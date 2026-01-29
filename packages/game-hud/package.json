@@ -1,0 +1,43 @@
+{
+  "browserslist": [
+    "defaults"
+  ],
+  "dependencies": {
+    "@mono/utils-core": "workspace:*"
+  },
+  "devDependencies": {},
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.es.js",
+      "require": "./dist/index.cjs.js"
+    }
+  },
+  "license": "MIT",
+  "main": "./dist/index.es.js",
+  "name": "@mono/game-hud",
+  "private": false,
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pan-Z2l0aHVi/mono.git"
+  },
+  "scripts": {
+    "build": "run-p type-check \"build-only {@}\" --",
+    "build-only": "vite build",
+    "deploy": "npm publish",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "type-check": "vue-tsc --build",
+    "watch": "vite build --watch"
+  },
+  "sideEffects": [
+    "**/*.css"
+  ],
+  "type": "module",
+  "types": "./dist/index.d.ts",
+  "version": "1.0.0"
+}

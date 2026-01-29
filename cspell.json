@@ -1,0 +1,38 @@
+{
+  "allowCompoundWords": true,
+  "dictionaries": ["en_US", "typescript", "node", "npm", "html", "css", "lorem-ipsum"],
+  "ignorePaths": [
+    "**/.git/**",
+    "**/.*ignore",
+    "**/*.lock",
+    "**/*-lock.yaml",
+    "**/*-lock.json",
+    "**/package.json",
+    "**/*.d.ts",
+    "**/*.{svg,png,jpg,jpeg,gif,ico,woff,woff2,ttf,eot}",
+    "**/.vscode/**",
+    "**/.zed/**"
+  ],
+  "ignoreRegExpList": [
+    // 忽略 hex 十六进制颜色
+    "#[a-fA-F0-9]{3,6}",
+    // 忽略 react 自定义事件（例如：onvisible-change）
+    "\\bon[a-z-]{4,}\\b"
+  ],
+  "useGitignore": true,
+  "version": "0.2",
+  "words": [
+    "Avenir",
+    "entrancy",
+    "iconify",
+    "kalimahapps",
+    "regen",
+    "turborepo",
+    "unplugin",
+    "Vetur",
+    "vueuse",
+    "Greey",
+    "pina",
+    "unhead"
+  ]
+}

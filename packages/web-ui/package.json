@@ -1,0 +1,50 @@
+{
+  "author": "Greey",
+  "browserslist": [
+    "defaults"
+  ],
+  "dependencies": {
+    "@mono/utils-browser": "workspace:*",
+    "@mono/utils-core": "workspace:*"
+  },
+  "devDependencies": {},
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./components/*": {
+      "types": "./dist/components/*/index.d.ts",
+      "import": "./dist/components/*/index.js"
+    },
+    "./types/*": "./dist/types/*.d.ts"
+  },
+  "license": "MIT",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "name": "@mono/web-ui",
+  "peerDependencies": {},
+  "private": false,
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pan-Z2l0aHVi/mono.git"
+  },
+  "scripts": {
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "watch": "vite build --watch"
+  },
+  "sideEffects": [
+    "./dist/index.js",
+    "./dist/components/*/index.js",
+    "**/*.css"
+  ],
+  "type": "module",
+  "types": "./dist/index.d.ts",
+  "version": "1.0.0"
+}

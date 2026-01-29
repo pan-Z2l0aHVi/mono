@@ -1,0 +1,21 @@
+{
+  "extends": [
+    "stylelint-config-clean-order",
+    "stylelint-config-standard-scss",
+    "stylelint-config-standard-vue",
+    "stylelint-prettier/recommended"
+  ],
+  "rules": {
+    "alpha-value-notation": "number",
+    "at-rule-no-unknown": null,
+    "color-function-notation": "modern",
+    "declaration-block-no-redundant-longhand-properties": null,
+    "no-empty-source": null,
+    "scss/at-rule-no-unknown": [
+      true,
+      {
+        "ignoreAtRules": ["theme", "source", "utility", "variant", "plugin", "tailwind", "apply", "config"]
+      }
+    ]
+  }
+}

@@ -1,0 +1,86 @@
+# ==========================================
+# 1. 核心依赖与系统文件 (Core & System)
+# ==========================================
+node_modules/
+.DS_Store
+Thumbs.db
+*.log
+logs/
+*.gz
+*.pfx
+*.certificate
+
+# 常见的 debug 日志（支持所有主流包管理器）
+*-debug.log*
+*-error.log*
+.pnpm-debug.log*
+
+# ==========================================
+# 2. 工具链缓存与产物 (Build Tools & Monorepo)
+# ==========================================
+.turbo/
+.cache/
+.temp/
+.storage/
+
+# 构建输出目录
+dist/
+dist-ssr/
+lib/
+esm/
+out/
+site/
+build/
+.next/
+.nuxt/
+.output/
+
+# 环境变量
+.env
+.env.*
+!.env.example # 建议保留 example 作为模板
+
+# ==========================================
+# 3. TypeScript & 编译器 (Compilers)
+# ==========================================
+*.tsbuildinfo
+*.metadata.json
+
+# ==========================================
+# 4. 测试与代码质量 (Testing & Linting)
+# ==========================================
+coverage/
+__snapshots__/
+*.received.*
+.eslintcache
+.stylelintcache
+.cspellcache
+.prettiercache
+.husky/_/
+
+# 可视化分析报告
+stats.html
+report.html
+
+# ==========================================
+# 5. 编辑器与 IDE (Editors)
+# ==========================================
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# 针对 VS Code：忽略所有配置，但保留共享的工程配置
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/launch.json
+!.vscode/tasks.json
+
+# ==========================================
+# 6. 本地开发私有文件 (Local Private)
+# ==========================================
+*.local
+.dev.vars # Cloudflare Workers 等工具使用

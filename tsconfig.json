@@ -1,0 +1,13 @@
+{
+  "files": [],
+  "references": [
+    { "path": "./packages/utils-core" },
+    { "path": "./packages/utils-browser" },
+    { "path": "./packages/web-ui" },
+    { "path": "./packages/game-hud" },
+    { "path": "./packages/unplugin-web-components" },
+
+    { "path": "./apps/react-app-demo" },
+    { "path": "./apps/vue-app-demo" }
+  ]
+}

@@ -1,0 +1,35 @@
+{
+  "browserslist": {
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ],
+    "production": [
+      "> 0.5% in CN",
+      "last 2 versions",
+      "Android >= 9",
+      "iOS >= 15",
+      "not dead",
+      "not Android <= 8",
+      "not iOS <= 14"
+    ]
+  },
+  "dependencies": {
+    "@mono/utils-core": "workspace:*",
+    "@mono/web-ui": "workspace:*"
+  },
+  "devDependencies": {
+    "@mono/unplugin-web-components": "workspace:*"
+  },
+  "name": "@mono/react-app-demo",
+  "private": false,
+  "scripts": {
+    "build": "tsc -b && vite build",
+    "dev": "vite",
+    "preview": "vite preview",
+    "test": "vitest run"
+  },
+  "type": "module",
+  "version": "1.0.0"
+}

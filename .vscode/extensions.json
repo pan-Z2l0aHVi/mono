@@ -1,0 +1,16 @@
+{
+  "recommendations": [
+    "streetsidesoftware.code-spell-checker",
+    "stylelint.vscode-stylelint",
+    "mrmlnc.vscode-scss",
+    "dbaeumer.vscode-eslint",
+    "esbenp.prettier-vscode",
+    "ms-vscode.vscode-typescript-next",
+    "unifiedjs.vscode-mdx",
+    "editorconfig.editorconfig",
+    "runem.lit-plugin",
+    "vitest.explorer",
+    "vue.volar",
+    "antfu.iconify"
+  ]
+}

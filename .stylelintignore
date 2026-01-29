@@ -1,0 +1,95 @@
+# ===================== 核心依赖/构建产物目录 =====================
+# 包依赖目录（必忽略）
+node_modules/
+# 构建/打包输出目录（适配主流构建工具）
+dist/
+build/
+out/
+dist-ssr/
+coverage/
+# 临时文件目录
+tmp/
+temp/
+# 缓存目录
+.cache/
+.eslintcache/
+.stylelintcache/
+.cspellcache/
+node_modules/.cache/
+
+# ===================== 第三方/生成的样式文件 =====================
+# 压缩后的样式文件（min 结尾）
+**/*.min.css
+**/*.min.scss
+**/*.min.less
+# 第三方样式文件（比如 CDN 引入、插件自带样式）
+**/vendor/**/*.{css,scss,less}
+**/libs/**/*.{css,scss,less}
+**/plugins/**/*.{css,scss,less}
+# 自动生成的样式文件（比如 tailwind/unoCSS 生成、CSS Modules 产物）
+**/*.module.css.d.ts
+**/*.generated.{css,scss,less}
+**/*.css.js
+# 预编译/编译后的样式产物
+**/*.css.map
+**/*.scss.map
+**/*.less.map
+# rollup
+stats.html
+
+# ===================== 框架/工具专属忽略 =====================
+# Vue 相关（按需保留）
+# Vue 服务端渲染临时文件
+**/*.vue.server.js
+# Nuxt 框架产物
+.nuxt/
+.output/
+# React 相关
+.next/
+# Angular 相关
+angular.json
+dist/out-tsc/
+# Electron 相关
+electron/
+# 小程序相关
+miniprogram_npm/
+unpackage/
+
+# ===================== 版本控制/文档/配置文件 =====================
+# Git 相关
+.git/
+.gitignore
+# 文档类文件
+docs/
+*.md
+*.txt
+# 配置文件（非样式相关）
+*.config.js
+*.config.ts
+*.config.json
+*.config.yml
+*.config.yaml
+# IDE 配置文件
+.idea/
+.vscode/
+.zed/
+*.sublime-*
+*.swp
+*.swo
+.DS_Store
+# 日志/报错文件
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ===================== 特殊场景忽略 =====================
+# 测试文件（若测试用例中的样式无需检查）
+**/__tests__/**/*.{css,scss,less}
+**/*.test.{css,scss,less}
+**/*.spec.{css,scss,less}
+# 旧版/归档样式文件
+**/old/**/*.{css,scss,less}
+**/archive/**/*.{css,scss,less}
+# 本地开发调试文件
+**/*.local.{css,scss,less}

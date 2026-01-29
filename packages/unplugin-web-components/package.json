@@ -1,0 +1,44 @@
+{
+  "author": "Greey",
+  "browserslist": [
+    "defaults"
+  ],
+  "dependencies": {
+    "@mono/utils-core": "workspace:*"
+  },
+  "description": "",
+  "devDependencies": {},
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "license": "MIT",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "name": "@mono/unplugin-web-components",
+  "peerDependencies": {},
+  "private": false,
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pan-Z2l0aHVi/mono.git"
+  },
+  "scripts": {
+    "build": "run-p type-check \"build-only {@}\" --",
+    "build-only": "vite build",
+    "deploy": "npm publish",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "type-check": "vue-tsc --build",
+    "watch": "vite build --watch"
+  },
+  "sideEffects": false,
+  "type": "module",
+  "types": "./dist/index.d.ts",
+  "version": "1.0.0"
+}

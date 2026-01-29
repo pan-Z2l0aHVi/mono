@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "experimentalDecorators": true, // Lit 必备
+    "paths": {
+      "@/*": ["./src/*"]
+    },
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
+    "types": ["vite/client"],
+    "useDefineForClassFields": false // Lit 必备
+  },
+  "exclude": ["**/__tests__"],
+  "extends": "@vue/tsconfig/tsconfig.dom.json",
+  "include": ["src/**/*"]
+}
