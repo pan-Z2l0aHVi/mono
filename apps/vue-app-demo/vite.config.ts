@@ -6,10 +6,10 @@ import vue from '@vitejs/plugin-vue'
 import vueJsx from '@vitejs/plugin-vue-jsx'
 import { visualizer } from 'rollup-plugin-visualizer'
 import autoImport from 'unplugin-auto-import/vite'
-import vueRouter from 'unplugin-vue-router/vite'
 import { type PluginOption, searchForWorkspaceRoot, type UserConfig } from 'vite'
 import checker from 'vite-plugin-checker'
 import tsconfigPaths from 'vite-tsconfig-paths'
+import vueRouter from 'vue-router/vite'
 
 // https://vite.dev/config/
 export default {

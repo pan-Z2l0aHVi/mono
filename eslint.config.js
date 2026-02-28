@@ -129,6 +129,8 @@ export default defineConfig([
     },
     rules: {
       ...reactRefresh.configs.recommended.rules,
+      'react-refresh/only-export-components': 'off',
+      'react/display-name': 'off',
       'react/react-in-jsx-scope': 'off' // react 19 不需要
     }
   },

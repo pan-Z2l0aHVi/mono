@@ -18,7 +18,7 @@ export default {
     }),
     react({
       babel: {
-        // plugins: [['babel-plugin-react-compiler']]
+        plugins: [['babel-plugin-react-compiler']]
       }
     }),
     unpluginWebComponents.vite({

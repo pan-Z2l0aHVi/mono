@@ -15,7 +15,7 @@ useHead({
 </script>
 
 <template>
-  <div className="p-12px">
+  <div class="p-12px">
     <h3>Welcome Home!</h3>
   </div>
 </template>

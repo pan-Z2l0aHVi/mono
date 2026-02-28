@@ -1,5 +1,5 @@
 /// <reference types="vite/client" />
-/// <reference types="unplugin-vue-router/client" />
+/// <reference types="vue-router/auto" />
 import type { WebUiComponents } from '@mono/web-ui/types/vue'
 
 export {}
