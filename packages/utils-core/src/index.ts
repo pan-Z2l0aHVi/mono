@@ -1,6 +1,6 @@
-export * from './emitter'
 export * from './number'
 export * from './paradigm'
+export * from './plugin'
 export * from './random'
 export * from './timer'
 export * from './url'

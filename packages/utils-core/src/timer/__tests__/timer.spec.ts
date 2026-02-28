@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { ControllableInterval } from '..'
+import { make } from '@/plugin'
+
+import { createControllableInterval } from '..'
 
 describe('timer 单元测试', () => {
   describe('ControllableInterval', () => {
@@ -10,7 +12,7 @@ describe('timer 单元测试', () => {
 
     it('应当能正常循环执行', () => {
       const cb = vi.fn()
-      const timer = new ControllableInterval(cb, 1000)
+      const timer = make(createControllableInterval(cb, 1000))
       timer.start()
 
       vi.advanceTimersByTime(3500)
@@ -20,7 +22,7 @@ describe('timer 单元测试', () => {
 
     it('暂停后不应触发回调', () => {
       const cb = vi.fn()
-      const timer = new ControllableInterval(cb, 1000)
+      const timer = make(createControllableInterval(cb, 1000))
       timer.start()
 
       vi.advanceTimersByTime(500)
@@ -33,7 +35,7 @@ describe('timer 单元测试', () => {
 
     it('恢复后应先补全剩余时间', () => {
       const cb = vi.fn()
-      const timer = new ControllableInterval(cb, 1000)
+      const timer = make(createControllableInterval(cb, 1000))
       timer.start()
 
       vi.advanceTimersByTime(800) // 此时还剩 200ms

@@ -34,7 +34,7 @@ describe('copy 单元测试', () => {
 
     it('传入 Blob 且环境不支持时应 reject', async () => {
       const blob = new Blob(['test'])
-      await expect(copyToClipboard(blob)).rejects.toBeInstanceOf(Error)
+      await expect(copyToClipboard(blob)).rejects.toThrow('Blob is not supported by copy-to-clipboard.')
     })
 
     it('debug 模式下的 console.error 应当包含预期的错误信息', async () => {

@@ -7,9 +7,9 @@
  * 3.链路稳健：基于递归 setTimeout 实现，避免原生 setInterval 在回调耗时过长时的“堆积”效应
  * 4.环境兼容：适配浏览器与 Node.js (SSR)，自动处理 Timeout 类型差异
  * @example
- * const timer = new ControllableInterval(() => {
+ * const timer = make(createControllableInterval(() => {
  *   console.log('tick')
- * }, 1000)
+ * }, 1000)))
  * timer.start()
  * setTimeout(() => {
  *   timer.pause() // 运行 800ms 后暂停，剩余 200ms
@@ -19,57 +19,64 @@
  * }, 800)
  */
 
-export class ControllableInterval {
-  private timerId: ReturnType<typeof setTimeout> | null = null
-  private isPaused = false
-  private remainingTime = 0
-  private lastStartTime = 0
+import { createPlugin } from '@/plugin'
 
-  constructor(
-    private callback: () => void,
-    private interval: number
-  ) {}
+export function createControllableInterval(callback: () => void, interval: number) {
+  return createPlugin('controllableInterval', () => {
+    let timerId: ReturnType<typeof setTimeout> | null = null
+    let isPaused = false
+    let remainingTime = 0
+    let lastStartTime = 0
 
-  private tick(delay: number) {
-    this.lastStartTime = Date.now()
-    this.timerId = setTimeout(() => {
-      this.callback()
-      // 只有在没被暂停的情况下，才继续下一次循环
-      if (!this.isPaused) this.tick(this.interval)
-    }, delay)
-  }
+    function tick(delay: number) {
+      lastStartTime = Date.now()
+      timerId = setTimeout(() => {
+        callback()
+        // 只有在没被暂停的情况下，才继续下一次循环
+        if (!isPaused) tick(interval)
+      }, delay)
+    }
 
-  start() {
-    if (this.timerId || this.isPaused) return
+    function start() {
+      if (timerId || isPaused) return
 
-    this.tick(this.interval)
-  }
+      tick(interval)
+    }
 
-  pause() {
-    if (this.isPaused || !this.timerId) return
+    function pause() {
+      if (isPaused || !timerId) return
 
-    this.isPaused = true
-    clearTimeout(this.timerId)
-    this.timerId = null
+      isPaused = true
+      clearTimeout(timerId)
+      timerId = null
 
-    // 计算当前这一轮还剩多少时间没跑完
-    const diff = Date.now() - this.lastStartTime
-    this.remainingTime = Math.max(0, this.interval - diff)
-  }
+      // 计算当前这一轮还剩多少时间没跑完
+      const diff = Date.now() - lastStartTime
+      remainingTime = Math.max(0, interval - diff)
+    }
 
-  resume() {
-    if (!this.isPaused) return
+    function resume() {
+      if (!isPaused) return
 
-    this.isPaused = false
-    // 恢复执行：先跑完上一轮剩下的时间
-    this.tick(this.remainingTime || this.interval)
-  }
+      isPaused = false
+      // 恢复执行：先跑完上一轮剩下的时间
+      tick(remainingTime || interval)
+    }
 
-  stop() {
-    if (this.timerId) clearTimeout(this.timerId)
+    function stop() {
+      if (timerId) clearTimeout(timerId)
 
-    this.timerId = null
-    this.isPaused = false
-    this.remainingTime = 0
-  }
+      timerId = null
+      isPaused = false
+      remainingTime = 0
+    }
+
+    return {
+      tick,
+      start,
+      pause,
+      resume,
+      stop
+    }
+  })
 }
