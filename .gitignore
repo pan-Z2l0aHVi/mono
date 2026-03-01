@@ -83,4 +83,13 @@ report.html
 # 6. 本地开发私有文件 (Local Private)
 # ==========================================
 *.local
-.dev.vars # Cloudflare Workers 等工具使用
+# Cloudflare Workers 等工具使用
+.dev.vars
+
+# ==========================================
+# 7. 工具链自动生成 (Auto Generated)
+# ==========================================
+wailsjs/
+typed-router.d.ts
+auto-imports.d.ts
+.eslintrc-auto-import.js

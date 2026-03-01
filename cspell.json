@@ -11,7 +11,8 @@
     "**/*.d.ts",
     "**/*.{svg,png,jpg,jpeg,gif,ico,woff,woff2,ttf,eot}",
     "**/.vscode/**",
-    "**/.zed/**"
+    "**/.zed/**",
+    "**/wailsjs/**"
   ],
   "ignoreRegExpList": [
     // 忽略 hex 十六进制颜色
@@ -33,6 +34,8 @@
     "vueuse",
     "Greey",
     "pina",
-    "unhead"
+    "unhead",
+    "mdgitai",
+    "wailsjs"
   ]
 }

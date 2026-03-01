@@ -45,7 +45,10 @@ export default defineConfig([
     'scripts/**',
     '**/*.d.ts',
     '**/.turbo/**',
-    '**/routeTree.gen.ts'
+    '**/routeTree.gen.ts',
+    '**/.eslintrc-auto-import.js',
+    '**/auto-imports.d.ts',
+    '**/wailsjs/**'
   ]),
 
   /**

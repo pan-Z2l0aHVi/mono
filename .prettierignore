@@ -11,3 +11,5 @@
 /public/*
 
 **/routeTree.gen.ts
+
+/wailsjs/**
