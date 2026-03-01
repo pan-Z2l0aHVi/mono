@@ -27,7 +27,8 @@ export default {
       'unplugin-web-components',
       'game-hud',
       'react-app-demo',
-      'vue-app-demo'
+      'vue-app-demo',
+      'mdgitai'
     ],
     enableMultipleScopes: true,
     allowCustomScopes: false,

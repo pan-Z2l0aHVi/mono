@@ -1,6 +1,10 @@
 {
   "$schema": "https://turbo.build/schema.json",
   "tasks": {
+    "@mono/mdgitai#build": {
+      "dependsOn": ["^build"],
+      "outputs": ["frontend/dist/**", "build/bin/**", "build/MyApp.app/**"]
+    },
     "build": {
       "dependsOn": ["^build"],
       "outputs": ["dist/**"]

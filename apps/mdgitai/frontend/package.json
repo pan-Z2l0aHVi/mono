@@ -1,0 +1,18 @@
+{
+  "dependencies": {
+    "@mono/utils-core": "workspace:*",
+    "@mono/web-ui": "workspace:*"
+  },
+  "devDependencies": {
+    "@mono/unplugin-web-components": "workspace:*"
+  },
+  "name": "frontend",
+  "private": true,
+  "scripts": {
+    "build": "vue-tsc --noEmit && vite build",
+    "dev": "vite",
+    "preview": "vite preview"
+  },
+  "type": "module",
+  "version": "0.0.0"
+}

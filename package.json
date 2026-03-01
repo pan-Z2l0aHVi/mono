@@ -124,6 +124,7 @@
     "deploy": "turbo deploy",
     "dev:react-app-demo": "pnpm -C apps/react-app-demo run dev",
     "dev:vue-app-demo": "pnpm -C apps/vue-app-demo run dev",
+    "dev:wails-app-demo": "pnpm -C apps/mdgitai run dev",
     "lint:fix": "eslint --fix --cache && stylelint --fix \"**/*.{css,scss,less,vue}\" && cspell \"**\" --no-must-find-files --cache",
     "precommit": "lint-staged",
     "prepare": "husky",
