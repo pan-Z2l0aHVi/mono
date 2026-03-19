@@ -7,9 +7,9 @@
  * 3.链路稳健：基于递归 setTimeout 实现，避免原生 setInterval 在回调耗时过长时的“堆积”效应
  * 4.环境兼容：适配浏览器与 Node.js (SSR)，自动处理 Timeout 类型差异
  * @example
- * const timer = make(createControllableInterval(() => {
+ * const timer = createControllableInterval(() => {
  *   console.log('tick')
- * }, 1000)))
+ * }, 1000))
  * timer.start()
  * setTimeout(() => {
  *   timer.pause() // 运行 800ms 后暂停，剩余 200ms
@@ -19,10 +19,10 @@
  * }, 800)
  */
 
-import { createPlugin } from '@/plugin'
+import { definePlugin } from '@/plugin'
 
-export function createControllableInterval(callback: () => void, interval: number) {
-  return createPlugin('controllableInterval', () => {
+export function defineControllableInterval(callback: () => void, interval: number) {
+  return definePlugin(() => {
     let timerId: ReturnType<typeof setTimeout> | null = null
     let isPaused = false
     let remainingTime = 0
@@ -79,4 +79,8 @@ export function createControllableInterval(callback: () => void, interval: numbe
       stop
     }
   })
+}
+
+export function createControllableInterval(callback: () => void, interval: number) {
+  return defineControllableInterval(callback, interval).make()
 }

@@ -58,6 +58,7 @@ export default defineConfig([
     ...config,
     rules: {
       ...config.rules,
+      '@typescript-eslint/no-unused-vars': 'warn',
       '@typescript-eslint/no-explicit-any': 'warn',
       '@typescript-eslint/no-redeclare': 'error',
       '@typescript-eslint/no-unsafe-declaration-merging': 'warn' // interface 合并还是有用处

@@ -1,16 +1,6 @@
-import { createPlugin, make, type PluginInstance } from '@mono/utils-core'
+import { definePlugin, type PluginMade } from '@mono/utils-core'
 
 import { on } from '@/shortcut'
-
-export interface StorageApi {
-  has(key: string): boolean
-  get<T>(key: string, def?: T | null): T | null
-  set<T>(key: string, val: T, ttl?: number): void
-  remove(key: string): void
-  clear(): void
-  clearUseless(): void
-  watch<T>(key: string, callback: (val: T | null) => void): () => void
-}
 
 export type StorageType = 'local' | 'session'
 const PKG_MARK = '_pkg'
@@ -19,14 +9,13 @@ interface Pkg<T> {
   v: T
   t?: number
 }
-type PluginName = 'storage'
 
 export interface StorageOptions {
   namespace?: string
 }
 
-function _createStorage(type: StorageType, options: StorageOptions = {}) {
-  return createPlugin<PluginName, StorageApi>('storage', () => {
+function defineStorage(type: StorageType, options: StorageOptions = {}) {
+  return definePlugin(() => {
     const store = typeof window !== 'undefined' ? window[`${type}Storage`] : ({} as globalThis.Storage)
     const prefix = options.namespace ? `${options.namespace}:` : ''
 
@@ -157,7 +146,7 @@ function _createStorage(type: StorageType, options: StorageOptions = {}) {
 }
 
 // 单例缓存，确保 namespace 相同时使用同一个实例
-type StorageInst = PluginInstance<PluginName, StorageApi, Record<string, never>>
+type StorageInst = PluginMade<typeof defineStorage>
 const uniqueInstMap = new Map<string, StorageInst>()
 const DEFAULT_INST_KEY = '_default'
 
@@ -166,7 +155,7 @@ function createStorage(type: StorageType, namespace?: string): StorageInst {
 
   if (uniqueInstMap.has(instKey)) return uniqueInstMap.get(instKey) as StorageInst
 
-  const inst = make(_createStorage(type, { namespace }))
+  const inst = defineStorage(type, { namespace }).make()
   uniqueInstMap.set(instKey, inst)
   return inst
 }

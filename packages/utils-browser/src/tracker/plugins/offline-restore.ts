@@ -1,52 +1,91 @@
-import { createPlugin } from '@mono/utils-core'
+/**
+ * @description
+ * 离线时收集埋点数据先存本地，等到重连或页面刷新后再上报
+ * 需要持久化，避免数据太大放不下，选用 indexDB 而不是 localStorage
+ */
+
+import { definePlugin, type PluginMade } from '@mono/utils-core'
 import { del, get, update } from 'idb-keyval'
+import { isDeepEqual, uniqueWith } from 'remeda'
 
 import { on } from '@/shortcut'
 
-import type { Params, TransportApi } from './transport'
+import type { defineTracker } from './core'
 
-export interface OfflineRestoreApi {
-  persist: (paramsList: Params[]) => Promise<void>
-  restore: () => Promise<void>
-  destroy: () => void
-}
-export type OfflineRestoreOptions = {
+type Options = {
   restoreKey?: string
   restoreMaxSize?: number
 }
-type OfflineRestoreConfig = Required<OfflineRestoreOptions>
+type Config = Required<Options>
 
 const DEFAULT_OPTIONS = {
   restoreKey: 'tracker-restore',
-  restoreMaxSize: 1000
+  restoreMaxSize: 1000 // 条
 }
 
-export function createOfflineRestore(options?: OfflineRestoreOptions) {
-  return createPlugin<'offlineRestore', OfflineRestoreApi, { transport: TransportApi }>('offlineRestore', ctx => {
-    const config: OfflineRestoreConfig = { ...DEFAULT_OPTIONS, ...options }
+export function defineOfflineRestore(options: Options) {
+  return definePlugin((ctx: PluginMade<typeof defineTracker>) => {
+    const config: Config = { ...DEFAULT_OPTIONS, ...options }
 
-    const persist = (paramsList: Params[]) => {
-      const { restoreKey, restoreMaxSize } = config
-      return update(restoreKey, (p: Params[] = []) => [...p, ...paramsList].slice(-restoreMaxSize))
+    let staged: object[] = []
+
+    function track(data: object): Promise<void> {
+      if (!navigator.onLine) {
+        staged.push(data)
+      }
+      return ctx.track(data)
     }
 
-    const restore = async () => {
-      const { restoreKey } = config
-      const paramsList = await get<Params[]>(restoreKey)
-      if (!paramsList?.length) return
-
-      await ctx.transport.send(paramsList)
-      await del(restoreKey)
+    function save(): Promise<void> {
+      return update(config.restoreKey, (p: object[] = []) =>
+        uniqueWith([...p, ...staged], isDeepEqual).slice(-config.restoreMaxSize)
+      )
     }
 
-    const controller = new AbortController()
-    const { signal } = controller
-    on(window, 'online', () => restore(), { signal })
+    async function init(): Promise<void> {
+      const caches = await get<object[]>(config.restoreKey)
+      if (!caches || !caches.length) return
+      for (const data of caches) {
+        ctx.track(data)
+      }
+      staged = []
+      del(config.restoreKey)
+    }
+
+    init()
+
+    let controller: AbortController | null = null
+
+    function onOfflineRestore() {
+      if (controller) controller.abort()
+      controller = new AbortController()
+      const { signal } = controller
+      on(
+        window,
+        'offline',
+        () => {
+          if (staged.length) save()
+        },
+        { signal }
+      )
+      on(
+        window,
+        'online',
+        () => {
+          init()
+        },
+        { signal }
+      )
+    }
+
+    function offOfflineRestore() {
+      if (controller) controller.abort()
+    }
 
     return {
-      persist,
-      restore,
-      destroy: () => controller.abort()
+      track,
+      onOfflineRestore,
+      offOfflineRestore
     }
   })
 }
