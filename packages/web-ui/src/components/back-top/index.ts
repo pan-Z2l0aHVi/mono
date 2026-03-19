@@ -2,35 +2,15 @@ import 'iconify-icon'
 import '@/components/button'
 
 import { getRootScrollTop } from '@mono/utils-browser'
-import { css, html, LitElement, type PropertyValues } from 'lit'
+import { css, html, LitElement, type PropertyValues, unsafeCSS } from 'lit'
 import { customElement, property, state } from 'lit/decorators.js'
+
+import style from './style.css?inline'
 
 @customElement('web-ui-back-top')
 export class WebUiBackTop extends LitElement {
   static styles = css`
-    :host {
-      display: block;
-      position: fixed;
-      width: max-content;
-      z-index: var(--web-ui-back-top-z-index, auto);
-      top: var(--web-ui-back-top-top, auto);
-      right: var(--web-ui-back-top-right, 20px);
-      bottom: var(--web-ui-back-top-bottom, 20px);
-      left: var(--web-ui-back-top-left, auto);
-
-      transition: all 0.3s ease-out;
-      opacity: 0;
-      transform: scale(0);
-      visibility: hidden;
-      pointer-events: none;
-    }
-
-    :host([visible]) {
-      opacity: 1;
-      transform: scale(1);
-      visibility: visible;
-      pointer-events: auto;
-    }
+    ${unsafeCSS(style)}
   `
 
   @property({ type: Boolean, reflect: true }) smooth = true

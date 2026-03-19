@@ -1,0 +1,22 @@
+:host {
+  pointer-events: none;
+  position: fixed;
+  z-index: var(--web-ui-back-top-z-index, auto);
+  top: var(--web-ui-back-top-top, auto);
+  right: var(--web-ui-back-top-right, 20px);
+  bottom: var(--web-ui-back-top-bottom, 20px);
+  left: var(--web-ui-back-top-left, auto);
+  transform: scale(0);
+  display: block;
+  width: max-content;
+  visibility: hidden;
+  opacity: 0;
+  transition: all 0.3s ease-out;
+}
+
+:host([visible]) {
+  pointer-events: auto;
+  transform: scale(1);
+  visibility: visible;
+  opacity: 1;
+}

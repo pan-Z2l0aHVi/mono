@@ -1,0 +1,47 @@
+:host {
+  display: grid;
+  grid-template-areas:
+    'sidebar header'
+    'sidebar content';
+  grid-template-columns: var(--web-ui-base-layout-sidebar-width, 240px) 1fr;
+  grid-template-rows: var(--web-ui-base-layout-header-height, 64px) 1fr;
+  box-sizing: border-box;
+  min-height: 100dvh;
+  min-height: 100vh;
+
+  * {
+    box-sizing: inherit;
+  }
+}
+
+header {
+  position: sticky;
+  top: 0;
+  right: 0;
+  grid-area: header;
+}
+
+main {
+  grid-area: content;
+}
+
+aside {
+  position: sticky;
+  top: 0;
+  left: 0;
+  grid-area: sidebar;
+  height: 100dvh;
+  height: 100vh;
+  padding: 8px;
+
+  .menu {
+    height: 100%;
+    border-radius: 16px;
+    background-color: var(--web-ui-base-layout-bg, #f5f5f5);
+    box-shadow: 2px 4px 32px rgb(0 0 0 / 0.2);
+  }
+}
+
+footer {
+  grid-area: footer;
+}

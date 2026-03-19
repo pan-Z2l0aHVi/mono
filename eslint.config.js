@@ -185,7 +185,7 @@ export default defineConfig([
    * exports 字段要求 types key 排序优先
    */
   {
-    files: ['**/package.json'],
+    files: ['**/package.json', '**/build/**/*.json'],
     rules: {
       'json/sort-keys': 'warn'
     }

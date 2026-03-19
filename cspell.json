@@ -12,7 +12,9 @@
     "**/*.{svg,png,jpg,jpeg,gif,ico,woff,woff2,ttf,eot}",
     "**/.vscode/**",
     "**/.zed/**",
-    "**/wailsjs/**"
+    "**/wailsjs/**",
+    "**/go.sum",
+    "**/go.mod"
   ],
   "ignoreRegExpList": [
     // 忽略 hex 十六进制颜色
