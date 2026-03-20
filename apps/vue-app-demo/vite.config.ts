@@ -1,4 +1,5 @@
-import unpluginWebComponents from '@mono/unplugin-web-components'
+import { depsFullReload } from '@mono/deps-full-reload'
+import { unpluginWebComponents } from '@mono/unplugin-web-components'
 import tailwindcss from '@tailwindcss/vite'
 import basicSsl from '@vitejs/plugin-basic-ssl'
 import legacy from '@vitejs/plugin-legacy'
@@ -41,6 +42,7 @@ export default {
       packageName: '@mono/web-ui',
       sideEffects: true
     }),
+    depsFullReload.vite([{ name: '@mono/web-ui' }]),
     tailwindcss(),
     checker({
       overlay: true,

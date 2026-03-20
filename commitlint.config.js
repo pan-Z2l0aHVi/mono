@@ -25,6 +25,7 @@ export default {
       'utils-browser',
       'web-ui',
       'unplugin-web-components',
+      'deps-full-reload',
       'game-hud',
       'react-app-demo',
       'vue-app-demo',

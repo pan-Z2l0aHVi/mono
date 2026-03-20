@@ -1,13 +1,11 @@
-import { css, html, LitElement, unsafeCSS } from 'lit'
+import { html, LitElement, unsafeCSS } from 'lit'
 import { customElement, property } from 'lit/decorators.js'
 
 import style from './style.css?inline'
 
 @customElement('web-ui-button')
 export class WebUiButton extends LitElement {
-  static styles = css`
-    ${unsafeCSS(style)}
-  `
+  static styles = unsafeCSS(style)
 
   @property({ type: Boolean, reflect: true }) full = false
   @property({ type: Boolean, reflect: true }) primary = false

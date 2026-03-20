@@ -73,5 +73,3 @@ export const unpluginWebComponents = createUnplugin<UnpluginWebComponentsOptions
     }
   }
 })
-
-export default unpluginWebComponents

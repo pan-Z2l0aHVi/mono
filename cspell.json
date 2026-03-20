@@ -38,6 +38,8 @@
     "pina",
     "unhead",
     "mdgitai",
-    "wailsjs"
+    "wailsjs",
+    "Debouncer",
+    "unplugin"
   ]
 }

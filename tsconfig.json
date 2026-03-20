@@ -6,6 +6,7 @@
     { "path": "./packages/web-ui" },
     { "path": "./packages/game-hud" },
     { "path": "./packages/unplugin-web-components" },
+    { "path": "./packages/deps-full-reload" },
 
     { "path": "./apps/react-app-demo" },
     { "path": "./apps/vue-app-demo" }

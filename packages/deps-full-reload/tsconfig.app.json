@@ -1,0 +1,12 @@
+{
+  "compilerOptions": {
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "noEmit": true,
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.node.tsbuildinfo",
+    "types": ["node"]
+  },
+  "exclude": ["**/__tests__"],
+  "extends": "@tsconfig/node24/tsconfig.json",
+  "include": ["src/**/*"]
+}

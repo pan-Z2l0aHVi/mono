@@ -1,3 +1,4 @@
+import { depsFullReload } from '@mono/deps-full-reload'
 import { unpluginWebComponents } from '@mono/unplugin-web-components'
 import tailwindcss from '@tailwindcss/vite'
 import { tanstackRouter } from '@tanstack/router-plugin/vite'
@@ -26,6 +27,7 @@ export default {
       packageName: '@mono/web-ui',
       sideEffects: true
     }),
+    depsFullReload.vite([{ name: '@mono/web-ui' }]),
     tailwindcss(),
     basicSsl(),
     legacy({

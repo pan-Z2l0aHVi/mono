@@ -2,16 +2,14 @@ import 'iconify-icon'
 import '@/components/button'
 
 import { getRootScrollTop } from '@mono/utils-browser'
-import { css, html, LitElement, type PropertyValues, unsafeCSS } from 'lit'
+import { html, LitElement, type PropertyValues, unsafeCSS } from 'lit'
 import { customElement, property, state } from 'lit/decorators.js'
 
 import style from './style.css?inline'
 
 @customElement('web-ui-back-top')
 export class WebUiBackTop extends LitElement {
-  static styles = css`
-    ${unsafeCSS(style)}
-  `
+  static styles = unsafeCSS(style)
 
   @property({ type: Boolean, reflect: true }) smooth = true
   @property({ type: Number, reflect: true }) threshold: number = 200
