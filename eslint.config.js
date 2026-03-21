@@ -187,7 +187,7 @@ export default defineConfig([
   {
     files: ['**/package.json', '**/build/**/*.json'],
     rules: {
-      'json/sort-keys': 'warn'
+      'json/sort-keys': 'off'
     }
   },
 

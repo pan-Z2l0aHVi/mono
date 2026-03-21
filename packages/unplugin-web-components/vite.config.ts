@@ -12,6 +12,7 @@ export default {
     tsconfigPaths({ root: './' })
   ],
   build: {
+    sourcemap: true,
     lib: {
       entry: resolve(import.meta.dirname, 'src/index.ts'),
       formats: ['es']

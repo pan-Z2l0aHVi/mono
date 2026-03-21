@@ -1,7 +1,6 @@
-import { depsFullReload } from '@mono/deps-full-reload'
+import { fullReload } from '@mono/full-reload'
 import { unpluginWebComponents } from '@mono/unplugin-web-components'
 import tailwindcss from '@tailwindcss/vite'
-import basicSsl from '@vitejs/plugin-basic-ssl'
 import legacy from '@vitejs/plugin-legacy'
 import vue from '@vitejs/plugin-vue'
 import vueJsx from '@vitejs/plugin-vue-jsx'
@@ -42,7 +41,20 @@ export default {
       packageName: '@mono/web-ui',
       sideEffects: true
     }),
-    depsFullReload.vite([{ name: '@mono/web-ui' }]),
+    fullReload.vite([
+      {
+        name: '@mono/web-ui',
+        path: '../../../packages/web-ui'
+      },
+      {
+        name: '@mono/utils-core',
+        path: '../../../packages/utils-core'
+      },
+      {
+        name: '@mono/utils-browser',
+        path: '../../../packages/utils-browser'
+      }
+    ]),
     tailwindcss(),
     checker({
       overlay: true,
@@ -51,7 +63,6 @@ export default {
         tsconfigPath: './tsconfig.app.json'
       }
     }),
-    basicSsl(),
     legacy({
       targets: ['defaults', 'not IE 11', 'Android >= 9', 'iOS >= 15']
     }),

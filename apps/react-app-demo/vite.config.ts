@@ -1,4 +1,4 @@
-import { depsFullReload } from '@mono/deps-full-reload'
+import { fullReload } from '@mono/full-reload'
 import { unpluginWebComponents } from '@mono/unplugin-web-components'
 import tailwindcss from '@tailwindcss/vite'
 import { tanstackRouter } from '@tanstack/router-plugin/vite'
@@ -27,7 +27,20 @@ export default {
       packageName: '@mono/web-ui',
       sideEffects: true
     }),
-    depsFullReload.vite([{ name: '@mono/web-ui' }]),
+    fullReload.vite([
+      {
+        name: '@mono/web-ui',
+        path: '../../packages/web-ui'
+      },
+      {
+        name: '@mono/utils-core',
+        path: '../../packages/utils-core'
+      },
+      {
+        name: '@mono/utils-browser',
+        path: '../../packages/utils-browser'
+      }
+    ]),
     tailwindcss(),
     basicSsl(),
     legacy({

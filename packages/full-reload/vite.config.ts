@@ -12,12 +12,13 @@ export default {
     tsconfigPaths({ root: './' })
   ],
   build: {
+    sourcemap: true,
     lib: {
       entry: resolve(import.meta.dirname, 'src/index.ts'),
       formats: ['es']
     },
     rollupOptions: {
-      external: ['unplugin', 'node:fs', 'node:path'],
+      external: ['unplugin', 'node:path'],
       output: {
         preserveModules: true,
         // 指定源码根目录，这样 dist 下就不会多出一层 'src' 目录

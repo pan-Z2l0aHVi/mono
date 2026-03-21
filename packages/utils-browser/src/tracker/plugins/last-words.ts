@@ -19,19 +19,19 @@ export function defineLastWords() {
 
       controller = new AbortController()
       let hasSent = false
-      const flushHandler = () => {
+      const handleFlush = () => {
         if (hasSent) return
         hasSent = true
         ctx.flush()
       }
       const { signal } = controller
-      on(window, 'beforeunload', flushHandler, { signal })
-      on(window, 'pagehide', flushHandler, { signal })
+      on(window, 'beforeunload', handleFlush, { signal })
+      on(window, 'pagehide', handleFlush, { signal })
       on(
         document,
         'visibilitychange',
         () => {
-          if (document.visibilityState === 'hidden') flushHandler()
+          if (document.visibilityState === 'hidden') handleFlush()
         },
         { signal }
       )

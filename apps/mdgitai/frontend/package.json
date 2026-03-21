@@ -1,12 +1,4 @@
 {
-  "dependencies": {
-    "@mono/utils-core": "workspace:*",
-    "@mono/web-ui": "workspace:*"
-  },
-  "devDependencies": {
-    "@mono/deps-full-reload": "workspace:*",
-    "@mono/unplugin-web-components": "workspace:*"
-  },
   "name": "frontend",
   "private": true,
   "scripts": {

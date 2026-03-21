@@ -129,7 +129,7 @@
     "precommit": "lint-staged",
     "prepare": "husky",
     "test": "turbo test",
-    "watch:deps-full-reload": "pnpm -C packages/deps-full-reload run watch",
+    "watch:full-reload": "pnpm -C packages/full-reload run watch",
     "watch:game-hud": "pnpm -C packages/game-hud run watch",
     "watch:unplugin-web-components": "pnpm -C packages/unplugin-web-components run watch",
     "watch:utils-browser": "pnpm -C packages/utils-browser run watch",

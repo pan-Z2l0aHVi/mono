@@ -5,7 +5,14 @@ import App from '../App.vue'
 
 describe('App 挂载测试', () => {
   it('组件应当成功渲染到 DOM', () => {
-    const wrapper = mount(App)
+    const wrapper = mount(App, {
+      global: {
+        stubs: {
+          RouterView: true,
+          RouterLink: true
+        }
+      }
+    })
 
     expect(wrapper.exists()).toBe(true)
 

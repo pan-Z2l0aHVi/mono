@@ -17,7 +17,7 @@
   "license": "MIT",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
-  "name": "@mono/deps-full-reload",
+  "name": "@mono/full-reload",
   "peerDependencies": {},
   "private": false,
   "publishConfig": {

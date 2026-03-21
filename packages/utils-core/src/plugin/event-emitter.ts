@@ -6,13 +6,13 @@ export function defineEventEmitter<E extends Record<string, unknown[]>>() {
 
     return {
       on<K extends keyof E>(type: K & string, handler: (...args: E[K]) => void, options?: AddEventListenerOptions) {
-        const wrapper = (e: Event) => {
+        const listener = (e: Event) => {
           const args = (e as CustomEvent).detail as E[K]
           handler(...args)
         }
-        bus.addEventListener(type, wrapper, options)
+        bus.addEventListener(type, listener, options)
         // off fn
-        return () => bus.removeEventListener(type, wrapper)
+        return () => bus.removeEventListener(type, listener)
       },
 
       // 支持传入多个参数

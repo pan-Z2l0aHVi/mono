@@ -1,4 +1,13 @@
 {
+  "dependencies": {
+    "@mono/utils-browser": "workspace:*",
+    "@mono/utils-core": "workspace:*",
+    "@mono/web-ui": "workspace:*"
+  },
+  "devDependencies": {
+    "@mono/full-reload": "workspace:*",
+    "@mono/unplugin-web-components": "workspace:*"
+  },
   "name": "@mono/mdgitai",
   "private": true,
   "scripts": {
