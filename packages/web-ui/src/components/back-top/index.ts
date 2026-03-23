@@ -18,18 +18,18 @@ export class WebUiBackTop extends LitElement {
 
   @state() private eventController?: AbortController
 
-  connectedCallback() {
+  override connectedCallback() {
     super.connectedCallback()
     this.computeVisible()
     this.onScrollTarget()
   }
 
-  disconnectedCallback() {
+  override disconnectedCallback() {
     super.disconnectedCallback()
     this.eventController?.abort()
   }
 
-  protected willUpdate(props: PropertyValues) {
+  protected override willUpdate(props: PropertyValues) {
     super.willUpdate(props)
 
     if (props.has('threshold') || props.has('scrollTarget')) {

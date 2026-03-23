@@ -1,13 +1,11 @@
-import { css, html, LitElement, unsafeCSS } from 'lit'
+import { html, LitElement, unsafeCSS } from 'lit'
 import { customElement } from 'lit/decorators.js'
 
 import style from './style.css?inline'
 
 @customElement('web-ui-layout')
 export class WebUiLayout extends LitElement {
-  static styles = css`
-    ${unsafeCSS(style)}
-  `
+  static styles = unsafeCSS(style)
 
   render() {
     return html`
