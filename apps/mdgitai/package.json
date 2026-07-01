@@ -1,4 +1,12 @@
 {
+  "name": "@mono/mdgitai",
+  "private": true,
+  "scripts": {
+    "build": "pnpm run build:mac && pnpm run build:win",
+    "build:mac": "wails build -platform darwin/arm64",
+    "build:win": "wails build -platform windows/amd64 -nsis -webview2 embed",
+    "dev": "wails dev"
+  },
   "dependencies": {
     "@mono/utils-browser": "workspace:*",
     "@mono/utils-core": "workspace:*",
@@ -7,13 +15,5 @@
   "devDependencies": {
     "@mono/full-reload": "workspace:*",
     "@mono/unplugin-web-components": "workspace:*"
-  },
-  "name": "@mono/mdgitai",
-  "private": true,
-  "scripts": {
-    "build": "pnpm run build:mac && pnpm run build:win",
-    "build:mac": "wails build -platform darwin/arm64",
-    "build:win": "wails build -platform windows/amd64 -nsis -webview2 embed",
-    "dev": "wails dev"
   }
 }

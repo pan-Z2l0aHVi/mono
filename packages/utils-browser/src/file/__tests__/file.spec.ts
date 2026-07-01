@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
 import { base64ToFile, downloadFile, formatFileSize, getFileExtension, isSameFileType, isValidBase64 } from '..'
 

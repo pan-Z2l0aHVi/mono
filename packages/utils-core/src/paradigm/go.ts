@@ -30,7 +30,6 @@ export async function to<T, E = unknown>(promise: Promise<T>): Promise<Result<Aw
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function unwrap<S extends Result<any, any>>(
   result: S
 ): S extends Ok<infer T> ? T : S extends Err<infer E> ? E : never {

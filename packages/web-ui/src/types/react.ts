@@ -1,6 +1,7 @@
 import type { DetailedHTMLProps, HTMLAttributes } from 'react'
 
 import type { WebUiBackTop, WebUiButton, WebUiLayout } from '..'
+
 import type { ExtractProps, OmitLitBase } from './utils'
 // 提取 $events 并转化为 React 的 on 事件
 type ExtractReactEvents<T> = T extends { readonly $events: infer E }
@@ -18,4 +19,12 @@ export interface WebUiComponents {
   'web-ui-button': ReactWrapper<WebUiButton>
   'web-ui-back-top': ReactWrapper<WebUiBackTop>
   'web-ui-layout': ReactWrapper<WebUiLayout>
+}
+
+declare module 'react' {
+  // oxlint-disable-next-line typescript/no-namespace
+  namespace JSX {
+    // oxlint-disable-next-line typescript/no-empty-object-type
+    interface IntrinsicElements extends WebUiComponents {}
+  }
 }

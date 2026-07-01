@@ -1,6 +1,7 @@
 import type { DefineComponent } from 'vue'
 
 import type { WebUiBackTop, WebUiButton, WebUiLayout } from '..'
+
 import type { ExtractProps, OmitLitBase } from './utils'
 
 // 提取 $events 并转化为 Vue on 事件
@@ -18,4 +19,9 @@ export interface WebUiComponents {
   'web-ui-button': VueWrapper<WebUiButton>
   'web-ui-back-top': VueWrapper<WebUiBackTop>
   'web-ui-layout': VueWrapper<WebUiLayout>
+}
+
+declare module 'vue' {
+  // oxlint-disable-next-line typescript/no-empty-object-type
+  export interface GlobalComponents extends WebUiComponents {}
 }

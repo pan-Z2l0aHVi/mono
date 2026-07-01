@@ -26,7 +26,6 @@ export default {
       'web-ui',
       'unplugin-web-components',
       'full-reload',
-      'game-hud',
       'react-app-demo',
       'vue-app-demo',
       'mdgitai'

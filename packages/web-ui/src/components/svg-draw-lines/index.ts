@@ -20,7 +20,7 @@ export class WebUiSvgDrawLines extends LitElement {
     this.cloneOriginalSvg()
 
     this.isAnimating = true
-    this.startAnimation()
+    void this.startAnimation()
   }
 
   private cloneOriginalSvg() {

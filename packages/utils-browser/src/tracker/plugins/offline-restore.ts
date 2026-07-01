@@ -45,14 +45,13 @@ export function defineOfflineRestore(options: Options) {
     async function init(): Promise<void> {
       const caches = await get<object[]>(config.restoreKey)
       if (!caches || !caches.length) return
-      for (const data of caches) {
-        ctx.track(data)
-      }
+
+      await Promise.all(caches.map(cache => ctx.track(cache)))
       staged = []
-      del(config.restoreKey)
+      await del(config.restoreKey)
     }
 
-    init()
+    void init()
 
     let controller: AbortController | null = null
 
@@ -64,7 +63,7 @@ export function defineOfflineRestore(options: Options) {
         window,
         'offline',
         () => {
-          if (staged.length) save()
+          if (staged.length) void save()
         },
         { signal }
       )
@@ -72,7 +71,7 @@ export function defineOfflineRestore(options: Options) {
         window,
         'online',
         () => {
-          init()
+          void init()
         },
         { signal }
       )

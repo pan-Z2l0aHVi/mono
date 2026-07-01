@@ -23,7 +23,7 @@ export function defineBatchEmitter<S>(onFlushed?: (queue: S[]) => Promise<void>)
         if (queue.push(data) === 1) {
           timerId = setTimeout(() => {
             try {
-              flush()
+              void flush()
             } catch (error) {
               reject(error)
             }

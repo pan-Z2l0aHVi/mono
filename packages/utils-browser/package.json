@@ -1,12 +1,18 @@
 {
-  "author": "Greey",
-  "browserslist": [
-    "defaults"
-  ],
-  "dependencies": {
-    "@mono/utils-core": "workspace:*"
-  },
+  "name": "@mono/utils-browser",
+  "version": "1.0.0",
   "description": "",
+  "license": "MIT",
+  "author": "Greey",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pan-Z2l0aHVi/mono.git"
+  },
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/index.es.js",
+  "module": "./dist/index.es.js",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -17,30 +23,23 @@
       "import": "./dist/*/index.js"
     }
   },
-  "license": "MIT",
-  "main": "./dist/index.es.js",
-  "module": "./dist/index.es.js",
-  "name": "@mono/utils-browser",
-  "private": false,
   "publishConfig": {
     "access": "public",
     "registry": "https://registry.npmjs.org/"
   },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/pan-Z2l0aHVi/mono.git"
-  },
   "scripts": {
     "build": "run-p type-check \"build-only {@}\" --",
-    "build-only": "vite build",
+    "build-only": "vp build",
     "deploy": "npm publish",
-    "preview": "vite preview",
-    "test": "vitest run",
+    "preview": "vp preview",
+    "test": "vp test run",
     "type-check": "vue-tsc --build",
-    "watch": "vite build --watch"
+    "watch": "vp build --watch"
   },
-  "sideEffects": false,
-  "type": "module",
-  "types": "./dist/index.d.ts",
-  "version": "1.0.0"
+  "dependencies": {
+    "@mono/utils-core": "workspace:*"
+  },
+  "browserslist": [
+    "defaults"
+  ]
 }

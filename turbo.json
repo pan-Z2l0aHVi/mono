@@ -3,16 +3,37 @@
   "tasks": {
     "@mono/mdgitai#build": {
       "dependsOn": ["^build"],
-      "outputs": ["frontend/dist/**", "build/bin/**", "build/MyApp.app/**"]
+      "outputs": ["frontend/dist/**", "build/bin/**"],
+      "inputs": [
+        "**/*.go",
+        "go.mod",
+        "go.sum",
+        "wails.json",
+        "frontend/src/**",
+        "frontend/package.json",
+        "frontend/vite.config.*"
+      ]
     },
     "build": {
       "dependsOn": ["^build"],
       "outputs": ["dist/**"]
     },
-    "deploy": {
-      "dependsOn": ["build", "test"]
-    },
     "test": {
+      "dependsOn": ["^build"]
+    },
+    "deploy": {
+      "dependsOn": ["test", "build"],
+      "env": ["APP_RELEASER_TOKEN", "S3_BUCKET_NAME"],
+      "cache": false
+    },
+    "watch": {
+      "cache": false,
+      "persistent": true,
+      "dependsOn": ["^build"]
+    },
+    "dev": {
+      "cache": false,
+      "persistent": true,
       "dependsOn": ["^build"]
     }
   }

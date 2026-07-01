@@ -1,4 +1,4 @@
-import { err, ok, type Result } from '@mono/utils-core/rust'
+import { rust } from '@mono/utils-core'
 import { kebabCase, pascalCase } from 'change-case'
 import { createUnplugin } from 'unplugin'
 
@@ -21,7 +21,7 @@ export const unpluginWebComponents = createUnplugin<UnpluginWebComponentsOptions
   const kebabReg = new RegExp(`<\\s*${kebabTagPrefix}-([a-z0-9-]+)(?=[\\s/>])`, 'gi')
   const pascalReg = new RegExp(`<\\s*${pascalTagPrefix}([A-Z][a-zA-Z0-9]+)(?=[\\s/>])`, 'g')
 
-  function makeImports(code: string): Result<string, Error> {
+  function makeImports(code: string): rust.Result<string, Error> {
     const dirs = new Set<string>()
     let matches: RegExpExecArray | null = null
 
@@ -33,7 +33,7 @@ export const unpluginWebComponents = createUnplugin<UnpluginWebComponentsOptions
     }
 
     if (!dirs.size) {
-      return err(new Error('No components found.'))
+      return rust.err(new Error('No components found.'))
     }
 
     const imports = [...dirs]
@@ -46,7 +46,7 @@ export const unpluginWebComponents = createUnplugin<UnpluginWebComponentsOptions
       })
       .join('\n')
 
-    return ok(imports)
+    return rust.ok(imports)
   }
 
   return {

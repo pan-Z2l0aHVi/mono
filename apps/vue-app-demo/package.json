@@ -1,4 +1,25 @@
 {
+  "name": "@mono/vue-app-demo",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vp build",
+    "build-only": "vp build",
+    "dev": "vp dev",
+    "preview": "vp preview",
+    "test": "vp test run",
+    "type-check": "vue-tsc --build"
+  },
+  "dependencies": {
+    "@mono/utils-browser": "workspace:*",
+    "@mono/utils-core": "workspace:*",
+    "@mono/web-ui": "workspace:*"
+  },
+  "devDependencies": {
+    "@mono/full-reload": "workspace:*",
+    "@mono/unplugin-web-components": "workspace:*"
+  },
   "browserslist": {
     "development": [
       "last 1 chrome version",
@@ -14,27 +35,5 @@
       "not Android <= 8",
       "not iOS <= 14"
     ]
-  },
-  "dependencies": {
-    "@mono/game-hud": "workspace:*",
-    "@mono/utils-browser": "workspace:*",
-    "@mono/utils-core": "workspace:*",
-    "@mono/web-ui": "workspace:*"
-  },
-  "devDependencies": {
-    "@mono/full-reload": "workspace:*",
-    "@mono/unplugin-web-components": "workspace:*"
-  },
-  "name": "@mono/vue-app-demo",
-  "private": false,
-  "scripts": {
-    "build": "vite build",
-    "build-only": "vite build",
-    "dev": "vite",
-    "preview": "vite preview",
-    "test": "vitest run",
-    "type-check": "vue-tsc --build"
-  },
-  "type": "module",
-  "version": "1.0.0"
+  }
 }

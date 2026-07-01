@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vite-plus/test'
 
 import { defineBatchEmitter } from '..'
 
@@ -30,7 +30,7 @@ describe('BatchEmitter 单元测试', () => {
     const p1 = batchEmit(1, 100)
     const p2 = batchEmit(2, 100)
 
-    flush()
+    await flush()
 
     const results = await Promise.all([p1, p2])
     expect(results[0]).toEqual([1, 2])
@@ -38,11 +38,11 @@ describe('BatchEmitter 单元测试', () => {
     expect(onFlushed).toHaveBeenCalledWith([1, 2])
   })
 
-  it('flush 在队列为空时不做任何事', () => {
+  it('flush 在队列为空时不做任何事', async () => {
     const onFlushed = vi.fn()
     const batchEmitter = defineBatchEmitter(onFlushed).make()
     const { flush } = batchEmitter
-    flush()
+    await flush()
     expect(onFlushed).not.toHaveBeenCalled()
   })
 })

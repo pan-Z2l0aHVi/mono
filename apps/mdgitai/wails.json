@@ -1,9 +1,9 @@
 {
   "$schema": "https://wails.io/schemas/config.v2.json",
-  "frontend:build": "pnpm run build",
+  "frontend:install": "",
+  "frontend:build": "vp run build",
   "frontend:dev:serverUrl": "auto",
-  "frontend:dev:watcher": "pnpm run dev",
-  "frontend:install": "pnpm install",
+  "frontend:dev:watcher": "vp run dev",
   "name": "mdgitai",
   "outputfilename": "mdgitai"
 }

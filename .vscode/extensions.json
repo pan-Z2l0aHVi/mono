@@ -11,6 +11,7 @@
     "runem.lit-plugin",
     "vitest.explorer",
     "vue.volar",
-    "antfu.iconify"
+    "antfu.iconify",
+    "VoidZero.vite-plus-extension-pack"
   ]
 }

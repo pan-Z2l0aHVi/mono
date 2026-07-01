@@ -1,7 +1,7 @@
 export type Next = () => Promise<void>
 export type Middleware<T = unknown> = (ctx: T, next: Next) => Promise<void>
 
-export function compose<T = unknown>(...fns: Middleware<T>[]): Middleware<T> {
+export function asyncCompose<T = unknown>(...fns: Middleware<T>[]): Middleware<T> {
   return async function dispatch(ctx: T, next: Next, i = 0): Promise<void> {
     if (!fns.length) return next()
     const fn = fns[i]

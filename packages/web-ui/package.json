@@ -1,13 +1,21 @@
 {
+  "name": "@mono/web-ui",
+  "version": "1.0.0",
+  "license": "MIT",
   "author": "Greey",
-  "browserslist": [
-    "defaults"
-  ],
-  "dependencies": {
-    "@mono/utils-browser": "workspace:*",
-    "@mono/utils-core": "workspace:*"
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pan-Z2l0aHVi/mono.git"
   },
-  "devDependencies": {},
+  "type": "module",
+  "sideEffects": [
+    "./dist/index.js",
+    "./dist/components/*/index.js",
+    "**/*.css"
+  ],
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -17,34 +25,28 @@
       "types": "./dist/components/*/index.d.ts",
       "import": "./dist/components/*/index.js"
     },
-    "./types/*": "./dist/types/*.d.ts"
+    "./types/*": "./dist/types/*.d.ts",
+    "./vue": {
+      "types": "./dist/types/vue.d.ts"
+    }
   },
-  "license": "MIT",
-  "main": "./dist/index.js",
-  "module": "./dist/index.js",
-  "name": "@mono/web-ui",
-  "peerDependencies": {},
-  "private": false,
   "publishConfig": {
     "access": "public",
     "registry": "https://registry.npmjs.org/"
   },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/pan-Z2l0aHVi/mono.git"
-  },
   "scripts": {
-    "build": "vite build",
-    "preview": "vite preview",
-    "test": "vitest run",
-    "watch": "vite build --watch"
+    "build": "vp build",
+    "preview": "vp preview",
+    "test": "vp test run",
+    "watch": "vp build --watch"
   },
-  "sideEffects": [
-    "./dist/index.js",
-    "./dist/components/*/index.js",
-    "**/*.css"
-  ],
-  "type": "module",
-  "types": "./dist/index.d.ts",
-  "version": "1.0.0"
+  "dependencies": {
+    "@mono/utils-browser": "workspace:*",
+    "@mono/utils-core": "workspace:*"
+  },
+  "devDependencies": {},
+  "peerDependencies": {},
+  "browserslist": [
+    "defaults"
+  ]
 }

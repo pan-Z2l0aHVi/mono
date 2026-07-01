@@ -6,13 +6,14 @@ import basicSsl from '@vitejs/plugin-basic-ssl'
 import legacy from '@vitejs/plugin-legacy'
 import react from '@vitejs/plugin-react'
 import { visualizer } from 'rollup-plugin-visualizer'
-import { type PluginOption, searchForWorkspaceRoot, type UserConfig } from 'vite'
-import tsconfigPaths from 'vite-tsconfig-paths'
+import { type PluginOption, searchForWorkspaceRoot, type UserConfig } from 'vite-plus'
 
 // https://vite.dev/config/
 export default {
+  resolve: {
+    tsconfigPaths: true
+  },
   plugins: [
-    tsconfigPaths({ root: './' }),
     tanstackRouter({
       target: 'react',
       autoCodeSplitting: true
@@ -52,6 +53,9 @@ export default {
       brotliSize: true
     }) as PluginOption
   ],
+  test: {
+    environment: 'jsdom'
+  },
   build: {
     cssMinify: 'lightningcss'
   },

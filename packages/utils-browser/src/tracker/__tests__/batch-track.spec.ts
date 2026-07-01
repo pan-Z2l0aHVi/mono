@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
 import { defineBatchTrack } from '../plugins/batch-track'
 import { defineTracker } from '../plugins/core'
@@ -24,8 +24,8 @@ describe('批量聚合上报测试用例', () => {
       .use(defineBatchTrack({ defaultBatchDelay: 200 }))
       .make()
 
-    tracker.track({ event: 'click' })
-    tracker.track({ event: 'view' })
+    void tracker.track({ event: 'click' })
+    void tracker.track({ event: 'view' })
 
     expect(sendBeaconSpy).not.toHaveBeenCalled()
 
@@ -40,7 +40,7 @@ describe('批量聚合上报测试用例', () => {
       .make()
 
     for (let i = 0; i < 10000; i++) {
-      tracker.track({ event: 'view' })
+      void tracker.track({ event: 'view' })
     }
 
     await new Promise(r => setTimeout(r, 200))

@@ -1,6 +1,5 @@
 import 'iconify-icon'
 import '@/components/button'
-
 import { getRootScrollTop } from '@mono/utils-browser'
 import { html, LitElement, type PropertyValues, unsafeCSS } from 'lit'
 import { customElement, property, state } from 'lit/decorators.js'

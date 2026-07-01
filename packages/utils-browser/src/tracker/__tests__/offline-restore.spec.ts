@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
 import { defineTracker } from '../plugins/core' // 假设这是你的核心定义
 import { defineOfflineRestore } from '../plugins/offline-restore'

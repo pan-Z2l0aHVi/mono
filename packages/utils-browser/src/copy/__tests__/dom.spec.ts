@@ -1,4 +1,4 @@
-import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
 import { copyToClipboard } from '..'
 
@@ -9,8 +9,6 @@ describe('copy 单元测试', () => {
       window.prompt = vi.fn()
 
       // 核心：模拟 execCommand 并让它返回 true
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore
       document.execCommand = vi.fn().mockReturnValue(true)
     })
 

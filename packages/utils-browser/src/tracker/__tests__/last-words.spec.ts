@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
 import { defineBatchTrack } from '../plugins/batch-track'
 import { defineTracker } from '../plugins/core'
@@ -27,7 +27,7 @@ describe('亡语插件测试用例', () => {
       .make()
 
     tracker.onLastWords()
-    tracker.track({ event: 'click before leave' })
+    void tracker.track({ event: 'click before leave' })
 
     window.dispatchEvent(new Event('beforeunload')) // or pagehide,visibilitychange hidden
 

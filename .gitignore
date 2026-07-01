@@ -1,5 +1,5 @@
 # ==========================================
-# 1. 核心依赖与系统文件 (Core & System)
+# 核心依赖与系统文件 (Core & System)
 # ==========================================
 node_modules/
 .DS_Store
@@ -16,7 +16,7 @@ logs/
 .pnpm-debug.log*
 
 # ==========================================
-# 2. 工具链缓存与产物 (Build Tools & Monorepo)
+# 工具链缓存与产物 (Build Tools & Monorepo)
 # ==========================================
 .turbo/
 .cache/
@@ -38,16 +38,16 @@ build/
 # 环境变量
 .env
 .env.*
-!.env.example # 建议保留 example 作为模板
+!.env.example
 
 # ==========================================
-# 3. TypeScript & 编译器 (Compilers)
+# TypeScript & 编译器 (Compilers)
 # ==========================================
 *.tsbuildinfo
 *.metadata.json
 
 # ==========================================
-# 4. 测试与代码质量 (Testing & Linting)
+# 测试与代码质量 (Testing & Linting)
 # ==========================================
 coverage/
 __snapshots__/
@@ -63,7 +63,7 @@ stats.html
 report.html
 
 # ==========================================
-# 5. 编辑器与 IDE (Editors)
+# 编辑器与 IDE (Editors)
 # ==========================================
 .idea/
 *.suo
@@ -72,24 +72,31 @@ report.html
 *.sln
 *.sw?
 
-# 针对 VS Code：忽略所有配置，但保留共享的工程配置
+# 针对 VSCode/Zed：忽略所有配置，但保留共享的工程配置
 .vscode/*
 !.vscode/extensions.json
 !.vscode/settings.json
 !.vscode/launch.json
 !.vscode/tasks.json
 
+.zed/*
+!.zed/settings.json
+
+.tanstack/*
+
 # ==========================================
-# 6. 本地开发私有文件 (Local Private)
+# 本地开发私有文件 (Local Private)
 # ==========================================
 *.local
 # Cloudflare Workers 等工具使用
 .dev.vars
 
 # ==========================================
-# 7. 工具链自动生成 (Auto Generated)
+# 工具链自动生成 (Auto Generated)
 # ==========================================
 wailsjs/
 typed-router.d.ts
 auto-imports.d.ts
 .eslintrc-auto-import.js
+routeTree.gen.ts
+package.json.md5

@@ -22,7 +22,7 @@ export function defineLastWords() {
       const handleFlush = () => {
         if (hasSent) return
         hasSent = true
-        ctx.flush()
+        void ctx.flush()
       }
       const { signal } = controller
       on(window, 'beforeunload', handleFlush, { signal })

@@ -1,11 +1,13 @@
 import type { Thenable, TransformResult } from 'unplugin'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 
 import { unpluginWebComponents } from '..'
 
 describe('unplugin-web-components', () => {
   it('应当在 Vue 组件中 import kebab-case 组件', async () => {
-    const raw = unpluginWebComponents.raw({ tagPrefix: 'web-ui', packageName: '@mono/web-ui' }, { framework: 'vite' })
+    const raw = unpluginWebComponents.raw({ tagPrefix: 'web-ui', packageName: '@mono/web-ui' }, {
+      framework: 'vite'
+    } as any)
 
     const plugin = Array.isArray(raw) ? raw[0] : raw
 
@@ -33,7 +35,9 @@ describe('unplugin-web-components', () => {
   })
 
   it('应当在 React 组件中 import kebab-case 组件', async () => {
-    const raw = unpluginWebComponents.raw({ tagPrefix: 'web-ui', packageName: '@mono/web-ui' }, { framework: 'vite' })
+    const raw = unpluginWebComponents.raw({ tagPrefix: 'web-ui', packageName: '@mono/web-ui' }, {
+      framework: 'vite'
+    } as any)
 
     const plugin = Array.isArray(raw) ? raw[0] : raw
 

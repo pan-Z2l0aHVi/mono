@@ -1,16 +1,20 @@
 import { resolve } from 'node:path'
 
-import { type UserConfig } from 'vite'
 import dts from 'vite-plugin-dts'
-import tsconfigPaths from 'vite-tsconfig-paths'
+import { type UserConfig } from 'vite-plus'
 
 export default {
+  resolve: {
+    tsconfigPaths: true
+  },
   plugins: [
     dts({
       tsconfigPath: './tsconfig.app.json'
-    }),
-    tsconfigPaths({ root: './' })
+    })
   ],
+  test: {
+    environment: 'jsdom'
+  },
   css: {
     transformer: 'lightningcss'
   },

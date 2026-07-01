@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
 import { defineTracker } from '../plugins/core'
 
@@ -20,7 +20,7 @@ describe('上报 core 测试用例', () => {
 
   it('应当调用 sendBeacon 上报数据', () => {
     const tracker = defineTracker({ url: 'https://example.com' }).make()
-    tracker.track({ event: 'page view' })
+    void tracker.track({ event: 'page view' })
 
     expect(sendBeaconSpy).toHaveBeenCalled()
   })

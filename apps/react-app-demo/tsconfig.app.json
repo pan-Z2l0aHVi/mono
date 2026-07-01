@@ -22,6 +22,6 @@
     "useDefineForClassFields": true,
     "verbatimModuleSyntax": true
   },
-  "exclude": ["**/__tests__"],
+  "exclude": ["src/**/__tests__"],
   "include": ["env.d.ts", "src/**/*"]
 }

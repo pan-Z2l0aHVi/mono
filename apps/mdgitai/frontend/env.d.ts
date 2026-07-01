@@ -1,9 +1,9 @@
-/// <reference types="vite/client" />
+/// <reference types="vite-plus/client" />
 /// <reference types="vue-router/auto" />
-import type { WebUiComponents } from '@mono/web-ui/types/vue'
+/// <reference types="@mono/web-ui/vue" />
 
-export {}
-
-declare module 'vue' {
-  export interface GlobalComponents extends WebUiComponents {}
+declare module '*.vue' {
+  import type { DefineComponent } from 'vue'
+  const component: DefineComponent
+  export default component
 }

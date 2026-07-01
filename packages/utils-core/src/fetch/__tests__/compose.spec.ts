@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 
-import { compose, type Middleware } from '../compose'
+import { asyncCompose, type Middleware } from '../compose'
 
 describe('Compose 单元测试', () => {
   describe('基本用法', () => {
@@ -22,7 +22,7 @@ describe('Compose 单元测试', () => {
         await next()
       }
 
-      const fn = compose(middleware1, middleware2, middleware3)
+      const fn = asyncCompose(middleware1, middleware2, middleware3)
 
       await fn({}, async () => {
         calls.push('end')
@@ -35,7 +35,7 @@ describe('Compose 单元测试', () => {
   describe('compose 边界情况', () => {
     it('空中间件数组时应直接调用外层 next', async () => {
       const calls: string[] = []
-      const fn = compose()
+      const fn = asyncCompose()
       await fn({}, async () => {
         calls.push('end')
       })
@@ -44,7 +44,7 @@ describe('Compose 单元测试', () => {
 
     it('单个中间件时应正常执行并调用外层 next', async () => {
       const calls: string[] = []
-      const fn = compose(async (ctx, next) => {
+      const fn = asyncCompose(async (ctx, next) => {
         calls.push('single')
         await next()
       })
@@ -55,7 +55,7 @@ describe('Compose 单元测试', () => {
     })
 
     it('多次调用同一个 compose 函数时索引不应污染', async () => {
-      const fn = compose(
+      const fn = asyncCompose(
         async (ctx: { calls: string[] }, next) => {
           ctx.calls.push('m1')
           await next()
@@ -78,7 +78,7 @@ describe('Compose 单元测试', () => {
     })
 
     it('中间件抛出错误时应正确传递异常', async () => {
-      const fn = compose(
+      const fn = asyncCompose(
         async () => {
           throw new Error('boom')
         },
@@ -90,7 +90,7 @@ describe('Compose 单元测试', () => {
     })
 
     it('同一个中间件里重复调用 next 应该抛错', async () => {
-      const fn = compose(
+      const fn = asyncCompose(
         async (ctx, next) => {
           await next()
           await next() // 第二次调用，触发防护

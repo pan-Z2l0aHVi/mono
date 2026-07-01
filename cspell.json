@@ -40,6 +40,10 @@
     "mdgitai",
     "wailsjs",
     "Debouncer",
-    "unplugin"
+    "unplugin",
+    "oxlint",
+    "tsgo",
+    "nsis",
+    "pkill"
   ]
 }
