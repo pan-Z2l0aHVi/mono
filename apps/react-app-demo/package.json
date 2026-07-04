@@ -10,11 +10,11 @@
     "test": "vp test run"
   },
   "dependencies": {
-    "@mono/utils-core": "workspace:*",
+    "@mono/js-kit": "workspace:*",
     "@mono/web-ui": "workspace:*"
   },
   "devDependencies": {
-    "@mono/full-reload": "workspace:*",
+    "@mono/vite-plugin-full-reload": "workspace:*",
     "@mono/unplugin-web-components": "workspace:*"
   },
   "browserslist": {

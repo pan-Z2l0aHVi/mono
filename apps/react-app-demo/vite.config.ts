@@ -1,10 +1,10 @@
-import { fullReload } from '@mono/full-reload'
 import { unpluginWebComponents } from '@mono/unplugin-web-components'
+import { fullReload } from '@mono/vite-plugin-full-reload'
 import tailwindcss from '@tailwindcss/vite'
 import { tanstackRouter } from '@tanstack/router-plugin/vite'
 import basicSsl from '@vitejs/plugin-basic-ssl'
 import legacy from '@vitejs/plugin-legacy'
-import react from '@vitejs/plugin-react'
+import react from '@vitejs/plugin-react-swc'
 import { visualizer } from 'rollup-plugin-visualizer'
 import { type PluginOption, searchForWorkspaceRoot, type UserConfig } from 'vite-plus'
 
@@ -18,11 +18,7 @@ export default {
       target: 'react',
       autoCodeSplitting: true
     }),
-    react({
-      babel: {
-        plugins: [['babel-plugin-react-compiler']]
-      }
-    }),
+    react(),
     unpluginWebComponents.vite({
       tagPrefix: 'web-ui',
       packageName: '@mono/web-ui',
@@ -34,12 +30,12 @@ export default {
         path: '../../packages/web-ui'
       },
       {
-        name: '@mono/utils-core',
-        path: '../../packages/utils-core'
+        name: '@mono/js-kit',
+        path: '../../packages/js-kit'
       },
       {
-        name: '@mono/utils-browser',
-        path: '../../packages/utils-browser'
+        name: '@mono/browser-kit',
+        path: '../../packages/browser-kit'
       }
     ]),
     tailwindcss(),

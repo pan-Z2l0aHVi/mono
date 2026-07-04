@@ -1,14 +1,13 @@
 {
   "files": [],
   "references": [
-    { "path": "./packages/utils-core" },
-    { "path": "./packages/utils-browser" },
+    { "path": "./packages/js-kit" },
+    { "path": "./packages/browser-kit" },
     { "path": "./packages/web-ui" },
     { "path": "./packages/unplugin-web-components" },
-    { "path": "./packages/full-reload" },
+    { "path": "./packages/vite-plugin-full-reload" },
 
     { "path": "./apps/react-app-demo" },
-    { "path": "./apps/vue-app-demo" },
-    { "path": "./apps/mdgitai/frontend" }
+    { "path": "./apps/vue-app-demo" }
   ]
 }

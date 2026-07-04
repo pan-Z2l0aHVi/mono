@@ -12,12 +12,12 @@
     "type-check": "vue-tsc --build"
   },
   "dependencies": {
-    "@mono/utils-browser": "workspace:*",
-    "@mono/utils-core": "workspace:*",
+    "@mono/browser-kit": "workspace:*",
+    "@mono/js-kit": "workspace:*",
     "@mono/web-ui": "workspace:*"
   },
   "devDependencies": {
-    "@mono/full-reload": "workspace:*",
+    "@mono/vite-plugin-full-reload": "workspace:*",
     "@mono/unplugin-web-components": "workspace:*"
   },
   "browserslist": {

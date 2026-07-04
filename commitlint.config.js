@@ -21,14 +21,13 @@ export default {
   prompt: {
     scopes: [
       'root',
-      'utils-core',
-      'utils-browser',
+      'js-kit',
+      'browser-kit',
       'web-ui',
       'unplugin-web-components',
-      'full-reload',
+      'vite-plugin-full-reload',
       'react-app-demo',
-      'vue-app-demo',
-      'mdgitai'
+      'vue-app-demo'
     ],
     enableMultipleScopes: true,
     allowCustomScopes: false,

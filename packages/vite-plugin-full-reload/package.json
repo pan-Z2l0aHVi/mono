@@ -1,5 +1,5 @@
 {
-  "name": "@mono/unplugin-web-components",
+  "name": "@mono/vite-plugin-full-reload",
   "version": "1.0.0",
   "description": "",
   "license": "MIT",

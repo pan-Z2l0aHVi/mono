@@ -33,9 +33,6 @@ if [[ "${1:-}" == "--full" || "${1:-}" == "-f" ]]; then
   # 清理锁文件
   rm -f pnpm-lock.yaml 2>/dev/null || true
 
-  # Wails 可能会产生的二进制产物 (假设叫 mdgitai)
-  rm -f mdgitai mdgitai.exe 2>/dev/null || true
-
   echo "🔔 彻底清理完成"
 else
   echo "🔔 提示: 子包 node_modules 已保留。如需全量重置，请使用 --full"

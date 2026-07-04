@@ -1,9 +1,0 @@
-{
-  "$schema": "https://wails.io/schemas/config.v2.json",
-  "frontend:install": "",
-  "frontend:build": "vp run build",
-  "frontend:dev:serverUrl": "auto",
-  "frontend:dev:watcher": "vp run dev",
-  "name": "mdgitai",
-  "outputfilename": "mdgitai"
-}

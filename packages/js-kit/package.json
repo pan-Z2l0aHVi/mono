@@ -1,5 +1,5 @@
 {
-  "name": "@mono/unplugin-web-components",
+  "name": "@mono/js-kit",
   "version": "1.0.0",
   "description": "",
   "license": "MIT",
@@ -17,6 +17,18 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./*": {
+      "types": "./dist/*/index.d.ts",
+      "import": "./dist/*/index.js"
+    },
+    "./go": {
+      "types": "./dist/paradigm/go.d.ts",
+      "import": "./dist/paradigm/go.js"
+    },
+    "./rust": {
+      "types": "./dist/paradigm/rust.d.ts",
+      "import": "./dist/paradigm/rust.js"
     }
   },
   "publishConfig": {
@@ -32,11 +44,11 @@
     "type-check": "vue-tsc --build",
     "dev": "vp build --watch"
   },
-  "dependencies": {
-    "@mono/js-kit": "workspace:*"
+  "dependencies": {},
+  "devDependencies": {
+    "vite": "catalog:",
+    "vite-plus": "catalog:"
   },
-  "devDependencies": {},
-  "peerDependencies": {},
   "browserslist": [
     "defaults"
   ]

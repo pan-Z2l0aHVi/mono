@@ -1,5 +1,5 @@
-import { fullReload } from '@mono/full-reload'
 import { unpluginWebComponents } from '@mono/unplugin-web-components'
+import { fullReload } from '@mono/vite-plugin-full-reload'
 import tailwindcss from '@tailwindcss/vite'
 import basicSsl from '@vitejs/plugin-basic-ssl'
 import legacy from '@vitejs/plugin-legacy'
@@ -49,12 +49,12 @@ export default {
         path: '../../packages/web-ui'
       },
       {
-        name: '@mono/utils-core',
-        path: '../../packages/utils-core'
+        name: '@mono/js-kit',
+        path: '../../packages/js-kit'
       },
       {
-        name: '@mono/utils-browser',
-        path: '../../packages/utils-browser'
+        name: '@mono/browser-kit',
+        path: '../../packages/browser-kit'
       }
     ]),
     tailwindcss(),

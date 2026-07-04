@@ -2,7 +2,7 @@
   "name": "@mono/web-ui",
   "version": "1.0.0",
   "license": "MIT",
-  "author": "Greey",
+  "author": "Grey Pan",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/pan-Z2l0aHVi/mono.git"
@@ -38,11 +38,11 @@
     "build": "vp build",
     "preview": "vp preview",
     "test": "vp test run",
-    "watch": "vp build --watch"
+    "dev": "vp build --watch"
   },
   "dependencies": {
-    "@mono/utils-browser": "workspace:*",
-    "@mono/utils-core": "workspace:*"
+    "@mono/browser-kit": "workspace:*",
+    "@mono/js-kit": "workspace:*"
   },
   "devDependencies": {},
   "peerDependencies": {},
