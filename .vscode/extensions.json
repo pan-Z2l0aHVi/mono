@@ -12,6 +12,7 @@
     "vitest.explorer",
     "vue.volar",
     "antfu.iconify",
+    "oxc.oxc-vscode",
     "VoidZero.vite-plus-extension-pack"
   ]
 }

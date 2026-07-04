@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main, 'release/**']
+    branches: [main, 'release/**', 'v1/stable']
   pull_request:
     branches: [main]
 
@@ -18,12 +18,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: pnpm/action-setup@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version-file: .nvmrc
-          cache: pnpm
+      - uses: jdx/mise-action@v2
 
       - run: pnpm install --frozen-lockfile
 
