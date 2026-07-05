@@ -2,7 +2,7 @@ import { defineConfig } from 'vite-plus'
 
 export default defineConfig({
   staged: {
-    '**/*.{js,ts,jsx,tsx,mjs,cjs,json,jsonc,md,mdx,html,vue,css,less,scss}': 'cspell',
+    '**/*.{js,ts,jsx,tsx,mjs,cjs,md,mdx,html,vue,css,less,scss}': 'cspell',
     '**/*.{css,scss,less,vue}': 'stylelint --fix',
     '**/*.{js,ts,jsx,tsx,json,jsonc,md,mdx,html}': 'vp fmt',
     '**/*.{js,ts,jsx,tsx,mjs,cjs}': 'vp lint --fix'
