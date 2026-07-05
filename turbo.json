@@ -8,11 +8,6 @@
     "test": {
       "dependsOn": ["^build"]
     },
-    "deploy": {
-      "dependsOn": ["build"],
-      "env": ["APP_RELEASER_TOKEN", "S3_BUCKET_NAME"],
-      "cache": false
-    },
     "dev": {
       "dependsOn": ["^build"],
       "cache": false,

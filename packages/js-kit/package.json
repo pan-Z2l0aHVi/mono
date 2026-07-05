@@ -37,7 +37,6 @@
   "scripts": {
     "build": "run-p type-check \"build-only {@}\" --",
     "build-only": "vp build",
-    "deploy": "npm publish",
     "preview": "vp preview",
     "test": "vp test run",
     "type-check": "vue-tsc --build",

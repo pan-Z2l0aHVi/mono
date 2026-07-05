@@ -1,6 +1,7 @@
 {
   "name": "mono",
-  "license": "MIT",
+    "private": true,
+    "license": "MIT",
   "type": "module",
   "scripts": {
     "prepare": "vp config",
@@ -10,7 +11,6 @@
     "test": "turbo test",
     "commit": "git-cz",
     "commit:ci": "bash scripts/commit.sh",
-    "deploy": "turbo deploy",
     "check:lockfile": "pnpm dedupe --check",
     "dev:react-app-demo": "turbo watch dev --filter=@greypan/react-app-demo...",
     "dev:vue-app-demo": "turbo watch dev --filter=@greypan/vue-app-demo..."
