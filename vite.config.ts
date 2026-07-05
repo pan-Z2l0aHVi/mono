@@ -225,6 +225,7 @@ export default defineConfig({
       },
       {
         files: ['**/*.{js,jsx,ts,tsx}'],
+        plugins: ['react'],
         rules: {
           'react/display-name': 'off',
           'react/jsx-key': 'error',
@@ -244,8 +245,8 @@ export default defineConfig({
           'react/no-unsafe': 'off',
           'react/react-in-jsx-scope': 'off',
           'react/require-render-return': 'error',
-          'react-hooks/rules-of-hooks': 'error',
-          'react-hooks/exhaustive-deps': 'warn',
+          'react/rules-of-hooks': 'error',
+          'react/exhaustive-deps': 'warn',
           'react/only-export-components': 'off'
         }
       },
