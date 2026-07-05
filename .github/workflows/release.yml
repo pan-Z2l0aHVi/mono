@@ -36,6 +36,9 @@ jobs:
       - name: Set official registry
         run: npm config set registry https://registry.npmjs.org/
 
+      - name: Upgrade npm (OIDC requires ≥ 11.5.1)
+        run: npm install -g npm@latest
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
