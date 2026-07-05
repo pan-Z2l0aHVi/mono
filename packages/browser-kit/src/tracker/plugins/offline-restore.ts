@@ -4,7 +4,7 @@
  * 需要持久化，避免数据太大放不下，选用 indexDB 而不是 localStorage
  */
 
-import { definePlugin, type PluginMade } from '@mono/js-kit'
+import { definePlugin, type PluginMade } from '@greypan/js-kit'
 import { del, get, update } from 'idb-keyval'
 import { isDeepEqual, uniqueWith } from 'remeda'
 

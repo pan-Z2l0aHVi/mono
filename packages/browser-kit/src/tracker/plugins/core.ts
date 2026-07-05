@@ -1,4 +1,4 @@
-import { definePlugin } from '@mono/js-kit'
+import { definePlugin } from '@greypan/js-kit'
 
 interface Options {
   url: string

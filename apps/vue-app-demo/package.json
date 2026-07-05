@@ -1,5 +1,5 @@
 {
-  "name": "@mono/vue-app-demo",
+  "name": "@greypan/vue-app-demo",
   "version": "1.0.0",
   "private": true,
   "type": "module",
@@ -12,13 +12,13 @@
     "type-check": "vue-tsc --build"
   },
   "dependencies": {
-    "@mono/browser-kit": "workspace:*",
-    "@mono/js-kit": "workspace:*",
-    "@mono/web-ui": "workspace:*"
+    "@greypan/browser-kit": "workspace:*",
+    "@greypan/js-kit": "workspace:*",
+    "@greypan/web-ui": "workspace:*"
   },
   "devDependencies": {
-    "@mono/vite-plugin-full-reload": "workspace:*",
-    "@mono/unplugin-web-components": "workspace:*"
+    "@greypan/vite-plugin-full-reload": "workspace:*",
+    "@greypan/unplugin-web-components": "workspace:*"
   },
   "browserslist": {
     "development": [

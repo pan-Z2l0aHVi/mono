@@ -1,8 +1,6 @@
 {
   "name": "mono",
-  "private": true,
   "license": "MIT",
-  "author": "Grey Pan",
   "type": "module",
   "scripts": {
     "prepare": "vp config",
@@ -14,8 +12,8 @@
     "commit:ci": "bash scripts/commit.sh",
     "deploy": "turbo deploy",
     "check:lockfile": "pnpm dedupe --check",
-    "dev:react-app-demo": "turbo watch dev --filter=@mono/react-app-demo...",
-    "dev:vue-app-demo": "turbo watch dev --filter=@mono/vue-app-demo..."
+    "dev:react-app-demo": "turbo watch dev --filter=@greypan/react-app-demo...",
+    "dev:vue-app-demo": "turbo watch dev --filter=@greypan/vue-app-demo..."
   },
   "dependencies": {
     "@tanstack/react-router": "^1.170.17",

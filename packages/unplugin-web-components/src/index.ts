@@ -1,4 +1,4 @@
-import { rust } from '@mono/js-kit'
+import { rust } from '@greypan/js-kit'
 import { kebabCase, pascalCase } from 'change-case'
 import { createUnplugin } from 'unplugin'
 

@@ -4,7 +4,7 @@
  * 聚合数据批量延迟发送的场景，页面退出｜销毁前立刻清空队列全部上报
  */
 
-import { definePlugin, type PluginMade } from '@mono/js-kit'
+import { definePlugin, type PluginMade } from '@greypan/js-kit'
 
 import { on } from '@/shortcut'
 

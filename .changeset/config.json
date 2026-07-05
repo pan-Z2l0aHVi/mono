@@ -7,5 +7,5 @@
   "access": "public",
   "baseBranch": "main",
   "updateInternalDependencies": "patch",
-  "ignore": ["@mono/react-app-demo", "@mono/vue-app-demo"]
+  "ignore": ["@greypan/react-app-demo", "@greypan/vue-app-demo"]
 }

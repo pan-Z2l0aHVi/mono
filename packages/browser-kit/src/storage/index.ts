@@ -1,4 +1,4 @@
-import { definePlugin, type PluginMade } from '@mono/js-kit'
+import { definePlugin, type PluginMade } from '@greypan/js-kit'
 
 import { on } from '@/shortcut'
 

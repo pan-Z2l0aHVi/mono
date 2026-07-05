@@ -1,6 +1,6 @@
 import { resolve, sep } from 'node:path'
 
-import { type ArgumentType, debounce } from '@mono/js-kit'
+import { type ArgumentType, debounce } from '@greypan/js-kit'
 import { createUnplugin, type VitePlugin } from 'unplugin'
 
 interface Dep {

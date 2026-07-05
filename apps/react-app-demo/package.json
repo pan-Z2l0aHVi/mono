@@ -1,5 +1,5 @@
 {
-  "name": "@mono/react-app-demo",
+  "name": "@greypan/react-app-demo",
   "version": "1.0.0",
   "private": true,
   "type": "module",
@@ -10,12 +10,12 @@
     "test": "vp test run"
   },
   "dependencies": {
-    "@mono/js-kit": "workspace:*",
-    "@mono/web-ui": "workspace:*"
+    "@greypan/js-kit": "workspace:*",
+    "@greypan/web-ui": "workspace:*"
   },
   "devDependencies": {
-    "@mono/vite-plugin-full-reload": "workspace:*",
-    "@mono/unplugin-web-components": "workspace:*"
+    "@greypan/vite-plugin-full-reload": "workspace:*",
+    "@greypan/unplugin-web-components": "workspace:*"
   },
   "browserslist": {
     "development": [

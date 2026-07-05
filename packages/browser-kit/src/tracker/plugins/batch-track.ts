@@ -1,4 +1,4 @@
-import { defineBatchEmitter, definePlugin, type PluginMade } from '@mono/js-kit'
+import { defineBatchEmitter, definePlugin, type PluginMade } from '@greypan/js-kit'
 import { nanoid } from 'nanoid'
 
 import type { defineTracker } from './core'

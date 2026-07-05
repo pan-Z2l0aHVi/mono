@@ -1,5 +1,5 @@
-import { unpluginWebComponents } from '@mono/unplugin-web-components'
-import { fullReload } from '@mono/vite-plugin-full-reload'
+import { unpluginWebComponents } from '@greypan/unplugin-web-components'
+import { fullReload } from '@greypan/vite-plugin-full-reload'
 import tailwindcss from '@tailwindcss/vite'
 import basicSsl from '@vitejs/plugin-basic-ssl'
 import legacy from '@vitejs/plugin-legacy'
@@ -40,20 +40,20 @@ export default {
     }),
     unpluginWebComponents.vite({
       tagPrefix: 'web-ui',
-      packageName: '@mono/web-ui',
+      packageName: '@greypan/web-ui',
       sideEffects: true
     }),
     fullReload.vite([
       {
-        name: '@mono/web-ui',
+        name: '@greypan/web-ui',
         path: '../../packages/web-ui'
       },
       {
-        name: '@mono/js-kit',
+        name: '@greypan/js-kit',
         path: '../../packages/js-kit'
       },
       {
-        name: '@mono/browser-kit',
+        name: '@greypan/browser-kit',
         path: '../../packages/browser-kit'
       }
     ]),

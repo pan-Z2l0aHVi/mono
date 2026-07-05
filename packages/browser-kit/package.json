@@ -1,9 +1,8 @@
 {
-  "name": "@mono/browser-kit",
+  "name": "@greypan/browser-kit",
   "version": "1.0.0",
   "description": "",
   "license": "MIT",
-  "author": "Grey Pan",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/pan-Z2l0aHVi/mono.git"
@@ -37,7 +36,7 @@
     "dev": "vp build --watch"
   },
   "dependencies": {
-    "@mono/js-kit": "workspace:*"
+    "@greypan/js-kit": "workspace:*"
   },
   "browserslist": [
     "defaults"

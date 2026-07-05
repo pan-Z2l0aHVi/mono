@@ -1,4 +1,4 @@
-import { clamp } from '@mono/js-kit'
+import { clamp } from '@greypan/js-kit'
 
 /**
  * 获取文件名的后缀名，例如 'file.txt' 的后缀名为 'txt'。

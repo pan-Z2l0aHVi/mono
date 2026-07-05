@@ -5,7 +5,7 @@ import { unpluginWebComponents } from '..'
 
 describe('unplugin-web-components', () => {
   it('应当在 Vue 组件中 import kebab-case 组件', async () => {
-    const raw = unpluginWebComponents.raw({ tagPrefix: 'web-ui', packageName: '@mono/web-ui' }, {
+    const raw = unpluginWebComponents.raw({ tagPrefix: 'web-ui', packageName: '@greypan/web-ui' }, {
       framework: 'vite'
     } as any)
 
@@ -30,12 +30,12 @@ describe('unplugin-web-components', () => {
     if (!result || typeof result === 'string') {
       throw new Error('Unexpected transform result.')
     }
-    expect(result.code).toContain(`import { WebUiButton } from '@mono/web-ui/components/button'`)
-    expect(result.code).toContain(`import { WebUiCard } from '@mono/web-ui/components/card'`)
+    expect(result.code).toContain(`import { WebUiButton } from '@greypan/web-ui/components/button'`)
+    expect(result.code).toContain(`import { WebUiCard } from '@greypan/web-ui/components/card'`)
   })
 
   it('应当在 React 组件中 import kebab-case 组件', async () => {
-    const raw = unpluginWebComponents.raw({ tagPrefix: 'web-ui', packageName: '@mono/web-ui' }, {
+    const raw = unpluginWebComponents.raw({ tagPrefix: 'web-ui', packageName: '@greypan/web-ui' }, {
       framework: 'vite'
     } as any)
 
@@ -59,7 +59,7 @@ describe('unplugin-web-components', () => {
     if (!result || typeof result === 'string') {
       throw new Error('Unexpected transform result.')
     }
-    expect(result.code).toContain(`import { WebUiButton } from '@mono/web-ui/components/button'`)
-    expect(result.code).toContain(`import { WebUiCard } from '@mono/web-ui/components/card'`)
+    expect(result.code).toContain(`import { WebUiButton } from '@greypan/web-ui/components/button'`)
+    expect(result.code).toContain(`import { WebUiCard } from '@greypan/web-ui/components/card'`)
   })
 })

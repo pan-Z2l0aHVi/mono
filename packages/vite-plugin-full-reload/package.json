@@ -1,9 +1,8 @@
 {
-  "name": "@mono/vite-plugin-full-reload",
+  "name": "@greypan/vite-plugin-full-reload",
   "version": "1.0.0",
   "description": "",
   "license": "MIT",
-  "author": "Grey Pan",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/pan-Z2l0aHVi/mono.git"
@@ -33,7 +32,7 @@
     "dev": "vp build --watch"
   },
   "dependencies": {
-    "@mono/js-kit": "workspace:*"
+    "@greypan/js-kit": "workspace:*"
   },
   "devDependencies": {},
   "peerDependencies": {},
