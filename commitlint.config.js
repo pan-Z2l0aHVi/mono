@@ -19,16 +19,7 @@ export default {
     ]
   },
   prompt: {
-    scopes: [
-      'root',
-      'js-kit',
-      'browser-kit',
-      'web-ui',
-      'unplugin-web-components',
-      'vite-plugin-full-reload',
-      'react-app-demo',
-      'vue-app-demo'
-    ],
+    scopes: ['root', 'apps', 'packages'],
     enableMultipleScopes: true,
     allowCustomScopes: false,
     skipQuestions: ['body', 'footer', 'footerPrefix', 'breaking'],
