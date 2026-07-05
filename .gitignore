@@ -95,19 +95,38 @@ report.html
 # ==========================================
 # AI Agent 工具 (AI Coding Agents)
 # ==========================================
-# Claude Code — 项目级本地配置（API key 等）
-.claude/
-# OpenCode
-.opencode/
-# MimoCode
-.mimocode/
-# Continue.dev
-.continue/
-# Aider
-.aider*
+# 策略同 .vscode / .zed：忽略全部，显式放行团队共享配置
 
-# 以下文件应提交（项目文档）：
-#   CLAUDE.md / AGENTS.md / .github/copilot-instructions.md
+# Claude Code — 忽略本地缓存，保留共享配置和指令
+.claude/*
+!.claude/settings.json
+!.claude/commands/
+# CLAUDE.md 放项目根目录，不在 .claude 内
+
+# OpenCode
+.opencode/*
+!.opencode/rules/
+!.opencode/settings.json
+
+# MimoCode
+.mimocode/*
+!.mimocode/rules/
+!.mimocode/settings.json
+
+# Cursor
+.cursor/*
+!.cursor/rules/
+
+# Windsurf
+.windsurf/*
+!.windsurf/rules/
+
+# Continue.dev
+.continue/*
+!.continue/config.json
+
+# Aider
+.aider*/
 
 # ==========================================
 # 框架自动生成 (Framework Generated)
