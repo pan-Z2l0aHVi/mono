@@ -31,7 +31,7 @@ jobs:
             ${{ runner.os }}-pnpm-
 
       - name: Set official registry
-        run: npm config set registry https://registry.npmjs.org/
+        run: pnpm config set registry https://registry.npmjs.org/
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -62,7 +62,7 @@ jobs:
             ${{ runner.os }}-pnpm-
 
       - name: Set official registry
-        run: npm config set registry https://registry.npmjs.org/
+        run: pnpm config set registry https://registry.npmjs.org/
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile

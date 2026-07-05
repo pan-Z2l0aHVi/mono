@@ -9,6 +9,8 @@ logs/
 *.gz
 *.pfx
 *.certificate
+*.pem
+*.key
 
 # 常见的 debug 日志（支持所有主流包管理器）
 *-debug.log*
@@ -22,6 +24,8 @@ logs/
 .cache/
 .temp/
 .storage/
+tmp/
+temp/
 
 # 构建输出目录
 dist/
@@ -34,6 +38,7 @@ build/
 .next/
 .nuxt/
 .output/
+dev-dist/
 
 # 环境变量
 .env
@@ -63,7 +68,7 @@ stats.html
 report.html
 
 # ==========================================
-# 编辑器与 IDE (Editors)
+# 编辑器 (Editors)
 # ==========================================
 .idea/
 *.suo
@@ -72,23 +77,48 @@ report.html
 *.sln
 *.sw?
 
-# 针对 VSCode/Zed：忽略所有配置，但保留共享的工程配置
+# VSCode
 .vscode/*
 !.vscode/extensions.json
 !.vscode/settings.json
 !.vscode/launch.json
 !.vscode/tasks.json
 
+# Zed
 .zed/*
 !.zed/settings.json
 
+# Cursor / Windsurf
+.cursor/
+.windsurf/
+
+# ==========================================
+# AI Agent 工具 (AI Coding Agents)
+# ==========================================
+# Claude Code — 项目级本地配置（API key 等）
+.claude/
+# OpenCode
+.opencode/
+# MimoCode
+.mimocode/
+# Continue.dev
+.continue/
+# Aider
+.aider*
+
+# 以下文件应提交（项目文档）：
+#   CLAUDE.md / AGENTS.md / .github/copilot-instructions.md
+
+# ==========================================
+# 框架自动生成 (Framework Generated)
+# ==========================================
 .tanstack/*
 
 # ==========================================
 # 本地开发私有文件 (Local Private)
 # ==========================================
 *.local
-# Cloudflare Workers 等工具使用
+# Cloudflare Workers 等
 .dev.vars
 
 # ==========================================
