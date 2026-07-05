@@ -40,6 +40,9 @@ build/
 .output/
 dev-dist/
 
+# Monorepo 根目录 src/ 不应存在，偶尔被外部工具误创建，忽略掉
+/src
+
 # 环境变量
 .env
 .env.*

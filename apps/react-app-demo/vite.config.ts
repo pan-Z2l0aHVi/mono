@@ -8,7 +8,6 @@ import react from '@vitejs/plugin-react-swc'
 import { visualizer } from 'rollup-plugin-visualizer'
 import { type PluginOption, searchForWorkspaceRoot, type UserConfig } from 'vite-plus'
 
-// https://vite.dev/config/
 export default {
   resolve: {
     tsconfigPaths: true

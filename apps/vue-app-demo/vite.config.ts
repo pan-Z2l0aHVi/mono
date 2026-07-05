@@ -11,7 +11,6 @@ import checker from 'vite-plugin-checker'
 import { type PluginOption, searchForWorkspaceRoot, type UserConfig } from 'vite-plus'
 import vueRouter from 'vue-router/vite'
 
-// https://vite.dev/config/
 export default {
   resolve: {
     tsconfigPaths: true

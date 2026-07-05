@@ -25,4 +25,3 @@ peerDependencyRules:
     - vite
   allowedVersions:
     vite: '*'
-# test

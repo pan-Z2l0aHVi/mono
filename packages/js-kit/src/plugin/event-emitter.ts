@@ -11,7 +11,6 @@ export function defineEventEmitter<E extends Record<string, unknown[]>>() {
           handler(...args)
         }
         bus.addEventListener(type, listener, options)
-        // off fn
         return () => bus.removeEventListener(type, listener)
       },
 
