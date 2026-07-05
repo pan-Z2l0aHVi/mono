@@ -4,9 +4,17 @@ packages:
 
 catalog:
   '@types/node': ^26
+  change-case: ^5.4.4
+  clsx: ^2.1.1
+  copy-to-clipboard: ^4.0.2
+  dayjs: ^1.11.21
+  nanoid: ^5.1.16
+  remeda: ^2.39.0
+  tailwindcss: ^4.3.2
   typescript: ^6
   vite: npm:@voidzero-dev/vite-plus-core@latest
   vite-plus: latest
+  zod: ^4.4.3
 
 catalogMode: prefer
 overrides:

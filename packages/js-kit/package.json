@@ -42,7 +42,9 @@
     "type-check": "vue-tsc --build",
     "dev": "vp build --watch"
   },
-  "dependencies": {},
+  "dependencies": {
+    "remeda": "catalog:"
+  },
   "devDependencies": {
     "vite": "catalog:",
     "vite-plus": "catalog:"

@@ -35,7 +35,10 @@
     "dev": "vp build --watch"
   },
   "dependencies": {
-    "@greypan/js-kit": "workspace:*"
+    "@greypan/js-kit": "workspace:*",
+    "idb-keyval": "^6.2.6",
+    "nanoid": "catalog:",
+    "remeda": "catalog:"
   },
   "browserslist": [
     "defaults"

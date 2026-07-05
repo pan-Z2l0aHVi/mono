@@ -11,7 +11,11 @@
   },
   "dependencies": {
     "@greypan/js-kit": "workspace:*",
-    "@greypan/web-ui": "workspace:*"
+    "@greypan/web-ui": "workspace:*",
+    "@tanstack/react-router": "^1.170.17",
+    "react-error-boundary": "^6.1.2",
+    "react-hook-form": "^7.80.0",
+    "zustand": "^5.0.14"
   },
   "devDependencies": {
     "@greypan/vite-plugin-full-reload": "workspace:*",
