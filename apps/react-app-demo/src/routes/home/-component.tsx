@@ -1,6 +1,6 @@
 import { useCounterStore } from '@/stores/counter'
 
-export default () => {
+function Home() {
   const { count, increment, decrement, reset } = useCounterStore()
 
   return (
@@ -18,3 +18,5 @@ export default () => {
     </div>
   )
 }
+
+export default Home
