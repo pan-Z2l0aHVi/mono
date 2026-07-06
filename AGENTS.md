@@ -87,8 +87,7 @@ bash scripts/commit.sh feat js-kit "add url parser utility"
 
 ## CI
 
-- **CI workflow** (`ci.yml`): `lint` job (lockfile check + changeset status) → `build-and-test` job (build + test)
-- **Lint job does NOT run `vp lint`** — only `pnpm check:lockfile` and `pnpm changeset status`
+- **CI workflow** (`ci.yml`): `lint` job (lockfile check + changeset status) → `build-and-test` job (build + lint + test)
 - **PRs to `main`** require `pnpm changeset status --since=origin/main` to pass
 - **Release** (`release.yml`): triggers on `v*` tags → `pnpm changeset publish` to npm
 

@@ -70,5 +70,8 @@ jobs:
       - name: Build
         run: pnpm build
 
+      - name: Lint
+        run: vp lint
+
       - name: Test
         run: pnpm test
