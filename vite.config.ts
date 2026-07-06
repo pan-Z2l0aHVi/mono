@@ -247,7 +247,8 @@ export default defineConfig({
           'react/require-render-return': 'error',
           'react/rules-of-hooks': 'error',
           'react/exhaustive-deps': 'warn',
-          'react/only-export-components': 'off'
+          'react/only-export-components': 'off',
+          'unicorn/no-anonymous-default-export': 'error'
         }
       },
       {
