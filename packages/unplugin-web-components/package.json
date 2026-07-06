@@ -31,7 +31,8 @@
     "dev": "vp build --watch"
   },
   "dependencies": {
-    "@greypan/js-kit": "workspace:*"
+    "@greypan/js-kit": "workspace:*",
+    "change-case": "catalog:"
   },
   "devDependencies": {},
   "peerDependencies": {},
