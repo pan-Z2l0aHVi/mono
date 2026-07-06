@@ -104,6 +104,7 @@ report.html
 .claude/*
 !.claude/settings.json
 !.claude/commands/
+!.claude/skills
 # CLAUDE.md 放项目根目录，不在 .claude 内
 
 # OpenCode
@@ -115,6 +116,7 @@ report.html
 .mimocode/*
 !.mimocode/rules/
 !.mimocode/settings.json
+!.mimocode/skills
 
 # Cursor
 .cursor/*
