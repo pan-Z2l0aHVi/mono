@@ -31,7 +31,7 @@ pnpm monorepo (`apps/**`, `packages/**`) using Turborepo. Packages published und
 
 Each package has `build`, `test`, and usually `dev` (watch mode). Run with `pnpm --filter @greypan/<name> <script>`. Example: `pnpm --filter @greypan/js-kit test`.
 
-Some library packages (`js-kit`, `browser-kit`, `unplugin-web-components`, `vite-plugin-full-reload`) have a two-step build: `run-p type-check "build-only {@}" --` — type-check and build run in parallel. `web-ui` only runs `vp build` (no separate type-check step).
+All library packages have a two-step build: `run-p type-check "build-only {@}" --` — type-check and build run in parallel. Apps run `tsc -b && vp build` (type-check first, then build).
 
 ## Package structure
 
@@ -126,7 +126,7 @@ They are excluded from linting, formatting, and spell-check.
 
 ## Dependency management
 
-- **Catalog**: Shared deps are versioned in `pnpm-workspace.yaml` under `catalog:`. Use `catalog:` references in package.json to pin versions centrally.
+- **Catalog**: Monorepo-wide shared deps are versioned in `pnpm-workspace.yaml` under `catalog:`. Use `catalog:` references in package.json to pin versions centrally. Package-specific deps keep version numbers directly.
 - **Lockfile**: After dependency changes, run `pnpm dedupe` then `pnpm check:lockfile` to avoid CI failures.
 
 ## Other gotchas

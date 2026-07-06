@@ -34,9 +34,11 @@
     "registry": "https://registry.npmjs.org/"
   },
   "scripts": {
-    "build": "vp build",
+    "build": "run-p type-check \"build-only {@}\" --",
+    "build-only": "vp build",
     "preview": "vp preview",
     "test": "vp test run",
+    "type-check": "vue-tsc --build",
     "dev": "vp build --watch"
   },
   "dependencies": {
