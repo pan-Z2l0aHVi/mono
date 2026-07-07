@@ -1,5 +1,12 @@
 # @greypan/browser-kit
 
+## 1.2.1
+
+### Patch Changes
+
+- Updated dependencies [ec36e92]
+  - @greypan/js-kit@1.1.1
+
 ## 1.2.0
 
 ### Minor Changes
