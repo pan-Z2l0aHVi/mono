@@ -1,5 +1,12 @@
 # @greypan/vite-plugin-full-reload
 
+## 1.1.1
+
+### Patch Changes
+
+- Updated dependencies [ec36e92]
+  - @greypan/js-kit@1.1.1
+
 ## 1.1.0
 
 ### Minor Changes
