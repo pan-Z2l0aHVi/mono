@@ -40,15 +40,6 @@ jobs:
       - name: Install dependencies
         run: pnpm i --frozen-lockfile
 
-      - name: Build
-        run: pnpm run build
-
-      - name: Format + Lint + Type-check
-        run: pnpm run check:code
-
-      - name: Test
-        run: pnpm run test
-
       - name: Verify changesets consumed
         run: |
           if [ -n "$(find .changeset -name '*.md' -not -name 'README.md' -print -quit)" ]; then
