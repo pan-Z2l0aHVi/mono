@@ -16,20 +16,6 @@
     "dev:react-app-demo": "turbo watch dev --filter=@greypan/react-app-demo...",
     "dev:vue-app-demo": "turbo watch dev --filter=@greypan/vue-app-demo..."
   },
-  "dependencies": {
-    "change-case": "catalog:",
-    "clsx": "catalog:",
-    "copy-to-clipboard": "catalog:",
-    "dayjs": "catalog:",
-    "lit": "catalog:",
-    "nanoid": "catalog:",
-    "react": "catalog:",
-    "react-dom": "catalog:",
-    "remeda": "catalog:",
-    "tailwindcss": "catalog:",
-    "vue": "catalog:",
-    "zod": "catalog:"
-  },
   "devDependencies": {
     "@changesets/cli": "catalog:",
     "@commitlint/cli": "catalog:",
@@ -87,7 +73,6 @@
   },
   "engines": {
     "node": ">=24.18.0",
-    "npm": ">=10.16.0",
     "pnpm": ">=10.33.0"
   },
   "packageManager": "pnpm@10.33.0"

@@ -7,6 +7,9 @@
     "url": "git+https://github.com/pan-Z2l0aHVi/mono.git"
   },
   "type": "module",
+  "files": [
+    "dist"
+  ],
   "sideEffects": [
     "./dist/index.js",
     "./dist/components/*/index.js",
@@ -46,6 +49,10 @@
     "@greypan/js-kit": "workspace:*",
     "iconify-icon": "^3.0.2",
     "lit": "catalog:"
+  },
+  "devDependencies": {
+    "react": "catalog:",
+    "vue": "catalog:"
   },
   "browserslist": [
     "defaults"
