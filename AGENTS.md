@@ -151,3 +151,17 @@ They are excluded from linting, formatting, and spell-check.
 - The `prepare` script runs `vp config` — this sets up vite-plus internal config on install.
 - `pnpm clean` removes `dist/`, `.turbo/`, `.vite/`, `build/` dirs. `pnpm clean --full` also removes `node_modules` and the lockfile.
 - Go toolchain is also managed via mise (used by some tooling, not by the JS packages directly).
+
+## Agent skills
+
+### Issue tracker
+
+GitHub Issues via `gh` CLI. External PRs count as a triage surface. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Default five-label vocabulary: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context layout: `CONTEXT.md` + `docs/adr/` at repo root (generated lazily by domain-modeling skills). See `docs/agents/domain.md`.
