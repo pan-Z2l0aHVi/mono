@@ -40,19 +40,20 @@ jobs:
       - name: Install dependencies
         run: pnpm i --frozen-lockfile
 
-      - name: Lint
-        run: pnpm run check:code
-
       - name: Build
         run: pnpm run build
+
+      - name: Format + Lint + Type-check
+        run: pnpm run check:code
 
       - name: Test
         run: pnpm run test
 
-      - name: Verify changesets exist
+      - name: Verify changesets consumed
         run: |
-          if [ -z "$(find .changeset -name '*.md' -not -name 'README.md' -print -quit)" ]; then
-            echo "No pending changesets to publish. Did you forget to merge the Version Packages PR?"
+          if [ -n "$(find .changeset -name '*.md' -not -name 'README.md' -print -quit)" ]; then
+            echo "Pending changesets found — versions haven't been bumped yet."
+            echo "Did you forget to merge the Version Packages PR?"
             exit 1
           fi
 
