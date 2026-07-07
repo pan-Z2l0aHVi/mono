@@ -6,8 +6,8 @@ on:
       - 'v*'
 
 permissions:
-  id-token: write  # npm provenance
-  contents: write  # changeset 写入版本号 + 创建 tag
+  id-token: write # npm provenance
+  contents: write # changeset 写入版本号 + 创建 tag
   packages: write
 
 concurrency:
@@ -41,13 +41,20 @@ jobs:
         run: pnpm i --frozen-lockfile
 
       - name: Lint
-        run: pnpm run check
+        run: pnpm run check:code
 
       - name: Build
         run: pnpm run build
 
       - name: Test
         run: pnpm run test
+
+      - name: Verify changesets exist
+        run: |
+          if [ -z "$(find .changeset -name '*.md' -not -name 'README.md' -print -quit)" ]; then
+            echo "No pending changesets to publish. Did you forget to merge the Version Packages PR?"
+            exit 1
+          fi
 
       - name: Publish to npm
         run: pnpm exec changeset publish
