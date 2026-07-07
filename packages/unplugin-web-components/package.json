@@ -32,10 +32,9 @@
   },
   "dependencies": {
     "@greypan/js-kit": "workspace:*",
-    "change-case": "catalog:"
+    "change-case": "catalog:",
+    "unplugin": "catalog:"
   },
-  "devDependencies": {},
-  "peerDependencies": {},
   "browserslist": [
     "defaults"
   ]

@@ -47,8 +47,6 @@
     "iconify-icon": "^3.0.2",
     "lit": "catalog:"
   },
-  "devDependencies": {},
-  "peerDependencies": {},
   "browserslist": [
     "defaults"
   ]

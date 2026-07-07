@@ -32,7 +32,7 @@
   },
   "dependencies": {
     "@greypan/js-kit": "workspace:*",
-    "unplugin": "^3.3.0"
+    "unplugin": "catalog:"
   },
   "devDependencies": {},
   "peerDependencies": {},

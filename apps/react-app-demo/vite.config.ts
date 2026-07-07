@@ -17,12 +17,7 @@ export default {
       target: 'react',
       autoCodeSplitting: true
     }),
-    react({
-      disableOxcRecommendation: true,
-      babel: {
-        plugins: [['babel-plugin-react-compiler', { target: '19' }]]
-      }
-    }),
+    react(),
     unpluginWebComponents.vite({
       tagPrefix: 'web-ui',
       packageName: '@greypan/web-ui',
