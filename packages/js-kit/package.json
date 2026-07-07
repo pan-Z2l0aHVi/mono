@@ -45,10 +45,6 @@
   "dependencies": {
     "remeda": "catalog:"
   },
-  "devDependencies": {
-    "vite": "catalog:",
-    "vite-plus": "catalog:"
-  },
   "browserslist": [
     "defaults"
   ]

@@ -1,10 +1,11 @@
 :host {
   display: grid;
   grid-template-areas:
-    "sidebar header"
-    "sidebar content";
+    'sidebar header'
+    'sidebar content';
   grid-template-columns: var(--web-ui-base-layout-sidebar-width, 240px) 1fr;
   grid-template-rows: var(--web-ui-base-layout-header-height, 64px) 1fr;
+
   box-sizing: border-box;
   min-height: 100dvh;
   min-height: 100vh;
@@ -29,7 +30,9 @@ aside {
   position: sticky;
   top: 0;
   left: 0;
+
   grid-area: sidebar;
+
   height: 100dvh;
   height: 100vh;
   padding: 8px;

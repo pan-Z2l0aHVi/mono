@@ -6,8 +6,9 @@ on:
       - 'v*'
 
 permissions:
-  id-token: write # 必需：允许 GitHub Actions 生成 OIDC token
-  contents: read
+  id-token: write # npm provenance
+  contents: write # changeset 写入版本号 + 创建 tag
+  packages: write
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -37,10 +38,26 @@ jobs:
         run: pnpm config set registry https://registry.npmjs.org/
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm i --frozen-lockfile
+
+      - name: Lint
+        run: pnpm run check:code
 
       - name: Build
-        run: pnpm build
+        run: pnpm run build
+
+      - name: Test
+        run: pnpm run test
+
+      - name: Verify changesets exist
+        run: |
+          if [ -z "$(find .changeset -name '*.md' -not -name 'README.md' -print -quit)" ]; then
+            echo "No pending changesets to publish. Did you forget to merge the Version Packages PR?"
+            exit 1
+          fi
 
       - name: Publish to npm
-        run: pnpm changeset publish
+        run: pnpm exec changeset publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_CONFIG_PROVENANCE: true

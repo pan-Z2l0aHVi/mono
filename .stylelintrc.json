@@ -1,16 +1,12 @@
 {
-  "extends": [
-    "stylelint-config-clean-order",
-    "stylelint-config-standard-scss",
-    "stylelint-config-standard-vue",
-    "stylelint-prettier/recommended"
-  ],
+  "extends": ["stylelint-config-clean-order", "stylelint-config-standard-scss", "stylelint-config-standard-vue"],
   "rules": {
     "alpha-value-notation": "number",
     "at-rule-no-unknown": null,
     "color-function-notation": "modern",
     "declaration-block-no-redundant-longhand-properties": null,
     "no-empty-source": null,
+    "declaration-empty-line-before": null,
     "scss/at-rule-no-unknown": [
       true,
       {
