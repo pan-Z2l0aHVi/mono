@@ -16,17 +16,11 @@ export default {
     sourcemap: true,
     lib: {
       entry: resolve(import.meta.dirname, 'src/index.ts'),
+      fileName: 'index',
       formats: ['es']
     },
     rollupOptions: {
-      external: ['unplugin', '@greypan/js-kit'],
-      output: {
-        preserveModules: true,
-        // 指定源码根目录，这样 dist 下就不会多出一层 'src' 目录
-        preserveModulesRoot: 'src',
-        dir: 'dist',
-        entryFileNames: '[name].js'
-      }
+      external: [/^node:/, '@greypan/js-kit']
     }
   }
 } satisfies UserConfig

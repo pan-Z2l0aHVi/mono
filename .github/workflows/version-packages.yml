@@ -1,0 +1,42 @@
+name: Version Packages
+
+# 当有 changeset 合入 main 时，自动提一个 Version Packages PR
+# 这个 PR 包含版本号变更和 CHANGELOG 内容，review 合并后手动打 tag 触发发布
+
+on:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: github.repository == 'pan-Z2l0aHVi/mono'
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - uses: jdx/mise-action@v4
+
+      - name: Install dependencies
+        run: pnpm i --frozen-lockfile
+
+      - name: Create Version Packages PR
+        uses: changesets/action@v1
+        with:
+          version: pnpm exec changeset version
+          commit: 'ci: version packages'
+          title: 'ci: version packages'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

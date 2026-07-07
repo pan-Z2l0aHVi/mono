@@ -34,8 +34,6 @@
     "@greypan/js-kit": "workspace:*",
     "unplugin": "catalog:"
   },
-  "devDependencies": {},
-  "peerDependencies": {},
   "browserslist": [
     "defaults"
   ]

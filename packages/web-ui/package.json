@@ -10,7 +10,7 @@
   "sideEffects": [
     "./dist/index.js",
     "./dist/components/*/index.js",
-    "**/*.css"
+    "./dist/**/*.css"
   ],
   "main": "./dist/index.js",
   "module": "./dist/index.js",

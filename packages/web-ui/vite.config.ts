@@ -27,6 +27,7 @@ export default {
       formats: ['es']
     },
     rollupOptions: {
+      external: ['@greypan/browser-kit', '@greypan/js-kit'],
       output: {
         preserveModules: true,
         // 指定源码根目录，这样 dist 下就不会多出一层 'src' 目录
