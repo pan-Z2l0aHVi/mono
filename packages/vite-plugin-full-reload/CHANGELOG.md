@@ -1,6 +1,6 @@
-# @greypan/browser-kit
+# @greypan/vite-plugin-full-reload
 
-## 1.2.0
+## 1.1.0
 
 ### Minor Changes
 
@@ -10,9 +10,3 @@
 
 - Updated dependencies [4dfde81]
   - @greypan/js-kit@1.1.0
-
-## 1.1.0
-
-### Minor Changes
-
-- 添加 getViewportSize 方法，获取当前视口尺寸
