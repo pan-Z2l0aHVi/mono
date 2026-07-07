@@ -2,7 +2,7 @@ import { defineConfig } from 'vite-plus'
 
 export default defineConfig({
   staged: {
-    '**/*.{js,ts,jsx,tsx,mjs,cjs,md,mdx,html,vue,css,less,scss}': 'cspell',
+    '**/*.{js,ts,jsx,tsx,mjs,cjs,html,vue,css,less,scss}': 'cspell',
     '**/*.{css,scss,less,vue}': 'stylelint --fix',
     '**/*.{js,ts,jsx,tsx,json,jsonc,md,mdx,html}': 'vp fmt',
     '**/*.{js,ts,jsx,tsx,mjs,cjs}': 'vp lint --fix'
@@ -247,7 +247,8 @@ export default defineConfig({
           'react/require-render-return': 'error',
           'react/rules-of-hooks': 'error',
           'react/exhaustive-deps': 'warn',
-          'react/only-export-components': 'off'
+          'react/only-export-components': 'off',
+          'unicorn/no-anonymous-default-export': 'error'
         }
       },
       {

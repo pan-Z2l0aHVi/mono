@@ -37,5 +37,5 @@ export function off(
   listener: EventListener,
   options?: boolean | AddEventListenerOptions
 ): void {
-  target.addEventListener(type, listener, options)
+  target.removeEventListener(type, listener, options)
 }

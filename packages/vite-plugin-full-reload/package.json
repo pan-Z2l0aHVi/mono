@@ -31,10 +31,9 @@
     "dev": "vp build --watch"
   },
   "dependencies": {
-    "@greypan/js-kit": "workspace:*"
+    "@greypan/js-kit": "workspace:*",
+    "unplugin": "catalog:"
   },
-  "devDependencies": {},
-  "peerDependencies": {},
   "browserslist": [
     "defaults"
   ]

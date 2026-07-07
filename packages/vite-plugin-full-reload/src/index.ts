@@ -11,7 +11,7 @@ interface Dep {
 }
 
 // 如果引入的子包是构建产物而非源码，用 full-reload 代替 hmr 更加合适
-export const fullReload = createUnplugin<Dep[]>((deps = []) => {
+export const fullReload = createUnplugin<Dep[]>(deps => {
   // 预处理：只保留绝对路径前缀和后缀正则
   // 统一处理成小写和正斜杠，消除跨平台差异 Window / Unix
   const configs = deps.map(({ name, path, outputDir = 'dist', extensions = ['.js', '.css'] }) => {

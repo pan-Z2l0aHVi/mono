@@ -7,7 +7,7 @@ import style from './style.css?inline'
 export class WebUiSvgDrawLines extends LitElement {
   static styles = unsafeCSS(style)
 
-  @property({ type: Boolean, reflect: true }) duration = 1000
+  @property({ type: Number, reflect: true }) duration = 1000
   @property({ type: String, reflect: true }) easing = 'linear'
 
   @state() private isAnimating = false

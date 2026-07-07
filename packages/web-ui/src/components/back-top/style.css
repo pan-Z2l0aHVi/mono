@@ -1,5 +1,6 @@
 :host {
   pointer-events: none;
+
   position: fixed;
   z-index: var(--web-ui-back-top-z-index, auto);
   top: var(--web-ui-back-top-top, auto);
@@ -7,9 +8,12 @@
   bottom: var(--web-ui-back-top-bottom, 20px);
   left: var(--web-ui-back-top-left, auto);
   transform: scale(0);
+
   display: inline-block;
+
   visibility: hidden;
   opacity: 0;
+
   transition: all 0.3s ease-out;
 }
 

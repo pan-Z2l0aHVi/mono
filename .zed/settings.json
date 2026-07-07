@@ -45,6 +45,9 @@
           "language_server": {
             "name": "oxfmt"
           }
+        },
+        {
+          "code_action": "source.fixAll.stylelint"
         }
       ]
     },
@@ -152,6 +155,9 @@
           "language_server": {
             "name": "oxfmt"
           }
+        },
+        {
+          "code_action": "source.fixAll.stylelint"
         }
       ]
     },
@@ -191,6 +197,9 @@
           "language_server": {
             "name": "oxfmt"
           }
+        },
+        {
+          "code_action": "source.fixAll.stylelint"
         }
       ]
     },
@@ -230,6 +239,9 @@
           "language_server": {
             "name": "oxfmt"
           }
+        },
+        {
+          "code_action": "source.fixAll.stylelint"
         }
       ]
     },

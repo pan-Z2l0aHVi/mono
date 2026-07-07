@@ -1,18 +1,22 @@
 :host {
   button {
     cursor: pointer;
+
     display: inline-flex;
     gap: var(--web-ui-button-gap, 8px);
     align-items: center;
     justify-content: center;
+
     width: max-content;
     min-height: var(--web-ui-button-h, 32px);
     padding: var(--web-ui-button-p-y, 4px) var(--web-ui-button-p-x, 16px);
     border: none;
     border-radius: 999vmax;
+
     font-size: var(--web-ui-button-font-size, 14px);
     font-weight: var(--web-ui-button-bold, 500);
     color: var(--web-ui-button-color, #006cf9);
+
     background: none;
     background-color: var(--web-ui-button-bg, #f0f0f6);
   }

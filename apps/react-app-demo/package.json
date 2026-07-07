@@ -7,19 +7,22 @@
     "build": "tsc -b && vp build",
     "dev": "vp dev",
     "preview": "vp preview",
-    "test": "vp test run"
+    "test": "vp test run",
+    "type-check": "tsc -b"
   },
   "dependencies": {
     "@greypan/js-kit": "workspace:*",
     "@greypan/web-ui": "workspace:*",
     "@tanstack/react-router": "^1.170.17",
+    "react": "catalog:",
+    "react-dom": "catalog:",
     "react-error-boundary": "^6.1.2",
-    "react-hook-form": "^7.80.0",
+    "react-hook-form": "^7.81.0",
     "zustand": "^5.0.14"
   },
   "devDependencies": {
-    "@greypan/vite-plugin-full-reload": "workspace:*",
-    "@greypan/unplugin-web-components": "workspace:*"
+    "@greypan/unplugin-web-components": "workspace:*",
+    "@greypan/vite-plugin-full-reload": "workspace:*"
   },
   "browserslist": {
     "development": [

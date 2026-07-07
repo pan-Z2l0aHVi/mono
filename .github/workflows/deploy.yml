@@ -1,0 +1,90 @@
+name: Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      app:
+        description: 'Which app to deploy'
+        type: choice
+        required: true
+        options:
+          - react-app-demo
+          - vue-app-demo
+        default: react-app-demo
+      environment:
+        description: 'Deploy target'
+        type: choice
+        required: true
+        options:
+          - staging
+          - production
+        default: staging
+
+concurrency:
+  group: deploy-${{ inputs.app }}-${{ inputs.environment }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: ${{ inputs.environment }}
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: jdx/mise-action@v4
+
+      - name: Cache pnpm store
+        uses: actions/cache@v5
+        with:
+          path: ~/.local/share/pnpm/store
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-
+
+      - name: Set official registry
+        run: pnpm config set registry https://registry.npmjs.org/
+
+      - name: Install dependencies
+        run: pnpm i --frozen-lockfile
+
+      - name: Build ${{ inputs.app }}
+        run: pnpm --filter @greypan/${{ inputs.app }} build
+
+      # ── 静态文件上传到对象存储 (OSS / S3 / COS) ──
+      # - name: Upload to OSS
+      #   run: |
+      #     aws s3 sync apps/${{ inputs.app }}/dist/ s3://your-bucket/${{ inputs.app }}/ --delete
+      #   需要 secrets.AWS_ACCESS_KEY_ID / secrets.AWS_SECRET_ACCESS_KEY
+
+      # ── CDN 刷新缓存 ──
+      # - name: Purge CDN cache
+      #   run: |
+      #     curl -X POST "https://cdn-api.example.com/purge?urls=https://${{ inputs.app }}.example.com/*"
+      #   需要 secrets.CDN_API_TOKEN
+
+      # ── 静态文件部署到 nginx ──
+      # - name: Deploy to nginx
+      #   run: rsync -avz --delete apps/${{ inputs.app }}/dist/ deploy@your-server:/var/www/${{ inputs.app }}/
+      #   需要 secrets.SSH_PRIVATE_KEY
+
+      # ── Docker 构建 + 推送 ──
+      # - name: Build and push Docker image
+      #   run: |
+      #     docker build -t your-registry/${{ inputs.app }}:${{ github.sha }} .
+      #     docker push your-registry/${{ inputs.app }}:${{ github.sha }}
+      #   需要 secrets.DOCKER_REGISTRY / secrets.DOCKER_USERNAME / secrets.DOCKER_PASSWORD
+
+      # ── Kubernetes 滚动更新 ──
+      # - name: Deploy to k8s
+      #   run: |
+      #     kubectl set image deployment/${{ inputs.app }} ${{ inputs.app }}=your-registry/${{ inputs.app }}:${{ github.sha }}
+      #   需要 secrets.KUBE_CONFIG
+
+      # ── SSH 到裸服务器拉镜像重启 ──
+      # - name: Deploy via SSH
+      #   run: |
+      #     ssh deploy@your-server "docker pull your-registry/${{ inputs.app }}:${{ github.sha }} && docker compose up -d"
+      #   需要 secrets.SSH_PRIVATE_KEY

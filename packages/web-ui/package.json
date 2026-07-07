@@ -10,7 +10,7 @@
   "sideEffects": [
     "./dist/index.js",
     "./dist/components/*/index.js",
-    "**/*.css"
+    "./dist/**/*.css"
   ],
   "main": "./dist/index.js",
   "module": "./dist/index.js",
@@ -34,18 +34,19 @@
     "registry": "https://registry.npmjs.org/"
   },
   "scripts": {
-    "build": "vp build",
+    "build": "run-p type-check \"build-only {@}\" --",
+    "build-only": "vp build",
     "preview": "vp preview",
     "test": "vp test run",
+    "type-check": "vue-tsc --build",
     "dev": "vp build --watch"
   },
   "dependencies": {
     "@greypan/browser-kit": "workspace:*",
     "@greypan/js-kit": "workspace:*",
-    "iconify-icon": "^3.0.2"
+    "iconify-icon": "^3.0.2",
+    "lit": "catalog:"
   },
-  "devDependencies": {},
-  "peerDependencies": {},
   "browserslist": [
     "defaults"
   ]
