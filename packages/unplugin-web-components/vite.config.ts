@@ -20,7 +20,7 @@ export default {
       formats: ['es']
     },
     rollupOptions: {
-      external: [/^node:/, '@greypan/js-kit']
+      external: [/^node:/, '@greypan/js-kit', 'unplugin', 'change-case']
     }
   }
 } satisfies UserConfig

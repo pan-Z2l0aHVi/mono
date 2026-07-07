@@ -23,11 +23,10 @@ export default {
     sourcemap: true,
     lib: {
       entry: resolve(import.meta.dirname, 'src/index.ts'),
-      name: 'WebUi',
       formats: ['es']
     },
     rollupOptions: {
-      external: ['@greypan/browser-kit', '@greypan/js-kit'],
+      external: ['@greypan/browser-kit', '@greypan/js-kit', 'lit', 'iconify-icon', 'react', 'vue'],
       output: {
         preserveModules: true,
         // 指定源码根目录，这样 dist 下就不会多出一层 'src' 目录
