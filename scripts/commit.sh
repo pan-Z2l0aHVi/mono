@@ -132,4 +132,8 @@ for line in "${BODY_LINES[@]}"; do
   BODY_ARGS+=(-m "$line")
 done
 
-GIT_EDITOR=true git commit -m "${HEADER}" "${BODY_ARGS[@]}"
+if [ ${#BODY_ARGS[@]} -gt 0 ]; then
+  GIT_EDITOR=true git commit -m "${HEADER}" "${BODY_ARGS[@]}"
+else
+  GIT_EDITOR=true git commit -m "${HEADER}"
+fi
