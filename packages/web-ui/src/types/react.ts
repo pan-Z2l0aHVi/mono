@@ -10,15 +10,15 @@ type ExtractReactEvents<T> = T extends { readonly $events: infer E }
     }
   : object
 
-export type ReactWrapper<T> = DetailedHTMLProps<
+export type LitReactWrapper<T> = DetailedHTMLProps<
   ExtractProps<OmitLitBase<T>> & ExtractReactEvents<T> & HTMLAttributes<HTMLElement>,
   HTMLElement
 >
 
 export interface WebUiComponents {
-  'web-ui-button': ReactWrapper<WebUiButton>
-  'web-ui-back-top': ReactWrapper<WebUiBackTop>
-  'web-ui-layout': ReactWrapper<WebUiLayout>
+  'web-ui-button': LitReactWrapper<WebUiButton>
+  'web-ui-back-top': LitReactWrapper<WebUiBackTop>
+  'web-ui-layout': LitReactWrapper<WebUiLayout>
 }
 
 declare module 'react' {

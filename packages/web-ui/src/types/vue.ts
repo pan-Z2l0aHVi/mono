@@ -13,12 +13,12 @@ type ExtractVueEvents<T> = T extends { readonly $events: infer E }
     }
   : object
 
-export type VueWrapper<T> = DefineComponent<ExtractProps<OmitLitBase<T>> & ExtractVueEvents<T>>
+export type LitVueWrapper<T> = DefineComponent<ExtractProps<OmitLitBase<T>> & ExtractVueEvents<T>>
 
 export interface WebUiComponents {
-  'web-ui-button': VueWrapper<WebUiButton>
-  'web-ui-back-top': VueWrapper<WebUiBackTop>
-  'web-ui-layout': VueWrapper<WebUiLayout>
+  'web-ui-button': LitVueWrapper<WebUiButton>
+  'web-ui-back-top': LitVueWrapper<WebUiBackTop>
+  'web-ui-layout': LitVueWrapper<WebUiLayout>
 }
 
 declare module 'vue' {
