@@ -1,5 +1,11 @@
 # @greypan/js-kit
 
+## 1.2.0
+
+### Minor Changes
+
+- 8944472: Improve engineering structures
+
 ## 1.1.1
 
 ### Patch Changes
