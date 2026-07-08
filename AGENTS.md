@@ -31,9 +31,9 @@ pnpm monorepo (`apps/**`, `packages/**`) using Turborepo. Packages published und
 
 Each package has `build`, `test`, and usually `dev` (watch mode). Run with `pnpm --filter @greypan/<name> <script>`. Example: `pnpm --filter @greypan/js-kit test`.
 
-All library packages have a two-step build: `run-p type-check "build-only {@}" --` — type-check and build run in parallel. Apps run `tsc -b && vp build` (type-check first, then build).
+All packages use sequential build: type-check first, then build. Libraries and Vue app use `vue-tsc --build && vp build`. React app uses `tsc -b && vp build`.
 
-**Type-checker**: All packages (including non-Vue ones like `js-kit`, `browser-kit`) use `vue-tsc --build` for type-checking. Apps use `tsc -b`.
+**Type-checker**: All packages (including non-Vue ones like `js-kit`, `browser-kit`) use `vue-tsc --build` for type-checking. React app uses `tsc -b`.
 
 ## Package structure
 

@@ -129,7 +129,18 @@ export default defineConfig({
           'no-with': 'error',
           'require-yield': 'error',
           'use-isnan': 'error',
-          'valid-typeof': 'error',
+          'valid-typeof': 'error'
+        },
+        env: {
+          browser: true,
+          es2026: true,
+          node: true
+        }
+      },
+      {
+        files: ['**/*.vue'],
+        plugins: ['vue'],
+        rules: {
           'vue/no-arrow-functions-in-watch': 'error',
           'vue/no-deprecated-destroyed-lifecycle': 'error',
           'vue/no-export-in-script-setup': 'error',
@@ -140,7 +151,6 @@ export default defineConfig({
           'vue/no-multiple-slot-args': 'warn',
           'vue/no-required-prop-with-default': 'warn'
         },
-        plugins: ['vue'],
         env: {
           browser: true,
           es2026: true,
@@ -323,8 +333,5 @@ export default defineConfig({
       enabled: true,
       groups: ['builtin', 'external', 'internal', 'parent', 'sibling', 'index']
     }
-  },
-  test: {
-    environment: 'jsdom'
   }
 })

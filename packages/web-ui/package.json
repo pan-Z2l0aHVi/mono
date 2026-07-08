@@ -7,6 +7,9 @@
     "url": "git+https://github.com/pan-Z2l0aHVi/mono.git"
   },
   "type": "module",
+  "files": [
+    "dist"
+  ],
   "sideEffects": [
     "./dist/index.js",
     "./dist/components/*/index.js",
@@ -34,8 +37,7 @@
     "registry": "https://registry.npmjs.org/"
   },
   "scripts": {
-    "build": "run-p type-check \"build-only {@}\" --",
-    "build-only": "vp build",
+    "build": "vue-tsc --build && vp build",
     "preview": "vp preview",
     "test": "vp test run",
     "type-check": "vue-tsc --build",
@@ -47,7 +49,24 @@
     "iconify-icon": "^3.0.2",
     "lit": "catalog:"
   },
+  "devDependencies": {
+    "react": "catalog:",
+    "vue": "catalog:"
+  },
+  "peerDependencies": {
+    "react": ">=16",
+    "vue": ">=3"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    },
+    "vue": {
+      "optional": true
+    }
+  },
   "browserslist": [
     "defaults"
-  ]
+  ],
+  "description": "Lit-based web components for React, Vue, and vanilla JS"
 }
