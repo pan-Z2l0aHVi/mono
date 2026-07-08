@@ -55,5 +55,6 @@
   },
   "browserslist": [
     "defaults"
-  ]
+  ],
+  "description": "Lit-based web components for React, Vue, and vanilla JS"
 }
