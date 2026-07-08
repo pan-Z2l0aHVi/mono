@@ -53,6 +53,18 @@
     "react": "catalog:",
     "vue": "catalog:"
   },
+  "peerDependencies": {
+    "react": ">=16",
+    "vue": ">=3"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    },
+    "vue": {
+      "optional": true
+    }
+  },
   "browserslist": [
     "defaults"
   ],
