@@ -21,6 +21,7 @@
     "@commitlint/cli": "catalog:",
     "@commitlint/config-conventional": "catalog:",
     "@cspell/dict-lorem-ipsum": "catalog:",
+    "@rolldown/plugin-babel": "catalog:",
     "@tailwindcss/vite": "catalog:",
     "@tanstack/router-plugin": "catalog:",
     "@testing-library/react": "catalog:",
@@ -61,6 +62,7 @@
     "vite-plugin-dts": "catalog:",
     "vite-plugin-http2-proxy": "catalog:",
     "vite-plugin-pwa": "catalog:",
+    "vite-plugin-vue-devtools": "catalog:",
     "vite-plus": "catalog:",
     "vite-tsconfig-paths": "catalog:",
     "vue-tsc": "catalog:"
