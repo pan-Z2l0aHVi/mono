@@ -45,7 +45,6 @@
     "globals": "catalog:",
     "jsdom": "catalog:",
     "lightningcss": "catalog:",
-    "npm-run-all": "catalog:",
     "rollup-plugin-visualizer": "catalog:",
     "stylelint": "catalog:",
     "stylelint-config-clean-order": "catalog:",

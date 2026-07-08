@@ -4,8 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "vue-tsc -b && vp build",
-    "build-only": "vp build",
+    "build": "vue-tsc --build && vp build",
     "dev": "vp dev",
     "preview": "vp preview",
     "test": "vp test run",
