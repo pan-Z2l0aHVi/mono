@@ -9,13 +9,6 @@
       "dependsOn": ["^build"],
       "outputs": []
     },
-    "lint": {
-      "outputs": []
-    },
-    "type-check": {
-      "dependsOn": ["^build"],
-      "outputs": []
-    },
     "dev": {
       "dependsOn": ["^build"],
       "cache": false,
