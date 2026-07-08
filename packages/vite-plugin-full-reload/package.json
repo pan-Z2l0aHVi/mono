@@ -1,7 +1,7 @@
 {
   "name": "@greypan/vite-plugin-full-reload",
   "version": "1.1.1",
-  "description": "",
+  "description": "Vite HMR plugin for full page reload",
   "license": "MIT",
   "repository": {
     "type": "git",

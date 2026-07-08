@@ -1,7 +1,7 @@
 {
   "name": "@greypan/browser-kit",
   "version": "1.2.1",
-  "description": "",
+  "description": "Browser utility functions",
   "license": "MIT",
   "repository": {
     "type": "git",
