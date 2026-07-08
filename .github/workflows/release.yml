@@ -2,20 +2,18 @@ name: Release
 
 on:
   push:
-    tags:
-      - 'v*'
+    branches: [main, 'v*']
+
+concurrency: ${{ github.workflow }}-${{ github.ref }}
 
 permissions:
+  contents: write
+  pull-requests: write
   id-token: write # npm provenance
-  contents: write # changeset 写入版本号 + 创建 tag
-  packages: write
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
 
 jobs:
-  publish:
+  release:
+    name: Release
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -25,6 +23,14 @@ jobs:
           fetch-depth: 0
 
       - uses: jdx/mise-action@v4
+
+      - name: Cache turbo
+        uses: actions/cache@v5
+        with:
+          path: .turbo
+          key: ${{ runner.os }}-turbo-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-turbo-
 
       - name: Cache pnpm store
         uses: actions/cache@v5
@@ -43,22 +49,13 @@ jobs:
       - name: Build
         run: pnpm run build
 
-      - name: Format + Lint + Type-check
-        run: pnpm run check:code
-
-      - name: Test
-        run: pnpm run test
-
-      - name: Verify changesets consumed
-        run: |
-          if [ -n "$(find .changeset -name '*.md' -not -name 'README.md' -print -quit)" ]; then
-            echo "Pending changesets found — versions haven't been bumped yet."
-            echo "Did you forget to merge the Version Packages PR?"
-            exit 1
-          fi
-
-      - name: Publish to npm
-        run: pnpm exec changeset publish
+      - name: Create Release Pull Request or Publish
+        uses: changesets/action@v1
+        with:
+          version: pnpm changeset version
+          publish: pnpm changeset publish
+          title: 'chore: version packages'
+          commit: 'chore: version packages'
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-          NPM_CONFIG_PROVENANCE: true
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}

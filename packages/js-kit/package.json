@@ -1,13 +1,16 @@
 {
   "name": "@greypan/js-kit",
   "version": "1.1.1",
-  "description": "",
+  "description": "JavaScript utility functions",
   "license": "MIT",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/pan-Z2l0aHVi/mono.git"
   },
   "type": "module",
+  "files": [
+    "dist"
+  ],
   "sideEffects": false,
   "main": "./dist/index.js",
   "module": "./dist/index.js",
@@ -35,8 +38,7 @@
     "registry": "https://registry.npmjs.org/"
   },
   "scripts": {
-    "build": "run-p type-check \"build-only {@}\" --",
-    "build-only": "vp build",
+    "build": "vue-tsc --build && vp build",
     "preview": "vp preview",
     "test": "vp test run",
     "type-check": "vue-tsc --build",

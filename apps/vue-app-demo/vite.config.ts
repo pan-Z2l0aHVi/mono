@@ -8,6 +8,7 @@ import vueJsx from '@vitejs/plugin-vue-jsx'
 import { visualizer } from 'rollup-plugin-visualizer'
 import autoImport from 'unplugin-auto-import/vite'
 import checker from 'vite-plugin-checker'
+import VueDevTools from 'vite-plugin-vue-devtools'
 import { type PluginOption, searchForWorkspaceRoot, type UserConfig } from 'vite-plus'
 import vueRouter from 'vue-router/vite'
 
@@ -16,6 +17,7 @@ export default {
     tsconfigPaths: true
   },
   plugins: [
+    VueDevTools(),
     vueRouter(),
     vue({
       template: {
