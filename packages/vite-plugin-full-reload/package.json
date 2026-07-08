@@ -26,8 +26,7 @@
     "registry": "https://registry.npmjs.org/"
   },
   "scripts": {
-    "build": "run-p type-check \"build-only {@}\" --",
-    "build-only": "vp build",
+    "build": "vue-tsc --build && vp build",
     "preview": "vp preview",
     "test": "vp test run",
     "type-check": "vue-tsc --build",
