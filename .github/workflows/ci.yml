@@ -48,7 +48,7 @@ jobs:
         run: pnpm run check:lockfile
 
       - name: Check changesets
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' && github.head_ref != 'changeset-release/main'
         run: pnpm exec changeset status --since=origin/${{ github.base_ref }}
 
       - name: Build
