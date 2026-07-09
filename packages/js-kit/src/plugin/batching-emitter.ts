@@ -23,7 +23,7 @@ export function defineBatchEmitter<S>(onFlushed?: (queue: S[]) => Promise<void>)
         if (queue.push(data) === 1) {
           timerId = setTimeout(() => {
             try {
-              void flush()
+              flush()
             } catch (error) {
               reject(error)
             }
@@ -35,7 +35,7 @@ export function defineBatchEmitter<S>(onFlushed?: (queue: S[]) => Promise<void>)
     /**
      * 立即清空并执行当前的队列
      */
-    async function flush() {
+    function flush() {
       if (!queue.length) return
 
       // 先快照一份，防止后续 push 污染当前批次，消除异步重入（Re-entrancy）
@@ -48,12 +48,12 @@ export function defineBatchEmitter<S>(onFlushed?: (queue: S[]) => Promise<void>)
         timerId = null
       }
 
-      if (onFlushed) await onFlushed(currentQueue)
-
       let fn: Resolve<S> | undefined
       while ((fn = currentResolves.shift())) {
         fn(currentQueue)
       }
+
+      if (onFlushed) void onFlushed(currentQueue)
     }
 
     return { batchEmit, flush }

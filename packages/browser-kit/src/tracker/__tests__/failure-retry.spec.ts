@@ -200,9 +200,12 @@ describe('失败重试测试用例', () => {
     expect(fetchSpy).toHaveBeenCalledTimes(5)
   })
 
-  it('flush：手动清空队列和 IndexedDB', async () => {
+  it('flush：尝试发送待重试数据并清空队列', async () => {
     sendBeaconSpy.mockReturnValue(false)
+    // 第一次 fetch 失败 → 入队
     fetchSpy.mockRejectedValueOnce(new Error('Network error'))
+    // flush 时的重试成功
+    fetchSpy.mockResolvedValue({ ok: true })
 
     const tracker = defineTracker({ url: 'https://example.com' })
       .use(defineFailureRetry({ restoreKey: 'test-retry' }))
@@ -217,10 +220,18 @@ describe('失败重试测试用例', () => {
     // 验证数据已持久化
     expect(_mockStore['test-retry']).toBeDefined()
 
-    // 手动清空
+    const callsBeforeFlush = fetchSpy.mock.calls.length
+
+    // flush 应该尝试发送待重试数据
     tracker.flush()
 
-    // IndexedDB 也应该被清空
+    // 等待异步发送完成
+    await new Promise(r => setTimeout(r, 50))
+
+    // 应该有新的 fetch 调用（重试发送）
+    expect(fetchSpy.mock.calls.length).toBeGreaterThan(callsBeforeFlush)
+
+    // IndexedDB 应该被清空
     expect(_mockStore['test-retry']).toBeUndefined()
   })
 })

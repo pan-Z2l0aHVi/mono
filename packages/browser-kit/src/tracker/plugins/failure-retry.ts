@@ -7,6 +7,8 @@
 import { definePlugin, type PluginMade } from '@greypan/js-kit'
 import { del, get, set } from 'idb-keyval'
 
+import type { Flushable } from '../func-types'
+
 import type { defineTracker } from './core'
 
 interface Options {
@@ -21,7 +23,7 @@ const DEFAULT_OPTIONS: Config = {
 }
 
 export function defineFailureRetry(options?: Options) {
-  return definePlugin((ctx: PluginMade<typeof defineTracker>) => {
+  return definePlugin((ctx: PluginMade<typeof defineTracker> & Flushable) => {
     const config = { ...DEFAULT_OPTIONS, ...options }
 
     let retryQueue: object[] = []
@@ -72,9 +74,15 @@ export function defineFailureRetry(options?: Options) {
       return retryQueue.length > 0 ? set(config.restoreKey, retryQueue) : del(config.restoreKey)
     }
 
+    // 页面关闭等场景：尝试发送待重试数据，而非直接丢弃
     function flush() {
+      const toRetry = [...retryQueue]
       retryQueue = []
       void del(config.restoreKey)
+      for (const data of toRetry) {
+        void ctx.track(data)
+      }
+      ctx.flush?.()
     }
 
     return { track, flush }
