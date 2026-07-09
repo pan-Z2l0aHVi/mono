@@ -19,6 +19,7 @@ export function defineBatchTrack(options?: Options) {
     const config = { ...DEFAULT_OPTIONS, ...options } as Config
 
     // 简单粗暴的二分分片
+    // 注意：ctx.track 支持传入数组，后端批量接收埋点数据
     async function sliceTrack(dataList: object[]): Promise<void> {
       if (dataList.length === 0) return
       // 单条埋点数据不太可能超出限制，即使超出也能兜底 fetch 上报逻辑

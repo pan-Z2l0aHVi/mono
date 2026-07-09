@@ -160,8 +160,8 @@ function createStorage(type: StorageType, namespace?: string): StorageInst {
   return inst
 }
 
-export const createLocal = (namespace?: string): StorageInst => createStorage('local', namespace)
-export const createSession = (namespace?: string): StorageInst => createStorage('session', namespace)
+export const defineLocal = (namespace?: string): StorageInst => createStorage('local', namespace)
+export const defineSession = (namespace?: string): StorageInst => createStorage('session', namespace)
 
-export const local = createLocal()
-export const session = createSession()
+export const local = defineLocal()
+export const session = defineSession()

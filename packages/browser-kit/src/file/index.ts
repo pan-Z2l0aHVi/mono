@@ -54,7 +54,13 @@ export async function downloadFile(
     const urlPath = new URL(arg).pathname
     name = filename ?? (urlPath.substring(urlPath.lastIndexOf('/') + 1) || DEFAULT_FILENAME)
 
-    const res = await fetch(arg)
+    let res: Response
+    try {
+      res = await fetch(arg)
+    } catch {
+      throw new Error('Network error: failed to fetch the file.')
+    }
+    if (!res.ok) throw new Error(`Download failed: ${res.status} ${res.statusText}`)
     // 为了支持进度条，改用 ReadableStream 读取数据。而不是 obj = await res.blob()
     const contentLen = res.headers.get('content-length')
     const contentType = res.headers.get('content-type') || 'application/octet-stream'
@@ -177,7 +183,7 @@ export function base64ToFile(base64: string, filename = 'file'): File {
  * @param file 需要被转换的 File 或 Blob 对象
  * @returns
  */
-export function file2Base64(file: File | Blob): Promise<string> {
+export function fileToBase64(file: File | Blob): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
     reader.readAsDataURL(file)

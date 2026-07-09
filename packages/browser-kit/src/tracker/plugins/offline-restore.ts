@@ -51,7 +51,7 @@ export function defineOfflineRestore(options: Options) {
       await del(config.restoreKey)
     }
 
-    void init()
+    init().catch(console.error)
 
     let controller: AbortController | null = null
 
