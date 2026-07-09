@@ -13,7 +13,6 @@ export function random(min: number, max: number): number {
  * 随机浮点数 [min, max)
  * @param min 最小值
  * @param max 最大值
- * @param precision 保留小数位，不传则返回原始浮点数
  */
 export function randomFloat(min: number, max: number): number {
   const lower = Math.min(min, max)

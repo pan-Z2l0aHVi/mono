@@ -53,7 +53,7 @@ function defineStorage(type: StorageType, options: StorageOptions = {}) {
     }
 
     /**
-     * @param key
+     * @param key 存储键名
      * @param def 默认值：当 key 不存在或已过期时返回
      */
     function get<T>(key: string, def: T | null = null): T | null {
