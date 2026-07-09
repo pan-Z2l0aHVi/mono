@@ -6,6 +6,7 @@
 
 import { definePlugin, type PluginMade } from '@greypan/js-kit'
 import { del, get, update } from 'idb-keyval'
+import { isDeepEqual, uniqueWith } from 'remeda'
 
 import type { Flushable } from '../func-types'
 
@@ -71,8 +72,12 @@ export function defineFailureRetry(options?: Options) {
     }
 
     function persist() {
-      // 使用 update 而非 set：原子操作避免并发写入时数据丢失
-      return retryQueue.length > 0 ? update(config.restoreKey, () => retryQueue) : del(config.restoreKey)
+      // 合并 IndexedDB 现有数据，避免异步加载竞态导致数据丢失
+      return retryQueue.length > 0
+        ? update(config.restoreKey, (existing: object[] = []) =>
+            uniqueWith([...existing, ...retryQueue], isDeepEqual).slice(-config.maxQueueSize)
+          )
+        : del(config.restoreKey)
     }
 
     // 页面关闭等场景：尝试发送待重试数据，而非直接丢弃
