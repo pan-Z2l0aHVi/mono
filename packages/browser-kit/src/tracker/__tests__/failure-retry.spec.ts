@@ -13,6 +13,9 @@ vi.mock('idb-keyval', () => ({
   }),
   set: vi.fn<(key: string, val: any) => Promise<void>>(async (key, val) => {
     _mockStore[key] = val
+  }),
+  update: vi.fn<(key: string, updater: (existing: any) => any) => Promise<void>>(async (key, updater) => {
+    _mockStore[key] = updater(_mockStore[key])
   })
 }))
 

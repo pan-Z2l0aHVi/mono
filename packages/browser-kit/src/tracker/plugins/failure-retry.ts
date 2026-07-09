@@ -5,7 +5,7 @@
  */
 
 import { definePlugin, type PluginMade } from '@greypan/js-kit'
-import { del, get, set } from 'idb-keyval'
+import { del, get, update } from 'idb-keyval'
 
 import type { Flushable } from '../func-types'
 
@@ -71,7 +71,8 @@ export function defineFailureRetry(options?: Options) {
     }
 
     function persist() {
-      return retryQueue.length > 0 ? set(config.restoreKey, retryQueue) : del(config.restoreKey)
+      // 使用 update 而非 set：原子操作避免并发写入时数据丢失
+      return retryQueue.length > 0 ? update(config.restoreKey, () => retryQueue) : del(config.restoreKey)
     }
 
     // 页面关闭等场景：尝试发送待重试数据，而非直接丢弃
