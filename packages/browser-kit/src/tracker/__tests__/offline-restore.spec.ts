@@ -7,15 +7,15 @@ import { defineOfflineRestore } from '../plugins/offline-restore'
 let _mockStore: Record<string, any> = {}
 
 vi.mock('idb-keyval', () => ({
-  get: vi.fn(async key => _mockStore[key]),
-  del: vi.fn(async key => {
+  get: vi.fn<(key: string) => Promise<any>>(async key => _mockStore[key]),
+  del: vi.fn<(key: string) => Promise<void>>(async key => {
     delete _mockStore[key]
   }),
-  update: vi.fn(async (key, updater) => {
+  update: vi.fn<(key: string, updater: (prev: any) => any) => Promise<void>>(async (key, updater) => {
     const oldValue = _mockStore[key] || []
     _mockStore[key] = updater(oldValue)
   }),
-  set: vi.fn(async (key, val) => {
+  set: vi.fn<(key: string, val: any) => Promise<void>>(async (key, val) => {
     _mockStore[key] = val
   })
 }))
@@ -28,7 +28,7 @@ describe('离线恢复上报插件测试用例', () => {
     if (typeof navigator !== 'undefined') {
       // 避免 core.ts 中 sendBeacon 报错
       Object.defineProperty(navigator, 'sendBeacon', {
-        value: vi.fn().mockReturnValue(true),
+        value: vi.fn<Navigator['sendBeacon']>(() => true),
         configurable: true
       })
       Object.defineProperty(navigator, 'onLine', {

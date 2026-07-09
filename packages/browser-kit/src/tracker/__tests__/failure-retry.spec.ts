@@ -7,32 +7,32 @@ import { defineFailureRetry } from '../plugins/failure-retry'
 let _mockStore: Record<string, any> = {}
 
 vi.mock('idb-keyval', () => ({
-  get: vi.fn(async key => _mockStore[key]),
-  del: vi.fn(async key => {
+  get: vi.fn<(key: string) => Promise<any>>(async key => _mockStore[key]),
+  del: vi.fn<(key: string) => Promise<void>>(async key => {
     delete _mockStore[key]
   }),
-  set: vi.fn(async (key, val) => {
+  set: vi.fn<(key: string, val: any) => Promise<void>>(async (key, val) => {
     _mockStore[key] = val
   })
 }))
 
 describe('失败重试测试用例', () => {
-  let sendBeaconSpy: ReturnType<typeof vi.fn>
-  let fetchSpy: ReturnType<typeof vi.fn>
+  let sendBeaconSpy: ReturnType<typeof vi.fn<Navigator['sendBeacon']>>
+  let fetchSpy: ReturnType<typeof vi.fn<typeof fetch>>
 
   beforeEach(() => {
     vi.clearAllMocks()
     _mockStore = {}
 
-    sendBeaconSpy = vi.fn(() => true)
+    sendBeaconSpy = vi.fn<Navigator['sendBeacon']>(() => true)
     Object.defineProperty(navigator, 'sendBeacon', {
       configurable: true,
       enumerable: true,
       value: sendBeaconSpy
     })
 
-    fetchSpy = vi.fn(() => Promise.resolve({ ok: true }))
-    ;(global as any).fetch = fetchSpy
+    fetchSpy = vi.fn<typeof fetch>(() => Promise.resolve({ ok: true } as Response))
+    vi.stubGlobal('fetch', fetchSpy)
   })
 
   it('成功发送：track 正常发送数据', async () => {
@@ -77,9 +77,9 @@ describe('失败重试测试用例', () => {
     // 第一次：fetch 失败 → 入队
     fetchSpy.mockRejectedValueOnce(new Error('Network error'))
     // 第二次：fetch 成功 → 触发重试
-    fetchSpy.mockResolvedValueOnce({ ok: true })
+    fetchSpy.mockResolvedValueOnce({ ok: true } as Response)
     // 重试队列：fetch 成功
-    fetchSpy.mockResolvedValueOnce({ ok: true })
+    fetchSpy.mockResolvedValueOnce({ ok: true } as Response)
 
     const tracker = defineTracker({ url: 'https://example.com' })
       .use(defineFailureRetry({ restoreKey: 'test-retry' }))
@@ -108,7 +108,7 @@ describe('失败重试测试用例', () => {
     // 第一次：fetch 失败 → 入队
     fetchSpy.mockRejectedValueOnce(new Error('Network error'))
     // 第二次：fetch 成功 → 触发重试
-    fetchSpy.mockResolvedValueOnce({ ok: true })
+    fetchSpy.mockResolvedValueOnce({ ok: true } as Response)
     // 重试队列：fetch 失败 → 放回队列
     fetchSpy.mockRejectedValueOnce(new Error('Still failing'))
 
@@ -140,10 +140,10 @@ describe('失败重试测试用例', () => {
     fetchSpy.mockRejectedValueOnce(new Error('Error 1'))
     fetchSpy.mockRejectedValueOnce(new Error('Error 2'))
     // 第三次：fetch 成功 → 触发重试
-    fetchSpy.mockResolvedValueOnce({ ok: true })
+    fetchSpy.mockResolvedValueOnce({ ok: true } as Response)
     // 重试队列：两次成功
-    fetchSpy.mockResolvedValueOnce({ ok: true })
-    fetchSpy.mockResolvedValueOnce({ ok: true })
+    fetchSpy.mockResolvedValueOnce({ ok: true } as Response)
+    fetchSpy.mockResolvedValueOnce({ ok: true } as Response)
 
     const tracker = defineTracker({ url: 'https://example.com' })
       .use(defineFailureRetry({ restoreKey: 'test-retry' }))
@@ -177,7 +177,7 @@ describe('失败重试测试用例', () => {
     // 第一次 fetch 失败 → 入队
     fetchSpy.mockRejectedValueOnce(new Error('Network error'))
     // 后续 fetch 成功，但加延迟模拟真实网络
-    fetchSpy.mockImplementation(() => new Promise(r => setTimeout(() => r({ ok: true }), 10)))
+    fetchSpy.mockImplementation(() => new Promise(r => setTimeout(() => r({ ok: true } as Response), 10)))
 
     const tracker = defineTracker({ url: 'https://example.com' })
       .use(defineFailureRetry({ restoreKey: 'test-retry' }))
@@ -205,7 +205,7 @@ describe('失败重试测试用例', () => {
     // 第一次 fetch 失败 → 入队
     fetchSpy.mockRejectedValueOnce(new Error('Network error'))
     // flush 时的重试成功
-    fetchSpy.mockResolvedValue({ ok: true })
+    fetchSpy.mockResolvedValue({ ok: true } as Response)
 
     const tracker = defineTracker({ url: 'https://example.com' })
       .use(defineFailureRetry({ restoreKey: 'test-retry' }))

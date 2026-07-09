@@ -8,32 +8,32 @@ import { defineFailureRetry } from '../plugins/failure-retry'
 let _mockStore: Record<string, any> = {}
 
 vi.mock('idb-keyval', () => ({
-  get: vi.fn(async key => _mockStore[key]),
-  del: vi.fn(async key => {
+  get: vi.fn<(key: string) => Promise<any>>(async key => _mockStore[key]),
+  del: vi.fn<(key: string) => Promise<void>>(async key => {
     delete _mockStore[key]
   }),
-  set: vi.fn(async (key, val) => {
+  set: vi.fn<(key: string, val: any) => Promise<void>>(async (key, val) => {
     _mockStore[key] = val
   })
 }))
 
 describe('批量聚合上报测试用例', () => {
-  let sendBeaconSpy: ReturnType<typeof vi.fn>
-  let fetchSpy: ReturnType<typeof vi.fn>
+  let sendBeaconSpy: ReturnType<typeof vi.fn<Navigator['sendBeacon']>>
+  let fetchSpy: ReturnType<typeof vi.fn<typeof fetch>>
 
   beforeEach(() => {
     vi.clearAllMocks()
     _mockStore = {}
 
-    sendBeaconSpy = vi.fn(() => true)
+    sendBeaconSpy = vi.fn<Navigator['sendBeacon']>(() => true)
     Object.defineProperty(navigator, 'sendBeacon', {
       configurable: true,
       enumerable: true,
       value: sendBeaconSpy
     })
 
-    fetchSpy = vi.fn(() => Promise.resolve({ ok: true }))
-    ;(global as any).fetch = fetchSpy
+    fetchSpy = vi.fn<typeof fetch>(() => Promise.resolve({ ok: true } as Response))
+    vi.stubGlobal('fetch', fetchSpy)
   })
 
   it('批量聚合：在延迟内合并多次上报', async () => {
