@@ -1,5 +1,5 @@
 /**
- * @description remeda debounce 废弃了，这是 remeda 官方提供的替代封装
+ * @description 基于 remeda funnel 的 debounce 封装
  * @link https://github.com/remeda/remeda/blob/main/packages/remeda/src/funnel.remeda-debounce.test.ts#L10
  */
 import { funnel } from 'remeda'
@@ -46,15 +46,12 @@ export function debounce<F extends StrictFunction>(
 
   const debouncingFunnel = funnel(
     (args: Parameters<F>) => {
-      // Every time the function is invoked the cached value is updated.
-      // @ts-expect-error [ts2345, ts2322] -- TypeScript infers the generic sub-
-      // types too eagerly, making itself blind to the fact that the types
-      // match here.
+      // 每次调用函数时，缓存值都会更新
+      // @ts-expect-error [ts2345, ts2322] -- TypeScript 对泛型子类型的推断过于急切，导致无法识别此处类型是匹配的
       cachedValue = func(...args)
     },
     {
-      // Debounce stores the latest args it was called with for the next
-      // invocation of the callback.
+      // Debounce 会存储最近一次调用的参数，用于下一次回调执行
       reducer: (_, ...args: Parameters<F>) => args,
       minQuietPeriodMs: waitMs ?? maxWaitMs ?? 0,
       ...(maxWaitMs !== undefined && { maxBurstDurationMs: maxWaitMs }),

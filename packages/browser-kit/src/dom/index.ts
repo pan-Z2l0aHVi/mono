@@ -1,4 +1,3 @@
-// 兼容性最佳的写法
 /** 获取当前视口尺寸 */
 export function getViewportSize(): { width: number; height: number } {
   return {

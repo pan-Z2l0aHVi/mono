@@ -1,27 +1,28 @@
 const isBrowser = typeof window !== 'undefined' && typeof document !== 'undefined'
-const getUA = () => (typeof window !== 'undefined' ? window.navigator.userAgent : '')
+const ua = typeof window !== 'undefined' ? window.navigator.userAgent : ''
+const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua)
 
 export const env = {
   // --- 基础操作系统 ---
   get isAndroid() {
-    return /Android/i.test(getUA())
+    return /Android/i.test(ua)
   },
   get isIos() {
-    return /iPad|iPhone|iPod/i.test(getUA())
+    return /iPad|iPhone|iPod/i.test(ua)
   },
   get isIpadOs() {
-    return /iPad/i.test(getUA()) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+    return /iPad/i.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
   },
 
   // --- 平台/宿主环境 ---
   get isWeChat() {
-    return /MicroMessenger/i.test(getUA())
+    return /MicroMessenger/i.test(ua)
   },
   get isAlipay() {
-    return /AlipayClient/i.test(getUA())
+    return /AlipayClient/i.test(ua)
   },
   get isDingTalk() {
-    return /DingTalk/i.test(getUA())
+    return /DingTalk/i.test(ua)
   },
   get isIframe() {
     return isBrowser && window.self !== window.top
@@ -30,8 +31,7 @@ export const env = {
     return isBrowser && window.matchMedia('(display-mode: standalone)').matches
   },
   get isWebview() {
-    const ua = getUA()
-    return /WebView|wv|u7/i.test(ua) || (this.isMobile && /AppleWebKit/i.test(ua) && !/Safari/i.test(ua))
+    return /WebView|wv|u7/i.test(ua) || (isMobile && /AppleWebKit/i.test(ua) && !/Safari/i.test(ua))
   },
   get isSsr() {
     return !isBrowser
@@ -42,10 +42,10 @@ export const env = {
 
   // --- 交互设备 ---
   get isMobile() {
-    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(getUA())
+    return isMobile
   },
   get isDesktop() {
-    return !this.isMobile
+    return !isMobile
   },
   get isTouchSupported() {
     return isBrowser && ('ontouchstart' in window || navigator.maxTouchPoints > 0)
@@ -53,12 +53,12 @@ export const env = {
 
   // --- 浏览器内核/引擎 ---
   get isChrome() {
-    return /Chrome/i.test(getUA()) && /Google Inc/.test(navigator.vendor)
+    return /Chrome/i.test(ua) && /Google Inc/.test(navigator.vendor)
   },
   get isSafari() {
-    return /Safari/i.test(getUA()) && /Apple Computer/.test(navigator.vendor)
+    return /Safari/i.test(ua) && /Apple Computer/.test(navigator.vendor)
   },
   get isFirefox() {
-    return /Firefox/i.test(getUA())
+    return /Firefox/i.test(ua)
   }
 }

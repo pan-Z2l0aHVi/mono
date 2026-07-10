@@ -1,3 +1,4 @@
+export * from './fetch'
 export * from './number'
 export * from './paradigm'
 export * from './plugin'

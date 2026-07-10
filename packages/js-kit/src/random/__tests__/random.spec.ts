@@ -1,8 +1,38 @@
 import { describe, expect, it } from 'vite-plus/test'
 
-import { randomFloat, randomHex, randomRgb } from '..'
+import { random, randomFloat, randomHex, randomRgb } from '..'
 
 describe('random 单元测试', () => {
+  describe('random', () => {
+    it('结果应在指定的范围内', () => {
+      const min = 1
+      const max = 10
+      for (let i = 0; i < 100; i++) {
+        const result = random(min, max)
+        expect(result).toBeGreaterThanOrEqual(min)
+        expect(result).toBeLessThanOrEqual(max)
+      }
+    })
+
+    it('即便 min 和 max 传反了也应当正常工作', () => {
+      const results = new Set<number>()
+      for (let i = 0; i < 1000; i++) {
+        const result = random(10, 1)
+        expect(result).toBeGreaterThanOrEqual(1)
+        expect(result).toBeLessThanOrEqual(10)
+        results.add(result)
+      }
+      // 应当覆盖完整范围 [1, 10]，特别是下界 1
+      expect(results.has(1)).toBe(true)
+      expect(results.has(10)).toBe(true)
+    })
+
+    it('当 min 等于 max 时应返回该数值', () => {
+      const result = random(5, 5)
+      expect(result).toBe(5)
+    })
+  })
+
   describe('randomFloat', () => {
     it('结果应在指定的范围内', () => {
       const min = 1.1

@@ -93,5 +93,28 @@ describe('file 单元测试', () => {
       expect(window.URL.createObjectURL).toHaveBeenCalledWith(file)
       expect(HTMLAnchorElement.prototype.click).toHaveBeenCalled()
     })
+
+    it('fetch 返回非 ok 响应时应抛出错误', async () => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue(new Response('Not Found', { status: 404, statusText: 'Not Found' }))
+      )
+
+      await expect(downloadFile('https://example.com/missing-file.pdf')).rejects.toThrow(
+        'Download failed: 404 Not Found'
+      )
+
+      vi.unstubAllGlobals()
+    })
+
+    it('fetch 网络错误时应抛出有意义的错误', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')))
+
+      await expect(downloadFile('https://example.com/file.pdf')).rejects.toThrow(
+        'Network error: failed to fetch the file.'
+      )
+
+      vi.unstubAllGlobals()
+    })
   })
 })

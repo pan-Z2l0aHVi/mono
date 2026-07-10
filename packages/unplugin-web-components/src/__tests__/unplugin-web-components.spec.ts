@@ -1,13 +1,16 @@
-import type { Thenable, TransformResult } from 'unplugin'
+import type { Thenable, TransformResult, UnpluginContextMeta } from 'unplugin'
 import { describe, expect, it } from 'vite-plus/test'
 
 import { unpluginWebComponents } from '..'
 
+const meta = { framework: 'vite' as const }
+
 describe('unplugin-web-components', () => {
   it('应当在 Vue 组件中 import kebab-case 组件', async () => {
-    const raw = unpluginWebComponents.raw({ tagPrefix: 'web-ui', packageName: '@greypan/web-ui' }, {
-      framework: 'vite'
-    } as any)
+    const raw = unpluginWebComponents.raw(
+      { tagPrefix: 'web-ui', packageName: '@greypan/web-ui' },
+      meta as UnpluginContextMeta
+    )
 
     const plugin = Array.isArray(raw) ? raw[0] : raw
 
@@ -35,9 +38,10 @@ describe('unplugin-web-components', () => {
   })
 
   it('应当在 React 组件中 import kebab-case 组件', async () => {
-    const raw = unpluginWebComponents.raw({ tagPrefix: 'web-ui', packageName: '@greypan/web-ui' }, {
-      framework: 'vite'
-    } as any)
+    const raw = unpluginWebComponents.raw(
+      { tagPrefix: 'web-ui', packageName: '@greypan/web-ui' },
+      meta as UnpluginContextMeta
+    )
 
     const plugin = Array.isArray(raw) ? raw[0] : raw
 
