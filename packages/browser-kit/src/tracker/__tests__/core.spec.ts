@@ -35,4 +35,20 @@ describe('上报 core 测试用例', () => {
 
     expect(fetchSpy).toHaveBeenCalled()
   })
+
+  it('空数据：null 时不应调用 sendBeacon', async () => {
+    const tracker = defineTracker({ url: 'https://example.com' }).make()
+    await tracker.track(null as unknown as object)
+
+    expect(sendBeaconSpy).not.toHaveBeenCalled()
+    expect(fetchSpy).not.toHaveBeenCalled()
+  })
+
+  it('空数据：undefined 时不应调用 sendBeacon', async () => {
+    const tracker = defineTracker({ url: 'https://example.com' }).make()
+    await tracker.track(undefined as unknown as object)
+
+    expect(sendBeaconSpy).not.toHaveBeenCalled()
+    expect(fetchSpy).not.toHaveBeenCalled()
+  })
 })

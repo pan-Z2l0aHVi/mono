@@ -237,4 +237,57 @@ describe('失败重试测试用例', () => {
     // IndexedDB 应该被清空
     expect(_mockStore['test-retry']).toBeUndefined()
   })
+
+  it('队列满：达到 maxQueueSize 后不再入队', async () => {
+    sendBeaconSpy.mockReturnValue(false)
+    fetchSpy.mockRejectedValue(new Error('Network error'))
+
+    const tracker = defineTracker({ url: 'https://example.com' })
+      .use(defineFailureRetry({ restoreKey: 'test-retry', maxQueueSize: 2 }))
+      .make()
+
+    // 前两次失败入队
+    try {
+      await tracker.track({ event: 'a' })
+    } catch {
+      /* 预期的错误 */
+    }
+    try {
+      await tracker.track({ event: 'b' })
+    } catch {
+      /* 预期的错误 */
+    }
+
+    // 第三次应被拒绝入队
+    try {
+      await tracker.track({ event: 'c' })
+    } catch {
+      /* 预期的错误 */
+    }
+
+    // 队列中应只有 2 条
+    expect(_mockStore['test-retry']).toHaveLength(2)
+  })
+
+  it('IndexedDB 不可用：get 失败时不影响正常发送', async () => {
+    const { get } = await import('idb-keyval')
+    vi.mocked(get).mockRejectedValueOnce(new Error('IndexedDB unavailable'))
+
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    const tracker = defineTracker({ url: 'https://example.com' })
+      .use(defineFailureRetry({ restoreKey: 'test-retry' }))
+      .make()
+
+    // 等待异步 get 完成
+    await new Promise(r => setTimeout(r, 50))
+
+    // 正常发送不受影响
+    await tracker.track({ event: 'click' })
+
+    expect(sendBeaconSpy).toHaveBeenCalled()
+    expect(consoleSpy).toHaveBeenCalled()
+
+    consoleSpy.mockRestore()
+  })
 })

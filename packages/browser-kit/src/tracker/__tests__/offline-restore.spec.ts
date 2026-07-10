@@ -152,4 +152,49 @@ describe('离线恢复上报插件测试用例', () => {
 
     sendBeaconSpy.mockRestore()
   })
+
+  it('队列满：达到 restoreMaxSize 后截断旧数据', async () => {
+    const restoreKey = 'max-size-test'
+    const tracker = defineTracker({ url: 'https://example.com' })
+      .use(defineOfflineRestore({ restoreKey, restoreMaxSize: 3 }))
+      .make()
+
+    tracker.onOfflineRestore()
+    Object.defineProperty(navigator, 'onLine', { value: false })
+
+    // 离线发送 5 条数据
+    for (let i = 1; i <= 5; i++) {
+      await tracker.track({ id: i })
+    }
+
+    window.dispatchEvent(new Event('offline'))
+    await new Promise(resolve => setTimeout(resolve, 10))
+
+    // 应只保留最后 3 条
+    expect(_mockStore[restoreKey]).toHaveLength(3)
+    expect(_mockStore[restoreKey]).toContainEqual({ id: 3 })
+    expect(_mockStore[restoreKey]).toContainEqual({ id: 4 })
+    expect(_mockStore[restoreKey]).toContainEqual({ id: 5 })
+  })
+
+  it('IndexedDB 不可用：init 失败时不影响正常发送', async () => {
+    const { get } = await import('idb-keyval')
+    vi.mocked(get).mockRejectedValueOnce(new Error('IndexedDB unavailable'))
+
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    const tracker = defineTracker({ url: 'https://example.com' })
+      .use(defineOfflineRestore({ restoreKey: 'test-offline' }))
+      .make()
+
+    // 等待异步 init 完成
+    await new Promise(resolve => setTimeout(resolve, 50))
+
+    // 正常发送不受影响
+    await tracker.track({ event: 'click' })
+
+    expect(consoleSpy).toHaveBeenCalled()
+
+    consoleSpy.mockRestore()
+  })
 })

@@ -79,4 +79,29 @@ describe('批量聚合上报测试用例', () => {
 
     expect(sendBeaconSpy).toHaveBeenCalled()
   })
+
+  it('batchDelay <= 0 时应立即上报，不经过批处理', async () => {
+    const tracker = defineTracker({ url: 'https://example.com' })
+      .use(defineBatchTrack({ defaultBatchDelay: 200 }))
+      .make()
+
+    await tracker.track({ event: 'immediate' }, 0)
+
+    // 应立即调用 sendBeacon，无需等待
+    expect(sendBeaconSpy).toHaveBeenCalled()
+  })
+
+  it('大数据分片：恰好 64KB 时应单次发送', async () => {
+    const tracker = defineTracker({ url: 'https://example.com' })
+      .use(defineBatchTrack({ defaultBatchDelay: 200, maxBeaconSize: 0.0625 }))
+      .make()
+
+    // 构造一条数据，使其转化后大小恰好等于阈值
+    // maxBeaconSize = 0.0625 KB = 64 字节
+    // JSON.stringify 后约 64 字节
+    const data = { payload: 'x'.repeat(50) }
+    void tracker.track(data, -1)
+
+    expect(sendBeaconSpy).toHaveBeenCalled()
+  })
 })
