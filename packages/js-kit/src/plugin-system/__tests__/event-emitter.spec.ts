@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vite-plus/test'
 
-import { defineEventEmitter } from '../event-emitter'
+import { defineEventEmitter } from '..'
 
 describe('EventEmitter 单元测试', () => {
   it('应当支持注册和触发事件回调', () => {
@@ -29,7 +29,7 @@ describe('EventEmitter 单元测试', () => {
     const app = eventPlugin.make()
     const users: string[] = []
 
-    app.on('user:update', (id, name, role) => {
+    app.on('user:update', (id: number, name: string, role: string) => {
       const user = `ID: ${id}, Name: ${name}, Role: ${role}`
       users.push(user)
     })

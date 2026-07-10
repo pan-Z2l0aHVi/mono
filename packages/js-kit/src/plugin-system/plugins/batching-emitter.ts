@@ -1,4 +1,4 @@
-import { definePlugin } from './core'
+import { definePlugin } from '../core'
 
 type Resolve<S> = (queue: S[]) => void
 

@@ -19,7 +19,7 @@
  * }, 800)
  */
 
-import { definePlugin } from '@/plugin'
+import { definePlugin } from '@/plugin-system'
 
 export function defineControllableInterval(callback: () => void, interval: number) {
   return definePlugin(() => {
