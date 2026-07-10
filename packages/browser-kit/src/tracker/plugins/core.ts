@@ -25,7 +25,7 @@ export function defineTracker(options: Options) {
         const isSuccess = navigator.sendBeacon(url, actualData)
         if (isSuccess) return
       } catch (error) {
-        console.error('SendBeacon error, falling back fetch: ', error)
+        console.error('SendBeacon 失败，降级使用 fetch: ', error)
       }
       await fetch(url, {
         method: 'POST',

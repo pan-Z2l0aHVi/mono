@@ -18,5 +18,6 @@ export function toPrecision(val: number, precision: number): number {
  * @param max 最大值
  */
 export function clamp(val: number, min: number, max: number): number {
+  if (min > max) [min, max] = [max, min]
   return Math.max(min, Math.min(val, max))
 }

@@ -1,5 +1,29 @@
 # AGENTS.md
 
+## 文档维护规则
+
+**当你的改动涉及以下任一类别时，必须同步更新本文档对应章节：**
+
+| 改动类别             | 需要更新的章节                      | 触发条件                                                                           |
+| -------------------- | ----------------------------------- | ---------------------------------------------------------------------------------- |
+| 构建脚本/流程        | Build architecture, Key commands    | 修改 `package.json` 的 `scripts`、`vite.config.ts` 的 build 配置、turbo.json tasks |
+| 包增删重命名         | Package structure, Dependency graph | 添加/删除/重命名 `packages/` 或 `apps/` 下的目录                                   |
+| Externalization 策略 | Externalization rules               | 修改 `vite.config.ts` 的 `rollupOptions.external`                                  |
+| CI/CD workflow       | CI, Release                         | 修改 `.github/workflows/` 下的文件                                                 |
+| 代码规范工具         | Code style                          | 修改 linter、formatter、stylelint、cspell 配置                                     |
+| 依赖管理方式         | Dependency management               | 修改 `pnpm-workspace.yaml` catalog、changeset 配置                                 |
+| 运行时/工具链版本    | Toolchain                           | 修改 `.mise.toml`、`package.json` engines                                          |
+| 测试配置             | Testing                             | 修改 `vite.config.ts` 的 test 配置、测试框架                                       |
+
+**执行规则：**
+
+1. 执行改动前，先读取相关章节，确认当前文档内容
+2. 执行改动后，立即更新文档，不要留到以后
+3. 如果不确定改动是否需要更新文档，**主动询问用户**
+4. 文档更新应与代码改动在同一个 commit 中提交
+
+---
+
 ## Repo overview
 
 pnpm monorepo (`apps/**`, `packages/**`) using Turborepo. Packages published under `@greypan/*` to npm. Apps are private demos, never published.
@@ -10,7 +34,7 @@ pnpm monorepo (`apps/**`, `packages/**`) using Turborepo. Packages published und
 - **Runtime**: Node 24 (managed via mise — run `mise install` if node/pnpm/go are missing; `engines` allows >=24.18.0)
 - **Build/dev/lint/test/format**: all delegated to `vite-plus` (`vp`) — a Vite wrapper. Most per-package scripts call `vp build`, `vp test run`, `vp lint`, `vp fmt`
 - **Linter**: `vp lint` uses **oxlint** (not ESLint). Rules are configured in `vite.config.ts` under `lint.overrides`. ESLint rule names may not work — check oxlint rule names instead.
-- **Orchestration**: Turborepo (`turbo.json`) — `build` and `test` tasks depend on `^build` (upstream packages build first)
+- **Orchestration**: Turborepo (`turbo.json`) — `build` and `test` tasks depend on `^build` (upstream packages build first). `dev` task also depends on `^build` but is not cached and runs persistently.
 - **Language**: TypeScript 6, ES modules only (`"type": "module"` everywhere)
 
 ## Key commands
@@ -25,7 +49,7 @@ pnpm monorepo (`apps/**`, `packages/**`) using Turborepo. Packages published und
 | `pnpm check:lockfile`                             | Verify lockfile has no duplicates           |
 | `pnpm dev:react-app-demo`                         | Dev server for React app (with turbo watch) |
 | `pnpm dev:vue-app-demo`                           | Dev server for Vue app (with turbo watch)   |
-| `pnpm run check`                                  | Format + lint + type-check (what CI runs)   |
+| `pnpm run check:code`                             | Format + lint + type-check (what CI runs)   |
 
 ### Per-package commands
 
@@ -63,17 +87,17 @@ apps/
 ### Externalization rules
 
 - **Workspace deps (`@greypan/*`) MUST be externalized** in `rollupOptions.external`. This is required for dev watch mode — without it, Rolldown fails to resolve workspace links on rebuild. It also prevents duplicate code in consumer bundles.
-- **Third-party npm deps MUST be bundled** (NOT externalized). Consumers should get zero-config, zero-dependency packages.
+- **Third-party npm deps can be externalized or bundled** — depends on the package's design intent. If the package is designed to be consumed with zero config, bundle them. If the package expects consumers to install peer dependencies, externalize them.
 - **Node built-in modules** (e.g., `node:path`) MUST be externalized — they can't be bundled.
-- `web-ui` bundles `lit` as an exception (no `external: [/^lit/]`), so consumers get web components without needing to install Lit. Workspace deps are still externalized normally.
+- `web-ui` externalizes `lit` (along with workspace deps), so consumers must install `lit` as a dependency.
 
-| Package                   | Externalized (workspace + builtin)        | Bundled (third-party)            |
-| ------------------------- | ----------------------------------------- | -------------------------------- |
-| `js-kit`                  | _(none)_                                  | `remeda`                         |
-| `browser-kit`             | `@greypan/js-kit`                         | `idb-keyval`, `nanoid`, `remeda` |
-| `web-ui`                  | `@greypan/browser-kit`, `@greypan/js-kit` | `iconify-icon`, `lit`            |
-| `unplugin-web-components` | `@greypan/js-kit`                         | `change-case`, `unplugin`        |
-| `vite-plugin-full-reload` | `node:path`, `@greypan/js-kit`            | `unplugin`                       |
+| Package                   | Externalized (workspace + builtin)                                       | Bundled (third-party)     |
+| ------------------------- | ------------------------------------------------------------------------ | ------------------------- |
+| `js-kit`                  | _(none)_                                                                 | `remeda`                  |
+| `browser-kit`             | `@greypan/js-kit`, `idb-keyval`, `nanoid`, `remeda`, `copy-to-clipboard` | _(none)_                  |
+| `web-ui`                  | `@greypan/browser-kit`, `@greypan/js-kit`, `iconify-icon`, `lit`         | _(none)_                  |
+| `unplugin-web-components` | `@greypan/js-kit`                                                        | `change-case`, `unplugin` |
+| `vite-plugin-full-reload` | `node:path`, `@greypan/js-kit`                                           | `unplugin`                |
 
 ### Apps
 
@@ -179,13 +203,17 @@ Ask yourself:
 
 ## CI
 
-- **CI workflow** (`ci.yml`): `lint` job (lockfile check + changeset status) → `build-and-test` job (build + lint + test)
-- **PRs to `main`** require `pnpm changeset status --since=origin/main` to pass
-- **Release** (`release.yml`): triggers on `v*` tags → `pnpm changeset publish` to npm
+- **CI workflow** (`ci.yml`): Single `check` job — lockfile check → changeset status → build → format+lint+type-check → test
+- **PRs to `main`** require `pnpm exec changeset status --since=origin/main` to pass (skipped on `changeset-release/*` branches)
 
 ## Release
 
-Uses **changesets**. Demo apps are excluded from versioning (`@greypan/react-app-demo`, `@greypan/vue-app-demo` in changeset ignore list).
+Uses **changesets** with `changesets/action@v1`.
+
+- **Release workflow** (`release.yml`): Triggers on push to `main` or `v*` branches
+- Automatically creates a "Version Packages" PR when changesets are present
+- Merging the PR triggers `pnpm changeset publish` to npm
+- Demo apps are excluded from versioning (`@greypan/react-app-demo`, `@greypan/vue-app-demo` in changeset ignore list)
 
 ## Code style
 
@@ -194,7 +222,7 @@ Uses **changesets**. Demo apps are excluded from versioning (`@greypan/react-app
   - Import sorting enabled (builtin → external → internal → parent → sibling → index)
 - **Linter**: `vp lint` (oxlint via vite-plus, type-aware)
 - **Spell check**: cspell on staged files
-- **CSS linting**: stylelint for `.css`, `.scss`, `.vue`
+- **CSS linting**: stylelint for `.css`, `.vue` (uses Tailwind CSS, no SCSS)
 - **Line endings**: LF enforced (`.gitattributes`: `* text=auto eol=lf`)
 
 ## Generated / ignored files

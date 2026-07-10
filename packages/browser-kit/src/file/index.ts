@@ -37,7 +37,6 @@ export function formatFileSize(bytes: number, decimals = 2): string {
  * 下载文件
  * @param arg 文件对象、Blob 对象或字符串（支持远程 URL 链接）
  * @param filename 文件名，为空时自动获取文件名
- * @returns
  */
 export async function downloadFile(
   arg: File | Blob | string,
@@ -54,7 +53,13 @@ export async function downloadFile(
     const urlPath = new URL(arg).pathname
     name = filename ?? (urlPath.substring(urlPath.lastIndexOf('/') + 1) || DEFAULT_FILENAME)
 
-    const res = await fetch(arg)
+    let res: Response
+    try {
+      res = await fetch(arg)
+    } catch {
+      throw new Error('Network error: failed to fetch the file.')
+    }
+    if (!res.ok) throw new Error(`Download failed: ${res.status} ${res.statusText}`)
     // 为了支持进度条，改用 ReadableStream 读取数据。而不是 obj = await res.blob()
     const contentLen = res.headers.get('content-length')
     const contentType = res.headers.get('content-type') || 'application/octet-stream'
@@ -136,7 +141,6 @@ export function getImageInfo(source: File | Blob | string): Promise<{ width: num
 /**
  * 检查给定的字符串是否是一个合法的 base64 编码
  * @param str 需要被校验的字符串
- * @returns
  */
 export function isValidBase64(str: string): boolean {
   if (typeof str !== 'string' || str.trim() === '') return false
@@ -175,9 +179,9 @@ export function base64ToFile(base64: string, filename = 'file'): File {
 /**
  * 将 File 或 Blob 对象转换为 base64 编码字符串
  * @param file 需要被转换的 File 或 Blob 对象
- * @returns
+ * @returns base64 编码字符串
  */
-export function file2Base64(file: File | Blob): Promise<string> {
+export function fileToBase64(file: File | Blob): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
     reader.readAsDataURL(file)
@@ -225,8 +229,3 @@ export async function isSameFileType(...files: File[]): Promise<boolean> {
   const isAllSame = headers.every(v => v === headers[0])
   return isAllSame
 }
-
-// TODO:
-// 大文件的 hash 计算
-// 降级处理：js 主线程 -> web worker -> wasm
-// export function computeFileHash(file: File): string {}

@@ -46,5 +46,11 @@ describe('number 单元测试', () => {
       expect(clamp(-20, -10, -5)).toBe(-10)
       expect(clamp(-2, -10, -5)).toBe(-5)
     })
+
+    it('应自动修正 min > max 的情况', () => {
+      expect(clamp(5, 10, 0)).toBe(5)
+      expect(clamp(-1, 10, 0)).toBe(0)
+      expect(clamp(15, 10, 0)).toBe(10)
+    })
   })
 })

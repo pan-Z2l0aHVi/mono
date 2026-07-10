@@ -29,9 +29,10 @@ export function defineOfflineRestore(options: Options) {
 
     let staged: object[] = []
 
-    function track(data: object): Promise<void> {
+    async function track(data: object): Promise<void> {
       if (!navigator.onLine) {
         staged.push(data)
+        return // 离线时不发送，等待重连后恢复
       }
       return ctx.track(data)
     }
@@ -51,7 +52,7 @@ export function defineOfflineRestore(options: Options) {
       await del(config.restoreKey)
     }
 
-    void init()
+    init().catch(console.error)
 
     let controller: AbortController | null = null
 

@@ -30,7 +30,7 @@ export const fullReload = createUnplugin<Dep[]>(deps => {
   const fullReloadTrigger = debounce(
     (server: ViteDevServer) => {
       server.ws.send({ type: 'full-reload', path: '*' })
-      server.config.logger.info(`\x1b[36m[deps-reload] Assets updated -> Browser reloaded\x1b[0m`, {
+      server.config.logger.info(`\x1b[36m[deps-reload] 资源已更新 -> 浏览器已刷新\x1b[0m`, {
         timestamp: true
       })
     },

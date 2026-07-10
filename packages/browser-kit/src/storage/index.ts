@@ -53,7 +53,7 @@ function defineStorage(type: StorageType, options: StorageOptions = {}) {
     }
 
     /**
-     * @param key
+     * @param key 存储键名
      * @param def 默认值：当 key 不存在或已过期时返回
      */
     function get<T>(key: string, def: T | null = null): T | null {
@@ -160,8 +160,8 @@ function createStorage(type: StorageType, namespace?: string): StorageInst {
   return inst
 }
 
-export const createLocal = (namespace?: string): StorageInst => createStorage('local', namespace)
-export const createSession = (namespace?: string): StorageInst => createStorage('session', namespace)
+export const defineLocal = (namespace?: string): StorageInst => createStorage('local', namespace)
+export const defineSession = (namespace?: string): StorageInst => createStorage('session', namespace)
 
-export const local = createLocal()
-export const session = createSession()
+export const local = defineLocal()
+export const session = defineSession()

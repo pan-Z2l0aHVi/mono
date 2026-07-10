@@ -11,5 +11,6 @@
 
 export * from './plugins/batch-track'
 export * from './plugins/core'
+export * from './plugins/failure-retry'
 export * from './plugins/last-words'
 export * from './plugins/offline-restore'
