@@ -105,6 +105,7 @@ report.html
 !.claude/settings.json
 !.claude/commands/
 !.claude/skills
+!.claude/rules
 # CLAUDE.md 放项目根目录，不在 .claude 内
 
 # OpenCode

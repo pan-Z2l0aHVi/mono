@@ -268,3 +268,11 @@ Default five-label vocabulary: `needs-triage`, `needs-info`, `ready-for-agent`, 
 ### Domain docs
 
 Single-context layout: `CONTEXT.md` + `docs/adr/` at repo root (generated lazily by domain-modeling skills). See `docs/agents/domain.md`.
+
+## Agent rules
+
+The following rules are automatically loaded from `.claude/rules/`:
+
+- **Testing standards**: `.claude/rules/testing.md` — test coverage requirements, edge cases, degradation scenarios
+- **Code style**: `.claude/rules/code-style.md` — naming conventions, comments, type safety
+- **Review checklist**: `.claude/rules/review-checklist.md` — review checkpoints for functionality, testing, and style
