@@ -1,5 +1,16 @@
 # @greypan/browser-kit
 
+## 1.4.0
+
+### Minor Changes
+
+- 13802c0: bug fix, type fix, spec fix
+
+### Patch Changes
+
+- Updated dependencies [13802c0]
+  - @greypan/js-kit@1.3.0
+
 ## 1.3.0
 
 ### Minor Changes
