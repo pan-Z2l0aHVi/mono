@@ -1,5 +1,13 @@
 # @greypan/web-ui
 
+## 1.2.1
+
+### Patch Changes
+
+- Updated dependencies [13802c0]
+  - @greypan/browser-kit@1.4.0
+  - @greypan/js-kit@1.3.0
+
 ## 1.2.0
 
 ### Minor Changes

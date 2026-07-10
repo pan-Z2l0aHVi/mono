@@ -1,5 +1,11 @@
 # @greypan/js-kit
 
+## 1.3.0
+
+### Minor Changes
+
+- 13802c0: bug fix, type fix, spec fix
+
 ## 1.2.0
 
 ### Minor Changes
