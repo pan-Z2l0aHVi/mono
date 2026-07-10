@@ -1,10 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
-import { createLocal } from '..'
+import { defineLocal } from '..'
 
 describe('storage 单元测试', () => {
   const NS = 'mfe'
-  const local = createLocal(NS)
+  const local = defineLocal(NS)
 
   beforeEach(() => {
     localStorage.clear()
@@ -46,14 +46,14 @@ describe('storage 单元测试', () => {
 
   describe('命名空间与单例', () => {
     it('相同命名空间应指向同一个实例 (单例验证)', () => {
-      const local1 = createLocal('app')
-      const local2 = createLocal('app')
+      const local1 = defineLocal('app')
+      const local2 = defineLocal('app')
       expect(local1).toBe(local2)
     })
 
     it('不同命名空间的数据不应互干扰', () => {
-      const storageA = createLocal('A')
-      const storageB = createLocal('B')
+      const storageA = defineLocal('A')
+      const storageB = defineLocal('B')
 
       storageA.set('key', 'valA')
       storageB.set('key', 'valB')

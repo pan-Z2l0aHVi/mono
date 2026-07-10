@@ -41,6 +41,7 @@
     "oxlint",
     "tsgo",
     "nsis",
-    "pkill"
+    "pkill",
+    "unstub"
   ]
 }

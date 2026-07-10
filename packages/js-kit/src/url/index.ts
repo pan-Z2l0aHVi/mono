@@ -7,7 +7,7 @@ interface URLObject {
   hash: string
 }
 
-export function urlParse(url = ''): URLObject {
+export function parseUrl(url = ''): URLObject {
   const isRelative = !/^(https?:)?\/\//.test(url)
 
   try {
@@ -24,7 +24,7 @@ export function urlParse(url = ''): URLObject {
   }
 }
 
-export function urlStringify(opts: Partial<URLObject>, omitNil = true): string {
+export function stringifyUrl(opts: Partial<URLObject>, omitNil = true): string {
   const { base = '', query = {}, hash = '' } = opts
 
   const cleanQuery = omitNil ? omitBy(query, isNullish) : query

@@ -52,4 +52,18 @@ describe('env 单元测试', () => {
     expect(env.isBrowser).toBe(true)
     expect(env.isSsr).toBe(false)
   })
+
+  it('isDesktop getter 不应依赖 this 上下文', () => {
+    const getter = Object.getOwnPropertyDescriptor(env, 'isDesktop')!.get!
+    // 调用 getter 时不传入 env 作为 this，应仍能正常工作
+    expect(() => getter()).not.toThrow()
+    expect(typeof getter()).toBe('boolean')
+  })
+
+  it('isWebview getter 不应依赖 this 上下文', () => {
+    const getter = Object.getOwnPropertyDescriptor(env, 'isWebview')!.get!
+    // 调用 getter 时不传入 env 作为 this，应仍能正常工作
+    expect(() => getter()).not.toThrow()
+    expect(typeof getter()).toBe('boolean')
+  })
 })

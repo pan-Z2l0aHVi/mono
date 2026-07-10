@@ -34,7 +34,6 @@ export class WebUiBackTop extends LitElement {
     if (props.has('threshold') || props.has('scrollTarget')) {
       this.computeVisible()
     }
-    //避免首次与 connectedCallback 重复触发
     if (props.has('scrollTarget') && this.hasUpdated) {
       this.onScrollTarget()
     }

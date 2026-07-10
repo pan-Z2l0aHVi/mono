@@ -3,19 +3,19 @@ import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { defineTracker } from '../plugins/core'
 
 describe('上报 core 测试用例', () => {
-  let sendBeaconSpy: ReturnType<typeof vi.fn>
-  let fetchSpy: ReturnType<typeof vi.fn>
+  let sendBeaconSpy: ReturnType<typeof vi.fn<Navigator['sendBeacon']>>
+  let fetchSpy: ReturnType<typeof vi.fn<typeof fetch>>
 
   beforeEach(() => {
-    sendBeaconSpy = vi.fn(() => true)
+    sendBeaconSpy = vi.fn<Navigator['sendBeacon']>(() => true)
     Object.defineProperty(navigator, 'sendBeacon', {
       configurable: true,
       enumerable: true,
       value: sendBeaconSpy
     })
 
-    fetchSpy = vi.fn(() => Promise.resolve({ ok: true }))
-    ;(global as any).fetch = fetchSpy
+    fetchSpy = vi.fn<typeof fetch>(() => Promise.resolve({ ok: true } as Response))
+    vi.stubGlobal('fetch', fetchSpy)
   })
 
   it('应当调用 sendBeacon 上报数据', () => {
