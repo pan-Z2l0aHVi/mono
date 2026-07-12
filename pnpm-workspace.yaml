@@ -31,6 +31,7 @@ catalog:
   cspell: ^10.0.1
   cz-git: ^1.13.1
   dayjs: ^1.11.21
+  fake-indexeddb: ^6.2.5
   glob: ^13.0.6
   jsdom: ^29.1.1
   lightningcss: ^1.32.0

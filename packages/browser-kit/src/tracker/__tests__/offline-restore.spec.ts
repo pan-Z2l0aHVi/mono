@@ -1,200 +1,111 @@
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
-import { defineTracker } from '../plugins/core'
+import { defineTracker } from '../core'
 import { defineOfflineRestore } from '../plugins/offline-restore'
 
-// 模拟 idb-keyval 存储
-let _mockStore: Record<string, any> = {}
-
-vi.mock('idb-keyval', () => ({
-  get: vi.fn<(key: string) => Promise<any>>(async key => _mockStore[key]),
-  del: vi.fn<(key: string) => Promise<void>>(async key => {
-    delete _mockStore[key]
-  }),
-  update: vi.fn<(key: string, updater: (prev: any) => any) => Promise<void>>(async (key, updater) => {
-    const oldValue = _mockStore[key] || []
-    _mockStore[key] = updater(oldValue)
-  }),
-  set: vi.fn<(key: string, val: any) => Promise<void>>(async (key, val) => {
-    _mockStore[key] = val
-  })
-}))
+vi.useFakeTimers()
 
 describe('离线恢复上报插件测试用例', () => {
+  let sendBeaconSpy: ReturnType<typeof vi.fn<Navigator['sendBeacon']>>
+
   beforeEach(() => {
     vi.clearAllMocks()
-    _mockStore = {}
+    localStorage.clear()
 
-    if (typeof navigator !== 'undefined') {
-      // 避免 core.ts 中 sendBeacon 报错
-      Object.defineProperty(navigator, 'sendBeacon', {
-        value: vi.fn<Navigator['sendBeacon']>(() => true),
-        configurable: true
-      })
-      Object.defineProperty(navigator, 'onLine', {
-        value: true,
-        configurable: true
-      })
-    }
+    sendBeaconSpy = vi.fn<Navigator['sendBeacon']>(() => true)
+    Object.defineProperty(navigator, 'sendBeacon', {
+      configurable: true,
+      enumerable: true,
+      value: sendBeaconSpy
+    })
+
+    Object.defineProperty(navigator, 'onLine', {
+      value: true,
+      configurable: true
+    })
   })
 
-  it('应当离线存储并在重连后恢复上报', async () => {
-    const restoreKey = 'integrated-test'
-
-    const tracker = defineTracker({ url: 'https://example.com' }).use(defineOfflineRestore({ restoreKey })).make()
-
-    tracker.onOfflineRestore()
-
+  it('离线时不应发送数据（暂停 loop）', async () => {
     Object.defineProperty(navigator, 'onLine', { value: false })
 
-    const eventData = { action: 'click', timestamp: 12345 }
-    await tracker.track(eventData)
+    const tracker = defineTracker({ url: 'https://example.com' }).use(defineOfflineRestore()).make()
 
-    window.dispatchEvent(new Event('offline'))
+    tracker.track({ action: 'offline-event' })
+    await vi.runAllTimersAsync()
 
-    expect(_mockStore[restoreKey]).toContainEqual(eventData)
+    expect(sendBeaconSpy).not.toHaveBeenCalled()
+  })
+
+  it('离线后重连恢复：online 事件触发 resume', async () => {
+    Object.defineProperty(navigator, 'onLine', { value: false })
+
+    const tracker = defineTracker({ url: 'https://example.com' }).use(defineOfflineRestore()).make()
+
+    tracker.track({ action: 'first' })
+    tracker.track({ action: 'second' })
+    await vi.runAllTimersAsync()
+
+    expect(sendBeaconSpy).not.toHaveBeenCalled()
 
     Object.defineProperty(navigator, 'onLine', { value: true })
     window.dispatchEvent(new Event('online'))
+    await vi.runAllTimersAsync()
 
-    // 等待异步 init() 完成
-    await new Promise(resolve => setTimeout(resolve, 50))
-
-    expect(_mockStore[restoreKey]).toBeUndefined()
-  })
-
-  it('离线时不应调用 ctx.track 发送数据', async () => {
-    const restoreKey = 'no-send-offline-test'
-    const tracker = defineTracker({ url: 'https://example.com' }).use(defineOfflineRestore({ restoreKey })).make()
-
-    tracker.onOfflineRestore()
-    Object.defineProperty(navigator, 'onLine', { value: false })
-
-    const sendBeaconSpy = vi.spyOn(navigator, 'sendBeacon')
-
-    await tracker.track({ action: 'offline-event' })
-
-    expect(sendBeaconSpy).not.toHaveBeenCalled()
-
-    sendBeaconSpy.mockRestore()
-  })
-
-  it('应当去重（deepEqual）', async () => {
-    const restoreKey = 'unique-test'
-    const tracker = defineTracker({ url: 'https://example.com' }).use(defineOfflineRestore({ restoreKey })).make()
-
-    tracker.onOfflineRestore()
-    Object.defineProperty(navigator, 'onLine', { value: false })
-
-    await tracker.track({ id: 'repeat', coordinate: { x: 1, y: 2 } })
-    await tracker.track({ id: 'repeat', coordinate: { x: 1, y: 2 } })
-
-    window.dispatchEvent(new Event('offline'))
-
-    expect(_mockStore[restoreKey]).toHaveLength(1)
-    expect(_mockStore[restoreKey][0]).toEqual({ id: 'repeat', coordinate: { x: 1, y: 2 } })
-  })
-
-  it('离线时不发送：track 在离线时只入队不调用 ctx.track', async () => {
-    const restoreKey = 'staged-only-test'
-    const tracker = defineTracker({ url: 'https://example.com' }).use(defineOfflineRestore({ restoreKey })).make()
-
-    tracker.onOfflineRestore()
-
-    Object.defineProperty(navigator, 'onLine', { value: false, configurable: true })
-
-    const sendBeaconSpy = vi.spyOn(navigator, 'sendBeacon')
-
-    await tracker.track({ action: 'offline-click' })
-
-    expect(sendBeaconSpy).not.toHaveBeenCalled()
-
-    // 触发 offline 事件，验证数据持久化
-    window.dispatchEvent(new Event('offline'))
-    await new Promise(resolve => setTimeout(resolve, 10))
-
-    expect(_mockStore[restoreKey]).toContainEqual({ action: 'offline-click' })
-
-    sendBeaconSpy.mockRestore()
-  })
-
-  it('离线存储后重连恢复：offline 事件触发存储，online 事件触发恢复', async () => {
-    const restoreKey = 'offline-online-test'
-    const tracker = defineTracker({ url: 'https://example.com' }).use(defineOfflineRestore({ restoreKey })).make()
-
-    tracker.onOfflineRestore()
-
-    // 离线并追踪数据
-    Object.defineProperty(navigator, 'onLine', { value: false, configurable: true })
-
-    await tracker.track({ action: 'first' })
-    await tracker.track({ action: 'second' })
-
-    // 触发 offline 事件，验证数据持久化
-    window.dispatchEvent(new Event('offline'))
-    await new Promise(resolve => setTimeout(resolve, 10))
-
-    expect(_mockStore[restoreKey]).toBeDefined()
-    expect(_mockStore[restoreKey]).toContainEqual({ action: 'first' })
-    expect(_mockStore[restoreKey]).toContainEqual({ action: 'second' })
-
-    // 恢复在线，验证数据恢复并发送
-    const sendBeaconSpy = vi.spyOn(navigator, 'sendBeacon')
-    Object.defineProperty(navigator, 'onLine', { value: true, configurable: true })
-
-    window.dispatchEvent(new Event('online'))
-
-    // 等待异步 init() 完成
-    await new Promise(resolve => setTimeout(resolve, 50))
-
-    expect(_mockStore[restoreKey]).toBeUndefined()
     expect(sendBeaconSpy).toHaveBeenCalled()
-
-    sendBeaconSpy.mockRestore()
   })
 
-  it('队列满：达到 restoreMaxSize 后截断旧数据', async () => {
-    const restoreKey = 'max-size-test'
-    const tracker = defineTracker({ url: 'https://example.com' })
-      .use(defineOfflineRestore({ restoreKey, restoreMaxSize: 3 }))
-      .make()
+  it('在线时正常发送', async () => {
+    const tracker = defineTracker({ url: 'https://example.com' }).use(defineOfflineRestore()).make()
 
-    tracker.onOfflineRestore()
+    tracker.track({ event: 'click' })
+    await vi.runAllTimersAsync()
+
+    expect(sendBeaconSpy).toHaveBeenCalled()
+  })
+
+  it('启动时离线 → 恢复在线应发送积压数据', async () => {
     Object.defineProperty(navigator, 'onLine', { value: false })
 
-    // 离线发送 5 条数据
-    for (let i = 1; i <= 5; i++) {
-      await tracker.track({ id: i })
-    }
+    const tracker = defineTracker({ url: 'https://example.com' }).use(defineOfflineRestore()).make()
 
-    window.dispatchEvent(new Event('offline'))
-    await new Promise(resolve => setTimeout(resolve, 10))
+    tracker.track({ action: 'pending' })
+    await vi.runAllTimersAsync()
+    expect(sendBeaconSpy).not.toHaveBeenCalled()
 
-    // 应只保留最后 3 条
-    expect(_mockStore[restoreKey]).toHaveLength(3)
-    expect(_mockStore[restoreKey]).toContainEqual({ id: 3 })
-    expect(_mockStore[restoreKey]).toContainEqual({ id: 4 })
-    expect(_mockStore[restoreKey]).toContainEqual({ id: 5 })
+    Object.defineProperty(navigator, 'onLine', { value: true })
+    window.dispatchEvent(new Event('online'))
+    await vi.runAllTimersAsync()
+
+    expect(sendBeaconSpy).toHaveBeenCalledWith('https://example.com', expect.stringContaining('pending'))
   })
 
-  it('IndexedDB 不可用：init 失败时不影响正常发送', async () => {
-    const { get } = await import('idb-keyval')
-    vi.mocked(get).mockRejectedValueOnce(new Error('IndexedDB unavailable'))
+  it('多次离线/在线切换应正确处理', async () => {
+    const tracker = defineTracker({ url: 'https://example.com' }).use(defineOfflineRestore()).make()
 
-    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    // 第一次离线
+    Object.defineProperty(navigator, 'onLine', { value: false })
+    window.dispatchEvent(new Event('offline'))
+    tracker.track({ action: 'first-offline' })
+    await vi.runAllTimersAsync()
+    expect(sendBeaconSpy).not.toHaveBeenCalled()
 
-    const tracker = defineTracker({ url: 'https://example.com' })
-      .use(defineOfflineRestore({ restoreKey: 'test-offline' }))
-      .make()
+    // 恢复在线
+    Object.defineProperty(navigator, 'onLine', { value: true })
+    window.dispatchEvent(new Event('online'))
+    await vi.runAllTimersAsync()
+    expect(sendBeaconSpy).toHaveBeenCalledTimes(1)
 
-    // 等待异步 init 完成
-    await new Promise(resolve => setTimeout(resolve, 50))
+    // 第二次离线
+    Object.defineProperty(navigator, 'onLine', { value: false })
+    window.dispatchEvent(new Event('offline'))
+    tracker.track({ action: 'second-offline' })
+    await vi.runAllTimersAsync()
+    expect(sendBeaconSpy).toHaveBeenCalledTimes(1)
 
-    // 正常发送不受影响
-    await tracker.track({ event: 'click' })
-
-    expect(consoleSpy).toHaveBeenCalled()
-
-    consoleSpy.mockRestore()
+    // 再次恢复
+    Object.defineProperty(navigator, 'onLine', { value: true })
+    window.dispatchEvent(new Event('online'))
+    await vi.runAllTimersAsync()
+    expect(sendBeaconSpy).toHaveBeenCalledTimes(2)
   })
 })

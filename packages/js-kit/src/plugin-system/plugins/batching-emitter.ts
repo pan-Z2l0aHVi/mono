@@ -1,9 +1,16 @@
+import { safeCall } from '@/shortcut'
+
 import { definePlugin } from '../core'
 
 type Resolve<S> = (queue: S[]) => void
 
-export function defineBatchEmitter<S>(onFlushed?: (queue: S[]) => Promise<void>) {
+interface Options<S> {
+  onFlushed?: (queue: S[]) => void | Promise<void>
+}
+
+export function defineBatchEmitter<S>(options?: Options<S>) {
   return definePlugin(() => {
+    const config = { onFlushed: () => {}, ...options }
     let queue: S[] = []
     let resolves: Resolve<S>[] = []
     let timerId: ReturnType<typeof setTimeout> | null = null
@@ -11,34 +18,29 @@ export function defineBatchEmitter<S>(onFlushed?: (queue: S[]) => Promise<void>)
     /**
      * 批量发出，延迟执行
      */
-    async function batchEmit(data: S, batchingDelay = 0): Promise<S[]> {
+    function batchEmit(data: S, batchingDelay = 0): Promise<S[]> {
       if (batchingDelay <= 0) {
-        if (onFlushed) await onFlushed([data])
+        safeCall(config.onFlushed, [data])
         return Promise.resolve([data])
       }
 
-      return new Promise((resolve, reject) => {
+      return new Promise(resolve => {
         resolves.push(resolve)
 
         if (queue.push(data) === 1) {
-          timerId = setTimeout(() => {
-            try {
-              flush()
-            } catch (error) {
-              reject(error)
-            }
-          }, batchingDelay)
+          timerId = setTimeout(flush, batchingDelay)
         }
       })
     }
 
     /**
      * 立即清空并执行当前的队列
+     * 先 resolve promises（同步），再调 onFlushed（不阻塞通知）
      */
     function flush() {
       if (!queue.length) return
 
-      // 先快照一份，防止后续 push 污染当前批次，消除异步重入（Re-entrancy）
+      // 先快照一份，防止后续 push 污染当前批次
       const currentQueue = [...queue]
       const currentResolves = [...resolves]
       queue = []
@@ -48,12 +50,14 @@ export function defineBatchEmitter<S>(onFlushed?: (queue: S[]) => Promise<void>)
         timerId = null
       }
 
+      // 先同步 resolve 所有等待中的 batchEmit 调用方
       let fn: Resolve<S> | undefined
       while ((fn = currentResolves.shift())) {
         fn(currentQueue)
       }
 
-      if (onFlushed) void onFlushed(currentQueue)
+      // onFlushed 放在后面，不阻塞 resolve
+      safeCall(config.onFlushed, currentQueue)
     }
 
     return { batchEmit, flush }

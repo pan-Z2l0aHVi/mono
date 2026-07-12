@@ -91,13 +91,13 @@ apps/
 - **Node built-in modules** (e.g., `node:path`) MUST be externalized — they can't be bundled.
 - `web-ui` externalizes `lit` (along with workspace deps), so consumers must install `lit` as a dependency.
 
-| Package                   | Externalized (workspace + builtin)                                       | Bundled (third-party)     |
-| ------------------------- | ------------------------------------------------------------------------ | ------------------------- |
-| `js-kit`                  | _(none)_                                                                 | `remeda`                  |
-| `browser-kit`             | `@greypan/js-kit`, `idb-keyval`, `nanoid`, `remeda`, `copy-to-clipboard` | _(none)_                  |
-| `web-ui`                  | `@greypan/browser-kit`, `@greypan/js-kit`, `iconify-icon`, `lit`         | _(none)_                  |
-| `unplugin-web-components` | `@greypan/js-kit`                                                        | `change-case`, `unplugin` |
-| `vite-plugin-full-reload` | `node:path`, `@greypan/js-kit`                                           | `unplugin`                |
+| Package                   | Externalized (workspace + builtin)                               | Bundled (third-party)     |
+| ------------------------- | ---------------------------------------------------------------- | ------------------------- |
+| `js-kit`                  | _(none)_                                                         | `remeda`                  |
+| `browser-kit`             | `@greypan/js-kit`, `nanoid`, `remeda`, `copy-to-clipboard`       | _(none)_                  |
+| `web-ui`                  | `@greypan/browser-kit`, `@greypan/js-kit`, `iconify-icon`, `lit` | _(none)_                  |
+| `unplugin-web-components` | `@greypan/js-kit`                                                | `change-case`, `unplugin` |
+| `vite-plugin-full-reload` | `node:path`, `@greypan/js-kit`                                   | `unplugin`                |
 
 ### Apps
 
@@ -271,8 +271,8 @@ Single-context layout: `CONTEXT.md` + `docs/adr/` at repo root (generated lazily
 
 ## Agent rules
 
-The following rules are automatically loaded from `.claude/rules/`:
+Rules are stored in `.agents/rules/` and symlinked to `.claude/rules` and `.mimocode/rules`:
 
-- **Testing standards**: `.claude/rules/testing.md` — test coverage requirements, edge cases, degradation scenarios
-- **Code style**: `.claude/rules/code-style.md` — naming conventions, comments, type safety
-- **Review checklist**: `.claude/rules/review-checklist.md` — review checkpoints for functionality, testing, and style
+- **Testing standards**: `testing.md` — test coverage requirements, edge cases, degradation scenarios
+- **Code style**: `code-style.md` — naming conventions, comments, type safety, plugin Options 规范
+- **Review checklist**: `review-checklist.md` — review checkpoints for functionality, testing, and style

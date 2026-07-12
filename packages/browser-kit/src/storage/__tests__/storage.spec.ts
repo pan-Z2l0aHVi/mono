@@ -120,6 +120,31 @@ describe('storage 单元测试', () => {
     })
   })
 
+  describe('has 与 remove', () => {
+    it('has 应在 key 存在时返回 true', () => {
+      local.set('exists', 'value')
+      expect(local.has('exists')).toBe(true)
+    })
+
+    it('has 应在 key 不存在时返回 false', () => {
+      expect(local.has('not_exists')).toBe(false)
+    })
+
+    it('remove 应删除指定 key', () => {
+      local.set('to_remove', 'data')
+      local.remove('to_remove')
+      expect(local.has('to_remove')).toBe(false)
+      expect(localStorage.getItem(`${NS}:to_remove`)).toBeNull()
+    })
+  })
+
+  describe('TTL 边界', () => {
+    it('TTL=0 应立即过期', () => {
+      local.set('zero_ttl', 'data', 0)
+      expect(local.get('zero_ttl')).toBe(null)
+    })
+  })
+
   describe('Watch 监听', () => {
     it('监听到对应的 key 变化时应触发回调', () => {
       const callback = vi.fn()
@@ -141,6 +166,22 @@ describe('storage 单元测试', () => {
       unwatch()
       window.dispatchEvent(event)
       expect(callback).toHaveBeenCalledTimes(1)
+    })
+
+    it('收到过期值时应返回 null', () => {
+      const callback = vi.fn()
+      local.watch('expired', callback)
+
+      const createExpiredPkg = (val: unknown) => ({ m: '_pkg', v: val, t: Date.now() - 1000 })
+
+      const event = new StorageEvent('storage', {
+        key: `${NS}:expired`,
+        newValue: JSON.stringify(createExpiredPkg('stale')),
+        oldValue: JSON.stringify(createExpiredPkg('older'))
+      })
+      window.dispatchEvent(event)
+
+      expect(callback).toHaveBeenCalledWith(null, null)
     })
   })
 })

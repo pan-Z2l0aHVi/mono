@@ -39,11 +39,11 @@
   "dependencies": {
     "@greypan/js-kit": "workspace:*",
     "copy-to-clipboard": "catalog:",
-    "idb-keyval": "^6.2.6",
     "nanoid": "catalog:",
     "remeda": "catalog:"
   },
   "browserslist": [
     "defaults"
-  ]
+  ],
+  "devDependencies": {}
 }

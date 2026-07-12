@@ -24,7 +24,7 @@ describe('BatchEmitter 单元测试', () => {
 
   it('flush 可以同步清空队列并调用 onFlushed', async () => {
     const onFlushed = vi.fn<(queue: unknown[]) => Promise<void>>()
-    const batchEmitter = defineBatchEmitter<number>(onFlushed).make()
+    const batchEmitter = defineBatchEmitter<number>({ onFlushed }).make()
     const { batchEmit, flush } = batchEmitter
 
     const p1 = batchEmit(1, 100)
@@ -40,9 +40,31 @@ describe('BatchEmitter 单元测试', () => {
 
   it('flush 在队列为空时不做任何事', async () => {
     const onFlushed = vi.fn<(queue: unknown[]) => Promise<void>>()
-    const batchEmitter = defineBatchEmitter(onFlushed).make()
+    const batchEmitter = defineBatchEmitter({ onFlushed }).make()
     const { flush } = batchEmitter
     flush()
     expect(onFlushed).not.toHaveBeenCalled()
+  })
+
+  it('onFlushed 抛异常不应阻塞 batchEmit 的 resolve', async () => {
+    const onFlushed = vi.fn<(queue: unknown[]) => Promise<void>>(() => {
+      throw new Error('flush failed')
+    })
+    const batchEmitter = defineBatchEmitter<number>({ onFlushed }).make()
+    const { batchEmit } = batchEmitter
+
+    const result = await batchEmit(1, 0)
+    expect(result).toEqual([1])
+  })
+
+  it('未提供 onFlushed 时不应报错', async () => {
+    const batchEmitter = defineBatchEmitter<string>().make()
+    const { batchEmit, flush } = batchEmitter
+
+    const result = await batchEmit('a', 0)
+    expect(result).toEqual(['a'])
+
+    batchEmit('b', 100)
+    expect(() => flush()).not.toThrow()
   })
 })
