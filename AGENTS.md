@@ -10,7 +10,7 @@
 | 包增删重命名         | Package structure, Dependency graph | 添加/删除/重命名 `packages/` 或 `apps/` 下的目录                                   |
 | Externalization 策略 | Externalization rules               | 修改 `vite.config.ts` 的 `rollupOptions.external`                                  |
 | CI/CD workflow       | CI, Release                         | 修改 `.github/workflows/` 下的文件                                                 |
-| 代码规范工具         | Code style                          | 修改 linter、formatter、stylelint、cspell 配置                                     |
+| 代码规范工具         | Linting & formatting                | 修改 linter、formatter、stylelint、cspell 配置                                     |
 | 依赖管理方式         | Dependency management               | 修改 `pnpm-workspace.yaml` catalog、changeset 配置                                 |
 | 运行时/工具链版本    | Toolchain                           | 修改 `.mise.toml`、`package.json` engines                                          |
 | 测试配置             | Testing                             | 修改 `vite.config.ts` 的 test 配置、测试框架                                       |
@@ -33,23 +33,24 @@ pnpm monorepo (`apps/**`, `packages/**`) using Turborepo. Packages published und
 - **Package manager**: pnpm 10.33.0 (enforced via `engine-strict=true` in `.npmrc`)
 - **Runtime**: Node 24 (managed via mise — run `mise install` if node/pnpm/go are missing; `engines` allows >=24.18.0)
 - **Build/dev/lint/test/format**: all delegated to `vite-plus` (`vp`) — a Vite wrapper. Most per-package scripts call `vp build`, `vp test run`, `vp lint`, `vp fmt`
-- **Linter**: `vp lint` uses **oxlint** (not ESLint). Rules are configured in `vite.config.ts` under `lint.overrides`. ESLint rule names may not work — check oxlint rule names instead.
 - **Orchestration**: Turborepo (`turbo.json`) — `build` and `test` tasks depend on `^build` (upstream packages build first). `dev` task also depends on `^build` but is not cached and runs persistently.
 - **Language**: TypeScript 6, ES modules only (`"type": "module"` everywhere)
 
 ## Key commands
 
-| Command                                           | What it does                                |
-| ------------------------------------------------- | ------------------------------------------- |
-| `pnpm install`                                    | Install all deps (frozen lockfile in CI)    |
-| `pnpm build`                                      | Build all packages in dependency order      |
-| `pnpm test`                                       | Run all tests                               |
-| `pnpm commit`                                     | Interactive conventional commit via cz-git  |
-| `bash scripts/commit.sh <type> <scope> <subject>` | Non-interactive commit (useful for agents)  |
-| `pnpm check:lockfile`                             | Verify lockfile has no duplicates           |
-| `pnpm dev:react-app-demo`                         | Dev server for React app (with turbo watch) |
-| `pnpm dev:vue-app-demo`                           | Dev server for Vue app (with turbo watch)   |
-| `pnpm run check:code`                             | Format + lint + type-check (what CI runs)   |
+| Command                                           | What it does                                  |
+| ------------------------------------------------- | --------------------------------------------- |
+| `pnpm install`                                    | Install all deps (frozen lockfile in CI)      |
+| `pnpm build`                                      | Build all packages in dependency order        |
+| `pnpm test`                                       | Run all tests                                 |
+| `pnpm commit`                                     | Interactive conventional commit via cz-git    |
+| `bash scripts/commit.sh <type> <scope> <subject>` | Non-interactive commit (useful for agents)    |
+| `pnpm check:lockfile`                             | Verify lockfile has no duplicates             |
+| `pnpm dev:react-app-demo`                         | Dev server for React app (with turbo watch)   |
+| `pnpm dev:vue-app-demo`                           | Dev server for Vue app (with turbo watch)     |
+| `pnpm run check:code`                             | Format + lint + type-check (what CI runs)     |
+| `pnpm clean`                                      | Remove `dist/`, `.turbo/`, `.vite/`, `build/` |
+| `pnpm clean --full`                               | Also remove `node_modules` and lockfile       |
 
 ### Per-package commands
 
@@ -65,6 +66,7 @@ All packages use sequential build: type-check first, then build. Libraries and V
 packages/
   js-kit          — JS utilities (base package, no workspace deps)
   browser-kit     — Browser utilities (depends on js-kit)
+  test-kit        — Test infrastructure plugins for Vitest browser mode + MSW (depends on js-kit)
   web-ui          — Web components (Lit-based, depends on js-kit + browser-kit)
   unplugin-web-components — Unplugin for web components (depends on js-kit)
   vite-plugin-full-reload — Vite HMR plugin (depends on js-kit)
@@ -73,7 +75,7 @@ apps/
   vue-app-demo    — Vue 3 + Vue Router + Pinia (private)
 ```
 
-**Dependency graph**: `js-kit` is the leaf. `browser-kit` → `js-kit`. `web-ui` → both. Apps depend on the shared packages.
+**Dependency graph**: `js-kit` is the leaf. `browser-kit` → `js-kit`. `test-kit` → `js-kit` (peer dep on `msw`). `web-ui` → both. Apps depend on the shared packages.
 
 ## Build architecture
 
@@ -91,13 +93,14 @@ apps/
 - **Node built-in modules** (e.g., `node:path`) MUST be externalized — they can't be bundled.
 - `web-ui` externalizes `lit` (along with workspace deps), so consumers must install `lit` as a dependency.
 
-| Package                   | Externalized (workspace + builtin)                                       | Bundled (third-party)     |
-| ------------------------- | ------------------------------------------------------------------------ | ------------------------- |
-| `js-kit`                  | _(none)_                                                                 | `remeda`                  |
-| `browser-kit`             | `@greypan/js-kit`, `idb-keyval`, `nanoid`, `remeda`, `copy-to-clipboard` | _(none)_                  |
-| `web-ui`                  | `@greypan/browser-kit`, `@greypan/js-kit`, `iconify-icon`, `lit`         | _(none)_                  |
-| `unplugin-web-components` | `@greypan/js-kit`                                                        | `change-case`, `unplugin` |
-| `vite-plugin-full-reload` | `node:path`, `@greypan/js-kit`                                           | `unplugin`                |
+| Package                   | Externalized (workspace + builtin)                               | Bundled (third-party)     |
+| ------------------------- | ---------------------------------------------------------------- | ------------------------- |
+| `js-kit`                  | _(none)_                                                         | `remeda`                  |
+| `browser-kit`             | `@greypan/js-kit`, `nanoid`, `remeda`, `copy-to-clipboard`       | _(none)_                  |
+| `test-kit`                | `@greypan/js-kit`, `msw`, `msw/browser`                          | _(none)_                  |
+| `web-ui`                  | `@greypan/browser-kit`, `@greypan/js-kit`, `iconify-icon`, `lit` | _(none)_                  |
+| `unplugin-web-components` | `@greypan/js-kit`                                                | `change-case`, `unplugin` |
+| `vite-plugin-full-reload` | `node:path`, `@greypan/js-kit`                                   | `unplugin`                |
 
 ### Apps
 
@@ -106,116 +109,16 @@ apps/
 - Both apps use `basicSsl()` for HTTPS dev server
 - `fullReload` plugin watches library `dist/` dirs and triggers full page reload on changes
 
-## React HMR rules
-
-- **Never use anonymous default exports** in React components: `export default () => {}` breaks Fast Refresh
-- Always use named function declarations: `function MyComponent() {} export default MyComponent`
-- This is enforced by `unicorn/no-anonymous-default-export` in the oxlint config
-
 ## Commit conventions
 
-Conventional commits enforced by commitlint.
+See `commitlint.config.js` and `.agents/rules/commit.md`. Use `bash scripts/commit.sh <type> <scope> <subject>`.
 
-### Allowed types
+## CI / Release
 
-| Type       | When to use                        | Emoji | Example                                        |
-| ---------- | ---------------------------------- | ----- | ---------------------------------------------- |
-| `feat`     | New feature                        | ✨    | `feat(js-kit): add url parser utility`         |
-| `fix`      | Bug fix                            | 🐛    | `fix(web-ui): resolve hydration mismatch`      |
-| `docs`     | Documentation only                 | 📚    | `docs(readme): add setup instructions`         |
-| `style`    | Formatting, no logic change        | 💎    | `style(js-kit): apply prettier formatting`     |
-| `refactor` | Code restructuring, no feature/fix | 📦    | `refactor(browser-kit): simplify cache logic`  |
-| `perf`     | Performance improvement            | 🚀    | `perf(web-ui): optimize lit element rendering` |
-| `test`     | Adding/updating tests              | 🚨    | `test(js-kit): add url parser unit tests`      |
-| `build`    | Build system or deps               | 🛠    | `build(root): upgrade vite to v6`              |
-| `ci`       | CI/CD configuration                | ⚙️    | `ci: add changeset release workflow`           |
-| `chore`    | Maintenance, no src/test changes   | ♻️    | `chore(root): dedupe lockfile`                 |
-| `revert`   | Revert a previous commit           | 🗑    | `revert(js-kit): remove url parser`            |
+- **CI** (`ci.yml`): lockfile check → changeset status → build → format+lint+type-check → test
+- **Release** (`release.yml`): changesets with `changesets/action@v1`. Demo apps excluded from versioning.
 
-### Scope rules
-
-- **Allowed scopes**: `root`, `apps`, `packages`, `js-kit`, `browser-kit`, `web-ui`, `unplugin-web-components`, `vite-plugin-full-reload`, `react-app-demo`, `vue-app-demo`
-- **Multiple scopes**: Use comma separation for cross-package changes: `fix(js-kit,browser-kit): resolve type mismatch`
-- **Cross-cutting changes**: Use `root` for repo-wide changes (CI, config, docs)
-
-### Header rules
-
-- Max 200 characters
-- Must not end with `.`
-- Must not be sentence-case, start-case, pascal-case, or upper-case
-- Use **imperative mood** ("add feature" not "added feature" or "adds feature")
-
-### Body (optional)
-
-- Add body with `-b` flag when the change needs explanation
-- Use body for **why** the change was made, not **what** (the header says what)
-- Keep lines under 100 characters
-
-### Agent commit workflow
-
-**Step 1**: Stage your changes
-
-```bash
-git add -A
-# or be selective:
-git add <file1> <file2>
-```
-
-**Step 2**: Preview the commit message (dry-run)
-
-```bash
-bash scripts/commit.sh feat js-kit "add url parser utility" --dry
-```
-
-**Step 3**: Commit
-
-```bash
-bash scripts/commit.sh feat js-kit "add url parser utility"
-```
-
-**With body** (for complex changes):
-
-```bash
-bash scripts/commit.sh fix web-ui,js-kit "resolve hydration mismatch" \
-  -b "Fix race condition in SSR where component state diverged between server and client"
-```
-
-### Choosing the right type
-
-Ask yourself:
-
-1. **Does it add user-facing functionality?** → `feat`
-2. **Does it fix a bug or regression?** → `fix`
-3. **Does it improve performance?** → `perf`
-4. **Does it only change tests?** → `test`
-5. **Does it only change docs/comments/formatting?** → `docs`/`style`
-6. **Does it restructure code without changing behavior?** → `refactor`
-7. **Does it affect build/CI tooling?** → `build`/`ci`
-8. **Everything else** → `chore`
-
-### Anti-patterns (will be rejected)
-
-- ❌ `update js-kit` (too vague, what did you update?)
-- ❌ `fix bug` (which bug? which scope?)
-- ❌ `Feat: Add Feature` (wrong case)
-- ❌ `fix(js-kit): Fixed the bug.` (past tense, ends with period)
-- ❌ `refactor: Refactor code` (tautological)
-
-## CI
-
-- **CI workflow** (`ci.yml`): Single `check` job — lockfile check → changeset status → build → format+lint+type-check → test
-- **PRs to `main`** require `pnpm exec changeset status --since=origin/main` to pass (skipped on `changeset-release/*` branches)
-
-## Release
-
-Uses **changesets** with `changesets/action@v1`.
-
-- **Release workflow** (`release.yml`): Triggers on push to `main` or `v*` branches
-- Automatically creates a "Version Packages" PR when changesets are present
-- Merging the PR triggers `pnpm changeset publish` to npm
-- Demo apps are excluded from versioning (`@greypan/react-app-demo`, `@greypan/vue-app-demo` in changeset ignore list)
-
-## Code style
+## Linting & formatting
 
 - **Formatter**: `vp fmt` (Prettier-compatible via vite-plus config)
   - Single quotes, no semicolons, 120 char print width, no trailing commas, arrow parens avoided
@@ -233,38 +136,42 @@ These files are auto-generated and should not be edited manually:
 - `**/auto-imports.d.ts` — auto-import type declarations
 - `**/.eslintrc-auto-import.js`
 - `**/wailsjs/**` — Wails bindings (if present)
+- `**/__screenshots__/` — Vitest browser mode test failure screenshots
+- `**/.vitest-attachments/` — Vitest browser mode test attachments
 
 They are excluded from linting, formatting, and spell-check.
 
 ## Testing
 
-- **Framework**: Vitest with jsdom environment (configured in root `vite.config.ts`)
+- **Framework**: Vitest (via `vite-plus`)
 - **Run all tests**: `pnpm test`
 - **Run one package**: `pnpm --filter @greypan/js-kit test` (which runs `vp test run`)
 - **Test files**: `*.spec.ts`, `*.test.ts`, `*.spec.tsx`
+- **Environment**: Most packages use Node environment. `browser-kit` uses Vitest Browser Mode with Playwright Chromium for real browser testing.
+- **Network mocking**: `browser-kit` uses MSW (Mock Service Worker) via `@greypan/test-kit` for network request interception
+- **Test infrastructure**: `@greypan/test-kit` provides composable plugins using js-kit's plugin system:
+  - `defineMsw(handlers)` — MSW service worker lifecycle management (start/stop/reset)
+  - `defineCapturedRequests()` — request capture and assertion utilities
+  - Usage pattern: `defineMsw(handlers).use(defineCapturedRequests()).make()`
+- **Browser mode config**: Browser-mode packages need `vite.config.ts` with `browser.provider: playwright()` from `vite-plus/test/browser-playwright`
 
 ## Dependency management
 
-- **Catalog**: Monorepo-wide shared deps are versioned in `pnpm-workspace.yaml` under `catalog:`. Use `catalog:` references in package.json to pin versions centrally. Package-specific deps keep version numbers directly.
+- **Catalog**: All shared dependencies are versioned in `pnpm-workspace.yaml` under `catalog:`. Use `catalog:` references in package.json to pin versions centrally. Only truly package-specific deps (used by a single package) may keep hardcoded versions.
 - **Lockfile**: After dependency changes, run `pnpm dedupe` then `pnpm check:lockfile` to avoid CI failures.
+- **Adding new deps**: When adding a dependency used by multiple packages, always add it to the catalog first, then reference `catalog:` in each package.json.
 
 ## Other gotchas
 
 - `.npmrc` uses an npmmirror registry (`registry=https://registry.npmmirror.com`). CI overrides this to the official registry.
 - The `prepare` script runs `vp config` — this sets up vite-plus internal config on install.
-- `pnpm clean` removes `dist/`, `.turbo/`, `.vite/`, `build/` dirs. `pnpm clean --full` also removes `node_modules` and the lockfile.
 - Go toolchain is also managed via mise (used by some tooling, not by the JS packages directly).
 
-## Agent skills
+## Agent rules
 
-### Issue tracker
+Rules are stored in `.agents/rules/` and symlinked to `.claude/rules`:
 
-GitHub Issues via `gh` CLI. External PRs count as a triage surface. See `docs/agents/issue-tracker.md`.
-
-### Triage labels
-
-Default five-label vocabulary: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`. See `docs/agents/triage-labels.md`.
-
-### Domain docs
-
-Single-context layout: `CONTEXT.md` + `docs/adr/` at repo root (generated lazily by domain-modeling skills). See `docs/agents/domain.md`.
+- `testing.md` — test coverage, edge cases, degradation scenarios
+- `code-style.md` — naming, comments, type safety, plugin Options 规范
+- `review-checklist.md` — review checkpoints
+- `commit.md` — commit conventions, workflow, anti-patterns

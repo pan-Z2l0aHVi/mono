@@ -14,12 +14,12 @@
     "@greypan/browser-kit": "workspace:*",
     "@greypan/js-kit": "workspace:*",
     "@greypan/web-ui": "workspace:*",
-    "@unhead/vue": "^3.1.7",
-    "@vueuse/core": "^14.3.0",
-    "pinia": "^3.0.4",
-    "vee-validate": "^4.15.1",
+    "@unhead/vue": "catalog:",
+    "@vueuse/core": "catalog:",
+    "pinia": "catalog:",
+    "vee-validate": "catalog:",
     "vue": "catalog:",
-    "vue-router": "^5.1.0"
+    "vue-router": "catalog:"
   },
   "devDependencies": {
     "@greypan/vite-plugin-full-reload": "workspace:*",

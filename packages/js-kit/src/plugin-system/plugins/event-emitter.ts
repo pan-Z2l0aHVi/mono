@@ -1,4 +1,4 @@
-import { definePlugin } from './core'
+import { definePlugin } from '../core'
 
 export function defineEventEmitter<E extends Record<string, unknown[]>>() {
   return definePlugin(() => {

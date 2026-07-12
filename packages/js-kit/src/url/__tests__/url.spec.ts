@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vite-plus/test'
 
 import { parseUrl, stringifyUrl } from '..'
 
-describe('url 单元测试', () => {
+describe('url 测试', () => {
   describe('parseUrl 测试', () => {
     it('应当能够解析带 Hash 的 URL', () => {
       expect(parseUrl('https://developer.mozilla.org/en-US/docs/Web/API/URL/URL#specifications')).toEqual({

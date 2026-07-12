@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vite-plus/test'
 
 import { asyncCompose, type Middleware } from '../compose'
 
-describe('Compose 单元测试', () => {
+describe('Compose 测试', () => {
   describe('基本用法', () => {
     it('应当按顺序运行中间件', async () => {
       const calls: string[] = []
