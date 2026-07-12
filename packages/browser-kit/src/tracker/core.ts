@@ -4,13 +4,13 @@ import { defineLocal } from '@/storage'
 
 interface Options {
   url: string
-  transform?: <T>(data: T) => T
+  transform?: (data: object) => object
   disablePersistence?: boolean
 }
 type Config = Required<Options>
 
 const DEFAULT_OPTIONS = {
-  transform: <T>(x: T): T => x,
+  transform: (data: object): object => data,
   disablePersistence: false
 }
 

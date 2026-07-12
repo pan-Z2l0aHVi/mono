@@ -147,7 +147,7 @@ describe('storage 单元测试', () => {
 
   describe('Watch 监听', () => {
     it('监听到对应的 key 变化时应触发回调', () => {
-      const callback = vi.fn()
+      const callback = vi.fn<() => void>()
       const unwatch = local.watch('msg', callback)
 
       // 为了模拟格式，需要手动拼装 pkg
@@ -169,7 +169,7 @@ describe('storage 单元测试', () => {
     })
 
     it('收到过期值时应返回 null', () => {
-      const callback = vi.fn()
+      const callback = vi.fn<() => void>()
       local.watch('expired', callback)
 
       const createExpiredPkg = (val: unknown) => ({ m: '_pkg', v: val, t: Date.now() - 1000 })

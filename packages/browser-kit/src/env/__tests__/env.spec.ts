@@ -8,15 +8,15 @@ describe('env 单元测试', () => {
     // 很多环境检测（如 isDarkMode, isPWA）会依赖这个
     Object.defineProperty(window, 'matchMedia', {
       writable: true,
-      value: vi.fn().mockImplementation(query => ({
+      value: vi.fn<(query: string) => MediaQueryList>().mockImplementation(query => ({
         matches: false,
         media: query,
         onchange: null,
-        addListener: vi.fn(), // 兼容旧版
-        removeListener: vi.fn(), // 兼容旧版
-        addEventListener: vi.fn(),
-        removeEventListener: vi.fn(),
-        dispatchEvent: vi.fn()
+        addListener: vi.fn<() => void>(), // 兼容旧版
+        removeListener: vi.fn<() => void>(), // 兼容旧版
+        addEventListener: vi.fn<(type: string, listener: EventListener) => void>(),
+        removeEventListener: vi.fn<(type: string, listener: EventListener) => void>(),
+        dispatchEvent: vi.fn<(event: Event) => boolean>()
       }))
     })
   })

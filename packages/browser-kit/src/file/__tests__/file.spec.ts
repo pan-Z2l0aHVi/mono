@@ -79,8 +79,8 @@ describe('file 单元测试', () => {
 
   describe('downloadFile', () => {
     beforeEach(() => {
-      window.URL.createObjectURL = vi.fn(() => 'mock-url')
-      window.URL.revokeObjectURL = vi.fn()
+      window.URL.createObjectURL = vi.fn<(blob: Blob) => string>(() => 'mock-url')
+      window.URL.revokeObjectURL = vi.fn<(url: string) => void>()
 
       // 模拟原型链上的方法
       vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
@@ -97,7 +97,7 @@ describe('file 单元测试', () => {
     it('fetch 返回非 ok 响应时应抛出错误', async () => {
       vi.stubGlobal(
         'fetch',
-        vi.fn().mockResolvedValue(new Response('Not Found', { status: 404, statusText: 'Not Found' }))
+        vi.fn<typeof fetch>().mockResolvedValue(new Response('Not Found', { status: 404, statusText: 'Not Found' }))
       )
 
       await expect(downloadFile('https://example.com/missing-file.pdf')).rejects.toThrow(
@@ -108,7 +108,7 @@ describe('file 单元测试', () => {
     })
 
     it('fetch 网络错误时应抛出有意义的错误', async () => {
-      vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')))
+      vi.stubGlobal('fetch', vi.fn<typeof fetch>().mockRejectedValue(new TypeError('Failed to fetch')))
 
       await expect(downloadFile('https://example.com/file.pdf')).rejects.toThrow(
         'Network error: failed to fetch the file.'

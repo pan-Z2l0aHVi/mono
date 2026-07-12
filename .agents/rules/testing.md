@@ -21,6 +21,14 @@
 - 避免 `as any`，使用具体类型
 - Mock 函数需要类型参数
 - 等待异步操作使用 `await new Promise(process.nextTick)` 而非 `setTimeout(50)`
+- 只有需要验证调用（`toHaveBeenCalledWith`/`toHaveBeenCalled`）时才用 `vi.fn`，否则用普通函数
+
+## 测试原则
+
+- **AAA 模式**：Arrange（准备）→ Act（执行）→ Assert（断言），三段分明，空行分隔
+- **一个测试只验证一个行为**：不把多个不相关的断言塞进一个测试
+- **测试公共接口**：通过公共 API 验证行为，不测实现细节，重构时测试不应改变
+- **测试间相互独立**：不依赖执行顺序，不共享可变状态，每个测试可单独运行
 
 ## 重构时的测试要求
 

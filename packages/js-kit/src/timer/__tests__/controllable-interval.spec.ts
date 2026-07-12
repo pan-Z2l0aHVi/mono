@@ -9,7 +9,7 @@ describe('timer 单元测试', () => {
     })
 
     it('应当能正常循环执行', () => {
-      const cb = vi.fn()
+      const cb = vi.fn<() => void>()
       const timer = defineControllableInterval({ callback: cb, interval: 1000 }).make()
       timer.start()
 
@@ -19,7 +19,7 @@ describe('timer 单元测试', () => {
     })
 
     it('暂停后不应触发回调', () => {
-      const cb = vi.fn()
+      const cb = vi.fn<() => void>()
       const timer = defineControllableInterval({ callback: cb, interval: 1000 }).make()
       timer.start()
 
@@ -32,7 +32,7 @@ describe('timer 单元测试', () => {
     })
 
     it('恢复后应先补全剩余时间', () => {
-      const cb = vi.fn()
+      const cb = vi.fn<() => void>()
       const timer = defineControllableInterval({ callback: cb, interval: 1000 }).make()
       timer.start()
 

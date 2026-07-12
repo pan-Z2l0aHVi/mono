@@ -47,10 +47,11 @@ describe('BatchEmitter 单元测试', () => {
   })
 
   it('onFlushed 抛异常不应阻塞 batchEmit 的 resolve', async () => {
-    const onFlushed = vi.fn<(queue: unknown[]) => Promise<void>>(() => {
-      throw new Error('flush failed')
-    })
-    const batchEmitter = defineBatchEmitter<number>({ onFlushed }).make()
+    const batchEmitter = defineBatchEmitter<number>({
+      onFlushed: () => {
+        throw new Error('flush failed')
+      }
+    }).make()
     const { batchEmit } = batchEmitter
 
     const result = await batchEmit(1, 0)
@@ -64,7 +65,7 @@ describe('BatchEmitter 单元测试', () => {
     const result = await batchEmit('a', 0)
     expect(result).toEqual(['a'])
 
-    batchEmit('b', 100)
+    void batchEmit('b', 100)
     expect(() => flush()).not.toThrow()
   })
 })

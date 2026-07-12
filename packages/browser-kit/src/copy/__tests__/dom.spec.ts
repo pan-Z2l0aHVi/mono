@@ -5,8 +5,8 @@ import { copyToClipboard } from '..'
 describe('copy 单元测试', () => {
   describe('copyToClipboard 测试', () => {
     beforeAll(() => {
-      window.prompt = vi.fn()
-      document.execCommand = vi.fn().mockReturnValue(true)
+      window.prompt = vi.fn<() => string | null>()
+      document.execCommand = vi.fn<(command: string) => boolean>().mockReturnValue(true)
     })
 
     beforeEach(() => {
@@ -29,7 +29,7 @@ describe('copy 单元测试', () => {
     })
 
     it('复制失败时不应 throw，静默 resolve', async () => {
-      ;(document.execCommand as any).mockImplementation(() => {
+      vi.mocked(document.execCommand).mockImplementation(() => {
         throw new Error('Fake Error.')
       })
 
@@ -38,7 +38,7 @@ describe('copy 单元测试', () => {
     })
 
     it('debug 模式下失败时 v4 内部会输出诊断信息', async () => {
-      ;(document.execCommand as any).mockImplementation(() => {
+      vi.mocked(document.execCommand).mockImplementation(() => {
         throw new Error('Fake Error.')
       })
 

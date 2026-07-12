@@ -117,14 +117,14 @@ describe('上报 core 测试用例', () => {
     })
   })
 
-  it('transform 函数应被调用', async () => {
-    const transform = vi.fn(data => ({ ...(data as object), extra: true }))
-
-    const tracker = defineTracker({ url: 'https://example.com', transform: transform as <T>(data: T) => T }).make()
+  it('transform 函数应转换上报数据', async () => {
+    const tracker = defineTracker({
+      url: 'https://example.com',
+      transform: (data: object) => ({ ...data, extra: true })
+    }).make()
     tracker.track({ event: 'click' })
     await vi.runAllTimersAsync()
 
-    expect(transform).toHaveBeenCalledWith({ event: 'click' })
     expect(sendBeaconSpy).toHaveBeenCalledWith('https://example.com', expect.stringContaining('"extra":true'))
   })
 
