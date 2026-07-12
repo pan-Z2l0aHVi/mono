@@ -1,5 +1,11 @@
 # @greypan/js-kit
 
+## 1.4.0
+
+### Minor Changes
+
+- 874638d: refactor tracker and storage
+
 ## 1.3.0
 
 ### Minor Changes
