@@ -169,7 +169,7 @@ They are excluded from linting, formatting, and spell-check.
 
 ## Agent rules
 
-Rules are stored in `.agents/rules/` and symlinked to `.claude/rules` and `.mimocode/rules`:
+Rules are stored in `.agents/rules/` and symlinked to `.claude/rules`:
 
 - `testing.md` — test coverage, edge cases, degradation scenarios
 - `code-style.md` — naming, comments, type safety, plugin Options 规范

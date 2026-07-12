@@ -115,12 +115,6 @@ report.html
 !.opencode/rules/
 !.opencode/settings.json
 
-# MimoCode
-.mimocode/*
-!.mimocode/rules
-!.mimocode/settings.json
-!.mimocode/skills
-
 # Cursor
 .cursor/*
 !.cursor/rules/
