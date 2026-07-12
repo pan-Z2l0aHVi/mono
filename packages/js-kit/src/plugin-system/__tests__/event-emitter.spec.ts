@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vite-plus/test'
 
 import { defineEventEmitter } from '..'
 
-describe('EventEmitter 单元测试', () => {
+describe('EventEmitter 测试', () => {
   it('应当支持注册和触发事件回调', () => {
     const logSpy = vi.spyOn(console, 'log')
 

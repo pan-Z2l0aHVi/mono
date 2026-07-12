@@ -1,12 +1,8 @@
 {
-  "name": "@greypan/browser-kit",
-  "version": "1.4.0",
-  "description": "Browser utility functions",
+  "name": "@greypan/test-kit",
+  "version": "0.1.0",
+  "description": "Test infrastructure plugins for Vitest browser mode + MSW",
   "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/pan-Z2l0aHVi/mono.git"
-  },
   "type": "module",
   "files": [
     "dist"
@@ -31,22 +27,20 @@
   },
   "scripts": {
     "build": "vue-tsc --build && vp build",
-    "preview": "vp preview",
     "test": "vp test run",
     "type-check": "vue-tsc --build",
     "dev": "vp build --watch"
   },
   "dependencies": {
-    "@greypan/js-kit": "workspace:*",
-    "copy-to-clipboard": "catalog:",
-    "nanoid": "catalog:",
-    "remeda": "catalog:"
+    "@greypan/js-kit": "workspace:*"
+  },
+  "peerDependencies": {
+    "msw": "catalog:"
   },
   "browserslist": [
     "defaults"
   ],
   "devDependencies": {
-    "@greypan/test-kit": "workspace:*",
     "msw": "catalog:"
   }
 }

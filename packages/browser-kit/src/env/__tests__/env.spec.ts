@@ -1,26 +1,8 @@
-import { beforeAll, describe, expect, it, vi } from 'vite-plus/test'
+import { describe, expect, it } from 'vite-plus/test'
 
 import { env } from '..'
 
-describe('env 单元测试', () => {
-  beforeAll(() => {
-    // 补齐 JSDOM 缺失的 matchMedia 方法
-    // 很多环境检测（如 isDarkMode, isPWA）会依赖这个
-    Object.defineProperty(window, 'matchMedia', {
-      writable: true,
-      value: vi.fn<(query: string) => MediaQueryList>().mockImplementation(query => ({
-        matches: false,
-        media: query,
-        onchange: null,
-        addListener: vi.fn<() => void>(), // 兼容旧版
-        removeListener: vi.fn<() => void>(), // 兼容旧版
-        addEventListener: vi.fn<(type: string, listener: EventListener) => void>(),
-        removeEventListener: vi.fn<(type: string, listener: EventListener) => void>(),
-        dispatchEvent: vi.fn<(event: Event) => boolean>()
-      }))
-    })
-  })
-
+describe('env 测试', () => {
   it('应当能正常读取环境属性', () => {
     // 检查基础环境
     expect(typeof env.isBrowser).toBe('boolean')

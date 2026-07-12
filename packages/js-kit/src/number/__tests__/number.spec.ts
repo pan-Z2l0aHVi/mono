@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vite-plus/test'
 
 import { clamp, toPrecision } from '..'
 
-describe('number 单元测试', () => {
+describe('number 测试', () => {
   describe('toPrecision', () => {
     it('应正确处理正数精度（四舍五入）', () => {
       expect(toPrecision(1234.567, 2)).toBe(1234.57)

@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
 import { definePlugin, type PluginMade } from '../core'
 
-describe('definePlugin 单元测试', () => {
+describe('definePlugin 测试', () => {
   const localStorageMock = (() => {
     let store: Record<string, string> = {}
     return {

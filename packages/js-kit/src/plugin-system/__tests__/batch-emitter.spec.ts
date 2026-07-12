@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vite-plus/test'
 
 import { defineBatchEmitter } from '..'
 
-describe('BatchEmitter 单元测试', () => {
+describe('BatchEmitter 测试', () => {
   it('立即返回单个 id，当 delay <= 0', async () => {
     const batchEmitter = defineBatchEmitter<string>().make()
     const { batchEmit } = batchEmitter

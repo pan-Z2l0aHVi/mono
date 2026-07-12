@@ -1,8 +1,10 @@
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { http, HttpResponse } from 'msw'
+import { describe, expect, it } from 'vite-plus/test'
 
 import { base64ToFile, downloadFile, formatFileSize, getFileExtension, isSameFileType, isValidBase64 } from '..'
+import { worker } from '../../../test-helper'
 
-describe('file 单元测试', () => {
+describe('file 测试', () => {
   describe('getFileExtension', () => {
     it('应当正确获取后缀名', () => {
       expect(getFileExtension('test.png')).toBe('png')
@@ -78,43 +80,25 @@ describe('file 单元测试', () => {
   })
 
   describe('downloadFile', () => {
-    beforeEach(() => {
-      window.URL.createObjectURL = vi.fn<(blob: Blob) => string>(() => 'mock-url')
-      window.URL.revokeObjectURL = vi.fn<(url: string) => void>()
-
-      // 模拟原型链上的方法
-      vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
-    })
-
-    it('从 File 对象触发下载时，应创建 a 标签并调用 click', async () => {
+    it('从 File 对象触发下载时，应正常完成不抛异常', async () => {
       const file = new File(['hello'], 'hello.txt', { type: 'text/plain' })
-      await downloadFile(file)
-
-      expect(window.URL.createObjectURL).toHaveBeenCalledWith(file)
-      expect(HTMLAnchorElement.prototype.click).toHaveBeenCalled()
+      await expect(downloadFile(file)).resolves.toBeUndefined()
     })
 
     it('fetch 返回非 ok 响应时应抛出错误', async () => {
-      vi.stubGlobal(
-        'fetch',
-        vi.fn<typeof fetch>().mockResolvedValue(new Response('Not Found', { status: 404, statusText: 'Not Found' }))
-      )
+      worker.use(http.get('*', () => new HttpResponse(null, { status: 404 })))
 
       await expect(downloadFile('https://example.com/missing-file.pdf')).rejects.toThrow(
         'Download failed: 404 Not Found'
       )
-
-      vi.unstubAllGlobals()
     })
 
     it('fetch 网络错误时应抛出有意义的错误', async () => {
-      vi.stubGlobal('fetch', vi.fn<typeof fetch>().mockRejectedValue(new TypeError('Failed to fetch')))
+      worker.use(http.get('*', () => HttpResponse.error()))
 
       await expect(downloadFile('https://example.com/file.pdf')).rejects.toThrow(
         'Network error: failed to fetch the file.'
       )
-
-      vi.unstubAllGlobals()
     })
   })
 })

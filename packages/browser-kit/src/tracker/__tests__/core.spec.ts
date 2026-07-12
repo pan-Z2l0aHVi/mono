@@ -1,36 +1,45 @@
+import { http, HttpResponse } from 'msw'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
 import { defineLocal } from '@/storage'
 
+import { capturedRequests, clearCapturedRequests } from '../../../test-helper'
+import { worker } from '../../../test-helper'
 import { defineTracker } from '../core'
 
 vi.useFakeTimers()
 
+/** 临时切换到真实计时器，等待 MSW 处理请求后再切回 */
+async function waitForMsw(ms = 50) {
+  vi.useRealTimers()
+  await new Promise(resolve => setTimeout(resolve, ms))
+  vi.useFakeTimers()
+}
+
 describe('上报 core 测试用例', () => {
   let sendBeaconSpy: ReturnType<typeof vi.fn<Navigator['sendBeacon']>>
-  let fetchSpy: ReturnType<typeof vi.fn<typeof fetch>>
 
   beforeEach(() => {
     vi.clearAllMocks()
+    clearCapturedRequests()
     localStorage.clear()
 
-    sendBeaconSpy = vi.fn<Navigator['sendBeacon']>(() => true)
+    // sendBeacon 始终返回 false，强制走 fetch 降级，由 MSW 拦截
+    sendBeaconSpy = vi.fn<Navigator['sendBeacon']>(() => false)
     Object.defineProperty(navigator, 'sendBeacon', {
       configurable: true,
       enumerable: true,
       value: sendBeaconSpy
     })
-
-    fetchSpy = vi.fn<typeof fetch>(() => Promise.resolve({ ok: true } as Response))
-    vi.stubGlobal('fetch', fetchSpy)
   })
 
   it('应当调用 sendBeacon 上报数据', async () => {
     const tracker = defineTracker({ url: 'https://example.com' }).make()
     tracker.track({ event: 'page view' })
-    await vi.runAllTimersAsync()
+    await waitForMsw()
 
     expect(sendBeaconSpy).toHaveBeenCalled()
+    expect(capturedRequests.length).toBeGreaterThanOrEqual(1)
   })
 
   it('降级策略：sendBeacon 失败时应当使用 fetch 上报数据', async () => {
@@ -40,27 +49,26 @@ describe('上报 core 测试用例', () => {
 
     const tracker = defineTracker({ url: 'https://example.com' }).make()
     tracker.track({ event: 'error' })
-    await vi.runAllTimersAsync()
+    await waitForMsw()
 
-    expect(fetchSpy).toHaveBeenCalled()
+    expect(capturedRequests.length).toBeGreaterThanOrEqual(1)
+    expect(JSON.stringify(capturedRequests[0].body)).toContain('error')
   })
 
-  it('空数据：null 时不应调用 sendBeacon', async () => {
+  it('空数据：null 时不应调用 sendBeacon', () => {
     const tracker = defineTracker({ url: 'https://example.com' }).make()
     tracker.track(null as unknown as object)
-    await vi.runAllTimersAsync()
 
     expect(sendBeaconSpy).not.toHaveBeenCalled()
-    expect(fetchSpy).not.toHaveBeenCalled()
+    expect(capturedRequests).toHaveLength(0)
   })
 
-  it('空数据：undefined 时不应调用 sendBeacon', async () => {
+  it('空数据：undefined 时不应调用 sendBeacon', () => {
     const tracker = defineTracker({ url: 'https://example.com' }).make()
     tracker.track(undefined as unknown as object)
-    await vi.runAllTimersAsync()
 
     expect(sendBeaconSpy).not.toHaveBeenCalled()
-    expect(fetchSpy).not.toHaveBeenCalled()
+    expect(capturedRequests).toHaveLength(0)
   })
 
   describe('持久化', () => {
@@ -75,7 +83,7 @@ describe('上报 core 测试用例', () => {
       expect(stored).toEqual([{ event: 'click' }])
     })
 
-    it('恢复的数据处理后应从 storage 清除', () => {
+    it('恢复的数据处理后应从 storage 清除', async () => {
       storage.set('queue:https://example.com', [{ event: 'a' }, { event: 'b' }])
 
       const tracker = defineTracker({ url: 'https://example.com' }).make()
@@ -86,6 +94,9 @@ describe('上报 core 测试用例', () => {
 
       const stored = storage.get('queue:https://example.com')
       expect(stored).toEqual([{ event: 'c' }])
+
+      // 等待恢复数据的 fetch 完成，避免污染后续测试
+      await waitForMsw()
     })
 
     it('disablePersistence 时不写 storage', () => {
@@ -101,16 +112,17 @@ describe('上报 core 测试用例', () => {
       storage.set('queue:https://example.com', [{ event: 'restored' }])
 
       const tracker = defineTracker({ url: 'https://example.com' }).make()
-      await vi.runAllTimersAsync()
+      await waitForMsw()
 
-      expect(sendBeaconSpy).toHaveBeenCalledWith('https://example.com', expect.stringContaining('restored'))
+      expect(capturedRequests.length).toBeGreaterThanOrEqual(1)
+      expect(JSON.stringify(capturedRequests[0].body)).toContain('restored')
       expect(storage.get('queue:https://example.com')).toBeNull()
     })
 
     it('发送完成后 storage 应清空', async () => {
       const tracker = defineTracker({ url: 'https://example.com' }).make()
       tracker.track({ event: 'click' })
-      await vi.runAllTimersAsync()
+      await waitForMsw()
 
       const stored = storage.get('queue:https://example.com')
       expect(stored).toBeNull()
@@ -123,16 +135,17 @@ describe('上报 core 测试用例', () => {
       transform: (data: object) => ({ ...data, extra: true })
     }).make()
     tracker.track({ event: 'click' })
-    await vi.runAllTimersAsync()
+    await waitForMsw()
 
-    expect(sendBeaconSpy).toHaveBeenCalledWith('https://example.com', expect.stringContaining('"extra":true'))
+    expect(capturedRequests.length).toBeGreaterThanOrEqual(1)
+    expect(JSON.stringify(capturedRequests[0].body)).toContain('"extra":true')
   })
 
   it('sendBeacon + fetch 双重失败时不应抛异常', async () => {
     sendBeaconSpy.mockImplementation(() => {
       throw new Error('sendBeacon failed')
     })
-    fetchSpy.mockRejectedValue(new Error('fetch failed'))
+    worker.use(http.post('*', () => HttpResponse.error()))
 
     const tracker = defineTracker({ url: 'https://example.com' }).make()
 

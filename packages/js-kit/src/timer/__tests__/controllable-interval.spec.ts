@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
 import { defineControllableInterval } from '..'
 
-describe('timer 单元测试', () => {
+describe('timer 测试', () => {
   describe('ControllableInterval', () => {
     beforeEach(() => {
       vi.useFakeTimers()

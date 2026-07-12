@@ -1,27 +1,30 @@
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
+import { clearCapturedRequests, capturedRequests } from '../../../test-helper'
 import { defineTracker } from '../core'
 import { defineBatchTrack } from '../plugins/batch-track'
 
 vi.useFakeTimers()
 
-describe('聚合上报测试用例', () => {
-  let sendBeaconSpy: ReturnType<typeof vi.fn<Navigator['sendBeacon']>>
-  let fetchSpy: ReturnType<typeof vi.fn<typeof fetch>>
+/** 临时切换到真实计时器，等待 MSW 处理请求后再切回 */
+async function waitForMsw(ms = 100) {
+  vi.useRealTimers()
+  await new Promise(resolve => setTimeout(resolve, ms))
+  vi.useFakeTimers()
+}
 
+describe('聚合上报测试用例', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    clearCapturedRequests()
     localStorage.clear()
 
-    sendBeaconSpy = vi.fn<Navigator['sendBeacon']>(() => true)
+    // sendBeacon 始终返回 false，强制走 fetch 降级，由 MSW 拦截
     Object.defineProperty(navigator, 'sendBeacon', {
       configurable: true,
       enumerable: true,
-      value: sendBeaconSpy
+      value: vi.fn<Navigator['sendBeacon']>(() => false)
     })
-
-    fetchSpy = vi.fn<typeof fetch>(() => Promise.resolve({ ok: true } as Response))
-    vi.stubGlobal('fetch', fetchSpy)
   })
 
   it('批量聚合：在延迟内合并多次上报', async () => {
@@ -32,12 +35,12 @@ describe('聚合上报测试用例', () => {
     tracker.track({ event: 'click' })
     tracker.track({ event: 'view' })
 
-    expect(sendBeaconSpy).not.toHaveBeenCalled()
+    expect(capturedRequests).toHaveLength(0)
 
     vi.advanceTimersByTime(200)
-    await vi.runAllTimersAsync()
+    await waitForMsw()
 
-    expect(sendBeaconSpy).toHaveBeenCalledOnce()
+    expect(capturedRequests).toHaveLength(1)
   })
 
   it('数据分片：超过阈值时分片', async () => {
@@ -45,15 +48,19 @@ describe('聚合上报测试用例', () => {
       .use(defineBatchTrack({ defaultBatchDelay: 200 }))
       .make()
 
-    for (let i = 0; i < 10000; i++) {
+    const totalCount = 10000
+    for (let i = 0; i < totalCount; i++) {
       tracker.track({ event: 'view' })
     }
 
     vi.advanceTimersByTime(200)
-    await vi.runAllTimersAsync()
+    await waitForMsw()
 
-    expect(sendBeaconSpy).toHaveBeenCalled()
-    expect(sendBeaconSpy).not.toHaveBeenCalledOnce()
+    // 分片后每次请求只包含部分数据（不是全部），证明分片生效
+    expect(capturedRequests.length).toBeGreaterThanOrEqual(1)
+    const body = capturedRequests[0].body as unknown[]
+    expect(Array.isArray(body)).toBe(true)
+    expect(body.length).toBeLessThan(totalCount)
   })
 
   it('flush 应立即发送批量数据', async () => {
@@ -63,9 +70,9 @@ describe('聚合上报测试用例', () => {
 
     tracker.track({ event: 'queued' })
     tracker.flush()
-    await vi.runAllTimersAsync()
+    await waitForMsw()
 
-    expect(sendBeaconSpy).toHaveBeenCalled()
+    expect(capturedRequests.length).toBeGreaterThanOrEqual(1)
   })
 
   it('batchDelay <= 0 时应立即上报，不经过批处理', async () => {
@@ -74,9 +81,9 @@ describe('聚合上报测试用例', () => {
       .make()
 
     tracker.track({ event: 'immediate' }, 0)
-    await vi.runAllTimersAsync()
+    await waitForMsw()
 
-    expect(sendBeaconSpy).toHaveBeenCalled()
+    expect(capturedRequests.length).toBeGreaterThanOrEqual(1)
   })
 
   it('大数据分片：恰好 64KB 时应单次发送', async () => {
@@ -86,9 +93,9 @@ describe('聚合上报测试用例', () => {
 
     const data = { payload: 'x'.repeat(50) }
     tracker.track(data, -1)
-    await vi.runAllTimersAsync()
+    await waitForMsw()
 
-    expect(sendBeaconSpy).toHaveBeenCalled()
+    expect(capturedRequests.length).toBeGreaterThanOrEqual(1)
   })
 
   it('单条数据应直接发送', async () => {
@@ -98,9 +105,9 @@ describe('聚合上报测试用例', () => {
 
     tracker.track({ event: 'single' })
     vi.advanceTimersByTime(200)
-    await vi.runAllTimersAsync()
+    await waitForMsw()
 
-    expect(sendBeaconSpy).toHaveBeenCalledOnce()
+    expect(capturedRequests).toHaveLength(1)
   })
 
   it('自定义 maxBeaconSize 应生效', async () => {
@@ -114,8 +121,8 @@ describe('聚合上报测试用例', () => {
     }
 
     vi.advanceTimersByTime(200)
-    await vi.runAllTimersAsync()
+    await waitForMsw()
 
-    expect(sendBeaconSpy.mock.calls.length).toBeGreaterThan(1)
+    expect(capturedRequests.length).toBeGreaterThan(1)
   })
 })

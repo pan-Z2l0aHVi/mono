@@ -21,6 +21,7 @@ catalog:
   '@vitejs/plugin-react': ^6.0.3
   '@vitejs/plugin-vue': ^6.0.7
   '@vitejs/plugin-vue-jsx': ^5.1.6
+  '@vitest/browser-playwright': ^4.1.10
   '@vue/test-utils': ^2.4.11
   '@vue/tsconfig': ^0.9.1
   browserslist: ^4.28.5
@@ -36,6 +37,16 @@ catalog:
   jsdom: ^29.1.1
   lightningcss: ^1.32.0
   lit: ^3.3.3
+  '@unhead/vue': ^3.1.7
+  '@vueuse/core': ^14.3.0
+  iconify-icon: ^3.0.2
+  msw: ^2.15.0
+  pinia: ^3.0.4
+  react-error-boundary: ^6.1.2
+  react-hook-form: ^7.81.0
+  vee-validate: ^4.15.1
+  vue-router: ^5.1.0
+  zustand: ^5.0.14
   nanoid: ^5.1.16
   react: ^19.2.7
   react-dom: ^19.2.7

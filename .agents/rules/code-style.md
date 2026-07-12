@@ -1,5 +1,9 @@
 # 代码风格规范
 
+## 工具说明
+
+- **Lint & fmt**: 由 `vite-plus` 集成的 oxc 工具链（lint + fmt），规则名与 ESLint/Prettier 不同，需查 oxc 文档
+
 ## 命名约定
 
 - 文件名：kebab-case（如 `offline-queue.ts`）
@@ -89,3 +93,9 @@ export function defineXxx(options: Options) {
 - 每个文件一个主要功能
 - 内部辅助函数放在导出函数之后
 - 类型定义放在文件顶部或单独的类型文件
+
+## React HMR 规则
+
+- **Never use anonymous default exports** in React components: `export default () => {}` breaks Fast Refresh
+- Always use named function declarations: `function MyComponent() {} export default MyComponent`
+- This is enforced by `unicorn/no-anonymous-default-export` in the oxlint config

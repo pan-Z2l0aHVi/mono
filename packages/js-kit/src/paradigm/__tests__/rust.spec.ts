@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vite-plus/test'
 
 import { err, isErr, isOk, ok, to, unwrap } from '../rust'
 
-describe('Result 工具函数（Rust 风格）单元测试', () => {
+describe('Result 工具函数（Rust 风格）测试', () => {
   it('ok() 应当返回一个 Ok<T>', () => {
     const result = ok(123)
     expect(result).toEqual({ ok: true, value: 123 })

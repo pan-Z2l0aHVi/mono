@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vite-plus/test'
 
 import { err, isErr, isOk, ok, to, unwrap } from '../go'
 
-describe('Result 工具函数（Go 风格）单元测试', () => {
+describe('Result 工具函数（Go 风格）测试', () => {
   it('ok() 应当返回 Ok<T>', () => {
     const result = ok(42)
     expect(result).toEqual([null, 42])

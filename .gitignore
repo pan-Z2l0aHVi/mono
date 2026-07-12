@@ -59,6 +59,8 @@ dev-dist/
 # ==========================================
 coverage/
 __snapshots__/
+__screenshots__/
+.vitest-attachments/
 *.received.*
 .eslintcache
 .stylelintcache

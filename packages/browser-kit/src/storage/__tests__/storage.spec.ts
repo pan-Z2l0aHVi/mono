@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
 import { defineLocal } from '..'
 
-describe('storage 单元测试', () => {
+describe('storage 测试', () => {
   const NS = 'mfe'
   const local = defineLocal(NS)
 

@@ -1,29 +1,39 @@
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
+import { capturedRequests, clearCapturedRequests } from '../../../test-helper'
 import { defineTracker } from '../core'
 import { defineBatchTrack } from '../plugins/batch-track'
 import { defineLastWords } from '../plugins/last-words'
 import { defineOfflineRestore } from '../plugins/offline-restore'
 
-vi.useFakeTimers()
+/** 等待 MSW 处理请求 */
+async function waitForMsw(ms = 100) {
+  await new Promise(resolve => setTimeout(resolve, ms))
+}
+
+/** 轮询等待 MSW 捕获到指定数量的请求 */
+async function waitForMswCapture(minCount = 1, timeout = 2000) {
+  const start = Date.now()
+  while (capturedRequests.length < minCount && Date.now() - start < timeout) {
+    await new Promise(resolve => setTimeout(resolve, 10))
+  }
+}
 
 describe('插件组合测试', () => {
   let sendBeaconSpy: ReturnType<typeof vi.fn<Navigator['sendBeacon']>>
-  let fetchSpy: ReturnType<typeof vi.fn<typeof fetch>>
 
   beforeEach(() => {
     vi.clearAllMocks()
+    clearCapturedRequests()
     localStorage.clear()
 
-    sendBeaconSpy = vi.fn<Navigator['sendBeacon']>(() => true)
+    // 始终返回 false，强制走 fetch 降级路径，由 MSW 拦截
+    sendBeaconSpy = vi.fn<Navigator['sendBeacon']>(() => false)
     Object.defineProperty(navigator, 'sendBeacon', {
       configurable: true,
       enumerable: true,
       value: sendBeaconSpy
     })
-
-    fetchSpy = vi.fn<typeof fetch>(() => Promise.resolve({ ok: true } as Response))
-    vi.stubGlobal('fetch', fetchSpy)
 
     Object.defineProperty(navigator, 'onLine', {
       value: true,
@@ -43,9 +53,10 @@ describe('插件组合测试', () => {
     it('正常上报：track 成功发送数据', async () => {
       const tracker = createTracker()
       tracker.track({ event: 'click' })
-      await vi.runAllTimersAsync()
+      await waitForMswCapture()
 
-      expect(sendBeaconSpy).toHaveBeenCalled()
+      expect(capturedRequests.length).toBeGreaterThan(0)
+      expect(capturedRequests[0].url).toBe('/')
     })
 
     it('离线缓存：离线时暂停 loop 不发送', async () => {
@@ -55,20 +66,22 @@ describe('插件组合测试', () => {
 
       sendBeaconSpy.mockClear()
       tracker.track({ event: 'offline' })
-      await vi.runAllTimersAsync()
+      await waitForMsw()
 
       expect(sendBeaconSpy).not.toHaveBeenCalled()
+      expect(capturedRequests).toHaveLength(0)
     })
 
     it('临终遗言：页面关闭时 flush', async () => {
       const tracker = createTracker()
 
       tracker.track({ event: 'before-close' })
-      await vi.runAllTimersAsync()
+      await waitForMswCapture()
 
       window.dispatchEvent(new Event('beforeunload'))
+      await waitForMswCapture()
 
-      expect(sendBeaconSpy).toHaveBeenCalled()
+      expect(capturedRequests.length).toBeGreaterThan(0)
     })
   })
 
@@ -80,9 +93,9 @@ describe('插件组合测试', () => {
         .make()
 
       tracker.track({ event: 'click' })
-      await vi.runAllTimersAsync()
+      await waitForMswCapture()
 
-      expect(sendBeaconSpy).toHaveBeenCalled()
+      expect(capturedRequests.length).toBeGreaterThan(0)
     })
 
     it('离线时仍然不发送', async () => {
@@ -94,9 +107,10 @@ describe('插件组合测试', () => {
         .make()
 
       tracker.track({ event: 'offline' })
-      await vi.runAllTimersAsync()
+      await waitForMsw()
 
       expect(sendBeaconSpy).not.toHaveBeenCalled()
+      expect(capturedRequests).toHaveLength(0)
     })
   })
 
@@ -105,7 +119,7 @@ describe('插件组合测试', () => {
       const tracker = defineTracker({ url: 'https://example.com' }).make()
 
       tracker.track({ event: 'click' })
-      await vi.runAllTimersAsync()
+      await waitForMsw()
 
       expect(sendBeaconSpy).toHaveBeenCalled()
     })
@@ -128,11 +142,13 @@ describe('插件组合测试', () => {
         .make()
 
       tracker.track({ action: 'offline-data' })
-      await vi.runAllTimersAsync()
+      await waitForMsw()
       expect(sendBeaconSpy).not.toHaveBeenCalled()
+      expect(capturedRequests).toHaveLength(0)
 
       // 页面关闭时应 flush 积压数据
       window.dispatchEvent(new Event('beforeunload'))
+      await waitForMsw()
       expect(sendBeaconSpy).toHaveBeenCalledWith('https://example.com', expect.stringContaining('offline-data'))
     })
   })
@@ -145,7 +161,7 @@ describe('插件组合测试', () => {
         .make()
 
       tracker.track({ event: 'click' })
-      await vi.runAllTimersAsync()
+      await waitForMsw()
 
       expect(() => {
         window.dispatchEvent(new Event('beforeunload'))
