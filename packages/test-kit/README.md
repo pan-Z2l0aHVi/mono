@@ -65,7 +65,7 @@ Create an MSW lifecycle plugin. Returns a plugin with worker management methods.
 
 **Returns:** `MswContext` with:
 
-| 属性       | 类型                  | 说明                           |
+| Property   | Type                  | Description                    |
 | ---------- | --------------------- | ------------------------------ |
 | `worker`   | `SetupWorker`         | MSW service worker instance    |
 | `startMsw` | `() => Promise<void>` | Start the service worker       |
@@ -78,7 +78,7 @@ Create a request capture plugin. Records intercepted HTTP requests.
 
 **Returns:** `CapturedRequestsContext` with:
 
-| 属性                    | 类型                | 说明                        |
+| Property                | Type                | Description                 |
 | ----------------------- | ------------------- | --------------------------- |
 | `capturedRequests`      | `CapturedRequest[]` | Array of captured requests  |
 | `clearCapturedRequests` | `() => void`        | Clear all captured requests |
@@ -87,7 +87,7 @@ Create a request capture plugin. Records intercepted HTTP requests.
 
 Type for a captured request.
 
-| 属性        | 类型      | 说明                 |
+| Property    | Type      | Description          |
 | ----------- | --------- | -------------------- |
 | `url`       | `string`  | Request URL pathname |
 | `body`      | `unknown` | Request body         |

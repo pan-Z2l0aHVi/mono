@@ -114,7 +114,7 @@ Default no-namespace singleton instances.
 
 Environment detection object with getter properties.
 
-| 属性                   | 说明                    |
+| Property               | Description             |
 | ---------------------- | ----------------------- |
 | `env.isWeChat`         | WeChat in-app browser   |
 | `env.isAlipay`         | Alipay in-app browser   |

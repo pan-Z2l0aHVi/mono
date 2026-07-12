@@ -60,7 +60,7 @@ Create an unplugin instance that watches dependency files and triggers full relo
 
 ### `Dep`
 
-| 属性         | 类型       | 默认值            | 说明                                      |
+| Property     | Type       | Default           | Description                               |
 | ------------ | ---------- | ----------------- | ----------------------------------------- |
 | `name`       | `string`   | -                 | Package name (used for node_modules path) |
 | `path`       | `string`   | -                 | Physical path (for monorepo or npm link)  |

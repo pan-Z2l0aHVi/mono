@@ -234,7 +234,7 @@ Compose async middleware functions into a single pipeline.
 
 Result type namespaces for Go-style and Rust-style error handling.
 
-| 方法             | 说明                           |
+| Method           | Description                    |
 | ---------------- | ------------------------------ |
 | `ok(value)`      | Create success result          |
 | `err(error)`     | Create error result            |
@@ -252,7 +252,7 @@ import { rust } from '@greypan/js-kit/rust'
 
 ### Type Utilities
 
-| 类型                    | 说明                                  |
+| Type                    | Description                           |
 | ----------------------- | ------------------------------------- |
 | `ValueOf<T>`            | Union of all value types in an object |
 | `ArrayItem<T>`          | Element type of an array              |

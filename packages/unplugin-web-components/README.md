@@ -76,7 +76,7 @@ Create an unplugin instance for web component auto-import.
 
 ### Supported frameworks
 
-| 框架  | 文件类型       | 说明                       |
-| ----- | -------------- | -------------------------- |
-| Vue   | `.vue`         | `<script>` block injection |
-| React | `.tsx`, `.jsx` | Top-level import injection |
+| Framework | File Types     | Description                |
+| --------- | -------------- | -------------------------- |
+| Vue       | `.vue`         | `<script>` block injection |
+| React     | `.tsx`, `.jsx` | Top-level import injection |

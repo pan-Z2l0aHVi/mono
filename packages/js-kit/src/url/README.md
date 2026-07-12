@@ -20,11 +20,11 @@ Parse a URL string into a structured object. Supports both absolute and relative
 
 **Returns:** `URLObject`
 
-| 属性    | 类型                     | 说明                                                     |
-| ------- | ------------------------ | -------------------------------------------------------- |
-| `base`  | `string`                 | Origin + pathname (absolute) or pathname only (relative) |
-| `query` | `Record<string, string>` | Query parameters as key-value pairs                      |
-| `hash`  | `string`                 | Hash fragment including `#`                              |
+| Property | Type                     | Description                                              |
+| -------- | ------------------------ | -------------------------------------------------------- |
+| `base`   | `string`                 | Origin + pathname (absolute) or pathname only (relative) |
+| `query`  | `Record<string, string>` | Query parameters as key-value pairs                      |
+| `hash`   | `string`                 | Hash fragment including `#`                              |
 
 ```ts
 import { parseUrl } from '@greypan/js-kit'

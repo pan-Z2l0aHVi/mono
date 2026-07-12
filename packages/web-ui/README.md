@@ -68,7 +68,7 @@ Scroll-to-top button.
 
 **Events:**
 
-| 事件名           | 详情                   | 说明                     |
+| Event            | Detail                 | Description              |
 | ---------------- | ---------------------- | ------------------------ |
 | `visible-change` | `{ visible: boolean }` | Visibility state changed |
 
@@ -76,7 +76,7 @@ Scroll-to-top button.
 
 Page layout with slots.
 
-| Slot      | 说明              |
+| Slot      | Description       |
 | --------- | ----------------- |
 | `header`  | Header area       |
 | `sidebar` | Sidebar area      |
