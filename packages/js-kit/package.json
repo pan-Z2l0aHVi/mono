@@ -45,7 +45,8 @@
     "dev": "vp build --watch"
   },
   "dependencies": {
-    "remeda": "catalog:"
+    "remeda": "catalog:",
+    "nanoid": "catalog:"
   },
   "browserslist": [
     "defaults"

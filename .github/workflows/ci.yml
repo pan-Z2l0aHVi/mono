@@ -57,5 +57,8 @@ jobs:
       - name: Format + Lint + Type-check
         run: pnpm run check:code
 
+      - name: Install Playwright browsers
+        run: pnpm exec playwright install chromium
+
       - name: Test
         run: pnpm run test

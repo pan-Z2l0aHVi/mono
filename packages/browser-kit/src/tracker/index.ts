@@ -9,8 +9,7 @@
  * 5.自动降级：sendBeacon 失败时 fetch keepalive 兜底
  */
 
+export * from './core'
 export * from './plugins/batch-track'
-export * from './plugins/core'
-export * from './plugins/failure-retry'
 export * from './plugins/last-words'
 export * from './plugins/offline-restore'

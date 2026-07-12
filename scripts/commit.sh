@@ -113,7 +113,7 @@ fi
 if [ ${#BODY_LINES[@]} -gt 0 ]; then
   echo "" >&2
   echo "   Body:" >&2
-  for line in "${BODY_LINES[@]}"; do
+  for line in "${BODY_LINES[@]+"${BODY_LINES[@]}"}"; do
     echo "   ${line}" >&2
   done
 fi
@@ -128,12 +128,12 @@ fi
 # ── 提交 ──
 # 注意：commitlint 不支持 emoji 前缀，所以实际提交时只用 HEADER
 BODY_ARGS=()
-for line in "${BODY_LINES[@]}"; do
+for line in "${BODY_LINES[@]+"${BODY_LINES[@]}"}"; do
   BODY_ARGS+=(-m "$line")
 done
 
 if [ ${#BODY_ARGS[@]} -gt 0 ]; then
-  GIT_EDITOR=true git commit -m "${HEADER}" "${BODY_ARGS[@]}"
+  GIT_EDITOR=true git commit -m "${HEADER}" "${BODY_ARGS[@]+"${BODY_ARGS[@]}"}"
 else
   GIT_EDITOR=true git commit -m "${HEADER}"
 fi

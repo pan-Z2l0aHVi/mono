@@ -42,6 +42,7 @@
     "tsgo",
     "nsis",
     "pkill",
-    "unstub"
+    "unstub",
+    "indexeddb"
   ]
 }

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vite-plus/test'
 
 import { random, randomFloat, randomHex, randomRgb } from '..'
 
-describe('random 单元测试', () => {
+describe('random 测试', () => {
   describe('random', () => {
     it('结果应在指定的范围内', () => {
       const min = 1

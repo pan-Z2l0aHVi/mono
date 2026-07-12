@@ -59,6 +59,8 @@ dev-dist/
 # ==========================================
 coverage/
 __snapshots__/
+__screenshots__/
+.vitest-attachments/
 *.received.*
 .eslintcache
 .stylelintcache
@@ -105,18 +107,13 @@ report.html
 !.claude/settings.json
 !.claude/commands/
 !.claude/skills
+!.claude/rules
 # CLAUDE.md 放项目根目录，不在 .claude 内
 
 # OpenCode
 .opencode/*
 !.opencode/rules/
 !.opencode/settings.json
-
-# MimoCode
-.mimocode/*
-!.mimocode/rules/
-!.mimocode/settings.json
-!.mimocode/skills
 
 # Cursor
 .cursor/*
