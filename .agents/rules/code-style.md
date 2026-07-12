@@ -10,8 +10,35 @@
 
 ## 架构范式
 
-- 底层代码优先使用函数插件组合模式（参考 `js-kit/src/plugin/index.ts`）
+- 底层代码优先使用函数插件组合模式（参考 `js-kit/src/plugin-system/index.ts`）
 - 通过插件机制实现可扩展性，而非继承或类体系
+
+### 插件 Options 规范
+
+插件的配置参数遵循以下约定：
+
+- 可选字段必须在 `DEFAULT_OPTIONS` 中提供默认值，回调类参数默认 `() => {}`
+- 通过 `Required<Options>` 生成内部 `Config` 类型，确保运行时所有字段都有值
+
+```ts
+interface Options {
+  foo?: string
+  bar?: number
+}
+type Config = Required<Options>
+
+const DEFAULT_OPTIONS = {
+  foo: 'default',
+  bar: 42
+}
+
+export function defineXxx(options: Options) {
+  return definePlugin(() => {
+    const config = { ...DEFAULT_OPTIONS, ...options } as Config
+    // ...
+  })
+}
+```
 
 ## 函数风格
 
@@ -22,14 +49,15 @@
 ## 依赖管理
 
 - 优先使用 monorepo 已有的工具库（`@greypan/js-kit`, `@greypan/browser-kit` 等）
+- uuid 优先使用已有的 nanoid 库
 - 引入第三方依赖前必须经人工确认，不得自行添加
 
 ## 注释规范
 
-- 注释解释 **为什么**，不解释 **是什么**
+- 注释只解释 **为什么**，不解释 **是什么**
+- 避免冗余注释（代码已经很清楚的不需要注释）
 - 使用中文注释，技术术语可保留英文
 - JSDoc 用于公共 API，说明参数、返回值、异常
-- 避免冗余注释（代码已经很清楚的不需要注释）
 
 ## 类型安全
 
@@ -37,6 +65,8 @@
 - 使用泛型保持类型推导
 - Mock 函数需要类型参数：`vi.fn<Type>()`
 - Response 等类型需要显式断言：`as Response`
+- 返回 `void` 的函数不需要显式声明返回类型（TS 自动推导）
+- 类型定义和参数类型中的 `void` 保留（如 `type Fn = () => void`）
 
 ## 导入顺序
 

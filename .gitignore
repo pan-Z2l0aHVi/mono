@@ -115,7 +115,7 @@ report.html
 
 # MimoCode
 .mimocode/*
-!.mimocode/rules/
+!.mimocode/rules
 !.mimocode/settings.json
 !.mimocode/skills
 
