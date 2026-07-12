@@ -3,8 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
 import { defineLocal } from '@/storage'
 
-import { capturedRequests, clearCapturedRequests } from '../../../test-helper'
-import { worker } from '../../../test-helper'
+import { capturedRequests, clearCapturedRequests, worker } from '../../../test-helper'
 import { defineTracker } from '../core'
 
 vi.useFakeTimers()
