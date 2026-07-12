@@ -19,10 +19,16 @@
  * }, 800)
  */
 
-import { definePlugin } from '@/plugin'
+import { definePlugin } from '@/plugin-system'
 
-export function defineControllableInterval(callback: () => void, interval: number) {
+interface Options {
+  callback: () => void
+  interval: number
+}
+
+export function defineControllableInterval(options: Options) {
   return definePlugin(() => {
+    const { callback, interval } = options
     let timerId: ReturnType<typeof setTimeout> | null = null
     let isPaused = false
     let remainingTime = 0

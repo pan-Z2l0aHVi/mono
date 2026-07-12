@@ -1,91 +1,28 @@
 /**
  * @description
- * 离线时收集埋点数据先存本地，等到重连或页面刷新后再上报
- * 需要持久化，避免数据太大放不下，选用 indexDB 而不是 localStorage
+ * 离线恢复插件：离线时暂停上报 loop，在线时恢复
+ * 内部自动监听 online/offline 事件，无需外部调用
  */
 
 import { definePlugin, type PluginMade } from '@greypan/js-kit'
-import { del, get, update } from 'idb-keyval'
-import { isDeepEqual, uniqueWith } from 'remeda'
 
 import { on } from '@/shortcut'
 
-import type { defineTracker } from './core'
+import type { defineTracker } from '../core'
 
-type Options = {
-  restoreKey?: string
-  restoreMaxSize?: number
-}
-type Config = Required<Options>
-
-const DEFAULT_OPTIONS = {
-  restoreKey: 'tracker-restore',
-  restoreMaxSize: 1000 // 条
-}
-
-export function defineOfflineRestore(options: Options) {
+export function defineOfflineRestore() {
   return definePlugin((ctx: PluginMade<typeof defineTracker>) => {
-    const config: Config = { ...DEFAULT_OPTIONS, ...options }
-
-    let staged: object[] = []
-
-    async function track(data: object): Promise<void> {
-      if (!navigator.onLine) {
-        staged.push(data)
-        return // 离线时不发送，等待重连后恢复
-      }
-      return ctx.track(data)
+    // 启动时已离线，立即暂停
+    if (!navigator.onLine) {
+      ctx.pause()
     }
 
-    function save(): Promise<void> {
-      return update(config.restoreKey, (p: object[] = []) =>
-        uniqueWith([...p, ...staged], isDeepEqual).slice(-config.restoreMaxSize)
-      )
-    }
+    const controller = new AbortController()
+    const { signal } = controller
 
-    async function init(): Promise<void> {
-      const caches = await get<object[]>(config.restoreKey)
-      if (!caches || !caches.length) return
+    on(window, 'offline', () => ctx.pause(), { signal })
+    on(window, 'online', () => ctx.resume(), { signal })
 
-      await Promise.all(caches.map(cache => ctx.track(cache)))
-      staged = []
-      await del(config.restoreKey)
-    }
-
-    init().catch(console.error)
-
-    let controller: AbortController | null = null
-
-    function onOfflineRestore() {
-      if (controller) controller.abort()
-      controller = new AbortController()
-      const { signal } = controller
-      on(
-        window,
-        'offline',
-        () => {
-          if (staged.length) void save()
-        },
-        { signal }
-      )
-      on(
-        window,
-        'online',
-        () => {
-          void init()
-        },
-        { signal }
-      )
-    }
-
-    function offOfflineRestore() {
-      if (controller) controller.abort()
-    }
-
-    return {
-      track,
-      onOfflineRestore,
-      offOfflineRestore
-    }
+    return {}
   })
 }

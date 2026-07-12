@@ -46,7 +46,7 @@
   "dependencies": {
     "@greypan/browser-kit": "workspace:*",
     "@greypan/js-kit": "workspace:*",
-    "iconify-icon": "^3.0.2",
+    "iconify-icon": "catalog:",
     "lit": "catalog:"
   },
   "devDependencies": {

@@ -1,0 +1,46 @@
+{
+  "name": "@greypan/test-kit",
+  "version": "0.1.0",
+  "description": "Test infrastructure plugins for Vitest browser mode + MSW",
+  "license": "MIT",
+  "type": "module",
+  "files": [
+    "dist"
+  ],
+  "sideEffects": false,
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./*": {
+      "types": "./dist/*/index.d.ts",
+      "import": "./dist/*/index.js"
+    }
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "scripts": {
+    "build": "vue-tsc --build && vp build",
+    "test": "vp test run",
+    "type-check": "vue-tsc --build",
+    "dev": "vp build --watch"
+  },
+  "dependencies": {
+    "@greypan/js-kit": "workspace:*"
+  },
+  "peerDependencies": {
+    "msw": "catalog:"
+  },
+  "browserslist": [
+    "defaults"
+  ],
+  "devDependencies": {
+    "msw": "catalog:"
+  }
+}

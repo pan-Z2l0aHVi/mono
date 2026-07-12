@@ -2,7 +2,7 @@ import { createRootRoute } from '@tanstack/react-router'
 import { render } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vite-plus/test'
 
-import App from '../App'
+import App from '@/app'
 
 // 避免 tanstack router 代码分割报错，直接模拟路由树
 vi.mock('../routeTree.gen.ts', () => {

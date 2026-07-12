@@ -1,7 +1,7 @@
 import { mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vite-plus/test'
 
-import App from '../App.vue'
+import App from '@/app/index.vue'
 
 describe('App 挂载测试', () => {
   it('组件应当成功渲染到 DOM', () => {

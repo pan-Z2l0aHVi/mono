@@ -44,6 +44,7 @@
     "glob": "catalog:",
     "jsdom": "catalog:",
     "lightningcss": "catalog:",
+    "playwright": "catalog:",
     "rollup-plugin-visualizer": "catalog:",
     "stylelint": "catalog:",
     "stylelint-config-clean-order": "catalog:",

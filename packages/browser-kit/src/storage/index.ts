@@ -10,14 +10,20 @@ interface Pkg<T> {
   t?: number
 }
 
-export interface StorageOptions {
+interface StorageOptions {
   namespace?: string
+}
+type StorageConfig = Required<StorageOptions>
+
+const STORAGE_DEFAULT_OPTIONS = {
+  namespace: ''
 }
 
 function defineStorage(type: StorageType, options: StorageOptions = {}) {
   return definePlugin(() => {
+    const config = { ...STORAGE_DEFAULT_OPTIONS, ...options } as StorageConfig
     const store = typeof window !== 'undefined' ? window[`${type}Storage`] : ({} as globalThis.Storage)
-    const prefix = options.namespace ? `${options.namespace}:` : ''
+    const prefix = config.namespace ? `${config.namespace}:` : ''
 
     function getRealKey(key: string): string {
       return `${prefix}${key}`
@@ -31,24 +37,28 @@ function defineStorage(type: StorageType, options: StorageOptions = {}) {
       return {
         m: PKG_MARK,
         v: val,
-        t: ttl ? Date.now() + ttl : undefined
+        t: ttl !== undefined ? Date.now() + ttl : undefined
       }
     }
 
-    function unPkg<T>(key: string, raw: string | null): T | null {
+    function unPkg<T>(raw: string | null): T | null {
       if (raw === null) return null
 
       try {
         const pkg: unknown = JSON.parse(raw)
         if (!isPkg<T>(pkg)) return raw as T
-
-        if (pkg.t && Date.now() > pkg.t) {
-          remove(key)
-          return null
-        }
         return pkg.v
       } catch {
         return raw as T
+      }
+    }
+
+    function isExpired(raw: string): boolean {
+      try {
+        const pkg: unknown = JSON.parse(raw)
+        return isPkg(pkg) && !!pkg.t && Date.now() >= pkg.t
+      } catch {
+        return false
       }
     }
 
@@ -61,7 +71,22 @@ function defineStorage(type: StorageType, options: StorageOptions = {}) {
       const raw = store.getItem(realKey)
       if (raw === null) return def
 
-      return unPkg(key, raw) ?? def
+      let pkg: unknown
+      try {
+        pkg = JSON.parse(raw)
+      } catch {
+        return raw as T
+      }
+
+      if (isPkg<T>(pkg)) {
+        if (pkg.t && Date.now() >= pkg.t) {
+          remove(key)
+          return def
+        }
+        return pkg.v
+      }
+
+      return raw as T
     }
 
     function has(key: string): boolean {
@@ -72,7 +97,6 @@ function defineStorage(type: StorageType, options: StorageOptions = {}) {
      * @param key
      * @param val
      * @param ttl 有效期持续时间，单位 ms
-     * @returns 存入成功与否
      */
     function set<T>(key: string, val: T, ttl?: number) {
       if (val === undefined) return remove(key)
@@ -99,10 +123,8 @@ function defineStorage(type: StorageType, options: StorageOptions = {}) {
     function clearUseless() {
       Reflect.ownKeys(store).forEach(realKey => {
         if (typeof realKey === 'string' && realKey.startsWith(prefix)) {
-          // 还原为不带 prefix 的业务 key，因为 unPkg 内部会再次 getRealKey
-          const key = realKey.slice(prefix.length)
-          // 逐一解包，unPkg 副作用会自动清除无效数据
-          unPkg(key, store.getItem(realKey))
+          const raw = store.getItem(realKey)
+          if (raw && isExpired(raw)) store.removeItem(realKey)
         }
       })
     }
@@ -115,13 +137,13 @@ function defineStorage(type: StorageType, options: StorageOptions = {}) {
       })
     }
 
-    function isQuotaExceeded(err: unknown): boolean {
+    function isQuotaExceeded(err: unknown) {
       return (
         err instanceof DOMException && (err.name === 'QuotaExceededError' || err.name === 'NS_ERROR_DOM_QUOTA_REACHED')
       )
     }
 
-    // 同页面不触发：在当前标签页执行 storage.set 时，当前标签页的 on 监听器不会触发，只有其他标签页会收到通知
+    // 当前标签页的 storage 事件不会触发，需要其他方式通知（如 BroadcastChannel）
     function watch<T>(key: string, callback: (newValue: T | null, oldValue: T | null) => void): () => void {
       const controller = new AbortController()
       on(
@@ -130,7 +152,10 @@ function defineStorage(type: StorageType, options: StorageOptions = {}) {
         e => {
           if (e.key !== getRealKey(key)) return
 
-          callback(unPkg(key, e.newValue), unPkg(key, e.oldValue))
+          callback(
+            e.newValue && isExpired(e.newValue) ? null : unPkg(e.newValue),
+            e.oldValue && isExpired(e.oldValue) ? null : unPkg(e.oldValue)
+          )
         },
         {
           signal: controller.signal

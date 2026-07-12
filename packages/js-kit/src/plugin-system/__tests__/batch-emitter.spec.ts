@@ -2,16 +2,16 @@ import { describe, expect, it, vi } from 'vite-plus/test'
 
 import { defineBatchEmitter } from '..'
 
-describe('BatchEmitter 单元测试', () => {
+describe('BatchEmitter 测试', () => {
   it('立即返回单个 id，当 delay <= 0', async () => {
-    const batchEmitter = defineBatchEmitter().make()
+    const batchEmitter = defineBatchEmitter<string>().make()
     const { batchEmit } = batchEmitter
     const result = await batchEmit('a', 0)
     expect(result).toEqual(['a'])
   })
 
   it('延迟后批量返回多个 id', async () => {
-    const batchEmitter = defineBatchEmitter().make()
+    const batchEmitter = defineBatchEmitter<string>().make()
     const { batchEmit } = batchEmitter
     const p1 = batchEmit('a', 10)
     const p2 = batchEmit('b', 10)
@@ -23,8 +23,8 @@ describe('BatchEmitter 单元测试', () => {
   })
 
   it('flush 可以同步清空队列并调用 onFlushed', async () => {
-    const onFlushed = vi.fn()
-    const batchEmitter = defineBatchEmitter(onFlushed).make()
+    const onFlushed = vi.fn<(queue: unknown[]) => Promise<void>>()
+    const batchEmitter = defineBatchEmitter<number>({ onFlushed }).make()
     const { batchEmit, flush } = batchEmitter
 
     const p1 = batchEmit(1, 100)
@@ -39,10 +39,33 @@ describe('BatchEmitter 单元测试', () => {
   })
 
   it('flush 在队列为空时不做任何事', async () => {
-    const onFlushed = vi.fn()
-    const batchEmitter = defineBatchEmitter(onFlushed).make()
+    const onFlushed = vi.fn<(queue: unknown[]) => Promise<void>>()
+    const batchEmitter = defineBatchEmitter({ onFlushed }).make()
     const { flush } = batchEmitter
     flush()
     expect(onFlushed).not.toHaveBeenCalled()
+  })
+
+  it('onFlushed 抛异常不应阻塞 batchEmit 的 resolve', async () => {
+    const batchEmitter = defineBatchEmitter<number>({
+      onFlushed: () => {
+        throw new Error('flush failed')
+      }
+    }).make()
+    const { batchEmit } = batchEmitter
+
+    const result = await batchEmit(1, 0)
+    expect(result).toEqual([1])
+  })
+
+  it('未提供 onFlushed 时不应报错', async () => {
+    const batchEmitter = defineBatchEmitter<string>().make()
+    const { batchEmit, flush } = batchEmitter
+
+    const result = await batchEmit('a', 0)
+    expect(result).toEqual(['a'])
+
+    void batchEmit('b', 100)
+    expect(() => flush()).not.toThrow()
   })
 })

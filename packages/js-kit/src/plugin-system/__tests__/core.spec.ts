@@ -2,13 +2,16 @@ import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
 import { definePlugin, type PluginMade } from '../core'
 
-describe('definePlugin 单元测试', () => {
+describe('definePlugin 测试', () => {
   const localStorageMock = (() => {
     let store: Record<string, string> = {}
     return {
-      getItem: (key: string) => store[key] || null,
+      getItem: (key: string) => store[key] ?? null,
       setItem: (key: string, value: string) => {
         store[key] = value.toString()
+      },
+      removeItem: (key: string) => {
+        delete store[key]
       },
       clear: () => {
         store = {}
@@ -19,7 +22,7 @@ describe('definePlugin 单元测试', () => {
 
   beforeEach(() => {
     localStorage.clear()
-    vi.restoreAllMocks()
+    vi.clearAllMocks()
   })
 
   describe('make', () => {

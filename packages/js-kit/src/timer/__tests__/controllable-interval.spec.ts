@@ -2,15 +2,15 @@ import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
 import { defineControllableInterval } from '..'
 
-describe('timer 单元测试', () => {
+describe('timer 测试', () => {
   describe('ControllableInterval', () => {
     beforeEach(() => {
       vi.useFakeTimers()
     })
 
     it('应当能正常循环执行', () => {
-      const cb = vi.fn()
-      const timer = defineControllableInterval(cb, 1000).make()
+      const cb = vi.fn<() => void>()
+      const timer = defineControllableInterval({ callback: cb, interval: 1000 }).make()
       timer.start()
 
       vi.advanceTimersByTime(3500)
@@ -19,8 +19,8 @@ describe('timer 单元测试', () => {
     })
 
     it('暂停后不应触发回调', () => {
-      const cb = vi.fn()
-      const timer = defineControllableInterval(cb, 1000).make()
+      const cb = vi.fn<() => void>()
+      const timer = defineControllableInterval({ callback: cb, interval: 1000 }).make()
       timer.start()
 
       vi.advanceTimersByTime(500)
@@ -32,8 +32,8 @@ describe('timer 单元测试', () => {
     })
 
     it('恢复后应先补全剩余时间', () => {
-      const cb = vi.fn()
-      const timer = defineControllableInterval(cb, 1000).make()
+      const cb = vi.fn<() => void>()
+      const timer = defineControllableInterval({ callback: cb, interval: 1000 }).make()
       timer.start()
 
       vi.advanceTimersByTime(800) // 此时还剩 200ms
