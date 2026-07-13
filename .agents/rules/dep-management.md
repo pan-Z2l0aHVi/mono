@@ -7,8 +7,7 @@
 | 共享工具链             | 根 `devDependencies`   | `typescript`, `turbo`, `vite`, `vite-plus`, `vue-tsc`, `cspell`, `stylelint*`, `@changesets/cli`                                     |
 | Vite/rolldown 插件生态 | 根 `devDependencies`   | `@vitejs/plugin-react`, `@vitejs/plugin-vue`, `@tanstack/router-plugin`, `vite-plugin-*`, `@rolldown/plugin-babel`, `babel-plugin-*` |
 | 框架私有工具           | 子包 `devDependencies` | `@testing-library/react`, `@vue/test-utils`, `@types/react`, `@types/react-dom`, `unplugin-auto-import`                              |
-| 测试基础设施（包私有） | 子包 `devDependencies` | `@vitest/browser-playwright`, `playwright`                                                                                           |
-| 测试基础设施（共享）   | 根 `devDependencies`   | `jsdom`, `@types/jsdom`, `msw`                                                                                                       |
+| 测试基础设施（共享）   | 根 `devDependencies`   | `jsdom`, `@types/jsdom`, `msw`, `@vitest/browser-playwright`, `playwright`                                                           |
 
 **原则**：
 

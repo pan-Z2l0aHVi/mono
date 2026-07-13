@@ -46,9 +46,7 @@
     "msw": "catalog:"
   },
   "devDependencies": {
-    "@greypan/test-kit": "workspace:*",
-    "@vitest/browser-playwright": "catalog:",
-    "playwright": "catalog:"
+    "@greypan/test-kit": "workspace:*"
   },
   "browserslist": [
     "defaults"
