@@ -1,26 +1,26 @@
 # AGENTS.md
 
-## 文档维护规则
+## Document maintenance
 
-**当你的改动涉及以下任一类别时，必须同步更新本文档对应章节：**
+When your changes fall into any category below, update the corresponding sections of this document:
 
-| 改动类别             | 需要更新的章节                      | 触发条件                                                                           |
-| -------------------- | ----------------------------------- | ---------------------------------------------------------------------------------- |
-| 构建脚本/流程        | Build architecture, Key commands    | 修改 `package.json` 的 `scripts`、`vite.config.ts` 的 build 配置、turbo.json tasks |
-| 包增删重命名         | Package structure, Dependency graph | 添加/删除/重命名 `packages/` 或 `apps/` 下的目录                                   |
-| Externalization 策略 | Externalization rules               | 修改 `vite.config.ts` 的 `rollupOptions.external`                                  |
-| CI/CD workflow       | CI, Release                         | 修改 `.github/workflows/` 下的文件                                                 |
-| 代码规范工具         | Linting & formatting                | 修改 linter、formatter、stylelint、cspell 配置                                     |
-| 依赖管理方式         | Dependency management               | 修改 `pnpm-workspace.yaml` catalog、changeset 配置                                 |
-| 运行时/工具链版本    | Toolchain                           | 修改 `.mise.toml`、`package.json` engines                                          |
-| 测试配置             | Testing                             | 修改 `vite.config.ts` 的 test 配置、测试框架                                       |
+| Change category       | Sections to update                  | Trigger                                                                            |
+| --------------------- | ----------------------------------- | ---------------------------------------------------------------------------------- |
+| Build scripts/flow    | Build architecture, Key commands    | Changes to `package.json` scripts, `vite.config.ts` build config, turbo.json tasks |
+| Package add/rename    | Package structure, Dependency graph | Adding/removing/renaming a directory under `packages/` or `apps/`                  |
+| Externalization       | Externalization rules               | Changes to `vite.config.ts` `rollupOptions.external`                               |
+| CI/CD workflow        | CI, Release                         | Changes to files under `.github/workflows/`                                        |
+| Code quality tools    | Linting & formatting                | Changes to linter, formatter, stylelint, cspell config                             |
+| Dependency management | Dependency management               | Changes to `pnpm-workspace.yaml` catalog, changeset config                         |
+| Runtime/toolchain     | Toolchain                           | Changes to `.mise.toml`, `package.json` engines                                    |
+| Test config           | Testing                             | Changes to `vite.config.ts` test config, test framework                            |
 
-**执行规则：**
+Rules:
 
-1. 执行改动前，先读取相关章节，确认当前文档内容
-2. 执行改动后，立即更新文档，不要留到以后
-3. 如果不确定改动是否需要更新文档，**主动询问用户**
-4. 文档更新应与代码改动在同一个 commit 中提交
+1. Read the relevant sections before making changes to confirm current documentation
+2. Update documentation immediately after changes, never postpone
+3. If unsure whether a change requires documentation updates, **ask the user**
+4. Documentation updates should land in the same commit as code changes
 
 ---
 
@@ -45,7 +45,6 @@ pnpm monorepo (`apps/**`, `packages/**`) using Turborepo. Packages published und
 | `pnpm test`                                       | Run all tests                                 |
 | `pnpm commit`                                     | Interactive conventional commit via cz-git    |
 | `bash scripts/commit.sh <type> <scope> <subject>` | Non-interactive commit (useful for agents)    |
-| `pnpm check:lockfile`                             | Verify lockfile has no duplicates             |
 | `pnpm dev:react-app-demo`                         | Dev server for React app (with turbo watch)   |
 | `pnpm dev:vue-app-demo`                           | Dev server for Vue app (with turbo watch)     |
 | `pnpm run check:code`                             | Format + lint + type-check (what CI runs)     |
@@ -116,7 +115,7 @@ See `commitlint.config.js` and `.agents/rules/commit.md`. Use `bash scripts/comm
 
 ## CI / Release
 
-- **CI** (`ci.yml`): lockfile check → changeset status → build → format+lint+type-check → test
+- **CI** (`ci.yml`): changeset status → build → format+lint+type-check → test
 - **Release** (`release.yml`): changesets with `changesets/action@v1`. Demo apps excluded from versioning.
 - **New package first publish**: `pnpm publish:new <package-dir>` — builds and publishes 1.0.0 via `npm publish`. Requires `npm login` beforehand. After first publish, configure Trusted Publisher on npmjs.com so CI handles subsequent releases.
 
@@ -159,9 +158,10 @@ They are excluded from linting, formatting, and spell-check.
 
 ## Dependency management
 
-- **Catalog**: All shared dependencies are versioned in `pnpm-workspace.yaml` under `catalog:`. Use `catalog:` references in package.json to pin versions centrally. Only truly package-specific deps (used by a single package) may keep hardcoded versions.
-- **Lockfile**: After dependency changes, run `pnpm dedupe` then `pnpm check:lockfile` to avoid CI failures.
-- **Adding new deps**: When adding a dependency used by multiple packages, always add it to the catalog first, then reference `catalog:` in each package.json.
+- **Catalog**: All dependencies versioned in `pnpm-workspace.yaml catalog:`. Use `catalog:` references in package.json to unify versions across the workspace.
+- **Catalog mode**: `catalogMode: prefer` — pnpm prefers catalog versions when resolving workspace dependencies.
+- **Lockfile**: `pnpm install --frozen-lockfile` (CI) ensures package.json and lockfile stay in sync.
+- **devDependencies / peerDependencies placement rules** refer to `.agents/rules/dep-management.md`.
 
 ## Other gotchas
 
@@ -174,9 +174,10 @@ They are excluded from linting, formatting, and spell-check.
 Rules are stored in `.agents/rules/` and symlinked to `.claude/rules`:
 
 - `testing.md` — test coverage, edge cases, degradation scenarios
-- `code-style.md` — naming, comments, type safety, plugin Options 规范
+- `code-style.md` — naming, comments, type safety, plugin Options conventions
 - `review-checklist.md` — review checkpoints
 - `commit.md` — commit conventions, workflow, anti-patterns
+- `dep-management.md` — devDependencies/peerDependencies placement strategy
 
 ## Agent skills
 

@@ -1,6 +1,7 @@
 {
   "name": "@greypan/web-ui",
   "version": "1.2.3",
+  "description": "Lit-based web components for React, Vue, and vanilla JS",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -46,18 +47,23 @@
   "dependencies": {
     "@greypan/browser-kit": "workspace:*",
     "@greypan/js-kit": "workspace:*",
-    "iconify-icon": "catalog:",
-    "lit": "catalog:"
+    "iconify-icon": "catalog:"
   },
   "devDependencies": {
+    "lit": "catalog:",
+    "@types/react": "catalog:",
     "react": "catalog:",
     "vue": "catalog:"
   },
   "peerDependencies": {
+    "lit": "catalog:",
     "react": ">=16",
     "vue": ">=3"
   },
   "peerDependenciesMeta": {
+    "lit": {
+      "optional": false
+    },
     "react": {
       "optional": true
     },
@@ -67,6 +73,5 @@
   },
   "browserslist": [
     "defaults"
-  ],
-  "description": "Lit-based web components for React, Vue, and vanilla JS"
+  ]
 }
