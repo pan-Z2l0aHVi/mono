@@ -36,13 +36,10 @@ describe('亡语插件测试用例', () => {
   })
 
   it('beforeunload 应触发 flush', async () => {
-    const tracker = defineTracker({ url: 'https://example.com' })
-      .use(defineBatchTrack({ defaultBatchDelay: 0 }))
-      .use(defineLastWords())
-      .make()
+    const tracker = defineTracker({ url: 'https://example.com' }).use(defineBatchTrack()).use(defineLastWords()).make()
 
-    // defaultBatchDelay: 0 时 track 直接发送，验证数据通过 MSW 捕获
     tracker.track({ event: 'before-close' })
+    vi.advanceTimersByTime(500)
     await waitForMsw()
 
     expect(capturedRequests.length).toBeGreaterThanOrEqual(1)
@@ -51,6 +48,7 @@ describe('亡语插件测试用例', () => {
     // 因此不在这里 dispatch，仅验证插件注册不会抛异常）
     clearCapturedRequests()
     tracker.track({ event: 'new-data' })
+    vi.advanceTimersByTime(500)
     await waitForMsw()
 
     expect(capturedRequests.length).toBeGreaterThanOrEqual(1)
@@ -60,7 +58,7 @@ describe('亡语插件测试用例', () => {
     Object.defineProperty(navigator, 'onLine', { value: false, configurable: true })
 
     const tracker = defineTracker({ url: 'https://example.com' })
-      .use(defineBatchTrack({ defaultBatchDelay: 0 }))
+      .use(defineBatchTrack())
       .use(defineOfflineRestore())
       .use(defineLastWords())
       .make()
@@ -73,6 +71,7 @@ describe('亡语插件测试用例', () => {
     // 第一次 hidden → flush 积压数据
     Object.defineProperty(document, 'visibilityState', { value: 'hidden', configurable: true })
     document.dispatchEvent(new Event('visibilitychange'))
+    vi.advanceTimersByTime(500)
     await waitForMsw()
 
     expect(capturedRequests.length).toBeGreaterThanOrEqual(1)
@@ -94,6 +93,7 @@ describe('亡语插件测试用例', () => {
     // 第二次 hidden → 应再次 flush
     Object.defineProperty(document, 'visibilityState', { value: 'hidden', configurable: true })
     document.dispatchEvent(new Event('visibilitychange'))
+    vi.advanceTimersByTime(500)
     await waitForMsw()
 
     expect(capturedRequests.length).toBeGreaterThanOrEqual(1)
