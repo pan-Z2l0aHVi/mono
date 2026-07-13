@@ -1,5 +1,11 @@
 # @greypan/js-kit
 
+## 1.5.1
+
+### Patch Changes
+
+- 8f4643d: Audit and reorganize devDependencies/peerDependencies across all packages
+
 ## 1.5.0
 
 ### Minor Changes

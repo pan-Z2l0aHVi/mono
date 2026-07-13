@@ -1,5 +1,14 @@
 # @greypan/web-ui
 
+## 1.2.4
+
+### Patch Changes
+
+- 8f4643d: Audit and reorganize devDependencies/peerDependencies across all packages
+- Updated dependencies [8f4643d]
+  - @greypan/browser-kit@1.6.1
+  - @greypan/js-kit@1.5.1
+
 ## 1.2.3
 
 ### Patch Changes
