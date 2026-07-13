@@ -1,5 +1,15 @@
 # @greypan/web-ui
 
+## 1.2.3
+
+### Patch Changes
+
+- a06335a: upgrade agents doc
+- Updated dependencies [a06335a]
+- Updated dependencies [a06335a]
+  - @greypan/browser-kit@1.6.0
+  - @greypan/js-kit@1.5.0
+
 ## 1.2.2
 
 ### Patch Changes
