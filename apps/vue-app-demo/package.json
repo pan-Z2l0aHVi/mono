@@ -23,7 +23,9 @@
   },
   "devDependencies": {
     "@greypan/vite-plugin-full-reload": "workspace:*",
-    "@greypan/unplugin-web-components": "workspace:*"
+    "@greypan/unplugin-web-components": "workspace:*",
+    "@vue/test-utils": "catalog:",
+    "unplugin-auto-import": "catalog:"
   },
   "browserslist": {
     "development": [

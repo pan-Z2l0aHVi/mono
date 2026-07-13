@@ -43,8 +43,5 @@
   },
   "browserslist": [
     "defaults"
-  ],
-  "devDependencies": {
-    "msw": "catalog:"
-  }
+  ]
 }
