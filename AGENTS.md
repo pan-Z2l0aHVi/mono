@@ -45,7 +45,6 @@ pnpm monorepo (`apps/**`, `packages/**`) using Turborepo. Packages published und
 | `pnpm test`                                       | Run all tests                                 |
 | `pnpm commit`                                     | Interactive conventional commit via cz-git    |
 | `bash scripts/commit.sh <type> <scope> <subject>` | Non-interactive commit (useful for agents)    |
-| `pnpm check:lockfile`                             | Verify lockfile has no duplicates             |
 | `pnpm dev:react-app-demo`                         | Dev server for React app (with turbo watch)   |
 | `pnpm dev:vue-app-demo`                           | Dev server for Vue app (with turbo watch)     |
 | `pnpm run check:code`                             | Format + lint + type-check (what CI runs)     |
@@ -116,7 +115,7 @@ See `commitlint.config.js` and `.agents/rules/commit.md`. Use `bash scripts/comm
 
 ## CI / Release
 
-- **CI** (`ci.yml`): lockfile check → changeset status → build → format+lint+type-check → test
+- **CI** (`ci.yml`): changeset status → build → format+lint+type-check → test
 - **Release** (`release.yml`): changesets with `changesets/action@v1`. Demo apps excluded from versioning.
 - **New package first publish**: `pnpm publish:new <package-dir>` — builds and publishes 1.0.0 via `npm publish`. Requires `npm login` beforehand. After first publish, configure Trusted Publisher on npmjs.com so CI handles subsequent releases.
 
@@ -161,7 +160,7 @@ They are excluded from linting, formatting, and spell-check.
 
 - **Catalog**: All dependencies versioned in `pnpm-workspace.yaml catalog:`. Use `catalog:` references in package.json to unify versions across the workspace.
 - **Catalog mode**: `catalogMode: prefer` — pnpm prefers catalog versions when resolving workspace dependencies.
-- **Lockfile**: After dependency changes, run `pnpm dedupe` then `pnpm check:lockfile` to avoid CI failures.
+- **Lockfile**: `pnpm install --frozen-lockfile` (CI) ensures package.json and lockfile stay in sync.
 - **devDependencies / peerDependencies placement rules** refer to `.agents/rules/dep-management.md`.
 
 ## Other gotchas
