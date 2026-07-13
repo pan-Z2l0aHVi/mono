@@ -1,5 +1,15 @@
 # @greypan/js-kit
 
+## 1.5.0
+
+### Minor Changes
+
+- a06335a: refactor tracker and storage
+
+### Patch Changes
+
+- a06335a: upgrade agents doc
+
 ## 1.4.0
 
 ### Minor Changes
