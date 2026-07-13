@@ -2,7 +2,7 @@
 
 ## 工具说明
 
-- **Lint & fmt**: 由 `vite-plus` 集成的 oxc 工具链（lint + fmt），规则名与 ESLint/Prettier 不同，需查 oxc 文档
+- **Lint & fmt**：由 `vite-plus` 集成的 oxc 工具链（lint + fmt），规则名与 ESLint/Prettier 不同，需查 oxc 文档
 
 ## 命名约定
 
@@ -10,11 +10,11 @@
 - 类型/接口：PascalCase（如 `Options`, `Config`）
 - 函数/变量：camelCase（如 `ensureQueue`, `retrying`）
 - 常量：UPPER_SNAKE_CASE（如 `DEFAULT_OPTIONS`）
-- 布尔变量：`is`/`has`/`can` 前缀（如 `queueReady`）
+- 布尔变量：`is`/`has`/`can` 前缀（如 `isReady`, `hasPermission`, `canEdit`）
 
 ## 架构范式
 
-- 底层代码优先使用函数插件组合模式（参考 `js-kit/src/plugin-system/index.ts`）
+- 底层代码优先使用函数插件组合模式（参考 `packages/js-kit/src/plugin-system/index.ts`）
 - 通过插件机制实现可扩展性，而非继承或类体系
 
 ### 插件 Options 规范
@@ -94,8 +94,8 @@ export function defineXxx(options: Options) {
 - 内部辅助函数放在导出函数之后
 - 类型定义放在文件顶部或单独的类型文件
 
-## React HMR 规则
+## React HMR 规则（仅 `.jsx` / `.tsx` 文件）
 
-- **Never use anonymous default exports** in React components: `export default () => {}` breaks Fast Refresh
-- Always use named function declarations: `function MyComponent() {} export default MyComponent`
-- This is enforced by `unicorn/no-anonymous-default-export` in the oxlint config
+- **禁止使用匿名 default export**：`export default () => {}` 会导致 Fast Refresh 失效
+- 使用具名函数声明：`function MyComponent() {} export default MyComponent`
+- 由 oxlint 的 `unicorn/no-anonymous-default-export` 规则强制执行
