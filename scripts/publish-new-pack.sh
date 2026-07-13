@@ -1,16 +1,14 @@
 #!/usr/bin/env bash
-# scripts/publish-new-pack.sh — 新增子包的首次手动发版（走 changeset 流程）
+# scripts/publish-new-pack.sh — 新增子包的首次发版（直接发布 1.0.0）
 #
 # 用法:
-#   bash scripts/publish-new-pack.sh <package-dir> [bump-type]
+#   bash scripts/publish-new-pack.sh <package-dir>
 #
 # 示例:
-#   bash scripts/publish-new-pack.sh my-new-kit          # 默认 major → 1.0.0
-#   bash scripts/publish-new-pack.sh my-new-kit minor    # → 0.1.0
-#
-# bump-type: major | minor | patch（默认 major）
+#   bash scripts/publish-new-pack.sh my-new-kit
 #
 # 前提: 已执行 npm login --registry https://registry.npmjs.org/
+# 或本地 .npmrc 已配置 Automation token。
 
 set -euo pipefail
 
@@ -19,14 +17,14 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m'
 
+# ── 参数校验 ──
 if [ $# -lt 1 ]; then
-  echo "用法: bash scripts/publish-new-pack.sh <package-dir> [major|minor|patch]" >&2
+  echo "用法: bash scripts/publish-new-pack.sh <package-dir>" >&2
   exit 1
 fi
 
 PKG_NAME="$1"
 PKG_DIR="packages/$PKG_NAME"
-BUMP="${2:-major}"
 
 if [ ! -d "$PKG_DIR" ]; then
   echo -e "${RED}❌ 包目录不存在: $PKG_DIR${NC}" >&2
@@ -34,41 +32,35 @@ if [ ! -d "$PKG_DIR" ]; then
 fi
 
 PACKAGE_JSON="$PKG_DIR/package.json"
-PKG_VERSION=$(grep '"version"' "$PACKAGE_JSON" | sed 's/.*"\(.*\)".*/\1/')
 
-echo -e "${GREEN}📦 首次发布 @greypan/$PKG_NAME${NC}"
-echo "   当前版本: $PKG_VERSION"
-echo "   bump 类型: $BUMP"
+if [ ! -f "$PACKAGE_JSON" ]; then
+  echo -e "${RED}❌ package.json 不存在: $PACKAGE_JSON${NC}" >&2
+  exit 1
+fi
 
-# 生成 changeset
-CHANGESET_FILE=".changeset/publish-$PKG_NAME.md"
-cat > "$CHANGESET_FILE" <<EOF
----
-"@greypan/$PKG_NAME": $BUMP
----
+# 用 node 提取版本号
+PKG_VERSION=$(node -e "console.log(require('./$PACKAGE_JSON').version)")
 
-首次发布 @greypan/$PKG_NAME
-EOF
+if [ "$PKG_VERSION" != "1.0.0" ]; then
+  echo -e "${RED}❌ 版本号必须是 1.0.0，当前: $PKG_VERSION${NC}" >&2
+  echo "   新包首次发版固定为 1.0.0" >&2
+  exit 1
+fi
 
-echo -e "${YELLOW}→ 创建 changeset: $CHANGESET_FILE${NC}"
+echo -e "${GREEN}📦 首次发布 @greypan/$PKG_NAME@1.0.0${NC}"
 
-# 消耗 changeset，更新版本号
-echo "→ 更新版本号..."
-mise x -- pnpm changeset version
-
-NEW_VERSION=$(grep '"version"' "$PACKAGE_JSON" | sed 's/.*"\(.*\)".*/\1/')
-echo "   新版本: $NEW_VERSION"
-
-# 构建
+# ── 构建 ──
 echo "→ 构建..."
 mise x -- pnpm build
 
-# 发布
+# ── 发布 ──
 echo "→ 发布..."
-mise x -- pnpm changeset publish
+cd "$PKG_DIR"
+mise x -- npm publish --registry https://registry.npmjs.org/
+cd -
 
 echo ""
-echo -e "${GREEN}✅ @greypan/$PKG_NAME@$NEW_VERSION 发布成功！${NC}"
+echo -e "${GREEN}✅ @greypan/$PKG_NAME@1.0.0 发布成功！${NC}"
 echo ""
 echo "🔐 接下来去 npmjs.com → @greypan/$PKG_NAME → Settings → Trusted Publisher 配置："
 echo "   Organization: pan-Z2l0aHVi"
@@ -76,6 +68,3 @@ echo "   Repository:   mono"
 echo "   Workflow:     release.yml"
 echo ""
 echo "   配好之后，后续所有发版只需 git tag && git push --tags。"
-echo ""
-echo "⚠️  别忘了提交 changeset 产生的 CHANGELOG 和版本变更："
-echo "   git add -A && git commit -m 'chore: publish @greypan/$PKG_NAME' && git push"
