@@ -3,6 +3,10 @@
   "version": "0.1.1",
   "description": "Test infrastructure plugins for Vitest browser mode + MSW",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pan-Z2l0aHVi/mono.git"
+  },
   "type": "module",
   "files": [
     "dist"
