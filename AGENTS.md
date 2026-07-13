@@ -51,6 +51,7 @@ pnpm monorepo (`apps/**`, `packages/**`) using Turborepo. Packages published und
 | `pnpm run check:code`                             | Format + lint + type-check (what CI runs)     |
 | `pnpm clean`                                      | Remove `dist/`, `.turbo/`, `.vite/`, `build/` |
 | `pnpm clean --full`                               | Also remove `node_modules` and lockfile       |
+| `pnpm publish:new <package-dir>`                  | First publish of a new package (1.0.0)        |
 
 ### Per-package commands
 
@@ -117,6 +118,7 @@ See `commitlint.config.js` and `.agents/rules/commit.md`. Use `bash scripts/comm
 
 - **CI** (`ci.yml`): lockfile check → changeset status → build → format+lint+type-check → test
 - **Release** (`release.yml`): changesets with `changesets/action@v1`. Demo apps excluded from versioning.
+- **New package first publish**: `pnpm publish:new <package-dir>` — builds and publishes 1.0.0 via `npm publish`. Requires `npm login` beforehand. After first publish, configure Trusted Publisher on npmjs.com so CI handles subsequent releases.
 
 ## Linting & formatting
 
@@ -175,3 +177,13 @@ Rules are stored in `.agents/rules/` and symlinked to `.claude/rules`:
 - `code-style.md` — naming, comments, type safety, plugin Options 规范
 - `review-checklist.md` — review checkpoints
 - `commit.md` — commit conventions, workflow, anti-patterns
+
+## Agent skills
+
+### Issue tracker
+
+Issues tracked on GitHub. See `docs/agents/issue-tracker.md`.
+
+### Domain docs
+
+Single-context layout (one `CONTEXT.md` + `docs/adr/` at repo root). See `docs/agents/domain.md`.
