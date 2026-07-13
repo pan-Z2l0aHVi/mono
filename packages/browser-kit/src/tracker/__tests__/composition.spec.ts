@@ -44,7 +44,7 @@ describe('插件组合测试', () => {
   describe('推荐顺序：batch → offline → last-words', () => {
     function createTracker() {
       return defineTracker({ url: 'https://example.com' })
-        .use(defineBatchTrack({ defaultBatchDelay: 0 }))
+        .use(defineBatchTrack())
         .use(defineOfflineRestore())
         .use(defineLastWords())
         .make()
@@ -88,7 +88,7 @@ describe('插件组合测试', () => {
   describe('不同顺序：batch → offline', () => {
     it('仍然能正常上报', async () => {
       const tracker = defineTracker({ url: 'https://example.com' })
-        .use(defineBatchTrack({ defaultBatchDelay: 0 }))
+        .use(defineBatchTrack())
         .use(defineOfflineRestore())
         .make()
 
@@ -102,7 +102,7 @@ describe('插件组合测试', () => {
       Object.defineProperty(navigator, 'onLine', { value: false })
 
       const tracker = defineTracker({ url: 'https://example.com' })
-        .use(defineBatchTrack({ defaultBatchDelay: 0 }))
+        .use(defineBatchTrack())
         .use(defineOfflineRestore())
         .make()
 
@@ -136,7 +136,7 @@ describe('插件组合测试', () => {
       Object.defineProperty(navigator, 'onLine', { value: false })
 
       const tracker = defineTracker({ url: 'https://example.com' })
-        .use(defineBatchTrack({ defaultBatchDelay: 0 }))
+        .use(defineBatchTrack())
         .use(defineOfflineRestore())
         .use(defineLastWords())
         .make()

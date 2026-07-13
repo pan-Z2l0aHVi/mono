@@ -86,6 +86,24 @@ describe('聚合上报测试用例', () => {
     expect(capturedRequests.length).toBeGreaterThanOrEqual(1)
   })
 
+  it('defaultBatchDelay=0 时不延迟，直接上报', async () => {
+    const tracker = defineTracker({ url: 'https://example.com' })
+      .use(defineBatchTrack({ defaultBatchDelay: 0 }))
+      .make()
+
+    tracker.track({ event: 'instant-1' })
+    // defaultBatchDelay=0 时 track 使用 setTimeout(0)，advance 任意正数即可触发
+    vi.advanceTimersByTime(1)
+    await waitForMsw()
+
+    tracker.track({ event: 'instant-2' })
+    vi.advanceTimersByTime(1)
+    await waitForMsw()
+
+    // 两条数据应该被分两次单独发送（不经过批处理合并）
+    expect(capturedRequests.length).toBe(2)
+  })
+
   it('大数据分片：恰好 64KB 时应单次发送', async () => {
     const tracker = defineTracker({ url: 'https://example.com' })
       .use(defineBatchTrack({ defaultBatchDelay: 200, maxBeaconSize: 0.0625 }))
