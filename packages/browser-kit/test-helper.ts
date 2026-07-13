@@ -1,4 +1,4 @@
-import { defineCapturedRequests, defineMsw, type CapturedRequest } from '@greypan/test-kit'
+import { defineCapturedRequests, defineMsw } from '@greypan/test-kit'
 import { http, HttpResponse } from 'msw'
 import { afterAll, afterEach, beforeAll } from 'vite-plus/test'
 

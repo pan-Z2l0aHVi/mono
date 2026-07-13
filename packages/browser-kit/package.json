@@ -42,11 +42,15 @@
     "nanoid": "catalog:",
     "remeda": "catalog:"
   },
-  "browserslist": [
-    "defaults"
-  ],
+  "peerDependencies": {
+    "msw": "catalog:"
+  },
   "devDependencies": {
     "@greypan/test-kit": "workspace:*",
-    "msw": "catalog:"
-  }
+    "@vitest/browser-playwright": "catalog:",
+    "playwright": "catalog:"
+  },
+  "browserslist": [
+    "defaults"
+  ]
 }
