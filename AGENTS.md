@@ -177,3 +177,13 @@ Rules are stored in `.agents/rules/` and symlinked to `.claude/rules`:
 - `code-style.md` — naming, comments, type safety, plugin Options 规范
 - `review-checklist.md` — review checkpoints
 - `commit.md` — commit conventions, workflow, anti-patterns
+
+## Agent skills
+
+### Issue tracker
+
+Issues tracked on GitHub. See `docs/agents/issue-tracker.md`.
+
+### Domain docs
+
+Single-context layout (one `CONTEXT.md` + `docs/adr/` at repo root). See `docs/agents/domain.md`.
