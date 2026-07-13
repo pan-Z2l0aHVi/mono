@@ -1,88 +1,90 @@
 # Commit 规范
 
-Conventional commits enforced by commitlint. **规则以根目录 `commitlint.config.js` 为准**，commit 前务必先读取该文件确认最新约束。
+遵循 Conventional Commits 规范，由 commitlint 强制执行。**规则以根目录 `commitlint.config.js` 为准**，commit 前务必先读取该文件确认最新约束。
 
-## Allowed types
+## 允许的 type
 
-| Type       | When to use                        | Emoji | Example                                        |
-| ---------- | ---------------------------------- | ----- | ---------------------------------------------- |
-| `feat`     | New feature                        | ✨    | `feat(js-kit): add url parser utility`         |
-| `fix`      | Bug fix                            | 🐛    | `fix(web-ui): resolve hydration mismatch`      |
-| `docs`     | Documentation only                 | 📚    | `docs(readme): add setup instructions`         |
-| `style`    | Formatting, no logic change        | 💎    | `style(js-kit): apply prettier formatting`     |
-| `refactor` | Code restructuring, no feature/fix | 📦    | `refactor(browser-kit): simplify cache logic`  |
-| `perf`     | Performance improvement            | 🚀    | `perf(web-ui): optimize lit element rendering` |
-| `test`     | Adding/updating tests              | 🚨    | `test(js-kit): add url parser unit tests`      |
-| `build`    | Build system or deps               | 🛠    | `build(root): upgrade vite to v6`              |
-| `ci`       | CI/CD configuration                | ⚙️    | `ci: add changeset release workflow`           |
-| `chore`    | Maintenance, no src/test changes   | ♻️    | `chore(root): dedupe lockfile`                 |
-| `revert`   | Revert a previous commit           | 🗑    | `revert(js-kit): remove url parser`            |
+| type       | 使用场景                    | Emoji | 示例                                           |
+| ---------- | --------------------------- | ----- | ---------------------------------------------- |
+| `feat`     | 新功能                      | ✨    | `feat(js-kit): add url parser utility`         |
+| `fix`      | 修复 bug                    | 🐛    | `fix(web-ui): resolve hydration mismatch`      |
+| `docs`     | 仅文档变更                  | 📚    | `docs(readme): add setup instructions`         |
+| `style`    | 格式调整，无逻辑变更        | 💎    | `style(js-kit): apply prettier formatting`     |
+| `refactor` | 代码重构，无功能/修复变更   | 📦    | `refactor(browser-kit): simplify cache logic`  |
+| `perf`     | 性能优化                    | 🚀    | `perf(web-ui): optimize lit element rendering` |
+| `test`     | 添加或更新测试              | 🚨    | `test(js-kit): add url parser unit tests`      |
+| `build`    | 构建系统或依赖变更          | 🛠    | `build(root): upgrade vite to v6`              |
+| `ci`       | CI/CD 配置变更              | ⚙️    | `ci: add changeset release workflow`           |
+| `chore`    | 维护性变更，不涉及 src/test | ♻️    | `chore(root): dedupe lockfile`                 |
+| `revert`   | 回滚之前的 commit           | 🗑    | `revert(js-kit): remove url parser`            |
 
-## Scope rules
+## Scope 规则
 
-- **Allowed scopes**: `root`, `apps`, `packages`, `js-kit`, `browser-kit`, `test-kit`, `web-ui`, `unplugin-web-components`, `vite-plugin-full-reload`, `react-app-demo`, `vue-app-demo`
-- **Multiple scopes**: Use comma separation for cross-package changes: `fix(js-kit,browser-kit): resolve type mismatch`
-- **Cross-cutting changes**: Use `root` for repo-wide changes (CI, config, docs)
+- **允许的 scope**：`root`、`apps`、`packages`、`js-kit`、`browser-kit`、`test-kit`、`web-ui`、`unplugin-web-components`、`vite-plugin-full-reload`、`react-app-demo`、`vue-app-demo`
+- **多 scope**：跨包变更用逗号分隔：`fix(js-kit,browser-kit): resolve type mismatch`
+- **跨模块变更**：使用 `root`，适用于 CI、配置、文档等全仓库变更
 
-## Header rules
+## Header 规则
 
-- Max 200 characters
-- Must not end with `.`
-- Must not be sentence-case, start-case, pascal-case, or upper-case
-- Use **imperative mood** ("add feature" not "added feature" or "adds feature")
+- 最多 200 个字符
+- 不能以 `.` 结尾
+- 不能是 sentence-case、start-case、pascal-case 或 upper-case
+- 使用**祈使语气**（"add feature" 而非 "added feature" 或 "adds feature"）
 
-## Body (optional)
+## Body（可选）
 
-- Add body with `-b` flag when the change needs explanation
-- Use body for **why** the change was made, not **what** (the header says what)
-- Keep lines under 100 characters
+- 需要解释时通过 `-b` 参数添加 body
+- body 说明**为什么**做这个变更，**是什么**由 header 说明
+- 每行不超过 100 个字符
 
-## Agent commit workflow
+## Agent commit 工作流
 
-**Step 1**: Stage your changes
+**⚠️ Agent 提交前必须先询问用户确认，不得自动 commit。**
+
+**步骤 1**：暂存变更
 
 ```bash
 git add -A
-# or be selective:
+# 或选择性暂存：
 git add <file1> <file2>
 ```
 
-**Step 2**: Preview the commit message (dry-run)
+**步骤 2**：预览 commit message（dry-run）
 
 ```bash
 bash scripts/commit.sh feat js-kit "add url parser utility" --dry
 ```
 
-**Step 3**: Commit
+**步骤 3**：提交
 
 ```bash
 bash scripts/commit.sh feat js-kit "add url parser utility"
 ```
 
-**With body** (for complex changes):
+**带 body**（复杂变更）：
 
 ```bash
 bash scripts/commit.sh fix web-ui,js-kit "resolve hydration mismatch" \
   -b "Fix race condition in SSR where component state diverged between server and client"
 ```
 
-## Choosing the right type
+## 如何选择 type
 
-Ask yourself:
+问自己这几个问题：
 
-1. **Does it add user-facing functionality?** → `feat`
-2. **Does it fix a bug or regression?** → `fix`
-3. **Does it improve performance?** → `perf`
-4. **Does it only change tests?** → `test`
-5. **Does it only change docs/comments/formatting?** → `docs`/`style`
-6. **Does it restructure code without changing behavior?** → `refactor`
-7. **Does it affect build/CI tooling?** → `build`/`ci`
-8. **Everything else** → `chore`
+1. **是否增加了用户可见的功能？** → `feat`
+2. **是否修复了 bug 或回归问题？** → `fix`
+3. **是否优化了性能？** → `perf`
+4. **是否只修改了测试？** → `test`
+5. **是否只修改了文档/注释/格式？** → `docs`/`style`
+6. **是否重构了代码但行为不变？** → `refactor`
+7. **是否影响了构建/CI 工具？** → `build`/`ci`
+8. **以上都不是？** → `chore`
 
-## Anti-patterns (will be rejected)
+## 反模式（会被拒绝）
 
-- ❌ `update js-kit` (too vague, what did you update?)
-- ❌ `fix bug` (which bug? which scope?)
-- ❌ `Feat: Add Feature` (wrong case)
-- ❌ `fix(js-kit): Fixed the bug.` (past tense, ends with period)
-- ❌ `refactor: Refactor code` (tautological)
+- ❌ `update js-kit`（太模糊，更新了什么？）
+- ❌ `fix bug`（哪个 bug？哪个 scope？）
+- ❌ `Feat: Add Feature`（大小写错误）
+- ❌ `fix(js-kit): Fixed the bug.`（过去式，且以句号结尾）
+- ❌ `refactor: Refactor code`（同义反复）
