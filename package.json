@@ -11,6 +11,7 @@
     "test": "turbo test",
     "commit": "git-cz",
     "commit:ci": "bash scripts/commit.sh",
+    "publish:new": "bash scripts/publish-new-pack.sh",
     "check:lockfile": "pnpm dedupe --check",
     "check:code": "vp check",
     "dev:react-app-demo": "turbo watch dev --filter=@greypan/react-app-demo...",
