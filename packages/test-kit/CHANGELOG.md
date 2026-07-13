@@ -1,5 +1,13 @@
 # @greypan/test-kit
 
+## 0.1.2
+
+### Patch Changes
+
+- 8f4643d: Audit and reorganize devDependencies/peerDependencies across all packages
+- Updated dependencies [8f4643d]
+  - @greypan/js-kit@1.5.1
+
 ## 0.1.1
 
 ### Patch Changes
