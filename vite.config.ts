@@ -8,6 +8,8 @@ export default defineConfig({
     '**/*.{js,ts,jsx,tsx,mjs,cjs}': 'vp lint --fix'
   },
   lint: {
+    jsPlugins: [{ name: 'vite-plus', specifier: 'vite-plus/oxlint-plugin' }],
+    rules: { 'vite-plus/prefer-vite-plus-imports': 'error' },
     ignorePatterns: [
       '**/node_modules/**',
       '**/dist/**',

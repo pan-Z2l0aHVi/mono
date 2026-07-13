@@ -30,11 +30,6 @@ export default {
     vueJsx(),
     autoImport({
       dts: true,
-      eslintrc: {
-        enabled: true,
-        filepath: './.eslintrc-auto-import.js',
-        globalsPropValue: true
-      },
       imports: ['vue'],
       // 禁止 auto-import 自动导入 Vue 的 h 方法，防止与 Lit 的 h 冲突
       ignore: ['h']

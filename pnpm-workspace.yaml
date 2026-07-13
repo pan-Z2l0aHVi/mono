@@ -9,6 +9,7 @@ catalog:
   '@cspell/dict-lorem-ipsum': ^4.0.5
   '@rolldown/plugin-babel': ^0.2.3
   '@tailwindcss/vite': ^4.3.2
+  '@tanstack/react-router': ^1.170.17
   '@tanstack/router-plugin': ^1.168.19
   '@testing-library/react': ^16.3.2
   '@tsconfig/node24': ^24.0.4
@@ -25,6 +26,7 @@ catalog:
   playwright: ^1.61.1
   '@vue/test-utils': ^2.4.11
   '@vue/tsconfig': ^0.9.1
+  babel-plugin-react-compiler: ^1.0.0
   browserslist: ^4.28.5
   change-case: ^5.4.4
   clsx: ^2.1.1
@@ -68,7 +70,7 @@ catalog:
   vite-plugin-dts: ^5.0.3
   vite-plugin-pwa: ^1.3.0
   vite-plugin-vue-devtools: ^8.1.5
-  vite-plus: ^0.2.4
+  vite-plus: 0.2.4
   vue: ^3.5.39
   vue-tsc: ^3.3.7
   zod: ^4.4.3
@@ -77,5 +79,7 @@ catalogMode: prefer
 overrides:
   vite: 'catalog:'
 peerDependencyRules:
+  allowAny:
+    - vite
   allowedVersions:
     vite: '*'
