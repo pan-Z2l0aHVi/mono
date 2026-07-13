@@ -14,7 +14,7 @@
 
 ## 架构范式
 
-- 底层代码优先使用函数插件组合模式（参考 `js-kit/src/plugin-system/index.ts`）
+- 底层代码优先使用函数插件组合模式（参考 `packages/js-kit/src/plugin-system/index.ts`）
 - 通过插件机制实现可扩展性，而非继承或类体系
 
 ### 插件 Options 规范

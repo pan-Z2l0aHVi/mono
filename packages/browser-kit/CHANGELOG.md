@@ -1,5 +1,16 @@
 # @greypan/browser-kit
 
+## 1.5.0
+
+### Minor Changes
+
+- 874638d: refactor tracker and storage
+
+### Patch Changes
+
+- Updated dependencies [874638d]
+  - @greypan/js-kit@1.4.0
+
 ## 1.4.0
 
 ### Minor Changes
