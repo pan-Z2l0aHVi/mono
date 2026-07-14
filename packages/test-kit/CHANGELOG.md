@@ -1,5 +1,16 @@
 # @greypan/test-kit
 
+## 0.2.0
+
+### Minor Changes
+
+- a4e7f9b: vp monorepo standardization
+
+### Patch Changes
+
+- Updated dependencies [a4e7f9b]
+  - @greypan/js-kit@1.6.0
+
 ## 0.1.2
 
 ### Patch Changes
