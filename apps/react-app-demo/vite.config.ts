@@ -26,7 +26,7 @@ export default {
       tagPrefix: 'web-ui',
       packageName: '@greypan/web-ui',
       sideEffects: true
-    }),
+    }) as PluginOption,
     fullReload.vite([
       {
         name: '@greypan/web-ui',
@@ -50,14 +50,12 @@ export default {
       filename: 'stats.html',
       gzipSize: true,
       brotliSize: true
-    }) as PluginOption
+    })
   ],
   test: {
     environment: 'jsdom'
   },
-  build: {
-    cssMinify: 'lightningcss'
-  },
+  build: {},
   css: {
     transformer: 'lightningcss'
   },

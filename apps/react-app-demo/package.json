@@ -7,8 +7,7 @@
     "build": "tsc -b && vp build",
     "dev": "vp dev",
     "preview": "vp preview",
-    "test": "vp test run",
-    "type-check": "tsc -b"
+    "test": "vp test run"
   },
   "dependencies": {
     "@greypan/js-kit": "workspace:*",

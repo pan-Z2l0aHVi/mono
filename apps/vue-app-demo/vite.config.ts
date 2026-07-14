@@ -74,9 +74,7 @@ export default {
   test: {
     environment: 'jsdom'
   },
-  build: {
-    cssMinify: 'lightningcss'
-  },
+  build: {},
   css: {
     transformer: 'lightningcss'
   },

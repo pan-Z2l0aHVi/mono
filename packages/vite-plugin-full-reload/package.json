@@ -12,25 +12,22 @@
     "dist"
   ],
   "sideEffects": false,
-  "main": "./dist/index.js",
-  "module": "./dist/index.js",
-  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
-    }
+      "types": "./dist/index.d.mts",
+      "import": "./dist/index.mjs"
+    },
+    "./package.json": "./package.json"
   },
   "publishConfig": {
     "access": "public",
     "registry": "https://registry.npmjs.org/"
   },
   "scripts": {
-    "build": "vue-tsc --build && vp build",
+    "build": "vp pack",
     "preview": "vp preview",
     "test": "vp test run",
-    "type-check": "vue-tsc --build",
-    "dev": "vp build --watch"
+    "dev": "vp pack --watch"
   },
   "dependencies": {
     "@greypan/js-kit": "workspace:*",
