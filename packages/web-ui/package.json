@@ -16,9 +16,6 @@
     "./dist/components/*/index.js",
     "./dist/**/*.css"
   ],
-  "main": "./dist/index.js",
-  "module": "./dist/index.js",
-  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -29,9 +26,7 @@
       "import": "./dist/components/*/index.js"
     },
     "./types/*": "./dist/types/*.d.ts",
-    "./vue": {
-      "types": "./dist/types/vue.d.ts"
-    }
+    "./package.json": "./package.json"
   },
   "publishConfig": {
     "access": "public",
@@ -39,9 +34,7 @@
   },
   "scripts": {
     "build": "vue-tsc --build && vp build",
-    "preview": "vp preview",
     "test": "vp test run",
-    "type-check": "vue-tsc --build",
     "dev": "vp build --watch"
   },
   "dependencies": {

@@ -1,17 +1,18 @@
 import { resolve, sep } from 'node:path'
 
-import { type ArgumentType, debounce } from '@greypan/js-kit'
-import { createUnplugin, type VitePlugin } from 'unplugin'
+import { debounce } from '@greypan/js-kit'
+import { UnpluginFactory } from 'unplugin'
+import type { ViteDevServer } from 'vite-plus'
 
-interface Dep {
+export interface Dep {
   name: string // 用于 npm 包名
-  path?: string // 物理路径，如 './packages/ui/dist'，用于 npm link 或 monorepo 子包
+  path?: string // 物理路径，如 '../../packages/web-ui'，用于 npm link 或 monorepo 子包
   outputDir?: string
   extensions?: string[]
 }
 
 // 如果引入的子包是构建产物而非源码，用 full-reload 代替 hmr 更加合适
-export const fullReload = createUnplugin<Dep[]>(deps => {
+export const depsReloadFactory: UnpluginFactory<Dep[]> = deps => {
   // 预处理：只保留绝对路径前缀和后缀正则
   // 统一处理成小写和正斜杠，消除跨平台差异 Window / Unix
   const configs = deps.map(({ name, path, outputDir = 'dist', extensions = ['.js', '.css'] }) => {
@@ -26,7 +27,6 @@ export const fullReload = createUnplugin<Dep[]>(deps => {
     }
   })
 
-  type ViteDevServer = ArgumentType<VitePlugin['hotUpdate']>['server']
   const fullReloadTrigger = debounce(
     (server: ViteDevServer) => {
       server.ws.send({ type: 'full-reload', path: '*' })
@@ -38,7 +38,7 @@ export const fullReload = createUnplugin<Dep[]>(deps => {
   )
 
   return {
-    name: 'vite-plugin-full-reload',
+    name: 'deps-reload',
     vite: {
       apply: 'serve',
 
@@ -56,6 +56,16 @@ export const fullReload = createUnplugin<Dep[]>(deps => {
           return []
         }
       }
+    },
+    webpack(compiler: import('webpack').Compiler) {
+      compiler.hooks.afterPlugins.tap('deps-reload', () => {
+        const alias = compiler.options.resolve?.alias ?? ({} as Record<string, string>)
+        for (const dep of deps) {
+          if (dep.path) {
+            ;(alias as Record<string, string>)[dep.name] = resolve(dep.path, 'src')
+          }
+        }
+      })
     }
   }
-})
+}

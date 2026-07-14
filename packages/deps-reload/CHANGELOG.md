@@ -1,4 +1,4 @@
-# @greypan/vite-plugin-full-reload
+# @greypan/deps-reload
 
 ## 1.2.4
 

@@ -1,6 +1,6 @@
-# @greypan/vite-plugin-full-reload
+# @greypan/deps-reload
 
-Vite HMR 插件，依赖变更时触发全量刷新
+一个监听 dist 文件夹变化并触发全量刷新的 Vite 插件
 
 [English](./README.md) | 简体中文
 
@@ -15,30 +15,30 @@ Vite HMR 插件，依赖变更时触发全量刷新
 
 ```bash
 # npm
-npm install @greypan/vite-plugin-full-reload
+npm install @greypan/deps-reload
 
 # pnpm
-pnpm add @greypan/vite-plugin-full-reload
+pnpm add @greypan/deps-reload
 
 # yarn
-yarn add @greypan/vite-plugin-full-reload
+yarn add @greypan/deps-reload
 
 # bun
-bun add @greypan/vite-plugin-full-reload
+bun add @greypan/deps-reload
 ```
 
 ## 快速开始
 
 ```ts
 // vite.config.ts
-import { fullReload } from '@greypan/vite-plugin-full-reload'
+import depsReload from '@greypan/deps-reload/vite'
 
 export default defineConfig({
   plugins: [
-    fullReload([
+    depsReload([
       {
         name: '@greypan/web-ui',
-        path: './packages/web-ui/dist',
+        path: '../../packages/web-ui/dist',
         extensions: ['.js', '.css']
       }
     ])
@@ -50,7 +50,7 @@ export default defineConfig({
 
 ## API
 
-### `fullReload(deps)`
+### `depsReload(deps)`
 
 创建用于监听依赖文件并触发全量刷新的 unplugin 实例。
 

@@ -1,7 +1,7 @@
 import { resolve } from 'node:path'
 
 import dts from 'vite-plugin-dts'
-import { type UserConfig } from 'vite-plus'
+import type { UserConfig } from 'vite-plus'
 
 export default {
   resolve: {
@@ -19,7 +19,6 @@ export default {
     transformer: 'lightningcss'
   },
   build: {
-    cssMinify: 'lightningcss',
     sourcemap: true,
     lib: {
       entry: resolve(import.meta.dirname, 'src/index.ts'),

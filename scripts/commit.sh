@@ -16,7 +16,7 @@
 #
 # scope 白名单:
 #   root | apps | packages | js-kit | browser-kit | web-ui | unplugin-web-components |
-#   vite-plugin-full-reload | react-app-demo | vue-app-demo
+#   deps-reload | react-app-demo | vue-app-demo
 #   支持逗号分隔多 scope: "browser-kit,web-ui"
 #
 # emoji 前缀（自动添加，与 git-cz 风格一致）:
@@ -63,7 +63,7 @@ if [ -z "${TYPE:-}" ] || [ -z "${SCOPE:-}" ] || [ -z "${SUBJECT:-}" ]; then
   echo "  bash scripts/commit.sh fix web-ui,js-kit \"resolve hydration mismatch\" -b \"Fix race condition in SSR\"" >&2
   echo "" >&2
   echo "type 白名单: build | chore | ci | docs | feat | fix | perf | refactor | revert | style | test" >&2
-  echo "scope 白名单: root | apps | packages | js-kit | browser-kit | web-ui | unplugin-web-components | vite-plugin-full-reload | react-app-demo | vue-app-demo" >&2
+  echo "scope 白名单: root | apps | packages | js-kit | browser-kit | web-ui | unplugin-web-components | deps-reload | react-app-demo | vue-app-demo" >&2
   exit 1
 fi
 

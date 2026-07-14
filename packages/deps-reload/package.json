@@ -1,7 +1,7 @@
 {
-  "name": "@greypan/unplugin-web-components",
-  "version": "1.2.4",
-  "description": "Unplugin for web components auto-import",
+  "name": "@greypan/deps-reload",
+  "version": "1.0.0",
+  "description": "A Plugin that watches dist folder for changes and reloads the page",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -34,7 +34,6 @@
   },
   "dependencies": {
     "@greypan/js-kit": "workspace:*",
-    "change-case": "catalog:",
     "unplugin": "catalog:"
   },
   "peerDependencies": {

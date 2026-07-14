@@ -1,6 +1,6 @@
 /// <reference types="vite-plus/client" />
 /// <reference types="vue-router/auto" />
-/// <reference types="@greypan/web-ui/vue" />
+/// <reference types="@greypan/web-ui/types/vue" />
 
 declare module '*.vue' {
   import type { DefineComponent } from 'vue'
