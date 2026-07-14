@@ -7,8 +7,7 @@
     "build": "vue-tsc --build && vp build",
     "dev": "vp dev",
     "preview": "vp preview",
-    "test": "vp test run",
-    "type-check": "vue-tsc --build"
+    "test": "vp test run"
   },
   "dependencies": {
     "@greypan/browser-kit": "workspace:*",
@@ -22,7 +21,7 @@
     "vue-router": "catalog:"
   },
   "devDependencies": {
-    "@greypan/vite-plugin-full-reload": "workspace:*",
+    "@greypan/deps-reload": "workspace:*",
     "@greypan/unplugin-web-components": "workspace:*",
     "@vue/test-utils": "catalog:",
     "unplugin-auto-import": "catalog:"
