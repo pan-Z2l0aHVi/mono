@@ -20,7 +20,7 @@
 
 ## Scope 规则
 
-- **允许的 scope**：`root`、`apps`、`packages`、`js-kit`、`browser-kit`、`test-kit`、`web-ui`、`unplugin-web-components`、`vite-plugin-full-reload`、`react-app-demo`、`vue-app-demo`
+- **允许的 scope**：`root`、`apps`、`packages`、`js-kit`、`browser-kit`、`test-kit`、`web-ui`、`unplugin-web-components`、`deps-reload`、`react-app-demo`、`vue-app-demo`
 - **多 scope**：跨包变更用逗号分隔：`fix(js-kit,browser-kit): resolve type mismatch`
 - **跨模块变更**：使用 `root`，适用于 CI、配置、文档等全仓库变更
 

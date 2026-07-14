@@ -1,6 +1,5 @@
 import { rust } from '@greypan/js-kit'
 import { kebabCase, pascalCase } from 'change-case'
-import { createUnplugin } from 'unplugin'
 
 import { transformReactCode } from './transforms/react'
 import { transformVueCode } from './transforms/vue'
@@ -12,11 +11,11 @@ export interface UnpluginWebComponentsOptions {
   withStyle?: string
 }
 
-export const unpluginWebComponents = createUnplugin<UnpluginWebComponentsOptions>(options => {
+export const factory = (options: UnpluginWebComponentsOptions) => {
   const { tagPrefix, packageName, sideEffects = false, withStyle } = options
 
-  const kebabTagPrefix = kebabCase(tagPrefix) // web-component
-  const pascalTagPrefix = pascalCase(tagPrefix) // WebComponent
+  const kebabTagPrefix = kebabCase(tagPrefix)
+  const pascalTagPrefix = pascalCase(tagPrefix)
 
   const kebabReg = new RegExp(`<\\s*${kebabTagPrefix}-([a-z0-9-]+)(?=[\\s/>])`, 'gi')
   const pascalReg = new RegExp(`<\\s*${pascalTagPrefix}([A-Z][a-zA-Z0-9]+)(?=[\\s/>])`, 'g')
@@ -51,9 +50,9 @@ export const unpluginWebComponents = createUnplugin<UnpluginWebComponentsOptions
 
   return {
     name: 'unplugin-web-components',
-    enforce: 'pre',
+    enforce: 'pre' as const,
 
-    transform(code, id) {
+    transform(code: string, id: string) {
       if (id.includes('node_modules')) return
       if (!code.includes(kebabTagPrefix) && !code.includes(pascalTagPrefix)) return
       if (!/\.(vue|jsx|tsx)$/.test(id)) return
@@ -61,15 +60,13 @@ export const unpluginWebComponents = createUnplugin<UnpluginWebComponentsOptions
       const imports = makeImports(code)
       if (!imports.ok) return
 
-      // Vue
       if (id.endsWith('.vue')) {
         return { code: transformVueCode(code, imports.value) }
       }
 
-      // React
       if (id.endsWith('.tsx') || id.endsWith('.jsx')) {
         return { code: transformReactCode(code, imports.value) }
       }
     }
   }
-})
+}

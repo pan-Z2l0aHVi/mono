@@ -2,10 +2,9 @@ import { defineConfig } from 'vite-plus'
 
 export default defineConfig({
   staged: {
-    '**/*.{js,ts,jsx,tsx,mjs,cjs,html,vue,css,less,scss}': 'cspell',
-    '**/*.{css,scss,less,vue}': 'stylelint --fix',
-    '**/*.{js,ts,jsx,tsx,json,jsonc,md,mdx,html}': 'vp fmt',
-    '**/*.{js,ts,jsx,tsx,mjs,cjs}': 'vp lint --fix'
+    '*.{js,ts,jsx,tsx,mjs,cjs,html,vue,css,less,scss}': 'cspell',
+    '*.{css,scss,less,vue}': 'stylelint --fix',
+    '*': 'vp check --fix'
   },
   lint: {
     jsPlugins: [{ name: 'vite-plus', specifier: 'vite-plus/oxlint-plugin' }],

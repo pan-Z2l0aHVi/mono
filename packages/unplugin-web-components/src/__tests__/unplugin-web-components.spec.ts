@@ -1,20 +1,22 @@
-import type { Thenable, TransformResult, UnpluginContextMeta } from 'unplugin'
+import type { Thenable, TransformResult } from 'unplugin'
 import { describe, expect, it } from 'vite-plus/test'
 
-import { unpluginWebComponents } from '..'
-
-const meta = { framework: 'vite' as const }
+import vitePlugin from '../vite'
 
 describe('unplugin-web-components', () => {
+  function createPlugin() {
+    const plugin = vitePlugin({ tagPrefix: 'web-ui', packageName: '@greypan/web-ui' })
+    return Array.isArray(plugin) ? plugin[0] : plugin
+  }
+
   it('应当在 Vue 组件中 import kebab-case 组件', async () => {
-    const raw = unpluginWebComponents.raw(
-      { tagPrefix: 'web-ui', packageName: '@greypan/web-ui' },
-      meta as UnpluginContextMeta
-    )
+    const plugin = createPlugin()
 
-    const plugin = Array.isArray(raw) ? raw[0] : raw
-
-    const transform = plugin.transform as (this: unknown, code: string, id: string) => Thenable<TransformResult>
+    const transform = plugin.transform as unknown as (
+      this: unknown,
+      code: string,
+      id: string
+    ) => Thenable<TransformResult>
 
     expect(transform).toBeTypeOf('function')
 
@@ -38,14 +40,13 @@ describe('unplugin-web-components', () => {
   })
 
   it('应当在 React 组件中 import kebab-case 组件', async () => {
-    const raw = unpluginWebComponents.raw(
-      { tagPrefix: 'web-ui', packageName: '@greypan/web-ui' },
-      meta as UnpluginContextMeta
-    )
+    const plugin = createPlugin()
 
-    const plugin = Array.isArray(raw) ? raw[0] : raw
-
-    const transform = plugin.transform as (this: unknown, code: string, id: string) => Thenable<TransformResult>
+    const transform = plugin.transform as unknown as (
+      this: unknown,
+      code: string,
+      id: string
+    ) => Thenable<TransformResult>
 
     expect(transform).toBeTypeOf('function')
 

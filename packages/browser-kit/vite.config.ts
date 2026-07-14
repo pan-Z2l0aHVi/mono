@@ -1,7 +1,7 @@
 import { resolve } from 'node:path'
 
 import dts from 'vite-plugin-dts'
-import { type UserConfig } from 'vite-plus'
+import type { UserConfig } from 'vite-plus'
 import { playwright } from 'vite-plus/test/browser-playwright'
 
 export default {

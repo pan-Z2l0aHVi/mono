@@ -12,9 +12,6 @@
     "dist"
   ],
   "sideEffects": false,
-  "main": "./dist/index.js",
-  "module": "./dist/index.js",
-  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -23,7 +20,8 @@
     "./*": {
       "types": "./dist/*/index.d.ts",
       "import": "./dist/*/index.js"
-    }
+    },
+    "./package.json": "./package.json"
   },
   "publishConfig": {
     "access": "public",
@@ -31,9 +29,7 @@
   },
   "scripts": {
     "build": "vue-tsc --build && vp build",
-    "preview": "vp preview",
     "test": "vp test run",
-    "type-check": "vue-tsc --build",
     "dev": "vp build --watch"
   },
   "dependencies": {
