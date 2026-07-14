@@ -1,6 +1,6 @@
 ---
 '@greypan/unplugin-web-components': minor
-'@greypan/vite-plugin-full-reload': minor
+'@greypan/deps-reload': minor
 '@greypan/browser-kit': minor
 '@greypan/test-kit': minor
 '@greypan/js-kit': minor

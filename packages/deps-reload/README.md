@@ -1,6 +1,6 @@
-# @greypan/vite-plugin-full-reload
+# @greypan/deps-reload
 
-Vite HMR plugin for full page reload when dependencies change
+A Plugin that watches dist folder for changes and reloads the page
 
 English | [简体中文](./README.CN.md)
 
@@ -15,30 +15,30 @@ English | [简体中文](./README.CN.md)
 
 ```bash
 # npm
-npm install @greypan/vite-plugin-full-reload
+npm install @greypan/deps-reload
 
 # pnpm
-pnpm add @greypan/vite-plugin-full-reload
+pnpm add @greypan/deps-reload
 
 # yarn
-yarn add @greypan/vite-plugin-full-reload
+yarn add @greypan/deps-reload
 
 # bun
-bun add @greypan/vite-plugin-full-reload
+bun add @greypan/deps-reload
 ```
 
 ## Quick Start
 
 ```ts
 // vite.config.ts
-import { fullReload } from '@greypan/vite-plugin-full-reload'
+import depsReload from '@greypan/deps-reload/vite'
 
 export default defineConfig({
   plugins: [
-    fullReload([
+    depsReload([
       {
         name: '@greypan/web-ui',
-        path: './packages/web-ui/dist',
+        path: '../../packages/web-ui/dist',
         extensions: ['.js', '.css']
       }
     ])
@@ -50,7 +50,7 @@ When files in `packages/web-ui/dist` change, the browser will automatically relo
 
 ## API
 
-### `fullReload(deps)`
+### `depsReload(deps)`
 
 Create an unplugin instance that watches dependency files and triggers full reload.
 

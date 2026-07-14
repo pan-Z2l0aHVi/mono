@@ -5,7 +5,7 @@
     { "path": "./packages/browser-kit" },
     { "path": "./packages/web-ui" },
     { "path": "./packages/unplugin-web-components" },
-    { "path": "./packages/vite-plugin-full-reload" },
+    { "path": "./packages/deps-reload" },
 
     { "path": "./apps/react-app-demo" },
     { "path": "./apps/vue-app-demo" }

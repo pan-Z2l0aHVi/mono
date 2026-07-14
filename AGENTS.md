@@ -58,7 +58,7 @@ Each package has `build`, `test`, and usually `dev` (watch mode). Run with `pnpm
 
 Build scripts differ by package type:
 
-- **Single-entry packages** (test-kit, unplugin-web-components, vite-plugin-full-reload): `vp pack` — tsdown-based, outputs `.mjs` + `.d.mts`
+- **Single-entry packages** (test-kit, unplugin-web-components, deps-reload): `vp pack` — tsdown-based, outputs `.mjs` + `.d.mts`
 - **Sub-path export packages** (js-kit, browser-kit, web-ui): `vue-tsc --build && vp build` — Vite lib mode with `preserveModules`, outputs `.js` + `.d.ts`
 - **React app**: `tsc -b && vp build`
 
@@ -73,7 +73,7 @@ packages/
   test-kit        — Test infrastructure plugins for Vitest browser mode + MSW (depends on js-kit)
   web-ui          — Web components (Lit-based, depends on js-kit + browser-kit)
   unplugin-web-components — Unplugin for web components (depends on js-kit)
-  vite-plugin-full-reload — Vite HMR plugin (depends on js-kit)
+  deps-reload — plugin for reload on local dependency update (depends on js-kit)
 apps/
   react-app-demo  — React 19 + TanStack Router + Zustand (private)
   vue-app-demo    — Vue 3 + Vue Router + Pinia (private)
@@ -87,7 +87,7 @@ apps/
 
 Two build modes:
 
-- **`vp pack` (tsdown)** — for single-entry packages. Configured via the `pack` block. Built-in dts generation (no `vite-plugin-dts`). Outputs `.mjs` + `.d.mts`. Auto-externalizes `dependencies`. Used by: `test-kit`, `unplugin-web-components`, `vite-plugin-full-reload`.
+- **`vp pack` (tsdown)** — for single-entry packages. Configured via the `pack` block. Built-in dts generation (no `vite-plugin-dts`). Outputs `.mjs` + `.d.mts`. Auto-externalizes `dependencies`. Used by: `test-kit`, `unplugin-web-components`, `deps-reload`.
 - **`vp build` (Vite lib mode)** — for packages with sub-path exports. Configured via `build.lib` + `preserveModules: true`. Uses `vite-plugin-dts` for declarations. Outputs `.js` + `.d.ts`. Used by: `js-kit`, `browser-kit`, `web-ui`.
 
 ### Externalization rules
@@ -104,14 +104,14 @@ Two build modes:
 | `test-kit`                | Auto by tsdown (`@greypan/js-kit`, `msw`)                        | _(none)_              |
 | `web-ui`                  | `@greypan/browser-kit`, `@greypan/js-kit`, `iconify-icon`, `lit` | _(none)_              |
 | `unplugin-web-components` | Auto by tsdown (`@greypan/js-kit`, `change-case`, `unplugin`)    | _(none)_              |
-| `vite-plugin-full-reload` | Auto by tsdown (`node:*`, `@greypan/js-kit`, `unplugin`)         | _(none)_              |
+| `deps-reload`             | Auto by tsdown (`node:*`, `@greypan/js-kit`, `unplugin`)         | _(none)_              |
 
 ### Apps
 
 - `react-app-demo` uses `@vitejs/plugin-react` v4 with **React Compiler** (`babel-plugin-react-compiler`, target: 19)
 - `react-app-demo` uses `@vitejs/plugin-legacy` for older browser support
 - Both apps use `basicSsl()` for HTTPS dev server
-- `fullReload` plugin watches library `dist/` dirs and triggers full page reload on changes
+- `depsReload` plugin watches library `dist/` dirs and triggers full page reload on changes
 
 ## Commit conventions
 

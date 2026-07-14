@@ -29,7 +29,6 @@
   },
   "scripts": {
     "build": "vue-tsc --build && vp build",
-    "preview": "vp preview",
     "test": "vp test run",
     "dev": "vp build --watch"
   },

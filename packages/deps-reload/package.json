@@ -1,7 +1,7 @@
 {
-  "name": "@greypan/vite-plugin-full-reload",
-  "version": "1.2.4",
-  "description": "Vite HMR plugin for full page reload",
+  "name": "@greypan/deps-reload",
+  "version": "1.0.0",
+  "description": "A Plugin that watches dist folder for changes and reloads the page",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -11,27 +11,42 @@
   "files": [
     "dist"
   ],
-  "sideEffects": false,
   "exports": {
-    ".": {
-      "types": "./dist/index.d.mts",
-      "import": "./dist/index.mjs"
+    "./vite": {
+      "types": "./dist/vite.d.mts",
+      "import": "./dist/vite.mjs"
+    },
+    "./webpack": {
+      "types": "./dist/webpack.d.mts",
+      "import": "./dist/webpack.mjs"
     },
     "./package.json": "./package.json"
   },
+  "sideEffects": false,
   "publishConfig": {
     "access": "public",
     "registry": "https://registry.npmjs.org/"
   },
   "scripts": {
     "build": "vp pack",
-    "preview": "vp preview",
     "test": "vp test run",
     "dev": "vp pack --watch"
   },
   "dependencies": {
     "@greypan/js-kit": "workspace:*",
     "unplugin": "catalog:"
+  },
+  "peerDependencies": {
+    "vite": "catalog:",
+    "webpack": "catalog:"
+  },
+  "peerDependenciesMeta": {
+    "vite": {
+      "optional": true
+    },
+    "webpack": {
+      "optional": true
+    }
   },
   "browserslist": [
     "defaults"

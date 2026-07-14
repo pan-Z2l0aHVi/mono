@@ -21,7 +21,7 @@
   },
   "devDependencies": {
     "@greypan/unplugin-web-components": "workspace:*",
-    "@greypan/vite-plugin-full-reload": "workspace:*",
+    "@greypan/deps-reload": "workspace:*",
     "@testing-library/react": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:"

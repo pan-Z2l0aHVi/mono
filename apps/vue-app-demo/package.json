@@ -21,7 +21,7 @@
     "vue-router": "catalog:"
   },
   "devDependencies": {
-    "@greypan/vite-plugin-full-reload": "workspace:*",
+    "@greypan/deps-reload": "workspace:*",
     "@greypan/unplugin-web-components": "workspace:*",
     "@vue/test-utils": "catalog:",
     "unplugin-auto-import": "catalog:"
