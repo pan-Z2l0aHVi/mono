@@ -1,5 +1,17 @@
 # @greypan/web-ui
 
+## 1.3.0
+
+### Minor Changes
+
+- a4e7f9b: vp monorepo standardization
+
+### Patch Changes
+
+- Updated dependencies [a4e7f9b]
+  - @greypan/browser-kit@1.7.0
+  - @greypan/js-kit@1.6.0
+
 ## 1.2.4
 
 ### Patch Changes
