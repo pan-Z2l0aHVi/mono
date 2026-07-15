@@ -35,9 +35,6 @@
     "access": "public",
     "registry": "https://registry.npmjs.org/"
   },
-  "devDependencies": {
-    "@greypan/tsconfig": "workspace:*"
-  },
   "scripts": {
     "build": "vue-tsc --build && vp build",
     "test": "vp test run",
@@ -46,6 +43,9 @@
   "dependencies": {
     "remeda": "catalog:",
     "nanoid": "catalog:"
+  },
+  "devDependencies": {
+    "@greypan/tsconfig": "workspace:*"
   },
   "browserslist": [
     "defaults"

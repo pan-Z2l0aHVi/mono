@@ -23,9 +23,6 @@
     "access": "public",
     "registry": "https://registry.npmjs.org/"
   },
-  "devDependencies": {
-    "@greypan/tsconfig": "workspace:*"
-  },
   "scripts": {
     "build": "vp pack",
     "test": "vp test run",
@@ -33,6 +30,10 @@
   },
   "dependencies": {
     "@greypan/js-kit": "workspace:*"
+  },
+  "devDependencies": {
+    "@greypan/tsconfig": "workspace:*",
+    "msw": "catalog:"
   },
   "peerDependencies": {
     "msw": "catalog:"

@@ -1,6 +1,6 @@
 # @greypan/unplugin-web-components
 
-Web Components 自动导入插件，支持 Vue 和 React
+Web Components 自动导入插件，支持 React、Vue 和原生 HTML
 
 [English](./README.md) | 简体中文
 
@@ -31,15 +31,14 @@ bun add @greypan/unplugin-web-components
 
 ```ts
 // vite.config.ts
-import { unpluginWebComponents } from '@greypan/unplugin-web-components'
+import unpluginWebComponents from '@greypan/unplugin-web-components/vite'
 
 export default defineConfig({
   plugins: [
     unpluginWebComponents({
       tagPrefix: 'web-ui',
       packageName: '@greypan/web-ui',
-      sideEffects: true,
-      withStyle: 'style.css'
+      sideEffects: true
     })
   ]
 })

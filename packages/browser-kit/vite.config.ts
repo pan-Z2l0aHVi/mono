@@ -29,7 +29,7 @@ export default {
       formats: ['es']
     },
     rollupOptions: {
-      external: ['@greypan/js-kit', 'nanoid', 'remeda', 'copy-to-clipboard'],
+      external: [/^@greypan\//, 'nanoid', 'remeda', 'copy-to-clipboard', 'msw'],
       output: {
         preserveModules: true,
         // 指定源码根目录，这样 dist 下就不会多出一层 'src' 目录

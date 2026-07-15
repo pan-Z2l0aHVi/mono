@@ -11,6 +11,7 @@ English | [简体中文](./README.CN.md)
 - **Layout**: Page layout with header/sidebar/tabbar slots
 - **SVG Draw Lines**: SVG line drawing animation with easing control
 - **Framework compatible**: Works with React, Vue, and vanilla HTML
+- **Type safe**: Full TypeScript types for React and Vue
 
 ## Install
 
@@ -32,14 +33,242 @@ bun add @greypan/web-ui
 
 ## Quick Start
 
-```html
-<script type="module" src="@greypan/web-ui"></script>
+```js
+import '@greypan/web-ui'
+// import '@greypan/web-ui/components/button'
+```
 
+```html
 <web-ui-button primary>Click me</web-ui-button>
 <web-ui-button text>Cancel</web-ui-button>
 <web-ui-button icon>
   <iconify-icon icon="lucide:plus"></iconify-icon>
 </web-ui-button>
+```
+
+## React
+
+> Requires `@types/react >= 16` as an optional peer dependency for type support.
+
+### Setup
+
+**Option A — auto-import (Vite, recommended)**
+
+Use `unplugin-web-components` to auto-register components when their tags appear in JSX:
+
+```ts
+// vite.config.ts
+import unpluginWebComponents from '@greypan/unplugin-web-components/vite'
+
+export default {
+  plugins: [
+    unpluginWebComponents({
+      tagPrefix: 'web-ui',
+      packageName: '@greypan/web-ui',
+      sideEffects: true
+    })
+  ]
+}
+```
+
+**Option B — manual import**
+
+Import the full library to register all components (side-effect registration):
+
+```tsx
+// main.tsx
+import '@greypan/web-ui'
+// import '@greypan/web-ui/components/button'
+```
+
+Or import only specific components for smaller bundle:
+
+```tsx
+// main.tsx or any component file
+import '@greypan/web-ui/components/button'
+import '@greypan/web-ui/components/back-top'
+```
+
+Add type augmentation so TypeScript recognizes the custom element JSX attributes:
+
+```tsx
+// env.d.ts or any type declaration file
+import '@greypan/web-ui/types/react'
+```
+
+### App Layout
+
+Wrap your router with `<web-ui-layout>` and use `<web-ui-back-top>` for global scroll-to-top:
+
+```tsx
+// root.tsx
+import { Outlet } from '@tanstack/react-router'
+
+export function Root() {
+  return (
+    <>
+      <web-ui-layout>
+        <h1>My App</h1>
+
+        {/* Button variants */}
+        <div className="flex gap-2">
+          <web-ui-button>Default</web-ui-button>
+          <web-ui-button primary>Primary</web-ui-button>
+          <web-ui-button text>Text</web-ui-button>
+          <web-ui-button full>Full Width</web-ui-button>
+        </div>
+
+        {/* Named slots */}
+        <web-ui-button>
+          <span slot="prefix">prefix</span>
+          Button with prefix/suffix slots
+          <span slot="suffix">suffix</span>
+        </web-ui-button>
+
+        {/* Router outlet for page content */}
+        <Outlet />
+      </web-ui-layout>
+
+      <web-ui-back-top
+        threshold={300}
+        onvisible-change={e => {
+          console.log('visible: ', e.detail.visible)
+        }}
+      />
+    </>
+  )
+}
+```
+
+> `onvisible-change` works in React 19+ (props forward to custom elements). For React 18, use a `ref` + `addEventListener` instead.
+
+### SVG Draw Lines
+
+Wrap an inline `<svg>` to animate its stroke drawing:
+
+```tsx
+function SvgDemo() {
+  return (
+    <web-ui-svg-draw-lines>
+      <svg viewBox="0 0 24 24" width="100" height="100" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M4 4v16M8 6h12M8 12h6m-6 6h10" />
+      </svg>
+    </web-ui-svg-draw-lines>
+  )
+}
+```
+
+## Vue
+
+> Requires `vue >= 3` as an optional peer dependency.
+
+### Setup
+
+**Option A — auto-import (Vite, recommended)**
+
+Use `unplugin-web-components` for auto-registration:
+
+```ts
+// vite.config.ts
+import vue from '@vitejs/plugin-vue'
+import unpluginWebComponents from '@greypan/unplugin-web-components/vite'
+
+export default {
+  plugins: [
+    vue({
+      template: {
+        compilerOptions: {
+          // tell Vue's template compiler to treat web-ui-* tags as custom elements
+          isCustomElement: tag => tag.startsWith('web-ui-') || tag.startsWith('WebUi')
+        }
+      }
+    }),
+    unpluginWebComponents({
+      tagPrefix: 'web-ui',
+      packageName: '@greypan/web-ui',
+      sideEffects: true
+    })
+  ]
+}
+```
+
+**Option B — manual import**
+
+```ts
+// main.ts
+import { createApp } from 'vue'
+import '@greypan/web-ui' // register all components
+// import '@greypan/web-ui/components/button'
+import App from './App.vue'
+
+createApp(App).mount('#app')
+```
+
+And configure the Vue compiler to recognize custom elements:
+
+```ts
+// vite.config.ts
+vue({
+  template: {
+    compilerOptions: {
+      isCustomElement: tag => tag.startsWith('web-ui-') || tag.startsWith('WebUi')
+    }
+  }
+})
+```
+
+For type augmentation in Vue templates:
+
+```ts
+// env.d.ts or any type declaration file
+import '@greypan/web-ui/types/vue'
+```
+
+### App Layout
+
+Wrap your app with `<web-ui-layout>` and use the button variants:
+
+```vue
+<template>
+  <web-ui-layout>
+    <h1>My App</h1>
+
+    <div class="flex gap-2">
+      <web-ui-button>默认</web-ui-button>
+      <web-ui-button primary>Primary</web-ui-button>
+      <web-ui-button text>Text</web-ui-button>
+      <web-ui-button full>Full Width</web-ui-button>
+    </div>
+
+    <web-ui-button>
+      <span slot="prefix">prefix</span>
+      带前后缀插槽的按钮
+      <span slot="suffix">suffix</span>
+    </web-ui-button>
+
+    <RouterView />
+  </web-ui-layout>
+
+  <web-ui-back-top :threshold="300" @visible-change="onVisibleChange" />
+</template>
+
+<script setup lang="ts">
+function onVisibleChange(e: CustomEvent<{ visible: boolean }>) {
+  console.log('visible: ', e.detail.visible)
+}
+</script>
+```
+
+### SVG Draw Lines
+
+```vue
+<template>
+  <web-ui-svg-draw-lines>
+    <svg viewBox="0 0 24 24" width="100" height="100" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M4 4v16M8 6h12M8 12h6m-6 6h10" />
+    </svg>
+  </web-ui-svg-draw-lines>
+</template>
 ```
 
 ## API
