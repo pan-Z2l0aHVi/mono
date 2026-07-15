@@ -1,5 +1,11 @@
 # @greypan/js-kit
 
+## 1.6.1
+
+### Patch Changes
+
+- c56dd3e: add tsconfig package
+
 ## 1.6.0
 
 ### Minor Changes

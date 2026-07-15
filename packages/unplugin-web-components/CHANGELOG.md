@@ -1,5 +1,13 @@
 # @greypan/unplugin-web-components
 
+## 1.3.1
+
+### Patch Changes
+
+- c56dd3e: add tsconfig package
+- Updated dependencies [c56dd3e]
+  - @greypan/js-kit@1.6.1
+
 ## 1.3.0
 
 ### Minor Changes
