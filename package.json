@@ -43,7 +43,6 @@
     "glob": "catalog:",
     "jsdom": "catalog:",
     "lightningcss": "catalog:",
-    "msw": "catalog:",
     "stylelint": "catalog:",
     "stylelint-config-clean-order": "catalog:",
     "stylelint-config-standard": "catalog:",

@@ -98,7 +98,7 @@ const tracker = defineTracker({ endpoint: '/api/track' })
 
 ## API
 
-### `defineLocal(namespace?)` / `defineSession(namespace?))`
+### `defineLocal(namespace?)` / `defineSession(namespace?)`
 
 创建带命名空间的 localStorage/sessionStorage 实例。每个 namespace 返回单例。
 
