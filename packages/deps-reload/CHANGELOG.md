@@ -1,5 +1,21 @@
 # @greypan/deps-reload
 
+## 1.1.2
+
+### Patch Changes
+
+- be4008b: Standardize externalization to regex patterns for workspace deps; move msw to package-level devDependencies
+
+  - `vite.config.ts` for `js-kit`, `browser-kit`, `web-ui`: replace hardcoded workspace dep names with `/^@greypan\//` regex; add missing external deps (`nanoid`, `msw`)
+  - `browser-kit`: move `msw` from peerDependencies to devDependencies
+  - `test-kit`: add `msw` to devDependencies for local type checking
+  - `web-ui`: replace `react` peer dep with `@types/react`; add React/Vue usage documentation to README
+  - `unplugin-web-components`: fix README import path to use `/vite` sub-path export
+  - Fix documentation in READMEs and AGENTS.md to reflect current externalization rules
+
+- Updated dependencies [be4008b]
+  - @greypan/js-kit@1.6.2
+
 ## 1.1.1
 
 ### Patch Changes
