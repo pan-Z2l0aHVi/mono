@@ -46,19 +46,15 @@
     "@greypan/tsconfig": "workspace:*",
     "lit": "catalog:",
     "@types/react": "catalog:",
-    "react": "catalog:",
     "vue": "catalog:"
   },
   "peerDependencies": {
     "lit": "catalog:",
-    "react": ">=16",
+    "@types/react": ">=16",
     "vue": ">=3"
   },
   "peerDependenciesMeta": {
-    "lit": {
-      "optional": false
-    },
-    "react": {
+    "@types/react": {
       "optional": true
     },
     "vue": {

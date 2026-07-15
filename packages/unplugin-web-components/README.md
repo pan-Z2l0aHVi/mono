@@ -1,6 +1,6 @@
 # @greypan/unplugin-web-components
 
-Unplugin for web components auto-import in Vue and React
+Unplugin for web components auto-import in React, Vue, and vanilla JS
 
 English | [简体中文](./README.CN.md)
 
@@ -31,15 +31,14 @@ bun add @greypan/unplugin-web-components
 
 ```ts
 // vite.config.ts
-import { unpluginWebComponents } from '@greypan/unplugin-web-components'
+import unpluginWebComponents from '@greypan/unplugin-web-components/vite'
 
 export default defineConfig({
   plugins: [
     unpluginWebComponents({
       tagPrefix: 'web-ui',
       packageName: '@greypan/web-ui',
-      sideEffects: true,
-      withStyle: 'style.css'
+      sideEffects: true
     })
   ]
 })

@@ -111,16 +111,17 @@ Two build modes:
 - **Workspace deps (`@greypan/*`) MUST be externalized** — either manually via `rollupOptions.external` (Vite lib mode) or automatically by tsdown (`vp pack` auto-externalizes `dependencies`). Required for dev watch mode — without it, Rolldown fails to resolve workspace links on rebuild. Also prevents duplicate code in consumer bundles.
 - **Third-party npm deps can be externalized or bundled** — depends on the package's design intent. If the package is designed to be consumed with zero config, bundle them. If the package expects consumers to install peer dependencies, externalize them.
 - **Node built-in modules** (e.g., `node:path`) MUST be externalized — they can't be bundled.
-- `web-ui` externalizes `lit` (along with workspace deps), so consumers must install `lit` as a dependency.
+- **Regex patterns preferred** — Use `/^@greypan\//` instead of listing individual workspace packages. Sub-path patterns (`/^lit($|\/)/`) catch deep imports.
+- `web-ui` externalizes framework deps via regex (`/^lit($|\/)/`, `/^react($|\/)/`, `/^vue($|\/)/`, etc.), so consumers must install `lit` (required) as a dependency.
 
-| Package                   | Externalization                                                  | Bundled (third-party) |
-| ------------------------- | ---------------------------------------------------------------- | --------------------- |
-| `js-kit`                  | _(none)_                                                         | `remeda`              |
-| `browser-kit`             | `@greypan/js-kit`, `nanoid`, `remeda`, `copy-to-clipboard`       | _(none)_              |
-| `test-kit`                | Auto by tsdown (`@greypan/js-kit`, `msw`)                        | _(none)_              |
-| `web-ui`                  | `@greypan/browser-kit`, `@greypan/js-kit`, `iconify-icon`, `lit` | _(none)_              |
-| `unplugin-web-components` | Auto by tsdown (`@greypan/js-kit`, `change-case`, `unplugin`)    | _(none)_              |
-| `deps-reload`             | Auto by tsdown (`node:*`, `@greypan/js-kit`, `unplugin`)         | _(none)_              |
+| Package                   | Externalization                                                 | Bundled (third-party) |
+| ------------------------- | --------------------------------------------------------------- | --------------------- | ----------------- | --------------------- | --------------- | --------------------- | -------- |
+| `js-kit`                  | `/^@greypan\//`, `remeda`, `nanoid`                             | _(none)_              |
+| `browser-kit`             | `/^@greypan\//`, `nanoid`, `remeda`, `copy-to-clipboard`, `msw` | _(none)_              |
+| `test-kit`                | Auto by tsdown (`@greypan/js-kit`, `msw`)                       | _(none)_              |
+| `web-ui`                  | `/^@greypan\//`, `/^lit($                                       | \/)/`, `/^@lit($      | \/)/`, `/^react($ | \/)/`, `/^react-dom($ | \/)/`, `/^vue($ | \/)/`, `iconify-icon` | _(none)_ |
+| `unplugin-web-components` | Auto by tsdown (`@greypan/js-kit`, `change-case`, `unplugin`)   | _(none)_              |
+| `deps-reload`             | Auto by tsdown (`node:*`, `@greypan/js-kit`, `unplugin`)        | _(none)_              |
 
 ### Apps
 
