@@ -27,6 +27,9 @@
     "access": "public",
     "registry": "https://registry.npmjs.org/"
   },
+  "devDependencies": {
+    "@greypan/tsconfig": "workspace:*"
+  },
   "scripts": {
     "build": "vp pack",
     "test": "vp test run",

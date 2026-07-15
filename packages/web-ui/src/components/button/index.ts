@@ -5,14 +5,14 @@ import style from './style.css?inline'
 
 @customElement('web-ui-button')
 export class WebUiButton extends LitElement {
-  static styles = unsafeCSS(style)
+  static override styles = unsafeCSS(style)
 
   @property({ type: Boolean, reflect: true }) full = false
   @property({ type: Boolean, reflect: true }) primary = false
   @property({ type: Boolean, reflect: true }) text = false
   @property({ type: Boolean, reflect: true }) icon = false
 
-  render() {
+  override render() {
     return html`
       <button>
         ${this.icon

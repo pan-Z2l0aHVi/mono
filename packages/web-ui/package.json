@@ -43,6 +43,7 @@
     "iconify-icon": "catalog:"
   },
   "devDependencies": {
+    "@greypan/tsconfig": "workspace:*",
     "lit": "catalog:",
     "@types/react": "catalog:",
     "react": "catalog:",

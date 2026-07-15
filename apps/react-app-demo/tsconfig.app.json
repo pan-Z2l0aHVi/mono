@@ -1,27 +1,11 @@
 {
+  "extends": "@greypan/tsconfig/react.json",
+  "exclude": ["src/**/__tests__/*"],
+  "include": ["src/**/*", "env.d.ts"],
   "compilerOptions": {
-    "allowImportingTsExtensions": true,
-    "erasableSyntaxOnly": true,
-    "jsx": "react-jsx",
-    "lib": ["ESNext", "DOM", "DOM.Iterable"],
-    "module": "ESNext",
-    "moduleDetection": "force",
-    "moduleResolution": "bundler",
-    "noEmit": true,
-    "noFallthroughCasesInSwitch": true,
-    "noUncheckedSideEffectImports": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
     "paths": {
       "@/*": ["./src/*"]
     },
-    "skipLibCheck": true,
-    "strict": true,
-    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
-    "types": ["vite/client"],
-    "useDefineForClassFields": true,
-    "verbatimModuleSyntax": true
-  },
-  "exclude": ["src/**/__tests__"],
-  "include": ["env.d.ts", "src/**/*"]
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo"
+  }
 }
