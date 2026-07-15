@@ -8,7 +8,7 @@ import style from './style.css?inline'
 
 @customElement('web-ui-back-top')
 export class WebUiBackTop extends LitElement {
-  static styles = unsafeCSS(style)
+  static override styles = unsafeCSS(style)
 
   @property({ type: Boolean, reflect: true }) smooth = true
   @property({ type: Number, reflect: true }) threshold: number = 200
@@ -102,7 +102,7 @@ export class WebUiBackTop extends LitElement {
     }
   }
 
-  render() {
+  override render() {
     return html`
       <div role="button" tabindex="0" @click=${this.toTop} @keydown=${this.onEnter}>
         <slot>

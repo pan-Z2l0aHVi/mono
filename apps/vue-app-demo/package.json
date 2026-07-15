@@ -23,6 +23,7 @@
   "devDependencies": {
     "@greypan/deps-reload": "workspace:*",
     "@greypan/unplugin-web-components": "workspace:*",
+    "@greypan/tsconfig": "workspace:*",
     "@vue/test-utils": "catalog:",
     "unplugin-auto-import": "catalog:"
   },

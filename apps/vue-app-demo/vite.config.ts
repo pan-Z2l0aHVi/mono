@@ -8,6 +8,7 @@ import vueJsx from '@vitejs/plugin-vue-jsx'
 import autoImport from 'unplugin-auto-import/vite'
 import vueDevTools from 'vite-plugin-vue-devtools'
 import { searchForWorkspaceRoot, type UserConfig } from 'vite-plus'
+import { VueRouterAutoImports } from 'vue-router/unplugin'
 import vueRouter from 'vue-router/vite'
 
 export default {
@@ -28,7 +29,7 @@ export default {
     vueJsx(),
     autoImport({
       dts: true,
-      imports: ['vue'],
+      imports: ['vue', VueRouterAutoImports],
       // 禁止 auto-import 自动导入 Vue 的 h 方法，防止与 Lit 的 h 冲突
       ignore: ['h']
     }),
