@@ -1,7 +1,7 @@
 import { resolve, sep } from 'node:path'
 
 import { debounce } from '@greypan/js-kit'
-import { UnpluginFactory } from 'unplugin'
+import type { UnpluginFactory } from 'unplugin'
 import type { ViteDevServer } from 'vite-plus'
 
 export interface Dep {

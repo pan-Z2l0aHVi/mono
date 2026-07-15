@@ -4,15 +4,11 @@ export default {
   pack: [
     {
       entry: 'src/vite.ts',
-      dts: {
-        build: true
-      }
+      dts: true
     },
     {
       entry: 'src/webpack.ts',
-      dts: {
-        build: true
-      }
+      dts: true
     }
   ]
 } satisfies UserConfig

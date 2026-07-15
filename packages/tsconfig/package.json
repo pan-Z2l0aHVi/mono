@@ -1,0 +1,24 @@
+{
+  "name": "@greypan/tsconfig",
+  "version": "1.0.0",
+  "description": "Shared TypeScript configuration profiles for the monorepo",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pan-Z2l0aHVi/mono.git"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "@vue/tsconfig": "catalog:"
+  },
+  "files": [
+    "base.json",
+    "core.json",
+    "dom.json",
+    "node.json",
+    "react.json",
+    "vue.json"
+  ]
+}

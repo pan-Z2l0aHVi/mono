@@ -5,9 +5,9 @@ import style from './style.css?inline'
 
 @customElement('web-ui-layout')
 export class WebUiLayout extends LitElement {
-  static styles = unsafeCSS(style)
+  static override styles = unsafeCSS(style)
 
-  render() {
+  override render() {
     return html`
       <header>
         <slot name="header"></slot>

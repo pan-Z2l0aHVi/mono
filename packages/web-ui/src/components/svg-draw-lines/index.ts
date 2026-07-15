@@ -5,7 +5,7 @@ import style from './style.css?inline'
 
 @customElement('web-ui-svg-draw-lines')
 export class WebUiSvgDrawLines extends LitElement {
-  static styles = unsafeCSS(style)
+  static override styles = unsafeCSS(style)
 
   @property({ type: Number, reflect: true }) duration = 1000
   @property({ type: String, reflect: true }) easing = 'linear'
@@ -118,7 +118,7 @@ export class WebUiSvgDrawLines extends LitElement {
     this.svgClone = null
   }
 
-  render() {
+  override render() {
     return html`
       <slot ?hidden="${this.isAnimating}" @slotchange="${this.handleSlotChange}"></slot>
       ${this.isAnimating ? this.svgClone : ''}

@@ -42,7 +42,8 @@
     "msw": "catalog:"
   },
   "devDependencies": {
-    "@greypan/test-kit": "workspace:*"
+    "@greypan/test-kit": "workspace:*",
+    "@greypan/tsconfig": "workspace:*"
   },
   "browserslist": [
     "defaults"

@@ -61,13 +61,29 @@ Build scripts differ by package type:
 - **Single-entry packages** (test-kit, unplugin-web-components, deps-reload): `vp pack` — tsdown-based, outputs `.mjs` + `.d.mts`
 - **Sub-path export packages** (js-kit, browser-kit, web-ui): `vue-tsc --build && vp build` — Vite lib mode with `preserveModules`, outputs `.js` + `.d.ts`
 - **React app**: `tsc -b && vp build`
+- **tsconfig**: No build step — pure JSON config files, consumed via TypeScript `extends`
 
 **Type-checker**: All packages (including non-Vue ones like `js-kit`, `browser-kit`) use `vue-tsc` for type-checking. React app uses `tsc`. Type-check runs in CI via `vp check`.
+
+## TypeScript configuration
+
+Shared config profiles in `packages/tsconfig/` consumed via `"extends": "@greypan/tsconfig/<profile>.json"`:
+
+| Profile      | Layer  | Used by                                     | Extends                            |
+| ------------ | ------ | ------------------------------------------- | ---------------------------------- |
+| `core.json`  | 1-纯JS | js-kit                                      | `./base.json`                      |
+| `node.json`  | 2-Node | Node.js packages + all `tsconfig.node.json` | `@tsconfig/node24` + `./base.json` |
+| `dom.json`   | 3-DOM  | Browser packages (browser-kit, web-ui)      | `./base.json`                      |
+| `react.json` | 4-框架 | React app (react-app-demo)                  | `./dom.json`                       |
+| `vue.json`   | 4-框架 | Vue app (vue-app-demo)                      | `@vue/tsconfig` + `./dom.json`     |
+
+Each sub-package adds its own `include`, `paths`, and `tsBuildInfoFile`. The `tsconfig.node.json`, `tsconfig.app.json`, `tsconfig.vitest.json` split is kept for packages targeting multiple environments (DOM + Node configs + test). Pure Node packages merge into a single `tsconfig.json`.
 
 ## Package structure
 
 ```
 packages/
+  tsconfig        — Shared TypeScript configuration profiles (no build step)
   js-kit          — JS utilities (base package, no workspace deps)
   browser-kit     — Browser utilities (depends on js-kit)
   test-kit        — Test infrastructure plugins for Vitest browser mode + MSW (depends on js-kit)
