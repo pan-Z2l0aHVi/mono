@@ -38,12 +38,10 @@
     "nanoid": "catalog:",
     "remeda": "catalog:"
   },
-  "peerDependencies": {
-    "msw": "catalog:"
-  },
   "devDependencies": {
     "@greypan/test-kit": "workspace:*",
-    "@greypan/tsconfig": "workspace:*"
+    "@greypan/tsconfig": "workspace:*",
+    "msw": "catalog:"
   },
   "browserslist": [
     "defaults"
