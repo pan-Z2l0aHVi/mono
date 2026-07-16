@@ -1,6 +1,6 @@
 # @greypan/deps-reload
 
-一个监听 dist 文件夹变化并触发全量刷新的 Vite 插件
+> 一个监听 dist 文件夹变化并触发全量刷新的 Vite 插件
 
 [English](./README.md) | 简体中文
 

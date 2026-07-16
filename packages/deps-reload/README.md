@@ -1,6 +1,6 @@
 # @greypan/deps-reload
 
-A Plugin that watches dist folder for changes and reloads the page
+> A Plugin that watches dist folder for changes and reloads the page
 
 English | [简体中文](./README.CN.md)
 

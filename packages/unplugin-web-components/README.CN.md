@@ -1,6 +1,6 @@
 # @greypan/unplugin-web-components
 
-Web Components 自动导入插件，支持 React、Vue 和原生 HTML
+> Web Components 自动导入插件，支持 React、Vue 和原生 HTML
 
 [English](./README.md) | 简体中文
 

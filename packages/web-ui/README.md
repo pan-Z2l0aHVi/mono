@@ -1,6 +1,6 @@
 # @greypan/web-ui
 
-Lit-based web components for React, Vue, and vanilla JS
+> Lit-based web components for React, Vue, and vanilla JS
 
 English | [简体中文](./README.CN.md)
 

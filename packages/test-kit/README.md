@@ -1,6 +1,6 @@
 # @greypan/test-kit
 
-Test infrastructure plugins for Vitest browser mode with MSW
+> Test infrastructure plugins for Vitest browser mode with MSW
 
 English | [简体中文](./README.CN.md)
 

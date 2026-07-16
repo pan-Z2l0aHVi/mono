@@ -1,6 +1,6 @@
 # @greypan/tsconfig
 
-Monorepo 共享 TypeScript 配置
+> Monorepo 共享 TypeScript 配置
 
 [English](./README.md) | 简体中文
 
