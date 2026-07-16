@@ -1,6 +1,6 @@
 # @greypan/test-kit
 
-Vitest 浏览器模式下的测试基础设施插件，基于 MSW
+> Vitest 浏览器模式下的测试基础设施插件，基于 MSW
 
 [English](./README.md) | 简体中文
 
