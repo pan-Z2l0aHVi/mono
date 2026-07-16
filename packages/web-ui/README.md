@@ -78,7 +78,6 @@ Import the full library to register all components (side-effect registration):
 ```tsx
 // main.tsx
 import '@greypan/web-ui'
-// import '@greypan/web-ui/components/button'
 ```
 
 Or import only specific components for smaller bundle:
