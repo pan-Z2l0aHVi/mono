@@ -1,6 +1,6 @@
 {
   "name": "@greypan/web-ui",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "description": "Lit-based web components for React, Vue, and vanilla JS",
   "license": "MIT",
   "repository": {
