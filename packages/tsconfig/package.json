@@ -1,6 +1,6 @@
 {
   "name": "@greypan/tsconfig",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Shared TypeScript configuration profiles for the monorepo",
   "license": "MIT",
   "repository": {
