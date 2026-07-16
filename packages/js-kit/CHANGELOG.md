@@ -1,5 +1,11 @@
 # @greypan/js-kit
 
+## 1.6.3
+
+### Patch Changes
+
+- 734dea6: fix npm readme cn link
+
 ## 1.6.2
 
 ### Patch Changes
