@@ -1,5 +1,16 @@
 # @greypan/web-ui
 
+## 1.4.2
+
+### Patch Changes
+
+- 57f9984: fix mardkwon table format
+- 57f9984: fix npm readme cn link
+- Updated dependencies [57f9984]
+- Updated dependencies [57f9984]
+  - @greypan/browser-kit@1.7.4
+  - @greypan/js-kit@1.6.4
+
 ## 1.4.1
 
 ### Patch Changes
