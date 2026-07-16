@@ -25,6 +25,14 @@
     "@greypan/unplugin-web-components": "workspace:*",
     "@greypan/tsconfig": "workspace:*",
     "@vue/test-utils": "catalog:",
+    "vite-plugin-dts": "catalog:",
+    "vite-plugin-pwa": "catalog:",
+    "@vitejs/plugin-basic-ssl": "catalog:",
+    "@vitejs/plugin-legacy": "catalog:",
+    "@vitejs/plugin-vue-jsx": "catalog:",
+    "@vitejs/plugin-vue": "catalog:",
+    "@tailwindcss/vite": "catalog:",
+    "vite-plugin-vue-devtools": "catalog:",
     "unplugin-auto-import": "catalog:"
   },
   "browserslist": {

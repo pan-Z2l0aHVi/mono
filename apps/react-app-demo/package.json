@@ -25,7 +25,16 @@
     "@greypan/tsconfig": "workspace:*",
     "@testing-library/react": "catalog:",
     "@types/react": "catalog:",
-    "@types/react-dom": "catalog:"
+    "@types/react-dom": "catalog:",
+    "vite-plugin-dts": "catalog:",
+    "vite-plugin-pwa": "catalog:",
+    "@vitejs/plugin-basic-ssl": "catalog:",
+    "@vitejs/plugin-legacy": "catalog:",
+    "@vitejs/plugin-react": "catalog:",
+    "@tailwindcss/vite": "catalog:",
+    "babel-plugin-react-compiler": "catalog:",
+    "@tanstack/router-plugin": "catalog:",
+    "@rolldown/plugin-babel": "catalog:"
   },
   "browserslist": {
     "development": [

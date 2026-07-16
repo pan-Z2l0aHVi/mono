@@ -41,6 +41,7 @@
   "devDependencies": {
     "@greypan/test-kit": "workspace:*",
     "@greypan/tsconfig": "workspace:*",
+    "vite-plugin-dts": "catalog:",
     "msw": "catalog:"
   },
   "browserslist": [
