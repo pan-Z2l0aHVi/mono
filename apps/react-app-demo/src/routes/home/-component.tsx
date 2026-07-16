@@ -1,5 +1,7 @@
 import { useCounterStore } from '@/stores/counter'
 
+import ButtonDemo from '../../components/button-demo'
+
 function Home() {
   const { count, increment, decrement, reset } = useCounterStore()
 
@@ -15,6 +17,8 @@ function Home() {
         <web-ui-button onClick={increment}>+1</web-ui-button>
         <web-ui-button onClick={reset}>reset</web-ui-button>
       </div>
+
+      <ButtonDemo />
     </div>
   )
 }
