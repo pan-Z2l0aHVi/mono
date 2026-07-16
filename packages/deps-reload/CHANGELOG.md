@@ -1,5 +1,13 @@
 # @greypan/deps-reload
 
+## 1.1.3
+
+### Patch Changes
+
+- 734dea6: fix npm readme cn link
+- Updated dependencies [734dea6]
+  - @greypan/js-kit@1.6.3
+
 ## 1.1.2
 
 ### Patch Changes
