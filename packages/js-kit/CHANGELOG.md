@@ -1,5 +1,12 @@
 # @greypan/js-kit
 
+## 1.6.4
+
+### Patch Changes
+
+- 57f9984: fix mardkwon table format
+- 57f9984: fix npm readme cn link
+
 ## 1.6.3
 
 ### Patch Changes
