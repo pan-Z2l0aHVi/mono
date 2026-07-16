@@ -30,7 +30,7 @@
   "scripts": {
     "build": "vp pack",
     "test": "vp test run",
-    "dev": "vp pack --watch"
+    "dev": "vp pack --watch --clean=false"
   },
   "dependencies": {
     "@greypan/js-kit": "workspace:*",
