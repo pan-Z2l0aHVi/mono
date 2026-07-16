@@ -1,8 +1,10 @@
-import 'iconify-icon'
 import '@/components/button'
 import { getRootScrollTop } from '@greypan/browser-kit'
 import { html, LitElement, type PropertyValues, unsafeCSS } from 'lit'
 import { customElement, property, state } from 'lit/decorators.js'
+
+import { moveToTop16 } from '../../icons/index'
+import '../icon'
 
 import style from './style.css?inline'
 
@@ -108,7 +110,7 @@ export class WebUiBackTop extends LitElement {
         <slot>
           <!-- 默认 slot 加上 tabindex="-1"，防止双重 focus -->
           <web-ui-button tabindex="-1" icon>
-            <iconify-icon icon="octicon:move-to-top-16" width="16" height="16"></iconify-icon>
+            <web-ui-icon .icon=${moveToTop16}></web-ui-icon>
           </web-ui-button>
         </slot>
       </div>

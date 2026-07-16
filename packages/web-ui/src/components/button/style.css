@@ -8,22 +8,22 @@ button {
   user-select: none;
 
   display: inline-flex;
-  gap: var(--web-ui-button-gap, 6px);
+  gap: var(--wui-button-gap, 6px);
   align-items: center;
   justify-content: center;
 
   box-sizing: border-box;
   width: max-content;
   border: 1px solid transparent;
-  border-radius: var(--web-ui-button-radius, 999vmax);
+  border-radius: var(--wui-button-radius, 999vmax);
 
   font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
   font-weight: 500;
   line-height: 1;
-  color: var(--btn-color);
+  color: var(--wui-button-color);
   white-space: nowrap;
 
-  background-color: var(--btn-bg);
+  background-color: var(--wui-button-bg);
 
   transition: all 0.15s cubic-bezier(0.25, 0.1, 0.25, 1);
 
@@ -39,11 +39,11 @@ button {
   }
 
   &:hover:not(:disabled) {
-    background-color: var(--btn-bg-hover);
+    background-color: var(--wui-button-bg-hover);
   }
 
   &:active:not(:disabled) {
-    background-color: var(--btn-bg-active);
+    background-color: var(--wui-button-bg-active);
   }
 }
 
@@ -51,25 +51,25 @@ button {
 
 :host([size='small']) {
   button {
-    height: var(--web-ui-button-h, 28px);
-    padding: 0 var(--web-ui-button-p-x, 12px);
-    font-size: var(--web-ui-button-font-size, 12px);
+    height: var(--wui-button-h, 28px);
+    padding: 0 var(--wui-button-px, 12px);
+    font-size: var(--wui-button-font-size, 12px);
   }
 }
 
 :host([size='medium']) {
   button {
-    height: var(--web-ui-button-h, 34px);
-    padding: 0 var(--web-ui-button-p-x, 16px);
-    font-size: var(--web-ui-button-font-size, 13px);
+    height: var(--wui-button-h, 34px);
+    padding: 0 var(--wui-button-px, 16px);
+    font-size: var(--wui-button-font-size, 13px);
   }
 }
 
 :host([size='large']) {
   button {
-    height: var(--web-ui-button-h, 40px);
-    padding: 0 var(--web-ui-button-p-x, 20px);
-    font-size: var(--web-ui-button-font-size, 14px);
+    height: var(--wui-button-h, 40px);
+    padding: 0 var(--wui-button-px, 20px);
+    font-size: var(--wui-button-font-size, 14px);
   }
 }
 
@@ -96,78 +96,66 @@ button {
 /* ===== Variant: primary (默认) ===== */
 
 :host([variant='primary']) {
-  --btn-color: #fff;
-  --btn-bg: #007aff;
-  --btn-bg-hover: #06d;
-  --btn-bg-active: #05c;
+  --wui-button-color: #fff;
+  --wui-button-bg: #007aff;
+  --wui-button-bg-hover: #06d;
+  --wui-button-bg-active: #05c;
 }
 
 /* ===== Variant: secondary ===== */
 
 :host([variant='secondary']) {
-  --btn-color: #1c1c1e;
-  --btn-bg: #f2f2f7;
-  --btn-bg-hover: #e8e8ed;
-  --btn-bg-active: #d1d1d6;
+  --wui-button-color: #1c1c1e;
+  --wui-button-bg: #f2f2f7;
+  --wui-button-bg-hover: #e8e8ed;
+  --wui-button-bg-active: #d1d1d6;
 }
 
 /* ===== Variant: ghost ===== */
 
 :host([variant='ghost']) {
-  --btn-color: #007aff;
-  --btn-bg: transparent;
-  --btn-bg-hover: rgb(0 122 255 / 0.08);
-  --btn-bg-active: rgb(0 122 255 / 0.12);
+  --wui-button-color: #007aff;
+  --wui-button-bg: transparent;
+  --wui-button-bg-hover: rgb(0 122 255 / 0.08);
+  --wui-button-bg-active: rgb(0 122 255 / 0.12);
 }
 
 /* ===== Variant: danger ===== */
 
 :host([variant='danger']) {
-  --btn-color: #ff3b30;
-  --btn-bg: #ffe5e5;
-  --btn-bg-hover: #ffd4d4;
-  --btn-bg-active: #ffc4c4;
-}
-
-/* ===== Loading spinner ===== */
-
-.spinner {
-  animation: spin 0.6s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
+  --wui-button-color: #ff3b30;
+  --wui-button-bg: #ffe5e5;
+  --wui-button-bg-hover: #ffd4d4;
+  --wui-button-bg-active: #ffc4c4;
 }
 
 /* ===== Dark mode ===== */
 
 @media (prefers-color-scheme: dark) {
   :host([variant='primary']) {
-    --btn-color: #fff;
-    --btn-bg: #0a84ff;
-    --btn-bg-hover: #409cff;
-    --btn-bg-active: #64b5f6;
+    --wui-button-color: #fff;
+    --wui-button-bg: #0a84ff;
+    --wui-button-bg-hover: #409cff;
+    --wui-button-bg-active: #64b5f6;
   }
 
   :host([variant='secondary']) {
-    --btn-color: #e5e5ea;
-    --btn-bg: #2c2c2e;
-    --btn-bg-hover: #3a3a3c;
-    --btn-bg-active: #48484a;
+    --wui-button-color: #e5e5ea;
+    --wui-button-bg: #2c2c2e;
+    --wui-button-bg-hover: #3a3a3c;
+    --wui-button-bg-active: #48484a;
   }
 
   :host([variant='ghost']) {
-    --btn-color: #0a84ff;
-    --btn-bg-hover: rgb(10 132 255 / 0.1);
-    --btn-bg-active: rgb(10 132 255 / 0.15);
+    --wui-button-color: #0a84ff;
+    --wui-button-bg-hover: rgb(10 132 255 / 0.1);
+    --wui-button-bg-active: rgb(10 132 255 / 0.15);
   }
 
   :host([variant='danger']) {
-    --btn-color: #ff453a;
-    --btn-bg: #3a1a1a;
-    --btn-bg-hover: #4a2020;
-    --btn-bg-active: #5a2a2a;
+    --wui-button-color: #ff453a;
+    --wui-button-bg: #3a1a1a;
+    --wui-button-bg-hover: #4a2020;
+    --wui-button-bg-active: #5a2a2a;
   }
 }

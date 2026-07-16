@@ -96,8 +96,9 @@ describe('WebUiButton', () => {
       expect(el.hasAttribute('loading')).toBe(true)
       const btn = el.shadowRoot?.querySelector('button')
       expect(btn?.hasAttribute('disabled')).toBe(true)
-      const spinner = el.shadowRoot?.querySelector('iconify-icon.spinner')
+      const spinner = el.shadowRoot?.querySelector('web-ui-icon')
       expect(spinner).toBeTruthy()
+      expect(spinner?.hasAttribute('spin')).toBe(true)
     })
 
     it('关闭 loading 后按钮恢复可交互', async () => {
@@ -107,7 +108,7 @@ describe('WebUiButton', () => {
       await el.updateComplete
       const btn = el.shadowRoot?.querySelector('button')
       expect(btn?.hasAttribute('disabled')).toBe(false)
-      const spinner = el.shadowRoot?.querySelector('iconify-icon.spinner')
+      const spinner = el.shadowRoot?.querySelector('web-ui-icon')
       expect(spinner).toBeNull()
     })
   })

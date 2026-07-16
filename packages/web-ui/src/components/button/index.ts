@@ -1,6 +1,9 @@
 import { html, LitElement, unsafeCSS } from 'lit'
 import { customElement, property } from 'lit/decorators.js'
 
+import { loaderCircle } from '../../icons/index'
+import '../icon'
+
 import style from './style.css?inline'
 
 @customElement('web-ui-button')
@@ -24,9 +27,7 @@ export class WebUiButton extends LitElement {
   override render() {
     return html`
       <button ?disabled=${this.disabled || this.loading} @click=${this.handleClick}>
-        ${this.loading
-          ? html`<iconify-icon class="spinner" icon="lucide:loader-2" width="1em" height="1em"></iconify-icon>`
-          : ''}
+        ${this.loading ? html`<web-ui-icon .icon=${loaderCircle} spin></web-ui-icon>` : ''}
         ${this.icon
           ? html`<slot></slot>`
           : html`

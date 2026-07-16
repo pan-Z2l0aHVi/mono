@@ -65,6 +65,10 @@ Build scripts differ by package type:
 
 **Type-checker**: All packages (including non-Vue ones like `js-kit`, `browser-kit`) use `vue-tsc` for type-checking. React app uses `tsc`. Type-check runs in CI via `vp check`.
 
+**web-ui specific**:
+
+- `pnpm --filter @greypan/web-ui generate-icons` — Regenerate icon modules from `icons.used.json`
+
 ## TypeScript configuration
 
 Shared config profiles in `packages/tsconfig/` consumed via `"extends": "@greypan/tsconfig/<profile>.json"`:
@@ -115,11 +119,11 @@ Two build modes:
 - `web-ui` externalizes framework deps via regex (`/^lit($|\/)/`, `/^react($|\/)/`, `/^vue($|\/)/`, etc.), so consumers must install `lit` (required) as a dependency.
 
 | Package                   | Externalization                                                 | Bundled (third-party) |
-| ------------------------- | --------------------------------------------------------------- | --------------------- | ----------------- | --------------------- | --------------- | --------------------- | -------- |
+| ------------------------- | --------------------------------------------------------------- | --------------------- | ----------------- | --------------------- | --------------- | ----- | -------- |
 | `js-kit`                  | `/^@greypan\//`, `remeda`, `nanoid`                             | _(none)_              |
 | `browser-kit`             | `/^@greypan\//`, `nanoid`, `remeda`, `copy-to-clipboard`, `msw` | _(none)_              |
 | `test-kit`                | Auto by tsdown (`@greypan/js-kit`, `msw`)                       | _(none)_              |
-| `web-ui`                  | `/^@greypan\//`, `/^lit($                                       | \/)/`, `/^@lit($      | \/)/`, `/^react($ | \/)/`, `/^react-dom($ | \/)/`, `/^vue($ | \/)/`, `iconify-icon` | _(none)_ |
+| `web-ui`                  | `/^@greypan\//`, `/^lit($                                       | \/)/`, `/^@lit($      | \/)/`, `/^react($ | \/)/`, `/^react-dom($ | \/)/`, `/^vue($ | \/)/` | _(none)_ |
 | `unplugin-web-components` | Auto by tsdown (`@greypan/js-kit`, `change-case`, `unplugin`)   | _(none)_              |
 | `deps-reload`             | Auto by tsdown (`node:*`, `@greypan/js-kit`, `unplugin`)        | _(none)_              |
 

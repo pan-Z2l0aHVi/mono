@@ -34,9 +34,7 @@ export default {
         /^react($|\/)/,
         /^react-dom($|\/)/,
 
-        /^vue($|\/)/,
-
-        'iconify-icon'
+        /^vue($|\/)/
       ],
       output: {
         preserveModules: true,
