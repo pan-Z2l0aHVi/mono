@@ -1,5 +1,13 @@
 # @greypan/browser-kit
 
+## 1.7.3
+
+### Patch Changes
+
+- 734dea6: fix npm readme cn link
+- Updated dependencies [734dea6]
+  - @greypan/js-kit@1.6.3
+
 ## 1.7.2
 
 ### Patch Changes

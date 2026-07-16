@@ -1,5 +1,14 @@
 # @greypan/web-ui
 
+## 1.4.1
+
+### Patch Changes
+
+- 734dea6: fix npm readme cn link
+- Updated dependencies [734dea6]
+  - @greypan/browser-kit@1.7.3
+  - @greypan/js-kit@1.6.3
+
 ## 1.4.0
 
 ### Minor Changes
