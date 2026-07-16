@@ -78,7 +78,6 @@ export default {
 ```tsx
 // main.tsx
 import '@greypan/web-ui'
-// import '@greypan/web-ui/components/button'
 ```
 
 或按需导入，只注册需要的组件：
