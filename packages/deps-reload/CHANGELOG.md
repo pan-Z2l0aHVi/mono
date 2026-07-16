@@ -1,5 +1,15 @@
 # @greypan/deps-reload
 
+## 1.1.4
+
+### Patch Changes
+
+- 57f9984: fix mardkwon table format
+- 57f9984: fix npm readme cn link
+- Updated dependencies [57f9984]
+- Updated dependencies [57f9984]
+  - @greypan/js-kit@1.6.4
+
 ## 1.1.3
 
 ### Patch Changes
