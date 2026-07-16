@@ -1,6 +1,6 @@
 # @greypan/web-ui
 
-基于 Lit 的 Web Components，支持 React、Vue 和原生 HTML
+> 基于 Lit 的 Web Components，支持 React、Vue 和原生 HTML
 
 [English](./README.md) | 简体中文
 

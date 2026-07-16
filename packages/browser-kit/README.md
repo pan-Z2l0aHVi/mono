@@ -1,6 +1,6 @@
 # @greypan/browser-kit
 
-Browser utility functions for storage, tracking, environment detection, and more
+> Browser utility functions for storage, tracking, environment detection, and more
 
 English | [简体中文](./README.CN.md)
 
