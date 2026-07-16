@@ -1,6 +1,6 @@
 # @greypan/js-kit
 
-JavaScript utility functions with composable plugin system
+> JavaScript utility functions with composable plugin system
 
 English | [简体中文](./README.CN.md)
 

@@ -1,6 +1,6 @@
 # @greypan/unplugin-web-components
 
-Unplugin for web components auto-import in React, Vue, and vanilla JS
+> Unplugin for web components auto-import in React, Vue, and vanilla JS
 
 English | [简体中文](./README.CN.md)
 

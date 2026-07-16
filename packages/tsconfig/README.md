@@ -1,6 +1,6 @@
 # @greypan/tsconfig
 
-Shared TypeScript configuration profiles for the monorepo
+> Shared TypeScript configuration profiles for the monorepo
 
 English | [简体中文](./README.CN.md)
 

@@ -1,6 +1,6 @@
 # @greypan/js-kit
 
-JavaScript 工具函数库，基于可组合插件系统
+> JavaScript 工具函数库，基于可组合插件系统
 
 [English](./README.md) | 简体中文
 
