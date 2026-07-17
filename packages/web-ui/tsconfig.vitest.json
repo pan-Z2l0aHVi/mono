@@ -4,7 +4,11 @@
   "include": ["src/**/__tests__/*"],
   "compilerOptions": {
     "lib": [],
-    "types": ["node", "jsdom", "vite/client"],
+    "types": [
+      "node",
+      "jsdom",
+      "vite/client" // vite 引入 .css?inline 需要
+    ],
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.vitest.tsbuildinfo"
   }
 }

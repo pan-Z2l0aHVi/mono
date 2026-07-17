@@ -97,10 +97,10 @@ describe('WebUiIcon', () => {
 })
 
 describe('WebUiIcon — via module import', () => {
-  it('使用 loaderCircle 图标渲染正确', async () => {
+  it('使用 lucideLoaderCircle 图标渲染正确', async () => {
     const el = document.createElement('web-ui-icon') as WebUiIcon & HTMLElement
-    const { loaderCircle } = await import('../../../icons/index')
-    el.icon = loaderCircle
+    const { lucideLoaderCircle } = await import('../../../icons/index')
+    el.icon = lucideLoaderCircle
     document.body.appendChild(el)
     await el.updateComplete
 
@@ -111,10 +111,10 @@ describe('WebUiIcon — via module import', () => {
     el.remove()
   })
 
-  it('使用 moveToTop16 图标渲染正确', async () => {
+  it('使用 lucideArrowUpToLine 图标渲染正确', async () => {
     const el = document.createElement('web-ui-icon') as WebUiIcon & HTMLElement
-    const { moveToTop16 } = await import('../../../icons/index')
-    el.icon = moveToTop16
+    const { lucideArrowUpToLine } = await import('../../../icons/index')
+    el.icon = lucideArrowUpToLine
     document.body.appendChild(el)
     await el.updateComplete
 

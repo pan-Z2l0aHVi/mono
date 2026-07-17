@@ -1,6 +1,6 @@
 import type { DetailedHTMLProps, HTMLAttributes } from 'react'
 
-import type { WebUiBackTop, WebUiButton, WebUiLayout } from '..'
+import type { WebUiBackTop, WebUiButton, WebUiIcon, WebUiLayout } from '../components'
 
 import type { ExtractProps, OmitLitBase } from './utils'
 // 提取 $events 并转化为 React 的 on 事件
@@ -17,6 +17,7 @@ export type LitReactWrapper<T> = DetailedHTMLProps<
 
 export interface WebUiComponents {
   'web-ui-button': LitReactWrapper<WebUiButton>
+  'web-ui-icon': LitReactWrapper<WebUiIcon>
   'web-ui-back-top': LitReactWrapper<WebUiBackTop>
   'web-ui-layout': LitReactWrapper<WebUiLayout>
 }

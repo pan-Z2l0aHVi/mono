@@ -24,3 +24,9 @@ export class WebUiLayout extends LitElement {
     `
   }
 }
+
+declare global {
+  interface HTMLElementTagNameMap {
+    'web-ui-layout': WebUiLayout
+  }
+}

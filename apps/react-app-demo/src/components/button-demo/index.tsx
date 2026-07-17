@@ -1,8 +1,7 @@
 function ButtonDemo() {
   return (
     <div>
-      {/* Variants */}
-      <h2>Variants</h2>
+      <h2>变体</h2>
       <div className="mb-12px flex gap-8px">
         <web-ui-button variant="primary">Primary</web-ui-button>
         <web-ui-button variant="secondary">Secondary</web-ui-button>
@@ -10,16 +9,14 @@ function ButtonDemo() {
         <web-ui-button variant="danger">Danger</web-ui-button>
       </div>
 
-      {/* Sizes */}
-      <h2>Sizes</h2>
+      <h2>尺寸</h2>
       <div className="mb-12px flex items-center gap-8px">
         <web-ui-button size="small">Small</web-ui-button>
         <web-ui-button>Medium (默认)</web-ui-button>
         <web-ui-button size="large">Large</web-ui-button>
       </div>
 
-      {/* Disabled & Loading */}
-      <h2>Disabled & Loading</h2>
+      <h2>禁用与加载</h2>
       <div className="mb-12px flex gap-8px">
         <web-ui-button disabled>Disabled</web-ui-button>
         <web-ui-button variant="primary" disabled>
@@ -31,14 +28,12 @@ function ButtonDemo() {
         </web-ui-button>
       </div>
 
-      {/* Full Width */}
-      <h2>Full Width</h2>
+      <h2>全宽</h2>
       <div className="mb-12px">
         <web-ui-button full>Full Width</web-ui-button>
       </div>
 
-      {/* Slots */}
-      <h2>Slots</h2>
+      <h2>插槽</h2>
       <div className="mb-12px flex gap-8px">
         <web-ui-button>
           <span slot="prefix">prefix</span>
@@ -47,8 +42,7 @@ function ButtonDemo() {
         </web-ui-button>
       </div>
 
-      {/* Icon Mode */}
-      <h2>Icon Mode</h2>
+      <h2>图标模式</h2>
       <div className="mb-12px flex gap-8px">
         <web-ui-button icon>
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24">

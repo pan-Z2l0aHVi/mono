@@ -8,7 +8,6 @@ catalog:
   '@commitlint/config-conventional': ^21.2.0
   '@cspell/dict-lorem-ipsum': ^4.0.5
   '@iconify-json/lucide': ^1.2.117
-  '@iconify-json/octicon': ^1.2.29
   '@iconify/types': ^2.0.0
   '@rolldown/plugin-babel': ^0.2.3
   '@tailwindcss/vite': ^4.3.2

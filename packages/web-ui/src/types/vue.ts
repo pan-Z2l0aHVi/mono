@@ -1,6 +1,6 @@
 import type { DefineComponent } from 'vue'
 
-import type { WebUiBackTop, WebUiButton, WebUiLayout } from '..'
+import type { WebUiBackTop, WebUiButton, WebUiIcon, WebUiLayout } from '../components'
 
 import type { ExtractProps, OmitLitBase } from './utils'
 
@@ -17,6 +17,7 @@ export type LitVueWrapper<T> = DefineComponent<ExtractProps<OmitLitBase<T>> & Ex
 
 export interface WebUiComponents {
   'web-ui-button': LitVueWrapper<WebUiButton>
+  'web-ui-icon': LitVueWrapper<WebUiIcon>
   'web-ui-back-top': LitVueWrapper<WebUiBackTop>
   'web-ui-layout': LitVueWrapper<WebUiLayout>
 }

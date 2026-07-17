@@ -1,10 +1,11 @@
-import '@/components/button'
 import { getRootScrollTop } from '@greypan/browser-kit'
 import { html, LitElement, type PropertyValues, unsafeCSS } from 'lit'
 import { customElement, property, state } from 'lit/decorators.js'
 
-import { moveToTop16 } from '../../icons/index'
-import '../icon'
+// web-ui-icon 必须注册（Rolldown tree-shake 副作用 import，引用类名阻止删除）
+import '@/components/icon'
+import '@/components/button'
+import { lucideArrowUpToLine } from '@/icons'
 
 import style from './style.css?inline'
 
@@ -110,7 +111,7 @@ export class WebUiBackTop extends LitElement {
         <slot>
           <!-- 默认 slot 加上 tabindex="-1"，防止双重 focus -->
           <web-ui-button tabindex="-1" icon>
-            <web-ui-icon .icon=${moveToTop16}></web-ui-icon>
+            <web-ui-icon .icon=${lucideArrowUpToLine}></web-ui-icon>
           </web-ui-button>
         </slot>
       </div>
@@ -121,5 +122,11 @@ export class WebUiBackTop extends LitElement {
 export interface WebUiBackTop {
   readonly $events: {
     'visible-change': CustomEvent<{ visible: boolean }>
+  }
+}
+
+declare global {
+  interface HTMLElementTagNameMap {
+    'web-ui-back-top': WebUiBackTop
   }
 }

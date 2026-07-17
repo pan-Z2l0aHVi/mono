@@ -33,7 +33,8 @@
     "@vitejs/plugin-vue": "catalog:",
     "@tailwindcss/vite": "catalog:",
     "vite-plugin-vue-devtools": "catalog:",
-    "unplugin-auto-import": "catalog:"
+    "unplugin-auto-import": "catalog:",
+    "vue-tsc": "catalog:"
   },
   "browserslist": {
     "development": [

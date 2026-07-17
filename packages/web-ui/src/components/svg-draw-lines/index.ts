@@ -125,3 +125,9 @@ export class WebUiSvgDrawLines extends LitElement {
     `
   }
 }
+
+declare global {
+  interface HTMLElementTagNameMap {
+    'web-ui-svg-draw-lines': WebUiSvgDrawLines
+  }
+}

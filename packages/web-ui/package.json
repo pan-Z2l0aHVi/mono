@@ -12,18 +12,21 @@
     "dist"
   ],
   "sideEffects": [
-    "./dist/index.js",
     "./dist/components/*/index.js",
     "./dist/**/*.css"
   ],
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
+      "types": "./dist/components/index.d.ts",
+      "import": "./dist/components/index.js"
     },
     "./components/*": {
       "types": "./dist/components/*/index.d.ts",
       "import": "./dist/components/*/index.js"
+    },
+    "./icons": {
+      "types": "./dist/icons/index.d.ts",
+      "import": "./dist/icons/index.js"
     },
     "./icons/*": {
       "types": "./dist/icons/*.d.ts",
@@ -37,7 +40,7 @@
     "registry": "https://registry.npmjs.org/"
   },
   "scripts": {
-    "build": "vue-tsc --build && vp build",
+    "build": "vp build",
     "test": "vp test run",
     "dev": "vp build --watch",
     "generate-icons": "node --experimental-strip-types scripts/generate-icons.ts"
@@ -49,7 +52,6 @@
   "devDependencies": {
     "@greypan/tsconfig": "workspace:*",
     "@iconify-json/lucide": "catalog:",
-    "@iconify-json/octicon": "catalog:",
     "@iconify/types": "catalog:",
     "@types/react": "catalog:",
     "lit": "catalog:",

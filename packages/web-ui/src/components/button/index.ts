@@ -1,8 +1,9 @@
 import { html, LitElement, unsafeCSS } from 'lit'
 import { customElement, property } from 'lit/decorators.js'
 
-import { loaderCircle } from '../../icons/index'
-import '../icon'
+// web-ui-icon 必须注册（Rolldown tree-shake 副作用 import，引用类名阻止删除）
+import '@/components/icon'
+import { lucideLoaderCircle } from '@/icons'
 
 import style from './style.css?inline'
 
@@ -27,7 +28,7 @@ export class WebUiButton extends LitElement {
   override render() {
     return html`
       <button ?disabled=${this.disabled || this.loading} @click=${this.handleClick}>
-        ${this.loading ? html`<web-ui-icon .icon=${loaderCircle} spin></web-ui-icon>` : ''}
+        ${this.loading ? html`<web-ui-icon .icon=${lucideLoaderCircle} spin></web-ui-icon>` : ''}
         ${this.icon
           ? html`<slot></slot>`
           : html`
@@ -43,5 +44,11 @@ export class WebUiButton extends LitElement {
 export interface WebUiButton {
   readonly $events: {
     click: MouseEvent
+  }
+}
+
+declare global {
+  interface HTMLElementTagNameMap {
+    'web-ui-button': WebUiButton
   }
 }

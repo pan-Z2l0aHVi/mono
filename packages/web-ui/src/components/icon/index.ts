@@ -24,6 +24,8 @@ export class WebUiIcon extends LitElement {
   }
 }
 
-export interface WebUiIcon {
-  readonly $events: Record<string, never>
+declare global {
+  interface HTMLElementTagNameMap {
+    'web-ui-icon': WebUiIcon
+  }
 }

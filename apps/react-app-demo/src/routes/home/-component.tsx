@@ -1,6 +1,7 @@
 import { useCounterStore } from '@/stores/counter'
 
 import ButtonDemo from '../../components/button-demo'
+import IconDemo from '../../components/icon-demo'
 
 function Home() {
   const { count, increment, decrement, reset } = useCounterStore()
@@ -19,6 +20,7 @@ function Home() {
       </div>
 
       <ButtonDemo />
+      <IconDemo />
     </div>
   )
 }
