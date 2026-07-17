@@ -151,3 +151,5 @@ auto-imports.d.ts
 .eslintrc-auto-import.js
 routeTree.gen.ts
 package.json.md5
+packages/web-ui/src/icons/generated/
+packages/web-ui/src/icons/index.ts
