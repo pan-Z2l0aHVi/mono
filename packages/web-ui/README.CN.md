@@ -263,13 +263,13 @@ function onVisibleChange(e: CustomEvent<{ visible: boolean }>) {
 
 样式化按钮组件。
 
-| 属性       | 类型                                                         | 默认值      | 说明                     |
-| ---------- | ------------------------------------------------------------ | ----------- | ------------------------ |
-| `variant`  | `'primary' \| 'secondary' \| 'ghost' \| 'danger' \| 'glass'` | `'primary'` | 按钮样式变体             |
-| `disabled` | `boolean`                                                    | `false`     | 禁用状态                 |
-| `loading`  | `boolean`                                                    | `false`     | 加载状态（显示旋转图标） |
-| `full`     | `boolean`                                                    | `false`     | 全宽按钮                 |
-| `icon`     | `boolean`                                                    | `false`     | 纯图标模式               |
+| 属性       | 类型                                                         | 默认值    | 说明                     |
+| ---------- | ------------------------------------------------------------ | --------- | ------------------------ |
+| `variant`  | `'primary' \| 'secondary' \| 'ghost' \| 'danger' \| 'glass'` | `'glass'` | 按钮样式变体             |
+| `disabled` | `boolean`                                                    | `false`   | 禁用状态                 |
+| `loading`  | `boolean`                                                    | `false`   | 加载状态（显示旋转图标） |
+| `full`     | `boolean`                                                    | `false`   | 全宽按钮                 |
+| `icon`     | `boolean`                                                    | `false`   | 纯图标模式               |
 
 ### `<web-ui-icon>`
 

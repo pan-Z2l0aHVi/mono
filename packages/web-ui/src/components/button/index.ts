@@ -13,7 +13,7 @@ import style from './style.css?inline'
 export class WebUiButton extends LitElement {
   static override styles = [unsafeCSS(glass), unsafeCSS(style)]
 
-  @property({ type: String, reflect: true }) variant: 'primary' | 'secondary' | 'ghost' | 'danger' | 'glass' = 'primary'
+  @property({ type: String, reflect: true }) variant: 'primary' | 'secondary' | 'ghost' | 'danger' | 'glass' = 'glass'
   @property({ type: Boolean, reflect: true }) disabled = false
   @property({ type: Boolean, reflect: true }) loading = false
   @property({ type: Boolean, reflect: true }) full = false

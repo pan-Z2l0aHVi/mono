@@ -18,7 +18,7 @@ useHead({
 </script>
 
 <template>
-  <div class="p-12px">
+  <div class="p-3">
     <h3>Welcome Home!</h3>
     <ButtonDemo />
     <IconDemo />

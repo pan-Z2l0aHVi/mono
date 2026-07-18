@@ -5,26 +5,26 @@ function IconDemo() {
     <div>
       <h1>图标</h1>
       <h2>基础用法</h2>
-      <div className="mb-12px flex items-center gap-16px">
+      <div className="mb-3 flex items-center gap-4">
         <web-ui-icon icon={lucideArrowUpToLine}></web-ui-icon>
         <web-ui-icon icon={lucideSearch}></web-ui-icon>
       </div>
 
       <h2>Spin 动画</h2>
-      <div className="mb-12px flex items-center gap-16px">
+      <div className="mb-3 flex items-center gap-4">
         <web-ui-icon icon={lucideLoaderCircle} spin></web-ui-icon>
         <span>Loading...</span>
       </div>
 
       <h2>尺寸</h2>
-      <div className="mb-12px flex items-center gap-16px">
+      <div className="mb-3 flex items-center gap-4">
         <web-ui-icon icon={lucideSearch} width={16} height={16}></web-ui-icon>
         <web-ui-icon icon={lucideSearch} width={24} height={24}></web-ui-icon>
         <web-ui-icon icon={lucideSearch} width={32} height={32}></web-ui-icon>
       </div>
 
       <h2>颜色</h2>
-      <div className="mb-12px flex items-center gap-16px">
+      <div className="mb-3 flex items-center gap-4">
         <span className="text-red-500">
           <web-ui-icon icon={lucideSearch}></web-ui-icon>
           继承 color
@@ -34,10 +34,9 @@ function IconDemo() {
       </div>
 
       <h2>搭配 Button</h2>
-      <div className="mb-12px flex gap-8px">
+      <div className="mb-3 flex gap-2">
         <web-ui-button>
-          <web-ui-icon icon={lucideArrowUpToLine}></web-ui-icon>
-          Back to Top
+          <web-ui-icon slot="prefix" icon={lucideArrowUpToLine}></web-ui-icon>Back to Top
         </web-ui-button>
         <web-ui-button icon variant="glass">
           <web-ui-icon icon={lucideChevronLeft}></web-ui-icon>
