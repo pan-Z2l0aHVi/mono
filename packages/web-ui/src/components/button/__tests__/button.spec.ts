@@ -1,7 +1,7 @@
 import { describe, expect, it, beforeEach } from 'vite-plus/test'
 
-import { type WebUiButton } from '../index'
-import '../index'
+import { type WebUiButton } from '..'
+import '..'
 
 describe('WebUiButton', () => {
   let el: WebUiButton & HTMLElement
@@ -49,25 +49,6 @@ describe('WebUiButton', () => {
       el.setAttribute('variant', 'danger')
       await el.updateComplete
       expect(el.getAttribute('variant')).toBe('danger')
-    })
-  })
-
-  describe('size 属性', () => {
-    it('默认为 medium', async () => {
-      await el.updateComplete
-      expect(el.getAttribute('size')).toBe('medium')
-    })
-
-    it('应当支持 small', async () => {
-      el.setAttribute('size', 'small')
-      await el.updateComplete
-      expect(el.getAttribute('size')).toBe('small')
-    })
-
-    it('应当支持 large', async () => {
-      el.setAttribute('size', 'large')
-      await el.updateComplete
-      expect(el.getAttribute('size')).toBe('large')
     })
   })
 

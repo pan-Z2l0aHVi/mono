@@ -1,19 +1,14 @@
 function ButtonDemo() {
   return (
     <div>
+      <h1>按钮</h1>
       <h2>变体</h2>
       <div className="mb-12px flex gap-8px">
         <web-ui-button variant="primary">Primary</web-ui-button>
         <web-ui-button variant="secondary">Secondary</web-ui-button>
         <web-ui-button variant="ghost">Ghost</web-ui-button>
         <web-ui-button variant="danger">Danger</web-ui-button>
-      </div>
-
-      <h2>尺寸</h2>
-      <div className="mb-12px flex items-center gap-8px">
-        <web-ui-button size="small">Small</web-ui-button>
-        <web-ui-button>Medium (默认)</web-ui-button>
-        <web-ui-button size="large">Large</web-ui-button>
+        <web-ui-button variant="glass">Glass</web-ui-button>
       </div>
 
       <h2>禁用与加载</h2>
@@ -54,7 +49,7 @@ function ButtonDemo() {
             <path fill="currentColor" d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6z" />
           </svg>
         </web-ui-button>
-        <web-ui-button variant="ghost" icon>
+        <web-ui-button variant="glass" icon>
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24">
             <path
               fill="currentColor"

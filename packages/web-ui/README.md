@@ -263,14 +263,13 @@ function onVisibleChange(e: CustomEvent<{ visible: boolean }>) {
 
 Styled button component.
 
-| Attribute  | Type                                              | Default     | Description                   |
-| ---------- | ------------------------------------------------- | ----------- | ----------------------------- |
-| `variant`  | `'primary' \| 'secondary' \| 'ghost' \| 'danger'` | `'primary'` | Button style variant          |
-| `size`     | `'small' \| 'medium' \| 'large'`                  | `'medium'`  | Button size                   |
-| `disabled` | `boolean`                                         | `false`     | Disabled state                |
-| `loading`  | `boolean`                                         | `false`     | Loading state (shows spinner) |
-| `full`     | `boolean`                                         | `false`     | Full width button             |
-| `icon`     | `boolean`                                         | `false`     | Icon-only mode                |
+| Attribute  | Type                                                         | Default     | Description                   |
+| ---------- | ------------------------------------------------------------ | ----------- | ----------------------------- |
+| `variant`  | `'primary' \| 'secondary' \| 'ghost' \| 'danger' \| 'glass'` | `'primary'` | Button style variant          |
+| `disabled` | `boolean`                                                    | `false`     | Disabled state                |
+| `loading`  | `boolean`                                                    | `false`     | Loading state (shows spinner) |
+| `full`     | `boolean`                                                    | `false`     | Full width button             |
+| `icon`     | `boolean`                                                    | `false`     | Icon-only mode                |
 
 ### `<web-ui-icon>`
 

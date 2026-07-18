@@ -1,8 +1,7 @@
 import type { IconifyIcon } from '@iconify/types'
 import { describe, expect, it } from 'vite-plus/test'
 
-import { type WebUiIcon } from '../index'
-import '../index'
+import '..'
 
 const createIcon = (): IconifyIcon => ({
   width: 24,
@@ -12,7 +11,7 @@ const createIcon = (): IconifyIcon => ({
 
 describe('WebUiIcon', () => {
   it('不传入 icon 时渲染 nothing', async () => {
-    const el = document.createElement('web-ui-icon') as WebUiIcon & HTMLElement
+    const el = document.createElement('web-ui-icon')
     document.body.appendChild(el)
     await el.updateComplete
 
@@ -23,7 +22,7 @@ describe('WebUiIcon', () => {
   })
 
   it('传入 icon 后渲染对应的 SVG', async () => {
-    const el = document.createElement('web-ui-icon') as WebUiIcon & HTMLElement
+    const el = document.createElement('web-ui-icon')
     el.icon = createIcon()
     document.body.appendChild(el)
     await el.updateComplete
@@ -43,7 +42,7 @@ describe('WebUiIcon', () => {
   })
 
   it('更换 icon 后更新 SVG', async () => {
-    const el = document.createElement('web-ui-icon') as WebUiIcon & HTMLElement
+    const el = document.createElement('web-ui-icon')
     el.icon = createIcon()
     document.body.appendChild(el)
     await el.updateComplete
@@ -63,7 +62,7 @@ describe('WebUiIcon', () => {
   })
 
   it('空 icon 恢复为 nothing', async () => {
-    const el = document.createElement('web-ui-icon') as WebUiIcon & HTMLElement
+    const el = document.createElement('web-ui-icon')
     el.icon = createIcon()
     document.body.appendChild(el)
     await el.updateComplete
@@ -78,7 +77,7 @@ describe('WebUiIcon', () => {
   })
 
   it('spin 属性应渲染加旋转动画', async () => {
-    const el = document.createElement('web-ui-icon') as WebUiIcon & HTMLElement
+    const el = document.createElement('web-ui-icon')
     el.icon = createIcon()
     el.setAttribute('spin', '')
     document.body.appendChild(el)
@@ -98,8 +97,8 @@ describe('WebUiIcon', () => {
 
 describe('WebUiIcon — via module import', () => {
   it('使用 lucideLoaderCircle 图标渲染正确', async () => {
-    const el = document.createElement('web-ui-icon') as WebUiIcon & HTMLElement
-    const { lucideLoaderCircle } = await import('../../../icons/index')
+    const el = document.createElement('web-ui-icon')
+    const { lucideLoaderCircle } = await import('../../../icons')
     el.icon = lucideLoaderCircle
     document.body.appendChild(el)
     await el.updateComplete
@@ -112,8 +111,8 @@ describe('WebUiIcon — via module import', () => {
   })
 
   it('使用 lucideArrowUpToLine 图标渲染正确', async () => {
-    const el = document.createElement('web-ui-icon') as WebUiIcon & HTMLElement
-    const { lucideArrowUpToLine } = await import('../../../icons/index')
+    const el = document.createElement('web-ui-icon')
+    const { lucideArrowUpToLine } = await import('../../../icons')
     el.icon = lucideArrowUpToLine
     document.body.appendChild(el)
     await el.updateComplete

@@ -1,18 +1,19 @@
 import { html, LitElement, unsafeCSS } from 'lit'
 import { customElement, property } from 'lit/decorators.js'
+import { classMap } from 'lit/directives/class-map.js'
 
 // web-ui-icon 必须注册（Rolldown tree-shake 副作用 import，引用类名阻止删除）
 import '@/components/icon'
+import glass from '@/assets/glass.css?inline'
 import { lucideLoaderCircle } from '@/icons'
 
 import style from './style.css?inline'
 
 @customElement('web-ui-button')
 export class WebUiButton extends LitElement {
-  static override styles = unsafeCSS(style)
+  static override styles = [unsafeCSS(glass), unsafeCSS(style)]
 
-  @property({ type: String, reflect: true }) variant: 'primary' | 'secondary' | 'ghost' | 'danger' = 'primary'
-  @property({ type: String, reflect: true }) size: 'small' | 'medium' | 'large' = 'medium'
+  @property({ type: String, reflect: true }) variant: 'primary' | 'secondary' | 'ghost' | 'danger' | 'glass' = 'primary'
   @property({ type: Boolean, reflect: true }) disabled = false
   @property({ type: Boolean, reflect: true }) loading = false
   @property({ type: Boolean, reflect: true }) full = false
@@ -26,8 +27,9 @@ export class WebUiButton extends LitElement {
   }
 
   override render() {
+    const btnClass = { 'wui-glass': this.variant === 'glass' }
     return html`
-      <button ?disabled=${this.disabled || this.loading} @click=${this.handleClick}>
+      <button class=${classMap(btnClass)} ?disabled=${this.disabled || this.loading} @click=${this.handleClick}>
         ${this.loading ? html`<web-ui-icon .icon=${lucideLoaderCircle} spin></web-ui-icon>` : ''}
         ${this.icon
           ? html`<slot></slot>`

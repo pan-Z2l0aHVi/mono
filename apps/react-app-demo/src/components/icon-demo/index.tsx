@@ -3,6 +3,7 @@ import { lucideArrowUpToLine, lucideLoaderCircle } from '@greypan/web-ui/icons'
 function IconDemo() {
   return (
     <div>
+      <h1>图标</h1>
       <h2>基础用法</h2>
       <div className="mb-12px flex items-center gap-16px">
         <web-ui-icon icon={lucideArrowUpToLine}></web-ui-icon>
@@ -12,16 +13,16 @@ function IconDemo() {
       <h2>Spin 动画</h2>
       <div className="mb-12px flex items-center gap-16px">
         <web-ui-icon icon={lucideLoaderCircle} spin></web-ui-icon>
-        <span>加载中...</span>
+        <span>Loading...</span>
       </div>
 
       <h2>搭配 Button</h2>
       <div className="mb-12px flex gap-8px">
-        <web-ui-button variant="primary">
+        <web-ui-button>
           <web-ui-icon icon={lucideArrowUpToLine}></web-ui-icon>
-          回到顶部
+          Back to Top
         </web-ui-button>
-        <web-ui-button icon>
+        <web-ui-button variant="glass" icon>
           <web-ui-icon icon={lucideArrowUpToLine}></web-ui-icon>
         </web-ui-button>
       </div>

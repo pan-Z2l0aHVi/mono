@@ -14,10 +14,12 @@ button {
 
   box-sizing: border-box;
   width: max-content;
+  height: 40px;
+  padding: 0 var(--wui-button-px, 16px);
   border: 1px solid transparent;
   border-radius: var(--wui-button-radius, 999vmax);
 
-  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+  font-size: 14px;
   font-weight: 500;
   line-height: 1;
   color: var(--wui-button-color);
@@ -44,32 +46,6 @@ button {
 
   &:active:not(:disabled) {
     background-color: var(--wui-button-bg-active);
-  }
-}
-
-/* ===== Size variants ===== */
-
-:host([size='small']) {
-  button {
-    height: var(--wui-button-h, 28px);
-    padding: 0 var(--wui-button-px, 12px);
-    font-size: var(--wui-button-font-size, 12px);
-  }
-}
-
-:host([size='medium']) {
-  button {
-    height: var(--wui-button-h, 34px);
-    padding: 0 var(--wui-button-px, 16px);
-    font-size: var(--wui-button-font-size, 13px);
-  }
-}
-
-:host([size='large']) {
-  button {
-    height: var(--wui-button-h, 40px);
-    padding: 0 var(--wui-button-px, 20px);
-    font-size: var(--wui-button-font-size, 14px);
   }
 }
 
@@ -129,6 +105,21 @@ button {
   --wui-button-bg-active: #ffc4c4;
 }
 
+/* ===== Variant: glass (玻璃) ===== */
+
+/* .wui-glass 样式由 @/assets/glass.css 提供 */
+:host([variant='glass']) {
+  --wui-button-color: #3e3e3e;
+
+  .wui-glass:hover {
+    filter: brightness(0.95);
+  }
+
+  .wui-glass:active {
+    filter: brightness(0.85);
+  }
+}
+
 /* ===== Dark mode ===== */
 
 @media (prefers-color-scheme: dark) {
@@ -157,5 +148,9 @@ button {
     --wui-button-bg: #3a1a1a;
     --wui-button-bg-hover: #4a2020;
     --wui-button-bg-active: #5a2a2a;
+  }
+
+  :host([variant='glass']) {
+    --wui-button-color: #e5e5ea;
   }
 }
