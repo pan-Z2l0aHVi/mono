@@ -36,7 +36,7 @@ button {
   }
 
   &:focus-visible {
-    outline: 3px solid rgb(0 122 255 / 0.4);
+    outline: 3px solid rgb(0 136 255 / 0.4);
     outline-offset: 2px;
   }
 
@@ -73,43 +73,43 @@ button {
 
 :host([variant='primary']) {
   --wui-button-color: #fff;
-  --wui-button-bg: #007aff;
-  --wui-button-bg-hover: #06d;
-  --wui-button-bg-active: #05c;
+  --wui-button-bg: #08f;
+  --wui-button-bg-hover: #07e;
+  --wui-button-bg-active: #06d;
 }
 
 /* ===== Variant: secondary ===== */
 
 :host([variant='secondary']) {
-  --wui-button-color: #1c1c1e;
-  --wui-button-bg: #f2f2f7;
-  --wui-button-bg-hover: #e8e8ed;
-  --wui-button-bg-active: #d1d1d6;
+  --wui-button-color: #1b1b1b;
+  --wui-button-bg: #dfdfdf;
+  --wui-button-bg-hover: #d0d0d0;
+  --wui-button-bg-active: #c0c0c0;
 }
 
 /* ===== Variant: ghost ===== */
 
 :host([variant='ghost']) {
-  --wui-button-color: #007aff;
+  --wui-button-color: #08f;
   --wui-button-bg: transparent;
-  --wui-button-bg-hover: rgb(0 122 255 / 0.08);
-  --wui-button-bg-active: rgb(0 122 255 / 0.12);
+  --wui-button-bg-hover: rgb(0 136 255 / 0.08);
+  --wui-button-bg-active: rgb(0 136 255 / 0.12);
 }
 
 /* ===== Variant: danger ===== */
 
 :host([variant='danger']) {
-  --wui-button-color: #ff3b30;
-  --wui-button-bg: #ffe5e5;
-  --wui-button-bg-hover: #ffd4d4;
-  --wui-button-bg-active: #ffc4c4;
+  --wui-button-color: #ff383c;
+  --wui-button-bg: #facccd;
+  --wui-button-bg-hover: #f0b8b8;
+  --wui-button-bg-active: #e6a4a4;
 }
 
 /* ===== Variant: glass (玻璃) ===== */
 
 /* .wui-glass 样式由 @/assets/glass.css 提供 */
 :host([variant='glass']) {
-  --wui-button-color: #3e3e3e;
+  --wui-button-color: #1a1a1a;
 
   .wui-glass:hover {
     filter: brightness(0.95);
@@ -117,40 +117,5 @@ button {
 
   .wui-glass:active {
     filter: brightness(0.85);
-  }
-}
-
-/* ===== Dark mode ===== */
-
-@media (prefers-color-scheme: dark) {
-  :host([variant='primary']) {
-    --wui-button-color: #fff;
-    --wui-button-bg: #0a84ff;
-    --wui-button-bg-hover: #409cff;
-    --wui-button-bg-active: #64b5f6;
-  }
-
-  :host([variant='secondary']) {
-    --wui-button-color: #e5e5ea;
-    --wui-button-bg: #2c2c2e;
-    --wui-button-bg-hover: #3a3a3c;
-    --wui-button-bg-active: #48484a;
-  }
-
-  :host([variant='ghost']) {
-    --wui-button-color: #0a84ff;
-    --wui-button-bg-hover: rgb(10 132 255 / 0.1);
-    --wui-button-bg-active: rgb(10 132 255 / 0.15);
-  }
-
-  :host([variant='danger']) {
-    --wui-button-color: #ff453a;
-    --wui-button-bg: #3a1a1a;
-    --wui-button-bg-hover: #4a2020;
-    --wui-button-bg-active: #5a2a2a;
-  }
-
-  :host([variant='glass']) {
-    --wui-button-color: #e5e5ea;
   }
 }

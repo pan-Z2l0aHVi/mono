@@ -18,7 +18,7 @@ export class WebUiLayout extends LitElement {
         <slot></slot>
       </main>
       <aside>
-        <div class="menu wui-glass"><slot name="sidebar"></slot></div>
+        <div class="menu wui-glass wui-glass-no-after"><slot name="sidebar"></slot></div>
       </aside>
       <footer>
         <slot name="tabbar"></slot>

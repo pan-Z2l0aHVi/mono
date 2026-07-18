@@ -2,22 +2,24 @@
 
 ## Document maintenance
 
-When your changes fall into any category below, update the corresponding sections of this document:
+When your changes fall into any category below, update the corresponding docs:
 
-| Change category       | Sections to update                  | Trigger                                                                            |
-| --------------------- | ----------------------------------- | ---------------------------------------------------------------------------------- |
-| Build scripts/flow    | Build architecture, Key commands    | Changes to `package.json` scripts, `vite.config.ts` build config, turbo.json tasks |
-| Package add/rename    | Package structure, Dependency graph | Adding/removing/renaming a directory under `packages/` or `apps/`                  |
-| Externalization       | Externalization rules               | Changes to `vite.config.ts` `rollupOptions.external`                               |
-| CI/CD workflow        | CI, Release                         | Changes to files under `.github/workflows/`                                        |
-| Code quality tools    | Linting & formatting                | Changes to linter, formatter, stylelint, cspell config                             |
-| Dependency management | Dependency management               | Changes to `pnpm-workspace.yaml` catalog, changeset config                         |
-| Runtime/toolchain     | Toolchain                           | Changes to `.mise.toml`, `package.json` engines                                    |
-| Test config           | Testing                             | Changes to `vite.config.ts` test config, test framework                            |
+| Change category       | Where to update                              | Trigger                                                                            |
+| --------------------- | -------------------------------------------- | ---------------------------------------------------------------------------------- |
+| Build scripts/flow    | This file (Build architecture, Key commands) | Changes to `package.json` scripts, `vite.config.ts` build config, turbo.json tasks |
+| Package add/rename    | This file (Package structure)                | Adding/removing/renaming a directory under `packages/` or `apps/`                  |
+| Externalization       | This file (Externalization rules)            | Changes to `vite.config.ts` `rollupOptions.external`                               |
+| CI/CD workflow        | This file (CI / Release)                     | Changes to files under `.github/workflows/`                                        |
+| Code quality tools    | `docs/agents/linting.md`                     | Changes to linter, formatter, stylelint, cspell config                             |
+| Dependency management | `.agents/rules/dep-management.md`            | Changes to `pnpm-workspace.yaml` catalog, changeset config                         |
+| Runtime/toolchain     | This file (Toolchain)                        | Changes to `.mise.toml`, `package.json` engines                                    |
+| Test config           | `docs/agents/testing.md`                     | Changes to `vite.config.ts` test config, test framework                            |
+| Coding standards      | `.agents/rules/code-style.md`                | Changes to naming, type safety, architecture patterns                              |
+| Commit conventions    | `.agents/rules/commit.md`                    | Changes to commitlint config, commit workflow                                      |
 
 Rules:
 
-1. Read the relevant sections before making changes to confirm current documentation
+1. Read the relevant docs before making changes to confirm current documentation
 2. Update documentation immediately after changes, never postpone
 3. If unsure whether a change requires documentation updates, **ask the user**
 4. Documentation updates should land in the same commit as code changes
@@ -134,10 +136,6 @@ Two build modes:
 - Both apps use `basicSsl()` for HTTPS dev server
 - `depsReload` plugin watches library `dist/` dirs and triggers full page reload on changes
 
-## Commit conventions
-
-See `commitlint.config.js` and `.agents/rules/commit.md`. Use `bash scripts/commit.sh <type> <scope> <subject>`.
-
 ## CI / Release
 
 - **CI** (`ci.yml`): changeset status → build → format+lint+type-check → test
@@ -170,22 +168,25 @@ They are excluded from linting, formatting, and spell-check.
 - `docs/prd/` — Product Requirements Documents（产品需求文档）
 - `docs/design/` — 设计参考文件（截图、CSS 参考实现等）
 
-## Agent rules
+## Agent reference docs
 
-Rules are stored in `.agents/rules/` and symlinked to `.claude/rules`:
+按需查阅，不要求每次对话都读：
 
-- `testing.md` — test coverage, edge cases, degradation scenarios
-- `code-style.md` — naming, comments, type safety, plugin Options conventions
-- `review-checklist.md` — review checkpoints
-- `commit.md` — commit conventions, workflow, anti-patterns
-- `dep-management.md` — devDependencies/peerDependencies placement strategy
+| 文件                           | 用途                                        | 什么时候读                       |
+| ------------------------------ | ------------------------------------------- | -------------------------------- |
+| `docs/agents/testing.md`       | 测试基础设施（框架、命令、browser mode）    | 不知道怎么跑测试、配置测试环境时 |
+| `docs/agents/linting.md`       | 工具链（formatter、linter、stylelint 命令） | 不知道怎么跑 lint/fmt 时         |
+| `docs/agents/issue-tracker.md` | GitHub issue 操作（gh CLI 用法）            | 需要创建/查询/更新 issue 时      |
+| `docs/agents/domain.md`        | 代码探索规范（ADR、术语表）                 | 探索不熟悉的代码区域时           |
 
-## Agent skills
+## Agent behavioral rules
 
-### Issue tracker
+自动加载，每次对话生效：
 
-Issues tracked on GitHub. See `docs/agents/issue-tracker.md`.
-
-### Domain docs
-
-Single-context layout (one `CONTEXT.md` + `docs/adr/` at repo root). See `docs/agents/domain.md`.
+| 文件                                | 管什么                              |
+| ----------------------------------- | ----------------------------------- |
+| `.agents/rules/code-style.md`       | 命名、注释、类型安全、架构模式      |
+| `.agents/rules/commit.md`           | commit message 格式、工作流、反模式 |
+| `.agents/rules/testing.md`          | 测试覆盖、AAA 模式、边界用例        |
+| `.agents/rules/dep-management.md`   | devDeps/peerDeps 放置策略           |
+| `.agents/rules/review-checklist.md` | code review 检查项                  |

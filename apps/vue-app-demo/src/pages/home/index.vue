@@ -10,6 +10,7 @@
 import { useHead } from '@unhead/vue'
 
 import ButtonDemo from '@/components/button-demo/index.vue'
+import DialogDemo from '@/components/dialog-demo/index.vue'
 import IconDemo from '@/components/icon-demo/index.vue'
 
 useHead({
@@ -22,5 +23,6 @@ useHead({
     <h3>Welcome Home!</h3>
     <ButtonDemo />
     <IconDemo />
+    <DialogDemo />
   </div>
 </template>

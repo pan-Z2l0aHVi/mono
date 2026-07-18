@@ -94,6 +94,38 @@ export function defineXxx(options: Options) {
 - 内部辅助函数放在导出函数之后
 - 类型定义放在文件顶部或单独的类型文件
 
+## Lit 组件规范（web-ui）
+
+- **动态 class**：统一使用 `classMap()` 指令，禁止内联对象 `${{ class: value }}`（会 stringify 为 `[object Object]`）和三元表达式
+  ```ts
+  import { classMap } from 'lit/directives/class-map.js'
+  // ✅ 正确
+  html`<div class=${classMap({ active: this.isActive, hidden: !this.visible })}></div>`
+  // ❌ 错误 — 对象会 stringify 为 "[object Object]"
+  html`<div class=${{ active: this.isActive }}></div>`
+  // ❌ 错误 — 多 class 时可读性差
+  html`<div class=${this.isActive ? 'active' : ''}></div>`
+  ```
+- **`:host` 属性选择器必须用顶层声明 + 括号语法**，禁止嵌套 `&[attr]` 写法（编译后 `:host[attr]` 无括号，部分浏览器/constructable stylesheet 下不匹配）
+
+  ```css
+  /* ✅ 正确 — 参考 button 的 variant 写法 */
+  :host {
+    display: block;
+  }
+  :host([visible]) {
+    opacity: 1;
+  }
+
+  /* ❌ 错误 — 编译为 :host[visible]（无括号），兼容性问题 */
+  :host {
+    display: block;
+    &[visible] {
+      opacity: 1;
+    }
+  }
+  ```
+
 ## React HMR 规则（仅 `.jsx` / `.tsx` 文件）
 
 - **禁止使用匿名 default export**：`export default () => {}` 会导致 Fast Refresh 失效

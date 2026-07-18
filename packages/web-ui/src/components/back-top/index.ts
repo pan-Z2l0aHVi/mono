@@ -110,7 +110,7 @@ export class WebUiBackTop extends LitElement {
       <div role="button" tabindex="0" @click=${this.toTop} @keydown=${this.onEnter}>
         <slot>
           <!-- 默认 slot 加上 tabindex="-1"，防止双重 focus -->
-          <web-ui-button tabindex="-1" icon variant="glass">
+          <web-ui-button tabindex="-1" icon>
             <web-ui-icon .icon=${lucideArrowUpToLine}></web-ui-icon>
           </web-ui-button>
         </slot>

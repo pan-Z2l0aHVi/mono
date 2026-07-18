@@ -1,0 +1,100 @@
+:host {
+  display: contents;
+}
+
+dialog {
+  transform: scale(1);
+
+  box-sizing: border-box;
+  max-width: min(90vw, var(--wui-dialog-max-width, 360px));
+  max-height: 90vh;
+  padding: 0;
+  border: none;
+  border-radius: 20px;
+
+  font-family: inherit;
+  color: #1c1c1e;
+
+  opacity: 1;
+  background: transparent;
+
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease;
+
+  &::backdrop {
+    opacity: 1;
+    background: var(--wui-dialog-overlay-bg, rgb(0 0 0 / 0.35));
+  }
+
+  &.entering {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+}
+
+/* ===== 玻璃卡片主体（样式由 glass.css 提供） ===== */
+
+.wui-dialog-body {
+  padding: 24px;
+  background-color: #f8f8f8;
+}
+
+/* ===== 标题 ===== */
+
+.title {
+  margin: 0 0 8px;
+  padding: 0;
+
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: #1c1c1e;
+}
+
+/* ===== 描述 ===== */
+
+.desc {
+  margin: 0 0 20px;
+  padding: 0;
+
+  font-size: 14px;
+  line-height: 1.5;
+  color: #8e8e93;
+}
+
+/* ===== 按钮区域 ===== */
+
+.wui-dialog-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+
+  /* ===== 按钮全宽（默认垂直排列） ===== */
+
+  & ::slotted(web-ui-button) {
+    display: flex;
+    width: 100%;
+  }
+}
+
+/* ===== horizontal 模式 ===== */
+
+:host([horizontal]) .wui-dialog-footer {
+  flex-direction: row;
+  gap: 10px;
+  justify-content: center;
+
+  /* 非 full 按钮：居中，不拉伸 */
+
+  & ::slotted(web-ui-button:not([full])) {
+    width: auto;
+  }
+
+  /* full 按钮：平分剩余空间 */
+
+  & ::slotted(web-ui-button[full]) {
+    flex: 1;
+    min-width: 0;
+  }
+}

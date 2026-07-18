@@ -25,6 +25,7 @@ import { lucideSearch } from '@greypan/web-ui/icons'
     <h2>全宽</h2>
     <div class="mb-3">
       <web-ui-button full>Full Width</web-ui-button>
+      <div class="my-2"></div>
       <web-ui-button full :variant="'primary'">Full Width</web-ui-button>
     </div>
 

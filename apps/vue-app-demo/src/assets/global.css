@@ -36,3 +36,8 @@
   --breakpoint-xl: 1280px; /* 标准桌面显示器 */
   --breakpoint-2xl: 1536px; /* 大桌面显示器 */
 }
+
+/* 防止页面闪烁。隐藏所有未注册的 web components 元素 */
+:not(:defined) {
+  display: none;
+}

@@ -1,6 +1,7 @@
 import type { IconifyIcon } from '@iconify/types'
 import { html, LitElement, nothing, unsafeCSS } from 'lit'
 import { customElement, property } from 'lit/decorators.js'
+import { classMap } from 'lit/directives/class-map.js'
 import { unsafeSVG } from 'lit/directives/unsafe-svg.js'
 
 import style from './style.css?inline'
@@ -23,7 +24,13 @@ export class WebUiIcon extends LitElement {
     }
 
     return html`
-      <svg viewBox="0 0 24 24" width="${this.width}" height="${this.height}" aria-hidden="true">
+      <svg
+        class=${classMap({ spin: this.spin })}
+        viewBox="0 0 24 24"
+        width="${this.width}"
+        height="${this.height}"
+        aria-hidden="true"
+      >
         ${unsafeSVG(this.icon.body)}
       </svg>
     `

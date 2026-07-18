@@ -3,17 +3,17 @@
   align-items: center;
   justify-content: center;
   color: var(--wui-icon-color, inherit);
+
+  svg {
+    display: block;
+  }
+
+  svg.spin {
+    animation: wui-icon-spin 0.6s linear infinite;
+  }
 }
 
-svg {
-  display: block;
-}
-
-:host([spin]) svg {
-  animation: spin 0.6s linear infinite;
-}
-
-@keyframes spin {
+@keyframes wui-icon-spin {
   to {
     transform: rotate(360deg);
   }
