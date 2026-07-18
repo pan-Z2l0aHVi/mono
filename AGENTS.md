@@ -59,11 +59,11 @@ Each package has `build`, `test`, and usually `dev` (watch mode). Run with `pnpm
 Build scripts differ by package type:
 
 - **Single-entry packages** (test-kit, unplugin-web-components, deps-reload): `vp pack` — tsdown-based, outputs `.mjs` + `.d.mts`
-- **Sub-path export packages** (js-kit, browser-kit, web-ui): `vp build` — Vite lib mode with `preserveModules`, outputs `.js` + `.d.ts`
-- **Apps** (react-app-demo, vue-app-demo): `vp build` / `vp dev`
+- **Sub-path export packages** (js-kit, browser-kit, web-ui): `vue-tsc --build && vp build` — Vite lib mode with `preserveModules`, outputs `.js` + `.d.ts`
+- **React app**: `tsc -b && vp build`
 - **tsconfig**: No build step — pure JSON config files, consumed via TypeScript `extends`
 
-**Type-checker**: Type-check is a workspace-level concern, handled by `vp check` at root (CI). Individual packages do not run type-check during build. `.d.ts` generation is done by `vite-plugin-dts` inside `vp build`.
+**Type-checker**: All packages (including non-Vue ones like `js-kit`, `browser-kit`) use `vue-tsc` for type-checking. React app uses `tsc`. Type-check runs in CI via `vp check`.
 
 **web-ui specific**:
 
@@ -144,16 +144,6 @@ See `commitlint.config.js` and `.agents/rules/commit.md`. Use `bash scripts/comm
 - **Release** (`release.yml`): changesets with `changesets/action@v1`. Demo apps excluded from versioning.
 - **New package first publish**: `pnpm publish:new <package-dir>` — builds and publishes 1.0.0 via `npm publish`. Requires `npm login` beforehand. After first publish, configure Trusted Publisher on npmjs.com so CI handles subsequent releases.
 
-## Linting & formatting
-
-- **Formatter**: `vp fmt` (Prettier-compatible via vite-plus config)
-  - Single quotes, no semicolons, 120 char print width, no trailing commas, arrow parens avoided
-  - Import sorting enabled (builtin → external → internal → parent → sibling → index)
-- **Linter**: `vp lint` (oxlint via vite-plus, type-aware)
-- **Spell check**: cspell on staged files
-- **CSS linting**: stylelint for `.css`, `.vue` (uses Tailwind CSS, no SCSS)
-- **Line endings**: LF enforced (`.gitattributes`: `* text=auto eol=lf`)
-
 ## Generated / ignored files
 
 These files are auto-generated and should not be edited manually:
@@ -167,32 +157,18 @@ These files are auto-generated and should not be edited manually:
 
 They are excluded from linting, formatting, and spell-check.
 
-## Testing
-
-- **Framework**: Vitest (via `vite-plus`)
-- **Run all tests**: `pnpm test`
-- **Run one package**: `pnpm --filter @greypan/js-kit test` (which runs `vp test run`)
-- **Test files**: `*.spec.ts`, `*.test.ts`, `*.spec.tsx`
-- **Environment**: Most packages use Node environment. `browser-kit` uses Vitest Browser Mode with Playwright Chromium for real browser testing.
-- **Network mocking**: `browser-kit` uses MSW (Mock Service Worker) via `@greypan/test-kit` for network request interception
-- **Test infrastructure**: `@greypan/test-kit` provides composable plugins using js-kit's plugin system:
-  - `defineMsw(handlers)` — MSW service worker lifecycle management (start/stop/reset)
-  - `defineCapturedRequests()` — request capture and assertion utilities
-  - Usage pattern: `defineMsw(handlers).use(defineCapturedRequests()).make()`
-- **Browser mode config**: Browser-mode packages need `vite.config.ts` with `browser.provider: playwright()` from `vite-plus/test/browser-playwright`
-
-## Dependency management
-
-- **Catalog**: All dependencies versioned in `pnpm-workspace.yaml catalog:`. Use `catalog:` references in package.json to unify versions across the workspace.
-- **Catalog mode**: `catalogMode: prefer` — pnpm prefers catalog versions when resolving workspace dependencies.
-- **Lockfile**: `pnpm install --frozen-lockfile` (CI) ensures package.json and lockfile stay in sync.
-- **devDependencies / peerDependencies placement rules** refer to `.agents/rules/dep-management.md`.
-
 ## Other gotchas
 
 - `.npmrc` uses an npmmirror registry (`registry=https://registry.npmmirror.com`). CI overrides this to the official registry.
 - The `prepare` script runs `vp config` — this sets up vite-plus internal config on install.
 - Go toolchain is also managed via mise (used by some tooling, not by the JS packages directly).
+
+## Documentation
+
+- `docs/agents/` — Agent 工作指南，包含 domain.md（代码探索规范）、issue-tracker.md（GitHub issue 工作流）、specs/（功能规格文档）
+- `docs/adr/` — Architecture Decision Records（架构决策记录），记录重要技术决策
+- `docs/prd/` — Product Requirements Documents（产品需求文档）
+- `docs/design/` — 设计参考文件（截图、CSS 参考实现等）
 
 ## Agent rules
 
