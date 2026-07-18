@@ -126,6 +126,10 @@ export class WebUiSvgDrawLines extends LitElement {
   }
 }
 
+export interface WebUiSvgDrawLines {
+  readonly $events: Record<string, never>
+}
+
 declare global {
   interface HTMLElementTagNameMap {
     'web-ui-svg-draw-lines': WebUiSvgDrawLines

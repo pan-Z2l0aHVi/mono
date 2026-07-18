@@ -27,6 +27,10 @@ export class WebUiLayout extends LitElement {
   }
 }
 
+export interface WebUiLayout {
+  readonly $events: Record<string, never>
+}
+
 declare global {
   interface HTMLElementTagNameMap {
     'web-ui-layout': WebUiLayout

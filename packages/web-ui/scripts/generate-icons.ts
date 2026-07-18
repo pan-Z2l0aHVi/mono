@@ -25,14 +25,10 @@ function writeIfChanged(filePath: string, content: string) {
 }
 
 /** 写入单个图标文件 */
-function writeIconFile(outDir: string, iconName: string, data: { body: string; width?: number; height?: number }) {
-  const w = data.width ?? 24
-  const h = data.height ?? 24
+function writeIconFile(outDir: string, iconName: string, data: { body: string }) {
   const content = `import type { IconifyIcon } from '@iconify/types'
 
 export default {
-  width: ${w},
-  height: ${h},
   body: '${data.body.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'
 } satisfies IconifyIcon
 `
