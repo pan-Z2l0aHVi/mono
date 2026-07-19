@@ -11,18 +11,11 @@ import type {
   WebUiLayout
 } from '../components'
 
-import type { ExtractProps, OmitLitBase } from './utils'
-// 提取 $events 并转化为 React 的 on 事件
-type ExtractReactEvents<T> = T extends { readonly $events: infer E }
-  ? {
-      [K in keyof E as `on${string & K}`]?: (e: E[K]) => void
-    }
-  : object
-
-export type LitReactWrapper<T> = DetailedHTMLProps<
-  ExtractProps<OmitLitBase<T>> & ExtractReactEvents<T> & HTMLAttributes<HTMLElement>,
-  HTMLElement
->
+import type { ExtractProps, EventListeners, OmitLitBase } from './utils'
+// React 通过 EventListeners<Events> + HTMLAttributes<HTMLElement> 获取事件类型
+export type LitReactWrapper<T> = T extends { readonly $events: infer E }
+  ? DetailedHTMLProps<ExtractProps<OmitLitBase<T>> & EventListeners<E> & HTMLAttributes<HTMLElement>, HTMLElement>
+  : DetailedHTMLProps<ExtractProps<OmitLitBase<T>> & HTMLAttributes<HTMLElement>, HTMLElement>
 
 export interface WebUiComponents {
   'web-ui-button': LitReactWrapper<WebUiButton>

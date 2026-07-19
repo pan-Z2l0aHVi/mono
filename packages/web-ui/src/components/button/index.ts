@@ -44,9 +44,7 @@ export class WebUiButton extends LitElement {
 }
 
 export interface WebUiButton {
-  readonly $events: {
-    click: MouseEvent
-  }
+  readonly $events: Record<string, never>
 }
 
 declare global {
