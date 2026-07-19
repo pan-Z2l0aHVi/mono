@@ -89,15 +89,15 @@ describe('WebUiIcon', () => {
       el.remove()
     })
 
-    it('默认值为 16', async () => {
+    it('默认值为 18', async () => {
       const el = document.createElement('web-ui-icon')
       el.icon = createIcon()
       document.body.appendChild(el)
       await el.updateComplete
 
       const svg = el.shadowRoot?.querySelector('svg')
-      expect(svg?.getAttribute('width')).toBe('16')
-      expect(svg?.getAttribute('height')).toBe('16')
+      expect(svg?.getAttribute('width')).toBe('18')
+      expect(svg?.getAttribute('height')).toBe('18')
 
       el.remove()
     })

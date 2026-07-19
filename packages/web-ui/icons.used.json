@@ -1,1 +1,12 @@
-["lucide:loader-circle", "lucide:arrow-up-to-line", "lucide:chevron-left", "lucide:search"]
+[
+  "lucide:loader-circle",
+  "lucide:arrow-up-to-line",
+  "lucide:arrow-down-to-line",
+  "lucide:chevron-left",
+  "lucide:chevron-right",
+  "lucide:chevron-up",
+  "lucide:chevron-down",
+  "lucide:plus",
+  "lucide:minus",
+  "lucide:search"
+]

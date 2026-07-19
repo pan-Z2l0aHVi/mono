@@ -131,3 +131,7 @@ export function defineXxx(options: Options) {
 - **禁止使用匿名 default export**：`export default () => {}` 会导致 Fast Refresh 失效
 - 使用具名函数声明：`function MyComponent() {} export default MyComponent`
 - 由 oxlint 的 `unicorn/no-anonymous-default-export` 规则强制执行
+
+## 代码验证
+
+- **完成代码改动后，必须先执行 `pnpm run check:code`**（format + lint + type-check），自动修复格式问题并确保无类型错误，再向用户汇报完成

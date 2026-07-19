@@ -27,7 +27,7 @@ export class WebUiButton extends LitElement {
   }
 
   override render() {
-    const btnClass = { 'wui-glass': this.variant === 'glass' }
+    const btnClass = { 'wui-glass': this.variant === 'glass' && !this.hasAttribute('group') }
     return html`
       <button class=${classMap(btnClass)} ?disabled=${this.disabled || this.loading} @click=${this.handleClick}>
         ${this.loading ? html`<web-ui-icon .icon=${lucideLoaderCircle} spin></web-ui-icon>` : ''}

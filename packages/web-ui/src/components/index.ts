@@ -1,5 +1,6 @@
 export * from '@/components/back-top'
 export * from '@/components/button'
+export * from '@/components/button-group'
 export * from '@/components/dialog'
 export * from '@/components/icon'
 export * from '@/components/layout'

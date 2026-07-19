@@ -1,4 +1,5 @@
 :host {
+  position: relative;
   display: inline-block;
   vertical-align: middle;
 }
@@ -7,14 +8,16 @@ button {
   cursor: pointer;
   user-select: none;
 
+  overflow: clip;
   display: inline-flex;
-  gap: var(--wui-button-gap, 6px);
+  gap: var(--wui-button-gap, 8px);
   align-items: center;
   justify-content: center;
 
   box-sizing: border-box;
   width: max-content;
-  height: 40px;
+  min-width: var(--wui-button-size, auto);
+  height: var(--wui-button-size, 40px);
   padding: 0 var(--wui-button-px, 16px);
   border: 1px solid transparent;
   border-radius: var(--wui-button-radius, 999vmax);
@@ -110,12 +113,42 @@ button {
 /* .wui-glass 样式由 @/assets/glass.css 提供 */
 :host([variant='glass']) {
   --wui-button-color: #1a1a1a;
+  --wui-button-bg-hover: rgb(0 0 0 / 0.06);
+  --wui-button-bg-active: rgb(0 0 0 / 0.1);
+}
 
-  .wui-glass:hover {
-    filter: brightness(0.95);
-  }
+/* ===== Group context ===== */
 
-  .wui-glass:active {
-    filter: brightness(0.85);
-  }
+:host([group]) {
+  --wui-button-color: #1a1a1a;
+  --wui-button-bg: transparent;
+  --wui-button-bg-hover: rgb(0 0 0 / 0.06);
+  --wui-button-bg-active: rgb(0 0 0 / 0.1);
+}
+
+/* ===== Group divider ===== */
+
+:host([group]:not([last]))::after {
+  content: '';
+
+  position: absolute;
+  top: 50%;
+  right: -2px;
+  transform: translateY(-50%);
+
+  width: var(--wui-button-divider-width, 0);
+  height: 24px;
+
+  background-color: rgb(0 0 0 / 0.1);
+}
+
+:host([group][orientation='vertical']:not([last]))::after {
+  top: auto;
+  right: auto;
+  bottom: -2px;
+  left: 50%;
+  transform: translateX(-50%);
+
+  width: 24px;
+  height: var(--wui-button-divider-width, 0);
 }
