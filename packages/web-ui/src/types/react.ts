@@ -1,6 +1,15 @@
 import type { DetailedHTMLProps, HTMLAttributes } from 'react'
 
-import type { WebUiBackTop, WebUiButton, WebUiButtonGroup, WebUiDialog, WebUiIcon, WebUiLayout } from '../components'
+import type {
+  WebUiBackTop,
+  WebUiButton,
+  WebUiButtonGroup,
+  WebUiDialog,
+  WebUiIcon,
+  WebUiInput,
+  WebUiInputNumber,
+  WebUiLayout
+} from '../components'
 
 import type { ExtractProps, OmitLitBase } from './utils'
 // 提取 $events 并转化为 React 的 on 事件
@@ -20,6 +29,8 @@ export interface WebUiComponents {
   'web-ui-button-group': LitReactWrapper<WebUiButtonGroup>
   'web-ui-dialog': LitReactWrapper<WebUiDialog>
   'web-ui-icon': LitReactWrapper<WebUiIcon>
+  'web-ui-input': LitReactWrapper<WebUiInput>
+  'web-ui-input-number': LitReactWrapper<WebUiInputNumber>
   'web-ui-back-top': LitReactWrapper<WebUiBackTop>
   'web-ui-layout': LitReactWrapper<WebUiLayout>
 }

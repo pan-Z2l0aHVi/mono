@@ -20,10 +20,9 @@ button {
   height: var(--wui-button-size, 40px);
   padding: 0 var(--wui-button-px, 16px);
   border: 1px solid transparent;
-  border-radius: var(--wui-button-radius, 999vmax);
+  border-radius: 999vmax;
 
-  font-size: 14px;
-  font-weight: 500;
+  font-size: var(--wui-font-size, 14px);
   line-height: 1;
   color: var(--wui-button-color);
   white-space: nowrap;

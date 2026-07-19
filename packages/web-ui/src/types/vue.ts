@@ -1,6 +1,15 @@
 import type { DefineComponent } from 'vue'
 
-import type { WebUiBackTop, WebUiButton, WebUiButtonGroup, WebUiDialog, WebUiIcon, WebUiLayout } from '../components'
+import type {
+  WebUiBackTop,
+  WebUiButton,
+  WebUiButtonGroup,
+  WebUiDialog,
+  WebUiIcon,
+  WebUiInput,
+  WebUiInputNumber,
+  WebUiLayout
+} from '../components'
 
 import type { ExtractProps, OmitLitBase } from './utils'
 
@@ -20,6 +29,8 @@ export interface WebUiComponents {
   'web-ui-button-group': LitVueWrapper<WebUiButtonGroup>
   'web-ui-dialog': LitVueWrapper<WebUiDialog>
   'web-ui-icon': LitVueWrapper<WebUiIcon>
+  'web-ui-input': LitVueWrapper<WebUiInput>
+  'web-ui-input-number': LitVueWrapper<WebUiInputNumber>
   'web-ui-back-top': LitVueWrapper<WebUiBackTop>
   'web-ui-layout': LitVueWrapper<WebUiLayout>
 }
