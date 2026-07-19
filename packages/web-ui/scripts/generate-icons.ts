@@ -6,6 +6,9 @@
  * 读取 icons.used.json, 从 @iconify-json/<set>/icons.json 提取图标数据,
  * 生成 src/icons/generated/<name>.ts 和 barrel index.ts。
  *
+ * 图标集的根级 left/top/width/height 作为默认值，
+ * 单个图标的同名字段会覆盖根级默认值。
+ *
  * CLI:     node --experimental-strip-types scripts/generate-icons.ts
  * Vite:    import { generateIcons } from './scripts/generate-icons'
  */
@@ -24,12 +27,27 @@ function writeIfChanged(filePath: string, content: string) {
   writeFileSync(filePath, content, 'utf8')
 }
 
+interface IconData {
+  body: string
+  left?: number
+  top?: number
+  width?: number
+  height?: number
+}
+
 /** 写入单个图标文件 */
-function writeIconFile(outDir: string, iconName: string, data: { body: string }) {
+function writeIconFile(outDir: string, iconName: string, data: IconData) {
+  const extra: string[] = []
+  if (data.left != null) extra.push(`left: ${data.left}`)
+  if (data.top != null) extra.push(`top: ${data.top}`)
+  if (data.width != null) extra.push(`width: ${data.width}`)
+  if (data.height != null) extra.push(`height: ${data.height}`)
+  const fields = extra.length ? `,\n  ${extra.join(',\n  ')}` : ''
+
   const content = `import type { IconifyIcon } from '@iconify/types'
 
 export default {
-  body: '${data.body.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'
+  body: '${data.body.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'${fields}
 } satisfies IconifyIcon
 `
   writeIfChanged(resolve(outDir, `${iconName}.ts`), content)
@@ -61,27 +79,45 @@ export async function generateIcons(pkgRoot: string) {
     return { set, name: rest.join(':') }
   })
 
-  // 按 set 分组加载
-  const setCache = new Map<string, Record<string, { body: string; width?: number; height?: number }>>()
+  // 按 set 分组加载，同时保留根级默认值
+  const setCache = new Map<string, { icons: Record<string, IconData>; root: IconData }>()
   for (const { set } of used) {
     if (!setCache.has(set)) {
       const mod = await import(`@iconify-json/${set}/icons.json`, { with: { type: 'json' } })
-      setCache.set(set, mod.default.icons)
+      const raw = mod.default
+      // 根级 left/top/width/height 是图标集的默认值
+      const root: IconData = {
+        body: '',
+        left: raw.left,
+        top: raw.top,
+        width: raw.width,
+        height: raw.height
+      }
+      setCache.set(set, { icons: raw.icons, root })
     }
   }
 
   const barrel: Array<{ name: string; camelName: string }> = []
 
   for (const { set, name } of used) {
-    const icons = setCache.get(set)!
+    const { icons, root } = setCache.get(set)!
     const data = icons[name]
     if (!data) {
       console.warn(`  ⚠️  icon "${set}:${name}" not found, skipping`)
       continue
     }
 
+    // 合并：图标自身字段 > 根级默认值
+    const merged: IconData = {
+      body: data.body,
+      left: data.left ?? root.left,
+      top: data.top ?? root.top,
+      width: data.width ?? root.width,
+      height: data.height ?? root.height
+    }
+
     const fileName = `${set}-${name}`
-    writeIconFile(outDir, fileName, data)
+    writeIconFile(outDir, fileName, merged)
 
     const camelName = toCamelCase(fileName)
     barrel.push({ name: fileName, camelName })

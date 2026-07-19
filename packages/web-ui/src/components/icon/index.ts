@@ -23,10 +23,12 @@ export class WebUiIcon extends LitElement {
       this.style.setProperty('--wui-icon-color', this.color)
     }
 
+    const viewBox = `${this.icon.left ?? 0} ${this.icon.top ?? 0} ${this.icon.width ?? 24} ${this.icon.height ?? 24}`
+
     return html`
       <svg
         class=${classMap({ spin: this.spin })}
-        viewBox="0 0 24 24"
+        viewBox="${viewBox}"
         width="${this.width}"
         height="${this.height}"
         aria-hidden="true"
