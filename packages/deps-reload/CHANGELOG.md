@@ -1,5 +1,11 @@
 # @greypan/deps-reload
 
+## 1.2.0
+
+### Minor Changes
+
+- 07f8595: fix re-reload
+
 ## 1.1.4
 
 ### Patch Changes
