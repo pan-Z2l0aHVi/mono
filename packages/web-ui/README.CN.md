@@ -6,7 +6,8 @@
 
 ## 功能
 
-- **Button**：带 full/primary/text/icon 变体的样式化按钮
+- **Button**：带 primary/secondary/ghost/danger 变体的样式化按钮
+- **Icon**：通过 `.icon` 属性绑定实现类型安全的图标渲染
 - **BackTop**：可配置阈值和平滑滚动的回到顶部按钮
 - **Layout**：带 header/sidebar/tabbar 插槽的页面布局
 - **SVG Draw Lines**：带缓动控制的 SVG 线条绘制动画
@@ -39,10 +40,10 @@ import '@greypan/web-ui'
 ```
 
 ```html
-<web-ui-button primary>点击我</web-ui-button>
-<web-ui-button text>取消</web-ui-button>
+<web-ui-button variant="primary">点击我</web-ui-button>
+<web-ui-button variant="secondary">取消</web-ui-button>
 <web-ui-button icon>
-  <iconify-icon icon="lucide:plus"></iconify-icon>
+  <web-ui-icon .icon="${lucidePlus}"></web-ui-icon>
 </web-ui-button>
 ```
 
@@ -112,8 +113,8 @@ export function Root() {
         {/* 按钮变体 */}
         <div className="flex gap-2">
           <web-ui-button>默认</web-ui-button>
-          <web-ui-button primary>Primary</web-ui-button>
-          <web-ui-button text>Text</web-ui-button>
+          <web-ui-button variant="primary">Primary</web-ui-button>
+          <web-ui-button variant="ghost">Ghost</web-ui-button>
           <web-ui-button full>Full Width</web-ui-button>
         </div>
 
@@ -177,7 +178,6 @@ export default {
     vue({
       template: {
         compilerOptions: {
-          // 告诉 Vue 模板编译器将 web-ui-* 标签视为自定义元素
           isCustomElement: tag => tag.startsWith('web-ui-') || tag.startsWith('WebUi')
         }
       }
@@ -203,19 +203,6 @@ import App from './App.vue'
 createApp(App).mount('#app')
 ```
 
-同时配置 Vue 编译器以识别自定义元素：
-
-```ts
-// vite.config.ts
-vue({
-  template: {
-    compilerOptions: {
-      isCustomElement: tag => tag.startsWith('web-ui-') || tag.startsWith('WebUi')
-    }
-  }
-})
-```
-
 Vue 模板中的类型增强：
 
 ```ts
@@ -234,8 +221,8 @@ import '@greypan/web-ui/types/vue'
 
     <div class="flex gap-2">
       <web-ui-button>默认</web-ui-button>
-      <web-ui-button primary>Primary</web-ui-button>
-      <web-ui-button text>Text</web-ui-button>
+      <web-ui-button variant="primary">Primary</web-ui-button>
+      <web-ui-button variant="ghost">Ghost</web-ui-button>
       <web-ui-button full>Full Width</web-ui-button>
     </div>
 
@@ -276,12 +263,28 @@ function onVisibleChange(e: CustomEvent<{ visible: boolean }>) {
 
 样式化按钮组件。
 
-| 属性      | 类型      | 默认值  | 说明       |
-| --------- | --------- | ------- | ---------- |
-| `full`    | `boolean` | `false` | 全宽按钮   |
-| `primary` | `boolean` | `false` | 主要样式   |
-| `text`    | `boolean` | `false` | 纯文本样式 |
-| `icon`    | `boolean` | `false` | 纯图标模式 |
+| 属性       | 类型                                                         | 默认值    | 说明                     |
+| ---------- | ------------------------------------------------------------ | --------- | ------------------------ |
+| `variant`  | `'primary' \| 'secondary' \| 'ghost' \| 'danger' \| 'glass'` | `'glass'` | 按钮样式变体             |
+| `disabled` | `boolean`                                                    | `false`   | 禁用状态                 |
+| `loading`  | `boolean`                                                    | `false`   | 加载状态（显示旋转图标） |
+| `full`     | `boolean`                                                    | `false`   | 全宽按钮                 |
+| `icon`     | `boolean`                                                    | `false`   | 纯图标模式               |
+
+### `<web-ui-icon>`
+
+图标渲染组件。接受图标数据对象（非字符串属性）。
+
+| 属性    | 类型          | 说明                                       |
+| ------- | ------------- | ------------------------------------------ |
+| `.icon` | `IconifyIcon` | 图标数据对象（Lit 属性绑定，非 attribute） |
+| `spin`  | `boolean`     | 启用 CSS 旋转动画                          |
+
+```js
+import { lucideLoaderCircle } from '@greypan/web-ui/icons'
+
+html`<web-ui-icon .icon=${lucideLoaderCircle} spin></web-ui-icon>`
+```
 
 ### `<web-ui-back-top>`
 

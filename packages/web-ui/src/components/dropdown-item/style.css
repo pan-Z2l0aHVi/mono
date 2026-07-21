@@ -1,0 +1,49 @@
+:host {
+  display: block;
+}
+
+:host([disabled]) {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.item-inner {
+  user-select: none;
+
+  display: flex;
+  gap: 8px;
+  align-items: center;
+
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 999vmax;
+
+  font-size: var(--wui-font-size, 14px);
+  color: inherit;
+  white-space: nowrap;
+}
+
+.item-inner:focus-visible {
+  color: #fff;
+  background: #48a1ff;
+}
+
+:host(:hover) .item-inner {
+  color: #fff;
+  background: #48a1ff;
+}
+
+:host([active]) .item-inner {
+  color: inherit;
+  background: rgb(0 0 0 / 0.1);
+}
+
+.item-label {
+  overflow: hidden;
+  flex: 1;
+
+  min-width: 0;
+
+  color: inherit;
+  text-overflow: ellipsis;
+}

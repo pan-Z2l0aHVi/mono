@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "tsc -b && vp build",
+    "build": "vp build",
     "dev": "vp dev",
     "preview": "vp preview",
     "test": "vp test run"
@@ -25,22 +25,22 @@
     "@greypan/tsconfig": "workspace:*",
     "@testing-library/react": "catalog:",
     "@types/react": "catalog:",
-    "@types/react-dom": "catalog:"
+    "@types/react-dom": "catalog:",
+    "vite-plugin-dts": "catalog:",
+    "vite-plugin-pwa": "catalog:",
+    "@vitejs/plugin-basic-ssl": "catalog:",
+    "@vitejs/plugin-legacy": "catalog:",
+    "@vitejs/plugin-react": "catalog:",
+    "@tailwindcss/vite": "catalog:",
+    "babel-plugin-react-compiler": "catalog:",
+    "@tanstack/router-plugin": "catalog:",
+    "@rolldown/plugin-babel": "catalog:"
   },
-  "browserslist": {
-    "development": [
-      "last 1 chrome version",
-      "last 1 firefox version",
-      "last 1 safari version"
-    ],
-    "production": [
-      "> 0.5% in CN",
-      "last 2 versions",
-      "Android >= 9",
-      "iOS >= 15",
-      "not dead",
-      "not Android <= 8",
-      "not iOS <= 14"
-    ]
-  }
+  "browserslist": [
+    "> 0.2% in CN",
+    "last 2 versions",
+    "iOS >= 16",
+    "Android >= 9",
+    "not dead"
+  ]
 }

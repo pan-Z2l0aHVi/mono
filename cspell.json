@@ -43,6 +43,7 @@
     "nsis",
     "pkill",
     "unstub",
-    "indexeddb"
+    "indexeddb",
+    "ooui"
   ]
 }

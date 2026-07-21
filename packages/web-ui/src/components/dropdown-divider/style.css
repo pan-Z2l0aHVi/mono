@@ -1,0 +1,9 @@
+:host {
+  display: block;
+}
+
+.divider {
+  height: 1px;
+  margin: 4px 8px;
+  background-color: rgb(0 0 0 / 0.1);
+}

@@ -1,0 +1,13 @@
+:host {
+  display: block;
+}
+
+.header {
+  user-select: none;
+
+  padding: 8px 12px 4px;
+
+  font-size: 11px;
+  font-weight: 600;
+  color: rgb(0 0 0 / 0.4);
+}

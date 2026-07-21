@@ -1,0 +1,25 @@
+:host {
+  display: inline-block;
+}
+
+.wui-button-group-inner {
+  display: flex;
+  flex-direction: var(--wui-button-group-flex-direction, row);
+  gap: 4px;
+  align-items: center;
+
+  width: max-content;
+  height: 40px;
+  padding: 0 4px;
+  border-radius: 999vmax;
+}
+
+:host([orientation='vertical']) {
+  --wui-button-group-flex-direction: column;
+}
+
+:host([orientation='vertical']) .wui-button-group-inner {
+  width: 40px;
+  height: auto;
+  padding: 4px 0;
+}

@@ -6,7 +6,8 @@ English | [简体中文](./README.CN.md)
 
 ## Features
 
-- **Button**: Styled button with full/primary/text/icon variants
+- **Button**: Styled button with primary/secondary/ghost/danger variants
+- **Icon**: Type-safe icon rendering via `.icon` property binding
 - **BackTop**: Scroll-to-top with configurable threshold and smooth scroll
 - **Layout**: Page layout with header/sidebar/tabbar slots
 - **SVG Draw Lines**: SVG line drawing animation with easing control
@@ -39,10 +40,10 @@ import '@greypan/web-ui'
 ```
 
 ```html
-<web-ui-button primary>Click me</web-ui-button>
-<web-ui-button text>Cancel</web-ui-button>
+<web-ui-button variant="primary">Click me</web-ui-button>
+<web-ui-button variant="secondary">Cancel</web-ui-button>
 <web-ui-button icon>
-  <iconify-icon icon="lucide:plus"></iconify-icon>
+  <web-ui-icon .icon="${lucidePlus}"></web-ui-icon>
 </web-ui-button>
 ```
 
@@ -111,9 +112,9 @@ export function Root() {
 
         {/* Button variants */}
         <div className="flex gap-2">
-          <web-ui-button>Default</web-ui-button>
-          <web-ui-button primary>Primary</web-ui-button>
-          <web-ui-button text>Text</web-ui-button>
+          <web-ui-button>默认</web-ui-button>
+          <web-ui-button variant="primary">Primary</web-ui-button>
+          <web-ui-button variant="ghost">Ghost</web-ui-button>
           <web-ui-button full>Full Width</web-ui-button>
         </div>
 
@@ -177,7 +178,6 @@ export default {
     vue({
       template: {
         compilerOptions: {
-          // tell Vue's template compiler to treat web-ui-* tags as custom elements
           isCustomElement: tag => tag.startsWith('web-ui-') || tag.startsWith('WebUi')
         }
       }
@@ -203,19 +203,6 @@ import App from './App.vue'
 createApp(App).mount('#app')
 ```
 
-And configure the Vue compiler to recognize custom elements:
-
-```ts
-// vite.config.ts
-vue({
-  template: {
-    compilerOptions: {
-      isCustomElement: tag => tag.startsWith('web-ui-') || tag.startsWith('WebUi')
-    }
-  }
-})
-```
-
 For type augmentation in Vue templates:
 
 ```ts
@@ -234,8 +221,8 @@ Wrap your app with `<web-ui-layout>` and use the button variants:
 
     <div class="flex gap-2">
       <web-ui-button>默认</web-ui-button>
-      <web-ui-button primary>Primary</web-ui-button>
-      <web-ui-button text>Text</web-ui-button>
+      <web-ui-button variant="primary">Primary</web-ui-button>
+      <web-ui-button variant="ghost">Ghost</web-ui-button>
       <web-ui-button full>Full Width</web-ui-button>
     </div>
 
@@ -276,12 +263,28 @@ function onVisibleChange(e: CustomEvent<{ visible: boolean }>) {
 
 Styled button component.
 
-| Attribute | Type      | Default | Description       |
-| --------- | --------- | ------- | ----------------- |
-| `full`    | `boolean` | `false` | Full width button |
-| `primary` | `boolean` | `false` | Primary style     |
-| `text`    | `boolean` | `false` | Text-only style   |
-| `icon`    | `boolean` | `false` | Icon-only mode    |
+| Attribute  | Type                                                         | Default   | Description                   |
+| ---------- | ------------------------------------------------------------ | --------- | ----------------------------- |
+| `variant`  | `'primary' \| 'secondary' \| 'ghost' \| 'danger' \| 'glass'` | `'glass'` | Button style variant          |
+| `disabled` | `boolean`                                                    | `false`   | Disabled state                |
+| `loading`  | `boolean`                                                    | `false`   | Loading state (shows spinner) |
+| `full`     | `boolean`                                                    | `false`   | Full width button             |
+| `icon`     | `boolean`                                                    | `false`   | Icon-only mode                |
+
+### `<web-ui-icon>`
+
+Icon rendering component. Accepts icon data objects (not string attributes).
+
+| Property | Type          | Description                                            |
+| -------- | ------------- | ------------------------------------------------------ |
+| `.icon`  | `IconifyIcon` | Icon data object (Lit property binding, not attribute) |
+| `spin`   | `boolean`     | Enable CSS rotation animation                          |
+
+```js
+import { lucideLoaderCircle } from '@greypan/web-ui/icons'
+
+html`<web-ui-icon .icon=${lucideLoaderCircle} spin></web-ui-icon>`
+```
 
 ### `<web-ui-back-top>`
 

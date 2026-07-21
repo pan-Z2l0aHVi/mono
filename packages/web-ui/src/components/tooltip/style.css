@@ -1,0 +1,39 @@
+:host {
+  display: inline-flex;
+}
+
+.tooltip-trigger {
+  display: inline-flex;
+}
+
+.tooltip-panel {
+  --wui-glass-shadow: 4px 12px 30px rgb(0 0 0 / 0.4);
+
+  pointer-events: none;
+
+  position: fixed;
+  z-index: 99999;
+  top: -9999px;
+  left: -9999px;
+
+  box-sizing: border-box;
+  max-width: var(--web-ui-tooltip-max-width, 240px);
+  padding: 6px 10px;
+  border-radius: 8px;
+
+  font-size: var(--wui-font-size, 13px);
+  line-height: 1.4;
+  color: #1b1b1b;
+
+  background-color: #f0f0f0;
+}
+
+.tooltip-panel.hidden {
+  display: none;
+}
+
+.tooltip-text {
+  display: block;
+  overflow-wrap: break-word;
+  white-space: normal;
+}

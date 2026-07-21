@@ -1,15 +1,30 @@
 import { resolve } from 'node:path'
 
 import dts from 'vite-plugin-dts'
-import type { UserConfig } from 'vite-plus'
+import type { Plugin, UserConfig } from 'vite-plus'
+
+import { generateIcons } from './scripts/generate-icons'
+
+/** 构建时自动生成图标模块 */
+function iconsPlugin(): Plugin {
+  return {
+    name: 'generate-icons',
+    async buildStart() {
+      const count = await generateIcons(import.meta.dirname)
+      this.info(`generated ${count} icons`)
+    }
+  }
+}
 
 export default {
   resolve: {
     tsconfigPaths: true
   },
   plugins: [
+    iconsPlugin(),
     dts({
-      tsconfigPath: './tsconfig.app.json'
+      tsconfigPath: './tsconfig.app.json',
+      include: ['src/components/**/*', 'src/icons/**/*', 'src/types/**/*']
     })
   ],
   test: {
@@ -21,7 +36,10 @@ export default {
   build: {
     sourcemap: true,
     lib: {
-      entry: resolve(import.meta.dirname, 'src/index.ts'),
+      entry: {
+        'components/index': resolve(import.meta.dirname, 'src/components/index.ts'),
+        'icons/index': resolve(import.meta.dirname, 'src/icons/index.ts')
+      },
       formats: ['es']
     },
     rollupOptions: {
@@ -34,9 +52,7 @@ export default {
         /^react($|\/)/,
         /^react-dom($|\/)/,
 
-        /^vue($|\/)/,
-
-        'iconify-icon'
+        /^vue($|\/)/
       ],
       output: {
         preserveModules: true,

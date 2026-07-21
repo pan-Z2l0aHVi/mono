@@ -1,4 +1,8 @@
 :host {
+  display: block;
+}
+
+.back-top-inner {
   pointer-events: none;
 
   position: fixed;
@@ -7,19 +11,13 @@
   right: var(--web-ui-back-top-right, 20px);
   bottom: var(--web-ui-back-top-bottom, 20px);
   left: var(--web-ui-back-top-left, auto);
-  transform: scale(0);
-
-  display: inline-block;
 
   visibility: hidden;
   opacity: 0;
-
-  transition: all 0.3s ease-out;
 }
 
-:host([visible]) {
+:host([visible]) .back-top-inner {
   pointer-events: auto;
-  transform: scale(1);
   visibility: visible;
   opacity: 1;
 }

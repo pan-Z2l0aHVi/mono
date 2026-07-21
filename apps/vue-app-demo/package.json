@@ -25,22 +25,22 @@
     "@greypan/unplugin-web-components": "workspace:*",
     "@greypan/tsconfig": "workspace:*",
     "@vue/test-utils": "catalog:",
-    "unplugin-auto-import": "catalog:"
+    "vite-plugin-dts": "catalog:",
+    "vite-plugin-pwa": "catalog:",
+    "@vitejs/plugin-basic-ssl": "catalog:",
+    "@vitejs/plugin-legacy": "catalog:",
+    "@vitejs/plugin-vue-jsx": "catalog:",
+    "@vitejs/plugin-vue": "catalog:",
+    "@tailwindcss/vite": "catalog:",
+    "vite-plugin-vue-devtools": "catalog:",
+    "unplugin-auto-import": "catalog:",
+    "vue-tsc": "catalog:"
   },
-  "browserslist": {
-    "development": [
-      "last 1 chrome version",
-      "last 1 firefox version",
-      "last 1 safari version"
-    ],
-    "production": [
-      "> 0.5% in CN",
-      "last 2 versions",
-      "Android >= 9",
-      "iOS >= 15",
-      "not dead",
-      "not Android <= 8",
-      "not iOS <= 14"
-    ]
-  }
+  "browserslist": [
+    "> 0.2% in CN",
+    "last 2 versions",
+    "iOS >= 16",
+    "Android >= 9",
+    "not dead"
+  ]
 }

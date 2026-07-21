@@ -1,0 +1,32 @@
+:host {
+  display: inline-block;
+}
+
+:host([disabled]) {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+:host([disabled]) .dropdown-trigger {
+  cursor: not-allowed;
+  cursor: pointer;
+  display: inline-flex;
+}
+
+.dropdown-overlay {
+  --wui-glass-shadow: 0 4px 16px rgb(0 0 0 / 0.25);
+  position: fixed;
+  z-index: 9999;
+
+  box-sizing: border-box;
+  border-radius: 20px;
+
+  background-color: rgb(240 240 240 / 0.8);
+}
+
+.dropdown-scroll {
+  overflow-y: auto;
+  min-width: 200px;
+  max-height: 320px;
+  padding: 4px;
+}

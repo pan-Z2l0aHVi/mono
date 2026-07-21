@@ -36,7 +36,7 @@
     "registry": "https://registry.npmjs.org/"
   },
   "scripts": {
-    "build": "vue-tsc --build && vp build",
+    "build": "vp build",
     "test": "vp test run",
     "dev": "vp build --watch"
   },
@@ -45,7 +45,8 @@
     "nanoid": "catalog:"
   },
   "devDependencies": {
-    "@greypan/tsconfig": "workspace:*"
+    "@greypan/tsconfig": "workspace:*",
+    "vite-plugin-dts": "catalog:"
   },
   "browserslist": [
     "defaults"
