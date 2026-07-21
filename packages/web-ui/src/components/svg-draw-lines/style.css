@@ -1,6 +1,9 @@
 :host {
-  position: relative;
   display: inline-block;
+}
+
+.lines-wrapper {
+  position: relative;
   vertical-align: middle;
 
   .svg-clone {

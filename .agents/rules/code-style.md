@@ -50,12 +50,6 @@ export function defineXxx(options: Options) {
 - 避免类，除非有明确的状态管理需求
 - 异步函数使用 `async/await`，避免 `.then()` 链
 
-## 依赖管理
-
-- 优先使用 monorepo 已有的工具库（`@greypan/js-kit`, `@greypan/browser-kit` 等）
-- uuid 优先使用已有的 nanoid 库
-- 引入第三方依赖前必须经人工确认，不得自行添加
-
 ## 注释规范
 
 - 注释只解释 **为什么**，不解释 **是什么**
@@ -94,8 +88,6 @@ export function defineXxx(options: Options) {
 - 内部辅助函数放在导出函数之后
 - 类型定义放在文件顶部或单独的类型文件
 
-## React HMR 规则（仅 `.jsx` / `.tsx` 文件）
+## 代码验证
 
-- **禁止使用匿名 default export**：`export default () => {}` 会导致 Fast Refresh 失效
-- 使用具名函数声明：`function MyComponent() {} export default MyComponent`
-- 由 oxlint 的 `unicorn/no-anonymous-default-export` 规则强制执行
+- **完成代码改动后，必须先执行 `pnpm run check:code`**（format + lint + type-check），自动修复格式问题并确保无类型错误，再向用户汇报完成

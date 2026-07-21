@@ -49,14 +49,14 @@ Now when you use `<web-ui-button>` in a Vue or React template, the import is aut
 ```vue
 <!-- Vue: auto-imported -->
 <template>
-  <web-ui-button primary>Click me</web-ui-button>
+  <web-ui-button>Click me</web-ui-button>
 </template>
 ```
 
 ```tsx
 // React: auto-imported
 function App() {
-  return <web-ui-button primary>Click me</web-ui-button>
+  return <web-ui-button>Click me</web-ui-button>
 }
 ```
 

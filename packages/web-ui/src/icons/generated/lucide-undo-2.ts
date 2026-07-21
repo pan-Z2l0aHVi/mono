@@ -1,0 +1,7 @@
+import type { IconifyIcon } from '@iconify/types'
+
+export default {
+  body: '<g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><path d="M9 14L4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11"/></g>',
+  width: 24,
+  height: 24
+} satisfies IconifyIcon

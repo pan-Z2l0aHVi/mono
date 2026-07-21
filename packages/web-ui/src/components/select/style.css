@@ -1,0 +1,92 @@
+:host {
+  display: inline-block;
+}
+
+:host([full]) {
+  display: block;
+}
+
+:host([disabled]) {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.wui-select-inner {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+:host([full]) .wui-select-inner {
+  width: 100%;
+}
+
+.select-trigger {
+  cursor: pointer;
+
+  display: flex;
+  gap: 8px;
+  align-items: center;
+
+  box-sizing: border-box;
+  width: var(--wui-input-width, 200px);
+  min-width: var(--wui-button-size, 40px);
+  height: var(--wui-button-size, 40px);
+  padding: 0 16px;
+  border-radius: 999vmax;
+
+  &:focus-visible {
+    outline: 3px solid rgb(0 136 255 / 0.4);
+    outline-offset: 2px;
+  }
+}
+
+:host([disabled]) .select-trigger {
+  cursor: not-allowed;
+}
+
+.label {
+  overflow: hidden;
+  flex: 1;
+
+  font-size: var(--wui-font-size, 14px);
+  color: #1b1b1b;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+:host(:not([value])) .label,
+:host([value='']) .label {
+  color: #6a6a6a;
+}
+
+.arrow {
+  flex-shrink: 0;
+  color: #6a6a6a;
+}
+
+:host([open]) .arrow {
+  transform: rotate(180deg);
+}
+
+/* ===== 浮层（glass 样式参考 dialog） ===== */
+
+.select-overlay {
+  --wui-glass-shadow: 0 4px 16px rgb(0 0 0 / 0.25);
+  position: fixed;
+  z-index: 9999;
+
+  overflow-y: auto;
+
+  box-sizing: border-box;
+  max-width: var(--wui-select-max-width, 300px);
+  max-height: 320px;
+  padding: 4px;
+  border-radius: 20px;
+
+  background-color: rgb(240 240 240 / 0.8);
+}
+
+.select-overlay.hidden {
+  display: none;
+}

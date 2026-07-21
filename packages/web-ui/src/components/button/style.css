@@ -1,52 +1,150 @@
 :host {
-  button {
-    cursor: pointer;
-
-    display: inline-flex;
-    gap: var(--web-ui-button-gap, 8px);
-    align-items: center;
-    justify-content: center;
-
-    width: max-content;
-    min-height: var(--web-ui-button-h, 32px);
-    padding: var(--web-ui-button-p-y, 4px) var(--web-ui-button-p-x, 16px);
-    border: none;
-    border-radius: 999vmax;
-
-    font-size: var(--web-ui-button-font-size, 14px);
-    font-weight: var(--web-ui-button-bold, 500);
-    color: var(--web-ui-button-color, #006cf9);
-
-    background: none;
-    background-color: var(--web-ui-button-bg, #f0f0f6);
-  }
+  display: inline-block;
 }
 
 :host([full]) {
-  button {
-    display: flex;
-    width: 100%;
+  display: block;
+}
+
+:host([disabled]) {
+  cursor: not-allowed;
+}
+
+button {
+  cursor: pointer;
+  user-select: none;
+
+  position: relative;
+
+  overflow: clip;
+  display: inline-flex;
+  gap: var(--wui-button-gap, 8px);
+  align-items: center;
+  justify-content: center;
+
+  box-sizing: border-box;
+  width: max-content;
+  min-width: var(--wui-button-size, auto);
+  height: var(--wui-button-size, 40px);
+  padding: 0 var(--wui-button-px, 16px);
+  border: 1px solid transparent;
+  border-radius: 999vmax;
+
+  font-size: var(--wui-font-size, 14px);
+  line-height: 1;
+  color: var(--wui-button-color);
+  white-space: nowrap;
+
+  background-color: var(--wui-button-bg);
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.4;
+  }
+
+  &:focus-visible {
+    outline: 3px solid rgb(0 136 255 / 0.4);
+    outline-offset: 2px;
+  }
+
+  &:hover:not(:disabled) {
+    background-color: var(--wui-button-bg-hover);
+  }
+
+  &:active:not(:disabled) {
+    background-color: var(--wui-button-bg-active);
   }
 }
 
-:host([primary]) {
-  button {
-    color: var(--web-ui-button-primary-color, #fff);
-    background-color: var(--web-ui-button-primary-bg, #006cf9);
-  }
+/* ===== Full width ===== */
+
+:host([full]) button {
+  display: flex;
+  width: 100%;
 }
 
-:host([text]) {
-  button {
-    color: var(--web-ui-button-primary-color, #006cf9);
-    background-color: transparent;
-  }
+/* ===== Icon mode ===== */
+
+:host([icon]) button {
+  aspect-ratio: 1;
+  padding: 0;
 }
 
-:host([icon]) {
-  button {
-    width: var(--web-ui-button-h, 32px);
-    height: var(--web-ui-button-h, 32px);
-    padding: var(--web-ui-button-p-y, 4px);
-  }
+/* ===== Variant: primary (默认) ===== */
+
+:host([variant='primary']) {
+  --wui-button-color: #fff;
+  --wui-button-bg: #08f;
+  --wui-button-bg-hover: #07e;
+  --wui-button-bg-active: #06d;
+}
+
+/* ===== Variant: secondary ===== */
+
+:host([variant='secondary']) {
+  --wui-button-color: #1b1b1b;
+  --wui-button-bg: #dfdfdf;
+  --wui-button-bg-hover: #d0d0d0;
+  --wui-button-bg-active: #c0c0c0;
+}
+
+/* ===== Variant: ghost ===== */
+
+:host([variant='ghost']) {
+  --wui-button-color: #08f;
+  --wui-button-bg: transparent;
+  --wui-button-bg-hover: rgb(0 136 255 / 0.08);
+  --wui-button-bg-active: rgb(0 136 255 / 0.12);
+}
+
+/* ===== Variant: danger ===== */
+
+:host([variant='danger']) {
+  --wui-button-color: #ff383c;
+  --wui-button-bg: #facccd;
+  --wui-button-bg-hover: #f0b8b8;
+  --wui-button-bg-active: #e6a4a4;
+}
+
+/* ===== Variant: glass (玻璃) ===== */
+
+/* .wui-glass 样式由 @/assets/glass.css 提供 */
+:host([variant='glass']) {
+  --wui-button-bg-hover: rgb(0 0 0 / 0.06);
+  --wui-button-bg-active: rgb(0 0 0 / 0.1);
+}
+
+/* ===== Group context ===== */
+
+:host([group]) {
+  --wui-button-color: #1a1a1a;
+  --wui-button-bg: transparent;
+  --wui-button-bg-hover: rgb(0 0 0 / 0.06);
+  --wui-button-bg-active: rgb(0 0 0 / 0.1);
+  position: relative;
+}
+
+:host([group]:not([last]))::after {
+  content: '';
+
+  position: absolute;
+  top: 50%;
+  right: -2px;
+  transform: translateY(-50%);
+
+  width: var(--wui-button-divider-width, 0);
+  height: 24px;
+
+  background-color: rgb(0 0 0 / 0.1);
+}
+
+:host([group][orientation='vertical']:not([last]))::after {
+  top: auto;
+  right: auto;
+  bottom: -2px;
+  left: 50%;
+  transform: translateX(-50%);
+
+  width: 24px;
+  height: var(--wui-button-divider-width, 0);
 }

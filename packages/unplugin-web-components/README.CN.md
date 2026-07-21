@@ -49,14 +49,14 @@ export default defineConfig({
 ```vue
 <!-- Vue：自动导入 -->
 <template>
-  <web-ui-button primary>点击我</web-ui-button>
+  <web-ui-button>点击我</web-ui-button>
 </template>
 ```
 
 ```tsx
 // React：自动导入
 function App() {
-  return <web-ui-button primary>点击我</web-ui-button>
+  return <web-ui-button>点击我</web-ui-button>
 }
 ```
 
