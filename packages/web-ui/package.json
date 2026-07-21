@@ -12,18 +12,25 @@
     "dist"
   ],
   "sideEffects": [
-    "./dist/index.js",
-    "./dist/components/*/index.js",
-    "./dist/**/*.css"
+    "./src/components/**",
+    "./dist/components/**"
   ],
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
+      "types": "./dist/components/index.d.ts",
+      "import": "./dist/components/index.js"
     },
     "./components/*": {
       "types": "./dist/components/*/index.d.ts",
       "import": "./dist/components/*/index.js"
+    },
+    "./icons": {
+      "types": "./dist/icons/index.d.ts",
+      "import": "./dist/icons/index.js"
+    },
+    "./icons/*": {
+      "types": "./dist/icons/*.d.ts",
+      "import": "./dist/icons/*.js"
     },
     "./types/*": "./dist/types/*.d.ts",
     "./package.json": "./package.json"
@@ -33,24 +40,33 @@
     "registry": "https://registry.npmjs.org/"
   },
   "scripts": {
-    "build": "vue-tsc --build && vp build",
+    "build": "vp build",
     "test": "vp test run",
-    "dev": "vp build --watch"
+    "dev": "vp build --watch",
+    "generate-icons": "node --experimental-strip-types scripts/generate-icons.ts"
   },
   "dependencies": {
+    "@floating-ui/dom": "catalog:",
     "@greypan/browser-kit": "workspace:*",
-    "@greypan/js-kit": "workspace:*",
-    "iconify-icon": "catalog:"
+    "@greypan/js-kit": "workspace:*"
   },
   "devDependencies": {
     "@greypan/tsconfig": "workspace:*",
-    "lit": "catalog:",
+    "@iconify-json/jam": "catalog:",
+    "@iconify-json/lucide": "catalog:",
+    "@iconify-json/si": "catalog:",
+    "@iconify-json/heroicons": "catalog:",
+    "@iconify-json/ooui": "catalog:",
+    "@iconify-json/radix-icons": "catalog:",
+    "@iconify/types": "catalog:",
     "@types/react": "catalog:",
+    "lit": "catalog:",
+    "vite-plugin-dts": "catalog:",
     "vue": "catalog:"
   },
   "peerDependencies": {
-    "lit": "catalog:",
     "@types/react": ">=16",
+    "lit": "catalog:",
     "vue": ">=3"
   },
   "peerDependenciesMeta": {

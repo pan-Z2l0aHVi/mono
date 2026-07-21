@@ -1,0 +1,43 @@
+/* stylelint-disable custom-property-pattern */
+@import 'tailwindcss';
+
+@theme {
+  --spacing: 4px;
+
+  /* 字体族 (Font Families) */
+  --font-sans:
+    'Inter', ui-sans-serif, system-ui, -apple-system, blinkmacsystemfont, 'Segoe UI', roboto, 'Helvetica Neue', arial,
+    'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+  --font-serif: 'Merriweather', ui-serif, georgia, cambria, 'Times New Roman', times, serif;
+  --font-mono: 'SF Mono', menlo, consolas, 'Roboto Mono', 'Courier New', courier, monospace;
+
+  /* 字体大小 (Font Sizes) - 使用 px */
+  --text-xs: 12px;
+  --text-xs--line-height: 16px; /* 或 1rem */
+  --text-sm: 14px;
+  --text-sm--line-height: 20px;
+  --text-base: 16px;
+  --text-base--line-height: 24px;
+  --text-lg: 18px;
+  --text-lg--line-height: 28px;
+  --text-xl: 20px;
+  --text-xl--line-height: 28px;
+  --text-2xl: 24px;
+  --text-2xl--line-height: 32px;
+  --text-3xl: 30px;
+  --text-3xl--line-height: 36px;
+  --text-4xl: 36px;
+  --text-4xl--line-height: 40px;
+
+  /* 断点 (Breakpoints) - 使用 px */
+  --breakpoint-sm: 640px; /* 手机横屏、小平板竖屏 */
+  --breakpoint-md: 768px; /* 平板竖屏 */
+  --breakpoint-lg: 1024px; /* 平板横屏、小笔记本 */
+  --breakpoint-xl: 1280px; /* 标准桌面显示器 */
+  --breakpoint-2xl: 1536px; /* 大桌面显示器 */
+}
+
+/* 防止页面闪烁。隐藏所有未注册的 web components 元素 */
+:not(:defined) {
+  display: none;
+}

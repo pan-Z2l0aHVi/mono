@@ -1,4 +1,8 @@
 :host {
+  display: block;
+}
+
+.layout-grid {
   display: grid;
   grid-template-areas:
     'sidebar header'
@@ -38,10 +42,10 @@ aside {
   padding: 8px;
 
   .menu {
+    --wui-glass-shadow: 2px 4px 12px rgb(0 0 0 / 0.1);
     height: 100%;
-    border-radius: 16px;
-    background-color: var(--web-ui-base-layout-bg, #f5f5f5);
-    box-shadow: 2px 4px 32px rgb(0 0 0 / 0.2);
+    border-radius: 20px;
+    background-color: rgb(240 240 240 / 0.5);
   }
 }
 

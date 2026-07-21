@@ -7,5 +7,5 @@ export function transformVueCode(code: string, imports: string): string {
   if (scriptReg.test(code)) {
     return code.replace(scriptReg, `$1\n${imports}\n`)
   }
-  return `${imports}\n${code}`
+  return `<script setup>\n${imports}\n</script>\n${code}`
 }

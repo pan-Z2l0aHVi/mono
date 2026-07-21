@@ -1,24 +1,45 @@
 import type { DetailedHTMLProps, HTMLAttributes } from 'react'
 
-import type { WebUiBackTop, WebUiButton, WebUiLayout } from '..'
+import type {
+  WebUiBackTop,
+  WebUiButton,
+  WebUiButtonGroup,
+  WebUiDialog,
+  WebUiDropdownDivider,
+  WebUiDropdownHeader,
+  WebUiDropdownItem,
+  WebUiDropdownMenu,
+  WebUiIcon,
+  WebUiInput,
+  WebUiInputNumber,
+  WebUiLayout,
+  WebUiOption,
+  WebUiSelect,
+  WebUiTooltip
+} from '../components'
 
-import type { ExtractProps, OmitLitBase } from './utils'
-// 提取 $events 并转化为 React 的 on 事件
-type ExtractReactEvents<T> = T extends { readonly $events: infer E }
-  ? {
-      [K in keyof E as `on${string & K}`]?: (e: E[K]) => void
-    }
-  : object
-
-export type LitReactWrapper<T> = DetailedHTMLProps<
-  ExtractProps<OmitLitBase<T>> & ExtractReactEvents<T> & HTMLAttributes<HTMLElement>,
-  HTMLElement
->
+import type { ExtractProps, EventListeners, OmitLitBase } from './utils'
+// React 通过 EventListeners<Events> + HTMLAttributes<HTMLElement> 获取事件类型
+export type LitReactWrapper<T> = T extends { readonly $events: infer E }
+  ? DetailedHTMLProps<ExtractProps<OmitLitBase<T>> & EventListeners<E> & HTMLAttributes<HTMLElement>, HTMLElement>
+  : DetailedHTMLProps<ExtractProps<OmitLitBase<T>> & HTMLAttributes<HTMLElement>, HTMLElement>
 
 export interface WebUiComponents {
   'web-ui-button': LitReactWrapper<WebUiButton>
+  'web-ui-button-group': LitReactWrapper<WebUiButtonGroup>
+  'web-ui-dialog': LitReactWrapper<WebUiDialog>
+  'web-ui-dropdown-divider': LitReactWrapper<WebUiDropdownDivider>
+  'web-ui-dropdown-header': LitReactWrapper<WebUiDropdownHeader>
+  'web-ui-dropdown-item': LitReactWrapper<WebUiDropdownItem>
+  'web-ui-dropdown-menu': LitReactWrapper<WebUiDropdownMenu>
+  'web-ui-icon': LitReactWrapper<WebUiIcon>
+  'web-ui-input': LitReactWrapper<WebUiInput>
+  'web-ui-input-number': LitReactWrapper<WebUiInputNumber>
+  'web-ui-select': LitReactWrapper<WebUiSelect>
+  'web-ui-option': LitReactWrapper<WebUiOption>
   'web-ui-back-top': LitReactWrapper<WebUiBackTop>
   'web-ui-layout': LitReactWrapper<WebUiLayout>
+  'web-ui-tooltip': LitReactWrapper<WebUiTooltip>
 }
 
 declare module 'react' {

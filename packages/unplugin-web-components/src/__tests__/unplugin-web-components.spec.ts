@@ -39,6 +39,30 @@ describe('unplugin-web-components', () => {
     expect(result.code).toContain(`import { WebUiCard } from '@greypan/web-ui/components/card'`)
   })
 
+  it('应当在 Vue SFC 无 script 块时生成 <script setup> 块', async () => {
+    const plugin = createPlugin()
+
+    const transform = plugin.transform as unknown as (
+      this: unknown,
+      code: string,
+      id: string
+    ) => Thenable<TransformResult>
+
+    const code = `
+      <template>
+        <web-ui-button />
+      </template>
+    `
+
+    const result = await transform!.call({}, code, '/src/App.vue')
+    if (!result || typeof result === 'string') {
+      throw new Error('Unexpected transform result.')
+    }
+    expect(result.code).toContain('<script setup>')
+    expect(result.code).toContain(`from '@greypan/web-ui/components/button'`)
+    expect(result.code).toContain('</script>')
+  })
+
   it('应当在 React 组件中 import kebab-case 组件', async () => {
     const plugin = createPlugin()
 

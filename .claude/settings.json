@@ -1,0 +1,35 @@
+{
+  "permissions": {
+    "allow": [
+      "pnpm",
+      "npm",
+      "node",
+      "git",
+      "gh",
+      "bash",
+      "ls",
+      "cat",
+      "grep",
+      "find",
+      "mkdir",
+      "cp",
+      "mv",
+      "rm",
+      "curl",
+      "head",
+      "tail",
+      "wc",
+      "sort",
+      "uniq",
+      "echo",
+      "printf",
+      "tee",
+      "xxd",
+      "file"
+    ],
+    "allowPath": ["/Users/bopan/VibeCoding/mono"]
+  },
+  "hooks": {
+    "preTool": []
+  }
+}

@@ -11,6 +11,7 @@
     "color-function-notation": "modern",
     "declaration-block-no-redundant-longhand-properties": null,
     "no-empty-source": null,
-    "declaration-empty-line-before": null
+    "declaration-empty-line-before": null,
+    "import-notation": "string"
   }
 }

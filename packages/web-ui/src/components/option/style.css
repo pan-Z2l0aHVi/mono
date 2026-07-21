@@ -1,0 +1,49 @@
+:host {
+  display: block;
+}
+
+:host([disabled]) {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.option-label {
+  cursor: pointer;
+  user-select: none;
+
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+
+  box-sizing: border-box;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 999vmax;
+
+  font-size: var(--wui-font-size, 14px);
+  color: #1b1b1b;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.check {
+  margin-right: 8px;
+}
+
+:host(:not([selected])) .check {
+  visibility: hidden;
+}
+
+.option-label:hover {
+  color: #fff;
+  background: #0081f8;
+}
+
+:host([active]) .option-label {
+  color: #fff;
+  background: #0081f8;
+}
+
+:host([disabled]) .option-label {
+  cursor: not-allowed;
+}

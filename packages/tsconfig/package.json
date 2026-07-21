@@ -11,7 +11,8 @@
     "access": "public"
   },
   "dependencies": {
-    "@vue/tsconfig": "catalog:"
+    "@vue/tsconfig": "catalog:",
+    "@tsconfig/node24": "catalog:"
   },
   "files": [
     "base.json",

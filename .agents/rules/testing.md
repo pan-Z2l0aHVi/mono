@@ -53,3 +53,9 @@
 ```
 
 同时产出测试覆盖分析：已覆盖 / 缺失两部分。
+
+## 命令规范
+
+- **测试**：始终运行 monorepo 根目录的 `pnpm run test`（而不是子包的 `pnpm --filter <pkg> run test`），确保感知到跨包变更的影响
+- **构建**：始终运行 `pnpm build`（根目录 turbo 编排），子包单独 `pnpm --filter <pkg> build` 仅在调试特定包时使用
+- **提交前检查**：根目录 `pnpm run check:code`（format + lint + type-check）
