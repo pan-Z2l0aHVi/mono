@@ -21,14 +21,12 @@ export class WebUiDropdownMenu extends LitElement {
   @property({ type: Number }) offset = 4
   @property({ type: Boolean, reflect: true }) matchWidth = false
 
-  /** 根菜单是否打开 */
   @state() private _isOpen = false
-  /** 子菜单路径，每层存 item 索引 */
   private _activePath: number[] = []
 
   private readonly _overlays = new Map<number, OverlayApi>()
   private _openTimer?: ReturnType<typeof setTimeout>
-  private _cleanupFns: (() => void)[] = []
+  private _hoverCleanupFns: (() => void)[] = []
 
   get isOpen(): boolean {
     return this._isOpen || this._activePath.length > 0
@@ -46,7 +44,7 @@ export class WebUiDropdownMenu extends LitElement {
     document.removeEventListener('click', this._onClickOutside)
     clearTimeout(this._openTimer)
     this._disposeAll()
-    this._cleanupFns.forEach(fn => fn())
+    this._hoverCleanupFns.forEach(fn => fn())
   }
 
   /* ========== 状态管理 ========== */
@@ -76,7 +74,7 @@ export class WebUiDropdownMenu extends LitElement {
 
     Array.from(this.children).forEach(child => {
       if (child.matches('web-ui-dropdown-item, web-ui-dropdown-divider, web-ui-dropdown-header')) {
-        ;(child as HTMLElement).setAttribute('slot', `${SLOT_PREFIX}0`)
+        child.setAttribute('slot', `${SLOT_PREFIX}0`)
       }
     })
   }
@@ -86,7 +84,7 @@ export class WebUiDropdownMenu extends LitElement {
     this.querySelectorAll('web-ui-dropdown-item[submenu]').forEach(item => {
       Array.from(item.children).forEach(child => {
         if (child.matches('web-ui-dropdown-item, web-ui-dropdown-divider, web-ui-dropdown-header')) {
-          ;(child as HTMLElement).setAttribute('slot', `${SLOT_PREFIX}-hidden`)
+          child.setAttribute('slot', `${SLOT_PREFIX}-hidden`)
         }
       })
     })
@@ -147,7 +145,6 @@ export class WebUiDropdownMenu extends LitElement {
     }
   }
 
-  /** 获取某层所有 item */
   private _getLevelItems(level: number): HTMLElement[] {
     if (level === 0) {
       return Array.from(this.children).filter((c): c is HTMLElement =>
@@ -163,7 +160,6 @@ export class WebUiDropdownMenu extends LitElement {
 
   /* ========== Slot 管理 ========== */
 
-  /** 将子菜单 item 的子项移入 overlay */
   private _populateOverlay(level: number, submenuItem: HTMLElement) {
     const overlay = this.shadowRoot?.querySelector(`.dropdown-overlay[data-level="${level}"] .dropdown-scroll`)
     if (!overlay) return
@@ -174,7 +170,6 @@ export class WebUiDropdownMenu extends LitElement {
     }
   }
 
-  /** 关闭子菜单时将子项移回 submenu item */
   private _depopulateOverlay(level: number) {
     const scroll = this.shadowRoot?.querySelector(`.dropdown-overlay[data-level="${level}"] .dropdown-scroll`)
     if (!scroll) return
@@ -247,7 +242,8 @@ export class WebUiDropdownMenu extends LitElement {
 
   private _queryTriggerAnchor(): HTMLElement | null {
     const slot = this.shadowRoot?.querySelector<HTMLSlotElement>('slot[name="trigger"]')
-    return (slot?.assignedElements()[0] as HTMLElement) ?? null
+    const el = slot?.assignedElements()[0]
+    return el instanceof HTMLElement ? el : null
   }
 
   private _getSubmenuTriggerAnchor(level: number): HTMLElement | null {
@@ -271,7 +267,7 @@ export class WebUiDropdownMenu extends LitElement {
   }
 
   private _onClickOutside = (e: MouseEvent) => {
-    if (this.isOpen && !this.contains(e.target as Node)) {
+    if (this.isOpen && e.target instanceof Node && !this.contains(e.target)) {
       this.closeAll()
     }
   }
@@ -288,10 +284,9 @@ export class WebUiDropdownMenu extends LitElement {
     }
   }
 
-  /** 绑定各层 hover 事件 */
   private _bindLevelHovers() {
-    this._cleanupFns.forEach(fn => fn())
-    this._cleanupFns.length = 0
+    this._hoverCleanupFns.forEach(fn => fn())
+    this._hoverCleanupFns.length = 0
 
     // level 0 始终绑定（根菜单打开时）
     const maxLevel = this._activePath.length + 1 // 当前层 + 可能的下一层
@@ -312,7 +307,7 @@ export class WebUiDropdownMenu extends LitElement {
           }
         }
         item.addEventListener('mouseenter', handler, { passive: true })
-        this._cleanupFns.push(() => item.removeEventListener('mouseenter', handler))
+        this._hoverCleanupFns.push(() => item.removeEventListener('mouseenter', handler))
       })
     }
   }

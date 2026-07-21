@@ -34,17 +34,16 @@ export class WebUiDialog extends LitElement {
     this.open = true
   }
 
-  /** 关闭对话框 */
   close() {
     this.open = false
   }
 
-  private onDialogCancel(e: Event) {
+  private handleCancel(e: Event) {
     e.preventDefault()
     this.close()
   }
 
-  private onBackdropClick(e: MouseEvent) {
+  private handleBackdropClick(e: MouseEvent) {
     if (e.target !== (e.currentTarget as HTMLDialogElement)) return
     this.close()
   }
@@ -61,7 +60,7 @@ export class WebUiDialog extends LitElement {
 
   override render() {
     return html`
-      <dialog @cancel=${this.onDialogCancel} @click=${this.onBackdropClick}>
+      <dialog @cancel=${this.handleCancel} @click=${this.handleBackdropClick}>
         <div class="wui-dialog-body wui-glass wui-glass-no-after">
           <div class="title"><slot name="title"></slot></div>
           <div class="desc"><slot></slot></div>

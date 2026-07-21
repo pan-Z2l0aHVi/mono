@@ -53,7 +53,8 @@ export class WebUiInputNumber extends LitElement {
   }
 
   private handleInput(e: Event) {
-    const raw = (e.target as HTMLInputElement).value
+    if (!(e.target instanceof HTMLInputElement)) return
+    const raw = e.target.value
     if (raw === '' || raw === '-') return
     this.setValueAndNotify(Number(raw))
   }

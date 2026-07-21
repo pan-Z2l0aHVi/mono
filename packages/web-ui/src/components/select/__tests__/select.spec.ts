@@ -131,7 +131,7 @@ describe('WebUiSelect', () => {
       el.value = 'apple'
       await el.updateComplete
 
-      const handler = vi.fn()
+      const handler = vi.fn<(e: Event) => void>()
       el.addEventListener('change', handler)
 
       const trigger = el.shadowRoot?.querySelector('.select-trigger') as HTMLElement

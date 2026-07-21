@@ -90,7 +90,7 @@ describe('WebUiButton', () => {
       const el = createButton('OK')
       await el.updateComplete
 
-      const handler = vi.fn()
+      const handler = vi.fn<(e: Event) => void>()
       el.addEventListener('click', handler)
       el.shadowRoot?.querySelector('button')?.click()
 
@@ -104,7 +104,7 @@ describe('WebUiButton', () => {
       el.disabled = true
       await el.updateComplete
 
-      const handler = vi.fn()
+      const handler = vi.fn<(e: Event) => void>()
       el.addEventListener('click', handler)
       el.shadowRoot?.querySelector('button')?.click()
 
@@ -118,7 +118,7 @@ describe('WebUiButton', () => {
       el.loading = true
       await el.updateComplete
 
-      const handler = vi.fn()
+      const handler = vi.fn<(e: Event) => void>()
       el.addEventListener('click', handler)
       el.shadowRoot?.querySelector('button')?.click()
 

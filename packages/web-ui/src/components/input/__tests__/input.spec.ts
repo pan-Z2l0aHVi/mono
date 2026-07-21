@@ -189,7 +189,7 @@ describe('WebUiInput', () => {
       el.value = 'hello'
       await el.updateComplete
 
-      const handler = vi.fn()
+      const handler = vi.fn<(e: Event) => void>()
       el.addEventListener('input', handler)
 
       const clear = el.shadowRoot?.querySelector('.clear') as HTMLElement
@@ -241,7 +241,7 @@ describe('WebUiInput', () => {
       const el = createInput()
       await el.updateComplete
 
-      const handler = vi.fn()
+      const handler = vi.fn<(e: Event) => void>()
       el.addEventListener('input', handler)
 
       const input = el.shadowRoot?.querySelector('input') as HTMLInputElement
@@ -257,7 +257,7 @@ describe('WebUiInput', () => {
       const el = createInput()
       await el.updateComplete
 
-      const handler = vi.fn()
+      const handler = vi.fn<(e: Event) => void>()
       el.addEventListener('change', handler)
 
       const input = el.shadowRoot?.querySelector('input') as HTMLInputElement
@@ -272,7 +272,7 @@ describe('WebUiInput', () => {
       const el = createInput()
       await el.updateComplete
 
-      const handler = vi.fn()
+      const handler = vi.fn<(e: Event) => void>()
       el.addEventListener('focus', handler)
 
       const input = el.shadowRoot?.querySelector('input') as HTMLInputElement
@@ -287,7 +287,7 @@ describe('WebUiInput', () => {
       const el = createInput()
       await el.updateComplete
 
-      const handler = vi.fn()
+      const handler = vi.fn<(e: Event) => void>()
       el.addEventListener('blur', handler)
 
       const input = el.shadowRoot?.querySelector('input') as HTMLInputElement

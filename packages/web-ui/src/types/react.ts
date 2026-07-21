@@ -5,6 +5,7 @@ import type {
   WebUiButton,
   WebUiButtonGroup,
   WebUiDialog,
+  WebUiDrawer,
   WebUiDropdownDivider,
   WebUiDropdownHeader,
   WebUiDropdownItem,
@@ -28,6 +29,7 @@ export interface WebUiComponents {
   'web-ui-button': LitReactWrapper<WebUiButton>
   'web-ui-button-group': LitReactWrapper<WebUiButtonGroup>
   'web-ui-dialog': LitReactWrapper<WebUiDialog>
+  'web-ui-drawer': LitReactWrapper<WebUiDrawer>
   'web-ui-dropdown-divider': LitReactWrapper<WebUiDropdownDivider>
   'web-ui-dropdown-header': LitReactWrapper<WebUiDropdownHeader>
   'web-ui-dropdown-item': LitReactWrapper<WebUiDropdownItem>

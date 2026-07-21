@@ -17,6 +17,7 @@ const navItems: NavItem[] = [
   { path: '/components/select', label: '下拉选择' },
   { path: '/components/dropdown', label: '下拉菜单' },
   { path: '/components/dialog', label: '对话框' },
+  { path: '/components/drawer', label: '抽屉' },
   { path: '/components/tooltip', label: '工具提示' }
 ]
 </script>

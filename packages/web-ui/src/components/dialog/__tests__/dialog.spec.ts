@@ -29,14 +29,14 @@ describe('WebUiDialog', () => {
   describe('event: open-change', () => {
     it('open false→true 触发 open-change，detail.open 为 true', async () => {
       const el = createDialog()
-      const handler = vi.fn()
+      const handler = vi.fn<(e: Event) => void>()
       el.addEventListener('open-change', handler)
 
       el.open = true
       await el.updateComplete
 
       expect(handler).toHaveBeenCalledTimes(1)
-      expect(handler.mock.calls[0][0].detail.open).toBe(true)
+      expect((handler.mock.calls[0][0] as CustomEvent<{ open: boolean }>).detail.open).toBe(true)
 
       el.remove()
     })
@@ -46,14 +46,14 @@ describe('WebUiDialog', () => {
       el.open = true
       await el.updateComplete
 
-      const handler = vi.fn()
+      const handler = vi.fn<(e: Event) => void>()
       el.addEventListener('open-change', handler)
 
       el.open = false
       await el.updateComplete
 
       expect(handler).toHaveBeenCalledTimes(1)
-      expect(handler.mock.calls[0][0].detail.open).toBe(false)
+      expect((handler.mock.calls[0][0] as CustomEvent<{ open: boolean }>).detail.open).toBe(false)
 
       el.remove()
     })
@@ -63,7 +63,7 @@ describe('WebUiDialog', () => {
       el.open = true
       await el.updateComplete
 
-      const handler = vi.fn()
+      const handler = vi.fn<(e: Event) => void>()
       el.addEventListener('open-change', handler)
 
       el.open = true
@@ -78,7 +78,7 @@ describe('WebUiDialog', () => {
   describe('command: showModal()', () => {
     it('设置 open=true 并触发 open-change', async () => {
       const el = createDialog()
-      const handler = vi.fn()
+      const handler = vi.fn<(e: Event) => void>()
       el.addEventListener('open-change', handler)
 
       el.showModal()
@@ -86,7 +86,7 @@ describe('WebUiDialog', () => {
 
       expect(el.open).toBe(true)
       expect(handler).toHaveBeenCalledTimes(1)
-      expect(handler.mock.calls[0][0].detail.open).toBe(true)
+      expect((handler.mock.calls[0][0] as CustomEvent<{ open: boolean }>).detail.open).toBe(true)
 
       el.remove()
     })
@@ -96,7 +96,7 @@ describe('WebUiDialog', () => {
       el.open = true
       await el.updateComplete
 
-      const handler = vi.fn()
+      const handler = vi.fn<(e: Event) => void>()
       el.addEventListener('open-change', handler)
 
       el.showModal()
@@ -114,7 +114,7 @@ describe('WebUiDialog', () => {
       el.open = true
       await el.updateComplete
 
-      const handler = vi.fn()
+      const handler = vi.fn<(e: Event) => void>()
       el.addEventListener('open-change', handler)
 
       el.close()
@@ -122,7 +122,7 @@ describe('WebUiDialog', () => {
 
       expect(el.open).toBe(false)
       expect(handler).toHaveBeenCalledTimes(1)
-      expect(handler.mock.calls[0][0].detail.open).toBe(false)
+      expect((handler.mock.calls[0][0] as CustomEvent<{ open: boolean }>).detail.open).toBe(false)
 
       el.remove()
     })

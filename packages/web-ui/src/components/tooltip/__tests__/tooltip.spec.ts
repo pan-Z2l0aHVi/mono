@@ -113,7 +113,7 @@ describe('WebUiTooltip', () => {
       const el = createTooltip({ content: '提示' })
       await el.updateComplete
 
-      const handler = vi.fn()
+      const handler = vi.fn<(e: Event) => void>()
       el.addEventListener('open-change', handler)
 
       el.dispatchEvent(new MouseEvent('mouseenter', { bubbles: true }))
@@ -139,7 +139,7 @@ describe('WebUiTooltip', () => {
       await new Promise(r => setTimeout(r, 250))
       await el.updateComplete
 
-      const handler = vi.fn()
+      const handler = vi.fn<(e: Event) => void>()
       el.addEventListener('open-change', handler)
 
       el.dispatchEvent(new MouseEvent('mouseleave', { bubbles: true }))

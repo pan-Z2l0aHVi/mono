@@ -1,0 +1,151 @@
+:host {
+  display: contents;
+}
+
+/* ===== Dialog 容器 ===== */
+dialog {
+  /* 默认：右侧滑出 — 需显式 left:auto 覆盖 UA dialog:modal 的 left:0 */
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: auto;
+  transform: translateX(100%);
+
+  overflow: visible;
+
+  box-sizing: border-box;
+  width: var(--wui-drawer-width, 320px);
+  max-width: 90vw;
+  height: 100dvh;
+  max-height: 100dvh;
+  margin: 0;
+  padding: 0;
+  border: none;
+
+  font-family: inherit;
+  color: #1c1c1e;
+
+  background: transparent;
+
+  &::backdrop {
+    background: var(--wui-drawer-overlay-bg, rgb(0 0 0 / 0.12));
+  }
+}
+
+/* opening */
+dialog[open] {
+  animation: wui-drawer-slide-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* closing */
+dialog.closing {
+  pointer-events: none;
+  animation: wui-drawer-slide-out 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+dialog.closing::backdrop {
+  animation: wui-drawer-backdrop-fade-out 0.3s ease forwards;
+}
+
+/* ===== Placement 变体 ===== */
+
+:host([placement='left']) dialog {
+  right: auto;
+  left: 0;
+  transform: translateX(-100%);
+}
+
+:host([placement='top']) dialog,
+:host([placement='bottom']) dialog {
+  width: 100vw;
+  max-width: 100vw;
+  height: var(--wui-drawer-height, 300px);
+  max-height: 90dvh;
+}
+
+:host([placement='top']) dialog {
+  top: 0;
+  right: 0;
+  bottom: auto;
+  left: 0;
+  transform: translateY(-100%);
+}
+
+:host([placement='bottom']) dialog {
+  top: auto;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  transform: translateY(100%);
+}
+
+/* ===== 抽屉主体 ===== */
+
+.wui-drawer-body {
+  --wui-glass-shadow: 0 4px 24px rgb(0 0 0 / 0.15);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background-color: rgb(250 250 250 / 0.88);
+}
+
+/* ===== Header ===== */
+
+.wui-drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  padding: 16px 20px;
+  border-bottom: 1px solid rgb(0 0 0 / 0.06);
+
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+/* ===== 内容区 ===== */
+
+.wui-drawer-content {
+  overflow-y: auto;
+  flex: 1;
+
+  padding: 20px;
+
+  font-size: var(--wui-font-size, 14px);
+  line-height: 1.5;
+  color: #1c1c1e;
+}
+
+/* ===== 关闭按钮（独立定位，与 header 解耦） ===== */
+
+.wui-drawer-close {
+  position: absolute;
+  z-index: 3;
+  top: 8px;
+  right: 8px;
+}
+
+/* ===== Keyframes ===== */
+
+@keyframes wui-drawer-slide-in {
+  to {
+    transform: translate(0, 0);
+  }
+}
+
+@keyframes wui-drawer-slide-out {
+  from {
+    transform: translate(0, 0);
+  }
+}
+
+@keyframes wui-drawer-backdrop-fade-out {
+  from {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0;
+  }
+}

@@ -116,7 +116,7 @@ describe('WebUiInputNumber', () => {
       el.value = 0
       await el.updateComplete
 
-      const handler = vi.fn()
+      const handler = vi.fn<(e: Event) => void>()
       el.addEventListener('input', handler)
 
       const btns = el.shadowRoot?.querySelectorAll('.num-btn')
@@ -132,7 +132,7 @@ describe('WebUiInputNumber', () => {
       el.disabled = true
       await el.updateComplete
 
-      const handler = vi.fn()
+      const handler = vi.fn<(e: Event) => void>()
       el.addEventListener('input', handler)
 
       const btns = el.shadowRoot?.querySelectorAll('.num-btn')

@@ -36,23 +36,23 @@ export class WebUiSelect extends LitElement {
   }
 
   private _onClickOutside = (e: MouseEvent) => {
-    if (this._isOpen && !this.contains(e.target as Node)) {
+    if (this._isOpen && e.target instanceof Node && !this.contains(e.target)) {
       this._close()
     }
   }
 
   override connectedCallback() {
     super.connectedCallback()
-    this.addEventListener('option-register', this._onOptionRegister as EventListener)
-    this.addEventListener('option-unregister', this._onOptionUnregister as EventListener)
+    this.addEventListener('option-register', this._onOptionRegister)
+    this.addEventListener('option-unregister', this._onOptionUnregister)
     this.addEventListener('keydown', this._onKeydown)
     document.addEventListener('click', this._onClickOutside)
   }
 
   override disconnectedCallback() {
     super.disconnectedCallback()
-    this.removeEventListener('option-register', this._onOptionRegister as EventListener)
-    this.removeEventListener('option-unregister', this._onOptionUnregister as EventListener)
+    this.removeEventListener('option-register', this._onOptionRegister)
+    this.removeEventListener('option-unregister', this._onOptionUnregister)
     this.removeEventListener('keydown', this._onKeydown)
     document.removeEventListener('click', this._onClickOutside)
     this._options.forEach(o => o.removeEventListener('click', this._handleOptionClick))
@@ -87,20 +87,23 @@ export class WebUiSelect extends LitElement {
   }
 
   private _onOptionRegister(e: Event) {
-    const target = e.target as HTMLElement
+    if (!(e.target instanceof HTMLElement)) return
+    const target = e.target
     target.addEventListener('click', this._handleOptionClick)
     this._options.push(target)
     this._syncSelected()
   }
 
   private _onOptionUnregister(e: Event) {
-    const target = e.target as HTMLElement
+    if (!(e.target instanceof HTMLElement)) return
+    const target = e.target
     target.removeEventListener('click', this._handleOptionClick)
     this._options = this._options.filter(o => o !== target)
   }
 
   private _handleOptionClick = (e: Event) => {
-    const target = e.target as HTMLElement
+    if (!(e.target instanceof HTMLElement)) return
+    const target = e.target
     if (target.hasAttribute('disabled')) return
     this.value = target.getAttribute('value') || ''
     this._close()

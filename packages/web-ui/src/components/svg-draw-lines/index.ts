@@ -27,7 +27,8 @@ export class WebUiSvgDrawLines extends LitElement {
     const original = this.slotEl.assignedElements({ flatten: true })[0]
     if (!(original instanceof SVGSVGElement)) return
 
-    const svgClone = original.cloneNode(true) as SVGSVGElement
+    const svgClone = original.cloneNode(true)
+    if (!(svgClone instanceof SVGSVGElement)) return
     svgClone.classList.add('svg-clone')
     this.svgClone = svgClone
   }
@@ -37,14 +38,14 @@ export class WebUiSvgDrawLines extends LitElement {
     await this.updateComplete
 
     const selectors = 'path, rect, circle, line, polyline, polygon, ellipse'
-    const elements = Array.from(this.svgClone.querySelectorAll(selectors)) as SVGGeometryElement[]
+    const elements = Array.from(this.svgClone.querySelectorAll(selectors)).filter(
+      (el): el is SVGGeometryElement => el instanceof SVGGeometryElement
+    )
 
     const animTasks: SVGGeometryElement[] = []
     let cursor = { x: 0, y: 0 }
 
-    // 除 path 外其余几何图形无需额外处理
-    // 将绘制多段路径的单 path 先拆分为多 path 并重新插入 dom
-    // 再分别计算每个 path 的 total length
+    // 多段 path 拆分为独立 path 以分别计算 stroke-dasharray
     elements.forEach(el => {
       if (el instanceof SVGPathElement) {
         const d = el.getAttribute('d') || ''
@@ -52,7 +53,8 @@ export class WebUiSvgDrawLines extends LitElement {
 
         // 无论是一段还是多段，统一处理
         segments.forEach(seg => {
-          const pathPart = segments.length > 1 ? (el.cloneNode() as SVGPathElement) : el
+          const raw = segments.length > 1 ? el.cloneNode() : el
+          const pathPart = raw instanceof SVGPathElement ? raw : el
           let finalD = seg.startsWith('m') ? `M${cursor.x} ${cursor.y}${seg}` : seg
 
           finalD = this.fixPathGap(pathPart, finalD)

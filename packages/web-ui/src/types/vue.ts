@@ -5,6 +5,7 @@ import type {
   WebUiButton,
   WebUiButtonGroup,
   WebUiDialog,
+  WebUiDrawer,
   WebUiDropdownDivider,
   WebUiDropdownHeader,
   WebUiDropdownItem,
@@ -22,9 +23,9 @@ import type { ExtractProps, EventListeners, OmitLitBase } from './utils'
 
 // 从 $events 提取 Vue emit 类型
 // $events 格式: { input: Event, change: Event }
-// Vue emits 格式: { input: (e: Event) => any }
+// Vue emits 格式: { input: (e: Event) => void }
 type ExtractVueEmits<T> = T extends { readonly $events: infer E }
-  ? { [K in keyof E]: (e: E[K]) => any }
+  ? { [K in keyof E]: (e: E[K]) => void }
   : Record<string, never>
 
 /**
@@ -50,6 +51,7 @@ export interface WebUiComponents {
   'web-ui-button': LitVueWrapper<WebUiButton>
   'web-ui-button-group': LitVueWrapper<WebUiButtonGroup>
   'web-ui-dialog': LitVueWrapper<WebUiDialog>
+  'web-ui-drawer': LitVueWrapper<WebUiDrawer>
   'web-ui-dropdown-divider': LitVueWrapper<WebUiDropdownDivider>
   'web-ui-dropdown-header': LitVueWrapper<WebUiDropdownHeader>
   'web-ui-dropdown-item': LitVueWrapper<WebUiDropdownItem>
@@ -71,7 +73,6 @@ declare module 'vue' {
   // oxlint-disable-next-line typescript/no-empty-object-type
   export interface GlobalComponents extends WebUiComponents {}
 
-  // 为 web-ui 组件添加全部原生 DOM 事件类型
   // 使 <web-ui-input @click @mousedown @keydown> 等有类型补全
   // oxlint-disable-next-line typescript/no-empty-object-type
   interface ComponentCustomProps extends HTMLAttributes {}

@@ -35,14 +35,16 @@ export class WebUiInput extends LitElement {
   }
 
   private _onSlotChange(e: Event) {
-    const slot = e.target as HTMLSlotElement
+    if (!(e.target instanceof HTMLSlotElement)) return
+    const slot = e.target
     const hasContent = slot.assignedElements().length > 0
     if (slot.name === 'prefix') this._hasPrefix = hasContent
     if (slot.name === 'suffix') this._hasSuffix = hasContent
   }
 
   private handleInput(e: Event) {
-    this.value = (e.target as HTMLInputElement).value
+    if (!(e.target instanceof HTMLInputElement)) return
+    this.value = e.target.value
   }
 
   private handleFocus() {

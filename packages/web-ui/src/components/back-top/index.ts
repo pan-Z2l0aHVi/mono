@@ -99,7 +99,7 @@ export class WebUiBackTop extends LitElement {
   }
 
   private onEnter(e: KeyboardEvent) {
-    if ((e as KeyboardEvent).key == 'Enter') {
+    if (e.key == 'Enter') {
       e.preventDefault()
       this.toTop()
     }
