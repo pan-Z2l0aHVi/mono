@@ -13,8 +13,8 @@
     "commit:ci": "bash scripts/commit.sh",
     "publish:new": "bash scripts/publish-new-pack.sh",
     "check:code": "vp check --fix",
-    "dev:react-app-demo": "turbo watch dev --filter=@greypan/react-app-demo...",
-    "dev:vue-app-demo": "turbo watch dev --filter=@greypan/vue-app-demo..."
+    "dev:react-app-demo": "turbo build --filter=@greypan/react-app-demo^... && turbo watch dev --filter=@greypan/react-app-demo...",
+    "dev:vue-app-demo": "turbo build --filter=@greypan/vue-app-demo^... && turbo watch dev --filter=@greypan/vue-app-demo..."
   },
   "devDependencies": {
     "@changesets/cli": "catalog:",

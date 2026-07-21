@@ -27,6 +27,8 @@ export const depsReloadFactory: UnpluginFactory<Dep[]> = deps => {
     }
   })
 
+  const pluginDist = import.meta.dirname.split(sep).join('/').toLowerCase()
+
   const fullReloadTrigger = debounce(
     (server: ViteDevServer) => {
       server.ws.send({ type: 'full-reload', path: '*' })
@@ -48,6 +50,9 @@ export const depsReloadFactory: UnpluginFactory<Dep[]> = deps => {
         if (file.endsWith('.map')) return
 
         const normalizedFile = file.split(sep).join('/').toLowerCase()
+        // 忽略插件自身的 dist 变更
+        if (normalizedFile.includes(pluginDist)) return []
+
         const isMatched = configs.some(
           cfg => normalizedFile.includes(cfg.targetPath) && cfg.extRegex.test(normalizedFile)
         )
