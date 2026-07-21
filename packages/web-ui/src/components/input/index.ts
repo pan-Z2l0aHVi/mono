@@ -54,6 +54,7 @@ export class WebUiInput extends LitElement {
   }
 
   private handleClear() {
+    if (this.disabled) return
     this.value = ''
     this.dispatchEvent(new Event('input', { bubbles: true, composed: true }))
   }
@@ -63,6 +64,7 @@ export class WebUiInput extends LitElement {
   }
 
   private focusInput() {
+    if (this.disabled) return
     this.shadowRoot?.querySelector('input')?.focus()
   }
 

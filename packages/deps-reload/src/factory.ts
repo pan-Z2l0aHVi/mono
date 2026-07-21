@@ -34,7 +34,7 @@ export const depsReloadFactory: UnpluginFactory<Dep[]> = deps => {
         timestamp: true
       })
     },
-    { waitMs: 300, maxWaitMs: 1500 }
+    { waitMs: 300, maxWaitMs: 3000 }
   )
 
   return {

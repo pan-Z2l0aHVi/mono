@@ -48,7 +48,7 @@ const visible2 = ref(false)
       <span slot="title">Save this message as a draft?</span>
       This message has not been sent and contains unsaved changes. You can save it as a draft to work on later.
       <web-ui-button slot="footer" variant="secondary" full @click="visible2 = false">Cancel</web-ui-button>
-      <web-ui-button slot="footer" variant="primary" full @click="visible2 = false">Save</web-ui-button>
+      <web-ui-button slot="footer" variant="primary" full>Save</web-ui-button>
     </web-ui-dialog>
   </div>
 </template>

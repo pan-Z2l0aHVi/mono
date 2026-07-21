@@ -24,17 +24,6 @@ describe('WebUiDialog', () => {
 
       el.remove()
     })
-
-    it('open=true 时 dialog 进入 entering 状态', async () => {
-      const el = createDialog()
-      el.open = true
-      await el.updateComplete
-
-      const dialog = el.shadowRoot?.querySelector('dialog')
-      expect(dialog?.classList.contains('entering')).toBe(true)
-
-      el.remove()
-    })
   })
 
   describe('event: open-change', () => {

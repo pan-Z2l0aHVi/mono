@@ -16,10 +16,10 @@
 
 :host([orientation='vertical']) {
   --wui-button-group-flex-direction: column;
+}
 
-  .wui-button-group-inner {
-    width: 40px;
-    height: auto;
-    padding: 4px 0;
-  }
+:host([orientation='vertical']) .wui-button-group-inner {
+  width: 40px;
+  height: auto;
+  padding: 4px 0;
 }

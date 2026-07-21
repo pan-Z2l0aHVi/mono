@@ -9,5 +9,17 @@
   "lucide:plus",
   "lucide:minus",
   "lucide:search",
-  "jam:close-circle-f"
+  "lucide:file",
+  "lucide:copy",
+  "lucide:clipboard-paste",
+  "lucide:trash-2",
+  "lucide:printer",
+  "lucide:settings",
+  "lucide:download",
+  "lucide:upload",
+  "lucide:undo-2",
+  "lucide:redo-2",
+  "lucide:scissors",
+  "jam:close-circle-f",
+  "heroicons:check-16-solid"
 ]

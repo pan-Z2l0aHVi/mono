@@ -5,10 +5,17 @@ import type {
   WebUiButton,
   WebUiButtonGroup,
   WebUiDialog,
+  WebUiDropdownDivider,
+  WebUiDropdownHeader,
+  WebUiDropdownItem,
+  WebUiDropdownMenu,
   WebUiIcon,
   WebUiInput,
   WebUiInputNumber,
-  WebUiLayout
+  WebUiLayout,
+  WebUiOption,
+  WebUiSelect,
+  WebUiTooltip
 } from '../components'
 
 import type { ExtractProps, EventListeners, OmitLitBase } from './utils'
@@ -43,11 +50,18 @@ export interface WebUiComponents {
   'web-ui-button': LitVueWrapper<WebUiButton>
   'web-ui-button-group': LitVueWrapper<WebUiButtonGroup>
   'web-ui-dialog': LitVueWrapper<WebUiDialog>
+  'web-ui-dropdown-divider': LitVueWrapper<WebUiDropdownDivider>
+  'web-ui-dropdown-header': LitVueWrapper<WebUiDropdownHeader>
+  'web-ui-dropdown-item': LitVueWrapper<WebUiDropdownItem>
+  'web-ui-dropdown-menu': LitVueWrapper<WebUiDropdownMenu>
   'web-ui-icon': LitVueWrapper<WebUiIcon>
   'web-ui-input': LitVueWrapper<WebUiInput>
   'web-ui-input-number': LitVueWrapper<WebUiInputNumber>
+  'web-ui-select': LitVueWrapper<WebUiSelect>
+  'web-ui-option': LitVueWrapper<WebUiOption>
   'web-ui-back-top': LitVueWrapper<WebUiBackTop>
   'web-ui-layout': LitVueWrapper<WebUiLayout>
+  'web-ui-tooltip': LitVueWrapper<WebUiTooltip>
 }
 
 // === Vue Template 类型补全 ===

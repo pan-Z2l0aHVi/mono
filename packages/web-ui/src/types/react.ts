@@ -5,10 +5,17 @@ import type {
   WebUiButton,
   WebUiButtonGroup,
   WebUiDialog,
+  WebUiDropdownDivider,
+  WebUiDropdownHeader,
+  WebUiDropdownItem,
+  WebUiDropdownMenu,
   WebUiIcon,
   WebUiInput,
   WebUiInputNumber,
-  WebUiLayout
+  WebUiLayout,
+  WebUiOption,
+  WebUiSelect,
+  WebUiTooltip
 } from '../components'
 
 import type { ExtractProps, EventListeners, OmitLitBase } from './utils'
@@ -21,11 +28,18 @@ export interface WebUiComponents {
   'web-ui-button': LitReactWrapper<WebUiButton>
   'web-ui-button-group': LitReactWrapper<WebUiButtonGroup>
   'web-ui-dialog': LitReactWrapper<WebUiDialog>
+  'web-ui-dropdown-divider': LitReactWrapper<WebUiDropdownDivider>
+  'web-ui-dropdown-header': LitReactWrapper<WebUiDropdownHeader>
+  'web-ui-dropdown-item': LitReactWrapper<WebUiDropdownItem>
+  'web-ui-dropdown-menu': LitReactWrapper<WebUiDropdownMenu>
   'web-ui-icon': LitReactWrapper<WebUiIcon>
   'web-ui-input': LitReactWrapper<WebUiInput>
   'web-ui-input-number': LitReactWrapper<WebUiInputNumber>
+  'web-ui-select': LitReactWrapper<WebUiSelect>
+  'web-ui-option': LitReactWrapper<WebUiOption>
   'web-ui-back-top': LitReactWrapper<WebUiBackTop>
   'web-ui-layout': LitReactWrapper<WebUiLayout>
+  'web-ui-tooltip': LitReactWrapper<WebUiTooltip>
 }
 
 declare module 'react' {

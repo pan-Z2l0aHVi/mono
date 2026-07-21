@@ -111,7 +111,7 @@ describe('WebUiIcon', () => {
       document.body.appendChild(el)
       await el.updateComplete
 
-      expect(el.style.getPropertyValue('--wui-icon-color')).toBe('red')
+      expect(el.shadowRoot?.querySelector('svg')?.getAttribute('style')).toContain('color: red')
 
       el.remove()
     })

@@ -3,41 +3,31 @@
 }
 
 dialog {
-  transform: scale(1);
+  overflow: visible;
 
   box-sizing: border-box;
   max-width: min(90vw, var(--wui-dialog-max-width, 360px));
   max-height: 90vh;
   padding: 0;
   border: none;
-  border-radius: 20px;
 
   font-family: inherit;
   color: #1c1c1e;
 
-  opacity: 1;
   background: transparent;
 
-  transition:
-    opacity 0.2s ease,
-    transform 0.2s ease;
-
   &::backdrop {
-    opacity: 1;
-    background: var(--wui-dialog-overlay-bg, rgb(0 0 0 / 0.35));
-  }
-
-  &.entering {
-    transform: scale(0.95);
-    opacity: 0;
+    background: var(--wui-dialog-overlay-bg, rgb(0 0 0 / 0.1));
   }
 }
 
 /* ===== 玻璃卡片主体（样式由 glass.css 提供） ===== */
 
 .wui-dialog-body {
+  --wui-glass-shadow: 2px 16px 40px rgb(0 0 0 / 0.4);
   padding: 24px;
-  background-color: #f8f8f8;
+  border-radius: 20px;
+  background-color: rgb(250 250 250 / 0.88);
 }
 
 /* ===== 标题 ===== */

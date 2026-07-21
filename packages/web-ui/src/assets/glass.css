@@ -15,7 +15,7 @@
     inset -3px -3px 0.5px -3px rgb(255 255 255 / 0.55),
     inset 3px 3px 0.5px -3px rgb(255 255 255 / 0.55),
     inset 0 0 1px rgb(0 0 0 / 0.8),
-    4px 6px 24px rgb(0 0 0 / 0.12);
+    var(--wui-glass-shadow, 4px 6px 24px rgb(0 0 0 / 0.12));
 
   &::before {
     pointer-events: none;

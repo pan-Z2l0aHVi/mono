@@ -1,14 +1,15 @@
 :host {
   display: inline-block;
-  vertical-align: middle;
+}
 
-  &[disabled] {
-    pointer-events: none;
-    opacity: 0.4;
-  }
+:host([disabled]) {
+  cursor: not-allowed;
+  opacity: 0.4;
 }
 
 .wui-input-inner {
+  position: relative;
+
   display: flex;
   gap: 4px;
   align-items: center;
@@ -19,10 +20,6 @@
   height: var(--wui-button-size, 40px);
   padding: 0 4px;
   border-radius: 999vmax;
-}
-
-:host([disabled]) .wui-input-inner {
-  cursor: not-allowed;
 }
 
 input {

@@ -1,6 +1,5 @@
 import { html, LitElement, type PropertyValues, unsafeCSS } from 'lit'
-import { customElement, property, state } from 'lit/decorators.js'
-import { classMap } from 'lit/directives/class-map.js'
+import { customElement, property } from 'lit/decorators.js'
 
 import '@/components/button'
 import glass from '@/assets/glass.css?inline'
@@ -12,16 +11,9 @@ export class WebUiDialog extends LitElement {
   static override styles = [unsafeCSS(glass), unsafeCSS(style)]
 
   @property({ type: Boolean, reflect: true }) open = false
-  @state() private entering = false
 
   private get dialog() {
     return this.shadowRoot?.querySelector('dialog') as HTMLDialogElement | null
-  }
-
-  protected override willUpdate(props: PropertyValues) {
-    if (props.has('open') && this.open && !this.entering) {
-      this.entering = true
-    }
   }
 
   protected override updated(props: PropertyValues) {
@@ -30,9 +22,6 @@ export class WebUiDialog extends LitElement {
       this.emitOpenChange()
       if (this.open) {
         this.dialog?.showModal?.()
-        requestAnimationFrame(() => {
-          this.entering = false
-        })
       } else {
         this.dialog?.close?.()
       }
@@ -42,7 +31,6 @@ export class WebUiDialog extends LitElement {
   /** 以模态方式打开对话框（命令式） */
   showModal() {
     if (this.open) return
-    this.entering = true
     this.open = true
   }
 
@@ -73,11 +61,7 @@ export class WebUiDialog extends LitElement {
 
   override render() {
     return html`
-      <dialog
-        class=${classMap({ entering: this.entering })}
-        @cancel=${this.onDialogCancel}
-        @click=${this.onBackdropClick}
-      >
+      <dialog @cancel=${this.onDialogCancel} @click=${this.onBackdropClick}>
         <div class="wui-dialog-body wui-glass wui-glass-no-after">
           <div class="title"><slot name="title"></slot></div>
           <div class="desc"><slot></slot></div>

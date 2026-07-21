@@ -1,12 +1,20 @@
 :host {
-  position: relative;
   display: inline-block;
-  vertical-align: middle;
+}
+
+:host([full]) {
+  display: block;
+}
+
+:host([disabled]) {
+  cursor: not-allowed;
 }
 
 button {
   cursor: pointer;
   user-select: none;
+
+  position: relative;
 
   overflow: clip;
   display: inline-flex;
@@ -29,10 +37,7 @@ button {
 
   background-color: var(--wui-button-bg);
 
-  transition: all 0.15s cubic-bezier(0.25, 0.1, 0.25, 1);
-
   &:disabled {
-    pointer-events: none;
     cursor: not-allowed;
     opacity: 0.4;
   }
@@ -53,22 +58,16 @@ button {
 
 /* ===== Full width ===== */
 
-:host([full]) {
-  display: block;
-
-  button {
-    display: flex;
-    width: 100%;
-  }
+:host([full]) button {
+  display: flex;
+  width: 100%;
 }
 
 /* ===== Icon mode ===== */
 
-:host([icon]) {
-  button {
-    aspect-ratio: 1;
-    padding: 0;
-  }
+:host([icon]) button {
+  aspect-ratio: 1;
+  padding: 0;
 }
 
 /* ===== Variant: primary (默认) ===== */
@@ -111,7 +110,6 @@ button {
 
 /* .wui-glass 样式由 @/assets/glass.css 提供 */
 :host([variant='glass']) {
-  --wui-button-color: #1a1a1a;
   --wui-button-bg-hover: rgb(0 0 0 / 0.06);
   --wui-button-bg-active: rgb(0 0 0 / 0.1);
 }
@@ -123,9 +121,8 @@ button {
   --wui-button-bg: transparent;
   --wui-button-bg-hover: rgb(0 0 0 / 0.06);
   --wui-button-bg-active: rgb(0 0 0 / 0.1);
+  position: relative;
 }
-
-/* ===== Group divider ===== */
 
 :host([group]:not([last]))::after {
   content: '';

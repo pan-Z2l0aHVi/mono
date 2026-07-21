@@ -1,6 +1,10 @@
 :host {
   display: inline-block;
-  vertical-align: middle;
+}
+
+:host([disabled]) {
+  cursor: not-allowed;
+  opacity: 0.4;
 }
 
 .wui-input-inner {
@@ -16,34 +20,26 @@
   height: var(--wui-button-size, 40px);
   padding: 0 16px;
   border-radius: 999vmax;
-
-  transition:
-    border-color 0.2s,
-    box-shadow 0.2s;
 }
-
-/* ===== Full width ===== */
 
 :host([full]) {
   display: block;
-
-  .wui-input-inner {
-    width: 100%;
-  }
 }
 
-:host([focused]) {
-  .wui-input-inner {
-    border-color: rgb(0 110 230 / 0.5);
-    box-shadow:
-      0 0 0 3px rgb(0 136 255 / 0.2),
-      inset -1px -1px 0.5px -0.5px rgb(255 255 255 / 0.9),
-      inset 1px 1px 0.5px -0.5px rgb(255 255 255 / 0.9),
-      inset -3px -3px 0.5px -3px rgb(255 255 255 / 0.55),
-      inset 3px 3px 0.5px -3px rgb(255 255 255 / 0.55),
-      inset 0 0 1px rgb(0 0 0 / 0.8),
-      4px 6px 24px rgb(0 0 0 / 0.12);
-  }
+:host([full]) .wui-input-inner {
+  width: 100%;
+}
+
+:host([focused]) .wui-input-inner {
+  border-color: rgb(0 110 230 / 0.5);
+  box-shadow:
+    0 0 0 3px rgb(0 136 255 / 0.2),
+    inset -1px -1px 0.5px -0.5px rgb(255 255 255 / 0.9),
+    inset 1px 1px 0.5px -0.5px rgb(255 255 255 / 0.9),
+    inset -3px -3px 0.5px -3px rgb(255 255 255 / 0.55),
+    inset 3px 3px 0.5px -3px rgb(255 255 255 / 0.55),
+    inset 0 0 1px rgb(0 0 0 / 0.8),
+    4px 6px 24px rgb(0 0 0 / 0.12);
 }
 
 /* ===== Input ===== */
@@ -106,12 +102,3 @@ slot.empty {
 }
 
 /* ===== Disabled ===== */
-
-:host([disabled]) {
-  pointer-events: none;
-  opacity: 0.4;
-
-  .wui-input-inner {
-    cursor: not-allowed;
-  }
-}

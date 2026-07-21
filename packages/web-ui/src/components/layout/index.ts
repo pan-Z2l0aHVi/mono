@@ -11,18 +11,20 @@ export class WebUiLayout extends LitElement {
 
   override render() {
     return html`
-      <header>
-        <slot name="header"></slot>
-      </header>
-      <main>
-        <slot></slot>
-      </main>
-      <aside>
-        <div class="menu wui-glass wui-glass-no-after"><slot name="sidebar"></slot></div>
-      </aside>
-      <footer>
-        <slot name="tabbar"></slot>
-      </footer>
+      <div class="layout-grid">
+        <header>
+          <slot name="header"></slot>
+        </header>
+        <main>
+          <slot></slot>
+        </main>
+        <aside>
+          <div class="menu wui-glass wui-glass-no-after"><slot name="sidebar"></slot></div>
+        </aside>
+        <footer>
+          <slot name="tabbar"></slot>
+        </footer>
+      </div>
     `
   }
 }

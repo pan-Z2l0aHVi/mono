@@ -120,8 +120,10 @@ export class WebUiSvgDrawLines extends LitElement {
 
   override render() {
     return html`
-      <slot ?hidden="${this.isAnimating}" @slotchange="${this.handleSlotChange}"></slot>
-      ${this.isAnimating ? this.svgClone : ''}
+      <div class="lines-wrapper">
+        <slot ?hidden="${this.isAnimating}" @slotchange="${this.handleSlotChange}"></slot>
+        ${this.isAnimating ? this.svgClone : ''}
+      </div>
     `
   }
 }

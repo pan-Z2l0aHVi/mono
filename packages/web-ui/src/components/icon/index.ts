@@ -19,15 +19,13 @@ export class WebUiIcon extends LitElement {
   override render() {
     if (!this.icon) return nothing
 
-    if (this.color) {
-      this.style.setProperty('--wui-icon-color', this.color)
-    }
-
+    const svgStyle = this.color ? `color: ${this.color}` : ''
     const viewBox = `${this.icon.left ?? 0} ${this.icon.top ?? 0} ${this.icon.width ?? 24} ${this.icon.height ?? 24}`
 
     return html`
       <svg
         class=${classMap({ spin: this.spin })}
+        style=${svgStyle}
         viewBox="${viewBox}"
         width="${this.width}"
         height="${this.height}"

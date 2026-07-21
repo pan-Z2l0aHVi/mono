@@ -15,6 +15,7 @@ When your changes fall into any category below, update the corresponding docs:
 | Runtime/toolchain     | This file (Toolchain)                        | Changes to `.mise.toml`, `package.json` engines                                    |
 | Test config           | `docs/agents/testing.md`                     | Changes to `vite.config.ts` test config, test framework                            |
 | Coding standards      | `.agents/rules/code-style.md`                | Changes to naming, type safety, architecture patterns                              |
+| Web UI components     | `.agents/rules/web-ui-components.md`         | Changes to Lit components in `packages/web-ui`                                     |
 | Commit conventions    | `.agents/rules/commit.md`                    | Changes to commitlint config, commit workflow                                      |
 
 Rules:
@@ -142,6 +143,18 @@ Two build modes:
 - **Release** (`release.yml`): changesets with `changesets/action@v1`. Demo apps excluded from versioning.
 - **New package first publish**: `pnpm publish:new <package-dir>` — builds and publishes 1.0.0 via `npm publish`. Requires `npm login` beforehand. After first publish, configure Trusted Publisher on npmjs.com so CI handles subsequent releases.
 
+## Agent constraints
+
+以下规则 agent 必须遵守，**不得以任何理由绕过**：
+
+- **不修改 `.npmrc`、`.mise.toml` 中的 registry/镜像配置**
+- **不添加新的 npm 依赖**（包括 devDependencies）除非用户明确要求
+- **不修改 CI/CD 配置文件**（`.github/workflows/`）除非用户明确要求
+- **不修改 go.mod、go.sum**（Go 工具链仅供辅助工具使用，非项目核心）
+- **不直接运行 `npm publish`**，一律通过 `pnpm publish:new` 脚本
+- **不修改 git 配置**（`.gitconfig`、全局 git config）
+- **不跳过 git hooks**（`--no-verify`、`--no-gpg-sign`）
+
 ## Generated / ignored files
 
 These files are auto-generated and should not be edited manually:
@@ -167,6 +180,14 @@ They are excluded from linting, formatting, and spell-check.
 - `docs/adr/` — Architecture Decision Records（架构决策记录），记录重要技术决策
 - `docs/prd/` — Product Requirements Documents（产品需求文档）
 - `docs/design/` — 设计参考文件（截图、CSS 参考实现等）
+- `CONTEXT.md` — 项目架构总览（ADR 索引、包边界、技术原则）
+
+## Agent hooks
+
+`.claude/hooks/` 包含自动化检查脚本，在每次 tool call 前后执行：
+
+- `pre-tool.sh` — 在工具调用前运行（防止破坏性操作）
+- `post-tool.sh` — 在工具调用后运行（提醒执行 check:code）
 
 ## Agent reference docs
 
@@ -183,10 +204,12 @@ They are excluded from linting, formatting, and spell-check.
 
 自动加载，每次对话生效：
 
-| 文件                                | 管什么                              |
-| ----------------------------------- | ----------------------------------- |
-| `.agents/rules/code-style.md`       | 命名、注释、类型安全、架构模式      |
-| `.agents/rules/commit.md`           | commit message 格式、工作流、反模式 |
-| `.agents/rules/testing.md`          | 测试覆盖、AAA 模式、边界用例        |
-| `.agents/rules/dep-management.md`   | devDeps/peerDeps 放置策略           |
-| `.agents/rules/review-checklist.md` | code review 检查项                  |
+| 文件                                 | 管什么                              |
+| ------------------------------------ | ----------------------------------- |
+| `.agents/rules/code-style.md`        | 命名、注释、类型安全、架构模式      |
+| `.agents/rules/commit.md`            | commit message 格式、工作流、反模式 |
+| `.agents/rules/testing.md`           | 测试覆盖、AAA 模式、边界用例        |
+| `.agents/rules/dep-management.md`    | devDeps/peerDeps 放置策略           |
+| `.agents/rules/review-checklist.md`  | code review 检查项                  |
+| `.agents/rules/web-ui-components.md` | web-ui Lit 组件开发规范             |
+| `.agents/rules/react.md`             | React 组件规范、Fast Refresh 规则   |
