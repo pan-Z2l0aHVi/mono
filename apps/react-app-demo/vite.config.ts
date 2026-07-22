@@ -43,7 +43,9 @@ export default {
     tailwindcss(),
     basicSsl(),
     legacy({
-      targets: ['defaults', 'not IE 11', 'Android >= 9', 'iOS >= 15']
+      modernTargets: ['Chrome >=111', 'Edge >=111', 'Safari >=16.4', 'iOS >=16.4', 'Firefox >=128'],
+      renderLegacyChunks: false,
+      modernPolyfills: true
     })
   ],
   test: {

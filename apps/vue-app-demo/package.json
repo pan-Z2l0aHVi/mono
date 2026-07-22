@@ -37,10 +37,12 @@
     "vue-tsc": "catalog:"
   },
   "browserslist": [
-    "> 0.2% in CN",
-    "last 2 versions",
-    "iOS >= 16",
-    "Android >= 9",
+    ">0.2% in CN",
+    "Chrome >=111",
+    "Edge >=111",
+    "Safari >=16.4",
+    "iOS >=16.4",
+    "Firefox >=128",
     "not dead"
   ]
 }
