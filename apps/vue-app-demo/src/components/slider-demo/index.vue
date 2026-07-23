@@ -24,45 +24,45 @@ function updateChangeValue(event: Event) {
 
 function getSlideValue(event: Event): number {
   const source = event.currentTarget
-  if (!isSlide(source)) return 0
+  if (!isSlider(source)) return 0
   return source.value
 }
 
-function isSlide(target: EventTarget | null): target is HTMLElement & { value: number } {
+function isSlider(target: EventTarget | null): target is HTMLElement & { value: number } {
   return (
     target instanceof HTMLElement &&
-    target.localName === 'web-ui-slide' &&
+    target.localName === 'web-ui-slider' &&
     typeof (target as { value?: unknown }).value === 'number'
   )
 }
 </script>
 
 <template>
-  <div class="slide-demo">
+  <div class="slider-demo">
     <h1>滑块</h1>
 
     <section>
       <h2>基础样式</h2>
       <div class="examples">
-        <div class="example"><web-ui-slide :value="standardValue" @input="updateStandardValue" /></div>
-        <div class="example"><web-ui-slide :value="42" /></div>
-        <div class="example"><web-ui-slide :value="42" disabled /></div>
+        <div class="example"><web-ui-slider :value="standardValue" @input="updateStandardValue" /></div>
+        <div class="example"><web-ui-slider :value="42" /></div>
+        <div class="example"><web-ui-slider :value="42" disabled /></div>
       </div>
     </section>
 
     <section>
       <h2>刻度</h2>
       <div class="examples">
-        <div class="example"><web-ui-slide :value="markedValue" :step="10" marks @input="updateMarkedValue" /></div>
-        <div class="example"><web-ui-slide :value="70" :step="10" marks /></div>
-        <div class="example"><web-ui-slide :value="50" :step="10" marks disabled /></div>
+        <div class="example"><web-ui-slider :value="markedValue" :step="10" marks @input="updateMarkedValue" /></div>
+        <div class="example"><web-ui-slider :value="70" :step="10" marks /></div>
+        <div class="example"><web-ui-slider :value="50" :step="10" marks disabled /></div>
       </div>
     </section>
 
     <section>
       <h2>范围与事件</h2>
       <div class="event-example">
-        <web-ui-slide
+        <web-ui-slider
           :value="inputValue"
           :min="10"
           :max="90"
@@ -78,7 +78,7 @@ function isSlide(target: EventTarget | null): target is HTMLElement & { value: n
 </template>
 
 <style scoped>
-.slide-demo {
+.slider-demo {
   max-width: 920px;
 }
 
@@ -111,7 +111,7 @@ output {
   color: #5d6675;
 }
 
-web-ui-slide {
+web-ui-slider {
   width: 100%;
 }
 

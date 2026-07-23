@@ -7,8 +7,8 @@ import glass from '@/assets/glass.css?inline'
 
 import style from './style.css?inline'
 
-@customElement('web-ui-slide')
-export class WebUiSlide extends LitElement {
+@customElement('web-ui-slider')
+export class WebUiSlider extends LitElement {
   static override styles = [unsafeCSS(glass), unsafeCSS(style)]
 
   @property({ type: Number, reflect: true }) value = 0
@@ -18,6 +18,8 @@ export class WebUiSlide extends LitElement {
   @property({ type: Boolean, reflect: true }) marks = false
   @property({ type: Boolean, reflect: true }) disabled = false
   @state() private dragging = false
+  // 避免未改变数值的点击被误认为一次表单提交。
+  private interactionStartValue: number | undefined
 
   override willUpdate(changed: Map<string, unknown>) {
     if (changed.has('value') || changed.has('min') || changed.has('max') || changed.has('step')) {
@@ -76,40 +78,45 @@ export class WebUiSlide extends LitElement {
     return decimal.length
   }
 
-  private setValue(value: number, eventType: 'input' | 'change') {
-    if (this.disabled) return
+  private setValue(value: number): boolean {
+    if (this.disabled) return false
     const nextValue = this.normalizeValue(value)
-    if (nextValue === this.value) return
+    if (nextValue === this.value) return false
     this.value = nextValue
-    this.dispatchEvent(new Event(eventType, { bubbles: true, composed: true }))
+    this.dispatchEvent(new Event('input', { bubbles: true, composed: true }))
+    return true
   }
 
-  private setValueFromPointer(event: PointerEvent, eventType: 'input' | 'change') {
+  private setValueFromPointer(event: PointerEvent): boolean {
     const track = event.currentTarget as HTMLElement
     const { left, width } = track.getBoundingClientRect()
-    if (width <= 0) return
+    if (width <= 0) return false
     const ratio = Math.min(1, Math.max(0, (event.clientX - left) / width))
-    this.setValue(this.min + ratio * this.range, eventType)
+    return this.setValue(this.min + ratio * this.range)
   }
 
   private handlePointerDown(event: PointerEvent) {
     if (this.disabled) return
     const track = event.currentTarget as HTMLElement
     track.setPointerCapture?.(event.pointerId)
+    this.interactionStartValue = this.value
     this.dragging = true
-    this.setValueFromPointer(event, 'input')
+    this.setValueFromPointer(event)
   }
 
   private handlePointerMove(event: PointerEvent) {
     if (!this.dragging) return
-    this.setValueFromPointer(event, 'input')
+    this.setValueFromPointer(event)
   }
 
   private handlePointerUp(event: PointerEvent) {
     if (!this.dragging) return
-    this.setValueFromPointer(event, 'input')
+    this.setValueFromPointer(event)
     this.dragging = false
-    this.dispatchEvent(new Event('change', { bubbles: true, composed: true }))
+    if (this.interactionStartValue !== this.value) {
+      this.dispatchEvent(new Event('change', { bubbles: true, composed: true }))
+    }
+    this.interactionStartValue = undefined
   }
 
   private handleKeyDown(event: KeyboardEvent) {
@@ -128,20 +135,17 @@ export class WebUiSlide extends LitElement {
     const nextValue = keyValues[event.key]
     if (nextValue === undefined) return
     event.preventDefault()
-    const previousValue = this.value
-    this.setValue(nextValue, 'input')
-    if (this.value !== previousValue) this.dispatchEvent(new Event('change', { bubbles: true, composed: true }))
+    if (this.setValue(nextValue)) this.dispatchEvent(new Event('change', { bubbles: true, composed: true }))
   }
 
   override render() {
     const trackClass = classMap({
-      'wui-slide-track': true,
+      'wui-slider-track': true,
       'is-disabled': this.disabled
     })
     const thumbClass = classMap({
-      'wui-slide-thumb': true,
-      'wui-glass': this.dragging,
-      'wui-glass-no-after': this.dragging
+      'wui-slider-thumb': true,
+      'wui-glass': this.dragging
     })
     const progressStyle = styleMap({ width: `${this.percent}%` })
 
@@ -161,21 +165,23 @@ export class WebUiSlide extends LitElement {
         @pointerup=${this.handlePointerUp}
         @pointercancel=${this.handlePointerUp}
       >
-        <div class="wui-slide-progress" style=${progressStyle}></div>
-        ${this.markValues.map(
-          mark =>
-            html`<span
-              class="wui-slide-mark"
-              style=${styleMap({ left: `${((mark - this.min) / this.range) * 100}%` })}
-            ></span>`
-        )}
+        <div class="wui-slider-progress" style=${progressStyle}></div>
+        <div class="wui-slider-marks">
+          ${this.markValues.map(
+            mark =>
+              html`<span
+                class="wui-slider-mark"
+                style=${styleMap({ left: `${((mark - this.min) / this.range) * 100}%` })}
+              ></span>`
+          )}
+        </div>
         <div class=${thumbClass} style=${styleMap({ left: `${this.percent}%` })}></div>
       </div>
     `
   }
 }
 
-export interface WebUiSlide {
+export interface WebUiSlider {
   readonly $events: {
     input: Event
     change: Event
@@ -184,6 +190,6 @@ export interface WebUiSlide {
 
 declare global {
   interface HTMLElementTagNameMap {
-    'web-ui-slide': WebUiSlide
+    'web-ui-slider': WebUiSlider
   }
 }

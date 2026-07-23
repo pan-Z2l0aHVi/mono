@@ -6,26 +6,24 @@
 
 :host {
   display: inline-block;
-  width: var(--wui-slide-width, 208px);
+  width: var(--wui-slider-width, 200px);
 }
 
 :host([disabled]) {
   cursor: not-allowed;
 }
 
-.wui-slide-track {
+.wui-slider-track {
   cursor: pointer;
   user-select: none;
 
   position: relative;
 
   width: 100%;
-  height: var(--wui-slide-height, 8px);
+  height: var(--wui-slider-height, 6px);
   border-radius: calc(infinity * 1px);
 
   background-color: #e5e5e7;
-  outline: 3px solid transparent;
-  outline-offset: 3px;
 
   &:focus-visible {
     outline-color: rgb(0 136 255 / 0.4);
@@ -37,7 +35,7 @@
   }
 }
 
-.wui-slide-progress {
+.wui-slider-progress {
   position: absolute;
   z-index: 1;
   top: 0;
@@ -49,49 +47,50 @@
   background-color: #087ff5;
 }
 
-.wui-slide-mark {
+.wui-slider-marks {
   pointer-events: none;
 
   position: absolute;
   z-index: 2;
-  top: 50%;
-  transform: translate(-50%, -50%);
+  top: calc(100% + 4px);
+  right: var(--wui-slider-marks-inset, 0);
+  left: var(--wui-slider-marks-inset, 0);
+
+  height: 4px;
+  margin-right: 2px;
+  margin-left: 2px;
+}
+
+.wui-slider-mark {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
 
   width: 4px;
   height: 4px;
-  border: 1px solid #fff;
   border-radius: 50%;
 
   background-color: #c6c6c8;
 }
 
-.wui-slide-mark:first-of-type,
-.wui-slide-mark:last-of-type {
-  display: none;
-}
-
-.wui-slide-thumb {
-  pointer-events: none;
+.wui-slider-thumb {
+  cursor: inherit;
 
   position: absolute;
   z-index: 3;
   top: 50%;
   transform: translate(-50%, -50%);
 
-  width: var(--wui-slide-thumb-size, 36px);
-  height: var(--wui-slide-thumb-size, 36px);
-  border: 0;
-  border-radius: 50%;
+  width: var(--wui-slider-thumb-width, 32px);
+  height: var(--wui-slider-thumb-height, 24px);
+  border-radius: calc(infinity * 1px);
 
+  transition: filter 0.15s ease;
+}
+
+.wui-slider-thumb:not(.wui-glass) {
+  border: 0;
   background-color: #fff;
   filter: drop-shadow(0 3px 12px rgb(0 0 0 / 0.08));
   outline: 1px solid rgb(51 51 51 / 0.06);
-
-  transition: filter 0.15s ease;
-
-  &.wui-glass {
-    background-color: transparent;
-    filter: none;
-    outline-color: transparent;
-  }
 }

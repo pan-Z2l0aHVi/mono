@@ -14,7 +14,7 @@
   display: inline-flex;
   align-items: stretch;
 
-  padding: 3px;
+  padding: 4px;
   border-radius: calc(infinity * 1px);
 
   background-color: rgb(0 0 0 / 0.06);

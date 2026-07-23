@@ -1,20 +1,20 @@
 import { describe, expect, it, vi } from 'vite-plus/test'
 
 import '..'
-import type { WebUiSlide } from '..'
+import type { WebUiSlider } from '..'
 
-const createSlide = (): WebUiSlide => {
-  const el = document.createElement('web-ui-slide') as WebUiSlide
+const createSlider = (): WebUiSlider => {
+  const el = document.createElement('web-ui-slider') as WebUiSlider
   document.body.appendChild(el)
   return el
 }
 
-const getSlider = (el: WebUiSlide): HTMLDivElement => el.shadowRoot!.querySelector('[role="slider"]')!
+const getSlider = (el: WebUiSlider): HTMLDivElement => el.shadowRoot!.querySelector('[role="slider"]')!
 
-describe('WebUiSlide', () => {
+describe('WebUiSlider', () => {
   describe('props', () => {
     it('提供默认值并反射数值属性', async () => {
-      const el = createSlide()
+      const el = createSlider()
       el.value = 20
       el.min = 10
       el.max = 30
@@ -31,7 +31,7 @@ describe('WebUiSlide', () => {
     })
 
     it('根据范围和步长规整 value', async () => {
-      const el = createSlide()
+      const el = createSlider()
       el.min = 0
       el.max = 10
       el.step = 0.5
@@ -43,19 +43,20 @@ describe('WebUiSlide', () => {
       el.remove()
     })
 
-    it('marks 启用时渲染中间刻度', async () => {
-      const el = createSlide()
+    it('marks 启用时在刻度容器中渲染边界和中间刻度', async () => {
+      const el = createSlider()
       el.max = 4
       el.marks = true
       await el.updateComplete
 
-      expect(el.shadowRoot!.querySelectorAll('.wui-slide-mark')).toHaveLength(5)
+      const marks = el.shadowRoot!.querySelector('.wui-slider-marks')!
+      expect(marks.querySelectorAll('.wui-slider-mark')).toHaveLength(5)
 
       el.remove()
     })
 
     it('disabled 反射到宿主并更新可访问状态', async () => {
-      const el = createSlide()
+      const el = createSlider()
       el.disabled = true
       await el.updateComplete
 
@@ -67,7 +68,7 @@ describe('WebUiSlide', () => {
     })
 
     it('不再提供 glass 属性', () => {
-      const el = createSlide()
+      const el = createSlider()
 
       expect('glass' in el).toBe(false)
 
@@ -77,7 +78,7 @@ describe('WebUiSlide', () => {
 
   describe('events', () => {
     it('点击轨道更新 value 并触发 input', async () => {
-      const el = createSlide()
+      const el = createSlider()
       const input = vi.fn<(event: Event) => void>()
       el.addEventListener('input', input)
       await el.updateComplete
@@ -94,7 +95,7 @@ describe('WebUiSlide', () => {
     })
 
     it('结束拖拽触发 change', async () => {
-      const el = createSlide()
+      const el = createSlider()
       const change = vi.fn<(event: Event) => void>()
       el.addEventListener('change', change)
       await el.updateComplete
@@ -109,8 +110,52 @@ describe('WebUiSlide', () => {
       el.remove()
     })
 
+    it('从 thumb 拖拽并仅在按压期间使用玻璃样式', async () => {
+      const el = createSlider()
+      el.value = 50
+      await el.updateComplete
+
+      const slider = getSlider(el)
+      vi.spyOn(slider, 'getBoundingClientRect').mockReturnValue(new DOMRect(0, 0, 200, 8))
+      const thumb = el.shadowRoot!.querySelector<HTMLDivElement>('.wui-slider-thumb')!
+
+      thumb.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, clientX: 100, pointerId: 1 }))
+      await el.updateComplete
+      expect(thumb.classList.contains('wui-glass')).toBe(true)
+
+      thumb.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, clientX: 160, pointerId: 1 }))
+      await el.updateComplete
+      expect(el.value).toBe(80)
+
+      thumb.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, clientX: 160, pointerId: 1 }))
+      await el.updateComplete
+      expect(thumb.classList.contains('wui-glass')).toBe(false)
+
+      el.remove()
+    })
+
+    it('未改变数值的点击不触发 input 或 change', async () => {
+      const el = createSlider()
+      el.value = 50
+      const input = vi.fn<(event: Event) => void>()
+      const change = vi.fn<(event: Event) => void>()
+      el.addEventListener('input', input)
+      el.addEventListener('change', change)
+      await el.updateComplete
+
+      const slider = getSlider(el)
+      vi.spyOn(slider, 'getBoundingClientRect').mockReturnValue(new DOMRect(0, 0, 200, 8))
+      slider.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, clientX: 100, pointerId: 1 }))
+      slider.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, clientX: 100, pointerId: 1 }))
+
+      expect(input).not.toHaveBeenCalled()
+      expect(change).not.toHaveBeenCalled()
+
+      el.remove()
+    })
+
     it('禁用时不响应指针事件', async () => {
-      const el = createSlide()
+      const el = createSlider()
       el.disabled = true
       const input = vi.fn<(event: Event) => void>()
       el.addEventListener('input', input)
@@ -127,7 +172,7 @@ describe('WebUiSlide', () => {
 
   describe('keyboard', () => {
     it('箭头键按 step 调整并触发 input 和 change', async () => {
-      const el = createSlide()
+      const el = createSlider()
       el.value = 10
       el.step = 5
       const input = vi.fn<(event: Event) => void>()
@@ -147,7 +192,7 @@ describe('WebUiSlide', () => {
     })
 
     it('Home 和 End 跳至范围边界', async () => {
-      const el = createSlide()
+      const el = createSlider()
       el.min = 10
       el.max = 90
       el.value = 50
@@ -167,7 +212,7 @@ describe('WebUiSlide', () => {
 
   describe('exported APIs', () => {
     it('focus() 和 blur() 代理至滑块', async () => {
-      const el = createSlide()
+      const el = createSlider()
       await el.updateComplete
 
       el.focus()
