@@ -17,7 +17,6 @@ export class WebUiSlide extends LitElement {
   @property({ type: Number, reflect: true }) step = 1
   @property({ type: Boolean, reflect: true }) marks = false
   @property({ type: Boolean, reflect: true }) disabled = false
-  @property({ type: Boolean, reflect: true }) glass = false
   @state() private dragging = false
 
   override willUpdate(changed: Map<string, unknown>) {
@@ -99,7 +98,6 @@ export class WebUiSlide extends LitElement {
     track.setPointerCapture?.(event.pointerId)
     this.dragging = true
     this.setValueFromPointer(event, 'input')
-    this.focus()
   }
 
   private handlePointerMove(event: PointerEvent) {
@@ -142,9 +140,8 @@ export class WebUiSlide extends LitElement {
     })
     const thumbClass = classMap({
       'wui-slide-thumb': true,
-      'wui-glass': this.glass,
-      'wui-glass-no-after': this.glass,
-      'is-dragging': this.dragging
+      'wui-glass': this.dragging,
+      'wui-glass-no-after': this.dragging
     })
     const progressStyle = styleMap({ width: `${this.percent}%` })
 

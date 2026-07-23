@@ -54,16 +54,22 @@ describe('WebUiSlide', () => {
       el.remove()
     })
 
-    it('disabled 和 glass 反射到宿主并改变可访问状态', async () => {
+    it('disabled 反射到宿主并更新可访问状态', async () => {
       const el = createSlide()
       el.disabled = true
-      el.glass = true
       await el.updateComplete
 
       expect(el.hasAttribute('disabled')).toBe(true)
-      expect(el.hasAttribute('glass')).toBe(true)
       expect(getSlider(el).tabIndex).toBe(-1)
-      expect(el.shadowRoot!.querySelector('.wui-slide-thumb')!.classList).toContain('wui-glass')
+      expect(getSlider(el).getAttribute('aria-disabled')).toBe('true')
+
+      el.remove()
+    })
+
+    it('不再提供 glass 属性', () => {
+      const el = createSlide()
+
+      expect('glass' in el).toBe(false)
 
       el.remove()
     })
