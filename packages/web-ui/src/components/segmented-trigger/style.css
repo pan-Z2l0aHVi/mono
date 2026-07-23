@@ -1,0 +1,50 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+:host {
+  display: inline-block;
+}
+
+:host([disabled]) {
+  cursor: not-allowed;
+}
+
+.wui-segmented-trigger {
+  cursor: pointer;
+  user-select: none;
+
+  position: relative;
+  z-index: 1;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  height: 34px;
+  padding: 0 16px;
+  border-radius: calc(infinity * 1px);
+
+  font-size: var(--wui-font-size, 14px);
+  line-height: 1;
+  color: #666;
+  white-space: nowrap;
+
+  transition: color 0.2s ease;
+
+  &:focus-visible {
+    outline: 3px solid rgb(0 136 255 / 0.4);
+    outline-offset: 2px;
+  }
+
+  &.is-checked {
+    color: #1a1a1a;
+  }
+}
+
+:host([disabled]) .wui-segmented-trigger {
+  cursor: not-allowed;
+  opacity: 0.4;
+}

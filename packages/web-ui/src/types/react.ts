@@ -19,6 +19,8 @@ import type {
   WebUiOption,
   WebUiRadio,
   WebUiRadioGroup,
+  WebUiSegmented,
+  WebUiSegmentedTrigger,
   WebUiSelect,
   WebUiSwitch,
   WebUiTooltip
@@ -48,6 +50,8 @@ export interface WebUiComponents {
   'web-ui-option': LitReactWrapper<WebUiOption>
   'web-ui-radio': LitReactWrapper<WebUiRadio>
   'web-ui-radio-group': LitReactWrapper<WebUiRadioGroup>
+  'web-ui-segmented': LitReactWrapper<WebUiSegmented>
+  'web-ui-segmented-trigger': LitReactWrapper<WebUiSegmentedTrigger>
   'web-ui-back-top': LitReactWrapper<WebUiBackTop>
   'web-ui-layout': LitReactWrapper<WebUiLayout>
   'web-ui-switch': LitReactWrapper<WebUiSwitch>
