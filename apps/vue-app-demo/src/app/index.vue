@@ -20,6 +20,7 @@ const navItems: NavItem[] = [
   { path: '/components/drawer', label: '抽屉' },
   { path: '/components/tooltip', label: '工具提示' },
   { path: '/components/switch', label: '开关' },
+  { path: '/components/slide', label: '滑块' },
   { path: '/components/radio', label: '单选框' },
   { path: '/components/checkbox', label: '复选框' },
   { path: '/components/segmented', label: '分段控制器' }
