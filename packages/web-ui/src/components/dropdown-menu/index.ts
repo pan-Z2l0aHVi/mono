@@ -288,8 +288,7 @@ export class WebUiDropdownMenu extends LitElement {
     this._hoverCleanupFns.forEach(fn => fn())
     this._hoverCleanupFns.length = 0
 
-    // level 0 始终绑定（根菜单打开时）
-    const maxLevel = this._activePath.length + 1 // 当前层 + 可能的下一层
+    const maxLevel = this._activePath.length + 1
     for (let lv = 0; lv <= maxLevel; lv++) {
       const items = this._getLevelItems(lv)
       if (!items.length) continue
@@ -298,7 +297,6 @@ export class WebUiDropdownMenu extends LitElement {
         const handler = () => {
           clearTimeout(this._openTimer)
           if (item.hasAttribute('submenu')) {
-            // 已激活的 submenu 不重复 toggle，由非 submenu 项的 hover 或 click 关闭
             if (this._activePath[lv] !== idx) {
               this._openTimer = setTimeout(() => this._toggleSubmenu(lv, idx), 200)
             }

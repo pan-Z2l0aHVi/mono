@@ -1,3 +1,9 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
 :host {
   display: block;
 }
@@ -16,7 +22,7 @@
 
   height: 32px;
   padding: 0 12px;
-  border-radius: 999vmax;
+  border-radius: calc(infinity * 1px);
 
   font-size: var(--wui-font-size, 14px);
   color: inherit;
@@ -33,7 +39,7 @@
   background: #48a1ff;
 }
 
-:host([active]) .item-inner {
+:host([active]:not(:hover)) .item-inner {
   color: inherit;
   background: rgb(0 0 0 / 0.1);
 }

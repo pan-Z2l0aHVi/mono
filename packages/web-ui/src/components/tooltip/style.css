@@ -1,3 +1,9 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
 :host {
   display: inline-flex;
 }
@@ -19,7 +25,7 @@
   box-sizing: border-box;
   max-width: var(--web-ui-tooltip-max-width, 240px);
   padding: 6px 10px;
-  border-radius: 8px;
+  border-radius: calc(infinity * 1px);
 
   font-size: var(--wui-font-size, 13px);
   line-height: 1.4;

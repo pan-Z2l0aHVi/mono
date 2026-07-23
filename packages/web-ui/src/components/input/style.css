@@ -1,3 +1,9 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
 :host {
   display: inline-block;
 }
@@ -19,7 +25,7 @@
   min-width: var(--wui-button-size, 40px);
   height: var(--wui-button-size, 40px);
   padding: 0 16px;
-  border-radius: 999vmax;
+  border-radius: calc(infinity * 1px);
 }
 
 :host([full]) {

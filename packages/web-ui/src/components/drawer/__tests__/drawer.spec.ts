@@ -173,9 +173,9 @@ describe('WebUiDrawer', () => {
       el.addEventListener('open-change', handler)
 
       el.close()
-      // 动画期间 open 仍为 true
-      expect(el.open).toBe(true)
-      // 动画结束后
+      // 动画已开始，open 立即关闭
+      expect(el.open).toBe(false)
+      // 动画结束后完成关闭
       await vi.advanceTimersByTimeAsync(300)
       expect(el.open).toBe(false)
       expect(handler).toHaveBeenCalledTimes(1)

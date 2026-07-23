@@ -1,3 +1,9 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
 :host {
   display: block;
 }
@@ -14,6 +20,12 @@
 
   visibility: hidden;
   opacity: 0;
+
+  .back-top-inner:focus-visible {
+    border-radius: calc(infinity * 1px);
+    outline: 3px solid rgb(0 136 255 / 0.4);
+    outline-offset: 2px;
+  }
 }
 
 :host([visible]) .back-top-inner {

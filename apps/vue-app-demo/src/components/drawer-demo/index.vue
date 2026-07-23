@@ -35,6 +35,7 @@ const headerSlotVisible = ref(false)
 
 const closableState = ref(true)
 const closableVisible = ref(false)
+const footerVisible = ref(false)
 </script>
 
 <template>
@@ -119,7 +120,7 @@ const closableVisible = ref(false)
     <div class="mb-3 flex flex-wrap gap-2 items-center">
       <web-ui-button @click="closableVisible = true">打开</web-ui-button>
       <label class="flex items-center gap-1 text-sm cursor-pointer select-none">
-        <input v-model="closableState" type="checkbox" />
+        <web-ui-checkbox v-model="closableState" />
         显示关闭按钮
       </label>
     </div>
@@ -130,6 +131,15 @@ const closableVisible = ref(false)
       @open-change="closableVisible = $event.detail.open"
     >
       <p><code>closable</code> 控制关闭按钮，独立于 header 定位。</p>
+    </web-ui-drawer>
+
+    <h2>Footer Slot</h2>
+    <div class="mb-3 flex gap-2">
+      <web-ui-button @click="footerVisible = true">打开</web-ui-button>
+    </div>
+    <web-ui-drawer :open="footerVisible" heading="带 Footer" closable @open-change="footerVisible = $event.detail.open">
+      <p>底部区域通过 <code>footer</code> slot 插入，固定在抽屉底部。</p>
+      <web-ui-button slot="footer" full variant="secondary" @click="footerVisible = false">关闭</web-ui-button>
     </web-ui-drawer>
 
     <h2>Custom CSS Vars</h2>

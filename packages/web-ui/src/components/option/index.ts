@@ -39,7 +39,7 @@ export class WebUiOption extends LitElement {
   override render() {
     return html`
       <div class="option-label">
-        <web-ui-icon class="check" .width=${16} .height=${16} .icon=${heroiconsCheck16Solid}></web-ui-icon>
+        <web-ui-icon class="check" .size=${16} .icon=${heroiconsCheck16Solid}></web-ui-icon>
         <slot></slot>
       </div>
     `

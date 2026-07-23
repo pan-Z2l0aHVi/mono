@@ -1,3 +1,9 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
 :host {
   display: contents;
 }
@@ -11,7 +17,7 @@ dialog {
   left: auto;
   transform: translateX(100%);
 
-  overflow: visible;
+  overflow: hidden;
 
   box-sizing: border-box;
   width: var(--wui-drawer-width, 320px);
@@ -83,9 +89,12 @@ dialog.closing::backdrop {
 
 .wui-drawer-body {
   --wui-glass-shadow: 0 4px 24px rgb(0 0 0 / 0.15);
+  overflow: hidden;
   display: flex;
   flex-direction: column;
+
   height: 100%;
+
   background-color: rgb(250 250 250 / 0.88);
 }
 
@@ -108,6 +117,7 @@ dialog.closing::backdrop {
 
 .wui-drawer-content {
   overflow-y: auto;
+  overscroll-behavior: contain;
   flex: 1;
 
   padding: 20px;
@@ -115,6 +125,18 @@ dialog.closing::backdrop {
   font-size: var(--wui-font-size, 14px);
   line-height: 1.5;
   color: #1c1c1e;
+}
+
+/* ===== Footer ===== */
+
+.wui-drawer-footer {
+  flex-shrink: 0;
+  padding: 16px 20px;
+  border-top: 1px solid rgb(0 0 0 / 0.06);
+}
+
+.wui-drawer-footer[hidden] {
+  display: none;
 }
 
 /* ===== 关闭按钮（独立定位，与 header 解耦） ===== */

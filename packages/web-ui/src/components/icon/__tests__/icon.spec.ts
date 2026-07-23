@@ -73,12 +73,11 @@ describe('WebUiIcon', () => {
     })
   })
 
-  describe('prop: width / height', () => {
-    it('自定义宽高应用到 SVG', async () => {
+  describe('prop: size', () => {
+    it('自定义 size 应用到 SVG', async () => {
       const el = document.createElement('web-ui-icon')
       el.icon = createIcon()
-      el.width = 32
-      el.height = 32
+      el.size = 32
       document.body.appendChild(el)
       await el.updateComplete
 

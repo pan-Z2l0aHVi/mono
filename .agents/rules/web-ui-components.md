@@ -15,6 +15,18 @@
 
 ## CSS 样式规范
 
+### Box-sizing
+
+每个组件的 CSS 文件**必须以**以下通用选择器开头，确保 Shadow DOM 内部所有元素使用 `border-box`，不依赖页面全局 reset：
+
+```css
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+```
+
 ### `:host` 职责划分
 
 `:host` 只承担以下职责：

@@ -4,6 +4,8 @@ import type {
   WebUiBackTop,
   WebUiButton,
   WebUiButtonGroup,
+  WebUiCheckbox,
+  WebUiCheckboxGroup,
   WebUiDialog,
   WebUiDrawer,
   WebUiDropdownDivider,
@@ -15,7 +17,10 @@ import type {
   WebUiInputNumber,
   WebUiLayout,
   WebUiOption,
+  WebUiRadio,
+  WebUiRadioGroup,
   WebUiSelect,
+  WebUiSwitch,
   WebUiTooltip
 } from '../components'
 
@@ -28,6 +33,8 @@ export type LitReactWrapper<T> = T extends { readonly $events: infer E }
 export interface WebUiComponents {
   'web-ui-button': LitReactWrapper<WebUiButton>
   'web-ui-button-group': LitReactWrapper<WebUiButtonGroup>
+  'web-ui-checkbox': LitReactWrapper<WebUiCheckbox>
+  'web-ui-checkbox-group': LitReactWrapper<WebUiCheckboxGroup>
   'web-ui-dialog': LitReactWrapper<WebUiDialog>
   'web-ui-drawer': LitReactWrapper<WebUiDrawer>
   'web-ui-dropdown-divider': LitReactWrapper<WebUiDropdownDivider>
@@ -39,8 +46,11 @@ export interface WebUiComponents {
   'web-ui-input-number': LitReactWrapper<WebUiInputNumber>
   'web-ui-select': LitReactWrapper<WebUiSelect>
   'web-ui-option': LitReactWrapper<WebUiOption>
+  'web-ui-radio': LitReactWrapper<WebUiRadio>
+  'web-ui-radio-group': LitReactWrapper<WebUiRadioGroup>
   'web-ui-back-top': LitReactWrapper<WebUiBackTop>
   'web-ui-layout': LitReactWrapper<WebUiLayout>
+  'web-ui-switch': LitReactWrapper<WebUiSwitch>
   'web-ui-tooltip': LitReactWrapper<WebUiTooltip>
 }
 

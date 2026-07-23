@@ -1,3 +1,9 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
 :host {
   display: block;
 }
@@ -18,7 +24,7 @@
   box-sizing: border-box;
   height: 32px;
   padding: 0 12px;
-  border-radius: 999vmax;
+  border-radius: calc(infinity * 1px);
 
   font-size: var(--wui-font-size, 14px);
   color: #1b1b1b;
@@ -32,6 +38,11 @@
 
 :host(:not([selected])) .check {
   visibility: hidden;
+}
+
+.option-label:focus-visible {
+  outline: 3px solid rgb(0 136 255 / 0.4);
+  outline-offset: 2px;
 }
 
 .option-label:hover {

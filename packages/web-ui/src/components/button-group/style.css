@@ -1,3 +1,9 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
 :host {
   display: inline-block;
 }
@@ -11,7 +17,7 @@
   width: max-content;
   height: 40px;
   padding: 0 4px;
-  border-radius: 999vmax;
+  border-radius: calc(infinity * 1px);
 }
 
 :host([orientation='vertical']) {
