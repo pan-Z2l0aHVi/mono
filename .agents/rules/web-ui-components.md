@@ -127,6 +127,7 @@
 
 - 交互式组件必须设置 `role` 属性（如 `role="button"`, `role="menuitem"`, `role="dialog"`）
 - 表单控件必须关联 `<label>` 或设置 `aria-label`
+- 支持水平与垂直方向的控件必须同步设置正确的 `aria-orientation`
 - `disabled` 状态的组件必须设置 `aria-disabled` 或在禁用时阻止交互
 - 图标组件必须设置 `aria-hidden="true"`
 - 使用 `:focus-visible` 而非 `:focus` 处理键盘焦点样式，避免鼠标点击时出现 focus ring

@@ -12,6 +12,12 @@
   cursor: not-allowed;
 }
 
+/*
+标准视觉隐藏技术（sr-only）：
+业内标准的“屏幕阅读器专用”隐藏方案。
+把复选框缩放到 1x1 像素，但保留在 dom 中，
+既让肉眼看不见，又能让读屏软件识别，并允许键盘用户通过空格键切换状态。
+*/
 .sr-only {
   position: absolute;
 
@@ -25,7 +31,7 @@
 
   white-space: nowrap;
 
-  clip-path: inset(0);
+  clip-path: inset(50%);
 }
 
 .wui-switch-track {
@@ -73,8 +79,6 @@
   height: 20px;
   border-radius: calc(infinity * 1px);
 
-  background-color: #fff;
-
   transition:
     width 0.15s cubic-bezier(0.4, 0, 0.2, 1),
     transform 0.25s cubic-bezier(0.4, 0, 0.2, 1),
@@ -85,6 +89,11 @@
     width: 32px;
     border-radius: calc(infinity * 1px);
     background-color: transparent;
+  }
+
+  &:not(.is-pressed) {
+    background-color: #fff;
+    box-shadow: 1px 2px 6px rgb(0 0 0 / 0.2);
   }
 }
 

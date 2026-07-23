@@ -17,8 +17,9 @@ export class WebUiSlider extends LitElement {
   @property({ type: Number, reflect: true }) step = 1
   @property({ type: Boolean, reflect: true }) marks = false
   @property({ type: Boolean, reflect: true }) disabled = false
+  @property({ type: Boolean, reflect: true }) vertical = false
   @state() private dragging = false
-  // 避免未改变数值的点击被误认为一次表单提交。
+  // 避免未改变数值的点击被误认为一次表单提交
   private interactionStartValue: number | undefined
 
   override willUpdate(changed: Map<string, unknown>) {
@@ -28,12 +29,12 @@ export class WebUiSlider extends LitElement {
     }
   }
 
-  /** 将焦点移至滑块，供表单或外部控制使用。 */
+  /** 将焦点移至滑块，供表单或外部控制使用 */
   override focus(options?: FocusOptions) {
     this.slider?.focus(options)
   }
 
-  /** 移除滑块焦点。 */
+  /** 移除滑块焦点 */
   override blur() {
     this.slider?.blur()
   }
@@ -89,9 +90,15 @@ export class WebUiSlider extends LitElement {
 
   private setValueFromPointer(event: PointerEvent): boolean {
     const track = event.currentTarget as HTMLElement
-    const { left, width } = track.getBoundingClientRect()
-    if (width <= 0) return false
-    const ratio = Math.min(1, Math.max(0, (event.clientX - left) / width))
+    const rect = track.getBoundingClientRect()
+    if (this.vertical) {
+      if (rect.height <= 0) return false
+      // 视觉上的数值从下往上增长，与坐标系相反。
+      const ratio = Math.min(1, Math.max(0, 1 - (event.clientY - rect.top) / rect.height))
+      return this.setValue(this.min + ratio * this.range)
+    }
+    if (rect.width <= 0) return false
+    const ratio = Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width))
     return this.setValue(this.min + ratio * this.range)
   }
 
@@ -145,16 +152,19 @@ export class WebUiSlider extends LitElement {
     })
     const thumbClass = classMap({
       'wui-slider-thumb': true,
-      'wui-glass': this.dragging
+      'wui-glass': true,
+      'is-dragging': this.dragging
     })
-    const progressStyle = styleMap({ width: `${this.percent}%` })
+    const trackStyle = styleMap({ '--percent': `${this.percent}%` })
 
     return html`
       <div
         class=${trackClass}
+        style=${trackStyle}
         role="slider"
         tabindex=${this.disabled ? -1 : 0}
         aria-label="滑块"
+        aria-orientation=${this.vertical ? 'vertical' : 'horizontal'}
         aria-valuemin=${this.min}
         aria-valuemax=${this.max}
         aria-valuenow=${this.value}
@@ -165,17 +175,17 @@ export class WebUiSlider extends LitElement {
         @pointerup=${this.handlePointerUp}
         @pointercancel=${this.handlePointerUp}
       >
-        <div class="wui-slider-progress" style=${progressStyle}></div>
+        <div class="wui-slider-progress"></div>
         <div class="wui-slider-marks">
           ${this.markValues.map(
             mark =>
               html`<span
                 class="wui-slider-mark"
-                style=${styleMap({ left: `${((mark - this.min) / this.range) * 100}%` })}
+                style=${styleMap({ '--percent': `${((mark - this.min) / this.range) * 100}%` })}
               ></span>`
           )}
         </div>
-        <div class=${thumbClass} style=${styleMap({ left: `${this.percent}%` })}></div>
+        <div class=${thumbClass}></div>
       </div>
     `
   }

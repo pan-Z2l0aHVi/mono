@@ -67,6 +67,17 @@ describe('WebUiSlider', () => {
       el.remove()
     })
 
+    it('vertical 反射到宿主并更新方向语义', async () => {
+      const el = createSlider()
+      el.vertical = true
+      await el.updateComplete
+
+      expect(el.hasAttribute('vertical')).toBe(true)
+      expect(getSlider(el).getAttribute('aria-orientation')).toBe('vertical')
+
+      el.remove()
+    })
+
     it('不再提供 glass 属性', () => {
       const el = createSlider()
 
@@ -110,6 +121,21 @@ describe('WebUiSlider', () => {
       el.remove()
     })
 
+    it('纵向点击按从下到上的方向更新 value', async () => {
+      const el = createSlider()
+      el.vertical = true
+      await el.updateComplete
+
+      const slider = getSlider(el)
+      vi.spyOn(slider, 'getBoundingClientRect').mockReturnValue(new DOMRect(0, 0, 8, 200))
+      slider.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, clientY: 50, pointerId: 1 }))
+      await el.updateComplete
+
+      expect(el.value).toBe(75)
+
+      el.remove()
+    })
+
     it('从 thumb 拖拽并仅在按压期间使用玻璃样式', async () => {
       const el = createSlider()
       el.value = 50
@@ -118,6 +144,8 @@ describe('WebUiSlider', () => {
       const slider = getSlider(el)
       vi.spyOn(slider, 'getBoundingClientRect').mockReturnValue(new DOMRect(0, 0, 200, 8))
       const thumb = el.shadowRoot!.querySelector<HTMLDivElement>('.wui-slider-thumb')!
+
+      expect(thumb.classList.contains('wui-glass')).toBe(false)
 
       thumb.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, clientX: 100, pointerId: 1 }))
       await el.updateComplete
@@ -205,6 +233,21 @@ describe('WebUiSlider', () => {
       getSlider(el).dispatchEvent(new KeyboardEvent('keydown', { key: 'End', bubbles: true }))
       await el.updateComplete
       expect(el.value).toBe(90)
+
+      el.remove()
+    })
+
+    it('纵向模式下 ArrowUp 增加 value', async () => {
+      const el = createSlider()
+      el.vertical = true
+      el.value = 50
+      el.step = 10
+      await el.updateComplete
+
+      getSlider(el).dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true }))
+      await el.updateComplete
+
+      expect(el.value).toBe(60)
 
       el.remove()
     })

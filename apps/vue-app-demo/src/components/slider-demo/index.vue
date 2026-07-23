@@ -5,24 +5,34 @@ const standardValue = ref(36)
 const markedValue = ref(50)
 const inputValue = ref(40)
 const changeValue = ref(40)
+const verticalValue = ref(60)
+const verticalMarkedValue = ref(50)
 
 function updateStandardValue(event: Event) {
-  standardValue.value = getSlideValue(event)
+  standardValue.value = getSliderValue(event)
 }
 
 function updateMarkedValue(event: Event) {
-  markedValue.value = getSlideValue(event)
+  markedValue.value = getSliderValue(event)
 }
 
 function updateInputValue(event: Event) {
-  inputValue.value = getSlideValue(event)
+  inputValue.value = getSliderValue(event)
 }
 
 function updateChangeValue(event: Event) {
-  changeValue.value = getSlideValue(event)
+  changeValue.value = getSliderValue(event)
 }
 
-function getSlideValue(event: Event): number {
+function updateVerticalValue(event: Event) {
+  verticalValue.value = getSliderValue(event)
+}
+
+function updateVerticalMarkedValue(event: Event) {
+  verticalMarkedValue.value = getSliderValue(event)
+}
+
+function getSliderValue(event: Event): number {
   const source = event.currentTarget
   if (!isSlider(source)) return 0
   return source.value
@@ -74,6 +84,24 @@ function isSlider(target: EventTarget | null): target is HTMLElement & { value: 
         <output>input: {{ inputValue }} / change: {{ changeValue }}</output>
       </div>
     </section>
+
+    <section>
+      <h2>垂直</h2>
+      <div class="vertical-examples">
+        <div class="example">
+          <web-ui-slider vertical :value="verticalValue" @input="updateVerticalValue" />
+          <span class="label">{{ verticalValue }}</span>
+        </div>
+        <div class="example">
+          <web-ui-slider vertical :value="verticalMarkedValue" :step="10" marks @input="updateVerticalMarkedValue" />
+          <span class="label">{{ verticalMarkedValue }}</span>
+        </div>
+        <div class="example">
+          <web-ui-slider vertical :value="50" disabled />
+          <span class="label">禁用</span>
+        </div>
+      </div>
+    </section>
   </div>
 </template>
 
@@ -95,8 +123,22 @@ section {
 
 .example {
   display: flex;
+  gap: 12px;
   align-items: center;
   min-width: 0;
+}
+
+.vertical-examples {
+  display: flex;
+  gap: 32px;
+  align-items: flex-start;
+  padding: 20px 0;
+}
+
+.label {
+  font-size: 14px;
+  color: #5d6675;
+  white-space: nowrap;
 }
 
 .event-example {
@@ -111,8 +153,12 @@ output {
   color: #5d6675;
 }
 
-web-ui-slider {
+web-ui-slider:not([vertical]) {
   width: 100%;
+}
+
+web-ui-slider[vertical] {
+  height: 200px;
 }
 
 @media (width <= 700px) {
