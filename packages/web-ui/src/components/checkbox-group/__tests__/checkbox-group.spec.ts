@@ -49,6 +49,23 @@ describe('WebUiCheckboxGroup', () => {
 
       el.remove()
     })
+
+    it('初次渲染后设置 value 时同步子选项的选中状态', async () => {
+      const el = createGroup(CHECKBOX_HTML)
+      await el.updateComplete
+
+      el.value = ['b', 'c']
+      await el.updateComplete
+
+      const checkboxes = el.querySelectorAll('web-ui-checkbox')
+      await Promise.all([...checkboxes].map(checkbox => checkbox.updateComplete))
+
+      expect(checkboxes[0].shadowRoot!.querySelector('label')!.classList.contains('is-checked')).toBe(false)
+      expect(checkboxes[1].shadowRoot!.querySelector('label')!.classList.contains('is-checked')).toBe(true)
+      expect(checkboxes[2].shadowRoot!.querySelector('label')!.classList.contains('is-checked')).toBe(true)
+
+      el.remove()
+    })
   })
 
   describe('prop: disabled', () => {

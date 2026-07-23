@@ -137,3 +137,5 @@
 - 表单类组件（input、select、option）必须支持 `value` 属性双向绑定
 - 必须派发 `Event('change', { bubbles: true, composed: true })` 以支持框架（Vue/React）的 v-model/value 绑定
 - Select/Option 组件使用 CustomEvent 注册/注销模式：option 在 `connectedCallback` 派发 `option-register`，parent select 监听并管理选项列表
+- 管理 slot 子表单控件的 group 组件必须通过子项公开属性读写状态，不能依赖 HTML 属性；框架可能只设置属性而不反射属性
+- group 组件必须在 slot 子项插入或删除后重新同步状态，覆盖框架延迟挂载和条件渲染

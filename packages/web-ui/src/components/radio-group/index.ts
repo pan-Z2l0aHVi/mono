@@ -1,6 +1,8 @@
 import { html, LitElement, type PropertyValues, unsafeCSS } from 'lit'
 import { customElement, property } from 'lit/decorators.js'
 
+import type { WebUiRadio } from '../radio'
+
 import style from './style.css?inline'
 
 @customElement('web-ui-radio-group')
@@ -11,25 +13,22 @@ export class WebUiRadioGroup extends LitElement {
   @property({ type: String }) name = ''
   @property({ type: Boolean, reflect: true }) disabled = false
 
+  private readonly childObserver = new MutationObserver(() => this._syncValueToChildren())
+
   private _syncValueToChildren() {
-    this.querySelectorAll('web-ui-radio').forEach(r => {
-      if (r.getAttribute('value') === this.value) {
-        r.setAttribute('checked', '')
-      } else {
-        r.removeAttribute('checked')
-      }
-      r.toggleAttribute('disabled', this.disabled)
+    this.querySelectorAll<WebUiRadio>('web-ui-radio').forEach(radio => {
+      radio.checked = radio.value === this.value
+      radio.disabled = this.disabled
     })
   }
 
   override updated(props: PropertyValues) {
-    if (props.has('disabled')) {
-      this.querySelectorAll('web-ui-radio').forEach(r => r.toggleAttribute('disabled', this.disabled))
-    }
+    if (props.has('value') || props.has('disabled')) this._syncValueToChildren()
   }
 
   override connectedCallback() {
     super.connectedCallback()
+    this.childObserver.observe(this, { childList: true })
     this.addEventListener('update:checked', this._handleRadioChange as EventListener)
   }
 
@@ -39,6 +38,7 @@ export class WebUiRadioGroup extends LitElement {
 
   override disconnectedCallback() {
     super.disconnectedCallback()
+    this.childObserver.disconnect()
     this.removeEventListener('update:checked', this._handleRadioChange as EventListener)
   }
 

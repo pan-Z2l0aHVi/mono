@@ -15,21 +15,13 @@ const updateSelected = (value: string) => {
     <h1>单选框</h1>
     <h2>基本用法</h2>
     <div class="mb-3 flex flex-col gap-3">
-      <web-ui-radio :checked="selected === 'apple'" value="apple" name="fruit" @update:checked="updateSelected('apple')"
+      <web-ui-radio :checked="selected === 'apple'" value="apple" name="fruit" @change="updateSelected('apple')"
         >Apple</web-ui-radio
       >
-      <web-ui-radio
-        :checked="selected === 'banana'"
-        value="banana"
-        name="fruit"
-        @update:checked="updateSelected('banana')"
+      <web-ui-radio :checked="selected === 'banana'" value="banana" name="fruit" @change="updateSelected('banana')"
         >Banana</web-ui-radio
       >
-      <web-ui-radio
-        :checked="selected === 'cherry'"
-        value="cherry"
-        name="fruit"
-        @update:checked="updateSelected('cherry')"
+      <web-ui-radio :checked="selected === 'cherry'" value="cherry" name="fruit" @change="updateSelected('cherry')"
         >Cherry</web-ui-radio
       >
     </div>

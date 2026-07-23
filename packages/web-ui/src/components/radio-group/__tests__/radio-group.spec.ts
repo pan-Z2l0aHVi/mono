@@ -49,6 +49,23 @@ describe('WebUiRadioGroup', () => {
 
       el.remove()
     })
+
+    it('初次渲染后设置 value 时同步子选项的选中状态', async () => {
+      const el = createGroup(RADIO_HTML)
+      await el.updateComplete
+
+      el.value = 'b'
+      await el.updateComplete
+
+      const radios = el.querySelectorAll('web-ui-radio')
+      await Promise.all([...radios].map(radio => radio.updateComplete))
+
+      expect(radios[0].shadowRoot!.querySelector('label')!.classList.contains('is-checked')).toBe(false)
+      expect(radios[1].shadowRoot!.querySelector('label')!.classList.contains('is-checked')).toBe(true)
+      expect(radios[2].shadowRoot!.querySelector('label')!.classList.contains('is-checked')).toBe(false)
+
+      el.remove()
+    })
   })
 
   describe('prop: name', () => {

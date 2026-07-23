@@ -1,6 +1,8 @@
 import { html, LitElement, type PropertyValues, unsafeCSS } from 'lit'
 import { customElement, property } from 'lit/decorators.js'
 
+import type { WebUiCheckbox } from '../checkbox'
+
 import style from './style.css?inline'
 
 @customElement('web-ui-checkbox-group')
@@ -10,26 +12,22 @@ export class WebUiCheckboxGroup extends LitElement {
   @property({ type: Array }) value: string[] = []
   @property({ type: Boolean, reflect: true }) disabled = false
 
+  private readonly childObserver = new MutationObserver(() => this._syncValueToChildren())
+
   private _syncValueToChildren() {
-    this.querySelectorAll('web-ui-checkbox').forEach(r => {
-      const v = r.getAttribute('value')
-      if (v !== null && this.value.includes(v)) {
-        r.setAttribute('checked', '')
-      } else {
-        r.removeAttribute('checked')
-      }
-      r.toggleAttribute('disabled', this.disabled)
+    this.querySelectorAll<WebUiCheckbox>('web-ui-checkbox').forEach(checkbox => {
+      checkbox.checked = this.value.includes(checkbox.value)
+      checkbox.disabled = this.disabled
     })
   }
 
   override updated(props: PropertyValues) {
-    if (props.has('disabled')) {
-      this.querySelectorAll('web-ui-checkbox').forEach(r => r.toggleAttribute('disabled', this.disabled))
-    }
+    if (props.has('value') || props.has('disabled')) this._syncValueToChildren()
   }
 
   override connectedCallback() {
     super.connectedCallback()
+    this.childObserver.observe(this, { childList: true })
     this.addEventListener('update:checked', this._handleCheckboxChange as EventListener)
   }
 
@@ -39,6 +37,7 @@ export class WebUiCheckboxGroup extends LitElement {
 
   override disconnectedCallback() {
     super.disconnectedCallback()
+    this.childObserver.disconnect()
     this.removeEventListener('update:checked', this._handleCheckboxChange as EventListener)
   }
 

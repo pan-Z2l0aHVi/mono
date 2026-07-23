@@ -20,13 +20,13 @@ const toggleFruit = (value: string) => {
     <h1>复选框</h1>
     <h2>基本用法</h2>
     <div class="mb-3 flex flex-col gap-3">
-      <web-ui-checkbox :checked="fruits.includes('apple')" value="apple" @update:checked="toggleFruit('apple')"
+      <web-ui-checkbox :checked="fruits.includes('apple')" value="apple" @change="toggleFruit('apple')"
         >Apple</web-ui-checkbox
       >
-      <web-ui-checkbox :checked="fruits.includes('banana')" value="banana" @update:checked="toggleFruit('banana')"
+      <web-ui-checkbox :checked="fruits.includes('banana')" value="banana" @change="toggleFruit('banana')"
         >Banana</web-ui-checkbox
       >
-      <web-ui-checkbox :checked="fruits.includes('cherry')" value="cherry" @update:checked="toggleFruit('cherry')"
+      <web-ui-checkbox :checked="fruits.includes('cherry')" value="cherry" @change="toggleFruit('cherry')"
         >Cherry</web-ui-checkbox
       >
     </div>
