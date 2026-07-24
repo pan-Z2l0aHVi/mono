@@ -3,6 +3,7 @@ import { html, LitElement, unsafeCSS } from 'lit'
 import { customElement, property, state } from 'lit/decorators.js'
 
 import glass from '@/assets/glass.css?inline'
+import { createMenuPortalOverlay } from '@/shared/menu-portal/menu-portal'
 import { withOverlay } from '@/shared/overlay/overlay'
 import type { OverlayApi } from '@/shared/overlay/overlay'
 import { lockScroll, unlockScroll } from '@/shared/scroll-lock/scroll-lock'
@@ -12,6 +13,11 @@ import style from './style.css?inline'
 export type { Placement }
 
 const SLOT_PREFIX = 'web-ui-menu-level-'
+
+interface MenuOverlay {
+  api: OverlayApi
+  overlay: HTMLElement
+}
 
 @customElement('web-ui-dropdown-menu')
 export class WebUiDropdownMenu extends LitElement {
@@ -25,7 +31,7 @@ export class WebUiDropdownMenu extends LitElement {
 
   @state() private _activePath: number[] = []
 
-  private readonly _overlays = new Map<number, OverlayApi>()
+  private readonly _overlays = new Map<number, MenuOverlay>()
   private _openTimer?: ReturnType<typeof setTimeout>
   private _ignoreOutsideClick = false
   private _ignoreOutsideClickTimer?: ReturnType<typeof setTimeout>
@@ -47,7 +53,7 @@ export class WebUiDropdownMenu extends LitElement {
     document.removeEventListener('click', this._onClickOutside)
     clearTimeout(this._openTimer)
     clearTimeout(this._ignoreOutsideClickTimer)
-    this._disposeAll()
+    this._cleanupClosedMenu()
     this._hoverCleanupFns.forEach(fn => fn())
   }
 
@@ -56,15 +62,19 @@ export class WebUiDropdownMenu extends LitElement {
       if (this.open) {
         this._ignoreCurrentOutsideClick()
         lockScroll()
-        this._assignLevel0Slot()
-        requestAnimationFrame(() => this._ensureOverlay(0))
+        this._hideAllSubmenuChildren()
+        requestAnimationFrame(() => {
+          if (this.open) this._ensureOverlay(0)
+        })
         this._bindHoversAfterUpdate()
       } else {
         unlockScroll()
-        // 同步移除 DOM overlay，避免视觉残留
-        this._disposeOverlay(0)
-        // 子菜单状态清理推迟到当前更新周期之后，避免 @state _activePath 赋值触发 Lit 二次更新警告
-        queueMicrotask(() => this._closeAllSubmenus())
+        // `_closeAllSubmenus()` resets Lit state. Run cleanup after this update
+        // to avoid scheduling a second update from within `updated()`.
+        queueMicrotask(() => {
+          if (this.open || !this.isConnected) return
+          this._cleanupClosedMenu()
+        })
       }
       this.dispatchEvent(
         new CustomEvent('open-change', {
@@ -103,14 +113,10 @@ export class WebUiDropdownMenu extends LitElement {
     this._syncActiveAttrs()
   }
 
-  private _assignLevel0Slot() {
-    this._hideAllSubmenuChildren()
-
-    Array.from(this.children).forEach(child => {
-      if (child.matches('web-ui-dropdown-item, web-ui-dropdown-divider, web-ui-dropdown-header')) {
-        child.setAttribute('slot', `${SLOT_PREFIX}0`)
-      }
-    })
+  private _cleanupClosedMenu() {
+    this._closeAllSubmenus()
+    this._returnLevel0Items()
+    this._disposeAll()
   }
 
   private _hideAllSubmenuChildren() {
@@ -136,6 +142,7 @@ export class WebUiDropdownMenu extends LitElement {
     const item = this._getLevelItems(level)[itemIndex]
     if (item?.hasAttribute('submenu')) {
       requestAnimationFrame(() => {
+        if (!this.open || this._activePath[level] !== itemIndex) return
         this._ensureOverlay(level + 1)
         this._populateOverlay(level + 1, item)
       })
@@ -157,25 +164,19 @@ export class WebUiDropdownMenu extends LitElement {
     this.querySelectorAll('web-ui-dropdown-item').forEach(item => {
       item.removeAttribute('active')
     })
-    this.shadowRoot?.querySelectorAll('.dropdown-overlay web-ui-dropdown-item').forEach(item => {
-      item.removeAttribute('active')
+    this._overlays.forEach((_, level) => {
+      this._getLevelItems(level).forEach(item => item.removeAttribute('active'))
     })
-    for (let lv = 0; lv < this._activePath.length; lv++) {
-      const items = this._getLevelItems(lv)
-      const item = items[this._activePath[lv]]
+    this._activePath.forEach((itemIndex, level) => {
+      const item = this._getLevelItems(level)[itemIndex]
       if (item?.matches('web-ui-dropdown-item')) {
         item.setAttribute('active', '')
       }
-    }
+    })
   }
 
   private _getLevelItems(level: number): HTMLElement[] {
-    if (level === 0) {
-      return Array.from(this.children).filter((c): c is HTMLElement =>
-        c.matches('web-ui-dropdown-item, web-ui-dropdown-divider, web-ui-dropdown-header')
-      )
-    }
-    const scroll = this.shadowRoot?.querySelector(`.dropdown-overlay[data-level="${level}"] .dropdown-scroll`)
+    const scroll = this._overlays.get(level)?.overlay.querySelector<HTMLElement>('.dropdown-scroll')
     if (!scroll) return []
     return Array.from(scroll.children).filter((c): c is HTMLElement =>
       c.matches('web-ui-dropdown-item, web-ui-dropdown-divider, web-ui-dropdown-header')
@@ -184,8 +185,28 @@ export class WebUiDropdownMenu extends LitElement {
 
   /* ========== Slot 管理 ========== */
 
+  private _populateLevel0() {
+    const overlay = this._overlays.get(0)?.overlay.querySelector<HTMLElement>('.dropdown-scroll')
+    if (!overlay) return
+    Array.from(this.children).forEach(child => {
+      if (child.matches('web-ui-dropdown-item, web-ui-dropdown-divider, web-ui-dropdown-header')) {
+        overlay.appendChild(child)
+      }
+    })
+  }
+
+  private _returnLevel0Items() {
+    const overlay = this._overlays.get(0)?.overlay.querySelector<HTMLElement>('.dropdown-scroll')
+    if (!overlay) return
+    Array.from(overlay.children).forEach(child => {
+      if (child.matches('web-ui-dropdown-item, web-ui-dropdown-divider, web-ui-dropdown-header')) {
+        this.appendChild(child)
+      }
+    })
+  }
+
   private _populateOverlay(level: number, submenuItem: HTMLElement) {
-    const overlay = this.shadowRoot?.querySelector(`.dropdown-overlay[data-level="${level}"] .dropdown-scroll`)
+    const overlay = this._overlays.get(level)?.overlay.querySelector<HTMLElement>('.dropdown-scroll')
     if (!overlay) return
     for (const child of Array.from(submenuItem.children)) {
       if (child.matches('web-ui-dropdown-item, web-ui-dropdown-divider, web-ui-dropdown-header')) {
@@ -195,7 +216,7 @@ export class WebUiDropdownMenu extends LitElement {
   }
 
   private _depopulateOverlay(level: number) {
-    const scroll = this.shadowRoot?.querySelector(`.dropdown-overlay[data-level="${level}"] .dropdown-scroll`)
+    const scroll = this._overlays.get(level)?.overlay.querySelector<HTMLElement>('.dropdown-scroll')
     if (!scroll) return
     for (const child of Array.from(scroll.children)) {
       if (child.matches('web-ui-dropdown-item, web-ui-dropdown-divider, web-ui-dropdown-header')) {
@@ -217,22 +238,13 @@ export class WebUiDropdownMenu extends LitElement {
   }
 
   private _buildOverlay(level: number) {
-    const overlay = document.createElement('div')
-    overlay.className = 'dropdown-overlay wui-glass wui-glass-no-after'
+    const overlay = createMenuPortalOverlay('dropdown-overlay')
     overlay.setAttribute('role', 'menu')
     overlay.dataset.level = String(level)
 
     const scroll = document.createElement('div')
     scroll.className = 'dropdown-scroll'
-
-    if (level === 0) {
-      const slot = document.createElement('slot')
-      slot.setAttribute('name', `${SLOT_PREFIX}0`)
-      scroll.appendChild(slot)
-    }
-
     overlay.appendChild(scroll)
-    this.shadowRoot!.appendChild(overlay)
 
     const anchor = level === 0 ? this._queryTriggerAnchor() : this._getSubmenuTriggerAnchor(level - 1)
 
@@ -244,21 +256,22 @@ export class WebUiDropdownMenu extends LitElement {
         offset: level === 0 ? this.offset : 0,
         matchWidth: level === 0 ? this.matchWidth : false
       })
-      this._overlays.set(level, ctrl)
+      this._overlays.set(level, { api: ctrl, overlay })
+      if (level === 0) this._populateLevel0()
       ctrl.open()
     }
   }
 
   private _disposeOverlay(level: number) {
-    const overlay = this.shadowRoot?.querySelector(`.dropdown-overlay[data-level="${level}"]`)
+    const overlay = this._overlays.get(level)?.overlay
     overlay?.remove()
-    this._overlays.get(level)?.dispose()
+    this._overlays.get(level)?.api.dispose()
     this._overlays.delete(level)
   }
 
   private _disposeAll() {
-    for (const lv of this._overlays.keys()) {
-      this._disposeOverlay(lv)
+    for (const level of [...this._overlays.keys()]) {
+      this._disposeOverlay(level)
     }
   }
 
@@ -310,6 +323,8 @@ export class WebUiDropdownMenu extends LitElement {
     for (const node of e.composedPath()) {
       if (node === this || node === this.shadowRoot) return true
       if (node instanceof Node && node.getRootNode() === this.shadowRoot) return true
+      if (node instanceof Node && [...this._overlays.values()].some(({ overlay }) => overlay.contains(node)))
+        return true
     }
     return false
   }

@@ -6,6 +6,7 @@ import type {
   WebUiButtonGroup,
   WebUiCheckbox,
   WebUiCheckboxGroup,
+  WebUiContextMenu,
   WebUiDialog,
   WebUiDrawer,
   WebUiDropdownDivider,
@@ -40,6 +41,7 @@ export interface WebUiComponents {
   'web-ui-button-group': LitReactWrapper<WebUiButtonGroup>
   'web-ui-checkbox': LitReactWrapper<WebUiCheckbox>
   'web-ui-checkbox-group': LitReactWrapper<WebUiCheckboxGroup>
+  'web-ui-context-menu': LitReactWrapper<WebUiContextMenu>
   'web-ui-dialog': LitReactWrapper<WebUiDialog>
   'web-ui-drawer': LitReactWrapper<WebUiDrawer>
   'web-ui-dropdown-divider': LitReactWrapper<WebUiDropdownDivider>
