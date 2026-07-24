@@ -1,0 +1,45 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+:host {
+  display: inline-flex;
+}
+
+:host([disabled]) {
+  cursor: not-allowed;
+}
+
+.popover-trigger {
+  display: inline-flex;
+}
+
+.popover-panel {
+  --wui-glass-shadow: 0 4px 16px rgb(0 0 0 / 0.25);
+  position: fixed;
+  z-index: 99999;
+  top: -9999px;
+  left: -9999px;
+
+  box-sizing: border-box;
+  max-width: min(90vw, 400px);
+  padding: 8px 12px;
+  border-radius: 20px;
+
+  font-size: var(--wui-font-size, 14px);
+  line-height: 1.5;
+  color: #1b1b1b;
+
+  background-color: rgb(250 250 250 / 0.88);
+
+  &:where([hidden]) {
+    display: none;
+  }
+
+  &:focus-visible {
+    outline: 2px solid rgb(0 136 255 / 0.4);
+    outline-offset: 2px;
+  }
+}

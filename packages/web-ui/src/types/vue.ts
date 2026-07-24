@@ -17,6 +17,7 @@ import type {
   WebUiInputNumber,
   WebUiLayout,
   WebUiOption,
+  WebUiPopover,
   WebUiRadio,
   WebUiRadioGroup,
   WebUiSegmented,
@@ -74,6 +75,7 @@ export interface WebUiComponents {
   'web-ui-slider': LitVueWrapper<WebUiSlider>
   'web-ui-spinner': LitVueWrapper<WebUiSpinner>
   'web-ui-option': LitVueWrapper<WebUiOption>
+  'web-ui-popover': LitVueWrapper<WebUiPopover>
   'web-ui-radio': LitVueWrapper<WebUiRadio>
   'web-ui-radio-group': LitVueWrapper<WebUiRadioGroup>
   'web-ui-segmented': LitVueWrapper<WebUiSegmented>

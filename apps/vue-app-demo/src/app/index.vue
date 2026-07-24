@@ -24,7 +24,8 @@ const navItems: NavItem[] = [
   { path: '/components/radio', label: '单选框' },
   { path: '/components/checkbox', label: '复选框' },
   { path: '/components/segmented', label: '分段控制器' },
-  { path: '/components/spinner', label: '加载指示器' }
+  { path: '/components/spinner', label: '加载指示器' },
+  { path: '/components/popover', label: '气泡卡片' }
 ]
 </script>
 
