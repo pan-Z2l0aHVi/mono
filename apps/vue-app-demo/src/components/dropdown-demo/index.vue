@@ -11,6 +11,9 @@ import {
   lucideRedo2,
   lucideSearch
 } from '@greypan/web-ui/icons'
+import { ref } from 'vue'
+
+const controlledOpen = ref(false)
 </script>
 
 <template>
@@ -138,7 +141,7 @@ import {
       </web-ui-dropdown-menu>
     </div>
 
-    <h2>pl 对齐（macOS 风格）</h2>
+    <h2>macOS 风格菜单</h2>
     <div class="mb-6">
       <web-ui-dropdown-menu>
         <web-ui-button slot="trigger">Menu</web-ui-button>
@@ -218,6 +221,22 @@ import {
         <web-ui-button slot="trigger">禁用菜单</web-ui-button>
         <web-ui-dropdown-item>Item 1</web-ui-dropdown-item>
         <web-ui-dropdown-item>Item 2</web-ui-dropdown-item>
+      </web-ui-dropdown-menu>
+    </div>
+
+    <h2>受控组件</h2>
+    <div class="mb-6">
+      <div class="mb-2 flex gap-2">
+        <web-ui-button variant="secondary" @click="controlledOpen = !controlledOpen">
+          {{ controlledOpen ? '由外部关闭菜单' : '由外部打开菜单' }}
+        </web-ui-button>
+        <span class="text-sm leading-10 text-gray-500">状态：{{ controlledOpen ? '打开' : '关闭' }}</span>
+      </div>
+      <web-ui-dropdown-menu :open="controlledOpen" @open-change="controlledOpen = $event.detail.open">
+        <web-ui-button variant="ghost" slot="trigger">受控菜单</web-ui-button>
+        <web-ui-dropdown-item>编辑</web-ui-dropdown-item>
+        <web-ui-dropdown-item>复制</web-ui-dropdown-item>
+        <web-ui-dropdown-item @click="controlledOpen = false">粘贴并关闭</web-ui-dropdown-item>
       </web-ui-dropdown-menu>
     </div>
   </div>

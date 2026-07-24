@@ -1,7 +1,19 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 
 const controlledOpen = ref(false)
+const closeBtnRef = ref<HTMLElement | null>(null)
+const cleanupListener: (() => void) | null = null
+
+function closePopover() {
+  controlledOpen.value = false
+}
+
+watch(closeBtnRef, (btn, _oldBtn, onCleanup) => {
+  if (!btn) return
+  btn.addEventListener('click', closePopover)
+  onCleanup(() => btn.removeEventListener('click', closePopover))
+})
 </script>
 
 <template>
@@ -33,7 +45,7 @@ const controlledOpen = ref(false)
         <web-ui-button slot="trigger">Manual</web-ui-button>
         <div class="p-1">
           <p>受控模式，外部控制开关。</p>
-          <web-ui-button variant="secondary" full @click="controlledOpen = false">关闭</web-ui-button>
+          <web-ui-button ref="closeBtnRef" variant="secondary" full>关闭</web-ui-button>
         </div>
       </web-ui-popover>
     </div>

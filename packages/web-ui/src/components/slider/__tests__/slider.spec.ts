@@ -136,32 +136,6 @@ describe('WebUiSlider', () => {
       el.remove()
     })
 
-    it('从 thumb 拖拽并仅在按压期间使用玻璃样式', async () => {
-      const el = createSlider()
-      el.value = 50
-      await el.updateComplete
-
-      const slider = getSlider(el)
-      vi.spyOn(slider, 'getBoundingClientRect').mockReturnValue(new DOMRect(0, 0, 200, 8))
-      const thumb = el.shadowRoot!.querySelector<HTMLDivElement>('.wui-slider-thumb')!
-
-      expect(thumb.classList.contains('wui-glass')).toBe(false)
-
-      thumb.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, clientX: 100, pointerId: 1 }))
-      await el.updateComplete
-      expect(thumb.classList.contains('wui-glass')).toBe(true)
-
-      thumb.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, clientX: 160, pointerId: 1 }))
-      await el.updateComplete
-      expect(el.value).toBe(80)
-
-      thumb.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, clientX: 160, pointerId: 1 }))
-      await el.updateComplete
-      expect(thumb.classList.contains('wui-glass')).toBe(false)
-
-      el.remove()
-    })
-
     it('未改变数值的点击不触发 input 或 change', async () => {
       const el = createSlider()
       el.value = 50

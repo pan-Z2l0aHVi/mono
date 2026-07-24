@@ -5,6 +5,7 @@ import { customElement, property, state } from 'lit/decorators.js'
 import glass from '@/assets/glass.css?inline'
 import { withOverlay } from '@/shared/overlay/overlay'
 import type { OverlayApi } from '@/shared/overlay/overlay'
+import { lockScroll, unlockScroll } from '@/shared/scroll-lock/scroll-lock'
 
 import style from './style.css?inline'
 
@@ -16,20 +17,22 @@ const SLOT_PREFIX = 'web-ui-menu-level-'
 export class WebUiDropdownMenu extends LitElement {
   static override styles = [unsafeCSS(glass), unsafeCSS(style)]
 
+  @property({ type: Boolean, reflect: true }) open = false
   @property({ type: String, reflect: true }) placement: Placement = 'bottom-start'
   @property({ type: Boolean, reflect: true }) disabled = false
   @property({ type: Number }) offset = 4
   @property({ type: Boolean, reflect: true }) matchWidth = false
 
-  @state() private _isOpen = false
-  private _activePath: number[] = []
+  @state() private _activePath: number[] = []
 
   private readonly _overlays = new Map<number, OverlayApi>()
   private _openTimer?: ReturnType<typeof setTimeout>
+  private _ignoreOutsideClick = false
+  private _ignoreOutsideClickTimer?: ReturnType<typeof setTimeout>
   private _hoverCleanupFns: (() => void)[] = []
 
   get isOpen(): boolean {
-    return this._isOpen || this._activePath.length > 0
+    return this.open || this._activePath.length > 0
   }
 
   override connectedCallback() {
@@ -43,33 +46,64 @@ export class WebUiDropdownMenu extends LitElement {
     this.removeEventListener('keydown', this._onKeydown)
     document.removeEventListener('click', this._onClickOutside)
     clearTimeout(this._openTimer)
+    clearTimeout(this._ignoreOutsideClickTimer)
     this._disposeAll()
     this._hoverCleanupFns.forEach(fn => fn())
   }
 
-  /* ========== 状态管理 ========== */
-
-  open() {
-    if (this.disabled || this._isOpen) return
-    this._isOpen = true
-    this._assignLevel0Slot()
-    requestAnimationFrame(() => this._ensureOverlay(0))
-    this._bindHoversAfterUpdate()
+  protected override updated(changed: Map<string, unknown>) {
+    if (changed.has('open')) {
+      if (this.open) {
+        this._ignoreCurrentOutsideClick()
+        lockScroll()
+        this._assignLevel0Slot()
+        requestAnimationFrame(() => this._ensureOverlay(0))
+        this._bindHoversAfterUpdate()
+      } else {
+        unlockScroll()
+        // 同步移除 DOM overlay，避免视觉残留
+        this._disposeOverlay(0)
+        // 子菜单状态清理推迟到当前更新周期之后，避免 @state _activePath 赋值触发 Lit 二次更新警告
+        queueMicrotask(() => this._closeAllSubmenus())
+      }
+      this.dispatchEvent(
+        new CustomEvent('open-change', {
+          detail: { open: this.open },
+          bubbles: true,
+          composed: true
+        })
+      )
+    }
+    this._bindLevelHovers()
   }
 
+  /* ========== 状态管理 ========== */
+
+  /** 打开菜单（内部调用，触发 open-change 事件） */
+  openMenu() {
+    if (this.disabled || this.open) return
+    this._ignoreCurrentOutsideClick()
+    this.open = true
+  }
+
+  /** 关闭所有层级（内部调用，触发 open-change 事件） */
   closeAll() {
-    this._isOpen = false
+    if (!this.open) return
+    this.open = false
+  }
+
+  /** @internal 仅清理子菜单状态（不影响 open prop） */
+  private _closeAllSubmenus() {
+    if (this._activePath.length === 0) return
     for (let lv = this._activePath.length; lv >= 1; lv--) {
       this._depopulateOverlay(lv)
       this._disposeOverlay(lv)
     }
     this._activePath = []
     this._syncActiveAttrs()
-    this._disposeOverlay(0)
   }
 
   private _assignLevel0Slot() {
-    // 先隐藏所有 submenu 子项
     this._hideAllSubmenuChildren()
 
     Array.from(this.children).forEach(child => {
@@ -79,7 +113,6 @@ export class WebUiDropdownMenu extends LitElement {
     })
   }
 
-  /** 隐藏所有 submenu item 的子项（防止显示在父菜单中） */
   private _hideAllSubmenuChildren() {
     this.querySelectorAll('web-ui-dropdown-item[submenu]').forEach(item => {
       Array.from(item.children).forEach(child => {
@@ -90,21 +123,16 @@ export class WebUiDropdownMenu extends LitElement {
     })
   }
 
-  /** 切换子菜单：hover 到有 children 的 item 时调用 */
   private _toggleSubmenu(level: number, itemIndex: number) {
-    // 同一 item 再 hover → 保持不变，不做 toggle
     if (this._activePath[level] === itemIndex) {
       return
     }
 
-    // 先关闭同层及更深的子层
     this._closeSubmenuFrom(level + 1)
 
-    // 更新路径
     this._activePath[level] = itemIndex
     this._syncActiveAttrs()
 
-    // 打开该层的子层
     const item = this._getLevelItems(level)[itemIndex]
     if (item?.hasAttribute('submenu')) {
       requestAnimationFrame(() => {
@@ -125,17 +153,13 @@ export class WebUiDropdownMenu extends LitElement {
     this._syncActiveAttrs()
   }
 
-  /** 同步 active 属性到当前路径上的 submenu trigger item */
   private _syncActiveAttrs() {
-    // 清除所有 light DOM 中的 active（含 hidden slot 的子项）
     this.querySelectorAll('web-ui-dropdown-item').forEach(item => {
       item.removeAttribute('active')
     })
-    // 清除所有 overlay 中的 active
     this.shadowRoot?.querySelectorAll('.dropdown-overlay web-ui-dropdown-item').forEach(item => {
       item.removeAttribute('active')
     })
-    // 设置当前路径上的 item
     for (let lv = 0; lv < this._activePath.length; lv++) {
       const items = this._getLevelItems(lv)
       const item = items[this._activePath[lv]]
@@ -201,7 +225,6 @@ export class WebUiDropdownMenu extends LitElement {
     const scroll = document.createElement('div')
     scroll.className = 'dropdown-scroll'
 
-    // level 0 用 slot 投影 light DOM 子元素；level 1+ 用 appendChild 直接移入
     if (level === 0) {
       const slot = document.createElement('slot')
       slot.setAttribute('name', `${SLOT_PREFIX}0`)
@@ -211,7 +234,6 @@ export class WebUiDropdownMenu extends LitElement {
     overlay.appendChild(scroll)
     this.shadowRoot!.appendChild(overlay)
 
-    // 计算 anchor
     const anchor = level === 0 ? this._queryTriggerAnchor() : this._getSubmenuTriggerAnchor(level - 1)
 
     if (anchor) {
@@ -259,17 +281,17 @@ export class WebUiDropdownMenu extends LitElement {
 
   private _onTriggerClick = () => {
     if (this.disabled) return
-    if (this._isOpen) {
+    if (this.open) {
       this.closeAll()
     } else {
-      this.open()
+      this.openMenu()
     }
   }
 
   private _onClickOutside = (e: MouseEvent) => {
-    if (this.isOpen && e.target instanceof Node && !this.contains(e.target)) {
-      this.closeAll()
-    }
+    if (!this.isOpen || this._ignoreOutsideClick) return
+    if (this._isInsideShadowRoot(e)) return
+    this.closeAll()
   }
 
   private _onKeydown = (e: KeyboardEvent) => {
@@ -277,11 +299,27 @@ export class WebUiDropdownMenu extends LitElement {
     if (e.key === 'Escape') {
       if (this._activePath.length > 0) {
         this._closeSubmenuFrom(this._activePath.length)
-      } else if (this._isOpen) {
+      } else if (this.open) {
         this.closeAll()
       }
       e.preventDefault()
     }
+  }
+
+  private _isInsideShadowRoot(e: MouseEvent): boolean {
+    for (const node of e.composedPath()) {
+      if (node === this || node === this.shadowRoot) return true
+      if (node instanceof Node && node.getRootNode() === this.shadowRoot) return true
+    }
+    return false
+  }
+
+  private _ignoreCurrentOutsideClick() {
+    this._ignoreOutsideClick = true
+    clearTimeout(this._ignoreOutsideClickTimer)
+    this._ignoreOutsideClickTimer = setTimeout(() => {
+      this._ignoreOutsideClick = false
+    })
   }
 
   private _bindLevelHovers() {
@@ -314,13 +352,6 @@ export class WebUiDropdownMenu extends LitElement {
     requestAnimationFrame(() => this._bindLevelHovers())
   }
 
-  protected override updated(changed: Map<string, unknown>) {
-    if (this._isOpen && !this._overlays.has(0)) {
-      this._ensureOverlay(0)
-    }
-    this._bindLevelHovers()
-  }
-
   override render() {
     return html`
       <div class="dropdown-trigger" @click=${this._onTriggerClick}>
@@ -331,9 +362,12 @@ export class WebUiDropdownMenu extends LitElement {
 }
 
 export interface WebUiDropdownMenu {
-  readonly $events: Record<string, never>
+  readonly $events: {
+    'open-change': CustomEvent<{ open: boolean }>
+  }
+  open: boolean
   isOpen: boolean
-  open(): void
+  openMenu(): void
   closeAll(): void
 }
 

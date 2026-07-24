@@ -5,6 +5,7 @@ import { customElement, property } from 'lit/decorators.js'
 import glass from '@/assets/glass.css?inline'
 import { withOverlay } from '@/shared/overlay/overlay'
 import type { OverlayApi } from '@/shared/overlay/overlay'
+import { lockScroll, unlockScroll } from '@/shared/scroll-lock/scroll-lock'
 
 import style from './style.css?inline'
 
@@ -68,10 +69,12 @@ export class WebUiPopover extends LitElement {
 
     if (changed.has('open')) {
       if (this.open) {
+        lockScroll()
         requestAnimationFrame(() => this._overlay?.open())
         this._dispatchChange(true)
         this._focusPanel()
       } else {
+        unlockScroll()
         this._overlay?.close()
         if (!this._suppressEvent) this._dispatchChange(false)
         this._returnFocus()
@@ -170,21 +173,19 @@ export class WebUiPopover extends LitElement {
 
   /* ========== Event Handlers ========== */
 
-  private _onTriggerClick = (e: Event) => {
+  private _onTriggerClick = () => {
     if (this.disabled) return
     // 清除 hover 定时器，防止 click/hover 竞争
     clearTimeout(this._showTimer)
     clearTimeout(this._hideTimer)
     // hover 模式不响应点击切换，仅由 mouseenter/mouseleave 控制
     if (this.trigger === 'hover') return
-    e.stopPropagation()
     this.toggle()
   }
 
   private _onClickOutside = (e: MouseEvent) => {
     if (!this.open) return
     if (this.trigger === 'manual' || this.trigger === 'hover') return
-    // composedPath 穿透 shadow DOM，准确判断点击是否在组件内部
     if (this._isInsideShadowRoot(e)) return
     this.open = false
   }

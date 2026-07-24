@@ -202,6 +202,24 @@ describe('WebUiPopover', () => {
   })
 
   describe('trigger: click', () => {
+    it('打开另一个 popover 时关闭当前 popover', async () => {
+      const first = createPopover('First', 'First content')
+      const second = createPopover('Second', 'Second content')
+      await Promise.all([first.updateComplete, second.updateComplete])
+
+      clickTrigger(first)
+      await first.updateComplete
+      expect(first.isOpen).toBe(true)
+
+      clickTrigger(second)
+      await Promise.all([first.updateComplete, second.updateComplete])
+      expect(first.isOpen).toBe(false)
+      expect(second.isOpen).toBe(true)
+
+      first.remove()
+      second.remove()
+    })
+
     it('点击 trigger 切换打开', async () => {
       const el = createPopover('Btn', 'Content')
       await el.updateComplete
@@ -426,6 +444,30 @@ describe('WebUiPopover', () => {
       document.body.click()
       await el.updateComplete
       expect(el.isOpen).toBe(true)
+
+      el.remove()
+    })
+
+    it('面板内按钮点击可通过设置 open=false 关闭', async () => {
+      const el = createPopover('Btn', '', { trigger: 'manual' })
+      // 在 light DOM 中添加带按钮的内容
+      const btn = document.createElement('button')
+      btn.id = 'close-btn'
+      btn.textContent = '关闭'
+      el.appendChild(btn)
+      await el.updateComplete
+
+      el.open = true
+      await waitFor二次渲染(el)
+      expect(el.isOpen).toBe(true)
+
+      // 点击面板内的按钮（light DOM）
+      btn.click()
+
+      // 模拟受控：外部响应按钮点击设置 open=false
+      el.open = false
+      await el.updateComplete
+      expect(el.isOpen).toBe(false)
 
       el.remove()
     })
