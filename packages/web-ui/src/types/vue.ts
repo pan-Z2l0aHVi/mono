@@ -23,6 +23,7 @@ import type {
   WebUiSegmentedTrigger,
   WebUiSelect,
   WebUiSlider,
+  WebUiSpinner,
   WebUiSwitch,
   WebUiTooltip
 } from '../components'
@@ -71,6 +72,7 @@ export interface WebUiComponents {
   'web-ui-input-number': LitVueWrapper<WebUiInputNumber>
   'web-ui-select': LitVueWrapper<WebUiSelect>
   'web-ui-slider': LitVueWrapper<WebUiSlider>
+  'web-ui-spinner': LitVueWrapper<WebUiSpinner>
   'web-ui-option': LitVueWrapper<WebUiOption>
   'web-ui-radio': LitVueWrapper<WebUiRadio>
   'web-ui-radio-group': LitVueWrapper<WebUiRadioGroup>

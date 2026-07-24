@@ -23,7 +23,8 @@ const navItems: NavItem[] = [
   { path: '/components/slider', label: '滑块' },
   { path: '/components/radio', label: '单选框' },
   { path: '/components/checkbox', label: '复选框' },
-  { path: '/components/segmented', label: '分段控制器' }
+  { path: '/components/segmented', label: '分段控制器' },
+  { path: '/components/spinner', label: '加载指示器' }
 ]
 </script>
 
