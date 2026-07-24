@@ -1,6 +1,7 @@
 import type { Placement } from '@floating-ui/dom'
 import { html, LitElement, unsafeCSS } from 'lit'
 import { customElement, property } from 'lit/decorators.js'
+import { classMap } from 'lit/directives/class-map.js'
 
 import glass from '@/assets/glass.css?inline'
 import { withOverlay } from '@/shared/overlay/overlay'
@@ -135,11 +136,16 @@ export class WebUiTooltip extends LitElement {
   }
 
   override render() {
+    const tooltipPanelCls = classMap({
+      'tooltip-panel': true,
+      'wui-glass wui-glass-no-after': true,
+      hidden: !this._isVisible
+    })
     return html`
       <div class="tooltip-trigger">
         <slot></slot>
       </div>
-      <div class="tooltip-panel${this._isVisible ? '' : ' hidden'}" role="tooltip">
+      <div class="${tooltipPanelCls}" role="tooltip">
         ${this.content ? html`<span class="tooltip-text">${this.content}</span>` : html`<slot name="content"></slot>`}
       </div>
     `
