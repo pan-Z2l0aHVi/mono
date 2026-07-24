@@ -26,7 +26,8 @@ const navItems: NavItem[] = [
   { path: '/components/segmented', label: '分段控制器' },
   { path: '/components/spinner', label: '加载指示器' },
   { path: '/components/popover', label: '气泡卡片' },
-  { path: '/components/context-menu', label: '右键菜单' }
+  { path: '/components/context-menu', label: '右键菜单' },
+  { path: '/components/toast', label: 'Toast 通知' }
 ]
 </script>
 

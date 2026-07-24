@@ -26,6 +26,7 @@ import type {
   WebUiSelect,
   WebUiSlider,
   WebUiSpinner,
+  WebUiToast,
   WebUiSwitch,
   WebUiTooltip
 } from '../components'
@@ -85,6 +86,7 @@ export interface WebUiComponents {
   'web-ui-back-top': LitVueWrapper<WebUiBackTop>
   'web-ui-layout': LitVueWrapper<WebUiLayout>
   'web-ui-switch': LitVueWrapper<WebUiSwitch>
+  'web-ui-toast': LitVueWrapper<WebUiToast>
   'web-ui-tooltip': LitVueWrapper<WebUiTooltip>
 }
 

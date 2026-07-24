@@ -1,0 +1,69 @@
+/* Toast 容器定位 — 由 toast 命令式 API 动态注入到 body */
+
+.wui-toast-container {
+  pointer-events: none;
+
+  position: fixed;
+  z-index: 99999;
+
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+
+  max-height: 100vh;
+
+  /* padding 需要 >= 阴影模糊半径，否则 overflow 会裁剪子元素 box-shadow */
+  padding: 20px;
+}
+
+.wui-toast-container > * {
+  pointer-events: auto;
+}
+
+/* ===== 顶部位置 ===== */
+
+.wui-toast-top-left {
+  top: 0;
+  left: 0;
+  align-items: flex-start;
+}
+
+.wui-toast-top-center {
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  align-items: center;
+}
+
+.wui-toast-top-right {
+  top: 0;
+  right: 0;
+  align-items: flex-end;
+}
+
+/* ===== 底部位置 ===== */
+
+.wui-toast-bottom-left {
+  bottom: 0;
+  left: 0;
+  flex-direction: column-reverse;
+  align-items: flex-start;
+}
+
+.wui-toast-bottom-center {
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+
+  flex-direction: column-reverse;
+  align-items: center;
+}
+
+.wui-toast-bottom-right {
+  right: 0;
+  bottom: 0;
+  flex-direction: column-reverse;
+  align-items: flex-end;
+}
