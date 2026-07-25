@@ -76,13 +76,13 @@ Build scripts differ by package type:
 
 Shared config profiles in `packages/tsconfig/` consumed via `"extends": "@greypan/tsconfig/<profile>.json"`:
 
-| Profile      | Layer  | Used by                                     | Extends                            |
-| ------------ | ------ | ------------------------------------------- | ---------------------------------- |
-| `core.json`  | 1-纯JS | js-kit                                      | `./base.json`                      |
-| `node.json`  | 2-Node | Node.js packages + all `tsconfig.node.json` | `@tsconfig/node24` + `./base.json` |
-| `dom.json`   | 3-DOM  | Browser packages (browser-kit, web-ui)      | `./base.json`                      |
-| `react.json` | 4-框架 | React app (react-app-demo)                  | `./dom.json`                       |
-| `vue.json`   | 4-框架 | Vue app (vue-app-demo)                      | `@vue/tsconfig` + `./dom.json`     |
+| Profile      | Layer         | Used by                                     | Extends                            |
+| ------------ | ------------- | ------------------------------------------- | ---------------------------------- |
+| `core.json`  | 1 - Pure JS   | js-kit                                      | `./base.json`                      |
+| `node.json`  | 2-Node        | Node.js packages + all `tsconfig.node.json` | `@tsconfig/node24` + `./base.json` |
+| `dom.json`   | 3-DOM         | Browser packages (browser-kit, web-ui)      | `./base.json`                      |
+| `react.json` | 4 - Framework | React app (react-app-demo)                  | `./dom.json`                       |
+| `vue.json`   | 4 - Framework | Vue app (vue-app-demo)                      | `@vue/tsconfig` + `./dom.json`     |
 
 Each sub-package adds its own `include`, `paths`, and `tsBuildInfoFile`. The `tsconfig.node.json`, `tsconfig.app.json`, `tsconfig.vitest.json` split is kept for packages targeting multiple environments (DOM + Node configs + test). Pure Node packages merge into a single `tsconfig.json`.
 
@@ -145,15 +145,15 @@ Two build modes:
 
 ## Agent constraints
 
-以下规则 agent 必须遵守，**不得以任何理由绕过**：
+Agents must follow these rules without exception:
 
-- **不修改 `.npmrc`、`.mise.toml` 中的 registry/镜像配置**
-- **不添加新的 npm 依赖**（包括 devDependencies）除非用户明确要求
-- **不修改 CI/CD 配置文件**（`.github/workflows/`）除非用户明确要求
-- **不修改 go.mod、go.sum**（Go 工具链仅供辅助工具使用，非项目核心）
-- **不直接运行 `npm publish`**，一律通过 `pnpm publish:new` 脚本
-- **不修改 git 配置**（`.gitconfig`、全局 git config）
-- **不跳过 git hooks**（`--no-verify`、`--no-gpg-sign`）
+- **Do not modify registry or mirror configuration in `.npmrc` or `.mise.toml`.**
+- **Do not add npm dependencies, including devDependencies, unless explicitly requested by the user.**
+- **Do not modify CI/CD configuration under `.github/workflows/` unless explicitly requested by the user.**
+- **Do not modify `go.mod` or `go.sum`; the Go toolchain is only for auxiliary tooling, not core project code.**
+- **Do not run `npm publish` directly; always use `pnpm publish:new`.**
+- **Do not modify Git configuration, including `.gitconfig` and global Git config.**
+- **Do not bypass Git hooks with `--no-verify` or `--no-gpg-sign`.**
 
 ## Generated / ignored files
 
@@ -176,40 +176,57 @@ They are excluded from linting, formatting, and spell-check.
 
 ## Documentation
 
-- `docs/agents/` — Agent 工作指南，包含 domain.md（代码探索规范）、issue-tracker.md（GitHub issue 工作流）、specs/（功能规格文档）
-- `docs/adr/` — Architecture Decision Records（架构决策记录），记录重要技术决策
-- `docs/prd/` — Product Requirements Documents（产品需求文档）
-- `docs/design/` — 设计参考文件（截图、CSS 参考实现等）
-- `CONTEXT.md` — 项目架构总览（ADR 索引、包边界、技术原则）
+- `docs/agents/` — Agent guides, including `domain.md` (code exploration), `issue-tracker.md` (GitHub issue workflow), and `specs/` (feature specifications)
+- `docs/adr/` — Architecture Decision Records for significant technical decisions
+- `docs/prd/` — Product Requirements Documents
+- `docs/design/` — Design references, including screenshots and CSS implementations
+- `CONTEXT.md` — Project architecture overview, including ADR index, package boundaries, and technical principles
 
 ## Agent hooks
 
-`.claude/hooks/` 包含自动化检查脚本，在每次 tool call 前后执行：
+`.claude/hooks/` contains automated checks that run before and after every tool call:
 
-- `pre-tool.sh` — 在工具调用前运行（防止破坏性操作）
-- `post-tool.sh` — 在工具调用后运行（提醒执行 check:code）
+- `pre-tool.sh` — Runs before tool calls to prevent destructive operations
+- `post-tool.sh` — Runs after tool calls to remind agents to run `check:code`
 
 ## Agent reference docs
 
-按需查阅，不要求每次对话都读：
+Read these as needed; they are not required for every conversation:
 
-| 文件                           | 用途                                        | 什么时候读                       |
-| ------------------------------ | ------------------------------------------- | -------------------------------- |
-| `docs/agents/testing.md`       | 测试基础设施（框架、命令、browser mode）    | 不知道怎么跑测试、配置测试环境时 |
-| `docs/agents/linting.md`       | 工具链（formatter、linter、stylelint 命令） | 不知道怎么跑 lint/fmt 时         |
-| `docs/agents/issue-tracker.md` | GitHub issue 操作（gh CLI 用法）            | 需要创建/查询/更新 issue 时      |
-| `docs/agents/domain.md`        | 代码探索规范（ADR、术语表）                 | 探索不熟悉的代码区域时           |
+| File                           | Purpose                                           | When to read                                    |
+| ------------------------------ | ------------------------------------------------- | ----------------------------------------------- |
+| `docs/agents/testing.md`       | Test infrastructure, commands, and browser mode   | When test execution or configuration is unclear |
+| `docs/agents/linting.md`       | Toolchain, formatter, linter, and stylelint usage | When linting or formatting commands are unclear |
+| `docs/agents/issue-tracker.md` | GitHub issue operations and `gh` CLI usage        | When creating, querying, or updating issues     |
+| `docs/agents/domain.md`        | Code exploration conventions, ADRs, and glossary  | When exploring an unfamiliar code area          |
 
 ## Agent behavioral rules
 
-自动加载，每次对话生效：
+Automatically loaded and effective for every conversation:
 
-| 文件                                 | 管什么                              |
-| ------------------------------------ | ----------------------------------- |
-| `.agents/rules/code-style.md`        | 命名、注释、类型安全、架构模式      |
-| `.agents/rules/commit.md`            | commit message 格式、工作流、反模式 |
-| `.agents/rules/testing.md`           | 测试覆盖、AAA 模式、边界用例        |
-| `.agents/rules/dep-management.md`    | devDeps/peerDeps 放置策略           |
-| `.agents/rules/review-checklist.md`  | code review 检查项                  |
-| `.agents/rules/web-ui-components.md` | web-ui Lit 组件开发规范             |
-| `.agents/rules/react.md`             | React 组件规范、Fast Refresh 规则   |
+### Browser verification
+
+Changes involving UI, UX, interaction, responsive behavior, or browser runtime behavior must be verified in the corresponding local demo or a minimal reproduction. Verification evidence has two complementary layers:
+
+1. **Agent-verifiable automated evidence (required)**: Prefer Playwright to control an isolated browser page, reproduce key actions, and assert outcomes. As applicable, check DOM, computed styles, focus and keyboard paths, scrolling and overlays, console errors, and page exceptions. Visual or layout changes must be checked with desktop and mobile screenshots for blank rendering, overflow, occlusion, misalignment, and unexpected layout shifts.
+2. **User-visible manual verification (when a GUI is available)**: After starting the demo, use `open -a "Google Chrome" "https://localhost:<port>/<path>"` to open a new Chrome tab without taking over the user's existing browser session. This only lets the user inspect the real page; it **cannot** by itself be treated as evidence that an agent verified interaction or visual behavior.
+
+For interactive components, automated verification must at least cover primary pointer interactions, keyboard operation, focus management, disabled states, and close or cancel paths. For accessibility-related changes, check semantics, accessible names, and keyboard reachability. Behavior relying on browser features must run in a real browser; jsdom results are not a substitute.
+
+Do not attach to, debug, or control the user's existing Chrome session, profile, authentication state, or tabs. When a controlled Chrome instance is needed, launch an isolated Playwright browser instance only. Ignore certificate errors only for local self-signed HTTPS demos; never relax certificate validation for external sites.
+
+The fallback chain is: controlled Playwright browser when headed mode is available → headless Playwright for interaction, console, and screenshots → project browser-mode tests → component tests and HTTP/DOM checks. If Chrome, a GUI, Playwright, browser binaries, or the local server are unavailable, continue with the next layer rather than stopping. If no browser layer is available, explicitly report why real-browser verification could not be completed and the resulting risk.
+
+Agents must stop every dev server they started after browser verification completes, including all child watch processes, unless the user explicitly asks to keep it running. Before stopping a server, preserve or report the local URL when it is useful for the user's follow-up verification.
+
+Final reports must state the verification URL, the verification layer actually used, covered viewports and interactions, and any gaps. Do not describe opening a Chrome tab, static code review, a successful build, or passing jsdom tests as browser interaction verification.
+
+| File                                 | Scope                                                     |
+| ------------------------------------ | --------------------------------------------------------- |
+| `.agents/rules/code-style.md`        | Naming, comments, type safety, and architectural patterns |
+| `.agents/rules/commit.md`            | Commit message format, workflow, and anti-patterns        |
+| `.agents/rules/testing.md`           | Test coverage, AAA style, and boundary cases              |
+| `.agents/rules/dep-management.md`    | devDependency and peerDependency placement                |
+| `.agents/rules/review-checklist.md`  | Code review checks                                        |
+| `.agents/rules/web-ui-components.md` | Lit web UI component conventions                          |
+| `.agents/rules/react.md`             | React conventions and Fast Refresh rules                  |

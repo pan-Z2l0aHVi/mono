@@ -38,7 +38,7 @@ export default defineConfig({
     depsReload([
       {
         name: '@greypan/web-ui',
-        path: '../../packages/web-ui/dist',
+        path: '../../packages/web-ui',
         extensions: ['.js', '.css']
       }
     ])
@@ -47,6 +47,32 @@ export default defineConfig({
 ```
 
 When files in `packages/web-ui/dist` change, the browser will automatically reload.
+
+## Webpack
+
+The Webpack plugin adds each configured output directory to Webpack's watch dependencies. To use the same full-reload behavior with Webpack Dev Server, enable native live reload and disable HMR:
+
+```ts
+// webpack.config.ts
+import depsReload from '@greypan/deps-reload/webpack'
+
+export default {
+  plugins: [
+    depsReload([
+      {
+        name: '@greypan/web-ui',
+        path: '../../packages/web-ui'
+      }
+    ])
+  ],
+  devServer: {
+    hot: false,
+    liveReload: true
+  }
+}
+```
+
+This plugin does not alias dependencies to source files. The app continues to consume the package build output.
 
 ## API
 
@@ -60,9 +86,9 @@ Create an unplugin instance that watches dependency files and triggers full relo
 
 ### `Dep`
 
-| Property     | Type       | Default           | Description                               |
-| ------------ | ---------- | ----------------- | ----------------------------------------- |
-| `name`       | `string`   | -                 | Package name (used for node_modules path) |
-| `path`       | `string`   | -                 | Physical path (for monorepo or npm link)  |
-| `outputDir`  | `string`   | `'dist'`          | Output directory name                     |
-| `extensions` | `string[]` | `['.js', '.css']` | File extensions to watch                  |
+| Property     | Type       | Default           | Description                                     |
+| ------------ | ---------- | ----------------- | ----------------------------------------------- |
+| `name`       | `string`   | -                 | Package name (used for node_modules path)       |
+| `path`       | `string`   | -                 | Local package root (for monorepos or npm links) |
+| `outputDir`  | `string`   | `'dist'`          | Build output directory relative to `path`       |
+| `extensions` | `string[]` | `['.js', '.css']` | File extensions to watch                        |

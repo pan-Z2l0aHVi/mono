@@ -4,35 +4,34 @@ import { debounce } from '@greypan/js-kit'
 import type { UnpluginFactory } from 'unplugin'
 import type { ViteDevServer } from 'vite-plus'
 
+const DEFAULT_OUTPUT_DIR = 'dist'
+const DEFAULT_EXTENSIONS = ['.js', '.css']
+
 export interface Dep {
-  name: string // 用于 npm 包名
-  path?: string // 物理路径，如 '../../packages/web-ui'，用于 npm link 或 monorepo 子包
+  /** npm package name, used to resolve packages without a local path */
+  name: string
+  /** Local package root directory, for monorepos or npm links */
+  path?: string
+  /** Build output directory relative to the package root */
   outputDir?: string
+  /** File extensions in the build output that should trigger a reload */
   extensions?: string[]
 }
 
-// 如果引入的子包是构建产物而非源码，用 full-reload 代替 hmr 更加合适
+interface DependencyConfig {
+  outputPath: string
+  normalizedOutputPath: string
+  extensions: string[]
+}
+
 export const depsReloadFactory: UnpluginFactory<Dep[]> = deps => {
-  // 预处理：只保留绝对路径前缀和后缀正则
-  // 统一处理成小写和正斜杠，消除跨平台差异 Window / Unix
-  const configs = deps.map(({ name, path, outputDir = 'dist', extensions = ['.js', '.css'] }) => {
-    const target = path ? resolve(path) : resolve('node_modules', name, outputDir)
-    const normalizedTarget = target.split(sep).join('/').toLowerCase()
-    const extPattern = extensions.map(e => e.replace(/^\./, '')).join('|')
-
-    return {
-      name,
-      targetPath: normalizedTarget,
-      extRegex: new RegExp(`\\.(${extPattern})$`)
-    }
-  })
-
-  const pluginDist = import.meta.dirname.split(sep).join('/').toLowerCase()
+  const configs = deps.map(createDependencyConfig)
+  const pluginDist = normalizePath(import.meta.dirname)
 
   const fullReloadTrigger = debounce(
     (server: ViteDevServer) => {
       server.ws.send({ type: 'full-reload', path: '*' })
-      server.config.logger.info(`\x1b[36m[deps-reload] 资源已更新 -> 浏览器已刷新\x1b[0m`, {
+      server.config.logger.info(`\x1b[36m[deps-reload] dependency output changed; reloading browser\x1b[0m`, {
         timestamp: true
       })
     },
@@ -44,33 +43,64 @@ export const depsReloadFactory: UnpluginFactory<Dep[]> = deps => {
     vite: {
       apply: 'serve',
 
+      configureServer(server) {
+        server.httpServer?.once('close', () => fullReloadTrigger.cancel())
+      },
+
       hotUpdate(ctx) {
-        const { file, server } = ctx
-        // 滤掉 sourcemap
-        if (file.endsWith('.map')) return
+        const normalizedFile = normalizePath(ctx.file)
+        if (isPathWithin(normalizedFile, pluginDist)) return []
 
-        const normalizedFile = file.split(sep).join('/').toLowerCase()
-        // 忽略插件自身的 dist 变更
-        if (normalizedFile.includes(pluginDist)) return []
-
-        const isMatched = configs.some(
-          cfg => normalizedFile.includes(cfg.targetPath) && cfg.extRegex.test(normalizedFile)
-        )
-        if (isMatched) {
-          fullReloadTrigger.call(server)
+        if (configs.some(config => isDependencyOutputFile(normalizedFile, config))) {
+          fullReloadTrigger.call(ctx.server)
           return []
         }
       }
     },
     webpack(compiler: import('webpack').Compiler) {
-      compiler.hooks.afterPlugins.tap('deps-reload', () => {
-        const alias = compiler.options.resolve?.alias ?? ({} as Record<string, string>)
-        for (const dep of deps) {
-          if (dep.path) {
-            ;(alias as Record<string, string>)[dep.name] = resolve(dep.path, 'src')
-          }
+      compiler.hooks.thisCompilation.tap('deps-reload', compilation => {
+        for (const config of configs) {
+          compilation.contextDependencies.add(config.outputPath)
         }
       })
     }
   }
+}
+
+function createDependencyConfig({
+  name,
+  path,
+  outputDir = DEFAULT_OUTPUT_DIR,
+  extensions = DEFAULT_EXTENSIONS
+}: Dep): DependencyConfig {
+  const packageRoot = path ? resolve(path) : resolve('node_modules', name)
+  const outputPath = resolve(packageRoot, outputDir)
+
+  return {
+    outputPath,
+    normalizedOutputPath: normalizePath(outputPath),
+    extensions: extensions.map(normalizeExtension).filter(Boolean)
+  }
+}
+
+function normalizePath(path: string): string {
+  const normalizedPath = path.split(sep).join('/').toLowerCase()
+  return normalizedPath.length > 1 ? normalizedPath.replace(/\/+$/, '') : normalizedPath
+}
+
+function normalizeExtension(extension: string): string {
+  const normalizedExtension = extension.trim().replace(/^\.+/, '').toLowerCase()
+  return normalizedExtension ? `.${normalizedExtension}` : ''
+}
+
+function isPathWithin(filePath: string, parentPath: string): boolean {
+  return filePath === parentPath || filePath.startsWith(`${parentPath}/`)
+}
+
+function isDependencyOutputFile(filePath: string, config: DependencyConfig): boolean {
+  return (
+    isPathWithin(filePath, config.normalizedOutputPath) &&
+    !filePath.endsWith('.map') &&
+    config.extensions.some(extension => filePath.endsWith(extension))
+  )
 }
