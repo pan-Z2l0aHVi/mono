@@ -27,7 +27,7 @@
   box-sizing: border-box;
   border-radius: 20px;
 
-  background-color: rgb(240 240 240 / 0.8);
+  background-color: var(--wui-color-surface-glass, rgb(240 240 240 / 0.8));
 }
 
 .dropdown-scroll {

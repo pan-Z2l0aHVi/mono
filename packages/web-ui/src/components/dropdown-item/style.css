@@ -30,18 +30,18 @@
 }
 
 .item-inner:focus-visible {
-  color: #fff;
-  background: #48a1ff;
+  color: var(--wui-color-on-accent, #fff);
+  background: var(--wui-color-accent, #48a1ff);
 }
 
 :host(:hover) .item-inner {
-  color: #fff;
-  background: #48a1ff;
+  color: var(--wui-color-on-accent, #fff);
+  background: var(--wui-color-accent, #48a1ff);
 }
 
 :host([active]:not(:hover)) .item-inner {
   color: inherit;
-  background: rgb(0 0 0 / 0.1);
+  background: var(--wui-color-border, rgb(0 0 0 / 0.1));
 }
 
 .item-label {

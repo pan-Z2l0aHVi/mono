@@ -29,7 +29,7 @@ dialog {
   border: none;
 
   font-family: inherit;
-  color: #1c1c1e;
+  color: var(--wui-color-text, #1c1c1e);
 
   background: transparent;
 
@@ -95,7 +95,7 @@ dialog.closing::backdrop {
 
   height: 100%;
 
-  background-color: rgb(250 250 250 / 0.88);
+  background-color: var(--wui-color-surface-glass, rgb(250 250 250 / 0.88));
 }
 
 /* ===== Header ===== */
@@ -124,7 +124,7 @@ dialog.closing::backdrop {
 
   font-size: var(--wui-font-size, 14px);
   line-height: 1.5;
-  color: #1c1c1e;
+  color: var(--wui-color-text, #1c1c1e);
 }
 
 /* ===== Footer ===== */

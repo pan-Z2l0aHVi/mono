@@ -5,8 +5,9 @@ import '@/components/icon'
 import { customElement, property } from 'lit/decorators.js'
 
 import glass from '@/assets/glass.css?inline'
-import containerStyle from '@/assets/toast-containers.css?inline'
 import { lucideCheck, lucideInfo, lucideTriangleAlert, lucideCircleAlert, heroiconsXMark16Solid } from '@/icons'
+import { getFallbackOverlayRoot } from '@/shared/theme/overlay-root'
+import { findNearestTheme, findRootTheme } from '@/shared/theme/theme-scope'
 
 import style from './style.css?inline'
 
@@ -21,18 +22,13 @@ export interface ToastOptions {
   closable?: boolean
   id?: string
   heading?: string
+  /** 用于解析最近 web-ui-theme 的触发元素。 */
+  target?: Element
+  /** 显式挂载容器，优先级高于 target 和主题作用域。 */
+  container?: HTMLElement
 }
 
 let toastIdCounter = 0
-let containerStyleInjected = false
-
-function injectContainerStyle() {
-  if (containerStyleInjected) return
-  containerStyleInjected = true
-  const styleEl = document.createElement('style')
-  styleEl.textContent = containerStyle
-  document.head.appendChild(styleEl)
-}
 
 const TYPE_ICONS: Record<ToastType, IconifyIcon> = {
   success: lucideCheck,
@@ -221,27 +217,30 @@ function generateId(): string {
   return `toast-${++toastIdCounter}`
 }
 
-function ensureContainer(position: ToastPosition): HTMLElement {
-  injectContainerStyle()
-  const key = `_toast_container_${position}`
-  let container = (globalThis as Record<string, unknown>)[key] as HTMLElement | undefined
-  if (!container) {
-    container = document.createElement('div')
-    container.className = `wui-toast-container wui-toast-${position}`
-    container.setAttribute('role', 'log')
-    container.setAttribute('aria-live', 'polite')
-    container.setAttribute('aria-relevant', 'additions')
-    document.body.appendChild(container)
-    ;(globalThis as Record<string, unknown>)[key] = container
+const toastContainers = new Set<HTMLElement>()
 
-    // hover 时标记容器，暂停自动滚动
-    container.addEventListener('mouseenter', () => (container!.dataset.hovered = 'true'))
-    container.addEventListener('mouseleave', () => {
-      delete container!.dataset.hovered
-      // 离开时如果之前有被暂停的滚动，恢复滚到底部
-      _scrollToBottom(container!)
-    })
-  }
+function ensureContainer(position: ToastPosition, root: HTMLElement): HTMLElement {
+  const existing = Array.from(root.children).find(
+    (child): child is HTMLElement => child instanceof HTMLElement && child.dataset.wuiToastPosition === position
+  )
+  if (existing) return existing
+
+  const container = document.createElement('div')
+  container.className = `wui-toast-container wui-toast-${position}`
+  container.dataset.wuiToastPosition = position
+  container.setAttribute('role', 'log')
+  container.setAttribute('aria-live', 'polite')
+  container.setAttribute('aria-relevant', 'additions')
+  root.appendChild(container)
+  toastContainers.add(container)
+
+  // hover 时标记容器，暂停自动滚动
+  container.addEventListener('mouseenter', () => (container.dataset.hovered = 'true'))
+  container.addEventListener('mouseleave', () => {
+    delete container.dataset.hovered
+    // 离开时如果之前有被暂停的滚动，恢复滚到底部
+    _scrollToBottom(container)
+  })
   return container
 }
 
@@ -290,7 +289,9 @@ function createToast(options: ToastInstanceOptions): string {
   if (visibleToasts.has(id)) return id
 
   const position = options.position || 'top-right'
-  const container = ensureContainer(position)
+  const targetTheme = options.target ? findNearestTheme(options.target) : findRootTheme()
+  const root = options.container ?? targetTheme?.getOverlayRoot() ?? getFallbackOverlayRoot()
+  const container = ensureContainer(position, root)
 
   if (!_pendingBatch) _pendingBatch = []
   _pendingBatch.push({ id, options, container })
@@ -368,15 +369,10 @@ toast._reset = () => {
     el.remove()
   }
   visibleToasts.clear()
-  for (const pos of ['top-left', 'top-center', 'top-right', 'bottom-left', 'bottom-center', 'bottom-right']) {
-    const key = `_toast_container_${pos}`
-    const container = (globalThis as Record<string, unknown>)[key] as HTMLElement | undefined
-    if (container) {
-      container.remove()
-      delete (globalThis as Record<string, unknown>)[key]
-    }
+  for (const container of toastContainers) {
+    container.remove()
   }
-  containerStyleInjected = false
+  toastContainers.clear()
 }
 
 export { toast }

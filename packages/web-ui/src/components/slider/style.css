@@ -28,10 +28,10 @@
   height: var(--wui-slider-height, var(--wui-slider-track-size, 6px));
   border-radius: calc(infinity * 1px);
 
-  background-color: #e5e5e7;
+  background-color: var(--wui-color-surface-raised, #e5e5e7);
 
   &:focus-visible {
-    outline-color: rgb(0 136 255 / 0.4);
+    outline-color: var(--wui-focus-ring, rgb(0 136 255 / 0.4));
   }
 
   &.is-disabled {
@@ -55,7 +55,7 @@
   width: var(--percent);
   border-radius: inherit;
 
-  background-color: #087ff5;
+  background-color: var(--wui-color-accent, #087ff5);
 }
 
 :host([vertical]) .wui-slider-progress {
@@ -100,7 +100,7 @@
   height: 4px;
   border-radius: calc(infinity * 1px);
 
-  background-color: #c6c6c8;
+  background-color: var(--wui-color-border-strong, #c6c6c8);
 }
 
 :host([vertical]) .wui-slider-mark {
@@ -124,7 +124,7 @@
   border-radius: calc(infinity * 1px);
 
   &:not(.is-dragging) {
-    background-color: #fff;
+    background-color: var(--wui-color-surface, #fff);
   }
 }
 

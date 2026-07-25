@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
 import '..'
-import type { WebUiToast, ToastType, ToastCloseReason } from '..'
+import type { WebUiToast, ToastCloseReason, ToastPosition, ToastType } from '..'
 import { toast } from '..'
 
 function createToastElement(attrs?: Record<string, string>, message = 'test message'): WebUiToast {
@@ -14,6 +14,21 @@ function createToastElement(attrs?: Record<string, string>, message = 'test mess
   el.message = message
   document.body.appendChild(el)
   return el
+}
+
+function getFallbackOverlayRoot(): ShadowRoot | null {
+  return document.querySelector<HTMLElement>('[data-wui-overlay-root]')?.shadowRoot ?? null
+}
+
+function getToasts(): NodeListOf<WebUiToast> {
+  return (
+    getFallbackOverlayRoot()?.querySelectorAll<WebUiToast>('web-ui-toast') ??
+    document.querySelectorAll<WebUiToast>('web-ui-toast')
+  )
+}
+
+function getToastContainer(position: ToastPosition): HTMLElement | null {
+  return getFallbackOverlayRoot()?.querySelector<HTMLElement>(`.wui-toast-${position}`) ?? null
 }
 
 beforeEach(() => {
@@ -351,7 +366,7 @@ describe('toast 命令式 API', () => {
     it('error 默认 duration 为 5000', async () => {
       toast.error('错误')
       await new Promise(resolve => requestAnimationFrame(resolve))
-      const all = document.body.querySelectorAll('web-ui-toast')
+      const all = getToasts()
       expect(all.length).toBeGreaterThan(0)
       const el = all[0] as WebUiToast
       expect(el.duration).toBe(5000)
@@ -369,7 +384,7 @@ describe('toast 命令式 API', () => {
       })
       expect(id).toBe('custom-id')
       await new Promise(resolve => requestAnimationFrame(resolve))
-      const all = document.body.querySelectorAll('web-ui-toast')
+      const all = getToasts()
       expect(all.length).toBeGreaterThan(0)
       const el = all[0] as WebUiToast
       expect(el.type).toBe('warning')
@@ -425,14 +440,14 @@ describe('toast 命令式 API', () => {
       // 等 duration(100) + dismiss fallback(400) + buffer
       await new Promise(resolve => setTimeout(resolve, 600))
 
-      const el = document.querySelector(`web-ui-toast[toast-id="${id}"]`)
+      const el = getToasts().item(0)?.matches(`[toast-id="${id}"]`) ? getToasts().item(0) : null
       expect(el).toBeNull()
     })
 
     it('手动关闭 reason 为 manual', async () => {
       const id = toast({ message: 'manual', closable: true })
       await new Promise(resolve => requestAnimationFrame(resolve))
-      const all = document.body.querySelectorAll('web-ui-toast')
+      const all = getToasts()
       expect(all.length).toBeGreaterThan(0)
       const el = all[0] as WebUiToast
 
@@ -489,8 +504,8 @@ describe('toast 命令式 API', () => {
       toast.success('左下', { position: 'bottom-left' })
       await new Promise(resolve => requestAnimationFrame(resolve))
 
-      expect(document.querySelector('.wui-toast-top-right')).toBeTruthy()
-      expect(document.querySelector('.wui-toast-bottom-left')).toBeTruthy()
+      expect(getToastContainer('top-right')).toBeTruthy()
+      expect(getToastContainer('bottom-left')).toBeTruthy()
     })
 
     it('同一 position 复用容器', async () => {
@@ -498,14 +513,13 @@ describe('toast 命令式 API', () => {
       toast.success('2', { position: 'top-left' })
       await new Promise(resolve => requestAnimationFrame(resolve))
 
-      const containers = document.querySelectorAll('.wui-toast-top-left')
-      expect(containers.length).toBe(1)
+      expect(getFallbackOverlayRoot()?.querySelectorAll('.wui-toast-top-left').length).toBe(1)
     })
 
     it('容器具有滚动相关 class', async () => {
       toast.info('test')
       await new Promise(resolve => requestAnimationFrame(resolve))
-      const container = document.querySelector('.wui-toast-top-right')
+      const container = getToastContainer('top-right')
       expect(container).toBeTruthy()
       expect(container?.classList.contains('wui-toast-container')).toBe(true)
     })

@@ -37,7 +37,7 @@
 }
 
 :host([focused]) .wui-input-inner {
-  border-color: rgb(0 110 230 / 0.5);
+  border-color: var(--wui-color-border-strong, rgb(0 110 230 / 0.5));
   box-shadow:
     0 0 0 3px rgb(0 136 255 / 0.2),
     inset -1px -1px 0.5px -0.5px rgb(255 255 255 / 0.9),
@@ -58,13 +58,13 @@ input {
   border: none;
 
   font-size: var(--wui-font-size, 14px);
-  color: #1b1b1b;
+  color: var(--wui-color-text, #1b1b1b);
 
   background: transparent;
   outline: none;
 
   &::placeholder {
-    color: #6a6a6a;
+    color: var(--wui-color-text-muted, #6a6a6a);
   }
 
   &:disabled {
@@ -81,7 +81,7 @@ slot {
   align-items: center;
 
   font-size: var(--wui-font-size, 14px);
-  color: #6a6a6a;
+  color: var(--wui-color-text-muted, #6a6a6a);
 }
 
 /* slot 无 slotted 内容时折叠 */
@@ -100,10 +100,10 @@ slot.empty {
   align-self: stretch;
   justify-content: center;
 
-  color: #9a9a9a;
+  color: var(--wui-color-text-muted, #9a9a9a);
 
   &:hover {
-    color: #6a6a6a;
+    color: var(--wui-color-text-muted, #6a6a6a);
   }
 }
 

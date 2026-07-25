@@ -24,18 +24,18 @@
 
   font-size: var(--wui-font-size, 14px);
   line-height: 1;
-  color: #1a1a1a;
+  color: var(--wui-color-text, #1a1a1a);
 
   &:focus-visible {
     border-radius: calc(infinity * 1px);
-    outline: 3px solid rgb(0 136 255 / 0.4);
+    outline: 3px solid var(--wui-focus-ring, rgb(0 136 255 / 0.4));
     outline-offset: 2px;
   }
 }
 
 :host([disabled]) .wui-checkbox {
   cursor: not-allowed;
-  color: #999;
+  color: var(--wui-color-text-muted, #999);
 }
 
 .wui-checkbox-box {
@@ -48,7 +48,7 @@
   height: 18px;
   border-radius: 6px;
 
-  background-color: #f2f2f7;
+  background-color: var(--wui-color-surface-raised, #f2f2f7);
 
   transition:
     background-color 0.2s ease,
@@ -56,8 +56,8 @@
 }
 
 .is-checked .wui-checkbox-box {
-  border-color: #08f;
-  background-color: #08f;
+  border-color: var(--wui-color-accent, #08f);
+  background-color: var(--wui-color-accent, #08f);
 }
 
 .wui-checkbox-icon {

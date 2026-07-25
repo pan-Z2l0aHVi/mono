@@ -42,7 +42,7 @@
   border-radius: calc(infinity * 1px);
 
   &:focus-visible {
-    outline: 3px solid rgb(0 136 255 / 0.4);
+    outline: 3px solid var(--wui-focus-ring, rgb(0 136 255 / 0.4));
     outline-offset: 2px;
   }
 }
@@ -56,19 +56,19 @@
   flex: 1;
 
   font-size: var(--wui-font-size, 14px);
-  color: #1b1b1b;
+  color: var(--wui-color-text, #1b1b1b);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 :host(:not([value])) .label,
 :host([value='']) .label {
-  color: #6a6a6a;
+  color: var(--wui-color-text-muted, #6a6a6a);
 }
 
 .arrow {
   flex-shrink: 0;
-  color: #6a6a6a;
+  color: var(--wui-color-text-muted, #6a6a6a);
 }
 
 :host([open]) .arrow {
@@ -90,7 +90,7 @@
   padding: 4px;
   border-radius: 20px;
 
-  background-color: rgb(240 240 240 / 0.8);
+  background-color: var(--wui-color-surface-glass, rgb(240 240 240 / 0.8));
 }
 
 .select-overlay.hidden {

@@ -18,7 +18,7 @@
   position: relative;
   width: var(--wui-spinner-size, 24px);
   height: var(--wui-spinner-size, 24px);
-  color: #333;
+  color: var(--wui-color-text, #333);
 
   span {
     position: absolute;

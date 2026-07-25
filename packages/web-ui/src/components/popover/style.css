@@ -30,16 +30,16 @@
 
   font-size: var(--wui-font-size, 14px);
   line-height: 1.5;
-  color: #1b1b1b;
+  color: var(--wui-color-text, #1b1b1b);
 
-  background-color: rgb(250 250 250 / 0.88);
+  background-color: var(--wui-color-surface-glass, rgb(250 250 250 / 0.88));
 
   &:where([hidden]) {
     display: none;
   }
 
   &:focus-visible {
-    outline: 2px solid rgb(0 136 255 / 0.4);
+    outline: 2px solid var(--wui-focus-ring, rgb(0 136 255 / 0.4));
     outline-offset: 2px;
   }
 }

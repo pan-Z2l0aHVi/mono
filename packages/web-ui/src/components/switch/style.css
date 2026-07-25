@@ -48,18 +48,18 @@
   height: 24px;
   border-radius: calc(infinity * 1px);
 
-  background-color: #e5e5ea;
+  background-color: var(--wui-color-surface-raised, #e5e5ea);
   outline: 3px solid transparent;
   outline-offset: 2px;
 
   transition: background-color 0.25s ease;
 
   &:focus-visible {
-    outline-color: rgb(0 136 255 / 0.4);
+    outline-color: var(--wui-focus-ring, rgb(0 136 255 / 0.4));
   }
 
   &.is-open {
-    background-color: #08f;
+    background-color: var(--wui-color-accent, #08f);
   }
 
   &.is-disabled {
@@ -92,7 +92,7 @@
   }
 
   &:not(.is-pressed) {
-    background-color: #fff;
+    background-color: var(--wui-color-surface, #fff);
     box-shadow: 1px 2px 6px rgb(0 0 0 / 0.2);
   }
 }

@@ -30,6 +30,7 @@ import type {
   WebUiSlider,
   WebUiSpinner,
   WebUiTextarea,
+  WebUiTheme,
   WebUiToast,
   WebUiSwitch,
   WebUiTooltip
@@ -94,6 +95,7 @@ export interface WebUiComponents {
   'web-ui-layout': LitVueWrapper<WebUiLayout>
   'web-ui-switch': LitVueWrapper<WebUiSwitch>
   'web-ui-textarea': LitVueWrapper<WebUiTextarea>
+  'web-ui-theme': LitVueWrapper<WebUiTheme>
   'web-ui-toast': LitVueWrapper<WebUiToast>
   'web-ui-tooltip': LitVueWrapper<WebUiTooltip>
 }

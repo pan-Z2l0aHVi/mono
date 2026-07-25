@@ -29,7 +29,13 @@ async function waitForMenuClose(el: WebUiContextMenu) {
 }
 
 function getMenu(): HTMLElement | null {
-  return document.querySelector('.context-menu')
+  const fallbackRoot = document.querySelector<HTMLElement>('[data-wui-overlay-root]')?.shadowRoot
+  return fallbackRoot?.querySelector<HTMLElement>('.context-menu') ?? null
+}
+
+function getSubmenu(): HTMLElement | null {
+  const fallbackRoot = document.querySelector<HTMLElement>('[data-wui-overlay-root]')?.shadowRoot
+  return fallbackRoot?.querySelector<HTMLElement>('.context-submenu') ?? null
 }
 
 beforeEach(() => {
@@ -328,7 +334,7 @@ describe('WebUiContextMenu', () => {
       item.click()
       await el.updateComplete
 
-      const submenu = document.querySelector('.context-submenu')
+      const submenu = getSubmenu()
       expect(submenu?.querySelector('web-ui-dropdown-item')?.textContent).toContain('PDF')
 
       el.remove()
@@ -421,7 +427,7 @@ describe('WebUiContextMenu', () => {
       await el.updateComplete
 
       expect(el.isOpen).toBe(true)
-      expect(document.querySelector('.context-submenu')).toBeNull()
+      expect(getSubmenu()).toBeNull()
 
       el.remove()
     })
@@ -444,7 +450,7 @@ describe('WebUiContextMenu', () => {
         item.dispatchEvent(new MouseEvent('mouseenter'))
         await vi.advanceTimersByTimeAsync(200)
 
-        expect(document.querySelector('.context-submenu')).toBeTruthy()
+        expect(getSubmenu()).toBeTruthy()
 
         el.remove()
       } finally {

@@ -15,7 +15,7 @@
 /* ===== 入场 / 退场动画 ===== */
 
 .toast {
-  --wui-glass-shadow: 2px 4px 16px rgb(0 0 0 / 0.12);
+  --wui-glass-shadow: var(--wui-shadow-raised, 2px 4px 16px rgb(0 0 0 / 0.12));
   position: relative;
   transform: translate(var(--toast-slide-x, 0), var(--toast-slide-y, -8px)) scale(0.97);
 
@@ -29,10 +29,10 @@
 
   font-size: var(--wui-font-size, 14px);
   line-height: 1.5;
-  color: #1b1b1b;
+  color: var(--wui-color-text, #1b1b1b);
 
   opacity: 0;
-  background-color: rgb(250 250 250 / 0.75);
+  background-color: var(--wui-color-surface-glass, rgb(250 250 250 / 0.75));
 
   transition:
     opacity 0.35s cubic-bezier(0.16, 1, 0.3, 1),
@@ -65,7 +65,7 @@
   border: none;
   border-radius: calc(infinity * 1px);
 
-  color: #666;
+  color: var(--wui-color-text-muted, #666);
 
   opacity: 0;
 
@@ -78,7 +78,7 @@
   &:focus-visible {
     pointer-events: auto;
     opacity: 1;
-    outline: 2px solid rgb(0 136 255 / 0.4);
+    outline: 2px solid var(--wui-focus-ring, rgb(0 136 255 / 0.4));
     outline-offset: 2px;
   }
 }
@@ -103,23 +103,23 @@
 }
 
 .toast.success .toast-icon {
-  color: #16a34a;
-  background-color: rgb(22 163 74 / 0.1);
+  color: var(--wui-color-success, #16a34a);
+  background-color: color-mix(in srgb, var(--wui-color-success, #16a34a) 10%, transparent);
 }
 
 .toast.info .toast-icon {
-  color: #2563eb;
-  background-color: rgb(37 99 235 / 0.1);
+  color: var(--wui-color-info, #2563eb);
+  background-color: color-mix(in srgb, var(--wui-color-info, #2563eb) 10%, transparent);
 }
 
 .toast.warning .toast-icon {
-  color: #d97706;
-  background-color: rgb(217 119 6 / 0.1);
+  color: var(--wui-color-warning, #d97706);
+  background-color: color-mix(in srgb, var(--wui-color-warning, #d97706) 10%, transparent);
 }
 
 .toast.error .toast-icon {
-  color: #dc2626;
-  background-color: rgb(220 38 38 / 0.1);
+  color: var(--wui-color-danger, #dc2626);
+  background-color: color-mix(in srgb, var(--wui-color-danger, #dc2626) 10%, transparent);
 }
 
 /* ===== 内容区 ===== */
@@ -136,7 +136,7 @@
   font-size: var(--wui-font-size, 14px);
   font-weight: 600;
   line-height: 1.4;
-  color: #1b1b1b;
+  color: var(--wui-color-text, #1b1b1b);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -151,7 +151,7 @@
 
   font-size: calc(var(--wui-font-size, 14px) - 1px);
   line-height: 1.45;
-  color: rgb(0 0 0 / 0.55);
+  color: color-mix(in srgb, var(--wui-color-text, #1b1b1b) 55%, transparent);
   word-break: break-all;
 }
 
@@ -163,6 +163,6 @@
   padding-top: 2px;
 
   font-size: 12px;
-  color: rgb(0 0 0 / 0.3);
+  color: color-mix(in srgb, var(--wui-color-text, #1b1b1b) 30%, transparent);
   white-space: nowrap;
 }

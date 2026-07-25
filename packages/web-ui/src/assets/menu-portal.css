@@ -1,0 +1,25 @@
+.wui-menu-portal-overlay {
+  --wui-glass-shadow: var(--wui-shadow-overlay, 0 4px 16px rgb(0 0 0 / 0.25));
+
+  position: fixed;
+  z-index: 99999;
+
+  overflow-y: auto;
+
+  box-sizing: border-box;
+  min-width: 200px;
+  max-width: 90vw;
+  max-height: 80vh;
+  padding: 4px;
+  border-radius: 20px;
+
+  color: var(--wui-color-text, #1b1b1b);
+
+  background-color: var(--wui-color-surface-glass, rgb(240 240 240 / 0.8));
+}
+
+.wui-menu-portal-overlay.dropdown-overlay .dropdown-scroll {
+  overflow-y: auto;
+  min-width: 200px;
+  max-height: 320px;
+}

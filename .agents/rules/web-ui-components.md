@@ -15,6 +15,12 @@
 
 ## CSS 样式规范
 
+### 主题 token 与浮层
+
+- 可见组件必须优先消费 `web-ui-theme` 提供的 `--wui-*` 语义 token，并在 `var()` 中保留当前浅色值 fallback，保证未使用主题的调用方外观不变。
+- 禁止把组件样式注入 `document.head`。需要 portal 的组件应解析最近的 `web-ui-theme` overlay root；没有主题时使用组件库内部 Shadow DOM fallback。
+- 组件内部变量可以存在，但不是稳定公开 API；调用方仅依赖公开语义 token。
+
 ### Box-sizing
 
 每个组件的 CSS 文件**必须以**以下通用选择器开头，确保 Shadow DOM 内部所有元素使用 `border-box`，不依赖页面全局 reset：

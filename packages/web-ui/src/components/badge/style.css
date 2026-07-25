@@ -33,10 +33,10 @@
   font-size: 12px;
   font-weight: 500;
   line-height: 1;
-  color: #fff;
+  color: var(--wui-color-on-accent, #fff);
   white-space: nowrap;
 
-  background-color: #ff3b30;
+  background-color: var(--wui-color-danger, #ff3b30);
 }
 
 .badge-fixed {

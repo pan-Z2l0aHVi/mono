@@ -49,7 +49,7 @@ button {
   }
 
   &:focus-visible {
-    outline: 3px solid rgb(0 136 255 / 0.4);
+    outline: 3px solid var(--wui-focus-ring, rgb(0 136 255 / 0.4));
     outline-offset: 2px;
   }
 
@@ -79,54 +79,64 @@ button {
 /* ===== Variant: primary (默认) ===== */
 
 :host([variant='primary']) {
-  --wui-button-color: #fff;
-  --wui-button-bg: #08f;
-  --wui-button-bg-hover: #07e;
-  --wui-button-bg-active: #06d;
+  --wui-button-color: var(--wui-color-on-accent, #fff);
+  --wui-button-bg: var(--wui-color-accent, #08f);
+  --wui-button-bg-hover: color-mix(in srgb, var(--wui-color-accent, #08f) 88%, var(--wui-color-text, #1b1b1b));
+  --wui-button-bg-active: color-mix(in srgb, var(--wui-color-accent, #08f) 76%, var(--wui-color-text, #1b1b1b));
 }
 
 /* ===== Variant: secondary ===== */
 
 :host([variant='secondary']) {
-  --wui-button-color: #1b1b1b;
-  --wui-button-bg: #dfdfdf;
-  --wui-button-bg-hover: #d0d0d0;
-  --wui-button-bg-active: #c0c0c0;
+  --wui-button-color: var(--wui-color-text, #1b1b1b);
+  --wui-button-bg: var(--wui-color-surface-raised, #dfdfdf);
+  --wui-button-bg-hover: color-mix(
+    in srgb,
+    var(--wui-color-surface-raised, #dfdfdf) 90%,
+    var(--wui-color-text, #1b1b1b)
+  );
+  --wui-button-bg-active: color-mix(
+    in srgb,
+    var(--wui-color-surface-raised, #dfdfdf) 80%,
+    var(--wui-color-text, #1b1b1b)
+  );
 }
 
 /* ===== Variant: ghost ===== */
 
 :host([variant='ghost']) {
-  --wui-button-color: #08f;
+  --wui-button-color: var(--wui-color-accent, #08f);
   --wui-button-bg: transparent;
-  --wui-button-bg-hover: rgb(0 136 255 / 0.08);
-  --wui-button-bg-active: rgb(0 136 255 / 0.12);
+  --wui-button-bg-hover: color-mix(in srgb, var(--wui-color-accent, #08f) 8%, transparent);
+  --wui-button-bg-active: color-mix(in srgb, var(--wui-color-accent, #08f) 12%, transparent);
 }
 
 /* ===== Variant: danger ===== */
 
 :host([variant='danger']) {
-  --wui-button-color: #ff383c;
-  --wui-button-bg: #facccd;
-  --wui-button-bg-hover: #f0b8b8;
-  --wui-button-bg-active: #e6a4a4;
+  --wui-button-color: var(--wui-color-danger, #ff383c);
+  --wui-button-bg: color-mix(in srgb, var(--wui-color-danger, #ff383c) 18%, var(--wui-color-surface, #fff));
+  --wui-button-bg-hover: color-mix(in srgb, var(--wui-color-danger, #ff383c) 26%, var(--wui-color-surface, #fff));
+  --wui-button-bg-active: color-mix(in srgb, var(--wui-color-danger, #ff383c) 34%, var(--wui-color-surface, #fff));
 }
 
 /* ===== Variant: glass (玻璃) ===== */
 
 /* .wui-glass 样式由 @/assets/glass.css 提供 */
 :host([variant='glass']) {
-  --wui-button-bg-hover: rgb(0 0 0 / 0.06);
-  --wui-button-bg-active: rgb(0 0 0 / 0.1);
+  --wui-button-color: var(--wui-color-text, #1b1b1b);
+  --wui-button-bg: transparent;
+  --wui-button-bg-hover: color-mix(in srgb, var(--wui-color-text, #1b1b1b) 6%, transparent);
+  --wui-button-bg-active: color-mix(in srgb, var(--wui-color-text, #1b1b1b) 10%, transparent);
 }
 
 /* ===== Group context ===== */
 
 :host([group]) {
-  --wui-button-color: #1a1a1a;
+  --wui-button-color: var(--wui-color-text, #1a1a1a);
   --wui-button-bg: transparent;
-  --wui-button-bg-hover: rgb(0 0 0 / 0.06);
-  --wui-button-bg-active: rgb(0 0 0 / 0.1);
+  --wui-button-bg-hover: color-mix(in srgb, var(--wui-color-text, #1b1b1b) 6%, transparent);
+  --wui-button-bg-active: color-mix(in srgb, var(--wui-color-text, #1b1b1b) 10%, transparent);
   position: relative;
 }
 
@@ -141,7 +151,7 @@ button {
   width: var(--wui-button-divider-width, 0);
   height: 24px;
 
-  background-color: rgb(0 0 0 / 0.1);
+  background-color: var(--wui-color-border, rgb(0 0 0 / 0.1));
 }
 
 :host([group][orientation='vertical']:not([last]))::after {

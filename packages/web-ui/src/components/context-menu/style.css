@@ -30,7 +30,7 @@
   padding: 4px;
   border-radius: 20px;
 
-  background-color: rgb(240 240 240 / 0.8);
+  background-color: var(--wui-color-surface-glass, rgb(240 240 240 / 0.8));
 }
 
 .context-menu:not(.is-open) {
@@ -50,5 +50,5 @@
   padding: 4px;
   border-radius: 20px;
 
-  background-color: rgb(240 240 240 / 0.8);
+  background-color: var(--wui-color-surface-glass, rgb(240 240 240 / 0.8));
 }

@@ -27,7 +27,7 @@
   border-radius: calc(infinity * 1px);
 
   font-size: var(--wui-font-size, 14px);
-  color: #1b1b1b;
+  color: var(--wui-color-text, #1b1b1b);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -41,18 +41,18 @@
 }
 
 .option-label:focus-visible {
-  outline: 3px solid rgb(0 136 255 / 0.4);
+  outline: 3px solid var(--wui-focus-ring, rgb(0 136 255 / 0.4));
   outline-offset: 2px;
 }
 
 .option-label:hover {
-  color: #fff;
-  background: #0081f8;
+  color: var(--wui-color-on-accent, #fff);
+  background: var(--wui-color-accent, #0081f8);
 }
 
 :host([active]) .option-label {
-  color: #fff;
-  background: #0081f8;
+  color: var(--wui-color-on-accent, #fff);
+  background: var(--wui-color-accent, #0081f8);
 }
 
 :host([disabled]) .option-label {

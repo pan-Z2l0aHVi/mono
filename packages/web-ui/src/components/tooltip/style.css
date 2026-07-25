@@ -28,9 +28,9 @@
   border-radius: 20px;
 
   font-size: var(--wui-tooltip-font-size, 13px);
-  color: #1b1b1b;
+  color: var(--wui-color-text, #1b1b1b);
 
-  background-color: rgb(250 250 250 / 0.6);
+  background-color: var(--wui-color-surface-glass, rgb(250 250 250 / 0.6));
 }
 
 .tooltip-panel.hidden {

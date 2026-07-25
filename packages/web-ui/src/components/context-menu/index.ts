@@ -64,7 +64,7 @@ export class WebUiContextMenu extends LitElement {
     if (changed.has('_isOpen')) {
       if (this._isOpen) {
         lockScroll()
-        this._menu = createMenuPortalOverlay('context-menu')
+        this._menu = createMenuPortalOverlay('context-menu', this)
         this._menu.setAttribute('role', 'menu')
         this._menu.setAttribute('aria-label', '上下文菜单')
         this._menu.addEventListener('click', this._onMenuClick)
@@ -191,7 +191,7 @@ export class WebUiContextMenu extends LitElement {
     )
     if (children.length === 0) return
 
-    const submenu = createMenuPortalOverlay('context-submenu')
+    const submenu = createMenuPortalOverlay('context-submenu', this)
     submenu.dataset.level = String(level)
     submenu.setAttribute('role', 'menu')
     submenu.setAttribute('aria-label', '子菜单')
