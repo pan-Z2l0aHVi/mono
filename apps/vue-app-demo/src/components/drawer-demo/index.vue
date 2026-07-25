@@ -36,6 +36,7 @@ const headerSlotVisible = ref(false)
 const closableState = ref(true)
 const closableVisible = ref(false)
 const footerVisible = ref(false)
+const unlockedVisible = ref(false)
 </script>
 
 <template>
@@ -102,6 +103,15 @@ const footerVisible = ref(false)
     </div>
     <web-ui-drawer :open="noHeaderVisible" @open-change="noHeaderVisible = $event.detail.open">
       <p>不传 <code>heading</code> 且无 <code>header slot</code> 时自动隐藏 header。</p>
+    </web-ui-drawer>
+
+    <h2>滚动锁定</h2>
+    <div class="mb-3 flex gap-2">
+      <web-ui-button @click="unlockedVisible = true">打开不锁定滚动的抽屉</web-ui-button>
+    </div>
+    <web-ui-drawer :open="unlockedVisible" :lock-scroll="false" @open-change="unlockedVisible = $event.detail.open">
+      <p>关闭 <code>lock-scroll</code> 后，背景页面仍可滚动。</p>
+      <web-ui-button slot="footer" full @click="unlockedVisible = false">关闭</web-ui-button>
     </web-ui-drawer>
 
     <h2>Header Slot</h2>

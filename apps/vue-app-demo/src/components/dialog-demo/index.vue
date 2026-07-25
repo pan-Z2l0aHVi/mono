@@ -7,6 +7,7 @@ const dialogRef = ref<HTMLDialogElement>()
 // 声明式
 const visible1 = ref(false)
 const visible2 = ref(false)
+const visible3 = ref(false)
 </script>
 
 <template>
@@ -37,6 +38,16 @@ const visible2 = ref(false)
       <web-ui-button slot="footer" variant="primary" full>Save</web-ui-button>
       <web-ui-button slot="footer" variant="danger" full>Don't Save</web-ui-button>
       <web-ui-button slot="footer" variant="secondary" full @click="visible1 = false">Cancel</web-ui-button>
+    </web-ui-dialog>
+
+    <h2>滚动锁定</h2>
+    <div class="mb-3 flex gap-2">
+      <web-ui-button @click="visible3 = true">打开不锁定滚动的对话框</web-ui-button>
+    </div>
+    <web-ui-dialog :open="visible3" :lock-scroll="false" @open-change="visible3 = $event.detail.open">
+      <span slot="title">可滚动背景</span>
+      此对话框关闭滚动锁定，仍保留原生模态焦点行为。
+      <web-ui-button slot="footer" variant="secondary" full @click="visible3 = false">关闭</web-ui-button>
     </web-ui-dialog>
 
     <h2>横向按钮</h2>

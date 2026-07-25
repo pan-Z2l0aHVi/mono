@@ -10,9 +10,9 @@ const brokenSrc = ref('https://broken.invalid/avatar.jpg')
 
     <h2>图片头像</h2>
     <div class="mb-3 flex items-center gap-3">
-      <web-ui-avatar src="https://i.pravatar.cc/150?img=1" alt="用户1" :size="40" />
-      <web-ui-avatar src="https://i.pravatar.cc/150?img=5" alt="用户2" :size="56" />
-      <web-ui-avatar src="https://i.pravatar.cc/150?img=12" alt="用户3" :size="80" />
+      <web-ui-avatar src="https://cravatar.cn/avatar/test?d=mp" alt="用户1" :size="40" />
+      <web-ui-avatar src="https://cravatar.cn/avatar/test?d=identicon" alt="用户2" :size="56" />
+      <web-ui-avatar src="https://cravatar.cn/avatar/test?d=monsterid" alt="用户3" :size="80" />
     </div>
 
     <h2>首字母回退</h2>
@@ -42,7 +42,7 @@ const brokenSrc = ref('https://broken.invalid/avatar.jpg')
 
     <h2>方形</h2>
     <div class="mb-3 flex items-center gap-3">
-      <web-ui-avatar src="https://i.pravatar.cc/150?img=3" alt="方形图" :size="56" shape="square" />
+      <web-ui-avatar src="https://cravatar.cn/avatar/test?d=retro" alt="方形图" :size="56" shape="square" />
       <web-ui-avatar name="Square" :size="56" shape="square" />
       <web-ui-avatar :size="56" shape="square" />
     </div>

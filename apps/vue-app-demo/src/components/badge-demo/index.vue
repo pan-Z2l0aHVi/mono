@@ -64,10 +64,10 @@
 
     <h2>偏移</h2>
     <div class="mb-3 flex items-center gap-6">
-      <web-ui-badge :count="8" offset-x="-4" offset-y="4">
+      <web-ui-badge :count="8" :offset-x="-4" :offset-y="4">
         <web-ui-button>圆角按钮</web-ui-button>
       </web-ui-badge>
-      <web-ui-badge dot offset-x="-4" offset-y="4">
+      <web-ui-badge dot :offset-x="-4" :offset-y="4">
         <web-ui-button>圆点徽标</web-ui-button>
       </web-ui-badge>
     </div>

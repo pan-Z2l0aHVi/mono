@@ -224,6 +224,15 @@ const controlledOpen = ref(false)
       </web-ui-dropdown-menu>
     </div>
 
+    <h2>滚动锁定</h2>
+    <div class="mb-6">
+      <web-ui-dropdown-menu :lock-scroll="false">
+        <web-ui-button slot="trigger">不锁定滚动</web-ui-button>
+        <web-ui-dropdown-item>编辑</web-ui-dropdown-item>
+        <web-ui-dropdown-item>复制</web-ui-dropdown-item>
+      </web-ui-dropdown-menu>
+    </div>
+
     <h2>受控组件</h2>
     <div class="mb-6">
       <div class="mb-2 flex gap-2">

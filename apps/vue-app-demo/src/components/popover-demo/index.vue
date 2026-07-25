@@ -39,6 +39,14 @@ watch(closeBtnRef, (btn, _oldBtn, onCleanup) => {
       </web-ui-popover>
     </div>
 
+    <h2>Portal</h2>
+    <div class="mb-3">
+      <web-ui-popover portal placement="bottom">
+        <web-ui-button slot="trigger">Portal</web-ui-button>
+        <div class="p-1">Portal 内容</div>
+      </web-ui-popover>
+    </div>
+
     <h2>Manual 触发（受控）</h2>
     <div class="mb-3">
       <web-ui-popover trigger="manual" :open="controlledOpen" @open-change="controlledOpen = $event.detail.open">

@@ -38,22 +38,20 @@ const navItems: NavItem[] = [
 
 <template>
   <web-ui-layout>
-    <div slot="sidebar">
-      <nav class="px-2 py-3">
-        <div class="px-3 pb-2 text-xs font-semibold uppercase tracking-wider text-gray-400">组件列表</div>
-        <RouterLink
-          v-for="item in navItems"
-          :key="item.path"
-          :to="item.path"
-          class="block rounded-full px-3 py-2 text-sm transition-colors"
-          :class="route.path === item.path ? 'bg-blue-500 text-white' : 'text-gray-700 hover:bg-gray-200'"
-        >
-          {{ item.label }}
-        </RouterLink>
-      </nav>
-    </div>
-
+    <nav class="px-2 py-3 h-full overflow-y-auto" slot="sidebar">
+      <div class="px-3 pb-2 text-xs font-semibold uppercase tracking-wider text-gray-400">组件列表</div>
+      <RouterLink
+        v-for="item in navItems"
+        :key="item.path"
+        :to="item.path"
+        class="block rounded-full px-3 py-2 text-sm transition-colors"
+        :class="route.path === item.path ? 'bg-blue-500 text-white' : 'text-gray-700 hover:bg-gray-200'"
+      >
+        {{ item.label }}
+      </RouterLink>
+    </nav>
     <RouterView />
+    <div class="w-100% h-300"></div>
   </web-ui-layout>
   <web-ui-back-top></web-ui-back-top>
 </template>

@@ -131,6 +131,19 @@ const openApiMenu = () => {
       </web-ui-context-menu>
     </div>
 
+    <h2>不锁定滚动</h2>
+    <div class="mb-6">
+      <web-ui-context-menu :lock-scroll="false">
+        <div
+          class="flex h-32 w-full items-center justify-center rounded-2xl border-2 border-dashed border-gray-300 bg-gray-50 text-gray-500"
+        >
+          右键打开时不锁定页面滚动
+        </div>
+        <web-ui-dropdown-item>编辑</web-ui-dropdown-item>
+        <web-ui-dropdown-item>复制</web-ui-dropdown-item>
+      </web-ui-context-menu>
+    </div>
+
     <h2>嵌套菜单</h2>
     <p class="mb-4 text-sm text-gray-500">支持子菜单的右键菜单</p>
     <div class="mb-6">
