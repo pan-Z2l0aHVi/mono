@@ -21,6 +21,7 @@ const navItems: NavItem[] = [
   { path: '/components/dropdown', label: '下拉菜单' },
   { path: '/components/dialog', label: '对话框' },
   { path: '/components/drawer', label: '抽屉' },
+  { path: '/components/empty', label: '空状态' },
   { path: '/components/tooltip', label: '工具提示' },
   { path: '/components/switch', label: '开关' },
   { path: '/components/slider', label: '滑块' },

@@ -11,6 +11,7 @@ import type {
   WebUiContextMenu,
   WebUiDialog,
   WebUiDrawer,
+  WebUiEmpty,
   WebUiDropdownDivider,
   WebUiDropdownHeader,
   WebUiDropdownItem,
@@ -51,6 +52,7 @@ export interface WebUiComponents {
   'web-ui-context-menu': LitReactWrapper<WebUiContextMenu>
   'web-ui-dialog': LitReactWrapper<WebUiDialog>
   'web-ui-drawer': LitReactWrapper<WebUiDrawer>
+  'web-ui-empty': LitReactWrapper<WebUiEmpty>
   'web-ui-dropdown-divider': LitReactWrapper<WebUiDropdownDivider>
   'web-ui-dropdown-header': LitReactWrapper<WebUiDropdownHeader>
   'web-ui-dropdown-item': LitReactWrapper<WebUiDropdownItem>

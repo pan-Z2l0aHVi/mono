@@ -104,6 +104,7 @@
 - **动态 style**：使用 `styleMap()` 指令或模板字符串，禁止直接拼接字符串（XSS 风险）
 - **条件渲染**：使用 `nothing` sentinel 而非 `null` 或空字符串
 - **slot 投影**：父组件通过 `slot="name"` 属性选择器投影，子组件通过 `<slot name="name">` 接收
+- **内容优先级**：同时提供文本 prop 与同用途 slot 时，slot 内容优先；组件应在 slot 动态插入和移除后同步布局状态。
 
 ## `:host` 选择器语法
 
