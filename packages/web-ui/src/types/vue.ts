@@ -3,6 +3,7 @@ import type { ComponentOptionsMixin, DefineComponent, HTMLAttributes } from 'vue
 import type {
   WebUiAvatar,
   WebUiBackTop,
+  WebUiBadge,
   WebUiButton,
   WebUiButtonGroup,
   WebUiCheckbox,
@@ -63,6 +64,8 @@ export type LitVueWrapper<T> = T extends { readonly $events: infer E }
 
 export interface WebUiComponents {
   'web-ui-avatar': LitVueWrapper<WebUiAvatar>
+  'web-ui-back-top': LitVueWrapper<WebUiBackTop>
+  'web-ui-badge': LitVueWrapper<WebUiBadge>
   'web-ui-button': LitVueWrapper<WebUiButton>
   'web-ui-button-group': LitVueWrapper<WebUiButtonGroup>
   'web-ui-checkbox': LitVueWrapper<WebUiCheckbox>
@@ -86,7 +89,6 @@ export interface WebUiComponents {
   'web-ui-radio-group': LitVueWrapper<WebUiRadioGroup>
   'web-ui-segmented': LitVueWrapper<WebUiSegmented>
   'web-ui-segmented-trigger': LitVueWrapper<WebUiSegmentedTrigger>
-  'web-ui-back-top': LitVueWrapper<WebUiBackTop>
   'web-ui-layout': LitVueWrapper<WebUiLayout>
   'web-ui-switch': LitVueWrapper<WebUiSwitch>
   'web-ui-textarea': LitVueWrapper<WebUiTextarea>

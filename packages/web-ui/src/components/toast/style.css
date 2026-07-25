@@ -99,7 +99,7 @@
 
   width: 36px;
   height: 36px;
-  border-radius: 10px;
+  border-radius: calc(infinity * 1px);
 }
 
 .toast.success .toast-icon {

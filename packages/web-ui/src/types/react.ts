@@ -3,6 +3,7 @@ import type { DetailedHTMLProps, HTMLAttributes } from 'react'
 import type {
   WebUiAvatar,
   WebUiBackTop,
+  WebUiBadge,
   WebUiButton,
   WebUiButtonGroup,
   WebUiCheckbox,
@@ -41,6 +42,8 @@ export type LitReactWrapper<T> = T extends { readonly $events: infer E }
 
 export interface WebUiComponents {
   'web-ui-avatar': LitReactWrapper<WebUiAvatar>
+  'web-ui-back-top': LitReactWrapper<WebUiBackTop>
+  'web-ui-badge': LitReactWrapper<WebUiBadge>
   'web-ui-button': LitReactWrapper<WebUiButton>
   'web-ui-button-group': LitReactWrapper<WebUiButtonGroup>
   'web-ui-checkbox': LitReactWrapper<WebUiCheckbox>
@@ -64,7 +67,6 @@ export interface WebUiComponents {
   'web-ui-radio-group': LitReactWrapper<WebUiRadioGroup>
   'web-ui-segmented': LitReactWrapper<WebUiSegmented>
   'web-ui-segmented-trigger': LitReactWrapper<WebUiSegmentedTrigger>
-  'web-ui-back-top': LitReactWrapper<WebUiBackTop>
   'web-ui-layout': LitReactWrapper<WebUiLayout>
   'web-ui-switch': LitReactWrapper<WebUiSwitch>
   'web-ui-textarea': LitReactWrapper<WebUiTextarea>

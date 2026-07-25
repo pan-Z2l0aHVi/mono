@@ -40,6 +40,10 @@
 
 所有视觉表现（`opacity`、`background`、`border`、`color`、`font`、`transform`、`filter`）放在 shadow root 内部元素上。
 
+组件专用状态属性不得使用 HTML 全局属性名（例如 `hidden`、`title`、`role`），避免与宿主元素的原生语义冲突。布尔属性的声明式名称使用 kebab-case，并在 `@property` 中通过 `attribute` 显式映射。
+
+需要调整浮层、徽标等定位组件的像素位置时，优先提供独立的 `offset-x`、`offset-y` 数值属性；偏移方向按屏幕坐标定义，避免使用框架特有的数组属性语法。
+
 禁止将以下属性放在 `:host` 上（外部 CSS reset 如 Tailwind v4 的 `@layer base * { margin: 0 }` 会覆盖这些属性）：
 
 ```css
