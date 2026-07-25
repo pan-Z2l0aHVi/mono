@@ -34,4 +34,13 @@ describe('WebUiDropdownItem', () => {
 
     el.remove()
   })
+
+  it('为 suffix 提供组件内的透明度容器', async () => {
+    const el = createItem({}, 'Edit<span slot="suffix">⌘E</span>')
+    await el.updateComplete
+
+    const slot = el.shadowRoot?.querySelector<HTMLSlotElement>('.item-suffix slot')
+    expect(slot?.assignedNodes()[0]?.textContent).toBe('⌘E')
+    el.remove()
+  })
 })

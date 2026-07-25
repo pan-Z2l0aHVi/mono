@@ -16,14 +16,20 @@
   display: inline-flex;
 }
 
+.popover-anchor {
+  position: relative;
+  display: inline-flex;
+}
+
 .popover-panel {
   --wui-glass-shadow: 0 4px 16px rgb(0 0 0 / 0.25);
-  position: fixed;
+  position: absolute;
   z-index: 99999;
   top: -9999px;
   left: -9999px;
 
   box-sizing: border-box;
+  width: max-content;
   max-width: min(90vw, 400px);
   padding: 8px 12px;
   border-radius: 20px;
@@ -42,4 +48,12 @@
     outline: 2px solid var(--wui-focus-ring, rgb(0 136 255 / 0.4));
     outline-offset: 2px;
   }
+}
+
+.popover-panel.portal {
+  position: fixed;
+}
+
+:host([portal]) .popover-panel {
+  display: none;
 }

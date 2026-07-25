@@ -12,17 +12,23 @@
   display: inline-flex;
 }
 
+.tooltip-anchor {
+  position: relative;
+  display: inline-flex;
+}
+
 .tooltip-panel {
   --wui-glass-shadow: 0 4px 16px rgb(0 0 0 / 0.16);
 
   pointer-events: none;
 
-  position: fixed;
+  position: absolute;
   z-index: 99999;
   top: -9999px;
   left: -9999px;
 
   box-sizing: border-box;
+  width: max-content;
   max-width: var(--wui-tooltip-max-width, 240px);
   padding: 6px 10px;
   border-radius: 20px;
@@ -33,6 +39,10 @@
   background-color: var(--wui-color-surface-glass, rgb(250 250 250 / 0.6));
 }
 
+.tooltip-panel.portal {
+  position: fixed;
+}
+
 .tooltip-panel.hidden {
   display: none;
 }
@@ -41,4 +51,8 @@
   display: block;
   overflow-wrap: break-word;
   white-space: normal;
+}
+
+:host([portal]) .tooltip-panel {
+  display: none;
 }

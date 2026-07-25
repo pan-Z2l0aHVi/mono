@@ -6,6 +6,7 @@ import glass from '@/assets/glass.css?inline'
 import { createMenuPortalOverlay } from '@/shared/menu-portal/menu-portal'
 import { withOverlay } from '@/shared/overlay/overlay'
 import type { OverlayApi } from '@/shared/overlay/overlay'
+import { booleanWithFalseString } from '@/shared/property-converters/boolean-with-false-string'
 import { lockScroll, unlockScroll } from '@/shared/scroll-lock/scroll-lock'
 
 import style from './style.css?inline'
@@ -28,6 +29,7 @@ export class WebUiDropdownMenu extends LitElement {
   @property({ type: Boolean, reflect: true }) disabled = false
   @property({ type: Number }) offset = 4
   @property({ type: Boolean, reflect: true }) matchWidth = false
+  @property({ reflect: true, attribute: 'lock-scroll', converter: booleanWithFalseString }) lockScroll = true
 
   @state() private _activePath: number[] = []
 
@@ -36,6 +38,8 @@ export class WebUiDropdownMenu extends LitElement {
   private _ignoreOutsideClick = false
   private _ignoreOutsideClickTimer?: ReturnType<typeof setTimeout>
   private _hoverCleanupFns: (() => void)[] = []
+  private _hasScrollLock = false
+  private _restoreFocusTarget?: HTMLElement
 
   get isOpen(): boolean {
     return this.open || this._activePath.length > 0
@@ -43,16 +47,17 @@ export class WebUiDropdownMenu extends LitElement {
 
   override connectedCallback() {
     super.connectedCallback()
-    this.addEventListener('keydown', this._onKeydown)
+    document.addEventListener('keydown', this._onKeydown)
     document.addEventListener('click', this._onClickOutside)
   }
 
   override disconnectedCallback() {
     super.disconnectedCallback()
-    this.removeEventListener('keydown', this._onKeydown)
+    document.removeEventListener('keydown', this._onKeydown)
     document.removeEventListener('click', this._onClickOutside)
     clearTimeout(this._openTimer)
     clearTimeout(this._ignoreOutsideClickTimer)
+    this._syncScrollLock(false)
     this._cleanupClosedMenu()
     this._hoverCleanupFns.forEach(fn => fn())
   }
@@ -60,20 +65,25 @@ export class WebUiDropdownMenu extends LitElement {
   protected override updated(changed: Map<string, unknown>) {
     if (changed.has('open')) {
       if (this.open) {
+        this._restoreFocusTarget ??= document.activeElement instanceof HTMLElement ? document.activeElement : undefined
         this._ignoreCurrentOutsideClick()
-        lockScroll()
+        this._syncScrollLock()
         this._hideAllSubmenuChildren()
         requestAnimationFrame(() => {
-          if (this.open) this._ensureOverlay(0)
+          if (!this.open) return
+          this._ensureOverlay(0)
+          this._focusMenuItem(this._getEnabledLevelItems(0)[0])
         })
         this._bindHoversAfterUpdate()
       } else {
-        unlockScroll()
+        this._syncScrollLock()
         // `_closeAllSubmenus()` resets Lit state. Run cleanup after this update
         // to avoid scheduling a second update from within `updated()`.
         queueMicrotask(() => {
           if (this.open || !this.isConnected) return
           this._cleanupClosedMenu()
+          this._restoreFocusTarget?.focus()
+          this._restoreFocusTarget = undefined
         })
       }
       this.dispatchEvent(
@@ -84,6 +94,7 @@ export class WebUiDropdownMenu extends LitElement {
         })
       )
     }
+    if (changed.has('lockScroll')) this._syncScrollLock()
     this._bindLevelHovers()
   }
 
@@ -254,7 +265,9 @@ export class WebUiDropdownMenu extends LitElement {
         overlay,
         placement: level === 0 ? this.placement : 'right-start',
         offset: level === 0 ? this.offset : 0,
-        matchWidth: level === 0 ? this.matchWidth : false
+        matchWidth: level === 0 ? this.matchWidth : false,
+        // Portal 菜单固定于视口，必须用同一坐标系计算位置。
+        strategy: 'fixed'
       })
       this._overlays.set(level, { api: ctrl, overlay })
       if (level === 0) this._populateLevel0()
@@ -273,6 +286,15 @@ export class WebUiDropdownMenu extends LitElement {
     for (const level of [...this._overlays.keys()]) {
       this._disposeOverlay(level)
     }
+  }
+
+  private _syncScrollLock(isOpen = this.open) {
+    const shouldLock = isOpen && this.lockScroll
+    if (shouldLock === this._hasScrollLock) return
+
+    if (shouldLock) lockScroll()
+    else unlockScroll()
+    this._hasScrollLock = shouldLock
   }
 
   private _queryTriggerAnchor(): HTMLElement | null {
@@ -308,15 +330,84 @@ export class WebUiDropdownMenu extends LitElement {
   }
 
   private _onKeydown = (e: KeyboardEvent) => {
-    if (this.disabled) return
-    if (e.key === 'Escape') {
-      if (this._activePath.length > 0) {
-        this._closeSubmenuFrom(this._activePath.length)
-      } else if (this.open) {
-        this.closeAll()
-      }
+    if (this.disabled || !this.open) return
+
+    if (e.key === 'Escape' && e.target === this) {
+      if (this._activePath.length > 0) this._closeSubmenuFrom(this._activePath.length)
+      else this.closeAll()
       e.preventDefault()
+      return
     }
+
+    const level = this._getFocusedLevel()
+    if (level === undefined) return
+    const items = this._getEnabledLevelItems(level)
+    const focused = this._getFocusedItem()
+    const currentIndex = focused ? items.indexOf(focused) : -1
+
+    switch (e.key) {
+      case 'ArrowDown':
+        this._focusMenuItem(items[(currentIndex + 1 + items.length) % items.length])
+        break
+      case 'ArrowUp':
+        this._focusMenuItem(items[(currentIndex - 1 + items.length) % items.length])
+        break
+      case 'Home':
+        this._focusMenuItem(items[0])
+        break
+      case 'End':
+        this._focusMenuItem(items.at(-1))
+        break
+      case 'ArrowRight':
+        if (focused?.hasAttribute('submenu')) {
+          const itemIndex = this._getLevelItems(level).indexOf(focused)
+          this._toggleSubmenu(level, itemIndex)
+          requestAnimationFrame(() =>
+            requestAnimationFrame(() => this._focusMenuItem(this._getEnabledLevelItems(level + 1)[0]))
+          )
+        }
+        break
+      case 'ArrowLeft':
+        if (level > 0) {
+          this._closeSubmenuFrom(level)
+          this._focusMenuItem(this._getLevelItems(level - 1)[this._activePath[level - 1]])
+        }
+        break
+      case 'Enter':
+      case ' ':
+        focused?.click()
+        break
+      case 'Escape':
+        if (this._activePath.length > 0) this._closeSubmenuFrom(this._activePath.length)
+        else this.closeAll()
+        break
+      default:
+        return
+    }
+    e.preventDefault()
+  }
+
+  private _getEnabledLevelItems(level: number) {
+    return this._getLevelItems(level).filter(item => item.matches('web-ui-dropdown-item:not([disabled])'))
+  }
+
+  private _getFocusedItem(): HTMLElement | undefined {
+    return [...this._overlays.values()]
+      .flatMap(({ overlay }) => Array.from(overlay.querySelectorAll<HTMLElement>('web-ui-dropdown-item')))
+      .find(item => Boolean(item.shadowRoot?.activeElement))
+  }
+
+  private _getFocusedLevel(): number | undefined {
+    const item = this._getFocusedItem()
+    if (!item) return undefined
+    const overlay = [...this._overlays.entries()].find(([, value]) => value.overlay.contains(item))
+    return overlay?.[0]
+  }
+
+  private _focusMenuItem(item: HTMLElement | undefined) {
+    if (!item || item.hasAttribute('disabled')) return
+    const focusable = item as HTMLElement & { focusItem?: () => void }
+    focusable.focusItem?.()
   }
 
   private _isInsideShadowRoot(e: MouseEvent): boolean {
@@ -381,6 +472,7 @@ export interface WebUiDropdownMenu {
     'open-change': CustomEvent<{ open: boolean }>
   }
   open: boolean
+  lockScroll: boolean
   isOpen: boolean
   openMenu(): void
   closeAll(): void

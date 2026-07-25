@@ -45,11 +45,7 @@
   outline-offset: 2px;
 }
 
-.option-label:hover {
-  color: var(--wui-color-on-accent, #fff);
-  background: var(--wui-color-accent, #0081f8);
-}
-
+.option-label:hover,
 :host([active]) .option-label {
   color: var(--wui-color-on-accent, #fff);
   background: var(--wui-color-accent, #0081f8);

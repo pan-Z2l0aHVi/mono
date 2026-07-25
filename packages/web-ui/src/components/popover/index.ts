@@ -5,7 +5,8 @@ import { customElement, property } from 'lit/decorators.js'
 import glass from '@/assets/glass.css?inline'
 import { withOverlay } from '@/shared/overlay/overlay'
 import type { OverlayApi } from '@/shared/overlay/overlay'
-import { lockScroll, unlockScroll } from '@/shared/scroll-lock/scroll-lock'
+import { createOverlayPortal } from '@/shared/overlay/portal'
+import type { OverlayContainer, OverlayPortal } from '@/shared/overlay/portal'
 
 import style from './style.css?inline'
 
@@ -20,11 +21,14 @@ export class WebUiPopover extends LitElement {
   @property({ type: String, reflect: true }) placement: Placement = 'bottom'
   @property({ type: Number }) offset = 8
   @property({ type: String, reflect: true }) trigger: 'click' | 'hover' | 'manual' = 'click'
+  @property({ type: Boolean, reflect: true }) portal = false
+  @property({ attribute: false }) overlayContainer?: OverlayContainer
 
   private _overlay?: OverlayApi & { anchor: HTMLElement; overlay: HTMLElement }
   private _showTimer?: ReturnType<typeof setTimeout>
   private _hideTimer?: ReturnType<typeof setTimeout>
   private _suppressEvent = false
+  private _portal?: OverlayPortal
 
   private _panelId = `wui-popover-panel-${++popoverIdCounter}`
 
@@ -37,6 +41,7 @@ export class WebUiPopover extends LitElement {
     super.connectedCallback()
     document.addEventListener('click', this._onClickOutside)
     document.addEventListener('keydown', this._onKeydown)
+    this.addEventListener('focusout', this._onFocusOut)
     this._syncTriggerListeners()
   }
 
@@ -44,40 +49,32 @@ export class WebUiPopover extends LitElement {
     super.disconnectedCallback()
     document.removeEventListener('click', this._onClickOutside)
     document.removeEventListener('keydown', this._onKeydown)
+    this.removeEventListener('focusout', this._onFocusOut)
     this.removeEventListener('mouseenter', this._onMouseEnter)
     this.removeEventListener('mouseleave', this._onMouseLeave)
     clearTimeout(this._showTimer)
     clearTimeout(this._hideTimer)
-    this._overlay?.dispose()
+    this._disposeOverlay()
   }
 
   override firstUpdated() {
-    this._initOverlay()
-    if (this.open) {
-      requestAnimationFrame(() => this._overlay?.open())
-    }
+    this._initLocalOverlay()
+    if (this.open) requestAnimationFrame(() => this._openOverlay())
   }
 
   protected override updated(changed: Map<string, unknown>) {
-    if (changed.has('placement') && this._overlay) {
-      this._overlay.dispose()
-      requestAnimationFrame(() => {
-        this._initOverlay()
-        if (this.open) this._overlay?.open()
-      })
-    }
+    if (changed.has('placement') || changed.has('portal') || changed.has('overlayContainer'))
+      requestAnimationFrame(() => this._reconfigureOverlay())
 
     if (changed.has('open')) {
       if (this.open) {
-        lockScroll()
-        requestAnimationFrame(() => this._overlay?.open())
+        requestAnimationFrame(() => this._openOverlay())
         this._dispatchChange(true)
         this._focusPanel()
       } else {
-        unlockScroll()
-        this._overlay?.close()
-        if (!this._suppressEvent) this._dispatchChange(false)
         this._returnFocus()
+        this._closeOverlay()
+        if (!this._suppressEvent) this._dispatchChange(false)
       }
     }
 
@@ -131,16 +128,73 @@ export class WebUiPopover extends LitElement {
     }
   }
 
-  private _initOverlay() {
-    const panel = this.shadowRoot?.querySelector('.popover-panel') as HTMLElement | null
-    if (panel) {
-      this._overlay = withOverlay.make({
-        anchor: this,
-        overlay: panel,
-        placement: this.placement,
-        offset: this.offset
-      })
-    }
+  private _initLocalOverlay() {
+    const anchor = this.shadowRoot?.querySelector<HTMLElement>('.popover-trigger')
+    const panel = this.shadowRoot?.querySelector<HTMLElement>('.popover-panel')
+    if (!anchor || !panel) return
+    this._overlay = withOverlay.make({
+      anchor,
+      overlay: panel,
+      placement: this.placement,
+      offset: this.offset
+    })
+  }
+
+  private _openOverlay() {
+    if (this.portal) this._openPortal()
+    else this._overlay?.open()
+  }
+
+  private _openPortal() {
+    if (this._portal) return
+    const anchor = this.shadowRoot?.querySelector('.popover-trigger') as HTMLElement | null
+    if (!anchor) return
+    const portal = createOverlayPortal({
+      container: this.overlayContainer,
+      target: this,
+      style: `${glass}\n${style}`,
+      className: 'popover-panel portal wui-glass wui-glass-no-after'
+    })
+    portal.panel.id = this._panelId
+    portal.panel.setAttribute('role', 'dialog')
+    portal.panel.tabIndex = -1
+    portal.panel.addEventListener('mouseenter', this._onPanelMouseEnter)
+    portal.panel.addEventListener('mouseleave', this._onPanelMouseLeave)
+    portal.moveContent(
+      Array.from(this.childNodes).filter(node => !(node instanceof HTMLElement && node.slot === 'trigger'))
+    )
+    this._portal = portal
+    this._overlay = withOverlay.make({
+      anchor,
+      overlay: portal.panel,
+      placement: this.placement,
+      offset: this.offset,
+      strategy: 'fixed'
+    })
+    this._overlay.open()
+  }
+
+  private _closeOverlay() {
+    this._overlay?.close()
+    if (!this._portal) return
+    this._portal?.restoreContent()
+    this._portal?.remove()
+    this._portal = undefined
+    this._overlay = undefined
+  }
+
+  private _disposeOverlay() {
+    this._overlay?.dispose()
+    this._overlay = undefined
+    this._portal?.restoreContent()
+    this._portal?.remove()
+    this._portal = undefined
+  }
+
+  private _reconfigureOverlay() {
+    this._disposeOverlay()
+    if (!this.portal) this._initLocalOverlay()
+    if (this.open) this._openOverlay()
   }
 
   private _dispatchChange(open: boolean) {
@@ -155,12 +209,15 @@ export class WebUiPopover extends LitElement {
 
   private _focusPanel() {
     requestAnimationFrame(() => {
-      const panel = this.shadowRoot?.querySelector('.popover-panel') as HTMLElement | null
-      panel?.focus()
+      const panel = this._portal?.panel ?? this.shadowRoot?.querySelector<HTMLElement>('.popover-panel')
+      const autofocus = panel?.querySelector<HTMLElement>('[autofocus]')
+      if (autofocus && !autofocus.matches(':disabled, [disabled]')) autofocus.focus()
     })
   }
 
   private _returnFocus() {
+    const panel = this._portal?.panel ?? this.shadowRoot?.querySelector<HTMLElement>('.popover-panel')
+    if (!panel?.matches(':focus-within')) return
     const trigger = this._queryTrigger()
     trigger?.focus()
   }
@@ -186,8 +243,19 @@ export class WebUiPopover extends LitElement {
   private _onClickOutside = (e: MouseEvent) => {
     if (!this.open) return
     if (this.trigger === 'manual' || this.trigger === 'hover') return
+    if (e.target instanceof Node && this._portal?.panel.contains(e.target)) return
     if (this._isInsideShadowRoot(e)) return
     this.open = false
+  }
+
+  private _onFocusOut = () => {
+    if (this.trigger === 'manual' || this.trigger === 'hover') return
+
+    requestAnimationFrame(() => {
+      if (this.open && !this.matches(':focus-within') && !this._portal?.panel.matches(':focus-within')) {
+        this.open = false
+      }
+    })
   }
 
   private _onKeydown = (e: KeyboardEvent) => {
@@ -223,24 +291,26 @@ export class WebUiPopover extends LitElement {
 
   override render() {
     return html`
-      <div
-        class="popover-trigger"
-        aria-expanded=${String(this.open)}
-        aria-controls=${this._panelId}
-        @click=${this._onTriggerClick}
-      >
-        <slot name="trigger"></slot>
-      </div>
-      <div
-        id=${this._panelId}
-        class="popover-panel wui-glass wui-glass-no-after"
-        ?hidden=${!this.open}
-        role="dialog"
-        tabindex="-1"
-        @mouseenter=${this._onPanelMouseEnter}
-        @mouseleave=${this._onPanelMouseLeave}
-      >
-        <slot></slot>
+      <div class="popover-anchor">
+        <div
+          class="popover-trigger"
+          aria-expanded=${String(this.open)}
+          aria-controls=${this._panelId}
+          @click=${this._onTriggerClick}
+        >
+          <slot name="trigger"></slot>
+        </div>
+        <div
+          id=${this._panelId}
+          class="popover-panel wui-glass wui-glass-no-after"
+          ?hidden=${!this.open}
+          role="dialog"
+          tabindex="-1"
+          @mouseenter=${this._onPanelMouseEnter}
+          @mouseleave=${this._onPanelMouseLeave}
+        >
+          <slot></slot>
+        </div>
       </div>
     `
   }

@@ -79,7 +79,7 @@
 
 .select-overlay {
   --wui-glass-shadow: 0 4px 16px rgb(0 0 0 / 0.25);
-  position: fixed;
+  position: absolute;
   z-index: 9999;
 
   overflow-y: auto;
@@ -91,6 +91,14 @@
   border-radius: 20px;
 
   background-color: var(--wui-color-surface-glass, rgb(240 240 240 / 0.8));
+}
+
+:host([portal]) .select-overlay {
+  display: none;
+}
+
+.select-overlay.portal {
+  position: fixed;
 }
 
 .select-overlay.hidden {

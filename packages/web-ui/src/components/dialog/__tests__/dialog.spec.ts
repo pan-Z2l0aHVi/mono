@@ -26,6 +26,42 @@ describe('WebUiDialog', () => {
     })
   })
 
+  describe('prop: lock-scroll', () => {
+    it('默认打开时锁定背景滚动，关闭后恢复', async () => {
+      const el = createDialog()
+      el.open = true
+      await el.updateComplete
+
+      expect(document.body.style.position).toBe('fixed')
+
+      el.close()
+      await el.updateComplete
+      expect(document.body.style.position).toBe('')
+      el.remove()
+    })
+
+    it('关闭 lock-scroll 时不锁定背景滚动', async () => {
+      const el = createDialog()
+      el.lockScroll = false
+      el.open = true
+      await el.updateComplete
+
+      expect(document.body.style.position).toBe('')
+      el.remove()
+    })
+
+    it('打开期间切换 lock-scroll 立即同步滚动锁', async () => {
+      const el = createDialog()
+      el.open = true
+      await el.updateComplete
+      el.lockScroll = false
+      await el.updateComplete
+
+      expect(document.body.style.position).toBe('')
+      el.remove()
+    })
+  })
+
   describe('event: open-change', () => {
     it('open false→true 触发 open-change，detail.open 为 true', async () => {
       const el = createDialog()

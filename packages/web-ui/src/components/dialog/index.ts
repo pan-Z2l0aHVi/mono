@@ -3,6 +3,8 @@ import { customElement, property } from 'lit/decorators.js'
 
 import '@/components/button'
 import glass from '@/assets/glass.css?inline'
+import { booleanWithFalseString } from '@/shared/property-converters/boolean-with-false-string'
+import { lockScroll, unlockScroll } from '@/shared/scroll-lock/scroll-lock'
 
 import style from './style.css?inline'
 
@@ -11,6 +13,9 @@ export class WebUiDialog extends LitElement {
   static override styles = [unsafeCSS(glass), unsafeCSS(style)]
 
   @property({ type: Boolean, reflect: true }) open = false
+  @property({ reflect: true, attribute: 'lock-scroll', converter: booleanWithFalseString }) lockScroll = true
+
+  private _hasScrollLock = false
 
   private get dialog() {
     return this.shadowRoot?.querySelector('dialog') as HTMLDialogElement | null
@@ -26,6 +31,12 @@ export class WebUiDialog extends LitElement {
         this.dialog?.close?.()
       }
     }
+    if (props.has('open') || props.has('lockScroll')) this._syncScrollLock()
+  }
+
+  override disconnectedCallback() {
+    super.disconnectedCallback()
+    this._syncScrollLock(false)
   }
 
   /** 以模态方式打开对话框（命令式） */
@@ -58,6 +69,15 @@ export class WebUiDialog extends LitElement {
     )
   }
 
+  private _syncScrollLock(isOpen = this.open) {
+    const shouldLock = isOpen && this.lockScroll
+    if (shouldLock === this._hasScrollLock) return
+
+    if (shouldLock) lockScroll()
+    else unlockScroll()
+    this._hasScrollLock = shouldLock
+  }
+
   override render() {
     return html`
       <dialog @cancel=${this.handleCancel} @click=${this.handleBackdropClick}>
@@ -75,6 +95,10 @@ export interface WebUiDialog {
   readonly $events: {
     'open-change': CustomEvent<{ open: boolean }>
   }
+  open: boolean
+  lockScroll: boolean
+  showModal(): void
+  close(): void
 }
 
 declare global {

@@ -357,6 +357,17 @@ describe('WebUiContextMenu', () => {
       el.remove()
     })
 
+    it('lock-scroll=false 时打开不锁定页面滚动', async () => {
+      const el = createContextMenu({}, SIMPLE)
+      el.lockScroll = false
+      await el.updateComplete
+      el.openAt(100, 100)
+      await waitForMenuOpen(el)
+
+      expect(document.body.style.position).toBe('')
+      el.remove()
+    })
+
     it('打开菜单时阻止外部容器滚动', async () => {
       const el = createContextMenu({}, SIMPLE)
       const container = document.createElement('div')

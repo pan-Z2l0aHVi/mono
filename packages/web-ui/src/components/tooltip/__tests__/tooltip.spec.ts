@@ -25,6 +25,20 @@ describe('WebUiTooltip', () => {
       const trigger = el.shadowRoot?.querySelector('.tooltip-trigger')
       expect(trigger).toBeTruthy()
 
+      const anchor = el.shadowRoot?.querySelector('.tooltip-anchor')
+      expect(anchor).toBeTruthy()
+
+      el.remove()
+    })
+
+    it('面板渲染在触发器局部定位容器中', async () => {
+      const el = createTooltip()
+      await el.updateComplete
+
+      const anchor = el.shadowRoot?.querySelector('.tooltip-anchor')
+      const panel = el.shadowRoot?.querySelector('.tooltip-panel')
+      expect(anchor?.contains(panel!)).toBe(true)
+
       el.remove()
     })
 
@@ -33,7 +47,7 @@ describe('WebUiTooltip', () => {
       await el.updateComplete
 
       const panel = el.shadowRoot?.querySelector('.tooltip-panel')
-      expect(panel?.classList.contains('hidden')).toBe(true)
+      expect((panel as HTMLElement | undefined)?.hidden).toBe(true)
 
       el.remove()
     })
@@ -91,6 +105,57 @@ describe('WebUiTooltip', () => {
       expect(el.hasAttribute('open')).toBe(true)
 
       el.remove()
+    })
+  })
+
+  describe('prop: portal', () => {
+    it('默认关闭且可反射到 host', async () => {
+      const el = createTooltip()
+      expect(el.portal).toBe(false)
+
+      el.portal = true
+      await el.updateComplete
+
+      expect(el.hasAttribute('portal')).toBe(true)
+      el.remove()
+    })
+
+    it('开启时将面板挂载到指定容器', async () => {
+      const el = createTooltip()
+      const container = document.createElement('div')
+      document.body.append(container)
+      el.portal = true
+      el.overlayContainer = container
+      await el.updateComplete
+
+      const trigger = el.querySelector('button') as HTMLButtonElement
+      trigger.focus()
+      await el.updateComplete
+
+      const panel = container.firstElementChild?.shadowRoot?.querySelector('.tooltip-panel')
+      expect(panel?.classList.contains('portal')).toBe(true)
+
+      el.remove()
+      container.remove()
+    })
+
+    it('开启时保留 content 文本换行样式节点', async () => {
+      const el = createTooltip({ content: 'averylongtooltipcontentwithoutwhitespace' })
+      const container = document.createElement('div')
+      document.body.append(container)
+      el.portal = true
+      el.overlayContainer = container
+      await el.updateComplete
+
+      const trigger = el.querySelector('button') as HTMLButtonElement
+      trigger.focus()
+      await el.updateComplete
+
+      const panel = container.firstElementChild?.shadowRoot?.querySelector('.tooltip-panel')
+      expect(panel?.querySelector('.tooltip-text')?.textContent).toBe('averylongtooltipcontentwithoutwhitespace')
+
+      el.remove()
+      container.remove()
     })
   })
 

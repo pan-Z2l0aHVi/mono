@@ -52,6 +52,38 @@ describe('WebUiDrawer', () => {
     })
   })
 
+  describe('prop: lock-scroll', () => {
+    it('默认打开时锁定页面滚动', async () => {
+      const el = createDrawer()
+      el.open = true
+      await el.updateComplete
+
+      expect(document.body.style.position).toBe('fixed')
+      el.remove()
+    })
+
+    it('关闭 lock-scroll 时不锁定页面滚动', async () => {
+      const el = createDrawer()
+      el.lockScroll = false
+      el.open = true
+      await el.updateComplete
+
+      expect(document.body.style.position).toBe('')
+      el.remove()
+    })
+
+    it('打开期间切换 lock-scroll 立即恢复页面滚动', async () => {
+      const el = createDrawer()
+      el.open = true
+      await el.updateComplete
+      el.lockScroll = false
+      await el.updateComplete
+
+      expect(document.body.style.position).toBe('')
+      el.remove()
+    })
+  })
+
   describe('prop: heading', () => {
     it('heading 可通过属性设置', async () => {
       const el = createDrawer()

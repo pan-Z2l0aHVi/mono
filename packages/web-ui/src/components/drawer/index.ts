@@ -5,6 +5,8 @@ import '@/components/icon'
 import '@/components/button'
 import glass from '@/assets/glass.css?inline'
 import { lucideX } from '@/icons'
+import { booleanWithFalseString } from '@/shared/property-converters/boolean-with-false-string'
+import { lockScroll, unlockScroll } from '@/shared/scroll-lock/scroll-lock'
 
 import style from './style.css?inline'
 
@@ -17,6 +19,8 @@ export class WebUiDrawer extends LitElement {
   static override styles = [unsafeCSS(glass), unsafeCSS(style)]
 
   @property({ type: Boolean, reflect: true }) open = false
+
+  @property({ reflect: true, attribute: 'lock-scroll', converter: booleanWithFalseString }) lockScroll = true
 
   @property({ reflect: true }) placement: DrawerPlacement = 'right'
 
@@ -33,6 +37,7 @@ export class WebUiDrawer extends LitElement {
   private _closeTimer: ReturnType<typeof setTimeout> | null = null
   private _hasHeaderSlot = false
   private _hasFooterSlot = false
+  private _hasScrollLock = false
 
   override connectedCallback() {
     super.connectedCallback()
@@ -42,6 +47,12 @@ export class WebUiDrawer extends LitElement {
 
   override firstUpdated() {
     this._checkSlotContent('footer')
+  }
+
+  override disconnectedCallback() {
+    super.disconnectedCallback()
+    if (this._closeTimer) clearTimeout(this._closeTimer)
+    this._syncScrollLock(false)
   }
 
   private _checkSlotContent(name: string) {
@@ -81,7 +92,6 @@ export class WebUiDrawer extends LitElement {
           this._closeTimer = null
         }
         this.dialog?.showModal?.()
-        document.body.style.overflow = 'hidden'
       } else if (!this._animating) {
         // 命令式（close()）和声明式（open=false）统一走动画关闭
         this._animating = true
@@ -91,10 +101,10 @@ export class WebUiDrawer extends LitElement {
           this.dialog?.classList.remove('closing')
           this._animating = false
           this._closeTimer = null
-          document.body.style.overflow = ''
         }, CLOSE_DURATION)
       }
     }
+    if (props.has('open') || props.has('lockScroll')) this._syncScrollLock()
   }
 
   /** 打开抽屉（命令式） */
@@ -127,6 +137,15 @@ export class WebUiDrawer extends LitElement {
         composed: true
       })
     )
+  }
+
+  private _syncScrollLock(isOpen = this.open) {
+    const shouldLock = isOpen && this.lockScroll
+    if (shouldLock === this._hasScrollLock) return
+
+    if (shouldLock) lockScroll()
+    else unlockScroll()
+    this._hasScrollLock = shouldLock
   }
 
   override render() {
@@ -167,6 +186,10 @@ export interface WebUiDrawer {
   readonly $events: {
     'open-change': CustomEvent<{ open: boolean }>
   }
+  open: boolean
+  lockScroll: boolean
+  show(): void
+  close(): void
 }
 
 declare global {

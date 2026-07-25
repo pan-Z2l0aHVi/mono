@@ -26,6 +26,7 @@ const clickTrigger = (el: WebUiPopover) => {
 
 const getPanel = (el: WebUiPopover) => el.shadowRoot!.querySelector('.popover-panel') as HTMLElement
 const getTriggerWrapper = (el: WebUiPopover) => el.shadowRoot!.querySelector('.popover-trigger') as HTMLElement
+const getAnchor = (el: WebUiPopover) => el.shadowRoot!.querySelector('.popover-anchor') as HTMLElement
 
 /** 等待 Lit 完成属性变更后的二次渲染（updated 中修改 state 会触发额外 render） */
 const waitFor二次渲染 = (el: WebUiPopover) => el.updateComplete.then(() => el.updateComplete)
@@ -39,6 +40,17 @@ afterEach(() => {
 })
 
 describe('WebUiPopover', () => {
+  describe('定位', () => {
+    it('面板渲染在触发器局部定位容器中', async () => {
+      const el = createPopover('Btn', 'Content')
+      await el.updateComplete
+
+      expect(getAnchor(el).contains(getPanel(el))).toBe(true)
+
+      el.remove()
+    })
+  })
+
   describe('prop: trigger', () => {
     it('默认值为 click', async () => {
       const el = createPopover('Btn', 'Content')
@@ -113,6 +125,50 @@ describe('WebUiPopover', () => {
       el.open = false
       await el.updateComplete
       expect(el.hasAttribute('open')).toBe(false)
+
+      el.remove()
+    })
+  })
+
+  describe('prop: portal', () => {
+    it('默认关闭且可反射到 host', async () => {
+      const el = createPopover('Btn', 'Content')
+      expect(el.portal).toBe(false)
+
+      el.portal = true
+      await el.updateComplete
+
+      expect(el.hasAttribute('portal')).toBe(true)
+      el.remove()
+    })
+
+    it('开启时将面板挂载到指定容器', async () => {
+      const el = createPopover('Btn', 'Content')
+      const container = document.createElement('div')
+      document.body.append(container)
+      el.portal = true
+      el.overlayContainer = container
+      await el.updateComplete
+
+      el.show()
+      await waitFor二次渲染(el)
+      await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
+
+      const panel = container.firstElementChild?.shadowRoot?.querySelector('.popover-panel')
+      expect(panel?.classList.contains('portal')).toBe(true)
+
+      el.remove()
+      container.remove()
+    })
+  })
+
+  describe('滚动行为', () => {
+    it('打开时不锁定页面滚动', async () => {
+      const el = createPopover('Btn', 'Content')
+      el.open = true
+      await waitFor二次渲染(el)
+
+      expect(document.body.style.position).toBe('')
 
       el.remove()
     })
@@ -257,6 +313,42 @@ describe('WebUiPopover', () => {
       document.body.click()
       await waitFor二次渲染(el)
       expect(el.isOpen).toBe(false)
+
+      el.remove()
+    })
+
+    it('焦点移出组件后关闭', async () => {
+      const el = createPopover('Btn', 'Content')
+      const external = document.createElement('button')
+      document.body.append(external)
+      await el.updateComplete
+
+      const trigger = el.querySelector<HTMLElement>('[slot="trigger"]')
+      trigger?.focus()
+      clickTrigger(el)
+      await waitFor二次渲染(el)
+
+      external.focus()
+      await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
+      await waitFor二次渲染(el)
+
+      expect(el.isOpen).toBe(false)
+
+      el.remove()
+      external.remove()
+    })
+
+    it('焦点移入面板内容时保持打开', async () => {
+      const el = createPopover('Btn', '<input autofocus>')
+      await el.updateComplete
+
+      const trigger = el.querySelector<HTMLElement>('[slot="trigger"]')
+      trigger?.focus()
+      clickTrigger(el)
+      await waitFor二次渲染(el)
+      await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
+
+      expect(el.isOpen).toBe(true)
 
       el.remove()
     })

@@ -131,6 +131,30 @@ describe('WebUiDropdownMenu', () => {
   })
 
   describe('打开/关闭', () => {
+    it('卸载打开的菜单时恢复页面滚动', async () => {
+      const el = createDropdown({}, SIMPLE)
+      await el.updateComplete
+
+      el.openMenu()
+      await el.updateComplete
+      expect(document.body.style.position).toBe('fixed')
+
+      el.remove()
+
+      expect(document.body.style.position).toBe('')
+    })
+
+    it('lock-scroll=false 时打开不锁定页面滚动', async () => {
+      const el = createDropdown({}, SIMPLE)
+      el.lockScroll = false
+      await el.updateComplete
+      el.openMenu()
+      await el.updateComplete
+
+      expect(document.body.style.position).toBe('')
+      el.remove()
+    })
+
     it('openMenu() 打开菜单', async () => {
       const el = createDropdown({}, SIMPLE)
       await el.updateComplete

@@ -75,7 +75,96 @@ describe('WebUiSelect', () => {
     })
   })
 
+  describe('prop: portal', () => {
+    it('默认关闭且可反射到 host', async () => {
+      const el = createSelect(OPTIONS_HTML)
+      expect(el.portal).toBe(false)
+
+      el.portal = true
+      await el.updateComplete
+
+      expect(el.hasAttribute('portal')).toBe(true)
+      el.remove()
+    })
+
+    it('开启时将面板挂载到指定容器', async () => {
+      const el = createSelect(OPTIONS_HTML)
+      const container = document.createElement('div')
+      document.body.append(container)
+      el.portal = true
+      el.overlayContainer = container
+      await el.updateComplete
+
+      const trigger = el.shadowRoot?.querySelector('.select-trigger') as HTMLElement
+      trigger.click()
+      await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
+
+      const panel = container.firstElementChild?.shadowRoot?.querySelector('.select-overlay')
+      expect(panel?.classList.contains('portal')).toBe(true)
+
+      el.remove()
+      container.remove()
+    })
+
+    it('开启时不输出跨 Shadow Root 的 aria-activedescendant', async () => {
+      const el = createSelect(OPTIONS_HTML)
+      el.portal = true
+      await el.updateComplete
+
+      const trigger = el.shadowRoot?.querySelector<HTMLElement>('.select-trigger')
+      trigger?.click()
+      await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
+
+      expect(trigger?.hasAttribute('aria-activedescendant')).toBe(false)
+      el.remove()
+    })
+  })
+
   describe('打开/关闭', () => {
+    it('打开时锁定页面滚动，关闭时恢复', async () => {
+      const el = createSelect(OPTIONS_HTML)
+      await el.updateComplete
+
+      const trigger = el.shadowRoot?.querySelector('.select-trigger') as HTMLElement
+      trigger.click()
+      await el.updateComplete
+
+      expect(document.body.style.position).toBe('fixed')
+
+      document.body.click()
+      await el.updateComplete
+
+      expect(document.body.style.position).toBe('')
+
+      el.remove()
+    })
+
+    it('lock-scroll=false 时打开不锁定页面滚动', async () => {
+      const el = createSelect(OPTIONS_HTML)
+      el.lockScroll = false
+      await el.updateComplete
+
+      const trigger = el.shadowRoot?.querySelector('.select-trigger') as HTMLElement
+      trigger.click()
+      await el.updateComplete
+
+      expect(document.body.style.position).toBe('')
+      el.remove()
+    })
+
+    it('打开期间切换 lock-scroll 立即恢复页面滚动', async () => {
+      const el = createSelect(OPTIONS_HTML)
+      await el.updateComplete
+      const trigger = el.shadowRoot?.querySelector('.select-trigger') as HTMLElement
+      trigger.click()
+      await el.updateComplete
+      el.lockScroll = false
+      await el.updateComplete
+
+      expect(document.body.style.position).toBe('')
+      el.remove()
+    })
+
     it('点击触发器打开浮层', async () => {
       const el = createSelect(OPTIONS_HTML)
       await el.updateComplete
@@ -85,6 +174,21 @@ describe('WebUiSelect', () => {
       await el.updateComplete
 
       expect(el.isOpen).toBe(true)
+
+      el.remove()
+    })
+
+    it('点击打开时只保留已选项勾选，不激活选项', async () => {
+      const el = createSelect(OPTIONS_HTML)
+      el.value = 'apple'
+      await el.updateComplete
+
+      const trigger = el.shadowRoot?.querySelector<HTMLElement>('.select-trigger')
+      trigger?.click()
+      await el.updateComplete
+
+      expect(el.querySelector('web-ui-option')?.hasAttribute('selected')).toBe(true)
+      expect(el.querySelector('web-ui-option')?.hasAttribute('active')).toBe(false)
 
       el.remove()
     })
@@ -123,6 +227,27 @@ describe('WebUiSelect', () => {
 
       el.remove()
     })
+
+    it('焦点移出组件后关闭浮层', async () => {
+      const el = createSelect(OPTIONS_HTML)
+      const external = document.createElement('button')
+      document.body.append(external)
+      await el.updateComplete
+
+      const trigger = el.shadowRoot?.querySelector<HTMLElement>('.select-trigger')
+      trigger?.focus()
+      trigger?.click()
+      await el.updateComplete
+
+      external.focus()
+      await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
+      await el.updateComplete
+
+      expect(el.isOpen).toBe(false)
+
+      el.remove()
+      external.remove()
+    })
   })
 
   describe('事件', () => {
@@ -149,6 +274,32 @@ describe('WebUiSelect', () => {
   })
 
   describe('键盘导航', () => {
+    it('ArrowDown 激活的选项使用 active 属性', async () => {
+      const el = createSelect(OPTIONS_HTML)
+      await el.updateComplete
+
+      el.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }))
+      await el.updateComplete
+
+      expect(el.querySelector('web-ui-option')?.hasAttribute('active')).toBe(true)
+
+      el.remove()
+    })
+
+    it('鼠标进入选项后清除键盘激活状态', async () => {
+      const el = createSelect(OPTIONS_HTML)
+      await el.updateComplete
+
+      el.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }))
+      await el.updateComplete
+      const option = el.querySelector<HTMLElement>('web-ui-option')
+      option?.dispatchEvent(new MouseEvent('mouseover', { bubbles: true, composed: true }))
+
+      expect(option?.hasAttribute('active')).toBe(false)
+
+      el.remove()
+    })
+
     it('Escape 关闭浮层', async () => {
       const el = createSelect(OPTIONS_HTML)
       await el.updateComplete
@@ -173,8 +324,6 @@ describe('WebUiSelect', () => {
       trigger.click()
       await el.updateComplete
 
-      el.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }))
-      await el.updateComplete
       el.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }))
       await el.updateComplete
       el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
