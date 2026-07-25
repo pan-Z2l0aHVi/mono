@@ -13,6 +13,7 @@ const navItems: NavItem[] = [
   { path: '/components/button', label: '按钮' },
   { path: '/components/icon', label: '图标' },
   { path: '/components/input', label: '输入框' },
+  { path: '/components/textarea', label: '文本域' },
   { path: '/components/input-number', label: '数字输入框' },
   { path: '/components/select', label: '下拉选择' },
   { path: '/components/dropdown', label: '下拉菜单' },
