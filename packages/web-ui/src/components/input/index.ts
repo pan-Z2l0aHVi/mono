@@ -17,7 +17,7 @@ export class WebUiInput extends LitElement {
   @property({ type: String, reflect: true }) value = ''
   @property({ type: String, reflect: true }) placeholder = ''
   @property({ type: Boolean, reflect: true }) disabled = false
-  @property({ type: Boolean, reflect: true }) closable = false
+  @property({ type: Boolean, reflect: true }) clearable = false
   @property({ type: Boolean, reflect: true }) full = false
 
   @state() private _focused = false
@@ -71,7 +71,7 @@ export class WebUiInput extends LitElement {
   }
 
   override render() {
-    const showClear = this.closable && this.value
+    const showClear = this.clearable && this.value
 
     return html`
       <div class="wui-glass wui-glass-no-after wui-input-inner" @click=${this.focusInput}>

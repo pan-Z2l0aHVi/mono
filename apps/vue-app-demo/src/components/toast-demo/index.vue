@@ -129,11 +129,5 @@ const handleMany = () => {
       <web-ui-button @click="handleMany">创建 7 个 Toast (队列测试)</web-ui-button>
       <web-ui-button variant="secondary" @click="handleCloseAll">全部关闭</web-ui-button>
     </div>
-
-    <h2>交互说明</h2>
-    <div class="mb-6">
-      <p class="mb-2 text-sm text-gray-500">Hover toast 时暂停自动关闭计时，同时显示右上角关闭按钮</p>
-      <p class="mb-2 text-sm text-gray-500">关闭：<code>toast.close(id)</code>、清除：<code>toast.clear()</code></p>
-    </div>
   </div>
 </template>

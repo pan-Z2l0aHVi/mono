@@ -18,7 +18,9 @@
 .wui-textarea-inner {
   position: relative;
 
-  display: block;
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
 
   box-sizing: border-box;
   width: var(--wui-textarea-width, 200px);
@@ -51,6 +53,7 @@ textarea {
   resize: vertical;
 
   display: block;
+  flex: 1;
 
   box-sizing: border-box;
   width: 100%;
@@ -75,5 +78,40 @@ textarea {
 
   &:read-only {
     cursor: default;
+  }
+}
+
+/* ===== Prefix / Suffix ===== */
+
+slot {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+
+  font-size: var(--wui-font-size, 14px);
+  color: #6a6a6a;
+}
+
+slot.empty {
+  display: none;
+}
+
+/* ===== Clear button ===== */
+
+.clear {
+  cursor: pointer;
+
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  align-self: flex-start;
+  justify-content: center;
+
+  margin-top: 2px;
+
+  color: #9a9a9a;
+
+  &:hover {
+    color: #6a6a6a;
   }
 }

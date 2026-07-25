@@ -178,6 +178,152 @@ describe('WebUiTextarea', () => {
     })
   })
 
+  describe('插槽', () => {
+    it('prefix slot 始终存在于 shadow DOM', async () => {
+      const el = createTextarea()
+      await el.updateComplete
+
+      const prefix = el.shadowRoot?.querySelector('slot[name=prefix]')
+      expect(prefix).toBeTruthy()
+
+      el.remove()
+    })
+
+    it('有 prefix 内容时 slot 非空', async () => {
+      const el = createTextarea()
+      el.innerHTML = '<span slot="prefix">Q</span>'
+      await el.updateComplete
+
+      const prefix = el.shadowRoot?.querySelector('slot[name=prefix]') as HTMLSlotElement
+      expect(prefix.assignedElements().length).toBe(1)
+
+      el.remove()
+    })
+
+    it('suffix slot 始终存在于 shadow DOM', async () => {
+      const el = createTextarea()
+      await el.updateComplete
+
+      const suffix = el.shadowRoot?.querySelector('slot[name=suffix]')
+      expect(suffix).toBeTruthy()
+
+      el.remove()
+    })
+
+    it('有 suffix 内容时 slot 非空', async () => {
+      const el = createTextarea()
+      el.innerHTML = '<span slot="suffix">ok</span>'
+      await el.updateComplete
+
+      const suffix = el.shadowRoot?.querySelector('slot[name=suffix]') as HTMLSlotElement
+      expect(suffix.assignedElements().length).toBe(1)
+
+      el.remove()
+    })
+  })
+
+  describe('prop: clearable', () => {
+    it('clearable 有值时显示清除按钮', async () => {
+      const el = createTextarea()
+      el.clearable = true
+      el.value = 'hello'
+      await el.updateComplete
+
+      const clear = el.shadowRoot?.querySelector('.clear')
+      expect(clear).toBeTruthy()
+
+      el.remove()
+    })
+
+    it('clearable 无值时不显示清除按钮', async () => {
+      const el = createTextarea()
+      el.clearable = true
+      await el.updateComplete
+
+      const clear = el.shadowRoot?.querySelector('.clear')
+      expect(clear).toBeNull()
+
+      el.remove()
+    })
+
+    it('非 clearable 时不显示清除按钮', async () => {
+      const el = createTextarea({ value: 'hello' })
+      await el.updateComplete
+
+      const clear = el.shadowRoot?.querySelector('.clear')
+      expect(clear).toBeNull()
+
+      el.remove()
+    })
+
+    it('点击清除按钮清空 value', async () => {
+      const el = createTextarea()
+      el.clearable = true
+      el.value = 'hello'
+      await el.updateComplete
+
+      const clear = el.shadowRoot?.querySelector('.clear') as HTMLElement
+      clear.click()
+
+      await el.updateComplete
+      expect(el.value).toBe('')
+
+      el.remove()
+    })
+
+    it('点击清除按钮触发 input 事件', async () => {
+      const el = createTextarea()
+      el.clearable = true
+      el.value = 'hello'
+      await el.updateComplete
+
+      const handler = vi.fn<(e: Event) => void>()
+      el.addEventListener('input', handler)
+
+      const clear = el.shadowRoot?.querySelector('.clear') as HTMLElement
+      clear.click()
+
+      expect(handler).toHaveBeenCalledTimes(1)
+
+      el.remove()
+    })
+
+    it('清除后图标消失', async () => {
+      const el = createTextarea()
+      el.clearable = true
+      el.value = 'hello'
+      await el.updateComplete
+
+      const clearBefore = el.shadowRoot?.querySelector('.clear')
+      expect(clearBefore).toBeTruthy()
+
+      const clear = el.shadowRoot?.querySelector('.clear') as HTMLElement
+      clear.click()
+      await el.updateComplete
+
+      const clearAfter = el.shadowRoot?.querySelector('.clear')
+      expect(clearAfter).toBeNull()
+
+      el.remove()
+    })
+
+    it('clearable + suffix 同时显示', async () => {
+      const el = createTextarea()
+      el.clearable = true
+      el.value = 'hello'
+      el.innerHTML = '<span slot="suffix">ok</span>'
+      await el.updateComplete
+
+      const suffix = el.shadowRoot?.querySelector('slot[name=suffix]') as HTMLSlotElement
+      expect(suffix.assignedElements().length).toBe(1)
+
+      const clear = el.shadowRoot?.querySelector('.clear')
+      expect(clear).toBeTruthy()
+
+      el.remove()
+    })
+  })
+
   describe('事件', () => {
     it('输入时触发 input 事件', async () => {
       const el = createTextarea()

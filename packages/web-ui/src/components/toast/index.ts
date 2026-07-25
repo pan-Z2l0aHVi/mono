@@ -6,7 +6,7 @@ import { customElement, property } from 'lit/decorators.js'
 
 import glass from '@/assets/glass.css?inline'
 import containerStyle from '@/assets/toast-containers.css?inline'
-import { lucideCheck, lucideInfo, lucideTriangleAlert, lucideCircleAlert, lucideX } from '@/icons'
+import { lucideCheck, lucideInfo, lucideTriangleAlert, lucideCircleAlert, heroiconsXMark16Solid } from '@/icons'
 
 import style from './style.css?inline'
 
@@ -180,7 +180,7 @@ export class WebUiToast extends LitElement {
         ${this.closable
           ? html`
               <button class="toast-close-btn wui-glass" aria-label="关闭" @click=${this._onCloseClick}>
-                <web-ui-icon .icon=${lucideX} :size="10"></web-ui-icon>
+                <web-ui-icon .icon=${heroiconsXMark16Solid} :size="10"></web-ui-icon>
               </button>
             `
           : html``}

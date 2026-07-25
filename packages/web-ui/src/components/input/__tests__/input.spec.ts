@@ -134,10 +134,10 @@ describe('WebUiInput', () => {
     })
   })
 
-  describe('prop: closable', () => {
-    it('closable 有值时显示清除按钮', async () => {
+  describe('prop: clearable', () => {
+    it('clearable 有值时显示清除按钮', async () => {
       const el = createInput()
-      el.closable = true
+      el.clearable = true
       el.value = 'hello'
       await el.updateComplete
 
@@ -147,9 +147,9 @@ describe('WebUiInput', () => {
       el.remove()
     })
 
-    it('closable 无值时不显示清除按钮', async () => {
+    it('clearable 无值时不显示清除按钮', async () => {
       const el = createInput()
-      el.closable = true
+      el.clearable = true
       await el.updateComplete
 
       const clear = el.shadowRoot?.querySelector('.clear')
@@ -158,7 +158,7 @@ describe('WebUiInput', () => {
       el.remove()
     })
 
-    it('非 closable 时不显示清除按钮', async () => {
+    it('非 clearable 时不显示清除按钮', async () => {
       const el = createInput({ value: 'hello' })
       await el.updateComplete
 
@@ -170,7 +170,7 @@ describe('WebUiInput', () => {
 
     it('点击清除按钮清空 value', async () => {
       const el = createInput()
-      el.closable = true
+      el.clearable = true
       el.value = 'hello'
       await el.updateComplete
 
@@ -185,7 +185,7 @@ describe('WebUiInput', () => {
 
     it('点击清除按钮触发 input 事件', async () => {
       const el = createInput()
-      el.closable = true
+      el.clearable = true
       el.value = 'hello'
       await el.updateComplete
 
@@ -202,7 +202,7 @@ describe('WebUiInput', () => {
 
     it('清除后图标消失', async () => {
       const el = createInput()
-      el.closable = true
+      el.clearable = true
       el.value = 'hello'
       await el.updateComplete
 
@@ -219,9 +219,9 @@ describe('WebUiInput', () => {
       el.remove()
     })
 
-    it('closable + suffix 同时显示', async () => {
+    it('clearable + suffix 同时显示', async () => {
       const el = createInput()
-      el.closable = true
+      el.clearable = true
       el.value = 'hello'
       el.innerHTML = '<span slot="suffix">ok</span>'
       await el.updateComplete

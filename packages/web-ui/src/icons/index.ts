@@ -30,3 +30,4 @@ export { default as lucideTriangleAlert } from './generated/lucide-triangle-aler
 export { default as lucideCircleAlert } from './generated/lucide-circle-alert'
 export { default as heroiconsCheck16Solid } from './generated/heroicons-check-16-solid'
 export { default as lucideUser } from './generated/lucide-user'
+export { default as heroiconsXMark16Solid } from './generated/heroicons-x-mark-16-solid'

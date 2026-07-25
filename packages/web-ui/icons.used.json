@@ -29,5 +29,6 @@
   "lucide:triangle-alert",
   "lucide:circle-alert",
   "heroicons:check-16-solid",
-  "lucide:user"
+  "lucide:user",
+  "heroicons:x-mark-16-solid"
 ]

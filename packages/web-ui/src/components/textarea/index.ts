@@ -1,8 +1,12 @@
 import { html, LitElement, unsafeCSS } from 'lit'
 import { customElement, property, state } from 'lit/decorators.js'
+import { classMap } from 'lit/directives/class-map.js'
 import { ifDefined } from 'lit/directives/if-defined.js'
 
+// web-ui-icon 必须注册（Rolldown tree-shake 副作用 import，引用类名阻止删除）
+import '@/components/icon'
 import glass from '@/assets/glass.css?inline'
+import { jamCloseCircleF } from '@/icons'
 
 import style from './style.css?inline'
 
@@ -18,6 +22,7 @@ export class WebUiTextarea extends LitElement {
   @property({ type: Boolean, reflect: true }) readonly = false
   @property({ type: Boolean, reflect: true }) required = false
   @property({ type: Boolean, reflect: true }) full = false
+  @property({ type: Boolean, reflect: true }) clearable = false
   @property({ type: Number, reflect: true }) rows = 3
   @property({ type: Number, reflect: true }) minlength: number | undefined
   @property({ type: Number, reflect: true }) maxlength: number | undefined
@@ -27,6 +32,8 @@ export class WebUiTextarea extends LitElement {
 
   @state() private _focused = false
   @state() private _formDisabled = false
+  @state() private _hasPrefix = false
+  @state() private _hasSuffix = false
 
   private _textarea: HTMLTextAreaElement | null = null
   private _resizeObserver: ResizeObserver | null = null
@@ -176,9 +183,30 @@ export class WebUiTextarea extends LitElement {
     this.shadowRoot?.querySelector('textarea')?.focus()
   }
 
+  private _onSlotChange(e: Event) {
+    if (!(e.target instanceof HTMLSlotElement)) return
+    const slot = e.target
+    const hasContent = slot.assignedElements().length > 0
+    if (slot.name === 'prefix') this._hasPrefix = hasContent
+    if (slot.name === 'suffix') this._hasSuffix = hasContent
+  }
+
+  private handleClear() {
+    if (this._isDisabled) return
+    this.value = ''
+    this.dispatchEvent(new Event('input', { bubbles: true, composed: true }))
+  }
+
+  private preventMouseDownBlur(e: Event) {
+    e.preventDefault()
+  }
+
   override render() {
+    const showClear = this.clearable && this.value
+
     return html`
       <div class="wui-glass wui-glass-no-after wui-textarea-inner" @click=${this.focusTextarea}>
+        <slot name="prefix" class=${classMap({ empty: !this._hasPrefix })} @slotchange=${this._onSlotChange}></slot>
         <textarea
           placeholder=${this.placeholder}
           name=${this.name}
@@ -196,6 +224,17 @@ export class WebUiTextarea extends LitElement {
           @focus=${this.handleFocus}
           @blur=${this.handleBlur}
         ></textarea>
+        ${showClear
+          ? html`<span
+              class="clear"
+              @pointerdown=${this.preventMouseDownBlur}
+              @mousedown=${this.preventMouseDownBlur}
+              @click=${this.handleClear}
+            >
+              <web-ui-icon .icon=${jamCloseCircleF}></web-ui-icon>
+            </span>`
+          : ''}
+        <slot name="suffix" class=${classMap({ empty: !this._hasSuffix })} @slotchange=${this._onSlotChange}></slot>
       </div>
     `
   }

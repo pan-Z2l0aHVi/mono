@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { lucideSearch } from '@greypan/web-ui/icons'
 import { ref } from 'vue'
 
 const basic = ref('')
@@ -24,6 +25,20 @@ const limitedVal = ref('')
       <div class="text-sm text-gray-500">输入值：{{ basic || '(空)' }}</div>
     </div>
 
+    <h2>前缀 / 后缀</h2>
+    <div class="mb-3 flex flex-col gap-3">
+      <web-ui-textarea placeholder="搜索">
+        <web-ui-icon slot="prefix" :icon="lucideSearch"></web-ui-icon>
+      </web-ui-textarea>
+      <web-ui-textarea placeholder="带后缀">
+        <span slot="suffix">/ 1000</span>
+      </web-ui-textarea>
+      <web-ui-textarea placeholder="前后都有" full>
+        <span slot="prefix">备注：</span>
+        <span slot="suffix">必填</span>
+      </web-ui-textarea>
+    </div>
+
     <h2>行数</h2>
     <div class="mb-3 flex flex-col gap-3">
       <web-ui-textarea :rows="2" placeholder="2 行" full />
@@ -40,6 +55,14 @@ const limitedVal = ref('')
     <div class="mb-3 flex flex-col gap-3">
       <web-ui-textarea :value="disabledVal" disabled full />
       <web-ui-textarea :value="readonlyVal" readonly full />
+    </div>
+
+    <h2>可清除</h2>
+    <div class="mb-3 flex flex-col gap-3">
+      <web-ui-textarea value="有值可清除" clearable full />
+      <web-ui-textarea placeholder="搜索" clearable full>
+        <web-ui-icon slot="prefix" :icon="lucideSearch"></web-ui-icon>
+      </web-ui-textarea>
     </div>
 
     <h2>字符限制</h2>

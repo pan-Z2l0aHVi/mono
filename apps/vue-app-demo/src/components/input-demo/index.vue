@@ -41,11 +41,11 @@ import { lucideSearch } from '@greypan/web-ui/icons'
 
     <h2>可清除</h2>
     <div class="mb-3 flex flex-col gap-3">
-      <web-ui-input value="有值可清除" closable />
-      <web-ui-input placeholder="搜索" closable>
+      <web-ui-input value="有值可清除" clearable />
+      <web-ui-input placeholder="搜索" clearable>
         <web-ui-icon slot="prefix" :icon="lucideSearch"></web-ui-icon>
       </web-ui-input>
-      <web-ui-input value="有值可清除" closable full
+      <web-ui-input value="有值可清除" clearable full
         ><span slot="prefix">www.</span><span slot="suffix">@gmail.com</span></web-ui-input
       >
     </div>
@@ -53,7 +53,7 @@ import { lucideSearch } from '@greypan/web-ui/icons'
     <h2>满宽</h2>
     <div class="mb-3 flex flex-col gap-3">
       <web-ui-input full placeholder="满宽输入框" />
-      <web-ui-input full value="满宽有值" closable>
+      <web-ui-input full value="满宽有值" clearable>
         <web-ui-icon slot="prefix" :icon="lucideSearch"></web-ui-icon>
       </web-ui-input>
     </div>
