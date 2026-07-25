@@ -1,6 +1,7 @@
 import type { DetailedHTMLProps, HTMLAttributes } from 'react'
 
 import type {
+  WebUiAvatar,
   WebUiBackTop,
   WebUiButton,
   WebUiButtonGroup,
@@ -39,6 +40,7 @@ export type LitReactWrapper<T> = T extends { readonly $events: infer E }
   : DetailedHTMLProps<ExtractProps<OmitLitBase<T>> & HTMLAttributes<HTMLElement>, HTMLElement>
 
 export interface WebUiComponents {
+  'web-ui-avatar': LitReactWrapper<WebUiAvatar>
   'web-ui-button': LitReactWrapper<WebUiButton>
   'web-ui-button-group': LitReactWrapper<WebUiButtonGroup>
   'web-ui-checkbox': LitReactWrapper<WebUiCheckbox>

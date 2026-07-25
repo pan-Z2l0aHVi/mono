@@ -10,6 +10,7 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { path: '/home', label: '首页' },
+  { path: '/components/avatar', label: '头像' },
   { path: '/components/button', label: '按钮' },
   { path: '/components/icon', label: '图标' },
   { path: '/components/input', label: '输入框' },

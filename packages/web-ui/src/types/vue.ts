@@ -1,6 +1,7 @@
 import type { ComponentOptionsMixin, DefineComponent, HTMLAttributes } from 'vue'
 
 import type {
+  WebUiAvatar,
   WebUiBackTop,
   WebUiButton,
   WebUiButtonGroup,
@@ -61,6 +62,7 @@ export type LitVueWrapper<T> = T extends { readonly $events: infer E }
   : DefineComponent<ExtractProps<OmitLitBase<T>>>
 
 export interface WebUiComponents {
+  'web-ui-avatar': LitVueWrapper<WebUiAvatar>
   'web-ui-button': LitVueWrapper<WebUiButton>
   'web-ui-button-group': LitVueWrapper<WebUiButtonGroup>
   'web-ui-checkbox': LitVueWrapper<WebUiCheckbox>
