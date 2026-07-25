@@ -193,12 +193,13 @@ They are excluded from linting, formatting, and spell-check.
 
 Read these as needed; they are not required for every conversation:
 
-| File                           | Purpose                                           | When to read                                    |
-| ------------------------------ | ------------------------------------------------- | ----------------------------------------------- |
-| `docs/agents/testing.md`       | Test infrastructure, commands, and browser mode   | When test execution or configuration is unclear |
-| `docs/agents/linting.md`       | Toolchain, formatter, linter, and stylelint usage | When linting or formatting commands are unclear |
-| `docs/agents/issue-tracker.md` | GitHub issue operations and `gh` CLI usage        | When creating, querying, or updating issues     |
-| `docs/agents/domain.md`        | Code exploration conventions, ADRs, and glossary  | When exploring an unfamiliar code area          |
+| File                                    | Purpose                                           | When to read                                    |
+| --------------------------------------- | ------------------------------------------------- | ----------------------------------------------- |
+| `docs/agents/testing.md`                | Test infrastructure, commands, and browser mode   | When test execution or configuration is unclear |
+| `docs/agents/linting.md`                | Toolchain, formatter, linter, and stylelint usage | When linting or formatting commands are unclear |
+| `docs/agents/issue-tracker.md`          | GitHub issue operations and `gh` CLI usage        | When creating, querying, or updating issues     |
+| `docs/agents/domain.md`                 | Code exploration conventions, ADRs, and glossary  | When exploring an unfamiliar code area          |
+| `.agents/skills/agent-browser/SKILL.md` | Browser automation for UI/UX verification         | When verifying UI changes in a real browser     |
 
 ## Agent behavioral rules
 
@@ -206,20 +207,24 @@ Automatically loaded and effective for every conversation:
 
 ### Browser verification
 
-Changes involving UI, UX, interaction, responsive behavior, or browser runtime behavior must be verified in the corresponding local demo or a minimal reproduction. Verification evidence has two complementary layers:
+Changes involving UI, UX, interaction, responsive behavior, or browser runtime behavior must be verified in a real browser. Use the `agent-browser` skill to automate this — start the dev server, navigate to the page, interact with components, and take screenshots.
 
-1. **Agent-verifiable automated evidence (required)**: Prefer Playwright to control an isolated browser page, reproduce key actions, and assert outcomes. As applicable, check DOM, computed styles, focus and keyboard paths, scrolling and overlays, console errors, and page exceptions. Visual or layout changes must be checked with desktop and mobile screenshots for blank rendering, overflow, occlusion, misalignment, and unexpected layout shifts.
-2. **User-visible manual verification (when a GUI is available)**: After starting the demo, use `open -a "Google Chrome" "https://localhost:<port>/<path>"` to open a new Chrome tab without taking over the user's existing browser session. This only lets the user inspect the real page; it **cannot** by itself be treated as evidence that an agent verified interaction or visual behavior.
+What to verify per change type:
 
-For interactive components, automated verification must at least cover primary pointer interactions, keyboard operation, focus management, disabled states, and close or cancel paths. For accessibility-related changes, check semantics, accessible names, and keyboard reachability. Behavior relying on browser features must run in a real browser; jsdom results are not a substitute.
+- **Interaction**: primary pointer interactions, keyboard operation, focus management, disabled states, close/cancel paths
+- **Layout**: blank rendering, overflow, occlusion, misalignment, unexpected layout shifts (check desktop and mobile viewports)
+- **Accessibility**: semantics, accessible names, keyboard reachability
+- **Runtime**: console errors, page exceptions, behavior relying on browser features (jsdom is not a substitute)
 
-Do not attach to, debug, or control the user's existing Chrome session, profile, authentication state, or tabs. When a controlled Chrome instance is needed, launch an isolated Playwright browser instance only. Ignore certificate errors only for local self-signed HTTPS demos; never relax certificate validation for external sites.
+Constraints:
 
-The fallback chain is: controlled Playwright browser when headed mode is available → headless Playwright for interaction, console, and screenshots → project browser-mode tests → component tests and HTTP/DOM checks. If Chrome, a GUI, Playwright, browser binaries, or the local server are unavailable, continue with the next layer rather than stopping. If no browser layer is available, explicitly report why real-browser verification could not be completed and the resulting risk.
+- Do not attach to or control the user's existing Chrome session. Use `agent-browser` in its own isolated context.
+- Ignore certificate errors only for local self-signed HTTPS demos; never relax certificate validation for external sites.
+- Stop every dev server started for verification after it completes, unless the user asks to keep it running. Preserve or report the local URL for follow-up.
 
-Agents must stop every dev server they started after browser verification completes, including all child watch processes, unless the user explicitly asks to keep it running. Before stopping a server, preserve or report the local URL when it is useful for the user's follow-up verification.
+Fallback chain: `agent-browser` → project browser-mode tests → component tests and HTTP/DOM checks. If no browser layer is available, explicitly report why real-browser verification could not be completed and the resulting risk.
 
-Final reports must state the verification URL, the verification layer actually used, covered viewports and interactions, and any gaps. Do not describe opening a Chrome tab, static code review, a successful build, or passing jsdom tests as browser interaction verification.
+Final reports must state the verification URL, what was checked, and any gaps. Do not describe a successful build or passing jsdom tests as browser interaction verification.
 
 | File                                 | Scope                                                     |
 | ------------------------------------ | --------------------------------------------------------- |

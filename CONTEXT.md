@@ -30,6 +30,18 @@ A pnpm monorepo publishing Lit-based web component UI library (`@greypan/web-ui`
 | `web-ui`      | `@greypan/web-ui`      | Lit web components, framework type wrappers, icons         |
 | `tsconfig`    | `@greypan/tsconfig`    | Shared TypeScript profiles (no build step)                 |
 
+## Web UI Language
+
+**Lock Scroll**:
+An overlay policy that prevents background document scrolling while an overlay is open. It does not imply modal accessibility semantics.
+_Avoid_: Modal
+
+**Modal Overlay**:
+An overlay that prevents background interaction and manages focus as a modal dialog. It is distinct from Lock Scroll.
+
+**Overlay Focus Model**:
+The component-specific rule defining where focus moves when an overlay opens and closes.
+
 ## Known Constraints
 
 - All packages are ES modules only (`"type": "module"`)
