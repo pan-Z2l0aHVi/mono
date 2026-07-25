@@ -6,7 +6,8 @@ import {
   shift,
   size,
   type Middleware,
-  type Placement
+  type Placement,
+  type Strategy
 } from '@floating-ui/dom'
 import { definePlugin } from '@greypan/js-kit'
 
@@ -17,6 +18,7 @@ export interface OverlayOptions {
   shift?: boolean
   /** Sync overlay width to anchor width */
   matchWidth?: boolean
+  strategy?: Strategy
 }
 
 export interface OverlayApi {
@@ -34,7 +36,8 @@ const DEFAULT_OPTIONS: Required<OverlayOptions> = {
   offset: 4,
   flip: true,
   shift: true,
-  matchWidth: false
+  matchWidth: false,
+  strategy: 'absolute'
 }
 
 export const withOverlay = definePlugin<OverlayApi, { anchor: HTMLElement; overlay: HTMLElement } & OverlayOptions>(
@@ -44,7 +47,8 @@ export const withOverlay = definePlugin<OverlayApi, { anchor: HTMLElement; overl
       offset: ctx.offset ?? DEFAULT_OPTIONS.offset,
       flip: ctx.flip ?? DEFAULT_OPTIONS.flip,
       shift: ctx.shift ?? DEFAULT_OPTIONS.shift,
-      matchWidth: ctx.matchWidth ?? DEFAULT_OPTIONS.matchWidth
+      matchWidth: ctx.matchWidth ?? DEFAULT_OPTIONS.matchWidth,
+      strategy: ctx.strategy ?? DEFAULT_OPTIONS.strategy
     }
 
     const overlay = ctx.overlay
@@ -70,6 +74,7 @@ export const withOverlay = definePlugin<OverlayApi, { anchor: HTMLElement; overl
       cleanup = autoUpdate(anchor, overlay, () => {
         void computePosition(anchor, overlay, {
           placement: options.placement,
+          strategy: options.strategy,
           middleware
         }).then(({ x, y }) => {
           overlay.style.left = `${x}px`

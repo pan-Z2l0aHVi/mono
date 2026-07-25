@@ -90,6 +90,30 @@ describe('withOverlay', () => {
     overlay.remove()
   })
 
+  it('默认使用 absolute 坐标策略', () => {
+    const trigger = createTrigger()
+    const overlay = createOverlay()
+    const ctx = withOverlay.make({ anchor: trigger, overlay })
+
+    expect(ctx.options.strategy).toBe('absolute')
+
+    ctx.dispose()
+    trigger.remove()
+    overlay.remove()
+  })
+
+  it('允许显式使用 fixed 坐标策略', () => {
+    const trigger = createTrigger()
+    const overlay = createOverlay()
+    const ctx = withOverlay.make({ anchor: trigger, overlay, strategy: 'fixed' })
+
+    expect(ctx.options.strategy).toBe('fixed')
+
+    ctx.dispose()
+    trigger.remove()
+    overlay.remove()
+  })
+
   it('dispose 清理资源', async () => {
     const trigger = createTrigger()
     const overlay = createOverlay()
