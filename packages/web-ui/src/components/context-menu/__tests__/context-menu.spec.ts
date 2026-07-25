@@ -248,6 +248,18 @@ describe('WebUiContextMenu', () => {
       el.remove()
     })
 
+    it('打开更新尚未完成时卸载不会遗留滚动锁', async () => {
+      const el = createContextMenu({}, SIMPLE)
+      await el.updateComplete
+
+      el.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, clientX: 100, clientY: 100 }))
+      el.remove()
+      await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
+
+      expect(document.documentElement.style.overflow).toBe('')
+      expect(document.body.style.position).toBe('')
+    })
+
     it('右键打开菜单', async () => {
       const el = createContextMenu({}, SIMPLE)
       await el.updateComplete

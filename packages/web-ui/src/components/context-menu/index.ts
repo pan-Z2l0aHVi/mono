@@ -60,15 +60,23 @@ export class WebUiContextMenu extends LitElement {
     clearTimeout(this._submenuTimer)
     clearTimeout(this._ignoreOutsideClickTimer)
     this._hoverCleanupFns.forEach(cleanup => cleanup())
-    // 异步打开尚未完成时也可能卸载；按打开状态补偿释放自身的锁。
-    if (this._hasScrollLock || (this._isOpen && this.lockScroll)) {
+    if (this._hasScrollLock) {
       unlockScroll()
       this._hasScrollLock = false
     }
+    this._returnItemsToSlot()
+    this._menu?.remove()
+    this._menu = undefined
     this._closeSubmenusFrom(0)
   }
 
   protected override updated(changed: Map<string, unknown>) {
+    // Lit 的已排队更新可在卸载后执行，不能让已失效实例重新获取全局滚动锁。
+    if (!this.isConnected) {
+      this._syncScrollLock(false)
+      return
+    }
+
     if (changed.has('_isOpen')) {
       if (this._isOpen) {
         this._syncScrollLock()
