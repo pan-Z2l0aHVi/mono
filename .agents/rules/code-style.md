@@ -60,6 +60,7 @@ export function defineXxx(options: Options) {
 ## 类型安全
 
 - 严格 TypeScript，避免 `any`
+- 仅当 `any` 位于类型级泛型约束、不会泄漏到调用方推导结果，且改用 `unknown` 会损失公共类型精度时，才可使用行级 `oxlint-disable-next-line typescript/no-explicit-any`；注释必须说明该边界。
 - 使用泛型保持类型推导
 - Mock 函数需要类型参数：`vi.fn<Type>()`
 - Response 等类型需要显式断言：`as Response`
