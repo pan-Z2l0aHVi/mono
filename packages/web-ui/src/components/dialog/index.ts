@@ -1,5 +1,5 @@
 import { html, LitElement, type PropertyValues, unsafeCSS } from 'lit'
-import { customElement, property } from 'lit/decorators.js'
+import { customElement, property, state } from 'lit/decorators.js'
 
 import '@/components/button'
 import glass from '@/assets/glass.css?inline'
@@ -14,6 +14,8 @@ export class WebUiDialog extends LitElement {
 
   @property({ type: Boolean, reflect: true }) open = false
   @property({ reflect: true, attribute: 'lock-scroll', converter: booleanWithFalseString }) lockScroll = true
+
+  @state() private _hasBody = false
 
   private _hasScrollLock = false
 
@@ -78,13 +80,23 @@ export class WebUiDialog extends LitElement {
     this._hasScrollLock = shouldLock
   }
 
+  private _onBodySlotChange(e: Event) {
+    if (!(e.target instanceof HTMLSlotElement)) return
+    this._hasBody = e.target.assignedElements().length > 0
+  }
+
   override render() {
     return html`
       <dialog @cancel=${this.handleCancel} @click=${this.handleBackdropClick}>
         <div class="wui-dialog-body wui-glass">
-          <div class="title"><slot name="title"></slot></div>
-          <div class="desc"><slot></slot></div>
-          <div class="wui-dialog-footer"><slot name="footer"></slot></div>
+          ${this._hasBody
+            ? html`<slot name="body" @slotchange=${this._onBodySlotChange}></slot>`
+            : html`
+                <slot name="body" @slotchange=${this._onBodySlotChange} hidden></slot>
+                <div class="title"><slot name="title"></slot></div>
+                <div class="desc"><slot></slot></div>
+                <div class="wui-dialog-footer"><slot name="footer"></slot></div>
+              `}
         </div>
       </dialog>
     `

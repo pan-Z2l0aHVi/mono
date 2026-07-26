@@ -17,7 +17,7 @@ dialog {
   left: auto;
   transform: translateX(100%);
 
-  overflow: hidden;
+  overflow: clip;
 
   box-sizing: border-box;
   width: var(--wui-drawer-width, 320px);
@@ -29,7 +29,7 @@ dialog {
   border: none;
 
   font-family: inherit;
-  color: var(--wui-color-text, #1c1c1e);
+  color: var(--wui-color-text, #1b1b1b);
 
   background: transparent;
 
@@ -88,14 +88,11 @@ dialog.closing::backdrop {
 /* ===== 抽屉主体 ===== */
 
 .wui-drawer-body {
-  --wui-glass-shadow: 0 4px 24px rgb(0 0 0 / 0.15);
-  overflow: hidden;
+  --wui-glass-shadow: var(--wui-shadow-overlay, 2px 16px 40px rgb(0 0 0 / 0.4));
   display: flex;
   flex-direction: column;
-
   height: 100%;
-
-  background-color: var(--wui-color-surface-overlay, rgb(250 250 250 / 0.88));
+  background-color: var(--wui-color-surface-overlay, rgb(250 250 250 / 0.82));
 }
 
 /* ===== Header ===== */
@@ -124,7 +121,7 @@ dialog.closing::backdrop {
 
   font-size: var(--wui-font-size, 14px);
   line-height: 1.5;
-  color: var(--wui-color-text, #1c1c1e);
+  color: var(--wui-color-text, #1b1b1b);
 }
 
 /* ===== Footer ===== */

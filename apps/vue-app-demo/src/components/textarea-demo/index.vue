@@ -81,5 +81,11 @@ const limitedVal = ref('')
     <div class="mb-3 flex flex-col gap-3">
       <web-ui-textarea :rows="4" required placeholder="必填项" full />
     </div>
+
+    <h2>无边框</h2>
+    <div class="mb-3 flex flex-col gap-3">
+      <web-ui-textarea borderless placeholder="无边框文本域" full />
+      <web-ui-textarea borderless :rows="4" value="无边框有值，适合调用方自定义容器样式" full />
+    </div>
   </div>
 </template>

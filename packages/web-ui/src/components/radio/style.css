@@ -24,7 +24,7 @@
 
   font-size: var(--wui-font-size, 14px);
   line-height: 1;
-  color: var(--wui-color-text, #1a1a1a);
+  color: var(--wui-color-text, #1b1b1b);
 
   &:focus-visible {
     border-radius: calc(infinity * 1px);
@@ -35,7 +35,7 @@
 
 :host([disabled]) .wui-radio {
   cursor: not-allowed;
-  color: var(--wui-color-text-muted, #999);
+  color: var(--wui-color-text-muted, #6a6a6a);
 }
 
 .wui-radio-circle {

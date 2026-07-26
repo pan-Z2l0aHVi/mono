@@ -5,6 +5,7 @@
 }
 
 :host {
+  --wui-shadow-glass: var(--wui-shadow-pop);
   display: block;
 }
 

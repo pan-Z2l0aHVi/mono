@@ -10,4 +10,12 @@ describe('DialogDemo', () => {
     expect(wrapper.html()).toContain('lock-scroll="false"')
     wrapper.unmount()
   })
+
+  it('包含自定义 body slot 对话框', () => {
+    const wrapper = mount(DialogDemo)
+
+    expect(wrapper.html()).toContain('slot="body"')
+    expect(wrapper.html()).toContain('操作成功')
+    wrapper.unmount()
+  })
 })

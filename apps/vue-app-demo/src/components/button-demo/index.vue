@@ -22,6 +22,15 @@ import {
       <web-ui-button variant="glass">Glass</web-ui-button>
     </div>
 
+    <h2>自定义尺寸</h2>
+    <div class="mb-3 flex gap-2">
+      <web-ui-button variant="primary" size="32">小号 32</web-ui-button>
+      <web-ui-button variant="primary">默认 40</web-ui-button>
+      <web-ui-button variant="primary" size="48">大号 48</web-ui-button>
+      <web-ui-button variant="secondary" size="32x100">32×100</web-ui-button>
+      <web-ui-button variant="secondary" size="40x200">40×200</web-ui-button>
+    </div>
+
     <h2>禁用与加载</h2>
     <div class="mb-3 flex gap-2">
       <web-ui-button disabled>Disabled</web-ui-button>

@@ -26,6 +26,41 @@
 - 本地浮层只使用组件内部的局部层级；`portal=true` 的 Select、Popover、Tooltip 与 Portal 菜单使用菜单层级。Toast 高于菜单，加载遮罩高于 Toast，Dialog 和 Drawer 使用原生 top layer。
 - BackTop 属于应用辅助层，高于基础内容、低于 Portal 菜单；调用方只能通过其语义层级变量调整位置，不能依赖数值层级。
 
+### 独立使用与 Theme 对齐规则
+
+**无 theme 单独使用任何组件时，视觉效果必须与 `web-ui-theme appearance="light"` 完全一致。**
+
+每个组件 CSS 中 `var(--wui-color-xxx, fallback)` 的 fallback 值必须与 theme light 模式的对应 token 值相同。新增组件、新增 token 用法、或修改 theme token 时，必须同步核对全组件 fallback 对齐。
+
+当前 theme light token 值参考：
+
+| Token                             | Light 值                         |
+| --------------------------------- | -------------------------------- |
+| `--wui-color-text`                | `#1b1b1b`                        |
+| `--wui-color-text-muted`          | `#6a6a6a`                        |
+| `--wui-color-accent`              | `#08f`                           |
+| `--wui-color-on-accent`           | `#fff`                           |
+| `--wui-color-danger`              | `#dc2626`                        |
+| `--wui-color-success`             | `#16a34a`                        |
+| `--wui-color-warning`             | `#d97706`                        |
+| `--wui-color-info`                | `#2563eb`                        |
+| `--wui-color-surface`             | `#fff`                           |
+| `--wui-color-surface-raised`      | `#f2f2f7`                        |
+| `--wui-color-surface-raised-mid`  | `#dfdfdf`                        |
+| `--wui-color-surface-raised-deep` | `#e5e5ea`                        |
+| `--wui-color-surface-glass`       | `rgb(250 250 250 / 0.55)`        |
+| `--wui-color-surface-overlay`     | `rgb(250 250 250 / 0.82)`        |
+| `--wui-color-border`              | `rgb(0 0 0 / 0.1)`               |
+| `--wui-color-border-strong`       | `rgb(0 110 230 / 0.5)`           |
+| `--wui-color-glass-border`        | `rgb(51 51 51 / 0.08)`           |
+| `--wui-color-glass-highlight`     | `rgb(255 255 255 / 0.9)`         |
+| `--wui-color-backdrop`            | `rgb(0 0 0 / 0.12)`              |
+| `--wui-shadow-glass`              | `0 2px 16px rgb(0 0 0 / 0.06)`   |
+| `--wui-shadow-pop`                | `0 3px 9px rgb(0 0 0 / 0.27)`    |
+| `--wui-shadow-overlay`            | `2px 16px 40px rgb(0 0 0 / 0.4)` |
+
+快速扫描命令：`grep -rn 'var(--wui-color-' packages/web-ui/src/components/*/style.css`
+
 ### 公共层级 Token
 
 `web-ui-theme` 提供以下稳定 CSS token；调用方可以覆盖 token，但不得依赖其默认数值：

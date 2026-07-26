@@ -19,6 +19,7 @@ export class WebUiInput extends LitElement {
   @property({ type: Boolean, reflect: true }) disabled = false
   @property({ type: Boolean, reflect: true }) clearable = false
   @property({ type: Boolean, reflect: true }) full = false
+  @property({ type: Boolean, reflect: true }) borderless = false
 
   @state() private _focused = false
   @state() private _hasPrefix = false

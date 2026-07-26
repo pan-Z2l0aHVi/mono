@@ -36,7 +36,7 @@
   color: var(--wui-color-on-accent, #fff);
   white-space: nowrap;
 
-  background-color: var(--wui-color-danger, #ff3b30);
+  background-color: var(--wui-color-danger, #dc2626);
 }
 
 .badge-fixed {

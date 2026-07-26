@@ -18,7 +18,7 @@ dialog {
   border: none;
 
   font-family: inherit;
-  color: var(--wui-color-text, #1c1c1e);
+  color: var(--wui-color-text, #1b1b1b);
 
   background: transparent;
 
@@ -33,7 +33,7 @@ dialog {
   --wui-glass-shadow: var(--wui-shadow-overlay, 2px 16px 40px rgb(0 0 0 / 0.4));
   padding: 24px;
   border-radius: 20px;
-  background-color: var(--wui-color-surface-overlay, rgb(250 250 250 / 0.88));
+  background-color: var(--wui-color-surface-overlay, rgb(250 250 250 / 0.82));
 }
 
 /* ===== 标题 ===== */
@@ -45,7 +45,7 @@ dialog {
   font-size: 18px;
   font-weight: 600;
   line-height: 1.4;
-  color: var(--wui-color-text, #1c1c1e);
+  color: var(--wui-color-text, #1b1b1b);
 }
 
 /* ===== 描述 ===== */
@@ -56,7 +56,7 @@ dialog {
 
   font-size: 14px;
   line-height: 1.5;
-  color: var(--wui-color-text-muted, #8e8e93);
+  color: var(--wui-color-text-muted, #6a6a6a);
 }
 
 /* ===== 按钮区域 ===== */

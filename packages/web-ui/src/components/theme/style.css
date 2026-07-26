@@ -38,9 +38,9 @@
   --wui-color-danger: #dc2626;
   --wui-color-info: #2563eb;
   --wui-color-backdrop: rgb(0 0 0 / 0.12);
-  --wui-shadow-raised: 4px 6px 24px rgb(0 0 0 / 0.12);
   --wui-shadow-overlay: 2px 16px 40px rgb(0 0 0 / 0.4);
-  --wui-shadow-glass: 4px 6px 24px rgb(0 0 0 / 0.12);
+  --wui-shadow-pop: 0 3px 9px rgb(0 0 0 / 0.27);
+  --wui-shadow-glass: 0 2px 16px rgb(0 0 0 / 0.06);
   --wui-focus-ring: rgb(0 136 255 / 0.4);
   color-scheme: light;
 }
@@ -66,8 +66,8 @@
   --wui-color-danger: #ff453a;
   --wui-color-info: #64d2ff;
   --wui-color-backdrop: rgb(0 0 0 / 0.48);
-  --wui-shadow-raised: 0 8px 24px rgb(0 0 0 / 0.32);
   --wui-shadow-overlay: 0 18px 48px rgb(0 0 0 / 0.54);
+  --wui-shadow-pop: 0 4px 16px rgb(0 0 0 / 0.35);
   --wui-shadow-glass: 0 8px 24px rgb(0 0 0 / 0.34);
   --wui-focus-ring: rgb(10 132 255 / 0.62);
   color-scheme: dark;
@@ -95,8 +95,8 @@
     --wui-color-danger: #ff453a;
     --wui-color-info: #64d2ff;
     --wui-color-backdrop: rgb(0 0 0 / 0.48);
-    --wui-shadow-raised: 0 8px 24px rgb(0 0 0 / 0.32);
     --wui-shadow-overlay: 0 18px 48px rgb(0 0 0 / 0.54);
+    --wui-shadow-pop: 0 4px 16px rgb(0 0 0 / 0.35);
     --wui-shadow-glass: 0 8px 24px rgb(0 0 0 / 0.34);
     --wui-focus-ring: rgb(10 132 255 / 0.62);
     color-scheme: dark;

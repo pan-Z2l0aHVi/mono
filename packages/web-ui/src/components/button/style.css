@@ -29,7 +29,7 @@ button {
   justify-content: center;
 
   box-sizing: border-box;
-  width: max-content;
+  width: var(--wui-button-width, max-content);
   min-width: var(--wui-button-size, auto);
   height: var(--wui-button-size, 40px);
   padding: 0 var(--wui-button-px, 16px);
@@ -105,19 +105,19 @@ button {
 /* ===== Variant: ghost ===== */
 
 :host([variant='ghost']) {
-  --wui-button-color: var(--wui-color-accent, #08f);
+  --wui-button-color: var(--wui-color-text, #1b1b1b);
   --wui-button-bg: transparent;
-  --wui-button-bg-hover: color-mix(in srgb, var(--wui-color-accent, #08f) 8%, transparent);
-  --wui-button-bg-active: color-mix(in srgb, var(--wui-color-accent, #08f) 12%, transparent);
+  --wui-button-bg-hover: color-mix(in srgb, var(--wui-color-text, #1b1b1b) 6%, transparent);
+  --wui-button-bg-active: color-mix(in srgb, var(--wui-color-text, #1b1b1b) 10%, transparent);
 }
 
 /* ===== Variant: danger ===== */
 
 :host([variant='danger']) {
-  --wui-button-color: var(--wui-color-danger, #ff383c);
-  --wui-button-bg: color-mix(in srgb, var(--wui-color-danger, #ff383c) 18%, var(--wui-color-surface, #fff));
-  --wui-button-bg-hover: color-mix(in srgb, var(--wui-color-danger, #ff383c) 26%, var(--wui-color-surface, #fff));
-  --wui-button-bg-active: color-mix(in srgb, var(--wui-color-danger, #ff383c) 34%, var(--wui-color-surface, #fff));
+  --wui-button-color: var(--wui-color-danger, #dc2626);
+  --wui-button-bg: color-mix(in srgb, var(--wui-color-danger, #dc2626) 18%, var(--wui-color-surface, #fff));
+  --wui-button-bg-hover: color-mix(in srgb, var(--wui-color-danger, #dc2626) 26%, var(--wui-color-surface, #fff));
+  --wui-button-bg-active: color-mix(in srgb, var(--wui-color-danger, #dc2626) 34%, var(--wui-color-surface, #fff));
 }
 
 /* ===== Variant: glass (玻璃) ===== */
@@ -133,7 +133,7 @@ button {
 /* ===== Group context ===== */
 
 :host([group]) {
-  --wui-button-color: var(--wui-color-text, #1a1a1a);
+  --wui-button-color: var(--wui-color-text, #1b1b1b);
   --wui-button-bg: transparent;
   --wui-button-bg-hover: color-mix(in srgb, var(--wui-color-text, #1b1b1b) 6%, transparent);
   --wui-button-bg-active: color-mix(in srgb, var(--wui-color-text, #1b1b1b) 10%, transparent);

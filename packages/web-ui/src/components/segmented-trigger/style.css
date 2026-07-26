@@ -29,7 +29,7 @@
 
   font-size: var(--wui-font-size, 14px);
   line-height: 1;
-  color: var(--wui-color-text-muted, #666);
+  color: var(--wui-color-text-muted, #6a6a6a);
   white-space: nowrap;
 
   transition: color 0.2s ease;

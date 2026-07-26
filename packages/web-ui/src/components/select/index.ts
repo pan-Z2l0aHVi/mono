@@ -91,7 +91,9 @@ export class WebUiSelect extends LitElement {
   }
 
   override willUpdate() {
-    this._options = [...this.querySelectorAll('web-ui-option')]
+    this._options = this._portal
+      ? [...this._portal.panel.querySelectorAll<HTMLElement>('web-ui-option')]
+      : [...this.querySelectorAll<HTMLElement>('web-ui-option')]
     this._ensureOptionIds()
     this._syncSelected()
   }
@@ -141,7 +143,9 @@ export class WebUiSelect extends LitElement {
   }
 
   private _onSlotChange() {
-    const options = [...this.querySelectorAll('web-ui-option')]
+    const options = this._portal
+      ? [...this._portal.panel.querySelectorAll<HTMLElement>('web-ui-option')]
+      : [...this.querySelectorAll<HTMLElement>('web-ui-option')]
     this._options = options
     this._ensureOptionIds()
     this._syncSelected()
@@ -360,7 +364,7 @@ export class WebUiSelect extends LitElement {
           role="combobox"
           aria-expanded=${this._isOpen}
           aria-haspopup="listbox"
-          aria-activedescendant=${!this.portal && this._isOpen && this._activeIndex >= 0
+          aria-activedescendant=${this._isOpen && this._activeIndex >= 0
             ? this._options[this._activeIndex]?.id
             : nothing}
         >

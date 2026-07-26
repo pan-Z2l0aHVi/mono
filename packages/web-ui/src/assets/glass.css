@@ -14,5 +14,5 @@
     inset 3px 3px 0.5px -3px
       color-mix(in srgb, var(--wui-color-glass-highlight, rgb(255 255 255 / 0.9)) 60%, transparent),
     inset 0 0 1px rgb(0 0 0 / 0.8),
-    var(--wui-glass-shadow, var(--wui-shadow-glass, 4px 6px 24px rgb(0 0 0 / 0.12)));
+    var(--wui-glass-shadow, var(--wui-shadow-glass, 0 2px 16px rgb(0 0 0 / 0.06)));
 }

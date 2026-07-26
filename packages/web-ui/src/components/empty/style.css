@@ -32,9 +32,9 @@
   height: var(--wui-empty-icon-size, 56px);
   border-radius: 16px;
 
-  color: var(--wui-color-text-muted, #737373);
+  color: var(--wui-color-text-muted, #6a6a6a);
 
-  background-color: var(--wui-color-surface-raised-mid, rgb(245 245 245 / 0.72));
+  background-color: var(--wui-color-surface-raised-mid, #dfdfdf);
 }
 
 .empty-title,
@@ -58,7 +58,7 @@
 
   font-size: var(--wui-empty-description-font-size, 14px);
   line-height: 1.6;
-  color: var(--wui-color-text-muted, #737373);
+  color: var(--wui-color-text-muted, #6a6a6a);
   overflow-wrap: anywhere;
 }
 

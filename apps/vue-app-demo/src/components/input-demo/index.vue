@@ -57,5 +57,14 @@ import { lucideSearch } from '@greypan/web-ui/icons'
         <web-ui-icon slot="prefix" :icon="lucideSearch"></web-ui-icon>
       </web-ui-input>
     </div>
+
+    <h2>无边框</h2>
+    <div class="mb-3 flex flex-col gap-3">
+      <web-ui-input borderless placeholder="无边框输入框" />
+      <web-ui-input borderless value="无边框有值" />
+      <web-ui-input borderless placeholder="带图标">
+        <web-ui-icon slot="prefix" :icon="lucideSearch"></web-ui-icon>
+      </web-ui-input>
+    </div>
   </div>
 </template>

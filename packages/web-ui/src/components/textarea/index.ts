@@ -23,6 +23,7 @@ export class WebUiTextarea extends LitElement {
   @property({ type: Boolean, reflect: true }) required = false
   @property({ type: Boolean, reflect: true }) full = false
   @property({ type: Boolean, reflect: true }) clearable = false
+  @property({ type: Boolean, reflect: true }) borderless = false
   @property({ type: Number, reflect: true }) rows = 3
   @property({ type: Number, reflect: true }) minlength: number | undefined
   @property({ type: Number, reflect: true }) maxlength: number | undefined
