@@ -74,7 +74,7 @@ export class WebUiInput extends LitElement {
     const showClear = this.clearable && this.value
 
     return html`
-      <div class="wui-glass wui-glass-no-after wui-input-inner" @click=${this.focusInput}>
+      <div class="wui-glass wui-input-inner" @click=${this.focusInput}>
         <slot name="prefix" class=${classMap({ empty: !this._hasPrefix })} @slotchange=${this._onSlotChange}></slot>
         <input
           type=${this.type}

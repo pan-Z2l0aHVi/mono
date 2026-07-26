@@ -36,6 +36,24 @@ describe('WebUiSelect', () => {
       el.remove()
     })
 
+    it('选项在连接后插入时同步标签', async () => {
+      const el = createSelect('', { value: 'banana' })
+      await el.updateComplete
+
+      const option = document.createElement('web-ui-option')
+      option.setAttribute('value', 'banana')
+      option.textContent = 'Banana'
+      el.append(option)
+      await option.updateComplete
+      await el.updateComplete
+
+      const label = el.shadowRoot?.querySelector('.label')
+      expect(label?.textContent).toBe('Banana')
+      expect(option?.hasAttribute('selected')).toBe(true)
+
+      el.remove()
+    })
+
     it('无选中值时显示 placeholder', async () => {
       const el = createSelect(OPTIONS_HTML, { placeholder: '请选择' })
       await el.updateComplete
@@ -212,6 +230,41 @@ describe('WebUiSelect', () => {
       el.remove()
     })
 
+    it('动态投影的选项通过宿主委托响应点击', async () => {
+      const el = createSelect()
+      await el.updateComplete
+
+      const option = document.createElement('web-ui-option')
+      option.value = 'banana'
+      option.textContent = 'Banana'
+      el.append(option)
+      await option.updateComplete
+      await el.updateComplete
+
+      const trigger = el.shadowRoot?.querySelector<HTMLElement>('.select-trigger')
+      trigger?.click()
+      option.dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true }))
+      await el.updateComplete
+
+      expect(el.value).toBe('banana')
+      expect(el.isOpen).toBe(false)
+
+      el.remove()
+    })
+
+    it('按下选项时阻止焦点移出导致的提前关闭', async () => {
+      const el = createSelect(OPTIONS_HTML)
+      await el.updateComplete
+
+      const option = el.querySelector<HTMLElement>('web-ui-option[value="banana"]')
+      const pointerDown = new Event('pointerdown', { bubbles: true, cancelable: true, composed: true })
+      option?.dispatchEvent(pointerDown)
+
+      expect(pointerDown.defaultPrevented).toBe(true)
+
+      el.remove()
+    })
+
     it('点击外部关闭浮层', async () => {
       const el = createSelect(OPTIONS_HTML)
       await el.updateComplete
@@ -251,13 +304,15 @@ describe('WebUiSelect', () => {
   })
 
   describe('事件', () => {
-    it('选择时触发 change 事件', async () => {
+    it('选择时触发 input 和 change 事件', async () => {
       const el = createSelect(OPTIONS_HTML)
       el.value = 'apple'
       await el.updateComplete
 
-      const handler = vi.fn<(e: Event) => void>()
-      el.addEventListener('change', handler)
+      const inputHandler = vi.fn<(e: Event) => void>()
+      const changeHandler = vi.fn<(e: Event) => void>()
+      el.addEventListener('input', inputHandler)
+      el.addEventListener('change', changeHandler)
 
       const trigger = el.shadowRoot?.querySelector('.select-trigger') as HTMLElement
       trigger.click()
@@ -267,7 +322,8 @@ describe('WebUiSelect', () => {
       ;(options[1] as HTMLElement).click()
       await el.updateComplete
 
-      expect(handler).toHaveBeenCalledTimes(1)
+      expect(inputHandler).toHaveBeenCalledTimes(1)
+      expect(changeHandler).toHaveBeenCalledTimes(1)
 
       el.remove()
     })
@@ -331,6 +387,22 @@ describe('WebUiSelect', () => {
 
       expect(el.value).toBe('banana')
       expect(el.isOpen).toBe(false)
+
+      el.remove()
+    })
+
+    it('Enter 选中高亮项时触发 input 事件', async () => {
+      const el = createSelect(OPTIONS_HTML)
+      await el.updateComplete
+
+      const inputHandler = vi.fn<(e: Event) => void>()
+      el.addEventListener('input', inputHandler)
+
+      el.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }))
+      el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
+      await el.updateComplete
+
+      expect(inputHandler).toHaveBeenCalledTimes(1)
 
       el.remove()
     })

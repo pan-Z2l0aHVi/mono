@@ -3,6 +3,10 @@ import { ref } from 'vue'
 
 const selected = ref('')
 const framework = ref('vue')
+
+function handleChange(event: Event) {
+  selected.value = (event.currentTarget as HTMLElement & { value: string }).value
+}
 </script>
 
 <template>
@@ -29,7 +33,7 @@ const framework = ref('vue')
 
     <h2>change 事件</h2>
     <div class="mb-3 flex flex-col gap-3">
-      <web-ui-select v-model="selected" placeholder="选择后触发 change">
+      <web-ui-select placeholder="选择后触发 change" @change="handleChange">
         <web-ui-option value="a">Option A</web-ui-option>
         <web-ui-option value="b">Option B</web-ui-option>
         <web-ui-option value="c">Option C</web-ui-option>

@@ -159,12 +159,7 @@ export class WebUiToast extends LitElement {
     const ariaLive = this.type === 'error' ? 'assertive' : 'polite'
 
     return html`
-      <div
-        class="toast wui-glass wui-glass-no-after ${this.type}"
-        role="alert"
-        aria-live=${ariaLive}
-        aria-atomic="true"
-      >
+      <div class="toast wui-glass ${this.type}" role="alert" aria-live=${ariaLive} aria-atomic="true">
         <span class="toast-icon" aria-hidden="true">
           <web-ui-icon .icon=${icon} :size="18"></web-ui-icon>
         </span>

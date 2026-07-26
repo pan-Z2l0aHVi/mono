@@ -51,7 +51,7 @@ export class WebUiEmpty extends LitElement {
 
     return html`
       <section class="empty">
-        <div class="empty-icon wui-glass wui-glass-no-after" aria-hidden="true">
+        <div class="empty-icon wui-glass" aria-hidden="true">
           <slot name="icon"><web-ui-icon .icon=${lucideInbox}></web-ui-icon></slot>
         </div>
         <div class=${classMap({ 'empty-title': true, 'is-hidden': !showTitle })}>

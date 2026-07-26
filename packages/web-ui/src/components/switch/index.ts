@@ -66,7 +66,6 @@ export class WebUiSwitch extends LitElement {
     const thumbCls = {
       'wui-switch-thumb': true,
       'wui-glass': this.pressed,
-      'wui-glass-no-after': this.pressed,
       'is-pressed': this.pressed
     }
 

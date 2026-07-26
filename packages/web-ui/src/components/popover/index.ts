@@ -153,7 +153,7 @@ export class WebUiPopover extends LitElement {
       container: this.overlayContainer,
       target: this,
       style: `${glass}\n${style}`,
-      className: 'popover-panel portal wui-glass wui-glass-no-after'
+      className: 'popover-panel portal wui-glass'
     })
     portal.panel.id = this._panelId
     portal.panel.setAttribute('role', 'dialog')
@@ -302,7 +302,7 @@ export class WebUiPopover extends LitElement {
         </div>
         <div
           id=${this._panelId}
-          class="popover-panel wui-glass wui-glass-no-after"
+          class="popover-panel wui-glass"
           ?hidden=${!this.open}
           role="dialog"
           tabindex="-1"

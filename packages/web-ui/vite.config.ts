@@ -28,7 +28,8 @@ export default {
     })
   ],
   test: {
-    environment: 'jsdom'
+    environment: 'jsdom',
+    setupFiles: ['./test-helper.ts']
   },
   css: {
     transformer: 'lightningcss'

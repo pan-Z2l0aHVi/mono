@@ -62,6 +62,7 @@ export class WebUiRadioGroup extends LitElement {
         composed: true
       })
     )
+    this.dispatchEvent(new Event('input', { bubbles: true, composed: true }))
     this.dispatchEvent(new Event('change', { bubbles: true, composed: true }))
   }
 
@@ -77,6 +78,7 @@ export class WebUiRadioGroup extends LitElement {
 export interface WebUiRadioGroup {
   readonly $events: {
     'value-changed': CustomEvent<{ value: string }>
+    input: Event
     change: Event
   }
 }

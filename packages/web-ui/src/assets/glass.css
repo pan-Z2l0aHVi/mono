@@ -1,8 +1,5 @@
 /*
  * 玻璃公共样式
- *
- * .wui-glass-no-after  隐藏 ::after（渐变高光）
- * 默认显示 ::after，button 需要，dialog/layout 不需要
  */
 
 .wui-glass {
@@ -18,48 +15,4 @@
       color-mix(in srgb, var(--wui-color-glass-highlight, rgb(255 255 255 / 0.9)) 60%, transparent),
     inset 0 0 1px rgb(0 0 0 / 0.8),
     var(--wui-glass-shadow, var(--wui-shadow-glass, 4px 6px 24px rgb(0 0 0 / 0.12)));
-
-  &::before {
-    pointer-events: none;
-    content: '';
-
-    position: absolute;
-    z-index: 1;
-    top: 1.4px;
-    right: 1.4px;
-    bottom: 1.4px;
-    left: 1.4px;
-
-    border: 0.5px solid color-mix(in srgb, var(--wui-color-glass-highlight, rgb(255 255 255 / 0.9)) 24%, transparent);
-    border-radius: inherit;
-
-    filter: blur(0.5px);
-  }
-
-  &::after {
-    pointer-events: none;
-    content: '';
-
-    position: absolute;
-    z-index: 1;
-    top: 0;
-    right: 0;
-    bottom: 0;
-    left: 0;
-
-    border-radius: inherit;
-
-    background: linear-gradient(
-      135deg,
-      color-mix(in srgb, var(--wui-color-glass-highlight, rgb(255 255 255 / 0.9)) 88%, transparent) 0%,
-      transparent 25%,
-      transparent 75%,
-      color-mix(in srgb, var(--wui-color-glass-highlight, rgb(255 255 255 / 0.9)) 88%, transparent) 100%
-    );
-    filter: blur(3px);
-  }
-
-  &.wui-glass-no-after::after {
-    display: none;
-  }
 }

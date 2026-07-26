@@ -147,7 +147,7 @@ export class WebUiTooltip extends LitElement {
       container: this.overlayContainer,
       target: this,
       style: `${glass}\n${style}`,
-      className: 'tooltip-panel portal wui-glass wui-glass-no-after'
+      className: 'tooltip-panel portal wui-glass'
     })
     if (this.content) {
       const text = document.createElement('span')
@@ -194,7 +194,7 @@ export class WebUiTooltip extends LitElement {
     return html`
       <div class="tooltip-anchor">
         <div class="tooltip-trigger"><slot></slot></div>
-        <div class="tooltip-panel wui-glass wui-glass-no-after" ?hidden=${!this._isVisible} role="tooltip">
+        <div class="tooltip-panel wui-glass" ?hidden=${!this._isVisible} role="tooltip">
           ${this.content ? html`<span class="tooltip-text">${this.content}</span>` : html`<slot name="content"></slot>`}
         </div>
       </div>

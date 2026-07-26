@@ -20,6 +20,7 @@
 - 可见组件必须优先消费 `web-ui-theme` 提供的 `--wui-*` 语义 token，并在 `var()` 中保留当前浅色值 fallback，保证未使用主题的调用方外观不变。
 - 禁止把组件样式注入 `document.head`。需要 portal 的组件应解析最近的 `web-ui-theme` overlay root；没有主题时使用组件库内部 Shadow DOM fallback。
 - 组件内部变量可以存在，但不是稳定公开 API；调用方仅依赖公开语义 token。
+- 布局组件中的 sticky header 必须建立高于内容区和侧栏的层叠级别，保证其内非 portal 浮层在狭窄视口溢出时仍可命中。
 
 ### Box-sizing
 
@@ -152,9 +153,10 @@
 ## 表单组件规范
 
 - 表单类组件（input、select、option）必须支持 `value` 属性双向绑定
-- 必须派发 `Event('change', { bubbles: true, composed: true })` 以支持框架（Vue/React）的 v-model/value 绑定
+- 值变化时必须派发 `Event('input', { bubbles: true, composed: true })`，使 Vue 自定义元素的 `v-model` 能同步 `value`；提交型控件还必须派发 `Event('change', { bubbles: true, composed: true })`。
 - 可放入原生 `<form>` 的自定义表单控件必须声明 `static formAssociated = true`，并通过 `ElementInternals` 同步表单值、约束校验和禁用状态
 - Shadow DOM 内的原生表单控件必须转发宿主元素的 `aria-label` 和 `aria-labelledby`，确保控件具备可访问名称
 - Select/Option 组件使用 CustomEvent 注册/注销模式：option 在 `connectedCallback` 派发 `option-register`，parent select 监听并管理选项列表
+- Select 必须在 option 注册、注销、slotchange 及初始渲染时同步 `value` 对应的 `selected` 状态并请求重渲染，保证框架先传入 `value`、后批量投影 option 时标签仍可回显。
 - 管理 slot 子表单控件的 group 组件必须通过子项公开属性读写状态，不能依赖 HTML 属性；框架可能只设置属性而不反射属性
 - group 组件必须在 slot 子项插入或删除后重新同步状态，覆盖框架延迟挂载和条件渲染

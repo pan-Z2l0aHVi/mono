@@ -130,7 +130,7 @@ const unlockedVisible = ref(false)
     <div class="mb-3 flex flex-wrap gap-2 items-center">
       <web-ui-button @click="closableVisible = true">打开</web-ui-button>
       <label class="flex items-center gap-1 text-sm cursor-pointer select-none">
-        <web-ui-checkbox v-model="closableState" />
+        <web-ui-checkbox :checked="closableState" @update:checked="closableState = $event.detail.checked" />
         显示关闭按钮
       </label>
     </div>

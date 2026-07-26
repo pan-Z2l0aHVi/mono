@@ -61,7 +61,7 @@ export class WebUiInputNumber extends LitElement {
 
   override render() {
     return html`
-      <div class="wui-glass wui-glass-no-after wui-input-inner">
+      <div class="wui-glass wui-input-inner">
         <button class="num-btn" ?disabled=${this.disabled || this.atMin} @click=${() => this.handleStep(-1)}>
           <web-ui-icon .icon=${lucideMinus}></web-ui-icon>
         </button>

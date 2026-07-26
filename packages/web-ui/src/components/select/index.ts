@@ -28,6 +28,7 @@ export class WebUiSelect extends LitElement {
 
   @state() private _isOpen = false
   @state() private _activeIndex = -1
+  @state() private _selectedLabel = ''
 
   private _options: HTMLElement[] = []
   private _overlay?: OverlayApi
@@ -36,12 +37,6 @@ export class WebUiSelect extends LitElement {
 
   get isOpen(): boolean {
     return this._isOpen
-  }
-
-  private get _selectedLabel(): string {
-    if (!this.value) return this.placeholder
-    const option = this._options.find(o => o.getAttribute('value') === this.value)
-    return option?.textContent?.trim() || this.placeholder
   }
 
   private _onClickOutside = (e: MouseEvent) => {
@@ -82,6 +77,7 @@ export class WebUiSelect extends LitElement {
     this._options.forEach(o => {
       o.removeEventListener('click', this._handleOptionClick)
       o.removeEventListener('mouseover', this._handleOptionMouseOver)
+      o.removeEventListener('pointerdown', this._handleOptionPointerDown)
     })
     this._close()
     this._disposeOverlay()
@@ -89,14 +85,18 @@ export class WebUiSelect extends LitElement {
 
   override firstUpdated() {
     this._initLocalOverlay()
+    requestAnimationFrame(() => {
+      if (this.isConnected) this._onSlotChange()
+    })
+  }
+
+  override willUpdate() {
+    this._options = [...this.querySelectorAll('web-ui-option')]
+    this._ensureOptionIds()
+    this._syncSelected()
   }
 
   override updated(changed: PropertyValues) {
-    this._options = [...this.querySelectorAll('web-ui-option')]
-    this._ensureOptionIds()
-    if (changed.has('value')) {
-      this._syncSelected()
-    }
     if (changed.has('portal') || changed.has('overlayContainer'))
       requestAnimationFrame(() => this._reconfigureOverlay())
     if (changed.has('lockScroll')) this._syncScrollLock()
@@ -106,6 +106,12 @@ export class WebUiSelect extends LitElement {
     this._options.forEach(o => {
       o.toggleAttribute('selected', o.getAttribute('value') === this.value)
     })
+    if (!this.value) {
+      this._selectedLabel = this.placeholder
+      return
+    }
+    const option = this._options.find(o => o.getAttribute('value') === this.value)
+    this._selectedLabel = option?.textContent?.trim() || this.placeholder
   }
 
   private _ensureOptionIds() {
@@ -119,6 +125,7 @@ export class WebUiSelect extends LitElement {
     const target = e.target
     target.addEventListener('click', this._handleOptionClick)
     target.addEventListener('mouseover', this._handleOptionMouseOver)
+    target.addEventListener('pointerdown', this._handleOptionPointerDown)
     this._options.push(target)
     this._ensureOptionIds()
     this._syncSelected()
@@ -129,7 +136,15 @@ export class WebUiSelect extends LitElement {
     const target = e.target
     target.removeEventListener('click', this._handleOptionClick)
     target.removeEventListener('mouseover', this._handleOptionMouseOver)
+    target.removeEventListener('pointerdown', this._handleOptionPointerDown)
     this._options = this._options.filter(o => o !== target)
+  }
+
+  private _onSlotChange() {
+    const options = [...this.querySelectorAll('web-ui-option')]
+    this._options = options
+    this._ensureOptionIds()
+    this._syncSelected()
   }
 
   private _handleOptionClick = (e: Event) => {
@@ -138,7 +153,7 @@ export class WebUiSelect extends LitElement {
     if (target.hasAttribute('disabled')) return
     this.value = target.getAttribute('value') || ''
     this._close()
-    this.dispatchEvent(new Event('change', { bubbles: true, composed: true }))
+    this._notifyValueChange()
   }
 
   private _handleOptionMouseOver = (e: Event) => {
@@ -147,6 +162,11 @@ export class WebUiSelect extends LitElement {
     // 指针接管后只保留 :hover，避免键盘激活项与悬停项同时高亮。
     this._activeIndex = -1
     this._syncActiveOption()
+  }
+
+  private _handleOptionPointerDown = (e: PointerEvent) => {
+    // 保持 trigger 焦点，避免 focusout 在 click 前关闭浮层。
+    e.preventDefault()
   }
 
   private _onKeydown(e: KeyboardEvent) {
@@ -177,7 +197,7 @@ export class WebUiSelect extends LitElement {
           const option = this._options[this._activeIndex]
           if (option && !option.hasAttribute('disabled')) {
             this.value = option.getAttribute('value') || ''
-            this.dispatchEvent(new Event('change', { bubbles: true, composed: true }))
+            this._notifyValueChange()
           }
           this._close()
           e.preventDefault()
@@ -245,6 +265,11 @@ export class WebUiSelect extends LitElement {
     this._options.forEach((option, index) => option.toggleAttribute('active', index === this._activeIndex))
   }
 
+  private _notifyValueChange() {
+    this.dispatchEvent(new Event('input', { bubbles: true, composed: true }))
+    this.dispatchEvent(new Event('change', { bubbles: true, composed: true }))
+  }
+
   private _syncScrollLock(isOpen = this._isOpen) {
     const shouldLock = isOpen && this.lockScroll
     if (shouldLock === this._hasScrollLock) return
@@ -286,7 +311,7 @@ export class WebUiSelect extends LitElement {
       container: this.overlayContainer,
       target: this,
       style: `${glass}\n${style}`,
-      className: 'wui-glass wui-glass-no-after select-overlay portal'
+      className: 'wui-glass select-overlay portal'
     })
     portal.panel.setAttribute('role', 'listbox')
     portal.moveContent(Array.from(this.children))
@@ -329,7 +354,7 @@ export class WebUiSelect extends LitElement {
     return html`
       <div class="wui-select-inner">
         <div
-          class="wui-glass wui-glass-no-after select-trigger"
+          class="wui-glass select-trigger"
           @click=${this._togglePopup}
           tabindex="0"
           role="combobox"
@@ -342,8 +367,8 @@ export class WebUiSelect extends LitElement {
           <span class="label">${this._selectedLabel}</span>
           <web-ui-icon class="arrow" .icon=${lucideChevronDown}></web-ui-icon>
         </div>
-        <div class="wui-glass wui-glass-no-after select-overlay" ?hidden=${!this._isOpen} role="listbox">
-          <slot></slot>
+        <div class="wui-glass select-overlay" ?hidden=${!this._isOpen} role="listbox">
+          <slot @slotchange=${this._onSlotChange}></slot>
         </div>
       </div>
     `
@@ -352,6 +377,7 @@ export class WebUiSelect extends LitElement {
 
 export interface WebUiSelect {
   readonly $events: {
+    input: Event
     change: Event
   }
   isOpen: boolean

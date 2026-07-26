@@ -81,13 +81,14 @@ export class WebUiSegmented extends LitElement {
         composed: true
       })
     )
+    this.dispatchEvent(new Event('input', { bubbles: true, composed: true }))
     this.dispatchEvent(new Event('change', { bubbles: true, composed: true }))
   }
 
   override render() {
     return html`
       <div class="wui-segmented">
-        <span class="wui-segmented-indicator wui-glass wui-glass-no-after"></span>
+        <span class="wui-segmented-indicator wui-glass"></span>
         <slot></slot>
       </div>
     `
@@ -97,6 +98,7 @@ export class WebUiSegmented extends LitElement {
 export interface WebUiSegmented {
   readonly $events: {
     'value-changed': CustomEvent<{ value: string }>
+    input: Event
     change: Event
   }
 }

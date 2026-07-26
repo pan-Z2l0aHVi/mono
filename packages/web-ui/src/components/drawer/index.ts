@@ -153,7 +153,7 @@ export class WebUiDrawer extends LitElement {
 
     return html`
       <dialog @cancel=${this.handleCancel} @click=${this.handleBackdropClick}>
-        <div class="wui-drawer-body wui-glass wui-glass-no-after">
+        <div class="wui-drawer-body wui-glass">
           ${showHeader
             ? html`
                 <div class="wui-drawer-header">

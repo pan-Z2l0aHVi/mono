@@ -32,6 +32,9 @@ A pnpm monorepo publishing Lit-based web component UI library (`@greypan/web-ui`
 
 ## Web UI Language
 
+**Theme Appearance**:
+The explicit user preference controlling a `web-ui-theme` scope: `light`, `dark`, or `system`. Applications may persist this preference and must fall back to `light` when a stored value is absent or invalid.
+
 **Lock Scroll**:
 An overlay policy that prevents background document scrolling while an overlay is open. It does not imply modal accessibility semantics.
 _Avoid_: Modal

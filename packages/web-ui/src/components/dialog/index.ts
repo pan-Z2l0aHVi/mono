@@ -81,7 +81,7 @@ export class WebUiDialog extends LitElement {
   override render() {
     return html`
       <dialog @cancel=${this.handleCancel} @click=${this.handleBackdropClick}>
-        <div class="wui-dialog-body wui-glass wui-glass-no-after">
+        <div class="wui-dialog-body wui-glass">
           <div class="title"><slot name="title"></slot></div>
           <div class="desc"><slot></slot></div>
           <div class="wui-dialog-footer"><slot name="footer"></slot></div>

@@ -33,7 +33,7 @@ export class WebUiButtonGroup extends LitElement {
 
   override render() {
     return html`
-      <div class="wui-glass wui-glass-no-after wui-button-group-inner">
+      <div class="wui-glass wui-button-group-inner">
         <slot></slot>
       </div>
     `

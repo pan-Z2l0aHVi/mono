@@ -1,5 +1,31 @@
 <script setup lang="ts">
+import { local } from '@greypan/browser-kit/storage'
+import { ref } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
+
+type ThemeAppearance = 'light' | 'dark' | 'system'
+
+const STORAGE_KEY = 'theme-appearance'
+const THEME_APPEARANCES = new Set<ThemeAppearance>(['light', 'dark', 'system'])
+
+function isThemeAppearance(appearance: unknown): appearance is ThemeAppearance {
+  return typeof appearance === 'string' && THEME_APPEARANCES.has(appearance as ThemeAppearance)
+}
+
+function getInitialThemeAppearance(): ThemeAppearance {
+  const appearance = local.get<unknown>(STORAGE_KEY)
+  return isThemeAppearance(appearance) ? appearance : 'light'
+}
+
+const themeAppearance = ref(getInitialThemeAppearance())
+
+function updateThemeAppearance(event: Event) {
+  const appearance = (event.currentTarget as HTMLElement & { value?: unknown }).value
+  if (!isThemeAppearance(appearance)) return
+
+  themeAppearance.value = appearance
+  local.set(STORAGE_KEY, appearance)
+}
 
 const route = useRoute()
 
@@ -37,21 +63,37 @@ const navItems: NavItem[] = [
 </script>
 
 <template>
-  <web-ui-layout>
-    <nav class="px-2 py-3 h-full overflow-y-auto" slot="sidebar">
-      <div class="px-3 pb-2 text-xs font-semibold uppercase tracking-wider text-gray-400">组件列表</div>
-      <RouterLink
-        v-for="item in navItems"
-        :key="item.path"
-        :to="item.path"
-        class="block rounded-full px-3 py-2 text-sm transition-colors"
-        :class="route.path === item.path ? 'bg-blue-500 text-white' : 'text-gray-700 hover:bg-gray-200'"
-      >
-        {{ item.label }}
-      </RouterLink>
-    </nav>
-    <RouterView />
-    <div class="w-100% h-300"></div>
-  </web-ui-layout>
-  <web-ui-back-top></web-ui-back-top>
+  <web-ui-theme :appearance="themeAppearance">
+    <div class="min-h-screen bg-[var(--wui-color-page)] text-[var(--wui-color-text)]">
+      <web-ui-layout>
+        <div slot="header" class="flex h-full items-center justify-end px-4">
+          <web-ui-select
+            :value="themeAppearance"
+            class="[--wui-input-width:120px]"
+            aria-label="全局主题"
+            @change="updateThemeAppearance"
+          >
+            <web-ui-option value="light">浅色</web-ui-option>
+            <web-ui-option value="dark">深色</web-ui-option>
+            <web-ui-option value="system">跟随系统</web-ui-option>
+          </web-ui-select>
+        </div>
+        <nav slot="sidebar" class="h-full overflow-y-auto px-2 py-3">
+          <div class="px-3 pb-2 text-xs font-semibold uppercase text-[var(--wui-color-text-muted)]">组件列表</div>
+          <RouterLink
+            v-for="item in navItems"
+            :key="item.path"
+            :to="item.path"
+            class="block rounded-full px-3 py-2 text-sm leading-5 text-[var(--wui-color-text)] transition-[background-color] duration-150 hover:bg-[color-mix(in_srgb,var(--wui-color-surface-raised)_80%,var(--wui-color-text))]"
+            :class="route.path === item.path ? '!bg-[var(--wui-color-accent)] !text-[var(--wui-color-on-accent)]' : ''"
+          >
+            {{ item.label }}
+          </RouterLink>
+        </nav>
+        <RouterView />
+        <div class="h-75 w-full"></div>
+      </web-ui-layout>
+      <web-ui-back-top></web-ui-back-top>
+    </div>
+  </web-ui-theme>
 </template>

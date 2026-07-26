@@ -22,16 +22,6 @@ describe('WebUiButtonGroup', () => {
       el.remove()
     })
 
-    it('玻璃容器不显示 ::after 高光', async () => {
-      const el = createButtonGroup()
-      await el.updateComplete
-
-      const glass = el.shadowRoot?.querySelector('.wui-glass')
-      expect(glass?.classList.contains('wui-glass-no-after')).toBe(true)
-
-      el.remove()
-    })
-
     it('slot 中的按钮被渲染', async () => {
       const el = createButtonGroup('<web-ui-button>A</web-ui-button><web-ui-button>B</web-ui-button>')
       await el.updateComplete

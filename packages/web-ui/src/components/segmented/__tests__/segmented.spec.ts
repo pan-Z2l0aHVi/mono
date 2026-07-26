@@ -121,6 +121,23 @@ describe('WebUiSegmented', () => {
     })
   })
 
+  describe('event: input', () => {
+    it('点击子项时触发 input 事件', async () => {
+      const el = createSegmented(TRIGGER_HTML)
+      await el.updateComplete
+
+      const handler = vi.fn<(e: Event) => void>()
+      el.addEventListener('input', handler)
+
+      clickTrigger(el, 1)
+      await el.updateComplete
+
+      expect(handler).toHaveBeenCalledTimes(1)
+
+      el.remove()
+    })
+  })
+
   describe('event: change', () => {
     it('点击子选项触发 change 事件（含子项冒泡+group 派发）', async () => {
       const el = createSegmented(TRIGGER_HTML)

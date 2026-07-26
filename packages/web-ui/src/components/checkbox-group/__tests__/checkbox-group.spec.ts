@@ -121,6 +121,23 @@ describe('WebUiCheckboxGroup', () => {
     })
   })
 
+  describe('event: input', () => {
+    it('子选项切换时触发 input 事件', async () => {
+      const el = createGroup(CHECKBOX_HTML)
+      await el.updateComplete
+
+      const handler = vi.fn<(e: Event) => void>()
+      el.addEventListener('input', handler)
+
+      clickChildCheckbox(el, 1)
+      await el.updateComplete
+
+      expect(handler).toHaveBeenCalledTimes(1)
+
+      el.remove()
+    })
+  })
+
   describe('event: change', () => {
     it('子选项切换时触发 change 事件（含子项冒泡+group 派发）', async () => {
       const el = createGroup(CHECKBOX_HTML)

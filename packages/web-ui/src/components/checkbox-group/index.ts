@@ -55,6 +55,7 @@ export class WebUiCheckboxGroup extends LitElement {
         composed: true
       })
     )
+    this.dispatchEvent(new Event('input', { bubbles: true, composed: true }))
     this.dispatchEvent(new Event('change', { bubbles: true, composed: true }))
   }
 
@@ -66,6 +67,7 @@ export class WebUiCheckboxGroup extends LitElement {
 export interface WebUiCheckboxGroup {
   readonly $events: {
     'value-changed': CustomEvent<{ value: string[] }>
+    input: Event
     change: Event
   }
 }

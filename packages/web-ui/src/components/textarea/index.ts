@@ -205,7 +205,7 @@ export class WebUiTextarea extends LitElement {
     const showClear = this.clearable && this.value
 
     return html`
-      <div class="wui-glass wui-glass-no-after wui-textarea-inner" @click=${this.focusTextarea}>
+      <div class="wui-glass wui-textarea-inner" @click=${this.focusTextarea}>
         <slot name="prefix" class=${classMap({ empty: !this._hasPrefix })} @slotchange=${this._onSlotChange}></slot>
         <textarea
           placeholder=${this.placeholder}
