@@ -34,7 +34,7 @@
 
   color: var(--wui-color-text-muted, #737373);
 
-  background-color: var(--wui-color-surface-raised, rgb(245 245 245 / 0.72));
+  background-color: var(--wui-color-surface-raised-mid, rgb(245 245 245 / 0.72));
 }
 
 .empty-title,

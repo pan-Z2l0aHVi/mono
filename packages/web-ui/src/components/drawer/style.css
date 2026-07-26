@@ -95,7 +95,7 @@ dialog.closing::backdrop {
 
   height: 100%;
 
-  background-color: var(--wui-color-surface-glass, rgb(250 250 250 / 0.88));
+  background-color: var(--wui-color-surface-overlay, rgb(250 250 250 / 0.88));
 }
 
 /* ===== Header ===== */

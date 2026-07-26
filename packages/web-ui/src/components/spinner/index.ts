@@ -1,4 +1,4 @@
-import { html, LitElement, type PropertyValues, unsafeCSS } from 'lit'
+import { html, LitElement, nothing, type PropertyValues, unsafeCSS } from 'lit'
 import { customElement, property } from 'lit/decorators.js'
 import { repeat } from 'lit/directives/repeat.js'
 
@@ -10,12 +10,14 @@ export class WebUiSpinner extends LitElement {
   static override styles = unsafeCSS(style)
 
   @property({ type: Number, reflect: true }) size = 24
+  @property({ type: String }) description!: string
 
   /** 显示全屏居中 spinner（自动创建并挂载） */
-  static show(options?: { size?: number; duration?: number }): WebUiSpinner {
+  static show(options?: { size?: number; duration?: number; description?: string }): WebUiSpinner {
     const el = document.createElement('web-ui-spinner') as WebUiSpinner
     el._imperative = true
     if (options?.size) el.size = options.size
+    if (options?.description) el.description = options.description
     document.body.appendChild(el)
     if (options?.duration && options.duration > 0) {
       el._timer = window.setTimeout(() => WebUiSpinner.hide(), options.duration)
@@ -76,6 +78,8 @@ export class WebUiSpinner extends LitElement {
             ></span>`
         )}
       </div>
+      ${this.description ? html`<div class="spinner-description">${this.description}</div>` : nothing}
+      <slot name="description"></slot>
     `
     return this._imperative ? html`<div class="wui-spinner-overlay">${spinner}</div>` : spinner
   }

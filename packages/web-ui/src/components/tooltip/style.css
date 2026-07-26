@@ -23,7 +23,7 @@
   pointer-events: none;
 
   position: absolute;
-  z-index: 99999;
+  z-index: var(--wui-layer-local-overlay, 1);
   top: -9999px;
   left: -9999px;
 
@@ -36,11 +36,12 @@
   font-size: var(--wui-tooltip-font-size, 13px);
   color: var(--wui-color-text, #1b1b1b);
 
-  background-color: var(--wui-color-surface-glass, rgb(250 250 250 / 0.6));
+  background-color: var(--wui-color-surface-overlay, rgb(250 250 250 / 0.6));
 }
 
 .tooltip-panel.portal {
   position: fixed;
+  z-index: var(--wui-layer-menu, 100);
 }
 
 .tooltip-panel.hidden {

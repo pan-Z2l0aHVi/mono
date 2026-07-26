@@ -27,7 +27,7 @@
 
 header {
   position: sticky;
-  z-index: 1;
+  z-index: var(--wui-layer-header, 10);
   top: 0;
   right: 0;
 

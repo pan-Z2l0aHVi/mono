@@ -48,7 +48,7 @@
   height: 24px;
   border-radius: calc(infinity * 1px);
 
-  background-color: var(--wui-color-surface-raised, #e5e5ea);
+  background-color: var(--wui-color-surface-raised-deep, #e5e5ea);
   outline: 3px solid transparent;
   outline-offset: 2px;
 

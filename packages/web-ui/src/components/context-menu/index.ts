@@ -216,7 +216,6 @@ export class WebUiContextMenu extends LitElement {
     submenu.setAttribute('role', 'menu')
     submenu.setAttribute('aria-label', '子菜单')
     submenu.style.visibility = 'hidden'
-    submenu.style.zIndex = '100000'
     submenu.addEventListener('click', this._onMenuClick)
     children.forEach(child => submenu.appendChild(child))
 

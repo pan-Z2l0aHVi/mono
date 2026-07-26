@@ -18,9 +18,34 @@
 ### 主题 token 与浮层
 
 - 可见组件必须优先消费 `web-ui-theme` 提供的 `--wui-*` 语义 token，并在 `var()` 中保留当前浅色值 fallback，保证未使用主题的调用方外观不变。
+- `--wui-color-surface-glass` 用于透明度高的玻璃控件（button、input 等）；`--wui-color-surface-overlay` 用于透明度低的全局弹出层（drawer、dialog、dropdown、context-menu、toast 等）。两者的区别在于背景透明度：控件用高透明度让内容透出，弹出层用低透明度保证可读性。
+- `--wui-color-surface-raised` 分三个层级，组件根据视觉对比度需求选用：`raised`（最浅，checkbox、radio 等小面积控件）、`raised-mid`（中间，button secondary、empty 等）、`raised-deep`（最深，switch、slider 等需要强对比的控件）。交互状态（hover/active）通过 `color-mix()` 从对应层级 token 向 `--wui-color-text` 混合派生。
 - 禁止把组件样式注入 `document.head`。需要 portal 的组件应解析最近的 `web-ui-theme` overlay root；没有主题时使用组件库内部 Shadow DOM fallback。
 - 组件内部变量可以存在，但不是稳定公开 API；调用方仅依赖公开语义 token。
 - 布局组件中的 sticky header 必须建立高于内容区和侧栏的层叠级别，保证其内非 portal 浮层在狭窄视口溢出时仍可命中。
+- 本地浮层只使用组件内部的局部层级；`portal=true` 的 Select、Popover、Tooltip 与 Portal 菜单使用菜单层级。Toast 高于菜单，加载遮罩高于 Toast，Dialog 和 Drawer 使用原生 top layer。
+- BackTop 属于应用辅助层，高于基础内容、低于 Portal 菜单；调用方只能通过其语义层级变量调整位置，不能依赖数值层级。
+
+### 公共层级 Token
+
+`web-ui-theme` 提供以下稳定 CSS token；调用方可以覆盖 token，但不得依赖其默认数值：
+
+| Token                       | 语义                                                        |
+| --------------------------- | ----------------------------------------------------------- |
+| `--wui-layer-base`          | 基础内容与侧栏                                              |
+| `--wui-layer-header`        | sticky header                                               |
+| `--wui-layer-auxiliary`     | BackTop 等应用辅助控件                                      |
+| `--wui-layer-local-overlay` | 组件内部非 Portal 浮层                                      |
+| `--wui-layer-menu`          | Portal 菜单，以及 `portal=true` 的 Select、Popover、Tooltip |
+| `--wui-layer-menu-submenu`  | Portal 菜单的子菜单                                         |
+| `--wui-layer-toast`         | Toast 通知                                                  |
+| `--wui-layer-loading`       | 全屏加载遮罩                                                |
+
+显式 `overlayContainer` 继承这些 token 的 fallback，但其祖先 stacking context 由调用方负责。
+
+`--web-ui-back-top-z-index` 保留为 BackTop 的兼容别名；新代码应覆盖 `--wui-layer-auxiliary`。
+
+共享 theme overlay root 中的 Portal 菜单必须在 `assets/menu-portal.css` 定义层级规则；组件自身 Shadow DOM 的样式不会穿透到该 root。
 
 ### Box-sizing
 

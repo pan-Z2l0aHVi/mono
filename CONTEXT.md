@@ -45,6 +45,18 @@ An overlay that prevents background interaction and manages focus as a modal dia
 **Overlay Focus Model**:
 The component-specific rule defining where focus moves when an overlay opens and closes.
 
+**Layout Layer**:
+The `web-ui-layout` stacking relationship between its sibling regions. Base content and sidebar remain below the sticky header so non-portal header overlays retain pointer interaction when they overflow their grid area.
+_Avoid_: Global z-index scale, overlay layer
+
+**Portal Overlay**:
+An overlay mounted in the nearest theme overlay root or an explicit overlay container. Select, Popover, and Tooltip become menu-layer portal overlays only when their `portal` property is enabled.
+_Avoid_: Local overlay
+
+**Application Auxiliary Layer**:
+Persistent fixed application affordances, such as BackTop, positioned above base content but below portal menus.
+_Avoid_: Overlay, modal
+
 ## Known Constraints
 
 - All packages are ES modules only (`"type": "module"`)

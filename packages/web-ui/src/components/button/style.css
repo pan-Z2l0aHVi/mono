@@ -89,15 +89,15 @@ button {
 
 :host([variant='secondary']) {
   --wui-button-color: var(--wui-color-text, #1b1b1b);
-  --wui-button-bg: var(--wui-color-surface-raised, #dfdfdf);
+  --wui-button-bg: var(--wui-color-surface-raised-mid, #dfdfdf);
   --wui-button-bg-hover: color-mix(
     in srgb,
-    var(--wui-color-surface-raised, #dfdfdf) 90%,
+    var(--wui-color-surface-raised-mid, #dfdfdf) 90%,
     var(--wui-color-text, #1b1b1b)
   );
   --wui-button-bg-active: color-mix(
     in srgb,
-    var(--wui-color-surface-raised, #dfdfdf) 80%,
+    var(--wui-color-surface-raised-mid, #dfdfdf) 80%,
     var(--wui-color-text, #1b1b1b)
   );
 }

@@ -85,6 +85,42 @@ describe('WebUiSpinner', () => {
 
       el.remove()
     })
+
+    it('有 description 时渲染描述文字', async () => {
+      const el = createSpinner()
+      el.description = '加载中...'
+      await el.updateComplete
+
+      const desc = el.shadowRoot!.querySelector('.spinner-description')
+      expect(desc).toBeTruthy()
+      expect(desc!.textContent).toBe('加载中...')
+
+      el.remove()
+    })
+
+    it('无 description 时不渲染描述元素', async () => {
+      const el = createSpinner()
+      await el.updateComplete
+
+      const desc = el.shadowRoot!.querySelector('.spinner-description')
+      expect(desc).toBeNull()
+
+      el.remove()
+    })
+
+    it('description slot 投影内容', async () => {
+      const el = createSpinner()
+      const slotContent = document.createElement('span')
+      slotContent.slot = 'description'
+      slotContent.textContent = '请稍候'
+      el.appendChild(slotContent)
+      await el.updateComplete
+
+      const slot = el.shadowRoot!.querySelector('slot[name="description"]')
+      expect(slot).toBeTruthy()
+
+      el.remove()
+    })
   })
 
   describe('命令式 API: show', () => {
@@ -104,6 +140,28 @@ describe('WebUiSpinner', () => {
       await el.updateComplete
 
       expect(el.size).toBe(40)
+
+      el.remove()
+    })
+
+    it('show() 支持 description 选项', async () => {
+      const el = WebUiSpinner.show({ description: '正在加载数据...' })
+      await el.updateComplete
+
+      expect(el.description).toBe('正在加载数据...')
+      const desc = el.shadowRoot!.querySelector('.spinner-description')
+      expect(desc).toBeTruthy()
+      expect(desc!.textContent).toBe('正在加载数据...')
+
+      el.remove()
+    })
+
+    it('show() 无 description 时不渲染描述', async () => {
+      const el = WebUiSpinner.show()
+      await el.updateComplete
+
+      const desc = el.shadowRoot!.querySelector('.spinner-description')
+      expect(desc).toBeNull()
 
       el.remove()
     })
