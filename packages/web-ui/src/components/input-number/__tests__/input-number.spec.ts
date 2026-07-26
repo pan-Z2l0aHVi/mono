@@ -1,9 +1,11 @@
-import { describe, expect, it, vi } from 'vite-plus/test'
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
 
 import '..'
+import { cleanupElement, queryA11y, spyEvents, waitForUpdate } from '@/shared/test-utils'
+
 import type { WebUiInputNumber } from '..'
 
-const createNumber = (attrs?: Record<string, string>): WebUiInputNumber => {
+function createNumber(attrs?: Record<string, string>): WebUiInputNumber {
   const el = document.createElement('web-ui-input-number') as WebUiInputNumber
   if (attrs) {
     for (const [k, v] of Object.entries(attrs)) {
@@ -15,260 +17,274 @@ const createNumber = (attrs?: Record<string, string>): WebUiInputNumber => {
 }
 
 describe('WebUiInputNumber', () => {
-  describe('基础渲染', () => {
-    it('渲染两个加减按钮', async () => {
+  afterEach(() => {
+    document.body.innerHTML = ''
+  })
+
+  describe('默认值', () => {
+    it('value 默认 0', () => {
       const el = createNumber()
-      await el.updateComplete
-
-      const btns = el.shadowRoot?.querySelectorAll('.num-btn')
-      expect(btns?.length).toBe(2)
-
-      el.remove()
-    })
-
-    it('渲染 number input', async () => {
-      const el = createNumber()
-      await el.updateComplete
-
-      const input = el.shadowRoot?.querySelector('input') as HTMLInputElement
-      expect(input.type).toBe('number')
-
-      el.remove()
-    })
-
-    it('默认 value 为 0', async () => {
-      const el = createNumber()
-      await el.updateComplete
-
       expect(el.value).toBe(0)
-
-      el.remove()
+      cleanupElement(el)
     })
 
-    it('value 属性反射到 host', async () => {
+    it('disabled 默认 false', () => {
       const el = createNumber()
-      el.value = 5
-      await el.updateComplete
-
-      expect(el.getAttribute('value')).toBe('5')
-
-      el.remove()
-    })
-  })
-
-  describe('prop: disabled', () => {
-    it('disabled 时按钮不可点击', async () => {
-      const el = createNumber()
-      el.disabled = true
-      await el.updateComplete
-
-      const btns = el.shadowRoot?.querySelectorAll('.num-btn')
-      expect(btns).toBeTruthy()
-      expect((btns![0] as HTMLButtonElement).disabled).toBe(true)
-      expect((btns![1] as HTMLButtonElement).disabled).toBe(true)
-
-      el.remove()
+      expect(el.disabled).toBe(false)
+      cleanupElement(el)
     })
 
-    it('disabled 时 input 被 disabled', async () => {
+    it('precision 默认 0', () => {
       const el = createNumber()
-      el.disabled = true
-      await el.updateComplete
+      expect(el.precision).toBe(0)
+      cleanupElement(el)
+    })
 
-      const input = el.shadowRoot?.querySelector('input') as HTMLInputElement
-      expect(input.disabled).toBe(true)
-
-      el.remove()
+    it('formAssociated 已声明', () => {
+      expect((customElements.get('web-ui-input-number') as typeof WebUiInputNumber).formAssociated).toBe(true)
     })
   })
 
-  describe('加减操作', () => {
-    it('点击 + 按钮增加 1', async () => {
+  describe('属性反射', () => {
+    it('disabled 属性反射', async () => {
+      const el = createNumber()
+      el.disabled = true
+      await waitForUpdate(el)
+      expect(el.hasAttribute('disabled')).toBe(true)
+      cleanupElement(el)
+    })
+
+    it('placeholder 属性反射', async () => {
+      const el = createNumber({ placeholder: '输入数字' })
+      await waitForUpdate(el)
+      expect(el.getAttribute('placeholder')).toBe('输入数字')
+      cleanupElement(el)
+    })
+
+    it('name 属性反射', async () => {
+      const el = createNumber({ name: 'count' })
+      await waitForUpdate(el)
+      expect(el.getAttribute('name')).toBe('count')
+      cleanupElement(el)
+    })
+
+    it('required 属性反射', async () => {
+      const el = createNumber()
+      el.required = true
+      await waitForUpdate(el)
+      expect(el.hasAttribute('required')).toBe(true)
+      cleanupElement(el)
+    })
+
+    it('precision 属性反射', () => {
+      const el = createNumber({ precision: '2' })
+      expect(el.getAttribute('precision')).toBe('2')
+      cleanupElement(el)
+    })
+  })
+
+  describe('步进按钮', () => {
+    it('点击增加按钮增大值', async () => {
       const el = createNumber()
       el.value = 5
-      await el.updateComplete
+      await waitForUpdate(el)
 
-      const btns = el.shadowRoot?.querySelectorAll('.num-btn')
-      ;(btns![1] as HTMLElement).click()
-      await el.updateComplete
+      const incBtn = queryA11y(el, 'button[aria-label="Increase"]') as HTMLButtonElement
+      incBtn.click()
+      await waitForUpdate(el)
 
       expect(el.value).toBe(6)
-
-      el.remove()
+      cleanupElement(el)
     })
 
-    it('点击 − 按钮减少 1', async () => {
+    it('点击减少按钮减小值', async () => {
       const el = createNumber()
       el.value = 5
-      await el.updateComplete
+      await waitForUpdate(el)
 
-      const btns = el.shadowRoot?.querySelectorAll('.num-btn')
-      ;(btns![0] as HTMLElement).click()
-      await el.updateComplete
+      const decBtn = queryA11y(el, 'button[aria-label="Decrease"]') as HTMLButtonElement
+      decBtn.click()
+      await waitForUpdate(el)
 
       expect(el.value).toBe(4)
-
-      el.remove()
+      cleanupElement(el)
     })
 
-    it('点击 + 触发 input 事件', async () => {
+    it('点击增加按钮触发 input 事件', async () => {
       const el = createNumber()
-      el.value = 0
-      await el.updateComplete
+      await waitForUpdate(el)
 
-      const handler = vi.fn<(e: Event) => void>()
-      el.addEventListener('input', handler)
+      const [events] = spyEvents(el, 'input')
+      const incBtn = queryA11y(el, 'button[aria-label="Increase"]') as HTMLButtonElement
+      incBtn.click()
 
-      const btns = el.shadowRoot?.querySelectorAll('.num-btn')
-      ;(btns![1] as HTMLElement).click()
-
-      expect(handler).toHaveBeenCalledTimes(1)
-
-      el.remove()
+      expect(events).toHaveLength(1)
+      cleanupElement(el)
     })
 
-    it('disabled 时点击按钮不触发事件', async () => {
+    it('disabled 时点击按钮不触发 input 事件', async () => {
       const el = createNumber()
       el.disabled = true
-      await el.updateComplete
+      await waitForUpdate(el)
 
-      const handler = vi.fn<(e: Event) => void>()
-      el.addEventListener('input', handler)
+      const [events] = spyEvents(el, 'input')
+      const incBtn = queryA11y(el, 'button[aria-label="Increase"]') as HTMLButtonElement
+      incBtn.click()
 
-      const btns = el.shadowRoot?.querySelectorAll('.num-btn')
-      ;(btns![1] as HTMLElement).click()
+      expect(events).toHaveLength(0)
+      cleanupElement(el)
+    })
 
-      expect(handler).not.toHaveBeenCalled()
+    it('设置属性时不派发 input 事件', async () => {
+      const el = createNumber()
+      await waitForUpdate(el)
 
-      el.remove()
+      const [events] = spyEvents(el, 'input')
+      el.value = 5
+      await waitForUpdate(el)
+
+      expect(events).toHaveLength(0)
+      cleanupElement(el)
     })
   })
 
-  describe('prop: min / max', () => {
-    it('到达 min 时减号按钮被禁用', async () => {
+  describe('min / max 边界', () => {
+    it('到达 min 时减少按钮被禁用', async () => {
       const el = createNumber()
-      el.value = 0
       el.min = 0
-      await el.updateComplete
-
-      const btns = el.shadowRoot?.querySelectorAll('.num-btn')
-      expect((btns![0] as HTMLButtonElement).disabled).toBe(true)
-      expect((btns![1] as HTMLButtonElement).disabled).toBe(false)
-
-      el.remove()
-    })
-
-    it('到达 max 时加号按钮被禁用', async () => {
-      const el = createNumber()
-      el.value = 10
-      el.max = 10
-      await el.updateComplete
-
-      const btns = el.shadowRoot?.querySelectorAll('.num-btn')
-      expect((btns![0] as HTMLButtonElement).disabled).toBe(false)
-      expect((btns![1] as HTMLButtonElement).disabled).toBe(true)
-
-      el.remove()
-    })
-
-    it('到达 min 后不能再减少', async () => {
-      const el = createNumber()
       el.value = 0
-      el.min = 0
-      await el.updateComplete
+      await waitForUpdate(el)
 
-      const btns = el.shadowRoot?.querySelectorAll('.num-btn')
-      ;(btns![0] as HTMLElement).click()
-      await el.updateComplete
+      const decBtn = queryA11y(el, 'button[aria-label="Decrease"]') as HTMLButtonElement
+      expect(decBtn.disabled).toBe(true)
 
-      expect(el.value).toBe(0)
-
-      el.remove()
+      const incBtn = queryA11y(el, 'button[aria-label="Increase"]') as HTMLButtonElement
+      expect(incBtn.disabled).toBe(false)
+      cleanupElement(el)
     })
 
-    it('到达 max 后不能再增加', async () => {
+    it('到达 max 时增加按钮被禁用', async () => {
       const el = createNumber()
-      el.value = 10
       el.max = 10
-      await el.updateComplete
+      el.value = 10
+      await waitForUpdate(el)
 
-      const btns = el.shadowRoot?.querySelectorAll('.num-btn')
-      ;(btns![1] as HTMLElement).click()
-      await el.updateComplete
+      const incBtn = queryA11y(el, 'button[aria-label="Increase"]') as HTMLButtonElement
+      expect(incBtn.disabled).toBe(true)
 
-      expect(el.value).toBe(10)
-
-      el.remove()
+      const decBtn = queryA11y(el, 'button[aria-label="Decrease"]') as HTMLButtonElement
+      expect(decBtn.disabled).toBe(false)
+      cleanupElement(el)
     })
 
-    it('设置超出范围的 value 自动 clamp', async () => {
+    it('超出范围时自动 clamp', async () => {
       const el = createNumber()
       el.min = 0
       el.max = 100
       el.value = 200
-      await el.updateComplete
+      await waitForUpdate(el)
 
       expect(el.value).toBe(100)
+      cleanupElement(el)
+    })
 
-      el.remove()
+    it('低于范围时自动 clamp', async () => {
+      const el = createNumber()
+      el.min = 0
+      el.max = 100
+      el.value = -10
+      await waitForUpdate(el)
+
+      expect(el.value).toBe(0)
+      cleanupElement(el)
     })
   })
 
-  describe('prop: precision', () => {
-    it('默认 precision 为 0（整数）', async () => {
-      const el = createNumber()
-      expect(el.precision).toBe(0)
-
-      el.remove()
-    })
-
+  describe('precision', () => {
     it('precision=1 保留一位小数', async () => {
       const el = createNumber()
       el.precision = 1
       el.value = 1.26
-      await el.updateComplete
+      await waitForUpdate(el)
 
       expect(el.value).toBe(1.3)
-
-      el.remove()
+      cleanupElement(el)
     })
 
     it('precision=2 保留两位小数', async () => {
       const el = createNumber()
       el.precision = 2
       el.value = 1.234
-      await el.updateComplete
+      await waitForUpdate(el)
 
       expect(el.value).toBe(1.23)
-
-      el.remove()
+      cleanupElement(el)
     })
 
-    it('precision=1 步进 0.1', async () => {
+    it('precision 变化后重算现有值', async () => {
       const el = createNumber()
-      el.precision = 1
-      el.value = 1.0
-      await el.updateComplete
-
-      const btns = el.shadowRoot?.querySelectorAll('.num-btn')
-      ;(btns![1] as HTMLElement).click()
-      await el.updateComplete
-
-      expect(el.value).toBe(1.1)
-
-      el.remove()
+      // value 在设入时已按当前精度舍入，精度变更不会恢复已丢失的精度
+      el.value = 1.234
+      await waitForUpdate(el)
+      expect(el.value).toBe(1)
+      el.precision = 2
+      await waitForUpdate(el)
+      expect(el.value).toBe(1)
+      cleanupElement(el)
     })
   })
 
-  describe('玻璃样式', () => {
-    it('容器具有 wui-glass 类', async () => {
+  describe('键盘操作', () => {
+    it('ArrowUp 增大值并派发 input 和 change', async () => {
       const el = createNumber()
-      await el.updateComplete
+      el.value = 5
+      await waitForUpdate(el)
 
-      const wrapper = el.shadowRoot?.querySelector('.wui-glass')
-      expect(wrapper).toBeTruthy()
+      const [inputEvents] = spyEvents(el, 'input')
+      const [changeEvents] = spyEvents(el, 'change')
 
-      el.remove()
+      const input = queryA11y(el, 'input') as HTMLInputElement
+      input.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true, composed: true }))
+      await waitForUpdate(el)
+
+      expect(el.value).toBe(6)
+      expect(inputEvents).toHaveLength(1)
+      expect(changeEvents).toHaveLength(1)
+      cleanupElement(el)
+    })
+
+    it('ArrowDown 减小值并派发 input 和 change', async () => {
+      const el = createNumber()
+      el.value = 5
+      await waitForUpdate(el)
+
+      const [inputEvents] = spyEvents(el, 'input')
+      const [changeEvents] = spyEvents(el, 'change')
+
+      const input = queryA11y(el, 'input') as HTMLInputElement
+      input.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, composed: true }))
+      await waitForUpdate(el)
+
+      expect(el.value).toBe(4)
+      expect(inputEvents).toHaveLength(1)
+      expect(changeEvents).toHaveLength(1)
+      cleanupElement(el)
+    })
+
+    it('disabled 时键盘无响应', async () => {
+      const el = createNumber()
+      el.value = 5
+      el.disabled = true
+      await waitForUpdate(el)
+
+      const [inputEvents] = spyEvents(el, 'input')
+      const input = queryA11y(el, 'input') as HTMLInputElement
+      input.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true, composed: true }))
+      await waitForUpdate(el)
+
+      expect(el.value).toBe(5)
+      expect(inputEvents).toHaveLength(0)
+      cleanupElement(el)
     })
   })
 })

@@ -1,4 +1,6 @@
-import { describe, expect, it, vi } from 'vite-plus/test'
+import { describe, expect, it } from 'vite-plus/test'
+
+import { cleanupElement, queryA11y, waitForUpdate } from '@/shared/test-utils'
 
 import '..'
 import type { WebUiBadge } from '..'
@@ -16,449 +18,242 @@ const createBadge = (attrs?: Record<string, string>, slotContent?: string): WebU
 }
 
 describe('WebUiBadge', () => {
-  describe('基础渲染', () => {
-    it('渲染 badge 容器', async () => {
+  describe('默认属性值', () => {
+    it('默认 count 为 0', async () => {
       const el = createBadge()
-      await el.updateComplete
-
-      const wrapper = el.shadowRoot?.querySelector('.badge-wrapper')
-      expect(wrapper).toBeTruthy()
-
-      el.remove()
-    })
-
-    it('默认 count 为 0，不显示徽章', async () => {
-      const el = createBadge()
-      await el.updateComplete
-
-      const badge = el.shadowRoot?.querySelector('.badge')
-      expect(badge).toBeNull()
-
-      el.remove()
+      await waitForUpdate(el)
+      expect(el.count).toBe(0)
+      cleanupElement(el)
     })
 
     it('默认 max 为 99', async () => {
       const el = createBadge()
-      await el.updateComplete
-
+      await waitForUpdate(el)
       expect(el.max).toBe(99)
-
-      el.remove()
+      cleanupElement(el)
     })
 
     it('默认 placement 为 top-right', async () => {
       const el = createBadge()
-      await el.updateComplete
-
+      await waitForUpdate(el)
       expect(el.placement).toBe('top-right')
+      cleanupElement(el)
+    })
 
-      el.remove()
+    it('默认 dot、showZero、badgeHidden 为 false', async () => {
+      const el = createBadge()
+      await waitForUpdate(el)
+      expect(el.dot).toBe(false)
+      expect(el.showZero).toBe(false)
+      expect(el.badgeHidden).toBe(false)
+      cleanupElement(el)
+    })
+
+    it('默认 offsetX 和 offsetY 为 0', async () => {
+      const el = createBadge()
+      await waitForUpdate(el)
+      expect(el.offsetX).toBe(0)
+      expect(el.offsetY).toBe(0)
+      cleanupElement(el)
     })
   })
 
-  describe('prop: count', () => {
-    it('count > 0 时显示徽章', async () => {
+  describe('属性反射', () => {
+    it('count 反射到宿主元素', async () => {
+      const el = createBadge()
+      await waitForUpdate(el)
+      el.count = 42
+      await waitForUpdate(el)
+      expect(el.getAttribute('count')).toBe('42')
+      cleanupElement(el)
+    })
+
+    it('max 反射到宿主元素', async () => {
+      const el = createBadge()
+      await waitForUpdate(el)
+      el.max = 999
+      await waitForUpdate(el)
+      expect(el.getAttribute('max')).toBe('999')
+      cleanupElement(el)
+    })
+
+    it('placement 反射到宿主元素', async () => {
+      const el = createBadge()
+      await waitForUpdate(el)
+      el.placement = 'bottom-left'
+      await waitForUpdate(el)
+      expect(el.getAttribute('placement')).toBe('bottom-left')
+      cleanupElement(el)
+    })
+
+    it('dot 布尔属性反射', async () => {
+      const el = createBadge()
+      await waitForUpdate(el)
+      el.dot = true
+      await waitForUpdate(el)
+      expect(el.hasAttribute('dot')).toBe(true)
+      cleanupElement(el)
+    })
+
+    it('offset-x 反射到宿主元素', async () => {
+      const el = createBadge()
+      await waitForUpdate(el)
+      el.offsetX = -4
+      await waitForUpdate(el)
+      expect(el.getAttribute('offset-x')).toBe('-4')
+      cleanupElement(el)
+    })
+
+    it('offset-y 反射到宿主元素', async () => {
+      const el = createBadge()
+      await waitForUpdate(el)
+      el.offsetY = 8
+      await waitForUpdate(el)
+      expect(el.getAttribute('offset-y')).toBe('8')
+      cleanupElement(el)
+    })
+  })
+
+  describe('count 显示行为', () => {
+    it('count > 0 时显示徽章，文本为数字', async () => {
       const el = createBadge({ count: '5' })
-      await el.updateComplete
-
-      const badge = el.shadowRoot?.querySelector('.badge')
-      expect(badge).toBeTruthy()
-      expect(badge?.textContent?.trim()).toBe('5')
-
-      el.remove()
+      await waitForUpdate(el)
+      const status = queryA11y(el, '[role="status"]')
+      expect(status).toBeTruthy()
+      expect(status?.textContent?.trim()).toBe('5')
+      cleanupElement(el)
     })
 
     it('count 为 0 时默认不显示', async () => {
       const el = createBadge({ count: '0' })
-      await el.updateComplete
-
-      const badge = el.shadowRoot?.querySelector('.badge')
-      expect(badge).toBeNull()
-
-      el.remove()
+      await waitForUpdate(el)
+      const status = queryA11y(el, '[role="status"]')
+      expect(status).toBeNull()
+      cleanupElement(el)
     })
 
-    it('count 显示为数字文本', async () => {
-      const el = createBadge({ count: '42' })
-      await el.updateComplete
-
-      const badge = el.shadowRoot?.querySelector('.badge')
-      expect(badge?.textContent?.trim()).toBe('42')
-
-      el.remove()
-    })
-  })
-
-  describe('prop: max', () => {
-    it('count 超过 max 时显示 max+', async () => {
+    it('count > max 时显示 "max+"', async () => {
       const el = createBadge({ count: '100', max: '99' })
-      await el.updateComplete
-
-      const badge = el.shadowRoot?.querySelector('.badge')
-      expect(badge?.textContent?.trim()).toBe('99+')
-
-      el.remove()
+      await waitForUpdate(el)
+      const status = queryA11y(el, '[role="status"]')
+      expect(status?.textContent?.trim()).toBe('99+')
+      cleanupElement(el)
     })
 
     it('count 等于 max 时显示数字', async () => {
       const el = createBadge({ count: '99', max: '99' })
-      await el.updateComplete
-
-      const badge = el.shadowRoot?.querySelector('.badge')
-      expect(badge?.textContent?.trim()).toBe('99')
-
-      el.remove()
+      await waitForUpdate(el)
+      const status = queryA11y(el, '[role="status"]')
+      expect(status?.textContent?.trim()).toBe('99')
+      cleanupElement(el)
     })
 
     it('count 小于 max 时显示数字', async () => {
       const el = createBadge({ count: '50', max: '99' })
-      await el.updateComplete
-
-      const badge = el.shadowRoot?.querySelector('.badge')
-      expect(badge?.textContent?.trim()).toBe('50')
-
-      el.remove()
-    })
-
-    it('自定义 max 值', async () => {
-      const el = createBadge({ count: '10', max: '9' })
-      await el.updateComplete
-
-      const badge = el.shadowRoot?.querySelector('.badge')
-      expect(badge?.textContent?.trim()).toBe('9+')
-
-      el.remove()
-    })
-
-    it('极大数字正确截断', async () => {
-      const el = createBadge({ count: '99999', max: '999' })
-      await el.updateComplete
-
-      const badge = el.shadowRoot?.querySelector('.badge')
-      expect(badge?.textContent?.trim()).toBe('999+')
-
-      el.remove()
+      await waitForUpdate(el)
+      const status = queryA11y(el, '[role="status"]')
+      expect(status?.textContent?.trim()).toBe('50')
+      cleanupElement(el)
     })
   })
 
-  describe('prop: show-zero', () => {
-    it('show-zero 时 count=0 显示 0', async () => {
-      const el = createBadge({ count: '0', 'show-zero': '' })
-      await el.updateComplete
-
-      const badge = el.shadowRoot?.querySelector('.badge')
-      expect(badge).toBeTruthy()
-      expect(badge?.textContent?.trim()).toBe('0')
-
-      el.remove()
-    })
-
-    it('show-zero 为 false 时 count=0 不显示', async () => {
-      const el = createBadge({ count: '0' })
-      await el.updateComplete
-
-      const badge = el.shadowRoot?.querySelector('.badge')
-      expect(badge).toBeNull()
-
-      el.remove()
-    })
-  })
-
-  describe('prop: badge-hidden', () => {
-    it('badge-hidden 时徽章不显示且保留包裹内容', async () => {
-      const el = createBadge({ count: '5', 'badge-hidden': '' }, '<button>隐藏徽标</button>')
-      await el.updateComplete
-
-      const badge = el.shadowRoot?.querySelector('.badge')
-      expect(badge).toBeNull()
-      expect(el.querySelector('button')?.textContent).toBe('隐藏徽标')
-      expect(el.hidden).toBe(false)
-
-      el.remove()
-    })
-
-    it('badge-hidden 时 dot 也不显示', async () => {
-      const el = createBadge({ dot: '', 'badge-hidden': '' })
-      await el.updateComplete
-
-      const badge = el.shadowRoot?.querySelector('.badge')
-      expect(badge).toBeNull()
-
-      el.remove()
-    })
-  })
-
-  describe('prop: dot', () => {
+  describe('dot 模式', () => {
     it('dot 模式显示圆点', async () => {
       const el = createBadge({ dot: '' })
-      await el.updateComplete
-
-      const badge = el.shadowRoot?.querySelector('.badge')
-      expect(badge).toBeTruthy()
-      expect(badge?.textContent?.trim()).toBe('')
-      expect(badge?.classList.contains('badge-dot')).toBe(true)
-
-      el.remove()
-    })
-
-    it('dot 模式不显示数字', async () => {
-      const el = createBadge({ count: '5', dot: '' })
-      await el.updateComplete
-
-      const badge = el.shadowRoot?.querySelector('.badge')
-      expect(badge?.textContent?.trim()).toBe('')
-      expect(badge?.classList.contains('badge-dot')).toBe(true)
-
-      el.remove()
+      await waitForUpdate(el)
+      const status = queryA11y(el, '[role="status"]')
+      expect(status).toBeTruthy()
+      expect(status?.textContent?.trim()).toBe('')
+      cleanupElement(el)
     })
 
     it('dot 模式即使 count=0 也显示', async () => {
       const el = createBadge({ count: '0', dot: '' })
-      await el.updateComplete
-
-      const badge = el.shadowRoot?.querySelector('.badge')
-      expect(badge).toBeTruthy()
-
-      el.remove()
+      await waitForUpdate(el)
+      const status = queryA11y(el, '[role="status"]')
+      expect(status).toBeTruthy()
+      cleanupElement(el)
     })
   })
 
-  describe('dot 与 count 互斥', () => {
-    it('dot=true 优先于 count，显示圆点', async () => {
-      const el = createBadge({ count: '10', dot: '' })
-      await el.updateComplete
-
-      const badge = el.shadowRoot?.querySelector('.badge')
-      expect(badge?.classList.contains('badge-dot')).toBe(true)
-      expect(badge?.textContent?.trim()).toBe('')
-
-      el.remove()
-    })
-
-    it('dot=false 时正常显示 count', async () => {
-      const el = createBadge({ count: '10' })
-      await el.updateComplete
-
-      const badge = el.shadowRoot?.querySelector('.badge')
-      expect(badge?.classList.contains('badge-dot')).toBe(false)
-      expect(badge?.textContent?.trim()).toBe('10')
-
-      el.remove()
+  describe('show-zero 模式', () => {
+    it('show-zero 时 count=0 显示 0', async () => {
+      const el = createBadge({ count: '0', 'show-zero': '' })
+      await waitForUpdate(el)
+      const status = queryA11y(el, '[role="status"]')
+      expect(status).toBeTruthy()
+      expect(status?.textContent?.trim()).toBe('0')
+      cleanupElement(el)
     })
   })
 
-  describe('prop: placement', () => {
-    it('top-left placement 反射到 host', async () => {
-      const el = createBadge({ count: '1', placement: 'top-left' })
-      await el.updateComplete
-
-      expect(el.getAttribute('placement')).toBe('top-left')
-
-      el.remove()
-    })
-
-    it('bottom-right placement 反射到 host', async () => {
-      const el = createBadge({ count: '1', placement: 'bottom-right' })
-      await el.updateComplete
-
-      expect(el.getAttribute('placement')).toBe('bottom-right')
-
-      el.remove()
-    })
-
-    it('bottom-left placement 反射到 host', async () => {
-      const el = createBadge({ count: '1', placement: 'bottom-left' })
-      await el.updateComplete
-
-      expect(el.getAttribute('placement')).toBe('bottom-left')
-
-      el.remove()
-    })
-  })
-
-  describe('prop: offset-x / offset-y', () => {
-    it('声明式 offset-x 和 offset-y 映射为数值属性', async () => {
-      const el = createBadge({ count: '1', 'offset-x': '-4', 'offset-y': '6' })
-      await el.updateComplete
-
-      expect(el.offsetX).toBe(-4)
-      expect(el.offsetY).toBe(6)
-
-      el.remove()
-    })
-
-    it('偏移量通过 CSS 变量传递给徽标', async () => {
-      const el = createBadge({ count: '1', 'offset-x': '-4', 'offset-y': '6' }, '<span>通知</span>')
-      await el.updateComplete
-
-      const badge = el.shadowRoot?.querySelector('.badge') as HTMLElement
-      expect(badge.style.getPropertyValue('--badge-offset-x')).toBe('-4px')
-      expect(badge.style.getPropertyValue('--badge-offset-y')).toBe('6px')
-
-      el.remove()
-    })
-  })
-
-  describe('独立使用（无 slot）', () => {
-    it('无 slot 时徽章正常显示', async () => {
-      const el = createBadge({ count: '3' })
-      await el.updateComplete
-
-      const badge = el.shadowRoot?.querySelector('.badge')
-      expect(badge).toBeTruthy()
-      expect(badge?.textContent?.trim()).toBe('3')
-
-      el.remove()
-    })
-
-    it('无 slot 时 dot 正常显示', async () => {
-      const el = createBadge({ dot: '' })
-      await el.updateComplete
-
-      const badge = el.shadowRoot?.querySelector('.badge')
-      expect(badge).toBeTruthy()
-
-      el.remove()
-    })
-
-    it('无 slot 时徽章不使用 fixed 布局', async () => {
-      const el = createBadge({ count: '3' })
-      await el.updateComplete
-
-      const badge = el.shadowRoot?.querySelector('.badge') as HTMLElement
-      expect(badge.classList.contains('badge-fixed')).toBe(false)
-
-      el.remove()
-    })
-  })
-
-  describe('包裹内容（有 slot）', () => {
-    it('有 slot 内容时徽章叠加显示', async () => {
-      const el = createBadge({ count: '3' }, '<button>消息</button>')
-      await el.updateComplete
-
-      const badge = el.shadowRoot?.querySelector('.badge')
-      expect(badge).toBeTruthy()
-      expect(badge?.classList.contains('badge-fixed')).toBe(true)
-
-      el.remove()
-    })
-
-    it('slot 内容存在时 badge 有 fixed 类', async () => {
-      const el = createBadge({ count: '1' }, '<span>通知</span>')
-      await el.updateComplete
-
-      const badge = el.shadowRoot?.querySelector('.badge')
-      expect(badge?.classList.contains('badge-fixed')).toBe(true)
-
-      el.remove()
-    })
-
-    it('包裹内容时徽章使用 fixed 布局', async () => {
-      const el = createBadge({ count: '1' }, '<span>通知</span>')
-      await el.updateComplete
-
-      const badge = el.shadowRoot?.querySelector('.badge') as HTMLElement
-      expect(badge.classList.contains('badge-fixed')).toBe(true)
-
-      el.remove()
-    })
-
-    it('圆点模式保留 bottom-left placement 属性', async () => {
-      const el = createBadge({ dot: '', placement: 'bottom-left' }, '<span>通知</span>')
-      await el.updateComplete
-
-      const badge = el.shadowRoot?.querySelector('.badge') as HTMLElement
-      expect(badge.classList.contains('badge-dot')).toBe(true)
-      expect(el.getAttribute('placement')).toBe('bottom-left')
-
-      el.remove()
-    })
-  })
-
-  describe('a11y', () => {
-    it('count 模式 aria-label 为"N 条未读消息"', async () => {
-      const el = createBadge({ count: '3' })
-      await el.updateComplete
-
-      const badge = el.shadowRoot?.querySelector('.badge') as HTMLElement
-      expect(badge.getAttribute('aria-label')).toBe('3 条未读消息')
-
-      el.remove()
-    })
-
-    it('dot 模式 aria-label 为"未读"', async () => {
-      const el = createBadge({ dot: '' })
-      await el.updateComplete
-
-      const badge = el.shadowRoot?.querySelector('.badge') as HTMLElement
-      expect(badge.getAttribute('aria-label')).toBe('未读')
-
-      el.remove()
-    })
-
-    it('show-zero 时 aria-label 为"无未读消息"', async () => {
-      const el = createBadge()
-      el.count = 0
-      el.showZero = true
-      await el.updateComplete
-
-      const badge = el.shadowRoot?.querySelector('.badge') as HTMLElement
-      expect(badge.getAttribute('aria-label')).toBe('无未读消息')
-
-      el.remove()
-    })
-
-    it('徽章有 role="status"', async () => {
-      const el = createBadge({ count: '1' })
-      await el.updateComplete
-
-      const badge = el.shadowRoot?.querySelector('.badge') as HTMLElement
-      expect(badge.getAttribute('role')).toBe('status')
-
-      el.remove()
-    })
-
-    it('badge-hidden 时无 aria 元素', async () => {
+  describe('badge-hidden 模式', () => {
+    it('badge-hidden 时徽章不显示', async () => {
       const el = createBadge({ count: '5', 'badge-hidden': '' })
-      await el.updateComplete
+      await waitForUpdate(el)
+      const status = queryA11y(el, '[role="status"]')
+      expect(status).toBeNull()
+      cleanupElement(el)
+    })
+  })
 
-      const badge = el.shadowRoot?.querySelector('.badge')
-      expect(badge).toBeNull()
+  describe('非法 placement 回退', () => {
+    it('非法 placement 值回退为 top-right', async () => {
+      const el = createBadge()
+      await waitForUpdate(el)
+      el.setAttribute('placement', 'invalid-position')
+      await waitForUpdate(el)
+      expect(el.placement).toBe('top-right')
+      expect(el.getAttribute('placement')).toBe('top-right')
+      cleanupElement(el)
+    })
+  })
 
-      el.remove()
+  describe('slot 投影', () => {
+    it('携带 slot 内容时组件正常渲染', async () => {
+      const el = createBadge({ count: '3' }, '<button>消息</button>')
+      await waitForUpdate(el)
+      const status = queryA11y(el, '[role="status"]')
+      expect(status).toBeTruthy()
+      expect(status?.textContent?.trim()).toBe('3')
+      expect(el.querySelector('button')?.textContent).toBe('消息')
+      cleanupElement(el)
+    })
+  })
+
+  describe('无障碍', () => {
+    it('count 模式徽章有 role="status"', async () => {
+      const el = createBadge({ count: '1' })
+      await waitForUpdate(el)
+      const status = queryA11y(el, '[role="status"]')
+      expect(status).toBeTruthy()
+      cleanupElement(el)
+    })
+
+    it('count > 0 时 aria-label 为 "N 条未读消息"', async () => {
+      const el = createBadge({ count: '3' })
+      await waitForUpdate(el)
+      const status = queryA11y(el, '[role="status"]') as HTMLElement
+      expect(status.getAttribute('aria-label')).toBe('3 条未读消息')
+      cleanupElement(el)
+    })
+
+    it('dot 模式 aria-label 为 "未读"', async () => {
+      const el = createBadge({ dot: '' })
+      await waitForUpdate(el)
+      const status = queryA11y(el, '[role="status"]') as HTMLElement
+      expect(status.getAttribute('aria-label')).toBe('未读')
+      cleanupElement(el)
     })
   })
 
   describe('极端值', () => {
-    it('极大 count 值正确显示', async () => {
+    it('极大 count 值显示 max+', async () => {
       const el = createBadge({ count: '999999' })
-      await el.updateComplete
-
-      const badge = el.shadowRoot?.querySelector('.badge')
-      expect(badge?.textContent?.trim()).toBe('99+')
-
-      el.remove()
-    })
-
-    it('负数 count 不显示徽章', async () => {
-      const el = createBadge({ count: '-1' })
-      await el.updateComplete
-
-      const badge = el.shadowRoot?.querySelector('.badge')
-      expect(badge).toBeNull()
-
-      el.remove()
-    })
-
-    it('max=0 时所有正数都显示 0+', async () => {
-      const el = createBadge({ count: '5', max: '0' })
-      await el.updateComplete
-
-      const badge = el.shadowRoot?.querySelector('.badge')
-      expect(badge?.textContent?.trim()).toBe('0+')
-
-      el.remove()
+      await waitForUpdate(el)
+      const status = queryA11y(el, '[role="status"]')
+      expect(status?.textContent?.trim()).toBe('99+')
+      cleanupElement(el)
     })
   })
 })

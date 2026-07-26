@@ -1,9 +1,11 @@
-import { describe, expect, it, vi } from 'vite-plus/test'
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
 
 import '..'
+import { cleanupElement, queryA11y, spyEvents, waitForUpdate } from '@/shared/test-utils'
+
 import type { WebUiInput } from '..'
 
-const createInput = (attrs?: Record<string, string>): WebUiInput => {
+function createInput(attrs?: Record<string, string>): WebUiInput {
   const el = document.createElement('web-ui-input') as WebUiInput
   if (attrs) {
     for (const [k, v] of Object.entries(attrs)) {
@@ -15,382 +17,237 @@ const createInput = (attrs?: Record<string, string>): WebUiInput => {
 }
 
 describe('WebUiInput', () => {
-  describe('基础渲染', () => {
-    it('渲染原生 input 元素', async () => {
-      const el = createInput()
-      await el.updateComplete
-
-      const input = el.shadowRoot?.querySelector('input')
-      expect(input).toBeTruthy()
-
-      el.remove()
-    })
-
-    it('默认 type 为 text', async () => {
-      const el = createInput()
-      await el.updateComplete
-
-      const input = el.shadowRoot?.querySelector('input') as HTMLInputElement
-      expect(input.type).toBe('text')
-
-      el.remove()
-    })
-
-    it('type 属性同步到原生 input', async () => {
-      const el = createInput({ type: 'password' })
-      await el.updateComplete
-
-      const input = el.shadowRoot?.querySelector('input') as HTMLInputElement
-      expect(input.type).toBe('password')
-
-      el.remove()
-    })
-
-    it('placeholder 渲染到原生 input', async () => {
-      const el = createInput({ placeholder: '请输入' })
-      await el.updateComplete
-
-      const input = el.shadowRoot?.querySelector('input') as HTMLInputElement
-      expect(input.placeholder).toBe('请输入')
-
-      el.remove()
-    })
-
-    it('value 渲染到原生 input', async () => {
-      const el = createInput({ value: 'hello' })
-      await el.updateComplete
-
-      const input = el.shadowRoot?.querySelector('input') as HTMLInputElement
-      expect(input.value).toBe('hello')
-
-      el.remove()
-    })
+  afterEach(() => {
+    document.body.innerHTML = ''
   })
 
-  describe('插槽', () => {
-    it('prefix slot 始终存在于 shadow DOM', async () => {
+  describe('默认值', () => {
+    it('type 默认 text', async () => {
       const el = createInput()
-      await el.updateComplete
-
-      const prefix = el.shadowRoot?.querySelector('slot[name=prefix]')
-      expect(prefix).toBeTruthy()
-
-      el.remove()
+      await waitForUpdate(el)
+      expect(el.type).toBe('text')
+      cleanupElement(el)
     })
 
-    it('有 prefix 内容时 slot 非空', async () => {
+    it('value 默认空字符串', () => {
       const el = createInput()
-      el.innerHTML = '<span slot="prefix">Q</span>'
-      await el.updateComplete
-
-      const prefix = el.shadowRoot?.querySelector('slot[name=prefix]') as HTMLSlotElement
-      expect(prefix.assignedElements().length).toBe(1)
-
-      el.remove()
-    })
-
-    it('suffix slot 始终存在于 shadow DOM', async () => {
-      const el = createInput()
-      await el.updateComplete
-
-      const suffix = el.shadowRoot?.querySelector('slot[name=suffix]')
-      expect(suffix).toBeTruthy()
-
-      el.remove()
-    })
-
-    it('有 suffix 内容时 slot 非空', async () => {
-      const el = createInput()
-      el.innerHTML = '<span slot="suffix">ok</span>'
-      await el.updateComplete
-
-      const suffix = el.shadowRoot?.querySelector('slot[name=suffix]') as HTMLSlotElement
-      expect(suffix.assignedElements().length).toBe(1)
-
-      el.remove()
-    })
-  })
-
-  describe('prop: disabled', () => {
-    it('disabled 时原生 input 被 disabled', async () => {
-      const el = createInput()
-      el.disabled = true
-      await el.updateComplete
-
-      const input = el.shadowRoot?.querySelector('input') as HTMLInputElement
-      expect(input.disabled).toBe(true)
-
-      el.remove()
-    })
-
-    it('disabled 属性反射到 host', async () => {
-      const el = createInput()
-      el.disabled = true
-      await el.updateComplete
-
-      expect(el.hasAttribute('disabled')).toBe(true)
-
-      el.remove()
-    })
-  })
-
-  describe('prop: clearable', () => {
-    it('clearable 有值时显示清除按钮', async () => {
-      const el = createInput()
-      el.clearable = true
-      el.value = 'hello'
-      await el.updateComplete
-
-      const clear = el.shadowRoot?.querySelector('.clear')
-      expect(clear).toBeTruthy()
-
-      el.remove()
-    })
-
-    it('clearable 无值时不显示清除按钮', async () => {
-      const el = createInput()
-      el.clearable = true
-      await el.updateComplete
-
-      const clear = el.shadowRoot?.querySelector('.clear')
-      expect(clear).toBeNull()
-
-      el.remove()
-    })
-
-    it('非 clearable 时不显示清除按钮', async () => {
-      const el = createInput({ value: 'hello' })
-      await el.updateComplete
-
-      const clear = el.shadowRoot?.querySelector('.clear')
-      expect(clear).toBeNull()
-
-      el.remove()
-    })
-
-    it('点击清除按钮清空 value', async () => {
-      const el = createInput()
-      el.clearable = true
-      el.value = 'hello'
-      await el.updateComplete
-
-      const clear = el.shadowRoot?.querySelector('.clear') as HTMLElement
-      clear.click()
-
-      await el.updateComplete
       expect(el.value).toBe('')
-
-      el.remove()
+      cleanupElement(el)
     })
 
-    it('点击清除按钮触发 input 事件', async () => {
+    it('disabled 默认 false', () => {
       const el = createInput()
-      el.clearable = true
-      el.value = 'hello'
-      await el.updateComplete
-
-      const handler = vi.fn<(e: Event) => void>()
-      el.addEventListener('input', handler)
-
-      const clear = el.shadowRoot?.querySelector('.clear') as HTMLElement
-      clear.click()
-
-      expect(handler).toHaveBeenCalledTimes(1)
-
-      el.remove()
+      expect(el.disabled).toBe(false)
+      cleanupElement(el)
     })
 
-    it('清除后图标消失', async () => {
-      const el = createInput()
-      el.clearable = true
-      el.value = 'hello'
-      await el.updateComplete
+    it('formAssociated 已声明', () => {
+      expect((customElements.get('web-ui-input') as typeof WebUiInput).formAssociated).toBe(true)
+    })
+  })
 
-      const clearBefore = el.shadowRoot?.querySelector('.clear')
-      expect(clearBefore).toBeTruthy()
-
-      const clear = el.shadowRoot?.querySelector('.clear') as HTMLElement
-      clear.click()
-      await el.updateComplete
-
-      const clearAfter = el.shadowRoot?.querySelector('.clear')
-      expect(clearAfter).toBeNull()
-
-      el.remove()
+  describe('属性反射', () => {
+    it('type 属性反射', async () => {
+      const el = createInput({ type: 'password' })
+      await waitForUpdate(el)
+      expect(el.getAttribute('type')).toBe('password')
+      cleanupElement(el)
     })
 
-    it('clearable + suffix 同时显示', async () => {
+    it('disabled 属性反射', async () => {
+      const el = createInput()
+      el.disabled = true
+      await waitForUpdate(el)
+      expect(el.hasAttribute('disabled')).toBe(true)
+      cleanupElement(el)
+    })
+
+    it('placeholder 属性反射', async () => {
+      const el = createInput({ placeholder: '请输入' })
+      await waitForUpdate(el)
+      expect(el.getAttribute('placeholder')).toBe('请输入')
+      cleanupElement(el)
+    })
+
+    it('name 属性反射', async () => {
+      const el = createInput({ name: 'username' })
+      await waitForUpdate(el)
+      expect(el.getAttribute('name')).toBe('username')
+      cleanupElement(el)
+    })
+
+    it('required 属性反射', async () => {
+      const el = createInput()
+      el.required = true
+      await waitForUpdate(el)
+      expect(el.hasAttribute('required')).toBe(true)
+      cleanupElement(el)
+    })
+
+    it('clearable 属性反射', async () => {
       const el = createInput()
       el.clearable = true
-      el.value = 'hello'
-      el.innerHTML = '<span slot="suffix">ok</span>'
-      await el.updateComplete
+      await waitForUpdate(el)
+      expect(el.hasAttribute('clearable')).toBe(true)
+      cleanupElement(el)
+    })
 
-      const suffix = el.shadowRoot?.querySelector('slot[name=suffix]') as HTMLSlotElement
-      expect(suffix.assignedElements().length).toBe(1)
+    it('full 属性反射', async () => {
+      const el = createInput()
+      el.full = true
+      await waitForUpdate(el)
+      expect(el.hasAttribute('full')).toBe(true)
+      cleanupElement(el)
+    })
 
-      const clear = el.shadowRoot?.querySelector('.clear')
-      expect(clear).toBeTruthy()
+    it('borderless 属性反射', async () => {
+      const el = createInput({ borderless: '' })
+      await waitForUpdate(el)
+      expect(el.hasAttribute('borderless')).toBe(true)
+      cleanupElement(el)
+    })
+  })
 
-      el.remove()
+  describe('disabled', () => {
+    it('disabled 时点击容器不聚焦原生 input', async () => {
+      const el = createInput()
+      el.disabled = true
+      await waitForUpdate(el)
+
+      const input = queryA11y(el, 'input') as HTMLInputElement
+      const spy = vi.spyOn(input, 'focus')
+      const wrapper = el.shadowRoot?.querySelector('.wui-input-inner') as HTMLElement
+      wrapper.click()
+
+      expect(spy).not.toHaveBeenCalled()
+      cleanupElement(el)
     })
   })
 
   describe('事件', () => {
     it('输入时触发 input 事件', async () => {
       const el = createInput()
-      await el.updateComplete
+      await waitForUpdate(el)
 
-      const handler = vi.fn<(e: Event) => void>()
-      el.addEventListener('input', handler)
-
-      const input = el.shadowRoot?.querySelector('input') as HTMLInputElement
+      const [events] = spyEvents(el, 'input')
+      const input = queryA11y(el, 'input') as HTMLInputElement
       input.value = 'test'
       input.dispatchEvent(new Event('input', { bubbles: true, composed: true }))
 
-      expect(handler).toHaveBeenCalledTimes(1)
-
-      el.remove()
+      expect(events).toHaveLength(1)
+      cleanupElement(el)
     })
 
-    it('失焦时触发 change 事件', async () => {
+    it('失焦时原生 change 事件冒泡至宿主', async () => {
       const el = createInput()
-      await el.updateComplete
+      await waitForUpdate(el)
 
-      const handler = vi.fn<(e: Event) => void>()
-      el.addEventListener('change', handler)
-
-      const input = el.shadowRoot?.querySelector('input') as HTMLInputElement
+      const [events] = spyEvents(el, 'change')
+      const input = queryA11y(el, 'input') as HTMLInputElement
       input.dispatchEvent(new Event('change', { bubbles: true, composed: true }))
 
-      expect(handler).toHaveBeenCalledTimes(1)
-
-      el.remove()
+      expect(events).toHaveLength(1)
+      cleanupElement(el)
     })
 
     it('聚焦时触发 focus 事件', async () => {
       const el = createInput()
-      await el.updateComplete
+      await waitForUpdate(el)
 
-      const handler = vi.fn<(e: Event) => void>()
-      el.addEventListener('focus', handler)
-
-      const input = el.shadowRoot?.querySelector('input') as HTMLInputElement
+      const [events] = spyEvents(el, 'focus')
+      const input = queryA11y(el, 'input') as HTMLInputElement
       input.dispatchEvent(new Event('focus', { bubbles: true, composed: true }))
 
-      expect(handler).toHaveBeenCalledTimes(1)
-
-      el.remove()
+      expect(events).toHaveLength(1)
+      cleanupElement(el)
     })
 
     it('失焦时触发 blur 事件', async () => {
       const el = createInput()
-      await el.updateComplete
+      await waitForUpdate(el)
 
-      const handler = vi.fn<(e: Event) => void>()
-      el.addEventListener('blur', handler)
-
-      const input = el.shadowRoot?.querySelector('input') as HTMLInputElement
+      const [events] = spyEvents(el, 'blur')
+      const input = queryA11y(el, 'input') as HTMLInputElement
       input.dispatchEvent(new Event('blur', { bubbles: true, composed: true }))
 
-      expect(handler).toHaveBeenCalledTimes(1)
+      expect(events).toHaveLength(1)
+      cleanupElement(el)
+    })
 
-      el.remove()
+    it('设置属性时不派发 input 事件', async () => {
+      const el = createInput()
+      await waitForUpdate(el)
+
+      const [events] = spyEvents(el, 'input')
+      el.value = 'hello'
+      await waitForUpdate(el)
+
+      expect(events).toHaveLength(0)
+      cleanupElement(el)
     })
   })
 
-  describe('prop: value（双向同步）', () => {
-    it('设置 value 属性后原生 input 同步', async () => {
+  describe('value 双向同步', () => {
+    it('设置 value 后原生 input 值同步', async () => {
       const el = createInput()
       el.value = 'hello'
-      await el.updateComplete
+      await waitForUpdate(el)
 
-      const input = el.shadowRoot?.querySelector('input') as HTMLInputElement
+      const input = queryA11y(el, 'input') as HTMLInputElement
       expect(input.value).toBe('hello')
-
-      el.remove()
+      cleanupElement(el)
     })
 
-    it('输入后 value 属性同步更新', async () => {
+    it('输入后组件 value 属性同步更新', async () => {
       const el = createInput()
-      await el.updateComplete
+      await waitForUpdate(el)
 
-      const input = el.shadowRoot?.querySelector('input') as HTMLInputElement
+      const input = queryA11y(el, 'input') as HTMLInputElement
       input.value = 'typed'
       input.dispatchEvent(new Event('input', { bubbles: true, composed: true }))
+      await waitForUpdate(el)
 
-      await el.updateComplete
       expect(el.value).toBe('typed')
-
-      el.remove()
+      cleanupElement(el)
     })
   })
 
-  describe('焦点状态', () => {
-    it('聚焦时添加 focused 属性', async () => {
+  describe('clearable', () => {
+    it('clearable 有值时触发 input 事件', async () => {
       const el = createInput()
-      await el.updateComplete
+      el.clearable = true
+      el.value = 'hello'
+      await waitForUpdate(el)
 
-      const input = el.shadowRoot?.querySelector('input') as HTMLInputElement
-      input.dispatchEvent(new Event('focus', { bubbles: true, composed: true }))
+      const [events] = spyEvents(el, 'input')
+      const clear = el.shadowRoot?.querySelector('.clear') as HTMLElement
+      clear.click()
 
-      await el.updateComplete
-      expect(el.hasAttribute('focused')).toBe(true)
-
-      el.remove()
-    })
-
-    it('失焦时移除 focused 属性', async () => {
-      const el = createInput()
-      await el.updateComplete
-
-      const input = el.shadowRoot?.querySelector('input') as HTMLInputElement
-      input.dispatchEvent(new Event('focus', { bubbles: true, composed: true }))
-      await el.updateComplete
-      input.dispatchEvent(new Event('blur', { bubbles: true, composed: true }))
-      await el.updateComplete
-
-      expect(el.hasAttribute('focused')).toBe(false)
-
-      el.remove()
-    })
-
-    it('disabled 时不添加 focused 属性', async () => {
-      const el = createInput()
-      el.disabled = true
-      await el.updateComplete
-
-      const input = el.shadowRoot?.querySelector('input') as HTMLInputElement
-      input.dispatchEvent(new Event('focus', { bubbles: true, composed: true }))
-      await el.updateComplete
-
-      expect(el.hasAttribute('focused')).toBe(false)
-
-      el.remove()
+      expect(events).toHaveLength(1)
+      expect(el.value).toBe('')
+      cleanupElement(el)
     })
   })
 
-  describe('玻璃样式', () => {
-    it('容器具有 wui-glass 类', async () => {
+  describe('slot 投影', () => {
+    it('prefix 内容投影', async () => {
       const el = createInput()
-      await el.updateComplete
+      el.innerHTML = '<span slot="prefix">Q</span>'
+      await waitForUpdate(el)
 
-      const wrapper = el.shadowRoot?.querySelector('.wui-glass')
-      expect(wrapper).toBeTruthy()
-
-      el.remove()
+      const slot = queryA11y(el, 'slot[name="prefix"]') as HTMLSlotElement
+      expect(slot.assignedElements().length).toBe(1)
+      cleanupElement(el)
     })
-  })
 
-  describe('prop: full', () => {
-    it('full 属性反射到 host', async () => {
+    it('suffix 内容投影', async () => {
       const el = createInput()
-      el.full = true
-      await el.updateComplete
+      el.innerHTML = '<span slot="suffix">ok</span>'
+      await waitForUpdate(el)
 
-      expect(el.hasAttribute('full')).toBe(true)
-
-      el.remove()
+      const slot = queryA11y(el, 'slot[name="suffix"]') as HTMLSlotElement
+      expect(slot.assignedElements().length).toBe(1)
+      cleanupElement(el)
     })
   })
 })

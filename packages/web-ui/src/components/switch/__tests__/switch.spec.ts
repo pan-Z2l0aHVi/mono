@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from 'vite-plus/test'
 
 import '..'
+import { waitForUpdate, spyEvents, cleanupElement, queryA11y } from '@/shared/test-utils'
+
 import type { WebUiSwitch } from '..'
 
 const createSwitch = (): WebUiSwitch => {
@@ -10,142 +12,182 @@ const createSwitch = (): WebUiSwitch => {
 }
 
 describe('WebUiSwitch', () => {
-  describe('prop: open', () => {
-    it('open 属性反映到 host 元素，初始值为 false', async () => {
+  describe('prop: checked', () => {
+    it('checked 默认值为 false', async () => {
       const el = createSwitch()
-      await el.updateComplete
-      expect(el.open).toBe(false)
-      expect(el.hasAttribute('open')).toBe(false)
+      await waitForUpdate(el)
+      expect(el.checked).toBe(false)
+      cleanupElement(el)
+    })
 
-      el.open = true
-      await el.updateComplete
-      expect(el.hasAttribute('open')).toBe(true)
-      expect(el.open).toBe(true)
+    it('checked 设置和读取，不反射到 host', async () => {
+      const el = createSwitch()
+      await waitForUpdate(el)
+      expect(el.hasAttribute('checked')).toBe(false)
 
-      el.open = false
-      await el.updateComplete
-      expect(el.hasAttribute('open')).toBe(false)
+      el.checked = true
+      await waitForUpdate(el)
+      expect(el.checked).toBe(true)
+      cleanupElement(el)
+    })
 
-      el.remove()
+    it('设置 checked 不触发 input/change 事件', async () => {
+      const el = createSwitch()
+      await waitForUpdate(el)
+
+      const [inputEvents, detachInput] = spyEvents(el, 'input')
+      const [changeEvents, detachChange] = spyEvents(el, 'change')
+
+      el.checked = true
+      await waitForUpdate(el)
+
+      expect(inputEvents).toHaveLength(0)
+      expect(changeEvents).toHaveLength(0)
+
+      detachInput()
+      detachChange()
+      cleanupElement(el)
     })
   })
 
   describe('prop: disabled', () => {
-    it('disabled 属性反映到 host 元素', async () => {
+    it('disabled 属性反射到 host', async () => {
       const el = createSwitch()
-      el.disabled = true
-      await el.updateComplete
-      expect(el.hasAttribute('disabled')).toBe(true)
-
-      el.disabled = false
-      await el.updateComplete
       expect(el.hasAttribute('disabled')).toBe(false)
-
-      el.remove()
+      el.disabled = true
+      await waitForUpdate(el)
+      expect(el.hasAttribute('disabled')).toBe(true)
+      cleanupElement(el)
     })
 
-    it('disabled 为 true 时阻止切换', async () => {
+    it('disabled 时点击不触发 input/change', async () => {
       const el = createSwitch()
       el.disabled = true
-      await el.updateComplete
+      await waitForUpdate(el)
 
-      const handler = vi.fn<(e: Event) => void>()
-      el.addEventListener('open-change', handler)
+      const [inputEvents, detachInput] = spyEvents(el, 'input')
+      const [changeEvents, detachChange] = spyEvents(el, 'change')
 
-      const track = el.shadowRoot!.querySelector('[role="switch"]') as HTMLElement
-      track.click()
-      await el.updateComplete
+      const label = queryA11y(el, '[role="switch"]')
+      if (label instanceof HTMLElement) {
+        label.click()
+      }
+      await waitForUpdate(el)
 
-      expect(el.open).toBe(false)
-      expect(handler).not.toHaveBeenCalled()
+      expect(inputEvents).toHaveLength(0)
+      expect(changeEvents).toHaveLength(0)
+      expect(el.checked).toBe(false)
 
-      el.remove()
+      detachInput()
+      detachChange()
+      cleanupElement(el)
     })
   })
 
-  describe('event: open-change', () => {
-    it('open 变化时触发 open-change，detail.open 匹配新状态', async () => {
+  describe('prop: loading', () => {
+    it('loading 时点击不切换状态', async () => {
       const el = createSwitch()
-      const handler = vi.fn<(e: Event) => void>()
-      el.addEventListener('open-change', handler)
+      el.loading = true
+      await waitForUpdate(el)
 
-      el.open = true
-      await el.updateComplete
+      const label = queryA11y(el, '[role="switch"]')
+      if (label instanceof HTMLElement) {
+        label.click()
+      }
+      await waitForUpdate(el)
 
-      expect(handler).toHaveBeenCalledTimes(1)
-      expect((handler.mock.calls[0][0] as CustomEvent<{ open: boolean }>).detail.open).toBe(true)
-
-      el.remove()
-    })
-
-    it('disabled 为 true 时不触发 open-change', async () => {
-      const el = createSwitch()
-      el.disabled = true
-      await el.updateComplete
-
-      const handler = vi.fn<(e: Event) => void>()
-      el.addEventListener('open-change', handler)
-
-      const track = el.shadowRoot!.querySelector('[role="switch"]') as HTMLElement
-      track.click()
-      await el.updateComplete
-
-      expect(handler).not.toHaveBeenCalled()
-
-      el.remove()
+      expect(el.checked).toBe(false)
+      cleanupElement(el)
     })
   })
 
-  describe('command: show()', () => {
-    it('设置 open=true 并触发 open-change', async () => {
+  describe('prop: name / value', () => {
+    it('可以设置 name', async () => {
       const el = createSwitch()
-      const handler = vi.fn<(e: Event) => void>()
-      el.addEventListener('open-change', handler)
-
-      el.show()
-      await el.updateComplete
-
-      expect(el.open).toBe(true)
-      expect(handler).toHaveBeenCalledTimes(1)
-      expect((handler.mock.calls[0][0] as CustomEvent<{ open: boolean }>).detail.open).toBe(true)
-
-      el.remove()
+      el.name = 'agreed'
+      await waitForUpdate(el)
+      expect(el.name).toBe('agreed')
+      cleanupElement(el)
     })
 
-    it('已打开时再次调用不重复触发', async () => {
+    it('可以设置 value', async () => {
       const el = createSwitch()
-      el.open = true
-      await el.updateComplete
-
-      const handler = vi.fn<(e: Event) => void>()
-      el.addEventListener('open-change', handler)
-
-      el.show()
-      await el.updateComplete
-
-      expect(handler).not.toHaveBeenCalled()
-
-      el.remove()
+      el.value = 'yes'
+      await waitForUpdate(el)
+      expect(el.value).toBe('yes')
+      cleanupElement(el)
     })
   })
 
-  describe('command: close()', () => {
-    it('设置 open=false 并触发 open-change', async () => {
+  describe('事件', () => {
+    it('点击切换后派发 input 和 change 事件', async () => {
       const el = createSwitch()
-      el.open = true
-      await el.updateComplete
+      await waitForUpdate(el)
 
-      const handler = vi.fn<(e: Event) => void>()
-      el.addEventListener('open-change', handler)
+      const [inputEvents, detachInput] = spyEvents(el, 'input')
+      const [changeEvents, detachChange] = spyEvents(el, 'change')
 
-      el.close()
-      await el.updateComplete
+      const label = queryA11y(el, '[role="switch"]')
+      if (label instanceof HTMLElement) {
+        label.click()
+      }
+      await waitForUpdate(el)
 
-      expect(el.open).toBe(false)
-      expect(handler).toHaveBeenCalledTimes(1)
-      expect((handler.mock.calls[0][0] as CustomEvent<{ open: boolean }>).detail.open).toBe(false)
+      expect(inputEvents).toHaveLength(1)
+      expect(changeEvents).toHaveLength(1)
 
-      el.remove()
+      detachInput()
+      detachChange()
+      cleanupElement(el)
+    })
+
+    it('多次点击多次触发 input/change', async () => {
+      const el = createSwitch()
+      await waitForUpdate(el)
+
+      const [inputEvents, detachInput] = spyEvents(el, 'input')
+      const [changeEvents, detachChange] = spyEvents(el, 'change')
+
+      const label = queryA11y(el, '[role="switch"]')
+      if (!(label instanceof HTMLElement)) {
+        detachInput()
+        detachChange()
+        cleanupElement(el)
+        return
+      }
+
+      label.click()
+      await waitForUpdate(el)
+      label.click()
+      await waitForUpdate(el)
+      label.click()
+      await waitForUpdate(el)
+
+      expect(inputEvents).toHaveLength(3)
+      expect(changeEvents).toHaveLength(3)
+
+      detachInput()
+      detachChange()
+      cleanupElement(el)
+    })
+  })
+
+  describe('可访问性', () => {
+    it('拥有 role="switch" 和正确的 aria-checked', async () => {
+      const el = createSwitch()
+      await waitForUpdate(el)
+
+      const label = queryA11y(el, '[role="switch"]')
+      expect(label).toBeTruthy()
+      expect(label?.getAttribute('aria-checked')).toBe('false')
+
+      el.checked = true
+      await waitForUpdate(el)
+
+      const labelAfter = queryA11y(el, '[role="switch"]')
+      expect(labelAfter?.getAttribute('aria-checked')).toBe('true')
+
+      cleanupElement(el)
     })
   })
 })

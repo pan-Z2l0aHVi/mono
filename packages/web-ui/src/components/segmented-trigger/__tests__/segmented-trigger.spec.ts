@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from 'vite-plus/test'
 
 import '..'
+import { waitForUpdate, spyEvents, expectReflected, cleanupElement, queryA11y } from '@/shared/test-utils'
+
 import type { WebUiSegmentedTrigger } from '..'
 
 const createTrigger = (): WebUiSegmentedTrigger => {
@@ -9,180 +11,182 @@ const createTrigger = (): WebUiSegmentedTrigger => {
   return el
 }
 
-const clickInner = (el: WebUiSegmentedTrigger) => {
-  const inner = el.shadowRoot!.querySelector('.wui-segmented-trigger') as HTMLElement
-  inner.click()
-}
-
 describe('WebUiSegmentedTrigger', () => {
   describe('prop: value', () => {
     it('value 可通过属性设置和获取', async () => {
       const el = createTrigger()
       el.value = 'option-1'
-      await el.updateComplete
+      await waitForUpdate(el)
       expect(el.value).toBe('option-1')
-
-      el.remove()
+      cleanupElement(el)
     })
   })
 
   describe('prop: checked', () => {
     it('checked 属性反映到 host 元素', async () => {
       const el = createTrigger()
+      await waitForUpdate(el)
+      expect(el.hasAttribute('checked')).toBe(false)
+
       el.checked = true
-      await el.updateComplete
+      await waitForUpdate(el)
       expect(el.hasAttribute('checked')).toBe(true)
 
       el.checked = false
-      await el.updateComplete
+      await waitForUpdate(el)
       expect(el.hasAttribute('checked')).toBe(false)
 
-      el.remove()
+      cleanupElement(el)
     })
   })
 
   describe('prop: disabled', () => {
     it('disabled 属性反映到 host 元素', async () => {
       const el = createTrigger()
-      el.disabled = true
-      await el.updateComplete
-      expect(el.hasAttribute('disabled')).toBe(true)
-
-      el.disabled = false
-      await el.updateComplete
+      await waitForUpdate(el)
       expect(el.hasAttribute('disabled')).toBe(false)
 
-      el.remove()
+      el.disabled = true
+      await waitForUpdate(el)
+      expect(el.hasAttribute('disabled')).toBe(true)
+
+      cleanupElement(el)
     })
   })
 
-  describe('event: update:checked', () => {
-    it('点击触发 update:checked，detail 包含正确的 checked 和 value', async () => {
-      const el = createTrigger()
-      el.value = 'option-a'
-      await el.updateComplete
-
-      const handler = vi.fn<(e: Event) => void>()
-      el.addEventListener('update:checked', handler)
-
-      clickInner(el)
-      await el.updateComplete
-
-      expect(handler).toHaveBeenCalledTimes(1)
-      const detail = (handler.mock.calls[0][0] as CustomEvent<{ checked: boolean; value: string }>).detail
-      expect(detail.checked).toBe(true)
-      expect(detail.value).toBe('option-a')
-
-      el.remove()
-    })
-  })
-
-  describe('event: change', () => {
+  describe('事件', () => {
     it('点击触发 change 事件', async () => {
       const el = createTrigger()
-      await el.updateComplete
+      el.value = 'option-a'
+      await waitForUpdate(el)
 
-      const handler = vi.fn<(e: Event) => void>()
-      el.addEventListener('change', handler)
+      const [events, detach] = spyEvents(el, 'change')
 
-      clickInner(el)
-      await el.updateComplete
+      const inner = queryA11y(el, '[role="option"]')
+      if (inner instanceof HTMLElement) inner.click()
+      await waitForUpdate(el)
 
-      expect(handler).toHaveBeenCalledTimes(1)
-
-      el.remove()
+      expect(events).toHaveLength(1)
+      detach()
+      cleanupElement(el)
     })
-  })
 
-  describe('已选中时不重复触发', () => {
-    it('checked 为 true 时点击不再触发事件', async () => {
+    it('已选中时不重复触发 change 事件', async () => {
       const el = createTrigger()
       el.checked = true
-      await el.updateComplete
+      await waitForUpdate(el)
 
-      const updateHandler = vi.fn<(e: Event) => void>()
-      const changeHandler = vi.fn<(e: Event) => void>()
-      el.addEventListener('update:checked', updateHandler)
-      el.addEventListener('change', changeHandler)
+      const [events, detach] = spyEvents(el, 'change')
 
-      clickInner(el)
-      await el.updateComplete
+      const inner = queryA11y(el, '[role="option"]')
+      if (inner instanceof HTMLElement) inner.click()
+      await waitForUpdate(el)
 
-      expect(updateHandler).not.toHaveBeenCalled()
-      expect(changeHandler).not.toHaveBeenCalled()
-
-      el.remove()
+      expect(events).toHaveLength(0)
+      detach()
+      cleanupElement(el)
     })
-  })
 
-  describe('禁用时不触发', () => {
-    it('disabled 为 true 时点击不触发事件', async () => {
+    it('禁用时不触发 change 事件', async () => {
       const el = createTrigger()
       el.disabled = true
-      await el.updateComplete
+      await waitForUpdate(el)
 
-      const updateHandler = vi.fn<(e: Event) => void>()
-      const changeHandler = vi.fn<(e: Event) => void>()
-      el.addEventListener('update:checked', updateHandler)
-      el.addEventListener('change', changeHandler)
+      const [events, detach] = spyEvents(el, 'change')
 
-      clickInner(el)
-      await el.updateComplete
+      const inner = queryA11y(el, '[role="option"]')
+      if (inner instanceof HTMLElement) inner.click()
+      await waitForUpdate(el)
 
-      expect(updateHandler).not.toHaveBeenCalled()
-      expect(changeHandler).not.toHaveBeenCalled()
+      expect(events).toHaveLength(0)
+      detach()
+      cleanupElement(el)
+    })
 
-      el.remove()
+    it('设置属性不触发 change 事件', async () => {
+      const el = createTrigger()
+      await waitForUpdate(el)
+
+      const [events, detach] = spyEvents(el, 'change')
+
+      el.checked = true
+      el.value = 'test'
+      await waitForUpdate(el)
+
+      expect(events).toHaveLength(0)
+      detach()
+      cleanupElement(el)
     })
   })
 
-  describe('keyboard interaction', () => {
-    it('Enter 键触发点击', async () => {
+  describe('键盘操作', () => {
+    it('Enter 键触发 change', async () => {
       const el = createTrigger()
-      await el.updateComplete
+      await waitForUpdate(el)
 
-      const handler = vi.fn<(e: Event) => void>()
-      el.addEventListener('update:checked', handler)
+      const [events, detach] = spyEvents(el, 'change')
 
-      const inner = el.shadowRoot!.querySelector('.wui-segmented-trigger') as HTMLElement
-      inner.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
-      await el.updateComplete
+      const inner = queryA11y(el, '[role="option"]')
+      if (inner instanceof HTMLElement) {
+        inner.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
+      }
+      await waitForUpdate(el)
 
-      expect(handler).toHaveBeenCalledTimes(1)
-
-      el.remove()
+      expect(events).toHaveLength(1)
+      detach()
+      cleanupElement(el)
     })
 
-    it('Space 键触发点击', async () => {
+    it('Space 键触发 change', async () => {
       const el = createTrigger()
-      await el.updateComplete
+      await waitForUpdate(el)
 
-      const handler = vi.fn<(e: Event) => void>()
-      el.addEventListener('update:checked', handler)
+      const [events, detach] = spyEvents(el, 'change')
 
-      const inner = el.shadowRoot!.querySelector('.wui-segmented-trigger') as HTMLElement
-      inner.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true }))
-      await el.updateComplete
+      const inner = queryA11y(el, '[role="option"]')
+      if (inner instanceof HTMLElement) {
+        inner.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true }))
+      }
+      await waitForUpdate(el)
 
-      expect(handler).toHaveBeenCalledTimes(1)
-
-      el.remove()
+      expect(events).toHaveLength(1)
+      detach()
+      cleanupElement(el)
     })
 
-    it('其他键不触发', async () => {
+    it('其他键不触发 change', async () => {
       const el = createTrigger()
-      await el.updateComplete
+      await waitForUpdate(el)
 
-      const handler = vi.fn<(e: Event) => void>()
-      el.addEventListener('update:checked', handler)
+      const [events, detach] = spyEvents(el, 'change')
 
-      const inner = el.shadowRoot!.querySelector('.wui-segmented-trigger') as HTMLElement
-      inner.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true }))
-      await el.updateComplete
+      const inner = queryA11y(el, '[role="option"]')
+      if (inner instanceof HTMLElement) {
+        inner.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true }))
+      }
+      await waitForUpdate(el)
 
-      expect(handler).not.toHaveBeenCalled()
+      expect(events).toHaveLength(0)
+      detach()
+      cleanupElement(el)
+    })
+  })
 
-      el.remove()
+  describe('可访问性', () => {
+    it('拥有 role="option" 和正确的 aria-selected', async () => {
+      const el = createTrigger()
+      await waitForUpdate(el)
+
+      const inner = queryA11y(el, '[role="option"]')
+      expect(inner).toBeTruthy()
+      expect(inner?.getAttribute('aria-selected')).toBe('false')
+
+      el.checked = true
+      await waitForUpdate(el)
+
+      expect(inner?.getAttribute('aria-selected')).toBe('true')
+
+      cleanupElement(el)
     })
   })
 })

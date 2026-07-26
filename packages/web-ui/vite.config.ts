@@ -2,6 +2,7 @@ import { resolve } from 'node:path'
 
 import dts from 'vite-plugin-dts'
 import type { Plugin, UserConfig } from 'vite-plus'
+import { playwright } from 'vite-plus/test/browser-playwright'
 
 import { generateIcons } from './scripts/generate-icons'
 
@@ -28,8 +29,32 @@ export default {
     })
   ],
   test: {
-    environment: 'jsdom',
-    setupFiles: ['./test-helper.ts']
+    projects: [
+      {
+        extends: true,
+        test: {
+          name: 'jsdom',
+          environment: 'jsdom',
+          setupFiles: ['./test-helper.ts'],
+          include: ['src/**/*.spec.ts'],
+          exclude: ['src/**/*.browser.spec.ts']
+        }
+      },
+      {
+        extends: true,
+        test: {
+          name: 'browser',
+          include: ['src/**/*.browser.spec.ts'],
+          browser: {
+            enabled: true,
+            headless: true,
+            screenshotFailures: true,
+            provider: playwright(),
+            instances: [{ browser: 'chromium' }]
+          }
+        }
+      }
+    ]
   },
   css: {
     transformer: 'lightningcss'

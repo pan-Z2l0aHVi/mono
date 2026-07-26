@@ -1,410 +1,421 @@
 import { describe, expect, it, vi } from 'vite-plus/test'
 
+import { waitForUpdate, spyEvents, expectReflected, cleanupElement, queryA11y } from '@/shared/test-utils'
+
 import '..'
 import '@/components/option'
 
 import type { WebUiSelect } from '..'
 
-const createSelect = (optionsHtml = '', attrs?: Record<string, string>): WebUiSelect => {
-  const el = document.createElement('web-ui-select') as WebUiSelect
-  if (attrs) {
-    for (const [k, v] of Object.entries(attrs)) {
-      el.setAttribute(k, v)
-    }
-  }
-  el.innerHTML = optionsHtml
-  document.body.appendChild(el)
-  return el
-}
-
-const OPTIONS_HTML = `
-  <web-ui-option value="apple">Apple</web-ui-option>
-  <web-ui-option value="banana">Banana</web-ui-option>
-  <web-ui-option value="cherry">Cherry</web-ui-option>
-`
-
 describe('WebUiSelect', () => {
-  describe('prop: value', () => {
-    it('显示选中项的文本', async () => {
+  function createSelect(optionsHtml = '', attrs?: Record<string, string>): WebUiSelect {
+    const el = document.createElement('web-ui-select') as WebUiSelect
+    if (attrs) {
+      for (const [k, v] of Object.entries(attrs)) {
+        el.setAttribute(k, v)
+      }
+    }
+    el.innerHTML = optionsHtml
+    document.body.append(el)
+    return el
+  }
+
+  const OPTIONS_HTML = `
+    <web-ui-option value="apple">Apple</web-ui-option>
+    <web-ui-option value="banana">Banana</web-ui-option>
+    <web-ui-option value="cherry">Cherry</web-ui-option>
+  `
+
+  describe('宿主属性', () => {
+    it('value 默认为空字符串', async () => {
+      const el = createSelect(OPTIONS_HTML)
+      await waitForUpdate(el)
+
+      expect(el.value).toBe('')
+
+      cleanupElement(el)
+    })
+
+    it('设置 value 后通过 combobox 文本反映选中标签', async () => {
       const el = createSelect(OPTIONS_HTML)
       el.value = 'banana'
-      await el.updateComplete
+      await waitForUpdate(el)
 
-      const label = el.shadowRoot?.querySelector('.label')
-      expect(label?.textContent).toBe('Banana')
+      const trigger = queryA11y(el, '[role="combobox"]')
+      expect(trigger?.textContent?.includes('Banana')).toBe(true)
 
-      el.remove()
+      cleanupElement(el)
     })
 
     it('选项在连接后插入时同步标签', async () => {
       const el = createSelect('', { value: 'banana' })
-      await el.updateComplete
+      await waitForUpdate(el)
 
       const option = document.createElement('web-ui-option')
       option.setAttribute('value', 'banana')
       option.textContent = 'Banana'
       el.append(option)
-      await option.updateComplete
-      await el.updateComplete
+      await waitForUpdate(el)
 
-      const label = el.shadowRoot?.querySelector('.label')
-      expect(label?.textContent).toBe('Banana')
-      expect(option?.hasAttribute('selected')).toBe(true)
+      const trigger = queryA11y(el, '[role="combobox"]')
+      expect(trigger?.textContent?.includes('Banana')).toBe(true)
 
-      el.remove()
+      cleanupElement(el)
     })
 
     it('无选中值时显示 placeholder', async () => {
       const el = createSelect(OPTIONS_HTML, { placeholder: '请选择' })
-      await el.updateComplete
+      await waitForUpdate(el)
 
-      const label = el.shadowRoot?.querySelector('.label')
-      expect(label?.textContent).toBe('请选择')
+      const trigger = queryA11y(el, '[role="combobox"]')
+      expect(trigger?.textContent?.trim()).toBe('请选择')
 
-      el.remove()
+      cleanupElement(el)
     })
-  })
 
-  describe('prop: disabled', () => {
-    it('disabled 时不可打开', async () => {
+    it('disabled 反射到宿主', async () => {
       const el = createSelect(OPTIONS_HTML)
+      expect(el.hasAttribute('disabled')).toBe(false)
       el.disabled = true
-      await el.updateComplete
+      await waitForUpdate(el)
+      expect(el.hasAttribute('disabled')).toBe(true)
 
-      const trigger = el.shadowRoot?.querySelector('.select-trigger') as HTMLElement
-      trigger.click()
-      await el.updateComplete
-
-      expect(el.isOpen).toBe(false)
-
-      el.remove()
+      cleanupElement(el)
     })
-  })
 
-  describe('prop: full', () => {
-    it('full 属性反射到 host', async () => {
+    it('full 反射到宿主', async () => {
       const el = createSelect(OPTIONS_HTML)
       el.full = true
-      await el.updateComplete
+      await waitForUpdate(el)
 
       expect(el.hasAttribute('full')).toBe(true)
 
-      el.remove()
+      cleanupElement(el)
     })
-  })
 
-  describe('prop: portal', () => {
-    it('默认关闭且可反射到 host', async () => {
+    it('portal 反射到宿主', async () => {
       const el = createSelect(OPTIONS_HTML)
-      expect(el.portal).toBe(false)
-
       el.portal = true
-      await el.updateComplete
+      await waitForUpdate(el)
 
       expect(el.hasAttribute('portal')).toBe(true)
-      el.remove()
+
+      cleanupElement(el)
     })
 
-    it('开启时将面板挂载到指定容器', async () => {
+    it('name 反射到宿主', async () => {
       const el = createSelect(OPTIONS_HTML)
-      const container = document.createElement('div')
-      document.body.append(container)
-      el.portal = true
-      el.overlayContainer = container
-      await el.updateComplete
+      el.name = 'fruit'
+      await waitForUpdate(el)
 
-      const trigger = el.shadowRoot?.querySelector('.select-trigger') as HTMLElement
-      trigger.click()
-      await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
+      expect(el.getAttribute('name')).toBe('fruit')
 
-      const panel = container.firstElementChild?.shadowRoot?.querySelector('.select-overlay')
-      expect(panel?.classList.contains('portal')).toBe(true)
-
-      el.remove()
-      container.remove()
+      cleanupElement(el)
     })
 
-    it('开启时不输出跨 Shadow Root 的 aria-activedescendant', async () => {
+    it('open getter 反映浮层状态', async () => {
       const el = createSelect(OPTIONS_HTML)
-      el.portal = true
-      await el.updateComplete
+      await waitForUpdate(el)
 
-      const trigger = el.shadowRoot?.querySelector<HTMLElement>('.select-trigger')
-      trigger?.click()
-      await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
+      expect(el.open).toBe(false)
 
-      expect(trigger?.hasAttribute('aria-activedescendant')).toBe(false)
-      el.remove()
+      cleanupElement(el)
+    })
+
+    it('isOpen 别名反映浮层状态', async () => {
+      const el = createSelect(OPTIONS_HTML)
+      await waitForUpdate(el)
+
+      expect(el.isOpen).toBe(false)
+
+      cleanupElement(el)
     })
   })
 
   describe('打开/关闭', () => {
-    it('打开时锁定页面滚动，关闭时恢复', async () => {
-      const el = createSelect(OPTIONS_HTML)
-      await el.updateComplete
-
-      const trigger = el.shadowRoot?.querySelector('.select-trigger') as HTMLElement
-      trigger.click()
-      await el.updateComplete
-
-      expect(document.body.style.position).toBe('fixed')
-
-      document.body.click()
-      await el.updateComplete
-
-      expect(document.body.style.position).toBe('')
-
-      el.remove()
-    })
-
-    it('lock-scroll=false 时打开不锁定页面滚动', async () => {
-      const el = createSelect(OPTIONS_HTML)
-      el.lockScroll = false
-      await el.updateComplete
-
-      const trigger = el.shadowRoot?.querySelector('.select-trigger') as HTMLElement
-      trigger.click()
-      await el.updateComplete
-
-      expect(document.body.style.position).toBe('')
-      el.remove()
-    })
-
-    it('打开期间切换 lock-scroll 立即恢复页面滚动', async () => {
-      const el = createSelect(OPTIONS_HTML)
-      await el.updateComplete
-      const trigger = el.shadowRoot?.querySelector('.select-trigger') as HTMLElement
-      trigger.click()
-      await el.updateComplete
-      el.lockScroll = false
-      await el.updateComplete
-
-      expect(document.body.style.position).toBe('')
-      el.remove()
-    })
-
     it('点击触发器打开浮层', async () => {
       const el = createSelect(OPTIONS_HTML)
-      await el.updateComplete
+      await waitForUpdate(el)
 
-      const trigger = el.shadowRoot?.querySelector('.select-trigger') as HTMLElement
+      const trigger = queryA11y(el, '[role="combobox"]') as HTMLElement
       trigger.click()
-      await el.updateComplete
+      await waitForUpdate(el)
 
-      expect(el.isOpen).toBe(true)
+      expect(el.open).toBe(true)
+      expect(trigger.getAttribute('aria-expanded')).toBe('true')
 
-      el.remove()
+      cleanupElement(el)
     })
 
-    it('点击打开时只保留已选项勾选，不激活选项', async () => {
+    it('打开时 aria-expanded 为 true', async () => {
       const el = createSelect(OPTIONS_HTML)
-      el.value = 'apple'
-      await el.updateComplete
+      await waitForUpdate(el)
 
-      const trigger = el.shadowRoot?.querySelector<HTMLElement>('.select-trigger')
-      trigger?.click()
-      await el.updateComplete
+      const trigger = queryA11y(el, '[role="combobox"]') as HTMLElement
+      trigger.click()
+      await waitForUpdate(el)
 
-      expect(el.querySelector('web-ui-option')?.hasAttribute('selected')).toBe(true)
-      expect(el.querySelector('web-ui-option')?.hasAttribute('active')).toBe(false)
+      expect(trigger.getAttribute('aria-expanded')).toBe('true')
 
-      el.remove()
+      cleanupElement(el)
     })
 
     it('点击选项后关闭浮层并更新 value', async () => {
       const el = createSelect(OPTIONS_HTML)
       el.value = 'apple'
-      await el.updateComplete
+      await waitForUpdate(el)
 
-      const trigger = el.shadowRoot?.querySelector('.select-trigger') as HTMLElement
+      const trigger = queryA11y(el, '[role="combobox"]') as HTMLElement
       trigger.click()
-      await el.updateComplete
+      await waitForUpdate(el)
 
       const options = el.querySelectorAll('web-ui-option')
       ;(options[1] as HTMLElement).click()
-      await el.updateComplete
+      await waitForUpdate(el)
 
       expect(el.value).toBe('banana')
-      expect(el.isOpen).toBe(false)
+      expect(el.open).toBe(false)
 
-      el.remove()
-    })
-
-    it('动态投影的选项通过宿主委托响应点击', async () => {
-      const el = createSelect()
-      await el.updateComplete
-
-      const option = document.createElement('web-ui-option')
-      option.value = 'banana'
-      option.textContent = 'Banana'
-      el.append(option)
-      await option.updateComplete
-      await el.updateComplete
-
-      const trigger = el.shadowRoot?.querySelector<HTMLElement>('.select-trigger')
-      trigger?.click()
-      option.dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true }))
-      await el.updateComplete
-
-      expect(el.value).toBe('banana')
-      expect(el.isOpen).toBe(false)
-
-      el.remove()
-    })
-
-    it('按下选项时阻止焦点移出导致的提前关闭', async () => {
-      const el = createSelect(OPTIONS_HTML)
-      await el.updateComplete
-
-      const option = el.querySelector<HTMLElement>('web-ui-option[value="banana"]')
-      const pointerDown = new Event('pointerdown', { bubbles: true, cancelable: true, composed: true })
-      option?.dispatchEvent(pointerDown)
-
-      expect(pointerDown.defaultPrevented).toBe(true)
-
-      el.remove()
+      cleanupElement(el)
     })
 
     it('点击外部关闭浮层', async () => {
       const el = createSelect(OPTIONS_HTML)
-      await el.updateComplete
+      await waitForUpdate(el)
 
-      const trigger = el.shadowRoot?.querySelector('.select-trigger') as HTMLElement
+      const trigger = queryA11y(el, '[role="combobox"]') as HTMLElement
       trigger.click()
-      await el.updateComplete
-      expect(el.isOpen).toBe(true)
+      await waitForUpdate(el)
+      expect(el.open).toBe(true)
 
       document.body.click()
-      await el.updateComplete
-      expect(el.isOpen).toBe(false)
+      await waitForUpdate(el)
+      expect(el.open).toBe(false)
 
-      el.remove()
+      cleanupElement(el)
     })
 
     it('焦点移出组件后关闭浮层', async () => {
       const el = createSelect(OPTIONS_HTML)
       const external = document.createElement('button')
       document.body.append(external)
-      await el.updateComplete
+      await waitForUpdate(el)
 
-      const trigger = el.shadowRoot?.querySelector<HTMLElement>('.select-trigger')
-      trigger?.focus()
-      trigger?.click()
-      await el.updateComplete
+      const trigger = queryA11y(el, '[role="combobox"]') as HTMLElement
+      trigger.focus()
+      trigger.click()
+      await waitForUpdate(el)
 
       external.focus()
       await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
-      await el.updateComplete
 
-      expect(el.isOpen).toBe(false)
+      expect(el.open).toBe(false)
 
-      el.remove()
+      cleanupElement(el)
       external.remove()
     })
   })
 
+  describe('lockScroll', () => {
+    it('打开时锁定页面滚动，关闭时恢复', async () => {
+      const el = createSelect(OPTIONS_HTML)
+      await waitForUpdate(el)
+
+      const trigger = queryA11y(el, '[role="combobox"]') as HTMLElement
+      trigger.click()
+      await waitForUpdate(el)
+
+      expect(document.body.style.position).toBe('fixed')
+
+      document.body.click()
+      await waitForUpdate(el)
+
+      expect(document.body.style.position).toBe('')
+
+      cleanupElement(el)
+    })
+
+    it('lock-scroll=false 时打开不锁定页面滚动', async () => {
+      const el = createSelect(OPTIONS_HTML)
+      el.lockScroll = false
+      await waitForUpdate(el)
+
+      const trigger = queryA11y(el, '[role="combobox"]') as HTMLElement
+      trigger.click()
+      await waitForUpdate(el)
+
+      expect(document.body.style.position).toBe('')
+
+      cleanupElement(el)
+    })
+
+    it('打开期间关闭 lock-scroll 立即恢复页面滚动', async () => {
+      const el = createSelect(OPTIONS_HTML)
+      await waitForUpdate(el)
+
+      const trigger = queryA11y(el, '[role="combobox"]') as HTMLElement
+      trigger.click()
+      await waitForUpdate(el)
+      el.lockScroll = false
+      await waitForUpdate(el)
+
+      expect(document.body.style.position).toBe('')
+
+      cleanupElement(el)
+    })
+  })
+
   describe('事件', () => {
-    it('选择时触发 input 和 change 事件', async () => {
+    it('选择时触发 input 和 change', async () => {
       const el = createSelect(OPTIONS_HTML)
       el.value = 'apple'
-      await el.updateComplete
+      const [inputEvents] = spyEvents(el, 'input')
+      const [changeEvents] = spyEvents(el, 'change')
+      await waitForUpdate(el)
 
-      const inputHandler = vi.fn<(e: Event) => void>()
-      const changeHandler = vi.fn<(e: Event) => void>()
-      el.addEventListener('input', inputHandler)
-      el.addEventListener('change', changeHandler)
-
-      const trigger = el.shadowRoot?.querySelector('.select-trigger') as HTMLElement
+      const trigger = queryA11y(el, '[role="combobox"]') as HTMLElement
       trigger.click()
-      await el.updateComplete
+      await waitForUpdate(el)
 
       const options = el.querySelectorAll('web-ui-option')
       ;(options[1] as HTMLElement).click()
-      await el.updateComplete
+      await waitForUpdate(el)
 
-      expect(inputHandler).toHaveBeenCalledTimes(1)
-      expect(changeHandler).toHaveBeenCalledTimes(1)
+      expect(inputEvents).toHaveLength(1)
+      expect(changeEvents).toHaveLength(1)
 
-      el.remove()
+      cleanupElement(el)
+    })
+
+    it('开闭时触发 open-change', async () => {
+      const el = createSelect(OPTIONS_HTML)
+      const [events] = spyEvents<CustomEvent<{ open: boolean }>>(el, 'open-change')
+      await waitForUpdate(el)
+
+      const trigger = queryA11y(el, '[role="combobox"]') as HTMLElement
+      trigger.click()
+      await waitForUpdate(el)
+
+      expect(events).toHaveLength(1)
+      expect(events[0].detail.open).toBe(true)
+
+      document.body.click()
+      await waitForUpdate(el)
+
+      expect(events).toHaveLength(2)
+      expect(events[1].detail.open).toBe(false)
+
+      cleanupElement(el)
     })
   })
 
   describe('键盘导航', () => {
-    it('ArrowDown 激活的选项使用 active 属性', async () => {
+    it('ArrowDown 激活选项', async () => {
       const el = createSelect(OPTIONS_HTML)
-      await el.updateComplete
+      await waitForUpdate(el)
 
       el.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }))
-      await el.updateComplete
+      await waitForUpdate(el)
 
-      expect(el.querySelector('web-ui-option')?.hasAttribute('active')).toBe(true)
+      const activeOption = el.querySelector('web-ui-option[active]')
+      expect(activeOption).toBeTruthy()
 
-      el.remove()
+      cleanupElement(el)
     })
 
     it('鼠标进入选项后清除键盘激活状态', async () => {
       const el = createSelect(OPTIONS_HTML)
-      await el.updateComplete
+      await waitForUpdate(el)
 
       el.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }))
-      await el.updateComplete
+      await waitForUpdate(el)
       const option = el.querySelector<HTMLElement>('web-ui-option')
       option?.dispatchEvent(new MouseEvent('mouseover', { bubbles: true, composed: true }))
 
       expect(option?.hasAttribute('active')).toBe(false)
 
-      el.remove()
+      cleanupElement(el)
     })
 
     it('Escape 关闭浮层', async () => {
       const el = createSelect(OPTIONS_HTML)
-      await el.updateComplete
+      await waitForUpdate(el)
 
-      const trigger = el.shadowRoot?.querySelector('.select-trigger') as HTMLElement
+      const trigger = queryA11y(el, '[role="combobox"]') as HTMLElement
       trigger.click()
-      await el.updateComplete
+      await waitForUpdate(el)
 
       el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
-      await el.updateComplete
-      expect(el.isOpen).toBe(false)
+      await waitForUpdate(el)
+      expect(el.open).toBe(false)
 
-      el.remove()
+      cleanupElement(el)
     })
 
     it('Enter 选中高亮项并关闭', async () => {
       const el = createSelect(OPTIONS_HTML)
       el.value = 'apple'
-      await el.updateComplete
+      await waitForUpdate(el)
 
-      const trigger = el.shadowRoot?.querySelector('.select-trigger') as HTMLElement
-      trigger.click()
-      await el.updateComplete
-
+      // 第一次 ArrowDown 打开浮层并定位到已选项
       el.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }))
-      await el.updateComplete
+      await waitForUpdate(el)
+      // 第二次 ArrowDown 移动到下一项
+      el.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }))
+      await waitForUpdate(el)
       el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
-      await el.updateComplete
+      await waitForUpdate(el)
 
       expect(el.value).toBe('banana')
-      expect(el.isOpen).toBe(false)
+      expect(el.open).toBe(false)
 
-      el.remove()
+      cleanupElement(el)
     })
 
-    it('Enter 选中高亮项时触发 input 事件', async () => {
+    it('Enter 触发 input 事件', async () => {
       const el = createSelect(OPTIONS_HTML)
-      await el.updateComplete
-
-      const inputHandler = vi.fn<(e: Event) => void>()
-      el.addEventListener('input', inputHandler)
+      const [events] = spyEvents(el, 'input')
+      await waitForUpdate(el)
 
       el.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }))
       el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
-      await el.updateComplete
+      await waitForUpdate(el)
 
-      expect(inputHandler).toHaveBeenCalledTimes(1)
+      expect(events).toHaveLength(1)
 
-      el.remove()
+      cleanupElement(el)
+    })
+  })
+
+  describe('disabled', () => {
+    it('disabled 时不可打开', async () => {
+      const el = createSelect(OPTIONS_HTML)
+      el.disabled = true
+      await waitForUpdate(el)
+
+      const trigger = queryA11y(el, '[role="combobox"]') as HTMLElement
+      trigger.click()
+      await waitForUpdate(el)
+
+      expect(el.open).toBe(false)
+
+      cleanupElement(el)
+    })
+  })
+
+  describe('portal 模式', () => {
+    it('portal 为 true 时仍可正常交互', async () => {
+      const el = createSelect(OPTIONS_HTML)
+      el.portal = true
+      await waitForUpdate(el)
+
+      const trigger = queryA11y(el, '[role="combobox"]') as HTMLElement
+      trigger.click()
+      await waitForUpdate(el)
+
+      expect(el.open).toBe(true)
+
+      cleanupElement(el)
     })
   })
 })

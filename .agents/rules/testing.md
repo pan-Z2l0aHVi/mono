@@ -56,6 +56,7 @@
 
 ## 命令规范
 
-- **测试**：始终运行 monorepo 根目录的 `pnpm run test`（而不是子包的 `pnpm --filter <pkg> run test`），确保感知到跨包变更的影响
+- **跨包验收测试**：凡是改动会影响多个包之间的引用、导出或运行时契约，验收时必须在 monorepo 根目录运行 `pnpm run test`，不得仅以 `pnpm --filter <pkg> run test` 作为验收依据。Turbo 会复用未受影响任务的缓存，无需因执行成本跳过根测试。
+- **子包测试**：`pnpm --filter <pkg> run test` 仅用于开发过程中的快速定位和调试；它不能替代跨包改动的根目录验收。
 - **构建**：始终运行 `pnpm build`（根目录 turbo 编排），子包单独 `pnpm --filter <pkg> build` 仅在调试特定包时使用
 - **提交前检查**：根目录 `pnpm run check:code`（format + lint + type-check）

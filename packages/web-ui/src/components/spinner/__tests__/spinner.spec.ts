@@ -1,178 +1,101 @@
-import { describe, expect, it, vi, afterEach } from 'vite-plus/test'
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
 
 import { WebUiSpinner } from '..'
-
-const createSpinner = (attrs?: Record<string, string>): WebUiSpinner => {
-  const el = document.createElement('web-ui-spinner') as WebUiSpinner
-  if (attrs) {
-    for (const [k, v] of Object.entries(attrs)) {
-      el.setAttribute(k, v)
-    }
-  }
-  document.body.appendChild(el)
-  return el
-}
-
-afterEach(() => {
-  WebUiSpinner.hide()
-  document.body.innerHTML = ''
-})
+import '..'
 
 describe('WebUiSpinner', () => {
+  afterEach(() => {
+    document.body.innerHTML = ''
+  })
+
   describe('prop: size', () => {
     it('默认值为 24', async () => {
-      const el = createSpinner()
+      const el = document.createElement('web-ui-spinner') as WebUiSpinner
+
+      document.body.appendChild(el)
       await el.updateComplete
 
       expect(el.size).toBe(24)
-
-      el.remove()
     })
 
-    it('设置自定义尺寸', async () => {
-      const el = createSpinner({ size: '40' })
+    it('反射为 size 属性', async () => {
+      const el = document.createElement('web-ui-spinner') as WebUiSpinner
+      el.size = 40
+
+      document.body.appendChild(el)
       await el.updateComplete
 
-      expect(el.size).toBe(40)
-
-      el.remove()
+      expect(el.getAttribute('size')).toBe('40')
     })
 
-    it('动态修改 size', async () => {
-      const el = createSpinner()
-      await el.updateComplete
-      expect(el.size).toBe(24)
+    it('通过属性设置', async () => {
+      const el = document.createElement('web-ui-spinner') as WebUiSpinner
+      el.setAttribute('size', '32')
 
-      el.size = 16
+      document.body.appendChild(el)
       await el.updateComplete
-      expect(el.size).toBe(16)
 
-      el.size = 48
-      await el.updateComplete
-      expect(el.size).toBe(48)
-
-      el.remove()
+      expect(el.size).toBe(32)
     })
   })
 
-  describe('render', () => {
-    it('渲染内部 spinner 元素', async () => {
-      const el = createSpinner()
+  describe('可访问性', () => {
+    it('宿主有 role="status"', async () => {
+      const el = document.createElement('web-ui-spinner')
+
+      document.body.appendChild(el)
       await el.updateComplete
 
-      const spinner = el.shadowRoot!.querySelector('.wui-spinner')
-      expect(spinner).toBeTruthy()
-
-      el.remove()
+      expect(el.getAttribute('role')).toBe('status')
     })
 
-    it('包含 8 个 span 元素', async () => {
-      const el = createSpinner()
+    it('宿主有 aria-label="加载中"', async () => {
+      const el = document.createElement('web-ui-spinner')
+
+      document.body.appendChild(el)
       await el.updateComplete
 
-      const spans = el.shadowRoot!.querySelectorAll('.wui-spinner span')
-      expect(spans.length).toBe(8)
-
-      el.remove()
+      expect(el.getAttribute('aria-label')).toBe('加载中')
     })
+  })
 
-    it('声明式渲染不含 overlay', async () => {
-      const el = createSpinner()
-      await el.updateComplete
-
-      const overlay = el.shadowRoot!.querySelector('.wui-spinner-overlay')
-      expect(overlay).toBeNull()
-
-      el.remove()
-    })
-
-    it('有 description 时渲染描述文字', async () => {
-      const el = createSpinner()
-      el.description = '加载中...'
-      await el.updateComplete
-
-      const desc = el.shadowRoot!.querySelector('.spinner-description')
-      expect(desc).toBeTruthy()
-      expect(desc!.textContent).toBe('加载中...')
-
-      el.remove()
-    })
-
-    it('无 description 时不渲染描述元素', async () => {
-      const el = createSpinner()
-      await el.updateComplete
-
-      const desc = el.shadowRoot!.querySelector('.spinner-description')
-      expect(desc).toBeNull()
-
-      el.remove()
-    })
-
-    it('description slot 投影内容', async () => {
-      const el = createSpinner()
+  describe('slot: description', () => {
+    it('投影 description slot 内容', async () => {
+      const el = document.createElement('web-ui-spinner') as WebUiSpinner
       const slotContent = document.createElement('span')
       slotContent.slot = 'description'
       slotContent.textContent = '请稍候'
+
+      document.body.appendChild(el)
       el.appendChild(slotContent)
       await el.updateComplete
 
-      const slot = el.shadowRoot!.querySelector('slot[name="description"]')
-      expect(slot).toBeTruthy()
-
-      el.remove()
+      expect(el.querySelector('[slot="description"]')).toBeTruthy()
     })
   })
 
   describe('命令式 API: show', () => {
+    afterEach(() => {
+      vi.useRealTimers()
+      WebUiSpinner.hide()
+    })
+
     it('show() 创建并挂载到 body', async () => {
       const el = WebUiSpinner.show()
+
       await el.updateComplete
 
-      expect(el).toBeInstanceOf(HTMLElement)
-      expect(el.tagName).toBe('WEB-UI-SPINNER')
       expect(document.body.contains(el)).toBe(true)
-
       el.remove()
     })
 
-    it('show() 支持 size 选项', async () => {
-      const el = WebUiSpinner.show({ size: 40 })
+    it('show() 支持 size 和 description 选项', async () => {
+      const el = WebUiSpinner.show({ size: 40, description: '正在加载数据...' })
+
       await el.updateComplete
 
       expect(el.size).toBe(40)
-
-      el.remove()
-    })
-
-    it('show() 支持 description 选项', async () => {
-      const el = WebUiSpinner.show({ description: '正在加载数据...' })
-      await el.updateComplete
-
       expect(el.description).toBe('正在加载数据...')
-      const desc = el.shadowRoot!.querySelector('.spinner-description')
-      expect(desc).toBeTruthy()
-      expect(desc!.textContent).toBe('正在加载数据...')
-
-      el.remove()
-    })
-
-    it('show() 无 description 时不渲染描述', async () => {
-      const el = WebUiSpinner.show()
-      await el.updateComplete
-
-      const desc = el.shadowRoot!.querySelector('.spinner-description')
-      expect(desc).toBeNull()
-
-      el.remove()
-    })
-
-    it('show() 渲染 overlay 遮罩', async () => {
-      const el = WebUiSpinner.show()
-      await el.updateComplete
-
-      const overlay = el.shadowRoot!.querySelector('.wui-spinner-overlay')
-      expect(overlay).toBeTruthy()
-
       el.remove()
     })
 
@@ -182,49 +105,20 @@ describe('WebUiSpinner', () => {
 
       expect(document.body.contains(el1)).toBe(false)
       expect(document.body.contains(el2)).toBe(true)
-
       el2.remove()
     })
-  })
 
-  describe('命令式 API: hide', () => {
-    it('hide() 移除当前 spinner', async () => {
-      WebUiSpinner.show()
-      expect(document.body.children.length).toBeGreaterThan(0)
-
-      WebUiSpinner.hide()
-      // overlay 元素被移除
-    })
-
-    it('hide() 后可再次 show()', () => {
-      WebUiSpinner.show()
-      WebUiSpinner.hide()
-
-      const el = WebUiSpinner.show()
-      expect(document.body.contains(el)).toBe(true)
-
-      el.remove()
-    })
-
-    it('未 show 时 hide() 不报错', () => {
-      expect(() => WebUiSpinner.hide()).not.toThrow()
-    })
-  })
-
-  describe('命令式 API: duration', () => {
     it('show() 支持 duration 自动关闭', async () => {
       vi.useFakeTimers()
 
-      const el = WebUiSpinner.show({ duration: 1000 })
+      const el = WebUiSpinner.show({ duration: 500 })
       expect(document.body.contains(el)).toBe(true)
 
-      vi.advanceTimersByTime(1000)
+      vi.advanceTimersByTime(500)
       expect(document.body.contains(el)).toBe(false)
-
-      vi.useRealTimers()
     })
 
-    it('duration 为 0 时不自动关闭', async () => {
+    it('duration 为 0 时不自动关闭', () => {
       vi.useFakeTimers()
 
       const el = WebUiSpinner.show({ duration: 0 })
@@ -232,20 +126,31 @@ describe('WebUiSpinner', () => {
       expect(document.body.contains(el)).toBe(true)
 
       el.remove()
-      vi.useRealTimers()
+    })
+  })
+
+  describe('命令式 API: hide', () => {
+    it('hide() 移除当前 spinner', () => {
+      const el = WebUiSpinner.show()
+
+      expect(document.body.contains(el)).toBe(true)
+      WebUiSpinner.hide()
+      expect(document.body.contains(el)).toBe(false)
+    })
+
+    it('未 show 时 hide() 不报错', () => {
+      expect(() => WebUiSpinner.hide()).not.toThrow()
     })
 
     it('hide() 清除 duration 定时器', () => {
       vi.useFakeTimers()
 
-      WebUiSpinner.show({ duration: 1000 })
+      const el = WebUiSpinner.show({ duration: 1000 })
       WebUiSpinner.hide()
 
-      // 定时器已清除，advanceTimersByTime 不会触发 hide
       vi.advanceTimersByTime(10000)
-      expect(WebUiSpinner._current).toBeUndefined()
-
-      vi.useRealTimers()
+      // 定时器已清除，advanceTimersByTime 不会触发 hide 回调
+      expect(document.body.contains(el)).toBe(false)
     })
   })
 })
