@@ -4,6 +4,7 @@ import { customElement, property, state } from 'lit/decorators.js'
 
 import glass from '@/assets/glass.css?inline'
 import { createMenuPortalOverlay } from '@/shared/menu-portal/menu-portal'
+import { normalizeLiteral, normalizeNumber } from '@/shared/normalize'
 import { withOverlay } from '@/shared/overlay/overlay'
 import type { OverlayApi } from '@/shared/overlay/overlay'
 import { booleanWithFalseString } from '@/shared/property-converters/boolean-with-false-string'
@@ -14,6 +15,20 @@ import style from './style.css?inline'
 export type { Placement }
 
 const SLOT_PREFIX = 'web-ui-menu-level-'
+const ALLOWED_PLACEMENTS = [
+  'top',
+  'top-start',
+  'top-end',
+  'right',
+  'right-start',
+  'right-end',
+  'bottom',
+  'bottom-start',
+  'bottom-end',
+  'left',
+  'left-start',
+  'left-end'
+] as const
 
 interface MenuOverlay {
   api: OverlayApi
@@ -25,11 +40,29 @@ export class WebUiDropdownMenu extends LitElement {
   static override styles = [unsafeCSS(glass), unsafeCSS(style)]
 
   @property({ type: Boolean, reflect: true }) open = false
-  @property({ type: String, reflect: true }) placement: Placement = 'bottom-start'
   @property({ type: Boolean, reflect: true }) disabled = false
-  @property({ type: Number }) offset = 4
   @property({ type: Boolean, reflect: true }) matchWidth = false
   @property({ reflect: true, attribute: 'lock-scroll', converter: booleanWithFalseString }) lockScroll = true
+
+  private _placement: Placement = 'bottom-start'
+
+  @property({ type: String, reflect: true })
+  get placement(): Placement {
+    return this._placement
+  }
+  set placement(v: string) {
+    this._placement = normalizeLiteral(v, ALLOWED_PLACEMENTS, 'bottom-start')
+  }
+
+  private _offset = 4
+
+  @property({ type: Number })
+  get offset(): number {
+    return this._offset
+  }
+  set offset(v: number) {
+    this._offset = normalizeNumber(v, 0, 100, 4)
+  }
 
   @state() private _activePath: number[] = []
 
@@ -77,8 +110,6 @@ export class WebUiDropdownMenu extends LitElement {
         this._bindHoversAfterUpdate()
       } else {
         this._syncScrollLock()
-        // `_closeAllSubmenus()` resets Lit state. Run cleanup after this update
-        // to avoid scheduling a second update from within `updated()`.
         queueMicrotask(() => {
           if (this.open || !this.isConnected) return
           this._cleanupClosedMenu()
@@ -98,22 +129,20 @@ export class WebUiDropdownMenu extends LitElement {
     this._bindLevelHovers()
   }
 
-  /* ========== 状态管理 ========== */
-
-  /** 打开菜单（内部调用，触发 open-change 事件） */
+  /** 打开菜单 */
   openMenu() {
     if (this.disabled || this.open) return
     this._ignoreCurrentOutsideClick()
     this.open = true
   }
 
-  /** 关闭所有层级（内部调用，触发 open-change 事件） */
+  /** 关闭所有层级 */
   closeAll() {
     if (!this.open) return
     this.open = false
   }
 
-  /** @internal 仅清理子菜单状态（不影响 open prop） */
+  /** 清理子菜单状态（不影响 open prop） */
   private _closeAllSubmenus() {
     if (this._activePath.length === 0) return
     for (let lv = this._activePath.length; lv >= 1; lv--) {
@@ -194,8 +223,6 @@ export class WebUiDropdownMenu extends LitElement {
     )
   }
 
-  /* ========== Slot 管理 ========== */
-
   private _populateLevel0() {
     const overlay = this._overlays.get(0)?.overlay.querySelector<HTMLElement>('.dropdown-scroll')
     if (!overlay) return
@@ -241,8 +268,6 @@ export class WebUiDropdownMenu extends LitElement {
     }
   }
 
-  /* ========== Overlay ========== */
-
   private _ensureOverlay(level: number) {
     if (this._overlays.has(level)) return
     this._buildOverlay(level)
@@ -266,7 +291,6 @@ export class WebUiDropdownMenu extends LitElement {
         placement: level === 0 ? this.placement : 'right-start',
         offset: level === 0 ? this.offset : 0,
         matchWidth: level === 0 ? this.matchWidth : false,
-        // Portal 菜单固定于视口，必须用同一坐标系计算位置。
         strategy: 'fixed'
       })
       this._overlays.set(level, { api: ctrl, overlay })
@@ -283,7 +307,7 @@ export class WebUiDropdownMenu extends LitElement {
   }
 
   private _disposeAll() {
-    for (const level of [...this._overlays.keys()]) {
+    for (const level of this._overlays.keys()) {
       this._disposeOverlay(level)
     }
   }
@@ -311,8 +335,6 @@ export class WebUiDropdownMenu extends LitElement {
     if (!item) return null
     return item.shadowRoot?.querySelector('.item-inner') ?? item
   }
-
-  /* ========== 交互事件 ========== */
 
   private _onTriggerClick = () => {
     if (this.disabled) return
@@ -448,8 +470,8 @@ export class WebUiDropdownMenu extends LitElement {
             this._closeSubmenuFrom(lv + 1)
           }
         }
-        item.addEventListener('mouseenter', handler, { passive: true })
-        this._hoverCleanupFns.push(() => item.removeEventListener('mouseenter', handler))
+        item.addEventListener('pointerenter', handler, { passive: true })
+        this._hoverCleanupFns.push(() => item.removeEventListener('pointerenter', handler))
       })
     }
   }
@@ -465,17 +487,10 @@ export class WebUiDropdownMenu extends LitElement {
       </div>
     `
   }
-}
 
-export interface WebUiDropdownMenu {
-  readonly $events: {
+  declare readonly $events: {
     'open-change': CustomEvent<{ open: boolean }>
   }
-  open: boolean
-  lockScroll: boolean
-  isOpen: boolean
-  openMenu(): void
-  closeAll(): void
 }
 
 declare global {

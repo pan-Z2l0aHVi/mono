@@ -15,13 +15,6 @@ export class WebUiSegmentedTrigger extends LitElement {
   private handleClick() {
     if (this.disabled || this.checked) return
     this.checked = true
-    this.dispatchEvent(
-      new CustomEvent('update:checked', {
-        detail: { checked: true, value: this.value },
-        bubbles: true,
-        composed: true
-      })
-    )
     this.dispatchEvent(new Event('change', { bubbles: true, composed: true }))
   }
 
@@ -52,11 +45,8 @@ export class WebUiSegmentedTrigger extends LitElement {
       </div>
     `
   }
-}
 
-export interface WebUiSegmentedTrigger {
-  readonly $events: {
-    'update:checked': CustomEvent<{ checked: boolean; value: string }>
+  declare readonly $events: {
     change: Event
   }
 }

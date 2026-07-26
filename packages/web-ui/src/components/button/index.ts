@@ -7,21 +7,34 @@ import { styleMap } from 'lit/directives/style-map.js'
 import '@/components/icon'
 import glass from '@/assets/glass.css?inline'
 import { lucideLoaderCircle } from '@/icons'
+import { normalizeLiteral } from '@/shared/normalize'
 
 import style from './style.css?inline'
+
+const ALLOWED_VARIANTS = ['primary', 'secondary', 'ghost', 'danger', 'glass'] as const
 
 @customElement('web-ui-button')
 export class WebUiButton extends LitElement {
   static override styles = [unsafeCSS(glass), unsafeCSS(style)]
 
-  @property({ type: String, reflect: true }) variant: 'primary' | 'secondary' | 'ghost' | 'danger' | 'glass' = 'glass'
+  @property({ type: String, reflect: true })
+  get variant(): 'primary' | 'secondary' | 'ghost' | 'danger' | 'glass' {
+    return this._variant
+  }
+  set variant(v: string) {
+    const old = this._variant
+    this._variant = normalizeLiteral(v, ALLOWED_VARIANTS, 'glass')
+    this.requestUpdate('variant', old)
+  }
+  private _variant: 'primary' | 'secondary' | 'ghost' | 'danger' | 'glass' = 'glass'
+
   @property({ type: Boolean, reflect: true }) disabled = false
   @property({ type: Boolean, reflect: true }) loading = false
   @property({ type: Boolean, reflect: true }) full = false
   @property({ type: Boolean, reflect: true }) icon = false
   @property({ type: String, reflect: true }) size = ''
 
-  /** 解析 size="32" → 32x32，size="32x80" → 32x80 */
+  /** size="32" → 32x32，size="32x80" → 32x80 */
   private get _sizeStyle(): Record<string, string> {
     if (!this.size) return {}
     const [h, w] = this.size.split('x')
@@ -57,10 +70,8 @@ export class WebUiButton extends LitElement {
       </button>
     `
   }
-}
 
-export interface WebUiButton {
-  readonly $events: Record<string, never>
+  declare readonly $events: Record<string, never>
 }
 
 declare global {

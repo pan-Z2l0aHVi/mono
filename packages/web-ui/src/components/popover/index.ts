@@ -3,12 +3,30 @@ import { html, LitElement, unsafeCSS } from 'lit'
 import { customElement, property } from 'lit/decorators.js'
 
 import glass from '@/assets/glass.css?inline'
+import { normalizeLiteral, normalizeNumber } from '@/shared/normalize'
 import { withOverlay } from '@/shared/overlay/overlay'
 import type { OverlayApi } from '@/shared/overlay/overlay'
 import { createOverlayPortal } from '@/shared/overlay/portal'
 import type { OverlayContainer, OverlayPortal } from '@/shared/overlay/portal'
 
 import style from './style.css?inline'
+
+const ALLOWED_PLACEMENTS = [
+  'top',
+  'top-start',
+  'top-end',
+  'bottom',
+  'bottom-start',
+  'bottom-end',
+  'left',
+  'left-start',
+  'left-end',
+  'right',
+  'right-start',
+  'right-end'
+] as const
+
+const ALLOWED_TRIGGERS = ['click', 'hover', 'manual'] as const
 
 let popoverIdCounter = 0
 
@@ -18,9 +36,40 @@ export class WebUiPopover extends LitElement {
 
   @property({ type: Boolean, reflect: true }) open = false
   @property({ type: Boolean, reflect: true }) disabled = false
-  @property({ type: String, reflect: true }) placement: Placement = 'bottom'
-  @property({ type: Number }) offset = 8
-  @property({ type: String, reflect: true }) trigger: 'click' | 'hover' | 'manual' = 'click'
+
+  @property({ type: String, reflect: true })
+  get placement(): Placement {
+    return this._placement
+  }
+  set placement(v: string) {
+    const old = this._placement
+    this._placement = normalizeLiteral(v, ALLOWED_PLACEMENTS, 'bottom')
+    this.requestUpdate('placement', old)
+  }
+  private _placement: Placement = 'bottom'
+
+  @property({ type: Number })
+  get offset(): number {
+    return this._offset
+  }
+  set offset(v: number) {
+    const old = this._offset
+    this._offset = normalizeNumber(v, 0, 100, 8)
+    this.requestUpdate('offset', old)
+  }
+  private _offset = 8
+
+  @property({ type: String, reflect: true })
+  get trigger(): 'click' | 'hover' | 'manual' {
+    return this._trigger
+  }
+  set trigger(v: string) {
+    const old = this._trigger
+    this._trigger = normalizeLiteral(v, ALLOWED_TRIGGERS, 'click')
+    this.requestUpdate('trigger', old)
+  }
+  private _trigger: 'click' | 'hover' | 'manual' = 'click'
+
   @property({ type: Boolean, reflect: true }) portal = false
   @property({ attribute: false }) overlayContainer?: OverlayContainer
 
@@ -50,8 +99,8 @@ export class WebUiPopover extends LitElement {
     document.removeEventListener('click', this._onClickOutside)
     document.removeEventListener('keydown', this._onKeydown)
     this.removeEventListener('focusout', this._onFocusOut)
-    this.removeEventListener('mouseenter', this._onMouseEnter)
-    this.removeEventListener('mouseleave', this._onMouseLeave)
+    this.removeEventListener('pointerenter', this._onPointerEnter)
+    this.removeEventListener('pointerleave', this._onPointerLeave)
     clearTimeout(this._showTimer)
     clearTimeout(this._hideTimer)
     this._disposeOverlay()
@@ -79,15 +128,13 @@ export class WebUiPopover extends LitElement {
     }
 
     if (changed.has('trigger')) {
-      this.removeEventListener('mouseenter', this._onMouseEnter)
-      this.removeEventListener('mouseleave', this._onMouseLeave)
+      this.removeEventListener('pointerenter', this._onPointerEnter)
+      this.removeEventListener('pointerleave', this._onPointerLeave)
       clearTimeout(this._showTimer)
       clearTimeout(this._hideTimer)
       this._syncTriggerListeners()
     }
   }
-
-  /* ========== Public API ========== */
 
   /** 打开 popover */
   show() {
@@ -111,9 +158,6 @@ export class WebUiPopover extends LitElement {
     else this.show()
   }
 
-  /* ========== Internal ========== */
-
-  /** 通过 composedPath 检查点击是否发生在 shadow DOM 内部 */
   private _isInsideShadowRoot(e: MouseEvent): boolean {
     for (const node of e.composedPath()) {
       if (node instanceof Node && node.getRootNode() === this.shadowRoot) return true
@@ -123,8 +167,8 @@ export class WebUiPopover extends LitElement {
 
   private _syncTriggerListeners() {
     if (this.trigger === 'hover') {
-      this.addEventListener('mouseenter', this._onMouseEnter)
-      this.addEventListener('mouseleave', this._onMouseLeave)
+      this.addEventListener('pointerenter', this._onPointerEnter)
+      this.addEventListener('pointerleave', this._onPointerLeave)
     }
   }
 
@@ -158,8 +202,8 @@ export class WebUiPopover extends LitElement {
     portal.panel.id = this._panelId
     portal.panel.setAttribute('role', 'dialog')
     portal.panel.tabIndex = -1
-    portal.panel.addEventListener('mouseenter', this._onPanelMouseEnter)
-    portal.panel.addEventListener('mouseleave', this._onPanelMouseLeave)
+    portal.panel.addEventListener('pointerenter', this._onPanelPointerEnter)
+    portal.panel.addEventListener('pointerleave', this._onPanelPointerLeave)
     portal.moveContent(
       Array.from(this.childNodes).filter(node => !(node instanceof HTMLElement && node.slot === 'trigger'))
     )
@@ -228,14 +272,10 @@ export class WebUiPopover extends LitElement {
     return el instanceof HTMLElement ? el : null
   }
 
-  /* ========== Event Handlers ========== */
-
   private _onTriggerClick = () => {
     if (this.disabled) return
-    // 清除 hover 定时器，防止 click/hover 竞争
     clearTimeout(this._showTimer)
     clearTimeout(this._hideTimer)
-    // hover 模式不响应点击切换，仅由 mouseenter/mouseleave 控制
     if (this.trigger === 'hover') return
     this.toggle()
   }
@@ -267,24 +307,24 @@ export class WebUiPopover extends LitElement {
     }
   }
 
-  private _onMouseEnter = () => {
+  private _onPointerEnter = () => {
     if (this.disabled || this.trigger !== 'hover') return
     clearTimeout(this._hideTimer)
     this._showTimer = setTimeout(() => this.show(), 100)
   }
 
-  private _onMouseLeave = () => {
+  private _onPointerLeave = () => {
     if (this.disabled || this.trigger !== 'hover') return
     clearTimeout(this._showTimer)
     this._hideTimer = setTimeout(() => this.close(), 100)
   }
 
-  private _onPanelMouseEnter = () => {
+  private _onPanelPointerEnter = () => {
     if (this.trigger !== 'hover') return
     clearTimeout(this._hideTimer)
   }
 
-  private _onPanelMouseLeave = () => {
+  private _onPanelPointerLeave = () => {
     if (this.trigger !== 'hover') return
     this._hideTimer = setTimeout(() => this.close(), 100)
   }
@@ -306,22 +346,18 @@ export class WebUiPopover extends LitElement {
           ?hidden=${!this.open}
           role="dialog"
           tabindex="-1"
-          @mouseenter=${this._onPanelMouseEnter}
-          @mouseleave=${this._onPanelMouseLeave}
+          @pointerenter=${this._onPanelPointerEnter}
+          @pointerleave=${this._onPanelPointerLeave}
         >
           <slot></slot>
         </div>
       </div>
     `
   }
-}
 
-export interface WebUiPopover {
-  readonly $events: {
+  declare readonly $events: {
     'open-change': CustomEvent<{ open: boolean }>
   }
-  open: boolean
-  isOpen: boolean
 }
 
 declare global {

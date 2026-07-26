@@ -32,11 +32,8 @@ export class WebUiDropdownItem extends LitElement {
       </div>
     `
   }
-}
 
-export interface WebUiDropdownItem {
-  readonly $events: Record<string, never>
-  focusItem(): void
+  declare readonly $events: Record<string, never>
 }
 
 declare global {

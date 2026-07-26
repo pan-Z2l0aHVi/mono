@@ -12,10 +12,9 @@ import style from './style.css?inline'
 
 @customElement('web-ui-textarea')
 export class WebUiTextarea extends LitElement {
-  static readonly formAssociated = true
+  static formAssociated = true
   static override styles = [unsafeCSS(glass), unsafeCSS(style)]
 
-  @property({ type: String, reflect: true }) value = ''
   @property({ type: String, reflect: true }) placeholder = ''
   @property({ type: String, reflect: true }) name = ''
   @property({ type: Boolean, reflect: true }) disabled = false
@@ -31,6 +30,7 @@ export class WebUiTextarea extends LitElement {
   @property({ type: String, attribute: 'aria-label' }) override ariaLabel: string | null = null
   @property({ type: String, attribute: 'aria-labelledby' }) ariaLabelledby: string | undefined
 
+  @state() private _value = ''
   @state() private _focused = false
   @state() private _formDisabled = false
   @state() private _hasPrefix = false
@@ -38,13 +38,30 @@ export class WebUiTextarea extends LitElement {
 
   private _textarea: HTMLTextAreaElement | null = null
   private _resizeObserver: ResizeObserver | null = null
-  private _defaultValue = ''
-  private readonly _internals = typeof this.attachInternals === 'function' ? this.attachInternals() : null
+  private _internals?: ElementInternals
 
-  override firstUpdated() {
-    this._textarea = this.shadowRoot?.querySelector('textarea') ?? null
-    this._defaultValue = this.value
-    this._syncFormState()
+  @property({ type: String, reflect: true })
+  get value(): string {
+    return this._value
+  }
+
+  set value(v: string) {
+    const old = this._value
+    this._value = v
+    this._internals?.setFormValue?.(v)
+    this.requestUpdate('value', old)
+  }
+
+  private get _isDisabled(): boolean {
+    return this.disabled || this._formDisabled
+  }
+
+  override connectedCallback() {
+    super.connectedCallback()
+    if (!this._internals) {
+      this._internals = this.attachInternals()
+    }
+    this._internals.setFormValue?.(this._value)
   }
 
   override disconnectedCallback() {
@@ -52,11 +69,15 @@ export class WebUiTextarea extends LitElement {
     this._teardownAutosize()
   }
 
+  override firstUpdated() {
+    this._textarea = this.shadowRoot?.querySelector('textarea') ?? null
+  }
+
   override updated(changed: Map<string, unknown>) {
-    if (changed.has('value')) {
+    if (changed.has('_value')) {
       const textarea = this._getTextarea()
-      if (textarea && textarea.value !== this.value) {
-        textarea.value = this.value
+      if (textarea && textarea.value !== this._value) {
+        textarea.value = this._value
       }
     }
     if (changed.has('autosize')) {
@@ -66,7 +87,7 @@ export class WebUiTextarea extends LitElement {
         this._teardownAutosize(true)
       }
     }
-    this._syncFormState()
+    this._syncValidity()
     this.toggleAttribute('focused', this._focused)
   }
 
@@ -75,36 +96,23 @@ export class WebUiTextarea extends LitElement {
   }
 
   formResetCallback() {
-    this.value = this._defaultValue
+    this.value = this.getAttribute('value') || ''
   }
 
   formStateRestoreCallback(state: string | File | FormData | null) {
     if (typeof state === 'string') this.value = state
   }
 
-  private get _isDisabled() {
-    return this.disabled || this._formDisabled
-  }
-
-  private _getTextarea() {
+  private _getTextarea(): HTMLTextAreaElement | null {
     this._textarea ??= this.shadowRoot?.querySelector('textarea') ?? null
     return this._textarea
   }
 
-  private _syncFormState() {
+  private _syncValidity() {
     const internals = this._internals
     const textarea = this._getTextarea()
-    // happy-dom 等非浏览器环境可能暴露不完整的 ElementInternals。
-    if (
-      !internals ||
-      !textarea ||
-      typeof internals.setFormValue !== 'function' ||
-      typeof internals.setValidity !== 'function'
-    ) {
-      return
-    }
+    if (!internals || !textarea || typeof internals.setValidity !== 'function') return
 
-    internals.setFormValue(this.name && !this._isDisabled ? this.value : null)
     if (this._isDisabled || textarea.validity.valid) {
       internals.setValidity({})
       return
@@ -148,9 +156,10 @@ export class WebUiTextarea extends LitElement {
 
   private handleInput(e: Event) {
     if (!(e.target instanceof HTMLTextAreaElement)) return
-    this.value = e.target.value
+    this._value = e.target.value
+    this._internals?.setFormValue?.(this._value)
+    this._syncValidity()
     this._autosize()
-    this._syncFormState()
   }
 
   private handleFocus() {
@@ -163,8 +172,9 @@ export class WebUiTextarea extends LitElement {
 
   private handleNativeChange(e: Event) {
     if (!(e.target instanceof HTMLTextAreaElement)) return
-    this.value = e.target.value
-    this._syncFormState()
+    this._value = e.target.value
+    this._internals?.setFormValue?.(this._value)
+    this._syncValidity()
   }
 
   override focus() {
@@ -194,7 +204,8 @@ export class WebUiTextarea extends LitElement {
 
   private handleClear() {
     if (this._isDisabled) return
-    this.value = ''
+    this._value = ''
+    this._internals?.setFormValue?.('')
     this.dispatchEvent(new Event('input', { bubbles: true, composed: true }))
   }
 
@@ -203,7 +214,7 @@ export class WebUiTextarea extends LitElement {
   }
 
   override render() {
-    const showClear = this.clearable && this.value
+    const showClear = this.clearable && this._value
 
     return html`
       <div class="wui-glass wui-textarea-inner" @click=${this.focusTextarea}>
@@ -219,19 +230,14 @@ export class WebUiTextarea extends LitElement {
           ?disabled=${this._isDisabled}
           ?readonly=${this.readonly}
           ?required=${this.required}
-          .value=${this.value}
+          .value=${this._value}
           @input=${this.handleInput}
           @change=${this.handleNativeChange}
           @focus=${this.handleFocus}
           @blur=${this.handleBlur}
         ></textarea>
         ${showClear
-          ? html`<span
-              class="clear"
-              @pointerdown=${this.preventMouseDownBlur}
-              @mousedown=${this.preventMouseDownBlur}
-              @click=${this.handleClear}
-            >
+          ? html`<span class="clear" @pointerdown=${this.preventMouseDownBlur} @click=${this.handleClear}>
               <web-ui-icon .icon=${jamCloseCircleF}></web-ui-icon>
             </span>`
           : ''}
@@ -239,10 +245,8 @@ export class WebUiTextarea extends LitElement {
       </div>
     `
   }
-}
 
-export interface WebUiTextarea {
-  readonly $events: {
+  declare readonly $events: {
     input: Event
     change: Event
     focus: FocusEvent

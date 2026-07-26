@@ -103,8 +103,6 @@ export class WebUiContextMenu extends LitElement {
     if (changed.has('lockScroll')) this._syncScrollLock()
   }
 
-  /* ========== Public API ========== */
-
   /** 在指定坐标打开菜单 */
   openAt(x: number, y: number) {
     if (this.disabled) return
@@ -125,13 +123,10 @@ export class WebUiContextMenu extends LitElement {
     this._isOpen = false
   }
 
-  /* ========== Internal ========== */
-
   private _positionMenu() {
     const menu = this._menu
     if (!menu) return
 
-    // 临时显示以获取尺寸
     menu.style.visibility = 'hidden'
     menu.style.display = ''
 
@@ -139,7 +134,6 @@ export class WebUiContextMenu extends LitElement {
     const vw = window.innerWidth
     const vh = window.innerHeight
 
-    // 边界检测，确保菜单保持在视口内
     let x = this._x
     let y = this._y
 
@@ -282,8 +276,6 @@ export class WebUiContextMenu extends LitElement {
     return false
   }
 
-  /* ========== Event Handlers ========== */
-
   private _onContextMenu = (e: MouseEvent) => {
     if (this.disabled) return
     e.preventDefault()
@@ -303,7 +295,6 @@ export class WebUiContextMenu extends LitElement {
     // 键盘 ContextMenu 键或 Shift+F10
     if (e.key === 'ContextMenu' || (e.shiftKey && e.key === 'F10')) {
       e.preventDefault()
-      // 在当前焦点元素位置打开
       const focused = document.activeElement
       if (focused && focused !== document.body) {
         const rect = focused.getBoundingClientRect()
@@ -366,8 +357,8 @@ export class WebUiContextMenu extends LitElement {
             this._bindLevelHovers()
           }
         }
-        item.addEventListener('mouseenter', handler, { passive: true })
-        this._hoverCleanupFns.push(() => item.removeEventListener('mouseenter', handler))
+        item.addEventListener('pointerenter', handler, { passive: true })
+        this._hoverCleanupFns.push(() => item.removeEventListener('pointerenter', handler))
       })
     }
   }
@@ -509,17 +500,10 @@ export class WebUiContextMenu extends LitElement {
       </div>
     `
   }
-}
 
-export interface WebUiContextMenu {
-  readonly $events: {
+  declare readonly $events: {
     'open-change': CustomEvent<{ open: boolean }>
   }
-  disabled: boolean
-  lockScroll: boolean
-  isOpen: boolean
-  openAt(x: number, y: number): void
-  close(): void
 }
 
 declare global {

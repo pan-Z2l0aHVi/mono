@@ -10,11 +10,11 @@ export class WebUiSpinner extends LitElement {
   static override styles = unsafeCSS(style)
 
   @property({ type: Number, reflect: true }) size = 24
-  @property({ type: String }) description!: string
+  @property({ type: String }) description = ''
 
   /** 显示全屏居中 spinner（自动创建并挂载） */
   static show(options?: { size?: number; duration?: number; description?: string }): WebUiSpinner {
-    const el = document.createElement('web-ui-spinner') as WebUiSpinner
+    const el = document.createElement('web-ui-spinner')
     el._imperative = true
     if (options?.size) el.size = options.size
     if (options?.description) el.description = options.description
@@ -45,6 +45,12 @@ export class WebUiSpinner extends LitElement {
 
   override connectedCallback() {
     super.connectedCallback()
+    if (!this.hasAttribute('role')) {
+      this.setAttribute('role', 'status')
+    }
+    if (!this.hasAttribute('aria-label')) {
+      this.setAttribute('aria-label', '加载中')
+    }
     if (this._imperative) {
       WebUiSpinner._current?.remove()
       WebUiSpinner._current = this
@@ -83,6 +89,8 @@ export class WebUiSpinner extends LitElement {
     `
     return this._imperative ? html`<div class="wui-spinner-overlay">${spinner}</div>` : spinner
   }
+
+  declare readonly $events: Record<string, never>
 }
 
 @customElement('web-ui-spinner')

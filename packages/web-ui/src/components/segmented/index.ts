@@ -1,5 +1,5 @@
 import { html, LitElement, type PropertyValues, unsafeCSS } from 'lit'
-import { customElement, property } from 'lit/decorators.js'
+import { customElement, property, state } from 'lit/decorators.js'
 
 import glass from '@/assets/glass.css?inline'
 
@@ -10,9 +10,26 @@ import style from './style.css?inline'
 @customElement('web-ui-segmented')
 export class WebUiSegmented extends LitElement {
   static override styles = [unsafeCSS(glass), unsafeCSS(style)]
+  static formAssociated = true
 
-  @property({ type: String }) value = ''
+  @property({ type: String, reflect: true }) name = ''
   @property({ type: Boolean, reflect: true }) disabled = false
+  @property({ type: Boolean, reflect: true }) required = false
+
+  private _internals?: ElementInternals
+  @state() private _value = ''
+  private _initialValue = ''
+
+  get value(): string {
+    return this._value
+  }
+
+  set value(v: string) {
+    const old = this._value
+    this._value = v
+    this._internals?.setFormValue?.(v)
+    this.requestUpdate('value', old)
+  }
 
   private readonly childObserver = new MutationObserver(() => {
     this._syncPropsToChildren()
@@ -21,7 +38,7 @@ export class WebUiSegmented extends LitElement {
 
   private _syncPropsToChildren() {
     this.querySelectorAll<WebUiSegmentedTrigger>('web-ui-segmented-trigger').forEach(trigger => {
-      trigger.checked = trigger.value === this.value
+      trigger.checked = trigger.value === this._value
       trigger.disabled = this.disabled
     })
   }
@@ -32,7 +49,7 @@ export class WebUiSegmented extends LitElement {
     let width = 0
 
     triggers.forEach(trigger => {
-      if (trigger.value === this.value) {
+      if (trigger.value === this._value) {
         const triggerRect = trigger.getBoundingClientRect()
         const groupRect = this.getBoundingClientRect()
         left = triggerRect.left - groupRect.left
@@ -53,8 +70,18 @@ export class WebUiSegmented extends LitElement {
 
   override connectedCallback() {
     super.connectedCallback()
+    this._internals = this.attachInternals()
+
+    // 仅当属性在连接前未被 property setter 设值时，才从 attribute 读取初始值
+    const attrValue = this.getAttribute('value')
+    if (attrValue !== null && this._value === '') {
+      this._value = attrValue
+    }
+    this._initialValue = attrValue ?? ''
+    this._internals?.setFormValue?.(this._value)
+
     this.childObserver.observe(this, { childList: true })
-    this.addEventListener('update:checked', this._handleTriggerChange as EventListener)
+    this.addEventListener('change', this._handleChildChange)
   }
 
   override firstUpdated() {
@@ -65,24 +92,27 @@ export class WebUiSegmented extends LitElement {
   override disconnectedCallback() {
     super.disconnectedCallback()
     this.childObserver.disconnect()
-    this.removeEventListener('update:checked', this._handleTriggerChange as EventListener)
+    this.removeEventListener('change', this._handleChildChange)
   }
 
-  private _handleTriggerChange(e: CustomEvent<{ checked: boolean; value: string }>) {
+  private _handleChildChange(e: Event) {
     if (this.disabled) return
-    const newValue = e.detail.value
-    if (newValue === this.value) return
+    const target = e.target as HTMLElement
+    if (!target.matches?.('web-ui-segmented-trigger')) return
+    const trigger = target as WebUiSegmentedTrigger
+    if (trigger.value === this._value) return
 
-    this.value = newValue
-    this.dispatchEvent(
-      new CustomEvent('value-changed', {
-        detail: { value: newValue },
-        bubbles: true,
-        composed: true
-      })
-    )
+    this.value = trigger.value
     this.dispatchEvent(new Event('input', { bubbles: true, composed: true }))
     this.dispatchEvent(new Event('change', { bubbles: true, composed: true }))
+  }
+
+  formResetCallback() {
+    this.value = this._initialValue
+  }
+
+  formDisabledCallback(disabled: boolean) {
+    this.disabled = disabled
   }
 
   override render() {
@@ -93,11 +123,8 @@ export class WebUiSegmented extends LitElement {
       </div>
     `
   }
-}
 
-export interface WebUiSegmented {
-  readonly $events: {
-    'value-changed': CustomEvent<{ value: string }>
+  declare readonly $events: {
     input: Event
     change: Event
   }

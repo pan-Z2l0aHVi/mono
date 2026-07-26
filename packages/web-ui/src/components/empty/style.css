@@ -34,7 +34,7 @@
 
   color: var(--wui-color-text-muted, #6a6a6a);
 
-  background-color: var(--wui-color-surface-raised-mid, #dfdfdf);
+  background-color: var(--wui-color-surface-raised, #f2f2f7);
 }
 
 .empty-title,

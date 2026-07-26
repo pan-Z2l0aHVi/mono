@@ -17,7 +17,8 @@ dialog {
   left: auto;
   transform: translateX(100%);
 
-  overflow: clip;
+  /* 阴影属于抽屉主体，不能由同尺寸的原生 dialog 裁剪。内容滚动由 .wui-drawer-content 管理。 */
+  overflow: visible;
 
   box-sizing: border-box;
   width: var(--wui-drawer-width, 320px);

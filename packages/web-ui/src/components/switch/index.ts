@@ -1,4 +1,4 @@
-import { html, LitElement, type PropertyValues, unsafeCSS } from 'lit'
+import { html, LitElement, unsafeCSS } from 'lit'
 import { customElement, property, state } from 'lit/decorators.js'
 import { classMap } from 'lit/directives/class-map.js'
 
@@ -11,41 +11,78 @@ import style from './style.css?inline'
 @customElement('web-ui-switch')
 export class WebUiSwitch extends LitElement {
   static override styles = [unsafeCSS(glass), unsafeCSS(style)]
+  static formAssociated = true
 
-  @property({ type: Boolean, reflect: true }) open = false
+  private _internals?: ElementInternals
+  @state() private _formDisabled = false
+
+  @state() private _checked = false
+
+  get checked(): boolean {
+    return this._checked
+  }
+
+  set checked(v: boolean) {
+    const old = this._checked
+    this._checked = v
+    this._syncFormValue()
+    this.requestUpdate('checked', old)
+  }
+
+  @property({ type: String, reflect: true }) name = ''
+  @property({ type: String }) value = ''
   @property({ type: Boolean, reflect: true }) disabled = false
+  @property({ type: Boolean, reflect: true }) required = false
   @property({ type: Boolean, reflect: true }) loading = false
   @state() private pressed = false
 
-  protected override updated(props: PropertyValues) {
-    super.updated(props)
-    if (props.has('open')) {
-      this.dispatchEvent(
-        new CustomEvent('open-change', {
-          detail: { open: this.open },
-          bubbles: true,
-          composed: true
-        })
-      )
+  private get _isDisabled(): boolean {
+    return this.disabled || this._formDisabled
+  }
+
+  override connectedCallback() {
+    super.connectedCallback()
+    if (this._internals) return
+    this._internals = this.attachInternals()
+    if (this.hasAttribute('checked')) {
+      this._checked = true
     }
+    this._syncFormValue()
   }
 
-  show() {
-    if (this.open) return
-    this.open = true
+  formResetCallback() {
+    this.checked = this.hasAttribute('checked')
   }
 
-  close() {
-    if (!this.open) return
-    this.open = false
+  formDisabledCallback(disabled: boolean) {
+    this._formDisabled = disabled
   }
 
-  private handleChange(e: Event) {
-    this.open = (e.target as HTMLInputElement).checked
+  override updated() {
+    this._syncFormValue()
+    if (!this._internals || typeof this._internals.setValidity !== 'function') return
+    if (this._isDisabled || !this.required || this._checked) this._internals.setValidity({})
+    else this._internals.setValidity({ valueMissing: true }, '请启用此项')
+  }
+
+  private _syncFormValue() {
+    this._internals?.setFormValue?.(this._checked ? this.value || 'on' : null)
+  }
+
+  /** 用户点击切换开关状态，阻止 label 默认行为避免原生 checkbox 重复触发 */
+  private handleClick(e: Event) {
+    e.preventDefault()
+    if (this._isDisabled || this.loading) return
+    const old = this._checked
+    this._checked = !old
+    this._syncFormValue()
+    this.requestUpdate('checked', old)
+    this.dispatchEvent(new Event('input', { bubbles: true, composed: true }))
+    this.dispatchEvent(new Event('change', { bubbles: true, composed: true }))
   }
 
   private handlePointerDown() {
-    if (this.disabled || this.loading) return
+    if (this._isDisabled || this.loading) return
     this.pressed = true
   }
 
@@ -60,8 +97,8 @@ export class WebUiSwitch extends LitElement {
   override render() {
     const trackCls = {
       'wui-switch-track': true,
-      'is-open': this.open,
-      'is-disabled': this.disabled || this.loading
+      'is-open': this._checked,
+      'is-disabled': this._isDisabled || this.loading
     }
     const thumbCls = {
       'wui-switch-thumb': true,
@@ -73,7 +110,8 @@ export class WebUiSwitch extends LitElement {
       <label
         class=${classMap(trackCls)}
         role="switch"
-        aria-checked=${String(this.open)}
+        aria-checked=${String(this._checked)}
+        @click=${this.handleClick}
         @pointerdown=${this.handlePointerDown}
         @pointerup=${this.handlePointerUp}
         @pointercancel=${this.handlePointerUp}
@@ -81,10 +119,9 @@ export class WebUiSwitch extends LitElement {
       >
         <input
           type="checkbox"
-          .checked=${this.open}
-          ?disabled=${this.disabled || this.loading}
+          .checked=${this._checked}
+          ?disabled=${this._isDisabled || this.loading}
           class="sr-only"
-          @change=${this.handleChange}
         />
         <div class=${classMap(thumbCls)}>
           ${this.loading
@@ -96,11 +133,10 @@ export class WebUiSwitch extends LitElement {
       </label>
     `
   }
-}
 
-export interface WebUiSwitch {
-  readonly $events: {
-    'open-change': CustomEvent<{ open: boolean }>
+  declare readonly $events: {
+    input: Event
+    change: Event
   }
 }
 

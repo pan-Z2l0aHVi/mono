@@ -6,6 +6,7 @@ import { customElement, property } from 'lit/decorators.js'
 
 import glass from '@/assets/glass.css?inline'
 import { lucideCheck, lucideInfo, lucideTriangleAlert, lucideCircleAlert, heroiconsXMark16Solid } from '@/icons'
+import { booleanWithFalseString } from '@/shared/property-converters/boolean-with-false-string'
 import { getFallbackOverlayRoot } from '@/shared/theme/overlay-root'
 import { findNearestTheme, findRootTheme } from '@/shared/theme/theme-scope'
 
@@ -54,21 +55,21 @@ export class WebUiToast extends LitElement {
   @property({ type: String }) heading = ''
   @property({ type: String }) message = ''
   @property({ type: Number }) duration = 3000
-  @property({ type: Boolean, reflect: true }) closable = true
+  @property({ reflect: true, converter: booleanWithFalseString }) closable = true
   @property({ type: Boolean, reflect: true }) visible = false
 
   private _closeTimer?: ReturnType<typeof setTimeout>
 
   override connectedCallback() {
     super.connectedCallback()
-    this.addEventListener('mouseenter', this._onMouseEnter)
-    this.addEventListener('mouseleave', this._onMouseLeave)
+    this.addEventListener('pointerenter', this._onPointerEnter)
+    this.addEventListener('pointerleave', this._onPointerLeave)
   }
 
   override disconnectedCallback() {
     super.disconnectedCallback()
-    this.removeEventListener('mouseenter', this._onMouseEnter)
-    this.removeEventListener('mouseleave', this._onMouseLeave)
+    this.removeEventListener('pointerenter', this._onPointerEnter)
+    this.removeEventListener('pointerleave', this._onPointerLeave)
     this._clearTimer()
   }
 
@@ -115,13 +116,12 @@ export class WebUiToast extends LitElement {
     if (!this.visible) return
     this.visible = false
     this._clearTimer()
-    // 等退场动画结束再通知 manager 移除 DOM
     const onEnd = () => {
       this.removeEventListener('transitionend', onEnd)
       this._dispatchClose(reason)
     }
     this.addEventListener('transitionend', onEnd)
-    // fallback：如果 transitionend 不触发（display:none 等）
+    // fallback: transitionend 不触发时（display:none 等）
     setTimeout(onEnd, 400)
   }
 
@@ -132,11 +132,11 @@ export class WebUiToast extends LitElement {
     }
   }
 
-  private _onMouseEnter = () => {
+  private _onPointerEnter = () => {
     this._clearTimer()
   }
 
-  private _onMouseLeave = () => {
+  private _onPointerLeave = () => {
     this.startAutoClose()
   }
 
@@ -178,22 +178,10 @@ export class WebUiToast extends LitElement {
       </div>
     `
   }
-}
 
-export interface WebUiToast {
-  readonly $events: {
+  declare readonly $events: {
     'toast-close': CustomEvent<{ id: string; reason: ToastCloseReason }>
   }
-  toastId: string
-  type: ToastType
-  position: ToastPosition
-  heading: string
-  message: string
-  duration: number
-  closable: boolean
-  visible: boolean
-  show(): void
-  dismiss(reason?: ToastCloseReason): void
 }
 
 declare global {
@@ -201,8 +189,6 @@ declare global {
     'web-ui-toast': WebUiToast
   }
 }
-
-/* ========== 命令式 API ========== */
 
 export interface ToastInstanceOptions extends ToastOptions {
   position?: ToastPosition
@@ -229,11 +215,9 @@ function ensureContainer(position: ToastPosition, root: HTMLElement): HTMLElemen
   root.appendChild(container)
   toastContainers.add(container)
 
-  // hover 时标记容器，暂停自动滚动
-  container.addEventListener('mouseenter', () => (container.dataset.hovered = 'true'))
-  container.addEventListener('mouseleave', () => {
+  container.addEventListener('pointerenter', () => (container.dataset.hovered = 'true'))
+  container.addEventListener('pointerleave', () => {
     delete container.dataset.hovered
-    // 离开时如果之前有被暂停的滚动，恢复滚到底部
     _scrollToBottom(container)
   })
   return container
@@ -250,7 +234,6 @@ function _scrollToBottom(container: HTMLElement) {
 
 const visibleToasts = new Map<string, WebUiToast>()
 
-/** 批量挂载队列：同一微任务内多次 createToast 只触发一次 DOM 批量挂载 */
 let _pendingBatch: Array<{ id: string; options: ToastInstanceOptions; container: HTMLElement }> | null = null
 let _batchScheduled = false
 
@@ -271,7 +254,6 @@ function _flushBatch() {
     _mountToast(item.id, item.options, item.container)
     containersToScroll.add(item.container)
   }
-  // 批量挂载完成后，统一滚动每个涉及的容器
   for (const c of containersToScroll) {
     _scrollToBottom(c)
   }
@@ -280,7 +262,6 @@ function _flushBatch() {
 function createToast(options: ToastInstanceOptions): string {
   const id = options.id || generateId()
 
-  // 去重：同 id 不重复创建
   if (visibleToasts.has(id)) return id
 
   const position = options.position || 'top-right'
@@ -311,7 +292,6 @@ function _mountToast(id: string, options: ToastInstanceOptions, container: HTMLE
 
   container.appendChild(el)
   visibleToasts.set(id, el)
-  // 等 DOM 挂载后触发动画
   requestAnimationFrame(() => el.show())
 }
 

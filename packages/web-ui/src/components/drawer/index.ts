@@ -5,6 +5,7 @@ import '@/components/icon'
 import '@/components/button'
 import glass from '@/assets/glass.css?inline'
 import { lucideX } from '@/icons'
+import { normalizeLiteral } from '@/shared/normalize'
 import { booleanWithFalseString } from '@/shared/property-converters/boolean-with-false-string'
 import { lockScroll, unlockScroll } from '@/shared/scroll-lock/scroll-lock'
 
@@ -12,7 +13,9 @@ import style from './style.css?inline'
 
 const CLOSE_DURATION = 300 // 与 CSS animation duration 一致
 
-export type DrawerPlacement = 'right' | 'left' | 'top' | 'bottom'
+const ALLOWED_PLACEMENTS = ['right', 'left', 'top', 'bottom'] as const
+
+export type DrawerPlacement = (typeof ALLOWED_PLACEMENTS)[number]
 
 @customElement('web-ui-drawer')
 export class WebUiDrawer extends LitElement {
@@ -22,7 +25,18 @@ export class WebUiDrawer extends LitElement {
 
   @property({ reflect: true, attribute: 'lock-scroll', converter: booleanWithFalseString }) lockScroll = true
 
-  @property({ reflect: true }) placement: DrawerPlacement = 'right'
+  @property({ reflect: true, attribute: 'overlay-closable', converter: booleanWithFalseString }) overlayClosable = true
+
+  @property({ reflect: true })
+  get placement(): DrawerPlacement {
+    return this._placement
+  }
+  set placement(v: string) {
+    const old = this._placement
+    this._placement = normalizeLiteral(v, ALLOWED_PLACEMENTS, 'right')
+    this.requestUpdate('placement', old)
+  }
+  private _placement: DrawerPlacement = 'right'
 
   /** 标题文字（未传 header slot 时显示默认 header） */
   @property({ type: String }) heading = ''
@@ -83,6 +97,8 @@ export class WebUiDrawer extends LitElement {
 
   protected override updated(props: PropertyValues) {
     super.updated(props)
+    if (!this.isConnected) return
+
     if (props.has('open')) {
       this.emitOpenChange()
       if (this.open) {
@@ -120,12 +136,15 @@ export class WebUiDrawer extends LitElement {
   }
 
   private handleCancel(e: Event) {
+    // preventDefault 阻止原生 <dialog> 关闭行为，然后由 overlayClosable 决定是否手动关闭
     e.preventDefault()
+    if (!this.overlayClosable) return
     this.close()
   }
 
   private handleBackdropClick(e: MouseEvent) {
     if (e.target !== (e.currentTarget as HTMLDialogElement)) return
+    if (!this.overlayClosable) return
     this.close()
   }
 
@@ -180,16 +199,10 @@ export class WebUiDrawer extends LitElement {
       </dialog>
     `
   }
-}
 
-export interface WebUiDrawer {
-  readonly $events: {
+  declare readonly $events: {
     'open-change': CustomEvent<{ open: boolean }>
   }
-  open: boolean
-  lockScroll: boolean
-  show(): void
-  close(): void
 }
 
 declare global {

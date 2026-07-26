@@ -11,28 +11,88 @@ import style from './style.css?inline'
 
 @customElement('web-ui-input')
 export class WebUiInput extends LitElement {
+  static formAssociated = true
   static override styles = [unsafeCSS(glass), unsafeCSS(style)]
 
   @property({ type: String, reflect: true }) type = 'text'
-  @property({ type: String, reflect: true }) value = ''
   @property({ type: String, reflect: true }) placeholder = ''
+  @property({ type: String, reflect: true }) name = ''
   @property({ type: Boolean, reflect: true }) disabled = false
+  @property({ type: Boolean, reflect: true }) required = false
   @property({ type: Boolean, reflect: true }) clearable = false
   @property({ type: Boolean, reflect: true }) full = false
   @property({ type: Boolean, reflect: true }) borderless = false
 
+  @state() private _value = ''
   @state() private _focused = false
+  @state() private _formDisabled = false
   @state() private _hasPrefix = false
   @state() private _hasSuffix = false
 
+  private _internals?: ElementInternals
+
+  @property({ type: String, reflect: true })
+  get value(): string {
+    return this._value
+  }
+
+  set value(v: string) {
+    const old = this._value
+    this._value = v
+    this._internals?.setFormValue?.(v)
+    this.requestUpdate('value', old)
+  }
+
+  private get _isDisabled(): boolean {
+    return this.disabled || this._formDisabled
+  }
+
+  override connectedCallback() {
+    super.connectedCallback()
+    if (!this._internals) {
+      this._internals = this.attachInternals()
+    }
+    this._internals.setFormValue?.(this._value)
+  }
+
   override updated(changed: Map<string, unknown>) {
-    if (changed.has('value')) {
+    if (changed.has('_value')) {
       const input = this.shadowRoot?.querySelector('input')
-      if (input && input.value !== this.value) {
-        input.value = this.value
+      if (input && input.value !== this._value) {
+        input.value = this._value
       }
     }
+    this._syncValidity()
     this.toggleAttribute('focused', this._focused)
+  }
+
+  formResetCallback() {
+    this.value = this.getAttribute('value') || ''
+  }
+
+  formDisabledCallback(disabled: boolean) {
+    this._formDisabled = disabled
+  }
+
+  formStateRestoreCallback(state: string | File | FormData | null) {
+    if (typeof state === 'string') this.value = state
+  }
+
+  private _syncValidity() {
+    const input = this.shadowRoot?.querySelector('input')
+    if (!this._internals || !input || typeof this._internals.setValidity !== 'function') return
+    if (this._isDisabled || input.validity.valid) {
+      this._internals.setValidity({})
+      return
+    }
+
+    const flags: ValidityStateFlags = {}
+    if (input.validity.valueMissing) flags.valueMissing = true
+    if (input.validity.typeMismatch) flags.typeMismatch = true
+    if (input.validity.patternMismatch) flags.patternMismatch = true
+    if (input.validity.tooLong) flags.tooLong = true
+    if (input.validity.tooShort) flags.tooShort = true
+    this._internals.setValidity(flags, input.validationMessage, input)
   }
 
   private _onSlotChange(e: Event) {
@@ -45,11 +105,13 @@ export class WebUiInput extends LitElement {
 
   private handleInput(e: Event) {
     if (!(e.target instanceof HTMLInputElement)) return
-    this.value = e.target.value
+    this._value = e.target.value
+    this._internals?.setFormValue?.(this._value)
+    this._syncValidity()
   }
 
   private handleFocus() {
-    if (!this.disabled) this._focused = true
+    if (!this._isDisabled) this._focused = true
   }
 
   private handleBlur() {
@@ -57,8 +119,10 @@ export class WebUiInput extends LitElement {
   }
 
   private handleClear() {
-    if (this.disabled) return
-    this.value = ''
+    if (this._isDisabled) return
+    this._value = ''
+    this._internals?.setFormValue?.('')
+    this._syncValidity()
     this.dispatchEvent(new Event('input', { bubbles: true, composed: true }))
   }
 
@@ -67,12 +131,12 @@ export class WebUiInput extends LitElement {
   }
 
   private focusInput() {
-    if (this.disabled) return
+    if (this._isDisabled) return
     this.shadowRoot?.querySelector('input')?.focus()
   }
 
   override render() {
-    const showClear = this.clearable && this.value
+    const showClear = this.clearable && this._value
 
     return html`
       <div class="wui-glass wui-input-inner" @click=${this.focusInput}>
@@ -80,19 +144,16 @@ export class WebUiInput extends LitElement {
         <input
           type=${this.type}
           placeholder=${this.placeholder}
-          ?disabled=${this.disabled}
-          .value=${this.value}
+          name=${this.name}
+          ?disabled=${this._isDisabled}
+          ?required=${this.required}
+          .value=${this._value}
           @input=${this.handleInput}
           @focus=${this.handleFocus}
           @blur=${this.handleBlur}
         />
         ${showClear
-          ? html`<span
-              class="clear"
-              @pointerdown=${this.preventMouseDownBlur}
-              @mousedown=${this.preventMouseDownBlur}
-              @click=${this.handleClear}
-            >
+          ? html`<span class="clear" @pointerdown=${this.preventMouseDownBlur} @click=${this.handleClear}>
               <web-ui-icon .icon=${jamCloseCircleF}></web-ui-icon>
             </span>`
           : ''}
@@ -100,11 +161,10 @@ export class WebUiInput extends LitElement {
       </div>
     `
   }
-}
 
-export interface WebUiInput {
-  readonly $events: {
+  declare readonly $events: {
     input: Event
+    change: Event
     focus: FocusEvent
     blur: FocusEvent
   }

@@ -34,10 +34,8 @@ export class WebUiIcon extends LitElement {
       </svg>
     `
   }
-}
 
-export interface WebUiIcon {
-  readonly $events: Record<string, never>
+  declare readonly $events: Record<string, never>
 }
 
 declare global {

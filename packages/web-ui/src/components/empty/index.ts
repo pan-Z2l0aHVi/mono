@@ -2,26 +2,44 @@ import { html, LitElement, unsafeCSS } from 'lit'
 import { customElement, property, state } from 'lit/decorators.js'
 import { classMap } from 'lit/directives/class-map.js'
 
-// web-ui-icon 必须注册（Rolldown tree-shake 副作用 import，引用类名阻止删除）
+// 注册 web-ui-icon（Rolldown tree-shake 副作用 import，引用类名阻止删除）
 import '@/components/icon'
 import glass from '@/assets/glass.css?inline'
 import { lucideInbox } from '@/icons'
+import { normalizeLiteral } from '@/shared/normalize'
 
 import style from './style.css?inline'
 
 export type EmptySize = 'small' | 'medium' | 'large'
 
+const ALLOWED_SIZES = ['small', 'medium', 'large'] as const
+
 @customElement('web-ui-empty')
 export class WebUiEmpty extends LitElement {
   static override styles = [unsafeCSS(glass), unsafeCSS(style)]
 
-  /** 空状态标题。默认 slot 有内容时，slot 内容优先。 */
   @property({ type: String, reflect: true }) override title = ''
 
-  /** 空状态说明。description slot 有内容时，slot 内容优先。 */
   @property({ type: String, reflect: true }) description = ''
 
-  @property({ type: String, reflect: true }) size: EmptySize = 'medium'
+  @property({ type: String, reflect: true })
+  set size(value: string) {
+    const normalized = normalizeLiteral(value, ALLOWED_SIZES, 'medium')
+    if (this._size !== normalized) {
+      const old = this._size
+      this._size = normalized
+      this.requestUpdate('size', old)
+    }
+    if (this.getAttribute('size') !== normalized) {
+      this.setAttribute('size', normalized)
+    }
+  }
+
+  get size(): EmptySize {
+    return this._size
+  }
+
+  private _size: EmptySize = 'medium'
 
   @state() private _hasTitleSlot = false
   @state() private _hasDescriptionSlot = false
@@ -66,10 +84,8 @@ export class WebUiEmpty extends LitElement {
       </section>
     `
   }
-}
 
-export interface WebUiEmpty {
-  readonly $events: Record<string, never>
+  declare readonly $events: Record<string, never>
 }
 
 declare global {

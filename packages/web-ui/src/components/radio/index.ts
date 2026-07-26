@@ -1,5 +1,5 @@
-import { html, LitElement, nothing, unsafeCSS } from 'lit'
-import { customElement, property } from 'lit/decorators.js'
+import { html, LitElement, unsafeCSS } from 'lit'
+import { customElement, property, state } from 'lit/decorators.js'
 import { classMap } from 'lit/directives/class-map.js'
 
 import style from './style.css?inline'
@@ -7,22 +7,87 @@ import style from './style.css?inline'
 @customElement('web-ui-radio')
 export class WebUiRadio extends LitElement {
   static override styles = unsafeCSS(style)
+  static formAssociated = true
+
+  /** 内部表单关联实例（connectedCallback 中初始化） */
+  private _internals?: ElementInternals
+  @state() private _formDisabled = false
+  @state() private _groupDisabled = false
+
+  /** 内部 checked 状态，通过 getter/setter 暴露为公共 API */
+  @state() private _checked = false
+
+  get checked(): boolean {
+    return this._checked
+  }
+
+  set checked(v: boolean) {
+    const old = this._checked
+    this._checked = v
+    this._syncFormValue()
+    this.requestUpdate('checked', old)
+  }
 
   @property({ type: String }) value = ''
-  @property({ type: String }) name = ''
-  @property({ type: Boolean, reflect: true }) checked = false
+  @property({ type: String, reflect: true }) name = ''
   @property({ type: Boolean, reflect: true }) disabled = false
+  @property({ type: Boolean, reflect: true }) required = false
 
+  private get _isDisabled(): boolean {
+    return this.disabled || this._formDisabled || this._groupDisabled
+  }
+
+  private get _isManagedByGroup(): boolean {
+    return this.closest('web-ui-radio-group') !== null
+  }
+
+  setGroupDisabled(disabled: boolean) {
+    this._groupDisabled = disabled
+  }
+
+  override connectedCallback() {
+    super.connectedCallback()
+    if (this._internals) return
+    this._internals = this.attachInternals()
+    if (this.hasAttribute('checked')) {
+      this._checked = true
+    }
+    this._syncFormValue()
+  }
+
+  formResetCallback() {
+    this.checked = this.hasAttribute('checked')
+  }
+
+  formDisabledCallback(disabled: boolean) {
+    this._formDisabled = disabled
+  }
+
+  override updated() {
+    this._syncFormValue()
+    this._syncValidity()
+  }
+
+  private _syncFormValue() {
+    this._internals?.setFormValue?.(!this._isManagedByGroup && this._checked ? this.value || 'on' : null)
+  }
+
+  private _syncValidity() {
+    if (!this._internals || typeof this._internals.setValidity !== 'function') return
+    if (this._isDisabled || this._isManagedByGroup || !this.required || this._checked) {
+      this._internals.setValidity({})
+      return
+    }
+    this._internals.setValidity({ valueMissing: true }, '请选择一项')
+  }
+
+  /** 用户点击选中（已选中时不重复触发） */
   private handleClick() {
-    if (this.disabled || this.checked) return
-    this.checked = true
-    this.dispatchEvent(
-      new CustomEvent('update:checked', {
-        detail: { checked: true, value: this.value },
-        bubbles: true,
-        composed: true
-      })
-    )
+    if (this._isDisabled || this._checked) return
+    this._checked = true
+    this._syncFormValue()
+    this.requestUpdate('checked', false)
+    this.dispatchEvent(new Event('input', { bubbles: true, composed: true }))
     this.dispatchEvent(new Event('change', { bubbles: true, composed: true }))
   }
 
@@ -36,12 +101,20 @@ export class WebUiRadio extends LitElement {
   override render() {
     const cls = {
       'wui-radio': true,
-      'is-checked': this.checked,
-      'is-disabled': this.disabled
+      'is-checked': this._checked,
+      'is-disabled': this._isDisabled
     }
 
     return html`
-      <label class=${classMap(cls)} tabindex="0" @click=${this.handleClick} @keydown=${this.handleKeyDown}>
+      <label
+        class=${classMap(cls)}
+        tabindex="0"
+        role="radio"
+        aria-checked=${String(this._checked)}
+        aria-disabled=${String(this._isDisabled)}
+        @click=${this.handleClick}
+        @keydown=${this.handleKeyDown}
+      >
         <span class="wui-radio-circle">
           <span class="wui-radio-dot"></span>
         </span>
@@ -49,11 +122,9 @@ export class WebUiRadio extends LitElement {
       </label>
     `
   }
-}
 
-export interface WebUiRadio {
-  readonly $events: {
-    'update:checked': CustomEvent<{ checked: boolean; value: string }>
+  declare readonly $events: {
+    input: Event
     change: Event
   }
 }

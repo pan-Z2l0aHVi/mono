@@ -18,13 +18,36 @@ import style from './style.css?inline'
 export class WebUiSelect extends LitElement {
   static override styles = [unsafeCSS(glass), unsafeCSS(style)]
 
-  @property({ type: String, reflect: true }) value = ''
+  static formAssociated = true
+
+  // ElementInternals 实例，在 connectedCallback 中初始化
+  private _internals?: ElementInternals
+  @state() private _formDisabled = false
+
   @property({ type: String, reflect: true }) placeholder = ''
   @property({ type: Boolean, reflect: true }) disabled = false
   @property({ type: Boolean, reflect: true }) full = false
+  @property({ type: Boolean, reflect: true }) required = false
   @property({ type: Boolean, reflect: true }) portal = false
   @property({ reflect: true, attribute: 'lock-scroll', converter: booleanWithFalseString }) lockScroll = true
   @property({ attribute: false }) overlayContainer?: OverlayContainer
+  @property({ type: String, reflect: true }) name = ''
+
+  // value 使用内部状态 + 访问器模式，在变更时同步 ElementInternals
+  @state() private _value = ''
+  get value(): string {
+    return this._value
+  }
+  set value(v: string) {
+    const old = this._value
+    this._value = v
+    this._internals?.setFormValue?.(v)
+    this.requestUpdate('value', old)
+  }
+
+  private get _isDisabled(): boolean {
+    return this.disabled || this._formDisabled
+  }
 
   @state() private _isOpen = false
   @state() private _activeIndex = -1
@@ -36,6 +59,10 @@ export class WebUiSelect extends LitElement {
   private _hasScrollLock = false
 
   get isOpen(): boolean {
+    return this._isOpen
+  }
+
+  get open(): boolean {
     return this._isOpen
   }
 
@@ -60,6 +87,11 @@ export class WebUiSelect extends LitElement {
 
   override connectedCallback() {
     super.connectedCallback()
+    this._internals = this.attachInternals()
+    // 同步 HTML 属性中预设的 value，补全访问器模式不处理 attribute 反射
+    const attrValue = this.getAttribute('value')
+    if (attrValue !== null) this._value = attrValue
+    this._internals?.setFormValue?.(this._value)
     this.addEventListener('option-register', this._onOptionRegister)
     this.addEventListener('option-unregister', this._onOptionUnregister)
     this.addEventListener('keydown', this._onKeydown)
@@ -102,6 +134,21 @@ export class WebUiSelect extends LitElement {
     if (changed.has('portal') || changed.has('overlayContainer'))
       requestAnimationFrame(() => this._reconfigureOverlay())
     if (changed.has('lockScroll')) this._syncScrollLock()
+    this._syncValidity()
+  }
+
+  formResetCallback() {
+    this.value = this.getAttribute('value') || ''
+  }
+
+  formDisabledCallback(disabled: boolean) {
+    this._formDisabled = disabled
+  }
+
+  private _syncValidity() {
+    if (!this._internals || typeof this._internals.setValidity !== 'function') return
+    if (this._isDisabled || !this.required || this.value) this._internals.setValidity({})
+    else this._internals.setValidity({ valueMissing: true }, '请选择一项')
   }
 
   private _syncSelected() {
@@ -122,7 +169,7 @@ export class WebUiSelect extends LitElement {
     })
   }
 
-  private _onOptionRegister(e: Event) {
+  private _onOptionRegister = (e: Event) => {
     if (!(e.target instanceof HTMLElement)) return
     const target = e.target
     target.addEventListener('click', this._handleOptionClick)
@@ -133,7 +180,7 @@ export class WebUiSelect extends LitElement {
     this._syncSelected()
   }
 
-  private _onOptionUnregister(e: Event) {
+  private _onOptionUnregister = (e: Event) => {
     if (!(e.target instanceof HTMLElement)) return
     const target = e.target
     target.removeEventListener('click', this._handleOptionClick)
@@ -142,7 +189,7 @@ export class WebUiSelect extends LitElement {
     this._options = this._options.filter(o => o !== target)
   }
 
-  private _onSlotChange() {
+  private _onSlotChange = () => {
     const options = this._portal
       ? [...this._portal.panel.querySelectorAll<HTMLElement>('web-ui-option')]
       : [...this.querySelectorAll<HTMLElement>('web-ui-option')]
@@ -173,8 +220,8 @@ export class WebUiSelect extends LitElement {
     e.preventDefault()
   }
 
-  private _onKeydown(e: KeyboardEvent) {
-    if (this.disabled) return
+  private _onKeydown = (e: KeyboardEvent) => {
+    if (this._isDisabled) return
 
     switch (e.key) {
       case 'Escape':
@@ -236,8 +283,9 @@ export class WebUiSelect extends LitElement {
   }
 
   private _open(isKeyboardNavigation = false) {
-    if (this.disabled || this._isOpen) return
+    if (this._isDisabled || this._isOpen) return
     this._isOpen = true
+    this._dispatchOpenChange()
     this._syncSelected()
     if (isKeyboardNavigation) this._setInitialActiveOption()
     else this._syncActiveOption()
@@ -250,10 +298,21 @@ export class WebUiSelect extends LitElement {
   private _close() {
     if (!this._isOpen) return
     this._isOpen = false
+    this._dispatchOpenChange()
     this._activeIndex = -1
     this._options.forEach(o => o.removeAttribute('active'))
     this._syncScrollLock(false)
     this._closeOverlay()
+  }
+
+  private _dispatchOpenChange() {
+    this.dispatchEvent(
+      new CustomEvent('open-change', {
+        detail: { open: this._isOpen },
+        bubbles: true,
+        composed: true
+      })
+    )
   }
 
   private _setInitialActiveOption() {
@@ -284,7 +343,7 @@ export class WebUiSelect extends LitElement {
   }
 
   private _togglePopup() {
-    if (this.disabled) return
+    if (this._isDisabled) return
     if (this._isOpen) this._close()
     else this._open()
   }
@@ -360,10 +419,11 @@ export class WebUiSelect extends LitElement {
         <div
           class="wui-glass select-trigger"
           @click=${this._togglePopup}
-          tabindex="0"
+          tabindex=${this._isDisabled ? -1 : 0}
           role="combobox"
           aria-expanded=${this._isOpen}
           aria-haspopup="listbox"
+          aria-disabled=${String(this._isDisabled)}
           aria-activedescendant=${this._isOpen && this._activeIndex >= 0
             ? this._options[this._activeIndex]?.id
             : nothing}
@@ -377,15 +437,12 @@ export class WebUiSelect extends LitElement {
       </div>
     `
   }
-}
 
-export interface WebUiSelect {
-  readonly $events: {
+  declare readonly $events: {
     input: Event
     change: Event
+    'open-change': CustomEvent<{ open: boolean }>
   }
-  isOpen: boolean
-  lockScroll: boolean
 }
 
 declare global {

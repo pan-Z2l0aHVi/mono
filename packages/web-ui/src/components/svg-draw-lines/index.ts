@@ -1,13 +1,25 @@
 import { html, LitElement, unsafeCSS } from 'lit'
 import { customElement, property, query, state } from 'lit/decorators.js'
 
+import { normalizeNumber } from '@/shared/normalize'
+
 import style from './style.css?inline'
 
 @customElement('web-ui-svg-draw-lines')
 export class WebUiSvgDrawLines extends LitElement {
   static override styles = unsafeCSS(style)
 
-  @property({ type: Number, reflect: true }) duration = 1000
+  @property({ type: Number, reflect: true })
+  get duration(): number {
+    return this._duration
+  }
+  set duration(v: number) {
+    const old = this._duration
+    this._duration = normalizeNumber(v, 0, 30000, 1000)
+    this.requestUpdate('duration', old)
+  }
+  private _duration = 1000
+
   @property({ type: String, reflect: true }) easing = 'linear'
 
   @state() private isAnimating = false
@@ -128,10 +140,8 @@ export class WebUiSvgDrawLines extends LitElement {
       </div>
     `
   }
-}
 
-export interface WebUiSvgDrawLines {
-  readonly $events: Record<string, never>
+  declare readonly $events: Record<string, never>
 }
 
 declare global {

@@ -154,7 +154,7 @@ button {
   background-color: var(--wui-color-border, rgb(0 0 0 / 0.1));
 }
 
-:host([group][orientation='vertical']:not([last]))::after {
+:host([group][direction='vertical']:not([last]))::after {
   top: auto;
   right: auto;
   bottom: -2px;

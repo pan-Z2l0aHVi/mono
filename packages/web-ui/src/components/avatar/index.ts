@@ -3,12 +3,15 @@ import { customElement, property, state } from 'lit/decorators.js'
 import { classMap } from 'lit/directives/class-map.js'
 import { ifDefined } from 'lit/directives/if-defined.js'
 
-// web-ui-icon 必须注册（Rolldown tree-shake 副作用 import，引用类名阻止删除）
+// 注册 web-ui-icon（Rolldown tree-shake 副作用 import，引用类名阻止删除）
 import '@/components/icon'
 import glass from '@/assets/glass.css?inline'
 import { lucideUser } from '@/icons'
+import { normalizeLiteral } from '@/shared/normalize'
 
 import style from './style.css?inline'
+
+const ALLOWED_SHAPES = ['circle', 'square'] as const
 
 @customElement('web-ui-avatar')
 export class WebUiAvatar extends LitElement {
@@ -33,7 +36,26 @@ export class WebUiAvatar extends LitElement {
   @property({ type: String, reflect: true }) alt = ''
   @property({ type: String, reflect: true }) name = ''
   @property({ type: Number, reflect: true }) size = 40
-  @property({ type: String, reflect: true }) shape: 'circle' | 'square' = 'circle'
+
+  @property({ type: String, reflect: true })
+  set shape(value: string) {
+    const normalized = normalizeLiteral(value, ALLOWED_SHAPES, 'circle')
+    if (this._shape !== normalized) {
+      const old = this._shape
+      this._shape = normalized
+      this.requestUpdate('shape', old)
+    }
+    // 外部 setAttribute 非法值后，宿主 attribute 与规范化后的值不同步，立即修正
+    if (this.getAttribute('shape') !== normalized) {
+      this.setAttribute('shape', normalized)
+    }
+  }
+
+  get shape(): 'circle' | 'square' {
+    return this._shape
+  }
+
+  private _shape: 'circle' | 'square' = 'circle'
 
   @state() private _imgError = false
   @state() private _hasDefaultSlot = false
@@ -57,7 +79,7 @@ export class WebUiAvatar extends LitElement {
     const words = this.name.trim().split(/\s+/)
     return words
       .slice(0, 2)
-      .map(w => [...w][0])
+      .map(w => Array.from(w)[0])
       .join('')
       .toUpperCase()
   }
@@ -76,7 +98,6 @@ export class WebUiAvatar extends LitElement {
 
   private _onImgError() {
     this._imgError = true
-    this.dispatchEvent(new Event('image-error', { bubbles: true, composed: true }))
   }
 
   private get _ariaLabel(): string | undefined {
@@ -116,12 +137,8 @@ export class WebUiAvatar extends LitElement {
       </div>
     `
   }
-}
 
-export interface WebUiAvatar {
-  readonly $events: {
-    'image-error': Event
-  }
+  declare readonly $events: Record<string, never>
 }
 
 declare global {

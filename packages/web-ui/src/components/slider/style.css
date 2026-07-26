@@ -100,7 +100,7 @@
   height: 4px;
   border-radius: calc(infinity * 1px);
 
-  background-color: var(--wui-color-border-strong, #c6c6c8);
+  background-color: var(--wui-color-surface-raised-deep, #e5e5ea);
 }
 
 :host([vertical]) .wui-slider-mark {

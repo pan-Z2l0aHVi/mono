@@ -27,10 +27,8 @@ export class WebUiLayout extends LitElement {
       </div>
     `
   }
-}
 
-export interface WebUiLayout {
-  readonly $events: Record<string, never>
+  declare readonly $events: Record<string, never>
 }
 
 declare global {

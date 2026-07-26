@@ -1,20 +1,29 @@
 import { html, LitElement, nothing, unsafeCSS } from 'lit'
 import { customElement, property } from 'lit/decorators.js'
 
+import { normalizeLiteral } from '@/shared/normalize'
 import { applyOverlayRootStyles } from '@/shared/theme/overlay-root'
 
 import style from './style.css?inline'
 
 export type ThemeAppearance = 'light' | 'dark' | 'system'
 
-const APPEARANCES = new Set<ThemeAppearance>(['light', 'dark', 'system'])
+const APPEARANCES = ['light', 'dark', 'system'] as const
 
 @customElement('web-ui-theme')
 export class WebUiTheme extends LitElement {
   static override styles = unsafeCSS(style)
 
-  /** 创建明确的浅色、深色或跟随系统的主题边界。 */
-  @property({ type: String, reflect: true }) appearance?: ThemeAppearance
+  @property({ type: String, reflect: true })
+  get appearance(): ThemeAppearance | undefined {
+    return this._appearance
+  }
+  set appearance(v: string | undefined) {
+    const old = this._appearance
+    this._appearance = v !== undefined ? (normalizeLiteral(v, APPEARANCES, 'light') as ThemeAppearance) : undefined
+    this.requestUpdate('appearance', old)
+  }
+  private _appearance?: ThemeAppearance
 
   private _warned = false
 
@@ -44,7 +53,7 @@ export class WebUiTheme extends LitElement {
   }
 
   private _hasAppearance(): this is this & { appearance: ThemeAppearance } {
-    return this.appearance !== undefined && APPEARANCES.has(this.appearance)
+    return this.appearance !== undefined && (APPEARANCES as readonly string[]).includes(this.appearance)
   }
 
   private _warnWhenAppearanceIsMissing() {
@@ -52,6 +61,8 @@ export class WebUiTheme extends LitElement {
     this._warned = true
     console.warn('[web-ui-theme] appearance is required; this theme scope is inactive until it is set.')
   }
+
+  declare readonly $events: Record<string, never>
 }
 
 declare global {

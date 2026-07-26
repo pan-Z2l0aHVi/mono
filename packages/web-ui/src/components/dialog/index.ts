@@ -14,6 +14,7 @@ export class WebUiDialog extends LitElement {
 
   @property({ type: Boolean, reflect: true }) open = false
   @property({ reflect: true, attribute: 'lock-scroll', converter: booleanWithFalseString }) lockScroll = true
+  @property({ reflect: true, attribute: 'overlay-closable', converter: booleanWithFalseString }) overlayClosable = true
 
   @state() private _hasBody = false
 
@@ -25,6 +26,8 @@ export class WebUiDialog extends LitElement {
 
   protected override updated(props: PropertyValues) {
     super.updated(props)
+    if (!this.isConnected) return
+
     if (props.has('open')) {
       this.emitOpenChange()
       if (this.open) {
@@ -52,12 +55,15 @@ export class WebUiDialog extends LitElement {
   }
 
   private handleCancel(e: Event) {
+    // preventDefault 阻止原生 <dialog> 关闭行为，然后由 overlayClosable 决定是否手动关闭
     e.preventDefault()
+    if (!this.overlayClosable) return
     this.close()
   }
 
   private handleBackdropClick(e: MouseEvent) {
     if (e.target !== (e.currentTarget as HTMLDialogElement)) return
+    if (!this.overlayClosable) return
     this.close()
   }
 
@@ -101,16 +107,10 @@ export class WebUiDialog extends LitElement {
       </dialog>
     `
   }
-}
 
-export interface WebUiDialog {
-  readonly $events: {
+  declare readonly $events: {
     'open-change': CustomEvent<{ open: boolean }>
   }
-  open: boolean
-  lockScroll: boolean
-  showModal(): void
-  close(): void
 }
 
 declare global {
