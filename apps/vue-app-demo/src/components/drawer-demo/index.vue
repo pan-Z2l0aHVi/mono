@@ -37,6 +37,7 @@ const closableState = ref(true)
 const closableVisible = ref(false)
 const footerVisible = ref(false)
 const unlockedVisible = ref(false)
+const overlayVisible = ref(false)
 </script>
 
 <template>
@@ -114,6 +115,20 @@ const unlockedVisible = ref(false)
       <web-ui-button slot="footer" full @click="unlockedVisible = false">关闭</web-ui-button>
     </web-ui-drawer>
 
+    <h2>不可点击遮罩关闭</h2>
+    <div class="mb-3 flex gap-2">
+      <web-ui-button @click="overlayVisible = true">打开</web-ui-button>
+    </div>
+    <web-ui-drawer
+      :open="overlayVisible"
+      heading="不可点击遮罩关闭"
+      :overlay-closable="false"
+      @open-change="overlayVisible = $event.detail.open"
+    >
+      <p>点击遮罩不会关闭抽屉，必须通过按钮操作。</p>
+      <web-ui-button slot="footer" variant="secondary" full @click="overlayVisible = false">关闭</web-ui-button>
+    </web-ui-drawer>
+
     <h2>Header Slot</h2>
     <div class="mb-3 flex gap-2">
       <web-ui-button @click="headerSlotVisible = true">打开</web-ui-button>
@@ -130,7 +145,7 @@ const unlockedVisible = ref(false)
     <div class="mb-3 flex flex-wrap gap-2 items-center">
       <web-ui-button @click="closableVisible = true">打开</web-ui-button>
       <label class="flex items-center gap-1 text-sm cursor-pointer select-none">
-        <web-ui-checkbox :checked="closableState" @update:checked="closableState = $event.detail.checked" />
+        <web-ui-checkbox :checked="closableState" @change="closableState = ($event.target as any).checked" />
         显示关闭按钮
       </label>
     </div>

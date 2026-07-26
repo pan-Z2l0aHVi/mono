@@ -11,6 +11,13 @@ describe('DialogDemo', () => {
     wrapper.unmount()
   })
 
+  it('包含不可点击遮罩关闭选项', () => {
+    const wrapper = mount(DialogDemo)
+
+    expect(wrapper.html()).toContain('overlay-closable="false"')
+    wrapper.unmount()
+  })
+
   it('包含自定义 body slot 对话框', () => {
     const wrapper = mount(DialogDemo)
 

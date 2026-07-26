@@ -10,4 +10,11 @@ describe('DrawerDemo', () => {
     expect(wrapper.html()).toContain('lock-scroll="false"')
     wrapper.unmount()
   })
+
+  it('展示不可点击遮罩关闭的抽屉', () => {
+    const wrapper = mount(DrawerDemo)
+
+    expect(wrapper.html()).toContain('overlay-closable="false"')
+    wrapper.unmount()
+  })
 })

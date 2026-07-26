@@ -16,7 +16,7 @@ describe('SpinnerDemo', () => {
     const wrapper = mount(SpinnerDemo)
 
     expect(wrapper.html()).toContain('带描述')
-    expect(wrapper.html()).toContain('长描述 (5s)')
+    expect(wrapper.html()).toContain('长描述 (10s)')
     expect(wrapper.html()).toContain('slot="description"')
     wrapper.unmount()
   })

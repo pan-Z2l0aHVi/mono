@@ -9,6 +9,7 @@ const visible1 = ref(false)
 const visible2 = ref(false)
 const visible3 = ref(false)
 const visible4 = ref(false)
+const visible5 = ref(false)
 </script>
 
 <template>
@@ -75,6 +76,18 @@ const visible4 = ref(false)
         <p style="margin: 0 0 20px; color: #6a6a6a">自定义 body slot 内容，保留玻璃卡片外壳。</p>
         <web-ui-button variant="primary" full @click="visible4 = false">知道了</web-ui-button>
       </div>
+    </web-ui-dialog>
+
+    <h2>不可点击遮罩关闭</h2>
+    <div class="mb-3 flex gap-2">
+      <web-ui-button @click="visible5 = true">打开</web-ui-button>
+    </div>
+
+    <web-ui-dialog :open="visible5" :overlay-closable="false" @open-change="visible5 = $event.detail.open">
+      <span slot="title">确认操作</span>
+      <p>此对话框禁止点击遮罩关闭，必须通过按钮操作。</p>
+      <web-ui-button slot="footer" variant="primary" full @click="visible5 = false">确认</web-ui-button>
+      <web-ui-button slot="footer" variant="secondary" full @click="visible5 = false">取消</web-ui-button>
     </web-ui-dialog>
   </div>
 </template>

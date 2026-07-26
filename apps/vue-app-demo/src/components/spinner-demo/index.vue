@@ -26,7 +26,7 @@ function showSpinnerWithDescription() {
 }
 
 function showSpinnerWithLongDescription() {
-  WebUiSpinner.show({ description: '正在同步云端文件，预计需要 30 秒', duration: 5000 })
+  WebUiSpinner.show({ description: '正在同步云端文件，预计需要 10 秒', duration: 10000 })
 }
 </script>
 
@@ -64,7 +64,7 @@ function showSpinnerWithLongDescription() {
     <h2>命令式描述文字</h2>
     <div class="mb-6 flex gap-2">
       <web-ui-button @click="showSpinnerWithDescription">带描述</web-ui-button>
-      <web-ui-button @click="showSpinnerWithLongDescription">长描述 (5s)</web-ui-button>
+      <web-ui-button @click="showSpinnerWithLongDescription">长描述 (10s)</web-ui-button>
     </div>
   </div>
 </template>
