@@ -173,6 +173,11 @@
 - **slot 投影**：父组件通过 `slot="name"` 属性选择器投影，子组件通过 `<slot name="name">` 接收
 - **内容优先级**：同时提供文本 prop 与同用途 slot 时，slot 内容优先；组件应在 slot 动态插入和移除后同步布局状态。
 
+### 默认 `true` 的布尔属性
+
+- 默认值为 `true` 且需要支持模板框架传入 `:prop-name="false"` 的属性，必须显式声明 kebab-case `attribute`，并使用 `booleanWithFalseString` converter；Lit 的默认 Boolean converter 会把字符串属性 `"false"` 当作 `true`。
+- 回归测试必须通过 `setAttribute('prop-name', 'false')` 覆盖声明式属性路径，不能只直接赋值 JavaScript 布尔值。
+
 ## 生命周期与全局副作用
 
 - 涉及 document 事件、portal、滚动锁等全局副作用的组件，必须只释放自身已取得的资源。
@@ -220,3 +225,48 @@
 - Select 必须在 option 注册、注销、slotchange 及初始渲染时同步 `value` 对应的 `selected` 状态并请求重渲染，保证框架先传入 `value`、后批量投影 option 时标签仍可回显。
 - 管理 slot 子表单控件的 group 组件必须通过子项公开属性读写状态，不能依赖 HTML 属性；框架可能只设置属性而不反射属性
 - group 组件必须在 slot 子项插入或删除后重新同步状态，覆盖框架延迟挂载和条件渲染
+- 值变更事件统一为标准 `Event('input')` 和 `Event('change')`，禁止派发 `update:checked`、`value-changed` 等框架特定事件
+- 直接设置属性或调用命令式方法不派发 `input`/`change`（不对应于用户交互）；属性变化导致的 `open-change` 仍派发
+
+## Pointer Events 规范
+
+- 统一使用 Pointer Events 替代鼠标专属事件：
+  - `pointerenter` / `pointerleave` 替代 `mouseenter` / `mouseleave`
+  - `pointerdown` 替代 `mousedown`
+  - `pointermove` 用于拖拽跟随
+- 拖拽操作必须使用 `setPointerCapture(pointerId)` + `pointercancel` 清理，确保鼠标、触控笔、触摸屏行为一致
+- 外部点击关闭使用语义化 `click` 事件（不将键盘激活误判为 pointer 事件）
+- `contextmenu` 保留为独立语义事件，不归入 Pointer Events
+- 保留 `focusin` / `focusout` 用于键盘焦点触发的行为（如 tooltip 显示）
+
+## 运行时参数规范化
+
+- 字面量联合类型属性（如 variant、placement、type、trigger）必须在 setter 中调用 `normalizeLiteral(value, allowed, default)`，非法输入回退到文档化默认值
+- 数值范围属性（如 min、max、step、duration、threshold、offset）必须调用 `normalizeNumber(value, min, max, default)`
+- 规范化函数从 `@/shared/normalize` 导入
+- 与 TypeScript 类型系统互补：类型保证编译期安全，运行时规范化保证 JS 调用方健壮性
+
+## 注释规范
+
+- 注释只解释设计原因、易误解语义、降级理由、生命周期/资源所有权约束
+- **禁止**逐行复述代码（代码自解释）、实现分区注释（如 `// ========== Internal ==========`）
+- 公共方法和静态 API 使用 JSDoc（中文），说明参数、返回值、副作用
+
+## 公开契约测试
+
+- 组件测试仅验证公开契约，禁止测试实现细节：
+  - ✅ 宿主属性默认值和反射
+  - ✅ 公开方法调用
+  - ✅ 派发事件名和 detail
+  - ✅ 语义 role 和 aria-\* 属性（通过 semantic selector 查询 shadow DOM）
+  - ✅ FormData 集成（formAssociated 组件）
+  - ✅ slot 投影
+  - ❌ shadowRoot 内部 CSS class 名
+  - ❌ 私有字段、内部状态、注册事件
+  - ❌ 实现顺序
+- 测试辅助工具从 `@/shared/test-utils` 导入（waitForUpdate, spyEvents, expectReflected, cleanupElement, queryA11y）
+- 默认 `*.spec.ts` 覆盖属性、事件和不依赖浏览器实现的宿主契约；显式 `*.browser.spec.ts` 在 Chromium Browser Mode 中覆盖 FormData、ElementInternals、Pointer 事件、键盘、焦点、portal、原生 dialog、表单提交/重置
+
+## 事件类型元数据
+
+- 组件为 Vue/React 类型包装器声明 `$events` 时，必须在 component class 内使用 `declare readonly $events: EventMap`；禁止使用同名 class/interface declaration merging。`declare` 只提供类型信息，不生成运行时代码。

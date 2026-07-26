@@ -13,12 +13,15 @@ A pnpm monorepo publishing Lit-based web component UI library (`@greypan/web-ui`
 
 ## Key Decisions
 
-| ADR  | Title                  | Summary                                                                             |
-| ---- | ---------------------- | ----------------------------------------------------------------------------------- |
-| 0001 | CI Pipeline            | Build + lint + type-check + test via Turborepo. Release via changesets              |
-| 0002 | Build Toolchain        | `vite-plus` as unified wrapper over Vite/Rolldown for build/test/lint/format        |
-| 0003 | Web Component Strategy | Lit elements in Shadow DOM. `:host` only for `display`. Framework types in `types/` |
-| 0004 | Plugin System          | js-kit's `definePlugin` with `use()`/`make()` chain for composable utilities        |
+| ADR  | Title                       | Summary                                                                                       |
+| ---- | --------------------------- | --------------------------------------------------------------------------------------------- |
+| 0001 | CI Pipeline                 | Build + lint + type-check + test via Turborepo. Release via changesets                        |
+| 0002 | Build Toolchain             | `vite-plus` as unified wrapper over Vite/Rolldown for build/test/lint/format                  |
+| 0003 | Web Component Strategy      | Lit elements in Shadow DOM. `:host` only for `display`. Framework types in `types/`           |
+| 0004 | Plugin System               | js-kit's `definePlugin` with `use()`/`make()` chain for composable utilities                  |
+| 0005 | Overlay Interaction Policy  | Click-outside, focus-out, keyboard Escape, and child-parent event coordination                |
+| 0006 | Layout Layering             | Local overlay stacking in layout, portal overlay z-index scale                                |
+| 0007 | Web UI Contract Convergence | Unified Pointer Events, standard event model, form-associated controls, public contract tests |
 
 ## Package Boundaries
 
@@ -56,6 +59,15 @@ _Avoid_: Local overlay
 **Application Auxiliary Layer**:
 Persistent fixed application affordances, such as BackTop, positioned above base content but below portal menus.
 _Avoid_: Overlay, modal
+
+**Public Component Contract**:
+The stable, documented surface of a component: props, default values, allowed values, slots, methods, events, accessibility semantics, and form behavior. Implementation details (shadow DOM structure, CSS classes, private state) are not part of the contract. Tests verify the contract, not the implementation.
+
+**Pointer Interaction**:
+Component interaction using Pointer Events (pointerenter, pointerleave, pointerdown, pointermove, pointerup, pointercancel) instead of mouse-specific events. Ensures consistent behavior across mouse, touch, and pen input. Contextmenu retains its own semantic event. Click remains the event for external-click-to-close detection.
+
+**Form-associated Control**:
+A custom element with `static formAssociated = true` that integrates with the native HTML form lifecycle: submits values via `FormData`, responds to `formResetCallback()` and `formDisabledCallback()`, and manages constraints through `ElementInternals`.
 
 ## Known Constraints
 

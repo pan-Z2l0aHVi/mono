@@ -4,33 +4,13 @@
 
 English | [简体中文](./README.CN.md)
 
-## Features
-
-- **Button**: Styled button with primary/secondary/ghost/danger variants
-- **Icon**: Type-safe icon rendering via `.icon` property binding
-- **BackTop**: Scroll-to-top with configurable threshold and smooth scroll
-- **Layout**: Page layout with header/sidebar/tabbar slots
-- **SVG Draw Lines**: SVG line drawing animation with easing control
-- **Framework compatible**: Works with React, Vue, and vanilla HTML
-- **Type safe**: Full TypeScript types for React and Vue
-
 ## Install
 
 ```bash
-# npm
 npm install @greypan/web-ui
-
-# pnpm
-pnpm add @greypan/web-ui
-
-# yarn
-yarn add @greypan/web-ui
-
-# bun
-bun add @greypan/web-ui
 ```
 
-> Requires `lit` as a dependency.
+Requires `lit` as a dependency.
 
 ## Quick Start
 
@@ -40,133 +20,45 @@ import '@greypan/web-ui'
 ```
 
 ```html
-<web-ui-button variant="primary">Click me</web-ui-button>
-<web-ui-button variant="secondary">Cancel</web-ui-button>
-<web-ui-button icon>
-  <web-ui-icon .icon="${lucidePlus}"></web-ui-icon>
-</web-ui-button>
+<web-ui-button variant="primary">Click me</web-ui-button> <web-ui-icon .icon="${lucidePlus}"></web-ui-icon>
 ```
 
-## React
+## Framework Setup
 
-> Requires `@types/react >= 16` as an optional peer dependency for type support.
+### React
 
-### Setup
-
-**Option A — auto-import (Vite, recommended)**
-
-Use `unplugin-web-components` to auto-register components when their tags appear in JSX:
+Requires `@types/react >= 16` as optional peer dependency.
 
 ```ts
 // vite.config.ts
 import unpluginWebComponents from '@greypan/unplugin-web-components/vite'
 
 export default {
-  plugins: [
-    unpluginWebComponents({
-      tagPrefix: 'web-ui',
-      packageName: '@greypan/web-ui',
-      sideEffects: true
-    })
-  ]
+  plugins: [unpluginWebComponents({ tagPrefix: 'web-ui', packageName: '@greypan/web-ui', sideEffects: true })]
 }
-```
 
-**Option B — manual import**
-
-Import the full library to register all components (side-effect registration):
-
-```tsx
-// main.tsx
-import '@greypan/web-ui'
-```
-
-Or import only specific components for smaller bundle:
-
-```tsx
-// main.tsx or any component file
-import '@greypan/web-ui/components/button'
-import '@greypan/web-ui/components/back-top'
-```
-
-Add type augmentation so TypeScript recognizes the custom element JSX attributes:
-
-```tsx
-// env.d.ts or any type declaration file
+// env.d.ts
 import '@greypan/web-ui/types/react'
 ```
 
-### App Layout
-
-Wrap your router with `<web-ui-layout>` and use `<web-ui-back-top>` for global scroll-to-top:
-
 ```tsx
-// root.tsx
-import { Outlet } from '@tanstack/react-router'
+import '@greypan/web-ui'
 
-export function Root() {
+function App() {
   return (
     <>
-      <web-ui-layout>
-        <h1>My App</h1>
-
-        {/* Button variants */}
-        <div className="flex gap-2">
-          <web-ui-button>默认</web-ui-button>
-          <web-ui-button variant="primary">Primary</web-ui-button>
-          <web-ui-button variant="ghost">Ghost</web-ui-button>
-          <web-ui-button full>Full Width</web-ui-button>
-        </div>
-
-        {/* Named slots */}
-        <web-ui-button>
-          <span slot="prefix">prefix</span>
-          Button with prefix/suffix slots
-          <span slot="suffix">suffix</span>
-        </web-ui-button>
-
-        {/* Router outlet for page content */}
-        <Outlet />
-      </web-ui-layout>
-
-      <web-ui-back-top
-        threshold={300}
-        onvisible-change={e => {
-          console.log('visible: ', e.detail.visible)
-        }}
-      />
+      <web-ui-button variant="primary" onClick={() => alert('clicked')}>
+        Click
+      </web-ui-button>
+      <web-ui-input onInput={e => console.log((e.target as any).value)} />
     </>
   )
 }
 ```
 
-> `onvisible-change` works in React 19+ (props forward to custom elements). For React 18, use a `ref` + `addEventListener` instead.
+### Vue
 
-### SVG Draw Lines
-
-Wrap an inline `<svg>` to animate its stroke drawing:
-
-```tsx
-function SvgDemo() {
-  return (
-    <web-ui-svg-draw-lines>
-      <svg viewBox="0 0 24 24" width="100" height="100" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M4 4v16M8 6h12M8 12h6m-6 6h10" />
-      </svg>
-    </web-ui-svg-draw-lines>
-  )
-}
-```
-
-## Vue
-
-> Requires `vue >= 3` as an optional peer dependency.
-
-### Setup
-
-**Option A — auto-import (Vite, recommended)**
-
-Use `unplugin-web-components` for auto-registration:
+Requires `vue >= 3` as optional peer dependency.
 
 ```ts
 // vite.config.ts
@@ -176,157 +68,664 @@ import unpluginWebComponents from '@greypan/unplugin-web-components/vite'
 export default {
   plugins: [
     vue({
-      template: {
-        compilerOptions: {
-          isCustomElement: tag => tag.startsWith('web-ui-') || tag.startsWith('WebUi')
-        }
-      }
+      template: { compilerOptions: { isCustomElement: tag => tag.startsWith('web-ui-') } }
     }),
-    unpluginWebComponents({
-      tagPrefix: 'web-ui',
-      packageName: '@greypan/web-ui',
-      sideEffects: true
-    })
+    unpluginWebComponents({ tagPrefix: 'web-ui', packageName: '@greypan/web-ui', sideEffects: true })
   ]
 }
-```
 
-**Option B — manual import**
-
-```ts
-// main.ts
-import { createApp } from 'vue'
-import '@greypan/web-ui' // register all components
-// import '@greypan/web-ui/components/button'
-import App from './App.vue'
-
-createApp(App).mount('#app')
-```
-
-For type augmentation in Vue templates:
-
-```ts
-// env.d.ts or any type declaration file
+// env.d.ts
 import '@greypan/web-ui/types/vue'
 ```
 
-### App Layout
-
-Wrap your app with `<web-ui-layout>` and use the button variants:
-
 ```vue
 <template>
-  <web-ui-layout>
-    <h1>My App</h1>
-
-    <div class="flex gap-2">
-      <web-ui-button>默认</web-ui-button>
-      <web-ui-button variant="primary">Primary</web-ui-button>
-      <web-ui-button variant="ghost">Ghost</web-ui-button>
-      <web-ui-button full>Full Width</web-ui-button>
-    </div>
-
-    <web-ui-button>
-      <span slot="prefix">prefix</span>
-      带前后缀插槽的按钮
-      <span slot="suffix">suffix</span>
-    </web-ui-button>
-
-    <RouterView />
-  </web-ui-layout>
-
-  <web-ui-back-top :threshold="300" @visible-change="onVisibleChange" />
-</template>
-
-<script setup lang="ts">
-function onVisibleChange(e: CustomEvent<{ visible: boolean }>) {
-  console.log('visible: ', e.detail.visible)
-}
-</script>
-```
-
-### SVG Draw Lines
-
-```vue
-<template>
-  <web-ui-svg-draw-lines>
-    <svg viewBox="0 0 24 24" width="100" height="100" fill="none" stroke="currentColor" stroke-width="2">
-      <path d="M4 4v16M8 6h12M8 12h6m-6 6h10" />
-    </svg>
-  </web-ui-svg-draw-lines>
+  <web-ui-button variant="primary" @click="handleClick">Click</web-ui-button>
+  <web-ui-input v-model="value" />
 </template>
 ```
 
-## API
+## API Reference
 
-### `<web-ui-button>`
+---
 
-Styled button component.
+### Form Controls
 
-| Attribute  | Type                                                         | Default   | Description                   |
-| ---------- | ------------------------------------------------------------ | --------- | ----------------------------- |
-| `variant`  | `'primary' \| 'secondary' \| 'ghost' \| 'danger' \| 'glass'` | `'glass'` | Button style variant          |
-| `disabled` | `boolean`                                                    | `false`   | Disabled state                |
-| `loading`  | `boolean`                                                    | `false`   | Loading state (shows spinner) |
-| `full`     | `boolean`                                                    | `false`   | Full width button             |
-| `icon`     | `boolean`                                                    | `false`   | Icon-only mode                |
+Form controls implement `static formAssociated = true` and integrate with native `<form>`: values are submitted via `FormData`, and `formResetCallback()` / `formDisabledCallback()` handle lifecycle.
 
-### `<web-ui-icon>`
+#### `<web-ui-input>`
 
-Icon rendering component. Accepts icon data objects (not string attributes).
+Text input with clearable, prefix/suffix slots.
 
-| Property | Type          | Description                                            |
-| -------- | ------------- | ------------------------------------------------------ |
-| `.icon`  | `IconifyIcon` | Icon data object (Lit property binding, not attribute) |
-| `spin`   | `boolean`     | Enable CSS rotation animation                          |
+| Attribute     | Type      | Default  | Description         |
+| ------------- | --------- | -------- | ------------------- |
+| `value`       | `string`  | `''`     | Input value         |
+| `type`        | `string`  | `'text'` | HTML input type     |
+| `placeholder` | `string`  | `''`     | Placeholder text    |
+| `name`        | `string`  | `''`     | Form field name     |
+| `disabled`    | `boolean` | `false`  | Disabled state      |
+| `required`    | `boolean` | `false`  | Required validation |
+| `clearable`   | `boolean` | `false`  | Show clear button   |
+| `full`        | `boolean` | `false`  | Full width          |
+| `borderless`  | `boolean` | `false`  | No border           |
+
+**Events:** `input`, `change`, `focus`, `blur`
+
+**Slots:** `prefix`, `default`, `suffix`
+
+#### `<web-ui-textarea>`
+
+Multi-line text input.
+
+| Attribute     | Type      | Default | Description         |
+| ------------- | --------- | ------- | ------------------- |
+| `value`       | `string`  | `''`    | Textarea value      |
+| `placeholder` | `string`  | `''`    | Placeholder text    |
+| `rows`        | `number`  | `3`     | Visible rows        |
+| `name`        | `string`  | `''`    | Form field name     |
+| `disabled`    | `boolean` | `false` | Disabled state      |
+| `required`    | `boolean` | `false` | Required validation |
+| `clearable`   | `boolean` | `false` | Show clear button   |
+
+**Events:** `input`, `change`, `focus`, `blur`
+
+#### `<web-ui-input-number>`
+
+Numeric input with step buttons and keyboard control.
+
+| Attribute     | Type      | Default     | Description         |
+| ------------- | --------- | ----------- | ------------------- |
+| `value`       | `number`  | `0`         | Current value       |
+| `min`         | `number`  | `-Infinity` | Minimum value       |
+| `max`         | `number`  | `Infinity`  | Maximum value       |
+| `step`        | `number`  | `1`         | Step increment      |
+| `precision`   | `number`  | auto        | Decimal precision   |
+| `placeholder` | `string`  | `''`        | Placeholder text    |
+| `name`        | `string`  | `''`        | Form field name     |
+| `disabled`    | `boolean` | `false`     | Disabled state      |
+| `required`    | `boolean` | `false`     | Required validation |
+
+**Events:** `input`, `change`
+
+ArrowUp/ArrowDown keyboard increments and decrements the value.
+
+#### `<web-ui-select>`
+
+Select dropdown with option items, keyboard navigation, and portal support.
+
+| Attribute          | Type                               | Default | Description                      |
+| ------------------ | ---------------------------------- | ------- | -------------------------------- |
+| `value`            | `string`                           | `''`    | Selected value                   |
+| `placeholder`      | `string`                           | `''`    | Placeholder text                 |
+| `name`             | `string`                           | `''`    | Form field name                  |
+| `disabled`         | `boolean`                          | `false` | Disabled state                   |
+| `required`         | `boolean`                          | `false` | Required validation              |
+| `full`             | `boolean`                          | `false` | Full width trigger               |
+| `portal`           | `boolean`                          | `false` | Render dropdown in theme overlay |
+| `lock-scroll`      | `boolean`                          | `true`  | Lock body scroll when open       |
+| `overlayContainer` | `HTMLElement \| () => HTMLElement` | —       | Explicit portal container        |
+
+**Events:** `input`, `change`, `open-change` (`CustomEvent<{ open: boolean }>`)
+
+**Slots:** `default` (project `<web-ui-option>` elements)
+
+**Methods:** none
+
+Child `<web-ui-option>` elements register via `option-register` / `option-unregister` events. Supports ArrowDown/ArrowUp/Enter/Escape keyboard navigation.
+
+#### `<web-ui-slider>`
+
+Range slider with marks and vertical orientation.
+
+| Attribute  | Type      | Default | Description          |
+| ---------- | --------- | ------- | -------------------- |
+| `value`    | `number`  | `0`     | Current value        |
+| `min`      | `number`  | `0`     | Minimum value        |
+| `max`      | `number`  | `100`   | Maximum value        |
+| `step`     | `number`  | `1`     | Step increment       |
+| `name`     | `string`  | `''`    | Form field name      |
+| `disabled` | `boolean` | `false` | Disabled state       |
+| `required` | `boolean` | `false` | Required validation  |
+| `marks`    | `boolean` | `false` | Show tick marks      |
+| `vertical` | `boolean` | `false` | Vertical orientation |
+
+**Events:** `input` (during drag), `change` (on release or keyboard)
+
+**Methods:** `focus()`, `blur()`
+
+Supports ArrowLeft/Right/Up/Down, Home/End, PageUp/PageDown keyboard navigation. Uses pointer capture for drag interaction across mouse, touch, and pen.
+
+#### `<web-ui-checkbox>`
+
+Individual checkbox.
+
+| Attribute  | Type      | Default | Description           |
+| ---------- | --------- | ------- | --------------------- |
+| `checked`  | `boolean` | `false` | Checked state         |
+| `value`    | `string`  | `''`    | Form submission value |
+| `name`     | `string`  | `''`    | Form field name       |
+| `disabled` | `boolean` | `false` | Disabled state        |
+| `required` | `boolean` | `false` | Required validation   |
+
+**Events:** `input`, `change`
+
+**Slots:** `default` (label text)
+
+Uses native `<label>` with `role="checkbox"` and `aria-checked`. Enter/Space keyboard toggle.
+
+#### `<web-ui-radio>`
+
+Individual radio button.
+
+| Attribute  | Type      | Default | Description           |
+| ---------- | --------- | ------- | --------------------- |
+| `checked`  | `boolean` | `false` | Checked state         |
+| `value`    | `string`  | `''`    | Form submission value |
+| `name`     | `string`  | `''`    | Form field name       |
+| `disabled` | `boolean` | `false` | Disabled state        |
+| `required` | `boolean` | `false` | Required validation   |
+
+**Events:** `input`, `change`
+
+**Slots:** `default` (label text)
+
+#### `<web-ui-switch>`
+
+Toggle switch.
+
+| Attribute  | Type      | Default | Description                                |
+| ---------- | --------- | ------- | ------------------------------------------ |
+| `checked`  | `boolean` | `false` | Checked (on) state                         |
+| `value`    | `string`  | `''`    | Form submission value (defaults to `'on'`) |
+| `name`     | `string`  | `''`    | Form field name                            |
+| `disabled` | `boolean` | `false` | Disabled state                             |
+| `required` | `boolean` | `false` | Required validation                        |
+| `loading`  | `boolean` | `false` | Loading (spinner) state                    |
+
+**Events:** `input`, `change`
+
+**Slots:** none
+
+Uses `role="switch"` and `aria-checked`. Pointer events for pressed visual state.
+
+#### `<web-ui-segmented>`
+
+Segmented control — single-select button group.
+
+| Attribute  | Type      | Default | Description            |
+| ---------- | --------- | ------- | ---------------------- |
+| `value`    | `string`  | `''`    | Selected trigger value |
+| `name`     | `string`  | `''`    | Form field name        |
+| `disabled` | `boolean` | `false` | Disabled state         |
+| `required` | `boolean` | `false` | Required validation    |
+
+**Events:** `input`, `change`
+
+**Slots:** `default` (project `<web-ui-segmented-trigger>` elements)
+
+Manages child trigger `checked` state based on `value`. Setting `value` directly does not dispatch `input`/`change`.
+
+#### `<web-ui-checkbox-group>`
+
+Checkbox group managing multiple selection.
+
+| Attribute  | Type       | Default | Description                             |
+| ---------- | ---------- | ------- | --------------------------------------- |
+| `value`    | `string[]` | `[]`    | Selected values                         |
+| `name`     | `string`   | `''`    | Form field name                         |
+| `disabled` | `boolean`  | `false` | Disabled state (propagates to children) |
+| `required` | `boolean`  | `false` | Required validation                     |
+
+**Events:** `input`, `change`
+
+**Slots:** `default` (project `<web-ui-checkbox>` elements)
+
+Syncs with child checkbox `checked`/`disabled` via public property access. Listens to child `change` events.
+
+#### `<web-ui-radio-group>`
+
+Radio group managing single selection.
+
+| Attribute  | Type      | Default | Description                              |
+| ---------- | --------- | ------- | ---------------------------------------- |
+| `value`    | `string`  | `''`    | Selected radio value                     |
+| `name`     | `string`  | `''`    | Form field name (propagates to children) |
+| `disabled` | `boolean` | `false` | Disabled state (propagates to children)  |
+| `required` | `boolean` | `false` | Required validation                      |
+
+**Events:** `input`, `change`
+
+**Slots:** `default` (project `<web-ui-radio>` elements)
+
+---
+
+### Buttons
+
+#### `<web-ui-button>`
+
+Styled button with variants and loading state.
+
+| Attribute  | Type                                                         | Default   | Description                            |
+| ---------- | ------------------------------------------------------------ | --------- | -------------------------------------- |
+| `variant`  | `'primary' \| 'secondary' \| 'ghost' \| 'danger' \| 'glass'` | `'glass'` | Button variant                         |
+| `disabled` | `boolean`                                                    | `false`   | Disabled state                         |
+| `loading`  | `boolean`                                                    | `false`   | Loading spinner                        |
+| `full`     | `boolean`                                                    | `false`   | Full width                             |
+| `icon`     | `boolean`                                                    | `false`   | Icon-only mode                         |
+| `size`     | `string`                                                     | `''`      | Size format `height` or `heightxwidth` |
+
+**Events:** standard `click`
+
+**Slots:** `prefix`, `default`, `suffix`
+
+Disabled and loading states prevent `click` events.
+
+#### `<web-ui-button-group>`
+
+Button group that manages child button layout and direction.
+
+| Attribute   | Type                         | Default        | Description      |
+| ----------- | ---------------------------- | -------------- | ---------------- |
+| `direction` | `'horizontal' \| 'vertical'` | `'horizontal'` | Layout direction |
+
+**Slots:** `default` (project `<web-ui-button>` elements)
+
+Propagates `direction` attribute to child buttons.
+
+---
+
+### Overlay / Modal
+
+#### `<web-ui-dialog>`
+
+Modal dialog using native `<dialog>` with `showModal()`.
+
+| Attribute          | Type      | Default | Description                |
+| ------------------ | --------- | ------- | -------------------------- |
+| `open`             | `boolean` | `false` | Dialog visibility          |
+| `lock-scroll`      | `boolean` | `true`  | Lock body scroll when open |
+| `overlay-closable` | `boolean` | `true`  | Close on backdrop click    |
+
+**Events:** `open-change` (`CustomEvent<{ open: boolean }>`)
+
+**Slots:** `body`, `title`, `default`, `footer`
+
+**Methods:** `showModal()`, `close()`
+
+Uses native `<dialog>` with `@cancel` prevention (Escape calls `close()`). Click on backdrop closes dialog.
+
+#### `<web-ui-drawer>`
+
+Side drawer using native `<dialog>` with closing animation.
+
+| Attribute          | Type                                     | Default   | Description                               |
+| ------------------ | ---------------------------------------- | --------- | ----------------------------------------- |
+| `open`             | `boolean`                                | `false`   | Drawer visibility                         |
+| `placement`        | `'right' \| 'left' \| 'top' \| 'bottom'` | `'right'` | Slide-in direction                        |
+| `heading`          | `string`                                 | `''`      | Title text (fallback when no header slot) |
+| `closable`         | `boolean`                                | `false`   | Show close button                         |
+| `lock-scroll`      | `boolean`                                | `true`    | Lock body scroll when open                |
+| `overlay-closable` | `boolean`                                | `true`    | Close on backdrop click                   |
+
+**Events:** `open-change` (`CustomEvent<{ open: boolean }>`)
+
+**Slots:** `header`, `default`, `footer`
+
+**Methods:** `show()`, `close()`
+
+Closing triggers a 300ms CSS animation before calling `dialog.close()`. Uses `@cancel` prevention for Escape key.
+
+---
+
+### Floating
+
+#### `<web-ui-popover>`
+
+Popover overlay anchored to trigger element.
+
+| Attribute          | Type                               | Default    | Description               |
+| ------------------ | ---------------------------------- | ---------- | ------------------------- |
+| `open`             | `boolean`                          | `false`    | Popover visibility        |
+| `disabled`         | `boolean`                          | `false`    | Disabled state            |
+| `placement`        | `Placement`                        | `'bottom'` | Floating UI placement     |
+| `trigger`          | `'click' \| 'hover' \| 'manual'`   | `'click'`  | Open trigger              |
+| `offset`           | `number`                           | `8`        | Offset from anchor        |
+| `portal`           | `boolean`                          | `false`    | Render in theme overlay   |
+| `overlayContainer` | `HTMLElement \| () => HTMLElement` | —          | Explicit portal container |
+
+**Events:** `open-change` (`CustomEvent<{ open: boolean }>`)
+
+**Slots:** `trigger`, `default`
+
+**Methods:** `show()`, `close()`, `toggle()`
+
+Hover mode uses `pointerenter`/`pointerleave` with delay. Click mode toggles on trigger click. Manual mode only responds to imperative `show()`/`close()`.
+
+#### `<web-ui-tooltip>`
+
+Tooltip overlay using pointer/focus triggers.
+
+| Attribute          | Type                               | Default | Description                        |
+| ------------------ | ---------------------------------- | ------- | ---------------------------------- |
+| `placement`        | `Placement`                        | `'top'` | Floating UI placement              |
+| `content`          | `string`                           | `''`    | Tooltip text (alternative to slot) |
+| `open`             | `boolean`                          | `false` | Tooltip visibility                 |
+| `disabled`         | `boolean`                          | `false` | Disabled state                     |
+| `show-delay`       | `number`                           | `200`   | Show delay in ms                   |
+| `hide-delay`       | `number`                           | `100`   | Hide delay in ms                   |
+| `offset`           | `number`                           | `6`     | Offset from trigger                |
+| `portal`           | `boolean`                          | `false` | Render in theme overlay            |
+| `overlayContainer` | `HTMLElement \| () => HTMLElement` | —       | Explicit portal container          |
+
+**Events:** `open-change` (`CustomEvent<{ open: boolean }>`)
+
+**Slots:** `default` (trigger), `content` (tooltip panel)
+
+Triggered by `pointerenter`/`pointerleave` and `focusin`/`focusout`. Uses delay timers for smooth transitions.
+
+#### `<web-ui-context-menu>`
+
+Right-click context menu.
+
+| Attribute     | Type      | Default | Description               |
+| ------------- | --------- | ------- | ------------------------- |
+| `disabled`    | `boolean` | `false` | Disabled state            |
+| `lock-scroll` | `boolean` | `true`  | Prevent background scroll |
+
+**Events:** `open-change` (`CustomEvent<{ open: boolean }>`)
+
+**Slots:** `default` (menu items content)
+
+**Methods:** `openAt(x: number, y: number)`, `close()`
+
+Opens on `contextmenu` event. Menu items: `<web-ui-dropdown-item>`, `<web-ui-dropdown-divider>`, `<web-ui-dropdown-header>`. Supports keyboard navigation (Arrow keys, Enter, Escape) and submenu hover with `pointerenter`.
+
+---
+
+### Menu
+
+#### `<web-ui-dropdown-menu>`
+
+Dropdown menu with multi-level submenu support.
+
+| Attribute     | Type        | Default          | Description                |
+| ------------- | ----------- | ---------------- | -------------------------- |
+| `open`        | `boolean`   | `false`          | Menu visibility            |
+| `disabled`    | `boolean`   | `false`          | Disabled state             |
+| `placement`   | `Placement` | `'bottom-start'` | Floating UI placement      |
+| `offset`      | `number`    | `4`              | Offset from trigger        |
+| `match-width` | `boolean`   | `false`          | Match trigger width        |
+| `lock-scroll` | `boolean`   | `true`           | Lock body scroll when open |
+
+**Events:** `open-change` (`CustomEvent<{ open: boolean }>`)
+
+**Slots:** `trigger`, `default` (menu items)
+
+**Methods:** `openMenu()`, `closeAll()`
+
+Items: `<web-ui-dropdown-item>`, `<web-ui-dropdown-divider>`, `<web-ui-dropdown-header>`. Submenus via `submenu` attribute on `<web-ui-dropdown-item>`. Full keyboard navigation (Arrow keys, Home, End, Enter, Space, Escape).
+
+#### `<web-ui-dropdown-item>`
+
+Menu item for dropdown-menu or context-menu.
+
+| Attribute  | Type      | Default | Description          |
+| ---------- | --------- | ------- | -------------------- |
+| `disabled` | `boolean` | `false` | Disabled state       |
+| `submenu`  | `boolean` | `false` | Has submenu children |
+
+**Slots:** `default`
+
+**Methods:** `focusItem()`
+
+Role: `menuitem`. Submenu items should be projected as child elements.
+
+#### `<web-ui-dropdown-divider>`
+
+Menu divider line. Role: `separator`. No attributes.
+
+#### `<web-ui-dropdown-header>`
+
+Menu section header. No attributes. Slots: `default` (text content).
+
+---
+
+### Data Display
+
+#### `<web-ui-avatar>`
+
+Avatar display with image fallback.
+
+| Attribute | Type                   | Default    | Description       |
+| --------- | ---------------------- | ---------- | ----------------- |
+| `src`     | `string`               | `''`       | Image source URL  |
+| `alt`     | `string`               | `''`       | Alternative text  |
+| `size`    | `number`               | `40`       | Avatar size in px |
+| `shape`   | `'circle' \| 'square'` | `'circle'` | Shape variant     |
+
+**Slots:** `default` (fallback content when image fails)
+
+#### `<web-ui-badge>`
+
+Badge / notification count.
+
+| Attribute   | Type      | Default | Description               |
+| ----------- | --------- | ------- | ------------------------- |
+| `count`     | `number`  | `0`     | Display count             |
+| `max`       | `number`  | `99`    | Maximum count (shows 99+) |
+| `dot`       | `boolean` | `false` | Dot mode (no count)       |
+| `show-zero` | `boolean` | `false` | Show when count is 0      |
+| `hidden`    | `boolean` | `false` | Hide completely           |
+
+#### `<web-ui-empty>`
+
+Empty state placeholder.
+
+| Attribute | Type                              | Default     | Description      |
+| --------- | --------------------------------- | ----------- | ---------------- |
+| `size`    | `'small' \| 'default' \| 'large'` | `'default'` | Empty state size |
+
+**Slots:** `default`, `description`, `image`, `action`
+
+#### `<web-ui-icon>`
+
+Icon renderer using Iconify data objects.
+
+| Property | Type          | Default | Description                      |
+| -------- | ------------- | ------- | -------------------------------- |
+| `.icon`  | `IconifyIcon` | —       | Icon data (Lit property binding) |
+| `size`   | `number`      | `18`    | Icon size in px                  |
+| `color`  | `string`      | —       | Icon color                       |
+| `spin`   | `boolean`     | `false` | Rotation animation               |
+
+Has `aria-hidden="true"`.
 
 ```js
 import { lucideLoaderCircle } from '@greypan/web-ui/icons'
-
-html`<web-ui-icon .icon=${lucideLoaderCircle} spin></web-ui-icon>`
+html`<web-ui-icon .icon=${lucideLoaderCircle} spin />`
 ```
 
-### `<web-ui-back-top>`
+#### `<web-ui-spinner>`
+
+Loading spinner.
+
+| Attribute | Type     | Default | Description        |
+| --------- | -------- | ------- | ------------------ |
+| `size`    | `number` | `24`    | Spinner size in px |
+| `color`   | `string` | —       | Spinner color      |
+
+Role: `status`, `aria-label="加载中"`.
+
+**Static API:** `spinner.show(config)`, `spinner.hide()`
+
+---
+
+### Layout & Utility
+
+#### `<web-ui-layout>`
+
+Page layout grid.
+
+| Slot      | Description     |
+| --------- | --------------- |
+| `header`  | Sticky top bar  |
+| `default` | Main content    |
+| `sidebar` | Side navigation |
+| `tabbar`  | Bottom tab bar  |
+
+#### `<web-ui-back-top>`
 
 Scroll-to-top button.
 
-| Attribute      | Type                    | Default  | Description                     |
-| -------------- | ----------------------- | -------- | ------------------------------- |
-| `smooth`       | `boolean`               | `true`   | Smooth scroll animation         |
-| `threshold`    | `number`                | `200`    | Scroll threshold to show button |
-| `visible`      | `boolean`               | `false`  | Current visibility state        |
-| `scrollTarget` | `HTMLElement \| Window` | `window` | Scroll container                |
+| Attribute      | Type                    | Default  | Description              |
+| -------------- | ----------------------- | -------- | ------------------------ |
+| `smooth`       | `boolean`               | `true`   | Smooth scroll            |
+| `threshold`    | `number`                | `200`    | Scroll threshold to show |
+| `visible`      | `boolean`               | `false`  | Current visibility state |
+| `scrollTarget` | `HTMLElement \| Window` | `window` | Scroll container         |
 
-**Events:**
+**Slots:** `default` (custom button content)
 
-| Event            | Detail                 | Description              |
-| ---------------- | ---------------------- | ------------------------ |
-| `visible-change` | `{ visible: boolean }` | Visibility state changed |
+**Methods:** `toTop()`
 
-### `<web-ui-layout>`
+Role: `button`, keyboard Enter scrolls to top.
 
-Page layout with slots.
+#### `<web-ui-svg-draw-lines>`
 
-| Slot      | Description       |
-| --------- | ----------------- |
-| `header`  | Header area       |
-| `sidebar` | Sidebar area      |
-| `tabbar`  | Tab bar area      |
-| (default) | Main content area |
-
-### `<web-ui-svg-draw-lines>`
-
-SVG line drawing animation component. Wraps an `<svg>` element and animates stroke-dashoffset.
+SVG line drawing animation using `stroke-dashoffset` animation.
 
 | Attribute  | Type     | Default    | Description              |
 | ---------- | -------- | ---------- | ------------------------ |
 | `duration` | `number` | `1000`     | Animation duration in ms |
 | `easing`   | `string` | `'linear'` | CSS easing function      |
 
-```html
-<web-ui-svg-draw-lines duration="2000" easing="ease-in-out">
-  <svg viewBox="0 0 100 100">
-    <path d="M10 10 L90 10 L90 90 L10 90 Z" fill="none" stroke="black" />
-  </svg>
-</web-ui-svg-draw-lines>
+**Slots:** `default` (single inline `<svg>` element)
+
+Animates `path`, `rect`, `circle`, `line`, `polyline`, `polygon`, `ellipse` elements. Clones the `<svg>` and applies individual stroke animations.
+
+#### `<web-ui-theme>`
+
+Theme provider defining CSS custom property tokens.
+
+| Attribute    | Type                            | Default   | Description  |
+| ------------ | ------------------------------- | --------- | ------------ |
+| `appearance` | `'light' \| 'dark' \| 'system'` | `'light'` | Color scheme |
+
+**Methods:** `getOverlayRoot()` — returns the portal overlay container
+
+Defines `--wui-color-*`, `--wui-shadow-*`, `--wui-layer-*` tokens. Nestable for scoped theming. System appearance follows `prefers-color-scheme`.
+
+---
+
+### Notification
+
+#### `<web-ui-toast>`
+
+Individual toast notification element. Managed by imperative API.
+
+**Imperative API:**
+
+```ts
+import { toast } from '@greypan/web-ui'
+
+// Create
+toast.success('Operation completed')
+toast.error('Something went wrong', { duration: 5000 })
+toast.info('Heads up')
+toast.warning('Be careful')
+
+// With options
+const id = toast({ message: 'Custom', type: 'info', position: 'bottom-right', duration: 4000, closable: true })
+
+// Close
+toast.close(id)
+toast.clear()
 ```
+
+**ToastOptions:**
+
+| Option     | Type                                                                                              | Default                   | Description                             |
+| ---------- | ------------------------------------------------------------------------------------------------- | ------------------------- | --------------------------------------- |
+| `message`  | `string`                                                                                          | —                         | Notification text                       |
+| `type`     | `'success' \| 'info' \| 'warning' \| 'error'`                                                     | `'info'`                  | Toast type                              |
+| `duration` | `number`                                                                                          | `3000` (`5000` for error) | Auto-close duration (0 = no auto-close) |
+| `closable` | `boolean`                                                                                         | `true`                    | Show close button                       |
+| `id`       | `string`                                                                                          | auto                      | Deduplication identifier                |
+| `heading`  | `string`                                                                                          | `''`                      | Bold heading                            |
+| `position` | `'top-left' \| 'top-center' \| 'top-right' \| 'bottom-left' \| 'bottom-center' \| 'bottom-right'` | `'top-right'`             | Screen position                         |
+| `target`   | `Element`                                                                                         | —                         | Used to find nearest theme scope        |
+
+**Events:** `toast-close` (`CustomEvent<{ id: string; reason: 'auto' | 'manual' | 'programmatic' | 'clear' }>`)
+
+Hover pauses auto-close timer (uses `pointerenter`/`pointerleave`). Batch-mounts toasts created in the same microtask.
+
+---
+
+### Sub-items
+
+#### `<web-ui-option>`
+
+Selection option for `<web-ui-select>`.
+
+| Attribute  | Type      | Default | Description        |
+| ---------- | --------- | ------- | ------------------ |
+| `value`    | `string`  | `''`    | Selection value    |
+| `selected` | `boolean` | `false` | Currently selected |
+| `disabled` | `boolean` | `false` | Disabled state     |
+
+Not form-associated (child of select, not independent submit).
+
+#### `<web-ui-segmented-trigger>`
+
+Segment trigger for `<web-ui-segmented>`.
+
+| Attribute  | Type      | Default | Description        |
+| ---------- | --------- | ------- | ------------------ |
+| `value`    | `string`  | `''`    | Segment value      |
+| `checked`  | `boolean` | `false` | Currently selected |
+| `disabled` | `boolean` | `false` | Disabled state     |
+
+**Events:** `change`
+
+Not form-associated (child of segmented, not independent submit).
+
+---
+
+## All Components
+
+| Tag                        | Category         |
+| -------------------------- | ---------------- |
+| `web-ui-input`             | Form Control     |
+| `web-ui-textarea`          | Form Control     |
+| `web-ui-input-number`      | Form Control     |
+| `web-ui-select`            | Form Control     |
+| `web-ui-slider`            | Form Control     |
+| `web-ui-checkbox`          | Form Control     |
+| `web-ui-radio`             | Form Control     |
+| `web-ui-switch`            | Form Control     |
+| `web-ui-segmented`         | Form Control     |
+| `web-ui-checkbox-group`    | Form Control     |
+| `web-ui-radio-group`       | Form Control     |
+| `web-ui-button`            | Button           |
+| `web-ui-button-group`      | Button           |
+| `web-ui-dialog`            | Overlay / Modal  |
+| `web-ui-drawer`            | Overlay / Modal  |
+| `web-ui-popover`           | Floating         |
+| `web-ui-tooltip`           | Floating         |
+| `web-ui-context-menu`      | Floating         |
+| `web-ui-dropdown-menu`     | Menu             |
+| `web-ui-dropdown-item`     | Menu             |
+| `web-ui-dropdown-divider`  | Menu             |
+| `web-ui-dropdown-header`   | Menu             |
+| `web-ui-avatar`            | Data Display     |
+| `web-ui-badge`             | Data Display     |
+| `web-ui-empty`             | Data Display     |
+| `web-ui-icon`              | Data Display     |
+| `web-ui-spinner`           | Data Display     |
+| `web-ui-layout`            | Layout & Utility |
+| `web-ui-back-top`          | Layout & Utility |
+| `web-ui-svg-draw-lines`    | Layout & Utility |
+| `web-ui-theme`             | Layout & Utility |
+| `web-ui-toast`             | Notification     |
+| `web-ui-option`            | Sub-item         |
+| `web-ui-segmented-trigger` | Sub-item         |
