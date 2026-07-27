@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { local } from '@greypan/browser-kit/storage'
-import { ref } from 'vue'
-import { RouterLink, useRoute } from 'vue-router'
+import { onMounted, ref } from 'vue'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
 
 type ThemeAppearance = 'light' | 'dark' | 'system'
 
@@ -28,6 +28,17 @@ function updateThemeAppearance(event: Event) {
 }
 
 const route = useRoute()
+const router = useRouter()
+const navSidebar = ref<HTMLElement>()
+
+onMounted(async () => {
+  // 等待 Vue Router 完成首次导航，确保 router-link-active class 已就绪
+  await router.isReady()
+  requestAnimationFrame(() => {
+    const link = navSidebar.value?.querySelector('.router-link-exact-active')
+    link?.scrollIntoView({ block: 'center' })
+  })
+})
 
 interface NavItem {
   path: string
@@ -74,12 +85,12 @@ const navItems: NavItem[] = [
             aria-label="全局主题"
             @change="updateThemeAppearance"
           >
-            <web-ui-option value="light">浅色</web-ui-option>
-            <web-ui-option value="dark">深色</web-ui-option>
-            <web-ui-option value="system">跟随系统</web-ui-option>
+            <web-ui-option value="light" label="浅色">浅色1</web-ui-option>
+            <web-ui-option value="dark" label="深色">深色2</web-ui-option>
+            <web-ui-option value="system" label="跟随系统">跟随系统3</web-ui-option>
           </web-ui-select>
         </div>
-        <nav slot="sidebar" class="h-full overflow-y-auto px-2 pt-3 pb-2">
+        <nav ref="navSidebar" slot="sidebar" class="h-full overflow-y-auto px-2 pt-3 pb-2">
           <div class="px-3 pb-2 text-xs font-semibold uppercase text-[var(--wui-color-text-muted)]">组件列表</div>
           <RouterLink
             v-for="item in navItems"

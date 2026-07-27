@@ -1,9 +1,10 @@
 import { describe, expect, it, vi } from 'vite-plus/test'
 
-import { waitForUpdate, spyEvents, expectReflected, cleanupElement, queryA11y } from '@/shared/test-utils'
+import type { WebUiOption } from '@/components/option'
 
 import '..'
 import '@/components/option'
+import { waitForUpdate, spyEvents, expectReflected, cleanupElement, queryA11y } from '@/shared/test-utils'
 
 import type { WebUiSelect } from '..'
 
@@ -21,9 +22,9 @@ describe('WebUiSelect', () => {
   }
 
   const OPTIONS_HTML = `
-    <web-ui-option value="apple">Apple</web-ui-option>
-    <web-ui-option value="banana">Banana</web-ui-option>
-    <web-ui-option value="cherry">Cherry</web-ui-option>
+    <web-ui-option value="apple" label="Apple"></web-ui-option>
+    <web-ui-option value="banana" label="Banana"></web-ui-option>
+    <web-ui-option value="cherry" label="Cherry"></web-ui-option>
   `
 
   describe('宿主属性', () => {
@@ -47,13 +48,38 @@ describe('WebUiSelect', () => {
       cleanupElement(el)
     })
 
+    it('未设置 option label 时使用默认 slot 文本作为选中标签', async () => {
+      const el = createSelect('<web-ui-option value="apple">Apple</web-ui-option>', { value: 'apple' })
+      await waitForUpdate(el)
+
+      const trigger = queryA11y(el, '[role="combobox"]')
+      expect(trigger?.textContent?.includes('Apple')).toBe(true)
+
+      cleanupElement(el)
+    })
+
+    it('已选 option 的 label 更新后同步触发器文本', async () => {
+      const el = createSelect(OPTIONS_HTML, { value: 'apple' })
+      await waitForUpdate(el)
+
+      const option = el.querySelector<WebUiOption>('web-ui-option')!
+      option.label = 'Updated Apple'
+      await option.updateComplete
+      await waitForUpdate(el)
+
+      const trigger = queryA11y(el, '[role="combobox"]')
+      expect(trigger?.textContent?.includes('Updated Apple')).toBe(true)
+
+      cleanupElement(el)
+    })
+
     it('选项在连接后插入时同步标签', async () => {
       const el = createSelect('', { value: 'banana' })
       await waitForUpdate(el)
 
       const option = document.createElement('web-ui-option')
       option.setAttribute('value', 'banana')
-      option.textContent = 'Banana'
+      option.label = 'Banana'
       el.append(option)
       await waitForUpdate(el)
 
@@ -165,6 +191,43 @@ describe('WebUiSelect', () => {
 
       expect(el.value).toBe('banana')
       expect(el.open).toBe(false)
+
+      cleanupElement(el)
+    })
+
+    it('点击 option 的 prefix 装饰仍选择所属 option', async () => {
+      const el = createSelect('<web-ui-option value="apple" label="Apple"><span slot="prefix">P</span></web-ui-option>')
+      await waitForUpdate(el)
+
+      const trigger = queryA11y(el, '[role="combobox"]') as HTMLElement
+      trigger.click()
+      await waitForUpdate(el)
+
+      ;(el.querySelector('[slot="prefix"]') as HTMLElement).click()
+      await waitForUpdate(el)
+
+      expect(el.value).toBe('apple')
+      expect(el.open).toBe(false)
+
+      cleanupElement(el)
+    })
+
+    it('点击禁用 option 的 suffix 装饰不改变选中值', async () => {
+      const el = createSelect(
+        '<web-ui-option value="apple" label="Apple"></web-ui-option><web-ui-option value="banana" label="Banana" disabled><span slot="suffix">S</span></web-ui-option>'
+      )
+      el.value = 'apple'
+      await waitForUpdate(el)
+
+      const trigger = queryA11y(el, '[role="combobox"]') as HTMLElement
+      trigger.click()
+      await waitForUpdate(el)
+
+      ;(el.querySelector('[slot="suffix"]') as HTMLElement).click()
+      await waitForUpdate(el)
+
+      expect(el.value).toBe('apple')
+      expect(el.open).toBe(true)
 
       cleanupElement(el)
     })
@@ -404,6 +467,113 @@ describe('WebUiSelect', () => {
       await waitForUpdate(el)
 
       expect(el.open).toBe(true)
+
+      cleanupElement(el)
+    })
+  })
+
+  describe('trigger slot', () => {
+    it('提供 trigger slot 时渲染 slot 内容', async () => {
+      const el = createSelect(OPTIONS_HTML)
+      el.innerHTML = `
+        <span slot="trigger">Custom Trigger</span>
+        ${OPTIONS_HTML}
+      `
+      await waitForUpdate(el)
+
+      // slot 投影内容在 light DOM 中，不在 shadow root 内
+      const slotEl = el.querySelector('[slot="trigger"]') as HTMLElement | null
+      expect(slotEl).toBeTruthy()
+      expect(slotEl!.textContent?.trim()).toBe('Custom Trigger')
+
+      cleanupElement(el)
+    })
+
+    it('提供 trigger slot 时隐藏默认 label', async () => {
+      const el = createSelect(OPTIONS_HTML, { placeholder: '请选择' })
+      el.innerHTML = `
+        <span slot="trigger">Custom Trigger</span>
+        ${OPTIONS_HTML}
+      `
+      await waitForUpdate(el)
+
+      const label = el.shadowRoot?.querySelector('.label') as HTMLElement | null
+      expect(label).toBeNull()
+
+      cleanupElement(el)
+    })
+
+    it('不提供 trigger slot 时显示默认 label', async () => {
+      const el = createSelect(OPTIONS_HTML, { placeholder: '请选择' })
+      await waitForUpdate(el)
+
+      const label = el.shadowRoot?.querySelector('.label') as HTMLElement | null
+      expect(label).toBeTruthy()
+      expect(label!.textContent?.trim()).toBe('请选择')
+
+      cleanupElement(el)
+    })
+
+    it('点击 trigger slot 内容打开浮层', async () => {
+      const el = createSelect(OPTIONS_HTML)
+      el.innerHTML = `
+        <span slot="trigger">Click me</span>
+        ${OPTIONS_HTML}
+      `
+      await waitForUpdate(el)
+
+      const trigger = queryA11y(el, '[role="combobox"]') as HTMLElement
+      trigger.click()
+      await waitForUpdate(el)
+
+      expect(el.open).toBe(true)
+      expect(trigger.getAttribute('aria-expanded')).toBe('true')
+
+      cleanupElement(el)
+    })
+
+    it('trigger slot 模式下选择选项仍更新 value', async () => {
+      const el = createSelect(OPTIONS_HTML)
+      el.innerHTML = `
+        <span slot="trigger">Pick one</span>
+        ${OPTIONS_HTML}
+      `
+      await waitForUpdate(el)
+
+      const trigger = queryA11y(el, '[role="combobox"]') as HTMLElement
+      trigger.click()
+      await waitForUpdate(el)
+
+      const options = el.querySelectorAll('web-ui-option')
+      ;(options[0] as HTMLElement).click()
+      await waitForUpdate(el)
+
+      expect(el.value).toBe('apple')
+      expect(el.open).toBe(false)
+
+      cleanupElement(el)
+    })
+
+    it('trigger slot 模式下 open 属性正确反映状态', async () => {
+      const el = createSelect(OPTIONS_HTML)
+      el.innerHTML = `
+        <span slot="trigger">Trigger</span>
+        ${OPTIONS_HTML}
+      `
+      await waitForUpdate(el)
+
+      expect(el.hasAttribute('open')).toBe(false)
+
+      const trigger = queryA11y(el, '[role="combobox"]') as HTMLElement
+      trigger.click()
+      await waitForUpdate(el)
+
+      expect(el.hasAttribute('open')).toBe(true)
+
+      document.body.click()
+      await waitForUpdate(el)
+
+      expect(el.hasAttribute('open')).toBe(false)
 
       cleanupElement(el)
     })

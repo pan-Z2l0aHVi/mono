@@ -215,7 +215,7 @@ Select dropdown with option items, keyboard navigation, and portal support.
 
 **Events:** `input`, `change`, `open-change` (`CustomEvent<{ open: boolean }>`)
 
-**Slots:** `default` (project `<web-ui-option>` elements)
+**Slots:** `default` (project `<web-ui-option>` elements), `trigger` (custom trigger content — replaces the default label and chevron area)
 
 **Methods:** none
 
@@ -743,11 +743,14 @@ Hover pauses auto-close timer (uses `pointerenter`/`pointerleave`). Batch-mounts
 
 Selection option for `<web-ui-select>`.
 
-| Attribute  | Type      | Default | Description        |
-| ---------- | --------- | ------- | ------------------ |
-| `value`    | `string`  | `''`    | Selection value    |
-| `selected` | `boolean` | `false` | Currently selected |
-| `disabled` | `boolean` | `false` | Disabled state     |
+| Attribute  | Type      | Default | Description                                   |
+| ---------- | --------- | ------- | --------------------------------------------- |
+| `value`    | `string`  | `''`    | Selection value                               |
+| `label`    | `string`  | `''`    | Display text; falls back to default slot text |
+| `selected` | `boolean` | `false` | Currently selected                            |
+| `disabled` | `boolean` | `false` | Disabled state                                |
+
+**Slots:** `default` (fallback label text), `prefix` (content before label), `suffix` (content after label)
 
 Not form-associated (child of select, not independent submit).
 

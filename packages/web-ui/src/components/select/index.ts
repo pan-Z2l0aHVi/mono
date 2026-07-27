@@ -4,6 +4,7 @@ import { customElement, property, state } from 'lit/decorators.js'
 import '@/components/icon'
 import '@/components/option'
 import glass from '@/assets/glass.css?inline'
+import type { WebUiOption } from '@/components/option'
 import { lucideChevronDown } from '@/icons'
 import { withOverlay } from '@/shared/overlay/overlay'
 import type { OverlayApi } from '@/shared/overlay/overlay'
@@ -41,6 +42,7 @@ export class WebUiSelect extends LitElement {
     const old = this._value
     this._value = v
     this._internals?.setFormValue?.(v)
+    this.toggleAttribute('data-has-value', !!v)
     this.requestUpdate('value', old)
   }
 
@@ -51,8 +53,9 @@ export class WebUiSelect extends LitElement {
   @state() private _isOpen = false
   @state() private _activeIndex = -1
   @state() private _selectedLabel = ''
+  @state() private _hasTriggerSlot = false
 
-  private _options: HTMLElement[] = []
+  private _options: WebUiOption[] = []
   private _overlay?: OverlayApi
   private _portal?: OverlayPortal
   private _hasScrollLock = false
@@ -89,7 +92,10 @@ export class WebUiSelect extends LitElement {
     this._internals = this.attachInternals()
     // 同步 HTML 属性中预设的 value，补全访问器模式不处理 attribute 反射
     const attrValue = this.getAttribute('value')
-    if (attrValue !== null) this._value = attrValue
+    if (attrValue !== null) {
+      this._value = attrValue
+      this.toggleAttribute('data-has-value', !!attrValue)
+    }
     this._internals?.setFormValue?.(this._value)
     this.addEventListener('option-register', this._onOptionRegister)
     this.addEventListener('option-unregister', this._onOptionUnregister)
@@ -109,6 +115,7 @@ export class WebUiSelect extends LitElement {
       o.removeEventListener('click', this._handleOptionClick)
       o.removeEventListener('mouseover', this._handleOptionMouseOver)
       o.removeEventListener('pointerdown', this._handleOptionPointerDown)
+      o.removeEventListener('option-update', this._onOptionUpdate)
     })
     this._close()
     this._disposeOverlay()
@@ -123,8 +130,8 @@ export class WebUiSelect extends LitElement {
 
   override willUpdate() {
     this._options = this._portal
-      ? [...this._portal.panel.querySelectorAll<HTMLElement>('web-ui-option')]
-      : [...this.querySelectorAll<HTMLElement>('web-ui-option')]
+      ? [...this._portal.panel.querySelectorAll<WebUiOption>('web-ui-option')]
+      : [...this.querySelectorAll<WebUiOption>('web-ui-option')]
     this._ensureOptionIds()
     this._syncSelected()
   }
@@ -133,6 +140,7 @@ export class WebUiSelect extends LitElement {
     if (changed.has('portal') || changed.has('overlayContainer'))
       requestAnimationFrame(() => this._reconfigureOverlay())
     if (changed.has('lockScroll')) this._syncScrollLock()
+    this._syncOpenAttribute()
     this._syncValidity()
   }
 
@@ -150,16 +158,28 @@ export class WebUiSelect extends LitElement {
     else this._internals.setValidity({ valueMissing: true }, '请选择一项')
   }
 
+  private _syncOpenAttribute() {
+    this.toggleAttribute('open', this._isOpen)
+  }
+
+  private _onTriggerSlotChange = (e: Event) => {
+    const slot = e.target as HTMLSlotElement
+    const hasContent = slot.assignedElements().length > 0
+    if (this._hasTriggerSlot === hasContent) return
+    this._hasTriggerSlot = hasContent
+    this._reconfigureOverlay()
+  }
+
   private _syncSelected() {
     this._options.forEach(o => {
-      o.toggleAttribute('selected', o.getAttribute('value') === this.value)
+      o.selected = o.value === this.value
     })
     if (!this.value) {
       this._selectedLabel = this.placeholder
       return
     }
-    const option = this._options.find(o => o.getAttribute('value') === this.value)
-    this._selectedLabel = option?.textContent?.trim() || this.placeholder
+    const option = this._options.find(o => o.value === this.value)
+    this._selectedLabel = option?.label || this.placeholder
   }
 
   private _ensureOptionIds() {
@@ -170,10 +190,11 @@ export class WebUiSelect extends LitElement {
 
   private _onOptionRegister = (e: Event) => {
     if (!(e.target instanceof HTMLElement)) return
-    const target = e.target
+    const target = e.target as WebUiOption
     target.addEventListener('click', this._handleOptionClick)
     target.addEventListener('mouseover', this._handleOptionMouseOver)
     target.addEventListener('pointerdown', this._handleOptionPointerDown)
+    target.addEventListener('option-update', this._onOptionUpdate)
     this._options.push(target)
     this._ensureOptionIds()
     this._syncSelected()
@@ -181,29 +202,35 @@ export class WebUiSelect extends LitElement {
 
   private _onOptionUnregister = (e: Event) => {
     if (!(e.target instanceof HTMLElement)) return
-    const target = e.target
+    const target = e.target as WebUiOption
     target.removeEventListener('click', this._handleOptionClick)
     target.removeEventListener('mouseover', this._handleOptionMouseOver)
     target.removeEventListener('pointerdown', this._handleOptionPointerDown)
+    target.removeEventListener('option-update', this._onOptionUpdate)
     this._options = this._options.filter(o => o !== target)
   }
 
   private _onSlotChange = () => {
     const options = this._portal
-      ? [...this._portal.panel.querySelectorAll<HTMLElement>('web-ui-option')]
-      : [...this.querySelectorAll<HTMLElement>('web-ui-option')]
+      ? [...this._portal.panel.querySelectorAll<WebUiOption>('web-ui-option')]
+      : [...this.querySelectorAll<WebUiOption>('web-ui-option')]
     this._options = options
     this._ensureOptionIds()
     this._syncSelected()
   }
 
   private _handleOptionClick = (e: Event) => {
-    if (!(e.target instanceof HTMLElement)) return
-    const target = e.target
-    if (target.hasAttribute('disabled')) return
-    this.value = target.getAttribute('value') || ''
+    if (!(e.currentTarget instanceof HTMLElement)) return
+    const option = e.currentTarget as WebUiOption
+    if (option.disabled) return
+    this.value = option.value
     this._close()
     this._notifyValueChange()
+  }
+
+  private _onOptionUpdate = () => {
+    this._syncSelected()
+    this._syncActiveOption()
   }
 
   private _handleOptionMouseOver = (e: Event) => {
@@ -245,8 +272,8 @@ export class WebUiSelect extends LitElement {
       case 'Enter':
         if (this._isOpen && this._activeIndex >= 0) {
           const option = this._options[this._activeIndex]
-          if (option && !option.hasAttribute('disabled')) {
-            this.value = option.getAttribute('value') || ''
+          if (option && !option.disabled) {
+            this.value = option.value
             this._notifyValueChange()
           }
           this._close()
@@ -257,12 +284,10 @@ export class WebUiSelect extends LitElement {
   }
 
   private _navigateActive(delta: number) {
-    const enabled = this._options.filter(o => !o.hasAttribute('disabled'))
+    const enabled = this._options.filter(o => !o.disabled)
     if (!enabled.length) return
 
-    const selectedOption = this._options.find(
-      option => option.getAttribute('value') === this.value && !option.hasAttribute('disabled')
-    )
+    const selectedOption = this._options.find(option => option.value === this.value && !option.disabled)
     const currentIdx =
       this._activeIndex >= 0
         ? enabled.indexOf(this._options[this._activeIndex])
@@ -315,10 +340,8 @@ export class WebUiSelect extends LitElement {
   }
 
   private _setInitialActiveOption() {
-    const selectedIndex = this._options.findIndex(
-      option => option.getAttribute('value') === this.value && !option.hasAttribute('disabled')
-    )
-    const firstEnabledIndex = this._options.findIndex(option => !option.hasAttribute('disabled'))
+    const selectedIndex = this._options.findIndex(option => option.value === this.value && !option.disabled)
+    const firstEnabledIndex = this._options.findIndex(option => !option.disabled)
     this._activeIndex = selectedIndex >= 0 ? selectedIndex : firstEnabledIndex
     this._syncActiveOption()
   }
@@ -355,26 +378,49 @@ export class WebUiSelect extends LitElement {
       anchor,
       overlay: panel,
       placement: 'bottom-start',
-      offset: 4,
-      matchWidth: true
+      offset: 4
     })
   }
 
   private _openOverlay() {
-    if (this.portal) this._openPortal()
-    else this._overlay?.open()
+    if (this.portal) {
+      this._openPortal()
+    } else {
+      const panel = this.shadowRoot?.querySelector<HTMLElement>('.select-overlay')
+      if (panel) panel.style.width = `${this._getDesiredWidth()}px`
+      this._overlay?.open()
+    }
+  }
+
+  private _getDesiredWidth(): number {
+    const trigger = this.shadowRoot?.querySelector<HTMLElement>('.select-trigger')
+    const triggerWidth = trigger?.offsetWidth || 0
+
+    const options = [...this.querySelectorAll<WebUiOption>('web-ui-option')]
+    let maxOptionWidth = 0
+    options.forEach(opt => {
+      const label = opt.shadowRoot?.querySelector<HTMLElement>('.option-label')
+      const w = label?.scrollWidth || opt.scrollWidth || 0
+      if (w > maxOptionWidth) maxOptionWidth = w
+    })
+
+    return Math.max(120, triggerWidth, maxOptionWidth)
   }
 
   private _openPortal() {
     if (this._portal) return
     const anchor = this.shadowRoot?.querySelector<HTMLElement>('.select-trigger')
     if (!anchor) return
+
+    const desiredWidth = this._getDesiredWidth()
+
     const portal = createOverlayPortal({
       container: this.overlayContainer,
       target: this,
       style: `${glass}\n${style}`,
       className: 'wui-glass select-overlay portal'
     })
+    portal.panel.style.width = `${desiredWidth}px`
     portal.panel.setAttribute('role', 'listbox')
     portal.moveContent(Array.from(this.children))
     this._portal = portal
@@ -383,7 +429,6 @@ export class WebUiSelect extends LitElement {
       overlay: portal.panel,
       placement: 'bottom-start',
       offset: 4,
-      matchWidth: true,
       strategy: 'fixed'
     })
     this._overlay.open()
@@ -417,6 +462,7 @@ export class WebUiSelect extends LitElement {
       <div class="wui-select-inner">
         <div
           class="wui-glass select-trigger"
+          ?data-custom-trigger=${this._hasTriggerSlot}
           @click=${this._togglePopup}
           tabindex=${this._isDisabled ? -1 : 0}
           role="combobox"
@@ -427,7 +473,8 @@ export class WebUiSelect extends LitElement {
             ? this._options[this._activeIndex]?.id
             : nothing}
         >
-          <span class="label">${this._selectedLabel}</span>
+          <slot name="trigger" @slotchange=${this._onTriggerSlotChange}></slot>
+          ${!this._hasTriggerSlot ? html`<span class="label">${this._selectedLabel}</span>` : nothing}
           <web-ui-icon class="arrow" .icon=${lucideChevronDown}></web-ui-icon>
         </div>
         <div class="wui-glass select-overlay" ?hidden=${!this._isOpen} role="listbox">

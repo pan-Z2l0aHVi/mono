@@ -5,9 +5,9 @@ import { waitForUpdate, expectReflected, cleanupElement } from '@/shared/test-ut
 
 import type { WebUiOption } from '..'
 
-const createOption = (attrs?: Record<string, string>, text = 'Option'): WebUiOption => {
+const createOption = (attrs?: Record<string, string>, label = 'Option'): WebUiOption => {
   const el = document.createElement('web-ui-option') as WebUiOption
-  el.textContent = text
+  el.label = label
   if (attrs) {
     for (const [k, v] of Object.entries(attrs)) {
       el.setAttribute(k, v)
@@ -63,6 +63,45 @@ describe('WebUiOption', () => {
     })
   })
 
+  describe('prop: label', () => {
+    it('label 可设置和获取', async () => {
+      const el = createOption()
+      el.label = 'Apple'
+      await waitForUpdate(el)
+      expect(el.label).toBe('Apple')
+      cleanupElement(el)
+    })
+
+    it('未设置 label 时回退到默认 slot 文本', async () => {
+      const el = createOption({ value: 'a' }, '')
+      el.textContent = 'Default label'
+      await waitForUpdate(el)
+
+      const slot = el.shadowRoot?.querySelector<HTMLSlotElement>('.content-wrap slot')
+      expect(
+        slot
+          ?.assignedNodes()
+          .map(node => node.textContent)
+          .join('')
+          .trim()
+      ).toBe('Default label')
+      expect(el.label).toBe('Default label')
+
+      cleanupElement(el)
+    })
+
+    it('label 渲染到 shadow DOM', async () => {
+      const el = createOption({ value: 'a' }, 'Hello World')
+      await waitForUpdate(el)
+
+      const content = el.shadowRoot?.querySelector('.content-wrap')
+      expect(content).toBeTruthy()
+      expect(content?.textContent?.trim()).toBe('Hello World')
+
+      cleanupElement(el)
+    })
+  })
+
   describe('注册/注销通信', () => {
     it('connectedCallback 派发 option-register', async () => {
       const handler = vi.fn<(e: Event) => void>()
@@ -93,6 +132,54 @@ describe('WebUiOption', () => {
       expect(handler).toHaveBeenCalledTimes(1)
       const detail = (handler.mock.calls[0][0] as CustomEvent).detail
       expect(detail.value).toBe('banana')
+
+      cleanupElement(el)
+    })
+  })
+
+  describe('slot: prefix / suffix', () => {
+    it('提供 prefix slot 时渲染 prefix 内容', async () => {
+      const el = createOption({ value: 'a' })
+      el.innerHTML = '<span slot="prefix">P</span>Option A'
+      await waitForUpdate(el)
+
+      const prefix = el.querySelector('[slot="prefix"]')
+      expect(prefix).toBeTruthy()
+      expect(prefix!.textContent?.trim()).toBe('P')
+
+      cleanupElement(el)
+    })
+
+    it('提供 suffix slot 时渲染 suffix 内容', async () => {
+      const el = createOption({ value: 'a' })
+      el.innerHTML = 'Option A<span slot="suffix">S</span>'
+      await waitForUpdate(el)
+
+      const suffix = el.querySelector('[slot="suffix"]')
+      expect(suffix).toBeTruthy()
+      expect(suffix!.textContent?.trim()).toBe('S')
+
+      cleanupElement(el)
+    })
+
+    it('无 prefix/suffix 时 label 正常显示', async () => {
+      const el = createOption({ value: 'a' }, 'Hello')
+      await waitForUpdate(el)
+
+      const wrap = el.shadowRoot?.querySelector('.content-wrap')
+      expect(wrap).toBeTruthy()
+      expect(wrap?.textContent?.trim()).toBe('Hello')
+
+      cleanupElement(el)
+    })
+
+    it('prefix + label + suffix 同时存在', async () => {
+      const el = createOption({ value: 'a' }, 'Apple')
+      el.innerHTML = '<span slot="prefix">★</span><span slot="suffix">10</span>'
+      await waitForUpdate(el)
+
+      expect(el.querySelector('[slot="prefix"]')?.textContent?.trim()).toBe('★')
+      expect(el.querySelector('[slot="suffix"]')?.textContent?.trim()).toBe('10')
 
       cleanupElement(el)
     })

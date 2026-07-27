@@ -18,6 +18,8 @@ export interface OverlayOptions {
   shift?: boolean
   /** Sync overlay width to anchor width */
   matchWidth?: boolean
+  /** Set overlay min-width to anchor width (content can expand wider) */
+  minAnchorWidth?: boolean
   strategy?: Strategy
 }
 
@@ -37,6 +39,7 @@ const DEFAULT_OPTIONS: Required<OverlayOptions> = {
   flip: true,
   shift: true,
   matchWidth: false,
+  minAnchorWidth: false,
   strategy: 'absolute'
 }
 
@@ -48,6 +51,7 @@ export const withOverlay = definePlugin<OverlayApi, { anchor: HTMLElement; overl
       flip: ctx.flip ?? DEFAULT_OPTIONS.flip,
       shift: ctx.shift ?? DEFAULT_OPTIONS.shift,
       matchWidth: ctx.matchWidth ?? DEFAULT_OPTIONS.matchWidth,
+      minAnchorWidth: ctx.minAnchorWidth ?? DEFAULT_OPTIONS.minAnchorWidth,
       strategy: ctx.strategy ?? DEFAULT_OPTIONS.strategy
     }
 
@@ -65,6 +69,14 @@ export const withOverlay = definePlugin<OverlayApi, { anchor: HTMLElement; overl
           size({
             apply({ rects }) {
               overlay.style.width = `${rects.reference.width}px`
+            }
+          })
+        )
+      } else if (options.minAnchorWidth) {
+        middleware.push(
+          size({
+            apply({ rects }) {
+              overlay.style.minWidth = `${Math.max(rects.reference.width, 120)}px`
             }
           })
         )

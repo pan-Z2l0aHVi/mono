@@ -209,14 +209,13 @@ ArrowUp/ArrowDown 键增减数值。
 | `name`             | `string`                           | `''`    | 表单字段名           |
 | `disabled`         | `boolean`                          | `false` | 禁用状态             |
 | `required`         | `boolean`                          | `false` | 必填校验             |
-| `full`             | `boolean`                          | `false` | 全宽触发器           |
 | `portal`           | `boolean`                          | `false` | 在主题浮层容器中渲染 |
 | `lock-scroll`      | `boolean`                          | `true`  | 打开时锁定页面滚动   |
 | `overlayContainer` | `HTMLElement \| () => HTMLElement` | —       | 显式 Portal 容器     |
 
 **事件：** `input`, `change`, `open-change` (`CustomEvent<{ open: boolean }>`)
 
-**插槽：** `default`（投影 `<web-ui-option>` 元素）
+**插槽：** `default`（投影 `<web-ui-option>` 元素）、`trigger`（自定义触发区域内容，替换默认 label 和箭头）
 
 子 `<web-ui-option>` 通过 `option-register` / `option-unregister` 注册。支持 ArrowDown/ArrowUp/Enter/Escape 键盘导航。
 
@@ -740,11 +739,14 @@ toast.clear()
 
 `<web-ui-select>` 的选择选项。
 
-| 属性       | 类型      | 默认值  | 说明         |
-| ---------- | --------- | ------- | ------------ |
-| `value`    | `string`  | `''`    | 选中值       |
-| `selected` | `boolean` | `false` | 当前是否选中 |
-| `disabled` | `boolean` | `false` | 禁用状态     |
+| 属性       | 类型      | 默认值  | 说明                               |
+| ---------- | --------- | ------- | ---------------------------------- |
+| `value`    | `string`  | `''`    | 选中值                             |
+| `label`    | `string`  | `''`    | 显示文本；未设置时回退默认插槽文本 |
+| `selected` | `boolean` | `false` | 当前是否选中                       |
+| `disabled` | `boolean` | `false` | 禁用状态                           |
+
+**插槽：** `default`（标签文本回退）、`prefix`（标签前装饰内容）、`suffix`（标签后装饰内容）
 
 非表单关联组件（父级 select 统一提交）。
 
