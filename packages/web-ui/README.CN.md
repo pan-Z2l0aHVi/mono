@@ -711,6 +711,9 @@ const id = toast({ message: '自定义', type: 'info', position: 'bottom-right',
 // 关闭
 toast.close(id)
 toast.clear()
+
+// 更新可见内容，不重置自动关闭计时
+toast.updateMessage(id, { message: '上传已完成 60%', heading: '正在上传' })
 ```
 
 **ToastOptions：**
@@ -726,6 +729,8 @@ toast.clear()
 | `position`  | 6 种位置                                      | `'top-right'`             | 屏幕位置                     |
 | `target`    | `Element`                                     | —                         | 用于查找最近主题作用域       |
 | `container` | `HTMLElement`                                 | —                         | 显式挂载容器（最高优先级）   |
+
+**`toast.updateMessage(id, options)`** 更新可见 Toast 的 `message`，并在传入时更新 `heading`；不会重置自动关闭计时。`options` 类型为 `ToastMessageUpdateOptions`：`{ message: string; heading?: string }`。
 
 **事件：** `toast-close` (`CustomEvent<{ id: string; reason: 'auto' | 'manual' | 'programmatic' | 'clear' }>`)
 

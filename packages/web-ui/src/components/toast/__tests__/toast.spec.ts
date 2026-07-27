@@ -304,6 +304,36 @@ describe('toast 命令式 API', () => {
     })
   })
 
+  describe('toast.updateMessage()', () => {
+    it('立即更新已挂载 toast 的 message 和 heading', async () => {
+      const id = toast.info('旧消息', { heading: '旧标题', duration: 0 })
+      await waitForToastMounted()
+
+      toast.updateMessage(id, { message: '新消息', heading: '新标题' })
+      const el = Array.from(getToasts()).find(toastEl => toastEl.toastId === id)
+      await el?.updateComplete
+
+      expect(el?.shadowRoot?.querySelector('.toast-heading')?.textContent?.trim()).toBe('新标题')
+      expect(el?.shadowRoot?.querySelector('.toast-message')?.textContent?.trim()).toBe('新消息')
+    })
+
+    it('未传入 heading 时保留现有标题', async () => {
+      const id = toast.info('旧消息', { heading: '保留标题', duration: 0 })
+      await waitForToastMounted()
+
+      toast.updateMessage(id, { message: '新消息' })
+      const el = Array.from(getToasts()).find(toastEl => toastEl.toastId === id)
+      await el?.updateComplete
+
+      expect(el?.heading).toBe('保留标题')
+      expect(el?.message).toBe('新消息')
+    })
+
+    it('更新不存在的 id 不抛出异常', () => {
+      expect(() => toast.updateMessage('missing', { message: '忽略' })).not.toThrow()
+    })
+  })
+
   describe('toast.clear()', () => {
     it('清除所有 toast', async () => {
       toast.info('1')

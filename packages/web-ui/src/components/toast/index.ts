@@ -1,5 +1,5 @@
 import type { IconifyIcon } from '@iconify/types'
-import { html, LitElement, type PropertyValues, unsafeCSS } from 'lit'
+import { html, LitElement, nothing, type PropertyValues, unsafeCSS } from 'lit'
 
 import '@/components/icon'
 import { customElement, property } from 'lit/decorators.js'
@@ -7,29 +7,18 @@ import { customElement, property } from 'lit/decorators.js'
 import glass from '@/assets/glass.css?inline'
 import { lucideCheck, lucideInfo, lucideTriangleAlert, lucideCircleAlert, heroiconsXMark16Solid } from '@/icons'
 import { booleanWithFalseString } from '@/shared/property-converters/boolean-with-false-string'
-import { getFallbackOverlayRoot } from '@/shared/theme/overlay-root'
-import { findNearestTheme, findRootTheme } from '@/shared/theme/theme-scope'
 
 import style from './style.css?inline'
+import type { ToastCloseReason, ToastPosition, ToastType } from './types'
 
-export type ToastType = 'success' | 'info' | 'warning' | 'error'
-export type ToastCloseReason = 'auto' | 'manual' | 'programmatic' | 'clear'
-export type ToastPosition = 'top-left' | 'top-center' | 'top-right' | 'bottom-left' | 'bottom-center' | 'bottom-right'
-
-export interface ToastOptions {
-  message: string
-  type?: ToastType
-  duration?: number
-  closable?: boolean
-  id?: string
-  heading?: string
-  /** 用于解析最近 web-ui-theme 的触发元素。 */
-  target?: Element
-  /** 显式挂载容器，优先级高于 target 和主题作用域。 */
-  container?: HTMLElement
-}
-
-let toastIdCounter = 0
+export type {
+  ToastCloseReason,
+  ToastInstanceOptions,
+  ToastMessageUpdateOptions,
+  ToastOptions,
+  ToastPosition,
+  ToastType
+} from './types'
 
 const TYPE_ICONS: Record<ToastType, IconifyIcon> = {
   success: lucideCheck,
@@ -164,7 +153,7 @@ export class WebUiToast extends LitElement {
           <web-ui-icon .icon=${icon} :size="18"></web-ui-icon>
         </span>
         <div class="toast-body">
-          ${this.heading ? html`<div class="toast-heading">${this.heading}</div>` : html``}
+          ${this.heading ? html`<div class="toast-heading">${this.heading}</div>` : nothing}
           <div class="toast-message">${this.message}</div>
         </div>
         <span class="toast-time">${_formatTime()}</span>
@@ -174,7 +163,7 @@ export class WebUiToast extends LitElement {
                 <web-ui-icon .icon=${heroiconsXMark16Solid} :size="10"></web-ui-icon>
               </button>
             `
-          : html``}
+          : nothing}
       </div>
     `
   }
@@ -190,164 +179,4 @@ declare global {
   }
 }
 
-export interface ToastInstanceOptions extends ToastOptions {
-  position?: ToastPosition
-}
-
-function generateId(): string {
-  return `toast-${++toastIdCounter}`
-}
-
-const toastContainers = new Set<HTMLElement>()
-
-function ensureContainer(position: ToastPosition, root: HTMLElement): HTMLElement {
-  const existing = Array.from(root.children).find(
-    (child): child is HTMLElement => child instanceof HTMLElement && child.dataset.wuiToastPosition === position
-  )
-  if (existing) return existing
-
-  const container = document.createElement('div')
-  container.className = `wui-toast-container wui-toast-${position}`
-  container.dataset.wuiToastPosition = position
-  container.setAttribute('role', 'log')
-  container.setAttribute('aria-live', 'polite')
-  container.setAttribute('aria-relevant', 'additions')
-  root.appendChild(container)
-  toastContainers.add(container)
-
-  container.addEventListener('pointerenter', () => (container.dataset.hovered = 'true'))
-  container.addEventListener('pointerleave', () => {
-    delete container.dataset.hovered
-    _scrollToBottom(container)
-  })
-  return container
-}
-
-/** 自动滚动容器到底部（仅在非 hover 状态） */
-function _scrollToBottom(container: HTMLElement) {
-  if (container.dataset.hovered === 'true') return
-  // 用 requestAnimationFrame 确保 DOM 更新后再滚动
-  requestAnimationFrame(() => {
-    container.scrollTop = container.scrollHeight
-  })
-}
-
-const visibleToasts = new Map<string, WebUiToast>()
-
-let _pendingBatch: Array<{ id: string; options: ToastInstanceOptions; container: HTMLElement }> | null = null
-let _batchScheduled = false
-
-function _scheduleBatchFlush() {
-  if (_batchScheduled) return
-  _batchScheduled = true
-  void Promise.resolve().then(_flushBatch)
-}
-
-function _flushBatch() {
-  _batchScheduled = false
-  const batch = _pendingBatch
-  _pendingBatch = null
-  if (!batch) return
-
-  const containersToScroll = new Set<HTMLElement>()
-  for (const item of batch) {
-    _mountToast(item.id, item.options, item.container)
-    containersToScroll.add(item.container)
-  }
-  for (const c of containersToScroll) {
-    _scrollToBottom(c)
-  }
-}
-
-function createToast(options: ToastInstanceOptions): string {
-  const id = options.id || generateId()
-
-  if (visibleToasts.has(id)) return id
-
-  const position = options.position || 'top-right'
-  const targetTheme = options.target ? findNearestTheme(options.target) : findRootTheme()
-  const root = options.container ?? targetTheme?.getOverlayRoot() ?? getFallbackOverlayRoot()
-  const container = ensureContainer(position, root)
-
-  if (!_pendingBatch) _pendingBatch = []
-  _pendingBatch.push({ id, options, container })
-  _scheduleBatchFlush()
-  return id
-}
-
-function _mountToast(id: string, options: ToastInstanceOptions, container: HTMLElement) {
-  const el = document.createElement('web-ui-toast') as WebUiToast
-  el.toastId = id
-  el.type = options.type || 'info'
-  el.position = options.position || 'top-right'
-  el.heading = options.heading || ''
-  el.message = options.message
-  el.duration = options.duration ?? 3000
-  el.closable = options.closable ?? true
-
-  el.addEventListener('toast-close', (e: Event) => {
-    const detail = (e as CustomEvent).detail
-    _removeToast(detail.id, detail.reason)
-  })
-
-  container.appendChild(el)
-  visibleToasts.set(id, el)
-  requestAnimationFrame(() => el.show())
-}
-
-function _removeToast(id: string, _reason: ToastCloseReason) {
-  const el = visibleToasts.get(id)
-  if (!el) return
-  el.remove()
-  visibleToasts.delete(id)
-}
-
-function close(id: string) {
-  const el = visibleToasts.get(id)
-  if (el) el.dismiss('programmatic')
-}
-
-function clear() {
-  for (const [, el] of visibleToasts) {
-    el.dismiss('clear')
-  }
-}
-
-function toast(options: ToastInstanceOptions): string {
-  return createToast(options)
-}
-
-type ToastShortcutOptions = Omit<ToastOptions, 'message' | 'type'> & Pick<ToastInstanceOptions, 'position'>
-
-toast.success = (message: string, options?: ToastShortcutOptions) =>
-  createToast({ ...options, message, type: 'success' })
-
-toast.info = (message: string, options?: ToastShortcutOptions) => createToast({ ...options, message, type: 'info' })
-
-toast.warning = (message: string, options?: ToastShortcutOptions) =>
-  createToast({ ...options, message, type: 'warning' })
-
-toast.error = (message: string, options?: ToastShortcutOptions) =>
-  createToast({ ...options, message, type: 'error', duration: options?.duration ?? 5000 })
-
-toast.close = close
-toast.clear = clear
-
-/** 获取当前可见 toast 数量（测试用） */
-toast._visibleCount = () => visibleToasts.size
-
-/** 重置全部状态（测试用） */
-toast._reset = () => {
-  _pendingBatch = null
-  _batchScheduled = false
-  for (const [, el] of visibleToasts) {
-    el.remove()
-  }
-  visibleToasts.clear()
-  for (const container of toastContainers) {
-    container.remove()
-  }
-  toastContainers.clear()
-}
-
-export { toast }
+export { toast } from './manager'

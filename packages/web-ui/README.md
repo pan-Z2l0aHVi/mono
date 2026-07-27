@@ -715,6 +715,9 @@ const id = toast({ message: 'Custom', type: 'info', position: 'bottom-right', du
 // Close
 toast.close(id)
 toast.clear()
+
+// Update visible content without resetting auto-close timing
+toast.updateMessage(id, { message: 'Upload 60% complete', heading: 'Uploading' })
 ```
 
 **ToastOptions:**
@@ -730,6 +733,8 @@ toast.clear()
 | `position`  | `'top-left' \| 'top-center' \| 'top-right' \| 'bottom-left' \| 'bottom-center' \| 'bottom-right'` | `'top-right'`             | Screen position                             |
 | `target`    | `Element`                                                                                         | —                         | Used to find nearest theme scope            |
 | `container` | `HTMLElement`                                                                                     | —                         | Explicit mount container (highest priority) |
+
+**`toast.updateMessage(id, options)`** updates the visible toast's `message` and, when supplied, `heading`. It does not restart the auto-close timer. `options` is `ToastMessageUpdateOptions`: `{ message: string; heading?: string }`.
 
 **Events:** `toast-close` (`CustomEvent<{ id: string; reason: 'auto' | 'manual' | 'programmatic' | 'clear' }>`)
 
