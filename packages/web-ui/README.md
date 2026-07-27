@@ -85,9 +85,46 @@ import '@greypan/web-ui/types/vue'
 </template>
 ```
 
-## API Reference
+## All Components
 
----
+| Category             | Component                                                 |
+| -------------------- | --------------------------------------------------------- |
+| **Form Controls**    | [`<web-ui-input>`](#web-ui-input)                         |
+|                      | [`<web-ui-textarea>`](#web-ui-textarea)                   |
+|                      | [`<web-ui-input-number>`](#web-ui-input-number)           |
+|                      | [`<web-ui-select>`](#web-ui-select)                       |
+|                      | [`<web-ui-slider>`](#web-ui-slider)                       |
+|                      | [`<web-ui-checkbox>`](#web-ui-checkbox)                   |
+|                      | [`<web-ui-radio>`](#web-ui-radio)                         |
+|                      | [`<web-ui-switch>`](#web-ui-switch)                       |
+|                      | [`<web-ui-segmented>`](#web-ui-segmented)                 |
+|                      | [`<web-ui-checkbox-group>`](#web-ui-checkbox-group)       |
+|                      | [`<web-ui-radio-group>`](#web-ui-radio-group)             |
+| **Buttons**          | [`<web-ui-button>`](#web-ui-button)                       |
+|                      | [`<web-ui-button-group>`](#web-ui-button-group)           |
+| **Overlay / Modal**  | [`<web-ui-dialog>`](#web-ui-dialog)                       |
+|                      | [`<web-ui-drawer>`](#web-ui-drawer)                       |
+| **Floating**         | [`<web-ui-popover>`](#web-ui-popover)                     |
+|                      | [`<web-ui-tooltip>`](#web-ui-tooltip)                     |
+|                      | [`<web-ui-context-menu>`](#web-ui-context-menu)           |
+| **Menu**             | [`<web-ui-dropdown-menu>`](#web-ui-dropdown-menu)         |
+|                      | [`<web-ui-dropdown-item>`](#web-ui-dropdown-item)         |
+|                      | [`<web-ui-dropdown-divider>`](#web-ui-dropdown-divider)   |
+|                      | [`<web-ui-dropdown-header>`](#web-ui-dropdown-header)     |
+| **Data Display**     | [`<web-ui-avatar>`](#web-ui-avatar)                       |
+|                      | [`<web-ui-badge>`](#web-ui-badge)                         |
+|                      | [`<web-ui-empty>`](#web-ui-empty)                         |
+|                      | [`<web-ui-icon>`](#web-ui-icon)                           |
+|                      | [`<web-ui-spinner>`](#web-ui-spinner)                     |
+| **Layout & Utility** | [`<web-ui-layout>`](#web-ui-layout)                       |
+|                      | [`<web-ui-back-top>`](#web-ui-back-top)                   |
+|                      | [`<web-ui-svg-draw-lines>`](#web-ui-svg-draw-lines)       |
+|                      | [`<web-ui-theme>`](#web-ui-theme)                         |
+| **Notification**     | [`<web-ui-toast>`](#web-ui-toast)                         |
+| **Sub-items**        | [`<web-ui-option>`](#web-ui-option)                       |
+|                      | [`<web-ui-segmented-trigger>`](#web-ui-segmented-trigger) |
+
+## API Reference
 
 ### Form Controls
 
@@ -115,35 +152,47 @@ Text input with clearable, prefix/suffix slots.
 
 #### `<web-ui-textarea>`
 
-Multi-line text input.
+Multi-line text input with auto-resize.
 
-| Attribute     | Type      | Default | Description         |
-| ------------- | --------- | ------- | ------------------- |
-| `value`       | `string`  | `''`    | Textarea value      |
-| `placeholder` | `string`  | `''`    | Placeholder text    |
-| `rows`        | `number`  | `3`     | Visible rows        |
-| `name`        | `string`  | `''`    | Form field name     |
-| `disabled`    | `boolean` | `false` | Disabled state      |
-| `required`    | `boolean` | `false` | Required validation |
-| `clearable`   | `boolean` | `false` | Show clear button   |
+| Attribute         | Type      | Default | Description                |
+| ----------------- | --------- | ------- | -------------------------- |
+| `value`           | `string`  | `''`    | Textarea value             |
+| `placeholder`     | `string`  | `''`    | Placeholder text           |
+| `rows`            | `number`  | `3`     | Visible rows               |
+| `name`            | `string`  | `''`    | Form field name            |
+| `disabled`        | `boolean` | `false` | Disabled state             |
+| `readonly`        | `boolean` | `false` | Read-only state            |
+| `required`        | `boolean` | `false` | Required validation        |
+| `clearable`       | `boolean` | `false` | Show clear button          |
+| `full`            | `boolean` | `false` | Full width                 |
+| `borderless`      | `boolean` | `false` | No border                  |
+| `autosize`        | `boolean` | `false` | Auto-resize height         |
+| `minlength`       | `number`  | —       | Minimum length validation  |
+| `maxlength`       | `number`  | —       | Maximum length validation  |
+| `aria-label`      | `string`  | —       | Accessible label           |
+| `aria-labelledby` | `string`  | —       | Accessible label reference |
 
 **Events:** `input`, `change`, `focus`, `blur`
+
+**Methods:** `focus()`, `blur()`, `select()`
+
+**Slots:** `prefix`, `suffix`
 
 #### `<web-ui-input-number>`
 
 Numeric input with step buttons and keyboard control.
 
-| Attribute     | Type      | Default     | Description         |
-| ------------- | --------- | ----------- | ------------------- |
-| `value`       | `number`  | `0`         | Current value       |
-| `min`         | `number`  | `-Infinity` | Minimum value       |
-| `max`         | `number`  | `Infinity`  | Maximum value       |
-| `step`        | `number`  | `1`         | Step increment      |
-| `precision`   | `number`  | auto        | Decimal precision   |
-| `placeholder` | `string`  | `''`        | Placeholder text    |
-| `name`        | `string`  | `''`        | Form field name     |
-| `disabled`    | `boolean` | `false`     | Disabled state      |
-| `required`    | `boolean` | `false`     | Required validation |
+| Attribute     | Type      | Default    | Description         |
+| ------------- | --------- | ---------- | ------------------- |
+| `value`       | `number`  | `0`        | Current value       |
+| `min`         | `number`  | `0`        | Minimum value       |
+| `max`         | `number`  | `Infinity` | Maximum value       |
+| `step`        | `number`  | `1`        | Step increment      |
+| `precision`   | `number`  | `0`        | Decimal precision   |
+| `placeholder` | `string`  | `''`       | Placeholder text    |
+| `name`        | `string`  | `''`       | Form field name     |
+| `disabled`    | `boolean` | `false`    | Disabled state      |
+| `required`    | `boolean` | `false`    | Required validation |
 
 **Events:** `input`, `change`
 
@@ -160,7 +209,6 @@ Select dropdown with option items, keyboard navigation, and portal support.
 | `name`             | `string`                           | `''`    | Form field name                  |
 | `disabled`         | `boolean`                          | `false` | Disabled state                   |
 | `required`         | `boolean`                          | `false` | Required validation              |
-| `full`             | `boolean`                          | `false` | Full width trigger               |
 | `portal`           | `boolean`                          | `false` | Render dropdown in theme overlay |
 | `lock-scroll`      | `boolean`                          | `true`  | Lock body scroll when open       |
 | `overlayContainer` | `HTMLElement \| () => HTMLElement` | —       | Explicit portal container        |
@@ -233,14 +281,14 @@ Individual radio button.
 
 Toggle switch.
 
-| Attribute  | Type      | Default | Description                                |
-| ---------- | --------- | ------- | ------------------------------------------ |
-| `checked`  | `boolean` | `false` | Checked (on) state                         |
-| `value`    | `string`  | `''`    | Form submission value (defaults to `'on'`) |
-| `name`     | `string`  | `''`    | Form field name                            |
-| `disabled` | `boolean` | `false` | Disabled state                             |
-| `required` | `boolean` | `false` | Required validation                        |
-| `loading`  | `boolean` | `false` | Loading (spinner) state                    |
+| Attribute  | Type      | Default | Description             |
+| ---------- | --------- | ------- | ----------------------- |
+| `checked`  | `boolean` | `false` | Checked (on) state      |
+| `value`    | `string`  | `''`    | Form submission value   |
+| `name`     | `string`  | `''`    | Form field name         |
+| `disabled` | `boolean` | `false` | Disabled state          |
+| `required` | `boolean` | `false` | Required validation     |
+| `loading`  | `boolean` | `false` | Loading (spinner) state |
 
 **Events:** `input`, `change`
 
@@ -262,6 +310,8 @@ Segmented control — single-select button group.
 **Events:** `input`, `change`
 
 **Slots:** `default` (project `<web-ui-segmented-trigger>` elements)
+
+Form-associated: integrates with native `<form>` via `ElementInternals`.
 
 Manages child trigger `checked` state based on `value`. Setting `value` directly does not dispatch `input`/`change`.
 
@@ -473,8 +523,10 @@ Menu item for dropdown-menu or context-menu.
 | ---------- | --------- | ------- | -------------------- |
 | `disabled` | `boolean` | `false` | Disabled state       |
 | `submenu`  | `boolean` | `false` | Has submenu children |
+| `value`    | `string`  | `''`    | Item value           |
+| `pl`       | `string`  | `''`    | Padding-left offset  |
 
-**Slots:** `default`
+**Slots:** `prefix`, `default`, `suffix`
 
 **Methods:** `focusItem()`
 
@@ -496,12 +548,13 @@ Menu section header. No attributes. Slots: `default` (text content).
 
 Avatar display with image fallback.
 
-| Attribute | Type                   | Default    | Description       |
-| --------- | ---------------------- | ---------- | ----------------- |
-| `src`     | `string`               | `''`       | Image source URL  |
-| `alt`     | `string`               | `''`       | Alternative text  |
-| `size`    | `number`               | `40`       | Avatar size in px |
-| `shape`   | `'circle' \| 'square'` | `'circle'` | Shape variant     |
+| Attribute | Type                   | Default    | Description                      |
+| --------- | ---------------------- | ---------- | -------------------------------- |
+| `src`     | `string`               | `''`       | Image source URL                 |
+| `alt`     | `string`               | `''`       | Alternative text                 |
+| `name`    | `string`               | `''`       | Display name (initials fallback) |
+| `size`    | `number`               | `40`       | Avatar size in px                |
+| `shape`   | `'circle' \| 'square'` | `'circle'` | Shape variant                    |
 
 **Slots:** `default` (fallback content when image fails)
 
@@ -509,23 +562,28 @@ Avatar display with image fallback.
 
 Badge / notification count.
 
-| Attribute   | Type      | Default | Description               |
-| ----------- | --------- | ------- | ------------------------- |
-| `count`     | `number`  | `0`     | Display count             |
-| `max`       | `number`  | `99`    | Maximum count (shows 99+) |
-| `dot`       | `boolean` | `false` | Dot mode (no count)       |
-| `show-zero` | `boolean` | `false` | Show when count is 0      |
-| `hidden`    | `boolean` | `false` | Hide completely           |
+| Attribute   | Type                                                           | Default       | Description               |
+| ----------- | -------------------------------------------------------------- | ------------- | ------------------------- |
+| `count`     | `number`                                                       | `0`           | Display count             |
+| `max`       | `number`                                                       | `99`          | Maximum count (shows 99+) |
+| `dot`       | `boolean`                                                      | `false`       | Dot mode (no count)       |
+| `show-zero` | `boolean`                                                      | `false`       | Show when count is 0      |
+| `hidden`    | `boolean`                                                      | `false`       | Hide completely           |
+| `offset-x`  | `number`                                                       | `0`           | Horizontal offset         |
+| `offset-y`  | `number`                                                       | `0`           | Vertical offset           |
+| `placement` | `'top-right' \| 'top-left' \| 'bottom-right' \| 'bottom-left'` | `'top-right'` | Badge position            |
 
 #### `<web-ui-empty>`
 
 Empty state placeholder.
 
-| Attribute | Type                              | Default     | Description      |
-| --------- | --------------------------------- | ----------- | ---------------- |
-| `size`    | `'small' \| 'default' \| 'large'` | `'default'` | Empty state size |
+| Attribute     | Type                             | Default    | Description      |
+| ------------- | -------------------------------- | ---------- | ---------------- |
+| `title`       | `string`                         | `''`       | Title text       |
+| `description` | `string`                         | `''`       | Description text |
+| `size`        | `'small' \| 'medium' \| 'large'` | `'medium'` | Empty state size |
 
-**Slots:** `default`, `description`, `image`, `action`
+**Slots:** `default` (title, overrides `title` prop), `icon`, `description`, `action`
 
 #### `<web-ui-icon>`
 
@@ -549,14 +607,27 @@ html`<web-ui-icon .icon=${lucideLoaderCircle} spin />`
 
 Loading spinner.
 
-| Attribute | Type     | Default | Description        |
-| --------- | -------- | ------- | ------------------ |
-| `size`    | `number` | `24`    | Spinner size in px |
-| `color`   | `string` | —       | Spinner color      |
+| Attribute     | Type     | Default | Description        |
+| ------------- | -------- | ------- | ------------------ |
+| `size`        | `number` | `24`    | Spinner size in px |
+| `color`       | `string` | —       | Spinner color      |
+| `description` | `string` | `''`    | Description text   |
 
 Role: `status`, `aria-label="加载中"`.
 
-**Static API:** `spinner.show(config)`, `spinner.hide()`
+**Slots:** `description`
+
+**Static API:**
+
+```ts
+import { WebUiSpinner } from '@greypan/web-ui'
+
+WebUiSpinner.show() // show
+WebUiSpinner.show({ size: 32, duration: 2000 }) // show with options
+WebUiSpinner.hide() // hide
+```
+
+`WebUiSpinner.show(options?: { size?: number; duration?: number; description?: string })`
 
 ---
 
@@ -592,16 +663,20 @@ Role: `button`, keyboard Enter scrolls to top.
 
 #### `<web-ui-svg-draw-lines>`
 
-SVG line drawing animation using `stroke-dashoffset` animation.
+SVG line drawing animation using `stroke-dashoffset`. Animates geometry in-place — no cloning, no DOM manipulation.
 
-| Attribute  | Type     | Default    | Description              |
-| ---------- | -------- | ---------- | ------------------------ |
-| `duration` | `number` | `1000`     | Animation duration in ms |
-| `easing`   | `string` | `'linear'` | CSS easing function      |
+| Attribute  | Type     | Default    | Description                                       |
+| ---------- | -------- | ---------- | ------------------------------------------------- |
+| `duration` | `number` | `1000`     | Animation duration in ms, clamped to `[0, 30000]` |
+| `easing`   | `string` | `'linear'` | CSS easing function passed to `element.animate()` |
 
-**Slots:** `default` (single inline `<svg>` element)
+Both attributes are reflected.
 
-Animates `path`, `rect`, `circle`, `line`, `polyline`, `polygon`, `ellipse` elements. Clones the `<svg>` and applies individual stroke animations.
+**Methods:** `replay(): Promise<void>` — cancels running animation, re-collects geometry elements from current DOM, and starts a new animation. All targets animate in parallel with the same duration/easing. Resolves when all complete. With `prefers-reduced-motion: reduce`, returns immediately without animation.
+
+**Slots:** `default` — SVG content to animate. Accepts inline `<svg>` elements (light DOM) as well as components that render an SVG in an open shadow root, such as `<web-ui-icon>`. Closed shadow roots are skipped.
+
+Finds `path`, `rect`, `circle`, `line`, `polyline`, `polygon`, `ellipse` elements by recursively traversing the light DOM and all open shadow roots. Paths ending with `Z`/`z` receive a temporary gap fix for proper closing-segment rendering. After animation completes or is cancelled, all in-line styles are restored.
 
 #### `<web-ui-theme>`
 
@@ -644,16 +719,17 @@ toast.clear()
 
 **ToastOptions:**
 
-| Option     | Type                                                                                              | Default                   | Description                             |
-| ---------- | ------------------------------------------------------------------------------------------------- | ------------------------- | --------------------------------------- |
-| `message`  | `string`                                                                                          | —                         | Notification text                       |
-| `type`     | `'success' \| 'info' \| 'warning' \| 'error'`                                                     | `'info'`                  | Toast type                              |
-| `duration` | `number`                                                                                          | `3000` (`5000` for error) | Auto-close duration (0 = no auto-close) |
-| `closable` | `boolean`                                                                                         | `true`                    | Show close button                       |
-| `id`       | `string`                                                                                          | auto                      | Deduplication identifier                |
-| `heading`  | `string`                                                                                          | `''`                      | Bold heading                            |
-| `position` | `'top-left' \| 'top-center' \| 'top-right' \| 'bottom-left' \| 'bottom-center' \| 'bottom-right'` | `'top-right'`             | Screen position                         |
-| `target`   | `Element`                                                                                         | —                         | Used to find nearest theme scope        |
+| Option      | Type                                                                                              | Default                   | Description                                 |
+| ----------- | ------------------------------------------------------------------------------------------------- | ------------------------- | ------------------------------------------- |
+| `message`   | `string`                                                                                          | —                         | Notification text                           |
+| `type`      | `'success' \| 'info' \| 'warning' \| 'error'`                                                     | `'info'`                  | Toast type                                  |
+| `duration`  | `number`                                                                                          | `3000` (`5000` for error) | Auto-close duration (0 = no auto-close)     |
+| `closable`  | `boolean`                                                                                         | `true`                    | Show close button                           |
+| `id`        | `string`                                                                                          | auto                      | Deduplication identifier                    |
+| `heading`   | `string`                                                                                          | `''`                      | Bold heading text                           |
+| `position`  | `'top-left' \| 'top-center' \| 'top-right' \| 'bottom-left' \| 'bottom-center' \| 'bottom-right'` | `'top-right'`             | Screen position                             |
+| `target`    | `Element`                                                                                         | —                         | Used to find nearest theme scope            |
+| `container` | `HTMLElement`                                                                                     | —                         | Explicit mount container (highest priority) |
 
 **Events:** `toast-close` (`CustomEvent<{ id: string; reason: 'auto' | 'manual' | 'programmatic' | 'clear' }>`)
 
@@ -688,44 +764,3 @@ Segment trigger for `<web-ui-segmented>`.
 **Events:** `change`
 
 Not form-associated (child of segmented, not independent submit).
-
----
-
-## All Components
-
-| Tag                        | Category         |
-| -------------------------- | ---------------- |
-| `web-ui-input`             | Form Control     |
-| `web-ui-textarea`          | Form Control     |
-| `web-ui-input-number`      | Form Control     |
-| `web-ui-select`            | Form Control     |
-| `web-ui-slider`            | Form Control     |
-| `web-ui-checkbox`          | Form Control     |
-| `web-ui-radio`             | Form Control     |
-| `web-ui-switch`            | Form Control     |
-| `web-ui-segmented`         | Form Control     |
-| `web-ui-checkbox-group`    | Form Control     |
-| `web-ui-radio-group`       | Form Control     |
-| `web-ui-button`            | Button           |
-| `web-ui-button-group`      | Button           |
-| `web-ui-dialog`            | Overlay / Modal  |
-| `web-ui-drawer`            | Overlay / Modal  |
-| `web-ui-popover`           | Floating         |
-| `web-ui-tooltip`           | Floating         |
-| `web-ui-context-menu`      | Floating         |
-| `web-ui-dropdown-menu`     | Menu             |
-| `web-ui-dropdown-item`     | Menu             |
-| `web-ui-dropdown-divider`  | Menu             |
-| `web-ui-dropdown-header`   | Menu             |
-| `web-ui-avatar`            | Data Display     |
-| `web-ui-badge`             | Data Display     |
-| `web-ui-empty`             | Data Display     |
-| `web-ui-icon`              | Data Display     |
-| `web-ui-spinner`           | Data Display     |
-| `web-ui-layout`            | Layout & Utility |
-| `web-ui-back-top`          | Layout & Utility |
-| `web-ui-svg-draw-lines`    | Layout & Utility |
-| `web-ui-theme`             | Layout & Utility |
-| `web-ui-toast`             | Notification     |
-| `web-ui-option`            | Sub-item         |
-| `web-ui-segmented-trigger` | Sub-item         |

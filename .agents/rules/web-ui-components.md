@@ -270,3 +270,9 @@
 ## 事件类型元数据
 
 - 组件为 Vue/React 类型包装器声明 `$events` 时，必须在 component class 内使用 `declare readonly $events: EventMap`；禁止使用同名 class/interface declaration merging。`declare` 只提供类型信息，不生成运行时代码。
+
+## 文档同步
+
+- 新增/修改组件 API（属性、事件、方法、插槽、静态 API）后，必须同步更新 `packages/web-ui/README.md`（英文）和 `packages/web-ui/README.CN.md`（简体中文）
+- 两份文档结构完全一致、互为翻译；只更新一份会导致另一份逐渐过时
+- 两份文档的改动必须落入同一 commit

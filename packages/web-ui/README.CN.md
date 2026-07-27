@@ -85,9 +85,46 @@ import '@greypan/web-ui/types/vue'
 </template>
 ```
 
-## API 参考
+## 所有组件
 
----
+| 分类            | 组件                                                      |
+| --------------- | --------------------------------------------------------- |
+| **表单控件**    | [`<web-ui-input>`](#web-ui-input)                         |
+|                 | [`<web-ui-textarea>`](#web-ui-textarea)                   |
+|                 | [`<web-ui-input-number>`](#web-ui-input-number)           |
+|                 | [`<web-ui-select>`](#web-ui-select)                       |
+|                 | [`<web-ui-slider>`](#web-ui-slider)                       |
+|                 | [`<web-ui-checkbox>`](#web-ui-checkbox)                   |
+|                 | [`<web-ui-radio>`](#web-ui-radio)                         |
+|                 | [`<web-ui-switch>`](#web-ui-switch)                       |
+|                 | [`<web-ui-segmented>`](#web-ui-segmented)                 |
+|                 | [`<web-ui-checkbox-group>`](#web-ui-checkbox-group)       |
+|                 | [`<web-ui-radio-group>`](#web-ui-radio-group)             |
+| **按钮**        | [`<web-ui-button>`](#web-ui-button)                       |
+|                 | [`<web-ui-button-group>`](#web-ui-button-group)           |
+| **浮层 / 模态** | [`<web-ui-dialog>`](#web-ui-dialog)                       |
+|                 | [`<web-ui-drawer>`](#web-ui-drawer)                       |
+| **浮动**        | [`<web-ui-popover>`](#web-ui-popover)                     |
+|                 | [`<web-ui-tooltip>`](#web-ui-tooltip)                     |
+|                 | [`<web-ui-context-menu>`](#web-ui-context-menu)           |
+| **菜单**        | [`<web-ui-dropdown-menu>`](#web-ui-dropdown-menu)         |
+|                 | [`<web-ui-dropdown-item>`](#web-ui-dropdown-item)         |
+|                 | [`<web-ui-dropdown-divider>`](#web-ui-dropdown-divider)   |
+|                 | [`<web-ui-dropdown-header>`](#web-ui-dropdown-header)     |
+| **数据展示**    | [`<web-ui-avatar>`](#web-ui-avatar)                       |
+|                 | [`<web-ui-badge>`](#web-ui-badge)                         |
+|                 | [`<web-ui-empty>`](#web-ui-empty)                         |
+|                 | [`<web-ui-icon>`](#web-ui-icon)                           |
+|                 | [`<web-ui-spinner>`](#web-ui-spinner)                     |
+| **布局与工具**  | [`<web-ui-layout>`](#web-ui-layout)                       |
+|                 | [`<web-ui-back-top>`](#web-ui-back-top)                   |
+|                 | [`<web-ui-svg-draw-lines>`](#web-ui-svg-draw-lines)       |
+|                 | [`<web-ui-theme>`](#web-ui-theme)                         |
+| **通知**        | [`<web-ui-toast>`](#web-ui-toast)                         |
+| **子项**        | [`<web-ui-option>`](#web-ui-option)                       |
+|                 | [`<web-ui-segmented-trigger>`](#web-ui-segmented-trigger) |
+
+## API 参考
 
 ### 表单控件
 
@@ -115,35 +152,47 @@ import '@greypan/web-ui/types/vue'
 
 #### `<web-ui-textarea>`
 
-多行文本输入框。
+多行文本输入框，支持自动调整高度。
 
-| 属性          | 类型      | 默认值  | 说明         |
-| ------------- | --------- | ------- | ------------ |
-| `value`       | `string`  | `''`    | 输入值       |
-| `placeholder` | `string`  | `''`    | 占位文本     |
-| `rows`        | `number`  | `3`     | 显示行数     |
-| `name`        | `string`  | `''`    | 表单字段名   |
-| `disabled`    | `boolean` | `false` | 禁用状态     |
-| `required`    | `boolean` | `false` | 必填校验     |
-| `clearable`   | `boolean` | `false` | 显示清除按钮 |
+| 属性              | 类型      | 默认值  | 说明           |
+| ----------------- | --------- | ------- | -------------- |
+| `value`           | `string`  | `''`    | 输入值         |
+| `placeholder`     | `string`  | `''`    | 占位文本       |
+| `rows`            | `number`  | `3`     | 显示行数       |
+| `name`            | `string`  | `''`    | 表单字段名     |
+| `disabled`        | `boolean` | `false` | 禁用状态       |
+| `readonly`        | `boolean` | `false` | 只读状态       |
+| `required`        | `boolean` | `false` | 必填校验       |
+| `clearable`       | `boolean` | `false` | 显示清除按钮   |
+| `full`            | `boolean` | `false` | 全宽           |
+| `borderless`      | `boolean` | `false` | 无边框         |
+| `autosize`        | `boolean` | `false` | 自动调整高度   |
+| `minlength`       | `number`  | —       | 最小长度校验   |
+| `maxlength`       | `number`  | —       | 最大长度校验   |
+| `aria-label`      | `string`  | —       | 无障碍标签     |
+| `aria-labelledby` | `string`  | —       | 无障碍标签引用 |
 
 **事件：** `input`, `change`, `focus`, `blur`
+
+**方法：** `focus()`, `blur()`, `select()`
+
+**插槽：** `prefix`, `suffix`
 
 #### `<web-ui-input-number>`
 
 数字输入框，支持步进按钮和键盘操作。
 
-| 属性          | 类型      | 默认值      | 说明       |
-| ------------- | --------- | ----------- | ---------- |
-| `value`       | `number`  | `0`         | 当前值     |
-| `min`         | `number`  | `-Infinity` | 最小值     |
-| `max`         | `number`  | `Infinity`  | 最大值     |
-| `step`        | `number`  | `1`         | 步进值     |
-| `precision`   | `number`  | auto        | 小数精度   |
-| `placeholder` | `string`  | `''`        | 占位文本   |
-| `name`        | `string`  | `''`        | 表单字段名 |
-| `disabled`    | `boolean` | `false`     | 禁用状态   |
-| `required`    | `boolean` | `false`     | 必填校验   |
+| 属性          | 类型      | 默认值     | 说明       |
+| ------------- | --------- | ---------- | ---------- |
+| `value`       | `number`  | `0`        | 当前值     |
+| `min`         | `number`  | `0`        | 最小值     |
+| `max`         | `number`  | `Infinity` | 最大值     |
+| `step`        | `number`  | `1`        | 步进值     |
+| `precision`   | `number`  | `0`        | 小数精度   |
+| `placeholder` | `string`  | `''`       | 占位文本   |
+| `name`        | `string`  | `''`       | 表单字段名 |
+| `disabled`    | `boolean` | `false`    | 禁用状态   |
+| `required`    | `boolean` | `false`    | 必填校验   |
 
 **事件：** `input`, `change`
 
@@ -231,14 +280,14 @@ ArrowUp/ArrowDown 键增减数值。
 
 开关切换。
 
-| 属性       | 类型      | 默认值  | 说明                        |
-| ---------- | --------- | ------- | --------------------------- |
-| `checked`  | `boolean` | `false` | 打开/关闭状态               |
-| `value`    | `string`  | `''`    | 表单提交值（默认为 `'on'`） |
-| `name`     | `string`  | `''`    | 表单字段名                  |
-| `disabled` | `boolean` | `false` | 禁用状态                    |
-| `required` | `boolean` | `false` | 必填校验                    |
-| `loading`  | `boolean` | `false` | 加载状态                    |
+| 属性       | 类型      | 默认值  | 说明          |
+| ---------- | --------- | ------- | ------------- |
+| `checked`  | `boolean` | `false` | 打开/关闭状态 |
+| `value`    | `string`  | `''`    | 表单提交值    |
+| `name`     | `string`  | `''`    | 表单字段名    |
+| `disabled` | `boolean` | `false` | 禁用状态      |
+| `required` | `boolean` | `false` | 必填校验      |
+| `loading`  | `boolean` | `false` | 加载状态      |
 
 **事件：** `input`, `change`
 
@@ -258,6 +307,8 @@ ArrowUp/ArrowDown 键增减数值。
 **事件：** `input`, `change`
 
 **插槽：** `default`（投影 `<web-ui-segmented-trigger>` 元素）
+
+与原生 `<form>` 集成（通过 `ElementInternals`）。
 
 根据 `value` 同步子 trigger 的 `checked` 状态。直接设 `value` 不派发事件。
 
@@ -469,8 +520,10 @@ Hover 模式使用 `pointerenter`/`pointerleave` 加延迟控制。Click 模式�
 | ---------- | --------- | ------- | ------------ |
 | `disabled` | `boolean` | `false` | 禁用状态     |
 | `submenu`  | `boolean` | `false` | 是否有子菜单 |
+| `value`    | `string`  | `''`    | 菜单项值     |
+| `pl`       | `string`  | `''`    | 左侧内边距   |
 
-**插槽：** `default`
+**插槽：** `prefix`, `default`, `suffix`
 
 **方法：** `focusItem()`
 
@@ -492,12 +545,13 @@ Hover 模式使用 `pointerenter`/`pointerleave` 加延迟控制。Click 模式�
 
 头像组件，支持图片加载失败回退。
 
-| 属性    | 类型                   | 默认值     | 说明           |
-| ------- | ---------------------- | ---------- | -------------- |
-| `src`   | `string`               | `''`       | 图片 URL       |
-| `alt`   | `string`               | `''`       | 替代文本       |
-| `size`  | `number`               | `40`       | 头像尺寸（px） |
-| `shape` | `'circle' \| 'square'` | `'circle'` | 形状           |
+| 属性    | 类型                   | 默认值     | 说明                   |
+| ------- | ---------------------- | ---------- | ---------------------- |
+| `src`   | `string`               | `''`       | 图片 URL               |
+| `alt`   | `string`               | `''`       | 替代文本               |
+| `name`  | `string`               | `''`       | 展示名称（首字母回退） |
+| `size`  | `number`               | `40`       | 头像尺寸（px）         |
+| `shape` | `'circle' \| 'square'` | `'circle'` | 形状                   |
 
 **插槽：** `default`（图片加载失败的降级内容）
 
@@ -505,23 +559,28 @@ Hover 模式使用 `pointerenter`/`pointerleave` 加延迟控制。Click 模式�
 
 徽标 / 通知计数。
 
-| 属性        | 类型      | 默认值  | 说明                   |
-| ----------- | --------- | ------- | ---------------------- |
-| `count`     | `number`  | `0`     | 显示数字               |
-| `max`       | `number`  | `99`    | 最大值（超过显示 99+） |
-| `dot`       | `boolean` | `false` | 点模式（不显示数字）   |
-| `show-zero` | `boolean` | `false` | count 为 0 时也显示    |
-| `hidden`    | `boolean` | `false` | 完全隐藏               |
+| 属性        | 类型                                                           | 默认值        | 说明                   |
+| ----------- | -------------------------------------------------------------- | ------------- | ---------------------- |
+| `count`     | `number`                                                       | `0`           | 显示数字               |
+| `max`       | `number`                                                       | `99`          | 最大值（超过显示 99+） |
+| `dot`       | `boolean`                                                      | `false`       | 点模式（不显示数字）   |
+| `show-zero` | `boolean`                                                      | `false`       | count 为 0 时也显示    |
+| `hidden`    | `boolean`                                                      | `false`       | 完全隐藏               |
+| `offset-x`  | `number`                                                       | `0`           | 水平偏移               |
+| `offset-y`  | `number`                                                       | `0`           | 垂直偏移               |
+| `placement` | `'top-right' \| 'top-left' \| 'bottom-right' \| 'bottom-left'` | `'top-right'` | 徽标位置               |
 
 #### `<web-ui-empty>`
 
 空状态占位。
 
-| 属性   | 类型                              | 默认值      | 说明 |
-| ------ | --------------------------------- | ----------- | ---- |
-| `size` | `'small' \| 'default' \| 'large'` | `'default'` | 尺寸 |
+| 属性          | 类型                             | 默认值     | 说明     |
+| ------------- | -------------------------------- | ---------- | -------- |
+| `title`       | `string`                         | `''`       | 标题     |
+| `description` | `string`                         | `''`       | 描述文本 |
+| `size`        | `'small' \| 'medium' \| 'large'` | `'medium'` | 尺寸     |
 
-**插槽：** `default`, `description`, `image`, `action`
+**插槽：** `default`（标题，覆盖 `title` 属性）、`icon`、`description`、`action`
 
 #### `<web-ui-icon>`
 
@@ -545,14 +604,27 @@ html`<web-ui-icon .icon=${lucideLoaderCircle} spin />`
 
 加载旋转器。
 
-| 属性    | 类型     | 默认值 | 说明       |
-| ------- | -------- | ------ | ---------- |
-| `size`  | `number` | `24`   | 尺寸（px） |
-| `color` | `string` | —      | 颜色       |
+| 属性          | 类型     | 默认值 | 说明       |
+| ------------- | -------- | ------ | ---------- |
+| `size`        | `number` | `24`   | 尺寸（px） |
+| `color`       | `string` | —      | 颜色       |
+| `description` | `string` | `''`   | 描述文字   |
 
 角色：`status`，`aria-label="加载中"`。
 
-**静态 API：** `spinner.show(config)`, `spinner.hide()`
+**插槽：** `description`
+
+**静态 API：**
+
+```ts
+import { WebUiSpinner } from '@greypan/web-ui'
+
+WebUiSpinner.show() // 显示
+WebUiSpinner.show({ size: 32, duration: 2000 }) // 带选项显示
+WebUiSpinner.hide() // 隐藏
+```
+
+`WebUiSpinner.show(options?: { size?: number; duration?: number; description?: string })`
 
 ---
 
@@ -588,16 +660,20 @@ html`<web-ui-icon .icon=${lucideLoaderCircle} spin />`
 
 #### `<web-ui-svg-draw-lines>`
 
-SVG 线条绘制动画，基于 `stroke-dashoffset`。
+SVG 线条绘制动画，基于 `stroke-dashoffset`。直接在原元素上动画 —— 不克隆、不操作 DOM。
 
-| 属性       | 类型     | 默认值     | 说明             |
-| ---------- | -------- | ---------- | ---------------- |
-| `duration` | `number` | `1000`     | 动画时长（毫秒） |
-| `easing`   | `string` | `'linear'` | CSS 缓动函数     |
+| 属性       | 类型     | 默认值     | 说明                                         |
+| ---------- | -------- | ---------- | -------------------------------------------- |
+| `duration` | `number` | `1000`     | 动画时长（毫秒），限制在 `[0, 30000]` 范围内 |
+| `easing`   | `string` | `'linear'` | CSS 缓动函数，传递给 `element.animate()`     |
 
-**插槽：** `default`（单个内联 `<svg>` 元素）
+两个属性均会反射（reflected）。
 
-动画化 `path`、`rect`、`circle`、`line`、`polyline`、`polygon`、`ellipse` 元素。克隆 `<svg>` 后分别应用线条动画。
+**方法：** `replay(): Promise<void>` — 取消当前动画，重新从 DOM 收集几何元素并开始新动画。所有目标以相同的 duration/easing 并行播放。动画全部完成后 resolve。启用 `prefers-reduced-motion: reduce` 时立即返回，不播放动画。
+
+**插槽：** `default` — 需要动画的 SVG 内容。接受内联 `<svg>` 元素（light DOM）以及将 SVG 渲染在开放 Shadow DOM 中的组件（如 `<web-ui-icon>`）。closed Shadow Root 被跳过。
+
+递归遍历 light DOM 和所有开放 Shadow Root，查找 `path`、`rect`、`circle`、`line`、`polyline`、`polygon`、`ellipse` 元素。以 `Z`/`z` 结尾的 `<path>` 会临时应用缺口修复逻辑确保闭合段正确渲染。动画完成或取消后恢复所有内联样式。
 
 #### `<web-ui-theme>`
 
@@ -640,16 +716,17 @@ toast.clear()
 
 **ToastOptions：**
 
-| 选项       | 类型                                          | 默认值                    | 说明                         |
-| ---------- | --------------------------------------------- | ------------------------- | ---------------------------- |
-| `message`  | `string`                                      | —                         | 通知文本                     |
-| `type`     | `'success' \| 'info' \| 'warning' \| 'error'` | `'info'`                  | 类型                         |
-| `duration` | `number`                                      | `3000`（error 为 `5000`） | 自动关闭时间（0=不自动关闭） |
-| `closable` | `boolean`                                     | `true`                    | 显示关闭按钮                 |
-| `id`       | `string`                                      | auto                      | 去重标识符                   |
-| `heading`  | `string`                                      | `''`                      | 粗体标题                     |
-| `position` | 6 种位置                                      | `'top-right'`             | 屏幕位置                     |
-| `target`   | `Element`                                     | —                         | 用于查找最近主题作用域       |
+| 选项        | 类型                                          | 默认值                    | 说明                         |
+| ----------- | --------------------------------------------- | ------------------------- | ---------------------------- |
+| `message`   | `string`                                      | —                         | 通知文本                     |
+| `type`      | `'success' \| 'info' \| 'warning' \| 'error'` | `'info'`                  | 类型                         |
+| `duration`  | `number`                                      | `3000`（error 为 `5000`） | 自动关闭时间（0=不自动关闭） |
+| `closable`  | `boolean`                                     | `true`                    | 显示关闭按钮                 |
+| `id`        | `string`                                      | auto                      | 去重标识符                   |
+| `heading`   | `string`                                      | `''`                      | 粗体标题                     |
+| `position`  | 6 种位置                                      | `'top-right'`             | 屏幕位置                     |
+| `target`    | `Element`                                     | —                         | 用于查找最近主题作用域       |
+| `container` | `HTMLElement`                                 | —                         | 显式挂载容器（最高优先级）   |
 
 **事件：** `toast-close` (`CustomEvent<{ id: string; reason: 'auto' | 'manual' | 'programmatic' | 'clear' }>`)
 
@@ -684,44 +761,3 @@ toast.clear()
 **事件：** `change`
 
 非表单关联组件（父级 segmented 统一提交）。
-
----
-
-## 所有组件
-
-| 标签                       | 分类        |
-| -------------------------- | ----------- |
-| `web-ui-input`             | 表单控件    |
-| `web-ui-textarea`          | 表单控件    |
-| `web-ui-input-number`      | 表单控件    |
-| `web-ui-select`            | 表单控件    |
-| `web-ui-slider`            | 表单控件    |
-| `web-ui-checkbox`          | 表单控件    |
-| `web-ui-radio`             | 表单控件    |
-| `web-ui-switch`            | 表单控件    |
-| `web-ui-segmented`         | 表单控件    |
-| `web-ui-checkbox-group`    | 表单控件    |
-| `web-ui-radio-group`       | 表单控件    |
-| `web-ui-button`            | 按钮        |
-| `web-ui-button-group`      | 按钮        |
-| `web-ui-dialog`            | 浮层 / 模态 |
-| `web-ui-drawer`            | 浮层 / 模态 |
-| `web-ui-popover`           | 浮动        |
-| `web-ui-tooltip`           | 浮动        |
-| `web-ui-context-menu`      | 浮动        |
-| `web-ui-dropdown-menu`     | 菜单        |
-| `web-ui-dropdown-item`     | 菜单        |
-| `web-ui-dropdown-divider`  | 菜单        |
-| `web-ui-dropdown-header`   | 菜单        |
-| `web-ui-avatar`            | 数据展示    |
-| `web-ui-badge`             | 数据展示    |
-| `web-ui-empty`             | 数据展示    |
-| `web-ui-icon`              | 数据展示    |
-| `web-ui-spinner`           | 数据展示    |
-| `web-ui-layout`            | 布局与工具  |
-| `web-ui-back-top`          | 布局与工具  |
-| `web-ui-svg-draw-lines`    | 布局与工具  |
-| `web-ui-theme`             | 布局与工具  |
-| `web-ui-toast`             | 通知        |
-| `web-ui-option`            | 子项        |
-| `web-ui-segmented-trigger` | 子项        |
