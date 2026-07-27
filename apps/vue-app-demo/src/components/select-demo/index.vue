@@ -50,14 +50,6 @@ function handleChange(event: Event) {
       </web-ui-select>
     </div>
 
-    <h2>满宽</h2>
-    <div class="mb-3 flex flex-col gap-3">
-      <web-ui-select full placeholder="满宽选择">
-        <web-ui-option value="a">Option A</web-ui-option>
-        <web-ui-option value="b">Option B</web-ui-option>
-      </web-ui-select>
-    </div>
-
     <h2>Portal</h2>
     <div class="mb-3 flex flex-col gap-3">
       <web-ui-select portal placeholder="Portal 选择">

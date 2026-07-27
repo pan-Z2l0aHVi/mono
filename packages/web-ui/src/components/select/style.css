@@ -8,10 +8,6 @@
   display: inline-block;
 }
 
-:host([full]) {
-  display: block;
-}
-
 :host([disabled]) {
   cursor: not-allowed;
   opacity: 0.4;
@@ -21,10 +17,6 @@
   position: relative;
   display: flex;
   flex-direction: column;
-}
-
-:host([full]) .wui-select-inner {
-  width: 100%;
 }
 
 .select-trigger {

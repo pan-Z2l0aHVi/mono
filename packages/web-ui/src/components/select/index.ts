@@ -26,7 +26,6 @@ export class WebUiSelect extends LitElement {
 
   @property({ type: String, reflect: true }) placeholder = ''
   @property({ type: Boolean, reflect: true }) disabled = false
-  @property({ type: Boolean, reflect: true }) full = false
   @property({ type: Boolean, reflect: true }) required = false
   @property({ type: Boolean, reflect: true }) portal = false
   @property({ reflect: true, attribute: 'lock-scroll', converter: booleanWithFalseString }) lockScroll = true

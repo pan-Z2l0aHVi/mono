@@ -83,16 +83,6 @@ describe('WebUiSelect', () => {
       cleanupElement(el)
     })
 
-    it('full 反射到宿主', async () => {
-      const el = createSelect(OPTIONS_HTML)
-      el.full = true
-      await waitForUpdate(el)
-
-      expect(el.hasAttribute('full')).toBe(true)
-
-      cleanupElement(el)
-    })
-
     it('portal 反射到宿主', async () => {
       const el = createSelect(OPTIONS_HTML)
       el.portal = true
