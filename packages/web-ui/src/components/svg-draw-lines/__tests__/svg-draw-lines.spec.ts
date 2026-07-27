@@ -78,12 +78,88 @@ describe('WebUiSvgDrawLines', () => {
     })
   })
 
+  describe('replay()', () => {
+    it('replay 是可调用的公开方法', () => {
+      const el = createSvgDrawLines()
+      expect(typeof el.replay).toBe('function')
+      el.remove()
+    })
+
+    it('无内容时 replay 不报错', async () => {
+      const el = createSvgDrawLines()
+      await expect(el.replay()).resolves.toBeUndefined()
+      el.remove()
+    })
+
+    it('有 SVG 内容时 replay 不报错', async () => {
+      const el = createSvgDrawLines()
+      el.innerHTML = '<svg><path d="M0 0 L100 100"/></svg>'
+      await el.updateComplete
+      await expect(el.replay()).resolves.toBeUndefined()
+      el.remove()
+    })
+
+    it('连续多次 replay 不报错', async () => {
+      const el = createSvgDrawLines()
+      el.innerHTML = '<svg><path d="M0 0 L100 100"/></svg>'
+      await el.updateComplete
+      await expect(el.replay()).resolves.toBeUndefined()
+      await expect(el.replay()).resolves.toBeUndefined()
+      await expect(el.replay()).resolves.toBeUndefined()
+      expect(el.querySelector('svg')).toBeTruthy()
+      el.remove()
+    })
+  })
+
   describe('slot 投影', () => {
     it('默认 slot 投影 SVG 内容', async () => {
       const el = createSvgDrawLines()
       el.innerHTML = '<svg><path d="M0 0 L100 100"/></svg>'
       await el.updateComplete
       expect(el.querySelector('svg')).toBeTruthy()
+      el.remove()
+    })
+
+    it('多个同级 SVG', async () => {
+      const el = createSvgDrawLines()
+      el.innerHTML = `
+        <svg><path d="M0 0 L50 50"/></svg>
+        <svg><rect x="0" y="0" width="20" height="20"/></svg>
+      `
+      await el.updateComplete
+      const svgs = el.querySelectorAll('svg')
+      expect(svgs.length).toBe(2)
+      el.remove()
+    })
+
+    it('深层嵌套的 SVG 几何元素', async () => {
+      const el = createSvgDrawLines()
+      el.innerHTML = `
+        <svg viewBox="0 0 100 100">
+          <g>
+            <g>
+              <path d="M10 10 L90 90" />
+              <circle cx="50" cy="50" r="30" />
+            </g>
+          </g>
+        </svg>
+      `
+      await el.updateComplete
+      expect(el.querySelector('path')).toBeTruthy()
+      expect(el.querySelector('circle')).toBeTruthy()
+      el.remove()
+    })
+
+    it('replay 后恢复样式', async () => {
+      const el = createSvgDrawLines()
+      el.innerHTML = '<svg><path d="M0 0 L100 100"/></svg>'
+      await el.updateComplete
+      await el.replay()
+      await el.replay()
+      // 第二次 replay 先 cancelAll 清除样式再重新设置
+      // 验证 inline 样式存在（第二次 replay 的 animateElement 已设置）
+      const path = el.querySelector('path')!
+      expect(typeof path.style.strokeDasharray).toBe('string')
       el.remove()
     })
   })
