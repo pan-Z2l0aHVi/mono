@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { toast, type ToastPosition } from '@greypan/web-ui'
-import { ref } from 'vue'
+import { onBeforeUnmount, ref } from 'vue'
 
 const position = ref<string>('top-right')
 
@@ -14,6 +14,8 @@ const positions = [
 ]
 
 let idCounter = 0
+let countdownIdCounter = 0
+const countdownTimers = new Map<string, ReturnType<typeof setInterval>>()
 
 const handleShowSuccess = () => {
   toast.success('操作已保存到云端', { heading: '保存成功' })
@@ -75,11 +77,40 @@ const handleCustomDuration = () => {
   toast.info('这条消息会在 1 秒后消失', { heading: '快速通知', duration: 1000 })
 }
 
+const handleCountdownUpdate = () => {
+  let remaining = 10
+  const id = `countdown-${++countdownIdCounter}`
+  toast.info(`将在 ${remaining} 秒后自动关闭`, {
+    heading: '倒计时更新',
+    id,
+    closable: false,
+    duration: remaining * 1000
+  })
+
+  const timer = setInterval(() => {
+    remaining--
+    if (remaining === 0) {
+      clearInterval(timer)
+      countdownTimers.delete(id)
+      return
+    }
+    toast.updateMessage(id, { message: `将在 ${remaining} 秒后自动关闭` })
+  }, 1000)
+  countdownTimers.set(id, timer)
+}
+
 const handleMany = () => {
   for (let i = 0; i < 7; i++) {
     toast.info(`队列中的第 ${i + 1} 条消息`, { heading: `队列 #${i + 1}`, id: `many-${i}` })
   }
 }
+
+onBeforeUnmount(() => {
+  for (const timer of countdownTimers.values()) {
+    clearInterval(timer)
+  }
+  countdownTimers.clear()
+})
 </script>
 
 <template>
@@ -97,8 +128,9 @@ const handleMany = () => {
     </div>
 
     <h2>自定义 duration</h2>
-    <div class="mb-6">
+    <div class="mb-6 flex flex-wrap gap-2">
       <web-ui-button @click="handleCustomDuration">1 秒后关闭</web-ui-button>
+      <web-ui-button variant="secondary" @click="handleCountdownUpdate">10 秒倒计时更新</web-ui-button>
     </div>
 
     <h2>不可手动关闭</h2>
