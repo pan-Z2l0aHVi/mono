@@ -58,7 +58,8 @@ const navItems: NavItem[] = [
   { path: '/components/spinner', label: 'Spinner 加载指示器' },
   { path: '/components/popover', label: 'Popover 气泡卡片' },
   { path: '/components/context-menu', label: 'ContextMenu 右键菜单' },
-  { path: '/components/toast', label: 'Toast 通知' }
+  { path: '/components/toast', label: 'Toast 通知' },
+  { path: '/components/svg-draw-lines', label: 'SVGDrawLines 描边动画' }
 ]
 </script>
 
@@ -78,7 +79,7 @@ const navItems: NavItem[] = [
             <web-ui-option value="system">跟随系统</web-ui-option>
           </web-ui-select>
         </div>
-        <nav slot="sidebar" class="h-full overflow-y-auto px-2 py-3">
+        <nav slot="sidebar" class="h-full overflow-y-auto px-2 pt-3 pb-2">
           <div class="px-3 pb-2 text-xs font-semibold uppercase text-[var(--wui-color-text-muted)]">组件列表</div>
           <RouterLink
             v-for="item in navItems"
