@@ -45,11 +45,26 @@ export default {
         test: {
           name: 'browser',
           include: ['src/**/*.browser.spec.ts'],
+          exclude: ['src/**/reduced-motion.browser.spec.ts'],
           browser: {
             enabled: true,
             headless: true,
             screenshotFailures: true,
             provider: playwright(),
+            instances: [{ browser: 'chromium' }]
+          }
+        }
+      },
+      {
+        extends: true,
+        test: {
+          name: 'browser-reduced-motion',
+          include: ['src/**/reduced-motion.browser.spec.ts'],
+          browser: {
+            enabled: true,
+            headless: true,
+            screenshotFailures: true,
+            provider: playwright({ contextOptions: { reducedMotion: 'reduce' } }),
             instances: [{ browser: 'chromium' }]
           }
         }

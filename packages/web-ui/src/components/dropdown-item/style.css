@@ -29,6 +29,10 @@
   white-space: nowrap;
 
   outline: none;
+
+  transition:
+    color var(--wui-duration-fast, 160ms) ease,
+    background-color var(--wui-duration-fast, 160ms) ease;
 }
 
 .item-inner:focus-visible {
@@ -36,14 +40,16 @@
   background: var(--wui-color-accent, #08f);
 }
 
-:host(:hover) .item-inner {
-  color: var(--wui-color-on-accent, #fff);
-  background: var(--wui-color-accent, #08f);
-}
-
-:host([active]:not(:hover)) .item-inner {
+:host([active]) .item-inner {
   color: inherit;
   background: var(--wui-color-border, rgb(0 0 0 / 0.1));
+}
+
+@media (hover: hover) and (pointer: fine) {
+  :host(:hover) .item-inner {
+    color: var(--wui-color-on-accent, #fff);
+    background: var(--wui-color-accent, #08f);
+  }
 }
 
 .item-label {

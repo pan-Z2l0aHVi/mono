@@ -35,13 +35,17 @@
   background-color: var(--wui-color-surface-overlay, rgb(245 245 245 / 0.85));
 
   transition:
-    opacity 0.35s cubic-bezier(0.16, 1, 0.3, 1),
-    transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    opacity var(--wui-duration-overlay-enter, 180ms) var(--wui-ease-out, cubic-bezier(0.23, 1, 0.32, 1)),
+    transform var(--wui-duration-overlay-enter, 180ms) var(--wui-ease-out, cubic-bezier(0.23, 1, 0.32, 1));
 }
 
 :host([visible]) .toast {
   transform: translate(0, 0) scale(1);
   opacity: 1;
+}
+
+:host(:not([visible])) .toast {
+  transition-duration: var(--wui-duration-overlay-exit, 140ms);
 }
 
 /* ===== 关闭按钮（放在 hover 规则之前，避免 specificity 降序） ===== */
@@ -69,11 +73,7 @@
 
   opacity: 0;
 
-  transition: opacity 0.2s ease;
-
-  &:hover {
-    opacity: 1;
-  }
+  transition: opacity var(--wui-duration-fast, 160ms) ease;
 
   &:focus-visible {
     pointer-events: auto;
@@ -83,10 +83,12 @@
   }
 }
 
-/* hover 时显示关闭按钮 */
-.toast:hover .toast-close-btn {
-  pointer-events: auto;
-  opacity: 1;
+@media (hover: hover) and (pointer: fine) {
+  .toast-close-btn:hover,
+  .toast:hover .toast-close-btn {
+    pointer-events: auto;
+    opacity: 1;
+  }
 }
 
 /* ===== 图标 ===== */
@@ -165,4 +167,11 @@
   font-size: 12px;
   color: color-mix(in srgb, var(--wui-color-text, #1b1b1b) 30%, transparent);
   white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toast,
+  :host([visible]) .toast {
+    transform: none;
+  }
 }

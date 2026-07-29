@@ -6,6 +6,7 @@ import { customElement, property } from 'lit/decorators.js'
 
 import glass from '@/assets/glass.css?inline'
 import { lucideCheck, lucideInfo, lucideTriangleAlert, lucideCircleAlert, heroiconsXMark16Solid } from '@/icons'
+import { getTransitionDuration } from '@/shared/overlay/presence'
 import { booleanWithFalseString } from '@/shared/property-converters/boolean-with-false-string'
 
 import style from './style.css?inline'
@@ -102,7 +103,8 @@ export class WebUiToast extends LitElement {
     }
     this.addEventListener('transitionend', onEnd)
     // fallback: transitionend 不触发时（display:none 等）
-    setTimeout(onEnd, 400)
+    const toast = this.shadowRoot?.querySelector<HTMLElement>('.toast')
+    setTimeout(onEnd, getTransitionDuration(toast ?? this) + 80)
   }
 
   private _clearTimer() {

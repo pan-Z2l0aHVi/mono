@@ -60,7 +60,7 @@
 }
 
 .wui-radio-dot {
-  transform: scale(0);
+  transform: scale(0.85);
 
   width: 8px;
   height: 8px;
@@ -74,8 +74,8 @@
     0 0 4px rgb(0 136 255 / 0.3);
 
   transition:
-    opacity 0.2s ease,
-    transform 0.2s ease;
+    opacity var(--wui-duration-fast, 160ms) ease,
+    transform var(--wui-duration-fast, 160ms) var(--wui-ease-out, cubic-bezier(0.23, 1, 0.32, 1));
 }
 
 .is-checked .wui-radio-dot {
@@ -85,4 +85,11 @@
 
 .wui-radio-label {
   pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wui-radio-dot,
+  .is-checked .wui-radio-dot {
+    transform: none;
+  }
 }

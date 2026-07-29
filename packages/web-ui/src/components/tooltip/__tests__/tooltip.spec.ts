@@ -96,12 +96,36 @@ describe('WebUiTooltip', () => {
   })
 
   describe('prop: open', () => {
-    it('open 属性反射到 host', async () => {
-      const el = createTooltip()
+    it('open=true 显示本地面板并触发 open-change', async () => {
+      const el = createTooltip({ content: '提示' })
+      const handler = vi.fn<(event: Event) => void>()
+      el.addEventListener('open-change', handler)
+
       el.open = true
       await waitForUpdate(el)
 
       expect(el.hasAttribute('open')).toBe(true)
+      expect(el.isOpen).toBe(true)
+      expect(queryA11y(el, '[role="tooltip"]')?.hasAttribute('hidden')).toBe(false)
+      expect(handler).toHaveBeenCalledOnce()
+      expect((handler.mock.calls[0][0] as CustomEvent<{ open: boolean }>).detail).toEqual({ open: true })
+
+      cleanupElement(el)
+    })
+
+    it('open=false 隐藏面板并触发 open-change', async () => {
+      const el = createTooltip({ content: '提示' })
+      el.open = true
+      await waitForUpdate(el)
+
+      const handler = vi.fn<(event: Event) => void>()
+      el.addEventListener('open-change', handler)
+      el.open = false
+      await waitForUpdate(el)
+
+      expect(el.isOpen).toBe(false)
+      expect(handler).toHaveBeenCalledOnce()
+      expect((handler.mock.calls[0][0] as CustomEvent<{ open: boolean }>).detail).toEqual({ open: false })
 
       cleanupElement(el)
     })
@@ -171,6 +195,25 @@ describe('WebUiTooltip', () => {
   })
 
   describe('pointerenter/pointerleave', () => {
+    it('已有可见 Tooltip 时，相邻 Tooltip 跳过显示延迟', async () => {
+      const first = createTooltip({ 'show-delay': '10', content: '第一个' })
+      const second = createTooltip({ 'show-delay': '500', content: '第二个' })
+      await Promise.all([waitForUpdate(first), waitForUpdate(second)])
+
+      first.dispatchEvent(new PointerEvent('pointerenter'))
+      await new Promise(resolve => setTimeout(resolve, 30))
+      await waitForUpdate(first)
+      expect(first.isOpen).toBe(true)
+
+      second.dispatchEvent(new PointerEvent('pointerenter'))
+      await new Promise(resolve => setTimeout(resolve))
+      await waitForUpdate(second)
+      expect(second.isOpen).toBe(true)
+
+      cleanupElement(first)
+      cleanupElement(second)
+    })
+
     it('pointerenter 延迟后显示', async () => {
       const el = createTooltip({ content: '提示' })
       await waitForUpdate(el)

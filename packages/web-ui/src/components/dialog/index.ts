@@ -3,6 +3,7 @@ import { customElement, property, state } from 'lit/decorators.js'
 
 import '@/components/button'
 import glass from '@/assets/glass.css?inline'
+import { getTransitionDuration } from '@/shared/overlay/presence'
 import { booleanWithFalseString } from '@/shared/property-converters/boolean-with-false-string'
 import { lockScroll, unlockScroll } from '@/shared/scroll-lock/scroll-lock'
 
@@ -19,6 +20,9 @@ export class WebUiDialog extends LitElement {
   @state() private _hasBody = false
 
   private _hasScrollLock = false
+  private _closeFallbackTimer?: ReturnType<typeof setTimeout>
+  private _openFrame?: number
+  private _isClosing = false
 
   private get dialog() {
     return this.shadowRoot?.querySelector('dialog') as HTMLDialogElement | null
@@ -30,17 +34,16 @@ export class WebUiDialog extends LitElement {
 
     if (props.has('open')) {
       this.emitOpenChange()
-      if (this.open) {
-        this.dialog?.showModal?.()
-      } else {
-        this.dialog?.close?.()
-      }
+      if (this.open) this._startOpening()
+      else this._startClosing()
     }
     if (props.has('open') || props.has('lockScroll')) this._syncScrollLock()
   }
 
   override disconnectedCallback() {
     super.disconnectedCallback()
+    this._cancelOpenFrame()
+    this._clearCloseFallback()
     this._syncScrollLock(false)
   }
 
@@ -55,9 +58,8 @@ export class WebUiDialog extends LitElement {
   }
 
   private handleCancel(e: Event) {
-    // preventDefault 阻止原生 <dialog> 关闭行为，然后由 overlayClosable 决定是否手动关闭
+    // 保留 top layer 直到视觉退场完成，避免原生关闭跳过退出动画。
     e.preventDefault()
-    if (!this.overlayClosable) return
     this.close()
   }
 
@@ -77,6 +79,76 @@ export class WebUiDialog extends LitElement {
     )
   }
 
+  private _startOpening() {
+    const dialog = this.dialog
+    if (!dialog) return
+
+    this._isClosing = false
+    this._clearCloseFallback()
+    dialog.classList.remove('is-closing')
+    if (!dialog.open) dialog.showModal?.()
+
+    this._cancelOpenFrame()
+    this._openFrame = requestAnimationFrame(() => {
+      this._openFrame = undefined
+      if (!this.isConnected || !this.open || !dialog.open) return
+      dialog.classList.add('is-visible')
+    })
+  }
+
+  private _startClosing() {
+    const dialog = this.dialog
+    if (!dialog?.open) return
+
+    this._cancelOpenFrame()
+    this._isClosing = true
+    if (!dialog.classList.contains('is-visible')) {
+      this._finishClosing()
+      return
+    }
+
+    dialog.classList.add('is-closing')
+    dialog.classList.remove('is-visible')
+    this._clearCloseFallback()
+    this._closeFallbackTimer = setTimeout(() => this._finishClosing(), getTransitionDuration(dialog) + 80)
+  }
+
+  private _finishClosing() {
+    const dialog = this.dialog
+    if (!dialog || !this._isClosing || this.open) return
+
+    this._clearCloseFallback()
+    this._isClosing = false
+    dialog.classList.remove('is-closing', 'is-visible')
+    if (dialog.open) dialog.close?.()
+  }
+
+  private _clearCloseFallback() {
+    if (this._closeFallbackTimer === undefined) return
+    clearTimeout(this._closeFallbackTimer)
+    this._closeFallbackTimer = undefined
+  }
+
+  private _cancelOpenFrame() {
+    if (this._openFrame === undefined) return
+    cancelAnimationFrame(this._openFrame)
+    this._openFrame = undefined
+  }
+
+  private _onTransitionEnd = (event: TransitionEvent) => {
+    if (event.target !== this.dialog || event.propertyName !== 'transform') return
+    this._finishClosing()
+  }
+
+  private _onNativeClose = () => {
+    if (!this.open) return
+    this._cancelOpenFrame()
+    this._clearCloseFallback()
+    this._isClosing = false
+    this.dialog?.classList.remove('is-closing', 'is-visible')
+    this.open = false
+  }
+
   private _syncScrollLock(isOpen = this.open) {
     const shouldLock = isOpen && this.lockScroll
     if (shouldLock === this._hasScrollLock) return
@@ -93,7 +165,12 @@ export class WebUiDialog extends LitElement {
 
   override render() {
     return html`
-      <dialog @cancel=${this.handleCancel} @click=${this.handleBackdropClick}>
+      <dialog
+        @cancel=${this.handleCancel}
+        @close=${this._onNativeClose}
+        @click=${this.handleBackdropClick}
+        @transitionend=${this._onTransitionEnd}
+      >
         <div class="wui-dialog-body wui-glass">
           ${this._hasBody
             ? html`<slot name="body" @slotchange=${this._onBodySlotChange}></slot>`

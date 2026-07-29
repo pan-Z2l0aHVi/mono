@@ -1,10 +1,11 @@
 import glass from '@/assets/glass.css?inline'
 import menuPortalStyle from '@/assets/menu-portal.css?inline'
+import overlayMotion from '@/assets/overlay-motion.css?inline'
 import toastContainerStyle from '@/assets/toast-containers.css?inline'
 
 const FALLBACK_ROOT_ATTRIBUTE = 'data-wui-overlay-root'
 
-const overlayStyle = `${glass}\n${toastContainerStyle}\n${menuPortalStyle}`
+const overlayStyle = `${glass}\n${toastContainerStyle}\n${menuPortalStyle}\n${overlayMotion}`
 
 export function applyOverlayRootStyles(root: ShadowRoot) {
   const style = document.createElement('style')

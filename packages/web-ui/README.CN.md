@@ -419,7 +419,7 @@ ArrowUp/ArrowDown 键增减数值。
 
 **方法：** `show()`, `close()`
 
-关闭时触发 300ms CSS 动画后调用 `dialog.close()`。Escape 始终走此关闭路径；`overlay-closable` 仅控制遮罩点击。
+关闭时保留原生 dialog 的 top layer，待 `--wui-duration-drawer` 过渡完成（默认 280ms）后调用 `dialog.close()`。Escape 始终走此关闭路径；`overlay-closable` 仅控制遮罩点击。
 
 ---
 
@@ -467,7 +467,7 @@ Hover 模式使用 `pointerenter`/`pointerleave` 加延迟控制。Click 模式�
 
 **插槽：** `default`（触发器）、`content`（提示面板）
 
-通过 `pointerenter`/`pointerleave` 和 `focusin`/`focusout` 触发。
+`open` 是受控可见性属性。指针/焦点触发会更新它，直接设置也会同步本地或 Portal 面板。第一个 Tooltip 显示后，相邻 Tooltip 会立即切换；其余 pointer/focus 触发使用延迟计时器。
 
 #### `<web-ui-context-menu>`
 
@@ -684,7 +684,7 @@ SVG 线条绘制动画，基于 `stroke-dashoffset`。直接在原元素上动�
 
 **方法：** `getOverlayRoot()` — 返回 Portal 浮层容器
 
-定义 `--wui-color-*`、`--wui-shadow-*`、`--wui-layer-*` token。可嵌套实现作用域主题。System 模式跟随 `prefers-color-scheme`。
+定义 `--wui-color-*`、`--wui-shadow-*`、`--wui-layer-*` 与 motion token。motion token 是稳定的主题契约，可在主题范围覆盖：`--wui-duration-press`、`--wui-duration-fast`、`--wui-duration-overlay-enter`、`--wui-duration-overlay-exit`、`--wui-duration-drawer`、`--wui-ease-out`、`--wui-ease-standard`、`--wui-scale-press`、`--wui-scale-enter`。可嵌套实现作用域主题。System 模式跟随 `prefers-color-scheme`；启用 reduced-motion 时保留状态透明度变化并移除 transform 位移。
 
 ---
 

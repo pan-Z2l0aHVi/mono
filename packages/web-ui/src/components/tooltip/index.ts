@@ -3,11 +3,13 @@ import { html, LitElement, unsafeCSS } from 'lit'
 import { customElement, property } from 'lit/decorators.js'
 
 import glass from '@/assets/glass.css?inline'
+import overlayMotion from '@/assets/overlay-motion.css?inline'
 import { normalizeLiteral, normalizeNumber } from '@/shared/normalize'
 import { withOverlay } from '@/shared/overlay/overlay'
 import type { OverlayApi } from '@/shared/overlay/overlay'
 import { createOverlayPortal } from '@/shared/overlay/portal'
 import type { OverlayContainer, OverlayPortal } from '@/shared/overlay/portal'
+import { hideOverlayPresence, showOverlayPresence } from '@/shared/overlay/presence'
 
 import style from './style.css?inline'
 
@@ -26,9 +28,11 @@ const ALLOWED_PLACEMENTS = [
   'right-end'
 ] as const
 
+let visibleTooltipCount = 0
+
 @customElement('web-ui-tooltip')
 export class WebUiTooltip extends LitElement {
-  static override styles = [unsafeCSS(glass), unsafeCSS(style)]
+  static override styles = [unsafeCSS(glass), unsafeCSS(overlayMotion), unsafeCSS(style)]
 
   @property({ type: String, reflect: true })
   get placement(): Placement {
@@ -85,11 +89,12 @@ export class WebUiTooltip extends LitElement {
   private _overlay?: OverlayApi & { anchor: HTMLElement; overlay: HTMLElement }
   private _showTimer?: ReturnType<typeof setTimeout>
   private _hideTimer?: ReturnType<typeof setTimeout>
-  private _isVisible = false
   private _portal?: OverlayPortal
+  private _isCountedVisible = false
+  private _shouldOpenInstantly = true
 
   get isOpen(): boolean {
-    return this._isVisible
+    return this.open
   }
 
   override connectedCallback() {
@@ -108,17 +113,32 @@ export class WebUiTooltip extends LitElement {
     this.removeEventListener('focusout', this._onFocusOut)
     clearTimeout(this._showTimer)
     clearTimeout(this._hideTimer)
+    this._syncVisibleTooltipCount(false)
     this._disposeOverlay()
   }
 
   override firstUpdated() {
     this._initLocalOverlay()
-    if (this._isVisible) requestAnimationFrame(() => this._openOverlay())
+    if (this.open) {
+      this._openOverlay(this._shouldOpenInstantly)
+      this._shouldOpenInstantly = true
+    }
   }
 
   protected override updated(changed: Map<string, unknown>) {
     if (changed.has('placement') || changed.has('portal') || changed.has('overlayContainer')) {
       requestAnimationFrame(() => this._reconfigureOverlay())
+    }
+
+    if (changed.has('open')) {
+      this._syncVisibleTooltipCount(this.open)
+      if (this.open) {
+        this._openOverlay(this._shouldOpenInstantly)
+        this._shouldOpenInstantly = true
+      } else {
+        void this._closeOverlay()
+      }
+      this._dispatchChange(this.open)
     }
   }
 
@@ -126,7 +146,7 @@ export class WebUiTooltip extends LitElement {
     if (e.pointerType === 'touch') return
     if (this.disabled) return
     clearTimeout(this._hideTimer)
-    this._showTimer = setTimeout(() => this._show(), this.showDelay)
+    this._showTimer = setTimeout(() => this._show(), visibleTooltipCount > 0 ? 0 : this.showDelay)
   }
 
   private _onPointerLeave = (e: PointerEvent) => {
@@ -139,7 +159,7 @@ export class WebUiTooltip extends LitElement {
   private _onFocusIn = () => {
     if (this.disabled) return
     clearTimeout(this._hideTimer)
-    this._show()
+    this._show(true)
   }
 
   private _onFocusOut = () => {
@@ -148,32 +168,15 @@ export class WebUiTooltip extends LitElement {
     this._hide()
   }
 
-  private _show() {
-    if (this._isVisible) return
-    this._isVisible = true
+  private _show(isInstant = false) {
+    if (this.open) return
+    this._shouldOpenInstantly = isInstant
     this.open = true
-    this._openOverlay()
-    this.dispatchEvent(
-      new CustomEvent('open-change', {
-        detail: { open: true },
-        bubbles: true,
-        composed: true
-      })
-    )
   }
 
   private _hide() {
-    if (!this._isVisible) return
-    this._isVisible = false
+    if (!this.open) return
     this.open = false
-    this._closeOverlay()
-    this.dispatchEvent(
-      new CustomEvent('open-change', {
-        detail: { open: false },
-        bubbles: true,
-        composed: true
-      })
-    )
   }
 
   private _initLocalOverlay() {
@@ -188,20 +191,28 @@ export class WebUiTooltip extends LitElement {
     })
   }
 
-  private _openOverlay() {
-    if (this.portal) this._openPortal()
-    else this._overlay?.open()
+  private _openOverlay(isInstant = false) {
+    if (this.portal) this._openPortal(isInstant)
+    else {
+      this._overlay?.open()
+      const panel = this.shadowRoot?.querySelector<HTMLElement>('.tooltip-panel')
+      if (panel) showOverlayPresence(panel, { isInstant })
+    }
   }
 
-  private _openPortal() {
-    if (this._portal) return
+  private _openPortal(isInstant = false) {
+    if (this._portal) {
+      this._overlay?.open()
+      showOverlayPresence(this._portal.panel, { isInstant })
+      return
+    }
     const anchor = this.shadowRoot?.querySelector('.tooltip-trigger') as HTMLElement | null
     if (!anchor) return
     const portal = createOverlayPortal({
       container: this.overlayContainer,
       target: this,
-      style: `${glass}\n${style}`,
-      className: 'tooltip-panel portal wui-glass'
+      style: `${glass}\n${overlayMotion}\n${style}`,
+      className: 'tooltip-panel portal wui-glass wui-floating-panel'
     })
     if (this.content) {
       const text = document.createElement('span')
@@ -219,13 +230,16 @@ export class WebUiTooltip extends LitElement {
       strategy: 'fixed'
     })
     this._overlay.open()
+    showOverlayPresence(portal.panel, { isInstant })
   }
 
-  private _closeOverlay() {
+  private async _closeOverlay() {
     this._overlay?.close()
-    if (!this._portal) return
-    this._portal?.restoreContent()
-    this._portal?.remove()
+    const panel = this._portal?.panel ?? this.shadowRoot?.querySelector<HTMLElement>('.tooltip-panel')
+    if (panel && !(await hideOverlayPresence(panel))) return
+    if (!this._portal || this.open) return
+    this._portal.restoreContent()
+    this._portal.remove()
     this._portal = undefined
     this._overlay = undefined
   }
@@ -239,16 +253,38 @@ export class WebUiTooltip extends LitElement {
   }
 
   private _reconfigureOverlay() {
+    const panel = this._portal?.panel ?? this.shadowRoot?.querySelector<HTMLElement>('.tooltip-panel')
+    const shouldAnimate = panel?.dataset.wuiPresence === 'entering'
     this._disposeOverlay()
     if (!this.portal) this._initLocalOverlay()
-    if (this._isVisible) this._openOverlay()
+    if (this.open) this._openOverlay(!shouldAnimate)
+  }
+
+  private _dispatchChange(open: boolean) {
+    this.dispatchEvent(
+      new CustomEvent('open-change', {
+        detail: { open },
+        bubbles: true,
+        composed: true
+      })
+    )
+  }
+
+  private _syncVisibleTooltipCount(isVisible: boolean) {
+    if (isVisible && !this._isCountedVisible) {
+      visibleTooltipCount += 1
+      this._isCountedVisible = true
+    } else if (!isVisible && this._isCountedVisible) {
+      visibleTooltipCount = Math.max(0, visibleTooltipCount - 1)
+      this._isCountedVisible = false
+    }
   }
 
   override render() {
     return html`
       <div class="tooltip-anchor">
         <div class="tooltip-trigger"><slot></slot></div>
-        <div class="tooltip-panel wui-glass" ?hidden=${!this._isVisible} role="tooltip">
+        <div class="tooltip-panel wui-glass wui-floating-panel" hidden role="tooltip">
           ${this.content ? html`<span class="tooltip-text">${this.content}</span>` : html`<slot name="content"></slot>`}
         </div>
       </div>

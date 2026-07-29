@@ -31,6 +31,10 @@
   color: var(--wui-color-text, #1b1b1b);
   text-overflow: ellipsis;
   white-space: nowrap;
+
+  transition:
+    color var(--wui-duration-fast, 160ms) ease,
+    background-color var(--wui-duration-fast, 160ms) ease;
 }
 
 .check {
@@ -58,10 +62,16 @@
   outline-offset: 2px;
 }
 
-.option-label:hover,
 :host([active]) .option-label {
   color: var(--wui-color-on-accent, #fff);
   background: var(--wui-color-accent, #08f);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .option-label:hover {
+    color: var(--wui-color-on-accent, #fff);
+    background: var(--wui-color-accent, #08f);
+  }
 }
 
 :host([disabled]) .option-label {

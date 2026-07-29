@@ -87,6 +87,10 @@ input {
 
   background: transparent;
 
+  transition:
+    transform var(--wui-duration-press, 120ms) var(--wui-ease-out, cubic-bezier(0.23, 1, 0.32, 1)),
+    background-color var(--wui-duration-fast, 160ms) ease;
+
   &:disabled {
     cursor: not-allowed;
     opacity: 0.4;
@@ -97,11 +101,24 @@ input {
     outline-offset: 2px;
   }
 
-  &:hover:not(:disabled) {
-    background: rgb(0 0 0 / 0.06);
+  &:active:not(:disabled) {
+    transform: scale(var(--wui-scale-press, 0.97));
+    background: var(--wui-color-border, rgb(0 0 0 / 0.1));
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .num-btn:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--wui-color-text, #1b1b1b) 6%, transparent);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .num-btn {
+    transition: background-color var(--wui-duration-fast, 160ms) ease;
   }
 
-  &:active:not(:disabled) {
-    background: var(--wui-color-border, rgb(0 0 0 / 0.1));
+  .num-btn:active:not(:disabled) {
+    transform: none;
   }
 }

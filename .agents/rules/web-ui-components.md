@@ -78,6 +78,14 @@
 
 显式 `overlayContainer` 继承这些 token 的 fallback，但其祖先 stacking context 由调用方负责。
 
+### 公共 Motion Token
+
+`web-ui-theme` 提供稳定且可覆盖的 motion token：`--wui-duration-press`、`--wui-duration-fast`、`--wui-duration-overlay-enter`、`--wui-duration-overlay-exit`、`--wui-duration-drawer`、`--wui-ease-out`、`--wui-ease-standard`、`--wui-scale-press`、`--wui-scale-enter`。
+
+- 高频按压控件使用 press token；锚定浮层使用 overlay enter/exit token；Drawer 使用 drawer token。
+- 浮层定位只由 `withOverlay` 负责；可见性过渡必须复用 `shared/overlay/presence`，使 Portal 与本地面板共享可中断的进入/退出生命周期。
+- Pointer hover 样式必须置于 `@media (hover: hover) and (pointer: fine)` 中。`prefers-reduced-motion` 下移除 transform 运动，仅保留必要的短 opacity/state 过渡。
+
 `--web-ui-back-top-z-index` 保留为 BackTop 的兼容别名；新代码应覆盖 `--wui-layer-auxiliary`。
 
 共享 theme overlay root 中的 Portal 菜单必须在 `assets/menu-portal.css` 定义层级规则；组件自身 Shadow DOM 的样式不会穿透到该 root。

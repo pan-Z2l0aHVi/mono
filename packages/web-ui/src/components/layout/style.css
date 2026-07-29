@@ -59,3 +59,16 @@ aside {
 footer {
   grid-area: footer;
 }
+
+@media (width <= 640px) {
+  .layout-grid {
+    grid-template-areas:
+      'header'
+      'content';
+    grid-template-columns: 1fr;
+  }
+
+  aside {
+    display: none;
+  }
+}

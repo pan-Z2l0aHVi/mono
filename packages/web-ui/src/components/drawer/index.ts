@@ -6,13 +6,11 @@ import '@/components/button'
 import glass from '@/assets/glass.css?inline'
 import { lucideX } from '@/icons'
 import { normalizeLiteral } from '@/shared/normalize'
+import { getTransitionDuration } from '@/shared/overlay/presence'
 import { booleanWithFalseString } from '@/shared/property-converters/boolean-with-false-string'
 import { lockScroll, unlockScroll } from '@/shared/scroll-lock/scroll-lock'
 
 import style from './style.css?inline'
-
-const CLOSE_DURATION = 300 // 与 CSS transition duration 一致
-const CLOSE_FALLBACK_DELAY = CLOSE_DURATION + 100
 
 const ALLOWED_PLACEMENTS = ['right', 'left', 'top', 'bottom'] as const
 
@@ -140,7 +138,7 @@ export class WebUiDrawer extends LitElement {
     dialog.classList.add('is-closing')
     dialog.classList.remove('is-visible')
     this._clearCloseFallback()
-    this._closeFallbackTimer = setTimeout(() => this._finishClosing(), CLOSE_FALLBACK_DELAY)
+    this._closeFallbackTimer = setTimeout(() => this._finishClosing(), getTransitionDuration(dialog) + 80)
   }
 
   private _finishClosing() {

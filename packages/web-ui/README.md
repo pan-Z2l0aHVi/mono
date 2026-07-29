@@ -423,7 +423,7 @@ Side drawer using native `<dialog>` with closing animation.
 
 **Methods:** `show()`, `close()`
 
-Closing triggers a 300ms CSS animation before calling `dialog.close()`. Escape always follows this close path; `overlay-closable` controls backdrop clicks only.
+Closing keeps the native dialog in the top layer until the `--wui-duration-drawer` transition completes (280ms by default), then calls `dialog.close()`. Escape always follows this close path; `overlay-closable` controls backdrop clicks only.
 
 ---
 
@@ -471,7 +471,7 @@ Tooltip overlay using pointer/focus triggers.
 
 **Slots:** `default` (trigger), `content` (tooltip panel)
 
-Triggered by `pointerenter`/`pointerleave` and `focusin`/`focusout`. Uses delay timers for smooth transitions.
+`open` is a controlled visibility property. Pointer/focus triggers update it, and direct updates synchronize the local or portal panel. Adjacent tooltips open immediately after the first tooltip is visible; pointer/focus triggers otherwise use delay timers.
 
 #### `<web-ui-context-menu>`
 
@@ -688,7 +688,7 @@ Theme provider defining CSS custom property tokens.
 
 **Methods:** `getOverlayRoot()` — returns the portal overlay container
 
-Defines `--wui-color-*`, `--wui-shadow-*`, `--wui-layer-*` tokens. Nestable for scoped theming. System appearance follows `prefers-color-scheme`.
+Defines `--wui-color-*`, `--wui-shadow-*`, `--wui-layer-*`, and motion tokens. Motion tokens are stable and may be overridden per theme scope: `--wui-duration-press`, `--wui-duration-fast`, `--wui-duration-overlay-enter`, `--wui-duration-overlay-exit`, `--wui-duration-drawer`, `--wui-ease-out`, `--wui-ease-standard`, `--wui-scale-press`, and `--wui-scale-enter`. Nestable for scoped theming. System appearance follows `prefers-color-scheme`; reduced-motion keeps state opacity changes while removing transform motion.
 
 ---
 

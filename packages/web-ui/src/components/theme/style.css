@@ -13,6 +13,15 @@
   --wui-layer-menu-submenu: 110;
   --wui-layer-toast: 200;
   --wui-layer-loading: 300;
+  --wui-duration-press: 120ms;
+  --wui-duration-fast: 160ms;
+  --wui-duration-overlay-enter: 180ms;
+  --wui-duration-overlay-exit: 140ms;
+  --wui-duration-drawer: 280ms;
+  --wui-ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --wui-ease-standard: cubic-bezier(0.77, 0, 0.175, 1);
+  --wui-scale-press: 0.97;
+  --wui-scale-enter: 0.97;
   display: contents;
 }
 

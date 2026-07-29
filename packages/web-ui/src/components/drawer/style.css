@@ -34,12 +34,12 @@ dialog {
 
   background: transparent;
 
-  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform var(--wui-duration-drawer, 280ms) var(--wui-ease-out, cubic-bezier(0.23, 1, 0.32, 1));
 
   &::backdrop {
     opacity: 0;
     background: var(--wui-drawer-overlay-bg, rgb(0 0 0 / 0.12));
-    transition: opacity 0.3s ease;
+    transition: opacity var(--wui-duration-drawer, 280ms) ease;
   }
 }
 
@@ -138,6 +138,20 @@ dialog[open].is-visible::backdrop {
   flex-shrink: 0;
   padding: 16px 20px;
   border-top: 1px solid rgb(0 0 0 / 0.06);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  dialog {
+    transition: opacity 120ms ease;
+  }
+
+  dialog::backdrop {
+    transition-duration: 120ms;
+  }
+
+  dialog[open].is-visible {
+    transform: none;
+  }
 }
 
 .wui-drawer-footer[hidden] {

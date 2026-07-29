@@ -44,6 +44,10 @@ button {
 
   background-color: var(--wui-button-bg);
 
+  transition:
+    transform var(--wui-duration-press, 120ms) var(--wui-ease-out, cubic-bezier(0.23, 1, 0.32, 1)),
+    background-color var(--wui-duration-fast, 160ms) ease;
+
   &:disabled {
     cursor: not-allowed;
     opacity: 0.4;
@@ -54,12 +58,25 @@ button {
     outline-offset: 2px;
   }
 
-  &:hover:not(:disabled) {
+  &:active:not(:disabled) {
+    transform: scale(var(--wui-scale-press, 0.97));
+    background-color: var(--wui-button-bg-active);
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  button:hover:not(:disabled) {
     background-color: var(--wui-button-bg-hover);
   }
+}
 
-  &:active:not(:disabled) {
-    background-color: var(--wui-button-bg-active);
+@media (prefers-reduced-motion: reduce) {
+  button {
+    transition: background-color var(--wui-duration-fast, 160ms) ease;
+  }
+
+  button:active:not(:disabled) {
+    transform: none;
   }
 }
 

@@ -3,11 +3,13 @@ import { html, LitElement, unsafeCSS } from 'lit'
 import { customElement, property } from 'lit/decorators.js'
 
 import glass from '@/assets/glass.css?inline'
+import overlayMotion from '@/assets/overlay-motion.css?inline'
 import { normalizeLiteral, normalizeNumber } from '@/shared/normalize'
 import { withOverlay } from '@/shared/overlay/overlay'
 import type { OverlayApi } from '@/shared/overlay/overlay'
 import { createOverlayPortal } from '@/shared/overlay/portal'
 import type { OverlayContainer, OverlayPortal } from '@/shared/overlay/portal'
+import { hideOverlayPresence, showOverlayPresence } from '@/shared/overlay/presence'
 
 import style from './style.css?inline'
 
@@ -32,7 +34,7 @@ let popoverIdCounter = 0
 
 @customElement('web-ui-popover')
 export class WebUiPopover extends LitElement {
-  static override styles = [unsafeCSS(glass), unsafeCSS(style)]
+  static override styles = [unsafeCSS(glass), unsafeCSS(overlayMotion), unsafeCSS(style)]
 
   @property({ type: Boolean, reflect: true }) open = false
   @property({ type: Boolean, reflect: true }) disabled = false
@@ -78,6 +80,7 @@ export class WebUiPopover extends LitElement {
   private _hideTimer?: ReturnType<typeof setTimeout>
   private _suppressEvent = false
   private _portal?: OverlayPortal
+  private _shouldOpenInstantly = true
 
   private _panelId = `wui-popover-panel-${++popoverIdCounter}`
 
@@ -108,7 +111,10 @@ export class WebUiPopover extends LitElement {
 
   override firstUpdated() {
     this._initLocalOverlay()
-    if (this.open) requestAnimationFrame(() => this._openOverlay())
+    if (this.open) {
+      requestAnimationFrame(() => this._openOverlay(this._shouldOpenInstantly))
+      this._shouldOpenInstantly = true
+    }
   }
 
   protected override updated(changed: Map<string, unknown>) {
@@ -117,12 +123,14 @@ export class WebUiPopover extends LitElement {
 
     if (changed.has('open')) {
       if (this.open) {
-        requestAnimationFrame(() => this._openOverlay())
+        const isInstant = this._shouldOpenInstantly
+        this._shouldOpenInstantly = true
+        requestAnimationFrame(() => this._openOverlay(isInstant))
         this._dispatchChange(true)
         this._focusPanel()
       } else {
         this._returnFocus()
-        this._closeOverlay()
+        void this._closeOverlay()
         if (!this._suppressEvent) this._dispatchChange(false)
       }
     }
@@ -184,20 +192,28 @@ export class WebUiPopover extends LitElement {
     })
   }
 
-  private _openOverlay() {
-    if (this.portal) this._openPortal()
-    else this._overlay?.open()
+  private _openOverlay(isInstant = false) {
+    if (this.portal) this._openPortal(isInstant)
+    else {
+      this._overlay?.open()
+      const panel = this.shadowRoot?.querySelector<HTMLElement>('.popover-panel')
+      if (panel) showOverlayPresence(panel, { isInstant })
+    }
   }
 
-  private _openPortal() {
-    if (this._portal) return
+  private _openPortal(isInstant = false) {
+    if (this._portal) {
+      this._overlay?.open()
+      showOverlayPresence(this._portal.panel, { isInstant })
+      return
+    }
     const anchor = this.shadowRoot?.querySelector('.popover-trigger') as HTMLElement | null
     if (!anchor) return
     const portal = createOverlayPortal({
       container: this.overlayContainer,
       target: this,
-      style: `${glass}\n${style}`,
-      className: 'popover-panel portal wui-glass'
+      style: `${glass}\n${overlayMotion}\n${style}`,
+      className: 'popover-panel portal wui-glass wui-floating-panel'
     })
     portal.panel.id = this._panelId
     portal.panel.setAttribute('role', 'dialog')
@@ -216,13 +232,16 @@ export class WebUiPopover extends LitElement {
       strategy: 'fixed'
     })
     this._overlay.open()
+    showOverlayPresence(portal.panel, { isInstant })
   }
 
-  private _closeOverlay() {
+  private async _closeOverlay() {
     this._overlay?.close()
-    if (!this._portal) return
-    this._portal?.restoreContent()
-    this._portal?.remove()
+    const panel = this._portal?.panel ?? this.shadowRoot?.querySelector<HTMLElement>('.popover-panel')
+    if (panel && !(await hideOverlayPresence(panel))) return
+    if (!this._portal || this.open) return
+    this._portal.restoreContent()
+    this._portal.remove()
     this._portal = undefined
     this._overlay = undefined
   }
@@ -236,9 +255,12 @@ export class WebUiPopover extends LitElement {
   }
 
   private _reconfigureOverlay() {
+    const panel = this._portal?.panel ?? this.shadowRoot?.querySelector<HTMLElement>('.popover-panel')
+    const shouldAnimate = panel?.dataset.wuiPresence === 'entering'
     this._disposeOverlay()
     if (!this.portal) this._initLocalOverlay()
-    if (this.open) this._openOverlay()
+    // 已稳定显示的面板重新定位不应重播动效；正在入场的指针交互则保持原有动效。
+    if (this.open) this._openOverlay(!shouldAnimate)
   }
 
   private _dispatchChange(open: boolean) {
@@ -272,11 +294,12 @@ export class WebUiPopover extends LitElement {
     return el instanceof HTMLElement ? el : null
   }
 
-  private _onTriggerClick = () => {
+  private _onTriggerClick = (event: MouseEvent) => {
     if (this.disabled) return
     clearTimeout(this._showTimer)
     clearTimeout(this._hideTimer)
     if (this.trigger === 'hover') return
+    if (!this.open) this._shouldOpenInstantly = event.detail === 0
     this.toggle()
   }
 
@@ -311,7 +334,10 @@ export class WebUiPopover extends LitElement {
     if (e.pointerType === 'touch') return
     if (this.disabled || this.trigger !== 'hover') return
     clearTimeout(this._hideTimer)
-    this._showTimer = setTimeout(() => this.show(), 100)
+    this._showTimer = setTimeout(() => {
+      this._shouldOpenInstantly = false
+      this.show()
+    }, 100)
   }
 
   private _onPointerLeave = (e: PointerEvent) => {
@@ -346,8 +372,8 @@ export class WebUiPopover extends LitElement {
         </div>
         <div
           id=${this._panelId}
-          class="popover-panel wui-glass"
-          ?hidden=${!this.open}
+          class="popover-panel wui-glass wui-floating-panel"
+          hidden
           role="dialog"
           tabindex="-1"
           @pointerenter=${this._onPanelPointerEnter}

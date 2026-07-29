@@ -43,6 +43,17 @@ const DEFAULT_OPTIONS: Required<OverlayOptions> = {
   strategy: 'absolute'
 }
 
+function getTransformOrigin(placement: Placement): string {
+  const [side, alignment] = placement.split('-')
+  const horizontalOrigin = alignment === 'start' ? 'left' : alignment === 'end' ? 'right' : 'center'
+  const verticalOrigin = alignment === 'start' ? 'top' : alignment === 'end' ? 'bottom' : 'center'
+
+  if (side === 'top') return `bottom ${horizontalOrigin}`
+  if (side === 'bottom') return `top ${horizontalOrigin}`
+  if (side === 'left') return `right ${verticalOrigin}`
+  return `left ${verticalOrigin}`
+}
+
 export const withOverlay = definePlugin<OverlayApi, { anchor: HTMLElement; overlay: HTMLElement } & OverlayOptions>(
   ctx => {
     const options: Required<OverlayOptions> = {
@@ -88,9 +99,10 @@ export const withOverlay = definePlugin<OverlayApi, { anchor: HTMLElement; overl
           placement: options.placement,
           strategy: options.strategy,
           middleware
-        }).then(({ x, y }) => {
+        }).then(({ x, y, placement }) => {
           overlay.style.left = `${x}px`
           overlay.style.top = `${y}px`
+          overlay.style.setProperty('--wui-overlay-transform-origin', getTransformOrigin(placement))
         })
       })
     }

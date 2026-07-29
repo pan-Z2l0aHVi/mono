@@ -4,12 +4,14 @@ import { customElement, property, state } from 'lit/decorators.js'
 import '@/components/icon'
 import '@/components/option'
 import glass from '@/assets/glass.css?inline'
+import overlayMotion from '@/assets/overlay-motion.css?inline'
 import type { WebUiOption } from '@/components/option'
 import { lucideChevronDown } from '@/icons'
 import { withOverlay } from '@/shared/overlay/overlay'
 import type { OverlayApi } from '@/shared/overlay/overlay'
 import { createOverlayPortal } from '@/shared/overlay/portal'
 import type { OverlayContainer, OverlayPortal } from '@/shared/overlay/portal'
+import { hideOverlayPresence, showOverlayPresence } from '@/shared/overlay/presence'
 import { booleanWithFalseString } from '@/shared/property-converters/boolean-with-false-string'
 import { lockScroll, unlockScroll } from '@/shared/scroll-lock/scroll-lock'
 
@@ -17,7 +19,7 @@ import style from './style.css?inline'
 
 @customElement('web-ui-select')
 export class WebUiSelect extends LitElement {
-  static override styles = [unsafeCSS(glass), unsafeCSS(style)]
+  static override styles = [unsafeCSS(glass), unsafeCSS(overlayMotion), unsafeCSS(style)]
 
   static formAssociated = true
 
@@ -315,9 +317,13 @@ export class WebUiSelect extends LitElement {
     if (isKeyboardNavigation) this._setInitialActiveOption()
     else this._syncActiveOption()
     this._syncScrollLock()
-    requestAnimationFrame(() => {
-      if (this._isOpen) this._openOverlay()
-    })
+    if (this.portal) {
+      requestAnimationFrame(() => {
+        if (this._isOpen) this._openOverlay(isKeyboardNavigation)
+      })
+    } else {
+      this._openOverlay(isKeyboardNavigation)
+    }
   }
 
   private _close() {
@@ -327,7 +333,7 @@ export class WebUiSelect extends LitElement {
     this._activeIndex = -1
     this._options.forEach(o => o.removeAttribute('active'))
     this._syncScrollLock(false)
-    this._closeOverlay()
+    void this._closeOverlay()
   }
 
   private _dispatchOpenChange() {
@@ -383,13 +389,14 @@ export class WebUiSelect extends LitElement {
     })
   }
 
-  private _openOverlay() {
+  private _openOverlay(isKeyboardNavigation = false) {
     if (this.portal) {
-      this._openPortal()
+      this._openPortal(isKeyboardNavigation)
     } else {
       const panel = this.shadowRoot?.querySelector<HTMLElement>('.select-overlay')
       if (panel) panel.style.width = `${this._getDesiredWidth()}px`
       this._overlay?.open()
+      if (panel) showOverlayPresence(panel, { isInstant: isKeyboardNavigation })
     }
   }
 
@@ -408,8 +415,12 @@ export class WebUiSelect extends LitElement {
     return Math.max(120, triggerWidth, maxOptionWidth)
   }
 
-  private _openPortal() {
-    if (this._portal) return
+  private _openPortal(isKeyboardNavigation = false) {
+    if (this._portal) {
+      this._overlay?.open()
+      showOverlayPresence(this._portal.panel, { isInstant: isKeyboardNavigation })
+      return
+    }
     const anchor = this.shadowRoot?.querySelector<HTMLElement>('.select-trigger')
     if (!anchor) return
 
@@ -418,8 +429,8 @@ export class WebUiSelect extends LitElement {
     const portal = createOverlayPortal({
       container: this.overlayContainer,
       target: this,
-      style: `${glass}\n${style}`,
-      className: 'wui-glass select-overlay portal'
+      style: `${glass}\n${overlayMotion}\n${style}`,
+      className: 'wui-glass select-overlay portal wui-floating-panel'
     })
     portal.panel.style.width = `${desiredWidth}px`
     portal.panel.setAttribute('role', 'listbox')
@@ -433,13 +444,16 @@ export class WebUiSelect extends LitElement {
       strategy: 'fixed'
     })
     this._overlay.open()
+    showOverlayPresence(portal.panel, { isInstant: isKeyboardNavigation })
   }
 
-  private _closeOverlay() {
+  private async _closeOverlay() {
     this._overlay?.close()
-    if (!this._portal) return
-    this._portal?.restoreContent()
-    this._portal?.remove()
+    const panel = this._portal?.panel ?? this.shadowRoot?.querySelector<HTMLElement>('.select-overlay')
+    if (panel && !(await hideOverlayPresence(panel))) return
+    if (!this._portal || this._isOpen) return
+    this._portal.restoreContent()
+    this._portal.remove()
     this._portal = undefined
     this._overlay = undefined
   }
@@ -478,7 +492,7 @@ export class WebUiSelect extends LitElement {
           ${!this._hasTriggerSlot ? html`<span class="label">${this._selectedLabel}</span>` : nothing}
           <web-ui-icon class="arrow" .icon=${lucideChevronDown}></web-ui-icon>
         </div>
-        <div class="wui-glass select-overlay" ?hidden=${!this._isOpen} role="listbox">
+        <div class="wui-glass select-overlay wui-floating-panel" hidden role="listbox">
           <slot @slotchange=${this._onSlotChange}></slot>
         </div>
       </div>
