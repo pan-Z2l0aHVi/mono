@@ -419,7 +419,7 @@ ArrowUp/ArrowDown 键增减数值。
 
 **方法：** `show()`, `close()`
 
-关闭时触发 300ms CSS 动画后调用 `dialog.close()`。
+关闭时触发 300ms CSS 动画后调用 `dialog.close()`。Escape 始终走此关闭路径；`overlay-closable` 仅控制遮罩点击。
 
 ---
 

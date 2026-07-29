@@ -5,10 +5,39 @@ import { cleanupElement, spyEvents, waitForUpdate } from '@/shared/test-utils'
 
 import type { WebUiDrawer } from '..'
 
+if (!HTMLDialogElement.prototype.showModal) {
+  HTMLDialogElement.prototype.showModal = function () {
+    this.setAttribute('open', '')
+  }
+}
+
+if (!HTMLDialogElement.prototype.close) {
+  HTMLDialogElement.prototype.close = function () {
+    this.removeAttribute('open')
+  }
+}
+
 function createDrawer(): WebUiDrawer {
   const el = document.createElement('web-ui-drawer') as WebUiDrawer
   document.body.appendChild(el)
   return el
+}
+
+function dispatchTransformTransitionEnd(dialog: HTMLDialogElement) {
+  const event = new Event('transitionend')
+  Object.defineProperty(event, 'propertyName', { value: 'transform' })
+  dialog.dispatchEvent(event)
+}
+
+function dispatchEscapeKey(target: EventTarget) {
+  const event = new KeyboardEvent('keydown', {
+    key: 'Escape',
+    bubbles: true,
+    composed: true,
+    cancelable: true
+  })
+  target.dispatchEvent(event)
+  return event
 }
 
 describe('WebUiDrawer', () => {
@@ -197,24 +226,150 @@ describe('WebUiDrawer', () => {
   })
 
   describe('command: close()', () => {
-    it('带动画关闭，动画后设置 open=false 并触发 open-change', async () => {
+    it('关闭过渡完成前保持 dialog 在 top layer，完成后关闭', async () => {
       vi.useFakeTimers()
       const el = createDrawer()
       el.open = true
       await waitForUpdate(el)
+      await vi.advanceTimersByTimeAsync(16)
+      const dialog = el.shadowRoot?.querySelector('dialog')
 
       const [events] = spyEvents<CustomEvent<{ open: boolean }>>(el, 'open-change')
 
       el.close()
-      // close 立即将 open 设为 false
+      await waitForUpdate(el)
       expect(el.open).toBe(false)
-      // 动画结束后触发 open-change
-      await vi.advanceTimersByTimeAsync(300)
+      expect(dialog?.open).toBe(true)
+
+      if (dialog) dispatchTransformTransitionEnd(dialog)
+      expect(el.open).toBe(false)
+      expect(events).toHaveLength(1)
+      expect(events[0].detail.open).toBe(false)
+      expect(dialog?.open).toBe(false)
+
+      vi.useRealTimers()
+      cleanupElement(el)
+    })
+
+    it('关闭过程中重新打开会取消关闭和 fallback', async () => {
+      vi.useFakeTimers()
+      const el = createDrawer()
+      el.open = true
+      await waitForUpdate(el)
+      await vi.advanceTimersByTimeAsync(16)
+      const dialog = el.shadowRoot?.querySelector('dialog')
+
+      el.close()
+      await waitForUpdate(el)
+      expect(dialog?.open).toBe(true)
+
+      el.show()
+      await waitForUpdate(el)
+      await vi.advanceTimersByTimeAsync(16)
+      expect(el.open).toBe(true)
+      expect(dialog?.open).toBe(true)
+
+      if (dialog) dispatchTransformTransitionEnd(dialog)
+      await vi.advanceTimersByTimeAsync(400)
+      expect(dialog?.open).toBe(true)
+
+      vi.useRealTimers()
+      cleanupElement(el)
+    })
+
+    it('transitionend 缺失时 fallback 会完成关闭', async () => {
+      vi.useFakeTimers()
+      const el = createDrawer()
+      el.open = true
+      await waitForUpdate(el)
+      await vi.advanceTimersByTimeAsync(16)
+      const dialog = el.shadowRoot?.querySelector('dialog')
+
+      el.close()
+      await waitForUpdate(el)
+      await vi.advanceTimersByTimeAsync(400)
+
+      expect(dialog?.open).toBe(false)
+
+      vi.useRealTimers()
+      cleanupElement(el)
+    })
+  })
+
+  describe('keyboard: Escape', () => {
+    it('footer 按钮获得焦点时按 Escape 仍通过关闭过渡退出', async () => {
+      vi.useFakeTimers()
+      const el = createDrawer()
+      el.innerHTML = '<web-ui-button slot="footer">关闭</web-ui-button>'
+      el.open = true
+      await waitForUpdate(el)
+      await vi.advanceTimersByTimeAsync(16)
+
+      const dialog = el.shadowRoot?.querySelector('dialog')
+      const footerButton = el.querySelector('web-ui-button')
+      const nativeButton = footerButton?.shadowRoot?.querySelector('button')
+      nativeButton?.focus()
+
+      const event = nativeButton ? dispatchEscapeKey(nativeButton) : null
+      await waitForUpdate(el)
+
+      expect(event?.defaultPrevented).toBe(true)
+      expect(el.open).toBe(false)
+      expect(dialog?.open).toBe(true)
+
+      if (dialog) dispatchTransformTransitionEnd(dialog)
+      expect(dialog?.open).toBe(false)
+
+      vi.useRealTimers()
+      cleanupElement(el)
+    })
+
+    it('overlay-closable=false 时 cancel 仍通过关闭过渡退出', async () => {
+      vi.useFakeTimers()
+      const el = createDrawer()
+      el.setAttribute('overlay-closable', 'false')
+      el.open = true
+      await waitForUpdate(el)
+      await vi.advanceTimersByTimeAsync(16)
+      const dialog = el.shadowRoot?.querySelector('dialog')
+
+      const event = new Event('cancel', { cancelable: true })
+      dialog?.dispatchEvent(event)
+      await waitForUpdate(el)
+
+      expect(event.defaultPrevented).toBe(true)
+      expect(el.open).toBe(false)
+      expect(dialog?.open).toBe(true)
+
+      if (dialog) dispatchTransformTransitionEnd(dialog)
+      expect(dialog?.open).toBe(false)
+
+      vi.useRealTimers()
+      cleanupElement(el)
+    })
+  })
+
+  describe('native dialog close', () => {
+    it('原生关闭后同步 open 并允许再次 show', async () => {
+      const el = createDrawer()
+      el.open = true
+      await waitForUpdate(el)
+      const dialog = el.shadowRoot?.querySelector('dialog')
+      const [events] = spyEvents<CustomEvent<{ open: boolean }>>(el, 'open-change')
+
+      dialog?.close()
+      dialog?.dispatchEvent(new Event('close'))
+      await waitForUpdate(el)
+
       expect(el.open).toBe(false)
       expect(events).toHaveLength(1)
       expect(events[0].detail.open).toBe(false)
 
-      vi.useRealTimers()
+      el.show()
+      await waitForUpdate(el)
+      expect(el.open).toBe(true)
+      expect(dialog?.open).toBe(true)
+
       cleanupElement(el)
     })
   })

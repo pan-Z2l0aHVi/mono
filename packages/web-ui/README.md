@@ -423,7 +423,7 @@ Side drawer using native `<dialog>` with closing animation.
 
 **Methods:** `show()`, `close()`
 
-Closing triggers a 300ms CSS animation before calling `dialog.close()`. Uses `@cancel` prevention for Escape key.
+Closing triggers a 300ms CSS animation before calling `dialog.close()`. Escape always follows this close path; `overlay-closable` controls backdrop clicks only.
 
 ---
 

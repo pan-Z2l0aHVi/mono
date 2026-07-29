@@ -34,24 +34,31 @@ dialog {
 
   background: transparent;
 
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+
   &::backdrop {
+    opacity: 0;
     background: var(--wui-drawer-overlay-bg, rgb(0 0 0 / 0.12));
+    transition: opacity 0.3s ease;
   }
 }
 
-/* opening */
-dialog[open] {
-  animation: wui-drawer-slide-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+dialog[open].is-visible {
+  transform: translate(0, 0);
 }
 
-/* closing */
-dialog.closing {
+:host([placement='left']) dialog[open].is-visible,
+:host([placement='top']) dialog[open].is-visible,
+:host([placement='bottom']) dialog[open].is-visible {
+  transform: translate(0, 0);
+}
+
+dialog.is-closing {
   pointer-events: none;
-  animation: wui-drawer-slide-out 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-dialog.closing::backdrop {
-  animation: wui-drawer-backdrop-fade-out 0.3s ease forwards;
+dialog[open].is-visible::backdrop {
+  opacity: 1;
 }
 
 /* ===== Placement 变体 ===== */
@@ -144,28 +151,4 @@ dialog.closing::backdrop {
   z-index: 3;
   top: 8px;
   right: 8px;
-}
-
-/* ===== Keyframes ===== */
-
-@keyframes wui-drawer-slide-in {
-  to {
-    transform: translate(0, 0);
-  }
-}
-
-@keyframes wui-drawer-slide-out {
-  from {
-    transform: translate(0, 0);
-  }
-}
-
-@keyframes wui-drawer-backdrop-fade-out {
-  from {
-    opacity: 1;
-  }
-
-  to {
-    opacity: 0;
-  }
 }

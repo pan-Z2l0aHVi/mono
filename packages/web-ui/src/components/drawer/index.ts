@@ -11,7 +11,8 @@ import { lockScroll, unlockScroll } from '@/shared/scroll-lock/scroll-lock'
 
 import style from './style.css?inline'
 
-const CLOSE_DURATION = 300 // 与 CSS animation duration 一致
+const CLOSE_DURATION = 300 // 与 CSS transition duration 一致
+const CLOSE_FALLBACK_DELAY = CLOSE_DURATION + 100
 
 const ALLOWED_PLACEMENTS = ['right', 'left', 'top', 'bottom'] as const
 
@@ -47,8 +48,9 @@ export class WebUiDrawer extends LitElement {
     return this.shadowRoot?.querySelector('dialog') as HTMLDialogElement | null
   }
 
-  private _animating = false
-  private _closeTimer: ReturnType<typeof setTimeout> | null = null
+  private _closeFallbackTimer: ReturnType<typeof setTimeout> | null = null
+  private _openFrame: number | null = null
+  private _isClosing = false
   private _hasHeaderSlot = false
   private _hasFooterSlot = false
   private _hasScrollLock = false
@@ -65,7 +67,8 @@ export class WebUiDrawer extends LitElement {
 
   override disconnectedCallback() {
     super.disconnectedCallback()
-    if (this._closeTimer) clearTimeout(this._closeTimer)
+    this._cancelOpenFrame()
+    this._clearCloseFallback()
     this._syncScrollLock(false)
   }
 
@@ -101,26 +104,79 @@ export class WebUiDrawer extends LitElement {
 
     if (props.has('open')) {
       this.emitOpenChange()
-      if (this.open) {
-        this._animating = false
-        if (this._closeTimer) {
-          clearTimeout(this._closeTimer)
-          this._closeTimer = null
-        }
-        this.dialog?.showModal?.()
-      } else if (!this._animating) {
-        // 命令式（close()）和声明式（open=false）统一走动画关闭
-        this._animating = true
-        this.dialog?.classList.add('closing')
-        this._closeTimer = setTimeout(() => {
-          this.dialog?.close?.()
-          this.dialog?.classList.remove('closing')
-          this._animating = false
-          this._closeTimer = null
-        }, CLOSE_DURATION)
-      }
+      if (this.open) this._startOpening()
+      else this._startClosing()
     }
     if (props.has('open') || props.has('lockScroll')) this._syncScrollLock()
+  }
+
+  private _startOpening() {
+    const dialog = this.dialog
+    if (!dialog) return
+
+    this._isClosing = false
+    this._clearCloseFallback()
+    dialog.classList.remove('is-closing')
+    if (!dialog.open) dialog.showModal?.()
+
+    this._cancelOpenFrame()
+    this._openFrame = requestAnimationFrame(() => {
+      this._openFrame = null
+      if (!this.isConnected || !this.open || !dialog.open) return
+      dialog.classList.add('is-visible')
+    })
+  }
+
+  private _startClosing() {
+    const dialog = this.dialog
+    if (!dialog?.open) return
+
+    this._cancelOpenFrame()
+    this._isClosing = true
+
+    // 还未进入可见帧时没有可过渡的视觉状态，直接释放原生 dialog。
+    if (!dialog.classList.contains('is-visible')) {
+      this._finishClosing()
+      return
+    }
+
+    dialog.classList.add('is-closing')
+    dialog.classList.remove('is-visible')
+    this._clearCloseFallback()
+    this._closeFallbackTimer = setTimeout(() => this._finishClosing(), CLOSE_FALLBACK_DELAY)
+  }
+
+  private _finishClosing() {
+    const dialog = this.dialog
+    if (!dialog || !this._isClosing || this.open) return
+
+    this._clearCloseFallback()
+    this._isClosing = false
+    dialog.classList.remove('is-closing', 'is-visible')
+    if (dialog.open) dialog.close?.()
+  }
+
+  private _clearCloseFallback() {
+    if (!this._closeFallbackTimer) return
+    clearTimeout(this._closeFallbackTimer)
+    this._closeFallbackTimer = null
+  }
+
+  private _cancelOpenFrame() {
+    if (this._openFrame === null) return
+    cancelAnimationFrame(this._openFrame)
+    this._openFrame = null
+  }
+
+  private handleTransitionEnd(e: TransitionEvent) {
+    if (e.target !== this.dialog || e.propertyName !== 'transform') return
+    this._finishClosing()
+  }
+
+  private handleKeydown(e: KeyboardEvent) {
+    if (e.key !== 'Escape') return
+    e.preventDefault()
+    this.close()
   }
 
   /** 打开抽屉（命令式） */
@@ -131,15 +187,25 @@ export class WebUiDrawer extends LitElement {
 
   /** 关闭抽屉（带动画） */
   close() {
-    if (!this.open || this._animating) return
+    if (!this.open) return
     this.open = false
   }
 
   private handleCancel(e: Event) {
-    // preventDefault 阻止原生 <dialog> 关闭行为，然后由 overlayClosable 决定是否手动关闭
+    // 保留 top layer 直到 CSS 过渡结束，避免原生关闭跳过退出动画。
     e.preventDefault()
-    if (!this.overlayClosable) return
     this.close()
+  }
+
+  private handleNativeClose() {
+    if (!this.open) return
+
+    // 原生关闭可绕过 cancel；同步受控状态，避免 show() 误判为已打开。
+    this._cancelOpenFrame()
+    this._clearCloseFallback()
+    this._isClosing = false
+    this.dialog?.classList.remove('is-closing', 'is-visible')
+    this.open = false
   }
 
   private handleBackdropClick(e: MouseEvent) {
@@ -171,7 +237,13 @@ export class WebUiDrawer extends LitElement {
     const showHeader = this._hasHeaderSlot || !!this.heading
 
     return html`
-      <dialog @cancel=${this.handleCancel} @click=${this.handleBackdropClick}>
+      <dialog
+        @cancel=${this.handleCancel}
+        @close=${this.handleNativeClose}
+        @click=${this.handleBackdropClick}
+        @keydown=${this.handleKeydown}
+        @transitionend=${this.handleTransitionEnd}
+      >
         <div class="wui-drawer-body wui-glass">
           ${showHeader
             ? html`
