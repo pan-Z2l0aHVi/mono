@@ -49,7 +49,7 @@
 | `--wui-color-surface-raised-mid`  | `#dfdfdf`                        |
 | `--wui-color-surface-raised-deep` | `#e5e5ea`                        |
 | `--wui-color-surface-glass`       | `rgb(250 250 250 / 0.55)`        |
-| `--wui-color-surface-overlay`     | `rgb(250 250 250 / 0.82)`        |
+| `--wui-color-surface-overlay`     | `rgb(245 245 245 / 0.85)`        |
 | `--wui-color-border`              | `rgb(0 0 0 / 0.1)`               |
 | `--wui-color-border-strong`       | `rgb(0 110 230 / 0.5)`           |
 | `--wui-color-glass-border`        | `rgb(51 51 51 / 0.08)`           |

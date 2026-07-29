@@ -15,7 +15,7 @@
 
   color: var(--wui-color-text, #1b1b1b);
 
-  background-color: var(--wui-color-surface-overlay, rgb(250 250 250 / 0.82));
+  background-color: var(--wui-color-surface-overlay, rgb(245 245 245 / 0.85));
 }
 
 .wui-menu-portal-overlay.dropdown-overlay .dropdown-scroll {

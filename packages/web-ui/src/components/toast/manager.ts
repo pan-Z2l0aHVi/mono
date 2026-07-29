@@ -1,6 +1,7 @@
 import { getFallbackOverlayRoot } from '@/shared/theme/overlay-root'
 import { findNearestTheme, findRootTheme } from '@/shared/theme/theme-scope'
 
+import type { WebUiToast } from './toast'
 import type {
   ToastCloseReason,
   ToastInstanceOptions,
@@ -8,8 +9,6 @@ import type {
   ToastOptions,
   ToastPosition
 } from './types'
-
-import type { WebUiToast } from './index'
 
 let toastIdCounter = 0
 

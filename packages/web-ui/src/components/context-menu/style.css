@@ -29,7 +29,7 @@
   padding: 4px;
   border-radius: 20px;
 
-  background-color: var(--wui-color-surface-overlay, rgb(250 250 250 / 0.82));
+  background-color: var(--wui-color-surface-overlay, rgb(245 245 245 / 0.85));
 }
 
 .context-menu:not(.is-open) {
@@ -48,5 +48,5 @@
   padding: 4px;
   border-radius: 20px;
 
-  background-color: var(--wui-color-surface-overlay, rgb(250 250 250 / 0.82));
+  background-color: var(--wui-color-surface-overlay, rgb(245 245 245 / 0.85));
 }

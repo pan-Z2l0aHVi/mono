@@ -52,7 +52,7 @@ aside {
   .menu {
     height: 100%;
     border-radius: 20px;
-    background-color: var(--wui-color-surface-overlay, rgb(250 250 250 / 0.82));
+    background-color: var(--wui-color-surface-overlay, rgb(245 245 245 / 0.85));
   }
 }
 

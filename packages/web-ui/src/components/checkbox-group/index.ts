@@ -14,9 +14,9 @@ export class WebUiCheckboxGroup extends LitElement {
   @property({ type: Boolean, reflect: true }) disabled = false
   @property({ type: Boolean, reflect: true }) required = false
 
-  private _internals?: ElementInternals
   @state() private _value: string[] = []
   @state() private _formDisabled = false
+  private _internals?: ElementInternals
   private _initialValue: string[] = []
 
   get value(): string[] {

@@ -23,11 +23,8 @@ export class WebUiDrawer extends LitElement {
   static override styles = [unsafeCSS(glass), unsafeCSS(style)]
 
   @property({ type: Boolean, reflect: true }) open = false
-
   @property({ reflect: true, attribute: 'lock-scroll', converter: booleanWithFalseString }) lockScroll = true
-
   @property({ reflect: true, attribute: 'overlay-closable', converter: booleanWithFalseString }) overlayClosable = true
-
   @property({ reflect: true })
   get placement(): DrawerPlacement {
     return this._placement
