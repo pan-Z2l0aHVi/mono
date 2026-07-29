@@ -122,13 +122,15 @@ export class WebUiTooltip extends LitElement {
     }
   }
 
-  private _onPointerEnter = () => {
+  private _onPointerEnter = (e: PointerEvent) => {
+    if (e.pointerType === 'touch') return
     if (this.disabled) return
     clearTimeout(this._hideTimer)
     this._showTimer = setTimeout(() => this._show(), this.showDelay)
   }
 
-  private _onPointerLeave = () => {
+  private _onPointerLeave = (e: PointerEvent) => {
+    if (e.pointerType === 'touch') return
     if (this.disabled) return
     clearTimeout(this._showTimer)
     this._hideTimer = setTimeout(() => this._hide(), this.hideDelay)

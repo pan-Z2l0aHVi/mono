@@ -5,6 +5,12 @@ import { cleanupElement, queryA11y, waitForUpdate } from '@/shared/test-utils'
 
 import type { WebUiPopover } from '..'
 
+function touchPointerEvent(type: string): PointerEvent {
+  const event = new PointerEvent(type)
+  Object.defineProperty(event, 'pointerType', { value: 'touch' })
+  return event
+}
+
 const createPopover = (triggerHtml = '', panelHtml = '', attrs?: Record<string, string>): WebUiPopover => {
   const el = document.createElement('web-ui-popover') as WebUiPopover
   if (attrs) {
@@ -342,6 +348,19 @@ describe('WebUiPopover', () => {
       el.dispatchEvent(new PointerEvent('pointerleave'))
       await new Promise(r => setTimeout(r, 150))
       await waitForUpdate(el)
+      expect(el.isOpen).toBe(false)
+
+      cleanupElement(el)
+    })
+
+    it('touch pointerenter 不打开', async () => {
+      const el = createPopover('Btn', 'Content', { trigger: 'hover' })
+      await waitForUpdate(el)
+
+      el.dispatchEvent(touchPointerEvent('pointerenter'))
+      await new Promise(r => setTimeout(r, 150))
+      await waitForUpdate(el)
+
       expect(el.isOpen).toBe(false)
 
       cleanupElement(el)

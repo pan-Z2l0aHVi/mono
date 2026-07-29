@@ -113,7 +113,7 @@ export class WebUiSelect extends LitElement {
     document.removeEventListener('click', this._onClickOutside)
     this._options.forEach(o => {
       o.removeEventListener('click', this._handleOptionClick)
-      o.removeEventListener('mouseover', this._handleOptionMouseOver)
+      o.removeEventListener('pointerover', this._handleOptionPointerOver)
       o.removeEventListener('pointerdown', this._handleOptionPointerDown)
       o.removeEventListener('option-update', this._onOptionUpdate)
     })
@@ -192,7 +192,7 @@ export class WebUiSelect extends LitElement {
     if (!(e.target instanceof HTMLElement)) return
     const target = e.target as WebUiOption
     target.addEventListener('click', this._handleOptionClick)
-    target.addEventListener('mouseover', this._handleOptionMouseOver)
+    target.addEventListener('pointerover', this._handleOptionPointerOver)
     target.addEventListener('pointerdown', this._handleOptionPointerDown)
     target.addEventListener('option-update', this._onOptionUpdate)
     this._options.push(target)
@@ -204,7 +204,7 @@ export class WebUiSelect extends LitElement {
     if (!(e.target instanceof HTMLElement)) return
     const target = e.target as WebUiOption
     target.removeEventListener('click', this._handleOptionClick)
-    target.removeEventListener('mouseover', this._handleOptionMouseOver)
+    target.removeEventListener('pointerover', this._handleOptionPointerOver)
     target.removeEventListener('pointerdown', this._handleOptionPointerDown)
     target.removeEventListener('option-update', this._onOptionUpdate)
     this._options = this._options.filter(o => o !== target)
@@ -233,7 +233,8 @@ export class WebUiSelect extends LitElement {
     this._syncActiveOption()
   }
 
-  private _handleOptionMouseOver = (e: Event) => {
+  private _handleOptionPointerOver = (e: PointerEvent) => {
+    if (e.pointerType === 'touch') return
     if (!this._isOpen || this._activeIndex < 0 || !(e.currentTarget instanceof HTMLElement)) return
 
     // 指针接管后只保留 :hover，避免键盘激活项与悬停项同时高亮。

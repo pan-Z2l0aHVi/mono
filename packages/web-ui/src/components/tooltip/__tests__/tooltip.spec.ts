@@ -5,6 +5,12 @@ import { cleanupElement, queryA11y, waitForUpdate } from '@/shared/test-utils'
 
 import type { WebUiTooltip } from '..'
 
+function touchPointerEvent(type: string): PointerEvent {
+  const event = new PointerEvent(type)
+  Object.defineProperty(event, 'pointerType', { value: 'touch' })
+  return event
+}
+
 function createTooltip(attrs?: Record<string, string>, slotContent = ''): WebUiTooltip {
   const el = document.createElement('web-ui-tooltip') as WebUiTooltip
   if (attrs) {
@@ -192,6 +198,19 @@ describe('WebUiTooltip', () => {
 
       el.dispatchEvent(new PointerEvent('pointerleave'))
       await new Promise(r => setTimeout(r, 150))
+      await waitForUpdate(el)
+
+      expect(el.isOpen).toBe(false)
+
+      cleanupElement(el)
+    })
+
+    it('touch pointerenter 不显示', async () => {
+      const el = createTooltip({ content: '提示' })
+      await waitForUpdate(el)
+
+      el.dispatchEvent(touchPointerEvent('pointerenter'))
+      await new Promise(r => setTimeout(r, 250))
       await waitForUpdate(el)
 
       expect(el.isOpen).toBe(false)

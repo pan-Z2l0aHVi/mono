@@ -16,6 +16,12 @@ function createToastElement(attrs?: Record<string, string>, message = 'test mess
   return el
 }
 
+function touchPointerEvent(type: string): PointerEvent {
+  const event = new PointerEvent(type, { bubbles: true })
+  Object.defineProperty(event, 'pointerType', { value: 'touch' })
+  return event
+}
+
 function getFallbackOverlayRoot(): ShadowRoot | null {
   return document.querySelector<HTMLElement>('[data-wui-overlay-root]')?.shadowRoot ?? null
 }
@@ -199,6 +205,20 @@ describe('WebUiToast 组件', () => {
       el.dispatchEvent(new PointerEvent('pointerleave', { bubbles: true }))
       // 等 duration(200) + dismiss fallback(400)
       await new Promise(resolve => setTimeout(resolve, 650))
+
+      expect(el.visible).toBe(false)
+      el.remove()
+    })
+
+    it('touch pointerenter 不暂停自动关闭', async () => {
+      const el = createToastElement()
+      el.duration = 200
+      await el.updateComplete
+      el.show()
+      await el.updateComplete
+
+      el.dispatchEvent(touchPointerEvent('pointerenter'))
+      await new Promise(resolve => setTimeout(resolve, 250))
 
       expect(el.visible).toBe(false)
       el.remove()

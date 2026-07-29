@@ -237,6 +237,7 @@
   - `pointerenter` / `pointerleave` 替代 `mouseenter` / `mouseleave`
   - `pointerdown` 替代 `mousedown`
   - `pointermove` 用于拖拽跟随
+- 由 `pointerenter`、`pointerleave` 或 `pointerover` 驱动的 hover 行为必须忽略 `pointerType === 'touch'`；鼠标与触控笔保持 hover 行为，键盘焦点继续由 `focusin` / `focusout` 单独处理。
 - 拖拽操作必须使用 `setPointerCapture(pointerId)` + `pointercancel` 清理，确保鼠标、触控笔、触摸屏行为一致
 - 外部点击关闭使用语义化 `click` 事件（不将键盘激活误判为 pointer 事件）
 - `contextmenu` 保留为独立语义事件，不归入 Pointer Events

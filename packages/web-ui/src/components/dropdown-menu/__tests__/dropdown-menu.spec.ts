@@ -26,6 +26,17 @@ const clickTrigger = (el: WebUiDropdownMenu) => {
   trigger.click()
 }
 
+function touchPointerEvent(type: string): PointerEvent {
+  const event = new PointerEvent(type)
+  Object.defineProperty(event, 'pointerType', { value: 'touch' })
+  return event
+}
+
+function getMenuItem(): HTMLElement | null {
+  const fallbackRoot = document.querySelector<HTMLElement>('[data-wui-overlay-root]')?.shadowRoot
+  return fallbackRoot?.querySelector<HTMLElement>('.dropdown-overlay web-ui-dropdown-item') ?? null
+}
+
 beforeEach(() => {
   document.body.innerHTML = ''
 })
@@ -328,6 +339,33 @@ describe('WebUiDropdownMenu', () => {
       await waitForUpdate(el)
       expect(el.isOpen).toBe(false)
       cleanupElement(el)
+    })
+  })
+
+  describe('子菜单悬停', () => {
+    it('touch pointerenter 不打开子菜单', async () => {
+      const el = createDropdown(
+        {},
+        '<button slot="trigger">M</button><web-ui-dropdown-item submenu>导出<web-ui-dropdown-item>PDF</web-ui-dropdown-item></web-ui-dropdown-item>'
+      )
+      await waitForUpdate(el)
+      el.openMenu()
+      await new Promise(resolve => requestAnimationFrame(resolve))
+      await new Promise(resolve => requestAnimationFrame(resolve))
+
+      vi.useFakeTimers()
+      try {
+        const item = getMenuItem() as HTMLElement
+        item.dispatchEvent(touchPointerEvent('pointerenter'))
+        await vi.advanceTimersByTimeAsync(200)
+        await el.updateComplete
+
+        expect(item.hasAttribute('active')).toBe(false)
+
+        cleanupElement(el)
+      } finally {
+        vi.useRealTimers()
+      }
     })
   })
 })

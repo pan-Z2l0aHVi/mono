@@ -307,24 +307,28 @@ export class WebUiPopover extends LitElement {
     }
   }
 
-  private _onPointerEnter = () => {
+  private _onPointerEnter = (e: PointerEvent) => {
+    if (e.pointerType === 'touch') return
     if (this.disabled || this.trigger !== 'hover') return
     clearTimeout(this._hideTimer)
     this._showTimer = setTimeout(() => this.show(), 100)
   }
 
-  private _onPointerLeave = () => {
+  private _onPointerLeave = (e: PointerEvent) => {
+    if (e.pointerType === 'touch') return
     if (this.disabled || this.trigger !== 'hover') return
     clearTimeout(this._showTimer)
     this._hideTimer = setTimeout(() => this.close(), 100)
   }
 
-  private _onPanelPointerEnter = () => {
+  private _onPanelPointerEnter = (e: PointerEvent) => {
+    if (e.pointerType === 'touch') return
     if (this.trigger !== 'hover') return
     clearTimeout(this._hideTimer)
   }
 
-  private _onPanelPointerLeave = () => {
+  private _onPanelPointerLeave = (e: PointerEvent) => {
+    if (e.pointerType === 'touch') return
     if (this.trigger !== 'hover') return
     this._hideTimer = setTimeout(() => this.close(), 100)
   }

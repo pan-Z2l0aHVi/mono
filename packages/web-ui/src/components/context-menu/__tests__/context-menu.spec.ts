@@ -39,6 +39,12 @@ function getSubmenu(): HTMLElement | null {
   return fallbackRoot?.querySelector<HTMLElement>('.context-submenu') ?? null
 }
 
+function touchPointerEvent(type: string): PointerEvent {
+  const event = new PointerEvent(type)
+  Object.defineProperty(event, 'pointerType', { value: 'touch' })
+  return event
+}
+
 beforeEach(() => {
   document.body.innerHTML = ''
 })
@@ -441,6 +447,30 @@ describe('WebUiContextMenu', () => {
         await vi.advanceTimersByTimeAsync(200)
 
         expect(getSubmenu()).toBeTruthy()
+
+        cleanupElement(el)
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    it('touch pointerenter 不打开子菜单', async () => {
+      const el = createContextMenu(
+        {},
+        '<web-ui-dropdown-item submenu>导出<web-ui-dropdown-item>PDF</web-ui-dropdown-item></web-ui-dropdown-item>'
+      )
+      await waitForUpdate(el)
+      el.openAt(100, 100)
+      await waitForMenuOpen(el)
+      await new Promise(resolve => requestAnimationFrame(resolve))
+
+      vi.useFakeTimers()
+      try {
+        const item = getMenu()?.querySelector('web-ui-dropdown-item') as HTMLElement
+        item.dispatchEvent(touchPointerEvent('pointerenter'))
+        await vi.advanceTimersByTimeAsync(200)
+
+        expect(getSubmenu()).toBeNull()
 
         cleanupElement(el)
       } finally {

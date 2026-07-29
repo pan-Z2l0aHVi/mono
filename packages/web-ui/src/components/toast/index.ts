@@ -121,11 +121,13 @@ export class WebUiToast extends LitElement {
     }
   }
 
-  private _onPointerEnter = () => {
+  private _onPointerEnter = (e: PointerEvent) => {
+    if (e.pointerType === 'touch') return
     this._clearTimer()
   }
 
-  private _onPointerLeave = () => {
+  private _onPointerLeave = (e: PointerEvent) => {
+    if (e.pointerType === 'touch') return
     this.startAutoClose()
   }
 

@@ -460,7 +460,8 @@ export class WebUiDropdownMenu extends LitElement {
       if (!items.length) continue
       items.forEach((item, idx) => {
         if (!item.matches('web-ui-dropdown-item') || item.hasAttribute('disabled')) return
-        const handler = () => {
+        const handler = (event: PointerEvent) => {
+          if (event.pointerType === 'touch') return
           clearTimeout(this._openTimer)
           if (item.hasAttribute('submenu')) {
             if (this._activePath[lv] !== idx) {

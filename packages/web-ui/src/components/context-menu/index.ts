@@ -346,7 +346,8 @@ export class WebUiContextMenu extends LitElement {
     for (let level = 0; level <= this._activeSubmenus.length; level++) {
       this._getLevelItems(level).forEach(item => {
         if (!item.matches('web-ui-dropdown-item') || item.hasAttribute('disabled')) return
-        const handler = () => {
+        const handler = (event: PointerEvent) => {
+          if (event.pointerType === 'touch') return
           clearTimeout(this._submenuTimer)
           if (item.hasAttribute('submenu')) {
             if (this._activeSubmenuItems[level] !== item) {

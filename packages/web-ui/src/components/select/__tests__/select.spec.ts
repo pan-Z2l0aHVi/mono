@@ -8,6 +8,12 @@ import { waitForUpdate, spyEvents, expectReflected, cleanupElement, queryA11y } 
 
 import type { WebUiSelect } from '..'
 
+function touchPointerEvent(type: string): PointerEvent {
+  const event = new PointerEvent(type, { bubbles: true, composed: true })
+  Object.defineProperty(event, 'pointerType', { value: 'touch' })
+  return event
+}
+
 describe('WebUiSelect', () => {
   function createSelect(optionsHtml = '', attrs?: Record<string, string>): WebUiSelect {
     const el = document.createElement('web-ui-select') as WebUiSelect
@@ -376,16 +382,30 @@ describe('WebUiSelect', () => {
       cleanupElement(el)
     })
 
-    it('鼠标进入选项后清除键盘激活状态', async () => {
+    it('指针进入选项后清除键盘激活状态', async () => {
       const el = createSelect(OPTIONS_HTML)
       await waitForUpdate(el)
 
       el.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }))
       await waitForUpdate(el)
       const option = el.querySelector<HTMLElement>('web-ui-option')
-      option?.dispatchEvent(new MouseEvent('mouseover', { bubbles: true, composed: true }))
+      option?.dispatchEvent(new PointerEvent('pointerover', { bubbles: true, composed: true }))
 
       expect(option?.hasAttribute('active')).toBe(false)
+
+      cleanupElement(el)
+    })
+
+    it('触摸指针进入选项时保留键盘激活状态', async () => {
+      const el = createSelect(OPTIONS_HTML)
+      await waitForUpdate(el)
+
+      el.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }))
+      await waitForUpdate(el)
+      const option = el.querySelector<HTMLElement>('web-ui-option')
+      option?.dispatchEvent(touchPointerEvent('pointerover'))
+
+      expect(option?.hasAttribute('active')).toBe(true)
 
       cleanupElement(el)
     })
