@@ -1,9 +1,11 @@
-:host {
-  display: inline-block;
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
 }
 
-:host([full]) {
-  display: block;
+:host {
+  display: inline-block;
 }
 
 :host([disabled]) {
@@ -15,10 +17,6 @@
   position: relative;
   display: flex;
   flex-direction: column;
-}
-
-:host([full]) .wui-select-inner {
-  width: 100%;
 }
 
 .select-trigger {
@@ -33,12 +31,16 @@
   min-width: var(--wui-button-size, 40px);
   height: var(--wui-button-size, 40px);
   padding: 0 16px;
-  border-radius: 999vmax;
+  border-radius: calc(infinity * 1px);
 
   &:focus-visible {
-    outline: 3px solid rgb(0 136 255 / 0.4);
+    outline: 3px solid var(--wui-focus-ring, rgb(0 136 255 / 0.4));
     outline-offset: 2px;
   }
+}
+
+.select-trigger[data-custom-trigger] {
+  width: auto;
 }
 
 :host([disabled]) .select-trigger {
@@ -50,19 +52,28 @@
   flex: 1;
 
   font-size: var(--wui-font-size, 14px);
-  color: #1b1b1b;
+  color: var(--wui-color-text, #1b1b1b);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-:host(:not([value])) .label,
-:host([value='']) .label {
-  color: #6a6a6a;
+:host(:not([data-has-value])) .label {
+  color: var(--wui-color-text-muted, #6a6a6a);
+}
+
+::slotted([slot='trigger']) {
+  overflow: hidden;
+  flex: 1;
+
+  font-size: var(--wui-font-size, 14px);
+  color: var(--wui-color-text, #1b1b1b);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .arrow {
   flex-shrink: 0;
-  color: #6a6a6a;
+  color: var(--wui-color-text-muted, #6a6a6a);
 }
 
 :host([open]) .arrow {
@@ -72,19 +83,29 @@
 /* ===== 浮层（glass 样式参考 dialog） ===== */
 
 .select-overlay {
-  --wui-glass-shadow: 0 4px 16px rgb(0 0 0 / 0.25);
-  position: fixed;
-  z-index: 9999;
+  --wui-glass-shadow: var(--wui-shadow-pop, 0 3px 9px rgb(0 0 0 / 0.27));
+  position: absolute;
+  z-index: var(--wui-layer-local-overlay, 1);
 
   overflow-y: auto;
 
   box-sizing: border-box;
-  max-width: var(--wui-select-max-width, 300px);
+  min-width: 200px;
+  max-width: var(--wui-select-max-width, 500px);
   max-height: 320px;
   padding: 4px;
   border-radius: 20px;
 
-  background-color: rgb(240 240 240 / 0.8);
+  background-color: var(--wui-color-surface-overlay, rgb(245 245 245 / 0.85));
+}
+
+:host([portal]) .select-overlay {
+  display: none;
+}
+
+.select-overlay.portal {
+  position: fixed;
+  z-index: var(--wui-layer-menu, 100);
 }
 
 .select-overlay.hidden {

@@ -1,6 +1,6 @@
 # Monorepo
 
-> All code, one repo.
+> Everything, one repo.
 
 English | [简体中文](./README.CN.md)
 

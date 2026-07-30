@@ -1,10 +1,17 @@
 import type { ComponentOptionsMixin, DefineComponent, HTMLAttributes } from 'vue'
 
 import type {
+  WebUiAvatar,
   WebUiBackTop,
+  WebUiBadge,
   WebUiButton,
   WebUiButtonGroup,
+  WebUiCheckbox,
+  WebUiCheckboxGroup,
+  WebUiContextMenu,
   WebUiDialog,
+  WebUiDrawer,
+  WebUiEmpty,
   WebUiDropdownDivider,
   WebUiDropdownHeader,
   WebUiDropdownItem,
@@ -14,7 +21,18 @@ import type {
   WebUiInputNumber,
   WebUiLayout,
   WebUiOption,
+  WebUiPopover,
+  WebUiRadio,
+  WebUiRadioGroup,
+  WebUiSegmented,
+  WebUiSegmentedTrigger,
   WebUiSelect,
+  WebUiSlider,
+  WebUiSpinner,
+  WebUiTextarea,
+  WebUiTheme,
+  WebUiToast,
+  WebUiSwitch,
   WebUiTooltip
 } from '../components'
 
@@ -22,9 +40,9 @@ import type { ExtractProps, EventListeners, OmitLitBase } from './utils'
 
 // 从 $events 提取 Vue emit 类型
 // $events 格式: { input: Event, change: Event }
-// Vue emits 格式: { input: (e: Event) => any }
+// Vue emits 格式: { input: (e: Event) => void }
 type ExtractVueEmits<T> = T extends { readonly $events: infer E }
-  ? { [K in keyof E]: (e: E[K]) => any }
+  ? { [K in keyof E]: (e: E[K]) => void }
   : Record<string, never>
 
 /**
@@ -47,9 +65,17 @@ export type LitVueWrapper<T> = T extends { readonly $events: infer E }
   : DefineComponent<ExtractProps<OmitLitBase<T>>>
 
 export interface WebUiComponents {
+  'web-ui-avatar': LitVueWrapper<WebUiAvatar>
+  'web-ui-back-top': LitVueWrapper<WebUiBackTop>
+  'web-ui-badge': LitVueWrapper<WebUiBadge>
   'web-ui-button': LitVueWrapper<WebUiButton>
   'web-ui-button-group': LitVueWrapper<WebUiButtonGroup>
+  'web-ui-checkbox': LitVueWrapper<WebUiCheckbox>
+  'web-ui-checkbox-group': LitVueWrapper<WebUiCheckboxGroup>
+  'web-ui-context-menu': LitVueWrapper<WebUiContextMenu>
   'web-ui-dialog': LitVueWrapper<WebUiDialog>
+  'web-ui-drawer': LitVueWrapper<WebUiDrawer>
+  'web-ui-empty': LitVueWrapper<WebUiEmpty>
   'web-ui-dropdown-divider': LitVueWrapper<WebUiDropdownDivider>
   'web-ui-dropdown-header': LitVueWrapper<WebUiDropdownHeader>
   'web-ui-dropdown-item': LitVueWrapper<WebUiDropdownItem>
@@ -58,9 +84,19 @@ export interface WebUiComponents {
   'web-ui-input': LitVueWrapper<WebUiInput>
   'web-ui-input-number': LitVueWrapper<WebUiInputNumber>
   'web-ui-select': LitVueWrapper<WebUiSelect>
+  'web-ui-slider': LitVueWrapper<WebUiSlider>
+  'web-ui-spinner': LitVueWrapper<WebUiSpinner>
   'web-ui-option': LitVueWrapper<WebUiOption>
-  'web-ui-back-top': LitVueWrapper<WebUiBackTop>
+  'web-ui-popover': LitVueWrapper<WebUiPopover>
+  'web-ui-radio': LitVueWrapper<WebUiRadio>
+  'web-ui-radio-group': LitVueWrapper<WebUiRadioGroup>
+  'web-ui-segmented': LitVueWrapper<WebUiSegmented>
+  'web-ui-segmented-trigger': LitVueWrapper<WebUiSegmentedTrigger>
   'web-ui-layout': LitVueWrapper<WebUiLayout>
+  'web-ui-switch': LitVueWrapper<WebUiSwitch>
+  'web-ui-textarea': LitVueWrapper<WebUiTextarea>
+  'web-ui-theme': LitVueWrapper<WebUiTheme>
+  'web-ui-toast': LitVueWrapper<WebUiToast>
   'web-ui-tooltip': LitVueWrapper<WebUiTooltip>
 }
 
@@ -71,7 +107,6 @@ declare module 'vue' {
   // oxlint-disable-next-line typescript/no-empty-object-type
   export interface GlobalComponents extends WebUiComponents {}
 
-  // 为 web-ui 组件添加全部原生 DOM 事件类型
   // 使 <web-ui-input @click @mousedown @keydown> 等有类型补全
   // oxlint-disable-next-line typescript/no-empty-object-type
   interface ComponentCustomProps extends HTMLAttributes {}

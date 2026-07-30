@@ -10,6 +10,8 @@ export class WebUiDropdownHeader extends LitElement {
   override render() {
     return html`<div class="header"><slot></slot></div>`
   }
+
+  declare readonly $events: Record<string, never>
 }
 
 declare global {

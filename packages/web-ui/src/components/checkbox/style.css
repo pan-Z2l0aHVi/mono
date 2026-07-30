@@ -1,0 +1,93 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+:host {
+  cursor: pointer;
+  display: inline-block;
+}
+
+:host([disabled]) {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.wui-checkbox {
+  cursor: pointer;
+  user-select: none;
+
+  display: inline-flex;
+  gap: 10px;
+  align-items: center;
+
+  font-size: var(--wui-font-size, 14px);
+  line-height: 1;
+  color: var(--wui-color-text, #1b1b1b);
+
+  &:focus-visible {
+    border-radius: calc(infinity * 1px);
+    outline: 3px solid var(--wui-focus-ring, rgb(0 136 255 / 0.4));
+    outline-offset: 2px;
+  }
+}
+
+:host([disabled]) .wui-checkbox {
+  cursor: not-allowed;
+  color: var(--wui-color-text-muted, #6a6a6a);
+}
+
+.wui-checkbox-box {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+
+  width: 18px;
+  height: 18px;
+  border-radius: 6px;
+
+  background-color: var(--wui-color-surface-raised, #f2f2f7);
+
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.is-checked .wui-checkbox-box {
+  border-color: var(--wui-color-accent, #08f);
+  background-color: var(--wui-color-accent, #08f);
+}
+
+.wui-checkbox-icon {
+  transform: scale(0.85);
+
+  overflow: hidden;
+  display: block;
+
+  font-size: 0;
+  line-height: 0;
+
+  opacity: 0;
+
+  transition:
+    opacity var(--wui-duration-fast, 160ms) ease,
+    transform var(--wui-duration-fast, 160ms) var(--wui-ease-out, cubic-bezier(0.23, 1, 0.32, 1));
+}
+
+.is-checked .wui-checkbox-icon {
+  transform: scale(1);
+  opacity: 1;
+}
+
+.wui-checkbox-label {
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wui-checkbox-icon,
+  .is-checked .wui-checkbox-icon {
+    transform: none;
+  }
+}

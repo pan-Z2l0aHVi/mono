@@ -1,0 +1,177 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+:host {
+  display: block;
+}
+
+:host([hidden]) {
+  display: none;
+}
+
+/* ===== 入场 / 退场动画 ===== */
+
+.toast {
+  --wui-glass-shadow: var(--wui-shadow-pop, 0 3px 9px rgb(0 0 0 / 0.27));
+  position: relative;
+  transform: translate(var(--toast-slide-x, 0), var(--toast-slide-y, -8px)) scale(0.97);
+
+  display: flex;
+  gap: 12px;
+  align-items: center;
+
+  width: 360px;
+  padding: 8px;
+  border-radius: 20px;
+
+  font-size: var(--wui-font-size, 14px);
+  line-height: 1.5;
+  color: var(--wui-color-text, #1b1b1b);
+
+  opacity: 0;
+  background-color: var(--wui-color-surface-overlay, rgb(245 245 245 / 0.85));
+
+  transition:
+    opacity var(--wui-duration-overlay-enter, 180ms) var(--wui-ease-out, cubic-bezier(0.23, 1, 0.32, 1)),
+    transform var(--wui-duration-overlay-enter, 180ms) var(--wui-ease-out, cubic-bezier(0.23, 1, 0.32, 1));
+}
+
+:host([visible]) .toast {
+  transform: translate(0, 0) scale(1);
+  opacity: 1;
+}
+
+:host(:not([visible])) .toast {
+  transition-duration: var(--wui-duration-overlay-exit, 140ms);
+}
+
+/* ===== 关闭按钮（放在 hover 规则之前，避免 specificity 降序） ===== */
+
+.toast-close-btn {
+  pointer-events: none;
+  cursor: pointer;
+
+  position: absolute;
+  top: -8px;
+  right: -8px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 24px;
+  height: 24px;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: calc(infinity * 1px);
+
+  color: var(--wui-color-text-muted, #6a6a6a);
+
+  opacity: 0;
+
+  transition: opacity var(--wui-duration-fast, 160ms) ease;
+
+  &:focus-visible {
+    pointer-events: auto;
+    opacity: 1;
+    outline: 2px solid var(--wui-focus-ring, rgb(0 136 255 / 0.4));
+    outline-offset: 2px;
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .toast-close-btn:hover,
+  .toast:hover .toast-close-btn {
+    pointer-events: auto;
+    opacity: 1;
+  }
+}
+
+/* ===== 图标 ===== */
+
+.toast-icon {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+
+  width: 32px;
+  height: 32px;
+  border-radius: calc(infinity * 1px);
+}
+
+.toast.success .toast-icon {
+  color: var(--wui-color-success, #16a34a);
+  background-color: color-mix(in srgb, var(--wui-color-success, #16a34a) 10%, transparent);
+}
+
+.toast.info .toast-icon {
+  color: var(--wui-color-info, #2563eb);
+  background-color: color-mix(in srgb, var(--wui-color-info, #2563eb) 10%, transparent);
+}
+
+.toast.warning .toast-icon {
+  color: var(--wui-color-warning, #d97706);
+  background-color: color-mix(in srgb, var(--wui-color-warning, #d97706) 10%, transparent);
+}
+
+.toast.error .toast-icon {
+  color: var(--wui-color-danger, #dc2626);
+  background-color: color-mix(in srgb, var(--wui-color-danger, #dc2626) 10%, transparent);
+}
+
+/* ===== 内容区 ===== */
+
+.toast-body {
+  flex: 1;
+  min-width: 0;
+  padding-top: 1px;
+}
+
+.toast-heading {
+  overflow: hidden;
+
+  font-size: var(--wui-font-size, 14px);
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--wui-color-text, #1b1b1b);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.toast-message {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+
+  margin-top: 2px;
+
+  font-size: calc(var(--wui-font-size, 14px) - 1px);
+  line-height: 1.45;
+  color: color-mix(in srgb, var(--wui-color-text, #1b1b1b) 55%, transparent);
+  word-break: break-all;
+}
+
+/* ===== 时间戳 ===== */
+
+.toast-time {
+  flex-shrink: 0;
+
+  padding-top: 2px;
+
+  font-size: 12px;
+  color: color-mix(in srgb, var(--wui-color-text, #1b1b1b) 30%, transparent);
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toast,
+  :host([visible]) .toast {
+    transform: none;
+  }
+}

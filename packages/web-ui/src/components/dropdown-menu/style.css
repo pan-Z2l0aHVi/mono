@@ -1,3 +1,9 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
 :host {
   display: inline-block;
 }
@@ -14,14 +20,14 @@
 }
 
 .dropdown-overlay {
-  --wui-glass-shadow: 0 4px 16px rgb(0 0 0 / 0.25);
+  --wui-glass-shadow: var(--wui-shadow-pop, 0 3px 9px rgb(0 0 0 / 0.27));
   position: fixed;
-  z-index: 9999;
+  z-index: var(--wui-layer-menu, 100);
 
   box-sizing: border-box;
   border-radius: 20px;
 
-  background-color: rgb(240 240 240 / 0.8);
+  background-color: var(--wui-color-surface-overlay, rgb(245 245 245 / 0.85));
 }
 
 .dropdown-scroll {

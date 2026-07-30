@@ -1,0 +1,93 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+:host {
+  display: inline-block;
+}
+
+.badge-wrapper {
+  display: inline-flex;
+}
+
+.badge-wrapper-fixed {
+  position: relative;
+}
+
+.badge {
+  z-index: 1;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border: 1px solid var(--wui-color-page, #fff);
+  border-radius: calc(infinity * 1px);
+
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1;
+  color: var(--wui-color-on-accent, #fff);
+  white-space: nowrap;
+
+  background-color: var(--wui-color-danger, #dc2626);
+}
+
+.badge-fixed {
+  position: absolute;
+  transform: translate(
+    calc(var(--badge-x, 50%) + var(--badge-offset-x, 0px)),
+    calc(var(--badge-y, -50%) + var(--badge-offset-y, 0px))
+  );
+}
+
+/* ===== Placement ===== */
+
+:host([placement='top-right']) .badge {
+  --badge-x: 50%;
+  --badge-y: -50%;
+  top: 0;
+  right: 0;
+}
+
+:host([placement='top-left']) .badge {
+  --badge-x: -50%;
+  --badge-y: -50%;
+  top: 0;
+  left: 0;
+}
+
+:host([placement='bottom-right']) .badge {
+  --badge-x: 50%;
+  --badge-y: 50%;
+  right: 0;
+  bottom: 0;
+}
+
+:host([placement='bottom-left']) .badge {
+  --badge-x: -50%;
+  --badge-y: 50%;
+  bottom: 0;
+  left: 0;
+}
+
+/* ===== Dot ===== */
+
+.badge-dot {
+  min-width: 8px;
+  height: 8px;
+  padding: 0;
+  font-size: 0;
+}
+
+/* ===== Fixed mode (has slotted content) ===== */
+
+.badge-fixed.badge-dot {
+  --badge-x: 40%;
+  --badge-y: -40%;
+}

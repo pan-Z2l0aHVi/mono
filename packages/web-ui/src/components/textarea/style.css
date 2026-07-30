@@ -1,0 +1,127 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+:host {
+  display: block;
+}
+
+:host([disabled]) {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+/* ===== Textarea ===== */
+
+.wui-textarea-inner {
+  position: relative;
+
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+
+  box-sizing: border-box;
+  width: var(--wui-textarea-width, 200px);
+  min-width: var(--wui-button-size, 40px);
+  padding: 9px 18px;
+  border-radius: 20px;
+
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
+}
+
+:host([full]) .wui-textarea-inner {
+  width: 100%;
+}
+
+/* ===== Borderless ===== */
+
+:host([borderless]) .wui-textarea-inner {
+  padding: 9px 0;
+  border: none;
+
+  background: transparent;
+  backdrop-filter: none;
+  box-shadow: none;
+}
+
+:host([focused]) .wui-textarea-inner {
+  --wui-glass-shadow:
+    var(--wui-shadow-glass, 0 2px 16px rgb(0 0 0 / 0.06)), 0 0 0 3px var(--wui-focus-ring, rgb(0 136 255 / 0.4));
+  border-color: var(--wui-color-border-strong, rgb(0 110 230 / 0.5));
+}
+
+:host([borderless][focused]) .wui-textarea-inner {
+  border-color: transparent;
+  box-shadow: none;
+}
+
+textarea {
+  resize: vertical;
+
+  display: block;
+  flex: 1;
+
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 60px;
+  padding: 0;
+  border: none;
+
+  font-size: var(--wui-font-size, 14px);
+  line-height: 1.5;
+  color: var(--wui-color-text, #1b1b1b);
+
+  background: transparent;
+  outline: none;
+
+  &::placeholder {
+    color: var(--wui-color-text-muted, #6a6a6a);
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+  }
+
+  &:read-only {
+    cursor: default;
+  }
+}
+
+/* ===== Prefix / Suffix ===== */
+
+slot {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+
+  font-size: var(--wui-font-size, 14px);
+  color: var(--wui-color-text-muted, #6a6a6a);
+}
+
+slot.empty {
+  display: none;
+}
+
+/* ===== Clear button ===== */
+
+.clear {
+  cursor: pointer;
+
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  align-self: flex-start;
+  justify-content: center;
+
+  margin-top: 2px;
+
+  color: var(--wui-color-text-muted, #6a6a6a);
+
+  &:hover {
+    color: var(--wui-color-text-muted, #6a6a6a);
+  }
+}

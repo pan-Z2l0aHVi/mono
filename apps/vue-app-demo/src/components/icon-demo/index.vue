@@ -19,9 +19,9 @@ import { lucideArrowUpToLine, lucideLoaderCircle, lucideChevronLeft, lucideSearc
 
     <h2>尺寸</h2>
     <div class="mb-3 flex items-center gap-4">
-      <web-ui-icon :icon="lucideSearch" :width="16" :height="16"></web-ui-icon>
-      <web-ui-icon :icon="lucideSearch" :width="24" :height="24"></web-ui-icon>
-      <web-ui-icon :icon="lucideSearch" :width="32" :height="32"></web-ui-icon>
+      <web-ui-icon :icon="lucideSearch" :size="16"></web-ui-icon>
+      <web-ui-icon :icon="lucideSearch" :size="24"></web-ui-icon>
+      <web-ui-icon :icon="lucideSearch" :size="32"></web-ui-icon>
     </div>
 
     <h2>颜色</h2>

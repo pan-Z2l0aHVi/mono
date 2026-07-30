@@ -13,8 +13,9 @@ Use `vite-plus` (`vp`) as the unified build/dev/lint/test/format wrapper:
 
 - **Single-entry packages** (test-kit, unplugin-web-components, deps-reload): `vp pack` (tsdown) → `.mjs` + `.d.mts`
 - **Sub-path export packages** (js-kit, browser-kit, web-ui): `vp build` (Vite lib mode + preserveModules + vite-plugin-dts) →`.js` + `.d.ts`
-- **React app**: `tsc -b && vp build`
-- **Type-checking**: `vue-tsc` for all packages (including non-Vue), `tsc` for React app
+- **React app**: `vp build`
+- **Vue app**: `vue-tsc --build && vp build`
+- **Workspace verification**: `pnpm run check:code` runs formatting, linting, and type checking
 
 ## Consequences
 

@@ -1,3 +1,9 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
 :host {
   display: inline-block;
 }
@@ -11,14 +17,14 @@
   width: max-content;
   height: 40px;
   padding: 0 4px;
-  border-radius: 999vmax;
+  border-radius: calc(infinity * 1px);
 }
 
-:host([orientation='vertical']) {
+:host([direction='vertical']) {
   --wui-button-group-flex-direction: column;
 }
 
-:host([orientation='vertical']) .wui-button-group-inner {
+:host([direction='vertical']) .wui-button-group-inner {
   width: 40px;
   height: auto;
   padding: 4px 0;

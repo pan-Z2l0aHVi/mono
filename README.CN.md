@@ -1,6 +1,6 @@
 # Monorepo
 
-> 所有代码，尽在一处。
+> 一切，尽在一处。
 
 [English](./README.md) | 简体中文
 

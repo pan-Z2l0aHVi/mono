@@ -6,7 +6,8 @@ import {
   shift,
   size,
   type Middleware,
-  type Placement
+  type Placement,
+  type Strategy
 } from '@floating-ui/dom'
 import { definePlugin } from '@greypan/js-kit'
 
@@ -17,6 +18,9 @@ export interface OverlayOptions {
   shift?: boolean
   /** Sync overlay width to anchor width */
   matchWidth?: boolean
+  /** Set overlay min-width to anchor width (content can expand wider) */
+  minAnchorWidth?: boolean
+  strategy?: Strategy
 }
 
 export interface OverlayApi {
@@ -34,7 +38,20 @@ const DEFAULT_OPTIONS: Required<OverlayOptions> = {
   offset: 4,
   flip: true,
   shift: true,
-  matchWidth: false
+  matchWidth: false,
+  minAnchorWidth: false,
+  strategy: 'absolute'
+}
+
+function getTransformOrigin(placement: Placement): string {
+  const [side, alignment] = placement.split('-')
+  const horizontalOrigin = alignment === 'start' ? 'left' : alignment === 'end' ? 'right' : 'center'
+  const verticalOrigin = alignment === 'start' ? 'top' : alignment === 'end' ? 'bottom' : 'center'
+
+  if (side === 'top') return `bottom ${horizontalOrigin}`
+  if (side === 'bottom') return `top ${horizontalOrigin}`
+  if (side === 'left') return `right ${verticalOrigin}`
+  return `left ${verticalOrigin}`
 }
 
 export const withOverlay = definePlugin<OverlayApi, { anchor: HTMLElement; overlay: HTMLElement } & OverlayOptions>(
@@ -44,7 +61,9 @@ export const withOverlay = definePlugin<OverlayApi, { anchor: HTMLElement; overl
       offset: ctx.offset ?? DEFAULT_OPTIONS.offset,
       flip: ctx.flip ?? DEFAULT_OPTIONS.flip,
       shift: ctx.shift ?? DEFAULT_OPTIONS.shift,
-      matchWidth: ctx.matchWidth ?? DEFAULT_OPTIONS.matchWidth
+      matchWidth: ctx.matchWidth ?? DEFAULT_OPTIONS.matchWidth,
+      minAnchorWidth: ctx.minAnchorWidth ?? DEFAULT_OPTIONS.minAnchorWidth,
+      strategy: ctx.strategy ?? DEFAULT_OPTIONS.strategy
     }
 
     const overlay = ctx.overlay
@@ -64,16 +83,26 @@ export const withOverlay = definePlugin<OverlayApi, { anchor: HTMLElement; overl
             }
           })
         )
+      } else if (options.minAnchorWidth) {
+        middleware.push(
+          size({
+            apply({ rects }) {
+              overlay.style.minWidth = `${Math.max(rects.reference.width, 120)}px`
+            }
+          })
+        )
       }
 
       cleanup?.()
       cleanup = autoUpdate(anchor, overlay, () => {
         void computePosition(anchor, overlay, {
           placement: options.placement,
+          strategy: options.strategy,
           middleware
-        }).then(({ x, y }) => {
+        }).then(({ x, y, placement }) => {
           overlay.style.left = `${x}px`
           overlay.style.top = `${y}px`
+          overlay.style.setProperty('--wui-overlay-transform-origin', getTransformOrigin(placement))
         })
       })
     }

@@ -6,7 +6,7 @@ describe('loop-queue', () => {
   let onConsume: (target: object, queue: object[]) => void
 
   beforeEach(() => {
-    onConsume = vi.fn()
+    onConsume = vi.fn<(target: object, queue: object[]) => void>()
   })
 
   it('enqueue 应触发 onConsume，传入目标 item 和空队列', () => {
@@ -92,7 +92,7 @@ describe('loop-queue', () => {
   })
 
   it('onConsume 应接收 data 对象而非 QueueItem 包装', () => {
-    const onConsume = vi.fn()
+    const onConsume = vi.fn<(target: object, queue: object[]) => void>()
 
     defineLoopQueue({
       initialQueue: [{ event: 'click' }],
@@ -176,7 +176,7 @@ describe('loop-queue', () => {
   })
 
   it('initialQueue 为空数组时不应触发 onConsume', () => {
-    const onConsume = vi.fn()
+    const onConsume = vi.fn<(target: object, queue: object[]) => void>()
 
     defineLoopQueue({ initialQueue: [], onConsume }).make()
 

@@ -146,8 +146,5 @@ report.html
 # 工具链自动生成 (Auto Generated)
 # ==========================================
 wailsjs/
-typed-router.d.ts
-auto-imports.d.ts
 .eslintrc-auto-import.js
-routeTree.gen.ts
 package.json.md5
