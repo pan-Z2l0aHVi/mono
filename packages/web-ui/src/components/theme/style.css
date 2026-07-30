@@ -25,6 +25,28 @@
   display: contents;
 }
 
+:host([motion='reduced']) {
+  --wui-duration-press: 0ms;
+  --wui-duration-fast: 0ms;
+  --wui-duration-overlay-enter: 0ms;
+  --wui-duration-overlay-exit: 0ms;
+  --wui-duration-drawer: 0ms;
+  --wui-scale-press: 1;
+  --wui-scale-enter: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :host([motion='system']) {
+    --wui-duration-press: 0ms;
+    --wui-duration-fast: 0ms;
+    --wui-duration-overlay-enter: 0ms;
+    --wui-duration-overlay-exit: 0ms;
+    --wui-duration-drawer: 0ms;
+    --wui-scale-press: 1;
+    --wui-scale-enter: 1;
+  }
+}
+
 :host([appearance='light']),
 :host([appearance='system']) {
   --wui-color-page: #fff;

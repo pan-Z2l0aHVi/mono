@@ -668,7 +668,7 @@ SVG 线条绘制动画，基于 `stroke-dashoffset`。直接在原元素上动�
 
 两个属性均会反射（reflected）。
 
-**方法：** `replay(): Promise<void>` — 取消当前动画，重新从 DOM 收集几何元素并开始新动画。所有目标以相同的 duration/easing 并行播放。动画全部完成后 resolve。启用 `prefers-reduced-motion: reduce` 时立即返回，不播放动画。
+**方法：** `replay(): Promise<void>` — 取消当前动画，重新从 DOM 收集几何元素并开始新动画。所有目标以相同的 duration/easing 并行播放。动画全部完成后 resolve。最近主题范围为 `motion="reduced"` 时立即返回，不播放动画；`motion="system"` 则在匹配 `prefers-reduced-motion: reduce` 时执行相同行为。
 
 **插槽：** `default` — 需要动画的 SVG 内容。接受内联 `<svg>` 元素（light DOM）以及将 SVG 渲染在开放 Shadow DOM 中的组件（如 `<web-ui-icon>`）。closed Shadow Root 被跳过。
 
@@ -678,13 +678,14 @@ SVG 线条绘制动画，基于 `stroke-dashoffset`。直接在原元素上动�
 
 主题提供者，定义 CSS 自定义属性 token。
 
-| 属性         | 类型                            | 默认值    | 说明     |
-| ------------ | ------------------------------- | --------- | -------- |
-| `appearance` | `'light' \| 'dark' \| 'system'` | `'light'` | 配色方案 |
+| 属性         | 类型                              | 默认值     | 说明                       |
+| ------------ | --------------------------------- | ---------- | -------------------------- |
+| `appearance` | `'light' \| 'dark' \| 'system'`   | `'light'`  | 配色方案                   |
+| `motion`     | `'full' \| 'reduced' \| 'system'` | `'system'` | 当前嵌套主题范围的动效偏好 |
 
 **方法：** `getOverlayRoot()` — 返回 Portal 浮层容器
 
-定义 `--wui-color-*`、`--wui-shadow-*`、`--wui-layer-*` 与 motion token。motion token 是稳定的主题契约，可在主题范围覆盖：`--wui-duration-press`、`--wui-duration-fast`、`--wui-duration-overlay-enter`、`--wui-duration-overlay-exit`、`--wui-duration-drawer`、`--wui-ease-out`、`--wui-ease-standard`、`--wui-scale-press`、`--wui-scale-enter`。可嵌套实现作用域主题。System 模式跟随 `prefers-color-scheme`；启用 reduced-motion 时保留状态透明度变化并移除 transform 位移。
+定义 `--wui-color-*`、`--wui-shadow-*`、`--wui-layer-*` 与 motion token。motion token 是稳定的主题契约，可在主题范围覆盖：`--wui-duration-press`、`--wui-duration-fast`、`--wui-duration-overlay-enter`、`--wui-duration-overlay-exit`、`--wui-duration-drawer`、`--wui-ease-out`、`--wui-ease-standard`、`--wui-scale-press`、`--wui-scale-enter`。`motion="system"` 跟随 `prefers-reduced-motion`；使用 `motion="reduced"` 降低当前作用域动效，或在嵌套主题中使用 `motion="full"` 恢复默认 token。System 配色模式跟随 `prefers-color-scheme`。
 
 ---
 

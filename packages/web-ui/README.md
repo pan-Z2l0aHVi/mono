@@ -672,7 +672,7 @@ SVG line drawing animation using `stroke-dashoffset`. Animates geometry in-place
 
 Both attributes are reflected.
 
-**Methods:** `replay(): Promise<void>` — cancels running animation, re-collects geometry elements from current DOM, and starts a new animation. All targets animate in parallel with the same duration/easing. Resolves when all complete. With `prefers-reduced-motion: reduce`, returns immediately without animation.
+**Methods:** `replay(): Promise<void>` — cancels running animation, re-collects geometry elements from current DOM, and starts a new animation. All targets animate in parallel with the same duration/easing. Resolves when all complete. Returns immediately without animation when the nearest theme scope uses `motion="reduced"`, or when its `motion="system"` mode matches `prefers-reduced-motion: reduce`.
 
 **Slots:** `default` — SVG content to animate. Accepts inline `<svg>` elements (light DOM) as well as components that render an SVG in an open shadow root, such as `<web-ui-icon>`. Closed shadow roots are skipped.
 
@@ -682,13 +682,14 @@ Finds `path`, `rect`, `circle`, `line`, `polyline`, `polygon`, `ellipse` element
 
 Theme provider defining CSS custom property tokens.
 
-| Attribute    | Type                            | Default   | Description  |
-| ------------ | ------------------------------- | --------- | ------------ |
-| `appearance` | `'light' \| 'dark' \| 'system'` | `'light'` | Color scheme |
+| Attribute    | Type                              | Default    | Description                                   |
+| ------------ | --------------------------------- | ---------- | --------------------------------------------- |
+| `appearance` | `'light' \| 'dark' \| 'system'`   | `'light'`  | Color scheme                                  |
+| `motion`     | `'full' \| 'reduced' \| 'system'` | `'system'` | Motion preference for this nested theme scope |
 
 **Methods:** `getOverlayRoot()` — returns the portal overlay container
 
-Defines `--wui-color-*`, `--wui-shadow-*`, `--wui-layer-*`, and motion tokens. Motion tokens are stable and may be overridden per theme scope: `--wui-duration-press`, `--wui-duration-fast`, `--wui-duration-overlay-enter`, `--wui-duration-overlay-exit`, `--wui-duration-drawer`, `--wui-ease-out`, `--wui-ease-standard`, `--wui-scale-press`, and `--wui-scale-enter`. Nestable for scoped theming. System appearance follows `prefers-color-scheme`; reduced-motion keeps state opacity changes while removing transform motion.
+Defines `--wui-color-*`, `--wui-shadow-*`, `--wui-layer-*`, and motion tokens. Motion tokens are stable and may be overridden per theme scope: `--wui-duration-press`, `--wui-duration-fast`, `--wui-duration-overlay-enter`, `--wui-duration-overlay-exit`, `--wui-duration-drawer`, `--wui-ease-out`, `--wui-ease-standard`, `--wui-scale-press`, and `--wui-scale-enter`. `motion="system"` follows `prefers-reduced-motion`; use `motion="reduced"` to reduce animation in a scope or `motion="full"` in a nested theme to restore the normal token values. System appearance follows `prefers-color-scheme`.
 
 ---
 

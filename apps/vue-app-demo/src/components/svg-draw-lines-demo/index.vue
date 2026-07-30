@@ -77,14 +77,14 @@ const iconItems = [
 
     <h2>参数控制</h2>
     <div class="mb-6 flex flex-col gap-4">
-      <label class="flex w-100 items-center gap-2 text-sm">
+      <label class="flex items-center gap-2 text-sm">
         <span class="whitespace-nowrap text-[var(--wui-color-text-muted)]">动画时长:</span>
         <web-ui-slider
           :value="duration"
           :min="200"
           :max="5000"
           :step="100"
-          class="w-32"
+          class="max-w-100"
           @input="updateDuration"
         ></web-ui-slider>
         <code class="rounded bg-[var(--wui-color-surface-raised)] px-2 py-0.5 text-xs">{{ duration }}ms</code>

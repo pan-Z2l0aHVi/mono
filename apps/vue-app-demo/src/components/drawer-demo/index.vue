@@ -112,7 +112,7 @@ const overlayVisible = ref(false)
     </div>
     <web-ui-drawer :open="unlockedVisible" :lock-scroll="false" @open-change="unlockedVisible = $event.detail.open">
       <p>关闭 <code>lock-scroll</code> 后，背景页面仍可滚动。</p>
-      <web-ui-button slot="footer" full @click="unlockedVisible = false">关闭</web-ui-button>
+      <web-ui-button slot="footer" variant="secondary" full @click="unlockedVisible = false">关闭</web-ui-button>
     </web-ui-drawer>
 
     <h2>不可点击遮罩关闭</h2>

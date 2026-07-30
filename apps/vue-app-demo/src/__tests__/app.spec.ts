@@ -6,6 +6,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import App from '@/app/index.vue'
 
 const STORAGE_KEY = 'theme-appearance'
+const MOTION_STORAGE_KEY = 'theme-motion'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -16,8 +17,16 @@ function getThemeAppearance(wrapper: ReturnType<typeof mountApp>): string {
   return (wrapper.find('web-ui-theme').element as HTMLElement & { appearance: string }).appearance
 }
 
+function getThemeMotion(wrapper: ReturnType<typeof mountApp>): string {
+  return (wrapper.find('web-ui-theme').element as HTMLElement & { motion: string }).motion
+}
+
 function getThemeSelectValue(wrapper: ReturnType<typeof mountApp>): string {
-  return (wrapper.find('web-ui-select').element as HTMLElement & { value: string }).value
+  return (wrapper.find("web-ui-select[aria-label='全局主题']").element as HTMLElement & { value: string }).value
+}
+
+function getThemeMotionSelectValue(wrapper: ReturnType<typeof mountApp>): string {
+  return (wrapper.find("web-ui-select[aria-label='全局动效']").element as HTMLElement & { value: string }).value
 }
 
 function mountApp() {
@@ -34,6 +43,7 @@ function mountApp() {
 
 afterEach(() => {
   local.remove(STORAGE_KEY)
+  local.remove(MOTION_STORAGE_KEY)
 })
 
 describe('App 挂载测试', () => {
@@ -77,13 +87,46 @@ describe('App 挂载测试', () => {
 
   it('选择主题后更新边界并持久化', async () => {
     const wrapper = mountApp()
-    const select = wrapper.find('web-ui-select')
+    const select = wrapper.find("web-ui-select[aria-label='全局主题']")
     ;(select.element as HTMLElement & { value: string }).value = 'system'
 
     await select.trigger('change')
 
     expect(getThemeAppearance(wrapper)).toBe('system')
     expect(local.get(STORAGE_KEY)).toBe('system')
+
+    wrapper.unmount()
+  })
+
+  it('默认跟随系统动效偏好', () => {
+    const wrapper = mountApp()
+
+    expect(getThemeMotion(wrapper)).toBe('system')
+    expect(getThemeMotionSelectValue(wrapper)).toBe('system')
+
+    wrapper.unmount()
+  })
+
+  it('选择动效后更新主题范围并持久化', async () => {
+    const wrapper = mountApp()
+    const select = wrapper.find("web-ui-select[aria-label='全局动效']")
+    ;(select.element as HTMLElement & { value: string }).value = 'reduced'
+
+    await select.trigger('change')
+
+    expect(getThemeMotion(wrapper)).toBe('reduced')
+    expect(local.get(MOTION_STORAGE_KEY)).toBe('reduced')
+
+    wrapper.unmount()
+  })
+
+  it('恢复持久化的动效偏好', () => {
+    local.set(MOTION_STORAGE_KEY, 'full')
+
+    const wrapper = mountApp()
+
+    expect(getThemeMotion(wrapper)).toBe('full')
+    expect(getThemeMotionSelectValue(wrapper)).toBe('full')
 
     wrapper.unmount()
   })

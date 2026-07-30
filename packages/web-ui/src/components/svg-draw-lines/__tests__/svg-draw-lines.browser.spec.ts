@@ -1,6 +1,9 @@
-import { afterEach, describe, expect, it } from 'vite-plus/test'
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
 
 import '..'
+import type { WebUiTheme } from '@/components/theme'
+import '@/components/theme'
+
 import type { WebUiSvgDrawLines } from '..'
 
 function createEl(): WebUiSvgDrawLines {
@@ -99,5 +102,37 @@ describe('WebUiSvgDrawLines browser', () => {
     await el.updateComplete
     await expect(el.replay()).resolves.toBeUndefined()
     el.remove()
+  })
+
+  it('最近的嵌套 theme motion 决定是否播放', async () => {
+    const outer = document.createElement('web-ui-theme') as WebUiTheme
+    outer.appearance = 'light'
+    outer.motion = 'reduced'
+    const inner = document.createElement('web-ui-theme') as WebUiTheme
+    inner.appearance = 'dark'
+    inner.motion = 'full'
+    const el = document.createElement('web-ui-svg-draw-lines') as WebUiSvgDrawLines
+    el.duration = 20
+    el.innerHTML = '<svg><path d="M0 0 L100 100" /></svg>'
+
+    inner.appendChild(el)
+    outer.appendChild(inner)
+    document.body.appendChild(outer)
+    await outer.updateComplete
+    await inner.updateComplete
+    await el.updateComplete
+
+    const path = el.querySelector('path')!
+    const animate = vi.spyOn(path, 'animate')
+
+    await el.replay()
+    expect(animate).toHaveBeenCalledOnce()
+
+    animate.mockClear()
+    inner.motion = 'reduced'
+    await inner.updateComplete
+
+    await expect(el.replay()).resolves.toBeUndefined()
+    expect(animate).not.toHaveBeenCalled()
   })
 })

@@ -7,8 +7,10 @@ import { applyOverlayRootStyles } from '@/shared/theme/overlay-root'
 import style from './style.css?inline'
 
 export type ThemeAppearance = 'light' | 'dark' | 'system'
+export type ThemeMotion = 'full' | 'reduced' | 'system'
 
 const APPEARANCES = ['light', 'dark', 'system'] as const
+const MOTIONS = ['full', 'reduced', 'system'] as const
 
 @customElement('web-ui-theme')
 export class WebUiTheme extends LitElement {
@@ -25,6 +27,17 @@ export class WebUiTheme extends LitElement {
   }
   private _appearance?: ThemeAppearance
 
+  @property({ type: String, reflect: true })
+  get motion(): ThemeMotion {
+    return this._motion
+  }
+  set motion(v: string) {
+    const old = this._motion
+    this._motion = normalizeLiteral(v, MOTIONS, 'system') as ThemeMotion
+    this.requestUpdate('motion', old)
+  }
+  private _motion: ThemeMotion = 'system'
+
   private _warned = false
 
   override connectedCallback() {
@@ -40,6 +53,18 @@ export class WebUiTheme extends LitElement {
   getOverlayRoot(): HTMLElement | undefined {
     if (!this._hasAppearance()) return undefined
     return this.renderRoot.querySelector<HTMLElement>('[data-wui-overlay-container]') ?? undefined
+  }
+
+  /** 当前范围是否应减少动效；`system` 跟随用户的系统偏好。 */
+  isReducedMotion(): boolean {
+    if (this.motion === 'reduced') return true
+    if (this.motion === 'full') return false
+
+    try {
+      return window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    } catch {
+      return false
+    }
   }
 
   override render() {

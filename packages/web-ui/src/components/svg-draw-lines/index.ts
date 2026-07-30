@@ -2,6 +2,7 @@ import { html, LitElement, nothing, unsafeCSS } from 'lit'
 import { customElement, property } from 'lit/decorators.js'
 
 import { normalizeNumber } from '@/shared/normalize'
+import { findNearestTheme } from '@/shared/theme/theme-scope'
 
 import style from './style.css?inline'
 
@@ -32,26 +33,15 @@ export class WebUiSvgDrawLines extends LitElement {
 
   private _activeRun: AnimationRun | undefined
   private _hasAutoPlayed = false
-  private _reducedMotion = false
-
-  override connectedCallback() {
-    super.connectedCallback()
-    try {
-      this._reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    } catch {
-      // jsdom or other environments without matchMedia
-    }
-  }
-
   /**
    * 停止当前播放并重新开始。每次调用重新收集子树中的几何元素。
    * 所有元素同时开始并行的 stroke-dashoffset 动画。
-   * 无目标或启用 prefers-reduced-motion 时立即 resolve。
+   * 无目标或当前主题范围启用 reduced motion 时立即 resolve。
    */
   async replay(): Promise<void> {
     this.cancelAll()
 
-    if (this._reducedMotion) return
+    if (this._isReducedMotion()) return
 
     const targets = this.collectGeometryElements()
     if (targets.length === 0) return
@@ -71,6 +61,17 @@ export class WebUiSvgDrawLines extends LitElement {
 
   private cancelAll() {
     if (this._activeRun) this.finishRun(this._activeRun)
+  }
+
+  private _isReducedMotion(): boolean {
+    const theme = findNearestTheme(this)
+    if (theme) return theme.isReducedMotion()
+
+    try {
+      return window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    } catch {
+      return false
+    }
   }
 
   private finishRun(run: AnimationRun) {

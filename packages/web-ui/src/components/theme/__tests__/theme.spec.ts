@@ -25,6 +25,52 @@ afterEach(() => {
 })
 
 describe('WebUiTheme', () => {
+  describe('prop: motion', () => {
+    it('默认使用 system 并反射到 host', async () => {
+      const theme = createTheme('light')
+      await theme.updateComplete
+      expect(theme.motion).toBe('system')
+      expect(theme.getAttribute('motion')).toBe('system')
+      theme.remove()
+    })
+
+    it('motion 反射到 host', async () => {
+      const theme = createTheme('light')
+      theme.motion = 'reduced'
+      await theme.updateComplete
+      expect(theme.getAttribute('motion')).toBe('reduced')
+      theme.remove()
+    })
+
+    it('非法的 motion 值回退到 system', async () => {
+      const theme = createTheme('light')
+      ;(theme as unknown as Record<string, unknown>).motion = 'invalid'
+      await theme.updateComplete
+      expect(theme.motion).toBe('system')
+      expect(theme.getAttribute('motion')).toBe('system')
+      theme.remove()
+    })
+
+    it('嵌套范围可独立设置 motion', async () => {
+      const outer = createTheme('light')
+      outer.motion = 'reduced'
+      const inner = document.createElement('web-ui-theme') as WebUiTheme
+      inner.appearance = 'dark'
+      inner.motion = 'full'
+      outer.appendChild(inner)
+
+      await outer.updateComplete
+      await inner.updateComplete
+
+      expect(outer.motion).toBe('reduced')
+      expect(inner.motion).toBe('full')
+      expect(outer.getAttribute('motion')).toBe('reduced')
+      expect(inner.getAttribute('motion')).toBe('full')
+      inner.remove()
+      outer.remove()
+    })
+  })
+
   describe('prop: appearance', () => {
     it('appearance 反射到 host', async () => {
       const theme = createTheme('dark')

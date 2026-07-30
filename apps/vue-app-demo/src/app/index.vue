@@ -4,12 +4,19 @@ import { onMounted, ref } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 
 type ThemeAppearance = 'light' | 'dark' | 'system'
+type ThemeMotion = 'full' | 'reduced' | 'system'
 
 const STORAGE_KEY = 'theme-appearance'
+const MOTION_STORAGE_KEY = 'theme-motion'
 const THEME_APPEARANCES = new Set<ThemeAppearance>(['light', 'dark', 'system'])
+const THEME_MOTIONS = new Set<ThemeMotion>(['full', 'reduced', 'system'])
 
 function isThemeAppearance(appearance: unknown): appearance is ThemeAppearance {
   return typeof appearance === 'string' && THEME_APPEARANCES.has(appearance as ThemeAppearance)
+}
+
+function isThemeMotion(motion: unknown): motion is ThemeMotion {
+  return typeof motion === 'string' && THEME_MOTIONS.has(motion as ThemeMotion)
 }
 
 function getInitialThemeAppearance(): ThemeAppearance {
@@ -17,7 +24,13 @@ function getInitialThemeAppearance(): ThemeAppearance {
   return isThemeAppearance(appearance) ? appearance : 'light'
 }
 
+function getInitialThemeMotion(): ThemeMotion {
+  const motion = local.get<unknown>(MOTION_STORAGE_KEY)
+  return isThemeMotion(motion) ? motion : 'system'
+}
+
 const themeAppearance = ref(getInitialThemeAppearance())
+const themeMotion = ref(getInitialThemeMotion())
 
 function updateThemeAppearance(event: Event) {
   const appearance = (event.currentTarget as HTMLElement & { value?: unknown }).value
@@ -25,6 +38,14 @@ function updateThemeAppearance(event: Event) {
 
   themeAppearance.value = appearance
   local.set(STORAGE_KEY, appearance)
+}
+
+function updateThemeMotion(event: Event) {
+  const motion = (event.currentTarget as HTMLElement & { value?: unknown }).value
+  if (!isThemeMotion(motion)) return
+
+  themeMotion.value = motion
+  local.set(MOTION_STORAGE_KEY, motion)
 }
 
 const route = useRoute()
@@ -75,19 +96,29 @@ const navItems: NavItem[] = [
 </script>
 
 <template>
-  <web-ui-theme :appearance="themeAppearance">
+  <web-ui-theme :appearance="themeAppearance" :motion="themeMotion">
     <div class="min-h-screen bg-[var(--wui-color-page)] text-[var(--wui-color-text)]">
       <web-ui-layout>
-        <div slot="header" class="flex h-full items-center justify-end px-4">
+        <div slot="header" class="flex h-full w-full items-center justify-end gap-4 px-4 max-[640px]:w-screen">
+          <web-ui-select
+            :value="themeMotion"
+            class="[--wui-input-width:120px]"
+            aria-label="全局动效"
+            @change="updateThemeMotion"
+          >
+            <web-ui-option value="full" label="完整动效">完整动效</web-ui-option>
+            <web-ui-option value="reduced" label="减少动效">减少动效</web-ui-option>
+            <web-ui-option value="system" label="跟随系统">跟随系统</web-ui-option>
+          </web-ui-select>
           <web-ui-select
             :value="themeAppearance"
             class="[--wui-input-width:120px]"
             aria-label="全局主题"
             @change="updateThemeAppearance"
           >
-            <web-ui-option value="light" label="浅色">浅色1</web-ui-option>
-            <web-ui-option value="dark" label="深色">深色2</web-ui-option>
-            <web-ui-option value="system" label="跟随系统">跟随系统3</web-ui-option>
+            <web-ui-option value="light" label="浅色">浅色</web-ui-option>
+            <web-ui-option value="dark" label="深色">深色</web-ui-option>
+            <web-ui-option value="system" label="跟随系统">跟随系统</web-ui-option>
           </web-ui-select>
         </div>
         <nav ref="navSidebar" slot="sidebar" class="h-full overflow-y-auto px-2 pt-3 pb-2">
