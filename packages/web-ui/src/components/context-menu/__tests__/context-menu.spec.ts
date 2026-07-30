@@ -280,7 +280,9 @@ describe('WebUiContextMenu', () => {
       await waitForMenuOpen(el)
       expect(el.isOpen).toBe(true)
 
-      document.body.click()
+      // flush setTimeout so _ignoreOutsideClick is reset
+      await new Promise(resolve => setTimeout(resolve))
+      document.dispatchEvent(new MouseEvent('click', { bubbles: true }))
       await waitForMenuClose(el)
       expect(el.isOpen).toBe(false)
 
