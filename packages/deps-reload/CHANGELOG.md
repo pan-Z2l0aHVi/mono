@@ -1,5 +1,15 @@
 # @greypan/deps-reload
 
+## 1.3.0
+
+### Minor Changes
+
+- 0a50d35: fix re-reload
+
+### Patch Changes
+
+- 26ca421: fix context-menu click-outside test for jsdom 30 compatibility
+
 ## 1.2.0
 
 ### Minor Changes
