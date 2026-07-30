@@ -1,6 +1,6 @@
 {
   "file_types": {
-    "JSON": ["eslintrc", "prettierrc", "stylelintrc"],
+    "JSON": ["stylelintrc"],
     "JSONC": ["tsconfig.json", "tsconfig.*.json", "cspell.json"]
   },
   "format_on_save": "on",

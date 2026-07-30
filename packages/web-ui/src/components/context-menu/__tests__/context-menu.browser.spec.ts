@@ -19,7 +19,7 @@ afterEach(() => document.body.replaceChildren())
 
 describe('WebUiContextMenu（浏览器）', () => {
   it('openAt() 以即时状态显示根菜单', async () => {
-    const menu = document.createElement('web-ui-context-menu') as WebUiContextMenu
+    const menu = document.createElement('web-ui-context-menu')
     menu.innerHTML = '<web-ui-dropdown-item>Open</web-ui-dropdown-item>'
     document.body.append(menu)
     await menu.updateComplete
@@ -32,7 +32,7 @@ describe('WebUiContextMenu（浏览器）', () => {
   })
 
   it('指针右键以入场状态打开根菜单', async () => {
-    const menu = document.createElement('web-ui-context-menu') as WebUiContextMenu
+    const menu = document.createElement('web-ui-context-menu')
     menu.innerHTML = '<web-ui-dropdown-item>Open</web-ui-dropdown-item>'
     document.body.append(menu)
     await menu.updateComplete
@@ -45,7 +45,7 @@ describe('WebUiContextMenu（浏览器）', () => {
   })
 
   it('键盘打开后，子菜单在退出中重新打开仍可用', async () => {
-    const menu = document.createElement('web-ui-context-menu') as WebUiContextMenu
+    const menu = document.createElement('web-ui-context-menu')
     menu.innerHTML = SUBMENU
     document.body.append(menu)
     await menu.updateComplete

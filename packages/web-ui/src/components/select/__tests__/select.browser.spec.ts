@@ -7,7 +7,7 @@ afterEach(() => document.body.replaceChildren())
 
 describe('WebUiSelect（浏览器）', () => {
   it('点击 option 的 prefix 装饰时选择所属 option', async () => {
-    const select = document.createElement('web-ui-select') as WebUiSelect
+    const select = document.createElement('web-ui-select')
     select.innerHTML = '<web-ui-option value="apple" label="Apple"><span slot="prefix">P</span></web-ui-option>'
     document.body.append(select)
     await select.updateComplete
@@ -26,7 +26,7 @@ describe('WebUiSelect（浏览器）', () => {
   })
 
   it('退出过渡隐藏前重新打开 Portal 面板', async () => {
-    const select = document.createElement('web-ui-select') as WebUiSelect
+    const select = document.createElement('web-ui-select')
     select.portal = true
     select.innerHTML = '<web-ui-option value="apple">Apple</web-ui-option>'
     document.body.append(select)

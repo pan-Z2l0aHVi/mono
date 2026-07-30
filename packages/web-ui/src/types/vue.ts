@@ -15,7 +15,7 @@ import type {
   WebUiDropdownDivider,
   WebUiDropdownHeader,
   WebUiDropdownItem,
-  WebUiDropdownMenu,
+  WebUiDropdown,
   WebUiIcon,
   WebUiInput,
   WebUiInputNumber,
@@ -79,7 +79,7 @@ export interface WebUiComponents {
   'web-ui-dropdown-divider': LitVueWrapper<WebUiDropdownDivider>
   'web-ui-dropdown-header': LitVueWrapper<WebUiDropdownHeader>
   'web-ui-dropdown-item': LitVueWrapper<WebUiDropdownItem>
-  'web-ui-dropdown-menu': LitVueWrapper<WebUiDropdownMenu>
+  'web-ui-dropdown': LitVueWrapper<WebUiDropdown>
   'web-ui-icon': LitVueWrapper<WebUiIcon>
   'web-ui-input': LitVueWrapper<WebUiInput>
   'web-ui-input-number': LitVueWrapper<WebUiInputNumber>

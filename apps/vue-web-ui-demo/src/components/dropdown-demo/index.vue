@@ -21,19 +21,19 @@ const controlledOpen = ref(false)
     <h1>下拉菜单</h1>
     <h2>基础</h2>
     <div class="mb-6">
-      <web-ui-dropdown-menu>
+      <web-ui-dropdown>
         <web-ui-button slot="trigger">操作</web-ui-button>
         <web-ui-dropdown-item>编辑</web-ui-dropdown-item>
         <web-ui-dropdown-item>复制</web-ui-dropdown-item>
         <web-ui-dropdown-item>粘贴</web-ui-dropdown-item>
         <web-ui-dropdown-divider></web-ui-dropdown-divider>
         <web-ui-dropdown-item disabled>删除</web-ui-dropdown-item>
-      </web-ui-dropdown-menu>
+      </web-ui-dropdown>
     </div>
 
     <h2>带图标和快捷键</h2>
     <div class="mb-6">
-      <web-ui-dropdown-menu>
+      <web-ui-dropdown>
         <web-ui-button slot="trigger">文件</web-ui-button>
         <web-ui-dropdown-item>
           <web-ui-icon slot="prefix" :size="14" :icon="lucideFile"></web-ui-icon>
@@ -56,12 +56,12 @@ const controlledOpen = ref(false)
           删除
           <span class="opacity-40" slot="suffix">⌘⌫</span>
         </web-ui-dropdown-item>
-      </web-ui-dropdown-menu>
+      </web-ui-dropdown>
     </div>
 
     <h2>嵌套菜单</h2>
     <div class="mb-6">
-      <web-ui-dropdown-menu>
+      <web-ui-dropdown>
         <web-ui-button slot="trigger">更多</web-ui-button>
         <web-ui-dropdown-item>
           <web-ui-icon slot="prefix" :size="14" :icon="lucideUndo2"></web-ui-icon>
@@ -93,12 +93,12 @@ const controlledOpen = ref(false)
           偏好设置
           <span class="opacity-40" slot="suffix">⌘,</span>
         </web-ui-dropdown-item>
-      </web-ui-dropdown-menu>
+      </web-ui-dropdown>
     </div>
 
     <h2>深层嵌套（4 层）</h2>
     <div class="mb-6">
-      <web-ui-dropdown-menu>
+      <web-ui-dropdown>
         <web-ui-button slot="trigger">深层导航</web-ui-button>
 
         <web-ui-dropdown-item submenu>
@@ -138,12 +138,12 @@ const controlledOpen = ref(false)
             <span class="opacity-40" slot="suffix">⇧⌘Z</span>
           </web-ui-dropdown-item>
         </web-ui-dropdown-item>
-      </web-ui-dropdown-menu>
+      </web-ui-dropdown>
     </div>
 
     <h2>macOS 风格菜单</h2>
     <div class="mb-6">
-      <web-ui-dropdown-menu>
+      <web-ui-dropdown>
         <web-ui-button slot="trigger">Menu</web-ui-button>
         <web-ui-dropdown-item>
           <web-ui-icon slot="prefix" :size="14" :icon="lucideUndo2"></web-ui-icon>
@@ -193,44 +193,44 @@ const controlledOpen = ref(false)
           表情
           <span slot="suffix" class="opacity-40">E</span>
         </web-ui-dropdown-item>
-      </web-ui-dropdown-menu>
+      </web-ui-dropdown>
     </div>
 
     <h2>不同位置</h2>
     <div class="mb-6 flex gap-2">
-      <web-ui-dropdown-menu placement="bottom-end">
+      <web-ui-dropdown placement="bottom-end">
         <web-ui-button slot="trigger">右下</web-ui-button>
         <web-ui-dropdown-item>Item 1</web-ui-dropdown-item>
         <web-ui-dropdown-item>Item 2</web-ui-dropdown-item>
-      </web-ui-dropdown-menu>
-      <web-ui-dropdown-menu placement="top-start">
+      </web-ui-dropdown>
+      <web-ui-dropdown placement="top-start">
         <web-ui-button slot="trigger">上方</web-ui-button>
         <web-ui-dropdown-item>Item 1</web-ui-dropdown-item>
         <web-ui-dropdown-item>Item 2</web-ui-dropdown-item>
-      </web-ui-dropdown-menu>
-      <web-ui-dropdown-menu placement="top-end">
+      </web-ui-dropdown>
+      <web-ui-dropdown placement="top-end">
         <web-ui-button slot="trigger">右上</web-ui-button>
         <web-ui-dropdown-item>Item 1</web-ui-dropdown-item>
         <web-ui-dropdown-item>Item 2</web-ui-dropdown-item>
-      </web-ui-dropdown-menu>
+      </web-ui-dropdown>
     </div>
 
     <h2>禁用</h2>
     <div class="mb-6">
-      <web-ui-dropdown-menu disabled>
+      <web-ui-dropdown disabled>
         <web-ui-button slot="trigger">禁用菜单</web-ui-button>
         <web-ui-dropdown-item>Item 1</web-ui-dropdown-item>
         <web-ui-dropdown-item>Item 2</web-ui-dropdown-item>
-      </web-ui-dropdown-menu>
+      </web-ui-dropdown>
     </div>
 
     <h2>滚动锁定</h2>
     <div class="mb-6">
-      <web-ui-dropdown-menu :lock-scroll="false">
+      <web-ui-dropdown :lock-scroll="false">
         <web-ui-button slot="trigger">不锁定滚动</web-ui-button>
         <web-ui-dropdown-item>编辑</web-ui-dropdown-item>
         <web-ui-dropdown-item>复制</web-ui-dropdown-item>
-      </web-ui-dropdown-menu>
+      </web-ui-dropdown>
     </div>
 
     <h2>受控组件</h2>
@@ -241,12 +241,12 @@ const controlledOpen = ref(false)
         </web-ui-button>
         <span class="text-sm leading-10 text-gray-500">状态：{{ controlledOpen ? '打开' : '关闭' }}</span>
       </div>
-      <web-ui-dropdown-menu :open="controlledOpen" @open-change="controlledOpen = $event.detail.open">
+      <web-ui-dropdown :open="controlledOpen" @open-change="controlledOpen = $event.detail.open">
         <web-ui-button variant="ghost" slot="trigger">受控菜单</web-ui-button>
         <web-ui-dropdown-item>编辑</web-ui-dropdown-item>
         <web-ui-dropdown-item>复制</web-ui-dropdown-item>
         <web-ui-dropdown-item @click="controlledOpen = false">粘贴并关闭</web-ui-dropdown-item>
-      </web-ui-dropdown-menu>
+      </web-ui-dropdown>
     </div>
   </div>
 </template>

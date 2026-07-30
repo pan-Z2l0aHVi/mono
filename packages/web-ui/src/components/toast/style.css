@@ -32,7 +32,7 @@
   color: var(--wui-color-text, #1b1b1b);
 
   opacity: 0;
-  background-color: var(--wui-color-surface-overlay, rgb(245 245 245 / 0.85));
+  background-color: var(--wui-color-surface-overlay, rgb(246 246 246 / 0.88));
 
   transition:
     opacity var(--wui-duration-overlay-enter, 180ms) var(--wui-ease-out, cubic-bezier(0.23, 1, 0.32, 1)),

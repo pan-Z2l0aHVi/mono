@@ -14,7 +14,7 @@ const TRIGGER_HTML = `
 `
 
 const createSegmented = (triggerHtml = '', attrs?: Record<string, string>): WebUiSegmented => {
-  const el = document.createElement('web-ui-segmented') as WebUiSegmented
+  const el = document.createElement('web-ui-segmented')
   if (attrs) {
     for (const [k, v] of Object.entries(attrs)) {
       el.setAttribute(k, v)
@@ -44,7 +44,7 @@ describe('WebUiSegmented', () => {
     })
 
     it('连接前通过 property 设值（如 Vue :value）', async () => {
-      const el = document.createElement('web-ui-segmented') as WebUiSegmented
+      const el = document.createElement('web-ui-segmented')
       el.innerHTML = TRIGGER_HTML
       const triggers = el.querySelectorAll('web-ui-segmented-trigger')
 
@@ -327,7 +327,7 @@ describe('WebUiSegmented', () => {
       el.value = 'new-option'
       await waitForUpdate(el)
 
-      const newTrigger = document.createElement('web-ui-segmented-trigger') as WebUiSegmentedTrigger
+      const newTrigger = document.createElement('web-ui-segmented-trigger')
       newTrigger.setAttribute('value', 'new-option')
       newTrigger.textContent = 'New'
       el.appendChild(newTrigger)

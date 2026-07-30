@@ -6,7 +6,7 @@ import { waitForUpdate, spyEvents, cleanupElement, queryA11y } from '@/shared/te
 import type { WebUiCheckbox } from '..'
 
 const createCheckbox = (): WebUiCheckbox => {
-  const el = document.createElement('web-ui-checkbox') as WebUiCheckbox
+  const el = document.createElement('web-ui-checkbox')
   document.body.appendChild(el)
   return el
 }

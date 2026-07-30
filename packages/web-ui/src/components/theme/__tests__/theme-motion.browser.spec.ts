@@ -4,7 +4,7 @@ import '..'
 import type { WebUiTheme } from '..'
 
 function createTheme(appearance: 'light' | 'dark' | 'system' = 'light'): WebUiTheme {
-  const theme = document.createElement('web-ui-theme') as WebUiTheme
+  const theme = document.createElement('web-ui-theme')
   theme.appearance = appearance
   document.body.appendChild(theme)
   return theme
@@ -16,7 +16,7 @@ describe('WebUiTheme motion（浏览器）', () => {
   it('reduced scope 覆盖 motion token，嵌套 full scope 可恢复默认值', async () => {
     const outer = createTheme()
     outer.motion = 'reduced'
-    const inner = document.createElement('web-ui-theme') as WebUiTheme
+    const inner = document.createElement('web-ui-theme')
     inner.appearance = 'dark'
     inner.motion = 'full'
     outer.appendChild(inner)

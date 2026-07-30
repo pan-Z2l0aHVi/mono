@@ -6,7 +6,7 @@ import '..'
 import type { WebUiBadge } from '..'
 
 const createBadge = (attrs?: Record<string, string>, slotContent?: string): WebUiBadge => {
-  const el = document.createElement('web-ui-badge') as WebUiBadge
+  const el = document.createElement('web-ui-badge')
   if (attrs) {
     for (const [k, v] of Object.entries(attrs)) {
       el.setAttribute(k, v)

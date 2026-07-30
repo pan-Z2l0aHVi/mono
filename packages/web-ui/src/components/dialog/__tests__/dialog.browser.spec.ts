@@ -6,7 +6,7 @@ import type { WebUiDialog } from '..'
 afterEach(() => document.body.replaceChildren())
 
 function createDialog(): WebUiDialog {
-  const dialog = document.createElement('web-ui-dialog') as WebUiDialog
+  const dialog = document.createElement('web-ui-dialog')
   dialog.textContent = 'Dialog content'
   document.body.append(dialog)
   return dialog

@@ -39,8 +39,8 @@ interface MenuOverlay {
   overlay: HTMLElement
 }
 
-@customElement('web-ui-dropdown-menu')
-export class WebUiDropdownMenu extends LitElement {
+@customElement('web-ui-dropdown')
+export class WebUiDropdown extends LitElement {
   static override styles = [unsafeCSS(glass), unsafeCSS(style)]
 
   @property({ type: Boolean, reflect: true }) open = false
@@ -586,6 +586,6 @@ export class WebUiDropdownMenu extends LitElement {
 
 declare global {
   interface HTMLElementTagNameMap {
-    'web-ui-dropdown-menu': WebUiDropdownMenu
+    'web-ui-dropdown': WebUiDropdown
   }
 }

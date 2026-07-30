@@ -12,8 +12,8 @@
 | `core.json`  | 1    | 纯 JS 库（js-kit）                     | `./base.json`                      |
 | `node.json`  | 2    | Node.js 包 + 所有 `tsconfig.node.json` | `@tsconfig/node24` + `./base.json` |
 | `dom.json`   | 3    | 浏览器/DOM 包（browser-kit, web-ui）   | `./base.json`                      |
-| `react.json` | 4    | React 应用（react-app-demo）           | `./dom.json`                       |
-| `vue.json`   | 4    | Vue 应用（vue-app-demo）               | `@vue/tsconfig` + `./dom.json`     |
+| `react.json` | 4    | React 应用（react-web-ui-demo）        | `./dom.json`                       |
+| `vue.json`   | 4    | Vue 应用（vue-web-ui-demo）            | `@vue/tsconfig` + `./dom.json`     |
 
 ## 为什么需要分层？
 

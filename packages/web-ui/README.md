@@ -107,7 +107,7 @@ import '@greypan/web-ui/types/vue'
 | **Floating**         | [`<web-ui-popover>`](#web-ui-popover)                     |
 |                      | [`<web-ui-tooltip>`](#web-ui-tooltip)                     |
 |                      | [`<web-ui-context-menu>`](#web-ui-context-menu)           |
-| **Menu**             | [`<web-ui-dropdown-menu>`](#web-ui-dropdown-menu)         |
+| **Menu**             | [`<web-ui-dropdown>`](#web-ui-dropdown)                   |
 |                      | [`<web-ui-dropdown-item>`](#web-ui-dropdown-item)         |
 |                      | [`<web-ui-dropdown-divider>`](#web-ui-dropdown-divider)   |
 |                      | [`<web-ui-dropdown-header>`](#web-ui-dropdown-header)     |
@@ -494,7 +494,7 @@ Opens on `contextmenu` event. Menu items: `<web-ui-dropdown-item>`, `<web-ui-dro
 
 ### Menu
 
-#### `<web-ui-dropdown-menu>`
+#### `<web-ui-dropdown>`
 
 Dropdown menu with multi-level submenu support.
 
@@ -517,7 +517,7 @@ Items: `<web-ui-dropdown-item>`, `<web-ui-dropdown-divider>`, `<web-ui-dropdown-
 
 #### `<web-ui-dropdown-item>`
 
-Menu item for dropdown-menu or context-menu.
+Menu item for dropdown or context-menu.
 
 | Attribute  | Type      | Default | Description          |
 | ---------- | --------- | ------- | -------------------- |

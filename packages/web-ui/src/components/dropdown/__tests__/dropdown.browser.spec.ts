@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 
 import '..'
-import type { WebUiDropdownMenu } from '..'
+import type { WebUiDropdown } from '..'
 
 const SUBMENU =
   '<button slot="trigger">Menu</button><web-ui-dropdown-item submenu>Export<web-ui-dropdown-item>PDF</web-ui-dropdown-item></web-ui-dropdown-item>'
@@ -17,9 +17,9 @@ async function nextFrame() {
 
 afterEach(() => document.body.replaceChildren())
 
-describe('WebUiDropdownMenu（浏览器）', () => {
+describe('WebUiDropdown（浏览器）', () => {
   it('直接设置 open 时以即时状态显示根菜单', async () => {
-    const menu = document.createElement('web-ui-dropdown-menu') as WebUiDropdownMenu
+    const menu = document.createElement('web-ui-dropdown')
     menu.innerHTML = '<button slot="trigger">Menu</button><web-ui-dropdown-item>Open</web-ui-dropdown-item>'
     document.body.append(menu)
     await menu.updateComplete
@@ -33,7 +33,7 @@ describe('WebUiDropdownMenu（浏览器）', () => {
   })
 
   it('指针点击可以打开子菜单', async () => {
-    const menu = document.createElement('web-ui-dropdown-menu') as WebUiDropdownMenu
+    const menu = document.createElement('web-ui-dropdown')
     menu.innerHTML = SUBMENU
     document.body.append(menu)
     await menu.updateComplete
@@ -58,7 +58,7 @@ describe('WebUiDropdownMenu（浏览器）', () => {
   })
 
   it('键盘语义激活可以关闭并重新打开子菜单', async () => {
-    const menu = document.createElement('web-ui-dropdown-menu') as WebUiDropdownMenu
+    const menu = document.createElement('web-ui-dropdown')
     menu.innerHTML = SUBMENU
     document.body.append(menu)
     await menu.updateComplete
@@ -105,7 +105,7 @@ describe('WebUiDropdownMenu（浏览器）', () => {
   })
 
   it('子菜单退出过渡中可以被键盘重新打开', async () => {
-    const menu = document.createElement('web-ui-dropdown-menu') as WebUiDropdownMenu
+    const menu = document.createElement('web-ui-dropdown')
     menu.innerHTML = SUBMENU
     document.body.append(menu)
     await menu.updateComplete

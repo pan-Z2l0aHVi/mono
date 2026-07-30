@@ -12,7 +12,7 @@ function touchPointerEvent(type: string): PointerEvent {
 }
 
 function createTooltip(attrs?: Record<string, string>, slotContent = ''): WebUiTooltip {
-  const el = document.createElement('web-ui-tooltip') as WebUiTooltip
+  const el = document.createElement('web-ui-tooltip')
   if (attrs) {
     for (const [k, v] of Object.entries(attrs)) {
       el.setAttribute(k, v)

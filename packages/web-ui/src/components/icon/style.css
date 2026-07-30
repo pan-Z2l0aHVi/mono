@@ -5,6 +5,7 @@
 }
 
 :host {
+  user-select: none;
   display: inline-flex;
 }
 

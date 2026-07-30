@@ -4,7 +4,7 @@ import '..'
 import type { WebUiSvgDrawLines } from '..'
 
 function createSvgDrawLines(): WebUiSvgDrawLines {
-  const el = document.createElement('web-ui-svg-draw-lines') as WebUiSvgDrawLines
+  const el = document.createElement('web-ui-svg-draw-lines')
   document.body.appendChild(el)
   return el
 }

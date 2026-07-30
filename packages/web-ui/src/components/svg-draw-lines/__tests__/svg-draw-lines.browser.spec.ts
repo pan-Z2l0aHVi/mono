@@ -7,7 +7,7 @@ import '@/components/theme'
 import type { WebUiSvgDrawLines } from '..'
 
 function createEl(): WebUiSvgDrawLines {
-  const el = document.createElement('web-ui-svg-draw-lines') as WebUiSvgDrawLines
+  const el = document.createElement('web-ui-svg-draw-lines')
   document.body.appendChild(el)
   return el
 }
@@ -105,13 +105,13 @@ describe('WebUiSvgDrawLines browser', () => {
   })
 
   it('最近的嵌套 theme motion 决定是否播放', async () => {
-    const outer = document.createElement('web-ui-theme') as WebUiTheme
+    const outer = document.createElement('web-ui-theme')
     outer.appearance = 'light'
     outer.motion = 'reduced'
-    const inner = document.createElement('web-ui-theme') as WebUiTheme
+    const inner = document.createElement('web-ui-theme')
     inner.appearance = 'dark'
     inner.motion = 'full'
-    const el = document.createElement('web-ui-svg-draw-lines') as WebUiSvgDrawLines
+    const el = document.createElement('web-ui-svg-draw-lines')
     el.duration = 20
     el.innerHTML = '<svg><path d="M0 0 L100 100" /></svg>'
 

@@ -6,7 +6,7 @@ import { waitForUpdate, spyEvents, cleanupElement, queryA11y } from '@/shared/te
 import type { WebUiSwitch } from '..'
 
 const createSwitch = (): WebUiSwitch => {
-  const el = document.createElement('web-ui-switch') as WebUiSwitch
+  const el = document.createElement('web-ui-switch')
   document.body.appendChild(el)
   return el
 }

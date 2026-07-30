@@ -49,8 +49,8 @@ pnpm monorepo (`apps/**`, `packages/**`) using Turborepo. Packages published und
 | `pnpm test`                                       | Run all tests                                 |
 | `pnpm commit`                                     | Interactive conventional commit via cz-git    |
 | `bash scripts/commit.sh <type> <scope> <subject>` | Non-interactive commit (useful for agents)    |
-| `pnpm dev:react-app-demo`                         | Dev server for React app (with turbo watch)   |
-| `pnpm dev:vue-app-demo`                           | Dev server for Vue app (with turbo watch)     |
+| `pnpm dev:react-web-ui-demo`                      | Dev server for React app (with turbo watch)   |
+| `pnpm dev:vue-web-ui-demo`                        | Dev server for Vue app (with turbo watch)     |
 | `pnpm run check:code`                             | Format + lint + type-check (what CI runs)     |
 | `pnpm clean`                                      | Remove `dist/`, `.turbo/`, `.vite/`, `build/` |
 | `pnpm clean --full`                               | Also remove `node_modules` and lockfile       |
@@ -78,7 +78,6 @@ These files are auto-generated and should not be edited manually:
 
 - `**/routeTree.gen.ts` — TanStack Router route tree
 - `**/auto-imports.d.ts` — auto-import type declarations
-- `**/.eslintrc-auto-import.js`
 - `**/wailsjs/**` — Wails bindings (if present)
 - `**/__screenshots__/` — Vitest browser mode test failure screenshots
 - `**/.vitest-attachments/` — Vitest browser mode test attachments

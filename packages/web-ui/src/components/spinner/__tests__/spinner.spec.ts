@@ -10,7 +10,7 @@ describe('WebUiSpinner', () => {
 
   describe('prop: size', () => {
     it('默认值为 24', async () => {
-      const el = document.createElement('web-ui-spinner') as WebUiSpinner
+      const el = document.createElement('web-ui-spinner')
 
       document.body.appendChild(el)
       await el.updateComplete
@@ -19,7 +19,7 @@ describe('WebUiSpinner', () => {
     })
 
     it('反射为 size 属性', async () => {
-      const el = document.createElement('web-ui-spinner') as WebUiSpinner
+      const el = document.createElement('web-ui-spinner')
       el.size = 40
 
       document.body.appendChild(el)
@@ -29,7 +29,7 @@ describe('WebUiSpinner', () => {
     })
 
     it('通过属性设置', async () => {
-      const el = document.createElement('web-ui-spinner') as WebUiSpinner
+      const el = document.createElement('web-ui-spinner')
       el.setAttribute('size', '32')
 
       document.body.appendChild(el)
@@ -61,7 +61,7 @@ describe('WebUiSpinner', () => {
 
   describe('slot: description', () => {
     it('投影 description slot 内容', async () => {
-      const el = document.createElement('web-ui-spinner') as WebUiSpinner
+      const el = document.createElement('web-ui-spinner')
       const slotContent = document.createElement('span')
       slotContent.slot = 'description'
       slotContent.textContent = '请稍候'

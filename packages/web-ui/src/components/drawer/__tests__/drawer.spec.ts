@@ -18,7 +18,7 @@ if (!HTMLDialogElement.prototype.close) {
 }
 
 function createDrawer(): WebUiDrawer {
-  const el = document.createElement('web-ui-drawer') as WebUiDrawer
+  const el = document.createElement('web-ui-drawer')
   document.body.appendChild(el)
   return el
 }

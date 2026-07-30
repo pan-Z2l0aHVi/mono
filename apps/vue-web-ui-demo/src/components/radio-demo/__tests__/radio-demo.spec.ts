@@ -13,7 +13,7 @@ describe('RadioDemo', () => {
     await nextTick()
     await new Promise(process.nextTick)
 
-    const group = wrapper.findAll('web-ui-radio-group')[0].element as WebUiRadioGroup
+    const group = wrapper.findAll('web-ui-radio-group')[0].element
     await group.updateComplete
     expect(group.value).toBe('banana')
 
@@ -35,7 +35,7 @@ describe('RadioDemo', () => {
     const wrapper = mount(RadioDemo, { attachTo: document.body })
     const radio = wrapper.findAll('web-ui-radio')[1].element
     await radio.updateComplete
-    const label = radio.shadowRoot!.querySelector('label') as HTMLElement
+    const label = radio.shadowRoot!.querySelector('label')!
 
     label.click()
     await nextTick()

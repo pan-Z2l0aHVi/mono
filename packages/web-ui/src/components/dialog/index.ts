@@ -25,7 +25,7 @@ export class WebUiDialog extends LitElement {
   private _isClosing = false
 
   private get dialog() {
-    return this.shadowRoot?.querySelector('dialog') as HTMLDialogElement | null
+    return this.shadowRoot?.querySelector('dialog') ?? null
   }
 
   protected override updated(props: PropertyValues) {

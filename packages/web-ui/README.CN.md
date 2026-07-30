@@ -107,7 +107,7 @@ import '@greypan/web-ui/types/vue'
 | **浮动**        | [`<web-ui-popover>`](#web-ui-popover)                     |
 |                 | [`<web-ui-tooltip>`](#web-ui-tooltip)                     |
 |                 | [`<web-ui-context-menu>`](#web-ui-context-menu)           |
-| **菜单**        | [`<web-ui-dropdown-menu>`](#web-ui-dropdown-menu)         |
+| **菜单**        | [`<web-ui-dropdown>`](#web-ui-dropdown)                   |
 |                 | [`<web-ui-dropdown-item>`](#web-ui-dropdown-item)         |
 |                 | [`<web-ui-dropdown-divider>`](#web-ui-dropdown-divider)   |
 |                 | [`<web-ui-dropdown-header>`](#web-ui-dropdown-header)     |
@@ -490,7 +490,7 @@ Hover 模式使用 `pointerenter`/`pointerleave` 加延迟控制。Click 模式�
 
 ### 菜单
 
-#### `<web-ui-dropdown-menu>`
+#### `<web-ui-dropdown>`
 
 下拉菜单，支持多级子菜单。
 
