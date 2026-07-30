@@ -280,7 +280,7 @@ describe('WebUiContextMenu', () => {
       await waitForMenuOpen(el)
       expect(el.isOpen).toBe(true)
 
-      document.body.click()
+      document.body.dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true }))
       await waitForMenuClose(el)
       expect(el.isOpen).toBe(false)
 
