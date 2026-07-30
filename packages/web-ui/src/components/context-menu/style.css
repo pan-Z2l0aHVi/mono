@@ -19,6 +19,8 @@
 
 .context-menu {
   --wui-glass-shadow: var(--wui-shadow-pop, 0 3px 9px rgb(0 0 0 / 0.27));
+  user-select: none;
+
   position: fixed;
 
   overflow-y: auto;
@@ -29,7 +31,7 @@
   padding: 4px;
   border-radius: 20px;
 
-  background-color: var(--wui-color-surface-overlay, rgb(245 245 245 / 0.85));
+  background-color: var(--wui-color-surface-overlay, rgb(246 246 246 / 0.88));
 }
 
 .context-menu:not(.is-open) {
@@ -38,6 +40,8 @@
 
 .context-submenu {
   --wui-glass-shadow: var(--wui-shadow-pop, 0 3px 9px rgb(0 0 0 / 0.27));
+  user-select: none;
+
   position: fixed;
 
   overflow-y: auto;
@@ -48,5 +52,5 @@
   padding: 4px;
   border-radius: 20px;
 
-  background-color: var(--wui-color-surface-overlay, rgb(245 245 245 / 0.85));
+  background-color: var(--wui-color-surface-overlay, rgb(246 246 246 / 0.88));
 }

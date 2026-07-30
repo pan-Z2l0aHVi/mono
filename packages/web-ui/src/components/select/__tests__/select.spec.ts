@@ -16,7 +16,7 @@ function touchPointerEvent(type: string): PointerEvent {
 
 describe('WebUiSelect', () => {
   function createSelect(optionsHtml = '', attrs?: Record<string, string>): WebUiSelect {
-    const el = document.createElement('web-ui-select') as WebUiSelect
+    const el = document.createElement('web-ui-select')
     if (attrs) {
       for (const [k, v] of Object.entries(attrs)) {
         el.setAttribute(k, v)

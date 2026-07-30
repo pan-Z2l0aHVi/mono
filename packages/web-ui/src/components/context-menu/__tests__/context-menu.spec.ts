@@ -6,7 +6,7 @@ import { cleanupElement, waitForUpdate } from '@/shared/test-utils'
 import type { WebUiContextMenu } from '..'
 
 function createContextMenu(attrs?: Record<string, string>, innerHtml = ''): WebUiContextMenu {
-  const el = document.createElement('web-ui-context-menu') as WebUiContextMenu
+  const el = document.createElement('web-ui-context-menu')
   if (attrs) {
     for (const [k, v] of Object.entries(attrs)) {
       el.setAttribute(k, v)
@@ -113,7 +113,7 @@ describe('WebUiContextMenu', () => {
       await waitForUpdate(el)
       el.openAt(100, 200)
       await waitForMenuOpen(el)
-      const menu = getMenu() as HTMLElement
+      const menu = getMenu()!
       expect(menu).toBeTruthy()
       expect(menu.style.left).toBe('100px')
       expect(menu.style.top).toBe('200px')
@@ -263,7 +263,7 @@ describe('WebUiContextMenu', () => {
       await waitForMenuOpen(el)
 
       expect(el.isOpen).toBe(true)
-      const menu = getMenu() as HTMLElement
+      const menu = getMenu()!
       expect(menu.style.left).toBe('100px')
       expect(menu.style.top).toBe('200px')
 
@@ -296,7 +296,7 @@ describe('WebUiContextMenu', () => {
       el.openAt(100, 100)
       await waitForMenuOpen(el)
 
-      const item = getMenu()?.querySelector('web-ui-dropdown-item') as HTMLElement
+      const item = getMenu()?.querySelector('web-ui-dropdown-item')!
       item.click()
       await waitForMenuClose(el)
 
@@ -317,7 +317,7 @@ describe('WebUiContextMenu', () => {
       el.openAt(100, 100)
       await waitForMenuOpen(el)
 
-      const item = getMenu()?.querySelector('web-ui-dropdown-item') as HTMLElement
+      const item = getMenu()?.querySelector('web-ui-dropdown-item')!
       item.click()
       await waitForUpdate(el)
 
@@ -417,7 +417,7 @@ describe('WebUiContextMenu', () => {
       el.openAt(100, 100)
       await waitForMenuOpen(el)
 
-      const item = getMenu()?.querySelector('web-ui-dropdown-item') as HTMLElement
+      const item = getMenu()?.querySelector('web-ui-dropdown-item')!
       item.click()
       await waitForUpdate(el)
 
@@ -444,7 +444,7 @@ describe('WebUiContextMenu', () => {
 
       vi.useFakeTimers()
       try {
-        const item = getMenu()?.querySelector('web-ui-dropdown-item') as HTMLElement
+        const item = getMenu()?.querySelector('web-ui-dropdown-item')!
         item.dispatchEvent(new PointerEvent('pointerenter'))
         await vi.advanceTimersByTimeAsync(200)
 
@@ -468,7 +468,7 @@ describe('WebUiContextMenu', () => {
 
       vi.useFakeTimers()
       try {
-        const item = getMenu()?.querySelector('web-ui-dropdown-item') as HTMLElement
+        const item = getMenu()?.querySelector('web-ui-dropdown-item')!
         item.dispatchEvent(touchPointerEvent('pointerenter'))
         await vi.advanceTimersByTimeAsync(200)
 
@@ -534,7 +534,7 @@ describe('WebUiContextMenu', () => {
       el.openAt(9999, 9999)
       await waitForMenuOpen(el)
 
-      const menu = getMenu() as HTMLElement
+      const menu = getMenu()!
       expect(menu).toBeTruthy()
       const left = Number.parseInt(menu.style.left)
       const top = Number.parseInt(menu.style.top)
@@ -551,7 +551,7 @@ describe('WebUiContextMenu', () => {
       el.openAt(-100, -100)
       await waitForMenuOpen(el)
 
-      const menu = getMenu() as HTMLElement
+      const menu = getMenu()!
       expect(menu).toBeTruthy()
       const left = Number.parseInt(menu.style.left)
       const top = Number.parseInt(menu.style.top)

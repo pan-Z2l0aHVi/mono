@@ -26,11 +26,11 @@
 
 ### 2. 统一事件模型
 
-| 组件类型                                                             | 事件               | 说明                                                    |
-| -------------------------------------------------------------------- | ------------------ | ------------------------------------------------------- |
-| 值类控件（input/select/slider/checkbox/radio/switch/segmented）      | `input` + `change` | 用户交互触发；直接设属性不派发                          |
-| 开闭组件（dialog/drawer/popover/tooltip/context-menu/dropdown-menu） | `open-change`      | `CustomEvent<{ open: boolean }>`                        |
-| 通知（toast）                                                        | `toast-close`      | `CustomEvent<{ id: string; reason: ToastCloseReason }>` |
+| 组件类型                                                        | 事件               | 说明                                                    |
+| --------------------------------------------------------------- | ------------------ | ------------------------------------------------------- |
+| 值类控件（input/select/slider/checkbox/radio/switch/segmented） | `input` + `change` | 用户交互触发；直接设属性不派发                          |
+| 开闭组件（dialog/drawer/popover/tooltip/context-menu/dropdown） | `open-change`      | `CustomEvent<{ open: boolean }>`                        |
+| 通知（toast）                                                   | `toast-close`      | `CustomEvent<{ id: string; reason: ToastCloseReason }>` |
 
 移除的实现泄露事件：
 

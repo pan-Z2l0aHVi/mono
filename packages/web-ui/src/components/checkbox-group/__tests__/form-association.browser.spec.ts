@@ -17,7 +17,7 @@ describe('WebUiCheckboxGroup form association', () => {
     `
     document.body.append(form)
 
-    const group = form.querySelector('web-ui-checkbox-group') as WebUiCheckboxGroup
+    const group = form.querySelector('web-ui-checkbox-group')!
     await group.updateComplete
 
     expect(new FormData(form).getAll('feature')).toEqual(['a', 'b'])
@@ -31,7 +31,7 @@ describe('WebUiCheckboxGroup form association', () => {
     form.append(fieldset)
     document.body.append(form)
 
-    const group = fieldset.querySelector('web-ui-checkbox-group') as WebUiCheckboxGroup
+    const group = fieldset.querySelector('web-ui-checkbox-group')!
     await group.updateComplete
 
     expect(group.hasAttribute('disabled')).toBe(false)

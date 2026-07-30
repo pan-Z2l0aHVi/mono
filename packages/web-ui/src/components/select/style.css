@@ -5,6 +5,7 @@
 }
 
 :host {
+  user-select: none;
   display: inline-block;
 }
 
@@ -96,7 +97,7 @@
   padding: 4px;
   border-radius: 20px;
 
-  background-color: var(--wui-color-surface-overlay, rgb(245 245 245 / 0.85));
+  background-color: var(--wui-color-surface-overlay, rgb(246 246 246 / 0.88));
 }
 
 :host([portal]) .select-overlay {

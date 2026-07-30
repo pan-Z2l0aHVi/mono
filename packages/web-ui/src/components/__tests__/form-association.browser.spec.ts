@@ -120,10 +120,8 @@ describe('form-associated components', () => {
     `
     document.body.append(form)
 
-    const checkboxGroup = form.querySelector('web-ui-checkbox-group') as HTMLElement & {
-      updateComplete: Promise<unknown>
-    }
-    const radioGroup = form.querySelector('web-ui-radio-group') as HTMLElement & { updateComplete: Promise<unknown> }
+    const checkboxGroup = form.querySelector('web-ui-checkbox-group')!
+    const radioGroup = form.querySelector('web-ui-radio-group')!
     await Promise.all([checkboxGroup.updateComplete, radioGroup.updateComplete])
 
     const data = new FormData(form)
@@ -141,15 +139,9 @@ describe('form-associated components', () => {
     `
     document.body.append(form)
 
-    const select = form.querySelector('web-ui-select') as WebUiSelect
-    const slider = form.querySelector('web-ui-slider') as HTMLElement & {
-      value: number
-      updateComplete: Promise<unknown>
-    }
-    const segmented = form.querySelector('web-ui-segmented') as HTMLElement & {
-      value: string
-      updateComplete: Promise<unknown>
-    }
+    const select = form.querySelector('web-ui-select')!
+    const slider = form.querySelector('web-ui-slider')!
+    const segmented = form.querySelector('web-ui-segmented')!
     select.value = 'banana'
     slider.value = 42
     segmented.value = 'b'
