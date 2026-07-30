@@ -1,0 +1,117 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+:host {
+  display: inline-block;
+}
+
+:host([disabled]) {
+  cursor: not-allowed;
+}
+
+/*
+标准视觉隐藏技术（sr-only）：
+业内标准的“屏幕阅读器专用”隐藏方案。
+把复选框缩放到 1x1 像素，但保留在 dom 中，
+既让肉眼看不见，又能让读屏软件识别，并允许键盘用户通过空格键切换状态。
+*/
+.sr-only {
+  position: absolute;
+
+  overflow: hidden;
+
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+
+  white-space: nowrap;
+
+  clip-path: inset(50%);
+}
+
+.wui-switch-track {
+  cursor: pointer;
+  user-select: none;
+
+  position: relative;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  width: 48px;
+  height: 24px;
+  border-radius: calc(infinity * 1px);
+
+  background-color: var(--wui-color-surface-raised-deep, #e5e5ea);
+  outline: 3px solid transparent;
+  outline-offset: 2px;
+
+  transition: background-color 0.25s ease;
+
+  &:focus-visible {
+    outline-color: var(--wui-focus-ring, rgb(0 136 255 / 0.4));
+  }
+
+  &.is-open {
+    background-color: var(--wui-color-accent, #08f);
+  }
+
+  &.is-disabled {
+    cursor: not-allowed;
+    opacity: 0.4;
+  }
+}
+
+.wui-switch-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+
+  overflow: hidden;
+
+  width: 20px;
+  height: 20px;
+  border-radius: calc(infinity * 1px);
+
+  transition:
+    width 0.15s cubic-bezier(0.4, 0, 0.2, 1),
+    transform 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+    border-radius 0.15s cubic-bezier(0.4, 0, 0.2, 1),
+    background-color 0.15s ease;
+
+  &.is-pressed {
+    width: 32px;
+    border-radius: calc(infinity * 1px);
+    background-color: transparent;
+  }
+
+  &:not(.is-pressed) {
+    background-color: var(--wui-color-surface, #fff);
+    box-shadow: 1px 2px 6px rgb(0 0 0 / 0.2);
+  }
+}
+
+.wui-switch-track.is-open .wui-switch-thumb {
+  transform: translateX(24px);
+
+  &.is-pressed {
+    transform: translateX(12px);
+  }
+}
+
+.wui-switch-loading {
+  pointer-events: none;
+
+  position: absolute;
+  inset: 0;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}

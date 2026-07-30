@@ -30,7 +30,7 @@ export function definePlugin<C extends object, D extends object>(setup: (ctx: D)
  * 提取插件实例化的类型 (C & D)
  * T 可以是 Plugin 实例，也可以是返回 Plugin 实例的函数
  */
-export type PluginMade<T> = T extends (...args: any[]) => Plugin<infer C, infer D>
+export type PluginMade<T> = T extends (...args: never[]) => Plugin<infer C, infer D>
   ? C & D
   : T extends Plugin<infer C, infer D>
     ? C & D

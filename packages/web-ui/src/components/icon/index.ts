@@ -12,8 +12,7 @@ export class WebUiIcon extends LitElement {
 
   @property({ attribute: false }) icon?: IconifyIcon
   @property({ type: Boolean, reflect: true }) spin = false
-  @property({ type: Number, reflect: true }) width: number = 18
-  @property({ type: Number, reflect: true }) height: number = 18
+  @property({ type: Number, reflect: true }) size: number = 18
   @property({ type: String, reflect: true }) color?: string
 
   override render() {
@@ -27,18 +26,16 @@ export class WebUiIcon extends LitElement {
         class=${classMap({ spin: this.spin })}
         style=${svgStyle}
         viewBox="${viewBox}"
-        width="${this.width}"
-        height="${this.height}"
+        width="${this.size}"
+        height="${this.size}"
         aria-hidden="true"
       >
         ${unsafeSVG(this.icon.body)}
       </svg>
     `
   }
-}
 
-export interface WebUiIcon {
-  readonly $events: Record<string, never>
+  declare readonly $events: Record<string, never>
 }
 
 declare global {

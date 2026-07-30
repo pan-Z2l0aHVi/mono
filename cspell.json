@@ -14,7 +14,10 @@
     "**/.zed/**",
     "**/wailsjs/**",
     "**/go.sum",
-    "**/go.mod"
+    "**/go.mod",
+    "**/routeTree.gen.ts",
+    "**/auto-imports.d.ts",
+    "**/typed-router.d.ts"
   ],
   "ignoreRegExpList": [
     // 忽略 hex 十六进制颜色

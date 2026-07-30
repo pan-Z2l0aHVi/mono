@@ -39,6 +39,13 @@
       </web-ui-tooltip>
     </div>
 
+    <h2>Portal</h2>
+    <div class="mb-6 flex gap-2">
+      <web-ui-tooltip portal placement="bottom" content="Portal Tooltip">
+        <web-ui-button>Portal</web-ui-button>
+      </web-ui-tooltip>
+    </div>
+
     <h2>延迟</h2>
     <div class="mb-6 flex gap-2">
       <web-ui-tooltip content="延迟 500ms 显示" :show-delay="500">

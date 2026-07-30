@@ -1,4 +1,5 @@
 [
+  "lucide:inbox",
   "lucide:loader-circle",
   "lucide:arrow-up-to-line",
   "lucide:arrow-down-to-line",
@@ -9,7 +10,9 @@
   "lucide:plus",
   "lucide:minus",
   "lucide:search",
+  "lucide:x",
   "lucide:file",
+  "lucide:folder",
   "lucide:copy",
   "lucide:clipboard-paste",
   "lucide:trash-2",
@@ -21,5 +24,17 @@
   "lucide:redo-2",
   "lucide:scissors",
   "jam:close-circle-f",
-  "heroicons:check-16-solid"
+  "lucide:check",
+  "lucide:info",
+  "lucide:triangle-alert",
+  "lucide:circle-alert",
+  "heroicons:check-16-solid",
+  "lucide:user",
+  "heroicons:x-mark-16-solid",
+  "lucide:star",
+  "lucide:heart",
+  "lucide:bell",
+  "lucide:mail",
+  "lucide:image",
+  "lucide:globe"
 ]

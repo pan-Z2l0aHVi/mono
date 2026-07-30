@@ -1,3 +1,9 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
 :host {
   display: inline-block;
 }
@@ -19,7 +25,7 @@
   min-width: var(--wui-button-size, 40px);
   height: var(--wui-button-size, 40px);
   padding: 0 16px;
-  border-radius: 999vmax;
+  border-radius: calc(infinity * 1px);
 }
 
 :host([full]) {
@@ -30,16 +36,26 @@
   width: 100%;
 }
 
+/* ===== Borderless ===== */
+
+:host([borderless]) .wui-input-inner {
+  padding: 0;
+  border: none;
+
+  background: transparent;
+  backdrop-filter: none;
+  box-shadow: none;
+}
+
 :host([focused]) .wui-input-inner {
-  border-color: rgb(0 110 230 / 0.5);
-  box-shadow:
-    0 0 0 3px rgb(0 136 255 / 0.2),
-    inset -1px -1px 0.5px -0.5px rgb(255 255 255 / 0.9),
-    inset 1px 1px 0.5px -0.5px rgb(255 255 255 / 0.9),
-    inset -3px -3px 0.5px -3px rgb(255 255 255 / 0.55),
-    inset 3px 3px 0.5px -3px rgb(255 255 255 / 0.55),
-    inset 0 0 1px rgb(0 0 0 / 0.8),
-    4px 6px 24px rgb(0 0 0 / 0.12);
+  --wui-glass-shadow:
+    var(--wui-shadow-glass, 0 2px 16px rgb(0 0 0 / 0.06)), 0 0 0 3px var(--wui-focus-ring, rgb(0 136 255 / 0.4));
+  border-color: var(--wui-color-border-strong, rgb(0 110 230 / 0.5));
+}
+
+:host([borderless][focused]) .wui-input-inner {
+  border-color: transparent;
+  box-shadow: none;
 }
 
 /* ===== Input ===== */
@@ -52,13 +68,13 @@ input {
   border: none;
 
   font-size: var(--wui-font-size, 14px);
-  color: #1b1b1b;
+  color: var(--wui-color-text, #1b1b1b);
 
   background: transparent;
   outline: none;
 
   &::placeholder {
-    color: #6a6a6a;
+    color: var(--wui-color-text-muted, #6a6a6a);
   }
 
   &:disabled {
@@ -75,7 +91,7 @@ slot {
   align-items: center;
 
   font-size: var(--wui-font-size, 14px);
-  color: #6a6a6a;
+  color: var(--wui-color-text-muted, #6a6a6a);
 }
 
 /* slot 无 slotted 内容时折叠 */
@@ -94,10 +110,10 @@ slot.empty {
   align-self: stretch;
   justify-content: center;
 
-  color: #9a9a9a;
+  color: var(--wui-color-text-muted, #6a6a6a);
 
   &:hover {
-    color: #6a6a6a;
+    color: var(--wui-color-text-muted, #6a6a6a);
   }
 }
 

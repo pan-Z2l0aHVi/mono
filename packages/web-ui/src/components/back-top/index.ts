@@ -2,10 +2,11 @@ import { getRootScrollTop } from '@greypan/browser-kit'
 import { html, LitElement, type PropertyValues, unsafeCSS } from 'lit'
 import { customElement, property, state } from 'lit/decorators.js'
 
-// web-ui-icon 必须注册（Rolldown tree-shake 副作用 import，引用类名阻止删除）
 import '@/components/icon'
 import '@/components/button'
 import { lucideArrowUpToLine } from '@/icons'
+import { normalizeNumber } from '@/shared/normalize'
+import { booleanWithFalseString } from '@/shared/property-converters/boolean-with-false-string'
 
 import style from './style.css?inline'
 
@@ -13,10 +14,20 @@ import style from './style.css?inline'
 export class WebUiBackTop extends LitElement {
   static override styles = unsafeCSS(style)
 
-  @property({ type: Boolean, reflect: true }) smooth = true
-  @property({ type: Number, reflect: true }) threshold: number = 200
+  @property({ reflect: true, converter: booleanWithFalseString }) smooth = true
   @property({ type: Boolean, reflect: true }) visible = false
   @property({ type: Object, attribute: false }) scrollTarget: HTMLElement | Window = window
+
+  @property({ type: Number, reflect: true })
+  get threshold(): number {
+    return this._threshold
+  }
+  set threshold(v: number) {
+    const old = this._threshold
+    this._threshold = normalizeNumber(v, 0, 10000, 200)
+    this.requestUpdate('threshold', old)
+  }
+  private _threshold = 200
 
   @state() private eventController?: AbortController
 
@@ -43,9 +54,7 @@ export class WebUiBackTop extends LitElement {
   }
 
   private get target() {
-    if (!this.scrollTarget) {
-      return window
-    }
+    if (!this.scrollTarget) return window
     const isRoot =
       this.scrollTarget === window ||
       this.scrollTarget === document.documentElement ||
@@ -62,32 +71,18 @@ export class WebUiBackTop extends LitElement {
       () => {
         this.computeVisible()
       },
-      {
-        signal: this.eventController.signal,
-        passive: true
-      }
+      { signal: this.eventController.signal, passive: true }
     )
   }
 
   private computeVisible() {
-    const { target } = this
-    let nextVisible: boolean
+    const target = this.target
     if (target === window) {
-      nextVisible = getRootScrollTop() >= this.threshold
+      this.visible = getRootScrollTop() >= this.threshold
     } else if (target instanceof HTMLElement) {
-      nextVisible = target.scrollTop >= this.threshold
+      this.visible = target.scrollTop >= this.threshold
     } else {
       throw new Error('Prop scrollTarget must be HTMLElement or Window.')
-    }
-    if (nextVisible !== this.visible) {
-      this.visible = nextVisible
-      this.dispatchEvent(
-        new CustomEvent('visible-change', {
-          detail: { visible: nextVisible },
-          bubbles: true,
-          composed: true
-        })
-      )
     }
   }
 
@@ -99,7 +94,7 @@ export class WebUiBackTop extends LitElement {
   }
 
   private onEnter(e: KeyboardEvent) {
-    if ((e as KeyboardEvent).key == 'Enter') {
+    if (e.key === 'Enter') {
       e.preventDefault()
       this.toTop()
     }
@@ -109,7 +104,6 @@ export class WebUiBackTop extends LitElement {
     return html`
       <div class="back-top-inner" role="button" tabindex="0" @click=${this.toTop} @keydown=${this.onEnter}>
         <slot>
-          <!-- 默认 slot 加上 tabindex="-1"，防止双重 focus -->
           <web-ui-button tabindex="-1" icon>
             <web-ui-icon .icon=${lucideArrowUpToLine}></web-ui-icon>
           </web-ui-button>
@@ -117,12 +111,8 @@ export class WebUiBackTop extends LitElement {
       </div>
     `
   }
-}
 
-export interface WebUiBackTop {
-  readonly $events: {
-    'visible-change': CustomEvent<{ visible: boolean }>
-  }
+  declare readonly $events: Record<string, never>
 }
 
 declare global {

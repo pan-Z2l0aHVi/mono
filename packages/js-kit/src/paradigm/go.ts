@@ -30,6 +30,7 @@ export async function to<T, E = unknown>(promise: Promise<T>): Promise<Result<Aw
   }
 }
 
+// oxlint-disable-next-line typescript/no-explicit-any -- `S` retains caller types; `any` only admits either Result branch.
 export function unwrap<S extends Result<any, any>>(
   result: S
 ): S extends Ok<infer T> ? T : S extends Err<infer E> ? E : never {

@@ -38,7 +38,7 @@ export default defineConfig({
     depsReload([
       {
         name: '@greypan/web-ui',
-        path: '../../packages/web-ui/dist',
+        path: '../../packages/web-ui',
         extensions: ['.js', '.css']
       }
     ])
@@ -47,6 +47,32 @@ export default defineConfig({
 ```
 
 当 `packages/web-ui/dist` 中的文件变更时，浏览器会自动刷新。
+
+## Webpack
+
+Webpack 插件会将每个配置的输出目录加入 Webpack 的 watch dependencies。若要通过 Webpack Dev Server 获得同样的全量刷新行为，需要启用原生 live reload 并关闭 HMR：
+
+```ts
+// webpack.config.ts
+import depsReload from '@greypan/deps-reload/webpack'
+
+export default {
+  plugins: [
+    depsReload([
+      {
+        name: '@greypan/web-ui',
+        path: '../../packages/web-ui'
+      }
+    ])
+  ],
+  devServer: {
+    hot: false,
+    liveReload: true
+  }
+}
+```
+
+该插件不会将依赖 alias 到源码，app 始终消费包的构建产物。
 
 ## API
 
@@ -60,9 +86,9 @@ export default defineConfig({
 
 ### `Dep`
 
-| 属性         | 类型       | 默认值            | 说明                                  |
-| ------------ | ---------- | ----------------- | ------------------------------------- |
-| `name`       | `string`   | -                 | 包名（用于 node_modules 路径）        |
-| `path`       | `string`   | -                 | 物理路径（用于 monorepo 或 npm link） |
-| `outputDir`  | `string`   | `'dist'`          | 输出目录名                            |
-| `extensions` | `string[]` | `['.js', '.css']` | 待监听的文件扩展名                    |
+| 属性         | 类型       | 默认值            | 说明                                      |
+| ------------ | ---------- | ----------------- | ----------------------------------------- |
+| `name`       | `string`   | -                 | 包名（用于 node_modules 路径）            |
+| `path`       | `string`   | -                 | 本地包根目录（用于 monorepo 或 npm link） |
+| `outputDir`  | `string`   | `'dist'`          | 相对 `path` 的构建输出目录                |
+| `extensions` | `string[]` | `['.js', '.css']` | 待监听的文件扩展名                        |
