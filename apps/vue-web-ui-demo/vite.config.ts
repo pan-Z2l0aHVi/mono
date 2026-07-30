@@ -63,7 +63,7 @@ export default {
   test: {
     environment: 'jsdom'
   },
-  base: process.env.CI ? '/mono/' : '/',
+  base: process.env.GITHUB_BASE_PATH || '/',
   build: {},
   css: {
     transformer: 'lightningcss'
