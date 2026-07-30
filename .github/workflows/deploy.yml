@@ -8,9 +8,9 @@ on:
         type: choice
         required: true
         options:
-          - react-app-demo
-          - vue-app-demo
-        default: react-app-demo
+          - react-web-ui-demo
+          - vue-web-ui-demo
+        default: vue-web-ui-demo
       environment:
         description: 'Deploy target'
         type: choice

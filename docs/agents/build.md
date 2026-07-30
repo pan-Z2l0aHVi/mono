@@ -27,8 +27,8 @@ Shared profiles live in `packages/tsconfig/` and are consumed with `"extends": "
 | `core.json`  | 1: Pure JS   | `js-kit`                                         | `./base.json`                         |
 | `node.json`  | 2: Node      | Node packages and all `tsconfig.node.json` files | `@tsconfig/node24` plus `./base.json` |
 | `dom.json`   | 3: DOM       | `browser-kit`, `web-ui`                          | `./base.json`                         |
-| `react.json` | 4: Framework | `react-app-demo`                                 | `./dom.json`                          |
-| `vue.json`   | 4: Framework | `vue-app-demo`                                   | `@vue/tsconfig` plus `./dom.json`     |
+| `react.json` | 4: Framework | `react-web-ui-demo`                              | `./dom.json`                          |
+| `vue.json`   | 4: Framework | `vue-web-ui-demo`                                | `@vue/tsconfig` plus `./dom.json`     |
 
 Each package adds its own `include`, `paths`, and `tsBuildInfoFile`. Packages that target DOM and Node split their configurations into `tsconfig.node.json`, `tsconfig.app.json`, and `tsconfig.vitest.json`; pure Node packages use one `tsconfig.json`.
 
@@ -44,8 +44,8 @@ packages/
   unplugin-web-components   Unplugin for web components; depends on js-kit
   deps-reload               Local dependency reload plugin; depends on js-kit
 apps/
-  react-app-demo            React 19, TanStack Router, Zustand; private
-  vue-app-demo              Vue 3, Vue Router, Pinia; private
+  react-web-ui-demo            React 19, TanStack Router, Zustand; private
+  vue-web-ui-demo              Vue 3, Vue Router, Pinia; private
 ```
 
 `js-kit` is the leaf package. `browser-kit` depends on `js-kit`; `test-kit` depends on `js-kit` and has an `msw` peer dependency; `web-ui` depends on both. The apps depend on shared packages.
@@ -75,7 +75,7 @@ apps/
 
 ## Applications
 
-- `react-app-demo` uses `@vitejs/plugin-react` v4 with React Compiler (`babel-plugin-react-compiler`, target 19), plus `@vitejs/plugin-legacy` for older browser support.
+- `react-web-ui-demo` uses `@vitejs/plugin-react` v4 with React Compiler (`babel-plugin-react-compiler`, target 19), plus `@vitejs/plugin-legacy` for older browser support.
 - Both demo apps use `basicSsl()` for HTTPS development servers.
 - `depsReload` watches library `dist/` directories and triggers a full page reload when a local dependency changes.
 
