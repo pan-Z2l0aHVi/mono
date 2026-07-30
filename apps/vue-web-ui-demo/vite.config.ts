@@ -63,6 +63,7 @@ export default {
   test: {
     environment: 'jsdom'
   },
+  base: process.env.CI ? '/mono/' : '/',
   build: {},
   css: {
     transformer: 'lightningcss'

@@ -83,4 +83,5 @@ apps/
 
 - CI in `ci.yml` runs changeset status, build, format/lint/type-check, and tests.
 - Release in `release.yml` uses `changesets/action@v1`; demo apps are excluded from versioning.
+- Deploy in `deploy.yml` builds and deploys demo apps to GitHub Pages via `actions/deploy-pages`. SPA fallback (`404.html`) handles client-side routing.
 - First publication must use `pnpm publish:new <package-dir>`, which builds then publishes version `1.0.0`. It requires `npm login`; configure npm Trusted Publisher afterwards for CI-driven releases.
