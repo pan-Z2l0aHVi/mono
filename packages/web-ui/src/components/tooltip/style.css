@@ -36,7 +36,7 @@
   font-size: var(--wui-tooltip-font-size, 13px);
   color: var(--wui-color-text, #1b1b1b);
 
-  background-color: var(--wui-color-surface-overlay, rgb(245 245 245 / 0.85));
+  background-color: var(--wui-color-surface-overlay, rgb(246 246 246 / 0.88));
 }
 
 .tooltip-panel.portal {
