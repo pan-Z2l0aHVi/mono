@@ -6,7 +6,7 @@ import '..'
 import type { WebUiButtonGroup } from '..'
 
 const createButtonGroup = (buttons = ''): WebUiButtonGroup => {
-  const el = document.createElement('web-ui-button-group') as WebUiButtonGroup
+  const el = document.createElement('web-ui-button-group')
   if (buttons) el.innerHTML = buttons
   document.body.appendChild(el)
   return el

@@ -7,7 +7,7 @@ afterEach(() => document.body.replaceChildren())
 
 describe('WebUiTooltip（浏览器）', () => {
   it('直接设置 open 时同步 Portal 面板', async () => {
-    const tooltip = document.createElement('web-ui-tooltip') as WebUiTooltip
+    const tooltip = document.createElement('web-ui-tooltip')
     tooltip.portal = true
     tooltip.content = 'Portal tooltip'
     tooltip.innerHTML = '<button>Trigger</button>'
@@ -30,7 +30,7 @@ describe('WebUiTooltip（浏览器）', () => {
   })
 
   it('退出过渡中重新打开时保持 Portal 面板可见', async () => {
-    const tooltip = document.createElement('web-ui-tooltip') as WebUiTooltip
+    const tooltip = document.createElement('web-ui-tooltip')
     tooltip.portal = true
     tooltip.content = '可中断提示'
     tooltip.innerHTML = '<button>Trigger</button>'

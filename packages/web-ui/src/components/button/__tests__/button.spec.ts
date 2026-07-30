@@ -6,7 +6,7 @@ import '..'
 import type { WebUiButton } from '..'
 
 const createButton = (text = ''): WebUiButton => {
-  const el = document.createElement('web-ui-button') as WebUiButton
+  const el = document.createElement('web-ui-button')
   if (text) el.textContent = text
   document.body.appendChild(el)
   return el

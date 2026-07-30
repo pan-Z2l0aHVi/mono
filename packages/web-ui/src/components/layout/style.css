@@ -52,12 +52,25 @@ aside {
   .menu {
     height: 100%;
     border-radius: 20px;
-    background-color: var(--wui-color-surface-overlay, rgb(245 245 245 / 0.85));
+    background-color: var(--wui-color-surface-overlay, rgb(246 246 246 / 0.88));
   }
 }
 
 footer {
   grid-area: footer;
+}
+
+.backdrop {
+  display: none;
+}
+
+.mobile-toggle {
+  position: fixed;
+  z-index: var(--wui-layer-header, 20);
+  top: 12px;
+  left: 12px;
+
+  visibility: hidden;
 }
 
 @media (width <= 640px) {
@@ -69,6 +82,38 @@ footer {
   }
 
   aside {
+    position: fixed;
+    z-index: var(--wui-layer-drawer, 100);
+    top: 0;
+    left: 0;
+    transform: translateX(-100%);
+
+    width: var(--web-ui-base-layout-sidebar-width, 240px);
+    height: 100dvh;
+    padding: 8px;
+
+    transition: transform 0.25s ease;
+  }
+
+  aside.open {
+    transform: translateX(0);
+  }
+
+  .backdrop {
+    position: fixed;
+    z-index: var(--wui-layer-backdrop, 90);
+    inset: 0;
+
     display: none;
+
+    background: rgb(0 0 0 / 0.3);
+  }
+
+  .backdrop.open {
+    display: block;
+  }
+
+  .mobile-toggle {
+    visibility: visible;
   }
 }

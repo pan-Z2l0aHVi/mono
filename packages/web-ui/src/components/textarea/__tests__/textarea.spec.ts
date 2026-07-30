@@ -6,7 +6,7 @@ import { cleanupElement, queryA11y, spyEvents, waitForUpdate } from '@/shared/te
 import type { WebUiTextarea } from '..'
 
 function createTextarea(attrs?: Record<string, string>): WebUiTextarea {
-  const el = document.createElement('web-ui-textarea') as WebUiTextarea
+  const el = document.createElement('web-ui-textarea')
   if (attrs) {
     for (const [k, v] of Object.entries(attrs)) {
       el.setAttribute(k, v)

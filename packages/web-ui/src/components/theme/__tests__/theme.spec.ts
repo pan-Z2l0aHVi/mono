@@ -8,7 +8,7 @@ import '@/components/context-menu'
 import '@/components/toast'
 
 function createTheme(appearance?: 'light' | 'dark' | 'system'): WebUiTheme {
-  const theme = document.createElement('web-ui-theme') as WebUiTheme
+  const theme = document.createElement('web-ui-theme')
   if (appearance) theme.appearance = appearance
   document.body.appendChild(theme)
   return theme
@@ -54,7 +54,7 @@ describe('WebUiTheme', () => {
     it('嵌套范围可独立设置 motion', async () => {
       const outer = createTheme('light')
       outer.motion = 'reduced'
-      const inner = document.createElement('web-ui-theme') as WebUiTheme
+      const inner = document.createElement('web-ui-theme')
       inner.appearance = 'dark'
       inner.motion = 'full'
       outer.appendChild(inner)
@@ -109,7 +109,7 @@ describe('WebUiTheme', () => {
   describe('嵌套主题', () => {
     it('内层主题保持独立 overlay root', async () => {
       const outer = createTheme('light')
-      const inner = document.createElement('web-ui-theme') as WebUiTheme
+      const inner = document.createElement('web-ui-theme')
       inner.appearance = 'dark'
       outer.appendChild(inner)
 
@@ -157,7 +157,7 @@ describe('WebUiTheme', () => {
   describe('Context Menu 集成', () => {
     it('使用最近主题的 overlay root', async () => {
       const theme = createTheme('dark')
-      const menu = document.createElement('web-ui-context-menu') as WebUiContextMenu
+      const menu = document.createElement('web-ui-context-menu')
       menu.innerHTML = '<web-ui-dropdown-item>编辑</web-ui-dropdown-item>'
       theme.appendChild(menu)
       await theme.updateComplete

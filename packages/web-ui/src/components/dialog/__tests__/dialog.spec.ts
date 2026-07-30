@@ -6,7 +6,7 @@ import { cleanupElement, spyEvents, waitForUpdate } from '@/shared/test-utils'
 import type { WebUiDialog } from '..'
 
 function createDialog(slots = ''): WebUiDialog {
-  const el = document.createElement('web-ui-dialog') as WebUiDialog
+  const el = document.createElement('web-ui-dialog')
   if (slots) el.innerHTML = slots
   document.body.appendChild(el)
   return el

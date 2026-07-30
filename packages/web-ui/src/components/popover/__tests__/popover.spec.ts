@@ -12,7 +12,7 @@ function touchPointerEvent(type: string): PointerEvent {
 }
 
 const createPopover = (triggerHtml = '', panelHtml = '', attrs?: Record<string, string>): WebUiPopover => {
-  const el = document.createElement('web-ui-popover') as WebUiPopover
+  const el = document.createElement('web-ui-popover')
   if (attrs) {
     for (const [k, v] of Object.entries(attrs)) {
       el.setAttribute(k, v)

@@ -7,7 +7,7 @@ afterEach(() => document.body.replaceChildren())
 
 describe('WebUiInput jsdom contract', () => {
   it('reads the declarative value attribute through the public value property', async () => {
-    const input = document.createElement('web-ui-input') as WebUiInput
+    const input = document.createElement('web-ui-input')
     input.setAttribute('value', 'foo')
     document.body.append(input)
     await input.updateComplete

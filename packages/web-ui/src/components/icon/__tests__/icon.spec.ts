@@ -22,7 +22,7 @@ describe('WebUiIcon', () => {
     })
 
     it('有 icon 时渲染带 aria-hidden 的 SVG', async () => {
-      const el = document.createElement('web-ui-icon') as WebUiIcon
+      const el = document.createElement('web-ui-icon')
       el.icon = aIcon
 
       document.body.appendChild(el)
@@ -35,7 +35,7 @@ describe('WebUiIcon', () => {
 
   describe('prop: size', () => {
     it('默认值为 18', async () => {
-      const el = document.createElement('web-ui-icon') as WebUiIcon
+      const el = document.createElement('web-ui-icon')
       el.icon = aIcon
 
       document.body.appendChild(el)
@@ -45,7 +45,7 @@ describe('WebUiIcon', () => {
     })
 
     it('反射为 size 属性', async () => {
-      const el = document.createElement('web-ui-icon') as WebUiIcon
+      const el = document.createElement('web-ui-icon')
       el.icon = aIcon
       el.size = 32
 
@@ -92,7 +92,7 @@ describe('WebUiIcon', () => {
 
   describe('prop: color', () => {
     it('反射为 color 属性', async () => {
-      const el = document.createElement('web-ui-icon') as WebUiIcon
+      const el = document.createElement('web-ui-icon')
       el.color = 'red'
 
       document.body.appendChild(el)

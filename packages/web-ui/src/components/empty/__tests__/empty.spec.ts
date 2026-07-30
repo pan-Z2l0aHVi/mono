@@ -6,7 +6,7 @@ import '..'
 import type { WebUiEmpty } from '..'
 
 const createEmpty = (attrs?: Record<string, string>, content?: string): WebUiEmpty => {
-  const el = document.createElement('web-ui-empty') as WebUiEmpty
+  const el = document.createElement('web-ui-empty')
   if (attrs) {
     for (const [name, value] of Object.entries(attrs)) {
       el.setAttribute(name, value)

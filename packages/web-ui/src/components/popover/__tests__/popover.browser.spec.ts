@@ -7,7 +7,7 @@ afterEach(() => document.body.replaceChildren())
 
 describe('WebUiPopover（浏览器）', () => {
   it('show() 以即时状态打开面板', async () => {
-    const popover = document.createElement('web-ui-popover') as WebUiPopover
+    const popover = document.createElement('web-ui-popover')
     popover.innerHTML = '<button slot="trigger">Trigger</button><div>Content</div>'
     document.body.append(popover)
     await popover.updateComplete
@@ -21,7 +21,7 @@ describe('WebUiPopover（浏览器）', () => {
   })
 
   it('退出过渡中重新打开时保持 Portal 面板可见', async () => {
-    const popover = document.createElement('web-ui-popover') as WebUiPopover
+    const popover = document.createElement('web-ui-popover')
     popover.portal = true
     popover.innerHTML = '<button slot="trigger">Trigger</button><div>Content</div>'
     document.body.append(popover)
@@ -42,7 +42,7 @@ describe('WebUiPopover（浏览器）', () => {
   })
 
   it('键盘语义 click 触发时立即打开', async () => {
-    const popover = document.createElement('web-ui-popover') as WebUiPopover
+    const popover = document.createElement('web-ui-popover')
     popover.innerHTML = '<button slot="trigger">Trigger</button><div>Content</div>'
     document.body.append(popover)
     await popover.updateComplete

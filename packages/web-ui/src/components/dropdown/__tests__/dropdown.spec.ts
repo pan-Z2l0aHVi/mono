@@ -3,10 +3,10 @@ import { describe, expect, it, vi, afterEach, beforeEach } from 'vite-plus/test'
 import '..'
 import { cleanupElement, spyEvents, waitForUpdate } from '@/shared/test-utils'
 
-import type { WebUiDropdownMenu } from '..'
+import type { WebUiDropdown } from '..'
 
-function createDropdown(attrs?: Record<string, string>, innerHtml = ''): WebUiDropdownMenu {
-  const el = document.createElement('web-ui-dropdown-menu') as WebUiDropdownMenu
+function createDropdown(attrs?: Record<string, string>, innerHtml = ''): WebUiDropdown {
+  const el = document.createElement('web-ui-dropdown')
   if (attrs) {
     for (const [k, v] of Object.entries(attrs)) {
       el.setAttribute(k, v)
@@ -20,7 +20,7 @@ function createDropdown(attrs?: Record<string, string>, innerHtml = ''): WebUiDr
 const SIMPLE =
   '<button slot="trigger">M</button><web-ui-dropdown-item>a</web-ui-dropdown-item><web-ui-dropdown-item>b</web-ui-dropdown-item>'
 
-const clickTrigger = (el: WebUiDropdownMenu) => {
+const clickTrigger = (el: WebUiDropdown) => {
   const slot = el.shadowRoot!.querySelector('slot[name="trigger"]') as HTMLSlotElement
   const trigger = slot.assignedElements()[0] as HTMLElement
   trigger.click()
@@ -45,7 +45,7 @@ afterEach(() => {
   document.body.innerHTML = ''
 })
 
-describe('WebUiDropdownMenu', () => {
+describe('WebUiDropdown', () => {
   describe('基础渲染', () => {
     it('默认关闭', async () => {
       const el = createDropdown({}, SIMPLE)
@@ -305,7 +305,7 @@ describe('WebUiDropdownMenu', () => {
 
       el.openMenu()
       await waitForUpdate(el)
-      const item = el.querySelector('web-ui-dropdown-item') as HTMLElement
+      const item = el.querySelector('web-ui-dropdown-item')!
       item.click()
       await waitForUpdate(el)
 
@@ -355,7 +355,7 @@ describe('WebUiDropdownMenu', () => {
 
       vi.useFakeTimers()
       try {
-        const item = getMenuItem() as HTMLElement
+        const item = getMenuItem()!
         item.dispatchEvent(touchPointerEvent('pointerenter'))
         await vi.advanceTimersByTimeAsync(200)
         await el.updateComplete

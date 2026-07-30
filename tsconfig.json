@@ -7,7 +7,7 @@
     { "path": "./packages/unplugin-web-components" },
     { "path": "./packages/deps-reload" },
 
-    { "path": "./apps/react-app-demo" },
-    { "path": "./apps/vue-app-demo" }
+    { "path": "./apps/react-web-ui-demo" },
+    { "path": "./apps/vue-web-ui-demo" }
   ]
 }

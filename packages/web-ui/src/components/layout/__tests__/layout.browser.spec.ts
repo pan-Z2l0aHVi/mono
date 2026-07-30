@@ -5,7 +5,7 @@ import '..'
 import type { WebUiLayout } from '..'
 
 function createLayout(): WebUiLayout {
-  const layout = document.createElement('web-ui-layout') as WebUiLayout
+  const layout = document.createElement('web-ui-layout')
   layout.innerHTML = '<header slot="header">Header</header><aside slot="sidebar">Sidebar</aside><main>Content</main>'
   document.body.append(layout)
   return layout
@@ -17,14 +17,15 @@ afterEach(async () => {
 })
 
 describe('WebUiLayout（浏览器）', () => {
-  it('390px 视口隐藏侧栏且不产生横向溢出', async () => {
+  it('390px 视口侧栏移出屏幕且不产生横向溢出', async () => {
     await page.viewport(390, 844)
     const layout = createLayout()
     await layout.updateComplete
     await new Promise(resolve => requestAnimationFrame(resolve))
 
     const sidebar = layout.shadowRoot?.querySelector('aside')
-    expect(getComputedStyle(sidebar!).display).toBe('none')
+    expect(sidebar!.classList.contains('open')).toBe(false)
+    // 通过 transform: translateX(-100%) 移出屏幕，不应导致页面横向滚动
     expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(window.innerWidth)
   })
 })

@@ -68,7 +68,7 @@ dialog[open].is-visible::backdrop {
   --wui-glass-shadow: var(--wui-shadow-overlay, 2px 16px 40px rgb(0 0 0 / 0.4));
   padding: 24px;
   border-radius: 20px;
-  background-color: var(--wui-color-surface-overlay, rgb(245 245 245 / 0.85));
+  background-color: var(--wui-color-surface-overlay, rgb(246 246 246 / 0.88));
 }
 
 /* ===== 标题 ===== */

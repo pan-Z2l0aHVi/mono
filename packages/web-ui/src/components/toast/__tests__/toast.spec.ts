@@ -5,7 +5,7 @@ import type { WebUiToast, ToastCloseReason, ToastPosition, ToastType } from '..'
 import { toast } from '..'
 
 function createToastElement(attrs?: Record<string, string>, message = 'test message'): WebUiToast {
-  const el = document.createElement('web-ui-toast') as WebUiToast
+  const el = document.createElement('web-ui-toast')
   if (attrs) {
     for (const [k, v] of Object.entries(attrs)) {
       el.setAttribute(k, v)
@@ -376,7 +376,7 @@ describe('toast 命令式 API', () => {
 
       const all = getToasts()
       expect(all.length).toBeGreaterThan(0)
-      const el = all[0] as WebUiToast
+      const el = all[0]
 
       const handler = vi.fn<(e: Event) => void>()
       document.addEventListener('toast-close', handler)

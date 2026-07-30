@@ -14,7 +14,7 @@ const RADIO_HTML = `
 `
 
 const createGroup = (radioHtml = RADIO_HTML, attrs?: Record<string, string>): WebUiRadioGroup => {
-  const el = document.createElement('web-ui-radio-group') as WebUiRadioGroup
+  const el = document.createElement('web-ui-radio-group')
   if (attrs) {
     for (const [k, v] of Object.entries(attrs)) {
       el.setAttribute(k, v)
@@ -272,7 +272,7 @@ describe('WebUiRadioGroup', () => {
       el.value = 'new-option'
       await waitForUpdate(el)
 
-      const newRadio = document.createElement('web-ui-radio') as WebUiRadio
+      const newRadio = document.createElement('web-ui-radio')
       newRadio.setAttribute('value', 'new-option')
       newRadio.textContent = 'New'
       el.appendChild(newRadio)
@@ -292,7 +292,7 @@ describe('WebUiRadioGroup', () => {
       el.value = 'existing'
       await waitForUpdate(el)
 
-      const newRadio = document.createElement('web-ui-radio') as WebUiRadio
+      const newRadio = document.createElement('web-ui-radio')
       newRadio.setAttribute('value', 'different')
       newRadio.textContent = 'Other'
       el.appendChild(newRadio)

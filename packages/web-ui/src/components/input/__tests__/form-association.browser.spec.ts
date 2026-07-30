@@ -11,7 +11,7 @@ describe('WebUiInput form association', () => {
     form.innerHTML = '<web-ui-input name="title" value="foo"></web-ui-input>'
     document.body.append(form)
 
-    const input = form.querySelector('web-ui-input') as WebUiInput
+    const input = form.querySelector('web-ui-input')!
     await input.updateComplete
 
     expect(input.value).toBe('foo')

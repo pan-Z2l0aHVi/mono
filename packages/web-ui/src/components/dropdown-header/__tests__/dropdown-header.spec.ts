@@ -6,7 +6,7 @@ import { cleanupElement, waitForUpdate } from '@/shared/test-utils'
 import type { WebUiDropdownHeader } from '..'
 
 function createHeader(content = ''): WebUiDropdownHeader {
-  const el = document.createElement('web-ui-dropdown-header') as WebUiDropdownHeader
+  const el = document.createElement('web-ui-dropdown-header')
   el.innerHTML = content
   document.body.appendChild(el)
   return el

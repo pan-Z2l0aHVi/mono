@@ -40,7 +40,7 @@ export class WebUiDrawer extends LitElement {
   @property({ type: Boolean, reflect: true }) closable = false
 
   private get dialog() {
-    return this.shadowRoot?.querySelector('dialog') as HTMLDialogElement | null
+    return this.shadowRoot?.querySelector('dialog') ?? null
   }
 
   private _closeFallbackTimer: ReturnType<typeof setTimeout> | null = null
