@@ -15,3 +15,19 @@
   - `defineCapturedRequests()` — request capture and assertion utilities
   - Usage pattern: `defineMsw(handlers).use(defineCapturedRequests()).make()`
 - **Browser mode config**: Browser-mode packages need `vite.config.ts` with `browser.provider: playwright()` from `vite-plus/test/browser-playwright`
+
+## Verification selection
+
+Choose verification based on the affected contract:
+
+| Change                                               | Required verification                                       |
+| ---------------------------------------------------- | ----------------------------------------------------------- |
+| Local behavior                                       | Focused package test                                        |
+| Cross-package export, reference, or runtime contract | Root `pnpm test`                                            |
+| Build config, published output, or exports           | Root `pnpm build`                                           |
+| Browser-native behavior                              | Relevant `*.browser.spec.ts` test                           |
+| UI, UX, or runtime browser behavior                  | Real-browser verification under the root `AGENTS.md` policy |
+
+Tests should use Arrange, Act, Assert sections; verify one behavior per test; avoid implementation details; and remain independent. Use Chinese descriptions. Use typed `vi.fn<Type>()` only when call assertions are needed, and await deterministic lifecycle signals rather than arbitrary timeouts.
+
+For a behavior-preserving refactor, record the existing behavior inventory before editing, preserve it or obtain approval for removals, and update the corresponding tests and documentation.

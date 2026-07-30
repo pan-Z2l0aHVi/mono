@@ -22,6 +22,7 @@ A pnpm monorepo publishing Lit-based web component UI library (`@greypan/web-ui`
 | 0005 | Overlay Interaction Policy  | Click-outside, focus-out, keyboard Escape, and child-parent event coordination                |
 | 0006 | Layout Layering             | Local overlay stacking in layout, portal overlay z-index scale                                |
 | 0007 | Web UI Contract Convergence | Unified Pointer Events, standard event model, form-associated controls, public contract tests |
+| 0008 | Icon System                 | Build-time Iconify data modules; no runtime icon component or lookup                          |
 
 ## Package Boundaries
 
