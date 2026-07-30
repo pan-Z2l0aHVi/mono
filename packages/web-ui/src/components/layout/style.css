@@ -65,6 +65,11 @@ footer {
 }
 
 .mobile-toggle {
+  position: fixed;
+  z-index: var(--wui-layer-header, 20);
+  top: 12px;
+  left: 12px;
+
   visibility: hidden;
 }
 
@@ -109,11 +114,6 @@ footer {
   }
 
   .mobile-toggle {
-    position: fixed;
-    z-index: var(--wui-layer-header, 20);
-    top: 12px;
-    left: 12px;
-
     visibility: visible;
   }
 }
