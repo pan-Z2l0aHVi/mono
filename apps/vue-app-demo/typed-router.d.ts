@@ -14,7 +14,9 @@ import type {
   ParamValueZeroOrMore,
   ParamValueZeroOrOne,
 } from 'vue-router'
-import type { _ExtractParamParserType } from 'vue-router/experimental'
+import type {
+  _ExtractParamParserType,
+} from 'vue-router/experimental'
 
 declare module 'vue-router' {
   interface TypesConfig {
@@ -34,177 +36,183 @@ declare module 'vue-router/auto-routes' {
       '/:all(.*)',
       { all: ParamValue<true> },
       { all: ParamValue<false> },
-      never
-    >
+      | never
+    >,
     '/components/avatar': RouteRecordInfo<
       '/components/avatar',
       '/components/avatar',
       Record<never, never>,
       Record<never, never>,
-      never
-    >
+      | never
+    >,
     '/components/badge': RouteRecordInfo<
       '/components/badge',
       '/components/badge',
       Record<never, never>,
       Record<never, never>,
-      never
-    >
+      | never
+    >,
     '/components/button': RouteRecordInfo<
       '/components/button',
       '/components/button',
       Record<never, never>,
       Record<never, never>,
-      never
-    >
+      | never
+    >,
     '/components/checkbox': RouteRecordInfo<
       '/components/checkbox',
       '/components/checkbox',
       Record<never, never>,
       Record<never, never>,
-      never
-    >
+      | never
+    >,
     '/components/context-menu': RouteRecordInfo<
       '/components/context-menu',
       '/components/context-menu',
       Record<never, never>,
       Record<never, never>,
-      never
-    >
+      | never
+    >,
     '/components/dialog': RouteRecordInfo<
       '/components/dialog',
       '/components/dialog',
       Record<never, never>,
       Record<never, never>,
-      never
-    >
+      | never
+    >,
     '/components/drawer': RouteRecordInfo<
       '/components/drawer',
       '/components/drawer',
       Record<never, never>,
       Record<never, never>,
-      never
-    >
+      | never
+    >,
     '/components/dropdown': RouteRecordInfo<
       '/components/dropdown',
       '/components/dropdown',
       Record<never, never>,
       Record<never, never>,
-      never
-    >
+      | never
+    >,
     '/components/empty': RouteRecordInfo<
       '/components/empty',
       '/components/empty',
       Record<never, never>,
       Record<never, never>,
-      never
-    >
+      | never
+    >,
     '/components/icon': RouteRecordInfo<
       '/components/icon',
       '/components/icon',
       Record<never, never>,
       Record<never, never>,
-      never
-    >
+      | never
+    >,
     '/components/input': RouteRecordInfo<
       '/components/input',
       '/components/input',
       Record<never, never>,
       Record<never, never>,
-      never
-    >
+      | never
+    >,
     '/components/input-number': RouteRecordInfo<
       '/components/input-number',
       '/components/input-number',
       Record<never, never>,
       Record<never, never>,
-      never
-    >
+      | never
+    >,
     '/components/popover': RouteRecordInfo<
       '/components/popover',
       '/components/popover',
       Record<never, never>,
       Record<never, never>,
-      never
-    >
+      | never
+    >,
     '/components/radio': RouteRecordInfo<
       '/components/radio',
       '/components/radio',
       Record<never, never>,
       Record<never, never>,
-      never
-    >
+      | never
+    >,
     '/components/segmented': RouteRecordInfo<
       '/components/segmented',
       '/components/segmented',
       Record<never, never>,
       Record<never, never>,
-      never
-    >
+      | never
+    >,
     '/components/select': RouteRecordInfo<
       '/components/select',
       '/components/select',
       Record<never, never>,
       Record<never, never>,
-      never
-    >
+      | never
+    >,
     '/components/slider': RouteRecordInfo<
       '/components/slider',
       '/components/slider',
       Record<never, never>,
       Record<never, never>,
-      never
-    >
+      | never
+    >,
     '/components/spinner': RouteRecordInfo<
       '/components/spinner',
       '/components/spinner',
       Record<never, never>,
       Record<never, never>,
-      never
-    >
+      | never
+    >,
     '/components/svg-draw-lines': RouteRecordInfo<
       '/components/svg-draw-lines',
       '/components/svg-draw-lines',
       Record<never, never>,
       Record<never, never>,
-      never
-    >
+      | never
+    >,
     '/components/switch': RouteRecordInfo<
       '/components/switch',
       '/components/switch',
       Record<never, never>,
       Record<never, never>,
-      never
-    >
+      | never
+    >,
     '/components/textarea': RouteRecordInfo<
       '/components/textarea',
       '/components/textarea',
       Record<never, never>,
       Record<never, never>,
-      never
-    >
+      | never
+    >,
     '/components/theme': RouteRecordInfo<
       '/components/theme',
       '/components/theme',
       Record<never, never>,
       Record<never, never>,
-      never
-    >
+      | never
+    >,
     '/components/toast': RouteRecordInfo<
       '/components/toast',
       '/components/toast',
       Record<never, never>,
       Record<never, never>,
-      never
-    >
+      | never
+    >,
     '/components/tooltip': RouteRecordInfo<
       '/components/tooltip',
       '/components/tooltip',
       Record<never, never>,
       Record<never, never>,
-      never
-    >
-    '/home/': RouteRecordInfo<'/home/', '/home', Record<never, never>, Record<never, never>, never>
+      | never
+    >,
+    '/home/': RouteRecordInfo<
+      '/home/',
+      '/home',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
   }
 
   /**
@@ -219,134 +227,212 @@ declare module 'vue-router/auto-routes' {
    */
   export interface _RouteFileInfoMap {
     'src/pages/[...all]/index.vue': {
-      routes: '/[...all]/'
-      views: never
-      pathParamNames: never
+      routes:
+        | '/[...all]/'
+      views:
+        | never
+      pathParamNames:
+        | never
     }
     'src/pages/components/avatar.vue': {
-      routes: '/components/avatar'
-      views: never
-      pathParamNames: never
+      routes:
+        | '/components/avatar'
+      views:
+        | never
+      pathParamNames:
+        | never
     }
     'src/pages/components/badge.vue': {
-      routes: '/components/badge'
-      views: never
-      pathParamNames: never
+      routes:
+        | '/components/badge'
+      views:
+        | never
+      pathParamNames:
+        | never
     }
     'src/pages/components/button.vue': {
-      routes: '/components/button'
-      views: never
-      pathParamNames: never
+      routes:
+        | '/components/button'
+      views:
+        | never
+      pathParamNames:
+        | never
     }
     'src/pages/components/checkbox.vue': {
-      routes: '/components/checkbox'
-      views: never
-      pathParamNames: never
+      routes:
+        | '/components/checkbox'
+      views:
+        | never
+      pathParamNames:
+        | never
     }
     'src/pages/components/context-menu.vue': {
-      routes: '/components/context-menu'
-      views: never
-      pathParamNames: never
+      routes:
+        | '/components/context-menu'
+      views:
+        | never
+      pathParamNames:
+        | never
     }
     'src/pages/components/dialog.vue': {
-      routes: '/components/dialog'
-      views: never
-      pathParamNames: never
+      routes:
+        | '/components/dialog'
+      views:
+        | never
+      pathParamNames:
+        | never
     }
     'src/pages/components/drawer.vue': {
-      routes: '/components/drawer'
-      views: never
-      pathParamNames: never
+      routes:
+        | '/components/drawer'
+      views:
+        | never
+      pathParamNames:
+        | never
     }
     'src/pages/components/dropdown.vue': {
-      routes: '/components/dropdown'
-      views: never
-      pathParamNames: never
+      routes:
+        | '/components/dropdown'
+      views:
+        | never
+      pathParamNames:
+        | never
     }
     'src/pages/components/empty.vue': {
-      routes: '/components/empty'
-      views: never
-      pathParamNames: never
+      routes:
+        | '/components/empty'
+      views:
+        | never
+      pathParamNames:
+        | never
     }
     'src/pages/components/icon.vue': {
-      routes: '/components/icon'
-      views: never
-      pathParamNames: never
+      routes:
+        | '/components/icon'
+      views:
+        | never
+      pathParamNames:
+        | never
     }
     'src/pages/components/input.vue': {
-      routes: '/components/input'
-      views: never
-      pathParamNames: never
+      routes:
+        | '/components/input'
+      views:
+        | never
+      pathParamNames:
+        | never
     }
     'src/pages/components/input-number.vue': {
-      routes: '/components/input-number'
-      views: never
-      pathParamNames: never
+      routes:
+        | '/components/input-number'
+      views:
+        | never
+      pathParamNames:
+        | never
     }
     'src/pages/components/popover.vue': {
-      routes: '/components/popover'
-      views: never
-      pathParamNames: never
+      routes:
+        | '/components/popover'
+      views:
+        | never
+      pathParamNames:
+        | never
     }
     'src/pages/components/radio.vue': {
-      routes: '/components/radio'
-      views: never
-      pathParamNames: never
+      routes:
+        | '/components/radio'
+      views:
+        | never
+      pathParamNames:
+        | never
     }
     'src/pages/components/segmented.vue': {
-      routes: '/components/segmented'
-      views: never
-      pathParamNames: never
+      routes:
+        | '/components/segmented'
+      views:
+        | never
+      pathParamNames:
+        | never
     }
     'src/pages/components/select.vue': {
-      routes: '/components/select'
-      views: never
-      pathParamNames: never
+      routes:
+        | '/components/select'
+      views:
+        | never
+      pathParamNames:
+        | never
     }
     'src/pages/components/slider.vue': {
-      routes: '/components/slider'
-      views: never
-      pathParamNames: never
+      routes:
+        | '/components/slider'
+      views:
+        | never
+      pathParamNames:
+        | never
     }
     'src/pages/components/spinner.vue': {
-      routes: '/components/spinner'
-      views: never
-      pathParamNames: never
+      routes:
+        | '/components/spinner'
+      views:
+        | never
+      pathParamNames:
+        | never
     }
     'src/pages/components/svg-draw-lines.vue': {
-      routes: '/components/svg-draw-lines'
-      views: never
-      pathParamNames: never
+      routes:
+        | '/components/svg-draw-lines'
+      views:
+        | never
+      pathParamNames:
+        | never
     }
     'src/pages/components/switch.vue': {
-      routes: '/components/switch'
-      views: never
-      pathParamNames: never
+      routes:
+        | '/components/switch'
+      views:
+        | never
+      pathParamNames:
+        | never
     }
     'src/pages/components/textarea.vue': {
-      routes: '/components/textarea'
-      views: never
-      pathParamNames: never
+      routes:
+        | '/components/textarea'
+      views:
+        | never
+      pathParamNames:
+        | never
     }
     'src/pages/components/theme.vue': {
-      routes: '/components/theme'
-      views: never
-      pathParamNames: never
+      routes:
+        | '/components/theme'
+      views:
+        | never
+      pathParamNames:
+        | never
     }
     'src/pages/components/toast.vue': {
-      routes: '/components/toast'
-      views: never
-      pathParamNames: never
+      routes:
+        | '/components/toast'
+      views:
+        | never
+      pathParamNames:
+        | never
     }
     'src/pages/components/tooltip.vue': {
-      routes: '/components/tooltip'
-      views: never
-      pathParamNames: never
+      routes:
+        | '/components/tooltip'
+      views:
+        | never
+      pathParamNames:
+        | never
     }
     'src/pages/home/index.vue': {
-      routes: '/home/'
-      views: never
-      pathParamNames: never
+      routes:
+        | '/home/'
+      views:
+        | never
+      pathParamNames:
+        | never
     }
   }
 
@@ -357,7 +443,9 @@ declare module 'vue-router/auto-routes' {
    * @internal
    */
   export type _RouteNamesForFilePath<FilePath extends string> =
-    _RouteFileInfoMap extends Record<FilePath, infer Info> ? Info['routes'] : keyof RouteNamedMap
+    _RouteFileInfoMap extends Record<FilePath, infer Info>
+      ? Info['routes']
+      : keyof RouteNamedMap
 }
 
 export {}

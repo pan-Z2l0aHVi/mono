@@ -78,7 +78,6 @@ These files are auto-generated and should not be edited manually:
 
 - `**/routeTree.gen.ts` — TanStack Router route tree
 - `**/auto-imports.d.ts` — auto-import type declarations
-- `**/.eslintrc-auto-import.js`
 - `**/wailsjs/**` — Wails bindings (if present)
 - `**/__screenshots__/` — Vitest browser mode test failure screenshots
 - `**/.vitest-attachments/` — Vitest browser mode test attachments

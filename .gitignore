@@ -146,5 +146,4 @@ report.html
 # 工具链自动生成 (Auto Generated)
 # ==========================================
 wailsjs/
-.eslintrc-auto-import.js
 package.json.md5

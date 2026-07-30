@@ -13,11 +13,11 @@ export default defineConfig({
       '**/node_modules/**',
       '**/dist/**',
       '**/dist-ssr/**',
-      'scripts/**',
       '**/.turbo/**',
+      '**/scripts/**',
       '**/routeTree.gen.ts',
-      '**/.eslintrc-auto-import.js',
       '**/auto-imports.d.ts',
+      '**/typed-router.d.ts',
       '**/wailsjs/**'
     ],
     overrides: [
@@ -318,17 +318,14 @@ export default defineConfig({
     arrowParens: 'avoid',
     sortPackageJson: false,
     ignorePatterns: [
-      '/dist/*',
-      '/dist-ssr/*',
-      '/dev-dist/*',
-      '.local',
-      '.output.js',
-      '/node_modules/**',
-      '**/*.svg',
-      '**/*.sh',
-      '/public/*',
+      '**/node_modules/**',
+      '**/dist/**',
+      '**/dist-ssr/**',
+      '**/.turbo/**',
       '**/routeTree.gen.ts',
-      '/wailsjs/**'
+      '**/auto-imports.d.ts',
+      '**/typed-router.d.ts',
+      '**/wailsjs/**'
     ],
     experimentalSortImports: {
       enabled: true,
