@@ -6,7 +6,7 @@ import { queryA11y, spyEvents } from '@/shared/test-utils'
 import type { WebUiBackTop } from '..'
 
 function createBackTop(): WebUiBackTop {
-  const el = document.createElement('web-ui-back-top') as WebUiBackTop
+  const el = document.createElement('web-ui-back-top')
   document.body.appendChild(el)
   return el
 }

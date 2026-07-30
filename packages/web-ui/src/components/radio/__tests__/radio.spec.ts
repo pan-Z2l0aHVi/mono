@@ -6,7 +6,7 @@ import { waitForUpdate, spyEvents, cleanupElement, queryA11y } from '@/shared/te
 import type { WebUiRadio } from '..'
 
 const createRadio = (): WebUiRadio => {
-  const el = document.createElement('web-ui-radio') as WebUiRadio
+  const el = document.createElement('web-ui-radio')
   document.body.appendChild(el)
   return el
 }

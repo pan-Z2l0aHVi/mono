@@ -6,7 +6,7 @@ import { cleanupElement, waitForUpdate, queryA11y } from '@/shared/test-utils'
 import type { WebUiDropdownDivider } from '..'
 
 function createDivider(): WebUiDropdownDivider {
-  const el = document.createElement('web-ui-dropdown-divider') as WebUiDropdownDivider
+  const el = document.createElement('web-ui-dropdown-divider')
   document.body.appendChild(el)
   return el
 }

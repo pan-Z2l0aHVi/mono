@@ -13,7 +13,7 @@ describe('CheckboxDemo', () => {
     await nextTick()
     await new Promise(process.nextTick)
 
-    const group = wrapper.findAll('web-ui-checkbox-group')[0].element as WebUiCheckboxGroup
+    const group = wrapper.findAll('web-ui-checkbox-group')[0].element
     await group.updateComplete
     expect(group.value).toEqual(['banana', 'cherry'])
 
@@ -35,7 +35,7 @@ describe('CheckboxDemo', () => {
     const wrapper = mount(CheckboxDemo, { attachTo: document.body })
     const checkbox = wrapper.findAll('web-ui-checkbox')[0].element
     await checkbox.updateComplete
-    const label = checkbox.shadowRoot!.querySelector('label') as HTMLElement
+    const label = checkbox.shadowRoot!.querySelector('label')!
 
     label.click()
     await nextTick()

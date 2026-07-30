@@ -7,7 +7,7 @@ import type { WebUiSlider } from '..'
 
 describe('WebUiSlider', () => {
   function createSlider(): WebUiSlider {
-    const el = document.createElement('web-ui-slider') as WebUiSlider
+    const el = document.createElement('web-ui-slider')
     document.body.append(el)
     return el
   }

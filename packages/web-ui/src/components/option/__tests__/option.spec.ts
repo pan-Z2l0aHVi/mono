@@ -6,7 +6,7 @@ import { waitForUpdate, expectReflected, cleanupElement } from '@/shared/test-ut
 import type { WebUiOption } from '..'
 
 const createOption = (attrs?: Record<string, string>, label = 'Option'): WebUiOption => {
-  const el = document.createElement('web-ui-option') as WebUiOption
+  const el = document.createElement('web-ui-option')
   el.label = label
   if (attrs) {
     for (const [k, v] of Object.entries(attrs)) {

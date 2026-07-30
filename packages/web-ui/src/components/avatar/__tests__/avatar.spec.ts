@@ -6,7 +6,7 @@ import '..'
 import type { WebUiAvatar } from '..'
 
 const createAvatar = (attrs?: Record<string, string>): WebUiAvatar => {
-  const el = document.createElement('web-ui-avatar') as WebUiAvatar
+  const el = document.createElement('web-ui-avatar')
   if (attrs) {
     for (const [k, v] of Object.entries(attrs)) {
       el.setAttribute(k, v)

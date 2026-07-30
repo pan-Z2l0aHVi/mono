@@ -6,7 +6,7 @@ import { cleanupElement, queryA11y, spyEvents, waitForUpdate } from '@/shared/te
 import type { WebUiInputNumber } from '..'
 
 function createNumber(attrs?: Record<string, string>): WebUiInputNumber {
-  const el = document.createElement('web-ui-input-number') as WebUiInputNumber
+  const el = document.createElement('web-ui-input-number')
   if (attrs) {
     for (const [k, v] of Object.entries(attrs)) {
       el.setAttribute(k, v)

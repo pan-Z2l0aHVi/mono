@@ -90,7 +90,7 @@ function createToast(options: ToastInstanceOptions): string {
 }
 
 function mountToast(id: string, options: ToastInstanceOptions, container: HTMLElement) {
-  const el = document.createElement('web-ui-toast') as WebUiToast
+  const el = document.createElement('web-ui-toast')
   el.toastId = id
   el.type = options.type || 'info'
   el.position = options.position || 'top-right'

@@ -14,7 +14,7 @@ const GROUP_HTML = `
 `
 
 const createGroup = (checkboxHtml = GROUP_HTML, attrs?: Record<string, string>): WebUiCheckboxGroup => {
-  const el = document.createElement('web-ui-checkbox-group') as WebUiCheckboxGroup
+  const el = document.createElement('web-ui-checkbox-group')
   if (attrs) {
     for (const [k, v] of Object.entries(attrs)) {
       el.setAttribute(k, v)
@@ -250,7 +250,7 @@ describe('WebUiCheckboxGroup', () => {
       el.value = ['y']
       await waitForUpdate(el)
 
-      const newCheckbox = document.createElement('web-ui-checkbox') as WebUiCheckbox
+      const newCheckbox = document.createElement('web-ui-checkbox')
       newCheckbox.setAttribute('value', 'y')
       newCheckbox.textContent = 'Y'
       el.appendChild(newCheckbox)

@@ -5,7 +5,7 @@ import '..'
 import type { WebUiLayout } from '..'
 
 function createLayout(): WebUiLayout {
-  const layout = document.createElement('web-ui-layout') as WebUiLayout
+  const layout = document.createElement('web-ui-layout')
   layout.innerHTML = '<header slot="header">Header</header><aside slot="sidebar">Sidebar</aside><main>Content</main>'
   document.body.append(layout)
   return layout

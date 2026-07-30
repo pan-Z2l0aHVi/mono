@@ -6,7 +6,7 @@ import { cleanupElement, waitForUpdate } from '@/shared/test-utils'
 import type { WebUiDropdownItem } from '..'
 
 function createItem(attrs?: Record<string, string>, content = ''): WebUiDropdownItem {
-  const el = document.createElement('web-ui-dropdown-item') as WebUiDropdownItem
+  const el = document.createElement('web-ui-dropdown-item')
   if (attrs) {
     for (const [k, v] of Object.entries(attrs)) {
       el.setAttribute(k, v)
