@@ -1,5 +1,11 @@
 # @greypan/web-ui
 
+## 2.0.2
+
+### Patch Changes
+
+- 384c683: some components add user select none
+
 ## 2.0.1
 
 ### Patch Changes
