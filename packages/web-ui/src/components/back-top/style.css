@@ -1,4 +1,11 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
 :host {
+  --wui-shadow-glass: var(--wui-shadow-pop);
   display: block;
 }
 
@@ -6,7 +13,7 @@
   pointer-events: none;
 
   position: fixed;
-  z-index: var(--web-ui-back-top-z-index, auto);
+  z-index: var(--web-ui-back-top-z-index, var(--wui-layer-auxiliary, 20));
   top: var(--web-ui-back-top-top, auto);
   right: var(--web-ui-back-top-right, 20px);
   bottom: var(--web-ui-back-top-bottom, 20px);
@@ -14,6 +21,12 @@
 
   visibility: hidden;
   opacity: 0;
+
+  .back-top-inner:focus-visible {
+    border-radius: calc(infinity * 1px);
+    outline: 3px solid var(--wui-focus-ring, rgb(0 136 255 / 0.4));
+    outline-offset: 2px;
+  }
 }
 
 :host([visible]) .back-top-inner {

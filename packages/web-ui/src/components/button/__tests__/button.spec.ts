@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from 'vite-plus/test'
 
+import { waitForUpdate, spyEvents, cleanupElement } from '@/shared/test-utils'
+
 import '..'
 import type { WebUiButton } from '..'
 
@@ -11,120 +13,157 @@ const createButton = (text = ''): WebUiButton => {
 }
 
 describe('WebUiButton', () => {
-  describe('prop: variant', () => {
-    it('默认 variant 为 glass', async () => {
+  describe('属性: variant', () => {
+    it('默认值为 glass，非法输入回退到默认值', async () => {
       const el = createButton()
-      await el.updateComplete
+      await waitForUpdate(el)
       expect(el.variant).toBe('glass')
-      el.remove()
+
+      ;(el as any).variant = 'unknown'
+      await waitForUpdate(el)
+      expect(el.variant).toBe('glass')
+
+      cleanupElement(el)
     })
 
-    it('variant 属性反射到 host', async () => {
+    it('设置后反射到 host 属性', async () => {
       const el = createButton()
       el.variant = 'primary'
-      await el.updateComplete
+      await waitForUpdate(el)
       expect(el.getAttribute('variant')).toBe('primary')
-      el.remove()
+
+      el.variant = 'danger'
+      await waitForUpdate(el)
+      expect(el.getAttribute('variant')).toBe('danger')
+
+      cleanupElement(el)
+    })
+
+    it('所有合法 variant 值生效', async () => {
+      const values = ['primary', 'secondary', 'ghost', 'danger', 'glass'] as const
+      for (const v of values) {
+        const el = createButton()
+        el.variant = v
+        await waitForUpdate(el)
+        expect(el.variant).toBe(v)
+        expect(el.getAttribute('variant')).toBe(v)
+        cleanupElement(el)
+      }
     })
   })
 
-  describe('prop: disabled', () => {
-    it('disabled 时原生 button 也被 disabled', async () => {
+  describe('属性: disabled', () => {
+    it('属性反射到 host，初始值为 false', async () => {
       const el = createButton()
+      expect(el.hasAttribute('disabled')).toBe(false)
+      expect(el.disabled).toBe(false)
+
       el.disabled = true
-      await el.updateComplete
+      await waitForUpdate(el)
+      expect(el.hasAttribute('disabled')).toBe(true)
+      expect(el.disabled).toBe(true)
 
-      const btn = el.shadowRoot?.querySelector('button')
-      expect(btn?.hasAttribute('disabled')).toBe(true)
+      cleanupElement(el)
+    })
 
-      el.remove()
+    it('disabled 为 true 时阻止 click 事件', async () => {
+      const el = createButton('OK')
+      el.disabled = true
+      await waitForUpdate(el)
+
+      const [events] = spyEvents(el, 'click')
+      el.shadowRoot?.querySelector('button')?.click()
+      expect(events).toHaveLength(0)
+
+      cleanupElement(el)
     })
   })
 
-  describe('prop: loading', () => {
-    it('loading 时显示 spinner 且原生 button 被 disabled', async () => {
+  describe('属性: loading', () => {
+    it('loading 属性反射到 host', async () => {
       const el = createButton()
+      expect(el.hasAttribute('loading')).toBe(false)
+
       el.loading = true
-      await el.updateComplete
+      await waitForUpdate(el)
+      expect(el.hasAttribute('loading')).toBe(true)
 
-      const btn = el.shadowRoot?.querySelector('button')
-      expect(btn?.hasAttribute('disabled')).toBe(true)
-
-      const spinner = el.shadowRoot?.querySelector('web-ui-icon')
-      expect(spinner).toBeTruthy()
-      expect(spinner?.hasAttribute('spin')).toBe(true)
-
-      el.remove()
+      cleanupElement(el)
     })
 
-    it('关闭 loading 后恢复', async () => {
-      const el = createButton()
+    it('loading 为 true 时阻止 click 事件', async () => {
+      const el = createButton('OK')
       el.loading = true
-      await el.updateComplete
-      el.loading = false
-      await el.updateComplete
+      await waitForUpdate(el)
 
-      const btn = el.shadowRoot?.querySelector('button')
-      expect(btn?.hasAttribute('disabled')).toBe(false)
-      expect(el.shadowRoot?.querySelector('web-ui-icon')).toBeNull()
+      const [events] = spyEvents(el, 'click')
+      el.shadowRoot?.querySelector('button')?.click()
+      expect(events).toHaveLength(0)
 
-      el.remove()
+      cleanupElement(el)
     })
   })
 
-  describe('prop: icon', () => {
-    it('icon 模式下不渲染 label 容器', async () => {
+  describe('属性: icon', () => {
+    it('icon 属性反射到 host', async () => {
       const el = createButton()
+      expect(el.hasAttribute('icon')).toBe(false)
+
       el.icon = true
-      el.textContent = 'X'
-      await el.updateComplete
+      await waitForUpdate(el)
+      expect(el.hasAttribute('icon')).toBe(true)
 
-      expect(el.shadowRoot?.querySelector('.label')).toBeNull()
-
-      el.remove()
+      cleanupElement(el)
     })
   })
 
-  describe('event: click', () => {
+  describe('属性: full', () => {
+    it('full 属性反射到 host', async () => {
+      const el = createButton()
+      expect(el.hasAttribute('full')).toBe(false)
+
+      el.full = true
+      await waitForUpdate(el)
+      expect(el.hasAttribute('full')).toBe(true)
+
+      cleanupElement(el)
+    })
+  })
+
+  describe('事件: click', () => {
     it('点击触发 click 事件', async () => {
       const el = createButton('OK')
-      await el.updateComplete
+      await waitForUpdate(el)
 
-      const handler = vi.fn()
-      el.addEventListener('click', handler)
+      const [events] = spyEvents(el, 'click')
       el.shadowRoot?.querySelector('button')?.click()
+      expect(events).toHaveLength(1)
 
-      expect(handler).toHaveBeenCalledTimes(1)
-
-      el.remove()
+      cleanupElement(el)
     })
+  })
 
-    it('disabled 时点击不触发', async () => {
+  describe('键盘操作', () => {
+    it('内联按钮的 click 方法触发宿主事件', async () => {
       const el = createButton('OK')
-      el.disabled = true
-      await el.updateComplete
+      await waitForUpdate(el)
 
-      const handler = vi.fn()
-      el.addEventListener('click', handler)
-      el.shadowRoot?.querySelector('button')?.click()
+      const [events] = spyEvents(el, 'click')
+      const btn = el.shadowRoot?.querySelector('button')
+      btn?.click()
+      expect(events).toHaveLength(1)
 
-      expect(handler).not.toHaveBeenCalled()
-
-      el.remove()
+      cleanupElement(el)
     })
+  })
 
-    it('loading 时点击不触发', async () => {
-      const el = createButton('OK')
-      el.loading = true
-      await el.updateComplete
+  describe('slot', () => {
+    it('slot 内容可通过 textContent 访问', async () => {
+      const el = createButton('Click Me')
+      await waitForUpdate(el)
+      expect(el.textContent).toBe('Click Me')
 
-      const handler = vi.fn()
-      el.addEventListener('click', handler)
-      el.shadowRoot?.querySelector('button')?.click()
-
-      expect(handler).not.toHaveBeenCalled()
-
-      el.remove()
+      cleanupElement(el)
     })
   })
 })

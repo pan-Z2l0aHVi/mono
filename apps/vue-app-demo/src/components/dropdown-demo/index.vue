@@ -11,6 +11,9 @@ import {
   lucideRedo2,
   lucideSearch
 } from '@greypan/web-ui/icons'
+import { ref } from 'vue'
+
+const controlledOpen = ref(false)
 </script>
 
 <template>
@@ -33,23 +36,23 @@ import {
       <web-ui-dropdown-menu>
         <web-ui-button slot="trigger">文件</web-ui-button>
         <web-ui-dropdown-item>
-          <web-ui-icon slot="prefix" :width="14" :height="14" :icon="lucideFile"></web-ui-icon>
+          <web-ui-icon slot="prefix" :size="14" :icon="lucideFile"></web-ui-icon>
           新建
           <span class="opacity-40" slot="suffix">⌘N</span>
         </web-ui-dropdown-item>
         <web-ui-dropdown-item>
-          <web-ui-icon slot="prefix" :width="14" :height="14" :icon="lucideCopy"></web-ui-icon>
+          <web-ui-icon slot="prefix" :size="14" :icon="lucideCopy"></web-ui-icon>
           复制
           <span class="opacity-40" slot="suffix">⌘C</span>
         </web-ui-dropdown-item>
         <web-ui-dropdown-item>
-          <web-ui-icon slot="prefix" :width="14" :height="14" :icon="lucideClipboardPaste"></web-ui-icon>
+          <web-ui-icon slot="prefix" :size="14" :icon="lucideClipboardPaste"></web-ui-icon>
           粘贴
           <span class="opacity-40" slot="suffix">⌘V</span>
         </web-ui-dropdown-item>
         <web-ui-dropdown-divider></web-ui-dropdown-divider>
         <web-ui-dropdown-item disabled>
-          <web-ui-icon slot="prefix" :width="14" :height="14" :icon="lucideTrash2"></web-ui-icon>
+          <web-ui-icon slot="prefix" :size="14" :icon="lucideTrash2"></web-ui-icon>
           删除
           <span class="opacity-40" slot="suffix">⌘⌫</span>
         </web-ui-dropdown-item>
@@ -61,32 +64,32 @@ import {
       <web-ui-dropdown-menu>
         <web-ui-button slot="trigger">更多</web-ui-button>
         <web-ui-dropdown-item>
-          <web-ui-icon slot="prefix" :width="14" :height="14" :icon="lucideUndo2"></web-ui-icon>
+          <web-ui-icon slot="prefix" :size="14" :icon="lucideUndo2"></web-ui-icon>
           撤销
           <span class="opacity-40" slot="suffix">⌘Z</span>
         </web-ui-dropdown-item>
         <web-ui-dropdown-item>
-          <web-ui-icon slot="prefix" :width="14" :height="14" :icon="lucideRedo2"></web-ui-icon>
+          <web-ui-icon slot="prefix" :size="14" :icon="lucideRedo2"></web-ui-icon>
           重做
           <span class="opacity-40" slot="suffix">⇧⌘Z</span>
         </web-ui-dropdown-item>
         <web-ui-dropdown-divider></web-ui-dropdown-divider>
         <web-ui-dropdown-item submenu>
-          <web-ui-icon slot="prefix" :width="14" :height="14" :icon="lucidePrinter"></web-ui-icon>
+          <web-ui-icon slot="prefix" :size="14" :icon="lucidePrinter"></web-ui-icon>
           导出为
           <web-ui-dropdown-item>导出为 PDF</web-ui-dropdown-item>
           <web-ui-dropdown-item>导出为 PNG</web-ui-dropdown-item>
           <web-ui-dropdown-item>导出为 SVG</web-ui-dropdown-item>
         </web-ui-dropdown-item>
         <web-ui-dropdown-item submenu>
-          <web-ui-icon slot="prefix" :width="14" :height="14" :icon="lucideDownload"></web-ui-icon>
+          <web-ui-icon slot="prefix" :size="14" :icon="lucideDownload"></web-ui-icon>
           导入
           <web-ui-dropdown-item>从文件导入</web-ui-dropdown-item>
           <web-ui-dropdown-item>从剪贴板导入</web-ui-dropdown-item>
         </web-ui-dropdown-item>
         <web-ui-dropdown-divider></web-ui-dropdown-divider>
         <web-ui-dropdown-item>
-          <web-ui-icon slot="prefix" :width="14" :height="14" :icon="lucideSettings"></web-ui-icon>
+          <web-ui-icon slot="prefix" :size="14" :icon="lucideSettings"></web-ui-icon>
           偏好设置
           <span class="opacity-40" slot="suffix">⌘,</span>
         </web-ui-dropdown-item>
@@ -99,10 +102,10 @@ import {
         <web-ui-button slot="trigger">深层导航</web-ui-button>
 
         <web-ui-dropdown-item submenu>
-          <web-ui-icon slot="prefix" :width="14" :height="14" :icon="lucideFile"></web-ui-icon>
+          <web-ui-icon slot="prefix" :size="14" :icon="lucideFile"></web-ui-icon>
           文件
           <web-ui-dropdown-item submenu>
-            <web-ui-icon slot="prefix" :width="14" :height="14" :icon="lucideFile"></web-ui-icon>
+            <web-ui-icon slot="prefix" :size="14" :icon="lucideFile"></web-ui-icon>
             新建
             <web-ui-dropdown-item submenu>
               办公文档
@@ -116,21 +119,21 @@ import {
             </web-ui-dropdown-item>
           </web-ui-dropdown-item>
           <web-ui-dropdown-item>
-            <web-ui-icon slot="prefix" :width="14" :height="14" :icon="lucideDownload"></web-ui-icon>
+            <web-ui-icon slot="prefix" :size="14" :icon="lucideDownload"></web-ui-icon>
             导出
           </web-ui-dropdown-item>
         </web-ui-dropdown-item>
 
         <web-ui-dropdown-item submenu>
-          <web-ui-icon slot="prefix" :width="14" :height="14" :icon="lucideSettings"></web-ui-icon>
+          <web-ui-icon slot="prefix" :size="14" :icon="lucideSettings"></web-ui-icon>
           编辑
           <web-ui-dropdown-item>
-            <web-ui-icon slot="prefix" :width="14" :height="14" :icon="lucideUndo2"></web-ui-icon>
+            <web-ui-icon slot="prefix" :size="14" :icon="lucideUndo2"></web-ui-icon>
             撤销
             <span class="opacity-40" slot="suffix">⌘Z</span>
           </web-ui-dropdown-item>
           <web-ui-dropdown-item>
-            <web-ui-icon slot="prefix" :width="14" :height="14" :icon="lucideRedo2"></web-ui-icon>
+            <web-ui-icon slot="prefix" :size="14" :icon="lucideRedo2"></web-ui-icon>
             重做
             <span class="opacity-40" slot="suffix">⇧⌘Z</span>
           </web-ui-dropdown-item>
@@ -138,33 +141,33 @@ import {
       </web-ui-dropdown-menu>
     </div>
 
-    <h2>pl 对齐（macOS 风格）</h2>
+    <h2>macOS 风格菜单</h2>
     <div class="mb-6">
       <web-ui-dropdown-menu>
         <web-ui-button slot="trigger">Menu</web-ui-button>
         <web-ui-dropdown-item>
-          <web-ui-icon slot="prefix" :width="14" :height="14" :icon="lucideUndo2"></web-ui-icon>
+          <web-ui-icon slot="prefix" :size="14" :icon="lucideUndo2"></web-ui-icon>
           撤销
           <span slot="suffix" class="opacity-40">⌘Z</span>
         </web-ui-dropdown-item>
         <web-ui-dropdown-item>
-          <web-ui-icon slot="prefix" :width="14" :height="14" :icon="lucideRedo2"></web-ui-icon>
+          <web-ui-icon slot="prefix" :size="14" :icon="lucideRedo2"></web-ui-icon>
           重做
           <span slot="suffix" class="opacity-40">⇧⌘Z</span>
         </web-ui-dropdown-item>
         <web-ui-dropdown-divider></web-ui-dropdown-divider>
         <web-ui-dropdown-item>
-          <web-ui-icon slot="prefix" :width="14" :height="14" :icon="lucideClipboardPaste"></web-ui-icon>
+          <web-ui-icon slot="prefix" :size="14" :icon="lucideClipboardPaste"></web-ui-icon>
           粘贴
           <span slot="suffix" class="opacity-40">⌘V</span>
         </web-ui-dropdown-item>
         <web-ui-dropdown-item>
-          <web-ui-icon slot="prefix" :width="14" :height="14" :icon="lucideClipboardPaste"></web-ui-icon>
+          <web-ui-icon slot="prefix" :size="14" :icon="lucideClipboardPaste"></web-ui-icon>
           粘贴并匹配样式
           <span slot="suffix" class="opacity-40">⌥⇧⌘V</span>
         </web-ui-dropdown-item>
         <web-ui-dropdown-item>
-          <web-ui-icon slot="prefix" :width="14" :height="14" :icon="lucideTrash2"></web-ui-icon>
+          <web-ui-icon slot="prefix" :size="14" :icon="lucideTrash2"></web-ui-icon>
           删除
           <span slot="suffix" class="opacity-40">⌫</span>
         </web-ui-dropdown-item>
@@ -177,7 +180,7 @@ import {
         >
         <web-ui-dropdown-divider></web-ui-dropdown-divider>
         <web-ui-dropdown-item submenu>
-          <web-ui-icon slot="prefix" :width="14" :height="14" :icon="lucideSearch"></web-ui-icon>
+          <web-ui-icon slot="prefix" :size="14" :icon="lucideSearch"></web-ui-icon>
           查找
           <web-ui-dropdown-item>查找下一个</web-ui-dropdown-item>
           <web-ui-dropdown-item>查找上一个</web-ui-dropdown-item>
@@ -186,7 +189,7 @@ import {
         <web-ui-dropdown-header>更多选项</web-ui-dropdown-header>
         <web-ui-dropdown-item pl="34px">听写<span slot="suffix" class="opacity-40">D</span></web-ui-dropdown-item>
         <web-ui-dropdown-item>
-          <web-ui-icon slot="prefix" :width="14" :height="14" :icon="lucideSettings"></web-ui-icon>
+          <web-ui-icon slot="prefix" :size="14" :icon="lucideSettings"></web-ui-icon>
           表情
           <span slot="suffix" class="opacity-40">E</span>
         </web-ui-dropdown-item>
@@ -218,6 +221,31 @@ import {
         <web-ui-button slot="trigger">禁用菜单</web-ui-button>
         <web-ui-dropdown-item>Item 1</web-ui-dropdown-item>
         <web-ui-dropdown-item>Item 2</web-ui-dropdown-item>
+      </web-ui-dropdown-menu>
+    </div>
+
+    <h2>滚动锁定</h2>
+    <div class="mb-6">
+      <web-ui-dropdown-menu :lock-scroll="false">
+        <web-ui-button slot="trigger">不锁定滚动</web-ui-button>
+        <web-ui-dropdown-item>编辑</web-ui-dropdown-item>
+        <web-ui-dropdown-item>复制</web-ui-dropdown-item>
+      </web-ui-dropdown-menu>
+    </div>
+
+    <h2>受控组件</h2>
+    <div class="mb-6">
+      <div class="mb-2 flex gap-2">
+        <web-ui-button variant="secondary" @click="controlledOpen = !controlledOpen">
+          {{ controlledOpen ? '由外部关闭菜单' : '由外部打开菜单' }}
+        </web-ui-button>
+        <span class="text-sm leading-10 text-gray-500">状态：{{ controlledOpen ? '打开' : '关闭' }}</span>
+      </div>
+      <web-ui-dropdown-menu :open="controlledOpen" @open-change="controlledOpen = $event.detail.open">
+        <web-ui-button variant="ghost" slot="trigger">受控菜单</web-ui-button>
+        <web-ui-dropdown-item>编辑</web-ui-dropdown-item>
+        <web-ui-dropdown-item>复制</web-ui-dropdown-item>
+        <web-ui-dropdown-item @click="controlledOpen = false">粘贴并关闭</web-ui-dropdown-item>
       </web-ui-dropdown-menu>
     </div>
   </div>

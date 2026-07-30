@@ -4,25 +4,26 @@
 
 When your changes fall into any category below, update the corresponding docs:
 
-| Change category       | Where to update                              | Trigger                                                                            |
-| --------------------- | -------------------------------------------- | ---------------------------------------------------------------------------------- |
-| Build scripts/flow    | This file (Build architecture, Key commands) | Changes to `package.json` scripts, `vite.config.ts` build config, turbo.json tasks |
-| Package add/rename    | This file (Package structure)                | Adding/removing/renaming a directory under `packages/` or `apps/`                  |
-| Externalization       | This file (Externalization rules)            | Changes to `vite.config.ts` `rollupOptions.external`                               |
-| CI/CD workflow        | This file (CI / Release)                     | Changes to files under `.github/workflows/`                                        |
-| Code quality tools    | `docs/agents/linting.md`                     | Changes to linter, formatter, stylelint, cspell config                             |
-| Dependency management | `.agents/rules/dep-management.md`            | Changes to `pnpm-workspace.yaml` catalog, changeset config                         |
-| Runtime/toolchain     | This file (Toolchain)                        | Changes to `.mise.toml`, `package.json` engines                                    |
-| Test config           | `docs/agents/testing.md`                     | Changes to `vite.config.ts` test config, test framework                            |
-| Coding standards      | `.agents/rules/code-style.md`                | Changes to naming, type safety, architecture patterns                              |
-| Web UI components     | `.agents/rules/web-ui-components.md`         | Changes to Lit components in `packages/web-ui`                                     |
-| Commit conventions    | `.agents/rules/commit.md`                    | Changes to commitlint config, commit workflow                                      |
+| Change category       | Where to update                                                 | Trigger                                                                            |
+| --------------------- | --------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| Build scripts/flow    | `docs/agents/build.md`; also `AGENTS.md` for top-level commands | Changes to `package.json` scripts, `vite.config.ts` build config, turbo.json tasks |
+| Package add/rename    | `docs/agents/build.md`                                          | Adding/removing/renaming a directory under `packages/` or `apps/`                  |
+| Externalization       | `docs/agents/build.md`                                          | Changes to `vite.config.ts` `rollupOptions.external`                               |
+| CI/CD workflow        | `docs/agents/build.md`                                          | Changes to files under `.github/workflows/`                                        |
+| Code quality tools    | `docs/agents/linting.md`                                        | Changes to linter, formatter, stylelint, cspell config                             |
+| Dependency management | `docs/agents/dependencies.md`                                   | Changes to `pnpm-workspace.yaml` catalog, changeset config                         |
+| Runtime/toolchain     | This file (Toolchain)                                           | Changes to `.mise.toml`, `package.json` engines                                    |
+| Test config           | `docs/agents/testing.md`                                        | Changes to `vite.config.ts` test config, test framework                            |
+| Coding standards      | `.agents/rules/code-style.md`, affected package `AGENTS.md`     | Changes to naming, type safety, architecture patterns                              |
+| Web UI components     | `packages/web-ui/AGENTS.md`, `docs/agents/web-ui.md`            | Changes to Lit components in `packages/web-ui`                                     |
+| Icon system           | `docs/adr/0008-icon-system.md`, `docs/agents/web-ui.md`         | Changes to icon manifest, generator, or icon public API                            |
+| Commit conventions    | `docs/agents/commit.md`                                         | Changes to commitlint config, commit workflow                                      |
 
 Rules:
 
 1. Read the relevant docs before making changes to confirm current documentation
 2. Update documentation immediately after changes, never postpone
-3. If unsure whether a change requires documentation updates, **ask the user**
+3. Check the mapped document first. Ask the user only if the scope remains ambiguous or needs unrelated documentation expansion.
 4. Documentation updates should land in the same commit as code changes
 
 ---
@@ -55,105 +56,21 @@ pnpm monorepo (`apps/**`, `packages/**`) using Turborepo. Packages published und
 | `pnpm clean --full`                               | Also remove `node_modules` and lockfile       |
 | `pnpm publish:new <package-dir>`                  | First publish of a new package (1.0.0)        |
 
-### Per-package commands
+## Build details
 
-Each package has `build`, `test`, and usually `dev` (watch mode). Run with `pnpm --filter @greypan/<name> <script>`. Example: `pnpm --filter @greypan/js-kit test`.
-
-Build scripts differ by package type:
-
-- **Single-entry packages** (test-kit, unplugin-web-components, deps-reload): `vp pack` — tsdown-based, outputs `.mjs` + `.d.mts`
-- **Sub-path export packages** (js-kit, browser-kit, web-ui): `vue-tsc --build && vp build` — Vite lib mode with `preserveModules`, outputs `.js` + `.d.ts`
-- **React app**: `tsc -b && vp build`
-- **tsconfig**: No build step — pure JSON config files, consumed via TypeScript `extends`
-
-**Type-checker**: All packages (including non-Vue ones like `js-kit`, `browser-kit`) use `vue-tsc` for type-checking. React app uses `tsc`. Type-check runs in CI via `vp check`.
-
-**web-ui specific**:
-
-- `pnpm --filter @greypan/web-ui generate-icons` — Regenerate icon modules from `icons.used.json` (also runs automatically during `vp build` via Vite plugin)
-
-## TypeScript configuration
-
-Shared config profiles in `packages/tsconfig/` consumed via `"extends": "@greypan/tsconfig/<profile>.json"`:
-
-| Profile      | Layer  | Used by                                     | Extends                            |
-| ------------ | ------ | ------------------------------------------- | ---------------------------------- |
-| `core.json`  | 1-纯JS | js-kit                                      | `./base.json`                      |
-| `node.json`  | 2-Node | Node.js packages + all `tsconfig.node.json` | `@tsconfig/node24` + `./base.json` |
-| `dom.json`   | 3-DOM  | Browser packages (browser-kit, web-ui)      | `./base.json`                      |
-| `react.json` | 4-框架 | React app (react-app-demo)                  | `./dom.json`                       |
-| `vue.json`   | 4-框架 | Vue app (vue-app-demo)                      | `@vue/tsconfig` + `./dom.json`     |
-
-Each sub-package adds its own `include`, `paths`, and `tsBuildInfoFile`. The `tsconfig.node.json`, `tsconfig.app.json`, `tsconfig.vitest.json` split is kept for packages targeting multiple environments (DOM + Node configs + test). Pure Node packages merge into a single `tsconfig.json`.
-
-## Package structure
-
-```
-packages/
-  tsconfig        — Shared TypeScript configuration profiles (no build step)
-  js-kit          — JS utilities (base package, no workspace deps)
-  browser-kit     — Browser utilities (depends on js-kit)
-  test-kit        — Test infrastructure plugins for Vitest browser mode + MSW (depends on js-kit)
-  web-ui          — Web components (Lit-based, depends on js-kit + browser-kit)
-  unplugin-web-components — Unplugin for web components (depends on js-kit)
-  deps-reload — plugin for reload on local dependency update (depends on js-kit)
-apps/
-  react-app-demo  — React 19 + TanStack Router + Zustand (private)
-  vue-app-demo    — Vue 3 + Vue Router + Pinia (private)
-```
-
-**Dependency graph**: `js-kit` is the leaf. `browser-kit` → `js-kit`. `test-kit` → `js-kit` (peer dep on `msw`). `web-ui` → both. Apps depend on the shared packages.
-
-## Build architecture
-
-### Library packages
-
-Two build modes:
-
-- **`vp pack` (tsdown)** — for single-entry packages. Configured via the `pack` block. Built-in dts generation (no `vite-plugin-dts`). Outputs `.mjs` + `.d.mts`. Auto-externalizes `dependencies`. Used by: `test-kit`, `unplugin-web-components`, `deps-reload`.
-- **`vp build` (Vite lib mode)** — for packages with sub-path exports. Configured via `build.lib` + `preserveModules: true`. Uses `vite-plugin-dts` for declarations. Outputs `.js` + `.d.ts`. Used by: `js-kit`, `browser-kit`, `web-ui`.
-
-### Externalization rules
-
-- **Workspace deps (`@greypan/*`) MUST be externalized** — either manually via `rollupOptions.external` (Vite lib mode) or automatically by tsdown (`vp pack` auto-externalizes `dependencies`). Required for dev watch mode — without it, Rolldown fails to resolve workspace links on rebuild. Also prevents duplicate code in consumer bundles.
-- **Third-party npm deps can be externalized or bundled** — depends on the package's design intent. If the package is designed to be consumed with zero config, bundle them. If the package expects consumers to install peer dependencies, externalize them.
-- **Node built-in modules** (e.g., `node:path`) MUST be externalized — they can't be bundled.
-- **Regex patterns preferred** — Use `/^@greypan\//` instead of listing individual workspace packages. Sub-path patterns (`/^lit($|\/)/`) catch deep imports.
-- `web-ui` externalizes framework deps via regex (`/^lit($|\/)/`, `/^react($|\/)/`, `/^vue($|\/)/`, etc.), so consumers must install `lit` (required) as a dependency.
-
-| Package                   | Externalization                                                 | Bundled (third-party) |
-| ------------------------- | --------------------------------------------------------------- | --------------------- | ----------------- | --------------------- | --------------- | ----- | -------- |
-| `js-kit`                  | `/^@greypan\//`, `remeda`, `nanoid`                             | _(none)_              |
-| `browser-kit`             | `/^@greypan\//`, `nanoid`, `remeda`, `copy-to-clipboard`, `msw` | _(none)_              |
-| `test-kit`                | Auto by tsdown (`@greypan/js-kit`, `msw`)                       | _(none)_              |
-| `web-ui`                  | `/^@greypan\//`, `/^lit($                                       | \/)/`, `/^@lit($      | \/)/`, `/^react($ | \/)/`, `/^react-dom($ | \/)/`, `/^vue($ | \/)/` | _(none)_ |
-| `unplugin-web-components` | Auto by tsdown (`@greypan/js-kit`, `change-case`, `unplugin`)   | _(none)_              |
-| `deps-reload`             | Auto by tsdown (`node:*`, `@greypan/js-kit`, `unplugin`)        | _(none)_              |
-
-### Apps
-
-- `react-app-demo` uses `@vitejs/plugin-react` v4 with **React Compiler** (`babel-plugin-react-compiler`, target: 19)
-- `react-app-demo` uses `@vitejs/plugin-legacy` for older browser support
-- Both apps use `basicSsl()` for HTTPS dev server
-- `depsReload` plugin watches library `dist/` dirs and triggers full page reload on changes
-
-## CI / Release
-
-- **CI** (`ci.yml`): changeset status → build → format+lint+type-check → test
-- **Release** (`release.yml`): changesets with `changesets/action@v1`. Demo apps excluded from versioning.
-- **New package first publish**: `pnpm publish:new <package-dir>` — builds and publishes 1.0.0 via `npm publish`. Requires `npm login` beforehand. After first publish, configure Trusted Publisher on npmjs.com so CI handles subsequent releases.
+Read [docs/agents/build.md](docs/agents/build.md) before changing package scripts, Vite/Turbo configuration, package structure, externalization, or release flow. It contains the package graph, TypeScript profiles, build modes, and CI/release architecture.
 
 ## Agent constraints
 
-以下规则 agent 必须遵守，**不得以任何理由绕过**：
+Agents must follow these rules without exception:
 
-- **不修改 `.npmrc`、`.mise.toml` 中的 registry/镜像配置**
-- **不添加新的 npm 依赖**（包括 devDependencies）除非用户明确要求
-- **不修改 CI/CD 配置文件**（`.github/workflows/`）除非用户明确要求
-- **不修改 go.mod、go.sum**（Go 工具链仅供辅助工具使用，非项目核心）
-- **不直接运行 `npm publish`**，一律通过 `pnpm publish:new` 脚本
-- **不修改 git 配置**（`.gitconfig`、全局 git config）
-- **不跳过 git hooks**（`--no-verify`、`--no-gpg-sign`）
+- **Do not modify registry or mirror configuration in `.npmrc` or `.mise.toml`.**
+- **Do not add npm dependencies, including devDependencies, unless explicitly requested by the user.**
+- **Do not modify CI/CD configuration under `.github/workflows/` unless explicitly requested by the user.**
+- **Do not modify `go.mod` or `go.sum`; the Go toolchain is only for auxiliary tooling, not core project code.**
+- **Do not run `npm publish` directly; always use `pnpm publish:new`.**
+- **Do not modify Git configuration, including `.gitconfig` and global Git config.**
+- **Do not bypass Git hooks with `--no-verify` or `--no-gpg-sign`.**
 
 ## Generated / ignored files
 
@@ -176,40 +93,60 @@ They are excluded from linting, formatting, and spell-check.
 
 ## Documentation
 
-- `docs/agents/` — Agent 工作指南，包含 domain.md（代码探索规范）、issue-tracker.md（GitHub issue 工作流）、specs/（功能规格文档）
-- `docs/adr/` — Architecture Decision Records（架构决策记录），记录重要技术决策
-- `docs/prd/` — Product Requirements Documents（产品需求文档）
-- `docs/design/` — 设计参考文件（截图、CSS 参考实现等）
-- `CONTEXT.md` — 项目架构总览（ADR 索引、包边界、技术原则）
+- `docs/agents/` — On-demand operating guides for build, testing, linting, package workflows, and issue tracking
+- `docs/adr/` — Architecture Decision Records for significant technical decisions
+- `docs/prd/` — Product Requirements Documents
+- `docs/design/` — Design references, including screenshots and CSS implementations
+- `CONTEXT.md` — Project architecture overview, including ADR index, package boundaries, and technical principles
 
 ## Agent hooks
 
-`.claude/hooks/` 包含自动化检查脚本，在每次 tool call 前后执行：
+`.claude/hooks/` contains automated checks that run before and after every tool call:
 
-- `pre-tool.sh` — 在工具调用前运行（防止破坏性操作）
-- `post-tool.sh` — 在工具调用后运行（提醒执行 check:code）
+- `pre-tool.sh` — Runs before tool calls to prevent destructive operations
+- `post-tool.sh` — Runs after tool calls to remind agents to run `check:code`
 
 ## Agent reference docs
 
-按需查阅，不要求每次对话都读：
+Read these as needed; they are not required for every conversation:
 
-| 文件                           | 用途                                        | 什么时候读                       |
-| ------------------------------ | ------------------------------------------- | -------------------------------- |
-| `docs/agents/testing.md`       | 测试基础设施（框架、命令、browser mode）    | 不知道怎么跑测试、配置测试环境时 |
-| `docs/agents/linting.md`       | 工具链（formatter、linter、stylelint 命令） | 不知道怎么跑 lint/fmt 时         |
-| `docs/agents/issue-tracker.md` | GitHub issue 操作（gh CLI 用法）            | 需要创建/查询/更新 issue 时      |
-| `docs/agents/domain.md`        | 代码探索规范（ADR、术语表）                 | 探索不熟悉的代码区域时           |
+| File                                    | Purpose                                           | When to read                                    |
+| --------------------------------------- | ------------------------------------------------- | ----------------------------------------------- |
+| `docs/agents/testing.md`                | Test infrastructure, commands, and browser mode   | When test execution or configuration is unclear |
+| `docs/agents/linting.md`                | Toolchain, formatter, linter, and stylelint usage | When linting or formatting commands are unclear |
+| `docs/agents/issue-tracker.md`          | GitHub issue operations and `gh` CLI usage        | When creating, querying, or updating issues     |
+| `docs/agents/domain.md`                 | Code exploration conventions, ADRs, and glossary  | When exploring an unfamiliar code area          |
+| `docs/agents/build.md`                  | Build modes, package graph, externalization, CI   | When changing build, package, or release flow   |
+| `docs/agents/web-ui.md`                 | Web UI implementation, tokens, overlays, testing  | When changing `packages/web-ui`                 |
+| `docs/agents/dependencies.md`           | Dependency placement and catalog policy           | After dependency changes are authorized         |
+| `docs/agents/commit.md`                 | Commit message and execution workflow             | After a commit is authorized                    |
+| `docs/agents/review.md`                 | Review scope and reporting                        | When reviewing code                             |
+| `.agents/skills/agent-browser/SKILL.md` | Browser automation for UI/UX verification         | When verifying UI changes in a real browser     |
 
-## Agent behavioral rules
+## Instruction scopes
 
-自动加载，每次对话生效：
+`AGENTS.md` and `.agents/rules/` define repository-wide constraints. Package-level `AGENTS.md` files add constraints only for changes inside that package. Files under `docs/agents/` are on-demand guides; read the matching guide before the scoped task.
 
-| 文件                                 | 管什么                              |
-| ------------------------------------ | ----------------------------------- |
-| `.agents/rules/code-style.md`        | 命名、注释、类型安全、架构模式      |
-| `.agents/rules/commit.md`            | commit message 格式、工作流、反模式 |
-| `.agents/rules/testing.md`           | 测试覆盖、AAA 模式、边界用例        |
-| `.agents/rules/dep-management.md`    | devDeps/peerDeps 放置策略           |
-| `.agents/rules/review-checklist.md`  | code review 检查项                  |
-| `.agents/rules/web-ui-components.md` | web-ui Lit 组件开发规范             |
-| `.agents/rules/react.md`             | React 组件规范、Fast Refresh 规则   |
+### Browser verification
+
+Changes involving UI, UX, interaction, responsive behavior, or browser runtime behavior must be verified in a real browser. Use the `agent-browser` skill to automate this — navigate to the local demo, interact with components, and take screenshots.
+
+What to verify per change type:
+
+- **Interaction**: primary pointer interactions, keyboard operation, focus management, disabled states, close/cancel paths
+- **Layout**: blank rendering, overflow, occlusion, misalignment, unexpected layout shifts (check desktop and mobile viewports)
+- **Accessibility**: semantics, accessible names, keyboard reachability
+- **Runtime**: console errors, page exceptions, behavior relying on browser features (jsdom is not a substitute)
+
+Constraints:
+
+- Before starting a local dev server, check whether the target port already has a responsive server for the required app. Reuse it when it is suitable; do not create a duplicate server merely because a verification task starts.
+- Start a new server only when no suitable server is running, the existing one cannot serve the required current state, or an isolated environment is explicitly needed. Use an unused port in that case and record its exact PID.
+- Only stop a server started by the current task. Never terminate a pre-existing server owned by the user or another task.
+- Do not attach to or control the user's existing Chrome session. Use `agent-browser` in its own isolated context.
+- Ignore certificate errors only for local self-signed HTTPS demos; never relax certificate validation for external sites.
+- Stop every dev server started for verification after it completes, unless the user asks to keep it running. Preserve or report the local URL for follow-up.
+
+Fallback chain: `agent-browser` → project browser-mode tests → component tests and HTTP/DOM checks. If no browser layer is available, explicitly report why real-browser verification could not be completed and the resulting risk.
+
+Final reports must state the verification URL, what was checked, and any gaps. Do not describe a successful build or passing jsdom tests as browser interaction verification.

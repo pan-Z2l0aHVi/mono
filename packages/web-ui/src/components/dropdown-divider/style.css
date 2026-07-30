@@ -1,3 +1,9 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
 :host {
   display: block;
 }
@@ -5,5 +11,5 @@
 .divider {
   height: 1px;
   margin: 4px 8px;
-  background-color: rgb(0 0 0 / 0.1);
+  background-color: var(--wui-color-border, rgb(0 0 0 / 0.1));
 }

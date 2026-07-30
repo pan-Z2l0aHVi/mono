@@ -1,64 +1,123 @@
-import { describe, expect, it } from 'vite-plus/test'
+import { resolve } from 'node:path'
 
+import type { UnpluginContextMeta, UnpluginOptions } from 'unplugin'
+import type { HmrContext, ViteDevServer } from 'vite-plus'
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
+import type { Compilation, Compiler } from 'webpack'
+
+import { depsReloadFactory, type Dep } from '../factory'
 import depsReload from '../vite'
 
-describe('depsReload', () => {
-  function createPlugin(deps: { name: string; path?: string; outputDir?: string; extensions?: string[] }[]) {
-    const vitePlugin = depsReload(deps)
-    return (Array.isArray(vitePlugin) ? vitePlugin[0] : vitePlugin) as any
-  }
+interface VitePluginShape {
+  name?: string
+  apply?: string
+  configureServer?: (server: ViteDevServer) => void
+  hotUpdate?: (context: HmrContext) => unknown
+}
 
-  it('应当作为一个有效的 Vite 插件初始化', () => {
-    const plugin = createPlugin([{ name: 'remeda' }])
+const createVitePlugin = (deps: Dep[]): VitePluginShape => {
+  const vitePlugin = depsReload(deps)
+  return (Array.isArray(vitePlugin) ? vitePlugin[0] : vitePlugin) as unknown as VitePluginShape
+}
+
+const createServer = () => {
+  const send = vi.fn<(payload: { type: string; path: string }) => void>()
+  const info = vi.fn<(message: string, options: { timestamp: boolean }) => void>()
+
+  return {
+    server: {
+      ws: { send },
+      config: { logger: { info } }
+    } as unknown as ViteDevServer,
+    send,
+    info
+  }
+}
+
+const createHotUpdateContext = (file: string, server: ViteDevServer): HmrContext =>
+  ({
+    file,
+    server
+  }) as unknown as HmrContext
+
+afterEach(() => {
+  vi.useRealTimers()
+})
+
+describe('depsReload', () => {
+  it('initializes as a Vite serve plugin', () => {
+    const plugin = createVitePlugin([{ name: 'remeda' }])
 
     expect(plugin.name).toBe('deps-reload')
     expect(plugin.apply).toBe('serve')
     expect(typeof plugin.hotUpdate).toBe('function')
   })
 
-  it('应当忽略 .map 文件', () => {
-    const plugin = createPlugin([{ name: '@greypan/web-ui', path: '/repo/packages/web-ui' }])
+  it('reloads when a supported file in the dependency output changes', async () => {
+    vi.useFakeTimers()
+    const plugin = createVitePlugin([{ name: '@greypan/web-ui', path: '/repo/packages/web-ui' }])
+    const { server, send } = createServer()
 
-    const result = plugin.hotUpdate!({ file: '/repo/packages/web-ui/dist/index.js.map', server: {} as any })
-
-    expect(result).toBeUndefined()
-  })
-
-  it('当文件命中自定义 path 时应触发全量刷新', () => {
-    const plugin = createPlugin([{ name: '@greypan/web-ui', path: '/repo/packages/web-ui' }])
-
-    const result = plugin.hotUpdate!({ file: '/repo/packages/web-ui/dist/button/index.js', server: {} as any })
+    const result = plugin.hotUpdate!(createHotUpdateContext('/repo/packages/web-ui/dist/button/index.js', server))
+    await vi.advanceTimersByTimeAsync(300)
 
     expect(result).toEqual([])
+    expect(send).toHaveBeenCalledWith({ type: 'full-reload', path: '*' })
   })
 
-  it('当文件不匹配任何依赖时不应触发刷新', () => {
-    const plugin = createPlugin([{ name: '@greypan/web-ui', path: '/repo/packages/web-ui' }])
+  it('ignores source maps and unsupported extensions', () => {
+    const plugin = createVitePlugin([{ name: '@greypan/web-ui', path: '/repo/packages/web-ui' }])
+    const { server } = createServer()
 
-    const result = plugin.hotUpdate!({ file: '/src/App.vue', server: {} as any })
-
-    expect(result).toBeUndefined()
+    expect(plugin.hotUpdate!(createHotUpdateContext('/repo/packages/web-ui/dist/index.js.map', server))).toBeUndefined()
+    expect(plugin.hotUpdate!(createHotUpdateContext('/repo/packages/web-ui/dist/index.d.ts', server))).toBeUndefined()
   })
 
-  it('当使用自定义 path 时，目录下的变化应当触发刷新', () => {
-    const plugin = createPlugin([{ name: '@greypan/web-ui', path: '/repo/packages/web-ui' }])
+  it('uses outputDir beneath a local package root', () => {
+    const plugin = createVitePlugin([{ name: '@greypan/web-ui', path: '/repo/packages/web-ui', outputDir: 'build' }])
+    const { server } = createServer()
 
-    expect(plugin.hotUpdate!({ file: '/repo/packages/web-ui/dist/index.js', server: {} as any })).toEqual([])
+    expect(plugin.hotUpdate!(createHotUpdateContext('/repo/packages/web-ui/build/index.js', server))).toEqual([])
+    expect(plugin.hotUpdate!(createHotUpdateContext('/repo/packages/web-ui/tools/index.js', server))).toBeUndefined()
   })
 
-  it('应当匹配自定义扩展名', () => {
-    const plugin = createPlugin([{ name: '@greypan/web-ui', path: '/repo/packages/web-ui', extensions: ['.js'] }])
+  it('does not match sibling directories with the same prefix', () => {
+    const plugin = createVitePlugin([{ name: '@greypan/web-ui', path: '/repo/packages/web-ui' }])
+    const { server } = createServer()
 
-    const result = plugin.hotUpdate!({ file: '/repo/packages/web-ui/dist/button/index.js', server: {} as any })
-
-    expect(result).toEqual([])
+    expect(
+      plugin.hotUpdate!(createHotUpdateContext('/repo/packages/web-ui-copy/dist/index.js', server))
+    ).toBeUndefined()
   })
 
-  it('当扩展名不匹配时不应触发', () => {
-    const plugin = createPlugin([{ name: '@greypan/web-ui', path: '/repo/packages/web-ui', extensions: ['.css'] }])
+  it('normalizes custom extensions', () => {
+    const plugin = createVitePlugin([{ name: '@greypan/web-ui', path: '/repo/packages/web-ui', extensions: ['mjs'] }])
+    const { server } = createServer()
 
-    const result = plugin.hotUpdate!({ file: '/repo/packages/web-ui/dist/button/index.js', server: {} as any })
+    expect(plugin.hotUpdate!(createHotUpdateContext('/repo/packages/web-ui/dist/index.mjs', server))).toEqual([])
+    expect(plugin.hotUpdate!(createHotUpdateContext('/repo/packages/web-ui/dist/index.js', server))).toBeUndefined()
+  })
 
-    expect(result).toBeUndefined()
+  it('adds dependency output directories to Webpack context dependencies', () => {
+    const plugin = depsReloadFactory(
+      [{ name: '@greypan/web-ui', path: '/repo/packages/web-ui', outputDir: 'build' }],
+      {} as UnpluginContextMeta
+    ) as UnpluginOptions
+    let compilationHandler: ((compilation: Compilation) => void) | undefined
+    const compiler = {
+      hooks: {
+        thisCompilation: {
+          tap: (_name: string, handler: (compilation: Compilation) => void) => {
+            compilationHandler = handler
+          }
+        }
+      }
+    } as unknown as Compiler
+    const contextDependencies = new Set<string>()
+
+    plugin.webpack!(compiler)
+    compilationHandler!({ contextDependencies } as unknown as Compilation)
+
+    expect(contextDependencies).toContain(resolve('/repo/packages/web-ui', 'build'))
   })
 })

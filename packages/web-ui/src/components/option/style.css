@@ -1,3 +1,9 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
 :host {
   display: block;
 }
@@ -13,35 +19,59 @@
 
   overflow: hidden;
   display: flex;
+  gap: 8px;
   align-items: center;
 
   box-sizing: border-box;
   height: 32px;
   padding: 0 12px;
-  border-radius: 999vmax;
+  border-radius: calc(infinity * 1px);
 
   font-size: var(--wui-font-size, 14px);
-  color: #1b1b1b;
+  color: var(--wui-color-text, #1b1b1b);
   text-overflow: ellipsis;
   white-space: nowrap;
+
+  transition:
+    color var(--wui-duration-fast, 160ms) ease,
+    background-color var(--wui-duration-fast, 160ms) ease;
 }
 
 .check {
-  margin-right: 8px;
+  flex-shrink: 0;
+}
+
+.content-wrap {
+  overflow: hidden;
+  flex: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 :host(:not([selected])) .check {
   visibility: hidden;
 }
 
-.option-label:hover {
-  color: #fff;
-  background: #0081f8;
+::slotted([slot='prefix']),
+::slotted([slot='suffix']) {
+  flex-shrink: 0;
+}
+
+.option-label:focus-visible {
+  outline: 3px solid var(--wui-focus-ring, rgb(0 136 255 / 0.4));
+  outline-offset: 2px;
 }
 
 :host([active]) .option-label {
-  color: #fff;
-  background: #0081f8;
+  color: var(--wui-color-on-accent, #fff);
+  background: var(--wui-color-accent, #08f);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .option-label:hover {
+    color: var(--wui-color-on-accent, #fff);
+    background: var(--wui-color-accent, #08f);
+  }
 }
 
 :host([disabled]) .option-label {

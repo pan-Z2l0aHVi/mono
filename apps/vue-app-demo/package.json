@@ -14,6 +14,7 @@
     "@greypan/js-kit": "workspace:*",
     "@greypan/web-ui": "workspace:*",
     "@unhead/vue": "catalog:",
+    "@vue/devtools-api": "catalog:",
     "@vueuse/core": "catalog:",
     "pinia": "catalog:",
     "vee-validate": "catalog:",
@@ -37,10 +38,12 @@
     "vue-tsc": "catalog:"
   },
   "browserslist": [
-    "> 0.2% in CN",
-    "last 2 versions",
-    "iOS >= 16",
-    "Android >= 9",
+    ">0.2% in CN",
+    "Chrome >=111",
+    "Edge >=111",
+    "Safari >=16.4",
+    "iOS >=16.4",
+    "Firefox >=128",
     "not dead"
   ]
 }
