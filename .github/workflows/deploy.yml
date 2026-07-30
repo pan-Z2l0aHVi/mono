@@ -49,14 +49,74 @@ jobs:
         run: pnpm i --frozen-lockfile
 
       - name: Build ${{ inputs.app }}
+        env:
+          GITHUB_BASE_PATH: /mono/${{ inputs.app }}
         run: pnpm --filter @greypan/${{ inputs.app }}... build
 
-      - name: SPA fallback for client-side routing
-        run: cp apps/${{ inputs.app }}/dist/index.html apps/${{ inputs.app }}/dist/404.html
+      - name: Prepare deployment directory
+        run: |
+          APP_DIR="${{ inputs.app }}"
+          mkdir -p "deploy/${APP_DIR}"
+          cp -r "apps/${APP_DIR}/dist/." "deploy/${APP_DIR}/"
+
+          # SPA fallback — copy app's index.html as 404 in its subdirectory
+          cp "deploy/${APP_DIR}/index.html" "deploy/${APP_DIR}/404.html"
+
+          # Root landing page
+          cat > deploy/index.html <<'INDEXHTML'
+          <!doctype html>
+          <html lang="en">
+          <head>
+            <meta charset="UTF-8" />
+            <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+            <title>Greypan UI Demos</title>
+            <style>
+              * { box-sizing: border-box; margin: 0; padding: 0; }
+              body {
+                font-family: system-ui, -apple-system, sans-serif;
+                display: flex; flex-direction: column; align-items: center; justify-content: center;
+                min-height: 100vh; background: #f5f5f5; color: #1b1b1b; gap: 24px;
+              }
+              h1 { font-size: 24px; font-weight: 600; }
+              .links { display: flex; gap: 16px; }
+              .links a {
+                display: inline-flex; align-items: center; justify-content: center;
+                width: 180px; height: 56px; border-radius: 28px;
+                background: #fff; color: #1b1b1b; text-decoration: none;
+                font-size: 16px; font-weight: 500; box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+                transition: box-shadow 0.2s, transform 0.2s;
+              }
+              .links a:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.12); transform: translateY(-2px); }
+            </style>
+          </head>
+          <body>
+            <h1>Greypan UI Demos</h1>
+            <div class="links">
+              <a href="./vue-web-ui-demo/">Vue Demo</a>
+              <a href="./react-web-ui-demo/">React Demo</a>
+            </div>
+          </body>
+          </html>
+          INDEXHTML
+
+          # Root 404 — redirect to app subdirectory
+          cat > deploy/404.html <<'EOF404'
+          <!doctype html>
+          <script>
+            var segs = location.pathname.replace('/mono/', '').split('/')
+            var appDir = segs[0]
+            if (appDir === 'vue-web-ui-demo' || appDir === 'react-web-ui-demo') {
+              location.replace('/mono/' + appDir + '/')
+            } else {
+              document.title = '404'
+              document.write('<h1>404</h1><p><a href="/mono/">Go home</a></p>')
+            }
+          </script>
+          EOF404
 
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: apps/${{ inputs.app }}/dist
+          path: deploy
 
       - id: deployment
         uses: actions/deploy-pages@v4
