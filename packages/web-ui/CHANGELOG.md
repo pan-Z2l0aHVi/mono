@@ -1,5 +1,16 @@
 # @greypan/web-ui
 
+## 2.1.0
+
+### Minor Changes
+
+- fff1c60: Correct React Custom Element event typings to use exact JSX keys such as `onopen-change` and `ontoast-close`.
+  The previously generated camel-cased keys such as `onOpenChange` did not match the event dispatched at runtime.
+
+### Patch Changes
+
+- fff1c60: Make Checkbox Group, Radio Group, and Segmented disabled state inherited without changing child `disabled` properties. Effective disabled child controls now expose `aria-disabled` and leave the tab sequence.
+
 ## 2.0.2
 
 ### Patch Changes
