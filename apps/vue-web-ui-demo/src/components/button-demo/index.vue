@@ -14,7 +14,7 @@ import {
   <div>
     <h1>按钮</h1>
     <h2>变体</h2>
-    <div class="mb-3 flex gap-2">
+    <div class="mb-3 flex flex-wrap gap-2">
       <web-ui-button variant="primary">Primary</web-ui-button>
       <web-ui-button variant="secondary">Secondary</web-ui-button>
       <web-ui-button variant="ghost">Ghost</web-ui-button>
@@ -23,7 +23,7 @@ import {
     </div>
 
     <h2>自定义尺寸</h2>
-    <div class="mb-3 flex gap-2">
+    <div class="mb-3 flex flex-wrap gap-2">
       <web-ui-button variant="primary" size="32">小号 32</web-ui-button>
       <web-ui-button variant="primary">默认 40</web-ui-button>
       <web-ui-button variant="primary" size="48">大号 48</web-ui-button>
@@ -32,7 +32,7 @@ import {
     </div>
 
     <h2>禁用与加载</h2>
-    <div class="mb-3 flex gap-2">
+    <div class="mb-3 flex flex-wrap gap-2">
       <web-ui-button disabled>Disabled</web-ui-button>
       <web-ui-button variant="primary" disabled>Disabled</web-ui-button>
       <web-ui-button loading>Loading</web-ui-button>
@@ -121,7 +121,7 @@ import {
       </web-ui-button-group>
 
       <h3>垂直排列</h3>
-      <web-ui-button-group orientation="vertical">
+      <web-ui-button-group direction="vertical">
         <web-ui-button icon><web-ui-icon :icon="lucidePlus"></web-ui-icon></web-ui-button>
         <web-ui-button icon><web-ui-icon :icon="lucideMinus"></web-ui-icon></web-ui-button>
       </web-ui-button-group>
