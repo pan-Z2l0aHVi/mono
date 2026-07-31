@@ -7,8 +7,9 @@ import { handleHotUpdate, routes } from 'vue-router/auto-routes'
 
 import App from '@/app/index.vue'
 
-// GitHub Pages preserves an unmatched History route in `redirect` via its root 404 page.
-// Restore it before Vue Router reads the browser location.
+// GitHub Pages 子路径 SPA
+// 通过其根 404 页面在 `redirect` 中保留了未匹配的 history 路由。
+// 在 Vue 路由器读取浏览器位置之前替换。
 if (import.meta.env.PROD) {
   const redirectedRoute = new URLSearchParams(window.location.search).get('redirect')
   if (redirectedRoute?.startsWith('/')) {

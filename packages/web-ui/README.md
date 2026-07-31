@@ -6,7 +6,8 @@ English | [简体中文](./README.CN.md)
 
 ## Demo
 
-[View demo](https://pan-z2l0ahvi.github.io/mono/)
+[View used by vue demo](https://pan-z2l0ahvi.github.io/mono/vue-web-ui-demo/)
+[View used by react demo](https://pan-z2l0ahvi.github.io/mono/react-web-ui-demo/)
 
 ## Install
 
