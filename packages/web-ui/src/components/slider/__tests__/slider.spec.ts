@@ -5,7 +5,7 @@ import { waitForUpdate, spyEvents, expectReflected, cleanupElement, queryA11y } 
 import '..'
 import type { WebUiSlider } from '..'
 
-describe('WebUiSlider', () => {
+describe('WebUiSlider 组件', () => {
   function createSlider(): WebUiSlider {
     const el = document.createElement('web-ui-slider')
     document.body.append(el)

@@ -108,7 +108,7 @@ export class WebUiRadio extends LitElement {
     return html`
       <label
         class=${classMap(cls)}
-        tabindex="0"
+        tabindex=${this._isDisabled ? '-1' : '0'}
         role="radio"
         aria-checked=${String(this._checked)}
         aria-disabled=${String(this._isDisabled)}

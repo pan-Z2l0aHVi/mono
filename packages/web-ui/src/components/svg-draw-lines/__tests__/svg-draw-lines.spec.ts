@@ -17,8 +17,8 @@ afterEach(() => {
   document.body.innerHTML = ''
 })
 
-describe('WebUiSvgDrawLines', () => {
-  describe('prop: duration', () => {
+describe('WebUiSvgDrawLines 组件', () => {
+  describe('属性：duration', () => {
     it('默认值为 1000', async () => {
       const el = createSvgDrawLines()
       await el.updateComplete
@@ -60,7 +60,7 @@ describe('WebUiSvgDrawLines', () => {
     })
   })
 
-  describe('prop: easing', () => {
+  describe('属性：easing', () => {
     it('默认值为 linear', async () => {
       const el = createSvgDrawLines()
       await el.updateComplete
@@ -78,7 +78,7 @@ describe('WebUiSvgDrawLines', () => {
     })
   })
 
-  describe('replay()', () => {
+  describe('方法：replay()', () => {
     it('replay 是可调用的公开方法', () => {
       const el = createSvgDrawLines()
       expect(typeof el.replay).toBe('function')
@@ -111,7 +111,7 @@ describe('WebUiSvgDrawLines', () => {
     })
   })
 
-  describe('slot 投影', () => {
+  describe('插槽投影', () => {
     it('默认 slot 投影 SVG 内容', async () => {
       const el = createSvgDrawLines()
       el.innerHTML = '<svg><path d="M0 0 L100 100"/></svg>'

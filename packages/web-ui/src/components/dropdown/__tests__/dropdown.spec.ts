@@ -45,7 +45,7 @@ afterEach(() => {
   document.body.innerHTML = ''
 })
 
-describe('WebUiDropdown', () => {
+describe('WebUiDropdown 组件', () => {
   describe('基础渲染', () => {
     it('默认关闭', async () => {
       const el = createDropdown({}, SIMPLE)
@@ -55,7 +55,7 @@ describe('WebUiDropdown', () => {
     })
   })
 
-  describe('prop: open', () => {
+  describe('属性：open', () => {
     it('open 属性反射到 host', async () => {
       const el = createDropdown({}, SIMPLE)
       el.open = true
@@ -90,7 +90,7 @@ describe('WebUiDropdown', () => {
     })
   })
 
-  describe('prop: disabled', () => {
+  describe('属性：disabled', () => {
     it('disabled 反射到 host', async () => {
       const el = createDropdown({ disabled: '' }, SIMPLE)
       await waitForUpdate(el)
@@ -118,7 +118,7 @@ describe('WebUiDropdown', () => {
     })
   })
 
-  describe('prop: placement / offset', () => {
+  describe('属性：placement / offset', () => {
     it('placement 反射到 host', async () => {
       const el = createDropdown({ placement: 'top-end' }, SIMPLE)
       await waitForUpdate(el)
@@ -208,7 +208,7 @@ describe('WebUiDropdown', () => {
     })
   })
 
-  describe('event: open-change', () => {
+  describe('事件：open-change', () => {
     it('打开时触发', async () => {
       const el = createDropdown({}, SIMPLE)
       await waitForUpdate(el)

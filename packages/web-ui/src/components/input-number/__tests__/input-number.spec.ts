@@ -16,7 +16,7 @@ function createNumber(attrs?: Record<string, string>): WebUiInputNumber {
   return el
 }
 
-describe('WebUiInputNumber', () => {
+describe('WebUiInputNumber 组件', () => {
   afterEach(() => {
     document.body.innerHTML = ''
   })
@@ -200,7 +200,7 @@ describe('WebUiInputNumber', () => {
     })
   })
 
-  describe('precision', () => {
+  describe('精度', () => {
     it('precision=1 保留一位小数', async () => {
       const el = createNumber()
       el.precision = 1

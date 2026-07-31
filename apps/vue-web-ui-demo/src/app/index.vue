@@ -134,7 +134,7 @@ const navItems: NavItem[] = [
           </RouterLink>
         </nav>
         <RouterView />
-        <div class="h-75 w-full"></div>
+        <div class="h-100 w-full"></div>
       </web-ui-layout>
       <web-ui-back-top></web-ui-back-top>
     </div>

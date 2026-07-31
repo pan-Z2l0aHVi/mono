@@ -6,12 +6,12 @@ import '..'
 
 const aIcon: IconifyIcon = { body: '<path d="M3 2h18v20H3z"/>' }
 
-describe('WebUiIcon', () => {
+describe('WebUiIcon 组件', () => {
   afterEach(() => {
     document.body.innerHTML = ''
   })
 
-  describe('prop: icon', () => {
+  describe('属性：icon', () => {
     it('无 icon 时不渲染 SVG', async () => {
       const el = document.createElement('web-ui-icon')
 
@@ -33,7 +33,7 @@ describe('WebUiIcon', () => {
     })
   })
 
-  describe('prop: size', () => {
+  describe('属性：size', () => {
     it('默认值为 18', async () => {
       const el = document.createElement('web-ui-icon')
       el.icon = aIcon
@@ -56,7 +56,7 @@ describe('WebUiIcon', () => {
     })
   })
 
-  describe('prop: spin', () => {
+  describe('属性：spin', () => {
     it('默认值为 false', async () => {
       const el = document.createElement('web-ui-icon')
 
@@ -90,7 +90,7 @@ describe('WebUiIcon', () => {
     })
   })
 
-  describe('prop: color', () => {
+  describe('属性：color', () => {
     it('反射为 color 属性', async () => {
       const el = document.createElement('web-ui-icon')
       el.color = 'red'

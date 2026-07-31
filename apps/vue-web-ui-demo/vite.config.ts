@@ -60,9 +60,6 @@ export default {
       modernPolyfills: true
     })
   ],
-  test: {
-    environment: 'jsdom'
-  },
   base: process.env.GITHUB_BASE_PATH || '/',
   build: {},
   css: {

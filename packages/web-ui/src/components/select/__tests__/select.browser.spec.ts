@@ -5,7 +5,7 @@ import type { WebUiSelect } from '..'
 
 afterEach(() => document.body.replaceChildren())
 
-describe('WebUiSelect（浏览器）', () => {
+describe('WebUiSelect 组件（浏览器）', () => {
   it('点击 option 的 prefix 装饰时选择所属 option', async () => {
     const select = document.createElement('web-ui-select')
     select.innerHTML = '<web-ui-option value="apple" label="Apple"><span slot="prefix">P</span></web-ui-option>'

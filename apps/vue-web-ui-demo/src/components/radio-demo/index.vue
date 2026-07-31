@@ -8,6 +8,12 @@ const groupVal = ref('banana')
 const updateSelected = (value: string) => {
   selected.value = value
 }
+
+function updateGroupValue(event: Event) {
+  const target = event.currentTarget
+  if (!(target instanceof HTMLElement) || typeof (target as { value?: unknown }).value !== 'string') return
+  groupVal.value = (target as HTMLElement & { value: string }).value
+}
 </script>
 
 <template>
@@ -29,7 +35,7 @@ const updateSelected = (value: string) => {
 
     <h2>Radio Group</h2>
     <div class="mb-3 flex flex-col gap-3">
-      <web-ui-radio-group :value="groupVal" name="group-demo" @value-changed="groupVal = $event.detail.value">
+      <web-ui-radio-group :value="groupVal" name="group-demo" @change="updateGroupValue">
         <web-ui-radio value="apple">Apple</web-ui-radio>
         <web-ui-radio value="banana">Banana</web-ui-radio>
         <web-ui-radio value="cherry">Cherry</web-ui-radio>
@@ -39,12 +45,7 @@ const updateSelected = (value: string) => {
 
     <h2>Radio Group 禁用</h2>
     <div class="mb-3 flex flex-col gap-3">
-      <web-ui-radio-group
-        disabled
-        :value="groupVal"
-        name="group-disabled-demo"
-        @value-changed="groupVal = $event.detail.value"
-      >
+      <web-ui-radio-group disabled :value="groupVal" name="group-disabled-demo" @change="updateGroupValue">
         <web-ui-radio value="apple">Apple</web-ui-radio>
         <web-ui-radio value="banana">Banana</web-ui-radio>
         <web-ui-radio value="cherry">Cherry</web-ui-radio>

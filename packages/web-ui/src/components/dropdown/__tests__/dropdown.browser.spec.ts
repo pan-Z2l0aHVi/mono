@@ -17,7 +17,7 @@ async function nextFrame() {
 
 afterEach(() => document.body.replaceChildren())
 
-describe('WebUiDropdown（浏览器）', () => {
+describe('WebUiDropdown 组件（浏览器）', () => {
   it('直接设置 open 时以即时状态显示根菜单', async () => {
     const menu = document.createElement('web-ui-dropdown')
     menu.innerHTML = '<button slot="trigger">Menu</button><web-ui-dropdown-item>Open</web-ui-dropdown-item>'

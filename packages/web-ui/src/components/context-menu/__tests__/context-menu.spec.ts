@@ -53,7 +53,7 @@ afterEach(() => {
   document.body.innerHTML = ''
 })
 
-describe('WebUiContextMenu', () => {
+describe('WebUiContextMenu 组件', () => {
   describe('基础渲染', () => {
     it('默认关闭', async () => {
       const el = createContextMenu({}, SIMPLE)
@@ -64,7 +64,7 @@ describe('WebUiContextMenu', () => {
     })
   })
 
-  describe('prop: disabled', () => {
+  describe('属性：disabled', () => {
     it('disabled 反射到 host', async () => {
       const el = createContextMenu({ disabled: '' }, SIMPLE)
       await waitForUpdate(el)
@@ -97,7 +97,7 @@ describe('WebUiContextMenu', () => {
     })
   })
 
-  describe('Public API: openAt()', () => {
+  describe('公开 API：openAt()', () => {
     it('在指定坐标打开菜单', async () => {
       const el = createContextMenu({}, SIMPLE)
       await waitForUpdate(el)
@@ -137,7 +137,7 @@ describe('WebUiContextMenu', () => {
     })
   })
 
-  describe('Public API: close()', () => {
+  describe('公开 API：close()', () => {
     it('关闭打开的菜单', async () => {
       const el = createContextMenu({}, SIMPLE)
       await waitForUpdate(el)
@@ -161,7 +161,7 @@ describe('WebUiContextMenu', () => {
     })
   })
 
-  describe('event: open-change', () => {
+  describe('事件：open-change', () => {
     it('打开时触发', async () => {
       const el = createContextMenu({}, SIMPLE)
       await waitForUpdate(el)

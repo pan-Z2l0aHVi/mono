@@ -24,8 +24,8 @@ function createTooltip(attrs?: Record<string, string>, slotContent = ''): WebUiT
   return el
 }
 
-describe('WebUiTooltip', () => {
-  describe('prop: placement', () => {
+describe('WebUiTooltip 组件', () => {
+  describe('属性：placement', () => {
     it('默认值为 top', async () => {
       const el = createTooltip()
       await waitForUpdate(el)
@@ -54,7 +54,7 @@ describe('WebUiTooltip', () => {
     })
   })
 
-  describe('prop: content', () => {
+  describe('属性：content', () => {
     it('通过 content 属性设置文本', async () => {
       const el = createTooltip({ content: '提示文字' })
       await waitForUpdate(el)
@@ -71,7 +71,7 @@ describe('WebUiTooltip', () => {
     })
   })
 
-  describe('prop: disabled', () => {
+  describe('属性：disabled', () => {
     it('disabled 时 host 具有 disabled 属性', async () => {
       const el = createTooltip()
       el.disabled = true
@@ -95,7 +95,7 @@ describe('WebUiTooltip', () => {
     })
   })
 
-  describe('prop: open', () => {
+  describe('属性：open', () => {
     it('open=true 显示本地面板并触发 open-change', async () => {
       const el = createTooltip({ content: '提示' })
       const handler = vi.fn<(event: Event) => void>()
@@ -131,7 +131,7 @@ describe('WebUiTooltip', () => {
     })
   })
 
-  describe('prop: portal', () => {
+  describe('属性：portal', () => {
     it('默认关闭且可反射到 host', async () => {
       const el = createTooltip()
       expect(el.portal).toBe(false)
@@ -144,7 +144,7 @@ describe('WebUiTooltip', () => {
     })
   })
 
-  describe('prop: show-delay / hide-delay', () => {
+  describe('属性：show-delay / hide-delay', () => {
     it('showDelay 默认 200', () => {
       const el = createTooltip()
       expect(el.showDelay).toBe(200)
@@ -172,7 +172,7 @@ describe('WebUiTooltip', () => {
     })
   })
 
-  describe('prop: offset', () => {
+  describe('属性：offset', () => {
     it('offset 默认 6', () => {
       const el = createTooltip()
       expect(el.offset).toBe(6)
@@ -194,7 +194,7 @@ describe('WebUiTooltip', () => {
     })
   })
 
-  describe('pointerenter/pointerleave', () => {
+  describe('指针进入/离开', () => {
     it('已有可见 Tooltip 时，相邻 Tooltip 跳过显示延迟', async () => {
       const first = createTooltip({ 'show-delay': '10', content: '第一个' })
       const second = createTooltip({ 'show-delay': '500', content: '第二个' })
@@ -262,7 +262,7 @@ describe('WebUiTooltip', () => {
     })
   })
 
-  describe('focusin/focusout', () => {
+  describe('焦点进入/离开', () => {
     it('focusin 立即显示', async () => {
       const el = createTooltip({ content: '提示' })
       await waitForUpdate(el)
@@ -291,7 +291,7 @@ describe('WebUiTooltip', () => {
     })
   })
 
-  describe('event: open-change', () => {
+  describe('事件：open-change', () => {
     it('打开时触发', async () => {
       const el = createTooltip({ content: '提示' })
       await waitForUpdate(el)

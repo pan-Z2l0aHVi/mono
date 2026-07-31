@@ -69,7 +69,7 @@ jobs:
           <head>
             <meta charset="UTF-8" />
             <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-            <title>Greypan UI Demos</title>
+            <title>Demos</title>
             <style>
               * { box-sizing: border-box; margin: 0; padding: 0; }
               body {
@@ -90,10 +90,10 @@ jobs:
             </style>
           </head>
           <body>
-            <h1>Greypan UI Demos</h1>
+            <h1>Demos</h1>
             <div class="links">
-              <a href="./vue-web-ui-demo/">Vue Demo</a>
-              <a href="./react-web-ui-demo/">React Demo</a>
+              <a href="./vue-web-ui-demo/">Web UI used by Vue Demo</a>
+              <a href="./react-web-ui-demo/">Web UI used by React Demo</a>
             </div>
           </body>
           </html>

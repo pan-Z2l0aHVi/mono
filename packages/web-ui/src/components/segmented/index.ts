@@ -1,5 +1,6 @@
 import { html, LitElement, type PropertyValues, unsafeCSS } from 'lit'
 import { customElement, property, state } from 'lit/decorators.js'
+import { classMap } from 'lit/directives/class-map.js'
 
 import glass from '@/assets/glass.css?inline'
 
@@ -18,6 +19,7 @@ export class WebUiSegmented extends LitElement {
 
   private _internals?: ElementInternals
   @state() private _value = ''
+  @state() private _formDisabled = false
   private _initialValue = ''
 
   get value(): string {
@@ -39,8 +41,12 @@ export class WebUiSegmented extends LitElement {
   private _syncPropsToChildren() {
     this.querySelectorAll<WebUiSegmentedTrigger>('web-ui-segmented-trigger').forEach(trigger => {
       trigger.checked = trigger.value === this._value
-      trigger.disabled = this.disabled
+      trigger.setGroupDisabled(this._isDisabled)
     })
+  }
+
+  private get _isDisabled(): boolean {
+    return this.disabled || this._formDisabled
   }
 
   private _updateIndicator() {
@@ -62,7 +68,7 @@ export class WebUiSegmented extends LitElement {
   }
 
   override updated(props: PropertyValues) {
-    if (props.has('value') || props.has('disabled')) {
+    if (props.has('value') || props.has('disabled') || props.has('_formDisabled')) {
       this._syncPropsToChildren()
       requestAnimationFrame(() => this._updateIndicator())
     }
@@ -96,7 +102,7 @@ export class WebUiSegmented extends LitElement {
   }
 
   private _handleChildChange(e: Event) {
-    if (this.disabled) return
+    if (this._isDisabled) return
     const target = e.target as HTMLElement
     if (!target.matches?.('web-ui-segmented-trigger')) return
     const trigger = target as WebUiSegmentedTrigger
@@ -112,12 +118,12 @@ export class WebUiSegmented extends LitElement {
   }
 
   formDisabledCallback(disabled: boolean) {
-    this.disabled = disabled
+    this._formDisabled = disabled
   }
 
   override render() {
     return html`
-      <div class="wui-segmented">
+      <div class=${classMap({ 'wui-segmented': true, 'is-disabled': this._isDisabled })}>
         <span class="wui-segmented-indicator wui-glass"></span>
         <slot></slot>
       </div>

@@ -3,12 +3,12 @@ import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
 import { WebUiSpinner } from '..'
 import '..'
 
-describe('WebUiSpinner', () => {
+describe('WebUiSpinner 组件', () => {
   afterEach(() => {
     document.body.innerHTML = ''
   })
 
-  describe('prop: size', () => {
+  describe('属性：size', () => {
     it('默认值为 24', async () => {
       const el = document.createElement('web-ui-spinner')
 
@@ -59,7 +59,7 @@ describe('WebUiSpinner', () => {
     })
   })
 
-  describe('slot: description', () => {
+  describe('插槽：description', () => {
     it('投影 description slot 内容', async () => {
       const el = document.createElement('web-ui-spinner')
       const slotContent = document.createElement('span')

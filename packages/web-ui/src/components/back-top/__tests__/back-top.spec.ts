@@ -19,8 +19,8 @@ afterEach(() => {
   document.body.innerHTML = ''
 })
 
-describe('WebUiBackTop', () => {
-  describe('prop: threshold', () => {
+describe('WebUiBackTop 组件', () => {
+  describe('属性：threshold', () => {
     it('默认值为 200', async () => {
       const el = createBackTop()
       await el.updateComplete
@@ -62,7 +62,7 @@ describe('WebUiBackTop', () => {
     })
   })
 
-  describe('prop: smooth', () => {
+  describe('属性：smooth', () => {
     it('默认值为 true', () => {
       const el = createBackTop()
       expect(el.smooth).toBe(true)
@@ -79,7 +79,7 @@ describe('WebUiBackTop', () => {
     })
   })
 
-  describe('prop: visible', () => {
+  describe('属性：visible', () => {
     it('默认值为 false', () => {
       const el = createBackTop()
       expect(el.visible).toBe(false)
@@ -97,7 +97,7 @@ describe('WebUiBackTop', () => {
     })
   })
 
-  describe('method: toTop()', () => {
+  describe('方法：toTop()', () => {
     it('调用 window.scrollTo 滚动到顶部', () => {
       const el = createBackTop()
       const spy = vi.spyOn(window, 'scrollTo').mockImplementation(() => {})

@@ -11,8 +11,8 @@ const createRadio = (): WebUiRadio => {
   return el
 }
 
-describe('WebUiRadio', () => {
-  describe('prop: checked', () => {
+describe('WebUiRadio 组件', () => {
+  describe('属性：checked', () => {
     it('checked 默认值为 false', async () => {
       const el = createRadio()
       await waitForUpdate(el)
@@ -50,7 +50,7 @@ describe('WebUiRadio', () => {
     })
   })
 
-  describe('prop: disabled', () => {
+  describe('属性：disabled', () => {
     it('disabled 属性反射到 host', async () => {
       const el = createRadio()
       expect(el.hasAttribute('disabled')).toBe(false)
@@ -84,7 +84,7 @@ describe('WebUiRadio', () => {
     })
   })
 
-  describe('prop: value / name / required', () => {
+  describe('属性：value / name / required', () => {
     it('value 可设置和获取', async () => {
       const el = createRadio()
       el.value = 'option-1'

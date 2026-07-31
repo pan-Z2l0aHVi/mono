@@ -16,7 +16,7 @@ afterEach(async () => {
   await page.viewport(1280, 720)
 })
 
-describe('WebUiLayout（浏览器）', () => {
+describe('WebUiLayout 组件（浏览器）', () => {
   it('390px 视口侧栏移出屏幕且不产生横向溢出', async () => {
     await page.viewport(390, 844)
     const layout = createLayout()

@@ -40,8 +40,8 @@ function dispatchEscapeKey(target: EventTarget) {
   return event
 }
 
-describe('WebUiDrawer', () => {
-  describe('prop: open', () => {
+describe('WebUiDrawer 组件', () => {
+  describe('属性：open', () => {
     it('open 属性反射到 host 元素', async () => {
       const el = createDrawer()
       el.open = true
@@ -56,7 +56,7 @@ describe('WebUiDrawer', () => {
     })
   })
 
-  describe('prop: placement', () => {
+  describe('属性：placement', () => {
     it('默认 placement 为 right', async () => {
       const el = createDrawer()
       await waitForUpdate(el)
@@ -93,7 +93,7 @@ describe('WebUiDrawer', () => {
     })
   })
 
-  describe('prop: lock-scroll', () => {
+  describe('属性：lock-scroll', () => {
     it('默认打开时锁定页面滚动', async () => {
       const el = createDrawer()
       el.open = true
@@ -125,7 +125,7 @@ describe('WebUiDrawer', () => {
     })
   })
 
-  describe('prop: heading', () => {
+  describe('属性：heading', () => {
     it('heading 可通过属性设置', async () => {
       const el = createDrawer()
       el.heading = '我的标题'
@@ -135,7 +135,7 @@ describe('WebUiDrawer', () => {
     })
   })
 
-  describe('prop: closable', () => {
+  describe('属性：closable', () => {
     it('默认 closable 为 false', async () => {
       const el = createDrawer()
       await waitForUpdate(el)
@@ -153,7 +153,7 @@ describe('WebUiDrawer', () => {
     })
   })
 
-  describe('event: open-change', () => {
+  describe('事件：open-change', () => {
     it('open false→true 触发 open-change，detail.open 为 true', async () => {
       const el = createDrawer()
       const [events] = spyEvents<CustomEvent<{ open: boolean }>>(el, 'open-change')
@@ -196,7 +196,7 @@ describe('WebUiDrawer', () => {
     })
   })
 
-  describe('command: show()', () => {
+  describe('命令：show()', () => {
     it('设置 open=true 并触发 open-change', async () => {
       const el = createDrawer()
       const [events] = spyEvents<CustomEvent<{ open: boolean }>>(el, 'open-change')
@@ -225,7 +225,7 @@ describe('WebUiDrawer', () => {
     })
   })
 
-  describe('command: close()', () => {
+  describe('命令：close()', () => {
     it('关闭过渡完成前保持 dialog 在 top layer，完成后关闭', async () => {
       vi.useFakeTimers()
       const el = createDrawer()
@@ -296,7 +296,7 @@ describe('WebUiDrawer', () => {
     })
   })
 
-  describe('keyboard: Escape', () => {
+  describe('键盘：Escape', () => {
     it('footer 按钮获得焦点时按 Escape 仍通过关闭过渡退出', async () => {
       vi.useFakeTimers()
       const el = createDrawer()
@@ -349,7 +349,7 @@ describe('WebUiDrawer', () => {
     })
   })
 
-  describe('native dialog close', () => {
+  describe('原生 dialog 关闭', () => {
     it('原生关闭后同步 open 并允许再次 show', async () => {
       const el = createDrawer()
       el.open = true
@@ -374,7 +374,7 @@ describe('WebUiDrawer', () => {
     })
   })
 
-  describe('prop: overlayClosable', () => {
+  describe('属性：overlayClosable', () => {
     it('默认 true，点击遮罩关闭抽屉', async () => {
       const el = createDrawer()
       el.open = true

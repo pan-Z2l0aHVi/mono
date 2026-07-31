@@ -12,7 +12,7 @@ const createButtonGroup = (buttons = ''): WebUiButtonGroup => {
   return el
 }
 
-describe('WebUiButtonGroup', () => {
+describe('WebUiButtonGroup 组件', () => {
   describe('属性: direction', () => {
     it('默认值为 horizontal，非法输入回退到默认值', async () => {
       const el = createButtonGroup()

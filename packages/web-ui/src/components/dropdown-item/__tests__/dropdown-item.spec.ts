@@ -17,7 +17,7 @@ function createItem(attrs?: Record<string, string>, content = ''): WebUiDropdown
   return el
 }
 
-describe('WebUiDropdownItem', () => {
+describe('WebUiDropdownItem 组件', () => {
   it('渲染文本内容', async () => {
     const el = createItem({}, 'Edit')
     await waitForUpdate(el)

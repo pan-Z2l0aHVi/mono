@@ -17,8 +17,8 @@ const createOption = (attrs?: Record<string, string>, label = 'Option'): WebUiOp
   return el
 }
 
-describe('WebUiOption', () => {
-  describe('prop: value', () => {
+describe('WebUiOption 组件', () => {
+  describe('属性：value', () => {
     it('value 可设置和获取', async () => {
       const el = createOption()
       el.value = 'apple'
@@ -35,7 +35,7 @@ describe('WebUiOption', () => {
     })
   })
 
-  describe('prop: disabled', () => {
+  describe('属性：disabled', () => {
     it('disabled 属性反射到 host', async () => {
       const el = createOption()
       await waitForUpdate(el)
@@ -49,7 +49,7 @@ describe('WebUiOption', () => {
     })
   })
 
-  describe('prop: selected', () => {
+  describe('属性：selected', () => {
     it('selected 属性反射到 host', async () => {
       const el = createOption()
       await waitForUpdate(el)
@@ -63,7 +63,7 @@ describe('WebUiOption', () => {
     })
   })
 
-  describe('prop: label', () => {
+  describe('属性：label', () => {
     it('label 可设置和获取', async () => {
       const el = createOption()
       el.label = 'Apple'
@@ -137,7 +137,7 @@ describe('WebUiOption', () => {
     })
   })
 
-  describe('slot: prefix / suffix', () => {
+  describe('插槽：prefix / suffix', () => {
     it('提供 prefix slot 时渲染 prefix 内容', async () => {
       const el = createOption({ value: 'a' })
       el.innerHTML = '<span slot="prefix">P</span>Option A'

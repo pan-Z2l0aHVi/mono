@@ -33,14 +33,16 @@ import type {
   WebUiTheme,
   WebUiToast,
   WebUiSwitch,
+  WebUiSvgDrawLines,
   WebUiTooltip
 } from '../components'
 
-import type { ExtractProps, EventListeners, OmitLitBase } from './utils'
-// React 通过 EventListeners<Events> + HTMLAttributes<HTMLElement> 获取事件类型
-export type LitReactWrapper<T> = T extends { readonly $events: infer E }
-  ? DetailedHTMLProps<ExtractProps<OmitLitBase<T>> & EventListeners<E> & HTMLAttributes<HTMLElement>, HTMLElement>
-  : DetailedHTMLProps<ExtractProps<OmitLitBase<T>> & HTMLAttributes<HTMLElement>, HTMLElement>
+import type { ExactEventListeners, ExtractProps, OmitLitBase } from './utils'
+
+// React 通过精确事件名和具体 Custom Element 实例获取事件与 currentTarget 类型。
+export type LitReactWrapper<T extends HTMLElement> = T extends { readonly $events: infer E }
+  ? DetailedHTMLProps<ExtractProps<OmitLitBase<T>> & ExactEventListeners<E> & HTMLAttributes<T>, T>
+  : DetailedHTMLProps<ExtractProps<OmitLitBase<T>> & HTMLAttributes<T>, T>
 
 export interface WebUiComponents {
   'web-ui-avatar': LitReactWrapper<WebUiAvatar>
@@ -64,6 +66,7 @@ export interface WebUiComponents {
   'web-ui-select': LitReactWrapper<WebUiSelect>
   'web-ui-slider': LitReactWrapper<WebUiSlider>
   'web-ui-spinner': LitReactWrapper<WebUiSpinner>
+  'web-ui-svg-draw-lines': LitReactWrapper<WebUiSvgDrawLines>
   'web-ui-option': LitReactWrapper<WebUiOption>
   'web-ui-popover': LitReactWrapper<WebUiPopover>
   'web-ui-radio': LitReactWrapper<WebUiRadio>
