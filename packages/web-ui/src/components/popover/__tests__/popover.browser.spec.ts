@@ -5,7 +5,7 @@ import type { WebUiPopover } from '..'
 
 afterEach(() => document.body.replaceChildren())
 
-describe('WebUiPopover（浏览器）', () => {
+describe('WebUiPopover 组件（浏览器）', () => {
   it('show() 以即时状态打开面板', async () => {
     const popover = document.createElement('web-ui-popover')
     popover.innerHTML = '<button slot="trigger">Trigger</button><div>Content</div>'

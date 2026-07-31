@@ -16,7 +16,7 @@ function createInput(attrs?: Record<string, string>): WebUiInput {
   return el
 }
 
-describe('WebUiInput', () => {
+describe('WebUiInput 组件', () => {
   afterEach(() => {
     document.body.innerHTML = ''
   })
@@ -108,7 +108,7 @@ describe('WebUiInput', () => {
     })
   })
 
-  describe('disabled', () => {
+  describe('禁用状态', () => {
     it('disabled 时点击容器不聚焦原生 input', async () => {
       const el = createInput()
       el.disabled = true
@@ -212,7 +212,7 @@ describe('WebUiInput', () => {
     })
   })
 
-  describe('clearable', () => {
+  describe('可清除', () => {
     it('clearable 有值时触发 input 事件', async () => {
       const el = createInput()
       el.clearable = true
@@ -229,7 +229,7 @@ describe('WebUiInput', () => {
     })
   })
 
-  describe('slot 投影', () => {
+  describe('插槽投影', () => {
     it('prefix 内容投影', async () => {
       const el = createInput()
       el.innerHTML = '<span slot="prefix">Q</span>'

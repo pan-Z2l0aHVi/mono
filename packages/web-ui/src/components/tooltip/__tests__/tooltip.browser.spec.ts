@@ -5,7 +5,7 @@ import type { WebUiTooltip } from '..'
 
 afterEach(() => document.body.replaceChildren())
 
-describe('WebUiTooltip（浏览器）', () => {
+describe('WebUiTooltip 组件（浏览器）', () => {
   it('直接设置 open 时同步 Portal 面板', async () => {
     const tooltip = document.createElement('web-ui-tooltip')
     tooltip.portal = true

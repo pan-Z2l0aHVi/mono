@@ -5,8 +5,8 @@ import type { WebUiInput } from '..'
 
 afterEach(() => document.body.replaceChildren())
 
-describe('WebUiInput jsdom contract', () => {
-  it('reads the declarative value attribute through the public value property', async () => {
+describe('WebUiInput jsdom 契约', () => {
+  it('通过公开 value 属性读取声明式 value 属性', async () => {
     const input = document.createElement('web-ui-input')
     input.setAttribute('value', 'foo')
     document.body.append(input)

@@ -16,7 +16,7 @@ function createOverlay(): HTMLElement {
   return el
 }
 
-describe('withOverlay', () => {
+describe('withOverlay 工具', () => {
   it('创建实例', () => {
     const trigger = createTrigger()
     const overlay = createOverlay()

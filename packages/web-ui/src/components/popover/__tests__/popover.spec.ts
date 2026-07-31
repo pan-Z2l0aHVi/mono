@@ -39,8 +39,8 @@ afterEach(() => {
   document.body.innerHTML = ''
 })
 
-describe('WebUiPopover', () => {
-  describe('prop: trigger', () => {
+describe('WebUiPopover 组件', () => {
+  describe('属性：trigger', () => {
     it('默认值为 click', async () => {
       const el = createPopover('Btn', 'Content')
       await waitForUpdate(el)
@@ -69,7 +69,7 @@ describe('WebUiPopover', () => {
     })
   })
 
-  describe('prop: open', () => {
+  describe('属性：open', () => {
     it('默认为关闭', async () => {
       const el = createPopover('Btn', 'Content')
       await waitForUpdate(el)
@@ -121,7 +121,7 @@ describe('WebUiPopover', () => {
     })
   })
 
-  describe('prop: portal', () => {
+  describe('属性：portal', () => {
     it('默认关闭且可反射到 host', async () => {
       const el = createPopover('Btn', 'Content')
       expect(el.portal).toBe(false)
@@ -134,7 +134,7 @@ describe('WebUiPopover', () => {
     })
   })
 
-  describe('prop: disabled', () => {
+  describe('属性：disabled', () => {
     it('禁用时点击不打开', async () => {
       const el = createPopover('Btn', 'Content', { disabled: '' })
       await waitForUpdate(el)
@@ -168,7 +168,7 @@ describe('WebUiPopover', () => {
     })
   })
 
-  describe('prop: placement', () => {
+  describe('属性：placement', () => {
     it('默认值为 bottom', async () => {
       const el = createPopover('Btn', 'Content')
       await waitForUpdate(el)
@@ -206,7 +206,7 @@ describe('WebUiPopover', () => {
     })
   })
 
-  describe('prop: offset', () => {
+  describe('属性：offset', () => {
     it('默认值为 8', async () => {
       const el = createPopover('Btn', 'Content')
       await waitForUpdate(el)
@@ -244,7 +244,7 @@ describe('WebUiPopover', () => {
     })
   })
 
-  describe('trigger: click', () => {
+  describe('触发方式：click', () => {
     it('点击 trigger 切换打开', async () => {
       const el = createPopover('Btn', 'Content')
       await waitForUpdate(el)
@@ -323,7 +323,7 @@ describe('WebUiPopover', () => {
     })
   })
 
-  describe('trigger: hover', () => {
+  describe('触发方式：hover', () => {
     it('pointerenter 打开', async () => {
       const el = createPopover('Btn', 'Content', { trigger: 'hover' })
       await waitForUpdate(el)
@@ -395,7 +395,7 @@ describe('WebUiPopover', () => {
     })
   })
 
-  describe('trigger: manual', () => {
+  describe('触发方式：manual', () => {
     it('点击 trigger 切换打开', async () => {
       const el = createPopover('Btn', 'Content', { trigger: 'manual' })
       await waitForUpdate(el)
@@ -462,7 +462,7 @@ describe('WebUiPopover', () => {
     })
   })
 
-  describe('event: open-change', () => {
+  describe('事件：open-change', () => {
     it('打开时触发', async () => {
       const el = createPopover('Btn', 'Content')
       await waitForUpdate(el)
@@ -551,7 +551,7 @@ describe('WebUiPopover', () => {
     })
   })
 
-  describe('Public API', () => {
+  describe('公开 API', () => {
     it('show() 打开', async () => {
       const el = createPopover('Btn', 'Content')
       await waitForUpdate(el)

@@ -53,7 +53,7 @@ afterEach(() => {
 })
 
 describe('WebUiToast 组件', () => {
-  describe('prop: type', () => {
+  describe('属性：type', () => {
     const types: ToastType[] = ['success', 'info', 'warning', 'error']
 
     for (const t of types) {
@@ -67,7 +67,7 @@ describe('WebUiToast 组件', () => {
     }
   })
 
-  describe('prop: visible', () => {
+  describe('属性：visible', () => {
     it('默认值为 false', async () => {
       const el = createToastElement()
       await el.updateComplete
@@ -89,7 +89,7 @@ describe('WebUiToast 组件', () => {
     })
   })
 
-  describe('prop: closable', () => {
+  describe('属性：closable', () => {
     it('默认可关闭', async () => {
       const el = createToastElement()
       await el.updateComplete
@@ -107,7 +107,7 @@ describe('WebUiToast 组件', () => {
     })
   })
 
-  describe('prop: duration', () => {
+  describe('属性：duration', () => {
     it('默认值为 3000', async () => {
       const el = createToastElement()
       await el.updateComplete
@@ -116,7 +116,7 @@ describe('WebUiToast 组件', () => {
     })
   })
 
-  describe('prop: position', () => {
+  describe('属性：position', () => {
     it('默认 top-right', async () => {
       const el = createToastElement()
       await el.updateComplete
@@ -132,7 +132,7 @@ describe('WebUiToast 组件', () => {
     })
   })
 
-  describe('method: show()', () => {
+  describe('方法：show()', () => {
     it('show() 设置 visible 为 true', async () => {
       const el = createToastElement()
       await el.updateComplete
@@ -143,7 +143,7 @@ describe('WebUiToast 组件', () => {
     })
   })
 
-  describe('method: dismiss()', () => {
+  describe('方法：dismiss()', () => {
     it('dismiss() 设置 visible 为 false', async () => {
       const el = createToastElement()
       await el.updateComplete
@@ -176,7 +176,7 @@ describe('WebUiToast 组件', () => {
     })
   })
 
-  describe('pointer 暂停', () => {
+  describe('指针暂停', () => {
     it('pointerenter 暂停自动关闭', async () => {
       const el = createToastElement()
       el.duration = 500
@@ -257,7 +257,7 @@ describe('WebUiToast 组件', () => {
 })
 
 describe('toast 命令式 API', () => {
-  describe('toast.success()', () => {
+  describe('命令式 API：toast.success()', () => {
     it('创建 success 类型 toast', async () => {
       const id = toast.success('成功')
       expect(id).toBeTruthy()
@@ -273,7 +273,7 @@ describe('toast 命令式 API', () => {
     })
   })
 
-  describe('toast.info()', () => {
+  describe('命令式 API：toast.info()', () => {
     it('创建 info 类型 toast', async () => {
       toast.info('提示')
       await waitForToastMounted()
@@ -281,7 +281,7 @@ describe('toast 命令式 API', () => {
     })
   })
 
-  describe('toast.warning()', () => {
+  describe('命令式 API：toast.warning()', () => {
     it('创建 warning 类型 toast', async () => {
       toast.warning('警告')
       await waitForToastMounted()
@@ -289,7 +289,7 @@ describe('toast 命令式 API', () => {
     })
   })
 
-  describe('toast.error()', () => {
+  describe('命令式 API：toast.error()', () => {
     it('创建 error 类型 toast', async () => {
       toast.error('错误')
       await waitForToastMounted()
@@ -297,7 +297,7 @@ describe('toast 命令式 API', () => {
     })
   })
 
-  describe('toast(options)', () => {
+  describe('命令式 API：toast(options)', () => {
     it('自定义 id 去重', async () => {
       toast({ message: '1', id: 'dup' })
       toast({ message: '2', id: 'dup' })
@@ -306,7 +306,7 @@ describe('toast 命令式 API', () => {
     })
   })
 
-  describe('toast.close()', () => {
+  describe('命令式 API：toast.close()', () => {
     it('按 id 关闭 toast', async () => {
       const id = toast.info('待关闭')
       await waitForToastMounted()
@@ -324,7 +324,7 @@ describe('toast 命令式 API', () => {
     })
   })
 
-  describe('toast.updateMessage()', () => {
+  describe('命令式 API：toast.updateMessage()', () => {
     it('立即更新已挂载 toast 的 message 和 heading', async () => {
       const id = toast.info('旧消息', { heading: '旧标题', duration: 0 })
       await waitForToastMounted()
@@ -354,7 +354,7 @@ describe('toast 命令式 API', () => {
     })
   })
 
-  describe('toast.clear()', () => {
+  describe('命令式 API：toast.clear()', () => {
     it('清除所有 toast', async () => {
       toast.info('1')
       toast.info('2')

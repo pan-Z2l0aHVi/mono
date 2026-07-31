@@ -5,8 +5,8 @@ import type { WebUiInput } from '..'
 
 afterEach(() => document.body.replaceChildren())
 
-describe('WebUiInput form association', () => {
-  it('uses the declarative value for rendering and FormData', async () => {
+describe('WebUiInput 表单关联（浏览器）', () => {
+  it('使用声明式 value 同步渲染与 FormData', async () => {
     const form = document.createElement('form')
     form.innerHTML = '<web-ui-input name="title" value="foo"></web-ui-input>'
     document.body.append(form)
