@@ -3,8 +3,19 @@ import { StrictMode } from 'react'
 
 import { routeTree } from '@/routeTree.gen.ts'
 
+// GitHub Pages 通过其根 404 页面在 `redirect` 中保留了未匹配的 history 路由。
+// Restore it before TanStack Router reads the browser location.
+if (import.meta.env.PROD) {
+  const redirectedRoute = new URLSearchParams(window.location.search).get('redirect')
+  if (redirectedRoute?.startsWith('/')) {
+    const basePath = import.meta.env.BASE_URL.replace(/\/$/, '')
+    window.history.replaceState(null, '', `${basePath}${redirectedRoute}`)
+  }
+}
+
 const router = createRouter({
   routeTree,
+  basepath: import.meta.env.BASE_URL,
   defaultPreload: 'intent',
   scrollRestoration: true
 })

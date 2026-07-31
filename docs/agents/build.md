@@ -83,5 +83,6 @@ apps/
 
 - CI in `ci.yml` runs changeset status, build, format/lint/type-check, and tests.
 - Release in `release.yml` uses `changesets/action@v1`; demo apps are excluded from versioning.
-- Deploy in `deploy.yml` builds and deploys demo apps to GitHub Pages via `actions/deploy-pages`. SPA fallback (`404.html`) handles client-side routing.
+- Deploy in `deploy.yml` is manually triggered and deploys every Deployable Demo in the job-level `DEMO_APPS` list through one `actions/deploy-pages` artifact. Each entry is an `apps/<name>` directory and is served at `/mono/<name>/`; build commands use pnpm's `{./apps/<name>}...` directory selector rather than an npm package name. The site has no root landing page.
+- Every Deployable Demo must support History-route deep links. GitHub Pages routes an unmatched request to the root `404.html`; it validates the app name against `DEMO_APPS`, preserves the requested route in `redirect`, and loads the app root. In production, the app must restore `redirect` before creating its router. Unknown paths remain 404 responses.
 - First publication must use `pnpm publish:new <package-dir>`, which builds then publishes version `1.0.0`. It requires `npm login`; configure npm Trusted Publisher afterwards for CI-driven releases.
