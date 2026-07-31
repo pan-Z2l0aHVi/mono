@@ -48,6 +48,7 @@ export default {
       modernPolyfills: true
     })
   ],
+  base: process.env.GITHUB_BASE_PATH || '/',
   build: {},
   css: {
     transformer: 'lightningcss'

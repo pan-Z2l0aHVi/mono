@@ -81,7 +81,7 @@ jobs:
               .links { display: flex; gap: 16px; }
               .links a {
                 display: inline-flex; align-items: center; justify-content: center;
-                width: 180px; height: 56px; border-radius: 28px;
+                min-width: 180px; height: 56px; padding: 0 16px; border-radius: 28px;
                 background: #fff; color: #1b1b1b; text-decoration: none;
                 font-size: 16px; font-weight: 500; box-shadow: 0 2px 8px rgba(0,0,0,0.08);
                 transition: box-shadow 0.2s, transform 0.2s;
@@ -92,8 +92,8 @@ jobs:
           <body>
             <h1>Demos</h1>
             <div class="links">
-              <a href="./vue-web-ui-demo/">Web UI used by Vue Demo</a>
-              <a href="./react-web-ui-demo/">Web UI used by React Demo</a>
+              <a href="./vue-web-ui-demo/">Web UI used by Vue</a>
+              <a href="./react-web-ui-demo/">Web UI used by React</a>
             </div>
           </body>
           </html>
