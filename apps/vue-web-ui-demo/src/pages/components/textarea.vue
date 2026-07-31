@@ -1,19 +1,13 @@
 <route lang="json">
 {
   "meta": {
-    "title": "文本域"
+    "title": "Textarea 文本域"
   }
 }
 </route>
 
 <script setup lang="ts">
-import { useHead } from '@unhead/vue'
-
 import TextareaDemo from '@/components/textarea-demo/index.vue'
-
-useHead({
-  title: () => '文本域'
-})
 </script>
 
 <template>

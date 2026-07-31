@@ -82,6 +82,10 @@ export function Root() {
     })
   }, [router])
 
+  const routeTitle = useRouterState({
+    select: s => s.matches.at(-1)?.staticData.title
+  })
+
   const updateThemeAppearance = (event: React.ChangeEvent<WebUiSelect>) => {
     const appearance = event.currentTarget.value
     if (!isThemeAppearance(appearance)) return
@@ -100,6 +104,7 @@ export function Root() {
     <ErrorBoundary FallbackComponent={RootErrorFallback}>
       <web-ui-theme appearance={themeAppearance} motion={themeMotion}>
         <div className="min-h-screen bg-[var(--wui-color-page)] text-[var(--wui-color-text)]">
+          {routeTitle ? <title>{routeTitle}</title> : null}
           <web-ui-layout>
             <div slot="header" className="flex h-full w-full items-center justify-end gap-4 px-4 max-[640px]:w-screen">
               <web-ui-select

@@ -28,6 +28,12 @@ const router = createRouter({
     ...routes
   ]
 })
+
+declare module 'vue-router' {
+  interface RouteMeta {
+    title?: string
+  }
+}
 // 这将在运行时更新路由而无需重新加载页面
 if (import.meta.hot) {
   handleHotUpdate(router)

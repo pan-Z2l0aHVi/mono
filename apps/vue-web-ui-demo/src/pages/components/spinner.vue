@@ -1,16 +1,13 @@
 <route lang="json">
 {
   "meta": {
-    "title": "Spinner"
+    "title": "Spinner 加载指示器"
   }
 }
 </route>
 
 <script setup lang="ts">
-import { useHead } from '@unhead/vue'
-
 import SpinnerDemo from '@/components/spinner-demo/index.vue'
-useHead({ title: () => 'Spinner' })
 </script>
 
 <template>

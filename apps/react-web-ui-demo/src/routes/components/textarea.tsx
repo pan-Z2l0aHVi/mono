@@ -11,5 +11,6 @@ function Component() {
 }
 
 export const Route = createFileRoute('/components/textarea')({
+  staticData: { title: 'Textarea 文本域' },
   component: Component
 })
