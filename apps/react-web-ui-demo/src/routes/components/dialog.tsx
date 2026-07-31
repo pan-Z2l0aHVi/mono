@@ -10,4 +10,7 @@ function Component() {
   )
 }
 
-export const Route = createFileRoute('/components/dialog')({ component: Component })
+export const Route = createFileRoute('/components/dialog')({
+  staticData: { title: 'Dialog 对话框' },
+  component: Component
+})

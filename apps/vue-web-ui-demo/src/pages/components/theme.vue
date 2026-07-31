@@ -1,3 +1,11 @@
+<route lang="json">
+{
+  "meta": {
+    "title": "Theme 主题"
+  }
+}
+</route>
+
 <script setup lang="ts">
 import ThemeDemo from '@/components/theme-demo/index.vue'
 </script>

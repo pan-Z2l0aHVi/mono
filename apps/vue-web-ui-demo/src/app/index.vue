@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { local } from '@greypan/browser-kit/storage'
+import { useHead } from '@unhead/vue'
 import { onMounted, ref } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 
@@ -50,6 +51,8 @@ function updateThemeMotion(event: Event) {
 
 const route = useRoute()
 const router = useRouter()
+
+useHead({ title: () => route.meta.title })
 const navSidebar = ref<HTMLElement>()
 
 onMounted(async () => {

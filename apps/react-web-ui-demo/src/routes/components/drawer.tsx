@@ -10,4 +10,7 @@ function Component() {
   )
 }
 
-export const Route = createFileRoute('/components/drawer')({ component: Component })
+export const Route = createFileRoute('/components/drawer')({
+  staticData: { title: 'Drawer 抽屉' },
+  component: Component
+})

@@ -10,4 +10,7 @@ function Component() {
   )
 }
 
-export const Route = createFileRoute('/components/empty')({ component: Component })
+export const Route = createFileRoute('/components/empty')({
+  staticData: { title: 'Empty 空状态' },
+  component: Component
+})

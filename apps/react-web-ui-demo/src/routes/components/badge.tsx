@@ -10,4 +10,4 @@ function Component() {
   )
 }
 
-export const Route = createFileRoute('/components/badge')({ component: Component })
+export const Route = createFileRoute('/components/badge')({ staticData: { title: 'Badge 徽标' }, component: Component })

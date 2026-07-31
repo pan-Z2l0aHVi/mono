@@ -1,17 +1,13 @@
 <route lang="json">
 {
   "meta": {
-    "title": "空状态"
+    "title": "Empty 空状态"
   }
 }
 </route>
 
 <script setup lang="ts">
-import { useHead } from '@unhead/vue'
-
 import EmptyDemo from '@/components/empty-demo/index.vue'
-
-useHead({ title: () => '空状态' })
 </script>
 
 <template>

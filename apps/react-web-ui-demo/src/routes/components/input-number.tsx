@@ -10,4 +10,7 @@ function Component() {
   )
 }
 
-export const Route = createFileRoute('/components/input-number')({ component: Component })
+export const Route = createFileRoute('/components/input-number')({
+  staticData: { title: 'InputNumber 数字输入框' },
+  component: Component
+})
