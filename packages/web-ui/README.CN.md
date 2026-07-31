@@ -6,7 +6,8 @@
 
 ## 演示
 
-[查看演示](https://pan-z2l0ahvi.github.io/mono/)
+[查看 vue 使用演示](https://pan-z2l0ahvi.github.io/mono/vue-web-ui-demo/)
+[查看 react 使用演示](https://pan-z2l0ahvi.github.io/mono/react-web-ui-demo/)
 
 ## 安装
 
