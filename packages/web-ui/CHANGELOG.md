@@ -1,5 +1,11 @@
 # @greypan/web-ui
 
+## 2.1.1
+
+### Patch Changes
+
+- 45a2f38: udpate readme
+
 ## 2.1.0
 
 ### Minor Changes
