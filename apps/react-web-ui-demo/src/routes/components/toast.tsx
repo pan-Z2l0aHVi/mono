@@ -11,5 +11,6 @@ function Component() {
 }
 
 export const Route = createFileRoute('/components/toast')({
+  staticData: { title: 'Toast 通知' },
   component: Component
 })

@@ -11,5 +11,6 @@ function Component() {
 }
 
 export const Route = createFileRoute('/components/segmented')({
+  staticData: { title: 'Segmented 分段控制器' },
   component: Component
 })

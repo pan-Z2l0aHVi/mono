@@ -11,5 +11,6 @@ function Component() {
 }
 
 export const Route = createFileRoute('/components/switch')({
+  staticData: { title: 'Switch 开关' },
   component: Component
 })

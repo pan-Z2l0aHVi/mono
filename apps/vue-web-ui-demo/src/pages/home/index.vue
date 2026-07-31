@@ -1,18 +1,10 @@
 <route lang="json">
 {
   "meta": {
-    "icon": "Home"
+    "title": "Home"
   }
 }
 </route>
-
-<script setup lang="ts">
-import { useHead } from '@unhead/vue'
-
-useHead({
-  title: () => 'Home'
-})
-</script>
 
 <template>
   <div class="p-3">

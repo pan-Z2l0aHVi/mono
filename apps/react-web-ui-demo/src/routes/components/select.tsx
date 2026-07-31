@@ -11,5 +11,6 @@ function Component() {
 }
 
 export const Route = createFileRoute('/components/select')({
+  staticData: { title: 'Select 下拉选择' },
   component: Component
 })

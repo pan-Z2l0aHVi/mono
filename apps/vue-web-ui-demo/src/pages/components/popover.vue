@@ -1,16 +1,13 @@
 <route lang="json">
 {
   "meta": {
-    "title": "Popover"
+    "title": "Popover 气泡卡片"
   }
 }
 </route>
 
 <script setup lang="ts">
-import { useHead } from '@unhead/vue'
-
 import PopoverDemo from '@/components/popover-demo/index.vue'
-useHead({ title: () => 'Popover' })
 </script>
 
 <template>

@@ -11,5 +11,6 @@ function Component() {
 }
 
 export const Route = createFileRoute('/components/popover')({
+  staticData: { title: 'Popover 气泡卡片' },
   component: Component
 })

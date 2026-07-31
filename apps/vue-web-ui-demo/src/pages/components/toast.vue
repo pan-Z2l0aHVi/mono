@@ -7,13 +7,7 @@
 </route>
 
 <script setup lang="ts">
-import { useHead } from '@unhead/vue'
-
 import ToastDemo from '@/components/toast-demo/index.vue'
-
-useHead({
-  title: () => 'Toast 通知'
-})
 </script>
 
 <template>

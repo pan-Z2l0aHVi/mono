@@ -4,7 +4,7 @@ import component from './-component'
 
 export const Route = createFileRoute('/home/')({
   staticData: {
-    icon: 'Home'
+    title: 'Home'
   },
   component
 })

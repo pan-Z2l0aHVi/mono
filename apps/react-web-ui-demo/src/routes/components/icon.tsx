@@ -10,4 +10,4 @@ function Component() {
   )
 }
 
-export const Route = createFileRoute('/components/icon')({ component: Component })
+export const Route = createFileRoute('/components/icon')({ staticData: { title: 'Icon 图标' }, component: Component })

@@ -1,19 +1,13 @@
 <route lang="json">
 {
   "meta": {
-    "title": "头像"
+    "title": "Avatar 头像"
   }
 }
 </route>
 
 <script setup lang="ts">
-import { useHead } from '@unhead/vue'
-
 import AvatarDemo from '@/components/avatar-demo/index.vue'
-
-useHead({
-  title: () => '头像'
-})
 </script>
 
 <template>
