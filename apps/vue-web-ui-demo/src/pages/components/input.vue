@@ -1,19 +1,13 @@
 <route lang="json">
 {
   "meta": {
-    "title": "输入框"
+    "title": "Input 输入框"
   }
 }
 </route>
 
 <script setup lang="ts">
-import { useHead } from '@unhead/vue'
-
 import InputDemo from '@/components/input-demo/index.vue'
-
-useHead({
-  title: () => '输入框'
-})
 </script>
 
 <template>

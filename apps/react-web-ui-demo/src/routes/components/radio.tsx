@@ -11,5 +11,6 @@ function Component() {
 }
 
 export const Route = createFileRoute('/components/radio')({
+  staticData: { title: 'Radio 单选框' },
   component: Component
 })

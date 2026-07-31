@@ -10,4 +10,7 @@ function Component() {
   )
 }
 
-export const Route = createFileRoute('/components/dropdown')({ component: Component })
+export const Route = createFileRoute('/components/dropdown')({
+  staticData: { title: 'Dropdown 下拉菜单' },
+  component: Component
+})
