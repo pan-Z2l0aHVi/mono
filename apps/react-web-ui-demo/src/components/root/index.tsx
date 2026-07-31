@@ -1,5 +1,5 @@
 import type { WebUiSelect } from '@greypan/web-ui'
-import { Outlet, useRouter, useRouterState } from '@tanstack/react-router'
+import { Link, Outlet, useRouter, useRouterState } from '@tanstack/react-router'
 import { useEffect, useRef, useState } from 'react'
 import { ErrorBoundary } from 'react-error-boundary'
 
@@ -140,16 +140,16 @@ export function Root() {
                 组件列表
               </div>
               {navItems.map(item => (
-                <a
+                <Link
                   key={item.path}
-                  href={item.path}
+                  to={item.path}
                   className={
                     'block rounded-full px-3 py-2 text-sm leading-5 text-[var(--wui-color-text)] transition-[background-color] duration-150 hover:bg-[color-mix(in_srgb,var(--wui-color-surface-raised)_80%,var(--wui-color-text))]' +
                     (pathname === item.path ? ' !bg-[var(--wui-color-accent)] !text-[var(--wui-color-on-accent)]' : '')
                   }
                 >
                   {item.label}
-                </a>
+                </Link>
               ))}
             </nav>
             <Outlet />

@@ -80,3 +80,9 @@ A custom element with `static formAssociated = true` that integrates with the na
 - Registry uses npmmirror (overridden to official registry in CI)
 - `web-ui` bundles no framework code — requires consumers to install `lit` as dependency
 - Apps are private, never published to npm
+
+## Deployment Language
+
+**Deployable Demo**:
+A private History-routing SPA included in the shared GitHub Pages artifact and exposed at its own path. All deployable demos are published together so one deployment cannot remove another demo, and each restores a deep link after a direct request or refresh.
+_Avoid_: Independently deployed app, standalone Pages site

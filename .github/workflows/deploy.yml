@@ -2,15 +2,6 @@ name: Deploy to GitHub Pages
 
 on:
   workflow_dispatch:
-    inputs:
-      app:
-        description: 'Which app to deploy'
-        type: choice
-        required: true
-        options:
-          - react-web-ui-demo
-          - vue-web-ui-demo
-        default: vue-web-ui-demo
 
 permissions:
   contents: read
@@ -18,13 +9,15 @@ permissions:
   id-token: write
 
 concurrency:
-  group: pages-${{ inputs.app }}
+  group: pages
   cancel-in-progress: false
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    env:
+      DEMO_APPS: react-web-ui-demo vue-web-ui-demo
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -48,65 +41,30 @@ jobs:
       - name: Install dependencies
         run: pnpm i --frozen-lockfile
 
-      - name: Build ${{ inputs.app }}
-        env:
-          GITHUB_BASE_PATH: /mono/${{ inputs.app }}
-        run: pnpm --filter @greypan/${{ inputs.app }}... build
+      - name: Build demo apps
+        run: |
+          for APP_DIR in $DEMO_APPS; do
+            GITHUB_BASE_PATH="/mono/${APP_DIR}" pnpm --filter "{./apps/${APP_DIR}}..." build
+          done
 
       - name: Prepare deployment directory
         run: |
-          APP_DIR="${{ inputs.app }}"
-          mkdir -p "deploy/${APP_DIR}"
-          cp -r "apps/${APP_DIR}/dist/." "deploy/${APP_DIR}/"
+          for APP_DIR in $DEMO_APPS; do
+            mkdir -p "deploy/${APP_DIR}"
+            cp -r "apps/${APP_DIR}/dist/." "deploy/${APP_DIR}/"
+          done
 
-          # SPA fallback — copy app's index.html as 404 in its subdirectory
-          cp "deploy/${APP_DIR}/index.html" "deploy/${APP_DIR}/404.html"
-
-          # Root landing page
-          cat > deploy/index.html <<'INDEXHTML'
-          <!doctype html>
-          <html lang="en">
-          <head>
-            <meta charset="UTF-8" />
-            <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-            <title>Demos</title>
-            <style>
-              * { box-sizing: border-box; margin: 0; padding: 0; }
-              body {
-                font-family: system-ui, -apple-system, sans-serif;
-                display: flex; flex-direction: column; align-items: center; justify-content: center;
-                min-height: 100vh; background: #f5f5f5; color: #1b1b1b; gap: 24px;
-              }
-              h1 { font-size: 24px; font-weight: 600; }
-              .links { display: flex; gap: 16px; }
-              .links a {
-                display: inline-flex; align-items: center; justify-content: center;
-                min-width: 180px; height: 56px; padding: 0 16px; border-radius: 28px;
-                background: #fff; color: #1b1b1b; text-decoration: none;
-                font-size: 16px; font-weight: 500; box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-                transition: box-shadow 0.2s, transform 0.2s;
-              }
-              .links a:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.12); transform: translateY(-2px); }
-            </style>
-          </head>
-          <body>
-            <h1>Demos</h1>
-            <div class="links">
-              <a href="./vue-web-ui-demo/">Web UI used by Vue</a>
-              <a href="./react-web-ui-demo/">Web UI used by React</a>
-            </div>
-          </body>
-          </html>
-          INDEXHTML
-
-          # Root 404 — redirect to app subdirectory
-          cat > deploy/404.html <<'EOF404'
+          # GitHub Pages serves only the root 404 page for unknown nested paths.
+          # Preserve the target route so each SPA can restore it after loading.
+          cat > deploy/404.html <<EOF404
           <!doctype html>
           <script>
+            var demoApps = new Set('${DEMO_APPS}'.split(' '))
             var segs = location.pathname.replace('/mono/', '').split('/')
             var appDir = segs[0]
-            if (appDir === 'vue-web-ui-demo' || appDir === 'react-web-ui-demo') {
-              location.replace('/mono/' + appDir + '/')
+            if (demoApps.has(appDir)) {
+              var route = '/' + segs.slice(1).join('/') + location.search + location.hash
+              location.replace('/mono/' + appDir + '/?redirect=' + encodeURIComponent(route))
             } else {
               document.title = '404'
               document.write('<h1>404</h1><p><a href="/mono/">Go home</a></p>')
