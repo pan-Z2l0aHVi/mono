@@ -32,8 +32,8 @@ const clickTrigger = (group: WebUiSegmented, index: number) => {
   if (inner instanceof HTMLElement) inner.click()
 }
 
-describe('WebUiSegmented', () => {
-  describe('prop: value', () => {
+describe('WebUiSegmented 组件', () => {
+  describe('属性：value', () => {
     it('初始值为空字符串', async () => {
       const el = createSegmented(TRIGGER_HTML)
       await waitForUpdate(el)
@@ -109,7 +109,7 @@ describe('WebUiSegmented', () => {
     })
   })
 
-  describe('prop: disabled', () => {
+  describe('属性：disabled', () => {
     it('disabled 属性反映到 host 元素', async () => {
       const el = createSegmented(TRIGGER_HTML)
       await waitForUpdate(el)
@@ -126,7 +126,7 @@ describe('WebUiSegmented', () => {
       cleanupElement(el)
     })
 
-    it('disabled 时传播到子 trigger', async () => {
+    it('继承禁用不改写子 trigger 属性，并移出 Tab 序列', async () => {
       const el = createSegmented(TRIGGER_HTML)
       await waitForUpdate(el)
 
@@ -134,9 +134,13 @@ describe('WebUiSegmented', () => {
       await waitForUpdate(el)
 
       const triggers = el.querySelectorAll<WebUiSegmentedTrigger>('web-ui-segmented-trigger')
-      expect(triggers[0].disabled).toBe(true)
-      expect(triggers[1].disabled).toBe(true)
-      expect(triggers[2].disabled).toBe(true)
+      await Promise.all([...triggers].map(trigger => trigger.updateComplete))
+      for (const trigger of triggers) {
+        const control = queryA11y(trigger, '[role="option"]')
+        expect(trigger.disabled).toBe(false)
+        expect(control?.getAttribute('aria-disabled')).toBe('true')
+        expect(control?.getAttribute('tabindex')).toBe('-1')
+      }
 
       cleanupElement(el)
     })
@@ -162,7 +166,7 @@ describe('WebUiSegmented', () => {
     })
   })
 
-  describe('prop: name', () => {
+  describe('属性：name', () => {
     it('name 属性反映到 host 元素', async () => {
       const el = createSegmented(TRIGGER_HTML)
       el.name = 'test'
@@ -172,7 +176,7 @@ describe('WebUiSegmented', () => {
     })
   })
 
-  describe('prop: required', () => {
+  describe('属性：required', () => {
     it('required 属性反映到 host 元素', async () => {
       const el = createSegmented(TRIGGER_HTML)
       expect(el.hasAttribute('required')).toBe(false)
@@ -308,12 +312,21 @@ describe('WebUiSegmented', () => {
       cleanupElement(el)
     })
 
-    it('formDisabledCallback 同步 disabled', async () => {
+    it('formDisabledCallback 使用内部有效禁用状态', async () => {
       const el = createSegmented(TRIGGER_HTML)
       await waitForUpdate(el)
 
       el.formDisabledCallback(true)
-      expect(el.disabled).toBe(true)
+      await waitForUpdate(el)
+
+      expect(el.disabled).toBe(false)
+      const triggers = el.querySelectorAll<WebUiSegmentedTrigger>('web-ui-segmented-trigger')
+      await Promise.all([...triggers].map(trigger => trigger.updateComplete))
+      for (const trigger of triggers) {
+        const control = queryA11y(trigger, '[role="option"]')
+        expect(control?.getAttribute('aria-disabled')).toBe('true')
+        expect(control?.getAttribute('tabindex')).toBe('-1')
+      }
 
       cleanupElement(el)
     })

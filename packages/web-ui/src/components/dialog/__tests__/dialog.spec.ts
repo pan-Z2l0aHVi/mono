@@ -12,8 +12,8 @@ function createDialog(slots = ''): WebUiDialog {
   return el
 }
 
-describe('WebUiDialog', () => {
-  describe('prop: open', () => {
+describe('WebUiDialog 组件', () => {
+  describe('属性：open', () => {
     it('open 属性反射到 host 元素', async () => {
       const el = createDialog()
       el.open = true
@@ -28,7 +28,7 @@ describe('WebUiDialog', () => {
     })
   })
 
-  describe('prop: lock-scroll', () => {
+  describe('属性：lock-scroll', () => {
     it('默认打开时锁定背景滚动，关闭后恢复', async () => {
       const el = createDialog()
       el.open = true
@@ -64,7 +64,7 @@ describe('WebUiDialog', () => {
     })
   })
 
-  describe('event: open-change', () => {
+  describe('事件：open-change', () => {
     it('open false→true 触发 open-change，detail.open 为 true', async () => {
       const el = createDialog()
       const [events] = spyEvents<CustomEvent<{ open: boolean }>>(el, 'open-change')
@@ -107,7 +107,7 @@ describe('WebUiDialog', () => {
     })
   })
 
-  describe('command: showModal()', () => {
+  describe('命令：showModal()', () => {
     it('设置 open=true 并触发 open-change', async () => {
       const el = createDialog()
       const [events] = spyEvents<CustomEvent<{ open: boolean }>>(el, 'open-change')
@@ -136,7 +136,7 @@ describe('WebUiDialog', () => {
     })
   })
 
-  describe('command: close()', () => {
+  describe('命令：close()', () => {
     it('设置 open=false 并触发 open-change', async () => {
       const el = createDialog()
       el.open = true
@@ -154,7 +154,7 @@ describe('WebUiDialog', () => {
     })
   })
 
-  describe('a11y', () => {
+  describe('无障碍', () => {
     it('打开时 shadow DOM 内存在原生 dialog 元素', async () => {
       const el = createDialog()
       el.open = true
@@ -166,7 +166,7 @@ describe('WebUiDialog', () => {
     })
   })
 
-  describe('prop: overlayClosable', () => {
+  describe('属性：overlayClosable', () => {
     it('默认 true，点击遮罩关闭对话框', async () => {
       const el = createDialog()
       el.open = true

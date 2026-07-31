@@ -4,6 +4,7 @@
 - **Run all tests**: `pnpm test`
 - **Run one package**: `pnpm --filter @greypan/<name> test` (which runs `vp test run`)
 - **Test files**: `*.spec.ts`, `*.test.ts`, `*.spec.tsx`
+- **Demo apps**: `react-web-ui-demo` and `vue-web-ui-demo` currently have no maintained unit-test suites, so they omit test scripts, Vite test configuration, and `tsconfig.vitest.json`. Verify demo behavior in a real browser instead.
 - **Environment**: Most packages use Node environment. `browser-kit` uses Vitest Browser Mode with Playwright Chromium for real browser testing.
 - **`web-ui` test environment**: jsdom, with `packages/web-ui/test-helper.ts` stubbing browser APIs that jsdom does not implement. It stubs `window.scrollTo` and `Element#scrollTo`; component tests assert the public scrolling call, while browser verification covers native scrolling.
 - **`web-ui` jsdom contract tests**: Default `*.spec.ts` files run in the independent `jsdom` project and cover host API, attribute/property synchronization, events, rendering, and non-browser DOM semantics. Test utilities must not treat jsdom as an ElementInternals implementation.

@@ -6,8 +6,7 @@
   "scripts": {
     "build": "vp build",
     "dev": "vp dev",
-    "preview": "vp preview",
-    "test": "vp test run"
+    "preview": "vp preview"
   },
   "dependencies": {
     "@greypan/js-kit": "workspace:*",
@@ -26,7 +25,6 @@
     "@testing-library/react": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
-    "vite-plugin-dts": "catalog:",
     "vite-plugin-pwa": "catalog:",
     "@vitejs/plugin-basic-ssl": "catalog:",
     "@vitejs/plugin-legacy": "catalog:",

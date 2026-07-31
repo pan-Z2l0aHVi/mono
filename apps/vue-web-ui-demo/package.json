@@ -6,8 +6,7 @@
   "scripts": {
     "build": "vue-tsc --build && vp build",
     "dev": "vp dev",
-    "preview": "vp preview",
-    "test": "vp test run"
+    "preview": "vp preview"
   },
   "dependencies": {
     "@greypan/browser-kit": "workspace:*",
@@ -26,7 +25,6 @@
     "@greypan/unplugin-web-components": "workspace:*",
     "@greypan/tsconfig": "workspace:*",
     "@vue/test-utils": "catalog:",
-    "vite-plugin-dts": "catalog:",
     "vite-plugin-pwa": "catalog:",
     "@vitejs/plugin-basic-ssl": "catalog:",
     "@vitejs/plugin-legacy": "catalog:",

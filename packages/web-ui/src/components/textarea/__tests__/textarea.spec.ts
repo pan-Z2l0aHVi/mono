@@ -16,7 +16,7 @@ function createTextarea(attrs?: Record<string, string>): WebUiTextarea {
   return el
 }
 
-describe('WebUiTextarea', () => {
+describe('WebUiTextarea 组件', () => {
   afterEach(() => {
     document.body.innerHTML = ''
   })
@@ -109,7 +109,7 @@ describe('WebUiTextarea', () => {
     })
   })
 
-  describe('disabled', () => {
+  describe('禁用状态', () => {
     it('disabled 时点击容器不聚焦原生 textarea', async () => {
       const el = createTextarea()
       el.disabled = true
@@ -213,7 +213,7 @@ describe('WebUiTextarea', () => {
     })
   })
 
-  describe('clearable', () => {
+  describe('可清除', () => {
     it('clearable 有值时触发 input 事件', async () => {
       const el = createTextarea()
       el.clearable = true
@@ -268,7 +268,7 @@ describe('WebUiTextarea', () => {
     })
   })
 
-  describe('autosize', () => {
+  describe('自动高度', () => {
     it('autosize 启用后同步高度', async () => {
       const el = createTextarea({ autosize: '' })
       await waitForUpdate(el)
@@ -294,7 +294,7 @@ describe('WebUiTextarea', () => {
     })
   })
 
-  describe('slot 投影', () => {
+  describe('插槽投影', () => {
     it('prefix 内容投影', async () => {
       const el = createTextarea()
       el.innerHTML = '<span slot="prefix">Q</span>'
@@ -316,7 +316,7 @@ describe('WebUiTextarea', () => {
     })
   })
 
-  describe('a11y', () => {
+  describe('无障碍', () => {
     it('将 aria-label 转发给原生 textarea', async () => {
       const el = createTextarea({ 'aria-label': '个人简介' })
       await waitForUpdate(el)

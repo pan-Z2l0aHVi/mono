@@ -4,7 +4,7 @@ Read this guide before changing package scripts, Vite/Turbo configuration, packa
 
 ## Per-package commands
 
-Each package has `build`, `test`, and usually `dev` (watch mode). Run them with `pnpm --filter @greypan/<name> <script>`; for example, `pnpm --filter @greypan/js-kit test`.
+Packages expose the commands they need: every buildable package has `build`, most have `dev` (watch mode), and only packages with maintained automated coverage expose `test`. Run them with `pnpm --filter @greypan/<name> <script>`; for example, `pnpm --filter @greypan/js-kit test`.
 
 Build scripts differ by package type:
 
@@ -75,7 +75,7 @@ apps/
 
 ## Applications
 
-- `react-web-ui-demo` uses `@vitejs/plugin-react` v4 with React Compiler (`babel-plugin-react-compiler`, target 19), plus `@vitejs/plugin-legacy` for older browser support.
+- `react-web-ui-demo` uses `@vitejs/plugin-react` v4 with React Compiler (`babel-plugin-react-compiler`, target 19), plus `@vitejs/plugin-legacy` for older browser support. The React and Vue demo apps currently rely on browser verification rather than maintained unit-test suites.
 - Both demo apps use `basicSsl()` for HTTPS development servers.
 - `depsReload` watches library `dist/` directories and triggers a full page reload when a local dependency changes.
 

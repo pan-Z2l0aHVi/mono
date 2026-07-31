@@ -14,19 +14,9 @@ export type ExtractProps<T> = {
 export type OmitLitBase<T> = Omit<T, keyof HTMLElement | keyof LitElement>
 
 /**
- * kebab-case 转 PascalCase
- * 'visible-change' → 'VisibleChange'
- * 'input' → 'Input'
+ * 将 EventMap 转换为 React 19 Custom Element 的精确事件键。
+ * 例如 { 'open-change': CustomEvent<...> } → { 'onopen-change'?: (e: CustomEvent<...>) => void }
  */
-type KebabToPascal<S extends string> = S extends `${infer P}-${infer Q}`
-  ? `${Capitalize<P>}${KebabToPascal<Q>}`
-  : Capitalize<S>
-
-/**
- * 将 EventMap 转换为 on* 事件监听器类型
- * 例如 { input: Event } → { onInput?: (e: Event) => void }
- *      { 'visible-change': CustomEvent<...> } → { onVisibleChange?: (e: CustomEvent<...>) => void }
- */
-export type EventListeners<T> = {
-  [K in keyof T & string as `on${KebabToPascal<K>}`]?: (e: T[K]) => void
+export type ExactEventListeners<T> = {
+  [K in keyof T & string as `on${K}`]?: (e: T[K]) => void
 }

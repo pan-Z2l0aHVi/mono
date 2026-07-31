@@ -48,9 +48,6 @@ export default {
       modernPolyfills: true
     })
   ],
-  test: {
-    environment: 'jsdom'
-  },
   build: {},
   css: {
     transformer: 'lightningcss'

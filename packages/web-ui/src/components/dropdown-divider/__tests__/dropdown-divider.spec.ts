@@ -11,7 +11,7 @@ function createDivider(): WebUiDropdownDivider {
   return el
 }
 
-describe('WebUiDropdownDivider', () => {
+describe('WebUiDropdownDivider 组件', () => {
   it('渲染为 separator 角色', async () => {
     const el = createDivider()
     await waitForUpdate(el)

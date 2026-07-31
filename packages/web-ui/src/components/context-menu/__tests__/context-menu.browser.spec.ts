@@ -17,7 +17,7 @@ async function nextFrame() {
 
 afterEach(() => document.body.replaceChildren())
 
-describe('WebUiContextMenu（浏览器）', () => {
+describe('WebUiContextMenu 组件（浏览器）', () => {
   it('openAt() 以即时状态显示根菜单', async () => {
     const menu = document.createElement('web-ui-context-menu')
     menu.innerHTML = '<web-ui-dropdown-item>Open</web-ui-dropdown-item>'

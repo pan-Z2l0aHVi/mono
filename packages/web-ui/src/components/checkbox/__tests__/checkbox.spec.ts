@@ -11,8 +11,8 @@ const createCheckbox = (): WebUiCheckbox => {
   return el
 }
 
-describe('WebUiCheckbox', () => {
-  describe('prop: checked', () => {
+describe('WebUiCheckbox 组件', () => {
+  describe('属性：checked', () => {
     it('checked 默认值为 false', async () => {
       const el = createCheckbox()
       await waitForUpdate(el)
@@ -50,7 +50,7 @@ describe('WebUiCheckbox', () => {
     })
   })
 
-  describe('prop: disabled', () => {
+  describe('属性：disabled', () => {
     it('disabled 属性反射到 host', async () => {
       const el = createCheckbox()
       expect(el.hasAttribute('disabled')).toBe(false)
@@ -84,7 +84,7 @@ describe('WebUiCheckbox', () => {
     })
   })
 
-  describe('prop: value / name / required', () => {
+  describe('属性：value / name / required', () => {
     it('value 可设置和获取', async () => {
       const el = createCheckbox()
       el.value = 'agree'

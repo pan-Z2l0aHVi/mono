@@ -64,6 +64,10 @@ _Avoid_: Overlay, modal
 **Public Component Contract**:
 The stable, documented surface of a component: props, default values, allowed values, slots, methods, events, accessibility semantics, and form behavior. Implementation details (shadow DOM structure, CSS classes, private state) are not part of the contract. Tests verify the contract, not the implementation.
 
+**React Custom-element Binding**:
+The React-side mapping from a `web-ui` public component contract to JSX: JavaScript properties use their camel-cased names, while custom events use their exact dispatched event names. It is distinct from the framework type wrapper.
+_Avoid_: React event normalization
+
 **Pointer Interaction**:
 Component interaction using Pointer Events (pointerenter, pointerleave, pointerdown, pointermove, pointerup, pointercancel) instead of mouse-specific events. Ensures consistent behavior across mouse, touch, and pen input. Contextmenu retains its own semantic event. Click remains the event for external-click-to-close detection.
 

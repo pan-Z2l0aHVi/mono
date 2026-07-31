@@ -4,6 +4,10 @@
 
 English | [简体中文](./README.CN.md)
 
+## Demo
+
+[View demo](https://pan-z2l0ahvi.github.io/mono/)
+
 ## Install
 
 ```bash
@@ -54,6 +58,40 @@ function App() {
     </>
   )
 }
+```
+
+#### React custom-element events and boolean properties
+
+React 19 registers Custom Element events using the suffix of the JSX `on` key unchanged. Event names are
+case-sensitive: bind `open-change` as `onopen-change`, not `onOpenChange`. Standard `input` and `change`
+events continue to use React's conventional `onInput` and `onChange`. For a default-`true` property, pass the
+camel-cased JavaScript property so `false` reaches the element.
+
+```tsx
+<web-ui-dialog
+  open={open}
+  lockScroll={false}
+  onopen-change={event => setOpen(event.detail.open)}
+/>
+<web-ui-select value={value} onChange={event => setValue(event.currentTarget.value)} />
+```
+
+When a component moves a child into its Portal Shadow DOM (such as a `web-ui-dropdown` menu item), React's
+root-delegated synthetic `onClick` cannot receive that child's event. Bind a native listener directly through a
+`ref` instead:
+
+```tsx
+const itemRef = useRef<HTMLElement>(null)
+
+useEffect(() => {
+  const item = itemRef.current
+  if (!item) return
+  const close = () => setOpen(false)
+  item.addEventListener('click', close)
+  return () => item.removeEventListener('click', close)
+}, [])
+
+<web-ui-dropdown-item ref={itemRef}>Paste and close</web-ui-dropdown-item>
 ```
 
 ### Vue
@@ -304,7 +342,7 @@ Segmented control — single-select button group.
 | ---------- | --------- | ------- | ---------------------- |
 | `value`    | `string`  | `''`    | Selected trigger value |
 | `name`     | `string`  | `''`    | Form field name        |
-| `disabled` | `boolean` | `false` | Disabled state         |
+| `disabled` | `boolean` | `false` | Disables all triggers  |
 | `required` | `boolean` | `false` | Required validation    |
 
 **Events:** `input`, `change`
@@ -313,24 +351,24 @@ Segmented control — single-select button group.
 
 Form-associated: integrates with native `<form>` via `ElementInternals`.
 
-Manages child trigger `checked` state based on `value`. Setting `value` directly does not dispatch `input`/`change`.
+Manages child trigger `checked` state based on `value`. `disabled` supplies inherited effective disabled state without changing a trigger's own `disabled` property. Setting `value` directly does not dispatch `input`/`change`.
 
 #### `<web-ui-checkbox-group>`
 
 Checkbox group managing multiple selection.
 
-| Attribute  | Type       | Default | Description                             |
-| ---------- | ---------- | ------- | --------------------------------------- |
-| `value`    | `string[]` | `[]`    | Selected values                         |
-| `name`     | `string`   | `''`    | Form field name                         |
-| `disabled` | `boolean`  | `false` | Disabled state (propagates to children) |
-| `required` | `boolean`  | `false` | Required validation                     |
+| Attribute  | Type       | Default | Description                 |
+| ---------- | ---------- | ------- | --------------------------- |
+| `value`    | `string[]` | `[]`    | Selected values             |
+| `name`     | `string`   | `''`    | Form field name             |
+| `disabled` | `boolean`  | `false` | Disables all child controls |
+| `required` | `boolean`  | `false` | Required validation         |
 
 **Events:** `input`, `change`
 
 **Slots:** `default` (project `<web-ui-checkbox>` elements)
 
-Syncs with child checkbox `checked`/`disabled` via public property access. Listens to child `change` events.
+Syncs child checkbox `checked` state. `disabled` supplies inherited effective disabled state without changing a child's own `disabled` property. Listens to child `change` events.
 
 #### `<web-ui-radio-group>`
 
@@ -340,12 +378,14 @@ Radio group managing single selection.
 | ---------- | --------- | ------- | ---------------------------------------- |
 | `value`    | `string`  | `''`    | Selected radio value                     |
 | `name`     | `string`  | `''`    | Form field name (propagates to children) |
-| `disabled` | `boolean` | `false` | Disabled state (propagates to children)  |
+| `disabled` | `boolean` | `false` | Disables all child controls              |
 | `required` | `boolean` | `false` | Required validation                      |
 
 **Events:** `input`, `change`
 
 **Slots:** `default` (project `<web-ui-radio>` elements)
+
+`disabled` supplies inherited effective disabled state without changing a child's own `disabled` property.
 
 ---
 
@@ -764,11 +804,11 @@ Not form-associated (child of select, not independent submit).
 
 Segment trigger for `<web-ui-segmented>`.
 
-| Attribute  | Type      | Default | Description        |
-| ---------- | --------- | ------- | ------------------ |
-| `value`    | `string`  | `''`    | Segment value      |
-| `checked`  | `boolean` | `false` | Currently selected |
-| `disabled` | `boolean` | `false` | Disabled state     |
+| Attribute  | Type      | Default | Description                        |
+| ---------- | --------- | ------- | ---------------------------------- |
+| `value`    | `string`  | `''`    | Segment value                      |
+| `checked`  | `boolean` | `false` | Currently selected                 |
+| `disabled` | `boolean` | `false` | Individually disables this trigger |
 
 **Events:** `change`
 

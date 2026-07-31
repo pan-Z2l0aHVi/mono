@@ -11,8 +11,8 @@ const createSwitch = (): WebUiSwitch => {
   return el
 }
 
-describe('WebUiSwitch', () => {
-  describe('prop: checked', () => {
+describe('WebUiSwitch 组件', () => {
+  describe('属性：checked', () => {
     it('checked 默认值为 false', async () => {
       const el = createSwitch()
       await waitForUpdate(el)
@@ -50,7 +50,7 @@ describe('WebUiSwitch', () => {
     })
   })
 
-  describe('prop: disabled', () => {
+  describe('属性：disabled', () => {
     it('disabled 属性反射到 host', async () => {
       const el = createSwitch()
       expect(el.hasAttribute('disabled')).toBe(false)
@@ -84,7 +84,7 @@ describe('WebUiSwitch', () => {
     })
   })
 
-  describe('prop: loading', () => {
+  describe('属性：loading', () => {
     it('loading 时点击不切换状态', async () => {
       const el = createSwitch()
       el.loading = true
@@ -101,7 +101,7 @@ describe('WebUiSwitch', () => {
     })
   })
 
-  describe('prop: name / value', () => {
+  describe('属性：name / value', () => {
     it('可以设置 name', async () => {
       const el = createSwitch()
       el.name = 'agreed'

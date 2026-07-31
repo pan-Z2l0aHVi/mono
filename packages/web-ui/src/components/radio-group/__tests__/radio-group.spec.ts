@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vite-plus/test'
 
 import '..'
 import '@/components/radio'
-import { waitForUpdate, spyEvents, cleanupElement } from '@/shared/test-utils'
+import { waitForUpdate, spyEvents, cleanupElement, queryA11y } from '@/shared/test-utils'
 
 import type { WebUiRadioGroup } from '..'
 import type { WebUiRadio } from '../../radio'
@@ -32,7 +32,7 @@ const clickChild = (group: WebUiRadioGroup, index: number) => {
   label.click()
 }
 
-describe('WebUiRadioGroup', () => {
+describe('WebUiRadioGroup 组件', () => {
   describe('属性: value', () => {
     it('初始值为空字符串', async () => {
       const el = createGroup()
@@ -93,17 +93,39 @@ describe('WebUiRadioGroup', () => {
       cleanupElement(el)
     })
 
-    it('disabled 为 true 时不改写子 radio 的声明式 disabled 属性', async () => {
-      const el = createGroup()
+    it('继承禁用不改写子项属性，移出 Tab 序列，并保留单项禁用', async () => {
+      const el = createGroup(`
+        <web-ui-radio value="a" disabled>A</web-ui-radio>
+        <web-ui-radio value="b">B</web-ui-radio>
+        <web-ui-radio value="c">C</web-ui-radio>
+      `)
       await waitForUpdate(el)
 
       el.disabled = true
       await waitForUpdate(el)
 
       const radios = el.querySelectorAll<WebUiRadio>('web-ui-radio')
-      expect(radios[0].disabled).toBe(false)
+      await Promise.all([...radios].map(radio => radio.updateComplete))
+      expect(radios[0].disabled).toBe(true)
       expect(radios[1].disabled).toBe(false)
       expect(radios[2].disabled).toBe(false)
+      for (const radio of radios) {
+        const control = queryA11y(radio, '[role="radio"]')
+        expect(control?.getAttribute('aria-disabled')).toBe('true')
+        expect(control?.getAttribute('tabindex')).toBe('-1')
+      }
+
+      el.disabled = false
+      await waitForUpdate(el)
+      await Promise.all([...radios].map(radio => radio.updateComplete))
+
+      expect(queryA11y(radios[0], '[role="radio"]')?.getAttribute('aria-disabled')).toBe('true')
+      expect(queryA11y(radios[0], '[role="radio"]')?.getAttribute('tabindex')).toBe('-1')
+      for (const radio of [...radios].slice(1)) {
+        const control = queryA11y(radio, '[role="radio"]')
+        expect(control?.getAttribute('aria-disabled')).toBe('false')
+        expect(control?.getAttribute('tabindex')).toBe('0')
+      }
 
       cleanupElement(el)
     })

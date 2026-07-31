@@ -16,7 +16,7 @@ const createAvatar = (attrs?: Record<string, string>): WebUiAvatar => {
   return el
 }
 
-describe('WebUiAvatar', () => {
+describe('WebUiAvatar 组件', () => {
   describe('默认属性值', () => {
     it('默认 size 为 40', async () => {
       const el = createAvatar()
@@ -107,7 +107,7 @@ describe('WebUiAvatar', () => {
     })
   })
 
-  describe('slot 投影', () => {
+  describe('插槽投影', () => {
     it('默认 slot 内容保留在 light DOM', async () => {
       const el = createAvatar()
       const child = document.createElement('span')

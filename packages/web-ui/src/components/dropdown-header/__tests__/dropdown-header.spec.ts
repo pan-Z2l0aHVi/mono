@@ -12,7 +12,7 @@ function createHeader(content = ''): WebUiDropdownHeader {
   return el
 }
 
-describe('WebUiDropdownHeader', () => {
+describe('WebUiDropdownHeader 组件', () => {
   it('slot 文本内容可通过 textContent 访问', async () => {
     const el = createHeader('分组标题')
     await waitForUpdate(el)

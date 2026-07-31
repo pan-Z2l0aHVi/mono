@@ -13,7 +13,7 @@ async function nextFrame() {
 
 afterEach(() => document.body.replaceChildren())
 
-describe('reduced-motion（浏览器）', () => {
+describe('减少动效（浏览器）', () => {
   it('Dialog 和 Drawer 移除位移并保留透明度过渡', async () => {
     const dialog = document.createElement('web-ui-dialog')
     document.body.append(dialog)
