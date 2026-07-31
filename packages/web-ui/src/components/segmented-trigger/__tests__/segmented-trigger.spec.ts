@@ -11,8 +11,8 @@ const createTrigger = (): WebUiSegmentedTrigger => {
   return el
 }
 
-describe('WebUiSegmentedTrigger', () => {
-  describe('prop: value', () => {
+describe('WebUiSegmentedTrigger 组件', () => {
+  describe('属性：value', () => {
     it('value 可通过属性设置和获取', async () => {
       const el = createTrigger()
       el.value = 'option-1'
@@ -22,7 +22,7 @@ describe('WebUiSegmentedTrigger', () => {
     })
   })
 
-  describe('prop: checked', () => {
+  describe('属性：checked', () => {
     it('checked 属性反映到 host 元素', async () => {
       const el = createTrigger()
       await waitForUpdate(el)
@@ -40,7 +40,7 @@ describe('WebUiSegmentedTrigger', () => {
     })
   })
 
-  describe('prop: disabled', () => {
+  describe('属性：disabled', () => {
     it('disabled 属性反映到 host 元素', async () => {
       const el = createTrigger()
       await waitForUpdate(el)
@@ -49,6 +49,10 @@ describe('WebUiSegmentedTrigger', () => {
       el.disabled = true
       await waitForUpdate(el)
       expect(el.hasAttribute('disabled')).toBe(true)
+
+      const control = queryA11y(el, '[role="option"]')
+      expect(control?.getAttribute('aria-disabled')).toBe('true')
+      expect(control?.getAttribute('tabindex')).toBe('-1')
 
       cleanupElement(el)
     })

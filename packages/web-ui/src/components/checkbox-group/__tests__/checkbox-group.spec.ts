@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vite-plus/test'
 
 import '..'
 import '@/components/checkbox'
-import { waitForUpdate, spyEvents, cleanupElement } from '@/shared/test-utils'
+import { waitForUpdate, spyEvents, cleanupElement, queryA11y } from '@/shared/test-utils'
 
 import type { WebUiCheckboxGroup } from '..'
 import type { WebUiCheckbox } from '../../checkbox'
@@ -32,7 +32,7 @@ const clickChild = (group: WebUiCheckboxGroup, index: number) => {
   label.click()
 }
 
-describe('WebUiCheckboxGroup', () => {
+describe('WebUiCheckboxGroup 组件', () => {
   describe('属性: value', () => {
     it('初始值为空数组', async () => {
       const el = createGroup()
@@ -90,17 +90,39 @@ describe('WebUiCheckboxGroup', () => {
       cleanupElement(el)
     })
 
-    it('disabled 为 true 时不改写子 checkbox 的声明式 disabled 属性', async () => {
-      const el = createGroup()
+    it('继承禁用不改写子项属性，移出 Tab 序列，并保留单项禁用', async () => {
+      const el = createGroup(`
+        <web-ui-checkbox value="a" disabled>A</web-ui-checkbox>
+        <web-ui-checkbox value="b">B</web-ui-checkbox>
+        <web-ui-checkbox value="c">C</web-ui-checkbox>
+      `)
       await waitForUpdate(el)
 
       el.disabled = true
       await waitForUpdate(el)
 
       const checkboxes = el.querySelectorAll<WebUiCheckbox>('web-ui-checkbox')
-      expect(checkboxes[0].disabled).toBe(false)
+      await Promise.all([...checkboxes].map(checkbox => checkbox.updateComplete))
+      expect(checkboxes[0].disabled).toBe(true)
       expect(checkboxes[1].disabled).toBe(false)
       expect(checkboxes[2].disabled).toBe(false)
+      for (const checkbox of checkboxes) {
+        const control = queryA11y(checkbox, '[role="checkbox"]')
+        expect(control?.getAttribute('aria-disabled')).toBe('true')
+        expect(control?.getAttribute('tabindex')).toBe('-1')
+      }
+
+      el.disabled = false
+      await waitForUpdate(el)
+      await Promise.all([...checkboxes].map(checkbox => checkbox.updateComplete))
+
+      expect(queryA11y(checkboxes[0], '[role="checkbox"]')?.getAttribute('aria-disabled')).toBe('true')
+      expect(queryA11y(checkboxes[0], '[role="checkbox"]')?.getAttribute('tabindex')).toBe('-1')
+      for (const checkbox of [...checkboxes].slice(1)) {
+        const control = queryA11y(checkbox, '[role="checkbox"]')
+        expect(control?.getAttribute('aria-disabled')).toBe('false')
+        expect(control?.getAttribute('tabindex')).toBe('0')
+      }
 
       cleanupElement(el)
     })
