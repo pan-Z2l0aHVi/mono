@@ -112,7 +112,7 @@ export class WebUiCheckbox extends LitElement {
     return html`
       <label
         class=${classMap(cls)}
-        tabindex="0"
+        tabindex=${this._isDisabled ? '-1' : '0'}
         role="checkbox"
         aria-checked=${String(this._checked)}
         aria-disabled=${String(this._isDisabled)}

@@ -30,8 +30,10 @@ const appendFormControl = <T extends HTMLElement>(tagName: string): [HTMLFormEle
   return [form, control]
 }
 
-describe('form-associated components', () => {
-  it('submits text and numeric values only when a name is provided', async () => {
+type FormAssociatedControl = HTMLElement & { updateComplete: Promise<unknown> }
+
+describe('表单关联组件（浏览器）', () => {
+  it('仅在提供 name 时提交文本和数值', async () => {
     const cases: Array<[string, string, string | number]> = [
       ['web-ui-input', 'query', 'search'],
       ['web-ui-textarea', 'bio', 'hello world'],
@@ -56,7 +58,7 @@ describe('form-associated components', () => {
     expect([...new FormData(form).keys()]).toHaveLength(0)
   })
 
-  it('submits checkable values only when checked and restores their declarative initial state', async () => {
+  it('仅在选中时提交可勾选控件值，并恢复声明初始状态', async () => {
     const cases: Array<[string, string]> = [
       ['web-ui-checkbox', 'agree'],
       ['web-ui-radio', 'gender'],
@@ -97,7 +99,7 @@ describe('form-associated components', () => {
     }
   })
 
-  it('uses the native on fallback for checked controls without a value', async () => {
+  it('未提供 value 的已选控件使用原生 on 回退值', async () => {
     const [form, checkbox] = appendFormControl<WebUiCheckbox>('web-ui-checkbox')
     checkbox.name = 'agree'
     checkbox.checked = true
@@ -106,7 +108,7 @@ describe('form-associated components', () => {
     expect(new FormData(form).get('agree')).toBe('on')
   })
 
-  it('submits checkbox and radio group values without child entries', async () => {
+  it('Checkbox Group 和 Radio Group 提交值时不产生子项重复条目', async () => {
     const form = document.createElement('form')
     form.innerHTML = `
       <web-ui-checkbox-group name="hobbies" value="a,b">
@@ -130,7 +132,38 @@ describe('form-associated components', () => {
     expect(data.get('a')).toBeNull()
   })
 
-  it('submits select, slider, and segmented values', async () => {
+  it('fieldset 禁用变化不改写 Group 的公开 disabled 属性', async () => {
+    const cases = [
+      ['web-ui-checkbox-group', 'feature'],
+      ['web-ui-radio-group', 'choice']
+    ] as const
+
+    for (const [tagName, name] of cases) {
+      const form = document.createElement('form')
+      const fieldset = document.createElement('fieldset')
+      const group = document.createElement(tagName) as FormAssociatedControl
+      fieldset.disabled = true
+      group.setAttribute('name', name)
+      group.setAttribute('required', '')
+      fieldset.append(group)
+      form.append(fieldset)
+      document.body.append(form)
+      await group.updateComplete
+
+      expect(group.hasAttribute('disabled')).toBe(false)
+      expect(form.checkValidity()).toBe(true)
+
+      fieldset.disabled = false
+      await group.updateComplete
+
+      expect(group.hasAttribute('disabled')).toBe(false)
+      expect(form.checkValidity()).toBe(false)
+
+      form.remove()
+    }
+  })
+
+  it('提交 Select、Slider 和 Segmented 的值', async () => {
     const form = document.createElement('form')
     form.innerHTML = `
       <web-ui-select name="fruit"><web-ui-option value="banana">Banana</web-ui-option></web-ui-select>
@@ -153,7 +186,7 @@ describe('form-associated components', () => {
     expect(data.get('choice')).toBe('b')
   })
 
-  it('resets a select to its initial value through the native form lifecycle', async () => {
+  it('通过原生表单生命周期将 Select 重置为初始值', async () => {
     const [form, select] = appendFormControl<WebUiSelect>('web-ui-select')
     select.name = 'fruit'
     select.innerHTML = '<web-ui-option value="banana">Banana</web-ui-option>'
@@ -166,7 +199,7 @@ describe('form-associated components', () => {
     expect(select.value).toBe('')
   })
 
-  it('does not submit controls without a name', async () => {
+  it('不提交未提供 name 的控件', async () => {
     const [form, input] = appendFormControl<WebUiInputNumber>('web-ui-input-number')
     input.value = 42
     await input.updateComplete

@@ -14,7 +14,7 @@ function createEl(): WebUiSvgDrawLines {
 
 afterEach(() => document.body.replaceChildren())
 
-describe('WebUiSvgDrawLines browser', () => {
+describe('WebUiSvgDrawLines 组件（浏览器）', () => {
   it('直接 light DOM SVG 完成后恢复原始内联样式', async () => {
     const el = createEl()
     el.duration = 50

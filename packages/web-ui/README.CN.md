@@ -4,6 +4,10 @@
 
 [English](./README.md) | 简体中文
 
+## 演示
+
+[查看演示](https://pan-z2l0ahvi.github.io/mono/)
+
 ## 安装
 
 ```bash
@@ -54,6 +58,39 @@ function App() {
     </>
   )
 }
+```
+
+#### React 自定义元素事件与布尔属性
+
+React 19 按 JSX 键名中的 `on` 后缀原样注册 Custom Element 事件。事件名大小写敏感：`open-change`
+必须绑定为 `onopen-change`，不能写成 `onOpenChange`。标准 `input` 和 `change` 事件仍使用 React
+惯用的 `onInput` 和 `onChange`。默认值为 `true` 的属性应使用驼峰 JavaScript 属性传入，这样 `false`
+才会传递给组件。
+
+```tsx
+<web-ui-dialog
+  open={open}
+  lockScroll={false}
+  onopen-change={event => setOpen(event.detail.open)}
+/>
+<web-ui-select value={value} onChange={event => setValue(event.currentTarget.value)} />
+```
+
+当组件会把子元素移入自身的 Portal Shadow DOM（例如 `web-ui-dropdown` 的菜单项）时，React 根节点的
+合成 `onClick` 无法收到该子元素的事件。需要通过 `ref` 直接绑定原生事件：
+
+```tsx
+const itemRef = useRef<HTMLElement>(null)
+
+useEffect(() => {
+  const item = itemRef.current
+  if (!item) return
+  const close = () => setOpen(false)
+  item.addEventListener('click', close)
+  return () => item.removeEventListener('click', close)
+}, [])
+
+<web-ui-dropdown-item ref={itemRef}>粘贴并关闭</web-ui-dropdown-item>
 ```
 
 ### Vue
@@ -296,12 +333,12 @@ ArrowUp/ArrowDown 键增减数值。
 
 分段控制——单选按钮组。
 
-| 属性       | 类型      | 默认值  | 说明       |
-| ---------- | --------- | ------- | ---------- |
-| `value`    | `string`  | `''`    | 当前选中值 |
-| `name`     | `string`  | `''`    | 表单字段名 |
-| `disabled` | `boolean` | `false` | 禁用状态   |
-| `required` | `boolean` | `false` | 必填校验   |
+| 属性       | 类型      | 默认值  | 说明             |
+| ---------- | --------- | ------- | ---------------- |
+| `value`    | `string`  | `''`    | 当前选中值       |
+| `name`     | `string`  | `''`    | 表单字段名       |
+| `disabled` | `boolean` | `false` | 禁用全部 trigger |
+| `required` | `boolean` | `false` | 必填校验         |
 
 **事件：** `input`, `change`
 
@@ -309,24 +346,24 @@ ArrowUp/ArrowDown 键增减数值。
 
 与原生 `<form>` 集成（通过 `ElementInternals`）。
 
-根据 `value` 同步子 trigger 的 `checked` 状态。直接设 `value` 不派发事件。
+根据 `value` 同步子 trigger 的 `checked` 状态。`disabled` 提供继承的有效禁用状态，不改写 trigger 自身的 `disabled` 属性。直接设 `value` 不派发事件。
 
 #### `<web-ui-checkbox-group>`
 
 多选复选框组。
 
-| 属性       | 类型       | 默认值  | 说明                   |
-| ---------- | ---------- | ------- | ---------------------- |
-| `value`    | `string[]` | `[]`    | 已选项的值数组         |
-| `name`     | `string`   | `''`    | 表单字段名             |
-| `disabled` | `boolean`  | `false` | 禁用状态（传递到子项） |
-| `required` | `boolean`  | `false` | 必填校验               |
+| 属性       | 类型       | 默认值  | 说明           |
+| ---------- | ---------- | ------- | -------------- |
+| `value`    | `string[]` | `[]`    | 已选项的值数组 |
+| `name`     | `string`   | `''`    | 表单字段名     |
+| `disabled` | `boolean`  | `false` | 禁用全部子项   |
+| `required` | `boolean`  | `false` | 必填校验       |
 
 **事件：** `input`, `change`
 
 **插槽：** `default`（投影 `<web-ui-checkbox>` 元素）
 
-通过子项公开属性同步 `checked`/`disabled`。监听子项 `change` 事件。
+同步子 checkbox 的 `checked` 状态。`disabled` 提供继承的有效禁用状态，不改写子项自身的 `disabled` 属性。监听子项 `change` 事件。
 
 #### `<web-ui-radio-group>`
 
@@ -336,12 +373,14 @@ ArrowUp/ArrowDown 键增减数值。
 | ---------- | --------- | ------- | ------------------------ |
 | `value`    | `string`  | `''`    | 当前选中值               |
 | `name`     | `string`  | `''`    | 表单字段名（传递到子项） |
-| `disabled` | `boolean` | `false` | 禁用状态（传递到子项）   |
+| `disabled` | `boolean` | `false` | 禁用全部子项             |
 | `required` | `boolean` | `false` | 必填校验                 |
 
 **事件：** `input`, `change`
 
 **插槽：** `default`（投影 `<web-ui-radio>` 元素）
+
+`disabled` 提供继承的有效禁用状态，不改写子项自身的 `disabled` 属性。
 
 ---
 
@@ -760,11 +799,11 @@ toast.updateMessage(id, { message: '上传已完成 60%', heading: '正在上传
 
 `<web-ui-segmented>` 的分段按钮。
 
-| 属性       | 类型      | 默认值  | 说明     |
-| ---------- | --------- | ------- | -------- |
-| `value`    | `string`  | `''`    | 分段值   |
-| `checked`  | `boolean` | `false` | 当前选中 |
-| `disabled` | `boolean` | `false` | 禁用状态 |
+| 属性       | 类型      | 默认值  | 说明               |
+| ---------- | --------- | ------- | ------------------ |
+| `value`    | `string`  | `''`    | 分段值             |
+| `checked`  | `boolean` | `false` | 当前选中           |
+| `disabled` | `boolean` | `false` | 单独禁用该 trigger |
 
 **事件：** `change`
 

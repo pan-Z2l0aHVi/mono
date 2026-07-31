@@ -36,7 +36,7 @@ import type {
   WebUiTooltip
 } from '../components'
 
-import type { ExtractProps, EventListeners, OmitLitBase } from './utils'
+import type { ExtractProps, OmitLitBase } from './utils'
 
 // 从 $events 提取 Vue emit 类型
 // $events 格式: { input: Event, change: Event }

@@ -6,7 +6,7 @@ afterEach(() => {
   document.body.innerHTML = ''
 })
 
-describe('overlay portal', () => {
+describe('浮层 Portal', () => {
   it('显式容器优先于主题和 fallback root', () => {
     const target = document.createElement('div')
     const container = document.createElement('div')

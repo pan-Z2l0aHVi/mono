@@ -24,8 +24,8 @@ afterEach(() => {
   document.body.innerHTML = ''
 })
 
-describe('WebUiTheme', () => {
-  describe('prop: motion', () => {
+describe('WebUiTheme 组件', () => {
+  describe('属性：motion', () => {
     it('默认使用 system 并反射到 host', async () => {
       const theme = createTheme('light')
       await theme.updateComplete
@@ -71,7 +71,7 @@ describe('WebUiTheme', () => {
     })
   })
 
-  describe('prop: appearance', () => {
+  describe('属性：appearance', () => {
     it('appearance 反射到 host', async () => {
       const theme = createTheme('dark')
       await theme.updateComplete

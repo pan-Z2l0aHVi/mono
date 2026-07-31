@@ -12,7 +12,7 @@ function createDialog(): WebUiDialog {
   return dialog
 }
 
-describe('WebUiDialog（浏览器）', () => {
+describe('WebUiDialog 组件（浏览器）', () => {
   it('退出过渡完成前保持原生 dialog 位于 top layer', async () => {
     const component = createDialog()
     component.open = true

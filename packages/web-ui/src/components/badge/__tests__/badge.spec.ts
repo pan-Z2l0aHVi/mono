@@ -17,7 +17,7 @@ const createBadge = (attrs?: Record<string, string>, slotContent?: string): WebU
   return el
 }
 
-describe('WebUiBadge', () => {
+describe('WebUiBadge 组件', () => {
   describe('默认属性值', () => {
     it('默认 count 为 0', async () => {
       const el = createBadge()
@@ -209,7 +209,7 @@ describe('WebUiBadge', () => {
     })
   })
 
-  describe('slot 投影', () => {
+  describe('插槽投影', () => {
     it('携带 slot 内容时组件正常渲染', async () => {
       const el = createBadge({ count: '3' }, '<button>消息</button>')
       await waitForUpdate(el)

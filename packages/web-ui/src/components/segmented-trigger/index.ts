@@ -1,5 +1,5 @@
 import { html, LitElement, unsafeCSS } from 'lit'
-import { customElement, property } from 'lit/decorators.js'
+import { customElement, property, state } from 'lit/decorators.js'
 import { classMap } from 'lit/directives/class-map.js'
 
 import style from './style.css?inline'
@@ -11,9 +11,18 @@ export class WebUiSegmentedTrigger extends LitElement {
   @property({ type: String }) value = ''
   @property({ type: Boolean, reflect: true }) checked = false
   @property({ type: Boolean, reflect: true }) disabled = false
+  @state() private _groupDisabled = false
+
+  private get _isDisabled(): boolean {
+    return this.disabled || this._groupDisabled
+  }
+
+  setGroupDisabled(disabled: boolean) {
+    this._groupDisabled = disabled
+  }
 
   private handleClick() {
-    if (this.disabled || this.checked) return
+    if (this._isDisabled || this.checked) return
     this.checked = true
     this.dispatchEvent(new Event('change', { bubbles: true, composed: true }))
   }
@@ -29,15 +38,16 @@ export class WebUiSegmentedTrigger extends LitElement {
     const cls = {
       'wui-segmented-trigger': true,
       'is-checked': this.checked,
-      'is-disabled': this.disabled
+      'is-disabled': this._isDisabled
     }
 
     return html`
       <div
         class=${classMap(cls)}
-        tabindex="0"
+        tabindex=${this._isDisabled ? '-1' : '0'}
         role="option"
         .ariaSelected=${String(this.checked)}
+        aria-disabled=${String(this._isDisabled)}
         @click=${this.handleClick}
         @keydown=${this.handleKeyDown}
       >

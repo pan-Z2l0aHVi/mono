@@ -13,6 +13,12 @@ const toggleFruit = (value: string) => {
     fruits.value = fruits.value.filter(v => v !== value)
   }
 }
+
+function updateGroupValues(event: Event) {
+  const target = event.currentTarget
+  if (!(target instanceof HTMLElement) || !Array.isArray((target as { value?: unknown }).value)) return
+  groupVals.value = (target as HTMLElement & { value: string[] }).value
+}
 </script>
 
 <template>
@@ -34,7 +40,7 @@ const toggleFruit = (value: string) => {
 
     <h2>Checkbox Group</h2>
     <div class="mb-3 flex flex-col gap-3">
-      <web-ui-checkbox-group :value="groupVals" @value-changed="groupVals = $event.detail.value">
+      <web-ui-checkbox-group :value="groupVals" @change="updateGroupValues">
         <web-ui-checkbox value="apple">Apple</web-ui-checkbox>
         <web-ui-checkbox value="banana">Banana</web-ui-checkbox>
         <web-ui-checkbox value="cherry">Cherry</web-ui-checkbox>
@@ -44,7 +50,7 @@ const toggleFruit = (value: string) => {
 
     <h2>Checkbox Group 禁用</h2>
     <div class="mb-3 flex flex-col gap-3">
-      <web-ui-checkbox-group disabled :value="groupVals" @value-changed="groupVals = $event.detail.value">
+      <web-ui-checkbox-group disabled :value="groupVals" @change="updateGroupValues">
         <web-ui-checkbox value="apple">Apple</web-ui-checkbox>
         <web-ui-checkbox value="banana">Banana</web-ui-checkbox>
         <web-ui-checkbox value="cherry">Cherry</web-ui-checkbox>

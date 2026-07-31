@@ -12,7 +12,7 @@ const createButton = (text = ''): WebUiButton => {
   return el
 }
 
-describe('WebUiButton', () => {
+describe('WebUiButton 组件', () => {
   describe('属性: variant', () => {
     it('默认值为 glass，非法输入回退到默认值', async () => {
       const el = createButton()
@@ -157,7 +157,7 @@ describe('WebUiButton', () => {
     })
   })
 
-  describe('slot', () => {
+  describe('插槽', () => {
     it('slot 内容可通过 textContent 访问', async () => {
       const el = createButton('Click Me')
       await waitForUpdate(el)

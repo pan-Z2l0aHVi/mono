@@ -14,7 +14,7 @@ function touchPointerEvent(type: string): PointerEvent {
   return event
 }
 
-describe('WebUiSelect', () => {
+describe('WebUiSelect 组件', () => {
   function createSelect(optionsHtml = '', attrs?: Record<string, string>): WebUiSelect {
     const el = document.createElement('web-ui-select')
     if (attrs) {
@@ -275,7 +275,7 @@ describe('WebUiSelect', () => {
     })
   })
 
-  describe('lockScroll', () => {
+  describe('属性：lockScroll', () => {
     it('打开时锁定页面滚动，关闭时恢复', async () => {
       const el = createSelect(OPTIONS_HTML)
       await waitForUpdate(el)
@@ -460,7 +460,7 @@ describe('WebUiSelect', () => {
     })
   })
 
-  describe('disabled', () => {
+  describe('禁用状态', () => {
     it('disabled 时不可打开', async () => {
       const el = createSelect(OPTIONS_HTML)
       el.disabled = true
@@ -492,7 +492,7 @@ describe('WebUiSelect', () => {
     })
   })
 
-  describe('trigger slot', () => {
+  describe('触发器插槽', () => {
     it('提供 trigger slot 时渲染 slot 内容', async () => {
       const el = createSelect(OPTIONS_HTML)
       el.innerHTML = `

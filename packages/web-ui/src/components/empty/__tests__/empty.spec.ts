@@ -17,7 +17,7 @@ const createEmpty = (attrs?: Record<string, string>, content?: string): WebUiEmp
   return el
 }
 
-describe('WebUiEmpty', () => {
+describe('WebUiEmpty 组件', () => {
   describe('默认属性值', () => {
     it('默认 title 为空字符串', async () => {
       const el = createEmpty()
@@ -90,7 +90,7 @@ describe('WebUiEmpty', () => {
     })
   })
 
-  describe('slot 投影', () => {
+  describe('插槽投影', () => {
     it('默认 slot 内容优先于 title prop', async () => {
       const el = createEmpty({ title: 'prop 标题' }, '<strong>slot 标题</strong>')
       await waitForUpdate(el)
