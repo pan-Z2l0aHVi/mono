@@ -77,7 +77,7 @@ export function Root() {
   useEffect(() => {
     void router.load().then(() => {
       requestAnimationFrame(() => {
-        const link = navSidebarRef.current?.querySelector('.router-link-exact-active')
+        const link = navSidebarRef.current?.querySelector('.active')
         link?.scrollIntoView({ block: 'center' })
       })
     })
