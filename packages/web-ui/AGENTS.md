@@ -7,5 +7,6 @@ Read [`docs/agents/web-ui.md`](../../docs/agents/web-ui.md) before changing a co
 - Reuse the shared overlay presence lifecycle and the semantic layer tokens. Do not inject component styles into `document.head`.
 - Choose shared overlay modules by interaction model: anchored panels, coordinate menus, or native dialog modals. Do not combine their trigger, focus, or dismissal semantics in a generic base class.
 - Shared state modules use `definePlugin` factories named `defineXxx`; components create instances with `defineXxx(...).make(...)`.
+- Organize component descendant states with native CSS nesting while keeping `:host(...)` selectors top-level.
 - Add or update focused public-contract tests. Use browser-mode tests for browser-native behavior, and perform the root browser verification required by `AGENTS.md` for UI changes.
 - Keep `README.md` and `README.CN.md` structurally aligned when a public component API changes.

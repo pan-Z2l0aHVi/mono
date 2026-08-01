@@ -408,7 +408,13 @@ export class WebUiSelect extends LitElement {
     })
     portal.panel.style.width = `${desiredWidth}px`
     portal.panel.setAttribute('role', 'listbox')
-    portal.moveContent(Array.from(this.children))
+    const scroll = document.createElement('div')
+    scroll.className = 'select-scroll'
+    const content = document.createElement('div')
+    content.className = 'select-content'
+    scroll.append(content)
+    portal.panel.append(scroll)
+    portal.moveContent(Array.from(this.children), content)
     return portal
   }
 
@@ -445,7 +451,11 @@ export class WebUiSelect extends LitElement {
           <web-ui-icon class="arrow" .icon=${lucideChevronDown}></web-ui-icon>
         </div>
         <div class="wui-glass select-overlay wui-floating-panel" hidden role="listbox">
-          <slot @slotchange=${this._onSlotChange}></slot>
+          <div class="select-scroll">
+            <div class="select-content">
+              <slot @slotchange=${this._onSlotChange}></slot>
+            </div>
+          </div>
         </div>
       </div>
     `

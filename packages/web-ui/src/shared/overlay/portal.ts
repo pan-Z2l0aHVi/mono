@@ -13,7 +13,7 @@ interface OverlayPortalOptions {
 export interface OverlayPortal {
   readonly panel: HTMLElement
   restoreContent(): void
-  moveContent(nodes: Node[]): void
+  moveContent(nodes: Node[], target?: HTMLElement): void
   remove(): void
 }
 
@@ -24,15 +24,16 @@ export function createOverlayPortal(options: OverlayPortalOptions): OverlayPorta
   style.textContent = options.style
   const panel = document.createElement('div')
   panel.className = options.className
+  panel.dataset.wuiPresence = 'entering'
   root.append(style, panel)
   resolveOverlayContainer(options.container, options.target).appendChild(host)
 
   const nodes: Node[] = []
   return {
     panel,
-    moveContent(content) {
+    moveContent(content, target = panel) {
       nodes.splice(0, nodes.length, ...content)
-      panel.append(...nodes)
+      target.append(...nodes)
     },
     restoreContent() {
       options.target.append(...nodes)

@@ -6,9 +6,9 @@
 
 ## 演示
 
-[查看 vue 使用演示](https://pan-z2l0ahvi.github.io/mono/vue-web-ui-demo/)
+[查看组件在 vue 中使用](https://pan-z2l0ahvi.github.io/mono/vue-web-ui-demo/)
 
-[查看 react 使用演示](https://pan-z2l0ahvi.github.io/mono/react-web-ui-demo/)
+[查看组件在 react 中使用](https://pan-z2l0ahvi.github.io/mono/react-web-ui-demo/)
 
 ## 安装
 
@@ -725,7 +725,7 @@ SVG 线条绘制动画，基于 `stroke-dashoffset`。直接在原元素上动�
 
 **方法：** `getOverlayRoot()` — 返回 Portal 浮层容器
 
-定义 `--wui-color-*`、`--wui-shadow-*`、`--wui-layer-*` 与 motion token。motion token 是稳定的主题契约，可在主题范围覆盖：`--wui-duration-press`、`--wui-duration-fast`、`--wui-duration-overlay-enter`、`--wui-duration-overlay-exit`、`--wui-duration-drawer`、`--wui-ease-out`、`--wui-ease-standard`、`--wui-scale-press`、`--wui-scale-enter`。`motion="system"` 跟随 `prefers-reduced-motion`；使用 `motion="reduced"` 降低当前作用域动效，或在嵌套主题中使用 `motion="full"` 恢复默认 token。System 配色模式跟随 `prefers-color-scheme`。
+定义 `--wui-color-*`、`--wui-shadow-*`、`--wui-layer-*` 与 motion token。motion token 是稳定的主题契约，可在主题范围覆盖：`--wui-duration-press`、`--wui-duration-feedback`、`--wui-duration-fast`、`--wui-duration-menu-enter`、`--wui-duration-menu-exit`、`--wui-duration-overlay-enter`、`--wui-duration-overlay-exit`、`--wui-duration-drawer`、`--wui-ease-out`、`--wui-ease-standard`、`--wui-scale-press`、`--wui-scale-enter`。`motion="system"` 跟随 `prefers-reduced-motion`；使用 `motion="reduced"` 降低当前作用域动效，或在嵌套主题中使用 `motion="full"` 恢复默认 token。System 配色模式跟随 `prefers-color-scheme`。
 
 ---
 

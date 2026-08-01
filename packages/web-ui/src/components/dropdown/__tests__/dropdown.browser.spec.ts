@@ -134,18 +134,9 @@ describe('WebUiDropdown 组件（浏览器）', () => {
       ?.shadowRoot?.querySelector<HTMLElement>('[role="menuitem"]')
     expect(submenuControl).toBeTruthy()
 
-    const exitStarted = new Promise<void>(resolve => {
-      submenu?.addEventListener(
-        'transitionrun',
-        event => {
-          if (event.target === submenu && event.propertyName === 'opacity') resolve()
-        },
-        { once: true }
-      )
-    })
     submenuControl!.focus()
     submenuControl!.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true, composed: true }))
-    await exitStarted
+    expect(submenu?.dataset.wuiPresence).toBe('closing')
 
     parentControl!.focus()
     parentControl!.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, composed: true }))

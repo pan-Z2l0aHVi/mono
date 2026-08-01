@@ -23,7 +23,7 @@ Do not duplicate token values in guidance. Every `var(--wui-*, fallback)` used b
 - Prefer the semantic `--wui-*` color, surface, shadow, layer, and motion tokens over literal values. Component-local variables are implementation details, not public API.
 - `surface-glass` is for transparent controls; `surface-overlay` is for readable global overlay panels. Use the raised surface level that matches the visual contrast required by the control.
 - Keep the sticky layout header above content and sidebar. Use local layers for non-portal panels; portal menus use the menu layer; Toast sits above menus; native Dialog and Drawer use the browser top layer. BackTop belongs to the auxiliary layer below portal menus.
-- High-frequency controls use press tokens, anchored overlays use overlay enter/exit tokens, and Drawer uses its drawer token. `motion="system"` follows `prefers-reduced-motion`; `reduced` disables displacement within its theme scope; nested `full` scopes restore normal tokens.
+- High-frequency press interactions use press tokens; color and background feedback uses the feedback token; Dropdown, ContextMenu, and Select use menu enter/exit tokens; generic anchored overlays use overlay enter/exit tokens; Drawer uses its drawer token. `motion="system"` follows `prefers-reduced-motion`; `reduced` disables displacement within its theme scope; nested `full` scopes restore normal tokens.
 - Overlay visibility transitions must reuse `shared/overlay/presence`; overlay positioning remains owned by `defineOverlay`. In reduced motion, remove transform displacement while retaining necessary brief opacity or state feedback.
 - Put pointer hover affordances inside `@media (hover: hover) and (pointer: fine)`.
 
@@ -42,6 +42,7 @@ Do not duplicate token values in guidance. Every `var(--wui-*, fallback)` used b
 - Do not use global HTML attributes such as `hidden`, `title`, or `role` as component-specific state attributes. Map declarative boolean attributes explicitly. A default-true boolean that must accept a framework-provided `"false"` string uses `booleanWithFalseString` and tests its attribute path.
 - Use `classMap()` for multi-class state, `styleMap()` or safe template values for styles, and Lit's `nothing` for absent conditional content. When a prop and slot express the same content, the slot wins and slot changes must update dependent layout state.
 - Use top-level `:host([attribute])` selectors rather than nested host attribute selectors.
+- Prefer native CSS nesting for component descendant states; keep the scroll viewport and padded content as separate elements when padding must scroll with the content.
 
 ## Interaction, lifecycle, and accessibility
 
