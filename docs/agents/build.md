@@ -20,7 +20,7 @@ Build scripts differ by package type:
 - **Vue app**: `vue-tsc --build && vp build`.
 - **tsconfig**: no build step; it provides JSON files consumed through TypeScript `extends`.
 
-Run `pnpm run check:code` at the workspace root for formatting, linting, and type checking. Package build commands do not replace this check.
+Run `pnpm run check:code` at the workspace root for formatting, linting, and type checking. Run `pnpm run fix:code` to auto-fix formatting and lint issues before type-checking. Package build commands do not replace either command.
 
 For `web-ui`, `pnpm --filter @greypan/web-ui generate-icons` regenerates icon modules from `icons.used.json`. The Vite plugin also runs it during `vp build`.
 

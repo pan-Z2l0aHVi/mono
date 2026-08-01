@@ -14,7 +14,7 @@ Do not duplicate token values in guidance. Every `var(--wui-*, fallback)` used b
 ## Adding or changing a component
 
 - Add new built-in icons to `packages/web-ui/icons.used.json`, then run `pnpm --filter @greypan/web-ui generate-icons`. Import generated icon data from `@/icons`; do not add a runtime icon dependency.
-- Add a new component to both `src/types/vue.ts` and `src/types/react.ts` so framework users receive type support.
+- Add each component's `HTMLElementTagNameMap` declaration in its module. The component barrel derives `WebUiElementMap` from that map; framework type adapters use it to expose every `web-ui-*` entry.
 - Treat properties, defaults, allowed values, slots, methods, events, accessibility semantics, and form behavior as the public contract. Normalize literal and numeric properties through `@/shared/normalize` so JavaScript callers receive documented fallback behavior.
 - Synchronize `README.md` and `README.CN.md` when that public contract changes. Their structure must remain equivalent.
 
