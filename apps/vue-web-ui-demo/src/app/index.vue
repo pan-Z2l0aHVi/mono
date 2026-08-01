@@ -56,7 +56,7 @@ useHead({ title: () => route.meta.title })
 const navSidebar = ref<HTMLElement>()
 
 onMounted(async () => {
-  // 等待 Vue Router 完成首次导航，确保 router-link-active class 已就绪
+  // 等待 Vue Router 完成首次导航，确保 active class 已就绪
   await router.isReady()
   requestAnimationFrame(() => {
     const link = navSidebar.value?.querySelector('.router-link-exact-active')

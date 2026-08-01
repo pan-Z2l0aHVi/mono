@@ -9,5 +9,6 @@
 - 内部状态与行为实现使用 `import { definePlugin } from '@greypan/js-kit'` 的插件系统，不使用 `class` 封装；Lit 自定义元素等框架要求继承的类型不在此限。
 - 插件构建器命名为 `defineXxx`，并以 `defineXxx = (...) => definePlugin(...)` 形式返回插件；调用端使用 `defineXxx(...).make(...)`。
 - CSS 的组件内部后代状态优先使用原生 nesting 组织；`:host(...)` 状态选择器保持顶层，避免混淆 Shadow DOM 宿主边界。
+- `apps/` 下的项目编写样式时，优先使用 Tailwind v4 工具类（含 arbitrary properties 和 arbitrary variants）；仅在 Tailwind 无法表达的场景（如 keyframes、复杂嵌套选择器）才允许使用 CSS 文件兜底。
 - 格式化工具负责 import 排序；不要手工对抗其输出。
 - 完成代码改动后，先运行 `pnpm run check:code`，再向用户报告结果。
