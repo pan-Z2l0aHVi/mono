@@ -122,7 +122,7 @@ function ContextMenuDemo() {
 
       <h2>不锁定滚动</h2>
       <div className="mb-6">
-        <web-ui-context-menu lockScroll={false}>
+        <web-ui-context-menu noScrollLock>
           <div className="flex h-32 w-full items-center justify-center rounded-2xl border-2 border-dashed border-gray-300 bg-gray-50 text-gray-500">
             右键打开时不锁定页面滚动
           </div>

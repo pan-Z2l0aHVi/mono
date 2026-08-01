@@ -275,7 +275,7 @@ describe('WebUiSelect 组件', () => {
     })
   })
 
-  describe('属性：lockScroll', () => {
+  describe('属性：no-scroll-lock', () => {
     it('打开时锁定页面滚动，关闭时恢复', async () => {
       const el = createSelect(OPTIONS_HTML)
       await waitForUpdate(el)
@@ -294,9 +294,8 @@ describe('WebUiSelect 组件', () => {
       cleanupElement(el)
     })
 
-    it('lock-scroll=false 时打开不锁定页面滚动', async () => {
-      const el = createSelect(OPTIONS_HTML)
-      el.lockScroll = false
+    it('no-scroll-lock 为 true 时打开不锁定页面滚动', async () => {
+      const el = createSelect(OPTIONS_HTML, { 'no-scroll-lock': '' })
       await waitForUpdate(el)
 
       const trigger = queryA11y(el, '[role="combobox"]') as HTMLElement
@@ -308,14 +307,14 @@ describe('WebUiSelect 组件', () => {
       cleanupElement(el)
     })
 
-    it('打开期间关闭 lock-scroll 立即恢复页面滚动', async () => {
+    it('打开期间启用 no-scroll-lock 立即恢复页面滚动', async () => {
       const el = createSelect(OPTIONS_HTML)
       await waitForUpdate(el)
 
       const trigger = queryA11y(el, '[role="combobox"]') as HTMLElement
       trigger.click()
       await waitForUpdate(el)
-      el.lockScroll = false
+      el.setAttribute('no-scroll-lock', '')
       await waitForUpdate(el)
 
       expect(document.body.style.position).toBe('')

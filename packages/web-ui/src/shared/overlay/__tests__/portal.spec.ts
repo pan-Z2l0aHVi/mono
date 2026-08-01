@@ -27,6 +27,7 @@ describe('浮层 Portal', () => {
     const portal = createOverlayPortal({ container, target, style: '', className: 'panel' })
     portal.moveContent([content])
 
+    expect(portal.panel.dataset.wuiPresence).toBe('entering')
     expect(portal.panel.contains(content)).toBe(true)
 
     portal.restoreContent()
@@ -34,5 +35,25 @@ describe('浮层 Portal', () => {
 
     expect(target.contains(content)).toBe(true)
     expect(container.childElementCount).toBe(0)
+  })
+
+  it('可将受跟踪内容迁移到面板内的指定容器', () => {
+    const target = document.createElement('div')
+    const content = document.createElement('button')
+    const container = document.createElement('div')
+    target.append(content)
+    document.body.append(target, container)
+
+    const portal = createOverlayPortal({ container, target, style: '', className: 'panel' })
+    const scroll = document.createElement('div')
+    portal.panel.append(scroll)
+    portal.moveContent([content], scroll)
+
+    expect(scroll.contains(content)).toBe(true)
+
+    portal.restoreContent()
+    portal.remove()
+
+    expect(target.contains(content)).toBe(true)
   })
 })

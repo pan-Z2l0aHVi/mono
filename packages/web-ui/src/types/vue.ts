@@ -33,7 +33,8 @@ import type {
   WebUiTheme,
   WebUiToast,
   WebUiSwitch,
-  WebUiTooltip
+  WebUiTooltip,
+  WebUiSvgDrawLines
 } from '../components'
 
 import type { ExtractProps, OmitLitBase } from './utils'
@@ -86,6 +87,7 @@ export interface WebUiComponents {
   'web-ui-select': LitVueWrapper<WebUiSelect>
   'web-ui-slider': LitVueWrapper<WebUiSlider>
   'web-ui-spinner': LitVueWrapper<WebUiSpinner>
+  'web-ui-svg-draw-lines': LitVueWrapper<WebUiSvgDrawLines>
   'web-ui-option': LitVueWrapper<WebUiOption>
   'web-ui-popover': LitVueWrapper<WebUiPopover>
   'web-ui-radio': LitVueWrapper<WebUiRadio>

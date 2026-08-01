@@ -39,6 +39,12 @@ function getSubmenu(): HTMLElement | null {
   return fallbackRoot?.querySelector<HTMLElement>('.context-submenu') ?? null
 }
 
+function getFirstMenuItem(): HTMLElement {
+  const item = getMenu()?.querySelector<HTMLElement>('web-ui-dropdown-item')
+  if (!item) throw new Error('Expected the context menu to contain a menu item')
+  return item
+}
+
 function touchPointerEvent(type: string): PointerEvent {
   const event = new PointerEvent(type)
   Object.defineProperty(event, 'pointerType', { value: 'touch' })
@@ -296,7 +302,7 @@ describe('WebUiContextMenu 组件', () => {
       el.openAt(100, 100)
       await waitForMenuOpen(el)
 
-      const item = getMenu()?.querySelector('web-ui-dropdown-item')!
+      const item = getFirstMenuItem()
       item.click()
       await waitForMenuClose(el)
 
@@ -317,7 +323,7 @@ describe('WebUiContextMenu 组件', () => {
       el.openAt(100, 100)
       await waitForMenuOpen(el)
 
-      const item = getMenu()?.querySelector('web-ui-dropdown-item')!
+      const item = getFirstMenuItem()
       item.click()
       await waitForUpdate(el)
 
@@ -344,9 +350,8 @@ describe('WebUiContextMenu 组件', () => {
       cleanupElement(el)
     })
 
-    it('lock-scroll=false 时打开不锁定页面滚动', async () => {
-      const el = createContextMenu({}, SIMPLE)
-      el.lockScroll = false
+    it('no-scroll-lock 为 true 时打开不锁定页面滚动', async () => {
+      const el = createContextMenu({ 'no-scroll-lock': '' }, SIMPLE)
       await waitForUpdate(el)
       el.openAt(100, 100)
       await waitForMenuOpen(el)
@@ -417,7 +422,7 @@ describe('WebUiContextMenu 组件', () => {
       el.openAt(100, 100)
       await waitForMenuOpen(el)
 
-      const item = getMenu()?.querySelector('web-ui-dropdown-item')!
+      const item = getFirstMenuItem()
       item.click()
       await waitForUpdate(el)
 
@@ -444,7 +449,7 @@ describe('WebUiContextMenu 组件', () => {
 
       vi.useFakeTimers()
       try {
-        const item = getMenu()?.querySelector('web-ui-dropdown-item')!
+        const item = getFirstMenuItem()
         item.dispatchEvent(new PointerEvent('pointerenter'))
         await vi.advanceTimersByTimeAsync(200)
 
@@ -468,7 +473,7 @@ describe('WebUiContextMenu 组件', () => {
 
       vi.useFakeTimers()
       try {
-        const item = getMenu()?.querySelector('web-ui-dropdown-item')!
+        const item = getFirstMenuItem()
         item.dispatchEvent(touchPointerEvent('pointerenter'))
         await vi.advanceTimersByTimeAsync(200)
 

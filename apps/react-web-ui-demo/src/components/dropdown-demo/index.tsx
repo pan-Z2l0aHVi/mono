@@ -249,7 +249,7 @@ function DropdownDemo() {
       </div>
       <h2>滚动锁定</h2>
       <div className="mb-6">
-        <web-ui-dropdown lockScroll={false}>
+        <web-ui-dropdown noScrollLock>
           <web-ui-button slot="trigger">不锁定滚动</web-ui-button>
           <web-ui-dropdown-item>编辑</web-ui-dropdown-item>
           <web-ui-dropdown-item>复制</web-ui-dropdown-item>

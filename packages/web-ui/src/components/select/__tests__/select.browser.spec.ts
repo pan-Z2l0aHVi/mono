@@ -46,5 +46,6 @@ describe('WebUiSelect 组件（浏览器）', () => {
     const panel = portalHost?.shadowRoot?.querySelector<HTMLElement>('[role="listbox"]')
     expect(select.open).toBe(true)
     expect(panel?.hasAttribute('hidden')).toBe(false)
+    expect(panel?.querySelector(':scope > .select-scroll > .select-content web-ui-option')).toBeTruthy()
   })
 })

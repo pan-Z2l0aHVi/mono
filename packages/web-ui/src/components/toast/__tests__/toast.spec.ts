@@ -89,20 +89,22 @@ describe('WebUiToast 组件', () => {
     })
   })
 
-  describe('属性：closable', () => {
-    it('默认可关闭', async () => {
+  describe('属性：noCloseButton', () => {
+    it('默认显示关闭按钮', async () => {
       const el = createToastElement()
       await el.updateComplete
-      expect(el.closable).toBe(true)
+      expect(el.noCloseButton).toBe(false)
+      expect(el.hasAttribute('no-close-button')).toBe(false)
       el.remove()
     })
 
-    it('closable 反射到 host', async () => {
+    it('no-close-button 反射到 host', async () => {
       const el = createToastElement()
-      el.setAttribute('closable', 'false')
+      el.setAttribute('no-close-button', '')
       await el.updateComplete
-      expect(el.closable).toBe(false)
-      expect(el.getAttribute('closable')).toBe('false')
+      expect(el.noCloseButton).toBe(true)
+      expect(el.hasAttribute('no-close-button')).toBe(true)
+      expect(el.shadowRoot?.querySelector('.toast-close-btn')).toBeNull()
       el.remove()
     })
   })

@@ -37,6 +37,9 @@ export function showOverlayPresence(panel: HTMLElement, options: OverlayPresence
   }
   panel.dataset.wuiPresence = 'entering'
 
+  // Commit the initial state so a newly mounted panel has a transition source.
+  void panel.offsetWidth
+
   requestAnimationFrame(() => {
     if (panel.dataset.wuiPresence === 'entering') panel.dataset.wuiPresence = 'open'
   })

@@ -3,9 +3,8 @@ import { afterEach, describe, expect, it } from 'vite-plus/test'
 import '@/components/dialog'
 import '@/components/drawer'
 import '@/components/dropdown'
-import type { WebUiDialog } from '@/components/dialog'
-import type { WebUiDrawer } from '@/components/drawer'
-import type { WebUiDropdown } from '@/components/dropdown'
+import '@/components/switch'
+import '@/components/theme'
 
 async function nextFrame() {
   await new Promise(resolve => requestAnimationFrame(resolve))

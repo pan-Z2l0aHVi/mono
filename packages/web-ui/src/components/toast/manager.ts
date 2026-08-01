@@ -97,7 +97,7 @@ function mountToast(id: string, options: ToastInstanceOptions, container: HTMLEl
   el.heading = options.heading || ''
   el.message = options.message
   el.duration = options.duration ?? 3000
-  el.closable = options.closable ?? true
+  el.noCloseButton = options.closable === false
 
   el.addEventListener('toast-close', (e: Event) => {
     const detail = (e as CustomEvent<{ id: string; reason: ToastCloseReason }>).detail
