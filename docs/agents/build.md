@@ -6,6 +6,12 @@ Read this guide before changing package scripts, Vite/Turbo configuration, packa
 
 Packages expose the commands they need: every buildable package has `build`, most have `dev` (watch mode), and only packages with maintained automated coverage expose `test`. Run them with `pnpm --filter @greypan/<name> <script>`; for example, `pnpm --filter @greypan/js-kit test`.
 
+## Demo development
+
+The root demo commands first build upstream workspace packages, then use `turbo run dev --filter=<demo>...` to start each package's persistent `dev` process. Do not use `turbo watch` for these commands: the package-level Vite and tsdown watchers already rebuild source changes, while `turbo watch` also observes Git control files and can restart all dev processes when editor or agent tooling updates Git worktrees.
+
+Restart a demo command after changing the package graph, lockfile, or Turbo configuration. Normal source changes continue to be handled by the running package-level watchers.
+
 Build scripts differ by package type:
 
 - **Single-entry packages** (`test-kit`, `unplugin-web-components`, `deps-reload`): `vp pack`, which is tsdown-based and emits `.mjs` plus `.d.mts`.

@@ -37,24 +37,24 @@ pnpm monorepo (`apps/**`, `packages/**`) using Turborepo. Packages published und
 - **Package manager**: pnpm 10.33.0 (enforced via `engine-strict=true` in `.npmrc`)
 - **Runtime**: Node 24 (managed via mise — run `mise install` if node/pnpm/go are missing; `engines` allows >=24.18.0)
 - **Build/dev/lint/test/format**: all delegated to `vite-plus` (`vp`) — a Vite wrapper. Most per-package scripts call `vp build`, `vp pack`, `vp check`, `vp test run`, `vp lint`, `vp fmt`
-- **Orchestration**: Turborepo (`turbo.json`) — `build` and `test` tasks depend on `^build` (upstream packages build first). `dev` task also depends on `^build` but is not cached and runs persistently.
+- **Orchestration**: Turborepo (`turbo.json`) — `build` and `test` tasks depend on `^build` (upstream packages build first). Demo commands build upstream packages once, then use `turbo run dev` to start the persistent package-level watchers without Turbo's repository watcher.
 - **Language**: TypeScript 6, ES modules only (`"type": "module"` everywhere)
 
 ## Key commands
 
-| Command                                           | What it does                                  |
-| ------------------------------------------------- | --------------------------------------------- |
-| `pnpm install`                                    | Install all deps (frozen lockfile in CI)      |
-| `pnpm build`                                      | Build all packages in dependency order        |
-| `pnpm test`                                       | Run all tests                                 |
-| `pnpm commit`                                     | Interactive conventional commit via cz-git    |
-| `bash scripts/commit.sh <type> <scope> <subject>` | Non-interactive commit (useful for agents)    |
-| `pnpm dev:react-web-ui-demo`                      | Dev server for React app (with turbo watch)   |
-| `pnpm dev:vue-web-ui-demo`                        | Dev server for Vue app (with turbo watch)     |
-| `pnpm run check:code`                             | Format + lint + type-check (what CI runs)     |
-| `pnpm clean`                                      | Remove `dist/`, `.turbo/`, `.vite/`, `build/` |
-| `pnpm clean --full`                               | Also remove `node_modules` and lockfile       |
-| `pnpm publish:new <package-dir>`                  | First publish of a new package (1.0.0)        |
+| Command                                           | What it does                                        |
+| ------------------------------------------------- | --------------------------------------------------- |
+| `pnpm install`                                    | Install all deps (frozen lockfile in CI)            |
+| `pnpm build`                                      | Build all packages in dependency order              |
+| `pnpm test`                                       | Run all tests                                       |
+| `pnpm commit`                                     | Interactive conventional commit via cz-git          |
+| `bash scripts/commit.sh <type> <scope> <subject>` | Non-interactive commit (useful for agents)          |
+| `pnpm dev:react-web-ui-demo`                      | React demo with upstream build and package watchers |
+| `pnpm dev:vue-web-ui-demo`                        | Vue demo with upstream build and package watchers   |
+| `pnpm run check:code`                             | Format + lint + type-check (what CI runs)           |
+| `pnpm clean`                                      | Remove `dist/`, `.turbo/`, `.vite/`, `build/`       |
+| `pnpm clean --full`                               | Also remove `node_modules` and lockfile             |
+| `pnpm publish:new <package-dir>`                  | First publish of a new package (1.0.0)              |
 
 ## Build details
 
