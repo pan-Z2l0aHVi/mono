@@ -10,7 +10,6 @@
   min-width: 200px;
   max-width: 90vw;
   max-height: 80vh;
-  padding: 4px;
   border-radius: 20px;
 
   color: var(--wui-color-text, #1b1b1b);
@@ -22,6 +21,7 @@
   overflow-y: auto;
   min-width: 200px;
   max-height: 320px;
+  padding: 4px;
 }
 
 .wui-menu-portal-overlay.dropdown-overlay[data-level]:not([data-level='0']),

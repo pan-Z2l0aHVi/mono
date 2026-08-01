@@ -24,8 +24,16 @@ Do not duplicate token values in guidance. Every `var(--wui-*, fallback)` used b
 - `surface-glass` is for transparent controls; `surface-overlay` is for readable global overlay panels. Use the raised surface level that matches the visual contrast required by the control.
 - Keep the sticky layout header above content and sidebar. Use local layers for non-portal panels; portal menus use the menu layer; Toast sits above menus; native Dialog and Drawer use the browser top layer. BackTop belongs to the auxiliary layer below portal menus.
 - High-frequency controls use press tokens, anchored overlays use overlay enter/exit tokens, and Drawer uses its drawer token. `motion="system"` follows `prefers-reduced-motion`; `reduced` disables displacement within its theme scope; nested `full` scopes restore normal tokens.
-- Overlay visibility transitions must reuse `shared/overlay/presence`; overlay positioning remains owned by `withOverlay`. In reduced motion, remove transform displacement while retaining necessary brief opacity or state feedback.
+- Overlay visibility transitions must reuse `shared/overlay/presence`; overlay positioning remains owned by `defineOverlay`. In reduced motion, remove transform displacement while retaining necessary brief opacity or state feedback.
 - Put pointer hover affordances inside `@media (hover: hover) and (pointer: fine)`.
+
+## Overlay architecture
+
+- Shared overlay state is defined with `defineXxx(...): Plugin` factories, each returning `definePlugin(...)`; components instantiate it through `defineXxx(...).make(...)` instead of an internal state class.
+- Reuse `shared/overlay/anchored-panel` for a single panel anchored to a trigger. The component retains its trigger, focus, content, and dismissal semantics; the shared module owns local/portal mounting, positioning, and presence.
+- Use `shared/menu-portal` for Dropdown and ContextMenu. Their common menu-tree operations live there, while anchor-based versus coordinate-based placement stays local to each component.
+- Reuse `shared/overlay/native-dialog-presence` for native `<dialog>` modals such as Dialog and Drawer. Keep native top-layer, backdrop, and Escape policy in the owning component.
+- Acquire page-scroll blocking through `createScrollLockLease()`. Release the lease on disconnect; never call a global unlock for a lock the instance did not acquire.
 
 ## Shadow DOM and Lit
 

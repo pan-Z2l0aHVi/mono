@@ -3,8 +3,8 @@ import { customElement, property, state } from 'lit/decorators.js'
 
 import '@/components/button'
 import glass from '@/assets/glass.css?inline'
-import { getTransitionDuration } from '@/shared/overlay/presence'
-import { lockScroll, unlockScroll } from '@/shared/scroll-lock/scroll-lock'
+import { defineNativeDialogPresence } from '@/shared/overlay/native-dialog-presence'
+import { createScrollLockLease } from '@/shared/scroll-lock/scroll-lock'
 
 import style from './style.css?inline'
 
@@ -18,10 +18,12 @@ export class WebUiDialog extends LitElement {
 
   @state() private _hasBody = false
 
-  private _hasScrollLock = false
-  private _closeFallbackTimer?: ReturnType<typeof setTimeout>
-  private _openFrame?: number
-  private _isClosing = false
+  private readonly _scrollLock = createScrollLockLease()
+  private readonly _presence = defineNativeDialogPresence().make({
+    getDialog: () => this.dialog,
+    isConnected: () => this.isConnected,
+    isOpen: () => this.open
+  })
 
   private get dialog() {
     return this.shadowRoot?.querySelector('dialog') ?? null
@@ -33,17 +35,15 @@ export class WebUiDialog extends LitElement {
 
     if (props.has('open')) {
       this.emitOpenChange()
-      if (this.open) this._startOpening()
-      else this._startClosing()
+      this._presence.sync(this.open)
     }
     if (props.has('open') || props.has('noScrollLock')) this._syncScrollLock()
   }
 
   override disconnectedCallback() {
     super.disconnectedCallback()
-    this._cancelOpenFrame()
-    this._clearCloseFallback()
-    this._syncScrollLock(false)
+    this._presence.dispose()
+    this._scrollLock.release()
   }
 
   /** 以模态方式打开对话框（命令式） */
@@ -78,83 +78,18 @@ export class WebUiDialog extends LitElement {
     )
   }
 
-  private _startOpening() {
-    const dialog = this.dialog
-    if (!dialog) return
-
-    this._isClosing = false
-    this._clearCloseFallback()
-    dialog.classList.remove('is-closing')
-    if (!dialog.open) dialog.showModal?.()
-
-    this._cancelOpenFrame()
-    this._openFrame = requestAnimationFrame(() => {
-      this._openFrame = undefined
-      if (!this.isConnected || !this.open || !dialog.open) return
-      dialog.classList.add('is-visible')
-    })
-  }
-
-  private _startClosing() {
-    const dialog = this.dialog
-    if (!dialog?.open) return
-
-    this._cancelOpenFrame()
-    this._isClosing = true
-    if (!dialog.classList.contains('is-visible')) {
-      this._finishClosing()
-      return
-    }
-
-    dialog.classList.add('is-closing')
-    dialog.classList.remove('is-visible')
-    this._clearCloseFallback()
-    this._closeFallbackTimer = setTimeout(() => this._finishClosing(), getTransitionDuration(dialog) + 80)
-  }
-
-  private _finishClosing() {
-    const dialog = this.dialog
-    if (!dialog || !this._isClosing || this.open) return
-
-    this._clearCloseFallback()
-    this._isClosing = false
-    dialog.classList.remove('is-closing', 'is-visible')
-    if (dialog.open) dialog.close?.()
-  }
-
-  private _clearCloseFallback() {
-    if (this._closeFallbackTimer === undefined) return
-    clearTimeout(this._closeFallbackTimer)
-    this._closeFallbackTimer = undefined
-  }
-
-  private _cancelOpenFrame() {
-    if (this._openFrame === undefined) return
-    cancelAnimationFrame(this._openFrame)
-    this._openFrame = undefined
-  }
-
   private _onTransitionEnd = (event: TransitionEvent) => {
-    if (event.target !== this.dialog || event.propertyName !== 'transform') return
-    this._finishClosing()
+    this._presence.handleTransitionEnd(event)
   }
 
   private _onNativeClose = () => {
     if (!this.open) return
-    this._cancelOpenFrame()
-    this._clearCloseFallback()
-    this._isClosing = false
-    this.dialog?.classList.remove('is-closing', 'is-visible')
+    this._presence.handleNativeClose()
     this.open = false
   }
 
   private _syncScrollLock(isOpen = this.open) {
-    const shouldLock = isOpen && !this.noScrollLock
-    if (shouldLock === this._hasScrollLock) return
-
-    if (shouldLock) lockScroll()
-    else unlockScroll()
-    this._hasScrollLock = shouldLock
+    this._scrollLock.sync(isOpen && !this.noScrollLock)
   }
 
   private _onBodySlotChange(e: Event) {

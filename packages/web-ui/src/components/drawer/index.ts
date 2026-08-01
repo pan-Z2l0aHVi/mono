@@ -6,8 +6,8 @@ import '@/components/button'
 import glass from '@/assets/glass.css?inline'
 import { oouiClose } from '@/icons'
 import { normalizeLiteral } from '@/shared/normalize'
-import { getTransitionDuration } from '@/shared/overlay/presence'
-import { lockScroll, unlockScroll } from '@/shared/scroll-lock/scroll-lock'
+import { defineNativeDialogPresence } from '@/shared/overlay/native-dialog-presence'
+import { createScrollLockLease } from '@/shared/scroll-lock/scroll-lock'
 
 import style from './style.css?inline'
 
@@ -42,12 +42,14 @@ export class WebUiDrawer extends LitElement {
     return this.shadowRoot?.querySelector('dialog') ?? null
   }
 
-  private _closeFallbackTimer: ReturnType<typeof setTimeout> | null = null
-  private _openFrame: number | null = null
-  private _isClosing = false
   private _hasHeaderSlot = false
   private _hasFooterSlot = false
-  private _hasScrollLock = false
+  private readonly _scrollLock = createScrollLockLease()
+  private readonly _presence = defineNativeDialogPresence().make({
+    getDialog: () => this.dialog,
+    isConnected: () => this.isConnected,
+    isOpen: () => this.open
+  })
 
   override connectedCallback() {
     super.connectedCallback()
@@ -61,9 +63,8 @@ export class WebUiDrawer extends LitElement {
 
   override disconnectedCallback() {
     super.disconnectedCallback()
-    this._cancelOpenFrame()
-    this._clearCloseFallback()
-    this._syncScrollLock(false)
+    this._presence.dispose()
+    this._scrollLock.release()
   }
 
   private _checkSlotContent(name: string) {
@@ -98,73 +99,13 @@ export class WebUiDrawer extends LitElement {
 
     if (props.has('open')) {
       this.emitOpenChange()
-      if (this.open) this._startOpening()
-      else this._startClosing()
+      this._presence.sync(this.open)
     }
     if (props.has('open') || props.has('noScrollLock')) this._syncScrollLock()
   }
 
-  private _startOpening() {
-    const dialog = this.dialog
-    if (!dialog) return
-
-    this._isClosing = false
-    this._clearCloseFallback()
-    dialog.classList.remove('is-closing')
-    if (!dialog.open) dialog.showModal?.()
-
-    this._cancelOpenFrame()
-    this._openFrame = requestAnimationFrame(() => {
-      this._openFrame = null
-      if (!this.isConnected || !this.open || !dialog.open) return
-      dialog.classList.add('is-visible')
-    })
-  }
-
-  private _startClosing() {
-    const dialog = this.dialog
-    if (!dialog?.open) return
-
-    this._cancelOpenFrame()
-    this._isClosing = true
-
-    // 还未进入可见帧时没有可过渡的视觉状态，直接释放原生 dialog。
-    if (!dialog.classList.contains('is-visible')) {
-      this._finishClosing()
-      return
-    }
-
-    dialog.classList.add('is-closing')
-    dialog.classList.remove('is-visible')
-    this._clearCloseFallback()
-    this._closeFallbackTimer = setTimeout(() => this._finishClosing(), getTransitionDuration(dialog) + 80)
-  }
-
-  private _finishClosing() {
-    const dialog = this.dialog
-    if (!dialog || !this._isClosing || this.open) return
-
-    this._clearCloseFallback()
-    this._isClosing = false
-    dialog.classList.remove('is-closing', 'is-visible')
-    if (dialog.open) dialog.close?.()
-  }
-
-  private _clearCloseFallback() {
-    if (!this._closeFallbackTimer) return
-    clearTimeout(this._closeFallbackTimer)
-    this._closeFallbackTimer = null
-  }
-
-  private _cancelOpenFrame() {
-    if (this._openFrame === null) return
-    cancelAnimationFrame(this._openFrame)
-    this._openFrame = null
-  }
-
   private handleTransitionEnd(e: TransitionEvent) {
-    if (e.target !== this.dialog || e.propertyName !== 'transform') return
-    this._finishClosing()
+    this._presence.handleTransitionEnd(e)
   }
 
   private handleKeydown(e: KeyboardEvent) {
@@ -195,10 +136,7 @@ export class WebUiDrawer extends LitElement {
     if (!this.open) return
 
     // 原生关闭可绕过 cancel；同步受控状态，避免 show() 误判为已打开。
-    this._cancelOpenFrame()
-    this._clearCloseFallback()
-    this._isClosing = false
-    this.dialog?.classList.remove('is-closing', 'is-visible')
+    this._presence.handleNativeClose()
     this.open = false
   }
 
@@ -219,12 +157,7 @@ export class WebUiDrawer extends LitElement {
   }
 
   private _syncScrollLock(isOpen = this.open) {
-    const shouldLock = isOpen && !this.noScrollLock
-    if (shouldLock === this._hasScrollLock) return
-
-    if (shouldLock) lockScroll()
-    else unlockScroll()
-    this._hasScrollLock = shouldLock
+    this._scrollLock.sync(isOpen && !this.noScrollLock)
   }
 
   override render() {

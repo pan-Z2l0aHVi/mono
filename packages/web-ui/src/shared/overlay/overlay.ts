@@ -29,6 +29,7 @@ export interface OverlayApi {
   open(): void
   close(): void
   toggle(): void
+  update(options: Partial<OverlayOptions>): void
   updateAnchor(anchor: HTMLElement): void
   dispose(): void
 }
@@ -54,8 +55,8 @@ function getTransformOrigin(placement: Placement): string {
   return `left ${verticalOrigin}`
 }
 
-export const withOverlay = definePlugin<OverlayApi, { anchor: HTMLElement; overlay: HTMLElement } & OverlayOptions>(
-  ctx => {
+export const defineOverlay = () =>
+  definePlugin<OverlayApi, { anchor: HTMLElement; overlay: HTMLElement } & OverlayOptions>(ctx => {
     const options: Required<OverlayOptions> = {
       placement: ctx.placement ?? DEFAULT_OPTIONS.placement,
       offset: ctx.offset ?? DEFAULT_OPTIONS.offset,
@@ -132,6 +133,11 @@ export const withOverlay = definePlugin<OverlayApi, { anchor: HTMLElement; overl
         else this.open()
       },
 
+      update(nextOptions) {
+        Object.assign(options, nextOptions)
+        if (isOpen) updatePosition()
+      },
+
       updateAnchor(newAnchor: HTMLElement) {
         anchor = newAnchor
         if (isOpen) updatePosition()
@@ -141,5 +147,4 @@ export const withOverlay = definePlugin<OverlayApi, { anchor: HTMLElement; overl
         this.close()
       }
     }
-  }
-)
+  })

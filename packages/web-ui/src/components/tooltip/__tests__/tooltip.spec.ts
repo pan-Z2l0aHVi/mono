@@ -69,6 +69,23 @@ describe('WebUiTooltip 组件', () => {
 
       cleanupElement(el)
     })
+
+    it('Portal 打开期间同步 content 更新', async () => {
+      const el = createTooltip({ content: '旧文本' })
+      el.portal = true
+      el.open = true
+      await waitForUpdate(el)
+      await new Promise(resolve => requestAnimationFrame(resolve))
+
+      el.content = '新文本'
+      await waitForUpdate(el)
+
+      const root = document.querySelector<HTMLElement>('[data-wui-overlay-root]')?.shadowRoot
+      const portalHost = root?.querySelector<HTMLElement>('[data-wui-overlay-container] > div')
+      expect(portalHost?.shadowRoot?.querySelector('[role="tooltip"]')?.textContent).toContain('新文本')
+
+      cleanupElement(el)
+    })
   })
 
   describe('属性：disabled', () => {
@@ -190,6 +207,18 @@ describe('WebUiTooltip 组件', () => {
       const el = createTooltip()
       ;(el as any).offset = NaN
       expect(el.offset).toBe(6)
+      cleanupElement(el)
+    })
+
+    it('打开后修改 offset 保持面板可见', async () => {
+      const el = createTooltip({ content: '提示' })
+      el.open = true
+      await waitForUpdate(el)
+      el.offset = 12
+      await waitForUpdate(el)
+      await new Promise(resolve => requestAnimationFrame(resolve))
+
+      expect(queryA11y(el, '[role="tooltip"]')?.hasAttribute('hidden')).toBe(false)
       cleanupElement(el)
     })
   })

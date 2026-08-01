@@ -2,6 +2,12 @@ let lockCount = 0
 let savedOverflow = ''
 let savedScrollY = 0
 
+export interface ScrollLockLease {
+  readonly isLocked: boolean
+  sync(shouldLock: boolean): void
+  release(): void
+}
+
 /**
  * 锁定页面滚动。支持嵌套调用（引用计数），仅在最后一个锁释放时恢复。
  */
@@ -29,5 +35,30 @@ export function unlockScroll() {
     document.body.style.top = ''
     document.body.style.width = ''
     window.scrollTo(0, savedScrollY)
+  }
+}
+
+/**
+ * 组件实例持有的滚动锁租约。它只会释放自身已获取的那一次锁，
+ * 避免卸载、属性切换和嵌套浮层互相影响。
+ */
+export function createScrollLockLease(): ScrollLockLease {
+  let isLocked = false
+
+  return {
+    get isLocked() {
+      return isLocked
+    },
+
+    sync(shouldLock) {
+      if (shouldLock === isLocked) return
+      if (shouldLock) lockScroll()
+      else unlockScroll()
+      isLocked = shouldLock
+    },
+
+    release() {
+      this.sync(false)
+    }
   }
 }

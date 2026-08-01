@@ -6,8 +6,17 @@ import '@/components/dropdown-header'
 import '@/components/dropdown-item'
 import glass from '@/assets/glass.css?inline'
 import { createMenuPortalOverlay } from '@/shared/menu-portal/menu-portal'
+import {
+  findFocusedMenuItem,
+  focusMenuItem,
+  getEnabledMenuItems,
+  getMenuChildren,
+  getMenuItemFromEvent,
+  hideNestedMenuChildren,
+  moveMenuChildren
+} from '@/shared/menu-portal/menu-tree'
 import { hideOverlayPresence, showOverlayPresence } from '@/shared/overlay/presence'
-import { lockScroll, unlockScroll } from '@/shared/scroll-lock/scroll-lock'
+import { createScrollLockLease } from '@/shared/scroll-lock/scroll-lock'
 
 import style from './style.css?inline'
 
@@ -30,7 +39,7 @@ export class WebUiContextMenu extends LitElement {
   private _ignoreOutsideClickTimer?: ReturnType<typeof setTimeout>
   private _hoverCleanupFns: (() => void)[] = []
   private _menu?: HTMLElement
-  private _hasScrollLock = false
+  private readonly _scrollLock = createScrollLockLease()
   private _restoreFocusTarget?: HTMLElement
   private _shouldOpenInstantly = true
 
@@ -65,10 +74,7 @@ export class WebUiContextMenu extends LitElement {
     clearTimeout(this._submenuTimer)
     clearTimeout(this._ignoreOutsideClickTimer)
     this._hoverCleanupFns.forEach(cleanup => cleanup())
-    if (this._hasScrollLock) {
-      unlockScroll()
-      this._hasScrollLock = false
-    }
+    this._scrollLock.release()
     this._returnItemsToSlot()
     this._menu?.remove()
     this._menu = undefined
@@ -184,11 +190,7 @@ export class WebUiContextMenu extends LitElement {
     if (!menu) return
 
     this._hideMenuItems()
-    Array.from(this.children).forEach(child => {
-      if (child.matches('web-ui-dropdown-item, web-ui-dropdown-divider, web-ui-dropdown-header')) {
-        menu.appendChild(child)
-      }
-    })
+    moveMenuChildren(this, menu)
   }
 
   private _returnItemsToSlot() {
@@ -197,9 +199,7 @@ export class WebUiContextMenu extends LitElement {
 
     this._closeSubmenusFrom(0, true)
     this._restoreClosingSubmenus()
-    Array.from(menu.children).forEach(child => {
-      this.appendChild(child)
-    })
+    moveMenuChildren(menu, this)
   }
 
   private async _closeMenuAfterPresence() {
@@ -215,18 +215,8 @@ export class WebUiContextMenu extends LitElement {
   }
 
   private _hideMenuItems() {
-    Array.from(this.children).forEach(child => {
-      if (child.matches('web-ui-dropdown-item, web-ui-dropdown-divider, web-ui-dropdown-header')) {
-        child.setAttribute('slot', 'context-menu-hidden')
-      }
-    })
-    this.querySelectorAll<HTMLElement>('web-ui-dropdown-item[submenu]').forEach(item => {
-      Array.from(item.children).forEach(child => {
-        if (child.matches('web-ui-dropdown-item, web-ui-dropdown-divider, web-ui-dropdown-header')) {
-          child.setAttribute('slot', 'context-menu-hidden')
-        }
-      })
-    })
+    getMenuChildren(this).forEach(child => child.setAttribute('slot', 'context-menu-hidden'))
+    hideNestedMenuChildren(this, 'context-menu-hidden')
   }
 
   private _openSubmenu(item: HTMLElement, isInstant = false) {
@@ -247,9 +237,7 @@ export class WebUiContextMenu extends LitElement {
       this._bindLevelHovers()
       return
     }
-    const children = Array.from(item.children).filter(child =>
-      child.matches('web-ui-dropdown-item, web-ui-dropdown-divider, web-ui-dropdown-header')
-    )
+    const children = getMenuChildren(item)
     if (children.length === 0) return
 
     const submenu = createMenuPortalOverlay('context-submenu', this)
@@ -388,7 +376,7 @@ export class WebUiContextMenu extends LitElement {
   }
 
   private _onMenuClick = (e: MouseEvent) => {
-    const item = this._getDropdownItemFromEvent(e)
+    const item = getMenuItemFromEvent(e)
     if (!item || item.hasAttribute('disabled')) return
     if (item.hasAttribute('submenu')) {
       this._openSubmenu(item)
@@ -397,21 +385,10 @@ export class WebUiContextMenu extends LitElement {
     this.close()
   }
 
-  private _getDropdownItemFromEvent(e: Event): HTMLElement | null {
-    return (
-      e
-        .composedPath()
-        .find((node): node is HTMLElement => node instanceof HTMLElement && node.matches('web-ui-dropdown-item')) ??
-      null
-    )
-  }
-
   private _getLevelItems(level: number): HTMLElement[] {
     const container = level === 0 ? this._menu : this._activeSubmenus[level - 1]
     if (!container) return []
-    return Array.from(container.children).filter((child): child is HTMLElement =>
-      child.matches('web-ui-dropdown-item, web-ui-dropdown-divider, web-ui-dropdown-header')
-    )
+    return getMenuChildren(container)
   }
 
   private _bindLevelHovers() {
@@ -526,23 +503,16 @@ export class WebUiContextMenu extends LitElement {
   }
 
   private _syncScrollLock(isOpen = this._isOpen) {
-    const shouldLock = isOpen && !this.noScrollLock
-    if (shouldLock === this._hasScrollLock) return
-
-    if (shouldLock) lockScroll()
-    else unlockScroll()
-    this._hasScrollLock = shouldLock
+    this._scrollLock.sync(isOpen && !this.noScrollLock)
   }
 
   private _getEnabledLevelItems(level: number) {
-    return this._getLevelItems(level).filter(item => item.matches('web-ui-dropdown-item:not([disabled])'))
+    const container = level === 0 ? this._menu : this._activeSubmenus[level - 1]
+    return container ? getEnabledMenuItems(container) : []
   }
 
   private _getFocusedItem(): HTMLElement | undefined {
-    return [this._menu, ...this._activeSubmenus]
-      .filter((menu): menu is HTMLElement => menu !== undefined)
-      .flatMap(menu => Array.from(menu.querySelectorAll<HTMLElement>('web-ui-dropdown-item')))
-      .find(item => Boolean(item.shadowRoot?.activeElement))
+    return findFocusedMenuItem([this._menu, ...this._activeSubmenus])
   }
 
   private _getFocusedLevel(): number | undefined {
@@ -554,9 +524,7 @@ export class WebUiContextMenu extends LitElement {
   }
 
   private _focusMenuItem(item: HTMLElement | undefined) {
-    if (!item || item.hasAttribute('disabled')) return
-    const focusable = item as HTMLElement & { focusItem?: () => void }
-    focusable.focusItem?.()
+    focusMenuItem(item)
   }
 
   private _isMenuPanelEvent(e: Event): boolean {

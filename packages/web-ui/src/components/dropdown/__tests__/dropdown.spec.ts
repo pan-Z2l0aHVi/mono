@@ -151,6 +151,21 @@ describe('WebUiDropdown 组件', () => {
       expect(el.offset).toBe(16)
       cleanupElement(el)
     })
+
+    it('打开后修改定位属性保持菜单可用', async () => {
+      const el = createDropdown({}, SIMPLE)
+      el.openMenu()
+      await waitForUpdate(el)
+      el.placement = 'top'
+      el.offset = 12
+      el.matchWidth = true
+      await waitForUpdate(el)
+      await new Promise(resolve => requestAnimationFrame(resolve))
+
+      expect(el.isOpen).toBe(true)
+      expect(getMenuItem()).toBeTruthy()
+      cleanupElement(el)
+    })
   })
 
   describe('打开/关闭', () => {
