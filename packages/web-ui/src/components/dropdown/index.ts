@@ -11,7 +11,6 @@ import { normalizeLiteral, normalizeNumber } from '@/shared/normalize'
 import { withOverlay } from '@/shared/overlay/overlay'
 import type { OverlayApi } from '@/shared/overlay/overlay'
 import { hideOverlayPresence, showOverlayPresence } from '@/shared/overlay/presence'
-import { booleanWithFalseString } from '@/shared/property-converters/boolean-with-false-string'
 import { lockScroll, unlockScroll } from '@/shared/scroll-lock/scroll-lock'
 
 import style from './style.css?inline'
@@ -45,8 +44,8 @@ export class WebUiDropdown extends LitElement {
 
   @property({ type: Boolean, reflect: true }) open = false
   @property({ type: Boolean, reflect: true }) disabled = false
-  @property({ type: Boolean, reflect: true }) matchWidth = false
-  @property({ reflect: true, attribute: 'lock-scroll', converter: booleanWithFalseString }) lockScroll = true
+  @property({ type: Boolean, reflect: true, attribute: 'match-width' }) matchWidth = false
+  @property({ type: Boolean, reflect: true, attribute: 'no-scroll-lock' }) noScrollLock = false
 
   private _placement: Placement = 'bottom-start'
 
@@ -127,7 +126,7 @@ export class WebUiDropdown extends LitElement {
         })
       )
     }
-    if (changed.has('lockScroll')) this._syncScrollLock()
+    if (changed.has('noScrollLock')) this._syncScrollLock()
     this._bindLevelHovers()
   }
 
@@ -159,7 +158,6 @@ export class WebUiDropdown extends LitElement {
   private _closeAllSubmenus() {
     this._closeSubmenuFrom(1, true)
     this._disposeClosingSubmenuOverlays()
-    this._activePath = []
     this._syncActiveAttrs()
   }
 
@@ -196,7 +194,7 @@ export class WebUiDropdown extends LitElement {
 
     this._closeSubmenuFrom(level + 1)
 
-    this._activePath[level] = itemIndex
+    this._activePath = [...this._activePath.slice(0, level), itemIndex]
     this._syncActiveAttrs()
 
     const item = this._getLevelItems(level)[itemIndex]
@@ -226,7 +224,10 @@ export class WebUiDropdown extends LitElement {
         void this._closeSubmenuAfterPresence(overlay, parentItem)
       }
     }
-    this._activePath = this._activePath.slice(0, level - 1)
+    const nextActivePath = this._activePath.slice(0, level - 1)
+    if (nextActivePath.length !== this._activePath.length) {
+      this._activePath = nextActivePath
+    }
     this._syncActiveAttrs()
   }
 
@@ -386,7 +387,7 @@ export class WebUiDropdown extends LitElement {
   }
 
   private _syncScrollLock(isOpen = this.open) {
-    const shouldLock = isOpen && this.lockScroll
+    const shouldLock = isOpen && !this.noScrollLock
     if (shouldLock === this._hasScrollLock) return
 
     if (shouldLock) lockScroll()

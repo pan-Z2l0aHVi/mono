@@ -7,6 +7,7 @@
 ## 演示
 
 [查看 vue 使用演示](https://pan-z2l0ahvi.github.io/mono/vue-web-ui-demo/)
+
 [查看 react 使用演示](https://pan-z2l0ahvi.github.io/mono/react-web-ui-demo/)
 
 ## 安装
@@ -65,13 +66,12 @@ function App() {
 
 React 19 按 JSX 键名中的 `on` 后缀原样注册 Custom Element 事件。事件名大小写敏感：`open-change`
 必须绑定为 `onopen-change`，不能写成 `onOpenChange`。标准 `input` 和 `change` 事件仍使用 React
-惯用的 `onInput` 和 `onChange`。默认值为 `true` 的属性应使用驼峰 JavaScript 属性传入，这样 `false`
-才会传递给组件。
+惯用的 `onInput` 和 `onChange`。布尔属性遵循原生 HTML 语义：属性缺失为 `false`，属性存在为 `true`。
 
 ```tsx
 <web-ui-dialog
   open={open}
-  lockScroll={false}
+  noScrollLock
   onopen-change={event => setOpen(event.detail.open)}
 />
 <web-ui-select value={value} onChange={event => setValue(event.currentTarget.value)} />
@@ -248,7 +248,7 @@ ArrowUp/ArrowDown 键增减数值。
 | `disabled`         | `boolean`                          | `false` | 禁用状态             |
 | `required`         | `boolean`                          | `false` | 必填校验             |
 | `portal`           | `boolean`                          | `false` | 在主题浮层容器中渲染 |
-| `lock-scroll`      | `boolean`                          | `true`  | 打开时锁定页面滚动   |
+| `no-scroll-lock`   | `boolean`                          | `false` | 打开时不锁定页面滚动 |
 | `overlayContainer` | `HTMLElement \| () => HTMLElement` | —       | 显式 Portal 容器     |
 
 **事件：** `input`, `change`, `open-change` (`CustomEvent<{ open: boolean }>`)
@@ -426,11 +426,11 @@ ArrowUp/ArrowDown 键增减数值。
 
 模态对话框，使用原生 `<dialog>` 的 `showModal()`。
 
-| 属性               | 类型      | 默认值  | 说明               |
-| ------------------ | --------- | ------- | ------------------ |
-| `open`             | `boolean` | `false` | 对话框可见性       |
-| `lock-scroll`      | `boolean` | `true`  | 打开时锁定页面滚动 |
-| `overlay-closable` | `boolean` | `true`  | 点击遮罩关闭对话框 |
+| 属性                | 类型      | 默认值  | 说明                 |
+| ------------------- | --------- | ------- | -------------------- |
+| `open`              | `boolean` | `false` | 对话框可见性         |
+| `no-scroll-lock`    | `boolean` | `false` | 打开时不锁定页面滚动 |
+| `no-backdrop-close` | `boolean` | `false` | 禁止点击遮罩关闭     |
 
 **事件：** `open-change` (`CustomEvent<{ open: boolean }>`)
 
@@ -444,14 +444,14 @@ ArrowUp/ArrowDown 键增减数值。
 
 侧边抽屉，使用原生 `<dialog>` 并自带关闭动画。
 
-| 属性               | 类型                                     | 默认值    | 说明                             |
-| ------------------ | ---------------------------------------- | --------- | -------------------------------- |
-| `open`             | `boolean`                                | `false`   | 抽屉可见性                       |
-| `placement`        | `'right' \| 'left' \| 'top' \| 'bottom'` | `'right'` | 滑入方向                         |
-| `heading`          | `string`                                 | `''`      | 标题文字（无 header 插槽时显示） |
-| `closable`         | `boolean`                                | `false`   | 显示关闭按钮                     |
-| `lock-scroll`      | `boolean`                                | `true`    | 打开时锁定页面滚动               |
-| `overlay-closable` | `boolean`                                | `true`    | 点击遮罩关闭抽屉                 |
+| 属性                | 类型                                     | 默认值    | 说明                             |
+| ------------------- | ---------------------------------------- | --------- | -------------------------------- |
+| `open`              | `boolean`                                | `false`   | 抽屉可见性                       |
+| `placement`         | `'right' \| 'left' \| 'top' \| 'bottom'` | `'right'` | 滑入方向                         |
+| `heading`           | `string`                                 | `''`      | 标题文字（无 header 插槽时显示） |
+| `closable`          | `boolean`                                | `false`   | 显示关闭按钮                     |
+| `no-scroll-lock`    | `boolean`                                | `false`   | 打开时不锁定页面滚动             |
+| `no-backdrop-close` | `boolean`                                | `false`   | 禁止点击遮罩关闭                 |
 
 **事件：** `open-change` (`CustomEvent<{ open: boolean }>`)
 
@@ -459,7 +459,7 @@ ArrowUp/ArrowDown 键增减数值。
 
 **方法：** `show()`, `close()`
 
-关闭时保留原生 dialog 的 top layer，待 `--wui-duration-drawer` 过渡完成（默认 280ms）后调用 `dialog.close()`。Escape 始终走此关闭路径；`overlay-closable` 仅控制遮罩点击。
+关闭时保留原生 dialog 的 top layer，待 `--wui-duration-drawer` 过渡完成（默认 280ms）后调用 `dialog.close()`。Escape 始终走此关闭路径；`no-backdrop-close` 仅控制遮罩点击。
 
 ---
 
@@ -513,10 +513,10 @@ Hover 模式使用 `pointerenter`/`pointerleave` 加延迟控制。Click 模式�
 
 右键上下文菜单。
 
-| 属性          | 类型      | 默认值  | 说明         |
-| ------------- | --------- | ------- | ------------ |
-| `disabled`    | `boolean` | `false` | 禁用状态     |
-| `lock-scroll` | `boolean` | `true`  | 阻止背景滚动 |
+| 属性             | 类型      | 默认值  | 说明         |
+| ---------------- | --------- | ------- | ------------ |
+| `disabled`       | `boolean` | `false` | 禁用状态     |
+| `no-scroll-lock` | `boolean` | `false` | 允许背景滚动 |
 
 **事件：** `open-change` (`CustomEvent<{ open: boolean }>`)
 
@@ -534,14 +534,14 @@ Hover 模式使用 `pointerenter`/`pointerleave` 加延迟控制。Click 模式�
 
 下拉菜单，支持多级子菜单。
 
-| 属性          | 类型        | 默认值           | 说明             |
-| ------------- | ----------- | ---------------- | ---------------- |
-| `open`        | `boolean`   | `false`          | 菜单可见性       |
-| `disabled`    | `boolean`   | `false`          | 禁用状态         |
-| `placement`   | `Placement` | `'bottom-start'` | Floating UI 位置 |
-| `offset`      | `number`    | `4`              | 与触发器距离     |
-| `match-width` | `boolean`   | `false`          | 匹配触发器宽度   |
-| `lock-scroll` | `boolean`   | `true`           | 锁定页面滚动     |
+| 属性             | 类型        | 默认值           | 说明                 |
+| ---------------- | ----------- | ---------------- | -------------------- |
+| `open`           | `boolean`   | `false`          | 菜单可见性           |
+| `disabled`       | `boolean`   | `false`          | 禁用状态             |
+| `placement`      | `Placement` | `'bottom-start'` | Floating UI 位置     |
+| `offset`         | `number`    | `4`              | 与触发器距离         |
+| `match-width`    | `boolean`   | `false`          | 匹配触发器宽度       |
+| `no-scroll-lock` | `boolean`   | `false`          | 打开时不锁定页面滚动 |
 
 **事件：** `open-change` (`CustomEvent<{ open: boolean }>`)
 
@@ -684,12 +684,12 @@ WebUiSpinner.hide() // 隐藏
 
 回到顶部按钮。
 
-| 属性           | 类型                    | 默认值   | 说明               |
-| -------------- | ----------------------- | -------- | ------------------ |
-| `smooth`       | `boolean`               | `true`   | 平滑滚动           |
-| `threshold`    | `number`                | `200`    | 显示按钮的滚动阈值 |
-| `visible`      | `boolean`               | `false`  | 当前可见状态       |
-| `scrollTarget` | `HTMLElement \| Window` | `window` | 滚动容器           |
+| 属性              | 类型                    | 默认值     | 说明               |
+| ----------------- | ----------------------- | ---------- | ------------------ |
+| `scroll-behavior` | `'smooth' \| 'auto'`    | `'smooth'` | 滚动行为           |
+| `threshold`       | `number`                | `200`      | 显示按钮的滚动阈值 |
+| `visible`         | `boolean`               | `false`    | 当前可见状态       |
+| `scrollTarget`    | `HTMLElement \| Window` | `window`   | 滚动容器           |
 
 **插槽：** `default`（自定义按钮内容）
 
@@ -734,6 +734,8 @@ SVG 线条绘制动画，基于 `stroke-dashoffset`。直接在原元素上动�
 #### `<web-ui-toast>`
 
 单个 Toast 通知。通过命令式 API 使用。
+
+直接使用元素时，`no-close-button` 是标准布尔属性，用于隐藏关闭按钮。
 
 **命令式 API：**
 

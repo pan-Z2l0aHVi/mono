@@ -28,7 +28,7 @@ describe('WebUiDialog 组件', () => {
     })
   })
 
-  describe('属性：lock-scroll', () => {
+  describe('属性：no-scroll-lock', () => {
     it('默认打开时锁定背景滚动，关闭后恢复', async () => {
       const el = createDialog()
       el.open = true
@@ -42,9 +42,9 @@ describe('WebUiDialog 组件', () => {
       cleanupElement(el)
     })
 
-    it('关闭 lock-scroll 时不锁定背景滚动', async () => {
+    it('no-scroll-lock 为 true 时不锁定背景滚动', async () => {
       const el = createDialog()
-      el.lockScroll = false
+      el.setAttribute('no-scroll-lock', '')
       el.open = true
       await waitForUpdate(el)
 
@@ -52,11 +52,11 @@ describe('WebUiDialog 组件', () => {
       cleanupElement(el)
     })
 
-    it('打开期间切换 lock-scroll 立即同步滚动锁', async () => {
+    it('打开期间切换 no-scroll-lock 立即同步滚动锁', async () => {
       const el = createDialog()
       el.open = true
       await waitForUpdate(el)
-      el.lockScroll = false
+      el.setAttribute('no-scroll-lock', '')
       await waitForUpdate(el)
 
       expect(document.body.style.position).toBe('')
@@ -166,8 +166,8 @@ describe('WebUiDialog 组件', () => {
     })
   })
 
-  describe('属性：overlayClosable', () => {
-    it('默认 true，点击遮罩关闭对话框', async () => {
+  describe('属性：noBackdropClose', () => {
+    it('默认允许点击遮罩关闭对话框', async () => {
       const el = createDialog()
       el.open = true
       await waitForUpdate(el)
@@ -180,18 +180,26 @@ describe('WebUiDialog 组件', () => {
       cleanupElement(el)
     })
 
-    it('false 时点击遮罩不关闭', async () => {
+    it('no-backdrop-close 存在时点击遮罩不关闭', async () => {
       const el = createDialog()
-      el.setAttribute('overlay-closable', 'false')
+      el.setAttribute('no-backdrop-close', '')
       el.open = true
       await waitForUpdate(el)
       const dialog = el.shadowRoot?.querySelector('dialog')
 
-      expect(el.overlayClosable).toBe(false)
+      expect(el.noBackdropClose).toBe(true)
       dialog?.click()
       await waitForUpdate(el)
       expect(el.open).toBe(true)
 
+      cleanupElement(el)
+    })
+
+    it('no-backdrop-close="false" 仍禁用遮罩关闭', async () => {
+      const el = createDialog()
+      el.setAttribute('no-backdrop-close', 'false')
+      await waitForUpdate(el)
+      expect(el.noBackdropClose).toBe(true)
       cleanupElement(el)
     })
   })

@@ -110,8 +110,8 @@ const overlayVisible = ref(false)
     <div class="mb-3 flex gap-2">
       <web-ui-button @click="unlockedVisible = true">打开不锁定滚动的抽屉</web-ui-button>
     </div>
-    <web-ui-drawer :open="unlockedVisible" :lock-scroll="false" @open-change="unlockedVisible = $event.detail.open">
-      <p>关闭 <code>lock-scroll</code> 后，背景页面仍可滚动。</p>
+    <web-ui-drawer :open="unlockedVisible" no-scroll-lock @open-change="unlockedVisible = $event.detail.open">
+      <p>关闭 <code>no-scroll-lock</code> 后，背景页面仍可滚动。</p>
       <web-ui-button slot="footer" variant="secondary" full @click="unlockedVisible = false">关闭</web-ui-button>
     </web-ui-drawer>
 
@@ -122,7 +122,7 @@ const overlayVisible = ref(false)
     <web-ui-drawer
       :open="overlayVisible"
       heading="不可点击遮罩关闭"
-      :overlay-closable="false"
+      no-backdrop-close
       @open-change="overlayVisible = $event.detail.open"
     >
       <p>点击遮罩不会关闭抽屉，必须通过按钮操作。</p>

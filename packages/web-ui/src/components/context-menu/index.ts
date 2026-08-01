@@ -7,7 +7,6 @@ import '@/components/dropdown-item'
 import glass from '@/assets/glass.css?inline'
 import { createMenuPortalOverlay } from '@/shared/menu-portal/menu-portal'
 import { hideOverlayPresence, showOverlayPresence } from '@/shared/overlay/presence'
-import { booleanWithFalseString } from '@/shared/property-converters/boolean-with-false-string'
 import { lockScroll, unlockScroll } from '@/shared/scroll-lock/scroll-lock'
 
 import style from './style.css?inline'
@@ -17,7 +16,7 @@ export class WebUiContextMenu extends LitElement {
   static override styles = [unsafeCSS(glass), unsafeCSS(style)]
 
   @property({ type: Boolean, reflect: true }) disabled = false
-  @property({ reflect: true, attribute: 'lock-scroll', converter: booleanWithFalseString }) lockScroll = true
+  @property({ type: Boolean, reflect: true, attribute: 'no-scroll-lock' }) noScrollLock = false
 
   @state() private _isOpen = false
   @state() private _x = 0
@@ -108,7 +107,7 @@ export class WebUiContextMenu extends LitElement {
       }
       this._dispatchChange(this._isOpen)
     }
-    if (changed.has('lockScroll')) this._syncScrollLock()
+    if (changed.has('noScrollLock')) this._syncScrollLock()
   }
 
   /**
@@ -522,12 +521,12 @@ export class WebUiContextMenu extends LitElement {
   }
 
   private _preventBackgroundScroll(e: Event) {
-    if (!this._isOpen || !this.lockScroll || this._isMenuPanelEvent(e)) return
+    if (!this._isOpen || this.noScrollLock || this._isMenuPanelEvent(e)) return
     e.preventDefault()
   }
 
   private _syncScrollLock(isOpen = this._isOpen) {
-    const shouldLock = isOpen && this.lockScroll
+    const shouldLock = isOpen && !this.noScrollLock
     if (shouldLock === this._hasScrollLock) return
 
     if (shouldLock) lockScroll()

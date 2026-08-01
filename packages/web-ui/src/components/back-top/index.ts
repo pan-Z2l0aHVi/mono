@@ -5,8 +5,7 @@ import { customElement, property, state } from 'lit/decorators.js'
 import '@/components/icon'
 import '@/components/button'
 import { lucideArrowUpToLine } from '@/icons'
-import { normalizeNumber } from '@/shared/normalize'
-import { booleanWithFalseString } from '@/shared/property-converters/boolean-with-false-string'
+import { normalizeLiteral, normalizeNumber } from '@/shared/normalize'
 
 import style from './style.css?inline'
 
@@ -14,9 +13,18 @@ import style from './style.css?inline'
 export class WebUiBackTop extends LitElement {
   static override styles = unsafeCSS(style)
 
-  @property({ reflect: true, converter: booleanWithFalseString }) smooth = true
+  @property({ reflect: true, attribute: 'scroll-behavior', useDefault: true })
+  get scrollBehavior(): 'smooth' | 'auto' {
+    return this._scrollBehavior
+  }
+  set scrollBehavior(value: string) {
+    const old = this._scrollBehavior
+    this._scrollBehavior = normalizeLiteral(value, ['smooth', 'auto'] as const, 'smooth')
+    this.requestUpdate('scrollBehavior', old)
+  }
+  private _scrollBehavior: 'smooth' | 'auto' = 'smooth'
   @property({ type: Boolean, reflect: true }) visible = false
-  @property({ type: Object, attribute: false }) scrollTarget: HTMLElement | Window = window
+  @property({ attribute: false }) scrollTarget: HTMLElement | Window = window
 
   @property({ type: Number, reflect: true })
   get threshold(): number {
@@ -89,7 +97,7 @@ export class WebUiBackTop extends LitElement {
   toTop() {
     this.target.scrollTo({
       top: 0,
-      behavior: this.smooth ? 'smooth' : 'auto'
+      behavior: this.scrollBehavior
     })
   }
 

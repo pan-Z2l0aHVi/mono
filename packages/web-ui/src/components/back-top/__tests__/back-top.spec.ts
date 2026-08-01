@@ -62,19 +62,29 @@ describe('WebUiBackTop 组件', () => {
     })
   })
 
-  describe('属性：smooth', () => {
-    it('默认值为 true', () => {
+  describe('属性：scrollBehavior', () => {
+    it('默认值为 smooth 且不反射初始值', async () => {
       const el = createBackTop()
-      expect(el.smooth).toBe(true)
+      await el.updateComplete
+      expect(el.scrollBehavior).toBe('smooth')
+      expect(el.hasAttribute('scroll-behavior')).toBe(false)
       el.remove()
     })
 
-    it('smooth 反射到 host', async () => {
+    it('scroll-behavior 反射到 host', async () => {
       const el = createBackTop()
-      el.setAttribute('smooth', 'false')
+      el.setAttribute('scroll-behavior', 'auto')
       await el.updateComplete
-      expect(el.smooth).toBe(false)
-      expect(el.getAttribute('smooth')).toBe('false')
+      expect(el.scrollBehavior).toBe('auto')
+      expect(el.getAttribute('scroll-behavior')).toBe('auto')
+      el.remove()
+    })
+
+    it('非法值回退为 smooth', async () => {
+      const el = createBackTop()
+      el.setAttribute('scroll-behavior', 'instant')
+      await el.updateComplete
+      expect(el.scrollBehavior).toBe('smooth')
       el.remove()
     })
   })
@@ -107,9 +117,9 @@ describe('WebUiBackTop 组件', () => {
       el.remove()
     })
 
-    it('smooth=false 时 behavior 为 auto', () => {
+    it('scrollBehavior=auto 时 behavior 为 auto', () => {
       const el = createBackTop()
-      el.smooth = false
+      el.scrollBehavior = 'auto'
       const spy = vi.spyOn(window, 'scrollTo').mockImplementation(() => {})
       el.toTop()
       expect(spy).toHaveBeenCalledWith({ top: 0, behavior: 'auto' })

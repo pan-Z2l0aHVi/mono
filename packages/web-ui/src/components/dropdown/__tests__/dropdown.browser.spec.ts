@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'vite-plus/test'
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
 
 import '..'
 import type { WebUiDropdown } from '..'
@@ -33,28 +33,34 @@ describe('WebUiDropdown 组件（浏览器）', () => {
   })
 
   it('指针点击可以打开子菜单', async () => {
-    const menu = document.createElement('web-ui-dropdown')
-    menu.innerHTML = SUBMENU
-    document.body.append(menu)
-    await menu.updateComplete
+    const warn = vi.spyOn(console, 'warn')
+    try {
+      const menu = document.createElement('web-ui-dropdown')
+      menu.innerHTML = SUBMENU
+      document.body.append(menu)
+      await menu.updateComplete
 
-    menu
-      .querySelector<HTMLButtonElement>('button')
-      ?.dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true, detail: 1 }))
-    await menu.updateComplete
-    await nextFrame()
+      menu
+        .querySelector<HTMLButtonElement>('button')
+        ?.dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true, detail: 1 }))
+      await menu.updateComplete
+      await nextFrame()
 
-    expect(getMenus()[0]?.dataset.wuiPresence).toBe('entering')
+      expect(getMenus()[0]?.dataset.wuiPresence).toBe('entering')
 
-    await nextFrame()
+      await nextFrame()
 
-    const parentItem = getMenus()[0]?.querySelector<HTMLElement>('web-ui-dropdown-item')
-    parentItem?.click()
-    await nextFrame()
-    await nextFrame()
+      const parentItem = getMenus()[0]?.querySelector<HTMLElement>('web-ui-dropdown-item')
+      parentItem?.click()
+      await nextFrame()
+      await nextFrame()
 
-    expect(getMenus()).toHaveLength(2)
-    expect(getMenus()[1]?.textContent).toContain('PDF')
+      expect(getMenus()).toHaveLength(2)
+      expect(getMenus()[1]?.textContent).toContain('PDF')
+      expect(warn).not.toHaveBeenCalledWith(expect.stringContaining('Element web-ui-dropdown scheduled an update'))
+    } finally {
+      warn.mockRestore()
+    }
   })
 
   it('键盘语义激活可以关闭并重新打开子菜单', async () => {

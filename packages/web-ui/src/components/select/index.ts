@@ -12,7 +12,6 @@ import type { OverlayApi } from '@/shared/overlay/overlay'
 import { createOverlayPortal } from '@/shared/overlay/portal'
 import type { OverlayContainer, OverlayPortal } from '@/shared/overlay/portal'
 import { hideOverlayPresence, showOverlayPresence } from '@/shared/overlay/presence'
-import { booleanWithFalseString } from '@/shared/property-converters/boolean-with-false-string'
 import { lockScroll, unlockScroll } from '@/shared/scroll-lock/scroll-lock'
 
 import style from './style.css?inline'
@@ -31,7 +30,7 @@ export class WebUiSelect extends LitElement {
   @property({ type: Boolean, reflect: true }) disabled = false
   @property({ type: Boolean, reflect: true }) required = false
   @property({ type: Boolean, reflect: true }) portal = false
-  @property({ reflect: true, attribute: 'lock-scroll', converter: booleanWithFalseString }) lockScroll = true
+  @property({ type: Boolean, reflect: true, attribute: 'no-scroll-lock' }) noScrollLock = false
   @property({ attribute: false }) overlayContainer?: OverlayContainer
   @property({ type: String, reflect: true }) name = ''
 
@@ -141,7 +140,7 @@ export class WebUiSelect extends LitElement {
   override updated(changed: PropertyValues) {
     if (changed.has('portal') || changed.has('overlayContainer'))
       requestAnimationFrame(() => this._reconfigureOverlay())
-    if (changed.has('lockScroll')) this._syncScrollLock()
+    if (changed.has('noScrollLock')) this._syncScrollLock()
     this._syncOpenAttribute()
     this._syncValidity()
   }
@@ -363,7 +362,7 @@ export class WebUiSelect extends LitElement {
   }
 
   private _syncScrollLock(isOpen = this._isOpen) {
-    const shouldLock = isOpen && this.lockScroll
+    const shouldLock = isOpen && !this.noScrollLock
     if (shouldLock === this._hasScrollLock) return
 
     if (shouldLock) lockScroll()

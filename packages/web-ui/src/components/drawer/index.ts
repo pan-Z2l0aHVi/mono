@@ -4,10 +4,9 @@ import { customElement, property } from 'lit/decorators.js'
 import '@/components/icon'
 import '@/components/button'
 import glass from '@/assets/glass.css?inline'
-import { lucideX } from '@/icons'
+import { oouiClose } from '@/icons'
 import { normalizeLiteral } from '@/shared/normalize'
 import { getTransitionDuration } from '@/shared/overlay/presence'
-import { booleanWithFalseString } from '@/shared/property-converters/boolean-with-false-string'
 import { lockScroll, unlockScroll } from '@/shared/scroll-lock/scroll-lock'
 
 import style from './style.css?inline'
@@ -21,9 +20,9 @@ export class WebUiDrawer extends LitElement {
   static override styles = [unsafeCSS(glass), unsafeCSS(style)]
 
   @property({ type: Boolean, reflect: true }) open = false
-  @property({ reflect: true, attribute: 'lock-scroll', converter: booleanWithFalseString }) lockScroll = true
-  @property({ reflect: true, attribute: 'overlay-closable', converter: booleanWithFalseString }) overlayClosable = true
-  @property({ reflect: true })
+  @property({ type: Boolean, reflect: true, attribute: 'no-scroll-lock' }) noScrollLock = false
+  @property({ type: Boolean, reflect: true, attribute: 'no-backdrop-close' }) noBackdropClose = false
+  @property({ type: String, reflect: true })
   get placement(): DrawerPlacement {
     return this._placement
   }
@@ -102,7 +101,7 @@ export class WebUiDrawer extends LitElement {
       if (this.open) this._startOpening()
       else this._startClosing()
     }
-    if (props.has('open') || props.has('lockScroll')) this._syncScrollLock()
+    if (props.has('open') || props.has('noScrollLock')) this._syncScrollLock()
   }
 
   private _startOpening() {
@@ -205,7 +204,7 @@ export class WebUiDrawer extends LitElement {
 
   private handleBackdropClick(e: MouseEvent) {
     if (e.target !== (e.currentTarget as HTMLDialogElement)) return
-    if (!this.overlayClosable) return
+    if (this.noBackdropClose) return
     this.close()
   }
 
@@ -220,7 +219,7 @@ export class WebUiDrawer extends LitElement {
   }
 
   private _syncScrollLock(isOpen = this.open) {
-    const shouldLock = isOpen && this.lockScroll
+    const shouldLock = isOpen && !this.noScrollLock
     if (shouldLock === this._hasScrollLock) return
 
     if (shouldLock) lockScroll()
@@ -258,8 +257,8 @@ export class WebUiDrawer extends LitElement {
         </div>
         ${this.closable
           ? html`
-              <web-ui-button class="wui-drawer-close" @click=${this.close} aria-label="关闭" icon>
-                <web-ui-icon .icon=${lucideX} size="16"></web-ui-icon>
+              <web-ui-button class="wui-drawer-close" @click=${this.close} aria-label="关闭" variant="secondary" icon>
+                <web-ui-icon .icon=${oouiClose}></web-ui-icon>
               </web-ui-button>
             `
           : nothing}

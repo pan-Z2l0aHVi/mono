@@ -7,6 +7,7 @@ English | [简体中文](./README.CN.md)
 ## Demo
 
 [View used by vue demo](https://pan-z2l0ahvi.github.io/mono/vue-web-ui-demo/)
+
 [View used by react demo](https://pan-z2l0ahvi.github.io/mono/react-web-ui-demo/)
 
 ## Install
@@ -65,13 +66,13 @@ function App() {
 
 React 19 registers Custom Element events using the suffix of the JSX `on` key unchanged. Event names are
 case-sensitive: bind `open-change` as `onopen-change`, not `onOpenChange`. Standard `input` and `change`
-events continue to use React's conventional `onInput` and `onChange`. For a default-`true` property, pass the
-camel-cased JavaScript property so `false` reaches the element.
+events continue to use React's conventional `onInput` and `onChange`. Boolean properties follow native HTML
+semantics: absence is `false` and presence is `true`.
 
 ```tsx
 <web-ui-dialog
   open={open}
-  lockScroll={false}
+  noScrollLock
   onopen-change={event => setOpen(event.detail.open)}
 />
 <web-ui-select value={value} onChange={event => setValue(event.currentTarget.value)} />
@@ -241,16 +242,16 @@ ArrowUp/ArrowDown keyboard increments and decrements the value.
 
 Select dropdown with option items, keyboard navigation, and portal support.
 
-| Attribute          | Type                               | Default | Description                      |
-| ------------------ | ---------------------------------- | ------- | -------------------------------- |
-| `value`            | `string`                           | `''`    | Selected value                   |
-| `placeholder`      | `string`                           | `''`    | Placeholder text                 |
-| `name`             | `string`                           | `''`    | Form field name                  |
-| `disabled`         | `boolean`                          | `false` | Disabled state                   |
-| `required`         | `boolean`                          | `false` | Required validation              |
-| `portal`           | `boolean`                          | `false` | Render dropdown in theme overlay |
-| `lock-scroll`      | `boolean`                          | `true`  | Lock body scroll when open       |
-| `overlayContainer` | `HTMLElement \| () => HTMLElement` | —       | Explicit portal container        |
+| Attribute          | Type                               | Default | Description                       |
+| ------------------ | ---------------------------------- | ------- | --------------------------------- |
+| `value`            | `string`                           | `''`    | Selected value                    |
+| `placeholder`      | `string`                           | `''`    | Placeholder text                  |
+| `name`             | `string`                           | `''`    | Form field name                   |
+| `disabled`         | `boolean`                          | `false` | Disabled state                    |
+| `required`         | `boolean`                          | `false` | Required validation               |
+| `portal`           | `boolean`                          | `false` | Render dropdown in theme overlay  |
+| `no-scroll-lock`   | `boolean`                          | `false` | Do not lock body scroll when open |
+| `overlayContainer` | `HTMLElement \| () => HTMLElement` | —       | Explicit portal container         |
 
 **Events:** `input`, `change`, `open-change` (`CustomEvent<{ open: boolean }>`)
 
@@ -431,11 +432,11 @@ Propagates `direction` attribute to child buttons.
 
 Modal dialog using native `<dialog>` with `showModal()`.
 
-| Attribute          | Type      | Default | Description                |
-| ------------------ | --------- | ------- | -------------------------- |
-| `open`             | `boolean` | `false` | Dialog visibility          |
-| `lock-scroll`      | `boolean` | `true`  | Lock body scroll when open |
-| `overlay-closable` | `boolean` | `true`  | Close on backdrop click    |
+| Attribute           | Type      | Default | Description                       |
+| ------------------- | --------- | ------- | --------------------------------- |
+| `open`              | `boolean` | `false` | Dialog visibility                 |
+| `no-scroll-lock`    | `boolean` | `false` | Do not lock body scroll when open |
+| `no-backdrop-close` | `boolean` | `false` | Do not close on backdrop click    |
 
 **Events:** `open-change` (`CustomEvent<{ open: boolean }>`)
 
@@ -449,14 +450,14 @@ Uses native `<dialog>` with `@cancel` prevention (Escape calls `close()`). Click
 
 Side drawer using native `<dialog>` with closing animation.
 
-| Attribute          | Type                                     | Default   | Description                               |
-| ------------------ | ---------------------------------------- | --------- | ----------------------------------------- |
-| `open`             | `boolean`                                | `false`   | Drawer visibility                         |
-| `placement`        | `'right' \| 'left' \| 'top' \| 'bottom'` | `'right'` | Slide-in direction                        |
-| `heading`          | `string`                                 | `''`      | Title text (fallback when no header slot) |
-| `closable`         | `boolean`                                | `false`   | Show close button                         |
-| `lock-scroll`      | `boolean`                                | `true`    | Lock body scroll when open                |
-| `overlay-closable` | `boolean`                                | `true`    | Close on backdrop click                   |
+| Attribute           | Type                                     | Default   | Description                               |
+| ------------------- | ---------------------------------------- | --------- | ----------------------------------------- |
+| `open`              | `boolean`                                | `false`   | Drawer visibility                         |
+| `placement`         | `'right' \| 'left' \| 'top' \| 'bottom'` | `'right'` | Slide-in direction                        |
+| `heading`           | `string`                                 | `''`      | Title text (fallback when no header slot) |
+| `closable`          | `boolean`                                | `false`   | Show close button                         |
+| `no-scroll-lock`    | `boolean`                                | `false`   | Do not lock body scroll when open         |
+| `no-backdrop-close` | `boolean`                                | `false`   | Do not close on backdrop click            |
 
 **Events:** `open-change` (`CustomEvent<{ open: boolean }>`)
 
@@ -464,7 +465,7 @@ Side drawer using native `<dialog>` with closing animation.
 
 **Methods:** `show()`, `close()`
 
-Closing keeps the native dialog in the top layer until the `--wui-duration-drawer` transition completes (280ms by default), then calls `dialog.close()`. Escape always follows this close path; `overlay-closable` controls backdrop clicks only.
+Closing keeps the native dialog in the top layer until the `--wui-duration-drawer` transition completes (280ms by default), then calls `dialog.close()`. Escape always follows this close path; `no-backdrop-close` controls backdrop clicks only.
 
 ---
 
@@ -518,10 +519,10 @@ Tooltip overlay using pointer/focus triggers.
 
 Right-click context menu.
 
-| Attribute     | Type      | Default | Description               |
-| ------------- | --------- | ------- | ------------------------- |
-| `disabled`    | `boolean` | `false` | Disabled state            |
-| `lock-scroll` | `boolean` | `true`  | Prevent background scroll |
+| Attribute        | Type      | Default | Description                |
+| ---------------- | --------- | ------- | -------------------------- |
+| `disabled`       | `boolean` | `false` | Disabled state             |
+| `no-scroll-lock` | `boolean` | `false` | Allow background scrolling |
 
 **Events:** `open-change` (`CustomEvent<{ open: boolean }>`)
 
@@ -539,14 +540,14 @@ Opens on `contextmenu` event. Menu items: `<web-ui-dropdown-item>`, `<web-ui-dro
 
 Dropdown menu with multi-level submenu support.
 
-| Attribute     | Type        | Default          | Description                |
-| ------------- | ----------- | ---------------- | -------------------------- |
-| `open`        | `boolean`   | `false`          | Menu visibility            |
-| `disabled`    | `boolean`   | `false`          | Disabled state             |
-| `placement`   | `Placement` | `'bottom-start'` | Floating UI placement      |
-| `offset`      | `number`    | `4`              | Offset from trigger        |
-| `match-width` | `boolean`   | `false`          | Match trigger width        |
-| `lock-scroll` | `boolean`   | `true`           | Lock body scroll when open |
+| Attribute        | Type        | Default          | Description                       |
+| ---------------- | ----------- | ---------------- | --------------------------------- |
+| `open`           | `boolean`   | `false`          | Menu visibility                   |
+| `disabled`       | `boolean`   | `false`          | Disabled state                    |
+| `placement`      | `Placement` | `'bottom-start'` | Floating UI placement             |
+| `offset`         | `number`    | `4`              | Offset from trigger               |
+| `match-width`    | `boolean`   | `false`          | Match trigger width               |
+| `no-scroll-lock` | `boolean`   | `false`          | Do not lock body scroll when open |
 
 **Events:** `open-change` (`CustomEvent<{ open: boolean }>`)
 
@@ -689,12 +690,12 @@ Page layout grid.
 
 Scroll-to-top button.
 
-| Attribute      | Type                    | Default  | Description              |
-| -------------- | ----------------------- | -------- | ------------------------ |
-| `smooth`       | `boolean`               | `true`   | Smooth scroll            |
-| `threshold`    | `number`                | `200`    | Scroll threshold to show |
-| `visible`      | `boolean`               | `false`  | Current visibility state |
-| `scrollTarget` | `HTMLElement \| Window` | `window` | Scroll container         |
+| Attribute         | Type                    | Default    | Description              |
+| ----------------- | ----------------------- | ---------- | ------------------------ |
+| `scroll-behavior` | `'smooth' \| 'auto'`    | `'smooth'` | Scroll behavior          |
+| `threshold`       | `number`                | `200`      | Scroll threshold to show |
+| `visible`         | `boolean`               | `false`    | Current visibility state |
+| `scrollTarget`    | `HTMLElement \| Window` | `window`   | Scroll container         |
 
 **Slots:** `default` (custom button content)
 
@@ -739,6 +740,8 @@ Defines `--wui-color-*`, `--wui-shadow-*`, `--wui-layer-*`, and motion tokens. M
 #### `<web-ui-toast>`
 
 Individual toast notification element. Managed by imperative API.
+
+When using the element directly, `no-close-button` is a standard boolean attribute that hides its close button.
 
 **Imperative API:**
 
