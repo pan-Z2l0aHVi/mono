@@ -1,5 +1,11 @@
 # @greypan/web-ui
 
+## 2.1.2
+
+### Patch Changes
+
+- 7db6d3e: Standardize Custom Element boolean attributes and replace default-true properties with semantic opt-out attributes.
+
 ## 2.1.1
 
 ### Patch Changes
