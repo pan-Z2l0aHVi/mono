@@ -225,6 +225,19 @@ describe('WebUiPopover 组件', () => {
       cleanupElement(el)
     })
 
+    it('打开后修改 placement 和 offset 保持面板可见', async () => {
+      const el = createPopover('Btn', 'Content')
+      el.open = true
+      await waitForUpdate(el)
+      el.placement = 'top'
+      el.offset = 16
+      await waitForUpdate(el)
+      await new Promise(resolve => requestAnimationFrame(resolve))
+
+      expect(queryA11y(el, '[role="dialog"]')?.hasAttribute('hidden')).toBe(false)
+      cleanupElement(el)
+    })
+
     it('负值回退到 0', async () => {
       const el = createPopover('Btn', 'Content')
       el.offset = -10

@@ -5,11 +5,9 @@ import { customElement, property } from 'lit/decorators.js'
 import glass from '@/assets/glass.css?inline'
 import overlayMotion from '@/assets/overlay-motion.css?inline'
 import { normalizeLiteral, normalizeNumber } from '@/shared/normalize'
-import { withOverlay } from '@/shared/overlay/overlay'
-import type { OverlayApi } from '@/shared/overlay/overlay'
+import { defineAnchoredPanel } from '@/shared/overlay/anchored-panel'
 import { createOverlayPortal } from '@/shared/overlay/portal'
 import type { OverlayContainer, OverlayPortal } from '@/shared/overlay/portal'
-import { hideOverlayPresence, showOverlayPresence } from '@/shared/overlay/presence'
 
 import style from './style.css?inline'
 
@@ -75,14 +73,23 @@ export class WebUiPopover extends LitElement {
   @property({ type: Boolean, reflect: true }) portal = false
   @property({ attribute: false }) overlayContainer?: OverlayContainer
 
-  private _overlay?: OverlayApi & { anchor: HTMLElement; overlay: HTMLElement }
   private _showTimer?: ReturnType<typeof setTimeout>
   private _hideTimer?: ReturnType<typeof setTimeout>
   private _suppressEvent = false
-  private _portal?: OverlayPortal
   private _shouldOpenInstantly = true
 
   private _panelId = `wui-popover-panel-${++popoverIdCounter}`
+  private readonly _panel = defineAnchoredPanel().make({
+    getAnchor: () => this.shadowRoot?.querySelector<HTMLElement>('.popover-trigger') ?? null,
+    getLocalPanel: () => this.shadowRoot?.querySelector<HTMLElement>('.popover-panel') ?? null,
+    getPositioning: () => ({
+      placement: this.placement,
+      offset: this.offset,
+      strategy: this.portal ? 'fixed' : 'absolute'
+    }),
+    isPortal: () => this.portal,
+    createPortal: () => this._createPortal()
+  })
 
   /** 当前是否打开 */
   get isOpen(): boolean {
@@ -106,11 +113,10 @@ export class WebUiPopover extends LitElement {
     this.removeEventListener('pointerleave', this._onPointerLeave)
     clearTimeout(this._showTimer)
     clearTimeout(this._hideTimer)
-    this._disposeOverlay()
+    this._panel.dispose()
   }
 
   override firstUpdated() {
-    this._initLocalOverlay()
     if (this.open) {
       requestAnimationFrame(() => this._openOverlay(this._shouldOpenInstantly))
       this._shouldOpenInstantly = true
@@ -118,8 +124,10 @@ export class WebUiPopover extends LitElement {
   }
 
   protected override updated(changed: Map<string, unknown>) {
-    if (changed.has('placement') || changed.has('portal') || changed.has('overlayContainer'))
+    if (changed.has('portal') || changed.has('overlayContainer'))
       requestAnimationFrame(() => this._reconfigureOverlay())
+    else if (changed.has('placement') || changed.has('offset'))
+      requestAnimationFrame(() => this._panel.updatePosition())
 
     if (changed.has('open')) {
       if (this.open) {
@@ -180,35 +188,11 @@ export class WebUiPopover extends LitElement {
     }
   }
 
-  private _initLocalOverlay() {
-    const anchor = this.shadowRoot?.querySelector<HTMLElement>('.popover-trigger')
-    const panel = this.shadowRoot?.querySelector<HTMLElement>('.popover-panel')
-    if (!anchor || !panel) return
-    this._overlay = withOverlay.make({
-      anchor,
-      overlay: panel,
-      placement: this.placement,
-      offset: this.offset
-    })
-  }
-
   private _openOverlay(isInstant = false) {
-    if (this.portal) this._openPortal(isInstant)
-    else {
-      this._overlay?.open()
-      const panel = this.shadowRoot?.querySelector<HTMLElement>('.popover-panel')
-      if (panel) showOverlayPresence(panel, { isInstant })
-    }
+    this._panel.open(isInstant)
   }
 
-  private _openPortal(isInstant = false) {
-    if (this._portal) {
-      this._overlay?.open()
-      showOverlayPresence(this._portal.panel, { isInstant })
-      return
-    }
-    const anchor = this.shadowRoot?.querySelector('.popover-trigger') as HTMLElement | null
-    if (!anchor) return
+  private _createPortal(): OverlayPortal {
     const portal = createOverlayPortal({
       container: this.overlayContainer,
       target: this,
@@ -223,44 +207,15 @@ export class WebUiPopover extends LitElement {
     portal.moveContent(
       Array.from(this.childNodes).filter(node => !(node instanceof HTMLElement && node.slot === 'trigger'))
     )
-    this._portal = portal
-    this._overlay = withOverlay.make({
-      anchor,
-      overlay: portal.panel,
-      placement: this.placement,
-      offset: this.offset,
-      strategy: 'fixed'
-    })
-    this._overlay.open()
-    showOverlayPresence(portal.panel, { isInstant })
+    return portal
   }
 
   private async _closeOverlay() {
-    this._overlay?.close()
-    const panel = this._portal?.panel ?? this.shadowRoot?.querySelector<HTMLElement>('.popover-panel')
-    if (panel && !(await hideOverlayPresence(panel))) return
-    if (!this._portal || this.open) return
-    this._portal.restoreContent()
-    this._portal.remove()
-    this._portal = undefined
-    this._overlay = undefined
-  }
-
-  private _disposeOverlay() {
-    this._overlay?.dispose()
-    this._overlay = undefined
-    this._portal?.restoreContent()
-    this._portal?.remove()
-    this._portal = undefined
+    await this._panel.close(() => this.open)
   }
 
   private _reconfigureOverlay() {
-    const panel = this._portal?.panel ?? this.shadowRoot?.querySelector<HTMLElement>('.popover-panel')
-    const shouldAnimate = panel?.dataset.wuiPresence === 'entering'
-    this._disposeOverlay()
-    if (!this.portal) this._initLocalOverlay()
-    // 已稳定显示的面板重新定位不应重播动效；正在入场的指针交互则保持原有动效。
-    if (this.open) this._openOverlay(!shouldAnimate)
+    this._panel.reconfigure(this.open)
   }
 
   private _dispatchChange(open: boolean) {
@@ -275,14 +230,14 @@ export class WebUiPopover extends LitElement {
 
   private _focusPanel() {
     requestAnimationFrame(() => {
-      const panel = this._portal?.panel ?? this.shadowRoot?.querySelector<HTMLElement>('.popover-panel')
+      const panel = this._panel.getPanel()
       const autofocus = panel?.querySelector<HTMLElement>('[autofocus]')
       if (autofocus && !autofocus.matches(':disabled, [disabled]')) autofocus.focus()
     })
   }
 
   private _returnFocus() {
-    const panel = this._portal?.panel ?? this.shadowRoot?.querySelector<HTMLElement>('.popover-panel')
+    const panel = this._panel.getPanel()
     if (!panel?.matches(':focus-within')) return
     const trigger = this._queryTrigger()
     trigger?.focus()
@@ -306,7 +261,7 @@ export class WebUiPopover extends LitElement {
   private _onClickOutside = (e: MouseEvent) => {
     if (!this.open) return
     if (this.trigger === 'manual' || this.trigger === 'hover') return
-    if (e.target instanceof Node && this._portal?.panel.contains(e.target)) return
+    if (e.target instanceof Node && this.portal && this._panel.getPanel()?.contains(e.target)) return
     if (this._isInsideShadowRoot(e)) return
     this.open = false
   }
@@ -315,7 +270,7 @@ export class WebUiPopover extends LitElement {
     if (this.trigger === 'manual' || this.trigger === 'hover') return
 
     requestAnimationFrame(() => {
-      if (this.open && !this.matches(':focus-within') && !this._portal?.panel.matches(':focus-within')) {
+      if (this.open && !this.matches(':focus-within') && !this._panel.getPanel()?.matches(':focus-within')) {
         this.open = false
       }
     })

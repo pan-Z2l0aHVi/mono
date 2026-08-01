@@ -7,7 +7,6 @@ import { customElement, property } from 'lit/decorators.js'
 import glass from '@/assets/glass.css?inline'
 import { lucideCheck, lucideInfo, lucideTriangleAlert, lucideCircleAlert, heroiconsXMark16Solid } from '@/icons'
 import { getTransitionDuration } from '@/shared/overlay/presence'
-import { booleanWithFalseString } from '@/shared/property-converters/boolean-with-false-string'
 
 import style from './style.css?inline'
 import type { ToastCloseReason, ToastPosition, ToastType } from './types'
@@ -30,13 +29,13 @@ function _formatTime(): string {
 export class WebUiToast extends LitElement {
   static override styles = [unsafeCSS(glass), unsafeCSS(style)]
 
-  @property({ type: String, reflect: true }) toastId = ''
+  @property({ type: String, attribute: false }) toastId = ''
   @property({ type: String, reflect: true }) type: ToastType = 'info'
   @property({ type: String, reflect: true }) position: ToastPosition = 'top-right'
   @property({ type: String }) heading = ''
   @property({ type: String }) message = ''
   @property({ type: Number }) duration = 3000
-  @property({ reflect: true, converter: booleanWithFalseString }) closable = true
+  @property({ type: Boolean, reflect: true, attribute: 'no-close-button' }) noCloseButton = false
   @property({ type: Boolean, reflect: true }) visible = false
 
   private _closeTimer?: ReturnType<typeof setTimeout>
@@ -152,7 +151,7 @@ export class WebUiToast extends LitElement {
           <div class="toast-message">${this.message}</div>
         </div>
         <span class="toast-time">${_formatTime()}</span>
-        ${this.closable
+        ${!this.noCloseButton
           ? html`
               <button class="toast-close-btn wui-glass" aria-label="关闭" @click=${this._onCloseClick}>
                 <web-ui-icon .icon=${heroiconsXMark16Solid} :size="10"></web-ui-icon>

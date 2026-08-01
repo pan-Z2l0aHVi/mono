@@ -192,7 +192,7 @@ watch(
 
     <h2>滚动锁定</h2>
     <div class="mb-3 flex flex-col gap-3">
-      <web-ui-select lock-scroll="false" placeholder="打开时不锁定页面滚动">
+      <web-ui-select no-scroll-lock placeholder="打开时不锁定页面滚动">
         <web-ui-option value="a" label="Option A"></web-ui-option>
         <web-ui-option value="b" label="Option B"></web-ui-option>
       </web-ui-select>

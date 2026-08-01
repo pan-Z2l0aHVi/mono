@@ -52,7 +52,7 @@ function DialogDemo() {
       <div className="mb-3 flex gap-2">
         <web-ui-button onClick={() => setVisible3(true)}>打开不锁定滚动的对话框</web-ui-button>
       </div>
-      <web-ui-dialog open={visible3} lockScroll={false} onopen-change={event => setVisible3(event.detail.open)}>
+      <web-ui-dialog open={visible3} noScrollLock onopen-change={event => setVisible3(event.detail.open)}>
         <span slot="title">可滚动背景</span>
         此对话框关闭滚动锁定，仍保留原生模态焦点行为。
         <web-ui-button slot="footer" variant="secondary" full onClick={() => setVisible3(false)}>
@@ -94,7 +94,7 @@ function DialogDemo() {
       <div className="mb-3 flex gap-2">
         <web-ui-button onClick={() => setVisible5(true)}>打开</web-ui-button>
       </div>
-      <web-ui-dialog open={visible5} overlayClosable={false} onopen-change={event => setVisible5(event.detail.open)}>
+      <web-ui-dialog open={visible5} noBackdropClose onopen-change={event => setVisible5(event.detail.open)}>
         <span slot="title">确认操作</span>
         <p>此对话框禁止点击遮罩关闭，必须通过按钮操作。</p>
         <web-ui-button slot="footer" variant="primary" full onClick={() => setVisible5(false)}>

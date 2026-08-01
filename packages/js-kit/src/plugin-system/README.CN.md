@@ -17,13 +17,14 @@
 ```ts
 import { definePlugin } from '@greypan/js-kit'
 
-const withConfig = definePlugin(() => ({
-  apiUrl: 'https://api.example.com',
-  timeout: 5000
-}))
+const defineConfig = () =>
+  definePlugin(() => ({
+    apiUrl: 'https://api.example.com',
+    timeout: 5000
+  }))
 
 // 通过 .make() 实例化
-const config = withConfig.make()
+const config = defineConfig().make()
 console.log(config.apiUrl) // 'https://api.example.com'
 ```
 
@@ -32,16 +33,12 @@ console.log(config.apiUrl) // 'https://api.example.com'
 链式组合插件。结果插件合并两者的 API。
 
 ```ts
-const withLogger = definePlugin(() => ({
-  log: (msg: string) => console.log(msg)
-}))
+const defineLogger = () => definePlugin(() => ({ log: (msg: string) => console.log(msg) }))
 
-const withAuth = definePlugin(() => ({
-  token: 'xxx'
-}))
+const defineAuth = () => definePlugin(() => ({ token: 'xxx' }))
 
 // 组合：结果插件同时拥有 log 和 token
-const app = withLogger.use(withAuth).make()
+const app = defineLogger().use(defineAuth()).make()
 app.log('hello')
 console.log(app.token)
 ```
@@ -49,13 +46,13 @@ console.log(app.token)
 **多级嵌套：** `.use()` 接受任意插件 — 包括已经是 `.use()` 链式组合的插件。所有 API 最终合并到实例中。
 
 ```ts
-const withA = definePlugin(() => ({ a: 1 }))
-const withB = definePlugin(() => ({ b: 2 }))
-const withC = definePlugin(() => ({ c: 3 }))
-const withD = definePlugin(() => ({ d: 4 }))
+const defineA = () => definePlugin(() => ({ a: 1 }))
+const defineB = () => definePlugin(() => ({ b: 2 }))
+const defineC = () => definePlugin(() => ({ c: 3 }))
+const defineD = () => definePlugin(() => ({ d: 4 }))
 
 // .use() 的参数可以是链式组合的插件表达式
-const app = withA.use(withB.use(withC)).use(withD).make()
+const app = defineA().use(defineB().use(defineC())).use(defineD()).make()
 console.log(app.a, app.b, app.c, app.d) // 1, 2, 3, 4
 ```
 
@@ -64,11 +61,12 @@ console.log(app.a, app.b, app.c, app.d) // 1, 2, 3, 4
 实例化插件链。可选传入初始上下文，会与插件 API 合并。
 
 ```ts
-const withDb = definePlugin((ctx: { connectionString: string }) => ({
-  query: (sql: string) => ctx.connectionString + sql
-}))
+const defineDb = () =>
+  definePlugin((ctx: { connectionString: string }) => ({
+    query: (sql: string) => ctx.connectionString + sql
+  }))
 
-const db = withDb.make({ connectionString: 'postgres://...' })
+const db = defineDb().make({ connectionString: 'postgres://...' })
 db.query('SELECT 1')
 ```
 

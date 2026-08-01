@@ -9,6 +9,13 @@
   display: block;
 }
 
+/* 容器模式：scrollTarget 为元素时按钮悬浮于容器底部（元素需置于容器内部），
+   横向偏移沿用 --web-ui-back-top-left/right，纵向沿用 --web-ui-back-top-bottom */
+:host([container-mode]) {
+  position: sticky;
+  bottom: var(--web-ui-back-top-bottom, 20px);
+}
+
 .back-top-inner {
   pointer-events: none;
 
@@ -27,6 +34,13 @@
     outline: 3px solid var(--wui-focus-ring, rgb(0 136 255 / 0.4));
     outline-offset: 2px;
   }
+}
+
+/* 容器模式下按钮脱离 fixed，改为流内布局并按偏移变量左/右对齐 */
+:host([container-mode]) .back-top-inner {
+  position: static;
+  margin-right: var(--web-ui-back-top-right, 20px);
+  margin-left: var(--web-ui-back-top-left, auto);
 }
 
 :host([visible]) .back-top-inner {

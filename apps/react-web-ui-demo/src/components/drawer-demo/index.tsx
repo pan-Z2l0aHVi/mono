@@ -137,13 +137,9 @@ function DrawerDemo() {
       <div className="mb-3 flex gap-2">
         <web-ui-button onClick={() => setUnlockedVisible(true)}>打开不锁定滚动的抽屉</web-ui-button>
       </div>
-      <web-ui-drawer
-        open={unlockedVisible}
-        lockScroll={false}
-        onopen-change={event => setUnlockedVisible(event.detail.open)}
-      >
+      <web-ui-drawer open={unlockedVisible} noScrollLock onopen-change={event => setUnlockedVisible(event.detail.open)}>
         <p>
-          关闭 <code>lock-scroll</code> 后，背景页面仍可滚动。
+          关闭 <code>no-scroll-lock</code> 后，背景页面仍可滚动。
         </p>
         <web-ui-button slot="footer" variant="secondary" full onClick={() => setUnlockedVisible(false)}>
           关闭
@@ -157,7 +153,7 @@ function DrawerDemo() {
       <web-ui-drawer
         open={overlayVisible}
         heading="不可点击遮罩关闭"
-        overlayClosable={false}
+        noBackdropClose
         onopen-change={event => setOverlayVisible(event.detail.open)}
       >
         <p>点击遮罩不会关闭抽屉，必须通过按钮操作。</p>

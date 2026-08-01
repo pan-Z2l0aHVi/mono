@@ -14,7 +14,10 @@
   --wui-layer-toast: 200;
   --wui-layer-loading: 300;
   --wui-duration-press: 120ms;
+  --wui-duration-feedback: 120ms;
   --wui-duration-fast: 160ms;
+  --wui-duration-menu-enter: 140ms;
+  --wui-duration-menu-exit: 100ms;
   --wui-duration-overlay-enter: 180ms;
   --wui-duration-overlay-exit: 140ms;
   --wui-duration-drawer: 280ms;
@@ -27,7 +30,10 @@
 
 :host([motion='reduced']) {
   --wui-duration-press: 0ms;
+  --wui-duration-feedback: 0ms;
   --wui-duration-fast: 0ms;
+  --wui-duration-menu-enter: 0ms;
+  --wui-duration-menu-exit: 0ms;
   --wui-duration-overlay-enter: 0ms;
   --wui-duration-overlay-exit: 0ms;
   --wui-duration-drawer: 0ms;
@@ -38,7 +44,10 @@
 @media (prefers-reduced-motion: reduce) {
   :host([motion='system']) {
     --wui-duration-press: 0ms;
+    --wui-duration-feedback: 0ms;
     --wui-duration-fast: 0ms;
+    --wui-duration-menu-enter: 0ms;
+    --wui-duration-menu-exit: 0ms;
     --wui-duration-overlay-enter: 0ms;
     --wui-duration-overlay-exit: 0ms;
     --wui-duration-drawer: 0ms;

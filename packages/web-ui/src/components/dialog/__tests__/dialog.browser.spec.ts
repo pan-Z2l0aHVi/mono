@@ -33,7 +33,7 @@ describe('WebUiDialog 组件（浏览器）', () => {
 
   it('禁用遮罩点击时仍可通过 Escape 关闭', async () => {
     const component = createDialog()
-    component.overlayClosable = false
+    component.noBackdropClose = true
     component.open = true
     await component.updateComplete
     await new Promise(resolve => requestAnimationFrame(resolve))

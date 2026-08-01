@@ -226,7 +226,7 @@ const controlledOpen = ref(false)
 
     <h2>滚动锁定</h2>
     <div class="mb-6">
-      <web-ui-dropdown :lock-scroll="false">
+      <web-ui-dropdown no-scroll-lock>
         <web-ui-button slot="trigger">不锁定滚动</web-ui-button>
         <web-ui-dropdown-item>编辑</web-ui-dropdown-item>
         <web-ui-dropdown-item>复制</web-ui-dropdown-item>

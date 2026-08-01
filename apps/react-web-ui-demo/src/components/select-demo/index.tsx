@@ -187,7 +187,7 @@ function SelectDemo() {
       </div>
       <h2>滚动锁定</h2>
       <div className="mb-3 flex flex-col gap-3">
-        <web-ui-select lockScroll={false} placeholder="打开时不锁定页面滚动">
+        <web-ui-select noScrollLock placeholder="打开时不锁定页面滚动">
           <web-ui-option value="a" label="Option A"></web-ui-option>
           <web-ui-option value="b" label="Option B"></web-ui-option>
         </web-ui-select>

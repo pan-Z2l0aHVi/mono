@@ -93,7 +93,7 @@ describe('WebUiDrawer 组件', () => {
     })
   })
 
-  describe('属性：lock-scroll', () => {
+  describe('属性：no-scroll-lock', () => {
     it('默认打开时锁定页面滚动', async () => {
       const el = createDrawer()
       el.open = true
@@ -103,9 +103,9 @@ describe('WebUiDrawer 组件', () => {
       cleanupElement(el)
     })
 
-    it('关闭 lock-scroll 时不锁定页面滚动', async () => {
+    it('no-scroll-lock 为 true 时不锁定页面滚动', async () => {
       const el = createDrawer()
-      el.lockScroll = false
+      el.setAttribute('no-scroll-lock', '')
       el.open = true
       await waitForUpdate(el)
 
@@ -113,11 +113,11 @@ describe('WebUiDrawer 组件', () => {
       cleanupElement(el)
     })
 
-    it('打开期间切换 lock-scroll 立即恢复页面滚动', async () => {
+    it('打开期间切换 no-scroll-lock 立即恢复页面滚动', async () => {
       const el = createDrawer()
       el.open = true
       await waitForUpdate(el)
-      el.lockScroll = false
+      el.setAttribute('no-scroll-lock', '')
       await waitForUpdate(el)
 
       expect(document.body.style.position).toBe('')
@@ -324,10 +324,10 @@ describe('WebUiDrawer 组件', () => {
       cleanupElement(el)
     })
 
-    it('overlay-closable=false 时 cancel 仍通过关闭过渡退出', async () => {
+    it('no-backdrop-close 存在时 cancel 仍通过关闭过渡退出', async () => {
       vi.useFakeTimers()
       const el = createDrawer()
-      el.setAttribute('overlay-closable', 'false')
+      el.setAttribute('no-backdrop-close', '')
       el.open = true
       await waitForUpdate(el)
       await vi.advanceTimersByTimeAsync(16)
@@ -374,8 +374,8 @@ describe('WebUiDrawer 组件', () => {
     })
   })
 
-  describe('属性：overlayClosable', () => {
-    it('默认 true，点击遮罩关闭抽屉', async () => {
+  describe('属性：noBackdropClose', () => {
+    it('默认允许点击遮罩关闭抽屉', async () => {
       const el = createDrawer()
       el.open = true
       await waitForUpdate(el)
@@ -388,14 +388,14 @@ describe('WebUiDrawer 组件', () => {
       cleanupElement(el)
     })
 
-    it('false 时点击遮罩不关闭', async () => {
+    it('no-backdrop-close 存在时点击遮罩不关闭', async () => {
       const el = createDrawer()
-      el.setAttribute('overlay-closable', 'false')
+      el.setAttribute('no-backdrop-close', '')
       el.open = true
       await waitForUpdate(el)
       const dialog = el.shadowRoot?.querySelector('dialog')
 
-      expect(el.overlayClosable).toBe(false)
+      expect(el.noBackdropClose).toBe(true)
       dialog?.click()
       await waitForUpdate(el)
       expect(el.open).toBe(true)

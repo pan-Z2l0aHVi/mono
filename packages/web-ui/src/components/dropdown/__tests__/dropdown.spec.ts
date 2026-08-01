@@ -119,6 +119,13 @@ describe('WebUiDropdown 组件', () => {
   })
 
   describe('属性：placement / offset', () => {
+    it('match-width 映射到 matchWidth', async () => {
+      const el = createDropdown({ 'match-width': '' }, SIMPLE)
+      await waitForUpdate(el)
+      expect(el.matchWidth).toBe(true)
+      cleanupElement(el)
+    })
+
     it('placement 反射到 host', async () => {
       const el = createDropdown({ placement: 'top-end' }, SIMPLE)
       await waitForUpdate(el)
@@ -144,6 +151,21 @@ describe('WebUiDropdown 组件', () => {
       expect(el.offset).toBe(16)
       cleanupElement(el)
     })
+
+    it('打开后修改定位属性保持菜单可用', async () => {
+      const el = createDropdown({}, SIMPLE)
+      el.openMenu()
+      await waitForUpdate(el)
+      el.placement = 'top'
+      el.offset = 12
+      el.matchWidth = true
+      await waitForUpdate(el)
+      await new Promise(resolve => requestAnimationFrame(resolve))
+
+      expect(el.isOpen).toBe(true)
+      expect(getMenuItem()).toBeTruthy()
+      cleanupElement(el)
+    })
   })
 
   describe('打开/关闭', () => {
@@ -160,9 +182,8 @@ describe('WebUiDropdown 组件', () => {
       expect(document.body.style.position).toBe('')
     })
 
-    it('lock-scroll=false 时打开不锁定页面滚动', async () => {
-      const el = createDropdown({}, SIMPLE)
-      el.lockScroll = false
+    it('no-scroll-lock 为 true 时打开不锁定页面滚动', async () => {
+      const el = createDropdown({ 'no-scroll-lock': '' }, SIMPLE)
       await waitForUpdate(el)
       el.openMenu()
       await waitForUpdate(el)

@@ -37,16 +37,12 @@ bun add @greypan/js-kit
 import { definePlugin } from '@greypan/js-kit'
 
 // 定义可复用的插件
-const withLogger = definePlugin(() => ({
-  log: (msg: string) => console.log(msg)
-}))
+const defineLogger = () => definePlugin(() => ({ log: (msg: string) => console.log(msg) }))
 
-const withAuth = definePlugin(() => ({
-  token: 'xxx'
-}))
+const defineAuth = () => definePlugin(() => ({ token: 'xxx' }))
 
 // 通过 .use() 组合插件，通过 .make() 实例化
-const app = withLogger.use(withAuth).make()
+const app = defineLogger().use(defineAuth()).make()
 
 app.log('hello') // 'hello'
 console.log(app.token) // 'xxx'
@@ -61,11 +57,9 @@ console.log(app.token) // 'xxx'
 ```ts
 import { definePlugin } from '@greypan/js-kit'
 
-const withConfig = definePlugin(() => ({
-  apiUrl: 'https://api.example.com'
-}))
+const defineConfig = () => definePlugin(() => ({ apiUrl: 'https://api.example.com' }))
 
-const ctx = withConfig.make()
+const ctx = defineConfig().make()
 console.log(ctx.apiUrl) // 'https://api.example.com'
 ```
 

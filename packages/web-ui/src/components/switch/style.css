@@ -52,7 +52,7 @@
   outline: 3px solid transparent;
   outline-offset: 2px;
 
-  transition: background-color 0.25s ease;
+  transition: background-color var(--wui-duration-fast, 160ms) ease;
 
   &:focus-visible {
     outline-color: var(--wui-focus-ring, rgb(0 136 255 / 0.4));
@@ -80,10 +80,10 @@
   border-radius: calc(infinity * 1px);
 
   transition:
-    width 0.15s cubic-bezier(0.4, 0, 0.2, 1),
-    transform 0.25s cubic-bezier(0.4, 0, 0.2, 1),
-    border-radius 0.15s cubic-bezier(0.4, 0, 0.2, 1),
-    background-color 0.15s ease;
+    width var(--wui-duration-press, 120ms) cubic-bezier(0.4, 0, 0.2, 1),
+    transform var(--wui-duration-fast, 160ms) cubic-bezier(0.4, 0, 0.2, 1),
+    border-radius var(--wui-duration-press, 120ms) cubic-bezier(0.4, 0, 0.2, 1),
+    background-color var(--wui-duration-press, 120ms) ease;
 
   &.is-pressed {
     width: 32px;
