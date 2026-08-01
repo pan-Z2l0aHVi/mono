@@ -1,5 +1,11 @@
 # @greypan/web-ui
 
+## 2.1.3
+
+### Patch Changes
+
+- 5c70639: provide back-top position css var
+
 ## 2.1.2
 
 ### Patch Changes
