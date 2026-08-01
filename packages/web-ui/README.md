@@ -701,6 +701,8 @@ Scroll-to-top button.
 
 **Methods:** `toTop()`
 
+**Positioning:** With `scrollTarget` as `window`, the button is fixed to the viewport corner. With `scrollTarget` as an `HTMLElement`, place the element inside that container and the button floats at the container's bottom corner via `position: sticky`. Offsets follow the `--web-ui-back-top-top/right/bottom/left` CSS variables.
+
 Role: `button`, keyboard Enter scrolls to top.
 
 #### `<web-ui-svg-draw-lines>`

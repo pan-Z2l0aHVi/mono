@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ComponentsAvatarRouteImport } from './routes/components/avatar'
+import { Route as ComponentsBackTopRouteImport } from './routes/components/back-top'
 import { Route as ComponentsBadgeRouteImport } from './routes/components/badge'
 import { Route as ComponentsButtonRouteImport } from './routes/components/button'
 import { Route as ComponentsCheckboxRouteImport } from './routes/components/checkbox'
@@ -44,6 +45,11 @@ const IndexRoute = IndexRouteImport.update({
 const ComponentsAvatarRoute = ComponentsAvatarRouteImport.update({
   id: '/components/avatar',
   path: '/components/avatar',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ComponentsBackTopRoute = ComponentsBackTopRouteImport.update({
+  id: '/components/back-top',
+  path: '/components/back-top',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ComponentsBadgeRoute = ComponentsBadgeRouteImport.update({
@@ -170,6 +176,7 @@ const HomeIndexRoute = HomeIndexRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/components/avatar': typeof ComponentsAvatarRoute
+  '/components/back-top': typeof ComponentsBackTopRoute
   '/components/badge': typeof ComponentsBadgeRoute
   '/components/button': typeof ComponentsButtonRoute
   '/components/checkbox': typeof ComponentsCheckboxRoute
@@ -198,6 +205,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/components/avatar': typeof ComponentsAvatarRoute
+  '/components/back-top': typeof ComponentsBackTopRoute
   '/components/badge': typeof ComponentsBadgeRoute
   '/components/button': typeof ComponentsButtonRoute
   '/components/checkbox': typeof ComponentsCheckboxRoute
@@ -227,6 +235,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/components/avatar': typeof ComponentsAvatarRoute
+  '/components/back-top': typeof ComponentsBackTopRoute
   '/components/badge': typeof ComponentsBadgeRoute
   '/components/button': typeof ComponentsButtonRoute
   '/components/checkbox': typeof ComponentsCheckboxRoute
@@ -257,6 +266,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/components/avatar'
+    | '/components/back-top'
     | '/components/badge'
     | '/components/button'
     | '/components/checkbox'
@@ -285,6 +295,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/components/avatar'
+    | '/components/back-top'
     | '/components/badge'
     | '/components/button'
     | '/components/checkbox'
@@ -313,6 +324,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/components/avatar'
+    | '/components/back-top'
     | '/components/badge'
     | '/components/button'
     | '/components/checkbox'
@@ -342,6 +354,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ComponentsAvatarRoute: typeof ComponentsAvatarRoute
+  ComponentsBackTopRoute: typeof ComponentsBackTopRoute
   ComponentsBadgeRoute: typeof ComponentsBadgeRoute
   ComponentsButtonRoute: typeof ComponentsButtonRoute
   ComponentsCheckboxRoute: typeof ComponentsCheckboxRoute
@@ -382,6 +395,13 @@ declare module '@tanstack/react-router' {
       path: '/components/avatar'
       fullPath: '/components/avatar'
       preLoaderRoute: typeof ComponentsAvatarRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/components/back-top': {
+      id: '/components/back-top'
+      path: '/components/back-top'
+      fullPath: '/components/back-top'
+      preLoaderRoute: typeof ComponentsBackTopRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/components/badge': {
@@ -558,6 +578,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ComponentsAvatarRoute: ComponentsAvatarRoute,
+  ComponentsBackTopRoute: ComponentsBackTopRoute,
   ComponentsBadgeRoute: ComponentsBadgeRoute,
   ComponentsButtonRoute: ComponentsButtonRoute,
   ComponentsCheckboxRoute: ComponentsCheckboxRoute,

@@ -45,6 +45,13 @@ declare module 'vue-router/auto-routes' {
       Record<never, never>,
       | never
     >,
+    '/components/back-top': RouteRecordInfo<
+      '/components/back-top',
+      '/components/back-top',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
     '/components/badge': RouteRecordInfo<
       '/components/badge',
       '/components/badge',
@@ -237,6 +244,14 @@ declare module 'vue-router/auto-routes' {
     'src/pages/components/avatar.vue': {
       routes:
         | '/components/avatar'
+      views:
+        | never
+      pathParamNames:
+        | never
+    }
+    'src/pages/components/back-top.vue': {
+      routes:
+        | '/components/back-top'
       views:
         | never
       pathParamNames:

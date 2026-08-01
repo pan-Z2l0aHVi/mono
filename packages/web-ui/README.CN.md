@@ -695,6 +695,8 @@ WebUiSpinner.hide() // 隐藏
 
 **方法：** `toTop()`
 
+**定位：** `scrollTarget` 为 `window` 时按钮固定在视口角落；为 `HTMLElement` 时需将元素放置在容器内部，按钮通过 `position: sticky` 悬浮于容器底部角落。偏移量沿用 `--web-ui-back-top-top/right/bottom/left` CSS 变量。
+
 角色：`button`，键盘 Enter 触发回到顶部。
 
 #### `<web-ui-svg-draw-lines>`

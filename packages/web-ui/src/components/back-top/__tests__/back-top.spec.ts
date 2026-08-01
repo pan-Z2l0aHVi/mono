@@ -107,6 +107,61 @@ describe('WebUiBackTop 组件', () => {
     })
   })
 
+  describe('属性：scrollTarget', () => {
+    it('首次更新完成前赋值时，滚动监听绑定到新容器', async () => {
+      const el = createBackTop()
+      const target = document.createElement('div')
+      el.scrollTarget = target
+      target.scrollTop = 300
+      target.dispatchEvent(new Event('scroll'))
+      await el.updateComplete
+      expect(el.visible).toBe(true)
+      el.remove()
+    })
+
+    it('后续更新 scrollTarget 时重新绑定滚动监听', async () => {
+      const el = createBackTop()
+      await el.updateComplete
+      const target = document.createElement('div')
+      el.scrollTarget = target
+      await el.updateComplete
+      target.scrollTop = 300
+      target.dispatchEvent(new Event('scroll'))
+      expect(el.visible).toBe(true)
+      el.remove()
+    })
+  })
+
+  describe('容器模式', () => {
+    it('scrollTarget 为元素时反射 container-mode 属性', async () => {
+      const el = createBackTop()
+      const target = document.createElement('div')
+      el.scrollTarget = target
+      await el.updateComplete
+      expect(el.hasAttribute('container-mode')).toBe(true)
+      el.remove()
+    })
+
+    it('scrollTarget 为 window 时无 container-mode 属性', async () => {
+      const el = createBackTop()
+      await el.updateComplete
+      expect(el.hasAttribute('container-mode')).toBe(false)
+      el.remove()
+    })
+
+    it('scrollTarget 从容器改回 window 时移除 container-mode', async () => {
+      const el = createBackTop()
+      const target = document.createElement('div')
+      el.scrollTarget = target
+      await el.updateComplete
+      expect(el.hasAttribute('container-mode')).toBe(true)
+      el.scrollTarget = window
+      await el.updateComplete
+      expect(el.hasAttribute('container-mode')).toBe(false)
+      el.remove()
+    })
+  })
+
   describe('方法：toTop()', () => {
     it('调用 window.scrollTo 滚动到顶部', () => {
       const el = createBackTop()
