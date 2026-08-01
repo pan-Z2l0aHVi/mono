@@ -28,13 +28,15 @@ const instantBox = useScrollBox()
 
     <h2>页面级滚动</h2>
     <p class="mb-2 text-sm text-[var(--wui-color-text-muted)]">
-      向下滚动页面超过阈值后出现按钮，点击或按 Enter 回到顶部。站点右下角已挂载全局按钮， 本示例通过
-      <code>--web-ui-back-top-left / --web-ui-back-top-right</code> 定位到左下角以便区分。
+      向下滚动页面超过阈值后出现按钮，点击或按 Enter 回到顶部。通过
+      <code>--web-ui-back-top-position</code>、<code>--web-ui-back-top-left</code> 等自定义属性控制按钮在容器内的定位。
     </p>
-    <div class="mb-6 min-h-80 rounded-xl border border-[var(--wui-color-border)] p-4">
-      <p>这是一个占位区域：滚动页面观察左下角的回到顶部按钮。</p>
+    <div class="mb-6 h-80 overflow-hidden rounded-xl border border-[var(--wui-color-border)] p-4 [position:relative]">
+      <p class="pb-10">这是一个占位区域：滚动页面观察左下角的回到顶部按钮。</p>
+      <web-ui-back-top
+        class="absolute bottom-5 left-6 right-auto [--web-ui-back-top-position:absolute]"
+      ></web-ui-back-top>
     </div>
-    <web-ui-back-top class="page-back-top"></web-ui-back-top>
 
     <h2>自定义滚动容器</h2>
     <p class="mb-2 text-sm text-[var(--wui-color-text-muted)]">
@@ -83,10 +85,5 @@ const instantBox = useScrollBox()
   border-radius: 12px;
 
   background-color: var(--wui-color-surface-raised);
-}
-
-.page-back-top {
-  --web-ui-back-top-left: 24px;
-  --web-ui-back-top-right: auto;
 }
 </style>

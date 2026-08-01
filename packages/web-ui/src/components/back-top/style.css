@@ -19,7 +19,7 @@
 .back-top-inner {
   pointer-events: none;
 
-  position: fixed;
+  position: var(--web-ui-back-top-position, fixed);
   z-index: var(--web-ui-back-top-z-index, var(--wui-layer-auxiliary, 20));
   top: var(--web-ui-back-top-top, auto);
   right: var(--web-ui-back-top-right, 20px);

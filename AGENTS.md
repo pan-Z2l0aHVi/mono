@@ -136,6 +136,7 @@ Constraints:
 - Before starting a local dev server, check whether the target port already has a responsive server for the required app. Reuse it when it is suitable; do not create a duplicate server merely because a verification task starts.
 - Start a new server only when no suitable server is running, the existing one cannot serve the required current state, or an isolated environment is explicitly needed. Use an unused port in that case and record its exact PID.
 - Only stop a server started by the current task. Never terminate a pre-existing server owned by the user or another task.
+- When encountering a stale or unresponsive dev server on the target port, ask the user before killing it. Clean up only the servers started by the current task at the end of the session.
 - Never attach to or control the user's existing Chrome session. Verify in the browser context owned by chrome-devtools MCP or `agent-browser`, isolated from the user's working Chrome.
 - Ignore certificate errors only for local self-signed HTTPS demos; never relax certificate validation for external sites.
 - Stop every dev server started for verification after it completes, unless the user asks to keep it running. Preserve or report the local URL for follow-up.
