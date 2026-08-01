@@ -17,13 +17,14 @@ Create a composable plugin. The `setup` function receives a context object and r
 ```ts
 import { definePlugin } from '@greypan/js-kit'
 
-const withConfig = definePlugin(() => ({
-  apiUrl: 'https://api.example.com',
-  timeout: 5000
-}))
+const defineConfig = () =>
+  definePlugin(() => ({
+    apiUrl: 'https://api.example.com',
+    timeout: 5000
+  }))
 
 // Instantiate with .make()
-const config = withConfig.make()
+const config = defineConfig().make()
 console.log(config.apiUrl) // 'https://api.example.com'
 ```
 
@@ -32,16 +33,12 @@ console.log(config.apiUrl) // 'https://api.example.com'
 Chain plugins together. The resulting plugin combines APIs from both.
 
 ```ts
-const withLogger = definePlugin(() => ({
-  log: (msg: string) => console.log(msg)
-}))
+const defineLogger = () => definePlugin(() => ({ log: (msg: string) => console.log(msg) }))
 
-const withAuth = definePlugin(() => ({
-  token: 'xxx'
-}))
+const defineAuth = () => definePlugin(() => ({ token: 'xxx' }))
 
 // Compose: resulting plugin has both log and token
-const app = withLogger.use(withAuth).make()
+const app = defineLogger().use(defineAuth()).make()
 app.log('hello')
 console.log(app.token)
 ```
@@ -49,13 +46,13 @@ console.log(app.token)
 **Multi-level nesting:** `.use()` accepts any plugin — including one that is itself a `.use()` chain. All APIs merge into the final instance.
 
 ```ts
-const withA = definePlugin(() => ({ a: 1 }))
-const withB = definePlugin(() => ({ b: 2 }))
-const withC = definePlugin(() => ({ c: 3 }))
-const withD = definePlugin(() => ({ d: 4 }))
+const defineA = () => definePlugin(() => ({ a: 1 }))
+const defineB = () => definePlugin(() => ({ b: 2 }))
+const defineC = () => definePlugin(() => ({ c: 3 }))
+const defineD = () => definePlugin(() => ({ d: 4 }))
 
 // .use() argument can be a chained plugin expression
-const app = withA.use(withB.use(withC)).use(withD).make()
+const app = defineA().use(defineB().use(defineC())).use(defineD()).make()
 console.log(app.a, app.b, app.c, app.d) // 1, 2, 3, 4
 ```
 
@@ -64,11 +61,12 @@ console.log(app.a, app.b, app.c, app.d) // 1, 2, 3, 4
 Instantiate the plugin chain. Optionally pass initial context that will be merged.
 
 ```ts
-const withDb = definePlugin((ctx: { connectionString: string }) => ({
-  query: (sql: string) => ctx.connectionString + sql
-}))
+const defineDb = () =>
+  definePlugin((ctx: { connectionString: string }) => ({
+    query: (sql: string) => ctx.connectionString + sql
+  }))
 
-const db = withDb.make({ connectionString: 'postgres://...' })
+const db = defineDb().make({ connectionString: 'postgres://...' })
 db.query('SELECT 1')
 ```
 

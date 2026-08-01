@@ -37,24 +37,25 @@ pnpm monorepo (`apps/**`, `packages/**`) using Turborepo. Packages published und
 - **Package manager**: pnpm 10.33.0 (enforced via `engine-strict=true` in `.npmrc`)
 - **Runtime**: Node 24 (managed via mise — run `mise install` if node/pnpm/go are missing; `engines` allows >=24.18.0)
 - **Build/dev/lint/test/format**: all delegated to `vite-plus` (`vp`) — a Vite wrapper. Most per-package scripts call `vp build`, `vp pack`, `vp check`, `vp test run`, `vp lint`, `vp fmt`
-- **Orchestration**: Turborepo (`turbo.json`) — `build` and `test` tasks depend on `^build` (upstream packages build first). `dev` task also depends on `^build` but is not cached and runs persistently.
+- **Orchestration**: Turborepo (`turbo.json`) — `build` and `test` tasks depend on `^build` (upstream packages build first). Demo commands build upstream packages once, then use `turbo run dev` to start the persistent package-level watchers without Turbo's repository watcher.
 - **Language**: TypeScript 6, ES modules only (`"type": "module"` everywhere)
 
 ## Key commands
 
-| Command                                           | What it does                                  |
-| ------------------------------------------------- | --------------------------------------------- |
-| `pnpm install`                                    | Install all deps (frozen lockfile in CI)      |
-| `pnpm build`                                      | Build all packages in dependency order        |
-| `pnpm test`                                       | Run all tests                                 |
-| `pnpm commit`                                     | Interactive conventional commit via cz-git    |
-| `bash scripts/commit.sh <type> <scope> <subject>` | Non-interactive commit (useful for agents)    |
-| `pnpm dev:react-web-ui-demo`                      | Dev server for React app (with turbo watch)   |
-| `pnpm dev:vue-web-ui-demo`                        | Dev server for Vue app (with turbo watch)     |
-| `pnpm run check:code`                             | Format + lint + type-check (what CI runs)     |
-| `pnpm clean`                                      | Remove `dist/`, `.turbo/`, `.vite/`, `build/` |
-| `pnpm clean --full`                               | Also remove `node_modules` and lockfile       |
-| `pnpm publish:new <package-dir>`                  | First publish of a new package (1.0.0)        |
+| Command                                           | What it does                                        |
+| ------------------------------------------------- | --------------------------------------------------- |
+| `pnpm install`                                    | Install all deps (frozen lockfile in CI)            |
+| `pnpm build`                                      | Build all packages in dependency order              |
+| `pnpm test`                                       | Run all tests                                       |
+| `pnpm commit`                                     | Interactive conventional commit via cz-git          |
+| `bash scripts/commit.sh <type> <scope> <subject>` | Non-interactive commit (useful for agents)          |
+| `pnpm dev:react-web-ui-demo`                      | React demo with upstream build and package watchers |
+| `pnpm dev:vue-web-ui-demo`                        | Vue demo with upstream build and package watchers   |
+| `pnpm run check:code`                             | Check formatting, lint, and types                   |
+| `pnpm run fix:code`                               | Auto-fix formatting/lint issues, then type-check    |
+| `pnpm clean`                                      | Remove `dist/`, `.turbo/`, `.vite/`, `build/`       |
+| `pnpm clean --full`                               | Also remove `node_modules` and lockfile             |
+| `pnpm publish:new <package-dir>`                  | First publish of a new package (1.0.0)              |
 
 ## Build details
 
@@ -98,29 +99,22 @@ They are excluded from linting, formatting, and spell-check.
 - `docs/design/` — Design references, including screenshots and CSS implementations
 - `CONTEXT.md` — Project architecture overview, including ADR index, package boundaries, and technical principles
 
-## Agent hooks
-
-`.claude/hooks/` contains automated checks that run before and after every tool call:
-
-- `pre-tool.sh` — Runs before tool calls to prevent destructive operations
-- `post-tool.sh` — Runs after tool calls to remind agents to run `check:code`
-
 ## Agent reference docs
 
 Read these as needed; they are not required for every conversation:
 
-| File                                    | Purpose                                           | When to read                                    |
-| --------------------------------------- | ------------------------------------------------- | ----------------------------------------------- |
-| `docs/agents/testing.md`                | Test infrastructure, commands, and browser mode   | When test execution or configuration is unclear |
-| `docs/agents/linting.md`                | Toolchain, formatter, linter, and stylelint usage | When linting or formatting commands are unclear |
-| `docs/agents/issue-tracker.md`          | GitHub issue operations and `gh` CLI usage        | When creating, querying, or updating issues     |
-| `docs/agents/domain.md`                 | Code exploration conventions, ADRs, and glossary  | When exploring an unfamiliar code area          |
-| `docs/agents/build.md`                  | Build modes, package graph, externalization, CI   | When changing build, package, or release flow   |
-| `docs/agents/web-ui.md`                 | Web UI implementation, tokens, overlays, testing  | When changing `packages/web-ui`                 |
-| `docs/agents/dependencies.md`           | Dependency placement and catalog policy           | After dependency changes are authorized         |
-| `docs/agents/commit.md`                 | Commit message and execution workflow             | After a commit is authorized                    |
-| `docs/agents/review.md`                 | Review scope and reporting                        | When reviewing code                             |
-| `.agents/skills/agent-browser/SKILL.md` | Browser automation for UI/UX verification         | When verifying UI changes in a real browser     |
+| File                                    | Purpose                                           | When to read                                                                     |
+| --------------------------------------- | ------------------------------------------------- | -------------------------------------------------------------------------------- |
+| `docs/agents/testing.md`                | Test infrastructure, commands, and browser mode   | When test execution or configuration is unclear                                  |
+| `docs/agents/linting.md`                | Toolchain, formatter, linter, and stylelint usage | When linting or formatting commands are unclear                                  |
+| `docs/agents/issue-tracker.md`          | GitHub issue operations and `gh` CLI usage        | When creating, querying, or updating issues                                      |
+| `docs/agents/domain.md`                 | Code exploration conventions, ADRs, and glossary  | When exploring an unfamiliar code area                                           |
+| `docs/agents/build.md`                  | Build modes, package graph, externalization, CI   | When changing build, package, or release flow                                    |
+| `docs/agents/web-ui.md`                 | Web UI implementation, tokens, overlays, testing  | When changing `packages/web-ui`                                                  |
+| `docs/agents/dependencies.md`           | Dependency placement and catalog policy           | After dependency changes are authorized                                          |
+| `docs/agents/commit.md`                 | Commit message and execution workflow             | After a commit is authorized                                                     |
+| `docs/agents/review.md`                 | Review scope and reporting                        | When reviewing code                                                              |
+| `.agents/skills/agent-browser/SKILL.md` | Browser automation CLI (manual invocation only)   | When the user invokes `/agent-browser` (e.g. chrome-devtools MCP is unavailable) |
 
 ## Instruction scopes
 
@@ -128,7 +122,7 @@ Read these as needed; they are not required for every conversation:
 
 ### Browser verification
 
-Changes involving UI, UX, interaction, responsive behavior, or browser runtime behavior must be verified in a real browser. Use the `agent-browser` skill to automate this — navigate to the local demo, interact with components, and take screenshots.
+Changes involving UI, UX, interaction, responsive behavior, or browser runtime behavior must be verified in a real browser. Use the chrome-devtools MCP as the primary layer when it is available — navigate to the local demo, interact with components, inspect console/network, and take screenshots. The `agent-browser` skill is a manual alternative: run it only when the user invokes `/agent-browser`, e.g. when MCP is unavailable or an isolated browser context is required.
 
 What to verify per change type:
 
@@ -142,10 +136,10 @@ Constraints:
 - Before starting a local dev server, check whether the target port already has a responsive server for the required app. Reuse it when it is suitable; do not create a duplicate server merely because a verification task starts.
 - Start a new server only when no suitable server is running, the existing one cannot serve the required current state, or an isolated environment is explicitly needed. Use an unused port in that case and record its exact PID.
 - Only stop a server started by the current task. Never terminate a pre-existing server owned by the user or another task.
-- Do not attach to or control the user's existing Chrome session. Use `agent-browser` in its own isolated context.
+- Never attach to or control the user's existing Chrome session. Verify in the browser context owned by chrome-devtools MCP or `agent-browser`, isolated from the user's working Chrome.
 - Ignore certificate errors only for local self-signed HTTPS demos; never relax certificate validation for external sites.
 - Stop every dev server started for verification after it completes, unless the user asks to keep it running. Preserve or report the local URL for follow-up.
 
-Fallback chain: `agent-browser` → project browser-mode tests → component tests and HTTP/DOM checks. If no browser layer is available, explicitly report why real-browser verification could not be completed and the resulting risk.
+Fallback chain: chrome-devtools MCP → project browser-mode tests → component tests and HTTP/DOM checks. `agent-browser` is not part of the automatic chain — it runs only on manual invocation (`/agent-browser`). If no browser layer is available (MCP missing and no manual invocation), explicitly report why real-browser verification could not be completed and the resulting risk.
 
 Final reports must state the verification URL, what was checked, and any gaps. Do not describe a successful build or passing jsdom tests as browser interaction verification.

@@ -4,34 +4,41 @@ import { customElement, property, state } from 'lit/decorators.js'
 import '@/components/dropdown-divider'
 import '@/components/dropdown-header'
 import '@/components/dropdown-item'
-import glass from '@/assets/glass.css?inline'
-import { createMenuPortalOverlay } from '@/shared/menu-portal/menu-portal'
+import { createMenuPortalOverlay, type MenuPortalOverlay } from '@/shared/menu-portal/menu-portal'
+import {
+  findFocusedMenuItem,
+  focusMenuItem,
+  getEnabledMenuItems,
+  getMenuChildren,
+  getMenuItemFromEvent,
+  hideNestedMenuChildren,
+  moveMenuChildren
+} from '@/shared/menu-portal/menu-tree'
 import { hideOverlayPresence, showOverlayPresence } from '@/shared/overlay/presence'
-import { booleanWithFalseString } from '@/shared/property-converters/boolean-with-false-string'
-import { lockScroll, unlockScroll } from '@/shared/scroll-lock/scroll-lock'
+import { createScrollLockLease } from '@/shared/scroll-lock/scroll-lock'
 
 import style from './style.css?inline'
 
 @customElement('web-ui-context-menu')
 export class WebUiContextMenu extends LitElement {
-  static override styles = [unsafeCSS(glass), unsafeCSS(style)]
+  static override styles = unsafeCSS(style)
 
   @property({ type: Boolean, reflect: true }) disabled = false
-  @property({ reflect: true, attribute: 'lock-scroll', converter: booleanWithFalseString }) lockScroll = true
+  @property({ type: Boolean, reflect: true, attribute: 'no-scroll-lock' }) noScrollLock = false
 
   @state() private _isOpen = false
   @state() private _x = 0
   @state() private _y = 0
 
-  private _activeSubmenus: HTMLElement[] = []
+  private _activeSubmenus: MenuPortalOverlay[] = []
   private _activeSubmenuItems: HTMLElement[] = []
-  private readonly _closingSubmenus = new Map<HTMLElement, HTMLElement>()
+  private readonly _closingSubmenus = new Map<HTMLElement, MenuPortalOverlay>()
   private _submenuTimer?: ReturnType<typeof setTimeout>
   private _ignoreOutsideClick = false
   private _ignoreOutsideClickTimer?: ReturnType<typeof setTimeout>
   private _hoverCleanupFns: (() => void)[] = []
-  private _menu?: HTMLElement
-  private _hasScrollLock = false
+  private _menu?: MenuPortalOverlay
+  private readonly _scrollLock = createScrollLockLease()
   private _restoreFocusTarget?: HTMLElement
   private _shouldOpenInstantly = true
 
@@ -66,12 +73,9 @@ export class WebUiContextMenu extends LitElement {
     clearTimeout(this._submenuTimer)
     clearTimeout(this._ignoreOutsideClickTimer)
     this._hoverCleanupFns.forEach(cleanup => cleanup())
-    if (this._hasScrollLock) {
-      unlockScroll()
-      this._hasScrollLock = false
-    }
+    this._scrollLock.release()
     this._returnItemsToSlot()
-    this._menu?.remove()
+    this._menu?.panel.remove()
     this._menu = undefined
     this._closeSubmenusFrom(0, true)
     this._restoreClosingSubmenus()
@@ -89,15 +93,15 @@ export class WebUiContextMenu extends LitElement {
         this._syncScrollLock()
         if (!this._menu) {
           this._menu = createMenuPortalOverlay('context-menu', this)
-          this._menu.setAttribute('role', 'menu')
-          this._menu.setAttribute('aria-label', '上下文菜单')
-          this._menu.addEventListener('click', this._onMenuClick)
+          this._menu.panel.setAttribute('role', 'menu')
+          this._menu.panel.setAttribute('aria-label', '上下文菜单')
+          this._menu.panel.addEventListener('click', this._onMenuClick)
         }
         requestAnimationFrame(() => {
           if (!this._isOpen || !this._menu) return
           this._setupMenuItems()
           this._positionMenu()
-          showOverlayPresence(this._menu, { isInstant: this._shouldOpenInstantly })
+          showOverlayPresence(this._menu.panel, { isInstant: this._shouldOpenInstantly })
           this._shouldOpenInstantly = true
           this._focusFirstItem()
           this._bindLevelHovers()
@@ -108,7 +112,7 @@ export class WebUiContextMenu extends LitElement {
       }
       this._dispatchChange(this._isOpen)
     }
-    if (changed.has('lockScroll')) this._syncScrollLock()
+    if (changed.has('noScrollLock')) this._syncScrollLock()
   }
 
   /**
@@ -145,13 +149,13 @@ export class WebUiContextMenu extends LitElement {
   }
 
   private _positionMenu() {
-    const menu = this._menu
-    if (!menu) return
+    const panel = this._menu?.panel
+    if (!panel) return
 
-    menu.style.visibility = 'hidden'
-    menu.style.display = ''
+    panel.style.visibility = 'hidden'
+    panel.style.display = ''
 
-    const { width, height } = menu.getBoundingClientRect()
+    const { width, height } = panel.getBoundingClientRect()
     const vw = window.innerWidth
     const vh = window.innerHeight
 
@@ -163,17 +167,16 @@ export class WebUiContextMenu extends LitElement {
     if (x < 0) x = 8
     if (y < 0) y = 8
 
-    menu.style.left = `${x}px`
-    menu.style.top = `${y}px`
+    panel.style.left = `${x}px`
+    panel.style.top = `${y}px`
     const horizontalOrigin = x < this._x ? 'right' : 'left'
     const verticalOrigin = y < this._y ? 'bottom' : 'top'
-    menu.style.setProperty('--wui-overlay-transform-origin', `${verticalOrigin} ${horizontalOrigin}`)
-    menu.style.visibility = ''
+    panel.style.setProperty('--wui-overlay-transform-origin', `${verticalOrigin} ${horizontalOrigin}`)
+    panel.style.visibility = ''
   }
 
   private _focusFirstItem() {
-    const menu = this._menu
-    const items = menu?.querySelectorAll<HTMLElement>('web-ui-dropdown-item:not([disabled])')
+    const items = this._menu?.content.querySelectorAll<HTMLElement>('web-ui-dropdown-item:not([disabled])')
     const firstItem = items?.[0]
     if (firstItem) {
       this._focusMenuItem(firstItem)
@@ -185,11 +188,7 @@ export class WebUiContextMenu extends LitElement {
     if (!menu) return
 
     this._hideMenuItems()
-    Array.from(this.children).forEach(child => {
-      if (child.matches('web-ui-dropdown-item, web-ui-dropdown-divider, web-ui-dropdown-header')) {
-        menu.appendChild(child)
-      }
-    })
+    moveMenuChildren(this, menu.content)
   }
 
   private _returnItemsToSlot() {
@@ -198,36 +197,24 @@ export class WebUiContextMenu extends LitElement {
 
     this._closeSubmenusFrom(0, true)
     this._restoreClosingSubmenus()
-    Array.from(menu.children).forEach(child => {
-      this.appendChild(child)
-    })
+    moveMenuChildren(menu.content, this)
   }
 
   private async _closeMenuAfterPresence() {
     const menu = this._menu
-    if (menu && !(await hideOverlayPresence(menu))) return
+    if (menu && !(await hideOverlayPresence(menu.panel))) return
     if (this._isOpen || !this.isConnected || this._menu !== menu) return
 
     this._returnItemsToSlot()
-    menu?.remove()
+    menu?.panel.remove()
     this._menu = undefined
     this._restoreFocusTarget?.focus()
     this._restoreFocusTarget = undefined
   }
 
   private _hideMenuItems() {
-    Array.from(this.children).forEach(child => {
-      if (child.matches('web-ui-dropdown-item, web-ui-dropdown-divider, web-ui-dropdown-header')) {
-        child.setAttribute('slot', 'context-menu-hidden')
-      }
-    })
-    this.querySelectorAll<HTMLElement>('web-ui-dropdown-item[submenu]').forEach(item => {
-      Array.from(item.children).forEach(child => {
-        if (child.matches('web-ui-dropdown-item, web-ui-dropdown-divider, web-ui-dropdown-header')) {
-          child.setAttribute('slot', 'context-menu-hidden')
-        }
-      })
-    })
+    getMenuChildren(this).forEach(child => child.setAttribute('slot', 'context-menu-hidden'))
+    hideNestedMenuChildren(this, 'context-menu-hidden')
   }
 
   private _openSubmenu(item: HTMLElement, isInstant = false) {
@@ -244,28 +231,26 @@ export class WebUiContextMenu extends LitElement {
       this._activeSubmenuItems[level] = item
       item.setAttribute('active', '')
       this._positionSubmenu(item, closingSubmenu)
-      showOverlayPresence(closingSubmenu, { isInstant })
+      showOverlayPresence(closingSubmenu.panel, { isInstant })
       this._bindLevelHovers()
       return
     }
-    const children = Array.from(item.children).filter(child =>
-      child.matches('web-ui-dropdown-item, web-ui-dropdown-divider, web-ui-dropdown-header')
-    )
+    const children = getMenuChildren(item)
     if (children.length === 0) return
 
     const submenu = createMenuPortalOverlay('context-submenu', this)
-    submenu.dataset.level = String(level)
-    submenu.setAttribute('role', 'menu')
-    submenu.setAttribute('aria-label', '子菜单')
-    submenu.style.visibility = 'hidden'
-    submenu.addEventListener('click', this._onMenuClick)
-    children.forEach(child => submenu.appendChild(child))
+    submenu.panel.dataset.level = String(level)
+    submenu.panel.setAttribute('role', 'menu')
+    submenu.panel.setAttribute('aria-label', '子菜单')
+    submenu.panel.style.visibility = 'hidden'
+    submenu.panel.addEventListener('click', this._onMenuClick)
+    submenu.content.append(...children)
 
     this._activeSubmenus[level] = submenu
     this._activeSubmenuItems[level] = item
     item.setAttribute('active', '')
     this._positionSubmenu(item, submenu)
-    showOverlayPresence(submenu, { isInstant })
+    showOverlayPresence(submenu.panel, { isInstant })
     this._bindLevelHovers()
   }
 
@@ -276,7 +261,7 @@ export class WebUiContextMenu extends LitElement {
       item?.removeAttribute('active')
       if (!item || isInstant) {
         this._restoreSubmenuItems(submenu, item)
-        submenu.remove()
+        submenu.panel.remove()
       } else {
         this._closingSubmenus.set(item, submenu)
         void this._closeSubmenuAfterPresence(submenu, item)
@@ -286,46 +271,46 @@ export class WebUiContextMenu extends LitElement {
     this._activeSubmenuItems.length = level
   }
 
-  private async _closeSubmenuAfterPresence(submenu: HTMLElement, item: HTMLElement) {
-    if (!(await hideOverlayPresence(submenu))) return
+  private async _closeSubmenuAfterPresence(submenu: MenuPortalOverlay, item: HTMLElement) {
+    if (!(await hideOverlayPresence(submenu.panel))) return
     if (this._closingSubmenus.get(item) !== submenu) return
 
     this._closingSubmenus.delete(item)
     this._restoreSubmenuItems(submenu, item)
-    submenu.remove()
+    submenu.panel.remove()
   }
 
-  private _restoreSubmenuItems(submenu: HTMLElement, item?: HTMLElement) {
-    Array.from(submenu.children).forEach(child => item?.appendChild(child))
+  private _restoreSubmenuItems(submenu: MenuPortalOverlay, item?: HTMLElement) {
+    if (item) moveMenuChildren(submenu.content, item)
   }
 
   private _restoreClosingSubmenus() {
     this._closingSubmenus.forEach((submenu, item) => {
       this._restoreSubmenuItems(submenu, item)
-      submenu.remove()
+      submenu.panel.remove()
     })
     this._closingSubmenus.clear()
   }
 
   private _getItemLevel(item: HTMLElement): number {
     const menu = this._menu
-    if (menu?.contains(item)) return 0
-    const parentLevel = this._activeSubmenus.findIndex(submenu => submenu.contains(item))
+    if (menu?.panel.contains(item)) return 0
+    const parentLevel = this._activeSubmenus.findIndex(submenu => submenu.panel.contains(item))
     return parentLevel === -1 ? -1 : parentLevel + 1
   }
 
-  private _positionSubmenu(item: HTMLElement, submenu: HTMLElement) {
+  private _positionSubmenu(item: HTMLElement, submenu: MenuPortalOverlay) {
     const itemRect = item.getBoundingClientRect()
-    const submenuRect = submenu.getBoundingClientRect()
+    const submenuRect = submenu.panel.getBoundingClientRect()
     const padding = 8
     const canOpenRight = itemRect.right + submenuRect.width + padding <= window.innerWidth
     const left = canOpenRight ? itemRect.right : Math.max(padding, itemRect.left - submenuRect.width)
     const top = Math.min(Math.max(padding, itemRect.top), window.innerHeight - submenuRect.height - padding)
 
-    submenu.style.left = `${left}px`
-    submenu.style.top = `${top}px`
-    submenu.style.setProperty('--wui-overlay-transform-origin', canOpenRight ? 'top left' : 'top right')
-    submenu.style.visibility = ''
+    submenu.panel.style.left = `${left}px`
+    submenu.panel.style.top = `${top}px`
+    submenu.panel.style.setProperty('--wui-overlay-transform-origin', canOpenRight ? 'top left' : 'top right')
+    submenu.panel.style.visibility = ''
   }
 
   private _dispatchChange(open: boolean) {
@@ -344,7 +329,7 @@ export class WebUiContextMenu extends LitElement {
       if (node instanceof Node && node.getRootNode() === this.shadowRoot) return true
       if (
         node instanceof Node &&
-        (this._menu?.contains(node) || this._activeSubmenus.some(menu => menu.contains(node)))
+        (this._menu?.panel.contains(node) || this._activeSubmenus.some(menu => menu.panel.contains(node)))
       ) {
         return true
       }
@@ -389,7 +374,7 @@ export class WebUiContextMenu extends LitElement {
   }
 
   private _onMenuClick = (e: MouseEvent) => {
-    const item = this._getDropdownItemFromEvent(e)
+    const item = getMenuItemFromEvent(e)
     if (!item || item.hasAttribute('disabled')) return
     if (item.hasAttribute('submenu')) {
       this._openSubmenu(item)
@@ -398,21 +383,10 @@ export class WebUiContextMenu extends LitElement {
     this.close()
   }
 
-  private _getDropdownItemFromEvent(e: Event): HTMLElement | null {
-    return (
-      e
-        .composedPath()
-        .find((node): node is HTMLElement => node instanceof HTMLElement && node.matches('web-ui-dropdown-item')) ??
-      null
-    )
-  }
-
   private _getLevelItems(level: number): HTMLElement[] {
-    const container = level === 0 ? this._menu : this._activeSubmenus[level - 1]
+    const container = level === 0 ? this._menu?.content : this._activeSubmenus[level - 1]?.content
     if (!container) return []
-    return Array.from(container.children).filter((child): child is HTMLElement =>
-      child.matches('web-ui-dropdown-item, web-ui-dropdown-divider, web-ui-dropdown-header')
-    )
+    return getMenuChildren(container)
   }
 
   private _bindLevelHovers() {
@@ -522,42 +496,33 @@ export class WebUiContextMenu extends LitElement {
   }
 
   private _preventBackgroundScroll(e: Event) {
-    if (!this._isOpen || !this.lockScroll || this._isMenuPanelEvent(e)) return
+    if (!this._isOpen || this.noScrollLock || this._isMenuPanelEvent(e)) return
     e.preventDefault()
   }
 
   private _syncScrollLock(isOpen = this._isOpen) {
-    const shouldLock = isOpen && this.lockScroll
-    if (shouldLock === this._hasScrollLock) return
-
-    if (shouldLock) lockScroll()
-    else unlockScroll()
-    this._hasScrollLock = shouldLock
+    this._scrollLock.sync(isOpen && !this.noScrollLock)
   }
 
   private _getEnabledLevelItems(level: number) {
-    return this._getLevelItems(level).filter(item => item.matches('web-ui-dropdown-item:not([disabled])'))
+    const container = level === 0 ? this._menu?.content : this._activeSubmenus[level - 1]?.content
+    return container ? getEnabledMenuItems(container) : []
   }
 
   private _getFocusedItem(): HTMLElement | undefined {
-    return [this._menu, ...this._activeSubmenus]
-      .filter((menu): menu is HTMLElement => menu !== undefined)
-      .flatMap(menu => Array.from(menu.querySelectorAll<HTMLElement>('web-ui-dropdown-item')))
-      .find(item => Boolean(item.shadowRoot?.activeElement))
+    return findFocusedMenuItem([this._menu?.content, ...this._activeSubmenus.map(submenu => submenu.content)])
   }
 
   private _getFocusedLevel(): number | undefined {
     const item = this._getFocusedItem()
     if (!item) return undefined
-    if (this._menu?.contains(item)) return 0
-    const submenuIndex = this._activeSubmenus.findIndex(menu => menu.contains(item))
+    if (this._menu?.panel.contains(item)) return 0
+    const submenuIndex = this._activeSubmenus.findIndex(menu => menu.panel.contains(item))
     return submenuIndex < 0 ? undefined : submenuIndex + 1
   }
 
   private _focusMenuItem(item: HTMLElement | undefined) {
-    if (!item || item.hasAttribute('disabled')) return
-    const focusable = item as HTMLElement & { focusItem?: () => void }
-    focusable.focusItem?.()
+    focusMenuItem(item)
   }
 
   private _isMenuPanelEvent(e: Event): boolean {

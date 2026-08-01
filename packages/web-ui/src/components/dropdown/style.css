@@ -12,30 +12,9 @@
 :host([disabled]) {
   cursor: not-allowed;
   opacity: 0.4;
-}
 
-:host([disabled]) .dropdown-trigger {
-  cursor: not-allowed;
-  cursor: pointer;
-  display: inline-flex;
-}
-
-.dropdown-overlay {
-  --wui-glass-shadow: var(--wui-shadow-pop, 0 3px 9px rgb(0 0 0 / 0.27));
-  user-select: none;
-
-  position: fixed;
-  z-index: var(--wui-layer-menu, 100);
-
-  box-sizing: border-box;
-  border-radius: 20px;
-
-  background-color: var(--wui-color-surface-overlay, rgb(246 246 246 / 0.88));
-}
-
-.dropdown-scroll {
-  overflow-y: auto;
-  min-width: 200px;
-  max-height: 320px;
-  padding: 4px;
+  & .dropdown-trigger {
+    cursor: not-allowed;
+    display: inline-flex;
+  }
 }

@@ -5,8 +5,7 @@ import { customElement, property, state } from 'lit/decorators.js'
 import '@/components/icon'
 import '@/components/button'
 import { lucideArrowUpToLine } from '@/icons'
-import { normalizeNumber } from '@/shared/normalize'
-import { booleanWithFalseString } from '@/shared/property-converters/boolean-with-false-string'
+import { normalizeLiteral, normalizeNumber } from '@/shared/normalize'
 
 import style from './style.css?inline'
 
@@ -14,9 +13,18 @@ import style from './style.css?inline'
 export class WebUiBackTop extends LitElement {
   static override styles = unsafeCSS(style)
 
-  @property({ reflect: true, converter: booleanWithFalseString }) smooth = true
+  @property({ reflect: true, attribute: 'scroll-behavior', useDefault: true })
+  get scrollBehavior(): 'smooth' | 'auto' {
+    return this._scrollBehavior
+  }
+  set scrollBehavior(value: string) {
+    const old = this._scrollBehavior
+    this._scrollBehavior = normalizeLiteral(value, ['smooth', 'auto'] as const, 'smooth')
+    this.requestUpdate('scrollBehavior', old)
+  }
+  private _scrollBehavior: 'smooth' | 'auto' = 'smooth'
   @property({ type: Boolean, reflect: true }) visible = false
-  @property({ type: Object, attribute: false }) scrollTarget: HTMLElement | Window = window
+  @property({ attribute: false }) scrollTarget: HTMLElement | Window = window
 
   @property({ type: Number, reflect: true })
   get threshold(): number {
@@ -48,7 +56,11 @@ export class WebUiBackTop extends LitElement {
     if (props.has('threshold') || props.has('scrollTarget')) {
       this.computeVisible()
     }
-    if (props.has('scrollTarget') && this.hasUpdated) {
+    // 不设 hasUpdated 门控：scrollTarget 可能在首次更新完成前赋值（如框架 onMounted 中），
+    // 此时 connectedCallback 已按 window 绑定，必须重绑到新容器；onScrollTarget 幂等，重复调用安全
+    if (props.has('scrollTarget')) {
+      // 容器模式：scrollTarget 为元素时按钮通过 sticky 悬浮于容器底部，而非固定视口角落
+      this.toggleAttribute('container-mode', this.target !== window)
       this.onScrollTarget()
     }
   }
@@ -89,7 +101,7 @@ export class WebUiBackTop extends LitElement {
   toTop() {
     this.target.scrollTo({
       top: 0,
-      behavior: this.smooth ? 'smooth' : 'auto'
+      behavior: this.scrollBehavior
     })
   }
 

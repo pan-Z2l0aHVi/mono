@@ -14,7 +14,7 @@ Do not duplicate token values in guidance. Every `var(--wui-*, fallback)` used b
 ## Adding or changing a component
 
 - Add new built-in icons to `packages/web-ui/icons.used.json`, then run `pnpm --filter @greypan/web-ui generate-icons`. Import generated icon data from `@/icons`; do not add a runtime icon dependency.
-- Add a new component to both `src/types/vue.ts` and `src/types/react.ts` so framework users receive type support.
+- Add each component's `HTMLElementTagNameMap` declaration in its module. The component barrel derives `WebUiElementMap` from that map; framework type adapters use it to expose every `web-ui-*` entry.
 - Treat properties, defaults, allowed values, slots, methods, events, accessibility semantics, and form behavior as the public contract. Normalize literal and numeric properties through `@/shared/normalize` so JavaScript callers receive documented fallback behavior.
 - Synchronize `README.md` and `README.CN.md` when that public contract changes. Their structure must remain equivalent.
 
@@ -23,9 +23,17 @@ Do not duplicate token values in guidance. Every `var(--wui-*, fallback)` used b
 - Prefer the semantic `--wui-*` color, surface, shadow, layer, and motion tokens over literal values. Component-local variables are implementation details, not public API.
 - `surface-glass` is for transparent controls; `surface-overlay` is for readable global overlay panels. Use the raised surface level that matches the visual contrast required by the control.
 - Keep the sticky layout header above content and sidebar. Use local layers for non-portal panels; portal menus use the menu layer; Toast sits above menus; native Dialog and Drawer use the browser top layer. BackTop belongs to the auxiliary layer below portal menus.
-- High-frequency controls use press tokens, anchored overlays use overlay enter/exit tokens, and Drawer uses its drawer token. `motion="system"` follows `prefers-reduced-motion`; `reduced` disables displacement within its theme scope; nested `full` scopes restore normal tokens.
-- Overlay visibility transitions must reuse `shared/overlay/presence`; overlay positioning remains owned by `withOverlay`. In reduced motion, remove transform displacement while retaining necessary brief opacity or state feedback.
+- High-frequency press interactions use press tokens; color and background feedback uses the feedback token; Dropdown, ContextMenu, and Select use menu enter/exit tokens; generic anchored overlays use overlay enter/exit tokens; Drawer uses its drawer token. `motion="system"` follows `prefers-reduced-motion`; `reduced` disables displacement within its theme scope; nested `full` scopes restore normal tokens.
+- Overlay visibility transitions must reuse `shared/overlay/presence`; overlay positioning remains owned by `defineOverlay`. In reduced motion, remove transform displacement while retaining necessary brief opacity or state feedback.
 - Put pointer hover affordances inside `@media (hover: hover) and (pointer: fine)`.
+
+## Overlay architecture
+
+- Shared overlay state is defined with `defineXxx(...): Plugin` factories, each returning `definePlugin(...)`; components instantiate it through `defineXxx(...).make(...)` instead of an internal state class.
+- Reuse `shared/overlay/anchored-panel` for a single panel anchored to a trigger. The component retains its trigger, focus, content, and dismissal semantics; the shared module owns local/portal mounting, positioning, and presence.
+- Use `shared/menu-portal` for Dropdown and ContextMenu. Their common menu-tree operations live there, while anchor-based versus coordinate-based placement stays local to each component.
+- Reuse `shared/overlay/native-dialog-presence` for native `<dialog>` modals such as Dialog and Drawer. Keep native top-layer, backdrop, and Escape policy in the owning component.
+- Acquire page-scroll blocking through `createScrollLockLease()`. Release the lease on disconnect; never call a global unlock for a lock the instance did not acquire.
 
 ## Shadow DOM and Lit
 
@@ -34,6 +42,7 @@ Do not duplicate token values in guidance. Every `var(--wui-*, fallback)` used b
 - Do not use global HTML attributes such as `hidden`, `title`, or `role` as component-specific state attributes. Map declarative boolean attributes explicitly. A default-true boolean that must accept a framework-provided `"false"` string uses `booleanWithFalseString` and tests its attribute path.
 - Use `classMap()` for multi-class state, `styleMap()` or safe template values for styles, and Lit's `nothing` for absent conditional content. When a prop and slot express the same content, the slot wins and slot changes must update dependent layout state.
 - Use top-level `:host([attribute])` selectors rather than nested host attribute selectors.
+- Prefer native CSS nesting for component descendant states; keep the scroll viewport and padded content as separate elements when padding must scroll with the content.
 
 ## Interaction, lifecycle, and accessibility
 
