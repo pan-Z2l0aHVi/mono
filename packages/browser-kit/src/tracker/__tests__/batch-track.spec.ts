@@ -129,6 +129,13 @@ describe('聚合上报测试用例', () => {
   })
 
   it('自定义 maxBeaconSize 应生效', async () => {
+    const sendBeacon = vi.fn<Navigator['sendBeacon']>(() => true)
+    Object.defineProperty(navigator, 'sendBeacon', {
+      configurable: true,
+      enumerable: true,
+      value: sendBeacon
+    })
+
     const tracker = defineTracker({ url: 'https://example.com' })
       .use(defineBatchTrack({ defaultBatchDelay: 200, maxBeaconSize: 0.001 }))
       .make()
@@ -139,8 +146,7 @@ describe('聚合上报测试用例', () => {
     }
 
     vi.advanceTimersByTime(200)
-    await waitForMsw()
 
-    expect(capturedRequests.length).toBeGreaterThan(1)
+    expect(sendBeacon).toHaveBeenCalledTimes(5)
   })
 })
