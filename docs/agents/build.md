@@ -52,6 +52,7 @@ packages/
 apps/
   react-web-ui-demo            React 19, TanStack Router, Zustand; private
   vue-web-ui-demo              Vue 3, Vue Router, Pinia; private
+  wails-starter                Wails 3 desktop starter; Go backend plus Vue WebView frontend
 ```
 
 `js-kit` is the leaf package. `browser-kit` depends on `js-kit`; `test-kit` depends on `js-kit` and has an `msw` peer dependency; `web-ui` depends on both. The apps depend on shared packages.
@@ -69,6 +70,10 @@ apps/
 - **Third-party dependencies** may be bundled when zero-config consumption is the design intent; externalize them when consumers are expected to provide them.
 - Prefer regex patterns to lists of workspace packages. Match sub-path imports too, for example the Lit pattern `/^lit($|\/)/`.
 - `web-ui` externalizes its framework dependencies, so consumers must install `lit` as a dependency.
+- `wails-starter` has an outer Turbo workspace (`@greypan/wails-starter`) and a nested WebView workspace (`@greypan/wails-starter-frontend`). The Wails Taskfile owns the nested frontend process; use `pnpm dev:wails-starter` rather than Turbo's dependency expansion for development.
+- The Wails Taskfile uses pnpm, generates `frontend/bindings/`, and embeds `frontend/dist/` into the Go binary. `bin/` is a Turbo build output for native artifacts.
+- The Wails build assets intentionally support only darwin/arm64 and windows/amd64. On macOS, the package `build` script creates both `bin/wails-starter.dmg` and `bin/wails-starter.exe`; `build:macos` and `build:windows` build either target explicitly. On Windows, `build` creates the EXE. On Linux CI, it builds only the WebView frontend because neither desktop release target is native to the runner. Windows cross-compilation works from macOS without Docker, while macOS builds on a non-macOS host require Wails' Docker setup.
+- `apps/wails-starter/build/` contains Wails Taskfiles, platform templates, icons, and packaging assets rather than disposable output. Both `pnpm clean` and `pnpm clean --full` preserve it; only `bin/`, `frontend/dist/`, generated bindings, caches, and dependencies are disposable.
 
 | Package                   | Externalization                                                                        | Bundled third-party dependencies |
 | ------------------------- | -------------------------------------------------------------------------------------- | -------------------------------- |
@@ -84,6 +89,7 @@ apps/
 - `react-web-ui-demo` uses `@vitejs/plugin-react` v4 with React Compiler (`babel-plugin-react-compiler`, target 19), plus `@vitejs/plugin-legacy` for older browser support. The React and Vue demo apps currently rely on browser verification rather than maintained unit-test suites.
 - Both demo apps use `basicSsl()` for HTTPS development servers.
 - `depsReload` watches library `dist/` directories and triggers a full page reload when a local dependency changes.
+- The Wails WebView frontend follows the Vue demo's Vite plugin and local-package conventions, with the Wails Vite plugin responsible for generated Go bindings.
 
 ## CI and release
 

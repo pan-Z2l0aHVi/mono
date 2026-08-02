@@ -18,8 +18,11 @@ pkill -f "wails" || true
 # 2. 清理核心构建产物与缓存
 # 使用 find 替代 globstar，兼容性更好且更精确
 echo "🧹 清理构建产物与开发缓存..."
-# 清理所有 dist, build, .vite, .turbo 文件夹
-find . -type d \( -name "dist" -o -name "build" -o -name ".vite" -o -name ".turbo" -o -name "out" \) \
+# 清理所有 dist, build, .vite, .turbo 文件夹。
+# Wails 的 build 目录包含 Taskfile、平台模板和打包资源，必须保留。
+find . \
+  -path "./apps/wails-starter/build" -prune -o \
+  -type d \( -name "dist" -o -name "build" -o -name ".vite" -o -name ".turbo" -o -name "out" \) \
   -not -path "*/node_modules/*" \
   -exec rm -rf {} + 2>/dev/null || true
 

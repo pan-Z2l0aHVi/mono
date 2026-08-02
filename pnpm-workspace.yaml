@@ -34,6 +34,7 @@ catalog:
   '@vitest/browser-playwright': ^4.1.10
   '@vue/devtools-api': ^8.0.0
   '@vue/test-utils': ^2.4.11
+  '@wailsio/runtime': 3.0.0-alpha2.119
   '@vue/tsconfig': ^0.9.1
   '@vueuse/core': ^14.3.0
   babel-plugin-react-compiler: ^1.0.0

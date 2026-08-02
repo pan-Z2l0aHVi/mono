@@ -35,6 +35,8 @@ esm/
 out/
 site/
 build/
+!apps/wails-starter/build/
+!apps/wails-starter/build/**
 .next/
 .nuxt/
 .output/
@@ -145,5 +147,4 @@ report.html
 # ==========================================
 # 工具链自动生成 (Auto Generated)
 # ==========================================
-wailsjs/
-package.json.md5
+apps/wails-starter/frontend/bindings/
