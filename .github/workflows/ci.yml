@@ -20,6 +20,11 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Install Wails Linux prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes libgtk-4-dev libwebkitgtk-6.0-dev
+
       - uses: jdx/mise-action@v4
 
       - name: Cache turbo

@@ -47,7 +47,14 @@ jobs:
         with:
           fetch-depth: 0
 
+      # This job only validates checked-in metadata, so it does not need the
+      # platform-specific Wails CLI or Linux WebKit development packages.
       - uses: jdx/mise-action@v4
+        with:
+          install: false
+
+      - name: Install Node
+        run: mise install node
 
       - name: Validate Wails version metadata
         run: node apps/wails-starter/scripts/sync-version.mjs --check

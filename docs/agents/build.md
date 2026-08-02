@@ -93,7 +93,7 @@ apps/
 
 ## CI and release
 
-- CI in `ci.yml` runs changeset status, build, format/lint/type-check, and tests.
+- CI in `ci.yml` installs Wails' GTK4 and WebKitGTK Linux prerequisites before mise, then runs changeset status, build, format/lint/type-check, and tests. This keeps the full workspace build valid when mise compiles the Wails CLI from source.
 - `wails-artifacts.yml` validates changes affecting the Wails starter on pull requests, `main`, and manual dispatch. It builds `apps/wails-starter/bin/wails-starter.dmg` on the macOS ARM64 runner and `apps/wails-starter/bin/wails-starter.exe` on the Windows x64 runner, then uploads them as 14-day GitHub Actions artifacts. When Changesets versions `@greypan/wails-starter` on `main`, the workflow validates the synchronized Wails metadata and creates `wails-starter-vX.Y.Z` with both installers and SHA-256 checksums. The private app is never published to npm.
 - Release in `release.yml` uses `changesets/action@v1`; demo apps are excluded from versioning.
 - Deploy in `deploy.yml` is manually triggered and deploys every Deployable Demo in the job-level `DEMO_APPS` list through one `actions/deploy-pages` artifact. Each entry is an `apps/<name>` directory and is served at `/mono/<name>/`; build commands use pnpm's `{./apps/<name>}...` directory selector rather than an npm package name. The site has no root landing page.
