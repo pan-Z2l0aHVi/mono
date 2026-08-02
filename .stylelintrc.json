@@ -1,5 +1,10 @@
 {
-  "extends": ["stylelint-config-clean-order", "stylelint-config-standard", "stylelint-config-standard-vue"],
+  "extends": [
+    "stylelint-config-clean-order",
+    "stylelint-config-standard",
+    "stylelint-config-standard-vue",
+    "stylelint-config-html"
+  ],
   "rules": {
     "alpha-value-notation": "number",
     "at-rule-no-unknown": [
