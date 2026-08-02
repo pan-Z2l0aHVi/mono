@@ -12,7 +12,7 @@
     "commit": "git-cz",
     "commit:ci": "bash scripts/commit.sh",
     "publish:new": "bash scripts/publish-new-pack.sh",
-    "release:version": "pnpm exec changeset version && pnpm --filter @greypan/wails-starter run sync:version",
+    "release:version": "node scripts/release-version.mjs",
     "check:code": "vp check",
     "fix:code": "vp check --fix",
     "dev:react-web-ui-demo": "turbo build --filter=@greypan/react-web-ui-demo^... && turbo run dev --filter=@greypan/react-web-ui-demo...",
