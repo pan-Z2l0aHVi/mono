@@ -18,7 +18,7 @@ export default defineConfig({
       '**/routeTree.gen.ts',
       '**/auto-imports.d.ts',
       '**/typed-router.d.ts',
-      '**/wailsjs/**'
+      'apps/wails-starter/frontend/bindings/**'
     ],
     overrides: [
       {
@@ -325,7 +325,7 @@ export default defineConfig({
       '**/routeTree.gen.ts',
       '**/auto-imports.d.ts',
       '**/typed-router.d.ts',
-      '**/wailsjs/**'
+      'apps/wails-starter/frontend/bindings/**'
     ],
     experimentalSortImports: {
       enabled: true,

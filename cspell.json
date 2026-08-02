@@ -12,7 +12,8 @@
     "**/*.{svg,png,jpg,jpeg,gif,ico,woff,woff2,ttf,eot}",
     "**/.vscode/**",
     "**/.zed/**",
-    "**/wailsjs/**",
+    "apps/wails-starter/build/**",
+    "apps/wails-starter/frontend/bindings/**",
     "**/go.sum",
     "**/go.mod",
     "**/routeTree.gen.ts",
@@ -39,7 +40,6 @@
     "vueuse",
     "Grey Pan",
     "unhead",
-    "wailsjs",
     "Debouncer",
     "oxlint",
     "tsgo",
@@ -47,6 +47,7 @@
     "pkill",
     "unstub",
     "indexeddb",
-    "ooui"
+    "ooui",
+    "wailsio"
   ]
 }
