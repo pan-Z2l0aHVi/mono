@@ -131,6 +131,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Build WebView workspace dependencies
+        run: pnpm exec turbo build --filter=@greypan/wails-starter-frontend^...
+
       - name: Build native artifact
         run: pnpm --filter @greypan/wails-starter run ${{ matrix.command }}
 
