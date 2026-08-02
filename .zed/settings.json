@@ -32,6 +32,13 @@
           "run": "onSave"
         }
       }
+    },
+    "stylelint-lsp": {
+      "settings": {
+        "stylelint": {
+          "validate": ["css", "less", "scss", "vue.js", "html"]
+        }
+      }
     }
   },
   "languages": {
