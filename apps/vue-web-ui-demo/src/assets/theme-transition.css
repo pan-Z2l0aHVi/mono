@@ -1,0 +1,46 @@
+/*
+ * 主题切换圆形动画（View Transitions API + Web Animations API）
+ * 对齐 ant.design 实现：通过动画 ::view-transition-old/new 伪元素的 clip-path
+ *
+ * 浅色→深色：旧快照（浅色）圆圈收缩消失，新快照（深色）在底层显露
+ * 深色→浅色：新快照（浅色）圆圈从点击位置扩大覆盖旧快照（深色）
+ */
+
+@keyframes keep-alive {
+  100% {
+    z-index: -1;
+  }
+}
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  mix-blend-mode: normal;
+  animation: keep-alive 0.5s linear;
+  animation-fill-mode: forwards;
+}
+
+/* 深色→浅色：新快照（浅色）在顶层，由圆圈扩大覆盖 */
+.dark::view-transition-old(root) {
+  z-index: 1;
+}
+
+.dark::view-transition-new(root) {
+  z-index: 999;
+}
+
+/* 浅色→深色：旧快照（浅色）在顶层，由圆圈收缩消失 */
+::view-transition-old(root) {
+  z-index: 999;
+}
+
+::view-transition-new(root) {
+  z-index: 1;
+}
+
+/* 减弱动效：跳过动画 */
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation: none !important;
+  }
+}
