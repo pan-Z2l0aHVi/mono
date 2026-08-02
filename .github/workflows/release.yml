@@ -1,36 +1,67 @@
-name: Release
+name: Publish npm Packages
 
 on:
-  push:
-    branches: [main, 'v*']
-
-concurrency: ${{ github.workflow }}-${{ github.ref }}
+  pull_request:
+    branches: [main]
+    types: [closed]
 
 permissions:
-  contents: write
-  pull-requests: write
-  id-token: write # npm provenance
+  contents: read
+  id-token: write # npm Trusted Publishing
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
 
 jobs:
-  release:
-    name: Release
+  prepare:
+    name: Detect public package release
+    if: github.event.pull_request.merged == true && github.event.pull_request.head.ref == 'changeset-release/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      should-publish: ${{ steps.release.outputs.should-publish }}
+      merge-sha: ${{ steps.release.outputs.merge-sha }}
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.merge_commit_sha }}
+          fetch-depth: 2
+
+      - id: release
+        name: Detect versioned public packages
+        env:
+          MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
+        shell: bash
+        run: |
+          base_sha="$(git rev-parse "${MERGE_SHA}^1")"
+          echo "merge-sha=$MERGE_SHA" >> "$GITHUB_OUTPUT"
+
+          if git diff --name-only "$base_sha" "$MERGE_SHA" -- packages | grep -Eq '^packages/[^/]+/package\.json$'; then
+            echo 'should-publish=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'should-publish=false' >> "$GITHUB_OUTPUT"
+          fi
+
+  publish:
+    name: Build and publish npm packages
+    needs: prepare
+    if: needs.prepare.outputs.should-publish == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
     steps:
       - uses: actions/checkout@v7
         with:
-          fetch-depth: 0
+          ref: ${{ needs.prepare.outputs.merge-sha }}
 
       - uses: jdx/mise-action@v4
-
-      - name: Cache turbo
-        uses: actions/cache@v5
         with:
-          path: .turbo
-          key: ${{ runner.os }}-turbo-${{ hashFiles('pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-turbo-
+          install: false
+
+      - name: Install Node and pnpm
+        run: mise install node pnpm
 
       - name: Cache pnpm store
         uses: actions/cache@v5
@@ -44,18 +75,10 @@ jobs:
         run: pnpm config set registry https://registry.npmjs.org/
 
       - name: Install dependencies
-        run: pnpm i --frozen-lockfile
+        run: pnpm install --frozen-lockfile
 
-      - name: Build
-        run: pnpm run build
+      - name: Build public packages
+        run: pnpm exec turbo build --filter='./packages/*'
 
-      - name: Create Release Pull Request or Publish
-        uses: changesets/action@v1
-        with:
-          version: pnpm run release:version
-          publish: pnpm changeset publish
-          title: 'chore: version packages'
-          commit: 'chore: version packages'
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: Publish public npm packages
+        run: pnpm changeset publish
