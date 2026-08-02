@@ -29,7 +29,8 @@ on:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # Never cancel a main-branch version release after native builds start.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   prepare:
@@ -74,6 +75,16 @@ jobs:
           fi
 
           if git diff --quiet "${{ github.event.before }}" "${{ github.sha }}" -- apps/wails-starter/package.json; then
+            echo 'should-release=false' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if ! deleted_changesets="$(git diff --name-only --diff-filter=D "${{ github.event.before }}" "${{ github.sha }}" -- .changeset)"; then
+            echo 'Unable to determine whether this push consumed a Changeset.' >&2
+            exit 1
+          fi
+
+          if [[ -z "$deleted_changesets" ]]; then
             echo 'should-release=false' >> "$GITHUB_OUTPUT"
             exit 0
           fi
