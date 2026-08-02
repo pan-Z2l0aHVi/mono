@@ -1,54 +1,34 @@
-name: Wails
+name: Release Wails Desktop
 
 on:
   pull_request:
     branches: [main]
-    paths:
-      - '.github/workflows/wails-artifacts.yml'
-      - '.mise.toml'
-      - '.npmrc'
-      - 'package.json'
-      - 'pnpm-lock.yaml'
-      - 'pnpm-workspace.yaml'
-      - 'turbo.json'
-      - 'apps/wails-starter/**'
-      - 'packages/**'
-  push:
-    branches: [main]
-    paths:
-      - '.github/workflows/wails-artifacts.yml'
-      - '.mise.toml'
-      - '.npmrc'
-      - 'package.json'
-      - 'pnpm-lock.yaml'
-      - 'pnpm-workspace.yaml'
-      - 'turbo.json'
-      - 'apps/wails-starter/**'
-      - 'packages/**'
-  workflow_dispatch:
+    types: [closed]
+
+permissions:
+  contents: read
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
 
 jobs:
   prepare:
-    name: Validate release metadata
+    name: Detect desktop application release
+    if: github.event.pull_request.merged == true && github.event.pull_request.head.ref == 'changeset-release/main'
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    permissions:
-      contents: read
     outputs:
       should-release: ${{ steps.release.outputs.should-release }}
+      merge-sha: ${{ steps.release.outputs.merge-sha }}
       version: ${{ steps.release.outputs.version }}
 
     steps:
       - uses: actions/checkout@v7
         with:
-          fetch-depth: 0
+          ref: ${{ github.event.pull_request.merge_commit_sha }}
+          fetch-depth: 2
 
-      # This job only validates checked-in metadata, so it does not need the
-      # platform-specific Wails CLI or Linux WebKit development packages.
       - uses: jdx/mise-action@v4
         with:
           install: false
@@ -60,20 +40,20 @@ jobs:
         run: node apps/wails-starter/scripts/sync-version.mjs --check
 
       - id: release
-        name: Detect a new desktop release
+        name: Detect a new desktop version
         env:
           GH_TOKEN: ${{ github.token }}
+          MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
         shell: bash
         run: |
+          base_sha="$(git rev-parse "${MERGE_SHA}^1")"
+          echo "merge-sha=$MERGE_SHA" >> "$GITHUB_OUTPUT"
+
           version="$(node --input-type=module -e "import manifest from './apps/wails-starter/package.json' with { type: 'json' }; console.log(manifest.version)")"
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
-          if [[ "${{ github.event_name }}" != "push" || "${{ github.ref }}" != "refs/heads/main" ]]; then
-            echo 'should-release=false' >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          if git diff --quiet "${{ github.event.before }}" "${{ github.sha }}" -- apps/wails-starter/package.json; then
+          previous_version="$(git show "$base_sha:apps/wails-starter/package.json" | node --input-type=module -e "let data = ''; process.stdin.on('data', chunk => data += chunk); process.stdin.on('end', () => console.log(JSON.parse(data).version))")"
+          if [[ "$version" == "$previous_version" ]]; then
             echo 'should-release=false' >> "$GITHUB_OUTPUT"
             exit 0
           fi
@@ -88,10 +68,9 @@ jobs:
   build:
     name: ${{ matrix.name }}
     needs: prepare
+    if: needs.prepare.outputs.should-release == 'true'
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 20
-    permissions:
-      contents: read
     strategy:
       fail-fast: false
       matrix:
@@ -109,6 +88,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.prepare.outputs.merge-sha }}
 
       - uses: jdx/mise-action@v4
 
@@ -137,7 +118,7 @@ jobs:
       - name: Build native artifact
         run: pnpm --filter @greypan/wails-starter run ${{ matrix.command }}
 
-      - name: Upload artifact
+      - name: Upload release artifact
         uses: actions/upload-artifact@v6
         with:
           name: ${{ matrix.artifact-name }}
@@ -145,7 +126,7 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
-  release:
+  publish:
     name: Publish desktop release
     needs: [prepare, build]
     if: needs.prepare.outputs.should-release == 'true'
@@ -155,10 +136,6 @@ jobs:
       contents: write
 
     steps:
-      - uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
-
       - name: Download macOS artifact
         uses: actions/download-artifact@v7
         with:
@@ -185,11 +162,12 @@ jobs:
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
+          MERGE_SHA: ${{ needs.prepare.outputs.merge-sha }}
           VERSION: ${{ needs.prepare.outputs.version }}
         shell: bash
         run: |
           gh release create "wails-starter-v${VERSION}" \
-            --target "${GITHUB_SHA}" \
+            --target "$MERGE_SHA" \
             --title "Wails Starter v${VERSION}" \
             --generate-notes \
             --notes 'The macOS and Windows artifacts are not yet signed for public distribution.' \

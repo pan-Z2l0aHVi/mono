@@ -10,11 +10,14 @@ The monorepo needs a CI pipeline that catches regressions before merge and publi
 ## Decision
 
 - **CI** (`.github/workflows/ci.yml`): changeset status check → full build → format+lint+type-check → test
-- **Release** (`.github/workflows/release.yml`): Changesets with `changesets/action@v1` — merges version PRs and publishes to npm
+- **Version Packages** (`.github/workflows/version.yml`): `changesets/action@v1` creates version PRs only. It versions the private Wails workspace without publishing it to npm.
+- **Publish npm Packages** (`.github/workflows/release.yml`): a merged version PR rebuilds and publishes public packages through npm Trusted Publishing.
+- **Verify Wails Desktop** (`.github/workflows/wails-verify.yml`): native macOS/Windows builds validate desktop pull requests and manual runs with read-only permissions.
+- **Release Wails Desktop** (`.github/workflows/wails-release.yml`): a merged version PR rebuilds both installers and creates the Wails GitHub Release.
 - Demo apps excluded from versioning (they're private)
 
 ## Consequences
 
 - CI runs `check:code` (format + lint + type-check) as a unified step before tests
-- Release is fully automated — no manual npm publish
+- npm publication and desktop GitHub Releases are independent, parallel release planes after their version PR merges
 - The `changeset` workflow requires conventional commit messages

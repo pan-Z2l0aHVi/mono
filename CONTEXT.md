@@ -23,6 +23,7 @@ A pnpm monorepo publishing Lit-based web component UI library (`@greypan/web-ui`
 | 0006 | Layout Layering             | Local overlay stacking in layout, portal overlay z-index scale                                |
 | 0007 | Web UI Contract Convergence | Unified Pointer Events, standard event model, form-associated controls, public contract tests |
 | 0008 | Icon System                 | Build-time Iconify data modules; no runtime icon component or lookup                          |
+| 0009 | Release Planes              | Shared version PR with independent npm and desktop delivery                                   |
 
 ## Package Boundaries
 
@@ -86,3 +87,31 @@ A custom element with `static formAssociated = true` that integrates with the na
 **Deployable Demo**:
 A private History-routing SPA included in the shared GitHub Pages artifact and exposed at its own path. All deployable demos are published together so one deployment cannot remove another demo, and each restores a deep link after a direct request or refresh.
 _Avoid_: Independently deployed app, standalone Pages site
+
+**Version PR**:
+A Changesets-generated pull request that records approved version changes across the monorepo. It is release intent, not an npm or desktop release itself.
+_Avoid_: Release, publish PR
+
+**npm Package Release**:
+Publication of versioned public packages to the npm registry.
+_Avoid_: Application release, desktop release
+
+**Desktop Application Release**:
+Publication of a versioned Wails installer set through a GitHub Release. It is distinct from npm package publication.
+_Avoid_: npm release, package publish
+
+**Release Plane**:
+An independently executable delivery path for either public npm packages or the desktop application. Release planes share a Version PR but may complete or be retried independently.
+_Avoid_: Release stage, release order
+
+**Release Authorization**:
+The rule that a Version PR merge is the sole authority for a formal release. Manual runs may validate artifacts but never publish them.
+_Avoid_: Manual release, ad hoc publish
+
+**Protected Main**:
+The branch policy that admits product changes through pull requests rather than direct pushes. It makes pull-request validation the authoritative pre-merge check.
+_Avoid_: Writable main, direct release branch
+
+**Release Recovery**:
+The policy that preserves a successful release plane when its peer fails, then retries only the failed plane. It does not attempt cross-registry rollback.
+_Avoid_: Atomic release, cross-plane rollback
