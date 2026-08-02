@@ -54,7 +54,7 @@ catalog:
   nanoid: ^6.0.0
   pinia: ^4.0.2
   playwright: ^1.61.1
-  postcss-html: ^1.0.0
+  postcss-html: ^2.0.0
   react: ^19.2.7
   react-dom: ^19.2.7
   react-error-boundary: ^6.1.2
@@ -62,6 +62,8 @@ catalog:
   remeda: ^2.39.0
   stylelint: ^17.14.0
   stylelint-config-clean-order: ^10.0.0
+  stylelint-config-html: ^2.0.0
+  stylelint-config-recommended-vue: ^2.0.0
   stylelint-config-standard: ^40.0.0
   stylelint-config-standard-vue: ^2.0.0
   stylelint-prettier: ^5.0.3
