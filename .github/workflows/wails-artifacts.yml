@@ -1,0 +1,186 @@
+name: Wails
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/wails-artifacts.yml'
+      - '.mise.toml'
+      - '.npmrc'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - 'turbo.json'
+      - 'apps/wails-starter/**'
+      - 'packages/**'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/wails-artifacts.yml'
+      - '.mise.toml'
+      - '.npmrc'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - 'turbo.json'
+      - 'apps/wails-starter/**'
+      - 'packages/**'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  prepare:
+    name: Validate release metadata
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      should-release: ${{ steps.release.outputs.should-release }}
+      version: ${{ steps.release.outputs.version }}
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - uses: jdx/mise-action@v4
+
+      - name: Validate Wails version metadata
+        run: node apps/wails-starter/scripts/sync-version.mjs --check
+
+      - id: release
+        name: Detect a new desktop release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          version="$(node --input-type=module -e "import manifest from './apps/wails-starter/package.json' with { type: 'json' }; console.log(manifest.version)")"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+          if [[ "${{ github.event_name }}" != "push" || "${{ github.ref }}" != "refs/heads/main" ]]; then
+            echo 'should-release=false' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if git diff --quiet "${{ github.event.before }}" "${{ github.sha }}" -- apps/wails-starter/package.json; then
+            echo 'should-release=false' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if gh release view "wails-starter-v$version" >/dev/null 2>&1; then
+            echo 'should-release=false' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo 'should-release=true' >> "$GITHUB_OUTPUT"
+
+  build:
+    name: ${{ matrix.name }}
+    needs: prepare
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macOS ARM64 DMG
+            runner: macos-14
+            command: build:macos
+            artifact-name: wails-starter-macos-arm64
+            artifact-path: apps/wails-starter/bin/wails-starter.dmg
+          - name: Windows x64 EXE
+            runner: windows-latest
+            command: build:windows
+            artifact-name: wails-starter-windows-amd64
+            artifact-path: apps/wails-starter/bin/wails-starter.exe
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: jdx/mise-action@v4
+
+      - id: pnpm-store
+        name: Resolve pnpm store path
+        shell: bash
+        run: echo "path=$(pnpm store path)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache pnpm store
+        uses: actions/cache@v5
+        with:
+          path: ${{ steps.pnpm-store.outputs.path }}
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-
+
+      - name: Set official registry
+        run: pnpm config set registry https://registry.npmjs.org/
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build native artifact
+        run: pnpm --filter @greypan/wails-starter run ${{ matrix.command }}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: ${{ matrix.artifact-name }}
+          path: ${{ matrix.artifact-path }}
+          if-no-files-found: error
+          retention-days: 14
+
+  release:
+    name: Publish desktop release
+    needs: [prepare, build]
+    if: needs.prepare.outputs.should-release == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Download macOS artifact
+        uses: actions/download-artifact@v7
+        with:
+          name: wails-starter-macos-arm64
+          path: release-assets/macos
+
+      - name: Download Windows artifact
+        uses: actions/download-artifact@v7
+        with:
+          name: wails-starter-windows-amd64
+          path: release-assets/windows
+
+      - name: Prepare release assets
+        env:
+          VERSION: ${{ needs.prepare.outputs.version }}
+        shell: bash
+        run: |
+          mkdir -p release-assets/publish
+          cp release-assets/macos/wails-starter.dmg "release-assets/publish/wails-starter-${VERSION}-macos-arm64.dmg"
+          cp release-assets/windows/wails-starter.exe "release-assets/publish/wails-starter-${VERSION}-windows-x64.exe"
+          cd release-assets/publish
+          shasum -a 256 wails-starter-* > checksums.txt
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.prepare.outputs.version }}
+        shell: bash
+        run: |
+          gh release create "wails-starter-v${VERSION}" \
+            --target "${GITHUB_SHA}" \
+            --title "Wails Starter v${VERSION}" \
+            --generate-notes \
+            --notes 'The macOS and Windows artifacts are not yet signed for public distribution.' \
+            release-assets/publish/*

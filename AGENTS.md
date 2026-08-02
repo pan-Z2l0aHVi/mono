@@ -39,6 +39,7 @@ pnpm monorepo (`apps/**`, `packages/**`) using Turborepo. Packages published und
 - **Desktop CLI**: Wails 3 CLI 3.0.0-alpha2.122 (managed through mise's Go backend; use a published npm runtime version verified as compatible with this CLI and Go module)
 - **Build/dev/lint/test/format**: all delegated to `vite-plus` (`vp`) — a Vite wrapper. Most per-package scripts call `vp build`, `vp pack`, `vp check`, `vp test run`, `vp lint`, `vp fmt`
 - **Orchestration**: Turborepo (`turbo.json`) — `build` and `test` tasks depend on `^build` (upstream packages build first). Demo commands build upstream packages once, then use `turbo run dev` to start the persistent package-level watchers without Turbo's repository watcher.
+- **Desktop artifacts**: `.github/workflows/wails-artifacts.yml` validates `wails-starter` natively on macOS ARM64 and Windows x64, then uploads a DMG and EXE as GitHub Actions artifacts. A Changesets-driven Wails version change on `main` additionally creates a versioned GitHub Release with both installers and SHA-256 checksums.
 - **Language**: TypeScript 6, ES modules only (`"type": "module"` everywhere)
 
 ## Key commands
@@ -57,6 +58,8 @@ pnpm monorepo (`apps/**`, `packages/**`) using Turborepo. Packages published und
 | `pnpm clean`                                      | Remove generated outputs and caches, preserving Wails build templates |
 | `pnpm clean --full`                               | Also remove `node_modules` and lockfile                               |
 | `pnpm publish:new <package-dir>`                  | First publish of a new package (1.0.0)                                |
+| `pnpm release:version`                            | Apply Changesets versions and synchronize Wails build metadata        |
+| GitHub Actions `Wails`                            | Build and upload Wails macOS/Windows native artifacts                 |
 
 ## Build details
 

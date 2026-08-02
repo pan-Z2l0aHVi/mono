@@ -16,6 +16,8 @@ Use `catalog:` for managed dependency versions. A peer dependency may use a wide
 
 Keep `@wailsio/runtime` pinned to a published version verified with the configured Wails CLI and Go module. Wails alpha version numbers do not necessarily match across the Go and npm release streams.
 
+Changesets versions the private `@greypan/wails-starter` workspace so desktop releases share the monorepo's version review flow. It must remain private and is never published to npm; `privatePackages.tag` remains disabled because the Wails workflow creates its binary release tag only after both native builds succeed. Its nested `@greypan/wails-starter-frontend` WebView package remains a pnpm workspace for local dependencies but is ignored by Changesets because it has no independent release lifecycle.
+
 Vite type-system plugins belong in root `devDependencies` to avoid divergent pnpm resolution. Framework-bound tools belong with the framework package.
 
 ## pnpm policy

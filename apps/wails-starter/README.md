@@ -24,6 +24,15 @@ Native artifacts are emitted to `apps/wails-starter/bin/`:
 The WebView uses workspace dependencies from `packages/` through
 `apps/wails-starter/frontend/`.
 
+## Releases
+
+Desktop releases use Changesets without publishing this private workspace to npm.
+Add a Changeset for `@greypan/wails-starter`; the Version Packages pull request
+synchronizes the Wails build metadata. After that pull request merges to `main`,
+GitHub Actions builds both native targets and creates a
+`wails-starter-vX.Y.Z` GitHub Release containing the DMG, EXE, and SHA-256
+checksums. The initial artifacts are not formally signed.
+
 ## Wails APIs
 
 Use the official Wails 3 Chinese documentation for Wails APIs and configuration:
