@@ -36,26 +36,30 @@ pnpm monorepo (`apps/**`, `packages/**`) using Turborepo. Packages published und
 
 - **Package manager**: pnpm 10.33.0 (enforced via `engine-strict=true` in `.npmrc`)
 - **Runtime**: Node 24 (managed via mise — run `mise install` if node/pnpm/go are missing; `engines` allows >=24.18.0)
+- **Desktop CLI**: Wails 3 CLI 3.0.0-alpha2.122 (managed through mise's Go backend; use a published npm runtime version verified as compatible with this CLI and Go module)
 - **Build/dev/lint/test/format**: all delegated to `vite-plus` (`vp`) — a Vite wrapper. Most per-package scripts call `vp build`, `vp pack`, `vp check`, `vp test run`, `vp lint`, `vp fmt`
 - **Orchestration**: Turborepo (`turbo.json`) — `build` and `test` tasks depend on `^build` (upstream packages build first). Demo commands build upstream packages once, then use `turbo run dev` to start the persistent package-level watchers without Turbo's repository watcher.
+- **Desktop artifacts**: `.github/workflows/wails-artifacts.yml` validates `wails-starter` natively on macOS ARM64 and Windows x64, then uploads a DMG and EXE as GitHub Actions artifacts. A Changesets-driven Wails version change on `main` additionally creates a versioned GitHub Release with both installers and SHA-256 checksums.
 - **Language**: TypeScript 6, ES modules only (`"type": "module"` everywhere)
 
 ## Key commands
 
-| Command                                           | What it does                                        |
-| ------------------------------------------------- | --------------------------------------------------- |
-| `pnpm install`                                    | Install all deps (frozen lockfile in CI)            |
-| `pnpm build`                                      | Build all packages in dependency order              |
-| `pnpm test`                                       | Run all tests                                       |
-| `pnpm commit`                                     | Interactive conventional commit via cz-git          |
-| `bash scripts/commit.sh <type> <scope> <subject>` | Non-interactive commit (useful for agents)          |
-| `pnpm dev:react-web-ui-demo`                      | React demo with upstream build and package watchers |
-| `pnpm dev:vue-web-ui-demo`                        | Vue demo with upstream build and package watchers   |
-| `pnpm run check:code`                             | Check formatting, lint, and types                   |
-| `pnpm run fix:code`                               | Auto-fix formatting/lint issues, then type-check    |
-| `pnpm clean`                                      | Remove `dist/`, `.turbo/`, `.vite/`, `build/`       |
-| `pnpm clean --full`                               | Also remove `node_modules` and lockfile             |
-| `pnpm publish:new <package-dir>`                  | First publish of a new package (1.0.0)              |
+| Command                                           | What it does                                                          |
+| ------------------------------------------------- | --------------------------------------------------------------------- |
+| `pnpm install`                                    | Install all deps (frozen lockfile in CI)                              |
+| `pnpm build`                                      | Build all packages in dependency order                                |
+| `pnpm test`                                       | Run all tests                                                         |
+| `pnpm commit`                                     | Interactive conventional commit via cz-git                            |
+| `bash scripts/commit.sh <type> <scope> <subject>` | Non-interactive commit (useful for agents)                            |
+| `pnpm dev:react-web-ui-demo`                      | React demo with upstream build and package watchers                   |
+| `pnpm dev:vue-web-ui-demo`                        | Vue demo with upstream build and package watchers                     |
+| `pnpm run check:code`                             | Check formatting, lint, and types                                     |
+| `pnpm run fix:code`                               | Auto-fix formatting/lint issues, then type-check                      |
+| `pnpm clean`                                      | Remove generated outputs and caches, preserving Wails build templates |
+| `pnpm clean --full`                               | Also remove `node_modules` and lockfile                               |
+| `pnpm publish:new <package-dir>`                  | First publish of a new package (1.0.0)                                |
+| `pnpm release:version`                            | Apply Changesets versions and synchronize Wails build metadata        |
+| GitHub Actions `Wails`                            | Build and upload Wails macOS/Windows native artifacts                 |
 
 ## Build details
 
@@ -79,7 +83,7 @@ These files are auto-generated and should not be edited manually:
 
 - `**/routeTree.gen.ts` — TanStack Router route tree
 - `**/auto-imports.d.ts` — auto-import type declarations
-- `**/wailsjs/**` — Wails bindings (if present)
+- `apps/wails-starter/frontend/bindings/**` — Wails 3 bindings
 - `**/__screenshots__/` — Vitest browser mode test failure screenshots
 - `**/.vitest-attachments/` — Vitest browser mode test attachments
 
