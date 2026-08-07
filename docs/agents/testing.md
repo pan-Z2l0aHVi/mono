@@ -10,7 +10,7 @@
 - **`web-ui` jsdom contract tests**: Default `*.spec.ts` files run in the independent `jsdom` project and cover host API, attribute/property synchronization, events, rendering, and non-browser DOM semantics. Test utilities must not treat jsdom as an ElementInternals implementation.
 - **`web-ui` browser mode**: Only explicit `*.browser.spec.ts` files run in Chromium via `@vitest/browser-playwright` + `playwright`. Use this layer for FormData, ElementInternals, Pointer events, focus, portal, native dialog, and other browser-native behavior that jsdom cannot faithfully implement.
 - **`web-ui` reduced-motion browser mode**: `reduced-motion.browser.spec.ts` files run in their own Chromium project with Playwright `reducedMotion: 'reduce'`. Use this layer to verify that transform displacement is removed while opacity-based state feedback remains available.
-- **Network mocking**: `browser-kit` uses MSW (Mock Service Worker) via `@greypan/test-kit` for network request interception
+- **Network mocking**: `browser-kit` uses MSW (Mock Service Worker) via `@greypan/test-kit` for network request interception. Its tracker specs share browser globals and one service worker, so that package disables Vitest file parallelism; keep those specs independent and do not re-enable parallel files unless the shared state is removed.
 - **Test infrastructure**: `@greypan/test-kit` provides composable plugins using js-kit's plugin system:
   - `defineMsw(handlers)` — MSW service worker lifecycle management (start/stop/reset)
   - `defineCapturedRequests()` — request capture and assertion utilities
