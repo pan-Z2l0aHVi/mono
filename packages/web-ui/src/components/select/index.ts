@@ -132,11 +132,16 @@ export class WebUiSelect extends LitElement {
     })
   }
 
+  private _queryOptions(): WebUiOption[] {
+    const panel = this.portal ? this._panel.getPanel() : null
+    const panelOptions = panel ? [...panel.querySelectorAll<WebUiOption>('web-ui-option')] : []
+    // 面板内容仅在浮层打开、moveContent 之后存在；关闭时回退 light DOM，
+    // 否则 portal select 首次加载时 _options 为空，trigger 显示不出已选值。
+    return panelOptions.length > 0 ? panelOptions : [...this.querySelectorAll<WebUiOption>('web-ui-option')]
+  }
+
   override willUpdate() {
-    this._options =
-      this.portal && this._panel.getPanel()
-        ? [...this._panel.getPanel()!.querySelectorAll<WebUiOption>('web-ui-option')]
-        : [...this.querySelectorAll<WebUiOption>('web-ui-option')]
+    this._options = this._queryOptions()
     this._ensureOptionIds()
     this._syncSelected()
   }
@@ -216,11 +221,7 @@ export class WebUiSelect extends LitElement {
   }
 
   private _onSlotChange = () => {
-    const options =
-      this.portal && this._panel.getPanel()
-        ? [...this._panel.getPanel()!.querySelectorAll<WebUiOption>('web-ui-option')]
-        : [...this.querySelectorAll<WebUiOption>('web-ui-option')]
-    this._options = options
+    this._options = this._queryOptions()
     this._ensureOptionIds()
     this._syncSelected()
   }
