@@ -1,5 +1,11 @@
 # @greypan/web-ui
 
+## 2.1.7
+
+### Patch Changes
+
+- fa0f989: fix(select): portal 模式未打开时 trigger 显示已选值
+
 ## 2.1.6
 
 ### Patch Changes
