@@ -1,5 +1,11 @@
 # @greypan/wails-starter
 
+## 0.1.3
+
+### Patch Changes
+
+- ddc28c7: chore(wails-starter): trigger version-pr rerun to verify concurrency dedup
+
 ## 0.1.2
 
 ### Patch Changes
