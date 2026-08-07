@@ -131,10 +131,10 @@ const navItems: NavItem[] = [
             v-for="item in navItems"
             :key="item.path"
             :to="item.path"
-            class="block rounded-full px-3 py-2 text-sm leading-5 text-[var(--wui-color-text)] transition-[background-color] duration-150 hover:bg-[color-mix(in_srgb,var(--wui-color-surface-raised)_80%,var(--wui-color-text))]"
+            class="flex items-center h-8 my-1 rounded-full px-3 text-sm leading-5 text-[var(--wui-color-text)] transition-[background-color] duration-150 hover:bg-[color-mix(in_srgb,var(--wui-color-surface-raised)_80%,var(--wui-color-text))]"
             :class="route.path === item.path ? '!bg-[var(--wui-color-accent)] !text-[var(--wui-color-on-accent)]' : ''"
           >
-            {{ item.label }}
+            <span class="truncate">{{ item.label }}</span>
           </RouterLink>
         </nav>
         <RouterView />

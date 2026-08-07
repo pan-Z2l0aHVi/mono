@@ -35,8 +35,8 @@
   background-color: var(--wui-color-surface-overlay, rgb(246 246 246 / 0.88));
 
   transition:
-    opacity var(--wui-duration-overlay-enter, 180ms) var(--wui-ease-out, cubic-bezier(0.23, 1, 0.32, 1)),
-    transform var(--wui-duration-overlay-enter, 180ms) var(--wui-ease-out, cubic-bezier(0.23, 1, 0.32, 1));
+    opacity var(--wui-duration-overlay-enter, 180ms) var(--wui-ease-enter, cubic-bezier(0.23, 1, 0.32, 1)),
+    transform var(--wui-duration-overlay-enter, 180ms) var(--wui-ease-enter, cubic-bezier(0.23, 1, 0.32, 1));
 }
 
 :host([visible]) .toast {
@@ -73,7 +73,7 @@
 
   opacity: 0;
 
-  transition: opacity var(--wui-duration-fast, 160ms) ease;
+  transition: opacity var(--wui-duration-trigger, 160ms) ease;
 
   &:focus-visible {
     pointer-events: auto;

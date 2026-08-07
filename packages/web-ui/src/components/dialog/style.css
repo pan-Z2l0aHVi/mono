@@ -26,8 +26,8 @@ dialog {
   background: transparent;
 
   transition:
-    opacity var(--wui-duration-overlay-enter, 180ms) var(--wui-ease-out, cubic-bezier(0.23, 1, 0.32, 1)),
-    transform var(--wui-duration-overlay-enter, 180ms) var(--wui-ease-out, cubic-bezier(0.23, 1, 0.32, 1));
+    opacity var(--wui-duration-overlay-enter, 180ms) var(--wui-ease-enter, cubic-bezier(0.23, 1, 0.32, 1)),
+    transform var(--wui-duration-overlay-enter, 180ms) var(--wui-ease-enter, cubic-bezier(0.23, 1, 0.32, 1));
 
   &::backdrop {
     opacity: 0;
@@ -58,7 +58,7 @@ dialog[open].is-visible::backdrop {
   dialog,
   dialog[open].is-visible {
     transform: none;
-    transition-duration: 120ms;
+    transition-duration: var(--wui-duration-feedback, 100ms);
   }
 }
 
@@ -66,15 +66,15 @@ dialog[open].is-visible::backdrop {
 
 .wui-dialog-body {
   --wui-glass-shadow: var(--wui-shadow-overlay, 2px 16px 40px rgb(0 0 0 / 0.4));
-  padding: 24px;
-  border-radius: 20px;
+  padding: 32px 24px 24px;
+  border-radius: 32px;
   background-color: var(--wui-color-surface-overlay, rgb(246 246 246 / 0.88));
 }
 
 /* ===== 标题 ===== */
 
 .title {
-  margin: 0 0 8px;
+  margin: 0 0 16px;
   padding: 0;
 
   font-size: 18px;
@@ -86,12 +86,12 @@ dialog[open].is-visible::backdrop {
 /* ===== 描述 ===== */
 
 .desc {
-  margin: 0 0 20px;
+  margin: 0 0 24px;
   padding: 0;
 
   font-size: 14px;
   line-height: 1.5;
-  color: var(--wui-color-text-muted, #6a6a6a);
+  color: var(--wui-color-text, #1b1b1b);
 }
 
 /* ===== 按钮区域 ===== */
@@ -113,7 +113,7 @@ dialog[open].is-visible::backdrop {
 
 :host([horizontal]) .wui-dialog-footer {
   flex-direction: row;
-  gap: 10px;
+  gap: 12px;
   justify-content: center;
 
   /* 非 full 按钮：居中，不拉伸 */
