@@ -12,6 +12,13 @@ The root demo commands first build upstream workspace packages, then use `turbo 
 
 Restart a demo command after changing the package graph, lockfile, or Turbo configuration. Normal source changes continue to be handled by the running package-level watchers.
 
+Wails development starts Wails plus every buildable workspace dependency of the
+nested WebView frontend with `--filter=@greypan/wails-starter-frontend^...`.
+The `^...` suffix excludes the frontend itself. The Wails Taskfile owns that
+frontend's Vite server, so do not use `--filter=@greypan/wails-starter...`; it
+would start a duplicate frontend dev server. Restart Wails after changing Vite
+plugins, TypeScript configuration, or the workspace dependency graph.
+
 Build scripts differ by package type:
 
 - **Single-entry packages** (`test-kit`, `unplugin-web-components`, `deps-reload`): `vp pack`, which is tsdown-based and emits `.mjs` plus `.d.mts`.
@@ -70,7 +77,7 @@ apps/
 - **Third-party dependencies** may be bundled when zero-config consumption is the design intent; externalize them when consumers are expected to provide them.
 - Prefer regex patterns to lists of workspace packages. Match sub-path imports too, for example the Lit pattern `/^lit($|\/)/`.
 - `web-ui` externalizes its framework dependencies, so consumers must install `lit` as a dependency.
-- `wails-starter` has an outer Turbo workspace (`@greypan/wails-starter`) and a nested WebView workspace (`@greypan/wails-starter-frontend`). The Wails Taskfile owns the nested frontend process; use `pnpm dev:wails-starter` rather than Turbo's dependency expansion for development.
+- `wails-starter` has an outer Turbo workspace (`@greypan/wails-starter`) and a nested WebView workspace (`@greypan/wails-starter-frontend`). The Wails Taskfile owns the nested frontend process; `pnpm dev:wails-starter` expands only the frontend's dependencies, excluding the frontend process itself.
 - The Wails Taskfile uses pnpm, generates `frontend/bindings/`, and embeds `frontend/dist/` into the Go binary. `bin/` is a Turbo build output for native artifacts.
 - The Wails build assets intentionally support only darwin/arm64 and windows/amd64. On macOS, the package `build` script creates both `bin/wails-starter.dmg` and `bin/wails-starter.exe`; `build:macos` and `build:windows` build either target explicitly. On Windows, `build` creates the EXE. On Linux CI, it builds only the WebView frontend because neither desktop release target is native to the runner. Windows cross-compilation works from macOS without Docker, while macOS builds on a non-macOS host require Wails' Docker setup. Wails may generate Android, iOS, and Linux build templates while updating assets; those unsupported target directories are ignored and must not enter version PRs.
 - `apps/wails-starter/build/` contains Wails Taskfiles, platform templates, icons, and packaging assets rather than disposable output. Both `pnpm clean` and `pnpm clean --full` preserve it; only `bin/`, `frontend/dist/`, generated bindings, caches, and dependencies are disposable.
