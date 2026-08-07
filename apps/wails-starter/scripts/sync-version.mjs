@@ -79,8 +79,9 @@ async function assertGeneratedVersions(version) {
 }
 
 async function main() {
-  const checkOnly = process.argv.slice(2).every(argument => argument === '--check')
-  if (!checkOnly && process.argv.length > 2) {
+  const args = process.argv.slice(2)
+  const checkOnly = args.length === 1 && args[0] === '--check'
+  if (!checkOnly && args.length > 0) {
     fail('only --check is supported')
   }
 
@@ -108,7 +109,7 @@ async function main() {
 
   const lines = config.split(/\r?\n/)
   lines[configVersion.index] = lines[configVersion.index].replace(configVersion.version, version)
-  await writeFile(configPath, `${lines.join('\n')}\n`)
+  await writeFile(configPath, lines.join('\n'))
 
   const result = spawnSync('wails3', ['task', 'common:update:build-assets'], {
     cwd: appRoot,
