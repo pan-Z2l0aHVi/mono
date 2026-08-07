@@ -14,6 +14,8 @@ export default {
     })
   ],
   test: {
+    // Tracker specs share browser globals and one MSW service worker.
+    fileParallelism: false,
     browser: {
       provider: playwright(),
       enabled: true,
