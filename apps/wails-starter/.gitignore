@@ -1,12 +1,7 @@
 .task
 bin
-frontend/dist
-frontend/node_modules
-frontend/bindings
-build/linux/appimage/build
 build/windows/nsis/MicrosoftEdgeWebview2Setup.exe
-# Wails generates templates for unsupported mobile and Linux targets.
+# Wails generates templates for unsupported targets while updating build assets.
 build/android/
 build/ios/
 build/linux/
-# Mobile generated (per-machine; overlays hold absolute paths)
