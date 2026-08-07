@@ -1,5 +1,11 @@
 # @greypan/browser-kit
 
+## 1.7.6
+
+### Patch Changes
+
+- 32d3366: Stabilize browser tracker tests while waiting for requests intercepted by MSW.
+
 ## 1.7.5
 
 ### Patch Changes
