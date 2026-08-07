@@ -8,10 +8,13 @@ import { defineTracker } from '../core'
 
 vi.useFakeTimers()
 
-/** 临时切换到真实计时器，等待 MSW 处理请求后再切回 */
-async function waitForMsw(ms = 50) {
+/** 临时切换到真实计时器，等待 MSW 捕获指定数量的请求后再切回。 */
+async function waitForMsw(minCount = 1, timeout = 1000) {
   vi.useRealTimers()
-  await new Promise(resolve => setTimeout(resolve, ms))
+  const start = Date.now()
+  while (capturedRequests.length < minCount && Date.now() - start < timeout) {
+    await new Promise(resolve => setTimeout(resolve, 10))
+  }
   vi.useFakeTimers()
 }
 
@@ -94,8 +97,8 @@ describe('上报 core 测试用例', () => {
       const stored = storage.get('queue:https://example.com')
       expect(stored).toEqual([{ event: 'c' }])
 
-      // 等待恢复数据的 fetch 完成，避免污染后续测试
-      await waitForMsw()
+      // 两条恢复记录都会单独降级为 fetch；全部完成后再进入下一用例。
+      await waitForMsw(2)
     })
 
     it('disablePersistence 时不写 storage', () => {
@@ -113,8 +116,7 @@ describe('上报 core 测试用例', () => {
       const tracker = defineTracker({ url: 'https://example.com' }).make()
       await waitForMsw()
 
-      expect(capturedRequests.length).toBeGreaterThanOrEqual(1)
-      expect(JSON.stringify(capturedRequests[0].body)).toContain('restored')
+      expect(capturedRequests.some(request => JSON.stringify(request.body).includes('restored'))).toBe(true)
       expect(storage.get('queue:https://example.com')).toBeNull()
     })
 
