@@ -29,8 +29,8 @@
   border-radius: 20px;
 
   transition:
-    border-color 0.2s,
-    box-shadow 0.2s;
+    border-color var(--wui-duration-focus, 200ms),
+    box-shadow var(--wui-duration-focus, 200ms);
 }
 
 :host([full]) .wui-textarea-inner {

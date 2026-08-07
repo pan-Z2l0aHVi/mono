@@ -74,8 +74,8 @@
     0 0 4px rgb(0 136 255 / 0.3);
 
   transition:
-    opacity var(--wui-duration-fast, 160ms) ease,
-    transform var(--wui-duration-fast, 160ms) var(--wui-ease-out, cubic-bezier(0.23, 1, 0.32, 1));
+    opacity var(--wui-duration-trigger, 160ms) ease,
+    transform var(--wui-duration-trigger, 160ms) var(--wui-ease-enter, cubic-bezier(0.23, 1, 0.32, 1));
 }
 
 .is-checked .wui-radio-dot {

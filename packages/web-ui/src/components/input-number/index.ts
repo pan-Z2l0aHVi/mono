@@ -38,6 +38,7 @@ export class WebUiInputNumber extends LitElement {
   @state() private _min = 0
   @state() private _max = Infinity
   @state() private _step = 1
+  @state() private _focused = false
   @state() private _formDisabled = false
   private _precision = 0
 
@@ -123,6 +124,7 @@ export class WebUiInputNumber extends LitElement {
 
   override updated() {
     this._syncValidity()
+    this.toggleAttribute('focused', this._focused)
   }
 
   private _syncValidity() {
@@ -181,6 +183,14 @@ export class WebUiInputNumber extends LitElement {
     }
   }
 
+  private handleFocus() {
+    if (!this._isDisabled) this._focused = true
+  }
+
+  private handleBlur() {
+    this._focused = false
+  }
+
   override render() {
     return html`
       <div class="wui-glass wui-input-inner">
@@ -201,6 +211,8 @@ export class WebUiInputNumber extends LitElement {
           ?required=${this.required}
           @input=${this.handleInput}
           @keydown=${this.handleKeydown}
+          @focus=${this.handleFocus}
+          @blur=${this.handleBlur}
         />
         <button
           class="num-btn"

@@ -44,9 +44,7 @@ button {
 
   background-color: var(--wui-button-bg);
 
-  transition:
-    transform var(--wui-duration-press, 120ms) var(--wui-ease-out, cubic-bezier(0.23, 1, 0.32, 1)),
-    background-color var(--wui-duration-fast, 160ms) ease;
+  transition: background-color var(--wui-duration-trigger, 160ms) ease;
 
   &:disabled {
     cursor: not-allowed;
@@ -57,11 +55,6 @@ button {
     outline: 3px solid var(--wui-focus-ring, rgb(0 136 255 / 0.4));
     outline-offset: 2px;
   }
-
-  &:active:not(:disabled) {
-    transform: scale(var(--wui-scale-press, 0.97));
-    background-color: var(--wui-button-bg-active);
-  }
 }
 
 @media (hover: hover) and (pointer: fine) {
@@ -70,13 +63,13 @@ button {
   }
 }
 
+button:active:not(:disabled) {
+  background-color: var(--wui-button-bg-active);
+}
+
 @media (prefers-reduced-motion: reduce) {
   button {
-    transition: background-color var(--wui-duration-fast, 160ms) ease;
-  }
-
-  button:active:not(:disabled) {
-    transform: none;
+    transition: background-color var(--wui-duration-trigger, 160ms) ease;
   }
 }
 
@@ -100,7 +93,7 @@ button {
   --wui-button-color: var(--wui-color-on-accent, #fff);
   --wui-button-bg: var(--wui-color-accent, #08f);
   --wui-button-bg-hover: color-mix(in srgb, var(--wui-color-accent, #08f) 88%, var(--wui-color-text, #1b1b1b));
-  --wui-button-bg-active: color-mix(in srgb, var(--wui-color-accent, #08f) 76%, var(--wui-color-text, #1b1b1b));
+  --wui-button-bg-active: color-mix(in srgb, var(--wui-color-accent, #08f) 65%, var(--wui-color-text, #1b1b1b));
 }
 
 /* ===== Variant: secondary ===== */
@@ -115,7 +108,7 @@ button {
   );
   --wui-button-bg-active: color-mix(
     in srgb,
-    var(--wui-color-surface-raised-mid, #dfdfdf) 80%,
+    var(--wui-color-surface-raised-mid, #dfdfdf) 70%,
     var(--wui-color-text, #1b1b1b)
   );
 }
@@ -126,7 +119,7 @@ button {
   --wui-button-color: var(--wui-color-text, #1b1b1b);
   --wui-button-bg: transparent;
   --wui-button-bg-hover: color-mix(in srgb, var(--wui-color-text, #1b1b1b) 6%, transparent);
-  --wui-button-bg-active: color-mix(in srgb, var(--wui-color-text, #1b1b1b) 10%, transparent);
+  --wui-button-bg-active: color-mix(in srgb, var(--wui-color-text, #1b1b1b) 15%, transparent);
 }
 
 /* ===== Variant: danger ===== */
@@ -135,7 +128,7 @@ button {
   --wui-button-color: var(--wui-color-danger, #dc2626);
   --wui-button-bg: color-mix(in srgb, var(--wui-color-danger, #dc2626) 18%, var(--wui-color-surface, #fff));
   --wui-button-bg-hover: color-mix(in srgb, var(--wui-color-danger, #dc2626) 26%, var(--wui-color-surface, #fff));
-  --wui-button-bg-active: color-mix(in srgb, var(--wui-color-danger, #dc2626) 34%, var(--wui-color-surface, #fff));
+  --wui-button-bg-active: color-mix(in srgb, var(--wui-color-danger, #dc2626) 45%, var(--wui-color-surface, #fff));
 }
 
 /* ===== Variant: glass (玻璃) ===== */
@@ -145,7 +138,7 @@ button {
   --wui-button-color: var(--wui-color-text, #1b1b1b);
   --wui-button-bg: transparent;
   --wui-button-bg-hover: color-mix(in srgb, var(--wui-color-text, #1b1b1b) 6%, transparent);
-  --wui-button-bg-active: color-mix(in srgb, var(--wui-color-text, #1b1b1b) 10%, transparent);
+  --wui-button-bg-active: color-mix(in srgb, var(--wui-color-text, #1b1b1b) 15%, transparent);
 }
 
 /* ===== Group context ===== */
@@ -154,7 +147,7 @@ button {
   --wui-button-color: var(--wui-color-text, #1b1b1b);
   --wui-button-bg: transparent;
   --wui-button-bg-hover: color-mix(in srgb, var(--wui-color-text, #1b1b1b) 6%, transparent);
-  --wui-button-bg-active: color-mix(in srgb, var(--wui-color-text, #1b1b1b) 10%, transparent);
+  --wui-button-bg-active: color-mix(in srgb, var(--wui-color-text, #1b1b1b) 15%, transparent);
   position: relative;
 }
 

@@ -33,8 +33,8 @@
   white-space: nowrap;
 
   transition:
-    color var(--wui-duration-feedback, 120ms) var(--wui-ease-out, cubic-bezier(0.23, 1, 0.32, 1)),
-    background-color var(--wui-duration-feedback, 120ms) var(--wui-ease-out, cubic-bezier(0.23, 1, 0.32, 1));
+    color var(--wui-duration-feedback, 100ms) var(--wui-ease-enter, cubic-bezier(0.23, 1, 0.32, 1)),
+    background-color var(--wui-duration-feedback, 100ms) var(--wui-ease-enter, cubic-bezier(0.23, 1, 0.32, 1));
 }
 
 .check {

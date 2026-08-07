@@ -26,6 +26,10 @@
   height: var(--wui-button-size, 40px);
   padding: 0 16px;
   border-radius: calc(infinity * 1px);
+
+  transition:
+    border-color var(--wui-duration-focus, 200ms),
+    box-shadow var(--wui-duration-focus, 200ms);
 }
 
 :host([full]) {

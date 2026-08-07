@@ -733,7 +733,7 @@ Theme provider defining CSS custom property tokens.
 
 **Methods:** `getOverlayRoot()` — returns the portal overlay container
 
-Defines `--wui-color-*`, `--wui-shadow-*`, `--wui-layer-*`, and motion tokens. Motion tokens are stable and may be overridden per theme scope: `--wui-duration-press`, `--wui-duration-feedback`, `--wui-duration-fast`, `--wui-duration-menu-enter`, `--wui-duration-menu-exit`, `--wui-duration-overlay-enter`, `--wui-duration-overlay-exit`, `--wui-duration-drawer`, `--wui-ease-out`, `--wui-ease-standard`, `--wui-scale-press`, and `--wui-scale-enter`. `motion="system"` follows `prefers-reduced-motion`; use `motion="reduced"` to reduce animation in a scope or `motion="full"` in a nested theme to restore the normal token values. System appearance follows `prefers-color-scheme`.
+Defines `--wui-color-*`, `--wui-shadow-*`, `--wui-layer-*`, and motion tokens. Motion tokens are stable and may be overridden per theme scope: `--wui-duration-press`, `--wui-duration-feedback`, `--wui-duration-trigger`, `--wui-duration-focus`, `--wui-duration-menu-enter`, `--wui-duration-menu-exit`, `--wui-duration-overlay-enter`, `--wui-duration-overlay-exit`, `--wui-duration-drawer-enter`, `--wui-duration-drawer-exit`, `--wui-ease-enter`, `--wui-ease-slide`, and `--wui-scale-enter`. `motion="system"` follows `prefers-reduced-motion`; use `motion="reduced"` to reduce animation in a scope or `motion="full"` in a nested theme to restore the normal token values. System appearance follows `prefers-color-scheme`.
 
 ---
 

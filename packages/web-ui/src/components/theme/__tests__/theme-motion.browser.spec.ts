@@ -25,11 +25,11 @@ describe('WebUiTheme motion（浏览器）', () => {
     await inner.updateComplete
 
     expect(getComputedStyle(outer).getPropertyValue('--wui-duration-feedback').trim()).toBe('0s')
-    expect(getComputedStyle(outer).getPropertyValue('--wui-duration-fast').trim()).toBe('0s')
+    expect(getComputedStyle(outer).getPropertyValue('--wui-duration-trigger').trim()).toBe('0s')
     expect(getComputedStyle(outer).getPropertyValue('--wui-duration-menu-enter').trim()).toBe('0s')
     expect(getComputedStyle(outer).getPropertyValue('--wui-duration-menu-exit').trim()).toBe('0s')
-    expect(getComputedStyle(inner).getPropertyValue('--wui-duration-feedback').trim()).toBe('.12s')
-    expect(getComputedStyle(inner).getPropertyValue('--wui-duration-fast').trim()).toBe('.16s')
+    expect(getComputedStyle(inner).getPropertyValue('--wui-duration-feedback').trim()).toBe('.1s')
+    expect(getComputedStyle(inner).getPropertyValue('--wui-duration-trigger').trim()).toBe('.16s')
     expect(getComputedStyle(inner).getPropertyValue('--wui-duration-menu-enter').trim()).toBe('.14s')
     expect(getComputedStyle(inner).getPropertyValue('--wui-duration-menu-exit').trim()).toBe('.1s')
     expect(getComputedStyle(outer).getPropertyValue('--wui-scale-enter').trim()).toBe('1')

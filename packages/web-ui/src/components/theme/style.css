@@ -13,17 +13,18 @@
   --wui-layer-menu-submenu: 110;
   --wui-layer-toast: 200;
   --wui-layer-loading: 300;
-  --wui-duration-press: 120ms;
-  --wui-duration-feedback: 120ms;
-  --wui-duration-fast: 160ms;
+  --wui-duration-press: 80ms;
+  --wui-duration-feedback: 100ms;
+  --wui-duration-trigger: 160ms;
+  --wui-duration-focus: 200ms;
   --wui-duration-menu-enter: 140ms;
   --wui-duration-menu-exit: 100ms;
   --wui-duration-overlay-enter: 180ms;
   --wui-duration-overlay-exit: 140ms;
-  --wui-duration-drawer: 280ms;
-  --wui-ease-out: cubic-bezier(0.23, 1, 0.32, 1);
-  --wui-ease-standard: cubic-bezier(0.77, 0, 0.175, 1);
-  --wui-scale-press: 0.97;
+  --wui-duration-drawer-enter: 280ms;
+  --wui-duration-drawer-exit: 240ms;
+  --wui-ease-enter: cubic-bezier(0.23, 1, 0.32, 1);
+  --wui-ease-slide: cubic-bezier(0.77, 0, 0.175, 1);
   --wui-scale-enter: 0.97;
   display: contents;
 }
@@ -31,13 +32,14 @@
 :host([motion='reduced']) {
   --wui-duration-press: 0ms;
   --wui-duration-feedback: 0ms;
-  --wui-duration-fast: 0ms;
+  --wui-duration-trigger: 0ms;
+  --wui-duration-focus: 0ms;
   --wui-duration-menu-enter: 0ms;
   --wui-duration-menu-exit: 0ms;
   --wui-duration-overlay-enter: 0ms;
   --wui-duration-overlay-exit: 0ms;
-  --wui-duration-drawer: 0ms;
-  --wui-scale-press: 1;
+  --wui-duration-drawer-enter: 0ms;
+  --wui-duration-drawer-exit: 0ms;
   --wui-scale-enter: 1;
 }
 
@@ -45,13 +47,14 @@
   :host([motion='system']) {
     --wui-duration-press: 0ms;
     --wui-duration-feedback: 0ms;
-    --wui-duration-fast: 0ms;
+    --wui-duration-trigger: 0ms;
+    --wui-duration-focus: 0ms;
     --wui-duration-menu-enter: 0ms;
     --wui-duration-menu-exit: 0ms;
     --wui-duration-overlay-enter: 0ms;
     --wui-duration-overlay-exit: 0ms;
-    --wui-duration-drawer: 0ms;
-    --wui-scale-press: 1;
+    --wui-duration-drawer-enter: 0ms;
+    --wui-duration-drawer-exit: 0ms;
     --wui-scale-enter: 1;
   }
 }
