@@ -8,10 +8,13 @@ import { defineOfflineRestore } from '../plugins/offline-restore'
 
 vi.useFakeTimers()
 
-/** 临时切换到真实计时器，等待 MSW 处理请求后再切回 */
-async function waitForMsw(ms = 100) {
+/** 临时切换到真实计时器，等待 MSW 捕获指定数量的请求后再切回。 */
+async function waitForMsw(minCount = 1, timeout = 1000) {
   vi.useRealTimers()
-  await new Promise(resolve => setTimeout(resolve, ms))
+  const start = Date.now()
+  while (capturedRequests.length < minCount && Date.now() - start < timeout) {
+    await new Promise(resolve => setTimeout(resolve, 10))
+  }
   vi.useFakeTimers()
 }
 
