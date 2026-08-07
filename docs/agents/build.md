@@ -12,6 +12,13 @@ The root demo commands first build upstream workspace packages, then use `turbo 
 
 Restart a demo command after changing the package graph, lockfile, or Turbo configuration. Normal source changes continue to be handled by the running package-level watchers.
 
+Wails development starts Wails plus every buildable workspace dependency of the
+nested WebView frontend with `--filter=@greypan/wails-starter-frontend^...`.
+The `^...` suffix excludes the frontend itself. The Wails Taskfile owns that
+frontend's Vite server, so do not use `--filter=@greypan/wails-starter...`; it
+would start a duplicate frontend dev server. Restart Wails after changing Vite
+plugins, TypeScript configuration, or the workspace dependency graph.
+
 Build scripts differ by package type:
 
 - **Single-entry packages** (`test-kit`, `unplugin-web-components`, `deps-reload`): `vp pack`, which is tsdown-based and emits `.mjs` plus `.d.mts`.
@@ -70,7 +77,7 @@ apps/
 - **Third-party dependencies** may be bundled when zero-config consumption is the design intent; externalize them when consumers are expected to provide them.
 - Prefer regex patterns to lists of workspace packages. Match sub-path imports too, for example the Lit pattern `/^lit($|\/)/`.
 - `web-ui` externalizes its framework dependencies, so consumers must install `lit` as a dependency.
-- `wails-starter` has an outer Turbo workspace (`@greypan/wails-starter`) and a nested WebView workspace (`@greypan/wails-starter-frontend`). The Wails Taskfile owns the nested frontend process; use `pnpm dev:wails-starter` rather than Turbo's dependency expansion for development.
+- `wails-starter` has an outer Turbo workspace (`@greypan/wails-starter`) and a nested WebView workspace (`@greypan/wails-starter-frontend`). The Wails Taskfile owns the nested frontend process; `pnpm dev:wails-starter` expands only the frontend's dependencies, excluding the frontend process itself.
 - The Wails Taskfile uses pnpm, generates `frontend/bindings/`, and embeds `frontend/dist/` into the Go binary. `bin/` is a Turbo build output for native artifacts.
 - The Wails build assets intentionally support only darwin/arm64 and windows/amd64. On macOS, the package `build` script creates both `bin/wails-starter.dmg` and `bin/wails-starter.exe`; `build:macos` and `build:windows` build either target explicitly. On Windows, `build` creates the EXE. On Linux CI, it builds only the WebView frontend because neither desktop release target is native to the runner. Windows cross-compilation works from macOS without Docker, while macOS builds on a non-macOS host require Wails' Docker setup. Wails may generate Android, iOS, and Linux build templates while updating assets; those unsupported target directories are ignored and must not enter version PRs.
 - `apps/wails-starter/build/` contains Wails Taskfiles, platform templates, icons, and packaging assets rather than disposable output. Both `pnpm clean` and `pnpm clean --full` preserve it; only `bin/`, `frontend/dist/`, generated bindings, caches, and dependencies are disposable.
@@ -93,7 +100,7 @@ apps/
 
 ## CI and release
 
-- CI in `ci.yml` remains the full validation workflow for pull requests and pushes to `main`: changeset status, build, format/lint/type-check, and tests. It also accepts a workflow dispatch for a Changesets version PR, because PRs created with `GITHUB_TOKEN` do not trigger `pull_request` workflows. It installs Wails' GTK4 and WebKitGTK Linux prerequisites because the full workspace build compiles the Wails CLI through mise.
+- CI in `ci.yml` remains the full validation workflow for pull requests and pushes to `main`: changeset status, build, format/lint/type-check, and tests. It also accepts a workflow dispatch for a Changesets version PR, covering the `pull_request.opened` that `GITHUB_TOKEN`-created version PRs may not trigger. Pull-request and dispatched runs share a `concurrency` group keyed on the branch (`github.head_ref || github.ref_name`), so `cancel-in-progress` collapses the pair into a single run instead of duplicating native builds. It installs Wails' GTK4 and WebKitGTK Linux prerequisites because the full workspace build compiles the Wails CLI through mise.
 - `changeset-version.yml` runs on pushes to `main` and has the single responsibility of creating or updating the Changesets version PR. It invokes `pnpm run release:version` through the `changesets/action` `version` input, so a pending `@greypan/wails-starter` release updates native version metadata rather than using Changesets' default command; `sync:version` updates by default and only validates when explicitly passed `--check`. It installs only Node and pnpm for public-package changes; a Wails release additionally installs the Wails Linux prerequisites, Go, and the configured Wails CLI. After creating the PR, it dispatches CI and, for Wails changes, native verification against the version branch; it never publishes packages or installers.
 - `npm-publish.yml` releases only public npm packages. Its `pull_request.closed` trigger is limited to `packages/**`, then it runs only when `changeset-release/main` merges into `main`, detects actual public package version changes, rebuilds the `packages/*` Turbo graph on the merged SHA, and publishes through npm Trusted Publishing. After a successful publish, a separate least-privilege job creates an idempotent GitHub Release and tag for each package version, with links to npm and the package changelog. Package releases are explicitly not marked Latest, so the latest Wails desktop installer remains prominent. It has no Wails toolchain or long-lived npm token.
 - `wails-verify.yml` validates Wails-affecting pull requests and manual runs only. It checks synchronized metadata, builds macOS ARM64 DMG and Windows x64 EXE, and retains them as 14-day read-only validation artifacts. It has no permission to create releases.
@@ -102,3 +109,4 @@ apps/
 - Deploy in `deploy-pages.yml` is manually triggered and deploys every Deployable Demo in the job-level `DEMO_APPS` list through one `actions/deploy-pages` artifact. It installs only Node and pnpm, since Pages does not require the Wails CLI. Each entry is an `apps/<name>` directory and is served at `/mono/<name>/`; build commands use pnpm's `{./apps/<name>}...` directory selector rather than an npm package name. The site has no root landing page.
 - Every Deployable Demo must support History-route deep links. GitHub Pages routes an unmatched request to the root `404.html`; it validates the app name against `DEMO_APPS`, preserves the requested route in `redirect`, and loads the app root. In production, the app must restore `redirect` before creating its router. Unknown paths remain 404 responses.
 - First publication must use `pnpm publish:new <package-dir>`, which builds then publishes version `1.0.0`. It requires `npm login`; configure npm Trusted Publishing for `npm-publish.yml` afterwards so subsequent package releases use the version-PR flow.
+- npm Trusted Publishing binds to the workflow file path via the OIDC `job_workflow_ref` claim. Renaming or moving `npm-publish.yml` invalidates the existing trusted-publisher registration: `pnpm changeset publish` then fails with `ENEEDAUTH` even though `id-token: write` is set. Update the matching trusted publisher on npmjs.com in the same change that renames the workflow.
