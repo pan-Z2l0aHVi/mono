@@ -74,8 +74,8 @@ jobs:
         if: steps.changesets.outputs.has-changesets == 'true'
         uses: changesets/action@v1
         with:
-          version-script: pnpm run release:version
-          pr-title: 'chore: version packages'
-          commit-message: 'chore: version packages'
+          version: pnpm run release:version
+          title: 'chore: version packages'
+          commit: 'chore: version packages'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
