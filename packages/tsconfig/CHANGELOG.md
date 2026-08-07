@@ -1,5 +1,11 @@
 # @greypan/tsconfig
 
+## 1.0.4
+
+### Patch Changes
+
+- cdc5cf7: Release pipeline validation: bump all public packages for trusted publishing verification.
+
 ## 1.0.3
 
 ### Patch Changes

@@ -1,5 +1,12 @@
 # @greypan/wails-starter
 
+## 0.1.2
+
+### Patch Changes
+
+- cdc5cf7: Release pipeline validation: bump all public packages for trusted publishing verification.
+  - @greypan/wails-starter-frontend@0.0.0
+
 ## 0.1.1
 
 ### Patch Changes
