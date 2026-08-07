@@ -51,7 +51,7 @@ aside {
 
   .menu {
     height: 100%;
-    border-radius: 20px;
+    border-radius: 24px;
     background-color: var(--wui-color-surface-overlay, rgb(246 246 246 / 0.88));
   }
 }
@@ -92,7 +92,7 @@ footer {
     height: 100dvh;
     padding: 8px;
 
-    transition: transform 0.25s ease;
+    transition: transform var(--wui-duration-drawer-enter, 280ms) ease;
   }
 
   aside.open {

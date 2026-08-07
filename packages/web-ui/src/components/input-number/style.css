@@ -27,17 +27,15 @@
   padding: 0 4px;
   border-radius: calc(infinity * 1px);
 
-  &:focus-within {
-    border-color: var(--wui-color-border-strong, rgb(0 110 230 / 0.5));
-    box-shadow:
-      0 0 0 3px rgb(0 136 255 / 0.2),
-      inset -1px -1px 0.5px -0.5px rgb(255 255 255 / 0.9),
-      inset 1px 1px 0.5px -0.5px rgb(255 255 255 / 0.9),
-      inset -3px -3px 0.5px -3px rgb(255 255 255 / 0.55),
-      inset 3px 3px 0.5px -3px rgb(255 255 255 / 0.55),
-      inset 0 0 1px rgb(0 0 0 / 0.8),
-      0 2px 16px rgb(0 0 0 / 0.06);
-  }
+  transition:
+    border-color var(--wui-duration-focus, 200ms),
+    box-shadow var(--wui-duration-focus, 200ms);
+}
+
+:host([focused]) .wui-input-inner {
+  --wui-glass-shadow:
+    var(--wui-shadow-glass, 0 2px 16px rgb(0 0 0 / 0.06)), 0 0 0 3px var(--wui-focus-ring, rgb(0 136 255 / 0.4));
+  border-color: var(--wui-color-border-strong, rgb(0 110 230 / 0.5));
 }
 
 input {
@@ -87,9 +85,7 @@ input {
 
   background: transparent;
 
-  transition:
-    transform var(--wui-duration-press, 120ms) var(--wui-ease-out, cubic-bezier(0.23, 1, 0.32, 1)),
-    background-color var(--wui-duration-fast, 160ms) ease;
+  transition: background-color var(--wui-duration-trigger, 160ms) ease;
 
   &:disabled {
     cursor: not-allowed;
@@ -100,25 +96,20 @@ input {
     outline: 3px solid var(--wui-focus-ring, rgb(0 136 255 / 0.4));
     outline-offset: 2px;
   }
-
-  &:active:not(:disabled) {
-    transform: scale(var(--wui-scale-press, 0.97));
-    background: var(--wui-color-border, rgb(0 0 0 / 0.1));
-  }
 }
 
 @media (hover: hover) and (pointer: fine) {
   .num-btn:hover:not(:disabled) {
-    background: color-mix(in srgb, var(--wui-color-text, #1b1b1b) 6%, transparent);
+    background: color-mix(in srgb, var(--wui-color-text, #1b1b1b) 12%, transparent);
   }
+}
+
+.num-btn:active:not(:disabled) {
+  background: color-mix(in srgb, var(--wui-color-text, #1b1b1b) 18%, transparent);
 }
 
 @media (prefers-reduced-motion: reduce) {
   .num-btn {
-    transition: background-color var(--wui-duration-fast, 160ms) ease;
-  }
-
-  .num-btn:active:not(:disabled) {
-    transform: none;
+    transition: background-color var(--wui-duration-trigger, 160ms) ease;
   }
 }
