@@ -24,6 +24,11 @@ Native artifacts are emitted to `apps/wails-starter/bin/`:
 The WebView uses workspace dependencies from `packages/` through
 `apps/wails-starter/frontend/`.
 
+`pnpm dev:wails-starter` starts Wails and watches every buildable workspace
+dependency of the WebView frontend. Adding a local workspace dependency does
+not require changing the command. Restart the command after changing Vite
+plugins, TypeScript configuration, or the workspace dependency graph.
+
 ## Releases
 
 Desktop releases use Changesets without publishing this private workspace to npm.

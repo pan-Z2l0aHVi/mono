@@ -6,20 +6,18 @@ on:
     paths:
       - '.github/workflows/wails-verify.yml'
       - '.mise.toml'
-      - '.npmrc'
       - 'package.json'
       - 'pnpm-lock.yaml'
       - 'pnpm-workspace.yaml'
       - 'turbo.json'
       - 'apps/wails-starter/**'
-      - 'packages/**'
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
 
 jobs:

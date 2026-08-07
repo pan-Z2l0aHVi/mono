@@ -476,6 +476,17 @@ describe('WebUiSelect 组件', () => {
   })
 
   describe('portal 模式', () => {
+    it('未打开时 trigger 显示已选值', async () => {
+      const el = createSelect(OPTIONS_HTML, { portal: '' })
+      el.value = 'banana'
+      await waitForUpdate(el)
+
+      const trigger = queryA11y(el, '[role="combobox"]')
+      expect(trigger?.textContent?.includes('Banana')).toBe(true)
+
+      cleanupElement(el)
+    })
+
     it('portal 为 true 时仍可正常交互', async () => {
       const el = createSelect(OPTIONS_HTML)
       el.portal = true
