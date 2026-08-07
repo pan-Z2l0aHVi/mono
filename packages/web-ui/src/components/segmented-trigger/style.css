@@ -32,7 +32,7 @@
   color: var(--wui-color-text-muted, #6a6a6a);
   white-space: nowrap;
 
-  transition: color 0.2s ease;
+  transition: color var(--wui-duration-focus, 200ms) ease;
 
   &:focus-visible {
     outline: 3px solid var(--wui-focus-ring, rgb(0 136 255 / 0.4));

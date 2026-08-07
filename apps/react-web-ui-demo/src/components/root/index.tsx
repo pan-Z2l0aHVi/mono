@@ -150,11 +150,11 @@ export function Root() {
                   key={item.path}
                   to={item.path}
                   className={
-                    'block rounded-full px-3 py-2 text-sm leading-5 text-[var(--wui-color-text)] transition-[background-color] duration-150 hover:bg-[color-mix(in_srgb,var(--wui-color-surface-raised)_80%,var(--wui-color-text))]' +
+                    'flex items-center h-8 my-1 rounded-full px-3 py-2 text-sm leading-5 text-[var(--wui-color-text)] transition-[background-color] duration-150 hover:bg-[color-mix(in_srgb,var(--wui-color-surface-raised)_80%,var(--wui-color-text))]' +
                     (pathname === item.path ? ' !bg-[var(--wui-color-accent)] !text-[var(--wui-color-on-accent)]' : '')
                   }
                 >
-                  {item.label}
+                  <span className="truncate">{item.label}</span>
                 </Link>
               ))}
             </nav>

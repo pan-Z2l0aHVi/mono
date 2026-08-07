@@ -1,4 +1,4 @@
-name: Version Packages
+name: Create Version PR
 
 on:
   push:

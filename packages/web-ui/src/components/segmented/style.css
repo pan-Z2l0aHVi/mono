@@ -43,6 +43,6 @@
   background-color: var(--wui-color-surface-glass, rgb(250 250 250 / 0.55));
 
   transition:
-    left var(--wui-duration-fast, 160ms) var(--wui-ease-standard, cubic-bezier(0.77, 0, 0.175, 1)),
-    width var(--wui-duration-fast, 160ms) var(--wui-ease-standard, cubic-bezier(0.77, 0, 0.175, 1));
+    left var(--wui-duration-trigger, 160ms) var(--wui-ease-slide, cubic-bezier(0.77, 0, 0.175, 1)),
+    width var(--wui-duration-trigger, 160ms) var(--wui-ease-slide, cubic-bezier(0.77, 0, 0.175, 1));
 }
