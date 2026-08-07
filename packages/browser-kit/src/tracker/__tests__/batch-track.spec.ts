@@ -6,10 +6,13 @@ import { defineBatchTrack } from '../plugins/batch-track'
 
 vi.useFakeTimers()
 
-/** 临时切换到真实计时器，等待 MSW 处理请求后再切回 */
-async function waitForMsw(ms = 100) {
+/** 临时切换到真实计时器，等待 MSW 捕获指定数量的请求后再切回。 */
+async function waitForMsw(minCount = 1, timeout = 1000) {
   vi.useRealTimers()
-  await new Promise(resolve => setTimeout(resolve, ms))
+  const start = Date.now()
+  while (capturedRequests.length < minCount && Date.now() - start < timeout) {
+    await new Promise(resolve => setTimeout(resolve, 10))
+  }
   vi.useFakeTimers()
 }
 
@@ -94,11 +97,11 @@ describe('聚合上报测试用例', () => {
     tracker.track({ event: 'instant-1' })
     // defaultBatchDelay=0 时 track 使用 setTimeout(0)，advance 任意正数即可触发
     vi.advanceTimersByTime(1)
-    await waitForMsw()
+    await waitForMsw(1)
 
     tracker.track({ event: 'instant-2' })
     vi.advanceTimersByTime(1)
-    await waitForMsw()
+    await waitForMsw(2)
 
     // 两条数据应该被分两次单独发送（不经过批处理合并）
     expect(capturedRequests.length).toBe(2)
