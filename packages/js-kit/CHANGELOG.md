@@ -1,5 +1,11 @@
 # @greypan/js-kit
 
+## 1.6.5
+
+### Patch Changes
+
+- cdc5cf7: Release pipeline validation: bump all public packages for trusted publishing verification.
+
 ## 1.6.4
 
 ### Patch Changes
