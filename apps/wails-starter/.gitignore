@@ -5,8 +5,8 @@ frontend/node_modules
 frontend/bindings
 build/linux/appimage/build
 build/windows/nsis/MicrosoftEdgeWebview2Setup.exe
+# Wails generates templates for unsupported mobile and Linux targets.
+build/android/
+build/ios/
+build/linux/
 # Mobile generated (per-machine; overlays hold absolute paths)
-build/ios/xcode/overlay.json
-build/ios/xcode/gen/
-build/android/overlay.json
-build/android/gen/
