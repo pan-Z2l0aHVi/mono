@@ -9,6 +9,7 @@ concurrency:
   cancel-in-progress: true
 
 permissions:
+  actions: write
   contents: write
   pull-requests: write
 
@@ -79,3 +80,15 @@ jobs:
           commit: 'chore: version packages'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Validate version pull request
+        if: steps.changesets.outputs.has-changesets == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          gh workflow run ci.yml --ref changeset-release/main
+
+          if [[ "${{ steps.changesets.outputs.has-wails-release }}" == 'true' ]]; then
+            gh workflow run wails-verify.yml --ref changeset-release/main
+          fi
