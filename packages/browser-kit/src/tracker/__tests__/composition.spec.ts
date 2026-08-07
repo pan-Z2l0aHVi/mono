@@ -6,13 +6,8 @@ import { defineBatchTrack } from '../plugins/batch-track'
 import { defineLastWords } from '../plugins/last-words'
 import { defineOfflineRestore } from '../plugins/offline-restore'
 
-/** 等待 MSW 处理请求 */
-async function waitForMsw(ms = 100) {
-  await new Promise(resolve => setTimeout(resolve, ms))
-}
-
-/** 轮询等待 MSW 捕获到指定数量的请求 */
-async function waitForMswCapture(minCount = 1, timeout = 2000) {
+/** 等待 MSW 捕获指定数量的请求。 */
+async function waitForMsw(minCount = 1, timeout = 1000) {
   const start = Date.now()
   while (capturedRequests.length < minCount && Date.now() - start < timeout) {
     await new Promise(resolve => setTimeout(resolve, 10))
@@ -53,7 +48,7 @@ describe('插件组合测试', () => {
     it('正常上报：track 成功发送数据', async () => {
       const tracker = createTracker()
       tracker.track({ event: 'click' })
-      await waitForMswCapture()
+      await waitForMsw()
 
       expect(capturedRequests.length).toBeGreaterThan(0)
       expect(capturedRequests[0].url).toBe('/')
@@ -61,7 +56,6 @@ describe('插件组合测试', () => {
 
     it('离线缓存：离线时暂停 loop 不发送', async () => {
       Object.defineProperty(navigator, 'onLine', { value: false })
-
       const tracker = createTracker()
 
       sendBeaconSpy.mockClear()
@@ -76,10 +70,10 @@ describe('插件组合测试', () => {
       const tracker = createTracker()
 
       tracker.track({ event: 'before-close' })
-      await waitForMswCapture()
+      await waitForMsw()
 
       window.dispatchEvent(new Event('beforeunload'))
-      await waitForMswCapture()
+      await waitForMsw()
 
       expect(capturedRequests.length).toBeGreaterThan(0)
     })
@@ -93,21 +87,24 @@ describe('插件组合测试', () => {
         .make()
 
       tracker.track({ event: 'click' })
-      await waitForMswCapture()
+      await waitForMsw()
 
       expect(capturedRequests.length).toBeGreaterThan(0)
+
+      // 等待 batch 发送完成，避免污染后续测试
+      await new Promise(resolve => setTimeout(resolve, 600))
     })
 
     it('离线时仍然不发送', async () => {
       Object.defineProperty(navigator, 'onLine', { value: false })
-
       const tracker = defineTracker({ url: 'https://example.com' })
         .use(defineBatchTrack())
         .use(defineOfflineRestore())
         .make()
 
       tracker.track({ event: 'offline' })
-      await waitForMsw()
+      // 等待 batch delay (500ms) + buffer，确保 batch 发送尝试
+      await new Promise(resolve => setTimeout(resolve, 600))
 
       expect(sendBeaconSpy).not.toHaveBeenCalled()
       expect(capturedRequests).toHaveLength(0)
