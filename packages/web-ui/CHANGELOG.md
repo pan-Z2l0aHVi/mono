@@ -1,5 +1,11 @@
 # @greypan/web-ui
 
+## 2.1.6
+
+### Patch Changes
+
+- 8d9d809: fix web-ui css token
+
 ## 2.1.5
 
 ### Patch Changes
