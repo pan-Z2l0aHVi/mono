@@ -1,5 +1,13 @@
 # @greypan/deps-reload
 
+## 1.3.1
+
+### Patch Changes
+
+- cdc5cf7: Release pipeline validation: bump all public packages for trusted publishing verification.
+- Updated dependencies [cdc5cf7]
+  - @greypan/js-kit@1.6.5
+
 ## 1.3.0
 
 ### Minor Changes
