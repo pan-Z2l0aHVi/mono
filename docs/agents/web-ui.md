@@ -31,6 +31,7 @@ Do not duplicate token values in guidance. Every `var(--wui-*, fallback)` used b
 
 - Shared overlay state is defined with `defineXxx(...): Plugin` factories, each returning `definePlugin(...)`; components instantiate it through `defineXxx(...).make(...)` instead of an internal state class.
 - Reuse `shared/overlay/anchored-panel` for a single panel anchored to a trigger. The component retains its trigger, focus, content, and dismissal semantics; the shared module owns local/portal mounting, positioning, and presence.
+- `createOverlayPortal` mounts the portal host with `display: contents` so component styles whose `:host` rules leak onto the host (e.g. `display: inline-block`) cannot create an anonymous line box that inflates the theme overlay container. Keep this style on the host when changing portal mounting.
 - Use `shared/menu-portal` for Dropdown and ContextMenu. Their common menu-tree operations live there, while anchor-based versus coordinate-based placement stays local to each component.
 - Reuse `shared/overlay/native-dialog-presence` for native `<dialog>` modals such as Dialog and Drawer. Keep native top-layer, backdrop, and Escape policy in the owning component.
 - Acquire page-scroll blocking through `createScrollLockLease()`. Release the lease on disconnect; never call a global unlock for a lock the instance did not acquire.

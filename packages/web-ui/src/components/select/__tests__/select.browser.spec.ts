@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 
 import '..'
+import '../../theme'
 import type { WebUiSelect } from '..'
 
 afterEach(() => document.body.replaceChildren())
@@ -47,5 +48,31 @@ describe('WebUiSelect 组件（浏览器）', () => {
     expect(select.open).toBe(true)
     expect(panel?.hasAttribute('hidden')).toBe(false)
     expect(panel?.querySelector(':scope > .select-scroll > .select-content web-ui-option')).toBeTruthy()
+  })
+
+  it('主题作用域内打开 Portal Select 不撑开 overlay 容器', async () => {
+    const theme = document.createElement('web-ui-theme')
+    theme.setAttribute('appearance', 'light')
+    theme.className = 'block'
+    const select = document.createElement('web-ui-select')
+    select.portal = true
+    select.innerHTML = '<web-ui-option value="apple">Apple</web-ui-option>'
+    theme.append(select)
+    document.body.append(theme)
+    await theme.updateComplete
+    await select.updateComplete
+
+    const trigger = select.shadowRoot?.querySelector<HTMLElement>('[role="combobox"]')
+    trigger?.click()
+    await new Promise(resolve => requestAnimationFrame(resolve))
+    await select.updateComplete
+
+    const overlayContainer = theme.shadowRoot?.querySelector<HTMLElement>('[data-wui-overlay-container]')
+    const portalHost = overlayContainer?.firstElementChild as HTMLElement | null
+    expect(select.open).toBe(true)
+    expect(overlayContainer).toBeTruthy()
+    expect(overlayContainer?.getBoundingClientRect().height).toBe(0)
+    expect(portalHost).toBeTruthy()
+    expect(getComputedStyle(portalHost!).display).toBe('contents')
   })
 })

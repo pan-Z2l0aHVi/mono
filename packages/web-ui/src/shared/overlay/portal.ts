@@ -19,6 +19,10 @@ export interface OverlayPortal {
 
 export function createOverlayPortal(options: OverlayPortalOptions): OverlayPortal {
   const host = document.createElement('div')
+  // 宿主只是固定定位面板的挂载点：注入的组件样式中的 :host 规则（如 display:inline-block）
+  // 会匹配到宿主，在块级 overlay 容器里产生匿名行盒，把布局撑开一行。display: contents
+  // 让宿主不生成盒；面板本身 position: fixed，定位不受影响。
+  host.style.display = 'contents'
   const root = host.attachShadow({ mode: 'open' })
   const style = document.createElement('style')
   style.textContent = options.style
