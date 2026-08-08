@@ -32,10 +32,18 @@ export async function settleCapturedRequests(timeout = 300) {
   vi.useRealTimers()
   const start = Date.now()
   let last = capturedRequests.length
+  let stableWindows = 0
   while (Date.now() - start < timeout) {
     await new Promise(resolve => setTimeout(resolve, 20))
-    if (capturedRequests.length === last) break
-    last = capturedRequests.length
+    if (capturedRequests.length === last) {
+      // 连续多个稳定窗口（约 60ms 无新增）才认为在途请求已排空；
+      // 单一 20ms 窗口在 CI 负载下可能因 fetch 落地耗时 > 20ms 而误判。
+      stableWindows += 1
+      if (stableWindows >= 3) break
+    } else {
+      stableWindows = 0
+      last = capturedRequests.length
+    }
   }
   if (hadFakeTimers) vi.useFakeTimers()
 }
