@@ -65,6 +65,31 @@ describe('depsReload', () => {
     expect(send).toHaveBeenCalledWith({ type: 'full-reload', path: '*' })
   })
 
+  it('invalidates the module graph before sending the full reload', async () => {
+    vi.useFakeTimers()
+    const onFileChange = vi.fn<(file: string) => void>()
+    const send = vi.fn<(payload: { type: string; path: string }) => void>()
+    const info = vi.fn<(message: string, options: { timestamp: boolean }) => void>()
+    const moduleGraph = { onFileChange }
+    const server = {
+      ws: { send },
+      config: { logger: { info } },
+      environments: {
+        client: { moduleGraph },
+        ssr: { moduleGraph }
+      }
+    } as unknown as ViteDevServer
+    const plugin = createVitePlugin([{ name: '@greypan/web-ui', path: '/repo/packages/web-ui' }])
+    const file = '/repo/packages/web-ui/dist/button/index.js'
+
+    const result = plugin.hotUpdate!(createHotUpdateContext(file, server))
+    await vi.advanceTimersByTimeAsync(300)
+
+    expect(onFileChange).toHaveBeenCalledWith(file)
+    expect(result).toEqual([])
+    expect(send).toHaveBeenCalledWith({ type: 'full-reload', path: '*' })
+  })
+
   it('ignores source maps and unsupported extensions', () => {
     const plugin = createVitePlugin([{ name: '@greypan/web-ui', path: '/repo/packages/web-ui' }])
     const { server } = createServer()

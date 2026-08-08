@@ -37,7 +37,6 @@
     "vue-tsc": "catalog:"
   },
   "browserslist": [
-    ">0.2% in CN",
     "Chrome >=111",
     "Edge >=111",
     "Safari >=16.4",

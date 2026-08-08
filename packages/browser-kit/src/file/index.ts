@@ -24,11 +24,12 @@ export function getFileExtension(filename: string): string {
  * @returns 字节数字符串
  */
 export function formatFileSize(bytes: number, decimals = 2): string {
-  if (bytes === 0) return '0 B'
+  if (bytes <= 0) return '0 B'
   const k = 1024
   const dm = decimals < 0 ? 0 : decimals
   const sizes = ['B', 'KB', 'MB', 'GB', 'TB']
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  // 超出最大单位（PB 及以上）时回退到 TB，避免 sizes[i] 越界返回 "undefined"
+  const i = Math.min(Math.floor(Math.log(bytes) / Math.log(k)), sizes.length - 1)
   const result = parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i]
   return result
 }
@@ -50,7 +51,13 @@ export async function downloadFile(
     obj = arg
     name = filename ?? (arg instanceof File ? arg.name : DEFAULT_FILENAME)
   } else {
-    const urlPath = new URL(arg).pathname
+    // 相对路径或裸文件名会被 new URL 判为非法，先给一个可读的错误，而不是抛 TypeError
+    let urlPath = ''
+    try {
+      urlPath = new URL(arg).pathname
+    } catch {
+      throw new Error(`Invalid URL: ${arg}.`)
+    }
     name = filename ?? (urlPath.substring(urlPath.lastIndexOf('/') + 1) || DEFAULT_FILENAME)
 
     let res: Response
@@ -151,7 +158,12 @@ export function isValidBase64(str: string): boolean {
   const base64Regex = /^[A-Za-z0-9+/]*={0,2}$/
   if (!base64Regex.test(base64Data)) return false
 
-  return !!window.atob(base64Data)
+  // atob 对格式不合法（如 padding 位置错误）的输入会抛异常，捕获后视为非法
+  try {
+    return !!window.atob(base64Data)
+  } catch {
+    return false
+  }
 }
 
 export function base64ToFile(base64: string, filename = 'file'): File {
@@ -159,9 +171,13 @@ export function base64ToFile(base64: string, filename = 'file'): File {
   if (!isValid) throw new Error('Invalid base64 string.')
 
   const arr = base64.split(',')
-  const mime = (arr[0] as string).match(/:(.*?);/)?.[1] || 'image/png'
+  // isValidBase64 允许无 data:...;base64, 前缀的裸 base64，此时整个字符串即数据
+  const hasPrefix = arr.length > 1
+  const meta = hasPrefix ? (arr[0] as string) : ''
+  const b64 = hasPrefix ? (arr[1] as string) : base64
+  const mime = meta.match(/:(.*?);/)?.[1] || 'image/png'
 
-  const bstr = atob(arr[1] as string)
+  const bstr = atob(b64)
   let n = bstr.length
   const u8arr = new Uint8Array(n)
 

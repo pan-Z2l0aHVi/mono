@@ -17,7 +17,7 @@
  * ```
  */
 
-/** 字面量联合类型属性可接受的值 */
+// 字面量联合类型属性可接受的值
 export type LiteralValues<T extends string> = readonly T[]
 
 /**

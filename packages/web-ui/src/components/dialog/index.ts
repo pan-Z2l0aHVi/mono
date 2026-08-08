@@ -3,6 +3,7 @@ import { customElement, property, state } from 'lit/decorators.js'
 
 import '@/components/button'
 import glass from '@/assets/glass.css?inline'
+import { UserChangeController } from '@/shared/events/user-change'
 import { defineNativeDialogPresence } from '@/shared/overlay/native-dialog-presence'
 import { createScrollLockLease } from '@/shared/scroll-lock/scroll-lock'
 
@@ -17,6 +18,7 @@ export class WebUiDialog extends LitElement {
   @property({ type: Boolean, reflect: true, attribute: 'no-backdrop-close' }) noBackdropClose = false
 
   @state() private _hasBody = false
+  private readonly _userOpenChange = new UserChangeController()
 
   private readonly _scrollLock = createScrollLockLease()
   private readonly _presence = defineNativeDialogPresence().make({
@@ -34,7 +36,7 @@ export class WebUiDialog extends LitElement {
     if (!this.isConnected) return
 
     if (props.has('open')) {
-      this.emitOpenChange()
+      if (this._userOpenChange.consume()) this.emitOpenChange()
       this._presence.sync(this.open)
     }
     if (props.has('open') || props.has('noScrollLock')) this._syncScrollLock()
@@ -46,7 +48,7 @@ export class WebUiDialog extends LitElement {
     this._scrollLock.release()
   }
 
-  /** 以模态方式打开对话框（命令式） */
+  // 以模态方式打开对话框（命令式）
   showModal() {
     if (this.open) return
     this.open = true
@@ -59,12 +61,14 @@ export class WebUiDialog extends LitElement {
   private handleCancel(e: Event) {
     // 保留 top layer 直到视觉退场完成，避免原生关闭跳过退出动画。
     e.preventDefault()
+    this._userOpenChange.mark()
     this.close()
   }
 
   private handleBackdropClick(e: MouseEvent) {
     if (e.target !== (e.currentTarget as HTMLDialogElement)) return
     if (this.noBackdropClose) return
+    this._userOpenChange.mark()
     this.close()
   }
 
@@ -85,6 +89,7 @@ export class WebUiDialog extends LitElement {
   private _onNativeClose = () => {
     if (!this.open) return
     this._presence.handleNativeClose()
+    this._userOpenChange.mark()
     this.open = false
   }
 

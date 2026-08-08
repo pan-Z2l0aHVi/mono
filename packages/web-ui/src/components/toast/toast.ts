@@ -2,6 +2,8 @@ import type { IconifyIcon } from '@iconify/types'
 import { html, LitElement, nothing, type PropertyValues, unsafeCSS } from 'lit'
 
 import '@/components/icon'
+// web-ui-button 复用 icon 变体的焦点环与统一样式（secondary 变体，浅灰底贴合 toast 角落）
+import '@/components/button'
 import { customElement, property } from 'lit/decorators.js'
 
 import glass from '@/assets/glass.css?inline'
@@ -59,7 +61,7 @@ export class WebUiToast extends LitElement {
     }
   }
 
-  /** 根据 position 设置入场/退场滑动方向 */
+  // 根据 position 设置入场/退场滑动方向
   private _applySlideDirection() {
     const SLIDE_OFFSET = 20
     let x = 0
@@ -75,7 +77,7 @@ export class WebUiToast extends LitElement {
     this.style.setProperty('--toast-slide-y', `${y}px`)
   }
 
-  /** 启动自动关闭计时器 */
+  // 启动自动关闭计时器
   startAutoClose() {
     this._clearTimer()
     if (this.duration > 0) {
@@ -85,13 +87,13 @@ export class WebUiToast extends LitElement {
     }
   }
 
-  /** 由 manager 调用：播放入场动画后自动开始计时 */
+  // 由 manager 调用：播放入场动画后自动开始计时
   show() {
     this.visible = true
     this.startAutoClose()
   }
 
-  /** 关闭（含退场动画） */
+  // 关闭（含退场动画）
   dismiss(reason: ToastCloseReason = 'programmatic') {
     if (!this.visible) return
     this.visible = false
@@ -140,11 +142,14 @@ export class WebUiToast extends LitElement {
   override render() {
     const icon = TYPE_ICONS[this.type]
     const ariaLive = this.type === 'error' ? 'assertive' : 'polite'
+    // role="alert" 会强制隐式 aria-live="assertive"，覆盖掉上方 aria-live 设置，
+    // 因此仅 error toast 使用 alert（本就应 assertive）；其余类型交给容器 role="log" 的 polite 播报。
+    const role = this.type === 'error' ? 'alert' : nothing
 
     return html`
-      <div class="toast wui-glass ${this.type}" role="alert" aria-live=${ariaLive} aria-atomic="true">
+      <div class="toast wui-glass ${this.type}" role=${role} aria-live=${ariaLive} aria-atomic="true">
         <span class="toast-icon" aria-hidden="true">
-          <web-ui-icon .icon=${icon} :size="18"></web-ui-icon>
+          <web-ui-icon .icon=${icon} size="14"></web-ui-icon>
         </span>
         <div class="toast-body">
           ${this.heading ? html`<div class="toast-heading">${this.heading}</div>` : nothing}
@@ -153,9 +158,16 @@ export class WebUiToast extends LitElement {
         <span class="toast-time">${_formatTime()}</span>
         ${!this.noCloseButton
           ? html`
-              <button class="toast-close-btn wui-glass" aria-label="关闭" @click=${this._onCloseClick}>
-                <web-ui-icon .icon=${heroiconsXMark16Solid} :size="10"></web-ui-icon>
-              </button>
+              <web-ui-button
+                class="toast-close-btn"
+                icon
+                variant="secondary"
+                size="24"
+                aria-label="关闭"
+                @click=${this._onCloseClick}
+              >
+                <web-ui-icon .icon=${heroiconsXMark16Solid} size="16"></web-ui-icon>
+              </web-ui-button>
             `
           : nothing}
       </div>

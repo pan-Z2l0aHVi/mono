@@ -145,15 +145,6 @@ ctx.push('task-2')
 | `opts`    | `Partial<URLObject>` | -      | URL 组件：`base`、`query`、`hash` |
 | `omitNil` | `boolean`            | `true` | 是否移除查询参数中的空值          |
 
-### `toPrecision(val, precision)`
-
-将数字舍入到指定精度。支持负数精度用于十位、百位等舍入。
-
-| 参数        | 类型     | 默认值 | 说明                           |
-| ----------- | -------- | ------ | ------------------------------ |
-| `val`       | `number` | -      | 待舍入的数字                   |
-| `precision` | `number` | -      | 小数位数（负数用于整数位舍入） |
-
 ### `clamp(val, min, max)`
 
 将数字限制在范围内。如果 min > max 会自动交换。

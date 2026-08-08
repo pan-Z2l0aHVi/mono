@@ -56,4 +56,20 @@ describe('浮层 Portal', () => {
 
     expect(target.contains(content)).toBe(true)
   })
+
+  it('宿主固定 display: contents，避免 :host 规则泄漏撑开容器', () => {
+    const target = document.createElement('div')
+    const container = document.createElement('div')
+    document.body.append(target, container)
+
+    // 模拟 select/popover/tooltip 组件样式中泄漏到宿主的 :host 规则
+    const leakyStyle = ':host { display: inline-block; } .panel { position: fixed; }'
+    const portal = createOverlayPortal({ container, target, style: leakyStyle, className: 'panel' })
+
+    const host = container.firstElementChild as HTMLElement
+    expect(getComputedStyle(host).display).toBe('contents')
+
+    portal.restoreContent()
+    portal.remove()
+  })
 })

@@ -4,6 +4,7 @@ import { customElement, property } from 'lit/decorators.js'
 
 import glass from '@/assets/glass.css?inline'
 import overlayMotion from '@/assets/overlay-motion.css?inline'
+import { UserChangeController } from '@/shared/events/user-change'
 import { normalizeLiteral, normalizeNumber } from '@/shared/normalize'
 import { defineAnchoredPanel } from '@/shared/overlay/anchored-panel'
 import { createOverlayPortal } from '@/shared/overlay/portal'
@@ -87,6 +88,7 @@ export class WebUiTooltip extends LitElement {
   private _showTimer?: ReturnType<typeof setTimeout>
   private _hideTimer?: ReturnType<typeof setTimeout>
   private _isCountedVisible = false
+  private readonly _userOpenChange = new UserChangeController()
   private _shouldOpenInstantly = true
   private readonly _panel = defineAnchoredPanel().make({
     getAnchor: () => this.shadowRoot?.querySelector<HTMLElement>('.tooltip-trigger') ?? null,
@@ -145,7 +147,7 @@ export class WebUiTooltip extends LitElement {
       } else {
         void this._closeOverlay()
       }
-      this._dispatchChange(this.open)
+      if (this._userOpenChange.consume()) this._dispatchChange(this.open)
     }
     if (changed.has('content')) this._syncPortalContent()
   }
@@ -179,11 +181,13 @@ export class WebUiTooltip extends LitElement {
   private _show(isInstant = false) {
     if (this.open) return
     this._shouldOpenInstantly = isInstant
+    this._userOpenChange.mark()
     this.open = true
   }
 
   private _hide() {
     if (!this.open) return
+    this._userOpenChange.mark()
     this.open = false
   }
 

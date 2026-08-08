@@ -4,6 +4,7 @@ import { customElement, property, state } from 'lit/decorators.js'
 import '@/components/dropdown-divider'
 import '@/components/dropdown-header'
 import '@/components/dropdown-item'
+import { UserChangeController } from '@/shared/events/user-change'
 import { createMenuPortalOverlay, type MenuPortalOverlay } from '@/shared/menu-portal/menu-portal'
 import {
   findFocusedMenuItem,
@@ -39,10 +40,11 @@ export class WebUiContextMenu extends LitElement {
   private _hoverCleanupFns: (() => void)[] = []
   private _menu?: MenuPortalOverlay
   private readonly _scrollLock = createScrollLockLease()
+  private readonly _userOpenChange = new UserChangeController()
   private _restoreFocusTarget?: HTMLElement
   private _shouldOpenInstantly = true
 
-  /** 当前菜单是否打开 */
+  // 当前菜单是否打开
   get isOpen(): boolean {
     return this._isOpen
   }
@@ -110,7 +112,7 @@ export class WebUiContextMenu extends LitElement {
         this._syncScrollLock(false)
         void this._closeMenuAfterPresence()
       }
-      this._dispatchChange(this._isOpen)
+      if (this._userOpenChange.consume()) this._dispatchChange(this._isOpen)
     }
     if (changed.has('noScrollLock')) this._syncScrollLock()
   }
@@ -119,33 +121,40 @@ export class WebUiContextMenu extends LitElement {
    * 在指定视口坐标打开菜单。
    * @param x 水平坐标（px）。
    * @param y 垂直坐标（px）。
-   * @returns 无返回值；打开后派发 `open-change` 事件。
+   * @returns 无返回值；命令式打开不派发 `open-change` 事件。
    */
   openAt(x: number, y: number) {
     this._openAt(x, y, true)
   }
 
-  private _openAt(x: number, y: number, isInstant: boolean) {
-    if (this.disabled) return
+  private _openAt(x: number, y: number, isInstant: boolean): boolean {
+    if (this.disabled) return false
     this._x = x
     this._y = y
     this._shouldOpenInstantly = isInstant
     this._ignoreCurrentOutsideClick()
     if (this._isOpen) {
       requestAnimationFrame(() => this._positionMenu())
-      return
+      return false
     }
     this._restoreFocusTarget ??= document.activeElement instanceof HTMLElement ? document.activeElement : undefined
     this._isOpen = true
+    return true
   }
 
   /**
    * 关闭菜单。
-   * @returns 无返回值；关闭后派发 `open-change` 事件。
+   * @returns 无返回值；命令式关闭不派发 `open-change` 事件。
    */
   close() {
     if (!this._isOpen) return
     this._isOpen = false
+  }
+
+  private readonly _closeFromUser = () => {
+    if (!this._isOpen) return
+    this._userOpenChange.mark()
+    this.close()
   }
 
   private _positionMenu() {
@@ -341,12 +350,12 @@ export class WebUiContextMenu extends LitElement {
     if (this.disabled) return
     e.preventDefault()
     this._restoreFocusTarget = e.target instanceof HTMLElement ? e.target : undefined
-    this._openAt(e.clientX, e.clientY, false)
+    if (this._openAt(e.clientX, e.clientY, false)) this._userOpenChange.mark()
   }
 
   private _onContextMenuOutside = (e: MouseEvent) => {
     if (this._isOpen && !this._isInsideShadowRoot(e)) {
-      this.close()
+      this._closeFromUser()
     }
   }
 
@@ -359,9 +368,9 @@ export class WebUiContextMenu extends LitElement {
       const focused = document.activeElement
       if (focused && focused !== document.body) {
         const rect = focused.getBoundingClientRect()
-        this._openAt(rect.left, rect.bottom, true)
+        if (this._openAt(rect.left, rect.bottom, true)) this._userOpenChange.mark()
       } else {
-        this._openAt(window.innerWidth / 2, window.innerHeight / 2, true)
+        if (this._openAt(window.innerWidth / 2, window.innerHeight / 2, true)) this._userOpenChange.mark()
       }
       return
     }
@@ -370,7 +379,7 @@ export class WebUiContextMenu extends LitElement {
   private _onClickOutside = (e: MouseEvent) => {
     if (!this._isOpen || this._ignoreOutsideClick) return
     if (this._isInsideShadowRoot(e)) return
-    this.close()
+    this._closeFromUser()
   }
 
   private _onMenuClick = (e: MouseEvent) => {
@@ -380,7 +389,7 @@ export class WebUiContextMenu extends LitElement {
       this._openSubmenu(item)
       return
     }
-    this.close()
+    this._closeFromUser()
   }
 
   private _getLevelItems(level: number): HTMLElement[] {
@@ -432,7 +441,9 @@ export class WebUiContextMenu extends LitElement {
 
   private _onDocumentKeydown = (e: KeyboardEvent) => {
     if (!this._isOpen) return
-    if (e.key === 'Escape' && e.target === this) {
+    // 鼠标右键打开的菜单焦点不在菜单内，e.target !== this 时也必须能 Escape 关闭；
+    // 菜单为模态浮层，按 Escape 即关闭，无需限定焦点位置
+    if (e.key === 'Escape') {
       this._closeLastSubmenuOrMenu()
       e.preventDefault()
       return
@@ -491,7 +502,7 @@ export class WebUiContextMenu extends LitElement {
       this._focusMenuItem(parent)
       this._bindLevelHovers()
     } else {
-      this.close()
+      this._closeFromUser()
     }
   }
 

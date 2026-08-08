@@ -31,12 +31,12 @@ async function waitForMenuClose(el: WebUiContextMenu) {
 
 function getMenu(): HTMLElement | null {
   const fallbackRoot = document.querySelector<HTMLElement>('[data-wui-overlay-root]')?.shadowRoot
-  return fallbackRoot?.querySelector<HTMLElement>('.context-menu') ?? null
+  return fallbackRoot?.querySelector<HTMLElement>('[role="menu"][aria-label="上下文菜单"]') ?? null
 }
 
 function getSubmenu(): HTMLElement | null {
   const fallbackRoot = document.querySelector<HTMLElement>('[data-wui-overlay-root]')?.shadowRoot
-  return fallbackRoot?.querySelector<HTMLElement>('.context-submenu') ?? null
+  return fallbackRoot?.querySelector<HTMLElement>('[role="menu"][aria-label="子菜单"]') ?? null
 }
 
 function getFirstMenuItem(): HTMLElement {
@@ -168,7 +168,7 @@ describe('WebUiContextMenu 组件', () => {
   })
 
   describe('事件：open-change', () => {
-    it('打开时触发', async () => {
+    it('命令式打开不触发', async () => {
       const el = createContextMenu({}, SIMPLE)
       await waitForUpdate(el)
 
@@ -178,13 +178,12 @@ describe('WebUiContextMenu 组件', () => {
       el.openAt(100, 100)
       await waitForMenuOpen(el)
 
-      expect(handler).toHaveBeenCalledTimes(1)
-      expect((handler.mock.calls[0][0] as CustomEvent).detail.open).toBe(true)
+      expect(handler).not.toHaveBeenCalled()
 
       cleanupElement(el)
     })
 
-    it('关闭时触发', async () => {
+    it('命令式关闭不触发', async () => {
       const el = createContextMenu({}, SIMPLE)
       el.openAt(100, 100)
       await waitForMenuOpen(el)
@@ -195,8 +194,7 @@ describe('WebUiContextMenu 组件', () => {
       el.close()
       await waitForMenuClose(el)
 
-      expect(handler).toHaveBeenCalledTimes(1)
-      expect((handler.mock.calls[0][0] as CustomEvent).detail.open).toBe(false)
+      expect(handler).not.toHaveBeenCalled()
 
       cleanupElement(el)
     })
@@ -220,6 +218,38 @@ describe('WebUiContextMenu 组件', () => {
       expect(handler).toHaveBeenCalledTimes(1)
       expect((handler.mock.calls[0][0] as CustomEvent).detail.open).toBe(true)
 
+      cleanupElement(el)
+    })
+
+    it('按 Escape 关闭时触发', async () => {
+      const el = createContextMenu({}, SIMPLE)
+      el.openAt(100, 100)
+      await waitForMenuOpen(el)
+
+      const handler = vi.fn<(e: Event) => void>()
+      el.addEventListener('open-change', handler)
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+      await waitForMenuClose(el)
+
+      expect(el.isOpen).toBe(false)
+      expect(handler).toHaveBeenCalledTimes(1)
+      expect((handler.mock.calls[0][0] as CustomEvent).detail.open).toBe(false)
+      cleanupElement(el)
+    })
+
+    it('重新定位已打开菜单后，命令式关闭不派发残留事件', async () => {
+      const el = createContextMenu({}, SIMPLE)
+      el.openAt(100, 100)
+      await waitForMenuOpen(el)
+
+      const handler = vi.fn<(e: Event) => void>()
+      el.addEventListener('open-change', handler)
+      el.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, clientX: 200, clientY: 200 }))
+      await new Promise(resolve => requestAnimationFrame(resolve))
+      el.close()
+      await waitForMenuClose(el)
+
+      expect(handler).not.toHaveBeenCalled()
       cleanupElement(el)
     })
   })

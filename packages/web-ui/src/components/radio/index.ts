@@ -9,12 +9,12 @@ export class WebUiRadio extends LitElement {
   static override styles = unsafeCSS(style)
   static formAssociated = true
 
-  /** 内部表单关联实例（connectedCallback 中初始化） */
+  // 内部表单关联实例（connectedCallback 中初始化）
   private _internals?: ElementInternals
   @state() private _formDisabled = false
   @state() private _groupDisabled = false
 
-  /** 内部 checked 状态，通过 getter/setter 暴露为公共 API */
+  // 内部 checked 状态，通过 getter/setter 暴露为公共 API
   @state() private _checked = false
 
   get checked(): boolean {
@@ -81,7 +81,7 @@ export class WebUiRadio extends LitElement {
     this._internals.setValidity({ valueMissing: true }, '请选择一项')
   }
 
-  /** 用户点击选中（已选中时不重复触发） */
+  // 用户点击选中（已选中时不重复触发）
   private handleClick() {
     if (this._isDisabled || this._checked) return
     this._checked = true

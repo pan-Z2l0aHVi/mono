@@ -46,7 +46,7 @@ export class WebUiSegmentedTrigger extends LitElement {
         class=${classMap(cls)}
         tabindex=${this._isDisabled ? '-1' : '0'}
         role="option"
-        .ariaSelected=${String(this.checked)}
+        aria-selected=${String(this.checked)}
         aria-disabled=${String(this._isDisabled)}
         @click=${this.handleClick}
         @keydown=${this.handleKeyDown}
