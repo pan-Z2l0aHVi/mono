@@ -94,6 +94,8 @@ apps/
 ## Applications
 
 - `react-web-ui-demo` uses `@vitejs/plugin-react` v4 with React Compiler (`babel-plugin-react-compiler`, target 19), plus `@vitejs/plugin-legacy` for older browser support. The React and Vue demo apps currently rely on browser verification rather than maintained unit-test suites.
+- The demo apps and `web-ui` share the same browserslist target (`>0.2% in CN`, Chrome/Edge >=111, Safari/iOS >=16.4, Firefox >=128, not dead), which matches the Tailwind v4 support matrix. `web-ui` is the only package that emits CSS at build time; its static `color-mix()` calls are evaluated by lightningcss, while `color-mix()` containing `var()` stays as runtime CSS and relies on those targets.
+- Library packages (`js-kit`, `browser-kit`, `test-kit`, `deps-reload`, `unplugin-web-components`) are JavaScript-only and do not emit CSS, so they carry no `browserslist` field; they uniformly declare `engines.node >=20.11.0`. That floor covers `import.meta.dirname` in `deps-reload` (Node 20.11+), aligns with the vite/vitest peer ranges (^20.19 / ^20), and drops already-EOL Node 18 and 20 lines.
 - Both demo apps use `basicSsl()` for HTTPS development servers.
 - `depsReload` watches library `dist/` directories and triggers a full page reload when a local dependency changes.
 - The Wails WebView frontend follows the Vue demo's Vite plugin and local-package conventions, with the Wails Vite plugin responsible for generated Go bindings.
