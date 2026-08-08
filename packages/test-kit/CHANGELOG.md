@@ -1,5 +1,13 @@
 # @greypan/test-kit
 
+## 0.2.6
+
+### Patch Changes
+
+- 7c06580: try workflows
+- Updated dependencies [7c06580]
+  - @greypan/js-kit@1.6.6
+
 ## 0.2.5
 
 ### Patch Changes
