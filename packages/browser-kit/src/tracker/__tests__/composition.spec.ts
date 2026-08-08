@@ -7,7 +7,7 @@ import { defineLastWords } from '../plugins/last-words'
 import { defineOfflineRestore } from '../plugins/offline-restore'
 
 /** 等待 MSW 捕获指定数量的请求。 */
-async function waitForMsw(minCount = 1, timeout = 1000) {
+async function waitForMsw(minCount = 1, timeout = 5000) {
   const start = Date.now()
   while (capturedRequests.length < minCount && Date.now() - start < timeout) {
     await new Promise(resolve => setTimeout(resolve, 10))

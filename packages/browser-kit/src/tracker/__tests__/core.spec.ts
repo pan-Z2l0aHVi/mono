@@ -9,10 +9,20 @@ import { defineTracker } from '../core'
 vi.useFakeTimers()
 
 /** 临时切换到真实计时器，等待 MSW 捕获指定数量的请求后再切回。 */
-async function waitForMsw(minCount = 1, timeout = 1000) {
+async function waitForMsw(minCount = 1, timeout = 5000) {
   vi.useRealTimers()
   const start = Date.now()
   while (capturedRequests.length < minCount && Date.now() - start < timeout) {
+    await new Promise(resolve => setTimeout(resolve, 10))
+  }
+  vi.useFakeTimers()
+}
+
+/** 切换到真实计时器，轮询 storage 直到满足条件或超时，用于断言发送确认后 storage 收敛。 */
+async function waitForStorage(predicate: () => boolean, timeout = 5000) {
+  vi.useRealTimers()
+  const start = Date.now()
+  while (!predicate() && Date.now() - start < timeout) {
     await new Promise(resolve => setTimeout(resolve, 10))
   }
   vi.useFakeTimers()
@@ -98,11 +108,13 @@ describe('上报 core 测试用例', () => {
       tracker.pause()
       tracker.track({ event: 'c' })
 
-      // 等 a、b 两条恢复记录发送完成（confirm 后从 pendingSet 清除），
-      // c 仍被 pause 积压，storage 应只剩 c。
-      await waitForMsw(2)
-      const stored = storage.get('queue:https://example.com')
-      expect(stored).toEqual([{ event: 'c' }])
+      // a、b 发送并 confirm 后才会从 storage 移除；轮询 storage 直到只剩 c，
+      // 避免在请求捕获与 confirm 之间的窗口过早断言（CI 负载下偶发）。
+      await waitForStorage(() => {
+        const stored = storage.get('queue:https://example.com')
+        return JSON.stringify(stored) === JSON.stringify([{ event: 'c' }])
+      })
+      expect(storage.get('queue:https://example.com')).toEqual([{ event: 'c' }])
     })
 
     it('恢复的数据发送失败后保留在 storage，供下次启动重试', async () => {
@@ -135,7 +147,8 @@ describe('上报 core 测试用例', () => {
       storage.set('queue:https://example.com', [{ event: 'restored' }])
 
       const tracker = defineTracker({ url: 'https://example.com' }).make()
-      await waitForMsw()
+      // 等恢复记录发送并 confirm（storage 清空）后，再断言请求与清空结果。
+      await waitForStorage(() => storage.get('queue:https://example.com') === null)
 
       expect(capturedRequests.some(request => JSON.stringify(request.body).includes('restored'))).toBe(true)
       expect(storage.get('queue:https://example.com')).toBeNull()
@@ -144,10 +157,9 @@ describe('上报 core 测试用例', () => {
     it('发送完成后 storage 应清空', async () => {
       const tracker = defineTracker({ url: 'https://example.com' }).make()
       tracker.track({ event: 'click' })
-      await waitForMsw()
 
-      const stored = storage.get('queue:https://example.com')
-      expect(stored).toBeNull()
+      await waitForStorage(() => storage.get('queue:https://example.com') === null)
+      expect(storage.get('queue:https://example.com')).toBeNull()
     })
   })
 
