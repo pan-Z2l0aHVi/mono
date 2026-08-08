@@ -106,6 +106,13 @@ describe('WebUiInput 组件', () => {
       expect(el.hasAttribute('borderless')).toBe(true)
       cleanupElement(el)
     })
+
+    it('aria-label 映射到内部输入元素', async () => {
+      const el = createInput({ 'aria-label': 'Search' })
+      await waitForUpdate(el)
+      expect(queryA11y(el, 'input')?.getAttribute('aria-label')).toBe('Search')
+      cleanupElement(el)
+    })
   })
 
   describe('禁用状态', () => {

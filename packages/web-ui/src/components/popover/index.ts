@@ -4,6 +4,7 @@ import { customElement, property } from 'lit/decorators.js'
 
 import glass from '@/assets/glass.css?inline'
 import overlayMotion from '@/assets/overlay-motion.css?inline'
+import { UserChangeController } from '@/shared/events/user-change'
 import { normalizeLiteral, normalizeNumber } from '@/shared/normalize'
 import { defineAnchoredPanel } from '@/shared/overlay/anchored-panel'
 import { createOverlayPortal } from '@/shared/overlay/portal'
@@ -75,7 +76,7 @@ export class WebUiPopover extends LitElement {
 
   private _showTimer?: ReturnType<typeof setTimeout>
   private _hideTimer?: ReturnType<typeof setTimeout>
-  private _suppressEvent = false
+  private readonly _userOpenChange = new UserChangeController()
   private _shouldOpenInstantly = true
 
   private _panelId = `wui-popover-panel-${++popoverIdCounter}`
@@ -134,12 +135,12 @@ export class WebUiPopover extends LitElement {
         const isInstant = this._shouldOpenInstantly
         this._shouldOpenInstantly = true
         requestAnimationFrame(() => this._openOverlay(isInstant))
-        this._dispatchChange(true)
+        if (this._userOpenChange.consume()) this._dispatchChange(true)
         this._focusPanel()
       } else {
         this._returnFocus()
         void this._closeOverlay()
-        if (!this._suppressEvent) this._dispatchChange(false)
+        if (this._userOpenChange.consume()) this._dispatchChange(false)
       }
     }
 
@@ -155,17 +156,13 @@ export class WebUiPopover extends LitElement {
   /** 打开 popover */
   show() {
     if (this.disabled || this.open) return
-    this._suppressEvent = true
     this.open = true
-    this._suppressEvent = false
   }
 
   /** 关闭 popover */
   close() {
     if (!this.open) return
-    this._suppressEvent = true
     this.open = false
-    this._suppressEvent = false
   }
 
   /** 切换 popover */
@@ -255,6 +252,7 @@ export class WebUiPopover extends LitElement {
     clearTimeout(this._hideTimer)
     if (this.trigger === 'hover') return
     if (!this.open) this._shouldOpenInstantly = event.detail === 0
+    this._userOpenChange.mark()
     this.toggle()
   }
 
@@ -263,6 +261,7 @@ export class WebUiPopover extends LitElement {
     if (this.trigger === 'manual' || this.trigger === 'hover') return
     if (e.target instanceof Node && this.portal && this._panel.getPanel()?.contains(e.target)) return
     if (this._isInsideShadowRoot(e)) return
+    this._userOpenChange.mark()
     this.open = false
   }
 
@@ -271,6 +270,7 @@ export class WebUiPopover extends LitElement {
 
     requestAnimationFrame(() => {
       if (this.open && !this.matches(':focus-within') && !this._panel.getPanel()?.matches(':focus-within')) {
+        this._userOpenChange.mark()
         this.open = false
       }
     })
@@ -280,6 +280,7 @@ export class WebUiPopover extends LitElement {
     if (!this.open) return
     if (this.trigger === 'manual') return
     if (e.key === 'Escape') {
+      this._userOpenChange.mark()
       this.open = false
       e.preventDefault()
     }
@@ -291,6 +292,8 @@ export class WebUiPopover extends LitElement {
     clearTimeout(this._hideTimer)
     this._showTimer = setTimeout(() => {
       this._shouldOpenInstantly = false
+      if (this.open) return
+      this._userOpenChange.mark()
       this.show()
     }, 100)
   }
@@ -299,7 +302,11 @@ export class WebUiPopover extends LitElement {
     if (e.pointerType === 'touch') return
     if (this.disabled || this.trigger !== 'hover') return
     clearTimeout(this._showTimer)
-    this._hideTimer = setTimeout(() => this.close(), 100)
+    this._hideTimer = setTimeout(() => {
+      if (!this.open) return
+      this._userOpenChange.mark()
+      this.close()
+    }, 100)
   }
 
   private _onPanelPointerEnter = (e: PointerEvent) => {
@@ -311,7 +318,11 @@ export class WebUiPopover extends LitElement {
   private _onPanelPointerLeave = (e: PointerEvent) => {
     if (e.pointerType === 'touch') return
     if (this.trigger !== 'hover') return
-    this._hideTimer = setTimeout(() => this.close(), 100)
+    this._hideTimer = setTimeout(() => {
+      if (!this.open) return
+      this._userOpenChange.mark()
+      this.close()
+    }, 100)
   }
 
   override render() {

@@ -5,6 +5,7 @@ import '@/components/icon'
 import '@/components/button'
 import glass from '@/assets/glass.css?inline'
 import { oouiClose } from '@/icons'
+import { UserChangeController } from '@/shared/events/user-change'
 import { normalizeLiteral } from '@/shared/normalize'
 import { defineNativeDialogPresence } from '@/shared/overlay/native-dialog-presence'
 import { createScrollLockLease } from '@/shared/scroll-lock/scroll-lock'
@@ -44,6 +45,7 @@ export class WebUiDrawer extends LitElement {
 
   private _hasHeaderSlot = false
   private _hasFooterSlot = false
+  private readonly _userOpenChange = new UserChangeController()
   private readonly _scrollLock = createScrollLockLease()
   private readonly _presence = defineNativeDialogPresence().make({
     getDialog: () => this.dialog,
@@ -98,7 +100,7 @@ export class WebUiDrawer extends LitElement {
     if (!this.isConnected) return
 
     if (props.has('open')) {
-      this.emitOpenChange()
+      if (this._userOpenChange.consume()) this.emitOpenChange()
       this._presence.sync(this.open)
     }
     if (props.has('open') || props.has('noScrollLock')) this._syncScrollLock()
@@ -111,7 +113,7 @@ export class WebUiDrawer extends LitElement {
   private handleKeydown(e: KeyboardEvent) {
     if (e.key !== 'Escape') return
     e.preventDefault()
-    this.close()
+    this._closeFromUser()
   }
 
   /** 打开抽屉（命令式） */
@@ -126,10 +128,16 @@ export class WebUiDrawer extends LitElement {
     this.open = false
   }
 
+  private readonly _closeFromUser = () => {
+    if (!this.open) return
+    this._userOpenChange.mark()
+    this.close()
+  }
+
   private handleCancel(e: Event) {
     // 保留 top layer 直到 CSS 过渡结束，避免原生关闭跳过退出动画。
     e.preventDefault()
-    this.close()
+    this._closeFromUser()
   }
 
   private handleNativeClose() {
@@ -137,13 +145,14 @@ export class WebUiDrawer extends LitElement {
 
     // 原生关闭可绕过 cancel；同步受控状态，避免 show() 误判为已打开。
     this._presence.handleNativeClose()
+    this._userOpenChange.mark()
     this.open = false
   }
 
   private handleBackdropClick(e: MouseEvent) {
     if (e.target !== (e.currentTarget as HTMLDialogElement)) return
     if (this.noBackdropClose) return
-    this.close()
+    this._closeFromUser()
   }
 
   private emitOpenChange() {
@@ -190,7 +199,13 @@ export class WebUiDrawer extends LitElement {
         </div>
         ${this.closable
           ? html`
-              <web-ui-button class="wui-drawer-close" @click=${this.close} aria-label="关闭" variant="secondary" icon>
+              <web-ui-button
+                class="wui-drawer-close"
+                @click=${this._closeFromUser}
+                aria-label="关闭"
+                variant="secondary"
+                icon
+              >
                 <web-ui-icon .icon=${oouiClose}></web-ui-icon>
               </web-ui-button>
             `

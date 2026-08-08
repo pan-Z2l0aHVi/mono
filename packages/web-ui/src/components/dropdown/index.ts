@@ -5,6 +5,7 @@ import { customElement, property, state } from 'lit/decorators.js'
 import '@/components/dropdown-divider'
 import '@/components/dropdown-header'
 import '@/components/dropdown-item'
+import { UserChangeController } from '@/shared/events/user-change'
 import { createMenuPortalOverlay } from '@/shared/menu-portal/menu-portal'
 import {
   findFocusedMenuItem,
@@ -85,6 +86,7 @@ export class WebUiDropdown extends LitElement {
   private _ignoreOutsideClickTimer?: ReturnType<typeof setTimeout>
   private _hoverCleanupFns: (() => void)[] = []
   private readonly _scrollLock = createScrollLockLease()
+  private readonly _userOpenChange = new UserChangeController()
   private _restoreFocusTarget?: HTMLElement
   private _shouldOpenInstantly = true
 
@@ -127,13 +129,15 @@ export class WebUiDropdown extends LitElement {
         this._syncScrollLock()
         void this._closeRootAfterPresence()
       }
-      this.dispatchEvent(
-        new CustomEvent('open-change', {
-          detail: { open: this.open },
-          bubbles: true,
-          composed: true
-        })
-      )
+      if (this._userOpenChange.consume()) {
+        this.dispatchEvent(
+          new CustomEvent('open-change', {
+            detail: { open: this.open },
+            bubbles: true,
+            composed: true
+          })
+        )
+      }
     }
     if (changed.has('noScrollLock')) this._syncScrollLock()
     if (changed.has('placement') || changed.has('offset') || changed.has('matchWidth')) {
@@ -146,27 +150,27 @@ export class WebUiDropdown extends LitElement {
     this._bindLevelHovers()
   }
 
-  /**
-   * 打开菜单。
-   * @returns 无返回值；打开后派发 `open-change` 事件。
-   */
+  /** 打开菜单（命令式，不派发 `open-change`）。 */
   openMenu() {
-    this._openMenu(true)
+    this._openMenu(true, false)
   }
 
-  private _openMenu(isInstant: boolean) {
+  private _openMenu(isInstant: boolean, fromUser: boolean) {
     if (this.disabled || this.open) return
     this._ignoreCurrentOutsideClick()
     this._shouldOpenInstantly = isInstant
+    if (fromUser) this._userOpenChange.mark()
     this.open = true
   }
 
-  /**
-   * 关闭所有层级。
-   * @returns 无返回值；关闭后派发 `open-change` 事件。
-   */
+  /** 关闭所有层级（命令式，不派发 `open-change`）。 */
   closeAll() {
+    this._closeAll(false)
+  }
+
+  private _closeAll(fromUser: boolean) {
     if (!this.open) return
+    if (fromUser) this._userOpenChange.mark()
     this.open = false
   }
 
@@ -388,16 +392,16 @@ export class WebUiDropdown extends LitElement {
   private _onTriggerClick = (event: MouseEvent) => {
     if (this.disabled) return
     if (this.open) {
-      this.closeAll()
+      this._closeAll(true)
     } else {
-      this._openMenu(event.detail === 0)
+      this._openMenu(event.detail === 0, true)
     }
   }
 
   private _onClickOutside = (e: MouseEvent) => {
     if (!this.isOpen || this._ignoreOutsideClick) return
     if (this._isInsideShadowRoot(e)) return
-    this.closeAll()
+    this._closeAll(true)
   }
 
   private _onMenuClick = (e: MouseEvent) => {
@@ -417,7 +421,7 @@ export class WebUiDropdown extends LitElement {
     // 否则鼠标打开、焦点在菜单项时 Escape 无法关闭
     if (e.key === 'Escape') {
       if (this._activePath.length > 0) this._closeSubmenuFrom(this._activePath.length)
-      else this.closeAll()
+      else this._closeAll(true)
       e.preventDefault()
       return
     }
@@ -462,7 +466,7 @@ export class WebUiDropdown extends LitElement {
         break
       case 'Escape':
         if (this._activePath.length > 0) this._closeSubmenuFrom(this._activePath.length)
-        else this.closeAll()
+        else this._closeAll(true)
         break
       default:
         return

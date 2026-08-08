@@ -123,6 +123,16 @@ import '@greypan/web-ui/types/vue'
 </template>
 ```
 
+### 属性与事件边界
+
+`web-ui-*` 元素是公开 DOM 边界。`id`、`class`、`style`、全局 HTML 属性和 `data-*` 保留在 Custom Element 宿主上，
+不会复制到 Shadow DOM。只有组件文档明确声明语义映射时，原生元素属性才会传递。例如 `web-ui-button` 会把 `type`
+映射到内部按钮，且仅接受 `button`、`submit`、`reset`；非法值会回退为 `button`。
+
+ARIA 属性同样必须显式支持：使用组件文档化的命名属性，而不是通配 `aria-*` 透传。组件拥有自己的 role 和交互状态。
+`click`、`input`、`change` 等浏览器 composed 原生事件仍是主要交互 API。`open-change` 等 kebab-case 自定义事件
+仅描述用户操作导致的组件状态变化；程序化赋值 property 不会触发它们。
+
 ## 所有组件
 
 | 分类            | 组件                                                      |
@@ -391,18 +401,21 @@ ArrowUp/ArrowDown 键增减数值。
 
 样式化按钮，支持多种变体和加载状态。
 
-| 属性       | 类型                                                         | 默认值    | 说明                           |
-| ---------- | ------------------------------------------------------------ | --------- | ------------------------------ |
-| `variant`  | `'primary' \| 'secondary' \| 'ghost' \| 'danger' \| 'glass'` | `'glass'` | 按钮变体                       |
-| `disabled` | `boolean`                                                    | `false`   | 禁用状态                       |
-| `loading`  | `boolean`                                                    | `false`   | 加载旋转动画                   |
-| `full`     | `boolean`                                                    | `false`   | 全宽                           |
-| `icon`     | `boolean`                                                    | `false`   | 纯图标模式                     |
-| `size`     | `string`                                                     | `''`      | 尺寸格式 `高度` 或 `高度x宽度` |
+| 属性       | 类型                                                         | 默认值     | 说明                                |
+| ---------- | ------------------------------------------------------------ | ---------- | ----------------------------------- |
+| `variant`  | `'primary' \| 'secondary' \| 'ghost' \| 'danger' \| 'glass'` | `'glass'`  | 按钮变体                            |
+| `type`     | `'button' \| 'submit' \| 'reset'`                            | `'button'` | 内部按钮类型；非法值回退为 `button` |
+| `disabled` | `boolean`                                                    | `false`    | 禁用状态                            |
+| `loading`  | `boolean`                                                    | `false`    | 加载旋转动画                        |
+| `full`     | `boolean`                                                    | `false`    | 全宽                                |
+| `icon`     | `boolean`                                                    | `false`    | 纯图标模式                          |
+| `size`     | `string`                                                     | `''`       | 尺寸格式 `高度` 或 `高度x宽度`      |
 
 **事件：** 标准 `click`
 
 **插槽：** `prefix`, `default`, `suffix`
+
+`submit` 和 `reset` 不会提交或重置组件 Shadow DOM 外祖先 `<form>`。如需外部表单行为，请使用 form-associated 控件。
 
 禁用和加载状态阻止 `click` 事件。
 

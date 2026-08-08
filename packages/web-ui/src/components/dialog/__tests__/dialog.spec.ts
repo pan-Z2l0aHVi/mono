@@ -65,19 +65,18 @@ describe('WebUiDialog 组件', () => {
   })
 
   describe('事件：open-change', () => {
-    it('open false→true 触发 open-change，detail.open 为 true', async () => {
+    it('程序设置 open 不触发 open-change', async () => {
       const el = createDialog()
       const [events] = spyEvents<CustomEvent<{ open: boolean }>>(el, 'open-change')
 
       el.open = true
       await waitForUpdate(el)
 
-      expect(events).toHaveLength(1)
-      expect(events[0].detail.open).toBe(true)
+      expect(events).toHaveLength(0)
       cleanupElement(el)
     })
 
-    it('open true→false 触发 open-change，detail.open 为 false', async () => {
+    it('程序关闭不触发 open-change', async () => {
       const el = createDialog()
       el.open = true
       await waitForUpdate(el)
@@ -87,8 +86,7 @@ describe('WebUiDialog 组件', () => {
       el.open = false
       await waitForUpdate(el)
 
-      expect(events).toHaveLength(1)
-      expect(events[0].detail.open).toBe(false)
+      expect(events).toHaveLength(0)
       cleanupElement(el)
     })
 
@@ -108,7 +106,7 @@ describe('WebUiDialog 组件', () => {
   })
 
   describe('命令：showModal()', () => {
-    it('设置 open=true 并触发 open-change', async () => {
+    it('设置 open=true 但不触发 open-change', async () => {
       const el = createDialog()
       const [events] = spyEvents<CustomEvent<{ open: boolean }>>(el, 'open-change')
 
@@ -116,8 +114,7 @@ describe('WebUiDialog 组件', () => {
       await waitForUpdate(el)
 
       expect(el.open).toBe(true)
-      expect(events).toHaveLength(1)
-      expect(events[0].detail.open).toBe(true)
+      expect(events).toHaveLength(0)
       cleanupElement(el)
     })
 
@@ -137,7 +134,7 @@ describe('WebUiDialog 组件', () => {
   })
 
   describe('命令：close()', () => {
-    it('设置 open=false 并触发 open-change', async () => {
+    it('设置 open=false 但不触发 open-change', async () => {
       const el = createDialog()
       el.open = true
       await waitForUpdate(el)
@@ -148,8 +145,7 @@ describe('WebUiDialog 组件', () => {
       await waitForUpdate(el)
 
       expect(el.open).toBe(false)
-      expect(events).toHaveLength(1)
-      expect(events[0].detail.open).toBe(false)
+      expect(events).toHaveLength(0)
       cleanupElement(el)
     })
   })

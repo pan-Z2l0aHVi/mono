@@ -45,6 +45,7 @@ Do not duplicate token values in guidance. Every `var(--wui-*, fallback)` used b
 - Choose attribute versus property bindings by value kind: write static literals as plain attributes (`size="18"`) and dynamic strings as attribute bindings (`attr=${str}`); use `.prop` bindings for dynamic non-string values (numbers, objects, arrays, functions); and `?prop` for dynamic booleans. Write ARIA values as explicit strings (`aria-selected=${String(x)}`). Never use `:`-prefixed bindings: Lit treats `:attr` as a literal attribute name, so the value never reaches the property and the declared type is silently ignored.
 - Use top-level `:host([attribute])` selectors rather than nested host attribute selectors.
 - Prefer native CSS nesting for component descendant states; keep the scroll viewport and padded content as separate elements when padding must scroll with the content.
+- The custom-element host is the public attribute boundary. Keep global attributes and `data-*` on the host; never implement a generic `$attrs`-style copy into shadow DOM. Map native attributes only when the component documents a one-to-one semantic owner, and map ARIA attributes only when they fit that owner's role. Do not accept arbitrary `role`, state ARIA, or cross-shadow IDREF attributes as pass-through.
 
 ## Interaction, lifecycle, and accessibility
 
@@ -53,6 +54,7 @@ Do not duplicate token values in guidance. Every `var(--wui-*, fallback)` used b
 - Prefer Pointer Events to mouse-specific events. Ignore touch pointers for hover-triggered behavior, use capture plus `pointercancel` for drags, and use `click` for external-click dismissal. Keep `contextmenu` and focus events as their own semantics.
 - Interactive components require suitable roles and accessible names; use `:focus-visible`; forward host labels to native shadow controls. Prefer native `<dialog>` for modal dialogs and wait for its visual exit before closing it.
 - Form-associated controls use `ElementInternals`, synchronize form values and disabled state, and emit composed bubbling `input` then `change` only for user-originated changes. Framework-specific value-change event names are not public API.
+- Let browser-native composed events expose primary interactions at the host; do not redispatch duplicates. State CustomEvents use kebab-case, bubble and compose, and are emitted only for user-originated state changes. Add cancellable `before-*` events only for a documented component-specific interception need.
 
 ## Tests
 

@@ -125,6 +125,18 @@ import '@greypan/web-ui/types/vue'
 </template>
 ```
 
+### Attribute and event boundaries
+
+`web-ui-*` elements are the public DOM boundary. `id`, `class`, `style`, global HTML attributes, and `data-*` stay on
+the custom-element host; they are not copied into its Shadow DOM. Components expose native-element attributes only when
+they document an explicit semantic mapping. For example, `web-ui-button` maps `type` to its inner button and accepts
+only `button`, `submit`, or `reset` (invalid values become `button`).
+
+ARIA attributes are explicit: use the component's documented naming attributes, not a blanket `aria-*` pass-through.
+Components own their role and interaction state. Browser-native composed events such as `click`, `input`, and `change`
+remain the primary interaction API. Kebab-case custom events such as `open-change` describe user-originated component
+state changes; assigning a property programmatically does not emit them.
+
 ## All Components
 
 | Category             | Component                                                 |
@@ -397,18 +409,22 @@ Radio group managing single selection.
 
 Styled button with variants and loading state.
 
-| Attribute  | Type                                                         | Default   | Description                            |
-| ---------- | ------------------------------------------------------------ | --------- | -------------------------------------- |
-| `variant`  | `'primary' \| 'secondary' \| 'ghost' \| 'danger' \| 'glass'` | `'glass'` | Button variant                         |
-| `disabled` | `boolean`                                                    | `false`   | Disabled state                         |
-| `loading`  | `boolean`                                                    | `false`   | Loading spinner                        |
-| `full`     | `boolean`                                                    | `false`   | Full width                             |
-| `icon`     | `boolean`                                                    | `false`   | Icon-only mode                         |
-| `size`     | `string`                                                     | `''`      | Size format `height` or `heightxwidth` |
+| Attribute  | Type                                                         | Default    | Description                                       |
+| ---------- | ------------------------------------------------------------ | ---------- | ------------------------------------------------- |
+| `variant`  | `'primary' \| 'secondary' \| 'ghost' \| 'danger' \| 'glass'` | `'glass'`  | Button variant                                    |
+| `type`     | `'button' \| 'submit' \| 'reset'`                            | `'button'` | Inner-button type; invalid values become `button` |
+| `disabled` | `boolean`                                                    | `false`    | Disabled state                                    |
+| `loading`  | `boolean`                                                    | `false`    | Loading spinner                                   |
+| `full`     | `boolean`                                                    | `false`    | Full width                                        |
+| `icon`     | `boolean`                                                    | `false`    | Icon-only mode                                    |
+| `size`     | `string`                                                     | `''`       | Size format `height` or `heightxwidth`            |
 
 **Events:** standard `click`
 
 **Slots:** `prefix`, `default`, `suffix`
+
+`submit` and `reset` do not submit or reset an ancestor form outside the component's Shadow DOM. Use a
+form-associated control when external form submission behavior is required.
 
 Disabled and loading states prevent `click` events.
 

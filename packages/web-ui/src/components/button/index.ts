@@ -1,6 +1,7 @@
 import { html, LitElement, nothing, unsafeCSS } from 'lit'
 import { customElement, property } from 'lit/decorators.js'
 import { classMap } from 'lit/directives/class-map.js'
+import { ifDefined } from 'lit/directives/if-defined.js'
 import { styleMap } from 'lit/directives/style-map.js'
 
 // web-ui-icon 必须注册（Rolldown tree-shake 副作用 import，引用类名阻止删除）
@@ -12,6 +13,7 @@ import { normalizeLiteral } from '@/shared/normalize'
 import style from './style.css?inline'
 
 const ALLOWED_VARIANTS = ['primary', 'secondary', 'ghost', 'danger', 'glass'] as const
+const ALLOWED_TYPES = ['button', 'submit', 'reset'] as const
 
 @customElement('web-ui-button')
 export class WebUiButton extends LitElement {
@@ -34,6 +36,20 @@ export class WebUiButton extends LitElement {
   @property({ type: Boolean, reflect: true }) icon = false
   @property({ type: String, reflect: true }) size = ''
 
+  @property({ type: String, reflect: true })
+  get type(): (typeof ALLOWED_TYPES)[number] {
+    return this._type
+  }
+  set type(value: unknown) {
+    const old = this._type
+    this._type = normalizeLiteral(value, ALLOWED_TYPES, 'button')
+    this.requestUpdate('type', old)
+  }
+  private _type: (typeof ALLOWED_TYPES)[number] = 'button'
+
+  /** Explicitly delegated accessible naming attributes. */
+  @property({ type: String, attribute: 'aria-label' }) override ariaLabel: string | null = null
+
   /** size="32" → 32x32，size="32x80" → 32x80 */
   private get _sizeStyle(): Record<string, string> {
     if (!this.size) return {}
@@ -54,6 +70,8 @@ export class WebUiButton extends LitElement {
     const btnClass = { 'wui-glass': this.variant === 'glass' && !this.hasAttribute('group') }
     return html`
       <button
+        type=${this.type}
+        aria-label=${ifDefined(this.ariaLabel)}
         class=${classMap(btnClass)}
         style=${this.size ? styleMap(this._sizeStyle) : nothing}
         ?disabled=${this.disabled || this.loading}

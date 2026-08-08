@@ -1,6 +1,7 @@
 import { html, LitElement, unsafeCSS } from 'lit'
 import { customElement, property, state } from 'lit/decorators.js'
 import { classMap } from 'lit/directives/class-map.js'
+import { ifDefined } from 'lit/directives/if-defined.js'
 
 // web-ui-icon 必须注册（Rolldown tree-shake 副作用 import，引用类名阻止删除）
 import '@/components/icon'
@@ -22,6 +23,7 @@ export class WebUiInput extends LitElement {
   @property({ type: Boolean, reflect: true }) clearable = false
   @property({ type: Boolean, reflect: true }) full = false
   @property({ type: Boolean, reflect: true }) borderless = false
+  @property({ type: String, attribute: 'aria-label' }) override ariaLabel: string | null = null
 
   @state() private _value = ''
   @state() private _focused = false
@@ -145,6 +147,7 @@ export class WebUiInput extends LitElement {
           type=${this.type}
           placeholder=${this.placeholder}
           name=${this.name}
+          aria-label=${ifDefined(this.ariaLabel)}
           ?disabled=${this._isDisabled}
           ?required=${this.required}
           .value=${this._value}

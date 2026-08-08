@@ -493,7 +493,7 @@ describe('WebUiPopover 组件', () => {
   })
 
   describe('事件：open-change', () => {
-    it('打开时触发', async () => {
+    it('程序打开不触发', async () => {
       const el = createPopover('Btn', 'Content')
       await waitForUpdate(el)
 
@@ -503,13 +503,12 @@ describe('WebUiPopover 组件', () => {
       el.open = true
       await waitForUpdate(el)
 
-      expect(handler).toHaveBeenCalledTimes(1)
-      expect((handler.mock.calls[0][0] as CustomEvent).detail.open).toBe(true)
+      expect(handler).not.toHaveBeenCalled()
 
       cleanupElement(el)
     })
 
-    it('关闭时触发', async () => {
+    it('程序关闭不触发', async () => {
       const el = createPopover('Btn', 'Content')
       el.open = true
       await el.updateComplete
@@ -522,13 +521,12 @@ describe('WebUiPopover 组件', () => {
       el.open = false
       await waitForUpdate(el)
 
-      expect(handler).toHaveBeenCalledTimes(1)
-      expect((handler.mock.calls[0][0] as CustomEvent).detail.open).toBe(false)
+      expect(handler).not.toHaveBeenCalled()
 
       cleanupElement(el)
     })
 
-    it('通过 show() 触发', async () => {
+    it('通过 show() 不触发', async () => {
       const el = createPopover('Btn', 'Content')
       await waitForUpdate(el)
 
@@ -538,13 +536,12 @@ describe('WebUiPopover 组件', () => {
       el.show()
       await waitForUpdate(el)
 
-      expect(handler).toHaveBeenCalledTimes(1)
-      expect((handler.mock.calls[0][0] as CustomEvent).detail.open).toBe(true)
+      expect(handler).not.toHaveBeenCalled()
 
       cleanupElement(el)
     })
 
-    it('通过 close() 触发', async () => {
+    it('通过 close() 不触发', async () => {
       const el = createPopover('Btn', 'Content')
       el.show()
       await el.updateComplete
@@ -557,8 +554,7 @@ describe('WebUiPopover 组件', () => {
       el.close()
       await waitForUpdate(el)
 
-      expect(handler).toHaveBeenCalledTimes(1)
-      expect((handler.mock.calls[0][0] as CustomEvent).detail.open).toBe(false)
+      expect(handler).not.toHaveBeenCalled()
 
       cleanupElement(el)
     })
@@ -572,13 +568,31 @@ describe('WebUiPopover 组件', () => {
 
       el.open = true
       await waitForUpdate(el)
-      expect(handler).toHaveBeenCalledTimes(1)
+      expect(handler).not.toHaveBeenCalled()
 
       handler.mockClear()
       el.open = true
       await waitForUpdate(el)
       expect(handler).not.toHaveBeenCalled()
 
+      cleanupElement(el)
+    })
+
+    it('hover 重入不让后续命令式关闭派发残留事件', async () => {
+      vi.useFakeTimers()
+      const el = createPopover('Btn', 'Content', { trigger: 'hover' })
+      el.show()
+      await waitForUpdate(el)
+
+      const handler = vi.fn<(e: Event) => void>()
+      el.addEventListener('open-change', handler)
+      el.dispatchEvent(new PointerEvent('pointerenter'))
+      await vi.advanceTimersByTimeAsync(100)
+      el.close()
+      await waitForUpdate(el)
+
+      expect(handler).not.toHaveBeenCalled()
+      vi.useRealTimers()
       cleanupElement(el)
     })
   })

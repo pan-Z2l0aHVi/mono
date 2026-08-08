@@ -125,7 +125,7 @@ describe('WebUiTooltip 组件', () => {
   })
 
   describe('属性：open', () => {
-    it('open=true 显示本地面板并触发 open-change', async () => {
+    it('open=true 显示本地面板且不触发 open-change', async () => {
       const el = createTooltip({ content: '提示' })
       const handler = vi.fn<(event: Event) => void>()
       el.addEventListener('open-change', handler)
@@ -136,13 +136,12 @@ describe('WebUiTooltip 组件', () => {
       expect(el.hasAttribute('open')).toBe(true)
       expect(el.isOpen).toBe(true)
       expect(queryA11y(el, '[role="tooltip"]')?.hasAttribute('hidden')).toBe(false)
-      expect(handler).toHaveBeenCalledOnce()
-      expect((handler.mock.calls[0][0] as CustomEvent<{ open: boolean }>).detail).toEqual({ open: true })
+      expect(handler).not.toHaveBeenCalled()
 
       cleanupElement(el)
     })
 
-    it('open=false 隐藏面板并触发 open-change', async () => {
+    it('open=false 隐藏面板且不触发 open-change', async () => {
       const el = createTooltip({ content: '提示' })
       el.open = true
       await waitForUpdate(el)
@@ -153,8 +152,7 @@ describe('WebUiTooltip 组件', () => {
       await waitForUpdate(el)
 
       expect(el.isOpen).toBe(false)
-      expect(handler).toHaveBeenCalledOnce()
-      expect((handler.mock.calls[0][0] as CustomEvent<{ open: boolean }>).detail).toEqual({ open: false })
+      expect(handler).not.toHaveBeenCalled()
 
       cleanupElement(el)
     })
