@@ -165,6 +165,16 @@ describe('storage 测试', () => {
       expect(() => local.set('blocked-key', 'value')).not.toThrow()
       expect(() => local.remove('blocked-key')).not.toThrow()
     })
+
+    it('获取 Storage 对象被禁时也应降级而非抛错', () => {
+      vi.spyOn(window, 'localStorage', 'get').mockImplementation(() => {
+        throw new DOMException('The operation is insecure.', 'SecurityError')
+      })
+
+      const blocked = defineLocal('blocked-object')
+      expect(() => blocked.get('blocked-key', 'def')).not.toThrow()
+      expect(blocked.get('blocked-key', 'def')).toBe('def')
+    })
   })
 
   describe('has 与 remove', () => {

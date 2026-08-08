@@ -22,8 +22,8 @@ export function defineTracker(options: Options) {
     async function send(data: object) {
       const body = JSON.stringify(config.transform(data))
       try {
-        // sendBeacon 传字符串默认按 text/plain 发送，用 Blob 指定 application/json
-        const ok = navigator.sendBeacon(config.url, new Blob([body], { type: 'application/json' }))
+        // 保持字符串载荷以使用 CORS-safelisted 的 text/plain，避免跨域采集端触发预检。
+        const ok = navigator.sendBeacon(config.url, body)
         if (!ok) throw new Error('sendBeacon 失败.')
       } catch (error) {
         console.warn(error, '[track 降级使用 fetch]')

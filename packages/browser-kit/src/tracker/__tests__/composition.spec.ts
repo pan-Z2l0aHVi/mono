@@ -151,9 +151,8 @@ describe('插件组合测试', () => {
       tracker.flush()
       await waitForMsw()
       expect(sendBeaconSpy).toHaveBeenCalled()
-      // sendBeacon 第二参数现在是 Blob，需异步读取内容断言
-      const payload = sendBeaconSpy.mock.calls[0][1] as Blob
-      expect(await payload.text()).toContain('offline-data')
+      const payload = sendBeaconSpy.mock.calls[0][1] as string
+      expect(payload).toContain('offline-data')
     })
   })
 

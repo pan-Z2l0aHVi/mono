@@ -90,12 +90,12 @@ describe('聚合上报测试用例', () => {
 
     vi.advanceTimersByTime(200)
 
-    // sendBeacon 同步执行，所有分片立即调用；第二参数现在是 Blob，需要异步读取
+    // sendBeacon 同步执行，所有分片立即调用；字符串载荷可直接解析
     expect(sendBeacon.mock.calls.length).toBeGreaterThanOrEqual(2)
     let total = 0
     for (const call of sendBeacon.mock.calls) {
-      const payload = call[1] as Blob
-      const arr = JSON.parse(await payload.text()) as unknown[]
+      const payload = call[1] as string
+      const arr = JSON.parse(payload) as unknown[]
       total += arr.length
     }
     expect(total).toBe(totalCount)

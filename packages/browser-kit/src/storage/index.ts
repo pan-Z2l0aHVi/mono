@@ -22,7 +22,13 @@ const STORAGE_DEFAULT_OPTIONS = {
 function defineStorage(type: StorageType, options: StorageOptions = {}) {
   return definePlugin(() => {
     const config = { ...STORAGE_DEFAULT_OPTIONS, ...options } as StorageConfig
-    const store = typeof window !== 'undefined' ? window[`${type}Storage`] : ({} as globalThis.Storage)
+    let store: globalThis.Storage
+    try {
+      store = typeof window !== 'undefined' ? window[`${type}Storage`] : ({} as globalThis.Storage)
+    } catch {
+      // 受限 iframe 或隐私策略可能在获取 Storage 属性时直接抛 SecurityError。
+      store = {} as globalThis.Storage
+    }
     const prefix = config.namespace ? `${config.namespace}:` : ''
 
     // blocked storage（隐私模式、沙箱 iframe 无 allow-same-origin）下访问

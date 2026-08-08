@@ -44,6 +44,9 @@ describe('上报 core 测试用例', () => {
     await waitForMsw()
 
     expect(sendBeaconSpy).toHaveBeenCalled()
+    const payload = sendBeaconSpy.mock.calls[0][1]
+    expect(typeof payload).toBe('string')
+    expect(payload).toContain('page view')
     expect(capturedRequests.length).toBeGreaterThanOrEqual(1)
   })
 
