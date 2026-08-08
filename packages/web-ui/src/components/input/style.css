@@ -114,7 +114,18 @@ slot.empty {
   align-self: stretch;
   justify-content: center;
 
+  /* 原生 button reset，视觉与图标按钮保持一致 */
+  margin: 0;
+  padding: 0;
+  border: none;
+
+  font: inherit;
   color: var(--wui-color-text-muted, #6a6a6a);
+
+  appearance: none;
+  background: transparent;
+
+  -webkit-tap-highlight-color: transparent;
 
   &:hover {
     color: var(--wui-color-text-muted, #6a6a6a);

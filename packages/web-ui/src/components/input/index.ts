@@ -153,9 +153,15 @@ export class WebUiInput extends LitElement {
           @blur=${this.handleBlur}
         />
         ${showClear
-          ? html`<span class="clear" @pointerdown=${this.preventMouseDownBlur} @click=${this.handleClear}>
+          ? html`<button
+              type="button"
+              class="clear"
+              aria-label="清除"
+              @pointerdown=${this.preventMouseDownBlur}
+              @click=${this.handleClear}
+            >
               <web-ui-icon .icon=${jamCloseCircleF}></web-ui-icon>
-            </span>`
+            </button>`
           : ''}
         <slot name="suffix" class=${classMap({ empty: !this._hasSuffix })} @slotchange=${this._onSlotChange}></slot>
       </div>
