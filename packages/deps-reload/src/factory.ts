@@ -54,6 +54,12 @@ export const depsReloadFactory: UnpluginFactory<Dep[]> = deps => {
         if (isPathWithin(normalizedFile, pluginDist)) return []
 
         if (configs.some(config => isDependencyOutputFile(normalizedFile, config))) {
+          // 依赖产物由构建以「原子重命名 / 目录重建」写盘，chokidar 上报 unlink/add 而非 change，
+          // Vite 只对 change 事件自动调用 moduleGraph.onFileChange 失效模块图，
+          // 导致 full-reload 后仍从模块图缓存返回旧产物。这里显式失效，保证 reload 拿到最新内容。
+          for (const environment of Object.values(ctx.server.environments ?? {})) {
+            environment.moduleGraph?.onFileChange?.(ctx.file)
+          }
           fullReloadTrigger.call(ctx.server)
           return []
         }
