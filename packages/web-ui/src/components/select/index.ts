@@ -446,7 +446,7 @@ export class WebUiSelect extends LitElement {
           class="wui-glass select-trigger"
           ?data-custom-trigger=${this._hasTriggerSlot}
           @click=${this._togglePopup}
-          tabindex=${this._isDisabled ? -1 : 0}
+          tabindex=${this._isDisabled ? '-1' : '0'}
           role="combobox"
           aria-expanded=${this._isOpen}
           aria-haspopup="listbox"

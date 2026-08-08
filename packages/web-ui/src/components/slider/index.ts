@@ -235,7 +235,7 @@ export class WebUiSlider extends LitElement {
         class=${trackClass}
         style=${trackStyle}
         role="slider"
-        tabindex=${this._isDisabled ? -1 : 0}
+        tabindex=${this._isDisabled ? '-1' : '0'}
         aria-label="滑块"
         aria-orientation=${this.vertical ? 'vertical' : 'horizontal'}
         aria-valuemin=${this.min}

@@ -79,7 +79,7 @@ export class WebUiOption extends LitElement {
   override render() {
     return html`
       <div class="option-label">
-        <web-ui-icon class="check" .size=${16} .icon=${heroiconsCheck16Solid}></web-ui-icon>
+        <web-ui-icon class="check" size="16" .icon=${heroiconsCheck16Solid}></web-ui-icon>
         <slot name="prefix"></slot>
         <span class="content-wrap">${this._label || html`<slot @slotchange=${this._onLabelSlotChange}></slot>`}</span>
         <slot name="suffix"></slot>
