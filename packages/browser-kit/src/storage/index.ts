@@ -25,6 +25,33 @@ function defineStorage(type: StorageType, options: StorageOptions = {}) {
     const store = typeof window !== 'undefined' ? window[`${type}Storage`] : ({} as globalThis.Storage)
     const prefix = config.namespace ? `${config.namespace}:` : ''
 
+    // blocked storage（隐私模式、沙箱 iframe 无 allow-same-origin）下访问
+    // localStorage 会抛 SecurityError。统一降级：读取返回 null、写入静默跳过，
+    // 避免调用方（含 tracker 持久化）在存储被禁时崩溃。
+    function safeGetItem(key: string): string | null {
+      try {
+        return store.getItem(key)
+      } catch {
+        return null
+      }
+    }
+
+    function safeSetItem(key: string, value: string): void {
+      try {
+        store.setItem(key, value)
+      } catch {
+        // 静默跳过：配额溢出或存储被禁
+      }
+    }
+
+    function safeRemoveItem(key: string): void {
+      try {
+        store.removeItem(key)
+      } catch {
+        // 静默跳过
+      }
+    }
+
     function getRealKey(key: string): string {
       return `${prefix}${key}`
     }
@@ -68,7 +95,7 @@ function defineStorage(type: StorageType, options: StorageOptions = {}) {
      */
     function get<T>(key: string, def: T | null = null): T | null {
       const realKey = getRealKey(key)
-      const raw = store.getItem(realKey)
+      const raw = safeGetItem(realKey)
       if (raw === null) return def
 
       let pkg: unknown
@@ -105,35 +132,40 @@ function defineStorage(type: StorageType, options: StorageOptions = {}) {
       const pkg = toPkg(val, ttl)
       const json = JSON.stringify(pkg)
       try {
-        return store.setItem(realKey, json)
+        store.setItem(realKey, json)
       } catch (error) {
-        // 溢出时重试一次
+        // 溢出时重试一次；存储被禁等 SecurityError 静默跳过（持久化降级）
         if (isQuotaExceeded(error)) {
           clearUseless()
-          return store.setItem(realKey, json)
+          safeSetItem(realKey, json)
         }
-        throw error
       }
     }
 
     function remove(key: string) {
-      store.removeItem(getRealKey(key))
+      safeRemoveItem(getRealKey(key))
     }
 
     function clearUseless() {
       Reflect.ownKeys(store).forEach(realKey => {
         if (typeof realKey === 'string' && realKey.startsWith(prefix)) {
-          const raw = store.getItem(realKey)
-          if (raw && isExpired(raw)) store.removeItem(realKey)
+          const raw = safeGetItem(realKey)
+          if (raw && isExpired(raw)) safeRemoveItem(realKey)
         }
       })
     }
 
     function clear() {
-      if (!prefix) return store.clear()
+      if (!prefix) {
+        try {
+          return store.clear()
+        } catch {
+          return
+        }
+      }
 
       Reflect.ownKeys(store).forEach(realKey => {
-        if (typeof realKey === 'string' && realKey.startsWith(prefix)) store.removeItem(realKey)
+        if (typeof realKey === 'string' && realKey.startsWith(prefix)) safeRemoveItem(realKey)
       })
     }
 

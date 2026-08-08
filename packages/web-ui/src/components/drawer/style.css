@@ -24,7 +24,9 @@ dialog {
   width: var(--wui-drawer-width, 320px);
   max-width: 90vw;
   height: 100dvh;
+  height: 100vh;
   max-height: 100dvh;
+  max-height: 100vh;
   margin: 0;
   padding: 0;
   border: none;

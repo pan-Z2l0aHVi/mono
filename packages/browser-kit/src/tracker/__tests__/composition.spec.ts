@@ -150,7 +150,10 @@ describe('插件组合测试', () => {
       // 离线积压的数据通过 flush 立即发送（beforeunload 内部调用同一路径）
       tracker.flush()
       await waitForMsw()
-      expect(sendBeaconSpy).toHaveBeenCalledWith('https://example.com', expect.stringContaining('offline-data'))
+      expect(sendBeaconSpy).toHaveBeenCalled()
+      // sendBeacon 第二参数现在是 Blob，需异步读取内容断言
+      const payload = sendBeaconSpy.mock.calls[0][1] as Blob
+      expect(await payload.text()).toContain('offline-data')
     })
   })
 

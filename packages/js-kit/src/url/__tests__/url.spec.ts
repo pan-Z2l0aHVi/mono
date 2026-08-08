@@ -41,6 +41,14 @@ describe('url 测试', () => {
       })
     })
 
+    it('应当能够解析协议相对 URL（//host），并保持协议相对形式', () => {
+      expect(parseUrl('//example.com/api/list?page=2#top')).toEqual({
+        base: '//example.com/api/list',
+        query: { page: '2' },
+        hash: '#top'
+      })
+    })
+
     it('应当能够对 Query 参数进行自动解码 (decode)', () => {
       expect(
         parseUrl('https://developer.mozilla.org/en-US/docs/Web/API/URL/URL?%E9%94%AE1=%E5%80%BC1&%E9%94%AE2=%E5%80%BC2')

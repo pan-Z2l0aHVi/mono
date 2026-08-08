@@ -49,7 +49,7 @@ describe('聚合上报测试用例', () => {
     expect(capturedRequests).toHaveLength(1)
   })
 
-  it('数据分片：超过阈值时分片', async () => {
+  it('数据分片：超过阈值时分片生效', async () => {
     const tracker = defineTracker({ url: 'https://example.com' })
       .use(defineBatchTrack({ defaultBatchDelay: 200 }))
       .make()
@@ -62,11 +62,43 @@ describe('聚合上报测试用例', () => {
     vi.advanceTimersByTime(200)
     await waitForMsw()
 
-    // 分片后每次请求只包含部分数据（不是全部），证明分片生效
+    // 分片生效：请求 body 是部分数据（不是全部），证明递归分片切分了批次
     expect(capturedRequests.length).toBeGreaterThanOrEqual(1)
     const body = capturedRequests[0].body as unknown[]
     expect(Array.isArray(body)).toBe(true)
     expect(body.length).toBeLessThan(totalCount)
+  })
+
+  it('分片后所有数据无丢失（sendBeacon 累计条数一致）', async () => {
+    // keepalive fetch 在 Chromium 有并发限制（并发分片请求只有第一个能被 MSW
+    // 捕获），因此改用 sendBeacon 同步路径统计分片完整性。
+    const sendBeacon = vi.fn<Navigator['sendBeacon']>(() => true)
+    Object.defineProperty(navigator, 'sendBeacon', {
+      configurable: true,
+      enumerable: true,
+      value: sendBeacon
+    })
+
+    const tracker = defineTracker({ url: 'https://example.com' })
+      .use(defineBatchTrack({ defaultBatchDelay: 200 }))
+      .make()
+
+    const totalCount = 10000
+    for (let i = 0; i < totalCount; i++) {
+      tracker.track({ event: 'view' })
+    }
+
+    vi.advanceTimersByTime(200)
+
+    // sendBeacon 同步执行，所有分片立即调用；第二参数现在是 Blob，需要异步读取
+    expect(sendBeacon.mock.calls.length).toBeGreaterThanOrEqual(2)
+    let total = 0
+    for (const call of sendBeacon.mock.calls) {
+      const payload = call[1] as Blob
+      const arr = JSON.parse(await payload.text()) as unknown[]
+      total += arr.length
+    }
+    expect(total).toBe(totalCount)
   })
 
   it('flush 应立即发送批量数据', async () => {

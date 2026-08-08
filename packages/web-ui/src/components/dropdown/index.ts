@@ -413,7 +413,9 @@ export class WebUiDropdown extends LitElement {
   private _onKeydown = (e: KeyboardEvent) => {
     if (this.disabled || !this.open) return
 
-    if (e.key === 'Escape' && e.target === this) {
+    // overlay 上键盘事件 target 是菜单项而非组件自身，不能限定 e.target === this，
+    // 否则鼠标打开、焦点在菜单项时 Escape 无法关闭
+    if (e.key === 'Escape') {
       if (this._activePath.length > 0) this._closeSubmenuFrom(this._activePath.length)
       else this.closeAll()
       e.preventDefault()

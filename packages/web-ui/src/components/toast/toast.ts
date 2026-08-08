@@ -140,9 +140,12 @@ export class WebUiToast extends LitElement {
   override render() {
     const icon = TYPE_ICONS[this.type]
     const ariaLive = this.type === 'error' ? 'assertive' : 'polite'
+    // role="alert" 会强制隐式 aria-live="assertive"，覆盖掉上方 aria-live 设置，
+    // 因此仅 error toast 使用 alert（本就应 assertive）；其余类型交给容器 role="log" 的 polite 播报。
+    const role = this.type === 'error' ? 'alert' : nothing
 
     return html`
-      <div class="toast wui-glass ${this.type}" role="alert" aria-live=${ariaLive} aria-atomic="true">
+      <div class="toast wui-glass ${this.type}" role=${role} aria-live=${ariaLive} aria-atomic="true">
         <span class="toast-icon" aria-hidden="true">
           <web-ui-icon .icon=${icon} :size="18"></web-ui-icon>
         </span>

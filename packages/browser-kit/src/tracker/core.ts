@@ -22,13 +22,15 @@ export function defineTracker(options: Options) {
     async function send(data: object) {
       const body = JSON.stringify(config.transform(data))
       try {
-        const ok = navigator.sendBeacon(config.url, body)
+        // sendBeacon 传字符串默认按 text/plain 发送，用 Blob 指定 application/json
+        const ok = navigator.sendBeacon(config.url, new Blob([body], { type: 'application/json' }))
         if (!ok) throw new Error('sendBeacon 失败.')
       } catch (error) {
         console.warn(error, '[track 降级使用 fetch]')
+        // no-cors 模式下浏览器只放行 CORS-safelisted 的 Content-Type，application/json
+        // 会被剥掉（实际按 text/plain 发送），因此不声明该 header，避免误导后端。
         await fetch(config.url, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
           keepalive: true,
           mode: 'no-cors',
           body
@@ -80,8 +82,10 @@ export function defineTracker(options: Options) {
       queue.enqueue(data)
     }
 
+    // 返回序列化后的字节数，而非 UTF-16 字符数——sendBeacon/keepalive 的
+    // 大小上限按字节计，字符数在中文/emoji 载荷下会低估实际体积
     function computeDataSize(data: object) {
-      return JSON.stringify(config.transform(data)).length
+      return new Blob([JSON.stringify(config.transform(data))]).size
     }
 
     return {

@@ -432,7 +432,9 @@ export class WebUiContextMenu extends LitElement {
 
   private _onDocumentKeydown = (e: KeyboardEvent) => {
     if (!this._isOpen) return
-    if (e.key === 'Escape' && e.target === this) {
+    // 鼠标右键打开的菜单焦点不在菜单内，e.target !== this 时也必须能 Escape 关闭；
+    // 菜单为模态浮层，按 Escape 即关闭，无需限定焦点位置
+    if (e.key === 'Escape') {
       this._closeLastSubmenuOrMenu()
       e.preventDefault()
       return

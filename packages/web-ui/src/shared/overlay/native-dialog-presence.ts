@@ -49,7 +49,14 @@ export const defineNativeDialogPresence = () =>
       isClosing = false
       clearCloseFallback()
       dialog.classList.remove('is-closing')
-      if (!dialog.open) dialog.showModal?.()
+      if (!dialog.open) {
+        try {
+          dialog.showModal?.()
+        } catch {
+          // 顶层已有其他 modal dialog 时 showModal 抛 InvalidStateError；
+          // 记录未打开状态，由 rAF 回调中的 dialog.open 判断中止动画
+        }
+      }
 
       cancelOpenFrame()
       openFrame = requestAnimationFrame(() => {
