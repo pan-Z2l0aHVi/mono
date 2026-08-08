@@ -147,7 +147,7 @@ export class WebUiToast extends LitElement {
     return html`
       <div class="toast wui-glass ${this.type}" role=${role} aria-live=${ariaLive} aria-atomic="true">
         <span class="toast-icon" aria-hidden="true">
-          <web-ui-icon .icon=${icon} size="18"></web-ui-icon>
+          <web-ui-icon .icon=${icon} size="14"></web-ui-icon>
         </span>
         <div class="toast-body">
           ${this.heading ? html`<div class="toast-heading">${this.heading}</div>` : nothing}
@@ -157,7 +157,7 @@ export class WebUiToast extends LitElement {
         ${!this.noCloseButton
           ? html`
               <button class="toast-close-btn wui-glass" aria-label="关闭" @click=${this._onCloseClick}>
-                <web-ui-icon .icon=${heroiconsXMark16Solid} size="10"></web-ui-icon>
+                <web-ui-icon .icon=${heroiconsXMark16Solid} size="16"></web-ui-icon>
               </button>
             `
           : nothing}
