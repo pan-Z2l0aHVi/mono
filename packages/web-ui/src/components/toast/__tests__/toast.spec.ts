@@ -39,17 +39,23 @@ function getToastContainer(position: ToastPosition): HTMLElement | null {
 
 // 等待 toast 完成挂载和动画（批量挂载微任务 + el.show() 的 rAF）
 async function waitForToastMounted(): Promise<void> {
-  await new Promise(resolve => setTimeout(resolve, 100))
+  // flushBatch 是 Promise.resolve().then 排的微任务；show() 在 mountToast 的 rAF 里
+  await Promise.resolve()
+  vi.advanceTimersToNextFrame()
+  await Promise.resolve()
 }
 
 beforeEach(() => {
   document.body.innerHTML = ''
   toast._reset()
+  // 全量 fake 定时器（含 requestAnimationFrame）；duration 与 dismiss fallback 由 advance 精确推进
+  vi.useFakeTimers()
 })
 
 afterEach(() => {
   toast._reset()
   document.body.innerHTML = ''
+  vi.useRealTimers()
 })
 
 describe('WebUiToast 组件', () => {
@@ -169,7 +175,7 @@ describe('WebUiToast 组件', () => {
       el.dismiss('manual')
 
       // 等待 transitionend fallback timeout（400ms）
-      await new Promise(resolve => setTimeout(resolve, 450))
+      vi.advanceTimersByTime(240)
 
       expect(handler).toHaveBeenCalledTimes(1)
       const detail = (handler.mock.calls[0][0] as CustomEvent).detail
@@ -187,11 +193,12 @@ describe('WebUiToast 组件', () => {
       await el.updateComplete
 
       el.dispatchEvent(new PointerEvent('pointerenter', { bubbles: true }))
-      await new Promise(resolve => setTimeout(resolve, 600))
+      // enter 清掉 duration timer，推进远超 duration 也不应关闭
+      vi.advanceTimersByTime(600)
 
       expect(el.visible).toBe(true)
       el.dismiss()
-      await new Promise(resolve => setTimeout(resolve, 50))
+      vi.advanceTimersByTime(240)
       el.remove()
     })
 
@@ -203,10 +210,10 @@ describe('WebUiToast 组件', () => {
       await el.updateComplete
 
       el.dispatchEvent(new PointerEvent('pointerenter', { bubbles: true }))
-      await new Promise(resolve => setTimeout(resolve, 100))
+      vi.advanceTimersByTime(100)
       el.dispatchEvent(new PointerEvent('pointerleave', { bubbles: true }))
-      // 等 duration(200) + dismiss fallback(400)
-      await new Promise(resolve => setTimeout(resolve, 650))
+      // leave 重启 duration(200) + dismiss fallback(240)
+      vi.advanceTimersByTime(440)
 
       expect(el.visible).toBe(false)
       el.remove()
@@ -220,7 +227,8 @@ describe('WebUiToast 组件', () => {
       await el.updateComplete
 
       el.dispatchEvent(touchPointerEvent('pointerenter'))
-      await new Promise(resolve => setTimeout(resolve, 250))
+      // touch 指针不清 timer，duration(200) 后自动关闭 + fallback(240)
+      vi.advanceTimersByTime(440)
 
       expect(el.visible).toBe(false)
       el.remove()
@@ -235,7 +243,8 @@ describe('WebUiToast 组件', () => {
       el.show()
       await el.updateComplete
 
-      await new Promise(resolve => setTimeout(resolve, 650))
+      // duration(200) 触发 dismiss + fallback(240) 完成退场
+      vi.advanceTimersByTime(440)
 
       expect(el.visible).toBe(false)
       el.remove()
@@ -248,11 +257,11 @@ describe('WebUiToast 组件', () => {
       el.show()
       await el.updateComplete
 
-      await new Promise(resolve => setTimeout(resolve, 200))
+      vi.advanceTimersByTime(200)
 
       expect(el.visible).toBe(true)
       el.dismiss()
-      await new Promise(resolve => setTimeout(resolve, 50))
+      vi.advanceTimersByTime(240)
       el.remove()
     })
   })
@@ -315,7 +324,7 @@ describe('toast 命令式 API', () => {
       expect(toast._visibleCount()).toBe(1)
 
       toast.close(id)
-      await new Promise(resolve => setTimeout(resolve, 450))
+      vi.advanceTimersByTime(240)
 
       expect(toast._visibleCount()).toBe(0)
     })
@@ -335,8 +344,8 @@ describe('toast 命令式 API', () => {
       const el = Array.from(getToasts()).find(toastEl => toastEl.toastId === id)
       await el?.updateComplete
 
-      expect(el?.shadowRoot?.querySelector('.toast-heading')?.textContent?.trim()).toBe('新标题')
-      expect(el?.shadowRoot?.querySelector('.toast-message')?.textContent?.trim()).toBe('新消息')
+      expect(el?.heading).toBe('新标题')
+      expect(el?.message).toBe('新消息')
     })
 
     it('未传入 heading 时保留现有标题', async () => {
@@ -365,7 +374,7 @@ describe('toast 命令式 API', () => {
       expect(toast._visibleCount()).toBe(3)
 
       toast.clear()
-      await new Promise(resolve => setTimeout(resolve, 450))
+      vi.advanceTimersByTime(240)
 
       expect(toast._visibleCount()).toBe(0)
     })
@@ -384,7 +393,7 @@ describe('toast 命令式 API', () => {
       document.addEventListener('toast-close', handler)
 
       el.dismiss('manual')
-      await new Promise(resolve => setTimeout(resolve, 450))
+      vi.advanceTimersByTime(240)
 
       const closeEvent = handler.mock.calls.find(c => (c[0] as CustomEvent).detail.id === id)
       expect(closeEvent).toBeTruthy()
@@ -401,7 +410,7 @@ describe('toast 命令式 API', () => {
       document.addEventListener('toast-close', handler)
 
       toast.close(id)
-      await new Promise(resolve => setTimeout(resolve, 450))
+      vi.advanceTimersByTime(240)
 
       const closeEvent = handler.mock.calls.find(c => (c[0] as CustomEvent).detail.id === id)
       expect(closeEvent).toBeTruthy()
@@ -418,7 +427,7 @@ describe('toast 命令式 API', () => {
       document.addEventListener('toast-close', handler)
 
       toast.clear()
-      await new Promise(resolve => setTimeout(resolve, 450))
+      vi.advanceTimersByTime(240)
 
       expect(handler.mock.calls.length).toBeGreaterThan(0)
       expect(handler.mock.calls[0][0]).toBeDefined()
@@ -463,7 +472,7 @@ describe('toast 命令式 API', () => {
       expect(toast._visibleCount()).toBe(10)
 
       toast.clear()
-      await new Promise(resolve => setTimeout(resolve, 450))
+      vi.advanceTimersByTime(240)
       expect(toast._visibleCount()).toBe(0)
     })
   })
