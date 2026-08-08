@@ -75,4 +75,33 @@ describe('WebUiSelect 组件（浏览器）', () => {
     expect(portalHost).toBeTruthy()
     expect(getComputedStyle(portalHost!).display).toBe('contents')
   })
+
+  it('required 且无值时 checkValidity 应为 false，选中后为 true', async () => {
+    const select = document.createElement('web-ui-select')
+    select.required = true
+    select.name = 'fruit'
+    select.innerHTML = '<web-ui-option value="apple">Apple</web-ui-option>'
+    const form = document.createElement('form')
+    form.append(select)
+    document.body.append(form)
+    await select.updateComplete
+
+    expect(form.checkValidity()).toBe(false)
+
+    select.value = 'apple'
+    await select.updateComplete
+    expect(form.checkValidity()).toBe(true)
+  })
+
+  it('disabled 时 required 不阻塞有效性', async () => {
+    const select = document.createElement('web-ui-select')
+    select.required = true
+    select.disabled = true
+    const form = document.createElement('form')
+    form.append(select)
+    document.body.append(form)
+    await select.updateComplete
+
+    expect(form.checkValidity()).toBe(true)
+  })
 })

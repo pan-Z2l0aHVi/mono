@@ -31,12 +31,12 @@ async function waitForMenuClose(el: WebUiContextMenu) {
 
 function getMenu(): HTMLElement | null {
   const fallbackRoot = document.querySelector<HTMLElement>('[data-wui-overlay-root]')?.shadowRoot
-  return fallbackRoot?.querySelector<HTMLElement>('.context-menu') ?? null
+  return fallbackRoot?.querySelector<HTMLElement>('[role="menu"][aria-label="上下文菜单"]') ?? null
 }
 
 function getSubmenu(): HTMLElement | null {
   const fallbackRoot = document.querySelector<HTMLElement>('[data-wui-overlay-root]')?.shadowRoot
-  return fallbackRoot?.querySelector<HTMLElement>('.context-submenu') ?? null
+  return fallbackRoot?.querySelector<HTMLElement>('[role="menu"][aria-label="子菜单"]') ?? null
 }
 
 function getFirstMenuItem(): HTMLElement {

@@ -117,8 +117,8 @@ describe('WebUiTextarea 组件', () => {
 
       const textarea = queryA11y(el, 'textarea') as HTMLTextAreaElement
       const spy = vi.spyOn(textarea, 'focus')
-      const wrapper = el.shadowRoot?.querySelector('.wui-textarea-inner') as HTMLElement
-      wrapper.click()
+      // textarea 的直接父容器即点击区域，用结构关系而非内部 class 定位
+      textarea.parentElement!.click()
 
       expect(spy).not.toHaveBeenCalled()
       cleanupElement(el)
@@ -221,7 +221,7 @@ describe('WebUiTextarea 组件', () => {
       await waitForUpdate(el)
 
       const [events] = spyEvents(el, 'input')
-      const clear = el.shadowRoot?.querySelector('.clear') as HTMLElement
+      const clear = queryA11y(el, '[aria-label="清除"]') as HTMLElement
       clear.click()
 
       expect(events).toHaveLength(1)

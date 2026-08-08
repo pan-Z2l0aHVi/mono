@@ -77,14 +77,6 @@ describe('WebUiOption 组件', () => {
       el.textContent = 'Default label'
       await waitForUpdate(el)
 
-      const slot = el.shadowRoot?.querySelector<HTMLSlotElement>('.content-wrap slot')
-      expect(
-        slot
-          ?.assignedNodes()
-          .map(node => node.textContent)
-          .join('')
-          .trim()
-      ).toBe('Default label')
       expect(el.label).toBe('Default label')
 
       cleanupElement(el)
@@ -94,9 +86,7 @@ describe('WebUiOption 组件', () => {
       const el = createOption({ value: 'a' }, 'Hello World')
       await waitForUpdate(el)
 
-      const content = el.shadowRoot?.querySelector('.content-wrap')
-      expect(content).toBeTruthy()
-      expect(content?.textContent?.trim()).toBe('Hello World')
+      expect(el.shadowRoot?.textContent?.trim()).toBe('Hello World')
 
       cleanupElement(el)
     })
@@ -166,9 +156,8 @@ describe('WebUiOption 组件', () => {
       const el = createOption({ value: 'a' }, 'Hello')
       await waitForUpdate(el)
 
-      const wrap = el.shadowRoot?.querySelector('.content-wrap')
-      expect(wrap).toBeTruthy()
-      expect(wrap?.textContent?.trim()).toBe('Hello')
+      expect(el.label).toBe('Hello')
+      expect(el.shadowRoot?.textContent?.trim()).toContain('Hello')
 
       cleanupElement(el)
     })

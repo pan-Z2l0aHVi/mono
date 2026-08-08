@@ -116,8 +116,8 @@ describe('WebUiInput 组件', () => {
 
       const input = queryA11y(el, 'input') as HTMLInputElement
       const spy = vi.spyOn(input, 'focus')
-      const wrapper = el.shadowRoot?.querySelector('.wui-input-inner') as HTMLElement
-      wrapper.click()
+      // input 的直接父容器即点击区域，用结构关系而非内部 class 定位
+      input.parentElement!.click()
 
       expect(spy).not.toHaveBeenCalled()
       cleanupElement(el)
@@ -220,7 +220,7 @@ describe('WebUiInput 组件', () => {
       await waitForUpdate(el)
 
       const [events] = spyEvents(el, 'input')
-      const clear = el.shadowRoot?.querySelector('.clear') as HTMLElement
+      const clear = queryA11y(el, '[aria-label="清除"]') as HTMLElement
       clear.click()
 
       expect(events).toHaveLength(1)

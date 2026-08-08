@@ -375,8 +375,45 @@ describe('WebUiSelect 组件', () => {
       el.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }))
       await waitForUpdate(el)
 
-      const activeOption = el.querySelector('web-ui-option[active]')
-      expect(activeOption).toBeTruthy()
+      const trigger = queryA11y(el, '[role="combobox"]')
+      expect(trigger?.getAttribute('aria-activedescendant')).toBeTruthy()
+
+      cleanupElement(el)
+    })
+
+    it('ArrowUp 打开后再次按下循环到末尾', async () => {
+      const el = createSelect(OPTIONS_HTML)
+      await waitForUpdate(el)
+
+      el.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true }))
+      await waitForUpdate(el)
+      expect(el.open).toBe(true)
+
+      const trigger = queryA11y(el, '[role="combobox"]')!
+      const activeId = trigger.getAttribute('aria-activedescendant')
+      // 第一次打开定位到初始项（第一个）
+      expect(el.querySelector(`#${activeId}`)?.getAttribute('value')).toBe('apple')
+
+      // 第二次 ArrowUp 向上导航，从首项循环到末尾
+      el.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true }))
+      await waitForUpdate(el)
+      const loopedId = trigger.getAttribute('aria-activedescendant')
+      expect(el.querySelector(`#${loopedId}`)?.getAttribute('value')).toBe('cherry')
+
+      cleanupElement(el)
+    })
+
+    it('打开时 aria-activedescendant 指向激活选项', async () => {
+      const el = createSelect(OPTIONS_HTML)
+      await waitForUpdate(el)
+
+      const trigger = queryA11y(el, '[role="combobox"]')!
+      el.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }))
+      await waitForUpdate(el)
+
+      const activeId = trigger.getAttribute('aria-activedescendant')
+      expect(activeId).toBeTruthy()
+      expect(el.querySelector(`#${activeId}`)?.tagName.toLowerCase()).toBe('web-ui-option')
 
       cleanupElement(el)
     })
@@ -389,8 +426,10 @@ describe('WebUiSelect 组件', () => {
       await waitForUpdate(el)
       const option = el.querySelector<HTMLElement>('web-ui-option')
       option?.dispatchEvent(new PointerEvent('pointerover', { bubbles: true, composed: true }))
+      await waitForUpdate(el)
 
-      expect(option?.hasAttribute('active')).toBe(false)
+      const trigger = queryA11y(el, '[role="combobox"]')
+      expect(trigger?.getAttribute('aria-activedescendant')).toBeFalsy()
 
       cleanupElement(el)
     })
@@ -404,7 +443,8 @@ describe('WebUiSelect 组件', () => {
       const option = el.querySelector<HTMLElement>('web-ui-option')
       option?.dispatchEvent(touchPointerEvent('pointerover'))
 
-      expect(option?.hasAttribute('active')).toBe(true)
+      const trigger = queryA11y(el, '[role="combobox"]')
+      expect(trigger?.getAttribute('aria-activedescendant')).toBeTruthy()
 
       cleanupElement(el)
     })
@@ -527,8 +567,9 @@ describe('WebUiSelect 组件', () => {
       `
       await waitForUpdate(el)
 
-      const label = el.shadowRoot?.querySelector('.label') as HTMLElement | null
-      expect(label).toBeNull()
+      // 自定义 trigger slot 替代默认 label：combobox 不应再渲染 placeholder 文本
+      const trigger = queryA11y(el, '[role="combobox"]')
+      expect(trigger?.textContent?.includes('请选择')).toBe(false)
 
       cleanupElement(el)
     })
@@ -537,9 +578,8 @@ describe('WebUiSelect 组件', () => {
       const el = createSelect(OPTIONS_HTML, { placeholder: '请选择' })
       await waitForUpdate(el)
 
-      const label = el.shadowRoot?.querySelector('.label') as HTMLElement | null
-      expect(label).toBeTruthy()
-      expect(label!.textContent?.trim()).toBe('请选择')
+      const trigger = queryA11y(el, '[role="combobox"]')
+      expect(trigger?.textContent?.trim()).toBe('请选择')
 
       cleanupElement(el)
     })
