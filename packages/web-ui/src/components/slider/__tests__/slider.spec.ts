@@ -215,6 +215,53 @@ describe('WebUiSlider 组件', () => {
 
       cleanupElement(el)
     })
+
+    it('ArrowLeft 和 ArrowDown 按 step 减小', async () => {
+      const el = createSlider()
+      el.value = 50
+      el.step = 5
+      await waitForUpdate(el)
+
+      const slider = queryA11y(el, '[role="slider"]')!
+      slider.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }))
+      expect(el.value).toBe(45)
+
+      slider.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }))
+      expect(el.value).toBe(40)
+
+      cleanupElement(el)
+    })
+
+    it('PageUp 和 PageDown 按 pageStep（step×10）调整并收敛到边界', async () => {
+      const el = createSlider()
+      el.value = 50
+      el.step = 5
+      await waitForUpdate(el)
+
+      const slider = queryA11y(el, '[role="slider"]')!
+      slider.dispatchEvent(new KeyboardEvent('keydown', { key: 'PageUp', bubbles: true }))
+      expect(el.value).toBe(100) // 50 + 50 = 100，clamp 到 max
+
+      el.value = 10
+      await waitForUpdate(el)
+      slider.dispatchEvent(new KeyboardEvent('keydown', { key: 'PageDown', bubbles: true }))
+      expect(el.value).toBe(0) // 10 - 50 < min，clamp 到 min
+
+      cleanupElement(el)
+    })
+
+    it('step 为 0 或负数时回退到 1 作为安全步长', async () => {
+      const el = createSlider()
+      el.value = 50
+      el.step = 0
+      await waitForUpdate(el)
+
+      const slider = queryA11y(el, '[role="slider"]')!
+      slider.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }))
+      expect(el.value).toBe(51)
+
+      cleanupElement(el)
+    })
   })
 
   describe('公开方法', () => {

@@ -131,7 +131,7 @@ export class WebUiAvatar extends LitElement {
           : ''}
         ${this._showFallback && !this._initials
           ? html`<span class="avatar-fallback"
-              ><web-ui-icon .icon=${lucideUser} size=${this._iconSize}></web-ui-icon
+              ><web-ui-icon .icon=${lucideUser} .size=${this._iconSize}></web-ui-icon
             ></span>`
           : ''}
       </div>

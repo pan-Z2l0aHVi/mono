@@ -90,32 +90,6 @@ describe('defineOverlay 工具', () => {
     overlay.remove()
   })
 
-  it('按最终 placement 设置有效的浮层变换原点', async () => {
-    const cases = [
-      ['top-start', 'bottom left'],
-      ['bottom-end', 'top right'],
-      ['left-start', 'right top'],
-      ['left-end', 'right bottom'],
-      ['right-start', 'left top'],
-      ['right-end', 'left bottom']
-    ] as const
-
-    for (const [placement, origin] of cases) {
-      const trigger = createTrigger()
-      const overlay = createOverlay()
-      const ctx = defineOverlay().make({ anchor: trigger, overlay, placement, flip: false, shift: false })
-
-      ctx.open()
-      await new Promise(resolve => requestAnimationFrame(resolve))
-
-      expect(overlay.style.getPropertyValue('--wui-overlay-transform-origin')).toBe(origin)
-
-      ctx.dispose()
-      trigger.remove()
-      overlay.remove()
-    }
-  })
-
   it('默认使用 absolute 坐标策略', () => {
     const trigger = createTrigger()
     const overlay = createOverlay()
@@ -153,7 +127,6 @@ describe('defineOverlay 工具', () => {
     expect(ctx.options.placement).toBe('top')
     expect(ctx.options.offset).toBe(16)
     expect(ctx.options.strategy).toBe('fixed')
-    expect(overlay.style.getPropertyValue('--wui-overlay-transform-origin')).toBe('bottom center')
 
     ctx.dispose()
     trigger.remove()

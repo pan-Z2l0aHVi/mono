@@ -145,15 +145,6 @@ Build a URL string from structured components.
 | `opts`    | `Partial<URLObject>` | -       | URL components: `base`, `query`, `hash` |
 | `omitNil` | `boolean`            | `true`  | Remove nil values from query            |
 
-### `toPrecision(val, precision)`
-
-Round a number to specified decimal precision. Supports negative precision for rounding to tens, hundreds, etc.
-
-| Parameter   | Type     | Default | Description                                    |
-| ----------- | -------- | ------- | ---------------------------------------------- |
-| `val`       | `number` | -       | Number to round                                |
-| `precision` | `number` | -       | Decimal places (negative for integer rounding) |
-
 ### `clamp(val, min, max)`
 
 Clamp a number to a range. Automatically swaps min/max if inverted.

@@ -3,13 +3,13 @@ import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
 import { defineLocal } from '@/storage'
 
-import { capturedRequests, clearCapturedRequests, worker } from '../../../test-helper'
+import { capturedRequests, clearCapturedRequests, settleCapturedRequests, worker } from '../../../test-helper'
 import { defineTracker } from '../core'
 
 vi.useFakeTimers()
 
 /** 临时切换到真实计时器，等待 MSW 捕获指定数量的请求后再切回。 */
-async function waitForMsw(minCount = 1, timeout = 1000) {
+async function waitForMsw(minCount = 1, timeout = 5000) {
   vi.useRealTimers()
   const start = Date.now()
   while (capturedRequests.length < minCount && Date.now() - start < timeout) {
@@ -18,10 +18,23 @@ async function waitForMsw(minCount = 1, timeout = 1000) {
   vi.useFakeTimers()
 }
 
+/** 切换到真实计时器，轮询 storage 直到满足条件或超时，用于断言发送确认后 storage 收敛。 */
+async function waitForStorage(predicate: () => boolean, timeout = 5000) {
+  vi.useRealTimers()
+  const start = Date.now()
+  while (!predicate() && Date.now() - start < timeout) {
+    await new Promise(resolve => setTimeout(resolve, 10))
+  }
+  vi.useFakeTimers()
+}
+
 describe('上报 core 测试用例', () => {
   let sendBeaconSpy: ReturnType<typeof vi.fn<Navigator['sendBeacon']>>
 
-  beforeEach(() => {
+  beforeEach(async () => {
+    // 上一用例的在途请求可能在本用例断言窗口才落地，排空后再清空。
+    await settleCapturedRequests()
+
     vi.clearAllMocks()
     clearCapturedRequests()
     localStorage.clear()
@@ -41,6 +54,9 @@ describe('上报 core 测试用例', () => {
     await waitForMsw()
 
     expect(sendBeaconSpy).toHaveBeenCalled()
+    const payload = sendBeaconSpy.mock.calls[0][1]
+    expect(typeof payload).toBe('string')
+    expect(payload).toContain('page view')
     expect(capturedRequests.length).toBeGreaterThanOrEqual(1)
   })
 
@@ -85,20 +101,37 @@ describe('上报 core 测试用例', () => {
       expect(stored).toEqual([{ event: 'click' }])
     })
 
-    it('恢复的数据处理后应从 storage 清除', async () => {
+    it('恢复的数据发送完成后从 storage 清除', async () => {
       storage.set('queue:https://example.com', [{ event: 'a' }, { event: 'b' }])
 
       const tracker = defineTracker({ url: 'https://example.com' }).make()
-      // 恢复的数据同步处理完后清除
-      // 追踪一个新数据来验证状态
       tracker.pause()
       tracker.track({ event: 'c' })
 
-      const stored = storage.get('queue:https://example.com')
-      expect(stored).toEqual([{ event: 'c' }])
+      // a、b 发送并 confirm 后才会从 storage 移除；轮询 storage 直到只剩 c，
+      // 避免在请求捕获与 confirm 之间的窗口过早断言（CI 负载下偶发）。
+      await waitForStorage(() => {
+        const stored = storage.get('queue:https://example.com')
+        return JSON.stringify(stored) === JSON.stringify([{ event: 'c' }])
+      })
+      expect(storage.get('queue:https://example.com')).toEqual([{ event: 'c' }])
+    })
 
-      // 两条恢复记录都会单独降级为 fetch；全部完成后再进入下一用例。
-      await waitForMsw(2)
+    it('恢复的数据发送失败后保留在 storage，供下次启动重试', async () => {
+      storage.set('queue:https://example.com', [{ event: 'sticky' }])
+      sendBeaconSpy.mockImplementation(() => {
+        throw new Error('sendBeacon failed')
+      })
+      worker.use(http.post('*', () => HttpResponse.error()))
+
+      const tracker = defineTracker({ url: 'https://example.com' }).make()
+      // 等待 fetch 降级路径失败（reject）完成后，断言 storage 未被清除。
+      vi.useRealTimers()
+      await new Promise(resolve => setTimeout(resolve, 200))
+      vi.useFakeTimers()
+
+      const stored = storage.get('queue:https://example.com')
+      expect(stored).toEqual([{ event: 'sticky' }])
     })
 
     it('disablePersistence 时不写 storage', () => {
@@ -114,7 +147,8 @@ describe('上报 core 测试用例', () => {
       storage.set('queue:https://example.com', [{ event: 'restored' }])
 
       const tracker = defineTracker({ url: 'https://example.com' }).make()
-      await waitForMsw()
+      // 等恢复记录发送并 confirm（storage 清空）后，再断言请求与清空结果。
+      await waitForStorage(() => storage.get('queue:https://example.com') === null)
 
       expect(capturedRequests.some(request => JSON.stringify(request.body).includes('restored'))).toBe(true)
       expect(storage.get('queue:https://example.com')).toBeNull()
@@ -123,10 +157,9 @@ describe('上报 core 测试用例', () => {
     it('发送完成后 storage 应清空', async () => {
       const tracker = defineTracker({ url: 'https://example.com' }).make()
       tracker.track({ event: 'click' })
-      await waitForMsw()
 
-      const stored = storage.get('queue:https://example.com')
-      expect(stored).toBeNull()
+      await waitForStorage(() => storage.get('queue:https://example.com') === null)
+      expect(storage.get('queue:https://example.com')).toBeNull()
     })
   })
 

@@ -52,6 +52,45 @@ describe('WebUiButton 组件', () => {
     })
   })
 
+  describe('原生按钮契约', () => {
+    it('type 默认 button，非法值规范化为 button 并映射到内部按钮', async () => {
+      const el = createButton('OK')
+      await waitForUpdate(el)
+      const inner = el.shadowRoot?.querySelector('button')
+      expect(el.type).toBe('button')
+      expect(inner?.type).toBe('button')
+
+      ;(el as any).type = 'invalid'
+      await waitForUpdate(el)
+      expect(el.type).toBe('button')
+      expect(el.getAttribute('type')).toBe('button')
+      expect(inner?.type).toBe('button')
+
+      el.type = 'submit'
+      await waitForUpdate(el)
+      expect(inner?.type).toBe('submit')
+      cleanupElement(el)
+    })
+
+    it('将文档化的可访问名称映射到内部按钮', async () => {
+      const el = createButton()
+      el.setAttribute('aria-label', 'Close')
+      await waitForUpdate(el)
+      const inner = el.shadowRoot?.querySelector('button')
+      expect(inner?.getAttribute('aria-label')).toBe('Close')
+      cleanupElement(el)
+    })
+
+    it('将 data-* 保留在组件宿主而不复制到内部按钮', async () => {
+      const el = createButton()
+      el.setAttribute('data-testid', 'save')
+      await waitForUpdate(el)
+      expect(el.getAttribute('data-testid')).toBe('save')
+      expect(el.shadowRoot?.querySelector('button')?.hasAttribute('data-testid')).toBe(false)
+      cleanupElement(el)
+    })
+  })
+
   describe('属性: disabled', () => {
     it('属性反射到 host，初始值为 false', async () => {
       const el = createButton()

@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vite-plus/test'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
 import '..'
 import { cleanupElement, queryA11y, waitForUpdate } from '@/shared/test-utils'
@@ -23,6 +23,17 @@ function createTooltip(attrs?: Record<string, string>, slotContent = ''): WebUiT
   document.body.appendChild(el)
   return el
 }
+
+beforeEach(() => {
+  document.body.innerHTML = ''
+  // 全量 fake 定时器（含 requestAnimationFrame）；show/hide 延迟与挂载 rAF 由 advance 精确推进
+  vi.useFakeTimers()
+})
+
+afterEach(() => {
+  document.body.innerHTML = ''
+  vi.useRealTimers()
+})
 
 describe('WebUiTooltip 组件', () => {
   describe('属性：placement', () => {
@@ -61,7 +72,7 @@ describe('WebUiTooltip 组件', () => {
 
       // 先打开 tooltip 以显示面板（保留当前行为：由 pointerenter 触发）
       el.dispatchEvent(new PointerEvent('pointerenter'))
-      await new Promise(r => setTimeout(r, 250))
+      vi.advanceTimersByTime(200)
       await waitForUpdate(el)
 
       const panel = queryA11y(el, '[role="tooltip"]')
@@ -75,7 +86,8 @@ describe('WebUiTooltip 组件', () => {
       el.portal = true
       el.open = true
       await waitForUpdate(el)
-      await new Promise(resolve => requestAnimationFrame(resolve))
+      vi.advanceTimersToNextFrame()
+      await waitForUpdate(el)
 
       el.content = '新文本'
       await waitForUpdate(el)
@@ -104,7 +116,7 @@ describe('WebUiTooltip 组件', () => {
       await waitForUpdate(el)
 
       el.dispatchEvent(new PointerEvent('pointerenter'))
-      await new Promise(r => setTimeout(r, 250))
+      vi.advanceTimersByTime(200)
       await waitForUpdate(el)
       expect(el.isOpen).toBe(false)
 
@@ -113,7 +125,7 @@ describe('WebUiTooltip 组件', () => {
   })
 
   describe('属性：open', () => {
-    it('open=true 显示本地面板并触发 open-change', async () => {
+    it('open=true 显示本地面板且不触发 open-change', async () => {
       const el = createTooltip({ content: '提示' })
       const handler = vi.fn<(event: Event) => void>()
       el.addEventListener('open-change', handler)
@@ -124,13 +136,12 @@ describe('WebUiTooltip 组件', () => {
       expect(el.hasAttribute('open')).toBe(true)
       expect(el.isOpen).toBe(true)
       expect(queryA11y(el, '[role="tooltip"]')?.hasAttribute('hidden')).toBe(false)
-      expect(handler).toHaveBeenCalledOnce()
-      expect((handler.mock.calls[0][0] as CustomEvent<{ open: boolean }>).detail).toEqual({ open: true })
+      expect(handler).not.toHaveBeenCalled()
 
       cleanupElement(el)
     })
 
-    it('open=false 隐藏面板并触发 open-change', async () => {
+    it('open=false 隐藏面板且不触发 open-change', async () => {
       const el = createTooltip({ content: '提示' })
       el.open = true
       await waitForUpdate(el)
@@ -141,8 +152,7 @@ describe('WebUiTooltip 组件', () => {
       await waitForUpdate(el)
 
       expect(el.isOpen).toBe(false)
-      expect(handler).toHaveBeenCalledOnce()
-      expect((handler.mock.calls[0][0] as CustomEvent<{ open: boolean }>).detail).toEqual({ open: false })
+      expect(handler).not.toHaveBeenCalled()
 
       cleanupElement(el)
     })
@@ -216,7 +226,8 @@ describe('WebUiTooltip 组件', () => {
       await waitForUpdate(el)
       el.offset = 12
       await waitForUpdate(el)
-      await new Promise(resolve => requestAnimationFrame(resolve))
+      vi.advanceTimersToNextFrame()
+      await waitForUpdate(el)
 
       expect(queryA11y(el, '[role="tooltip"]')?.hasAttribute('hidden')).toBe(false)
       cleanupElement(el)
@@ -230,12 +241,12 @@ describe('WebUiTooltip 组件', () => {
       await Promise.all([waitForUpdate(first), waitForUpdate(second)])
 
       first.dispatchEvent(new PointerEvent('pointerenter'))
-      await new Promise(resolve => setTimeout(resolve, 30))
+      vi.advanceTimersByTime(10)
       await waitForUpdate(first)
       expect(first.isOpen).toBe(true)
 
       second.dispatchEvent(new PointerEvent('pointerenter'))
-      await new Promise(resolve => setTimeout(resolve))
+      vi.advanceTimersByTime(0)
       await waitForUpdate(second)
       expect(second.isOpen).toBe(true)
 
@@ -248,7 +259,7 @@ describe('WebUiTooltip 组件', () => {
       await waitForUpdate(el)
 
       el.dispatchEvent(new PointerEvent('pointerenter'))
-      await new Promise(r => setTimeout(r, 250))
+      vi.advanceTimersByTime(200)
       await waitForUpdate(el)
 
       expect(el.isOpen).toBe(true)
@@ -263,13 +274,13 @@ describe('WebUiTooltip 组件', () => {
       await waitForUpdate(el)
 
       el.dispatchEvent(new PointerEvent('pointerenter'))
-      await new Promise(r => setTimeout(r, 250))
+      vi.advanceTimersByTime(200)
       await waitForUpdate(el)
 
       expect(el.isOpen).toBe(true)
 
       el.dispatchEvent(new PointerEvent('pointerleave'))
-      await new Promise(r => setTimeout(r, 150))
+      vi.advanceTimersByTime(100)
       await waitForUpdate(el)
 
       expect(el.isOpen).toBe(false)
@@ -282,7 +293,7 @@ describe('WebUiTooltip 组件', () => {
       await waitForUpdate(el)
 
       el.dispatchEvent(touchPointerEvent('pointerenter'))
-      await new Promise(r => setTimeout(r, 250))
+      vi.advanceTimersByTime(200)
       await waitForUpdate(el)
 
       expect(el.isOpen).toBe(false)
@@ -329,7 +340,7 @@ describe('WebUiTooltip 组件', () => {
       el.addEventListener('open-change', handler)
 
       el.dispatchEvent(new PointerEvent('pointerenter'))
-      await new Promise(r => setTimeout(r, 250))
+      vi.advanceTimersByTime(200)
       await waitForUpdate(el)
 
       expect(handler).toHaveBeenCalledTimes(1)
@@ -343,14 +354,14 @@ describe('WebUiTooltip 组件', () => {
       await waitForUpdate(el)
 
       el.dispatchEvent(new PointerEvent('pointerenter'))
-      await new Promise(r => setTimeout(r, 250))
+      vi.advanceTimersByTime(200)
       await waitForUpdate(el)
 
       const handler = vi.fn<(e: Event) => void>()
       el.addEventListener('open-change', handler)
 
       el.dispatchEvent(new PointerEvent('pointerleave'))
-      await new Promise(r => setTimeout(r, 150))
+      vi.advanceTimersByTime(100)
       await waitForUpdate(el)
 
       expect(handler).toHaveBeenCalledTimes(1)

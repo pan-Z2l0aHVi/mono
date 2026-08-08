@@ -1,6 +1,22 @@
-import { describe, expect, it } from 'vite-plus/test'
+import { http, HttpResponse } from 'msw'
+import { describe, expect, it, vi } from 'vite-plus/test'
 
 import { defineCapturedRequests, defineMsw } from '..'
+
+// test-kit 在 Node 环境跑，真实 setupWorker 会抛
+// "Failed to execute setupWorker in a non-browser environment"，
+// 因此桩掉 msw/browser，仅验证 defineMsw 的生命周期委托。
+vi.mock('msw/browser', () => ({
+  setupWorker: vi.fn<(...handlers: unknown[]) => object>(() => ({
+    start: vi.fn<(options?: { quiet: boolean }) => Promise<void>>().mockResolvedValue(undefined),
+    stop: vi.fn<() => void>(),
+    resetHandlers: vi.fn<() => void>()
+  }))
+}))
+
+import { setupWorker } from 'msw/browser'
+
+const mockedSetupWorker = vi.mocked(setupWorker)
 
 describe('test-kit 插件测试', () => {
   describe('defineCapturedRequests', () => {
@@ -65,11 +81,36 @@ describe('test-kit 插件测试', () => {
       expect(typeof plugin.make).toBe('function')
     })
 
-    it('应当支持插件组合', () => {
-      const combined = defineMsw([]).use(defineCapturedRequests())
+    it('make() 应创建 worker 并转发 handlers', () => {
+      const handlers = [http.post('*', () => HttpResponse.json({}))]
+      const ctx = defineMsw(handlers).make()
 
-      expect(combined).toBeDefined()
-      expect(typeof combined.make).toBe('function')
+      expect(mockedSetupWorker).toHaveBeenCalledWith(...handlers)
+      expect(ctx.worker).toBeDefined()
+    })
+
+    it('startMsw/stopMsw/resetMsw 应委托到 worker', async () => {
+      const ctx = defineMsw([]).make()
+
+      await ctx.startMsw()
+      expect(ctx.worker.start).toHaveBeenCalledWith({ quiet: true })
+
+      ctx.stopMsw()
+      expect(ctx.worker.stop).toHaveBeenCalled()
+
+      ctx.resetMsw()
+      expect(ctx.worker.resetHandlers).toHaveBeenCalled()
+    })
+
+    it('应当支持插件组合并同时暴露 worker 与 capturedRequests', () => {
+      const ctx = defineMsw([]).use(defineCapturedRequests()).make()
+
+      expect(ctx.worker).toBeDefined()
+      expect(Array.isArray(ctx.capturedRequests)).toBe(true)
+
+      ctx.capturedRequests.push({ url: '/x', body: {}, method: 'POST', timestamp: 0 })
+      ctx.clearCapturedRequests()
+      expect(ctx.capturedRequests).toHaveLength(0)
     })
   })
 })

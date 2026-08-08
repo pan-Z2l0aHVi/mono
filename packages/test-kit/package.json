@@ -38,7 +38,7 @@
   "peerDependencies": {
     "msw": "catalog:"
   },
-  "browserslist": [
-    "defaults"
-  ]
+  "engines": {
+    "node": ">=20.11.0"
+  }
 }

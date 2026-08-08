@@ -33,10 +33,14 @@ const clickTrigger = (el: WebUiPopover) => {
 
 beforeEach(() => {
   document.body.innerHTML = ''
+  // 全量 fake 定时器（含 requestAnimationFrame）；组件内部 rAF 与 setTimeout
+  // 均由 advanceTimersToNextFrame / advanceTimersByTime 精确推进
+  vi.useFakeTimers()
 })
 
 afterEach(() => {
   document.body.innerHTML = ''
+  vi.useRealTimers()
 })
 
 describe('WebUiPopover 组件', () => {
@@ -84,7 +88,8 @@ describe('WebUiPopover 组件', () => {
       const el = createPopover('Btn', 'Content')
       el.open = true
       await el.updateComplete
-      await new Promise(resolve => requestAnimationFrame(resolve))
+      vi.advanceTimersToNextFrame()
+      await waitForUpdate(el)
 
       expect(el.isOpen).toBe(true)
       const panel = queryA11y(el, '[role="dialog"]')
@@ -97,7 +102,8 @@ describe('WebUiPopover 组件', () => {
       const el = createPopover('Btn', 'Content')
       el.open = true
       await el.updateComplete
-      await new Promise(resolve => requestAnimationFrame(resolve))
+      vi.advanceTimersToNextFrame()
+      await waitForUpdate(el)
       expect(el.isOpen).toBe(true)
 
       el.open = false
@@ -232,7 +238,8 @@ describe('WebUiPopover 组件', () => {
       el.placement = 'top'
       el.offset = 16
       await waitForUpdate(el)
-      await new Promise(resolve => requestAnimationFrame(resolve))
+      vi.advanceTimersToNextFrame()
+      await waitForUpdate(el)
 
       expect(queryA11y(el, '[role="dialog"]')?.hasAttribute('hidden')).toBe(false)
       cleanupElement(el)
@@ -264,7 +271,8 @@ describe('WebUiPopover 组件', () => {
 
       clickTrigger(el)
       await el.updateComplete
-      await new Promise(resolve => requestAnimationFrame(resolve))
+      vi.advanceTimersToNextFrame()
+      await waitForUpdate(el)
       expect(el.isOpen).toBe(true)
 
       cleanupElement(el)
@@ -276,7 +284,8 @@ describe('WebUiPopover 组件', () => {
 
       clickTrigger(el)
       await el.updateComplete
-      await new Promise(resolve => requestAnimationFrame(resolve))
+      vi.advanceTimersToNextFrame()
+      await waitForUpdate(el)
       expect(el.isOpen).toBe(true)
 
       clickTrigger(el)
@@ -292,7 +301,8 @@ describe('WebUiPopover 组件', () => {
 
       el.open = true
       await el.updateComplete
-      await new Promise(resolve => requestAnimationFrame(resolve))
+      vi.advanceTimersToNextFrame()
+      await waitForUpdate(el)
       expect(el.isOpen).toBe(true)
 
       document.body.click()
@@ -308,7 +318,8 @@ describe('WebUiPopover 组件', () => {
 
       el.open = true
       await el.updateComplete
-      await new Promise(resolve => requestAnimationFrame(resolve))
+      vi.advanceTimersToNextFrame()
+      await waitForUpdate(el)
       expect(el.isOpen).toBe(true)
 
       document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
@@ -324,7 +335,8 @@ describe('WebUiPopover 组件', () => {
 
       el.open = true
       await el.updateComplete
-      await new Promise(resolve => requestAnimationFrame(resolve))
+      vi.advanceTimersToNextFrame()
+      await waitForUpdate(el)
       expect(el.isOpen).toBe(true)
 
       const panel = queryA11y(el, '[role="dialog"]')
@@ -342,7 +354,7 @@ describe('WebUiPopover 组件', () => {
       await waitForUpdate(el)
 
       el.dispatchEvent(new PointerEvent('pointerenter'))
-      await new Promise(r => setTimeout(r, 150))
+      vi.advanceTimersByTime(100)
       await waitForUpdate(el)
       expect(el.isOpen).toBe(true)
 
@@ -354,12 +366,12 @@ describe('WebUiPopover 组件', () => {
       await waitForUpdate(el)
 
       el.dispatchEvent(new PointerEvent('pointerenter'))
-      await new Promise(r => setTimeout(r, 150))
+      vi.advanceTimersByTime(100)
       await waitForUpdate(el)
       expect(el.isOpen).toBe(true)
 
       el.dispatchEvent(new PointerEvent('pointerleave'))
-      await new Promise(r => setTimeout(r, 150))
+      vi.advanceTimersByTime(100)
       await waitForUpdate(el)
       expect(el.isOpen).toBe(false)
 
@@ -371,7 +383,7 @@ describe('WebUiPopover 组件', () => {
       await waitForUpdate(el)
 
       el.dispatchEvent(touchPointerEvent('pointerenter'))
-      await new Promise(r => setTimeout(r, 150))
+      vi.advanceTimersByTime(100)
       await waitForUpdate(el)
 
       expect(el.isOpen).toBe(false)
@@ -384,7 +396,7 @@ describe('WebUiPopover 组件', () => {
       await waitForUpdate(el)
 
       el.dispatchEvent(new PointerEvent('pointerenter'))
-      await new Promise(r => setTimeout(r, 150))
+      vi.advanceTimersByTime(100)
       await waitForUpdate(el)
       expect(el.isOpen).toBe(true)
 
@@ -400,7 +412,7 @@ describe('WebUiPopover 组件', () => {
       await waitForUpdate(el)
 
       el.dispatchEvent(new PointerEvent('pointerenter'))
-      await new Promise(r => setTimeout(r, 150))
+      vi.advanceTimersByTime(100)
       await waitForUpdate(el)
       expect(el.isOpen).toBe(false)
 
@@ -415,7 +427,8 @@ describe('WebUiPopover 组件', () => {
 
       clickTrigger(el)
       await el.updateComplete
-      await new Promise(resolve => requestAnimationFrame(resolve))
+      vi.advanceTimersToNextFrame()
+      await waitForUpdate(el)
       expect(el.isOpen).toBe(true)
 
       cleanupElement(el)
@@ -427,7 +440,8 @@ describe('WebUiPopover 组件', () => {
 
       el.open = true
       await el.updateComplete
-      await new Promise(resolve => requestAnimationFrame(resolve))
+      vi.advanceTimersToNextFrame()
+      await waitForUpdate(el)
       expect(el.isOpen).toBe(true)
 
       document.body.click()
@@ -443,7 +457,8 @@ describe('WebUiPopover 组件', () => {
 
       el.open = true
       await el.updateComplete
-      await new Promise(resolve => requestAnimationFrame(resolve))
+      vi.advanceTimersToNextFrame()
+      await waitForUpdate(el)
       expect(el.isOpen).toBe(true)
 
       document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
@@ -459,7 +474,8 @@ describe('WebUiPopover 组件', () => {
 
       el.show()
       await el.updateComplete
-      await new Promise(resolve => requestAnimationFrame(resolve))
+      vi.advanceTimersToNextFrame()
+      await waitForUpdate(el)
       expect(el.isOpen).toBe(true)
 
       el.close()
@@ -468,7 +484,8 @@ describe('WebUiPopover 组件', () => {
 
       el.toggle()
       await el.updateComplete
-      await new Promise(resolve => requestAnimationFrame(resolve))
+      vi.advanceTimersToNextFrame()
+      await waitForUpdate(el)
       expect(el.isOpen).toBe(true)
 
       cleanupElement(el)
@@ -476,7 +493,7 @@ describe('WebUiPopover 组件', () => {
   })
 
   describe('事件：open-change', () => {
-    it('打开时触发', async () => {
+    it('程序打开不触发', async () => {
       const el = createPopover('Btn', 'Content')
       await waitForUpdate(el)
 
@@ -486,17 +503,17 @@ describe('WebUiPopover 组件', () => {
       el.open = true
       await waitForUpdate(el)
 
-      expect(handler).toHaveBeenCalledTimes(1)
-      expect((handler.mock.calls[0][0] as CustomEvent).detail.open).toBe(true)
+      expect(handler).not.toHaveBeenCalled()
 
       cleanupElement(el)
     })
 
-    it('关闭时触发', async () => {
+    it('程序关闭不触发', async () => {
       const el = createPopover('Btn', 'Content')
       el.open = true
       await el.updateComplete
-      await new Promise(resolve => requestAnimationFrame(resolve))
+      vi.advanceTimersToNextFrame()
+      await waitForUpdate(el)
 
       const handler = vi.fn<(e: Event) => void>()
       el.addEventListener('open-change', handler)
@@ -504,13 +521,12 @@ describe('WebUiPopover 组件', () => {
       el.open = false
       await waitForUpdate(el)
 
-      expect(handler).toHaveBeenCalledTimes(1)
-      expect((handler.mock.calls[0][0] as CustomEvent).detail.open).toBe(false)
+      expect(handler).not.toHaveBeenCalled()
 
       cleanupElement(el)
     })
 
-    it('通过 show() 触发', async () => {
+    it('通过 show() 不触发', async () => {
       const el = createPopover('Btn', 'Content')
       await waitForUpdate(el)
 
@@ -520,17 +536,17 @@ describe('WebUiPopover 组件', () => {
       el.show()
       await waitForUpdate(el)
 
-      expect(handler).toHaveBeenCalledTimes(1)
-      expect((handler.mock.calls[0][0] as CustomEvent).detail.open).toBe(true)
+      expect(handler).not.toHaveBeenCalled()
 
       cleanupElement(el)
     })
 
-    it('通过 close() 触发', async () => {
+    it('通过 close() 不触发', async () => {
       const el = createPopover('Btn', 'Content')
       el.show()
       await el.updateComplete
-      await new Promise(resolve => requestAnimationFrame(resolve))
+      vi.advanceTimersToNextFrame()
+      await waitForUpdate(el)
 
       const handler = vi.fn<(e: Event) => void>()
       el.addEventListener('open-change', handler)
@@ -538,8 +554,7 @@ describe('WebUiPopover 组件', () => {
       el.close()
       await waitForUpdate(el)
 
-      expect(handler).toHaveBeenCalledTimes(1)
-      expect((handler.mock.calls[0][0] as CustomEvent).detail.open).toBe(false)
+      expect(handler).not.toHaveBeenCalled()
 
       cleanupElement(el)
     })
@@ -553,13 +568,31 @@ describe('WebUiPopover 组件', () => {
 
       el.open = true
       await waitForUpdate(el)
-      expect(handler).toHaveBeenCalledTimes(1)
+      expect(handler).not.toHaveBeenCalled()
 
       handler.mockClear()
       el.open = true
       await waitForUpdate(el)
       expect(handler).not.toHaveBeenCalled()
 
+      cleanupElement(el)
+    })
+
+    it('hover 重入不让后续命令式关闭派发残留事件', async () => {
+      vi.useFakeTimers()
+      const el = createPopover('Btn', 'Content', { trigger: 'hover' })
+      el.show()
+      await waitForUpdate(el)
+
+      const handler = vi.fn<(e: Event) => void>()
+      el.addEventListener('open-change', handler)
+      el.dispatchEvent(new PointerEvent('pointerenter'))
+      await vi.advanceTimersByTimeAsync(100)
+      el.close()
+      await waitForUpdate(el)
+
+      expect(handler).not.toHaveBeenCalled()
+      vi.useRealTimers()
       cleanupElement(el)
     })
   })
@@ -571,7 +604,8 @@ describe('WebUiPopover 组件', () => {
 
       el.show()
       await el.updateComplete
-      await new Promise(resolve => requestAnimationFrame(resolve))
+      vi.advanceTimersToNextFrame()
+      await waitForUpdate(el)
       expect(el.isOpen).toBe(true)
 
       cleanupElement(el)
@@ -583,7 +617,8 @@ describe('WebUiPopover 组件', () => {
 
       el.show()
       await el.updateComplete
-      await new Promise(resolve => requestAnimationFrame(resolve))
+      vi.advanceTimersToNextFrame()
+      await waitForUpdate(el)
       el.close()
       await waitForUpdate(el)
       expect(el.isOpen).toBe(false)
@@ -597,7 +632,8 @@ describe('WebUiPopover 组件', () => {
 
       el.toggle()
       await el.updateComplete
-      await new Promise(resolve => requestAnimationFrame(resolve))
+      vi.advanceTimersToNextFrame()
+      await waitForUpdate(el)
       expect(el.isOpen).toBe(true)
 
       el.toggle()
@@ -614,7 +650,8 @@ describe('WebUiPopover 组件', () => {
       expect(el.isOpen).toBe(false)
       el.show()
       await el.updateComplete
-      await new Promise(resolve => requestAnimationFrame(resolve))
+      vi.advanceTimersToNextFrame()
+      await waitForUpdate(el)
       expect(el.isOpen).toBe(true)
 
       cleanupElement(el)
@@ -641,7 +678,8 @@ describe('WebUiPopover 组件', () => {
 
       el.open = true
       await el.updateComplete
-      await new Promise(resolve => requestAnimationFrame(resolve))
+      vi.advanceTimersToNextFrame()
+      await waitForUpdate(el)
       expect(wrapper?.getAttribute('aria-expanded')).toBe('true')
 
       cleanupElement(el)

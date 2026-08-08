@@ -40,7 +40,7 @@ describe('WebUiDropdownItem 组件', () => {
     const el = createItem({ disabled: '' })
     await waitForUpdate(el)
 
-    const inner = el.shadowRoot?.querySelector('[tabindex="-1"]')
+    const inner = el.shadowRoot?.querySelector('[role="menuitem"][tabindex="-1"]')
     expect(inner).toBeTruthy()
 
     cleanupElement(el)
@@ -74,7 +74,7 @@ describe('WebUiDropdownItem 组件', () => {
     el.focusItem()
     await waitForUpdate(el)
 
-    const inner = el.shadowRoot?.querySelector('.item-inner')
+    const inner = el.shadowRoot?.querySelector('[role="menuitem"]')
     expect(el.shadowRoot?.activeElement).toBe(inner)
 
     cleanupElement(el)
@@ -90,11 +90,13 @@ describe('WebUiDropdownItem 组件', () => {
     cleanupElement(el)
   })
 
-  it('pl 属性设置内边距', async () => {
+  it('pl 属性反射到 host', async () => {
     const el = createItem({ pl: '24px' }, 'Item')
     await waitForUpdate(el)
 
-    expect(el.shadowRoot?.querySelector('.item-inner')?.getAttribute('style')).toContain('24px')
+    // pl 是公开 prop，反射到 host；内边距样式是内部实现，不做样式断言
+    expect(el.pl).toBe('24px')
+    expect(el.getAttribute('pl')).toBe('24px')
 
     cleanupElement(el)
   })

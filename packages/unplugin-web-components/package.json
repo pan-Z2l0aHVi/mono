@@ -52,7 +52,7 @@
       "optional": true
     }
   },
-  "browserslist": [
-    "defaults"
-  ]
+  "engines": {
+    "node": ">=20.11.0"
+  }
 }

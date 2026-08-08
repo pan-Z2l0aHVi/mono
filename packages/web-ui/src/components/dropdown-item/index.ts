@@ -15,7 +15,7 @@ export class WebUiDropdownItem extends LitElement {
   @property({ type: String, reflect: true }) value = ''
   @property({ type: Boolean, reflect: true }) submenu = false
 
-  /** 通过可见元素聚焦，避免 portal 菜单跨 Shadow DOM 时丢失焦点。 */
+  // 通过可见元素聚焦，避免 portal 菜单跨 Shadow DOM 时丢失焦点。
   focusItem() {
     this.shadowRoot?.querySelector<HTMLElement>('.item-inner')?.focus()
   }

@@ -12,6 +12,9 @@ import type { defineTracker } from '../core'
 
 export function defineOfflineRestore() {
   return definePlugin((ctx: PluginMade<typeof defineTracker>) => {
+    // SSR / 非浏览器环境无 navigator 与 window，插件空转，避免 ReferenceError
+    if (typeof window === 'undefined') return {}
+
     // 启动时已离线，立即暂停
     if (!navigator.onLine) {
       ctx.pause()

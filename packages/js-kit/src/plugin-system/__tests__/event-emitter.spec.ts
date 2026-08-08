@@ -38,4 +38,43 @@ describe('EventEmitter 测试', () => {
 
     expect(users).toEqual(['ID: 1, Name: Tom, Role: admin'])
   })
+
+  it('on 返回的清理函数应退订回调', () => {
+    const app = defineEventEmitter<{ click: [string] }>().make()
+    const handler = vi.fn<() => void>()
+
+    const unsubscribe = app.on('click', handler)
+    app.emit('click', 'a')
+    expect(handler).toHaveBeenCalledTimes(1)
+
+    unsubscribe()
+    app.emit('click', 'b')
+    expect(handler).toHaveBeenCalledTimes(1) // 退订后不再触发
+  })
+
+  it('once: true 应只触发一次后自动退订', () => {
+    const app = defineEventEmitter<{ click: [string] }>().make()
+    const handler = vi.fn<() => void>()
+
+    app.on('click', handler, { once: true })
+    app.emit('click', 'a')
+    app.emit('click', 'b')
+    expect(handler).toHaveBeenCalledTimes(1)
+  })
+
+  it('多次退订同一 handler 不应影响其他订阅者', () => {
+    const app = defineEventEmitter<{ click: [string] }>().make()
+    const handlerA = vi.fn<() => void>()
+    const handlerB = vi.fn<() => void>()
+
+    app.on('click', handlerA)
+    app.on('click', handlerB)
+    app.emit('click', 'x')
+    expect(handlerA).toHaveBeenCalledTimes(1)
+    expect(handlerB).toHaveBeenCalledTimes(1)
+
+    app.emit('click', 'y')
+    expect(handlerA).toHaveBeenCalledTimes(2)
+    expect(handlerB).toHaveBeenCalledTimes(2)
+  })
 })

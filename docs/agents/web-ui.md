@@ -31,6 +31,7 @@ Do not duplicate token values in guidance. Every `var(--wui-*, fallback)` used b
 
 - Shared overlay state is defined with `defineXxx(...): Plugin` factories, each returning `definePlugin(...)`; components instantiate it through `defineXxx(...).make(...)` instead of an internal state class.
 - Reuse `shared/overlay/anchored-panel` for a single panel anchored to a trigger. The component retains its trigger, focus, content, and dismissal semantics; the shared module owns local/portal mounting, positioning, and presence.
+- `createOverlayPortal` mounts the portal host with `display: contents` so component styles whose `:host` rules leak onto the host (e.g. `display: inline-block`) cannot create an anonymous line box that inflates the theme overlay container. Keep this style on the host when changing portal mounting.
 - Use `shared/menu-portal` for Dropdown and ContextMenu. Their common menu-tree operations live there, while anchor-based versus coordinate-based placement stays local to each component.
 - Reuse `shared/overlay/native-dialog-presence` for native `<dialog>` modals such as Dialog and Drawer. Keep native top-layer, backdrop, and Escape policy in the owning component.
 - Acquire page-scroll blocking through `createScrollLockLease()`. Release the lease on disconnect; never call a global unlock for a lock the instance did not acquire.
@@ -41,8 +42,10 @@ Do not duplicate token values in guidance. Every `var(--wui-*, fallback)` used b
 - Keep host styling limited to layout, containment, cursor, and inherited token definitions. Rendered visual styling belongs inside the shadow tree, where page resets cannot override it.
 - Do not use global HTML attributes such as `hidden`, `title`, or `role` as component-specific state attributes. Map declarative boolean attributes explicitly. A default-true boolean that must accept a framework-provided `"false"` string uses `booleanWithFalseString` and tests its attribute path.
 - Use `classMap()` for multi-class state, `styleMap()` or safe template values for styles, and Lit's `nothing` for absent conditional content. When a prop and slot express the same content, the slot wins and slot changes must update dependent layout state.
+- Choose attribute versus property bindings by value kind: write static literals as plain attributes (`size="18"`) and dynamic strings as attribute bindings (`attr=${str}`); use `.prop` bindings for dynamic non-string values (numbers, objects, arrays, functions); and `?prop` for dynamic booleans. Write ARIA values as explicit strings (`aria-selected=${String(x)}`). Never use `:`-prefixed bindings: Lit treats `:attr` as a literal attribute name, so the value never reaches the property and the declared type is silently ignored.
 - Use top-level `:host([attribute])` selectors rather than nested host attribute selectors.
 - Prefer native CSS nesting for component descendant states; keep the scroll viewport and padded content as separate elements when padding must scroll with the content.
+- The custom-element host is the public attribute boundary. Keep global attributes and `data-*` on the host; never implement a generic `$attrs`-style copy into shadow DOM. Map native attributes only when the component documents a one-to-one semantic owner, and map ARIA attributes only when they fit that owner's role. Do not accept arbitrary `role`, state ARIA, or cross-shadow IDREF attributes as pass-through.
 
 ## Interaction, lifecycle, and accessibility
 
@@ -51,6 +54,7 @@ Do not duplicate token values in guidance. Every `var(--wui-*, fallback)` used b
 - Prefer Pointer Events to mouse-specific events. Ignore touch pointers for hover-triggered behavior, use capture plus `pointercancel` for drags, and use `click` for external-click dismissal. Keep `contextmenu` and focus events as their own semantics.
 - Interactive components require suitable roles and accessible names; use `:focus-visible`; forward host labels to native shadow controls. Prefer native `<dialog>` for modal dialogs and wait for its visual exit before closing it.
 - Form-associated controls use `ElementInternals`, synchronize form values and disabled state, and emit composed bubbling `input` then `change` only for user-originated changes. Framework-specific value-change event names are not public API.
+- Let browser-native composed events expose primary interactions at the host; do not redispatch duplicates. State CustomEvents use kebab-case, bubble and compose, and are emitted only for user-originated state changes. Add cancellable `before-*` events only for a documented component-specific interception need.
 
 ## Tests
 

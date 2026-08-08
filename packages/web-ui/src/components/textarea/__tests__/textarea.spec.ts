@@ -117,8 +117,8 @@ describe('WebUiTextarea 组件', () => {
 
       const textarea = queryA11y(el, 'textarea') as HTMLTextAreaElement
       const spy = vi.spyOn(textarea, 'focus')
-      const wrapper = el.shadowRoot?.querySelector('.wui-textarea-inner') as HTMLElement
-      wrapper.click()
+      // textarea 的直接父容器即点击区域，用结构关系而非内部 class 定位
+      textarea.parentElement!.click()
 
       expect(spy).not.toHaveBeenCalled()
       cleanupElement(el)
@@ -221,7 +221,7 @@ describe('WebUiTextarea 组件', () => {
       await waitForUpdate(el)
 
       const [events] = spyEvents(el, 'input')
-      const clear = el.shadowRoot?.querySelector('.clear') as HTMLElement
+      const clear = queryA11y(el, '[aria-label="清除"]') as HTMLElement
       clear.click()
 
       expect(events).toHaveLength(1)
@@ -290,6 +290,27 @@ describe('WebUiTextarea 组件', () => {
       await waitForUpdate(el)
 
       expect(textarea.style.height).toBe('')
+      cleanupElement(el)
+    })
+
+    it('max-height 属性反射并应用到 textarea 的 max-height 样式', async () => {
+      const el = createTextarea({ autosize: '', 'max-height': '120' })
+      await waitForUpdate(el)
+
+      expect(el.maxHeight).toBe(120)
+      expect(el.getAttribute('max-height')).toBe('120')
+      const textarea = queryA11y(el, 'textarea') as HTMLTextAreaElement
+      expect(textarea.style.maxHeight).toBe('120px')
+      cleanupElement(el)
+    })
+
+    it('max-height 默认 0 时不设置上限', async () => {
+      const el = createTextarea({ autosize: '' })
+      await waitForUpdate(el)
+
+      expect(el.maxHeight).toBe(0)
+      const textarea = queryA11y(el, 'textarea') as HTMLTextAreaElement
+      expect(textarea.style.maxHeight).toBe('')
       cleanupElement(el)
     })
   })

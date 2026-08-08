@@ -5,7 +5,10 @@
 }
 
 :host {
-  display: inline-block;
+  /* inline-flex 让内层按钮在宿主内完全居中，避免继承的行高撑高宿主、导致图标偏移 */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 :host([full]) {

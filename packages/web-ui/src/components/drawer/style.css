@@ -23,7 +23,9 @@ dialog {
   box-sizing: border-box;
   width: var(--wui-drawer-width, 320px);
   max-width: 90vw;
+  height: 100vh;
   height: 100dvh;
+  max-height: 100vh;
   max-height: 100dvh;
   margin: 0;
   padding: 0;
@@ -168,6 +170,6 @@ dialog[open].is-visible::backdrop {
 .wui-drawer-close {
   position: absolute;
   z-index: 3;
-  top: 8px;
-  right: 8px;
+  top: 16px;
+  right: 16px;
 }

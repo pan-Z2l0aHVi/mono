@@ -12,7 +12,7 @@ export class WebUiSpinner extends LitElement {
   @property({ type: Number, reflect: true }) size = 24
   @property({ type: String }) description = ''
 
-  /** 显示全屏居中 spinner（自动创建并挂载） */
+  // 显示全屏居中 spinner（自动创建并挂载）
   static show(options?: { size?: number; duration?: number; description?: string }): WebUiSpinner {
     const el = document.createElement('web-ui-spinner')
     el._imperative = true
@@ -25,7 +25,7 @@ export class WebUiSpinner extends LitElement {
     return el
   }
 
-  /** 隐藏并销毁全屏 spinner */
+  // 隐藏并销毁全屏 spinner
   static hide() {
     if (WebUiSpinner._current?._timer) {
       clearTimeout(WebUiSpinner._current._timer)

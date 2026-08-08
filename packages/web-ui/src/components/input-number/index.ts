@@ -1,7 +1,6 @@
 import { html, LitElement, unsafeCSS } from 'lit'
 import { customElement, property, state } from 'lit/decorators.js'
 
-// web-ui-icon 必须注册（Rolldown tree-shake 副作用 import，引用类名阻止删除）
 import '@/components/icon'
 import glass from '@/assets/glass.css?inline'
 import { lucideMinus, lucidePlus } from '@/icons'

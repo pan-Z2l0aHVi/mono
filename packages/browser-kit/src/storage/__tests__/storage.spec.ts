@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
-import { defineLocal } from '..'
+import { defineLocal, defineSession } from '..'
 
 describe('storage 测试', () => {
   const NS = 'mfe'
@@ -51,6 +51,18 @@ describe('storage 测试', () => {
       expect(local1).toBe(local2)
     })
 
+    it('defineSession 应使用 sessionStorage 存取并保持单例', () => {
+      const session1 = defineSession('session-ns')
+      const session2 = defineSession('session-ns')
+
+      expect(session1).toBe(session2)
+      session1.set('key', { a: 1 })
+      expect(sessionStorage.getItem('session-ns:key')).toContain('_pkg')
+      expect(session1.get('key')).toEqual({ a: 1 })
+
+      sessionStorage.clear()
+    })
+
     it('不同命名空间的数据不应互干扰', () => {
       const storageA = defineLocal('A')
       const storageB = defineLocal('B')
@@ -98,6 +110,14 @@ describe('storage 测试', () => {
       expect(local.get(key)).toBe('legacy_string')
     })
 
+    it('有效 JSON 但非本库 pkg 格式的值应原样返回字符串', () => {
+      // 外部写入的合法 JSON（无 m/v 标记）按原始字符串返回，这是兼容性契约
+      const key = 'plain_json'
+      localStorage.setItem(`${NS}:${key}`, JSON.stringify({ a: 1 }))
+
+      expect(local.get(key)).toBe('{"a":1}')
+    })
+
     it('当存储满额时应当触发 clearUseless 并重试', () => {
       // 通过原型链 spy 模拟原生存储溢出
       const setItemSpy = vi.spyOn(Object.getPrototypeOf(window.localStorage), 'setItem')
@@ -117,6 +137,43 @@ describe('storage 测试', () => {
       expect(setItemSpy).toHaveBeenCalledTimes(2)
 
       setItemSpy.mockRestore()
+    })
+  })
+
+  describe('blocked storage 降级', () => {
+    afterEach(() => {
+      vi.restoreAllMocks()
+    })
+
+    it('get 在存储被禁时返回默认值而非抛错', () => {
+      vi.spyOn(Object.getPrototypeOf(window.localStorage), 'getItem').mockImplementation(() => {
+        throw new DOMException('The operation is insecure.', 'SecurityError')
+      })
+
+      expect(() => local.get('blocked-key', 'def')).not.toThrow()
+      expect(local.get('blocked-key', 'def')).toBe('def')
+    })
+
+    it('set / remove 在存储被禁时静默跳过而非抛错', () => {
+      vi.spyOn(Object.getPrototypeOf(window.localStorage), 'setItem').mockImplementation(() => {
+        throw new DOMException('The operation is insecure.', 'SecurityError')
+      })
+      vi.spyOn(Object.getPrototypeOf(window.localStorage), 'removeItem').mockImplementation(() => {
+        throw new DOMException('The operation is insecure.', 'SecurityError')
+      })
+
+      expect(() => local.set('blocked-key', 'value')).not.toThrow()
+      expect(() => local.remove('blocked-key')).not.toThrow()
+    })
+
+    it('获取 Storage 对象被禁时也应降级而非抛错', () => {
+      vi.spyOn(window, 'localStorage', 'get').mockImplementation(() => {
+        throw new DOMException('The operation is insecure.', 'SecurityError')
+      })
+
+      const blocked = defineLocal('blocked-object')
+      expect(() => blocked.get('blocked-key', 'def')).not.toThrow()
+      expect(blocked.get('blocked-key', 'def')).toBe('def')
     })
   })
 
@@ -182,6 +239,19 @@ describe('storage 测试', () => {
       window.dispatchEvent(event)
 
       expect(callback).toHaveBeenCalledWith(null, null)
+    })
+
+    it('应忽略不匹配 key 的 storage 事件', () => {
+      const callback = vi.fn<() => void>()
+      local.watch('target', callback)
+
+      const event = new StorageEvent('storage', {
+        key: `${NS}:other`,
+        newValue: JSON.stringify({ m: '_pkg', v: 'x' })
+      })
+      window.dispatchEvent(event)
+
+      expect(callback).not.toHaveBeenCalled()
     })
   })
 })

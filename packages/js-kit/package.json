@@ -48,7 +48,7 @@
     "@greypan/tsconfig": "workspace:*",
     "vite-plugin-dts": "catalog:"
   },
-  "browserslist": [
-    "defaults"
-  ]
+  "engines": {
+    "node": ">=20.11.0"
+  }
 }
