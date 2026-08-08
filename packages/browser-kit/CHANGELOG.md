@@ -1,5 +1,13 @@
 # @greypan/browser-kit
 
+## 1.7.7
+
+### Patch Changes
+
+- 7c06580: try workflows
+- Updated dependencies [7c06580]
+  - @greypan/js-kit@1.6.6
+
 ## 1.7.6
 
 ### Patch Changes
