@@ -9,7 +9,8 @@
 
   /* Safari 16.4 只支持带 -webkit- 前缀的 backdrop-filter（无前缀 18 才支持），
      lightningcss 对 ?inline 导入不做自动前缀，需手动写前缀版本 */
-  backdrop-filter: blur(2px);
+  /* stylelint-disable-next-line property-no-vendor-prefix */
+  -webkit-backdrop-filter: blur(2px);
   backdrop-filter: blur(2px);
   box-shadow:
     inset -1px -1px 0.5px -0.5px var(--wui-color-glass-highlight, rgb(255 255 255 / 0.9)),
