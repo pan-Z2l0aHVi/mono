@@ -197,6 +197,7 @@ Text input with clearable, prefix/suffix slots.
 | `clearable`   | `boolean` | `false`  | Show clear button   |
 | `full`        | `boolean` | `false`  | Full width          |
 | `borderless`  | `boolean` | `false`  | No border           |
+| `aria-label`  | `string`  | —        | Accessible label    |
 
 **Events:** `input`, `change`, `focus`, `blur`
 
@@ -206,23 +207,24 @@ Text input with clearable, prefix/suffix slots.
 
 Multi-line text input with auto-resize.
 
-| Attribute         | Type      | Default | Description                |
-| ----------------- | --------- | ------- | -------------------------- |
-| `value`           | `string`  | `''`    | Textarea value             |
-| `placeholder`     | `string`  | `''`    | Placeholder text           |
-| `rows`            | `number`  | `3`     | Visible rows               |
-| `name`            | `string`  | `''`    | Form field name            |
-| `disabled`        | `boolean` | `false` | Disabled state             |
-| `readonly`        | `boolean` | `false` | Read-only state            |
-| `required`        | `boolean` | `false` | Required validation        |
-| `clearable`       | `boolean` | `false` | Show clear button          |
-| `full`            | `boolean` | `false` | Full width                 |
-| `borderless`      | `boolean` | `false` | No border                  |
-| `autosize`        | `boolean` | `false` | Auto-resize height         |
-| `minlength`       | `number`  | —       | Minimum length validation  |
-| `maxlength`       | `number`  | —       | Maximum length validation  |
-| `aria-label`      | `string`  | —       | Accessible label           |
-| `aria-labelledby` | `string`  | —       | Accessible label reference |
+| Attribute         | Type      | Default | Description                               |
+| ----------------- | --------- | ------- | ----------------------------------------- |
+| `value`           | `string`  | `''`    | Textarea value                            |
+| `placeholder`     | `string`  | `''`    | Placeholder text                          |
+| `rows`            | `number`  | `3`     | Visible rows                              |
+| `name`            | `string`  | `''`    | Form field name                           |
+| `disabled`        | `boolean` | `false` | Disabled state                            |
+| `readonly`        | `boolean` | `false` | Read-only state                           |
+| `required`        | `boolean` | `false` | Required validation                       |
+| `clearable`       | `boolean` | `false` | Show clear button                         |
+| `full`            | `boolean` | `false` | Full width                                |
+| `borderless`      | `boolean` | `false` | No border                                 |
+| `autosize`        | `boolean` | `false` | Auto-resize height                        |
+| `max-height`      | `number`  | `0`     | Autosize max height (px); `0` = unlimited |
+| `minlength`       | `number`  | —       | Minimum length validation                 |
+| `maxlength`       | `number`  | —       | Maximum length validation                 |
+| `aria-label`      | `string`  | —       | Accessible label                          |
+| `aria-labelledby` | `string`  | —       | Accessible label reference                |
 
 **Events:** `input`, `change`, `focus`, `blur`
 
@@ -409,15 +411,16 @@ Radio group managing single selection.
 
 Styled button with variants and loading state.
 
-| Attribute  | Type                                                         | Default    | Description                                       |
-| ---------- | ------------------------------------------------------------ | ---------- | ------------------------------------------------- |
-| `variant`  | `'primary' \| 'secondary' \| 'ghost' \| 'danger' \| 'glass'` | `'glass'`  | Button variant                                    |
-| `type`     | `'button' \| 'submit' \| 'reset'`                            | `'button'` | Inner-button type; invalid values become `button` |
-| `disabled` | `boolean`                                                    | `false`    | Disabled state                                    |
-| `loading`  | `boolean`                                                    | `false`    | Loading spinner                                   |
-| `full`     | `boolean`                                                    | `false`    | Full width                                        |
-| `icon`     | `boolean`                                                    | `false`    | Icon-only mode                                    |
-| `size`     | `string`                                                     | `''`       | Size format `height` or `heightxwidth`            |
+| Attribute    | Type                                                         | Default    | Description                                       |
+| ------------ | ------------------------------------------------------------ | ---------- | ------------------------------------------------- |
+| `variant`    | `'primary' \| 'secondary' \| 'ghost' \| 'danger' \| 'glass'` | `'glass'`  | Button variant                                    |
+| `type`       | `'button' \| 'submit' \| 'reset'`                            | `'button'` | Inner-button type; invalid values become `button` |
+| `disabled`   | `boolean`                                                    | `false`    | Disabled state                                    |
+| `loading`    | `boolean`                                                    | `false`    | Loading spinner                                   |
+| `full`       | `boolean`                                                    | `false`    | Full width                                        |
+| `icon`       | `boolean`                                                    | `false`    | Icon-only mode                                    |
+| `size`       | `string`                                                     | `''`       | Size format `height` or `heightxwidth`            |
+| `aria-label` | `string`                                                     | —          | Accessible label (delegated to inner button)      |
 
 **Events:** standard `click`
 
@@ -620,16 +623,16 @@ Avatar display with image fallback.
 
 Badge / notification count.
 
-| Attribute   | Type                                                           | Default       | Description               |
-| ----------- | -------------------------------------------------------------- | ------------- | ------------------------- |
-| `count`     | `number`                                                       | `0`           | Display count             |
-| `max`       | `number`                                                       | `99`          | Maximum count (shows 99+) |
-| `dot`       | `boolean`                                                      | `false`       | Dot mode (no count)       |
-| `show-zero` | `boolean`                                                      | `false`       | Show when count is 0      |
-| `hidden`    | `boolean`                                                      | `false`       | Hide completely           |
-| `offset-x`  | `number`                                                       | `0`           | Horizontal offset         |
-| `offset-y`  | `number`                                                       | `0`           | Vertical offset           |
-| `placement` | `'top-right' \| 'top-left' \| 'bottom-right' \| 'bottom-left'` | `'top-right'` | Badge position            |
+| Attribute      | Type                                                           | Default       | Description               |
+| -------------- | -------------------------------------------------------------- | ------------- | ------------------------- |
+| `count`        | `number`                                                       | `0`           | Display count             |
+| `max`          | `number`                                                       | `99`          | Maximum count (shows 99+) |
+| `dot`          | `boolean`                                                      | `false`       | Dot mode (no count)       |
+| `show-zero`    | `boolean`                                                      | `false`       | Show when count is 0      |
+| `badge-hidden` | `boolean`                                                      | `false`       | Hide completely           |
+| `offset-x`     | `number`                                                       | `0`           | Horizontal offset         |
+| `offset-y`     | `number`                                                       | `0`           | Vertical offset           |
+| `placement`    | `'top-right' \| 'top-left' \| 'bottom-right' \| 'bottom-left'` | `'top-right'` | Badge position            |
 
 #### `<web-ui-empty>`
 

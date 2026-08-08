@@ -34,7 +34,7 @@ export class WebUiDrawer extends LitElement {
   }
   private _placement: DrawerPlacement = 'right'
 
-  /** 标题文字（未传 header slot 时显示默认 header） */
+  // 标题文字（未传 header slot 时显示默认 header）
   @property({ type: String }) heading = ''
 
   @property({ type: Boolean, reflect: true }) closable = false
@@ -116,13 +116,13 @@ export class WebUiDrawer extends LitElement {
     this._closeFromUser()
   }
 
-  /** 打开抽屉（命令式） */
+  // 打开抽屉（命令式）
   show() {
     if (this.open) return
     this.open = true
   }
 
-  /** 关闭抽屉（带动画） */
+  // 关闭抽屉（带动画）
   close() {
     if (!this.open) return
     this.open = false
@@ -205,8 +205,9 @@ export class WebUiDrawer extends LitElement {
                 aria-label="关闭"
                 variant="secondary"
                 icon
+                size="26"
               >
-                <web-ui-icon .icon=${oouiClose}></web-ui-icon>
+                <web-ui-icon .icon=${oouiClose} size="16"></web-ui-icon>
               </web-ui-button>
             `
           : nothing}

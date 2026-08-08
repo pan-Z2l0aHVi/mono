@@ -2,6 +2,8 @@ import type { IconifyIcon } from '@iconify/types'
 import { html, LitElement, nothing, type PropertyValues, unsafeCSS } from 'lit'
 
 import '@/components/icon'
+// web-ui-button 复用 icon 变体的焦点环与统一样式（secondary 变体，浅灰底贴合 toast 角落）
+import '@/components/button'
 import { customElement, property } from 'lit/decorators.js'
 
 import glass from '@/assets/glass.css?inline'
@@ -59,7 +61,7 @@ export class WebUiToast extends LitElement {
     }
   }
 
-  /** 根据 position 设置入场/退场滑动方向 */
+  // 根据 position 设置入场/退场滑动方向
   private _applySlideDirection() {
     const SLIDE_OFFSET = 20
     let x = 0
@@ -75,7 +77,7 @@ export class WebUiToast extends LitElement {
     this.style.setProperty('--toast-slide-y', `${y}px`)
   }
 
-  /** 启动自动关闭计时器 */
+  // 启动自动关闭计时器
   startAutoClose() {
     this._clearTimer()
     if (this.duration > 0) {
@@ -85,13 +87,13 @@ export class WebUiToast extends LitElement {
     }
   }
 
-  /** 由 manager 调用：播放入场动画后自动开始计时 */
+  // 由 manager 调用：播放入场动画后自动开始计时
   show() {
     this.visible = true
     this.startAutoClose()
   }
 
-  /** 关闭（含退场动画） */
+  // 关闭（含退场动画）
   dismiss(reason: ToastCloseReason = 'programmatic') {
     if (!this.visible) return
     this.visible = false
@@ -156,9 +158,16 @@ export class WebUiToast extends LitElement {
         <span class="toast-time">${_formatTime()}</span>
         ${!this.noCloseButton
           ? html`
-              <button class="toast-close-btn wui-glass" aria-label="关闭" @click=${this._onCloseClick}>
+              <web-ui-button
+                class="toast-close-btn"
+                icon
+                variant="secondary"
+                size="24"
+                aria-label="关闭"
+                @click=${this._onCloseClick}
+              >
                 <web-ui-icon .icon=${heroiconsXMark16Solid} size="16"></web-ui-icon>
-              </button>
+              </web-ui-button>
             `
           : nothing}
       </div>

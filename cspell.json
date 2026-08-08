@@ -49,6 +49,7 @@
     "indexeddb",
     "ooui",
     "wailsio",
-    "ENEEDAUTH"
+    "ENEEDAUTH",
+    "oxfmt"
   ]
 }

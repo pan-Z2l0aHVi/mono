@@ -25,7 +25,7 @@ const createSegmented = (triggerHtml = '', attrs?: Record<string, string>): WebU
   return el
 }
 
-/** 通过 role 点击子 trigger 的内部元素 */
+// 通过 role 点击子 trigger 的内部元素
 const clickTrigger = (group: WebUiSegmented, index: number) => {
   const triggers = group.querySelectorAll<WebUiSegmentedTrigger>('web-ui-segmented-trigger')
   const inner = queryA11y(triggers[index], '[role="option"]')

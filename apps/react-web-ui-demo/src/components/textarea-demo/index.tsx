@@ -34,6 +34,7 @@ function TextareaDemo() {
       </div>
       <h2>行数</h2>
       <div className="mb-3 flex flex-col gap-3">
+        <web-ui-textarea rows={1} placeholder="1 行" full />
         <web-ui-textarea rows={2} placeholder="2 行" full />
         <web-ui-textarea rows={5} placeholder="5 行" full />
         <web-ui-textarea rows={8} placeholder="8 行" full />

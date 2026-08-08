@@ -25,7 +25,7 @@
   box-sizing: border-box;
   width: var(--wui-textarea-width, 200px);
   min-width: var(--wui-button-size, 40px);
-  padding: 9px 18px;
+  padding: 9px 12px;
   border-radius: 20px;
 
   transition:
@@ -67,7 +67,6 @@ textarea {
 
   box-sizing: border-box;
   width: 100%;
-  min-height: 60px;
   padding: 0;
   border: none;
 
@@ -108,30 +107,14 @@ slot.empty {
 
 /* ===== Clear button ===== */
 
-.clear {
-  cursor: pointer;
+/* 复用 web-ui-button icon ghost：仅覆盖颜色为 muted 并对齐首行，保持原清除图标观感；
+   负 margin-left 抵消容器 8px flex gap，让清除按钮紧贴文本域内容 */
+.wui-textarea-inner web-ui-button[variant='ghost'] {
+  --wui-button-color: var(--wui-color-text-muted, #6a6a6a);
 
-  display: flex;
-  flex-shrink: 0;
-  align-items: center;
-  align-self: flex-start;
-  justify-content: center;
-
-  /* 原生 button reset，视觉与图标按钮保持一致 */
-  margin: 0;
-  margin-top: 2px;
-  padding: 0;
-  border: none;
-
-  font: inherit;
-  color: var(--wui-color-text-muted, #6a6a6a);
-
-  appearance: none;
-  background: transparent;
-
-  -webkit-tap-highlight-color: transparent;
-
-  &:hover {
-    color: var(--wui-color-text-muted, #6a6a6a);
-  }
+  /* 与首行文字垂直居中对齐：容器 align-items: flex-start 使按钮贴内容区顶部（9px 留白处），
+     而首行中心在 9px + 行高半程；要让 24px 按钮（18px 图标居中）的图标中心落在首行中心，
+     需上移 (行高 − 按钮高度) / 2，行高 = font-size × 1.5（与 textarea 的 line-height 一致） */
+  margin-top: calc((var(--wui-font-size, 14px) * 1.5 - 24px) / 2);
+  margin-left: -8px;
 }

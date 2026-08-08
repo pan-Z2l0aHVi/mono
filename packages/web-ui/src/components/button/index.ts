@@ -4,7 +4,6 @@ import { classMap } from 'lit/directives/class-map.js'
 import { ifDefined } from 'lit/directives/if-defined.js'
 import { styleMap } from 'lit/directives/style-map.js'
 
-// web-ui-icon 必须注册（Rolldown tree-shake 副作用 import，引用类名阻止删除）
 import '@/components/icon'
 import glass from '@/assets/glass.css?inline'
 import { lucideLoaderCircle } from '@/icons'
@@ -47,10 +46,10 @@ export class WebUiButton extends LitElement {
   }
   private _type: (typeof ALLOWED_TYPES)[number] = 'button'
 
-  /** Explicitly delegated accessible naming attributes. */
+  // Explicitly delegated accessible naming attributes.
   @property({ type: String, attribute: 'aria-label' }) override ariaLabel: string | null = null
 
-  /** size="32" → 32x32，size="32x80" → 32x80 */
+  // size="32" → 32x32，size="32x80" → 32x80
   private get _sizeStyle(): Record<string, string> {
     if (!this.size) return {}
     const [h, w] = this.size.split('x')

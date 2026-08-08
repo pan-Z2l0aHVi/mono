@@ -170,6 +170,6 @@ dialog[open].is-visible::backdrop {
 .wui-drawer-close {
   position: absolute;
   z-index: 3;
-  top: 8px;
-  right: 8px;
+  top: 16px;
+  right: 16px;
 }

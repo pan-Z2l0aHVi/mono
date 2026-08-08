@@ -193,6 +193,7 @@ ARIA 属性同样必须显式支持：使用组件文档化的命名属性，而
 | `clearable`   | `boolean` | `false`  | 显示清除按钮    |
 | `full`        | `boolean` | `false`  | 全宽            |
 | `borderless`  | `boolean` | `false`  | 无边框          |
+| `aria-label`  | `string`  | —        | 无障碍标签      |
 
 **事件：** `input`, `change`, `focus`, `blur`
 
@@ -202,23 +203,24 @@ ARIA 属性同样必须显式支持：使用组件文档化的命名属性，而
 
 多行文本输入框，支持自动调整高度。
 
-| 属性              | 类型      | 默认值  | 说明           |
-| ----------------- | --------- | ------- | -------------- |
-| `value`           | `string`  | `''`    | 输入值         |
-| `placeholder`     | `string`  | `''`    | 占位文本       |
-| `rows`            | `number`  | `3`     | 显示行数       |
-| `name`            | `string`  | `''`    | 表单字段名     |
-| `disabled`        | `boolean` | `false` | 禁用状态       |
-| `readonly`        | `boolean` | `false` | 只读状态       |
-| `required`        | `boolean` | `false` | 必填校验       |
-| `clearable`       | `boolean` | `false` | 显示清除按钮   |
-| `full`            | `boolean` | `false` | 全宽           |
-| `borderless`      | `boolean` | `false` | 无边框         |
-| `autosize`        | `boolean` | `false` | 自动调整高度   |
-| `minlength`       | `number`  | —       | 最小长度校验   |
-| `maxlength`       | `number`  | —       | 最大长度校验   |
-| `aria-label`      | `string`  | —       | 无障碍标签     |
-| `aria-labelledby` | `string`  | —       | 无障碍标签引用 |
+| 属性              | 类型      | 默认值  | 说明                               |
+| ----------------- | --------- | ------- | ---------------------------------- |
+| `value`           | `string`  | `''`    | 输入值                             |
+| `placeholder`     | `string`  | `''`    | 占位文本                           |
+| `rows`            | `number`  | `3`     | 显示行数                           |
+| `name`            | `string`  | `''`    | 表单字段名                         |
+| `disabled`        | `boolean` | `false` | 禁用状态                           |
+| `readonly`        | `boolean` | `false` | 只读状态                           |
+| `required`        | `boolean` | `false` | 必填校验                           |
+| `clearable`       | `boolean` | `false` | 显示清除按钮                       |
+| `full`            | `boolean` | `false` | 全宽                               |
+| `borderless`      | `boolean` | `false` | 无边框                             |
+| `autosize`        | `boolean` | `false` | 自动调整高度                       |
+| `max-height`      | `number`  | `0`     | 自动高度上限（px），`0` 表示不限制 |
+| `minlength`       | `number`  | —       | 最小长度校验                       |
+| `maxlength`       | `number`  | —       | 最大长度校验                       |
+| `aria-label`      | `string`  | —       | 无障碍标签                         |
+| `aria-labelledby` | `string`  | —       | 无障碍标签引用                     |
 
 **事件：** `input`, `change`, `focus`, `blur`
 
@@ -401,15 +403,16 @@ ArrowUp/ArrowDown 键增减数值。
 
 样式化按钮，支持多种变体和加载状态。
 
-| 属性       | 类型                                                         | 默认值     | 说明                                |
-| ---------- | ------------------------------------------------------------ | ---------- | ----------------------------------- |
-| `variant`  | `'primary' \| 'secondary' \| 'ghost' \| 'danger' \| 'glass'` | `'glass'`  | 按钮变体                            |
-| `type`     | `'button' \| 'submit' \| 'reset'`                            | `'button'` | 内部按钮类型；非法值回退为 `button` |
-| `disabled` | `boolean`                                                    | `false`    | 禁用状态                            |
-| `loading`  | `boolean`                                                    | `false`    | 加载旋转动画                        |
-| `full`     | `boolean`                                                    | `false`    | 全宽                                |
-| `icon`     | `boolean`                                                    | `false`    | 纯图标模式                          |
-| `size`     | `string`                                                     | `''`       | 尺寸格式 `高度` 或 `高度x宽度`      |
+| 属性         | 类型                                                         | 默认值     | 说明                                |
+| ------------ | ------------------------------------------------------------ | ---------- | ----------------------------------- |
+| `variant`    | `'primary' \| 'secondary' \| 'ghost' \| 'danger' \| 'glass'` | `'glass'`  | 按钮变体                            |
+| `type`       | `'button' \| 'submit' \| 'reset'`                            | `'button'` | 内部按钮类型；非法值回退为 `button` |
+| `disabled`   | `boolean`                                                    | `false`    | 禁用状态                            |
+| `loading`    | `boolean`                                                    | `false`    | 加载旋转动画                        |
+| `full`       | `boolean`                                                    | `false`    | 全宽                                |
+| `icon`       | `boolean`                                                    | `false`    | 纯图标模式                          |
+| `size`       | `string`                                                     | `''`       | 尺寸格式 `高度` 或 `高度x宽度`      |
+| `aria-label` | `string`                                                     | —          | 无障碍标签（委托给内部按钮）        |
 
 **事件：** 标准 `click`
 
@@ -611,16 +614,16 @@ Hover 模式使用 `pointerenter`/`pointerleave` 加延迟控制。Click 模式�
 
 徽标 / 通知计数。
 
-| 属性        | 类型                                                           | 默认值        | 说明                   |
-| ----------- | -------------------------------------------------------------- | ------------- | ---------------------- |
-| `count`     | `number`                                                       | `0`           | 显示数字               |
-| `max`       | `number`                                                       | `99`          | 最大值（超过显示 99+） |
-| `dot`       | `boolean`                                                      | `false`       | 点模式（不显示数字）   |
-| `show-zero` | `boolean`                                                      | `false`       | count 为 0 时也显示    |
-| `hidden`    | `boolean`                                                      | `false`       | 完全隐藏               |
-| `offset-x`  | `number`                                                       | `0`           | 水平偏移               |
-| `offset-y`  | `number`                                                       | `0`           | 垂直偏移               |
-| `placement` | `'top-right' \| 'top-left' \| 'bottom-right' \| 'bottom-left'` | `'top-right'` | 徽标位置               |
+| 属性           | 类型                                                           | 默认值        | 说明                   |
+| -------------- | -------------------------------------------------------------- | ------------- | ---------------------- |
+| `count`        | `number`                                                       | `0`           | 显示数字               |
+| `max`          | `number`                                                       | `99`          | 最大值（超过显示 99+） |
+| `dot`          | `boolean`                                                      | `false`       | 点模式（不显示数字）   |
+| `show-zero`    | `boolean`                                                      | `false`       | count 为 0 时也显示    |
+| `badge-hidden` | `boolean`                                                      | `false`       | 完全隐藏               |
+| `offset-x`     | `number`                                                       | `0`           | 水平偏移               |
+| `offset-y`     | `number`                                                       | `0`           | 垂直偏移               |
+| `placement`    | `'top-right' \| 'top-left' \| 'bottom-right' \| 'bottom-left'` | `'top-right'` | 徽标位置               |
 
 #### `<web-ui-empty>`
 

@@ -1,10 +1,11 @@
-import { html, LitElement, unsafeCSS } from 'lit'
+import { html, LitElement, nothing, unsafeCSS } from 'lit'
 import { customElement, property, state } from 'lit/decorators.js'
 import { classMap } from 'lit/directives/class-map.js'
 import { ifDefined } from 'lit/directives/if-defined.js'
+import { styleMap } from 'lit/directives/style-map.js'
 
-// web-ui-icon 必须注册（Rolldown tree-shake 副作用 import，引用类名阻止删除）
 import '@/components/icon'
+import '@/components/button'
 import glass from '@/assets/glass.css?inline'
 import { jamCloseCircleF } from '@/icons'
 
@@ -27,6 +28,8 @@ export class WebUiTextarea extends LitElement {
   @property({ type: Number, reflect: true }) minlength: number | undefined
   @property({ type: Number, reflect: true }) maxlength: number | undefined
   @property({ type: Boolean, reflect: true }) autosize = false
+  // 自动高度上限（px）；0 表示不限制，随内容无限增高
+  @property({ type: Number, reflect: true, attribute: 'max-height' }) maxHeight = 0
   @property({ type: String, attribute: 'aria-label' }) override ariaLabel: string | null = null
   @property({ type: String, attribute: 'aria-labelledby' }) ariaLabelledby: string | undefined
 
@@ -148,10 +151,10 @@ export class WebUiTextarea extends LitElement {
     if (!this._textarea || !this.autosize) return
     this._textarea.style.height = 'auto'
     const computedMin = this.rows * 20
-    const computedMax = 300
     const scrollH = this._textarea.scrollHeight
-    const clamped = Math.min(Math.max(scrollH, computedMin), computedMax)
-    this._textarea.style.height = `${clamped}px`
+    // 上限由 CSS max-height（maxHeight 属性）钳制，这里只负责随内容增高，默认无限
+    const height = Math.max(scrollH, computedMin)
+    this._textarea.style.height = `${height}px`
   }
 
   private handleInput(e: Event) {
@@ -231,21 +234,23 @@ export class WebUiTextarea extends LitElement {
           ?readonly=${this.readonly}
           ?required=${this.required}
           .value=${this._value}
+          style=${this.maxHeight > 0 ? styleMap({ 'max-height': `${this.maxHeight}px` }) : nothing}
           @input=${this.handleInput}
           @change=${this.handleNativeChange}
           @focus=${this.handleFocus}
           @blur=${this.handleBlur}
         ></textarea>
         ${showClear
-          ? html`<button
-              type="button"
-              class="clear"
+          ? html`<web-ui-button
+              icon
+              variant="ghost"
+              size="24"
               aria-label="清除"
               @pointerdown=${this.preventMouseDownBlur}
               @click=${this.handleClear}
             >
               <web-ui-icon .icon=${jamCloseCircleF}></web-ui-icon>
-            </button>`
+            </web-ui-button>`
           : ''}
         <slot name="suffix" class=${classMap({ empty: !this._hasSuffix })} @slotchange=${this._onSlotChange}></slot>
       </div>

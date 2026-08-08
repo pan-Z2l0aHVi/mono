@@ -169,7 +169,7 @@ export class WebUiSvgDrawLines extends LitElement {
     })
   }
 
-  /** Z → explicit line back to start + 0.1px extra, forcing render of the closing segment */
+  // Z → explicit line back to start + 0.1px extra, forcing render of the closing segment
   private fixPathGap(pathEl: SVGPathElement, d: string): string {
     pathEl.setAttribute('d', d)
     const p0 = pathEl.getPointAtLength(0)
@@ -177,7 +177,7 @@ export class WebUiSvgDrawLines extends LitElement {
     return d.replace(/[Zz]\s*$/, `L${p0.x.toFixed(3)} ${p0.y.toFixed(3)} L${p1.x.toFixed(3)} ${p1.y.toFixed(3)}`)
   }
 
-  /** 首次 slot 内容稳定后自动播放一次 */
+  // 首次 slot 内容稳定后自动播放一次
   private handleSlotChange() {
     if (this._hasAutoPlayed) return
     this._hasAutoPlayed = true

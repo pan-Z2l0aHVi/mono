@@ -48,7 +48,7 @@ export class WebUiDialog extends LitElement {
     this._scrollLock.release()
   }
 
-  /** 以模态方式打开对话框（命令式） */
+  // 以模态方式打开对话框（命令式）
   showModal() {
     if (this.open) return
     this.open = true

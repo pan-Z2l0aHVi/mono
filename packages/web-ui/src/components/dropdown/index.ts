@@ -150,7 +150,7 @@ export class WebUiDropdown extends LitElement {
     this._bindLevelHovers()
   }
 
-  /** 打开菜单（命令式，不派发 `open-change`）。 */
+  // 打开菜单（命令式，不派发 `open-change`）。
   openMenu() {
     this._openMenu(true, false)
   }
@@ -163,7 +163,7 @@ export class WebUiDropdown extends LitElement {
     this.open = true
   }
 
-  /** 关闭所有层级（命令式，不派发 `open-change`）。 */
+  // 关闭所有层级（命令式，不派发 `open-change`）。
   closeAll() {
     this._closeAll(false)
   }
@@ -174,7 +174,7 @@ export class WebUiDropdown extends LitElement {
     this.open = false
   }
 
-  /** 清理子菜单状态（不影响 open prop） */
+  // 清理子菜单状态（不影响 open prop）
   private _closeAllSubmenus() {
     this._closeSubmenuFrom(1, true)
     this._disposeClosingSubmenuOverlays()

@@ -102,12 +102,12 @@ export class WebUiSlider extends LitElement {
     else this._internals.setValidity({})
   }
 
-  /** 将焦点移至滑块，供表单或外部控制使用 */
+  // 将焦点移至滑块，供表单或外部控制使用
   override focus(options?: FocusOptions) {
     this._slider?.focus(options)
   }
 
-  /** 移除滑块焦点 */
+  // 移除滑块焦点
   override blur() {
     this._slider?.blur()
   }

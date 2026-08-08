@@ -92,7 +92,7 @@ export class WebUiPopover extends LitElement {
     createPortal: () => this._createPortal()
   })
 
-  /** 当前是否打开 */
+  // 当前是否打开
   get isOpen(): boolean {
     return this.open
   }
@@ -153,19 +153,19 @@ export class WebUiPopover extends LitElement {
     }
   }
 
-  /** 打开 popover */
+  // 打开 popover
   show() {
     if (this.disabled || this.open) return
     this.open = true
   }
 
-  /** 关闭 popover */
+  // 关闭 popover
   close() {
     if (!this.open) return
     this.open = false
   }
 
-  /** 切换 popover */
+  // 切换 popover
   toggle() {
     if (this.open) this.close()
     else this.show()

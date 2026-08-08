@@ -69,7 +69,7 @@ export class WebUiSwitch extends LitElement {
     this._internals?.setFormValue?.(this._checked ? this.value || 'on' : null)
   }
 
-  /** 用户点击切换开关状态，阻止 label 默认行为避免原生 checkbox 重复触发 */
+  // 用户点击切换开关状态，阻止 label 默认行为避免原生 checkbox 重复触发
   private handleClick(e: Event) {
     e.preventDefault()
     if (this._isDisabled || this.loading) return

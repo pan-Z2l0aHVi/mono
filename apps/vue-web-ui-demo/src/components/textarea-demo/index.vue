@@ -41,6 +41,7 @@ const limitedVal = ref('')
 
     <h2>行数</h2>
     <div class="mb-3 flex flex-col gap-3">
+      <web-ui-textarea :rows="1" placeholder="1 行" full />
       <web-ui-textarea :rows="2" placeholder="2 行" full />
       <web-ui-textarea :rows="5" placeholder="5 行" full />
       <web-ui-textarea :rows="8" placeholder="8 行" full />
@@ -48,7 +49,8 @@ const limitedVal = ref('')
 
     <h2>自动高度</h2>
     <div class="mb-3 flex flex-col gap-3">
-      <web-ui-textarea autosize placeholder="内容多了自动变高" full />
+      <web-ui-textarea autosize placeholder="内容多了自动变高（不限高）" full />
+      <web-ui-textarea autosize max-height="120" placeholder="内容超过 120px 后滚动" full />
     </div>
 
     <h2>禁用</h2>

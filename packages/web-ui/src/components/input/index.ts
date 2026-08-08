@@ -3,8 +3,8 @@ import { customElement, property, state } from 'lit/decorators.js'
 import { classMap } from 'lit/directives/class-map.js'
 import { ifDefined } from 'lit/directives/if-defined.js'
 
-// web-ui-icon 必须注册（Rolldown tree-shake 副作用 import，引用类名阻止删除）
 import '@/components/icon'
+import '@/components/button'
 import glass from '@/assets/glass.css?inline'
 import { jamCloseCircleF } from '@/icons'
 
@@ -156,15 +156,16 @@ export class WebUiInput extends LitElement {
           @blur=${this.handleBlur}
         />
         ${showClear
-          ? html`<button
-              type="button"
-              class="clear"
+          ? html`<web-ui-button
+              icon
+              variant="ghost"
+              size="24"
               aria-label="清除"
               @pointerdown=${this.preventMouseDownBlur}
               @click=${this.handleClear}
             >
               <web-ui-icon .icon=${jamCloseCircleF}></web-ui-icon>
-            </button>`
+            </web-ui-button>`
           : ''}
         <slot name="suffix" class=${classMap({ empty: !this._hasSuffix })} @slotchange=${this._onSlotChange}></slot>
       </div>

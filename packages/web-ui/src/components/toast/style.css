@@ -50,7 +50,7 @@
 
 /* ===== 关闭按钮（放在 hover 规则之前，避免 specificity 降序） ===== */
 
-.toast-close-btn {
+web-ui-button.toast-close-btn {
   pointer-events: none;
   cursor: pointer;
 
@@ -58,37 +58,28 @@
   top: -8px;
   right: -8px;
 
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  width: 24px;
-  height: 24px;
-  margin: 0;
-  padding: 0;
-  border: none;
-  border-radius: calc(infinity * 1px);
-
-  color: var(--wui-color-text-muted, #6a6a6a);
-
   opacity: 0;
 
   transition: opacity var(--wui-duration-trigger, 160ms) ease;
 
-  &:focus-visible {
+  /* 内层原生按钮获得键盘焦点时宿主同样可见 */
+  &:focus-within {
     pointer-events: auto;
     opacity: 1;
-    outline: 2px solid var(--wui-focus-ring, rgb(0 136 255 / 0.4));
-    outline-offset: 2px;
   }
 }
 
 @media (hover: hover) and (pointer: fine) {
-  .toast-close-btn:hover,
-  .toast:hover .toast-close-btn {
+  web-ui-button.toast-close-btn:hover,
+  .toast:hover web-ui-button.toast-close-btn {
     pointer-events: auto;
     opacity: 1;
   }
+}
+
+/* secondary 变体默认用文本色，恢复原关闭按钮的 muted 观感 */
+.toast web-ui-button[icon] {
+  --wui-button-color: var(--wui-color-text-muted, #6a6a6a);
 }
 
 /* ===== 图标 ===== */
@@ -99,8 +90,8 @@
   align-items: center;
   justify-content: center;
 
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
   margin-bottom: auto;
   border-radius: calc(infinity * 1px);
 }
