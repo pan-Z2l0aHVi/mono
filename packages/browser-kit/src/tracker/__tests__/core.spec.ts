@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
 import { defineLocal } from '@/storage'
 
-import { capturedRequests, clearCapturedRequests, worker } from '../../../test-helper'
+import { capturedRequests, clearCapturedRequests, settleCapturedRequests, worker } from '../../../test-helper'
 import { defineTracker } from '../core'
 
 vi.useFakeTimers()
@@ -21,7 +21,10 @@ async function waitForMsw(minCount = 1, timeout = 1000) {
 describe('上报 core 测试用例', () => {
   let sendBeaconSpy: ReturnType<typeof vi.fn<Navigator['sendBeacon']>>
 
-  beforeEach(() => {
+  beforeEach(async () => {
+    // 上一用例的在途请求可能在本用例断言窗口才落地，排空后再清空。
+    await settleCapturedRequests()
+
     vi.clearAllMocks()
     clearCapturedRequests()
     localStorage.clear()
@@ -85,20 +88,35 @@ describe('上报 core 测试用例', () => {
       expect(stored).toEqual([{ event: 'click' }])
     })
 
-    it('恢复的数据处理后应从 storage 清除', async () => {
+    it('恢复的数据发送完成后从 storage 清除', async () => {
       storage.set('queue:https://example.com', [{ event: 'a' }, { event: 'b' }])
 
       const tracker = defineTracker({ url: 'https://example.com' }).make()
-      // 恢复的数据同步处理完后清除
-      // 追踪一个新数据来验证状态
       tracker.pause()
       tracker.track({ event: 'c' })
 
+      // 等 a、b 两条恢复记录发送完成（confirm 后从 pendingSet 清除），
+      // c 仍被 pause 积压，storage 应只剩 c。
+      await waitForMsw(2)
       const stored = storage.get('queue:https://example.com')
       expect(stored).toEqual([{ event: 'c' }])
+    })
 
-      // 两条恢复记录都会单独降级为 fetch；全部完成后再进入下一用例。
-      await waitForMsw(2)
+    it('恢复的数据发送失败后保留在 storage，供下次启动重试', async () => {
+      storage.set('queue:https://example.com', [{ event: 'sticky' }])
+      sendBeaconSpy.mockImplementation(() => {
+        throw new Error('sendBeacon failed')
+      })
+      worker.use(http.post('*', () => HttpResponse.error()))
+
+      const tracker = defineTracker({ url: 'https://example.com' }).make()
+      // 等待 fetch 降级路径失败（reject）完成后，断言 storage 未被清除。
+      vi.useRealTimers()
+      await new Promise(resolve => setTimeout(resolve, 200))
+      vi.useFakeTimers()
+
+      const stored = storage.get('queue:https://example.com')
+      expect(stored).toEqual([{ event: 'sticky' }])
     })
 
     it('disablePersistence 时不写 storage', () => {

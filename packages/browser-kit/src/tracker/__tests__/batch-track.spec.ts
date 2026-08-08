@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
-import { clearCapturedRequests, capturedRequests } from '../../../test-helper'
+import { clearCapturedRequests, capturedRequests, settleCapturedRequests } from '../../../test-helper'
 import { defineTracker } from '../core'
 import { defineBatchTrack } from '../plugins/batch-track'
 
@@ -17,7 +17,10 @@ async function waitForMsw(minCount = 1, timeout = 1000) {
 }
 
 describe('聚合上报测试用例', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
+    // 上一用例的在途请求可能在本用例断言窗口才落地，排空后再清空。
+    await settleCapturedRequests()
+
     vi.clearAllMocks()
     clearCapturedRequests()
     localStorage.clear()
@@ -107,16 +110,22 @@ describe('聚合上报测试用例', () => {
     expect(capturedRequests.length).toBe(2)
   })
 
-  it('大数据分片：恰好 64KB 时应单次发送', async () => {
+  it('未超过 maxBeaconSize 时整批单次发送', async () => {
     const tracker = defineTracker({ url: 'https://example.com' })
-      .use(defineBatchTrack({ defaultBatchDelay: 200, maxBeaconSize: 0.0625 }))
+      .use(defineBatchTrack({ defaultBatchDelay: 200, maxBeaconSize: 64 }))
       .make()
 
-    const data = { payload: 'x'.repeat(50) }
-    tracker.track(data, -1)
+    // 3 条小数据总大小远小于 64KB，flush 时 sliceTrack 判断不超限，整批单次发送
+    tracker.track({ event: 'a' })
+    tracker.track({ event: 'b' })
+    tracker.track({ event: 'c' })
+    vi.advanceTimersByTime(200)
     await waitForMsw()
 
-    expect(capturedRequests.length).toBeGreaterThanOrEqual(1)
+    expect(capturedRequests).toHaveLength(1)
+    const body = capturedRequests[0].body as unknown[]
+    expect(Array.isArray(body)).toBe(true)
+    expect(body).toHaveLength(3)
   })
 
   it('单条数据应直接发送', async () => {

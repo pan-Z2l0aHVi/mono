@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
-import { capturedRequests, clearCapturedRequests } from '../../../test-helper'
+import { capturedRequests, clearCapturedRequests, settleCapturedRequests } from '../../../test-helper'
 import { defineTracker } from '../core'
 import { defineBatchTrack } from '../plugins/batch-track'
 import { defineLastWords } from '../plugins/last-words'
@@ -19,7 +19,10 @@ async function waitForMsw(minCount = 1, timeout = 1000) {
 }
 
 describe('亡语插件测试用例', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
+    // 上一用例的在途请求可能在本用例断言窗口才落地，排空后再清空。
+    await settleCapturedRequests()
+
     vi.clearAllTimers()
     vi.clearAllMocks()
     clearCapturedRequests()
@@ -38,7 +41,10 @@ describe('亡语插件测试用例', () => {
     })
   })
 
-  it('beforeunload 应触发 flush', async () => {
+  it('track 数据按 batch 周期发送，插件注册不抛异常', async () => {
+    // 真实 beforeunload 会在浏览器进入卸载流程时让 keepalive fetch 挂起，
+    // 阻塞后续用例（MSW handler 无法完成），因此这里不派发 beforeunload；
+    // beforeunload 触发的是 flush 路径，由下方 flush 用例覆盖。
     const tracker = defineTracker({ url: 'https://example.com' }).use(defineBatchTrack()).use(defineLastWords()).make()
 
     tracker.track({ event: 'before-close' })
@@ -47,11 +53,20 @@ describe('亡语插件测试用例', () => {
 
     expect(capturedRequests.length).toBeGreaterThanOrEqual(1)
 
-    // beforeunload 不应报错（注意：beforeunload 事件会破坏 MSW service worker 状态，
-    // 因此不在这里 dispatch，仅验证插件注册不会抛异常）
+    // 插件注册后仍可继续 track，不应报错
     clearCapturedRequests()
     tracker.track({ event: 'new-data' })
     vi.advanceTimersByTime(500)
+    await waitForMsw()
+
+    expect(capturedRequests.length).toBeGreaterThanOrEqual(1)
+  })
+
+  it('flush 立即发送积压数据（beforeunload 内部调用的路径）', async () => {
+    const tracker = defineTracker({ url: 'https://example.com' }).use(defineBatchTrack()).use(defineLastWords()).make()
+
+    tracker.track({ event: 'queued' })
+    tracker.flush()
     await waitForMsw()
 
     expect(capturedRequests.length).toBeGreaterThanOrEqual(1)

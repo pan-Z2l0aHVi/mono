@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
-import { capturedRequests, clearCapturedRequests } from '../../../test-helper'
+import { capturedRequests, clearCapturedRequests, settleCapturedRequests } from '../../../test-helper'
 import { defineTracker } from '../core'
 import { defineOfflineRestore } from '../plugins/offline-restore'
 
@@ -17,7 +17,11 @@ async function waitForMsw(minCount = 1, timeout = 1000) {
 }
 
 describe('离线恢复上报插件测试用例', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
+    // 上一用例的在途请求可能在共享 afterEach 清空后才落地并 push，从而
+    // 污染本用例的离线断言（典型：启动时离线收到上一条 POST）。排空后清空。
+    await settleCapturedRequests()
+
     vi.clearAllMocks()
     localStorage.clear()
     clearCapturedRequests()

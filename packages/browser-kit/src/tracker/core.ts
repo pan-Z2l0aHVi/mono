@@ -56,12 +56,20 @@ export function defineTracker(options: Options) {
       }
     }
 
+    const restored = config.disablePersistence ? [] : restoreQueue()
+    // 恢复的数据也要纳入 pendingSet，发送确认前不清除 storage；
+    // 否则发送失败（sendBeacon 与 fetch 都失败）时数据已从 storage 移除，无法重试。
+    restored.forEach(item => pendingSet.add(item))
+
     const queue = defineLoopQueue({
-      initialQueue: config.disablePersistence ? [] : restoreQueue(),
+      initialQueue: restored,
       onConsume: target => {
-        pendingSet.delete(target)
-        persistQueue()
-        return send(target)
+        const confirm = () => {
+          pendingSet.delete(target)
+          persistQueue()
+        }
+        // 发送成功才确认；失败时保留 pendingSet 与 storage，下次启动恢复时重试。
+        return send(target).then(confirm, () => {})
       }
     }).make()
 
