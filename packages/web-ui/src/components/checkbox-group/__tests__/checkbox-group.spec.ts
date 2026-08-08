@@ -25,7 +25,7 @@ const createGroup = (checkboxHtml = GROUP_HTML, attrs?: Record<string, string>):
   return el
 }
 
-/** 点击子 checkbox 触发用户交互 */
+// 点击子 checkbox 触发用户交互
 const clickChild = (group: WebUiCheckboxGroup, index: number) => {
   const checkbox = group.querySelectorAll<WebUiCheckbox>('web-ui-checkbox')[index]
   const label = checkbox.shadowRoot!.querySelector('label')!

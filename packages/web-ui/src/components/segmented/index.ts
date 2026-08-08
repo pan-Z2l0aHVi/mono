@@ -123,7 +123,11 @@ export class WebUiSegmented extends LitElement {
 
   override render() {
     return html`
-      <div class=${classMap({ 'wui-segmented': true, 'is-disabled': this._isDisabled })}>
+      <div
+        class=${classMap({ 'wui-segmented': true, 'is-disabled': this._isDisabled })}
+        role="listbox"
+        aria-orientation="horizontal"
+      >
         <span class="wui-segmented-indicator wui-glass"></span>
         <slot></slot>
       </div>

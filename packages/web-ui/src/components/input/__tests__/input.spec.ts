@@ -106,6 +106,13 @@ describe('WebUiInput 组件', () => {
       expect(el.hasAttribute('borderless')).toBe(true)
       cleanupElement(el)
     })
+
+    it('aria-label 映射到内部输入元素', async () => {
+      const el = createInput({ 'aria-label': 'Search' })
+      await waitForUpdate(el)
+      expect(queryA11y(el, 'input')?.getAttribute('aria-label')).toBe('Search')
+      cleanupElement(el)
+    })
   })
 
   describe('禁用状态', () => {
@@ -116,8 +123,8 @@ describe('WebUiInput 组件', () => {
 
       const input = queryA11y(el, 'input') as HTMLInputElement
       const spy = vi.spyOn(input, 'focus')
-      const wrapper = el.shadowRoot?.querySelector('.wui-input-inner') as HTMLElement
-      wrapper.click()
+      // input 的直接父容器即点击区域，用结构关系而非内部 class 定位
+      input.parentElement!.click()
 
       expect(spy).not.toHaveBeenCalled()
       cleanupElement(el)
@@ -220,7 +227,7 @@ describe('WebUiInput 组件', () => {
       await waitForUpdate(el)
 
       const [events] = spyEvents(el, 'input')
-      const clear = el.shadowRoot?.querySelector('.clear') as HTMLElement
+      const clear = queryA11y(el, '[aria-label="清除"]') as HTMLElement
       clear.click()
 
       expect(events).toHaveLength(1)

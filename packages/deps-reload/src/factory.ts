@@ -1,4 +1,5 @@
 import { resolve, sep } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 import { debounce } from '@greypan/js-kit'
 import type { UnpluginFactory } from 'unplugin'
@@ -26,7 +27,8 @@ interface DependencyConfig {
 
 export const depsReloadFactory: UnpluginFactory<Dep[]> = deps => {
   const configs = deps.map(createDependencyConfig)
-  const pluginDist = normalizePath(import.meta.dirname)
+  // import.meta.dirname 仅 Node >=20.11 可用，用 fileURLToPath 兼容更早的 Node 版本
+  const pluginDist = normalizePath(fileURLToPath(new URL('.', import.meta.url)))
 
   const fullReloadTrigger = debounce(
     (server: ViteDevServer) => {
@@ -52,6 +54,12 @@ export const depsReloadFactory: UnpluginFactory<Dep[]> = deps => {
         if (isPathWithin(normalizedFile, pluginDist)) return []
 
         if (configs.some(config => isDependencyOutputFile(normalizedFile, config))) {
+          // 依赖产物由构建以「原子重命名 / 目录重建」写盘，chokidar 上报 unlink/add 而非 change，
+          // Vite 只对 change 事件自动调用 moduleGraph.onFileChange 失效模块图，
+          // 导致 full-reload 后仍从模块图缓存返回旧产物。这里显式失效，保证 reload 拿到最新内容。
+          for (const environment of Object.values(ctx.server.environments ?? {})) {
+            environment.moduleGraph?.onFileChange?.(ctx.file)
+          }
           fullReloadTrigger.call(ctx.server)
           return []
         }

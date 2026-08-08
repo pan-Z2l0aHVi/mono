@@ -13,6 +13,9 @@ import type { defineTracker } from '../core'
 
 export function defineLastWords() {
   return definePlugin((ctx: PluginMade<typeof defineTracker>) => {
+    // SSR / 非浏览器环境无 window 与 document，插件空转，避免 ReferenceError
+    if (typeof window === 'undefined' || typeof document === 'undefined') return {}
+
     const controller = new AbortController()
     const { signal } = controller
     let hasSent = false

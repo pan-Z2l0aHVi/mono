@@ -127,6 +127,10 @@ Read these as needed; they are not required for every conversation:
 
 `AGENTS.md` and `.agents/rules/` define repository-wide constraints. Package-level `AGENTS.md` files add constraints only for changes inside that package. Files under `docs/agents/` are on-demand guides; read the matching guide before the scoped task.
 
+### Web Platform API verification
+
+When implementing against a Web Platform API that is unfamiliar, recently introduced, or has ambiguous cross-browser behavior, verify the API semantics and browser behavior through the MDN MCP server (`mdn`) before implementing — do not rely on model memory. This includes checking MDN compatibility data (BCD) when browser support is uncertain.
+
 ### Browser verification
 
 Changes involving UI, UX, interaction, responsive behavior, or browser runtime behavior must be verified in a real browser. Use the chrome-devtools MCP as the primary layer when it is available — navigate to the local demo, interact with components, inspect console/network, and take screenshots. The `agent-browser` skill is a manual alternative: run it only when the user invokes `/agent-browser`, e.g. when MCP is unavailable or an isolated browser context is required.

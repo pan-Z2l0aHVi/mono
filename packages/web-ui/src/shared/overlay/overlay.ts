@@ -16,9 +16,9 @@ export interface OverlayOptions {
   offset?: number
   flip?: boolean
   shift?: boolean
-  /** Sync overlay width to anchor width */
+  // Sync overlay width to anchor width
   matchWidth?: boolean
-  /** Set overlay min-width to anchor width (content can expand wider) */
+  // Set overlay min-width to anchor width (content can expand wider)
   minAnchorWidth?: boolean
   strategy?: Strategy
 }

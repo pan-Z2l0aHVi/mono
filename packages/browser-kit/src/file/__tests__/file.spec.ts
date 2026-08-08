@@ -1,7 +1,16 @@
 import { http, HttpResponse } from 'msw'
 import { describe, expect, it } from 'vite-plus/test'
 
-import { base64ToFile, downloadFile, formatFileSize, getFileExtension, isSameFileType, isValidBase64 } from '..'
+import {
+  base64ToFile,
+  downloadFile,
+  fileToBase64,
+  formatFileSize,
+  getFileExtension,
+  getImageInfo,
+  isSameFileType,
+  isValidBase64
+} from '..'
 import { worker } from '../../../test-helper'
 
 describe('file 测试', () => {
@@ -31,6 +40,18 @@ describe('file 测试', () => {
       expect(formatFileSize(1500, 3)).toBe('1.465 KB')
       expect(formatFileSize(1500, 0)).toBe('1 KB')
     })
+
+    it('负数与零应当返回 0 B，而非 NaN', () => {
+      expect(formatFileSize(-1)).toBe('0 B')
+      expect(formatFileSize(-1024)).toBe('0 B')
+      expect(formatFileSize(0)).toBe('0 B')
+    })
+
+    it('超过 TB 上限时回退到最大单位，而非 undefined', () => {
+      // 1 PB = 1024^5，sizes 只有 5 项（最大 TB）；越界前应回退
+      expect(formatFileSize(1024 ** 5)).toBe('1024 TB')
+      expect(formatFileSize(1024 ** 6)).toBe('1048576 TB')
+    })
   })
 
   describe('Base64 校验与转换', () => {
@@ -49,6 +70,22 @@ describe('file 测试', () => {
       expect(file).toBeInstanceOf(File)
       expect(file.name).toBe('test-image.png')
       expect(file.type).toBe('image/png')
+    })
+
+    it('fileToBase64 应当返回 data URL 格式的字符串', async () => {
+      const file = new File(['hello'], 'hello.txt', { type: 'text/plain' })
+      const result = await fileToBase64(file)
+
+      expect(result).toMatch(/^data:text\/plain;base64,/)
+      expect(result).toContain('aGVsbG8=') // 'hello' 的 base64
+    })
+
+    it('getImageInfo 应当返回图片的宽高', async () => {
+      const file = base64ToFile(validBase64, 'pixel')
+      const info = await getImageInfo(file)
+
+      expect(info.width).toBe(1)
+      expect(info.height).toBe(1)
     })
   })
 

@@ -25,7 +25,7 @@ const createGroup = (radioHtml = RADIO_HTML, attrs?: Record<string, string>): We
   return el
 }
 
-/** 点击子 radio 触发用户交互 */
+// 点击子 radio 触发用户交互
 const clickChild = (group: WebUiRadioGroup, index: number) => {
   const radio = group.querySelectorAll<WebUiRadio>('web-ui-radio')[index]
   const label = radio.shadowRoot!.querySelector('label')!

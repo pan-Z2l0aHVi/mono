@@ -154,19 +154,18 @@ describe('WebUiDrawer 组件', () => {
   })
 
   describe('事件：open-change', () => {
-    it('open false→true 触发 open-change，detail.open 为 true', async () => {
+    it('程序设置 open 不触发 open-change', async () => {
       const el = createDrawer()
       const [events] = spyEvents<CustomEvent<{ open: boolean }>>(el, 'open-change')
 
       el.open = true
       await waitForUpdate(el)
 
-      expect(events).toHaveLength(1)
-      expect(events[0].detail.open).toBe(true)
+      expect(events).toHaveLength(0)
       cleanupElement(el)
     })
 
-    it('open true→false 触发 open-change，detail.open 为 false', async () => {
+    it('程序关闭不触发 open-change', async () => {
       const el = createDrawer()
       el.open = true
       await waitForUpdate(el)
@@ -176,8 +175,7 @@ describe('WebUiDrawer 组件', () => {
       el.open = false
       await waitForUpdate(el)
 
-      expect(events).toHaveLength(1)
-      expect(events[0].detail.open).toBe(false)
+      expect(events).toHaveLength(0)
       cleanupElement(el)
     })
 
@@ -194,10 +192,27 @@ describe('WebUiDrawer 组件', () => {
       expect(events).toHaveLength(0)
       cleanupElement(el)
     })
+
+    it('点击内置关闭按钮时派发 open-change', async () => {
+      const el = createDrawer()
+      el.closable = true
+      el.open = true
+      await waitForUpdate(el)
+
+      const [events] = spyEvents<CustomEvent<{ open: boolean }>>(el, 'open-change')
+      const closeButton = el.shadowRoot?.querySelector('web-ui-button')
+      closeButton?.shadowRoot?.querySelector('button')?.click()
+      await waitForUpdate(el)
+
+      expect(el.open).toBe(false)
+      expect(events).toHaveLength(1)
+      expect(events[0].detail.open).toBe(false)
+      cleanupElement(el)
+    })
   })
 
   describe('命令：show()', () => {
-    it('设置 open=true 并触发 open-change', async () => {
+    it('设置 open=true 但不触发 open-change', async () => {
       const el = createDrawer()
       const [events] = spyEvents<CustomEvent<{ open: boolean }>>(el, 'open-change')
 
@@ -205,8 +220,7 @@ describe('WebUiDrawer 组件', () => {
       await waitForUpdate(el)
 
       expect(el.open).toBe(true)
-      expect(events).toHaveLength(1)
-      expect(events[0].detail.open).toBe(true)
+      expect(events).toHaveLength(0)
       cleanupElement(el)
     })
 
@@ -243,8 +257,7 @@ describe('WebUiDrawer 组件', () => {
 
       if (dialog) dispatchTransformTransitionEnd(dialog)
       expect(el.open).toBe(false)
-      expect(events).toHaveLength(1)
-      expect(events[0].detail.open).toBe(false)
+      expect(events).toHaveLength(0)
       expect(dialog?.open).toBe(false)
 
       vi.useRealTimers()

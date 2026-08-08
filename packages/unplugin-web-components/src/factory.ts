@@ -22,13 +22,13 @@ export const factory = (options: UnpluginWebComponentsOptions) => {
 
   function makeImports(code: string): rust.Result<string, Error> {
     const dirs = new Set<string>()
-    let matches: RegExpExecArray | null = null
-
-    while ((matches = kebabReg.exec(code))) {
-      dirs.add(matches[1])
+    // 用 matchAll 而非共享 g-flag 正则 + exec：避免跨 transform 调用残留 lastIndex，
+    // 使同一正则被复用多次时匹配起点漂移
+    for (const match of code.matchAll(kebabReg)) {
+      dirs.add(match[1])
     }
-    while ((matches = pascalReg.exec(code))) {
-      dirs.add(kebabCase(matches[1]))
+    for (const match of code.matchAll(pascalReg)) {
+      dirs.add(kebabCase(match[1]))
     }
 
     if (!dirs.size) {

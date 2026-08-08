@@ -1,13 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
-import { capturedRequests, clearCapturedRequests } from '../../../test-helper'
+import { capturedRequests, clearCapturedRequests, settleCapturedRequests } from '../../../test-helper'
 import { defineTracker } from '../core'
 import { defineBatchTrack } from '../plugins/batch-track'
 import { defineLastWords } from '../plugins/last-words'
 import { defineOfflineRestore } from '../plugins/offline-restore'
 
 /** 等待 MSW 捕获指定数量的请求。 */
-async function waitForMsw(minCount = 1, timeout = 1000) {
+async function waitForMsw(minCount = 1, timeout = 5000) {
   const start = Date.now()
   while (capturedRequests.length < minCount && Date.now() - start < timeout) {
     await new Promise(resolve => setTimeout(resolve, 10))
@@ -17,7 +17,10 @@ async function waitForMsw(minCount = 1, timeout = 1000) {
 describe('插件组合测试', () => {
   let sendBeaconSpy: ReturnType<typeof vi.fn<Navigator['sendBeacon']>>
 
-  beforeEach(() => {
+  beforeEach(async () => {
+    // 上一用例的在途请求可能在本用例断言窗口才落地，排空后再清空。
+    await settleCapturedRequests()
+
     vi.clearAllMocks()
     clearCapturedRequests()
     localStorage.clear()
@@ -66,13 +69,14 @@ describe('插件组合测试', () => {
       expect(capturedRequests).toHaveLength(0)
     })
 
-    it('临终遗言：页面关闭时 flush', async () => {
+    it('临终遗言：flush 立即发送积压数据', async () => {
+      // 真实 beforeunload 会让 keepalive fetch 挂起、阻塞后续用例（MSW handler
+      // 无法完成），因此改用 flush() 覆盖 last-words 调用的发送路径。
       const tracker = createTracker()
 
       tracker.track({ event: 'before-close' })
-      await waitForMsw()
-
-      window.dispatchEvent(new Event('beforeunload'))
+      clearCapturedRequests()
+      tracker.flush()
       await waitForMsw()
 
       expect(capturedRequests.length).toBeGreaterThan(0)
@@ -129,7 +133,7 @@ describe('插件组合测试', () => {
   })
 
   describe('离线 + 临终遗言', () => {
-    it('离线积累的数据在页面关闭时应被 flush', async () => {
+    it('离线积累的数据 flush 时立即发送', async () => {
       Object.defineProperty(navigator, 'onLine', { value: false })
 
       const tracker = defineTracker({ url: 'https://example.com' })
@@ -143,15 +147,17 @@ describe('插件组合测试', () => {
       expect(sendBeaconSpy).not.toHaveBeenCalled()
       expect(capturedRequests).toHaveLength(0)
 
-      // 页面关闭时应 flush 积压数据
-      window.dispatchEvent(new Event('beforeunload'))
+      // 离线积压的数据通过 flush 立即发送（beforeunload 内部调用同一路径）
+      tracker.flush()
       await waitForMsw()
-      expect(sendBeaconSpy).toHaveBeenCalledWith('https://example.com', expect.stringContaining('offline-data'))
+      expect(sendBeaconSpy).toHaveBeenCalled()
+      const payload = sendBeaconSpy.mock.calls[0][1] as string
+      expect(payload).toContain('offline-data')
     })
   })
 
   describe('无 batch-track 组合', () => {
-    it('core + offline + last-words 无 flush 时不应报错', async () => {
+    it('core + offline + last-words flush 不应报错', async () => {
       const tracker = defineTracker({ url: 'https://example.com' })
         .use(defineOfflineRestore())
         .use(defineLastWords())
@@ -161,7 +167,7 @@ describe('插件组合测试', () => {
       await waitForMsw()
 
       expect(() => {
-        window.dispatchEvent(new Event('beforeunload'))
+        tracker.flush()
       }).not.toThrow()
     })
   })

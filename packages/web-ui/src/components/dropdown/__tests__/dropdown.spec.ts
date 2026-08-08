@@ -230,7 +230,7 @@ describe('WebUiDropdown 组件', () => {
   })
 
   describe('事件：open-change', () => {
-    it('打开时触发', async () => {
+    it('命令式打开不触发', async () => {
       const el = createDropdown({}, SIMPLE)
       await waitForUpdate(el)
 
@@ -239,13 +239,12 @@ describe('WebUiDropdown 组件', () => {
       el.openMenu()
       await waitForUpdate(el)
 
-      expect(events).toHaveLength(1)
-      expect((events[0] as CustomEvent).detail.open).toBe(true)
+      expect(events).toHaveLength(0)
       detach()
       cleanupElement(el)
     })
 
-    it('关闭时触发', async () => {
+    it('命令式关闭不触发', async () => {
       const el = createDropdown({}, SIMPLE)
       el.openMenu()
       await waitForUpdate(el)
@@ -255,8 +254,7 @@ describe('WebUiDropdown 组件', () => {
       el.closeAll()
       await waitForUpdate(el)
 
-      expect(events).toHaveLength(1)
-      expect((events[0] as CustomEvent).detail.open).toBe(false)
+      expect(events).toHaveLength(0)
       detach()
       cleanupElement(el)
     })

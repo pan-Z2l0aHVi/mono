@@ -8,14 +8,22 @@ interface URLObject {
 }
 
 export function parseUrl(url = ''): URLObject {
-  const isRelative = !/^(https?:)?\/\//.test(url)
+  const isAbsolute = /^https?:\/\//.test(url)
+  const isProtocolRelative = url.startsWith('//')
+  const isRelative = !isAbsolute && !isProtocolRelative
 
   try {
-    // 如果 url 是相对路径，就借用 http://n.n 作为 base
-    const parsed = new URL(url, isRelative ? 'http://n.n' : undefined)
+    // 只有 http(s):// 开头的绝对 URL 不需要 base；协议相对 URL（//host）与
+    // 相对路径都借用 http://n.n 作为 base，否则 new URL('//host', undefined) 会抛错
+    const parsed = new URL(url, isAbsolute ? undefined : 'http://n.n')
 
     return {
-      base: isRelative ? parsed.pathname : `${parsed.origin}${parsed.pathname}`,
+      // 协议相对 URL 保持 //host/path 形式，避免丢失协议
+      base: isRelative
+        ? parsed.pathname
+        : isProtocolRelative
+          ? `//${parsed.host}${parsed.pathname}`
+          : `${parsed.origin}${parsed.pathname}`,
       query: Object.fromEntries(parsed.searchParams),
       hash: parsed.hash
     }

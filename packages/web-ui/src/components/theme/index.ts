@@ -49,13 +49,13 @@ export class WebUiTheme extends LitElement {
     this._warnWhenAppearanceIsMissing()
   }
 
-  /** 返回此主题范围内的浮层挂载点；未设置 appearance 时不创建。 */
+  // 返回此主题范围内的浮层挂载点；未设置 appearance 时不创建。
   getOverlayRoot(): HTMLElement | undefined {
     if (!this._hasAppearance()) return undefined
     return this.renderRoot.querySelector<HTMLElement>('[data-wui-overlay-container]') ?? undefined
   }
 
-  /** 当前范围是否应减少动效；`system` 跟随用户的系统偏好。 */
+  // 当前范围是否应减少动效；`system` 跟随用户的系统偏好。
   isReducedMotion(): boolean {
     if (this.motion === 'reduced') return true
     if (this.motion === 'full') return false

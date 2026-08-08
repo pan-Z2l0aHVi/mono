@@ -105,8 +105,9 @@ export class WebUiBackTop extends LitElement {
     })
   }
 
+  // ARIA button 契约要求 Enter 与 Space 均能激活
   private onEnter(e: KeyboardEvent) {
-    if (e.key === 'Enter') {
+    if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault()
       this.toTop()
     }

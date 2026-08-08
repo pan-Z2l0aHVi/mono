@@ -14,7 +14,7 @@ function parseDuration(value: string): number {
   return 0
 }
 
-/** 读取元素实际 CSS transition 的最长时长，供可覆盖主题 token 的 JS 生命周期使用。 */
+// 读取元素实际 CSS transition 的最长时长，供可覆盖主题 token 的 JS 生命周期使用。
 export function getTransitionDuration(panel: HTMLElement, fallback = DEFAULT_EXIT_DURATION): number {
   const style = getComputedStyle(panel)
   const durations = style.transitionDuration.split(',').map(parseDuration)
@@ -27,7 +27,7 @@ export function getTransitionDuration(panel: HTMLElement, fallback = DEFAULT_EXI
   return longest || fallback
 }
 
-/** 以可中断的方式显示浮层，避免快速切换时重启动画。 */
+// 以可中断的方式显示浮层，避免快速切换时重启动画。
 export function showOverlayPresence(panel: HTMLElement, options: OverlayPresenceOptions = {}) {
   pendingExits.get(panel)?.()
   panel.hidden = false
@@ -45,7 +45,7 @@ export function showOverlayPresence(panel: HTMLElement, options: OverlayPresence
   })
 }
 
-/** 播放退出过渡；若在结束前重新显示则返回 false。 */
+// 播放退出过渡；若在结束前重新显示则返回 false。
 export function hideOverlayPresence(panel: HTMLElement): Promise<boolean> {
   pendingExits.get(panel)?.()
   panel.dataset.wuiPresence = 'closing'

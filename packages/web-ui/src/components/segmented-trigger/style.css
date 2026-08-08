@@ -13,6 +13,9 @@
 }
 
 .wui-segmented-trigger {
+  --wui-segmented-trigger-bg-hover: color-mix(in srgb, var(--wui-color-text, #1b1b1b) 6%, transparent);
+  --wui-segmented-trigger-bg-active: color-mix(in srgb, var(--wui-color-text, #1b1b1b) 15%, transparent);
+
   cursor: pointer;
   user-select: none;
 
@@ -32,7 +35,11 @@
   color: var(--wui-color-text-muted, #6a6a6a);
   white-space: nowrap;
 
-  transition: color var(--wui-duration-focus, 200ms) ease;
+  background-color: transparent;
+
+  transition:
+    background-color var(--wui-duration-trigger, 160ms) ease,
+    color var(--wui-duration-focus, 200ms) ease;
 
   &:focus-visible {
     outline: 3px solid var(--wui-focus-ring, rgb(0 136 255 / 0.4));
@@ -42,6 +49,16 @@
   &.is-checked {
     color: var(--wui-color-text, #1a1a1a);
   }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .wui-segmented-trigger:hover:not(.is-disabled) {
+    background-color: var(--wui-segmented-trigger-bg-hover);
+  }
+}
+
+.wui-segmented-trigger:active:not(.is-disabled) {
+  background-color: var(--wui-segmented-trigger-bg-active);
 }
 
 .wui-segmented-trigger.is-disabled {

@@ -150,16 +150,15 @@ describe('WebUiSvgDrawLines 组件', () => {
       el.remove()
     })
 
-    it('replay 后恢复样式', async () => {
+    it('连续 replay 不应抛异常', async () => {
       const el = createSvgDrawLines()
       el.innerHTML = '<svg><path d="M0 0 L100 100"/></svg>'
       await el.updateComplete
-      await el.replay()
-      await el.replay()
-      // 第二次 replay 先 cancelAll 清除样式再重新设置
-      // 验证 inline 样式存在（第二次 replay 的 animateElement 已设置）
-      const path = el.querySelector('path')!
-      expect(typeof path.style.strokeDasharray).toBe('string')
+
+      await expect(el.replay()).resolves.toBeUndefined()
+      // 第二次 replay 先 cancelAll 再重新设置，不应抛错
+      await expect(el.replay()).resolves.toBeUndefined()
+
       el.remove()
     })
   })

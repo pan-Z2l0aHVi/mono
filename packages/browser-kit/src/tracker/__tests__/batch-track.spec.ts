@@ -1,13 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
-import { clearCapturedRequests, capturedRequests } from '../../../test-helper'
+import { clearCapturedRequests, capturedRequests, settleCapturedRequests } from '../../../test-helper'
 import { defineTracker } from '../core'
 import { defineBatchTrack } from '../plugins/batch-track'
 
 vi.useFakeTimers()
 
 /** 临时切换到真实计时器，等待 MSW 捕获指定数量的请求后再切回。 */
-async function waitForMsw(minCount = 1, timeout = 1000) {
+async function waitForMsw(minCount = 1, timeout = 5000) {
   vi.useRealTimers()
   const start = Date.now()
   while (capturedRequests.length < minCount && Date.now() - start < timeout) {
@@ -17,7 +17,10 @@ async function waitForMsw(minCount = 1, timeout = 1000) {
 }
 
 describe('聚合上报测试用例', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
+    // 上一用例的在途请求可能在本用例断言窗口才落地，排空后再清空。
+    await settleCapturedRequests()
+
     vi.clearAllMocks()
     clearCapturedRequests()
     localStorage.clear()
@@ -46,7 +49,7 @@ describe('聚合上报测试用例', () => {
     expect(capturedRequests).toHaveLength(1)
   })
 
-  it('数据分片：超过阈值时分片', async () => {
+  it('数据分片：超过阈值时分片生效', async () => {
     const tracker = defineTracker({ url: 'https://example.com' })
       .use(defineBatchTrack({ defaultBatchDelay: 200 }))
       .make()
@@ -59,11 +62,43 @@ describe('聚合上报测试用例', () => {
     vi.advanceTimersByTime(200)
     await waitForMsw()
 
-    // 分片后每次请求只包含部分数据（不是全部），证明分片生效
+    // 分片生效：请求 body 是部分数据（不是全部），证明递归分片切分了批次
     expect(capturedRequests.length).toBeGreaterThanOrEqual(1)
     const body = capturedRequests[0].body as unknown[]
     expect(Array.isArray(body)).toBe(true)
     expect(body.length).toBeLessThan(totalCount)
+  })
+
+  it('分片后所有数据无丢失（sendBeacon 累计条数一致）', async () => {
+    // keepalive fetch 在 Chromium 有并发限制（并发分片请求只有第一个能被 MSW
+    // 捕获），因此改用 sendBeacon 同步路径统计分片完整性。
+    const sendBeacon = vi.fn<Navigator['sendBeacon']>(() => true)
+    Object.defineProperty(navigator, 'sendBeacon', {
+      configurable: true,
+      enumerable: true,
+      value: sendBeacon
+    })
+
+    const tracker = defineTracker({ url: 'https://example.com' })
+      .use(defineBatchTrack({ defaultBatchDelay: 200 }))
+      .make()
+
+    const totalCount = 10000
+    for (let i = 0; i < totalCount; i++) {
+      tracker.track({ event: 'view' })
+    }
+
+    vi.advanceTimersByTime(200)
+
+    // sendBeacon 同步执行，所有分片立即调用；字符串载荷可直接解析
+    expect(sendBeacon.mock.calls.length).toBeGreaterThanOrEqual(2)
+    let total = 0
+    for (const call of sendBeacon.mock.calls) {
+      const payload = call[1] as string
+      const arr = JSON.parse(payload) as unknown[]
+      total += arr.length
+    }
+    expect(total).toBe(totalCount)
   })
 
   it('flush 应立即发送批量数据', async () => {
@@ -107,16 +142,22 @@ describe('聚合上报测试用例', () => {
     expect(capturedRequests.length).toBe(2)
   })
 
-  it('大数据分片：恰好 64KB 时应单次发送', async () => {
+  it('未超过 maxBeaconSize 时整批单次发送', async () => {
     const tracker = defineTracker({ url: 'https://example.com' })
-      .use(defineBatchTrack({ defaultBatchDelay: 200, maxBeaconSize: 0.0625 }))
+      .use(defineBatchTrack({ defaultBatchDelay: 200, maxBeaconSize: 64 }))
       .make()
 
-    const data = { payload: 'x'.repeat(50) }
-    tracker.track(data, -1)
+    // 3 条小数据总大小远小于 64KB，flush 时 sliceTrack 判断不超限，整批单次发送
+    tracker.track({ event: 'a' })
+    tracker.track({ event: 'b' })
+    tracker.track({ event: 'c' })
+    vi.advanceTimersByTime(200)
     await waitForMsw()
 
-    expect(capturedRequests.length).toBeGreaterThanOrEqual(1)
+    expect(capturedRequests).toHaveLength(1)
+    const body = capturedRequests[0].body as unknown[]
+    expect(Array.isArray(body)).toBe(true)
+    expect(body).toHaveLength(3)
   })
 
   it('单条数据应直接发送', async () => {

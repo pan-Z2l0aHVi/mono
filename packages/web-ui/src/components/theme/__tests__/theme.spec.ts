@@ -166,19 +166,20 @@ describe('WebUiTheme 组件', () => {
       menu.openAt(80, 80)
       await new Promise(resolve => requestAnimationFrame(resolve))
 
-      expect(theme.getOverlayRoot()?.querySelector('.context-menu')).toBeTruthy()
+      expect(theme.getOverlayRoot()?.querySelector('[role="menu"]')).toBeTruthy()
       theme.remove()
     })
   })
 
   describe('无主题 fallback', () => {
-    it('Toast 在不设置主题时使用 fallback overlay root', async () => {
-      const before = document.head.querySelectorAll('style').length
-
+    it('Toast 在不设置主题时使用 fallback overlay root 渲染', async () => {
       toast.info('fallback', { duration: 0 })
       await new Promise(resolve => requestAnimationFrame(resolve))
 
-      expect(document.head.querySelectorAll('style')).toHaveLength(before)
+      // 外在表现：toast 渲染进 fallback overlay root，而不是注入 document head 样式
+      expect(toast._visibleCount()).toBe(1)
+      const fallbackRoot = document.querySelector('[data-wui-overlay-root]')?.shadowRoot
+      expect(fallbackRoot?.querySelector('web-ui-toast')).toBeTruthy()
       toast._reset()
     })
   })

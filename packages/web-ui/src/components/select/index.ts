@@ -432,26 +432,33 @@ export class WebUiSelect extends LitElement {
   }
 
   override render() {
+    // portal 模式下 options 被 moveContent 移入浮层 shadow root，id 引用无法跨树作用域
+    // 解析，因此 activedescendant 仅在非 portal 模式输出；aria-controls 同理指向同根内 listbox
+    const listboxId = `${this.localName}-listbox`
+    const activeDescendant =
+      !this.portal && this._isOpen && this._activeIndex >= 0
+        ? (this._options[this._activeIndex]?.id ?? nothing)
+        : nothing
+
     return html`
       <div class="wui-select-inner">
         <div
           class="wui-glass select-trigger"
           ?data-custom-trigger=${this._hasTriggerSlot}
           @click=${this._togglePopup}
-          tabindex=${this._isDisabled ? -1 : 0}
+          tabindex=${this._isDisabled ? '-1' : '0'}
           role="combobox"
           aria-expanded=${this._isOpen}
           aria-haspopup="listbox"
+          aria-controls=${this.portal ? nothing : listboxId}
           aria-disabled=${String(this._isDisabled)}
-          aria-activedescendant=${this._isOpen && this._activeIndex >= 0
-            ? this._options[this._activeIndex]?.id
-            : nothing}
+          aria-activedescendant=${activeDescendant}
         >
           <slot name="trigger" @slotchange=${this._onTriggerSlotChange}></slot>
           ${!this._hasTriggerSlot ? html`<span class="label">${this._selectedLabel}</span>` : nothing}
           <web-ui-icon class="arrow" .icon=${lucideChevronDown}></web-ui-icon>
         </div>
-        <div class="wui-glass select-overlay wui-floating-panel" hidden role="listbox">
+        <div class="wui-glass select-overlay wui-floating-panel" hidden role="listbox" id=${listboxId}>
           <div class="select-scroll">
             <div class="select-content">
               <slot @slotchange=${this._onSlotChange}></slot>

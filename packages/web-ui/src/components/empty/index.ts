@@ -2,7 +2,6 @@ import { html, LitElement, unsafeCSS } from 'lit'
 import { customElement, property, state } from 'lit/decorators.js'
 import { classMap } from 'lit/directives/class-map.js'
 
-// 注册 web-ui-icon（Rolldown tree-shake 副作用 import，引用类名阻止删除）
 import '@/components/icon'
 import glass from '@/assets/glass.css?inline'
 import { lucideInbox } from '@/icons'

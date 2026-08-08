@@ -157,10 +157,10 @@ toast.close = close
 toast.clear = clear
 toast.updateMessage = updateMessage
 
-/** 获取当前可见 toast 数量（测试用） */
+// 获取当前可见 toast 数量（测试用）
 toast._visibleCount = () => visibleToasts.size
 
-/** 重置全部状态（测试用） */
+// 重置全部状态（测试用）
 toast._reset = () => {
   pendingBatch = undefined
   isBatchScheduled = false

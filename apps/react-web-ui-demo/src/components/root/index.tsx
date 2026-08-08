@@ -21,15 +21,33 @@ function isThemeMotion(motion: unknown): motion is ThemeMotion {
   return typeof motion === 'string' && THEME_MOTIONS.has(motion as ThemeMotion)
 }
 
+// localStorage 在存储被禁的上下文（沙箱 iframe、隐私模式）访问会抛 SecurityError，
+// 损坏的旧数据会让 JSON.parse 抛错；这两处都在 useState 初始化器里执行，错误发生在
+// Root 自身 render 中，外层 ErrorBoundary 无法捕获，会导致整个应用白屏，因此必须防护。
+function readStoredTheme(key: string): unknown {
+  try {
+    const stored = localStorage.getItem(key)
+    return stored ? JSON.parse(stored) : null
+  } catch {
+    return null
+  }
+}
+
+function writeStoredTheme(key: string, value: string): void {
+  try {
+    localStorage.setItem(key, value)
+  } catch {
+    // 写入失败（配额/被禁）时仅跳过持久化，不打断交互
+  }
+}
+
 function getInitialThemeAppearance(): ThemeAppearance {
-  const stored = localStorage.getItem(STORAGE_KEY)
-  const appearance = stored ? JSON.parse(stored) : null
+  const appearance = readStoredTheme(STORAGE_KEY)
   return isThemeAppearance(appearance) ? appearance : 'light'
 }
 
 function getInitialThemeMotion(): ThemeMotion {
-  const stored = localStorage.getItem(MOTION_STORAGE_KEY)
-  const motion = stored ? JSON.parse(stored) : null
+  const motion = readStoredTheme(MOTION_STORAGE_KEY)
   return isThemeMotion(motion) ? motion : 'system'
 }
 
@@ -91,14 +109,14 @@ export function Root() {
     const appearance = event.currentTarget.value
     if (!isThemeAppearance(appearance)) return
     setThemeAppearance(appearance)
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(appearance))
+    writeStoredTheme(STORAGE_KEY, JSON.stringify(appearance))
   }
 
   const updateThemeMotion = (event: React.ChangeEvent<WebUiSelect>) => {
     const motion = event.currentTarget.value
     if (!isThemeMotion(motion)) return
     setThemeMotion(motion)
-    localStorage.setItem(MOTION_STORAGE_KEY, JSON.stringify(motion))
+    writeStoredTheme(MOTION_STORAGE_KEY, JSON.stringify(motion))
   }
 
   return (

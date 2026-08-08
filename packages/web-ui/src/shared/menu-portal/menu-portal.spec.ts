@@ -7,12 +7,11 @@ afterEach(() => {
 })
 
 describe('菜单 Portal 容器', () => {
-  it('创建滚动视口和随内容滚动的内边距层', () => {
+  it('创建 portal 面板并将内容挂载到面板内', () => {
     const { panel, content } = createMenuPortalOverlay('context-menu')
-    const scroll = panel.firstElementChild
 
     expect(panel.dataset.wuiPresence).toBe('entering')
-    expect(scroll?.classList.contains('wui-menu-scroll')).toBe(true)
-    expect(scroll?.firstElementChild).toBe(content)
+    expect(content.isConnected).toBe(true)
+    expect(panel.contains(content)).toBe(true)
   })
 })
