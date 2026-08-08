@@ -2,8 +2,8 @@
 
 ## Wails API
 
-For this project, consult the official Wails 3 Chinese documentation before using or changing any Wails API:
+在使用或修改任何 Wails API 前，请先查阅 Wails 3 官方文档：
 
-- https://v3.wails.io/zh-cn/quick-start/installation/
+- https://v3.wails.io/reference/overview/
 
-Do not rely on Wails v2 APIs, examples, or third-party API references when official Wails 3 documentation is available.
+当 Wails 3 官方文档可用时，不要依赖 Wails v2 的 API、示例或第三方 API 参考。

@@ -40,6 +40,6 @@ checksums. The initial artifacts are not formally signed.
 
 ## Wails APIs
 
-Use the official Wails 3 Chinese documentation for Wails APIs and configuration:
+Use the official Wails 3 documentation for Wails APIs and configuration:
 
-https://v3.wails.io/zh-cn/quick-start/installation/
+https://v3.wails.io/reference/overview/
