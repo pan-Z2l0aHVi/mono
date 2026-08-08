@@ -1,5 +1,14 @@
 # @greypan/web-ui
 
+## 2.1.8
+
+### Patch Changes
+
+- 7c06580: try workflows
+- Updated dependencies [7c06580]
+  - @greypan/browser-kit@1.7.7
+  - @greypan/js-kit@1.6.6
+
 ## 2.1.7
 
 ### Patch Changes

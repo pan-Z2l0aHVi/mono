@@ -1,5 +1,11 @@
 # @greypan/js-kit
 
+## 1.6.6
+
+### Patch Changes
+
+- 7c06580: try workflows
+
 ## 1.6.5
 
 ### Patch Changes
