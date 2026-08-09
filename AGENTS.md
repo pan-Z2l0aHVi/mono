@@ -29,6 +29,19 @@
 
 ---
 
+## 仓库级规则（强制约束）
+
+以下 `.agents/rules/` 文件为仓库级强制约束，开始任务前必须阅读与任务相关的规则文件全文。
+
+| 规则文件                                                   | 摘要                                                                                                                                                        |
+| ---------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`code-style.md`](.agents/rules/code-style.md)             | 命名/大小写规范；公共 API 中文 JSDoc；严格 TS（禁 `any`）；`definePlugin` 优先于 class；CSS nesting 组织；`apps/` 优先 Tailwind v4；改动后先跑 `check:code` |
+| [`commit.md`](.agents/rules/commit.md)                     | 未经授权不暂存/提交；授权后先读 `commitlint.config.js` 与 `docs/agents/commit.md`；禁 `--no-verify`/`--no-gpg-sign`                                         |
+| [`dep-management.md`](.agents/rules/dep-management.md)     | 未经授权不增删改 npm 依赖；授权后先读 `docs/agents/dependencies.md`，遵循 workspace catalog 与 peer dependency 策略                                         |
+| [`react.md`](.agents/rules/react.md)                       | React HMR——禁匿名 default export，用具名函数声明；由 oxlint `unicorn/no-anonymous-default-export` 强制执行                                                  |
+| [`review-checklist.md`](.agents/rules/review-checklist.md) | Review 以问题为先、按严重程度排序；独立 review agent 不参与同一变更的实施                                                                                   |
+| [`testing.md`](.agents/rules/testing.md)                   | 公共行为加聚焦测试；跨包/导出/契约变更跑根 `pnpm test`；构建/产物变更跑根 `pnpm build`                                                                      |
+
 ## 仓库概览
 
 pnpm monorepo（`apps/**`、`packages/**`），使用 Turborepo。包发布到 npm，命名空间为 `@greypan/*`。apps 为私有 demo，不发布。

@@ -24,6 +24,7 @@ A pnpm monorepo publishing Lit-based web component UI library (`@greypan/web-ui`
 | 0007 | Web UI Contract Convergence | Unified Pointer Events, standard event model, form-associated controls, public contract tests |
 | 0008 | Icon System                 | Build-time Iconify data modules; no runtime icon component or lookup                          |
 | 0009 | Release Planes              | Shared version PR with independent npm and desktop delivery                                   |
+| 0010 | Design Token Restructure    | Reorganize duration/easing/scale tokens into semantic names; breaking change for consumers    |
 
 ## Package Boundaries
 
