@@ -1,6 +1,8 @@
 # 构建与发布架构
 
-在修改包脚本、Vite/Turbo 配置、包结构、外部化或 CI/发布流程之前，请先阅读本指南。当这些细节发生变化时，应在同一变更中更新本文档。
+在修改包脚本、Vite/Turbo 配置、外部化或 CI/发布流程之前，请先阅读本指南。当这些细节发生变化时，应在同一变更中更新本文档。
+
+包清单和依赖边界以 [`CONTEXT.md`](../../CONTEXT.md) 为权威来源；release terminology 以 [ADR-0009](../adr/0009-release-planes.md) 为权威来源，本指南只描述构建、验证和发布流程。
 
 ## 各包命令
 
@@ -39,25 +41,6 @@ Wails 开发启动 Wails 以及嵌套 WebView 前端的每个可构建工作区�
 | `vue.json`   | 4：框架  | `vue-web-ui-demo`                       | `@vue/tsconfig` 加 `./dom.json`     |
 
 每个包添加自己的 `include`、`paths` 和 `tsBuildInfoFile`。面向 DOM 和 Node 的包将其配置拆分为 `tsconfig.node.json`、`tsconfig.app.json` 和 `tsconfig.vitest.json`；纯 Node 包只使用一个 `tsconfig.json`。
-
-## 包结构
-
-```text
-packages/
-  tsconfig                  共享 TypeScript 配置文件；无构建步骤
-  js-kit                    JS 工具库；无工作区依赖的基础包
-  browser-kit               浏览器工具库；依赖 js-kit
-  test-kit                  Vitest 浏览器模式和 MSW 基础设施；依赖 js-kit
-  web-ui                    Lit Web 组件；依赖 js-kit 和 browser-kit
-  unplugin-web-components   Web 组件的 Unplugin；依赖 js-kit
-  deps-reload               本地依赖重载插件；依赖 js-kit
-apps/
-  react-web-ui-demo            React 19、TanStack Router、Zustand；私有项目
-  vue-web-ui-demo              Vue 3、Vue Router、Pinia；私有项目
-  wails-starter                Wails 3 桌面应用模板；Go 后端加 Vue WebView 前端
-```
-
-`js-kit` 是叶子包。`browser-kit` 依赖 `js-kit`；`test-kit` 依赖 `js-kit` 并有 `msw` peer 依赖；`web-ui` 依赖两者。应用依赖共享包。
 
 ## 库构建模式
 
@@ -106,5 +89,8 @@ apps/
 - Changesets 版本 PR 使用 `GITHUB_TOKEN` 创建，因此其自身的 `pull_request` 触发的 CI 会被 GitHub 的 pwn-request 保护标记为 `action_required`，在获批准前不会运行。由于 `main` 规则集要求 `check` 上下文，合并版本 PR 需要先批准那个被挂起的运行（Actions 运行页面，或 `gh api repos/<owner>/<repo>/actions/runs/<id>/approve`）。`changeset-version.yml` 触发的 `workflow_dispatch` 运行已经验证了相同的提交，因此批准只是为了满足合并门控；分支键控的 `concurrency` 组随后会在两者同时运行时将已批准的运行与调度运行合并。
 - `deploy-pages.yml` 中的部署是手动触发的，通过一个 `actions/deploy-pages` 产物部署作业级 `DEMO_APPS` 列表中的每个可部署 Demo。它仅安装 Node 和 pnpm，因为 Pages 不需要 Wails CLI。每个条目是 `apps/<name>` 目录，服务路径为 `/mono/<name>/`；构建命令使用 pnpm 的 `{./apps/<name>}...` 目录选择器而非 npm 包名。站点没有根落地页。
 - 每个可部署 Demo 必须支持 History 路由深层链接。GitHub Pages 将未匹配的请求路由到根 `404.html`；它根据 `DEMO_APPS` 验证应用名称，将请求的路由保存在 `redirect` 中，并加载应用根目录。在生产环境中，应用必须在创建路由器之前恢复 `redirect`。未知路径保持 404 响应。
-- 首次发布必须使用 `pnpm publish:new <package-dir>`，它会构建并发布版本 `1.0.0`。需要先执行 `npm login`；之后为 `npm-publish.yml` 配置 npm Trusted Publishing，以便后续包发布使用版本 PR 流程。
 - npm Trusted Publishing 通过 OIDC `job_workflow_ref` 声明绑定到工作流文件路径。重命名或移动 `npm-publish.yml` 会使现有的 trusted-publisher 注册失效：即使设置了 `id-token: write`，`pnpm changeset publish` 也会因 `ENEEDAUTH` 失败。在重命名工作流的同一变更中更新 npmjs.com 上对应的 trusted publisher。
+
+## Release context
+
+发布流程和 release plane 的术语、边界与授权模型见 [ADR-0009](../adr/0009-release-planes.md)。本指南只保留执行流程和 release safety boundary：未经用户授权不执行发布；不得直接运行 `npm publish`，首次发布使用 `pnpm publish:new <package-dir>`；不得使用 `--no-verify` 或 `--no-gpg-sign`。后续公共包和 Wails 安装程序按对应 workflow 与 Changesets 配置执行。修改 `.github/workflows/`、Changesets 或发布脚本时，先阅读本指南和相关 ADR，并以当前 workflow、manifest 与脚本为事实来源。

@@ -1,122 +1,70 @@
-# Mono — Architecture Context
+# Mono 项目架构 Context
 
-## Overview
+本文件是 repository-level project context：记录项目边界、跨包架构、依赖方向、领域术语入口和 ADR 索引。仅在架构、跨包依赖、仓库拓扑、项目术语或长期设计取舍相关任务中阅读；不要把它当作逐项操作手册。
 
-A pnpm monorepo publishing Lit-based web component UI library (`@greypan/web-ui`) and supporting JS utilities under `@greypan/*` to npm. Includes two private demo apps (React 19 + Vue 3) for development and preview.
+- **Domain vocabulary**：项目中需要保持一致的术语和概念边界。
+- **Repository architecture context**：包边界、依赖方向、集成表面和长期工程原则。
+- **Implementation details**：源码、manifest、配置、测试以及按需加载的 task guide；不在此文件中复制。
 
-## Architectural Principles
+## 项目身份
 
-- **Plugin over inheritance**: Extensibility through function composition (see `packages/js-kit/src/plugin-system/`), not class hierarchies
-- **Shadow DOM encapsulation**: all web components use Shadow DOM. External CSS resets (Tailwind etc.) cannot penetrate component internals — only `:host` and CSS custom properties are exposed
-- **Framework-agnostic components**: web components work in React, Vue, and vanilla JS. Framework-specific type wrappers in `packages/web-ui/src/types/`
-- **Monorepo discipline**: dependency graph is a DAG — `js-kit` is root leaf, all packages depend `^build`, no circular deps
+Mono 是一个 pnpm + Turborepo monorepo。它向 npm 发布 `@greypan/*` 工具包和基于 Lit 的 `@greypan/web-ui`，同时维护 React、Vue 与 Wails 私有应用，以验证共享包在真实框架和桌面交付中的契约。
 
-## Key Decisions
+## 核心工程原则
 
-| ADR  | Title                       | Summary                                                                                       |
-| ---- | --------------------------- | --------------------------------------------------------------------------------------------- |
-| 0001 | CI Pipeline                 | Build + lint + type-check + test via Turborepo. Release via changesets                        |
-| 0002 | Build Toolchain             | `vite-plus` as unified wrapper over Vite/Rolldown for build/test/lint/format                  |
-| 0003 | Web Component Strategy      | Lit elements in Shadow DOM. `:host` only for `display`. Framework types in `types/`           |
-| 0004 | Plugin System               | js-kit's `definePlugin` with `use()`/`make()` chain for composable utilities                  |
-| 0005 | Overlay Interaction Policy  | Click-outside, focus-out, keyboard Escape, and child-parent event coordination                |
-| 0006 | Layout Layering             | Local overlay stacking in layout, portal overlay z-index scale                                |
-| 0007 | Web UI Contract Convergence | Unified Pointer Events, standard event model, form-associated controls, public contract tests |
-| 0008 | Icon System                 | Build-time Iconify data modules; no runtime icon component or lookup                          |
-| 0009 | Release Planes              | Shared version PR with independent npm and desktop delivery                                   |
-| 0010 | Design Token Restructure    | Reorganize duration/easing/scale tokens into semantic names; breaking change for consumers    |
+- **Plugin over inheritance**：扩展性通过 `packages/js-kit/src/plugin-system/` 的函数组合实现，不以 class 层级承载内部状态或行为。
+- **Shadow DOM encapsulation**：`web-ui` 组件使用 Shadow DOM；应用 CSS reset 无法进入组件内部，组件通过 `:host` 和 CSS custom properties 提供受控边界。
+- **Framework-agnostic public contract**：一个 Lit 运行时实现服务 React、Vue 与 vanilla JS；框架类型适配位于 `packages/web-ui/src/types/`，不引入运行时 wrapper。
+- **Acyclic workspace graph**：工作区依赖保持有向无环；`js-kit` 是运行时代码的基础包，Turbo 的 `build` 与 `test` 先构建上游依赖。
 
-## Package Boundaries
+## 模块关系
 
-| Package       | Public API             | Owns                                                       |
-| ------------- | ---------------------- | ---------------------------------------------------------- |
-| `js-kit`      | `@greypan/js-kit`      | Type utilities, plugin system, platform-agnostic helpers   |
-| `browser-kit` | `@greypan/browser-kit` | DOM utilities, offline queue, network interception via MSW |
-| `test-kit`    | `@greypan/test-kit`    | Vitest + Playwright test infrastructure, MSW composition   |
-| `web-ui`      | `@greypan/web-ui`      | Lit web components, framework type wrappers, icons         |
-| `tsconfig`    | `@greypan/tsconfig`    | Shared TypeScript profiles (no build step)                 |
+```text
+@greypan/tsconfig ──配置 profile，供所有 TypeScript workspace 使用
+@greypan/js-kit ───无工作区运行时依赖的基础工具与 plugin system
+  ├─ @greypan/browser-kit ──浏览器工具
+  │    └─ @greypan/web-ui ──Lit 组件、icons、React/Vue 类型
+  ├─ @greypan/test-kit ────Vitest browser mode 与 MSW 基础设施
+  ├─ @greypan/unplugin-web-components ──Web Components auto-import
+  └─ @greypan/deps-reload ─开发期 workspace dist 重载
 
-## Web UI Language
+react-web-ui-demo / vue-web-ui-demo ─共享包的 Web 集成与预览表面
+wails-starter（含 wails-starter-frontend）──共享包的 Wails 桌面集成表面
+```
 
-**Theme Appearance**:
-The explicit user preference controlling a `web-ui-theme` scope: `light`, `dark`, or `system`. Applications may persist this preference and must fall back to `light` when a stored value is absent or invalid.
+| 边界                      | 负责内容                                            | 不负责内容                        |
+| ------------------------- | --------------------------------------------------- | --------------------------------- |
+| `js-kit`                  | 平台无关的 type、utility、plugin system             | DOM、UI 或框架绑定                |
+| `browser-kit`             | DOM、storage、环境、网络和浏览器工具                | Node runtime 或 UI 组件           |
+| `test-kit`                | Vitest browser mode、MSW 复用基础设施               | 产品组件或应用测试逻辑            |
+| `web-ui`                  | Lit components、主题、icons、公共组件契约、框架类型 | 框架运行时 wrapper 或全局应用样式 |
+| `unplugin-web-components` | Vite/Webpack 的 Web Components auto-import 转换     | Web Components 实现               |
+| `deps-reload`             | 本地开发时 workspace 产物重载                       | 生产构建行为                      |
+| `tsconfig`                | 可发布的 TypeScript profile JSON                    | 编译或运行时代码                  |
+| `apps/*`                  | 私有集成、展示和桌面交付表面                        | npm 公共包发布                    |
 
-**Lock Scroll**:
-An overlay policy that prevents background document scrolling while an overlay is open. It does not imply modal accessibility semantics.
-_Avoid_: Modal
+## 关键 ADR
 
-**Modal Overlay**:
-An overlay that prevents background interaction and manages focus as a modal dialog. It is distinct from Lock Scroll.
+| ADR                                                             | 决策                                   | 何时读取                                                |
+| --------------------------------------------------------------- | -------------------------------------- | ------------------------------------------------------- |
+| [0001](docs/adr/0001-ci-pipeline.md)                            | CI Pipeline                            | 修改验证、Changesets 或发布门控                         |
+| [0002](docs/adr/0002-build-toolchain.md)                        | Build Toolchain                        | 修改 Vite Plus、构建或测试工具链                        |
+| [0003](docs/adr/0003-web-component-strategy.md)                 | Web Component Strategy                 | 修改 Lit、Shadow DOM 或框架集成                         |
+| [0004](docs/adr/0004-plugin-system.md)                          | Plugin System                          | 设计可组合状态或行为模块                                |
+| [0005](docs/adr/0005-overlay-interaction-policy.md)             | Overlay Interaction Policy             | 修改 overlay 关闭、焦点或事件协调                       |
+| [0006](docs/adr/0006-layout-layering.md)                        | Layout Layering                        | 修改布局层级、portal 或 z-index                         |
+| [0007](docs/adr/0007-web-ui-contract-convergence.md)            | Web UI Contract Convergence            | 修改组件公共契约、事件或表单行为                        |
+| [0008](docs/adr/0008-icon-system.md)                            | Icon System                            | 修改图标来源、生成器或导出                              |
+| [0009](docs/adr/0009-release-planes.md)                         | Release Planes                         | 修改 npm/Wails 发布流程                                 |
+| [0010](docs/adr/0010-design-token-restructure.md)               | Design Token Restructure               | 修改 `--wui-*` token 或破坏性兼容性                     |
+| [0011](docs/adr/0011-framework-type-adaptation-narrowing.md)    | Framework Type Adaptation Narrowing    | 修改 React/Vue 类型适配或复合控件事件边界               |
+| [0012](docs/adr/0012-progressive-agent-context-architecture.md) | Progressive Agent Context Architecture | 修改 agent context、rules、skills 或 instruction system |
 
-**Overlay Focus Model**:
-The component-specific rule defining where focus moves when an overlay opens and closes.
+## 已知边界
 
-**Layout Layer**:
-The `web-ui-layout` stacking relationship between its sibling regions. Base content and sidebar remain below the sticky header so non-portal header overlays retain pointer interaction when they overflow their grid area.
-_Avoid_: Global z-index scale, overlay layer
+- 所有发布的 JavaScript 包均为 ES modules；`tsconfig` 仅发布 JSON profile。
+- `web-ui` 不打包框架代码；消费者安装并提供 `lit`，可选地提供 React/Vue 类型依赖。
+- 应用均为私有包，不发布到 npm；React/Vue demo 部署到 GitHub Pages，Wails starter 通过 GitHub Release 交付安装程序。
+- registry 使用 npmmirror，CI 覆盖为官方 npm registry；不得为局部任务改写 registry/mirror。
 
-**Portal Overlay**:
-An overlay mounted in the nearest theme overlay root or an explicit overlay container. Select, Popover, and Tooltip become menu-layer portal overlays only when their `portal` property is enabled.
-_Avoid_: Local overlay
-
-**Application Auxiliary Layer**:
-Persistent fixed application affordances, such as BackTop, positioned above base content but below portal menus.
-_Avoid_: Overlay, modal
-
-**Public Component Contract**:
-The stable, documented surface of a component: props, default values, allowed values, slots, methods, events, accessibility semantics, and form behavior. Implementation details (shadow DOM structure, CSS classes, private state) are not part of the contract. Tests verify the contract, not the implementation.
-
-**React Custom-element Binding**:
-The React-side mapping from a `web-ui` public component contract to JSX: JavaScript properties use their camel-cased names, while custom events use their exact dispatched event names. It is distinct from the framework type wrapper.
-_Avoid_: React event normalization
-
-**Pointer Interaction**:
-Component interaction using Pointer Events (pointerenter, pointerleave, pointerdown, pointermove, pointerup, pointercancel) instead of mouse-specific events. Ensures consistent behavior across mouse, touch, and pen input. Contextmenu retains its own semantic event. Click remains the event for external-click-to-close detection.
-
-**Form-associated Control**:
-A custom element with `static formAssociated = true` that integrates with the native HTML form lifecycle: submits values via `FormData`, responds to `formResetCallback()` and `formDisabledCallback()`, and manages constraints through `ElementInternals`.
-
-**Target-carried Event**:
-A native-semantic DOM event whose value lives on `event.target` — the host element — rather than in an event payload. Its `$events` entry declares only the bare event type (`input: Event`); the framework adaptation layer injects `readonly target/currentTarget: WebUiXxx` via `WithHost`, giving framework consumers a typed target without per-component duplication. Composite controls (checkbox-group/radio-group/segmented) re-dispatch a single host event with the group as `target`, so the promise holds at group level too.
-_Avoid_: detail event, payload-carrying event
-
-## Known Constraints
-
-- All packages are ES modules only (`"type": "module"`)
-- Registry uses npmmirror (overridden to official registry in CI)
-- `web-ui` bundles no framework code — requires consumers to install `lit` as dependency
-- Apps are private, never published to npm
-
-## Deployment Language
-
-**Deployable Demo**:
-A private History-routing SPA included in the shared GitHub Pages artifact and exposed at its own path. All deployable demos are published together so one deployment cannot remove another demo, and each restores a deep link after a direct request or refresh.
-_Avoid_: Independently deployed app, standalone Pages site
-
-**Version PR**:
-A Changesets-generated pull request that records approved version changes across the monorepo. It is release intent, not an npm or desktop release itself.
-_Avoid_: Release, publish PR
-
-**npm Package Release**:
-Publication of versioned public packages to the npm registry.
-_Avoid_: Application release, desktop release
-
-**Desktop Application Release**:
-Publication of a versioned Wails installer set through a GitHub Release. It is distinct from npm package publication.
-_Avoid_: npm release, package publish
-
-**Release Plane**:
-An independently executable delivery path for either public npm packages or the desktop application. Release planes share a Version PR but may complete or be retried independently.
-_Avoid_: Release stage, release order
-
-**Release Authorization**:
-The rule that a Version PR merge is the sole authority for a formal release. Manual runs may validate artifacts but never publish them.
-_Avoid_: Manual release, ad hoc publish
-
-**Protected Main**:
-The branch policy that admits product changes through pull requests rather than direct pushes. It makes pull-request validation the authoritative pre-merge check.
-_Avoid_: Writable main, direct release branch
-
-**Release Recovery**:
-The policy that preserves a successful release plane when its peer fails, then retries only the failed plane. It does not attempt cross-registry rollback.
-_Avoid_: Atomic release, cross-plane rollback
+组件、token、overlay 与事件语义按需读取 `docs/agents/web-ui.md` 及其指向的 ADR；构建、部署与 release workflow 按需读取 `docs/agents/build.md` 和 ADR-0009。

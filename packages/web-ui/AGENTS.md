@@ -1,15 +1,7 @@
 # web-ui 包指令
 
-修改组件、主题 token、overlay、表单行为或框架类型封装前，请先阅读 [`docs/agents/web-ui.md`](../../docs/agents/web-ui.md)。
+修改组件、主题 token、overlay、表单行为或框架类型封装前，先按 [`docs/agents/web-ui.md`](../../docs/agents/web-ui.md) 路由到受影响的 ADR、源码和测试；不要为简单 UI 修改加载完整组件语义。
 
-- 保留文档中记录的公共组件契约：属性、默认值、事件、插槽、方法、无障碍语义和表单行为。
-- 使用公共 `--wui-*` 语义 token。`src/components/theme/style.css` 中的值是权威来源；独立 fallback 必须与其 light theme 值匹配。
-- 复用共享的 overlay 存在生命周期和语义层 token。不得将组件样式注入 `document.head`。
-- 按交互模型选择共享 overlay 模块：锚定面板、坐标菜单或原生 dialog 模态框。不要在通用基类中混合它们的触发、焦点或关闭语义。
-- 共享状态模块使用名为 `defineXxx` 的 `definePlugin` 工厂；组件通过 `defineXxx(...).make(...)` 创建实例。
-- 使用原生 CSS nesting 组织组件后代状态，同时保持 `:host(...)` 选择器在顶层。
-- 遵循 [`docs/agents/web-ui.md`](../../docs/agents/web-ui.md)（Shadow DOM 和 Lit）中的 Lit 绑定约定：静态字面量和动态字符串使用普通属性，动态非字符串值使用 `.prop`，动态布尔值使用 `?prop`，显式 ARIA 字符串；永远不要使用 `:` 前缀绑定。
-- 新增或更新聚焦公共契约的测试。浏览器原生行为使用 browser-mode 测试，UI 变更需执行[根目录 `AGENTS.md`](../../AGENTS.md)要求的浏览器验证。
-- 公共组件 API 变更时，保持 `README.md` 和 `README.CN.md` 结构对齐。
-- 将 custom-element 宿主视为公共属性边界。不要添加通用属性透传：`data-*` 留在宿主上；原生和 ARIA 属性仅通过文档化的、组件特定的映射到达 shadow 内部控件。原生交互事件通过浏览器组合穿越边界；状态 `*-change` 事件保留给用户发起的变更。
-- `$events` 是公共类型契约：只声明事件本体（`input: Event`、`'open-change': CustomEvent<{ open: boolean }>`），宿主 target 由框架适配层经 `WithHost` 统一注入并标为 readonly。无公共事件的组件不声明 `$events`；`web-ui-option` 的注册/更新事件是内部协议。复合控件（checkbox/radio/segmented）中 group 管理的子项以 `bubbles: false, composed: false` 派发自身事件（不外泄），group 用 capture 相位监听子项并只派发一次自己的 `input`/`change`；独立子项保持 `bubbles: true, composed: true`。React 标准事件仅承诺 `currentTarget`（`target` 遵循 SyntheticEvent）；Vue 在包装器局部合并 HTMLAttributes（排除与 emit 重名的 handler）并提供精确 emit，`$event.target` 直接是组件实例。不要在 `types/vue.ts` 全局扩展 `ComponentCustomProps`。详情见 [`docs/agents/web-ui.md`](../../docs/agents/web-ui.md)。
+- `src/components/theme/style.css` 是 token 值的权威来源；复用共享 overlay 生命周期和 semantic token，不将组件样式注入 `document.head`。
+- 共享状态和行为使用 `defineXxx(...).make(...)` 的 `definePlugin` factory；Lit、Shadow DOM、属性绑定和框架事件类型以对应 ADR 为准。
+- browser-mode 测试覆盖无法由 jsdom 证明的原生行为；UI/UX/交互改动还必须按 browser-verification guide 做真实浏览器验证。

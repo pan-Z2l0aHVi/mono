@@ -1,150 +1,46 @@
-# AGENTS.md
+# Mono Agent Entry
 
-## 文档维护
+本文件是所有 agent 的轻量入口：提供项目身份、长期边界和任务路由，不承载实现细节、操作手册或任务清单。
 
-当你的变更属于以下任何类别时，请更新对应文档：
+## 先确定所需 context
 
-| 变更类别      | 更新位置                                                | 触发条件                                                                 |
-| ------------- | ------------------------------------------------------- | ------------------------------------------------------------------------ |
-| 构建脚本/流程 | `docs/agents/build.md`；顶层命令还需更新 `AGENTS.md`    | `package.json` scripts、`vite.config.ts` 构建配置、turbo.json tasks 变更 |
-| 包新增/重命名 | `docs/agents/build.md`                                  | `packages/` 或 `apps/` 下新增/移除/重命名目录                            |
-| 外部化        | `docs/agents/build.md`                                  | `vite.config.ts` `rollupOptions.external` 变更                           |
-| CI/CD 工作流  | `docs/agents/build.md`                                  | `.github/workflows/` 下文件变更                                          |
-| 代码质量工具  | `docs/agents/linting.md`                                | linter、formatter、stylelint、cspell 配置变更                            |
-| 依赖管理      | `docs/agents/dependencies.md`                           | `pnpm-workspace.yaml` catalog、changeset 配置变更                        |
-| 运行时/工具链 | 本文件（工具链）                                        | `.mise.toml`、`package.json` engines 变更                                |
-| 测试配置      | `docs/agents/testing.md`                                | `vite.config.ts` 测试配置、测试框架变更                                  |
-| 编码规范      | `.agents/rules/code-style.md`、受影响的包 `AGENTS.md`   | 命名、类型安全、架构模式变更                                             |
-| Web UI 组件   | `packages/web-ui/AGENTS.md`、`docs/agents/web-ui.md`    | `packages/web-ui` 中 Lit 组件变更                                        |
-| 图标系统      | `docs/adr/0008-icon-system.md`、`docs/agents/web-ui.md` | 图标 manifest、生成器或图标公共 API 变更                                 |
-| 提交约定      | `docs/agents/commit.md`                                 | commitlint 配置、提交工作流变更                                          |
+1. 先查看工作区状态、目标文件和最近的 `AGENTS.md`；只有进入某个 `apps/` 或 `packages/` 时才加载其包级指令。
+2. 按任务命中对应的 task guide、rule 和包级指令；不要为普通局部 coding task 预先加载完整的 `docs/agents/context.md`。
+3. 只有在架构探索、跨包依赖、仓库拓扑、项目术语、长期设计取舍或 instruction system 维护时，才阅读 [`CONTEXT.md`](CONTEXT.md) 和 [`docs/agents/context.md`](docs/agents/context.md)，再只打开相关 ADR。
+4. 以当前源码、`package.json`、配置和测试为事实来源；文档解释意图，不能替代实现验证。
 
-规则：
+## 项目身份
 
-1. 变更前先阅读相关文档，确认当前文档状态
-2. 变更后立即更新文档，不得推迟
-3. 优先检查映射文档。仅当范围不明确或需要不相关的文档扩展时，才询问用户
-4. 文档更新应与代码变更在同一 commit 中提交
-5. `AGENTS.md`（含所有子包）、`docs/adr/`、`docs/agents/`、`.agents/rules/` 下的文档使用中文撰写，专业名词（技术术语、命令、路径、包名等）保留英文
+这是一个 pnpm + Turborepo monorepo：发布 `@greypan/*` 工具包和 Lit Web Components（`@greypan/web-ui`），并维护 React、Vue 和 Wails 私有应用作为真实集成表面。长期架构方向是可组合的 plugin、Shadow DOM 隔离、框架无关的组件契约和无环的工作区依赖图；跨包边界与 ADR 索引见 [`CONTEXT.md`](CONTEXT.md)。
 
----
+## 不可绕过的仓库边界
 
-## 仓库级规则（强制约束）
+- 不得改写 `.npmrc` 或 `.mise.toml` 的 registry/mirror，或任何 Git 配置。
+- 不手动编辑生成文件：`**/routeTree.gen.ts`、`**/auto-imports.d.ts`、`apps/wails-starter/frontend/bindings/**`、`**/__screenshots__/`、`**/.vitest-attachments/`。
+- `AGENTS.md`（含包级）、`docs/adr/`、`docs/agents/` 和 `.agents/rules/` 下的文档使用中文；技术术语、命令、路径和包名保留英文。
+- 缺少 Node、pnpm 或 Go 时先运行 `mise install`；准确版本以 `.mise.toml`、`package.json` 与目标包 manifest 为准。
 
-以下 `.agents/rules/` 文件为仓库级强制约束，开始任务前必须阅读与任务相关的规则文件全文。
+依赖、CI/CD、commit 和 release 操作的具体约束分别由对应 task context 路由，不在根入口重复。
 
-| 规则文件                                                   | 摘要                                                                                                                                                        |
-| ---------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [`code-style.md`](.agents/rules/code-style.md)             | 命名/大小写规范；公共 API 中文 JSDoc；严格 TS（禁 `any`）；`definePlugin` 优先于 class；CSS nesting 组织；`apps/` 优先 Tailwind v4；改动后先跑 `check:code` |
-| [`commit.md`](.agents/rules/commit.md)                     | 未经授权不暂存/提交；授权后先读 `commitlint.config.js` 与 `docs/agents/commit.md`；禁 `--no-verify`/`--no-gpg-sign`                                         |
-| [`dep-management.md`](.agents/rules/dep-management.md)     | 未经授权不增删改 npm 依赖；授权后先读 `docs/agents/dependencies.md`，遵循 workspace catalog 与 peer dependency 策略                                         |
-| [`react.md`](.agents/rules/react.md)                       | React HMR——禁匿名 default export，用具名函数声明；由 oxlint `unicorn/no-anonymous-default-export` 强制执行                                                  |
-| [`review-checklist.md`](.agents/rules/review-checklist.md) | Review 以问题为先、按严重程度排序；独立 review agent 不参与同一变更的实施                                                                                   |
-| [`testing.md`](.agents/rules/testing.md)                   | 公共行为加聚焦测试；跨包/导出/契约变更跑根 `pnpm test`；构建/产物变更跑根 `pnpm build`                                                                      |
+## 按任务加载
 
-## 仓库概览
+| 任务或变更                                    | 先读                                                                                                                                             |
+| --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| TypeScript、CSS、公共 API 或一般源码          | [`.agents/rules/code-style.md`](.agents/rules/code-style.md)                                                                                     |
+| React 源码                                    | [`.agents/rules/react.md`](.agents/rules/react.md)                                                                                               |
+| npm dependency / workspace catalog            | [`.agents/rules/dep-management.md`](.agents/rules/dep-management.md) 和 [`docs/agents/dependencies.md`](docs/agents/dependencies.md)             |
+| 测试、公共行为、导出或构建产物                | [`.agents/rules/testing.md`](.agents/rules/testing.md) 和 [`docs/agents/testing.md`](docs/agents/testing.md)                                     |
+| UI、UX、交互或浏览器运行时                    | [`docs/agents/browser-verification.md`](docs/agents/browser-verification.md)；`web-ui` 任务再读 [`docs/agents/web-ui.md`](docs/agents/web-ui.md) |
+| 构建脚本、Vite/Turbo、包图、外部化、CI 或发布 | [`docs/agents/build.md`](docs/agents/build.md)                                                                                                   |
+| 格式化、lint、拼写或类型检查配置              | [`docs/agents/linting.md`](docs/agents/linting.md)                                                                                               |
+| 架构探索、术语或 ADR                          | [`docs/agents/domain.md`](docs/agents/domain.md)、[`CONTEXT.md`](CONTEXT.md) 和相关 ADR                                                          |
+| instruction system / context 维护             | [`docs/agents/context.md`](docs/agents/context.md)、[`CONTEXT.md`](CONTEXT.md) 和 ADR-0012                                                       |
+| 代码 review                                   | [`.agents/rules/review-checklist.md`](.agents/rules/review-checklist.md) 和 [`docs/agents/review.md`](docs/agents/review.md)                     |
+| Git commit                                    | [`.agents/rules/commit.md`](.agents/rules/commit.md) 和 [`docs/agents/commit.md`](docs/agents/commit.md)                                         |
+| GitHub issue                                  | [`docs/agents/issue-tracker.md`](docs/agents/issue-tracker.md)                                                                                   |
 
-pnpm monorepo（`apps/**`、`packages/**`），使用 Turborepo。`packages/*` 发布到 npm，命名空间为 `@greypan/*`。`apps/*` 为私有应用，不发布 npm 包：两个 web demo 部署到 GitHub Pages，`wails-starter` 以安装包发布到 GitHub Release。
+涉及 UI、UX、交互、响应式或浏览器运行时的改动，必须按 [`browser-verification.md`](docs/agents/browser-verification.md) 在真实浏览器验证；构建成功或 jsdom 测试不能替代该验证。实现不熟悉或跨浏览器语义不明确的 Web Platform API 时，使用 MDN MCP 验证语义和兼容性。
 
-## 工具链
+## 文档同步
 
-- **包管理器**：pnpm 10.33.0（通过 `.npmrc` 中 `engine-strict=true` 强制执行）
-- **运行时**：Node 24（通过 mise 管理——若 node/pnpm/go 缺失则运行 `mise install`；`engines` 允许 >=24.18.0）
-- **桌面端 CLI**：Wails 3 CLI 3.0.0-alpha2.122（通过 mise 的 Go 后端管理；使用已验证与此 CLI 和 Go 模块兼容的已发布 npm 运行时版本）
-- **构建/开发/Lint/测试/格式化**：全部委托给 `vite-plus`（`vp`）——一个 Vite 封装器。大多数包级脚本调用 `vp build`、`vp pack`、`vp check`、`vp test run`、`vp lint`、`vp fmt`
-- **编排**：Turborepo（`turbo.json`）——`build` 和 `test` 任务依赖 `^build`（上游包优先构建）。Demo 命令先构建一次上游包，然后使用 `turbo run dev` 启动持久的包级 watcher，不使用 Turbo 的仓库 watcher
-- **桌面端产物**：`.github/workflows/wails-verify.yml` 在 PR 上原生验证 `wails-starter`，并上传 DMG 和 EXE 作为 GitHub Actions 产物。`.github/workflows/wails-release.yml` 从合并的 Changesets version PR 重建两个安装程序，并创建带 SHA-256 校验和的 GitHub Release
-- **语言**：TypeScript 6，仅 ES modules（含 JS 源码的包均设置 `"type": "module"`；`packages/tsconfig` 仅发布 JSON 配置，无该字段）
-
-## 常用命令
-
-| 命令                                              | 功能                                              |
-| ------------------------------------------------- | ------------------------------------------------- |
-| `pnpm install`                                    | 安装所有依赖（CI 中使用冻结 lockfile）            |
-| `pnpm build`                                      | 按依赖顺序构建所有包                              |
-| `pnpm test`                                       | 运行所有测试                                      |
-| `pnpm commit`                                     | 通过 cz-git 交互式提交 conventional commit        |
-| `bash scripts/commit.sh <type> <scope> <subject>` | 非交互式提交（适用于 agent）                      |
-| `pnpm dev:react-web-ui-demo`                      | React demo，包含上游构建和包 watcher              |
-| `pnpm dev:vue-web-ui-demo`                        | Vue demo，包含上游构建和包 watcher                |
-| `pnpm run check:code`                             | 检查格式化、Lint 和类型                           |
-| `pnpm run fix:code`                               | 自动修复格式化/Lint 问题，然后类型检查            |
-| `pnpm clean`                                      | 移除生成产物和缓存，保留 Wails 构建模板           |
-| `pnpm clean --full`                               | 同时移除 `node_modules` 和 lockfile               |
-| `pnpm publish:new <package-dir>`                  | 首次发布新包（1.0.0）                             |
-| `pnpm release:version`                            | 应用 Changesets 版本；仅在变更时同步 Wails 元数据 |
-| GitHub Actions `Version Packages`                 | 创建或更新 Changesets version PR                  |
-| GitHub Actions `Publish npm Packages`             | 在 version PR 合并后构建并发布公共包              |
-| GitHub Actions `Verify Wails Desktop`             | 构建并上传 Wails macOS/Windows 验证产物           |
-| GitHub Actions `Release Wails Desktop`            | 在 version PR 合并后构建并发布 Wails 安装程序     |
-
-## 构建详情
-
-修改包脚本、Vite/Turbo 配置、包结构、外部化或发布流程前，请先阅读 [docs/agents/build.md](docs/agents/build.md)。其中包含包图、TypeScript 配置、构建模式和 CI/发布架构。
-
-## Agent 约束
-
-Agent 必须无例外地遵守以下规则：
-
-- **不得修改 `.npmrc` 或 `.mise.toml` 中的 registry 或 mirror 配置。**
-- **不得新增 npm 依赖（包括 devDependencies），除非用户明确要求。**
-- **不得修改 `.github/workflows/` 下的 CI/CD 配置，除非用户明确要求。**
-- **不得修改 `go.mod` 或 `go.sum`；Go 工具链仅用于辅助工具，非核心项目代码。**
-- **不得直接运行 `npm publish`；始终使用 `pnpm publish:new`。**
-- **不得修改 Git 配置，包括 `.gitconfig` 和全局 Git 配置。**
-- **不得使用 `--no-verify` 或 `--no-gpg-sign` 绕过 Git hooks。**
-
-## 自动生成/忽略的文件
-
-以下文件为自动生成，不应手动编辑：
-
-- `**/routeTree.gen.ts` — TanStack Router 路由树
-- `**/auto-imports.d.ts` — auto-import 类型声明
-- `apps/wails-starter/frontend/bindings/**` — Wails 3 bindings
-- `**/__screenshots__/` — Vitest browser mode 测试失败截图
-- `**/.vitest-attachments/` — Vitest browser mode 测试附件
-
-这些文件被排除在 lint、格式化和拼写检查之外。
-
-## 其他注意事项
-
-- `.npmrc` 使用 npmmirror registry（`registry=https://registry.npmmirror.com`）。CI 中覆盖为官方 registry。
-- `prepare` 脚本运行 `vp config`——在安装时设置 vite-plus 内部配置。
-- Go 工具链也通过 mise 管理（用于部分工具，非 JS 包直接使用）。
-
-## 文档
-
-- `docs/agents/` — 按需操作指南，涵盖构建、测试、Lint、包工作流和 issue 跟踪
-- `docs/adr/` — 重要技术决策的架构决策记录
-- `docs/design/` — 设计参考，包括截图和 CSS 实现
-- `CONTEXT.md` — 项目架构概览，包括 ADR 索引、包边界和技术原则
-
-## Agent 参考文档
-
-按需阅读；非每次会话必需：
-
-| 文件                                    | 用途                                           | 何时阅读                                                      |
-| --------------------------------------- | ---------------------------------------------- | ------------------------------------------------------------- |
-| `docs/agents/testing.md`                | 测试基础设施、命令和 browser mode              | 测试执行或配置不明确时                                        |
-| `docs/agents/browser-verification.md`   | 真实浏览器验证策略、验证要点与 dev server 约束 | 涉及 UI/UX/交互或浏览器运行时验证时                           |
-| `docs/agents/linting.md`                | 工具链、formatter、linter 和 stylelint 使用    | Lint 或格式化命令不明确时                                     |
-| `docs/agents/issue-tracker.md`          | GitHub issue 操作和 `gh` CLI 用法              | 创建、查询或更新 issue 时                                     |
-| `docs/agents/domain.md`                 | 代码探索约定、ADR 和术语表                     | 探索不熟悉的代码区域时                                        |
-| `docs/agents/build.md`                  | 构建模式、包图、外部化、CI                     | 变更构建、包或发布流程时                                      |
-| `docs/agents/web-ui.md`                 | Web UI 实现、token、overlay、测试              | 变更 `packages/web-ui` 时                                     |
-| `docs/agents/dependencies.md`           | 依赖放置和 catalog 策略                        | 依赖变更授权后                                                |
-| `docs/agents/commit.md`                 | 提交信息和执行工作流                           | 提交授权后                                                    |
-| `docs/agents/review.md`                 | Review 范围和报告                              | 进行代码 review 时                                            |
-| `.agents/skills/agent-browser/SKILL.md` | 浏览器自动化 CLI（仅手动调用）                 | 用户调用 `/agent-browser` 时（如 chrome-devtools MCP 不可用） |
-
-## 指令作用域
-
-`AGENTS.md` 和 `.agents/rules/` 定义仓库级约束。包级 `AGENTS.md` 仅对包内变更添加约束。`docs/agents/` 下的文件为按需指南；在执行对应任务前阅读相应指南。
-
-### Web Platform API 验证
-
-实现不熟悉、新引入或跨浏览器行为模糊的 Web Platform API 时，应通过 MDN MCP server（`mdn`）验证 API 语义和浏览器行为——不要依赖模型记忆。包括在浏览器支持不确定时检查 MDN 兼容性数据（BCD）。
-
-### 浏览器验证
-
-涉及 UI、UX、交互、响应式行为或浏览器运行时行为的变更，必须在真实浏览器中验证。chrome-devtools MCP 可用时作为主要验证层——导航到本地 demo、与组件交互、检查 console/network 并截图；`agent-browser` skill 是手动替代方案（仅 `/agent-browser` 时运行）。核心约束：不得附加或控制用户现有的 Chrome 会话；验证完成后停止本任务启动的 dev server；详细的验证要点、dev server 约束与 fallback 链见 [`docs/agents/browser-verification.md`](docs/agents/browser-verification.md)。报告必须声明验证 URL、检查内容和任何缺口——构建成功或 jsdom 测试通过不构成浏览器交互验证。
+只有修改 instruction system、仓库拓扑、构建/包结构、依赖策略、运行时/工具链、测试配置、编码规范、`web-ui` 或提交工作流时，才按 [`docs/agents/context.md`](docs/agents/context.md) 的「变更与文档同步」表同步权威文档；普通源码任务不需要加载该表。

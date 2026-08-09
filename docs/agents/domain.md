@@ -1,12 +1,14 @@
 # 领域文档
 
-工程技能在探索代码库时，应如何使用本仓库的领域文档。
+工程技能在探索代码库时，应如何使用本仓库的领域文档。根 `CONTEXT.md` 是 repository-level project context：它可以同时记录 domain vocabulary、repository architecture context 和 ADR 索引；实现细节仍应留在源码、manifest、配置、测试或按需 task guide 中。
 
-## 探索前先阅读以下内容
+## 按需探索
+
+先从任务目标、受影响目录和最近的 `AGENTS.md` 确定范围。只有在架构、跨包依赖、术语或长期取舍会影响当前决策时，才加载以下 context：
 
 - **`CONTEXT.md`**（位于仓库根目录），或者
-- **`CONTEXT-MAP.md`**（位于仓库根目录，如果存在）——它指向每个 context 对应的 `CONTEXT.md`。阅读与当前主题相关的每一个。
-- **`docs/adr/`** ——阅读与你即将工作的领域相关的 ADR。在多 context 仓库中，还需检查 `src/<context>/docs/adr/` 中 context 范围内的决策记录。
+- **`CONTEXT-MAP.md`**（位于仓库根目录，如果存在）——它指向每个 context 对应的 `CONTEXT.md`。只阅读当前主题命中的 context。
+- **`docs/adr/`** ——只读取与当前选择相关的 ADR；在多 context 仓库中，再检查 `src/<context>/docs/adr/` 内的 context 范围决策。不要为简单的局部实现预先扫描全部 ADR。
 
 如果以上文件不存在，**静默继续即可**。不要标记它们的缺失；不要建议提前创建。`/domain-modeling` 技能（包括通过 `/grill-with-docs` 调用时）会在术语或决策实际确定时懒创建这些文件。
 
@@ -38,11 +40,11 @@
         └── docs/adr/
 ```
 
-## 使用术语表中的词汇
+## 使用权威术语
 
-当你的输出中需要命名一个领域概念（在 issue 标题、重构提案、假设、测试名称中），请使用 `CONTEXT.md` 中定义的术语。不要偏离术语表明确避免的同义词。
+当你的输出中需要命名一个领域概念（在 issue 标题、重构提案、假设、测试名称中），使用当前任务已加载的 context 中定义的术语：跨包概念见 `CONTEXT.md`；`web-ui` 的架构和交互术语以对应 ADR 为准，`docs/agents/web-ui.md` 只负责路由；其他领域以各自 `CONTEXT.md` 或 task guide 为准。不要偏离文档明确避免的同义词。
 
-如果你需要的概念还不在术语表中，这是一个信号——要么你在发明项目未使用的语言（请重新考虑），要么确实存在空白（记下来供 `/domain-modeling` 使用）。
+如果你需要的概念还不在权威 context 中，这是一个信号——要么你在发明项目未使用的语言（请重新考虑），要么确实存在空白（记下来供 `/domain-modeling` 使用）。
 
 ## 标记 ADR 冲突
 
