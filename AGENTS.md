@@ -123,18 +123,19 @@ Agent 必须无例外地遵守以下规则：
 
 按需阅读；非每次会话必需：
 
-| 文件                                    | 用途                                        | 何时阅读                                                      |
-| --------------------------------------- | ------------------------------------------- | ------------------------------------------------------------- |
-| `docs/agents/testing.md`                | 测试基础设施、命令和 browser mode           | 测试执行或配置不明确时                                        |
-| `docs/agents/linting.md`                | 工具链、formatter、linter 和 stylelint 使用 | Lint 或格式化命令不明确时                                     |
-| `docs/agents/issue-tracker.md`          | GitHub issue 操作和 `gh` CLI 用法           | 创建、查询或更新 issue 时                                     |
-| `docs/agents/domain.md`                 | 代码探索约定、ADR 和术语表                  | 探索不熟悉的代码区域时                                        |
-| `docs/agents/build.md`                  | 构建模式、包图、外部化、CI                  | 变更构建、包或发布流程时                                      |
-| `docs/agents/web-ui.md`                 | Web UI 实现、token、overlay、测试           | 变更 `packages/web-ui` 时                                     |
-| `docs/agents/dependencies.md`           | 依赖放置和 catalog 策略                     | 依赖变更授权后                                                |
-| `docs/agents/commit.md`                 | 提交信息和执行工作流                        | 提交授权后                                                    |
-| `docs/agents/review.md`                 | Review 范围和报告                           | 进行代码 review 时                                            |
-| `.agents/skills/agent-browser/SKILL.md` | 浏览器自动化 CLI（仅手动调用）              | 用户调用 `/agent-browser` 时（如 chrome-devtools MCP 不可用） |
+| 文件                                    | 用途                                           | 何时阅读                                                      |
+| --------------------------------------- | ---------------------------------------------- | ------------------------------------------------------------- |
+| `docs/agents/testing.md`                | 测试基础设施、命令和 browser mode              | 测试执行或配置不明确时                                        |
+| `docs/agents/browser-verification.md`   | 真实浏览器验证策略、验证要点与 dev server 约束 | 涉及 UI/UX/交互或浏览器运行时验证时                           |
+| `docs/agents/linting.md`                | 工具链、formatter、linter 和 stylelint 使用    | Lint 或格式化命令不明确时                                     |
+| `docs/agents/issue-tracker.md`          | GitHub issue 操作和 `gh` CLI 用法              | 创建、查询或更新 issue 时                                     |
+| `docs/agents/domain.md`                 | 代码探索约定、ADR 和术语表                     | 探索不熟悉的代码区域时                                        |
+| `docs/agents/build.md`                  | 构建模式、包图、外部化、CI                     | 变更构建、包或发布流程时                                      |
+| `docs/agents/web-ui.md`                 | Web UI 实现、token、overlay、测试              | 变更 `packages/web-ui` 时                                     |
+| `docs/agents/dependencies.md`           | 依赖放置和 catalog 策略                        | 依赖变更授权后                                                |
+| `docs/agents/commit.md`                 | 提交信息和执行工作流                           | 提交授权后                                                    |
+| `docs/agents/review.md`                 | Review 范围和报告                              | 进行代码 review 时                                            |
+| `.agents/skills/agent-browser/SKILL.md` | 浏览器自动化 CLI（仅手动调用）                 | 用户调用 `/agent-browser` 时（如 chrome-devtools MCP 不可用） |
 
 ## 指令作用域
 
@@ -146,25 +147,4 @@ Agent 必须无例外地遵守以下规则：
 
 ### 浏览器验证
 
-涉及 UI、UX、交互、响应式行为或浏览器运行时行为的变更，必须在真实浏览器中验证。chrome-devtools MCP 可用时作为主要验证层——导航到本地 demo、与组件交互、检查 console/network 并截图。`agent-browser` skill 是手动替代方案：仅在用户调用 `/agent-browser` 时运行，例如 MCP 不可用或需要隔离浏览器上下文时。
-
-各变更类型的验证要点：
-
-- **交互**：主要指针交互、键盘操作、焦点管理、禁用状态、关闭/取消路径
-- **布局**：空白渲染、溢出、遮挡、错位、意外布局偏移（检查桌面和移动端视口）
-- **无障碍**：语义化、accessible name、键盘可达性
-- **运行时**：console 错误、页面异常、依赖浏览器特性的行为（jsdom 不是替代品）
-
-约束：
-
-- 启动本地 dev server 前，检查目标端口是否已有响应的服务器。合适则复用；不要仅因验证任务启动就创建重复服务器。
-- 仅在无合适服务器运行、现有服务器无法提供所需当前状态、或明确需要隔离环境时才启动新服务器。此时使用未占用端口并记录其 PID。
-- 仅停止当前任务启动的服务器。不得终止用户或其他任务拥有的已有服务器。
-- 目标端口上遇到无响应的 dev server 时，先询问用户再终止。仅在会话结束时清理当前任务启动的服务器。
-- 不得附加或控制用户现有的 Chrome 会话。在 chrome-devtools MCP 或 `agent-browser` 拥有的浏览器上下文中验证，与用户工作的 Chrome 隔离。
-- 仅对本地自签名 HTTPS demo 忽略证书错误；不得为外部站点放松证书验证。
-- 验证完成后停止为验证启动的所有 dev server，除非用户要求保留。保留或报告本地 URL 供后续使用。
-
-Fallback 链：chrome-devtools MCP → 项目 browser-mode 测试 → 组件测试和 HTTP/DOM 检查。`agent-browser` 不在自动链中——仅在手动调用（`/agent-browser`）时运行。若无浏览器层可用（MCP 缺失且未手动调用），需明确报告为何无法完成真实浏览器验证及其风险。
-
-最终报告必须声明验证 URL、检查内容和任何缺口。不得将构建成功或 jsdom 测试通过描述为浏览器交互验证。
+涉及 UI、UX、交互、响应式行为或浏览器运行时行为的变更，必须在真实浏览器中验证。chrome-devtools MCP 可用时作为主要验证层——导航到本地 demo、与组件交互、检查 console/network 并截图；`agent-browser` skill 是手动替代方案（仅 `/agent-browser` 时运行）。核心约束：不得附加或控制用户现有的 Chrome 会话；验证完成后停止本任务启动的 dev server；详细的验证要点、dev server 约束与 fallback 链见 [`docs/agents/browser-verification.md`](docs/agents/browser-verification.md)。报告必须声明验证 URL、检查内容和任何缺口——构建成功或 jsdom 测试通过不构成浏览器交互验证。

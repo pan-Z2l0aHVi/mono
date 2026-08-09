@@ -72,3 +72,7 @@
 - 测试公共契约，而非私有字段、内部类或实现顺序。
 - 默认 `*.spec.ts` 测试覆盖宿主属性、事件、反射、slot 和非浏览器 DOM 行为。`*.browser.spec.ts` 覆盖 ElementInternals、FormData、指针交互、焦点、portal 和原生 dialog。
 - 使用 `@/shared/test-utils` 中的辅助工具。遵循 [`testing.md`](testing.md) 中的 browser mode 和 reduced-motion 指南。
+
+## 浏览器验证
+
+真实浏览器验证策略、dev server 约束与 fallback 链是全局规则，见根 `AGENTS.md` 的「浏览器验证」与 [`browser-verification.md`](browser-verification.md)，此处不重复。web-ui 组件变更以 `react-web-ui-demo` / `vue-web-ui-demo` 为验证表面（组件展示、交互、console/network）；自动化兜底为 `*.browser.spec.ts`（Vitest browser mode，见 [`testing.md`](testing.md)）。
