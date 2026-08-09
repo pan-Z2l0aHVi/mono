@@ -76,6 +76,10 @@ Component interaction using Pointer Events (pointerenter, pointerleave, pointerd
 **Form-associated Control**:
 A custom element with `static formAssociated = true` that integrates with the native HTML form lifecycle: submits values via `FormData`, responds to `formResetCallback()` and `formDisabledCallback()`, and manages constraints through `ElementInternals`.
 
+**Target-carried Event**:
+A native-semantic DOM event whose value lives on `event.target` — the host element — rather than in an event payload. Its `$events` type declares `Event & { target: WebUiXxx }`, giving framework consumers a typed target.
+_Avoid_: detail event, payload-carrying event
+
 ## Known Constraints
 
 - All packages are ES modules only (`"type": "module"`)

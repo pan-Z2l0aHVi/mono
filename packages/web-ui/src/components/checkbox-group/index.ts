@@ -113,8 +113,8 @@ export class WebUiCheckboxGroup extends LitElement {
   }
 
   declare readonly $events: {
-    input: Event
-    change: Event
+    input: Event & { target: WebUiCheckboxGroup }
+    change: Event & { target: WebUiCheckboxGroup }
   }
 }
 

@@ -135,8 +135,8 @@ export class WebUiSwitch extends LitElement {
   }
 
   declare readonly $events: {
-    input: Event
-    change: Event
+    input: Event & { target: WebUiSwitch }
+    change: Event & { target: WebUiSwitch }
   }
 }
 

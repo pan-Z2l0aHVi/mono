@@ -57,7 +57,7 @@ export class WebUiSegmentedTrigger extends LitElement {
   }
 
   declare readonly $events: {
-    change: Event
+    change: Event & { target: WebUiSegmentedTrigger }
   }
 }
 

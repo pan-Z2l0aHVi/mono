@@ -124,8 +124,8 @@ export class WebUiRadio extends LitElement {
   }
 
   declare readonly $events: {
-    input: Event
-    change: Event
+    input: Event & { target: WebUiRadio }
+    change: Event & { target: WebUiRadio }
   }
 }
 

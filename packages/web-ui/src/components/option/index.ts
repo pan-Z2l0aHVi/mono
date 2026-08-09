@@ -88,9 +88,9 @@ export class WebUiOption extends LitElement {
   }
 
   declare readonly $events: {
-    'option-register': CustomEvent<{ value: string; label: string; disabled: boolean }>
-    'option-unregister': CustomEvent<{ value: string }>
-    'option-update': CustomEvent<void>
+    'option-register': CustomEvent<{ value: string; label: string; disabled: boolean }> & { target: WebUiOption }
+    'option-unregister': CustomEvent<{ value: string }> & { target: WebUiOption }
+    'option-update': CustomEvent<void> & { target: WebUiOption }
   }
 }
 

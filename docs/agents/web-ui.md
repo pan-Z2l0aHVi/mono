@@ -56,6 +56,16 @@
 - 表单关联控件使用 `ElementInternals`，同步表单值和禁用状态，仅对用户发起的变更发出组合冒泡的 `input` 然后 `change` 事件。框架特定的值变更事件名称不是公共 API。
 - 让浏览器原生的组合事件在宿主上暴露主要交互；不要重新派发重复事件。状态 CustomEvents 使用 kebab-case，冒泡和组合，仅对用户发起的状态变更发出。仅在有文档记录的组件特定拦截需求时才添加可取消的 `before-*` 事件。
 
+## 事件类型契约（$events）
+
+每个组件通过 `declare readonly $events` 声明公共事件类型。框架类型包装器（`types/react.ts` 的 `ExactEventListeners`、`types/vue.ts` 的 `ExtractVueEmits`）从该映射生成 React 的 `on<event>` 与 Vue 的 `@event` 绑定类型，因此 `$events` 是公共类型契约的一部分。
+
+- 每个 `$events` 条目必须声明宿主 target 类型：`input: Event & { target: WebUiInput }`、`focus: FocusEvent & { target: WebUiInput }`、`'open-change': CustomEvent<{ open: boolean }> & { target: WebUiDialog }`。浏览器组合事件在宿主上重定向后 `event.target` 恒等于宿主元素，因此该声明是零例外的。
+- React 消费端经 `LitReactWrapper` 直接获得类型化事件：`onChange` 的 `currentTarget` 是组件实例，`on<event>`（如 `oninput`）的 handler 参数携带 `Event & { target: WebUiXxx }`，无需 cast。
+- Vue 消费端对原生 value 事件（`@input`/`@change`）需对 target 做权威 cast：Vue 会把组件的 `input` emit 与全局 `ComponentCustomProps` 的原生 `onInput` 并成联合类型，`$event.target` 退化为 `EventTarget | WebUiXxx | null`，因此写 `@input="val = ($event.target as WebUiSegmented).value"`；仅当把 `string` 收窄为已知字面量联合时再加值 cast：`($event.target as WebUiSegmented).value as 'light' | 'dark'`。不要手写 `HTMLElement & { value: ... }`。
+- 非原生命名的状态事件（如 `open-change`）在 Vue 中无需 cast：emit 类型 `CustomEvent<T> & { target: WebUiXxx }` 直接可用（`$event.detail.open`）。
+- 不要从全局 `ComponentCustomProps` 排除 `onInput`/`onChange`/`onFocus`/`onBlur`：该接口作用于所有 Vue 组件，且并非每个组件都声明了 `focus`/`blur` emit（如 `web-ui-checkbox`/`web-ui-radio` 仍通过宿主暴露焦点事件），全局排除会造成消费者类型回归。
+
 ## 测试
 
 - 测试公共契约，而非私有字段、内部类或实现顺序。

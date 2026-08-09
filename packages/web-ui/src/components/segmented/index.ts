@@ -135,8 +135,8 @@ export class WebUiSegmented extends LitElement {
   }
 
   declare readonly $events: {
-    input: Event
-    change: Event
+    input: Event & { target: WebUiSegmented }
+    change: Event & { target: WebUiSegmented }
   }
 }
 

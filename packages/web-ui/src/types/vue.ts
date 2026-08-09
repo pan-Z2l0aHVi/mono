@@ -110,6 +110,8 @@ declare module 'vue' {
   export interface GlobalComponents extends WebUiComponents {}
 
   // 使 <web-ui-input @click @mousedown @keydown> 等有类型补全
+  // 注意：不要从 ComponentCustomProps 排除 onInput/onChange/onFocus/onBlur —— 该接口作用于
+  // 所有 Vue 组件，且并非每个组件都声明了 focus/blur emit，全局排除会造成消费者类型回归。
   // oxlint-disable-next-line typescript/no-empty-object-type
   interface ComponentCustomProps extends HTMLAttributes {}
 }

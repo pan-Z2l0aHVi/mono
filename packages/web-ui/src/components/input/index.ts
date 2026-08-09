@@ -173,10 +173,10 @@ export class WebUiInput extends LitElement {
   }
 
   declare readonly $events: {
-    input: Event
-    change: Event
-    focus: FocusEvent
-    blur: FocusEvent
+    input: Event & { target: WebUiInput }
+    change: Event & { target: WebUiInput }
+    focus: FocusEvent & { target: WebUiInput }
+    blur: FocusEvent & { target: WebUiInput }
   }
 }
 

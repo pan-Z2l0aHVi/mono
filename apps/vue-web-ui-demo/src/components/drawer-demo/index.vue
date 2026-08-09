@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { DrawerPlacement } from '@greypan/web-ui'
+import type { DrawerPlacement, WebUiCheckbox } from '@greypan/web-ui'
 import { ref } from 'vue'
 
 const drawerRef = ref()
@@ -145,7 +145,7 @@ const overlayVisible = ref(false)
     <div class="mb-3 flex flex-wrap gap-2 items-center">
       <web-ui-button @click="closableVisible = true">打开</web-ui-button>
       <label class="flex items-center gap-1 text-sm cursor-pointer select-none">
-        <web-ui-checkbox :checked="closableState" @change="closableState = ($event.target as any).checked" />
+        <web-ui-checkbox :checked="closableState" @change="closableState = ($event.target as WebUiCheckbox).checked" />
         显示关闭按钮
       </label>
     </div>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { toast } from '@greypan/web-ui'
+import { toast, type WebUiSegmented } from '@greypan/web-ui'
 import { ref } from 'vue'
 
 type ThemeMotion = 'full' | 'reduced' | 'system'
@@ -38,7 +38,7 @@ function showScopedToast() {
       <web-ui-segmented
         :value="appearance"
         aria-label="单层主题外观"
-        @input="appearance = ($event.target as any).value"
+        @input="appearance = ($event.target as WebUiSegmented).value as 'light' | 'dark' | 'system'"
       >
         <web-ui-segmented-trigger value="light">Light</web-ui-segmented-trigger>
         <web-ui-segmented-trigger value="dark">Dark</web-ui-segmented-trigger>
@@ -48,7 +48,11 @@ function showScopedToast() {
 
     <h3>动效偏好</h3>
     <div class="mb-4">
-      <web-ui-segmented :value="motion" aria-label="单层主题动效偏好" @input="motion = ($event.target as any).value">
+      <web-ui-segmented
+        :value="motion"
+        aria-label="单层主题动效偏好"
+        @input="motion = ($event.target as WebUiSegmented).value as ThemeMotion"
+      >
         <web-ui-segmented-trigger value="full">Full</web-ui-segmented-trigger>
         <web-ui-segmented-trigger value="reduced">Reduced</web-ui-segmented-trigger>
         <web-ui-segmented-trigger value="system">System</web-ui-segmented-trigger>
@@ -103,7 +107,7 @@ function showScopedToast() {
         <web-ui-segmented
           :value="innerAppearance"
           aria-label="内层主题外观"
-          @input="innerAppearance = ($event.target as any).value"
+          @input="innerAppearance = ($event.target as WebUiSegmented).value as 'light' | 'dark'"
         >
           <web-ui-segmented-trigger value="light">Light</web-ui-segmented-trigger>
           <web-ui-segmented-trigger value="dark">Dark</web-ui-segmented-trigger>
@@ -114,7 +118,7 @@ function showScopedToast() {
         <web-ui-segmented
           :value="innermostAppearance"
           aria-label="最内层主题外观"
-          @input="innermostAppearance = ($event.target as any).value"
+          @input="innermostAppearance = ($event.target as WebUiSegmented).value as 'light' | 'dark'"
         >
           <web-ui-segmented-trigger value="light">Light</web-ui-segmented-trigger>
           <web-ui-segmented-trigger value="dark">Dark</web-ui-segmented-trigger>
@@ -128,7 +132,7 @@ function showScopedToast() {
         <web-ui-segmented
           :value="innerMotion"
           aria-label="内层主题动效偏好"
-          @input="innerMotion = ($event.target as any).value"
+          @input="innerMotion = ($event.target as WebUiSegmented).value as ThemeMotion"
         >
           <web-ui-segmented-trigger value="system">System</web-ui-segmented-trigger>
           <web-ui-segmented-trigger value="full">Full</web-ui-segmented-trigger>
@@ -140,7 +144,7 @@ function showScopedToast() {
         <web-ui-segmented
           :value="innermostMotion"
           aria-label="最内层主题动效偏好"
-          @input="innermostMotion = ($event.target as any).value"
+          @input="innermostMotion = ($event.target as WebUiSegmented).value as ThemeMotion"
         >
           <web-ui-segmented-trigger value="system">System</web-ui-segmented-trigger>
           <web-ui-segmented-trigger value="full">Full</web-ui-segmented-trigger>

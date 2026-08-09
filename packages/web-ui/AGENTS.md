@@ -12,3 +12,4 @@
 - 新增或更新聚焦公共契约的测试。浏览器原生行为使用 browser-mode 测试，UI 变更需执行[根目录 `AGENTS.md`](../../AGENTS.md)要求的浏览器验证。
 - 公共组件 API 变更时，保持 `README.md` 和 `README.CN.md` 结构对齐。
 - 将 custom-element 宿主视为公共属性边界。不要添加通用属性透传：`data-*` 留在宿主上；原生和 ARIA 属性仅通过文档化的、组件特定的映射到达 shadow 内部控件。原生交互事件通过浏览器组合穿越边界；状态 `*-change` 事件保留给用户发起的变更。
+- `$events` 是公共类型契约：每个条目声明 `TYPE & { target: WebUiXxx }`（`Event`/`FocusEvent`/`CustomEvent<T>` 统一）。React 经 `LitReactWrapper` 直接获得类型化 `$event`/`currentTarget`；Vue 对原生 value 事件用权威 target cast（`$event.target as WebUiXxx`）、值收窄用值 cast；不要从全局 `ComponentCustomProps` 排除任何原生事件键。详情见 [`docs/agents/web-ui.md`](../../docs/agents/web-ui.md)。

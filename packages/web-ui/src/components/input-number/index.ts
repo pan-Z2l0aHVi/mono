@@ -226,8 +226,8 @@ export class WebUiInputNumber extends LitElement {
   }
 
   declare readonly $events: {
-    input: Event
-    change: Event
+    input: Event & { target: WebUiInputNumber }
+    change: Event & { target: WebUiInputNumber }
   }
 }
 
