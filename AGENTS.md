@@ -44,7 +44,7 @@
 
 ## 仓库概览
 
-pnpm monorepo（`apps/**`、`packages/**`），使用 Turborepo。包发布到 npm，命名空间为 `@greypan/*`。apps 为私有 demo，不发布。
+pnpm monorepo（`apps/**`、`packages/**`），使用 Turborepo。`packages/*` 发布到 npm，命名空间为 `@greypan/*`。`apps/*` 为私有应用，不发布 npm 包：两个 web demo 部署到 GitHub Pages，`wails-starter` 以安装包发布到 GitHub Release。
 
 ## 工具链
 
@@ -54,7 +54,7 @@ pnpm monorepo（`apps/**`、`packages/**`），使用 Turborepo。包发布到 n
 - **构建/开发/Lint/测试/格式化**：全部委托给 `vite-plus`（`vp`）——一个 Vite 封装器。大多数包级脚本调用 `vp build`、`vp pack`、`vp check`、`vp test run`、`vp lint`、`vp fmt`
 - **编排**：Turborepo（`turbo.json`）——`build` 和 `test` 任务依赖 `^build`（上游包优先构建）。Demo 命令先构建一次上游包，然后使用 `turbo run dev` 启动持久的包级 watcher，不使用 Turbo 的仓库 watcher
 - **桌面端产物**：`.github/workflows/wails-verify.yml` 在 PR 上原生验证 `wails-starter`，并上传 DMG 和 EXE 作为 GitHub Actions 产物。`.github/workflows/wails-release.yml` 从合并的 Changesets version PR 重建两个安装程序，并创建带 SHA-256 校验和的 GitHub Release
-- **语言**：TypeScript 6，仅 ES modules（所有位置 `"type": "module"`）
+- **语言**：TypeScript 6，仅 ES modules（含 JS 源码的包均设置 `"type": "module"`；`packages/tsconfig` 仅发布 JSON 配置，无该字段）
 
 ## 常用命令
 
