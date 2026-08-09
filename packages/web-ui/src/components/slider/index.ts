@@ -264,8 +264,8 @@ export class WebUiSlider extends LitElement {
   }
 
   declare readonly $events: {
-    input: Event & { target: WebUiSlider }
-    change: Event & { target: WebUiSlider }
+    input: Event
+    change: Event
   }
 }
 

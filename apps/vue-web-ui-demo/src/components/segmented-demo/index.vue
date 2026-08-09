@@ -1,14 +1,9 @@
 <script setup lang="ts">
-import type { WebUiSegmented } from '@greypan/web-ui'
 import { ref } from 'vue'
 
 const basicVal = ref('mon')
 const groupVal = ref('banana')
 const disabledVal = ref('apple')
-
-const updateValue = (e: Event, target: ReturnType<typeof ref<string>>) => {
-  target.value = (e.target as WebUiSegmented).value
-}
 </script>
 
 <template>
@@ -17,7 +12,7 @@ const updateValue = (e: Event, target: ReturnType<typeof ref<string>>) => {
 
     <h2>基本用法</h2>
     <div class="mb-3">
-      <web-ui-segmented :value="basicVal" @input="basicVal = ($event.target as WebUiSegmented).value">
+      <web-ui-segmented :value="basicVal" @input="basicVal = $event.target.value">
         <web-ui-segmented-trigger value="mon">周一</web-ui-segmented-trigger>
         <web-ui-segmented-trigger value="tue">周二</web-ui-segmented-trigger>
         <web-ui-segmented-trigger value="wed">周三</web-ui-segmented-trigger>
@@ -29,7 +24,7 @@ const updateValue = (e: Event, target: ReturnType<typeof ref<string>>) => {
 
     <h2>禁用状态</h2>
     <div class="mb-3">
-      <web-ui-segmented disabled :value="disabledVal" @input="disabledVal = ($event.target as WebUiSegmented).value">
+      <web-ui-segmented disabled :value="disabledVal" @input="disabledVal = $event.target.value">
         <web-ui-segmented-trigger value="apple">Apple</web-ui-segmented-trigger>
         <web-ui-segmented-trigger value="banana">Banana</web-ui-segmented-trigger>
         <web-ui-segmented-trigger value="cherry">Cherry</web-ui-segmented-trigger>
@@ -39,7 +34,7 @@ const updateValue = (e: Event, target: ReturnType<typeof ref<string>>) => {
 
     <h2>Segmented Group</h2>
     <div class="mb-3">
-      <web-ui-segmented :value="groupVal" @input="groupVal = ($event.target as WebUiSegmented).value">
+      <web-ui-segmented :value="groupVal" @input="groupVal = $event.target.value">
         <web-ui-segmented-trigger value="apple">Apple</web-ui-segmented-trigger>
         <web-ui-segmented-trigger value="banana">Banana</web-ui-segmented-trigger>
         <web-ui-segmented-trigger value="cherry">Cherry</web-ui-segmented-trigger>

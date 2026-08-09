@@ -352,7 +352,7 @@ export class WebUiPopover extends LitElement {
   }
 
   declare readonly $events: {
-    'open-change': CustomEvent<{ open: boolean }> & { target: WebUiPopover }
+    'open-change': CustomEvent<{ open: boolean }>
   }
 }
 

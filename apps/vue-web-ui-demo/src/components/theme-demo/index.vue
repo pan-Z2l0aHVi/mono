@@ -1,10 +1,21 @@
 <script setup lang="ts">
-import { toast, type WebUiSegmented } from '@greypan/web-ui'
+import { toast, type WebUiEvent, type WebUiSegmented } from '@greypan/web-ui'
 import { ref } from 'vue'
 
+type ThemeAppearance = 'light' | 'dark' | 'system'
 type ThemeMotion = 'full' | 'reduced' | 'system'
 
-const appearance = ref<'light' | 'dark' | 'system'>('light')
+const APPEARANCES = new Set<ThemeAppearance>(['light', 'dark', 'system'])
+const MOTIONS = new Set<ThemeMotion>(['full', 'reduced', 'system'])
+
+function isAppearance(value: string): value is ThemeAppearance {
+  return APPEARANCES.has(value as ThemeAppearance)
+}
+function isMotion(value: string): value is ThemeMotion {
+  return MOTIONS.has(value as ThemeMotion)
+}
+
+const appearance = ref<ThemeAppearance>('light')
 const motion = ref<ThemeMotion>('system')
 const innerAppearance = ref<'light' | 'dark'>('dark')
 const innerMotion = ref<ThemeMotion>('full')
@@ -13,6 +24,32 @@ const innermostMotion = ref<ThemeMotion>('system')
 const scopedSelectValue = ref('portal')
 const scopedDialogOpen = ref(false)
 const scopedToastTarget = ref<HTMLElement>()
+
+// 字面量 union 不伪造泛型推导，由应用级 type guard 验证组件返回的 string。
+function setAppearance(e: WebUiEvent<WebUiSegmented, 'input'>) {
+  const value = e.target.value
+  if (isAppearance(value)) appearance.value = value
+}
+function setMotion(e: WebUiEvent<WebUiSegmented, 'input'>) {
+  const value = e.target.value
+  if (isMotion(value)) motion.value = value
+}
+function setInnerAppearance(e: WebUiEvent<WebUiSegmented, 'input'>) {
+  const value = e.target.value
+  if (isAppearance(value) && value !== 'system') innerAppearance.value = value
+}
+function setInnermostAppearance(e: WebUiEvent<WebUiSegmented, 'input'>) {
+  const value = e.target.value
+  if (isAppearance(value) && value !== 'system') innermostAppearance.value = value
+}
+function setInnerMotion(e: WebUiEvent<WebUiSegmented, 'input'>) {
+  const value = e.target.value
+  if (isMotion(value)) innerMotion.value = value
+}
+function setInnermostMotion(e: WebUiEvent<WebUiSegmented, 'input'>) {
+  const value = e.target.value
+  if (isMotion(value)) innermostMotion.value = value
+}
 
 function showScopedToast() {
   if (!scopedToastTarget.value) return
@@ -35,11 +72,7 @@ function showScopedToast() {
     <h2>基本用法（单层）</h2>
     <h3>外观</h3>
     <div class="mb-4">
-      <web-ui-segmented
-        :value="appearance"
-        aria-label="单层主题外观"
-        @input="appearance = ($event.target as WebUiSegmented).value as 'light' | 'dark' | 'system'"
-      >
+      <web-ui-segmented :value="appearance" aria-label="单层主题外观" @input="setAppearance">
         <web-ui-segmented-trigger value="light">Light</web-ui-segmented-trigger>
         <web-ui-segmented-trigger value="dark">Dark</web-ui-segmented-trigger>
         <web-ui-segmented-trigger value="system">System</web-ui-segmented-trigger>
@@ -48,11 +81,7 @@ function showScopedToast() {
 
     <h3>动效偏好</h3>
     <div class="mb-4">
-      <web-ui-segmented
-        :value="motion"
-        aria-label="单层主题动效偏好"
-        @input="motion = ($event.target as WebUiSegmented).value as ThemeMotion"
-      >
+      <web-ui-segmented :value="motion" aria-label="单层主题动效偏好" @input="setMotion">
         <web-ui-segmented-trigger value="full">Full</web-ui-segmented-trigger>
         <web-ui-segmented-trigger value="reduced">Reduced</web-ui-segmented-trigger>
         <web-ui-segmented-trigger value="system">System</web-ui-segmented-trigger>
@@ -104,22 +133,14 @@ function showScopedToast() {
     <div class="mb-4 flex flex-wrap items-center gap-4">
       <div class="flex items-center gap-2">
         <span class="text-sm text-[var(--wui-color-text-muted)]">内层外观</span>
-        <web-ui-segmented
-          :value="innerAppearance"
-          aria-label="内层主题外观"
-          @input="innerAppearance = ($event.target as WebUiSegmented).value as 'light' | 'dark'"
-        >
+        <web-ui-segmented :value="innerAppearance" aria-label="内层主题外观" @input="setInnerAppearance">
           <web-ui-segmented-trigger value="light">Light</web-ui-segmented-trigger>
           <web-ui-segmented-trigger value="dark">Dark</web-ui-segmented-trigger>
         </web-ui-segmented>
       </div>
       <div class="flex items-center gap-2">
         <span class="text-sm text-[var(--wui-color-text-muted)]">最内层外观</span>
-        <web-ui-segmented
-          :value="innermostAppearance"
-          aria-label="最内层主题外观"
-          @input="innermostAppearance = ($event.target as WebUiSegmented).value as 'light' | 'dark'"
-        >
+        <web-ui-segmented :value="innermostAppearance" aria-label="最内层主题外观" @input="setInnermostAppearance">
           <web-ui-segmented-trigger value="light">Light</web-ui-segmented-trigger>
           <web-ui-segmented-trigger value="dark">Dark</web-ui-segmented-trigger>
         </web-ui-segmented>
@@ -129,11 +150,7 @@ function showScopedToast() {
     <div class="mb-4 flex flex-wrap items-center gap-4">
       <div class="flex items-center gap-2">
         <span class="text-sm text-[var(--wui-color-text-muted)]">内层动效</span>
-        <web-ui-segmented
-          :value="innerMotion"
-          aria-label="内层主题动效偏好"
-          @input="innerMotion = ($event.target as WebUiSegmented).value as ThemeMotion"
-        >
+        <web-ui-segmented :value="innerMotion" aria-label="内层主题动效偏好" @input="setInnerMotion">
           <web-ui-segmented-trigger value="system">System</web-ui-segmented-trigger>
           <web-ui-segmented-trigger value="full">Full</web-ui-segmented-trigger>
           <web-ui-segmented-trigger value="reduced">Reduced</web-ui-segmented-trigger>
@@ -141,11 +158,7 @@ function showScopedToast() {
       </div>
       <div class="flex items-center gap-2">
         <span class="text-sm text-[var(--wui-color-text-muted)]">最内层动效</span>
-        <web-ui-segmented
-          :value="innermostMotion"
-          aria-label="最内层主题动效偏好"
-          @input="innermostMotion = ($event.target as WebUiSegmented).value as ThemeMotion"
-        >
+        <web-ui-segmented :value="innermostMotion" aria-label="最内层主题动效偏好" @input="setInnermostMotion">
           <web-ui-segmented-trigger value="system">System</web-ui-segmented-trigger>
           <web-ui-segmented-trigger value="full">Full</web-ui-segmented-trigger>
           <web-ui-segmented-trigger value="reduced">Reduced</web-ui-segmented-trigger>

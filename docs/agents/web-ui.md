@@ -58,13 +58,14 @@
 
 ## 事件类型契约（$events）
 
-每个组件通过 `declare readonly $events` 声明公共事件类型。框架类型包装器（`types/react.ts` 的 `ExactEventListeners`、`types/vue.ts` 的 `ExtractVueEmits`）从该映射生成 React 的 `on<event>` 与 Vue 的 `@event` 绑定类型，因此 `$events` 是公共类型契约的一部分。
+每个组件通过 `declare readonly $events` 声明公共事件类型。`$events` 只声明事件本体（如 `input: Event`、`focus: FocusEvent`、`'open-change': CustomEvent<{ open: boolean }>`），不重复书写宿主 target —— 组件 barrel 的 `WebUiElementMap` 从各组件 `HTMLElementTagNameMap` 声明派生，框架类型适配器（`types/react.ts`、`types/vue.ts`）经 `WithHost` 统一把每个条目收窄为 `TYPE & { readonly target: WebUiXxx; readonly currentTarget: WebUiXxx }`。事件在宿主上重定向后 `event.target` 恒等于宿主元素，因此该收窄零例外；`WithHost` 注入的 target/currentTarget 标为 readonly，与 DOM `Event` 契约一致。
 
-- 每个 `$events` 条目必须声明宿主 target 类型：`input: Event & { target: WebUiInput }`、`focus: FocusEvent & { target: WebUiInput }`、`'open-change': CustomEvent<{ open: boolean }> & { target: WebUiDialog }`。浏览器组合事件在宿主上重定向后 `event.target` 恒等于宿主元素，因此该声明是零例外的。
-- React 消费端经 `LitReactWrapper` 直接获得类型化事件：`onChange` 的 `currentTarget` 是组件实例，`on<event>`（如 `oninput`）的 handler 参数携带 `Event & { target: WebUiXxx }`，无需 cast。
-- Vue 消费端对原生 value 事件（`@input`/`@change`）需对 target 做权威 cast：Vue 会把组件的 `input` emit 与全局 `ComponentCustomProps` 的原生 `onInput` 并成联合类型，`$event.target` 退化为 `EventTarget | WebUiXxx | null`，因此写 `@input="val = ($event.target as WebUiSegmented).value"`；仅当把 `string` 收窄为已知字面量联合时再加值 cast：`($event.target as WebUiSegmented).value as 'light' | 'dark'`。不要手写 `HTMLElement & { value: ... }`。
-- 非原生命名的状态事件（如 `open-change`）在 Vue 中无需 cast：emit 类型 `CustomEvent<T> & { target: WebUiXxx }` 直接可用（`$event.detail.open`）。
-- 不要从全局 `ComponentCustomProps` 排除 `onInput`/`onChange`/`onFocus`/`onBlur`：该接口作用于所有 Vue 组件，且并非每个组件都声明了 `focus`/`blur` emit（如 `web-ui-checkbox`/`web-ui-radio` 仍通过宿主暴露焦点事件），全局排除会造成消费者类型回归。
+- **React**：标准 DOM 事件（input/change/focus/blur）使用 React 惯用 camelCase handler（`onInput`/`onChange`/`onFocus`/`onBlur`），保留对应 SyntheticEvent 类型，`currentTarget` 经 `HTMLAttributes<T>` 收窄到组件实例，无需 cast；`target` 遵循 React SyntheticEvent 语义（`EventTarget`），不承诺为组件实例。kebab-case 自定义事件生成精确的 `on<event>` 绑定（如 `onopen-change`），handler 参数携带 `CustomEvent<T> & { target: WebUiXxx; currentTarget: WebUiXxx }`。不再生成 lowercase `oninput`/`onchange` 别名。
+- **Vue**：不再全局扩展 `ComponentCustomProps`。每个 `LitVueWrapper` 局部合并 `HTMLAttributes`，排除与该组件 emit 重名的 handler（如 emit `input` → 排除 `onInput`）后再加入精确 emit，因此 `@input`/`@change` 的 `$event.target` 直接是组件实例（`$event.target.value`），cast-free；`$event.detail` 保持 `CustomEvent` 的精确载荷。未声明对应 emit 的原生事件（如 checkbox/radio 的 `@focus`/`@blur`、无 `$events` 组件的 `@click`/`@keydown`）仍通过局部 `HTMLAttributes` 支持，且不影响其他 Vue 组件。Vue 3.5 的 element type 参数使模板 ref/$el 为具体 Custom Element 类型。
+- **复合控件**：checkbox/radio/segmented-trigger 被对应 group 管理时，子控件自身仍向直接监听器派发 `input`/`change`，但事件 `bubbles: false, composed: false`，不会冒泡到 group 外；group 用 capture 相位监听子项 change，并只派发一次自己的 `input` 再 `change`，两者 `target`/`currentTarget` 均为 group。独立使用子控件时保持 `bubbles: true, composed: true`。因此 `WebUiEvent<Group, 'change'>` 与 Vue `$event.target` 的收窄承诺在 group 上也成立。
+- 具名 handler 或无法从上下文推导 `$event` 的位置，显式标注 `WebUiEvent<WebUiXxx, 'change'>`（`WebUiEvent` 从包入口导出）。
+- 无公共事件的组件不声明 `$events`（空的 `Record<string, never>` 无意义）。`web-ui-option` 的注册/更新事件是 select 的内部协议，不作为框架公共事件类型暴露。
+- `WebUiElementMap` 是组件标签的单一权威来源：新增组件只需添加 `HTMLElementTagNameMap` 声明，React/Vue 的 `WebUiComponents` 经 mapped type 自动覆盖，勿手写组件清单。
 
 ## 测试
 

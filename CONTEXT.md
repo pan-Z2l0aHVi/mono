@@ -77,7 +77,7 @@ Component interaction using Pointer Events (pointerenter, pointerleave, pointerd
 A custom element with `static formAssociated = true` that integrates with the native HTML form lifecycle: submits values via `FormData`, responds to `formResetCallback()` and `formDisabledCallback()`, and manages constraints through `ElementInternals`.
 
 **Target-carried Event**:
-A native-semantic DOM event whose value lives on `event.target` — the host element — rather than in an event payload. Its `$events` type declares `Event & { target: WebUiXxx }`, giving framework consumers a typed target.
+A native-semantic DOM event whose value lives on `event.target` — the host element — rather than in an event payload. Its `$events` entry declares only the bare event type (`input: Event`); the framework adaptation layer injects `readonly target/currentTarget: WebUiXxx` via `WithHost`, giving framework consumers a typed target without per-component duplication. Composite controls (checkbox-group/radio-group/segmented) re-dispatch a single host event with the group as `target`, so the promise holds at group level too.
 _Avoid_: detail event, payload-carrying event
 
 ## Known Constraints

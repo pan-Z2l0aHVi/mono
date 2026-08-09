@@ -175,7 +175,7 @@ export class WebUiToast extends LitElement {
   }
 
   declare readonly $events: {
-    'toast-close': CustomEvent<{ id: string; reason: ToastCloseReason }> & { target: WebUiToast }
+    'toast-close': CustomEvent<{ id: string; reason: ToastCloseReason }>
   }
 }
 

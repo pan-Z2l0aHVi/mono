@@ -91,8 +91,12 @@ export class WebUiCheckbox extends LitElement {
     this._checked = !old
     this._syncFormValue()
     this.requestUpdate('checked', old)
-    this.dispatchEvent(new Event('input', { bubbles: true, composed: true }))
-    this.dispatchEvent(new Event('change', { bubbles: true, composed: true }))
+    // group-managed 时事件不冒泡/不组合，由 group 统一派发一次 host 事件，避免同名事件外泄
+    const opts: EventInit = this._isManagedByGroup
+      ? { bubbles: false, composed: false }
+      : { bubbles: true, composed: true }
+    this.dispatchEvent(new Event('input', opts))
+    this.dispatchEvent(new Event('change', opts))
   }
 
   private handleKeyDown(e: KeyboardEvent) {
@@ -130,8 +134,8 @@ export class WebUiCheckbox extends LitElement {
   }
 
   declare readonly $events: {
-    input: Event & { target: WebUiCheckbox }
-    change: Event & { target: WebUiCheckbox }
+    input: Event
+    change: Event
   }
 }
 

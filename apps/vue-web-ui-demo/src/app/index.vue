@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { local } from '@greypan/browser-kit/storage'
+import type { WebUiEvent, WebUiSelect } from '@greypan/web-ui'
 import { useHead } from '@unhead/vue'
 import { onMounted, ref } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
@@ -33,16 +34,16 @@ function getInitialThemeMotion(): ThemeMotion {
 const themeAppearance = ref(getInitialThemeAppearance())
 const themeMotion = ref(getInitialThemeMotion())
 
-function updateThemeAppearance(event: Event) {
-  const appearance = (event.currentTarget as HTMLElement & { value?: unknown }).value
+function updateThemeAppearance(event: WebUiEvent<WebUiSelect, 'change'>) {
+  const appearance = event.currentTarget.value
   if (!isThemeAppearance(appearance)) return
 
   themeAppearance.value = appearance
   local.set(STORAGE_KEY, appearance)
 }
 
-function updateThemeMotion(event: Event) {
-  const motion = (event.currentTarget as HTMLElement & { value?: unknown }).value
+function updateThemeMotion(event: WebUiEvent<WebUiSelect, 'change'>) {
+  const motion = event.currentTarget.value
   if (!isThemeMotion(motion)) return
 
   themeMotion.value = motion

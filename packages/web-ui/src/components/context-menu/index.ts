@@ -555,7 +555,7 @@ export class WebUiContextMenu extends LitElement {
   }
 
   declare readonly $events: {
-    'open-change': CustomEvent<{ open: boolean }> & { target: WebUiContextMenu }
+    'open-change': CustomEvent<{ open: boolean }>
   }
 }
 

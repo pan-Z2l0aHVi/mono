@@ -123,8 +123,6 @@ export class WebUiBadge extends LitElement {
       </div>
     `
   }
-
-  declare readonly $events: Record<string, never>
 }
 
 declare global {

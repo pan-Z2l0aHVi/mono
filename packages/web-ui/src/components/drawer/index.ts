@@ -216,7 +216,7 @@ export class WebUiDrawer extends LitElement {
   }
 
   declare readonly $events: {
-    'open-change': CustomEvent<{ open: boolean }> & { target: WebUiDrawer }
+    'open-change': CustomEvent<{ open: boolean }>
   }
 }
 

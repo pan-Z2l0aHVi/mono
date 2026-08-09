@@ -470,9 +470,9 @@ export class WebUiSelect extends LitElement {
   }
 
   declare readonly $events: {
-    input: Event & { target: WebUiSelect }
-    change: Event & { target: WebUiSelect }
-    'open-change': CustomEvent<{ open: boolean }> & { target: WebUiSelect }
+    input: Event
+    change: Event
+    'open-change': CustomEvent<{ open: boolean }>
   }
 }
 

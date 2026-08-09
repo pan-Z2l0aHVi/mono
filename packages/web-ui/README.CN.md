@@ -33,7 +33,7 @@ import '@greypan/web-ui'
 
 ### React
 
-需要 `@types/react >= 16` 作为可选 peer 依赖。
+需要 `@types/react >= 19` 作为可选 peer 依赖。
 
 ```ts
 // vite.config.ts
@@ -56,7 +56,7 @@ function App() {
       <web-ui-button variant="primary" onClick={() => alert('点击')}>
         按钮
       </web-ui-button>
-      <web-ui-input onInput={e => console.log((e.target as any).value)} />
+      <web-ui-input onInput={e => console.log(e.currentTarget.value)} />
     </>
   )
 }
@@ -65,8 +65,11 @@ function App() {
 #### React 自定义元素事件与布尔属性
 
 React 19 按 JSX 键名中的 `on` 后缀原样注册 Custom Element 事件。事件名大小写敏感：`open-change`
-必须绑定为 `onopen-change`，不能写成 `onOpenChange`。标准 `input` 和 `change` 事件仍使用 React
-惯用的 `onInput` 和 `onChange`。布尔属性遵循原生 HTML 语义：属性缺失为 `false`，属性存在为 `true`。
+必须绑定为 `onopen-change`，不能写成 `onOpenChange`。标准 `input`、`change`、`focus`、`blur`
+事件使用 React 惯用的 `onInput`、`onChange`、`onFocus`、`onBlur` handler——其 `currentTarget`
+类型为组件实例，value/checked 读取无需 cast；`target` 遵循 React SyntheticEvent 语义（`EventTarget`），
+不承诺为组件实例。kebab-case 自定义事件携带精确类型的 `CustomEvent` detail。
+布尔属性遵循原生 HTML 语义：属性缺失为 `false`，属性存在为 `true`。
 
 ```tsx
 <web-ui-dialog
@@ -96,7 +99,7 @@ useEffect(() => {
 
 ### Vue
 
-需要 `vue >= 3` 作为可选 peer 依赖。
+需要 `vue >= 3.5` 作为可选 peer 依赖。
 
 ```ts
 // vite.config.ts
@@ -120,8 +123,14 @@ import '@greypan/web-ui/types/vue'
 <template>
   <web-ui-button variant="primary" @click="handleClick">按钮</web-ui-button>
   <web-ui-input v-model="value" />
+  <web-ui-select :value="framework" @change="framework = $event.target.value" />
 </template>
 ```
+
+Vue 事件类型零 cast：带值组件上的 `@input`/`@change` 解析到组件 emit，`$event.target` 即为组件实例，
+`value`/`checked` 直接读取；kebab-case 事件（如 `open-change`）的 `$event.detail` 保持 `CustomEvent` 载荷类型。
+命名 handler 用 `WebUiEvent<WebUiXxx, 'change'>` 标注。未声明为 emit 的原生事件（`@click`/`@focus` 等）
+在任何 `web-ui-*` 元素上仍可绑定。
 
 ### 属性与事件边界
 

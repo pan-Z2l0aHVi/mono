@@ -269,7 +269,7 @@ export class WebUiTooltip extends LitElement {
   }
 
   declare readonly $events: {
-    'open-change': CustomEvent<{ open: boolean }> & { target: WebUiTooltip }
+    'open-change': CustomEvent<{ open: boolean }>
   }
 }
 

@@ -124,8 +124,6 @@ export class WebUiBackTop extends LitElement {
       </div>
     `
   }
-
-  declare readonly $events: Record<string, never>
 }
 
 declare global {
