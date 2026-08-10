@@ -173,11 +173,14 @@ export class WebUiTextarea extends LitElement {
     this._focused = false
   }
 
+  // 原生 change 不 composed，被 shadow root 挡住；这里补发 composed 事件，
+  // 兑现 $events/README 声明的公共 change 契约。
   private handleNativeChange(e: Event) {
     if (!(e.target instanceof HTMLTextAreaElement)) return
     this._value = e.target.value
     this._internals?.setFormValue?.(this._value)
     this._syncValidity()
+    this.dispatchEvent(new Event('change', { bubbles: true, composed: true }))
   }
 
   override focus() {
@@ -206,7 +209,7 @@ export class WebUiTextarea extends LitElement {
   }
 
   private handleClear() {
-    if (this._isDisabled) return
+    if (this._isDisabled || this.readonly) return
     this._value = ''
     this._internals?.setFormValue?.('')
     this.dispatchEvent(new Event('input', { bubbles: true, composed: true }))
@@ -217,7 +220,8 @@ export class WebUiTextarea extends LitElement {
   }
 
   override render() {
-    const showClear = this.clearable && this._value
+    // readonly 下不可清除：清空按钮会修改值，与只读语义冲突
+    const showClear = this.clearable && this._value && !this.readonly
 
     return html`
       <div class="wui-glass wui-textarea-inner" @click=${this.focusTextarea}>

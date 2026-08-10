@@ -16,12 +16,7 @@ const limitedVal = ref('')
     <h2>基础</h2>
     <div class="mb-3 flex flex-col gap-3">
       <web-ui-textarea placeholder="请输入内容" full />
-      <web-ui-textarea
-        :value="basic"
-        placeholder="双向绑定"
-        full
-        @input="(e: Event) => (basic = (e.target as HTMLTextAreaElement).value)"
-      />
+      <web-ui-textarea :value="basic" placeholder="双向绑定" full @input="basic = $event.target.value" />
       <div class="text-sm text-gray-500">输入值：{{ basic || '(空)' }}</div>
     </div>
 
@@ -74,7 +69,7 @@ const limitedVal = ref('')
         :maxlength="20"
         placeholder="最多 20 字"
         full
-        @input="(e: Event) => (limitedVal = (e.target as HTMLTextAreaElement).value)"
+        @input="limitedVal = $event.target.value"
       />
       <div class="text-sm text-gray-500">{{ limitedVal.length }} / 20</div>
     </div>

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { WebUiEvent, WebUiRadioGroup } from '@greypan/web-ui'
 import { ref } from 'vue'
 
 const selected = ref('apple')
@@ -9,10 +10,8 @@ const updateSelected = (value: string) => {
   selected.value = value
 }
 
-function updateGroupValue(event: Event) {
-  const target = event.currentTarget
-  if (!(target instanceof HTMLElement) || typeof (target as { value?: unknown }).value !== 'string') return
-  groupVal.value = (target as HTMLElement & { value: string }).value
+function updateGroupValue(event: WebUiEvent<WebUiRadioGroup, 'change'>) {
+  groupVal.value = event.currentTarget.value
 }
 </script>
 

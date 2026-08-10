@@ -139,13 +139,15 @@ describe('WebUiTextarea 组件', () => {
       cleanupElement(el)
     })
 
-    it('失焦时触发 change 事件', async () => {
+    it('失焦时原生 change 事件转发为宿主 change', async () => {
       const el = createTextarea()
       await waitForUpdate(el)
 
       const [events] = spyEvents(el, 'change')
       const textarea = queryA11y(el, 'textarea') as HTMLTextAreaElement
-      textarea.dispatchEvent(new Event('change', { bubbles: true, composed: true }))
+      // 真实浏览器派发的 change 不 composed，被 shadow root 挡住；
+      // 组件捕获后补发 composed change，宿主监听器收到一次
+      textarea.dispatchEvent(new Event('change', { bubbles: true }))
 
       expect(events).toHaveLength(1)
       cleanupElement(el)
@@ -226,6 +228,17 @@ describe('WebUiTextarea 组件', () => {
 
       expect(events).toHaveLength(1)
       expect(el.value).toBe('')
+      cleanupElement(el)
+    })
+
+    it('readonly 时不渲染清除按钮', async () => {
+      const el = createTextarea()
+      el.clearable = true
+      el.readonly = true
+      el.value = 'hello'
+      await waitForUpdate(el)
+
+      expect(queryA11y(el, '[aria-label="清除"]')).toBeNull()
       cleanupElement(el)
     })
   })

@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ComponentsAutocompleteRouteImport } from './routes/components/autocomplete'
 import { Route as ComponentsAvatarRouteImport } from './routes/components/avatar'
 import { Route as ComponentsBackTopRouteImport } from './routes/components/back-top'
 import { Route as ComponentsBadgeRouteImport } from './routes/components/badge'
@@ -40,6 +41,11 @@ import { Route as HomeIndexRouteImport } from './routes/home/index'
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ComponentsAutocompleteRoute = ComponentsAutocompleteRouteImport.update({
+  id: '/components/autocomplete',
+  path: '/components/autocomplete',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ComponentsAvatarRoute = ComponentsAvatarRouteImport.update({
@@ -175,6 +181,7 @@ const HomeIndexRoute = HomeIndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/components/autocomplete': typeof ComponentsAutocompleteRoute
   '/components/avatar': typeof ComponentsAvatarRoute
   '/components/back-top': typeof ComponentsBackTopRoute
   '/components/badge': typeof ComponentsBadgeRoute
@@ -204,6 +211,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/components/autocomplete': typeof ComponentsAutocompleteRoute
   '/components/avatar': typeof ComponentsAvatarRoute
   '/components/back-top': typeof ComponentsBackTopRoute
   '/components/badge': typeof ComponentsBadgeRoute
@@ -234,6 +242,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/components/autocomplete': typeof ComponentsAutocompleteRoute
   '/components/avatar': typeof ComponentsAvatarRoute
   '/components/back-top': typeof ComponentsBackTopRoute
   '/components/badge': typeof ComponentsBadgeRoute
@@ -265,6 +274,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/components/autocomplete'
     | '/components/avatar'
     | '/components/back-top'
     | '/components/badge'
@@ -294,6 +304,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/components/autocomplete'
     | '/components/avatar'
     | '/components/back-top'
     | '/components/badge'
@@ -323,6 +334,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/components/autocomplete'
     | '/components/avatar'
     | '/components/back-top'
     | '/components/badge'
@@ -353,6 +365,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ComponentsAutocompleteRoute: typeof ComponentsAutocompleteRoute
   ComponentsAvatarRoute: typeof ComponentsAvatarRoute
   ComponentsBackTopRoute: typeof ComponentsBackTopRoute
   ComponentsBadgeRoute: typeof ComponentsBadgeRoute
@@ -388,6 +401,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/components/autocomplete': {
+      id: '/components/autocomplete'
+      path: '/components/autocomplete'
+      fullPath: '/components/autocomplete'
+      preLoaderRoute: typeof ComponentsAutocompleteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/components/avatar': {
@@ -577,6 +597,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ComponentsAutocompleteRoute: ComponentsAutocompleteRoute,
   ComponentsAvatarRoute: ComponentsAvatarRoute,
   ComponentsBackTopRoute: ComponentsBackTopRoute,
   ComponentsBadgeRoute: ComponentsBadgeRoute,

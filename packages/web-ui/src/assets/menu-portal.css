@@ -2,6 +2,7 @@
   --wui-glass-shadow: var(--wui-shadow-pop, 0 3px 9px rgb(0 0 0 / 0.27));
   --wui-duration-overlay-enter: var(--wui-duration-menu-enter, 140ms);
   --wui-duration-overlay-exit: var(--wui-duration-menu-exit, 100ms);
+  --wui-overlay-min-width: 200px;
   user-select: none;
 
   position: fixed;
@@ -10,7 +11,7 @@
   overflow: hidden;
 
   box-sizing: border-box;
-  min-width: 200px;
+  min-width: var(--wui-overlay-min-width, 120px);
   max-width: 90vw;
   max-height: 80vh;
   border-radius: 20px;

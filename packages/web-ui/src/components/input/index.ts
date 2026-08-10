@@ -19,6 +19,7 @@ export class WebUiInput extends LitElement {
   @property({ type: String, reflect: true }) placeholder = ''
   @property({ type: String, reflect: true }) name = ''
   @property({ type: Boolean, reflect: true }) disabled = false
+  @property({ type: Boolean, reflect: true }) readonly = false
   @property({ type: Boolean, reflect: true }) required = false
   @property({ type: Boolean, reflect: true }) clearable = false
   @property({ type: Boolean, reflect: true }) full = false
@@ -106,10 +107,22 @@ export class WebUiInput extends LitElement {
   }
 
   private handleInput(e: Event) {
+    if (this._isDisabled || this.readonly) return
     if (!(e.target instanceof HTMLInputElement)) return
     this._value = e.target.value
     this._internals?.setFormValue?.(this._value)
     this._syncValidity()
+  }
+
+  // 原生 change 不 composed，被 shadow root 挡住；这里补发 composed 事件，
+  // 兑现 $events/README 声明的公共 change 契约。
+  private handleNativeChange(e: Event) {
+    if (this.readonly) return
+    if (!(e.target instanceof HTMLInputElement)) return
+    this._value = e.target.value
+    this._internals?.setFormValue?.(this._value)
+    this._syncValidity()
+    this.dispatchEvent(new Event('change', { bubbles: true, composed: true }))
   }
 
   private handleFocus() {
@@ -121,7 +134,7 @@ export class WebUiInput extends LitElement {
   }
 
   private handleClear() {
-    if (this._isDisabled) return
+    if (this._isDisabled || this.readonly) return
     this._value = ''
     this._internals?.setFormValue?.('')
     this._syncValidity()
@@ -138,7 +151,8 @@ export class WebUiInput extends LitElement {
   }
 
   override render() {
-    const showClear = this.clearable && this._value
+    // readonly 下不可清除：清空按钮会修改值，与只读语义冲突
+    const showClear = this.clearable && this._value && !this.readonly
 
     return html`
       <div class="wui-glass wui-input-inner" @click=${this.focusInput}>
@@ -149,9 +163,11 @@ export class WebUiInput extends LitElement {
           name=${this.name}
           aria-label=${ifDefined(this.ariaLabel)}
           ?disabled=${this._isDisabled}
+          ?readonly=${this.readonly}
           ?required=${this.required}
           .value=${this._value}
           @input=${this.handleInput}
+          @change=${this.handleNativeChange}
           @focus=${this.handleFocus}
           @blur=${this.handleBlur}
         />

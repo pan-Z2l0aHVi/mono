@@ -1,7 +1,7 @@
-# Review Guide
+# Review 指南
 
-Use this guide for a code review or self-review. Lead the report with concrete findings ordered by severity, including file and line references. State test gaps and residual risk when no defects are found.
+在进行代码 review 或自我 review 时使用本指南。报告应以按严重程度排列的具体发现开头，包含文件和行号引用。未发现缺陷时，说明测试缺口和残余风险。
 
-Check public behavior and backward compatibility, focused test coverage, boundary and failure cases, type and error handling, race or resource leaks, user-input security risks, and documentation changes. For refactors, compare the completed change against a pre-change behavior inventory.
+检查项包括：公共行为与向后兼容性、聚焦测试覆盖、边界与失败情况、类型与错误处理、竞态或资源泄漏、用户输入安全风险、以及文档变更。对于重构，将完成的变更与变更前的行为清单进行对照。
 
-An independent review agent must not also implement the reviewed change. Review final code and tests rather than relying on the implementation narrative.
+独立的 review agent 不得同时参与所 review 变更的实施。应 review 最终代码和测试，而非依赖实施过程中的描述。

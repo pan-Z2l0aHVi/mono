@@ -89,8 +89,6 @@ export class WebUiSpinner extends LitElement {
     `
     return this._imperative ? html`<div class="wui-spinner-overlay">${spinner}</div>` : spinner
   }
-
-  declare readonly $events: Record<string, never>
 }
 
 @customElement('web-ui-spinner')

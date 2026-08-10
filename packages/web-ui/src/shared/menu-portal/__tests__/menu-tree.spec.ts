@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vite-plus/test'
 
-import { findFocusedMenuItem, getEnabledMenuItems, getMenuChildren, moveMenuChildren } from './menu-tree'
+import { findFocusedMenuItem, getEnabledMenuItems, getMenuChildren, moveMenuChildren } from '../menu-tree'
 
 describe('多级菜单树操作', () => {
   it('只迁移合法菜单节点并保留其他节点', () => {

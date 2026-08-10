@@ -1,24 +1,24 @@
-# ADR-0002: Build Toolchain
+# ADR-0002: 构建工具链
 
 - **Date**: 2025-01-01
-- **Status**: Accepted
+- **Status**: 已接受
 
-## Context
+## 背景
 
-Multiple packages with different build needs (tsdown for single-entry, Vite lib mode for multi-entry, apps needing full bundling) require a consistent build interface.
+多个软件包具有不同的构建需求（单入口使用 tsdown、多入口使用 Vite lib 模式、应用需要完整打包），需要统一的构建接口。
 
-## Decision
+## 决策
 
-Use `vite-plus` (`vp`) as the unified build/dev/lint/test/format wrapper:
+使用 `vite-plus`（`vp`）作为统一的构建 / 开发 / lint / 测试 / 格式化封装工具：
 
-- **Single-entry packages** (test-kit, unplugin-web-components, deps-reload): `vp pack` (tsdown) → `.mjs` + `.d.mts`
-- **Sub-path export packages** (js-kit, browser-kit, web-ui): `vp build` (Vite lib mode + preserveModules + vite-plugin-dts) →`.js` + `.d.ts`
-- **React app**: `vp build`
-- **Vue app**: `vue-tsc --build && vp build`
-- **Workspace verification**: `pnpm run check:code` runs formatting, linting, and type checking
+- **单入口软件包**（test-kit、unplugin-web-components、deps-reload）：`vp pack`（tsdown）→ `.mjs` + `.d.mts`
+- **子路径导出软件包**（js-kit、browser-kit、web-ui）：`vp build`（Vite lib 模式 + preserveModules + vite-plugin-dts）→ `.js` + `.d.ts`
+- **React 应用**：`vp build`
+- **Vue 应用**：`vue-tsc --build && vp build`
+- **工作区验证**：`pnpm run check:code` 运行格式化、lint 和类型检查
 
-## Consequences
+## 后果
 
-- All package scripts delegate to `vp build`/`vp test`/`vp check`/`vp lint`/`vp fmt`
-- Workspace deps MUST be externalized (regex preferred) for dev watch mode to work
-- CSS nesting in web-ui requires LightningCSS transpilation (configured in `vp build`)
+- 所有软件包脚本都委托给 `vp build` / `vp test` / `vp check` / `vp lint` / `vp fmt`
+- 工作区依赖必须外部化（推荐使用正则），以确保 dev watch 模式正常工作
+- web-ui 中的 CSS 嵌套需要 LightningCSS 转译（在 `vp build` 中配置）

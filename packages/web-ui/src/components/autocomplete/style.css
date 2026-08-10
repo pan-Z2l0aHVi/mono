@@ -1,0 +1,140 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+:host {
+  display: inline-block;
+}
+
+:host([disabled]) {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.input-wrapper {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+
+  box-sizing: border-box;
+  width: var(--wui-input-width, 200px);
+  min-width: var(--wui-button-size, 40px);
+  height: var(--wui-button-size, 40px);
+  padding: 0 12px;
+  border-radius: calc(infinity * 1px);
+
+  transition:
+    border-color var(--wui-duration-focus, 200ms),
+    box-shadow var(--wui-duration-focus, 200ms);
+}
+
+:host([focused]) .input-wrapper {
+  --wui-glass-shadow:
+    var(--wui-shadow-glass, 0 2px 16px rgb(0 0 0 / 0.06)), 0 0 0 3px var(--wui-focus-ring, rgb(0 136 255 / 0.4));
+  border-color: var(--wui-color-border-strong, rgb(0 110 230 / 0.5));
+}
+
+.autocomplete-input {
+  flex: 1;
+
+  min-width: 0;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: none;
+
+  /* 表单控件不继承字体；显式继承以对齐宿主排版，避免 UA 默认字体差异 */
+  font: inherit;
+  font-size: var(--wui-font-size, 14px);
+  color: var(--wui-color-text, #1b1b1b);
+
+  background: transparent;
+  outline: none;
+
+  &::placeholder {
+    color: var(--wui-color-text-muted, #6a6a6a);
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.4;
+  }
+}
+
+/* ===== 浮层（glass 样式参考 select） ===== */
+
+.autocomplete-overlay {
+  --wui-glass-shadow: var(--wui-shadow-pop, 0 3px 9px rgb(0 0 0 / 0.27));
+  --wui-duration-overlay-enter: var(--wui-duration-menu-enter, 140ms);
+  --wui-duration-overlay-exit: var(--wui-duration-menu-exit, 100ms);
+  --wui-overlay-min-width: 200px;
+  position: absolute;
+  z-index: var(--wui-layer-local-overlay, 1);
+
+  overflow: hidden;
+
+  box-sizing: border-box;
+  min-width: var(--wui-overlay-min-width, 120px);
+  max-width: 500px;
+  border-radius: 20px;
+
+  background-color: var(--wui-color-surface-overlay, rgb(246 246 246 / 0.88));
+
+  &.portal {
+    position: fixed;
+    z-index: var(--wui-layer-menu, 100);
+  }
+
+  &.hidden {
+    display: none;
+  }
+}
+
+.autocomplete-scroll {
+  overflow-y: auto;
+  max-height: 320px;
+}
+
+.autocomplete-content {
+  padding: 4px;
+}
+
+.autocomplete-empty {
+  padding: 8px 12px;
+  font-size: var(--wui-font-size, 14px);
+  color: var(--wui-color-text-muted, #6a6a6a);
+  text-align: center;
+}
+
+/* 非匹配候选隐藏：本地模式经 slot 投影，portal 模式为面板直接子元素 */
+::slotted(web-ui-option[data-filtered]) {
+  display: none;
+}
+
+.autocomplete-content web-ui-option[data-filtered] {
+  display: none;
+}
+
+:host([portal]) .autocomplete-overlay {
+  display: none;
+}
+
+/* Shadow DOM idref 不能跨越 Portal 或 light DOM；保留同根可访问的语义镜像。 */
+.autocomplete-a11y-only,
+.autocomplete-a11y-listbox {
+  position: absolute;
+
+  overflow: hidden;
+
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+
+  white-space: nowrap;
+
+  clip-path: inset(50%);
+}

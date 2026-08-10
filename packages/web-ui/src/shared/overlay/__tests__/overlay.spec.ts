@@ -133,6 +133,59 @@ describe('defineOverlay 工具', () => {
     overlay.remove()
   })
 
+  it('minAnchorWidth 使用默认 120px floor', async () => {
+    const trigger = createTrigger()
+    const overlay = createOverlay()
+    const ctx = defineOverlay().make({ anchor: trigger, overlay, minAnchorWidth: true })
+
+    ctx.open()
+    await new Promise(r => requestAnimationFrame(r))
+
+    // jsdom 中 anchor 无布局，参考宽度为 0，min-width 取 floor
+    expect(overlay.style.minWidth).toBe('120px')
+
+    ctx.dispose()
+    trigger.remove()
+    overlay.remove()
+  })
+
+  it('minAnchorWidth 读取 --wui-overlay-min-width 作为 floor', async () => {
+    const trigger = createTrigger()
+    const overlay = createOverlay()
+    overlay.style.setProperty('--wui-overlay-min-width', '200px')
+    const ctx = defineOverlay().make({ anchor: trigger, overlay, minAnchorWidth: true })
+
+    ctx.open()
+    await new Promise(r => requestAnimationFrame(r))
+
+    expect(overlay.style.minWidth).toBe('200px')
+
+    ctx.dispose()
+    trigger.remove()
+    overlay.remove()
+  })
+
+  it('关闭 minAnchorWidth 后清理 inline width/min-width', async () => {
+    const trigger = createTrigger()
+    const overlay = createOverlay()
+    overlay.style.setProperty('--wui-overlay-min-width', '160px')
+    const ctx = defineOverlay().make({ anchor: trigger, overlay, minAnchorWidth: true })
+
+    ctx.open()
+    await new Promise(r => requestAnimationFrame(r))
+    expect(overlay.style.width).toBe('max-content')
+    expect(overlay.style.minWidth).toBe('160px')
+
+    ctx.update({ minAnchorWidth: false })
+    await new Promise(r => requestAnimationFrame(r))
+    expect(overlay.style.width).toBe('')
+    expect(overlay.style.minWidth).toBe('')
+
+    ctx.dispose()
+    trigger.remove()
+    overlay.remove()
+  })
+
   it('dispose 清理资源', async () => {
     const trigger = createTrigger()
     const overlay = createOverlay()

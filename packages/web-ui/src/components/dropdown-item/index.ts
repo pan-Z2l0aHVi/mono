@@ -32,8 +32,6 @@ export class WebUiDropdownItem extends LitElement {
       </div>
     `
   }
-
-  declare readonly $events: Record<string, never>
 }
 
 declare global {

@@ -38,6 +38,13 @@ declare module 'vue-router/auto-routes' {
       { all: ParamValue<false> },
       | never
     >,
+    '/components/autocomplete': RouteRecordInfo<
+      '/components/autocomplete',
+      '/components/autocomplete',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
     '/components/avatar': RouteRecordInfo<
       '/components/avatar',
       '/components/avatar',
@@ -236,6 +243,14 @@ declare module 'vue-router/auto-routes' {
     'src/pages/[...all]/index.vue': {
       routes:
         | '/[...all]/'
+      views:
+        | never
+      pathParamNames:
+        | never
+    }
+    'src/pages/components/autocomplete.vue': {
+      routes:
+        | '/components/autocomplete'
       views:
         | never
       pathParamNames:

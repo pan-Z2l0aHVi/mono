@@ -16,7 +16,7 @@ import {
   moveMenuChildren
 } from '@/shared/menu-portal/menu-tree'
 import { hideOverlayPresence, showOverlayPresence } from '@/shared/overlay/presence'
-import { createScrollLockLease } from '@/shared/scroll-lock/scroll-lock'
+import { defineScrollLockLease } from '@/shared/scroll-lock/scroll-lock'
 
 import style from './style.css?inline'
 
@@ -39,7 +39,7 @@ export class WebUiContextMenu extends LitElement {
   private _ignoreOutsideClickTimer?: ReturnType<typeof setTimeout>
   private _hoverCleanupFns: (() => void)[] = []
   private _menu?: MenuPortalOverlay
-  private readonly _scrollLock = createScrollLockLease()
+  private readonly _scrollLock = defineScrollLockLease().make()
   private readonly _userOpenChange = new UserChangeController()
   private _restoreFocusTarget?: HTMLElement
   private _shouldOpenInstantly = true

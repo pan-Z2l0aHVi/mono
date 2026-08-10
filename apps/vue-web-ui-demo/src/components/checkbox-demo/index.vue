@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { WebUiCheckboxGroup, WebUiEvent } from '@greypan/web-ui'
 import { ref } from 'vue'
 
 const fruits = ref<string[]>([])
@@ -14,10 +15,8 @@ const toggleFruit = (value: string) => {
   }
 }
 
-function updateGroupValues(event: Event) {
-  const target = event.currentTarget
-  if (!(target instanceof HTMLElement) || !Array.isArray((target as { value?: unknown }).value)) return
-  groupVals.value = (target as HTMLElement & { value: string[] }).value
+function updateGroupValues(event: WebUiEvent<WebUiCheckboxGroup, 'change'>) {
+  groupVals.value = event.currentTarget.value
 }
 </script>
 

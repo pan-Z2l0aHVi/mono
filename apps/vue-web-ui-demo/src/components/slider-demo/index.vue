@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { WebUiEvent, WebUiSlider } from '@greypan/web-ui'
 import { ref } from 'vue'
 
 const standardValue = ref(36)
@@ -8,42 +9,28 @@ const changeValue = ref(40)
 const verticalValue = ref(60)
 const verticalMarkedValue = ref(50)
 
-function updateStandardValue(event: Event) {
-  standardValue.value = getSliderValue(event)
+function updateStandardValue(event: WebUiEvent<WebUiSlider, 'input'>) {
+  standardValue.value = event.currentTarget.value
 }
 
-function updateMarkedValue(event: Event) {
-  markedValue.value = getSliderValue(event)
+function updateMarkedValue(event: WebUiEvent<WebUiSlider, 'input'>) {
+  markedValue.value = event.currentTarget.value
 }
 
-function updateInputValue(event: Event) {
-  inputValue.value = getSliderValue(event)
+function updateInputValue(event: WebUiEvent<WebUiSlider, 'input'>) {
+  inputValue.value = event.currentTarget.value
 }
 
-function updateChangeValue(event: Event) {
-  changeValue.value = getSliderValue(event)
+function updateChangeValue(event: WebUiEvent<WebUiSlider, 'input'>) {
+  changeValue.value = event.currentTarget.value
 }
 
-function updateVerticalValue(event: Event) {
-  verticalValue.value = getSliderValue(event)
+function updateVerticalValue(event: WebUiEvent<WebUiSlider, 'input'>) {
+  verticalValue.value = event.currentTarget.value
 }
 
-function updateVerticalMarkedValue(event: Event) {
-  verticalMarkedValue.value = getSliderValue(event)
-}
-
-function getSliderValue(event: Event): number {
-  const source = event.currentTarget
-  if (!isSlider(source)) return 0
-  return source.value
-}
-
-function isSlider(target: EventTarget | null): target is HTMLElement & { value: number } {
-  return (
-    target instanceof HTMLElement &&
-    target.localName === 'web-ui-slider' &&
-    typeof (target as { value?: unknown }).value === 'number'
-  )
+function updateVerticalMarkedValue(event: WebUiEvent<WebUiSlider, 'input'>) {
+  verticalMarkedValue.value = event.currentTarget.value
 }
 </script>
 

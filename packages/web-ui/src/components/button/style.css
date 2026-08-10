@@ -40,6 +40,8 @@ button {
   border: 1px solid transparent;
   border-radius: calc(infinity * 1px);
 
+  /* 原生 button 不继承字体；显式继承以对齐宿主排版，避免 UA 默认 Arial 差异 */
+  font: inherit;
   font-size: var(--wui-font-size, 14px);
   line-height: 1;
   color: var(--wui-button-color);

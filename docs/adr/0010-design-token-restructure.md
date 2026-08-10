@@ -1,46 +1,46 @@
-# Web UI Design Token Restructuring
+# Web UI Design Token 重构
 
-Reorganize duration, easing, and scale tokens for better semantic clarity and consistency.
+重新组织 duration、easing 和 scale Design Token，以提升语义清晰度和一致性。
 
-## Duration Tokens
+## Duration Token
 
-**New tokens:**
+**新增 Token：**
 
-- `--wui-duration-focus: 200ms` — input/textarea focus ring transition
+- `--wui-duration-focus: 200ms` — input/textarea 焦点环过渡
 
-**Renamed:**
+**重命名：**
 
-- `--wui-duration-fast` → `--wui-duration-trigger` — state change transitions (button, switch, checkbox, radio)
+- `--wui-duration-fast` → `--wui-duration-trigger` — 状态变更过渡（button、switch、checkbox、radio）
 
-**Split:**
+**拆分：**
 
 - `--wui-duration-drawer: 280ms` → `--wui-duration-drawer-enter: 280ms` + `--wui-duration-drawer-exit: 240ms`
-- Exit is faster than enter (consistent with overlay pattern)
+- 退出动画快于进入动画（与 overlay 模式保持一致）
 
-**Reuse:**
+**复用：**
 
-- Layout sidebar transition: `--wui-duration-drawer-enter` (replaces hardcoded 250ms)
-- Drawer/dialog backdrop: `--wui-duration-feedback: 120ms` (replaces hardcoded 120ms)
+- 布局侧边栏过渡：`--wui-duration-drawer-enter`（替代硬编码的 250ms）
+- Drawer/dialog 背景遮罩：`--wui-duration-feedback: 120ms`（替代硬编码的 120ms）
 
-## Easing Tokens
+## Easing Token
 
-**Renamed:**
+**重命名：**
 
-- `--wui-ease-out` → `--wui-ease-enter` — element appearance/entry
-- `--wui-ease-standard` → `--wui-ease-slide` — element movement/sliding
+- `--wui-ease-out` → `--wui-ease-enter` — 元素出现/进入
+- `--wui-ease-standard` → `--wui-ease-slide` — 元素移动/滑动
 
-**Rationale:** Names describe usage ("enter", "slide") not curve characteristics ("ease-out"), avoiding confusion with CSS native `ease-out`.
+**理由：** 名称描述用途（"enter"、"slide"）而非曲线特性（"ease-out"），避免与 CSS 原生 `ease-out` 混淆。
 
-## Scale Tokens
+## Scale Token
 
-**Adjusted values:**
+**调整值：**
 
-- `--wui-scale-enter: 0.97` (was 0.97) — subtler entry animation
+- `--wui-scale-enter: 0.97`（原值 0.97）— 更细腻的进入动画
 
-**Rationale:** Press scale transform removed; active feedback is now purely color-based for more subtle, consistent interaction.
+**理由：** 移除了按下缩放变换；激活反馈现在完全基于颜色变化，以实现更细腻、更一致的交互体验。
 
-## Consequences
+## 影响
 
-- All component CSS files must be updated to use new token names
-- Reduced motion media query must include new tokens
-- Breaking change for any external consumers of these tokens
+- 所有组件 CSS 文件必须更新以使用新的 Token 名称
+- Reduced motion 媒体查询必须包含新的 Token
+- 对任何外部使用者而言属于破坏性变更

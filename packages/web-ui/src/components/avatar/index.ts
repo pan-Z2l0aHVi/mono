@@ -137,8 +137,6 @@ export class WebUiAvatar extends LitElement {
       </div>
     `
   }
-
-  declare readonly $events: Record<string, never>
 }
 
 declare global {

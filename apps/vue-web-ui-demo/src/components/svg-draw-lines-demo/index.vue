@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { WebUiSvgDrawLines } from '@greypan/web-ui'
+import { WebUiSvgDrawLines, type WebUiEvent, type WebUiSlider } from '@greypan/web-ui'
 import {
   lucideSearch,
   lucideStar,
@@ -26,7 +26,8 @@ const iconRefs = reactive<Record<string, WebUiSvgDrawLines | undefined>>({})
 
 function getRef(itemId: string): (el: unknown) => void {
   return (el: unknown) => {
-    if (el) iconRefs[itemId] = el as WebUiSvgDrawLines
+    // callback ref 的实参由 Vue 注入，运行时 instanceof 收窄到组件实例
+    if (el instanceof WebUiSvgDrawLines) iconRefs[itemId] = el
   }
 }
 
@@ -50,8 +51,8 @@ function replayIcon(name: string) {
   iconRefs[name]?.replay()
 }
 
-function updateDuration(e: Event) {
-  duration.value = (e.currentTarget as EventTarget & { value: number }).value
+function updateDuration(e: WebUiEvent<WebUiSlider, 'input'>) {
+  duration.value = e.currentTarget.value
 }
 
 const iconItems = [

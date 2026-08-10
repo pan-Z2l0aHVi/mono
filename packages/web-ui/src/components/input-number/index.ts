@@ -16,6 +16,7 @@ export class WebUiInputNumber extends LitElement {
   @property({ type: String, reflect: true }) placeholder = ''
   @property({ type: String, reflect: true }) name = ''
   @property({ type: Boolean, reflect: true }) disabled = false
+  @property({ type: Boolean, reflect: true }) readonly = false
   @property({ type: Boolean, reflect: true }) required = false
   @property({ type: Number, reflect: true })
   get precision(): number {
@@ -156,11 +157,12 @@ export class WebUiInputNumber extends LitElement {
   }
 
   private handleStep(direction: 1 | -1) {
-    if (this._isDisabled) return
+    if (this._isDisabled || this.readonly) return
     this.setValueAndNotify(this._value + direction * this._effectiveStep)
   }
 
   private handleInput(e: Event) {
+    if (this.readonly) return
     if (!(e.target instanceof HTMLInputElement)) return
     const raw = e.target.value
     if (raw === '' || raw === '-') return
@@ -169,8 +171,21 @@ export class WebUiInputNumber extends LitElement {
     this._syncValidity()
   }
 
+  // 原生 change 不 composed，被 shadow root 挡住；文本失焦提交时补发 composed 事件，
+  // 与 ArrowUp/ArrowDown 的 change 行为对齐。
+  private handleNativeChange(e: Event) {
+    if (this.readonly) return
+    if (!(e.target instanceof HTMLInputElement)) return
+    const raw = e.target.value
+    if (raw === '' || raw === '-') return
+    this._value = this.clamp(this.round(Number(raw)))
+    this._internals?.setFormValue?.(String(this._value))
+    this._syncValidity()
+    this.dispatchEvent(new Event('change', { bubbles: true, composed: true }))
+  }
+
   private handleKeydown(e: KeyboardEvent) {
-    if (this._isDisabled) return
+    if (this._isDisabled || this.readonly) return
     if (e.key === 'ArrowUp') {
       e.preventDefault()
       this.setValueAndNotify(this._value + this._effectiveStep)
@@ -196,7 +211,7 @@ export class WebUiInputNumber extends LitElement {
         <button
           class="num-btn"
           aria-label="Decrease"
-          ?disabled=${this._isDisabled || this.atMin}
+          ?disabled=${this._isDisabled || this.readonly || this.atMin}
           @click=${() => this.handleStep(-1)}
         >
           <web-ui-icon .icon=${lucideMinus}></web-ui-icon>
@@ -207,8 +222,10 @@ export class WebUiInputNumber extends LitElement {
           name=${this.name}
           .value=${String(this._value)}
           ?disabled=${this._isDisabled}
+          ?readonly=${this.readonly}
           ?required=${this.required}
           @input=${this.handleInput}
+          @change=${this.handleNativeChange}
           @keydown=${this.handleKeydown}
           @focus=${this.handleFocus}
           @blur=${this.handleBlur}
@@ -216,7 +233,7 @@ export class WebUiInputNumber extends LitElement {
         <button
           class="num-btn"
           aria-label="Increase"
-          ?disabled=${this._isDisabled || this.atMax}
+          ?disabled=${this._isDisabled || this.readonly || this.atMax}
           @click=${() => this.handleStep(1)}
         >
           <web-ui-icon .icon=${lucidePlus}></web-ui-icon>
