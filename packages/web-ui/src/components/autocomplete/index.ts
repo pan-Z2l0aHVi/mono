@@ -8,9 +8,9 @@ import overlayMotion from '@/assets/overlay-motion.css?inline'
 import type { WebUiOption } from '@/components/option'
 import { normalizeLiteral } from '@/shared/normalize'
 import { defineAnchoredPanel } from '@/shared/overlay/anchored-panel'
-import { createOverlayPortal } from '@/shared/overlay/portal'
+import { defineOverlayPortal } from '@/shared/overlay/portal'
 import type { OverlayContainer, OverlayPortal } from '@/shared/overlay/portal'
-import { createScrollLockLease } from '@/shared/scroll-lock/scroll-lock'
+import { defineScrollLockLease } from '@/shared/scroll-lock/scroll-lock'
 
 import style from './style.css?inline'
 
@@ -106,7 +106,7 @@ export class WebUiAutocomplete extends LitElement {
   private _portal?: OverlayPortal
   private _portalContent?: HTMLElement
   private readonly _pendingUnregisteredOptions = new Set<WebUiOption>()
-  private readonly _scrollLock = createScrollLockLease()
+  private readonly _scrollLock = defineScrollLockLease().make()
   private readonly _panel = defineAnchoredPanel().make({
     getAnchor: () => this.shadowRoot?.querySelector<HTMLElement>('.input-wrapper') ?? null,
     getLocalPanel: () => this.shadowRoot?.querySelector<HTMLElement>('.autocomplete-overlay') ?? null,
@@ -563,7 +563,7 @@ export class WebUiAutocomplete extends LitElement {
   }
 
   private _createPortal(): OverlayPortal {
-    const portal = createOverlayPortal({
+    const portal = defineOverlayPortal().make({
       container: this.overlayContainer,
       target: this,
       style: `${glass}\n${overlayMotion}\n${style}`,

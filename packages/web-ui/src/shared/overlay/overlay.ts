@@ -16,12 +16,19 @@ export interface OverlayOptions {
   offset?: number
   flip?: boolean
   shift?: boolean
-  // Sync overlay width to anchor width
+  /** 面板宽度与锚点宽度保持一致。 */
   matchWidth?: boolean
-  // Set overlay min-width to anchor width (content can expand wider)
+  /** 面板至少与锚点同宽，同时允许内容将面板撑宽。 */
   minAnchorWidth?: boolean
   strategy?: Strategy
 }
+
+/** 虚拟锚点：无对应 DOM 元素的定位基准（如右键菜单的鼠标坐标）。 */
+export interface OverlayVirtualAnchor {
+  getBoundingClientRect(): DOMRect
+}
+
+export type OverlayAnchor = HTMLElement | OverlayVirtualAnchor
 
 export interface OverlayApi {
   isOpen(): boolean
@@ -30,9 +37,12 @@ export interface OverlayApi {
   close(): void
   toggle(): void
   update(options: Partial<OverlayOptions>): void
-  updateAnchor(anchor: HTMLElement): void
+  updateAnchor(anchor: OverlayAnchor): void
   dispose(): void
 }
+
+const DEFAULT_OVERLAY_MIN_WIDTH = 120
+const OVERLAY_MIN_WIDTH_VARIABLE = '--wui-overlay-min-width'
 
 const DEFAULT_OPTIONS: Required<OverlayOptions> = {
   placement: 'bottom-start',
@@ -42,6 +52,73 @@ const DEFAULT_OPTIONS: Required<OverlayOptions> = {
   matchWidth: false,
   minAnchorWidth: false,
   strategy: 'absolute'
+}
+
+interface WidthStyleState {
+  hasManagedStyles: boolean
+}
+
+function readOverlayMinWidth(overlay: HTMLElement): number {
+  if (typeof getComputedStyle !== 'function') return DEFAULT_OVERLAY_MIN_WIDTH
+
+  const minWidth = Number.parseFloat(getComputedStyle(overlay).getPropertyValue(OVERLAY_MIN_WIDTH_VARIABLE))
+  return Number.isFinite(minWidth) ? minWidth : DEFAULT_OVERLAY_MIN_WIDTH
+}
+
+function clearManagedWidthStyles(overlay: HTMLElement) {
+  overlay.style.removeProperty('width')
+  overlay.style.removeProperty('min-width')
+}
+
+function createWidthMiddleware(
+  overlay: HTMLElement,
+  options: Required<OverlayOptions>,
+  widthStyles: WidthStyleState
+): Middleware | undefined {
+  if (options.matchWidth) {
+    // matchWidth 必须移除之前 minAnchorWidth 写入的 min-width，才能精确跟随 trigger。
+    overlay.style.removeProperty('min-width')
+    widthStyles.hasManagedStyles = true
+    return size({
+      apply({ rects }) {
+        overlay.style.width = `${rects.reference.width}px`
+      }
+    })
+  }
+
+  if (options.minAnchorWidth) {
+    const minWidth = readOverlayMinWidth(overlay)
+    widthStyles.hasManagedStyles = true
+    return size({
+      apply({ rects }) {
+        // max-content 让内容决定宽度，min-width 再提供 trigger 与 floor 两个下限。
+        overlay.style.width = 'max-content'
+        overlay.style.minWidth = `${Math.max(rects.reference.width, minWidth)}px`
+      }
+    })
+  }
+
+  if (widthStyles.hasManagedStyles) {
+    clearManagedWidthStyles(overlay)
+    widthStyles.hasManagedStyles = false
+  }
+
+  return undefined
+}
+
+function createPositioningMiddleware(
+  overlay: HTMLElement,
+  options: Required<OverlayOptions>,
+  widthStyles: WidthStyleState
+): Middleware[] {
+  const middleware: Middleware[] = [offset(options.offset)]
+  if (options.flip) middleware.push(flip())
+  if (options.shift) middleware.push(shift({ padding: 8 }))
+
+  const widthMiddleware = createWidthMiddleware(overlay, options, widthStyles)
+  if (widthMiddleware) middleware.push(widthMiddleware)
+
+  return middleware
 }
 
 function getTransformOrigin(placement: Placement): string {
@@ -56,7 +133,7 @@ function getTransformOrigin(placement: Placement): string {
 }
 
 export const defineOverlay = () =>
-  definePlugin<OverlayApi, { anchor: HTMLElement; overlay: HTMLElement } & OverlayOptions>(ctx => {
+  definePlugin<OverlayApi, { anchor: OverlayAnchor; overlay: HTMLElement } & OverlayOptions>(ctx => {
     const options: Required<OverlayOptions> = {
       placement: ctx.placement ?? DEFAULT_OPTIONS.placement,
       offset: ctx.offset ?? DEFAULT_OPTIONS.offset,
@@ -68,35 +145,16 @@ export const defineOverlay = () =>
     }
 
     const overlay = ctx.overlay
+    const widthStyles: WidthStyleState = { hasManagedStyles: false }
     let isOpen = false
-    let cleanup: (() => void) | null = null
-    let anchor = ctx.anchor
+    let cleanupAutoUpdate: (() => void) | null = null
+    let currentAnchor = ctx.anchor
 
     function updatePosition() {
-      const middleware: Middleware[] = [offset(options.offset)]
-      if (options.flip) middleware.push(flip())
-      if (options.shift) middleware.push(shift({ padding: 8 }))
-      if (options.matchWidth) {
-        middleware.push(
-          size({
-            apply({ rects }) {
-              overlay.style.width = `${rects.reference.width}px`
-            }
-          })
-        )
-      } else if (options.minAnchorWidth) {
-        middleware.push(
-          size({
-            apply({ rects }) {
-              overlay.style.minWidth = `${Math.max(rects.reference.width, 120)}px`
-            }
-          })
-        )
-      }
+      const middleware = createPositioningMiddleware(overlay, options, widthStyles)
 
-      cleanup?.()
-      cleanup = autoUpdate(anchor, overlay, () => {
-        void computePosition(anchor, overlay, {
+      const applyPosition = () => {
+        void computePosition(currentAnchor, overlay, {
           placement: options.placement,
           strategy: options.strategy,
           middleware
@@ -105,7 +163,12 @@ export const defineOverlay = () =>
           overlay.style.top = `${y}px`
           overlay.style.setProperty('--wui-overlay-transform-origin', getTransformOrigin(placement))
         })
-      })
+      }
+
+      // 立即定位一次，避免浮层首帧出现在左上角；autoUpdate 负责后续滚动/尺寸变化。
+      applyPosition()
+      cleanupAutoUpdate?.()
+      cleanupAutoUpdate = autoUpdate(currentAnchor, overlay, applyPosition)
     }
 
     return {
@@ -124,8 +187,8 @@ export const defineOverlay = () =>
       close() {
         if (!isOpen) return
         isOpen = false
-        cleanup?.()
-        cleanup = null
+        cleanupAutoUpdate?.()
+        cleanupAutoUpdate = null
       },
 
       toggle() {
@@ -138,8 +201,8 @@ export const defineOverlay = () =>
         if (isOpen) updatePosition()
       },
 
-      updateAnchor(newAnchor: HTMLElement) {
-        anchor = newAnchor
+      updateAnchor(newAnchor: OverlayAnchor) {
+        currentAnchor = newAnchor
         if (isOpen) updatePosition()
       },
 
