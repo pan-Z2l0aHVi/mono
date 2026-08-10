@@ -80,7 +80,7 @@ Wails 开发启动 Wails 以及嵌套 WebView 前端的每个可构建工作区�
 
 ## CI 与发布
 
-- `ci.yml` 中的 CI 仍然是针对 pull request 和推送到 `main` 的完整验证工作流：changeset 状态、构建、格式化/lint/类型检查和测试。它还接受 `workflow_dispatch` 触发来处理 Changesets 版本 PR，覆盖了 `GITHUB_TOKEN` 创建的版本 PR 可能不会触发的 `pull_request.opened` 事件。PR 和手动触发的运行共享一个以分支为键的 `concurrency` 组（`github.head_ref || github.ref_name`），因此 `cancel-in-progress` 会将两者合并为单次运行而非重复原生构建。它安装了 Wails 的 GTK4 和 WebKitGTK Linux 前置依赖，因为完整工作区构建会通过 mise 编译 Wails CLI。
+- `ci.yml` 中的 CI 仍然是针对 pull request 和推送到 `main` 的完整验证工作流：共享 agent context、changeset 状态、构建、格式化/lint/类型检查和测试。它还接受 `workflow_dispatch` 触发来处理 Changesets 版本 PR，覆盖了 `GITHUB_TOKEN` 创建的版本 PR 可能不会触发的 `pull_request.opened` 事件。PR 和手动触发的运行共享一个以分支为键的 `concurrency` 组（`github.head_ref || github.ref_name`），因此 `cancel-in-progress` 会将两者合并为单次运行而非重复原生构建。它安装了 Wails 的 GTK4 和 WebKitGTK Linux 前置依赖，因为完整工作区构建会通过 mise 编译 Wails CLI。
 - `changeset-version.yml` 在推送到 `main` 时运行，其唯一职责是创建或更新 Changesets 版本 PR。它通过 `changesets/action` 的 `version` 输入调用 `pnpm run release:version`，因此待处理的 `@greypan/wails-starter` 发布会更新原生版本元数据而非使用 Changesets 的默认命令；`sync:version` 默认更新，仅在显式传入 `--check` 时进行验证。对于公共包变更它仅安装 Node 和 pnpm；Wails 发布还会额外安装 Wails Linux 前置依赖、Go 和配置的 Wails CLI。创建 PR 后，它会触发 CI，对于 Wails 变更还会对版本分支进行原生验证；它从不发布包或安装程序。
 - `npm-publish.yml` 仅发布公共 npm 包。其 `pull_request.closed` 触发器限定为 `packages/**`，然后仅在 `changeset-release/main` 合并到 `main` 时运行，检测实际的公共包版本变更，在合并 SHA 上重建 `packages/*` Turbo 图并通过 npm Trusted Publishing 发布。发布成功后，一个独立的最小权限作业为每个包版本创建幂等的 GitHub Release 和标签，附带 npm 和包 changelog 的链接。包发布显式不标记为 Latest，以确保最新的 Wails 桌面安装程序保持突出。它不使用 Wails 工具链或长期 npm token。
 - `wails-verify.yml` 仅验证涉及 Wails 的 pull request 和手动运行。它检查同步的元数据，构建 macOS ARM64 DMG 和 Windows x64 EXE，并将其保留为 14 天的只读验证产物。它没有创建 Release 的权限。

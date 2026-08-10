@@ -28,7 +28,7 @@
 - `docs/agents/web-ui.md` 只负责把 `web-ui` 任务路由到对应 ADR；组件契约和框架事件边界仍以 ADR-0003/0007/0011 为准。`docs/agents/build.md` 只承载部署与 release workflow，release plane 术语以 ADR-0009 为准，避免污染通用 project context。
 - 文档同步要求集中在 `docs/agents/context.md`，减少根入口与 task guide 的重复；影响未来取舍的变更仍需 ADR，并更新 `CONTEXT.md` 索引。
 - Agent 需要遵循路由选择 context，而不是把“读完所有文档”视为完成探索。缺少所需证据时，应回到 manifest、配置、源码、测试或相关 ADR。
-- 双客户端共享的实施、review、验证和 worktree 隔离协议见 `docs/agents/agent-workflow.md`；新增评测基线与 client harness 的长期取舍见 ADR-0013。
+- Codex 与 Claude Code 通过共享入口、规则、skills 和 agent profile 复用同一套规范；客户端专属配置只承担工具适配。
 
 ## 替代方案
 

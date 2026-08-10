@@ -18,9 +18,7 @@
     "dev:react-web-ui-demo": "turbo build --filter=@greypan/react-web-ui-demo^... && turbo run dev --filter=@greypan/react-web-ui-demo...",
     "dev:vue-web-ui-demo": "turbo build --filter=@greypan/vue-web-ui-demo^... && turbo run dev --filter=@greypan/vue-web-ui-demo...",
     "dev:wails-starter": "turbo build --filter=@greypan/wails-starter^... && turbo run dev --filter=@greypan/wails-starter --filter=@greypan/wails-starter-frontend^...",
-    "check:context": "node scripts/context-check.mjs",
-    "check:agent-review": "node scripts/agent-review-check.mjs",
-    "check:agent-review:fixture": "node scripts/agent-review-check-fixture.mjs"
+    "check:context": "node scripts/context-check.mjs"
   },
   "devDependencies": {
     "@changesets/cli": "catalog:",

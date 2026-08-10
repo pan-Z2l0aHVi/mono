@@ -25,13 +25,7 @@ function addError(message) {
   errors.push(message)
 }
 
-for (const file of [
-  'AGENTS.md',
-  'CLAUDE.md',
-  'CONTEXT.md',
-  'docs/agents/agent-workflow.md',
-  'docs/agents/prompting.md'
-]) {
+for (const file of ['AGENTS.md', 'CLAUDE.md', 'CONTEXT.md', 'docs/agents/context.md']) {
   if (!exists(file)) addError(`missing required context file: ${file}`)
 }
 
@@ -46,7 +40,7 @@ if (exists('CLAUDE.md')) {
 if (exists('package.json')) {
   try {
     const packageJson = JSON.parse(read('package.json'))
-    for (const script of ['check:context', 'check:agent-review', 'check:agent-review:fixture']) {
+    for (const script of ['check:context']) {
       if (typeof packageJson.scripts?.[script] !== 'string') addError(`package.json is missing scripts.${script}`)
     }
   } catch (error) {
@@ -123,18 +117,6 @@ if (exists('CONTEXT.md')) {
     }
   } else {
     addError('missing required directory: docs/adr')
-  }
-}
-
-if (exists('AGENTS.md')) {
-  const agents = read('AGENTS.md')
-  for (const required of [
-    'docs/agents/agent-workflow.md',
-    'docs/agents/prompting.md',
-    'docs/agents/evals/',
-    '.agents/agents/reviewer.md'
-  ]) {
-    if (!agents.includes(required)) addError(`AGENTS.md does not route to ${required}`)
   }
 }
 
