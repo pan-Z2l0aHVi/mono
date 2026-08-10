@@ -190,6 +190,16 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     expect(new FormData(form).get('city')).toBe('Shanghai')
   })
 
+  it('readonly 空值不阻塞提交（barred from validation）', async () => {
+    const form = document.createElement('form')
+    form.innerHTML = '<web-ui-autocomplete name="city" required readonly></web-ui-autocomplete>'
+    document.body.append(form)
+    const el = form.querySelector('web-ui-autocomplete')!
+    await el.updateComplete
+
+    expect(form.checkValidity()).toBe(true)
+  })
+
   it('打开时锁定页面滚动，外部点击关闭后恢复', async () => {
     const el = document.createElement('web-ui-autocomplete')
     el.innerHTML = '<web-ui-option value="apple" label="Apple"></web-ui-option>'

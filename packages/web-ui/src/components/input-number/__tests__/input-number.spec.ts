@@ -76,6 +76,15 @@ describe('WebUiInputNumber 组件', () => {
       cleanupElement(el)
     })
 
+    it('readonly 属性反射并同步到原生 input', async () => {
+      const el = createNumber()
+      el.readonly = true
+      await waitForUpdate(el)
+      expect(el.hasAttribute('readonly')).toBe(true)
+      expect(queryA11y(el, 'input')?.hasAttribute('readonly')).toBe(true)
+      cleanupElement(el)
+    })
+
     it('precision 属性反射', () => {
       const el = createNumber({ precision: '2' })
       expect(el.getAttribute('precision')).toBe('2')
@@ -131,6 +140,22 @@ describe('WebUiInputNumber 组件', () => {
       const incBtn = queryA11y(el, 'button[aria-label="Increase"]') as HTMLButtonElement
       incBtn.click()
 
+      expect(events).toHaveLength(0)
+      cleanupElement(el)
+    })
+
+    it('readonly 时步进按钮禁用且点击不触发 input', async () => {
+      const el = createNumber()
+      el.readonly = true
+      await waitForUpdate(el)
+
+      const incBtn = queryA11y(el, 'button[aria-label="Increase"]') as HTMLButtonElement
+      const decBtn = queryA11y(el, 'button[aria-label="Decrease"]') as HTMLButtonElement
+      expect(incBtn.disabled).toBe(true)
+      expect(decBtn.disabled).toBe(true)
+
+      const [events] = spyEvents(el, 'input')
+      incBtn.click()
       expect(events).toHaveLength(0)
       cleanupElement(el)
     })
@@ -284,6 +309,58 @@ describe('WebUiInputNumber 组件', () => {
 
       expect(el.value).toBe(5)
       expect(inputEvents).toHaveLength(0)
+      cleanupElement(el)
+    })
+
+    it('readonly 时键盘无响应', async () => {
+      const el = createNumber()
+      el.value = 5
+      el.readonly = true
+      await waitForUpdate(el)
+
+      const [inputEvents] = spyEvents(el, 'input')
+      const input = queryA11y(el, 'input') as HTMLInputElement
+      input.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true, composed: true }))
+      await waitForUpdate(el)
+
+      expect(el.value).toBe(5)
+      expect(inputEvents).toHaveLength(0)
+      cleanupElement(el)
+    })
+  })
+
+  describe('change 事件', () => {
+    it('文本失焦提交时原生 change 转发为宿主 change', async () => {
+      const el = createNumber()
+      el.value = 5
+      await waitForUpdate(el)
+
+      const [changeEvents] = spyEvents(el, 'change')
+      const input = queryA11y(el, 'input') as HTMLInputElement
+      // 真实浏览器派发的 change 不 composed，被 shadow root 挡住；组件补发 composed change
+      input.value = '8'
+      input.dispatchEvent(new Event('change', { bubbles: true }))
+      await waitForUpdate(el)
+
+      expect(el.value).toBe(8)
+      expect(changeEvents).toHaveLength(1)
+      cleanupElement(el)
+    })
+
+    it('readonly 时原生 change 不转发', async () => {
+      const el = createNumber()
+      el.value = 5
+      el.readonly = true
+      await waitForUpdate(el)
+
+      const [changeEvents] = spyEvents(el, 'change')
+      const input = queryA11y(el, 'input') as HTMLInputElement
+      input.value = '8'
+      input.dispatchEvent(new Event('change', { bubbles: true }))
+      await waitForUpdate(el)
+
+      expect(el.value).toBe(5)
+      expect(changeEvents).toHaveLength(0)
       cleanupElement(el)
     })
   })

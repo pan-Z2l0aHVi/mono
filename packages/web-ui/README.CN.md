@@ -199,6 +199,7 @@ ARIA 属性同样必须显式支持：使用组件文档化的命名属性，而
 | `placeholder` | `string`  | `''`     | 占位文本        |
 | `name`        | `string`  | `''`     | 表单字段名      |
 | `disabled`    | `boolean` | `false`  | 禁用状态        |
+| `readonly`    | `boolean` | `false`  | 只读状态        |
 | `required`    | `boolean` | `false`  | 必填校验        |
 | `clearable`   | `boolean` | `false`  | 显示清除按钮    |
 | `full`        | `boolean` | `false`  | 全宽            |
@@ -252,11 +253,12 @@ ARIA 属性同样必须显式支持：使用组件文档化的命名属性，而
 | `placeholder` | `string`  | `''`       | 占位文本   |
 | `name`        | `string`  | `''`       | 表单字段名 |
 | `disabled`    | `boolean` | `false`    | 禁用状态   |
+| `readonly`    | `boolean` | `false`    | 只读状态   |
 | `required`    | `boolean` | `false`    | 必填校验   |
 
 **事件：** `input`, `change`
 
-ArrowUp/ArrowDown 键增减数值。
+ArrowUp/ArrowDown 键增减数值。空输入或 `-` 在提交时被忽略，值保持在最后一个有效数字。
 
 #### `<web-ui-select>`
 
@@ -291,6 +293,7 @@ ArrowUp/ArrowDown 键增减数值。
 | `filter`           | `'none' \| 'prefix' \| 'contains'` | `'contains'` | 候选过滤模式（按 option label 匹配）                    |
 | `name`             | `string`                           | `''`         | 表单字段名                                              |
 | `disabled`         | `boolean`                          | `false`      | 禁用状态                                                |
+| `readonly`         | `boolean`                          | `false`      | 只读状态（不可输入、不可展开下拉）                      |
 | `required`         | `boolean`                          | `false`      | 必填校验                                                |
 | `portal`           | `boolean`                          | `false`      | 在主题浮层容器中渲染                                    |
 | `no-scroll-lock`   | `boolean`                          | `false`      | 打开时不锁定页面滚动                                    |

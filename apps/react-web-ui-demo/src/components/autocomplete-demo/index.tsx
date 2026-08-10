@@ -164,6 +164,17 @@ function AutocompleteDemo() {
           ))}
         </web-ui-autocomplete>
       </div>
+
+      <h2>只读</h2>
+      <div className="mb-3 flex flex-col gap-3">
+        <web-ui-autocomplete value="Vue" placeholder="只读状态" readonly>
+          {frameworks.map(name => (
+            <web-ui-option key={name} value={name} label={name}>
+              {name}
+            </web-ui-option>
+          ))}
+        </web-ui-autocomplete>
+      </div>
     </div>
   )
 }

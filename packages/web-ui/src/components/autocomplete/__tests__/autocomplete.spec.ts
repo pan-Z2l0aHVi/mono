@@ -626,6 +626,65 @@ describe('WebUiAutocomplete 组件', () => {
     })
   })
 
+  describe('只读状态', () => {
+    it('readonly 属性反射并同步到原生 input 与 aria-readonly', async () => {
+      const el = createAutocomplete(OPTIONS_HTML)
+      el.readonly = true
+      await waitForUpdate(el)
+
+      expect(el.hasAttribute('readonly')).toBe(true)
+      expect(comboboxInput(el).hasAttribute('readonly')).toBe(true)
+      expect(comboboxInput(el).getAttribute('aria-readonly')).toBe('true')
+      cleanupElement(el)
+    })
+
+    it('非只读时不渲染 aria-readonly', async () => {
+      const el = createAutocomplete(OPTIONS_HTML)
+      await waitForUpdate(el)
+
+      expect(comboboxInput(el).hasAttribute('aria-readonly')).toBe(false)
+      cleanupElement(el)
+    })
+
+    it('readonly 时聚焦不打开面板', async () => {
+      const el = createAutocomplete(OPTIONS_HTML)
+      el.readonly = true
+      await waitForUpdate(el)
+
+      comboboxInput(el).focus()
+      await waitForUpdate(el)
+
+      expect(el.open).toBe(false)
+      cleanupElement(el)
+    })
+
+    it('readonly 时 ArrowDown 不打开面板', async () => {
+      const el = createAutocomplete(OPTIONS_HTML)
+      el.readonly = true
+      await waitForUpdate(el)
+
+      el.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }))
+      await waitForUpdate(el)
+
+      expect(el.open).toBe(false)
+      cleanupElement(el)
+    })
+
+    it('readonly 时键入不改变 value', async () => {
+      const el = createAutocomplete(OPTIONS_HTML)
+      el.value = 'Apple'
+      el.readonly = true
+      await waitForUpdate(el)
+
+      typeText(el, 'Banana')
+      await waitForUpdate(el)
+
+      expect(el.value).toBe('Apple')
+      expect(el.selectedValue).toBe('apple')
+      cleanupElement(el)
+    })
+  })
+
   describe('portal 模式', () => {
     it('portal 为 true 时仍可正常交互', async () => {
       const el = createAutocomplete(OPTIONS_HTML, { portal: '' })

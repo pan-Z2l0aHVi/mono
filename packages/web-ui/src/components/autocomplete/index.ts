@@ -36,6 +36,7 @@ export class WebUiAutocomplete extends LitElement {
 
   @property({ type: String, reflect: true }) placeholder = ''
   @property({ type: Boolean, reflect: true }) disabled = false
+  @property({ type: Boolean, reflect: true }) readonly = false
   @property({ type: Boolean, reflect: true }) required = false
   @property({ type: Boolean, reflect: true }) portal = false
   @property({ type: Boolean, reflect: true, attribute: 'no-scroll-lock' })
@@ -244,7 +245,8 @@ export class WebUiAutocomplete extends LitElement {
 
   private _syncValidity() {
     if (!this._internals || typeof this._internals.setValidity !== 'function') return
-    if (this._isDisabled || !this.required || this._value) this._internals.setValidity({})
+    // readonly 与 disabled 一致：值不可由用户修改，视为通过校验（原生 barred-from-validation 语义）
+    if (this._isDisabled || this.readonly || !this.required || this._value) this._internals.setValidity({})
     else this._internals.setValidity({ valueMissing: true }, '请输入内容')
   }
 
@@ -409,7 +411,7 @@ export class WebUiAutocomplete extends LitElement {
   }
 
   private _onKeydown = (e: KeyboardEvent) => {
-    if (this._isDisabled) return
+    if (this._isDisabled || this.readonly) return
 
     switch (e.key) {
       case 'Escape':
@@ -465,6 +467,7 @@ export class WebUiAutocomplete extends LitElement {
   }
 
   private _selectOption(option: WebUiOption) {
+    if (this.readonly) return
     // value 即输入文本：选择后回填为 option label，selected-value 取 option value
     this.value = option.label
     this._setSelectedValue(option.value)
@@ -474,7 +477,7 @@ export class WebUiAutocomplete extends LitElement {
   }
 
   private _onInput = (e: Event) => {
-    if (this._isDisabled) return
+    if (this._isDisabled || this.readonly) return
     const input = e.target as HTMLInputElement
     if (input.value === this._value) return
     this.value = input.value
@@ -492,6 +495,8 @@ export class WebUiAutocomplete extends LitElement {
   private _onFocus = () => {
     if (this._isDisabled) return
     this._focused = true
+    // readonly 仅可聚焦选中，不展开候选
+    if (this.readonly) return
     if (this._options.length > 0) this._open()
   }
 
@@ -500,7 +505,7 @@ export class WebUiAutocomplete extends LitElement {
   }
 
   private _open(isKeyboardNavigation = false) {
-    if (this._isDisabled || this._isOpen) return
+    if (this._isDisabled || this.readonly || this._isOpen) return
     this._isOpen = true
     this._dispatchOpenChange()
     if (isKeyboardNavigation) this._setInitialActiveOption()
@@ -626,6 +631,7 @@ export class WebUiAutocomplete extends LitElement {
             aria-label=${ifDefined(this.ariaLabel)}
             aria-labelledby=${labelledbyText ? labelId : nothing}
             ?disabled=${this._isDisabled}
+            ?readonly=${this.readonly}
             ?required=${this.required}
             role="combobox"
             aria-expanded=${this._isOpen}
@@ -633,6 +639,7 @@ export class WebUiAutocomplete extends LitElement {
             aria-autocomplete="list"
             aria-controls=${listboxId}
             aria-disabled=${String(this._isDisabled)}
+            aria-readonly=${this.readonly ? 'true' : nothing}
             aria-activedescendant=${activeDescendant}
             @input=${this._onInput}
             @change=${this._onInnerChange}

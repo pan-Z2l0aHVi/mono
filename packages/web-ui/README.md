@@ -204,6 +204,7 @@ Text input with clearable, prefix/suffix slots.
 | `placeholder` | `string`  | `''`     | Placeholder text    |
 | `name`        | `string`  | `''`     | Form field name     |
 | `disabled`    | `boolean` | `false`  | Disabled state      |
+| `readonly`    | `boolean` | `false`  | Read-only state     |
 | `required`    | `boolean` | `false`  | Required validation |
 | `clearable`   | `boolean` | `false`  | Show clear button   |
 | `full`        | `boolean` | `false`  | Full width          |
@@ -257,11 +258,12 @@ Numeric input with step buttons and keyboard control.
 | `placeholder` | `string`  | `''`       | Placeholder text    |
 | `name`        | `string`  | `''`       | Form field name     |
 | `disabled`    | `boolean` | `false`    | Disabled state      |
+| `readonly`    | `boolean` | `false`    | Read-only state     |
 | `required`    | `boolean` | `false`    | Required validation |
 
 **Events:** `input`, `change`
 
-ArrowUp/ArrowDown keyboard increments and decrements the value.
+ArrowUp/ArrowDown keyboard increments and decrements the value. Empty or `-` input is ignored on commit; the value stays at the last valid number.
 
 #### `<web-ui-select>`
 
@@ -298,6 +300,7 @@ Editable combobox with input filtering and single option selection.
 | `filter`           | `'none' \| 'prefix' \| 'contains'` | `'contains'` | Candidate filtering mode (matched against option label)                   |
 | `name`             | `string`                           | `''`         | Form field name                                                           |
 | `disabled`         | `boolean`                          | `false`      | Disabled state                                                            |
+| `readonly`         | `boolean`                          | `false`      | Read-only state (no typing, no dropdown)                                  |
 | `required`         | `boolean`                          | `false`      | Required validation                                                       |
 | `portal`           | `boolean`                          | `false`      | Render dropdown in theme overlay                                          |
 | `no-scroll-lock`   | `boolean`                          | `false`      | Do not lock body scroll when open                                         |

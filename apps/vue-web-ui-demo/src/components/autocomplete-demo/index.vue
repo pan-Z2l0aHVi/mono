@@ -135,5 +135,12 @@ const cities = ['北京', '上海', '广州', '深圳', '杭州', '成都', '武
         <web-ui-option v-for="name in frameworks" :key="name" :value="name" :label="name">{{ name }}</web-ui-option>
       </web-ui-autocomplete>
     </div>
+
+    <h2>只读</h2>
+    <div class="mb-3 flex flex-col gap-3">
+      <web-ui-autocomplete value="Vue" placeholder="只读状态" readonly>
+        <web-ui-option v-for="name in frameworks" :key="name" :value="name" :label="name">{{ name }}</web-ui-option>
+      </web-ui-autocomplete>
+    </div>
   </div>
 </template>
