@@ -25,6 +25,14 @@
 
 skills 和 MCP 是按能力调用的工具层，不是 always-loaded rules：只有任务确实需要其能力时才读取对应 `SKILL.md` 或调用工具。工具返回的信息不能取代仓库内 manifest、配置、源码和测试对当前状态的证明。
 
+## 客户端适配与评测
+
+- 共享规范只维护在 `AGENTS.md`、`CONTEXT.md`、`docs/agents/`、`.agents/rules/`、`.agents/skills/` 与 `.agents/agents/`。
+- Codex 从层级 `AGENTS.md` 获得目录约束；根 `CLAUDE.md` 仅为 Claude Code 提供加载顺序适配，不复制根入口。`.claude/rules`、`.claude/skills` 和 `.claude/agents` 通过 symlink 复用共享内容。
+- `docs/agents/agent-workflow.md` 是实施、独立审查、验证、交付和并行 worktree 隔离的权威协议。
+- `docs/agents/evals/` 维护固定 baseline、fixture、oracle、评分 rubric 和 run artifact schema，用于检查 context 路由、边界遵守和验证证据；它们不是产品测试替代品。
+- `scripts/context-check.mjs` 是 instruction system 的结构检查；`scripts/agent-review-check.mjs` 检查独立 review 的 worktree、身份和实现快照绑定。
+
 ## Context 路由原则
 
 - **规则只保存不可从代码、类型、测试或工具配置可靠推导的工程约束。** 能自动验证的约束优先交给测试、lint、类型或脚本。
@@ -37,21 +45,22 @@ skills 和 MCP 是按能力调用的工具层，不是 always-loaded rules：只
 
 当任务属于 instruction system、仓库拓扑或架构/context 维护时，先读取表中列出的权威文档；修改后在同一变更中同步更新。普通 coding task 只读取命中的 task guide，不需要加载本表。若范围不明确，先查本表和相邻包 `AGENTS.md`，仅在仍无法判断时询问用户。
 
-| 变更类别                             | 必须同步的文档                                                    | 触发范围                                                            |
-| ------------------------------------ | ----------------------------------------------------------------- | ------------------------------------------------------------------- |
-| 构建脚本、Vite/Turbo 流程            | `docs/agents/build.md`；根命令还更新 `AGENTS.md`                  | `package.json` scripts、`vite.config.ts`、`turbo.json`              |
-| 包新增、移除或重命名                 | `CONTEXT.md`                                                      | `packages/` 或 `apps/` 目录结构；包清单和依赖边界以此为唯一权威来源 |
-| 外部化策略                           | `docs/agents/build.md`                                            | Vite `rollupOptions.external`                                       |
-| CI/CD 工作流                         | `docs/agents/build.md`                                            | `.github/workflows/`                                                |
-| lint、formatter、stylelint、cspell   | `docs/agents/linting.md`                                          | 对应配置                                                            |
-| workspace catalog 或 Changesets 策略 | `docs/agents/dependencies.md`                                     | `pnpm-workspace.yaml`、Changesets 配置                              |
-| Node/pnpm/Go 工具链                  | 根 `AGENTS.md`                                                    | `.mise.toml`、根 `package.json` engines                             |
-| 测试框架或 Vite 测试配置             | `docs/agents/testing.md`                                          | 测试配置                                                            |
-| 跨包编码约定                         | `.agents/rules/code-style.md` 和受影响包 `AGENTS.md`              | 命名、类型安全、架构模式                                            |
-| `packages/web-ui` 组件               | `packages/web-ui/AGENTS.md`、`docs/agents/web-ui.md` 及受影响 ADR | Lit 组件、主题、overlay、类型封装；web-ui guide 只负责路由          |
-| 图标 manifest、生成器或公共 API      | `docs/adr/0008-icon-system.md`；web-ui guide 仅作路由             | 图标系统                                                            |
-| commitlint 或提交流程                | `docs/agents/commit.md`                                           | commit 配置或工作流                                                 |
-| 仍影响未来工程取舍的架构决定         | 对应 ADR，并更新 `CONTEXT.md` ADR 索引                            | 可行替代方案之间的长期选择                                          |
+| 变更类别                                       | 必须同步的文档                                                                                     | 触发范围                                                                              |
+| ---------------------------------------------- | -------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| 构建脚本、Vite/Turbo 流程                      | `docs/agents/build.md`；根命令还更新 `AGENTS.md`                                                   | `package.json` scripts、`vite.config.ts`、`turbo.json`                                |
+| 包新增、移除或重命名                           | `CONTEXT.md`                                                                                       | `packages/` 或 `apps/` 目录结构；包清单和依赖边界以此为唯一权威来源                   |
+| 外部化策略                                     | `docs/agents/build.md`                                                                             | Vite `rollupOptions.external`                                                         |
+| CI/CD 工作流                                   | `docs/agents/build.md`                                                                             | `.github/workflows/`                                                                  |
+| lint、formatter、stylelint、cspell             | `docs/agents/linting.md`                                                                           | 对应配置                                                                              |
+| workspace catalog 或 Changesets 策略           | `docs/agents/dependencies.md`                                                                      | `pnpm-workspace.yaml`、Changesets 配置                                                |
+| Node/pnpm/Go 工具链                            | 根 `AGENTS.md`                                                                                     | `.mise.toml`、根 `package.json` engines                                               |
+| 测试框架或 Vite 测试配置                       | `docs/agents/testing.md`                                                                           | 测试配置                                                                              |
+| 跨包编码约定                                   | `.agents/rules/code-style.md` 和受影响包 `AGENTS.md`                                               | 命名、类型安全、架构模式                                                              |
+| `packages/web-ui` 组件                         | `packages/web-ui/AGENTS.md`、`docs/agents/web-ui.md` 及受影响 ADR                                  | Lit 组件、主题、overlay、类型封装；web-ui guide 只负责路由                            |
+| 图标 manifest、生成器或公共 API                | `docs/adr/0008-icon-system.md`；web-ui guide 仅作路由                                              | 图标系统                                                                              |
+| commitlint 或提交流程                          | `docs/agents/commit.md`                                                                            | commit 配置或工作流                                                                   |
+| 仍影响未来工程取舍的架构决定                   | 对应 ADR，并更新 `CONTEXT.md` ADR 索引                                                             | 可行替代方案之间的长期选择                                                            |
+| client adapter、agent workflow、skills 或 eval | `context.md`、`agent-workflow.md`、`prompting.md`、ADR-0013、`CONTEXT.md` 和 `scripts/*-check.mjs` | `CLAUDE.md`、`.agents/agents/`、`.agents/skills/`、`docs/agents/evals/`、root scripts |
 
 ## 维护 instruction system
 

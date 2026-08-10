@@ -45,20 +45,21 @@ wails-starter（含 wails-starter-frontend）──共享包的 Wails 桌面集�
 
 ## 关键 ADR
 
-| ADR                                                             | 决策                                   | 何时读取                                                |
-| --------------------------------------------------------------- | -------------------------------------- | ------------------------------------------------------- |
-| [0001](docs/adr/0001-ci-pipeline.md)                            | CI Pipeline                            | 修改验证、Changesets 或发布门控                         |
-| [0002](docs/adr/0002-build-toolchain.md)                        | Build Toolchain                        | 修改 Vite Plus、构建或测试工具链                        |
-| [0003](docs/adr/0003-web-component-strategy.md)                 | Web Component Strategy                 | 修改 Lit、Shadow DOM 或框架集成                         |
-| [0004](docs/adr/0004-plugin-system.md)                          | Plugin System                          | 设计可组合状态或行为模块                                |
-| [0005](docs/adr/0005-overlay-interaction-policy.md)             | Overlay Interaction Policy             | 修改 overlay 关闭、焦点或事件协调                       |
-| [0006](docs/adr/0006-layout-layering.md)                        | Layout Layering                        | 修改布局层级、portal 或 z-index                         |
-| [0007](docs/adr/0007-web-ui-contract-convergence.md)            | Web UI Contract Convergence            | 修改组件公共契约、事件或表单行为                        |
-| [0008](docs/adr/0008-icon-system.md)                            | Icon System                            | 修改图标来源、生成器或导出                              |
-| [0009](docs/adr/0009-release-planes.md)                         | Release Planes                         | 修改 npm/Wails 发布流程                                 |
-| [0010](docs/adr/0010-design-token-restructure.md)               | Design Token Restructure               | 修改 `--wui-*` token 或破坏性兼容性                     |
-| [0011](docs/adr/0011-framework-type-adaptation-narrowing.md)    | Framework Type Adaptation Narrowing    | 修改 React/Vue 类型适配或复合控件事件边界               |
-| [0012](docs/adr/0012-progressive-agent-context-architecture.md) | Progressive Agent Context Architecture | 修改 agent context、rules、skills 或 instruction system |
+| ADR                                                             | 决策                                   | 何时读取                                                          |
+| --------------------------------------------------------------- | -------------------------------------- | ----------------------------------------------------------------- |
+| [0001](docs/adr/0001-ci-pipeline.md)                            | CI Pipeline                            | 修改验证、Changesets 或发布门控                                   |
+| [0002](docs/adr/0002-build-toolchain.md)                        | Build Toolchain                        | 修改 Vite Plus、构建或测试工具链                                  |
+| [0003](docs/adr/0003-web-component-strategy.md)                 | Web Component Strategy                 | 修改 Lit、Shadow DOM 或框架集成                                   |
+| [0004](docs/adr/0004-plugin-system.md)                          | Plugin System                          | 设计可组合状态或行为模块                                          |
+| [0005](docs/adr/0005-overlay-interaction-policy.md)             | Overlay Interaction Policy             | 修改 overlay 关闭、焦点或事件协调                                 |
+| [0006](docs/adr/0006-layout-layering.md)                        | Layout Layering                        | 修改布局层级、portal 或 z-index                                   |
+| [0007](docs/adr/0007-web-ui-contract-convergence.md)            | Web UI Contract Convergence            | 修改组件公共契约、事件或表单行为                                  |
+| [0008](docs/adr/0008-icon-system.md)                            | Icon System                            | 修改图标来源、生成器或导出                                        |
+| [0009](docs/adr/0009-release-planes.md)                         | Release Planes                         | 修改 npm/Wails 发布流程                                           |
+| [0010](docs/adr/0010-design-token-restructure.md)               | Design Token Restructure               | 修改 `--wui-*` token 或破坏性兼容性                               |
+| [0011](docs/adr/0011-framework-type-adaptation-narrowing.md)    | Framework Type Adaptation Narrowing    | 修改 React/Vue 类型适配或复合控件事件边界                         |
+| [0012](docs/adr/0012-progressive-agent-context-architecture.md) | Progressive Agent Context Architecture | 修改 agent context、rules、skills 或 instruction system           |
+| [0013](docs/adr/0013-dual-client-agent-harness.md)              | Dual-client Agent Harness              | 修改 Codex/Claude 适配、agent workflow、独立 review 或 agent eval |
 
 ## 已知边界
 

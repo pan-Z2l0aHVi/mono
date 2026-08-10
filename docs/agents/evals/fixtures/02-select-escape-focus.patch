@@ -1,0 +1,24 @@
+diff --git a/packages/web-ui/src/components/select/__tests__/select.browser.spec.ts b/packages/web-ui/src/components/select/__tests__/select.browser.spec.ts
+index f6955c3..83b9703 100644
+--- a/packages/web-ui/src/components/select/__tests__/select.browser.spec.ts
++++ b/packages/web-ui/src/components/select/__tests__/select.browser.spec.ts
+@@ -28,0 +29,19 @@ describe('WebUiSelect 组件（浏览器）', () => {
++  it('Portal Select 按 Escape 关闭后恢复 trigger 焦点', async () => {
++    const select = document.createElement('web-ui-select')
++    select.portal = true
++    select.innerHTML = '<web-ui-option value="apple">Apple</web-ui-option>'
++    document.body.append(select)
++    await select.updateComplete
++
++    const trigger = select.shadowRoot?.querySelector<HTMLElement>('[role="combobox"]')
++    trigger?.click()
++    await new Promise(resolve => requestAnimationFrame(resolve))
++    trigger?.blur()
++
++    select.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, composed: true }))
++    await select.updateComplete
++
++    expect(select.open).toBe(false)
++    expect(select.shadowRoot?.activeElement).toBe(trigger)
++  })
++
