@@ -24,20 +24,22 @@
 
 ## 按任务加载
 
-| 任务或变更                                    | 先读                                                                                                                                             |
-| --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| TypeScript、CSS、公共 API 或一般源码          | [`.agents/rules/code-style.md`](.agents/rules/code-style.md)                                                                                     |
-| React 源码                                    | [`.agents/rules/react.md`](.agents/rules/react.md)                                                                                               |
-| npm dependency / workspace catalog            | [`.agents/rules/dep-management.md`](.agents/rules/dep-management.md) 和 [`docs/agents/dependencies.md`](docs/agents/dependencies.md)             |
-| 测试、公共行为、导出或构建产物                | [`.agents/rules/testing.md`](.agents/rules/testing.md) 和 [`docs/agents/testing.md`](docs/agents/testing.md)                                     |
-| UI、UX、交互或浏览器运行时                    | [`docs/agents/browser-verification.md`](docs/agents/browser-verification.md)；`web-ui` 任务再读 [`docs/agents/web-ui.md`](docs/agents/web-ui.md) |
-| 构建脚本、Vite/Turbo、包图、外部化、CI 或发布 | [`docs/agents/build.md`](docs/agents/build.md)                                                                                                   |
-| 格式化、lint、拼写或类型检查配置              | [`docs/agents/linting.md`](docs/agents/linting.md)                                                                                               |
-| 架构探索、术语或 ADR                          | [`docs/agents/domain.md`](docs/agents/domain.md)、[`CONTEXT.md`](CONTEXT.md) 和相关 ADR                                                          |
-| instruction system / context 维护             | [`docs/agents/context.md`](docs/agents/context.md)、[`CONTEXT.md`](CONTEXT.md) 和 ADR-0012                                                       |
-| 代码 review                                   | [`.agents/rules/review-checklist.md`](.agents/rules/review-checklist.md) 和 [`docs/agents/review.md`](docs/agents/review.md)                     |
-| Git commit                                    | [`.agents/rules/commit.md`](.agents/rules/commit.md) 和 [`docs/agents/commit.md`](docs/agents/commit.md)                                         |
-| GitHub issue                                  | [`docs/agents/issue-tracker.md`](docs/agents/issue-tracker.md)                                                                                   |
+| 任务或变更                                    | 先读                                                                                                                                                              |
+| --------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| TypeScript、CSS、公共 API 或一般源码          | [`.agents/rules/code-style.md`](.agents/rules/code-style.md)                                                                                                      |
+| React 源码                                    | [`.agents/rules/react.md`](.agents/rules/react.md)                                                                                                                |
+| npm dependency / workspace catalog            | [`.agents/rules/dep-management.md`](.agents/rules/dep-management.md) 和 [`docs/agents/dependencies.md`](docs/agents/dependencies.md)                              |
+| 测试、公共行为、导出或构建产物                | [`.agents/rules/testing.md`](.agents/rules/testing.md) 和 [`docs/agents/testing.md`](docs/agents/testing.md)                                                      |
+| UI、UX、交互或浏览器运行时                    | [`docs/agents/browser-verification.md`](docs/agents/browser-verification.md)；`web-ui` 任务再读 [`docs/agents/web-ui.md`](docs/agents/web-ui.md)                  |
+| 构建脚本、Vite/Turbo、包图、外部化、CI 或发布 | [`docs/agents/build.md`](docs/agents/build.md)                                                                                                                    |
+| 格式化、lint、拼写或类型检查配置              | [`docs/agents/linting.md`](docs/agents/linting.md)                                                                                                                |
+| 架构探索、术语或 ADR                          | [`docs/agents/domain.md`](docs/agents/domain.md)、[`CONTEXT.md`](CONTEXT.md) 和相关 ADR                                                                           |
+| instruction system / context 维护             | [`docs/agents/context.md`](docs/agents/context.md)、[`docs/agents/agent-workflow.md`](docs/agents/agent-workflow.md)、[`CONTEXT.md`](CONTEXT.md) 和 ADR-0012/0013 |
+| 实现、验证或 agent 协作                       | [`docs/agents/agent-workflow.md`](docs/agents/agent-workflow.md)；按需使用 `.agents/agents/` 与 `.agents/skills/`                                                 |
+| 任务提示或 agent eval                         | [`docs/agents/prompting.md`](docs/agents/prompting.md) 和 [`docs/agents/evals/`](docs/agents/evals/)                                                              |
+| 代码 review                                   | [`.agents/rules/review-checklist.md`](.agents/rules/review-checklist.md)、[`docs/agents/review.md`](docs/agents/review.md) 和 `.agents/agents/reviewer.md`        |
+| Git commit                                    | [`.agents/rules/commit.md`](.agents/rules/commit.md) 和 [`docs/agents/commit.md`](docs/agents/commit.md)                                                          |
+| GitHub issue                                  | [`docs/agents/issue-tracker.md`](docs/agents/issue-tracker.md)                                                                                                    |
 
 涉及 UI、UX、交互、响应式或浏览器运行时的改动，必须按 [`browser-verification.md`](docs/agents/browser-verification.md) 在真实浏览器验证；构建成功或 jsdom 测试不能替代该验证。实现不熟悉或跨浏览器语义不明确的 Web Platform API 时，使用 MDN MCP 验证语义和兼容性。
 
