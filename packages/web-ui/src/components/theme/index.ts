@@ -86,8 +86,6 @@ export class WebUiTheme extends LitElement {
     this._warned = true
     console.warn('[web-ui-theme] appearance is required; this theme scope is inactive until it is set.')
   }
-
-  declare readonly $events: Record<string, never>
 }
 
 declare global {

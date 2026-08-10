@@ -1,24 +1,24 @@
-# ADR-0003: Web Component Strategy
+# ADR-0003: Web 组件策略
 
 - **Date**: 2025-01-01
-- **Status**: Accepted
-- **Supersedes**: N/A
+- **Status**: 已接受
+- **Supersedes**: 不适用
 
-## Context
+## 背景
 
-The `@greypan/web-ui` component library needs to work across React, Vue, and vanilla JS without duplication. Each framework has different JSX type systems and template compilers.
+`@greypan/web-ui` 组件库需要在 React、Vue 和原生 JS 之间通用，且不产生重复代码。每个框架有不同的 JSX 类型系统和模板编译器。
 
-## Decision
+## 决策
 
-- Build components as **Lit custom elements with Shadow DOM**
-- `:host` CSS selector limited to `display` and `contain` only — all other styles inside shadow root
-- **Framework type wrappers** in `packages/web-ui/src/types/vue.ts` and `react.ts` for Volar/TSX completion
-- Components use `declare global { interface HTMLElementTagNameMap }` for global HTML type augmentation
-- Expose `$events` interface on each component for framework-level event type extraction
+- 将组件构建为**带有 Shadow DOM 的 Lit 自定义元素**
+- `:host` CSS 选择器仅限于 `display` 和 `contain` —— 所有其他样式放在 shadow root 内部
+- 在 `packages/web-ui/src/types/vue.ts` 和 `react.ts` 中提供**框架类型封装**，用于 Volar/TSX 补全
+- 组件使用 `declare global { interface HTMLElementTagNameMap }` 进行全局 HTML 类型扩展
+- 在每个组件上暴露 `$events` 接口，用于框架层面的事件类型提取
 
-## Consequences
+## 后果
 
-- Single implementation serves all frameworks
-- External CSS resets (Tailwind) cannot penetrate Shadow DOM — only `:host` properties are vulnerable
-- Framework consumers must import `@greypan/web-ui/types/vue` or `@greypan/web-ui/types/react` for JSX types
-- New components require updates to both type helper files
+- 单一实现即可服务于所有框架
+- 外部 CSS 重置样式（Tailwind）无法穿透 Shadow DOM —— 只有 `:host` 属性会受到影响
+- 框架消费者必须导入 `@greypan/web-ui/types/vue` 或 `@greypan/web-ui/types/react` 以获得 JSX 类型
+- 新组件需要同时更新两个类型辅助文件

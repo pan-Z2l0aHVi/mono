@@ -2,7 +2,14 @@ import { describe, expect, it, vi } from 'vite-plus/test'
 
 import '..'
 import '@/components/segmented-trigger'
-import { waitForUpdate, spyEvents, expectReflected, cleanupElement, queryA11y } from '@/shared/test-utils'
+import {
+  waitForUpdate,
+  spyEvents,
+  spyHostEvents,
+  expectReflected,
+  cleanupElement,
+  queryA11y
+} from '@/shared/test-utils'
 
 import type { WebUiSegmented } from '..'
 import type { WebUiSegmentedTrigger } from '../../segmented-trigger'
@@ -249,32 +256,93 @@ describe('WebUiSegmented 组件', () => {
   })
 
   describe('事件', () => {
-    it('点击子 trigger 触发 input 事件', async () => {
+    it('点击子 trigger 只派发一次 input 事件，target/currentTarget 均为 group', async () => {
       const el = createSegmented(TRIGGER_HTML)
       await waitForUpdate(el)
 
-      const [events, detach] = spyEvents(el, 'input')
+      const { events, targets, currentTargets, detach } = spyHostEvents(el, 'input')
 
       clickTrigger(el, 1)
       await waitForUpdate(el)
 
       expect(events).toHaveLength(1)
+      expect(targets[0]).toBe(el)
+      expect(currentTargets[0]).toBe(el)
       detach()
       cleanupElement(el)
     })
 
-    it('点击子 trigger 触发 change 事件', async () => {
+    it('点击子 trigger 只派发一次 change 事件，target/currentTarget 均为 group', async () => {
       const el = createSegmented(TRIGGER_HTML)
       await waitForUpdate(el)
 
-      const [events, detach] = spyEvents(el, 'change')
+      const { events, targets, currentTargets, detach } = spyHostEvents(el, 'change')
 
       clickTrigger(el, 2)
       await waitForUpdate(el)
 
-      expect(events.length).toBeGreaterThanOrEqual(1)
+      expect(events).toHaveLength(1)
+      expect(targets[0]).toBe(el)
+      expect(currentTargets[0]).toBe(el)
       detach()
       cleanupElement(el)
+    })
+
+    it('子 trigger 的同名 change 不冒泡到 segmented 外部', async () => {
+      const el = document.createElement('web-ui-segmented')
+      el.innerHTML = TRIGGER_HTML
+      const container = document.createElement('div')
+      container.appendChild(el)
+      document.body.appendChild(container)
+      await waitForUpdate(el)
+
+      const [events, detach] = spyEvents(container, 'change')
+
+      clickTrigger(el, 0)
+      await waitForUpdate(el)
+
+      // 只收到 group 自身的一次 change，子项 change 未外泄
+      expect(events).toHaveLength(1)
+      expect(events[0].target).toBe(el)
+      detach()
+      cleanupElement(container)
+    })
+
+    it('group-managed 子 trigger 的直接监听器仍收到自身 change', async () => {
+      const el = createSegmented(TRIGGER_HTML)
+      await waitForUpdate(el)
+
+      const trigger = el.querySelectorAll<WebUiSegmentedTrigger>('web-ui-segmented-trigger')[1]
+      const [events, detach] = spyEvents(trigger, 'change')
+
+      clickTrigger(el, 1)
+      await waitForUpdate(el)
+
+      expect(events).toHaveLength(1)
+      expect(events[0].target).toBe(trigger)
+      detach()
+      cleanupElement(el)
+    })
+
+    it('独立子 trigger 的 change 仍冒泡且组合', async () => {
+      const trigger = document.createElement('web-ui-segmented-trigger')
+      trigger.setAttribute('value', 'solo')
+      trigger.textContent = 'Solo'
+      const container = document.createElement('div')
+      container.appendChild(trigger)
+      document.body.appendChild(container)
+      await waitForUpdate(trigger)
+
+      const [events, detach] = spyEvents(container, 'change')
+
+      const inner = queryA11y(trigger, '[role="option"]')
+      if (inner instanceof HTMLElement) inner.click()
+      await waitForUpdate(trigger)
+
+      expect(events).toHaveLength(1)
+      expect(events[0].target).toBe(trigger)
+      detach()
+      cleanupElement(container)
     })
 
     it('设置属性不触发 input/change', async () => {

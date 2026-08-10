@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vite-plus/test'
 
 import '..'
 import '@/components/checkbox'
-import { waitForUpdate, spyEvents, cleanupElement, queryA11y } from '@/shared/test-utils'
+import { waitForUpdate, spyEvents, spyHostEvents, cleanupElement, queryA11y } from '@/shared/test-utils'
 
 import type { WebUiCheckboxGroup } from '..'
 import type { WebUiCheckbox } from '../../checkbox'
@@ -204,33 +204,100 @@ describe('WebUiCheckboxGroup 组件', () => {
   })
 
   describe('事件', () => {
-    it('点击子 checkbox 触发 input 事件', async () => {
+    it('点击子 checkbox 只派发一次 input 事件，target/currentTarget 均为 group', async () => {
       const el = createGroup()
       await waitForUpdate(el)
 
-      const [events, detach] = spyEvents(el, 'input')
+      const { events, targets, currentTargets, detach } = spyHostEvents(el, 'input')
 
       clickChild(el, 1)
       await waitForUpdate(el)
 
-      // 子 checkbox 的 input 冒泡 + group 自身派发
-      expect(events.length).toBeGreaterThanOrEqual(1)
+      expect(events).toHaveLength(1)
+      expect(targets[0]).toBe(el)
+      expect(currentTargets[0]).toBe(el)
       detach()
       cleanupElement(el)
     })
 
-    it('点击子 checkbox 触发 change 事件', async () => {
+    it('点击子 checkbox 只派发一次 change 事件，target/currentTarget 均为 group', async () => {
       const el = createGroup()
       await waitForUpdate(el)
 
-      const [events, detach] = spyEvents(el, 'change')
+      const { events, targets, currentTargets, detach } = spyHostEvents(el, 'change')
 
       clickChild(el, 2)
       await waitForUpdate(el)
 
-      expect(events.length).toBeGreaterThanOrEqual(1)
+      expect(events).toHaveLength(1)
+      expect(targets[0]).toBe(el)
+      expect(currentTargets[0]).toBe(el)
       detach()
       cleanupElement(el)
+    })
+
+    it('子 checkbox 的同名 change 不冒泡到 group 外部', async () => {
+      const el = createGroup()
+      await waitForUpdate(el)
+
+      const container = document.createElement('div')
+      container.appendChild(el)
+      document.body.appendChild(container)
+      const [events, detach] = spyEvents(container, 'change')
+
+      clickChild(el, 0)
+      await waitForUpdate(el)
+
+      // 只收到 group 自身的一次 change，子项 change 未外泄
+      expect(events).toHaveLength(1)
+      expect(events[0].target).toBe(el)
+      detach()
+      cleanupElement(container)
+    })
+
+    it('group-managed 子 checkbox 的直接监听器仍收到自身 input/change', async () => {
+      const el = createGroup()
+      await waitForUpdate(el)
+
+      const checkbox = el.querySelectorAll<WebUiCheckbox>('web-ui-checkbox')[1]
+      const [inputEvents, detachInput] = spyEvents(checkbox, 'input')
+      const [changeEvents, detachChange] = spyEvents(checkbox, 'change')
+
+      clickChild(el, 1)
+      await waitForUpdate(el)
+
+      expect(inputEvents).toHaveLength(1)
+      expect(changeEvents).toHaveLength(1)
+      expect(inputEvents[0].target).toBe(checkbox)
+      expect(changeEvents[0].target).toBe(checkbox)
+      detachInput()
+      detachChange()
+      cleanupElement(el)
+    })
+
+    it('独立子 checkbox 的 input/change 仍冒泡且组合', async () => {
+      const checkbox = document.createElement('web-ui-checkbox')
+      checkbox.setAttribute('value', 'solo')
+      checkbox.textContent = 'Solo'
+      const container = document.createElement('div')
+      container.appendChild(checkbox)
+      document.body.appendChild(container)
+      await waitForUpdate(checkbox)
+
+      const [inputEvents, detachInput] = spyEvents(container, 'input')
+      const [changeEvents, detachChange] = spyEvents(container, 'change')
+
+      const label = checkbox.shadowRoot!.querySelector('label')!
+      label.click()
+      await waitForUpdate(checkbox)
+
+      expect(inputEvents).toHaveLength(1)
+      expect(changeEvents).toHaveLength(1)
+      expect(inputEvents[0].target).toBe(checkbox)
+      expect(changeEvents[0].target).toBe(checkbox)
+      detachInput()
+      detachChange()
+      cleanupElement(container)
     })
 
     it('disabled 时点击子 checkbox 不触发 input 事件', async () => {

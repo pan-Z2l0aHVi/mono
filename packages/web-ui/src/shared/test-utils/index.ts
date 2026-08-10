@@ -36,6 +36,46 @@ export function spyEvents<T extends Event = Event>(target: EventTarget, eventNam
 }
 
 /**
+ * 监听目标元素上指定事件类型的派发，并记录每次事件的 target/currentTarget。
+ * currentTarget 在派发结束后会被 DOM 重置为 null，因此必须在 handler 内捕获。
+ *
+ * 使用方式：
+ * ```
+ * const { events, targets, currentTargets, detach } = spyHostEvents(group, 'change')
+ * // ... 触发交互 ...
+ * expect(events).toHaveLength(1)
+ * expect(targets[0]).toBe(group)
+ * expect(currentTargets[0]).toBe(group)
+ * detach()
+ * ```
+ */
+export function spyHostEvents(
+  target: EventTarget,
+  eventName: string
+): {
+  events: Event[]
+  targets: (EventTarget | null)[]
+  currentTargets: (EventTarget | null)[]
+  detach: () => void
+} {
+  const events: Event[] = []
+  const targets: (EventTarget | null)[] = []
+  const currentTargets: (EventTarget | null)[] = []
+  const handler = (e: Event) => {
+    events.push(e)
+    targets.push(e.target)
+    currentTargets.push(e.currentTarget)
+  }
+  target.addEventListener(eventName, handler)
+  return {
+    events,
+    targets,
+    currentTargets,
+    detach: () => target.removeEventListener(eventName, handler)
+  }
+}
+
+/**
  * 通过语义选择器查询 shadow DOM 中的可访问性元素。
  * 仅用于验证 role、aria-* 等公开语义属性，不依赖内部 class 结构。
  *

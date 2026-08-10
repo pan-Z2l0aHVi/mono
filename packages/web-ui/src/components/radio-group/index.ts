@@ -40,12 +40,14 @@ export class WebUiRadioGroup extends LitElement {
     const attributeValue = this.getAttribute('value')
     if (attributeValue !== null) this.value = attributeValue
     this._initialValue = this._value
-    this.addEventListener('change', this._handleChildChange)
+    // group-managed 子项以 bubbles:false 派发 change，须用 capture 相位才能观察到子项事件，
+    // 同时该事件不会冒泡到 group 外部的同名监听器
+    this.addEventListener('change', this._handleChildChange, true)
   }
 
   override disconnectedCallback() {
     super.disconnectedCallback()
-    this.removeEventListener('change', this._handleChildChange)
+    this.removeEventListener('change', this._handleChildChange, true)
   }
 
   override updated(changed: Map<string, unknown>) {

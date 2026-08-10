@@ -1,157 +1,40 @@
-# AGENTS.md
+# Mono Agent Entry
 
-## Document maintenance
+本文件是所有 agent 的轻量入口：只提供项目身份、不可绕过边界和任务路由。实现事实以当前源码、`package.json`、配置和测试为准；文档解释意图，不能替代验证。
 
-When your changes fall into any category below, update the corresponding docs:
+## 先确定所需 context
 
-| Change category       | Where to update                                                 | Trigger                                                                            |
-| --------------------- | --------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
-| Build scripts/flow    | `docs/agents/build.md`; also `AGENTS.md` for top-level commands | Changes to `package.json` scripts, `vite.config.ts` build config, turbo.json tasks |
-| Package add/rename    | `docs/agents/build.md`                                          | Adding/removing/renaming a directory under `packages/` or `apps/`                  |
-| Externalization       | `docs/agents/build.md`                                          | Changes to `vite.config.ts` `rollupOptions.external`                               |
-| CI/CD workflow        | `docs/agents/build.md`                                          | Changes to files under `.github/workflows/`                                        |
-| Code quality tools    | `docs/agents/linting.md`                                        | Changes to linter, formatter, stylelint, cspell config                             |
-| Dependency management | `docs/agents/dependencies.md`                                   | Changes to `pnpm-workspace.yaml` catalog, changeset config                         |
-| Runtime/toolchain     | This file (Toolchain)                                           | Changes to `.mise.toml`, `package.json` engines                                    |
-| Test config           | `docs/agents/testing.md`                                        | Changes to `vite.config.ts` test config, test framework                            |
-| Coding standards      | `.agents/rules/code-style.md`, affected package `AGENTS.md`     | Changes to naming, type safety, architecture patterns                              |
-| Web UI components     | `packages/web-ui/AGENTS.md`, `docs/agents/web-ui.md`            | Changes to Lit components in `packages/web-ui`                                     |
-| Icon system           | `docs/adr/0008-icon-system.md`, `docs/agents/web-ui.md`         | Changes to icon manifest, generator, or icon public API                            |
-| Commit conventions    | `docs/agents/commit.md`                                         | Changes to commitlint config, commit workflow                                      |
+1. 先查看工作区状态、目标文件和最近的 `AGENTS.md`；只有进入某个 `apps/` 或 `packages/` 时才加载其包级指令。
+2. 只按任务加载命中的 rule、guide 和包级指令；不要为普通局部任务预读 `CONTEXT.md`、ADR 或无关领域指南。
+3. 只有架构、跨包、仓库拓扑、术语、长期设计或 instruction system 维护时，才阅读 [`CONTEXT.md`](CONTEXT.md)、[`docs/agents/context.md`](docs/agents/context.md) 和相关 ADR。
 
-Rules:
+## 项目身份
 
-1. Read the relevant docs before making changes to confirm current documentation
-2. Update documentation immediately after changes, never postpone
-3. Check the mapped document first. Ask the user only if the scope remains ambiguous or needs unrelated documentation expansion.
-4. Documentation updates should land in the same commit as code changes
+这是一个 pnpm + Turborepo monorepo：发布 `@greypan/*` 工具包和 Lit Web Components（`@greypan/web-ui`），并维护 React、Vue 和 Wails 私有应用作为真实集成表面。长期架构方向是可组合的 plugin、Shadow DOM 隔离、框架无关的组件契约和无环的工作区依赖图；跨包边界与 ADR 索引见 [`CONTEXT.md`](CONTEXT.md)。
 
----
+## 不可绕过的仓库边界
 
-## Repo overview
+- 不得改写 `.npmrc` 或 `.mise.toml` 的 registry/mirror，或任何 Git 配置。
+- 不手动编辑生成文件：`**/routeTree.gen.ts`、`**/auto-imports.d.ts`、`apps/wails-starter/frontend/bindings/**`、`**/__screenshots__/`、`**/.vitest-attachments/`。
+- `AGENTS.md`（含包级）、`docs/adr/`、`docs/agents/` 和 `.agents/rules/` 下的文档使用中文；技术术语、命令、路径和包名保留英文。
+- 缺少 Node、pnpm 或 Go 时先运行 `mise install`；准确版本以 `.mise.toml`、`package.json` 与目标包 manifest 为准。
+- 并行 agent 必须使用不同的 branch/worktree；不得在共享工作区执行 `git switch`、`git checkout`、`git stash`、`git reset` 或 `git clean`。
 
-pnpm monorepo (`apps/**`, `packages/**`) using Turborepo. Packages published under `@greypan/*` to npm. Apps are private demos, never published.
+## 按任务加载
 
-## Toolchain
+| 任务或变更                                    | 先读                                                                                                                                                                                                            |
+| --------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| TypeScript、CSS、公共 API 或一般源码          | [`.agents/rules/code-style.md`](.agents/rules/code-style.md)                                                                                                                                                    |
+| React 源码                                    | [`.agents/rules/react.md`](.agents/rules/react.md)                                                                                                                                                              |
+| npm dependency / workspace catalog            | [`.agents/rules/dep-management.md`](.agents/rules/dep-management.md) 和 [`docs/agents/dependencies.md`](docs/agents/dependencies.md)                                                                            |
+| 测试、公共行为、导出或构建产物                | [`.agents/rules/testing.md`](.agents/rules/testing.md) 和 [`docs/agents/testing.md`](docs/agents/testing.md)                                                                                                    |
+| UI、UX、交互或浏览器运行时                    | [`docs/agents/browser-verification.md`](docs/agents/browser-verification.md)；`web-ui` 任务再读 [`docs/agents/web-ui.md`](docs/agents/web-ui.md)                                                                |
+| 构建脚本、Vite/Turbo、包图、外部化、CI 或发布 | [`docs/agents/build.md`](docs/agents/build.md)                                                                                                                                                                  |
+| 格式化、lint、拼写或类型检查配置              | [`docs/agents/linting.md`](docs/agents/linting.md)                                                                                                                                                              |
+| 架构探索、术语或 ADR                          | [`docs/agents/domain.md`](docs/agents/domain.md)、[`CONTEXT.md`](CONTEXT.md) 和相关 ADR                                                                                                                         |
+| instruction system / context 维护             | [`docs/agents/context.md`](docs/agents/context.md)、[`CONTEXT.md`](CONTEXT.md) 和 ADR-0012                                                                                                                      |
+| 代码 review                                   | [`.agents/rules/review-checklist.md`](.agents/rules/review-checklist.md)、[`docs/agents/review.md`](docs/agents/review.md)；需要独立 reviewer 时再读 [`.agents/agents/reviewer.md`](.agents/agents/reviewer.md) |
+| Git commit                                    | [`.agents/rules/commit.md`](.agents/rules/commit.md) 和 [`docs/agents/commit.md`](docs/agents/commit.md)                                                                                                        |
+| GitHub issue                                  | [`docs/agents/issue-tracker.md`](docs/agents/issue-tracker.md)                                                                                                                                                  |
 
-- **Package manager**: pnpm 10.33.0 (enforced via `engine-strict=true` in `.npmrc`)
-- **Runtime**: Node 24 (managed via mise — run `mise install` if node/pnpm/go are missing; `engines` allows >=24.18.0)
-- **Desktop CLI**: Wails 3 CLI 3.0.0-alpha2.122 (managed through mise's Go backend; use a published npm runtime version verified as compatible with this CLI and Go module)
-- **Build/dev/lint/test/format**: all delegated to `vite-plus` (`vp`) — a Vite wrapper. Most per-package scripts call `vp build`, `vp pack`, `vp check`, `vp test run`, `vp lint`, `vp fmt`
-- **Orchestration**: Turborepo (`turbo.json`) — `build` and `test` tasks depend on `^build` (upstream packages build first). Demo commands build upstream packages once, then use `turbo run dev` to start the persistent package-level watchers without Turbo's repository watcher.
-- **Desktop artifacts**: `.github/workflows/wails-verify.yml` validates `wails-starter` natively on pull requests and uploads a DMG and EXE as GitHub Actions artifacts. `.github/workflows/wails-release.yml` rebuilds both installers from a merged Changesets version PR and creates the GitHub Release with SHA-256 checksums.
-- **Language**: TypeScript 6, ES modules only (`"type": "module"` everywhere)
-
-## Key commands
-
-| Command                                           | What it does                                                          |
-| ------------------------------------------------- | --------------------------------------------------------------------- |
-| `pnpm install`                                    | Install all deps (frozen lockfile in CI)                              |
-| `pnpm build`                                      | Build all packages in dependency order                                |
-| `pnpm test`                                       | Run all tests                                                         |
-| `pnpm commit`                                     | Interactive conventional commit via cz-git                            |
-| `bash scripts/commit.sh <type> <scope> <subject>` | Non-interactive commit (useful for agents)                            |
-| `pnpm dev:react-web-ui-demo`                      | React demo with upstream build and package watchers                   |
-| `pnpm dev:vue-web-ui-demo`                        | Vue demo with upstream build and package watchers                     |
-| `pnpm run check:code`                             | Check formatting, lint, and types                                     |
-| `pnpm run fix:code`                               | Auto-fix formatting/lint issues, then type-check                      |
-| `pnpm clean`                                      | Remove generated outputs and caches, preserving Wails build templates |
-| `pnpm clean --full`                               | Also remove `node_modules` and lockfile                               |
-| `pnpm publish:new <package-dir>`                  | First publish of a new package (1.0.0)                                |
-| `pnpm release:version`                            | Apply Changesets versions; synchronize Wails metadata only if changed |
-| GitHub Actions `Version Packages`                 | Create or update a Changesets version pull request                    |
-| GitHub Actions `Publish npm Packages`             | Build and publish public packages after a version PR merge            |
-| GitHub Actions `Verify Wails Desktop`             | Build and upload Wails macOS/Windows validation artifacts             |
-| GitHub Actions `Release Wails Desktop`            | Build and publish Wails installers after a version PR merge           |
-
-## Build details
-
-Read [docs/agents/build.md](docs/agents/build.md) before changing package scripts, Vite/Turbo configuration, package structure, externalization, or release flow. It contains the package graph, TypeScript profiles, build modes, and CI/release architecture.
-
-## Agent constraints
-
-Agents must follow these rules without exception:
-
-- **Do not modify registry or mirror configuration in `.npmrc` or `.mise.toml`.**
-- **Do not add npm dependencies, including devDependencies, unless explicitly requested by the user.**
-- **Do not modify CI/CD configuration under `.github/workflows/` unless explicitly requested by the user.**
-- **Do not modify `go.mod` or `go.sum`; the Go toolchain is only for auxiliary tooling, not core project code.**
-- **Do not run `npm publish` directly; always use `pnpm publish:new`.**
-- **Do not modify Git configuration, including `.gitconfig` and global Git config.**
-- **Do not bypass Git hooks with `--no-verify` or `--no-gpg-sign`.**
-
-## Generated / ignored files
-
-These files are auto-generated and should not be edited manually:
-
-- `**/routeTree.gen.ts` — TanStack Router route tree
-- `**/auto-imports.d.ts` — auto-import type declarations
-- `apps/wails-starter/frontend/bindings/**` — Wails 3 bindings
-- `**/__screenshots__/` — Vitest browser mode test failure screenshots
-- `**/.vitest-attachments/` — Vitest browser mode test attachments
-
-They are excluded from linting, formatting, and spell-check.
-
-## Other gotchas
-
-- `.npmrc` uses an npmmirror registry (`registry=https://registry.npmmirror.com`). CI overrides this to the official registry.
-- The `prepare` script runs `vp config` — this sets up vite-plus internal config on install.
-- Go toolchain is also managed via mise (used by some tooling, not by the JS packages directly).
-
-## Documentation
-
-- `docs/agents/` — On-demand operating guides for build, testing, linting, package workflows, and issue tracking
-- `docs/adr/` — Architecture Decision Records for significant technical decisions
-- `docs/prd/` — Product Requirements Documents
-- `docs/design/` — Design references, including screenshots and CSS implementations
-- `CONTEXT.md` — Project architecture overview, including ADR index, package boundaries, and technical principles
-
-## Agent reference docs
-
-Read these as needed; they are not required for every conversation:
-
-| File                                    | Purpose                                           | When to read                                                                     |
-| --------------------------------------- | ------------------------------------------------- | -------------------------------------------------------------------------------- |
-| `docs/agents/testing.md`                | Test infrastructure, commands, and browser mode   | When test execution or configuration is unclear                                  |
-| `docs/agents/linting.md`                | Toolchain, formatter, linter, and stylelint usage | When linting or formatting commands are unclear                                  |
-| `docs/agents/issue-tracker.md`          | GitHub issue operations and `gh` CLI usage        | When creating, querying, or updating issues                                      |
-| `docs/agents/domain.md`                 | Code exploration conventions, ADRs, and glossary  | When exploring an unfamiliar code area                                           |
-| `docs/agents/build.md`                  | Build modes, package graph, externalization, CI   | When changing build, package, or release flow                                    |
-| `docs/agents/web-ui.md`                 | Web UI implementation, tokens, overlays, testing  | When changing `packages/web-ui`                                                  |
-| `docs/agents/dependencies.md`           | Dependency placement and catalog policy           | After dependency changes are authorized                                          |
-| `docs/agents/commit.md`                 | Commit message and execution workflow             | After a commit is authorized                                                     |
-| `docs/agents/review.md`                 | Review scope and reporting                        | When reviewing code                                                              |
-| `.agents/skills/agent-browser/SKILL.md` | Browser automation CLI (manual invocation only)   | When the user invokes `/agent-browser` (e.g. chrome-devtools MCP is unavailable) |
-
-## Instruction scopes
-
-`AGENTS.md` and `.agents/rules/` define repository-wide constraints. Package-level `AGENTS.md` files add constraints only for changes inside that package. Files under `docs/agents/` are on-demand guides; read the matching guide before the scoped task.
-
-### Web Platform API verification
-
-When implementing against a Web Platform API that is unfamiliar, recently introduced, or has ambiguous cross-browser behavior, verify the API semantics and browser behavior through the MDN MCP server (`mdn`) before implementing — do not rely on model memory. This includes checking MDN compatibility data (BCD) when browser support is uncertain.
-
-### Browser verification
-
-Changes involving UI, UX, interaction, responsive behavior, or browser runtime behavior must be verified in a real browser. Use the chrome-devtools MCP as the primary layer when it is available — navigate to the local demo, interact with components, inspect console/network, and take screenshots. The `agent-browser` skill is a manual alternative: run it only when the user invokes `/agent-browser`, e.g. when MCP is unavailable or an isolated browser context is required.
-
-What to verify per change type:
-
-- **Interaction**: primary pointer interactions, keyboard operation, focus management, disabled states, close/cancel paths
-- **Layout**: blank rendering, overflow, occlusion, misalignment, unexpected layout shifts (check desktop and mobile viewports)
-- **Accessibility**: semantics, accessible names, keyboard reachability
-- **Runtime**: console errors, page exceptions, behavior relying on browser features (jsdom is not a substitute)
-
-Constraints:
-
-- Before starting a local dev server, check whether the target port already has a responsive server for the required app. Reuse it when it is suitable; do not create a duplicate server merely because a verification task starts.
-- Start a new server only when no suitable server is running, the existing one cannot serve the required current state, or an isolated environment is explicitly needed. Use an unused port in that case and record its exact PID.
-- Only stop a server started by the current task. Never terminate a pre-existing server owned by the user or another task.
-- When encountering a stale or unresponsive dev server on the target port, ask the user before killing it. Clean up only the servers started by the current task at the end of the session.
-- Never attach to or control the user's existing Chrome session. Verify in the browser context owned by chrome-devtools MCP or `agent-browser`, isolated from the user's working Chrome.
-- Ignore certificate errors only for local self-signed HTTPS demos; never relax certificate validation for external sites.
-- Stop every dev server started for verification after it completes, unless the user asks to keep it running. Preserve or report the local URL for follow-up.
-
-Fallback chain: chrome-devtools MCP → project browser-mode tests → component tests and HTTP/DOM checks. `agent-browser` is not part of the automatic chain — it runs only on manual invocation (`/agent-browser`). If no browser layer is available (MCP missing and no manual invocation), explicitly report why real-browser verification could not be completed and the resulting risk.
-
-Final reports must state the verification URL, what was checked, and any gaps. Do not describe a successful build or passing jsdom tests as browser interaction verification.
+涉及 UI、UX、交互、响应式或浏览器运行时的改动，必须按 [`browser-verification.md`](docs/agents/browser-verification.md) 在真实浏览器验证；构建成功或 jsdom 测试不能替代该验证。实现不熟悉或跨浏览器语义不明确的 Web Platform API 时，使用 MDN MCP 验证语义和兼容性。

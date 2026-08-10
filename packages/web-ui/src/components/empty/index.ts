@@ -83,8 +83,6 @@ export class WebUiEmpty extends LitElement {
       </section>
     `
   }
-
-  declare readonly $events: Record<string, never>
 }
 
 declare global {

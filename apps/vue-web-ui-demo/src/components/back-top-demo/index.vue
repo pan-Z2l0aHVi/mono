@@ -1,15 +1,18 @@
 <script setup lang="ts">
-import type { WebUiBackTop } from '@greypan/web-ui'
+import { WebUiBackTop } from '@greypan/web-ui'
 import { onMounted, ref } from 'vue'
-import type { ComponentPublicInstance } from 'vue'
 
 // scrollTarget 是 element 属性而非 attribute，模板绑定无法生效，需在容器挂载后手动赋值
 function useScrollBox() {
   const box = ref<HTMLElement>()
   const backTop = ref<WebUiBackTop>()
-  const setBox = (el: Element | ComponentPublicInstance | null) => (box.value = (el as HTMLElement | null) ?? undefined)
-  const setBackTop = (el: Element | ComponentPublicInstance | null) =>
-    (backTop.value = (el as WebUiBackTop | null) ?? undefined)
+  // callback ref 的实参由 Vue 注入，运行时 instanceof 收窄到具体元素类型
+  const setBox = (el: unknown) => {
+    if (el instanceof HTMLElement) box.value = el
+  }
+  const setBackTop = (el: unknown) => {
+    if (el instanceof WebUiBackTop) backTop.value = el
+  }
   onMounted(() => {
     if (box.value && backTop.value) backTop.value.scrollTarget = box.value
   })

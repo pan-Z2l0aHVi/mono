@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 
-import { createOverlayPortal, resolveOverlayContainer } from '../portal'
+import { defineOverlayPortal, resolveOverlayContainer } from '../portal'
 
 afterEach(() => {
   document.body.innerHTML = ''
@@ -24,7 +24,7 @@ describe('浮层 Portal', () => {
     target.append(content)
     document.body.append(target, container)
 
-    const portal = createOverlayPortal({ container, target, style: '', className: 'panel' })
+    const portal = defineOverlayPortal().make({ container, target, style: '', className: 'panel' })
     portal.moveContent([content])
 
     expect(portal.panel.dataset.wuiPresence).toBe('entering')
@@ -44,7 +44,7 @@ describe('浮层 Portal', () => {
     target.append(content)
     document.body.append(target, container)
 
-    const portal = createOverlayPortal({ container, target, style: '', className: 'panel' })
+    const portal = defineOverlayPortal().make({ container, target, style: '', className: 'panel' })
     const scroll = document.createElement('div')
     portal.panel.append(scroll)
     portal.moveContent([content], scroll)
@@ -64,7 +64,7 @@ describe('浮层 Portal', () => {
 
     // 模拟 select/popover/tooltip 组件样式中泄漏到宿主的 :host 规则
     const leakyStyle = ':host { display: inline-block; } .panel { position: fixed; }'
-    const portal = createOverlayPortal({ container, target, style: leakyStyle, className: 'panel' })
+    const portal = defineOverlayPortal().make({ container, target, style: leakyStyle, className: 'panel' })
 
     const host = container.firstElementChild as HTMLElement
     expect(getComputedStyle(host).display).toBe('contents')

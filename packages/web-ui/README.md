@@ -33,7 +33,7 @@ import '@greypan/web-ui'
 
 ### React
 
-Requires `@types/react >= 16` as optional peer dependency.
+Requires `@types/react >= 19` as optional peer dependency.
 
 ```ts
 // vite.config.ts
@@ -56,7 +56,7 @@ function App() {
       <web-ui-button variant="primary" onClick={() => alert('clicked')}>
         Click
       </web-ui-button>
-      <web-ui-input onInput={e => console.log((e.target as any).value)} />
+      <web-ui-input onInput={e => console.log(e.currentTarget.value)} />
     </>
   )
 }
@@ -65,9 +65,12 @@ function App() {
 #### React custom-element events and boolean properties
 
 React 19 registers Custom Element events using the suffix of the JSX `on` key unchanged. Event names are
-case-sensitive: bind `open-change` as `onopen-change`, not `onOpenChange`. Standard `input` and `change`
-events continue to use React's conventional `onInput` and `onChange`. Boolean properties follow native HTML
-semantics: absence is `false` and presence is `true`.
+case-sensitive: bind `open-change` as `onopen-change`, not `onOpenChange`. Standard `input`, `change`, `focus`,
+and `blur` events use React's conventional `onInput`, `onChange`, `onFocus`, and `onBlur` handlers — their
+`currentTarget` is typed as the component instance, so `value` and `checked` are read cast-free. The `target`
+follows React SyntheticEvent semantics (`EventTarget`) and is not narrowed. Kebab-case custom events carry their
+`CustomEvent` detail typed. Boolean properties follow native HTML semantics: absence is `false` and presence is
+`true`.
 
 ```tsx
 <web-ui-dialog
@@ -98,7 +101,7 @@ useEffect(() => {
 
 ### Vue
 
-Requires `vue >= 3` as optional peer dependency.
+Requires `vue >= 3.5` as optional peer dependency.
 
 ```ts
 // vite.config.ts
@@ -122,8 +125,15 @@ import '@greypan/web-ui/types/vue'
 <template>
   <web-ui-button variant="primary" @click="handleClick">Click</web-ui-button>
   <web-ui-input v-model="value" />
+  <web-ui-select :value="framework" @change="framework = $event.target.value" />
 </template>
 ```
+
+Vue events are typed cast-free: `@input`/`@change` on value-bearing components resolve to the component emit, so
+`$event.target` is the component instance and `value`/`checked` are read directly. `$event.detail` keeps the
+`CustomEvent` payload type for kebab-case events like `open-change`. Named handlers annotate with
+`WebUiEvent<WebUiXxx, 'change'>`. `@click`/`@focus` and other native events not declared as emits remain
+bindable on any `web-ui-*` element.
 
 ### Attribute and event boundaries
 
@@ -145,6 +155,7 @@ state changes; assigning a property programmatically does not emit them.
 |                      | [`<web-ui-textarea>`](#web-ui-textarea)                   |
 |                      | [`<web-ui-input-number>`](#web-ui-input-number)           |
 |                      | [`<web-ui-select>`](#web-ui-select)                       |
+|                      | [`<web-ui-autocomplete>`](#web-ui-autocomplete)           |
 |                      | [`<web-ui-slider>`](#web-ui-slider)                       |
 |                      | [`<web-ui-checkbox>`](#web-ui-checkbox)                   |
 |                      | [`<web-ui-radio>`](#web-ui-radio)                         |
@@ -193,6 +204,7 @@ Text input with clearable, prefix/suffix slots.
 | `placeholder` | `string`  | `''`     | Placeholder text    |
 | `name`        | `string`  | `''`     | Form field name     |
 | `disabled`    | `boolean` | `false`  | Disabled state      |
+| `readonly`    | `boolean` | `false`  | Read-only state     |
 | `required`    | `boolean` | `false`  | Required validation |
 | `clearable`   | `boolean` | `false`  | Show clear button   |
 | `full`        | `boolean` | `false`  | Full width          |
@@ -246,11 +258,12 @@ Numeric input with step buttons and keyboard control.
 | `placeholder` | `string`  | `''`       | Placeholder text    |
 | `name`        | `string`  | `''`       | Form field name     |
 | `disabled`    | `boolean` | `false`    | Disabled state      |
+| `readonly`    | `boolean` | `false`    | Read-only state     |
 | `required`    | `boolean` | `false`    | Required validation |
 
 **Events:** `input`, `change`
 
-ArrowUp/ArrowDown keyboard increments and decrements the value.
+ArrowUp/ArrowDown keyboard increments and decrements the value. Empty or `-` input is ignored on commit; the value stays at the last valid number.
 
 #### `<web-ui-select>`
 
@@ -274,6 +287,32 @@ Select dropdown with option items, keyboard navigation, and portal support.
 **Methods:** none
 
 Child `<web-ui-option>` elements register via `option-register` / `option-unregister` events. Supports ArrowDown/ArrowUp/Enter/Escape keyboard navigation.
+
+#### `<web-ui-autocomplete>`
+
+Editable combobox with input filtering and single option selection.
+
+| Attribute          | Type                               | Default      | Description                                                               |
+| ------------------ | ---------------------------------- | ------------ | ------------------------------------------------------------------------- |
+| `value`            | `string`                           | `''`         | Current input text (form value)                                           |
+| `selected-value`   | `string`                           | `''`         | Value of the option exactly matching the input label (derived, read-only) |
+| `placeholder`      | `string`                           | `''`         | Placeholder text                                                          |
+| `filter`           | `'none' \| 'prefix' \| 'contains'` | `'contains'` | Candidate filtering mode (matched against option label)                   |
+| `name`             | `string`                           | `''`         | Form field name                                                           |
+| `disabled`         | `boolean`                          | `false`      | Disabled state                                                            |
+| `readonly`         | `boolean`                          | `false`      | Read-only state (no typing, no dropdown)                                  |
+| `required`         | `boolean`                          | `false`      | Required validation                                                       |
+| `portal`           | `boolean`                          | `false`      | Render dropdown in theme overlay                                          |
+| `no-scroll-lock`   | `boolean`                          | `false`      | Do not lock body scroll when open                                         |
+| `overlayContainer` | `HTMLElement \| () => HTMLElement` | —            | Explicit portal container                                                 |
+| `aria-label`       | `string`                           | —            | Accessible name                                                           |
+| `aria-labelledby`  | `string`                           | —            | Accessible name references                                                |
+
+**Events:** `input`, `change`, `focus`, `blur`, `open-change` (`CustomEvent<{ open: boolean }>`)
+
+**Slots:** `default` (project `<web-ui-option>` elements)
+
+Typing filters the option list by label (`contains` or `prefix`, or `none` to disable filtering). Selecting an option fills the input with its label and exposes the option's value via `selected-value`; `change` fires on selection commit. Supports ArrowDown/ArrowUp/Enter/Escape keyboard navigation.
 
 #### `<web-ui-slider>`
 

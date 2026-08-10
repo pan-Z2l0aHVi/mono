@@ -1,115 +1,64 @@
-import type { ComponentOptionsMixin, DefineComponent, HTMLAttributes } from 'vue'
+import type { ComponentOptionsMixin, DefineComponent, EmitsToProps, HTMLAttributes, PublicProps } from 'vue'
 
-import type {
-  WebUiAvatar,
-  WebUiBackTop,
-  WebUiBadge,
-  WebUiButton,
-  WebUiButtonGroup,
-  WebUiCheckbox,
-  WebUiCheckboxGroup,
-  WebUiContextMenu,
-  WebUiDialog,
-  WebUiDrawer,
-  WebUiEmpty,
-  WebUiDropdownDivider,
-  WebUiDropdownHeader,
-  WebUiDropdownItem,
-  WebUiDropdown,
-  WebUiIcon,
-  WebUiInput,
-  WebUiInputNumber,
-  WebUiLayout,
-  WebUiOption,
-  WebUiPopover,
-  WebUiRadio,
-  WebUiRadioGroup,
-  WebUiSegmented,
-  WebUiSegmentedTrigger,
-  WebUiSelect,
-  WebUiSlider,
-  WebUiSpinner,
-  WebUiTextarea,
-  WebUiTheme,
-  WebUiToast,
-  WebUiSwitch,
-  WebUiTooltip,
-  WebUiSvgDrawLines
-} from '../components'
+import type { WebUiElementMap } from '../components'
 
-import type { ExtractProps, OmitLitBase } from './utils'
+import type { ComponentEvents, ExtractProps, OmitLitBase, WithHost } from './utils'
 
-// 从 $events 提取 Vue emit 类型
-// $events 格式: { input: Event, change: Event }
-// Vue emits 格式: { input: (e: Event) => void }
-type ExtractVueEmits<T> = T extends { readonly $events: infer E }
-  ? { [K in keyof E]: (e: E[K]) => void }
-  : Record<string, never>
+// 从 $events 提取 Vue emits：每个条目 → (e: 宿主化事件) => void。
+// Vue 经 EmitsToProps 将 emits 映射为 on<Event> props，模板 @event 绑定由此解析。
+type VueEmits<T extends HTMLElement> = T extends { readonly $events: infer E }
+  ? { [K in keyof E]: (e: WithHost<T, E[K]>) => void }
+  : Record<never, never>
+
+// 与 emit 重名的原生 handler（如 emit input → onInput）从局部 HTMLAttributes 中排除，
+// 使 @event 精确解析到 emit，不再与原生事件类型形成联合。
+type VueNativeAttrs<T extends HTMLElement> = Omit<HTMLAttributes, `on${Capitalize<keyof ComponentEvents<T> & string>}`>
+
+type VueProps<T extends HTMLElement> = ExtractProps<OmitLitBase<T>> & VueNativeAttrs<T>
+
+// 复刻 Vue 内部 ResolveProps：组件 props + emits 派生的 on<Event> props。
+// 显式传入 Props 参数，才能在 DefineComponent 尾部注入 TypeEl。
+// 空 emits（无 $events 的组件）不应用 EmitsToProps，避免产生 on${string} 索引签名。
+type VueResolvedProps<T extends HTMLElement> = Readonly<VueProps<T>> &
+  (VueEmits<T> extends Record<string, never> ? unknown : EmitsToProps<VueEmits<T>>)
 
 /**
  * Lit Web Component 的 Vue 包装类型。
  *
- * - Props: 从 LitElement 推导的组件属性 + Vue HTMLAttributes（含原生 DOM 事件）
- * - Emits: 从 $events 接口提取的自定义事件，Volar 可识别 @event 绑定
+ * - Props: 组件属性 + 局部 HTMLAttributes（含原生 DOM 事件），不污染其他 Vue 组件
+ * - Emits: 从 $events 提取的宿主化事件，Volar 可识别 @event 绑定
+ * - TypeEl: 模板 ref/$el 类型为具体 Custom Element 实例
+ * - 不再全局扩展 ComponentCustomProps
  */
-export type LitVueWrapper<T> = T extends { readonly $events: infer E }
-  ? DefineComponent<
-      ExtractProps<OmitLitBase<T>>,
-      Record<string, never>,
-      Record<string, never>,
-      Record<string, never>,
-      Record<string, never>,
-      ComponentOptionsMixin,
-      ComponentOptionsMixin,
-      ExtractVueEmits<T>
-    >
-  : DefineComponent<ExtractProps<OmitLitBase<T>>>
+export type LitVueWrapper<T extends HTMLElement> = DefineComponent<
+  VueProps<T>,
+  Record<string, never>,
+  Record<string, never>,
+  Record<string, never>,
+  Record<string, never>,
+  ComponentOptionsMixin,
+  ComponentOptionsMixin,
+  VueEmits<T>,
+  string,
+  PublicProps,
+  VueResolvedProps<T>,
+  Record<never, never>,
+  Record<never, never>,
+  Record<never, never>,
+  Record<never, never>,
+  string,
+  Record<never, never>,
+  true,
+  Record<never, never>,
+  T
+>
 
-export interface WebUiComponents {
-  'web-ui-avatar': LitVueWrapper<WebUiAvatar>
-  'web-ui-back-top': LitVueWrapper<WebUiBackTop>
-  'web-ui-badge': LitVueWrapper<WebUiBadge>
-  'web-ui-button': LitVueWrapper<WebUiButton>
-  'web-ui-button-group': LitVueWrapper<WebUiButtonGroup>
-  'web-ui-checkbox': LitVueWrapper<WebUiCheckbox>
-  'web-ui-checkbox-group': LitVueWrapper<WebUiCheckboxGroup>
-  'web-ui-context-menu': LitVueWrapper<WebUiContextMenu>
-  'web-ui-dialog': LitVueWrapper<WebUiDialog>
-  'web-ui-drawer': LitVueWrapper<WebUiDrawer>
-  'web-ui-empty': LitVueWrapper<WebUiEmpty>
-  'web-ui-dropdown-divider': LitVueWrapper<WebUiDropdownDivider>
-  'web-ui-dropdown-header': LitVueWrapper<WebUiDropdownHeader>
-  'web-ui-dropdown-item': LitVueWrapper<WebUiDropdownItem>
-  'web-ui-dropdown': LitVueWrapper<WebUiDropdown>
-  'web-ui-icon': LitVueWrapper<WebUiIcon>
-  'web-ui-input': LitVueWrapper<WebUiInput>
-  'web-ui-input-number': LitVueWrapper<WebUiInputNumber>
-  'web-ui-select': LitVueWrapper<WebUiSelect>
-  'web-ui-slider': LitVueWrapper<WebUiSlider>
-  'web-ui-spinner': LitVueWrapper<WebUiSpinner>
-  'web-ui-svg-draw-lines': LitVueWrapper<WebUiSvgDrawLines>
-  'web-ui-option': LitVueWrapper<WebUiOption>
-  'web-ui-popover': LitVueWrapper<WebUiPopover>
-  'web-ui-radio': LitVueWrapper<WebUiRadio>
-  'web-ui-radio-group': LitVueWrapper<WebUiRadioGroup>
-  'web-ui-segmented': LitVueWrapper<WebUiSegmented>
-  'web-ui-segmented-trigger': LitVueWrapper<WebUiSegmentedTrigger>
-  'web-ui-layout': LitVueWrapper<WebUiLayout>
-  'web-ui-switch': LitVueWrapper<WebUiSwitch>
-  'web-ui-textarea': LitVueWrapper<WebUiTextarea>
-  'web-ui-theme': LitVueWrapper<WebUiTheme>
-  'web-ui-toast': LitVueWrapper<WebUiToast>
-  'web-ui-tooltip': LitVueWrapper<WebUiTooltip>
+// Vue 从 WebUiElementMap 派生全部标签，无需手写组件清单。
+export type WebUiComponents = {
+  [K in keyof WebUiElementMap]: LitVueWrapper<WebUiElementMap[K]>
 }
-
-// === Vue Template 类型补全 ===
-// Volar 通过 GlobalComponents 识别 web-ui-* 组件标签
 
 declare module 'vue' {
   // oxlint-disable-next-line typescript/no-empty-object-type
   export interface GlobalComponents extends WebUiComponents {}
-
-  // 使 <web-ui-input @click @mousedown @keydown> 等有类型补全
-  // oxlint-disable-next-line typescript/no-empty-object-type
-  interface ComponentCustomProps extends HTMLAttributes {}
 }

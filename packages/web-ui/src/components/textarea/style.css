@@ -67,9 +67,12 @@ textarea {
 
   box-sizing: border-box;
   width: 100%;
+  margin: 0;
   padding: 0;
   border: none;
 
+  /* 表单控件不继承字体；显式继承以对齐宿主排版，避免 UA 默认字体差异 */
+  font: inherit;
   font-size: var(--wui-font-size, 14px);
   line-height: 1.5;
   color: var(--wui-color-text, #1b1b1b);

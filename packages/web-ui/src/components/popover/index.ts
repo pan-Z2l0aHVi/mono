@@ -7,7 +7,7 @@ import overlayMotion from '@/assets/overlay-motion.css?inline'
 import { UserChangeController } from '@/shared/events/user-change'
 import { normalizeLiteral, normalizeNumber } from '@/shared/normalize'
 import { defineAnchoredPanel } from '@/shared/overlay/anchored-panel'
-import { createOverlayPortal } from '@/shared/overlay/portal'
+import { defineOverlayPortal } from '@/shared/overlay/portal'
 import type { OverlayContainer, OverlayPortal } from '@/shared/overlay/portal'
 
 import style from './style.css?inline'
@@ -190,7 +190,7 @@ export class WebUiPopover extends LitElement {
   }
 
   private _createPortal(): OverlayPortal {
-    const portal = createOverlayPortal({
+    const portal = defineOverlayPortal().make({
       container: this.overlayContainer,
       target: this,
       style: `${glass}\n${overlayMotion}\n${style}`,

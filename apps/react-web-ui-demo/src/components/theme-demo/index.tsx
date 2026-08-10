@@ -1,4 +1,18 @@
+import type { WebUiSegmented } from '@greypan/web-ui'
 import { useState } from 'react'
+
+type ThemeAppearance = 'light' | 'dark' | 'system'
+type ThemeMotion = 'full' | 'reduced' | 'system'
+
+const APPEARANCES = new Set<ThemeAppearance>(['light', 'dark', 'system'])
+const MOTIONS = new Set<ThemeMotion>(['full', 'reduced', 'system'])
+
+function isAppearance(value: string): value is ThemeAppearance {
+  return APPEARANCES.has(value as ThemeAppearance)
+}
+function isMotion(value: string): value is ThemeMotion {
+  return MOTIONS.has(value as ThemeMotion)
+}
 
 function ThemeDemo() {
   const [appearance, setAppearance] = useState<'light' | 'dark' | 'system'>('light')
@@ -10,6 +24,31 @@ function ThemeDemo() {
   const [scopedSelectValue, setScopedSelectValue] = useState('portal')
   const [scopedDialogOpen, setScopedDialogOpen] = useState(false)
 
+  const updateAppearance = (event: React.FormEvent<WebUiSegmented>) => {
+    const value = event.currentTarget.value
+    if (isAppearance(value)) setAppearance(value)
+  }
+  const updateMotion = (event: React.FormEvent<WebUiSegmented>) => {
+    const value = event.currentTarget.value
+    if (isMotion(value)) setMotion(value)
+  }
+  const updateInnerAppearance = (event: React.FormEvent<WebUiSegmented>) => {
+    const value = event.currentTarget.value
+    if (isAppearance(value) && value !== 'system') setInnerAppearance(value)
+  }
+  const updateInnermostAppearance = (event: React.FormEvent<WebUiSegmented>) => {
+    const value = event.currentTarget.value
+    if (isAppearance(value) && value !== 'system') setInnermostAppearance(value)
+  }
+  const updateInnerMotion = (event: React.FormEvent<WebUiSegmented>) => {
+    const value = event.currentTarget.value
+    if (isMotion(value)) setInnerMotion(value)
+  }
+  const updateInnermostMotion = (event: React.FormEvent<WebUiSegmented>) => {
+    const value = event.currentTarget.value
+    if (isMotion(value)) setInnermostMotion(value)
+  }
+
   return (
     <div>
       <h1>Theme</h1>
@@ -20,11 +59,7 @@ function ThemeDemo() {
       <h2>基本用法（单层）</h2>
       <h3>外观</h3>
       <div className="mb-4">
-        <web-ui-segmented
-          value={appearance}
-          onInput={event => setAppearance(event.currentTarget.value as typeof appearance)}
-          aria-label="单层主题外观"
-        >
+        <web-ui-segmented value={appearance} onInput={updateAppearance} aria-label="单层主题外观">
           <web-ui-segmented-trigger value="light">Light</web-ui-segmented-trigger>
           <web-ui-segmented-trigger value="dark">Dark</web-ui-segmented-trigger>
           <web-ui-segmented-trigger value="system">System</web-ui-segmented-trigger>
@@ -32,11 +67,7 @@ function ThemeDemo() {
       </div>
       <h3>动效偏好</h3>
       <div className="mb-4">
-        <web-ui-segmented
-          value={motion}
-          onInput={event => setMotion(event.currentTarget.value as typeof motion)}
-          aria-label="单层主题动效偏好"
-        >
+        <web-ui-segmented value={motion} onInput={updateMotion} aria-label="单层主题动效偏好">
           <web-ui-segmented-trigger value="full">Full</web-ui-segmented-trigger>
           <web-ui-segmented-trigger value="reduced">Reduced</web-ui-segmented-trigger>
           <web-ui-segmented-trigger value="system">System</web-ui-segmented-trigger>
@@ -115,22 +146,14 @@ function ThemeDemo() {
       <div className="mb-4 flex flex-wrap items-center gap-4">
         <div className="flex items-center gap-2">
           <span className="text-sm text-[var(--wui-color-text-muted)]">内层外观</span>
-          <web-ui-segmented
-            value={innerAppearance}
-            onInput={event => setInnerAppearance(event.currentTarget.value as typeof innerAppearance)}
-            aria-label="内层主题外观"
-          >
+          <web-ui-segmented value={innerAppearance} onInput={updateInnerAppearance} aria-label="内层主题外观">
             <web-ui-segmented-trigger value="light">Light</web-ui-segmented-trigger>
             <web-ui-segmented-trigger value="dark">Dark</web-ui-segmented-trigger>
           </web-ui-segmented>
         </div>
         <div className="flex items-center gap-2">
           <span className="text-sm text-[var(--wui-color-text-muted)]">最内层外观</span>
-          <web-ui-segmented
-            value={innermostAppearance}
-            onInput={event => setInnermostAppearance(event.currentTarget.value as typeof innermostAppearance)}
-            aria-label="最内层主题外观"
-          >
+          <web-ui-segmented value={innermostAppearance} onInput={updateInnermostAppearance} aria-label="最内层主题外观">
             <web-ui-segmented-trigger value="light">Light</web-ui-segmented-trigger>
             <web-ui-segmented-trigger value="dark">Dark</web-ui-segmented-trigger>
           </web-ui-segmented>
@@ -140,11 +163,7 @@ function ThemeDemo() {
       <div className="mb-4 flex flex-wrap items-center gap-4">
         <div className="flex items-center gap-2">
           <span className="text-sm text-[var(--wui-color-text-muted)]">内层动效</span>
-          <web-ui-segmented
-            value={innerMotion}
-            onInput={event => setInnerMotion(event.currentTarget.value as typeof innerMotion)}
-            aria-label="内层主题动效偏好"
-          >
+          <web-ui-segmented value={innerMotion} onInput={updateInnerMotion} aria-label="内层主题动效偏好">
             <web-ui-segmented-trigger value="system">System</web-ui-segmented-trigger>
             <web-ui-segmented-trigger value="full">Full</web-ui-segmented-trigger>
             <web-ui-segmented-trigger value="reduced">Reduced</web-ui-segmented-trigger>
@@ -152,11 +171,7 @@ function ThemeDemo() {
         </div>
         <div className="flex items-center gap-2">
           <span className="text-sm text-[var(--wui-color-text-muted)]">最内层动效</span>
-          <web-ui-segmented
-            value={innermostMotion}
-            onInput={event => setInnermostMotion(event.currentTarget.value as typeof innermostMotion)}
-            aria-label="最内层主题动效偏好"
-          >
+          <web-ui-segmented value={innermostMotion} onInput={updateInnermostMotion} aria-label="最内层主题动效偏好">
             <web-ui-segmented-trigger value="system">System</web-ui-segmented-trigger>
             <web-ui-segmented-trigger value="full">Full</web-ui-segmented-trigger>
             <web-ui-segmented-trigger value="reduced">Reduced</web-ui-segmented-trigger>

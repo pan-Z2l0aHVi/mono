@@ -26,8 +26,7 @@
       "tee",
       "xxd",
       "file"
-    ],
-    "allowPath": ["/Users/bopan/VibeCoding/mono"]
+    ]
   },
   "hooks": {
     "preTool": []

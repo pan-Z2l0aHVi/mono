@@ -21,3 +21,14 @@
 | [`@greypan/web-ui`](./packages/web-ui/README.CN.md)                                   | 基于 Lit 的 Web Components，支持 React、Vue 和原生 HTML |
 | [`@greypan/unplugin-web-components`](./packages/unplugin-web-components/README.CN.md) | Web Components 自动导入插件                             |
 | [`@greypan/deps-reload`](./packages/deps-reload/README.CN.md)                         | 监听 dist 目录变更并自动刷新页面的插件                  |
+| [`@greypan/tsconfig`](./packages/tsconfig/README.CN.md)                               | 共享 TypeScript 配置                                    |
+
+## 应用
+
+私有应用（不发布 npm 包）；`react-web-ui-demo` 与 `vue-web-ui-demo` 部署到 GitHub Pages，`wails-starter` 以安装包发布到 GitHub Release：
+
+| 应用                                             | 技术栈                                   |
+| ------------------------------------------------ | ---------------------------------------- |
+| [`react-web-ui-demo`](./apps/react-web-ui-demo/) | React 19 + TanStack Router + Zustand     |
+| [`vue-web-ui-demo`](./apps/vue-web-ui-demo/)     | Vue 3 + Vue Router + Pinia               |
+| [`wails-starter`](./apps/wails-starter/)         | Wails 3 桌面应用模板（Go + Vue WebView） |

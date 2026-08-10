@@ -25,5 +25,10 @@
     <div class="mb-3 flex flex-col gap-3">
       <web-ui-input-number :value="5" disabled />
     </div>
+
+    <h2>只读</h2>
+    <div class="mb-3 flex flex-col gap-3">
+      <web-ui-input-number :value="5" readonly />
+    </div>
   </div>
 </template>

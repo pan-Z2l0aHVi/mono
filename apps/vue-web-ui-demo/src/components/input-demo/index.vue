@@ -39,6 +39,15 @@ import { lucideSearch } from '@greypan/web-ui/icons'
       </web-ui-input>
     </div>
 
+    <h2>只读</h2>
+    <div class="mb-3 flex flex-col gap-3">
+      <web-ui-input value="只读有值" readonly />
+      <!-- readonly 优先于 clearable：只读时清除按钮隐藏 -->
+      <web-ui-input value="只读可复制" readonly clearable>
+        <web-ui-icon slot="prefix" :icon="lucideSearch"></web-ui-icon>
+      </web-ui-input>
+    </div>
+
     <h2>可清除</h2>
     <div class="mb-3 flex flex-col gap-3">
       <web-ui-input value="有值可清除" clearable />

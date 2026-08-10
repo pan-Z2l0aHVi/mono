@@ -1,84 +1,26 @@
 import type { DetailedHTMLProps, HTMLAttributes } from 'react'
 
-import type {
-  WebUiAvatar,
-  WebUiBackTop,
-  WebUiBadge,
-  WebUiButton,
-  WebUiButtonGroup,
-  WebUiCheckbox,
-  WebUiCheckboxGroup,
-  WebUiContextMenu,
-  WebUiDialog,
-  WebUiDrawer,
-  WebUiEmpty,
-  WebUiDropdownDivider,
-  WebUiDropdownHeader,
-  WebUiDropdownItem,
-  WebUiDropdown,
-  WebUiIcon,
-  WebUiInput,
-  WebUiInputNumber,
-  WebUiLayout,
-  WebUiOption,
-  WebUiPopover,
-  WebUiRadio,
-  WebUiRadioGroup,
-  WebUiSegmented,
-  WebUiSegmentedTrigger,
-  WebUiSelect,
-  WebUiSlider,
-  WebUiSpinner,
-  WebUiTextarea,
-  WebUiTheme,
-  WebUiToast,
-  WebUiSwitch,
-  WebUiSvgDrawLines,
-  WebUiTooltip
-} from '../components'
+import type { WebUiElementMap } from '../components'
 
-import type { ExactEventListeners, ExtractProps, OmitLitBase } from './utils'
+import type { ExtractProps, OmitLitBase, ReactCustomEventListeners } from './utils'
 
-// React 通过精确事件名和具体 Custom Element 实例获取事件与 currentTarget 类型。
-export type LitReactWrapper<T extends HTMLElement> = T extends { readonly $events: infer E }
-  ? DetailedHTMLProps<ExtractProps<OmitLitBase<T>> & ExactEventListeners<E> & HTMLAttributes<T>, T>
-  : DetailedHTMLProps<ExtractProps<OmitLitBase<T>> & HTMLAttributes<T>, T>
+/**
+ * Lit Web Component 的 React 包装类型。
+ *
+ * - 标准 DOM 事件（input/change/focus/blur）使用 React 惯用 camelCase handler，
+ *   `currentTarget` 收窄为组件实例（`target` 遵循 React SyntheticEvent 语义，不承诺）。
+ * - kebab-case 自定义事件（open-change/toast-close）生成精确的 `on<event>` 绑定。
+ * - 与 `HTMLAttributes<T>` 全量交叉：组件自身属性与通用 HTML 属性（含原生事件）共存，
+ *   重叠键类型相容（如 `placeholder`），组件类型在交叉中自然生效；`ref` 保持具体元素类型。
+ */
+export type LitReactWrapper<T extends HTMLElement> = DetailedHTMLProps<
+  ExtractProps<OmitLitBase<T>> & ReactCustomEventListeners<T> & HTMLAttributes<T>,
+  T
+>
 
-export interface WebUiComponents {
-  'web-ui-avatar': LitReactWrapper<WebUiAvatar>
-  'web-ui-back-top': LitReactWrapper<WebUiBackTop>
-  'web-ui-badge': LitReactWrapper<WebUiBadge>
-  'web-ui-button': LitReactWrapper<WebUiButton>
-  'web-ui-button-group': LitReactWrapper<WebUiButtonGroup>
-  'web-ui-checkbox': LitReactWrapper<WebUiCheckbox>
-  'web-ui-checkbox-group': LitReactWrapper<WebUiCheckboxGroup>
-  'web-ui-context-menu': LitReactWrapper<WebUiContextMenu>
-  'web-ui-dialog': LitReactWrapper<WebUiDialog>
-  'web-ui-drawer': LitReactWrapper<WebUiDrawer>
-  'web-ui-empty': LitReactWrapper<WebUiEmpty>
-  'web-ui-dropdown-divider': LitReactWrapper<WebUiDropdownDivider>
-  'web-ui-dropdown-header': LitReactWrapper<WebUiDropdownHeader>
-  'web-ui-dropdown-item': LitReactWrapper<WebUiDropdownItem>
-  'web-ui-dropdown': LitReactWrapper<WebUiDropdown>
-  'web-ui-icon': LitReactWrapper<WebUiIcon>
-  'web-ui-input': LitReactWrapper<WebUiInput>
-  'web-ui-input-number': LitReactWrapper<WebUiInputNumber>
-  'web-ui-select': LitReactWrapper<WebUiSelect>
-  'web-ui-slider': LitReactWrapper<WebUiSlider>
-  'web-ui-spinner': LitReactWrapper<WebUiSpinner>
-  'web-ui-svg-draw-lines': LitReactWrapper<WebUiSvgDrawLines>
-  'web-ui-option': LitReactWrapper<WebUiOption>
-  'web-ui-popover': LitReactWrapper<WebUiPopover>
-  'web-ui-radio': LitReactWrapper<WebUiRadio>
-  'web-ui-radio-group': LitReactWrapper<WebUiRadioGroup>
-  'web-ui-segmented': LitReactWrapper<WebUiSegmented>
-  'web-ui-segmented-trigger': LitReactWrapper<WebUiSegmentedTrigger>
-  'web-ui-layout': LitReactWrapper<WebUiLayout>
-  'web-ui-switch': LitReactWrapper<WebUiSwitch>
-  'web-ui-textarea': LitReactWrapper<WebUiTextarea>
-  'web-ui-theme': LitReactWrapper<WebUiTheme>
-  'web-ui-toast': LitReactWrapper<WebUiToast>
-  'web-ui-tooltip': LitReactWrapper<WebUiTooltip>
+// React 从 WebUiElementMap 派生全部标签，无需手写组件清单。
+export type WebUiComponents = {
+  [K in keyof WebUiElementMap]: LitReactWrapper<WebUiElementMap[K]>
 }
 
 declare module 'react' {

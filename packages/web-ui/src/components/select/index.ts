@@ -8,9 +8,9 @@ import overlayMotion from '@/assets/overlay-motion.css?inline'
 import type { WebUiOption } from '@/components/option'
 import { lucideChevronDown } from '@/icons'
 import { defineAnchoredPanel } from '@/shared/overlay/anchored-panel'
-import { createOverlayPortal } from '@/shared/overlay/portal'
+import { defineOverlayPortal } from '@/shared/overlay/portal'
 import type { OverlayContainer, OverlayPortal } from '@/shared/overlay/portal'
-import { createScrollLockLease } from '@/shared/scroll-lock/scroll-lock'
+import { defineScrollLockLease } from '@/shared/scroll-lock/scroll-lock'
 
 import style from './style.css?inline'
 
@@ -55,11 +55,17 @@ export class WebUiSelect extends LitElement {
   @state() private _hasTriggerSlot = false
 
   private _options: WebUiOption[] = []
-  private readonly _scrollLock = createScrollLockLease()
+  private readonly _scrollLock = defineScrollLockLease().make()
   private readonly _panel = defineAnchoredPanel().make({
     getAnchor: () => this.shadowRoot?.querySelector<HTMLElement>('.select-trigger') ?? null,
     getLocalPanel: () => this.shadowRoot?.querySelector<HTMLElement>('.select-overlay') ?? null,
-    getPositioning: () => ({ placement: 'bottom-start', offset: 4, strategy: this.portal ? 'fixed' : 'absolute' }),
+    getPositioning: () => ({
+      placement: 'bottom-start',
+      offset: 4,
+      // 面板宽度统一为 max(内容, trigger, --wui-overlay-min-width)，内容自适应展开
+      minAnchorWidth: true,
+      strategy: this.portal ? 'fixed' : 'absolute'
+    }),
     isPortal: () => this.portal,
     createPortal: () => this._createPortal()
   })
@@ -378,36 +384,16 @@ export class WebUiSelect extends LitElement {
   }
 
   private _openOverlay(isKeyboardNavigation = false) {
-    const panel = !this.portal ? this._panel.getPanel() : null
-    if (panel) panel.style.width = `${this._getDesiredWidth()}px`
     this._panel.open(isKeyboardNavigation)
   }
 
-  private _getDesiredWidth(): number {
-    const trigger = this.shadowRoot?.querySelector<HTMLElement>('.select-trigger')
-    const triggerWidth = trigger?.offsetWidth || 0
-
-    const options = [...this.querySelectorAll<WebUiOption>('web-ui-option')]
-    let maxOptionWidth = 0
-    options.forEach(opt => {
-      const label = opt.shadowRoot?.querySelector<HTMLElement>('.option-label')
-      const w = label?.scrollWidth || opt.scrollWidth || 0
-      if (w > maxOptionWidth) maxOptionWidth = w
-    })
-
-    return Math.max(120, triggerWidth, maxOptionWidth)
-  }
-
   private _createPortal(): OverlayPortal {
-    const desiredWidth = this._getDesiredWidth()
-
-    const portal = createOverlayPortal({
+    const portal = defineOverlayPortal().make({
       container: this.overlayContainer,
       target: this,
       style: `${glass}\n${overlayMotion}\n${style}`,
       className: 'wui-glass select-overlay portal wui-floating-panel'
     })
-    portal.panel.style.width = `${desiredWidth}px`
     portal.panel.setAttribute('role', 'listbox')
     const scroll = document.createElement('div')
     scroll.className = 'select-scroll'
@@ -424,10 +410,6 @@ export class WebUiSelect extends LitElement {
   }
 
   private _reconfigureOverlay() {
-    if (!this.portal) {
-      const panel = this._panel.getPanel()
-      if (panel) panel.style.width = `${this._getDesiredWidth()}px`
-    }
     this._panel.reconfigure(this._isOpen)
   }
 

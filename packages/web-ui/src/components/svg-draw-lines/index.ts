@@ -192,8 +192,6 @@ export class WebUiSvgDrawLines extends LitElement {
   override render() {
     return html`<slot @slotchange=${this.handleSlotChange}></slot>`
   }
-
-  declare readonly $events: Record<string, never>
 }
 
 declare global {

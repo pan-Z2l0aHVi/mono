@@ -1,5 +1,4 @@
 import { resolve, sep } from 'node:path'
-import { fileURLToPath } from 'node:url'
 
 import { debounce } from '@greypan/js-kit'
 import type { UnpluginFactory } from 'unplugin'
@@ -27,8 +26,7 @@ interface DependencyConfig {
 
 export const depsReloadFactory: UnpluginFactory<Dep[]> = deps => {
   const configs = deps.map(createDependencyConfig)
-  // import.meta.dirname 仅 Node >=20.11 可用，用 fileURLToPath 兼容更早的 Node 版本
-  const pluginDist = normalizePath(fileURLToPath(new URL('.', import.meta.url)))
+  const pluginDist = normalizePath(import.meta.dirname)
 
   const fullReloadTrigger = debounce(
     (server: ViteDevServer) => {

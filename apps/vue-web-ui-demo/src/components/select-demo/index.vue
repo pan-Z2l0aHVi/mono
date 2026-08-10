@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { WebUiEvent, WebUiSelect } from '@greypan/web-ui'
 import {
   lucideImage,
   lucideUser,
@@ -14,8 +15,8 @@ import { ref, watch } from 'vue'
 const selected = ref('')
 const framework = ref('vue')
 
-function handleChange(event: Event) {
-  selected.value = (event.currentTarget as HTMLElement & { value: string }).value
+function handleChange(event: WebUiEvent<WebUiSelect, 'change'>) {
+  selected.value = event.currentTarget.value
 }
 
 // 图标 trigger 演示：trigger 图标跟随选中项变化

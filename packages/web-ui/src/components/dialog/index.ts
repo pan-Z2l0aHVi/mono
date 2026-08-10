@@ -5,7 +5,7 @@ import '@/components/button'
 import glass from '@/assets/glass.css?inline'
 import { UserChangeController } from '@/shared/events/user-change'
 import { defineNativeDialogPresence } from '@/shared/overlay/native-dialog-presence'
-import { createScrollLockLease } from '@/shared/scroll-lock/scroll-lock'
+import { defineScrollLockLease } from '@/shared/scroll-lock/scroll-lock'
 
 import style from './style.css?inline'
 
@@ -20,7 +20,7 @@ export class WebUiDialog extends LitElement {
   @state() private _hasBody = false
   private readonly _userOpenChange = new UserChangeController()
 
-  private readonly _scrollLock = createScrollLockLease()
+  private readonly _scrollLock = defineScrollLockLease().make()
   private readonly _presence = defineNativeDialogPresence().make({
     getDialog: () => this.dialog,
     isConnected: () => this.isConnected,

@@ -17,6 +17,10 @@ export class WebUiSegmentedTrigger extends LitElement {
     return this.disabled || this._groupDisabled
   }
 
+  private get _isManagedByGroup(): boolean {
+    return this.closest('web-ui-segmented') !== null
+  }
+
   setGroupDisabled(disabled: boolean) {
     this._groupDisabled = disabled
   }
@@ -24,7 +28,11 @@ export class WebUiSegmentedTrigger extends LitElement {
   private handleClick() {
     if (this._isDisabled || this.checked) return
     this.checked = true
-    this.dispatchEvent(new Event('change', { bubbles: true, composed: true }))
+    // group-managed 时事件不冒泡/不组合，由 segmented 统一派发一次 host 事件
+    const opts: EventInit = this._isManagedByGroup
+      ? { bubbles: false, composed: false }
+      : { bubbles: true, composed: true }
+    this.dispatchEvent(new Event('change', opts))
   }
 
   private handleKeyDown(e: KeyboardEvent) {

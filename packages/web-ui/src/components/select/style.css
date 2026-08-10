@@ -31,7 +31,7 @@
   width: var(--wui-input-width, 200px);
   min-width: var(--wui-button-size, 40px);
   height: var(--wui-button-size, 40px);
-  padding: 0 16px;
+  padding: 0 12px;
   border-radius: calc(infinity * 1px);
 
   &:focus-visible {
@@ -87,13 +87,14 @@
   --wui-glass-shadow: var(--wui-shadow-pop, 0 3px 9px rgb(0 0 0 / 0.27));
   --wui-duration-overlay-enter: var(--wui-duration-menu-enter, 140ms);
   --wui-duration-overlay-exit: var(--wui-duration-menu-exit, 100ms);
+  --wui-overlay-min-width: 200px;
   position: absolute;
   z-index: var(--wui-layer-local-overlay, 1);
 
   overflow: hidden;
 
   box-sizing: border-box;
-  min-width: 200px;
+  min-width: var(--wui-overlay-min-width, 120px);
   max-width: var(--wui-select-max-width, 500px);
   border-radius: 20px;
 
