@@ -1,3 +1,5 @@
+import { definePlugin } from '@greypan/js-kit'
+
 let lockCount = 0
 let savedOverflow = ''
 let savedScrollY = 0
@@ -39,26 +41,29 @@ export function unlockScroll() {
 }
 
 /**
- * 组件实例持有的滚动锁租约。它只会释放自身已获取的那一次锁，
- * 避免卸载、属性切换和嵌套浮层互相影响。
+ * 构建组件实例持有的滚动锁租约。每个租约仅释放自身获得的那一次锁，
+ * 因此卸载、属性切换和嵌套浮层不会互相影响。
  */
-export function createScrollLockLease(): ScrollLockLease {
-  let isLocked = false
+export const defineScrollLockLease = () =>
+  definePlugin<ScrollLockLease, Record<never, never>>(() => {
+    let isLocked = false
 
-  return {
-    get isLocked() {
-      return isLocked
-    },
-
-    sync(shouldLock) {
+    const sync = (shouldLock: boolean) => {
       if (shouldLock === isLocked) return
       if (shouldLock) lockScroll()
       else unlockScroll()
       isLocked = shouldLock
-    },
-
-    release() {
-      this.sync(false)
     }
-  }
-}
+
+    return {
+      get isLocked() {
+        return isLocked
+      },
+
+      sync,
+
+      release() {
+        sync(false)
+      }
+    }
+  })

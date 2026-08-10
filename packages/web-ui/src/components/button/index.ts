@@ -87,8 +87,6 @@ export class WebUiButton extends LitElement {
       </button>
     `
   }
-
-  declare readonly $events: Record<string, never>
 }
 
 declare global {

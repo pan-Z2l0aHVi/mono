@@ -1,23 +1,23 @@
-# ADR-0001: CI Pipeline
+# ADR-0001: CI 流水线
 
 - **Date**: 2025-01-01
-- **Status**: Accepted
+- **Status**: 已接受
 
-## Context
+## 背景
 
-The monorepo needs a CI pipeline that catches regressions before merge and publishes packages automatically on release.
+该 monorepo 需要一条 CI 流水线，在合并前捕获回归问题，并在发布时自动发布软件包。
 
-## Decision
+## 决策
 
-- **CI** (`.github/workflows/ci.yml`): changeset status check → full build → format+lint+type-check → test
-- **Create Version PR** (`.github/workflows/changeset-version.yml`): `changesets/action@v1` creates version PRs only. It versions the private Wails workspace without publishing it to npm.
-- **Publish npm Packages** (`.github/workflows/npm-publish.yml`): a merged version PR rebuilds and publishes public packages through npm Trusted Publishing.
-- **Verify Wails Desktop** (`.github/workflows/wails-verify.yml`): native macOS/Windows builds validate desktop pull requests and manual runs with read-only permissions.
-- **Release Wails Desktop** (`.github/workflows/wails-release.yml`): a merged version PR rebuilds both installers and creates the Wails GitHub Release.
-- Demo apps excluded from versioning (they're private)
+- **CI**（`.github/workflows/ci.yml`）：changeset 状态检查 → 完整构建 → 格式化 + lint + 类型检查 → 测试
+- **创建版本 PR**（`.github/workflows/changeset-version.yml`）：仅使用 `changesets/action@v1` 创建版本 PR。它会对私有 Wails 工作区进行版本管理，但不会将其发布到 npm。
+- **发布 npm 软件包**（`.github/workflows/npm-publish.yml`）：合并版本 PR 后，通过 npm Trusted Publishing 重新构建并发布公开软件包。
+- **验证 Wails 桌面端**（`.github/workflows/wails-verify.yml`）：原生 macOS/Windows 构建用于验证桌面端 Pull Request，并支持只读权限的手动运行。
+- **发布 Wails 桌面端**（`.github/workflows/wails-release.yml`）：合并版本 PR 后，重新构建两个安装程序并创建 Wails GitHub Release。
+- Demo 应用被排除在版本管理之外（它们是私有的）
 
-## Consequences
+## 后果
 
-- CI runs `check:code` (format + lint + type-check) as a unified step before tests
-- npm publication and desktop GitHub Releases are independent, parallel release planes after their version PR merges
-- The `changeset` workflow requires conventional commit messages
+- CI 在测试之前统一运行 `check:code`（格式化 + lint + 类型检查）
+- npm 发布和桌面端 GitHub Release 在版本 PR 合并后是独立的、并行的发布平面
+- `changeset` 工作流要求使用约定式提交消息

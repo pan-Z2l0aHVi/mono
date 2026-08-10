@@ -1,34 +1,34 @@
-# Testing
+# 测试
 
-- **Framework**: Vitest (via `vite-plus`)
-- **Run all tests**: `pnpm test`
-- **Run one package**: `pnpm --filter @greypan/<name> test` (which runs `vp test run`)
-- **Test files**: `*.spec.ts`, `*.test.ts`, `*.spec.tsx`
-- **Demo apps**: `react-web-ui-demo` and `vue-web-ui-demo` currently have no maintained unit-test suites, so they omit test scripts, Vite test configuration, and `tsconfig.vitest.json`. Verify demo behavior in a real browser instead.
-- **Environment**: Most packages use Node environment. `browser-kit` uses Vitest Browser Mode with Playwright Chromium for real browser testing.
-- **`web-ui` test environment**: jsdom, with `packages/web-ui/test-helper.ts` stubbing browser APIs that jsdom does not implement. It stubs `window.scrollTo` and `Element#scrollTo`; component tests assert the public scrolling call, while browser verification covers native scrolling.
-- **`web-ui` jsdom contract tests**: Default `*.spec.ts` files run in the independent `jsdom` project and cover host API, attribute/property synchronization, events, rendering, and non-browser DOM semantics. Test utilities must not treat jsdom as an ElementInternals implementation.
-- **`web-ui` browser mode**: Only explicit `*.browser.spec.ts` files run in Chromium via `@vitest/browser-playwright` + `playwright`. Use this layer for FormData, ElementInternals, Pointer events, focus, portal, native dialog, and other browser-native behavior that jsdom cannot faithfully implement.
-- **`web-ui` reduced-motion browser mode**: `reduced-motion.browser.spec.ts` files run in their own Chromium project with Playwright `reducedMotion: 'reduce'`. Use this layer to verify that transform displacement is removed while opacity-based state feedback remains available.
-- **Network mocking**: `browser-kit` uses MSW (Mock Service Worker) via `@greypan/test-kit` for network request interception. Its tracker specs share browser globals and one service worker, so that package disables Vitest file parallelism; keep those specs independent and do not re-enable parallel files unless the shared state is removed.
-- **Test infrastructure**: `@greypan/test-kit` provides composable plugins using js-kit's plugin system:
-  - `defineMsw(handlers)` — MSW service worker lifecycle management (start/stop/reset)
-  - `defineCapturedRequests()` — request capture and assertion utilities
-  - Usage pattern: `defineMsw(handlers).use(defineCapturedRequests()).make()`
-- **Browser mode config**: Browser-mode packages need `vite.config.ts` with `browser.provider: playwright()` from `vite-plus/test/browser-playwright`
+- **测试框架**：Vitest（通过 `vite-plus`）
+- **运行所有测试**：`pnpm test`
+- **运行单个包的测试**：`pnpm --filter @greypan/<name> test`（执行 `vp test run`）
+- **测试文件**：`*.spec.ts`、`*.test.ts`、`*.spec.tsx`
+- **Demo 应用**：`react-web-ui-demo` 和 `vue-web-ui-demo` 目前没有维护的单元测试套件，因此不包含测试脚本、Vite 测试配置和 `tsconfig.vitest.json`。请在真实浏览器中验证 demo 行为。
+- **测试环境**：大多数包使用 Node 环境。`browser-kit` 使用 Vitest Browser Mode 配合 Playwright Chromium 进行真实浏览器测试。
+- **`web-ui` 测试环境**：使用 jsdom，`packages/web-ui/test-helper.ts` 对 jsdom 未实现的浏览器 API 进行桩处理。桩处理了 `window.scrollTo` 和 `Element#scrollTo`；组件测试断言公共的滚动调用，而浏览器验证覆盖原生滚动行为。
+- **`web-ui` jsdom 契约测试**：默认的 `*.spec.ts` 文件在独立的 `jsdom` 项目中运行，覆盖宿主 API、属性/属性同步、事件、渲染以及非浏览器 DOM 语义。测试工具不应将 jsdom 视为 ElementInternals 实现。
+- **`web-ui` browser mode**：仅显式的 `*.browser.spec.ts` 文件通过 `@vitest/browser-playwright` + `playwright` 在 Chromium 中运行。此层级用于 FormData、ElementInternals、Pointer events、焦点、portal、原生 dialog 以及其他 jsdom 无法忠实实现的浏览器原生行为。
+- **`web-ui` reduced-motion browser mode**：`reduced-motion.browser.spec.ts` 文件在独立的 Chromium 项目中运行，使用 Playwright `reducedMotion: 'reduce'`。此层级用于验证 transform 位移被移除的同时，基于 opacity 的状态反馈仍然可用。
+- **网络模拟**：`browser-kit` 通过 `@greypan/test-kit` 使用 MSW（Mock Service Worker）进行网络请求拦截。其 tracker spec 共享浏览器全局变量和一个 service worker，因此该包禁用了 Vitest 文件并行；保持这些 spec 独立，除非移除了共享状态，否则不要重新启用文件并行。
+- **测试基础设施**：`@greypan/test-kit` 使用 js-kit 的插件系统提供可组合的插件：
+  - `defineMsw(handlers)` — MSW service worker 生命周期管理（start/stop/reset）
+  - `defineCapturedRequests()` — 请求捕获与断言工具
+  - 使用模式：`defineMsw(handlers).use(defineCapturedRequests()).make()`
+- **Browser mode 配置**：使用 browser mode 的包需要在 `vite.config.ts` 中配置 `browser.provider: playwright()`（来自 `vite-plus/test/browser-playwright`）
 
-## Verification selection
+## 验证选择
 
-Choose verification based on the affected contract:
+根据受影响的契约选择验证方式：
 
-| Change                                               | Required verification                                       |
-| ---------------------------------------------------- | ----------------------------------------------------------- |
-| Local behavior                                       | Focused package test                                        |
-| Cross-package export, reference, or runtime contract | Root `pnpm test`                                            |
-| Build config, published output, or exports           | Root `pnpm build`                                           |
-| Browser-native behavior                              | Relevant `*.browser.spec.ts` test                           |
-| UI, UX, or runtime browser behavior                  | Real-browser verification under the root `AGENTS.md` policy |
+| 变更类型                   | 所需验证                                      |
+| -------------------------- | --------------------------------------------- |
+| 本地行为                   | 聚焦的包测试                                  |
+| 跨包导出、引用或运行时契约 | 根目录 `pnpm test`                            |
+| 构建配置、发布产物或导出   | 根目录 `pnpm build`                           |
+| 浏览器原生行为             | 相关的 `*.browser.spec.ts` 测试               |
+| UI、UX 或运行时浏览器行为  | 按 `browser-verification.md` 的真实浏览器验证 |
 
-Tests should use Arrange, Act, Assert sections; verify one behavior per test; avoid implementation details; and remain independent. Use Chinese descriptions. Use typed `vi.fn<Type>()` only when call assertions are needed, and await deterministic lifecycle signals rather than arbitrary timeouts.
+测试应使用 Arrange、Act、Assert 结构；每个测试验证一个行为；避免依赖实现细节；保持独立性。使用中文描述。仅在需要调用断言时使用带类型的 `vi.fn<Type>()`，并等待确定性的生命周期信号而非任意超时。
 
-For a behavior-preserving refactor, record the existing behavior inventory before editing, preserve it or obtain approval for removals, and update the corresponding tests and documentation.
+对于保持行为不变的重构，应在编辑前记录现有的行为清单，保留行为或获得移除审批后进行变更，并更新相应的测试和文档。

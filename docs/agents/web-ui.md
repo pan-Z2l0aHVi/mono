@@ -1,63 +1,27 @@
-# web-ui Component Guide
+# web-ui 任务路由
 
-Read this guide before changing `packages/web-ui`. The package-level `AGENTS.md` contains the short mandatory rules; this guide explains the implementation conventions behind them.
+这是 `packages/web-ui` 的 task-specific 路由，不是组件百科。实现细节、完整事件表和交互语义以源码、测试与对应 ADR 为准；简单 UI 修改不需要预先加载全部章节或全部 ADR。
 
-## Sources of truth
+## 权威来源
 
-- Theme colors, layers, and motion defaults: `packages/web-ui/src/components/theme/style.css`
-- Overlay placement and theme scope: `packages/web-ui/src/shared/overlay/` and `packages/web-ui/src/shared/theme/`
-- Shared portal menu styles: `packages/web-ui/src/assets/menu-portal.css`
-- Public component API: `packages/web-ui/README.md` and `README.CN.md`
+- Lit、Shadow DOM 和框架无关组件边界：[ADR-0003](../adr/0003-web-component-strategy.md)。
+- 公共组件契约、原生事件和表单行为：[ADR-0007](../adr/0007-web-ui-contract-convergence.md)；组件 README 是面向消费者的 API 说明。
+- Overlay 关闭、焦点和滚动语义：[ADR-0005](../adr/0005-overlay-interaction-policy.md)；Portal 与层叠：[ADR-0006](../adr/0006-layout-layering.md)。
+- Design token：[ADR-0010](../adr/0010-design-token-restructure.md)；图标 manifest、生成器和导出：[ADR-0008](../adr/0008-icon-system.md)。
+- React/Vue 类型适配、`$events` 和复合控件事件边界：[ADR-0011](../adr/0011-framework-type-adaptation-narrowing.md)。
+- 测试选择和 browser mode：[`testing.md`](testing.md)；真实浏览器验证：[`browser-verification.md`](browser-verification.md)。
 
-Do not duplicate token values in guidance. Every `var(--wui-*, fallback)` used by a standalone component must use the equivalent light-theme value from `theme/style.css`.
+## 修改前路由
 
-## Adding or changing a component
+- **单个组件的属性、slot、事件、无障碍或表单行为**：先看该组件 README、源码和聚焦测试；只有契约或事件模型发生变化时才读 ADR-0007。
+- **Overlay、portal、焦点、滚动锁定或层叠**：读 ADR-0005/0006 中受影响的决策，不加载无关组件语义。
+- **主题 token 或图标**：读 ADR-0010/0008 以及对应源码；`src/components/theme/style.css` 是 token 值的权威来源。
+- **React/Vue 类型或事件**：读 ADR-0011 和对应的 `src/types/` 源码；不要新增运行时 framework wrapper 或全局 Vue 类型污染。
+- **仅 CSS/视觉微调**：优先读取组件源码和相关 token；不因任务名称加载 overlay、框架适配或完整事件模型。
 
-- Add new built-in icons to `packages/web-ui/icons.used.json`, then run `pnpm --filter @greypan/web-ui generate-icons`. Import generated icon data from `@/icons`; do not add a runtime icon dependency.
-- Add each component's `HTMLElementTagNameMap` declaration in its module. The component barrel derives `WebUiElementMap` from that map; framework type adapters use it to expose every `web-ui-*` entry.
-- Treat properties, defaults, allowed values, slots, methods, events, accessibility semantics, and form behavior as the public contract. Normalize literal and numeric properties through `@/shared/normalize` so JavaScript callers receive documented fallback behavior.
-- Synchronize `README.md` and `README.CN.md` when that public contract changes. Their structure must remain equivalent.
+## 局部不可绕过约束
 
-## Styling, layers, and motion
-
-- Prefer the semantic `--wui-*` color, surface, shadow, layer, and motion tokens over literal values. Component-local variables are implementation details, not public API.
-- `surface-glass` is for transparent controls; `surface-overlay` is for readable global overlay panels. Use the raised surface level that matches the visual contrast required by the control.
-- Keep the sticky layout header above content and sidebar. Use local layers for non-portal panels; portal menus use the menu layer; Toast sits above menus; native Dialog and Drawer use the browser top layer. BackTop belongs to the auxiliary layer below portal menus.
-- High-frequency press interactions use press tokens; color and background feedback uses the feedback token; Dropdown, ContextMenu, and Select use menu enter/exit tokens; generic anchored overlays use overlay enter/exit tokens; Drawer uses its drawer token. `motion="system"` follows `prefers-reduced-motion`; `reduced` disables displacement within its theme scope; nested `full` scopes restore normal tokens.
-- Overlay visibility transitions must reuse `shared/overlay/presence`; overlay positioning remains owned by `defineOverlay`. In reduced motion, remove transform displacement while retaining necessary brief opacity or state feedback.
-- Put pointer hover affordances inside `@media (hover: hover) and (pointer: fine)`.
-
-## Overlay architecture
-
-- Shared overlay state is defined with `defineXxx(...): Plugin` factories, each returning `definePlugin(...)`; components instantiate it through `defineXxx(...).make(...)` instead of an internal state class.
-- Reuse `shared/overlay/anchored-panel` for a single panel anchored to a trigger. The component retains its trigger, focus, content, and dismissal semantics; the shared module owns local/portal mounting, positioning, and presence.
-- `createOverlayPortal` mounts the portal host with `display: contents` so component styles whose `:host` rules leak onto the host (e.g. `display: inline-block`) cannot create an anonymous line box that inflates the theme overlay container. Keep this style on the host when changing portal mounting.
-- Use `shared/menu-portal` for Dropdown and ContextMenu. Their common menu-tree operations live there, while anchor-based versus coordinate-based placement stays local to each component.
-- Reuse `shared/overlay/native-dialog-presence` for native `<dialog>` modals such as Dialog and Drawer. Keep native top-layer, backdrop, and Escape policy in the owning component.
-- Acquire page-scroll blocking through `createScrollLockLease()`. Release the lease on disconnect; never call a global unlock for a lock the instance did not acquire.
-
-## Shadow DOM and Lit
-
-- Each component stylesheet begins with the universal `box-sizing: border-box` rule for descendants.
-- Keep host styling limited to layout, containment, cursor, and inherited token definitions. Rendered visual styling belongs inside the shadow tree, where page resets cannot override it.
-- Do not use global HTML attributes such as `hidden`, `title`, or `role` as component-specific state attributes. Map declarative boolean attributes explicitly. A default-true boolean that must accept a framework-provided `"false"` string uses `booleanWithFalseString` and tests its attribute path.
-- Use `classMap()` for multi-class state, `styleMap()` or safe template values for styles, and Lit's `nothing` for absent conditional content. When a prop and slot express the same content, the slot wins and slot changes must update dependent layout state.
-- Choose attribute versus property bindings by value kind: write static literals as plain attributes (`size="18"`) and dynamic strings as attribute bindings (`attr=${str}`); use `.prop` bindings for dynamic non-string values (numbers, objects, arrays, functions); and `?prop` for dynamic booleans. Write ARIA values as explicit strings (`aria-selected=${String(x)}`). Never use `:`-prefixed bindings: Lit treats `:attr` as a literal attribute name, so the value never reaches the property and the declared type is silently ignored.
-- Use top-level `:host([attribute])` selectors rather than nested host attribute selectors.
-- Prefer native CSS nesting for component descendant states; keep the scroll viewport and padded content as separate elements when padding must scroll with the content.
-- The custom-element host is the public attribute boundary. Keep global attributes and `data-*` on the host; never implement a generic `$attrs`-style copy into shadow DOM. Map native attributes only when the component documents a one-to-one semantic owner, and map ARIA attributes only when they fit that owner's role. Do not accept arbitrary `role`, state ARIA, or cross-shadow IDREF attributes as pass-through.
-
-## Interaction, lifecycle, and accessibility
-
-- Disabled components block interaction in logic; do not use `pointer-events: none` as the disabled mechanism because it removes cursor and tooltip behavior.
-- Global listeners, portal resources, and scroll locks release only resources acquired by that instance. Check that an element remains connected before creating global resources from an update lifecycle.
-- Prefer Pointer Events to mouse-specific events. Ignore touch pointers for hover-triggered behavior, use capture plus `pointercancel` for drags, and use `click` for external-click dismissal. Keep `contextmenu` and focus events as their own semantics.
-- Interactive components require suitable roles and accessible names; use `:focus-visible`; forward host labels to native shadow controls. Prefer native `<dialog>` for modal dialogs and wait for its visual exit before closing it.
-- Form-associated controls use `ElementInternals`, synchronize form values and disabled state, and emit composed bubbling `input` then `change` only for user-originated changes. Framework-specific value-change event names are not public API.
-- Let browser-native composed events expose primary interactions at the host; do not redispatch duplicates. State CustomEvents use kebab-case, bubble and compose, and are emitted only for user-originated state changes. Add cancellable `before-*` events only for a documented component-specific interception need.
-
-## Tests
-
-- Test public contracts, not private fields, internal classes, or implementation order.
-- Default `*.spec.ts` tests cover host properties, events, reflection, slots, and non-browser DOM behavior. `*.browser.spec.ts` covers ElementInternals, FormData, pointer interaction, focus, portals, and native dialogs.
-- Use the helpers in `@/shared/test-utils`. Follow the browser-mode and reduced-motion guidance in [`testing.md`](testing.md).
+- 保持 Public Component Contract；公共 API 变更时同步 `README.md`、`README.CN.md` 和聚焦契约测试。
+- Shadow DOM 样式留在组件内部；不要把组件样式注入 `document.head`。使用公共 `--wui-*` semantic token。
+- 共享状态和行为沿用 `definePlugin` factory 的 `defineXxx(...).make(...)` 组合方式，不用继承承载共享状态。
+- 组件或交互改动完成后，按影响范围运行聚焦测试，并按 [`browser-verification.md`](browser-verification.md) 在 React/Vue demo 集成表面进行真实浏览器验证。

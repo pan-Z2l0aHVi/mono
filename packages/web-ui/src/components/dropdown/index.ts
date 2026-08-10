@@ -20,7 +20,7 @@ import { normalizeLiteral, normalizeNumber } from '@/shared/normalize'
 import { defineOverlay } from '@/shared/overlay/overlay'
 import type { OverlayApi } from '@/shared/overlay/overlay'
 import { hideOverlayPresence, showOverlayPresence } from '@/shared/overlay/presence'
-import { createScrollLockLease } from '@/shared/scroll-lock/scroll-lock'
+import { defineScrollLockLease } from '@/shared/scroll-lock/scroll-lock'
 
 import style from './style.css?inline'
 
@@ -85,7 +85,7 @@ export class WebUiDropdown extends LitElement {
   private _ignoreOutsideClick = false
   private _ignoreOutsideClickTimer?: ReturnType<typeof setTimeout>
   private _hoverCleanupFns: (() => void)[] = []
-  private readonly _scrollLock = createScrollLockLease()
+  private readonly _scrollLock = defineScrollLockLease().make()
   private readonly _userOpenChange = new UserChangeController()
   private _restoreFocusTarget?: HTMLElement
   private _shouldOpenInstantly = true
@@ -308,7 +308,7 @@ export class WebUiDropdown extends LitElement {
   }
 
   private _buildOverlay(level: number, isInstant = false) {
-    const { panel: overlay, content } = createMenuPortalOverlay('dropdown-overlay')
+    const { panel: overlay, content } = createMenuPortalOverlay('dropdown-overlay', this)
     overlay.setAttribute('role', 'menu')
     overlay.dataset.level = String(level)
     overlay.addEventListener('click', this._onMenuClick)
@@ -322,6 +322,8 @@ export class WebUiDropdown extends LitElement {
         overlay,
         placement: level === 0 ? this.placement : 'right-start',
         offset: level === 0 ? this.offset : 0,
+        // 菜单至少与 trigger/父项同宽，内容可更宽（floor 来自 --wui-overlay-min-width）
+        minAnchorWidth: true,
         matchWidth: level === 0 ? this.matchWidth : false,
         strategy: 'fixed'
       })

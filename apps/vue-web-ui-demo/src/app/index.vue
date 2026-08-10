@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { local } from '@greypan/browser-kit/storage'
+import type { WebUiEvent, WebUiSelect } from '@greypan/web-ui'
 import { useHead } from '@unhead/vue'
 import { onMounted, ref } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
@@ -33,16 +34,16 @@ function getInitialThemeMotion(): ThemeMotion {
 const themeAppearance = ref(getInitialThemeAppearance())
 const themeMotion = ref(getInitialThemeMotion())
 
-function updateThemeAppearance(event: Event) {
-  const appearance = (event.currentTarget as HTMLElement & { value?: unknown }).value
+function updateThemeAppearance(event: WebUiEvent<WebUiSelect, 'change'>) {
+  const appearance = event.currentTarget.value
   if (!isThemeAppearance(appearance)) return
 
   themeAppearance.value = appearance
   local.set(STORAGE_KEY, appearance)
 }
 
-function updateThemeMotion(event: Event) {
-  const motion = (event.currentTarget as HTMLElement & { value?: unknown }).value
+function updateThemeMotion(event: WebUiEvent<WebUiSelect, 'change'>) {
+  const motion = event.currentTarget.value
   if (!isThemeMotion(motion)) return
 
   themeMotion.value = motion
@@ -80,6 +81,7 @@ const navItems: NavItem[] = [
   { path: '/components/theme', label: 'Theme 主题' },
   { path: '/components/input-number', label: 'InputNumber 数字输入框' },
   { path: '/components/select', label: 'Select 下拉选择' },
+  { path: '/components/autocomplete', label: 'Autocomplete 自动补全' },
   { path: '/components/dropdown', label: 'Dropdown 下拉菜单' },
   { path: '/components/dialog', label: 'Dialog 对话框' },
   { path: '/components/drawer', label: 'Drawer 抽屉' },

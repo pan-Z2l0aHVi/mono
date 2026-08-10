@@ -10,8 +10,6 @@ export class WebUiDropdownDivider extends LitElement {
   override render() {
     return html`<div class="divider" role="separator"></div>`
   }
-
-  declare readonly $events: Record<string, never>
 }
 
 declare global {

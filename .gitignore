@@ -110,6 +110,7 @@ report.html
 !.claude/commands/
 !.claude/skills
 !.claude/rules
+!.claude/agents
 # CLAUDE.md 放项目根目录，不在 .claude 内
 
 # OpenCode

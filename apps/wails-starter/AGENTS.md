@@ -1,9 +1,3 @@
-# Wails Starter
+# Wails Starter 应用指令
 
-## Wails API
-
-For this project, consult the official Wails 3 Chinese documentation before using or changing any Wails API:
-
-- https://v3.wails.io/zh-cn/quick-start/installation/
-
-Do not rely on Wails v2 APIs, examples, or third-party API references when official Wails 3 documentation is available.
+在使用或修改任何 Wails API 前，先查阅 Wails 3 官方文档；官方文档可用时不要依赖 Wails v2 API、示例或第三方 API 参考。

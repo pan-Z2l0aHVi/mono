@@ -87,8 +87,12 @@ export class WebUiRadio extends LitElement {
     this._checked = true
     this._syncFormValue()
     this.requestUpdate('checked', false)
-    this.dispatchEvent(new Event('input', { bubbles: true, composed: true }))
-    this.dispatchEvent(new Event('change', { bubbles: true, composed: true }))
+    // group-managed 时事件不冒泡/不组合，由 group 统一派发一次 host 事件
+    const opts: EventInit = this._isManagedByGroup
+      ? { bubbles: false, composed: false }
+      : { bubbles: true, composed: true }
+    this.dispatchEvent(new Event('input', opts))
+    this.dispatchEvent(new Event('change', opts))
   }
 
   private handleKeyDown(e: KeyboardEvent) {

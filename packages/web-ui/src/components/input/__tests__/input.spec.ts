@@ -107,6 +107,15 @@ describe('WebUiInput 组件', () => {
       cleanupElement(el)
     })
 
+    it('readonly 属性反射并同步到原生 input', async () => {
+      const el = createInput()
+      el.readonly = true
+      await waitForUpdate(el)
+      expect(el.hasAttribute('readonly')).toBe(true)
+      expect(queryA11y(el, 'input')?.hasAttribute('readonly')).toBe(true)
+      cleanupElement(el)
+    })
+
     it('aria-label 映射到内部输入元素', async () => {
       const el = createInput({ 'aria-label': 'Search' })
       await waitForUpdate(el)
@@ -145,15 +154,34 @@ describe('WebUiInput 组件', () => {
       cleanupElement(el)
     })
 
-    it('失焦时原生 change 事件冒泡至宿主', async () => {
+    it('失焦时原生 change 事件转发为宿主 change', async () => {
       const el = createInput()
       await waitForUpdate(el)
 
       const [events] = spyEvents(el, 'change')
       const input = queryA11y(el, 'input') as HTMLInputElement
-      input.dispatchEvent(new Event('change', { bubbles: true, composed: true }))
+      // 真实浏览器派发的 change 不 composed，被 shadow root 挡住；
+      // 组件捕获后补发 composed change，宿主监听器收到一次
+      input.dispatchEvent(new Event('change', { bubbles: true }))
 
       expect(events).toHaveLength(1)
+      cleanupElement(el)
+    })
+
+    it('readonly 时原生 change 不转发', async () => {
+      const el = createInput()
+      el.value = 'hello'
+      el.readonly = true
+      await waitForUpdate(el)
+
+      const [events] = spyEvents(el, 'change')
+      const input = queryA11y(el, 'input') as HTMLInputElement
+      input.value = 'changed'
+      input.dispatchEvent(new Event('change', { bubbles: true }))
+      await waitForUpdate(el)
+
+      expect(el.value).toBe('hello')
+      expect(events).toHaveLength(0)
       cleanupElement(el)
     })
 
@@ -232,6 +260,17 @@ describe('WebUiInput 组件', () => {
 
       expect(events).toHaveLength(1)
       expect(el.value).toBe('')
+      cleanupElement(el)
+    })
+
+    it('readonly 时不渲染清除按钮', async () => {
+      const el = createInput()
+      el.clearable = true
+      el.readonly = true
+      el.value = 'hello'
+      await waitForUpdate(el)
+
+      expect(queryA11y(el, '[aria-label="清除"]')).toBeNull()
       cleanupElement(el)
     })
   })

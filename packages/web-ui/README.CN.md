@@ -33,7 +33,7 @@ import '@greypan/web-ui'
 
 ### React
 
-需要 `@types/react >= 16` 作为可选 peer 依赖。
+需要 `@types/react >= 19` 作为可选 peer 依赖。
 
 ```ts
 // vite.config.ts
@@ -56,7 +56,7 @@ function App() {
       <web-ui-button variant="primary" onClick={() => alert('点击')}>
         按钮
       </web-ui-button>
-      <web-ui-input onInput={e => console.log((e.target as any).value)} />
+      <web-ui-input onInput={e => console.log(e.currentTarget.value)} />
     </>
   )
 }
@@ -65,8 +65,11 @@ function App() {
 #### React 自定义元素事件与布尔属性
 
 React 19 按 JSX 键名中的 `on` 后缀原样注册 Custom Element 事件。事件名大小写敏感：`open-change`
-必须绑定为 `onopen-change`，不能写成 `onOpenChange`。标准 `input` 和 `change` 事件仍使用 React
-惯用的 `onInput` 和 `onChange`。布尔属性遵循原生 HTML 语义：属性缺失为 `false`，属性存在为 `true`。
+必须绑定为 `onopen-change`，不能写成 `onOpenChange`。标准 `input`、`change`、`focus`、`blur`
+事件使用 React 惯用的 `onInput`、`onChange`、`onFocus`、`onBlur` handler——其 `currentTarget`
+类型为组件实例，value/checked 读取无需 cast；`target` 遵循 React SyntheticEvent 语义（`EventTarget`），
+不承诺为组件实例。kebab-case 自定义事件携带精确类型的 `CustomEvent` detail。
+布尔属性遵循原生 HTML 语义：属性缺失为 `false`，属性存在为 `true`。
 
 ```tsx
 <web-ui-dialog
@@ -96,7 +99,7 @@ useEffect(() => {
 
 ### Vue
 
-需要 `vue >= 3` 作为可选 peer 依赖。
+需要 `vue >= 3.5` 作为可选 peer 依赖。
 
 ```ts
 // vite.config.ts
@@ -120,8 +123,14 @@ import '@greypan/web-ui/types/vue'
 <template>
   <web-ui-button variant="primary" @click="handleClick">按钮</web-ui-button>
   <web-ui-input v-model="value" />
+  <web-ui-select :value="framework" @change="framework = $event.target.value" />
 </template>
 ```
+
+Vue 事件类型零 cast：带值组件上的 `@input`/`@change` 解析到组件 emit，`$event.target` 即为组件实例，
+`value`/`checked` 直接读取；kebab-case 事件（如 `open-change`）的 `$event.detail` 保持 `CustomEvent` 载荷类型。
+命名 handler 用 `WebUiEvent<WebUiXxx, 'change'>` 标注。未声明为 emit 的原生事件（`@click`/`@focus` 等）
+在任何 `web-ui-*` 元素上仍可绑定。
 
 ### 属性与事件边界
 
@@ -141,6 +150,7 @@ ARIA 属性同样必须显式支持：使用组件文档化的命名属性，而
 |                 | [`<web-ui-textarea>`](#web-ui-textarea)                   |
 |                 | [`<web-ui-input-number>`](#web-ui-input-number)           |
 |                 | [`<web-ui-select>`](#web-ui-select)                       |
+|                 | [`<web-ui-autocomplete>`](#web-ui-autocomplete)           |
 |                 | [`<web-ui-slider>`](#web-ui-slider)                       |
 |                 | [`<web-ui-checkbox>`](#web-ui-checkbox)                   |
 |                 | [`<web-ui-radio>`](#web-ui-radio)                         |
@@ -189,6 +199,7 @@ ARIA 属性同样必须显式支持：使用组件文档化的命名属性，而
 | `placeholder` | `string`  | `''`     | 占位文本        |
 | `name`        | `string`  | `''`     | 表单字段名      |
 | `disabled`    | `boolean` | `false`  | 禁用状态        |
+| `readonly`    | `boolean` | `false`  | 只读状态        |
 | `required`    | `boolean` | `false`  | 必填校验        |
 | `clearable`   | `boolean` | `false`  | 显示清除按钮    |
 | `full`        | `boolean` | `false`  | 全宽            |
@@ -242,11 +253,12 @@ ARIA 属性同样必须显式支持：使用组件文档化的命名属性，而
 | `placeholder` | `string`  | `''`       | 占位文本   |
 | `name`        | `string`  | `''`       | 表单字段名 |
 | `disabled`    | `boolean` | `false`    | 禁用状态   |
+| `readonly`    | `boolean` | `false`    | 只读状态   |
 | `required`    | `boolean` | `false`    | 必填校验   |
 
 **事件：** `input`, `change`
 
-ArrowUp/ArrowDown 键增减数值。
+ArrowUp/ArrowDown 键增减数值。空输入或 `-` 在提交时被忽略，值保持在最后一个有效数字。
 
 #### `<web-ui-select>`
 
@@ -268,6 +280,32 @@ ArrowUp/ArrowDown 键增减数值。
 **插槽：** `default`（投影 `<web-ui-option>` 元素）、`trigger`（自定义触发区域内容，替换默认 label 和箭头）
 
 子 `<web-ui-option>` 通过 `option-register` / `option-unregister` 注册。支持 ArrowDown/ArrowUp/Enter/Escape 键盘导航。
+
+#### `<web-ui-autocomplete>`
+
+可输入并过滤候选的单值选择器。
+
+| 属性               | 类型                               | 默认值       | 说明                                                    |
+| ------------------ | ---------------------------------- | ------------ | ------------------------------------------------------- |
+| `value`            | `string`                           | `''`         | 当前输入文本（表单值）                                  |
+| `selected-value`   | `string`                           | `''`         | 输入文本精确匹配 label 的 option 的 value（派生，只读） |
+| `placeholder`      | `string`                           | `''`         | 占位文本                                                |
+| `filter`           | `'none' \| 'prefix' \| 'contains'` | `'contains'` | 候选过滤模式（按 option label 匹配）                    |
+| `name`             | `string`                           | `''`         | 表单字段名                                              |
+| `disabled`         | `boolean`                          | `false`      | 禁用状态                                                |
+| `readonly`         | `boolean`                          | `false`      | 只读状态（不可输入、不可展开下拉）                      |
+| `required`         | `boolean`                          | `false`      | 必填校验                                                |
+| `portal`           | `boolean`                          | `false`      | 在主题浮层容器中渲染                                    |
+| `no-scroll-lock`   | `boolean`                          | `false`      | 打开时不锁定页面滚动                                    |
+| `overlayContainer` | `HTMLElement \| () => HTMLElement` | —            | 显式 Portal 容器                                        |
+| `aria-label`       | `string`                           | —            | 无障碍名称                                              |
+| `aria-labelledby`  | `string`                           | —            | 无障碍名称引用                                          |
+
+**事件：** `input`, `change`, `focus`, `blur`, `open-change` (`CustomEvent<{ open: boolean }>`)
+
+**插槽：** `default`（投影 `<web-ui-option>` 元素）
+
+键入时按 label 过滤候选（`contains` 或 `prefix`，`none` 关闭过滤）。选择 option 时文本回填为该项 label，`selected-value` 暴露该项的 value；`change` 在选择提交时触发。支持 ArrowDown/ArrowUp/Enter/Escape 键盘导航。
 
 #### `<web-ui-slider>`
 

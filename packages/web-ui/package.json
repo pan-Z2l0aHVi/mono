@@ -65,9 +65,9 @@
     "vue": "catalog:"
   },
   "peerDependencies": {
-    "@types/react": ">=16",
+    "@types/react": ">=19",
     "lit": "catalog:",
-    "vue": ">=3"
+    "vue": ">=3.5"
   },
   "peerDependenciesMeta": {
     "@types/react": {
