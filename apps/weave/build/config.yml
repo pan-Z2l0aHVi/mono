@@ -6,11 +6,11 @@ version: '3'
 # This information is used to generate the build assets.
 info:
   companyName: 'greypan' # The name of the company
-  productName: 'Wails Starter' # The name of the application
-  productIdentifier: 'com.greypan.wailsstarter' # The unique product identifier
-  description: 'Wails desktop starter' # The application description
+  productName: 'Weave' # The name of the application
+  productIdentifier: 'com.greypan.weave' # The unique product identifier
+  description: 'Weave desktop application' # The application description
   copyright: '(c) 2026, greypan' # Copyright text
-  comments: 'Wails desktop starter' # Comments
+  comments: 'Weave desktop application' # Comments
   version: '0.1.3' # The application version
   # cfBundleIconName: "appicon" # The macOS icon name in Assets.car icon bundles (optional)
   #                               # Should match the name of your .icon file without the extension

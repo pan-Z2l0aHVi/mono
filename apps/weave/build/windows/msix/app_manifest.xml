@@ -8,15 +8,15 @@
   IgnorableNamespaces="uap3">
   
   <Identity 
-    Name="com.greypan.wailsstarter"
+    Name="com.greypan.weave"
     Publisher="CN=greypan"
     Version="0.1.0.0" 
     ProcessorArchitecture="arm64" />
   
   <Properties>
-    <DisplayName>Wails Starter</DisplayName>
+    <DisplayName>Weave</DisplayName>
     <PublisherDisplayName>greypan</PublisherDisplayName>
-    <Description>Wails desktop starter</Description>
+    <Description>Weave desktop application</Description>
     <Logo>Assets\StoreLogo.png</Logo>
   </Properties>
   
@@ -29,10 +29,10 @@
   </Resources>
   
   <Applications>
-    <Application Id="com.greypan.wailsstarter" Executable="wails-starter" EntryPoint="Windows.FullTrustApplication">
+    <Application Id="com.greypan.weave" Executable="weave" EntryPoint="Windows.FullTrustApplication">
       <uap:VisualElements
-        DisplayName="Wails Starter"
-        Description="Wails desktop starter"
+        DisplayName="Weave"
+        Description="Weave desktop application"
         BackgroundColor="transparent"
         Square150x150Logo="Assets\Square150x150Logo.png"
         Square44x44Logo="Assets\Square44x44Logo.png">
@@ -41,7 +41,7 @@
       </uap:VisualElements>
       
       <Extensions>
-        <desktop:Extension Category="windows.fullTrustProcess" Executable="wails-starter" />
+        <desktop:Extension Category="windows.fullTrustProcess" Executable="weave" />
         
         
       </Extensions>

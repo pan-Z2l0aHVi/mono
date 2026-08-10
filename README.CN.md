@@ -25,10 +25,10 @@
 
 ## 应用
 
-私有应用（不发布 npm 包）；`react-web-ui-demo` 与 `vue-web-ui-demo` 部署到 GitHub Pages，`wails-starter` 以安装包发布到 GitHub Release：
+私有应用（不发布 npm 包）；`react-web-ui-demo` 与 `vue-web-ui-demo` 部署到 GitHub Pages，`weave` 以安装包发布到 GitHub Release：
 
-| 应用                                             | 技术栈                                   |
-| ------------------------------------------------ | ---------------------------------------- |
-| [`react-web-ui-demo`](./apps/react-web-ui-demo/) | React 19 + TanStack Router + Zustand     |
-| [`vue-web-ui-demo`](./apps/vue-web-ui-demo/)     | Vue 3 + Vue Router + Pinia               |
-| [`wails-starter`](./apps/wails-starter/)         | Wails 3 桌面应用模板（Go + Vue WebView） |
+| 应用                                             | 技术栈                               |
+| ------------------------------------------------ | ------------------------------------ |
+| [`react-web-ui-demo`](./apps/react-web-ui-demo/) | React 19 + TanStack Router + Zustand |
+| [`vue-web-ui-demo`](./apps/vue-web-ui-demo/)     | Vue 3 + Vue Router + Pinia           |
+| [`weave`](./apps/weave/)                         | Wails 3 桌面应用（Go + Vue WebView） |

@@ -29,7 +29,7 @@ Mono 是一个 pnpm + Turborepo monorepo。它向 npm 发布 `@greypan/*` 工具
   └─ @greypan/deps-reload ─开发期 workspace dist 重载
 
 react-web-ui-demo / vue-web-ui-demo ─共享包的 Web 集成与预览表面
-wails-starter（含 wails-starter-frontend）──共享包的 Wails 桌面集成表面
+weave（含 weave-frontend）──共享包的 Wails 桌面集成表面
 ```
 
 | 边界                      | 负责内容                                            | 不负责内容                        |

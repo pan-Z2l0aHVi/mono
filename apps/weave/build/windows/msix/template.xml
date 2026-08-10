@@ -8,27 +8,27 @@
         AllowPromptForPassword="false">
     </Settings>
     <Installer
-        Path="wails-starter"
+        Path="weave"
         Arguments=""
-        InstallLocation="C:\Program Files\greypan\Wails Starter">
+        InstallLocation="C:\Program Files\greypan\Weave">
     </Installer>
     <PackageInformation
-        PackageName="Wails Starter"
-        PackageDisplayName="Wails Starter"
+        PackageName="Weave"
+        PackageDisplayName="Weave"
         PublisherName="CN=greypan"
         PublisherDisplayName="greypan"
         Version="0.1.0.0"
-        PackageDescription="Wails desktop starter">
+        PackageDescription="Weave desktop application">
         <Capabilities>
             <Capability Name="runFullTrust" />
             
         </Capabilities>
         <Applications>
             <Application
-                Id="com.greypan.wailsstarter"
-                Description="Wails desktop starter"
-                DisplayName="Wails Starter"
-                ExecutableName="wails-starter"
+                Id="com.greypan.weave"
+                Description="Weave desktop application"
+                DisplayName="Weave"
+                ExecutableName="weave"
                 EntryPoint="Windows.FullTrustApplication">
                 
             </Application>
@@ -41,13 +41,13 @@
         </Dependencies>
         <Properties>
             <Framework>false</Framework>
-            <DisplayName>Wails Starter</DisplayName>
+            <DisplayName>Weave</DisplayName>
             <PublisherDisplayName>greypan</PublisherDisplayName>
-            <Description>Wails desktop starter</Description>
+            <Description>Weave desktop application</Description>
             <Logo>Assets\AppIcon.png</Logo>
         </Properties>
     </PackageInformation>
-    <SaveLocation PackagePath="wails-starter.msix" />
+    <SaveLocation PackagePath="weave.msix" />
     <PackageIntegrity>
         <CertificatePath></CertificatePath>
     </PackageIntegrity>

@@ -5,13 +5,13 @@
 !include "FileFunc.nsh"
 
 !ifndef INFO_PROJECTNAME
-    !define INFO_PROJECTNAME "wails-starter"
+    !define INFO_PROJECTNAME "weave"
 !endif
 !ifndef INFO_COMPANYNAME
     !define INFO_COMPANYNAME "greypan"
 !endif
 !ifndef INFO_PRODUCTNAME
-    !define INFO_PRODUCTNAME "Wails Starter"
+    !define INFO_PRODUCTNAME "Weave"
 !endif
 !ifndef INFO_PRODUCTVERSION
     !define INFO_PRODUCTVERSION "0.1.3"

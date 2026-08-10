@@ -1,4 +1,4 @@
-module github.com/pan-Z2l0aHVi/mono/apps/wails-starter
+module github.com/pan-Z2l0aHVi/mono/apps/weave
 
 go 1.26.0
 

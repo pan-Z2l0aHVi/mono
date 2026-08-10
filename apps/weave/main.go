@@ -17,8 +17,8 @@ var assets embed.FS
 
 func main() {
 	app := application.New(application.Options{
-		Name:        "Wails Starter",
-		Description: "Wails desktop starter",
+		Name:        "Weave",
+		Description: "Weave desktop application",
 		Services: []application.Service{
 			application.NewService(&GreetService{}),
 		},
@@ -31,7 +31,7 @@ func main() {
 	})
 
 	app.Window.NewWithOptions(application.WebviewWindowOptions{
-		Title: "Wails Starter",
+		Title: "Weave",
 		// Window sized to the golden ratio (1000 / 618 ≈ 1.618).
 		Width:  1000,
 		Height: 618,

@@ -15,7 +15,7 @@
 ## 不可绕过的仓库边界
 
 - 不得改写 `.npmrc` 或 `.mise.toml` 的 registry/mirror，或任何 Git 配置。
-- 不手动编辑生成文件：`**/routeTree.gen.ts`、`**/auto-imports.d.ts`、`apps/wails-starter/frontend/bindings/**`、`**/__screenshots__/`、`**/.vitest-attachments/`。
+- 不手动编辑生成文件：`**/routeTree.gen.ts`、`**/auto-imports.d.ts`、`apps/weave/frontend/bindings/**`、`**/__screenshots__/`、`**/.vitest-attachments/`。
 - `AGENTS.md`（含包级）、`docs/adr/`、`docs/agents/` 和 `.agents/rules/` 下的文档使用中文；技术术语、命令、路径和包名保留英文。
 - 缺少 Node、pnpm 或 Go 时先运行 `mise install`；准确版本以 `.mise.toml`、`package.json` 与目标包 manifest 为准。
 - 并行 agent 必须使用不同的 branch/worktree；不得在共享工作区执行 `git switch`、`git checkout`、`git stash`、`git reset` 或 `git clean`。

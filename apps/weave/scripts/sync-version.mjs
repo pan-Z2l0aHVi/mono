@@ -23,7 +23,7 @@ const generatedVersionFiles = [
   },
   {
     path: new URL('../build/windows/wails.exe.manifest', import.meta.url),
-    values: [/assemblyIdentity type="win32" name="com\.greypan\.wailsstarter" version="([^"]+)"/]
+    values: [/assemblyIdentity type="win32" name="com\.greypan\.weave" version="([^"]+)"/]
   }
 ]
 

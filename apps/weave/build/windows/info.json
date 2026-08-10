@@ -6,10 +6,10 @@
     "0000": {
       "ProductVersion": "0.1.3",
       "CompanyName": "greypan",
-      "FileDescription": "Wails desktop starter",
+      "FileDescription": "Weave desktop application",
       "LegalCopyright": "(c) 2026, greypan",
-      "ProductName": "Wails Starter",
-      "Comments": "Wails desktop starter"
+      "ProductName": "Weave",
+      "Comments": "Weave desktop application"
     }
   }
 }

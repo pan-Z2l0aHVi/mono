@@ -13,13 +13,13 @@ function run(command, args) {
 
 run('pnpm', ['exec', 'changeset', 'version'])
 
-const versionChanged = spawnSync('git', ['diff', '--quiet', '--', 'apps/wails-starter/package.json'])
+const versionChanged = spawnSync('git', ['diff', '--quiet', '--', 'apps/weave/package.json'])
 
 if (versionChanged.error) {
   throw versionChanged.error
 }
 if (versionChanged.status === 1) {
-  run('pnpm', ['--filter', '@greypan/wails-starter', 'run', 'sync:version'])
+  run('pnpm', ['--filter', '@greypan/weave', 'run', 'sync:version'])
 } else if (versionChanged.status !== 0) {
   process.exit(versionChanged.status ?? 1)
 }

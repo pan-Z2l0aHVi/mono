@@ -35,8 +35,8 @@ esm/
 out/
 site/
 build/
-!apps/wails-starter/build/
-!apps/wails-starter/build/**
+!apps/weave/build/
+!apps/weave/build/**
 .next/
 .nuxt/
 .output/
@@ -148,4 +148,4 @@ report.html
 # ==========================================
 # 工具链自动生成 (Auto Generated)
 # ==========================================
-apps/wails-starter/frontend/bindings/
+apps/weave/frontend/bindings/
