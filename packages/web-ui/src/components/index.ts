@@ -1,3 +1,4 @@
+export * from '@/components/autocomplete'
 export * from '@/components/avatar'
 export * from '@/components/back-top'
 export * from '@/components/badge'

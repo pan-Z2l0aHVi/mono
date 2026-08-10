@@ -50,6 +50,9 @@
     "ooui",
     "wailsio",
     "ENEEDAUTH",
-    "oxfmt"
+    "oxfmt",
+    "idref",
+    "retarget",
+    "pple"
   ]
 }

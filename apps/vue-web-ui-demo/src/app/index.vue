@@ -81,6 +81,7 @@ const navItems: NavItem[] = [
   { path: '/components/theme', label: 'Theme 主题' },
   { path: '/components/input-number', label: 'InputNumber 数字输入框' },
   { path: '/components/select', label: 'Select 下拉选择' },
+  { path: '/components/autocomplete', label: 'Autocomplete 自动补全' },
   { path: '/components/dropdown', label: 'Dropdown 下拉菜单' },
   { path: '/components/dialog', label: 'Dialog 对话框' },
   { path: '/components/drawer', label: 'Drawer 抽屉' },

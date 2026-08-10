@@ -43,8 +43,12 @@ input {
 
   min-width: 48px;
   height: 100%;
+  margin: 0;
+  padding: 0;
   border: none;
 
+  /* 表单控件不继承字体；显式继承以对齐宿主排版，避免 UA 默认字体差异 */
+  font: inherit;
   font-size: var(--wui-font-size, 14px);
   color: var(--wui-color-text, #1b1b1b);
   text-align: center;
@@ -78,6 +82,7 @@ input {
 
   width: 32px;
   height: 32px;
+  padding: 0;
   border: none;
   border-radius: calc(infinity * 1px);
 

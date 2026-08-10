@@ -155,6 +155,7 @@ state changes; assigning a property programmatically does not emit them.
 |                      | [`<web-ui-textarea>`](#web-ui-textarea)                   |
 |                      | [`<web-ui-input-number>`](#web-ui-input-number)           |
 |                      | [`<web-ui-select>`](#web-ui-select)                       |
+|                      | [`<web-ui-autocomplete>`](#web-ui-autocomplete)           |
 |                      | [`<web-ui-slider>`](#web-ui-slider)                       |
 |                      | [`<web-ui-checkbox>`](#web-ui-checkbox)                   |
 |                      | [`<web-ui-radio>`](#web-ui-radio)                         |
@@ -284,6 +285,31 @@ Select dropdown with option items, keyboard navigation, and portal support.
 **Methods:** none
 
 Child `<web-ui-option>` elements register via `option-register` / `option-unregister` events. Supports ArrowDown/ArrowUp/Enter/Escape keyboard navigation.
+
+#### `<web-ui-autocomplete>`
+
+Editable combobox with input filtering and single option selection.
+
+| Attribute          | Type                               | Default      | Description                                                               |
+| ------------------ | ---------------------------------- | ------------ | ------------------------------------------------------------------------- |
+| `value`            | `string`                           | `''`         | Current input text (form value)                                           |
+| `selected-value`   | `string`                           | `''`         | Value of the option exactly matching the input label (derived, read-only) |
+| `placeholder`      | `string`                           | `''`         | Placeholder text                                                          |
+| `filter`           | `'none' \| 'prefix' \| 'contains'` | `'contains'` | Candidate filtering mode (matched against option label)                   |
+| `name`             | `string`                           | `''`         | Form field name                                                           |
+| `disabled`         | `boolean`                          | `false`      | Disabled state                                                            |
+| `required`         | `boolean`                          | `false`      | Required validation                                                       |
+| `portal`           | `boolean`                          | `false`      | Render dropdown in theme overlay                                          |
+| `no-scroll-lock`   | `boolean`                          | `false`      | Do not lock body scroll when open                                         |
+| `overlayContainer` | `HTMLElement \| () => HTMLElement` | —            | Explicit portal container                                                 |
+| `aria-label`       | `string`                           | —            | Accessible name                                                           |
+| `aria-labelledby`  | `string`                           | —            | Accessible name references                                                |
+
+**Events:** `input`, `change`, `focus`, `blur`, `open-change` (`CustomEvent<{ open: boolean }>`)
+
+**Slots:** `default` (project `<web-ui-option>` elements)
+
+Typing filters the option list by label (`contains` or `prefix`, or `none` to disable filtering). Selecting an option fills the input with its label and exposes the option's value via `selected-value`; `change` fires on selection commit. Supports ArrowDown/ArrowUp/Enter/Escape keyboard navigation.
 
 #### `<web-ui-slider>`
 

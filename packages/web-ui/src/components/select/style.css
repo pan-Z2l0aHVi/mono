@@ -31,7 +31,7 @@
   width: var(--wui-input-width, 200px);
   min-width: var(--wui-button-size, 40px);
   height: var(--wui-button-size, 40px);
-  padding: 0 16px;
+  padding: 0 12px;
   border-radius: calc(infinity * 1px);
 
   &:focus-visible {

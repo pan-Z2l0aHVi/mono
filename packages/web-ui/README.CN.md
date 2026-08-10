@@ -150,6 +150,7 @@ ARIA 属性同样必须显式支持：使用组件文档化的命名属性，而
 |                 | [`<web-ui-textarea>`](#web-ui-textarea)                   |
 |                 | [`<web-ui-input-number>`](#web-ui-input-number)           |
 |                 | [`<web-ui-select>`](#web-ui-select)                       |
+|                 | [`<web-ui-autocomplete>`](#web-ui-autocomplete)           |
 |                 | [`<web-ui-slider>`](#web-ui-slider)                       |
 |                 | [`<web-ui-checkbox>`](#web-ui-checkbox)                   |
 |                 | [`<web-ui-radio>`](#web-ui-radio)                         |
@@ -277,6 +278,31 @@ ArrowUp/ArrowDown 键增减数值。
 **插槽：** `default`（投影 `<web-ui-option>` 元素）、`trigger`（自定义触发区域内容，替换默认 label 和箭头）
 
 子 `<web-ui-option>` 通过 `option-register` / `option-unregister` 注册。支持 ArrowDown/ArrowUp/Enter/Escape 键盘导航。
+
+#### `<web-ui-autocomplete>`
+
+可输入并过滤候选的单值选择器。
+
+| 属性               | 类型                               | 默认值       | 说明                                                    |
+| ------------------ | ---------------------------------- | ------------ | ------------------------------------------------------- |
+| `value`            | `string`                           | `''`         | 当前输入文本（表单值）                                  |
+| `selected-value`   | `string`                           | `''`         | 输入文本精确匹配 label 的 option 的 value（派生，只读） |
+| `placeholder`      | `string`                           | `''`         | 占位文本                                                |
+| `filter`           | `'none' \| 'prefix' \| 'contains'` | `'contains'` | 候选过滤模式（按 option label 匹配）                    |
+| `name`             | `string`                           | `''`         | 表单字段名                                              |
+| `disabled`         | `boolean`                          | `false`      | 禁用状态                                                |
+| `required`         | `boolean`                          | `false`      | 必填校验                                                |
+| `portal`           | `boolean`                          | `false`      | 在主题浮层容器中渲染                                    |
+| `no-scroll-lock`   | `boolean`                          | `false`      | 打开时不锁定页面滚动                                    |
+| `overlayContainer` | `HTMLElement \| () => HTMLElement` | —            | 显式 Portal 容器                                        |
+| `aria-label`       | `string`                           | —            | 无障碍名称                                              |
+| `aria-labelledby`  | `string`                           | —            | 无障碍名称引用                                          |
+
+**事件：** `input`, `change`, `focus`, `blur`, `open-change` (`CustomEvent<{ open: boolean }>`)
+
+**插槽：** `default`（投影 `<web-ui-option>` 元素）
+
+键入时按 label 过滤候选（`contains` 或 `prefix`，`none` 关闭过滤）。选择 option 时文本回填为该项 label，`selected-value` 暴露该项的 value；`change` 在选择提交时触发。支持 ArrowDown/ArrowUp/Enter/Escape 键盘导航。
 
 #### `<web-ui-slider>`
 

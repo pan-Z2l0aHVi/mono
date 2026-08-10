@@ -14,6 +14,8 @@ export interface OverlayPortal {
   readonly panel: HTMLElement
   restoreContent(): void
   moveContent(nodes: Node[], target?: HTMLElement): void
+  appendContent(nodes: Node[], target?: HTMLElement): void
+  removeContent(nodes: Node[]): void
   remove(): void
 }
 
@@ -38,6 +40,20 @@ export function createOverlayPortal(options: OverlayPortalOptions): OverlayPorta
     moveContent(content, target = panel) {
       nodes.splice(0, nodes.length, ...content)
       target.append(...nodes)
+    },
+    appendContent(content, target = panel) {
+      content.forEach(node => {
+        const index = nodes.indexOf(node)
+        if (index >= 0) nodes.splice(index, 1)
+        nodes.push(node)
+      })
+      target.append(...content)
+    },
+    removeContent(content) {
+      content.forEach(node => {
+        const index = nodes.indexOf(node)
+        if (index >= 0) nodes.splice(index, 1)
+      })
     },
     restoreContent() {
       options.target.append(...nodes)
