@@ -18,7 +18,11 @@
     "dev:react-web-ui-demo": "turbo build --filter=@greypan/react-web-ui-demo^... && turbo run dev --filter=@greypan/react-web-ui-demo...",
     "dev:vue-web-ui-demo": "turbo build --filter=@greypan/vue-web-ui-demo^... && turbo run dev --filter=@greypan/vue-web-ui-demo...",
     "dev:weave": "turbo build --filter=@greypan/weave^... && turbo run dev --filter=@greypan/weave --filter=@greypan/weave-frontend^...",
-    "check:context": "node scripts/context-check.mjs"
+    "check:context": "node scripts/context-check.mjs",
+    "repo:impact": "node scripts/repo-context.mjs impact",
+    "repo:verify": "node scripts/repo-context.mjs verify",
+    "check:contracts": "node scripts/package-contract-check.mjs",
+    "test:repo-tools": "node scripts/repo-tools.test.mjs"
   },
   "devDependencies": {
     "@changesets/cli": "catalog:",

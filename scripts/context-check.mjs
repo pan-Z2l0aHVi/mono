@@ -40,7 +40,7 @@ if (exists('CLAUDE.md')) {
 if (exists('package.json')) {
   try {
     const packageJson = JSON.parse(read('package.json'))
-    for (const script of ['check:context']) {
+    for (const script of ['check:context', 'check:contracts', 'repo:impact', 'repo:verify', 'test:repo-tools']) {
       if (typeof packageJson.scripts?.[script] !== 'string') addError(`package.json is missing scripts.${script}`)
     }
   } catch (error) {
@@ -48,6 +48,22 @@ if (exists('package.json')) {
   }
 } else {
   addError('missing required context file: package.json')
+}
+
+for (const directory of ['packages', 'apps']) {
+  const absolute = path.join(root, directory)
+  if (!fs.existsSync(absolute)) continue
+
+  for (const entry of fs.readdirSync(absolute, { withFileTypes: true })) {
+    if (!entry.isDirectory()) continue
+    const workspaceRoot = path.join(absolute, entry.name)
+    if (
+      fs.existsSync(path.join(workspaceRoot, 'package.json')) &&
+      !fs.existsSync(path.join(workspaceRoot, 'AGENTS.md'))
+    ) {
+      addError(`${directory}/${entry.name}: missing nearest AGENTS.md for workspace context routing`)
+    }
+  }
 }
 
 const symlinks = {

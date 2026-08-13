@@ -7,6 +7,8 @@ description: 根据变更契约选择最小充分的测试、构建和浏览器�
 
 ## 选择验证层级
 
+先对改动路径运行 `pnpm repo:verify -- <paths...>`。它从当前非 Weave workspace manifest 与路径风险派生受影响 workspace 和最小验证建议；输出是验证计划的起点，仍需根据实际 diff 补充无法由路径推断的行为风险。
+
 - 局部行为：运行受影响包的聚焦测试。
 - 跨包导出、引用或运行时契约：运行根 `pnpm test`。
 - 构建配置、发布产物或导出：运行根 `pnpm build`。

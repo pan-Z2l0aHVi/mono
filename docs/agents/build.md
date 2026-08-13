@@ -26,6 +26,8 @@ Wails 开发启动 Wails 以及嵌套 WebView 前端的每个可构建工作区�
 
 在工作区根目录运行 `pnpm run check:code` 进行格式化、lint 和类型检查。运行 `pnpm run fix:code` 可在类型检查前自动修复格式化和 lint 问题。包构建命令不能替代这两个命令。
 
+构建可发布 package 或修改其 `exports`、`files`、Vite 输出时，在根构建成功后运行 `pnpm run check:contracts`。该检查直接验证当前 `dist/` 中的发布文件和 manifest export targets；它不判断 API 语义或版本级别。任务开始时可使用 `pnpm repo:impact -- <paths...>` 查看非 Weave workspace 影响面，或使用 `pnpm repo:verify -- <paths...>` 取得最小充分验证建议。
+
 对于 `web-ui`，`pnpm --filter @greypan/web-ui generate-icons` 从 `icons.used.json` 重新生成图标模块。Vite 插件也会在 `vp build` 期间自动运行它。
 
 ## TypeScript 配置
