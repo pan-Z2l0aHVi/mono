@@ -1,26 +1,62 @@
 package main
 
 import (
+	"context"
 	"embed"
 	"log"
 
+	"github.com/adrg/xdg"
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
-// Wails uses Go's `embed` package to embed the frontend files into the binary.
-// Any files in the frontend/dist folder will be embedded into the binary and
-// made available to the frontend.
-// See https://pkg.go.dev/embed for more information.
+// Wails 使用 Go 的 embed 将前端产物嵌入二进制。
+// 任何 frontend/dist 下的文件都会被嵌入。
 
 //go:embed all:frontend/dist
 var assets embed.FS
 
 func main() {
+	ctx := context.Background()
+
+	db, err := openStore()
+	if err != nil {
+		log.Fatalf("初始化数据库: %v", err)
+	}
+	defer func() { _ = db.Close() }()
+
+	// 事件推送：服务通过 application.Get() 惰性获取 app 实例（测试时为空则忽略）。
+	emit := func(name string, data any) {
+		if app := application.Get(); app != nil {
+			app.Event.Emit(name, data)
+		}
+	}
+
+	itemSvc := NewItemService(db, emit)
+	tagSvc := NewTagService(db, emit)
+	repairSvc := NewRepairService(db, emit)
+	indexSvc := NewIndexService(db, itemSvc, repairSvc, emit)
+	watchSvc := NewWatchService(db, itemSvc, repairSvc, emit)
+	mcpMgr := NewMcpManager(db, itemSvc, tagSvc, repairSvc, indexSvc)
+	settingsSvc := NewSettingsService(db, mcpMgr)
+
+	if libPath, err := xdg.DataFile("weave"); err == nil && libPath != "" {
+		_ = settingsSvc.SetLibraryPath(ctx, libPath)
+	}
+	if err := mcpMgr.Start(ctx); err != nil {
+		log.Fatalf("启动本地服务: %v", err)
+	}
+	defer mcpMgr.Stop()
+
 	app := application.New(application.Options{
 		Name:        "Weave",
-		Description: "Weave desktop application",
+		Description: "Weave 素材中心化管理",
 		Services: []application.Service{
-			application.NewService(&GreetService{}),
+			application.NewService(itemSvc),
+			application.NewService(tagSvc),
+			application.NewService(repairSvc),
+			application.NewService(indexSvc),
+			application.NewService(watchSvc),
+			application.NewService(settingsSvc),
 		},
 		Assets: application.AssetOptions{
 			Handler: application.AssetFileServerFS(assets),
@@ -31,10 +67,9 @@ func main() {
 	})
 
 	app.Window.NewWithOptions(application.WebviewWindowOptions{
-		Title: "Weave",
-		// Window sized to the golden ratio (1000 / 618 ≈ 1.618).
-		Width:  1000,
-		Height: 618,
+		Title:  "Weave",
+		Width:  1280,
+		Height: 800,
 		Mac: application.MacWindow{
 			InvisibleTitleBarHeight: 50,
 			Backdrop:                application.MacBackdropTranslucent,
@@ -44,8 +79,19 @@ func main() {
 		URL:              "/",
 	})
 
-	err := app.Run()
-	if err != nil {
+	// 后台监听 + 启动全量扫描（可在设置中关闭）
+	if err := watchSvc.Start(ctx); err != nil {
+		log.Printf("启动文件监听失败: %v", err)
+	}
+	defer watchSvc.Stop()
+
+	if v, _ := getSetting(db, "rescan_on_start"); v != "0" {
+		if _, err := indexSvc.Rescan(ctx); err != nil {
+			log.Printf("启动扫描失败: %v", err)
+		}
+	}
+
+	if err := app.Run(); err != nil {
 		log.Fatal(err)
 	}
 }
