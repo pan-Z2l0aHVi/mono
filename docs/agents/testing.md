@@ -19,7 +19,7 @@
 
 ## 验证选择
 
-开始跨包或 UI 改动前，可运行 `pnpm repo:verify -- <paths...>` 获取由当前 workspace 依赖和路径风险派生的最小验证建议；它不会替代对实际 diff、公共行为和浏览器语义的判断。
+开始跨包或 UI 改动前，可运行 `pnpm repo:verify -- <paths...>` 获取由当前 workspace 依赖、路径风险、邻近测试目录和最小读取 context 派生的最小验证建议；也可传入 `--base <git-ref>`、`--staged` 或 `--worktree`；它不会替代对实际 diff、公共行为和浏览器语义的判断。
 
 根据受影响的契约选择验证方式：
 

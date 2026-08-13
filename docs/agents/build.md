@@ -14,7 +14,7 @@
 
 在修改包图、lockfile 或 Turbo 配置后，需要重启 demo 命令。普通的源文件变更会由运行中的包级监听器继续处理。
 
-Wails 开发启动 Wails 以及嵌套 WebView 前端的每个可构建工作区依赖，使用 `--filter=@greypan/weave-frontend^...`。`^...` 后缀排除了前端本身。Wails Taskfile 负责前端的 Vite 服务器，因此不要使用 `--filter=@greypan/weave...`；这会导致启动一个重复的前端 dev 服务器。在修改 Vite 插件、TypeScript 配置或工作区依赖图后，需要重启 Wails。
+对于由宿主运行时管理嵌套前端的集成应用，先从目标应用的 `package.json`、最近的 `AGENTS.md` 与任务配置确认依赖筛选器。若宿主任务已负责前端开发服务器，只构建前端的上游依赖，不要额外启动重复的前端进程。在修改 Vite 插件、TypeScript 配置或工作区依赖图后，需要重启宿主开发进程。
 
 不同包类型的构建脚本不同：
 
@@ -26,7 +26,7 @@ Wails 开发启动 Wails 以及嵌套 WebView 前端的每个可构建工作区�
 
 在工作区根目录运行 `pnpm run check:code` 进行格式化、lint 和类型检查。运行 `pnpm run fix:code` 可在类型检查前自动修复格式化和 lint 问题。包构建命令不能替代这两个命令。
 
-构建可发布 package 或修改其 `exports`、`files`、Vite 输出时，在根构建成功后运行 `pnpm run check:contracts`。该检查直接验证当前 `dist/` 中的发布文件和 manifest export targets；它不判断 API 语义或版本级别。任务开始时可使用 `pnpm repo:impact -- <paths...>` 查看非 Weave workspace 影响面，或使用 `pnpm repo:verify -- <paths...>` 取得最小充分验证建议。
+构建可发布 package 或修改其 `exports`、`files`、Vite 输出时，在根构建成功后运行 `pnpm run check:contracts`。该检查使用 `pnpm pack --dry-run` 验证实际发布文件与 manifest export targets；它不判断 API 语义或版本级别。任务开始时可使用 `pnpm repo:impact -- <paths...>` 查看由 `pnpm-workspace.yaml` 纳入的受影响 workspace 与最小读取 context，或使用 `pnpm repo:verify -- <paths...>` 取得最小充分验证建议；需要确认公开入口时使用 `pnpm repo:contract -- <published-package>`，需要审阅 Git 变更集的 manifest-level semver 候选时使用 `pnpm repo:contract-diff -- --base <git-ref>`；对 Git 变更集可传入 `--base <git-ref>`、`--staged` 或 `--worktree`。
 
 对于 `web-ui`，`pnpm --filter @greypan/web-ui generate-icons` 从 `icons.used.json` 重新生成图标模块。Vite 插件也会在 `vp build` 期间自动运行它。
 
@@ -57,10 +57,7 @@ Wails 开发启动 Wails 以及嵌套 WebView 前端的每个可构建工作区�
 - **第三方依赖**在设计意图为零配置消费时可以被打包；当期望消费端自行提供时应外部化。
 - 优先使用正则表达式而非工作区包列表。同时匹配子路径导入，例如 Lit 模式 `/^lit($|\/)/`。
 - `web-ui` 外部化其框架依赖，因此消费端必须安装 `lit` 作为依赖。
-- `weave` 有一个外层 Turbo 工作区（`@greypan/weave`）和一个嵌套的 WebView 工作区（`@greypan/weave-frontend`）。Wails Taskfile 负责嵌套的前端进程；`pnpm dev:weave` 仅展开前端的依赖，排除前端进程本身。
-- Wails Taskfile 使用 pnpm，生成 `frontend/bindings/`，并将 `frontend/dist/` 嵌入 Go 二进制文件。`bin/` 是 Turbo 构建原生产物的输出目录。
-- Wails 构建资源有意仅支持 darwin/arm64 和 windows/amd64。在 macOS 上，包 `build` 脚本同时创建 `bin/weave.dmg` 和 `bin/weave.exe`；`build:macos` 和 `build:windows` 分别明确构建各自目标。在 Windows 上，`build` 创建 EXE。在 Linux CI 上，它仅构建 WebView 前端，因为两个桌面发布目标都不是原生运行环境。Windows 交叉编译可在 macOS 上无需 Docker 运行，而在非 macOS 主机上构建 macOS 需要 Wails 的 Docker 设置。Wails 在更新资源时可能会生成 Android、iOS 和 Linux 构建模板；这些不支持的目标目录应被忽略，不得进入版本 PR。
-- `apps/weave/build/` 包含 Wails Taskfile、平台模板、图标和打包资源，而非一次性输出。`pnpm clean` 和 `pnpm clean --full` 都会保留它；只有 `bin/`、`frontend/dist/`、生成的绑定、缓存和依赖是一次性产物。
+- 对于包含外层宿主工作区和嵌套前端工作区的应用，宿主任务、构建目标、生成绑定与资源目录均以目标应用的 manifest、包级 `AGENTS.md`、任务配置和 CI workflow 为准；通用指南不复制应用专属的筛选器、平台矩阵或发布产物名称。生成绑定、前端产物、缓存和依赖通常是一次性产物；任务配置、平台模板、图标和打包资源是否保留必须以目标应用的清理脚本为准。
 
 | 包                        | 外部化                                                                   | 打包的第三方依赖 |
 | ------------------------- | ------------------------------------------------------------------------ | ---------------- |
@@ -78,21 +75,20 @@ Wails 开发启动 Wails 以及嵌套 WebView 前端的每个可构建工作区�
 - 库包（`js-kit`、`browser-kit`、`test-kit`、`deps-reload`、`unplugin-web-components`）仅包含 JavaScript，不输出 CSS，因此没有 `browserslist` 字段；它们统一声明 `engines.node >=20.11.0`。该下限覆盖了 `deps-reload` 中的 `import.meta.dirname`（Node 20.11+），与 vite/vitest 的 peer 版本范围（^20.19 / ^20）对齐，并排除了已停止维护的 Node 18 和 20 版本。
 - 两个 demo 应用都使用 `basicSsl()` 进行 HTTPS 开发服务器配置。
 - `depsReload` 监听库的 `dist/` 目录，当本地依赖发生变化时触发整页刷新。
-- Wails WebView 前端遵循 Vue demo 的 Vite 插件和本地包约定，Wails Vite 插件负责生成 Go 绑定。
+- 使用嵌套 WebView 前端的集成应用遵循相应框架 demo 的 Vite 插件和本地包约定；宿主运行时的插件负责生成其绑定。
 
 ## CI 与发布
 
-- `ci.yml` 中的 CI 仍然是针对 pull request 和推送到 `main` 的完整验证工作流：共享 agent context、changeset 状态、构建、格式化/lint/类型检查和测试。它还接受 `workflow_dispatch` 触发来处理 Changesets 版本 PR，覆盖了 `GITHUB_TOKEN` 创建的版本 PR 可能不会触发的 `pull_request.opened` 事件。PR 和手动触发的运行共享一个以分支为键的 `concurrency` 组（`github.head_ref || github.ref_name`），因此 `cancel-in-progress` 会将两者合并为单次运行而非重复原生构建。它安装了 Wails 的 GTK4 和 WebKitGTK Linux 前置依赖，因为完整工作区构建会通过 mise 编译 Wails CLI。
-- `changeset-version.yml` 在推送到 `main` 时运行，其唯一职责是创建或更新 Changesets 版本 PR。它通过 `changesets/action` 的 `version` 输入调用 `pnpm run release:version`，因此待处理的 `@greypan/weave` 发布会更新原生版本元数据而非使用 Changesets 的默认命令；`sync:version` 默认更新，仅在显式传入 `--check` 时进行验证。对于公共包变更它仅安装 Node 和 pnpm；Wails 发布还会额外安装 Wails Linux 前置依赖、Go 和配置的 Wails CLI。创建 PR 后，它会触发 CI，对于 Wails 变更还会对版本分支进行原生验证；它从不发布包或安装程序。
-- `npm-publish.yml` 仅发布公共 npm 包。其 `pull_request.closed` 触发器限定为 `packages/**`，然后仅在 `changeset-release/main` 合并到 `main` 时运行，检测实际的公共包版本变更，在合并 SHA 上重建 `packages/*` Turbo 图并通过 npm Trusted Publishing 发布。发布成功后，一个独立的最小权限作业为每个包版本创建幂等的 GitHub Release 和标签，附带 npm 和包 changelog 的链接。包发布显式不标记为 Latest，以确保最新的 Wails 桌面安装程序保持突出。它不使用 Wails 工具链或长期 npm token。
-- `wails-verify.yml` 仅验证涉及 Wails 的 pull request 和手动运行。它检查同步的元数据，构建 macOS ARM64 DMG 和 Windows x64 EXE，并将其保留为 14 天的只读验证产物。它没有创建 Release 的权限。
-- `wails-release.yml` 限定为修改 `apps/weave/**` 的已关闭 pull request，然后仅在 `changeset-release/main` 合并到 `main` 时运行。如果 Wails 应用版本发生了变更，它会从该精确合并 SHA 重建两个原生安装程序，并创建带 SHA-256 校验和的 `weave-vX.Y.Z`。其发布作业在创建 Release 前检出该 SHA，以便 GitHub CLI 解析发布目标；它独占 `contents: write` 权限，且私有应用永远不会发布到 npm。
-- `main` 必须受到保护，确保产品变更通过 pull request 合入。在 GitHub 分支保护中要求 `CI` 通过；Wails 验证保持路径触发而非全局必需检查，因此不相关的 PR 无需等待原生运行环境。
+- `ci.yml` 是针对 pull request 和推送到 `main` 的完整验证工作流：共享 agent context、changeset 状态、构建、格式化/lint/类型检查和测试。它还接受 `workflow_dispatch` 触发来处理版本 PR，覆盖由自动化令牌创建的版本 PR 可能不会触发初始 pull request 事件的情形。PR 和手动触发的运行共享一个以分支为键的 `concurrency` 组（`github.head_ref || github.ref_name`），因此 `cancel-in-progress` 会将两者合并为单次运行而非重复构建。原生应用所需的系统前置条件以当前 workflow 和工具配置为准。
+- `changeset-version.yml` 在推送到 `main` 时创建或更新 Changesets 版本 PR，并通过 `changesets/action` 的 `version` 输入调用 `pnpm run release:version`。包专属的版本同步由相应脚本负责；默认更新与 `--check` 验证的语义以该脚本为准。公共包与私有原生应用所需的工具链和后续验证分别由当前 workflow 决定；版本 workflow 不直接发布包或安装程序。
+- `npm-publish.yml` 仅发布公共 npm 包。其 `pull_request.closed` 触发器限定为 `packages/**`，然后仅在 `changeset-release/main` 合并到 `main` 时运行，检测实际的公共包版本变更，在合并 SHA 上重建 `packages/*` Turbo 图并通过 npm Trusted Publishing 发布。发布成功后，一个独立的最小权限作业为每个包版本创建幂等的 GitHub Release 和标签，附带 npm 和包 changelog 的链接。它不使用私有原生应用的工具链或长期 npm token。
+- 私有原生应用的验证与发布 workflow 仅处理目标应用路径或手动触发，校验同步元数据并在对应的原生目标上构建验证产物；发布 workflow 只在版本变更后的受控合并上创建带校验和的安装程序 Release，且私有应用永远不会发布到 npm。workflow 文件、路径筛选器、平台矩阵、产物保留期和 Release 命名均以当前配置为准。
+- `main` 必须受到保护，确保产品变更通过 pull request 合入。在 GitHub 分支保护中要求 `CI` 通过；原生应用验证保持路径触发而非全局必需检查，因此不相关的 PR 无需等待原生运行环境。
 - Changesets 版本 PR 使用 `GITHUB_TOKEN` 创建，因此其自身的 `pull_request` 触发的 CI 会被 GitHub 的 pwn-request 保护标记为 `action_required`，在获批准前不会运行。由于 `main` 规则集要求 `check` 上下文，合并版本 PR 需要先批准那个被挂起的运行（Actions 运行页面，或 `gh api repos/<owner>/<repo>/actions/runs/<id>/approve`）。`changeset-version.yml` 触发的 `workflow_dispatch` 运行已经验证了相同的提交，因此批准只是为了满足合并门控；分支键控的 `concurrency` 组随后会在两者同时运行时将已批准的运行与调度运行合并。
-- `deploy-pages.yml` 中的部署是手动触发的，通过一个 `actions/deploy-pages` 产物部署作业级 `DEMO_APPS` 列表中的每个可部署 Demo。它仅安装 Node 和 pnpm，因为 Pages 不需要 Wails CLI。每个条目是 `apps/<name>` 目录，服务路径为 `/mono/<name>/`；构建命令使用 pnpm 的 `{./apps/<name>}...` 目录选择器而非 npm 包名。站点没有根落地页。
+- `deploy-pages.yml` 中的部署是手动触发的，通过一个 `actions/deploy-pages` 产物部署作业级 `DEMO_APPS` 列表中的每个可部署 Demo。它仅安装 Node 和 pnpm，因为 Pages 不需要私有原生应用的工具链。每个条目是 `apps/<name>` 目录，服务路径为 `/mono/<name>/`；构建命令使用 pnpm 的 `{./apps/<name>}...` 目录选择器而非 npm 包名。站点没有根落地页。
 - 每个可部署 Demo 必须支持 History 路由深层链接。GitHub Pages 将未匹配的请求路由到根 `404.html`；它根据 `DEMO_APPS` 验证应用名称，将请求的路由保存在 `redirect` 中，并加载应用根目录。在生产环境中，应用必须在创建路由器之前恢复 `redirect`。未知路径保持 404 响应。
 - npm Trusted Publishing 通过 OIDC `job_workflow_ref` 声明绑定到工作流文件路径。重命名或移动 `npm-publish.yml` 会使现有的 trusted-publisher 注册失效：即使设置了 `id-token: write`，`pnpm changeset publish` 也会因 `ENEEDAUTH` 失败。在重命名工作流的同一变更中更新 npmjs.com 上对应的 trusted publisher。
 
 ## Release context
 
-发布流程和 release plane 的术语、边界与授权模型见 [ADR-0009](../adr/0009-release-planes.md)。本指南只保留执行流程和 release safety boundary：未经用户授权不执行发布；不得直接运行 `npm publish`，首次发布使用 `pnpm publish:new <package-dir>`；不得使用 `--no-verify` 或 `--no-gpg-sign`。后续公共包和 Wails 安装程序按对应 workflow 与 Changesets 配置执行。修改 `.github/workflows/`、Changesets 或发布脚本时，先阅读本指南和相关 ADR，并以当前 workflow、manifest 与脚本为事实来源。
+发布流程和 release plane 的术语、边界与授权模型见 [ADR-0009](../adr/0009-release-planes.md)。本指南只保留执行流程和 release safety boundary：未经用户授权不执行发布；不得直接运行 `npm publish`，首次发布使用 `pnpm publish:new <package-dir>`；不得使用 `--no-verify` 或 `--no-gpg-sign`。后续公共包和私有原生应用安装程序按对应 workflow 与 Changesets 配置执行。修改 `.github/workflows/`、Changesets 或发布脚本时，先阅读本指南和相关 ADR，并以当前 workflow、manifest 与脚本为事实来源。

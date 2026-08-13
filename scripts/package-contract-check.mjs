@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 
@@ -7,6 +8,8 @@ const quiet = args.includes('--quiet')
 const root =
   rootOptionIndex >= 0 ? path.resolve(args[rootOptionIndex + 1] ?? '') : path.resolve(import.meta.dirname, '..')
 const errors = []
+const pnpm = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm'
+const packageManagerRoot = path.resolve(import.meta.dirname, '..')
 
 if (rootOptionIndex >= 0 && !args[rootOptionIndex + 1]) {
   console.error('Usage: node scripts/package-contract-check.mjs [--quiet] [--root <repository-root>]')
@@ -36,11 +39,13 @@ function escapeRegExp(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
-function targetPatternMatches(packageRoot, target) {
+function patternMatches(files, target) {
   const expression = new RegExp(`^${escapeRegExp(target).replaceAll('\\*', '.*')}$`)
-  return walk(packageRoot)
-    .map(file => `./${path.relative(packageRoot, file).split(path.sep).join('/')}`)
-    .filter(file => expression.test(file))
+  return files.filter(file => expression.test(file))
+}
+
+function filesInPackageRoot(packageRoot) {
+  return walk(packageRoot).map(file => `./${path.relative(packageRoot, file).split(path.sep).join('/')}`)
 }
 
 function collectTargets(value) {
@@ -49,9 +54,24 @@ function collectTargets(value) {
   return Object.values(value).flatMap(collectTargets)
 }
 
-function checkFilePattern(packageRoot, packageName, filePattern) {
-  const absolute = path.join(packageRoot, filePattern)
-  if (!fs.existsSync(absolute)) addError(`${packageName}: files entry is missing from package root: ${filePattern}`)
+function getPackedFiles(packageRoot, packageName) {
+  try {
+    const output = execFileSync(pnpm, ['--dir', packageRoot, 'pack', '--dry-run', '--json'], {
+      cwd: packageManagerRoot,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe']
+    })
+    const result = JSON.parse(output)
+    if (!Array.isArray(result.files)) {
+      addError(`${packageName}: pnpm pack --dry-run did not return a files array`)
+      return []
+    }
+    return result.files.map(file => `./${file.path}`)
+  } catch (error) {
+    const stderr = error && typeof error === 'object' && 'stderr' in error ? String(error.stderr).trim() : ''
+    addError(`${packageName}: pnpm pack --dry-run failed${stderr ? `: ${stderr}` : ''}`)
+    return []
+  }
 }
 
 for (const entry of fs.readdirSync(path.join(root, 'packages'), { withFileTypes: true })) {
@@ -66,14 +86,27 @@ for (const entry of fs.readdirSync(path.join(root, 'packages'), { withFileTypes:
 
   if (manifest.private === true) continue
   if (!fs.existsSync(path.join(packageRoot, 'README.md'))) addError(`${packageName}: missing consumer README.md`)
+  if (!Array.isArray(manifest.files) || manifest.files.length === 0) {
+    addError(`${packageName}: published package requires a non-empty files allowlist`)
+  }
 
-  for (const filePattern of manifest.files ?? []) checkFilePattern(packageRoot, packageName, filePattern)
+  const packageFiles = filesInPackageRoot(packageRoot)
+  const packedFiles = getPackedFiles(packageRoot, packageName)
+
+  for (const filePattern of manifest.files ?? []) {
+    if (
+      patternMatches(packageFiles, `./${filePattern}/**`).length === 0 &&
+      !packageFiles.includes(`./${filePattern}`)
+    ) {
+      addError(`${packageName}: files entry is missing from package root: ${filePattern}`)
+    }
+  }
 
   const sideEffects = Array.isArray(manifest.sideEffects) ? manifest.sideEffects : []
   for (const pattern of sideEffects) {
     if (typeof pattern !== 'string' || !pattern.startsWith('./')) {
       addError(`${packageName}: sideEffects entry must be a package-relative path: ${String(pattern)}`)
-    } else if (targetPatternMatches(packageRoot, pattern).length === 0) {
+    } else if (patternMatches(packageFiles, pattern).length === 0) {
       addError(`${packageName}: sideEffects pattern has no matching source or built file: ${pattern}`)
     }
   }
@@ -84,12 +117,11 @@ for (const entry of fs.readdirSync(path.join(root, 'packages'), { withFileTypes:
       continue
     }
 
-    if (target.includes('*')) {
-      if (targetPatternMatches(packageRoot, target).length === 0) {
-        addError(`${packageName}: export pattern has no matching built artifact: ${target}`)
-      }
-    } else if (!fs.existsSync(path.join(packageRoot, target))) {
-      addError(`${packageName}: export target is missing: ${target}`)
+    if (patternMatches(packageFiles, target).length === 0) {
+      addError(`${packageName}: export target is missing from package root: ${target}`)
+    }
+    if (patternMatches(packedFiles, target).length === 0) {
+      addError(`${packageName}: export target is missing from the packed artifact: ${target}`)
     }
   }
 }
@@ -102,4 +134,4 @@ if (errors.length > 0) {
   process.exit(1)
 }
 
-if (!quiet) console.log('package-contract-check passed (published package files and export targets are present)')
+if (!quiet) console.log('package-contract-check passed (published package exports resolve from packed artifacts)')

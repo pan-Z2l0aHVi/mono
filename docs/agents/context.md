@@ -19,8 +19,8 @@
 - Codex 通过层级 `AGENTS.md` 获得目录约束；根 `CLAUDE.md` 只说明 Claude Code 的加载顺序，不复制共享规则。
 - `.claude/rules`、`.claude/skills` 和 `.claude/agents` 必须通过 symlink 指向 `.agents/` 中的共享内容。
 - `scripts/context-check.mjs` 只检查这套共享 context 的可加载性，不能替代对规则语义、代码行为或 agent 输出质量的评审。
-- `scripts/repo-context.mjs` 是面向 Agent 的按需查询接口：`pnpm repo:impact -- <paths...>` 输出受影响的非 Weave workspace；`pnpm repo:verify -- <paths...>` 额外给出最小充分验证。它从当前 manifest 和路径规则派生结论，不把影响面复制成静态文档。
-- `scripts/package-contract-check.mjs` 在构建后校验发布 package 的 `files` 与 `exports` 目标存在；它是发布产物边界的可执行证据，不替代 API 语义或 semver 评审。
+- `scripts/repo-context.mjs` 是面向 Agent 的按需查询接口：`pnpm repo:impact -- <paths...>` 输出受影响 workspace、最小读取 context 和传递依赖；`pnpm repo:verify -- <paths...>` 额外给出最小充分验证；`pnpm repo:contract -- <published-package>` 输出当前 exports、直接消费者和最小验证；`pnpm repo:contract-diff -- --base <git-ref>` 输出 manifest-level semver 审阅候选。前两者均支持 `--base <git-ref>`、`--staged` 与 `--worktree` 从 Git 变更集读取路径。它从 `pnpm-workspace.yaml` 的 `packages` patterns、当前 manifest 和路径规则派生结论，不把影响面复制成静态文档。
+- `scripts/package-contract-check.mjs` 在构建后校验发布 package 的 `files` 与 `exports` 目标可从 `pnpm pack --dry-run` 产物解析；它是发布产物边界的可执行证据，不替代 API 语义或 semver 评审。
 
 ## 变更与文档同步
 

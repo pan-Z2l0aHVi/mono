@@ -2,6 +2,8 @@ import crypto from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
 
+import { readPnpmWorkspacePatterns } from './workspace-manifests.mjs'
+
 const root = path.resolve(import.meta.dirname, '..')
 const errors = []
 
@@ -40,7 +42,15 @@ if (exists('CLAUDE.md')) {
 if (exists('package.json')) {
   try {
     const packageJson = JSON.parse(read('package.json'))
-    for (const script of ['check:context', 'check:contracts', 'repo:impact', 'repo:verify', 'test:repo-tools']) {
+    for (const script of [
+      'check:context',
+      'check:contracts',
+      'repo:impact',
+      'repo:verify',
+      'repo:contract',
+      'repo:contract-diff',
+      'test:repo-tools'
+    ]) {
       if (typeof packageJson.scripts?.[script] !== 'string') addError(`package.json is missing scripts.${script}`)
     }
   } catch (error) {
@@ -48,6 +58,12 @@ if (exists('package.json')) {
   }
 } else {
   addError('missing required context file: package.json')
+}
+
+try {
+  readPnpmWorkspacePatterns(root)
+} catch (error) {
+  addError(`pnpm workspace config cannot be parsed: ${error instanceof Error ? error.message : String(error)}`)
 }
 
 for (const directory of ['packages', 'apps']) {

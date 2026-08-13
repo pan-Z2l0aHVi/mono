@@ -22,7 +22,9 @@
     "repo:impact": "node scripts/repo-context.mjs impact",
     "repo:verify": "node scripts/repo-context.mjs verify",
     "check:contracts": "node scripts/package-contract-check.mjs",
-    "test:repo-tools": "node scripts/repo-tools.test.mjs"
+    "test:repo-tools": "node scripts/repo-tools.test.mjs",
+    "repo:contract": "node scripts/repo-context.mjs contract",
+    "repo:contract-diff": "node scripts/repo-context.mjs contract-diff"
   },
   "devDependencies": {
     "@changesets/cli": "catalog:",
