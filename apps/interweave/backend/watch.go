@@ -400,7 +400,7 @@ func (s *WatchService) ListWatchRoots(ctx context.Context) ([]WatchRoot, error) 
 		}
 		roots[i].ItemCount = count
 	}
-	return nonNilSlice(roots), nil
+	return roots, nil
 }
 
 // AddWatchRoot 登记监听根并立即索引（幂等）。

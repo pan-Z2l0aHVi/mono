@@ -89,7 +89,7 @@ func (s *ItemService) ListItems(ctx context.Context, query ListQuery) ([]Item, e
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
-	return nonNilSlice(items), nil
+	return items, nil
 }
 
 // GetItem 返回单个条目。
@@ -378,7 +378,7 @@ func (s *ItemService) PickFiles() ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	return nonNilSlice(paths), nil
+	return paths, nil
 }
 
 // PickFolder 打开系统目录选择器。

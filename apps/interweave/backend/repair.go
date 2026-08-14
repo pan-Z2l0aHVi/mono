@@ -30,7 +30,7 @@ func (s *RepairService) ListRepairs(ctx context.Context, state string) ([]Repair
 	if err != nil {
 		return nil, err
 	}
-	return nonNilSlice(repairs), nil
+	return repairs, nil
 }
 
 // GetCandidates 为某个修复项计算候选位置（每次实时计算，不落库）。
@@ -60,7 +60,7 @@ func (s *RepairService) GetCandidates(ctx context.Context, repairID string) ([]C
 	if err != nil {
 		return nil, err
 	}
-	return nonNilSlice(candidates), nil
+	return candidates, nil
 }
 
 // findCandidates 邻近优先搜索候选：原目录 → 所有监听根（含子目录）。

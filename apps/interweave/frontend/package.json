@@ -5,8 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vp dev",
-    "build:dev": "cd .. && wails3 generate bindings -ts -clean=true && bash scripts/patch-bindings-types.sh && cd frontend && vue-tsc --build && vp build --minify false --mode development",
-    "build": "cd .. && wails3 generate bindings -ts -clean=true && bash scripts/patch-bindings-types.sh && cd frontend && vue-tsc --build && vp build --mode production",
+    "build:dev": "cd .. && wails3 generate bindings -ts -clean=true && cd frontend && vue-tsc --build && vp build --minify false --mode development",
+    "build": "cd .. && wails3 generate bindings -ts -clean=true && cd frontend && vue-tsc --build && vp build --mode production",
     "preview": "vp preview"
   },
   "dependencies": {
