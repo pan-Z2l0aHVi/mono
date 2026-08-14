@@ -35,6 +35,8 @@
 - `scripts/context-check.mjs` 只检查这套共享 context 的可加载性，不能替代对规则语义、代码行为或 agent 输出质量的评审。
 - `scripts/repo-context.mjs` 是面向 Agent 的按需查询接口：`pnpm repo:verify -- <paths...>` 一次输出受影响 workspace、最小读取 context、传递依赖、所需证据和最小充分验证建议；`pnpm repo:contract -- <published-package>` 输出当前 exports、直接消费者和最小验证；`pnpm repo:contract-diff -- --base <git-ref>` 输出 manifest-level semver 审阅候选。`repo:verify` 支持 `--base <git-ref>`、`--staged` 与 `--worktree` 从 Git 变更集读取路径。它从 `pnpm-workspace.yaml` 的 `packages` patterns、当前 manifest 和路径规则派生结论，不把影响面复制成静态文档。
 - `scripts/package-contract-check.mjs` 在构建后校验发布 package 的 `files` 与 `exports` 目标可从 `pnpm pack --dry-run` 产物解析；它是发布产物边界的可执行证据，不替代 API 语义或 semver 评审。
+- `scripts/agent-state.mjs` 是可选的 task receipt 接口：仅在跨会话、交接、验证失败或用户要求保留状态时，将已读取 context、验证状态和未决风险写入 Git-ignore 的 `.agent-state/`。它不是常驻 context，也不能覆盖当前源码、测试、manifest 或配置；格式和安全边界见 [`agent-state.md`](agent-state.md)。
+- `.claude/settings.local.json` 不得显式放行根 `AGENTS.md` 禁止的共享 worktree Git 改写操作（`stash`、`switch`、`checkout`、`reset`、`clean`）；`context-check` 负责检测这一类显式权限冲突。
 
 ## 评测与审计
 

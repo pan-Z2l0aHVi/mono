@@ -46,6 +46,23 @@ if (exists('CLAUDE.md')) {
     addError('CLAUDE.md is missing the shared-entry adapter contract')
 }
 
+if (exists('.claude/settings.local.json')) {
+  try {
+    const settings = JSON.parse(read('.claude/settings.local.json'))
+    const unsafeGitAllowances = (settings.permissions?.allow ?? []).filter(
+      allowance =>
+        typeof allowance === 'string' && /^Bash\(git (?:stash|switch|checkout|reset|clean)(?: |\))/.test(allowance)
+    )
+    if (unsafeGitAllowances.length > 0) {
+      addError(
+        `.claude/settings.local.json explicitly allows shared-worktree Git mutations: ${unsafeGitAllowances.join(', ')}`
+      )
+    }
+  } catch (error) {
+    addError(`.claude/settings.local.json cannot be parsed: ${error instanceof Error ? error.message : String(error)}`)
+  }
+}
+
 if (exists('package.json')) {
   try {
     const packageJson = JSON.parse(read('package.json'))
@@ -54,6 +71,7 @@ if (exists('package.json')) {
       'check:contracts',
       'repo:verify',
       'repo:context-audit',
+      'agent:state',
       'repo:contract',
       'repo:contract-diff',
       'test:repo-tools'

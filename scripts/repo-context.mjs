@@ -107,21 +107,33 @@ try {
   console.error(`repo-context: cannot load pnpm workspace manifests: ${detail}`)
   process.exit(1)
 }
+function collectWorkspaceDependencyEdges(manifest) {
+  const sections = [
+    ['dependencies', 'runtime'],
+    ['devDependencies', 'development'],
+    ['peerDependencies', 'peer']
+  ]
+
+  return sections.flatMap(([field, type]) =>
+    Object.keys(manifest[field] ?? {})
+      .filter(name => name.startsWith('@greypan/'))
+      .map(to => ({ to, type }))
+  )
+}
+
 const workspaces = manifests
   .map(file => {
     const manifest = readJson(file)
     const relativeRoot = path.relative(root, path.dirname(file)).split(path.sep).join('/')
+    const dependencyEdges = collectWorkspaceDependencyEdges(manifest)
     return {
       name: manifest.name,
       private: manifest.private === true,
       root: relativeRoot,
       kind: getWorkspaceKind(relativeRoot),
       scripts: manifest.scripts ?? {},
-      dependencies: Object.keys({
-        ...manifest.dependencies,
-        ...manifest.devDependencies,
-        ...manifest.peerDependencies
-      }).filter(name => name.startsWith('@greypan/'))
+      dependencyEdges,
+      dependencies: [...new Set(dependencyEdges.map(edge => edge.to))]
     }
   })
   .filter(workspace => workspace.name)
@@ -135,10 +147,10 @@ const manifestByName = new Map(
 )
 const dependentsByDependency = new Map()
 for (const workspace of workspaces) {
-  for (const dependency of workspace.dependencies) {
-    const dependents = dependentsByDependency.get(dependency) ?? []
+  for (const edge of workspace.dependencyEdges) {
+    const dependents = dependentsByDependency.get(edge.to) ?? []
     dependents.push(workspace.name)
-    dependentsByDependency.set(dependency, dependents)
+    dependentsByDependency.set(edge.to, dependents)
   }
 }
 
@@ -580,11 +592,19 @@ if (hasContextChange)
     'context 改动必须检查加载路径、链接、索引和重复风险。'
   )
 
+const dependencyEdges = workspaces
+  .flatMap(workspace => workspace.dependencyEdges.map(edge => ({ from: workspace.name, ...edge })))
+  .filter(edge => directWorkspaces.includes(edge.from) || directWorkspaces.includes(edge.to))
+  .sort((left, right) =>
+    `${left.from}:${left.to}:${left.type}`.localeCompare(`${right.from}:${right.to}:${right.type}`)
+  )
+
 const result = {
   command,
   changedPaths: normalizedPaths,
   directWorkspaces,
   affectedWorkspaces: [...affected].sort(),
+  dependencyEdges,
   context: [...context].sort(),
   requiredEvidence,
   focusedTests,
@@ -604,6 +624,10 @@ if (options.json) {
   console.log(`changed: ${result.changedPaths.join(', ') || '(none)'}`)
   console.log(`direct workspaces: ${result.directWorkspaces.join(', ') || '(root only)'}`)
   console.log(`affected workspaces: ${result.affectedWorkspaces.join(', ') || '(none)'}`)
+  if (result.dependencyEdges.length > 0) {
+    console.log('dependency edges:')
+    for (const edge of result.dependencyEdges) console.log(`- [${edge.type}] ${edge.from} -> ${edge.to}`)
+  }
   console.log(
     `risk: context=${result.risk.context}, public-package-contract=${result.risk.publicPackageContract}, build-artifact=${result.risk.buildArtifact}, browser-runtime=${result.risk.browserRuntime}`
   )

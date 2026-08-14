@@ -65,6 +65,7 @@ Mono 是一个 `pnpm` workspace + `Turborepo` monorepo：发布 `@greypan/*` 工
 
 - 任务路由与验证计划：`pnpm repo:verify -- <paths...>` 输出最小 context、受影响 workspace、风险、required evidence 和最小充分验证建议；公共 package 再用 `repo:contract`。
 - Context 审计：`pnpm repo:context-audit -- --json`；它只报告重复和规则密度候选，不替代人工判断。
+- 任务级状态：仅在跨会话、交接或需要保留验证缺口时使用 `pnpm agent:state -- <write|read|list> ...`；它写入 Git-ignore 的短期 receipt，不是常驻 context 或行为事实。
 
 1. 先读根 `AGENTS.md`，再读目标目录最近的 `AGENTS.md`。
 2. 只按任务读取命中的 `.agents/rules/*` 和 `docs/agents/*`；普通局部任务不预读全部 ADR。

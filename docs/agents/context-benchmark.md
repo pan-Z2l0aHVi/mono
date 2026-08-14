@@ -10,6 +10,7 @@
 - 以当前源码、manifest、测试和配置作为结果事实；文档只评估能否正确路由。
 - 记录首次完成率，而不只记录最终是否能完成；失败要区分导航、范围、实现、验证和环境原因。
 - 记录 context/tool 使用量，避免用新增规则换取表面成功率。
+- 外部 harness 可选保存对应的 `.agent-state/` task receipt，用于恢复任务状态；receipt 不是原始 trace，也不替代 telemetry、Git diff 或首次成功判定。
 - 评测中不得把人工补救、未运行的 generator 或缺少浏览器验证误记为 Agent 首次成功。
 
 ## 最小任务集

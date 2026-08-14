@@ -21,6 +21,7 @@
     "check:context": "node scripts/context-check.mjs",
     "repo:verify": "node scripts/repo-context.mjs verify",
     "repo:context-audit": "node scripts/context-audit.mjs",
+    "agent:state": "node scripts/agent-state.mjs",
     "check:contracts": "node scripts/package-contract-check.mjs",
     "test:repo-tools": "node scripts/repo-tools.test.mjs",
     "repo:contract": "node scripts/repo-context.mjs contract",

@@ -16,6 +16,14 @@ const checkContractFailure = root =>
     encoding: 'utf8',
     stdio: 'pipe'
   })
+const runAgentState = (root, ...args) =>
+  execFileSync(process.execPath, ['scripts/agent-state.mjs', ...args, '--root', root], { encoding: 'utf8' })
+const runAgentStateFailure = (root, ...args) =>
+  execFileSync(process.execPath, ['scripts/agent-state.mjs', ...args, '--root', root], {
+    encoding: 'utf8',
+    stdio: 'pipe'
+  })
+const runContextCheck = () => execFileSync(process.execPath, ['scripts/context-check.mjs'], { encoding: 'utf8' })
 
 const webUiContract = JSON.parse(run('contract', '--json', '@greypan/web-ui'))
 assert.equal(webUiContract.package.root, 'packages/web-ui')
@@ -40,6 +48,16 @@ assert.ok(webUiPlan.affectedWorkspaces.includes('@greypan/vue-web-ui-demo'))
 assert.equal(webUiPlan.risk.publicPackageContract, true)
 assert.equal(webUiPlan.risk.buildArtifact, true)
 assert.equal(webUiPlan.risk.browserRuntime, true)
+assert.ok(
+  webUiPlan.dependencyEdges.some(
+    edge => edge.from === '@greypan/react-web-ui-demo' && edge.to === '@greypan/web-ui' && edge.type === 'runtime'
+  )
+)
+assert.ok(
+  webUiPlan.dependencyEdges.some(
+    edge => edge.from === '@greypan/web-ui' && edge.to === '@greypan/tsconfig' && edge.type === 'development'
+  )
+)
 assert.ok(webUiPlan.context.includes('AGENTS.md'))
 assert.ok(webUiPlan.context.includes('packages/web-ui/AGENTS.md'))
 assert.ok(webUiPlan.context.includes('docs/agents/web-ui.md'))
@@ -137,6 +155,38 @@ assert.deepEqual(gitPlan.changedPaths, [])
 const worktreePlan = JSON.parse(run('verify', '--json', '--worktree'))
 assert.ok(worktreePlan.changedPaths.includes('scripts/repo-context.mjs'))
 assert.ok(worktreePlan.verification.some(item => item.command === 'pnpm run test:repo-tools'))
+
+assert.match(runContextCheck(), /context-check passed/)
+
+const stateRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'greypan-agent-state-'))
+const stateInput = path.join(stateRoot, 'receipt.json')
+fs.writeFileSync(
+  stateInput,
+  JSON.stringify({
+    status: 'in_progress',
+    summary: '已完成 context 路由，等待最小验证。',
+    contextFiles: ['AGENTS.md', 'docs/agents/context.md'],
+    changedPaths: ['scripts/repo-context.mjs'],
+    verification: [{ command: 'pnpm run test:repo-tools', status: 'not_run' }],
+    risks: ['需要确认 dependency edge 类型。']
+  })
+)
+assert.match(
+  runAgentState(stateRoot, 'write', '--task', 'C03-web-ui-event', '--input', stateInput),
+  /agent-state: wrote/
+)
+const stateReceipt = JSON.parse(runAgentState(stateRoot, 'read', '--task', 'C03-web-ui-event'))
+assert.equal(stateReceipt.schemaVersion, 1)
+assert.equal(stateReceipt.taskId, 'C03-web-ui-event')
+assert.deepEqual(stateReceipt.contextFiles, ['AGENTS.md', 'docs/agents/context.md'])
+assert.equal(stateReceipt.verification[0].status, 'not_run')
+const stateList = JSON.parse(runAgentState(stateRoot, 'list'))
+assert.deepEqual(
+  stateList.map(state => state.taskId),
+  ['C03-web-ui-event']
+)
+assert.throws(() => runAgentStateFailure(stateRoot, 'write', '--task', '../unsafe', '--input', stateInput))
+fs.rmSync(stateRoot, { recursive: true, force: true })
 
 assert.match(runContractCheck(), /package-contract-check passed/)
 
