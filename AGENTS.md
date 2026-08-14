@@ -41,6 +41,7 @@
 | 架构探索、术语或 ADR                              | [`docs/agents/domain.md`](docs/agents/domain.md)、[`CONTEXT.md`](CONTEXT.md) 和相关 ADR                                                                                                                         |
 | instruction system / context 维护                 | [`docs/agents/context.md`](docs/agents/context.md)、[`CONTEXT.md`](CONTEXT.md) 和 ADR-0012                                                                                                                      |
 | 代码 review                                       | [`.agents/rules/review-checklist.md`](.agents/rules/review-checklist.md)、[`docs/agents/review.md`](docs/agents/review.md)；需要独立 reviewer 时再读 [`.agents/agents/reviewer.md`](.agents/agents/reviewer.md) |
+| 全局替换 / 重命名 / API 迁移 / 文件迁移           | [`.agents/rules/global-rename.md`](.agents/rules/global-rename.md)                                                                                                                                              |
 | Git commit                                        | [`.agents/rules/commit.md`](.agents/rules/commit.md) 和 [`docs/agents/commit.md`](docs/agents/commit.md)                                                                                                        |
 | GitHub issue                                      | [`docs/agents/issue-tracker.md`](docs/agents/issue-tracker.md)                                                                                                                                                  |
 
