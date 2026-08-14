@@ -104,9 +104,6 @@ report.html
 # ==========================================
 # 策略同 .vscode / .zed：忽略全部，显式放行团队共享配置
 
-# Agent task receipts — task-local execution memory, never a source of truth
-.agent-state/
-
 # Claude Code — 忽略本地缓存，保留共享配置和指令
 .claude/*
 !.claude/settings.json

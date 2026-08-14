@@ -71,7 +71,6 @@ if (exists('package.json')) {
       'check:contracts',
       'repo:verify',
       'repo:context-audit',
-      'agent:state',
       'repo:contract',
       'repo:contract-diff',
       'test:repo-tools'
