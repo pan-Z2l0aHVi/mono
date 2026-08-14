@@ -26,7 +26,7 @@
 
 在工作区根目录运行 `pnpm run check:code` 进行格式化、lint 和类型检查。运行 `pnpm run fix:code` 可在类型检查前自动修复格式化和 lint 问题。包构建命令不能替代这两个命令。
 
-构建可发布 package 或修改其 `exports`、`files`、Vite 输出时，在根构建成功后运行 `pnpm run check:contracts`。该检查使用 `pnpm pack --dry-run` 验证实际发布文件与 manifest export targets；它不判断 API 语义或版本级别。任务开始时使用 `pnpm repo:verify -- <paths...>`，取得由 `pnpm-workspace.yaml` 纳入的受影响 workspace、最小读取 context、所需证据与最小充分验证建议；需要确认公开入口时使用 `pnpm repo:contract -- <published-package>`，需要审阅 Git 变更集的 manifest-level semver 候选时使用 `pnpm repo:contract-diff -- --base <git-ref>`；对 Git 变更集可传入 `--base <git-ref>`、`--staged` 或 `--worktree`。
+构建可发布 package 或修改其 `exports`、`files`、Vite 输出时，在根构建成功后运行 `pnpm run check:pack`。该检查使用 `pnpm pack --dry-run` 验证实际发布文件与 manifest export targets；它不判断 API 语义或版本级别。任务开始时使用 `pnpm find:usages -- <paths...>`，取得由 `pnpm-workspace.yaml` 纳入的受影响 workspace、最小读取 context、所需证据与最小充分验证建议；需要确认公开入口时使用 `pnpm inspect:contract -- <published-package>`，需要审阅 Git 变更集的 manifest-level semver 候选时使用 `pnpm diff:contract -- --base <git-ref>`；对 Git 变更集可传入 `--base <git-ref>`、`--staged` 或 `--worktree`。
 
 对于 `web-ui`，`pnpm --filter @greypan/web-ui generate-icons` 从 `icons.used.json` 重新生成图标模块。Vite 插件也会在 `vp build` 期间自动运行它。
 

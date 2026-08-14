@@ -58,7 +58,7 @@ const filesReport = files.map(file => {
   }
 })
 
-const repeatedTerms = ['生成文件', '真实浏览器', '公共契约', 'repo:verify', 'definePlugin', 'Shadow DOM']
+const repeatedTerms = ['生成文件', '真实浏览器', '公共契约', 'find:usages', 'definePlugin', 'Shadow DOM']
 const duplicates = repeatedTerms
   .map(term => ({
     term,
@@ -73,7 +73,7 @@ const highDensity = filesReport
   .filter(item => item.imperatives >= 5)
   .sort((left, right) => right.imperatives - left.imperatives)
 const result = {
-  command: 'context-audit',
+  command: 'audit-instructions',
   scope: files.sort(),
   summary: {
     markdownFiles: files.length,
@@ -92,7 +92,7 @@ const result = {
 
 if (json) console.log(JSON.stringify(result, null, 2))
 else {
-  console.log('context-audit report')
+  console.log('audit-instructions report')
   console.log(`markdown files: ${result.summary.markdownFiles}`)
   console.log(`total lines: ${result.summary.totalLines}`)
   console.log(`imperative terms: ${result.summary.totalImperatives}`)

@@ -18,7 +18,7 @@ if (
   (command === 'verify' && options.paths.length === 0 && !options.base && !options.staged && !options.worktree)
 ) {
   console.error(
-    'Usage: node scripts/repo-context.mjs verify [--json] [--base <git-ref> | --staged | --worktree] <changed-path>...\n       node scripts/repo-context.mjs contract [--json] <workspace-name>\n       node scripts/repo-context.mjs contract-diff --base <git-ref> [--json]'
+    'Usage: node scripts/repo-query.mjs verify [--json] [--base <git-ref> | --staged | --worktree] <changed-path>...\n       node scripts/repo-query.mjs contract [--json] <workspace-name>\n       node scripts/repo-query.mjs contract-diff --base <git-ref> [--json]'
   )
   process.exit(1)
 }
@@ -44,7 +44,7 @@ function parseOptions(args) {
     if (argument === '--base') {
       const base = args[index + 1]
       if (!base || base.startsWith('--')) {
-        console.error('repo-context: --base requires a Git ref')
+        console.error('repo-query: --base requires a Git ref')
         process.exit(1)
       }
       result.base = base
@@ -55,7 +55,7 @@ function parseOptions(args) {
   }
 
   if ([result.base, result.staged, result.worktree].filter(Boolean).length > 1) {
-    console.error('repo-context: --base, --staged and --worktree are mutually exclusive')
+    console.error('repo-query: --base, --staged and --worktree are mutually exclusive')
     process.exit(1)
   }
 
@@ -76,7 +76,7 @@ function getGitPaths(gitArgs) {
     return execFileSync('git', gitArgs, { cwd: root, encoding: 'utf8' }).split('\n').filter(Boolean)
   } catch (error) {
     const detail = error instanceof Error ? error.message : String(error)
-    console.error(`repo-context: cannot read Git change set: ${detail}`)
+    console.error(`repo-query: cannot read Git change set: ${detail}`)
     process.exit(1)
   }
 }
@@ -104,7 +104,7 @@ try {
   manifests = listPnpmWorkspaceManifests(root)
 } catch (error) {
   const detail = error instanceof Error ? error.message : String(error)
-  console.error(`repo-context: cannot load pnpm workspace manifests: ${detail}`)
+  console.error(`repo-query: cannot load pnpm workspace manifests: ${detail}`)
   process.exit(1)
 }
 function collectWorkspaceDependencyEdges(manifest) {
@@ -278,11 +278,11 @@ if (command === 'contract') {
   const workspace = workspaceByName.get(contractTarget)
   const manifest = manifestByName.get(contractTarget)
   if (!workspace || !manifest) {
-    console.error(`repo-context: unknown workspace ${contractTarget}`)
+    console.error(`repo-query: unknown workspace ${contractTarget}`)
     process.exit(1)
   }
   if (workspace.kind !== 'package' || workspace.private) {
-    console.error(`repo-context: ${contractTarget} is not a published package contract`)
+    console.error(`repo-query: ${contractTarget} is not a published package contract`)
     process.exit(1)
   }
 
@@ -306,7 +306,7 @@ if (command === 'contract') {
     ].filter(file => fs.existsSync(path.join(root, file))),
     verification: [
       'pnpm run build',
-      'pnpm run check:contracts',
+      'pnpm run check:pack',
       ...(typeof workspace.scripts.test === 'string' ? [`pnpm --filter ${workspace.name} test`] : [])
     ]
   }
@@ -414,21 +414,21 @@ const hasContextChange = normalizedPaths.some(
     file.startsWith('.claude/') ||
     file.startsWith('docs/agents/') ||
     file.startsWith('docs/adr/') ||
-    file.startsWith('scripts/context-check') ||
-    file.startsWith('scripts/context-audit') ||
-    file.startsWith('scripts/repo-context') ||
+    file.startsWith('scripts/validate-context') ||
+    file.startsWith('scripts/audit-instructions') ||
+    file.startsWith('scripts/repo-query') ||
     file.startsWith('scripts/workspace-manifests')
 )
 const hasAgentToolChange = normalizedPaths.some(
   file =>
     file === 'pnpm-workspace.yaml' ||
-    file.startsWith('scripts/repo-context') ||
-    file.startsWith('scripts/context-check') ||
-    file.startsWith('scripts/context-audit') ||
+    file.startsWith('scripts/repo-query') ||
+    file.startsWith('scripts/validate-context') ||
+    file.startsWith('scripts/audit-instructions') ||
     file.startsWith('scripts/workspace-manifests') ||
-    file.startsWith('scripts/repo-tools')
+    file.startsWith('scripts/scripts.test')
 )
-const hasContractToolChange = normalizedPaths.some(file => file.startsWith('scripts/package-contract-check'))
+const hasContractToolChange = normalizedPaths.some(file => file.startsWith('scripts/check-pack'))
 const hasPackageContractChange = normalizedPaths.some(file =>
   directlyChanged.some(workspace => isPackageContractChange(file, workspace))
 )
@@ -497,9 +497,9 @@ function addVerification(level, command, reason) {
 }
 
 if (hasContextChange)
-  addVerification('required', 'pnpm run check:context', '共享 Agent context、路由或其校验脚本发生变化。')
-if (hasAgentToolChange) addVerification('required', 'pnpm run test:repo-tools', '影响分析或 context 校验工具发生变化。')
-if (hasContractToolChange) addVerification('required', 'pnpm run test:repo-tools', '发布产物契约检查器发生变化。')
+  addVerification('required', 'pnpm run validate:context', '共享 Agent context、路由或其校验脚本发生变化。')
+if (hasAgentToolChange) addVerification('required', 'pnpm run test:scripts', '影响分析或 context 校验工具发生变化。')
+if (hasContractToolChange) addVerification('required', 'pnpm run test:scripts', '发布产物契约检查器发生变化。')
 if (hasCodeChange)
   addVerification('required', 'pnpm run check:code', '代码或配置发生变化，需要执行格式化、lint 和类型检查。')
 if (hasReactRouteSourceChange)
@@ -543,7 +543,7 @@ if (hasPackageContractChange)
   addVerification('required', 'pnpm run test', '可发布 package 的源码、入口或 manifest 发生变化。')
 if (hasBuildArtifactChange || hasPackageContractChange || hasContractToolChange) {
   addVerification('required', 'pnpm run build', '构建配置、发布产物或可发布 package 契约发生变化。')
-  addVerification('required', 'pnpm run check:contracts', '构建后需要验证 package exports、类型入口与发布文件。')
+  addVerification('required', 'pnpm run check:pack', '构建后需要验证 package exports、类型入口与发布文件。')
 }
 if (hasBrowserRuntimeChange) {
   addVerification('required', 'pnpm run test', 'browser-mode 测试与相关 package 测试由根 Turbo test 编排。')
@@ -588,7 +588,7 @@ if (hasWailsPublicApiChange)
 if (hasContextChange)
   addEvidence(
     'context-system',
-    'scripts/context-check.mjs + current diff',
+    'scripts/validate-context.mjs + current diff',
     'context 改动必须检查加载路径、链接、索引和重复风险。'
   )
 

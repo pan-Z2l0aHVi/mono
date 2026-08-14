@@ -18,13 +18,13 @@
     "dev:react-web-ui-demo": "turbo build --filter=@greypan/react-web-ui-demo^... && turbo run dev --filter=@greypan/react-web-ui-demo...",
     "dev:vue-web-ui-demo": "turbo build --filter=@greypan/vue-web-ui-demo^... && turbo run dev --filter=@greypan/vue-web-ui-demo...",
     "dev:interweave": "turbo build --filter=@greypan/interweave^... && turbo run dev --filter=@greypan/interweave --filter=@greypan/interweave-frontend^...",
-    "check:context": "node scripts/context-check.mjs",
-    "repo:verify": "node scripts/repo-context.mjs verify",
-    "repo:context-audit": "node scripts/context-audit.mjs",
-    "check:contracts": "node scripts/package-contract-check.mjs",
-    "test:repo-tools": "node scripts/repo-tools.test.mjs",
-    "repo:contract": "node scripts/repo-context.mjs contract",
-    "repo:contract-diff": "node scripts/repo-context.mjs contract-diff"
+    "validate:context": "node scripts/validate-context.mjs",
+    "find:usages": "node scripts/repo-query.mjs verify",
+    "audit:instructions": "node scripts/audit-instructions.mjs",
+    "check:pack": "node scripts/check-pack.mjs",
+    "test:scripts": "node scripts/scripts.test.mjs",
+    "inspect:contract": "node scripts/repo-query.mjs contract",
+    "diff:contract": "node scripts/repo-query.mjs contract-diff"
   },
   "devDependencies": {
     "@changesets/cli": "catalog:",

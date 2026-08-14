@@ -6,7 +6,7 @@
 
 ## 评测原则
 
-- 让 Agent 先使用最小入口，再根据 `repo:verify` 和任务事实渐进加载证据；不要要求它预读整个仓库。
+- 让 Agent 先使用最小入口，再根据 `find:usages` 和任务事实渐进加载证据；不要要求它预读整个仓库。
 - 以当前源码、manifest、测试和配置作为结果事实；文档只评估能否正确路由。
 - 记录首次完成率，而不只记录最终是否能完成；失败要区分导航、范围、实现、验证和环境原因。
 - 记录 context/tool 使用量，避免用新增规则换取表面成功率。
@@ -18,13 +18,13 @@
 | --- | ------------------------------------------ | ---------------------- | ---------------------------------------------- |
 | C01 | 修改 `js-kit` 一个局部 utility             | 局部导航、最小 context | 根/包级 `AGENTS.md`、源码、邻近测试            |
 | C02 | 修改 `browser-kit` 浏览器 API              | runtime 边界           | `packages/browser-kit/AGENTS.md`、源码/测试    |
-| C03 | 修改一个 `web-ui` 组件属性或事件           | 公共契约、跨框架影响   | `repo:verify`                                  |
-| C04 | 修改 `web-ui` React/Vue 类型               | 类型契约、消费端       | `repo:verify`、ADR-0011、type fixtures         |
-| C05 | 修改 overlay/focus/portal 行为             | 浏览器语义和分层       | `repo:verify`、ADR-0005/0006、browser tests    |
-| C06 | 修改 workspace catalog 或 tsconfig profile | 传递影响、构建风险     | `repo:verify`、manifest/继承者                 |
+| C03 | 修改一个 `web-ui` 组件属性或事件           | 公共契约、跨框架影响   | `find:usages`                                  |
+| C04 | 修改 `web-ui` React/Vue 类型               | 类型契约、消费端       | `find:usages`、ADR-0011、type fixtures         |
+| C05 | 修改 overlay/focus/portal 行为             | 浏览器语义和分层       | `find:usages`、ADR-0005/0006、browser tests    |
+| C06 | 修改 workspace catalog 或 tsconfig profile | 传递影响、构建风险     | `find:usages`、manifest/继承者                 |
 | C07 | 修改 Interweave Go/Wails API               | 跨语言和生成物边界     | Interweave `AGENTS.md`、Wails 3 文档、Go tests |
 | C08 | 修改 Interweave MCP 或领域模型             | 术语和长期决策         | ADR-0013–0016、Go tests、frontend consumer     |
-| C09 | 修改构建/发布配置                          | release safety         | `repo:verify`、build guide、workflow/manifest  |
+| C09 | 修改构建/发布配置                          | release safety         | `find:usages`、build guide、workflow/manifest  |
 | C10 | 处理生成文件中的错误                       | source-of-truth 定位   | 根 `AGENTS.md`、generator/config/source        |
 
 ## 外部 harness 必须记录的字段

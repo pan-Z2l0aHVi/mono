@@ -67,13 +67,13 @@ if (exists('package.json')) {
   try {
     const packageJson = JSON.parse(read('package.json'))
     for (const script of [
-      'check:context',
-      'check:contracts',
-      'repo:verify',
-      'repo:context-audit',
-      'repo:contract',
-      'repo:contract-diff',
-      'test:repo-tools'
+      'validate:context',
+      'check:pack',
+      'find:usages',
+      'audit:instructions',
+      'inspect:contract',
+      'diff:contract',
+      'test:scripts'
     ]) {
       if (typeof packageJson.scripts?.[script] !== 'string') addError(`package.json is missing scripts.${script}`)
     }
@@ -216,10 +216,10 @@ if (exists('CONTEXT.md')) {
 }
 
 if (errors.length) {
-  console.error(`context-check failed with ${errors.length} error(s):`)
+  console.error(`validate-context failed with ${errors.length} error(s):`)
   console.error(errors.map(error => `- ${error}`).join('\n'))
   process.exit(1)
 }
 
 const digest = crypto.createHash('sha256').update(markdownFiles.sort().join('\n')).digest('hex').slice(0, 12)
-console.log(`context-check passed (${markdownFiles.length} Markdown files, index ${digest})`)
+console.log(`validate-context passed (${markdownFiles.length} Markdown files, index ${digest})`)

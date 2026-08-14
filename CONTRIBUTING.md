@@ -13,8 +13,8 @@
 ## 定位和影响分析
 
 - 先从目标 workspace 的 `package.json`、`src/`、测试和 README 定位。
-- 变更路径明确后使用 `pnpm repo:verify -- <paths...>`，获取受影响 workspace、所需证据和最小充分验证建议。
-- 修改已发布 package 的 exports、类型或运行时契约时，使用 `pnpm repo:contract -- <package-name>`；比较基线时使用 `pnpm repo:contract-diff -- --base <git-ref>`。
+- 变更路径明确后使用 `pnpm find:usages -- <paths...>`，获取受影响 workspace、所需证据和最小充分验证建议。
+- 修改已发布 package 的 exports、类型或运行时契约时，使用 `pnpm inspect:contract -- <package-name>`；比较基线时使用 `pnpm diff:contract -- --base <git-ref>`。
 - 不把 `dist/`、`.turbo/`、生成 bindings、route tree 或测试附件当作源码入口。
 
 ## 变更分级
@@ -23,7 +23,7 @@
 - **公共行为/导出/跨包引用**：读取 `docs/agents/testing.md`，添加公共 API 测试，并在根目录运行相应的全局验证。
 - **构建、发布、配置或依赖**：读取对应 `docs/agents/*.md`，同时检查 manifest、Turbo、CI 和 Changesets。
 - **UI、交互或浏览器运行时**：读取 `docs/agents/browser-verification.md`；真实浏览器验证不能由 jsdom 或构建替代。
-- **架构或 instruction system**：更新相关 ADR/索引，并运行 `pnpm check:context`。
+- **架构或 instruction system**：更新相关 ADR/索引，并运行 `pnpm validate:context`。
 
 ## 交付前
 

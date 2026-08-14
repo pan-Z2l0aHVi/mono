@@ -16,6 +16,6 @@
 - 聚焦测试和 browser-mode 测试
 - React/Vue demo 的 type fixtures 与集成表面
 - `apps/interweave/frontend`（若被公共组件消费）
-- package `exports`、Changeset 和 `repo:contract` 报告
+- package `exports`、Changeset 和 `inspect:contract` 报告
 
-不要机械同步全部项目；以 `repo:verify`、manifest、源码引用和测试确定实际影响。
+不要机械同步全部项目；以 `find:usages`、manifest、源码引用和测试确定实际影响。

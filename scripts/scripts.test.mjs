@@ -4,19 +4,19 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 
-const run = (...args) => execFileSync(process.execPath, ['scripts/repo-context.mjs', ...args], { encoding: 'utf8' })
+const run = (...args) => execFileSync(process.execPath, ['scripts/repo-query.mjs', ...args], { encoding: 'utf8' })
 const runFailure = (...args) =>
-  execFileSync(process.execPath, ['scripts/repo-context.mjs', ...args], { encoding: 'utf8', stdio: 'pipe' })
+  execFileSync(process.execPath, ['scripts/repo-query.mjs', ...args], { encoding: 'utf8', stdio: 'pipe' })
 const runContractCheck = root =>
-  execFileSync(process.execPath, ['scripts/package-contract-check.mjs', ...(root ? ['--root', root] : [])], {
+  execFileSync(process.execPath, ['scripts/check-pack.mjs', ...(root ? ['--root', root] : [])], {
     encoding: 'utf8'
   })
 const checkContractFailure = root =>
-  execFileSync(process.execPath, ['scripts/package-contract-check.mjs', '--quiet', '--root', root], {
+  execFileSync(process.execPath, ['scripts/check-pack.mjs', '--quiet', '--root', root], {
     encoding: 'utf8',
     stdio: 'pipe'
   })
-const runContextCheck = () => execFileSync(process.execPath, ['scripts/context-check.mjs'], { encoding: 'utf8' })
+const runContextCheck = () => execFileSync(process.execPath, ['scripts/validate-context.mjs'], { encoding: 'utf8' })
 
 const webUiContract = JSON.parse(run('contract', '--json', '@greypan/web-ui'))
 assert.equal(webUiContract.package.root, 'packages/web-ui')
@@ -24,7 +24,7 @@ assert.ok(webUiContract.directConsumers.includes('@greypan/react-web-ui-demo'))
 assert.ok(webUiContract.directConsumers.includes('@greypan/vue-web-ui-demo'))
 assert.ok(Object.hasOwn(webUiContract.package.exports, './components/*'))
 assert.ok(webUiContract.readFirst.includes('packages/web-ui/README.md'))
-assert.ok(webUiContract.verification.includes('pnpm run check:contracts'))
+assert.ok(webUiContract.verification.includes('pnpm run check:pack'))
 assert.throws(() => runFailure('contract', '--json', '@greypan/react-web-ui-demo'))
 
 const noContractDiff = JSON.parse(run('contract-diff', '--json', '--base', 'HEAD'))
@@ -60,14 +60,14 @@ assert.ok(
     item => item.command === 'pnpm --filter @greypan/web-ui test src/components/select/__tests__'
   )
 )
-assert.ok(webUiPlan.verification.some(item => item.command === 'pnpm run check:contracts'))
+assert.ok(webUiPlan.verification.some(item => item.command === 'pnpm run check:pack'))
 assert.ok(webUiPlan.verification.some(item => item.command === 'chrome-devtools MCP 真实浏览器验证'))
 assert.match(run('verify', 'packages/web-ui/src/components/select/index.ts'), /evidence:/)
 
 const contextPlan = JSON.parse(run('verify', '--json', 'docs/agents/context.md'))
 assert.equal(contextPlan.risk.context, true)
 assert.ok(contextPlan.context.includes('docs/adr/0012-progressive-agent-context-architecture.md'))
-assert.ok(contextPlan.verification.some(item => item.command === 'pnpm run check:context'))
+assert.ok(contextPlan.verification.some(item => item.command === 'pnpm run validate:context'))
 
 const typePlan = JSON.parse(run('verify', '--json', 'packages/web-ui/src/types/react.ts'))
 assert.equal(typePlan.command, 'verify')
@@ -77,14 +77,14 @@ assert.equal(
   false
 )
 
-const toolPlan = JSON.parse(run('verify', '--json', 'scripts/repo-context.mjs'))
-assert.ok(toolPlan.verification.some(item => item.command === 'pnpm run test:repo-tools'))
+const toolPlan = JSON.parse(run('verify', '--json', 'scripts/repo-query.mjs'))
+assert.ok(toolPlan.verification.some(item => item.command === 'pnpm run test:scripts'))
 
 const workspaceConfigPlan = JSON.parse(run('verify', '--json', 'pnpm-workspace.yaml'))
-assert.ok(workspaceConfigPlan.verification.some(item => item.command === 'pnpm run test:repo-tools'))
+assert.ok(workspaceConfigPlan.verification.some(item => item.command === 'pnpm run test:scripts'))
 
 const workspaceManifestToolPlan = JSON.parse(run('verify', '--json', 'scripts/workspace-manifests.mjs'))
-assert.ok(workspaceManifestToolPlan.verification.some(item => item.command === 'pnpm run test:repo-tools'))
+assert.ok(workspaceManifestToolPlan.verification.some(item => item.command === 'pnpm run test:scripts'))
 
 const tsconfigPlan = JSON.parse(run('verify', '--json', 'packages/tsconfig/base.json'))
 assert.equal(tsconfigPlan.directWorkspaces[0], '@greypan/tsconfig')
@@ -151,9 +151,9 @@ const worktreePlan = JSON.parse(run('verify', '--json', '--worktree'))
 assert.ok(Array.isArray(worktreePlan.changedPaths))
 assert.ok(Array.isArray(worktreePlan.verification))
 
-assert.match(runContextCheck(), /context-check passed/)
+assert.match(runContextCheck(), /validate-context passed/)
 
-assert.match(runContractCheck(), /package-contract-check passed/)
+assert.match(runContractCheck(), /check-pack passed/)
 
 const fixtureRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'greypan-contract-'))
 const fixturePackageRoot = path.join(fixtureRoot, 'packages', 'fixture')
@@ -170,7 +170,7 @@ fs.writeFileSync(
     exports: { '.': { import: './dist/index.js', types: './dist/index.d.ts' } }
   })
 )
-assert.match(runContractCheck(fixtureRoot), /package-contract-check passed/)
+assert.match(runContractCheck(fixtureRoot), /check-pack passed/)
 fs.writeFileSync(
   path.join(fixturePackageRoot, 'package.json'),
   JSON.stringify({
@@ -213,4 +213,4 @@ fs.writeFileSync(
 assert.throws(() => checkContractFailure(fixtureRoot))
 fs.rmSync(fixtureRoot, { recursive: true, force: true })
 
-console.log('repo-tools tests passed')
+console.log('scripts tests passed')

@@ -12,7 +12,7 @@ const pnpm = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm'
 const packageManagerRoot = path.resolve(import.meta.dirname, '..')
 
 if (rootOptionIndex >= 0 && !args[rootOptionIndex + 1]) {
-  console.error('Usage: node scripts/package-contract-check.mjs [--quiet] [--root <repository-root>]')
+  console.error('Usage: node scripts/check-pack.mjs [--quiet] [--root <repository-root>]')
   process.exit(1)
 }
 
@@ -128,10 +128,10 @@ for (const entry of fs.readdirSync(path.join(root, 'packages'), { withFileTypes:
 
 if (errors.length > 0) {
   if (!quiet) {
-    console.error(`package-contract-check failed with ${errors.length} error(s):`)
+    console.error(`check-pack failed with ${errors.length} error(s):`)
     console.error(errors.map(error => `- ${error}`).join('\n'))
   }
   process.exit(1)
 }
 
-if (!quiet) console.log('package-contract-check passed (published package exports resolve from packed artifacts)')
+if (!quiet) console.log('check-pack passed (published package exports resolve from packed artifacts)')

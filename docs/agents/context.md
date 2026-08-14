@@ -24,7 +24,7 @@
 | ------------------ | -------------------------------------------------------- | ------------------------------------- | ------------------------------------------------------ |
 | 生成物             | 根/包级 `AGENTS.md` 说明“不可手改”与局部 source of truth | `docs/agents/build.md`                | generator diff、build、消费者类型检查                  |
 | 真实浏览器         | 根/包级 `AGENTS.md` 仅声明需要浏览器层                   | `docs/agents/browser-verification.md` | `pnpm run test` 中的 `*.browser.spec.ts`、MCP 操作记录 |
-| `repo:*` 工具      | 根入口只提供命令路由                                     | 本文件的工具接口说明                  | `scripts/repo-tools.test.mjs`                          |
+| `repo:*` 工具      | 根入口只提供命令路由                                     | 本文件的工具接口说明                  | `scripts/scripts.test.mjs`                          |
 | 公共 `web-ui` 契约 | `packages/web-ui/AGENTS.md` 指向受影响消费者             | `docs/agents/web-ui.md`               | fixtures、contracts、browser/integration tests         |
 
 ## 客户端适配
@@ -33,14 +33,14 @@
 - Codex 通过层级 `AGENTS.md` 获得目录约束；根 `CLAUDE.md` 只说明 Claude Code 的加载顺序，不复制共享规则。
 - ACP plan 是当前会话的临时进度 UI；多阶段任务的创建、阶段同步和结束前收敛以 [`CONTRIBUTING.md`](../../CONTRIBUTING.md) 为权威。它不持久化为 `agent-state`，也不能替代源码、Git 或验证证据。
 - `.claude/rules`、`.claude/skills` 和 `.claude/agents` 必须通过 symlink 指向 `.agents/` 中的共享内容。
-- `scripts/context-check.mjs` 只检查这套共享 context 的可加载性，不能替代对规则语义、代码行为或 agent 输出质量的评审。
-- `scripts/repo-context.mjs` 是面向 Agent 的按需查询接口：`pnpm repo:verify -- <paths...>` 一次输出受影响 workspace、最小读取 context、传递依赖、所需证据和最小充分验证建议；`pnpm repo:contract -- <published-package>` 输出当前 exports、直接消费者和最小验证；`pnpm repo:contract-diff -- --base <git-ref>` 输出 manifest-level semver 审阅候选。`repo:verify` 支持 `--base <git-ref>`、`--staged` 与 `--worktree` 从 Git 变更集读取路径。它从 `pnpm-workspace.yaml` 的 `packages` patterns、当前 manifest 和路径规则派生结论，不把影响面复制成静态文档。
-- `scripts/package-contract-check.mjs` 在构建后校验发布 package 的 `files` 与 `exports` 目标可从 `pnpm pack --dry-run` 产物解析；它是发布产物边界的可执行证据，不替代 API 语义或 semver 评审。
-- `.claude/settings.local.json` 不得显式放行根 `AGENTS.md` 禁止的共享 worktree Git 改写操作（`stash`、`switch`、`checkout`、`reset`、`clean`）；`context-check` 负责检测这一类显式权限冲突。
+- `scripts/validate-context.mjs` 只检查这套共享 context 的可加载性，不能替代对规则语义、代码行为或 agent 输出质量的评审。
+- `scripts/repo-query.mjs` 是面向 Agent 的按需查询接口：`pnpm find:usages -- <paths...>` 一次输出受影响 workspace、最小读取 context、传递依赖、所需证据和最小充分验证建议；`pnpm inspect:contract -- <published-package>` 输出当前 exports、直接消费者和最小验证；`pnpm diff:contract -- --base <git-ref>` 输出 manifest-level semver 审阅候选。`find:usages` 支持 `--base <git-ref>`、`--staged` 与 `--worktree` 从 Git 变更集读取路径。它从 `pnpm-workspace.yaml` 的 `packages` patterns、当前 manifest 和路径规则派生结论，不把影响面复制成静态文档。
+- `scripts/check-pack.mjs` 在构建后校验发布 package 的 `files` 与 `exports` 目标可从 `pnpm pack --dry-run` 产物解析；它是发布产物边界的可执行证据，不替代 API 语义或 semver 评审。
+- `.claude/settings.local.json` 不得显式放行根 `AGENTS.md` 禁止的共享 worktree Git 改写操作（`stash`、`switch`、`checkout`、`reset`、`clean`）；`validate-context` 负责检测这一类显式权限冲突。
 
 ## 评测与审计
 
-- 快速审计规则密度和重复主题：`pnpm repo:context-audit -- --json`。它只生成候选，不自动判断语义冲突或删除规则；重复主题应回到权威来源、加载条件和实现证据人工复核。
+- 快速审计规则密度和重复主题：`pnpm audit:instructions -- --json`。它只生成候选，不自动判断语义冲突或删除规则；重复主题应回到权威来源、加载条件和实现证据人工复核。
 - 真实任务评测定义：[`context-benchmark.md`](context-benchmark.md)。它定义 C01–C10、首次成功率、读取量、影响范围和验证选择的比较口径；真实 trace 由外部 evaluation harness 保存，不是普通源码任务的必跑测试。
 
 ## 最小 context 组合
@@ -49,10 +49,10 @@
 | --------------------- | -------------------------------------------------------------------------------------- | ------------------------------------------------------ |
 | 局部工具函数          | 根 `AGENTS.md` + 目标包 `AGENTS.md` + 目标源码/测试                                    | `.agents/rules/code-style.md`、包 README               |
 | `web-ui` 组件或类型   | 根/包级 `AGENTS.md` + `docs/agents/web-ui.md` + 组件源码/测试                          | 对应 ADR、React/Vue demo type fixtures                 |
-| 跨包公共 API          | `contract-change-review` skill + `repo:verify`/`repo:contract` 输出 + 受影响包 context | `docs/agents/testing.md`、相关消费者和 ADR             |
+| 跨包公共 API          | `contract-change-review` skill + `find:usages`/`inspect:contract` 输出 + 受影响包 context | `docs/agents/testing.md`、相关消费者和 ADR             |
 | 构建/依赖/发布        | `ARCHITECTURE.md` + `docs/agents/build.md` 或 `dependencies.md` + manifests            | CI workflow、ADR-0001/0002/0009                        |
 | InterWeave/Wails/领域 | `apps/interweave/AGENTS.md` + `apps/interweave/frontend/AGENTS.md` + 相关源码          | ADR-0013-0016、Wails 3 官方文档                        |
-| context system        | `ARCHITECTURE.md` + `CONTEXT.md` + 本文件 + ADR-0012                                   | `scripts/context-check.mjs`、共享 symlinks 和当前 diff |
+| context system        | `ARCHITECTURE.md` + `CONTEXT.md` + 本文件 + ADR-0012                                   | `scripts/validate-context.mjs`、共享 symlinks 和当前 diff |
 
 不要把“最小入口”理解为足够完成实现；它只是开始定位的最小上下文。实现和交付前必须读取工具输出指出的证据，并按风险升级验证。
 
@@ -78,7 +78,7 @@
 | `packages/web-ui` 组件、图标或公共契约              | `packages/web-ui/AGENTS.md`、`docs/agents/web-ui.md` 与受影响 ADR   | 组件源码、类型、测试                               |
 | commitlint 或提交流程                               | `docs/agents/commit.md`                                             | commit 配置或工作流                                |
 | 影响未来工程取舍的架构决定                          | 对应 ADR，并更新 `CONTEXT.md` ADR 索引                              | 可行替代方案之间的长期选择                         |
-| client adapter、共享 rules、skills 或 agent profile | `context.md`、`CONTEXT.md`、ADR-0012 与 `scripts/context-check.mjs` | `CLAUDE.md`、`.agents/`、root scripts              |
+| client adapter、共享 rules、skills 或 agent profile | `context.md`、`CONTEXT.md`、ADR-0012 与 `scripts/validate-context.mjs` | `CLAUDE.md`、`.agents/`、root scripts              |
 
 ## 维护 instruction system
 
