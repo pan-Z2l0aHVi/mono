@@ -1,4 +1,4 @@
-import type { WebUiDialog, WebUiSegmented, WebUiSwitch } from '@greypan/web-ui'
+import type { WebUiDialog, WebUiEventName, WebUiSegmented, WebUiSwitch } from '@greypan/web-ui'
 import { useRef } from 'react'
 
 // React 事件类型回归护栏：锁定「宿主化 $events + HTMLAttributes」类型契约的关键场景，
@@ -8,6 +8,13 @@ export function EventTypingFixture() {
   const segmentedRef = useRef<WebUiSegmented>(null)
   const switchRef = useRef<WebUiSwitch>(null)
   const dialogRef = useRef<WebUiDialog>(null)
+
+  // `$events` 中声明的 kebab-case event name 可赋值；其他 string 被拒绝。
+  const dialogOpenChangeEventName: WebUiEventName<WebUiDialog> = 'open-change'
+  void dialogOpenChangeEventName
+  // @ts-expect-error web-ui-dialog 未声明 invalid-event
+  const invalidDialogEventName: WebUiEventName<WebUiDialog> = 'invalid-event'
+  void invalidDialogEventName
 
   return (
     <>
@@ -41,6 +48,7 @@ export function EventTypingFixture() {
 
       {/* 2. kebab-case 自定义事件精确 detail，target/currentTarget 收窄到 host */}
       <web-ui-dialog
+        noEscapeClose
         onopen-change={e => {
           const open: boolean = e.detail.open
           const host: WebUiDialog = e.currentTarget

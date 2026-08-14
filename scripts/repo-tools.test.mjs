@@ -29,57 +29,89 @@ assert.throws(() => runFailure('contract', '--json', '@greypan/react-web-ui-demo
 const noContractDiff = JSON.parse(run('contract-diff', '--json', '--base', 'HEAD'))
 assert.deepEqual(noContractDiff.changes, [])
 assert.equal(noContractDiff.requiresSemverReview, false)
+assert.throws(() => runFailure('impact', '--json', 'packages/web-ui/src/components/select/index.ts'))
+assert.throws(() => runFailure('route', '--json', 'packages/web-ui/src/components/select/index.ts'))
 
-const webUiImpact = JSON.parse(run('impact', '--json', 'packages/web-ui/src/components/select/index.ts'))
-assert.deepEqual(webUiImpact.directWorkspaces, ['@greypan/web-ui'])
-assert.ok(webUiImpact.affectedWorkspaces.includes('@greypan/web-ui'))
-assert.ok(webUiImpact.affectedWorkspaces.includes('@greypan/react-web-ui-demo'))
-assert.ok(webUiImpact.affectedWorkspaces.includes('@greypan/vue-web-ui-demo'))
-assert.equal(webUiImpact.risk.publicPackageContract, true)
-assert.equal(webUiImpact.risk.buildArtifact, true)
-assert.equal(webUiImpact.risk.browserRuntime, true)
-assert.ok(webUiImpact.context.includes('AGENTS.md'))
-assert.ok(webUiImpact.context.includes('packages/web-ui/AGENTS.md'))
-assert.ok(webUiImpact.context.includes('docs/agents/web-ui.md'))
-assert.deepEqual(webUiImpact.focusedTests['@greypan/web-ui'], ['src/components/select/__tests__'])
+const webUiPlan = JSON.parse(run('verify', '--json', 'packages/web-ui/src/components/select/index.ts'))
+assert.deepEqual(webUiPlan.directWorkspaces, ['@greypan/web-ui'])
+assert.ok(webUiPlan.affectedWorkspaces.includes('@greypan/web-ui'))
+assert.ok(webUiPlan.affectedWorkspaces.includes('@greypan/react-web-ui-demo'))
+assert.ok(webUiPlan.affectedWorkspaces.includes('@greypan/vue-web-ui-demo'))
+assert.equal(webUiPlan.risk.publicPackageContract, true)
+assert.equal(webUiPlan.risk.buildArtifact, true)
+assert.equal(webUiPlan.risk.browserRuntime, true)
+assert.ok(webUiPlan.context.includes('AGENTS.md'))
+assert.ok(webUiPlan.context.includes('packages/web-ui/AGENTS.md'))
+assert.ok(webUiPlan.context.includes('docs/agents/web-ui.md'))
+assert.deepEqual(webUiPlan.focusedTests['@greypan/web-ui'], ['src/components/select/__tests__'])
 assert.ok(
-  webUiImpact.verification.some(
+  webUiPlan.verification.some(
     item => item.command === 'pnpm --filter @greypan/web-ui test src/components/select/__tests__'
   )
 )
-assert.ok(webUiImpact.verification.some(item => item.command === 'pnpm run check:contracts'))
-assert.ok(webUiImpact.verification.some(item => item.command === 'React/Vue demo 真实浏览器验证'))
+assert.ok(webUiPlan.verification.some(item => item.command === 'pnpm run check:contracts'))
+assert.ok(webUiPlan.verification.some(item => item.command === 'chrome-devtools MCP 真实浏览器验证'))
+assert.match(run('verify', 'packages/web-ui/src/components/select/index.ts'), /evidence:/)
 
-const contextImpact = JSON.parse(run('verify', '--json', 'docs/agents/context.md'))
-assert.equal(contextImpact.risk.context, true)
-assert.ok(contextImpact.context.includes('docs/adr/0012-progressive-agent-context-architecture.md'))
-assert.ok(contextImpact.verification.some(item => item.command === 'pnpm run check:context'))
+const contextPlan = JSON.parse(run('verify', '--json', 'docs/agents/context.md'))
+assert.equal(contextPlan.risk.context, true)
+assert.ok(contextPlan.context.includes('docs/adr/0012-progressive-agent-context-architecture.md'))
+assert.ok(contextPlan.verification.some(item => item.command === 'pnpm run check:context'))
 
-const routeImpact = JSON.parse(run('route', '--json', 'packages/web-ui/src/types/react.ts'))
-assert.equal(routeImpact.command, 'route')
-assert.ok(routeImpact.requiredEvidence.some(item => item.kind === 'consumer'))
-assert.ok(routeImpact.requiredEvidence.some(item => item.kind === 'runtime'))
-
-const toolImpact = JSON.parse(run('verify', '--json', 'scripts/repo-context.mjs'))
-assert.ok(toolImpact.verification.some(item => item.command === 'pnpm run test:repo-tools'))
-
-const workspaceConfigImpact = JSON.parse(run('verify', '--json', 'pnpm-workspace.yaml'))
-assert.ok(workspaceConfigImpact.verification.some(item => item.command === 'pnpm run test:repo-tools'))
-
-const workspaceManifestToolImpact = JSON.parse(run('verify', '--json', 'scripts/workspace-manifests.mjs'))
-assert.ok(workspaceManifestToolImpact.verification.some(item => item.command === 'pnpm run test:repo-tools'))
-
-const tsconfigImpact = JSON.parse(run('impact', '--json', 'packages/tsconfig/base.json'))
-assert.equal(tsconfigImpact.directWorkspaces[0], '@greypan/tsconfig')
+const typePlan = JSON.parse(run('verify', '--json', 'packages/web-ui/src/types/react.ts'))
+assert.equal(typePlan.command, 'verify')
+assert.ok(typePlan.requiredEvidence.some(item => item.kind === 'consumer'))
 assert.equal(
-  tsconfigImpact.verification.some(item => item.command === 'pnpm --filter @greypan/tsconfig test'),
+  typePlan.requiredEvidence.some(item => item.kind === 'runtime'),
   false
 )
 
-const reactDemoImpact = JSON.parse(run('verify', '--json', 'apps/react-web-ui-demo/src/main.tsx'))
-assert.ok(reactDemoImpact.context.includes('.agents/rules/react.md'))
-assert.ok(reactDemoImpact.verification.some(item => item.command === 'pnpm --filter @greypan/react-web-ui-demo build'))
-assert.ok(reactDemoImpact.verification.some(item => item.command === 'React/Vue demo 真实浏览器验证'))
+const toolPlan = JSON.parse(run('verify', '--json', 'scripts/repo-context.mjs'))
+assert.ok(toolPlan.verification.some(item => item.command === 'pnpm run test:repo-tools'))
+
+const workspaceConfigPlan = JSON.parse(run('verify', '--json', 'pnpm-workspace.yaml'))
+assert.ok(workspaceConfigPlan.verification.some(item => item.command === 'pnpm run test:repo-tools'))
+
+const workspaceManifestToolPlan = JSON.parse(run('verify', '--json', 'scripts/workspace-manifests.mjs'))
+assert.ok(workspaceManifestToolPlan.verification.some(item => item.command === 'pnpm run test:repo-tools'))
+
+const tsconfigPlan = JSON.parse(run('verify', '--json', 'packages/tsconfig/base.json'))
+assert.equal(tsconfigPlan.directWorkspaces[0], '@greypan/tsconfig')
+assert.equal(
+  tsconfigPlan.verification.some(item => item.command === 'pnpm --filter @greypan/tsconfig test'),
+  false
+)
+
+const reactDemoPlan = JSON.parse(run('verify', '--json', 'apps/react-web-ui-demo/src/main.tsx'))
+assert.ok(reactDemoPlan.context.includes('.agents/rules/react.md'))
+assert.ok(reactDemoPlan.verification.some(item => item.command === 'pnpm --filter @greypan/react-web-ui-demo build'))
+assert.ok(reactDemoPlan.verification.some(item => item.command === 'pnpm run test'))
+assert.ok(reactDemoPlan.verification.some(item => item.command === 'chrome-devtools MCP 真实浏览器验证'))
+
+const reactRoutePlan = JSON.parse(run('verify', '--json', 'apps/react-web-ui-demo/src/routes/about.tsx'))
+assert.ok(reactRoutePlan.context.includes('docs/agents/build.md'))
+assert.ok(
+  reactRoutePlan.requiredEvidence.some(item => item.kind === 'generator' && item.location.includes('routeTree.gen.ts'))
+)
+assert.ok(
+  reactRoutePlan.verification.some(
+    item =>
+      item.level === 'required' &&
+      item.command === 'pnpm --filter @greypan/react-web-ui-demo build' &&
+      item.reason.includes('禁止手动编辑')
+  )
+)
+
+const weaveApiPlan = JSON.parse(run('verify', '--json', 'apps/weave/index.go'))
+assert.ok(weaveApiPlan.context.includes('docs/agents/build.md'))
+assert.ok(
+  weaveApiPlan.requiredEvidence.some(item => item.kind === 'generator' && item.location.includes('frontend/bindings'))
+)
+assert.ok(
+  weaveApiPlan.verification.some(
+    item => item.level === 'required' && item.command === 'pnpm --filter @greypan/weave-frontend build'
+  )
+)
 
 function findNestedManifest(directory) {
   for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
@@ -95,16 +127,16 @@ function findNestedManifest(directory) {
 const nestedAppManifest = findNestedManifest('apps')
 assert.ok(nestedAppManifest)
 const nestedApp = JSON.parse(fs.readFileSync(nestedAppManifest, 'utf8'))
-const nestedAppImpact = JSON.parse(run('impact', '--json', nestedAppManifest))
-assert.deepEqual(nestedAppImpact.directWorkspaces, [nestedApp.name])
-assert.ok(nestedAppImpact.affectedWorkspaces.includes(nestedApp.name))
+const nestedAppPlan = JSON.parse(run('verify', '--json', nestedAppManifest))
+assert.deepEqual(nestedAppPlan.directWorkspaces, [nestedApp.name])
+assert.ok(nestedAppPlan.affectedWorkspaces.includes(nestedApp.name))
 
-const gitImpact = JSON.parse(run('impact', '--json', '--base', 'HEAD'))
-assert.deepEqual(gitImpact.changedPaths, [])
+const gitPlan = JSON.parse(run('verify', '--json', '--base', 'HEAD'))
+assert.deepEqual(gitPlan.changedPaths, [])
 
-const worktreeImpact = JSON.parse(run('impact', '--json', '--worktree'))
-assert.ok(worktreeImpact.changedPaths.includes('scripts/repo-context.mjs'))
-assert.ok(worktreeImpact.verification.some(item => item.command === 'pnpm run test:repo-tools'))
+const worktreePlan = JSON.parse(run('verify', '--json', '--worktree'))
+assert.ok(worktreePlan.changedPaths.includes('scripts/repo-context.mjs'))
+assert.ok(worktreePlan.verification.some(item => item.command === 'pnpm run test:repo-tools'))
 
 assert.match(runContractCheck(), /package-contract-check passed/)
 

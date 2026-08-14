@@ -6,23 +6,19 @@ import { listPnpmWorkspaceManifests } from './workspace-manifests.mjs'
 
 const root = path.resolve(import.meta.dirname, '..')
 const rawArgs = process.argv.slice(2)
-const command = rawArgs.shift() ?? 'impact'
+const command = rawArgs.shift() ?? 'verify'
 const options = parseOptions(rawArgs)
 const contractTarget = command === 'contract' ? (options.paths.shift() ?? '') : ''
 
 if (
-  !['impact', 'verify', 'route', 'contract', 'contract-diff'].includes(command) ||
+  !['verify', 'contract', 'contract-diff'].includes(command) ||
   (command === 'contract' &&
     (options.paths.length > 0 || !contractTarget || options.base || options.staged || options.worktree)) ||
   (command === 'contract-diff' && (options.paths.length > 0 || !options.base || options.staged || options.worktree)) ||
-  (['impact', 'verify', 'route'].includes(command) &&
-    options.paths.length === 0 &&
-    !options.base &&
-    !options.staged &&
-    !options.worktree)
+  (command === 'verify' && options.paths.length === 0 && !options.base && !options.staged && !options.worktree)
 ) {
   console.error(
-    'Usage: node scripts/repo-context.mjs <impact|verify|route> [--json] [--base <git-ref> | --staged | --worktree] <changed-path>...\n       node scripts/repo-context.mjs contract [--json] <workspace-name>\n       node scripts/repo-context.mjs contract-diff --base <git-ref> [--json]'
+    'Usage: node scripts/repo-context.mjs verify [--json] [--base <git-ref> | --staged | --worktree] <changed-path>...\n       node scripts/repo-context.mjs contract [--json] <workspace-name>\n       node scripts/repo-context.mjs contract-diff --base <git-ref> [--json]'
   )
   process.exit(1)
 }
@@ -448,6 +444,12 @@ const hasBrowserRuntimeChange = normalizedPaths.some(
     file.startsWith('apps/react-web-ui-demo/src/') ||
     file.startsWith('apps/vue-web-ui-demo/src/')
 )
+const hasReactRouteSourceChange = normalizedPaths.some(
+  file => file.startsWith('apps/react-web-ui-demo/src/routes/') && !file.endsWith('/routeTree.gen.ts')
+)
+const hasWailsPublicApiChange = normalizedPaths.some(file =>
+  ['apps/weave/index.go', 'apps/weave/types.go'].includes(file)
+)
 
 const context = new Set()
 if (normalizedPaths.length > 0) addContext(context, 'AGENTS.md')
@@ -458,7 +460,13 @@ if (hasContextChange) {
   addContext(context, 'CONTEXT.md')
   addContext(context, 'docs/adr/0012-progressive-agent-context-architecture.md')
 }
-if (hasPackageContractChange || hasBuildArtifactChange || hasContractToolChange)
+if (
+  hasPackageContractChange ||
+  hasBuildArtifactChange ||
+  hasContractToolChange ||
+  hasReactRouteSourceChange ||
+  hasWailsPublicApiChange
+)
   addContext(context, 'docs/agents/build.md')
 if (hasPackageContractChange || hasBrowserRuntimeChange) {
   addContext(context, '.agents/rules/testing.md')
@@ -482,6 +490,18 @@ if (hasAgentToolChange) addVerification('required', 'pnpm run test:repo-tools', 
 if (hasContractToolChange) addVerification('required', 'pnpm run test:repo-tools', '发布产物契约检查器发生变化。')
 if (hasCodeChange)
   addVerification('required', 'pnpm run check:code', '代码或配置发生变化，需要执行格式化、lint 和类型检查。')
+if (hasReactRouteSourceChange)
+  addVerification(
+    'required',
+    'pnpm --filter @greypan/react-web-ui-demo build',
+    'TanStack Router 文件路由变更必须由 Vite plugin 更新 routeTree.gen.ts；禁止手动编辑生成路由树。'
+  )
+if (hasWailsPublicApiChange)
+  addVerification(
+    'required',
+    'pnpm --filter @greypan/weave-frontend build',
+    'Wails 公开 Go API 变更必须生成 frontend bindings，并验证 TypeScript 消费端。'
+  )
 for (const workspace of directlyChanged) {
   const testDirectories = focusedTests[workspace.name]
   if (testDirectories.length > 0) {
@@ -514,8 +534,12 @@ if (hasBuildArtifactChange || hasPackageContractChange || hasContractToolChange)
   addVerification('required', 'pnpm run check:contracts', '构建后需要验证 package exports、类型入口与发布文件。')
 }
 if (hasBrowserRuntimeChange) {
-  addVerification('required', '相关 *.browser.spec.ts', 'web-ui 或 Demo 的浏览器运行时行为发生变化。')
-  addVerification('required', 'React/Vue demo 真实浏览器验证', 'UI、UX 或跨框架集成表面发生变化。')
+  addVerification('required', 'pnpm run test', 'browser-mode 测试与相关 package 测试由根 Turbo test 编排。')
+  addVerification(
+    'required',
+    'chrome-devtools MCP 真实浏览器验证',
+    'UI、UX 或跨框架集成表面必须在 MCP 浏览器中验证交互、console、network 与视口。'
+  )
 }
 if (verification.length === 0 && normalizedPaths.length > 0)
   addVerification('recommended', 'pnpm run check:code', '未识别到特定高风险契约；按局部改动执行最小充分验证。')
@@ -528,14 +552,33 @@ function addEvidence(kind, location, reason) {
 for (const file of context) addEvidence('context', file, '任务路由命中的最小上下文入口。')
 for (const workspace of directlyChanged) {
   addEvidence('manifest', `${workspace.root}/package.json`, '确认 workspace scripts、exports、依赖和发布边界。')
-  if (workspace.scripts.test) addEvidence('test', `${workspace.root}/src/**/__tests__`, '优先读取受影响目录的现有测试，而不是凭文档猜行为。')
+  if (workspace.scripts.test)
+    addEvidence('test', `${workspace.root}/src/**/__tests__`, '优先读取受影响目录的现有测试，而不是凭文档猜行为。')
 }
 if (hasPackageContractChange) {
   addEvidence('contract', 'package.json exports/files/peerDependencies', '公共 package 的 manifest 是发布契约证据。')
   addEvidence('consumer', 'direct workspace consumers', '确认直接消费者是否需要适配或验证。')
 }
-if (hasBrowserRuntimeChange) addEvidence('runtime', '相关 *.browser.spec.ts + React/Vue demo', 'jsdom/build 不能证明原生浏览器和集成行为。')
-if (hasContextChange) addEvidence('context-system', 'scripts/context-check.mjs + current diff', 'context 改动必须检查加载路径、链接、索引和重复风险。')
+if (hasBrowserRuntimeChange)
+  addEvidence('runtime', '相关 *.browser.spec.ts + React/Vue demo', 'jsdom/build 不能证明原生浏览器和集成行为。')
+if (hasReactRouteSourceChange)
+  addEvidence(
+    'generator',
+    'apps/react-web-ui-demo/vite.config.ts -> src/routeTree.gen.ts',
+    '文件路由以 src/routes/** 为 source of truth；路由树必须由 TanStack Router generator 更新。'
+  )
+if (hasWailsPublicApiChange)
+  addEvidence(
+    'generator',
+    'apps/weave/frontend/package.json build -> frontend/bindings/**',
+    '公开 Go API 的 bindings 必须由 Wails generator 更新，不得手工编辑。'
+  )
+if (hasContextChange)
+  addEvidence(
+    'context-system',
+    'scripts/context-check.mjs + current diff',
+    'context 改动必须检查加载路径、链接、索引和重复风险。'
+  )
 
 const result = {
   command,
@@ -565,10 +608,8 @@ if (options.json) {
     `risk: context=${result.risk.context}, public-package-contract=${result.risk.publicPackageContract}, build-artifact=${result.risk.buildArtifact}, browser-runtime=${result.risk.browserRuntime}`
   )
   console.log(`read first: ${result.context.join(', ') || '(none)'}`)
-  if (command === 'route') {
-    console.log('evidence:')
-    for (const item of result.requiredEvidence) console.log(`- [${item.kind}] ${item.location} — ${item.reason}`)
-  }
+  console.log('evidence:')
+  for (const item of result.requiredEvidence) console.log(`- [${item.kind}] ${item.location} — ${item.reason}`)
   const testHints = Object.entries(result.focusedTests).flatMap(([workspace, directories]) =>
     directories.map(directory => `${workspace}:${directory}`)
   )

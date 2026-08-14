@@ -82,13 +82,14 @@ type SettingsPatch struct {
 
 // Stats 是库统计信息。
 type Stats struct {
-	ItemCount       int `json:"itemCount"`
-	FileCount       int `json:"fileCount"`
-	URLCount        int `json:"urlCount"`
-	BrokenCount     int `json:"brokenCount"`
-	TagCount        int `json:"tagCount"`
-	WatchRootCount  int `json:"watchRootCount"`
-	RepairOpenCount int `json:"repairOpenCount"`
+	ItemCount       int   `json:"itemCount"`
+	TotalSize       int64 `json:"totalSize"`
+	FileCount       int   `json:"fileCount"`
+	URLCount        int   `json:"urlCount"`
+	BrokenCount     int   `json:"brokenCount"`
+	TagCount        int   `json:"tagCount"`
+	WatchRootCount  int   `json:"watchRootCount"`
+	RepairOpenCount int   `json:"repairOpenCount"`
 }
 
 // AddResult 是入库操作的结果摘要。

@@ -26,9 +26,22 @@
 
 在工作区根目录运行 `pnpm run check:code` 进行格式化、lint 和类型检查。运行 `pnpm run fix:code` 可在类型检查前自动修复格式化和 lint 问题。包构建命令不能替代这两个命令。
 
-构建可发布 package 或修改其 `exports`、`files`、Vite 输出时，在根构建成功后运行 `pnpm run check:contracts`。该检查使用 `pnpm pack --dry-run` 验证实际发布文件与 manifest export targets；它不判断 API 语义或版本级别。任务开始时可使用 `pnpm repo:impact -- <paths...>` 查看由 `pnpm-workspace.yaml` 纳入的受影响 workspace 与最小读取 context，或使用 `pnpm repo:verify -- <paths...>` 取得最小充分验证建议；需要确认公开入口时使用 `pnpm repo:contract -- <published-package>`，需要审阅 Git 变更集的 manifest-level semver 候选时使用 `pnpm repo:contract-diff -- --base <git-ref>`；对 Git 变更集可传入 `--base <git-ref>`、`--staged` 或 `--worktree`。
+构建可发布 package 或修改其 `exports`、`files`、Vite 输出时，在根构建成功后运行 `pnpm run check:contracts`。该检查使用 `pnpm pack --dry-run` 验证实际发布文件与 manifest export targets；它不判断 API 语义或版本级别。任务开始时使用 `pnpm repo:verify -- <paths...>`，取得由 `pnpm-workspace.yaml` 纳入的受影响 workspace、最小读取 context、所需证据与最小充分验证建议；需要确认公开入口时使用 `pnpm repo:contract -- <published-package>`，需要审阅 Git 变更集的 manifest-level semver 候选时使用 `pnpm repo:contract-diff -- --base <git-ref>`；对 Git 变更集可传入 `--base <git-ref>`、`--staged` 或 `--worktree`。
 
 对于 `web-ui`，`pnpm --filter @greypan/web-ui generate-icons` 从 `icons.used.json` 重新生成图标模块。Vite 插件也会在 `vp build` 期间自动运行它。
+
+## 生成物生命周期
+
+生成文件不是 source of truth，禁止手动编辑；但这不等于禁止使用仓库配置的 generator。若源码或配置的变更会影响受版本控制的代码生成物，必须运行所属 generator，让工具产生 diff，再验证生成结果和消费者。不要通过复制、补丁或格式化工具直接改写输出。
+
+| 场景                           | source of truth                                            | 受控生成入口                                                                       | 完成证据                                                                                                 |
+| ------------------------------ | ---------------------------------------------------------- | ---------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| React 文件路由                 | `apps/react-web-ui-demo/src/routes/**` 与 `vite.config.ts` | `pnpm --filter @greypan/react-web-ui-demo build`（TanStack Router Vite plugin）    | `src/routeTree.gen.ts` 仅由 generator 更新；`check:code` 通过，并在真实浏览器访问新增/修改的路由。       |
+| Vue auto import / typed router | Vue 源码与 `apps/vue-web-ui-demo/vite.config.ts`           | `pnpm --filter @greypan/vue-web-ui-demo build`（Vite plugins）                     | `auto-imports.d.ts`、`typed-router.d.ts` 仅由 plugin 更新；`vue-tsc --build` 与受影响路由/页面验证通过。 |
+| Wails frontend bindings        | 公开 Go API、`apps/weave/frontend/package.json`            | `pnpm --filter @greypan/weave-frontend build`（先执行 `wails3 generate bindings`） | 核对 `frontend/bindings/**` 的 generator diff，并运行 frontend 类型检查/构建和受影响调用点验证。         |
+| web-ui icons                   | `packages/web-ui/icons.used.json`                          | `pnpm --filter @greypan/web-ui generate-icons` 或 `vp build`                       | 图标模块只由 generator 更新，并完成 package build 与公开契约验证。                                       |
+
+`**/__screenshots__/` 与 `**/.vitest-attachments/` 属于测试证据，而不是应用代码生成物。除非任务明确要求并已经完成对应的视觉/浏览器验证，不要创建、手改或提交这些文件。
 
 ## TypeScript 配置
 
@@ -82,7 +95,7 @@
 - `ci.yml` 是针对 pull request 和推送到 `main` 的完整验证工作流：共享 agent context、changeset 状态、构建、格式化/lint/类型检查和测试。它还接受 `workflow_dispatch` 触发来处理版本 PR，覆盖由自动化令牌创建的版本 PR 可能不会触发初始 pull request 事件的情形。PR 和手动触发的运行共享一个以分支为键的 `concurrency` 组（`github.head_ref || github.ref_name`），因此 `cancel-in-progress` 会将两者合并为单次运行而非重复构建。原生应用所需的系统前置条件以当前 workflow 和工具配置为准。
 - `changeset-version.yml` 在推送到 `main` 时创建或更新 Changesets 版本 PR，并通过 `changesets/action` 的 `version` 输入调用 `pnpm run release:version`。包专属的版本同步由相应脚本负责；默认更新与 `--check` 验证的语义以该脚本为准。公共包与私有原生应用所需的工具链和后续验证分别由当前 workflow 决定；版本 workflow 不直接发布包或安装程序。
 - `npm-publish.yml` 仅发布公共 npm 包。其 `pull_request.closed` 触发器限定为 `packages/**`，然后仅在 `changeset-release/main` 合并到 `main` 时运行，检测实际的公共包版本变更，在合并 SHA 上重建 `packages/*` Turbo 图并通过 npm Trusted Publishing 发布。发布成功后，一个独立的最小权限作业为每个包版本创建幂等的 GitHub Release 和标签，附带 npm 和包 changelog 的链接。它不使用私有原生应用的工具链或长期 npm token。
-- 私有原生应用的验证与发布 workflow 仅处理目标应用路径或手动触发，校验同步元数据并在对应的原生目标上构建验证产物；发布 workflow 只在版本变更后的受控合并上创建带校验和的安装程序 Release，且私有应用永远不会发布到 npm。workflow 文件、路径筛选器、平台矩阵、产物保留期和 Release 命名均以当前配置为准。
+- 私有原生应用的验证 workflow 处理目标应用路径、其 WebView frontend 的直接 workspace runtime dependencies 或手动触发，校验同步元数据并在对应的原生目标上构建验证产物；当前 Wails 验证还覆盖 `packages/web-ui/**`、`packages/browser-kit/**` 和 `packages/js-kit/**`。发布 workflow 保持只在目标应用版本变更后的受控合并上创建带校验和的安装程序 Release，且私有应用永远不会发布到 npm。workflow 文件、路径筛选器、平台矩阵、产物保留期和 Release 命名均以当前配置为准。
 - `main` 必须受到保护，确保产品变更通过 pull request 合入。在 GitHub 分支保护中要求 `CI` 通过；原生应用验证保持路径触发而非全局必需检查，因此不相关的 PR 无需等待原生运行环境。
 - Changesets 版本 PR 使用 `GITHUB_TOKEN` 创建，因此其自身的 `pull_request` 触发的 CI 会被 GitHub 的 pwn-request 保护标记为 `action_required`，在获批准前不会运行。由于 `main` 规则集要求 `check` 上下文，合并版本 PR 需要先批准那个被挂起的运行（Actions 运行页面，或 `gh api repos/<owner>/<repo>/actions/runs/<id>/approve`）。`changeset-version.yml` 触发的 `workflow_dispatch` 运行已经验证了相同的提交，因此批准只是为了满足合并门控；分支键控的 `concurrency` 组随后会在两者同时运行时将已批准的运行与调度运行合并。
 - `deploy-pages.yml` 中的部署是手动触发的，通过一个 `actions/deploy-pages` 产物部署作业级 `DEMO_APPS` 列表中的每个可部署 Demo。它仅安装 Node 和 pnpm，因为 Pages 不需要私有原生应用的工具链。每个条目是 `apps/<name>` 目录，服务路径为 `/mono/<name>/`；构建命令使用 pnpm 的 `{./apps/<name>}...` 目录选择器而非 npm 包名。站点没有根落地页。

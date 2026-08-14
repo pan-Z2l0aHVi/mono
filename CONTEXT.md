@@ -110,4 +110,4 @@ _Avoid_: 错误修复、断链管理
 - 应用均为私有包，不发布到 npm；React/Vue demo 部署到 GitHub Pages，Wails starter 通过 GitHub Release 交付安装程序。
 - registry 使用 npmmirror，CI 覆盖为官方 npm registry；不得为局部任务改写 registry/mirror。
 
-组件、token、overlay 与事件语义按需读取 `docs/agents/web-ui.md` 及其指向的 ADR；构建、部署与 release workflow 按需读取 `docs/agents/build.md` 和 ADR-0009。
+组件、token、overlay 与事件语义按需读取 `docs/agents/web-ui.md` 及其指向的 ADR；公共 package 或跨 workspace 契约审查按需读取 `contract-change-review` skill，并以 manifest、消费者和测试为事实；构建、部署与 release workflow 按需读取 `docs/agents/build.md` 和 ADR-0009。

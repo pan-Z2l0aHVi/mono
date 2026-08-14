@@ -138,6 +138,71 @@ func TestMcpAuthAndTools(t *testing.T) {
 	}
 }
 
+func TestMcpListTagsReturnsPathTree(t *testing.T) {
+	db := openTestDB(t)
+	items, tags, repairs, index := newTestServices(t, db)
+	mgr := NewMcpManager(db, items, tags, repairs, index)
+	if err := mgr.Start(context.Background()); err != nil {
+		t.Fatalf("启动 MCP: %v", err)
+	}
+	defer mgr.Stop()
+
+	client := &mcpClient{base: mgr.getBaseURL(), token: mgr.getToken()}
+	initialize := client.call(t, 1, "initialize", map[string]any{
+		"protocolVersion": "2025-03-26", "capabilities": map[string]any{}, "clientInfo": map[string]any{"name": "test", "version": "0"},
+	})
+	if initialize["result"] == nil {
+		t.Fatalf("initialize 失败: %v", initialize)
+	}
+
+	tools := client.call(t, 2, "tools/list", nil)
+	toolsResult, _ := tools["result"].(map[string]any)
+	toolsList, _ := toolsResult["tools"].([]any)
+	foundListTags := false
+	for _, raw := range toolsList {
+		tool, _ := raw.(map[string]any)
+		if tool["name"] == "list_tags" {
+			foundListTags = true
+			break
+		}
+	}
+	if !foundListTags {
+		t.Fatalf("tools/list 未返回 list_tags: %v", tools)
+	}
+
+	callTool := func(id int, name string, arguments map[string]any) map[string]any {
+		return client.call(t, id, "tools/call", map[string]any{"name": name, "arguments": arguments})
+	}
+	created := callTool(3, "create_tag", map[string]any{"name": "library/images", "parent_path": ""})
+	if created["result"] == nil {
+		t.Fatalf("create_tag 失败: %v", created)
+	}
+	file := writeFile(t, t.TempDir(), "cover.png", "image")
+	added := callTool(4, "add_item", map[string]any{"locator": file, "tag_paths": []string{"library/images"}})
+	if added["result"] == nil {
+		t.Fatalf("add_item 失败: %v", added)
+	}
+
+	listed := callTool(5, "list_tags", map[string]any{})
+	listedResult, _ := listed["result"].(map[string]any)
+	content, _ := listedResult["content"].([]any)
+	if len(content) != 1 {
+		t.Fatalf("list_tags 响应内容错误: %v", listed)
+	}
+	entry, _ := content[0].(map[string]any)
+	text, _ := entry["text"].(string)
+	var tree []Tag
+	if err := json.Unmarshal([]byte(text), &tree); err != nil {
+		t.Fatalf("list_tags 返回的 Tag DTO JSON 无法解析: %v; 响应: %v", err, listed)
+	}
+	if len(tree) != 1 || tree[0].Path != "library" || tree[0].ItemCount != 1 {
+		t.Fatalf("根标签或继承条目数错误: %+v", tree)
+	}
+	if len(tree[0].Children) != 1 || tree[0].Children[0].Path != "library/images" || tree[0].Children[0].ItemCount != 1 {
+		t.Fatalf("路径式子标签错误: %+v", tree)
+	}
+}
+
 func TestMediaHandlerServesFile(t *testing.T) {
 	db := openTestDB(t)
 	items, _, _, _ := newTestServices(t, db)

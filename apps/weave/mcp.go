@@ -175,7 +175,7 @@ func (m *mcpManager) registerTools(srv *server.MCPServer) {
 	}
 
 	srv.AddTool(
-		mcp.NewTool("list_tags", mcp.WithDescription("返回标签树（路径式层级，含条目数）")),
+		mcp.NewTool("list_tags", mcp.WithDescription("返回当前标签列表（Bear 式路径树；父标签条目数包含子孙）")),
 		func(ctx context.Context, _ mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			tags, err := m.tagSvc.ListTags(ctx)
 			if err != nil {

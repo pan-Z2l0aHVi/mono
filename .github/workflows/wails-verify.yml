@@ -11,6 +11,9 @@ on:
       - 'pnpm-workspace.yaml'
       - 'turbo.json'
       - 'apps/weave/**'
+      - 'packages/web-ui/**'
+      - 'packages/browser-kit/**'
+      - 'packages/js-kit/**'
   workflow_dispatch:
 
 permissions:

@@ -33,7 +33,11 @@ function walk(relative) {
     if (entry.isDirectory() && ignoredDirectories.has(entry.name)) continue
     const child = path.posix.join(relative, entry.name)
     if (entry.isDirectory()) walk(child)
-    else if (entry.name.endsWith('.md') && (entry.name === 'AGENTS.md' || relative.startsWith('.agents') || relative.startsWith('docs/agents'))) files.push(child)
+    else if (
+      entry.name.endsWith('.md') &&
+      (entry.name === 'AGENTS.md' || relative.startsWith('.agents') || relative.startsWith('docs/agents'))
+    )
+      files.push(child)
   }
 }
 
@@ -54,13 +58,20 @@ const filesReport = files.map(file => {
   }
 })
 
-const repeatedTerms = ['生成文件', '真实浏览器', '公共契约', 'repo:impact', 'repo:verify', 'definePlugin', 'Shadow DOM']
+const repeatedTerms = ['生成文件', '真实浏览器', '公共契约', 'repo:verify', 'definePlugin', 'Shadow DOM']
 const duplicates = repeatedTerms
-  .map(term => ({ term, files: filesReport.filter(item => fs.readFileSync(path.join(root, item.file), 'utf8').includes(term)).map(item => item.file) }))
+  .map(term => ({
+    term,
+    files: filesReport
+      .filter(item => fs.readFileSync(path.join(root, item.file), 'utf8').includes(term))
+      .map(item => item.file)
+  }))
   .filter(item => item.files.length > 1)
 
 const alwaysLoaded = filesReport.filter(item => ['AGENTS.md', 'CLAUDE.md'].includes(item.file))
-const highDensity = filesReport.filter(item => item.imperatives >= 5).sort((left, right) => right.imperatives - left.imperatives)
+const highDensity = filesReport
+  .filter(item => item.imperatives >= 5)
+  .sort((left, right) => right.imperatives - left.imperatives)
 const result = {
   command: 'context-audit',
   scope: files.sort(),
@@ -87,7 +98,8 @@ else {
   console.log(`imperative terms: ${result.summary.totalImperatives}`)
   console.log(`always-loaded lines: ${result.summary.alwaysLoadedLines}`)
   console.log('high-density files:')
-  for (const item of highDensity) console.log(`- ${item.file}: ${item.imperatives} imperative terms / ${item.lines} lines`)
+  for (const item of highDensity)
+    console.log(`- ${item.file}: ${item.imperatives} imperative terms / ${item.lines} lines`)
   console.log('repeated topic candidates:')
   for (const item of duplicates) console.log(`- ${item.term}: ${item.files.join(', ')}`)
 }

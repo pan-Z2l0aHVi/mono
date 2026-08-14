@@ -27,19 +27,19 @@ Mono 是一个 `pnpm` workspace + `Turborepo` monorepo：发布 `@greypan/*` 工
 
 ## 2. Workspace 目录索引
 
-| 路径 | 角色 | 先看什么 |
-|---|---|---|
-| `packages/js-kit` (`@greypan/js-kit`) | 运行时基础工具和 plugin system | `src/plugin-system/`、`README.md`、包级 `AGENTS.md` |
-| `packages/browser-kit` (`@greypan/browser-kit`) | 浏览器能力：DOM、storage、file、tracker | `src/` 对应模块 README、包级 `AGENTS.md` |
-| `packages/test-kit` (`@greypan/test-kit`) | Vitest browser mode + MSW 基础设施 | `docs/agents/testing.md`、`src/__tests__/` |
-| `packages/unplugin-web-components` (`@greypan/unplugin-web-components`) | Vite/Webpack 模块转换和 Vite HTML 注入 | 包级 `AGENTS.md`、`src/transforms/`、两种 adapter |
-| `packages/deps-reload` (`@greypan/deps-reload`) | 开发期 workspace `dist` watcher | 包级 `AGENTS.md`、`src/vite.ts`、`src/webpack.ts` |
-| `packages/web-ui` (`@greypan/web-ui`) | Lit components、tokens、icons、overlay、框架类型 | `docs/agents/web-ui.md`、组件 README、相关 ADR |
-| `packages/tsconfig` (`@greypan/tsconfig`) | 可被 `extends` 的 TypeScript profiles | `*.json`、包级 `AGENTS.md` |
-| `apps/react-web-ui-demo` (`@greypan/react-web-ui-demo`) | React 集成和预览 | `src/routes/`、`src/components/`、包级 README |
-| `apps/vue-web-ui-demo` (`@greypan/vue-web-ui-demo`) | Vue 集成和预览 | `src/pages/`、`src/components/`、包级 README |
-| `apps/weave` (`@greypan/weave`) | Go/Wails 桌面 host、领域服务、MCP | `README.md`、`AGENTS.md`、`docs/adr/0013-0016` |
-| `apps/weave/frontend` (`@greypan/weave-frontend`) | Weave Vue WebView | `src/pages/`、`src/stores/`、`apps/weave/AGENTS.md` |
+| 路径                                                                    | 角色                                             | 先看什么                                            |
+| ----------------------------------------------------------------------- | ------------------------------------------------ | --------------------------------------------------- |
+| `packages/js-kit` (`@greypan/js-kit`)                                   | 运行时基础工具和 plugin system                   | `src/plugin-system/`、`README.md`、包级 `AGENTS.md` |
+| `packages/browser-kit` (`@greypan/browser-kit`)                         | 浏览器能力：DOM、storage、file、tracker          | `src/` 对应模块 README、包级 `AGENTS.md`            |
+| `packages/test-kit` (`@greypan/test-kit`)                               | Vitest browser mode + MSW 基础设施               | `docs/agents/testing.md`、`src/__tests__/`          |
+| `packages/unplugin-web-components` (`@greypan/unplugin-web-components`) | Vite/Webpack 模块转换和 Vite HTML 注入           | 包级 `AGENTS.md`、`src/transforms/`、两种 adapter   |
+| `packages/deps-reload` (`@greypan/deps-reload`)                         | 开发期 workspace `dist` watcher                  | 包级 `AGENTS.md`、`src/vite.ts`、`src/webpack.ts`   |
+| `packages/web-ui` (`@greypan/web-ui`)                                   | Lit components、tokens、icons、overlay、框架类型 | `docs/agents/web-ui.md`、组件 README、相关 ADR      |
+| `packages/tsconfig` (`@greypan/tsconfig`)                               | 可被 `extends` 的 TypeScript profiles            | `*.json`、包级 `AGENTS.md`                          |
+| `apps/react-web-ui-demo` (`@greypan/react-web-ui-demo`)                 | React 集成和预览                                 | `src/routes/`、`src/components/`、包级 README       |
+| `apps/vue-web-ui-demo` (`@greypan/vue-web-ui-demo`)                     | Vue 集成和预览                                   | `src/pages/`、`src/components/`、包级 README        |
+| `apps/weave` (`@greypan/weave`)                                         | Go/Wails 桌面 host、领域服务、MCP                | `README.md`、`AGENTS.md`、`docs/adr/0013-0016`      |
+| `apps/weave/frontend` (`@greypan/weave-frontend`)                       | Weave Vue WebView                                | `src/pages/`、`src/stores/`、`apps/weave/AGENTS.md` |
 
 ## 3. 依赖和构建事实
 
@@ -51,40 +51,30 @@ Mono 是一个 `pnpm` workspace + `Turborepo` monorepo：发布 `@greypan/*` 工
 
 ## 4. 高频改动热点和影响面
 
-| 改动区域 | 典型影响 | 必须关注 |
-|---|---|---|
-| `js-kit/src/plugin-system` | 多个工具包的状态/组合方式 | `docs/adr/0004`、包级规则、公共测试 |
-| `web-ui/src/components` | React、Vue、Weave 前端和组件契约 | `docs/agents/web-ui.md`、ADR-0003/0005/0006/0007/0011 |
-| `web-ui/src/types` | React/Vue 类型推导和事件绑定 | ADR-0011、两个 demo 的 type fixtures |
-| `web-ui/src/components/theme`、`src/icons` | token、视觉一致性、生成导出 | ADR-0008/0010、生成器和 manifest |
-| `unplugin-web-components/src` | Vite/Webpack 行为差异 | 包级 `AGENTS.md`、两种 adapter 测试 |
-| `tsconfig/*.json`、workspace catalog | 所有 TypeScript workspace 或依赖版本 | `docs/agents/dependencies.md`、继承者 |
-| `apps/weave/*.go`、`frontend/src` | Go/Wails API、领域状态和 MCP | Wails 官方文档、ADR-0013-0016、Go/前端两侧 |
+| 改动区域                                   | 典型影响                             | 必须关注                                              |
+| ------------------------------------------ | ------------------------------------ | ----------------------------------------------------- |
+| `js-kit/src/plugin-system`                 | 多个工具包的状态/组合方式            | `docs/adr/0004`、包级规则、公共测试                   |
+| `web-ui/src/components`                    | React、Vue、Weave 前端和组件契约     | `docs/agents/web-ui.md`、ADR-0003/0005/0006/0007/0011 |
+| `web-ui/src/types`                         | React/Vue 类型推导和事件绑定         | ADR-0011、两个 demo 的 type fixtures                  |
+| `web-ui/src/components/theme`、`src/icons` | token、视觉一致性、生成导出          | ADR-0008/0010、生成器和 manifest                      |
+| `unplugin-web-components/src`              | Vite/Webpack 行为差异                | 包级 `AGENTS.md`、两种 adapter 测试                   |
+| `tsconfig/*.json`、workspace catalog       | 所有 TypeScript workspace 或依赖版本 | `docs/agents/dependencies.md`、继承者                 |
+| `apps/weave/*.go`、`frontend/src`          | Go/Wails API、领域状态和 MCP         | Wails 官方文档、ADR-0013-0016、Go/前端两侧            |
 
 ## 5. Agent 快速路由
 
-- 工具化路由：`pnpm repo:route -- <paths...>` 输出最小 context、风险和 required evidence。
-- 影响/验证：`pnpm repo:impact`、`pnpm repo:verify`；公共 package 再用 `repo:contract`。
+- 任务路由与验证计划：`pnpm repo:verify -- <paths...>` 输出最小 context、受影响 workspace、风险、required evidence 和最小充分验证建议；公共 package 再用 `repo:contract`。
 - Context 审计：`pnpm repo:context-audit -- --json`；它只报告重复和规则密度候选，不替代人工判断。
 
 1. 先读根 `AGENTS.md`，再读目标目录最近的 `AGENTS.md`。
 2. 只按任务读取命中的 `.agents/rules/*` 和 `docs/agents/*`；普通局部任务不预读全部 ADR。
 3. 跨包、架构、术语或 instruction system 任务才读 `CONTEXT.md` 和相关 ADR；需要全局拓扑时先读本文件。
-4. 变更影响和验证建议优先使用 `repo:impact` / `repo:verify`；公共 package 变更再使用 `repo:contract` 或 `repo:contract-diff`。
+4. 变更影响、所需证据和验证建议优先使用 `repo:verify`；公共 package 变更再使用 `repo:contract` 或 `repo:contract-diff`。
 5. 公共行为的最终证据来自源码、测试和配置；UI/交互还需要真实浏览器验证，构建成功不能替代它。
 
-## 6. 不可编辑的生成物
+## 6. 生成物边界
 
-以下路径是生成物、缓存或验证附件，不是手工修改入口：
-
-- `**/routeTree.gen.ts`
-- `**/auto-imports.d.ts`
-- `apps/*/frontend/bindings/**`
-- `**/__screenshots__/`
-- `**/.vitest-attachments/`
-- 各 workspace 的 `dist/**`、Turbo cache 和 Wails 构建产物
-
-遇到生成文件问题，应定位其 generator、配置或源文件；具体例外以根 `AGENTS.md` 和目标包级 `AGENTS.md` 为准。
+生成代码、缓存和测试附件不属于架构 source of truth。其禁止手改边界以根/包级 `AGENTS.md` 为准；generator、验证命令和消费者闭环以 [`docs/agents/build.md`](docs/agents/build.md) 为准。遇到此类问题，应定位源文件、配置或 generator，而不是修补输出。
 
 ## 7. 权威来源顺序
 

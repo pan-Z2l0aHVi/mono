@@ -16,6 +16,7 @@ export class WebUiDialog extends LitElement {
   @property({ type: Boolean, reflect: true }) open = false
   @property({ type: Boolean, reflect: true, attribute: 'no-scroll-lock' }) noScrollLock = false
   @property({ type: Boolean, reflect: true, attribute: 'no-backdrop-close' }) noBackdropClose = false
+  @property({ type: Boolean, reflect: true, attribute: 'no-escape-close' }) noEscapeClose = false
 
   @state() private _hasBody = false
   private readonly _userOpenChange = new UserChangeController()
@@ -61,6 +62,7 @@ export class WebUiDialog extends LitElement {
   private handleCancel(e: Event) {
     // 保留 top layer 直到视觉退场完成，避免原生关闭跳过退出动画。
     e.preventDefault()
+    if (this.noEscapeClose) return
     this._userOpenChange.mark()
     this.close()
   }

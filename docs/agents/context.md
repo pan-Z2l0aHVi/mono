@@ -6,15 +6,26 @@
 
 ## Context 层级
 
-| 层级               | 权威来源                                                         | 何时加载                              | 内容边界                             |
-| ------------------ | ---------------------------------------------------------------- | ------------------------------------- | ------------------------------------ |
-| Always available   | 根 `AGENTS.md`                                                   | 每次任务                              | 项目身份、不可绕过边界、任务路由     |
+| 层级               | 权威来源                                                         | 何时加载                               | 内容边界                             |
+| ------------------ | ---------------------------------------------------------------- | -------------------------------------- | ------------------------------------ |
+| Always available   | 根 `AGENTS.md`                                                   | 每次任务                               | 项目身份、不可绕过边界、任务路由     |
 | Repository map     | 根 `ARCHITECTURE.md`                                             | 需要全局拓扑、workspace 定位或热点概览 | 稳定目录地图、依赖草图、影响热点     |
-| Project context    | `CONTEXT.md`                                                     | 架构、跨包、术语、长期设计            | 包边界、工程原则、领域词汇、ADR 索引 |
-| Task-specific      | `docs/agents/*.md`、`.agents/rules/*.md`、最近的包级 `AGENTS.md` | 任务命中对应领域                      | 可执行流程、质量门槛、局部约束       |
-| On-demand evidence | ADR、README、manifest、配置、源码、测试                          | 已确认受影响区域后                    | 历史取舍、公共契约、当前实现         |
+| Project context    | `CONTEXT.md`                                                     | 架构、跨包、术语、长期设计             | 包边界、工程原则、领域词汇、ADR 索引 |
+| Task-specific      | `docs/agents/*.md`、`.agents/rules/*.md`、最近的包级 `AGENTS.md` | 任务命中对应领域                       | 可执行流程、质量门槛、局部约束       |
+| On-demand evidence | ADR、README、manifest、配置、源码、测试                          | 已确认受影响区域后                     | 历史取舍、公共契约、当前实现         |
 
 不要为“可能有用”批量加载文档。规则只保留无法由代码、类型、测试或工具配置可靠推导的约束；可自动验证的约束优先交给相应工具。
+
+## 重复主题的权威来源
+
+不同层级可以为路由而短暂提及同一主题，但只能有一个流程权威来源；其他位置只说明何时加载或链接到它，不能复制完整处方。
+
+| 主题               | 规则边界                                                 | 流程权威来源                          | 自动证据                                               |
+| ------------------ | -------------------------------------------------------- | ------------------------------------- | ------------------------------------------------------ |
+| 生成物             | 根/包级 `AGENTS.md` 说明“不可手改”与局部 source of truth | `docs/agents/build.md`                | generator diff、build、消费者类型检查                  |
+| 真实浏览器         | 根/包级 `AGENTS.md` 仅声明需要浏览器层                   | `docs/agents/browser-verification.md` | `pnpm run test` 中的 `*.browser.spec.ts`、MCP 操作记录 |
+| `repo:*` 工具      | 根入口只提供命令路由                                     | 本文件的工具接口说明                  | `scripts/repo-tools.test.mjs`                          |
+| 公共 `web-ui` 契约 | `packages/web-ui/AGENTS.md` 指向受影响消费者             | `docs/agents/web-ui.md`               | fixtures、contracts、browser/integration tests         |
 
 ## 客户端适配
 
@@ -22,24 +33,24 @@
 - Codex 通过层级 `AGENTS.md` 获得目录约束；根 `CLAUDE.md` 只说明 Claude Code 的加载顺序，不复制共享规则。
 - `.claude/rules`、`.claude/skills` 和 `.claude/agents` 必须通过 symlink 指向 `.agents/` 中的共享内容。
 - `scripts/context-check.mjs` 只检查这套共享 context 的可加载性，不能替代对规则语义、代码行为或 agent 输出质量的评审。
-- `scripts/repo-context.mjs` 是面向 Agent 的按需查询接口：`pnpm repo:impact -- <paths...>` 输出受影响 workspace、最小读取 context 和传递依赖；`pnpm repo:verify -- <paths...>` 额外给出最小充分验证；`pnpm repo:contract -- <published-package>` 输出当前 exports、直接消费者和最小验证；`pnpm repo:contract-diff -- --base <git-ref>` 输出 manifest-level semver 审阅候选。前两者均支持 `--base <git-ref>`、`--staged` 与 `--worktree` 从 Git 变更集读取路径。它从 `pnpm-workspace.yaml` 的 `packages` patterns、当前 manifest 和路径规则派生结论，不把影响面复制成静态文档。
+- `scripts/repo-context.mjs` 是面向 Agent 的按需查询接口：`pnpm repo:verify -- <paths...>` 一次输出受影响 workspace、最小读取 context、传递依赖、所需证据和最小充分验证建议；`pnpm repo:contract -- <published-package>` 输出当前 exports、直接消费者和最小验证；`pnpm repo:contract-diff -- --base <git-ref>` 输出 manifest-level semver 审阅候选。`repo:verify` 支持 `--base <git-ref>`、`--staged` 与 `--worktree` 从 Git 变更集读取路径。它从 `pnpm-workspace.yaml` 的 `packages` patterns、当前 manifest 和路径规则派生结论，不把影响面复制成静态文档。
 - `scripts/package-contract-check.mjs` 在构建后校验发布 package 的 `files` 与 `exports` 目标可从 `pnpm pack --dry-run` 产物解析；它是发布产物边界的可执行证据，不替代 API 语义或 semver 评审。
 
 ## 评测与审计
 
 - 快速审计规则密度和重复主题：`pnpm repo:context-audit -- --json`。它只生成候选，不自动判断语义冲突或删除规则；重复主题应回到权威来源、加载条件和实现证据人工复核。
-- 真实任务 benchmark：[`context-benchmark.md`](context-benchmark.md)。它用于比较 Agent 首次成功率、读取量、影响范围和验证选择，不是普通源码任务的必跑测试。
+- 真实任务评测定义：[`context-benchmark.md`](context-benchmark.md)。它定义 C01–C10、首次成功率、读取量、影响范围和验证选择的比较口径；真实 trace 由外部 evaluation harness 保存，不是普通源码任务的必跑测试。
 
 ## 最小 context 组合
 
-| 任务 | 最小入口 | 需要升级时再读 |
-|---|---|---|
-| 局部工具函数 | 根 `AGENTS.md` + 目标包 `AGENTS.md` + 目标源码/测试 | `.agents/rules/code-style.md`、包 README |
-| `web-ui` 组件或类型 | 根/包级 `AGENTS.md` + `docs/agents/web-ui.md` + 组件源码/测试 | 对应 ADR、React/Vue demo type fixtures |
-| 跨包公共 API | `ARCHITECTURE.md` + `repo:impact`/`repo:contract` 输出 + 受影响包 context | `docs/agents/testing.md`、相关消费者和 ADR |
-| 构建/依赖/发布 | `ARCHITECTURE.md` + `docs/agents/build.md` 或 `dependencies.md` + manifests | CI workflow、ADR-0001/0002/0009 |
-| Weave/Wails/领域 | `apps/weave/AGENTS.md` + `apps/weave/frontend/AGENTS.md` + 相关源码 | ADR-0013-0016、Wails 3 官方文档 |
-| context system | `ARCHITECTURE.md` + `CONTEXT.md` + 本文件 + ADR-0012 | `scripts/context-check.mjs`、共享 symlinks 和当前 diff |
+| 任务                | 最小入口                                                                               | 需要升级时再读                                         |
+| ------------------- | -------------------------------------------------------------------------------------- | ------------------------------------------------------ |
+| 局部工具函数        | 根 `AGENTS.md` + 目标包 `AGENTS.md` + 目标源码/测试                                    | `.agents/rules/code-style.md`、包 README               |
+| `web-ui` 组件或类型 | 根/包级 `AGENTS.md` + `docs/agents/web-ui.md` + 组件源码/测试                          | 对应 ADR、React/Vue demo type fixtures                 |
+| 跨包公共 API        | `contract-change-review` skill + `repo:verify`/`repo:contract` 输出 + 受影响包 context | `docs/agents/testing.md`、相关消费者和 ADR             |
+| 构建/依赖/发布      | `ARCHITECTURE.md` + `docs/agents/build.md` 或 `dependencies.md` + manifests            | CI workflow、ADR-0001/0002/0009                        |
+| Weave/Wails/领域    | `apps/weave/AGENTS.md` + `apps/weave/frontend/AGENTS.md` + 相关源码                    | ADR-0013-0016、Wails 3 官方文档                        |
+| context system      | `ARCHITECTURE.md` + `CONTEXT.md` + 本文件 + ADR-0012                                   | `scripts/context-check.mjs`、共享 symlinks 和当前 diff |
 
 不要把“最小入口”理解为足够完成实现；它只是开始定位的最小上下文。实现和交付前必须读取工具输出指出的证据，并按风险升级验证。
 

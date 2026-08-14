@@ -12,7 +12,7 @@
 ## 定位和影响分析
 
 - 先从目标 workspace 的 `package.json`、`src/`、测试和 README 定位。
-- 变更路径明确后使用 `pnpm repo:impact -- <paths...>` 和 `pnpm repo:verify -- <paths...>`。
+- 变更路径明确后使用 `pnpm repo:verify -- <paths...>`，获取受影响 workspace、所需证据和最小充分验证建议。
 - 修改已发布 package 的 exports、类型或运行时契约时，使用 `pnpm repo:contract -- <package-name>`；比较基线时使用 `pnpm repo:contract-diff -- --base <git-ref>`。
 - 不把 `dist/`、`.turbo/`、生成 bindings、route tree 或测试附件当作源码入口。
 

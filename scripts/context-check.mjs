@@ -52,9 +52,7 @@ if (exists('package.json')) {
     for (const script of [
       'check:context',
       'check:contracts',
-      'repo:impact',
       'repo:verify',
-      'repo:route',
       'repo:context-audit',
       'repo:contract',
       'repo:contract-diff',
@@ -88,7 +86,9 @@ if (exists('ARCHITECTURE.md')) {
       if (manifest.name && !architecture.includes(`\`${manifest.name}\``))
         addError(`ARCHITECTURE.md does not mention workspace ${manifest.name}`)
     } catch (error) {
-      addError(`${path.relative(root, manifestFile)} cannot be parsed: ${error instanceof Error ? error.message : String(error)}`)
+      addError(
+        `${path.relative(root, manifestFile)} cannot be parsed: ${error instanceof Error ? error.message : String(error)}`
+      )
     }
   }
 }
@@ -142,7 +142,9 @@ for (const [file, expectedTarget] of Object.entries(symlinks)) {
 }
 
 const markdownFiles = [
-  ...['AGENTS.md', 'CLAUDE.md', 'CONTEXT.md', 'ARCHITECTURE.md', 'CONTRIBUTING.md'].filter(exists).map(file => path.join(root, file)),
+  ...['AGENTS.md', 'CLAUDE.md', 'CONTEXT.md', 'ARCHITECTURE.md', 'CONTRIBUTING.md']
+    .filter(exists)
+    .map(file => path.join(root, file)),
   ...walk('docs/agents', file => file.endsWith('.md')),
   ...walk('docs/adr', file => file.endsWith('.md')),
   ...walk('.agents', file => file.endsWith('.md')),

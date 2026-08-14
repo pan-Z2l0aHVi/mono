@@ -9,7 +9,7 @@
 - `src/pages/`：页面级集成表面。
 - `src/stores/`：demo 的 Pinia 状态。
 - `src/type-fixtures/`：Vue 事件和组件类型集成样例。
-- `auto-imports.d.ts`、`typed-router.d.ts`：生成类型，不手工修改。
+- `auto-imports.d.ts`、`typed-router.d.ts`：由 Vite plugins 派生的类型；生命周期见 [`docs/agents/build.md`](../../docs/agents/build.md)。
 
 ## Agent 入口
 

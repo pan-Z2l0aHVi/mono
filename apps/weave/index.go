@@ -134,6 +134,9 @@ func (s *IndexService) GetStats(ctx context.Context) (Stats, error) {
 	if err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM items`).Scan(&st.ItemCount); err != nil {
 		return st, err
 	}
+	if err := s.db.QueryRowContext(ctx, `SELECT COALESCE(SUM(size), 0) FROM items`).Scan(&st.TotalSize); err != nil {
+		return st, err
+	}
 	if err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM items WHERE kind = 'file'`).Scan(&st.FileCount); err != nil {
 		return st, err
 	}

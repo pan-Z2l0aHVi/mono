@@ -6,7 +6,6 @@
 - 共享状态和行为使用 `defineXxx(...).make(...)` 的 `definePlugin` factory；Lit、Shadow DOM、属性绑定和框架事件类型以对应 ADR 为准。
 - browser-mode 测试覆盖无法由 jsdom 证明的原生行为；UI/UX/交互改动还必须按 browser-verification guide 做真实浏览器验证。
 
-
 ## 公共契约变更清单
 
 涉及属性、slot、event、form、导出、框架类型、token 或组件可见行为时，按实际影响检查：
@@ -19,4 +18,4 @@
 - `apps/weave/frontend`（若被公共组件消费）
 - package `exports`、Changeset 和 `repo:contract` 报告
 
-不要机械同步全部项目；以 `repo:impact`、manifest、源码引用和测试确定实际影响。
+不要机械同步全部项目；以 `repo:verify`、manifest、源码引用和测试确定实际影响。

@@ -24,6 +24,7 @@ describe('file 测试', () => {
     it('处理无后缀或特殊文件名', () => {
       expect(() => getFileExtension('no-extension')).toThrow('Filename has no extension.')
       expect(() => getFileExtension('.gitignore')).toThrow('Filename has no extension.')
+      expect(() => getFileExtension('report.')).toThrow('Filename has no extension.')
       expect(() => getFileExtension('')).toThrow('Filename is invalid.')
     })
   })
