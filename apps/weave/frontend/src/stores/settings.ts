@@ -10,12 +10,10 @@ import {
   RegenerateMcpToken,
   UpdateSettings
 } from '@bindings/github.com/pan-Z2l0aHVi/mono/apps/weave/settingsservice'
-import {
-  AddWatchRoot,
-  ListWatchRoots,
-  RemoveWatchRoot
-} from '@bindings/github.com/pan-Z2l0aHVi/mono/apps/weave/watchservice'
+import { AddWatchRoot, RemoveWatchRoot } from '@bindings/github.com/pan-Z2l0aHVi/mono/apps/weave/watchservice'
 import { defineStore } from 'pinia'
+
+import { listWatchRoots } from '@/services/wails'
 
 export const useSettingsStore = defineStore('settings', {
   state: () => ({
@@ -31,7 +29,7 @@ export const useSettingsStore = defineStore('settings', {
       this.loading = true
       try {
         this.settings = await GetSettings()
-        this.watchRoots = await ListWatchRoots()
+        this.watchRoots = await listWatchRoots()
         this.stats = await GetStats()
       } catch (err) {
         this.error = String(err)

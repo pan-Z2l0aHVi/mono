@@ -86,7 +86,10 @@ func (s *ItemService) ListItems(ctx context.Context, query ListQuery) ([]Item, e
 		}
 		items = append(items, item)
 	}
-	return items, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return nonNilSlice(items), nil
 }
 
 // GetItem 返回单个条目。
@@ -372,7 +375,10 @@ func (s *ItemService) PickFiles() ([]string, error) {
 		Title: "选择要入库的文件", CanChooseFiles: true, CanChooseDirectories: false, AllowsMultipleSelection: true,
 	})
 	paths, err := dlg.PromptForMultipleSelection()
-	return nonNilSlice(paths), err
+	if err != nil {
+		return nil, err
+	}
+	return nonNilSlice(paths), nil
 }
 
 // PickFolder 打开系统目录选择器。

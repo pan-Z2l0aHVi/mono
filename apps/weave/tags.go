@@ -48,7 +48,7 @@ func (s *TagService) ListTags(ctx context.Context) ([]Tag, error) {
 	for _, r := range roots {
 		out = append(out, *r)
 	}
-	return out, nil
+	return nonNilSlice(out), nil
 }
 
 // CreateTag 创建标签。name 可为单个标签名（配合 parentPath）或完整路径（如 a/b/c）。

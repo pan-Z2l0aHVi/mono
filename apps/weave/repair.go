@@ -26,7 +26,11 @@ func (s *RepairService) queueChanged() {
 
 // ListRepairs 列出修复工作项；state 为空表示全部。
 func (s *RepairService) ListRepairs(ctx context.Context, state string) ([]RepairItem, error) {
-	return listRepairJobs(ctx, s.db, state)
+	repairs, err := listRepairJobs(ctx, s.db, state)
+	if err != nil {
+		return nil, err
+	}
+	return nonNilSlice(repairs), nil
 }
 
 // GetCandidates 为某个修复项计算候选位置（每次实时计算，不落库）。
@@ -52,7 +56,11 @@ func (s *RepairService) GetCandidates(ctx context.Context, repairID string) ([]C
 	if item == nil || item.Kind != "file" {
 		return nil, fmt.Errorf("条目不存在或不是文件: %s", job.ItemID)
 	}
-	return s.findCandidates(ctx, item)
+	candidates, err := s.findCandidates(ctx, item)
+	if err != nil {
+		return nil, err
+	}
+	return nonNilSlice(candidates), nil
 }
 
 // findCandidates 邻近优先搜索候选：原目录 → 所有监听根（含子目录）。
