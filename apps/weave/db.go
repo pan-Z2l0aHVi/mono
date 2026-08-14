@@ -334,7 +334,7 @@ func tagsOfItem(ctx context.Context, db *sql.DB, itemID string) ([]TagRef, error
 		return nil, err
 	}
 	defer rows.Close()
-	var out []TagRef
+	out := make([]TagRef, 0)
 	for rows.Next() {
 		var ref TagRef
 		if err := rows.Scan(&ref.ID, &ref.Path); err != nil {
@@ -407,7 +407,7 @@ func listWatchRoots(ctx context.Context, db *sql.DB) ([]WatchRoot, error) {
 		return nil, err
 	}
 	defer rows.Close()
-	var out []WatchRoot
+	out := make([]WatchRoot, 0)
 	for rows.Next() {
 		var r WatchRoot
 		var created int64
@@ -491,9 +491,9 @@ func listRepairJobs(ctx context.Context, db *sql.DB, state string) ([]RepairItem
 		return nil, err
 	}
 	defer rows.Close()
-	var out []RepairItem
+	out := make([]RepairItem, 0)
 	for rows.Next() {
-		var r RepairItem
+		r := RepairItem{Candidates: []string{}}
 		if err := rows.Scan(&r.ID, &r.ItemID, &r.State, &r.CreatedAt, &r.UpdatedAt, &r.ItemName, &r.ItemPath); err != nil {
 			return nil, err
 		}

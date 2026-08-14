@@ -74,7 +74,7 @@ func (s *ItemService) ListItems(ctx context.Context, query ListQuery) ([]Item, e
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Item
+	items := make([]Item, 0)
 	for rows.Next() {
 		r, err := scanItem(rows)
 		if err != nil {
@@ -116,7 +116,7 @@ func (s *ItemService) toItem(ctx context.Context, r *itemRow) (Item, error) {
 
 // AddFiles 添加一个或多个文件（保持原位，仅登记）。
 func (s *ItemService) AddFiles(ctx context.Context, paths []string, tagPaths []string) (AddResult, error) {
-	res := AddResult{}
+	res := AddResult{Items: []Item{}}
 	tagIDs, err := resolveTagPaths(ctx, s.db, tagPaths)
 	if err != nil {
 		return res, err
@@ -217,7 +217,7 @@ func (s *ItemService) AddFolder(ctx context.Context, path string, tagPaths []str
 	if err != nil {
 		return AddResult{}, err
 	}
-	res := AddResult{}
+	res := AddResult{Items: []Item{}}
 	err = filepath.WalkDir(abs, func(p string, d os.DirEntry, err error) error {
 		if err != nil {
 			return nil // 跳过无权限子树
@@ -371,7 +371,8 @@ func (s *ItemService) PickFiles() ([]string, error) {
 	dlg := app.Dialog.OpenFileWithOptions(&application.OpenFileDialogOptions{
 		Title: "选择要入库的文件", CanChooseFiles: true, CanChooseDirectories: false, AllowsMultipleSelection: true,
 	})
-	return dlg.PromptForMultipleSelection()
+	paths, err := dlg.PromptForMultipleSelection()
+	return nonNilSlice(paths), err
 }
 
 // PickFolder 打开系统目录选择器。

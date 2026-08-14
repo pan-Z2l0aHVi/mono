@@ -59,7 +59,7 @@ func (s *RepairService) GetCandidates(ctx context.Context, repairID string) ([]C
 func (s *RepairService) findCandidates(ctx context.Context, item *itemRow) ([]Candidate, error) {
 	dir := filepath.Dir(item.Locator)
 	name := filepath.Base(item.Locator)
-	var out []Candidate
+	out := make([]Candidate, 0)
 	seen := map[string]bool{}
 
 	add := func(path, note string, score int) {
