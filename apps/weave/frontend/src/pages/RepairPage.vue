@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Candidate, RepairItem } from '@bindings/github.com/pan-Z2l0aHVi/mono/apps/weave/models'
+import type { Candidate, RepairItem } from '@bindings/weave/models'
 import { lucideRefreshCw, lucideSearch, lucideWrench, lucideX } from '@greypan/web-ui/icons'
 import { onMounted, ref } from 'vue'
 

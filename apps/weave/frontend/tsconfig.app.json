@@ -5,6 +5,7 @@
   "compilerOptions": {
     "paths": {
       "@/*": ["./src/*"],
+      "@bindings/weave/*": ["./bindings/github.com/pan-Z2l0aHVi/mono/apps/weave/*"],
       "@bindings/*": ["./bindings/*"]
     },
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo"

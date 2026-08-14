@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Item } from '@bindings/github.com/pan-Z2l0aHVi/mono/apps/weave/models'
+import type { Item } from '@bindings/weave/models'
 import { lucideExternalLink, lucideFolderOpen, lucidePencil, lucideTrash2, lucideX } from '@greypan/web-ui/icons'
 import { computed, ref } from 'vue'
 

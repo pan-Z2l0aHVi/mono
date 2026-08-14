@@ -1,9 +1,7 @@
-import type { Tag } from '@bindings/github.com/pan-Z2l0aHVi/mono/apps/weave/models'
-import { CreateTag, DeleteTag, MoveTag, RenameTag } from '@bindings/github.com/pan-Z2l0aHVi/mono/apps/weave/tagservice'
+import type { Tag } from '@bindings/weave/models'
+import { CreateTag, DeleteTag, ListTags, MoveTag, RenameTag } from '@bindings/weave/tagservice'
 import { Events } from '@wailsio/runtime'
 import { defineStore } from 'pinia'
-
-import { listTags } from '@/services/wails'
 
 export const useTagsStore = defineStore('tags', {
   state: () => ({
@@ -16,7 +14,7 @@ export const useTagsStore = defineStore('tags', {
     async load() {
       this.loading = true
       try {
-        this.tree = await listTags()
+        this.tree = await ListTags()
       } catch (err) {
         this.error = String(err)
       } finally {

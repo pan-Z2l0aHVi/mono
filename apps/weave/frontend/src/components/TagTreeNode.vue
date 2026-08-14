@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Tag } from '@bindings/github.com/pan-Z2l0aHVi/mono/apps/weave/models'
+import type { Tag } from '@bindings/weave/models'
 import { lucideChevronRight } from '@greypan/web-ui/icons'
 import { computed } from 'vue'
 

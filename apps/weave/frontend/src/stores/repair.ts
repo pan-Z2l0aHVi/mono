@@ -1,9 +1,7 @@
-import type { Candidate, RepairItem } from '@bindings/github.com/pan-Z2l0aHVi/mono/apps/weave/models'
-import { AutoRepair, Dismiss, Repair } from '@bindings/github.com/pan-Z2l0aHVi/mono/apps/weave/repairservice'
+import type { Candidate, RepairItem } from '@bindings/weave/models'
+import { AutoRepair, Dismiss, GetCandidates, ListRepairs, Repair } from '@bindings/weave/repairservice'
 import { Events } from '@wailsio/runtime'
 import { defineStore } from 'pinia'
-
-import { getCandidates, listRepairs } from '@/services/wails'
 
 export const useRepairStore = defineStore('repair', {
   state: () => ({
@@ -20,7 +18,7 @@ export const useRepairStore = defineStore('repair', {
     async load() {
       this.loading = true
       try {
-        this.repairs = await listRepairs('')
+        this.repairs = await ListRepairs('')
       } catch (err) {
         this.error = String(err)
       } finally {
@@ -28,7 +26,7 @@ export const useRepairStore = defineStore('repair', {
       }
     },
     async candidates(repairId: string): Promise<Candidate[]> {
-      return getCandidates(repairId)
+      return GetCandidates(repairId)
     },
     async autoRepair(repairId: string): Promise<boolean> {
       const ok = await AutoRepair(repairId)

@@ -3,18 +3,18 @@ import {
   AddFolder,
   AddUrl,
   GetItem,
+  ListItems,
   OpenItem,
   OpenItemLocation,
+  PickFiles,
   PickFolder,
   RemoveItems,
   SetItemTags,
   UpdateItemName
-} from '@bindings/github.com/pan-Z2l0aHVi/mono/apps/weave/itemservice'
-import type { Item, ListQuery } from '@bindings/github.com/pan-Z2l0aHVi/mono/apps/weave/models'
+} from '@bindings/weave/itemservice'
+import type { Item, ListQuery } from '@bindings/weave/models'
 import { Events } from '@wailsio/runtime'
 import { defineStore } from 'pinia'
-
-import { listItems, pickFiles } from '@/services/wails'
 
 /** 从 Wails 拖放事件数据中提取文件路径（兼容数组与对象形态）。 */
 export function extractFilePaths(data: unknown): string[] {
@@ -57,7 +57,7 @@ export const useLibraryStore = defineStore('library', {
           tagPath: this.tagPath || undefined,
           limit: 500
         }
-        this.items = await listItems(query)
+        this.items = await ListItems(query)
         if (this.selectedId && !this.items.some(i => i.id === this.selectedId)) {
           this.selectedId = ''
         }
@@ -82,7 +82,7 @@ export const useLibraryStore = defineStore('library', {
       await this.refreshSelected()
     },
     async pickAndAddFiles() {
-      const paths = await pickFiles()
+      const paths = await PickFiles()
       if (!paths.length) return
       await this.addFiles(paths)
     },
