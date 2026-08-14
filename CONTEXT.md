@@ -35,7 +35,7 @@ Mono 是一个 pnpm + Turborepo monorepo。它向 npm 发布 `@greypan/*` 工具
   └─ @greypan/deps-reload ─开发期 workspace dist 重载
 
 react-web-ui-demo / vue-web-ui-demo ─共享包的 Web 集成与预览表面
-weave（含 weave-frontend）──共享包的 Wails 桌面集成表面
+interweave（含 interweave-frontend）──共享包的 Wails 桌面集成表面
 ```
 
 | 边界                      | 负责内容                                            | 不负责内容                        |
@@ -51,26 +51,26 @@ weave（含 weave-frontend）──共享包的 Wails 桌面集成表面
 
 ## 关键 ADR
 
-| ADR                                                             | 决策                                      | 何时读取                                                |
-| --------------------------------------------------------------- | ----------------------------------------- | ------------------------------------------------------- |
-| [0001](docs/adr/0001-ci-pipeline.md)                            | CI Pipeline                               | 修改验证、Changesets 或发布门控                         |
-| [0002](docs/adr/0002-build-toolchain.md)                        | Build Toolchain                           | 修改 Vite Plus、构建或测试工具链                        |
-| [0003](docs/adr/0003-web-component-strategy.md)                 | Web Component Strategy                    | 修改 Lit、Shadow DOM 或框架集成                         |
-| [0004](docs/adr/0004-plugin-system.md)                          | Plugin System                             | 设计可组合状态或行为模块                                |
-| [0005](docs/adr/0005-overlay-interaction-policy.md)             | Overlay Interaction Policy                | 修改 overlay 关闭、焦点或事件协调                       |
-| [0006](docs/adr/0006-layout-layering.md)                        | Layout Layering                           | 修改布局层级、portal 或 z-index                         |
-| [0007](docs/adr/0007-web-ui-contract-convergence.md)            | Web UI Contract Convergence               | 修改组件公共契约、事件或表单行为                        |
-| [0008](docs/adr/0008-icon-system.md)                            | Icon System                               | 修改图标来源、生成器或导出                              |
-| [0009](docs/adr/0009-release-planes.md)                         | Release Planes                            | 修改 npm/Wails 发布流程                                 |
-| [0010](docs/adr/0010-design-token-restructure.md)               | Design Token Restructure                  | 修改 `--wui-*` token 或破坏性兼容性                     |
-| [0011](docs/adr/0011-framework-type-adaptation-narrowing.md)    | Framework Type Adaptation Narrowing       | 修改 React/Vue 类型适配或复合控件事件边界               |
-| [0012](docs/adr/0012-progressive-agent-context-architecture.md) | Progressive Agent Context Architecture    | 修改 agent context、rules、skills 或 instruction system |
-| [0013](docs/adr/0013-weave-domain-model.md)                     | Weave 领域模型（可寻址资源+内部索引引用） | 修改 weave 库/条目/存储模型                             |
-| [0014](docs/adr/0014-weave-tag-model.md)                        | Weave 标签模型（Bear 式路径标签）         | 修改 weave 标签结构/继承/过滤                           |
-| [0015](docs/adr/0015-weave-identity-and-repair.md)              | Weave 身份与修复模型                      | 修改 weave 条目身份/监听/修复策略                       |
-| [0016](docs/adr/0016-weave-mcp-service.md)                      | Weave MCP 服务形态                        | 修改 weave MCP 传输/鉴权/工具集                         |
+| ADR                                                             | 决策                                           | 何时读取                                                |
+| --------------------------------------------------------------- | ---------------------------------------------- | ------------------------------------------------------- |
+| [0001](docs/adr/0001-ci-pipeline.md)                            | CI Pipeline                                    | 修改验证、Changesets 或发布门控                         |
+| [0002](docs/adr/0002-build-toolchain.md)                        | Build Toolchain                                | 修改 Vite Plus、构建或测试工具链                        |
+| [0003](docs/adr/0003-web-component-strategy.md)                 | Web Component Strategy                         | 修改 Lit、Shadow DOM 或框架集成                         |
+| [0004](docs/adr/0004-plugin-system.md)                          | Plugin System                                  | 设计可组合状态或行为模块                                |
+| [0005](docs/adr/0005-overlay-interaction-policy.md)             | Overlay Interaction Policy                     | 修改 overlay 关闭、焦点或事件协调                       |
+| [0006](docs/adr/0006-layout-layering.md)                        | Layout Layering                                | 修改布局层级、portal 或 z-index                         |
+| [0007](docs/adr/0007-web-ui-contract-convergence.md)            | Web UI Contract Convergence                    | 修改组件公共契约、事件或表单行为                        |
+| [0008](docs/adr/0008-icon-system.md)                            | Icon System                                    | 修改图标来源、生成器或导出                              |
+| [0009](docs/adr/0009-release-planes.md)                         | Release Planes                                 | 修改 npm/Wails 发布流程                                 |
+| [0010](docs/adr/0010-design-token-restructure.md)               | Design Token Restructure                       | 修改 `--wui-*` token 或破坏性兼容性                     |
+| [0011](docs/adr/0011-framework-type-adaptation-narrowing.md)    | Framework Type Adaptation Narrowing            | 修改 React/Vue 类型适配或复合控件事件边界               |
+| [0012](docs/adr/0012-progressive-agent-context-architecture.md) | Progressive Agent Context Architecture         | 修改 agent context、rules、skills 或 instruction system |
+| [0013](docs/adr/0013-interweave-domain-model.md)                | Interweave 领域模型（可寻址资源+内部索引引用） | 修改 interweave 库/条目/存储模型                        |
+| [0014](docs/adr/0014-interweave-tag-model.md)                   | Interweave 标签模型（Bear 式路径标签）         | 修改 interweave 标签结构/继承/过滤                      |
+| [0015](docs/adr/0015-interweave-identity-and-repair.md)         | Interweave 身份与修复模型                      | 修改 interweave 条目身份/监听/修复策略                  |
+| [0016](docs/adr/0016-interweave-mcp-service.md)                 | Interweave MCP 服务形态                        | 修改 interweave MCP 传输/鉴权/工具集                    |
 
-## Weave 领域词汇
+## Interweave 领域词汇
 
 **条目（Item）**:
 库中的最小单元，一个可寻址资源（v1：`file` 或 `url`），拥有稳定 UUID、定位符与标签集合。

@@ -14,18 +14,18 @@
 
 ## 最小任务集
 
-| ID  | 任务                                       | 主要能力               | 预期首个工具/入口                             |
-| --- | ------------------------------------------ | ---------------------- | --------------------------------------------- |
-| C01 | 修改 `js-kit` 一个局部 utility             | 局部导航、最小 context | 根/包级 `AGENTS.md`、源码、邻近测试           |
-| C02 | 修改 `browser-kit` 浏览器 API              | runtime 边界           | `packages/browser-kit/AGENTS.md`、源码/测试   |
-| C03 | 修改一个 `web-ui` 组件属性或事件           | 公共契约、跨框架影响   | `repo:verify`                                 |
-| C04 | 修改 `web-ui` React/Vue 类型               | 类型契约、消费端       | `repo:verify`、ADR-0011、type fixtures        |
-| C05 | 修改 overlay/focus/portal 行为             | 浏览器语义和分层       | `repo:verify`、ADR-0005/0006、browser tests   |
-| C06 | 修改 workspace catalog 或 tsconfig profile | 传递影响、构建风险     | `repo:verify`、manifest/继承者                |
-| C07 | 修改 Weave Go/Wails API                    | 跨语言和生成物边界     | Weave `AGENTS.md`、Wails 3 文档、Go tests     |
-| C08 | 修改 Weave MCP 或领域模型                  | 术语和长期决策         | ADR-0013–0016、Go tests、frontend consumer    |
-| C09 | 修改构建/发布配置                          | release safety         | `repo:verify`、build guide、workflow/manifest |
-| C10 | 处理生成文件中的错误                       | source-of-truth 定位   | 根 `AGENTS.md`、generator/config/source       |
+| ID  | 任务                                       | 主要能力               | 预期首个工具/入口                              |
+| --- | ------------------------------------------ | ---------------------- | ---------------------------------------------- |
+| C01 | 修改 `js-kit` 一个局部 utility             | 局部导航、最小 context | 根/包级 `AGENTS.md`、源码、邻近测试            |
+| C02 | 修改 `browser-kit` 浏览器 API              | runtime 边界           | `packages/browser-kit/AGENTS.md`、源码/测试    |
+| C03 | 修改一个 `web-ui` 组件属性或事件           | 公共契约、跨框架影响   | `repo:verify`                                  |
+| C04 | 修改 `web-ui` React/Vue 类型               | 类型契约、消费端       | `repo:verify`、ADR-0011、type fixtures         |
+| C05 | 修改 overlay/focus/portal 行为             | 浏览器语义和分层       | `repo:verify`、ADR-0005/0006、browser tests    |
+| C06 | 修改 workspace catalog 或 tsconfig profile | 传递影响、构建风险     | `repo:verify`、manifest/继承者                 |
+| C07 | 修改 Interweave Go/Wails API               | 跨语言和生成物边界     | Interweave `AGENTS.md`、Wails 3 文档、Go tests |
+| C08 | 修改 Interweave MCP 或领域模型             | 术语和长期决策         | ADR-0013–0016、Go tests、frontend consumer     |
+| C09 | 修改构建/发布配置                          | release safety         | `repo:verify`、build guide、workflow/manifest  |
+| C10 | 处理生成文件中的错误                       | source-of-truth 定位   | 根 `AGENTS.md`、generator/config/source        |
 
 ## 外部 harness 必须记录的字段
 

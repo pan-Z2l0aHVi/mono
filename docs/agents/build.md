@@ -34,12 +34,12 @@
 
 生成文件不是 source of truth，禁止手动编辑；但这不等于禁止使用仓库配置的 generator。若源码或配置的变更会影响受版本控制的代码生成物，必须运行所属 generator，让工具产生 diff，再验证生成结果和消费者。不要通过复制、补丁或格式化工具直接改写输出。
 
-| 场景                           | source of truth                                            | 受控生成入口                                                                       | 完成证据                                                                                                 |
-| ------------------------------ | ---------------------------------------------------------- | ---------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| React 文件路由                 | `apps/react-web-ui-demo/src/routes/**` 与 `vite.config.ts` | `pnpm --filter @greypan/react-web-ui-demo build`（TanStack Router Vite plugin）    | `src/routeTree.gen.ts` 仅由 generator 更新；`check:code` 通过，并在真实浏览器访问新增/修改的路由。       |
-| Vue auto import / typed router | Vue 源码与 `apps/vue-web-ui-demo/vite.config.ts`           | `pnpm --filter @greypan/vue-web-ui-demo build`（Vite plugins）                     | `auto-imports.d.ts`、`typed-router.d.ts` 仅由 plugin 更新；`vue-tsc --build` 与受影响路由/页面验证通过。 |
-| Wails frontend bindings        | 公开 Go API、`apps/weave/frontend/package.json`            | `pnpm --filter @greypan/weave-frontend build`（先执行 `wails3 generate bindings`） | 核对 `frontend/bindings/**` 的 generator diff，并运行 frontend 类型检查/构建和受影响调用点验证。         |
-| web-ui icons                   | `packages/web-ui/icons.used.json`                          | `pnpm --filter @greypan/web-ui generate-icons` 或 `vp build`                       | 图标模块只由 generator 更新，并完成 package build 与公开契约验证。                                       |
+| 场景                           | source of truth                                            | 受控生成入口                                                                            | 完成证据                                                                                                 |
+| ------------------------------ | ---------------------------------------------------------- | --------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| React 文件路由                 | `apps/react-web-ui-demo/src/routes/**` 与 `vite.config.ts` | `pnpm --filter @greypan/react-web-ui-demo build`（TanStack Router Vite plugin）         | `src/routeTree.gen.ts` 仅由 generator 更新；`check:code` 通过，并在真实浏览器访问新增/修改的路由。       |
+| Vue auto import / typed router | Vue 源码与 `apps/vue-web-ui-demo/vite.config.ts`           | `pnpm --filter @greypan/vue-web-ui-demo build`（Vite plugins）                          | `auto-imports.d.ts`、`typed-router.d.ts` 仅由 plugin 更新；`vue-tsc --build` 与受影响路由/页面验证通过。 |
+| Wails frontend bindings        | 公开 Go API、`apps/interweave/frontend/package.json`       | `pnpm --filter @greypan/interweave-frontend build`（先执行 `wails3 generate bindings`） | 核对 `frontend/bindings/**` 的 generator diff，并运行 frontend 类型检查/构建和受影响调用点验证。         |
+| web-ui icons                   | `packages/web-ui/icons.used.json`                          | `pnpm --filter @greypan/web-ui generate-icons` 或 `vp build`                            | 图标模块只由 generator 更新，并完成 package build 与公开契约验证。                                       |
 
 `**/__screenshots__/` 与 `**/.vitest-attachments/` 属于测试证据，而不是应用代码生成物。除非任务明确要求并已经完成对应的视觉/浏览器验证，不要创建、手改或提交这些文件。
 

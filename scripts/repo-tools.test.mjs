@@ -113,14 +113,16 @@ assert.ok(
   )
 )
 
-const weaveApiPlan = JSON.parse(run('verify', '--json', 'apps/weave/index.go'))
-assert.ok(weaveApiPlan.context.includes('docs/agents/build.md'))
+const interweaveApiPlan = JSON.parse(run('verify', '--json', 'apps/interweave/index.go'))
+assert.ok(interweaveApiPlan.context.includes('docs/agents/build.md'))
 assert.ok(
-  weaveApiPlan.requiredEvidence.some(item => item.kind === 'generator' && item.location.includes('frontend/bindings'))
+  interweaveApiPlan.requiredEvidence.some(
+    item => item.kind === 'generator' && item.location.includes('frontend/bindings')
+  )
 )
 assert.ok(
-  weaveApiPlan.verification.some(
-    item => item.level === 'required' && item.command === 'pnpm --filter @greypan/weave-frontend build'
+  interweaveApiPlan.verification.some(
+    item => item.level === 'required' && item.command === 'pnpm --filter @greypan/interweave-frontend build'
   )
 )
 

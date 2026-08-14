@@ -17,7 +17,7 @@
     "fix:code": "vp check --fix",
     "dev:react-web-ui-demo": "turbo build --filter=@greypan/react-web-ui-demo^... && turbo run dev --filter=@greypan/react-web-ui-demo...",
     "dev:vue-web-ui-demo": "turbo build --filter=@greypan/vue-web-ui-demo^... && turbo run dev --filter=@greypan/vue-web-ui-demo...",
-    "dev:weave": "turbo build --filter=@greypan/weave^... && turbo run dev --filter=@greypan/weave --filter=@greypan/weave-frontend^...",
+    "dev:interweave": "turbo build --filter=@greypan/interweave^... && turbo run dev --filter=@greypan/interweave --filter=@greypan/interweave-frontend^...",
     "check:context": "node scripts/context-check.mjs",
     "repo:verify": "node scripts/repo-context.mjs verify",
     "repo:context-audit": "node scripts/context-audit.mjs",

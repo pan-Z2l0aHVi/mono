@@ -27,10 +27,10 @@ English | [简体中文](./README.CN.md)
 
 ## Apps
 
-Private apps (not published to npm); the two web demos deploy to GitHub Pages, and `weave` ships installers via GitHub Releases:
+Private apps (not published to npm); the two web demos deploy to GitHub Pages, and `interweave` ships installers via GitHub Releases:
 
 | App                                              | Stack                                          |
 | ------------------------------------------------ | ---------------------------------------------- |
 | [`react-web-ui-demo`](./apps/react-web-ui-demo/) | React 19 + TanStack Router + Zustand           |
 | [`vue-web-ui-demo`](./apps/vue-web-ui-demo/)     | Vue 3 + Vue Router + Pinia                     |
-| [`weave`](./apps/weave/)                         | Wails 3 desktop application (Go + Vue WebView) |
+| [`interweave`](./apps/interweave/)               | Wails 3 desktop application (Go + Vue WebView) |

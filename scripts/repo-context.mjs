@@ -460,7 +460,7 @@ const hasReactRouteSourceChange = normalizedPaths.some(
   file => file.startsWith('apps/react-web-ui-demo/src/routes/') && !file.endsWith('/routeTree.gen.ts')
 )
 const hasWailsPublicApiChange = normalizedPaths.some(file =>
-  ['apps/weave/index.go', 'apps/weave/types.go'].includes(file)
+  ['apps/interweave/index.go', 'apps/interweave/types.go'].includes(file)
 )
 
 const context = new Set()
@@ -511,7 +511,7 @@ if (hasReactRouteSourceChange)
 if (hasWailsPublicApiChange)
   addVerification(
     'required',
-    'pnpm --filter @greypan/weave-frontend build',
+    'pnpm --filter @greypan/interweave-frontend build',
     'Wails 公开 Go API 变更必须生成 frontend bindings，并验证 TypeScript 消费端。'
   )
 for (const workspace of directlyChanged) {
@@ -582,7 +582,7 @@ if (hasReactRouteSourceChange)
 if (hasWailsPublicApiChange)
   addEvidence(
     'generator',
-    'apps/weave/frontend/package.json build -> frontend/bindings/**',
+    'apps/interweave/frontend/package.json build -> frontend/bindings/**',
     '公开 Go API 的 bindings 必须由 Wails generator 更新，不得手工编辑。'
   )
 if (hasContextChange)

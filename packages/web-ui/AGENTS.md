@@ -15,7 +15,7 @@
 - 受影响的 ADR（0003、0005、0006、0007、0008、0010、0011）
 - 聚焦测试和 browser-mode 测试
 - React/Vue demo 的 type fixtures 与集成表面
-- `apps/weave/frontend`（若被公共组件消费）
+- `apps/interweave/frontend`（若被公共组件消费）
 - package `exports`、Changeset 和 `repo:contract` 报告
 
 不要机械同步全部项目；以 `repo:verify`、manifest、源码引用和测试确定实际影响。
