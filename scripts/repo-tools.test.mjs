@@ -55,6 +55,11 @@ assert.equal(contextImpact.risk.context, true)
 assert.ok(contextImpact.context.includes('docs/adr/0012-progressive-agent-context-architecture.md'))
 assert.ok(contextImpact.verification.some(item => item.command === 'pnpm run check:context'))
 
+const routeImpact = JSON.parse(run('route', '--json', 'packages/web-ui/src/types/react.ts'))
+assert.equal(routeImpact.command, 'route')
+assert.ok(routeImpact.requiredEvidence.some(item => item.kind === 'consumer'))
+assert.ok(routeImpact.requiredEvidence.some(item => item.kind === 'runtime'))
+
 const toolImpact = JSON.parse(run('verify', '--json', 'scripts/repo-context.mjs'))
 assert.ok(toolImpact.verification.some(item => item.command === 'pnpm run test:repo-tools'))
 

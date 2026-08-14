@@ -11,18 +11,18 @@ const options = parseOptions(rawArgs)
 const contractTarget = command === 'contract' ? (options.paths.shift() ?? '') : ''
 
 if (
-  !['impact', 'verify', 'contract', 'contract-diff'].includes(command) ||
+  !['impact', 'verify', 'route', 'contract', 'contract-diff'].includes(command) ||
   (command === 'contract' &&
     (options.paths.length > 0 || !contractTarget || options.base || options.staged || options.worktree)) ||
   (command === 'contract-diff' && (options.paths.length > 0 || !options.base || options.staged || options.worktree)) ||
-  (['impact', 'verify'].includes(command) &&
+  (['impact', 'verify', 'route'].includes(command) &&
     options.paths.length === 0 &&
     !options.base &&
     !options.staged &&
     !options.worktree)
 ) {
   console.error(
-    'Usage: node scripts/repo-context.mjs <impact|verify> [--json] [--base <git-ref> | --staged | --worktree] <changed-path>...\n       node scripts/repo-context.mjs contract [--json] <workspace-name>\n       node scripts/repo-context.mjs contract-diff --base <git-ref> [--json]'
+    'Usage: node scripts/repo-context.mjs <impact|verify|route> [--json] [--base <git-ref> | --staged | --worktree] <changed-path>...\n       node scripts/repo-context.mjs contract [--json] <workspace-name>\n       node scripts/repo-context.mjs contract-diff --base <git-ref> [--json]'
   )
   process.exit(1)
 }
@@ -407,6 +407,7 @@ const hasContextChange = normalizedPaths.some(
     file.startsWith('docs/agents/') ||
     file.startsWith('docs/adr/') ||
     file.startsWith('scripts/context-check') ||
+    file.startsWith('scripts/context-audit') ||
     file.startsWith('scripts/repo-context') ||
     file.startsWith('scripts/workspace-manifests')
 )
@@ -415,6 +416,7 @@ const hasAgentToolChange = normalizedPaths.some(
     file === 'pnpm-workspace.yaml' ||
     file.startsWith('scripts/repo-context') ||
     file.startsWith('scripts/context-check') ||
+    file.startsWith('scripts/context-audit') ||
     file.startsWith('scripts/workspace-manifests') ||
     file.startsWith('scripts/repo-tools')
 )
@@ -518,12 +520,30 @@ if (hasBrowserRuntimeChange) {
 if (verification.length === 0 && normalizedPaths.length > 0)
   addVerification('recommended', 'pnpm run check:code', '未识别到特定高风险契约；按局部改动执行最小充分验证。')
 
+const requiredEvidence = []
+function addEvidence(kind, location, reason) {
+  if (!requiredEvidence.some(item => item.location === location)) requiredEvidence.push({ kind, location, reason })
+}
+
+for (const file of context) addEvidence('context', file, '任务路由命中的最小上下文入口。')
+for (const workspace of directlyChanged) {
+  addEvidence('manifest', `${workspace.root}/package.json`, '确认 workspace scripts、exports、依赖和发布边界。')
+  if (workspace.scripts.test) addEvidence('test', `${workspace.root}/src/**/__tests__`, '优先读取受影响目录的现有测试，而不是凭文档猜行为。')
+}
+if (hasPackageContractChange) {
+  addEvidence('contract', 'package.json exports/files/peerDependencies', '公共 package 的 manifest 是发布契约证据。')
+  addEvidence('consumer', 'direct workspace consumers', '确认直接消费者是否需要适配或验证。')
+}
+if (hasBrowserRuntimeChange) addEvidence('runtime', '相关 *.browser.spec.ts + React/Vue demo', 'jsdom/build 不能证明原生浏览器和集成行为。')
+if (hasContextChange) addEvidence('context-system', 'scripts/context-check.mjs + current diff', 'context 改动必须检查加载路径、链接、索引和重复风险。')
+
 const result = {
   command,
   changedPaths: normalizedPaths,
   directWorkspaces,
   affectedWorkspaces: [...affected].sort(),
   context: [...context].sort(),
+  requiredEvidence,
   focusedTests,
   risk: {
     context: hasContextChange,
@@ -545,6 +565,10 @@ if (options.json) {
     `risk: context=${result.risk.context}, public-package-contract=${result.risk.publicPackageContract}, build-artifact=${result.risk.buildArtifact}, browser-runtime=${result.risk.browserRuntime}`
   )
   console.log(`read first: ${result.context.join(', ') || '(none)'}`)
+  if (command === 'route') {
+    console.log('evidence:')
+    for (const item of result.requiredEvidence) console.log(`- [${item.kind}] ${item.location} — ${item.reason}`)
+  }
   const testHints = Object.entries(result.focusedTests).flatMap(([workspace, directories]) =>
     directories.map(directory => `${workspace}:${directory}`)
   )

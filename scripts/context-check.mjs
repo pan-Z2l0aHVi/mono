@@ -2,7 +2,7 @@ import crypto from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
 
-import { readPnpmWorkspacePatterns } from './workspace-manifests.mjs'
+import { listPnpmWorkspaceManifests, readPnpmWorkspacePatterns } from './workspace-manifests.mjs'
 
 const root = path.resolve(import.meta.dirname, '..')
 const errors = []
@@ -27,7 +27,14 @@ function addError(message) {
   errors.push(message)
 }
 
-for (const file of ['AGENTS.md', 'CLAUDE.md', 'CONTEXT.md', 'docs/agents/context.md']) {
+for (const file of [
+  'AGENTS.md',
+  'CLAUDE.md',
+  'CONTEXT.md',
+  'ARCHITECTURE.md',
+  'CONTRIBUTING.md',
+  'docs/agents/context.md'
+]) {
   if (!exists(file)) addError(`missing required context file: ${file}`)
 }
 
@@ -47,6 +54,8 @@ if (exists('package.json')) {
       'check:contracts',
       'repo:impact',
       'repo:verify',
+      'repo:route',
+      'repo:context-audit',
       'repo:contract',
       'repo:contract-diff',
       'test:repo-tools'
@@ -60,11 +69,34 @@ if (exists('package.json')) {
   addError('missing required context file: package.json')
 }
 
+let workspaceManifests = []
 try {
   readPnpmWorkspacePatterns(root)
+  workspaceManifests = listPnpmWorkspaceManifests(root)
 } catch (error) {
   addError(`pnpm workspace config cannot be parsed: ${error instanceof Error ? error.message : String(error)}`)
 }
+
+if (exists('ARCHITECTURE.md')) {
+  const architecture = read('ARCHITECTURE.md')
+  for (const manifestFile of workspaceManifests) {
+    const relativeRoot = path.relative(root, path.dirname(manifestFile)).replaceAll('\\', '/')
+    try {
+      const manifest = JSON.parse(fs.readFileSync(manifestFile, 'utf8'))
+      if (!architecture.includes(`\`${relativeRoot}\``))
+        addError(`ARCHITECTURE.md does not index workspace root ${relativeRoot}`)
+      if (manifest.name && !architecture.includes(`\`${manifest.name}\``))
+        addError(`ARCHITECTURE.md does not mention workspace ${manifest.name}`)
+    } catch (error) {
+      addError(`${path.relative(root, manifestFile)} cannot be parsed: ${error instanceof Error ? error.message : String(error)}`)
+    }
+  }
+}
+
+if (exists('README.md') && !read('README.md').includes('./ARCHITECTURE.md'))
+  addError('README.md must link to ARCHITECTURE.md')
+if (exists('README.CN.md') && !read('README.CN.md').includes('./ARCHITECTURE.md'))
+  addError('README.CN.md must link to ARCHITECTURE.md')
 
 for (const directory of ['packages', 'apps']) {
   const absolute = path.join(root, directory)
@@ -80,6 +112,16 @@ for (const directory of ['packages', 'apps']) {
       addError(`${directory}/${entry.name}: missing nearest AGENTS.md for workspace context routing`)
     }
   }
+}
+
+for (const manifestFile of workspaceManifests) {
+  const workspaceRoot = path.dirname(manifestFile)
+  const manifest = JSON.parse(fs.readFileSync(manifestFile, 'utf8'))
+  const relativeRoot = path.relative(root, workspaceRoot).replaceAll('\\', '/')
+  if (manifest.private !== true && !fs.existsSync(path.join(workspaceRoot, 'README.md')))
+    addError(`${relativeRoot}: published workspace is missing README.md`)
+  if (relativeRoot.startsWith('apps/') && !fs.existsSync(path.join(workspaceRoot, 'README.md')))
+    addError(`${relativeRoot}: app workspace is missing README.md`)
 }
 
 const symlinks = {
@@ -100,10 +142,12 @@ for (const [file, expectedTarget] of Object.entries(symlinks)) {
 }
 
 const markdownFiles = [
-  ...['AGENTS.md', 'CLAUDE.md', 'CONTEXT.md'].filter(exists).map(file => path.join(root, file)),
+  ...['AGENTS.md', 'CLAUDE.md', 'CONTEXT.md', 'ARCHITECTURE.md', 'CONTRIBUTING.md'].filter(exists).map(file => path.join(root, file)),
   ...walk('docs/agents', file => file.endsWith('.md')),
   ...walk('docs/adr', file => file.endsWith('.md')),
-  ...walk('.agents', file => file.endsWith('.md'))
+  ...walk('.agents', file => file.endsWith('.md')),
+  ...walk('packages', file => path.basename(file) === 'AGENTS.md'),
+  ...walk('apps', file => path.basename(file) === 'AGENTS.md')
 ]
 const linkPattern = /(?<!!?)\[[^\]]*\]\(([^)]+)\)/g
 for (const file of markdownFiles) {

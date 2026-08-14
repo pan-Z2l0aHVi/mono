@@ -2,6 +2,8 @@
 
 > Everything, one repo.
 
+- [Architecture map](./ARCHITECTURE.md) · [Contribution workflow](./CONTRIBUTING.md)
+
 English | [简体中文](./README.CN.md)
 
 ## Tech Stack

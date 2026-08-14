@@ -6,6 +6,12 @@
 - **Repository architecture context**：包边界、依赖方向、集成表面和长期工程原则。
 - **Implementation details**：源码、manifest、配置、测试以及按需加载的 task guide；不在此文件中复制。
 
+## 快速入口
+
+- 全局拓扑、workspace 清单、依赖草图和高频热点：[`ARCHITECTURE.md`](ARCHITECTURE.md)。
+- 协作与 Agent 交付流程：[`CONTRIBUTING.md`](CONTRIBUTING.md)。
+- 本文件只承载跨包架构、术语和 ADR 索引；不要把它当作普通局部任务的操作手册。
+
 ## 项目身份
 
 Mono 是一个 pnpm + Turborepo monorepo。它向 npm 发布 `@greypan/*` 工具包和基于 Lit 的 `@greypan/web-ui`，同时维护 React、Vue 与 Wails 私有应用，以验证共享包在真实框架和桌面交付中的契约。

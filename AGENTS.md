@@ -4,9 +4,12 @@
 
 ## 先确定所需 context
 
+- 全局拓扑和快速定位：[`ARCHITECTURE.md`](ARCHITECTURE.md)。
+- 协作流程短入口：[`CONTRIBUTING.md`](CONTRIBUTING.md)；它不取代按任务加载的规则。
+
 1. 先查看工作区状态、目标文件和最近的 `AGENTS.md`；只有进入某个 `apps/` 或 `packages/` 时才加载其包级指令。
 2. 只按任务加载命中的 rule、guide 和包级指令；不要为普通局部任务预读 `CONTEXT.md`、ADR 或无关领域指南。
-3. 只有架构、跨包、仓库拓扑、术语、长期设计或 instruction system 维护时，才阅读 [`CONTEXT.md`](CONTEXT.md)、[`docs/agents/context.md`](docs/agents/context.md) 和相关 ADR。
+3. 需要全局拓扑时先阅读 [`ARCHITECTURE.md`](ARCHITECTURE.md)；只有架构、跨包、仓库拓扑、术语、长期设计或 instruction system 维护时，才继续阅读 [`CONTEXT.md`](CONTEXT.md)、[`docs/agents/context.md`](docs/agents/context.md) 和相关 ADR。
 
 ## 项目身份
 
@@ -32,6 +35,7 @@
 | 构建脚本、Vite/Turbo、包图、外部化、CI 或发布 | [`docs/agents/build.md`](docs/agents/build.md)                                                                                                                                                                        |
 | 格式化、lint、拼写或类型检查配置              | [`docs/agents/linting.md`](docs/agents/linting.md)                                                                                                                                                                    |
 | 变更影响或验证命令选择                        | `pnpm repo:impact -- <paths...>`；`pnpm repo:verify -- <paths...>`；`pnpm repo:contract -- <package>`；`pnpm repo:contract-diff -- --base <git-ref>`；改动查询也可使用 `--base <git-ref>`、`--staged` 或 `--worktree` |
+| 全局拓扑和快速导航                            | [`ARCHITECTURE.md`](ARCHITECTURE.md)；实现事实仍以源码、manifest、配置和测试为准                                           |
 | 架构探索、术语或 ADR                          | [`docs/agents/domain.md`](docs/agents/domain.md)、[`CONTEXT.md`](CONTEXT.md) 和相关 ADR                                                                                                                               |
 | instruction system / context 维护             | [`docs/agents/context.md`](docs/agents/context.md)、[`CONTEXT.md`](CONTEXT.md) 和 ADR-0012                                                                                                                            |
 | 代码 review                                   | [`.agents/rules/review-checklist.md`](.agents/rules/review-checklist.md)、[`docs/agents/review.md`](docs/agents/review.md)；需要独立 reviewer 时再读 [`.agents/agents/reviewer.md`](.agents/agents/reviewer.md)       |
