@@ -51,7 +51,7 @@ jobs:
         run: pnpm i --frozen-lockfile
 
       - name: Check shared agent context
-        run: pnpm run check:context
+        run: pnpm run validate:context
 
       - name: Test repository Agent tools
         run: pnpm run test:scripts
@@ -64,7 +64,7 @@ jobs:
         run: pnpm run build
 
       - name: Check published package contracts
-        run: pnpm run check:contracts
+        run: pnpm run check:pack
 
       - name: Format + Lint + Type-check
         run: pnpm run check:code
