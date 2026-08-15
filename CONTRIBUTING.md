@@ -25,6 +25,18 @@
 - **UI、交互或浏览器运行时**：读取 `docs/agents/browser-verification.md`；真实浏览器验证不能由 jsdom 或构建替代。
 - **架构或 instruction system**：更新相关 ADR/索引，并运行 `pnpm validate:context`。
 
+## AI 协作署名
+
+- 仅当 AI agent 对某项变更有实质贡献时，才在对应提交中添加共同作者尾注；不要为展示署名创建空提交或伪造身份。
+- Codex 参与时使用以下固定格式；Claude Code 等其他 agent 也应使用相同的 Git trailers 机制进行透明署名：
+
+  ```text
+  Co-authored-by: Codex <noreply@openai.com>
+  ```
+
+- 人类提交者仍对需求、设计、审查、测试和最终合并承担全部责任。
+- 共同作者尾注用于公开记录协作；GitHub 是否将其显示为独立 Contributors 条目取决于该邮箱能否被 GitHub 识别和归属。
+
 ## 交付前
 
 报告：改动文件、影响 workspace、验证命令及结果、未验证的风险和需要用户决定的事项。未经授权不要提交、暂存或重写 Git 历史。
