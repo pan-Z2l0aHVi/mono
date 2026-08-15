@@ -50,6 +50,9 @@ jobs:
       - name: Check published package contracts
         run: pnpm run check:pack
 
+      - name: Generate Wails bindings
+        run: cd apps/interweave && wails3 generate bindings -ts -clean=true
+
       - name: Format + Lint + Type-check
         run: pnpm run check:code
 
