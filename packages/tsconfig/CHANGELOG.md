@@ -1,5 +1,11 @@
 # @greypan/tsconfig
 
+## 1.0.5
+
+### Patch Changes
+
+- b9faa2c: enhance monorepo agent capabilities
+
 ## 1.0.4
 
 ### Patch Changes
