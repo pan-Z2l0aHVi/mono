@@ -1,5 +1,11 @@
 # @greypan/interweave
 
+## 0.0.0
+
+### Patch Changes
+
+- Reset version to 0.0.0 for fresh start
+
 ## 0.1.3
 
 ### Patch Changes
