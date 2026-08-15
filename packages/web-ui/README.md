@@ -132,8 +132,9 @@ import '@greypan/web-ui/types/vue'
 Vue events are typed cast-free: `@input`/`@change` on value-bearing components resolve to the component emit, so
 `$event.target` is the component instance and `value`/`checked` are read directly. `$event.detail` keeps the
 `CustomEvent` payload type for kebab-case events like `open-change`. Named handlers annotate with
-`WebUiEvent<WebUiXxx, 'change'>`. `@click`/`@focus` and other native events not declared as emits remain
-bindable on any `web-ui-*` element.
+`WebUiEvent<WebUiXxx, 'change'>`; use `WebUiEventName<WebUiXxx>` when a value or generic represents an
+event name, because it accepts only the component's string `$events` keys. `@click`/`@focus` and other native
+events not declared as emits remain bindable on any `web-ui-*` element.
 
 ### Attribute and event boundaries
 
@@ -490,11 +491,12 @@ Propagates `direction` attribute to child buttons.
 
 Modal dialog using native `<dialog>` with `showModal()`.
 
-| Attribute           | Type      | Default | Description                       |
-| ------------------- | --------- | ------- | --------------------------------- |
-| `open`              | `boolean` | `false` | Dialog visibility                 |
-| `no-scroll-lock`    | `boolean` | `false` | Do not lock body scroll when open |
-| `no-backdrop-close` | `boolean` | `false` | Do not close on backdrop click    |
+| Attribute           | Type      | Default | Description                         |
+| ------------------- | --------- | ------- | ----------------------------------- |
+| `open`              | `boolean` | `false` | Dialog visibility                   |
+| `no-scroll-lock`    | `boolean` | `false` | Do not lock body scroll when open   |
+| `no-backdrop-close` | `boolean` | `false` | Do not close on backdrop click      |
+| `no-escape-close`   | `boolean` | `false` | Do not close when Escape is pressed |
 
 **Events:** `open-change` (`CustomEvent<{ open: boolean }>`)
 
@@ -502,7 +504,7 @@ Modal dialog using native `<dialog>` with `showModal()`.
 
 **Methods:** `showModal()`, `close()`
 
-Uses native `<dialog>` with `@cancel` prevention (Escape calls `close()`). Click on backdrop closes dialog.
+Uses native `<dialog>` with `@cancel` prevention. Escape calls `close()` unless `no-escape-close` is present. Click on backdrop closes dialog unless `no-backdrop-close` is present.
 
 #### `<web-ui-drawer>`
 

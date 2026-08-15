@@ -156,5 +156,14 @@ describe('url 测试', () => {
         })
       ).toBe('https://test.com/?a=1')
     })
+
+    it('stringifyUrl: base 以孤立 ? 结尾时不应插入多余的 &', () => {
+      expect(
+        stringifyUrl({
+          base: 'https://test.com/?',
+          query: { a: 1 }
+        })
+      ).toBe('https://test.com/?a=1')
+    })
   })
 })

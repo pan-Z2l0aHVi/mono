@@ -32,6 +32,10 @@ Pure JavaScript libraries (like `js-kit`) need runtime APIs such as `setTimeout`
 
 This package organizes the libs into a progressive 4-layer hierarchy, matching packages to the runtime APIs they actually use.
 
+### Indexed access in `core.json`
+
+`core.json` enables `noUncheckedIndexedAccess`. An unchecked array or dictionary lookup is typed as possibly `undefined`, so consumers must handle absent values before using them.
+
 ## Usage
 
 ```json

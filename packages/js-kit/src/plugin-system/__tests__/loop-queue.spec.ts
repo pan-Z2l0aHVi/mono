@@ -100,7 +100,11 @@ describe('loop-queue', () => {
     }).make()
 
     expect(onConsume).toHaveBeenCalledWith({ event: 'click' }, [])
-    expect(onConsume.mock.calls[0][0]).not.toHaveProperty('id')
+
+    const firstCall = onConsume.mock.calls[0]
+    if (firstCall === undefined) throw new Error('Expected onConsume to be called.')
+
+    expect(firstCall[0]).not.toHaveProperty('id')
   })
 
   it('onConsume 异常不应阻塞后续 items 处理', () => {

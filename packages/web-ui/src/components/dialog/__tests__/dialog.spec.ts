@@ -162,6 +162,24 @@ describe('WebUiDialog 组件', () => {
     })
   })
 
+  describe('属性：noEscapeClose', () => {
+    it('property/attribute 按 Boolean 语义双向同步', async () => {
+      const el = createDialog()
+      el.noEscapeClose = true
+      await waitForUpdate(el)
+      expect(el.hasAttribute('no-escape-close')).toBe(true)
+
+      el.noEscapeClose = false
+      await waitForUpdate(el)
+      expect(el.hasAttribute('no-escape-close')).toBe(false)
+
+      el.setAttribute('no-escape-close', 'false')
+      await waitForUpdate(el)
+      expect(el.noEscapeClose).toBe(true)
+      cleanupElement(el)
+    })
+  })
+
   describe('属性：noBackdropClose', () => {
     it('默认允许点击遮罩关闭对话框', async () => {
       const el = createDialog()

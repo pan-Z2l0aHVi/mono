@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it } from 'vite-plus/test'
+import { userEvent } from 'vite-plus/test/browser'
 
 import '..'
 import type { WebUiDialog } from '..'
@@ -31,7 +32,26 @@ describe('WebUiDialog 组件（浏览器）', () => {
     expect(dialog?.open).toBe(false)
   })
 
-  it('禁用遮罩点击时仍可通过 Escape 关闭', async () => {
+  it('no-escape-close 存在时 Escape/cancel 不关闭对话框', async () => {
+    const component = createDialog()
+    component.noEscapeClose = true
+    component.open = true
+    await component.updateComplete
+    await new Promise(resolve => requestAnimationFrame(resolve))
+
+    const dialog = component.shadowRoot?.querySelector('dialog')
+    dialog?.focus()
+    await userEvent.keyboard('{Escape}')
+    await component.updateComplete
+    expect(component.open).toBe(true)
+
+    const event = new Event('cancel', { cancelable: true })
+    expect(dialog?.dispatchEvent(event)).toBe(false)
+    await component.updateComplete
+    expect(component.open).toBe(true)
+  })
+
+  it('no-backdrop-close 只阻止遮罩 click，不阻止 Escape 触发的 cancel', async () => {
     const component = createDialog()
     component.noBackdropClose = true
     component.open = true
@@ -39,9 +59,15 @@ describe('WebUiDialog 组件（浏览器）', () => {
     await new Promise(resolve => requestAnimationFrame(resolve))
 
     const dialog = component.shadowRoot?.querySelector('dialog')
-    dialog?.dispatchEvent(new Event('cancel', { cancelable: true }))
-    await component.updateComplete
+    expect(dialog?.open).toBe(true)
 
+    dialog?.dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true }))
+    await component.updateComplete
+    expect(component.open).toBe(true)
+
+    dialog?.focus()
+    await userEvent.keyboard('{Escape}')
+    await component.updateComplete
     expect(component.open).toBe(false)
   })
 })

@@ -129,8 +129,9 @@ import '@greypan/web-ui/types/vue'
 
 Vue 事件类型零 cast：带值组件上的 `@input`/`@change` 解析到组件 emit，`$event.target` 即为组件实例，
 `value`/`checked` 直接读取；kebab-case 事件（如 `open-change`）的 `$event.detail` 保持 `CustomEvent` 载荷类型。
-命名 handler 用 `WebUiEvent<WebUiXxx, 'change'>` 标注。未声明为 emit 的原生事件（`@click`/`@focus` 等）
-在任何 `web-ui-*` 元素上仍可绑定。
+命名 handler 用 `WebUiEvent<WebUiXxx, 'change'>` 标注；当变量或泛型表示事件名时，使用
+`WebUiEventName<WebUiXxx>`，它只接受该组件 `$events` 的 string key。未声明为 emit 的原生事件
+（`@click`/`@focus` 等）在任何 `web-ui-*` 元素上仍可绑定。
 
 ### 属性与事件边界
 
@@ -485,6 +486,7 @@ ArrowUp/ArrowDown 键增减数值。空输入或 `-` 在提交时被忽略，值
 | `open`              | `boolean` | `false` | 对话框可见性         |
 | `no-scroll-lock`    | `boolean` | `false` | 打开时不锁定页面滚动 |
 | `no-backdrop-close` | `boolean` | `false` | 禁止点击遮罩关闭     |
+| `no-escape-close`   | `boolean` | `false` | 禁止按 Escape 关闭   |
 
 **事件：** `open-change` (`CustomEvent<{ open: boolean }>`)
 
@@ -492,7 +494,7 @@ ArrowUp/ArrowDown 键增减数值。空输入或 `-` 在提交时被忽略，值
 
 **方法：** `showModal()`, `close()`
 
-使用原生 `<dialog>`，`@cancel` 阻止默认关闭行为（Escape 调用 `close()`）。点击遮罩关闭。
+使用原生 `<dialog>`，`@cancel` 阻止默认关闭行为。除非存在 `no-escape-close`，否则 Escape 调用 `close()`；除非存在 `no-backdrop-close`，否则点击遮罩关闭。
 
 #### `<web-ui-drawer>`
 

@@ -1,6 +1,5 @@
 # js-kit 包指令
 
-- 优先使用小型、可组合的函数和 plugin system，而非继承；内部状态和行为模块使用 `definePlugin`，除非框架明确要求继承。
-- 插件构建器导出为 `defineXxx = (...) => definePlugin(...)`，调用方通过 `defineXxx(...).make(...)` 实例化。
-- 插件选项必须有运行时默认值；规范化后全为必需时，使用 `DEFAULT_OPTIONS` 加 `Required<Options>` 作为内部配置。
-- 保留公共边界的泛型推导；公共行为和文档化 fallback 路径使用聚焦测试覆盖。
+- `plugin system` 是本包承载内部状态和可组合行为的架构边界；修改状态抽象或 plugin system 前读 [`docs/adr/0004-plugin-system.md`](../../docs/adr/0004-plugin-system.md) 和 `src/plugin-system/`。
+- 新增或修改 plugin builder 时保持现有 `defineXxx(...).make(...)` 公共形状、选项默认值和公共类型推导；具体实现以当前源码为准，不要把这条规则扩展成新的继承层级。
+- 公共行为或 fallback 改动需要聚焦测试；影响消费者时用 `find:usages` 确认范围、所需证据和验证计划。

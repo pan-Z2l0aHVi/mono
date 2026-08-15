@@ -4,7 +4,14 @@
 // 局限：vue-tsc 对组件上未声明 emit/prop 的属性和事件会回退到 $attrs 放行（$event 为 any），
 // 因此本文件无法对「非 web-ui 组件被全局污染」做负向断言；该契约由 types/vue.ts
 // 不再全局扩展 ComponentCustomProps 结构保证，并由 docs/agents/web-ui.md 约束。
-import type { WebUiCheckboxGroup, WebUiDialog, WebUiEvent, WebUiSegmented, WebUiSwitch } from '@greypan/web-ui'
+import type {
+  WebUiCheckboxGroup,
+  WebUiDialog,
+  WebUiEvent,
+  WebUiEventName,
+  WebUiSegmented,
+  WebUiSwitch
+} from '@greypan/web-ui'
 import { ref } from 'vue'
 
 // 1. 标准事件的 target/currentTarget 收窄到 host，value/checked 精确推导。
@@ -28,6 +35,13 @@ function onDialogOpenChange(event: WebUiEvent<WebUiDialog, 'open-change'>) {
   const open: boolean = event.detail.open
   dialogOpen.value = open
 }
+
+// 2b. `$events` 中声明的 string 事件名可赋值；其他 string 被拒绝。
+const dialogOpenChangeEventName: WebUiEventName<WebUiDialog> = 'open-change'
+void dialogOpenChangeEventName
+// @ts-expect-error web-ui-dialog 未声明 invalid-event
+const invalidDialogEventName: WebUiEventName<WebUiDialog> = 'invalid-event'
+void invalidDialogEventName
 
 // 3. 具体 Custom Element 模板 ref 类型。
 const segmentedRef = ref<WebUiSegmented>()
@@ -53,7 +67,7 @@ const clickCount = ref(0)
   <web-ui-checkbox-group @change="onGroupChange" />
 
   <!-- 2. kebab 自定义事件：$event.detail 精确类型 -->
-  <web-ui-dialog :open="dialogOpen" @open-change="dialogOpen = $event.detail.open" />
+  <web-ui-dialog :open="dialogOpen" no-escape-close @open-change="dialogOpen = $event.detail.open" />
   <web-ui-dialog @open-change="onDialogOpenChange" />
 
   <!-- 3. 具体 Custom Element ref -->

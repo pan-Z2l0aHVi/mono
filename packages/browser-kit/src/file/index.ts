@@ -12,7 +12,10 @@ export function getFileExtension(filename: string): string {
   // 边缘情况处理：
   // - 没有点 (lastDotIndex = -1)
   // - 点在开头 (lastDotIndex = 0)，例如 .gitignore，不视作后缀
-  if (lastDotIndex <= 0) throw new Error('Filename has no extension.')
+  // - 点在末尾 (lastDotIndex = filename.length - 1)，例如 report.，不视作后缀
+  if (lastDotIndex <= 0 || lastDotIndex === filename.length - 1) {
+    throw new Error('Filename has no extension.')
+  }
 
   return filename.slice(lastDotIndex + 1).toLowerCase()
 }
