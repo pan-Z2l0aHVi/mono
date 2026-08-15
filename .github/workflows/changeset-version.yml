@@ -25,6 +25,8 @@ jobs:
           fetch-depth: 0
 
       - uses: ./.github/actions/setup-deps
+        with:
+          mise-install: 'node pnpm'
 
       - id: changesets
         name: Detect pending Changesets
