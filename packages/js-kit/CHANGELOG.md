@@ -1,5 +1,11 @@
 # @greypan/js-kit
 
+## 1.6.7
+
+### Patch Changes
+
+- b9faa2c: enhance monorepo agent capabilities
+
 ## 1.6.6
 
 ### Patch Changes
