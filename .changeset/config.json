@@ -11,5 +11,5 @@
     "version": true,
     "tag": false
   },
-  "ignore": ["@greypan/react-web-ui-demo", "@greypan/vue-web-ui-demo", "@greypan/wails-starter-frontend"]
+  "ignore": ["@greypan/react-web-ui-demo", "@greypan/vue-web-ui-demo", "@greypan/interweave-frontend"]
 }

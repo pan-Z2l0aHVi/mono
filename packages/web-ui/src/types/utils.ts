@@ -37,10 +37,16 @@ export type HostEventMap<T extends HTMLElement> = {
 }
 
 /**
+ * 组件 `$events` 中的 string 事件名。
+ * 无公共事件或仅有非 string 键的组件得到 `never`。
+ */
+export type WebUiEventName<T extends HTMLElement> = keyof ComponentEvents<T> & string
+
+/**
  * 具名 handler 的显式事件类型，用于 Vue 命名 handler 等无法从上下文推导 `$event` 的位置。
  * 用法：`function onChange(e: WebUiEvent<WebUiSelect, 'change'>)`
  */
-export type WebUiEvent<T extends HTMLElement, K extends keyof HostEventMap<T>> = HostEventMap<T>[K]
+export type WebUiEvent<T extends HTMLElement, K extends WebUiEventName<T>> = HostEventMap<T>[K]
 
 /**
  * React 自定义事件（kebab-case 事件名）→ `on<event>` 绑定。

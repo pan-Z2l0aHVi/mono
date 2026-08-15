@@ -1,0 +1,47 @@
+{
+  "name": "@greypan/interweave-frontend",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vp dev",
+    "build:dev": "cd .. && wails3 generate bindings -ts -clean=true && cd frontend && vue-tsc --build && vp build --minify false --mode development",
+    "build": "cd .. && wails3 generate bindings -ts -clean=true && cd frontend && vue-tsc --build && vp build --mode production",
+    "preview": "vp preview"
+  },
+  "dependencies": {
+    "@greypan/browser-kit": "workspace:*",
+    "@greypan/js-kit": "workspace:*",
+    "@greypan/web-ui": "workspace:*",
+    "@unhead/vue": "catalog:",
+    "@vue/devtools-api": "catalog:",
+    "@vueuse/core": "catalog:",
+    "@wailsio/runtime": "catalog:",
+    "pinia": "catalog:",
+    "vee-validate": "catalog:",
+    "vue": "catalog:",
+    "vue-router": "catalog:"
+  },
+  "devDependencies": {
+    "@greypan/deps-reload": "workspace:*",
+    "@greypan/tsconfig": "workspace:*",
+    "@greypan/unplugin-web-components": "workspace:*",
+    "@vitejs/plugin-basic-ssl": "catalog:",
+    "@vitejs/plugin-legacy": "catalog:",
+    "@vitejs/plugin-vue": "catalog:",
+    "@vitejs/plugin-vue-jsx": "catalog:",
+    "@tailwindcss/vite": "catalog:",
+    "unplugin-auto-import": "catalog:",
+    "vite-plugin-pwa": "catalog:",
+    "vite-plugin-vue-devtools": "catalog:",
+    "vue-tsc": "catalog:"
+  },
+  "browserslist": [
+    "Chrome >=111",
+    "Edge >=111",
+    "Safari >=16.4",
+    "iOS >=16.4",
+    "Firefox >=128",
+    "not dead"
+  ]
+}

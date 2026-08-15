@@ -38,5 +38,16 @@
   "lucide:image",
   "lucide:globe",
   "radix-icons:panel-left-minimized",
-  "ooui:close"
+  "ooui:close",
+  "lucide:external-link",
+  "lucide:file-text",
+  "lucide:film",
+  "lucide:folder-open",
+  "lucide:layout-grid",
+  "lucide:music",
+  "lucide:package",
+  "lucide:pencil",
+  "lucide:refresh-cw",
+  "lucide:tags",
+  "lucide:wrench"
 ]

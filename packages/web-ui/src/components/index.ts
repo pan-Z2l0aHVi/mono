@@ -35,7 +35,7 @@ export * from '@/components/switch'
 export * from '@/components/tooltip'
 
 // 公共事件类型：供 Vue 命名 handler 等无法从上下文推导 $event 的位置显式标注。
-export type { WebUiEvent } from '@/types/utils'
+export type { WebUiEvent, WebUiEventName } from '@/types/utils'
 
 // 从各组件模块的 HTMLElementTagNameMap 全局声明派生全部 web-ui 标签映射。
 // 框架类型适配器（React/Vue）通过 mapped type 生成组件标签，无需手写组件清单。
