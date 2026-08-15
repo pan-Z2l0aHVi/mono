@@ -51,23 +51,23 @@ interweave（含 interweave-frontend）──共享包的 Wails 桌面集成表�
 
 ## 关键 ADR
 
-| ADR                                                             | 决策                                           | 何时读取                                                |
-| --------------------------------------------------------------- | ---------------------------------------------- | ------------------------------------------------------- |
-| [0001](docs/adr/0001-ci-pipeline.md)                            | CI Pipeline                                    | 修改验证、Changesets 或发布门控                         |
-| [0002](docs/adr/0002-build-toolchain.md)                        | Build Toolchain                                | 修改 Vite Plus、构建或测试工具链                        |
-| [0003](docs/adr/0003-web-component-strategy.md)                 | Web Component Strategy                         | 修改 Lit、Shadow DOM 或框架集成                         |
-| [0004](docs/adr/0004-plugin-system.md)                          | Plugin System                                  | 设计可组合状态或行为模块                                |
-| [0005](docs/adr/0005-overlay-interaction-policy.md)             | Overlay Interaction Policy                     | 修改 overlay 关闭、焦点或事件协调                       |
-| [0006](docs/adr/0006-layout-layering.md)                        | Layout Layering                                | 修改布局层级、portal 或 z-index                         |
-| [0007](docs/adr/0007-web-ui-contract-convergence.md)            | Web UI Contract Convergence                    | 修改组件公共契约、事件或表单行为                        |
-| [0008](docs/adr/0008-icon-system.md)                            | Icon System                                    | 修改图标来源、生成器或导出                              |
-| [0009](docs/adr/0009-release-planes.md)                         | Release Planes                                 | 修改 npm/Wails 发布流程                                 |
-| [0010](docs/adr/0010-design-token-restructure.md)               | Design Token Restructure                       | 修改 `--wui-*` token 或破坏性兼容性                     |
-| [0011](docs/adr/0011-framework-type-adaptation-narrowing.md)    | Framework Type Adaptation Narrowing            | 修改 React/Vue 类型适配或复合控件事件边界               |
-| [0012](docs/adr/0012-progressive-agent-context-architecture.md) | Progressive Agent Context Architecture         | 修改 agent context、rules、skills 或 instruction system |
-| [0017](docs/adr/0017-interweave-resource-source-boundary.md)         | Interweave Resource/Source 与外部内容边界      | 修改 interweave Resource、Source 或外部内容边界          |
-| [0018](docs/adr/0018-interweave-flat-semantic-tags-map.md)          | Interweave 扁平语义标签与派生 Map              | 修改 interweave 标签、Map 或资源关系语义                 |
-| [0019](docs/adr/0019-interweave-backend-capability-boundaries.md) | Interweave 后端能力边界与 Wails 暴露面 | 修改 interweave Go 模块、Wails Service 或 frontend bindings |
+| ADR                                                               | 决策                                      | 何时读取                                                    |
+| ----------------------------------------------------------------- | ----------------------------------------- | ----------------------------------------------------------- |
+| [0001](docs/adr/0001-ci-pipeline.md)                              | CI Pipeline                               | 修改验证、Changesets 或发布门控                             |
+| [0002](docs/adr/0002-build-toolchain.md)                          | Build Toolchain                           | 修改 Vite Plus、构建或测试工具链                            |
+| [0003](docs/adr/0003-web-component-strategy.md)                   | Web Component Strategy                    | 修改 Lit、Shadow DOM 或框架集成                             |
+| [0004](docs/adr/0004-plugin-system.md)                            | Plugin System                             | 设计可组合状态或行为模块                                    |
+| [0005](docs/adr/0005-overlay-interaction-policy.md)               | Overlay Interaction Policy                | 修改 overlay 关闭、焦点或事件协调                           |
+| [0006](docs/adr/0006-layout-layering.md)                          | Layout Layering                           | 修改布局层级、portal 或 z-index                             |
+| [0007](docs/adr/0007-web-ui-contract-convergence.md)              | Web UI Contract Convergence               | 修改组件公共契约、事件或表单行为                            |
+| [0008](docs/adr/0008-icon-system.md)                              | Icon System                               | 修改图标来源、生成器或导出                                  |
+| [0009](docs/adr/0009-release-planes.md)                           | Release Planes                            | 修改 npm/Wails 发布流程                                     |
+| [0010](docs/adr/0010-design-token-restructure.md)                 | Design Token Restructure                  | 修改 `--wui-*` token 或破坏性兼容性                         |
+| [0011](docs/adr/0011-framework-type-adaptation-narrowing.md)      | Framework Type Adaptation Narrowing       | 修改 React/Vue 类型适配或复合控件事件边界                   |
+| [0012](docs/adr/0012-progressive-agent-context-architecture.md)   | Progressive Agent Context Architecture    | 修改 agent context、rules、skills 或 instruction system     |
+| [0017](docs/adr/0017-interweave-resource-source-boundary.md)      | Interweave Resource/Source 与外部内容边界 | 修改 interweave Resource、Source 或外部内容边界             |
+| [0018](docs/adr/0018-interweave-flat-semantic-tags-map.md)        | Interweave 扁平语义标签与派生 Map         | 修改 interweave 标签、Map 或资源关系语义                    |
+| [0019](docs/adr/0019-interweave-backend-capability-boundaries.md) | Interweave 后端能力边界与 Wails 暴露面    | 修改 interweave Go 模块、Wails Service 或 frontend bindings |
 
 ## Interweave 产品与领域词汇
 
