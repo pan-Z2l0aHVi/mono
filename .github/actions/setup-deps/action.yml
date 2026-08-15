@@ -1,0 +1,56 @@
+# 复合 action：安装 Node/pnpm 依赖并缓存。
+# 用法：
+#   - uses: ./.github/actions/setup-deps
+#   - uses: ./.github/actions/setup-deps
+#       with:
+#         mise-install: 'node pnpm'  # 仅安装指定工具（默认安装 .mise.toml 全部）
+#         skip-install: 'true'       # 跳过 pnpm install 和相关缓存（准备 job 不需要装依赖）
+name: 'Setup Dependencies'
+description: 'Install tools via mise, cache pnpm store, and install dependencies'
+
+inputs:
+  mise-install:
+    description: 'Space-separated tools for mise install. Empty = install all from .mise.toml'
+    required: false
+    default: ''
+  skip-install:
+    description: 'Skip pnpm install and pnpm-related steps'
+    required: false
+    default: 'false'
+
+runs:
+  using: 'composite'
+  steps:
+    - uses: jdx/mise-action@v4
+      with:
+        install: ${{ inputs.mise-install == '' }}
+
+    - name: Install tools
+      if: inputs.mise-install != ''
+      shell: bash
+      run: mise install ${{ inputs.mise-install }}
+
+    - name: Resolve pnpm store path
+      if: inputs.skip-install != 'true'
+      id: pnpm-store
+      shell: bash
+      run: echo "path=$(pnpm store path)" >> "$GITHUB_OUTPUT"
+
+    - name: Cache pnpm store
+      if: inputs.skip-install != 'true'
+      uses: actions/cache@v5
+      with:
+        path: ${{ steps.pnpm-store.outputs.path }}
+        key: ${{ runner.os }}-pnpm-${{ hashFiles('pnpm-lock.yaml') }}
+        restore-keys: |
+          ${{ runner.os }}-pnpm-
+
+    - name: Set official registry
+      if: inputs.skip-install != 'true'
+      shell: bash
+      run: pnpm config set registry https://registry.npmjs.org/
+
+    - name: Install dependencies
+      if: inputs.skip-install != 'true'
+      shell: bash
+      run: pnpm install --frozen-lockfile

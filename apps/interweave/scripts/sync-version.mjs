@@ -1,3 +1,14 @@
+// 版本同步脚本：以 package.json 为唯一版本源，确保所有 Wails 构建产物版本一致。
+//
+// 用法：
+//   node scripts/sync-version.mjs          # 同步版本到 build/config.yml，再由 wails3 生成平台产物
+//   node scripts/sync-version.mjs --check  # 仅校验（CI 用），不修改文件
+//
+// 同步链路：package.json → build/config.yml → wails3 task → Info.plist / Info.dev.plist / wails.exe.manifest / info.json
+//
+// CI 调用点：
+//   - wails-verify.yml（--check）：PR 阶段校验版本一致性
+//   - changeset-release：Changesets 升级 package.json 后，调用此脚本同步到构建产物
 import { spawnSync } from 'node:child_process'
 import { readFile, writeFile } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'

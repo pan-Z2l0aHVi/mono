@@ -24,26 +24,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - uses: jdx/mise-action@v4
-        with:
-          install: false
-
-      - name: Install Node and pnpm
-        run: mise install node pnpm
-
-      - name: Cache pnpm store
-        uses: actions/cache@v5
-        with:
-          path: ~/.local/share/pnpm/store
-          key: ${{ runner.os }}-pnpm-${{ hashFiles('pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-pnpm-
-
-      - name: Set official registry
-        run: pnpm config set registry https://registry.npmjs.org/
-
-      - name: Install dependencies
-        run: pnpm i --frozen-lockfile
+      - uses: ./.github/actions/setup-deps
 
       - id: changesets
         name: Detect pending Changesets
@@ -60,16 +41,6 @@ jobs:
 
           await appendFile(process.env.GITHUB_OUTPUT, `has-changesets=${hasChangesets}\nhas-wails-release=${hasWailsRelease}\n`)
           EOF
-
-      - name: Install Wails Linux prerequisites
-        if: steps.changesets.outputs.has-wails-release == 'true'
-        run: |
-          sudo apt-get update
-          sudo apt-get install --yes libgtk-4-dev libwebkitgtk-6.0-dev
-
-      - name: Install Go and Wails CLI
-        if: steps.changesets.outputs.has-wails-release == 'true'
-        run: mise install go 'go:github.com/wailsapp/wails/v3/cmd/wails3'
 
       - name: Create or update version pull request
         if: steps.changesets.outputs.has-changesets == 'true'
