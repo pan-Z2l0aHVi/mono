@@ -6,21 +6,21 @@
 
 MCP 工具命名空间：`mcp__github__`
 
-| 操作 | 工具 | 关键参数 |
-|------|------|----------|
-| 创建 issue | `create_issue` | owner, repo, title, body?, labels? |
-| 查看 issue | `get_issue` | owner, repo, issue_number |
-| 列出 issue | `list_issues` | owner, repo, state?, labels?, sort? |
-| 评论 | `add_issue_comment` | owner, repo, issue_number, body |
-| 更新 issue | `update_issue` | owner, repo, issue_number, state?, labels?, assignees? |
-| 创建 PR | `create_pull_request` | owner, repo, title, head, base, body? |
-| 查看 PR | `get_pull_request` | owner, repo, pull_number |
-| 列出 PR | `list_pull_requests` | owner, repo, state?, base? |
-| PR 审查 | `create_pull_request_review` | owner, repo, pull_number, body, event |
-| 合并 PR | `merge_pull_request` | owner, repo, pull_number, merge_method? |
-| 搜索仓库 | `search_repositories` | query, perPage? |
-| 搜索代码 | `search_code` | q |
-| 搜索 issue | `search_issues` | q, sort? |
+| 操作       | 工具                         | 关键参数                                               |
+| ---------- | ---------------------------- | ------------------------------------------------------ |
+| 创建 issue | `create_issue`               | owner, repo, title, body?, labels?                     |
+| 查看 issue | `get_issue`                  | owner, repo, issue_number                              |
+| 列出 issue | `list_issues`                | owner, repo, state?, labels?, sort?                    |
+| 评论       | `add_issue_comment`          | owner, repo, issue_number, body                        |
+| 更新 issue | `update_issue`               | owner, repo, issue_number, state?, labels?, assignees? |
+| 创建 PR    | `create_pull_request`        | owner, repo, title, head, base, body?                  |
+| 查看 PR    | `get_pull_request`           | owner, repo, pull_number                               |
+| 列出 PR    | `list_pull_requests`         | owner, repo, state?, base?                             |
+| PR 审查    | `create_pull_request_review` | owner, repo, pull_number, body, event                  |
+| 合并 PR    | `merge_pull_request`         | owner, repo, pull_number, merge_method?                |
+| 搜索仓库   | `search_repositories`        | query, perPage?                                        |
+| 搜索代码   | `search_code`                | q                                                      |
+| 搜索 issue | `search_issues`              | q, sort?                                               |
 
 ## 约定
 
