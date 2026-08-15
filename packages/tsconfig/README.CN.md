@@ -32,6 +32,10 @@ TypeScript 的 `lib` 选项是按运行环境分组的，而非按项目类型�
 
 本包将其组织为渐进式 4 层结构，每个包只使用它实际需要的运行时 API。
 
+### `core.json` 的索引访问
+
+`core.json` 启用了 `noUncheckedIndexedAccess`。未经检查的数组或字典索引访问会被推断为可能是 `undefined`，消费者必须先处理值不存在的情况再使用它。
+
 ## 使用方式
 
 ```json

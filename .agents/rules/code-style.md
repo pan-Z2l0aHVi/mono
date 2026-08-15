@@ -1,14 +1,9 @@
-# 代码风格规范
+# 代码风格入口
 
-格式、lint、CSS 规则的细节见 [`docs/agents/linting.md`](../../docs/agents/linting.md)。
+本文件只保留需要 Agent 主动记住、且不能可靠地从 formatter、lint、类型或现有代码推断的约束。格式和 lint 细节见 [`docs/agents/linting.md`](../../docs/agents/linting.md)；当前实现以源码和配置为准。
 
-- 文件名使用 kebab-case；类型和接口使用 PascalCase；函数与变量使用 camelCase；常量使用 UPPER_SNAKE_CASE；布尔变量使用 `is`、`has` 或 `can` 前缀。
-- 注释解释原因、语义或降级理由，不复述代码。公共 API 使用中文 JSDoc 说明参数、返回值和副作用。
-- 保持严格 TypeScript。避免 `any`；只有类型级泛型约束且不泄漏推导结果时，才可使用带理由的行级禁用。保留公共边界的泛型推导。`no-explicit-any` 在非测试代码中以 warning 级别检查，测试文件（`*.{test,spec}.*`）在 lint 配置中显式豁免；事件处理中应使用具体元素类型（如 `HTMLElement & { value: string }`）而非 `any`。
-- 不吞掉错误；降级逻辑必须说明原因。一个文件聚焦一个主要职责，内部辅助函数位于导出函数之后。
-- 内部状态与行为实现使用 `import { definePlugin } from '@greypan/js-kit'` 的插件系统，不使用 `class` 封装；Lit 自定义元素等框架要求继承的类型不在此限。
-- 插件构建器命名为 `defineXxx`，并以 `defineXxx = (...) => definePlugin(...)` 形式返回插件；调用端使用 `defineXxx(...).make(...)`。
-- CSS 的组件内部后代状态优先使用原生 nesting 组织；`:host(...)` 状态选择器保持顶层，避免混淆 Shadow DOM 宿主边界。
-- `apps/` 下的项目编写样式时，优先使用 Tailwind v4 工具类（含 arbitrary properties 和 arbitrary variants）；仅在 Tailwind 无法表达的场景（如 keyframes、复杂嵌套选择器）才允许使用 CSS 文件兜底。
-- 格式化工具负责 import 排序；不要手工对抗其输出。
-- 完成代码改动后，先运行 `pnpm run check:code`，再向用户报告结果。
+- 保持严格 TypeScript 和公共边界的类型推导；必要的例外要在代码附近说明原因，不用 `any` 掩盖契约不清。
+- 错误处理和 fallback 必须保留可观察原因；公共 API 的 JSDoc 说明参数、返回值和副作用。
+- 先匹配目标目录的现有代码风格，再让 formatter/import sorter 输出最终格式；不要手工对抗工具。
+- `packages/js-kit` 的 plugin system、`packages/web-ui` 的 Shadow DOM/组件契约和各包 `AGENTS.md` 中的边界属于架构约束，不在本文件重复实现处方。
+- 完成源码改动后，按 `find:usages` 输出和任务风险选择 `pnpm run check:code`；不要因为本文件而无条件扩大验证范围。

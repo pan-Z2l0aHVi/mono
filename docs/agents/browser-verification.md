@@ -1,6 +1,6 @@
 # 浏览器验证指南
 
-涉及 UI、UX、交互、响应式行为或浏览器运行时行为的变更，必须在真实浏览器中验证。chrome-devtools MCP 可用时作为主要验证层——导航到本地 demo、与组件交互、检查 console/network 并截图。`agent-browser` skill 是手动替代方案：仅在用户调用 `/agent-browser` 时运行，例如 MCP 不可用或需要隔离浏览器上下文时。
+涉及 UI、UX、交互、响应式行为或浏览器运行时行为的变更，必须在真实浏览器中验证。chrome-devtools MCP 是唯一的 Agent 真实浏览器验证层：导航到本地 demo、与组件交互、检查 console/network 并截图。`agent-browser` 不属于自动 fallback；只有用户显式调用 `/agent-browser` 时才可使用。
 
 ## 验证要点
 
@@ -21,9 +21,12 @@
 - 仅对本地自签名 HTTPS demo 忽略证书错误；不得为外部站点放松证书验证。
 - 验证完成后停止为验证启动的所有 dev server，除非用户要求保留。保留或报告本地 URL 供后续使用。
 
-## Fallback 链
+## 验证分层
 
-chrome-devtools MCP → 项目 browser-mode 测试 → 组件测试和 HTTP/DOM 检查。`agent-browser` 不在自动链中——仅在手动调用（`/agent-browser`）时运行。若无浏览器层可用（MCP 缺失且未手动调用），需明确报告为何无法完成真实浏览器验证及其风险。
+- `pnpm run test`：运行 Turbo 编排的 package 测试；其中包含已配置的 Vitest Browser Mode / Playwright Chromium `*.browser.spec.ts` 回归。
+- chrome-devtools MCP：验证 demo 集成、真实交互、键盘和焦点、布局、console、network 与桌面/移动视口。
+
+这两层分别提供可重复回归与 Agent 的真实端到端证据，不能互相替代。没有自动 fallback：若 chrome-devtools MCP 在任务环境中不可用，必须报告环境阻塞，不得将构建、jsdom 或自定义浏览器脚本表述为完成了真实交互验证。
 
 ## 报告
 

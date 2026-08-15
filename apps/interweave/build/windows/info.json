@@ -1,0 +1,15 @@
+{
+  "fixed": {
+    "file_version": "0.1.3"
+  },
+  "info": {
+    "0000": {
+      "ProductVersion": "0.1.3",
+      "CompanyName": "greypan",
+      "FileDescription": "Interweave desktop application",
+      "LegalCopyright": "(c) 2026, greypan",
+      "ProductName": "Interweave",
+      "Comments": "Interweave desktop application"
+    }
+  }
+}

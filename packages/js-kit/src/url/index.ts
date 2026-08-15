@@ -47,6 +47,6 @@ export function stringifyUrl(opts: Partial<URLObject>, omitNil = true): string {
   const queryString = params.toString()
   if (!queryString) return base + normalizedHash
 
-  const connector = base.includes('?') ? '&' : '?'
+  const connector = base.endsWith('?') ? '' : base.includes('?') ? '&' : '?'
   return `${base}${connector}${queryString}${normalizedHash}`
 }

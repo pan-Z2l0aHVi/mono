@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AboutRouteImport } from './routes/about'
 import { Route as ComponentsAutocompleteRouteImport } from './routes/components/autocomplete'
 import { Route as ComponentsAvatarRouteImport } from './routes/components/avatar'
 import { Route as ComponentsBackTopRouteImport } from './routes/components/back-top'
@@ -41,6 +42,11 @@ import { Route as HomeIndexRouteImport } from './routes/home/index'
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AboutRoute = AboutRouteImport.update({
+  id: '/about',
+  path: '/about',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ComponentsAutocompleteRoute = ComponentsAutocompleteRouteImport.update({
@@ -181,6 +187,7 @@ const HomeIndexRoute = HomeIndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/about': typeof AboutRoute
   '/components/autocomplete': typeof ComponentsAutocompleteRoute
   '/components/avatar': typeof ComponentsAvatarRoute
   '/components/back-top': typeof ComponentsBackTopRoute
@@ -211,6 +218,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/about': typeof AboutRoute
   '/components/autocomplete': typeof ComponentsAutocompleteRoute
   '/components/avatar': typeof ComponentsAvatarRoute
   '/components/back-top': typeof ComponentsBackTopRoute
@@ -242,6 +250,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/about': typeof AboutRoute
   '/components/autocomplete': typeof ComponentsAutocompleteRoute
   '/components/avatar': typeof ComponentsAvatarRoute
   '/components/back-top': typeof ComponentsBackTopRoute
@@ -274,6 +283,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/about'
     | '/components/autocomplete'
     | '/components/avatar'
     | '/components/back-top'
@@ -304,6 +314,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/about'
     | '/components/autocomplete'
     | '/components/avatar'
     | '/components/back-top'
@@ -334,6 +345,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/about'
     | '/components/autocomplete'
     | '/components/avatar'
     | '/components/back-top'
@@ -365,6 +377,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AboutRoute: typeof AboutRoute
   ComponentsAutocompleteRoute: typeof ComponentsAutocompleteRoute
   ComponentsAvatarRoute: typeof ComponentsAvatarRoute
   ComponentsBackTopRoute: typeof ComponentsBackTopRoute
@@ -401,6 +414,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/about': {
+      id: '/about'
+      path: '/about'
+      fullPath: '/about'
+      preLoaderRoute: typeof AboutRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/components/autocomplete': {
@@ -597,6 +617,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AboutRoute: AboutRoute,
   ComponentsAutocompleteRoute: ComponentsAutocompleteRoute,
   ComponentsAvatarRoute: ComponentsAvatarRoute,
   ComponentsBackTopRoute: ComponentsBackTopRoute,

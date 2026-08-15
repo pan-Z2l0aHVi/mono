@@ -35,8 +35,8 @@ esm/
 out/
 site/
 build/
-!apps/wails-starter/build/
-!apps/wails-starter/build/**
+!apps/interweave/build/
+!apps/interweave/build/**
 .next/
 .nuxt/
 .output/
@@ -148,4 +148,12 @@ report.html
 # ==========================================
 # 工具链自动生成 (Auto Generated)
 # ==========================================
-apps/wails-starter/frontend/bindings/
+
+# ==========================================
+# Codex 环境配置 (Codex Environment)
+# ==========================================
+# Local agent artifacts, except the shared Codex environment
+.codex/*
+!.codex/environments/
+.codex/environments/*
+!.codex/environments/environment.toml

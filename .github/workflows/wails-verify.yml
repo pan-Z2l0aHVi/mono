@@ -10,7 +10,10 @@ on:
       - 'pnpm-lock.yaml'
       - 'pnpm-workspace.yaml'
       - 'turbo.json'
-      - 'apps/wails-starter/**'
+      - 'apps/interweave/**'
+      - 'packages/web-ui/**'
+      - 'packages/browser-kit/**'
+      - 'packages/js-kit/**'
   workflow_dispatch:
 
 permissions:
@@ -29,15 +32,13 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: jdx/mise-action@v4
+      - uses: ./.github/actions/setup-deps
         with:
-          install: false
-
-      - name: Install Node
-        run: mise install node
+          mise-install: 'node'
+          skip-install: 'true'
 
       - name: Validate Wails version metadata
-        run: node apps/wails-starter/scripts/sync-version.mjs --check
+        run: node apps/interweave/scripts/sync-version.mjs --check
 
   build:
     name: ${{ matrix.name }}
@@ -51,43 +52,24 @@ jobs:
           - name: macOS ARM64 DMG
             runner: macos-14
             command: build:macos
-            artifact-name: wails-starter-macos-arm64
-            artifact-path: apps/wails-starter/bin/wails-starter.dmg
+            artifact-name: interweave-macos-arm64
+            artifact-path: apps/interweave/bin/interweave.dmg
           - name: Windows x64 EXE
             runner: windows-latest
             command: build:windows
-            artifact-name: wails-starter-windows-amd64
-            artifact-path: apps/wails-starter/bin/wails-starter.exe
+            artifact-name: interweave-windows-amd64
+            artifact-path: apps/interweave/bin/interweave.exe
 
     steps:
       - uses: actions/checkout@v7
 
-      - uses: jdx/mise-action@v4
-
-      - id: pnpm-store
-        name: Resolve pnpm store path
-        shell: bash
-        run: echo "path=$(pnpm store path)" >> "$GITHUB_OUTPUT"
-
-      - name: Cache pnpm store
-        uses: actions/cache@v5
-        with:
-          path: ${{ steps.pnpm-store.outputs.path }}
-          key: ${{ runner.os }}-pnpm-${{ hashFiles('pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-pnpm-
-
-      - name: Set official registry
-        run: pnpm config set registry https://registry.npmjs.org/
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+      - uses: ./.github/actions/setup-deps
 
       - name: Build WebView workspace dependencies
-        run: pnpm exec turbo build --filter=@greypan/wails-starter-frontend^...
+        run: pnpm exec turbo build --filter=@greypan/interweave-frontend^...
 
       - name: Build native artifact
-        run: pnpm --filter @greypan/wails-starter run ${{ matrix.command }}
+        run: pnpm --filter @greypan/interweave run ${{ matrix.command }}
 
       - name: Upload verification artifact
         uses: actions/upload-artifact@v6
@@ -95,4 +77,4 @@ jobs:
           name: ${{ matrix.artifact-name }}
           path: ${{ matrix.artifact-path }}
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 3

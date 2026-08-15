@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<MsixPackagingToolTemplate
+    xmlns="http://schemas.microsoft.com/msix/packaging/msixpackagingtool/template/2022">
+    <Settings
+        AllowTelemetry="false"
+        ApplyACLsToPackageFiles="true"
+        GenerateCommandLineFile="true"
+        AllowPromptForPassword="false">
+    </Settings>
+    <Installer
+        Path="interweave"
+        Arguments=""
+        InstallLocation="C:\Program Files\greypan\Interweave">
+    </Installer>
+    <PackageInformation
+        PackageName="Interweave"
+        PackageDisplayName="Interweave"
+        PublisherName="CN=greypan"
+        PublisherDisplayName="greypan"
+        Version="0.1.0.0"
+        PackageDescription="Interweave desktop application">
+        <Capabilities>
+            <Capability Name="runFullTrust" />
+            
+        </Capabilities>
+        <Applications>
+            <Application
+                Id="com.greypan.interweave"
+                Description="Interweave desktop application"
+                DisplayName="Interweave"
+                ExecutableName="interweave"
+                EntryPoint="Windows.FullTrustApplication">
+                
+            </Application>
+        </Applications>
+        <Resources>
+            <Resource Language="en-us" />
+        </Resources>
+        <Dependencies>
+            <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.17763.0" MaxVersionTested="10.0.19041.0" />
+        </Dependencies>
+        <Properties>
+            <Framework>false</Framework>
+            <DisplayName>Interweave</DisplayName>
+            <PublisherDisplayName>greypan</PublisherDisplayName>
+            <Description>Interweave desktop application</Description>
+            <Logo>Assets\AppIcon.png</Logo>
+        </Properties>
+    </PackageInformation>
+    <SaveLocation PackagePath="interweave.msix" />
+    <PackageIntegrity>
+        <CertificatePath></CertificatePath>
+    </PackageIntegrity>
+</MsixPackagingToolTemplate>

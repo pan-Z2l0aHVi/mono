@@ -4,6 +4,8 @@
 
 ## 加载顺序
 
+- 需要仓库地图时先读 [`ARCHITECTURE.md`](ARCHITECTURE.md)；不要将它当作实现事实或逐项操作手册。
+
 1. 先读取根 [`AGENTS.md`](AGENTS.md)，确认项目身份、不可绕过边界和任务路由。
 2. 仅按任务路由读取相关的 `docs/agents/*.md`、`.agents/rules/*.md` 和最近的包级 `AGENTS.md`。
 3. 只有跨包、架构、术语或 instruction system 任务才读取 [`CONTEXT.md`](CONTEXT.md) 与相关 ADR。
