@@ -1,5 +1,13 @@
 # @greypan/browser-kit
 
+## 1.7.8
+
+### Patch Changes
+
+- b9faa2c: enhance monorepo agent capabilities
+- Updated dependencies [b9faa2c]
+  - @greypan/js-kit@1.6.7
+
 ## 1.7.7
 
 ### Patch Changes

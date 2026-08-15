@@ -1,5 +1,14 @@
 # @greypan/web-ui
 
+## 3.0.1
+
+### Patch Changes
+
+- b9faa2c: enhance monorepo agent capabilities
+- Updated dependencies [b9faa2c]
+  - @greypan/browser-kit@1.7.8
+  - @greypan/js-kit@1.6.7
+
 ## 3.0.0
 
 ### Major Changes
