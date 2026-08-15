@@ -65,43 +65,6 @@ interweave（含 interweave-frontend）──共享包的 Wails 桌面集成表�
 | [0010](docs/adr/0010-design-token-restructure.md)               | Design Token Restructure                       | 修改 `--wui-*` token 或破坏性兼容性                     |
 | [0011](docs/adr/0011-framework-type-adaptation-narrowing.md)    | Framework Type Adaptation Narrowing            | 修改 React/Vue 类型适配或复合控件事件边界               |
 | [0012](docs/adr/0012-progressive-agent-context-architecture.md) | Progressive Agent Context Architecture         | 修改 agent context、rules、skills 或 instruction system |
-| [0013](docs/adr/0013-interweave-domain-model.md)                | Interweave 领域模型（可寻址资源+内部索引引用） | 修改 interweave 库/条目/存储模型                        |
-| [0014](docs/adr/0014-interweave-tag-model.md)                   | Interweave 标签模型（Bear 式路径标签）         | 修改 interweave 标签结构/继承/过滤                      |
-| [0015](docs/adr/0015-interweave-identity-and-repair.md)         | Interweave 身份与修复模型                      | 修改 interweave 条目身份/监听/修复策略                  |
-| [0016](docs/adr/0016-interweave-mcp-service.md)                 | Interweave MCP 服务形态                        | 修改 interweave MCP 传输/鉴权/工具集                    |
-
-## Interweave 领域词汇
-
-**条目（Item）**:
-库中的最小单元，一个可寻址资源（v1：`file` 或 `url`），拥有稳定 UUID、定位符与标签集合。
-_Avoid_: 文件、素材文件、文档
-
-**定位符（Locator）**:
-条目当前可解析的位置——本地绝对路径（file）或远程 URL（url）；不可解析即断链。
-_Avoid_: 软链接目标、路径
-
-**指纹（Fingerprint）**:
-条目源文件的 大小/mtime（可选内容哈希），仅作为断链修复时的候选匹配证据；内容变动不触发事件。
-_Avoid_: 版本、内容快照
-
-**标签（Tag）**:
-路径式命名的层级节点（`父/子/孙`），单父树；选择父标签默认包含其子孙标签下的条目。
-_Avoid_: 文件夹、目录、分类
-
-**断链（Broken）**:
-file 条目的定位符无法在文件系统解析的状态；对应条目进入修复中心。
-_Avoid_: 失效软链接、缺失文件
-
-**监听根（Watch Root）**:
-用户登记的目录；其内容被递归索引为条目，并由后台 watcher 持续监听。
-_Avoid_: 素材目录、库目录
-
-**修复中心（Repair Center）**:
-集中处理断链的界面：列出断链、展示候选、手动重定位/自动修复/忽略。
-_Avoid_: 错误修复、断链管理
-
-**可寻址资源（Addressable Resource）**:
-条目类型抽象——任何可被定位符引用的资源；v1 仅实现 file 与 url，未来可扩展（便签、云盘等）。
 
 ## 已知边界
 

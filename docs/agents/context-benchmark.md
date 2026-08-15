@@ -23,7 +23,7 @@
 | C05 | 修改 overlay/focus/portal 行为             | 浏览器语义和分层       | `find:usages`、ADR-0005/0006、browser tests    |
 | C06 | 修改 workspace catalog 或 tsconfig profile | 传递影响、构建风险     | `find:usages`、manifest/继承者                 |
 | C07 | 修改 Interweave Go/Wails API               | 跨语言和生成物边界     | Interweave `AGENTS.md`、Wails 3 文档、Go tests |
-| C08 | 修改 Interweave MCP 或领域模型             | 术语和长期决策         | ADR-0013–0016、Go tests、frontend consumer     |
+| C08 | 修改 Interweave MCP 或领域模型             | 术语和长期决策         | Interweave `AGENTS.md`、Go tests、frontend consumer |
 | C09 | 修改构建/发布配置                          | release safety         | `find:usages`、build guide、workflow/manifest  |
 | C10 | 处理生成文件中的错误                       | source-of-truth 定位   | 根 `AGENTS.md`、generator/config/source        |
 

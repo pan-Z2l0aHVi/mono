@@ -1,9 +1,5 @@
 # ADR-0003: Web 组件策略
 
-- **Date**: 2025-01-01
-- **Status**: 已接受
-- **Supersedes**: 不适用
-
 ## 背景
 
 `@greypan/web-ui` 组件库需要在 React、Vue 和原生 JS 之间通用，且不产生重复代码。每个框架有不同的 JSX 类型系统和模板编译器。
