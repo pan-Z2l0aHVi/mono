@@ -65,6 +65,28 @@ interweave（含 interweave-frontend）──共享包的 Wails 桌面集成表�
 | [0010](docs/adr/0010-design-token-restructure.md)               | Design Token Restructure                       | 修改 `--wui-*` token 或破坏性兼容性                     |
 | [0011](docs/adr/0011-framework-type-adaptation-narrowing.md)    | Framework Type Adaptation Narrowing            | 修改 React/Vue 类型适配或复合控件事件边界               |
 | [0012](docs/adr/0012-progressive-agent-context-architecture.md) | Progressive Agent Context Architecture         | 修改 agent context、rules、skills 或 instruction system |
+| [0017](docs/adr/0017-interweave-resource-source-boundary.md)         | Interweave Resource/Source 与外部内容边界      | 修改 interweave Resource、Source 或外部内容边界          |
+| [0018](docs/adr/0018-interweave-flat-semantic-tags-map.md)          | Interweave 扁平语义标签与派生 Map              | 修改 interweave 标签、Map 或资源关系语义                 |
+
+## Interweave 产品与领域词汇
+
+Interweave 当前已确认的产品基线见 [`apps/interweave/docs/product.md`](apps/interweave/docs/product.md)。产品、领域模型、Map、标签、Source 或 MCP 路线任务按需读取该文档和 ADR-0017/0018。
+
+**资源（Resource）**:
+用户希望长期找回、理解或使用的原子概念对象；保存独立标题、短备注、语义标签与一个或多个 Source。
+_Avoid_: 条目、文件夹、项目容器、内容页面
+
+**来源（Source）**:
+访问 Resource 的外部入口，例如本地文件或 URL。多个 Source 表示同一 Resource 的备用或替代入口，不表达版本。
+_Avoid_: locator、版本、资源副本
+
+**语义标签（Semantic Tag）**:
+用户赋予 Resource 的扁平内容意义。标签无父子、路径、继承或显式标签关系；Resource 的关联仅从共享语义标签派生。
+_Avoid_: 文件夹、目录、类型、状态
+
+**资源关系地图（Map）**:
+从 Resource—语义标签归属中派生的分层探索视图，用于发现主题群、桥梁与孤立资源；不是全量知识图谱或手工画布。
+_Avoid_: 文件树、关系编辑器、资源容器
 
 ## 已知边界
 

@@ -38,7 +38,7 @@ Mono 是一个 `pnpm` workspace + `Turborepo` monorepo：发布 `@greypan/*` 工
 | `packages/tsconfig` (`@greypan/tsconfig`)                               | 可被 `extends` 的 TypeScript profiles            | `*.json`、包级 `AGENTS.md`                               |
 | `apps/react-web-ui-demo` (`@greypan/react-web-ui-demo`)                 | React 集成和预览                                 | `src/routes/`、`src/components/`、包级 README            |
 | `apps/vue-web-ui-demo` (`@greypan/vue-web-ui-demo`)                     | Vue 集成和预览                                   | `src/pages/`、`src/components/`、包级 README             |
-| `apps/interweave` (`@greypan/interweave`)                               | Go/Wails 桌面 host、领域服务、MCP                | `README.md`、`AGENTS.md`                         |
+| `apps/interweave` (`@greypan/interweave`)                               | Go/Wails 桌面 host、领域服务、MCP                | `README.md`、`AGENTS.md`、`docs/product.md`、ADR-0017/0018 |
 | `apps/interweave/frontend` (`@greypan/interweave-frontend`)             | Interweave Vue WebView                           | `src/pages/`、`src/stores/`、`apps/interweave/AGENTS.md` |
 
 ## 3. 依赖和构建事实
@@ -59,7 +59,7 @@ Mono 是一个 `pnpm` workspace + `Turborepo` monorepo：发布 `@greypan/*` 工
 | `web-ui/src/components/theme`、`src/icons` | token、视觉一致性、生成导出           | ADR-0008/0010、生成器和 manifest                      |
 | `unplugin-web-components/src`              | Vite/Webpack 行为差异                 | 包级 `AGENTS.md`、两种 adapter 测试                   |
 | `tsconfig/*.json`、workspace catalog       | 所有 TypeScript workspace 或依赖版本  | `docs/agents/dependencies.md`、继承者                 |
-| `apps/interweave/*.go`、`frontend/src`     | Go/Wails API、领域状态和 MCP          | Wails 官方文档、Go/前端两侧                         |
+| `apps/interweave/*.go`、`frontend/src`     | Go/Wails API、领域状态和 MCP          | Wails 官方文档、产品基线、ADR-0017/0018、Go/前端两侧 |
 
 ## 5. Agent 快速路由
 

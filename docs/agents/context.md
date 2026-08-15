@@ -51,7 +51,7 @@
 | `web-ui` 组件或类型   | 根/包级 `AGENTS.md` + `docs/agents/web-ui.md` + 组件源码/测试                             | 对应 ADR、React/Vue demo type fixtures                    |
 | 跨包公共 API          | `contract-change-review` skill + `find:usages`/`inspect:contract` 输出 + 受影响包 context | `docs/agents/testing.md`、相关消费者和 ADR                |
 | 构建/依赖/发布        | `ARCHITECTURE.md` + `docs/agents/build.md` 或 `dependencies.md` + manifests               | CI workflow、ADR-0001/0002/0009                           |
-| InterWeave/Wails/领域 | `apps/interweave/AGENTS.md` + `apps/interweave/frontend/AGENTS.md` + 相关源码             | Wails 3 官方文档、Go tests、frontend consumer     |
+| InterWeave/Wails/领域 | `apps/interweave/AGENTS.md` + 产品基线 + 相关源码                                        | ADR-0017/0018、Wails 3 官方文档、Go tests、frontend consumer |
 | context system        | `ARCHITECTURE.md` + `CONTEXT.md` + 本文件 + ADR-0012                                      | `scripts/validate-context.mjs`、共享 symlinks 和当前 diff |
 
 不要把“最小入口”理解为足够完成实现；它只是开始定位的最小上下文。实现和交付前必须读取工具输出指出的证据，并按风险升级验证。

@@ -2,6 +2,12 @@
 
 Wails 3 desktop application using a Go backend and a Vue WebView frontend.
 
+## Product baseline
+
+The approved product scope and domain vocabulary are documented in
+[`docs/product.md`](docs/product.md). Read it before changing Interweave's
+product behavior, resource model, tag semantics, Map, or MCP roadmap.
+
 ## Commands
 
 Run commands from the repository root:
