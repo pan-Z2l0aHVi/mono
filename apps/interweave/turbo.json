@@ -1,0 +1,17 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "tasks": {
+    "build": {
+      "inputs": [
+        "frontend/**",
+        "backend/**",
+        "scripts/**",
+        "package.json"
+      ],
+      "outputs": [
+        "frontend/dist/**",
+        "frontend/bindings/**"
+      ]
+    }
+  }
+}
