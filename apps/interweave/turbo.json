@@ -1,17 +1,10 @@
 {
   "$schema": "https://turbo.build/schema.json",
+  "extends": ["//"],
   "tasks": {
     "build": {
-      "inputs": [
-        "frontend/**",
-        "backend/**",
-        "scripts/**",
-        "package.json"
-      ],
-      "outputs": [
-        "frontend/dist/**",
-        "frontend/bindings/**"
-      ]
+      "inputs": ["backend/**/*.go", "frontend/src/**"],
+      "outputs": ["frontend/dist/**"]
     }
   }
 }
