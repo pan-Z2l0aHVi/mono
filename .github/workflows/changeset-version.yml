@@ -26,7 +26,7 @@ jobs:
 
       - uses: ./.github/actions/setup-deps
         with:
-          mise-install: 'node pnpm'
+          wails: 'true'
 
       - id: changesets
         name: Detect pending Changesets
