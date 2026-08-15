@@ -4,7 +4,8 @@
 #   - uses: ./.github/actions/setup-deps
 #       with:
 #         mise-install: 'node pnpm'  # 仅安装指定工具（默认安装 .mise.toml 全部）
-#         skip-install: 'true'       # 跳过 pnpm install 和相关缓存（准备 job 不需要装依赖）
+#         skip-install: 'true'       # 跳过 pnpm install（准备 job 不需要装依赖）
+#         wails: 'true'              # 安装 Wails Linux 系统依赖（libgtk-4-dev, libwebkitgtk-6.0-dev）
 name: 'Setup Dependencies'
 description: 'Install tools via mise, cache pnpm store, and install dependencies'
 
@@ -15,6 +16,10 @@ inputs:
     default: ''
   skip-install:
     description: 'Skip pnpm install and pnpm-related steps'
+    required: false
+    default: 'false'
+  wails:
+    description: 'Install Wails Linux system dependencies (libgtk-4-dev, libwebkitgtk-6.0-dev)'
     required: false
     default: 'false'
 
@@ -29,6 +34,13 @@ runs:
       if: inputs.mise-install != ''
       shell: bash
       run: mise install ${{ inputs.mise-install }}
+
+    - name: Install Wails Linux prerequisites
+      if: inputs.wails == 'true'
+      shell: bash
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libgtk-4-dev libwebkitgtk-6.0-dev
 
     - name: Resolve pnpm store path
       if: inputs.skip-install != 'true'

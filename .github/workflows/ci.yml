@@ -24,6 +24,7 @@ jobs:
       - uses: ./.github/actions/setup-deps
         with:
           mise-install: 'node pnpm'
+          wails: 'true'
 
       - name: Cache turbo
         uses: actions/cache@v5
