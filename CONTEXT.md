@@ -67,10 +67,11 @@ interweave（含 interweave-frontend）──共享包的 Wails 桌面集成表�
 | [0012](docs/adr/0012-progressive-agent-context-architecture.md) | Progressive Agent Context Architecture         | 修改 agent context、rules、skills 或 instruction system |
 | [0017](docs/adr/0017-interweave-resource-source-boundary.md)         | Interweave Resource/Source 与外部内容边界      | 修改 interweave Resource、Source 或外部内容边界          |
 | [0018](docs/adr/0018-interweave-flat-semantic-tags-map.md)          | Interweave 扁平语义标签与派生 Map              | 修改 interweave 标签、Map 或资源关系语义                 |
+| [0019](docs/adr/0019-interweave-backend-capability-boundaries.md) | Interweave 后端能力边界与 Wails 暴露面 | 修改 interweave Go 模块、Wails Service 或 frontend bindings |
 
 ## Interweave 产品与领域词汇
 
-Interweave 当前已确认的产品基线见 [`apps/interweave/docs/product.md`](apps/interweave/docs/product.md)。产品、领域模型、Map、标签、Source 或 MCP 路线任务按需读取该文档和 ADR-0017/0018。
+Interweave 当前已确认的产品基线见 [`apps/interweave/docs/product.md`](apps/interweave/docs/product.md)。产品、领域模型、Map、标签、Source 或 MCP 路线任务按需读取该文档和 ADR-0017/0018；修改 Go 模块、Wails Service 或 frontend bindings 时还读取 ADR-0019。
 
 **资源（Resource）**:
 用户希望长期找回、理解或使用的原子概念对象；保存独立标题、短备注、语义标签与一个或多个 Source。
