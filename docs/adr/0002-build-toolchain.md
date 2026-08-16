@@ -12,10 +12,10 @@
 - **子路径导出软件包**（js-kit、browser-kit、web-ui）：`vp build`（Vite lib 模式 + preserveModules + vite-plugin-dts）→ `.js` + `.d.ts`
 - **React 应用**：`vp build`
 - **Vue 应用**：`vue-tsc --build && vp build`
-- **工作区验证**：`pnpm run check:code` 运行格式化、lint 和类型检查
+- **工作区验证**：`pnpm run check:code` 运行 Vite Plus Web 格式、lint、类型检查与根 `check:go` 调用的 Interweave Go 静态检查；提交 hook 自动修复暂存文件，Go 格式未作为独立 CI 门禁
 
 ## 后果
 
-- 所有软件包脚本都委托给 `vp build` / `vp test` / `vp check` / `vp lint` / `vp fmt`
+- Web workspace 的构建、测试、lint 和格式化委托给 `vp`；Interweave 的 Go 静态检查与格式化使用 Go 工具链
 - 工作区依赖必须外部化（推荐使用正则），以确保 dev watch 模式正常工作
 - web-ui 中的 CSS 嵌套需要 LightningCSS 转译（在 `vp build` 中配置）

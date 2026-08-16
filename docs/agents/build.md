@@ -24,7 +24,7 @@
 - **Vue 应用**：`vue-tsc --build && vp build`。
 - **tsconfig**：无构建步骤；它提供通过 TypeScript `extends` 消费的 JSON 文件。
 
-在工作区根目录运行 `pnpm run check:code` 进行格式化、lint 和类型检查。运行 `pnpm run fix:code` 可在类型检查前自动修复格式化和 lint 问题。包构建命令不能替代这两个命令。
+在工作区根目录运行 `pnpm run check:code` 进行 CI 代码质量检查：`check:vp` 使用 `vp check` 执行 Web 格式、lint 和 TypeScript 类型检查；根 `check:go` 通过 Interweave workspace 执行整个 Wails Go module 的 `go vet ./...`，覆盖 `main.go` 与 `backend/**`。提交 hook 的 `vp staged` 对全部暂存路径运行 `vp check --fix`，并额外对暂存的 `.go` 文件运行 `gofmt -w`；Go 格式化以 `gofmt` 任务为准，未作为独立 CI 门禁。包构建命令不能替代这些命令；Wails 的 macOS/Windows 原生构建仍负责验证 host package 与平台集成。
 
 构建可发布 package 或修改其 `exports`、`files`、Vite 输出时，在根构建成功后运行 `pnpm run check:pack`。该检查使用 `pnpm pack --dry-run` 验证实际发布文件与 manifest export targets；它不判断 API 语义或版本级别。任务开始时使用 `pnpm find:usages -- <paths...>`，取得由 `pnpm-workspace.yaml` 纳入的受影响 workspace、最小读取 context、所需证据与最小充分验证建议；需要确认公开入口时使用 `pnpm inspect:contract -- <published-package>`，需要审阅 Git 变更集的 manifest-level semver 候选时使用 `pnpm diff:contract -- --base <git-ref>`；对 Git 变更集可传入 `--base <git-ref>`、`--staged` 或 `--worktree`。
 

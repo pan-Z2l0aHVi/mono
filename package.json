@@ -13,8 +13,6 @@
     "commit:ci": "bash scripts/commit.sh",
     "publish:new": "bash scripts/publish-new-pack.sh",
     "release:version": "node scripts/release-version.mjs",
-    "check:code": "vp check",
-    "fix:code": "vp check --fix",
     "dev:react-web-ui-demo": "turbo build --filter=@greypan/react-web-ui-demo^... && turbo run dev --filter=@greypan/react-web-ui-demo...",
     "dev:vue-web-ui-demo": "turbo build --filter=@greypan/vue-web-ui-demo^... && turbo run dev --filter=@greypan/vue-web-ui-demo...",
     "dev:interweave": "turbo build --filter=@greypan/interweave^... && turbo run dev --filter=@greypan/interweave --filter=@greypan/interweave-frontend^...",
@@ -24,7 +22,10 @@
     "check:pack": "node scripts/check-pack.mjs",
     "test:scripts": "node scripts/scripts.test.mjs",
     "inspect:contract": "node scripts/repo-query.mjs contract",
-    "diff:contract": "node scripts/repo-query.mjs contract-diff"
+    "diff:contract": "node scripts/repo-query.mjs contract-diff",
+    "check:code": "pnpm run check:vp && pnpm run check:go",
+    "check:vp": "vp check",
+    "check:go": "pnpm --filter @greypan/interweave exec go vet ./..."
   },
   "devDependencies": {
     "@changesets/cli": "catalog:",
