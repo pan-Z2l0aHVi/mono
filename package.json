@@ -24,7 +24,7 @@
     "inspect:contract": "node scripts/repo-query.mjs contract",
     "diff:contract": "node scripts/repo-query.mjs contract-diff",
     "check:code": "pnpm run check:vp && pnpm run check:go",
-    "check:vp": "vp check",
+    "check:vp": "vp fmt --check '**/*' '!**/.agents/skills/agent-browser/**' '!**/.agents/skills/apple-design/**' '!**/.agents/skills/domain-modeling/**' '!**/.agents/skills/emil-design-eng/**' '!**/.agents/skills/grill-with-docs/**' '!**/.agents/skills/grilling/**' '!**/.agents/skills/prototype/**' '!**/.agents/skills/review-animations/**' && vp check --no-fmt",
     "check:go": "pnpm --filter @greypan/interweave exec go vet ./..."
   },
   "devDependencies": {

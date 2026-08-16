@@ -5,7 +5,8 @@ export default defineConfig({
     '*.{js,ts,jsx,tsx,mjs,cjs,html,vue,css,less,scss}': 'cspell',
     '*.{css,scss,less,vue}': 'stylelint --fix --allow-empty-input',
     '*.go': 'gofmt -w',
-    '*': 'vp check --fix'
+    // Formatting third-party skill sources would violate their upstream-content contract.
+    '*': 'vp check --fix --no-fmt'
   },
   lint: {
     jsPlugins: [{ name: 'vite-plus', specifier: 'vite-plus/oxlint-plugin' }],
