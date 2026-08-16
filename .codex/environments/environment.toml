@@ -39,6 +39,6 @@ icon = "run"
 command = "pnpm run dev:interweave"
 
 [[actions]]
-name = "verify paths"
+name = "validate context"
 icon = "check"
-command = "pnpm repo:verify"
+command = "pnpm validate:context"
