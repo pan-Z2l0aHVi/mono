@@ -141,4 +141,3 @@ func fmtRange(size int64) string { return "bytes */" + strconv.FormatInt(size, 1
 func fmtRange2(start, end, size int64) string {
 	return "bytes " + strconv.FormatInt(start, 10) + "-" + strconv.FormatInt(end, 10) + "/" + strconv.FormatInt(size, 10)
 }
-

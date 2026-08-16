@@ -501,7 +501,7 @@ if (hasContextChange)
 if (hasAgentToolChange) addVerification('required', 'pnpm run test:scripts', '影响分析或 context 校验工具发生变化。')
 if (hasContractToolChange) addVerification('required', 'pnpm run test:scripts', '发布产物契约检查器发生变化。')
 if (hasCodeChange)
-  addVerification('required', 'pnpm run check:code', '代码或配置发生变化，需要执行格式化、lint 和类型检查。')
+  addVerification('required', 'pnpm run check:code', '代码或配置发生变化，需要执行 lint、类型检查和语言专属静态检查。')
 if (hasReactRouteSourceChange)
   addVerification(
     'required',

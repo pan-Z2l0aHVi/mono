@@ -54,6 +54,9 @@
     "oxfmt",
     "idref",
     "retarget",
-    "pple"
+    "pple",
+    "gofmt",
+    "GOARCH",
+    "ACMR"
   ]
 }

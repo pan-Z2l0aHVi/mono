@@ -4,6 +4,7 @@ export default defineConfig({
   staged: {
     '*.{js,ts,jsx,tsx,mjs,cjs,html,vue,css,less,scss}': 'cspell',
     '*.{css,scss,less,vue}': 'stylelint --fix',
+    '*.go': 'gofmt -w',
     '*': 'vp check --fix'
   },
   lint: {

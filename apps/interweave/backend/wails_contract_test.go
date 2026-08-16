@@ -6,15 +6,15 @@ import (
 	"testing"
 )
 
-// assertEmptySlice 验证返回值为空集合：长度为 0，JSON 编码为 [] 或 null 均可。
-func assertEmptySlice[T any](t *testing.T, name string, values []T) {
+// assertNoEntries 验证查询空状态时不返回元素。
+func assertNoEntries[T any](t *testing.T, name string, values []T) {
 	t.Helper()
 	if len(values) != 0 {
 		t.Fatalf("%s 应为空，got %d entries", name, len(values))
 	}
 }
 
-func TestWailsCollectionContractReturnsEmptyCollections(t *testing.T) {
+func TestEmptyCollectionQueriesReturnNoEntries(t *testing.T) {
 	db := openTestDB(t)
 	items, tags, repairs, index := newTestServices(t, db)
 	watch := NewWatchService(db, items, repairs, noopEmit)
@@ -24,37 +24,37 @@ func TestWailsCollectionContractReturnsEmptyCollections(t *testing.T) {
 	if err != nil {
 		t.Fatalf("列出空库条目: %v", err)
 	}
-	assertEmptySlice(t, "ListItems", listedItems)
+	assertNoEntries(t, "ListItems", listedItems)
 
 	listedTags, err := tags.ListTags(ctx)
 	if err != nil {
 		t.Fatalf("列出空标签树: %v", err)
 	}
-	assertEmptySlice(t, "ListTags", listedTags)
+	assertNoEntries(t, "ListTags", listedTags)
 
 	listedRepairs, err := repairs.ListRepairs(ctx, "")
 	if err != nil {
 		t.Fatalf("列出空修复队列: %v", err)
 	}
-	assertEmptySlice(t, "ListRepairs", listedRepairs)
+	assertNoEntries(t, "ListRepairs", listedRepairs)
 
 	listedRoots, err := watch.ListWatchRoots(ctx)
 	if err != nil {
 		t.Fatalf("列出空监听根: %v", err)
 	}
-	assertEmptySlice(t, "ListWatchRoots", listedRoots)
+	assertNoEntries(t, "ListWatchRoots", listedRoots)
 
 	addResult, err := items.AddFiles(ctx, []string{}, nil)
 	if err != nil {
 		t.Fatalf("添加空文件集合: %v", err)
 	}
-	assertEmptySlice(t, "AddFiles.items", addResult.Items)
+	assertNoEntries(t, "AddFiles.items", addResult.Items)
 
 	folderResult, err := items.AddFolder(ctx, t.TempDir(), nil)
 	if err != nil {
 		t.Fatalf("添加空目录: %v", err)
 	}
-	assertEmptySlice(t, "AddFolder.items", folderResult.Items)
+	assertNoEntries(t, "AddFolder.items", folderResult.Items)
 
 	file := writeFile(t, t.TempDir(), "missing.txt", "content")
 	if _, err := items.AddFiles(ctx, []string{file}, nil); err != nil {
@@ -70,11 +70,11 @@ func TestWailsCollectionContractReturnsEmptyCollections(t *testing.T) {
 	if err != nil || len(openRepairs) != 1 {
 		t.Fatalf("获取断链修复项: repairs=%+v err=%v", openRepairs, err)
 	}
-	assertEmptySlice(t, "RepairItem.candidates", openRepairs[0].Candidates)
+	assertNoEntries(t, "RepairItem.candidates", openRepairs[0].Candidates)
 
 	candidates, err := repairs.GetCandidates(ctx, openRepairs[0].ID)
 	if err != nil {
 		t.Fatalf("计算空候选: %v", err)
 	}
-	assertEmptySlice(t, "GetCandidates", candidates)
+	assertNoEntries(t, "GetCandidates", candidates)
 }
