@@ -2,7 +2,7 @@ import { defineConfig } from 'vite-plus'
 
 export default defineConfig({
   staged: {
-    '*.{js,ts,jsx,tsx,mjs,cjs,html,vue,css,less,scss}': 'cspell',
+    '*.{js,ts,jsx,tsx,mjs,cjs,html,vue,css,less,scss}': 'cspell --no-must-find-files',
     '*.{css,scss,less,vue}': 'stylelint --fix --allow-empty-input',
     '*.go': 'gofmt -w',
     '*': 'vp check --fix'
@@ -66,7 +66,6 @@ export default defineConfig({
           '@typescript-eslint/no-wrapper-object-types': 'error',
           '@typescript-eslint/prefer-as-const': 'error',
           '@typescript-eslint/prefer-namespace-keyword': 'error'
-          // '@typescript-eslint/triple-slash-reference': 'error'
         }
       },
       {

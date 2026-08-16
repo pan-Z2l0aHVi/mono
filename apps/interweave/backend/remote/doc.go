@@ -1,5 +1,2 @@
-// Package remote will own Go-side outbound HTTP capabilities, including URL
-// metadata retrieval and future business API clients.
-//
-// It is an internal backend dependency and must not expose Wails services.
+// remote 收敛后端出站网络访问，避免远程能力直接暴露给前端。
 package remote

@@ -1,5 +1,2 @@
-// Package native will own controlled access to desktop operating-system
-// capabilities such as file dialogs and opening local or external targets.
-//
-// It is eligible to expose focused Wails services to the frontend.
+// native 将桌面系统能力收敛为受控的前端调用边界。
 package native
