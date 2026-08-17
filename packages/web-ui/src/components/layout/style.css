@@ -5,115 +5,132 @@
 }
 
 :host {
+  --wui-layout-visible-banner-height: 0px;
   display: block;
 }
 
-.layout-grid {
-  display: grid;
-  grid-template-areas:
-    'sidebar header'
-    'sidebar content';
-  grid-template-columns: var(--web-ui-base-layout-sidebar-width, 240px) 1fr;
-  grid-template-rows: var(--web-ui-base-layout-header-height, 64px) 1fr;
-
-  box-sizing: border-box;
-  min-height: 100dvh;
+/* 页面级滚动容器。Banner 位于正文前，随页面一起滚动。 */
+.layout-page {
+  display: flex;
+  flex-direction: column;
   min-height: 100vh;
+  min-height: 100dvh;
+}
 
-  * {
-    box-sizing: inherit;
+/* 参考 book-fe：正文区域负责撑高 sidebar 的 relative wrapper。 */
+.layout-body {
+  display: flex;
+  flex: 1;
+}
+
+.sidebar-wrapper {
+  position: relative;
+  align-self: stretch;
+}
+
+/* Layout 只提供可用高度；Consumer 决定其内部 scrollport。 */
+.sidebar-viewport {
+  flex: 1;
+  min-height: 0;
+}
+
+/* headless drawer 只提供 overlay 基础设施；此卡片与桌面端 aside-panel 相同。 */
+.mobile-sidebar {
+  display: flex;
+  flex-direction: column;
+
+  width: calc(var(--wui-layout-mobile-sidebar-width, 240px) - 16px);
+  max-width: calc(100vw - 16px);
+  height: calc(100vh - 16px);
+  height: calc(100dvh - 16px);
+  min-height: 0;
+  margin: 8px;
+  border-radius: 24px;
+
+  background-color: var(--wui-color-surface-overlay, rgb(246 246 246 / 0.88));
+}
+
+/*
+ * Banner 可见时，组件用它的当前可见高度缩短 aside；Banner 滚出后该值归零。
+ * 因而圆角卡片始终完整可见，同时 sticky Sidebar 可在 Banner 消失后填满视口。
+ */
+aside {
+  position: sticky;
+  top: 0;
+
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+
+  height: calc(100vh - var(--wui-layout-visible-banner-height));
+  height: calc(100dvh - var(--wui-layout-visible-banner-height));
+  max-height: calc(100vh - var(--wui-layout-visible-banner-height));
+  max-height: calc(100dvh - var(--wui-layout-visible-banner-height));
+  padding: 8px;
+
+  transition: width var(--wui-duration-regular, 200ms) ease;
+
+  .aside-panel {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+
+    min-height: 0;
+    border-radius: 24px;
+
+    background-color: var(--wui-color-surface-overlay, rgb(246 246 246 / 0.88));
   }
+
+  .sidebar-toggle-area {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+  }
+
+  .sidebar-toggle {
+    width: fit-content;
+    margin: 8px;
+  }
+
+  &.collapsed {
+    .sidebar-viewport {
+      pointer-events: none;
+      visibility: hidden;
+      opacity: 0;
+    }
+  }
+}
+
+.layout-content {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
 }
 
 header {
   position: sticky;
   z-index: var(--wui-layer-header, 10);
   top: 0;
-  right: 0;
 
-  grid-area: header;
+  display: flex;
+  gap: 8px;
+  align-items: center;
 }
 
 main {
-  grid-area: content;
-}
-
-aside {
-  position: sticky;
-  top: 0;
-  left: 0;
-
-  grid-area: sidebar;
-
-  height: 100dvh;
-  height: 100vh;
-  padding: 8px;
-
-  .menu {
-    height: 100%;
-    border-radius: 24px;
-    background-color: var(--wui-color-surface-overlay, rgb(246 246 246 / 0.88));
-  }
-}
-
-footer {
-  grid-area: footer;
-}
-
-.backdrop {
-  display: none;
-}
-
-.mobile-toggle {
-  position: fixed;
-  z-index: var(--wui-layer-header, 20);
-  top: 12px;
-  left: 12px;
-
-  visibility: hidden;
+  flex: 1;
 }
 
 @media (width <= 640px) {
-  .layout-grid {
-    grid-template-areas:
-      'header'
-      'content';
-    grid-template-columns: 1fr;
-  }
-
-  aside {
-    position: fixed;
-    z-index: var(--wui-layer-drawer, 100);
-    top: 0;
-    left: 0;
-    transform: translateX(-100%);
-
-    width: var(--web-ui-base-layout-sidebar-width, 240px);
-    height: 100dvh;
-    padding: 8px;
-
-    transition: transform var(--wui-duration-drawer-enter, 280ms) ease;
-  }
-
-  aside.open {
-    transform: translateX(0);
-  }
-
-  .backdrop {
-    position: fixed;
-    z-index: var(--wui-layer-backdrop, 90);
-    inset: 0;
-
+  aside,
+  .sidebar-wrapper {
     display: none;
-
-    background: rgb(0 0 0 / 0.3);
   }
+}
 
-  .backdrop.open {
-    display: block;
-  }
-
-  .mobile-toggle {
-    visibility: visible;
+@media (prefers-reduced-motion: reduce) {
+  aside {
+    transition: none;
   }
 }

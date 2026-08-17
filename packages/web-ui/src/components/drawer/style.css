@@ -173,3 +173,12 @@ dialog[open].is-visible::backdrop {
   top: 16px;
   right: 16px;
 }
+
+/* ===== Headless 模式 ===== */
+
+/* Headless 模式下，dialog 只作为 overlay 容器，不渲染内置 UI */
+:host([headless]) dialog {
+  /* 保持 overlay 基础设施，移除内置样式 */
+  width: auto;
+  max-width: none;
+}
