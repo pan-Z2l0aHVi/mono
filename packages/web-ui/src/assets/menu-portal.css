@@ -35,11 +35,11 @@
     }
 
     &[data-level]:not([data-level='0']) {
-      z-index: var(--wui-layer-menu-submenu, 110);
+      z-index: var(--wui-layer-menu-nested, 110);
     }
   }
 
   &.context-submenu {
-    z-index: var(--wui-layer-menu-submenu, 110);
+    z-index: var(--wui-layer-menu-nested, 110);
   }
 }

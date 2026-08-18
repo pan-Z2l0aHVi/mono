@@ -5,12 +5,17 @@
 }
 
 :host {
+  /* z-index layers - 基础结构 */
   --wui-layer-base: 0;
+  --wui-layer-inline-overlay: 1;
   --wui-layer-header: 10;
   --wui-layer-auxiliary: 20;
-  --wui-layer-local-overlay: 1;
+  --wui-layer-tabbar: 30;
+  --wui-layer-sidebar: 40;
+
+  /* z-index layers - 浮层 */
   --wui-layer-menu: 100;
-  --wui-layer-menu-submenu: 110;
+  --wui-layer-menu-nested: 110;
   --wui-layer-toast: 200;
   --wui-layer-loading: 300;
   --wui-duration-press: 80ms;

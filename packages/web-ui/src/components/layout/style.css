@@ -56,6 +56,7 @@
  */
 aside {
   position: sticky;
+  z-index: var(--wui-layer-sidebar, 40);
   top: 0;
 
   display: flex;
@@ -120,6 +121,12 @@ header {
 
 main {
   flex: 1;
+}
+
+footer {
+  position: sticky;
+  z-index: var(--wui-layer-tabbar, 30);
+  bottom: 0;
 }
 
 @media (width <= 640px) {
