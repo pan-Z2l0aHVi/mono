@@ -1,7 +1,5 @@
 # CONTEXT.md Format
 
-`CONTEXT.md` may combine domain vocabulary with repository-level architecture context. This format governs vocabulary entries; it does not require removing project boundaries, dependency direction, or ADR indexes that belong to repository context.
-
 ## Structure
 
 ```md
@@ -29,7 +27,6 @@ _Avoid_: Client, buyer, account
 - **Be opinionated.** When multiple words exist for the same concept, pick the best one and list the others under `_Avoid_`.
 - **Keep definitions tight.** One or two sentences max. Define what it IS, not what it does.
 - **Only include terms specific to this project's context.** General programming concepts (timeouts, error types, utility patterns) don't belong even if the project uses them extensively. Before adding a term, ask: is this a concept unique to this context, or a general programming concept? Only the former belongs.
-- **Keep architecture context separate from vocabulary.** Project boundaries and ADR indexes may remain in `CONTEXT.md`; implementation details belong in source, manifests, task guides, tests, or ADRs.
 - **Group terms under subheadings** when natural clusters emerge. If all terms belong to a single cohesive area, a flat list is fine.
 
 ## Single vs multi-context repos
