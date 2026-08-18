@@ -10,15 +10,31 @@ product behavior, resource model, tag semantics, Map, or MCP roadmap.
 
 ## Commands
 
-Run commands from the repository root:
+Run all commands from the repository root. Interweave is a private pnpm workspace
+application: dependency installation, workspace-package builds, CI and release
+orchestration are owned by the root pnpm and Turborepo commands.
 
 ```bash
 mise install
+pnpm install
+
+# Start the Wails host after Turbo has built its WebView workspace dependencies.
 pnpm dev:interweave
-pnpm --filter @greypan/interweave build
+
+# Build the complete monorepo graph (the CI build entry point).
+pnpm build
+
+# Manually verify a native desktop target with the same preparation used in the
+# Wails CI workflows.
+pnpm exec turbo build --filter=@greypan/interweave-frontend^...
 pnpm --filter @greypan/interweave build:macos
 pnpm --filter @greypan/interweave build:windows
 ```
+
+Do not install or build `apps/interweave/frontend` as an isolated npm, Yarn or
+Bun project: it consumes workspace packages from `packages/*`. The app-local
+scripts remain Turborepo targets and native packaging primitives, not a separate
+build, CI or release pipeline.
 
 Native artifacts are emitted to `apps/interweave/bin/`:
 

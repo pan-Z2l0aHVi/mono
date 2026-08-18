@@ -1,6 +1,2 @@
-// Package backend is the root of Interweave's Go-side capabilities.
-//
-// Product behavior, native operating-system access, outbound HTTP, and shared
-// backend utilities are owned by their respective child packages. The root
-// package intentionally contains no product implementation.
+// backend 为各后端能力提供清晰的归属边界，避免产品规则在根包聚集。
 package backend

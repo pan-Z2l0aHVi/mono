@@ -500,22 +500,27 @@ ArrowUp/ArrowDown 键增减数值。空输入或 `-` 在提交时被忽略，值
 
 侧边抽屉，使用原生 `<dialog>` 并自带关闭动画。
 
-| 属性                | 类型                                     | 默认值    | 说明                             |
-| ------------------- | ---------------------------------------- | --------- | -------------------------------- |
-| `open`              | `boolean`                                | `false`   | 抽屉可见性                       |
-| `placement`         | `'right' \| 'left' \| 'top' \| 'bottom'` | `'right'` | 滑入方向                         |
-| `heading`           | `string`                                 | `''`      | 标题文字（无 header 插槽时显示） |
-| `closable`          | `boolean`                                | `false`   | 显示关闭按钮                     |
-| `no-scroll-lock`    | `boolean`                                | `false`   | 打开时不锁定页面滚动             |
-| `no-backdrop-close` | `boolean`                                | `false`   | 禁止点击遮罩关闭                 |
+| 属性                | 类型                                     | 默认值    | 说明                                                 |
+| ------------------- | ---------------------------------------- | --------- | ---------------------------------------------------- |
+| `open`              | `boolean`                                | `false`   | 抽屉可见性                                           |
+| `placement`         | `'right' \| 'left' \| 'top' \| 'bottom'` | `'right'` | 滑入方向                                             |
+| `heading`           | `string`                                 | `''`      | 标题文字（无 header 插槽时显示）                     |
+| `closable`          | `boolean`                                | `false`   | 显示关闭按钮                                         |
+| `no-scroll-lock`    | `boolean`                                | `false`   | 打开时不锁定页面滚动                                 |
+| `no-backdrop-close` | `boolean`                                | `false`   | 禁止点击遮罩关闭                                     |
+| `request-only`      | `boolean`                                | `false`   | 用户关闭仅请求 `open=false`，由 Consumer 回写 `open` |
+| `headless`          | `boolean`                                | `false`   | 仅保留 overlay 行为，默认插槽不渲染内置抽屉 UI       |
+| `dialog-label`      | `string`                                 | `''`      | 内部原生 dialog 的可访问名称；headless 模式必须提供  |
 
-**事件：** `open-change` (`CustomEvent<{ open: boolean }>`)
+**事件：** `open-change` (`CustomEvent<{ open: boolean }>`)。启用 `request-only` 后，Escape、遮罩和内置关闭按钮仅请求 `open=false`；Consumer 写入 `open=false` 前抽屉保持打开。若原生 dialog 在请求被拒绝期间关闭，组件会恢复其打开的 top layer 状态并发出同一关闭请求。
 
-**插槽：** `header`, `default`, `footer`
+**插槽：** `header`, `default`, `footer`；启用 `headless` 时仅渲染 `default` 插槽。
 
 **方法：** `show()`, `close()`
 
-关闭时保留原生 dialog 的 top layer，待 `--wui-duration-drawer` 过渡完成（默认 280ms）后调用 `dialog.close()`。Escape 始终走此关闭路径；`no-backdrop-close` 仅控制遮罩点击。
+`headless` 保留原生 dialog、遮罩、placement 动画、Escape/遮罩关闭行为和滚动锁定，但不渲染内置 glass 主体、header、关闭按钮或 footer；Consumer 负责完整定义默认插槽内容的样式，并且必须提供 `dialog-label`，确保原生 dialog 具有可访问名称。
+
+关闭时保留原生 dialog 的 top layer，待退出过渡完成后调用 `dialog.close()`。Escape 始终走此关闭路径；`no-backdrop-close` 仅控制遮罩点击。
 
 ---
 
@@ -727,14 +732,28 @@ WebUiSpinner.hide() // 隐藏
 
 #### `<web-ui-layout>`
 
-页面布局网格。
+响应式页面布局：支持可选全宽 Banner、桌面端可折叠侧边栏，以及移动端 headless drawer。页面本身滚动；Banner 滚出后，桌面端 sidebar 和 header 固定在视口内。
 
-| 插槽      | 说明       |
-| --------- | ---------- |
-| `header`  | 顶部横幅   |
-| `default` | 主内容区   |
-| `sidebar` | 侧边栏     |
-| `tabbar`  | 底部标签栏 |
+| 属性                | 类型      | 默认值    | 说明                             |
+| ------------------- | --------- | --------- | -------------------------------- |
+| `sidebar-collapsed` | `boolean` | `false`   | 桌面端侧边栏受控折叠状态         |
+| `sidebar-open`      | `boolean` | `false`   | 移动端侧边栏 Drawer 受控打开状态 |
+| `sidebar-width`     | `string`  | `'240px'` | 桌面端和移动端展开时的侧边栏宽度 |
+| `collapsed-width`   | `string`  | `'72px'`  | 桌面端折叠时的侧边栏宽度         |
+
+**事件：** `sidebar-collapsed-change`（`CustomEvent<{ collapsed: boolean }>`）用于请求更新桌面端折叠状态；`sidebar-open-change`（`CustomEvent<{ open: boolean }>`）用于请求更新移动端 Drawer 打开状态。Consumer 必须将请求值回写到对应的受控属性。
+
+| 插槽      | 说明                                                         |
+| --------- | ------------------------------------------------------------ |
+| `banner`  | 位于布局主体上方的可选全宽 Banner                            |
+| `header`  | 内容区的 sticky header                                       |
+| `sidebar` | 侧边栏卡片内容；内部固定区域与滚动容器均由 Consumer 自行定义 |
+| `default` | 主内容区                                                     |
+| `tabbar`  | 底部 tabbar                                                  |
+
+`web-ui-layout` 只约束侧边栏卡片的可用空间并管理桌面端 Toggle，不创建侧边栏 scrollport。若仅让侧边栏的一部分滚动，请将 `sidebar` 插槽根节点设为 `height: 100%; min-height: 0` 的 flex column，再将 `overflow-y: auto` 设置到目标子元素。这样 Consumer 可自行固定头部和底部，无需额外的公共 slot。
+
+在 `640px` 及以下，侧边栏会切换为 headless 模式的 `web-ui-drawer`。Consumer 内容仍渲染在相同的圆角侧边栏卡片中，移动端 Toggle 位于 header 行内。
 
 #### `<web-ui-back-top>`
 

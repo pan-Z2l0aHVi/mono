@@ -510,20 +510,25 @@ Uses native `<dialog>` with `@cancel` prevention. Escape calls `close()` unless 
 
 Side drawer using native `<dialog>` with closing animation.
 
-| Attribute           | Type                                     | Default   | Description                               |
-| ------------------- | ---------------------------------------- | --------- | ----------------------------------------- |
-| `open`              | `boolean`                                | `false`   | Drawer visibility                         |
-| `placement`         | `'right' \| 'left' \| 'top' \| 'bottom'` | `'right'` | Slide-in direction                        |
-| `heading`           | `string`                                 | `''`      | Title text (fallback when no header slot) |
-| `closable`          | `boolean`                                | `false`   | Show close button                         |
-| `no-scroll-lock`    | `boolean`                                | `false`   | Do not lock body scroll when open         |
-| `no-backdrop-close` | `boolean`                                | `false`   | Do not close on backdrop click            |
+| Attribute           | Type                                     | Default   | Description                                                                       |
+| ------------------- | ---------------------------------------- | --------- | --------------------------------------------------------------------------------- |
+| `open`              | `boolean`                                | `false`   | Drawer visibility                                                                 |
+| `placement`         | `'right' \| 'left' \| 'top' \| 'bottom'` | `'right'` | Slide-in direction                                                                |
+| `heading`           | `string`                                 | `''`      | Title text (fallback when no header slot)                                         |
+| `closable`          | `boolean`                                | `false`   | Show close button                                                                 |
+| `no-scroll-lock`    | `boolean`                                | `false`   | Do not lock body scroll when open                                                 |
+| `no-backdrop-close` | `boolean`                                | `false`   | Do not close on backdrop click                                                    |
+| `request-only`      | `boolean`                                | `false`   | User close actions only request `open=false`; the consumer must update `open`     |
+| `headless`          | `boolean`                                | `false`   | Keep only overlay behavior and render the default slot without built-in drawer UI |
+| `dialog-label`      | `string`                                 | `''`      | Accessible name for the internal native dialog; required in headless mode         |
 
-**Events:** `open-change` (`CustomEvent<{ open: boolean }>`)
+**Events:** `open-change` (`CustomEvent<{ open: boolean }>`). With `request-only`, Escape, backdrop and the built-in close button only request `open=false`; the drawer remains open until the consumer writes `open=false`. If native dialog closure occurs while that request is rejected, the drawer restores its open top-layer state and emits the same request.
 
-**Slots:** `header`, `default`, `footer`
+**Slots:** `header`, `default`, `footer` — with `headless`, only the `default` slot is rendered.
 
 **Methods:** `show()`, `close()`
+
+`headless` keeps the native dialog, backdrop, placement animation, Escape/backdrop close behavior, and scroll locking. It does not render the built-in glass body, header, close button, or footer; style the default-slot content completely in the consumer.
 
 Closing keeps the native dialog in the top layer until the `--wui-duration-drawer` transition completes (280ms by default), then calls `dialog.close()`. Escape always follows this close path; `no-backdrop-close` controls backdrop clicks only.
 
@@ -737,14 +742,28 @@ WebUiSpinner.hide() // hide
 
 #### `<web-ui-layout>`
 
-Page layout grid.
+Responsive page layout with an optional full-width banner, a collapsible desktop sidebar, and a headless-drawer mobile sidebar. The page itself scrolls; the desktop sidebar and header stick to the viewport after the banner scrolls away.
 
-| Slot      | Description     |
-| --------- | --------------- |
-| `header`  | Sticky top bar  |
-| `default` | Main content    |
-| `sidebar` | Side navigation |
-| `tabbar`  | Bottom tab bar  |
+| Attribute           | Type      | Default   | Description                                 |
+| ------------------- | --------- | --------- | ------------------------------------------- |
+| `sidebar-collapsed` | `boolean` | `false`   | Controlled desktop sidebar collapsed state  |
+| `sidebar-open`      | `boolean` | `false`   | Controlled mobile sidebar drawer open state |
+| `sidebar-width`     | `string`  | `'240px'` | Expanded desktop and mobile sidebar width   |
+| `collapsed-width`   | `string`  | `'72px'`  | Collapsed desktop sidebar width             |
+
+**Events:** `sidebar-collapsed-change` (`CustomEvent<{ collapsed: boolean }>`) requests a desktop collapse-state update. `sidebar-open-change` (`CustomEvent<{ open: boolean }>`) requests a mobile drawer open-state update. Consumers must write the requested value back to the corresponding controlled property.
+
+| Slot      | Description                                                                               |
+| --------- | ----------------------------------------------------------------------------------------- |
+| `banner`  | Optional full-width banner above the layout body                                          |
+| `header`  | Sticky content-area header                                                                |
+| `sidebar` | Sidebar-card content. The consumer owns its internal fixed regions and scroll containers. |
+| `default` | Main content                                                                              |
+| `tabbar`  | Bottom tab bar                                                                            |
+
+`web-ui-layout` constrains the sidebar card and owns the desktop toggle area, but does not create a sidebar scrollport. To make only part of the sidebar scroll, make the `sidebar` slot root a `height: 100%; min-height: 0` flex column and apply `overflow-y: auto` to the intended child. This keeps consumer-defined headers and footers fixed without adding extra public slots.
+
+At `640px` and below, the sidebar becomes a headless `web-ui-drawer`. The consumer content is rendered in the same rounded sidebar card; the mobile toggle appears in the header row.
 
 #### `<web-ui-back-top>`
 
