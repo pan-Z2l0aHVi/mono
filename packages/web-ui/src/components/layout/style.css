@@ -161,7 +161,8 @@ header {
 
   position: absolute;
   z-index: -1;
-  inset: calc(100% - var(--wui-layout-header-glow-height)) -10px auto;
+  inset: calc(100% - var(--wui-layout-header-glow-height)) -20px auto;
+  transform: scaleY(1.5);
 
   height: var(--wui-layout-header-glow-height);
 

@@ -88,7 +88,6 @@ button:active:not(:disabled) {
 /* ===== Icon mode ===== */
 
 :host([icon]) button {
-  aspect-ratio: 1;
   padding: 0;
 }
 

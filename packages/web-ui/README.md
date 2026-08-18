@@ -451,16 +451,16 @@ Radio group managing single selection.
 
 Styled button with variants and loading state.
 
-| Attribute    | Type                                                         | Default    | Description                                       |
-| ------------ | ------------------------------------------------------------ | ---------- | ------------------------------------------------- |
-| `variant`    | `'primary' \| 'secondary' \| 'ghost' \| 'danger' \| 'glass'` | `'glass'`  | Button variant                                    |
-| `type`       | `'button' \| 'submit' \| 'reset'`                            | `'button'` | Inner-button type; invalid values become `button` |
-| `disabled`   | `boolean`                                                    | `false`    | Disabled state                                    |
-| `loading`    | `boolean`                                                    | `false`    | Loading spinner                                   |
-| `full`       | `boolean`                                                    | `false`    | Full width                                        |
-| `icon`       | `boolean`                                                    | `false`    | Icon-only mode                                    |
-| `size`       | `string`                                                     | `''`       | Size format `height` or `heightxwidth`            |
-| `aria-label` | `string`                                                     | —          | Accessible label (delegated to inner button)      |
+| Attribute    | Type                                                         | Default    | Description                                                             |
+| ------------ | ------------------------------------------------------------ | ---------- | ----------------------------------------------------------------------- |
+| `variant`    | `'primary' \| 'secondary' \| 'ghost' \| 'danger' \| 'glass'` | `'glass'`  | Button variant                                                          |
+| `type`       | `'button' \| 'submit' \| 'reset'`                            | `'button'` | Inner-button type; invalid values become `button`                       |
+| `disabled`   | `boolean`                                                    | `false`    | Disabled state                                                          |
+| `loading`    | `boolean`                                                    | `false`    | Loading spinner                                                         |
+| `full`       | `boolean`                                                    | `false`    | Full width                                                              |
+| `icon`       | `boolean`                                                    | `false`    | Icon-only mode                                                          |
+| `size`       | `string`                                                     | `''`       | Button height in px (icon mode: also sets min-width for square default) |
+| `aria-label` | `string`                                                     | —          | Accessible label (delegated to inner button)                            |
 
 **Events:** standard `click`
 

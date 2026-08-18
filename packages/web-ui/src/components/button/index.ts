@@ -49,12 +49,11 @@ export class WebUiButton extends LitElement {
   // Explicitly delegated accessible naming attributes.
   @property({ type: String, attribute: 'aria-label' }) override ariaLabel: string | null = null
 
-  // size="32" → 32x32，size="32x80" → 32x80
   private get _sizeStyle(): Record<string, string> {
+    // size 仅控制按钮高度；icon 模式下 min-width 同步为相同值，天然保持正方形。
     if (!this.size) return {}
-    const [h, w] = this.size.split('x')
-    const style: Record<string, string> = { '--wui-button-size': `${h}px` }
-    if (w) style['--wui-button-width'] = `${w}px`
+
+    const style: Record<string, string> = { '--wui-button-size': `${this.size}px` }
     return style
   }
 
