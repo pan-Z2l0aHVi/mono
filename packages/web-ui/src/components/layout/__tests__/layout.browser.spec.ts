@@ -6,9 +6,11 @@ import type { WebUiLayout } from '..'
 
 function createLayout({
   banner = true,
-  bannerContent = 'Banner'
-}: { banner?: boolean; bannerContent?: string } = {}): WebUiLayout {
+  bannerContent = 'Banner',
+  headerGlow = false
+}: { banner?: boolean; bannerContent?: string; headerGlow?: boolean } = {}): WebUiLayout {
   const layout = document.createElement('web-ui-layout')
+  if (headerGlow) layout.setAttribute('header-glow', '')
   layout.innerHTML = `
     ${banner ? `<div slot="banner" style="height: 36px">${bannerContent}</div>` : ''}
     <header slot="header">Header</header>
@@ -183,6 +185,51 @@ describe('WebUiLayout 组件（浏览器）', () => {
       const panel = layout.shadowRoot?.querySelector('aside .aside-panel') as HTMLElement
       expect(layout.style.getPropertyValue('--wui-layout-visible-banner-height')).toBe('72px')
       expect(panel.getBoundingClientRect().bottom).toBeLessThanOrEqual(window.innerHeight - 8 + 1)
+    })
+
+    it('header-glow 作为 sticky Header 背景渲染，并遵循布局层级顺序', async () => {
+      await page.viewport(1280, 720)
+      const layout = createLayout({ headerGlow: true })
+      await layout.updateComplete
+      await nextFrame()
+
+      const header = layout.shadowRoot?.querySelector('header') as HTMLElement
+      const glow = window.getComputedStyle(header, '::before')
+      const headerContent = layout.querySelector('[slot="header"]') as HTMLElement
+      const banner = layout.shadowRoot?.querySelector('.layout-banner') as HTMLElement
+      const aside = layout.shadowRoot?.querySelector('aside') as HTMLElement
+      const footer = layout.shadowRoot?.querySelector('footer') as HTMLElement
+
+      expect(layout.headerGlow).toBe(true)
+      expect(layout.hasAttribute('header-glow')).toBe(true)
+      expect(layout.shadowRoot?.querySelector('.header-glow')).toBeNull()
+      expect(glow.content).toBe('""')
+      expect(glow.pointerEvents).toBe('none')
+      expect(glow.zIndex).toBe('-1')
+      expect(glow.top).toBe(`-${header.getBoundingClientRect().height / 2}px`)
+      expect(glow.bottom).toBe('0px')
+      expect(glow.filter).toBe('blur(10px)')
+      expect(parseFloat(glow.height)).toBeCloseTo(header.getBoundingClientRect().height * 1.5, 0)
+
+      headerContent.style.height = '80px'
+      await nextFrame()
+      const resizedGlow = window.getComputedStyle(header, '::before')
+      expect(parseFloat(resizedGlow.height)).toBeCloseTo(header.getBoundingClientRect().height * 1.5, 0)
+      expect(parseFloat(resizedGlow.top)).toBeCloseTo(-header.getBoundingClientRect().height / 2, 0)
+      expect(header.getBoundingClientRect().height).toBeCloseTo(80, 0)
+
+      expect(window.getComputedStyle(header).isolation).toBe('isolate')
+      expect(window.getComputedStyle(headerContent).position).toBe('static')
+      expect(window.getComputedStyle(headerContent).zIndex).toBe('auto')
+      expect(window.getComputedStyle(header).position).toBe('sticky')
+      expect(window.getComputedStyle(header).zIndex).toBe('10')
+      expect(window.getComputedStyle(banner).zIndex).toBe('30')
+      expect(window.getComputedStyle(footer).zIndex).toBe('40')
+      expect(window.getComputedStyle(aside).zIndex).toBe('50')
+
+      window.scrollTo(0, 240)
+      await nextFrame()
+      expect(header.getBoundingClientRect().top).toBe(0)
     })
 
     it('页面使用 Flex 页面级滚动布局', async () => {

@@ -115,6 +115,7 @@ const navItems: NavItem[] = [
   <web-ui-theme :appearance="themeAppearance" :motion="themeMotion">
     <div class="min-h-screen bg-[var(--wui-color-page)] text-[var(--wui-color-text)]">
       <web-ui-layout
+        header-glow
         :sidebarCollapsed.prop="sidebarCollapsed"
         :sidebarOpen.prop="sidebarOpen"
         @sidebar-collapsed-change="updateSidebarCollapsed"
@@ -128,7 +129,7 @@ const navItems: NavItem[] = [
           <span>🎉 欢迎使用 web-ui 组件库！</span>
           <button class="ml-auto text-current opacity-70 hover:opacity-100" @click="bannerVisible = false">✕</button>
         </div>
-        <div slot="header" class="flex h-full w-full items-center justify-end gap-4 px-4 max-[640px]:w-screen">
+        <div slot="header" class="flex h-full w-full items-center justify-end gap-4 px-4 py-2 max-[640px]:w-screen">
           <web-ui-select
             :value="themeMotion"
             class="[--wui-input-width:120px]"
@@ -151,10 +152,10 @@ const navItems: NavItem[] = [
           </web-ui-select>
         </div>
         <div class="flex h-full min-h-0 flex-col" slot="sidebar">
-          <div class="shrink-0 px-3 pb-2 text-xs font-semibold uppercase text-[var(--wui-color-text-muted)]">
+          <div class="shrink-0 px-5 pt-4 pb-2 text-xs font-semibold uppercase text-[var(--wui-color-text-muted)]">
             组件列表
           </div>
-          <nav ref="navSidebar" class="min-h-0 flex-1 overflow-y-auto">
+          <nav ref="navSidebar" class="min-h-0 flex-1 p-2 overflow-y-auto">
             <RouterLink
               v-for="item in navItems"
               :key="item.path"

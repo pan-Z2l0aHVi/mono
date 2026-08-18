@@ -734,12 +734,13 @@ WebUiSpinner.hide() // 隐藏
 
 响应式页面布局：支持可选全宽 Banner、桌面端可折叠侧边栏，以及移动端 headless drawer。页面本身滚动；Banner 滚出后，桌面端 sidebar 和 header 固定在视口内。
 
-| 属性                | 类型      | 默认值    | 说明                             |
-| ------------------- | --------- | --------- | -------------------------------- |
-| `sidebar-collapsed` | `boolean` | `false`   | 桌面端侧边栏受控折叠状态         |
-| `sidebar-open`      | `boolean` | `false`   | 移动端侧边栏 Drawer 受控打开状态 |
-| `sidebar-width`     | `string`  | `'240px'` | 桌面端和移动端展开时的侧边栏宽度 |
-| `collapsed-width`   | `string`  | `'72px'`  | 桌面端折叠时的侧边栏宽度         |
+| 属性                | 类型      | 默认值    | 说明                                 |
+| ------------------- | --------- | --------- | ------------------------------------ |
+| `sidebar-collapsed` | `boolean` | `false`   | 桌面端侧边栏受控折叠状态             |
+| `sidebar-open`      | `boolean` | `false`   | 移动端侧边栏 Drawer 受控打开状态     |
+| `header-glow`       | `boolean` | `false`   | 在 header 插槽内容背后显示装饰性晕染 |
+| `sidebar-width`     | `string`  | `'240px'` | 桌面端和移动端展开时的侧边栏宽度     |
+| `collapsed-width`   | `string`  | `'72px'`  | 桌面端折叠时的侧边栏宽度             |
 
 **事件：** `sidebar-collapsed-change`（`CustomEvent<{ collapsed: boolean }>`）用于请求更新桌面端折叠状态；`sidebar-open-change`（`CustomEvent<{ open: boolean }>`）用于请求更新移动端 Drawer 打开状态。Consumer 必须将请求值回写到对应的受控属性。
 
@@ -754,6 +755,8 @@ WebUiSpinner.hide() // 隐藏
 `web-ui-layout` 只约束侧边栏卡片的可用空间并管理桌面端 Toggle，不创建侧边栏 scrollport。若仅让侧边栏的一部分滚动，请将 `sidebar` 插槽根节点设为 `height: 100%; min-height: 0` 的 flex column，再将 `overflow-y: auto` 设置到目标子元素。这样 Consumer 可自行固定头部和底部，无需额外的公共 slot。
 
 在 `640px` 及以下，侧边栏会切换为 headless 模式的 `web-ui-drawer`。Consumer 内容仍渲染在相同的圆角侧边栏卡片中，移动端 Toggle 位于 header 行内。
+
+`header-glow` 会在 header 插槽内容和移动端 Toggle 的背后添加 `pointer-events: none` 的装饰性晕染。它属于 Header 背景而非前景层，因此插槽内容始终位于其上方；可通过 `--wui-layout-header-glow-color` 覆盖颜色，默认值为 `--wui-color-page`。晕染浓度和范围由内部变量 `--wui-layout-header-glow-height`（默认 `150%`）控制；增大可加强覆盖，减小则更柔和。布局层级顺序为 Header（`10`）< Auxiliary（`20`）< Banner（`30`）< Tabbar（`40`）< Sidebar（`50`）。
 
 #### `<web-ui-back-top>`
 
@@ -802,7 +805,7 @@ SVG 线条绘制动画，基于 `stroke-dashoffset`。直接在原元素上动�
 
 **方法：** `getOverlayRoot()` — 返回 Portal 浮层容器
 
-定义 `--wui-color-*`、`--wui-shadow-*`、`--wui-layer-*` 与 motion token。motion token 是稳定的主题契约，可在主题范围覆盖：`--wui-duration-press`、`--wui-duration-feedback`、`--wui-duration-trigger`、`--wui-duration-focus`、`--wui-duration-menu-enter`、`--wui-duration-menu-exit`、`--wui-duration-overlay-enter`、`--wui-duration-overlay-exit`、`--wui-duration-drawer-enter`、`--wui-duration-drawer-exit`、`--wui-ease-enter`、`--wui-ease-slide`、`--wui-scale-enter`。`motion="system"` 跟随 `prefers-reduced-motion`；使用 `motion="reduced"` 降低当前作用域动效，或在嵌套主题中使用 `motion="full"` 恢复默认 token。System 配色模式跟随 `prefers-color-scheme`。
+定义 `--wui-color-*`、`--wui-shadow-*`、`--wui-layer-*` 与 motion token。布局层级 token 依次为 `--wui-layer-header: 10`、`--wui-layer-auxiliary: 20`、`--wui-layer-banner: 30`、`--wui-layer-tabbar: 40`、`--wui-layer-sidebar: 50`。motion token 是稳定的主题契约，可在主题范围覆盖：`--wui-duration-press`、`--wui-duration-feedback`、`--wui-duration-trigger`、`--wui-duration-focus`、`--wui-duration-menu-enter`、`--wui-duration-menu-exit`、`--wui-duration-overlay-enter`、`--wui-duration-overlay-exit`、`--wui-duration-drawer-enter`、`--wui-duration-drawer-exit`、`--wui-ease-enter`、`--wui-ease-slide`、`--wui-scale-enter`。`motion="system"` 跟随 `prefers-reduced-motion`；使用 `motion="reduced"` 降低当前作用域动效，或在嵌套主题中使用 `motion="full"` 恢复默认 token。System 配色模式跟随 `prefers-color-scheme`。
 
 ---
 
