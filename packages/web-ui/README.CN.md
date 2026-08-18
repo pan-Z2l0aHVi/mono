@@ -442,16 +442,16 @@ ArrowUp/ArrowDown 键增减数值。空输入或 `-` 在提交时被忽略，值
 
 样式化按钮，支持多种变体和加载状态。
 
-| 属性         | 类型                                                         | 默认值     | 说明                                |
-| ------------ | ------------------------------------------------------------ | ---------- | ----------------------------------- |
-| `variant`    | `'primary' \| 'secondary' \| 'ghost' \| 'danger' \| 'glass'` | `'glass'`  | 按钮变体                            |
-| `type`       | `'button' \| 'submit' \| 'reset'`                            | `'button'` | 内部按钮类型；非法值回退为 `button` |
-| `disabled`   | `boolean`                                                    | `false`    | 禁用状态                            |
-| `loading`    | `boolean`                                                    | `false`    | 加载旋转动画                        |
-| `full`       | `boolean`                                                    | `false`    | 全宽                                |
-| `icon`       | `boolean`                                                    | `false`    | 纯图标模式                          |
-| `size`       | `string`                                                     | `''`       | 尺寸格式 `高度` 或 `高度x宽度`      |
-| `aria-label` | `string`                                                     | —          | 无障碍标签（委托给内部按钮）        |
+| 属性         | 类型                                                         | 默认值     | 说明                                                          |
+| ------------ | ------------------------------------------------------------ | ---------- | ------------------------------------------------------------- |
+| `variant`    | `'primary' \| 'secondary' \| 'ghost' \| 'danger' \| 'glass'` | `'glass'`  | 按钮变体                                                      |
+| `type`       | `'button' \| 'submit' \| 'reset'`                            | `'button'` | 内部按钮类型；非法值回退为 `button`                           |
+| `disabled`   | `boolean`                                                    | `false`    | 禁用状态                                                      |
+| `loading`    | `boolean`                                                    | `false`    | 加载旋转动画                                                  |
+| `full`       | `boolean`                                                    | `false`    | 全宽                                                          |
+| `icon`       | `boolean`                                                    | `false`    | 纯图标模式                                                    |
+| `size`       | `string`                                                     | `''`       | 按钮高度（px）；icon 模式下同时设为 min-width，默认保持正方形 |
+| `aria-label` | `string`                                                     | —          | 无障碍标签（委托给内部按钮）                                  |
 
 **事件：** 标准 `click`
 
