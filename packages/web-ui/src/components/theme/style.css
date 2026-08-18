@@ -10,8 +10,9 @@
   --wui-layer-inline-overlay: 1;
   --wui-layer-header: 10;
   --wui-layer-auxiliary: 20;
-  --wui-layer-tabbar: 30;
-  --wui-layer-sidebar: 40;
+  --wui-layer-banner: 30;
+  --wui-layer-tabbar: 40;
+  --wui-layer-sidebar: 50;
 
   /* z-index layers - 浮层 */
   --wui-layer-menu: 100;

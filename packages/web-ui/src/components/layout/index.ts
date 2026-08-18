@@ -26,6 +26,12 @@ import style from './style.css?inline'
 export class WebUiLayout extends LitElement {
   static override styles = [unsafeCSS(glass), unsafeCSS(style)]
 
+  /**
+   * 桌面端 Sidebar 的持久布局偏好。
+   *
+   * `true` 只会将桌面 Sidebar 收窄到 `collapsedWidth`，不会影响移动端 Drawer。
+   * 它不与 `sidebarOpen` 合并：前者是跨视口保留的密度选择，后者是移动端瞬时的 modal 可见性。
+   */
   @property({ type: Boolean, attribute: 'sidebar-collapsed', reflect: true })
   sidebarCollapsed = false
 
@@ -35,8 +41,20 @@ export class WebUiLayout extends LitElement {
   @property({ type: String, attribute: 'collapsed-width', reflect: true })
   collapsedWidth = '72px'
 
+  /**
+   * 移动端 headless Drawer 的瞬时可见性。
+   *
+   * Drawer Toggle、Escape 和遮罩关闭都通过 `sidebar-open-change` 请求更新它；它不会改变桌面端的折叠偏好。
+   * 因而不与 `sidebarCollapsed` 合并，避免响应式切换时将一次移动端交互误写为桌面端布局选择。
+   */
   @property({ type: Boolean, attribute: 'sidebar-open', reflect: true })
   sidebarOpen = false
+
+  /**
+   * 启用 header 晕染效果
+   */
+  @property({ type: Boolean, attribute: 'header-glow', reflect: true })
+  headerGlow = false
 
   @state() private _isMobile = false
   private _hasBanner = false
@@ -213,7 +231,9 @@ export class WebUiLayout extends LitElement {
           </aside>
         </div>
         <div class="layout-content">
-          <header><slot name="header"></slot></header>
+          <header>
+            <slot name="header"></slot>
+          </header>
           <main><slot></slot></main>
           <footer><slot name="tabbar"></slot></footer>
         </div>

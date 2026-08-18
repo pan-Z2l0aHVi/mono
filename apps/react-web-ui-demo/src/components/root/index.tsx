@@ -137,6 +137,7 @@ export function Root() {
         <div className="min-h-screen bg-[var(--wui-color-page)] text-[var(--wui-color-text)]">
           {routeTitle ? <title>{routeTitle}</title> : null}
           <web-ui-layout
+            header-glow
             sidebarCollapsed={sidebarCollapsed}
             sidebarOpen={sidebarOpen}
             onsidebar-collapsed-change={updateSidebarCollapsed}
@@ -156,7 +157,10 @@ export function Root() {
                 </button>
               </div>
             ) : null}
-            <div slot="header" className="flex h-full w-full items-center justify-end gap-4 px-4 max-[640px]:w-screen">
+            <div
+              slot="header"
+              className="flex h-full w-full items-center justify-end gap-4 px-4 py-2 max-[640px]:w-screen"
+            >
               <web-ui-select
                 value={themeMotion}
                 className="[--wui-input-width:120px]"
@@ -191,10 +195,10 @@ export function Root() {
               </web-ui-select>
             </div>
             <div slot="sidebar" className="flex h-full min-h-0 flex-col">
-              <div className="shrink-0 px-3 pb-2 text-xs font-semibold uppercase text-[var(--wui-color-text-muted)]">
+              <div className="shrink-0 px-5 pt-4 pb-2 text-xs font-semibold uppercase text-[var(--wui-color-text-muted)]">
                 组件列表
               </div>
-              <nav ref={navSidebarRef} className="min-h-0 flex-1 overflow-y-auto">
+              <nav ref={navSidebarRef} className="min-h-0 flex-1 p-2 overflow-y-auto">
                 {navItems.map(item => (
                   <Link
                     key={item.path}

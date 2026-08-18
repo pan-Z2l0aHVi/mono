@@ -6,6 +6,17 @@
 
 :host {
   --wui-layout-visible-banner-height: 0px;
+  --wui-layout-header-glow-color: var(--wui-color-page, #fff);
+
+  /*
+   * 内部变量：晕染伪元素的总高度（相对于 header 盒子高度的百分比）。
+   * 默认 150% 表示伪元素从 header 顶部向上延伸 50% header 高度，
+   * 向下延伸 100% header 高度。sticky 到顶后，可见范围为 header 底部到
+   * 下方 100% header 高度处，实现从实色到透明的自然过渡。
+   *
+   * 调大此值会加深晕染浓度并扩大覆盖范围，但过大会遮挡内容区。
+   */
+  --wui-layout-header-glow-height: 150%;
   display: block;
 }
 
@@ -15,6 +26,11 @@
   flex-direction: column;
   min-height: 100vh;
   min-height: 100dvh;
+}
+
+.layout-banner {
+  position: relative;
+  z-index: var(--wui-layer-banner, 30);
 }
 
 /* 参考 book-fe：正文区域负责撑高 sidebar 的 relative wrapper。 */
@@ -56,7 +72,7 @@
  */
 aside {
   position: sticky;
-  z-index: var(--wui-layer-sidebar, 40);
+  z-index: var(--wui-layer-sidebar, 50);
   top: 0;
 
   display: flex;
@@ -110,6 +126,8 @@ aside {
 }
 
 header {
+  /* 将负层级 glow 限定在 Header 的局部 stacking context，slot 内容自然位于其上。 */
+  isolation: isolate;
   position: sticky;
   z-index: var(--wui-layer-header, 10);
   top: 0;
@@ -119,13 +137,52 @@ header {
   align-items: center;
 }
 
+/*
+ * Header 的装饰性背景晕染
+ * ========================
+ *
+ * 伪元素随 header 的实际盒子尺寸和 sticky 位置变化，自然适配 header slot 的
+ * 高度与位置，无需单独维护一层 DOM。
+ *
+ * 几何模型（以 --wui-layout-header-glow-height: 150% 为例）：
+ *   伪元素总高度 = 1.5 × header 高度
+ *   inset top    = 100% - 150% = -50%（即向上延伸 0.5 个 header 高度）
+ *   sticky 到顶后，上半段位于视口外，下半段（header 底部 → 下方 1 header 高度）
+ *   为可见区域，形成从实色到透明的渐变过渡。
+ *
+ * 渐变浓度控制（0% 在伪元素顶部，100% 在底部）：
+ *   0%  - 55%   实色（覆盖可见区域上方约 1/3，确保 header 后方完全不透明）
+ *   55% - 70%   快速衰减（90% → 40% 混合透明，覆盖中间过渡带）
+ *   70% - 100%  柔和收尾（40% → 完全透明，过渡到内容区背景）
+ */
+:host([header-glow]) header::before {
+  pointer-events: none;
+  content: '';
+
+  position: absolute;
+  z-index: -1;
+  inset: calc(100% - var(--wui-layout-header-glow-height)) -10px auto;
+
+  height: var(--wui-layout-header-glow-height);
+
+  background: linear-gradient(
+    to bottom,
+    var(--wui-layout-header-glow-color) 0%,
+    var(--wui-layout-header-glow-color) 55%,
+    color-mix(in srgb, var(--wui-layout-header-glow-color) 90%, transparent) 62%,
+    color-mix(in srgb, var(--wui-layout-header-glow-color) 40%, transparent) 70%,
+    transparent 100%
+  );
+  filter: blur(10px);
+}
+
 main {
   flex: 1;
 }
 
 footer {
   position: sticky;
-  z-index: var(--wui-layer-tabbar, 30);
+  z-index: var(--wui-layer-tabbar, 40);
   bottom: 0;
 }
 
