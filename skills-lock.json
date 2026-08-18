@@ -43,6 +43,12 @@
       "skillPath": "skills/engineering/prototype/SKILL.md",
       "computedHash": "73862de6cd32acf30799bfb2220357b96c1a58ab0e3d01126b769fd659d6555a"
     },
+    "research": {
+      "source": "mattpocock/skills",
+      "sourceType": "github",
+      "skillPath": "skills/engineering/research/SKILL.md",
+      "computedHash": "af378829f015775a3bcd65ff466826722e99359017ae6bae227ca4c9bd14049c"
+    },
     "wait-what": {
       "source": "mattpocock/skills",
       "sourceType": "github",
