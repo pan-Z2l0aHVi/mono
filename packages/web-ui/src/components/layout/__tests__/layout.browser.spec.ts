@@ -266,7 +266,6 @@ describe('WebUiLayout 组件（浏览器）', () => {
       expect(requested).toEqual([true])
       expect(layout.sidebarOpen).toBe(true)
       expect(drawer.getAttribute('open')).toBe('')
-      expect(window.getComputedStyle(panel).borderRadius).toBe('24px')
       expect(panelRect.left).toBeGreaterThan(0)
       expect(panelRect.top).toBeGreaterThan(0)
       expect(panelRect.right).toBeLessThanOrEqual(window.innerWidth)

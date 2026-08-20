@@ -134,6 +134,8 @@ export class WebUiContextMenu extends LitElement {
     this._shouldOpenInstantly = isInstant
     this._ignoreCurrentOutsideClick()
     if (this._isOpen) {
+      this._closeSubmenusFrom(0, true)
+      this._restoreClosingSubmenus()
       requestAnimationFrame(() => this._positionMenu())
       return false
     }
