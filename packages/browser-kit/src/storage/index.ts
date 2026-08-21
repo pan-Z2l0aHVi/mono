@@ -42,19 +42,23 @@ function defineStorage(type: StorageType, options: StorageOptions = {}) {
       }
     }
 
-    function safeSetItem(key: string, value: string): void {
+    function safeSetItem(key: string, value: string): boolean {
       try {
         store.setItem(key, value)
+        return true
       } catch {
         // 静默跳过：配额溢出或存储被禁
+        return false
       }
     }
 
-    function safeRemoveItem(key: string): void {
+    function safeRemoveItem(key: string): boolean {
       try {
         store.removeItem(key)
+        return true
       } catch {
         // 静默跳过
+        return false
       }
     }
 
@@ -130,8 +134,9 @@ function defineStorage(type: StorageType, options: StorageOptions = {}) {
      * @param key
      * @param val
      * @param ttl 有效期持续时间，单位 ms
+     * @returns 底层存储成功写入或删除时返回 true；受限存储降级时返回 false
      */
-    function set<T>(key: string, val: T, ttl?: number) {
+    function set<T>(key: string, val: T, ttl?: number): boolean {
       if (val === undefined) return remove(key)
 
       const realKey = getRealKey(key)
@@ -139,17 +144,23 @@ function defineStorage(type: StorageType, options: StorageOptions = {}) {
       const json = JSON.stringify(pkg)
       try {
         store.setItem(realKey, json)
+        return true
       } catch (error) {
         // 溢出时重试一次；存储被禁等 SecurityError 静默跳过（持久化降级）
         if (isQuotaExceeded(error)) {
           clearUseless()
-          safeSetItem(realKey, json)
+          return safeSetItem(realKey, json)
         }
+        return false
       }
     }
 
-    function remove(key: string) {
-      safeRemoveItem(getRealKey(key))
+    /**
+     * 删除指定键。
+     * @returns 底层存储成功删除时返回 true；受限存储降级时返回 false
+     */
+    function remove(key: string): boolean {
+      return safeRemoveItem(getRealKey(key))
     }
 
     function clearUseless() {

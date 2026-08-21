@@ -66,7 +66,7 @@ describe('亡语插件测试用例', () => {
     const tracker = defineTracker({ url: 'https://example.com' }).use(defineBatchTrack()).use(defineLastWords()).make()
 
     tracker.track({ event: 'queued' })
-    tracker.flush()
+    await tracker.flush()
     await waitForMsw()
 
     expect(capturedRequests.length).toBeGreaterThanOrEqual(1)
@@ -99,8 +99,7 @@ describe('亡语插件测试用例', () => {
     Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true })
     document.dispatchEvent(new Event('visibilitychange'))
 
-    // flush 会重置 isPaused，需要再次触发离线事件以重新暂停队列
-    window.dispatchEvent(new Event('offline'))
+    // flush 保持暂停状态，无需再次触发离线事件。
 
     // 再次离线 track
     clearCapturedRequests()
