@@ -289,6 +289,13 @@ Select dropdown with option items, keyboard navigation, and portal support.
 
 Child `<web-ui-option>` elements register via `option-register` / `option-unregister` events. Supports ArrowDown/ArrowUp/Enter/Escape keyboard navigation.
 
+**CSS Custom Properties:**
+
+| Property                   | Default    | Description              |
+| -------------------------- | ---------- | ------------------------ |
+| `--wui-select-max-width`   | `500px`    | Dropdown max width       |
+| `--wui-overlay-min-width`  | `200px`    | Dropdown min width       |
+
 #### `<web-ui-autocomplete>`
 
 Editable combobox with input filtering and single option selection.
@@ -336,6 +343,18 @@ Range slider with marks and vertical orientation.
 **Methods:** `focus()`, `blur()`
 
 Supports ArrowLeft/Right/Up/Down, Home/End, PageUp/PageDown keyboard navigation. Uses pointer capture for drag interaction across mouse, touch, and pen.
+
+**CSS Custom Properties:**
+
+| Property                      | Default               | Description               |
+| ----------------------------- | --------------------- | ------------------------- |
+| `--wui-slider-width`          | `200px`               | Slider width              |
+| `--wui-slider-vertical-height`| `200px`               | Vertical slider height    |
+| `--wui-slider-height`         | `var(--wui-slider-track-size, 6px)` | Track thickness |
+| `--wui-slider-track-size`     | `6px`                 | Track size                |
+| `--wui-slider-thumb-width`    | `24px`                | Thumb short axis          |
+| `--wui-slider-thumb-height`   | `32px`                | Thumb long axis           |
+| `--wui-slider-marks-inset`    | `0`                   | Marks inset from edges    |
 
 #### `<web-ui-checkbox>`
 
@@ -471,6 +490,17 @@ form-associated control when external form submission behavior is required.
 
 Disabled and loading states prevent `click` events.
 
+**CSS Custom Properties:**
+
+| Property              | Default        | Description                              |
+| --------------------- | -------------- | ---------------------------------------- |
+| `--wui-button-px`     | `12px`         | Horizontal padding                       |
+| `--wui-button-gap`    | `8px`          | Gap between prefix/default/suffix slots  |
+| `--wui-button-color`  | variant-based  | Button text color                        |
+| `--wui-button-bg`     | variant-based  | Button background color                  |
+| `--wui-button-bg-hover` | variant-based | Button hover background                 |
+| `--wui-button-bg-active` | variant-based | Button active background               |
+
 #### `<web-ui-button-group>`
 
 Button group that manages child button layout and direction.
@@ -506,6 +536,13 @@ Modal dialog using native `<dialog>` with `showModal()`.
 
 Uses native `<dialog>` with `@cancel` prevention. Escape calls `close()` unless `no-escape-close` is present. Click on backdrop closes dialog unless `no-backdrop-close` is present.
 
+**CSS Custom Properties:**
+
+| Property                    | Default                          | Description                |
+| --------------------------- | -------------------------------- | -------------------------- |
+| `--wui-dialog-max-width`    | `360px`                          | Dialog max width           |
+| `--wui-dialog-overlay-bg`   | `var(--wui-color-backdrop)`      | Backdrop background        |
+
 #### `<web-ui-drawer>`
 
 Side drawer using native `<dialog>` with closing animation.
@@ -531,6 +568,15 @@ Side drawer using native `<dialog>` with closing animation.
 `headless` keeps the native dialog, backdrop, placement animation, Escape/backdrop close behavior, and scroll locking. It does not render the built-in glass body, header, close button, or footer; style the default-slot content completely in the consumer.
 
 Closing keeps the native dialog in the top layer until the `--wui-duration-drawer` transition completes (280ms by default), then calls `dialog.close()`. Escape always follows this close path; `no-backdrop-close` controls backdrop clicks only.
+
+**CSS Custom Properties:**
+
+| Property                    | Default                              | Description                |
+| --------------------------- | ------------------------------------ | -------------------------- |
+| `--wui-drawer-width`        | `320px`                              | Drawer width               |
+| `--wui-drawer-height`       | `300px`                              | Drawer height (top/bottom) |
+| `--wui-drawer-bg`           | `var(--wui-color-surface-overlay)`   | Drawer body background     |
+| `--wui-drawer-overlay-bg`   | `rgb(0 0 0 / 0.12)`                 | Backdrop background        |
 
 ---
 
@@ -579,6 +625,13 @@ Tooltip overlay using pointer/focus triggers.
 **Slots:** `default` (trigger), `content` (tooltip panel)
 
 `open` is a controlled visibility property. Pointer/focus triggers update it, and direct updates synchronize the local or portal panel. Adjacent tooltips open immediately after the first tooltip is visible; pointer/focus triggers otherwise use delay timers.
+
+**CSS Custom Properties:**
+
+| Property                   | Default  | Description        |
+| -------------------------- | -------- | ------------------ |
+| `--wui-tooltip-max-width`  | `240px`  | Tooltip max width  |
+| `--wui-tooltip-font-size`  | `13px`   | Tooltip font size  |
 
 #### `<web-ui-context-menu>`
 
@@ -692,6 +745,17 @@ Empty state placeholder.
 
 **Slots:** `default` (title, overrides `title` prop), `icon`, `description`, `action`
 
+**CSS Custom Properties:**
+
+| Property                           | Default      | Description                     |
+| ---------------------------------- | ------------ | ------------------------------- |
+| `--wui-empty-min-height`           | `240px`      | Min height (medium)             |
+| `--wui-empty-padding`              | `32px 24px`  | Padding (medium)                |
+| `--wui-empty-icon-size`            | `56px`       | Icon container size (medium)    |
+| `--wui-empty-content-width`        | `480px`      | Max width of title/description  |
+| `--wui-empty-title-font-size`      | `16px`       | Title font size (medium)        |
+| `--wui-empty-description-font-size`| `14px`       | Description font size (medium)  |
+
 #### `<web-ui-icon>`
 
 Icon renderer using Iconify data objects.
@@ -709,6 +773,12 @@ Has `aria-hidden="true"`.
 import { lucideLoaderCircle } from '@greypan/web-ui/icons'
 html`<web-ui-icon .icon=${lucideLoaderCircle} spin />`
 ```
+
+**CSS Custom Properties:**
+
+| Property           | Default  | Description  |
+| ------------------ | -------- | ------------ |
+| `--wui-icon-color` | `inherit`| Icon color   |
 
 #### `<web-ui-spinner>`
 
@@ -768,6 +838,12 @@ At `640px` and below, the sidebar becomes a headless `web-ui-drawer`. The consum
 
 `header-glow` adds a pointer-transparent decorative glow behind header-slot content and the mobile toggle. It is a Header background rather than a foreground layer, so slotted content remains above it. Override its color with `--wui-layout-header-glow-color` (default: `--wui-color-page`). The glow concentration and spread are controlled by the internal variable `--wui-layout-header-glow-height` (default: `150%`); increase for stronger coverage, decrease for a subtler effect. Layout layers are ordered as Header (`10`) < Auxiliary (`20`) < Banner (`30`) < Tabbar (`40`) < Sidebar (`50`).
 
+**CSS Custom Properties:**
+
+| Property                      | Default | Description                                |
+| ----------------------------- | ------- | ------------------------------------------ |
+| `--wui-layout-sidebar-radius` | `28px`  | Border radius of sidebar card (desktop & mobile) |
+
 #### `<web-ui-back-top>`
 
 Scroll-to-top button.
@@ -786,6 +862,17 @@ Scroll-to-top button.
 **Positioning:** With `scrollTarget` as `window`, the button is fixed to the viewport corner. With `scrollTarget` as an `HTMLElement`, place the element inside that container and the button floats at the container's bottom corner via `position: sticky`. Offsets follow the `--web-ui-back-top-top/right/bottom/left` CSS variables.
 
 Role: `button`, keyboard Enter scrolls to top.
+
+**CSS Custom Properties:**
+
+| Property                       | Default                         | Description                  |
+| ------------------------------ | ------------------------------- | ---------------------------- |
+| `--web-ui-back-top-position`   | `fixed`                         | CSS position                 |
+| `--web-ui-back-top-z-index`    | `var(--wui-layer-auxiliary, 20)`| Z-index                      |
+| `--web-ui-back-top-top`        | `auto`                          | Top offset                   |
+| `--web-ui-back-top-right`      | `20px`                          | Right offset                 |
+| `--web-ui-back-top-bottom`     | `20px`                          | Bottom offset                |
+| `--web-ui-back-top-left`       | `auto`                          | Left offset                  |
 
 #### `<web-ui-svg-draw-lines>`
 
@@ -901,3 +988,9 @@ Segment trigger for `<web-ui-segmented>`.
 **Events:** `change`
 
 Not form-associated (child of segmented, not independent submit).
+
+**CSS Custom Properties:**
+
+| Property                        | Default | Description          |
+| ------------------------------- | ------- | -------------------- |
+| `--wui-segmented-trigger-px`    | `12px`  | Horizontal padding   |

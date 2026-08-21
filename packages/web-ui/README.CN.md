@@ -282,6 +282,13 @@ ArrowUp/ArrowDown 键增减数值。空输入或 `-` 在提交时被忽略，值
 
 子 `<web-ui-option>` 通过 `option-register` / `option-unregister` 注册。支持 ArrowDown/ArrowUp/Enter/Escape 键盘导航。
 
+**CSS 自定义属性：**
+
+| 属性                       | 默认值   | 说明           |
+| -------------------------- | -------- | -------------- |
+| `--wui-select-max-width`   | `500px`  | 下拉框最大宽度 |
+| `--wui-overlay-min-width`  | `200px`  | 下拉框最小宽度 |
+
 #### `<web-ui-autocomplete>`
 
 可输入并过滤候选的单值选择器。
@@ -329,6 +336,18 @@ ArrowUp/ArrowDown 键增减数值。空输入或 `-` 在提交时被忽略，值
 **方法：** `focus()`, `blur()`
 
 支持 ArrowLeft/Right/Up/Down、Home/End、PageUp/PageDown 键盘导航。使用 pointer capture 处理鼠标、触控笔和触摸交互。
+
+**CSS 自定义属性：**
+
+| 属性                           | 默认值                    | 说明           |
+| ------------------------------ | ------------------------- | -------------- |
+| `--wui-slider-width`           | `200px`                   | 滑块宽度       |
+| `--wui-slider-vertical-height` | `200px`                   | 垂直滑块高度   |
+| `--wui-slider-height`          | `var(--wui-slider-track-size, 6px)` | 轨道厚度 |
+| `--wui-slider-track-size`      | `6px`                     | 轨道尺寸       |
+| `--wui-slider-thumb-width`     | `24px`                    | 滑块短轴       |
+| `--wui-slider-thumb-height`    | `32px`                    | 滑块长轴       |
+| `--wui-slider-marks-inset`     | `0`                       | 刻度内缩       |
 
 #### `<web-ui-checkbox>`
 
@@ -461,6 +480,17 @@ ArrowUp/ArrowDown 键增减数值。空输入或 `-` 在提交时被忽略，值
 
 禁用和加载状态阻止 `click` 事件。
 
+**CSS 自定义属性：**
+
+| 属性                  | 默认值         | 说明                           |
+| --------------------- | -------------- | ------------------------------ |
+| `--wui-button-px`     | `12px`         | 水平内边距                     |
+| `--wui-button-gap`    | `8px`          | 前缀/默认/后缀插槽间距         |
+| `--wui-button-color`  | 随 variant     | 按钮文字颜色                   |
+| `--wui-button-bg`     | 随 variant     | 按钮背景颜色                   |
+| `--wui-button-bg-hover` | 随 variant   | 悬停背景颜色                   |
+| `--wui-button-bg-active` | 随 variant  | 按下背景颜色                   |
+
 #### `<web-ui-button-group>`
 
 按钮组，管理子按钮布局和方向。
@@ -496,6 +526,13 @@ ArrowUp/ArrowDown 键增减数值。空输入或 `-` 在提交时被忽略，值
 
 使用原生 `<dialog>`，`@cancel` 阻止默认关闭行为。除非存在 `no-escape-close`，否则 Escape 调用 `close()`；除非存在 `no-backdrop-close`，否则点击遮罩关闭。
 
+**CSS 自定义属性：**
+
+| 属性                        | 默认值                          | 说明         |
+| --------------------------- | ------------------------------- | ------------ |
+| `--wui-dialog-max-width`    | `360px`                         | 对话框最大宽度 |
+| `--wui-dialog-overlay-bg`   | `var(--wui-color-backdrop)`     | 遮罩背景色   |
+
 #### `<web-ui-drawer>`
 
 侧边抽屉，使用原生 `<dialog>` 并自带关闭动画。
@@ -521,6 +558,15 @@ ArrowUp/ArrowDown 键增减数值。空输入或 `-` 在提交时被忽略，值
 `headless` 保留原生 dialog、遮罩、placement 动画、Escape/遮罩关闭行为和滚动锁定，但不渲染内置 glass 主体、header、关闭按钮或 footer；Consumer 负责完整定义默认插槽内容的样式，并且必须提供 `dialog-label`，确保原生 dialog 具有可访问名称。
 
 关闭时保留原生 dialog 的 top layer，待退出过渡完成后调用 `dialog.close()`。Escape 始终走此关闭路径；`no-backdrop-close` 仅控制遮罩点击。
+
+**CSS 自定义属性：**
+
+| 属性                        | 默认值                              | 说明         |
+| --------------------------- | ----------------------------------- | ------------ |
+| `--wui-drawer-width`        | `320px`                             | 抽屉宽度     |
+| `--wui-drawer-height`       | `300px`                             | 抽屉高度（上/下） |
+| `--wui-drawer-bg`           | `var(--wui-color-surface-overlay)`  | 抽屉背景色   |
+| `--wui-drawer-overlay-bg`   | `rgb(0 0 0 / 0.12)`                | 遮罩背景色   |
 
 ---
 
@@ -569,6 +615,13 @@ Hover 模式使用 `pointerenter`/`pointerleave` 加延迟控制。Click 模式�
 **插槽：** `default`（触发器）、`content`（提示面板）
 
 `open` 是受控可见性属性。指针/焦点触发会更新它，直接设置也会同步本地或 Portal 面板。第一个 Tooltip 显示后，相邻 Tooltip 会立即切换；其余 pointer/focus 触发使用延迟计时器。
+
+**CSS 自定义属性：**
+
+| 属性                       | 默认值   | 说明         |
+| -------------------------- | -------- | ------------ |
+| `--wui-tooltip-max-width`  | `240px`  | 提示最大宽度 |
+| `--wui-tooltip-font-size`  | `13px`   | 提示字号     |
 
 #### `<web-ui-context-menu>`
 
@@ -682,6 +735,17 @@ Hover 模式使用 `pointerenter`/`pointerleave` 加延迟控制。Click 模式�
 
 **插槽：** `default`（标题，覆盖 `title` 属性）、`icon`、`description`、`action`
 
+**CSS 自定义属性：**
+
+| 属性                                | 默认值       | 说明               |
+| ----------------------------------- | ------------ | ------------------ |
+| `--wui-empty-min-height`            | `240px`      | 最小高度（medium） |
+| `--wui-empty-padding`               | `32px 24px`  | 内边距（medium）   |
+| `--wui-empty-icon-size`             | `56px`       | 图标容器尺寸       |
+| `--wui-empty-content-width`         | `480px`      | 标题/描述最大宽度  |
+| `--wui-empty-title-font-size`       | `16px`       | 标题字号（medium） |
+| `--wui-empty-description-font-size` | `14px`       | 描述字号（medium） |
+
 #### `<web-ui-icon>`
 
 图标渲染组件。接受 Iconify 数据对象。
@@ -699,6 +763,12 @@ Hover 模式使用 `pointerenter`/`pointerleave` 加延迟控制。Click 模式�
 import { lucideLoaderCircle } from '@greypan/web-ui/icons'
 html`<web-ui-icon .icon=${lucideLoaderCircle} spin />`
 ```
+
+**CSS 自定义属性：**
+
+| 属性               | 默认值   | 说明     |
+| ------------------ | -------- | -------- |
+| `--wui-icon-color` | `inherit`| 图标颜色 |
 
 #### `<web-ui-spinner>`
 
@@ -758,6 +828,12 @@ WebUiSpinner.hide() // 隐藏
 
 `header-glow` 会在 header 插槽内容和移动端 Toggle 的背后添加 `pointer-events: none` 的装饰性晕染。它属于 Header 背景而非前景层，因此插槽内容始终位于其上方；可通过 `--wui-layout-header-glow-color` 覆盖颜色，默认值为 `--wui-color-page`。晕染浓度和范围由内部变量 `--wui-layout-header-glow-height`（默认 `150%`）控制；增大可加强覆盖，减小则更柔和。布局层级顺序为 Header（`10`）< Auxiliary（`20`）< Banner（`30`）< Tabbar（`40`）< Sidebar（`50`）。
 
+**CSS 自定义属性：**
+
+| 属性                          | 默认值  | 说明                                |
+| ----------------------------- | ------- | ----------------------------------- |
+| `--wui-layout-sidebar-radius` | `28px`  | 侧边栏卡片圆角（桌面端和移动端共用）|
+
 #### `<web-ui-back-top>`
 
 回到顶部按钮。
@@ -776,6 +852,17 @@ WebUiSpinner.hide() // 隐藏
 **定位：** `scrollTarget` 为 `window` 时按钮固定在视口角落；为 `HTMLElement` 时需将元素放置在容器内部，按钮通过 `position: sticky` 悬浮于容器底部角落。偏移量沿用 `--web-ui-back-top-top/right/bottom/left` CSS 变量。
 
 角色：`button`，键盘 Enter 触发回到顶部。
+
+**CSS 自定义属性：**
+
+| 属性                            | 默认值                          | 说明       |
+| ------------------------------- | ------------------------------- | ---------- |
+| `--web-ui-back-top-position`    | `fixed`                         | CSS 定位   |
+| `--web-ui-back-top-z-index`     | `var(--wui-layer-auxiliary, 20)`| 层级       |
+| `--web-ui-back-top-top`         | `auto`                          | 上偏移     |
+| `--web-ui-back-top-right`       | `20px`                          | 右偏移     |
+| `--web-ui-back-top-bottom`      | `20px`                          | 下偏移     |
+| `--web-ui-back-top-left`        | `auto`                          | 左偏移     |
 
 #### `<web-ui-svg-draw-lines>`
 
@@ -891,3 +978,9 @@ toast.updateMessage(id, { message: '上传已完成 60%', heading: '正在上传
 **事件：** `change`
 
 非表单关联组件（父级 segmented 统一提交）。
+
+**CSS 自定义属性：**
+
+| 属性                             | 默认值  | 说明       |
+| -------------------------------- | ------- | ---------- |
+| `--wui-segmented-trigger-px`     | `12px`  | 水平内边距 |
