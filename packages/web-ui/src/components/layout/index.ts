@@ -8,6 +8,7 @@ import '@/components/icon'
 import '@/components/button'
 import '@/components/drawer'
 import { radixIconsPanelLeftMinimized } from '@/icons'
+import { defineVisibleAreaTracker, VisibleAreaController } from '@/shared/visible-area'
 
 import style from './style.css?inline'
 
@@ -57,10 +58,14 @@ export class WebUiLayout extends LitElement {
   headerGlow = false
 
   @state() private _isMobile = false
-  private _hasBanner = false
 
-  private _bannerObserver: ResizeObserver | null = null
-  private _bannerFrame: number | null = null
+  private readonly _visibleBanner = defineVisibleAreaTracker({
+    onVisibleAreaChange: area => {
+      this.style.setProperty('--wui-layout-visible-banner-height', `${area.height}px`)
+    }
+  }).make()
+
+  private readonly _visibleBannerController = new VisibleAreaController(this, this._visibleBanner)
 
   private _toggleSidebar() {
     if (this._isMobile) {
@@ -106,50 +111,14 @@ export class WebUiLayout extends LitElement {
     if (this._resizeTimeout !== null) clearTimeout(this._resizeTimeout)
     this._resizeTimeout = setTimeout(() => {
       this._checkMobile()
-      this._scheduleBannerSync()
       this._resizeTimeout = null
     }, 100)
-  }
-
-  private readonly _scheduleBannerSync = () => {
-    if (this._bannerFrame !== null) return
-    this._bannerFrame = requestAnimationFrame(() => {
-      this._bannerFrame = null
-      this._syncVisibleBannerHeight()
-    })
-  }
-
-  private _observeBanner() {
-    this._bannerObserver?.disconnect()
-    this._bannerObserver = null
-
-    const banner = this.shadowRoot?.querySelector('.layout-banner')
-    if (!this._hasBanner || !banner) {
-      this.style.setProperty('--wui-layout-visible-banner-height', '0px')
-      return
-    }
-
-    this._bannerObserver = new ResizeObserver(this._scheduleBannerSync)
-    this._bannerObserver.observe(banner)
-  }
-
-  private _syncVisibleBannerHeight() {
-    const banner = this.shadowRoot?.querySelector('.layout-banner')
-    if (!this._hasBanner || !banner) {
-      this.style.setProperty('--wui-layout-visible-banner-height', '0px')
-      return
-    }
-
-    const rect = banner.getBoundingClientRect()
-    const visibleHeight = Math.max(0, Math.min(rect.bottom, window.innerHeight) - Math.max(rect.top, 0))
-    this.style.setProperty('--wui-layout-visible-banner-height', `${visibleHeight}px`)
   }
 
   override connectedCallback() {
     super.connectedCallback()
     this._checkMobile()
     window.addEventListener('resize', this._handleResize)
-    window.addEventListener('scroll', this._scheduleBannerSync, { passive: true })
     void this.updateComplete.then(() => {
       if (this.isConnected) this._syncBannerPresence()
     })
@@ -158,13 +127,8 @@ export class WebUiLayout extends LitElement {
   override disconnectedCallback() {
     super.disconnectedCallback()
     window.removeEventListener('resize', this._handleResize)
-    window.removeEventListener('scroll', this._scheduleBannerSync)
     if (this._resizeTimeout !== null) clearTimeout(this._resizeTimeout)
     this._resizeTimeout = null
-    if (this._bannerFrame !== null) cancelAnimationFrame(this._bannerFrame)
-    this._bannerFrame = null
-    this._bannerObserver?.disconnect()
-    this._bannerObserver = null
   }
 
   override firstUpdated() {
@@ -177,15 +141,15 @@ export class WebUiLayout extends LitElement {
 
   private _syncBannerPresence() {
     const bannerSlot = this.renderRoot.querySelector<HTMLSlotElement>('slot[name="banner"]')
-    this._hasBanner =
+    const hasBanner =
       bannerSlot
         ?.assignedNodes()
         .some(
           node =>
             node.nodeType === Node.ELEMENT_NODE || (node.nodeType === Node.TEXT_NODE && !!node.textContent?.trim())
         ) ?? false
-    this._observeBanner()
-    this._scheduleBannerSync()
+    const banner = this.shadowRoot?.querySelector<HTMLElement>('.layout-banner') ?? null
+    this._visibleBanner.setTarget(hasBanner ? banner : null)
   }
 
   override render() {
