@@ -148,6 +148,10 @@ Components own their role and interaction state. Browser-native composed events 
 remain the primary interaction API. Kebab-case custom events such as `open-change` describe user-originated component
 state changes; assigning a property programmatically does not emit them.
 
+### Form-associated controls
+
+All form controls participate in native `FormData`, constraint validation, `form.reset()` and browser form-state restoration. The control captures its reset default once, after declarative attributes have been applied on its first connection. Later runtime property updates do not redefine that default. A disabled ancestor `fieldset` disables validation and interaction without mutating the control's public `disabled` property. For checkbox/radio groups, the group is the single submission, reset and restoration owner; managed child controls do not submit or restore an independent state.
+
 ## All Components
 
 | Category             | Component                                                 |
@@ -511,7 +515,7 @@ Button group that manages child button layout and direction.
 
 **Slots:** `default` (project `<web-ui-button>` elements)
 
-Propagates `direction` attribute to child buttons.
+Applies the direction to the grouped button layout without changing child button attributes.
 
 ---
 

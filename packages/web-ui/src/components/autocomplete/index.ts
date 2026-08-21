@@ -6,6 +6,7 @@ import '@/components/option'
 import glass from '@/assets/glass.css?inline'
 import overlayMotion from '@/assets/overlay-motion.css?inline'
 import type { WebUiOption } from '@/components/option'
+import { defineFormAssociation, FormAssociationController } from '@/shared/form-association'
 import { normalizeLiteral } from '@/shared/normalize'
 import { defineAnchoredPanel } from '@/shared/overlay/anchored-panel'
 import { defineOverlayPortal } from '@/shared/overlay/portal'
@@ -29,10 +30,6 @@ export class WebUiAutocomplete extends LitElement {
   static override styles = [unsafeCSS(glass), unsafeCSS(overlayMotion), unsafeCSS(style)]
 
   static formAssociated = true
-
-  // ElementInternals 实例，在 connectedCallback 中初始化
-  private _internals?: ElementInternals
-  @state() private _formDisabled = false
 
   @property({ type: String, reflect: true }) placeholder = ''
   @property({ type: Boolean, reflect: true }) disabled = false
@@ -58,9 +55,7 @@ export class WebUiAutocomplete extends LitElement {
     this.requestUpdate('filter', old)
   }
 
-  // value 使用内部状态 + 访问器模式，在变更时同步 ElementInternals。
-  // 与 Select 一致不反射 attribute：value attribute 保留为表单重置的初始默认值，
-  // 避免设置属性时回写 attribute 导致 formResetCallback 读取到当前值。
+  // value 不反射 attribute，attribute 只参与首次声明式初始化。
   @state() private _value = ''
 
   get value(): string {
@@ -69,7 +64,7 @@ export class WebUiAutocomplete extends LitElement {
   set value(v: string) {
     const old = this._value
     this._value = v
-    this._internals?.setFormValue?.(v)
+    this._formAssociation.sync()
     this.requestUpdate('value', old)
   }
 
@@ -89,8 +84,29 @@ export class WebUiAutocomplete extends LitElement {
     if (old !== value) this.requestUpdate('selectedValue', old)
   }
 
+  private readonly _formAssociation = defineFormAssociation<string>({
+    host: this,
+    initialize: () => {
+      // 同步 HTML 属性中预设的 value，补全访问器模式不处理 attribute 反射。
+      const attrValue = this.getAttribute('value')
+      if (attrValue !== null) this._value = attrValue
+    },
+    getState: () => this._value,
+    setState: value => {
+      this.value = value
+    },
+    getFormValue: () => this._value,
+    getFormState: () => this._value,
+    restoreState: state => {
+      if (typeof state === 'string') this.value = state
+    },
+    syncValidity: () => this._syncValidity()
+  }).make()
+
+  private readonly _formAssociationController = new FormAssociationController(this, this._formAssociation)
+
   private get _isDisabled(): boolean {
-    return this.disabled || this._formDisabled
+    return this.disabled || this._formAssociation.isFormDisabled()
   }
 
   @state() private _isOpen = false
@@ -153,16 +169,6 @@ export class WebUiAutocomplete extends LitElement {
 
   override connectedCallback() {
     super.connectedCallback()
-    // 元素被移动时会重连，ElementInternals 只能 attach 一次
-    if (!this._internals) {
-      this._internals = this.attachInternals()
-    }
-    // 同步 HTML 属性中预设的 value，补全访问器模式不处理 attribute 反射
-    const attrValue = this.getAttribute('value')
-    if (attrValue !== null) {
-      this._value = attrValue
-      this._internals?.setFormValue?.(attrValue)
-    }
     this.addEventListener('option-register', this._onOptionRegister)
     this.addEventListener('option-unregister', this._onOptionUnregister)
     this.addEventListener('keydown', this._onKeydown)
@@ -231,23 +237,24 @@ export class WebUiAutocomplete extends LitElement {
   }
 
   formResetCallback() {
-    this.value = this.getAttribute('value') || ''
+    this._formAssociation.reset()
   }
 
   formDisabledCallback(disabled: boolean) {
-    this._formDisabled = disabled
+    this._formAssociation.setDisabled(disabled)
     if (disabled && this._isOpen) this._close()
   }
 
   formStateRestoreCallback(state: string | File | FormData | null) {
-    if (typeof state === 'string') this.value = state
+    this._formAssociation.restore(state)
   }
 
   private _syncValidity() {
-    if (!this._internals || typeof this._internals.setValidity !== 'function') return
+    const internals = this._formAssociation.getInternals()
+    if (!internals || typeof internals.setValidity !== 'function') return
     // readonly 与 disabled 一致：值不可由用户修改，视为通过校验（原生 barred-from-validation 语义）
-    if (this._isDisabled || this.readonly || !this.required || this._value) this._internals.setValidity({})
-    else this._internals.setValidity({ valueMissing: true }, '请输入内容')
+    if (this._isDisabled || this.readonly || !this.required || this._value) internals.setValidity({})
+    else internals.setValidity({ valueMissing: true }, '请输入内容')
   }
 
   private _syncOpenAttribute() {

@@ -57,7 +57,7 @@ describe('插件组合测试', () => {
       expect(capturedRequests[0].url).toBe('/')
     })
 
-    it('离线缓存：离线时暂停 loop 不发送', async () => {
+    it('离线缓存：离线时暂停 outbox，不发送数据', async () => {
       Object.defineProperty(navigator, 'onLine', { value: false })
       const tracker = createTracker()
 
@@ -76,7 +76,7 @@ describe('插件组合测试', () => {
 
       tracker.track({ event: 'before-close' })
       clearCapturedRequests()
-      tracker.flush()
+      await tracker.flush()
       await waitForMsw()
 
       expect(capturedRequests.length).toBeGreaterThan(0)
@@ -148,7 +148,7 @@ describe('插件组合测试', () => {
       expect(capturedRequests).toHaveLength(0)
 
       // 离线积压的数据通过 flush 立即发送（beforeunload 内部调用同一路径）
-      tracker.flush()
+      await tracker.flush()
       await waitForMsw()
       expect(sendBeaconSpy).toHaveBeenCalled()
       const payload = sendBeaconSpy.mock.calls[0][1] as string
@@ -166,9 +166,7 @@ describe('插件组合测试', () => {
       tracker.track({ event: 'click' })
       await waitForMsw()
 
-      expect(() => {
-        tracker.flush()
-      }).not.toThrow()
+      await expect(tracker.flush()).resolves.toBeUndefined()
     })
   })
 })

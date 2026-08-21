@@ -7,6 +7,7 @@ import '@/components/icon'
 import '@/components/button'
 import glass from '@/assets/glass.css?inline'
 import { jamCloseCircleF } from '@/icons'
+import { defineFormAssociation, FormAssociationController } from '@/shared/form-association'
 
 import style from './style.css?inline'
 
@@ -28,11 +29,8 @@ export class WebUiInput extends LitElement {
 
   @state() private _value = ''
   @state() private _focused = false
-  @state() private _formDisabled = false
   @state() private _hasPrefix = false
   @state() private _hasSuffix = false
-
-  private _internals?: ElementInternals
 
   @property({ type: String, reflect: true })
   get value(): string {
@@ -42,21 +40,29 @@ export class WebUiInput extends LitElement {
   set value(v: string) {
     const old = this._value
     this._value = v
-    this._internals?.setFormValue?.(v)
+    this._formAssociation.sync()
     this.requestUpdate('value', old)
   }
 
   private get _isDisabled(): boolean {
-    return this.disabled || this._formDisabled
+    return this.disabled || this._formAssociation.isFormDisabled()
   }
 
-  override connectedCallback() {
-    super.connectedCallback()
-    if (!this._internals) {
-      this._internals = this.attachInternals()
-    }
-    this._internals.setFormValue?.(this._value)
-  }
+  private readonly _formAssociation = defineFormAssociation<string>({
+    host: this,
+    getState: () => this._value,
+    setState: value => {
+      this.value = value
+    },
+    getFormValue: () => this._value,
+    getFormState: () => this._value,
+    restoreState: state => {
+      if (typeof state === 'string') this.value = state
+    },
+    syncValidity: () => this._syncValidity()
+  }).make()
+
+  private readonly _formAssociationController = new FormAssociationController(this, this._formAssociation)
 
   override updated(changed: Map<string, unknown>) {
     if (changed.has('_value')) {
@@ -70,22 +76,23 @@ export class WebUiInput extends LitElement {
   }
 
   formResetCallback() {
-    this.value = this.getAttribute('value') || ''
+    this._formAssociation.reset()
   }
 
   formDisabledCallback(disabled: boolean) {
-    this._formDisabled = disabled
+    this._formAssociation.setDisabled(disabled)
   }
 
   formStateRestoreCallback(state: string | File | FormData | null) {
-    if (typeof state === 'string') this.value = state
+    this._formAssociation.restore(state)
   }
 
   private _syncValidity() {
     const input = this.shadowRoot?.querySelector('input')
-    if (!this._internals || !input || typeof this._internals.setValidity !== 'function') return
+    const internals = this._formAssociation.getInternals()
+    if (!internals || !input || typeof internals.setValidity !== 'function') return
     if (this._isDisabled || input.validity.valid) {
-      this._internals.setValidity({})
+      internals.setValidity({})
       return
     }
 
@@ -95,7 +102,7 @@ export class WebUiInput extends LitElement {
     if (input.validity.patternMismatch) flags.patternMismatch = true
     if (input.validity.tooLong) flags.tooLong = true
     if (input.validity.tooShort) flags.tooShort = true
-    this._internals.setValidity(flags, input.validationMessage, input)
+    internals.setValidity(flags, input.validationMessage, input)
   }
 
   private _onSlotChange(e: Event) {
@@ -110,8 +117,7 @@ export class WebUiInput extends LitElement {
     if (this._isDisabled || this.readonly) return
     if (!(e.target instanceof HTMLInputElement)) return
     this._value = e.target.value
-    this._internals?.setFormValue?.(this._value)
-    this._syncValidity()
+    this._formAssociation.sync()
   }
 
   // 原生 change 不 composed，被 shadow root 挡住；这里补发 composed 事件，
@@ -120,8 +126,7 @@ export class WebUiInput extends LitElement {
     if (this.readonly) return
     if (!(e.target instanceof HTMLInputElement)) return
     this._value = e.target.value
-    this._internals?.setFormValue?.(this._value)
-    this._syncValidity()
+    this._formAssociation.sync()
     this.dispatchEvent(new Event('change', { bubbles: true, composed: true }))
   }
 
@@ -136,8 +141,7 @@ export class WebUiInput extends LitElement {
   private handleClear() {
     if (this._isDisabled || this.readonly) return
     this._value = ''
-    this._internals?.setFormValue?.('')
-    this._syncValidity()
+    this._formAssociation.sync()
     this.dispatchEvent(new Event('input', { bubbles: true, composed: true }))
   }
 

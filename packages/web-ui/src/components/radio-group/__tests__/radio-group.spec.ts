@@ -401,4 +401,34 @@ describe('WebUiRadioGroup 组件', () => {
       cleanupElement(el)
     })
   })
+
+  it('子 radio 离组后恢复独立事件行为', async () => {
+    const el = createGroup()
+    await waitForUpdate(el)
+
+    const radio = el.querySelectorAll<WebUiRadio>('web-ui-radio')[0]
+    const container = document.createElement('div')
+    container.append(el)
+    document.body.append(container)
+    await waitForUpdate(el)
+
+    const slot = el.shadowRoot!.querySelector('slot')!
+    const slotChanged = new Promise<void>(resolve =>
+      slot.addEventListener('slotchange', () => resolve(), { once: true })
+    )
+    container.append(radio)
+    await slotChanged
+    await radio.updateComplete
+
+    radio.checked = false
+    await radio.updateComplete
+    const [events, detach] = spyEvents(container, 'change')
+    queryA11y(radio, '[role="radio"]')!.dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true }))
+    await radio.updateComplete
+
+    expect(events).toHaveLength(1)
+    expect(events[0].target).toBe(radio)
+    detach()
+    cleanupElement(container)
+  })
 })

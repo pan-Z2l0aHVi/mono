@@ -145,6 +145,38 @@ describe('WebUiLayout 组件（浏览器）', () => {
       expect(toggleRect.bottom).toBeLessThanOrEqual(panelRect.bottom + 1)
     })
 
+    it('Banner 部分滚出时连续同步其当前可见高度', async () => {
+      await page.viewport(1280, 720)
+      const layout = createLayout()
+      await layout.updateComplete
+      await nextFrame()
+
+      window.scrollTo(0, 18)
+      await nextFrame()
+      await nextFrame()
+
+      const banner = layout.shadowRoot?.querySelector('.layout-banner') as HTMLElement
+      const rect = banner.getBoundingClientRect()
+      const visibleHeight = Math.max(0, Math.min(rect.bottom, window.innerHeight) - Math.max(rect.top, 0))
+
+      expect(visibleHeight).toBeGreaterThan(0)
+      expect(visibleHeight).toBeLessThan(rect.height)
+      expect(layout.style.getPropertyValue('--wui-layout-visible-banner-height')).toBe(`${visibleHeight}px`)
+    })
+
+    it('移除 Banner 后清空 Sidebar 的可见高度', async () => {
+      await page.viewport(1280, 720)
+      const layout = createLayout()
+      await layout.updateComplete
+      await nextFrame()
+
+      layout.querySelector('[slot="banner"]')?.remove()
+      await nextFrame()
+      await nextFrame()
+
+      expect(layout.style.getPropertyValue('--wui-layout-visible-banner-height')).toBe('0px')
+    })
+
     it('Banner 滚出后 Sidebar sticky 到视口顶部，卡片仍保留底部间距', async () => {
       await page.viewport(1280, 720)
       const layout = createLayout()

@@ -49,7 +49,7 @@ export function defineBatchTrack(options?: Options) {
 
     function flush() {
       batchEmitter.flush()
-      ctx.flush()
+      return ctx.flush()
     }
 
     return { track, flush }
