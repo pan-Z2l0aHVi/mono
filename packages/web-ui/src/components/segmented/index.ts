@@ -3,6 +3,7 @@ import { customElement, property, state } from 'lit/decorators.js'
 import { classMap } from 'lit/directives/class-map.js'
 
 import glass from '@/assets/glass.css?inline'
+import { defineFormAssociation, FormAssociationController } from '@/shared/form-association'
 import { defineGroupCoordinator, GroupController } from '@/shared/group-management'
 
 import type { WebUiSegmentedTrigger } from '../segmented-trigger'
@@ -18,10 +19,7 @@ export class WebUiSegmented extends LitElement {
   @property({ type: Boolean, reflect: true }) disabled = false
   @property({ type: Boolean, reflect: true }) required = false
 
-  private _internals?: ElementInternals
   @state() private _value = ''
-  @state() private _formDisabled = false
-  private _initialValue = ''
 
   private readonly _groupController = new GroupController(
     this,
@@ -57,12 +55,12 @@ export class WebUiSegmented extends LitElement {
   set value(v: string) {
     const old = this._value
     this._value = v
-    this._internals?.setFormValue?.(v)
+    this._formAssociation.sync()
     this.requestUpdate('value', old)
   }
 
   private get _isDisabled(): boolean {
-    return this.disabled || this._formDisabled
+    return this.disabled || this._formAssociation.isFormDisabled()
   }
 
   private _updateIndicator() {
@@ -83,33 +81,36 @@ export class WebUiSegmented extends LitElement {
     this.style.setProperty('--indicator-width', `${width}px`)
   }
 
-  override connectedCallback() {
-    super.connectedCallback()
-    if (!this._internals) this._internals = this.attachInternals()
-
-    // 仅当属性在连接前未被 property setter 设值时，才从 attribute 读取初始值
-    const attrValue = this.getAttribute('value')
-    if (attrValue !== null && this._value === '') {
-      this._value = attrValue
+  private readonly _formAssociation = defineFormAssociation<string>({
+    host: this,
+    initialize: () => {
+      const attrValue = this.getAttribute('value')
+      if (attrValue !== null && this._value === '') this._value = attrValue
+    },
+    getState: () => this._value,
+    setState: value => {
+      this.value = value
+    },
+    getFormValue: () => (this.name && this._value ? this._value : null),
+    getFormState: () => this._value,
+    restoreState: state => {
+      if (typeof state === 'string') this.value = state
     }
-    this._initialValue = attrValue ?? ''
-    this._internals?.setFormValue?.(this._value)
-  }
+  }).make()
 
-  private _handleFormUpdate() {
-    this._internals?.setFormValue?.(this.name && this._value ? this._value : null)
-  }
-
-  override updated() {
-    this._handleFormUpdate()
-  }
+  private readonly _formAssociationController = new FormAssociationController(this, this._formAssociation)
 
   formResetCallback() {
-    this.value = this._initialValue
+    this._formAssociation.reset()
   }
 
   formDisabledCallback(disabled: boolean) {
-    this._formDisabled = disabled
+    this._formAssociation.setDisabled(disabled)
+    this._groupController.sync()
+  }
+
+  formStateRestoreCallback(state: string | File | FormData | null) {
+    this._formAssociation.restore(state)
   }
 
   override render() {

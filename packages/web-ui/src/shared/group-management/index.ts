@@ -104,7 +104,7 @@ export class GroupController implements ReactiveController {
     this.sync()
   }
 
-  private sync() {
+  sync() {
     if (!this.lifecycle.sync()) return
     this.options.afterSync?.()
   }

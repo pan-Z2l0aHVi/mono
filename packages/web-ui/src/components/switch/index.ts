@@ -5,6 +5,7 @@ import { classMap } from 'lit/directives/class-map.js'
 import '@/components/icon'
 import glass from '@/assets/glass.css?inline'
 import { lucideLoaderCircle } from '@/icons'
+import { defineFormAssociation, FormAssociationController } from '@/shared/form-association'
 
 import style from './style.css?inline'
 
@@ -12,9 +13,6 @@ import style from './style.css?inline'
 export class WebUiSwitch extends LitElement {
   static override styles = [unsafeCSS(glass), unsafeCSS(style)]
   static formAssociated = true
-
-  private _internals?: ElementInternals
-  @state() private _formDisabled = false
 
   @state() private _checked = false
 
@@ -25,7 +23,7 @@ export class WebUiSwitch extends LitElement {
   set checked(v: boolean) {
     const old = this._checked
     this._checked = v
-    this._syncFormValue()
+    this._formAssociation.sync()
     this.requestUpdate('checked', old)
   }
 
@@ -37,36 +35,45 @@ export class WebUiSwitch extends LitElement {
   @state() private pressed = false
 
   private get _isDisabled(): boolean {
-    return this.disabled || this._formDisabled
+    return this.disabled || this._formAssociation.isFormDisabled()
   }
 
-  override connectedCallback() {
-    super.connectedCallback()
-    if (this._internals) return
-    this._internals = this.attachInternals()
-    if (this.hasAttribute('checked')) {
-      this._checked = true
-    }
-    this._syncFormValue()
-  }
+  private readonly _formAssociation = defineFormAssociation<boolean>({
+    host: this,
+    initialize: () => {
+      if (this.hasAttribute('checked')) this._checked = true
+    },
+    getState: () => this._checked,
+    setState: checked => {
+      this.checked = checked
+    },
+    getFormValue: () => (this._checked ? this.value || 'on' : null),
+    getFormState: () => String(this._checked),
+    restoreState: state => {
+      if (typeof state === 'string') this.checked = state === 'true'
+    },
+    syncValidity: () => this._syncValidity()
+  }).make()
+
+  private readonly _formAssociationController = new FormAssociationController(this, this._formAssociation)
 
   formResetCallback() {
-    this.checked = this.hasAttribute('checked')
+    this._formAssociation.reset()
   }
 
   formDisabledCallback(disabled: boolean) {
-    this._formDisabled = disabled
+    this._formAssociation.setDisabled(disabled)
   }
 
-  override updated() {
-    this._syncFormValue()
-    if (!this._internals || typeof this._internals.setValidity !== 'function') return
-    if (this._isDisabled || !this.required || this._checked) this._internals.setValidity({})
-    else this._internals.setValidity({ valueMissing: true }, '请启用此项')
+  formStateRestoreCallback(state: string | File | FormData | null) {
+    this._formAssociation.restore(state)
   }
 
-  private _syncFormValue() {
-    this._internals?.setFormValue?.(this._checked ? this.value || 'on' : null)
+  private _syncValidity() {
+    const internals = this._formAssociation.getInternals()
+    if (!internals || typeof internals.setValidity !== 'function') return
+    if (this._isDisabled || !this.required || this._checked) internals.setValidity({})
+    else internals.setValidity({ valueMissing: true }, '请启用此项')
   }
 
   // 用户点击切换开关状态，阻止 label 默认行为避免原生 checkbox 重复触发
@@ -75,7 +82,7 @@ export class WebUiSwitch extends LitElement {
     if (this._isDisabled || this.loading) return
     const old = this._checked
     this._checked = !old
-    this._syncFormValue()
+    this._formAssociation.sync()
     this.requestUpdate('checked', old)
     this.dispatchEvent(new Event('input', { bubbles: true, composed: true }))
     this.dispatchEvent(new Event('change', { bubbles: true, composed: true }))

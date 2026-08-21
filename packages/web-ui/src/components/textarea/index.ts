@@ -8,6 +8,7 @@ import '@/components/icon'
 import '@/components/button'
 import glass from '@/assets/glass.css?inline'
 import { jamCloseCircleF } from '@/icons'
+import { defineFormAssociation, FormAssociationController } from '@/shared/form-association'
 
 import style from './style.css?inline'
 
@@ -35,13 +36,11 @@ export class WebUiTextarea extends LitElement {
 
   @state() private _value = ''
   @state() private _focused = false
-  @state() private _formDisabled = false
   @state() private _hasPrefix = false
   @state() private _hasSuffix = false
 
   private _textarea: HTMLTextAreaElement | null = null
   private _resizeObserver: ResizeObserver | null = null
-  private _internals?: ElementInternals
 
   @property({ type: String, reflect: true })
   get value(): string {
@@ -51,20 +50,40 @@ export class WebUiTextarea extends LitElement {
   set value(v: string) {
     const old = this._value
     this._value = v
-    this._internals?.setFormValue?.(v)
+    this._formAssociation.sync()
     this.requestUpdate('value', old)
   }
 
   private get _isDisabled(): boolean {
-    return this.disabled || this._formDisabled
+    return this.disabled || this._formAssociation.isFormDisabled()
   }
 
-  override connectedCallback() {
-    super.connectedCallback()
-    if (!this._internals) {
-      this._internals = this.attachInternals()
-    }
-    this._internals.setFormValue?.(this._value)
+  private readonly _formAssociation = defineFormAssociation<string>({
+    host: this,
+    getState: () => this._value,
+    setState: value => {
+      this.value = value
+    },
+    getFormValue: () => this._value,
+    getFormState: () => this._value,
+    restoreState: state => {
+      if (typeof state === 'string') this.value = state
+    },
+    syncValidity: () => this._syncValidity()
+  }).make()
+
+  private readonly _formAssociationController = new FormAssociationController(this, this._formAssociation)
+
+  formResetCallback() {
+    this._formAssociation.reset()
+  }
+
+  formDisabledCallback(disabled: boolean) {
+    this._formAssociation.setDisabled(disabled)
+  }
+
+  formStateRestoreCallback(state: string | File | FormData | null) {
+    this._formAssociation.restore(state)
   }
 
   override disconnectedCallback() {
@@ -94,25 +113,13 @@ export class WebUiTextarea extends LitElement {
     this.toggleAttribute('focused', this._focused)
   }
 
-  formDisabledCallback(disabled: boolean) {
-    this._formDisabled = disabled
-  }
-
-  formResetCallback() {
-    this.value = this.getAttribute('value') || ''
-  }
-
-  formStateRestoreCallback(state: string | File | FormData | null) {
-    if (typeof state === 'string') this.value = state
-  }
-
   private _getTextarea(): HTMLTextAreaElement | null {
     this._textarea ??= this.shadowRoot?.querySelector('textarea') ?? null
     return this._textarea
   }
 
   private _syncValidity() {
-    const internals = this._internals
+    const internals = this._formAssociation.getInternals()
     const textarea = this._getTextarea()
     if (!internals || !textarea || typeof internals.setValidity !== 'function') return
 
@@ -160,7 +167,7 @@ export class WebUiTextarea extends LitElement {
   private handleInput(e: Event) {
     if (!(e.target instanceof HTMLTextAreaElement)) return
     this._value = e.target.value
-    this._internals?.setFormValue?.(this._value)
+    this._formAssociation.sync()
     this._syncValidity()
     this._autosize()
   }
@@ -178,7 +185,7 @@ export class WebUiTextarea extends LitElement {
   private handleNativeChange(e: Event) {
     if (!(e.target instanceof HTMLTextAreaElement)) return
     this._value = e.target.value
-    this._internals?.setFormValue?.(this._value)
+    this._formAssociation.sync()
     this._syncValidity()
     this.dispatchEvent(new Event('change', { bubbles: true, composed: true }))
   }
@@ -211,7 +218,7 @@ export class WebUiTextarea extends LitElement {
   private handleClear() {
     if (this._isDisabled || this.readonly) return
     this._value = ''
-    this._internals?.setFormValue?.('')
+    this._formAssociation.sync()
     this.dispatchEvent(new Event('input', { bubbles: true, composed: true }))
   }
 

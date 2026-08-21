@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 
 import '../checkbox'
+import '../autocomplete'
 import '../checkbox-group'
 import '../input'
 import '../input-number'
@@ -81,22 +82,26 @@ describe('表单关联组件（浏览器）', () => {
       expect(new FormData(form).get(name)).toBeNull()
     }
 
-    const resetCases: Array<[HTMLFormElement, WebUiCheckbox | WebUiRadio | WebUiSwitch]> = [
-      appendFormControl<WebUiCheckbox>('web-ui-checkbox'),
-      appendFormControl<WebUiRadio>('web-ui-radio'),
-      appendFormControl<WebUiSwitch>('web-ui-switch')
+    const form = document.createElement('form')
+    form.innerHTML = `
+      <web-ui-checkbox checked></web-ui-checkbox>
+      <web-ui-radio checked></web-ui-radio>
+      <web-ui-switch checked></web-ui-switch>
+    `
+    document.body.append(form)
+    const resetCases = [
+      form.querySelector<WebUiCheckbox>('web-ui-checkbox')!,
+      form.querySelector<WebUiRadio>('web-ui-radio')!,
+      form.querySelector<WebUiSwitch>('web-ui-switch')!
     ]
+    await Promise.all(resetCases.map(control => control.updateComplete))
 
-    for (const [form, control] of resetCases) {
-      control.setAttribute('checked', '')
-      await control.updateComplete
-      control.checked = false
-      await control.updateComplete
+    for (const control of resetCases) control.checked = false
+    await Promise.all(resetCases.map(control => control.updateComplete))
 
-      form.reset()
-      await control.updateComplete
-      expect(control.checked).toBe(true)
-    }
+    form.reset()
+    await Promise.all(resetCases.map(control => control.updateComplete))
+    for (const control of resetCases) expect(control.checked).toBe(true)
   })
 
   it('未提供 value 的已选控件使用原生 on 回退值', async () => {
@@ -197,6 +202,177 @@ describe('表单关联组件（浏览器）', () => {
     await select.updateComplete
 
     expect(select.value).toBe('')
+  })
+
+  it('在首次连接后为全部表单控件保留声明式默认值', async () => {
+    const form = document.createElement('form')
+    form.innerHTML = `
+      <web-ui-input value="initial input"></web-ui-input>
+      <web-ui-textarea value="initial textarea"></web-ui-textarea>
+      <web-ui-input-number value="7"></web-ui-input-number>
+      <web-ui-select value="apple"><web-ui-option value="apple">Apple</web-ui-option></web-ui-select>
+      <web-ui-autocomplete value="initial autocomplete"></web-ui-autocomplete>
+      <web-ui-slider value="8"></web-ui-slider>
+      <web-ui-checkbox checked></web-ui-checkbox>
+      <web-ui-radio checked></web-ui-radio>
+      <web-ui-switch checked></web-ui-switch>
+      <web-ui-checkbox-group value="a"><web-ui-checkbox value="a"></web-ui-checkbox></web-ui-checkbox-group>
+      <web-ui-radio-group value="a"><web-ui-radio value="a"></web-ui-radio></web-ui-radio-group>
+      <web-ui-segmented value="a"><web-ui-segmented-trigger value="a">A</web-ui-segmented-trigger></web-ui-segmented>
+    `
+    document.body.append(form)
+
+    const input = form.querySelector<WebUiInput>('web-ui-input')!
+    const textarea = form.querySelector<HTMLElement & { value: string; updateComplete: Promise<unknown> }>(
+      'web-ui-textarea'
+    )!
+    const inputNumber = form.querySelector<WebUiInputNumber>('web-ui-input-number')!
+    const select = form.querySelector<WebUiSelect>('web-ui-select')!
+    const autocomplete = form.querySelector<HTMLElement & { value: string; updateComplete: Promise<unknown> }>(
+      'web-ui-autocomplete'
+    )!
+    const slider = form.querySelector<HTMLElement & { value: number; updateComplete: Promise<unknown> }>(
+      'web-ui-slider'
+    )!
+    const checkbox = form.querySelector<WebUiCheckbox>('web-ui-checkbox')!
+    const radio = form.querySelector<WebUiRadio>('web-ui-radio')!
+    const switchControl = form.querySelector<WebUiSwitch>('web-ui-switch')!
+    const checkboxGroup = form.querySelector<HTMLElement & { value: string[]; updateComplete: Promise<unknown> }>(
+      'web-ui-checkbox-group'
+    )!
+    const radioGroup = form.querySelector<HTMLElement & { value: string; updateComplete: Promise<unknown> }>(
+      'web-ui-radio-group'
+    )!
+    const segmented = form.querySelector<HTMLElement & { value: string; updateComplete: Promise<unknown> }>(
+      'web-ui-segmented'
+    )!
+    const controls = [
+      input,
+      textarea,
+      inputNumber,
+      select,
+      autocomplete,
+      slider,
+      checkbox,
+      radio,
+      switchControl,
+      checkboxGroup,
+      radioGroup,
+      segmented
+    ]
+    await Promise.all(controls.map(control => control.updateComplete))
+
+    input.value = 'changed input'
+    textarea.value = 'changed textarea'
+    inputNumber.value = 9
+    select.value = 'pear'
+    autocomplete.value = 'changed autocomplete'
+    slider.value = 10
+    checkbox.checked = false
+    radio.checked = false
+    switchControl.checked = false
+    checkboxGroup.value = []
+    radioGroup.value = ''
+    segmented.value = ''
+    await Promise.all(controls.map(control => control.updateComplete))
+
+    form.reset()
+    await Promise.all(controls.map(control => control.updateComplete))
+
+    expect(input.value).toBe('initial input')
+    expect(textarea.value).toBe('initial textarea')
+    expect(inputNumber.value).toBe(7)
+    expect(select.value).toBe('apple')
+    expect(autocomplete.value).toBe('initial autocomplete')
+    expect(slider.value).toBe(8)
+    expect(checkbox.checked).toBe(true)
+    expect(radio.checked).toBe(true)
+    expect(switchControl.checked).toBe(true)
+    expect(checkboxGroup.value).toEqual(['a'])
+    expect(radioGroup.value).toBe('a')
+    expect(segmented.value).toBe('a')
+  })
+
+  it('通过表单状态恢复回调恢复全部控件的序列化状态', async () => {
+    const form = document.createElement('form')
+    form.innerHTML = `
+      <web-ui-input></web-ui-input><web-ui-textarea></web-ui-textarea><web-ui-input-number></web-ui-input-number>
+      <web-ui-select><web-ui-option value="apple">Apple</web-ui-option></web-ui-select><web-ui-autocomplete></web-ui-autocomplete><web-ui-slider></web-ui-slider>
+      <web-ui-checkbox></web-ui-checkbox><web-ui-radio></web-ui-radio><web-ui-switch></web-ui-switch>
+      <web-ui-checkbox-group><web-ui-checkbox value="a"></web-ui-checkbox></web-ui-checkbox-group>
+      <web-ui-radio-group><web-ui-radio value="a"></web-ui-radio></web-ui-radio-group>
+      <web-ui-segmented><web-ui-segmented-trigger value="a">A</web-ui-segmented-trigger></web-ui-segmented>
+    `
+    document.body.append(form)
+
+    const controls = Array.from(form.children) as Array<
+      HTMLElement & {
+        formStateRestoreCallback(state: string): void
+        updateComplete: Promise<unknown>
+      }
+    >
+    await Promise.all(controls.map(control => control.updateComplete))
+
+    const states = ['input', 'textarea', '12', 'apple', 'autocomplete', '14', 'true', 'true', 'true', '["a"]', 'a', 'a']
+    controls.forEach((control, index) => control.formStateRestoreCallback(states[index]!))
+    await Promise.all(controls.map(control => control.updateComplete))
+
+    const restored = controls.map(control => {
+      const formControl = control as HTMLElement & { value?: unknown; checked?: unknown }
+      return { value: formControl.value, checked: formControl.checked }
+    })
+
+    expect((controls[0] as WebUiInput).value).toBe('input')
+    expect(restored[1]?.value).toBe('textarea')
+    expect((controls[2] as WebUiInputNumber).value).toBe(12)
+    expect((controls[3] as WebUiSelect).value).toBe('apple')
+    expect(restored[4]?.value).toBe('autocomplete')
+    expect(restored[5]?.value).toBe(14)
+    expect((controls[6] as WebUiCheckbox).checked).toBe(true)
+    expect((controls[7] as WebUiRadio).checked).toBe(true)
+    expect((controls[8] as WebUiSwitch).checked).toBe(true)
+    expect(restored[9]?.value).toEqual(['a'])
+    expect(restored[10]?.value).toBe('a')
+    expect(restored[11]?.value).toBe('a')
+  })
+
+  it('重连不重复 attachInternals，也不覆盖首次连接后的当前值或默认值', async () => {
+    const form = document.createElement('form')
+    form.innerHTML = '<web-ui-input value="initial"></web-ui-input>'
+    document.body.append(form)
+    const input = form.querySelector<WebUiInput>('web-ui-input')!
+    await input.updateComplete
+
+    input.value = 'current'
+    await input.updateComplete
+    const fieldset = document.createElement('fieldset')
+    form.append(fieldset)
+    fieldset.append(input)
+    await input.updateComplete
+
+    expect(input.value).toBe('current')
+    form.reset()
+    await input.updateComplete
+    expect(input.value).toBe('initial')
+  })
+
+  it('由 Group 管理的 checkbox 和 radio 忽略独立状态恢复', async () => {
+    const form = document.createElement('form')
+    form.innerHTML = `
+      <web-ui-checkbox-group value="a"><web-ui-checkbox value="a"></web-ui-checkbox></web-ui-checkbox-group>
+      <web-ui-radio-group value="a"><web-ui-radio value="a"></web-ui-radio></web-ui-radio-group>
+    `
+    document.body.append(form)
+    const checkbox = form.querySelector<WebUiCheckbox>('web-ui-checkbox')!
+    const radio = form.querySelector<WebUiRadio>('web-ui-radio')!
+    await Promise.all([checkbox.updateComplete, radio.updateComplete])
+
+    checkbox.formStateRestoreCallback('false')
+    radio.formStateRestoreCallback('false')
+    await Promise.all([checkbox.updateComplete, radio.updateComplete])
+
+    expect(checkbox.checked).toBe(true)
+    expect(radio.checked).toBe(true)
   })
 
   it('不提交未提供 name 的控件', async () => {

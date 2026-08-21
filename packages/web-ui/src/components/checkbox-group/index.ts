@@ -1,6 +1,7 @@
 import { html, LitElement, unsafeCSS } from 'lit'
 import { customElement, property, state } from 'lit/decorators.js'
 
+import { defineFormAssociation, FormAssociationController } from '@/shared/form-association'
 import { defineGroupCoordinator, GroupController } from '@/shared/group-management'
 
 import type { WebUiCheckbox } from '../checkbox'
@@ -17,9 +18,6 @@ export class WebUiCheckboxGroup extends LitElement {
   @property({ type: Boolean, reflect: true }) required = false
 
   @state() private _value: string[] = []
-  @state() private _formDisabled = false
-  private _internals?: ElementInternals
-  private _initialValue: string[] = []
 
   private readonly _groupController = new GroupController(
     this,
@@ -54,53 +52,67 @@ export class WebUiCheckboxGroup extends LitElement {
   set value(v: string[]) {
     const old = this._value
     this._value = [...v]
-    this._syncFormValue()
+    this._formAssociation.sync()
     this.requestUpdate('value', old)
   }
 
   private get _isDisabled(): boolean {
-    return this.disabled || this._formDisabled
+    return this.disabled || this._formAssociation.isFormDisabled()
   }
 
-  override connectedCallback() {
-    super.connectedCallback()
-    if (!this._internals) this._internals = this.attachInternals()
-    const attributeValue = this.getAttribute('value')
-    if (attributeValue !== null) this.value = attributeValue.split(',').filter(Boolean)
-    this._initialValue = [...this._value]
-  }
+  private readonly _formAssociation = defineFormAssociation<string[]>({
+    host: this,
+    initialize: () => {
+      const attributeValue = this.getAttribute('value')
+      if (attributeValue !== null) this.value = attributeValue.split(',').filter(Boolean)
+    },
+    getState: () => this._value,
+    setState: value => {
+      this.value = value
+    },
+    copyState: value => [...value],
+    getFormValue: () => {
+      if (!this.name || this._value.length === 0) return null
+      const formData = new FormData()
+      this._value.forEach(value => formData.append(this.name, value))
+      return formData
+    },
+    getFormState: () => JSON.stringify(this._value),
+    restoreState: state => {
+      if (typeof state !== 'string') return
+      try {
+        const value = JSON.parse(state)
+        if (Array.isArray(value) && value.every(item => typeof item === 'string')) this.value = value
+      } catch {
+        // 忽略无法解析的历史表单状态。
+      }
+    },
+    syncValidity: () => this._syncValidity()
+  }).make()
 
-  override updated() {
-    this._syncFormValue()
-    this._syncValidity()
-  }
+  private readonly _formAssociationController = new FormAssociationController(this, this._formAssociation)
 
   formResetCallback() {
-    this.value = [...this._initialValue]
+    this._formAssociation.reset()
   }
 
   formDisabledCallback(disabled: boolean) {
-    this._formDisabled = disabled
+    this._formAssociation.setDisabled(disabled)
+    this._groupController.sync()
   }
 
-  private _syncFormValue() {
-    if (!this._internals) return
-    if (!this.name || this._value.length === 0) {
-      this._internals.setFormValue?.(null)
-      return
-    }
-    const formData = new FormData()
-    this._value.forEach(value => formData.append(this.name, value))
-    this._internals.setFormValue?.(formData)
+  formStateRestoreCallback(state: string | File | FormData | null) {
+    this._formAssociation.restore(state)
   }
 
   private _syncValidity() {
-    if (!this._internals || typeof this._internals.setValidity !== 'function') return
+    const internals = this._formAssociation.getInternals()
+    if (!internals || typeof internals.setValidity !== 'function') return
     if (this._isDisabled || !this.required || this._value.length > 0) {
-      this._internals.setValidity({})
+      internals.setValidity({})
       return
     }
-    this._internals.setValidity({ valueMissing: true }, '请至少选择一项')
+    internals.setValidity({ valueMissing: true }, '请至少选择一项')
   }
 
   override render() {
