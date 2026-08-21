@@ -116,8 +116,8 @@ const navItems: NavItem[] = [
     <div class="min-h-screen bg-[var(--wui-color-page)] text-[var(--wui-color-text)]">
       <web-ui-layout
         header-glow
-        :sidebarCollapsed.prop="sidebarCollapsed"
-        :sidebarOpen.prop="sidebarOpen"
+        :sidebar-collapsed="sidebarCollapsed"
+        :sidebar-open="sidebarOpen"
         @sidebar-collapsed-change="updateSidebarCollapsed"
         @sidebar-open-change="updateSidebarOpen"
       >
