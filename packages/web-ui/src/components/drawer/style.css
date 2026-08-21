@@ -103,11 +103,11 @@ dialog[open].is-visible::backdrop {
 /* ===== 抽屉主体 ===== */
 
 .wui-drawer-body {
-  --wui-glass-shadow: var(--wui-shadow-overlay, 2px 16px 40px rgb(0 0 0 / 0.4));
+  --wui-shadow-glass: var(--wui-shadow-overlay, 2px 16px 40px rgb(0 0 0 / 0.4));
   display: flex;
   flex-direction: column;
   height: 100%;
-  background-color: var(--wui-color-surface-overlay, rgb(246 246 246 / 0.88));
+  background-color: var(--wui-drawer-bg, var(--wui-color-surface-overlay, rgb(246 246 246 / 0.88)));
 }
 
 /* ===== Header ===== */
