@@ -206,4 +206,27 @@ describe('表单关联组件（浏览器）', () => {
 
     expect([...new FormData(form).keys()]).toHaveLength(0)
   })
+  it('离开 Checkbox Group 的子项恢复自身表单提交', async () => {
+    const form = document.createElement('form')
+    form.innerHTML = `
+      <web-ui-checkbox-group name="hobbies" value="a">
+        <web-ui-checkbox name="solo" value="a"></web-ui-checkbox>
+      </web-ui-checkbox-group>
+    `
+    document.body.append(form)
+
+    const group = form.querySelector('web-ui-checkbox-group')!
+    const checkbox = form.querySelector<WebUiCheckbox>('web-ui-checkbox')!
+    await Promise.all([group.updateComplete, checkbox.updateComplete])
+
+    const slot = group.shadowRoot!.querySelector('slot')!
+    const slotChanged = new Promise<void>(resolve =>
+      slot.addEventListener('slotchange', () => resolve(), { once: true })
+    )
+    form.append(checkbox)
+    await slotChanged
+    await checkbox.updateComplete
+
+    expect(new FormData(form).get('solo')).toBe('a')
+  })
 })

@@ -1,6 +1,8 @@
 import { html, LitElement, unsafeCSS } from 'lit'
 import { customElement, property, state } from 'lit/decorators.js'
 
+import { defineGroupCoordinator, GroupController } from '@/shared/group-management'
+
 import type { WebUiRadio } from '../radio'
 
 import style from './style.css?inline'
@@ -18,6 +20,31 @@ export class WebUiRadioGroup extends LitElement {
   @state() private _value = ''
   @state() private _formDisabled = false
   private _initialValue = ''
+
+  private readonly _groupController = new GroupController(
+    this,
+    defineGroupCoordinator<WebUiRadio, string>({
+      host: this,
+      getItems: () => [...this.querySelectorAll<WebUiRadio>('web-ui-radio')],
+      getValue: () => this._value,
+      setValue: value => {
+        this.value = value
+      },
+      getDisabled: () => this._isDisabled,
+      isItem: (target): target is WebUiRadio => target instanceof HTMLElement && target.matches('web-ui-radio'),
+      isItemSelected: (radio, value) => radio.value === value,
+      getNextValue: (radio, value) => (radio.checked ? radio.value : value),
+      valuesEqual: (a, b) => a === b,
+      copyValue: value => value,
+      setItemSelected: (radio, selected) => {
+        radio.checked = selected
+      },
+      dispatchValueChange: () => {
+        this.dispatchEvent(new Event('input', { bubbles: true, composed: true }))
+        this.dispatchEvent(new Event('change', { bubbles: true, composed: true }))
+      }
+    }).make()
+  )
 
   get value(): string {
     return this._value
@@ -40,18 +67,9 @@ export class WebUiRadioGroup extends LitElement {
     const attributeValue = this.getAttribute('value')
     if (attributeValue !== null) this.value = attributeValue
     this._initialValue = this._value
-    // group-managed 子项以 bubbles:false 派发 change，须用 capture 相位才能观察到子项事件，
-    // 同时该事件不会冒泡到 group 外部的同名监听器
-    this.addEventListener('change', this._handleChildChange, true)
   }
 
-  override disconnectedCallback() {
-    super.disconnectedCallback()
-    this.removeEventListener('change', this._handleChildChange, true)
-  }
-
-  override updated(changed: Map<string, unknown>) {
-    if (changed.has('value') || changed.has('disabled') || changed.has('_formDisabled')) this._syncValueToChildren()
+  override updated() {
     this._syncFormValue()
     this._syncValidity()
   }
@@ -74,32 +92,8 @@ export class WebUiRadioGroup extends LitElement {
     else this._internals.setValidity({ valueMissing: true }, '请选择一项')
   }
 
-  private _syncValueToChildren() {
-    this.querySelectorAll<WebUiRadio>('web-ui-radio').forEach(radio => {
-      radio.checked = radio.value === this._value
-      radio.setGroupDisabled(this._isDisabled)
-    })
-  }
-
-  private _handleChildChange(e: Event) {
-    if (this._isDisabled) return
-    const target = e.target as HTMLElement
-    if (!target.matches?.('web-ui-radio')) return
-
-    const radio = target as WebUiRadio
-    if (!radio.checked || radio.value === this._value) return
-
-    this.value = radio.value
-    this.dispatchEvent(new Event('input', { bubbles: true, composed: true }))
-    this.dispatchEvent(new Event('change', { bubbles: true, composed: true }))
-  }
-
-  private _handleSlotChange() {
-    this._syncValueToChildren()
-  }
-
   override render() {
-    return html`<div class="wui-radio-group"><slot @slotchange=${this._handleSlotChange}></slot></div>`
+    return html`<div class="wui-radio-group"><slot></slot></div>`
   }
 
   declare readonly $events: {

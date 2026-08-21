@@ -481,7 +481,7 @@ Button group that manages child button layout and direction.
 
 **Slots:** `default` (project `<web-ui-button>` elements)
 
-Propagates `direction` attribute to child buttons.
+Applies the direction to the grouped button layout without changing child button attributes.
 
 ---
 

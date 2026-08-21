@@ -2,6 +2,8 @@ import { html, LitElement, unsafeCSS } from 'lit'
 import { customElement, property, state } from 'lit/decorators.js'
 import { classMap } from 'lit/directives/class-map.js'
 
+import { defineGroupManaged, registerGroupManagedItem, type SelectionGroupContext } from '@/shared/group-management'
+
 import style from './style.css?inline'
 
 @customElement('web-ui-radio')
@@ -9,13 +11,19 @@ export class WebUiRadio extends LitElement {
   static override styles = unsafeCSS(style)
   static formAssociated = true
 
-  // 内部表单关联实例（connectedCallback 中初始化）
   private _internals?: ElementInternals
   @state() private _formDisabled = false
-  @state() private _groupDisabled = false
 
-  // 内部 checked 状态，通过 getter/setter 暴露为公共 API
+  private readonly _groupManagement = defineGroupManaged<SelectionGroupContext>({
+    requestUpdate: () => this.requestUpdate()
+  }).make()
+
   @state() private _checked = false
+
+  constructor() {
+    super()
+    registerGroupManagedItem<SelectionGroupContext>(this, context => this._groupManagement.setContext(context))
+  }
 
   get checked(): boolean {
     return this._checked
@@ -34,24 +42,18 @@ export class WebUiRadio extends LitElement {
   @property({ type: Boolean, reflect: true }) required = false
 
   private get _isDisabled(): boolean {
-    return this.disabled || this._formDisabled || this._groupDisabled
+    return this.disabled || this._formDisabled || this._groupManagement.getContext()?.disabled === true
   }
 
   private get _isManagedByGroup(): boolean {
-    return this.closest('web-ui-radio-group') !== null
-  }
-
-  setGroupDisabled(disabled: boolean) {
-    this._groupDisabled = disabled
+    return this._groupManagement.getContext() !== undefined
   }
 
   override connectedCallback() {
     super.connectedCallback()
     if (this._internals) return
     this._internals = this.attachInternals()
-    if (this.hasAttribute('checked')) {
-      this._checked = true
-    }
+    if (this.hasAttribute('checked')) this._checked = true
     this._syncFormValue()
   }
 
@@ -81,7 +83,6 @@ export class WebUiRadio extends LitElement {
     this._internals.setValidity({ valueMissing: true }, '请选择一项')
   }
 
-  // 用户点击选中（已选中时不重复触发）
   private handleClick() {
     if (this._isDisabled || this._checked) return
     this._checked = true

@@ -361,4 +361,34 @@ describe('WebUiCheckboxGroup 组件', () => {
       cleanupElement(el)
     })
   })
+
+  it('子 checkbox 离组后恢复独立事件行为', async () => {
+    const el = createGroup()
+    await waitForUpdate(el)
+
+    const checkbox = el.querySelectorAll<WebUiCheckbox>('web-ui-checkbox')[0]
+    const container = document.createElement('div')
+    container.append(el)
+    document.body.append(container)
+    await waitForUpdate(el)
+
+    const slot = el.shadowRoot!.querySelector('slot')!
+    const slotChanged = new Promise<void>(resolve =>
+      slot.addEventListener('slotchange', () => resolve(), { once: true })
+    )
+    container.append(checkbox)
+    await slotChanged
+    await checkbox.updateComplete
+
+    checkbox.checked = false
+    await checkbox.updateComplete
+    const [events, detach] = spyEvents(container, 'change')
+    queryA11y(checkbox, '[role="checkbox"]')!.dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true }))
+    await checkbox.updateComplete
+
+    expect(events).toHaveLength(1)
+    expect(events[0].target).toBe(checkbox)
+    detach()
+    cleanupElement(container)
+  })
 })

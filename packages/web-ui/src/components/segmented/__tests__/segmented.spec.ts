@@ -431,4 +431,34 @@ describe('WebUiSegmented 组件', () => {
       cleanupElement(el)
     })
   })
+
+  it('子 trigger 离组后恢复独立事件行为', async () => {
+    const el = createSegmented(TRIGGER_HTML)
+    await waitForUpdate(el)
+
+    const trigger = el.querySelectorAll<WebUiSegmentedTrigger>('web-ui-segmented-trigger')[0]
+    const container = document.createElement('div')
+    container.append(el)
+    document.body.append(container)
+    await waitForUpdate(el)
+
+    const slot = el.shadowRoot!.querySelector('slot')!
+    const slotChanged = new Promise<void>(resolve =>
+      slot.addEventListener('slotchange', () => resolve(), { once: true })
+    )
+    container.append(trigger)
+    await slotChanged
+    await trigger.updateComplete
+
+    trigger.checked = false
+    await trigger.updateComplete
+    const [events, detach] = spyEvents(container, 'change')
+    queryA11y(trigger, '[role="option"]')!.dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true }))
+    await trigger.updateComplete
+
+    expect(events).toHaveLength(1)
+    expect(events[0].target).toBe(trigger)
+    detach()
+    cleanupElement(container)
+  })
 })

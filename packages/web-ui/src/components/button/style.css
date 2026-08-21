@@ -5,6 +5,8 @@
 }
 
 :host {
+  position: relative;
+
   /* inline-flex 让内层按钮在宿主内完全居中，避免继承的行高撑高宿主、导致图标偏移 */
   display: inline-flex;
   align-items: center;
@@ -147,29 +149,27 @@ button:active:not(:disabled) {
 
 /* ===== Group context ===== */
 
-:host([group]) {
+button.is-grouped {
   --wui-button-color: var(--wui-color-text, #1b1b1b);
   --wui-button-bg: transparent;
   --wui-button-bg-hover: color-mix(in srgb, var(--wui-color-text, #1b1b1b) 6%, transparent);
   --wui-button-bg-active: color-mix(in srgb, var(--wui-color-text, #1b1b1b) 15%, transparent);
-  position: relative;
 }
 
-:host([group]:not([last]))::after {
-  content: '';
-
+.group-divider {
   position: absolute;
+  z-index: 1;
   top: 50%;
   right: -2px;
   transform: translateY(-50%);
 
-  width: var(--wui-button-divider-width, 0);
+  width: 1px;
   height: 24px;
 
   background-color: var(--wui-color-border, rgb(0 0 0 / 0.1));
 }
 
-:host([group][direction='vertical']:not([last]))::after {
+.group-divider.vertical {
   top: auto;
   right: auto;
   bottom: -2px;
@@ -177,5 +177,5 @@ button:active:not(:disabled) {
   transform: translateX(-50%);
 
   width: 24px;
-  height: var(--wui-button-divider-width, 0);
+  height: 1px;
 }
