@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	coreLibrary "github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/core"
 	"github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/service"
 	"github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage"
 	"github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/remote"
@@ -40,9 +41,12 @@ func TestResourceAndSourceLifecycle(t *testing.T) {
 	defer cleanup()
 
 	fetcher := remote.NewFetcher()
-	resService := service.NewResourceService(db, fetcher)
-	srcService := service.NewSourceService(db, fetcher)
-	tagService := service.NewTagService(db)
+	coreResource := coreLibrary.NewResourceService(db, fetcher)
+	coreSource := coreLibrary.NewSourceService(db, fetcher)
+	coreTag := coreLibrary.NewTagService(db)
+	resService := service.NewResourceService(coreResource)
+	srcService := service.NewSourceService(coreSource)
+	tagService := service.NewTagService(coreTag)
 
 	ctx := context.Background()
 
@@ -157,9 +161,12 @@ func TestMapServiceDerivedExploration(t *testing.T) {
 	defer cleanup()
 
 	fetcher := remote.NewFetcher()
-	resService := service.NewResourceService(db, fetcher)
-	tagService := service.NewTagService(db)
-	mapService := service.NewMapService(db, resService)
+	coreResource := coreLibrary.NewResourceService(db, fetcher)
+	coreTag := coreLibrary.NewTagService(db)
+	coreMap := coreLibrary.NewMapService(db, coreResource)
+	resService := service.NewResourceService(coreResource)
+	tagService := service.NewTagService(coreTag)
+	mapService := service.NewMapService(coreMap)
 
 	ctx := context.Background()
 

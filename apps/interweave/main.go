@@ -8,6 +8,7 @@ import (
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 
+	coreLibrary "github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/core"
 	libraryService "github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/service"
 	"github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage"
 	nativeService "github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/native/service"
@@ -38,10 +39,16 @@ func main() {
 	defer db.Close()
 
 	fetcher := remote.NewFetcher()
-	resourceService := libraryService.NewResourceService(db, fetcher)
-	sourceService := libraryService.NewSourceService(db, fetcher)
-	tagService := libraryService.NewTagService(db)
-	mapService := libraryService.NewMapService(db, resourceService)
+
+	coreResourceService := coreLibrary.NewResourceService(db, fetcher)
+	coreSourceService := coreLibrary.NewSourceService(db, fetcher)
+	coreTagService := coreLibrary.NewTagService(db)
+	coreMapService := coreLibrary.NewMapService(db, coreResourceService)
+
+	resourceService := libraryService.NewResourceService(coreResourceService)
+	sourceService := libraryService.NewSourceService(coreSourceService)
+	tagService := libraryService.NewTagService(coreTagService)
+	mapService := libraryService.NewMapService(coreMapService)
 	osService := nativeService.NewOSService()
 
 	// 仅暴露产品与受控原生能力，避免基础设施绕过后端边界。
