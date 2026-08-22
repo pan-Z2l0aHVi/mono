@@ -4,6 +4,7 @@ import { customElement, property, state } from 'lit/decorators.js'
 import '@/components/icon'
 import glass from '@/assets/glass.css?inline'
 import { lucideMinus, lucidePlus } from '@/icons'
+import { defineFormAssociation, FormAssociationController } from '@/shared/form-association'
 import { normalizeNumber } from '@/shared/normalize'
 
 import style from './style.css?inline'
@@ -29,7 +30,7 @@ export class WebUiInputNumber extends LitElement {
     const current = this.clamp(this.round(this._value))
     if (current !== this._value) {
       this._value = current
-      this._internals?.setFormValue?.(String(current))
+      this._formAssociation.sync()
     }
     this.requestUpdate('precision', old)
   }
@@ -39,10 +40,7 @@ export class WebUiInputNumber extends LitElement {
   @state() private _max = Infinity
   @state() private _step = 1
   @state() private _focused = false
-  @state() private _formDisabled = false
   private _precision = 0
-
-  private _internals?: ElementInternals
 
   @property({ type: Number, reflect: true })
   get value(): number {
@@ -53,12 +51,12 @@ export class WebUiInputNumber extends LitElement {
     const clamped = this.clamp(this.round(v))
     const old = this._value
     this._value = clamped
-    this._internals?.setFormValue?.(String(clamped))
+    this._formAssociation.sync()
     this.requestUpdate('value', old)
   }
 
   private get _isDisabled(): boolean {
-    return this.disabled || this._formDisabled
+    return this.disabled || this._formAssociation.isFormDisabled()
   }
 
   @property({ type: Number })
@@ -101,25 +99,34 @@ export class WebUiInputNumber extends LitElement {
     return this._value >= this._max
   }
 
-  override connectedCallback() {
-    super.connectedCallback()
-    if (!this._internals) {
-      this._internals = this.attachInternals()
-    }
-    this._internals.setFormValue?.(String(this._value))
-  }
+  private readonly _formAssociation = defineFormAssociation<number>({
+    host: this,
+    getState: () => this._value,
+    setState: value => {
+      this.value = value
+    },
+    getFormValue: () => String(this._value),
+    getFormState: () => String(this._value),
+    restoreState: state => {
+      if (typeof state !== 'string') return
+      const value = Number(state)
+      if (Number.isFinite(value)) this.value = value
+    },
+    syncValidity: () => this._syncValidity()
+  }).make()
+
+  private readonly _formAssociationController = new FormAssociationController(this, this._formAssociation)
 
   formResetCallback() {
-    const attr = this.getAttribute('value')
-    this.value = attr !== null ? Number(attr) : 0
+    this._formAssociation.reset()
   }
 
   formDisabledCallback(disabled: boolean) {
-    this._formDisabled = disabled
+    this._formAssociation.setDisabled(disabled)
   }
 
   formStateRestoreCallback(state: string | File | FormData | null) {
-    if (typeof state === 'string') this.value = Number(state)
+    this._formAssociation.restore(state)
   }
 
   override updated() {
@@ -129,9 +136,10 @@ export class WebUiInputNumber extends LitElement {
 
   private _syncValidity() {
     const input = this.shadowRoot?.querySelector('input')
-    if (!this._internals || !input || typeof this._internals.setValidity !== 'function') return
+    const internals = this._formAssociation.getInternals()
+    if (!internals || !input || typeof internals.setValidity !== 'function') return
     if (this._isDisabled || input.validity.valid) {
-      this._internals.setValidity({})
+      internals.setValidity({})
       return
     }
     const flags: ValidityStateFlags = {}
@@ -139,7 +147,7 @@ export class WebUiInputNumber extends LitElement {
     if (input.validity.rangeUnderflow) flags.rangeUnderflow = true
     if (input.validity.rangeOverflow) flags.rangeOverflow = true
     if (input.validity.stepMismatch) flags.stepMismatch = true
-    this._internals.setValidity(flags, input.validationMessage, input)
+    internals.setValidity(flags, input.validationMessage, input)
   }
 
   private clamp(v: number): number {
@@ -167,7 +175,7 @@ export class WebUiInputNumber extends LitElement {
     const raw = e.target.value
     if (raw === '' || raw === '-') return
     this._value = this.clamp(this.round(Number(raw)))
-    this._internals?.setFormValue?.(String(this._value))
+    this._formAssociation.sync()
     this._syncValidity()
   }
 
@@ -179,7 +187,7 @@ export class WebUiInputNumber extends LitElement {
     const raw = e.target.value
     if (raw === '' || raw === '-') return
     this._value = this.clamp(this.round(Number(raw)))
-    this._internals?.setFormValue?.(String(this._value))
+    this._formAssociation.sync()
     this._syncValidity()
     this.dispatchEvent(new Event('change', { bubbles: true, composed: true }))
   }

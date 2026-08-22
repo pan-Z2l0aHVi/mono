@@ -135,6 +135,79 @@ describe('WebUiDrawer 组件', () => {
     })
   })
 
+  describe('属性：headless', () => {
+    it('dialog-label 提供 headless dialog 的可访问名称', async () => {
+      const el = createDrawer()
+      el.headless = true
+      el.dialogLabel = '主导航'
+      await waitForUpdate(el)
+
+      const dialog = el.shadowRoot?.querySelector('dialog') as HTMLDialogElement
+      expect(dialog.getAttribute('aria-label')).toBe('主导航')
+      expect(dialog.hasAttribute('aria-labelledby')).toBe(false)
+      cleanupElement(el)
+    })
+
+    it('打开期间切换 headless 时保留同一个处于 top layer 的 dialog', async () => {
+      const el = createDrawer()
+      el.open = true
+      await waitForUpdate(el)
+
+      const dialog = el.shadowRoot?.querySelector('dialog') as HTMLDialogElement
+      expect(dialog.open).toBe(true)
+      expect(el.shadowRoot?.querySelector('.wui-drawer-body')).toBeTruthy()
+
+      el.headless = true
+      await waitForUpdate(el)
+
+      expect(el.shadowRoot?.querySelector('dialog')).toBe(dialog)
+      expect(dialog.open).toBe(true)
+      expect(el.shadowRoot?.querySelector('.wui-drawer-body')).toBeFalsy()
+      cleanupElement(el)
+    })
+  })
+
+  describe('属性：request-only', () => {
+    it('用户通过 Escape 或遮罩关闭时仅请求 open=false，不自行修改 open', async () => {
+      const el = createDrawer()
+      el.requestOnly = true
+      el.open = true
+      await waitForUpdate(el)
+
+      const [events] = spyEvents<CustomEvent<{ open: boolean }>>(el, 'open-change')
+      const dialog = el.shadowRoot?.querySelector('dialog') as HTMLDialogElement
+      dispatchEscapeKey(dialog)
+      await waitForUpdate(el)
+
+      expect(el.open).toBe(true)
+      expect(events.map(event => event.detail.open)).toEqual([false])
+
+      dialog.click()
+      await waitForUpdate(el)
+
+      expect(el.open).toBe(true)
+      expect(events.map(event => event.detail.open)).toEqual([false, false])
+      cleanupElement(el)
+    })
+
+    it('内置关闭按钮仅请求关闭，不自行修改 open', async () => {
+      const el = createDrawer()
+      el.closable = true
+      el.requestOnly = true
+      el.open = true
+      await waitForUpdate(el)
+
+      const [events] = spyEvents<CustomEvent<{ open: boolean }>>(el, 'open-change')
+      const closeButton = el.shadowRoot?.querySelector('.wui-drawer-close') as HTMLElement
+      closeButton.click()
+      await waitForUpdate(el)
+
+      expect(el.open).toBe(true)
+      expect(events.map(event => event.detail.open)).toEqual([false])
+      cleanupElement(el)
+    })
+  })
+
   describe('属性：closable', () => {
     it('默认 closable 为 false', async () => {
       const el = createDrawer()
@@ -363,6 +436,24 @@ describe('WebUiDrawer 组件', () => {
   })
 
   describe('原生 dialog 关闭', () => {
+    it('request-only 时恢复 native dialog 并仅请求关闭', async () => {
+      const el = createDrawer()
+      el.requestOnly = true
+      el.open = true
+      await waitForUpdate(el)
+      const dialog = el.shadowRoot?.querySelector('dialog') as HTMLDialogElement
+      const [events] = spyEvents<CustomEvent<{ open: boolean }>>(el, 'open-change')
+
+      dialog.close()
+      dialog.dispatchEvent(new Event('close'))
+      await waitForUpdate(el)
+
+      expect(el.open).toBe(true)
+      expect(dialog.open).toBe(true)
+      expect(events.map(event => event.detail.open)).toEqual([false])
+      cleanupElement(el)
+    })
+
     it('原生关闭后同步 open 并允许再次 show', async () => {
       const el = createDrawer()
       el.open = true
