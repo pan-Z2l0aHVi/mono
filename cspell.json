@@ -57,6 +57,12 @@
     "pple",
     "gofmt",
     "GOARCH",
-    "ACMR"
+    "ACMR",
+    "nodir",
+    "modernc",
+    "dedup",
+    "maint",
+    "taggings",
+    "cooccurring"
   ]
 }

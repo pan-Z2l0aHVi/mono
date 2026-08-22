@@ -23,9 +23,13 @@
     "test:scripts": "node scripts/scripts.test.mjs",
     "inspect:contract": "node scripts/repo-query.mjs contract",
     "diff:contract": "node scripts/repo-query.mjs contract-diff",
-    "check:code": "pnpm run check:vp && pnpm run check:go",
-    "check:vp": "vp fmt --check '**/*' '!**/.agents/skills/agent-browser/**' '!**/.agents/skills/apple-design/**' '!**/.agents/skills/domain-modeling/**' '!**/.agents/skills/emil-design-eng/**' '!**/.agents/skills/grill-with-docs/**' '!**/.agents/skills/grilling/**' '!**/.agents/skills/prototype/**' '!**/.agents/skills/review-animations/**' && vp check --no-fmt",
-    "check:go": "pnpm --filter @greypan/interweave exec go vet ./..."
+    "check:code": "pnpm run check:cspell && vp check && pnpm run check:go",
+    "check:go": "! gofmt -l . | grep -q . && find . -name go.mod -not -path \"*/node_modules/*\" -exec dirname {} \\; | sort -u | xargs -I{} sh -c \"cd {} && go vet ./...\"",
+    "check:stylelint": "pnpm exec stylelint --allow-empty-input \"**/*.{css,scss,less,html,vue}\"",
+    "check:cspell": "pnpm exec cspell --no-must-find-files \"**/*.{js,ts,jsx,tsx,mjs,cjs,html,vue,css,less,scss,go}\"",
+    "fix:go": "gofmt -w . && find . -name go.mod -not -path \"*/node_modules/*\" -exec dirname {} \\; | sort -u | xargs -I{} sh -c \"cd {} && go vet ./...\"",
+    "fix:stylelint": "pnpm exec stylelint --fix --allow-empty-input \"**/*.{css,scss,less,html,vue}\"",
+    "fix:code": "vp check --fix && pnpm run fix:go && pnpm run fix:stylelint"
   },
   "devDependencies": {
     "@changesets/cli": "catalog:",

@@ -2,11 +2,10 @@ import { defineConfig } from 'vite-plus'
 
 export default defineConfig({
   staged: {
-    '*.{js,ts,jsx,tsx,mjs,cjs,html,vue,css,less,scss}': 'cspell --no-must-find-files',
-    '*.{css,scss,less,vue}': 'stylelint --fix --allow-empty-input',
+    '*.{js,ts,jsx,tsx,mjs,cjs,html,vue,css,less,scss,go}': 'cspell --no-must-find-files',
+    '*.{css,scss,less,html,vue}': 'stylelint --fix --allow-empty-input',
     '*.go': 'gofmt -w',
-    // Formatting third-party skill sources would violate their upstream-content contract.
-    '*': 'vp check --fix --no-fmt'
+    '*': 'vp check --fix'
   },
   lint: {
     jsPlugins: [{ name: 'vite-plus', specifier: 'vite-plus/oxlint-plugin' }],
@@ -326,7 +325,8 @@ export default defineConfig({
       '**/routeTree.gen.ts',
       '**/auto-imports.d.ts',
       '**/typed-router.d.ts',
-      'apps/interweave/frontend/bindings/**'
+      'apps/interweave/frontend/bindings/**',
+      '**/.agents/skills/**' // third-party skill sources
     ],
     experimentalSortImports: {
       enabled: true,

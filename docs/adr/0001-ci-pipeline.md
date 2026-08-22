@@ -15,6 +15,6 @@
 
 ## 后果
 
-- CI 在测试之前统一运行 `check:code`（Vite Plus Web 格式/lint/类型检查与根 `check:go` 调用的 Interweave `go vet`）；提交 hook 的 `vp staged` 自动修复暂存文件，Go 格式未作为独立 CI 门禁
+- CI 在测试之前统一运行 `check:code`（`vp check` 执行格式化/lint/类型检查，`check:go` 自动发现 Go 模块并运行 `go vet`）；提交 hook 的 `vp staged` 自动修复暂存文件
 - npm 发布和桌面端 GitHub Release 在版本 PR 合并后是独立的、并行的发布平面
 - `changeset` 工作流要求使用约定式提交消息

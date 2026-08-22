@@ -12,7 +12,7 @@
 - **子路径导出软件包**（js-kit、browser-kit、web-ui）：`vp build`（Vite lib 模式 + preserveModules + vite-plugin-dts）→ `.js` + `.d.ts`
 - **React 应用**：`vp build`
 - **Vue 应用**：`vue-tsc --build && vp build`
-- **工作区验证**：`pnpm run check:code` 运行 Vite Plus Web 格式、lint、类型检查与根 `check:go` 调用的 Interweave Go 静态检查；提交 hook 自动修复暂存文件，Go 格式未作为独立 CI 门禁
+- **工作区验证**：`pnpm run check:code` 运行 `vp check`（格式化/lint/类型检查）与 `check:go`（自动发现 Go 模块并运行 `go vet`）；提交 hook 自动修复暂存文件
 
 ## 后果
 
