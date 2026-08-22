@@ -88,7 +88,7 @@ func (s *MapService) GetLocalMap(ctx context.Context, tagID string) (*LocalMap, 
 	}
 
 	// 仅展示能由当前资源归属解释的相邻主题。
-	coocNodes, err := s.mapQueries.CooccurringTags(ctx, s.db.SqlDB(), tagID)
+	cooccurringTags, err := s.mapQueries.CooccurringTags(ctx, s.db.SqlDB(), tagID)
 	if err != nil {
 		return nil, err
 	}
@@ -96,7 +96,7 @@ func (s *MapService) GetLocalMap(ctx context.Context, tagID string) (*LocalMap, 
 	result := &LocalMap{
 		FocusedTag:      focused,
 		Resources:       resList,
-		CooccurringTags: coocNodes,
+		CooccurringTags: cooccurringTags,
 	}
 	if result.CooccurringTags == nil {
 		result.CooccurringTags = []TagAggregate{}

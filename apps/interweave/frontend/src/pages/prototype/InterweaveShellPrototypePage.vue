@@ -368,9 +368,7 @@ function onResourceContextmenu(resource: Resource, event: MouseEvent) {
         placement="right"
         :closable="false"
         request-only
-        style="
-
---wui-drawer-width: 400px"
+        style="--wui-drawer-width: 400px"
         @open-change="drawerOpen = $event.detail.open"
       >
         <div class="grid gap-4">

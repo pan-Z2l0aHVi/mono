@@ -343,7 +343,7 @@ function onResourceContextmenu(resource: Resource, event: MouseEvent) {
       <div class="flex gap-3 items-center px-6 py-2.5 text-sm text-[#5b5b66]">
         <label class="flex items-center gap-1.5">
           来源
-          <web-ui-select :value="filterSource" @change="handleFilterSourceChange" style="width:128px">
+          <web-ui-select :value="filterSource" @change="handleFilterSourceChange" style="width: 128px">
             <web-ui-option value="all" label="全部">全部</web-ui-option>
             <web-ui-option value="local" label="本地文件">本地文件</web-ui-option>
             <web-ui-option value="link" label="链接">链接</web-ui-option>
@@ -351,7 +351,7 @@ function onResourceContextmenu(resource: Resource, event: MouseEvent) {
         </label>
         <label class="flex items-center gap-1.5">
           类型
-          <web-ui-select :value="filterType" @change="handleFilterTypeChange" style="width:128px">
+          <web-ui-select :value="filterType" @change="handleFilterTypeChange" style="width: 128px">
             <web-ui-option value="all" label="全部">全部</web-ui-option>
             <web-ui-option value="image" label="图片">图片</web-ui-option>
             <web-ui-option value="video" label="视频">视频</web-ui-option>
@@ -363,7 +363,7 @@ function onResourceContextmenu(resource: Resource, event: MouseEvent) {
         </label>
         <label class="flex items-center gap-1.5">
           状态
-          <web-ui-select :value="filterBroken" @change="handleFilterBrokenChange" style="width:128px">
+          <web-ui-select :value="filterBroken" @change="handleFilterBrokenChange" style="width: 128px">
             <web-ui-option value="all" label="全部">全部</web-ui-option>
             <web-ui-option value="valid" label="有效">有效</web-ui-option>
             <web-ui-option value="broken" label="已失效">已失效</web-ui-option>
@@ -505,9 +505,7 @@ function onResourceContextmenu(resource: Resource, event: MouseEvent) {
         placement="right"
         :closable="false"
         request-only
-        style="
-
---wui-drawer-width: 640px; max-width: 60%"
+        style="--wui-drawer-width: 640px; max-width: 60%"
         @open-change="drawerOpen = $event.detail.open"
       >
         <div class="grid gap-5">
@@ -533,16 +531,12 @@ function onResourceContextmenu(resource: Resource, event: MouseEvent) {
           <web-ui-button-group
             v-if="selectedResource"
             class="self-start"
-            style="
-
---wui-shadow-glass: 0 2px 16px rgb(0 0 0 / 0.06)"
+            style="--wui-shadow-glass: 0 2px 16px rgb(0 0 0 / 0.06)"
           >
             <web-ui-button>预览</web-ui-button>
             <web-ui-button>打开方式</web-ui-button>
             <web-ui-button v-show="selectedResource.broken">找回资源</web-ui-button>
-            <web-ui-button style="
-
---wui-button-color: #ef4444">删除</web-ui-button>
+            <web-ui-button style="--wui-button-color: #ef4444">删除</web-ui-button>
           </web-ui-button-group>
 
           <!-- Tags -->
@@ -557,7 +551,10 @@ function onResourceContextmenu(resource: Resource, event: MouseEvent) {
           </div>
 
           <!-- Metadata -->
-          <div v-if="selectedResource" class="meta-table grid gap-0 text-[13px] rounded-xl border border-black/5 overflow-hidden">
+          <div
+            v-if="selectedResource"
+            class="meta-table grid gap-0 text-[13px] rounded-xl border border-black/5 overflow-hidden"
+          >
             <div class="meta-row flex justify-between px-3.5 py-2.5">
               <span class="text-[#8a8a94]">来源</span>
               <span class="text-[#22212a]">{{ selectedResource.sourceType === 'local' ? '本地文件' : '链接' }}</span>
@@ -586,7 +583,10 @@ function onResourceContextmenu(resource: Resource, event: MouseEvent) {
               <span class="text-[#8a8a94]">创建时间</span>
               <span class="text-[#22212a] tabular-nums">{{ selectedResource.createdAt }}</span>
             </div>
-            <div v-if="selectedResource.modifiedAt" class="meta-row flex justify-between px-3.5 py-2.5 border-t border-black/5">
+            <div
+              v-if="selectedResource.modifiedAt"
+              class="meta-row flex justify-between px-3.5 py-2.5 border-t border-black/5"
+            >
               <span class="text-[#8a8a94]">修改时间</span>
               <span class="text-[#22212a] tabular-nums">{{ selectedResource.modifiedAt }}</span>
             </div>
