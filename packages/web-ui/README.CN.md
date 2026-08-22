@@ -288,10 +288,10 @@ ArrowUp/ArrowDown 键增减数值。空输入或 `-` 在提交时被忽略，值
 
 **CSS 自定义属性：**
 
-| 属性                       | 默认值   | 说明           |
-| -------------------------- | -------- | -------------- |
-| `--wui-select-max-width`   | `500px`  | 下拉框最大宽度 |
-| `--wui-overlay-min-width`  | `200px`  | 下拉框最小宽度 |
+| 属性                      | 默认值  | 说明           |
+| ------------------------- | ------- | -------------- |
+| `--wui-select-max-width`  | `500px` | 下拉框最大宽度 |
+| `--wui-overlay-min-width` | `200px` | 下拉框最小宽度 |
 
 #### `<web-ui-autocomplete>`
 
@@ -343,15 +343,15 @@ ArrowUp/ArrowDown 键增减数值。空输入或 `-` 在提交时被忽略，值
 
 **CSS 自定义属性：**
 
-| 属性                           | 默认值                    | 说明           |
-| ------------------------------ | ------------------------- | -------------- |
-| `--wui-slider-width`           | `200px`                   | 滑块宽度       |
-| `--wui-slider-vertical-height` | `200px`                   | 垂直滑块高度   |
-| `--wui-slider-height`          | `var(--wui-slider-track-size, 6px)` | 轨道厚度 |
-| `--wui-slider-track-size`      | `6px`                     | 轨道尺寸       |
-| `--wui-slider-thumb-width`     | `24px`                    | 滑块短轴       |
-| `--wui-slider-thumb-height`    | `32px`                    | 滑块长轴       |
-| `--wui-slider-marks-inset`     | `0`                       | 刻度内缩       |
+| 属性                           | 默认值                              | 说明         |
+| ------------------------------ | ----------------------------------- | ------------ |
+| `--wui-slider-width`           | `200px`                             | 滑块宽度     |
+| `--wui-slider-vertical-height` | `200px`                             | 垂直滑块高度 |
+| `--wui-slider-height`          | `var(--wui-slider-track-size, 6px)` | 轨道厚度     |
+| `--wui-slider-track-size`      | `6px`                               | 轨道尺寸     |
+| `--wui-slider-thumb-width`     | `24px`                              | 滑块短轴     |
+| `--wui-slider-thumb-height`    | `32px`                              | 滑块长轴     |
+| `--wui-slider-marks-inset`     | `0`                                 | 刻度内缩     |
 
 #### `<web-ui-checkbox>`
 
@@ -486,14 +486,14 @@ ArrowUp/ArrowDown 键增减数值。空输入或 `-` 在提交时被忽略，值
 
 **CSS 自定义属性：**
 
-| 属性                  | 默认值         | 说明                           |
-| --------------------- | -------------- | ------------------------------ |
-| `--wui-button-px`     | `12px`         | 水平内边距                     |
-| `--wui-button-gap`    | `8px`          | 前缀/默认/后缀插槽间距         |
-| `--wui-button-color`  | 随 variant     | 按钮文字颜色                   |
-| `--wui-button-bg`     | 随 variant     | 按钮背景颜色                   |
-| `--wui-button-bg-hover` | 随 variant   | 悬停背景颜色                   |
-| `--wui-button-bg-active` | 随 variant  | 按下背景颜色                   |
+| 属性                     | 默认值     | 说明                   |
+| ------------------------ | ---------- | ---------------------- |
+| `--wui-button-px`        | `12px`     | 水平内边距             |
+| `--wui-button-gap`       | `8px`      | 前缀/默认/后缀插槽间距 |
+| `--wui-button-color`     | 随 variant | 按钮文字颜色           |
+| `--wui-button-bg`        | 随 variant | 按钮背景颜色           |
+| `--wui-button-bg-hover`  | 随 variant | 悬停背景颜色           |
+| `--wui-button-bg-active` | 随 variant | 按下背景颜色           |
 
 #### `<web-ui-button-group>`
 
@@ -532,10 +532,10 @@ ArrowUp/ArrowDown 键增减数值。空输入或 `-` 在提交时被忽略，值
 
 **CSS 自定义属性：**
 
-| 属性                        | 默认值                          | 说明         |
-| --------------------------- | ------------------------------- | ------------ |
-| `--wui-dialog-max-width`    | `360px`                         | 对话框最大宽度 |
-| `--wui-dialog-overlay-bg`   | `var(--wui-color-backdrop)`     | 遮罩背景色   |
+| 属性                      | 默认值                      | 说明           |
+| ------------------------- | --------------------------- | -------------- |
+| `--wui-dialog-max-width`  | `360px`                     | 对话框最大宽度 |
+| `--wui-dialog-overlay-bg` | `var(--wui-color-backdrop)` | 遮罩背景色     |
 
 #### `<web-ui-drawer>`
 
@@ -565,12 +565,12 @@ ArrowUp/ArrowDown 键增减数值。空输入或 `-` 在提交时被忽略，值
 
 **CSS 自定义属性：**
 
-| 属性                        | 默认值                              | 说明         |
-| --------------------------- | ----------------------------------- | ------------ |
-| `--wui-drawer-width`        | `320px`                             | 抽屉宽度     |
-| `--wui-drawer-height`       | `300px`                             | 抽屉高度（上/下） |
-| `--wui-drawer-bg`           | `var(--wui-color-surface-overlay)`  | 抽屉背景色   |
-| `--wui-drawer-overlay-bg`   | `rgb(0 0 0 / 0.12)`                | 遮罩背景色   |
+| 属性                      | 默认值                             | 说明              |
+| ------------------------- | ---------------------------------- | ----------------- |
+| `--wui-drawer-width`      | `320px`                            | 抽屉宽度          |
+| `--wui-drawer-height`     | `300px`                            | 抽屉高度（上/下） |
+| `--wui-drawer-bg`         | `var(--wui-color-surface-overlay)` | 抽屉背景色        |
+| `--wui-drawer-overlay-bg` | `rgb(0 0 0 / 0.12)`                | 遮罩背景色        |
 
 ---
 
@@ -622,10 +622,10 @@ Hover 模式使用 `pointerenter`/`pointerleave` 加延迟控制。Click 模式�
 
 **CSS 自定义属性：**
 
-| 属性                       | 默认值   | 说明         |
-| -------------------------- | -------- | ------------ |
-| `--wui-tooltip-max-width`  | `240px`  | 提示最大宽度 |
-| `--wui-tooltip-font-size`  | `13px`   | 提示字号     |
+| 属性                      | 默认值  | 说明         |
+| ------------------------- | ------- | ------------ |
+| `--wui-tooltip-max-width` | `240px` | 提示最大宽度 |
+| `--wui-tooltip-font-size` | `13px`  | 提示字号     |
 
 #### `<web-ui-context-menu>`
 
@@ -741,14 +741,14 @@ Hover 模式使用 `pointerenter`/`pointerleave` 加延迟控制。Click 模式�
 
 **CSS 自定义属性：**
 
-| 属性                                | 默认值       | 说明               |
-| ----------------------------------- | ------------ | ------------------ |
-| `--wui-empty-min-height`            | `240px`      | 最小高度（medium） |
-| `--wui-empty-padding`               | `32px 24px`  | 内边距（medium）   |
-| `--wui-empty-icon-size`             | `56px`       | 图标容器尺寸       |
-| `--wui-empty-content-width`         | `480px`      | 标题/描述最大宽度  |
-| `--wui-empty-title-font-size`       | `16px`       | 标题字号（medium） |
-| `--wui-empty-description-font-size` | `14px`       | 描述字号（medium） |
+| 属性                                | 默认值      | 说明               |
+| ----------------------------------- | ----------- | ------------------ |
+| `--wui-empty-min-height`            | `240px`     | 最小高度（medium） |
+| `--wui-empty-padding`               | `32px 24px` | 内边距（medium）   |
+| `--wui-empty-icon-size`             | `56px`      | 图标容器尺寸       |
+| `--wui-empty-content-width`         | `480px`     | 标题/描述最大宽度  |
+| `--wui-empty-title-font-size`       | `16px`      | 标题字号（medium） |
+| `--wui-empty-description-font-size` | `14px`      | 描述字号（medium） |
 
 #### `<web-ui-icon>`
 
@@ -770,9 +770,9 @@ html`<web-ui-icon .icon=${lucideLoaderCircle} spin />`
 
 **CSS 自定义属性：**
 
-| 属性               | 默认值   | 说明     |
-| ------------------ | -------- | -------- |
-| `--wui-icon-color` | `inherit`| 图标颜色 |
+| 属性               | 默认值    | 说明     |
+| ------------------ | --------- | -------- |
+| `--wui-icon-color` | `inherit` | 图标颜色 |
 
 #### `<web-ui-spinner>`
 
@@ -834,9 +834,9 @@ WebUiSpinner.hide() // 隐藏
 
 **CSS 自定义属性：**
 
-| 属性                          | 默认值  | 说明                                |
-| ----------------------------- | ------- | ----------------------------------- |
-| `--wui-layout-sidebar-radius` | `28px`  | 侧边栏卡片圆角（桌面端和移动端共用）|
+| 属性                          | 默认值 | 说明                                 |
+| ----------------------------- | ------ | ------------------------------------ |
+| `--wui-layout-sidebar-radius` | `28px` | 侧边栏卡片圆角（桌面端和移动端共用） |
 
 #### `<web-ui-back-top>`
 
@@ -859,14 +859,14 @@ WebUiSpinner.hide() // 隐藏
 
 **CSS 自定义属性：**
 
-| 属性                            | 默认值                          | 说明       |
-| ------------------------------- | ------------------------------- | ---------- |
-| `--web-ui-back-top-position`    | `fixed`                         | CSS 定位   |
-| `--web-ui-back-top-z-index`     | `var(--wui-layer-auxiliary, 20)`| 层级       |
-| `--web-ui-back-top-top`         | `auto`                          | 上偏移     |
-| `--web-ui-back-top-right`       | `20px`                          | 右偏移     |
-| `--web-ui-back-top-bottom`      | `20px`                          | 下偏移     |
-| `--web-ui-back-top-left`        | `auto`                          | 左偏移     |
+| 属性                         | 默认值                           | 说明     |
+| ---------------------------- | -------------------------------- | -------- |
+| `--web-ui-back-top-position` | `fixed`                          | CSS 定位 |
+| `--web-ui-back-top-z-index`  | `var(--wui-layer-auxiliary, 20)` | 层级     |
+| `--web-ui-back-top-top`      | `auto`                           | 上偏移   |
+| `--web-ui-back-top-right`    | `20px`                           | 右偏移   |
+| `--web-ui-back-top-bottom`   | `20px`                           | 下偏移   |
+| `--web-ui-back-top-left`     | `auto`                           | 左偏移   |
 
 #### `<web-ui-svg-draw-lines>`
 
@@ -985,6 +985,6 @@ toast.updateMessage(id, { message: '上传已完成 60%', heading: '正在上传
 
 **CSS 自定义属性：**
 
-| 属性                             | 默认值  | 说明       |
-| -------------------------------- | ------- | ---------- |
-| `--wui-segmented-trigger-px`     | `12px`  | 水平内边距 |
+| 属性                         | 默认值 | 说明       |
+| ---------------------------- | ------ | ---------- |
+| `--wui-segmented-trigger-px` | `12px` | 水平内边距 |

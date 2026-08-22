@@ -295,10 +295,10 @@ Child `<web-ui-option>` elements register via `option-register` / `option-unregi
 
 **CSS Custom Properties:**
 
-| Property                   | Default    | Description              |
-| -------------------------- | ---------- | ------------------------ |
-| `--wui-select-max-width`   | `500px`    | Dropdown max width       |
-| `--wui-overlay-min-width`  | `200px`    | Dropdown min width       |
+| Property                  | Default | Description        |
+| ------------------------- | ------- | ------------------ |
+| `--wui-select-max-width`  | `500px` | Dropdown max width |
+| `--wui-overlay-min-width` | `200px` | Dropdown min width |
 
 #### `<web-ui-autocomplete>`
 
@@ -350,15 +350,15 @@ Supports ArrowLeft/Right/Up/Down, Home/End, PageUp/PageDown keyboard navigation.
 
 **CSS Custom Properties:**
 
-| Property                      | Default               | Description               |
-| ----------------------------- | --------------------- | ------------------------- |
-| `--wui-slider-width`          | `200px`               | Slider width              |
-| `--wui-slider-vertical-height`| `200px`               | Vertical slider height    |
-| `--wui-slider-height`         | `var(--wui-slider-track-size, 6px)` | Track thickness |
-| `--wui-slider-track-size`     | `6px`                 | Track size                |
-| `--wui-slider-thumb-width`    | `24px`                | Thumb short axis          |
-| `--wui-slider-thumb-height`   | `32px`                | Thumb long axis           |
-| `--wui-slider-marks-inset`    | `0`                   | Marks inset from edges    |
+| Property                       | Default                             | Description            |
+| ------------------------------ | ----------------------------------- | ---------------------- |
+| `--wui-slider-width`           | `200px`                             | Slider width           |
+| `--wui-slider-vertical-height` | `200px`                             | Vertical slider height |
+| `--wui-slider-height`          | `var(--wui-slider-track-size, 6px)` | Track thickness        |
+| `--wui-slider-track-size`      | `6px`                               | Track size             |
+| `--wui-slider-thumb-width`     | `24px`                              | Thumb short axis       |
+| `--wui-slider-thumb-height`    | `32px`                              | Thumb long axis        |
+| `--wui-slider-marks-inset`     | `0`                                 | Marks inset from edges |
 
 #### `<web-ui-checkbox>`
 
@@ -496,14 +496,14 @@ Disabled and loading states prevent `click` events.
 
 **CSS Custom Properties:**
 
-| Property              | Default        | Description                              |
-| --------------------- | -------------- | ---------------------------------------- |
-| `--wui-button-px`     | `12px`         | Horizontal padding                       |
-| `--wui-button-gap`    | `8px`          | Gap between prefix/default/suffix slots  |
-| `--wui-button-color`  | variant-based  | Button text color                        |
-| `--wui-button-bg`     | variant-based  | Button background color                  |
-| `--wui-button-bg-hover` | variant-based | Button hover background                 |
-| `--wui-button-bg-active` | variant-based | Button active background               |
+| Property                 | Default       | Description                             |
+| ------------------------ | ------------- | --------------------------------------- |
+| `--wui-button-px`        | `12px`        | Horizontal padding                      |
+| `--wui-button-gap`       | `8px`         | Gap between prefix/default/suffix slots |
+| `--wui-button-color`     | variant-based | Button text color                       |
+| `--wui-button-bg`        | variant-based | Button background color                 |
+| `--wui-button-bg-hover`  | variant-based | Button hover background                 |
+| `--wui-button-bg-active` | variant-based | Button active background                |
 
 #### `<web-ui-button-group>`
 
@@ -542,10 +542,10 @@ Uses native `<dialog>` with `@cancel` prevention. Escape calls `close()` unless 
 
 **CSS Custom Properties:**
 
-| Property                    | Default                          | Description                |
-| --------------------------- | -------------------------------- | -------------------------- |
-| `--wui-dialog-max-width`    | `360px`                          | Dialog max width           |
-| `--wui-dialog-overlay-bg`   | `var(--wui-color-backdrop)`      | Backdrop background        |
+| Property                  | Default                     | Description         |
+| ------------------------- | --------------------------- | ------------------- |
+| `--wui-dialog-max-width`  | `360px`                     | Dialog max width    |
+| `--wui-dialog-overlay-bg` | `var(--wui-color-backdrop)` | Backdrop background |
 
 #### `<web-ui-drawer>`
 
@@ -575,12 +575,12 @@ Closing keeps the native dialog in the top layer until the `--wui-duration-drawe
 
 **CSS Custom Properties:**
 
-| Property                    | Default                              | Description                |
-| --------------------------- | ------------------------------------ | -------------------------- |
-| `--wui-drawer-width`        | `320px`                              | Drawer width               |
-| `--wui-drawer-height`       | `300px`                              | Drawer height (top/bottom) |
-| `--wui-drawer-bg`           | `var(--wui-color-surface-overlay)`   | Drawer body background     |
-| `--wui-drawer-overlay-bg`   | `rgb(0 0 0 / 0.12)`                 | Backdrop background        |
+| Property                  | Default                            | Description                |
+| ------------------------- | ---------------------------------- | -------------------------- |
+| `--wui-drawer-width`      | `320px`                            | Drawer width               |
+| `--wui-drawer-height`     | `300px`                            | Drawer height (top/bottom) |
+| `--wui-drawer-bg`         | `var(--wui-color-surface-overlay)` | Drawer body background     |
+| `--wui-drawer-overlay-bg` | `rgb(0 0 0 / 0.12)`                | Backdrop background        |
 
 ---
 
@@ -632,10 +632,10 @@ Tooltip overlay using pointer/focus triggers.
 
 **CSS Custom Properties:**
 
-| Property                   | Default  | Description        |
-| -------------------------- | -------- | ------------------ |
-| `--wui-tooltip-max-width`  | `240px`  | Tooltip max width  |
-| `--wui-tooltip-font-size`  | `13px`   | Tooltip font size  |
+| Property                  | Default | Description       |
+| ------------------------- | ------- | ----------------- |
+| `--wui-tooltip-max-width` | `240px` | Tooltip max width |
+| `--wui-tooltip-font-size` | `13px`  | Tooltip font size |
 
 #### `<web-ui-context-menu>`
 
@@ -751,14 +751,14 @@ Empty state placeholder.
 
 **CSS Custom Properties:**
 
-| Property                           | Default      | Description                     |
-| ---------------------------------- | ------------ | ------------------------------- |
-| `--wui-empty-min-height`           | `240px`      | Min height (medium)             |
-| `--wui-empty-padding`              | `32px 24px`  | Padding (medium)                |
-| `--wui-empty-icon-size`            | `56px`       | Icon container size (medium)    |
-| `--wui-empty-content-width`        | `480px`      | Max width of title/description  |
-| `--wui-empty-title-font-size`      | `16px`       | Title font size (medium)        |
-| `--wui-empty-description-font-size`| `14px`       | Description font size (medium)  |
+| Property                            | Default     | Description                    |
+| ----------------------------------- | ----------- | ------------------------------ |
+| `--wui-empty-min-height`            | `240px`     | Min height (medium)            |
+| `--wui-empty-padding`               | `32px 24px` | Padding (medium)               |
+| `--wui-empty-icon-size`             | `56px`      | Icon container size (medium)   |
+| `--wui-empty-content-width`         | `480px`     | Max width of title/description |
+| `--wui-empty-title-font-size`       | `16px`      | Title font size (medium)       |
+| `--wui-empty-description-font-size` | `14px`      | Description font size (medium) |
 
 #### `<web-ui-icon>`
 
@@ -780,9 +780,9 @@ html`<web-ui-icon .icon=${lucideLoaderCircle} spin />`
 
 **CSS Custom Properties:**
 
-| Property           | Default  | Description  |
-| ------------------ | -------- | ------------ |
-| `--wui-icon-color` | `inherit`| Icon color   |
+| Property           | Default   | Description |
+| ------------------ | --------- | ----------- |
+| `--wui-icon-color` | `inherit` | Icon color  |
 
 #### `<web-ui-spinner>`
 
@@ -844,8 +844,8 @@ At `640px` and below, the sidebar becomes a headless `web-ui-drawer`. The consum
 
 **CSS Custom Properties:**
 
-| Property                      | Default | Description                                |
-| ----------------------------- | ------- | ------------------------------------------ |
+| Property                      | Default | Description                                      |
+| ----------------------------- | ------- | ------------------------------------------------ |
 | `--wui-layout-sidebar-radius` | `28px`  | Border radius of sidebar card (desktop & mobile) |
 
 #### `<web-ui-back-top>`
@@ -869,14 +869,14 @@ Role: `button`, keyboard Enter scrolls to top.
 
 **CSS Custom Properties:**
 
-| Property                       | Default                         | Description                  |
-| ------------------------------ | ------------------------------- | ---------------------------- |
-| `--web-ui-back-top-position`   | `fixed`                         | CSS position                 |
-| `--web-ui-back-top-z-index`    | `var(--wui-layer-auxiliary, 20)`| Z-index                      |
-| `--web-ui-back-top-top`        | `auto`                          | Top offset                   |
-| `--web-ui-back-top-right`      | `20px`                          | Right offset                 |
-| `--web-ui-back-top-bottom`     | `20px`                          | Bottom offset                |
-| `--web-ui-back-top-left`       | `auto`                          | Left offset                  |
+| Property                     | Default                          | Description   |
+| ---------------------------- | -------------------------------- | ------------- |
+| `--web-ui-back-top-position` | `fixed`                          | CSS position  |
+| `--web-ui-back-top-z-index`  | `var(--wui-layer-auxiliary, 20)` | Z-index       |
+| `--web-ui-back-top-top`      | `auto`                           | Top offset    |
+| `--web-ui-back-top-right`    | `20px`                           | Right offset  |
+| `--web-ui-back-top-bottom`   | `20px`                           | Bottom offset |
+| `--web-ui-back-top-left`     | `auto`                           | Left offset   |
 
 #### `<web-ui-svg-draw-lines>`
 
@@ -995,6 +995,6 @@ Not form-associated (child of segmented, not independent submit).
 
 **CSS Custom Properties:**
 
-| Property                        | Default | Description          |
-| ------------------------------- | ------- | -------------------- |
-| `--wui-segmented-trigger-px`    | `12px`  | Horizontal padding   |
+| Property                     | Default | Description        |
+| ---------------------------- | ------- | ------------------ |
+| `--wui-segmented-trigger-px` | `12px`  | Horizontal padding |

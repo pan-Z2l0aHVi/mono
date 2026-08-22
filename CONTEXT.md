@@ -122,7 +122,7 @@ interweave（含 interweave-frontend）──共享包的 Wails 桌面集成表�
 | [0029](docs/adr/0029-interweave-map-local-exploration-boundary.md)     | Interweave Map 局部探索操作边界              | 修改 interweave Map 交互边界或探索操作模型                       |
 | [0030](docs/adr/0030-interweave-sqlite-persistence-wal.md)             | Interweave 本地 SQLite 持久化与 WAL 并发模型 | 修改 interweave SQLite 配置、并发或持久化基础设施                |
 | [0031](docs/adr/0031-layout-sidebar-collapse.md)                       | Layout 页面结构、Banner 与可折叠 Sidebar     | 修改 `web-ui-layout` 的页面结构、Sidebar、Banner 或移动端 Drawer |
-| [0032](docs/adr/0032-interweave-library-core-layer.md)                    | Interweave library 分层与 core 产品规则层    | 修改 interweave library 分层、Wails 外观或产品规则归属           |
+| [0032](docs/adr/0032-interweave-library-core-layer.md)                 | Interweave library 分层与 core 产品规则层    | 修改 interweave library 分层、Wails 外观或产品规则归属           |
 
 ## Interweave 产品与领域词汇
 

@@ -15,14 +15,14 @@
 官方明确推荐 Vue 使用 Hash Mode：
 
 ```javascript
-import { createRouter, createWebHashHistory } from "vue-router";
+import { createRouter, createWebHashHistory } from 'vue-router'
 
 const router = createRouter({
   history: createWebHashHistory(),
   routes: [
     //...
-  ],
-});
+  ]
+})
 ```
 
 **来源**: https://v3.wails.io/guides/routing
@@ -32,6 +32,7 @@ const router = createRouter({
 官方解释：
 
 > **Hash-based routing (#/page instead of /page) avoids conflicts with:**
+>
 > - The Wails runtime's internal routing
 > - Native window URL handling on different platforms
 > - Production assets served from non-root paths
@@ -75,14 +76,14 @@ Browser → AssetServer → Embedded FS (go:embed)
 
 ### Hash 路由 vs History 路由对比
 
-| 特性 | Hash 路由 | History 路由 |
-|------|-----------|--------------|
-| 官方推荐 | ✅ **官方推荐** | ❌ 不推荐 |
-| URL 美观度 | ⭐⭐ `/#/tags` | ⭐⭐⭐⭐ `/tags` |
-| 跨平台兼容性 | ✅ 无需配置 | ⚠️ 需要测试 |
-| Wails 运行时干扰 | ✅ 无 | ⚠️ 可能有 |
-| 生产构建兼容性 | ✅ 无需配置 | ⚠️ 需要测试 |
-| 桌面应用适用性 | ✅ 完美 | ✅ 可用但需额外工作 |
+| 特性             | Hash 路由       | History 路由        |
+| ---------------- | --------------- | ------------------- |
+| 官方推荐         | ✅ **官方推荐** | ❌ 不推荐           |
+| URL 美观度       | ⭐⭐ `/#/tags`  | ⭐⭐⭐⭐ `/tags`    |
+| 跨平台兼容性     | ✅ 无需配置     | ⚠️ 需要测试         |
+| Wails 运行时干扰 | ✅ 无           | ⚠️ 可能有           |
+| 生产构建兼容性   | ✅ 无需配置     | ⚠️ 需要测试         |
+| 桌面应用适用性   | ✅ 完美         | ✅ 可用但需额外工作 |
 
 ---
 
@@ -110,6 +111,7 @@ Browser → AssetServer → Embedded FS (go:embed)
 ### 短期（当前阶段）
 
 **保持 hash 路由。** 理由：
+
 - 这是 Wails 3 官方推荐的最佳实践
 - 避免引入不必要的复杂性
 - 桌面应用的 URL 美观度不是优先级
@@ -119,6 +121,7 @@ Browser → AssetServer → Embedded FS (go:embed)
 虽然官方不推荐，但如果确实需要，需要：
 
 1. 修改 `router.ts`：
+
    ```typescript
    import { createRouter, createWebHistory } from 'vue-router'
    export const router = createRouter({
@@ -128,9 +131,10 @@ Browser → AssetServer → Embedded FS (go:embed)
    ```
 
 2. 修改 Vite 配置（`vite.config.ts`）：
+
    ```typescript
    export default defineConfig({
-     base: "./", // 确保相对路径
+     base: './' // 确保相对路径
      // ...
    })
    ```
