@@ -1,63 +1,66 @@
 package main
 
 import (
-	"context"
 	"embed"
 	"log"
+	"os"
+	"path/filepath"
 
-	"github.com/adrg/xdg"
-	"github.com/pan-Z2l0aHVi/mono/apps/interweave/backend"
 	"github.com/wailsapp/wails/v3/pkg/application"
+
+	coreLibrary "github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/core"
+	libraryService "github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/service"
+	"github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage"
+	nativeService "github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/native/service"
+	"github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/remote"
 )
 
-// Wails 使用 Go 的 embed 将前端产物嵌入二进制。
-// 任何 frontend/dist 下的文件都会被嵌入。
+// 将前端产物随桌面应用交付，避免运行时依赖外部开发服务器。
 
 //go:embed all:frontend/dist
 var assets embed.FS
 
-func main() {
-	ctx := context.Background()
-
-	db, err := backend.OpenStore()
+func getDatabasePath() string {
+	configDir, err := os.UserConfigDir()
 	if err != nil {
-		log.Fatalf("初始化数据库: %v", err)
+		configDir = "."
 	}
-	defer func() { _ = db.Close() }()
+	appDir := filepath.Join(configDir, "interweave")
+	_ = os.MkdirAll(appDir, 0755)
+	return filepath.Join(appDir, "library.db")
+}
 
-	// 事件推送：服务通过 application.Get() 惰性获取 app 实例（测试时为空则忽略）。
-	emit := func(name string, data any) {
-		if app := application.Get(); app != nil {
-			app.Event.Emit(name, data)
-		}
+func main() {
+	dbPath := getDatabasePath()
+	db, err := storage.Open(dbPath)
+	if err != nil {
+		log.Fatalf("failed to open database at %s: %v", dbPath, err)
 	}
+	defer db.Close()
 
-	itemSvc := backend.NewItemService(db, emit)
-	tagSvc := backend.NewTagService(db, emit)
-	repairSvc := backend.NewRepairService(db, emit)
-	indexSvc := backend.NewIndexService(db, itemSvc, repairSvc, emit)
-	watchSvc := backend.NewWatchService(db, itemSvc, repairSvc, emit)
-	mcpMgr := backend.NewMcpManager(db, itemSvc, tagSvc, repairSvc, indexSvc)
-	settingsSvc := backend.NewSettingsService(db, mcpMgr)
+	fetcher := remote.NewFetcher()
 
-	if libPath, err := xdg.DataFile("interweave"); err == nil && libPath != "" {
-		_ = settingsSvc.SetLibraryPath(ctx, libPath)
-	}
-	if err := mcpMgr.Start(ctx); err != nil {
-		log.Fatalf("启动本地服务: %v", err)
-	}
-	defer mcpMgr.Stop()
+	coreResourceService := coreLibrary.NewResourceService(db, fetcher)
+	coreSourceService := coreLibrary.NewSourceService(db, fetcher)
+	coreTagService := coreLibrary.NewTagService(db)
+	coreMapService := coreLibrary.NewMapService(db, coreResourceService)
 
+	resourceService := libraryService.NewResourceService(coreResourceService)
+	sourceService := libraryService.NewSourceService(coreSourceService)
+	tagService := libraryService.NewTagService(coreTagService)
+	mapService := libraryService.NewMapService(coreMapService)
+	osService := nativeService.NewOSService()
+
+	// 仅暴露产品与受控原生能力，避免基础设施绕过后端边界。
 	app := application.New(application.Options{
 		Name:        "Interweave",
-		Description: "Interweave 素材中心化管理",
+		Description: "Interweave desktop application",
 		Services: []application.Service{
-			application.NewService(itemSvc),
-			application.NewService(tagSvc),
-			application.NewService(repairSvc),
-			application.NewService(indexSvc),
-			application.NewService(watchSvc),
-			application.NewService(settingsSvc),
+			application.NewService(resourceService),
+			application.NewService(sourceService),
+			application.NewService(tagService),
+			application.NewService(mapService),
+			application.NewService(osService),
 		},
 		Assets: application.AssetOptions{
 			Handler: application.AssetFileServerFS(assets),
@@ -79,18 +82,6 @@ func main() {
 		BackgroundColour: application.NewRGB(6, 7, 15),
 		URL:              "/",
 	})
-
-	// 后台监听 + 启动全量扫描（可在设置中关闭）
-	if err := watchSvc.Start(ctx); err != nil {
-		log.Printf("启动文件监听失败: %v", err)
-	}
-	defer watchSvc.Stop()
-
-	if v, _ := backend.GetSetting(db, "rescan_on_start"); v != "0" {
-		if _, err := indexSvc.Rescan(ctx); err != nil {
-			log.Printf("启动扫描失败: %v", err)
-		}
-	}
 
 	if err := app.Run(); err != nil {
 		log.Fatal(err)

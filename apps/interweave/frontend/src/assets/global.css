@@ -1,5 +1,13 @@
 @import 'tailwindcss';
 
+html,
+body,
+#app,
+web-ui-theme,
+main {
+  min-height: 100%;
+}
+
 :not(:defined) {
   display: none;
 }

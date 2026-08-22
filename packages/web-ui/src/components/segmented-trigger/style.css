@@ -27,7 +27,7 @@
   justify-content: center;
 
   height: 34px;
-  padding: 0 16px;
+  padding: 0 var(--wui-segmented-trigger-px, 12px);
   border-radius: calc(infinity * 1px);
 
   font-size: var(--wui-font-size, 14px);

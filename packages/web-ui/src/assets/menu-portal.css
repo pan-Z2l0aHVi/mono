@@ -1,5 +1,5 @@
 .wui-menu-portal-overlay {
-  --wui-glass-shadow: var(--wui-shadow-pop, 0 3px 9px rgb(0 0 0 / 0.27));
+  --wui-shadow-glass: var(--wui-shadow-pop, 0 3px 9px rgb(0 0 0 / 0.27));
   --wui-duration-overlay-enter: var(--wui-duration-menu-enter, 140ms);
   --wui-duration-overlay-exit: var(--wui-duration-menu-exit, 100ms);
   --wui-overlay-min-width: 200px;
@@ -35,11 +35,11 @@
     }
 
     &[data-level]:not([data-level='0']) {
-      z-index: var(--wui-layer-menu-submenu, 110);
+      z-index: var(--wui-layer-menu-nested, 110);
     }
   }
 
   &.context-submenu {
-    z-index: var(--wui-layer-menu-submenu, 110);
+    z-index: var(--wui-layer-menu-nested, 110);
   }
 }

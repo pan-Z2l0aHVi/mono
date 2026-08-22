@@ -2,8 +2,9 @@ import { defineConfig } from 'vite-plus'
 
 export default defineConfig({
   staged: {
-    '*.{js,ts,jsx,tsx,mjs,cjs,html,vue,css,less,scss}': 'cspell',
-    '*.{css,scss,less,vue}': 'stylelint --fix',
+    '*.{js,ts,jsx,tsx,mjs,cjs,html,vue,css,less,scss,go}': 'cspell --no-must-find-files',
+    '*.{css,scss,less,html,vue}': 'stylelint --fix --allow-empty-input',
+    '*.go': 'gofmt -w',
     '*': 'vp check --fix'
   },
   lint: {
@@ -65,7 +66,6 @@ export default defineConfig({
           '@typescript-eslint/no-wrapper-object-types': 'error',
           '@typescript-eslint/prefer-as-const': 'error',
           '@typescript-eslint/prefer-namespace-keyword': 'error'
-          // '@typescript-eslint/triple-slash-reference': 'error'
         }
       },
       {
@@ -325,7 +325,8 @@ export default defineConfig({
       '**/routeTree.gen.ts',
       '**/auto-imports.d.ts',
       '**/typed-router.d.ts',
-      'apps/interweave/frontend/bindings/**'
+      'apps/interweave/frontend/bindings/**',
+      '**/.agents/skills/**' // third-party skill sources
     ],
     experimentalSortImports: {
       enabled: true,

@@ -31,6 +31,29 @@ import '@greypan/web-ui'
 
 ## 框架集成
 
+### 跨框架 API 约定
+
+`web-ui-*` 元素暴露三面 API，**DOM / JavaScript API 是事实来源**：Property 使用 camelCase，Attribute 使用
+kebab-case，Event 使用 kebab-case。
+
+| 表面      | 命名       | 示例                                          |
+| --------- | ---------- | --------------------------------------------- |
+| Property  | camelCase  | `open`、`sidebarCollapsed`、`noScrollLock`    |
+| Attribute | kebab-case | `open`、`sidebar-collapsed`、`no-scroll-lock` |
+| Event     | kebab-case | `open-change`、`sidebar-collapsed-change`     |
+
+- **布尔 Attribute** 遵循原生 HTML 存在语义：不存在 → `false`，存在 → `true`。框架绑定写入的
+  `disabled="false"` 是字符串 `"false"`，会被视为 true——**动态布尔必须绑定 Property**（camelCase），
+  才能把 `false` 写成真实 property。
+- **Vue**：动态绑定必须走 **Property**，使用 camelCase 属性名（`:sidebarCollapsed="x"`、`:open="x"`）。
+  kebab-case 绑定（`:sidebar-collapsed="x"`）会被写成字符串 attribute，无法表达 `false`，请使用 camelCase
+  property。`.prop` 修饰符只在 camelCase 属性名下有效（`:sidebarCollapsed.prop="x"`）。String/Number 值可
+  保留 kebab-case attribute（`:max-height="120"`）。带值控件（`web-ui-input`、`web-ui-select`、
+  `web-ui-autocomplete` 等）支持 `v-model`，编译为元素的 `value` property + `input` 事件。
+- **React**：React 19 对 custom element 的 props 直接写 DOM property，因此使用 camelCase props
+  （`open={open}`、`noScrollLock`、`value={value}`）。**不要把复杂数据（对象、数组）放进 attribute 字符串**，
+  一律绑定为 property。kebab-case JSX prop 在 custom element 上会写成 attribute。
+
 ### React
 
 需要 `@types/react >= 19` 作为可选 peer 依赖。
@@ -127,6 +150,20 @@ import '@greypan/web-ui/types/vue'
 </template>
 ```
 
+Boolean 属性必须用 **camelCase 属性名**绑定，而不是 kebab-case attribute。Vue 会把 attribute 绑定写成字符串，
+而布尔 attribute 遵循「存在即 true」的语义——所以 `:sidebar-collapsed="false"` 会写出字符串 `"false"`，被当作 true。
+改用 camelCase 属性名（`:sidebarCollapsed="false"`，或 `.prop` 修饰符）会让 Vue 直接写 DOM property：
+
+```vue
+<web-ui-layout
+  header-glow
+  :sidebarCollapsed="sidebarCollapsed"
+  :sidebarOpen="sidebarOpen"
+  @sidebar-collapsed-change="sidebarCollapsed = $event.detail.collapsed"
+  @sidebar-open-change="sidebarOpen = $event.detail.open"
+/>
+```
+
 Vue 事件类型零 cast：带值组件上的 `@input`/`@change` 解析到组件 emit，`$event.target` 即为组件实例，
 `value`/`checked` 直接读取；kebab-case 事件（如 `open-change`）的 `$event.detail` 保持 `CustomEvent` 载荷类型。
 命名 handler 用 `WebUiEvent<WebUiXxx, 'change'>` 标注；当变量或泛型表示事件名时，使用
@@ -142,6 +179,10 @@ Vue 事件类型零 cast：带值组件上的 `@input`/`@change` 解析到组件
 ARIA 属性同样必须显式支持：使用组件文档化的命名属性，而不是通配 `aria-*` 透传。组件拥有自己的 role 和交互状态。
 `click`、`input`、`change` 等浏览器 composed 原生事件仍是主要交互 API。`open-change` 等 kebab-case 自定义事件
 仅描述用户操作导致的组件状态变化；程序化赋值 property 不会触发它们。
+
+### 表单关联控件
+
+所有表单控件均参与原生 `FormData`、约束校验、`form.reset()` 和浏览器表单状态恢复。控件会在**首次连接且声明式属性完成初始化后**捕获一次重置默认值；之后的运行时 property 更新不会改写该默认值。祖先 `fieldset` 的禁用状态会禁用交互和校验，但不会改写控件公开的 `disabled` 属性。对于 checkbox/radio group，父 group 是提交、重置和状态恢复的唯一所有者；被管理的子项不会独立提交或恢复状态。
 
 ## 所有组件
 
@@ -282,6 +323,13 @@ ArrowUp/ArrowDown 键增减数值。空输入或 `-` 在提交时被忽略，值
 
 子 `<web-ui-option>` 通过 `option-register` / `option-unregister` 注册。支持 ArrowDown/ArrowUp/Enter/Escape 键盘导航。
 
+**CSS 自定义属性：**
+
+| 属性                      | 默认值  | 说明           |
+| ------------------------- | ------- | -------------- |
+| `--wui-select-max-width`  | `500px` | 下拉框最大宽度 |
+| `--wui-overlay-min-width` | `200px` | 下拉框最小宽度 |
+
 #### `<web-ui-autocomplete>`
 
 可输入并过滤候选的单值选择器。
@@ -329,6 +377,18 @@ ArrowUp/ArrowDown 键增减数值。空输入或 `-` 在提交时被忽略，值
 **方法：** `focus()`, `blur()`
 
 支持 ArrowLeft/Right/Up/Down、Home/End、PageUp/PageDown 键盘导航。使用 pointer capture 处理鼠标、触控笔和触摸交互。
+
+**CSS 自定义属性：**
+
+| 属性                           | 默认值                              | 说明         |
+| ------------------------------ | ----------------------------------- | ------------ |
+| `--wui-slider-width`           | `200px`                             | 滑块宽度     |
+| `--wui-slider-vertical-height` | `200px`                             | 垂直滑块高度 |
+| `--wui-slider-height`          | `var(--wui-slider-track-size, 6px)` | 轨道厚度     |
+| `--wui-slider-track-size`      | `6px`                               | 轨道尺寸     |
+| `--wui-slider-thumb-width`     | `24px`                              | 滑块短轴     |
+| `--wui-slider-thumb-height`    | `32px`                              | 滑块长轴     |
+| `--wui-slider-marks-inset`     | `0`                                 | 刻度内缩     |
 
 #### `<web-ui-checkbox>`
 
@@ -442,16 +502,16 @@ ArrowUp/ArrowDown 键增减数值。空输入或 `-` 在提交时被忽略，值
 
 样式化按钮，支持多种变体和加载状态。
 
-| 属性         | 类型                                                         | 默认值     | 说明                                |
-| ------------ | ------------------------------------------------------------ | ---------- | ----------------------------------- |
-| `variant`    | `'primary' \| 'secondary' \| 'ghost' \| 'danger' \| 'glass'` | `'glass'`  | 按钮变体                            |
-| `type`       | `'button' \| 'submit' \| 'reset'`                            | `'button'` | 内部按钮类型；非法值回退为 `button` |
-| `disabled`   | `boolean`                                                    | `false`    | 禁用状态                            |
-| `loading`    | `boolean`                                                    | `false`    | 加载旋转动画                        |
-| `full`       | `boolean`                                                    | `false`    | 全宽                                |
-| `icon`       | `boolean`                                                    | `false`    | 纯图标模式                          |
-| `size`       | `string`                                                     | `''`       | 尺寸格式 `高度` 或 `高度x宽度`      |
-| `aria-label` | `string`                                                     | —          | 无障碍标签（委托给内部按钮）        |
+| 属性         | 类型                                                         | 默认值     | 说明                                                          |
+| ------------ | ------------------------------------------------------------ | ---------- | ------------------------------------------------------------- |
+| `variant`    | `'primary' \| 'secondary' \| 'ghost' \| 'danger' \| 'glass'` | `'glass'`  | 按钮变体                                                      |
+| `type`       | `'button' \| 'submit' \| 'reset'`                            | `'button'` | 内部按钮类型；非法值回退为 `button`                           |
+| `disabled`   | `boolean`                                                    | `false`    | 禁用状态                                                      |
+| `loading`    | `boolean`                                                    | `false`    | 加载旋转动画                                                  |
+| `full`       | `boolean`                                                    | `false`    | 全宽                                                          |
+| `icon`       | `boolean`                                                    | `false`    | 纯图标模式                                                    |
+| `size`       | `string`                                                     | `''`       | 按钮高度（px）；icon 模式下同时设为 min-width，默认保持正方形 |
+| `aria-label` | `string`                                                     | —          | 无障碍标签（委托给内部按钮）                                  |
 
 **事件：** 标准 `click`
 
@@ -460,6 +520,17 @@ ArrowUp/ArrowDown 键增减数值。空输入或 `-` 在提交时被忽略，值
 `submit` 和 `reset` 不会提交或重置组件 Shadow DOM 外祖先 `<form>`。如需外部表单行为，请使用 form-associated 控件。
 
 禁用和加载状态阻止 `click` 事件。
+
+**CSS 自定义属性：**
+
+| 属性                     | 默认值     | 说明                   |
+| ------------------------ | ---------- | ---------------------- |
+| `--wui-button-px`        | `12px`     | 水平内边距             |
+| `--wui-button-gap`       | `8px`      | 前缀/默认/后缀插槽间距 |
+| `--wui-button-color`     | 随 variant | 按钮文字颜色           |
+| `--wui-button-bg`        | 随 variant | 按钮背景颜色           |
+| `--wui-button-bg-hover`  | 随 variant | 悬停背景颜色           |
+| `--wui-button-bg-active` | 随 variant | 按下背景颜色           |
 
 #### `<web-ui-button-group>`
 
@@ -471,7 +542,7 @@ ArrowUp/ArrowDown 键增减数值。空输入或 `-` 在提交时被忽略，值
 
 **插槽：** `default`（投影 `<web-ui-button>` 元素）
 
-向子按钮传递 `direction` 属性。
+以内部派生的视觉上下文控制按钮组方向，不改写子按钮属性。
 
 ---
 
@@ -496,26 +567,47 @@ ArrowUp/ArrowDown 键增减数值。空输入或 `-` 在提交时被忽略，值
 
 使用原生 `<dialog>`，`@cancel` 阻止默认关闭行为。除非存在 `no-escape-close`，否则 Escape 调用 `close()`；除非存在 `no-backdrop-close`，否则点击遮罩关闭。
 
+**CSS 自定义属性：**
+
+| 属性                      | 默认值                      | 说明           |
+| ------------------------- | --------------------------- | -------------- |
+| `--wui-dialog-max-width`  | `360px`                     | 对话框最大宽度 |
+| `--wui-dialog-overlay-bg` | `var(--wui-color-backdrop)` | 遮罩背景色     |
+
 #### `<web-ui-drawer>`
 
 侧边抽屉，使用原生 `<dialog>` 并自带关闭动画。
 
-| 属性                | 类型                                     | 默认值    | 说明                             |
-| ------------------- | ---------------------------------------- | --------- | -------------------------------- |
-| `open`              | `boolean`                                | `false`   | 抽屉可见性                       |
-| `placement`         | `'right' \| 'left' \| 'top' \| 'bottom'` | `'right'` | 滑入方向                         |
-| `heading`           | `string`                                 | `''`      | 标题文字（无 header 插槽时显示） |
-| `closable`          | `boolean`                                | `false`   | 显示关闭按钮                     |
-| `no-scroll-lock`    | `boolean`                                | `false`   | 打开时不锁定页面滚动             |
-| `no-backdrop-close` | `boolean`                                | `false`   | 禁止点击遮罩关闭                 |
+| 属性                | 类型                                     | 默认值    | 说明                                                 |
+| ------------------- | ---------------------------------------- | --------- | ---------------------------------------------------- |
+| `open`              | `boolean`                                | `false`   | 抽屉可见性                                           |
+| `placement`         | `'right' \| 'left' \| 'top' \| 'bottom'` | `'right'` | 滑入方向                                             |
+| `heading`           | `string`                                 | `''`      | 标题文字（无 header 插槽时显示）                     |
+| `closable`          | `boolean`                                | `false`   | 显示关闭按钮                                         |
+| `no-scroll-lock`    | `boolean`                                | `false`   | 打开时不锁定页面滚动                                 |
+| `no-backdrop-close` | `boolean`                                | `false`   | 禁止点击遮罩关闭                                     |
+| `request-only`      | `boolean`                                | `false`   | 用户关闭仅请求 `open=false`，由 Consumer 回写 `open` |
+| `headless`          | `boolean`                                | `false`   | 仅保留 overlay 行为，默认插槽不渲染内置抽屉 UI       |
+| `dialog-label`      | `string`                                 | `''`      | 内部原生 dialog 的可访问名称；headless 模式必须提供  |
 
-**事件：** `open-change` (`CustomEvent<{ open: boolean }>`)
+**事件：** `open-change` (`CustomEvent<{ open: boolean }>`)。启用 `request-only` 后，Escape、遮罩和内置关闭按钮仅请求 `open=false`；Consumer 写入 `open=false` 前抽屉保持打开。若原生 dialog 在请求被拒绝期间关闭，组件会恢复其打开的 top layer 状态并发出同一关闭请求。
 
-**插槽：** `header`, `default`, `footer`
+**插槽：** `header`, `default`, `footer`；启用 `headless` 时仅渲染 `default` 插槽。
 
 **方法：** `show()`, `close()`
 
-关闭时保留原生 dialog 的 top layer，待 `--wui-duration-drawer` 过渡完成（默认 280ms）后调用 `dialog.close()`。Escape 始终走此关闭路径；`no-backdrop-close` 仅控制遮罩点击。
+`headless` 保留原生 dialog、遮罩、placement 动画、Escape/遮罩关闭行为和滚动锁定，但不渲染内置 glass 主体、header、关闭按钮或 footer；Consumer 负责完整定义默认插槽内容的样式，并且必须提供 `dialog-label`，确保原生 dialog 具有可访问名称。
+
+关闭时保留原生 dialog 的 top layer，待退出过渡完成后调用 `dialog.close()`。Escape 始终走此关闭路径；`no-backdrop-close` 仅控制遮罩点击。
+
+**CSS 自定义属性：**
+
+| 属性                      | 默认值                             | 说明              |
+| ------------------------- | ---------------------------------- | ----------------- |
+| `--wui-drawer-width`      | `320px`                            | 抽屉宽度          |
+| `--wui-drawer-height`     | `300px`                            | 抽屉高度（上/下） |
+| `--wui-drawer-bg`         | `var(--wui-color-surface-overlay)` | 抽屉背景色        |
+| `--wui-drawer-overlay-bg` | `rgb(0 0 0 / 0.12)`                | 遮罩背景色        |
 
 ---
 
@@ -564,6 +656,13 @@ Hover 模式使用 `pointerenter`/`pointerleave` 加延迟控制。Click 模式�
 **插槽：** `default`（触发器）、`content`（提示面板）
 
 `open` 是受控可见性属性。指针/焦点触发会更新它，直接设置也会同步本地或 Portal 面板。第一个 Tooltip 显示后，相邻 Tooltip 会立即切换；其余 pointer/focus 触发使用延迟计时器。
+
+**CSS 自定义属性：**
+
+| 属性                      | 默认值  | 说明         |
+| ------------------------- | ------- | ------------ |
+| `--wui-tooltip-max-width` | `240px` | 提示最大宽度 |
+| `--wui-tooltip-font-size` | `13px`  | 提示字号     |
 
 #### `<web-ui-context-menu>`
 
@@ -677,6 +776,17 @@ Hover 模式使用 `pointerenter`/`pointerleave` 加延迟控制。Click 模式�
 
 **插槽：** `default`（标题，覆盖 `title` 属性）、`icon`、`description`、`action`
 
+**CSS 自定义属性：**
+
+| 属性                                | 默认值      | 说明               |
+| ----------------------------------- | ----------- | ------------------ |
+| `--wui-empty-min-height`            | `240px`     | 最小高度（medium） |
+| `--wui-empty-padding`               | `32px 24px` | 内边距（medium）   |
+| `--wui-empty-icon-size`             | `56px`      | 图标容器尺寸       |
+| `--wui-empty-content-width`         | `480px`     | 标题/描述最大宽度  |
+| `--wui-empty-title-font-size`       | `16px`      | 标题字号（medium） |
+| `--wui-empty-description-font-size` | `14px`      | 描述字号（medium） |
+
 #### `<web-ui-icon>`
 
 图标渲染组件。接受 Iconify 数据对象。
@@ -694,6 +804,12 @@ Hover 模式使用 `pointerenter`/`pointerleave` 加延迟控制。Click 模式�
 import { lucideLoaderCircle } from '@greypan/web-ui/icons'
 html`<web-ui-icon .icon=${lucideLoaderCircle} spin />`
 ```
+
+**CSS 自定义属性：**
+
+| 属性               | 默认值    | 说明     |
+| ------------------ | --------- | -------- |
+| `--wui-icon-color` | `inherit` | 图标颜色 |
 
 #### `<web-ui-spinner>`
 
@@ -727,14 +843,37 @@ WebUiSpinner.hide() // 隐藏
 
 #### `<web-ui-layout>`
 
-页面布局网格。
+响应式页面布局：支持可选全宽 Banner、桌面端可折叠侧边栏，以及移动端 headless drawer。页面本身滚动；Banner 滚出后，桌面端 sidebar 和 header 固定在视口内。
 
-| 插槽      | 说明       |
-| --------- | ---------- |
-| `header`  | 顶部横幅   |
-| `default` | 主内容区   |
-| `sidebar` | 侧边栏     |
-| `tabbar`  | 底部标签栏 |
+| 属性                | 类型      | 默认值    | 说明                                 |
+| ------------------- | --------- | --------- | ------------------------------------ |
+| `sidebar-collapsed` | `boolean` | `false`   | 桌面端侧边栏受控折叠状态             |
+| `sidebar-open`      | `boolean` | `false`   | 移动端侧边栏 Drawer 受控打开状态     |
+| `header-glow`       | `boolean` | `false`   | 在 header 插槽内容背后显示装饰性晕染 |
+| `sidebar-width`     | `string`  | `'240px'` | 桌面端和移动端展开时的侧边栏宽度     |
+| `collapsed-width`   | `string`  | `'72px'`  | 桌面端折叠时的侧边栏宽度             |
+
+**事件：** `sidebar-collapsed-change`（`CustomEvent<{ collapsed: boolean }>`）用于请求更新桌面端折叠状态；`sidebar-open-change`（`CustomEvent<{ open: boolean }>`）用于请求更新移动端 Drawer 打开状态。Consumer 必须将请求值回写到对应的受控属性。
+
+| 插槽      | 说明                                                         |
+| --------- | ------------------------------------------------------------ |
+| `banner`  | 位于布局主体上方的可选全宽 Banner                            |
+| `header`  | 内容区的 sticky header                                       |
+| `sidebar` | 侧边栏卡片内容；内部固定区域与滚动容器均由 Consumer 自行定义 |
+| `default` | 主内容区                                                     |
+| `tabbar`  | 底部 tabbar                                                  |
+
+`web-ui-layout` 只约束侧边栏卡片的可用空间并管理桌面端 Toggle，不创建侧边栏 scrollport。若仅让侧边栏的一部分滚动，请将 `sidebar` 插槽根节点设为 `height: 100%; min-height: 0` 的 flex column，再将 `overflow-y: auto` 设置到目标子元素。这样 Consumer 可自行固定头部和底部，无需额外的公共 slot。
+
+在 `640px` 及以下，侧边栏会切换为 headless 模式的 `web-ui-drawer`。Consumer 内容仍渲染在相同的圆角侧边栏卡片中，移动端 Toggle 位于 header 行内。
+
+`header-glow` 会在 header 插槽内容和移动端 Toggle 的背后添加 `pointer-events: none` 的装饰性晕染。它属于 Header 背景而非前景层，因此插槽内容始终位于其上方；可通过 `--wui-layout-header-glow-color` 覆盖颜色，默认值为 `--wui-color-page`。晕染浓度和范围由内部变量 `--wui-layout-header-glow-height`（默认 `150%`）控制；增大可加强覆盖，减小则更柔和。布局层级顺序为 Header（`10`）< Auxiliary（`20`）< Banner（`30`）< Tabbar（`40`）< Sidebar（`50`）。
+
+**CSS 自定义属性：**
+
+| 属性                          | 默认值 | 说明                                 |
+| ----------------------------- | ------ | ------------------------------------ |
+| `--wui-layout-sidebar-radius` | `28px` | 侧边栏卡片圆角（桌面端和移动端共用） |
 
 #### `<web-ui-back-top>`
 
@@ -754,6 +893,17 @@ WebUiSpinner.hide() // 隐藏
 **定位：** `scrollTarget` 为 `window` 时按钮固定在视口角落；为 `HTMLElement` 时需将元素放置在容器内部，按钮通过 `position: sticky` 悬浮于容器底部角落。偏移量沿用 `--web-ui-back-top-top/right/bottom/left` CSS 变量。
 
 角色：`button`，键盘 Enter 触发回到顶部。
+
+**CSS 自定义属性：**
+
+| 属性                         | 默认值                           | 说明     |
+| ---------------------------- | -------------------------------- | -------- |
+| `--web-ui-back-top-position` | `fixed`                          | CSS 定位 |
+| `--web-ui-back-top-z-index`  | `var(--wui-layer-auxiliary, 20)` | 层级     |
+| `--web-ui-back-top-top`      | `auto`                           | 上偏移   |
+| `--web-ui-back-top-right`    | `20px`                           | 右偏移   |
+| `--web-ui-back-top-bottom`   | `20px`                           | 下偏移   |
+| `--web-ui-back-top-left`     | `auto`                           | 左偏移   |
 
 #### `<web-ui-svg-draw-lines>`
 
@@ -783,7 +933,7 @@ SVG 线条绘制动画，基于 `stroke-dashoffset`。直接在原元素上动�
 
 **方法：** `getOverlayRoot()` — 返回 Portal 浮层容器
 
-定义 `--wui-color-*`、`--wui-shadow-*`、`--wui-layer-*` 与 motion token。motion token 是稳定的主题契约，可在主题范围覆盖：`--wui-duration-press`、`--wui-duration-feedback`、`--wui-duration-trigger`、`--wui-duration-focus`、`--wui-duration-menu-enter`、`--wui-duration-menu-exit`、`--wui-duration-overlay-enter`、`--wui-duration-overlay-exit`、`--wui-duration-drawer-enter`、`--wui-duration-drawer-exit`、`--wui-ease-enter`、`--wui-ease-slide`、`--wui-scale-enter`。`motion="system"` 跟随 `prefers-reduced-motion`；使用 `motion="reduced"` 降低当前作用域动效，或在嵌套主题中使用 `motion="full"` 恢复默认 token。System 配色模式跟随 `prefers-color-scheme`。
+定义 `--wui-color-*`、`--wui-shadow-*`、`--wui-layer-*` 与 motion token。布局层级 token 依次为 `--wui-layer-header: 10`、`--wui-layer-auxiliary: 20`、`--wui-layer-banner: 30`、`--wui-layer-tabbar: 40`、`--wui-layer-sidebar: 50`。motion token 是稳定的主题契约，可在主题范围覆盖：`--wui-duration-press`、`--wui-duration-feedback`、`--wui-duration-trigger`、`--wui-duration-focus`、`--wui-duration-menu-enter`、`--wui-duration-menu-exit`、`--wui-duration-overlay-enter`、`--wui-duration-overlay-exit`、`--wui-duration-drawer-enter`、`--wui-duration-drawer-exit`、`--wui-ease-enter`、`--wui-ease-slide`、`--wui-scale-enter`。`motion="system"` 跟随 `prefers-reduced-motion`；使用 `motion="reduced"` 降低当前作用域动效，或在嵌套主题中使用 `motion="full"` 恢复默认 token。System 配色模式跟随 `prefers-color-scheme`。
 
 ---
 
@@ -869,3 +1019,9 @@ toast.updateMessage(id, { message: '上传已完成 60%', heading: '正在上传
 **事件：** `change`
 
 非表单关联组件（父级 segmented 统一提交）。
+
+**CSS 自定义属性：**
+
+| 属性                         | 默认值 | 说明       |
+| ---------------------------- | ------ | ---------- |
+| `--wui-segmented-trigger-px` | `12px` | 水平内边距 |

@@ -15,7 +15,7 @@
 /* ===== 入场 / 退场动画 ===== */
 
 .toast {
-  --wui-glass-shadow: var(--wui-shadow-pop, 0 3px 9px rgb(0 0 0 / 0.27));
+  --wui-shadow-glass: var(--wui-shadow-pop, 0 3px 9px rgb(0 0 0 / 0.27));
   position: relative;
   transform: translate(var(--toast-slide-x, 0), var(--toast-slide-y, -8px)) scale(0.97);
 

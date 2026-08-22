@@ -26,7 +26,7 @@ function ScrollBox({ threshold = 200, behavior = 'smooth', children }: ScrollBox
       {Array.from({ length: 30 }, (_, i) => (
         <p key={i}>滚动容器第 {i + 1} 行</p>
       ))}
-      <web-ui-back-top ref={backTopRef} threshold={threshold} scroll-behavior={behavior}>
+      <web-ui-back-top ref={backTopRef} threshold={threshold} scrollBehavior={behavior}>
         {children}
       </web-ui-back-top>
     </div>

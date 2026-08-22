@@ -7,6 +7,7 @@ import glass from '@/assets/glass.css?inline'
 import overlayMotion from '@/assets/overlay-motion.css?inline'
 import type { WebUiOption } from '@/components/option'
 import { lucideChevronDown } from '@/icons'
+import { defineFormAssociation, FormAssociationController } from '@/shared/form-association'
 import { defineAnchoredPanel } from '@/shared/overlay/anchored-panel'
 import { defineOverlayPortal } from '@/shared/overlay/portal'
 import type { OverlayContainer, OverlayPortal } from '@/shared/overlay/portal'
@@ -20,10 +21,6 @@ export class WebUiSelect extends LitElement {
 
   static formAssociated = true
 
-  // ElementInternals 实例，在 connectedCallback 中初始化
-  private _internals?: ElementInternals
-  @state() private _formDisabled = false
-
   @property({ type: String, reflect: true }) placeholder = ''
   @property({ type: Boolean, reflect: true }) disabled = false
   @property({ type: Boolean, reflect: true }) required = false
@@ -32,21 +29,47 @@ export class WebUiSelect extends LitElement {
   @property({ attribute: false }) overlayContainer?: OverlayContainer
   @property({ type: String, reflect: true }) name = ''
 
-  // value 使用内部状态 + 访问器模式，在变更时同步 ElementInternals
+  // value 使用内部状态 + 访问器模式，在变更时同步 ElementInternals；
+  // @property + reflect 让它与 input/textarea/slider/input-number 的 value 反射语义保持一致。
   @state() private _value = ''
+  @property({ type: String, reflect: true })
   get value(): string {
     return this._value
   }
   set value(v: string) {
     const old = this._value
     this._value = v
-    this._internals?.setFormValue?.(v)
+    this._formAssociation.sync()
     this.toggleAttribute('data-has-value', !!v)
     this.requestUpdate('value', old)
   }
 
+  private readonly _formAssociation = defineFormAssociation<string>({
+    host: this,
+    initialize: () => {
+      // 同步 HTML 属性中预设的 value，补全访问器模式不处理 attribute 反射。
+      const attrValue = this.getAttribute('value')
+      if (attrValue !== null) {
+        this._value = attrValue
+        this.toggleAttribute('data-has-value', !!attrValue)
+      }
+    },
+    getState: () => this._value,
+    setState: value => {
+      this.value = value
+    },
+    getFormValue: () => this._value,
+    getFormState: () => this._value,
+    restoreState: state => {
+      if (typeof state === 'string') this.value = state
+    },
+    syncValidity: () => this._syncValidity()
+  }).make()
+
+  private readonly _formAssociationController = new FormAssociationController(this, this._formAssociation)
+
   private get _isDisabled(): boolean {
-    return this.disabled || this._formDisabled
+    return this.disabled || this._formAssociation.isFormDisabled()
   }
 
   @state() private _isOpen = false
@@ -99,14 +122,6 @@ export class WebUiSelect extends LitElement {
 
   override connectedCallback() {
     super.connectedCallback()
-    this._internals = this.attachInternals()
-    // 同步 HTML 属性中预设的 value，补全访问器模式不处理 attribute 反射
-    const attrValue = this.getAttribute('value')
-    if (attrValue !== null) {
-      this._value = attrValue
-      this.toggleAttribute('data-has-value', !!attrValue)
-    }
-    this._internals?.setFormValue?.(this._value)
     this.addEventListener('option-register', this._onOptionRegister)
     this.addEventListener('option-unregister', this._onOptionUnregister)
     this.addEventListener('keydown', this._onKeydown)
@@ -161,17 +176,22 @@ export class WebUiSelect extends LitElement {
   }
 
   formResetCallback() {
-    this.value = this.getAttribute('value') || ''
+    this._formAssociation.reset()
   }
 
   formDisabledCallback(disabled: boolean) {
-    this._formDisabled = disabled
+    this._formAssociation.setDisabled(disabled)
+  }
+
+  formStateRestoreCallback(state: string | File | FormData | null) {
+    this._formAssociation.restore(state)
   }
 
   private _syncValidity() {
-    if (!this._internals || typeof this._internals.setValidity !== 'function') return
-    if (this._isDisabled || !this.required || this.value) this._internals.setValidity({})
-    else this._internals.setValidity({ valueMissing: true }, '请选择一项')
+    const internals = this._formAssociation.getInternals()
+    if (!internals || typeof internals.setValidity !== 'function') return
+    if (this._isDisabled || !this.required || this.value) internals.setValidity({})
+    else internals.setValidity({ valueMissing: true }, '请选择一项')
   }
 
   private _syncOpenAttribute() {

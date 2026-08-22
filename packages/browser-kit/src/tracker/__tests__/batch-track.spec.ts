@@ -6,14 +6,19 @@ import { defineBatchTrack } from '../plugins/batch-track'
 
 vi.useFakeTimers()
 
-/** 临时切换到真实计时器，等待 MSW 捕获指定数量的请求后再切回。 */
-async function waitForMsw(minCount = 1, timeout = 5000) {
+/** 临时切换到真实计时器，轮询断言条件直到满足或超时。 */
+async function waitFor(predicate: () => boolean, timeout = 5000) {
   vi.useRealTimers()
   const start = Date.now()
-  while (capturedRequests.length < minCount && Date.now() - start < timeout) {
+  while (!predicate() && Date.now() - start < timeout) {
     await new Promise(resolve => setTimeout(resolve, 10))
   }
   vi.useFakeTimers()
+}
+
+/** 等待 MSW 捕获指定数量的请求。 */
+async function waitForMsw(minCount = 1, timeout = 5000) {
+  await waitFor(() => capturedRequests.length >= minCount, timeout)
 }
 
 describe('聚合上报测试用例', () => {
@@ -90,7 +95,8 @@ describe('聚合上报测试用例', () => {
 
     vi.advanceTimersByTime(200)
 
-    // sendBeacon 同步执行，所有分片立即调用；字符串载荷可直接解析
+    // 常规 drain 按顺序确认每个分片；等待全部 sendBeacon 调用完成后再统计。
+    await waitFor(() => sendBeacon.mock.calls.length >= 2)
     expect(sendBeacon.mock.calls.length).toBeGreaterThanOrEqual(2)
     let total = 0
     for (const call of sendBeacon.mock.calls) {
@@ -107,7 +113,7 @@ describe('聚合上报测试用例', () => {
       .make()
 
     tracker.track({ event: 'queued' })
-    tracker.flush()
+    await tracker.flush()
     await waitForMsw()
 
     expect(capturedRequests.length).toBeGreaterThanOrEqual(1)
@@ -190,6 +196,7 @@ describe('聚合上报测试用例', () => {
     }
 
     vi.advanceTimersByTime(200)
+    await waitFor(() => sendBeacon.mock.calls.length === 5)
 
     expect(sendBeacon).toHaveBeenCalledTimes(5)
   })
