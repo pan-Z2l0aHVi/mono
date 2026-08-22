@@ -44,3 +44,17 @@ type TaggingModel struct {
 	TagID      string `json:"tag_id"`
 	CreatedAt  int64  `json:"created_at"`
 }
+
+// 持久化 Tagging 的聚合结果：一个标签及其直接归属的资源数。
+type TagAggregate struct {
+	TagID         string
+	Name          string
+	ResourceCount int
+}
+
+// 持久化 Tagging 的共现聚合结果：一对标签及其共享的资源数。
+type TagEdgeAggregate struct {
+	SourceTagID string
+	TargetTagID string
+	Weight      int
+}

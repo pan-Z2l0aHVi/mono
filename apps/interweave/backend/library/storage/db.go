@@ -9,6 +9,13 @@ import (
 	_ "modernc.org/sqlite"
 )
 
+// Queryer 抽象查询执行器，使 store 既能直接使用只读连接（并发读），也能在事务内组合写操作。
+type Queryer interface {
+	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
+	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
+	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
+}
+
 // 为本地单库写入维持可预测的一致性边界。
 type DB struct {
 	db      *sql.DB

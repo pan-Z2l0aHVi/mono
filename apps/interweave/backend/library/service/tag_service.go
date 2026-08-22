@@ -15,12 +15,20 @@ import (
 
 // 将标签维护限制在单个 Resource 的上下文，避免演变为全局标签管理。
 type TagService struct {
-	db *storage.DB
+	db        *storage.DB
+	resources storage.ResourceStore
+	tags      storage.TagStore
+	taggings  storage.TaggingStore
 }
 
 // 保持标签规则与持久化实现解耦。
 func NewTagService(db *storage.DB) *TagService {
-	return &TagService{db: db}
+	return &TagService{
+		db:        db,
+		resources: storage.ResourceStore{},
+		tags:      storage.TagStore{},
+		taggings:  storage.TaggingStore{},
+	}
 }
 
 // 标准名称决定标签身份，确保全库复用而不依赖别名或层级。
@@ -35,37 +43,33 @@ func (s *TagService) AddTagToResource(ctx context.Context, resourceID string, in
 
 	err = s.db.WithTx(ctx, func(tx *sql.Tx) error {
 		// 不为不存在的资源制造悬挂归属。
-		var exists int
-		err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM resources WHERE id = ?`, resourceID).Scan(&exists)
+		exists, err := s.resources.Exists(ctx, tx, resourceID)
 		if err != nil {
 			return err
 		}
-		if exists == 0 {
+		if !exists {
 			return errors.New("resource not found")
 		}
 
 		// 优先复用既有标签，保持资源网络收敛。
-		err = tx.QueryRowContext(ctx, `SELECT id FROM tags WHERE name = ?`, stdName).Scan(&tagID)
-		if err != nil {
-			if errors.Is(err, sql.ErrNoRows) {
-				tagID = id.NewID()
-				_, err = tx.ExecContext(ctx, `INSERT INTO tags (id, name, created_at) VALUES (?, ?, ?)`, tagID, stdName, now)
-				if err != nil {
-					return err
-				}
-			} else {
+		tag, err := s.tags.GetByName(ctx, tx, stdName)
+		if errors.Is(err, storage.ErrTagNotFound) {
+			tag = storage.TagModel{ID: id.NewID(), Name: stdName, CreatedAt: now}
+			if err := s.tags.Insert(ctx, tx, tag); err != nil {
 				return err
 			}
+		} else if err != nil {
+			return err
 		}
+		tagID = tag.ID
 
 		// 同一 Resource 对同一标签只能保留一份归属。
-		_, err = tx.ExecContext(ctx, `
-			INSERT OR IGNORE INTO taggings (resource_id, tag_id, created_at)
-			VALUES (?, ?, ?)
-		`, resourceID, tagID, now)
-		return err
+		return s.taggings.Insert(ctx, tx, storage.TaggingModel{
+			ResourceID: resourceID,
+			TagID:      tagID,
+			CreatedAt:  now,
+		})
 	})
-
 	if err != nil {
 		return nil, err
 	}
@@ -79,22 +83,14 @@ func (s *TagService) AddTagToResource(ctx context.Context, resourceID string, in
 
 // 解除单个 Resource 的归属，不暗中改变其他资源。
 func (s *TagService) RemoveTagFromResource(ctx context.Context, resourceID string, tagID string) error {
-	return s.db.WithTx(ctx, func(tx *sql.Tx) error {
-		res, err := tx.ExecContext(ctx, `
-			DELETE FROM taggings WHERE resource_id = ? AND tag_id = ?
-		`, resourceID, tagID)
-		if err != nil {
-			return err
-		}
-		rows, err := res.RowsAffected()
-		if err != nil {
-			return err
-		}
-		if rows == 0 {
+	err := s.db.WithTx(ctx, func(tx *sql.Tx) error {
+		err := s.taggings.Delete(ctx, tx, resourceID, tagID)
+		if errors.Is(err, storage.ErrTaggingNotFound) {
 			return errors.New("tagging not found on resource")
 		}
-		return nil
+		return err
 	})
+	return err
 }
 
 // 通过已有标签建议降低新建近义标签的概率。
@@ -104,43 +100,21 @@ func (s *TagService) SuggestTags(ctx context.Context, query string, limit int) (
 	}
 
 	trimmed := strings.TrimSpace(query)
-	var rows *sql.Rows
+	var tags []storage.TagModel
 	var err error
-
 	if trimmed == "" {
-		rows, err = s.db.SqlDB().QueryContext(ctx, `
-			SELECT id, name, created_at
-			FROM tags
-			ORDER BY name ASC
-			LIMIT ?
-		`, limit)
+		tags, err = s.tags.List(ctx, s.db.SqlDB(), limit)
 	} else {
 		likePattern := "%" + trimmed + "%"
-		rows, err = s.db.SqlDB().QueryContext(ctx, `
-			SELECT id, name, created_at
-			FROM tags
-			WHERE name LIKE ?
-			ORDER BY name ASC
-			LIMIT ?
-		`, likePattern, limit)
+		tags, err = s.tags.SearchByName(ctx, s.db.SqlDB(), likePattern, limit)
 	}
-
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
 
-	var tags []TagDTO
-	for rows.Next() {
-		var tag TagDTO
-		if err := rows.Scan(&tag.ID, &tag.Name, &tag.CreatedAt); err != nil {
-			return nil, err
-		}
-		tags = append(tags, tag)
+	result := make([]TagDTO, 0, len(tags))
+	for _, tag := range tags {
+		result = append(result, tagToDTO(tag))
 	}
-
-	if tags == nil {
-		tags = []TagDTO{}
-	}
-	return tags, nil
+	return result, nil
 }
