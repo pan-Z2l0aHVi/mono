@@ -154,8 +154,8 @@ function onResourceContextmenu(resource: Resource, event: MouseEvent) {
   <web-ui-layout
     header-glow
     class="min-h-dvh color-[#22212a] bg-white"
-    :sidebarCollapsed.prop="sidebarCollapsed"
-    :sidebarOpen.prop="sidebarOpen"
+    :sidebar-collapsed="sidebarCollapsed"
+    :sidebar-open="sidebarOpen"
     @sidebar-collapsed-change="updateSidebarCollapsed"
     @sidebar-open-change="updateSidebarOpen"
   >
@@ -175,7 +175,7 @@ function onResourceContextmenu(resource: Resource, event: MouseEvent) {
             portal
             placement="right"
             :content="sidebarCollapsed ? '资料库' : ''"
-            :disabled.prop="!sidebarCollapsed"
+            :disabled="!sidebarCollapsed"
           >
             <web-ui-icon :icon="lucideFolderOpen"></web-ui-icon>
           </web-ui-tooltip>
@@ -194,7 +194,7 @@ function onResourceContextmenu(resource: Resource, event: MouseEvent) {
             portal
             placement="right"
             :content="sidebarCollapsed ? '关系图谱' : ''"
-            :disabled.prop="!sidebarCollapsed"
+            :disabled="!sidebarCollapsed"
           >
             <web-ui-icon :icon="lucideLayoutGrid"></web-ui-icon>
           </web-ui-tooltip>
