@@ -21,7 +21,7 @@ export const router = createRouter({
     },
     {
       path: '/prototype/interweave-shell',
-      component: () => import('@/pages/prototype/InterweaveShellPrototypePage.vue'),
+      component: () => import('@/pages/prototype/InterweaveShellPrototypePageV2.vue'),
       meta: { prototype: true }
     }
   ]
