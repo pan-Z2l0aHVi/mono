@@ -37,7 +37,7 @@ function TextareaDemo() {
       <h2>自动高度</h2>
       <div className="mb-3 flex flex-col gap-3">
         <web-ui-textarea autosize placeholder="内容多了自动变高" full />
-        <web-ui-textarea autosize max-height={120} placeholder="内容超过 120px 后滚动" full />
+        <web-ui-textarea autosize maxHeight={120} placeholder="内容超过 120px 后滚动" full />
       </div>
       <h2>禁用</h2>
       <div className="mb-3 flex flex-col gap-3">

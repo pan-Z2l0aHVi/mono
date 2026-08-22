@@ -96,6 +96,25 @@ describe('WebUiLayout 组件（浏览器）', () => {
       expect(eventCount).toBe(0)
     })
 
+    it('kebab-case 布尔 attribute 遵循存在语义；camelCase 属性绑定才可表达 false（Vue 互操作）', async () => {
+      await page.viewport(1280, 720)
+      const layout = createLayout({ banner: false })
+      await layout.updateComplete
+
+      // Vue 的 `:sidebar-collapsed="false"` 会写入字符串 attribute "false"。
+      // Lit 布尔属性按原生 HTML 存在语义解析：attribute 存在即为 true，因此该绑定无法表达 false。
+      layout.setAttribute('sidebar-collapsed', 'false')
+      await layout.updateComplete
+      expect(layout.sidebarCollapsed).toBe(true)
+
+      // Vue 的 `:sidebarCollapsed="false"`（camelCase 属性名）命中既有 property，
+      // Vue 直接写 DOM property，Lit 收到 false 并移除对应 attribute。
+      layout.sidebarCollapsed = false
+      await layout.updateComplete
+      expect(layout.sidebarCollapsed).toBe(false)
+      expect(layout.hasAttribute('sidebar-collapsed')).toBe(false)
+    })
+
     it('不创建 sidebar scrollport；Consumer 的标题固定且仅其 nav 滚动', async () => {
       await page.viewport(1280, 720)
       const layout = createLayout()

@@ -31,6 +31,30 @@ import '@greypan/web-ui'
 
 ## Framework Setup
 
+### Cross-framework API conventions
+
+`web-ui-*` elements expose three surfaces. The **DOM / JavaScript API is the source of truth**: Properties use
+camelCase, Attributes use kebab-case, Events use kebab-case.
+
+| Surface   | Naming     | Examples                                      |
+| --------- | ---------- | --------------------------------------------- |
+| Property  | camelCase  | `open`, `sidebarCollapsed`, `noScrollLock`    |
+| Attribute | kebab-case | `open`, `sidebar-collapsed`, `no-scroll-lock` |
+| Event     | kebab-case | `open-change`, `sidebar-collapsed-change`     |
+
+- **Boolean attributes** follow native HTML presence semantics: absent → `false`, presence → `true`. A framework
+  binding that writes `disabled="false"` produces the string `"false"`, which is truthy — **bind dynamic booleans as
+  properties** (camelCase), not attributes, so `false` is written as a real property.
+- **Vue**: dynamic binding must go to **Properties** with camelCase names (`:sidebarCollapsed="x"`, `:open="x"`).
+  A kebab-case binding like `:sidebar-collapsed="x"` is written as a string attribute and cannot express `false`;
+  use the camelCase property. The `.prop` modifier is only valid with the camelCase name
+  (`:sidebarCollapsed.prop="x"`). String/number values may stay on kebab-case attributes (`:max-height="120"`).
+  `v-model` is supported on value-bearing controls (`web-ui-input`, `web-ui-select`, `web-ui-autocomplete`, …) and
+  compiles to the element `value` property + `input` event.
+- **React**: React 19 writes DOM properties for custom-element props, so use camelCase props (`open={open}`,
+  `noScrollLock`, `value={value}`). Never pass complex data (objects, arrays) through attribute strings — bind
+  them as properties. Kebab-case JSX props on a custom element are written as attributes.
+
 ### React
 
 Requires `@types/react >= 19` as optional peer dependency.
@@ -127,6 +151,21 @@ import '@greypan/web-ui/types/vue'
   <web-ui-input v-model="value" />
   <web-ui-select :value="framework" @change="framework = $event.target.value" />
 </template>
+```
+
+Boolean properties must be bound with the **camelCase property name**, not the kebab-case attribute. Vue writes
+attribute bindings as strings, and boolean attributes follow presence semantics — so `:sidebar-collapsed="false"`
+produces the string `"false"`, which is truthy. Binding the camelCase name (`:sidebarCollapsed="false"`, or the
+`.prop` modifier) makes Vue write the DOM property directly:
+
+```vue
+<web-ui-layout
+  header-glow
+  :sidebarCollapsed="sidebarCollapsed"
+  :sidebarOpen="sidebarOpen"
+  @sidebar-collapsed-change="sidebarCollapsed = $event.detail.collapsed"
+  @sidebar-open-change="sidebarOpen = $event.detail.open"
+/>
 ```
 
 Vue events are typed cast-free: `@input`/`@change` on value-bearing components resolve to the component emit, so

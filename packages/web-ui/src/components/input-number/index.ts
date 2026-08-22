@@ -59,7 +59,7 @@ export class WebUiInputNumber extends LitElement {
     return this.disabled || this._formAssociation.isFormDisabled()
   }
 
-  @property({ type: Number })
+  @property({ type: Number, reflect: true })
   get min(): number {
     return this._min
   }
@@ -68,7 +68,7 @@ export class WebUiInputNumber extends LitElement {
     this._min = normalizeNumber(v, -Infinity, Infinity, 0)
   }
 
-  @property({ type: Number })
+  @property({ type: Number, reflect: true })
   get max(): number {
     return this._max
   }
@@ -77,7 +77,7 @@ export class WebUiInputNumber extends LitElement {
     this._max = normalizeNumber(v, -Infinity, Infinity, Infinity)
   }
 
-  @property({ type: Number })
+  @property({ type: Number, reflect: true })
   get step(): number {
     return this._step
   }

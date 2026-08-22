@@ -29,8 +29,10 @@ export class WebUiSelect extends LitElement {
   @property({ attribute: false }) overlayContainer?: OverlayContainer
   @property({ type: String, reflect: true }) name = ''
 
-  // value 使用内部状态 + 访问器模式，在变更时同步 ElementInternals
+  // value 使用内部状态 + 访问器模式，在变更时同步 ElementInternals；
+  // @property + reflect 让它与 input/textarea/slider/input-number 的 value 反射语义保持一致。
   @state() private _value = ''
+  @property({ type: String, reflect: true })
   get value(): string {
     return this._value
   }

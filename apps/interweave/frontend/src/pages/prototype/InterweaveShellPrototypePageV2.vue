@@ -252,8 +252,8 @@ function onResourceContextmenu(resource: Resource, event: MouseEvent) {
   <web-ui-layout
     header-glow
     class="min-h-dvh color-[#22212a] bg-white"
-    :sidebar-collapsed="sidebarCollapsed"
-    :sidebar-open="sidebarOpen"
+    :sidebarCollapsed="sidebarCollapsed"
+    :sidebarOpen="sidebarOpen"
     @sidebar-collapsed-change="updateSidebarCollapsed"
     @sidebar-open-change="updateSidebarOpen"
   >

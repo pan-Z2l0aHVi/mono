@@ -114,10 +114,14 @@ const navItems: NavItem[] = [
 <template>
   <web-ui-theme :appearance="themeAppearance" :motion="themeMotion">
     <div class="min-h-screen bg-[var(--wui-color-page)] text-[var(--wui-color-text)]">
+      <!--
+        Boolean 动态绑定走 camelCase Property（Vue 对已存在的属性名直接写 DOM property）。
+        kebab-case（:sidebar-collapsed）会写字符串 attribute，布尔属性存在即 true，无法表达 false。
+      -->
       <web-ui-layout
         header-glow
-        :sidebar-collapsed="sidebarCollapsed"
-        :sidebar-open="sidebarOpen"
+        :sidebarCollapsed="sidebarCollapsed"
+        :sidebarOpen="sidebarOpen"
         @sidebar-collapsed-change="updateSidebarCollapsed"
         @sidebar-open-change="updateSidebarOpen"
       >

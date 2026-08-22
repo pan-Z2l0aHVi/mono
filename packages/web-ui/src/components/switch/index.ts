@@ -32,7 +32,7 @@ export class WebUiSwitch extends LitElement {
   @property({ type: Boolean, reflect: true }) disabled = false
   @property({ type: Boolean, reflect: true }) required = false
   @property({ type: Boolean, reflect: true }) loading = false
-  @state() private pressed = false
+  @state() private _pressed = false
 
   private get _isDisabled(): boolean {
     return this.disabled || this._formAssociation.isFormDisabled()
@@ -90,15 +90,15 @@ export class WebUiSwitch extends LitElement {
 
   private handlePointerDown() {
     if (this._isDisabled || this.loading) return
-    this.pressed = true
+    this._pressed = true
   }
 
   private handlePointerUp() {
-    this.pressed = false
+    this._pressed = false
   }
 
   private handlePointerLeave() {
-    this.pressed = false
+    this._pressed = false
   }
 
   override render() {
@@ -109,8 +109,8 @@ export class WebUiSwitch extends LitElement {
     }
     const thumbCls = {
       'wui-switch-thumb': true,
-      'wui-glass': this.pressed,
-      'is-pressed': this.pressed
+      'wui-glass': this._pressed,
+      'is-pressed': this._pressed
     }
 
     return html`

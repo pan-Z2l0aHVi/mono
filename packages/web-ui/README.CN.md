@@ -31,6 +31,29 @@ import '@greypan/web-ui'
 
 ## 框架集成
 
+### 跨框架 API 约定
+
+`web-ui-*` 元素暴露三面 API，**DOM / JavaScript API 是事实来源**：Property 使用 camelCase，Attribute 使用
+kebab-case，Event 使用 kebab-case。
+
+| 表面      | 命名       | 示例                                          |
+| --------- | ---------- | --------------------------------------------- |
+| Property  | camelCase  | `open`、`sidebarCollapsed`、`noScrollLock`    |
+| Attribute | kebab-case | `open`、`sidebar-collapsed`、`no-scroll-lock` |
+| Event     | kebab-case | `open-change`、`sidebar-collapsed-change`     |
+
+- **布尔 Attribute** 遵循原生 HTML 存在语义：不存在 → `false`，存在 → `true`。框架绑定写入的
+  `disabled="false"` 是字符串 `"false"`，会被视为 true——**动态布尔必须绑定 Property**（camelCase），
+  才能把 `false` 写成真实 property。
+- **Vue**：动态绑定必须走 **Property**，使用 camelCase 属性名（`:sidebarCollapsed="x"`、`:open="x"`）。
+  kebab-case 绑定（`:sidebar-collapsed="x"`）会被写成字符串 attribute，无法表达 `false`，请使用 camelCase
+  property。`.prop` 修饰符只在 camelCase 属性名下有效（`:sidebarCollapsed.prop="x"`）。String/Number 值可
+  保留 kebab-case attribute（`:max-height="120"`）。带值控件（`web-ui-input`、`web-ui-select`、
+  `web-ui-autocomplete` 等）支持 `v-model`，编译为元素的 `value` property + `input` 事件。
+- **React**：React 19 对 custom element 的 props 直接写 DOM property，因此使用 camelCase props
+  （`open={open}`、`noScrollLock`、`value={value}`）。**不要把复杂数据（对象、数组）放进 attribute 字符串**，
+  一律绑定为 property。kebab-case JSX prop 在 custom element 上会写成 attribute。
+
 ### React
 
 需要 `@types/react >= 19` 作为可选 peer 依赖。
@@ -125,6 +148,20 @@ import '@greypan/web-ui/types/vue'
   <web-ui-input v-model="value" />
   <web-ui-select :value="framework" @change="framework = $event.target.value" />
 </template>
+```
+
+Boolean 属性必须用 **camelCase 属性名**绑定，而不是 kebab-case attribute。Vue 会把 attribute 绑定写成字符串，
+而布尔 attribute 遵循「存在即 true」的语义——所以 `:sidebar-collapsed="false"` 会写出字符串 `"false"`，被当作 true。
+改用 camelCase 属性名（`:sidebarCollapsed="false"`，或 `.prop` 修饰符）会让 Vue 直接写 DOM property：
+
+```vue
+<web-ui-layout
+  header-glow
+  :sidebarCollapsed="sidebarCollapsed"
+  :sidebarOpen="sidebarOpen"
+  @sidebar-collapsed-change="sidebarCollapsed = $event.detail.collapsed"
+  @sidebar-open-change="sidebarOpen = $event.detail.open"
+/>
 ```
 
 Vue 事件类型零 cast：带值组件上的 `@input`/`@change` 解析到组件 emit，`$event.target` 即为组件实例，
