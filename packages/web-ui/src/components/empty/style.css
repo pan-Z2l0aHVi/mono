@@ -21,8 +21,6 @@
 }
 
 .empty-icon {
-  --wui-glass-shadow: none;
-
   display: flex;
   flex: none;
   align-items: center;
@@ -35,6 +33,7 @@
   color: var(--wui-color-text-muted, #6a6a6a);
 
   background-color: var(--wui-color-surface-raised, #f2f2f7);
+  box-shadow: none;
 }
 
 .empty-title,

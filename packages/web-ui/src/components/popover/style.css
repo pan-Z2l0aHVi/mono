@@ -22,7 +22,7 @@
 }
 
 .popover-panel {
-  --wui-glass-shadow: var(--wui-shadow-pop, 0 3px 9px rgb(0 0 0 / 0.27));
+  --wui-shadow-glass: var(--wui-shadow-pop, 0 3px 9px rgb(0 0 0 / 0.27));
   position: absolute;
   z-index: var(--wui-layer-inline-overlay, 1);
   top: -9999px;
