@@ -151,6 +151,33 @@ describe('WebUiSelect 条件组合边界', () => {
       cleanupElement(el)
     })
 
+    // 回归：portal 追踪列表仍持引用时，关闭 restoreContent 会把已删除的 option 复活回 light DOM
+    it('打开时删除 option 后关闭，已删项不复活回 light DOM', async () => {
+      const el = createSelect(OPTIONS_HTML_THREE, { portal: '' })
+      await waitForUpdate(el)
+
+      const trigger = queryA11y(el, '[role="combobox"]') as HTMLElement
+      trigger.click()
+      await flushFrame(el)
+      expect(el.open).toBe(true)
+
+      const appleInPanel = getPortalPanel(el)?.querySelector('web-ui-option[value="apple"]') as WebUiOption | null
+      expect(appleInPanel).toBeTruthy()
+      appleInPanel?.remove()
+      await new Promise<void>(resolve => queueMicrotask(resolve))
+      await waitForUpdate(el)
+
+      document.body.click()
+      await waitForUpdate(el)
+      await new Promise(resolve => setTimeout(resolve, 300))
+      expect(el.open).toBe(false)
+
+      // 关闭后 light DOM 只应包含未删除的 banana/cherry
+      const values = [...el.querySelectorAll<WebUiOption>('web-ui-option')].map(o => o.value).sort()
+      expect(values).toEqual(['banana', 'cherry'])
+      cleanupElement(el)
+    })
+
     it('快速关闭再重新打开后 portal 内容完整恢复且可继续选择', async () => {
       const el = createSelect(OPTIONS_HTML_THREE, { portal: '' })
       await waitForUpdate(el)

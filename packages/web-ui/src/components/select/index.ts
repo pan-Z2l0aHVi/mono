@@ -80,6 +80,9 @@ export class WebUiSelect extends LitElement {
   private _options: WebUiOption[] = []
   private _portal?: OverlayPortal
   private _portalContent?: HTMLElement
+  // Portal 打开期间被真实删除的 option：unregister 时无法与迁移区分，
+  // 先记录，微任务末按最终位置判定后从 portal 追踪列表摘除，防止关闭时复活。
+  private readonly _pendingUnregisteredOptions = new Set<WebUiOption>()
   private readonly _scrollLock = defineScrollLockLease().make()
   private readonly _panel = defineAnchoredPanel().make({
     getAnchor: () => this.shadowRoot?.querySelector<HTMLElement>('.select-trigger') ?? null,
@@ -140,6 +143,7 @@ export class WebUiSelect extends LitElement {
     document.removeEventListener('click', this._onClickOutside)
     this._options.forEach(this._unbindOption)
     this._options = []
+    this._pendingUnregisteredOptions.clear()
     this._portal = undefined
     this._portalContent = undefined
     this._close()
@@ -229,6 +233,9 @@ export class WebUiSelect extends LitElement {
     option.addEventListener('pointerover', this._handleOptionPointerOver)
     option.addEventListener('pointerdown', this._handleOptionPointerDown)
     option.addEventListener('option-update', this._onOptionUpdate)
+    // 面板内的 option 删除时已脱离宿主子树，unregister 冒泡不经过 select，
+    // 必须逐元素监听才能捕获真删除（autocomplete 同款）。
+    option.addEventListener('option-unregister', this._onOptionUnregister)
   }
 
   private _unbindOption = (option: WebUiOption) => {
@@ -236,6 +243,7 @@ export class WebUiSelect extends LitElement {
     option.removeEventListener('pointerover', this._handleOptionPointerOver)
     option.removeEventListener('pointerdown', this._handleOptionPointerDown)
     option.removeEventListener('option-update', this._onOptionUpdate)
+    option.removeEventListener('option-unregister', this._onOptionUnregister)
   }
 
   private _refreshOptions() {
@@ -255,9 +263,11 @@ export class WebUiSelect extends LitElement {
     this._scheduleOptionsRefresh()
   }
 
-  private _onOptionUnregister = () => {
-    // Portal 迁移与真实删除都会触发 unregister；延迟到微任务末尾再刷新，
-    // 才能根据 option 的最终位置区分二者。
+  private _onOptionUnregister = (e: Event) => {
+    // Portal 迁移与真实删除都会触发 unregister；先记录候选，微任务末按最终位置区分。
+    if (e.target instanceof HTMLElement && e.target.localName === 'web-ui-option') {
+      this._pendingUnregisteredOptions.add(e.target as WebUiOption)
+    }
     this._scheduleOptionsRefresh()
   }
 
@@ -283,6 +293,14 @@ export class WebUiSelect extends LitElement {
   // 面板内已有内容时 _queryOptions 不会回退 light DOM，必须显式把新节点迁移进面板。
   private _syncPortalContent() {
     if (!this._portal || !this._portalContent) return
+
+    // 真删除（既不在面板也不在 light DOM）的 option 从 portal 追踪列表摘除，
+    // 否则关闭时 restoreContent 会把它复活回 light DOM。
+    for (const option of this._pendingUnregisteredOptions) {
+      if (!this._portalContent.contains(option) && !this.contains(option)) this._portal.removeContent([option])
+    }
+    this._pendingUnregisteredOptions.clear()
+
     if (!this._isOpen) return
 
     const panel = this._portalContent
