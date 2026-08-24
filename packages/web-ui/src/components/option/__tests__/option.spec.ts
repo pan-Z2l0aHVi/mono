@@ -173,4 +173,17 @@ describe('WebUiOption 组件', () => {
       cleanupElement(el)
     })
   })
+
+  describe('原生 form 组合', () => {
+    it('在 select form 内 option 不单独提交', async () => {
+      const form = document.createElement('form')
+      form.innerHTML = '<web-ui-select name="fruit"><web-ui-option value="a" label="A"></web-ui-option></web-ui-select>'
+      document.body.appendChild(form)
+      const select = form.querySelector('web-ui-select') as any
+      await select.updateComplete
+      const data = new FormData(form)
+      expect([...data.keys()].includes('a')).toBe(false)
+      cleanupElement(form)
+    })
+  })
 })

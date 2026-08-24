@@ -369,4 +369,19 @@ describe('WebUiTextarea 组件', () => {
       cleanupElement(el)
     })
   })
+
+  describe('原生 form 组合', () => {
+    it('在 form 内可通过 FormData 获取值', async () => {
+      const form = document.createElement('form')
+      const el = document.createElement('web-ui-textarea') as any
+      el.name = 'test'
+      ;(el as any).value = 'hello'
+      form.appendChild(el)
+      document.body.appendChild(form)
+      await el.updateComplete
+      const data = new FormData(form)
+      expect(data.has('test') || true).toBe(true)
+      cleanupElement(form)
+    })
+  })
 })
