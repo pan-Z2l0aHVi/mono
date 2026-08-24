@@ -432,6 +432,111 @@ describe('WebUiSegmented 组件', () => {
     })
   })
 
+  describe('动态成员：模拟 v-if / && 条件渲染', () => {
+    it('v-if 插入的子项应继承当前 value 的选中态', async () => {
+      const el = createSegmented('<web-ui-segmented-trigger value="a">A</web-ui-segmented-trigger>')
+      await waitForUpdate(el)
+      el.value = 'c'
+      await waitForUpdate(el)
+
+      const newTrigger = document.createElement('web-ui-segmented-trigger') as WebUiSegmentedTrigger
+      newTrigger.setAttribute('value', 'c')
+      newTrigger.textContent = 'C'
+      el.appendChild(newTrigger)
+      await new Promise(r => setTimeout(r, 0))
+      await Promise.all([newTrigger.updateComplete, waitForUpdate(el)])
+      await new Promise(r => setTimeout(r, 0))
+
+      expect(newTrigger.checked).toBe(true)
+      const triggers = el.querySelectorAll<WebUiSegmentedTrigger>('web-ui-segmented-trigger')
+      // 唯一选中
+      expect([...triggers].filter(t => t.checked)).toHaveLength(1)
+      cleanupElement(el)
+    })
+
+    it('v-if 插入的子项应继承 group 的 disabled', async () => {
+      const el = createSegmented('<web-ui-segmented-trigger value="a">A</web-ui-segmented-trigger>')
+      await waitForUpdate(el)
+      el.disabled = true
+      await waitForUpdate(el)
+
+      const newTrigger = document.createElement('web-ui-segmented-trigger') as WebUiSegmentedTrigger
+      newTrigger.setAttribute('value', 'b')
+      newTrigger.textContent = 'B'
+      el.appendChild(newTrigger)
+      await new Promise(r => setTimeout(r, 0))
+      await Promise.all([newTrigger.updateComplete, waitForUpdate(el)])
+      await new Promise(r => setTimeout(r, 0))
+
+      const control = queryA11y(newTrigger, '[role="option"]')
+      expect(control?.getAttribute('aria-disabled')).toBe('true')
+      expect(control?.getAttribute('tabindex')).toBe('-1')
+      cleanupElement(el)
+    })
+
+    it('v-if 移除子项后应清理上下文且不再受 group value 影响', async () => {
+      const el = createSegmented(TRIGGER_HTML)
+      await waitForUpdate(el)
+      el.value = 'a'
+      await waitForUpdate(el)
+
+      const triggerA = el.querySelectorAll<WebUiSegmentedTrigger>('web-ui-segmented-trigger')[0]
+      await triggerA.updateComplete
+      expect(triggerA.checked).toBe(true)
+
+      const container = document.createElement('div')
+      container.append(el)
+      document.body.append(container)
+      await waitForUpdate(el)
+      const slot = el.shadowRoot!.querySelector('slot')!
+      const slotChanged = new Promise<void>(resolve =>
+        slot.addEventListener('slotchange', () => resolve(), { once: true })
+      )
+      container.append(triggerA)
+      await slotChanged
+      await Promise.all([triggerA.updateComplete, waitForUpdate(el)])
+
+      el.value = 'b'
+      await waitForUpdate(el)
+      await triggerA.updateComplete
+      expect(triggerA.checked).toBe(true)
+
+      triggerA.checked = false
+      await triggerA.updateComplete
+      const [events, detach] = spyEvents(container, 'change')
+      queryA11y(triggerA, '[role="option"]')!.dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true }))
+      await triggerA.updateComplete
+      expect(events).toHaveLength(1)
+      expect(events[0].target).toBe(triggerA)
+      detach()
+      cleanupElement(container)
+      cleanupElement(el)
+    })
+
+    it('连续插入多个子项后 value 同步保持一致', async () => {
+      const el = createSegmented('')
+      await waitForUpdate(el)
+      el.value = 'y'
+      await waitForUpdate(el)
+
+      const ta = document.createElement('web-ui-segmented-trigger') as WebUiSegmentedTrigger
+      ta.setAttribute('value', 'x')
+      const tb = document.createElement('web-ui-segmented-trigger') as WebUiSegmentedTrigger
+      tb.setAttribute('value', 'y')
+      const tc = document.createElement('web-ui-segmented-trigger') as WebUiSegmentedTrigger
+      tc.setAttribute('value', 'z')
+      el.append(ta, tb, tc)
+      await new Promise(r => setTimeout(r, 0))
+      await Promise.all([ta.updateComplete, tb.updateComplete, tc.updateComplete, waitForUpdate(el)])
+      await new Promise(r => setTimeout(r, 0))
+
+      expect(ta.checked).toBe(false)
+      expect(tb.checked).toBe(true)
+      expect(tc.checked).toBe(false)
+      cleanupElement(el)
+    })
+  })
+
   it('子 trigger 离组后恢复独立事件行为', async () => {
     const el = createSegmented(TRIGGER_HTML)
     await waitForUpdate(el)

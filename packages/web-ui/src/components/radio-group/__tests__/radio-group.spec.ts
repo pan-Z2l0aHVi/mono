@@ -352,6 +352,109 @@ describe('WebUiRadioGroup 组件', () => {
     })
   })
 
+  describe('动态成员：模拟 v-if / && 条件渲染', () => {
+    it('v-if 插入的子项应继承当前 value 的选中态', async () => {
+      const el = createGroup('<web-ui-radio value="a">A</web-ui-radio>')
+      await waitForUpdate(el)
+      el.value = 'c'
+      await waitForUpdate(el)
+
+      const newRadio = document.createElement('web-ui-radio') as WebUiRadio
+      newRadio.setAttribute('value', 'c')
+      newRadio.textContent = 'C'
+      el.appendChild(newRadio)
+      await new Promise(r => setTimeout(r, 0))
+      await Promise.all([newRadio.updateComplete, waitForUpdate(el)])
+      await new Promise(r => setTimeout(r, 0))
+
+      expect(newRadio.checked).toBe(true)
+      cleanupElement(el)
+    })
+
+    it('v-if 插入的子项应继承 group 的 disabled（不改写子项 disabled 属性）', async () => {
+      const el = createGroup('<web-ui-radio value="a">A</web-ui-radio>')
+      await waitForUpdate(el)
+      el.disabled = true
+      await waitForUpdate(el)
+
+      const newRadio = document.createElement('web-ui-radio') as WebUiRadio
+      newRadio.setAttribute('value', 'b')
+      newRadio.textContent = 'B'
+      el.appendChild(newRadio)
+      await new Promise(r => setTimeout(r, 0))
+      await Promise.all([newRadio.updateComplete, waitForUpdate(el)])
+      await new Promise(r => setTimeout(r, 0))
+
+      expect(newRadio.disabled).toBe(false)
+      const control = queryA11y(newRadio, '[role="radio"]')
+      expect(control?.getAttribute('aria-disabled')).toBe('true')
+      expect(control?.getAttribute('tabindex')).toBe('-1')
+      cleanupElement(el)
+    })
+
+    it('v-if 移除子项后应清理上下文且不再受 group value 影响', async () => {
+      const el = createGroup()
+      await waitForUpdate(el)
+      el.value = 'a'
+      await waitForUpdate(el)
+
+      const radioA = el.querySelectorAll<WebUiRadio>('web-ui-radio')[0]
+      await radioA.updateComplete
+      expect(radioA.checked).toBe(true)
+
+      const container = document.createElement('div')
+      container.append(el)
+      document.body.append(container)
+      await waitForUpdate(el)
+      const slot = el.shadowRoot!.querySelector('slot')!
+      const slotChanged = new Promise<void>(resolve =>
+        slot.addEventListener('slotchange', () => resolve(), { once: true })
+      )
+      container.append(radioA)
+      await slotChanged
+      await Promise.all([radioA.updateComplete, waitForUpdate(el)])
+
+      el.value = 'b'
+      await waitForUpdate(el)
+      await radioA.updateComplete
+      expect(radioA.checked).toBe(true)
+
+      radioA.checked = false
+      await radioA.updateComplete
+      const [events, detach] = spyEvents(container, 'change')
+      queryA11y(radioA, '[role="radio"]')!.dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true }))
+      await radioA.updateComplete
+      expect(events).toHaveLength(1)
+      expect(events[0].target).toBe(radioA)
+      detach()
+      cleanupElement(container)
+      cleanupElement(el)
+    })
+
+    it('连续插入多个子项后 value 同步保持一致', async () => {
+      const el = createGroup('')
+      await waitForUpdate(el)
+      el.value = 'y'
+      await waitForUpdate(el)
+
+      const ra = document.createElement('web-ui-radio') as WebUiRadio
+      ra.setAttribute('value', 'x')
+      const rb = document.createElement('web-ui-radio') as WebUiRadio
+      rb.setAttribute('value', 'y')
+      const rc = document.createElement('web-ui-radio') as WebUiRadio
+      rc.setAttribute('value', 'z')
+      el.append(ra, rb, rc)
+      await new Promise(r => setTimeout(r, 0))
+      await Promise.all([ra.updateComplete, rb.updateComplete, rc.updateComplete, waitForUpdate(el)])
+      await new Promise(r => setTimeout(r, 0))
+
+      expect(ra.checked).toBe(false)
+      expect(rb.checked).toBe(true)
+      expect(rc.checked).toBe(false)
+      cleanupElement(el)
+    })
+  })
+
   describe('slot 动态变化', () => {
     it('动态添加子 radio 后 value 状态同步', async () => {
       const el = createGroup('')

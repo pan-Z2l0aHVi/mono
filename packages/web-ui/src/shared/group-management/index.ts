@@ -68,7 +68,8 @@ interface GroupControllerOptions {
  */
 export class GroupController implements ReactiveController {
   private connected = false
-
+  private observer: MutationObserver | null = null
+  private observedSlots = new Set<HTMLSlotElement>()
   constructor(
     private readonly host: GroupControllerHost,
     private readonly lifecycle: GroupLifecycle,
@@ -80,18 +81,21 @@ export class GroupController implements ReactiveController {
   hostConnected() {
     this.connected = true
     this.host.addEventListener('change', this.handleChange, true)
-    this.host.renderRoot.addEventListener('slotchange', this.handleSlotChange)
+    this.observeHost()
+    this.observeSlots()
     this.sync()
   }
 
   hostUpdated() {
+    this.observeSlots()
     this.sync()
   }
 
   hostDisconnected() {
     this.connected = false
     this.host.removeEventListener('change', this.handleChange, true)
-    this.host.renderRoot.removeEventListener('slotchange', this.handleSlotChange)
+    this.disconnectSlots()
+    this.disconnectHostObserver()
     this.lifecycle.disconnect()
   }
 
@@ -104,9 +108,53 @@ export class GroupController implements ReactiveController {
     this.sync()
   }
 
+  private readonly handleMutations = () => {
+    if (!this.connected) return
+    this.sync()
+  }
+
   sync() {
     if (!this.lifecycle.sync()) return
     this.options.afterSync?.()
+  }
+
+  private observeHost() {
+    this.disconnectHostObserver()
+    // 监听 light DOM 的增删，覆盖 Vue v-if / React && 的 comment 锚点替换与深层包裹
+    this.observer = new MutationObserver(this.handleMutations)
+    this.observer.observe(this.host, { childList: true, subtree: true })
+  }
+
+  private disconnectHostObserver() {
+    if (this.observer) {
+      this.observer.disconnect()
+      this.observer = null
+    }
+  }
+
+  private observeSlots() {
+    const root = this.host.renderRoot as Element
+    const slots = root.querySelectorAll<HTMLSlotElement>('slot')
+    for (const slot of slots) {
+      if (!this.observedSlots.has(slot)) {
+        slot.addEventListener('slotchange', this.handleSlotChange)
+        this.observedSlots.add(slot)
+      }
+    }
+    // 清理已移除的 slot（热更新等场景）
+    for (const slot of this.observedSlots) {
+      if (!root.contains(slot)) {
+        slot.removeEventListener('slotchange', this.handleSlotChange)
+        this.observedSlots.delete(slot)
+      }
+    }
+  }
+
+  private disconnectSlots() {
+    for (const slot of this.observedSlots) {
+      slot.removeEventListener('slotchange', this.handleSlotChange)
+    }
+    this.observedSlots.clear()
   }
 }
 
