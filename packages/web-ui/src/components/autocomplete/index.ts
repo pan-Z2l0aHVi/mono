@@ -8,6 +8,7 @@ import overlayMotion from '@/assets/overlay-motion.css?inline'
 import type { WebUiOption } from '@/components/option'
 import { defineFormAssociation, FormAssociationController } from '@/shared/form-association'
 import { normalizeLiteral } from '@/shared/normalize'
+import { defineOptionPortal } from '@/shared/option-portal'
 import { defineAnchoredPanel } from '@/shared/overlay/anchored-panel'
 import { defineOverlayPortal } from '@/shared/overlay/portal'
 import type { OverlayContainer, OverlayPortal } from '@/shared/overlay/portal'
@@ -115,15 +116,28 @@ export class WebUiAutocomplete extends LitElement {
 
   private static _nextInstanceId = 0
   private readonly _idPrefix = `web-ui-autocomplete-${++WebUiAutocomplete._nextInstanceId}`
-  private readonly _optionIds = new WeakMap<WebUiOption, string>()
   private readonly _a11yOptionIds = new WeakMap<WebUiOption, string>()
-  private _nextOptionId = 0
   private _nextA11yOptionId = 0
   private _options: WebUiOption[] = []
   private _portal?: OverlayPortal
   private _portalContent?: HTMLElement
-  private readonly _pendingUnregisteredOptions = new Set<WebUiOption>()
   private readonly _scrollLock = defineScrollLockLease().make()
+
+  // option 注册表 / portal 同步 / 微任务调度收敛到 shared 模块（select 同款）
+  private readonly _optionPortal = defineOptionPortal().make({
+    element: this,
+    idPrefix: `${this._idPrefix}-option`,
+    getPortal: () => this._portal,
+    getPortalContent: () => this._portalContent,
+    isOpen: () => this.portal && this._isOpen,
+    // autocomplete 迁移全部子节点：empty state 等面板内静态内容与 option 的相对顺序
+    // 由 childNodes 原序保持，迁移粒度与 select（裸 option）刻意不同
+    getMigratableNodes: () => Array.from(this.childNodes),
+    hasUpdated: () => this.hasUpdated,
+    requestUpdate: () => this.requestUpdate(),
+    bindOption: option => this._bindOption(option),
+    unbindOption: option => this._unbindOption(option)
+  })
   private readonly _panel = defineAnchoredPanel().make({
     getAnchor: () => this.shadowRoot?.querySelector<HTMLElement>('.input-wrapper') ?? null,
     getLocalPanel: () => this.shadowRoot?.querySelector<HTMLElement>('.autocomplete-overlay') ?? null,
@@ -169,8 +183,7 @@ export class WebUiAutocomplete extends LitElement {
 
   override connectedCallback() {
     super.connectedCallback()
-    this.addEventListener('option-register', this._onOptionRegister)
-    this.addEventListener('option-unregister', this._onOptionUnregister)
+    this._optionPortal.bindHost()
     this.addEventListener('keydown', this._onKeydown)
     this.addEventListener('focusout', this._onFocusOut)
     document.addEventListener('click', this._onClickOutside)
@@ -187,13 +200,11 @@ export class WebUiAutocomplete extends LitElement {
 
   override disconnectedCallback() {
     super.disconnectedCallback()
-    this.removeEventListener('option-register', this._onOptionRegister)
-    this.removeEventListener('option-unregister', this._onOptionUnregister)
+    this._optionPortal.dispose()
     this.removeEventListener('keydown', this._onKeydown)
     this.removeEventListener('focusout', this._onFocusOut)
     document.removeEventListener('click', this._onClickOutside)
     this._options.forEach(this._unbindOption)
-    this._pendingUnregisteredOptions.clear()
     this._close()
     this._portal = undefined
     this._portalContent = undefined
@@ -203,21 +214,13 @@ export class WebUiAutocomplete extends LitElement {
 
   override firstUpdated() {
     requestAnimationFrame(() => {
-      if (this.isConnected) this._onSlotChange()
+      if (this.isConnected) this._optionPortal.scheduleRefresh()
     })
-  }
-
-  private _queryOptions(): WebUiOption[] {
-    const panel = this.portal ? this._panel.getPanel() : null
-    const panelOptions = panel ? [...panel.querySelectorAll<WebUiOption>('web-ui-option')] : []
-    // 面板内容仅在浮层打开、moveContent 之后存在；关闭时回退 light DOM，
-    // 否则 portal 模式首次加载时 _options 为空。
-    return panelOptions.length > 0 ? panelOptions : [...this.querySelectorAll<WebUiOption>('web-ui-option')]
   }
 
   override willUpdate() {
     this._refreshOptions()
-    this._ensureOptionIds()
+    this._optionPortal.ensureOptionIds(this._options)
     this._syncSelectedValue()
     this._applyFilter()
     this._syncOptionA11y()
@@ -275,23 +278,6 @@ export class WebUiAutocomplete extends LitElement {
     })
   }
 
-  private _ensureOptionIds() {
-    const usedIds = new Set(this._options.map(option => option.id).filter(Boolean))
-    this._options.forEach(option => {
-      if (option.id) return
-
-      let id = this._optionIds.get(option)
-      if (!id || usedIds.has(id)) {
-        do {
-          id = `${this._idPrefix}-option-${++this._nextOptionId}`
-        } while (usedIds.has(id))
-        this._optionIds.set(option, id)
-      }
-      option.id = id
-      usedIds.add(id)
-    })
-  }
-
   private _getA11yOptionId(option: WebUiOption): string {
     let id = this._a11yOptionIds.get(option)
     if (!id) {
@@ -332,8 +318,6 @@ export class WebUiAutocomplete extends LitElement {
     option.addEventListener('pointerover', this._handleOptionPointerOver)
     option.addEventListener('pointerdown', this._handleOptionPointerDown)
     option.addEventListener('option-update', this._onOptionUpdate)
-    // Portal 迁移后 option 不再向宿主冒泡事件，直接监听以覆盖真实删除。
-    option.addEventListener('option-unregister', this._onOptionUnregister)
   }
 
   private _unbindOption = (option: WebUiOption) => {
@@ -341,55 +325,14 @@ export class WebUiAutocomplete extends LitElement {
     option.removeEventListener('pointerover', this._handleOptionPointerOver)
     option.removeEventListener('pointerdown', this._handleOptionPointerDown)
     option.removeEventListener('option-update', this._onOptionUpdate)
-    option.removeEventListener('option-unregister', this._onOptionUnregister)
   }
 
   private _refreshOptions() {
     const activeOption = this._options[this._activeIndex]
-    const nextOptions = this._queryOptions()
-
-    this._options.filter(option => !nextOptions.includes(option)).forEach(this._unbindOption)
-    nextOptions.forEach(this._bindOption)
-    this._options = nextOptions
-    this._activeIndex = activeOption && nextOptions.includes(activeOption) ? nextOptions.indexOf(activeOption) : -1
-  }
-
-  private _syncPortalContent() {
-    if (!this._portal || !this._portalContent) return
-
-    for (const option of this._pendingUnregisteredOptions) {
-      if (!this._portalContent.contains(option) && !this.contains(option)) this._portal.removeContent([option])
-    }
-    this._pendingUnregisteredOptions.clear()
-
-    if (!this._isOpen) return
-
-    const lightDomNodes = Array.from(this.childNodes)
-    if (lightDomNodes.length) this._portal.appendContent(lightDomNodes, this._portalContent)
-  }
-
-  private _scheduleOptionsRefresh() {
-    // disconnectedCallback 在 Portal 迁移与实际删除时都会触发。延迟到当前微任务结束，
-    // 才能根据 option 的最终位置区分二者并同时同步 active/selected/ARIA 状态。
-    queueMicrotask(() => {
-      if (!this.isConnected) return
-      this._syncPortalContent()
-      this.requestUpdate()
-    })
-  }
-
-  private _onOptionRegister = () => {
-    this._scheduleOptionsRefresh()
-  }
-
-  private _onOptionUnregister = (e: Event) => {
-    if (e.target instanceof HTMLElement && e.target.localName === 'web-ui-option')
-      this._pendingUnregisteredOptions.add(e.target as WebUiOption)
-    this._scheduleOptionsRefresh()
-  }
-
-  private _onSlotChange = () => {
-    this._scheduleOptionsRefresh()
+    // diff 绑定/解绑与激活索引按 option 身份保持在 shared 内完成
+    const next = this._optionPortal.refresh(this._options, activeOption)
+    this._options = next.options
+    this._activeIndex = next.activeIndex
   }
 
   private _handleOptionClick = (e: Event) => {
@@ -400,7 +343,7 @@ export class WebUiAutocomplete extends LitElement {
   }
 
   private _onOptionUpdate = () => {
-    this._scheduleOptionsRefresh()
+    this._optionPortal.scheduleRefresh()
   }
 
   private _handleOptionPointerOver = (e: PointerEvent) => {
@@ -415,6 +358,11 @@ export class WebUiAutocomplete extends LitElement {
   private _handleOptionPointerDown = (e: PointerEvent) => {
     // 保持输入框焦点，避免 focusout 在 click 前关闭浮层。
     e.preventDefault()
+  }
+
+  // slotchange 不冒泡，只能由模板内 slot 自行监听；稳定引用避免 Lit 重挂载
+  private _onSlotChange = () => {
+    this._optionPortal.scheduleRefresh()
   }
 
   private _onKeydown = (e: KeyboardEvent) => {
@@ -532,7 +480,7 @@ export class WebUiAutocomplete extends LitElement {
     // Portal 内容可能在当前微任务尚未完成同步；先把 light DOM 中新增或重排的节点
     // 收回当前 content，再关闭并 restore，避免 restoreContent() 按旧 tracking 顺序把
     // 新 option 插到旧 option 前面。
-    this._syncPortalContent()
+    this._optionPortal.syncPortalContent()
     this._isOpen = false
     this._dispatchOpenChange()
     this._activeIndex = -1
@@ -580,7 +528,7 @@ export class WebUiAutocomplete extends LitElement {
       target: this,
       style: `${glass}\n${overlayMotion}\n${style}`,
       className: 'wui-glass autocomplete-overlay portal wui-floating-panel',
-      onContentChange: () => this._scheduleOptionsRefresh()
+      onContentChange: () => this._optionPortal.scheduleRefresh()
     })
     this._portal = portal
     portal.panel.setAttribute('aria-hidden', 'true')

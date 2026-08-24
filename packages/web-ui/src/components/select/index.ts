@@ -8,6 +8,7 @@ import overlayMotion from '@/assets/overlay-motion.css?inline'
 import type { WebUiOption } from '@/components/option'
 import { lucideChevronDown } from '@/icons'
 import { defineFormAssociation, FormAssociationController } from '@/shared/form-association'
+import { defineOptionPortal } from '@/shared/option-portal'
 import { defineAnchoredPanel } from '@/shared/overlay/anchored-panel'
 import { defineOverlayPortal } from '@/shared/overlay/portal'
 import type { OverlayContainer, OverlayPortal } from '@/shared/overlay/portal'
@@ -80,10 +81,26 @@ export class WebUiSelect extends LitElement {
   private _options: WebUiOption[] = []
   private _portal?: OverlayPortal
   private _portalContent?: HTMLElement
-  // Portal 打开期间被真实删除的 option：unregister 时无法与迁移区分，
-  // 先记录，微任务末按最终位置判定后从 portal 追踪列表摘除，防止关闭时复活。
-  private readonly _pendingUnregisteredOptions = new Set<WebUiOption>()
   private readonly _scrollLock = defineScrollLockLease().make()
+
+  // option 注册表 / portal 同步 / 微任务调度收敛到 shared 模块（autocomplete 同款）
+  private readonly _optionPortal = defineOptionPortal().make({
+    element: this,
+    idPrefix: this.localName,
+    getPortal: () => this._portal,
+    getPortalContent: () => this._portalContent,
+    isOpen: () => this.portal && this._isOpen,
+    getMigratableNodes: () => [...this.querySelectorAll<WebUiOption>('web-ui-option')],
+    hasUpdated: () => this.hasUpdated,
+    requestUpdate: () => this.requestUpdate(),
+    bindOption: option => this._bindOption(option),
+    unbindOption: option => this._unbindOption(option),
+    onImmediateSync: () => {
+      this._refreshOptions()
+      this._syncSelected()
+      this._syncActiveOption()
+    }
+  })
   private readonly _panel = defineAnchoredPanel().make({
     getAnchor: () => this.shadowRoot?.querySelector<HTMLElement>('.select-trigger') ?? null,
     getLocalPanel: () => this.shadowRoot?.querySelector<HTMLElement>('.select-overlay') ?? null,
@@ -127,8 +144,7 @@ export class WebUiSelect extends LitElement {
 
   override connectedCallback() {
     super.connectedCallback()
-    this.addEventListener('option-register', this._onOptionRegister)
-    this.addEventListener('option-unregister', this._onOptionUnregister)
+    this._optionPortal.bindHost()
     this.addEventListener('keydown', this._onKeydown)
     this.addEventListener('focusout', this._onFocusOut)
     document.addEventListener('click', this._onClickOutside)
@@ -136,14 +152,12 @@ export class WebUiSelect extends LitElement {
 
   override disconnectedCallback() {
     super.disconnectedCallback()
-    this.removeEventListener('option-register', this._onOptionRegister)
-    this.removeEventListener('option-unregister', this._onOptionUnregister)
+    this._optionPortal.dispose()
     this.removeEventListener('keydown', this._onKeydown)
     this.removeEventListener('focusout', this._onFocusOut)
     document.removeEventListener('click', this._onClickOutside)
     this._options.forEach(this._unbindOption)
     this._options = []
-    this._pendingUnregisteredOptions.clear()
     this._portal = undefined
     this._portalContent = undefined
     this._close()
@@ -153,21 +167,12 @@ export class WebUiSelect extends LitElement {
 
   override firstUpdated() {
     requestAnimationFrame(() => {
-      if (this.isConnected) this._onSlotChange()
+      if (this.isConnected) this._optionPortal.scheduleRefresh()
     })
-  }
-
-  private _queryOptions(): WebUiOption[] {
-    const panel = this.portal ? this._panel.getPanel() : null
-    const panelOptions = panel ? [...panel.querySelectorAll<WebUiOption>('web-ui-option')] : []
-    // 面板内容仅在浮层打开、moveContent 之后存在；关闭时回退 light DOM，
-    // 否则 portal select 首次加载时 _options 为空，trigger 显示不出已选值。
-    return panelOptions.length > 0 ? panelOptions : [...this.querySelectorAll<WebUiOption>('web-ui-option')]
   }
 
   override willUpdate() {
     this._refreshOptions()
-    this._ensureOptionIds()
     this._syncSelected()
   }
 
@@ -222,20 +227,11 @@ export class WebUiSelect extends LitElement {
     this._selectedLabel = option?.label || this.placeholder
   }
 
-  private _ensureOptionIds() {
-    this._options.forEach((option, index) => {
-      if (!option.id) option.id = `${this.localName}-option-${index}`
-    })
-  }
-
   private _bindOption = (option: WebUiOption) => {
     option.addEventListener('click', this._handleOptionClick)
     option.addEventListener('pointerover', this._handleOptionPointerOver)
     option.addEventListener('pointerdown', this._handleOptionPointerDown)
     option.addEventListener('option-update', this._onOptionUpdate)
-    // 面板内的 option 删除时已脱离宿主子树，unregister 冒泡不经过 select，
-    // 必须逐元素监听才能捕获真删除（autocomplete 同款）。
-    option.addEventListener('option-unregister', this._onOptionUnregister)
   }
 
   private _unbindOption = (option: WebUiOption) => {
@@ -243,69 +239,17 @@ export class WebUiSelect extends LitElement {
     option.removeEventListener('pointerover', this._handleOptionPointerOver)
     option.removeEventListener('pointerdown', this._handleOptionPointerDown)
     option.removeEventListener('option-update', this._onOptionUpdate)
-    option.removeEventListener('option-unregister', this._onOptionUnregister)
   }
 
   private _refreshOptions() {
     const activeOption = this._options[this._activeIndex]
-    const nextOptions = this._queryOptions()
-
-    // register/unregister 是 composed 事件：Portal 迁移时 target 会 retarget 成宿主，
-    // 不能作为监听器绑定依据；绑定只发生在按 DOM 查询确认身份的 option 上。
-    this._options.filter(option => !nextOptions.includes(option)).forEach(this._unbindOption)
-    nextOptions.forEach(this._bindOption)
-    this._options = nextOptions
-    // 激活索引按 option 身份保持，避免移除中间项后静默偏移到相邻项
-    this._activeIndex = activeOption && nextOptions.includes(activeOption) ? nextOptions.indexOf(activeOption) : -1
-  }
-
-  private _onOptionRegister = () => {
-    this._scheduleOptionsRefresh()
-  }
-
-  private _onOptionUnregister = (e: Event) => {
-    // Portal 迁移与真实删除都会触发 unregister；先记录候选，微任务末按最终位置区分。
-    if (e.target instanceof HTMLElement && e.target.localName === 'web-ui-option') {
-      this._pendingUnregisteredOptions.add(e.target as WebUiOption)
-    }
-    this._scheduleOptionsRefresh()
-  }
-
-  private _onSlotChange = () => {
-    this._scheduleOptionsRefresh()
-  }
-
-  private _scheduleOptionsRefresh() {
-    queueMicrotask(() => {
-      if (!this.isConnected) return
-      this._syncPortalContent()
-      this.requestUpdate()
-      // 关闭状态下 willUpdate 查不到 portal 面板内容；打开期间的新增/删除需立即同步标签与激活态
-      if (!this.hasUpdated || !this.portal || !this._isOpen) return
-      this._refreshOptions()
-      this._ensureOptionIds()
-      this._syncSelected()
-      this._syncActiveOption()
-    })
-  }
-
-  // Portal 打开期间框架条件渲染（v-if）可能在 light DOM 插入新 option；
-  // 面板内已有内容时 _queryOptions 不会回退 light DOM，必须显式把新节点迁移进面板。
-  private _syncPortalContent() {
-    if (!this._portal || !this._portalContent) return
-
-    // 真删除（既不在面板也不在 light DOM）的 option 从 portal 追踪列表摘除，
-    // 否则关闭时 restoreContent 会把它复活回 light DOM。
-    for (const option of this._pendingUnregisteredOptions) {
-      if (!this._portalContent.contains(option) && !this.contains(option)) this._portal.removeContent([option])
-    }
-    this._pendingUnregisteredOptions.clear()
-
-    if (!this._isOpen) return
-
-    const panel = this._portalContent
-    const lightDomOptions = [...this.querySelectorAll<WebUiOption>('web-ui-option')]
-    if (lightDomOptions.length) this._portal.appendContent(lightDomOptions, panel)
+    // diff 绑定/解绑与激活索引按 option 身份保持在 shared 内完成，
+    // 避免移除中间项后激活静默偏移到相邻项
+    const next = this._optionPortal.refresh(this._options, activeOption)
+    this._options = next.options
+    this._activeIndex = next.activeIndex
+    // 非 portal 模式 aria-activedescendant 引用真实 option id,需保证已分配
+    this._optionPortal.ensureOptionIds(this._options)
   }
 
   private _handleOptionClick = (e: Event) => {
@@ -334,6 +278,11 @@ export class WebUiSelect extends LitElement {
   private _handleOptionPointerDown = (e: PointerEvent) => {
     // 保持 trigger 焦点，避免 focusout 在 click 前关闭浮层。
     e.preventDefault()
+  }
+
+  // slotchange 不冒泡，只能由模板内 slot 自行监听；稳定引用避免 Lit 重挂载
+  private _onSlotChange = () => {
+    this._optionPortal.scheduleRefresh()
   }
 
   // slotchange/unregister 的刷新依赖 Lit 渲染调度；键盘或 click 事件可能先于其触发，
@@ -483,7 +432,7 @@ export class WebUiSelect extends LitElement {
       target: this,
       style: `${glass}\n${overlayMotion}\n${style}`,
       className: 'wui-glass select-overlay portal wui-floating-panel',
-      onContentChange: () => this._scheduleOptionsRefresh()
+      onContentChange: () => this._optionPortal.scheduleRefresh()
     })
     this._portal = portal
     portal.panel.setAttribute('role', 'listbox')
