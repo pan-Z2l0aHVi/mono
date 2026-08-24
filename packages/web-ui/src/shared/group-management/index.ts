@@ -3,8 +3,14 @@ import type { ReactiveController, ReactiveControllerHost } from 'lit'
 
 const groupManagedItem = Symbol('web-ui.group-managed-item')
 
+// 组实例的唯一身份。同一子项可能先后属于多个组（如跨组移动），共享通道必须
+// 按 owner 归属写入，防止旧组晚到的清理覆写新组刚安装的 context。
+const groupOwnerToken = Symbol('web-ui.group-owner-token')
+
+type GroupOwner = Record<typeof groupOwnerToken, true>
+
 type GroupManagedItem<Context> = HTMLElement & {
-  [groupManagedItem]?: (context: Context | undefined) => void
+  [groupManagedItem]?: (owner: GroupOwner, context: Context | undefined) => void
 }
 
 interface GroupControllerHost extends HTMLElement, ReactiveControllerHost {
@@ -24,6 +30,10 @@ export interface ButtonGroupContext {
  * 创建受管理 group 的子项侧能力：提供只读 context 视图，并注册由 group owner
  * 推送的接收通道。在 `make()` 时完成注册，组件无需再编写 constructor 样板。
  */
+function createGroupOwner(): GroupOwner {
+  return { [groupOwnerToken]: true }
+}
+
 export function defineGroupManaged<Context>(
   item: HTMLElement,
   options: {
@@ -51,12 +61,20 @@ export function defineGroupManaged<Context>(
   })
 }
 
-function installGroupContext<Context>(item: HTMLElement, context: Context | undefined) {
-  ;(item as GroupManagedItem<Context>)[groupManagedItem]?.(context)
+function installGroupContext<Context>(item: HTMLElement, owner: GroupOwner, context: Context | undefined) {
+  ;(item as GroupManagedItem<Context>)[groupManagedItem]?.(owner, context)
 }
 
 function registerGroupManagedItem<Context>(item: HTMLElement, setContext: (context: Context | undefined) => void) {
-  ;(item as GroupManagedItem<Context>)[groupManagedItem] = setContext
+  let currentOwner: GroupOwner | undefined
+  ;(item as GroupManagedItem<Context>)[groupManagedItem] = (owner, context) => {
+    // 安装总是被接受并转移归属（安装方来自实时 DOM 查询，身份可信）；
+    // 清理只在写入者仍是当前归属者时执行——跨组移动后旧组晚到的
+    // 移除同步不得覆写新组刚安装的 context。
+    if (context === undefined && currentOwner !== owner) return
+    currentOwner = context === undefined ? undefined : owner
+    setContext(context)
+  }
 }
 
 export interface GroupLifecycle {
@@ -186,6 +204,7 @@ export interface GroupCoordinatorOptions<Item extends HTMLElement, Value> {
  */
 export function defineGroupCoordinator<Item extends HTMLElement, Value>(options: GroupCoordinatorOptions<Item, Value>) {
   return definePlugin(() => {
+    const owner = createGroupOwner()
     let items = new Set<Item>()
     let lastValue: Value | undefined
     let lastDisabled: boolean | undefined
@@ -203,12 +222,13 @@ export function defineGroupCoordinator<Item extends HTMLElement, Value>(options:
         membershipChanged
 
       for (const item of items) {
-        if (!nextItems.has(item)) installGroupContext<SelectionGroupContext>(item, undefined)
+        if (!nextItems.has(item)) installGroupContext<SelectionGroupContext>(item, owner, undefined)
       }
 
       for (const item of nextItems) {
         installGroupContext<SelectionGroupContext>(
           item,
+          owner,
           disabled ? DISABLED_SELECTION_CONTEXT : ENABLED_SELECTION_CONTEXT
         )
         if (selectionChanged) options.setItemSelected(item, options.isItemSelected(item, value))
@@ -224,7 +244,7 @@ export function defineGroupCoordinator<Item extends HTMLElement, Value>(options:
     return {
       sync,
       disconnect() {
-        for (const item of items) installGroupContext<SelectionGroupContext>(item, undefined)
+        for (const item of items) installGroupContext<SelectionGroupContext>(item, owner, undefined)
         items.clear()
         initialized = false
         lastValue = undefined
@@ -262,6 +282,7 @@ export function defineGroupPresentation<Item extends HTMLElement, Context>(
   options: GroupPresentationOptions<Item, Context>
 ) {
   return definePlugin(() => {
+    const owner = createGroupOwner()
     let items = new Set<Item>()
     let previousItems: readonly Item[] = []
 
@@ -273,16 +294,16 @@ export function defineGroupPresentation<Item extends HTMLElement, Context>(
           nextItems.length !== previousItems.length || nextItems.some((item, index) => item !== previousItems[index])
 
         for (const item of items) {
-          if (!nextSet.has(item)) installGroupContext<Context>(item, undefined)
+          if (!nextSet.has(item)) installGroupContext<Context>(item, owner, undefined)
         }
 
-        nextItems.forEach((item, index) => installGroupContext(item, options.getContext(item, index, nextItems)))
+        nextItems.forEach((item, index) => installGroupContext(item, owner, options.getContext(item, index, nextItems)))
         items = nextSet
         previousItems = nextItems
         return membershipChanged
       },
       disconnect() {
-        for (const item of items) installGroupContext<Context>(item, undefined)
+        for (const item of items) installGroupContext<Context>(item, owner, undefined)
         items.clear()
         previousItems = []
       }
