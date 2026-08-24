@@ -209,6 +209,85 @@ describe('WebUiSelect 条件组合边界', () => {
     })
   })
 
+  describe('选项新增（portal）', () => {
+    it('打开期间向 light DOM 插入新 option 后同步进面板并可选择', async () => {
+      const el = createSelect(OPTIONS_HTML_THREE, { portal: '' })
+      await waitForUpdate(el)
+
+      const trigger = queryA11y(el, '[role="combobox"]') as HTMLElement
+      trigger.click()
+      await flushFrame(el)
+      expect(el.open).toBe(true)
+      expect(getPortalPanel(el)?.querySelectorAll('web-ui-option').length).toBe(3)
+
+      // 模拟框架条件渲染：异步数据到达后插入新选项（含 wrapper 包裹形态）
+      const wrapper = document.createElement('div')
+      wrapper.innerHTML = '<web-ui-option value="durian" label="Durian"></web-ui-option>'
+      el.appendChild(wrapper)
+      await new Promise<void>(resolve => queueMicrotask(resolve))
+      await waitForUpdate(el)
+
+      const panel = getPortalPanel(el)!
+      expect(panel.querySelectorAll('web-ui-option').length).toBe(4)
+      expect(el.querySelectorAll('web-ui-option').length).toBe(0)
+      expect(wrapper.children.length).toBe(0)
+
+      const durian = panel.querySelector<WebUiOption>('web-ui-option[value="durian"]')!
+      durian.click()
+      await waitForUpdate(el)
+      expect(el.value).toBe('durian')
+      expect(el.open).toBe(false)
+      cleanupElement(el)
+    })
+
+    it('关闭状态下插入新 option 不迁移，打开时随初始 moveContent 进入面板', async () => {
+      const el = createSelect(OPTIONS_HTML_THREE, { portal: '' })
+      await waitForUpdate(el)
+
+      const wrapper = document.createElement('div')
+      wrapper.innerHTML = '<web-ui-option value="elderberry" label="Elderberry"></web-ui-option>'
+      el.appendChild(wrapper)
+      await waitForUpdate(el)
+
+      // 关闭态 light DOM 保持原位
+      expect(el.querySelectorAll('web-ui-option').length).toBe(4)
+
+      const trigger = queryA11y(el, '[role="combobox"]') as HTMLElement
+      trigger.click()
+      await flushFrame(el)
+      expect(getPortalPanel(el)?.querySelectorAll('web-ui-option').length).toBe(4)
+      cleanupElement(el)
+    })
+
+    it('打开期间新增 option 后触发器标签与激活索引保持一致', async () => {
+      const el = createSelect('<web-ui-option value="apple" label="Apple"></web-ui-option>', {
+        portal: '',
+        placeholder: 'Pick'
+      })
+      el.value = 'apple'
+      await waitForUpdate(el)
+
+      const trigger = queryA11y(el, '[role="combobox"]') as HTMLElement
+      trigger.click()
+      await flushFrame(el)
+
+      el.insertAdjacentHTML('beforeend', '<web-ui-option value="fig" label="Fig"></web-ui-option>')
+      await new Promise<void>(resolve => queueMicrotask(resolve))
+      await waitForUpdate(el)
+
+      // 已选标签不因新增项丢失；键盘导航能看到新增项
+      expect(trigger.textContent?.includes('Apple')).toBe(true)
+      // 从已选 apple 出发 ArrowDown 确定性落到新增的 fig(portal 打开时 option 位于面板内)
+      el.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }))
+      await waitForUpdate(el)
+      expect(getPortalPanel(el)?.querySelector('web-ui-option[active]')?.getAttribute('value')).toBe('fig')
+      el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
+      await waitForUpdate(el)
+      expect(el.value).toBe('fig')
+      cleanupElement(el)
+    })
+  })
+
   describe('自定义 overlayContainer', () => {
     it('portal 面板挂载到指定容器并可正常选择', async () => {
       const container = document.createElement('div')

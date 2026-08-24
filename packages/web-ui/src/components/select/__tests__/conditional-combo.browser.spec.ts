@@ -156,6 +156,35 @@ describe('WebUiSelect 条件组合边界（浏览器）', () => {
     expect(select.querySelectorAll('web-ui-option[selected]').length).toBe(0)
   })
 
+  it('打开期间向 light DOM 插入新 option 后同步进面板并可选择', async () => {
+    const select = createSelect(OPTIONS_HTML_THREE, { portal: '' })
+    await select.updateComplete
+
+    const trigger = select.shadowRoot!.querySelector<HTMLElement>('[role="combobox"]')!
+    trigger.click()
+    await waitForFrame()
+    await select.updateComplete
+    expect(select.open).toBe(true)
+    expect(getPortalPanel()?.querySelectorAll('web-ui-option').length).toBe(3)
+
+    // 模拟框架条件渲染：异步数据到达后插入新选项
+    const wrapper = document.createElement('div')
+    wrapper.innerHTML = '<web-ui-option value="durian" label="Durian"></web-ui-option>'
+    select.appendChild(wrapper)
+    await new Promise(resolve => setTimeout(resolve, 0))
+    await select.updateComplete
+
+    const panel = getPortalPanel()!
+    expect(panel.querySelectorAll('web-ui-option').length).toBe(4)
+    expect(select.querySelectorAll('web-ui-option').length).toBe(0)
+
+    const durian = panel.querySelector<WebUiOption>('web-ui-option[value="durian"]')!
+    durian.click()
+    await select.updateComplete
+    expect(select.value).toBe('durian')
+    expect(select.open).toBe(false)
+  })
+
   it('自定义 overlayContainer 时 Portal 面板挂载到指定容器且可选择', async () => {
     const container = document.createElement('div')
     container.id = 'overlay-target-browser'

@@ -78,6 +78,8 @@ export class WebUiSelect extends LitElement {
   @state() private _hasTriggerSlot = false
 
   private _options: WebUiOption[] = []
+  private _portal?: OverlayPortal
+  private _portalContent?: HTMLElement
   private readonly _scrollLock = defineScrollLockLease().make()
   private readonly _panel = defineAnchoredPanel().make({
     getAnchor: () => this.shadowRoot?.querySelector<HTMLElement>('.select-trigger') ?? null,
@@ -138,6 +140,8 @@ export class WebUiSelect extends LitElement {
     document.removeEventListener('click', this._onClickOutside)
     this._options.forEach(this._unbindOption)
     this._options = []
+    this._portal = undefined
+    this._portalContent = undefined
     this._close()
     this._panel.dispose()
     this._scrollLock.release()
@@ -248,17 +252,26 @@ export class WebUiSelect extends LitElement {
   }
 
   private _onOptionRegister = () => {
-    this.requestUpdate()
+    this._scheduleOptionsRefresh()
   }
 
   private _onOptionUnregister = () => {
     // Portal 迁移与真实删除都会触发 unregister；延迟到微任务末尾再刷新，
     // 才能根据 option 的最终位置区分二者。
+    this._scheduleOptionsRefresh()
+  }
+
+  private _onSlotChange = () => {
+    this._scheduleOptionsRefresh()
+  }
+
+  private _scheduleOptionsRefresh() {
     queueMicrotask(() => {
       if (!this.isConnected) return
+      this._syncPortalContent()
       this.requestUpdate()
-      // 关闭状态下 willUpdate 查不到 portal 面板内容；移除已选/激活项后需立即同步标签
-      if (!this.hasUpdated || !this.portal) return
+      // 关闭状态下 willUpdate 查不到 portal 面板内容；打开期间的新增/删除需立即同步标签与激活态
+      if (!this.hasUpdated || !this.portal || !this._isOpen) return
       this._refreshOptions()
       this._ensureOptionIds()
       this._syncSelected()
@@ -266,8 +279,15 @@ export class WebUiSelect extends LitElement {
     })
   }
 
-  private _onSlotChange = () => {
-    this.requestUpdate()
+  // Portal 打开期间框架条件渲染（v-if）可能在 light DOM 插入新 option；
+  // 面板内已有内容时 _queryOptions 不会回退 light DOM，必须显式把新节点迁移进面板。
+  private _syncPortalContent() {
+    if (!this._portal || !this._portalContent) return
+    if (!this._isOpen) return
+
+    const panel = this._portalContent
+    const lightDomOptions = [...this.querySelectorAll<WebUiOption>('web-ui-option')]
+    if (lightDomOptions.length) this._portal.appendContent(lightDomOptions, panel)
   }
 
   private _handleOptionClick = (e: Event) => {
@@ -445,25 +465,35 @@ export class WebUiSelect extends LitElement {
       target: this,
       style: `${glass}\n${overlayMotion}\n${style}`,
       className: 'wui-glass select-overlay portal wui-floating-panel',
-      onContentChange: () => this.requestUpdate()
+      onContentChange: () => this._scheduleOptionsRefresh()
     })
+    this._portal = portal
     portal.panel.setAttribute('role', 'listbox')
     const scroll = document.createElement('div')
     scroll.className = 'select-scroll'
     const content = document.createElement('div')
     content.className = 'select-content'
+    this._portalContent = content
     scroll.append(content)
     portal.panel.append(scroll)
     portal.moveContent(Array.from(this.children), content)
     return portal
   }
 
-  private async _closeOverlay() {
-    await this._panel.close(() => this._isOpen)
+  private _reconfigureOverlay() {
+    // reconfigure 会 dispose 并按需重建 portal，旧引用必须同步失效
+    this._portal = undefined
+    this._portalContent = undefined
+    this._panel.reconfigure(this._isOpen)
   }
 
-  private _reconfigureOverlay() {
-    this._panel.reconfigure(this._isOpen)
+  private async _closeOverlay() {
+    const closed = await this._panel.close(() => this._isOpen)
+    // portal 已随关闭 dispose，与 autocomplete 对齐同步失效引用
+    if (closed) {
+      this._portal = undefined
+      this._portalContent = undefined
+    }
   }
 
   override render() {
