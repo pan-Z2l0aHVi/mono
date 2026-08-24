@@ -136,12 +136,8 @@ export class WebUiSelect extends LitElement {
     this.removeEventListener('keydown', this._onKeydown)
     this.removeEventListener('focusout', this._onFocusOut)
     document.removeEventListener('click', this._onClickOutside)
-    this._options.forEach(o => {
-      o.removeEventListener('click', this._handleOptionClick)
-      o.removeEventListener('pointerover', this._handleOptionPointerOver)
-      o.removeEventListener('pointerdown', this._handleOptionPointerDown)
-      o.removeEventListener('option-update', this._onOptionUpdate)
-    })
+    this._options.forEach(this._unbindOption)
+    this._options = []
     this._close()
     this._panel.dispose()
     this._scrollLock.release()
@@ -162,7 +158,7 @@ export class WebUiSelect extends LitElement {
   }
 
   override willUpdate() {
-    this._options = this._queryOptions()
+    this._refreshOptions()
     this._ensureOptionIds()
     this._syncSelected()
   }
@@ -224,38 +220,60 @@ export class WebUiSelect extends LitElement {
     })
   }
 
-  private _onOptionRegister = (e: Event) => {
-    if (!(e.target instanceof HTMLElement)) return
-    const target = e.target as WebUiOption
-    target.addEventListener('click', this._handleOptionClick)
-    target.addEventListener('pointerover', this._handleOptionPointerOver)
-    target.addEventListener('pointerdown', this._handleOptionPointerDown)
-    target.addEventListener('option-update', this._onOptionUpdate)
-    this._options.push(target)
-    this._ensureOptionIds()
-    this._syncSelected()
+  private _bindOption = (option: WebUiOption) => {
+    option.addEventListener('click', this._handleOptionClick)
+    option.addEventListener('pointerover', this._handleOptionPointerOver)
+    option.addEventListener('pointerdown', this._handleOptionPointerDown)
+    option.addEventListener('option-update', this._onOptionUpdate)
   }
 
-  private _onOptionUnregister = (e: Event) => {
-    if (!(e.target instanceof HTMLElement)) return
-    const target = e.target as WebUiOption
-    target.removeEventListener('click', this._handleOptionClick)
-    target.removeEventListener('pointerover', this._handleOptionPointerOver)
-    target.removeEventListener('pointerdown', this._handleOptionPointerDown)
-    target.removeEventListener('option-update', this._onOptionUpdate)
-    this._options = this._options.filter(o => o !== target)
+  private _unbindOption = (option: WebUiOption) => {
+    option.removeEventListener('click', this._handleOptionClick)
+    option.removeEventListener('pointerover', this._handleOptionPointerOver)
+    option.removeEventListener('pointerdown', this._handleOptionPointerDown)
+    option.removeEventListener('option-update', this._onOptionUpdate)
+  }
+
+  private _refreshOptions() {
+    const activeOption = this._options[this._activeIndex]
+    const nextOptions = this._queryOptions()
+
+    // register/unregister 是 composed 事件：Portal 迁移时 target 会 retarget 成宿主，
+    // 不能作为监听器绑定依据；绑定只发生在按 DOM 查询确认身份的 option 上。
+    this._options.filter(option => !nextOptions.includes(option)).forEach(this._unbindOption)
+    nextOptions.forEach(this._bindOption)
+    this._options = nextOptions
+    // 激活索引按 option 身份保持，避免移除中间项后静默偏移到相邻项
+    this._activeIndex = activeOption && nextOptions.includes(activeOption) ? nextOptions.indexOf(activeOption) : -1
+  }
+
+  private _onOptionRegister = () => {
+    this.requestUpdate()
+  }
+
+  private _onOptionUnregister = () => {
+    // Portal 迁移与真实删除都会触发 unregister；延迟到微任务末尾再刷新，
+    // 才能根据 option 的最终位置区分二者。
+    queueMicrotask(() => {
+      if (!this.isConnected) return
+      this.requestUpdate()
+      // 关闭状态下 willUpdate 查不到 portal 面板内容；移除已选/激活项后需立即同步标签
+      if (!this.hasUpdated || !this.portal) return
+      this._refreshOptions()
+      this._ensureOptionIds()
+      this._syncSelected()
+      this._syncActiveOption()
+    })
   }
 
   private _onSlotChange = () => {
-    this._options = this._queryOptions()
-    this._ensureOptionIds()
-    this._syncSelected()
+    this.requestUpdate()
   }
 
   private _handleOptionClick = (e: Event) => {
     if (!(e.currentTarget instanceof HTMLElement)) return
     const option = e.currentTarget as WebUiOption
-    if (option.disabled) return
+    if (option.disabled || !this._isLive(option)) return
     this.value = option.value
     this._close()
     this._notifyValueChange()
@@ -278,6 +296,13 @@ export class WebUiSelect extends LitElement {
   private _handleOptionPointerDown = (e: PointerEvent) => {
     // 保持 trigger 焦点，避免 focusout 在 click 前关闭浮层。
     e.preventDefault()
+  }
+
+  // slotchange/unregister 的刷新依赖 Lit 渲染调度；键盘或 click 事件可能先于其触发，
+  // 已从 DOM 移除或被移出 Select/portal 面板的选项不得再被激活或选中。
+  private _isLive(option: WebUiOption): boolean {
+    const panel = this.portal ? this._panel.getPanel() : null
+    return option.isConnected && (this.contains(option) || (!!panel && panel.contains(option)))
   }
 
   private _onKeydown = (e: KeyboardEvent) => {
@@ -303,10 +328,10 @@ export class WebUiSelect extends LitElement {
         if (!this._isOpen) this._open(true)
         else this._navigateActive(-1)
         break
-      case 'Enter':
+      case 'Enter': {
         if (this._isOpen && this._activeIndex >= 0) {
           const option = this._options[this._activeIndex]
-          if (option && !option.disabled) {
+          if (option && this._isLive(option) && !option.disabled) {
             this.value = option.value
             this._notifyValueChange()
           }
@@ -314,16 +339,19 @@ export class WebUiSelect extends LitElement {
           e.preventDefault()
         }
         break
+      }
     }
   }
 
   private _navigateActive(delta: number) {
-    const enabled = this._options.filter(o => !o.disabled)
+    const enabled = this._options.filter(o => !o.disabled && this._isLive(o))
     if (!enabled.length) return
 
-    const selectedOption = this._options.find(option => option.value === this.value && !option.disabled)
+    const selectedOption = this._options.find(
+      option => option.value === this.value && !option.disabled && this._isLive(option)
+    )
     const currentIdx =
-      this._activeIndex >= 0
+      this._activeIndex >= 0 && this._isLive(this._options[this._activeIndex])
         ? enabled.indexOf(this._options[this._activeIndex])
         : selectedOption
           ? enabled.indexOf(selectedOption)
@@ -378,14 +406,18 @@ export class WebUiSelect extends LitElement {
   }
 
   private _setInitialActiveOption() {
-    const selectedIndex = this._options.findIndex(option => option.value === this.value && !option.disabled)
-    const firstEnabledIndex = this._options.findIndex(option => !option.disabled)
+    const selectedIndex = this._options.findIndex(
+      option => option.value === this.value && !option.disabled && this._isLive(option)
+    )
+    const firstEnabledIndex = this._options.findIndex(option => !option.disabled && this._isLive(option))
     this._activeIndex = selectedIndex >= 0 ? selectedIndex : firstEnabledIndex
     this._syncActiveOption()
   }
 
   private _syncActiveOption() {
-    this._options.forEach((option, index) => option.toggleAttribute('active', index === this._activeIndex))
+    this._options.forEach((option, index) =>
+      option.toggleAttribute('active', index === this._activeIndex && this._isLive(option))
+    )
   }
 
   private _notifyValueChange() {
