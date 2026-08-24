@@ -33,72 +33,39 @@ describe('WebUiIcon 组件', () => {
     })
   })
 
-  describe('属性：size', () => {
-    it('默认值为 18', async () => {
+  describe('默认属性与反射（合并）', () => {
+    it('默认值符合契约', async () => {
       const el = document.createElement('web-ui-icon')
-      el.icon = aIcon
-
       document.body.appendChild(el)
       await el.updateComplete
-
       expect(el.size).toBe(18)
-    })
-
-    it('反射为 size 属性', async () => {
-      const el = document.createElement('web-ui-icon')
-      el.icon = aIcon
-      el.size = 32
-
-      document.body.appendChild(el)
-      await el.updateComplete
-
-      expect(el.getAttribute('size')).toBe('32')
-    })
-  })
-
-  describe('属性：spin', () => {
-    it('默认值为 false', async () => {
-      const el = document.createElement('web-ui-icon')
-
-      document.body.appendChild(el)
-      await el.updateComplete
-
       expect(el.spin).toBe(false)
-    })
-
-    it('true 时反射为 spin 属性', async () => {
-      const el = document.createElement('web-ui-icon')
-
-      document.body.appendChild(el)
-      el.spin = true
-      await el.updateComplete
-
-      expect(el.hasAttribute('spin')).toBe(true)
-    })
-
-    it('false 时移除 spin 属性', async () => {
-      const el = document.createElement('web-ui-icon')
-      el.spin = true
-
-      document.body.appendChild(el)
-      await el.updateComplete
-
-      el.spin = false
-      await el.updateComplete
-
       expect(el.hasAttribute('spin')).toBe(false)
     })
-  })
 
-  describe('属性：color', () => {
-    it('反射为 color 属性', async () => {
-      const el = document.createElement('web-ui-icon')
-      el.color = 'red'
-
+    it.each([
+      ['size', 32, '32'],
+      ['color', 'red', 'red']
+    ] as const)('%s 反射到宿主 attribute', async (prop, value, expected) => {
+      const el = document.createElement('web-ui-icon') as any
+      el.icon = aIcon
       document.body.appendChild(el)
       await el.updateComplete
+      el[prop] = value
+      await el.updateComplete
+      expect(el.getAttribute(prop)).toBe(expected)
+    })
 
-      expect(el.getAttribute('color')).toBe('red')
+    it('spin 布尔存在语义', async () => {
+      const el = document.createElement('web-ui-icon')
+      document.body.appendChild(el)
+      await el.updateComplete
+      el.spin = true
+      await el.updateComplete
+      expect(el.hasAttribute('spin')).toBe(true)
+      el.spin = false
+      await el.updateComplete
+      expect(el.hasAttribute('spin')).toBe(false)
     })
   })
 })

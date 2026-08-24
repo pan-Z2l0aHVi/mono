@@ -18,54 +18,26 @@ const createEmpty = (attrs?: Record<string, string>, content?: string): WebUiEmp
 }
 
 describe('WebUiEmpty 组件', () => {
-  describe('默认属性值', () => {
-    it('默认 title 为空字符串', async () => {
+  describe('默认属性与反射（合并）', () => {
+    it('默认值符合契约', async () => {
       const el = createEmpty()
       await waitForUpdate(el)
       expect(el.title).toBe('')
-      cleanupElement(el)
-    })
-
-    it('默认 description 为空字符串', async () => {
-      const el = createEmpty()
-      await waitForUpdate(el)
       expect(el.description).toBe('')
-      cleanupElement(el)
-    })
-
-    it('默认 size 为 medium', async () => {
-      const el = createEmpty()
-      await waitForUpdate(el)
       expect(el.size).toBe('medium')
       cleanupElement(el)
     })
-  })
 
-  describe('属性反射', () => {
-    it('title 属性反射到宿主元素', async () => {
+    it.each([
+      ['title', '暂无内容'],
+      ['description', '暂无可展示的数据'],
+      ['size', 'small']
+    ] as const)('%s 反射到宿主 attribute', async (prop, value) => {
       const el = createEmpty()
       await waitForUpdate(el)
-      el.title = '暂无内容'
+      ;(el as any)[prop] = value
       await waitForUpdate(el)
-      expect(el.getAttribute('title')).toBe('暂无内容')
-      cleanupElement(el)
-    })
-
-    it('description 属性反射到宿主元素', async () => {
-      const el = createEmpty()
-      await waitForUpdate(el)
-      el.description = '暂无可展示的数据'
-      await waitForUpdate(el)
-      expect(el.getAttribute('description')).toBe('暂无可展示的数据')
-      cleanupElement(el)
-    })
-
-    it('size 属性反射到宿主元素', async () => {
-      const el = createEmpty()
-      await waitForUpdate(el)
-      el.size = 'small'
-      await waitForUpdate(el)
-      expect(el.getAttribute('size')).toBe('small')
+      expect(el.getAttribute(prop)).toBe(value)
       cleanupElement(el)
     })
   })
