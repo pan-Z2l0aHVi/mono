@@ -5,7 +5,7 @@ import { classMap } from 'lit/directives/class-map.js'
 import '@/components/icon'
 import { heroiconsCheck16Solid } from '@/icons'
 import { defineFormAssociation, FormAssociationController } from '@/shared/form-association'
-import { defineGroupManaged, registerGroupManagedItem, type SelectionGroupContext } from '@/shared/group-management'
+import { defineGroupManaged, type SelectionGroupContext } from '@/shared/group-management'
 
 import style from './style.css?inline'
 
@@ -14,17 +14,12 @@ export class WebUiCheckbox extends LitElement {
   static override styles = unsafeCSS(style)
   static formAssociated = true
 
-  private readonly _groupManagement = defineGroupManaged<SelectionGroupContext>({
+  private readonly _groupManagement = defineGroupManaged<SelectionGroupContext>(this, {
     requestUpdate: () => this.requestUpdate()
   }).make()
 
   // 内部 checked 状态，通过 getter/setter 暴露为公共 API
   @state() private _checked = false
-
-  constructor() {
-    super()
-    registerGroupManagedItem<SelectionGroupContext>(this, context => this._groupManagement.setContext(context))
-  }
 
   get checked(): boolean {
     return this._checked

@@ -20,35 +20,42 @@ export interface ButtonGroupContext {
   readonly isLast: boolean
 }
 
-export function defineGroupManaged<Context>(options: {
-  requestUpdate: () => void
-  equals?: (a: Context | undefined, b: Context | undefined) => boolean
-}) {
+/**
+ * 创建受管理 group 的子项侧能力：提供只读 context 视图，并注册由 group owner
+ * 推送的接收通道。在 `make()` 时完成注册，组件无需再编写 constructor 样板。
+ */
+export function defineGroupManaged<Context>(
+  item: HTMLElement,
+  options: {
+    requestUpdate: () => void
+    equals?: (a: Context | undefined, b: Context | undefined) => boolean
+  }
+) {
   return definePlugin(() => {
     let context: Context | undefined
     const equals = options.equals ?? Object.is
 
+    const setContext = (next: Context | undefined) => {
+      if (equals(context, next)) return
+      context = next
+      options.requestUpdate()
+    }
+
+    registerGroupManagedItem(item, setContext)
+
     return {
       getContext(): Context | undefined {
         return context
-      },
-      setContext(next: Context | undefined) {
-        if (equals(context, next)) return
-        context = next
-        options.requestUpdate()
       }
     }
   })
 }
 
-export function installGroupContext<Context>(item: HTMLElement, context: Context | undefined) {
+function installGroupContext<Context>(item: HTMLElement, context: Context | undefined) {
   ;(item as GroupManagedItem<Context>)[groupManagedItem]?.(context)
 }
 
-export function registerGroupManagedItem<Context>(
-  item: HTMLElement,
-  setContext: (context: Context | undefined) => void
-) {
+function registerGroupManagedItem<Context>(item: HTMLElement, setContext: (context: Context | undefined) => void) {
   ;(item as GroupManagedItem<Context>)[groupManagedItem] = setContext
 }
 

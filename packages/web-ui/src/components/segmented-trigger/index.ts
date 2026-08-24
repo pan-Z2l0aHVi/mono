@@ -2,7 +2,7 @@ import { html, LitElement, unsafeCSS } from 'lit'
 import { customElement, property } from 'lit/decorators.js'
 import { classMap } from 'lit/directives/class-map.js'
 
-import { defineGroupManaged, registerGroupManagedItem, type SelectionGroupContext } from '@/shared/group-management'
+import { defineGroupManaged, type SelectionGroupContext } from '@/shared/group-management'
 
 import style from './style.css?inline'
 
@@ -14,14 +14,9 @@ export class WebUiSegmentedTrigger extends LitElement {
   @property({ type: Boolean, reflect: true }) checked = false
   @property({ type: Boolean, reflect: true }) disabled = false
 
-  private readonly _groupManagement = defineGroupManaged<SelectionGroupContext>({
+  private readonly _groupManagement = defineGroupManaged<SelectionGroupContext>(this, {
     requestUpdate: () => this.requestUpdate()
   }).make()
-
-  constructor() {
-    super()
-    registerGroupManagedItem<SelectionGroupContext>(this, context => this._groupManagement.setContext(context))
-  }
 
   private get _isDisabled(): boolean {
     return this.disabled || this._groupManagement.getContext()?.disabled === true

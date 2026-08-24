@@ -3,7 +3,7 @@ import { customElement, property, state } from 'lit/decorators.js'
 import { classMap } from 'lit/directives/class-map.js'
 
 import { defineFormAssociation, FormAssociationController } from '@/shared/form-association'
-import { defineGroupManaged, registerGroupManagedItem, type SelectionGroupContext } from '@/shared/group-management'
+import { defineGroupManaged, type SelectionGroupContext } from '@/shared/group-management'
 
 import style from './style.css?inline'
 
@@ -12,16 +12,11 @@ export class WebUiRadio extends LitElement {
   static override styles = unsafeCSS(style)
   static formAssociated = true
 
-  private readonly _groupManagement = defineGroupManaged<SelectionGroupContext>({
+  private readonly _groupManagement = defineGroupManaged<SelectionGroupContext>(this, {
     requestUpdate: () => this.requestUpdate()
   }).make()
 
   @state() private _checked = false
-
-  constructor() {
-    super()
-    registerGroupManagedItem<SelectionGroupContext>(this, context => this._groupManagement.setContext(context))
-  }
 
   get checked(): boolean {
     return this._checked

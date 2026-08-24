@@ -7,7 +7,7 @@ import { styleMap } from 'lit/directives/style-map.js'
 import '@/components/icon'
 import glass from '@/assets/glass.css?inline'
 import { lucideLoaderCircle } from '@/icons'
-import { defineGroupManaged, registerGroupManagedItem, type ButtonGroupContext } from '@/shared/group-management'
+import { defineGroupManaged, type ButtonGroupContext } from '@/shared/group-management'
 import { normalizeLiteral } from '@/shared/normalize'
 
 import style from './style.css?inline'
@@ -50,15 +50,10 @@ export class WebUiButton extends LitElement {
   // Explicitly delegated accessible naming attributes.
   @property({ type: String, attribute: 'aria-label' }) override ariaLabel: string | null = null
 
-  private readonly _groupManagement = defineGroupManaged<ButtonGroupContext>({
+  private readonly _groupManagement = defineGroupManaged<ButtonGroupContext>(this, {
     requestUpdate: () => this.requestUpdate(),
     equals: (a, b) => a?.direction === b?.direction && a?.isLast === b?.isLast
   }).make()
-
-  constructor() {
-    super()
-    registerGroupManagedItem<ButtonGroupContext>(this, context => this._groupManagement.setContext(context))
-  }
 
   private get _groupContext(): ButtonGroupContext | undefined {
     return this._groupManagement.getContext()
