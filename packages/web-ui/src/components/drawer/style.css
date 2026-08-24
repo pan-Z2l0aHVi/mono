@@ -125,6 +125,12 @@ dialog[open].is-visible::backdrop {
   line-height: 1.4;
 }
 
+/* ===== 隐藏态 ===== */
+
+.wui-drawer-header[hidden] {
+  display: none;
+}
+
 /* ===== 内容区 ===== */
 
 .wui-drawer-content {

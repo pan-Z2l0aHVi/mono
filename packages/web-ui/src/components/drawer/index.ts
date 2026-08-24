@@ -219,15 +219,11 @@ export class WebUiDrawer extends LitElement {
           ? html`<slot></slot>`
           : html`
               <div class="wui-drawer-body wui-glass">
-                ${showHeader
-                  ? html`
-                      <div class="wui-drawer-header" id="wui-drawer-heading">
-                        <slot name="header" @slotchange=${this.handleHeaderSlotChange}>
-                          ${this.heading ? html`<span class="wui-drawer-heading">${this.heading}</span>` : nothing}
-                        </slot>
-                      </div>
-                    `
-                  : nothing}
+                <div class="wui-drawer-header" id="wui-drawer-heading" ?hidden=${!showHeader}>
+                  <slot name="header" @slotchange=${this.handleHeaderSlotChange}>
+                    ${this.heading ? html`<span class="wui-drawer-heading">${this.heading}</span>` : nothing}
+                  </slot>
+                </div>
                 <div class="wui-drawer-content">
                   <slot></slot>
                 </div>
