@@ -17,6 +17,14 @@ const createBadge = (attrs?: Record<string, string>, slotContent?: string): WebU
   return el
 }
 
+async function waitForSlotChange(el: WebUiBadge, mutate: () => void): Promise<void> {
+  const slot = el.shadowRoot!.querySelector('slot')!
+  const slotChanged = new Promise<void>(resolve => slot.addEventListener('slotchange', () => resolve(), { once: true }))
+  mutate()
+  await slotChanged
+  await waitForUpdate(el)
+}
+
 describe('WebUiBadge 组件', () => {
   describe('默认属性与反射（合并）', () => {
     it('默认值符合契约', async () => {

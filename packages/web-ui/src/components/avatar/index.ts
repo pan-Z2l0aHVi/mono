@@ -60,13 +60,6 @@ export class WebUiAvatar extends LitElement {
   @state() private _imgError = false
   @state() private _hasDefaultSlot = false
 
-  override connectedCallback() {
-    super.connectedCallback()
-    void this.updateComplete.then(() => {
-      this.shadowRoot?.querySelector('slot:not([name])')?.addEventListener('slotchange', () => this._checkSlot())
-    })
-  }
-
   private _checkSlot() {
     const slot = this.shadowRoot?.querySelector('slot:not([name])')
     const has = slot instanceof HTMLSlotElement && slot.assignedElements().length > 0

@@ -81,14 +81,13 @@ export class WebUiBadge extends LitElement {
 
   @state() private _hasContent = false
 
+  private readonly _handleSlotChange = () => {
+    this._hasContent = this.children.length > 0
+  }
+
   override connectedCallback() {
     super.connectedCallback()
     this._hasContent = this.children.length > 0
-    void this.updateComplete.then(() => {
-      this.shadowRoot?.querySelector('slot')?.addEventListener('slotchange', () => {
-        this._hasContent = this.children.length > 0
-      })
-    })
   }
 
   override render() {
@@ -110,7 +109,7 @@ export class WebUiBadge extends LitElement {
 
     return html`
       <div class=${classMap(wrapperClass)}>
-        <slot></slot>
+        <slot @slotchange=${this._handleSlotChange}></slot>
         ${showBadge
           ? html`<span
               class=${classMap(badgeClass)}

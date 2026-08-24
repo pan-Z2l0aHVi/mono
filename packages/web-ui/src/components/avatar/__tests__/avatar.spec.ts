@@ -16,6 +16,14 @@ const createAvatar = (attrs?: Record<string, string>): WebUiAvatar => {
   return el
 }
 
+async function waitForSlotChange(el: WebUiAvatar, mutate: () => void): Promise<void> {
+  const slot = el.shadowRoot!.querySelector('slot:not([name])')!
+  const slotChanged = new Promise<void>(resolve => slot.addEventListener('slotchange', () => resolve(), { once: true }))
+  mutate()
+  await slotChanged
+  await waitForUpdate(el)
+}
+
 describe('WebUiAvatar 组件', () => {
   describe('默认属性与反射（合并）', () => {
     it('默认值符合契约', async () => {
@@ -110,6 +118,43 @@ describe('WebUiAvatar 组件', () => {
       await waitForUpdate(el)
       expect(el.size).toBe(999)
       expect(el.getAttribute('size')).toBe('999')
+      cleanupElement(el)
+    })
+
+    it('动态插入和删除默认 slot 时同步 fallback', async () => {
+      const el = createAvatar({ name: 'Alice' })
+      await waitForUpdate(el)
+
+      const content = document.createElement('span')
+      content.textContent = 'VIP'
+      await waitForSlotChange(el, () => el.append(content))
+      expect(queryA11y(el, '[role="img"]')?.textContent?.includes('Alice')).toBe(false)
+
+      await waitForSlotChange(el, () => content.remove())
+      expect(queryA11y(el, '[role="img"]')?.textContent?.trim()).toBe('A')
+
+      cleanupElement(el)
+    })
+
+    it('反复断开重连后仍保持 slot 状态语义', async () => {
+      const el = createAvatar({ name: 'Alice' })
+      document.body.appendChild(el)
+      await waitForUpdate(el)
+
+      for (let index = 0; index < 3; index++) {
+        el.remove()
+        document.body.appendChild(el)
+        await waitForUpdate(el)
+      }
+
+      const content = document.createElement('span')
+      content.textContent = 'VIP'
+      await waitForSlotChange(el, () => el.append(content))
+      expect(queryA11y(el, '[role="img"]')?.textContent?.includes('Alice')).toBe(false)
+
+      await waitForSlotChange(el, () => content.remove())
+      expect(queryA11y(el, '[role="img"]')?.textContent?.trim()).toBe('A')
+
       cleanupElement(el)
     })
   })
