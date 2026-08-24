@@ -246,8 +246,7 @@ export class WebUiContextMenu extends LitElement {
       this._bindLevelHovers()
       return
     }
-    const children = getMenuChildren(item)
-    if (children.length === 0) return
+    if (getMenuChildren(item).length === 0) return
 
     const submenu = createMenuPortalOverlay('context-submenu', this)
     submenu.panel.dataset.level = String(level)
@@ -255,7 +254,7 @@ export class WebUiContextMenu extends LitElement {
     submenu.panel.setAttribute('aria-label', '子菜单')
     submenu.panel.style.visibility = 'hidden'
     submenu.panel.addEventListener('click', this._onMenuClick)
-    submenu.content.append(...children)
+    moveMenuChildren(item, submenu.content)
 
     this._activeSubmenus[level] = submenu
     this._activeSubmenuItems[level] = item

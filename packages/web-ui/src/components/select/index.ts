@@ -412,7 +412,8 @@ export class WebUiSelect extends LitElement {
       container: this.overlayContainer,
       target: this,
       style: `${glass}\n${overlayMotion}\n${style}`,
-      className: 'wui-glass select-overlay portal wui-floating-panel'
+      className: 'wui-glass select-overlay portal wui-floating-panel',
+      onContentChange: () => this.requestUpdate()
     })
     portal.panel.setAttribute('role', 'listbox')
     const scroll = document.createElement('div')

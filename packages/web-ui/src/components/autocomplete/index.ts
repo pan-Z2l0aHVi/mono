@@ -579,7 +579,8 @@ export class WebUiAutocomplete extends LitElement {
       container: this.overlayContainer,
       target: this,
       style: `${glass}\n${overlayMotion}\n${style}`,
-      className: 'wui-glass autocomplete-overlay portal wui-floating-panel'
+      className: 'wui-glass autocomplete-overlay portal wui-floating-panel',
+      onContentChange: () => this._scheduleOptionsRefresh()
     })
     this._portal = portal
     portal.panel.setAttribute('aria-hidden', 'true')

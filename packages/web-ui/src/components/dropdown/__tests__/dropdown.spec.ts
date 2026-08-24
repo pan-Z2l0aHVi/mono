@@ -37,6 +37,11 @@ function getMenuItem(): HTMLElement | null {
   return fallbackRoot?.querySelector<HTMLElement>('.dropdown-overlay web-ui-dropdown-item') ?? null
 }
 
+function getMenuItems(): HTMLElement[] {
+  const fallbackRoot = document.querySelector<HTMLElement>('[data-wui-overlay-root]')?.shadowRoot
+  return [...(fallbackRoot?.querySelectorAll<HTMLElement>('.dropdown-overlay web-ui-dropdown-item') ?? [])]
+}
+
 beforeEach(() => {
   document.body.innerHTML = ''
 })
@@ -385,6 +390,92 @@ describe('WebUiDropdown 组件', () => {
       } finally {
         vi.useRealTimers()
       }
+    })
+  })
+
+  describe('条件渲染边界', () => {
+    it('关闭状态把注释锚点替换为 wrapper 后，新成员进入菜单', async () => {
+      const el = createDropdown(
+        {},
+        '<button slot="trigger">M</button><!--items--><web-ui-dropdown-item>a</web-ui-dropdown-item>'
+      )
+      await waitForUpdate(el)
+
+      const comment = [...el.childNodes].find(node => node.nodeType === Node.COMMENT_NODE) as Comment
+      const wrapper = document.createElement('div')
+      wrapper.innerHTML = '<web-ui-dropdown-item>b</web-ui-dropdown-item>'
+      el.replaceChild(wrapper, comment)
+      await waitForUpdate(el)
+
+      el.openMenu()
+      await waitForUpdate(el)
+      await new Promise(resolve => requestAnimationFrame(resolve))
+
+      expect(getMenuItems().map(item => item.textContent?.trim())).toEqual(['b', 'a'])
+
+      cleanupElement(el)
+    })
+
+    it('打开时删除 wrapper 后立即从菜单移除成员并保持键盘导航有效', async () => {
+      const el = createDropdown(
+        {},
+        '<button slot="trigger">M</button><web-ui-dropdown-item>a</web-ui-dropdown-item><div><web-ui-dropdown-item>b</web-ui-dropdown-item></div>'
+      )
+      await waitForUpdate(el)
+      const wrapper = el.querySelector('div')!
+      el.openMenu()
+      await waitForUpdate(el)
+      await new Promise(resolve => requestAnimationFrame(resolve))
+
+      wrapper.remove()
+      await waitForUpdate(el)
+      await new Promise(resolve => requestAnimationFrame(resolve))
+
+      expect(getMenuItems().map(item => item.textContent?.trim())).toEqual(['a'])
+
+      const overlay = document
+        .querySelector<HTMLElement>('[data-wui-overlay-root]')
+        ?.shadowRoot?.querySelector<HTMLElement>('.dropdown-overlay')
+      overlay?.dispatchEvent(new KeyboardEvent('keydown', { key: 'End', bubbles: true }))
+      await waitForUpdate(el)
+      const items = getMenuItems()
+      const focusedItem = items.find(item => item.shadowRoot?.activeElement)
+      expect(focusedItem).toBe(items[0])
+
+      cleanupElement(el)
+    })
+
+    it('打开时删除嵌套子菜单 wrapper 后同步移除子成员', async () => {
+      const el = createDropdown(
+        {},
+        '<button slot="trigger">M</button><web-ui-dropdown-item submenu>导出<div><web-ui-dropdown-item>PDF</web-ui-dropdown-item></div></web-ui-dropdown-item>'
+      )
+      await waitForUpdate(el)
+
+      const wrapper = el.querySelector('web-ui-dropdown-item div')!
+      el.openMenu()
+      await waitForUpdate(el)
+      await new Promise(resolve => requestAnimationFrame(resolve))
+
+      const parent = document
+        .querySelector<HTMLElement>('[data-wui-overlay-root]')
+        ?.shadowRoot?.querySelector<HTMLElement>('.dropdown-overlay web-ui-dropdown-item[submenu]')
+      parent?.click()
+      await waitForUpdate(el)
+      await new Promise(resolve => requestAnimationFrame(resolve))
+      await new Promise(resolve => requestAnimationFrame(resolve))
+
+      wrapper.remove()
+      await waitForUpdate(el)
+      await new Promise(resolve => requestAnimationFrame(resolve))
+
+      const fallbackRoot = document.querySelector<HTMLElement>('[data-wui-overlay-root]')?.shadowRoot
+      const submenuItems = fallbackRoot?.querySelectorAll<HTMLElement>(
+        '.dropdown-overlay[data-level]:not([data-level="0"]) web-ui-dropdown-item'
+      )
+      expect([...(submenuItems ?? [])]).toEqual([])
+
+      cleanupElement(el)
     })
   })
 })
