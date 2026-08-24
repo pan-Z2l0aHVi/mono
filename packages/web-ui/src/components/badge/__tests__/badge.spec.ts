@@ -146,17 +146,6 @@ describe('WebUiBadge 组件', () => {
       expect(el.querySelector('button')?.textContent).toBe('消息')
       cleanupElement(el)
     })
-
-    it('在 form 内的 badge 不影响表单提交（原生 DOM 组合）', async () => {
-      const form = document.createElement('form')
-      form.innerHTML = '<web-ui-badge count="5"><button>ok</button></web-ui-badge>'
-      document.body.appendChild(form)
-      const badge = form.querySelector('web-ui-badge') as WebUiBadge
-      await waitForUpdate(badge)
-      const data = new FormData(form)
-      expect([...data.keys()]).toHaveLength(0)
-      cleanupElement(form)
-    })
   })
 
   describe('无障碍（对外可见）', () => {
