@@ -37,7 +37,7 @@ export function showOverlayPresence(panel: HTMLElement, options: OverlayPresence
   }
   panel.dataset.wuiPresence = 'entering'
 
-  // Commit the initial state so a newly mounted panel has a transition source.
+  // 提交初始状态，让新挂载的面板拥有过渡起点。
   void panel.offsetWidth
 
   requestAnimationFrame(() => {

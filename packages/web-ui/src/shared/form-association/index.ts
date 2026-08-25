@@ -30,8 +30,7 @@ export interface FormAssociationLifecycle {
 }
 
 /**
- * Owns the native custom-element form lifecycle while leaving each control's
- * value serialization and validity semantics in its component.
+ * 承接原生 custom element 表单生命周期，值序列化与校验语义仍由各控件组件自己表达。
  */
 export function defineFormAssociation<State>(options: FormAssociationOptions<State>) {
   return definePlugin((): FormAssociationLifecycle => {
@@ -80,7 +79,7 @@ export function defineFormAssociation<State>(options: FormAssociationOptions<Sta
   })
 }
 
-/** Connects a form lifecycle plugin to the host without a shared component base class. */
+/** 把表单生命周期插件接入宿主，无需共享组件基类。 */
 export class FormAssociationController implements ReactiveController {
   constructor(
     private readonly host: FormAssociationHost,

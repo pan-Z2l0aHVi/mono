@@ -88,8 +88,7 @@ interface GroupControllerOptions {
 }
 
 /**
- * Connects an internal group lifecycle plugin to Lit without putting group
- * coordination rules in component lifecycle methods.
+ * 把组生命周期插件接入 Lit，协调规则不落在组件生命周期方法里。
  */
 export class GroupController implements ReactiveController {
   private connected = false
@@ -199,8 +198,7 @@ export interface GroupCoordinatorOptions<Item extends HTMLElement, Value> {
 }
 
 /**
- * Keeps selection, inherited disabled state, and managed child membership
- * behind one internal plugin interface.
+ * 在一个内部插件接口后收敛选中态、继承禁用与受管子项成员关系。
  */
 export function defineGroupCoordinator<Item extends HTMLElement, Value>(options: GroupCoordinatorOptions<Item, Value>) {
   return definePlugin(() => {
@@ -275,8 +273,7 @@ export interface GroupPresentationOptions<Item extends HTMLElement, Context> {
 }
 
 /**
- * Registers a reversible presentation context for grouped children. It owns no
- * public DOM attributes and clears every context when membership changes.
+ * 为分组子项注册可逆的展示上下文。不持有公开 DOM 属性，成员变化时清空全部上下文。
  */
 export function defineGroupPresentation<Item extends HTMLElement, Context>(
   options: GroupPresentationOptions<Item, Context>
