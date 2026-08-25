@@ -63,7 +63,7 @@
   margin: 8px;
   border-radius: var(--wui-layout-sidebar-radius, 28px);
 
-  background-color: var(--wui-color-surface-overlay, rgb(246 246 246 / 0.72));
+  background-color: var(--wui-color-surface-overlay, rgb(246 246 246 / 0.82));
 }
 
 /*
@@ -95,7 +95,7 @@ aside {
     min-height: 0;
     border-radius: var(--wui-layout-sidebar-radius, 28px);
 
-    background-color: var(--wui-color-surface-overlay, rgb(246 246 246 / 0.72));
+    background-color: var(--wui-color-surface-overlay, rgb(246 246 246 / 0.82));
   }
 
   .sidebar-toggle-area {

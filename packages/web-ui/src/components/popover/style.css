@@ -38,7 +38,7 @@
   line-height: 1.5;
   color: var(--wui-color-text, #1b1b1b);
 
-  background-color: var(--wui-color-surface-overlay, rgb(246 246 246 / 0.72));
+  background-color: var(--wui-color-surface-overlay, rgb(246 246 246 / 0.82));
 
   &:where([hidden]) {
     display: none;

@@ -107,7 +107,7 @@ dialog[open].is-visible::backdrop {
   display: flex;
   flex-direction: column;
   height: 100%;
-  background-color: var(--wui-drawer-bg, var(--wui-color-surface-overlay, rgb(246 246 246 / 0.72)));
+  background-color: var(--wui-drawer-bg, var(--wui-color-surface-overlay, rgb(246 246 246 / 0.82)));
 }
 
 /* ===== Header ===== */
