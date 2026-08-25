@@ -37,36 +37,7 @@ jobs:
         env:
           MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
         run: |
-          node --input-type=module <<'EOF'
-          import { execFileSync } from 'node:child_process'
-          import { appendFile, readFile } from 'node:fs/promises'
-
-          const mergeSha = process.env.MERGE_SHA
-          const baseSha = execFileSync('git', ['rev-parse', `${mergeSha}^1`], { encoding: 'utf8' }).trim()
-          const changedManifests = execFileSync('git', ['diff', '--name-only', baseSha, mergeSha, '--', 'packages'], { encoding: 'utf8' })
-            .split('\n')
-            .filter(path => /^packages\/[^/]+\/package\.json$/.test(path))
-
-          const releases = []
-          for (const manifestPath of changedManifests) {
-            const previous = JSON.parse(execFileSync('git', ['show', `${baseSha}:${manifestPath}`], { encoding: 'utf8' }))
-            const current = JSON.parse(await readFile(manifestPath, 'utf8'))
-            if (!current.private && current.version !== previous.version) {
-              releases.push({
-                name: current.name,
-                version: current.version,
-                directory: manifestPath.slice(0, -'/package.json'.length)
-              })
-            }
-          }
-
-          const output = [
-            `merge-sha=${mergeSha}`,
-            `should-publish=${releases.length > 0}`,
-            `package-releases=${JSON.stringify(releases)}`
-          ].join('\n') + '\n'
-          await appendFile(process.env.GITHUB_OUTPUT, output)
-          EOF
+          node .github/scripts/detect-versioned-packages.mjs
 
   publish:
     name: Build and publish npm packages
@@ -109,34 +80,4 @@ jobs:
           MERGE_SHA: ${{ needs.prepare.outputs.merge-sha }}
           PACKAGE_RELEASES: ${{ needs.prepare.outputs.package-releases }}
         run: |
-          node --input-type=module <<'EOF'
-          import { execFileSync } from 'node:child_process'
-
-          const repository = process.env.GITHUB_REPOSITORY
-          const mergeSha = process.env.MERGE_SHA
-          const releases = JSON.parse(process.env.PACKAGE_RELEASES)
-
-          for (const { name, version, directory } of releases) {
-            const tag = `${name}@${version}`
-            try {
-              execFileSync('gh', ['release', 'view', tag, '--repo', repository], { stdio: 'ignore' })
-              console.log(`Release ${tag} already exists; skipping.`)
-              continue
-            } catch {
-              // Create the missing release below. This makes workflow reruns idempotent.
-            }
-
-            const npmUrl = `https://www.npmjs.com/package/${name}/v/${version}`
-            const changelogUrl = `https://github.com/${repository}/blob/${mergeSha}/${directory}/CHANGELOG.md`
-            const notes = `Published to npm: [${name}@${version}](${npmUrl}).\n\nSee [${directory}/CHANGELOG.md](${changelogUrl}) for release notes.`
-
-            execFileSync('gh', [
-              'release', 'create', tag,
-              '--repo', repository,
-              '--target', mergeSha,
-              '--title', `${name} v${version}`,
-              '--notes', notes,
-              '--latest=false'
-            ], { stdio: 'inherit' })
-          }
-          EOF
+          node .github/scripts/create-github-releases.mjs

@@ -5,6 +5,7 @@
 }
 
 :host {
+  --wui-input-clear-color: var(--wui-color-text-tertiary, rgb(27 27 27 / 0.35));
   display: inline-block;
 }
 
@@ -22,8 +23,8 @@
 
   box-sizing: border-box;
   width: var(--wui-input-width, 200px);
-  min-width: var(--wui-button-size, 40px);
-  height: var(--wui-button-size, 40px);
+  min-width: var(--wui-control-size, 40px);
+  height: var(--wui-control-size, 40px);
   padding: 0 12px;
   border-radius: calc(infinity * 1px);
 
@@ -52,14 +53,17 @@
 }
 
 :host([focused]) .wui-input-inner {
-  --wui-glass-shadow:
-    var(--wui-shadow-glass, 0 2px 16px rgb(0 0 0 / 0.06)), 0 0 0 3px var(--wui-focus-ring, rgb(0 136 255 / 0.4));
-  border-color: var(--wui-color-border-strong, rgb(0 110 230 / 0.5));
+  --wui-internal-glass-focus-ring:
+    inset 0 0 0 1px var(--wui-color-accent, #08f),
+    0 0 0 var(--wui-focus-ring-width, 3px) var(--wui-color-focus-ring, rgb(0 136 255 / 0.4));
 }
 
 :host([borderless][focused]) .wui-input-inner {
   border-color: transparent;
-  box-shadow: none;
+
+  /* borderless 移除了背景和玻璃阴影，但仍必须保留可感知的键盘/输入焦点边界 */
+  outline: var(--wui-focus-ring-width, 3px) solid var(--wui-color-focus-ring, rgb(0 136 255 / 0.4));
+  outline-offset: 2px;
 }
 
 /* ===== Input ===== */
@@ -82,7 +86,7 @@ input {
   outline: none;
 
   &::placeholder {
-    color: var(--wui-color-text-muted, #6a6a6a);
+    color: var(--wui-color-text-secondary, #6a6a6a);
   }
 
   &:disabled {
@@ -99,7 +103,7 @@ slot {
   align-items: center;
 
   font-size: var(--wui-font-size, 14px);
-  color: var(--wui-color-text-muted, #6a6a6a);
+  color: var(--wui-color-text-secondary, #6a6a6a);
 }
 
 /* slot 无 slotted 内容时折叠 */
@@ -109,10 +113,10 @@ slot.empty {
 
 /* ===== Clear button ===== */
 
-/* 复用 web-ui-button icon ghost：仅覆盖颜色为 muted，保持原清除图标观感；
+/* 复用 web-ui-button icon ghost：仅覆盖颜色为 faint，保持弱意图清除图标观感；
    负 margin-left 抵消容器 8px flex gap，让清除按钮紧贴输入文本 */
 .wui-input-inner web-ui-button[variant='ghost'] {
-  --wui-button-color: var(--wui-color-text-muted, #6a6a6a);
+  --wui-button-color: var(--wui-input-clear-color);
   margin-left: -8px;
 }
 

@@ -43,7 +43,7 @@ function TooltipDemo() {
       </div>
       <h2>延迟</h2>
       <div className="mb-6 flex gap-2">
-        <web-ui-tooltip content="延迟 500ms 显示" show-delay={500}>
+        <web-ui-tooltip content="延迟 500ms 显示" showDelay={500}>
           <web-ui-button>长延迟</web-ui-button>
         </web-ui-tooltip>
       </div>

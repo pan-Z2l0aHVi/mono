@@ -72,14 +72,14 @@ const iconItems = [
 <template>
   <div>
     <h1>SVG 描边动画</h1>
-    <p class="mb-4 text-[var(--wui-color-text-muted)]">
+    <p class="mb-4 text-[var(--wui-color-text-secondary)]">
       将 SVG 图形的轮廓线以描边动画逐笔绘制。支持 path、rect、circle、line、polyline、polygon、ellipse 等多种基本图形。
     </p>
 
     <h2>参数控制</h2>
     <div class="mb-6 flex flex-col gap-4">
       <label class="flex items-center gap-2 text-sm">
-        <span class="whitespace-nowrap text-[var(--wui-color-text-muted)]">动画时长:</span>
+        <span class="whitespace-nowrap text-[var(--wui-color-text-secondary)]">动画时长:</span>
         <web-ui-slider
           :value="duration"
           :min="200"
@@ -92,7 +92,7 @@ const iconItems = [
       </label>
 
       <label class="flex items-center gap-2 text-sm">
-        <span class="text-[var(--wui-color-text-muted)]">缓动函数:</span>
+        <span class="text-[var(--wui-color-text-secondary)]">缓动函数:</span>
         <web-ui-select v-model="easing" class="w-36">
           <web-ui-option value="linear">linear</web-ui-option>
           <web-ui-option value="ease">ease</web-ui-option>
@@ -109,7 +109,7 @@ const iconItems = [
     <h2>基础形状（light DOM）</h2>
     <div class="mb-6 flex flex-wrap items-end gap-6">
       <div>
-        <p class="mb-1 text-sm text-[var(--wui-color-text-muted)]">简单线条</p>
+        <p class="mb-1 text-sm text-[var(--wui-color-text-secondary)]">简单线条</p>
         <div class="flex items-center gap-2">
           <web-ui-svg-draw-lines ref="svg1" :duration="duration" :easing="easing">
             <svg
@@ -130,7 +130,7 @@ const iconItems = [
         </div>
       </div>
       <div>
-        <p class="mb-1 text-sm text-[var(--wui-color-text-muted)]">几何图形</p>
+        <p class="mb-1 text-sm text-[var(--wui-color-text-secondary)]">几何图形</p>
         <div class="flex items-center gap-2">
           <web-ui-svg-draw-lines ref="svg2" :duration="duration" :easing="easing">
             <svg
@@ -151,7 +151,7 @@ const iconItems = [
         </div>
       </div>
       <div>
-        <p class="mb-1 text-sm text-[var(--wui-color-text-muted)]">波浪曲线</p>
+        <p class="mb-1 text-sm text-[var(--wui-color-text-secondary)]">波浪曲线</p>
         <div class="flex items-center gap-2">
           <web-ui-svg-draw-lines ref="svg3" :duration="duration" :easing="easing">
             <svg
@@ -175,7 +175,7 @@ const iconItems = [
     <h2>复杂场景</h2>
     <div class="mb-6 flex flex-wrap items-end gap-8">
       <div>
-        <p class="mb-1 text-sm text-[var(--wui-color-text-muted)]">多个同级 SVG</p>
+        <p class="mb-1 text-sm text-[var(--wui-color-text-secondary)]">多个同级 SVG</p>
         <div class="flex items-center gap-2">
           <web-ui-svg-draw-lines ref="multiRef" :duration="duration" :easing="easing">
             <svg viewBox="0 0 50 50" width="50" height="50" fill="none" stroke="currentColor" stroke-width="2">
@@ -190,7 +190,7 @@ const iconItems = [
       </div>
 
       <div>
-        <p class="mb-1 text-sm text-[var(--wui-color-text-muted)]">深层嵌套 &lt;g&gt;</p>
+        <p class="mb-1 text-sm text-[var(--wui-color-text-secondary)]">深层嵌套 &lt;g&gt;</p>
         <div class="flex items-center gap-2">
           <web-ui-svg-draw-lines ref="nestedRef" :duration="duration" :easing="easing">
             <svg viewBox="0 0 100 100" width="100" height="100" fill="none" stroke="currentColor" stroke-width="2">
@@ -207,7 +207,7 @@ const iconItems = [
       </div>
 
       <div>
-        <p class="mb-1 text-sm text-[var(--wui-color-text-muted)]">light DOM + Shadow DOM 混合</p>
+        <p class="mb-1 text-sm text-[var(--wui-color-text-secondary)]">light DOM + Shadow DOM 混合</p>
         <div class="flex items-center gap-2">
           <web-ui-svg-draw-lines ref="mixedRef" :duration="duration" :easing="easing">
             <svg
@@ -237,7 +237,7 @@ const iconItems = [
         :key="item.id"
         class="flex flex-col items-center gap-2 rounded-lg border border-[var(--wui-color-border)] bg-[var(--wui-color-surface)] p-4"
       >
-        <div class="flex items-center gap-1.5 text-sm text-[var(--wui-color-text-muted)]">
+        <div class="flex items-center gap-1.5 text-sm text-[var(--wui-color-text-secondary)]">
           <web-ui-icon :icon="item.icon" :size="16"></web-ui-icon>
           <span>{{ item.label }}</span>
         </div>

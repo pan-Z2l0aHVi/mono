@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { local } from '@greypan/browser-kit/storage'
-import type { WebUiEvent, WebUiSelect } from '@greypan/web-ui'
+import type { WebUiEvent, WebUiLayout, WebUiSelect } from '@greypan/web-ui'
 import { useHead } from '@unhead/vue'
 import { onMounted, ref } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
@@ -33,6 +33,9 @@ function getInitialThemeMotion(): ThemeMotion {
 
 const themeAppearance = ref(getInitialThemeAppearance())
 const themeMotion = ref(getInitialThemeMotion())
+const bannerVisible = ref(true)
+const sidebarCollapsed = ref(false)
+const sidebarOpen = ref(false)
 
 function updateThemeAppearance(event: WebUiEvent<WebUiSelect, 'change'>) {
   const appearance = event.currentTarget.value
@@ -50,6 +53,14 @@ function updateThemeMotion(event: WebUiEvent<WebUiSelect, 'change'>) {
   local.set(MOTION_STORAGE_KEY, motion)
 }
 
+function updateSidebarCollapsed(event: WebUiEvent<WebUiLayout, 'sidebar-collapsed-change'>) {
+  sidebarCollapsed.value = event.detail.collapsed
+}
+
+function updateSidebarOpen(event: WebUiEvent<WebUiLayout, 'sidebar-open-change'>) {
+  sidebarOpen.value = event.detail.open
+}
+
 const route = useRoute()
 const router = useRouter()
 
@@ -57,7 +68,6 @@ useHead({ title: () => route.meta.title })
 const navSidebar = ref<HTMLElement>()
 
 onMounted(async () => {
-  // 等待 Vue Router 完成首次导航，确保 active class 已就绪
   await router.isReady()
   requestAnimationFrame(() => {
     const link = navSidebar.value?.querySelector('.router-link-exact-active')
@@ -104,8 +114,26 @@ const navItems: NavItem[] = [
 <template>
   <web-ui-theme :appearance="themeAppearance" :motion="themeMotion">
     <div class="min-h-screen bg-[var(--wui-color-page)] text-[var(--wui-color-text)]">
-      <web-ui-layout>
-        <div slot="header" class="flex h-full w-full items-center justify-end gap-4 px-4 max-[640px]:w-screen">
+      <!--
+        Boolean 动态绑定走 camelCase Property（Vue 对已存在的属性名直接写 DOM property）。
+        kebab-case（:sidebar-collapsed）会写字符串 attribute，布尔属性存在即 true，无法表达 false。
+      -->
+      <web-ui-layout
+        header-glow
+        :sidebarCollapsed="sidebarCollapsed"
+        :sidebarOpen="sidebarOpen"
+        @sidebar-collapsed-change="updateSidebarCollapsed"
+        @sidebar-open-change="updateSidebarOpen"
+      >
+        <div
+          v-if="bannerVisible"
+          slot="banner"
+          class="flex items-center justify-center gap-2 py-2 px-4 bg-[var(--wui-color-accent)] text-[var(--wui-color-on-accent)] text-sm"
+        >
+          <span>🎉 欢迎使用 web-ui 组件库！</span>
+          <button class="ml-auto text-current opacity-70 hover:opacity-100" @click="bannerVisible = false">✕</button>
+        </div>
+        <div slot="header" class="flex h-full w-full items-center justify-end gap-4 px-4 py-2 max-[640px]:w-screen">
           <web-ui-select
             :value="themeMotion"
             class="[--wui-input-width:120px]"
@@ -127,18 +155,24 @@ const navItems: NavItem[] = [
             <web-ui-option value="system" label="跟随系统">跟随系统</web-ui-option>
           </web-ui-select>
         </div>
-        <nav ref="navSidebar" slot="sidebar" class="h-full overflow-y-auto px-2 pt-3 pb-2">
-          <div class="px-3 pb-2 text-xs font-semibold uppercase text-[var(--wui-color-text-muted)]">组件列表</div>
-          <RouterLink
-            v-for="item in navItems"
-            :key="item.path"
-            :to="item.path"
-            class="flex items-center h-8 my-1 rounded-full px-3 text-sm leading-5 text-[var(--wui-color-text)] transition-[background-color] duration-150 hover:bg-[color-mix(in_srgb,var(--wui-color-surface-raised)_80%,var(--wui-color-text))]"
-            :class="route.path === item.path ? '!bg-[var(--wui-color-accent)] !text-[var(--wui-color-on-accent)]' : ''"
-          >
-            <span class="truncate">{{ item.label }}</span>
-          </RouterLink>
-        </nav>
+        <div class="flex h-full min-h-0 flex-col" slot="sidebar">
+          <div class="shrink-0 px-5 pt-4 pb-2 text-xs font-semibold uppercase text-[var(--wui-color-text-secondary)]">
+            组件列表
+          </div>
+          <nav ref="navSidebar" class="min-h-0 flex-1 p-2 overflow-y-auto">
+            <RouterLink
+              v-for="item in navItems"
+              :key="item.path"
+              :to="item.path"
+              class="flex items-center h-8 my-1 rounded-full px-3 text-sm leading-5 text-[var(--wui-color-text)] transition-[background-color] duration-150 hover:bg-[color-mix(in_srgb,var(--wui-color-surface-raised)_80%,var(--wui-color-text))]"
+              :class="
+                route.path === item.path ? '!bg-[var(--wui-color-accent)] !text-[var(--wui-color-on-accent)]' : ''
+              "
+            >
+              <span class="truncate">{{ item.label }}</span>
+            </RouterLink>
+          </nav>
+        </div>
         <RouterView />
         <div class="h-100 w-full"></div>
       </web-ui-layout>

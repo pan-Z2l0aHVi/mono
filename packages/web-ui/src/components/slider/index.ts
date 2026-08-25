@@ -4,6 +4,7 @@ import { classMap } from 'lit/directives/class-map.js'
 import { styleMap } from 'lit/directives/style-map.js'
 
 import glass from '@/assets/glass.css?inline'
+import { defineFormAssociation, FormAssociationController } from '@/shared/form-association'
 import { normalizeNumber } from '@/shared/normalize'
 
 import style from './style.css?inline'
@@ -14,19 +15,14 @@ export class WebUiSlider extends LitElement {
 
   static formAssociated = true
 
-  // ElementInternals 实例，在 connectedCallback 中初始化
-  private _internals?: ElementInternals
-  @state() private _formDisabled = false
-
   @property({ type: Boolean, reflect: true }) disabled = false
   @property({ type: Boolean, reflect: true }) marks = false
   @property({ type: Boolean, reflect: true }) vertical = false
   @property({ type: String, reflect: true }) name = ''
   @property({ type: Boolean, reflect: true }) required = false
 
-  // value 使用访问器模式同步 ElementInternals
+  // value 使用访问器模式同步表单关联状态。
   private _value = 0
-  private _initialValue = 0
   @property({ type: Number, reflect: true })
   get value(): number {
     return this._value
@@ -35,7 +31,7 @@ export class WebUiSlider extends LitElement {
     const normalized = normalizeNumber(v, -Infinity, Infinity, 0)
     const old = this._value
     this._value = normalized
-    this._internals?.setFormValue?.(String(normalized))
+    this._formAssociation.sync()
     this.requestUpdate('value', old)
   }
 
@@ -70,15 +66,31 @@ export class WebUiSlider extends LitElement {
   // 避免未改变数值的点击被误认为一次表单提交
   private _interactionStartValue: number | undefined
 
-  private get _isDisabled(): boolean {
-    return this.disabled || this._formDisabled
-  }
+  private readonly _formAssociation = defineFormAssociation<number>({
+    host: this,
+    initialize: () => {
+      this._value = this._normalizeValue(this._value)
+    },
+    getState: () => this._value,
+    setState: value => {
+      this.value = value
+    },
+    getFormValue: () => String(this._value),
+    getFormState: () => String(this._value),
+    restoreState: state => {
+      if (typeof state !== 'string') return
+      const value = Number(state)
+      if (Number.isFinite(value)) this.value = value
+    },
+    syncValidity: internals => {
+      if (typeof internals.setValidity === 'function') internals.setValidity({})
+    }
+  }).make()
 
-  override connectedCallback() {
-    super.connectedCallback()
-    this._internals = this.attachInternals()
-    this._initialValue = Number(this.getAttribute('value')) || 0
-    this._internals?.setFormValue?.(String(this._value))
+  private readonly _formAssociationController = new FormAssociationController(this, this._formAssociation)
+
+  private get _isDisabled(): boolean {
+    return this.disabled || this._formAssociation.isFormDisabled()
   }
 
   override willUpdate(changed: Map<string, unknown>) {
@@ -89,17 +101,15 @@ export class WebUiSlider extends LitElement {
   }
 
   formResetCallback() {
-    this.value = this._initialValue
+    this._formAssociation.reset()
   }
 
   formDisabledCallback(disabled: boolean) {
-    this._formDisabled = disabled
+    this._formAssociation.setDisabled(disabled)
   }
 
-  override updated() {
-    if (!this._internals || typeof this._internals.setValidity !== 'function') return
-    if (this._isDisabled || !this.required) this._internals.setValidity({})
-    else this._internals.setValidity({})
+  formStateRestoreCallback(state: string | File | FormData | null) {
+    this._formAssociation.restore(state)
   }
 
   // 将焦点移至滑块，供表单或外部控制使用

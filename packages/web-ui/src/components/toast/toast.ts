@@ -156,20 +156,22 @@ export class WebUiToast extends LitElement {
           <div class="toast-message">${this.message}</div>
         </div>
         <span class="toast-time">${_formatTime()}</span>
-        ${!this.noCloseButton
-          ? html`
-              <web-ui-button
-                class="toast-close-btn"
-                icon
-                variant="secondary"
-                size="24"
-                aria-label="关闭"
-                @click=${this._onCloseClick}
-              >
-                <web-ui-icon .icon=${heroiconsXMark16Solid} size="16"></web-ui-icon>
-              </web-ui-button>
-            `
-          : nothing}
+        ${
+          !this.noCloseButton
+            ? html`
+                <web-ui-button
+                  class="toast-close-btn"
+                  icon
+                  variant="secondary"
+                  size="24"
+                  aria-label="关闭"
+                  @click=${this._onCloseClick}
+                >
+                  <web-ui-icon .icon=${heroiconsXMark16Solid} size="16"></web-ui-icon>
+                </web-ui-button>
+              `
+            : nothing
+        }
       </div>
     `
   }

@@ -161,7 +161,7 @@ export const defineOverlay = () =>
         }).then(({ x, y, placement }) => {
           overlay.style.left = `${x}px`
           overlay.style.top = `${y}px`
-          overlay.style.setProperty('--wui-overlay-transform-origin', getTransformOrigin(placement))
+          overlay.style.setProperty('--wui-internal-overlay-transform-origin', getTransformOrigin(placement))
         })
       }
 

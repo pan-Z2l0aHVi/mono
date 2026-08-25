@@ -16,6 +16,8 @@ function DrawerDemo() {
   const [footerVisible, setFooterVisible] = useState(false)
   const [unlockedVisible, setUnlockedVisible] = useState(false)
   const [overlayVisible, setOverlayVisible] = useState(false)
+  const [headlessVisible, setHeadlessVisible] = useState(false)
+  const [requestOnlyVisible, setRequestOnlyVisible] = useState(false)
 
   const allPlacements: { label: string; value: Placement }[] = [
     { label: '右侧', value: 'right' },
@@ -231,6 +233,41 @@ function DrawerDemo() {
         }
       >
         <p style={{ color: '#ccc' }}>自定义遮罩层、背景、阴影等样式。</p>
+      </web-ui-drawer>
+
+      <h2>受控关闭请求</h2>
+      <div className="mb-3 flex gap-2">
+        <web-ui-button onClick={() => setRequestOnlyVisible(true)}>打开</web-ui-button>
+      </div>
+      <web-ui-drawer
+        open={requestOnlyVisible}
+        requestOnly
+        onopen-change={event => setRequestOnlyVisible(event.detail.open)}
+      >
+        <p>
+          <code>request-only</code> 时，Escape、遮罩和关闭按钮只派发 <code>open-change</code> 请求；Consumer 回写
+          <code>open</code> 后才关闭。
+        </p>
+      </web-ui-drawer>
+
+      <h2>Headless 模式</h2>
+      <div className="mb-3 flex gap-2">
+        <web-ui-button onClick={() => setHeadlessVisible(true)}>打开</web-ui-button>
+      </div>
+      <web-ui-drawer
+        open={headlessVisible}
+        placement="left"
+        headless
+        dialogLabel="Headless 抽屉"
+        onopen-change={event => setHeadlessVisible(event.detail.open)}
+      >
+        <div style={{ height: '100%', padding: 16, background: 'white', borderRadius: '0 16px 16px 0' }}>
+          <h3 style={{ margin: '0 0 12px' }}>Headless 抽屉</h3>
+          <p style={{ margin: 0, color: '#666' }}>
+            使用 <code>headless</code> 属性后，抽屉只保留 overlay 基础设施（backdrop、动画、scroll lock）， 不渲染内置
+            UI。Consumer 自定义内容样式。
+          </p>
+        </div>
       </web-ui-drawer>
     </div>
   )

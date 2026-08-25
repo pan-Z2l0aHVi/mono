@@ -8,69 +8,32 @@ describe('WebUiSpinner 组件', () => {
     document.body.innerHTML = ''
   })
 
-  describe('属性：size', () => {
-    it('默认值为 24', async () => {
+  describe('默认属性与反射（合并）', () => {
+    it('默认值与反射符合契约', async () => {
       const el = document.createElement('web-ui-spinner')
-
       document.body.appendChild(el)
       await el.updateComplete
-
       expect(el.size).toBe(24)
-    })
-
-    it('反射为 size 属性', async () => {
-      const el = document.createElement('web-ui-spinner')
+      expect(el.getAttribute('role')).toBe('status')
+      expect(el.getAttribute('aria-label')).toBe('加载中')
       el.size = 40
-
-      document.body.appendChild(el)
       await el.updateComplete
-
       expect(el.getAttribute('size')).toBe('40')
-    })
-
-    it('通过属性设置', async () => {
-      const el = document.createElement('web-ui-spinner')
       el.setAttribute('size', '32')
-
-      document.body.appendChild(el)
       await el.updateComplete
-
       expect(el.size).toBe(32)
     })
-  })
 
-  describe('可访问性', () => {
-    it('宿主有 role="status"', async () => {
-      const el = document.createElement('web-ui-spinner')
-
-      document.body.appendChild(el)
-      await el.updateComplete
-
-      expect(el.getAttribute('role')).toBe('status')
-    })
-
-    it('宿主有 aria-label="加载中"', async () => {
-      const el = document.createElement('web-ui-spinner')
-
-      document.body.appendChild(el)
-      await el.updateComplete
-
-      expect(el.getAttribute('aria-label')).toBe('加载中')
-    })
-  })
-
-  describe('插槽：description', () => {
-    it('投影 description slot 内容', async () => {
+    it('description slot 与原生组合', async () => {
       const el = document.createElement('web-ui-spinner')
       const slotContent = document.createElement('span')
       slotContent.slot = 'description'
       slotContent.textContent = '请稍候'
-
       document.body.appendChild(el)
       el.appendChild(slotContent)
       await el.updateComplete
-
       expect(el.querySelector('[slot="description"]')).toBeTruthy()
+      expect(el.getAttribute('role')).toBe('status')
     })
   })
 

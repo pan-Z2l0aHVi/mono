@@ -96,23 +96,31 @@ ctx.emit({ id: 1 })
 ctx.emit({ id: 2 })
 ```
 
-### `defineLoopQueue<T>(options)`
+### `defineQueue<T>(options)`
 
-Async queue that processes items sequentially with auto-consume, pause/resume support.
+A “delivery-is-consumption” queue. It removes an item immediately after calling `onConsume` and does not await a returned Promise, making it suitable for fire-and-forget work. Consumer errors can be observed through `onConsumeError`, but an already delivered item is not retried automatically.
+
+### `defineAckQueue<T>(options)`
+
+A consumer-acknowledged queue. It removes an item only after the Promise returned by `onConsume` fulfills. A rejection affects only the current item; later items continue, and failed items can be retried with `resume()` or `flush()`.
+
+Both queues expose `enqueue()`, `pause()`, `resume()`, and asynchronous `flush()`. They support `initialItems`, synchronous `onPersist` snapshot persistence, and `onConsumeError`. The normal drain is strictly serial; `flush()` concurrently starts pending/failed items from its call boundary without clearing pause or including items enqueued afterward. `onPersist` must complete synchronously; the runtime rejects a returned thenable to preserve persist-before-commit.
+
+Consumers may return Promises, but must not call the same queue's `flush()` from an asynchronous continuation of that consumer. That would make `flush()` wait for the in-flight consumer while the consumer waits for `flush()`, creating a circular wait. Trigger `flush()` outside the consumer; synchronous self-`flush()` is rejected immediately.
 
 ```ts
-import { defineLoopQueue } from '@greypan/js-kit'
+import { defineAckQueue } from '@greypan/js-kit'
 
-const queue = defineLoopQueue<string>({
-  onConsume: async item => {
-    console.log('Processing:', item)
-  }
-})
+const queue = defineAckQueue<string>({
+  onConsume: item => sendTask(item),
+  onPersist: items => savePendingItems(items)
+}).make()
 
-const ctx = queue.make()
-ctx.push('task-1')
-ctx.push('task-2')
+queue.enqueue('task-1')
+await queue.flush()
 ```
+
+The “acknowledgement” in `defineAckQueue` is consumer Promise fulfillment, not server acknowledgement. Use `defineQueue` when delivery should remove the item immediately.
 
 ## API
 

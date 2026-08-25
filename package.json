@@ -13,8 +13,6 @@
     "commit:ci": "bash scripts/commit.sh",
     "publish:new": "bash scripts/publish-new-pack.sh",
     "release:version": "node scripts/release-version.mjs",
-    "check:code": "vp check",
-    "fix:code": "vp check --fix",
     "dev:react-web-ui-demo": "turbo build --filter=@greypan/react-web-ui-demo^... && turbo run dev --filter=@greypan/react-web-ui-demo...",
     "dev:vue-web-ui-demo": "turbo build --filter=@greypan/vue-web-ui-demo^... && turbo run dev --filter=@greypan/vue-web-ui-demo...",
     "dev:interweave": "turbo build --filter=@greypan/interweave^... && turbo run dev --filter=@greypan/interweave --filter=@greypan/interweave-frontend^...",
@@ -24,7 +22,14 @@
     "check:pack": "node scripts/check-pack.mjs",
     "test:scripts": "node scripts/scripts.test.mjs",
     "inspect:contract": "node scripts/repo-query.mjs contract",
-    "diff:contract": "node scripts/repo-query.mjs contract-diff"
+    "diff:contract": "node scripts/repo-query.mjs contract-diff",
+    "check:code": "pnpm run check:cspell && vp check && pnpm run check:go",
+    "check:go": "! gofmt -l . | grep -q . && find . -name go.mod -not -path \"*/node_modules/*\" -exec dirname {} \\; | sort -u | xargs -I{} sh -c \"cd {} && go vet ./...\"",
+    "check:stylelint": "pnpm exec stylelint --allow-empty-input \"**/*.{css,scss,less,html,vue}\"",
+    "check:cspell": "pnpm exec cspell --no-must-find-files \"**/*.{js,ts,jsx,tsx,mjs,cjs,html,vue,css,less,scss,go}\"",
+    "fix:go": "gofmt -w . && find . -name go.mod -not -path \"*/node_modules/*\" -exec dirname {} \\; | sort -u | xargs -I{} sh -c \"cd {} && go vet ./...\"",
+    "fix:stylelint": "pnpm exec stylelint --fix --allow-empty-input \"**/*.{css,scss,less,html,vue}\"",
+    "fix:code": "vp check --fix && pnpm run fix:go && pnpm run fix:stylelint"
   },
   "devDependencies": {
     "@changesets/cli": "catalog:",

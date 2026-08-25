@@ -18,12 +18,12 @@
 }
 
 .tooltip-panel {
-  --wui-glass-shadow: var(--wui-shadow-pop, 0 3px 9px rgb(0 0 0 / 0.27));
+  --wui-internal-glass-shadow: var(--wui-shadow-panel, 0 3px 9px rgb(0 0 0 / 0.27));
 
   pointer-events: none;
 
   position: absolute;
-  z-index: var(--wui-layer-local-overlay, 1);
+  z-index: var(--wui-layer-inline-overlay, 1);
   top: -9999px;
   left: -9999px;
 
@@ -36,7 +36,7 @@
   font-size: var(--wui-tooltip-font-size, 13px);
   color: var(--wui-color-text, #1b1b1b);
 
-  background-color: var(--wui-color-surface-overlay, rgb(246 246 246 / 0.88));
+  background-color: var(--wui-color-surface-overlay, rgb(246 246 246 / 0.82));
 }
 
 .tooltip-panel.portal {

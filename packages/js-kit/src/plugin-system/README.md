@@ -111,31 +111,50 @@ ctx.emit({ id: 2 })
 // After batchDelay ms, onFlushed is called with [{ id: 1 }, { id: 2 }]
 ```
 
-### `defineLoopQueue<T>(options)`
+### `defineQueue<T>(options)`
 
-Async queue that processes items sequentially with auto-consume.
+A “delivery-is-consumption” queue. An item is removed immediately after `onConsume` is called; the queue does not await a returned Promise. It is suitable for fire-and-forget work. Synchronous throws and asynchronous rejections are reported to the optional `onConsumeError`, but the item is not re-enqueued.
 
-| Parameter              | Type                         | Default | Description                 |
-| ---------------------- | ---------------------------- | ------- | --------------------------- |
-| `options.onConsume`    | `(item: T) => Promise<void>` | -       | Handler for each queue item |
-| `options.initialQueue` | `T[]`                        | `[]`    | Initial queue items         |
+### `defineAckQueue<T>(options)`
+
+A consumer-acknowledged queue. An item is removed only after the Promise returned by `onConsume` fulfills. A rejection marks only that item as failed, so later items continue processing. `resume()` or `flush()` can retry failed items.
+
+Both queues are instantiated with `.make()` and share these options:
+
+| Option           | Type                                     | Default | Description                                                          |
+| ---------------- | ---------------------------------------- | ------- | -------------------------------------------------------------------- |
+| `onConsume`      | `(item: T) => void \| PromiseLike<void>` | -       | Required consumer for each queue item                                |
+| `initialItems`   | `readonly T[]`                           | `[]`    | Items restored at creation; consumption starts in the next microtask |
+| `onPersist`      | `(items: readonly T[]) => void`          | -       | Optional synchronous persistence seam receiving a shallow snapshot   |
+| `onConsumeError` | `(error: unknown, item: T) => unknown`   | -       | Optional error observer; errors from the observer are ignored        |
+
+A queue instance exposes `enqueue(item)`, `pause()`, `resume()`, and `flush(): Promise<void>`. The normal drain is strictly serial. `flush()` concurrently starts items that are pending or failed at call time and waits for the operations included in that call. It bypasses pause without clearing it; items enqueued after the call are outside that flush boundary.
+
+When `onPersist` is provided, the queue uses persist-before-commit: a persistence failure preserves the previous membership and stops new consumption. `enqueue()` throws synchronously and `flush()` rejects. `resume()` probes the current snapshot before clearing this queue-global block. `onPersist` must complete synchronously; although TypeScript's `void` callback type may accept an async function, the runtime rejects a thenable and enters the persistence-blocked state.
+
+Consumers may return Promises, but must not call the same queue's `flush()` from an asynchronous continuation of that consumer. `flush()` waits for in-flight consumers while that consumer would be waiting for `flush()`, creating a circular wait. Trigger `flush()` outside the consumer; a synchronous self-`flush()` is rejected immediately.
 
 ```ts
-import { defineLoopQueue } from '@greypan/js-kit'
+import { defineAckQueue } from '@greypan/js-kit'
 
-const queue = defineLoopQueue<string>({
+const queue = defineAckQueue<string>({
+  initialItems: ['restored-task'],
   onConsume: async item => {
-    console.log('Processing:', item)
+    await sendTask(item)
+  },
+  onPersist: items => {
+    savePendingItems(items)
+  },
+  onConsumeError: (error, item) => {
+    console.warn('Task failed:', item, error)
   }
-})
+}).make()
 
-const ctx = queue.make()
-ctx.push('task-1')
-ctx.push('task-2')
-ctx.pause() // Pause processing
-ctx.resume() // Resume processing
-ctx.flush() // Process all remaining items immediately
+queue.enqueue('task-1')
+await queue.flush()
 ```
+
+Use `defineQueue` when consumer Promise fulfillment is not part of the removal boundary. Use `defineAckQueue` when it is. “Acknowledgement” here means consumer-level success; it does not promise exactly-once processing or a server acknowledgement.
 
 ## Type Utilities
 

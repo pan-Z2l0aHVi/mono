@@ -6,6 +6,7 @@ import style from './style.css?inline'
 
 const LEAF_COUNT = 8
 
+@customElement('web-ui-spinner')
 export class WebUiSpinner extends LitElement {
   static override styles = unsafeCSS(style)
 
@@ -90,9 +91,6 @@ export class WebUiSpinner extends LitElement {
     return this._imperative ? html`<div class="wui-spinner-overlay">${spinner}</div>` : spinner
   }
 }
-
-@customElement('web-ui-spinner')
-export class WebUiSpinnerElement extends WebUiSpinner {}
 
 declare global {
   interface HTMLElementTagNameMap {

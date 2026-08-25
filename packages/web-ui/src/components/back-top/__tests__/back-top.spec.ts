@@ -20,44 +20,27 @@ afterEach(() => {
 })
 
 describe('WebUiBackTop 组件', () => {
-  describe('属性：threshold', () => {
-    it('默认值为 200', async () => {
+  describe('默认属性与反射（合并）', () => {
+    it('threshold 默认值与反射符合契约', async () => {
       const el = createBackTop()
       await el.updateComplete
       expect(el.threshold).toBe(200)
       expect(el.getAttribute('threshold')).toBe('200')
-      el.remove()
-    })
-
-    it('threshold 反射到 host', async () => {
-      const el = createBackTop()
       el.threshold = 500
       await el.updateComplete
       expect(el.getAttribute('threshold')).toBe('500')
       el.remove()
     })
 
-    it('负数 threshold 归零', async () => {
+    it.each([
+      [-1, 0],
+      [99999, 10000],
+      ['invalid' as unknown as number, 200]
+    ])('threshold 边界 %p 回退为 %p', async (input, expected) => {
       const el = createBackTop()
-      el.threshold = -1
+      ;(el as unknown as Record<string, unknown>).threshold = input
       await el.updateComplete
-      expect(el.threshold).toBe(0)
-      el.remove()
-    })
-
-    it('超标 threshold 上限 10000', async () => {
-      const el = createBackTop()
-      el.threshold = 99999
-      await el.updateComplete
-      expect(el.threshold).toBe(10000)
-      el.remove()
-    })
-
-    it('非数值 threshold 回退到默认值 200', async () => {
-      const el = createBackTop()
-      ;(el as unknown as Record<string, unknown>).threshold = 'invalid'
-      await el.updateComplete
-      expect(el.threshold).toBe(200)
+      expect(el.threshold).toBe(expected)
       el.remove()
     })
   })

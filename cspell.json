@@ -54,6 +54,15 @@
     "oxfmt",
     "idref",
     "retarget",
-    "pple"
+    "pple",
+    "gofmt",
+    "GOARCH",
+    "ACMR",
+    "nodir",
+    "modernc",
+    "dedup",
+    "maint",
+    "taggings",
+    "cooccurring"
   ]
 }

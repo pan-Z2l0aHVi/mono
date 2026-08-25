@@ -32,7 +32,9 @@
     "@tailwindcss/vite": "catalog:",
     "babel-plugin-react-compiler": "catalog:",
     "@tanstack/router-plugin": "catalog:",
-    "@rolldown/plugin-babel": "catalog:"
+    "@rolldown/plugin-babel": "catalog:",
+    "vite": "catalog:",
+    "vite-plus": "catalog:"
   },
   "browserslist": [
     "Chrome >=111",

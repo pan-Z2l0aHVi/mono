@@ -5,6 +5,7 @@ import { ref } from 'vue'
 const selected = ref('apple')
 const disabledVal = ref('apple')
 const groupVal = ref('banana')
+const disabledGroupVal = ref('apple')
 
 const updateSelected = (value: string) => {
   selected.value = value
@@ -44,7 +45,7 @@ function updateGroupValue(event: WebUiEvent<WebUiRadioGroup, 'change'>) {
 
     <h2>Radio Group 禁用</h2>
     <div class="mb-3 flex flex-col gap-3">
-      <web-ui-radio-group disabled :value="groupVal" name="group-disabled-demo" @change="updateGroupValue">
+      <web-ui-radio-group disabled :value="disabledGroupVal" name="group-disabled-demo">
         <web-ui-radio value="apple">Apple</web-ui-radio>
         <web-ui-radio value="banana">Banana</web-ui-radio>
         <web-ui-radio value="cherry">Cherry</web-ui-radio>

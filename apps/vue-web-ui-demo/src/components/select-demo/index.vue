@@ -72,7 +72,7 @@ watch(
     </div>
 
     <h2>自定义 Trigger</h2>
-    <p class="mb-2 text-sm text-[var(--wui-color-text-muted)]">
+    <p class="mb-2 text-sm text-[var(--wui-color-text-secondary)]">
       通过 <code>slot="trigger"</code> 自定义触发区域内容，外壳和箭头保持默认。
     </p>
     <div class="mb-3 flex flex-wrap items-end gap-3">
@@ -112,7 +112,7 @@ watch(
     </div>
 
     <h3>响应式图标 Trigger</h3>
-    <p class="mb-2 text-sm text-[var(--wui-color-text-muted)]">
+    <p class="mb-2 text-sm text-[var(--wui-color-text-secondary)]">
       trigger 为纯图标，选中后 trigger 图标跟随选项的 prefix 图标同步更新。
     </p>
     <div class="mb-3 flex flex-wrap items-end gap-3">
@@ -122,11 +122,11 @@ watch(
           <web-ui-icon slot="prefix" :icon="opt.icon" :size="16"></web-ui-icon>
         </web-ui-option>
       </web-ui-select>
-      <div class="text-sm text-[var(--wui-color-text-muted)]">选中值：{{ selectedIconValue }}</div>
+      <div class="text-sm text-[var(--wui-color-text-secondary)]">选中值：{{ selectedIconValue }}</div>
     </div>
 
     <h2>Option 前后缀</h2>
-    <p class="mb-2 text-sm text-[var(--wui-color-text-muted)]">
+    <p class="mb-2 text-sm text-[var(--wui-color-text-secondary)]">
       通过 <code>slot="prefix"</code> / <code>slot="suffix"</code> 装饰选项，通过 <code>label</code> 属性设置选项文本。
       布局：check → prefix → label → suffix
     </p>
@@ -134,42 +134,42 @@ watch(
       <web-ui-select placeholder="选择优先级">
         <web-ui-option value="high" label="高优先级">
           <span slot="prefix">🔴</span>
-          <span slot="suffix" class="text-xs text-[var(--wui-color-text-muted)]">P0</span>
+          <span slot="suffix" class="text-xs text-[var(--wui-color-text-secondary)]">P0</span>
         </web-ui-option>
         <web-ui-option value="mid" label="中优先级">
           <span slot="prefix">🟡</span>
-          <span slot="suffix" class="text-xs text-[var(--wui-color-text-muted)]">P1</span>
+          <span slot="suffix" class="text-xs text-[var(--wui-color-text-secondary)]">P1</span>
         </web-ui-option>
         <web-ui-option value="low" label="低优先级">
           <span slot="prefix">🟢</span>
-          <span slot="suffix" class="text-xs text-[var(--wui-color-text-muted)]">P2</span>
+          <span slot="suffix" class="text-xs text-[var(--wui-color-text-secondary)]">P2</span>
         </web-ui-option>
       </web-ui-select>
 
       <web-ui-select placeholder="选择国家">
         <web-ui-option value="cn" label="中国">
           <span slot="prefix">🇨🇳</span>
-          <span slot="suffix" class="text-xs text-[var(--wui-color-text-muted)]">+86</span>
+          <span slot="suffix" class="text-xs text-[var(--wui-color-text-secondary)]">+86</span>
         </web-ui-option>
         <web-ui-option value="us" label="美国">
           <span slot="prefix">🇺🇸</span>
-          <span slot="suffix" class="text-xs text-[var(--wui-color-text-muted)]">+1</span>
+          <span slot="suffix" class="text-xs text-[var(--wui-color-text-secondary)]">+1</span>
         </web-ui-option>
         <web-ui-option value="jp" label="日本">
           <span slot="prefix">🇯🇵</span>
-          <span slot="suffix" class="text-xs text-[var(--wui-color-text-muted)]">+81</span>
+          <span slot="suffix" class="text-xs text-[var(--wui-color-text-secondary)]">+81</span>
         </web-ui-option>
       </web-ui-select>
 
       <web-ui-select placeholder="纯 suffix">
         <web-ui-option value="vue" label="Vue">
-          <span slot="suffix" class="text-xs text-[var(--wui-color-text-muted)]">v3.4</span>
+          <span slot="suffix" class="text-xs text-[var(--wui-color-text-secondary)]">v3.4</span>
         </web-ui-option>
         <web-ui-option value="react" label="React">
-          <span slot="suffix" class="text-xs text-[var(--wui-color-text-muted)]">v19</span>
+          <span slot="suffix" class="text-xs text-[var(--wui-color-text-secondary)]">v19</span>
         </web-ui-option>
         <web-ui-option value="svelte" label="Svelte">
-          <span slot="suffix" class="text-xs text-[var(--wui-color-text-muted)]">v5</span>
+          <span slot="suffix" class="text-xs text-[var(--wui-color-text-secondary)]">v5</span>
         </web-ui-option>
       </web-ui-select>
     </div>

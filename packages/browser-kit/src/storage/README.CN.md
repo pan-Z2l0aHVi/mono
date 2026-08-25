@@ -52,7 +52,7 @@ session.set('temp', 'data')
 
 ### `storage.set(key, value, ttl?)`
 
-设置值。传 `undefined` 会删除该键。
+设置值。传 `undefined` 会删除该键。返回 `true` 表示底层存储操作成功；受限存储被安全降级时返回 `false`，但不会抛错。
 
 | 参数    | 类型     | 默认值 | 说明           |
 | ------- | -------- | ------ | -------------- |
@@ -72,7 +72,7 @@ storage.set('key', undefined) // 删除该键
 
 ### `storage.remove(key)`
 
-删除指定键。
+删除指定键。返回 `true` 表示删除成功；受限存储被安全降级时返回 `false`，但不会抛错。
 
 ### `storage.clear()`
 

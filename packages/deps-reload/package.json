@@ -37,7 +37,9 @@
     "unplugin": "catalog:"
   },
   "devDependencies": {
-    "@greypan/tsconfig": "workspace:*"
+    "@greypan/tsconfig": "workspace:*",
+    "vite": "catalog:",
+    "vite-plus": "catalog:"
   },
   "peerDependencies": {
     "vite": "catalog:",

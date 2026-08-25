@@ -49,10 +49,10 @@ jobs:
           base_sha="$(git rev-parse "${MERGE_SHA}^1")"
           echo "merge-sha=$MERGE_SHA" >> "$GITHUB_OUTPUT"
 
-          version="$(node --input-type=module -e "import manifest from './apps/interweave/package.json' with { type: 'json' }; console.log(manifest.version)")"
+          version="$(node .github/scripts/read-json-version.mjs ./apps/interweave/package.json)"
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
-          previous_version="$(git show "$base_sha:apps/interweave/package.json" | node --input-type=module -e "let data = ''; process.stdin.on('data', chunk => data += chunk); process.stdin.on('end', () => console.log(JSON.parse(data).version))")"
+          previous_version="$(git show "$base_sha:apps/interweave/package.json" | node .github/scripts/read-json-version.mjs)"
           if [[ "$version" == "$previous_version" ]]; then
             echo 'should-release=false' >> "$GITHUB_OUTPUT"
             exit 0

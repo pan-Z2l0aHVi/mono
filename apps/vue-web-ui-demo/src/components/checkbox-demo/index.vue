@@ -5,6 +5,7 @@ import { ref } from 'vue'
 const fruits = ref<string[]>([])
 const checkedDisabled = ref(['apple'])
 const groupVals = ref<string[]>(['banana', 'cherry'])
+const disabledGroupVals = ref<string[]>(['apple', 'cherry'])
 
 const toggleFruit = (value: string) => {
   const idx = fruits.value.indexOf(value)
@@ -49,7 +50,7 @@ function updateGroupValues(event: WebUiEvent<WebUiCheckboxGroup, 'change'>) {
 
     <h2>Checkbox Group 禁用</h2>
     <div class="mb-3 flex flex-col gap-3">
-      <web-ui-checkbox-group disabled :value="groupVals" @change="updateGroupValues">
+      <web-ui-checkbox-group disabled :value="disabledGroupVals">
         <web-ui-checkbox value="apple">Apple</web-ui-checkbox>
         <web-ui-checkbox value="banana">Banana</web-ui-checkbox>
         <web-ui-checkbox value="cherry">Cherry</web-ui-checkbox>

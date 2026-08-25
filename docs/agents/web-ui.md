@@ -9,6 +9,7 @@
 - Overlay 关闭、焦点和滚动语义：[ADR-0005](../adr/0005-overlay-interaction-policy.md)；Portal 与层叠：[ADR-0006](../adr/0006-layout-layering.md)。
 - Design token：[ADR-0010](../adr/0010-design-token-restructure.md)；图标 manifest、生成器和导出：[ADR-0008](../adr/0008-icon-system.md)。
 - React/Vue 类型适配、`$events` 和复合控件事件边界：[ADR-0011](../adr/0011-framework-type-adaptation-narrowing.md)。
+- 跨框架 API 约定（Property camelCase / Attribute kebab-case / Event kebab-case）与布尔 converter 兜底：[ADR-0033](../adr/0033-cross-framework-api-convention.md)；README「框架集成」章节是面向消费者的规范。
 - 测试选择和 browser mode：[`testing.md`](testing.md)；真实浏览器验证：[`browser-verification.md`](browser-verification.md)。
 
 ## 修改前路由
@@ -25,3 +26,4 @@
 - Shadow DOM 样式留在组件内部；不要把组件样式注入 `document.head`。使用公共 `--wui-*` semantic token。
 - 共享状态和行为沿用 `definePlugin` factory 的 `defineXxx(...).make(...)` 组合方式，不用继承承载共享状态。
 - 组件或交互改动完成后，按影响范围运行聚焦测试，并按 [`browser-verification.md`](browser-verification.md) 在 React/Vue demo 集成表面进行真实浏览器验证。
+- 框架动态绑定布尔属性必须使用 camelCase Property；不要在组件内引入 attribute 字符串解析兜底，保持原生 HTML 布尔存在语义（存在即 true）。

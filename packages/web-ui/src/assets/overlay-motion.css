@@ -1,10 +1,12 @@
 .wui-floating-panel {
-  transform-origin: var(--wui-overlay-transform-origin, center);
+  transform-origin: var(--wui-internal-overlay-transform-origin, center);
   transform: scale(1);
   opacity: 1;
   transition:
-    opacity var(--wui-duration-overlay-enter, 180ms) var(--wui-ease-out, cubic-bezier(0.23, 1, 0.32, 1)),
-    transform var(--wui-duration-overlay-enter, 180ms) var(--wui-ease-out, cubic-bezier(0.23, 1, 0.32, 1));
+    opacity var(--wui-internal-duration-overlay-enter, var(--wui-duration-overlay-enter, 180ms))
+      var(--wui-ease-enter, cubic-bezier(0.23, 1, 0.32, 1)),
+    transform var(--wui-internal-duration-overlay-enter, var(--wui-duration-overlay-enter, 180ms))
+      var(--wui-ease-enter, cubic-bezier(0.23, 1, 0.32, 1));
 }
 
 .wui-floating-panel[data-wui-presence='entering'],
@@ -15,7 +17,7 @@
 
 .wui-floating-panel[data-wui-presence='closing'] {
   pointer-events: none;
-  transition-duration: var(--wui-duration-overlay-exit, 140ms);
+  transition-duration: var(--wui-internal-duration-overlay-exit, var(--wui-duration-overlay-exit, 140ms));
 }
 
 @media (prefers-reduced-motion: reduce) {

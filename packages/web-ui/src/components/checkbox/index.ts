@@ -4,6 +4,8 @@ import { classMap } from 'lit/directives/class-map.js'
 
 import '@/components/icon'
 import { heroiconsCheck16Solid } from '@/icons'
+import { defineFormAssociation, FormAssociationController } from '@/shared/form-association'
+import { defineGroupManaged, type SelectionGroupContext } from '@/shared/group-management'
 
 import style from './style.css?inline'
 
@@ -12,10 +14,9 @@ export class WebUiCheckbox extends LitElement {
   static override styles = unsafeCSS(style)
   static formAssociated = true
 
-  // 内部表单关联实例（connectedCallback 中初始化）
-  private _internals?: ElementInternals
-  @state() private _formDisabled = false
-  @state() private _groupDisabled = false
+  private readonly _groupManagement = defineGroupManaged<SelectionGroupContext>(this, {
+    requestUpdate: () => this.requestUpdate()
+  }).make()
 
   // 内部 checked 状态，通过 getter/setter 暴露为公共 API
   @state() private _checked = false
@@ -27,7 +28,7 @@ export class WebUiCheckbox extends LitElement {
   set checked(v: boolean) {
     const old = this._checked
     this._checked = v
-    this._syncFormValue()
+    this._formAssociation.sync()
     this.requestUpdate('checked', old)
   }
 
@@ -37,51 +38,55 @@ export class WebUiCheckbox extends LitElement {
   @property({ type: Boolean, reflect: true }) required = false
 
   private get _isDisabled(): boolean {
-    return this.disabled || this._formDisabled || this._groupDisabled
+    return (
+      this.disabled || this._formAssociation.isFormDisabled() || this._groupManagement.getContext()?.disabled === true
+    )
   }
 
   private get _isManagedByGroup(): boolean {
-    return this.closest('web-ui-checkbox-group') !== null
+    return this._groupManagement.getContext() !== undefined
   }
 
-  setGroupDisabled(disabled: boolean) {
-    this._groupDisabled = disabled
-  }
+  private readonly _formAssociation = defineFormAssociation<boolean>({
+    host: this,
+    initialize: () => {
+      if (this.hasAttribute('checked')) this._checked = true
+    },
+    getState: () => this._checked,
+    setState: checked => {
+      this.checked = checked
+    },
+    getFormValue: () => (!this._isManagedByGroup && this._checked ? this.value || 'on' : null),
+    getFormState: () => String(this._checked),
+    restoreState: state => {
+      if (typeof state === 'string') this.checked = state === 'true'
+    },
+    isStateManaged: () => this._isManagedByGroup,
+    syncValidity: () => this._syncValidity()
+  }).make()
 
-  override connectedCallback() {
-    super.connectedCallback()
-    if (this._internals) return
-    this._internals = this.attachInternals()
-    if (this.hasAttribute('checked')) {
-      this._checked = true
-    }
-    this._syncFormValue()
-  }
+  private readonly _formAssociationController = new FormAssociationController(this, this._formAssociation)
 
   formResetCallback() {
-    this.checked = this.hasAttribute('checked')
+    this._formAssociation.reset()
   }
 
   formDisabledCallback(disabled: boolean) {
-    this._formDisabled = disabled
+    this._formAssociation.setDisabled(disabled)
   }
 
-  override updated() {
-    this._syncFormValue()
-    this._syncValidity()
-  }
-
-  private _syncFormValue() {
-    this._internals?.setFormValue?.(!this._isManagedByGroup && this._checked ? this.value || 'on' : null)
+  formStateRestoreCallback(state: string | File | FormData | null) {
+    this._formAssociation.restore(state)
   }
 
   private _syncValidity() {
-    if (!this._internals || typeof this._internals.setValidity !== 'function') return
+    const internals = this._formAssociation.getInternals()
+    if (!internals || typeof internals.setValidity !== 'function') return
     if (this._isDisabled || this._isManagedByGroup || !this.required || this._checked) {
-      this._internals.setValidity({})
+      internals.setValidity({})
       return
     }
-    this._internals.setValidity({ valueMissing: true }, '请选择此项')
+    internals.setValidity({ valueMissing: true }, '请选择此项')
   }
 
   // 用户点击切换
@@ -89,7 +94,7 @@ export class WebUiCheckbox extends LitElement {
     if (this._isDisabled) return
     const old = this._checked
     this._checked = !old
-    this._syncFormValue()
+    this._formAssociation.sync()
     this.requestUpdate('checked', old)
     // group-managed 时事件不冒泡/不组合，由 group 统一派发一次 host 事件，避免同名事件外泄
     const opts: EventInit = this._isManagedByGroup

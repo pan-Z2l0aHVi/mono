@@ -2,6 +2,12 @@
 
 工程技能在探索代码库时，应如何使用本仓库的领域文档。根 `CONTEXT.md` 是 repository-level project context：它可以同时记录 domain vocabulary、repository architecture context 和 ADR 索引；实现细节仍应留在源码、manifest、配置、测试或按需 task guide 中。
 
+## 第三方 `domain-modeling` skill 集成
+
+`.agents/skills/domain-modeling/` 是保持上游原文的第三方 skill；其通用 `CONTEXT.md` 流程不能改变本仓库根 `CONTEXT.md` 的内容边界或既有结构。调用该 skill 时，本指南、[`context.md`](./context.md) 和 ADR-0012 是本仓库的权威约束：保留 repository architecture context、包边界、依赖方向和 ADR 索引，只在相应章节维护领域词汇或记录已解决的架构决策。
+
+上游 skill 中与本仓库 context 架构不兼容的通用表述不得据此删除或重构既有 project context；仅将实现细节保留在源码、manifest、配置、测试、task guide 或 ADR 中。出现冲突时，遵循本仓库规则而不修改第三方 skill。
+
 ## 按需探索
 
 先从任务目标、受影响目录和最近的 `AGENTS.md` 确定范围。只有在架构、跨包依赖、术语或长期取舍会影响当前决策时，才加载以下 context：

@@ -1,10 +1,10 @@
 /**
  * @description
- * 离线恢复插件：离线时暂停上报 loop，在线时恢复
+ * 离线恢复插件：离线时暂停 outbox，在线时恢复
  * 内部自动监听 online/offline 事件，无需外部调用
  */
 
-import { definePlugin, type PluginMade } from '@greypan/js-kit'
+import { definePlugin, safeCall, type PluginMade } from '@greypan/js-kit'
 
 import { on } from '@/shortcut'
 
@@ -24,7 +24,7 @@ export function defineOfflineRestore() {
     const { signal } = controller
 
     on(window, 'offline', () => ctx.pause(), { signal })
-    on(window, 'online', () => ctx.resume(), { signal })
+    on(window, 'online', () => safeCall(ctx.resume), { signal })
 
     return {}
   })

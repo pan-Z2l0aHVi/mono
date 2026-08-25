@@ -45,6 +45,10 @@ function getFirstMenuItem(): HTMLElement {
   return item
 }
 
+function getMenuItems(): HTMLElement[] {
+  return [...(getMenu()?.querySelectorAll<HTMLElement>('web-ui-dropdown-item') ?? [])]
+}
+
 function touchPointerEvent(type: string): PointerEvent {
   const event = new PointerEvent(type)
   Object.defineProperty(event, 'pointerType', { value: 'touch' })
@@ -609,6 +613,69 @@ describe('WebUiContextMenu 组件', () => {
       document.dispatchEvent(new Event('scroll'))
       await waitForUpdate(el)
       expect(el.isOpen).toBe(true)
+
+      cleanupElement(el)
+    })
+  })
+
+  describe('条件渲染边界', () => {
+    it('关闭状态把注释锚点替换为 wrapper 后，新成员进入菜单', async () => {
+      const el = createContextMenu({}, '<!--items--><web-ui-dropdown-item>编辑</web-ui-dropdown-item>')
+      await waitForUpdate(el)
+
+      const comment = [...el.childNodes].find(node => node.nodeType === Node.COMMENT_NODE) as Comment
+      const wrapper = document.createElement('div')
+      wrapper.innerHTML = '<web-ui-dropdown-item>复制</web-ui-dropdown-item>'
+      el.replaceChild(wrapper, comment)
+      await waitForUpdate(el)
+
+      el.openAt(100, 100)
+      await waitForMenuOpen(el)
+
+      expect(getMenuItems().map(item => item.textContent?.trim())).toEqual(['复制', '编辑'])
+
+      cleanupElement(el)
+    })
+
+    it('打开时删除 wrapper 后立即从菜单移除成员', async () => {
+      const el = createContextMenu(
+        {},
+        '<web-ui-dropdown-item>编辑</web-ui-dropdown-item><div><web-ui-dropdown-item>复制</web-ui-dropdown-item></div>'
+      )
+      await waitForUpdate(el)
+      const wrapper = el.querySelector('div')!
+      el.openAt(100, 100)
+      await waitForMenuOpen(el)
+
+      wrapper.remove()
+      await waitForMenuClose(el)
+      await new Promise(resolve => requestAnimationFrame(resolve))
+
+      expect(getMenuItems().map(item => item.textContent?.trim())).toEqual(['编辑'])
+
+      cleanupElement(el)
+    })
+
+    it('打开时删除嵌套子菜单 wrapper 后同步移除子成员', async () => {
+      const el = createContextMenu(
+        {},
+        '<web-ui-dropdown-item submenu>导出<div><web-ui-dropdown-item>PDF</web-ui-dropdown-item></div></web-ui-dropdown-item>'
+      )
+      await waitForUpdate(el)
+
+      const wrapper = el.querySelector('web-ui-dropdown-item div')!
+      el.openAt(100, 100)
+      await waitForMenuOpen(el)
+
+      getFirstMenuItem().click()
+      await waitForUpdate(el)
+      await new Promise(resolve => requestAnimationFrame(resolve))
+
+      wrapper.remove()
+      await waitForUpdate(el)
+      await new Promise(resolve => requestAnimationFrame(resolve))
+
+      expect(getSubmenu()?.querySelectorAll('web-ui-dropdown-item')).toHaveLength(0)
 
       cleanupElement(el)
     })

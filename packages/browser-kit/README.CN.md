@@ -54,47 +54,58 @@ const unwatch = storage.watch('user', (newVal, oldVal) => {
 
 ### `defineTracker(options)`
 
-核心埋点插件。通过 sendBeacon 发送数据，fetch 降级兜底。
+核心埋点插件。它会用 `JSON.stringify` 序列化数据，优先调用 `navigator.sendBeacon()`；浏览器未接受 Beacon 时，降级为带 `keepalive: true` 的 `fetch()`。
 
-| 参数      | 类型                                         | 默认值 | 说明     |
-| --------- | -------------------------------------------- | ------ | -------- |
-| `options` | `{ endpoint: string; sendBeacon?: boolean }` | -      | 埋点配置 |
+| 配置                 | 类型                       | 默认值     | 说明                                                              |
+| -------------------- | -------------------------- | ---------- | ----------------------------------------------------------------- |
+| `url`                | `string`                   | -          | 埋点接口 URL                                                      |
+| `transform`          | `(data: object) => object` | 恒等函数   | 在序列化和计算批次大小前转换每一条事件                            |
+| `disablePersistence` | `boolean`                  | `false`    | 禁止从 localStorage 读取和向其中写入待传输 outbox                 |
+| `persistenceKey`     | `string`                   | `url` 的值 | localStorage outbox 的稳定键；多个独立 Tracker 必须使用不同的 key |
 
 ```ts
 import { defineTracker } from '@greypan/browser-kit'
 
-const tracker = defineTracker({ endpoint: '/api/track' })
-const ctx = tracker.make()
-ctx.send({ event: 'page_view', path: '/' })
+const tracker = defineTracker({ url: '/api/track' }).make()
+tracker.track({ event: 'page_view', path: '/' })
 ```
+
+核心上下文提供 `track(data)`、`pause()`、`resume()` 和 `flush()`。`pause()` 会让后续事件继续保留在内存和持久化待传输 outbox 中；`resume()` 会重试仍保留的事件。`flush()` 返回 Promise，是 best-effort：它会绕过暂停和单条消费失败状态，发送调用时尚未在途的事件并等待传输 Promise settle；但不会解除暂停，也不会等待服务端确认。Tracker 的 storage 故障会只告警一次并降级为 memory-only，因此 `flush()` 不会因 localStorage 失败 reject；旧快照可能残留，并在下次初始化时造成 at-least-once 重复发送。
 
 ### `defineBatchTrack(options?)`
 
-批量聚合插件。收集事件并批量发送，支持 64KB beacon 分片。
+批量聚合插件。它收集事件，并在延迟后以数组形式发送。批次超过 `maxBeaconSize` 时会递归分片；单条超大事件仍会作为一个条目发送。
 
-| 参数      | 类型                      | 默认值                 | 说明     |
-| --------- | ------------------------- | ---------------------- | -------- |
-| `options` | `{ batchDelay?: number }` | `{ batchDelay: 3000 }` | 批量配置 |
+| 配置                | 类型     | 默认值 | 说明                                    |
+| ------------------- | -------- | ------ | --------------------------------------- |
+| `defaultBatchDelay` | `number` | `500`  | 默认批量刷新延迟，单位为毫秒            |
+| `maxBeaconSize`     | `number` | `64`   | 触发递归分片前的最大批次大小，单位为 KB |
 
-### `defineLastWords()`
-
-临终遗言插件。在页面关闭或切到后台时立即发送待发数据。
+组合后的 `track(data, batchDelay?)` 支持逐次指定延迟；传入 `0` 或负数可跳过该事件的批量聚合。
 
 ### `defineOfflineRestore()`
 
-离线恢复插件。断网时将数据存入 IndexedDB，重连后自动恢复。
+离线恢复插件。浏览器离线时（包括初始化时已离线）暂停 Tracker，并在收到 `online` 事件后调用 `resume()`。
 
-**组合示例：**
+### `defineLastWords()`
+
+临终遗言插件。在 `beforeunload`、`pagehide` 以及页面变为隐藏状态时调用 `flush()`，以 best-effort 方式尝试发送待发数据。
+
+**推荐组合顺序：**
 
 ```ts
-import { defineTracker, defineBatchTrack, defineLastWords, defineOfflineRestore } from '@greypan/browser-kit'
+import { defineBatchTrack, defineLastWords, defineOfflineRestore, defineTracker } from '@greypan/browser-kit'
 
-const tracker = defineTracker({ endpoint: '/api/track' })
+const tracker = defineTracker({ url: '/api/track' })
   .use(defineBatchTrack())
-  .use(defineLastWords())
   .use(defineOfflineRestore())
+  .use(defineLastWords())
   .make()
 ```
+
+待传输条目会保存在 localStorage，直到浏览器传输层接受它们。`sendBeacon()` 返回 `true` 只表示浏览器已经接受数据并安排传输，并不表示服务端已确认接收。若 `sendBeacon()` 与 `fetch()` 降级都失败，条目会继续保留。`flush()` 会重试调用时快照中的 `pending` 和 `failed` 条目，但不会重新启动已经处于 in-flight 的条目；其他自动重试路径仍是调用 `resume()`、安装 `defineOfflineRestore()` 后触发 `online` 事件，或下次初始化 Tracker。`flush()` 不会解除暂停状态。
+
+`persistenceKey` 默认使用 `url`。同一页面中多个相互独立的 Tracker 如果复用同一个 key，会读取和覆盖同一份快照；应为每个独立实例提供不同且稳定的 key。localStorage 受限、配额耗尽或读写失败时，Tracker 会停止后续持久化并继续以内存模式发送；这是一种明确的 best-effort 降级，不提供 exactly-once 保证。
 
 ## API
 

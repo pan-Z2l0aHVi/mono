@@ -4,11 +4,12 @@
 
 ## 结构
 
-- `src/pages/`：页面级工作流，包括 library、tags、repair 和 settings。
-- `src/components/`：Interweave 前端展示和布局组件。
-- `src/stores/`：Pinia 状态，领域事实和 Wails API 位于 Go host。
-- `src/router.ts`：前端路由。
-- `bindings/`：Wails 生成的 TypeScript bindings，不手工修改。
+- `src/components/`：通用应用壳；当前仅保留无业务内容的 `AppLayout`。
+- `src/pages/`：资源库、标签、Map 和设置的页面挂载点；当前均无内容实现。
+- `src/stores/`：Pinia 注入和未来领域状态的统一入口；当前不保存业务状态。
+- `src/router.ts`：前端路由骨架。
+- `src/assets/`：前端全局基础样式。
+- `bindings/`：Wails 生成的 TypeScript bindings，不手工修改；应用只消费 `backend/library` 与 `backend/native` 暴露的 Interweave Go Service bindings，Wails runtime bindings 不受此业务边界限制。
 
 ## Agent 入口
 
