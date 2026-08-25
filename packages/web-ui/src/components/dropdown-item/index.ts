@@ -26,9 +26,11 @@ export class WebUiDropdownItem extends LitElement {
       <div class="item-inner" style=${plStyle} role="menuitem" tabindex=${this.disabled ? '-1' : '0'}>
         <slot name="prefix"></slot>
         <span class="item-label"><slot></slot></span>
-        ${this.submenu
-          ? html`<web-ui-icon .icon=${lucideChevronRight}></web-ui-icon>`
-          : html`<span class="item-suffix"><slot name="suffix"></slot></span>`}
+        ${
+          this.submenu
+            ? html`<web-ui-icon .icon=${lucideChevronRight}></web-ui-icon>`
+            : html`<span class="item-suffix"><slot name="suffix"></slot></span>`
+        }
       </div>
     `
   }

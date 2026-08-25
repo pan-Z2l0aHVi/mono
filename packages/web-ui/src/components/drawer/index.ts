@@ -215,37 +215,41 @@ export class WebUiDrawer extends LitElement {
         @keydown=${this.handleKeydown}
         @transitionend=${this.handleTransitionEnd}
       >
-        ${this.headless
-          ? html`<slot></slot>`
-          : html`
-              <div class="wui-drawer-body wui-glass">
-                <div class="wui-drawer-header" id="wui-drawer-heading" ?hidden=${!showHeader}>
-                  <slot name="header" @slotchange=${this.handleHeaderSlotChange}>
-                    ${this.heading ? html`<span class="wui-drawer-heading">${this.heading}</span>` : nothing}
-                  </slot>
+        ${
+          this.headless
+            ? html`<slot></slot>`
+            : html`
+                <div class="wui-drawer-body wui-glass">
+                  <div class="wui-drawer-header" id="wui-drawer-heading" ?hidden=${!showHeader}>
+                    <slot name="header" @slotchange=${this.handleHeaderSlotChange}>
+                      ${this.heading ? html`<span class="wui-drawer-heading">${this.heading}</span>` : nothing}
+                    </slot>
+                  </div>
+                  <div class="wui-drawer-content">
+                    <slot></slot>
+                  </div>
+                  <div class="wui-drawer-footer" ?hidden=${!this._hasFooterSlot}>
+                    <slot name="footer" @slotchange=${this.handleFooterSlotChange}></slot>
+                  </div>
                 </div>
-                <div class="wui-drawer-content">
-                  <slot></slot>
-                </div>
-                <div class="wui-drawer-footer" ?hidden=${!this._hasFooterSlot}>
-                  <slot name="footer" @slotchange=${this.handleFooterSlotChange}></slot>
-                </div>
-              </div>
-              ${this.closable
-                ? html`
-                    <web-ui-button
-                      class="wui-drawer-close"
-                      @click=${this._closeFromUser}
-                      aria-label="关闭"
-                      variant="secondary"
-                      icon
-                      size="26"
-                    >
-                      <web-ui-icon .icon=${oouiClose}></web-ui-icon>
-                    </web-ui-button>
-                  `
-                : nothing}
-            `}
+                ${
+                  this.closable
+                    ? html`
+                        <web-ui-button
+                          class="wui-drawer-close"
+                          @click=${this._closeFromUser}
+                          aria-label="关闭"
+                          variant="secondary"
+                          icon
+                          size="26"
+                        >
+                          <web-ui-icon .icon=${oouiClose}></web-ui-icon>
+                        </web-ui-button>
+                      `
+                    : nothing
+                }
+              `
+        }
       </dialog>
     `
   }
