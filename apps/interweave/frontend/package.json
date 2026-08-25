@@ -34,7 +34,9 @@
     "unplugin-auto-import": "catalog:",
     "vite-plugin-pwa": "catalog:",
     "vite-plugin-vue-devtools": "catalog:",
-    "vue-tsc": "catalog:"
+    "vue-tsc": "catalog:",
+    "vite": "catalog:",
+    "vite-plus": "catalog:"
   },
   "browserslist": [
     "Chrome >=111",

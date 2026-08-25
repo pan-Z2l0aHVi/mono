@@ -57,7 +57,7 @@ function SelectDemo() {
         <div>selected：{selected || '无'}</div>
       </div>
       <h2>自定义 Trigger</h2>
-      <p className="mb-2 text-sm text-[var(--wui-color-text-muted)]">
+      <p className="mb-2 text-sm text-[var(--wui-color-text-secondary)]">
         通过 <code>slot=&quot;trigger&quot;</code> 自定义触发区域内容，外壳和箭头保持默认。
       </p>
       <div className="mb-3 flex flex-wrap items-end gap-3">
@@ -93,7 +93,7 @@ function SelectDemo() {
         </web-ui-select>
       </div>
       <h3>响应式图标 Trigger</h3>
-      <p className="mb-2 text-sm text-[var(--wui-color-text-muted)]">
+      <p className="mb-2 text-sm text-[var(--wui-color-text-secondary)]">
         trigger 为纯图标，选中后 trigger 图标跟随选项的 prefix 图标同步更新。
       </p>
       <div className="mb-3 flex flex-wrap items-end gap-3">
@@ -105,29 +105,29 @@ function SelectDemo() {
             </web-ui-option>
           ))}
         </web-ui-select>
-        <div className="text-sm text-[var(--wui-color-text-muted)]">选中值：{selectedIconValue}</div>
+        <div className="text-sm text-[var(--wui-color-text-secondary)]">选中值：{selectedIconValue}</div>
       </div>
       <h2>Option 前后缀</h2>
-      <p className="mb-2 text-sm text-[var(--wui-color-text-muted)]">
+      <p className="mb-2 text-sm text-[var(--wui-color-text-secondary)]">
         通过 <code>slot=&quot;prefix&quot;</code> / <code>slot=&quot;suffix&quot;</code> 装饰选项。
       </p>
       <div className="mb-3 flex flex-col gap-3">
         <web-ui-select placeholder="选择优先级">
           <web-ui-option value="high" label="高优先级">
             <span slot="prefix">🔴</span>
-            <span slot="suffix" className="text-xs text-[var(--wui-color-text-muted)]">
+            <span slot="suffix" className="text-xs text-[var(--wui-color-text-secondary)]">
               P0
             </span>
           </web-ui-option>
           <web-ui-option value="mid" label="中优先级">
             <span slot="prefix">🟡</span>
-            <span slot="suffix" className="text-xs text-[var(--wui-color-text-muted)]">
+            <span slot="suffix" className="text-xs text-[var(--wui-color-text-secondary)]">
               P1
             </span>
           </web-ui-option>
           <web-ui-option value="low" label="低优先级">
             <span slot="prefix">🟢</span>
-            <span slot="suffix" className="text-xs text-[var(--wui-color-text-muted)]">
+            <span slot="suffix" className="text-xs text-[var(--wui-color-text-secondary)]">
               P2
             </span>
           </web-ui-option>
@@ -135,36 +135,36 @@ function SelectDemo() {
         <web-ui-select placeholder="选择国家">
           <web-ui-option value="cn" label="中国">
             <span slot="prefix">🇨🇳</span>
-            <span slot="suffix" className="text-xs text-[var(--wui-color-text-muted)]">
+            <span slot="suffix" className="text-xs text-[var(--wui-color-text-secondary)]">
               +86
             </span>
           </web-ui-option>
           <web-ui-option value="us" label="美国">
             <span slot="prefix">🇺🇸</span>
-            <span slot="suffix" className="text-xs text-[var(--wui-color-text-muted)]">
+            <span slot="suffix" className="text-xs text-[var(--wui-color-text-secondary)]">
               +1
             </span>
           </web-ui-option>
           <web-ui-option value="jp" label="日本">
             <span slot="prefix">🇯🇵</span>
-            <span slot="suffix" className="text-xs text-[var(--wui-color-text-muted)]">
+            <span slot="suffix" className="text-xs text-[var(--wui-color-text-secondary)]">
               +81
             </span>
           </web-ui-option>
         </web-ui-select>
         <web-ui-select placeholder="纯 suffix">
           <web-ui-option value="vue" label="Vue">
-            <span slot="suffix" className="text-xs text-[var(--wui-color-text-muted)]">
+            <span slot="suffix" className="text-xs text-[var(--wui-color-text-secondary)]">
               v3.4
             </span>
           </web-ui-option>
           <web-ui-option value="react" label="React">
-            <span slot="suffix" className="text-xs text-[var(--wui-color-text-muted)]">
+            <span slot="suffix" className="text-xs text-[var(--wui-color-text-secondary)]">
               v19
             </span>
           </web-ui-option>
           <web-ui-option value="svelte" label="Svelte">
-            <span slot="suffix" className="text-xs text-[var(--wui-color-text-muted)]">
+            <span slot="suffix" className="text-xs text-[var(--wui-color-text-secondary)]">
               v5
             </span>
           </web-ui-option>

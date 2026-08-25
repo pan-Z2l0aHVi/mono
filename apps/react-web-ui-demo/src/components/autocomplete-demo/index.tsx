@@ -36,7 +36,7 @@ function AutocompleteDemo() {
       <h1>自动补全</h1>
 
       <h2>基础</h2>
-      <p className="mb-2 text-sm text-[var(--wui-color-text-muted)]">
+      <p className="mb-2 text-sm text-[var(--wui-color-text-secondary)]">
         键入时按 label 过滤候选（默认 <code>contains</code>），选择后文本回填为选项 label。
       </p>
       <div className="mb-3 flex flex-col gap-3">
@@ -66,7 +66,7 @@ function AutocompleteDemo() {
       </div>
 
       <h2>filter 模式</h2>
-      <p className="mb-2 text-sm text-[var(--wui-color-text-muted)]">
+      <p className="mb-2 text-sm text-[var(--wui-color-text-secondary)]">
         <code>contains</code> 包含匹配，<code>prefix</code> 前缀匹配，<code>none</code> 关闭过滤。
       </p>
       <div className="mb-3 flex flex-col gap-3">
@@ -81,7 +81,7 @@ function AutocompleteDemo() {
             <web-ui-option value="prefix" label="前缀"></web-ui-option>
             <web-ui-option value="none" label="不过滤"></web-ui-option>
           </web-ui-select>
-          <span className="text-sm text-[var(--wui-color-text-muted)]">当前模式：{filterMode}</span>
+          <span className="text-sm text-[var(--wui-color-text-secondary)]">当前模式：{filterMode}</span>
         </div>
         <web-ui-autocomplete filter={filterMode} placeholder="输入框架名">
           {frameworks.map(name => (
@@ -93,7 +93,7 @@ function AutocompleteDemo() {
       </div>
 
       <h2>change 事件</h2>
-      <p className="mb-2 text-sm text-[var(--wui-color-text-muted)]">
+      <p className="mb-2 text-sm text-[var(--wui-color-text-secondary)]">
         选择提交时触发 <code>change</code>；<code>selected-value</code> 由当前输入派生，输入不再精确匹配任何 option
         label 时自动清空。
       </p>

@@ -52,7 +52,7 @@ Get a value by key. Returns `defaultValue` if key doesn't exist or has expired.
 
 ### `storage.set(key, value, ttl?)`
 
-Set a value. Pass `undefined` to remove the key.
+Set a value. Pass `undefined` to remove the key. Returns `true` when the underlying storage operation succeeds; returns `false` for safely degraded/restricted storage without throwing.
 
 | Parameter | Type     | Default | Description                  |
 | --------- | -------- | ------- | ---------------------------- |
@@ -72,7 +72,7 @@ Check if a key exists and hasn't expired.
 
 ### `storage.remove(key)`
 
-Remove a key.
+Remove a key. Returns `true` when removal succeeds and `false` when restricted storage is safely degraded.
 
 ### `storage.clear()`
 

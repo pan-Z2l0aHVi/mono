@@ -22,11 +22,11 @@ function ButtonDemo() {
         <web-ui-button variant="primary" size="48">
           大号 48
         </web-ui-button>
-        <web-ui-button variant="secondary" size="32x100">
-          32x100
+        <web-ui-button variant="secondary" size="32" style={{ '--wui-button-width': '100px' } as React.CSSProperties}>
+          32×100
         </web-ui-button>
-        <web-ui-button variant="secondary" size="40x200">
-          40x200
+        <web-ui-button variant="secondary" size="40" style={{ '--wui-button-width': '200px' } as React.CSSProperties}>
+          40×200
         </web-ui-button>
       </div>
 

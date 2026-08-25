@@ -62,7 +62,9 @@
     "@types/react": "catalog:",
     "lit": "catalog:",
     "vite-plugin-dts": "catalog:",
-    "vue": "catalog:"
+    "vue": "catalog:",
+    "vite": "catalog:",
+    "vite-plus": "catalog:"
   },
   "peerDependencies": {
     "@types/react": ">=19",

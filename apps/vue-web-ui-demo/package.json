@@ -33,7 +33,9 @@
     "@tailwindcss/vite": "catalog:",
     "vite-plugin-vue-devtools": "catalog:",
     "unplugin-auto-import": "catalog:",
-    "vue-tsc": "catalog:"
+    "vue-tsc": "catalog:",
+    "vite": "catalog:",
+    "vite-plus": "catalog:"
   },
   "browserslist": [
     "Chrome >=111",

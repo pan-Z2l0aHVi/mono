@@ -38,6 +38,8 @@ const closableVisible = ref(false)
 const footerVisible = ref(false)
 const unlockedVisible = ref(false)
 const overlayVisible = ref(false)
+const headlessVisible = ref(false)
+const requestOnlyVisible = ref(false)
 </script>
 
 <template>
@@ -183,6 +185,37 @@ const overlayVisible = ref(false)
       @open-change="cssVarsVisible = $event.detail.open"
     >
       <p style="color: #ccc">自定义遮罩层、背景、阴影等样式。</p>
+    </web-ui-drawer>
+
+    <h2>受控关闭请求</h2>
+    <div class="mb-3 flex gap-2">
+      <web-ui-button @click="requestOnlyVisible = true">打开</web-ui-button>
+    </div>
+    <web-ui-drawer :open="requestOnlyVisible" request-only @open-change="requestOnlyVisible = $event.detail.open">
+      <p>
+        <code>request-only</code> 时，Escape、遮罩和关闭按钮只派发 <code>open-change</code> 请求；Consumer 回写
+        <code>open</code> 后才关闭。
+      </p>
+    </web-ui-drawer>
+
+    <h2>Headless 模式</h2>
+    <div class="mb-3 flex gap-2">
+      <web-ui-button @click="headlessVisible = true">打开</web-ui-button>
+    </div>
+    <web-ui-drawer
+      :open="headlessVisible"
+      placement="left"
+      headless
+      dialog-label="Headless 抽屉"
+      @open-change="headlessVisible = $event.detail.open"
+    >
+      <div style="height: 100%; padding: 16px; border-radius: 0 16px 16px 0; background: white">
+        <h3 style="margin: 0 0 12px">Headless 抽屉</h3>
+        <p style="margin: 0; color: #666">
+          使用 <code>headless</code> 属性后，抽屉只保留 overlay 基础设施（backdrop、动画、scroll lock）， 不渲染内置
+          UI。Consumer 自定义内容样式。
+        </p>
+      </div>
     </web-ui-drawer>
   </div>
 </template>

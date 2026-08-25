@@ -171,11 +171,11 @@ const controlledOpen = ref(false)
           删除
           <span slot="suffix" class="opacity-40">⌫</span>
         </web-ui-dropdown-item>
-        <web-ui-dropdown-item pl="34px">全选<span slot="suffix" class="opacity-40">⌘A</span></web-ui-dropdown-item>
-        <web-ui-dropdown-item pl="34px"
+        <web-ui-dropdown-item pl="30px">全选<span slot="suffix" class="opacity-40">⌘A</span></web-ui-dropdown-item>
+        <web-ui-dropdown-item pl="30px"
           >粘贴为引用<span slot="suffix" class="opacity-40">⇧⌘V</span></web-ui-dropdown-item
         >
-        <web-ui-dropdown-item pl="34px" disabled
+        <web-ui-dropdown-item pl="30px" disabled
           >添加链接<span slot="suffix" class="opacity-40">⌘K</span></web-ui-dropdown-item
         >
         <web-ui-dropdown-divider></web-ui-dropdown-divider>
@@ -187,7 +187,7 @@ const controlledOpen = ref(false)
         </web-ui-dropdown-item>
         <web-ui-dropdown-divider></web-ui-dropdown-divider>
         <web-ui-dropdown-header>更多选项</web-ui-dropdown-header>
-        <web-ui-dropdown-item pl="34px">听写<span slot="suffix" class="opacity-40">D</span></web-ui-dropdown-item>
+        <web-ui-dropdown-item pl="30px">听写<span slot="suffix" class="opacity-40">D</span></web-ui-dropdown-item>
         <web-ui-dropdown-item>
           <web-ui-icon slot="prefix" :size="14" :icon="lucideSettings"></web-ui-icon>
           表情

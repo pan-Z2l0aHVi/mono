@@ -111,31 +111,50 @@ ctx.emit({ id: 2 })
 // 经过 batchDelay 毫秒后，onFlushed 收到 [{ id: 1 }, { id: 2 }]
 ```
 
-### `defineLoopQueue<T>(options)`
+### `defineQueue<T>(options)`
 
-异步循环队列，按顺序处理任务，支持自动消费。
+“交付即消费”的通用队列。调用 `onConsume` 后立即移除条目，不等待消费者返回的 Promise；适合 fire-and-forget 任务。消费者同步抛错或异步 rejection 会交给可选的 `onConsumeError` 观察，但不会把条目重新放回队列。
 
-| 参数                   | 类型                         | 默认值 | 说明                 |
-| ---------------------- | ---------------------------- | ------ | -------------------- |
-| `options.onConsume`    | `(item: T) => Promise<void>` | -      | 每个队列项的处理函数 |
-| `options.initialQueue` | `T[]`                        | `[]`   | 初始队列项           |
+### `defineAckQueue<T>(options)`
+
+“消费者确认后消费”的通用队列。只有 `onConsume` 返回的 Promise fulfilled 后才移除条目；rejection 只标记当前条目失败，后续条目仍会继续处理。`resume()` 或 `flush()` 可以再次尝试失败条目。
+
+两种队列都通过 `.make()` 实例化，并共享以下选项：
+
+| 选项             | 类型                                     | 默认值 | 说明                                                      |
+| ---------------- | ---------------------------------------- | ------ | --------------------------------------------------------- |
+| `onConsume`      | `(item: T) => void \| PromiseLike<void>` | -      | 必填；每个队列项的消费者                                  |
+| `initialItems`   | `readonly T[]`                           | `[]`   | 创建时恢复的初始项；实例创建后的下一个 microtask 开始消费 |
+| `onPersist`      | `(items: readonly T[]) => void`          | -      | 可选的同步持久化接缝；成员关系变更前先提交新的浅层快照    |
+| `onConsumeError` | `(error: unknown, item: T) => unknown`   | -      | 可选的错误观察器；其自身的异常会被忽略                    |
+
+队列实例提供 `enqueue(item)`、`pause()`、`resume()` 和 `flush(): Promise<void>`。普通 drain 严格串行；`flush()` 会并发启动调用时仍处于 pending/failed 的项，并等待本次调用涉及的操作完成。`flush()` 忽略暂停状态但不会解除暂停，新入队项不属于本次 flush 的边界。
+
+如果提供 `onPersist`，队列采用 persist-before-commit：持久化失败时保留原成员关系并停止新的消费，`enqueue()` 同步抛出错误，`flush()` reject。`resume()` 会先重新探测当前快照，持久化恢复后才解除这个全局阻塞。`onPersist` 必须同步完成；虽然 TypeScript 的 `void` 回调类型可能接受 async 函数，运行时会拒绝 thenable 并进入 persistence-blocked 状态。
+
+消费者可以异步返回 Promise，但不要在同一个队列消费者的异步 continuation 中调用该队列自己的 `flush()`；`flush()` 会等待在途消费者，而该消费者又在等待 `flush()`，会形成循环等待。请从消费者外部触发 `flush()`；同步执行期间的自身 `flush()` 会被立即拒绝。
 
 ```ts
-import { defineLoopQueue } from '@greypan/js-kit'
+import { defineAckQueue } from '@greypan/js-kit'
 
-const queue = defineLoopQueue<string>({
+const queue = defineAckQueue<string>({
+  initialItems: ['restored-task'],
   onConsume: async item => {
-    console.log('Processing:', item)
+    await sendTask(item)
+  },
+  onPersist: items => {
+    savePendingItems(items)
+  },
+  onConsumeError: (error, item) => {
+    console.warn('Task failed:', item, error)
   }
-})
+}).make()
 
-const ctx = queue.make()
-ctx.push('task-1')
-ctx.push('task-2')
-ctx.pause() // 暂停处理
-ctx.resume() // 恢复处理
-ctx.flush() // 立即处理所有剩余项
+queue.enqueue('task-1')
+await queue.flush()
 ```
+
+如果不需要等待消费者 Promise fulfilled，使用 `defineQueue`；如果需要把消费者的成功结果作为移除边界，使用 `defineAckQueue`。这里的“确认”只表示消费者回调成功，不代表远端服务已经提供 exactly-once 或服务端确认。
 
 ## 类型工具
 

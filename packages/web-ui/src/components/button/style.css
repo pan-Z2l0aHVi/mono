@@ -5,6 +5,8 @@
 }
 
 :host {
+  position: relative;
+
   /* inline-flex 让内层按钮在宿主内完全居中，避免继承的行高撑高宿主、导致图标偏移 */
   display: inline-flex;
   align-items: center;
@@ -34,9 +36,9 @@ button {
 
   box-sizing: border-box;
   width: var(--wui-button-width, max-content);
-  min-width: var(--wui-button-size, auto);
-  height: var(--wui-button-size, 40px);
-  padding: 0 var(--wui-button-px, 16px);
+  min-width: var(--wui-control-size, 40px);
+  height: var(--wui-control-size, 40px);
+  padding: 0 var(--wui-button-px, 12px);
   border: 1px solid transparent;
   border-radius: calc(infinity * 1px);
 
@@ -57,7 +59,7 @@ button {
   }
 
   &:focus-visible {
-    outline: 3px solid var(--wui-focus-ring, rgb(0 136 255 / 0.4));
+    outline: var(--wui-focus-ring-width, 3px) solid var(--wui-color-focus-ring, rgb(0 136 255 / 0.4));
     outline-offset: 2px;
   }
 }
@@ -88,7 +90,6 @@ button:active:not(:disabled) {
 /* ===== Icon mode ===== */
 
 :host([icon]) button {
-  aspect-ratio: 1;
   padding: 0;
 }
 
@@ -105,15 +106,15 @@ button:active:not(:disabled) {
 
 :host([variant='secondary']) {
   --wui-button-color: var(--wui-color-text, #1b1b1b);
-  --wui-button-bg: var(--wui-color-surface-raised-mid, #dfdfdf);
+  --wui-button-bg: var(--wui-color-surface-control, #dfdfdf);
   --wui-button-bg-hover: color-mix(
     in srgb,
-    var(--wui-color-surface-raised-mid, #dfdfdf) 90%,
+    var(--wui-color-surface-control, #dfdfdf) 90%,
     var(--wui-color-text, #1b1b1b)
   );
   --wui-button-bg-active: color-mix(
     in srgb,
-    var(--wui-color-surface-raised-mid, #dfdfdf) 70%,
+    var(--wui-color-surface-control, #dfdfdf) 70%,
     var(--wui-color-text, #1b1b1b)
   );
 }
@@ -123,8 +124,14 @@ button:active:not(:disabled) {
 :host([variant='ghost']) {
   --wui-button-color: var(--wui-color-text, #1b1b1b);
   --wui-button-bg: transparent;
-  --wui-button-bg-hover: color-mix(in srgb, var(--wui-color-text, #1b1b1b) 6%, transparent);
-  --wui-button-bg-active: color-mix(in srgb, var(--wui-color-text, #1b1b1b) 15%, transparent);
+  --wui-button-bg-hover: var(
+    --wui-color-state-layer-hover,
+    color-mix(in srgb, var(--wui-color-text, #1b1b1b) 6%, transparent)
+  );
+  --wui-button-bg-active: var(
+    --wui-color-state-layer-active,
+    color-mix(in srgb, var(--wui-color-text, #1b1b1b) 15%, transparent)
+  );
 }
 
 /* ===== Variant: danger ===== */
@@ -141,36 +148,48 @@ button:active:not(:disabled) {
 /* .wui-glass 样式由 @/assets/glass.css 提供 */
 :host([variant='glass']) {
   --wui-button-color: var(--wui-color-text, #1b1b1b);
+
+  /* standalone glass 底色由 .wui-glass 提供；hover/active 需要还原玻璃底，避免被按钮状态色整块替换 */
   --wui-button-bg: transparent;
-  --wui-button-bg-hover: color-mix(in srgb, var(--wui-color-text, #1b1b1b) 6%, transparent);
-  --wui-button-bg-active: color-mix(in srgb, var(--wui-color-text, #1b1b1b) 15%, transparent);
+  --wui-button-bg-hover: var(
+    --wui-color-surface-glass-hover,
+    color-mix(in srgb, var(--wui-color-text, #1b1b1b) 6%, var(--wui-color-surface-glass, rgb(250 250 250 / 0.34)))
+  );
+  --wui-button-bg-active: var(
+    --wui-color-surface-glass-active,
+    color-mix(in srgb, var(--wui-color-text, #1b1b1b) 15%, var(--wui-color-surface-glass, rgb(250 250 250 / 0.34)))
+  );
 }
 
 /* ===== Group context ===== */
 
-:host([group]) {
+button.is-grouped {
   --wui-button-color: var(--wui-color-text, #1b1b1b);
   --wui-button-bg: transparent;
-  --wui-button-bg-hover: color-mix(in srgb, var(--wui-color-text, #1b1b1b) 6%, transparent);
-  --wui-button-bg-active: color-mix(in srgb, var(--wui-color-text, #1b1b1b) 15%, transparent);
-  position: relative;
+  --wui-button-bg-hover: var(
+    --wui-color-state-layer-hover,
+    color-mix(in srgb, var(--wui-color-text, #1b1b1b) 6%, transparent)
+  );
+  --wui-button-bg-active: var(
+    --wui-color-state-layer-active,
+    color-mix(in srgb, var(--wui-color-text, #1b1b1b) 15%, transparent)
+  );
 }
 
-:host([group]:not([last]))::after {
-  content: '';
-
+.group-divider {
   position: absolute;
+  z-index: 1;
   top: 50%;
   right: -2px;
   transform: translateY(-50%);
 
-  width: var(--wui-button-divider-width, 0);
+  width: 1px;
   height: 24px;
 
   background-color: var(--wui-color-border, rgb(0 0 0 / 0.1));
 }
 
-:host([group][direction='vertical']:not([last]))::after {
+.group-divider.vertical {
   top: auto;
   right: auto;
   bottom: -2px;
@@ -178,5 +197,5 @@ button:active:not(:disabled) {
   transform: translateX(-50%);
 
   width: 24px;
-  height: var(--wui-button-divider-width, 0);
+  height: 1px;
 }

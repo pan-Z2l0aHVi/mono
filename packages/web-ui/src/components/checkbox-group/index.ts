@@ -1,6 +1,9 @@
 import { html, LitElement, unsafeCSS } from 'lit'
 import { customElement, property, state } from 'lit/decorators.js'
 
+import { defineFormAssociation, FormAssociationController } from '@/shared/form-association'
+import { defineGroupCoordinator, GroupController } from '@/shared/group-management'
+
 import type { WebUiCheckbox } from '../checkbox'
 
 import style from './style.css?inline'
@@ -15,9 +18,32 @@ export class WebUiCheckboxGroup extends LitElement {
   @property({ type: Boolean, reflect: true }) required = false
 
   @state() private _value: string[] = []
-  @state() private _formDisabled = false
-  private _internals?: ElementInternals
-  private _initialValue: string[] = []
+
+  private readonly _groupController = new GroupController(
+    this,
+    defineGroupCoordinator<WebUiCheckbox, string[]>({
+      host: this,
+      getItems: () => [...this.querySelectorAll<WebUiCheckbox>('web-ui-checkbox')],
+      getValue: () => this._value,
+      setValue: value => {
+        this.value = value
+      },
+      getDisabled: () => this._isDisabled,
+      isItem: (target): target is WebUiCheckbox => target instanceof HTMLElement && target.matches('web-ui-checkbox'),
+      isItemSelected: (checkbox, value) => value.includes(checkbox.value),
+      getNextValue: (checkbox, value) =>
+        checkbox.checked ? [...new Set([...value, checkbox.value])] : value.filter(item => item !== checkbox.value),
+      valuesEqual: (a, b) => a.length === b.length && a.every((value, index) => value === b[index]),
+      copyValue: value => [...value],
+      setItemSelected: (checkbox, selected) => {
+        checkbox.checked = selected
+      },
+      dispatchValueChange: () => {
+        this.dispatchEvent(new Event('input', { bubbles: true, composed: true }))
+        this.dispatchEvent(new Event('change', { bubbles: true, composed: true }))
+      }
+    }).make()
+  )
 
   get value(): string[] {
     return this._value
@@ -26,92 +52,71 @@ export class WebUiCheckboxGroup extends LitElement {
   set value(v: string[]) {
     const old = this._value
     this._value = [...v]
-    this._syncFormValue()
+    this._formAssociation.sync()
     this.requestUpdate('value', old)
   }
 
   private get _isDisabled(): boolean {
-    return this.disabled || this._formDisabled
+    return this.disabled || this._formAssociation.isFormDisabled()
   }
 
-  override connectedCallback() {
-    super.connectedCallback()
-    if (!this._internals) this._internals = this.attachInternals()
-    const attributeValue = this.getAttribute('value')
-    if (attributeValue !== null) this.value = attributeValue.split(',').filter(Boolean)
-    this._initialValue = [...this._value]
-    // group-managed 子项以 bubbles:false 派发 change，须用 capture 相位才能观察到子项事件，
-    // 同时该事件不会冒泡到 group 外部的同名监听器
-    this.addEventListener('change', this._handleChildChange, true)
-  }
+  private readonly _formAssociation = defineFormAssociation<string[]>({
+    host: this,
+    initialize: () => {
+      const attributeValue = this.getAttribute('value')
+      if (attributeValue !== null) this.value = attributeValue.split(',').filter(Boolean)
+    },
+    getState: () => this._value,
+    setState: value => {
+      this.value = value
+    },
+    copyState: value => [...value],
+    getFormValue: () => {
+      if (!this.name || this._value.length === 0) return null
+      const formData = new FormData()
+      this._value.forEach(value => formData.append(this.name, value))
+      return formData
+    },
+    getFormState: () => JSON.stringify(this._value),
+    restoreState: state => {
+      if (typeof state !== 'string') return
+      try {
+        const value = JSON.parse(state)
+        if (Array.isArray(value) && value.every(item => typeof item === 'string')) this.value = value
+      } catch {
+        // 忽略无法解析的历史表单状态。
+      }
+    },
+    syncValidity: () => this._syncValidity()
+  }).make()
 
-  override disconnectedCallback() {
-    super.disconnectedCallback()
-    this.removeEventListener('change', this._handleChildChange, true)
-  }
-
-  override updated(changed: Map<string, unknown>) {
-    if (changed.has('value') || changed.has('disabled') || changed.has('_formDisabled')) this._syncValueToChildren()
-    this._syncFormValue()
-    this._syncValidity()
-  }
+  private readonly _formAssociationController = new FormAssociationController(this, this._formAssociation)
 
   formResetCallback() {
-    this.value = [...this._initialValue]
+    this._formAssociation.reset()
   }
 
   formDisabledCallback(disabled: boolean) {
-    this._formDisabled = disabled
+    this._formAssociation.setDisabled(disabled)
+    this._groupController.sync()
   }
 
-  private _syncFormValue() {
-    if (!this._internals) return
-    if (!this.name || this._value.length === 0) {
-      this._internals.setFormValue?.(null)
-      return
-    }
-    const formData = new FormData()
-    this._value.forEach(value => formData.append(this.name, value))
-    this._internals.setFormValue?.(formData)
+  formStateRestoreCallback(state: string | File | FormData | null) {
+    this._formAssociation.restore(state)
   }
 
   private _syncValidity() {
-    if (!this._internals || typeof this._internals.setValidity !== 'function') return
+    const internals = this._formAssociation.getInternals()
+    if (!internals || typeof internals.setValidity !== 'function') return
     if (this._isDisabled || !this.required || this._value.length > 0) {
-      this._internals.setValidity({})
+      internals.setValidity({})
       return
     }
-    this._internals.setValidity({ valueMissing: true }, '请至少选择一项')
-  }
-
-  private _syncValueToChildren() {
-    this.querySelectorAll<WebUiCheckbox>('web-ui-checkbox').forEach(checkbox => {
-      checkbox.checked = this._value.includes(checkbox.value)
-      checkbox.setGroupDisabled(this._isDisabled)
-    })
-  }
-
-  private _handleChildChange(e: Event) {
-    if (this._isDisabled) return
-    const target = e.target as HTMLElement
-    if (!target.matches?.('web-ui-checkbox')) return
-
-    const checkbox = target as WebUiCheckbox
-    const next = checkbox.checked
-      ? [...new Set([...this._value, checkbox.value])]
-      : this._value.filter(v => v !== checkbox.value)
-
-    this.value = next
-    this.dispatchEvent(new Event('input', { bubbles: true, composed: true }))
-    this.dispatchEvent(new Event('change', { bubbles: true, composed: true }))
-  }
-
-  private _handleSlotChange() {
-    this._syncValueToChildren()
+    internals.setValidity({ valueMissing: true }, '请至少选择一项')
   }
 
   override render() {
-    return html`<div class="wui-checkbox-group"><slot @slotchange=${this._handleSlotChange}></slot></div>`
+    return html`<div class="wui-checkbox-group"><slot></slot></div>`
   }
 
   declare readonly $events: {

@@ -134,6 +134,8 @@ export class WebUiContextMenu extends LitElement {
     this._shouldOpenInstantly = isInstant
     this._ignoreCurrentOutsideClick()
     if (this._isOpen) {
+      this._closeSubmenusFrom(0, true)
+      this._restoreClosingSubmenus()
       requestAnimationFrame(() => this._positionMenu())
       return false
     }
@@ -180,7 +182,7 @@ export class WebUiContextMenu extends LitElement {
     panel.style.top = `${y}px`
     const horizontalOrigin = x < this._x ? 'right' : 'left'
     const verticalOrigin = y < this._y ? 'bottom' : 'top'
-    panel.style.setProperty('--wui-overlay-transform-origin', `${verticalOrigin} ${horizontalOrigin}`)
+    panel.style.setProperty('--wui-internal-overlay-transform-origin', `${verticalOrigin} ${horizontalOrigin}`)
     panel.style.visibility = ''
   }
 
@@ -244,8 +246,7 @@ export class WebUiContextMenu extends LitElement {
       this._bindLevelHovers()
       return
     }
-    const children = getMenuChildren(item)
-    if (children.length === 0) return
+    if (getMenuChildren(item).length === 0) return
 
     const submenu = createMenuPortalOverlay('context-submenu', this)
     submenu.panel.dataset.level = String(level)
@@ -253,7 +254,7 @@ export class WebUiContextMenu extends LitElement {
     submenu.panel.setAttribute('aria-label', '子菜单')
     submenu.panel.style.visibility = 'hidden'
     submenu.panel.addEventListener('click', this._onMenuClick)
-    submenu.content.append(...children)
+    moveMenuChildren(item, submenu.content)
 
     this._activeSubmenus[level] = submenu
     this._activeSubmenuItems[level] = item
@@ -318,7 +319,7 @@ export class WebUiContextMenu extends LitElement {
 
     submenu.panel.style.left = `${left}px`
     submenu.panel.style.top = `${top}px`
-    submenu.panel.style.setProperty('--wui-overlay-transform-origin', canOpenRight ? 'top left' : 'top right')
+    submenu.panel.style.setProperty('--wui-internal-overlay-transform-origin', canOpenRight ? 'top left' : 'top right')
     submenu.panel.style.visibility = ''
   }
 

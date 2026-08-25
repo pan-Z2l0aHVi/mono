@@ -1,8 +1,10 @@
-import { html, LitElement, type PropertyValues, unsafeCSS } from 'lit'
+import { html, LitElement, unsafeCSS } from 'lit'
 import { customElement, property, state } from 'lit/decorators.js'
 import { classMap } from 'lit/directives/class-map.js'
 
 import glass from '@/assets/glass.css?inline'
+import { defineFormAssociation, FormAssociationController } from '@/shared/form-association'
+import { defineGroupCoordinator, GroupController } from '@/shared/group-management'
 
 import type { WebUiSegmentedTrigger } from '../segmented-trigger'
 
@@ -17,10 +19,35 @@ export class WebUiSegmented extends LitElement {
   @property({ type: Boolean, reflect: true }) disabled = false
   @property({ type: Boolean, reflect: true }) required = false
 
-  private _internals?: ElementInternals
   @state() private _value = ''
-  @state() private _formDisabled = false
-  private _initialValue = ''
+  @state() private _indicatorReady = false
+
+  private readonly _groupController = new GroupController(
+    this,
+    defineGroupCoordinator<WebUiSegmentedTrigger, string>({
+      host: this,
+      getItems: () => [...this.querySelectorAll<WebUiSegmentedTrigger>('web-ui-segmented-trigger')],
+      getValue: () => this._value,
+      setValue: value => {
+        this.value = value
+      },
+      getDisabled: () => this._isDisabled,
+      isItem: (target): target is WebUiSegmentedTrigger =>
+        target instanceof HTMLElement && target.matches('web-ui-segmented-trigger'),
+      isItemSelected: (trigger, value) => trigger.value === value,
+      getNextValue: (trigger, value) => (trigger.checked ? trigger.value : value),
+      valuesEqual: (a, b) => a === b,
+      copyValue: value => value,
+      setItemSelected: (trigger, selected) => {
+        trigger.checked = selected
+      },
+      dispatchValueChange: () => {
+        this.dispatchEvent(new Event('input', { bubbles: true, composed: true }))
+        this.dispatchEvent(new Event('change', { bubbles: true, composed: true }))
+      }
+    }).make(),
+    { afterSync: () => requestAnimationFrame(() => this._updateIndicator()) }
+  )
 
   get value(): string {
     return this._value
@@ -29,24 +56,12 @@ export class WebUiSegmented extends LitElement {
   set value(v: string) {
     const old = this._value
     this._value = v
-    this._internals?.setFormValue?.(v)
+    this._formAssociation.sync()
     this.requestUpdate('value', old)
   }
 
-  private readonly childObserver = new MutationObserver(() => {
-    this._syncPropsToChildren()
-    requestAnimationFrame(() => this._updateIndicator())
-  })
-
-  private _syncPropsToChildren() {
-    this.querySelectorAll<WebUiSegmentedTrigger>('web-ui-segmented-trigger').forEach(trigger => {
-      trigger.checked = trigger.value === this._value
-      trigger.setGroupDisabled(this._isDisabled)
-    })
-  }
-
   private get _isDisabled(): boolean {
-    return this.disabled || this._formDisabled
+    return this.disabled || this._formAssociation.isFormDisabled()
   }
 
   private _updateIndicator() {
@@ -65,68 +80,51 @@ export class WebUiSegmented extends LitElement {
 
     this.style.setProperty('--indicator-left', `${left}px`)
     this.style.setProperty('--indicator-width', `${width}px`)
+
+    // 首帧只完成定位；若一开始就启用 left/width transition，indicator 会从 0 滑到初始选项。
+    if (!this._indicatorReady) this._indicatorReady = true
   }
 
-  override updated(props: PropertyValues) {
-    if (props.has('value') || props.has('disabled') || props.has('_formDisabled')) {
-      this._syncPropsToChildren()
-      requestAnimationFrame(() => this._updateIndicator())
+  private readonly _formAssociation = defineFormAssociation<string>({
+    host: this,
+    initialize: () => {
+      const attrValue = this.getAttribute('value')
+      if (attrValue !== null && this._value === '') this._value = attrValue
+    },
+    getState: () => this._value,
+    setState: value => {
+      this.value = value
+    },
+    getFormValue: () => (this.name && this._value ? this._value : null),
+    getFormState: () => this._value,
+    restoreState: state => {
+      if (typeof state === 'string') this.value = state
     }
-  }
+  }).make()
 
-  override connectedCallback() {
-    super.connectedCallback()
-    this._internals = this.attachInternals()
-
-    // 仅当属性在连接前未被 property setter 设值时，才从 attribute 读取初始值
-    const attrValue = this.getAttribute('value')
-    if (attrValue !== null && this._value === '') {
-      this._value = attrValue
-    }
-    this._initialValue = attrValue ?? ''
-    this._internals?.setFormValue?.(this._value)
-
-    this.childObserver.observe(this, { childList: true })
-    // group-managed 子项以 bubbles:false 派发 change，须用 capture 相位才能观察到子项事件，
-    // 同时该事件不会冒泡到 segmented 外部的同名监听器
-    this.addEventListener('change', this._handleChildChange, true)
-  }
-
-  override firstUpdated() {
-    this._syncPropsToChildren()
-    requestAnimationFrame(() => this._updateIndicator())
-  }
-
-  override disconnectedCallback() {
-    super.disconnectedCallback()
-    this.childObserver.disconnect()
-    this.removeEventListener('change', this._handleChildChange, true)
-  }
-
-  private _handleChildChange(e: Event) {
-    if (this._isDisabled) return
-    const target = e.target as HTMLElement
-    if (!target.matches?.('web-ui-segmented-trigger')) return
-    const trigger = target as WebUiSegmentedTrigger
-    if (trigger.value === this._value) return
-
-    this.value = trigger.value
-    this.dispatchEvent(new Event('input', { bubbles: true, composed: true }))
-    this.dispatchEvent(new Event('change', { bubbles: true, composed: true }))
-  }
+  private readonly _formAssociationController = new FormAssociationController(this, this._formAssociation)
 
   formResetCallback() {
-    this.value = this._initialValue
+    this._formAssociation.reset()
   }
 
   formDisabledCallback(disabled: boolean) {
-    this._formDisabled = disabled
+    this._formAssociation.setDisabled(disabled)
+    this._groupController.sync()
+  }
+
+  formStateRestoreCallback(state: string | File | FormData | null) {
+    this._formAssociation.restore(state)
   }
 
   override render() {
     return html`
       <div
-        class=${classMap({ 'wui-segmented': true, 'is-disabled': this._isDisabled })}
+        class=${classMap({
+          'wui-segmented': true,
+          'is-disabled': this._isDisabled,
+          'is-indicator-ready': this._indicatorReady
+        })}
         role="listbox"
         aria-orientation="horizontal"
       >

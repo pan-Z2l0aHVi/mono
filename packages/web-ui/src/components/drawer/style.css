@@ -40,8 +40,8 @@ dialog {
 
   &::backdrop {
     opacity: 0;
-    background: var(--wui-drawer-overlay-bg, rgb(0 0 0 / 0.12));
-    transition: opacity var(--wui-duration-drawer-enter, 280ms) ease;
+    background: var(--wui-drawer-overlay-bg, var(--wui-color-backdrop, rgb(0 0 0 / 0.12)));
+    transition: opacity var(--wui-duration-drawer-enter, 280ms) var(--wui-ease-enter, cubic-bezier(0.23, 1, 0.32, 1));
   }
 }
 
@@ -61,7 +61,7 @@ dialog.is-closing {
 }
 
 dialog.is-closing::backdrop {
-  transition: opacity var(--wui-duration-drawer-exit, 240ms) ease;
+  transition: opacity var(--wui-duration-drawer-exit, 240ms) var(--wui-ease-enter, cubic-bezier(0.23, 1, 0.32, 1));
 }
 
 dialog[open].is-visible::backdrop {
@@ -103,11 +103,11 @@ dialog[open].is-visible::backdrop {
 /* ===== 抽屉主体 ===== */
 
 .wui-drawer-body {
-  --wui-glass-shadow: var(--wui-shadow-overlay, 2px 16px 40px rgb(0 0 0 / 0.4));
+  --wui-internal-glass-shadow: var(--wui-shadow-overlay, 2px 16px 40px rgb(0 0 0 / 0.4));
   display: flex;
   flex-direction: column;
   height: 100%;
-  background-color: var(--wui-color-surface-overlay, rgb(246 246 246 / 0.88));
+  background-color: var(--wui-drawer-bg, var(--wui-color-surface-overlay, rgb(246 246 246 / 0.82)));
 }
 
 /* ===== Header ===== */
@@ -123,6 +123,12 @@ dialog[open].is-visible::backdrop {
   font-size: 18px;
   font-weight: 600;
   line-height: 1.4;
+}
+
+/* ===== 隐藏态 ===== */
+
+.wui-drawer-header[hidden] {
+  display: none;
 }
 
 /* ===== 内容区 ===== */
@@ -172,4 +178,13 @@ dialog[open].is-visible::backdrop {
   z-index: 3;
   top: 16px;
   right: 16px;
+}
+
+/* ===== Headless 模式 ===== */
+
+/* Headless 模式下，dialog 只作为 overlay 容器，不渲染内置 UI */
+:host([headless]) dialog {
+  /* 保持 overlay 基础设施，移除内置样式 */
+  width: auto;
+  max-width: none;
 }

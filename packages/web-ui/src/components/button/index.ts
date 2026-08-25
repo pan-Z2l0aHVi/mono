@@ -7,6 +7,7 @@ import { styleMap } from 'lit/directives/style-map.js'
 import '@/components/icon'
 import glass from '@/assets/glass.css?inline'
 import { lucideLoaderCircle } from '@/icons'
+import { defineGroupManaged, type ButtonGroupContext } from '@/shared/group-management'
 import { normalizeLiteral } from '@/shared/normalize'
 
 import style from './style.css?inline'
@@ -49,13 +50,19 @@ export class WebUiButton extends LitElement {
   // Explicitly delegated accessible naming attributes.
   @property({ type: String, attribute: 'aria-label' }) override ariaLabel: string | null = null
 
-  // size="32" → 32x32，size="32x80" → 32x80
+  private readonly _groupManagement = defineGroupManaged<ButtonGroupContext>(this, {
+    requestUpdate: () => this.requestUpdate(),
+    equals: (a, b) => a?.direction === b?.direction && a?.isLast === b?.isLast
+  }).make()
+
+  private get _groupContext(): ButtonGroupContext | undefined {
+    return this._groupManagement.getContext()
+  }
+
   private get _sizeStyle(): Record<string, string> {
-    if (!this.size) return {}
-    const [h, w] = this.size.split('x')
-    const style: Record<string, string> = { '--wui-button-size': `${h}px` }
-    if (w) style['--wui-button-width'] = `${w}px`
-    return style
+    // size 仅控制按钮高度；icon 模式下 min-width 同步为相同值，天然保持正方形。
+    const size = this._groupContext ? '32' : this.size
+    return size ? { '--wui-control-size': `${size}px` } : {}
   }
 
   private handleClick(e: Event) {
@@ -66,25 +73,41 @@ export class WebUiButton extends LitElement {
   }
 
   override render() {
-    const btnClass = { 'wui-glass': this.variant === 'glass' && !this.hasAttribute('group') }
+    const groupContext = this._groupContext
+    const btnClass = {
+      'wui-glass': this.variant === 'glass' && !groupContext,
+      'is-grouped': Boolean(groupContext)
+    }
+    const dividerClass = {
+      'group-divider': true,
+      vertical: groupContext?.direction === 'vertical'
+    }
+
     return html`
       <button
         type=${this.type}
         aria-label=${ifDefined(this.ariaLabel)}
         class=${classMap(btnClass)}
-        style=${this.size ? styleMap(this._sizeStyle) : nothing}
+        style=${Object.keys(this._sizeStyle).length > 0 ? styleMap(this._sizeStyle) : nothing}
         ?disabled=${this.disabled || this.loading}
         @click=${this.handleClick}
       >
         ${this.loading ? html`<web-ui-icon .icon=${lucideLoaderCircle} spin></web-ui-icon>` : ''}
-        ${this.icon
-          ? html`<slot></slot>`
-          : html`
-              <slot name="prefix"></slot>
-              <span class="label"><slot></slot></span>
-              <slot name="suffix"></slot>
-            `}
+        ${
+          this.icon
+            ? html`<slot></slot>`
+            : html`
+                <slot name="prefix"></slot>
+                <span class="label"><slot></slot></span>
+                <slot name="suffix"></slot>
+              `
+        }
       </button>
+      ${
+        groupContext && !groupContext.isLast
+          ? html`<span class=${classMap(dividerClass)} aria-hidden="true"></span>`
+          : ''
+      }
     `
   }
 }

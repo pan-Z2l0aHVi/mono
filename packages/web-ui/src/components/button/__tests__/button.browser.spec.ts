@@ -1,5 +1,7 @@
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 
+import { lucidePlus } from '@/icons'
+
 import '..'
 
 afterEach(() => document.body.replaceChildren())
@@ -52,4 +54,83 @@ describe('WebUiButton 组件（浏览器）', () => {
     expect(submitEvents).toHaveLength(0)
     expect(input.value).toBe('changed')
   })
+})
+
+describe('Icon button 尺寸行为', () => {
+  it('无 size 时 padding 为零，按钮包裹 icon 内容', async () => {
+    const btn = document.createElement('web-ui-button')
+    btn.setAttribute('icon', '')
+    btn.setAttribute('aria-label', 'test')
+    const icon = document.createElement('web-ui-icon')
+    icon.icon = lucidePlus
+    btn.append(icon)
+    document.body.append(btn)
+    await btn.updateComplete
+
+    const inner = btn.shadowRoot?.querySelector('button') as HTMLElement
+    const cs = window.getComputedStyle(inner)
+    expect(cs.paddingTop).toBe('0px')
+    expect(cs.paddingBottom).toBe('0px')
+    expect(cs.height).toBe('40px')
+    // 按钮宽度应由 icon 内容撑开
+    expect(parseFloat(cs.width)).toBeGreaterThan(0)
+  })
+
+  it('有 size 时按钮高度和最小宽度均为 size，保持正方形', async () => {
+    const btn = document.createElement('web-ui-button')
+    btn.setAttribute('icon', '')
+    btn.setAttribute('size', '32')
+    btn.setAttribute('aria-label', 'test')
+    document.body.append(btn)
+    await btn.updateComplete
+
+    const inner = btn.shadowRoot?.querySelector('button') as HTMLElement
+    const rect = inner.getBoundingClientRect()
+    expect(rect.height).toBe(32)
+    expect(rect.width).toBe(32)
+  })
+
+  it('full + icon 时按钮撑满容器宽度', async () => {
+    const btn = document.createElement('web-ui-button')
+    btn.setAttribute('icon', '')
+    btn.setAttribute('full', '')
+    btn.setAttribute('size', '32')
+    btn.setAttribute('aria-label', 'test')
+    document.body.append(btn)
+    await btn.updateComplete
+
+    const inner = btn.shadowRoot?.querySelector('button') as HTMLElement
+    const rect = inner.getBoundingClientRect()
+    expect(rect.width).toBe(btn.parentElement?.clientWidth ?? 0)
+    expect(rect.height).toBe(32)
+  })
+
+  it('icon + 显式宽度时变为胶囊形', async () => {
+    const btn = document.createElement('web-ui-button')
+    btn.setAttribute('icon', '')
+    btn.setAttribute('size', '32')
+    btn.style.setProperty('--wui-button-width', '120px')
+    btn.setAttribute('aria-label', 'test')
+    document.body.append(btn)
+    await btn.updateComplete
+
+    const inner = btn.shadowRoot?.querySelector('button') as HTMLElement
+    const rect = inner.getBoundingClientRect()
+    expect(rect.height).toBe(32)
+    expect(rect.width).toBe(120)
+  })
+})
+
+it('非 icon 模式下 size 仅控制高度，宽度由内容决定', async () => {
+  const btn = document.createElement('web-ui-button')
+  btn.setAttribute('size', '32')
+  btn.textContent = 'OK'
+  document.body.append(btn)
+  await btn.updateComplete
+
+  const inner = btn.shadowRoot?.querySelector('button') as HTMLElement
+  const rect = inner.getBoundingClientRect()
+  expect(rect.height).toBe(32)
+  // 宽度由文本内容撑开，大于高度
+  expect(rect.width).toBeGreaterThan(rect.height)
 })

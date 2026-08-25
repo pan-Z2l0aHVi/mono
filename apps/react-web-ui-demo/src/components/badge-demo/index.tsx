@@ -10,7 +10,7 @@ function BadgeDemo() {
         <web-ui-badge count={0}>
           <web-ui-button>无通知</web-ui-button>
         </web-ui-badge>
-        <web-ui-badge count={0} show-zero>
+        <web-ui-badge count={0} showZero>
           <web-ui-button>显示零</web-ui-button>
         </web-ui-badge>
       </div>
@@ -40,7 +40,7 @@ function BadgeDemo() {
         <web-ui-badge count={3} />
         <web-ui-badge count={128} />
         <web-ui-badge dot />
-        <web-ui-badge count={0} show-zero />
+        <web-ui-badge count={0} showZero />
       </div>
       <h2>位置</h2>
       <div className="mb-3 flex items-center gap-6">
@@ -68,7 +68,7 @@ function BadgeDemo() {
       </div>
       <h2>隐藏</h2>
       <div className="mb-3 flex items-center gap-6">
-        <web-ui-badge count={5} badge-hidden>
+        <web-ui-badge count={5} badgeHidden>
           <web-ui-button>隐藏徽标</web-ui-button>
         </web-ui-badge>
       </div>

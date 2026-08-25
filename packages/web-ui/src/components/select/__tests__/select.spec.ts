@@ -542,6 +542,57 @@ describe('WebUiSelect 组件', () => {
     })
   })
 
+  describe('条件渲染边界', () => {
+    it('注释锚点替换为包含 option 的 wrapper 后同步选中标签', async () => {
+      const el = createSelect('<!--options-->', { value: 'banana' })
+      await waitForUpdate(el)
+
+      const comment = el.firstChild as Comment
+      const wrapper = document.createElement('div')
+      wrapper.innerHTML = '<web-ui-option value="banana" label="Banana"></web-ui-option>'
+      el.replaceChild(wrapper, comment)
+      await waitForUpdate(el)
+
+      const trigger = queryA11y(el, '[role="combobox"]')
+      expect(trigger?.textContent?.includes('Banana')).toBe(true)
+
+      cleanupElement(el)
+    })
+
+    it('portal 打开时删除整个 wrapper 不再激活已删除选项', async () => {
+      const el = createSelect(`
+        <div>
+          <web-ui-option value="banana" label="Banana"></web-ui-option>
+        </div>
+      `)
+      el.portal = true
+      el.value = ''
+      await waitForUpdate(el)
+
+      const wrapper = el.querySelector('div')!
+      const trigger = queryA11y(el, '[role="combobox"]') as HTMLElement
+      trigger.click()
+      await waitForUpdate(el)
+      await new Promise(resolve => requestAnimationFrame(resolve))
+      await waitForUpdate(el)
+
+      expect(wrapper).toBeTruthy()
+      wrapper.remove()
+      await new Promise(resolve => requestAnimationFrame(resolve))
+      await waitForUpdate(el)
+
+      const [events] = spyEvents(el, 'input')
+      el.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }))
+      el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
+      await waitForUpdate(el)
+
+      expect(events).toHaveLength(0)
+      expect(el.value).toBe('')
+
+      cleanupElement(el)
+    })
+  })
+
   describe('触发器插槽', () => {
     it('提供 trigger slot 时渲染 slot 内容', async () => {
       const el = createSelect(OPTIONS_HTML)

@@ -15,6 +15,7 @@ export interface OverlayPortalOptions {
   target: Element
   style: string
   className: string
+  onContentChange?: () => void
 }
 
 export interface OverlayPortal {
@@ -43,15 +44,17 @@ export const defineOverlayPortal = () =>
     panel.dataset.wuiPresence = 'entering'
     root.append(style, panel)
 
-    resolveOverlayContainer(ctx.container, ctx.target).appendChild(host)
-
     const trackedNodes: Node[] = []
+    const contentObserver = new MutationObserver(() => ctx.onContentChange?.())
     const untrackNodes = (nodes: Node[]) => {
       nodes.forEach(node => {
         const index = trackedNodes.indexOf(node)
         if (index >= 0) trackedNodes.splice(index, 1)
       })
     }
+
+    resolveOverlayContainer(ctx.container, ctx.target).appendChild(host)
+    if (ctx.onContentChange) contentObserver.observe(panel, { childList: true, subtree: true })
 
     return {
       panel,
@@ -77,6 +80,7 @@ export const defineOverlayPortal = () =>
       },
 
       remove() {
+        contentObserver.disconnect()
         host.remove()
       }
     }

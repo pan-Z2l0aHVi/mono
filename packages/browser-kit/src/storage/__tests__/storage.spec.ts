@@ -163,7 +163,9 @@ describe('storage 测试', () => {
       })
 
       expect(() => local.set('blocked-key', 'value')).not.toThrow()
+      expect(local.set('blocked-key', 'value')).toBe(false)
       expect(() => local.remove('blocked-key')).not.toThrow()
+      expect(local.remove('blocked-key')).toBe(false)
     })
 
     it('获取 Storage 对象被禁时也应降级而非抛错', () => {
