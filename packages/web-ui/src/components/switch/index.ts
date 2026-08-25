@@ -131,11 +131,13 @@ export class WebUiSwitch extends LitElement {
           class="sr-only"
         />
         <div class=${classMap(thumbCls)}>
-          ${this.loading
-            ? html`<div class="wui-switch-loading">
-                <web-ui-icon .icon=${lucideLoaderCircle} size="14" color="#08f" spin></web-ui-icon>
-              </div>`
-            : ''}
+          ${
+            this.loading
+              ? html`<div class="wui-switch-loading">
+                  <web-ui-icon .icon=${lucideLoaderCircle} size="14" color="#08f" spin></web-ui-icon>
+                </div>`
+              : ''
+          }
         </div>
       </label>
     `

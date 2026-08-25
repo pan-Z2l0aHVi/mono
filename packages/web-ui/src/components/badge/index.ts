@@ -110,15 +110,17 @@ export class WebUiBadge extends LitElement {
     return html`
       <div class=${classMap(wrapperClass)}>
         <slot @slotchange=${this._handleSlotChange}></slot>
-        ${showBadge
-          ? html`<span
-              class=${classMap(badgeClass)}
-              style=${styleMap(badgeStyle)}
-              role="status"
-              aria-label=${ifDefined(ariaLabel)}
-              >${display}</span
-            >`
-          : ''}
+        ${
+          showBadge
+            ? html`<span
+                class=${classMap(badgeClass)}
+                style=${styleMap(badgeStyle)}
+                role="status"
+                aria-label=${ifDefined(ariaLabel)}
+                >${display}</span
+              >`
+            : ''
+        }
       </div>
     `
   }

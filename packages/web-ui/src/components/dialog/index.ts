@@ -113,14 +113,16 @@ export class WebUiDialog extends LitElement {
         @transitionend=${this._onTransitionEnd}
       >
         <div class="wui-dialog-body wui-glass">
-          ${this._hasBody
-            ? html`<slot name="body" @slotchange=${this._onBodySlotChange}></slot>`
-            : html`
-                <slot name="body" @slotchange=${this._onBodySlotChange} hidden></slot>
-                <div class="title"><slot name="title"></slot></div>
-                <div class="desc"><slot></slot></div>
-                <div class="wui-dialog-footer"><slot name="footer"></slot></div>
-              `}
+          ${
+            this._hasBody
+              ? html`<slot name="body" @slotchange=${this._onBodySlotChange}></slot>`
+              : html`
+                  <slot name="body" @slotchange=${this._onBodySlotChange} hidden></slot>
+                  <div class="title"><slot name="title"></slot></div>
+                  <div class="desc"><slot></slot></div>
+                  <div class="wui-dialog-footer"><slot name="footer"></slot></div>
+                `
+          }
         </div>
       </dialog>
     `

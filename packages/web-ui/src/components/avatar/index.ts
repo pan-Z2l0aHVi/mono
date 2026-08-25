@@ -110,23 +110,29 @@ export class WebUiAvatar extends LitElement {
         aria-hidden=${isDecorative ? 'true' : undefined}
         style="width:${this.size}px;height:${this.size}px;--wui-avatar-size:${this.size}px"
       >
-        ${this._showImage
-          ? html`<img
-              class="avatar-img"
-              src=${this.src}
-              alt=${ifDefined(this.alt || undefined)}
-              @error=${this._onImgError}
-            />`
-          : ''}
+        ${
+          this._showImage
+            ? html`<img
+                class="avatar-img"
+                src=${this.src}
+                alt=${ifDefined(this.alt || undefined)}
+                @error=${this._onImgError}
+              />`
+            : ''
+        }
         <slot @slotchange=${this._checkSlot}></slot>
-        ${this._showFallback && this._initials
-          ? html`<span class="avatar-fallback avatar-initials">${this._initials}</span>`
-          : ''}
-        ${this._showFallback && !this._initials
-          ? html`<span class="avatar-fallback"
-              ><web-ui-icon .icon=${lucideUser} .size=${this._iconSize}></web-ui-icon
-            ></span>`
-          : ''}
+        ${
+          this._showFallback && this._initials
+            ? html`<span class="avatar-fallback avatar-initials">${this._initials}</span>`
+            : ''
+        }
+        ${
+          this._showFallback && !this._initials
+            ? html`<span class="avatar-fallback"
+                ><web-ui-icon .icon=${lucideUser} .size=${this._iconSize}></web-ui-icon
+              ></span>`
+            : ''
+        }
       </div>
     `
   }

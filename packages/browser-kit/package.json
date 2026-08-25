@@ -42,7 +42,9 @@
     "@greypan/test-kit": "workspace:*",
     "@greypan/tsconfig": "workspace:*",
     "vite-plugin-dts": "catalog:",
-    "msw": "catalog:"
+    "msw": "catalog:",
+    "vite": "catalog:",
+    "vite-plus": "catalog:"
   },
   "engines": {
     "node": ">=20.11.0"

@@ -93,17 +93,21 @@ export class WebUiButton extends LitElement {
         @click=${this.handleClick}
       >
         ${this.loading ? html`<web-ui-icon .icon=${lucideLoaderCircle} spin></web-ui-icon>` : ''}
-        ${this.icon
-          ? html`<slot></slot>`
-          : html`
-              <slot name="prefix"></slot>
-              <span class="label"><slot></slot></span>
-              <slot name="suffix"></slot>
-            `}
+        ${
+          this.icon
+            ? html`<slot></slot>`
+            : html`
+                <slot name="prefix"></slot>
+                <span class="label"><slot></slot></span>
+                <slot name="suffix"></slot>
+              `
+        }
       </button>
-      ${groupContext && !groupContext.isLast
-        ? html`<span class=${classMap(dividerClass)} aria-hidden="true"></span>`
-        : ''}
+      ${
+        groupContext && !groupContext.isLast
+          ? html`<span class=${classMap(dividerClass)} aria-hidden="true"></span>`
+          : ''
+      }
     `
   }
 }

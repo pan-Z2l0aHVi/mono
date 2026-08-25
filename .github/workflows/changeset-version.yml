@@ -46,13 +46,12 @@ jobs:
 
       - name: Create or update version pull request
         if: steps.changesets.outputs.has-changesets == 'true'
-        uses: changesets/action@v1
+        uses: changesets/action@v2
         with:
-          version: pnpm run release:version
-          title: 'chore: version packages'
-          commit: 'chore: version packages'
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          version-script: pnpm run release:version
+          pr-title: 'chore: version packages'
+          commit-message: 'chore: version packages'
 
       - name: Validate version pull request
         if: steps.changesets.outputs.has-changesets == 'true'

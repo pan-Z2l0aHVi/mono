@@ -175,18 +175,20 @@ export class WebUiInput extends LitElement {
           @focus=${this.handleFocus}
           @blur=${this.handleBlur}
         />
-        ${showClear
-          ? html`<web-ui-button
-              icon
-              variant="ghost"
-              size="24"
-              aria-label="清除"
-              @pointerdown=${this.preventMouseDownBlur}
-              @click=${this.handleClear}
-            >
-              <web-ui-icon .icon=${jamCloseCircleF}></web-ui-icon>
-            </web-ui-button>`
-          : ''}
+        ${
+          showClear
+            ? html`<web-ui-button
+                icon
+                variant="ghost"
+                size="24"
+                aria-label="清除"
+                @pointerdown=${this.preventMouseDownBlur}
+                @click=${this.handleClear}
+              >
+                <web-ui-icon .icon=${jamCloseCircleF}></web-ui-icon>
+              </web-ui-button>`
+            : ''
+        }
         <slot name="suffix" class=${classMap({ empty: !this._hasSuffix })} @slotchange=${this._onSlotChange}></slot>
       </div>
     `
