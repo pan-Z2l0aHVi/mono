@@ -29,7 +29,7 @@ runs:
     # Wails Go 工具在 Linux 上编译会链接 GTK4/WebKitGTK，必须先于 mise install 安装系统库，
     # 否则 mise 编译 go:.../wails3 会因 pkg-config 找不到 gtk4/webkitgtk-6.0 而失败。
     - name: Install Wails Linux prerequisites
-      if: inputs.wails == 'true'
+      if: inputs.wails == 'true' && runner.os == 'Linux'
       shell: bash
       run: |
         sudo apt-get update

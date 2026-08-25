@@ -43,25 +43,34 @@ jobs:
 
           const mergeSha = process.env.MERGE_SHA
           const baseSha = execFileSync('git', ['rev-parse', `${mergeSha}^1`], { encoding: 'utf8' }).trim()
-          // 只取新增/修改的 manifest：删除或重命名在磁盘上不存在、没有可对比的上一版本，跳过避免崩溃
+          // 用 --name-status 取新增/修改的 manifest，不依赖 git 对"路径缺失"的 stderr 措辞：
+          // 删除/重命名跳过（无上一版本）；新增包直接视为首次发布，不跑 git show。
           const changedManifests = execFileSync(
             'git',
-            ['diff', '--name-only', '--diff-filter=AM', baseSha, mergeSha, '--', 'packages'],
+            ['diff', '--name-status', '--diff-filter=AM', baseSha, mergeSha, '--', 'packages'],
             { encoding: 'utf8' }
           )
             .split('\n')
-            .filter(path => /^packages\/[^/]+\/package\.json$/.test(path))
+            .filter(Boolean)
+            .map(line => {
+              const [status, manifestPath] = line.split('\t')
+              return { status, manifestPath }
+            })
+            .filter(({ manifestPath }) => /^packages\/[^/]+\/package\.json$/.test(manifestPath))
 
           const releases = []
-          for (const manifestPath of changedManifests) {
-            // 新增包在 baseSha 不存在，git show 会失败；视为首次发布，previous 置 null
-            let previous = null
-            try {
-              previous = JSON.parse(execFileSync('git', ['show', `${baseSha}:${manifestPath}`], { encoding: 'utf8' }))
-            } catch {
-              // manifest 是本次 merge 新增的包，没有上一版本
-            }
+          for (const { status, manifestPath } of changedManifests) {
             const current = JSON.parse(await readFile(manifestPath, 'utf8'))
+            let previous = null
+            if (status === 'M') {
+              // 修改包：base 侧必须存在，任何读取失败都是真实错误，直接抛出
+              try {
+                previous = JSON.parse(execFileSync('git', ['show', `${baseSha}:${manifestPath}`], { encoding: 'utf8' }))
+              } catch (error) {
+                throw new Error(`无法读取 base 版本 ${manifestPath}: ${String(error.stderr || error.message)}`)
+              }
+            }
+            // 新增包（A）previous 保持 null，视为首次发布
             if (!current.private && (previous === null || current.version !== previous.version)) {
               releases.push({
                 name: current.name,

@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/wails-verify.yml'
+      - '.github/actions/setup-deps/action.yml'
       - '.mise.toml'
       - 'package.json'
       - 'pnpm-lock.yaml'
