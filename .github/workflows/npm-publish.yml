@@ -43,15 +43,26 @@ jobs:
 
           const mergeSha = process.env.MERGE_SHA
           const baseSha = execFileSync('git', ['rev-parse', `${mergeSha}^1`], { encoding: 'utf8' }).trim()
-          const changedManifests = execFileSync('git', ['diff', '--name-only', baseSha, mergeSha, '--', 'packages'], { encoding: 'utf8' })
+          // 只取新增/修改的 manifest：删除或重命名在磁盘上不存在、没有可对比的上一版本，跳过避免崩溃
+          const changedManifests = execFileSync(
+            'git',
+            ['diff', '--name-only', '--diff-filter=AM', baseSha, mergeSha, '--', 'packages'],
+            { encoding: 'utf8' }
+          )
             .split('\n')
             .filter(path => /^packages\/[^/]+\/package\.json$/.test(path))
 
           const releases = []
           for (const manifestPath of changedManifests) {
-            const previous = JSON.parse(execFileSync('git', ['show', `${baseSha}:${manifestPath}`], { encoding: 'utf8' }))
+            // 新增包在 baseSha 不存在，git show 会失败；视为首次发布，previous 置 null
+            let previous = null
+            try {
+              previous = JSON.parse(execFileSync('git', ['show', `${baseSha}:${manifestPath}`], { encoding: 'utf8' }))
+            } catch {
+              // manifest 是本次 merge 新增的包，没有上一版本
+            }
             const current = JSON.parse(await readFile(manifestPath, 'utf8'))
-            if (!current.private && current.version !== previous.version) {
+            if (!current.private && (previous === null || current.version !== previous.version)) {
               releases.push({
                 name: current.name,
                 version: current.version,
