@@ -1,7 +1,6 @@
 # 复合 action：安装 Node/pnpm 依赖并缓存。
 # 用法：
 #   - uses: ./.github/actions/setup-deps
-#   - uses: ./.github/actions/setup-deps
 #       with:
 #         mise-install: 'node pnpm'  # 仅安装指定工具（默认安装 .mise.toml 全部）
 #         skip-install: 'true'       # 跳过 pnpm install（准备 job 不需要装依赖）
