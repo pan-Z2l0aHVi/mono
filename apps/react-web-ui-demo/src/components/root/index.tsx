@@ -89,6 +89,9 @@ const navItems: NavItem[] = [
 export function Root() {
   const [themeAppearance, setThemeAppearance] = useState<ThemeAppearance>(getInitialThemeAppearance)
   const [themeMotion, setThemeMotion] = useState<ThemeMotion>(getInitialThemeMotion)
+  const [bannerVisible, setBannerVisible] = useState(true)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
   const navSidebarRef = useRef<HTMLElement>(null)
   const router = useRouter()
   const pathname = useRouterState({ select: s => s.location.pathname })
@@ -120,13 +123,44 @@ export function Root() {
     writeStoredTheme(MOTION_STORAGE_KEY, JSON.stringify(motion))
   }
 
+  const updateSidebarCollapsed = (event: CustomEvent<{ collapsed: boolean }>) => {
+    setSidebarCollapsed(event.detail.collapsed)
+  }
+
+  const updateSidebarOpen = (event: CustomEvent<{ open: boolean }>) => {
+    setSidebarOpen(event.detail.open)
+  }
+
   return (
     <ErrorBoundary FallbackComponent={RootErrorFallback}>
       <web-ui-theme appearance={themeAppearance} motion={themeMotion}>
         <div className="min-h-screen bg-[var(--wui-color-page)] text-[var(--wui-color-text)]">
           {routeTitle ? <title>{routeTitle}</title> : null}
-          <web-ui-layout>
-            <div slot="header" className="flex h-full w-full items-center justify-end gap-4 px-4 max-[640px]:w-screen">
+          <web-ui-layout
+            header-glow
+            sidebarCollapsed={sidebarCollapsed}
+            sidebarOpen={sidebarOpen}
+            onsidebar-collapsed-change={updateSidebarCollapsed}
+            onsidebar-open-change={updateSidebarOpen}
+          >
+            {bannerVisible ? (
+              <div
+                slot="banner"
+                className="flex items-center justify-center gap-2 bg-[var(--wui-color-accent)] px-4 py-2 text-sm text-[var(--wui-color-on-accent)]"
+              >
+                <span>🎉 欢迎使用 web-ui 组件库！</span>
+                <button
+                  className="ml-auto text-current opacity-70 hover:opacity-100"
+                  onClick={() => setBannerVisible(false)}
+                >
+                  ✕
+                </button>
+              </div>
+            ) : null}
+            <div
+              slot="header"
+              className="flex h-full w-full items-center justify-end gap-4 px-4 py-2 max-[640px]:w-screen"
+            >
               <web-ui-select
                 value={themeMotion}
                 className="[--wui-input-width:120px]"
@@ -160,23 +194,27 @@ export function Root() {
                 </web-ui-option>
               </web-ui-select>
             </div>
-            <nav ref={navSidebarRef} slot="sidebar" className="h-full overflow-y-auto px-2 pt-3 pb-2">
-              <div className="px-3 pb-2 text-xs font-semibold uppercase text-[var(--wui-color-text-muted)]">
+            <div slot="sidebar" className="flex h-full min-h-0 flex-col">
+              <div className="shrink-0 px-5 pt-4 pb-2 text-xs font-semibold uppercase text-[var(--wui-color-text-secondary)]">
                 组件列表
               </div>
-              {navItems.map(item => (
-                <Link
-                  key={item.path}
-                  to={item.path}
-                  className={
-                    'flex items-center h-8 my-1 rounded-full px-3 py-2 text-sm leading-5 text-[var(--wui-color-text)] transition-[background-color] duration-150 hover:bg-[color-mix(in_srgb,var(--wui-color-surface-raised)_80%,var(--wui-color-text))]' +
-                    (pathname === item.path ? ' !bg-[var(--wui-color-accent)] !text-[var(--wui-color-on-accent)]' : '')
-                  }
-                >
-                  <span className="truncate">{item.label}</span>
-                </Link>
-              ))}
-            </nav>
+              <nav ref={navSidebarRef} className="min-h-0 flex-1 p-2 overflow-y-auto">
+                {navItems.map(item => (
+                  <Link
+                    key={item.path}
+                    to={item.path}
+                    className={
+                      'flex items-center h-8 my-1 rounded-full px-3 py-2 text-sm leading-5 text-[var(--wui-color-text)] transition-[background-color] duration-150 hover:bg-[color-mix(in_srgb,var(--wui-color-surface-raised)_80%,var(--wui-color-text))]' +
+                      (pathname === item.path
+                        ? ' !bg-[var(--wui-color-accent)] !text-[var(--wui-color-on-accent)]'
+                        : '')
+                    }
+                  >
+                    <span className="truncate">{item.label}</span>
+                  </Link>
+                ))}
+              </nav>
+            </div>
             <Outlet />
 
             <div className="h-100 w-full"></div>

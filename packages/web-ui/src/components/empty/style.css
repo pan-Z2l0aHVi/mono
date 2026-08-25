@@ -21,8 +21,6 @@
 }
 
 .empty-icon {
-  --wui-glass-shadow: none;
-
   display: flex;
   flex: none;
   align-items: center;
@@ -32,9 +30,10 @@
   height: var(--wui-empty-icon-size, 56px);
   border-radius: 16px;
 
-  color: var(--wui-color-text-muted, #6a6a6a);
+  color: var(--wui-color-text-secondary, #6a6a6a);
 
   background-color: var(--wui-color-surface-raised, #f2f2f7);
+  box-shadow: none;
 }
 
 .empty-title,
@@ -49,7 +48,7 @@
   font-size: var(--wui-empty-title-font-size, 16px);
   font-weight: 600;
   line-height: 1.5;
-  color: var(--wui-color-text, #262626);
+  color: var(--wui-color-text, #1b1b1b);
   overflow-wrap: anywhere;
 }
 
@@ -58,7 +57,7 @@
 
   font-size: var(--wui-empty-description-font-size, 14px);
   line-height: 1.6;
-  color: var(--wui-color-text-muted, #6a6a6a);
+  color: var(--wui-color-text-secondary, #6a6a6a);
   overflow-wrap: anywhere;
 }
 

@@ -7,6 +7,8 @@ import glass from '@/assets/glass.css?inline'
 import overlayMotion from '@/assets/overlay-motion.css?inline'
 import type { WebUiOption } from '@/components/option'
 import { lucideChevronDown } from '@/icons'
+import { defineFormAssociation, FormAssociationController } from '@/shared/form-association'
+import { defineOptionPortal } from '@/shared/option-portal'
 import { defineAnchoredPanel } from '@/shared/overlay/anchored-panel'
 import { defineOverlayPortal } from '@/shared/overlay/portal'
 import type { OverlayContainer, OverlayPortal } from '@/shared/overlay/portal'
@@ -20,10 +22,6 @@ export class WebUiSelect extends LitElement {
 
   static formAssociated = true
 
-  // ElementInternals 实例，在 connectedCallback 中初始化
-  private _internals?: ElementInternals
-  @state() private _formDisabled = false
-
   @property({ type: String, reflect: true }) placeholder = ''
   @property({ type: Boolean, reflect: true }) disabled = false
   @property({ type: Boolean, reflect: true }) required = false
@@ -32,21 +30,47 @@ export class WebUiSelect extends LitElement {
   @property({ attribute: false }) overlayContainer?: OverlayContainer
   @property({ type: String, reflect: true }) name = ''
 
-  // value 使用内部状态 + 访问器模式，在变更时同步 ElementInternals
+  // value 使用内部状态 + 访问器模式，在变更时同步 ElementInternals；
+  // @property + reflect 让它与 input/textarea/slider/input-number 的 value 反射语义保持一致。
   @state() private _value = ''
+  @property({ type: String, reflect: true })
   get value(): string {
     return this._value
   }
   set value(v: string) {
     const old = this._value
     this._value = v
-    this._internals?.setFormValue?.(v)
+    this._formAssociation.sync()
     this.toggleAttribute('data-has-value', !!v)
     this.requestUpdate('value', old)
   }
 
+  private readonly _formAssociation = defineFormAssociation<string>({
+    host: this,
+    initialize: () => {
+      // 同步 HTML 属性中预设的 value，补全访问器模式不处理 attribute 反射。
+      const attrValue = this.getAttribute('value')
+      if (attrValue !== null) {
+        this._value = attrValue
+        this.toggleAttribute('data-has-value', !!attrValue)
+      }
+    },
+    getState: () => this._value,
+    setState: value => {
+      this.value = value
+    },
+    getFormValue: () => this._value,
+    getFormState: () => this._value,
+    restoreState: state => {
+      if (typeof state === 'string') this.value = state
+    },
+    syncValidity: () => this._syncValidity()
+  }).make()
+
+  private readonly _formAssociationController = new FormAssociationController(this, this._formAssociation)
+
   private get _isDisabled(): boolean {
-    return this.disabled || this._formDisabled
+    return this.disabled || this._formAssociation.isFormDisabled()
   }
 
   @state() private _isOpen = false
@@ -55,7 +79,31 @@ export class WebUiSelect extends LitElement {
   @state() private _hasTriggerSlot = false
 
   private _options: WebUiOption[] = []
+  private _portal?: OverlayPortal
+  private _portalContent?: HTMLElement
   private readonly _scrollLock = defineScrollLockLease().make()
+
+  private static _nextInstanceId = 0
+
+  // option 注册表 / portal 同步 / 微任务调度收敛到 shared 模块（autocomplete 同款）
+  private readonly _optionPortal = defineOptionPortal().make({
+    element: this,
+    // 实例级前缀保证多实例同时展开时 option id 不冲突（aria 引用按 id 定位）
+    idPrefix: `web-ui-select-${++WebUiSelect._nextInstanceId}`,
+    getPortal: () => this._portal,
+    getPortalContent: () => this._portalContent,
+    isOpen: () => this.portal && this._isOpen,
+    getMigratableNodes: () => [...this.querySelectorAll<WebUiOption>('web-ui-option')],
+    hasUpdated: () => this.hasUpdated,
+    requestUpdate: () => this.requestUpdate(),
+    bindOption: option => this._bindOption(option),
+    unbindOption: option => this._unbindOption(option),
+    onImmediateSync: () => {
+      this._refreshOptions()
+      this._syncSelected()
+      this._syncActiveOption()
+    }
+  })
   private readonly _panel = defineAnchoredPanel().make({
     getAnchor: () => this.shadowRoot?.querySelector<HTMLElement>('.select-trigger') ?? null,
     getLocalPanel: () => this.shadowRoot?.querySelector<HTMLElement>('.select-overlay') ?? null,
@@ -99,16 +147,7 @@ export class WebUiSelect extends LitElement {
 
   override connectedCallback() {
     super.connectedCallback()
-    this._internals = this.attachInternals()
-    // 同步 HTML 属性中预设的 value，补全访问器模式不处理 attribute 反射
-    const attrValue = this.getAttribute('value')
-    if (attrValue !== null) {
-      this._value = attrValue
-      this.toggleAttribute('data-has-value', !!attrValue)
-    }
-    this._internals?.setFormValue?.(this._value)
-    this.addEventListener('option-register', this._onOptionRegister)
-    this.addEventListener('option-unregister', this._onOptionUnregister)
+    this._optionPortal.bindHost()
     this.addEventListener('keydown', this._onKeydown)
     this.addEventListener('focusout', this._onFocusOut)
     document.addEventListener('click', this._onClickOutside)
@@ -116,17 +155,14 @@ export class WebUiSelect extends LitElement {
 
   override disconnectedCallback() {
     super.disconnectedCallback()
-    this.removeEventListener('option-register', this._onOptionRegister)
-    this.removeEventListener('option-unregister', this._onOptionUnregister)
+    this._optionPortal.dispose()
     this.removeEventListener('keydown', this._onKeydown)
     this.removeEventListener('focusout', this._onFocusOut)
     document.removeEventListener('click', this._onClickOutside)
-    this._options.forEach(o => {
-      o.removeEventListener('click', this._handleOptionClick)
-      o.removeEventListener('pointerover', this._handleOptionPointerOver)
-      o.removeEventListener('pointerdown', this._handleOptionPointerDown)
-      o.removeEventListener('option-update', this._onOptionUpdate)
-    })
+    this._options.forEach(this._unbindOption)
+    this._options = []
+    this._portal = undefined
+    this._portalContent = undefined
     this._close()
     this._panel.dispose()
     this._scrollLock.release()
@@ -134,21 +170,12 @@ export class WebUiSelect extends LitElement {
 
   override firstUpdated() {
     requestAnimationFrame(() => {
-      if (this.isConnected) this._onSlotChange()
+      if (this.isConnected) this._optionPortal.scheduleRefresh()
     })
   }
 
-  private _queryOptions(): WebUiOption[] {
-    const panel = this.portal ? this._panel.getPanel() : null
-    const panelOptions = panel ? [...panel.querySelectorAll<WebUiOption>('web-ui-option')] : []
-    // 面板内容仅在浮层打开、moveContent 之后存在；关闭时回退 light DOM，
-    // 否则 portal select 首次加载时 _options 为空，trigger 显示不出已选值。
-    return panelOptions.length > 0 ? panelOptions : [...this.querySelectorAll<WebUiOption>('web-ui-option')]
-  }
-
   override willUpdate() {
-    this._options = this._queryOptions()
-    this._ensureOptionIds()
+    this._refreshOptions()
     this._syncSelected()
   }
 
@@ -161,17 +188,22 @@ export class WebUiSelect extends LitElement {
   }
 
   formResetCallback() {
-    this.value = this.getAttribute('value') || ''
+    this._formAssociation.reset()
   }
 
   formDisabledCallback(disabled: boolean) {
-    this._formDisabled = disabled
+    this._formAssociation.setDisabled(disabled)
+  }
+
+  formStateRestoreCallback(state: string | File | FormData | null) {
+    this._formAssociation.restore(state)
   }
 
   private _syncValidity() {
-    if (!this._internals || typeof this._internals.setValidity !== 'function') return
-    if (this._isDisabled || !this.required || this.value) this._internals.setValidity({})
-    else this._internals.setValidity({ valueMissing: true }, '请选择一项')
+    const internals = this._formAssociation.getInternals()
+    if (!internals || typeof internals.setValidity !== 'function') return
+    if (this._isDisabled || !this.required || this.value) internals.setValidity({})
+    else internals.setValidity({ valueMissing: true }, '请选择一项')
   }
 
   private _syncOpenAttribute() {
@@ -198,44 +230,35 @@ export class WebUiSelect extends LitElement {
     this._selectedLabel = option?.label || this.placeholder
   }
 
-  private _ensureOptionIds() {
-    this._options.forEach((option, index) => {
-      if (!option.id) option.id = `${this.localName}-option-${index}`
-    })
+  private _bindOption = (option: WebUiOption) => {
+    option.addEventListener('click', this._handleOptionClick)
+    option.addEventListener('pointerover', this._handleOptionPointerOver)
+    option.addEventListener('pointerdown', this._handleOptionPointerDown)
+    option.addEventListener('option-update', this._onOptionUpdate)
   }
 
-  private _onOptionRegister = (e: Event) => {
-    if (!(e.target instanceof HTMLElement)) return
-    const target = e.target as WebUiOption
-    target.addEventListener('click', this._handleOptionClick)
-    target.addEventListener('pointerover', this._handleOptionPointerOver)
-    target.addEventListener('pointerdown', this._handleOptionPointerDown)
-    target.addEventListener('option-update', this._onOptionUpdate)
-    this._options.push(target)
-    this._ensureOptionIds()
-    this._syncSelected()
+  private _unbindOption = (option: WebUiOption) => {
+    option.removeEventListener('click', this._handleOptionClick)
+    option.removeEventListener('pointerover', this._handleOptionPointerOver)
+    option.removeEventListener('pointerdown', this._handleOptionPointerDown)
+    option.removeEventListener('option-update', this._onOptionUpdate)
   }
 
-  private _onOptionUnregister = (e: Event) => {
-    if (!(e.target instanceof HTMLElement)) return
-    const target = e.target as WebUiOption
-    target.removeEventListener('click', this._handleOptionClick)
-    target.removeEventListener('pointerover', this._handleOptionPointerOver)
-    target.removeEventListener('pointerdown', this._handleOptionPointerDown)
-    target.removeEventListener('option-update', this._onOptionUpdate)
-    this._options = this._options.filter(o => o !== target)
-  }
-
-  private _onSlotChange = () => {
-    this._options = this._queryOptions()
-    this._ensureOptionIds()
-    this._syncSelected()
+  private _refreshOptions() {
+    const activeOption = this._options[this._activeIndex]
+    // diff 绑定/解绑与激活索引按 option 身份保持在 shared 内完成，
+    // 避免移除中间项后激活静默偏移到相邻项
+    const next = this._optionPortal.refresh(this._options, activeOption)
+    this._options = next.options
+    this._activeIndex = next.activeIndex
+    // 非 portal 模式 aria-activedescendant 引用真实 option id,需保证已分配
+    this._optionPortal.ensureOptionIds(this._options)
   }
 
   private _handleOptionClick = (e: Event) => {
     if (!(e.currentTarget instanceof HTMLElement)) return
     const option = e.currentTarget as WebUiOption
-    if (option.disabled) return
+    if (option.disabled || !this._isLive(option)) return
     this.value = option.value
     this._close()
     this._notifyValueChange()
@@ -258,6 +281,18 @@ export class WebUiSelect extends LitElement {
   private _handleOptionPointerDown = (e: PointerEvent) => {
     // 保持 trigger 焦点，避免 focusout 在 click 前关闭浮层。
     e.preventDefault()
+  }
+
+  // slotchange 不冒泡，只能由模板内 slot 自行监听；稳定引用避免 Lit 重挂载
+  private _onSlotChange = () => {
+    this._optionPortal.scheduleRefresh()
+  }
+
+  // slotchange/unregister 的刷新依赖 Lit 渲染调度；键盘或 click 事件可能先于其触发，
+  // 已从 DOM 移除或被移出 Select/portal 面板的选项不得再被激活或选中。
+  private _isLive(option: WebUiOption): boolean {
+    const panel = this.portal ? this._panel.getPanel() : null
+    return option.isConnected && (this.contains(option) || (!!panel && panel.contains(option)))
   }
 
   private _onKeydown = (e: KeyboardEvent) => {
@@ -283,10 +318,10 @@ export class WebUiSelect extends LitElement {
         if (!this._isOpen) this._open(true)
         else this._navigateActive(-1)
         break
-      case 'Enter':
+      case 'Enter': {
         if (this._isOpen && this._activeIndex >= 0) {
           const option = this._options[this._activeIndex]
-          if (option && !option.disabled) {
+          if (option && this._isLive(option) && !option.disabled) {
             this.value = option.value
             this._notifyValueChange()
           }
@@ -294,16 +329,19 @@ export class WebUiSelect extends LitElement {
           e.preventDefault()
         }
         break
+      }
     }
   }
 
   private _navigateActive(delta: number) {
-    const enabled = this._options.filter(o => !o.disabled)
+    const enabled = this._options.filter(o => !o.disabled && this._isLive(o))
     if (!enabled.length) return
 
-    const selectedOption = this._options.find(option => option.value === this.value && !option.disabled)
+    const selectedOption = this._options.find(
+      option => option.value === this.value && !option.disabled && this._isLive(option)
+    )
     const currentIdx =
-      this._activeIndex >= 0
+      this._activeIndex >= 0 && this._isLive(this._options[this._activeIndex])
         ? enabled.indexOf(this._options[this._activeIndex])
         : selectedOption
           ? enabled.indexOf(selectedOption)
@@ -358,14 +396,18 @@ export class WebUiSelect extends LitElement {
   }
 
   private _setInitialActiveOption() {
-    const selectedIndex = this._options.findIndex(option => option.value === this.value && !option.disabled)
-    const firstEnabledIndex = this._options.findIndex(option => !option.disabled)
+    const selectedIndex = this._options.findIndex(
+      option => option.value === this.value && !option.disabled && this._isLive(option)
+    )
+    const firstEnabledIndex = this._options.findIndex(option => !option.disabled && this._isLive(option))
     this._activeIndex = selectedIndex >= 0 ? selectedIndex : firstEnabledIndex
     this._syncActiveOption()
   }
 
   private _syncActiveOption() {
-    this._options.forEach((option, index) => option.toggleAttribute('active', index === this._activeIndex))
+    this._options.forEach((option, index) =>
+      option.toggleAttribute('active', index === this._activeIndex && this._isLive(option))
+    )
   }
 
   private _notifyValueChange() {
@@ -392,25 +434,36 @@ export class WebUiSelect extends LitElement {
       container: this.overlayContainer,
       target: this,
       style: `${glass}\n${overlayMotion}\n${style}`,
-      className: 'wui-glass select-overlay portal wui-floating-panel'
+      className: 'wui-glass select-overlay portal wui-floating-panel',
+      onContentChange: () => this._optionPortal.scheduleRefresh()
     })
+    this._portal = portal
     portal.panel.setAttribute('role', 'listbox')
     const scroll = document.createElement('div')
     scroll.className = 'select-scroll'
     const content = document.createElement('div')
     content.className = 'select-content'
+    this._portalContent = content
     scroll.append(content)
     portal.panel.append(scroll)
     portal.moveContent(Array.from(this.children), content)
     return portal
   }
 
-  private async _closeOverlay() {
-    await this._panel.close(() => this._isOpen)
+  private _reconfigureOverlay() {
+    // reconfigure 会 dispose 并按需重建 portal，旧引用必须同步失效
+    this._portal = undefined
+    this._portalContent = undefined
+    this._panel.reconfigure(this._isOpen)
   }
 
-  private _reconfigureOverlay() {
-    this._panel.reconfigure(this._isOpen)
+  private async _closeOverlay() {
+    const closed = await this._panel.close(() => this._isOpen)
+    // portal 已随关闭 dispose，与 autocomplete 对齐同步失效引用
+    if (closed) {
+      this._portal = undefined
+      this._portalContent = undefined
+    }
   }
 
   override render() {

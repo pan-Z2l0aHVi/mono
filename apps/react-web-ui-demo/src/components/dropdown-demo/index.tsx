@@ -181,19 +181,19 @@ function DropdownDemo() {
               ⌫
             </span>
           </web-ui-dropdown-item>
-          <web-ui-dropdown-item pl="34px">
+          <web-ui-dropdown-item pl="30px">
             全选
             <span slot="suffix" className="opacity-40">
               ⌘A
             </span>
           </web-ui-dropdown-item>
-          <web-ui-dropdown-item pl="34px">
+          <web-ui-dropdown-item pl="30px">
             粘贴为引用
             <span slot="suffix" className="opacity-40">
               ⇧⌘V
             </span>
           </web-ui-dropdown-item>
-          <web-ui-dropdown-item pl="34px" disabled>
+          <web-ui-dropdown-item pl="30px" disabled>
             添加链接
             <span slot="suffix" className="opacity-40">
               ⌘K
@@ -207,7 +207,7 @@ function DropdownDemo() {
           </web-ui-dropdown-item>
           <web-ui-dropdown-divider></web-ui-dropdown-divider>
           <web-ui-dropdown-header>更多选项</web-ui-dropdown-header>
-          <web-ui-dropdown-item pl="34px">
+          <web-ui-dropdown-item pl="30px">
             听写
             <span slot="suffix" className="opacity-40">
               D

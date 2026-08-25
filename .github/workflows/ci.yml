@@ -23,8 +23,12 @@ jobs:
 
       - uses: ./.github/actions/setup-deps
         with:
-          mise-install: 'node pnpm'
           wails: 'true'
+
+      # interweave-frontend 的 build 依赖 wails3，每次 CI 显式验证工具链，
+      # 避免 turbo 缓存命中时绕过 wails3 缺失/损坏而静默通过。
+      - name: Verify Wails CLI
+        run: bash .github/scripts/verify-wails.sh
 
       - name: Cache turbo
         uses: actions/cache@v5
@@ -50,8 +54,8 @@ jobs:
       - name: Check published package contracts
         run: pnpm run check:pack
 
-      - name: Format + Lint + Type-check
-        run: pnpm run fix:code
+      - name: Format + Lint + Type-check + Go vet
+        run: pnpm run check:code
 
       - name: Install Playwright browsers
         run: pnpm exec playwright install chromium

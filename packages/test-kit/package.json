@@ -33,7 +33,9 @@
   },
   "devDependencies": {
     "@greypan/tsconfig": "workspace:*",
-    "msw": "catalog:"
+    "msw": "catalog:",
+    "vite": "catalog:",
+    "vite-plus": "catalog:"
   },
   "peerDependencies": {
     "msw": "catalog:"

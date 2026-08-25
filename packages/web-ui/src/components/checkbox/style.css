@@ -27,14 +27,14 @@
 
   &:focus-visible {
     border-radius: calc(infinity * 1px);
-    outline: 3px solid var(--wui-focus-ring, rgb(0 136 255 / 0.4));
+    outline: var(--wui-focus-ring-width, 3px) solid var(--wui-color-focus-ring, rgb(0 136 255 / 0.4));
     outline-offset: 2px;
   }
 }
 
 .wui-checkbox.is-disabled {
   cursor: not-allowed;
-  color: var(--wui-color-text-muted, #6a6a6a);
+  color: var(--wui-color-text-secondary, #6a6a6a);
   opacity: 0.4;
 }
 

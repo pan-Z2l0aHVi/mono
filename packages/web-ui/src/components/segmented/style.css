@@ -18,7 +18,7 @@
   padding: 4px;
   border-radius: calc(infinity * 1px);
 
-  background-color: var(--wui-color-surface-raised-mid, #dfdfdf);
+  background-color: var(--wui-color-surface-control, #dfdfdf);
 }
 
 .wui-segmented.is-disabled {
@@ -40,9 +40,12 @@
   width: var(--indicator-width, 0);
   border-radius: calc(infinity * 1px);
 
-  background-color: var(--wui-color-surface-glass, rgb(250 250 250 / 0.55));
+  background-color: var(--wui-color-surface-glass, rgb(250 250 250 / 0.34));
 
-  transition:
-    left var(--wui-duration-trigger, 160ms) var(--wui-ease-slide, cubic-bezier(0.77, 0, 0.175, 1)),
-    width var(--wui-duration-trigger, 160ms) var(--wui-ease-slide, cubic-bezier(0.77, 0, 0.175, 1));
+  /* transition 只在首帧定位后启用，避免组件进入视口时触发初始化动画 */
+  .is-indicator-ready & {
+    transition:
+      left var(--wui-duration-trigger, 160ms) var(--wui-ease-slide, cubic-bezier(0.77, 0, 0.175, 1)),
+      width var(--wui-duration-trigger, 160ms) var(--wui-ease-slide, cubic-bezier(0.77, 0, 0.175, 1));
+  }
 }

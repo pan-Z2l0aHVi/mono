@@ -48,8 +48,8 @@
   height: 24px;
   border-radius: calc(infinity * 1px);
 
-  background-color: var(--wui-color-surface-raised-deep, #e5e5ea);
-  outline: 3px solid transparent;
+  background-color: var(--wui-color-surface-track, #e5e5ea);
+  outline: var(--wui-focus-ring-width, 3px) solid transparent;
   outline-offset: 2px;
 
   transition: background-color var(--wui-duration-trigger, 160ms) ease;
@@ -57,7 +57,7 @@
   /* 实际获得焦点的是内部 sr-only 的 checkbox，track 本身不可聚焦；
      :focus-visible 在 track 上永不匹配，需用 :focus-within 让键盘焦点环生效 */
   &:focus-within {
-    outline-color: var(--wui-focus-ring, rgb(0 136 255 / 0.4));
+    outline-color: var(--wui-color-focus-ring, rgb(0 136 255 / 0.4));
   }
 
   &.is-open {

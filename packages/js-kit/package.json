@@ -46,7 +46,9 @@
   },
   "devDependencies": {
     "@greypan/tsconfig": "workspace:*",
-    "vite-plugin-dts": "catalog:"
+    "vite-plugin-dts": "catalog:",
+    "vite": "catalog:",
+    "vite-plus": "catalog:"
   },
   "engines": {
     "node": ">=20.11.0"

@@ -28,7 +28,9 @@
     "registry": "https://registry.npmjs.org/"
   },
   "devDependencies": {
-    "@greypan/tsconfig": "workspace:*"
+    "@greypan/tsconfig": "workspace:*",
+    "vite": "catalog:",
+    "vite-plus": "catalog:"
   },
   "scripts": {
     "build": "vp pack",
