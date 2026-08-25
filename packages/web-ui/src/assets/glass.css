@@ -5,20 +5,30 @@
 .wui-glass {
   position: relative;
 
-  border: 0.5px double var(--wui-color-glass-border, rgb(51 51 51 / 0.08));
+  background-color: var(--wui-color-surface-glass, rgb(250 250 250 / 0.34));
+  background-image: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--wui-color-glass-highlight, rgb(255 255 255 / 0.9)) 20%, transparent),
+    color-mix(in srgb, var(--wui-color-glass-highlight, rgb(255 255 255 / 0.9)) 4%, transparent) 48%,
+    transparent
+  );
+  background-clip: padding-box;
 
   /* Safari 16.4 只支持带 -webkit- 前缀的 backdrop-filter（无前缀 18 才支持），
      lightningcss 对 ?inline 导入不做自动前缀，需手动写前缀版本 */
   /* stylelint-disable-next-line property-no-vendor-prefix */
-  -webkit-backdrop-filter: blur(2px);
-  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(8px) saturate(160%) brightness(1.06);
+  backdrop-filter: blur(8px) saturate(160%) brightness(1.06);
   box-shadow:
-    inset -1px -1px 0.5px -0.5px var(--wui-color-glass-highlight, rgb(255 255 255 / 0.9)),
-    inset 1px 1px 0.5px -0.5px var(--wui-color-glass-highlight, rgb(255 255 255 / 0.9)),
-    inset -3px -3px 0.5px -3px
-      color-mix(in srgb, var(--wui-color-glass-highlight, rgb(255 255 255 / 0.9)) 60%, transparent),
-    inset 3px 3px 0.5px -3px
-      color-mix(in srgb, var(--wui-color-glass-highlight, rgb(255 255 255 / 0.9)) 60%, transparent),
-    inset 0 0 1px rgb(0 0 0 / 0.8),
-    var(--wui-shadow-glass, 0 2px 16px rgb(0 0 0 / 0.06));
+    inset 0 0 0 0.5px color-mix(in srgb, var(--wui-color-glass-highlight, rgb(255 255 255 / 0.9)) 38%, transparent),
+    inset 0 1px 0.5px color-mix(in srgb, var(--wui-color-glass-highlight, rgb(255 255 255 / 0.9)) 52%, transparent),
+    inset 0 -0.5px 1px rgb(0 0 0 / 0.03),
+    var(--wui-glass-focus-ring, 0 0 0 0 transparent),
+    var(
+      --wui-shadow-glass,
+      0 0 1px rgb(0 0 0 / 0.05),
+      0 0 8px rgb(0 0 0 / 0.03),
+      0 2px 16px rgb(0 0 0 / 0.025),
+      0 8px 32px rgb(0 0 0 / 0.015)
+    );
 }

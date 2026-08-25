@@ -947,6 +947,15 @@ Theme provider defining CSS custom property tokens.
 
 Defines `--wui-color-*`, `--wui-shadow-*`, `--wui-layer-*`, and motion tokens. The layout layer scale is `--wui-layer-header: 10`, `--wui-layer-auxiliary: 20`, `--wui-layer-banner: 30`, `--wui-layer-tabbar: 40`, and `--wui-layer-sidebar: 50`. Motion tokens are stable and may be overridden per theme scope: `--wui-duration-press`, `--wui-duration-feedback`, `--wui-duration-trigger`, `--wui-duration-focus`, `--wui-duration-menu-enter`, `--wui-duration-menu-exit`, `--wui-duration-overlay-enter`, `--wui-duration-overlay-exit`, `--wui-duration-drawer-enter`, `--wui-duration-drawer-exit`, `--wui-ease-enter`, `--wui-ease-slide`, and `--wui-scale-enter`. `motion="system"` follows `prefers-reduced-motion`; use `motion="reduced"` to reduce animation in a scope or `motion="full"` in a nested theme to restore the normal token values. System appearance follows `prefers-color-scheme`.
 
+Interaction state tokens follow the current theme colors:
+
+| Property                           | Light default                                                                   | Dark default                                                                    | Description                                                                                         |
+| ---------------------------------- | ------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| `--wui-color-state-layer-hover`    | `color-mix(in srgb, var(--wui-color-text) 6%, transparent)`                     | `color-mix(in srgb, var(--wui-color-text) 6%, transparent)`                     | Transparent hover overlay for controls rendered above a glass container                             |
+| `--wui-color-state-layer-active`   | `color-mix(in srgb, var(--wui-color-text) 15%, transparent)`                    | `color-mix(in srgb, var(--wui-color-text) 15%, transparent)`                    | Transparent active overlay for controls rendered above a glass container                            |
+| `--wui-color-surface-glass-hover`  | `color-mix(in srgb, var(--wui-color-text) 6%, var(--wui-color-surface-glass))`  | `color-mix(in srgb, var(--wui-color-text) 6%, var(--wui-color-surface-glass))`  | Full hover background for an element whose glass surface and interactive element are the same node  |
+| `--wui-color-surface-glass-active` | `color-mix(in srgb, var(--wui-color-text) 15%, var(--wui-color-surface-glass))` | `color-mix(in srgb, var(--wui-color-text) 15%, var(--wui-color-surface-glass))` | Full active background for an element whose glass surface and interactive element are the same node |
+
 ---
 
 ### Notification
@@ -1034,6 +1043,8 @@ Not form-associated (child of segmented, not independent submit).
 
 **CSS Custom Properties:**
 
-| Property                     | Default | Description        |
-| ---------------------------- | ------- | ------------------ |
-| `--wui-segmented-trigger-px` | `12px`  | Horizontal padding |
+| Property                            | Default                          | Description               |
+| ----------------------------------- | -------------------------------- | ------------------------- |
+| `--wui-segmented-trigger-px`        | `12px`                           | Horizontal padding        |
+| `--wui-segmented-trigger-bg-hover`  | `--wui-color-state-layer-hover`  | Trigger hover background  |
+| `--wui-segmented-trigger-bg-active` | `--wui-color-state-layer-active` | Trigger active background |

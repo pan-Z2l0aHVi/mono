@@ -40,7 +40,7 @@
   width: var(--indicator-width, 0);
   border-radius: calc(infinity * 1px);
 
-  background-color: var(--wui-color-surface-glass, rgb(250 250 250 / 0.55));
+  background-color: var(--wui-color-surface-glass, rgb(250 250 250 / 0.34));
 
   transition:
     left var(--wui-duration-trigger, 160ms) var(--wui-ease-slide, cubic-bezier(0.77, 0, 0.175, 1)),

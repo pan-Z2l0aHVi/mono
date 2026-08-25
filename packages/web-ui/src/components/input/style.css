@@ -52,8 +52,7 @@
 }
 
 :host([focused]) .wui-input-inner {
-  --wui-shadow-glass:
-    var(--wui-shadow-glass, 0 2px 16px rgb(0 0 0 / 0.06)), 0 0 0 3px var(--wui-focus-ring, rgb(0 136 255 / 0.4));
+  --wui-glass-focus-ring: 0 0 0 3px var(--wui-focus-ring, rgb(0 136 255 / 0.4));
   border-color: var(--wui-color-border-strong, rgb(0 110 230 / 0.5));
 }
 

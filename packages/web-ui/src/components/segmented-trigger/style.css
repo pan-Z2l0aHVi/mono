@@ -13,8 +13,14 @@
 }
 
 .wui-segmented-trigger {
-  --wui-segmented-trigger-bg-hover: color-mix(in srgb, var(--wui-color-text, #1b1b1b) 6%, transparent);
-  --wui-segmented-trigger-bg-active: color-mix(in srgb, var(--wui-color-text, #1b1b1b) 15%, transparent);
+  --wui-segmented-trigger-bg-hover: var(
+    --wui-color-state-layer-hover,
+    color-mix(in srgb, var(--wui-color-text, #1b1b1b) 6%, transparent)
+  );
+  --wui-segmented-trigger-bg-active: var(
+    --wui-color-state-layer-active,
+    color-mix(in srgb, var(--wui-color-text, #1b1b1b) 15%, transparent)
+  );
 
   cursor: pointer;
   user-select: none;

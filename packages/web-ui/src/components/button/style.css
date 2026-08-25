@@ -124,8 +124,14 @@ button:active:not(:disabled) {
 :host([variant='ghost']) {
   --wui-button-color: var(--wui-color-text, #1b1b1b);
   --wui-button-bg: transparent;
-  --wui-button-bg-hover: color-mix(in srgb, var(--wui-color-text, #1b1b1b) 6%, transparent);
-  --wui-button-bg-active: color-mix(in srgb, var(--wui-color-text, #1b1b1b) 15%, transparent);
+  --wui-button-bg-hover: var(
+    --wui-color-state-layer-hover,
+    color-mix(in srgb, var(--wui-color-text, #1b1b1b) 6%, transparent)
+  );
+  --wui-button-bg-active: var(
+    --wui-color-state-layer-active,
+    color-mix(in srgb, var(--wui-color-text, #1b1b1b) 15%, transparent)
+  );
 }
 
 /* ===== Variant: danger ===== */
@@ -142,9 +148,17 @@ button:active:not(:disabled) {
 /* .wui-glass 样式由 @/assets/glass.css 提供 */
 :host([variant='glass']) {
   --wui-button-color: var(--wui-color-text, #1b1b1b);
+
+  /* standalone glass 底色由 .wui-glass 提供；hover/active 需要还原玻璃底，避免被按钮状态色整块替换 */
   --wui-button-bg: transparent;
-  --wui-button-bg-hover: color-mix(in srgb, var(--wui-color-text, #1b1b1b) 6%, transparent);
-  --wui-button-bg-active: color-mix(in srgb, var(--wui-color-text, #1b1b1b) 15%, transparent);
+  --wui-button-bg-hover: var(
+    --wui-color-surface-glass-hover,
+    color-mix(in srgb, var(--wui-color-text, #1b1b1b) 6%, var(--wui-color-surface-glass, rgb(250 250 250 / 0.34)))
+  );
+  --wui-button-bg-active: var(
+    --wui-color-surface-glass-active,
+    color-mix(in srgb, var(--wui-color-text, #1b1b1b) 15%, var(--wui-color-surface-glass, rgb(250 250 250 / 0.34)))
+  );
 }
 
 /* ===== Group context ===== */
@@ -152,8 +166,14 @@ button:active:not(:disabled) {
 button.is-grouped {
   --wui-button-color: var(--wui-color-text, #1b1b1b);
   --wui-button-bg: transparent;
-  --wui-button-bg-hover: color-mix(in srgb, var(--wui-color-text, #1b1b1b) 6%, transparent);
-  --wui-button-bg-active: color-mix(in srgb, var(--wui-color-text, #1b1b1b) 15%, transparent);
+  --wui-button-bg-hover: var(
+    --wui-color-state-layer-hover,
+    color-mix(in srgb, var(--wui-color-text, #1b1b1b) 6%, transparent)
+  );
+  --wui-button-bg-active: var(
+    --wui-color-state-layer-active,
+    color-mix(in srgb, var(--wui-color-text, #1b1b1b) 15%, transparent)
+  );
 }
 
 .group-divider {

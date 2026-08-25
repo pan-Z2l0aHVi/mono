@@ -935,6 +935,15 @@ SVG 线条绘制动画，基于 `stroke-dashoffset`。直接在原元素上动�
 
 定义 `--wui-color-*`、`--wui-shadow-*`、`--wui-layer-*` 与 motion token。布局层级 token 依次为 `--wui-layer-header: 10`、`--wui-layer-auxiliary: 20`、`--wui-layer-banner: 30`、`--wui-layer-tabbar: 40`、`--wui-layer-sidebar: 50`。motion token 是稳定的主题契约，可在主题范围覆盖：`--wui-duration-press`、`--wui-duration-feedback`、`--wui-duration-trigger`、`--wui-duration-focus`、`--wui-duration-menu-enter`、`--wui-duration-menu-exit`、`--wui-duration-overlay-enter`、`--wui-duration-overlay-exit`、`--wui-duration-drawer-enter`、`--wui-duration-drawer-exit`、`--wui-ease-enter`、`--wui-ease-slide`、`--wui-scale-enter`。`motion="system"` 跟随 `prefers-reduced-motion`；使用 `motion="reduced"` 降低当前作用域动效，或在嵌套主题中使用 `motion="full"` 恢复默认 token。System 配色模式跟随 `prefers-color-scheme`。
 
+交互状态 token 跟随当前主题颜色：
+
+| 属性                               | 浅色默认值                                                                      | 深色默认值                                                                      | 说明                                           |
+| ---------------------------------- | ------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- | ---------------------------------------------- |
+| `--wui-color-state-layer-hover`    | `color-mix(in srgb, var(--wui-color-text) 6%, transparent)`                     | `color-mix(in srgb, var(--wui-color-text) 6%, transparent)`                     | 位于 glass 容器上的子控件使用的透明悬停层      |
+| `--wui-color-state-layer-active`   | `color-mix(in srgb, var(--wui-color-text) 15%, transparent)`                    | `color-mix(in srgb, var(--wui-color-text) 15%, transparent)`                    | 位于 glass 容器上的子控件使用的透明按下层      |
+| `--wui-color-surface-glass-hover`  | `color-mix(in srgb, var(--wui-color-text) 6%, var(--wui-color-surface-glass))`  | `color-mix(in srgb, var(--wui-color-text) 6%, var(--wui-color-surface-glass))`  | glass 表面与交互元素为同一节点时的完整悬停背景 |
+| `--wui-color-surface-glass-active` | `color-mix(in srgb, var(--wui-color-text) 15%, var(--wui-color-surface-glass))` | `color-mix(in srgb, var(--wui-color-text) 15%, var(--wui-color-surface-glass))` | glass 表面与交互元素为同一节点时的完整按下背景 |
+
 ---
 
 ### 通知
@@ -1022,6 +1031,8 @@ toast.updateMessage(id, { message: '上传已完成 60%', heading: '正在上传
 
 **CSS 自定义属性：**
 
-| 属性                         | 默认值 | 说明       |
-| ---------------------------- | ------ | ---------- |
-| `--wui-segmented-trigger-px` | `12px` | 水平内边距 |
+| 属性                                | 默认值                           | 说明             |
+| ----------------------------------- | -------------------------------- | ---------------- |
+| `--wui-segmented-trigger-px`        | `12px`                           | 水平内边距       |
+| `--wui-segmented-trigger-bg-hover`  | `--wui-color-state-layer-hover`  | Trigger 悬停背景 |
+| `--wui-segmented-trigger-bg-active` | `--wui-color-state-layer-active` | Trigger 按下背景 |

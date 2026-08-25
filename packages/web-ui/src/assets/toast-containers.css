@@ -14,8 +14,8 @@
 
   max-height: 100vh;
 
-  /* padding 需要 >= 阴影模糊半径，否则 overflow 会裁剪子元素 box-shadow */
-  padding: 24px;
+  /* padding 需要 >= 阴影偏移 + 模糊半径，否则 overflow 会裁剪子元素 box-shadow */
+  padding: 40px;
 }
 
 .wui-toast-container > * {
