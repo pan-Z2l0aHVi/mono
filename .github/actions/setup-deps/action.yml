@@ -26,6 +26,15 @@ inputs:
 runs:
   using: 'composite'
   steps:
+    # Wails Go 工具在 Linux 上编译会链接 GTK4/WebKitGTK，必须先于 mise install 安装系统库，
+    # 否则 mise 编译 go:.../wails3 会因 pkg-config 找不到 gtk4/webkitgtk-6.0 而失败。
+    - name: Install Wails Linux prerequisites
+      if: inputs.wails == 'true'
+      shell: bash
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libgtk-4-dev libwebkitgtk-6.0-dev
+
     - uses: jdx/mise-action@v4
       with:
         install: ${{ inputs.mise-install == '' }}
@@ -34,13 +43,6 @@ runs:
       if: inputs.mise-install != ''
       shell: bash
       run: mise install ${{ inputs.mise-install }}
-
-    - name: Install Wails Linux prerequisites
-      if: inputs.wails == 'true'
-      shell: bash
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y libgtk-4-dev libwebkitgtk-6.0-dev
 
     - name: Resolve pnpm store path
       if: inputs.skip-install != 'true'
