@@ -143,7 +143,7 @@ jobs:
               console.log(`Release ${tag} already exists; skipping.`)
               continue
             } catch {
-              // Create the missing release below. This makes workflow reruns idempotent.
+              // 下面创建缺失的 release；这保证 workflow 重跑是幂等的。
             }
 
             const npmUrl = `https://www.npmjs.com/package/${name}/v/${version}`
