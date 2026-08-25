@@ -71,7 +71,7 @@
 
   font-size: var(--wui-font-size, 14px);
   line-height: 1.5;
-  color: var(--wui-color-text-muted, #6a6a6a);
+  color: var(--wui-color-text-secondary, #6a6a6a);
   text-align: center;
 }
 

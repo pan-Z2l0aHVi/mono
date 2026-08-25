@@ -124,10 +124,11 @@ interweave（含 interweave-frontend）──共享包的 Wails 桌面集成表�
 | [0031](docs/adr/0031-layout-sidebar-collapse.md)                       | Layout 页面结构、Banner 与可折叠 Sidebar     | 修改 `web-ui-layout` 的页面结构、Sidebar、Banner 或移动端 Drawer |
 | [0032](docs/adr/0032-interweave-library-core-layer.md)                 | Interweave library 分层与 core 产品规则层    | 修改 interweave library 分层、Wails 外观或产品规则归属           |
 | [0033](docs/adr/0033-cross-framework-api-convention.md)                | 跨框架 API 约定与框架调用方绑定约束          | 修改 web-ui 的 Property/Attribute/Event 命名或跨框架绑定兼容性   |
+| [0034](docs/adr/0034-web-ui-semantic-token-system.md)                  | Web UI Semantic Token System                 | 修改 `--wui-*` token 契约、focus 指示器或组件 token 文档         |
 
 ## Interweave 产品与领域词汇
 
-Interweave 当前已确认的产品基线见 [`apps/interweave/docs/product.md`](apps/interweave/docs/product.md)。产品、领域模型、Map、标签、Source 或 MCP 路线任务按需读取该文档和 ADR-0017/0018；修改本地资源库初始化或旧库兼容策略时还读取 ADR-0020；修改 Source 输入规范化、重复添加或去重策略时还读取 ADR-0021/0025；修改 Source 可用状态或 URL 抓取规则时还读取 ADR-0022；修改 Resource 标题或 Source 元数据更新规则时还读取 ADR-0023；修改 Source 删除、首选或基数不变量时还读取 ADR-0024；修改标签创建、名称标准化或同名复用策略时还读取 ADR-0026；修改 Tag ID 或 Resource—Tag 关联键时还读取 ADR-0027；修改标签操作作用域或全局标签管理策略时还读取 ADR-0028；修改 Map 交互边界或探索操作模型时还读取 ADR-0029；修改 SQLite 配置、并发或持久化基础设施时还读取 ADR-0030；修改 interweave library 分层或产品规则归属时还读取 ADR-0032；修改 web-ui 的 Property/Attribute/Event 命名或跨框架绑定兼容性时还读取 ADR-0033；修改 Go 模块、Wails Service 或 frontend bindings 时还读取 ADR-0019。
+Interweave 当前已确认的产品基线见 [`apps/interweave/docs/product.md`](apps/interweave/docs/product.md)。产品、领域模型、Map、标签、Source 或 MCP 路线任务按需读取该文档和 ADR-0017/0018；修改本地资源库初始化或旧库兼容策略时还读取 ADR-0020；修改 Source 输入规范化、重复添加或去重策略时还读取 ADR-0021/0025；修改 Source 可用状态或 URL 抓取规则时还读取 ADR-0022；修改 Resource 标题或 Source 元数据更新规则时还读取 ADR-0023；修改 Source 删除、首选或基数不变量时还读取 ADR-0024；修改标签创建、名称标准化或同名复用策略时还读取 ADR-0026；修改 Tag ID 或 Resource—Tag 关联键时还读取 ADR-0027；修改标签操作作用域或全局标签管理策略时还读取 ADR-0028；修改 Map 交互边界或探索操作模型时还读取 ADR-0029；修改 SQLite 配置、并发或持久化基础设施时还读取 ADR-0030；修改 interweave library 分层或产品规则归属时还读取 ADR-0032；修改 web-ui 的 Property/Attribute/Event 命名或跨框架绑定兼容性时还读取 ADR-0033；修改 web-ui 的 `--wui-*` token 契约、focus 指示器或组件 token 文档矩阵时还读取 ADR-0034；修改 Go 模块、Wails Service 或 frontend bindings 时还读取 ADR-0019。
 
 **资源（Resource）**:
 用户希望长期找回、理解或使用的原子概念对象；保存独立标题、短备注、语义标签与一个或多个 Source。

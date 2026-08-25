@@ -5,6 +5,7 @@
 }
 
 :host {
+  --wui-autocomplete-max-width: 500px;
   display: inline-block;
 }
 
@@ -20,8 +21,8 @@
 
   box-sizing: border-box;
   width: var(--wui-input-width, 200px);
-  min-width: var(--wui-button-size, 40px);
-  height: var(--wui-button-size, 40px);
+  min-width: var(--wui-control-size, 40px);
+  height: var(--wui-control-size, 40px);
   padding: 0 12px;
   border-radius: calc(infinity * 1px);
 
@@ -31,8 +32,9 @@
 }
 
 :host([focused]) .input-wrapper {
-  --wui-glass-focus-ring: 0 0 0 3px var(--wui-focus-ring, rgb(0 136 255 / 0.4));
-  border-color: var(--wui-color-border-strong, rgb(0 110 230 / 0.5));
+  --wui-internal-glass-focus-ring:
+    inset 0 0 0 1px var(--wui-color-accent, #08f),
+    0 0 0 var(--wui-focus-ring-width, 3px) var(--wui-color-focus-ring, rgb(0 136 255 / 0.4));
 }
 
 .autocomplete-input {
@@ -53,7 +55,7 @@
   outline: none;
 
   &::placeholder {
-    color: var(--wui-color-text-muted, #6a6a6a);
+    color: var(--wui-color-text-secondary, #6a6a6a);
   }
 
   &:disabled {
@@ -67,21 +69,20 @@
 .autocomplete-overlay {
   /* autocomplete 不表示选中状态；隐藏共享 option 的勾选图标及其布局占位 */
   --wui-option-check-display: none;
-  --wui-shadow-glass: var(--wui-shadow-pop, 0 3px 9px rgb(0 0 0 / 0.27));
-  --wui-duration-overlay-enter: var(--wui-duration-menu-enter, 140ms);
-  --wui-duration-overlay-exit: var(--wui-duration-menu-exit, 100ms);
-  --wui-overlay-min-width: 200px;
+  --wui-internal-glass-shadow: var(--wui-shadow-panel, 0 3px 9px rgb(0 0 0 / 0.27));
+  --wui-internal-duration-overlay-enter: var(--wui-duration-menu-enter, 140ms);
+  --wui-internal-duration-overlay-exit: var(--wui-duration-menu-exit, 100ms);
   position: absolute;
   z-index: var(--wui-layer-inline-overlay, 1);
 
   overflow: hidden;
 
   box-sizing: border-box;
-  min-width: var(--wui-overlay-min-width, 120px);
-  max-width: 500px;
+  min-width: var(--wui-overlay-min-width, 200px);
+  max-width: var(--wui-autocomplete-max-width, 500px);
   border-radius: 20px;
 
-  background-color: var(--wui-color-surface-overlay, rgb(246 246 246 / 0.88));
+  background-color: var(--wui-color-surface-overlay, rgb(246 246 246 / 0.72));
 
   &.portal {
     position: fixed;
@@ -105,7 +106,7 @@
 .autocomplete-empty {
   padding: 8px 12px;
   font-size: var(--wui-font-size, 14px);
-  color: var(--wui-color-text-muted, #6a6a6a);
+  color: var(--wui-color-text-secondary, #6a6a6a);
   text-align: center;
 }
 

@@ -15,5 +15,5 @@
 
   font-size: 12px;
   font-weight: 600;
-  color: var(--wui-color-text-faint, rgb(27 27 27 / 0.35));
+  color: var(--wui-color-text-tertiary, rgb(27 27 27 / 0.35));
 }

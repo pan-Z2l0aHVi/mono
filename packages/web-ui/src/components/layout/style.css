@@ -16,7 +16,7 @@
    *
    * 调大此值会加深晕染浓度并扩大覆盖范围，但过大会遮挡内容区。
    */
-  --wui-layout-header-glow-height: 150%;
+  --wui-internal-layout-header-glow-height: 150%;
   display: block;
 }
 
@@ -63,7 +63,7 @@
   margin: 8px;
   border-radius: var(--wui-layout-sidebar-radius, 28px);
 
-  background-color: var(--wui-color-surface-overlay, rgb(246 246 246 / 0.88));
+  background-color: var(--wui-color-surface-overlay, rgb(246 246 246 / 0.72));
 }
 
 /*
@@ -85,7 +85,7 @@ aside {
   max-height: calc(100dvh - var(--wui-layout-visible-banner-height));
   padding: 8px;
 
-  transition: width var(--wui-duration-regular, 200ms) ease;
+  transition: width var(--wui-duration-layout, 200ms) var(--wui-ease-enter, cubic-bezier(0.23, 1, 0.32, 1));
 
   .aside-panel {
     display: flex;
@@ -95,7 +95,7 @@ aside {
     min-height: 0;
     border-radius: var(--wui-layout-sidebar-radius, 28px);
 
-    background-color: var(--wui-color-surface-overlay, rgb(246 246 246 / 0.88));
+    background-color: var(--wui-color-surface-overlay, rgb(246 246 246 / 0.72));
   }
 
   .sidebar-toggle-area {
@@ -142,7 +142,7 @@ header {
  * 伪元素随 header 的实际盒子尺寸和 sticky 位置变化，自然适配 header slot 的
  * 高度与位置，无需单独维护一层 DOM。
  *
- * 几何模型（以 --wui-layout-header-glow-height: 150% 为例）：
+ * 几何模型（以 --wui-internal-layout-header-glow-height: 150% 为例）：
  *   伪元素总高度 = 1.5 × header 高度
  *   inset top    = 100% - 150% = -50%（即向上延伸 0.5 个 header 高度）
  *   sticky 到顶后，上半段位于视口外，下半段（header 底部 → 下方 1 header 高度）
@@ -159,10 +159,10 @@ header {
 
   position: absolute;
   z-index: -1;
-  inset: calc(100% - var(--wui-layout-header-glow-height)) -20px auto;
+  inset: calc(100% - var(--wui-internal-layout-header-glow-height)) -20px auto;
   transform: scaleY(1.5);
 
-  height: var(--wui-layout-header-glow-height);
+  height: var(--wui-internal-layout-header-glow-height);
 
   background: linear-gradient(
     to bottom,

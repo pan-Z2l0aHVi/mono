@@ -20,6 +20,7 @@ export class WebUiSegmented extends LitElement {
   @property({ type: Boolean, reflect: true }) required = false
 
   @state() private _value = ''
+  @state() private _indicatorReady = false
 
   private readonly _groupController = new GroupController(
     this,
@@ -79,6 +80,9 @@ export class WebUiSegmented extends LitElement {
 
     this.style.setProperty('--indicator-left', `${left}px`)
     this.style.setProperty('--indicator-width', `${width}px`)
+
+    // 首帧只完成定位；若一开始就启用 left/width transition，indicator 会从 0 滑到初始选项。
+    if (!this._indicatorReady) this._indicatorReady = true
   }
 
   private readonly _formAssociation = defineFormAssociation<string>({
@@ -116,7 +120,11 @@ export class WebUiSegmented extends LitElement {
   override render() {
     return html`
       <div
-        class=${classMap({ 'wui-segmented': true, 'is-disabled': this._isDisabled })}
+        class=${classMap({
+          'wui-segmented': true,
+          'is-disabled': this._isDisabled,
+          'is-indicator-ready': this._indicatorReady
+        })}
         role="listbox"
         aria-orientation="horizontal"
       >

@@ -252,6 +252,12 @@ ARIA 属性同样必须显式支持：使用组件文档化的命名属性，而
 
 **插槽：** `prefix`, `default`, `suffix`
 
+**CSS 自定义属性：**
+
+| 属性                      | 默认值                           | 说明         |
+| ------------------------- | -------------------------------- | ------------ |
+| `--wui-input-clear-color` | `var(--wui-color-text-tertiary)` | 清除按钮颜色 |
+
 #### `<web-ui-textarea>`
 
 多行文本输入框，支持自动调整高度。
@@ -280,6 +286,13 @@ ARIA 属性同样必须显式支持：使用组件文档化的命名属性，而
 **方法：** `focus()`, `blur()`, `select()`
 
 **插槽：** `prefix`, `suffix`
+
+**CSS 自定义属性：**
+
+| 属性                         | 默认值                           | 说明         |
+| ---------------------------- | -------------------------------- | ------------ |
+| `--wui-textarea-width`       | `200px`                          | 文本域宽度   |
+| `--wui-textarea-clear-color` | `var(--wui-color-text-tertiary)` | 清除按钮颜色 |
 
 #### `<web-ui-input-number>`
 
@@ -355,6 +368,13 @@ ArrowUp/ArrowDown 键增减数值。空输入或 `-` 在提交时被忽略，值
 **插槽：** `default`（投影 `<web-ui-option>` 元素）
 
 键入时按 label 过滤候选（`contains` 或 `prefix`，`none` 关闭过滤）。选择 option 时文本回填为该项 label，`selected-value` 暴露该项的 value；`change` 在选择提交时触发。支持 ArrowDown/ArrowUp/Enter/Escape 键盘导航。
+
+**CSS 自定义属性：**
+
+| 属性                           | 默认值  | 说明           |
+| ------------------------------ | ------- | -------------- |
+| `--wui-autocomplete-max-width` | `500px` | 下拉框最大宽度 |
+| `--wui-overlay-min-width`      | `200px` | 下拉框最小宽度 |
 
 #### `<web-ui-slider>`
 
@@ -523,14 +543,15 @@ ArrowUp/ArrowDown 键增减数值。空输入或 `-` 在提交时被忽略，值
 
 **CSS 自定义属性：**
 
-| 属性                     | 默认值     | 说明                   |
-| ------------------------ | ---------- | ---------------------- |
-| `--wui-button-px`        | `12px`     | 水平内边距             |
-| `--wui-button-gap`       | `8px`      | 前缀/默认/后缀插槽间距 |
-| `--wui-button-color`     | 随 variant | 按钮文字颜色           |
-| `--wui-button-bg`        | 随 variant | 按钮背景颜色           |
-| `--wui-button-bg-hover`  | 随 variant | 悬停背景颜色           |
-| `--wui-button-bg-active` | 随 variant | 按下背景颜色           |
+| 属性                     | 默认值        | 说明                   |
+| ------------------------ | ------------- | ---------------------- |
+| `--wui-button-width`     | `max-content` | 按钮宽度               |
+| `--wui-button-px`        | `12px`        | 水平内边距             |
+| `--wui-button-gap`       | `8px`         | 前缀/默认/后缀插槽间距 |
+| `--wui-button-color`     | 随 variant    | 按钮文字颜色           |
+| `--wui-button-bg`        | 随 variant    | 按钮背景颜色           |
+| `--wui-button-bg-hover`  | 随 variant    | 悬停背景颜色           |
+| `--wui-button-bg-active` | 随 variant    | 按下背景颜色           |
 
 #### `<web-ui-button-group>`
 
@@ -890,20 +911,20 @@ WebUiSpinner.hide() // 隐藏
 
 **方法：** `toTop()`
 
-**定位：** `scrollTarget` 为 `window` 时按钮固定在视口角落；为 `HTMLElement` 时需将元素放置在容器内部，按钮通过 `position: sticky` 悬浮于容器底部角落。偏移量沿用 `--web-ui-back-top-top/right/bottom/left` CSS 变量。
+**定位：** `scrollTarget` 为 `window` 时按钮固定在视口角落；为 `HTMLElement` 时需将元素放置在容器内部，按钮通过 `position: sticky` 悬浮于容器底部角落。偏移量沿用 `--wui-back-top-top/right/bottom/left` CSS 变量。
 
 角色：`button`，键盘 Enter 触发回到顶部。
 
 **CSS 自定义属性：**
 
-| 属性                         | 默认值                           | 说明     |
-| ---------------------------- | -------------------------------- | -------- |
-| `--web-ui-back-top-position` | `fixed`                          | CSS 定位 |
-| `--web-ui-back-top-z-index`  | `var(--wui-layer-auxiliary, 20)` | 层级     |
-| `--web-ui-back-top-top`      | `auto`                           | 上偏移   |
-| `--web-ui-back-top-right`    | `20px`                           | 右偏移   |
-| `--web-ui-back-top-bottom`   | `20px`                           | 下偏移   |
-| `--web-ui-back-top-left`     | `auto`                           | 左偏移   |
+| 属性                      | 默认值                           | 说明     |
+| ------------------------- | -------------------------------- | -------- |
+| `--wui-back-top-position` | `fixed`                          | CSS 定位 |
+| `--wui-back-top-z-index`  | `var(--wui-layer-auxiliary, 20)` | 层级     |
+| `--wui-back-top-top`      | `auto`                           | 上偏移   |
+| `--wui-back-top-right`    | `20px`                           | 右偏移   |
+| `--wui-back-top-bottom`   | `20px`                           | 下偏移   |
+| `--wui-back-top-left`     | `auto`                           | 左偏移   |
 
 #### `<web-ui-svg-draw-lines>`
 
@@ -933,24 +954,76 @@ SVG 线条绘制动画，基于 `stroke-dashoffset`。直接在原元素上动�
 
 **方法：** `getOverlayRoot()` — 返回 Portal 浮层容器
 
-定义 `--wui-color-*`、`--wui-shadow-*`、`--wui-layer-*` 与 motion token。布局层级 token 依次为 `--wui-layer-header: 10`、`--wui-layer-auxiliary: 20`、`--wui-layer-banner: 30`、`--wui-layer-tabbar: 40`、`--wui-layer-sidebar: 50`。motion token 是稳定的主题契约，可在主题范围覆盖：`--wui-duration-press`、`--wui-duration-feedback`、`--wui-duration-trigger`、`--wui-duration-focus`、`--wui-duration-menu-enter`、`--wui-duration-menu-exit`、`--wui-duration-overlay-enter`、`--wui-duration-overlay-exit`、`--wui-duration-drawer-enter`、`--wui-duration-drawer-exit`、`--wui-ease-enter`、`--wui-ease-slide`、`--wui-scale-enter`。`motion="system"` 跟随 `prefers-reduced-motion`；使用 `motion="reduced"` 降低当前作用域动效，或在嵌套主题中使用 `motion="full"` 恢复默认 token。System 配色模式跟随 `prefers-color-scheme`。
+在其子树中定义基础、颜色、层级、阴影和动效 token。`motion="system"` 跟随 `prefers-reduced-motion`；使用 `motion="reduced"` 降低当前作用域动效，或在嵌套主题中使用 `motion="full"` 恢复默认 token。System 配色模式跟随 `prefers-color-scheme`。
 
-文本颜色 token 跟随当前主题颜色：
+**基础 token：**
 
-| 属性                     | 浅色默认值                                                   | 深色默认值                                                   | 说明                 |
-| ------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ | -------------------- |
-| `--wui-color-text`       | `#1b1b1b`                                                    | `#f5f5f7`                                                    | 主要文本             |
-| `--wui-color-text-muted` | `#6a6a6a`                                                    | `#a1a1a6`                                                    | 次要文本             |
-| `--wui-color-text-faint` | `color-mix(in srgb, var(--wui-color-text) 35%, transparent)` | `color-mix(in srgb, var(--wui-color-text) 42%, transparent)` | 三级文本和弱意图图标 |
+| 属性                      | 默认值  | 说明                     |
+| ------------------------- | ------- | ------------------------ |
+| `--wui-font-size`         | `14px`  | 控件基础字号             |
+| `--wui-input-width`       | `200px` | 紧凑表单控件默认宽度     |
+| `--wui-control-size`      | `40px`  | 控件默认高度和方形最小宽 |
+| `--wui-overlay-min-width` | `200px` | 锚定浮层最小宽度         |
+| `--wui-focus-ring-width`  | `3px`   | Focus 指示器宽度         |
 
-交互状态 token 跟随当前主题颜色：
+**层级 token：**
 
-| 属性                               | 浅色默认值                                                                      | 深色默认值                                                                      | 说明                                           |
-| ---------------------------------- | ------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- | ---------------------------------------------- |
-| `--wui-color-state-layer-hover`    | `color-mix(in srgb, var(--wui-color-text) 6%, transparent)`                     | `color-mix(in srgb, var(--wui-color-text) 6%, transparent)`                     | 位于 glass 容器上的子控件使用的透明悬停层      |
-| `--wui-color-state-layer-active`   | `color-mix(in srgb, var(--wui-color-text) 15%, transparent)`                    | `color-mix(in srgb, var(--wui-color-text) 15%, transparent)`                    | 位于 glass 容器上的子控件使用的透明按下层      |
-| `--wui-color-surface-glass-hover`  | `color-mix(in srgb, var(--wui-color-text) 6%, var(--wui-color-surface-glass))`  | `color-mix(in srgb, var(--wui-color-text) 6%, var(--wui-color-surface-glass))`  | glass 表面与交互元素为同一节点时的完整悬停背景 |
-| `--wui-color-surface-glass-active` | `color-mix(in srgb, var(--wui-color-text) 15%, var(--wui-color-surface-glass))` | `color-mix(in srgb, var(--wui-color-text) 15%, var(--wui-color-surface-glass))` | glass 表面与交互元素为同一节点时的完整按下背景 |
+| 属性                         | 默认值 | 说明           |
+| ---------------------------- | ------ | -------------- |
+| `--wui-layer-base`           | `0`    | 基础内容       |
+| `--wui-layer-inline-overlay` | `1`    | 组件内部浮层   |
+| `--wui-layer-header`         | `10`   | 页面 Header    |
+| `--wui-layer-auxiliary`      | `20`   | 悬浮工具控件   |
+| `--wui-layer-banner`         | `30`   | Banner         |
+| `--wui-layer-tabbar`         | `40`   | Tab Bar        |
+| `--wui-layer-sidebar`        | `50`   | 侧边栏         |
+| `--wui-layer-menu`           | `100`  | 菜单/浮动面板  |
+| `--wui-layer-menu-nested`    | `110`  | 嵌套菜单       |
+| `--wui-layer-toast`          | `200`  | Toast          |
+| `--wui-layer-loading`        | `300`  | 阻塞式 Loading |
+
+**动效 token：** duration 默认值为 `--wui-duration-press: 80ms`、`--wui-duration-feedback: 100ms`、`--wui-duration-trigger: 160ms`、`--wui-duration-focus: 200ms`、`--wui-duration-menu-enter: 140ms`、`--wui-duration-menu-exit: 100ms`、`--wui-duration-overlay-enter: 180ms`、`--wui-duration-overlay-exit: 140ms`、`--wui-duration-drawer-enter: 280ms`、`--wui-duration-drawer-exit: 240ms`、`--wui-duration-layout: 200ms`。Easing token 是 `--wui-ease-enter` 和 `--wui-ease-slide`；进入缩放是 `--wui-scale-enter: 0.97`。
+
+**颜色 token：**
+
+| 属性                               | 浅色默认值                                                   | 深色默认值                                                   | 说明                   |
+| ---------------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------ | ---------------------- |
+| `--wui-color-page`                 | `#fff`                                                       | `#18181a`                                                    | 页面背景               |
+| `--wui-color-surface`              | `#fff`                                                       | `#2c2c2e`                                                    | 普通 表面              |
+| `--wui-color-surface-raised`       | `#f2f2f7`                                                    | `#2c2c2e`                                                    | 抬升表面               |
+| `--wui-color-surface-control`      | `#dfdfdf`                                                    | `#3a3a3c`                                                    | 中性可交互控件表面     |
+| `--wui-color-surface-track`        | `#e5e5ea`                                                    | `#444446`                                                    | Slider/Switch 轨道表面 |
+| `--wui-color-surface-glass`        | `rgb(250 250 250 / 0.34)`                                    | `rgb(44 44 46 / 0.42)`                                       | 液态玻璃表面           |
+| `--wui-color-surface-glass-hover`  | `color-mix(... text 6%, surface-glass)`                      | `color-mix(... text 6%, surface-glass)`                      | Glass 完整悬停背景     |
+| `--wui-color-surface-glass-active` | `color-mix(... text 15%, surface-glass)`                     | `color-mix(... text 15%, surface-glass)`                     | Glass 完整按下背景     |
+| `--wui-color-surface-overlay`      | `rgb(246 246 246 / 0.72)`                                    | `rgb(44 44 46 / 0.62)`                                       | 半透明浮层表面         |
+| `--wui-color-text`                 | `#1b1b1b`                                                    | `#f5f5f7`                                                    | 主要文本               |
+| `--wui-color-text-secondary`       | `#6a6a6a`                                                    | `#a1a1a6`                                                    | 次要文本               |
+| `--wui-color-text-tertiary`        | `color-mix(in srgb, var(--wui-color-text) 35%, transparent)` | `color-mix(in srgb, var(--wui-color-text) 42%, transparent)` | 三级文本和弱意图图标   |
+| `--wui-color-text-disabled`        | `color-mix(in srgb, var(--wui-color-text) 32%, transparent)` | `color-mix(in srgb, var(--wui-color-text) 38%, transparent)` | 禁用态前景文本         |
+| `--wui-color-state-layer-hover`    | `color-mix(in srgb, var(--wui-color-text) 6%, transparent)`  | `color-mix(in srgb, var(--wui-color-text) 6%, transparent)`  | 透明悬停层             |
+| `--wui-color-state-layer-active`   | `color-mix(in srgb, var(--wui-color-text) 15%, transparent)` | `color-mix(in srgb, var(--wui-color-text) 15%, transparent)` | 透明按下层             |
+| `--wui-color-border`               | `rgb(0 0 0 / 0.1)`                                           | `rgb(255 255 255 / 0.14)`                                    | 常规边框和分隔线       |
+| `--wui-color-glass-border`         | `rgb(51 51 51 / 0.12)`                                       | `rgb(255 255 255 / 0.16)`                                    | Glass 边框色调         |
+| `--wui-color-glass-highlight`      | `rgb(255 255 255 / 0.9)`                                     | `rgb(255 255 255 / 0.22)`                                    | Glass 高光边缘         |
+| `--wui-color-accent`               | `#08f`                                                       | `#0a84ff`                                                    | Accent 和输入焦点边框  |
+| `--wui-color-on-accent`            | `#fff`                                                       | `#fff`                                                       | Accent 上的前景色      |
+| `--wui-color-success`              | `#16a34a`                                                    | `#30d158`                                                    | 成功                   |
+| `--wui-color-warning`              | `#d97706`                                                    | `#ff9f0a`                                                    | 警告                   |
+| `--wui-color-danger`               | `#dc2626`                                                    | `#ff453a`                                                    | 危险                   |
+| `--wui-color-info`                 | `#2563eb`                                                    | `#64d2ff`                                                    | 信息                   |
+| `--wui-color-backdrop`             | `rgb(0 0 0 / 0.12)`                                          | `rgb(0 0 0 / 0.48)`                                          | Modal 遮罩             |
+| `--wui-color-focus-ring`           | `rgb(0 136 255 / 0.4)`                                       | `rgb(10 132 255 / 0.62)`                                     | Focus 指示器颜色       |
+
+**阴影 token：**
+
+| 属性                   | 浅色默认值                       | 深色默认值                      | 说明              |
+| ---------------------- | -------------------------------- | ------------------------------- | ----------------- |
+| `--wui-shadow-overlay` | `2px 16px 40px rgb(0 0 0 / 0.4)` | `0 18px 48px rgb(0 0 0 / 0.54)` | Modal/Drawer 阴影 |
+| `--wui-shadow-panel`   | `0 3px 9px rgb(0 0 0 / 0.27)`    | `0 4px 16px rgb(0 0 0 / 0.35)`  | 小型浮动面板阴影  |
+| `--wui-shadow-glass`   | 四层扩散阴影                     | `0 12px 32px rgb(0 0 0 / 0.38)` | 液态玻璃基础阴影  |
+
+**内部 token：** 以 `--wui-internal-*` 为前缀的变量是 Shadow DOM 内部接线变量，不属于公共 token API，消费方不应覆盖。
 
 ---
 

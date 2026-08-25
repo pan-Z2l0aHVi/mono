@@ -23,12 +23,15 @@
     inset 0 0 0 0.5px color-mix(in srgb, var(--wui-color-glass-highlight, rgb(255 255 255 / 0.9)) 38%, transparent),
     inset 0 1px 0.5px color-mix(in srgb, var(--wui-color-glass-highlight, rgb(255 255 255 / 0.9)) 52%, transparent),
     inset 0 -0.5px 1px rgb(0 0 0 / 0.03),
-    var(--wui-glass-focus-ring, 0 0 0 0 transparent),
+    var(--wui-internal-glass-focus-ring, 0 0 0 0 transparent),
     var(
-      --wui-shadow-glass,
-      0 0 1px rgb(0 0 0 / 0.05),
-      0 0 8px rgb(0 0 0 / 0.03),
-      0 2px 16px rgb(0 0 0 / 0.025),
-      0 8px 32px rgb(0 0 0 / 0.015)
+      --wui-internal-glass-shadow,
+      var(
+        --wui-shadow-glass,
+        0 0 1px rgb(0 0 0 / 0.05),
+        0 0 8px rgb(0 0 0 / 0.03),
+        0 2px 16px rgb(0 0 0 / 0.025),
+        0 8px 32px rgb(0 0 0 / 0.015)
+      )
     );
 }

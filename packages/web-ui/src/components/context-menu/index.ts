@@ -182,7 +182,7 @@ export class WebUiContextMenu extends LitElement {
     panel.style.top = `${y}px`
     const horizontalOrigin = x < this._x ? 'right' : 'left'
     const verticalOrigin = y < this._y ? 'bottom' : 'top'
-    panel.style.setProperty('--wui-overlay-transform-origin', `${verticalOrigin} ${horizontalOrigin}`)
+    panel.style.setProperty('--wui-internal-overlay-transform-origin', `${verticalOrigin} ${horizontalOrigin}`)
     panel.style.visibility = ''
   }
 
@@ -319,7 +319,7 @@ export class WebUiContextMenu extends LitElement {
 
     submenu.panel.style.left = `${left}px`
     submenu.panel.style.top = `${top}px`
-    submenu.panel.style.setProperty('--wui-overlay-transform-origin', canOpenRight ? 'top left' : 'top right')
+    submenu.panel.style.setProperty('--wui-internal-overlay-transform-origin', canOpenRight ? 'top left' : 'top right')
     submenu.panel.style.visibility = ''
   }
 

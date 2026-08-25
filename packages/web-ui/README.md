@@ -259,6 +259,12 @@ Text input with clearable, prefix/suffix slots.
 
 **Slots:** `prefix`, `default`, `suffix`
 
+**CSS Custom Properties:**
+
+| Property                  | Default                          | Description        |
+| ------------------------- | -------------------------------- | ------------------ |
+| `--wui-input-clear-color` | `var(--wui-color-text-tertiary)` | Clear button color |
+
 #### `<web-ui-textarea>`
 
 Multi-line text input with auto-resize.
@@ -287,6 +293,13 @@ Multi-line text input with auto-resize.
 **Methods:** `focus()`, `blur()`, `select()`
 
 **Slots:** `prefix`, `suffix`
+
+**CSS Custom Properties:**
+
+| Property                     | Default                          | Description        |
+| ---------------------------- | -------------------------------- | ------------------ |
+| `--wui-textarea-width`       | `200px`                          | Textarea width     |
+| `--wui-textarea-clear-color` | `var(--wui-color-text-tertiary)` | Clear button color |
 
 #### `<web-ui-input-number>`
 
@@ -364,6 +377,13 @@ Editable combobox with input filtering and single option selection.
 **Slots:** `default` (project `<web-ui-option>` elements)
 
 Typing filters the option list by label (`contains` or `prefix`, or `none` to disable filtering). Selecting an option fills the input with its label and exposes the option's value via `selected-value`; `change` fires on selection commit. Supports ArrowDown/ArrowUp/Enter/Escape keyboard navigation.
+
+**CSS Custom Properties:**
+
+| Property                       | Default | Description            |
+| ------------------------------ | ------- | ---------------------- |
+| `--wui-autocomplete-max-width` | `500px` | Dropdown max width     |
+| `--wui-overlay-min-width`      | `200px` | Dropdown minimum width |
 
 #### `<web-ui-slider>`
 
@@ -537,6 +557,7 @@ Disabled and loading states prevent `click` events.
 
 | Property                 | Default       | Description                             |
 | ------------------------ | ------------- | --------------------------------------- |
+| `--wui-button-width`     | `max-content` | Button width                            |
 | `--wui-button-px`        | `12px`        | Horizontal padding                      |
 | `--wui-button-gap`       | `8px`         | Gap between prefix/default/suffix slots |
 | `--wui-button-color`     | variant-based | Button text color                       |
@@ -610,7 +631,7 @@ Side drawer using native `<dialog>` with closing animation.
 
 `headless` keeps the native dialog, backdrop, placement animation, Escape/backdrop close behavior, and scroll locking. It does not render the built-in glass body, header, close button, or footer; style the default-slot content completely in the consumer.
 
-Closing keeps the native dialog in the top layer until the `--wui-duration-drawer` transition completes (280ms by default), then calls `dialog.close()`. Escape always follows this close path; `no-backdrop-close` controls backdrop clicks only.
+Closing keeps the native dialog in the top layer until the `--wui-duration-drawer-exit` transition completes (240ms by default), then calls `dialog.close()`. Escape always follows this close path; `no-backdrop-close` controls backdrop clicks only.
 
 **CSS Custom Properties:**
 
@@ -902,20 +923,20 @@ Scroll-to-top button.
 
 **Methods:** `toTop()`
 
-**Positioning:** With `scrollTarget` as `window`, the button is fixed to the viewport corner. With `scrollTarget` as an `HTMLElement`, place the element inside that container and the button floats at the container's bottom corner via `position: sticky`. Offsets follow the `--web-ui-back-top-top/right/bottom/left` CSS variables.
+**Positioning:** With `scrollTarget` as `window`, the button is fixed to the viewport corner. With `scrollTarget` as an `HTMLElement`, place the element inside that container and the button floats at the container's bottom corner via `position: sticky`. Offsets follow the `--wui-back-top-top/right/bottom/left` CSS variables.
 
 Role: `button`, keyboard Enter scrolls to top.
 
 **CSS Custom Properties:**
 
-| Property                     | Default                          | Description   |
-| ---------------------------- | -------------------------------- | ------------- |
-| `--web-ui-back-top-position` | `fixed`                          | CSS position  |
-| `--web-ui-back-top-z-index`  | `var(--wui-layer-auxiliary, 20)` | Z-index       |
-| `--web-ui-back-top-top`      | `auto`                           | Top offset    |
-| `--web-ui-back-top-right`    | `20px`                           | Right offset  |
-| `--web-ui-back-top-bottom`   | `20px`                           | Bottom offset |
-| `--web-ui-back-top-left`     | `auto`                           | Left offset   |
+| Property                  | Default                          | Description   |
+| ------------------------- | -------------------------------- | ------------- |
+| `--wui-back-top-position` | `fixed`                          | CSS position  |
+| `--wui-back-top-z-index`  | `var(--wui-layer-auxiliary, 20)` | Z-index       |
+| `--wui-back-top-top`      | `auto`                           | Top offset    |
+| `--wui-back-top-right`    | `20px`                           | Right offset  |
+| `--wui-back-top-bottom`   | `20px`                           | Bottom offset |
+| `--wui-back-top-left`     | `auto`                           | Left offset   |
 
 #### `<web-ui-svg-draw-lines>`
 
@@ -945,24 +966,76 @@ Theme provider defining CSS custom property tokens.
 
 **Methods:** `getOverlayRoot()` — returns the portal overlay container
 
-Defines `--wui-color-*`, `--wui-shadow-*`, `--wui-layer-*`, and motion tokens. The layout layer scale is `--wui-layer-header: 10`, `--wui-layer-auxiliary: 20`, `--wui-layer-banner: 30`, `--wui-layer-tabbar: 40`, and `--wui-layer-sidebar: 50`. Motion tokens are stable and may be overridden per theme scope: `--wui-duration-press`, `--wui-duration-feedback`, `--wui-duration-trigger`, `--wui-duration-focus`, `--wui-duration-menu-enter`, `--wui-duration-menu-exit`, `--wui-duration-overlay-enter`, `--wui-duration-overlay-exit`, `--wui-duration-drawer-enter`, `--wui-duration-drawer-exit`, `--wui-ease-enter`, `--wui-ease-slide`, and `--wui-scale-enter`. `motion="system"` follows `prefers-reduced-motion`; use `motion="reduced"` to reduce animation in a scope or `motion="full"` in a nested theme to restore the normal token values. System appearance follows `prefers-color-scheme`.
+Defines foundation, color, layer, shadow, and motion tokens for its subtree. `motion="system"` follows `prefers-reduced-motion`; use `motion="reduced"` to reduce animation in a scope or `motion="full"` in a nested theme to restore normal token values. System appearance follows `prefers-color-scheme`.
 
-Text color tokens follow the current theme colors:
+**Foundation tokens:**
 
-| Property                 | Light default                                                | Dark default                                                 | Description                         |
-| ------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ | ----------------------------------- |
-| `--wui-color-text`       | `#1b1b1b`                                                    | `#f5f5f7`                                                    | Primary text                        |
-| `--wui-color-text-muted` | `#6a6a6a`                                                    | `#a1a1a6`                                                    | Secondary text                      |
-| `--wui-color-text-faint` | `color-mix(in srgb, var(--wui-color-text) 35%, transparent)` | `color-mix(in srgb, var(--wui-color-text) 42%, transparent)` | Tertiary text and quiet icon glyphs |
+| Property                  | Default | Description                                      |
+| ------------------------- | ------- | ------------------------------------------------ |
+| `--wui-font-size`         | `14px`  | Base font size for controls                      |
+| `--wui-input-width`       | `200px` | Default width for compact form controls          |
+| `--wui-control-size`      | `40px`  | Default height and square min-width for controls |
+| `--wui-overlay-min-width` | `200px` | Minimum anchored overlay width                   |
+| `--wui-focus-ring-width`  | `3px`   | Focus indicator width                            |
 
-Interaction state tokens follow the current theme colors:
+**Layer tokens:**
 
-| Property                           | Light default                                                                   | Dark default                                                                    | Description                                                                                         |
-| ---------------------------------- | ------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
-| `--wui-color-state-layer-hover`    | `color-mix(in srgb, var(--wui-color-text) 6%, transparent)`                     | `color-mix(in srgb, var(--wui-color-text) 6%, transparent)`                     | Transparent hover overlay for controls rendered above a glass container                             |
-| `--wui-color-state-layer-active`   | `color-mix(in srgb, var(--wui-color-text) 15%, transparent)`                    | `color-mix(in srgb, var(--wui-color-text) 15%, transparent)`                    | Transparent active overlay for controls rendered above a glass container                            |
-| `--wui-color-surface-glass-hover`  | `color-mix(in srgb, var(--wui-color-text) 6%, var(--wui-color-surface-glass))`  | `color-mix(in srgb, var(--wui-color-text) 6%, var(--wui-color-surface-glass))`  | Full hover background for an element whose glass surface and interactive element are the same node  |
-| `--wui-color-surface-glass-active` | `color-mix(in srgb, var(--wui-color-text) 15%, var(--wui-color-surface-glass))` | `color-mix(in srgb, var(--wui-color-text) 15%, var(--wui-color-surface-glass))` | Full active background for an element whose glass surface and interactive element are the same node |
+| Property                     | Default | Description                  |
+| ---------------------------- | ------- | ---------------------------- |
+| `--wui-layer-base`           | `0`     | Base content                 |
+| `--wui-layer-inline-overlay` | `1`     | Overlay local to a component |
+| `--wui-layer-header`         | `10`    | Page header                  |
+| `--wui-layer-auxiliary`      | `20`    | Floating utility controls    |
+| `--wui-layer-banner`         | `30`    | Banners                      |
+| `--wui-layer-tabbar`         | `40`    | Tab bars                     |
+| `--wui-layer-sidebar`        | `50`    | Sidebars                     |
+| `--wui-layer-menu`           | `100`   | Menus and floating panels    |
+| `--wui-layer-menu-nested`    | `110`   | Nested menus                 |
+| `--wui-layer-toast`          | `200`   | Toasts                       |
+| `--wui-layer-loading`        | `300`   | Blocking loading surfaces    |
+
+**Motion tokens:** duration defaults are `--wui-duration-press: 80ms`, `--wui-duration-feedback: 100ms`, `--wui-duration-trigger: 160ms`, `--wui-duration-focus: 200ms`, `--wui-duration-menu-enter: 140ms`, `--wui-duration-menu-exit: 100ms`, `--wui-duration-overlay-enter: 180ms`, `--wui-duration-overlay-exit: 140ms`, `--wui-duration-drawer-enter: 280ms`, `--wui-duration-drawer-exit: 240ms`, `--wui-duration-layout: 200ms`. Easing tokens are `--wui-ease-enter` and `--wui-ease-slide`; enter scale is `--wui-scale-enter: 0.97`.
+
+**Color tokens:**
+
+| Property                           | Light default                                                | Dark default                                                 | Description                     |
+| ---------------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------- |
+| `--wui-color-page`                 | `#fff`                                                       | `#18181a`                                                    | Page background                 |
+| `--wui-color-surface`              | `#fff`                                                       | `#2c2c2e`                                                    | Plain surface                   |
+| `--wui-color-surface-raised`       | `#f2f2f7`                                                    | `#2c2c2e`                                                    | Raised surface                  |
+| `--wui-color-surface-control`      | `#dfdfdf`                                                    | `#3a3a3c`                                                    | Neutral control surface         |
+| `--wui-color-surface-track`        | `#e5e5ea`                                                    | `#444446`                                                    | Slider and switch track surface |
+| `--wui-color-surface-glass`        | `rgb(250 250 250 / 0.34)`                                    | `rgb(44 44 46 / 0.42)`                                       | Liquid glass surface            |
+| `--wui-color-surface-glass-hover`  | `color-mix(... text 6%, surface-glass)`                      | `color-mix(... text 6%, surface-glass)`                      | Full glass hover background     |
+| `--wui-color-surface-glass-active` | `color-mix(... text 15%, surface-glass)`                     | `color-mix(... text 15%, surface-glass)`                     | Full glass pressed background   |
+| `--wui-color-surface-overlay`      | `rgb(246 246 246 / 0.72)`                                    | `rgb(44 44 46 / 0.62)`                                       | Translucent overlay surface     |
+| `--wui-color-text`                 | `#1b1b1b`                                                    | `#f5f5f7`                                                    | Primary text                    |
+| `--wui-color-text-secondary`       | `#6a6a6a`                                                    | `#a1a1a6`                                                    | Secondary text                  |
+| `--wui-color-text-tertiary`        | `color-mix(in srgb, var(--wui-color-text) 35%, transparent)` | `color-mix(in srgb, var(--wui-color-text) 42%, transparent)` | Tertiary text and quiet icons   |
+| `--wui-color-text-disabled`        | `color-mix(in srgb, var(--wui-color-text) 32%, transparent)` | `color-mix(in srgb, var(--wui-color-text) 38%, transparent)` | Disabled foreground text        |
+| `--wui-color-state-layer-hover`    | `color-mix(in srgb, var(--wui-color-text) 6%, transparent)`  | `color-mix(in srgb, var(--wui-color-text) 6%, transparent)`  | Transparent hover overlay       |
+| `--wui-color-state-layer-active`   | `color-mix(in srgb, var(--wui-color-text) 15%, transparent)` | `color-mix(in srgb, var(--wui-color-text) 15%, transparent)` | Transparent pressed overlay     |
+| `--wui-color-border`               | `rgb(0 0 0 / 0.1)`                                           | `rgb(255 255 255 / 0.14)`                                    | Normal border and divider       |
+| `--wui-color-glass-border`         | `rgb(51 51 51 / 0.12)`                                       | `rgb(255 255 255 / 0.16)`                                    | Glass border tint               |
+| `--wui-color-glass-highlight`      | `rgb(255 255 255 / 0.9)`                                     | `rgb(255 255 255 / 0.22)`                                    | Glass edge highlight            |
+| `--wui-color-accent`               | `#08f`                                                       | `#0a84ff`                                                    | Accent and focused input border |
+| `--wui-color-on-accent`            | `#fff`                                                       | `#fff`                                                       | Foreground on accent            |
+| `--wui-color-success`              | `#16a34a`                                                    | `#30d158`                                                    | Success                         |
+| `--wui-color-warning`              | `#d97706`                                                    | `#ff9f0a`                                                    | Warning                         |
+| `--wui-color-danger`               | `#dc2626`                                                    | `#ff453a`                                                    | Danger                          |
+| `--wui-color-info`                 | `#2563eb`                                                    | `#64d2ff`                                                    | Info                            |
+| `--wui-color-backdrop`             | `rgb(0 0 0 / 0.12)`                                          | `rgb(0 0 0 / 0.48)`                                          | Modal backdrop                  |
+| `--wui-color-focus-ring`           | `rgb(0 136 255 / 0.4)`                                       | `rgb(10 132 255 / 0.62)`                                     | Focus indicator color           |
+
+**Shadow tokens:**
+
+| Property               | Light default                    | Dark default                    | Description                 |
+| ---------------------- | -------------------------------- | ------------------------------- | --------------------------- |
+| `--wui-shadow-overlay` | `2px 16px 40px rgb(0 0 0 / 0.4)` | `0 18px 48px rgb(0 0 0 / 0.54)` | Modal and drawer shadow     |
+| `--wui-shadow-panel`   | `0 3px 9px rgb(0 0 0 / 0.27)`    | `0 4px 16px rgb(0 0 0 / 0.35)`  | Small floating panel shadow |
+| `--wui-shadow-glass`   | four-layer diffuse shadow        | `0 12px 32px rgb(0 0 0 / 0.38)` | Base liquid glass shadow    |
+
+**Internal tokens:** variables prefixed `--wui-internal-*` are private wiring between shadow DOM parts; they are not part of the public token API and must not be overridden by consumers.
 
 ---
 

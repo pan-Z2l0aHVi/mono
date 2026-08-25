@@ -36,8 +36,8 @@ button {
 
   box-sizing: border-box;
   width: var(--wui-button-width, max-content);
-  min-width: var(--wui-button-size, 40px);
-  height: var(--wui-button-size, 40px);
+  min-width: var(--wui-control-size, 40px);
+  height: var(--wui-control-size, 40px);
   padding: 0 var(--wui-button-px, 12px);
   border: 1px solid transparent;
   border-radius: calc(infinity * 1px);
@@ -59,7 +59,7 @@ button {
   }
 
   &:focus-visible {
-    outline: 3px solid var(--wui-focus-ring, rgb(0 136 255 / 0.4));
+    outline: var(--wui-focus-ring-width, 3px) solid var(--wui-color-focus-ring, rgb(0 136 255 / 0.4));
     outline-offset: 2px;
   }
 }
@@ -106,15 +106,15 @@ button:active:not(:disabled) {
 
 :host([variant='secondary']) {
   --wui-button-color: var(--wui-color-text, #1b1b1b);
-  --wui-button-bg: var(--wui-color-surface-raised-mid, #dfdfdf);
+  --wui-button-bg: var(--wui-color-surface-control, #dfdfdf);
   --wui-button-bg-hover: color-mix(
     in srgb,
-    var(--wui-color-surface-raised-mid, #dfdfdf) 90%,
+    var(--wui-color-surface-control, #dfdfdf) 90%,
     var(--wui-color-text, #1b1b1b)
   );
   --wui-button-bg-active: color-mix(
     in srgb,
-    var(--wui-color-surface-raised-mid, #dfdfdf) 70%,
+    var(--wui-color-surface-control, #dfdfdf) 70%,
     var(--wui-color-text, #1b1b1b)
   );
 }

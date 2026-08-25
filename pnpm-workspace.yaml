@@ -31,7 +31,9 @@ catalog:
   '@vitejs/plugin-react': ^6.0.3
   '@vitejs/plugin-vue': ^6.0.7
   '@vitejs/plugin-vue-jsx': ^5.1.6
-  '@vitest/browser-playwright': ^4.1.10
+  # vitest 生态版本由 vite-plus 统一供给：browser-playwright 对 vitest 是精确 peer,
+  # 必须与 vite-plus 内置的 vitest 版本一字不差，禁止 semver 漂移（否则双 runner 共存）
+  '@vitest/browser-playwright': 4.1.10
   '@vue/devtools-api': ^8.0.0
   '@vue/test-utils': ^2.4.11
   '@wailsio/runtime': 3.0.0-alpha2.119

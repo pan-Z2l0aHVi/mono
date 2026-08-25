@@ -29,13 +29,13 @@
 
   box-sizing: border-box;
   width: var(--wui-input-width, 200px);
-  min-width: var(--wui-button-size, 40px);
-  height: var(--wui-button-size, 40px);
+  min-width: var(--wui-control-size, 40px);
+  height: var(--wui-control-size, 40px);
   padding: 0 12px;
   border-radius: calc(infinity * 1px);
 
   &:focus-visible {
-    outline: 3px solid var(--wui-focus-ring, rgb(0 136 255 / 0.4));
+    outline: var(--wui-focus-ring-width, 3px) solid var(--wui-color-focus-ring, rgb(0 136 255 / 0.4));
     outline-offset: 2px;
   }
 }
@@ -59,7 +59,7 @@
 }
 
 :host(:not([data-has-value])) .label {
-  color: var(--wui-color-text-muted, #6a6a6a);
+  color: var(--wui-color-text-secondary, #6a6a6a);
 }
 
 ::slotted([slot='trigger']) {
@@ -74,7 +74,7 @@
 
 .arrow {
   flex-shrink: 0;
-  color: var(--wui-color-text-muted, #6a6a6a);
+  color: var(--wui-color-text-secondary, #6a6a6a);
 }
 
 :host([open]) .arrow {
@@ -84,21 +84,20 @@
 /* ===== 浮层（glass 样式参考 dialog） ===== */
 
 .select-overlay {
-  --wui-shadow-glass: var(--wui-shadow-pop, 0 3px 9px rgb(0 0 0 / 0.27));
-  --wui-duration-overlay-enter: var(--wui-duration-menu-enter, 140ms);
-  --wui-duration-overlay-exit: var(--wui-duration-menu-exit, 100ms);
-  --wui-overlay-min-width: 200px;
+  --wui-internal-glass-shadow: var(--wui-shadow-panel, 0 3px 9px rgb(0 0 0 / 0.27));
+  --wui-internal-duration-overlay-enter: var(--wui-duration-menu-enter, 140ms);
+  --wui-internal-duration-overlay-exit: var(--wui-duration-menu-exit, 100ms);
   position: absolute;
   z-index: var(--wui-layer-inline-overlay, 1);
 
   overflow: hidden;
 
   box-sizing: border-box;
-  min-width: var(--wui-overlay-min-width, 120px);
+  min-width: var(--wui-overlay-min-width, 200px);
   max-width: var(--wui-select-max-width, 500px);
   border-radius: 20px;
 
-  background-color: var(--wui-color-surface-overlay, rgb(246 246 246 / 0.88));
+  background-color: var(--wui-color-surface-overlay, rgb(246 246 246 / 0.72));
 
   &.portal {
     position: fixed;

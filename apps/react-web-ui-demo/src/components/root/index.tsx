@@ -195,7 +195,7 @@ export function Root() {
               </web-ui-select>
             </div>
             <div slot="sidebar" className="flex h-full min-h-0 flex-col">
-              <div className="shrink-0 px-5 pt-4 pb-2 text-xs font-semibold uppercase text-[var(--wui-color-text-muted)]">
+              <div className="shrink-0 px-5 pt-4 pb-2 text-xs font-semibold uppercase text-[var(--wui-color-text-secondary)]">
                 组件列表
               </div>
               <nav ref={navSidebarRef} className="min-h-0 flex-1 p-2 overflow-y-auto">

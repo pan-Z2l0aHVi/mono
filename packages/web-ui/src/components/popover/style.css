@@ -22,7 +22,7 @@
 }
 
 .popover-panel {
-  --wui-shadow-glass: var(--wui-shadow-pop, 0 3px 9px rgb(0 0 0 / 0.27));
+  --wui-internal-glass-shadow: var(--wui-shadow-panel, 0 3px 9px rgb(0 0 0 / 0.27));
   position: absolute;
   z-index: var(--wui-layer-inline-overlay, 1);
   top: -9999px;
@@ -38,14 +38,14 @@
   line-height: 1.5;
   color: var(--wui-color-text, #1b1b1b);
 
-  background-color: var(--wui-color-surface-overlay, rgb(246 246 246 / 0.88));
+  background-color: var(--wui-color-surface-overlay, rgb(246 246 246 / 0.72));
 
   &:where([hidden]) {
     display: none;
   }
 
   &:focus-visible {
-    outline: 2px solid var(--wui-focus-ring, rgb(0 136 255 / 0.4));
+    outline: var(--wui-focus-ring-width, 3px) solid var(--wui-color-focus-ring, rgb(0 136 255 / 0.4));
     outline-offset: 2px;
   }
 }

@@ -40,6 +40,21 @@ const clickTrigger = (group: WebUiSegmented, index: number) => {
 }
 
 describe('WebUiSegmented 组件', () => {
+  it('indicator 首帧定位后才启用移动动画', async () => {
+    const el = createSegmented(TRIGGER_HTML, { value: 'b' })
+    await waitForUpdate(el)
+
+    const container = el.shadowRoot?.querySelector('.wui-segmented')
+    expect(container?.classList.contains('is-indicator-ready')).toBe(false)
+
+    await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
+    await el.updateComplete
+
+    expect(container?.classList.contains('is-indicator-ready')).toBe(true)
+
+    cleanupElement(el)
+  })
+
   describe('属性：value', () => {
     it('初始值为空字符串', async () => {
       const el = createSegmented(TRIGGER_HTML)

@@ -18,7 +18,7 @@
 }
 
 .tooltip-panel {
-  --wui-shadow-glass: var(--wui-shadow-pop, 0 3px 9px rgb(0 0 0 / 0.27));
+  --wui-internal-glass-shadow: var(--wui-shadow-panel, 0 3px 9px rgb(0 0 0 / 0.27));
 
   pointer-events: none;
 
@@ -36,7 +36,7 @@
   font-size: var(--wui-tooltip-font-size, 13px);
   color: var(--wui-color-text, #1b1b1b);
 
-  background-color: var(--wui-color-surface-overlay, rgb(246 246 246 / 0.88));
+  background-color: var(--wui-color-surface-overlay, rgb(246 246 246 / 0.72));
 }
 
 .tooltip-panel.portal {

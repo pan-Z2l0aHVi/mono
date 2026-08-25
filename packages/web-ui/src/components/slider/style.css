@@ -28,10 +28,10 @@
   height: var(--wui-slider-height, var(--wui-slider-track-size, 6px));
   border-radius: calc(infinity * 1px);
 
-  background-color: var(--wui-color-surface-raised-deep, #e5e5ea);
+  background-color: var(--wui-color-surface-track, #e5e5ea);
 
   &:focus-visible {
-    outline-color: var(--wui-focus-ring, rgb(0 136 255 / 0.4));
+    outline-color: var(--wui-color-focus-ring, rgb(0 136 255 / 0.4));
   }
 
   &.is-disabled {
@@ -100,7 +100,7 @@
   height: 4px;
   border-radius: calc(infinity * 1px);
 
-  background-color: var(--wui-color-surface-raised-deep, #e5e5ea);
+  background-color: var(--wui-color-surface-track, #e5e5ea);
 }
 
 :host([vertical]) .wui-slider-mark {

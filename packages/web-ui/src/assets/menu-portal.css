@@ -1,8 +1,7 @@
 .wui-menu-portal-overlay {
-  --wui-shadow-glass: var(--wui-shadow-pop, 0 3px 9px rgb(0 0 0 / 0.27));
-  --wui-duration-overlay-enter: var(--wui-duration-menu-enter, 140ms);
-  --wui-duration-overlay-exit: var(--wui-duration-menu-exit, 100ms);
-  --wui-overlay-min-width: 200px;
+  --wui-internal-glass-shadow: var(--wui-shadow-panel, 0 3px 9px rgb(0 0 0 / 0.27));
+  --wui-internal-duration-overlay-enter: var(--wui-duration-menu-enter, 140ms);
+  --wui-internal-duration-overlay-exit: var(--wui-duration-menu-exit, 100ms);
   user-select: none;
 
   position: fixed;
@@ -11,14 +10,14 @@
   overflow: hidden;
 
   box-sizing: border-box;
-  min-width: var(--wui-overlay-min-width, 120px);
+  min-width: var(--wui-overlay-min-width, 200px);
   max-width: 90vw;
   max-height: 80vh;
   border-radius: 20px;
 
   color: var(--wui-color-text, #1b1b1b);
 
-  background-color: var(--wui-color-surface-overlay, rgb(246 246 246 / 0.88));
+  background-color: var(--wui-color-surface-overlay, rgb(246 246 246 / 0.72));
 
   & .wui-menu-scroll {
     overflow-y: auto;

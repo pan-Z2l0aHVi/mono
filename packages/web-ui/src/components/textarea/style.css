@@ -5,6 +5,7 @@
 }
 
 :host {
+  --wui-textarea-clear-color: var(--wui-color-text-tertiary, rgb(27 27 27 / 0.35));
   display: block;
 }
 
@@ -24,7 +25,7 @@
 
   box-sizing: border-box;
   width: var(--wui-textarea-width, 200px);
-  min-width: var(--wui-button-size, 40px);
+  min-width: var(--wui-control-size, 40px);
   padding: 9px 12px;
   border-radius: 20px;
 
@@ -49,13 +50,17 @@
 }
 
 :host([focused]) .wui-textarea-inner {
-  --wui-glass-focus-ring: 0 0 0 3px var(--wui-focus-ring, rgb(0 136 255 / 0.4));
-  border-color: var(--wui-color-border-strong, rgb(0 110 230 / 0.5));
+  --wui-internal-glass-focus-ring:
+    inset 0 0 0 1px var(--wui-color-accent, #08f),
+    0 0 0 var(--wui-focus-ring-width, 3px) var(--wui-color-focus-ring, rgb(0 136 255 / 0.4));
 }
 
 :host([borderless][focused]) .wui-textarea-inner {
   border-color: transparent;
-  box-shadow: none;
+
+  /* borderless 移除了背景和玻璃阴影，但仍必须保留可感知的键盘/输入焦点边界 */
+  outline: var(--wui-focus-ring-width, 3px) solid var(--wui-color-focus-ring, rgb(0 136 255 / 0.4));
+  outline-offset: 2px;
 }
 
 textarea {
@@ -80,7 +85,7 @@ textarea {
   outline: none;
 
   &::placeholder {
-    color: var(--wui-color-text-muted, #6a6a6a);
+    color: var(--wui-color-text-secondary, #6a6a6a);
   }
 
   &:disabled {
@@ -100,7 +105,7 @@ slot {
   align-items: center;
 
   font-size: var(--wui-font-size, 14px);
-  color: var(--wui-color-text-muted, #6a6a6a);
+  color: var(--wui-color-text-secondary, #6a6a6a);
 }
 
 slot.empty {
@@ -112,7 +117,7 @@ slot.empty {
 /* 复用 web-ui-button icon ghost：仅覆盖颜色为 faint 并对齐首行，保持弱意图清除图标观感；
    负 margin-left 抵消容器 8px flex gap，让清除按钮紧贴文本域内容 */
 .wui-textarea-inner web-ui-button[variant='ghost'] {
-  --wui-button-color: var(--wui-color-text-faint, rgb(27 27 27 / 0.35));
+  --wui-button-color: var(--wui-textarea-clear-color);
 
   /* 与首行文字垂直居中对齐：容器 align-items: flex-start 使按钮贴内容区顶部（9px 留白处），
      而首行中心在 9px + 行高半程；要让 24px 按钮（18px 图标居中）的图标中心落在首行中心，

@@ -22,8 +22,8 @@
 
   box-sizing: border-box;
   width: var(--wui-input-width, 200px);
-  min-width: var(--wui-button-size, 40px);
-  height: var(--wui-button-size, 40px);
+  min-width: var(--wui-control-size, 40px);
+  height: var(--wui-control-size, 40px);
   padding: 0 4px;
   border-radius: calc(infinity * 1px);
 
@@ -33,8 +33,9 @@
 }
 
 :host([focused]) .wui-input-inner {
-  --wui-glass-focus-ring: 0 0 0 3px var(--wui-focus-ring, rgb(0 136 255 / 0.4));
-  border-color: var(--wui-color-border-strong, rgb(0 110 230 / 0.5));
+  --wui-internal-glass-focus-ring:
+    inset 0 0 0 1px var(--wui-color-accent, #08f),
+    0 0 0 var(--wui-focus-ring-width, 3px) var(--wui-color-focus-ring, rgb(0 136 255 / 0.4));
 }
 
 input {
@@ -85,7 +86,7 @@ input {
   border: none;
   border-radius: calc(infinity * 1px);
 
-  color: var(--wui-color-text-muted, #6a6a6a);
+  color: var(--wui-color-text-secondary, #6a6a6a);
 
   background: transparent;
 
@@ -97,7 +98,7 @@ input {
   }
 
   &:focus-visible {
-    outline: 3px solid var(--wui-focus-ring, rgb(0 136 255 / 0.4));
+    outline: var(--wui-focus-ring-width, 3px) solid var(--wui-color-focus-ring, rgb(0 136 255 / 0.4));
     outline-offset: 2px;
   }
 }

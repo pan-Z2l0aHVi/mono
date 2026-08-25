@@ -5,14 +5,6 @@
 }
 
 :host {
-  display: inline-block;
-}
-
-:host([disabled]) {
-  cursor: not-allowed;
-}
-
-.wui-segmented-trigger {
   --wui-segmented-trigger-bg-hover: var(
     --wui-color-state-layer-hover,
     color-mix(in srgb, var(--wui-color-text, #1b1b1b) 6%, transparent)
@@ -21,7 +13,14 @@
     --wui-color-state-layer-active,
     color-mix(in srgb, var(--wui-color-text, #1b1b1b) 15%, transparent)
   );
+  display: inline-block;
+}
 
+:host([disabled]) {
+  cursor: not-allowed;
+}
+
+.wui-segmented-trigger {
   cursor: pointer;
   user-select: none;
 
@@ -38,7 +37,7 @@
 
   font-size: var(--wui-font-size, 14px);
   line-height: 1;
-  color: var(--wui-color-text-muted, #6a6a6a);
+  color: var(--wui-color-text-secondary, #6a6a6a);
   white-space: nowrap;
 
   background-color: transparent;
@@ -48,12 +47,12 @@
     color var(--wui-duration-focus, 200ms) ease;
 
   &:focus-visible {
-    outline: 3px solid var(--wui-focus-ring, rgb(0 136 255 / 0.4));
+    outline: var(--wui-focus-ring-width, 3px) solid var(--wui-color-focus-ring, rgb(0 136 255 / 0.4));
     outline-offset: 2px;
   }
 
   &.is-checked {
-    color: var(--wui-color-text, #1a1a1a);
+    color: var(--wui-color-text, #1b1b1b);
   }
 }
 
