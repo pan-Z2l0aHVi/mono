@@ -23,7 +23,6 @@ jobs:
 
       - uses: ./.github/actions/setup-deps
         with:
-          mise-install: 'node pnpm go'
           wails: 'true'
 
       - name: Cache turbo
