@@ -83,10 +83,13 @@ export class WebUiSelect extends LitElement {
   private _portalContent?: HTMLElement
   private readonly _scrollLock = defineScrollLockLease().make()
 
+  private static _nextInstanceId = 0
+
   // option 注册表 / portal 同步 / 微任务调度收敛到 shared 模块（autocomplete 同款）
   private readonly _optionPortal = defineOptionPortal().make({
     element: this,
-    idPrefix: this.localName,
+    // 实例级前缀保证多实例同时展开时 option id 不冲突（aria 引用按 id 定位）
+    idPrefix: `web-ui-select-${++WebUiSelect._nextInstanceId}`,
     getPortal: () => this._portal,
     getPortalContent: () => this._portalContent,
     isOpen: () => this.portal && this._isOpen,

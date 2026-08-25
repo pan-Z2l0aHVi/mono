@@ -17,7 +17,7 @@ const OPTIONS_HTML_THREE = `
 // 通过宿主 select 驱动 shared option-portal 的完整链路（注册/查询/刷新/id 分配）。
 // portal 内容同步与微任务调度的行为细节由 select/autocomplete 组件测试覆盖。
 describe('shared/option-portal', () => {
-  it('同一宿主内 option id 唯一；跨实例注册表互不串扰', async () => {
+  it('同一宿主内 option id 唯一；跨实例 id 也不冲突', async () => {
     const elA = document.createElement('web-ui-select') as WebUiSelect
     elA.innerHTML = OPTIONS_HTML_THREE
     document.body.append(elA)
@@ -26,13 +26,11 @@ describe('shared/option-portal', () => {
     document.body.append(elB)
     await Promise.all([waitForUpdate(elA), waitForUpdate(elB)])
 
+    // 实例级 idPrefix（含实例序号）+ 冲突循环：文档级唯一，供 aria 引用定位
     const optionsA = [...elA.querySelectorAll<WebUiOption>('web-ui-option')]
-    const idsA = new Set(optionsA.map(o => o.id))
-    expect(idsA.size).toBe(optionsA.length)
-
-    // B 的 id 分配不受 A 已用 id 的影响（每实例独立闭包）
     const optionsB = [...elB.querySelectorAll<WebUiOption>('web-ui-option')]
-    expect(new Set(optionsB.map(o => o.id)).size).toBe(optionsB.length)
+    const allIds = new Set([...optionsA, ...optionsB].map(o => o.id))
+    expect(allIds.size).toBe(optionsA.length + optionsB.length)
 
     elA.remove()
     elB.remove()
