@@ -33,16 +33,7 @@ jobs:
         shell: bash
         run: |
           pnpm exec changeset status --output="$RUNNER_TEMP/changeset-status.json"
-          node --input-type=module - "$RUNNER_TEMP/changeset-status.json" <<'EOF'
-          import { appendFile, readFile } from 'node:fs/promises'
-
-          const status = JSON.parse(await readFile(process.argv[2], 'utf8'))
-          const releases = status.releases ?? []
-          const hasChangesets = releases.length > 0
-          const hasWailsRelease = releases.some(release => release.name === '@greypan/interweave')
-
-          await appendFile(process.env.GITHUB_OUTPUT, `has-changesets=${hasChangesets}\nhas-wails-release=${hasWailsRelease}\n`)
-          EOF
+          node .github/scripts/detect-pending-changesets.mjs "$RUNNER_TEMP/changeset-status.json"
 
       - name: Create or update version pull request
         if: steps.changesets.outputs.has-changesets == 'true'

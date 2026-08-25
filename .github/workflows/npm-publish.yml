@@ -37,56 +37,7 @@ jobs:
         env:
           MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
         run: |
-          node --input-type=module <<'EOF'
-          import { execFileSync } from 'node:child_process'
-          import { appendFile, readFile } from 'node:fs/promises'
-
-          const mergeSha = process.env.MERGE_SHA
-          const baseSha = execFileSync('git', ['rev-parse', `${mergeSha}^1`], { encoding: 'utf8' }).trim()
-          // 用 --name-status 取新增/修改的 manifest，不依赖 git 对"路径缺失"的 stderr 措辞：
-          // 删除/重命名跳过（无上一版本）；新增包直接视为首次发布，不跑 git show。
-          const changedManifests = execFileSync(
-            'git',
-            ['diff', '--name-status', '--diff-filter=AM', baseSha, mergeSha, '--', 'packages'],
-            { encoding: 'utf8' }
-          )
-            .split('\n')
-            .filter(Boolean)
-            .map(line => {
-              const [status, manifestPath] = line.split('\t')
-              return { status, manifestPath }
-            })
-            .filter(({ manifestPath }) => /^packages\/[^/]+\/package\.json$/.test(manifestPath))
-
-          const releases = []
-          for (const { status, manifestPath } of changedManifests) {
-            const current = JSON.parse(await readFile(manifestPath, 'utf8'))
-            let previous = null
-            if (status === 'M') {
-              // 修改包：base 侧必须存在，任何读取失败都是真实错误，直接抛出
-              try {
-                previous = JSON.parse(execFileSync('git', ['show', `${baseSha}:${manifestPath}`], { encoding: 'utf8' }))
-              } catch (error) {
-                throw new Error(`无法读取 base 版本 ${manifestPath}: ${String(error.stderr || error.message)}`)
-              }
-            }
-            // 新增包（A）previous 保持 null，视为首次发布
-            if (!current.private && (previous === null || current.version !== previous.version)) {
-              releases.push({
-                name: current.name,
-                version: current.version,
-                directory: manifestPath.slice(0, -'/package.json'.length)
-              })
-            }
-          }
-
-          const output = [
-            `merge-sha=${mergeSha}`,
-            `should-publish=${releases.length > 0}`,
-            `package-releases=${JSON.stringify(releases)}`
-          ].join('\n') + '\n'
-          await appendFile(process.env.GITHUB_OUTPUT, output)
-          EOF
+          node .github/scripts/detect-versioned-packages.mjs
 
   publish:
     name: Build and publish npm packages
@@ -129,34 +80,4 @@ jobs:
           MERGE_SHA: ${{ needs.prepare.outputs.merge-sha }}
           PACKAGE_RELEASES: ${{ needs.prepare.outputs.package-releases }}
         run: |
-          node --input-type=module <<'EOF'
-          import { execFileSync } from 'node:child_process'
-
-          const repository = process.env.GITHUB_REPOSITORY
-          const mergeSha = process.env.MERGE_SHA
-          const releases = JSON.parse(process.env.PACKAGE_RELEASES)
-
-          for (const { name, version, directory } of releases) {
-            const tag = `${name}@${version}`
-            try {
-              execFileSync('gh', ['release', 'view', tag, '--repo', repository], { stdio: 'ignore' })
-              console.log(`Release ${tag} already exists; skipping.`)
-              continue
-            } catch {
-              // 下面创建缺失的 release；这保证 workflow 重跑是幂等的。
-            }
-
-            const npmUrl = `https://www.npmjs.com/package/${name}/v/${version}`
-            const changelogUrl = `https://github.com/${repository}/blob/${mergeSha}/${directory}/CHANGELOG.md`
-            const notes = `Published to npm: [${name}@${version}](${npmUrl}).\n\nSee [${directory}/CHANGELOG.md](${changelogUrl}) for release notes.`
-
-            execFileSync('gh', [
-              'release', 'create', tag,
-              '--repo', repository,
-              '--target', mergeSha,
-              '--title', `${name} v${version}`,
-              '--notes', notes,
-              '--latest=false'
-            ], { stdio: 'inherit' })
-          }
-          EOF
+          node .github/scripts/create-github-releases.mjs
