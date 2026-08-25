@@ -935,6 +935,14 @@ SVG 线条绘制动画，基于 `stroke-dashoffset`。直接在原元素上动�
 
 定义 `--wui-color-*`、`--wui-shadow-*`、`--wui-layer-*` 与 motion token。布局层级 token 依次为 `--wui-layer-header: 10`、`--wui-layer-auxiliary: 20`、`--wui-layer-banner: 30`、`--wui-layer-tabbar: 40`、`--wui-layer-sidebar: 50`。motion token 是稳定的主题契约，可在主题范围覆盖：`--wui-duration-press`、`--wui-duration-feedback`、`--wui-duration-trigger`、`--wui-duration-focus`、`--wui-duration-menu-enter`、`--wui-duration-menu-exit`、`--wui-duration-overlay-enter`、`--wui-duration-overlay-exit`、`--wui-duration-drawer-enter`、`--wui-duration-drawer-exit`、`--wui-ease-enter`、`--wui-ease-slide`、`--wui-scale-enter`。`motion="system"` 跟随 `prefers-reduced-motion`；使用 `motion="reduced"` 降低当前作用域动效，或在嵌套主题中使用 `motion="full"` 恢复默认 token。System 配色模式跟随 `prefers-color-scheme`。
 
+文本颜色 token 跟随当前主题颜色：
+
+| 属性                     | 浅色默认值                                                   | 深色默认值                                                   | 说明                 |
+| ------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ | -------------------- |
+| `--wui-color-text`       | `#1b1b1b`                                                    | `#f5f5f7`                                                    | 主要文本             |
+| `--wui-color-text-muted` | `#6a6a6a`                                                    | `#a1a1a6`                                                    | 次要文本             |
+| `--wui-color-text-faint` | `color-mix(in srgb, var(--wui-color-text) 35%, transparent)` | `color-mix(in srgb, var(--wui-color-text) 42%, transparent)` | 三级文本和弱意图图标 |
+
 交互状态 token 跟随当前主题颜色：
 
 | 属性                               | 浅色默认值                                                                      | 深色默认值                                                                      | 说明                                           |
@@ -996,6 +1004,13 @@ toast.updateMessage(id, { message: '上传已完成 60%', heading: '正在上传
 
 悬停暂停自动关闭计时器（使用 `pointerenter`/`pointerleave`）。同一微任务中批量挂载 Toast。
 
+**CSS 自定义属性：**
+
+| 属性                            | 默认值 | 说明                       |
+| ------------------------------- | ------ | -------------------------- |
+| `--wui-toast-viewport-gap`      | `16px` | Toast 到视口边缘的可见距离 |
+| `--wui-toast-container-padding` | `40px` | 容器预留的扩散阴影绘制空间 |
+
 ---
 
 ### 子项
@@ -1014,6 +1029,12 @@ toast.updateMessage(id, { message: '上传已完成 60%', heading: '正在上传
 **插槽：** `default`（标签文本回退）、`prefix`（标签前装饰内容）、`suffix`（标签后装饰内容）
 
 非表单关联组件（父级 select 统一提交）。
+
+**CSS 自定义属性：**
+
+| 属性                         | 默认值  | 说明                      |
+| ---------------------------- | ------- | ------------------------- |
+| `--wui-option-check-display` | `block` | 选中勾选图标的 display 值 |
 
 #### `<web-ui-segmented-trigger>`
 

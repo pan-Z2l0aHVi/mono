@@ -947,6 +947,14 @@ Theme provider defining CSS custom property tokens.
 
 Defines `--wui-color-*`, `--wui-shadow-*`, `--wui-layer-*`, and motion tokens. The layout layer scale is `--wui-layer-header: 10`, `--wui-layer-auxiliary: 20`, `--wui-layer-banner: 30`, `--wui-layer-tabbar: 40`, and `--wui-layer-sidebar: 50`. Motion tokens are stable and may be overridden per theme scope: `--wui-duration-press`, `--wui-duration-feedback`, `--wui-duration-trigger`, `--wui-duration-focus`, `--wui-duration-menu-enter`, `--wui-duration-menu-exit`, `--wui-duration-overlay-enter`, `--wui-duration-overlay-exit`, `--wui-duration-drawer-enter`, `--wui-duration-drawer-exit`, `--wui-ease-enter`, `--wui-ease-slide`, and `--wui-scale-enter`. `motion="system"` follows `prefers-reduced-motion`; use `motion="reduced"` to reduce animation in a scope or `motion="full"` in a nested theme to restore the normal token values. System appearance follows `prefers-color-scheme`.
 
+Text color tokens follow the current theme colors:
+
+| Property                 | Light default                                                | Dark default                                                 | Description                         |
+| ------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ | ----------------------------------- |
+| `--wui-color-text`       | `#1b1b1b`                                                    | `#f5f5f7`                                                    | Primary text                        |
+| `--wui-color-text-muted` | `#6a6a6a`                                                    | `#a1a1a6`                                                    | Secondary text                      |
+| `--wui-color-text-faint` | `color-mix(in srgb, var(--wui-color-text) 35%, transparent)` | `color-mix(in srgb, var(--wui-color-text) 42%, transparent)` | Tertiary text and quiet icon glyphs |
+
 Interaction state tokens follow the current theme colors:
 
 | Property                           | Light default                                                                   | Dark default                                                                    | Description                                                                                         |
@@ -1008,6 +1016,13 @@ toast.updateMessage(id, { message: 'Upload 60% complete', heading: 'Uploading' }
 
 Hover pauses auto-close timer (uses `pointerenter`/`pointerleave`). Batch-mounts toasts created in the same microtask.
 
+**CSS Custom Properties:**
+
+| Property                        | Default | Description                                        |
+| ------------------------------- | ------- | -------------------------------------------------- |
+| `--wui-toast-viewport-gap`      | `16px`  | Visible distance between toasts and viewport edges |
+| `--wui-toast-container-padding` | `40px`  | Container padding reserved for diffuse shadows     |
+
 ---
 
 ### Sub-items
@@ -1026,6 +1041,12 @@ Selection option for `<web-ui-select>`.
 **Slots:** `default` (fallback label text), `prefix` (content before label), `suffix` (content after label)
 
 Not form-associated (child of select, not independent submit).
+
+**CSS Custom Properties:**
+
+| Property                     | Default | Description                                   |
+| ---------------------------- | ------- | --------------------------------------------- |
+| `--wui-option-check-display` | `block` | Display mode of the selection check indicator |
 
 #### `<web-ui-segmented-trigger>`
 

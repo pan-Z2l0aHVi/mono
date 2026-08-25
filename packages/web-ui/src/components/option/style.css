@@ -38,6 +38,7 @@
 }
 
 .check {
+  display: var(--wui-option-check-display, block);
   flex-shrink: 0;
 }
 

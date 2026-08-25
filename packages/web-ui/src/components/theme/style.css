@@ -78,6 +78,7 @@
   --wui-color-surface-overlay: rgb(246 246 246 / 0.72);
   --wui-color-text: #1b1b1b;
   --wui-color-text-muted: #6a6a6a;
+  --wui-color-text-faint: color-mix(in srgb, var(--wui-color-text) 35%, transparent);
   --wui-color-state-layer-hover: color-mix(in srgb, var(--wui-color-text) 6%, transparent);
   --wui-color-state-layer-active: color-mix(in srgb, var(--wui-color-text) 15%, transparent);
   --wui-color-border: rgb(0 0 0 / 0.1);
@@ -111,6 +112,7 @@
   --wui-color-surface-overlay: rgb(44 44 46 / 0.62);
   --wui-color-text: #f5f5f7;
   --wui-color-text-muted: #a1a1a6;
+  --wui-color-text-faint: color-mix(in srgb, var(--wui-color-text) 42%, transparent);
   --wui-color-state-layer-hover: color-mix(in srgb, var(--wui-color-text) 6%, transparent);
   --wui-color-state-layer-active: color-mix(in srgb, var(--wui-color-text) 15%, transparent);
   --wui-color-border: rgb(255 255 255 / 0.14);
@@ -144,6 +146,7 @@
     --wui-color-surface-overlay: rgb(44 44 46 / 0.62);
     --wui-color-text: #f5f5f7;
     --wui-color-text-muted: #a1a1a6;
+    --wui-color-text-faint: color-mix(in srgb, var(--wui-color-text) 42%, transparent);
     --wui-color-state-layer-hover: color-mix(in srgb, var(--wui-color-text) 6%, transparent);
     --wui-color-state-layer-active: color-mix(in srgb, var(--wui-color-text) 15%, transparent);
     --wui-color-border: rgb(255 255 255 / 0.14);

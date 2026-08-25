@@ -65,6 +65,8 @@
 /* ===== 浮层（glass 样式参考 select） ===== */
 
 .autocomplete-overlay {
+  /* autocomplete 不表示选中状态；隐藏共享 option 的勾选图标及其布局占位 */
+  --wui-option-check-display: none;
   --wui-shadow-glass: var(--wui-shadow-pop, 0 3px 9px rgb(0 0 0 / 0.27));
   --wui-duration-overlay-enter: var(--wui-duration-menu-enter, 140ms);
   --wui-duration-overlay-exit: var(--wui-duration-menu-exit, 100ms);

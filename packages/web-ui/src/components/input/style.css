@@ -108,10 +108,10 @@ slot.empty {
 
 /* ===== Clear button ===== */
 
-/* 复用 web-ui-button icon ghost：仅覆盖颜色为 muted，保持原清除图标观感；
+/* 复用 web-ui-button icon ghost：仅覆盖颜色为 faint，保持弱意图清除图标观感；
    负 margin-left 抵消容器 8px flex gap，让清除按钮紧贴输入文本 */
 .wui-input-inner web-ui-button[variant='ghost'] {
-  --wui-button-color: var(--wui-color-text-muted, #6a6a6a);
+  --wui-button-color: var(--wui-color-text-faint, rgb(27 27 27 / 0.35));
   margin-left: -8px;
 }
 
