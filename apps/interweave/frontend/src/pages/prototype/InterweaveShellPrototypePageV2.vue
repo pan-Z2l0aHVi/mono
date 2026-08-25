@@ -442,52 +442,52 @@ function onResourceContextmenu(resource: Resource, event: MouseEvent) {
               <web-ui-icon slot="prefix" :size="14" :icon="lucideExternalLink"></web-ui-icon>
               系统默认应用
             </web-ui-dropdown-item>
-            <web-ui-dropdown-item v-show="contextResource?.resourceType === 'image'">
+            <web-ui-dropdown-item v-if="contextResource?.resourceType === 'image'">
               <web-ui-icon slot="prefix" :size="14" :icon="lucideEye"></web-ui-icon>
               预览
             </web-ui-dropdown-item>
-            <web-ui-dropdown-item v-show="contextResource?.resourceType === 'image'">
+            <web-ui-dropdown-item v-if="contextResource?.resourceType === 'image'">
               <web-ui-icon slot="prefix" :size="14" :icon="lucideImage"></web-ui-icon>
               看图
             </web-ui-dropdown-item>
-            <web-ui-dropdown-item v-show="contextResource?.resourceType === 'video'">
+            <web-ui-dropdown-item v-if="contextResource?.resourceType === 'video'">
               <web-ui-icon slot="prefix" :size="14" :icon="lucidePlay"></web-ui-icon>
               视频播放器
             </web-ui-dropdown-item>
-            <web-ui-dropdown-item v-show="contextResource?.resourceType === 'video'">
+            <web-ui-dropdown-item v-if="contextResource?.resourceType === 'video'">
               <web-ui-icon slot="prefix" :size="14" :icon="lucideClapperboard"></web-ui-icon>
               iMovie
             </web-ui-dropdown-item>
-            <web-ui-dropdown-item v-show="contextResource?.resourceType === 'audio'">
+            <web-ui-dropdown-item v-if="contextResource?.resourceType === 'audio'">
               <web-ui-icon slot="prefix" :size="14" :icon="lucideMusic"></web-ui-icon>
               音乐播放器
             </web-ui-dropdown-item>
-            <web-ui-dropdown-item v-show="contextResource?.resourceType === 'audio'">
+            <web-ui-dropdown-item v-if="contextResource?.resourceType === 'audio'">
               <web-ui-icon slot="prefix" :size="14" :icon="lucideHeadphones"></web-ui-icon>
               GarageBand
             </web-ui-dropdown-item>
-            <web-ui-dropdown-item v-show="contextResource?.resourceType === 'document'">
+            <web-ui-dropdown-item v-if="contextResource?.resourceType === 'document'">
               <web-ui-icon slot="prefix" :size="14" :icon="lucideFileText"></web-ui-icon>
               文本编辑
             </web-ui-dropdown-item>
-            <web-ui-dropdown-item v-show="contextResource?.resourceType === 'document'">
+            <web-ui-dropdown-item v-if="contextResource?.resourceType === 'document'">
               <web-ui-icon slot="prefix" :size="14" :icon="lucidePenLine"></web-ui-icon>
               Notion
             </web-ui-dropdown-item>
-            <web-ui-dropdown-item v-show="contextResource?.resourceType === 'json'">
+            <web-ui-dropdown-item v-if="contextResource?.resourceType === 'json'">
               <web-ui-icon slot="prefix" :size="14" :icon="lucideFile"></web-ui-icon>
               VS Code
             </web-ui-dropdown-item>
-            <web-ui-dropdown-item v-show="contextResource?.resourceType === 'web'">
+            <web-ui-dropdown-item v-if="contextResource?.resourceType === 'web'">
               <web-ui-icon slot="prefix" :size="14" :icon="lucideGlobe"></web-ui-icon>
               Safari
             </web-ui-dropdown-item>
-            <web-ui-dropdown-item v-show="contextResource?.resourceType === 'web'">
+            <web-ui-dropdown-item v-if="contextResource?.resourceType === 'web'">
               <web-ui-icon slot="prefix" :size="14" :icon="lucideGlobe"></web-ui-icon>
               Chrome
             </web-ui-dropdown-item>
           </web-ui-dropdown-item>
-          <web-ui-dropdown-item v-show="contextResource?.broken">
+          <web-ui-dropdown-item v-if="contextResource?.broken">
             <web-ui-icon slot="prefix" :size="14" :icon="lucideRefreshCw"></web-ui-icon>
             找回资源
           </web-ui-dropdown-item>
@@ -535,7 +535,7 @@ function onResourceContextmenu(resource: Resource, event: MouseEvent) {
           >
             <web-ui-button>预览</web-ui-button>
             <web-ui-button>打开方式</web-ui-button>
-            <web-ui-button v-show="selectedResource.broken">找回资源</web-ui-button>
+            <web-ui-button v-if="selectedResource.broken">找回资源</web-ui-button>
             <web-ui-button style="--wui-button-color: #ef4444">删除</web-ui-button>
           </web-ui-button-group>
 
