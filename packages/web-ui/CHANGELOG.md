@@ -1,5 +1,33 @@
 # @greypan/web-ui
 
+## 4.0.0
+
+### Major Changes
+
+- 1e52bc4: 重构 Web UI CSS token 契约：文本层级改为 `secondary/tertiary/disabled`，focus 指示器拆分为 `--wui-color-focus-ring` 和 `--wui-focus-ring-width`，并删除 `--wui-color-border-strong`。同时将 control surface、track、panel shadow、control size、layout duration 和 back-top 变量统一到语义化命名。
+  
+  本次不保留旧名兼容别名。需要迁移的主要映射：
+  
+  - `--wui-color-text-muted` → `--wui-color-text-secondary`
+  - `--wui-color-text-faint` → `--wui-color-text-tertiary`
+  - `--wui-color-border-strong` → focused 输入边框改用 `--wui-color-accent`
+  - `--wui-focus-ring` → `--wui-color-focus-ring` + `--wui-focus-ring-width`
+  - `--wui-button-size` → `--wui-control-size`
+  - `--wui-color-surface-raised-mid` → `--wui-color-surface-control`
+  - `--wui-color-surface-raised-deep` → `--wui-color-surface-track`
+  - `--wui-shadow-pop` → `--wui-shadow-panel`
+  - `--web-ui-back-top-*` → `--wui-back-top-*`
+  - `--wui-duration-regular` → `--wui-duration-layout`
+  - `--wui-ease-out` → `--wui-ease-enter`
+
+### Patch Changes
+
+- 1e52bc4: 统一表单关联控件的原生生命周期：`form.reset()` 会恢复首次连接时声明式初始化后的默认值，并为所有表单控件提供浏览器表单状态恢复支持；被 group 管理的 checkbox/radio 子项仍由父 group 统一管理。
+- 1e52bc4: 将 `web-ui-button-group` 的子按钮组态改为内部派生的视觉上下文。`group`、`last` 与 `direction` 不再注入到子 button；请仅依赖按钮组的可见布局，不要读取这些实现属性。
+- Updated dependencies [1e52bc4]
+  - @greypan/js-kit@2.0.0
+  - @greypan/browser-kit@2.0.0
+
 ## 3.0.1
 
 ### Patch Changes
