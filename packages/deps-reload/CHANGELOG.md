@@ -1,5 +1,12 @@
 # @greypan/deps-reload
 
+## 1.3.4
+
+### Patch Changes
+
+- Updated dependencies [1e52bc4]
+  - @greypan/js-kit@2.0.0
+
 ## 1.3.3
 
 ### Patch Changes
