@@ -74,10 +74,12 @@ jobs:
       contents: write
 
     steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.prepare.outputs.merge-sha }}
       - name: Create GitHub releases
         env:
           GH_TOKEN: ${{ github.token }}
           MERGE_SHA: ${{ needs.prepare.outputs.merge-sha }}
           PACKAGE_RELEASES: ${{ needs.prepare.outputs.package-releases }}
-        run: |
-          node .github/scripts/create-github-releases.mjs
+        run: node .github/scripts/create-github-releases.mjs
