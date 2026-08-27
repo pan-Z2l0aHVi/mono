@@ -113,6 +113,12 @@ report.html
 !.claude/agents
 # CLAUDE.md 放项目根目录，不在 .claude 内
 
+# Gemini CLI — 忽略本地缓存/临时文件，保留共享配置（如有）
+.gemini/*
+!.gemini/settings.json
+!.gemini/agents/
+# GEMINI.md 放项目根目录，不在 .gemini 内
+
 # OpenCode
 .opencode/*
 !.opencode/rules/

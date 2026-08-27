@@ -9,6 +9,7 @@ const includeGenerated = args.includes('--include-generated')
 const roots = [
   'AGENTS.md',
   'CLAUDE.md',
+  'GEMINI.md',
   'CONTEXT.md',
   'ARCHITECTURE.md',
   'CONTRIBUTING.md',
@@ -68,7 +69,7 @@ const duplicates = repeatedTerms
   }))
   .filter(item => item.files.length > 1)
 
-const alwaysLoaded = filesReport.filter(item => ['AGENTS.md', 'CLAUDE.md'].includes(item.file))
+const alwaysLoaded = filesReport.filter(item => ['AGENTS.md', 'CLAUDE.md', 'GEMINI.md'].includes(item.file))
 const highDensity = filesReport
   .filter(item => item.imperatives >= 5)
   .sort((left, right) => right.imperatives - left.imperatives)
