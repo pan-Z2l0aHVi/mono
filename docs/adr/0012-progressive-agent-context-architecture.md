@@ -29,6 +29,7 @@
 - 文档同步要求集中在 `docs/agents/context.md`，减少根入口与 task guide 的重复；影响未来取舍的变更仍需 ADR，并更新 `CONTEXT.md` 索引。
 - Agent 需要遵循路由选择 context，而不是把“读完所有文档”视为完成探索。缺少所需证据时，应回到 manifest、配置、源码、测试或相关 ADR。
 - Codex、Claude Code 与 Gemini CLI 通过共享入口、规则、skills 和 agent profile 复用同一套规范；客户端专属配置只承担工具适配。公共契约 review skill 以窄触发条件将任务路由到 `find:usages`、`inspect:contract*` 与发布产物验证，不把这类流程加入所有任务的常驻 context。
+- 确立 Token 与输出噪音治理：开发校验脚本在成功时使用摘要模式（如 `--no-progress`）减少无意义输出；根入口与常驻规则保持高稳定性以保证 Prefix Cache 命中率；第三方 skills 保持上游原文，自建 skills 保持 frontmatter 指针紧凑。
 
 ## 替代方案
 

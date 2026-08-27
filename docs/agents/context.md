@@ -83,3 +83,13 @@
 ## 维护 instruction system
 
 新增 instruction、rule、skill 或 profile 前，先证明现有源码设计、类型、测试、lint 或脚本无法表达该约束。新增内容必须说明：何时加载、哪个事实是权威、违反后有什么工程风险。不能回答时，不新增文档或规则。
+
+### Context Engineering 与 Token 治理准则
+
+1. **工具输出噪音控制（Tool Output Efficiency）**：
+   - 常用验证与检查脚本（如 `check:cspell`、`check:code`）在通过时应默认使用 `--no-progress`、`--quiet` 等模式输出精简摘要；仅在发生失败或异常时输出完整错误定位与上下文，避免无效的文件路径进度刷屏污染 Agent 会话上下文。
+2. **Skill 描述与常驻指针边界**：
+   - 仓库自建的 `.agents/skills/`，其 frontmatter `description` 属于常驻提示词指针，必须精炼为高意图密度的触发词（首词前置、合并近义词分支），将详细工作流置于正文中按需激活。
+   - 第三方引入的 `.agents/skills/` 严格保持上游原文，不本地改写，以保障未来版本升级与维护的一致性。
+3. **Prompt Cache（前缀缓存）稳定性**：
+   - 根入口（`AGENTS.md`、`CLAUDE.md`、`GEMINI.md`）与 `.agents/rules/` 保持高度静态化与格式稳定，严禁混入动态时间戳、易变临时状态或频繁变动的操作日志，以最大化大模型服务商（Anthropic、Google、OpenAI 等）的 Prefix Cache 命中率。

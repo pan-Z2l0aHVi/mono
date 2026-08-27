@@ -26,7 +26,7 @@
     "check:code": "pnpm run check:cspell && vp check && pnpm run check:go",
     "check:go": "! gofmt -l . | grep -q . && find . -name go.mod -not -path \"*/node_modules/*\" -exec dirname {} \\; | sort -u | xargs -I{} sh -c \"cd {} && go vet ./...\"",
     "check:stylelint": "pnpm exec stylelint --allow-empty-input \"**/*.{css,scss,less,html,vue}\"",
-    "check:cspell": "pnpm exec cspell --no-must-find-files \"**/*.{js,ts,jsx,tsx,mjs,cjs,html,vue,css,less,scss,go}\"",
+    "check:cspell": "pnpm exec cspell --no-progress --no-must-find-files \"**/*.{js,ts,jsx,tsx,mjs,cjs,html,vue,css,less,scss,go}\"",
     "fix:go": "gofmt -w . && find . -name go.mod -not -path \"*/node_modules/*\" -exec dirname {} \\; | sort -u | xargs -I{} sh -c \"cd {} && go vet ./...\"",
     "fix:stylelint": "pnpm exec stylelint --fix --allow-empty-input \"**/*.{css,scss,less,html,vue}\"",
     "fix:code": "vp check --fix && pnpm run fix:go && pnpm run fix:stylelint"
