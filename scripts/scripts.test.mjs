@@ -69,6 +69,10 @@ assert.equal(contextPlan.risk.context, true)
 assert.ok(contextPlan.context.includes('docs/adr/0012-progressive-agent-context-architecture.md'))
 assert.ok(contextPlan.verification.some(item => item.command === 'pnpm run validate:context'))
 
+const geminiContextPlan = JSON.parse(run('verify', '--json', 'GEMINI.md'))
+assert.equal(geminiContextPlan.risk.context, true)
+assert.ok(geminiContextPlan.verification.some(item => item.command === 'pnpm run validate:context'))
+
 const typePlan = JSON.parse(run('verify', '--json', 'packages/web-ui/src/types/react.ts'))
 assert.equal(typePlan.command, 'verify')
 assert.ok(typePlan.requiredEvidence.some(item => item.kind === 'consumer'))

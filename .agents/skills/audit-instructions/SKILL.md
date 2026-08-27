@@ -1,6 +1,6 @@
 ---
 name: audit-instructions
-description: 审计仓库 instruction system 的加载路径、重复约束、权威来源和验证缺口。用于修改 AGENTS.md、CLAUDE.md、rules、skills、agent profiles 或 hooks；不用于普通源码任务。
+description: 审计仓库 instruction system 的加载路径、重复约束、权威来源和验证缺口。用于修改 AGENTS.md、CLAUDE.md、GEMINI.md、rules、skills、agent profiles 或 hooks；不用于普通源码任务。
 ---
 
 # Context Audit
