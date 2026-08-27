@@ -13,7 +13,7 @@
 
 采用四层、按任务展开的 agent context 架构：
 
-1. **Always available**：根 `AGENTS.md` 只保留项目身份、不可绕过的仓库约束和 task routing；根 `CLAUDE.md` 只作为 Claude Code 的薄适配入口，指向共享规范而不复制其正文。
+1. **Always available**：根 `AGENTS.md` 只保留项目身份、不可绕过的仓库约束和 task routing；根 `CLAUDE.md` 与 `GEMINI.md` 只作为客户端的薄适配入口，指向共享规范而不复制其正文。
 2. **Project context**：`CONTEXT.md` 记录跨包边界、依赖方向、核心工程原则和 ADR 索引。只在架构、跨包、术语或长期设计取舍相关任务中加载。
 3. **Task-specific context**：`docs/agents/*.md`、`.agents/rules/*.md` 和最近的包级 `AGENTS.md` 承载按领域执行的流程与局部约束。包级文件不复制根规则。
 4. **On-demand evidence**：相关 ADR、README、manifest、配置、源码和测试在影响范围确定后加载；当前实现和可执行验证优先于文字说明。
@@ -28,7 +28,7 @@
 - `docs/agents/web-ui.md` 只负责把 `web-ui` 任务路由到对应 ADR；组件契约和框架事件边界仍以 ADR-0003/0007/0011 为准。`docs/agents/build.md` 只承载部署与 release workflow，release plane 术语以 ADR-0009 为准，避免污染通用 project context。
 - 文档同步要求集中在 `docs/agents/context.md`，减少根入口与 task guide 的重复；影响未来取舍的变更仍需 ADR，并更新 `CONTEXT.md` 索引。
 - Agent 需要遵循路由选择 context，而不是把“读完所有文档”视为完成探索。缺少所需证据时，应回到 manifest、配置、源码、测试或相关 ADR。
-- Codex 与 Claude Code 通过共享入口、规则、skills 和 agent profile 复用同一套规范；客户端专属配置只承担工具适配。公共契约 review skill 以窄触发条件将任务路由到 `find:usages`、`inspect:contract*` 与发布产物验证，不把这类流程加入所有任务的常驻 context。
+- Codex、Claude Code 与 Gemini CLI 通过共享入口、规则、skills 和 agent profile 复用同一套规范；客户端专属配置只承担工具适配。公共契约 review skill 以窄触发条件将任务路由到 `find:usages`、`inspect:contract*` 与发布产物验证，不把这类流程加入所有任务的常驻 context。
 
 ## 替代方案
 

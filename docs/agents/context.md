@@ -29,10 +29,10 @@
 
 ## 客户端适配
 
-- `AGENTS.md`、`CONTEXT.md`、`docs/agents/`、`.agents/rules/`、`.agents/skills/` 与 `.agents/agents/` 是 Codex 和 Claude Code 共用的规范。
-- Codex 通过层级 `AGENTS.md` 获得目录约束；根 `CLAUDE.md` 只说明 Claude Code 的加载顺序，不复制共享规则。
+- `AGENTS.md`、`CONTEXT.md`、`docs/agents/`、`.agents/rules/`、`.agents/skills/` 与 `.agents/agents/` 是 Codex、Claude Code 与 Gemini CLI 等共用的规范。
+- Codex 通过层级 `AGENTS.md` 获得目录约束；根 `CLAUDE.md` 与 `GEMINI.md` 只说明对应客户端的加载顺序，不复制共享规则。
 - ACP plan 是当前会话的临时进度 UI；多阶段任务的创建、阶段同步和结束前收敛以 [`CONTRIBUTING.md`](../../CONTRIBUTING.md) 为权威。它不持久化为 `agent-state`，也不能替代源码、Git 或验证证据。
-- `.claude/rules`、`.claude/skills` 和 `.claude/agents` 必须通过 symlink 指向 `.agents/` 中的共享内容。
+- `.claude/rules`、`.claude/skills` 和 `.claude/agents` 必须通过 symlink 指向 `.agents/` 中的共享内容；Gemini CLI 自动发现 `.agents/skills/`。
 - `scripts/validate-context.mjs` 只检查这套共享 context 的可加载性，不能替代对规则语义、代码行为或 agent 输出质量的评审。
 - `scripts/repo-query.mjs` 是面向 Agent 的按需查询接口：`pnpm find:usages -- <paths...>` 一次输出受影响 workspace、最小读取 context、传递依赖、所需证据和最小充分验证建议；`pnpm inspect:contract -- <published-package>` 输出当前 exports、直接消费者和最小验证；`pnpm diff:contract -- --base <git-ref>` 输出 manifest-level semver 审阅候选。`find:usages` 支持 `--base <git-ref>`、`--staged` 与 `--worktree` 从 Git 变更集读取路径。它从 `pnpm-workspace.yaml` 的 `packages` patterns、当前 manifest 和路径规则派生结论，不把影响面复制成静态文档。
 - `scripts/check-pack.mjs` 在构建后校验发布 package 的 `files` 与 `exports` 目标可从 `pnpm pack --dry-run` 产物解析；它是发布产物边界的可执行证据，不替代 API 语义或 semver 评审。
@@ -61,7 +61,7 @@
 - **当前实现优先**：源码、测试、`package.json`、workspace 配置和构建配置是当前行为的证据；地图或 README 与它们冲突时，以实现为准，并记录是否需要同步文档。
 - **局部约束优先**：目标目录最近的 `AGENTS.md` 负责局部不可绕过约束；根 `AGENTS.md` 负责仓库级边界和路由。
 - **流程与背景分离**：`docs/agents/*` 和 `.agents/rules/*` 描述按任务加载的流程；`CONTEXT.md` 和 ADR 描述架构、术语和长期取舍；`ARCHITECTURE.md` 只做快速地图。
-- **适配入口不复制规则**：`CLAUDE.md` 只负责 Claude Code 的入口提示；`.claude/{rules,skills,agents}` 通过 symlink 复用 `.agents/`，不建立第二套规范。
+- **适配入口不复制规则**：`CLAUDE.md` 与 `GEMINI.md` 只负责对应客户端的入口提示；`.claude/{rules,skills,agents}` 通过 symlink 复用 `.agents/`，不建立第二套规范。
 - **不确定时不要猜**：当文档、类型、配置和源码不能共同证明边界时，停在最小受影响范围，读取相关测试/ADR或报告未决风险。
 
 ## 变更与文档同步
@@ -78,7 +78,7 @@
 | `packages/web-ui` 组件、图标或公共契约              | `packages/web-ui/AGENTS.md`、`docs/agents/web-ui.md` 与受影响 ADR      | 组件源码、类型、测试                               |
 | commitlint 或提交流程                               | `docs/agents/commit.md`                                                | commit 配置或工作流                                |
 | 影响未来工程取舍的架构决定                          | 对应 ADR，并更新 `CONTEXT.md` ADR 索引                                 | 可行替代方案之间的长期选择                         |
-| client adapter、共享 rules、skills 或 agent profile | `context.md`、`CONTEXT.md`、ADR-0012 与 `scripts/validate-context.mjs` | `CLAUDE.md`、`.agents/`、root scripts              |
+| client adapter、共享 rules、skills 或 agent profile | `context.md`、`CONTEXT.md`、ADR-0012 与 `scripts/validate-context.mjs` | `CLAUDE.md`、`GEMINI.md`、`.agents/`、root scripts |
 
 ## 维护 instruction system
 
