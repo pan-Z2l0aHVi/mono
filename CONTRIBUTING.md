@@ -27,11 +27,13 @@
 
 ## AI 协作署名
 
-- 仅当 AI agent 对某项变更有实质贡献时，才在对应提交中添加共同作者尾注；不要为展示署名创建空提交或伪造身份。
-- Codex 参与时使用以下固定格式；Claude Code 等其他 agent 也应使用相同的 Git trailers 机制进行透明署名：
+- 仅当 AI agent 对某项变更有实质贡献时，才在对应提交中添加共同作者尾注或独立署名；不要为展示署名创建空提交或伪造身份。
+- Codex、Claude Code 与 Gemini CLI 等 agent 参与时使用以下固定格式通过 Git trailers 机制进行透明署名：
 
   ```text
   Co-authored-by: Codex <noreply@openai.com>
+  Co-authored-by: Claude <noreply@anthropic.com>
+  Co-authored-by: Gemini CLI <gemini-code-assist[bot]@users.noreply.github.com>
   ```
 
 - 人类提交者仍对需求、设计、审查、测试和最终合并承担全部责任。

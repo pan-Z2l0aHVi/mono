@@ -3,8 +3,8 @@
   "extends": ["//"],
   "tasks": {
     "build": {
-      "inputs": ["backend/**/*.go", "frontend/src/**"],
-      "outputs": ["frontend/dist/**"]
+      "inputs": ["$TURBO_DEFAULT$", "!docs/**", "!**/*.md", "!**/*_test.go"],
+      "outputs": ["bin/**", "frontend/dist/**"]
     }
   }
 }

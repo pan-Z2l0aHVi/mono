@@ -3,11 +3,15 @@
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "outputs": ["dist/**", "bin/**"]
+      "inputs": ["$TURBO_DEFAULT$", "!**/*.md", "!**/*.spec.ts", "!**/*.test.ts", "!**/__tests__/**"],
+      "outputs": ["dist/**", "bin/**"],
+      "outputLogs": "new-only"
     },
     "test": {
       "dependsOn": ["^build"],
-      "outputs": []
+      "inputs": ["$TURBO_DEFAULT$", "!**/*.md"],
+      "outputs": [],
+      "outputLogs": "new-only"
     },
     "dev": {
       "cache": false,
