@@ -9,12 +9,73 @@ import { UserChangeController } from '@/shared/events/user-change'
 import { normalizeLiteral } from '@/shared/normalize'
 import { defineNativeDialogPresence } from '@/shared/overlay/native-dialog-presence'
 import { defineScrollLockLease } from '@/shared/scroll-lock/scroll-lock'
+import { findNearestTheme } from '@/shared/theme/theme-scope'
 
 import style from './style.css?inline'
 
 const ALLOWED_PLACEMENTS = ['right', 'left', 'top', 'bottom'] as const
 
 export type DrawerPlacement = (typeof ALLOWED_PLACEMENTS)[number]
+
+// 拖拽关闭判定：位移超过抽屉尺寸 1/3，或闭合方向甩动速度超过 500px/s 视为关闭意图。
+const DRAG_CLOSE_RATIO = 1 / 3
+const DRAG_FLICK_VELOCITY = 500
+// 速度估算的时间窗、request-only 回写等待窗口，以及弹簧采样参数（半隐式欧拉，每 16ms 一个关键帧）。
+const DRAG_VELOCITY_WINDOW_MS = 100
+const DRAG_REQUEST_WINDOW_MS = 120
+const SPRING_SAMPLE_MS = 16
+const SPRING_CLOSE = { stiffness: 260, damping: 34, maxSamples: 19 } as const
+const SPRING_REBOUND = { stiffness: 220, damping: 22, maxSamples: 29 } as const
+
+interface DragSample {
+  t: number
+  o: number
+}
+
+interface SpringParams {
+  stiffness: number
+  damping: number
+  maxSamples: number
+}
+
+/*
+ * 拖拽期间由 JS 写入的遮罩透明度变量参与 WAAPI 关键帧。未注册的自定义属性在
+ * 关键帧之间是离散插值（半帧跳变），注册为 <number> 后获得线性插值。
+ * inherits 必须为 true：::backdrop 只从 originating element 继承「可继承属性」，
+ * 注册为不可继承会让变量到不了遮罩，跟手淡出整体失效（Chrome 151 实证）。
+ * 注册表是全局的，模块重复执行（HMR）时捕获已注册错误并忽略。
+ */
+if (typeof CSS !== 'undefined' && 'registerProperty' in CSS) {
+  try {
+    CSS.registerProperty({
+      name: '--wui-internal-drag-backdrop-opacity',
+      syntax: '<number>',
+      inherits: true,
+      initialValue: '1'
+    })
+  } catch {
+    // 已注册（如 HMR 重复执行）时忽略
+  }
+}
+
+// 半隐式欧拉积分弹簧轨迹，返回均匀时间间隔的位置采样（末尾附加精确终点）。
+// 关闭方向采用近临界阻尼避免越过闭合位回弹，弹回方向欠阻尼保留轻微弹性。
+// 位置单位为闭合方向像素，速度单位为 px/s。
+function springOffsets(from: number, to: number, velocity: number, spring: SpringParams): number[] {
+  const dt = SPRING_SAMPLE_MS / 2000
+  let x = from
+  let v = velocity
+  const samples = [x]
+  for (let i = 0; i < spring.maxSamples * 2; i++) {
+    const acceleration = -spring.stiffness * (x - to) - spring.damping * v
+    v += acceleration * dt
+    x += v * dt
+    if (i % 2 === 1) samples.push(x)
+    if (Math.abs(x - to) < 0.5 && Math.abs(v) < 40) break
+  }
+  samples.push(to)
+  return samples
+}
 
 @customElement('web-ui-drawer')
 export class WebUiDrawer extends LitElement {
@@ -58,6 +119,13 @@ export class WebUiDrawer extends LitElement {
    */
   @property({ type: String, attribute: 'dialog-label' }) dialogLabel = ''
 
+  /**
+   * 启用拖拽关闭：打开态在抽屉内缘渲染 drag bar（灰色胶囊 + 加宽热区），
+   * 指针拖拽实时跟手，松手按位移与甩动速度判定关闭或弹回。
+   * 关闭态基于原生 dialog 无可见渲染物，因此不支持从关闭态拖拽打开。
+   */
+  @property({ type: Boolean, reflect: true }) override draggable = false
+
   private get dialog() {
     return this.shadowRoot?.querySelector('dialog') ?? null
   }
@@ -72,6 +140,344 @@ export class WebUiDrawer extends LitElement {
     isOpen: () => this.open
   })
 
+  // ===== 拖拽关闭手势状态 =====
+  private _dragPointerId: number | null = null
+  private _dragStartClient = 0
+  // pointerdown 时刻已存在的闭合方向位移（从弹回动画中抓取时非 0）。
+  private _dragInitialOffset = 0
+  private _dragOffset = 0
+  private _dragSamples: DragSample[] = []
+  private _dragAnimation: Animation | null = null
+  // request-only：弹簧到闭合位后等待 Consumer 回写 open；超时未回写则弹回。
+  private _dragAwaitWriteback = false
+  private _dragRequestTimer: ReturnType<typeof setTimeout> | undefined
+
+  /*
+   * 手势期间的 move/up/cancel 统一挂载在 window 捕获阶段：Chromium 可能在快速
+   * 拖拽中提前释放 setPointerCapture（lostpointercapture 早于任何 up/cancel），
+   * 此后事件按普通 hit-test 派发、不再保证命中 zone。window 层接管使拖拽持续
+   * 跟手直到真正的松手，状态机不会悬挂。pointerId 守卫过滤掉非本手势的指针。
+   * zone 绑定仍是 capture 生效时的主路径；move 的事件对象去重（_handledMoveEvent）
+   * 保证 window 与 zone 两条路径不会重复消费同一次输入。
+   */
+  private readonly _onWindowDragMove = (e: PointerEvent) => this._handleDragPointerMove(e)
+  private readonly _onWindowDragUp = (e: PointerEvent) => this._handleDragPointerUp(e)
+  private readonly _onWindowDragCancel = (e: PointerEvent) => this._handleDragPointerCancel(e)
+  // 同一次 pointermove 可能同时经过 window 捕获与 zone 两路；记录已处理的事件对象去重。
+  private _handledMoveEvent: PointerEvent | null = null
+
+  private _attachWindowGestureListeners() {
+    window.addEventListener('pointermove', this._onWindowDragMove, true)
+    window.addEventListener('pointerup', this._onWindowDragUp, true)
+    window.addEventListener('pointercancel', this._onWindowDragCancel, true)
+  }
+
+  private _detachWindowGestureListeners() {
+    window.removeEventListener('pointermove', this._onWindowDragMove, true)
+    window.removeEventListener('pointerup', this._onWindowDragUp, true)
+    window.removeEventListener('pointercancel', this._onWindowDragCancel, true)
+  }
+
+  // placement 的闭合轴向：right/left 沿 X 轴，top/bottom 沿 Y 轴。
+  private get _dragAxis(): 'x' | 'y' {
+    return this._placement === 'left' || this._placement === 'right' ? 'x' : 'y'
+  }
+
+  // 位移正方向 = 抽屉的闭合方向（拖出屏幕为正）。
+  private get _dragCloseSign(): number {
+    switch (this._placement) {
+      case 'right':
+        return 1
+      case 'left':
+        return -1
+      case 'top':
+        return -1
+      case 'bottom':
+        return 1
+    }
+  }
+
+  private _measureDragSize(): number {
+    const dialog = this.dialog
+    if (!dialog) return 0
+    return this._dragAxis === 'x' ? dialog.offsetWidth : dialog.offsetHeight
+  }
+
+  // 浮动卡片（非 headless）的四周留边；闭合位移需越过它才能完全滑出视口。
+  // headless 无此变量，返回 0，行为与贴边几何一致。
+  private _readDrawerInset(dialog: HTMLDialogElement): number {
+    const raw = getComputedStyle(dialog).getPropertyValue('--wui-internal-drawer-inset')
+    const parsed = Number.parseFloat(raw)
+    return Number.isFinite(parsed) ? parsed : 0
+  }
+
+  // 闭合方向上的完全出屏距离：抽屉尺寸 + 浮动留边（headless 下即尺寸本身）。
+  // CSS 闭合态 transform、request-only 悬停终态与弹簧终点共用同一数学，避免衔接跳变。
+  private _dragCloseDistance(dialog: HTMLDialogElement): number {
+    return this._measureDragSize() + this._readDrawerInset(dialog)
+  }
+
+  private _isReducedMotion(): boolean {
+    // 优先尊重所在 web-ui-theme 的 motion 设置（与 svg-draw-lines 一致）；
+    // 无主题范围时回退到系统 prefers-reduced-motion。jsdom 等环境无 matchMedia，视为完整动效。
+    const theme = findNearestTheme(this)
+    if (theme) return theme.isReducedMotion()
+    try {
+      return typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    } catch {
+      return false
+    }
+  }
+
+  private _isDragging(): boolean {
+    return this._dragPointerId !== null
+  }
+
+  private _cancelDragAwait() {
+    if (this._dragRequestTimer !== undefined) {
+      clearTimeout(this._dragRequestTimer)
+      this._dragRequestTimer = undefined
+    }
+    this._dragAwaitWriteback = false
+  }
+
+  private _handleDragPointerDown(e: PointerEvent) {
+    if (!this.open || !this.draggable || this._isDragging()) return
+    // 多点触控的副指针（isPrimary 明确为 false）不参与手势。
+    if (e.isPrimary === false) return
+
+    const dialog = this.dialog
+    if (!dialog) return
+    // is-visible 由 presence 在 showModal 后一帧加上；就位前（打开极早期）忽略。
+    // 就位后即使 enter 过渡仍在进行也允许抓取，起始位移从当前计算值续接。
+    if (!dialog.classList.contains('is-visible')) return
+
+    // 先读取动画中的当前位移再取消弹回动画，避免取消后回跳到内联样式值。
+    const currentTransform = getComputedStyle(dialog).transform
+    const axisValue =
+      currentTransform && currentTransform !== 'none' && typeof DOMMatrixReadOnly === 'function'
+        ? new DOMMatrixReadOnly(currentTransform)[this._dragAxis === 'x' ? 'm41' : 'm42']
+        : 0
+    this._dragAnimation?.cancel()
+    this._dragAnimation = null
+    this._cancelDragAwait()
+
+    this._dragPointerId = e.pointerId
+    this._dragStartClient = this._dragAxis === 'x' ? e.clientX : e.clientY
+    this._dragInitialOffset = axisValue * this._dragCloseSign
+    this._dragOffset = this._dragInitialOffset
+    this._dragSamples = [{ t: e.timeStamp, o: this._dragOffset }]
+    this._handledMoveEvent = null
+
+    // 先挂 window 兜底再尝试 capture：即使 capture 调用失败，手势仍可收尾。
+    this._attachWindowGestureListeners()
+    ;(e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId)
+    dialog.classList.add('is-dragging')
+  }
+
+  private _handleDragPointerMove(e: PointerEvent) {
+    if (this._dragPointerId !== e.pointerId) return
+    // window 捕获层先于 zone 收到同一事件；已处理过则跳过，避免重复采样污染速度估算。
+    if (this._handledMoveEvent === e) return
+    this._handledMoveEvent = e
+
+    const dialog = this.dialog
+    if (!dialog) return
+
+    const pointerDelta = (this._dragAxis === 'x' ? e.clientX : e.clientY) - this._dragStartClient
+    // 闭合方向全额跟随；开启方向施加阻尼（橡皮筋），最多回弹 10% 抽屉尺寸。
+    const raw = this._dragInitialOffset + pointerDelta * this._dragCloseSign
+    const resisted = raw < 0 ? Math.max(raw * 0.15, -this._measureDragSize() * 0.1) : raw
+    this._dragOffset = resisted
+
+    // 达到关闭阈值时胶囊变 accent 色作视觉确认（ADR-0035）。
+    const dragSize = this._measureDragSize()
+    dialog.classList.toggle('is-drag-close', dragSize > 0 && this._dragOffset > dragSize * DRAG_CLOSE_RATIO)
+
+    const now = e.timeStamp
+    this._dragSamples.push({ t: now, o: this._dragOffset })
+    while (this._dragSamples.length > 2 && now - this._dragSamples[0].t > DRAG_VELOCITY_WINDOW_MS) {
+      this._dragSamples.shift()
+    }
+
+    this._applyDragOffset(dialog, this._dragOffset)
+  }
+
+  // 窗口内首尾采样差估算闭合方向速度（px/s）。
+  // 采样跨度不足一帧（约 <8ms，常见于合成事件）时数据不可信，返回 0 不触发甩动判定。
+  private _estimateVelocity(): number {
+    const samples = this._dragSamples
+    if (samples.length < 2) return 0
+    const first = samples[0]
+    const last = samples[samples.length - 1]
+    const dt = last.t - first.t
+    if (dt < 8) return 0
+    return ((last.o - first.o) / dt) * 1000
+  }
+
+  private _handleDragPointerUp(e: PointerEvent) {
+    if (this._dragPointerId !== e.pointerId) return
+    this._dragPointerId = null
+    this._detachWindowGestureListeners()
+
+    const dialog = this.dialog
+    if (!dialog) return
+
+    dialog.classList.remove('is-dragging', 'is-drag-close')
+    const size = this._measureDragSize()
+    const velocity = this._estimateVelocity()
+    const shouldClose =
+      this._dragOffset > size * DRAG_CLOSE_RATIO || (this._dragOffset > 8 && velocity > DRAG_FLICK_VELOCITY)
+
+    if (shouldClose) this._springToClose(dialog, velocity)
+    else this._springRebound(dialog, velocity, this._dragOffset)
+  }
+
+  private _handleDragPointerCancel(e: PointerEvent) {
+    if (this._dragPointerId !== e.pointerId) return
+    this._dragPointerId = null
+    this._detachWindowGestureListeners()
+
+    const dialog = this.dialog
+    if (!dialog) return
+    dialog.classList.remove('is-dragging', 'is-drag-close')
+    this._springRebound(dialog, 0, this._dragOffset)
+  }
+
+  // 受控状态写入等外部原因强制终结拖拽：清手势状态与拖拽样式，不弹回，
+  // 后续管线（关闭/打开）由调用方继续执行。
+  private _cancelActiveDrag() {
+    if (!this._isDragging()) return
+    this._dragPointerId = null
+    this._handledMoveEvent = null
+    this._detachWindowGestureListeners()
+    const dialog = this.dialog
+    if (!dialog) return
+    dialog.classList.remove('is-dragging', 'is-drag-close')
+    this._clearDragStyles(dialog)
+  }
+
+  // 将闭合方向位移映射为 dialog transform，并同步遮罩透明度保持跟手反馈。
+  private _applyDragOffset(dialog: HTMLDialogElement, offset: number) {
+    const sign = this._dragCloseSign
+    const value = offset * sign
+    dialog.style.transform = this._dragAxis === 'x' ? `translateX(${value}px)` : `translateY(${value}px)`
+    const size = this._measureDragSize()
+    const progress = size > 0 ? Math.min(1, Math.max(0, offset / size)) : 0
+    dialog.style.setProperty('--wui-internal-drag-backdrop-opacity', String(1 - progress))
+  }
+
+  private _clearDragStyles(dialog: HTMLDialogElement) {
+    dialog.style.removeProperty('transform')
+    dialog.style.removeProperty('--wui-internal-drag-backdrop-opacity')
+  }
+
+  // 弹簧到完全闭合；request-only 下保持闭合位等待回写，其余走常规关闭管线。
+  private _springToClose(dialog: HTMLDialogElement, velocity: number) {
+    const from = this._dragOffset
+    this._dragOffset = 0
+    const sign = this._dragCloseSign
+    // 弹簧终点 = 完全出屏距离（含浮动留边），与 CSS 闭合态/悬停终态一致，
+    // 否则 onfinish 后会有一个留边宽度的瞬移。
+    const to = this._dragCloseDistance(dialog)
+    const size = this._measureDragSize()
+
+    const finishClose = () => {
+      if (this.requestOnly) {
+        // 保持在闭合位（is-visible 未移除，状态仍 open），等待 Consumer 回写或超时弹回。
+        const distance = to
+        dialog.style.transform =
+          this._dragAxis === 'x' ? `translateX(${distance * sign}px)` : `translateY(${distance * sign}px)`
+        dialog.style.setProperty('--wui-internal-drag-backdrop-opacity', '0')
+      } else {
+        // 移除 is-visible 后基础 transform 即闭合位，清内联样式不产生跳变；
+        // presence.sync(false) 检测不到 is-visible 会立即完成关闭，不重播退出动画。
+        dialog.classList.remove('is-visible')
+        this._clearDragStyles(dialog)
+      }
+      this._closeFromDrag()
+    }
+
+    if (this._isReducedMotion() || typeof dialog.animate !== 'function') {
+      finishClose()
+      return
+    }
+
+    const samples = springOffsets(from, to, velocity, SPRING_CLOSE)
+    const keyframes = samples.map(o => ({
+      transform: this._dragAxis === 'x' ? `translateX(${o * sign}px)` : `translateY(${o * sign}px)`,
+      '--wui-internal-drag-backdrop-opacity': String(Math.max(0, 1 - o / size))
+    }))
+    // 采样帧含首值与附加终点，实际时长为帧间隔数 × 采样周期。
+    const duration = (samples.length - 1) * SPRING_SAMPLE_MS
+    const animation = dialog.animate(keyframes, { duration, easing: 'linear' })
+    // onfinish 同步应用终态并取消动画：fill 会持续覆盖 transform，阻断后续 CSS 过渡。
+    animation.onfinish = () => {
+      animation.cancel()
+      finishClose()
+    }
+  }
+
+  // 弹回打开：从 from 位移弹回 0；结束后清内联样式交还 CSS transition 管辖。
+  private _springRebound(dialog: HTMLDialogElement, velocity: number, from: number) {
+    this._dragOffset = 0
+
+    const finishRebound = () => {
+      this._dragAnimation = null
+      dialog.classList.remove('is-dragging')
+      this._clearDragStyles(dialog)
+    }
+
+    if (this._isReducedMotion() || typeof dialog.animate !== 'function' || Math.abs(from) < 1) {
+      finishRebound()
+      return
+    }
+
+    const sign = this._dragCloseSign
+    const size = this._measureDragSize()
+    const samples = springOffsets(from, 0, velocity, SPRING_REBOUND)
+    const keyframes = samples.map(o => ({
+      transform: this._dragAxis === 'x' ? `translateX(${o * sign}px)` : `translateY(${o * sign}px)`,
+      '--wui-internal-drag-backdrop-opacity': String(Math.max(0, 1 - o / size))
+    }))
+    // 弹回期间抑制 transform/backdrop 的 CSS transition，避免与弹簧动画叠加。
+    dialog.classList.add('is-dragging')
+    const duration = (samples.length - 1) * SPRING_SAMPLE_MS
+    const animation = dialog.animate(keyframes, { duration, easing: 'linear' })
+    // onfinish 同步清除内联样式并取消动画：fill 会持续覆盖 transform，阻断后续 CSS 过渡。
+    animation.onfinish = () => {
+      animation.cancel()
+      finishRebound()
+    }
+    this._dragAnimation = animation
+  }
+
+  private _closeFromDrag() {
+    // 先派发关闭请求（_closeFromUser），再进入悬停等待：等待态中 _closeFromUser
+    // 会被 L2 去重守卫短路，顺序颠倒会吞掉首次请求。
+    this._closeFromUser()
+    if (this.requestOnly) {
+      this._dragAwaitWriteback = true
+      this._dragRequestTimer = setTimeout(this._handleDragWritebackTimeout, DRAG_REQUEST_WINDOW_MS)
+    }
+  }
+
+  // request-only 回写窗口超时：Consumer 拒绝关闭，从闭合位弹回打开位。
+  private readonly _handleDragWritebackTimeout = () => {
+    this._dragRequestTimer = undefined
+    if (!this._dragAwaitWriteback || !this.open || this._isDragging()) {
+      this._dragAwaitWriteback = false
+      return
+    }
+    this._dragAwaitWriteback = false
+
+    const dialog = this.dialog
+    if (!dialog) return
+    dialog.classList.add('is-visible')
+    // 悬停终态位于完全出屏位（含留边），弹回也从该真实位置起步，避免首帧内跳。
+    this._springRebound(dialog, 0, this._dragCloseDistance(dialog))
+  }
+
   override connectedCallback() {
     super.connectedCallback()
     this._hasHeaderSlot = Array.from(this.children).some(child => child.getAttribute?.('slot') === 'header')
@@ -84,8 +490,12 @@ export class WebUiDrawer extends LitElement {
 
   override disconnectedCallback() {
     super.disconnectedCallback()
+    this._detachWindowGestureListeners()
     this._presence.dispose()
     this._scrollLock.release()
+    this._dragAnimation?.cancel()
+    this._dragAnimation = null
+    this._cancelDragAwait()
   }
 
   private _checkSlotContent(name: string) {
@@ -119,7 +529,22 @@ export class WebUiDrawer extends LitElement {
     if (!this.isConnected) return
 
     if (props.has('open')) {
+      // Consumer 在拖拽进行中写入受控 open：受控状态优先，立即终结手势（等同
+      // pointercancel 的清理但不弹回），交由下方 presence 走标准关闭/打开管线。
+      if (this._isDragging() && !this.open) this._cancelActiveDrag()
       if (this._userOpenChange.consume()) this.emitOpenChange()
+      // request-only 拖拽关闭的回写结果：确认关闭则清除闭合位悬停状态走正常关闭；
+      // 拒绝关闭（回写 open=true）则从闭合位（含留边）弹回。
+      if (this._dragAwaitWriteback) {
+        this._cancelDragAwait()
+        const dialog = this.dialog
+        if (dialog && !this.open) {
+          dialog.classList.remove('is-visible')
+          this._clearDragStyles(dialog)
+        } else if (dialog && this.open) {
+          this._springRebound(dialog, 0, this._dragCloseDistance(dialog))
+        }
+      }
       this._presence.sync(this.open)
     }
     if (props.has('open') || props.has('noScrollLock')) this._syncScrollLock()
@@ -131,6 +556,11 @@ export class WebUiDrawer extends LitElement {
 
   private handleKeydown(e: KeyboardEvent) {
     if (e.key !== 'Escape') return
+    // 拖拽进行中忽略 ESC，避免手势与关闭管线竞争。
+    if (this._isDragging()) {
+      e.preventDefault()
+      return
+    }
     e.preventDefault()
     this._closeFromUser()
   }
@@ -149,6 +579,9 @@ export class WebUiDrawer extends LitElement {
 
   private readonly _closeFromUser = () => {
     if (!this.open) return
+    // request-only 悬停等待回写期间，关闭意图已在途（open-change 已派发）：
+    // Escape/遮罩/关闭按钮的重复触发不再派发第二次请求，也不与超时弹回竞争。
+    if (this._dragAwaitWriteback) return
     if (this.requestOnly) {
       this.emitOpenChange(false)
       return
@@ -167,6 +600,13 @@ export class WebUiDrawer extends LitElement {
   private handleNativeClose() {
     if (!this.open) return
 
+    // 悬停等待期间的原生关闭（如表单 method="dialog"）：视为回写窗口内的重复
+    // 关闭意图，取消等待不补发请求；已原生关闭的 dialog 不再被超时弹回拉起。
+    if (this._dragAwaitWriteback) {
+      this._cancelDragAwait()
+      return
+    }
+
     // 原生关闭可绕过 cancel；request-only 时恢复受控状态，由 Consumer 决定是否关闭。
     if (this.requestOnly) {
       this._presence.sync(true)
@@ -182,6 +622,8 @@ export class WebUiDrawer extends LitElement {
   private handleBackdropClick(e: MouseEvent) {
     if (e.target !== (e.currentTarget as HTMLDialogElement)) return
     if (this.noBackdropClose) return
+    // 拖拽进行中 pointer capture 使 click 落在 dialog 上，忽略以避免与手势竞争。
+    if (this._isDragging()) return
     this._closeFromUser()
   }
 
@@ -204,6 +646,23 @@ export class WebUiDrawer extends LitElement {
     const dialogLabel = this.dialogLabel.trim()
     const dialogLabelledBy = !dialogLabel && !this.headless && showHeader ? 'wui-drawer-heading' : nothing
 
+    // 拖拽热区：仅在打开且 draggable 时渲染；胶囊 + 加宽命中条贴在抽屉内缘。
+    // move/up/cancel 同时挂 zone 与手势期间的 window 捕获监听（见类字段注释），
+    // 由 _handleDragPointerMove 的事件对象去重保证每次拖拽只消费一份输入流。
+    const dragBar = this.draggable
+      ? html`
+          <div
+            class="wui-drawer-drag-zone"
+            @pointerdown=${this._handleDragPointerDown}
+            @pointermove=${this._handleDragPointerMove}
+            @pointerup=${this._handleDragPointerUp}
+            @pointercancel=${this._handleDragPointerCancel}
+          >
+            <div class="wui-drawer-drag-bar"></div>
+          </div>
+        `
+      : nothing
+
     // 保持同一个 dialog 实例，避免打开期间切换 headless 时脱离 top layer。
     return html`
       <dialog
@@ -217,7 +676,7 @@ export class WebUiDrawer extends LitElement {
       >
         ${
           this.headless
-            ? html`<slot></slot>`
+            ? html`<slot></slot>${dragBar}`
             : html`
                 <div class="wui-drawer-body wui-glass">
                   <div class="wui-drawer-header" id="wui-drawer-heading" ?hidden=${!showHeader}>
@@ -248,6 +707,7 @@ export class WebUiDrawer extends LitElement {
                       `
                     : nothing
                 }
+                ${dragBar}
               `
         }
       </dialog>

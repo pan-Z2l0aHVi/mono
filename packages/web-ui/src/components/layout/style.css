@@ -79,6 +79,7 @@ aside {
   flex-direction: column;
   flex-shrink: 0;
 
+  max-width: 50vw;
   height: calc(100vh - var(--wui-layout-visible-banner-height));
   height: calc(100dvh - var(--wui-layout-visible-banner-height));
   max-height: calc(100vh - var(--wui-layout-visible-banner-height));
@@ -114,6 +115,54 @@ aside {
       overflow: hidden;
     }
   }
+}
+
+/* ===== Sidebar 拖拽调宽 handle ===== */
+
+/*
+ * 命中条贴 aside 右缘（约 12px 宽），hover 或拖拽中显示 3px accent 竖线。
+ * aside 有 8px padding，handle 定位在 padding 区外缘，不遮挡 aside-panel 内容。
+ */
+.sidebar-resize-handle {
+  touch-action: none;
+  cursor: col-resize;
+
+  position: absolute;
+  z-index: 1;
+  top: 0;
+  right: -6px;
+  bottom: 0;
+
+  width: 12px;
+}
+
+.sidebar-resize-handle::before {
+  content: '';
+
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  translate: -50%;
+
+  width: 3px;
+  border-radius: 999px;
+
+  opacity: 0;
+  background: var(--wui-color-accent, #08f);
+
+  transition: opacity var(--wui-duration-feedback, 100ms) ease;
+}
+
+.sidebar-resize-handle:hover::before,
+.sidebar-resize-handle:focus-visible::before,
+aside.is-resizing .sidebar-resize-handle::before {
+  opacity: 1;
+}
+
+/* 拖拽中禁用宽度过渡，保证实时跟手。 */
+aside.is-resizing {
+  transition: none;
 }
 
 .layout-content {
@@ -194,6 +243,10 @@ footer {
 
 @media (prefers-reduced-motion: reduce) {
   aside {
+    transition: none;
+  }
+
+  .sidebar-resize-handle::before {
     transition: none;
   }
 }

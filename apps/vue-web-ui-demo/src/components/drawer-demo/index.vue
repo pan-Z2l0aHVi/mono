@@ -40,6 +40,9 @@ const unlockedVisible = ref(false)
 const overlayVisible = ref(false)
 const headlessVisible = ref(false)
 const requestOnlyVisible = ref(false)
+const draggableVisible = ref(false)
+const draggableTopVisible = ref(false)
+const draggableHeadlessVisible = ref(false)
 </script>
 
 <template>
@@ -215,6 +218,47 @@ const requestOnlyVisible = ref(false)
           使用 <code>headless</code> 属性后，抽屉只保留 overlay 基础设施（backdrop、动画、scroll lock）， 不渲染内置
           UI。Consumer 自定义内容样式。
         </p>
+      </div>
+    </web-ui-drawer>
+
+    <h2>拖拽关闭（draggable）</h2>
+    <div class="mb-3 flex flex-wrap gap-2">
+      <web-ui-button @click="draggableVisible = true">右侧</web-ui-button>
+      <web-ui-button @click="draggableTopVisible = true">上方</web-ui-button>
+      <web-ui-button @click="draggableHeadlessVisible = true">Headless 左侧</web-ui-button>
+    </div>
+    <p class="mb-3 text-sm text-[var(--wui-color-text-secondary)]">
+      <code>draggable</code> 时抽屉内缘显示灰色胶囊 drag bar：拖拽实时跟手，拖出约 1/3 或快速甩动松手即关闭，否则弹回。
+    </p>
+    <web-ui-drawer
+      :open="draggableVisible"
+      heading="拖拽关闭"
+      closable
+      draggable
+      @open-change="draggableVisible = $event.detail.open"
+    >
+      <p>抓住左缘的胶囊向右拖出即可关闭；未超过 1/3 宽度松手会弹回。</p>
+    </web-ui-drawer>
+    <web-ui-drawer
+      :open="draggableTopVisible"
+      placement="top"
+      heading="上方拖拽关闭"
+      draggable
+      @open-change="draggableTopVisible = $event.detail.open"
+    >
+      <p>抓住下缘的胶囊向上拖出即可关闭。</p>
+    </web-ui-drawer>
+    <web-ui-drawer
+      :open="draggableHeadlessVisible"
+      placement="left"
+      headless
+      draggable
+      dialog-label="Headless 拖拽抽屉"
+      @open-change="draggableHeadlessVisible = $event.detail.open"
+    >
+      <div style="height: 100%; padding: 16px; border-radius: 0 16px 16px 0; background: white">
+        <h3 style="margin: 0 0 12px">Headless 拖拽抽屉</h3>
+        <p style="margin: 0; color: #666">headless 模式同样支持 drag bar，抓住右缘胶囊向左拖出关闭。</p>
       </div>
     </web-ui-drawer>
   </div>

@@ -129,3 +129,16 @@ collapsedWidth: string    // attribute: collapsed-width，默认 '72px'
 - React 与 Vue demo 都必须将 `sidebar-collapsed-change` / `sidebar-open-change` 回写到对应的受控属性，作为两个状态模型的集成验证。
 - Banner 的可见高度成为 Sidebar 尺寸计算的一部分，增加了 ResizeObserver 与滚动同步实现，但保证圆角卡片在 Banner 出现、收缩和消失时视觉完整。
 - 不引入 `sidebar-header` / `sidebar-footer`：它们曾作为候选设计被否决，因为会将 Consumer 的内部信息架构固化为固定头部、强制滚动中间区和固定底部。
+
+### 7. 桌面端 Sidebar 拖拽调宽
+
+`sidebar-resizable` 启用后，桌面 Sidebar 右缘渲染 resize handle（折叠态隐藏）。拖拽调宽与折叠解耦：仅夹紧在 `[min, max]` 与视口内，不联动 `sidebar-collapsed`。
+
+- `sidebar-min-width`（默认回退 `collapsed-width`）：拖拽下限，防止拖到不可用宽度（单位按 px 解析）；
+- `sidebar-max-width`：调用方可配置上限（单位按 px 解析）；组件内置硬上限为视口宽度的一半（50vw）且优先于配置值生效，Sidebar 永远不会占据超过一半视口。
+
+**受控契约**：拖拽中组件内部实时更新宽度（禁用 `width` transition，跟手），`pointerup` 派发 `sidebar-width-change`（`CustomEvent<{ width: string }>`，如 `'312px'`）；Consumer 回写 `sidebar-width` 后新宽度正式生效。`pointercancel` 清临时宽度并恢复 prop 管辖宽度，不派发事件。零位移松手（点击）不派发。这与现有的 `sidebar-collapsed-change` 受控模型一致（ADR-0007）。
+
+**键盘交互**：handle 采用 WAI-ARIA splitter 模式（`role="separator"` + 方向键）。←/→ 以 16px 步进（Shift 64px）调整临时宽度，Home/End 到 min/max，Enter 以同一 `sidebar-width-change` 请求提交，Escape 撤回。键盘调整与指针拖拽共用同一临时宽度字段；指针抓取会隐式放弃键盘未提交的调整。
+
+宽度状态由 prop 持有，组件不持久化、不引入“第三种宽度”。双击重置等额外手势不在范围内。

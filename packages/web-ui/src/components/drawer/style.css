@@ -49,6 +49,15 @@ dialog[open].is-visible {
   transform: translate(0, 0);
 }
 
+/* 拖拽跟手期间与弹簧弹回期间，transform/backdrop 由 JS 内联样式与 WAAPI 管辖。 */
+dialog.is-dragging {
+  transition: none;
+
+  &::backdrop {
+    transition: none;
+  }
+}
+
 :host([placement='left']) dialog[open].is-visible,
 :host([placement='top']) dialog[open].is-visible,
 :host([placement='bottom']) dialog[open].is-visible {
@@ -65,7 +74,85 @@ dialog.is-closing::backdrop {
 }
 
 dialog[open].is-visible::backdrop {
-  opacity: 1;
+  /* 拖拽期间由 JS 写入 --wui-internal-drag-backdrop-opacity 实现遮罩跟手淡出。 */
+  opacity: var(--wui-internal-drag-backdrop-opacity, 1);
+}
+
+/* ===== Drag bar（拖拽关闭热区） ===== */
+
+/*
+ * 热区贴在抽屉内缘，宽度约 24px 便于触控命中；胶囊本身是约 4×48px 的灰色短条。
+ * 位置随 placement 切换：right 贴在左缘、left 贴在右缘、top 贴在底边、bottom 贴在顶边。
+ */
+.wui-drawer-drag-zone {
+  touch-action: none;
+  cursor: grab;
+
+  position: absolute;
+  z-index: 4;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+:host([placement='right']) .wui-drawer-drag-zone {
+  top: 0;
+  left: 0;
+  width: 24px;
+  height: 100%;
+}
+
+:host([placement='left']) .wui-drawer-drag-zone {
+  top: 0;
+  right: 0;
+  width: 24px;
+  height: 100%;
+}
+
+:host([placement='top']) .wui-drawer-drag-zone,
+:host([placement='bottom']) .wui-drawer-drag-zone {
+  right: 0;
+  left: 0;
+  width: 100%;
+  height: 24px;
+}
+
+:host([placement='top']) .wui-drawer-drag-zone {
+  bottom: 0;
+}
+
+:host([placement='bottom']) .wui-drawer-drag-zone {
+  top: 0;
+}
+
+.wui-drawer-drag-bar {
+  width: 4px;
+  height: 48px;
+  border-radius: 999px;
+
+  background: color-mix(in srgb, var(--wui-color-text, #1b1b1b) 24%, transparent);
+
+  transition: background-color var(--wui-duration-feedback, 100ms) ease;
+}
+
+:host([placement='top']) .wui-drawer-drag-bar,
+:host([placement='bottom']) .wui-drawer-drag-bar {
+  width: 48px;
+  height: 4px;
+}
+
+.wui-drawer-drag-zone:hover .wui-drawer-drag-bar,
+.wui-drawer-drag-zone:active .wui-drawer-drag-bar {
+  background: color-mix(in srgb, var(--wui-color-text, #1b1b1b) 40%, transparent);
+}
+
+/*
+ * 达到关闭阈值的 accent 确认需压过上方 :hover/:active 中性色（拖拽全程 capture
+ * 使 hover 恒成立），这里的选择器特异性 (0,3,1) 高于 hover/active 的 (0,3,0)。
+ */
+dialog.is-drag-close .wui-drawer-drag-zone .wui-drawer-drag-bar {
+  background: var(--wui-color-accent, #08f);
 }
 
 /* ===== Placement 变体 ===== */
@@ -98,6 +185,16 @@ dialog[open].is-visible::backdrop {
   bottom: 0;
   left: 0;
   transform: translateY(100%);
+}
+
+/*
+ * 拖拽中的 grabbing 光标。dialog 复合前缀使其特异性恒高于上方 placement 变体，
+ * stylelint 的顺序比较对这种结构必然告警；cascade 上此规则不依赖 placement，
+ * 置于其后仅为可读性，故显式豁免。
+ */
+/* stylelint-disable-next-line no-descending-specificity */
+dialog.is-dragging .wui-drawer-drag-zone {
+  cursor: grabbing;
 }
 
 /* ===== 抽屉主体 ===== */
@@ -165,6 +262,10 @@ dialog[open].is-visible::backdrop {
   dialog[open].is-visible {
     transform: none;
   }
+
+  .wui-drawer-drag-bar {
+    transition: none;
+  }
 }
 
 .wui-drawer-footer[hidden] {
@@ -187,4 +288,77 @@ dialog[open].is-visible::backdrop {
   /* 保持 overlay 基础设施，移除内置样式 */
   width: auto;
   max-width: none;
+}
+
+/* ===== 浮动卡片视觉语言（ADR-0036） ===== */
+
+/*
+ * 非 headless 时抽屉是四周留边的圆角卡片，与 layout sidebar 的设计语言一致；
+ * 弹性拖拽使边距变化（8px → 更大）是合法状态而非渲染缺口。
+ * headless 保持贴边几何，视觉由 Consumer 自绘。
+ *
+ * 闭合位移需要越过留边才能完全滑出视口，因此闭合态 transform 以
+ * --wui-internal-drawer-inset 补偿；JS 在 request-only 悬停终态读取同一变量，
+ * 保证两条关闭路径的行为一致。headless 下无此变量，JS 回退为 0（贴边几何）。
+ */
+
+/* 默认 right：四周留边、高度随上下边距拉伸，闭合位移越过右侧留边 */
+:host(:not([headless])) dialog {
+  --wui-internal-drawer-inset: 8px;
+
+  top: var(--wui-internal-drawer-inset);
+  right: var(--wui-internal-drawer-inset);
+  bottom: var(--wui-internal-drawer-inset);
+  left: auto;
+  transform: translateX(calc(100% + var(--wui-internal-drawer-inset)));
+
+  height: auto;
+  border-radius: var(--wui-drawer-radius, 28px);
+}
+
+:host(:not([headless])) .wui-drawer-body {
+  border-radius: inherit;
+}
+
+:host(:not([headless])[placement='left']) dialog {
+  top: var(--wui-internal-drawer-inset);
+  right: auto;
+  bottom: var(--wui-internal-drawer-inset);
+  left: var(--wui-internal-drawer-inset);
+  transform: translateX(calc(-100% - var(--wui-internal-drawer-inset)));
+
+  height: auto;
+}
+
+:host(:not([headless])[placement='top']) dialog {
+  top: var(--wui-internal-drawer-inset);
+  right: var(--wui-internal-drawer-inset);
+  bottom: auto;
+  left: var(--wui-internal-drawer-inset);
+  transform: translateY(calc(-100% - var(--wui-internal-drawer-inset)));
+
+  width: auto;
+  max-width: none;
+}
+
+:host(:not([headless])[placement='bottom']) dialog {
+  top: auto;
+  right: var(--wui-internal-drawer-inset);
+  bottom: var(--wui-internal-drawer-inset);
+  left: var(--wui-internal-drawer-inset);
+  transform: translateY(calc(100% + var(--wui-internal-drawer-inset)));
+
+  width: auto;
+  max-width: none;
+}
+
+/*
+ * 开放态守卫：上方闭合 transform 与基础 `dialog[open].is-visible` 特异性相同且
+ * 在文件更后方，必须以更高特异性显式恢复打开位，否则抽屉停在闭合位。
+ */
+:host(:not([headless])) dialog[open].is-visible,
+:host(:not([headless])[placement='left']) dialog[open].is-visible,
+:host(:not([headless])[placement='top']) dialog[open].is-visible,
+:host(:not([headless])[placement='bottom']) dialog[open].is-visible {
+  transform: translate(0, 0);
 }

@@ -387,5 +387,413 @@ describe('WebUiLayout 组件（浏览器）', () => {
       expect(layout.sidebarOpen).toBe(false)
       expect(drawer.hasAttribute('open')).toBe(false)
     })
+
+    it('内部 Drawer 启用 draggable 手势关闭', async () => {
+      await page.viewport(390, 844)
+      const layout = createLayout()
+      syncControlledSidebarState(layout)
+      await layout.updateComplete
+
+      const drawer = layout.shadowRoot?.querySelector('web-ui-drawer') as HTMLElement
+      expect(drawer.hasAttribute('draggable')).toBe(true)
+    })
+  })
+
+  describe('桌面端 Sidebar 拖拽调宽（浏览器）', () => {
+    it('未启用 sidebar-resizable 时不渲染 handle', async () => {
+      await page.viewport(1280, 720)
+      const layout = createLayout()
+      await layout.updateComplete
+      await nextFrame()
+
+      expect(layout.sidebarResizable).toBe(false)
+      expect(layout.shadowRoot?.querySelector('.sidebar-resize-handle')).toBeFalsy()
+    })
+
+    it('拖拽 handle 实时更新 aside 宽度；松手派发 sidebar-width-change 请求', async () => {
+      await page.viewport(1280, 720)
+      const layout = createLayout()
+      layout.setAttribute('sidebar-resizable', '')
+      await layout.updateComplete
+      await nextFrame()
+
+      const widthRequests: string[] = []
+      layout.addEventListener('sidebar-width-change', event =>
+        widthRequests.push((event as CustomEvent<{ width: string }>).detail.width)
+      )
+
+      const aside = layout.shadowRoot?.querySelector('aside') as HTMLElement
+      const handle = layout.shadowRoot?.querySelector('.sidebar-resize-handle') as HTMLElement
+      expect(handle).toBeTruthy()
+      const startWidth = parseFloat(window.getComputedStyle(aside).width)
+
+      const handleRect = handle.getBoundingClientRect()
+      // pointerdown/move 的 clientX 一致：向右拖 60px 增宽
+      handle.dispatchEvent(
+        new PointerEvent('pointerdown', {
+          bubbles: true,
+          pointerId: 1,
+          isPrimary: true,
+          clientX: handleRect.left
+        })
+      )
+      await layout.updateComplete
+      expect(aside.classList.contains('is-resizing')).toBe(true)
+      expect(window.getComputedStyle(aside).transitionDuration).toBe('0s')
+
+      handle.dispatchEvent(
+        new PointerEvent('pointermove', {
+          bubbles: true,
+          pointerId: 1,
+          isPrimary: true,
+          clientX: handleRect.left + 60
+        })
+      )
+      await nextFrame()
+
+      const draggedWidth = parseFloat(window.getComputedStyle(aside).width)
+      expect(draggedWidth).toBeCloseTo(startWidth + 60, 0)
+
+      handle.dispatchEvent(
+        new PointerEvent('pointerup', {
+          bubbles: true,
+          pointerId: 1,
+          isPrimary: true,
+          clientX: handleRect.left + 60
+        })
+      )
+      await layout.updateComplete
+
+      expect(aside.classList.contains('is-resizing')).toBe(false)
+      expect(widthRequests).toHaveLength(1)
+      expect(parseFloat(widthRequests[0])).toBeCloseTo(startWidth + 60, 0)
+    })
+
+    it('拖拽宽度被 min/max 钳制', async () => {
+      await page.viewport(1280, 720)
+      const layout = createLayout()
+      layout.setAttribute('sidebar-resizable', '')
+      layout.setAttribute('sidebar-min-width', '200px')
+      layout.setAttribute('sidebar-max-width', '300px')
+      await layout.updateComplete
+      await nextFrame()
+
+      const handle = layout.shadowRoot?.querySelector('.sidebar-resize-handle') as HTMLElement
+      const handleRect = handle.getBoundingClientRect()
+
+      // 大幅增宽超过 max（向右拖）
+      handle.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerId: 1, isPrimary: true }))
+      await layout.updateComplete
+      handle.dispatchEvent(
+        new PointerEvent('pointermove', {
+          bubbles: true,
+          pointerId: 1,
+          isPrimary: true,
+          clientX: handleRect.left + 400
+        })
+      )
+      await nextFrame()
+
+      const aside = layout.shadowRoot?.querySelector('aside') as HTMLElement
+      expect(parseFloat(window.getComputedStyle(aside).width)).toBeLessThanOrEqual(300)
+
+      // 大幅收窄低于 min（向左拖）
+      handle.dispatchEvent(
+        new PointerEvent('pointermove', {
+          bubbles: true,
+          pointerId: 1,
+          isPrimary: true,
+          clientX: handleRect.left - 400
+        })
+      )
+      await nextFrame()
+      expect(parseFloat(window.getComputedStyle(aside).width)).toBeGreaterThanOrEqual(200)
+
+      handle.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, pointerId: 1, isPrimary: true }))
+      await layout.updateComplete
+    })
+
+    it('sidebar-min-width 未设置时回退为 collapsed-width', async () => {
+      await page.viewport(1280, 720)
+      const layout = createLayout()
+      layout.setAttribute('sidebar-resizable', '')
+      await layout.updateComplete
+      await nextFrame()
+
+      const handle = layout.shadowRoot?.querySelector('.sidebar-resize-handle') as HTMLElement
+      const handleRect = handle.getBoundingClientRect()
+
+      handle.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerId: 1, isPrimary: true }))
+      await layout.updateComplete
+      // 大幅收窄，应被钳制在 collapsed-width (72px)（向左拖）
+      handle.dispatchEvent(
+        new PointerEvent('pointermove', {
+          bubbles: true,
+          pointerId: 1,
+          isPrimary: true,
+          clientX: handleRect.left - 600
+        })
+      )
+      await nextFrame()
+
+      const aside = layout.shadowRoot?.querySelector('aside') as HTMLElement
+      expect(parseFloat(window.getComputedStyle(aside).width)).toBeGreaterThanOrEqual(72)
+
+      handle.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, pointerId: 1, isPrimary: true }))
+      await layout.updateComplete
+    })
+
+    it('零位移松手不派发 sidebar-width-change', async () => {
+      await page.viewport(1280, 720)
+      const layout = createLayout()
+      layout.setAttribute('sidebar-resizable', '')
+      await layout.updateComplete
+      await nextFrame()
+
+      const widthRequests: string[] = []
+      layout.addEventListener('sidebar-width-change', event =>
+        widthRequests.push((event as CustomEvent<{ width: string }>).detail.width)
+      )
+
+      const aside = layout.shadowRoot?.querySelector('aside') as HTMLElement
+      const startWidth = parseFloat(window.getComputedStyle(aside).width)
+      const handle = layout.shadowRoot?.querySelector('.sidebar-resize-handle') as HTMLElement
+      const handleRect = handle.getBoundingClientRect()
+
+      // down 后原位 up：点击而非拖拽，不应产生调宽请求
+      handle.dispatchEvent(
+        new PointerEvent('pointerdown', { bubbles: true, pointerId: 1, isPrimary: true, clientX: handleRect.left })
+      )
+      await layout.updateComplete
+      handle.dispatchEvent(
+        new PointerEvent('pointerup', { bubbles: true, pointerId: 1, isPrimary: true, clientX: handleRect.left })
+      )
+      await layout.updateComplete
+      await waitForLayoutTransition()
+
+      expect(widthRequests).toHaveLength(0)
+      expect(parseFloat(window.getComputedStyle(aside).width)).toBeCloseTo(startWidth, 0)
+    })
+
+    it('键盘调宽：方向键步进受 min/max 钳制，松开焦点后由 Consumer 回写生效', async () => {
+      await page.viewport(1280, 720)
+      const layout = createLayout()
+      layout.setAttribute('sidebar-resizable', '')
+      layout.setAttribute('sidebar-min-width', '200px')
+      layout.setAttribute('sidebar-max-width', '300px')
+      await layout.updateComplete
+      await nextFrame()
+
+      const widthRequests: string[] = []
+      layout.addEventListener('sidebar-width-change', event =>
+        widthRequests.push((event as CustomEvent<{ width: string }>).detail.width)
+      )
+
+      const handle = layout.shadowRoot?.querySelector('.sidebar-resize-handle') as HTMLElement
+      expect(handle.getAttribute('role')).toBe('separator')
+      expect(handle.getAttribute('tabindex')).toBe('0')
+
+      // 向右键入增宽：240 → 256 → 272（等 width transition 完成，否则 computed 值滞后）
+      handle.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'ArrowRight' }))
+      await layout.updateComplete
+      handle.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'ArrowRight' }))
+      await layout.updateComplete
+      await waitForLayoutTransition()
+      const aside = layout.shadowRoot?.querySelector('aside') as HTMLElement
+      expect(parseFloat(window.getComputedStyle(aside).width)).toBeCloseTo(272, 0)
+
+      // 键盘调整不直接派发；Commit（Enter）后走受控请求
+      expect(widthRequests).toHaveLength(0)
+      handle.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'Enter' }))
+      await layout.updateComplete
+      expect(widthRequests).toEqual(['272px'])
+    })
+
+    it('折叠态隐藏 handle；展开后重现', async () => {
+      await page.viewport(1280, 720)
+      const layout = createLayout()
+      layout.setAttribute('sidebar-resizable', '')
+      await layout.updateComplete
+      await nextFrame()
+
+      expect(layout.shadowRoot?.querySelector('.sidebar-resize-handle')).toBeTruthy()
+
+      layout.sidebarCollapsed = true
+      await layout.updateComplete
+      await waitForLayoutTransition()
+      expect(layout.shadowRoot?.querySelector('.sidebar-resize-handle')).toBeFalsy()
+
+      layout.sidebarCollapsed = false
+      await layout.updateComplete
+      expect(layout.shadowRoot?.querySelector('.sidebar-resize-handle')).toBeTruthy()
+    })
+
+    it('handle 竖线使用 accent 颜色且 hover 时可见', async () => {
+      await page.viewport(1280, 720)
+      const layout = createLayout()
+      layout.setAttribute('sidebar-resizable', '')
+      await layout.updateComplete
+      await nextFrame()
+
+      const handle = layout.shadowRoot?.querySelector('.sidebar-resize-handle') as HTMLElement
+      expect(window.getComputedStyle(handle).cursor).toBe('col-resize')
+
+      const line = window.getComputedStyle(handle, '::before')
+      expect(line.background).toContain('rgb(0, 136, 255)')
+      expect(parseFloat(line.opacity)).toBe(0)
+    })
+
+    it('pointercancel 恢复 prop 管辖宽度且不派发事件', async () => {
+      await page.viewport(1280, 720)
+      const layout = createLayout()
+      layout.setAttribute('sidebar-resizable', '')
+      await layout.updateComplete
+      await nextFrame()
+
+      const widthRequests: string[] = []
+      layout.addEventListener('sidebar-width-change', event =>
+        widthRequests.push((event as CustomEvent<{ width: string }>).detail.width)
+      )
+
+      const aside = layout.shadowRoot?.querySelector('aside') as HTMLElement
+      const startWidth = parseFloat(window.getComputedStyle(aside).width)
+      const handle = layout.shadowRoot?.querySelector('.sidebar-resize-handle') as HTMLElement
+      const handleRect = handle.getBoundingClientRect()
+
+      handle.dispatchEvent(
+        new PointerEvent('pointerdown', {
+          bubbles: true,
+          pointerId: 1,
+          isPrimary: true,
+          clientX: handleRect.left
+        })
+      )
+      await layout.updateComplete
+      handle.dispatchEvent(
+        new PointerEvent('pointermove', {
+          bubbles: true,
+          pointerId: 1,
+          isPrimary: true,
+          clientX: handleRect.left - 100
+        })
+      )
+      await nextFrame()
+      handle.dispatchEvent(new PointerEvent('pointercancel', { bubbles: true, pointerId: 1, isPrimary: true }))
+      await layout.updateComplete
+      await waitForLayoutTransition()
+
+      expect(widthRequests).toHaveLength(0)
+      expect(parseFloat(window.getComputedStyle(aside).width)).toBeCloseTo(startWidth, 0)
+    })
+
+    it('capture 提前丢失后：window 捕获层接管拖拽直到松手收尾', async () => {
+      await page.viewport(1280, 720)
+      const layout = createLayout()
+      layout.setAttribute('sidebar-resizable', '')
+      await layout.updateComplete
+      await nextFrame()
+
+      const widthRequests: string[] = []
+      layout.addEventListener('sidebar-width-change', event =>
+        widthRequests.push((event as CustomEvent<{ width: string }>).detail.width)
+      )
+
+      const aside = layout.shadowRoot?.querySelector('aside') as HTMLElement
+      const startWidth = parseFloat(window.getComputedStyle(aside).width)
+      const handle = layout.shadowRoot?.querySelector('.sidebar-resize-handle') as HTMLElement
+      const handleRect = handle.getBoundingClientRect()
+
+      handle.dispatchEvent(
+        new PointerEvent('pointerdown', {
+          bubbles: true,
+          pointerId: 1,
+          isPrimary: true,
+          clientX: handleRect.left
+        })
+      )
+      await layout.updateComplete
+      expect(aside.classList.contains('is-resizing')).toBe(true)
+
+      // 复现 Chromium 提前 lostpointercapture 的场景：后续事件不再经过 handle，
+      // 按 hit-test 散落（此处直接派发到 body），window 捕获层必须继续消费。
+      document.body.dispatchEvent(
+        new PointerEvent('pointermove', {
+          bubbles: true,
+          composed: true,
+          pointerId: 1,
+          isPrimary: true,
+          clientX: handleRect.left + 80
+        })
+      )
+      await nextFrame()
+      // 跟手不中断：向右拖 80px 增宽由 window 层消费
+      expect(parseFloat(window.getComputedStyle(aside).width)).toBeCloseTo(startWidth + 80, -1)
+
+      document.body.dispatchEvent(
+        new PointerEvent('pointerup', {
+          bubbles: true,
+          composed: true,
+          pointerId: 1,
+          isPrimary: true,
+          clientX: handleRect.left + 80
+        })
+      )
+      await layout.updateComplete
+
+      expect(aside.classList.contains('is-resizing')).toBe(false)
+      expect(widthRequests).toHaveLength(1)
+    })
+
+    it('拖拽中视口跨越移动端断点：手势被终结且切回桌面后可再次拖拽', async () => {
+      await page.viewport(1280, 720)
+      const layout = createLayout()
+      layout.setAttribute('sidebar-resizable', '')
+      await layout.updateComplete
+      await nextFrame()
+
+      const widthRequests: string[] = []
+      layout.addEventListener('sidebar-width-change', event =>
+        widthRequests.push((event as CustomEvent<{ width: string }>).detail.width)
+      )
+
+      const handle = layout.shadowRoot?.querySelector('.sidebar-resize-handle') as HTMLElement
+      const handleRect = handle.getBoundingClientRect()
+      handle.dispatchEvent(
+        new PointerEvent('pointerdown', { bubbles: true, pointerId: 1, isPrimary: true, clientX: handleRect.left })
+      )
+      await layout.updateComplete
+
+      // 缩到移动端宽度：桌面 layout 卸载，resize 防抖后 _checkMobile 必须终结悬挂手势
+      await page.viewport(390, 844)
+      await waitForLayoutTransition()
+      await new Promise(resolve => setTimeout(resolve, 250))
+
+      // 切回桌面后新手势不被旧的悬挂状态拦截
+      await page.viewport(1280, 720)
+      await waitForLayoutTransition()
+      await new Promise(resolve => setTimeout(resolve, 250))
+      const freshHandle = layout.shadowRoot?.querySelector('.sidebar-resize-handle') as HTMLElement
+      expect(freshHandle).toBeTruthy()
+      // 悬挂手势的终结不应派发任何宽度请求
+      expect(widthRequests).toHaveLength(0)
+
+      const rect = freshHandle.getBoundingClientRect()
+      freshHandle.dispatchEvent(
+        new PointerEvent('pointerdown', { bubbles: true, pointerId: 1, isPrimary: true, clientX: rect.left })
+      )
+      await layout.updateComplete
+      const aside = layout.shadowRoot?.querySelector('aside') as HTMLElement
+      expect(aside.classList.contains('is-resizing')).toBe(true)
+      // 带真实位移的拖拽 + 松手：正常派发调宽请求
+      freshHandle.dispatchEvent(
+        new PointerEvent('pointermove', { bubbles: true, pointerId: 1, isPrimary: true, clientX: rect.left + 60 })
+      )
+      await nextFrame()
+      freshHandle.dispatchEvent(
+        new PointerEvent('pointerup', { bubbles: true, pointerId: 1, isPrimary: true, clientX: rect.left + 60 })
+      )
+      await layout.updateComplete
+      expect(widthRequests).toHaveLength(1)
+    })
   })
 })

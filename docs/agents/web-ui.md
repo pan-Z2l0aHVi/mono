@@ -7,6 +7,7 @@
 - Lit、Shadow DOM 和框架无关组件边界：[ADR-0003](../adr/0003-web-component-strategy.md)。
 - 公共组件契约、原生事件和表单行为：[ADR-0007](../adr/0007-web-ui-contract-convergence.md)；组件 README 是面向消费者的 API 说明。
 - Overlay 关闭、焦点和滚动语义：[ADR-0005](../adr/0005-overlay-interaction-policy.md)；Portal 与层叠：[ADR-0006](../adr/0006-layout-layering.md)。
+- Drawer 拖拽关闭手势、drag bar 与关闭态无渲染约束：[ADR-0035](../adr/0035-web-ui-drawer-drag-close.md)；非 headless Drawer 的浮动卡片视觉容器（留边、圆角、闭合补偿）：[ADR-0036](../adr/0036-web-ui-drawer-floating-card.md)。
 - Design token：[ADR-0010](../adr/0010-design-token-restructure.md)；图标 manifest、生成器和导出：[ADR-0008](../adr/0008-icon-system.md)。
 - React/Vue 类型适配、`$events` 和复合控件事件边界：[ADR-0011](../adr/0011-framework-type-adaptation-narrowing.md)。
 - 跨框架 API 约定（Property camelCase / Attribute kebab-case / Event kebab-case）与布尔 converter 兜底：[ADR-0033](../adr/0033-cross-framework-api-convention.md)；README「框架集成」章节是面向消费者的规范。

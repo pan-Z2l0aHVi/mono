@@ -50,6 +50,7 @@
     "indexeddb",
     "ooui",
     "wailsio",
+    "WAAPI",
     "ENEEDAUTH",
     "oxfmt",
     "idref",
