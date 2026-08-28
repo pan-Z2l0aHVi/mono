@@ -626,13 +626,14 @@ ArrowUp/ArrowDown 键增减数值。空输入或 `-` 在提交时被忽略，值
 
 **CSS 自定义属性：**
 
-| 属性                      | 默认值                             | 说明                        |
-| ------------------------- | ---------------------------------- | --------------------------- |
-| `--wui-drawer-width`      | `320px`                            | 抽屉宽度                    |
-| `--wui-drawer-height`     | `300px`                            | 抽屉高度（上/下）           |
-| `--wui-drawer-bg`         | `var(--wui-color-surface-overlay)` | 抽屉背景色                  |
-| `--wui-drawer-radius`     | `28px`                             | 浮动卡片圆角（非 headless） |
-| `--wui-drawer-overlay-bg` | `rgb(0 0 0 / 0.12)`                | 遮罩背景色                  |
+| 属性                      | 默认值                             | 说明                                               |
+| ------------------------- | ---------------------------------- | -------------------------------------------------- |
+| `--wui-drawer-width`      | `320px`                            | 抽屉宽度                                           |
+| `--wui-drawer-height`     | `300px`                            | 抽屉高度（上/下）                                  |
+| `--wui-drawer-bg`         | `var(--wui-color-surface-overlay)` | 抽屉背景色                                         |
+| `--wui-drawer-radius`     | `28px`                             | 浮动卡片圆角（非 headless）                        |
+| `--wui-drawer-inset`      | `8px`                              | 浮动卡片视口留边（非 headless）；置 `0` 为贴边几何 |
+| `--wui-drawer-overlay-bg` | `rgb(0 0 0 / 0.12)`                | 遮罩背景色                                         |
 
 ---
 

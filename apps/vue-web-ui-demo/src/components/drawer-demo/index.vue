@@ -192,20 +192,19 @@ const randomWidthL4 = ref(false)
 
     <h2>Custom CSS Vars</h2>
     <div class="mb-3 flex gap-2">
-      <web-ui-button @click="cssVarsVisible = true">打开暗色抽屉</web-ui-button>
+      <web-ui-button @click="cssVarsVisible = true">打开直角白底抽屉</web-ui-button>
     </div>
     <web-ui-drawer
       :open="cssVarsVisible"
-      heading="暗色抽屉"
+      heading="直角白底抽屉"
       :style="{
-        '--wui-drawer-overlay-bg': 'rgba(0, 0, 0, 0.45)',
-        '--wui-drawer-bg': '#1c1c1e',
-        '--wui-drawer-shadow': '0 4px 24px rgba(0, 0, 0, 0.5)',
-        '--wui-drawer-width': '380px'
+        '--wui-drawer-bg': '#fff',
+        '--wui-drawer-radius': '0',
+        '--wui-drawer-inset': '0'
       }"
       @open-change="cssVarsVisible = $event.detail.open"
     >
-      <p style="color: #ccc">自定义遮罩层、背景、阴影等样式。</p>
+      <p>通过 CSS 变量自定义背景与几何：白色背景、直角贴边（四周无间隙）。</p>
     </web-ui-drawer>
 
     <h2>受控关闭请求</h2>

@@ -638,13 +638,14 @@ Closing keeps the native dialog in the top layer until the `--wui-duration-drawe
 
 **CSS Custom Properties:**
 
-| Property                  | Default                            | Description                                |
-| ------------------------- | ---------------------------------- | ------------------------------------------ |
-| `--wui-drawer-width`      | `320px`                            | Drawer width                               |
-| `--wui-drawer-height`     | `300px`                            | Drawer height (top/bottom)                 |
-| `--wui-drawer-bg`         | `var(--wui-color-surface-overlay)` | Drawer body background                     |
-| `--wui-drawer-radius`     | `28px`                             | Floating card corner radius (non-headless) |
-| `--wui-drawer-overlay-bg` | `rgb(0 0 0 / 0.12)`                | Backdrop background                        |
+| Property                  | Default                            | Description                                                                  |
+| ------------------------- | ---------------------------------- | ---------------------------------------------------------------------------- |
+| `--wui-drawer-width`      | `320px`                            | Drawer width                                                                 |
+| `--wui-drawer-height`     | `300px`                            | Drawer height (top/bottom)                                                   |
+| `--wui-drawer-bg`         | `var(--wui-color-surface-overlay)` | Drawer body background                                                       |
+| `--wui-drawer-radius`     | `28px`                             | Floating card corner radius (non-headless)                                   |
+| `--wui-drawer-inset`      | `8px`                              | Floating card viewport inset (non-headless); `0` gives edge-to-edge geometry |
+| `--wui-drawer-overlay-bg` | `rgb(0 0 0 / 0.12)`                | Backdrop background                                                          |
 
 ---
 

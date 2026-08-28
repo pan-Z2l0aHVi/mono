@@ -16,8 +16,8 @@
 
 - 所有 **non-headless** drawer 改为浮动卡片：dialog 四周留边 8px，`.wui-drawer-body` 铺满并带圆角。四个 placement 一致处理。
 - 几何放在 dialog 自身的 insets 上，不再包一层 wrapper：transform 动画、遮罩跟手淡出、drag bar 定位均不变。
-- 新增公开 token `--wui-drawer-radius`（fallback `28px`，与 layout sidebar 圆角一致）。留边固定 8px，不进 token 矩阵。
-- 闭合位移必须越过留边才能完全滑出视口：CSS 闭合态 transform 以内部变量 `--wui-internal-drawer-inset` 补偿（如 `translateX(calc(100% + var(--wui-internal-drawer-inset)))`）；JS 在 request-only 悬停终态读取同一变量。headless 无此变量，JS 回退为 0，保持贴边几何由 Consumer 自绘。
+- 新增公开 token `--wui-drawer-radius`（fallback `28px`，与 layout sidebar 圆角一致）。留边经公开 token `--wui-drawer-inset` 暴露（fallback `8px`；后续修订：初始版本为写死的内部值，Consumer 无法贴边，置 0 即 headless 同款贴边几何，通常与 radius 0 搭配）。
+- 闭合位移必须越过留边才能完全滑出视口：CSS 闭合态 transform 以内部变量 `--wui-internal-drawer-inset` 补偿（如 `translateX(calc(100% + var(--wui-internal-drawer-inset)))`）；JS 在 request-only 悬停终态读取同一变量。headless 在 `:host([headless]) dialog` 上把该变量显式归零（防止嵌套在非 headless drawer 内时沿 flattened tree 继承到 8px），保持贴边几何由 Consumer 自绘。
 - 开放态需要显式的更高特异性守卫恢复 `translate(0,0)`，否则闭合补偿会在级联中反超基础打开态规则。
 
 ## 后果

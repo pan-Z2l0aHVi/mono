@@ -280,6 +280,13 @@ dialog.is-dragging .wui-drawer-drag-zone {
 
 /* Headless 模式下，dialog 只作为 overlay 容器，不渲染内置 UI */
 :host([headless]) dialog {
+  /*
+   * inset 只属于浮动卡片几何；headless 嵌套在非 headless 外层内时会沿
+   * flattened tree 继承到 8px，破坏 JS 读取该变量得到的贴边几何假设
+   * （parseFloat('0px') 与回退 0 语义一致），故显式归零。
+   */
+  --wui-internal-drawer-inset: 0px;
+
   /* 保持 overlay 基础设施，移除内置样式 */
   width: auto;
   max-width: none;
@@ -292,14 +299,17 @@ dialog.is-dragging .wui-drawer-drag-zone {
  * 弹性拖拽使边距变化（8px → 更大）是合法状态而非渲染缺口。
  * headless 保持贴边几何，视觉由 Consumer 自绘。
  *
+ * 留边经公开 token --wui-drawer-inset 暴露（默认 8px，ADR-0036 修订）；
+ * 置 0 即贴边几何（与 headless 相同），通常与 --wui-drawer-radius: 0 搭配。
+ *
  * 闭合位移需要越过留边才能完全滑出视口，因此闭合态 transform 以
  * --wui-internal-drawer-inset 补偿；JS 在 request-only 悬停终态读取同一变量，
- * 保证两条关闭路径的行为一致。headless 下无此变量，JS 回退为 0（贴边几何）。
+ * 保证两条关闭路径的行为一致。headless 将该变量显式归零（见上方 Headless 模式）。
  */
 
 /* 默认 right：四周留边、高度随上下边距拉伸，闭合位移越过右侧留边 */
 :host(:not([headless])) dialog {
-  --wui-internal-drawer-inset: 8px;
+  --wui-internal-drawer-inset: var(--wui-drawer-inset, 8px);
   --wui-internal-drawer-nested-depth: 0;
   --wui-internal-drawer-nested-scale: 1;
   --wui-internal-drawer-nested-shift: 0px;

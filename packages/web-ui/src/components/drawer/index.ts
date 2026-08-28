@@ -43,6 +43,20 @@ if (typeof CSS !== 'undefined' && 'registerProperty' in CSS) {
   } catch {
     // 已注册（如 HMR 重复执行）时忽略
   }
+  /*
+   * 公开 token 注册为 <length>：Consumer 传 unitless 0 时计算值被归一为 0px，
+   * 避免 calc(100% + 0) 因 number/percentage 不兼容而使闭合位移失效。
+   */
+  try {
+    CSS.registerProperty({
+      name: '--wui-drawer-inset',
+      syntax: '<length>',
+      inherits: true,
+      initialValue: '8px'
+    })
+  } catch {
+    // 已注册（如 HMR 重复执行）时忽略
+  }
 }
 
 @customElement('web-ui-drawer')
@@ -149,7 +163,7 @@ export class WebUiDrawer extends LitElement {
   }
 
   // 浮动卡片（非 headless）的四周留边；闭合位移需越过它才能完全滑出视口。
-  // headless 无此变量，返回 0，行为与贴边几何一致。
+  // headless 在 :host([headless]) dialog 上显式归零（防嵌套继承），解析失败回退 0。
   private _readDrawerInset(dialog: HTMLDialogElement): number {
     const raw = getComputedStyle(dialog).getPropertyValue('--wui-internal-drawer-inset')
     const parsed = Number.parseFloat(raw)
