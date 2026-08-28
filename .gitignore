@@ -163,3 +163,6 @@ report.html
 !.codex/environments/
 .codex/environments/*
 !.codex/environments/environment.toml
+
+# Wails temp bindings
+.bindings-tmp-*/

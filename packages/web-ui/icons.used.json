@@ -56,5 +56,10 @@
   "lucide:clapperboard",
   "lucide:headphones",
   "lucide:pen-line",
-  "lucide:play"
+  "lucide:play",
+  "lucide:list-filter",
+  "lucide:code",
+  "heroicons:bars-arrow-down-16-solid",
+  "heroicons:bars-arrow-up-16-solid",
+  "lucide:list-restart"
 ]

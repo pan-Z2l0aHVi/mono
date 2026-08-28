@@ -14,6 +14,12 @@
   opacity: 0.4;
 }
 
+.wui-autocomplete-inner {
+  /* 与 select 的 .wui-select-inner 对齐：为本地绝对定位面板提供包含块，
+     避免面板 offsetParent（BODY）与实际包含块（远端定位祖先，如 layout header）不一致导致定位偏移。 */
+  position: relative;
+}
+
 .input-wrapper {
   display: flex;
   gap: 8px;
