@@ -22,6 +22,7 @@ Add Layout desktop sidebar drag-to-resize and Drawer drag-to-close features.
 - Spring via WAAPI (no new `--wui-*` tokens)
 - `prefers-reduced-motion` snaps instantly
 - Request-only `open-change(false)` with writeback await + timeout rebound
+- Declarative nested drawer stacking: open drawers below the top layer automatically scale down (0.95^depth) and shift towards the inner side to expose card edges; Escape and backdrop clicks dismiss only the topmost layer
 
 **Drawer visual language (breaking visual, no API change):**
 

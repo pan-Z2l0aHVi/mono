@@ -383,32 +383,10 @@ describe('WebUiDrawer 组件', () => {
   })
 
   describe('键盘：Escape', () => {
-    it('footer 按钮获得焦点时按 Escape 仍通过关闭过渡退出', async () => {
-      vi.useFakeTimers()
-      const el = createDrawer()
-      el.innerHTML = '<web-ui-button slot="footer">关闭</web-ui-button>'
-      el.open = true
-      await waitForUpdate(el)
-      await vi.advanceTimersByTimeAsync(16)
-
-      const dialog = el.shadowRoot?.querySelector('dialog')
-      const footerButton = el.querySelector('web-ui-button')
-      const nativeButton = footerButton?.shadowRoot?.querySelector('button')
-      nativeButton?.focus()
-
-      const event = nativeButton ? dispatchEscapeKey(nativeButton) : null
-      await waitForUpdate(el)
-
-      expect(event?.defaultPrevented).toBe(true)
-      expect(el.open).toBe(false)
-      expect(dialog?.open).toBe(true)
-
-      if (dialog) dispatchTransformTransitionEnd(dialog)
-      expect(dialog?.open).toBe(false)
-
-      vi.useRealTimers()
-      cleanupElement(el)
-    })
+    // 「footer 内按钮获得焦点时按 Escape」的行为依赖真实 UA 的 top layer 键盘
+    // 路由（焦点在 shadow 内 light DOM 时，Esc 仍派发到 top layer 的 dialog），
+    // jsdom 无此机制（composed keydown 不经过 dialog，handler 不会触发），
+    // 该场景由 nested.browser.spec.ts 的浏览器用例覆盖。
 
     it('no-backdrop-close 存在时 cancel 仍通过关闭过渡退出', async () => {
       vi.useFakeTimers()

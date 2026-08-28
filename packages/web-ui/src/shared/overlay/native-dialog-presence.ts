@@ -51,10 +51,12 @@ export const defineNativeDialogPresence = () =>
       dialog.classList.remove('is-closing')
       if (!dialog.open) {
         try {
+          // 并发多个 modal dialog（nested drawer 场景）在规范中合法；
+          // 此 try/catch 为防御性兜底（如对已在 top layer 的 dialog 重复 showModal
+          // 会抛 InvalidStateError），失败时由下方 rAF 回调的 dialog.open 判断中止动画。
           dialog.showModal?.()
         } catch {
-          // 顶层已有其他 modal dialog 时 showModal 抛 InvalidStateError；
-          // 记录未打开状态，由 rAF 回调中的 dialog.open 判断中止动画
+          // 保留未打开状态
         }
       }
 

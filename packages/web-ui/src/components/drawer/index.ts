@@ -8,6 +8,7 @@ import { oouiClose } from '@/icons'
 import { UserChangeController } from '@/shared/events/user-change'
 import { normalizeLiteral } from '@/shared/normalize'
 import { defineNativeDialogPresence } from '@/shared/overlay/native-dialog-presence'
+import { defineNestedDrawerLayers } from '@/shared/overlay/nested-drawer-layers'
 import { defineScrollLockLease } from '@/shared/scroll-lock/scroll-lock'
 import { findNearestTheme } from '@/shared/theme/theme-scope'
 
@@ -138,6 +139,11 @@ export class WebUiDrawer extends LitElement {
     getDialog: () => this.dialog,
     isConnected: () => this.isConnected,
     isOpen: () => this.open
+  })
+  // nested 层序：打开后纳入全局栈，上层打开/关闭时本层缩放平移（对齐 Base UI）。
+  private readonly _nestedLayers = defineNestedDrawerLayers().make({
+    getDialog: () => this.dialog,
+    getPlacement: () => this._placement
   })
 
   // ===== 拖拽关闭手势状态 =====
@@ -271,7 +277,11 @@ export class WebUiDrawer extends LitElement {
 
     // 先挂 window 兜底再尝试 capture：即使 capture 调用失败，手势仍可收尾。
     this._attachWindowGestureListeners()
-    ;(e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId)
+    try {
+      ;(e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId)
+    } catch {
+      // 忽略合成指针或不可捕获上下文（如测试环境）
+    }
     dialog.classList.add('is-dragging')
   }
 
@@ -490,6 +500,7 @@ export class WebUiDrawer extends LitElement {
 
   override disconnectedCallback() {
     super.disconnectedCallback()
+    this._nestedLayers.dispose()
     this._detachWindowGestureListeners()
     this._presence.dispose()
     this._scrollLock.release()
@@ -546,6 +557,14 @@ export class WebUiDrawer extends LitElement {
         }
       }
       this._presence.sync(this.open)
+      if (this.open) {
+        // presence.sync 已同步发起 showModal：此刻 dialog.open 为真，计数出正确
+        // 的层序 depth 并驱动下层缩放。直接同步 register，不等待 is-visible
+        //（那要再等一帧，且打开过渡期间上层关系已应确立）。
+        this._nestedLayers.register()
+      } else {
+        this._nestedLayers.unregister()
+      }
     }
     if (props.has('open') || props.has('noScrollLock')) this._syncScrollLock()
   }
@@ -556,6 +575,17 @@ export class WebUiDrawer extends LitElement {
 
   private handleKeydown(e: KeyboardEvent) {
     if (e.key !== 'Escape') return
+    /*
+     * nested 场景防连锁：子 drawer 的 dialog 经 slot 投影在本层 shadow 内，其
+     * keydown composed 冒泡路径会再次经过本层 dialog（事件路径含 slot 宿主链）。
+     * 若事件传播路径在本层 dialog 之前已存在其他 <dialog>，说明该事件来自子层，本层忽略。
+     */
+    const path = e.composedPath()
+    const ownDialogIndex = path.indexOf(e.currentTarget as Node)
+    if (ownDialogIndex > 0) {
+      const hasChildDialog = path.slice(0, ownDialogIndex).some(n => n instanceof HTMLDialogElement)
+      if (hasChildDialog) return
+    }
     // 拖拽进行中忽略 ESC，避免手势与关闭管线竞争。
     if (this._isDragging()) {
       e.preventDefault()

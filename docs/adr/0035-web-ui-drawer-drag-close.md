@@ -40,7 +40,7 @@
 
 松手 snap 用 Web Animations API（`element.animate`）按释放速度做半隐式欧拉积分生成关键帧：关闭方向近临界阻尼（避免越过闭合位回弹），弹回方向欠阻尼（保留轻微弹性）。**不新增 `--wui-*` 动效 token**——弹簧是手势尾随的物理插值，与服务端可主题化的语义时长（如 `--wui-duration-drawer-exit`）不同，纳入 token 矩阵反而会污染消费者可控的语义。
 
-`prefers-reduced-motion` 下松手即时到位（无弹簧），并保持现有 reduced-motion 退出行为（transform 置 none、仅 opacity 过渡）。
+`prefers-reduced-motion` 或祖先 `<web-ui-theme motion="reduced">` 下松手即时到位（无弹簧），并保持现有 reduced-motion 退出行为（transform 置 none、仅 opacity 过渡）。
 
 ### 5. 与受控契约一致
 

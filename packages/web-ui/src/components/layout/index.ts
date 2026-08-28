@@ -192,7 +192,11 @@ export class WebUiLayout extends LitElement {
 
     // 先挂 window 兜底再尝试 capture：即使 capture 调用失败，手势仍可收尾。
     this._attachWindowResizeListeners()
-    ;(e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId)
+    try {
+      ;(e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId)
+    } catch {
+      // 忽略合成指针或不可捕获上下文（如测试环境）
+    }
     aside.classList.add('is-resizing')
   }
 

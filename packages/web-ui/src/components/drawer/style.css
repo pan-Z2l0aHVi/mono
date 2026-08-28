@@ -49,7 +49,13 @@ dialog[open].is-visible {
   transform: translate(0, 0);
 }
 
-/* 拖拽跟手期间与弹簧弹回期间，transform/backdrop 由 JS 内联样式与 WAAPI 管辖。 */
+/*
+ * 拖拽跟手期间与弹簧弹回期间，transform/backdrop 由 JS 内联样式与 WAAPI 管辖。
+ * 特异性必须压过下方开放守卫块（:host(:not()) dialog[open].is-visible = (0,4,1)
+ * 的 nested transition 声明），否则拖拽写入的 transform 会被平滑掉、跟手失效。
+ * 复合选择器达 (0,6,1)，恒高于守卫。
+ */
+:host(:not([headless])) dialog.is-dragging[open].is-visible,
 dialog.is-dragging {
   transition: none;
 
@@ -94,6 +100,13 @@ dialog[open].is-visible::backdrop {
   display: flex;
   align-items: center;
   justify-content: center;
+
+  transition: opacity var(--wui-duration-feedback, 150ms) ease;
+}
+
+dialog.is-nested-lower .wui-drawer-drag-zone {
+  pointer-events: none;
+  opacity: 0;
 }
 
 :host([placement='right']) .wui-drawer-drag-zone {
@@ -250,24 +263,6 @@ dialog.is-dragging .wui-drawer-drag-zone {
   border-top: 1px solid rgb(0 0 0 / 0.06);
 }
 
-@media (prefers-reduced-motion: reduce) {
-  dialog {
-    transition: opacity var(--wui-duration-feedback, 100ms) ease;
-  }
-
-  dialog::backdrop {
-    transition-duration: var(--wui-duration-feedback, 100ms);
-  }
-
-  dialog[open].is-visible {
-    transform: none;
-  }
-
-  .wui-drawer-drag-bar {
-    transition: none;
-  }
-}
-
 .wui-drawer-footer[hidden] {
   display: none;
 }
@@ -305,6 +300,9 @@ dialog.is-dragging .wui-drawer-drag-zone {
 /* 默认 right：四周留边、高度随上下边距拉伸，闭合位移越过右侧留边 */
 :host(:not([headless])) dialog {
   --wui-internal-drawer-inset: 8px;
+  --wui-internal-drawer-nested-depth: 0;
+  --wui-internal-drawer-nested-scale: 1;
+  --wui-internal-drawer-nested-shift: 0px;
 
   top: var(--wui-internal-drawer-inset);
   right: var(--wui-internal-drawer-inset);
@@ -355,10 +353,65 @@ dialog.is-dragging .wui-drawer-drag-zone {
 /*
  * 开放态守卫：上方闭合 transform 与基础 `dialog[open].is-visible` 特异性相同且
  * 在文件更后方，必须以更高特异性显式恢复打开位，否则抽屉停在闭合位。
+ *
+ * Nested 层叠（对齐卡片堆栈效果）：非顶层抽屉按 0.95^depth 缩放并向屏幕内侧
+ * 平移（shift 为正，朝屏幕中心方向），使缩小的卡片在顶层后方露出阶梯式卡片边缘。
+ * 用独立 translate/scale 属性（而非并入 transform）：
+ * 它们是标准可过渡属性，变量变化即触发平滑过渡；且与 transform 轴上的
+ * 闭合/拖拽/弹簧位移互不覆写（独立属性先于 transform 应用后合并）。
+ * JS 层序管理写入 depth/scale/shift 三个内部变量，单层使用时全为中性值。
+ *
+ * 层叠变化的平滑过渡（Base UI nested 实测规格：450ms easeOutQuint 类曲线）。
+ * transform 保持既有 enter/exit 时长；translate/scale 只在层叠数变化时更新，
+ * 用更长的 nested 时长。
  */
-:host(:not([headless])) dialog[open].is-visible,
-:host(:not([headless])[placement='left']) dialog[open].is-visible,
-:host(:not([headless])[placement='top']) dialog[open].is-visible,
+:host(:not([headless])) dialog[open].is-visible {
+  transform: translate(0, 0);
+  translate: calc(var(--wui-internal-drawer-nested-shift) * -1) 0;
+  scale: var(--wui-internal-drawer-nested-scale);
+  transition:
+    transform var(--wui-duration-drawer-enter, 280ms) var(--wui-ease-enter, cubic-bezier(0.23, 1, 0.32, 1)),
+    translate var(--wui-duration-drawer-nested, 450ms) cubic-bezier(0.22, 1, 0.36, 1),
+    scale var(--wui-duration-drawer-nested, 450ms) cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+:host(:not([headless])[placement='left']) dialog[open].is-visible {
+  transform: translate(0, 0);
+  translate: var(--wui-internal-drawer-nested-shift) 0;
+}
+
+:host(:not([headless])[placement='top']) dialog[open].is-visible {
+  transform: translate(0, 0);
+  translate: 0 var(--wui-internal-drawer-nested-shift);
+}
+
 :host(:not([headless])[placement='bottom']) dialog[open].is-visible {
   transform: translate(0, 0);
+  translate: 0 calc(var(--wui-internal-drawer-nested-shift) * -1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /*
+   * reduce 下：位移一律归零、transform 不参与过渡（仅 opacity 反馈）。
+   * 全部 !important：压过开放守卫（嵌套层叠变量的特异性猫鼠不可维护），
+   * 排除 .is-dragging —— reduce 下拖拽仍需实时跟手（ADR-0035）。
+   * JS 收尾移除内联 transform 后立即为终态，无 280ms 过渡尾巴。
+   */
+  dialog:not(.is-dragging) {
+    transition: opacity var(--wui-duration-feedback, 100ms) ease !important;
+
+    &::backdrop {
+      transition-duration: var(--wui-duration-feedback, 100ms) !important;
+    }
+  }
+
+  dialog[open].is-visible:not(.is-dragging) {
+    transform: none !important;
+    translate: none !important;
+    scale: none !important;
+  }
+
+  .wui-drawer-drag-bar {
+    transition: none !important;
+  }
 }
