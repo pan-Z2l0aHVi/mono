@@ -8,6 +8,7 @@ import '@/components/icon'
 import '@/components/button'
 import '@/components/drawer'
 import { radixIconsPanelLeftMinimized } from '@/icons'
+import { attachDragGesture, clamp, type DragGestureHandle } from '@/shared/gesture'
 import { defineVisibleAreaTracker, VisibleAreaController } from '@/shared/visible-area'
 
 import style from './style.css?inline'
@@ -119,34 +120,10 @@ export class WebUiLayout extends LitElement {
 
   // ===== 桌面端 Sidebar 拖拽调宽 =====
 
-  private _resizePointerId: number | null = null
-  private _resizeStartClientX = 0
+  private _resizeGesture: DragGestureHandle | null = null
   private _resizeStartWidth = 0
   // 拖拽中的临时宽度；由 render 的 styleMap 统一写入，避免与 Lit 样式管理竞争。
   @state() private _resizeWidth: string | null = null
-
-  /*
-   * 手势期间的 move/up/cancel 同时挂 handle 与 window 捕获阶段两条路径：
-   * Chromium 快速拖拽可能提前释放 setPointerCapture（与 Drawer 的修复同构，
-   * 见 drawer/index.ts），窗口层保证松手一定被消费、状态机不悬挂；
-   * _handledMoveEvent 以事件对象去重，防止同一输入被两条路径重复采样。
-   */
-  private readonly _onWindowResizeMove = (e: PointerEvent) => this._handleResizePointerMove(e)
-  private readonly _onWindowResizeUp = (e: PointerEvent) => this._handleResizePointerUp(e)
-  private readonly _onWindowResizeCancel = (e: PointerEvent) => this._handleResizePointerCancel(e)
-  private _handledMoveEvent: PointerEvent | null = null
-
-  private _attachWindowResizeListeners() {
-    window.addEventListener('pointermove', this._onWindowResizeMove, true)
-    window.addEventListener('pointerup', this._onWindowResizeUp, true)
-    window.addEventListener('pointercancel', this._onWindowResizeCancel, true)
-  }
-
-  private _detachWindowResizeListeners() {
-    window.removeEventListener('pointermove', this._onWindowResizeMove, true)
-    window.removeEventListener('pointerup', this._onWindowResizeUp, true)
-    window.removeEventListener('pointercancel', this._onWindowResizeCancel, true)
-  }
 
   private _parsePx(value: string, fallback: number): number {
     const parsed = Number.parseFloat(value)
@@ -170,7 +147,7 @@ export class WebUiLayout extends LitElement {
   }
 
   private _isResizing(): boolean {
-    return this._resizePointerId !== null
+    return this._resizeGesture?.isDragging() ?? false
   }
 
   private _handleResizePointerDown(e: PointerEvent) {
@@ -181,73 +158,48 @@ export class WebUiLayout extends LitElement {
     const aside = this.renderRoot.querySelector('aside')
     if (!aside) return
 
-    e.preventDefault()
-    this._resizePointerId = e.pointerId
-    this._resizeStartClientX = e.clientX
     // 拖拽起点以 computed width 为准，并丢弃键盘未提交的调整（Enter 才提交、
     // Escape 撤回；抓取隐式放弃），保证零位移松手不会派发陈旧宽度。
     this._resizeStartWidth = this._parsePx(window.getComputedStyle(aside).width, this._parsePx(this.sidebarWidth, 240))
     this._resizeWidth = null
-    this._handledMoveEvent = null
-
-    // 先挂 window 兜底再尝试 capture：即使 capture 调用失败，手势仍可收尾。
-    this._attachWindowResizeListeners()
-    try {
-      ;(e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId)
-    } catch {
-      // 忽略合成指针或不可捕获上下文（如测试环境）
-    }
     aside.classList.add('is-resizing')
-  }
 
-  private _handleResizePointerMove(e: PointerEvent) {
-    if (this._resizePointerId !== e.pointerId) return
-    // window 捕获层先于 handle 收到同一事件；已处理过则跳过，避免重复采样。
-    if (this._handledMoveEvent === e) return
-    this._handledMoveEvent = e
-
-    // 向右拖增宽、向左拖收窄（handle 在右缘）；钳制在 [min, max] 与视口内。
-    const delta = e.clientX - this._resizeStartClientX
-    const next = this._resizeStartWidth + delta
-    const clamped = Math.min(this._resolveSidebarMaxWidth(), Math.max(this._resolveSidebarMinWidth(), next))
-    this._resizeWidth = `${Math.round(clamped)}px`
-  }
-
-  private _handleResizePointerUp(e: PointerEvent) {
-    if (this._resizePointerId !== e.pointerId) return
-    // 零位移松手（点击而非拖拽）不视为调宽动作：按 cancel 语义静默收尾。
-    if (this._resizeWidth === null) {
-      this._resetActiveResize()
-      return
-    }
-    this._resizePointerId = null
-    this._detachWindowResizeListeners()
-
-    this.renderRoot.querySelector('aside')?.classList.remove('is-resizing')
-
-    // 受控契约：拖拽中组件内部实时更新宽度；松手派发请求并交还 prop 管辖，
-    // Consumer 回写 sidebar-width 后新宽度正式生效（同步回写时 Lit 批处理无跳变）。
-    const width = this._resizeWidth
-    this._resizeWidth = null
-    this.dispatchEvent(
-      new CustomEvent('sidebar-width-change', {
-        detail: { width },
-        bubbles: true,
-        composed: true
-      })
-    )
-  }
-
-  private _handleResizePointerCancel(e: PointerEvent) {
-    if (this._resizePointerId !== e.pointerId) return
-    this._resetActiveResize()
+    this._resizeGesture = attachDragGesture(e, {
+      axis: 'x',
+      onMove: info => {
+        // 向右拖增宽、向左拖收窄（handle 在右缘）；钳制在 [min, max] 与视口内。
+        const next = this._resizeStartWidth + info.deltaX
+        const clamped = clamp(next, this._resolveSidebarMinWidth(), this._resolveSidebarMaxWidth())
+        this._resizeWidth = `${Math.round(clamped)}px`
+      },
+      onEnd: () => {
+        // 零位移松手（点击而非拖拽）不视为调宽动作：按 cancel 语义静默收尾。
+        if (this._resizeWidth === null) {
+          this._resetActiveResize()
+          return
+        }
+        const width = this._resizeWidth
+        this._resetActiveResize()
+        // 受控契约：松手派发请求并交还 prop 管辖，由 Consumer 回写 sidebar-width。
+        this.dispatchEvent(
+          new CustomEvent('sidebar-width-change', {
+            detail: { width },
+            bubbles: true,
+            composed: true
+          })
+        )
+      },
+      onCancel: () => {
+        this._resetActiveResize()
+      }
+    })
   }
 
   // 终结进行中的拖拽：清手势状态、移除跟手 class，宽度过渡回 prop 管辖，不派发事件。
   // pointer cancel 与视口跨越移动端断点（handle 随桌面 layout 卸载）共用此收尾。
   private _resetActiveResize() {
-    this._resizePointerId = null
-    this._detachWindowResizeListeners()
+    this._resizeGesture?.destroy()
+    this._resizeGesture = null
     this.renderRoot.querySelector('aside')?.classList.remove('is-resizing')
     this._resizeWidth = null
   }
@@ -331,7 +283,7 @@ export class WebUiLayout extends LitElement {
 
   override disconnectedCallback() {
     super.disconnectedCallback()
-    this._detachWindowResizeListeners()
+    this._resetActiveResize()
     window.removeEventListener('resize', this._handleResize)
     if (this._resizeTimeout !== null) clearTimeout(this._resizeTimeout)
     this._resizeTimeout = null
@@ -409,9 +361,6 @@ export class WebUiLayout extends LitElement {
                       aria-orientation="vertical"
                       aria-label="调整侧边栏宽度"
                       @pointerdown=${this._handleResizePointerDown}
-                      @pointermove=${this._handleResizePointerMove}
-                      @pointerup=${this._handleResizePointerUp}
-                      @pointercancel=${this._handleResizePointerCancel}
                       @keydown=${this._handleResizeKeydown}
                     ></div>
                   `

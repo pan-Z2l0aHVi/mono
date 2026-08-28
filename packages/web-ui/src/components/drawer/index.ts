@@ -6,6 +6,7 @@ import '@/components/button'
 import glass from '@/assets/glass.css?inline'
 import { oouiClose } from '@/icons'
 import { UserChangeController } from '@/shared/events/user-change'
+import { attachDragGesture, type DragGestureHandle, rubberband, SPRING_PRESETS, springOffsets } from '@/shared/gesture'
 import { normalizeLiteral } from '@/shared/normalize'
 import { defineNativeDialogPresence } from '@/shared/overlay/native-dialog-presence'
 import { defineNestedDrawerLayers } from '@/shared/overlay/nested-drawer-layers'
@@ -21,23 +22,8 @@ export type DrawerPlacement = (typeof ALLOWED_PLACEMENTS)[number]
 // 拖拽关闭判定：位移超过抽屉尺寸 1/3，或闭合方向甩动速度超过 500px/s 视为关闭意图。
 const DRAG_CLOSE_RATIO = 1 / 3
 const DRAG_FLICK_VELOCITY = 500
-// 速度估算的时间窗、request-only 回写等待窗口，以及弹簧采样参数（半隐式欧拉，每 16ms 一个关键帧）。
-const DRAG_VELOCITY_WINDOW_MS = 100
 const DRAG_REQUEST_WINDOW_MS = 120
 const SPRING_SAMPLE_MS = 16
-const SPRING_CLOSE = { stiffness: 260, damping: 34, maxSamples: 19 } as const
-const SPRING_REBOUND = { stiffness: 220, damping: 22, maxSamples: 29 } as const
-
-interface DragSample {
-  t: number
-  o: number
-}
-
-interface SpringParams {
-  stiffness: number
-  damping: number
-  maxSamples: number
-}
 
 /*
  * 拖拽期间由 JS 写入的遮罩透明度变量参与 WAAPI 关键帧。未注册的自定义属性在
@@ -57,25 +43,6 @@ if (typeof CSS !== 'undefined' && 'registerProperty' in CSS) {
   } catch {
     // 已注册（如 HMR 重复执行）时忽略
   }
-}
-
-// 半隐式欧拉积分弹簧轨迹，返回均匀时间间隔的位置采样（末尾附加精确终点）。
-// 关闭方向采用近临界阻尼避免越过闭合位回弹，弹回方向欠阻尼保留轻微弹性。
-// 位置单位为闭合方向像素，速度单位为 px/s。
-function springOffsets(from: number, to: number, velocity: number, spring: SpringParams): number[] {
-  const dt = SPRING_SAMPLE_MS / 2000
-  let x = from
-  let v = velocity
-  const samples = [x]
-  for (let i = 0; i < spring.maxSamples * 2; i++) {
-    const acceleration = -spring.stiffness * (x - to) - spring.damping * v
-    v += acceleration * dt
-    x += v * dt
-    if (i % 2 === 1) samples.push(x)
-    if (Math.abs(x - to) < 0.5 && Math.abs(v) < 40) break
-  }
-  samples.push(to)
-  return samples
 }
 
 @customElement('web-ui-drawer')
@@ -147,42 +114,14 @@ export class WebUiDrawer extends LitElement {
   })
 
   // ===== 拖拽关闭手势状态 =====
-  private _dragPointerId: number | null = null
-  private _dragStartClient = 0
+  private _dragGesture: DragGestureHandle | null = null
   // pointerdown 时刻已存在的闭合方向位移（从弹回动画中抓取时非 0）。
   private _dragInitialOffset = 0
   private _dragOffset = 0
-  private _dragSamples: DragSample[] = []
   private _dragAnimation: Animation | null = null
   // request-only：弹簧到闭合位后等待 Consumer 回写 open；超时未回写则弹回。
   private _dragAwaitWriteback = false
   private _dragRequestTimer: ReturnType<typeof setTimeout> | undefined
-
-  /*
-   * 手势期间的 move/up/cancel 统一挂载在 window 捕获阶段：Chromium 可能在快速
-   * 拖拽中提前释放 setPointerCapture（lostpointercapture 早于任何 up/cancel），
-   * 此后事件按普通 hit-test 派发、不再保证命中 zone。window 层接管使拖拽持续
-   * 跟手直到真正的松手，状态机不会悬挂。pointerId 守卫过滤掉非本手势的指针。
-   * zone 绑定仍是 capture 生效时的主路径；move 的事件对象去重（_handledMoveEvent）
-   * 保证 window 与 zone 两条路径不会重复消费同一次输入。
-   */
-  private readonly _onWindowDragMove = (e: PointerEvent) => this._handleDragPointerMove(e)
-  private readonly _onWindowDragUp = (e: PointerEvent) => this._handleDragPointerUp(e)
-  private readonly _onWindowDragCancel = (e: PointerEvent) => this._handleDragPointerCancel(e)
-  // 同一次 pointermove 可能同时经过 window 捕获与 zone 两路；记录已处理的事件对象去重。
-  private _handledMoveEvent: PointerEvent | null = null
-
-  private _attachWindowGestureListeners() {
-    window.addEventListener('pointermove', this._onWindowDragMove, true)
-    window.addEventListener('pointerup', this._onWindowDragUp, true)
-    window.addEventListener('pointercancel', this._onWindowDragCancel, true)
-  }
-
-  private _detachWindowGestureListeners() {
-    window.removeEventListener('pointermove', this._onWindowDragMove, true)
-    window.removeEventListener('pointerup', this._onWindowDragUp, true)
-    window.removeEventListener('pointercancel', this._onWindowDragCancel, true)
-  }
 
   // placement 的闭合轴向：right/left 沿 X 轴，top/bottom 沿 Y 轴。
   private get _dragAxis(): 'x' | 'y' {
@@ -236,7 +175,7 @@ export class WebUiDrawer extends LitElement {
   }
 
   private _isDragging(): boolean {
-    return this._dragPointerId !== null
+    return this._dragGesture?.isDragging() ?? false
   }
 
   private _cancelDragAwait() {
@@ -268,99 +207,48 @@ export class WebUiDrawer extends LitElement {
     this._dragAnimation = null
     this._cancelDragAwait()
 
-    this._dragPointerId = e.pointerId
-    this._dragStartClient = this._dragAxis === 'x' ? e.clientX : e.clientY
     this._dragInitialOffset = axisValue * this._dragCloseSign
     this._dragOffset = this._dragInitialOffset
-    this._dragSamples = [{ t: e.timeStamp, o: this._dragOffset }]
-    this._handledMoveEvent = null
-
-    // 先挂 window 兜底再尝试 capture：即使 capture 调用失败，手势仍可收尾。
-    this._attachWindowGestureListeners()
-    try {
-      ;(e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId)
-    } catch {
-      // 忽略合成指针或不可捕获上下文（如测试环境）
-    }
     dialog.classList.add('is-dragging')
-  }
 
-  private _handleDragPointerMove(e: PointerEvent) {
-    if (this._dragPointerId !== e.pointerId) return
-    // window 捕获层先于 zone 收到同一事件；已处理过则跳过，避免重复采样污染速度估算。
-    if (this._handledMoveEvent === e) return
-    this._handledMoveEvent = e
+    this._dragGesture = attachDragGesture(e, {
+      axis: this._dragAxis,
+      onMove: info => {
+        const pointerDelta = this._dragAxis === 'x' ? info.deltaX : info.deltaY
+        // 闭合方向全额跟随；开启方向施加阻尼（橡皮筋），最多回弹 10% 抽屉尺寸。
+        const raw = this._dragInitialOffset + pointerDelta * this._dragCloseSign
+        this._dragOffset = rubberband(raw, this._measureDragSize() * 0.1, 0.15)
 
-    const dialog = this.dialog
-    if (!dialog) return
+        // 达到关闭阈值时胶囊变 accent 色作视觉确认（ADR-0035）。
+        const dragSize = this._measureDragSize()
+        dialog.classList.toggle('is-drag-close', dragSize > 0 && this._dragOffset > dragSize * DRAG_CLOSE_RATIO)
+        this._applyDragOffset(dialog, this._dragOffset)
+      },
+      onEnd: info => {
+        this._dragGesture = null
+        dialog.classList.remove('is-dragging', 'is-drag-close')
+        const size = this._measureDragSize()
+        const velocity = (this._dragAxis === 'x' ? info.velocityX : info.velocityY) * this._dragCloseSign
+        const shouldClose =
+          this._dragOffset > size * DRAG_CLOSE_RATIO || (this._dragOffset > 8 && velocity > DRAG_FLICK_VELOCITY)
 
-    const pointerDelta = (this._dragAxis === 'x' ? e.clientX : e.clientY) - this._dragStartClient
-    // 闭合方向全额跟随；开启方向施加阻尼（橡皮筋），最多回弹 10% 抽屉尺寸。
-    const raw = this._dragInitialOffset + pointerDelta * this._dragCloseSign
-    const resisted = raw < 0 ? Math.max(raw * 0.15, -this._measureDragSize() * 0.1) : raw
-    this._dragOffset = resisted
-
-    // 达到关闭阈值时胶囊变 accent 色作视觉确认（ADR-0035）。
-    const dragSize = this._measureDragSize()
-    dialog.classList.toggle('is-drag-close', dragSize > 0 && this._dragOffset > dragSize * DRAG_CLOSE_RATIO)
-
-    const now = e.timeStamp
-    this._dragSamples.push({ t: now, o: this._dragOffset })
-    while (this._dragSamples.length > 2 && now - this._dragSamples[0].t > DRAG_VELOCITY_WINDOW_MS) {
-      this._dragSamples.shift()
-    }
-
-    this._applyDragOffset(dialog, this._dragOffset)
-  }
-
-  // 窗口内首尾采样差估算闭合方向速度（px/s）。
-  // 采样跨度不足一帧（约 <8ms，常见于合成事件）时数据不可信，返回 0 不触发甩动判定。
-  private _estimateVelocity(): number {
-    const samples = this._dragSamples
-    if (samples.length < 2) return 0
-    const first = samples[0]
-    const last = samples[samples.length - 1]
-    const dt = last.t - first.t
-    if (dt < 8) return 0
-    return ((last.o - first.o) / dt) * 1000
-  }
-
-  private _handleDragPointerUp(e: PointerEvent) {
-    if (this._dragPointerId !== e.pointerId) return
-    this._dragPointerId = null
-    this._detachWindowGestureListeners()
-
-    const dialog = this.dialog
-    if (!dialog) return
-
-    dialog.classList.remove('is-dragging', 'is-drag-close')
-    const size = this._measureDragSize()
-    const velocity = this._estimateVelocity()
-    const shouldClose =
-      this._dragOffset > size * DRAG_CLOSE_RATIO || (this._dragOffset > 8 && velocity > DRAG_FLICK_VELOCITY)
-
-    if (shouldClose) this._springToClose(dialog, velocity)
-    else this._springRebound(dialog, velocity, this._dragOffset)
-  }
-
-  private _handleDragPointerCancel(e: PointerEvent) {
-    if (this._dragPointerId !== e.pointerId) return
-    this._dragPointerId = null
-    this._detachWindowGestureListeners()
-
-    const dialog = this.dialog
-    if (!dialog) return
-    dialog.classList.remove('is-dragging', 'is-drag-close')
-    this._springRebound(dialog, 0, this._dragOffset)
+        if (shouldClose) this._springToClose(dialog, velocity)
+        else this._springRebound(dialog, velocity, this._dragOffset)
+      },
+      onCancel: () => {
+        this._dragGesture = null
+        dialog.classList.remove('is-dragging', 'is-drag-close')
+        this._springRebound(dialog, 0, this._dragOffset)
+      }
+    })
   }
 
   // 受控状态写入等外部原因强制终结拖拽：清手势状态与拖拽样式，不弹回，
   // 后续管线（关闭/打开）由调用方继续执行。
   private _cancelActiveDrag() {
     if (!this._isDragging()) return
-    this._dragPointerId = null
-    this._handledMoveEvent = null
-    this._detachWindowGestureListeners()
+    this._dragGesture?.destroy()
+    this._dragGesture = null
     const dialog = this.dialog
     if (!dialog) return
     dialog.classList.remove('is-dragging', 'is-drag-close')
@@ -413,7 +301,7 @@ export class WebUiDrawer extends LitElement {
       return
     }
 
-    const samples = springOffsets(from, to, velocity, SPRING_CLOSE)
+    const samples = springOffsets(from, to, velocity, SPRING_PRESETS.close)
     const keyframes = samples.map(o => ({
       transform: this._dragAxis === 'x' ? `translateX(${o * sign}px)` : `translateY(${o * sign}px)`,
       '--wui-internal-drag-backdrop-opacity': String(Math.max(0, 1 - o / size))
@@ -445,7 +333,7 @@ export class WebUiDrawer extends LitElement {
 
     const sign = this._dragCloseSign
     const size = this._measureDragSize()
-    const samples = springOffsets(from, 0, velocity, SPRING_REBOUND)
+    const samples = springOffsets(from, 0, velocity, SPRING_PRESETS.rebound)
     const keyframes = samples.map(o => ({
       transform: this._dragAxis === 'x' ? `translateX(${o * sign}px)` : `translateY(${o * sign}px)`,
       '--wui-internal-drag-backdrop-opacity': String(Math.max(0, 1 - o / size))
@@ -501,7 +389,8 @@ export class WebUiDrawer extends LitElement {
   override disconnectedCallback() {
     super.disconnectedCallback()
     this._nestedLayers.dispose()
-    this._detachWindowGestureListeners()
+    this._dragGesture?.destroy()
+    this._dragGesture = null
     this._presence.dispose()
     this._scrollLock.release()
     this._dragAnimation?.cancel()
@@ -677,17 +566,9 @@ export class WebUiDrawer extends LitElement {
     const dialogLabelledBy = !dialogLabel && !this.headless && showHeader ? 'wui-drawer-heading' : nothing
 
     // 拖拽热区：仅在打开且 draggable 时渲染；胶囊 + 加宽命中条贴在抽屉内缘。
-    // move/up/cancel 同时挂 zone 与手势期间的 window 捕获监听（见类字段注释），
-    // 由 _handleDragPointerMove 的事件对象去重保证每次拖拽只消费一份输入流。
     const dragBar = this.draggable
       ? html`
-          <div
-            class="wui-drawer-drag-zone"
-            @pointerdown=${this._handleDragPointerDown}
-            @pointermove=${this._handleDragPointerMove}
-            @pointerup=${this._handleDragPointerUp}
-            @pointercancel=${this._handleDragPointerCancel}
-          >
+          <div class="wui-drawer-drag-zone" @pointerdown=${this._handleDragPointerDown}>
             <div class="wui-drawer-drag-bar"></div>
           </div>
         `
