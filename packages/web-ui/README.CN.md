@@ -597,7 +597,7 @@ ArrowUp/ArrowDown 键增减数值。空输入或 `-` 在提交时被忽略，值
 
 #### `<web-ui-drawer>`
 
-侧边抽屉，使用原生 `<dialog>` 并自带关闭动画。
+侧边抽屉，使用原生 `<dialog>` 并自带关闭动画。非 headless 模式下抽屉渲染为四周留边的浮动圆角卡片（与 layout sidebar 的卡片语言一致），弹性拖拽的位移表现为边距变化而非缺口。
 
 | 属性                | 类型                                     | 默认值    | 说明                                                 |
 | ------------------- | ---------------------------------------- | --------- | ---------------------------------------------------- |
@@ -610,6 +610,7 @@ ArrowUp/ArrowDown 键增减数值。空输入或 `-` 在提交时被忽略，值
 | `request-only`      | `boolean`                                | `false`   | 用户关闭仅请求 `open=false`，由 Consumer 回写 `open` |
 | `headless`          | `boolean`                                | `false`   | 仅保留 overlay 行为，默认插槽不渲染内置抽屉 UI       |
 | `dialog-label`      | `string`                                 | `''`      | 内部原生 dialog 的可访问名称；headless 模式必须提供  |
+| `draggable`         | `boolean`                                | `false`   | 打开时在抽屉内缘显示 drag bar，支持拖拽关闭手势      |
 
 **事件：** `open-change` (`CustomEvent<{ open: boolean }>`)。启用 `request-only` 后，Escape、遮罩和内置关闭按钮仅请求 `open=false`；Consumer 写入 `open=false` 前抽屉保持打开。若原生 dialog 在请求被拒绝期间关闭，组件会恢复其打开的 top layer 状态并发出同一关闭请求。
 
@@ -621,14 +622,17 @@ ArrowUp/ArrowDown 键增减数值。空输入或 `-` 在提交时被忽略，值
 
 关闭时保留原生 dialog 的 top layer，待退出过渡完成后调用 `dialog.close()`。Escape 始终走此关闭路径；`no-backdrop-close` 仅控制遮罩点击。
 
+**拖拽关闭：** 启用 `draggable` 后，打开的抽屉在内缘显示灰色胶囊 drag bar（`right` 在左缘、`left` 在右缘、`top` 在下缘、`bottom` 在上缘）。拖拽实时跟手（遮罩透明度按比例淡出）；松手时位移超过抽屉尺寸约 1/3 或快速甩动即弹簧关闭，否则弹回打开位，方向随 placement 适配。启用 `request-only` 后，超过阈值松手仅派发 `open-change(false)`；抽屉在闭合位短暂等待，Consumer 拒绝回写时弹回打开位。不支持拖拽打开——关闭态的抽屉在原生 dialog 之外没有任何渲染物。`prefers-reduced-motion` 下松手即时到位，不播放弹簧动画。
+
 **CSS 自定义属性：**
 
-| 属性                      | 默认值                             | 说明              |
-| ------------------------- | ---------------------------------- | ----------------- |
-| `--wui-drawer-width`      | `320px`                            | 抽屉宽度          |
-| `--wui-drawer-height`     | `300px`                            | 抽屉高度（上/下） |
-| `--wui-drawer-bg`         | `var(--wui-color-surface-overlay)` | 抽屉背景色        |
-| `--wui-drawer-overlay-bg` | `rgb(0 0 0 / 0.12)`                | 遮罩背景色        |
+| 属性                      | 默认值                             | 说明                        |
+| ------------------------- | ---------------------------------- | --------------------------- |
+| `--wui-drawer-width`      | `320px`                            | 抽屉宽度                    |
+| `--wui-drawer-height`     | `300px`                            | 抽屉高度（上/下）           |
+| `--wui-drawer-bg`         | `var(--wui-color-surface-overlay)` | 抽屉背景色                  |
+| `--wui-drawer-radius`     | `28px`                             | 浮动卡片圆角（非 headless） |
+| `--wui-drawer-overlay-bg` | `rgb(0 0 0 / 0.12)`                | 遮罩背景色                  |
 
 ---
 
@@ -866,15 +870,20 @@ WebUiSpinner.hide() // 隐藏
 
 响应式页面布局：支持可选全宽 Banner、桌面端可折叠侧边栏，以及移动端 headless drawer。页面本身滚动；Banner 滚出后，桌面端 sidebar 和 header 固定在视口内。
 
-| 属性                | 类型      | 默认值    | 说明                                 |
-| ------------------- | --------- | --------- | ------------------------------------ |
-| `sidebar-collapsed` | `boolean` | `false`   | 桌面端侧边栏受控折叠状态             |
-| `sidebar-open`      | `boolean` | `false`   | 移动端侧边栏 Drawer 受控打开状态     |
-| `header-glow`       | `boolean` | `false`   | 在 header 插槽内容背后显示装饰性晕染 |
-| `sidebar-width`     | `string`  | `'240px'` | 桌面端和移动端展开时的侧边栏宽度     |
-| `collapsed-width`   | `string`  | `'72px'`  | 桌面端折叠时的侧边栏宽度             |
+| 属性                | 类型      | 默认值    | 说明                                                           |
+| ------------------- | --------- | --------- | -------------------------------------------------------------- |
+| `sidebar-collapsed` | `boolean` | `false`   | 桌面端侧边栏受控折叠状态                                       |
+| `sidebar-open`      | `boolean` | `false`   | 移动端侧边栏 Drawer 受控打开状态                               |
+| `header-glow`       | `boolean` | `false`   | 在 header 插槽内容背后显示装饰性晕染                           |
+| `sidebar-width`     | `string`  | `'240px'` | 桌面端和移动端展开时的侧边栏宽度                               |
+| `collapsed-width`   | `string`  | `'72px'`  | 桌面端折叠时的侧边栏宽度                                       |
+| `sidebar-resizable` | `boolean` | `false`   | 启用桌面端侧边栏右边缘拖拽调整宽度                             |
+| `sidebar-min-width` | `string`  | —         | 拖拽调整的下限（px）；默认回退到 `collapsed-width`             |
+| `sidebar-max-width` | `string`  | —         | 拖拽调整的上限（px）；钳制在视口一半以内，内置上限优先于配置值 |
 
-**事件：** `sidebar-collapsed-change`（`CustomEvent<{ collapsed: boolean }>`）用于请求更新桌面端折叠状态；`sidebar-open-change`（`CustomEvent<{ open: boolean }>`）用于请求更新移动端 Drawer 打开状态。Consumer 必须将请求值回写到对应的受控属性。
+**事件：** `sidebar-collapsed-change`（`CustomEvent<{ collapsed: boolean }>`）用于请求更新桌面端折叠状态；`sidebar-open-change`（`CustomEvent<{ open: boolean }>`）用于请求更新移动端 Drawer 打开状态；`sidebar-width-change`（`CustomEvent<{ width: string }>`）用于请求在拖拽调整结束后更新侧边栏宽度。Consumer 必须将请求值回写到对应的受控属性。
+
+**侧边栏调整宽度：** 启用 `sidebar-resizable` 后，桌面端侧边栏右边缘会出现调整手柄（折叠状态下隐藏）。悬停或拖拽时显示 3px 宽的强调色垂直线和 `col-resize` 光标。拖拽时实时更新宽度（禁止过渡动画，限制在 `[min, max]` 和视口范围内）；释放时触发 `sidebar-width-change` 事件并携带最终像素宽度，控制权交还给 `sidebar-width` 属性等待 Consumer 回写。`pointercancel` 会恢复属性控制的宽度且不触发事件。手柄同时支持键盘（WAI-ARIA splitter 模式）：聚焦后用 ←/→ 以 16px 步进调整（Shift 加速到 64px），Home/End 跳到 min/max，Enter 以同一 `sidebar-width-change` 请求提交，Escape 撤回未提交的调整。移动端 Drawer 始终通过其内置 `draggable` 抽屉支持拖拽关闭。
 
 | 插槽      | 说明                                                         |
 | --------- | ------------------------------------------------------------ |

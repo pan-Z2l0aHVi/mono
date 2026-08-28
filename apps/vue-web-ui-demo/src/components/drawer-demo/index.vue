@@ -40,6 +40,27 @@ const unlockedVisible = ref(false)
 const overlayVisible = ref(false)
 const headlessVisible = ref(false)
 const requestOnlyVisible = ref(false)
+const draggableVisible = ref(false)
+const draggableTopVisible = ref(false)
+const draggableHeadlessVisible = ref(false)
+
+// Nested 抽屉：声明式嵌套，无额外 API。后打开的是顶层，先打开的按 0.95^depth
+// 缩放并向内侧平移露出阶梯式卡片边缘。
+const nestedL1 = ref(false)
+const nestedL2 = ref(false)
+const nestedL3 = ref(false)
+const nestedL4 = ref(false)
+
+// 多宽度嵌套（500px → 360px → 260px）
+const diffWidthL1 = ref(false)
+const diffWidthL2 = ref(false)
+const diffWidthL3 = ref(false)
+
+// 乱序宽度嵌套（窄 300px → 宽 520px → 极窄 240px → 中宽 400px）
+const randomWidthL1 = ref(false)
+const randomWidthL2 = ref(false)
+const randomWidthL3 = ref(false)
+const randomWidthL4 = ref(false)
 </script>
 
 <template>
@@ -216,6 +237,233 @@ const requestOnlyVisible = ref(false)
           UI。Consumer 自定义内容样式。
         </p>
       </div>
+    </web-ui-drawer>
+
+    <h2>拖拽关闭（draggable）</h2>
+    <div class="mb-3 flex flex-wrap gap-2">
+      <web-ui-button @click="draggableVisible = true">右侧</web-ui-button>
+      <web-ui-button @click="draggableTopVisible = true">上方</web-ui-button>
+      <web-ui-button @click="draggableHeadlessVisible = true">Headless 左侧</web-ui-button>
+    </div>
+    <p class="mb-3 text-sm text-[var(--wui-color-text-secondary)]">
+      <code>draggable</code> 时抽屉内缘显示灰色胶囊 drag bar：拖拽实时跟手，拖出约 1/3 或快速甩动松手即关闭，否则弹回。
+    </p>
+    <web-ui-drawer
+      :open="draggableVisible"
+      heading="拖拽关闭"
+      closable
+      draggable
+      @open-change="draggableVisible = $event.detail.open"
+    >
+      <p>抓住左缘的胶囊向右拖出即可关闭；未超过 1/3 宽度松手会弹回。</p>
+    </web-ui-drawer>
+    <web-ui-drawer
+      :open="draggableTopVisible"
+      placement="top"
+      heading="上方拖拽关闭"
+      draggable
+      @open-change="draggableTopVisible = $event.detail.open"
+    >
+      <p>抓住下缘的胶囊向上拖出即可关闭。</p>
+    </web-ui-drawer>
+    <web-ui-drawer
+      :open="draggableHeadlessVisible"
+      placement="left"
+      headless
+      draggable
+      dialog-label="Headless 拖拽抽屉"
+      @open-change="draggableHeadlessVisible = $event.detail.open"
+    >
+      <div style="height: 100%; padding: 16px; border-radius: 0 16px 16px 0; background: white">
+        <h3 style="margin: 0 0 12px">Headless 拖拽抽屉</h3>
+        <p style="margin: 0; color: #666">headless 模式同样支持 drag bar，抓住右缘胶囊向左拖出关闭。</p>
+      </div>
+    </web-ui-drawer>
+
+    <h2>Nested 层叠抽屉</h2>
+    <div class="mb-3 flex flex-wrap gap-2">
+      <web-ui-button @click="nestedL1 = true">等宽嵌套 (320px)</web-ui-button>
+      <web-ui-button variant="secondary" @click="diffWidthL1 = true"> 级联收窄 (500px → 360px → 260px) </web-ui-button>
+      <web-ui-button variant="secondary" @click="randomWidthL1 = true">
+        乱序宽度交错 (300px → 520px → 240px → 400px)
+      </web-ui-button>
+    </div>
+    <p class="mb-3 text-sm text-[var(--wui-color-text-secondary)]">
+      同组件声明式嵌套即 nested：后打开的位于顶层全尺寸，下层按 0.95<sup>n</sup>
+      缩放并向内侧平移露出阶梯式卡片边缘；多层宽度不同或乱序交错时，自动计算上方最大宽度进行补偿，确保所有底层的左缘均不会被上方更宽的抽屉遮挡；Escape
+      与遮罩点击只作用于最顶层，逐层退出。
+    </p>
+    <web-ui-drawer
+      :open="nestedL1"
+      heading="第一层 (320px)"
+      closable
+      draggable
+      @open-change="
+        event => {
+          if (event.target === event.currentTarget) nestedL1 = event.detail.open
+        }
+      "
+    >
+      <p>第一层抽屉。子层打开后本层缩小并向左偏移露出边缘卡片。</p>
+      <web-ui-button slot="footer" variant="secondary" full @click="nestedL2 = true">打开第二层</web-ui-button>
+      <web-ui-drawer
+        :open="nestedL2"
+        heading="第二层 (320px)"
+        closable
+        draggable
+        @open-change="
+          event => {
+            if (event.target === event.currentTarget) nestedL2 = event.detail.open
+          }
+        "
+      >
+        <p>第二层抽屉。继续叠第三层观察连续缩放。</p>
+        <web-ui-button slot="footer" variant="secondary" full @click="nestedL3 = true">打开第三层</web-ui-button>
+        <web-ui-drawer
+          :open="nestedL3"
+          heading="第三层 (320px)"
+          closable
+          draggable
+          @open-change="
+            event => {
+              if (event.target === event.currentTarget) nestedL3 = event.detail.open
+            }
+          "
+        >
+          <p>第三层抽屉。</p>
+          <web-ui-button slot="footer" variant="secondary" full @click="nestedL4 = true">打开第四层</web-ui-button>
+          <web-ui-drawer
+            :open="nestedL4"
+            heading="第四层（顶层 320px）"
+            closable
+            draggable
+            @open-change="
+              event => {
+                if (event.target === event.currentTarget) nestedL4 = event.detail.open
+              }
+            "
+          >
+            <p>最顶层抽屉。Escape 或拖拽关闭后逐层回弹。</p>
+          </web-ui-drawer>
+        </web-ui-drawer>
+      </web-ui-drawer>
+    </web-ui-drawer>
+
+    <!-- 多宽度 Nested Drawer -->
+    <web-ui-drawer
+      :open="diffWidthL1"
+      heading="主信息面板 (500px)"
+      :style="{ '--wui-drawer-width': '500px' }"
+      closable
+      draggable
+      @open-change="
+        event => {
+          if (event.target === event.currentTarget) diffWidthL1 = event.detail.open
+        }
+      "
+    >
+      <p>宽面板（500px）。子层（360px）打开后，本层依然平滑缩放，卡片在左侧优雅露出。</p>
+      <web-ui-button slot="footer" variant="secondary" full @click="diffWidthL2 = true">
+        打开详情面板 (360px)
+      </web-ui-button>
+      <web-ui-drawer
+        :open="diffWidthL2"
+        heading="详情面板 (360px)"
+        :style="{ '--wui-drawer-width': '360px' }"
+        closable
+        draggable
+        @open-change="
+          event => {
+            if (event.target === event.currentTarget) diffWidthL2 = event.detail.open
+          }
+        "
+      >
+        <p>中等面板（360px）。可再打开子层（260px），层层收窄堆叠。</p>
+        <web-ui-button slot="footer" variant="secondary" full @click="diffWidthL3 = true">
+          打开确认操作面板 (260px)
+        </web-ui-button>
+        <web-ui-drawer
+          :open="diffWidthL3"
+          heading="确认面板 (260px)"
+          :style="{ '--wui-drawer-width': '260px' }"
+          closable
+          draggable
+          @open-change="
+            event => {
+              if (event.target === event.currentTarget) diffWidthL3 = event.detail.open
+            }
+          "
+        >
+          <p>最顶层窄面板（260px）。下层多级宽面板依次在左侧形成阶梯堆叠。</p>
+        </web-ui-drawer>
+      </web-ui-drawer>
+    </web-ui-drawer>
+
+    <!-- 乱序宽度 Nested Drawer (300px → 520px → 240px → 400px) -->
+    <web-ui-drawer
+      :open="randomWidthL1"
+      heading="侧边基础面板 (300px)"
+      :style="{ '--wui-drawer-width': '300px' }"
+      closable
+      draggable
+      @open-change="
+        event => {
+          if (event.target === event.currentTarget) randomWidthL1 = event.detail.open
+        }
+      "
+    >
+      <p>第 1 层（窄 300px）。子层打开更宽抽屉（520px）时，本层会自动补偿向左平移，左缘依然清晰外露。</p>
+      <web-ui-button slot="footer" variant="secondary" full @click="randomWidthL2 = true">
+        打开大预览面板 (520px)
+      </web-ui-button>
+      <web-ui-drawer
+        :open="randomWidthL2"
+        heading="大预览面板 (520px)"
+        :style="{ '--wui-drawer-width': '520px' }"
+        closable
+        draggable
+        @open-change="
+          event => {
+            if (event.target === event.currentTarget) randomWidthL2 = event.detail.open
+          }
+        "
+      >
+        <p>第 2 层（超宽 520px）。铺展大卡片，可在其上打开更窄的工具栏抽屉（240px）。</p>
+        <web-ui-button slot="footer" variant="secondary" full @click="randomWidthL3 = true">
+          打开工具配置 (240px)
+        </web-ui-button>
+        <web-ui-drawer
+          :open="randomWidthL3"
+          heading="工具配置 (240px)"
+          :style="{ '--wui-drawer-width': '240px' }"
+          closable
+          draggable
+          @open-change="
+            event => {
+              if (event.target === event.currentTarget) randomWidthL3 = event.detail.open
+            }
+          "
+        >
+          <p>第 3 层（极窄 240px）。在 520px 宽卡片上方，再在其上打开顶层确认表单（400px）。</p>
+          <web-ui-button slot="footer" variant="secondary" full @click="randomWidthL4 = true">
+            打开确认表单 (400px)
+          </web-ui-button>
+          <web-ui-drawer
+            :open="randomWidthL4"
+            heading="确认表单 (400px 顶层)"
+            :style="{ '--wui-drawer-width': '400px' }"
+            closable
+            draggable
+            @open-change="
+              event => {
+                if (event.target === event.currentTarget) randomWidthL4 = event.detail.open
+              }
+            "
+          >
+            <p>第 4 层（顶层 400px）。所有下层卡片（无论宽于或窄于本层）均在左侧按层次有序排列。</p>
+          </web-ui-drawer>
+        </web-ui-drawer>
+      </web-ui-drawer>
     </web-ui-drawer>
   </div>
 </template>

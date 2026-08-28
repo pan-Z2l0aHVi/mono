@@ -609,7 +609,7 @@ Uses native `<dialog>` with `@cancel` prevention. Escape calls `close()` unless 
 
 #### `<web-ui-drawer>`
 
-Side drawer using native `<dialog>` with closing animation.
+Side drawer using native `<dialog>` with closing animation. In non-headless mode the drawer renders as a floating rounded card inset from all viewport edges (matching the layout sidebar's card language), so elastic drag distances read as margin changes rather than gaps.
 
 | Attribute           | Type                                     | Default   | Description                                                                       |
 | ------------------- | ---------------------------------------- | --------- | --------------------------------------------------------------------------------- |
@@ -622,6 +622,7 @@ Side drawer using native `<dialog>` with closing animation.
 | `request-only`      | `boolean`                                | `false`   | User close actions only request `open=false`; the consumer must update `open`     |
 | `headless`          | `boolean`                                | `false`   | Keep only overlay behavior and render the default slot without built-in drawer UI |
 | `dialog-label`      | `string`                                 | `''`      | Accessible name for the internal native dialog; required in headless mode         |
+| `draggable`         | `boolean`                                | `false`   | Show a drag bar on the inner edge for drag-to-close gestures                      |
 
 **Events:** `open-change` (`CustomEvent<{ open: boolean }>`). With `request-only`, Escape, backdrop and the built-in close button only request `open=false`; the drawer remains open until the consumer writes `open=false`. If native dialog closure occurs while that request is rejected, the drawer restores its open top-layer state and emits the same request.
 
@@ -633,14 +634,17 @@ Side drawer using native `<dialog>` with closing animation.
 
 Closing keeps the native dialog in the top layer until the `--wui-duration-drawer-exit` transition completes (240ms by default), then calls `dialog.close()`. Escape always follows this close path; `no-backdrop-close` controls backdrop clicks only.
 
+**Drag to close:** With `draggable`, a gray capsule drag bar appears on the drawer's inner edge (left edge for `right`, right edge for `left`, bottom edge for `top`, top edge for `bottom`) while open. Dragging follows the pointer in real time (backdrop fades proportionally); releasing past ~1/3 of the drawer size or with a fast closing flick springs the drawer shut, otherwise it springs back open. The close direction is placement-aware. With `request-only`, release past the threshold only emits `open-change(false)`; the drawer holds at the closed position briefly and springs back open if the consumer rejects the write-back. Drag-to-open is not supported because the closed drawer renders nothing outside the native dialog. Under `prefers-reduced-motion`, release snaps instantly without spring animation.
+
 **CSS Custom Properties:**
 
-| Property                  | Default                            | Description                |
-| ------------------------- | ---------------------------------- | -------------------------- |
-| `--wui-drawer-width`      | `320px`                            | Drawer width               |
-| `--wui-drawer-height`     | `300px`                            | Drawer height (top/bottom) |
-| `--wui-drawer-bg`         | `var(--wui-color-surface-overlay)` | Drawer body background     |
-| `--wui-drawer-overlay-bg` | `rgb(0 0 0 / 0.12)`                | Backdrop background        |
+| Property                  | Default                            | Description                                |
+| ------------------------- | ---------------------------------- | ------------------------------------------ |
+| `--wui-drawer-width`      | `320px`                            | Drawer width                               |
+| `--wui-drawer-height`     | `300px`                            | Drawer height (top/bottom)                 |
+| `--wui-drawer-bg`         | `var(--wui-color-surface-overlay)` | Drawer body background                     |
+| `--wui-drawer-radius`     | `28px`                             | Floating card corner radius (non-headless) |
+| `--wui-drawer-overlay-bg` | `rgb(0 0 0 / 0.12)`                | Backdrop background                        |
 
 ---
 
@@ -878,15 +882,20 @@ WebUiSpinner.hide() // hide
 
 Responsive page layout with an optional full-width banner, a collapsible desktop sidebar, and a headless-drawer mobile sidebar. The page itself scrolls; the desktop sidebar and header stick to the viewport after the banner scrolls away.
 
-| Attribute           | Type      | Default   | Description                                           |
-| ------------------- | --------- | --------- | ----------------------------------------------------- |
-| `sidebar-collapsed` | `boolean` | `false`   | Controlled desktop sidebar collapsed state            |
-| `sidebar-open`      | `boolean` | `false`   | Controlled mobile sidebar drawer open state           |
-| `header-glow`       | `boolean` | `false`   | Decorative Header background glow behind slot content |
-| `sidebar-width`     | `string`  | `'240px'` | Expanded desktop and mobile sidebar width             |
-| `collapsed-width`   | `string`  | `'72px'`  | Collapsed desktop sidebar width                       |
+| Attribute           | Type      | Default   | Description                                                                                        |
+| ------------------- | --------- | --------- | -------------------------------------------------------------------------------------------------- |
+| `sidebar-collapsed` | `boolean` | `false`   | Controlled desktop sidebar collapsed state                                                         |
+| `sidebar-open`      | `boolean` | `false`   | Controlled mobile sidebar drawer open state                                                        |
+| `header-glow`       | `boolean` | `false`   | Decorative Header background glow behind slot content                                              |
+| `sidebar-width`     | `string`  | `'240px'` | Expanded desktop and mobile sidebar width                                                          |
+| `collapsed-width`   | `string`  | `'72px'`  | Collapsed desktop sidebar width                                                                    |
+| `sidebar-resizable` | `boolean` | `false`   | Enable drag-to-resize on the desktop sidebar edge                                                  |
+| `sidebar-min-width` | `string`  | —         | Resize lower bound (px); falls back to `collapsed-width`                                           |
+| `sidebar-max-width` | `string`  | —         | Resize upper bound (px); clamped to half the viewport, which always wins over the configured value |
 
-**Events:** `sidebar-collapsed-change` (`CustomEvent<{ collapsed: boolean }>`) requests a desktop collapse-state update. `sidebar-open-change` (`CustomEvent<{ open: boolean }>`) requests a mobile drawer open-state update. Consumers must write the requested value back to the corresponding controlled property.
+**Events:** `sidebar-collapsed-change` (`CustomEvent<{ collapsed: boolean }>`) requests a desktop collapse-state update. `sidebar-open-change` (`CustomEvent<{ open: boolean }>`) requests a mobile drawer open-state update. `sidebar-width-change` (`CustomEvent<{ width: string }>`) requests a sidebar width update after a resize drag ends. Consumers must write the requested value back to the corresponding controlled property.
+
+**Sidebar resize:** With `sidebar-resizable`, a resize handle appears on the desktop sidebar's right edge (hidden while collapsed). Hovering or dragging shows a 3px accent vertical line with a `col-resize` cursor. Dragging updates the width in real time (transition suppressed, clamped to `[min, max]` and the viewport); releasing emits `sidebar-width-change` with the final pixel width and returns control to the `sidebar-width` property once the consumer writes it back. `pointercancel` restores the property-controlled width without emitting. The handle is keyboard-operable (WAI-ARIA splitter pattern): focus it and use ←/→ to step by 16px (Shift for 64px), Home/End to jump to min/max, Enter to commit via the same `sidebar-width-change` request, and Escape to revert an uncommitted adjustment. The mobile drawer always supports drag-to-close via its built-in `draggable` drawer.
 
 | Slot      | Description                                                                               |
 | --------- | ----------------------------------------------------------------------------------------- |
