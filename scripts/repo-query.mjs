@@ -409,7 +409,9 @@ const focusedTests = Object.fromEntries(
 )
 const hasContextChange = normalizedPaths.some(
   file =>
-    ['AGENTS.md', 'CLAUDE.md', 'CONTEXT.md', 'package.json', 'pnpm-workspace.yaml', 'turbo.json'].includes(file) ||
+    ['AGENTS.md', 'CLAUDE.md', 'GEMINI.md', 'CONTEXT.md', 'package.json', 'pnpm-workspace.yaml', 'turbo.json'].includes(
+      file
+    ) ||
     file.startsWith('.agents/') ||
     file.startsWith('.claude/') ||
     file.startsWith('docs/agents/') ||
