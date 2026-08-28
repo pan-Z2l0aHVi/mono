@@ -8,15 +8,6 @@
   --wui-layout-visible-banner-height: 0px;
   --wui-layout-header-glow-color: var(--wui-color-page, #fff);
 
-  /*
-   * 内部变量：晕染伪元素的总高度（相对于 header 盒子高度的百分比）。
-   * 默认 150% 表示伪元素从 header 顶部向上延伸 50% header 高度，
-   * 向下延伸 100% header 高度。sticky 到顶后，可见范围为 header 底部到
-   * 下方 100% header 高度处，实现从实色到透明的自然过渡。
-   *
-   * 调大此值会加深晕染浓度并扩大覆盖范围，但过大会遮挡内容区。
-   */
-  --wui-internal-layout-header-glow-height: 150%;
   display: block;
 }
 
@@ -142,16 +133,8 @@ header {
  * 伪元素随 header 的实际盒子尺寸和 sticky 位置变化，自然适配 header slot 的
  * 高度与位置，无需单独维护一层 DOM。
  *
- * 几何模型（以 --wui-internal-layout-header-glow-height: 150% 为例）：
- *   伪元素总高度 = 1.5 × header 高度
- *   inset top    = 100% - 150% = -50%（即向上延伸 0.5 个 header 高度）
- *   sticky 到顶后，上半段位于视口外，下半段（header 底部 → 下方 1 header 高度）
- *   为可见区域，形成从实色到透明的渐变过渡。
- *
- * 渐变浓度控制（0% 在伪元素顶部，100% 在底部）：
- *   0%  - 55%   实色（覆盖可见区域上方约 1/3，确保 header 后方完全不透明）
- *   55% - 70%   快速衰减（90% → 40% 混合透明，覆盖中间过渡带）
- *   70% - 100%  柔和收尾（40% → 完全透明，过渡到内容区背景）
+ * 通过 translate + scale 将晕染区域从 header 中心向外扩展，
+ * 并使用 blur 模糊边缘，实现柔和的渐变过渡效果。
  */
 :host([header-glow]) header::before {
   pointer-events: none;
@@ -159,19 +142,11 @@ header {
 
   position: absolute;
   z-index: -1;
-  inset: calc(100% - var(--wui-internal-layout-header-glow-height)) -20px auto;
-  transform: scaleY(1.5);
+  inset: 0;
+  transform: translate(5%, -50%) scale(1.05, 2);
 
-  height: var(--wui-internal-layout-header-glow-height);
-
-  background: linear-gradient(
-    to bottom,
-    var(--wui-layout-header-glow-color) 0%,
-    var(--wui-layout-header-glow-color) 55%,
-    color-mix(in srgb, var(--wui-layout-header-glow-color) 90%, transparent) 62%,
-    color-mix(in srgb, var(--wui-layout-header-glow-color) 40%, transparent) 70%,
-    transparent 100%
-  );
+  opacity: 0.95;
+  background-color: var(--wui-layout-header-glow-color);
   filter: blur(10px);
 }
 
