@@ -24,9 +24,9 @@
 - **Vue 应用**：`vue-tsc --build && vp build`。
 - **tsconfig**：无构建步骤；它提供通过 TypeScript `extends` 消费的 JSON 文件。
 
-在工作区根目录运行 `pnpm run check:code` 进行 CI 代码质量检查：`vp check` 运行格式化、lint 与 TypeScript 类型检查（通过 `fmt.ignorePatterns` 排除第三方 `.agents/skills/`）；`check:go` 自动发现所有 `go.mod` 并运行 `go vet`。提交 hook 的 `vp staged` 对暂存路径运行 `vp check --fix`，并额外对暂存的 `.go` 文件运行 `gofmt -w`、对 `.css/.vue` 运行 `stylelint --fix`。包构建命令不能替代这些命令；Wails 的 macOS/Windows 原生构建仍负责验证 host package 与平台集成。
+在工作区根目录运行 `CI=true pnpm run check:code` 进行 CI 代码质量检查（聚合 `check:cspell`、`vp check`、`check:go`）：`vp check` 运行格式化、lint 与 TypeScript 类型检查（通过 `fmt.ignorePatterns` 排除第三方 `.agents/skills/`）；`check:go` 自动发现所有 `go.mod` 并运行 `go vet`。出现格式或静态问题时，运行 `CI=true pnpm run fix:code` 一键全量修复（聚合 `vp check --fix`、`fix:go` 与 `fix:stylelint`）。提交 hook 的 `vp staged` 则对暂存路径做增量修复与检查。包构建命令不能替代这些命令；Wails 的 macOS/Windows 原生构建仍负责验证 host package 与平台集成。
 
-构建可发布 package 或修改其 `exports`、`files`、Vite 输出时，在根构建成功后运行 `pnpm run check:pack`。该检查使用 `pnpm pack --dry-run` 验证实际发布文件与 manifest export targets；它不判断 API 语义或版本级别。任务开始时使用 `pnpm find:usages -- <paths...>`，取得由 `pnpm-workspace.yaml` 纳入的受影响 workspace、最小读取 context、所需证据与最小充分验证建议；需要确认公开入口时使用 `pnpm inspect:contract -- <published-package>`，需要审阅 Git 变更集的 manifest-level semver 候选时使用 `pnpm diff:contract -- --base <git-ref>`；对 Git 变更集可传入 `--base <git-ref>`、`--staged` 或 `--worktree`。
+清理构建产物与缓存时使用 `pnpm run clean`（执行 `scripts/clean.sh`，安全重置各工作区的 `dist/`、`.turbo/` 和临时产物）；验证仓库内部工具脚本时运行 `pnpm run test:scripts`。构建可发布 package 或修改其 `exports`、`files`、Vite 输出时，在根构建成功后运行 `pnpm run check:pack`。该检查使用 `pnpm pack --dry-run` 验证实际发布文件与 manifest export targets；它不判断 API 语义或版本级别。任务开始时使用 `pnpm find:usages -- <paths...>`，取得由 `pnpm-workspace.yaml` 纳入的受影响 workspace、最小读取 context、所需证据与最小充分验证建议；需要确认公开入口时使用 `pnpm inspect:contract -- <published-package>`，需要审阅 Git 变更集的 manifest-level semver 候选时使用 `pnpm diff:contract -- --base <git-ref>`；对 Git 变更集可传入 `--base <git-ref>`、`--staged` 或 `--worktree`。
 
 对于 `web-ui`，`pnpm --filter @greypan/web-ui generate-icons` 从 `icons.used.json` 重新生成图标模块。Vite 插件也会在 `vp build` 期间自动运行它。
 
