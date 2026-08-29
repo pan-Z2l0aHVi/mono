@@ -167,10 +167,10 @@ describe('WebUiDrawer 组件', () => {
     })
   })
 
-  describe('属性：request-only', () => {
+  describe('属性：controlled', () => {
     it('用户通过 Escape 或遮罩关闭时仅请求 open=false，不自行修改 open', async () => {
       const el = createDrawer()
-      el.requestOnly = true
+      el.controlled = true
       el.open = true
       await waitForUpdate(el)
 
@@ -193,7 +193,7 @@ describe('WebUiDrawer 组件', () => {
     it('内置关闭按钮仅请求关闭，不自行修改 open', async () => {
       const el = createDrawer()
       el.closable = true
-      el.requestOnly = true
+      el.controlled = true
       el.open = true
       await waitForUpdate(el)
 
@@ -414,9 +414,9 @@ describe('WebUiDrawer 组件', () => {
   })
 
   describe('原生 dialog 关闭', () => {
-    it('request-only 时恢复 native dialog 并仅请求关闭', async () => {
+    it('controlled 时恢复 native dialog 并仅请求关闭', async () => {
       const el = createDrawer()
-      el.requestOnly = true
+      el.controlled = true
       el.open = true
       await waitForUpdate(el)
       const dialog = el.shadowRoot?.querySelector('dialog') as HTMLDialogElement
@@ -570,11 +570,11 @@ describe('WebUiDrawer 组件', () => {
       cleanupElement(el)
     })
 
-    it('request-only 下拖拽松手只派发 open-change 请求，不修改 open', async () => {
+    it('controlled 下拖拽松手只派发 open-change 请求，不修改 open', async () => {
       vi.useFakeTimers()
       const el = createDrawer()
       el.draggable = true
-      el.requestOnly = true
+      el.controlled = true
       el.open = true
       await waitForUpdate(el)
       await vi.advanceTimersByTimeAsync(16)

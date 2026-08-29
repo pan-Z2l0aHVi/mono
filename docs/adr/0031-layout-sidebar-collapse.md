@@ -100,7 +100,7 @@ Desktop Toggle 是 layout 自己的固定 footer，而不是 `sidebar` slot 内�
 在 `640px` 及以下：
 
 - 页面仍显示 Banner、Header、默认内容与 Tabbar；
-- Sidebar 使用带有 `dialog-label="主导航"` 的 `web-ui-drawer[headless][request-only]`，复用 native dialog、backdrop、placement 动画、Escape/遮罩关闭和 scroll lock；Drawer 的用户关闭行为仅请求 `sidebar-open=false`，由 Consumer 回写后才关闭；headless Drawer 必须显式提供 `dialog-label`，确保其内部原生 dialog 具有可访问名称；
+- Sidebar 使用带有 `dialog-label="主导航"` 的 `web-ui-drawer[headless][controlled]`，复用 native dialog、backdrop、placement 动画、Escape/遮罩关闭和 scroll lock；Drawer 的用户关闭行为仅请求 `sidebar-open=false`，由 Consumer 回写后才关闭；headless Drawer 必须显式提供 `dialog-label`，确保其内部原生 dialog 具有可访问名称；
 - Drawer 内渲染与桌面端相同的圆角 glass Sidebar 卡片，但没有 Drawer 内置 header、footer 或关闭按钮；
 - Header 行内显示打开菜单的 Toggle；移动端不显示桌面端底部 Toggle；`sidebar-open` 是移动端 Drawer 的独立受控属性。
 

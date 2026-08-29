@@ -585,20 +585,21 @@ Applies the direction to the grouped button layout without changing child button
 
 Modal dialog using native `<dialog>` with `showModal()`.
 
-| Attribute           | Type      | Default | Description                         |
-| ------------------- | --------- | ------- | ----------------------------------- |
-| `open`              | `boolean` | `false` | Dialog visibility                   |
-| `no-scroll-lock`    | `boolean` | `false` | Do not lock body scroll when open   |
-| `no-backdrop-close` | `boolean` | `false` | Do not close on backdrop click      |
-| `no-escape-close`   | `boolean` | `false` | Do not close when Escape is pressed |
+| Attribute           | Type      | Default | Description                                                                    |
+| ------------------- | --------- | ------- | ------------------------------------------------------------------------------ |
+| `open`              | `boolean` | `false` | Dialog visibility                                                              |
+| `no-scroll-lock`    | `boolean` | `false` | Do not lock body scroll when open                                              |
+| `no-backdrop-close` | `boolean` | `false` | Do not close on backdrop click                                                 |
+| `no-escape-close`   | `boolean` | `false` | Do not close when Escape is pressed                                            |
+| `controlled`        | `boolean` | `false` | Escape and backdrop only request `open=false`; the consumer must update `open` |
 
-**Events:** `open-change` (`CustomEvent<{ open: boolean }>`)
+**Events:** `open-change` (`CustomEvent<{ open: boolean }>`). With `controlled`, Escape and backdrop clicks only request `open=false` and the dialog stays open until the consumer writes `open=false`. Programmatic APIs (`showModal()`, `close()`, assigning `open`) stay direct and never emit. Native dialog closure (e.g. form `method="dialog"`) is restored to the controlled open state and re-emits the request.
 
 **Slots:** `body`, `title`, `default`, `footer`
 
 **Methods:** `showModal()`, `close()`
 
-Uses native `<dialog>` with `@cancel` prevention. Escape calls `close()` unless `no-escape-close` is present. Click on backdrop closes dialog unless `no-backdrop-close` is present.
+Uses native `<dialog>` with `@cancel` prevention. Escape calls `close()` unless `no-escape-close` is present. Click on backdrop closes dialog unless `no-backdrop-close` is present. With `controlled`, both only emit the close request instead.
 
 **CSS Custom Properties:**
 
@@ -619,12 +620,12 @@ Side drawer using native `<dialog>` with closing animation. In non-headless mode
 | `closable`          | `boolean`                                | `false`   | Show close button                                                                 |
 | `no-scroll-lock`    | `boolean`                                | `false`   | Do not lock body scroll when open                                                 |
 | `no-backdrop-close` | `boolean`                                | `false`   | Do not close on backdrop click                                                    |
-| `request-only`      | `boolean`                                | `false`   | User close actions only request `open=false`; the consumer must update `open`     |
+| `controlled`        | `boolean`                                | `false`   | User close actions only request `open=false`; the consumer must update `open`     |
 | `headless`          | `boolean`                                | `false`   | Keep only overlay behavior and render the default slot without built-in drawer UI |
 | `dialog-label`      | `string`                                 | `''`      | Accessible name for the internal native dialog; required in headless mode         |
 | `draggable`         | `boolean`                                | `false`   | Show a drag bar on the inner edge for drag-to-close gestures                      |
 
-**Events:** `open-change` (`CustomEvent<{ open: boolean }>`). With `request-only`, Escape, backdrop and the built-in close button only request `open=false`; the drawer remains open until the consumer writes `open=false`. If native dialog closure occurs while that request is rejected, the drawer restores its open top-layer state and emits the same request.
+**Events:** `open-change` (`CustomEvent<{ open: boolean }>`). With `controlled`, Escape, backdrop, the built-in close button and drag-release only request `open=false`; the drawer remains open until the consumer writes `open=false`. Programmatic APIs (`show()`, `close()`, assigning `open`) stay direct and never emit. If native dialog closure occurs while a request is pending, the drawer restores its open top-layer state and emits the same request.
 
 **Slots:** `header`, `default`, `footer` — with `headless`, only the `default` slot is rendered.
 
@@ -634,7 +635,7 @@ Side drawer using native `<dialog>` with closing animation. In non-headless mode
 
 Closing keeps the native dialog in the top layer until the `--wui-duration-drawer-exit` transition completes (240ms by default), then calls `dialog.close()`. Escape always follows this close path; `no-backdrop-close` controls backdrop clicks only.
 
-**Drag to close:** With `draggable`, a gray capsule drag bar appears on the drawer's inner edge (left edge for `right`, right edge for `left`, bottom edge for `top`, top edge for `bottom`) while open. Dragging follows the pointer in real time (backdrop fades proportionally); releasing past ~1/3 of the drawer size or with a fast closing flick springs the drawer shut, otherwise it springs back open. The close direction is placement-aware. With `request-only`, release past the threshold only emits `open-change(false)`; the drawer holds at the closed position briefly and springs back open if the consumer rejects the write-back. Drag-to-open is not supported because the closed drawer renders nothing outside the native dialog. Under `prefers-reduced-motion`, release snaps instantly without spring animation.
+**Drag to close:** With `draggable`, a gray capsule drag bar appears on the drawer's inner edge (left edge for `right`, right edge for `left`, bottom edge for `top`, top edge for `bottom`) while open. Dragging follows the pointer in real time (backdrop fades proportionally); releasing past ~1/3 of the drawer size or with a fast closing flick springs the drawer shut, otherwise it springs back open. The close direction is placement-aware. With `controlled`, release past the threshold only emits `open-change(false)`; the drawer holds at the closed position briefly (120ms write-back window) and springs back open if the consumer rejects or misses the write-back. Drag-to-open is not supported because the closed drawer renders nothing outside the native dialog. Under `prefers-reduced-motion`, release snaps instantly without spring animation.
 
 **CSS Custom Properties:**
 

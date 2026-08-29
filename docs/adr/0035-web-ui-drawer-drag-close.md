@@ -44,11 +44,11 @@
 
 ### 5. 与受控契约一致
 
-拖拽属于用户手势。`request-only` 模式下，松手达阈值只派发 `open-change(false)` 请求（与 Escape/遮罩同语义），不修改 `open`；Consumer 拒绝回写时，组件在闭合位短暂保持后弹簧弹回打开位。非 request-only 下走原生关闭管线（`is-closing` → `dialog.close()`），复用现有 `defineNativeDialogPresence` 生命周期，不重复实现关闭时序。
+拖拽属于用户手势。`controlled` 模式（原名 request-only，后统一改名）下，松手达阈值只派发 `open-change(false)` 请求（与 Escape/遮罩同语义），不修改 `open`；Consumer 拒绝或超时未回写时，组件在闭合位短暂保持后弹簧弹回打开位。非 controlled 下走原生关闭管线（`is-closing` → `dialog.close()`），复用现有 `defineNativeDialogPresence` 生命周期，不重复实现关闭时序。
 
 ## 后果
 
 - `draggable` 是 `web-ui-drawer` 的新增布尔属性（默认 false），关闭态无渲染代价。
-- 测试需在 browser mode 下用真实 `PointerEvent` 验证跟手、阈值关闭、短拖弹回、request-only 拒绝弹回与 reduced-motion 即时到位——jsdom 无法证明原生 dialog / `setPointerCapture` / WAAPI 行为。
+- 测试需在 browser mode 下用真实 `PointerEvent` 验证跟手、阈值关闭、短拖弹回、controlled 拒绝弹回与 reduced-motion 即时到位——jsdom 无法证明原生 dialog / `setPointerCapture` / WAAPI 行为。
 - 移动端 layout 内部的 headless drawer 直接启用 `draggable`，手势关闭无需新 prop。
 - 关闭态“无渲染”的约束被显式记录，避免后续有人尝试在关闭态挂载拖拽热区。

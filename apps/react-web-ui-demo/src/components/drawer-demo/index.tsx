@@ -17,7 +17,7 @@ function DrawerDemo() {
   const [unlockedVisible, setUnlockedVisible] = useState(false)
   const [overlayVisible, setOverlayVisible] = useState(false)
   const [headlessVisible, setHeadlessVisible] = useState(false)
-  const [requestOnlyVisible, setRequestOnlyVisible] = useState(false)
+  const [controlledVisible, setControlledVisible] = useState(false)
   const [draggableVisible, setDraggableVisible] = useState(false)
   const [draggableTopVisible, setDraggableTopVisible] = useState(false)
   const [draggableHeadlessVisible, setDraggableHeadlessVisible] = useState(false)
@@ -253,15 +253,15 @@ function DrawerDemo() {
 
       <h2>受控关闭请求</h2>
       <div className="mb-3 flex gap-2">
-        <web-ui-button onClick={() => setRequestOnlyVisible(true)}>打开</web-ui-button>
+        <web-ui-button onClick={() => setControlledVisible(true)}>打开</web-ui-button>
       </div>
       <web-ui-drawer
-        open={requestOnlyVisible}
-        requestOnly
-        onopen-change={event => setRequestOnlyVisible(event.detail.open)}
+        open={controlledVisible}
+        controlled
+        onopen-change={event => setControlledVisible(event.detail.open)}
       >
         <p>
-          <code>request-only</code> 时，Escape、遮罩和关闭按钮只派发 <code>open-change</code> 请求；Consumer 回写
+          <code>controlled</code> 时，Escape、遮罩和关闭按钮只派发 <code>open-change</code> 请求；Consumer 回写
           <code>open</code> 后才关闭。
         </p>
       </web-ui-drawer>

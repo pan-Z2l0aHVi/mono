@@ -147,10 +147,10 @@ describe('WebUiDrawer 拖拽关闭（浏览器）', () => {
     expect(getCloseOffset(el)).toBeLessThan(2)
   })
 
-  it('request-only 拒绝回写：等待窗口超时后弹回打开位', async () => {
+  it('controlled 拒绝回写：等待窗口超时后弹回打开位', async () => {
     const el = createDrawer()
     el.draggable = true
-    el.requestOnly = true
+    el.controlled = true
     el.open = true
     await el.updateComplete
     await waitForOpenTransition()
@@ -186,10 +186,10 @@ describe('WebUiDrawer 拖拽关闭（浏览器）', () => {
     expect(getDialog(el).open).toBe(true)
   })
 
-  it('request-only 消费者回写 open=false：确认关闭', async () => {
+  it('controlled 消费者回写 open=false：确认关闭', async () => {
     const el = createDrawer()
     el.draggable = true
-    el.requestOnly = true
+    el.controlled = true
     el.open = true
     await el.updateComplete
     await waitForOpenTransition()
@@ -217,7 +217,7 @@ describe('WebUiDrawer 拖拽关闭（浏览器）', () => {
     expect(getDialog(el).open).toBe(false)
   })
 
-  it('request-only 悬停等待期间：Escape/遮罩不重复派发 open-change(false)', async () => {
+  it('controlled 悬停等待期间：Escape/遮罩不重复派发 open-change(false)', async () => {
     // theme motion=reduced 走即时终态路径，稳定进入悬停态
     const theme = document.createElement('web-ui-theme')
     theme.setAttribute('appearance', 'light')
@@ -226,7 +226,7 @@ describe('WebUiDrawer 拖拽关闭（浏览器）', () => {
 
     const el = document.createElement('web-ui-drawer')
     theme.append(el)
-    el.requestOnly = true
+    el.controlled = true
     el.draggable = true
     el.open = true
     await el.updateComplete
@@ -447,7 +447,7 @@ describe('WebUiDrawer 拖拽关闭（浏览器）', () => {
     expect(dialog.open).toBe(false)
   })
 
-  it('request-only 悬停闭合位越过留边补偿：dialog 完全位于视口之外', async () => {
+  it('controlled 悬停闭合位越过留边补偿：dialog 完全位于视口之外', async () => {
     // theme motion=reduced 走即时终态路径，避免与回写等待窗口竞争（窗口仅 120ms）。
     const theme = document.createElement('web-ui-theme')
     theme.setAttribute('appearance', 'light')
@@ -457,7 +457,7 @@ describe('WebUiDrawer 拖拽关闭（浏览器）', () => {
     for (const placement of ['right', 'bottom'] as const) {
       const el = document.createElement('web-ui-drawer')
       theme.append(el)
-      el.requestOnly = true
+      el.controlled = true
       el.placement = placement
       el.draggable = true
       el.open = true
@@ -493,7 +493,7 @@ describe('WebUiDrawer 拖拽关闭（浏览器）', () => {
       )
       await el.updateComplete
 
-      // request-only 仅派发请求：状态仍 open，组件悬停在闭合位等待回写
+      // controlled 仅派发请求：状态仍 open，组件悬停在闭合位等待回写
       expect(el.open).toBe(true)
       const rect = getDialog(el).getBoundingClientRect()
       const horizontal = placement === 'right'

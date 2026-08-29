@@ -21,7 +21,7 @@ Add Layout desktop sidebar drag-to-resize and Drawer drag-to-close features.
 - Native dialog renders nothing when closed ⇒ drag-to-open NOT supported
 - Spring via WAAPI (no new `--wui-*` tokens)
 - `prefers-reduced-motion` snaps instantly
-- Request-only `open-change(false)` with writeback await + timeout rebound
+- `controlled` mode: user close actions only emit `open-change(false)` with writeback await + timeout rebound
 - Declarative nested drawer stacking: open drawers below the top layer automatically scale down (0.95^depth) and shift towards the inner side to expose card edges; Escape and backdrop clicks dismiss only the topmost layer
 
 **Drawer visual language (breaking visual, no API change):**
@@ -33,5 +33,10 @@ Add Layout desktop sidebar drag-to-resize and Drawer drag-to-close features.
 **Glass variable isolation (bug fix):**
 
 - `.wui-glass` now declares its own `--wui-internal-glass-shadow` / `--wui-internal-glass-focus-ring` defaults, cutting the flattened-tree inheritance path from ancestor glass containers (drawer/dialog bodies, overlay panels) into slotted content. Previously a glass-variant button or input inside a drawer/dialog silently picked up the huge overlay shadow instead of the soft glass fallback.
-- Headless drawers explicitly zero `--wui-internal-drawer-inset` on their dialog: a headless drawer nested inside a non-headless one used to inherit the 8px inset, breaking the drag-close distance / request-only hover end-state math for edge-to-edge geometry.
+- Headless drawers explicitly zero `--wui-internal-drawer-inset` on their dialog: a headless drawer nested inside a non-headless one used to inherit the 8px inset, breaking the drag-close distance / controlled hover end-state math for edge-to-edge geometry.
 - **Breaking visual:** `<web-ui-back-top>`'s default glass button now uses the glass fallback shadow (`--wui-shadow-glass`) instead of the small panel shadow (`--wui-shadow-panel`). The old `:host`-level `--wui-internal-glass-shadow` config could no longer reach the inner glass element under the new isolation and was removed; pass `--wui-shadow-glass` on the element if the previous look is required.
+
+**Controlled mode rename (was `request-only`) + dialog support:**
+
+- `web-ui-drawer`: prop `request-only` (attribute) / `requestOnly` (property) is renamed to `controlled` / `controlled` (same semantics — user close actions only emit `open-change(false)`; the consumer writes `open` back; programmatic `show()`/`close()` stay direct). No alias is kept.
+- `web-ui-dialog`: new `controlled` prop with the same contract (Escape and backdrop only request; native dialog closure while controlled is restored to the open state and re-emits the request).

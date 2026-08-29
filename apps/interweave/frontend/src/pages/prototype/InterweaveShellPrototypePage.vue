@@ -367,7 +367,7 @@ function onResourceContextmenu(resource: Resource, event: MouseEvent) {
         :open="drawerOpen"
         placement="right"
         :closable="false"
-        request-only
+        controlled
         style="--wui-drawer-width: 400px"
         @open-change="drawerOpen = $event.detail.open"
       >

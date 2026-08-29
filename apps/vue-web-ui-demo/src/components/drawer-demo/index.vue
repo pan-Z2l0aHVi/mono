@@ -39,7 +39,7 @@ const footerVisible = ref(false)
 const unlockedVisible = ref(false)
 const overlayVisible = ref(false)
 const headlessVisible = ref(false)
-const requestOnlyVisible = ref(false)
+const controlledVisible = ref(false)
 const draggableVisible = ref(false)
 const draggableTopVisible = ref(false)
 const draggableHeadlessVisible = ref(false)
@@ -209,11 +209,11 @@ const randomWidthL4 = ref(false)
 
     <h2>受控关闭请求</h2>
     <div class="mb-3 flex gap-2">
-      <web-ui-button @click="requestOnlyVisible = true">打开</web-ui-button>
+      <web-ui-button @click="controlledVisible = true">打开</web-ui-button>
     </div>
-    <web-ui-drawer :open="requestOnlyVisible" request-only @open-change="requestOnlyVisible = $event.detail.open">
+    <web-ui-drawer :open="controlledVisible" controlled @open-change="controlledVisible = $event.detail.open">
       <p>
-        <code>request-only</code> 时，Escape、遮罩和关闭按钮只派发 <code>open-change</code> 请求；Consumer 回写
+        <code>controlled</code> 时，Escape、遮罩和关闭按钮只派发 <code>open-change</code> 请求；Consumer 回写
         <code>open</code> 后才关闭。
       </p>
     </web-ui-drawer>

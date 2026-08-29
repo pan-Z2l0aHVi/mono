@@ -68,10 +68,11 @@ export class WebUiDrawer extends LitElement {
   @property({ type: Boolean, reflect: true, attribute: 'no-backdrop-close' }) noBackdropClose = false
 
   /**
-   * request-only 模式下，Escape、遮罩和关闭按钮只派发 `open-change` 请求，
+   * Controlled 模式下，Escape、遮罩、关闭按钮和拖拽关闭只派发 `open-change` 请求，
    * 不会自行修改 `open`。Consumer 回写 `open` 后才执行关闭动画。
+   * 程序化 API（show/close/直接赋值 open）不受此模式影响，始终直通。
    */
-  @property({ type: Boolean, reflect: true, attribute: 'request-only' }) requestOnly = false
+  @property({ type: Boolean, reflect: true }) controlled = false
 
   @property({ type: String, reflect: true })
   get placement(): DrawerPlacement {
@@ -133,7 +134,7 @@ export class WebUiDrawer extends LitElement {
   private _dragInitialOffset = 0
   private _dragOffset = 0
   private _dragAnimation: Animation | null = null
-  // request-only：弹簧到闭合位后等待 Consumer 回写 open；超时未回写则弹回。
+  // controlled：弹簧到闭合位后等待 Consumer 回写 open；超时未回写则弹回。
   private _dragAwaitWriteback = false
   private _dragRequestTimer: ReturnType<typeof setTimeout> | undefined
 
@@ -171,7 +172,7 @@ export class WebUiDrawer extends LitElement {
   }
 
   // 闭合方向上的完全出屏距离：抽屉尺寸 + 浮动留边（headless 下即尺寸本身）。
-  // CSS 闭合态 transform、request-only 悬停终态与弹簧终点共用同一数学，避免衔接跳变。
+  // CSS 闭合态 transform、controlled 悬停终态与弹簧终点共用同一数学，避免衔接跳变。
   private _dragCloseDistance(dialog: HTMLDialogElement): number {
     return this._measureDragSize() + this._readDrawerInset(dialog)
   }
@@ -284,7 +285,7 @@ export class WebUiDrawer extends LitElement {
     dialog.style.removeProperty('--wui-internal-drag-backdrop-opacity')
   }
 
-  // 弹簧到完全闭合；request-only 下保持闭合位等待回写，其余走常规关闭管线。
+  // 弹簧到完全闭合；controlled 下保持闭合位等待回写，其余走常规关闭管线。
   private _springToClose(dialog: HTMLDialogElement, velocity: number) {
     const from = this._dragOffset
     this._dragOffset = 0
@@ -295,7 +296,7 @@ export class WebUiDrawer extends LitElement {
     const size = this._measureDragSize()
 
     const finishClose = () => {
-      if (this.requestOnly) {
+      if (this.controlled) {
         // 保持在闭合位（is-visible 未移除，状态仍 open），等待 Consumer 回写或超时弹回。
         const distance = to
         dialog.style.transform =
@@ -368,13 +369,13 @@ export class WebUiDrawer extends LitElement {
     // 先派发关闭请求（_closeFromUser），再进入悬停等待：等待态中 _closeFromUser
     // 会被 L2 去重守卫短路，顺序颠倒会吞掉首次请求。
     this._closeFromUser()
-    if (this.requestOnly) {
+    if (this.controlled) {
       this._dragAwaitWriteback = true
       this._dragRequestTimer = setTimeout(this._handleDragWritebackTimeout, DRAG_REQUEST_WINDOW_MS)
     }
   }
 
-  // request-only 回写窗口超时：Consumer 拒绝关闭，从闭合位弹回打开位。
+  // controlled 回写窗口超时：Consumer 拒绝关闭，从闭合位弹回打开位。
   private readonly _handleDragWritebackTimeout = () => {
     this._dragRequestTimer = undefined
     if (!this._dragAwaitWriteback || !this.open || this._isDragging()) {
@@ -447,7 +448,7 @@ export class WebUiDrawer extends LitElement {
       // pointercancel 的清理但不弹回），交由下方 presence 走标准关闭/打开管线。
       if (this._isDragging() && !this.open) this._cancelActiveDrag()
       if (this._userOpenChange.consume()) this.emitOpenChange()
-      // request-only 拖拽关闭的回写结果：确认关闭则清除闭合位悬停状态走正常关闭；
+      // controlled 拖拽关闭的回写结果：确认关闭则清除闭合位悬停状态走正常关闭；
       // 拒绝关闭（回写 open=true）则从闭合位（含留边）弹回。
       if (this._dragAwaitWriteback) {
         this._cancelDragAwait()
@@ -512,10 +513,10 @@ export class WebUiDrawer extends LitElement {
 
   private readonly _closeFromUser = () => {
     if (!this.open) return
-    // request-only 悬停等待回写期间，关闭意图已在途（open-change 已派发）：
+    // controlled 悬停等待回写期间，关闭意图已在途（open-change 已派发）：
     // Escape/遮罩/关闭按钮的重复触发不再派发第二次请求，也不与超时弹回竞争。
     if (this._dragAwaitWriteback) return
-    if (this.requestOnly) {
+    if (this.controlled) {
       this.emitOpenChange(false)
       return
     }
@@ -540,8 +541,8 @@ export class WebUiDrawer extends LitElement {
       return
     }
 
-    // 原生关闭可绕过 cancel；request-only 时恢复受控状态，由 Consumer 决定是否关闭。
-    if (this.requestOnly) {
+    // 原生关闭可绕过 cancel；controlled 时恢复受控状态，由 Consumer 决定是否关闭。
+    if (this.controlled) {
       this._presence.sync(true)
       this.emitOpenChange(false)
       return

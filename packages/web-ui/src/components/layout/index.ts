@@ -400,7 +400,7 @@ export class WebUiLayout extends LitElement {
       <web-ui-drawer
         placement="left"
         ?open="${this.sidebarOpen}"
-        request-only
+        controlled
         draggable
         dialog-label="主导航"
         @open-change="${this._onDrawerChange}"

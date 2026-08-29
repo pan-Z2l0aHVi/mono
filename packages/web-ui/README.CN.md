@@ -573,20 +573,21 @@ ArrowUp/ArrowDown 键增减数值。空输入或 `-` 在提交时被忽略，值
 
 模态对话框，使用原生 `<dialog>` 的 `showModal()`。
 
-| 属性                | 类型      | 默认值  | 说明                 |
-| ------------------- | --------- | ------- | -------------------- |
-| `open`              | `boolean` | `false` | 对话框可见性         |
-| `no-scroll-lock`    | `boolean` | `false` | 打开时不锁定页面滚动 |
-| `no-backdrop-close` | `boolean` | `false` | 禁止点击遮罩关闭     |
-| `no-escape-close`   | `boolean` | `false` | 禁止按 Escape 关闭   |
+| 属性                | 类型      | 默认值  | 说明                                                      |
+| ------------------- | --------- | ------- | --------------------------------------------------------- |
+| `open`              | `boolean` | `false` | 对话框可见性                                              |
+| `no-scroll-lock`    | `boolean` | `false` | 打开时不锁定页面滚动                                      |
+| `no-backdrop-close` | `boolean` | `false` | 禁止点击遮罩关闭                                          |
+| `no-escape-close`   | `boolean` | `false` | 禁止按 Escape 关闭                                        |
+| `controlled`        | `boolean` | `false` | Escape 与遮罩仅请求 `open=false`，由 Consumer 回写 `open` |
 
-**事件：** `open-change` (`CustomEvent<{ open: boolean }>`)
+**事件：** `open-change` (`CustomEvent<{ open: boolean }>`)。启用 `controlled` 后，Escape 与遮罩点击仅请求 `open=false`，Consumer 写入 `open=false` 前对话框保持打开。程序化 API（`showModal()`/`close()`/直接赋值 `open`）不受影响，始终直通且不派发事件。原生 dialog 关闭（如表单 `method="dialog"`）会被恢复为受控打开状态并重新发出同一请求。
 
 **插槽：** `body`, `title`, `default`, `footer`
 
 **方法：** `showModal()`, `close()`
 
-使用原生 `<dialog>`，`@cancel` 阻止默认关闭行为。除非存在 `no-escape-close`，否则 Escape 调用 `close()`；除非存在 `no-backdrop-close`，否则点击遮罩关闭。
+使用原生 `<dialog>`，`@cancel` 阻止默认关闭行为。除非存在 `no-escape-close`，否则 Escape 调用 `close()`；除非存在 `no-backdrop-close`，否则点击遮罩关闭。启用 `controlled` 后，两者都只派发关闭请求而不自关闭。
 
 **CSS 自定义属性：**
 
@@ -607,12 +608,12 @@ ArrowUp/ArrowDown 键增减数值。空输入或 `-` 在提交时被忽略，值
 | `closable`          | `boolean`                                | `false`   | 显示关闭按钮                                         |
 | `no-scroll-lock`    | `boolean`                                | `false`   | 打开时不锁定页面滚动                                 |
 | `no-backdrop-close` | `boolean`                                | `false`   | 禁止点击遮罩关闭                                     |
-| `request-only`      | `boolean`                                | `false`   | 用户关闭仅请求 `open=false`，由 Consumer 回写 `open` |
+| `controlled`        | `boolean`                                | `false`   | 用户关闭仅请求 `open=false`，由 Consumer 回写 `open` |
 | `headless`          | `boolean`                                | `false`   | 仅保留 overlay 行为，默认插槽不渲染内置抽屉 UI       |
 | `dialog-label`      | `string`                                 | `''`      | 内部原生 dialog 的可访问名称；headless 模式必须提供  |
 | `draggable`         | `boolean`                                | `false`   | 打开时在抽屉内缘显示 drag bar，支持拖拽关闭手势      |
 
-**事件：** `open-change` (`CustomEvent<{ open: boolean }>`)。启用 `request-only` 后，Escape、遮罩和内置关闭按钮仅请求 `open=false`；Consumer 写入 `open=false` 前抽屉保持打开。若原生 dialog 在请求被拒绝期间关闭，组件会恢复其打开的 top layer 状态并发出同一关闭请求。
+**事件：** `open-change` (`CustomEvent<{ open: boolean }>`)。启用 `controlled` 后，Escape、遮罩、内置关闭按钮和拖拽松手仅请求 `open=false`；Consumer 写入 `open=false` 前抽屉保持打开。程序化 API（`show()`/`close()`/直接赋值 `open`）不受影响，始终直通且不派发事件。若原生 dialog 在请求等待期间关闭，组件会恢复其打开的 top layer 状态并发出同一关闭请求。
 
 **插槽：** `header`, `default`, `footer`；启用 `headless` 时仅渲染 `default` 插槽。
 
@@ -622,7 +623,7 @@ ArrowUp/ArrowDown 键增减数值。空输入或 `-` 在提交时被忽略，值
 
 关闭时保留原生 dialog 的 top layer，待退出过渡完成后调用 `dialog.close()`。Escape 始终走此关闭路径；`no-backdrop-close` 仅控制遮罩点击。
 
-**拖拽关闭：** 启用 `draggable` 后，打开的抽屉在内缘显示灰色胶囊 drag bar（`right` 在左缘、`left` 在右缘、`top` 在下缘、`bottom` 在上缘）。拖拽实时跟手（遮罩透明度按比例淡出）；松手时位移超过抽屉尺寸约 1/3 或快速甩动即弹簧关闭，否则弹回打开位，方向随 placement 适配。启用 `request-only` 后，超过阈值松手仅派发 `open-change(false)`；抽屉在闭合位短暂等待，Consumer 拒绝回写时弹回打开位。不支持拖拽打开——关闭态的抽屉在原生 dialog 之外没有任何渲染物。`prefers-reduced-motion` 下松手即时到位，不播放弹簧动画。
+**拖拽关闭：** 启用 `draggable` 后，打开的抽屉在内缘显示灰色胶囊 drag bar（`right` 在左缘、`left` 在右缘、`top` 在下缘、`bottom` 在上缘）。拖拽实时跟手（遮罩透明度按比例淡出）；松手时位移超过抽屉尺寸约 1/3 或快速甩动即弹簧关闭，否则弹回打开位，方向随 placement 适配。启用 `controlled` 后，超过阈值松手仅派发 `open-change(false)`；抽屉在闭合位短暂等待（120ms 回写窗口），Consumer 拒绝或超时未回写时弹回打开位。不支持拖拽打开——关闭态的抽屉在原生 dialog 之外没有任何渲染物。`prefers-reduced-motion` 下松手即时到位，不播放弹簧动画。
 
 **CSS 自定义属性：**
 
