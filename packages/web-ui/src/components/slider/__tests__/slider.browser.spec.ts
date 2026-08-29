@@ -43,7 +43,15 @@ describe('WebUiSlider 组件（浏览器）', () => {
       })
     )
     await el.updateComplete
+    await new Promise(r => setTimeout(r, 140))
     const afterMove = el.value
+
+    const thumb = slider!.querySelector('.wui-slider-thumb') as HTMLElement
+    expect(thumb.classList.contains('is-dragging')).toBe(true)
+    const transform = getComputedStyle(thumb).transform
+    expect(transform).not.toBe('none')
+    const matrix = new DOMMatrixReadOnly(transform)
+    expect(matrix.a).toBeCloseTo(1.2, 1)
 
     // pointerup 结束拖拽
     slider!.dispatchEvent(
@@ -104,6 +112,45 @@ describe('WebUiSlider 组件（浏览器）', () => {
     await el.updateComplete
 
     expect(el.value).toBe(valueAtDown)
+  })
+
+  it('指针交互后获得键盘焦点且响应键盘方向键', async () => {
+    const el = document.createElement('web-ui-slider')
+    document.body.append(el)
+    await el.updateComplete
+
+    const slider = el.shadowRoot?.querySelector<HTMLElement>('[role="slider"]')
+    expect(slider).toBeTruthy()
+    const rect = slider!.getBoundingClientRect()
+
+    // 点击 50% 位置
+    slider!.dispatchEvent(
+      new PointerEvent('pointerdown', {
+        bubbles: true,
+        composed: true,
+        clientX: rect.left + rect.width * 0.5,
+        clientY: rect.top + rect.height / 2,
+        pointerId: 1
+      })
+    )
+    slider!.dispatchEvent(
+      new PointerEvent('pointerup', {
+        bubbles: true,
+        composed: true,
+        clientX: rect.left + rect.width * 0.5,
+        clientY: rect.top + rect.height / 2,
+        pointerId: 1
+      })
+    )
+    await el.updateComplete
+
+    expect(el.value).toBe(50)
+
+    // 键盘方向键操作
+    slider!.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }))
+    await el.updateComplete
+
+    expect(el.value).toBe(51)
   })
 
   it('禁用时不响应指针拖拽', async () => {

@@ -139,6 +139,15 @@ export function attachDragGesture(
   }
 
   function resetState() {
+    if (activePointerId !== null && target && typeof target.hasPointerCapture === 'function') {
+      try {
+        if (target.hasPointerCapture(activePointerId)) {
+          target.releasePointerCapture(activePointerId)
+        }
+      } catch {
+        // ignore
+      }
+    }
     activePointerId = null
     isThresholdPassed = threshold <= 0
     samples = []
@@ -149,8 +158,8 @@ export function attachDragGesture(
 
   function handlePointerDown(e: PointerEvent) {
     if (activePointerId !== null) return
-    // 多点触控副指针（isPrimary 明确为 false）不参与手势
-    if (e.isPrimary === false) return
+    // 真实触控环境下的多点触控副指针不启动手势（合成事件或鼠标环境缺省时不拦截）
+    if (e.pointerType === 'touch' && e.isPrimary === false) return
 
     const startInfo: DragStartInfo = {
       pointerId: e.pointerId,
@@ -160,9 +169,6 @@ export function attachDragGesture(
     }
 
     if (onStart?.(startInfo, e) === false) return
-
-    // 未被拒绝时阻止默认行为（如文字选择）
-    if (e.cancelable) e.preventDefault()
 
     activePointerId = e.pointerId
     startX = e.clientX
@@ -174,10 +180,13 @@ export function attachDragGesture(
     attachWindowListeners()
     attachTargetListeners()
 
-    try {
-      target?.setPointerCapture?.(e.pointerId)
-    } catch {
-      // 忽略合成指针或不可捕获上下文（如测试环境）
+    // 仅在无意图死区时立即捕获指针；若存在死区，延迟至确认拖拽后捕获，避免干扰子元素原生点击
+    if (isThresholdPassed) {
+      try {
+        target?.setPointerCapture?.(e.pointerId)
+      } catch {
+        // 忽略合成指针或不可捕获上下文（如测试环境）
+      }
     }
   }
 
@@ -204,7 +213,15 @@ export function attachDragGesture(
         return
       }
       isThresholdPassed = true
+      try {
+        target?.setPointerCapture?.(e.pointerId)
+      } catch {
+        // 忽略合成指针
+      }
     }
+
+    // 确认拖拽后阻止默认滚动/文字选中
+    if (e.cancelable) e.preventDefault()
 
     const now = e.timeStamp
     samples.push({ t: now, x: e.clientX, y: e.clientY })
@@ -231,6 +248,12 @@ export function attachDragGesture(
 
   function handlePointerUp(e: PointerEvent) {
     if (activePointerId !== e.pointerId) return
+
+    const now = e.timeStamp
+    samples.push({ t: now, x: e.clientX, y: e.clientY })
+    while (samples.length > 2 && now - samples[0].t > VELOCITY_WINDOW_MS) {
+      samples.shift()
+    }
 
     const deltaX = e.clientX - startX
     const deltaY = e.clientY - startY

@@ -10,6 +10,8 @@
 }
 
 .wui-segmented {
+  touch-action: pan-y;
+
   position: relative;
 
   display: inline-flex;
@@ -19,15 +21,15 @@
   border-radius: calc(infinity * 1px);
 
   background-color: var(--wui-color-surface-control, #dfdfdf);
-}
 
-.wui-segmented.is-disabled {
-  cursor: not-allowed;
-  opacity: 0.4;
-}
+  &.is-disabled {
+    cursor: not-allowed;
+    opacity: 0.4;
+  }
 
-.wui-segmented.is-disabled .wui-segmented-trigger.is-disabled {
-  opacity: 1;
+  &.is-disabled .wui-segmented-trigger.is-disabled {
+    opacity: 1;
+  }
 }
 
 .wui-segmented-indicator {
@@ -36,16 +38,41 @@
   top: 3px;
   bottom: 3px;
   left: var(--indicator-left, 0);
+  transform-origin: center center;
+  transform: scale(1);
+
+  display: block;
 
   width: var(--indicator-width, 0);
   border-radius: calc(infinity * 1px);
 
-  background-color: var(--wui-color-surface-glass, rgb(250 250 250 / 0.34));
+  background-color: var(--wui-color-surface, #fff);
+  box-shadow:
+    0 1px 3px rgb(0 0 0 / 0.12),
+    0 1px 2px rgb(0 0 0 / 0.08);
 
-  /* transition 只在首帧定位后启用，避免组件进入视口时触发初始化动画 */
-  .is-indicator-ready & {
+  transition:
+    transform var(--wui-duration-press, 80ms) cubic-bezier(0.4, 0, 0.2, 1),
+    background-color var(--wui-duration-press, 80ms) ease,
+    box-shadow var(--wui-duration-press, 80ms) ease;
+
+  /* transition 只在首帧定位后且非拖拽状态启用，避免组件进入视口时触发初始化动画或拖拽跟手产生延迟 */
+  .is-indicator-ready:not(.is-dragging) & {
     transition:
       left var(--wui-duration-trigger, 160ms) var(--wui-ease-slide, cubic-bezier(0.77, 0, 0.175, 1)),
-      width var(--wui-duration-trigger, 160ms) var(--wui-ease-slide, cubic-bezier(0.77, 0, 0.175, 1));
+      width var(--wui-duration-trigger, 160ms) var(--wui-ease-slide, cubic-bezier(0.77, 0, 0.175, 1)),
+      transform var(--wui-duration-press, 80ms) cubic-bezier(0.4, 0, 0.2, 1),
+      background-color var(--wui-duration-press, 80ms) ease,
+      box-shadow var(--wui-duration-press, 80ms) ease;
   }
+}
+
+.wui-segmented.is-pressed .wui-segmented-indicator,
+.wui-segmented.is-dragging .wui-segmented-indicator {
+  transform: scale(1.2);
+  background-color: var(--wui-color-surface-glass, rgb(250 250 250 / 0.34));
+  box-shadow:
+    0 0 1px rgb(0 0 0 / 0.05),
+    0 2px 8px rgb(0 0 0 / 0.04);
+  backdrop-filter: blur(4px) saturate(160%);
 }

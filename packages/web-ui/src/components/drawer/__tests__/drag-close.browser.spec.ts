@@ -355,7 +355,12 @@ describe('WebUiDrawer 拖拽关闭（浏览器）', () => {
     await el.updateComplete
     await waitForOpenTransition()
 
-    const assertInsetCard = (rect: DOMRect) => {
+    const assertInsetCard = async (body: HTMLElement) => {
+      await waitFor(() => {
+        const r = body.getBoundingClientRect()
+        return r.left > 0 && r.top > 0 && window.innerWidth - r.right > 0 && window.innerHeight - r.bottom > 0
+      })
+      const rect = body.getBoundingClientRect()
       // 行为契约：四周存在可见留边（非贴边），具体数值不锁像素
       expect(rect.left).toBeGreaterThan(0)
       expect(rect.top).toBeGreaterThan(0)
@@ -364,7 +369,7 @@ describe('WebUiDrawer 拖拽关闭（浏览器）', () => {
     }
 
     const body = el.shadowRoot?.querySelector('.wui-drawer-body') as HTMLElement
-    assertInsetCard(body.getBoundingClientRect())
+    await assertInsetCard(body)
     expect(getComputedStyle(body).borderRadius).not.toBe('0px')
 
     const bottom = createDrawer()
@@ -374,7 +379,7 @@ describe('WebUiDrawer 拖拽关闭（浏览器）', () => {
     await waitForOpenTransition()
 
     const bottomBody = bottom.shadowRoot?.querySelector('.wui-drawer-body') as HTMLElement
-    assertInsetCard(bottomBody.getBoundingClientRect())
+    await assertInsetCard(bottomBody)
     expect(getComputedStyle(bottomBody).borderRadius).not.toBe('0px')
   })
 
