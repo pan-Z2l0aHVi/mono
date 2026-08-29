@@ -103,42 +103,42 @@ interweave（含 interweave-frontend）──共享包的 Wails 桌面集成表�
 
 ## 关键 ADR
 
-| ADR                                                                    | 决策                                            | 何时读取                                                          |
-| ---------------------------------------------------------------------- | ----------------------------------------------- | ----------------------------------------------------------------- |
-| [0001](docs/adr/0001-ci-pipeline.md)                                   | CI Pipeline                                     | 修改验证、Changesets 或发布门控                                   |
-| [0002](docs/adr/0002-build-toolchain.md)                               | Build Toolchain                                 | 修改 Vite Plus、构建或测试工具链                                  |
-| [0003](docs/adr/0003-web-component-strategy.md)                        | Web Component Strategy                          | 修改 Lit、Shadow DOM 或框架集成                                   |
-| [0004](docs/adr/0004-plugin-system.md)                                 | Plugin System                                   | 设计可组合状态或行为模块                                          |
-| [0005](docs/adr/0005-overlay-interaction-policy.md)                    | Overlay Interaction Policy                      | 修改 overlay 关闭、焦点或事件协调                                 |
-| [0006](docs/adr/0006-layout-layering.md)                               | Layout Layering                                 | 修改布局层级、portal 或 z-index                                   |
-| [0007](docs/adr/0007-web-ui-contract-convergence.md)                   | Web UI Contract Convergence                     | 修改组件公共契约、事件或表单行为                                  |
-| [0008](docs/adr/0008-icon-system.md)                                   | Icon System                                     | 修改图标来源、生成器或导出                                        |
-| [0009](docs/adr/0009-release-planes.md)                                | Release Planes                                  | 修改 npm/Wails 发布流程                                           |
-| [0010](docs/adr/0010-design-token-restructure.md)                      | Design Token Restructure                        | 修改 `--wui-*` token 或破坏性兼容性                               |
-| [0011](docs/adr/0011-framework-type-adaptation-narrowing.md)           | Framework Type Adaptation Narrowing             | 修改 React/Vue 类型适配或复合控件事件边界                         |
-| [0012](docs/adr/0012-progressive-agent-context-architecture.md)        | Progressive Agent Context Architecture          | 修改 agent context、rules、skills 或 instruction system           |
-| [0017](docs/adr/0017-interweave-resource-source-boundary.md)           | Interweave Resource/Source 与外部内容边界       | 修改 interweave Resource、Source 或外部内容边界                   |
-| [0018](docs/adr/0018-interweave-flat-semantic-tags-map.md)             | Interweave 扁平语义标签与派生 Map               | 修改 interweave 标签、Map 或资源关系语义                          |
-| [0019](docs/adr/0019-interweave-backend-capability-boundaries.md)      | Interweave 后端能力边界与 Wails 暴露面          | 修改 interweave Go 模块、Wails Service 或 frontend bindings       |
-| [0020](docs/adr/0020-interweave-fresh-library-start.md)                | Interweave v1 新资源库起点                      | 修改 interweave 本地库初始化或旧库兼容策略                        |
-| [0021](docs/adr/0021-interweave-source-identity.md)                    | Interweave Source 同一性与去重                  | 修改 interweave Source 去重或规范化规则                           |
-| [0022](docs/adr/0022-interweave-source-availability.md)                | Interweave Source 布尔可用性与 URL 写入时序     | 修改 interweave Source 可用状态或 URL 抓取/写入规则               |
-| [0023](docs/adr/0023-interweave-resource-title-ownership.md)           | Interweave Resource 标题的独立所有权            | 修改 interweave Resource 标题或 Source 元数据更新规则             |
-| [0024](docs/adr/0024-interweave-resource-source-preference.md)         | Interweave Resource Source 基数与首选规则       | 修改 interweave Source 删除、首选或基数不变量                     |
-| [0025](docs/adr/0025-interweave-duplicate-sources-are-user-managed.md) | Interweave 重复 Source 由用户自行管理           | 修改 interweave Source 重复添加或去重策略                         |
-| [0026](docs/adr/0026-interweave-standardized-tag-names.md)             | Interweave 标准化标签名称与自动复用             | 修改 interweave 标签创建、名称标准化或同名复用策略                |
-| [0027](docs/adr/0027-interweave-stable-tag-identity.md)                | Interweave Tag 的稳定内部身份                   | 修改 interweave Tag ID 或 Resource—Tag 关联键                     |
-| [0028](docs/adr/0028-interweave-resource-scoped-tag-operations.md)     | Interweave 标签操作仅作用于单个 Resource        | 修改 interweave 标签作用域或全局标签管理边界                      |
-| [0029](docs/adr/0029-interweave-map-local-exploration-boundary.md)     | Interweave Map 局部探索操作边界                 | 修改 interweave Map 交互边界或探索操作模型                        |
-| [0030](docs/adr/0030-interweave-sqlite-persistence-wal.md)             | Interweave 本地 SQLite 持久化与 WAL 并发模型    | 修改 interweave SQLite 配置、并发或持久化基础设施                 |
-| [0031](docs/adr/0031-layout-sidebar-collapse.md)                       | Layout 页面结构、Banner 与可折叠 Sidebar        | 修改 `web-ui-layout` 的页面结构、Sidebar、Banner 或移动端 Drawer  |
-| [0032](docs/adr/0032-interweave-library-core-layer.md)                 | Interweave library 分层与 core 产品规则层       | 修改 interweave library 分层、Wails 外观或产品规则归属            |
-| [0033](docs/adr/0033-cross-framework-api-convention.md)                | 跨框架 API 约定与框架调用方绑定约束             | 修改 web-ui 的 Property/Attribute/Event 命名或跨框架绑定兼容性    |
-| [0034](docs/adr/0034-web-ui-semantic-token-system.md)                  | Web UI Semantic Token System                    | 修改 `--wui-*` token 契约、focus 指示器或组件 token 文档          |
-| [0035](docs/adr/0035-web-ui-drawer-drag-close.md)                      | Web UI Drawer 边缘拖拽关闭                      | 修改 drawer 拖拽手势、drag bar、关闭态无渲染约束或弹簧动画        |
-| [0036](docs/adr/0036-web-ui-drawer-floating-card.md)                   | Web UI Drawer 浮动卡片视觉语言                  | 修改 drawer 视觉容器：留边、圆角或贴边语义（非 headless）         |
-| [0037](docs/adr/0037-web-ui-nested-drawer-stacking.md)                 | Web UI Nested Drawer 声明式层叠与自适应阶梯露边 | 修改 nested drawer 层叠、等比缩放、上方最大宽度补偿或卡片露边策略 |
-| [0038](docs/adr/0038-browser-kit-history-nav.md)                    | browser-kit 自研 history-nav（Navigation API 只读子集） | 修改 history-nav 公共 API、导航跟踪或前进/后退可用性 |
+| ADR                                                                    | 决策                                                    | 何时读取                                                          |
+| ---------------------------------------------------------------------- | ------------------------------------------------------- | ----------------------------------------------------------------- |
+| [0001](docs/adr/0001-ci-pipeline.md)                                   | CI Pipeline                                             | 修改验证、Changesets 或发布门控                                   |
+| [0002](docs/adr/0002-build-toolchain.md)                               | Build Toolchain                                         | 修改 Vite Plus、构建或测试工具链                                  |
+| [0003](docs/adr/0003-web-component-strategy.md)                        | Web Component Strategy                                  | 修改 Lit、Shadow DOM 或框架集成                                   |
+| [0004](docs/adr/0004-plugin-system.md)                                 | Plugin System                                           | 设计可组合状态或行为模块                                          |
+| [0005](docs/adr/0005-overlay-interaction-policy.md)                    | Overlay Interaction Policy                              | 修改 overlay 关闭、焦点或事件协调                                 |
+| [0006](docs/adr/0006-layout-layering.md)                               | Layout Layering                                         | 修改布局层级、portal 或 z-index                                   |
+| [0007](docs/adr/0007-web-ui-contract-convergence.md)                   | Web UI Contract Convergence                             | 修改组件公共契约、事件或表单行为                                  |
+| [0008](docs/adr/0008-icon-system.md)                                   | Icon System                                             | 修改图标来源、生成器或导出                                        |
+| [0009](docs/adr/0009-release-planes.md)                                | Release Planes                                          | 修改 npm/Wails 发布流程                                           |
+| [0010](docs/adr/0010-design-token-restructure.md)                      | Design Token Restructure                                | 修改 `--wui-*` token 或破坏性兼容性                               |
+| [0011](docs/adr/0011-framework-type-adaptation-narrowing.md)           | Framework Type Adaptation Narrowing                     | 修改 React/Vue 类型适配或复合控件事件边界                         |
+| [0012](docs/adr/0012-progressive-agent-context-architecture.md)        | Progressive Agent Context Architecture                  | 修改 agent context、rules、skills 或 instruction system           |
+| [0017](docs/adr/0017-interweave-resource-source-boundary.md)           | Interweave Resource/Source 与外部内容边界               | 修改 interweave Resource、Source 或外部内容边界                   |
+| [0018](docs/adr/0018-interweave-flat-semantic-tags-map.md)             | Interweave 扁平语义标签与派生 Map                       | 修改 interweave 标签、Map 或资源关系语义                          |
+| [0019](docs/adr/0019-interweave-backend-capability-boundaries.md)      | Interweave 后端能力边界与 Wails 暴露面                  | 修改 interweave Go 模块、Wails Service 或 frontend bindings       |
+| [0020](docs/adr/0020-interweave-fresh-library-start.md)                | Interweave v1 新资源库起点                              | 修改 interweave 本地库初始化或旧库兼容策略                        |
+| [0021](docs/adr/0021-interweave-source-identity.md)                    | Interweave Source 同一性与去重                          | 修改 interweave Source 去重或规范化规则                           |
+| [0022](docs/adr/0022-interweave-source-availability.md)                | Interweave Source 布尔可用性与 URL 写入时序             | 修改 interweave Source 可用状态或 URL 抓取/写入规则               |
+| [0023](docs/adr/0023-interweave-resource-title-ownership.md)           | Interweave Resource 标题的独立所有权                    | 修改 interweave Resource 标题或 Source 元数据更新规则             |
+| [0024](docs/adr/0024-interweave-resource-source-preference.md)         | Interweave Resource Source 基数与首选规则               | 修改 interweave Source 删除、首选或基数不变量                     |
+| [0025](docs/adr/0025-interweave-duplicate-sources-are-user-managed.md) | Interweave 重复 Source 由用户自行管理                   | 修改 interweave Source 重复添加或去重策略                         |
+| [0026](docs/adr/0026-interweave-standardized-tag-names.md)             | Interweave 标准化标签名称与自动复用                     | 修改 interweave 标签创建、名称标准化或同名复用策略                |
+| [0027](docs/adr/0027-interweave-stable-tag-identity.md)                | Interweave Tag 的稳定内部身份                           | 修改 interweave Tag ID 或 Resource—Tag 关联键                     |
+| [0028](docs/adr/0028-interweave-resource-scoped-tag-operations.md)     | Interweave 标签操作仅作用于单个 Resource                | 修改 interweave 标签作用域或全局标签管理边界                      |
+| [0029](docs/adr/0029-interweave-map-local-exploration-boundary.md)     | Interweave Map 局部探索操作边界                         | 修改 interweave Map 交互边界或探索操作模型                        |
+| [0030](docs/adr/0030-interweave-sqlite-persistence-wal.md)             | Interweave 本地 SQLite 持久化与 WAL 并发模型            | 修改 interweave SQLite 配置、并发或持久化基础设施                 |
+| [0031](docs/adr/0031-layout-sidebar-collapse.md)                       | Layout 页面结构、Banner 与可折叠 Sidebar                | 修改 `web-ui-layout` 的页面结构、Sidebar、Banner 或移动端 Drawer  |
+| [0032](docs/adr/0032-interweave-library-core-layer.md)                 | Interweave library 分层与 core 产品规则层               | 修改 interweave library 分层、Wails 外观或产品规则归属            |
+| [0033](docs/adr/0033-cross-framework-api-convention.md)                | 跨框架 API 约定与框架调用方绑定约束                     | 修改 web-ui 的 Property/Attribute/Event 命名或跨框架绑定兼容性    |
+| [0034](docs/adr/0034-web-ui-semantic-token-system.md)                  | Web UI Semantic Token System                            | 修改 `--wui-*` token 契约、focus 指示器或组件 token 文档          |
+| [0035](docs/adr/0035-web-ui-drawer-drag-close.md)                      | Web UI Drawer 边缘拖拽关闭                              | 修改 drawer 拖拽手势、drag bar、关闭态无渲染约束或弹簧动画        |
+| [0036](docs/adr/0036-web-ui-drawer-floating-card.md)                   | Web UI Drawer 浮动卡片视觉语言                          | 修改 drawer 视觉容器：留边、圆角或贴边语义（非 headless）         |
+| [0037](docs/adr/0037-web-ui-nested-drawer-stacking.md)                 | Web UI Nested Drawer 声明式层叠与自适应阶梯露边         | 修改 nested drawer 层叠、等比缩放、上方最大宽度补偿或卡片露边策略 |
+| [0038](docs/adr/0038-browser-kit-history-nav.md)                       | browser-kit 自研 history-nav（Navigation API 只读子集） | 修改 history-nav 公共 API、导航跟踪或前进/后退可用性              |
 
 ## Interweave 产品与领域词汇
 

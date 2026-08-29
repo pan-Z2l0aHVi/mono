@@ -1,6 +1,5 @@
-import { ref } from 'vue'
-
 import { defineHistoryNav, type HistoryNav } from '@greypan/browser-kit/history-nav'
+import { ref } from 'vue'
 
 /**
  * history-nav（browser-kit）的 Vue 薄包装。
