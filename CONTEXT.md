@@ -65,6 +65,16 @@ _Avoid_: ack、传输确认、服务端响应
 - `onPersist` 是同步提交接缝；公共队列不等待它返回 Promise。`defineQueue` 与 `defineAckQueue` 都通过 `definePlugin(...).make()` 暴露，私有 queue core 不单独导出。
 - Tracker core 内部继续使用 `transport` 表示单条传输函数，并通过 `defineAckQueue` 等待 transport Promise fulfilled；这里的 ack 只表示浏览器传输路径成功，不代表服务端确认。
 
+## 历史导航词汇（History Nav）
+
+**导航条目（Navigation Entry）**:
+历史导航模块记录的一次同文档导航；每条具备栈内稳定 id、跨 replace 保持的 key、当前 index 与 URL。
+_Avoid_: 历史记录点、页面快照、浏览记录
+
+**同文档导航（Same-document Navigation）**:
+不离开当前页面、仅通过 URL 片段变化或 history API 产生的导航（含浏览器前进/后退）；history-nav 只跟踪这一类，整页加载或跨文档跳转不在其职责内。
+_Avoid_: 页面跳转、路由切换（避免与 router 概念混淆）
+
 ## 模块关系
 
 ```text
@@ -128,6 +138,7 @@ interweave（含 interweave-frontend）──共享包的 Wails 桌面集成表�
 | [0035](docs/adr/0035-web-ui-drawer-drag-close.md)                      | Web UI Drawer 边缘拖拽关闭                      | 修改 drawer 拖拽手势、drag bar、关闭态无渲染约束或弹簧动画        |
 | [0036](docs/adr/0036-web-ui-drawer-floating-card.md)                   | Web UI Drawer 浮动卡片视觉语言                  | 修改 drawer 视觉容器：留边、圆角或贴边语义（非 headless）         |
 | [0037](docs/adr/0037-web-ui-nested-drawer-stacking.md)                 | Web UI Nested Drawer 声明式层叠与自适应阶梯露边 | 修改 nested drawer 层叠、等比缩放、上方最大宽度补偿或卡片露边策略 |
+| [0038](docs/adr/0038-browser-kit-history-nav.md)                    | browser-kit 自研 history-nav（Navigation API 只读子集） | 修改 history-nav 公共 API、导航跟踪或前进/后退可用性 |
 
 ## Interweave 产品与领域词汇
 

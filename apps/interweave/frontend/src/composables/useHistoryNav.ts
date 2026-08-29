@@ -1,66 +1,27 @@
 import { ref } from 'vue'
 
-import { router } from '@/router'
+import { defineHistoryNav, type HistoryNav } from '@greypan/browser-kit/history-nav'
 
 /**
- * 基于真实浏览器 history 的前进/后退可用性跟踪。
+ * history-nav（browser-kit）的 Vue 薄包装。
  *
- * vue-router 只在 router.push() 时维护 history.state.back/forward；地址栏输入、
- * 浏览器前进/后退创建的 entry 会克隆旧 state，导致 back/forward 恒为 null，
- * 无法用来判断能否后退/前进。这里用「已访问 URL 栈 + 当前索引」自行跟踪
- * 浏览器 history 位置，并通过 sessionStorage 持久化，刷新后仍能恢复。
+ * browser-kit 侧只提供纯 TS 对象与事件（AGENTS.md 约束：browser-kit 不得引入
+ * 框架运行时），这里把 canGoBack/canGoForward 转成响应式 ref 并订阅
+ * currententrychange 更新。页面通过这两个 ref 驱动前进/后退按钮禁用态。
  *
- * 必须在应用启动时（main.ts）调用 installHistoryNav() 全局注册，否则
- * 页面懒加载之前的历史 entry 不会被记录。
+ * 必须在应用启动时（main.ts 调用 installHistoryNav）注册，保证页面懒加载之前
+ * 的导航也被记录；defineHistoryNav 本身幂等。
  */
-const HISTORY_STACK_KEY = 'interweave-shell:history-stack'
-const HISTORY_INDEX_KEY = 'interweave-shell:history-index'
+const nav: HistoryNav = defineHistoryNav({ namespace: 'interweave' })
 
-const historyStack: string[] = JSON.parse(sessionStorage.getItem(HISTORY_STACK_KEY) ?? 'null') ?? []
-let historyIndex = Number(sessionStorage.getItem(HISTORY_INDEX_KEY) ?? '-1')
-let installed = false
+export const canGoBack = ref(nav.canGoBack)
+export const canGoForward = ref(nav.canGoForward)
 
-export const canGoBack = ref(false)
-export const canGoForward = ref(false)
+nav.onCurrentEntryChange(() => {
+  canGoBack.value = nav.canGoBack
+  canGoForward.value = nav.canGoForward
+})
 
-function persist() {
-  sessionStorage.setItem(HISTORY_STACK_KEY, JSON.stringify(historyStack))
-  sessionStorage.setItem(HISTORY_INDEX_KEY, String(historyIndex))
-}
-
-function track(to: string) {
-  // 同一 entry（刷新 / 重复导航）不处理
-  if (historyStack[historyIndex] === to) return
-  // 栈里往前找 → 浏览器后退
-  const prev = historyStack.lastIndexOf(to, historyIndex - 1)
-  if (prev !== -1) {
-    historyIndex = prev
-  } else {
-    // 栈里往后找 → 浏览器前进
-    const next = historyStack.indexOf(to, historyIndex + 1)
-    if (next !== -1) {
-      historyIndex = next
-    } else {
-      // 全新地址（地址栏输入新路由）→ 截断前进分支并追加
-      historyStack.length = historyIndex + 1
-      historyStack.push(to)
-      historyIndex++
-    }
-  }
-  persist()
-}
-
-function sync() {
-  canGoBack.value = historyIndex > 0
-  canGoForward.value = historyIndex < historyStack.length - 1
-}
-
-export function installHistoryNav() {
-  if (installed) return
-  installed = true
-  // 在 mount 之前注册，初始导航完成后 afterEach 会记录真实初始路由
-  router.afterEach(to => {
-    track(to.fullPath)
-    sync()
-  })
+export function installHistoryNav(): HistoryNav {
+  return nav
 }
