@@ -1,13 +1,30 @@
 import { describe, expect, it, vi } from 'vite-plus/test'
 
 import { attachDragGesture } from '../drag-gesture'
-import { clamp, rubberband, springOffsets, SPRING_PRESETS } from '../physics'
+import { clamp, normalizeProgress, rubberband, snapToNearest, springOffsets, SPRING_PRESETS } from '../physics'
 
 describe('shared/gesture physics', () => {
   it('clamp 正确限制在 [min, max] 范围内', () => {
     expect(clamp(150, 100, 200)).toBe(150)
     expect(clamp(50, 100, 200)).toBe(100)
     expect(clamp(250, 100, 200)).toBe(200)
+  })
+
+  it('snapToNearest 正确返回距离目标值最近的下标', () => {
+    expect(snapToNearest(10, [])).toBe(-1)
+    expect(snapToNearest(10, [0, 20, 50])).toBe(0) // 10 与 0 距离 10，与 20 距离 10，取第一个
+    expect(snapToNearest(15, [0, 20, 50])).toBe(1)
+    expect(snapToNearest(45, [0, 20, 50])).toBe(2)
+    expect(snapToNearest(-10, [0, 20, 50])).toBe(0)
+  })
+
+  it('normalizeProgress 正确将数值映射为 0~1 之间的比例', () => {
+    expect(normalizeProgress(50, 0, 100)).toBe(0.5)
+    expect(normalizeProgress(0, 0, 100)).toBe(0)
+    expect(normalizeProgress(100, 0, 100)).toBe(1)
+    expect(normalizeProgress(-10, 0, 100)).toBe(0)
+    expect(normalizeProgress(150, 0, 100)).toBe(1)
+    expect(normalizeProgress(50, 100, 100)).toBe(0) // min === max 兜底
   })
 
   it('rubberband 正向位移保持原值，负向拉伸施加阻尼并受最大距离限制', () => {

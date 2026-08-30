@@ -40,3 +40,10 @@ Add Layout desktop sidebar drag-to-resize and Drawer drag-to-close features.
 
 - `web-ui-drawer`: prop `request-only` (attribute) / `requestOnly` (property) is renamed to `controlled` / `controlled` (same semantics — user close actions only emit `open-change(false)`; the consumer writes `open` back; programmatic `show()`/`close()` stay direct). No alias is kept.
 - `web-ui-dialog`: new `controlled` prop with the same contract (Escape and backdrop only request; native dialog closure while controlled is restored to the open state and re-emits the request).
+
+**Switch, Segmented & Slider Gesture Enhancements (`<web-ui-switch>`, `<web-ui-segmented>`, `<web-ui-slider>`):**
+
+- `Switch`: Full-track draggable gesture with real-time capsule glass thumb following, 6px intent deadzone against vertical scrolling, `scale(1.2)` press/drag micro-interaction, toggle commit on >50% travel (12px total travel) or flick velocity (>300px/s), with instant tap toggling preserved.
+- `Segmented`: Active indicator smooth drag tracking (initiated by pressing on the currently active trigger), `scale(1.2)` press/drag micro-interaction with glass visual, snap to nearest non-disabled trigger on release, and flick gesture support.
+- `Slider`: Refactored internal pointer handling to adopt unified `shared/gesture/` (`attachDragGesture` + `clamp`), with `scale(1.2)` drag micro-interaction and translucent glass thumb when dragging.
+- `Gesture Utilities`: Added `snapToNearest` and `normalizeProgress` helper functions in `packages/web-ui/src/shared/gesture/physics.ts`.

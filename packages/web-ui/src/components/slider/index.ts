@@ -5,6 +5,8 @@ import { styleMap } from 'lit/directives/style-map.js'
 
 import glass from '@/assets/glass.css?inline'
 import { defineFormAssociation, FormAssociationController } from '@/shared/form-association'
+import { attachDragGesture, type DragGestureHandle } from '@/shared/gesture/drag-gesture'
+import { clamp } from '@/shared/gesture/physics'
 import { normalizeNumber } from '@/shared/normalize'
 
 import style from './style.css?inline'
@@ -65,6 +67,13 @@ export class WebUiSlider extends LitElement {
   @state() private _dragging = false
   // 避免未改变数值的点击被误认为一次表单提交
   private _interactionStartValue: number | undefined
+  private _dragGestureHandle: DragGestureHandle | null = null
+
+  override disconnectedCallback() {
+    super.disconnectedCallback()
+    this._dragGestureHandle?.destroy()
+    this._dragGestureHandle = null
+  }
 
   private readonly _formAssociation = defineFormAssociation<number>({
     host: this,
@@ -148,7 +157,7 @@ export class WebUiSlider extends LitElement {
     if (!Number.isFinite(value)) return this.min
     const lower = Math.min(this.min, this.max)
     const upper = Math.max(this.min, this.max)
-    const clamped = Math.min(upper, Math.max(lower, value))
+    const clamped = clamp(value, lower, upper)
     const steps = Math.round((clamped - lower) / this._safeStep)
     return Number((lower + steps * this._safeStep).toFixed(this._precision))
   }
@@ -172,41 +181,48 @@ export class WebUiSlider extends LitElement {
   }
 
   private _setValueFromPointer(event: PointerEvent): boolean {
-    const track = event.currentTarget as HTMLElement
+    const track = this._slider
+    if (!track) return false
     const rect = track.getBoundingClientRect()
     if (this.vertical) {
       if (rect.height <= 0) return false
       // 视觉上的数值从下往上增长，与坐标系相反。
-      const ratio = Math.min(1, Math.max(0, 1 - (event.clientY - rect.top) / rect.height))
+      const ratio = clamp(1 - (event.clientY - rect.top) / rect.height, 0, 1)
       return this._setValue(this.min + ratio * this._range)
     }
     if (rect.width <= 0) return false
-    const ratio = Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width))
+    const ratio = clamp((event.clientX - rect.left) / rect.width, 0, 1)
     return this._setValue(this.min + ratio * this._range)
   }
 
   private _handlePointerDown(event: PointerEvent) {
     if (this._isDisabled) return
-    const track = event.currentTarget as HTMLElement
-    track.setPointerCapture?.(event.pointerId)
     this._interactionStartValue = this.value
-    this._dragging = true
     this._setValueFromPointer(event)
-  }
 
-  private _handlePointerMove(event: PointerEvent) {
-    if (!this._dragging) return
-    this._setValueFromPointer(event)
-  }
-
-  private _handlePointerUp(event: PointerEvent) {
-    if (!this._dragging) return
-    this._setValueFromPointer(event)
-    this._dragging = false
-    if (this._interactionStartValue !== this.value) {
-      this.dispatchEvent(new Event('change', { bubbles: true, composed: true }))
-    }
-    this._interactionStartValue = undefined
+    this._dragGestureHandle?.destroy()
+    this._dragGestureHandle = attachDragGesture(event, {
+      axis: this.vertical ? 'y' : 'x',
+      onStart: () => {
+        this._dragging = true
+      },
+      onMove: (_info, e) => {
+        this._dragging = true
+        this._setValueFromPointer(e)
+      },
+      onEnd: (_info, e) => {
+        this._setValueFromPointer(e)
+        this._dragging = false
+        if (this._interactionStartValue !== this.value) {
+          this.dispatchEvent(new Event('change', { bubbles: true, composed: true }))
+        }
+        this._interactionStartValue = undefined
+      },
+      onCancel: () => {
+        this._dragging = false
+        this._interactionStartValue = undefined
+      }
+    })
   }
 
   private _handleKeyDown(event: KeyboardEvent) {
@@ -254,9 +270,6 @@ export class WebUiSlider extends LitElement {
         aria-disabled=${String(this._isDisabled)}
         @keydown=${this._handleKeyDown}
         @pointerdown=${this._handlePointerDown}
-        @pointermove=${this._handlePointerMove}
-        @pointerup=${this._handlePointerUp}
-        @pointercancel=${this._handlePointerUp}
       >
         <div class="wui-slider-progress"></div>
         <div class="wui-slider-marks">

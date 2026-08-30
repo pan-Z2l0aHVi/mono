@@ -21,6 +21,38 @@ export function clamp(value: number, min: number, max: number): number {
 }
 
 /**
+ * 寻找与目标值距离最近的采样点索引。
+ * @param value 目标数值
+ * @param points 采样点数组
+ * @returns 最近采样点的下标（空数组返回 -1）
+ */
+export function snapToNearest(value: number, points: number[]): number {
+  if (points.length === 0) return -1
+  let minDistance = Infinity
+  let nearestIndex = 0
+  for (let i = 0; i < points.length; i++) {
+    const dist = Math.abs(value - points[i])
+    if (dist < minDistance) {
+      minDistance = dist
+      nearestIndex = i
+    }
+  }
+  return nearestIndex
+}
+
+/**
+ * 将数值钳制并归一化到 [0, 1] 区间（0 对应 min，1 对应 max）。
+ * @param value 输入值
+ * @param min 最小值
+ * @param max 最大值
+ */
+export function normalizeProgress(value: number, min: number, max: number): number {
+  if (max <= min) return 0
+  const clamped = clamp(value, min, max)
+  return (clamped - min) / (max - min)
+}
+
+/**
  * 阻尼橡皮筋函数：超出边界部分施加衰减阻尼
  * @param offset 当前位移（正数正常，负数为拉伸超出边界）
  * @param maxDistance 最大拉伸上限（绝对值）

@@ -35,6 +35,7 @@
 }
 
 .wui-switch-track {
+  touch-action: pan-y;
   cursor: pointer;
   user-select: none;
 
@@ -74,6 +75,8 @@
   position: absolute;
   top: 2px;
   left: 2px;
+  transform-origin: center center;
+  transform: translateX(0) scale(1);
 
   overflow: hidden;
 
@@ -88,6 +91,7 @@
     background-color var(--wui-duration-press, 80ms) ease;
 
   &.is-pressed {
+    transform: translateX(0) scale(1.2);
     width: 32px;
     border-radius: calc(infinity * 1px);
     background-color: transparent;
@@ -100,11 +104,17 @@
 }
 
 .wui-switch-track.is-open .wui-switch-thumb {
-  transform: translateX(24px);
+  transform: translateX(24px) scale(1);
 
   &.is-pressed {
-    transform: translateX(12px);
+    transform: translateX(12px) scale(1.2);
   }
+}
+
+.wui-switch-track.is-dragging .wui-switch-thumb,
+.wui-switch-track.is-dragging .wui-switch-thumb.is-pressed {
+  transform: translateX(var(--wui-switch-drag-offset, 0)) scale(1.2);
+  transition: none;
 }
 
 .wui-switch-loading {
