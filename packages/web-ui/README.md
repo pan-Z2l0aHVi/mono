@@ -211,6 +211,7 @@ All form controls participate in native `FormData`, constraint validation, `form
 |                      | [`<web-ui-button-group>`](#web-ui-button-group)           |
 | **Overlay / Modal**  | [`<web-ui-dialog>`](#web-ui-dialog)                       |
 |                      | [`<web-ui-drawer>`](#web-ui-drawer)                       |
+|                      | [`<web-ui-collapse>`](#web-ui-collapse)                   |
 | **Floating**         | [`<web-ui-popover>`](#web-ui-popover)                     |
 |                      | [`<web-ui-tooltip>`](#web-ui-tooltip)                     |
 |                      | [`<web-ui-context-menu>`](#web-ui-context-menu)           |
@@ -230,6 +231,8 @@ All form controls participate in native `FormData`, constraint validation, `form
 | **Notification**     | [`<web-ui-toast>`](#web-ui-toast)                         |
 | **Sub-items**        | [`<web-ui-option>`](#web-ui-option)                       |
 |                      | [`<web-ui-segmented-trigger>`](#web-ui-segmented-trigger) |
+|                      | [`<web-ui-collapse-trigger>`](#web-ui-collapse-trigger)   |
+|                      | [`<web-ui-collapse-content>`](#web-ui-collapse-content)   |
 
 ## API Reference
 
@@ -650,6 +653,58 @@ Closing keeps the native dialog in the top layer until the `--wui-duration-drawe
 
 ---
 
+### In-flow Disclosure
+
+#### `<web-ui-collapse>`
+
+In-flow expand/collapse container with animated height (or width) transition. Composed of a trigger and a content element; no portal, no scroll lock, no focus management.
+
+| Attribute    | Type      | Default | Description                                         |
+| ------------ | --------- | ------- | --------------------------------------------------- |
+| `open`       | `boolean` | `false` | Expanded state (strictly controlled, single source) |
+| `disabled`   | `boolean` | `false` | Disables the trigger; expanded content is kept      |
+| `horizontal` | `boolean` | `false` | Animate width instead of height                     |
+
+**Events:** `open-change` (`CustomEvent<{ open: boolean }>`). Emitted only for user-originated toggles (trigger click). Programmatic writes (`open`, `show()`, `close()`, `toggle()`) never emit. Nested collapses: an inner `open-change` bubbles through the outer root (composed event); distinguish by `event.target`.
+
+**Slots:** `default` (one `web-ui-collapse-trigger` + one `web-ui-collapse-content`)
+
+**Methods:** `show()`, `close()`, `toggle()`
+
+The initial `open` attribute settles instantly without playing the animation. Multiple triggers/contents are allowed; the first content supplies `aria-controls`.
+
+**Known limitations:** the `horizontal` animation reflows content while width changes. Keep trigger content non-interactive (an interactive child inside the trigger button is invalid HTML).
+
+#### `<web-ui-collapse-trigger>`
+
+Toggle button for `<web-ui-collapse>`. Renders a native `<button>` wrapping arbitrary slot content, with `aria-expanded`, `aria-controls` and native disabled wired from the root collapse.
+
+The trigger inherits the surrounding typography (`font: inherit`) instead of the `--wui-font-size` control token — it is an in-flow disclosure label (like `<summary>`), not a standalone control.
+
+**Events:** none (the root collapse emits `open-change`)
+
+**Slots:** `default` (trigger label; keep it non-interactive)
+
+Not form-associated (child of collapse, not independent submit).
+
+#### `<web-ui-collapse-content>`
+
+Collapsible region for `<web-ui-collapse>`, animated with a CSS grid `0fr ↔ 1fr` transition (ADR-0038) — height adapts to content with zero JS measurement.
+
+| Attribute      | Type      | Default | Description                                                                                                              |
+| -------------- | --------- | ------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `keep-mounted` | `boolean` | `false` | Closed state keeps the content in the 0fr track with `inert` (scroll position and layout measurable) instead of `hidden` |
+
+**Events:** none
+
+**Slots:** `default` (collapsible content)
+
+Not form-associated (child of collapse, not independent submit).
+
+**Closed-state semantics:** the consumer's light DOM is never moved or unmounted. Default closed state applies `hidden` to the host; with `keep-mounted` the inner container is marked `inert` while staying measurable inside the collapsed track.
+
+---
+
 ### Floating
 
 #### `<web-ui-popover>`
@@ -1005,7 +1060,7 @@ Defines foundation, color, layer, shadow, and motion tokens for its subtree. `mo
 | `--wui-layer-toast`          | `200`   | Toasts                       |
 | `--wui-layer-loading`        | `300`   | Blocking loading surfaces    |
 
-**Motion tokens:** duration defaults are `--wui-duration-press: 80ms`, `--wui-duration-feedback: 100ms`, `--wui-duration-trigger: 160ms`, `--wui-duration-focus: 200ms`, `--wui-duration-menu-enter: 140ms`, `--wui-duration-menu-exit: 100ms`, `--wui-duration-overlay-enter: 180ms`, `--wui-duration-overlay-exit: 140ms`, `--wui-duration-drawer-enter: 280ms`, `--wui-duration-drawer-exit: 240ms`, `--wui-duration-layout: 200ms`. Easing tokens are `--wui-ease-enter` and `--wui-ease-slide`; enter scale is `--wui-scale-enter: 0.97`.
+**Motion tokens:** duration defaults are `--wui-duration-press: 80ms`, `--wui-duration-feedback: 100ms`, `--wui-duration-trigger: 160ms`, `--wui-duration-focus: 200ms`, `--wui-duration-menu-enter: 140ms`, `--wui-duration-menu-exit: 100ms`, `--wui-duration-overlay-enter: 180ms`, `--wui-duration-overlay-exit: 140ms`, `--wui-duration-drawer-enter: 280ms`, `--wui-duration-drawer-exit: 240ms`, `--wui-duration-collapse-enter: 200ms`, `--wui-duration-collapse-exit: 160ms`, `--wui-duration-layout: 200ms`. Easing tokens are `--wui-ease-enter` and `--wui-ease-slide`; enter scale is `--wui-scale-enter: 0.97`.
 
 **Color tokens:**
 

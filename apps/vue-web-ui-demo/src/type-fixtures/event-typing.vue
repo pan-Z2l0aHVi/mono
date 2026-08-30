@@ -6,6 +6,7 @@
 // 不再全局扩展 ComponentCustomProps 结构保证，并由 docs/agents/web-ui.md 约束。
 import type {
   WebUiCheckboxGroup,
+  WebUiCollapse,
   WebUiDialog,
   WebUiEvent,
   WebUiEventName,
@@ -36,6 +37,12 @@ function onDialogOpenChange(event: WebUiEvent<WebUiDialog, 'open-change'>) {
   dialogOpen.value = open
 }
 
+// 2a. collapse 的 open-change 同样收窄到 collapse 实例。
+function onCollapseOpenChange(event: WebUiEvent<WebUiCollapse, 'open-change'>) {
+  const open: boolean = event.currentTarget.open
+  collapseOpen.value = open
+}
+
 // 2b. `$events` 中声明的 string 事件名可赋值；其他 string 被拒绝。
 const dialogOpenChangeEventName: WebUiEventName<WebUiDialog> = 'open-change'
 void dialogOpenChangeEventName
@@ -50,6 +57,7 @@ const valueRef = ref('')
 const checkedRef = ref(false)
 const groupVals = ref<string[]>([])
 const dialogOpen = ref(false)
+const collapseOpen = ref(false)
 const clickCount = ref(0)
 </script>
 
@@ -69,6 +77,11 @@ const clickCount = ref(0)
   <!-- 2. kebab 自定义事件：$event.detail 精确类型 -->
   <web-ui-dialog :open="dialogOpen" no-escape-close @open-change="dialogOpen = $event.detail.open" />
   <web-ui-dialog @open-change="onDialogOpenChange" />
+  <web-ui-collapse :open="collapseOpen" @open-change="collapseOpen = $event.detail.open">
+    <web-ui-collapse-trigger>Trigger</web-ui-collapse-trigger>
+    <web-ui-collapse-content keep-mounted>Content</web-ui-collapse-content>
+  </web-ui-collapse>
+  <web-ui-collapse @open-change="onCollapseOpenChange" />
 
   <!-- 3. 具体 Custom Element ref -->
   <web-ui-segmented ref="segmentedRef" />

@@ -1,0 +1,10 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+/* :host 仅限 display/contain（ADR-0003） */
+:host {
+  display: contents;
+}

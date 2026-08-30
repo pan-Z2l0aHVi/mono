@@ -1,0 +1,40 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+:host {
+  display: contents;
+}
+
+/* 原生 button 重置：字体继承宿主排版，间距边框清零（web-ui 原生表单控件惯例） */
+button {
+  cursor: pointer;
+  user-select: none;
+
+  display: block;
+
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: none;
+
+  font: inherit;
+  line-height: inherit;
+  color: inherit;
+  text-align: inherit;
+
+  background: transparent;
+
+  transition: color var(--wui-duration-trigger, 160ms) ease;
+
+  &:disabled {
+    cursor: not-allowed;
+  }
+
+  &:focus-visible {
+    outline: var(--wui-focus-ring-width, 3px) solid var(--wui-color-focus-ring, rgb(0 136 255 / 0.4));
+    outline-offset: 2px;
+  }
+}

@@ -1,5 +1,5 @@
 import type { WebUiDialog, WebUiEventName, WebUiSegmented, WebUiSwitch } from '@greypan/web-ui'
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 
 // React 事件类型回归护栏：锁定「宿主化 $events + HTMLAttributes」类型契约的关键场景，
 // 随每次 `vp check`（oxlint 类型感知）被检查。
@@ -8,6 +8,7 @@ export function EventTypingFixture() {
   const segmentedRef = useRef<WebUiSegmented>(null)
   const switchRef = useRef<WebUiSwitch>(null)
   const dialogRef = useRef<WebUiDialog>(null)
+  const [collapseOpen, setCollapseOpen] = useState(false)
 
   // `$events` 中声明的 kebab-case event name 可赋值；其他 string 被拒绝。
   const dialogOpenChangeEventName: WebUiEventName<WebUiDialog> = 'open-change'
@@ -56,6 +57,10 @@ export function EventTypingFixture() {
           void host
         }}
       />
+      <web-ui-collapse open={collapseOpen} onopen-change={e => setCollapseOpen(e.detail.open)}>
+        <web-ui-collapse-trigger>Trigger</web-ui-collapse-trigger>
+        <web-ui-collapse-content keep-mounted>Content</web-ui-collapse-content>
+      </web-ui-collapse>
 
       {/* 3. 具体 Custom Element ref */}
       <web-ui-segmented ref={segmentedRef} />

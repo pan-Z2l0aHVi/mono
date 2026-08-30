@@ -204,6 +204,7 @@ ARIA 属性同样必须显式支持：使用组件文档化的命名属性，而
 |                 | [`<web-ui-button-group>`](#web-ui-button-group)           |
 | **浮层 / 模态** | [`<web-ui-dialog>`](#web-ui-dialog)                       |
 |                 | [`<web-ui-drawer>`](#web-ui-drawer)                       |
+|                 | [`<web-ui-collapse>`](#web-ui-collapse)                   |
 | **浮动**        | [`<web-ui-popover>`](#web-ui-popover)                     |
 |                 | [`<web-ui-tooltip>`](#web-ui-tooltip)                     |
 |                 | [`<web-ui-context-menu>`](#web-ui-context-menu)           |
@@ -223,6 +224,8 @@ ARIA 属性同样必须显式支持：使用组件文档化的命名属性，而
 | **通知**        | [`<web-ui-toast>`](#web-ui-toast)                         |
 | **子项**        | [`<web-ui-option>`](#web-ui-option)                       |
 |                 | [`<web-ui-segmented-trigger>`](#web-ui-segmented-trigger) |
+|                 | [`<web-ui-collapse-trigger>`](#web-ui-collapse-trigger)   |
+|                 | [`<web-ui-collapse-content>`](#web-ui-collapse-content)   |
 
 ## API 参考
 
@@ -638,6 +641,58 @@ ArrowUp/ArrowDown 键增减数值。空输入或 `-` 在提交时被忽略，值
 
 ---
 
+### 文档流展开收起
+
+#### `<web-ui-collapse>`
+
+文档流内的展开收起容器，带高度（或宽度）过渡动画。由 trigger 与 content 两个子元素组成；无 portal、无滚动锁定、无焦点管理。
+
+| 属性         | 类型      | 默认值  | 说明                             |
+| ------------ | --------- | ------- | -------------------------------- |
+| `open`       | `boolean` | `false` | 展开状态（严格受控，唯一状态源） |
+| `disabled`   | `boolean` | `false` | 禁用触发器；已展开内容保持现状   |
+| `horizontal` | `boolean` | `false` | 沿宽度而非高度动画               |
+
+**事件：** `open-change` (`CustomEvent<{ open: boolean }>`)。仅用户来源的切换（trigger 点击）派发；程序化写入（`open`、`show()`、`close()`、`toggle()`）不派发。嵌套时内层 `open-change` 会冒泡穿过外层根（composed 事件），按 `event.target` 区分。
+
+**插槽：** `default`（一个 `web-ui-collapse-trigger` + 一个 `web-ui-collapse-content`）
+
+**方法：** `show()`、`close()`、`toggle()`
+
+初始即带 `open` attribute 时直接落稳态，不播动画。允许多个 trigger/content；第一个 content 用于 `aria-controls` 关联。
+
+**已知限制：** `horizontal` 动画期间内容随宽度变化 reflow。trigger 内容建议保持非交互（按钮内嵌交互元素是非法 HTML）。
+
+#### `<web-ui-collapse-trigger>`
+
+`<web-ui-collapse>` 的切换按钮。shadow 内渲染原生 `<button>` 包裹任意插槽内容，`aria-expanded`、`aria-controls` 与原生 disabled 由根 collapse 同步。
+
+触发器字号继承周围排版（`font: inherit`），不走 `--wui-font-size` 控件 token——它是文档流内的 disclosure 标签（同 `<summary>` 语义），不是独立控件。
+
+**事件：** 无（由根 collapse 派发 `open-change`）
+
+**插槽：** `default`（触发器内容；建议非交互内容）
+
+非表单关联（collapse 子项，非独立提交）。
+
+#### `<web-ui-collapse-content>`
+
+`<web-ui-collapse>` 的可折叠区域，使用 CSS grid `0fr ↔ 1fr` 过渡动画（ADR-0038）——高度自适应内容，零 JS 测量。
+
+| 属性           | 类型      | 默认值  | 说明                                                                            |
+| -------------- | --------- | ------- | ------------------------------------------------------------------------------- |
+| `keep-mounted` | `boolean` | `false` | 关闭稳态以 `inert` 保留在 0fr 轨道内（滚动位置与布局可测量），而非宿主 `hidden` |
+
+**事件：** 无
+
+**插槽：** `default`（折叠内容）
+
+非表单关联（collapse 子项，非独立提交）。
+
+**关闭稳态语义：** 消费者的 light DOM 永不移动或卸载。默认关闭稳态在宿主上设 `hidden`；`keep-mounted` 时内部容器标记 `inert`，保留在收起轨道内可测量。
+
+---
+
 ### 浮动
 
 #### `<web-ui-popover>`
@@ -993,7 +1048,7 @@ SVG 线条绘制动画，基于 `stroke-dashoffset`。直接在原元素上动�
 | `--wui-layer-toast`          | `200`  | Toast          |
 | `--wui-layer-loading`        | `300`  | 阻塞式 Loading |
 
-**动效 token：** duration 默认值为 `--wui-duration-press: 80ms`、`--wui-duration-feedback: 100ms`、`--wui-duration-trigger: 160ms`、`--wui-duration-focus: 200ms`、`--wui-duration-menu-enter: 140ms`、`--wui-duration-menu-exit: 100ms`、`--wui-duration-overlay-enter: 180ms`、`--wui-duration-overlay-exit: 140ms`、`--wui-duration-drawer-enter: 280ms`、`--wui-duration-drawer-exit: 240ms`、`--wui-duration-layout: 200ms`。Easing token 是 `--wui-ease-enter` 和 `--wui-ease-slide`；进入缩放是 `--wui-scale-enter: 0.97`。
+**动效 token：** duration 默认值为 `--wui-duration-press: 80ms`、`--wui-duration-feedback: 100ms`、`--wui-duration-trigger: 160ms`、`--wui-duration-focus: 200ms`、`--wui-duration-menu-enter: 140ms`、`--wui-duration-menu-exit: 100ms`、`--wui-duration-overlay-enter: 180ms`、`--wui-duration-overlay-exit: 140ms`、`--wui-duration-drawer-enter: 280ms`、`--wui-duration-drawer-exit: 240ms`、`--wui-duration-collapse-enter: 200ms`、`--wui-duration-collapse-exit: 160ms`、`--wui-duration-layout: 200ms`。Easing token 是 `--wui-ease-enter` 和 `--wui-ease-slide`；进入缩放是 `--wui-scale-enter: 0.97`。
 
 **颜色 token：**
 

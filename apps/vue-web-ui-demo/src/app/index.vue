@@ -107,6 +107,7 @@ const navItems: NavItem[] = [
   { path: '/components/select', label: 'Select 下拉选择' },
   { path: '/components/autocomplete', label: 'Autocomplete 自动补全' },
   { path: '/components/dropdown', label: 'Dropdown 下拉菜单' },
+  { path: '/components/collapse', label: 'Collapse 折叠面板' },
   { path: '/components/dialog', label: 'Dialog 对话框' },
   { path: '/components/drawer', label: 'Drawer 抽屉' },
   { path: '/components/empty', label: 'Empty 空状态' },
