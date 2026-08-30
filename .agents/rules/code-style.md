@@ -6,4 +6,4 @@
 - 错误处理和 fallback 必须保留可观察原因；公共 API 的 JSDoc 说明参数、返回值和副作用。
 - 先匹配目标目录的现有代码风格，再让 formatter/import sorter 输出最终格式；不要手工对抗工具。
 - `packages/js-kit` 的 plugin system、`packages/web-ui` 的 Shadow DOM/组件契约和各包 `AGENTS.md` 中的边界属于架构约束，不在本文件重复实现处方。
-- 完成源码改动后，按 `find:usages` 输出和任务风险选择 `pnpm run check:code`；不要因为本文件而无条件扩大验证范围。
+- 完成源码改动后，可通过 `CI=true pnpm run fix:code` 自动修复格式与样式；按 `find:usages` 输出和任务风险选择 `CI=true pnpm run check:code`；不要因为本文件而无条件扩大验证范围。

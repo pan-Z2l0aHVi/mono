@@ -548,4 +548,41 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     expect(document.body.style.position).toBe('')
     expect(el.querySelector('web-ui-option')).toBeTruthy()
   })
+
+  it('非 portal：位于 shadow root 内水平偏移的定位祖先时，面板仍与输入框对齐', async () => {
+    // 回归：autocomplete 缺少本地 position:relative 包裹层（对比 select 的 .wui-select-inner）时，
+    // 绝对定位面板的包含块会落到远端定位祖先（如 web-ui-layout 的 sticky header），
+    // 而 Floating UI 按 offsetParent（BODY）计算坐标，导致水平偏移。
+    // 复刻 web-ui-layout：组件作为 light DOM 内容 slot 进 shadow root 内一个
+    // 水平偏移的定位祖先。offsetParent 计算不会跨 shadow 边界取到该祖先（落到 BODY），
+    // 而绝对定位面板的实际包含块却是它——两者不一致时面板就会水平偏移。
+    const host = document.createElement('div')
+    host.style.marginTop = '40px'
+    const shadow = host.attachShadow({ mode: 'open' })
+    shadow.innerHTML =
+      '<div style="position: absolute; left: 120px; top: 0; isolation: isolate; padding: 12px; display: inline-block;"><slot></slot></div>'
+    document.body.append(host)
+
+    const el = document.createElement('web-ui-autocomplete')
+    el.innerHTML = '<web-ui-option value="apple" label="Apple"></web-ui-option>'
+    host.append(el)
+    await el.updateComplete
+
+    const input = el.shadowRoot!.querySelector<HTMLInputElement>('[role="combobox"]')!
+    input.focus()
+    await el.updateComplete
+    await waitForFrame()
+    await el.updateComplete
+
+    const panel = el.shadowRoot!.querySelector<HTMLElement>('.autocomplete-overlay')!
+    const wrapper = el.shadowRoot!.querySelector<HTMLElement>('.input-wrapper')!
+    const panelRect = panel.getBoundingClientRect()
+    const wrapperRect = wrapper.getBoundingClientRect()
+
+    expect(el.open).toBe(true)
+    // bottom-start：面板左边缘应与锚点（input-wrapper）左边缘对齐（offset 4 只影响纵向）
+    expect(Math.abs(panelRect.left - wrapperRect.left)).toBeLessThan(2)
+    // 面板纵向位于输入框下方
+    expect(panelRect.top).toBeGreaterThanOrEqual(wrapperRect.bottom - 1)
+  })
 })
