@@ -9,9 +9,14 @@ async function nextFrame() {
   await new Promise(resolve => requestAnimationFrame(resolve))
 }
 
-// 等待打开过渡（280ms）完成，dialog 进入 is-visible 稳定态。
-async function waitForOpenTransition() {
-  await new Promise(resolve => setTimeout(resolve, 350))
+// 等待打开过渡完成；固定 sleep 在 CI 高负载下会把未收敛的位移抓进拖拽起点。
+async function waitForOpenTransition(el: WebUiDrawer) {
+  await nextFrame()
+  await Promise.all(
+    getDialog(el)
+      .getAnimations({ subtree: true })
+      .map(animation => animation.finished)
+  )
 }
 
 // 轮询条件直至满足：弹簧等 WAAPI 动画在并行负载下完成时间不可预测，
@@ -56,7 +61,7 @@ describe('WebUiDrawer 拖拽关闭（浏览器）', () => {
     el.draggable = true
     el.open = true
     await el.updateComplete
-    await waitForOpenTransition()
+    await waitForOpenTransition(el)
 
     const dragZone = getDragZone(el)
     const startTransform = getComputedStyle(getDialog(el)).transform
@@ -89,7 +94,7 @@ describe('WebUiDrawer 拖拽关闭（浏览器）', () => {
     el.draggable = true
     el.open = true
     await el.updateComplete
-    await waitForOpenTransition()
+    await waitForOpenTransition(el)
 
     const openChangeEvents: CustomEvent<{ open: boolean }>[] = []
     el.addEventListener('open-change', event => openChangeEvents.push(event as CustomEvent<{ open: boolean }>))
@@ -120,7 +125,7 @@ describe('WebUiDrawer 拖拽关闭（浏览器）', () => {
     el.draggable = true
     el.open = true
     await el.updateComplete
-    await waitForOpenTransition()
+    await waitForOpenTransition(el)
 
     const dragZone = getDragZone(el)
     dragZone.dispatchEvent(
@@ -153,7 +158,7 @@ describe('WebUiDrawer 拖拽关闭（浏览器）', () => {
     el.controlled = true
     el.open = true
     await el.updateComplete
-    await waitForOpenTransition()
+    await waitForOpenTransition(el)
 
     const openChangeEvents: CustomEvent<{ open: boolean }>[] = []
     el.addEventListener('open-change', event => openChangeEvents.push(event as CustomEvent<{ open: boolean }>))
@@ -192,7 +197,7 @@ describe('WebUiDrawer 拖拽关闭（浏览器）', () => {
     el.controlled = true
     el.open = true
     await el.updateComplete
-    await waitForOpenTransition()
+    await waitForOpenTransition(el)
 
     el.addEventListener('open-change', event => {
       if (!(event as CustomEvent<{ open: boolean }>).detail.open) el.open = false
@@ -230,7 +235,7 @@ describe('WebUiDrawer 拖拽关闭（浏览器）', () => {
     el.draggable = true
     el.open = true
     await el.updateComplete
-    await waitForOpenTransition()
+    await waitForOpenTransition(el)
 
     const openChangeEvents: CustomEvent<{ open: boolean }>[] = []
     el.addEventListener('open-change', event => openChangeEvents.push(event as CustomEvent<{ open: boolean }>))
@@ -273,7 +278,7 @@ describe('WebUiDrawer 拖拽关闭（浏览器）', () => {
     el.draggable = true
     el.open = true
     await el.updateComplete
-    await waitForOpenTransition()
+    await waitForOpenTransition(el)
 
     const dialog = getDialog(el)
     const dragZone = getDragZone(el)
@@ -309,7 +314,7 @@ describe('WebUiDrawer 拖拽关闭（浏览器）', () => {
     el.placement = 'left'
     el.open = true
     await el.updateComplete
-    await waitForOpenTransition()
+    await waitForOpenTransition(el)
 
     const dragZone = getDragZone(el)
     dragZone.dispatchEvent(
@@ -331,7 +336,7 @@ describe('WebUiDrawer 拖拽关闭（浏览器）', () => {
     el.placement = 'top'
     el.open = true
     await el.updateComplete
-    await waitForOpenTransition()
+    await waitForOpenTransition(el)
 
     const dragZone = getDragZone(el)
     dragZone.dispatchEvent(
@@ -353,7 +358,7 @@ describe('WebUiDrawer 拖拽关闭（浏览器）', () => {
     const el = createDrawer()
     el.open = true
     await el.updateComplete
-    await waitForOpenTransition()
+    await waitForOpenTransition(el)
 
     const assertInsetCard = async (body: HTMLElement) => {
       await waitFor(() => {
@@ -376,7 +381,7 @@ describe('WebUiDrawer 拖拽关闭（浏览器）', () => {
     bottom.placement = 'bottom'
     bottom.open = true
     await bottom.updateComplete
-    await waitForOpenTransition()
+    await waitForOpenTransition(el)
 
     const bottomBody = bottom.shadowRoot?.querySelector('.wui-drawer-body') as HTMLElement
     await assertInsetCard(bottomBody)
@@ -388,7 +393,7 @@ describe('WebUiDrawer 拖拽关闭（浏览器）', () => {
     el.draggable = true
     el.open = true
     await el.updateComplete
-    await waitForOpenTransition()
+    await waitForOpenTransition(el)
 
     const dialog = getDialog(el)
     const dragZone = getDragZone(el)
@@ -467,7 +472,7 @@ describe('WebUiDrawer 拖拽关闭（浏览器）', () => {
       el.draggable = true
       el.open = true
       await el.updateComplete
-      await waitForOpenTransition()
+      await waitForOpenTransition(el)
 
       const dragZone = getDragZone(el)
       dragZone.dispatchEvent(
