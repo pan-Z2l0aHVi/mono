@@ -242,7 +242,7 @@ describe('WebUiSegmented 手势拖拽与吸附（浏览器）', () => {
     expect(changeEvents).toHaveLength(1)
   })
 
-  it('按下当前选中的 trigger 时指示器呈现 scale(1.3) 按压反馈', async () => {
+  it('按下当前选中的 trigger 时指示器呈现 scale(1.2) 按压反馈', async () => {
     const { segmented, t1 } = createSegmented()
     await segmented.updateComplete
 
@@ -261,9 +261,9 @@ describe('WebUiSegmented 手势拖拽与吸附（浏览器）', () => {
       })
     )
     await segmented.updateComplete
-    await new Promise(r => setTimeout(r, 140))
 
     expect(inner.classList.contains('is-pressed')).toBe(true)
+    await Promise.all(indicator.getAnimations().map(animation => animation.finished))
     const transform = getComputedStyle(indicator).transform
     expect(transform).not.toBe('none')
     const matrix = new DOMMatrixReadOnly(transform)
@@ -283,7 +283,43 @@ describe('WebUiSegmented 手势拖拽与吸附（浏览器）', () => {
     expect(inner.classList.contains('is-pressed')).toBe(false)
   })
 
-  it('按下未选中的 trigger 不启动拖拽且指示器不产生 scale(1.3)', async () => {
+  it('按住当前选项后 pointerleave 不清除按压反馈', async () => {
+    const { segmented, t1 } = createSegmented()
+    await segmented.updateComplete
+
+    const inner = segmented.shadowRoot?.querySelector('.wui-segmented') as HTMLElement
+    const t1Rect = t1.getBoundingClientRect()
+
+    inner.dispatchEvent(
+      new PointerEvent('pointerdown', {
+        bubbles: true,
+        isPrimary: true,
+        pointerId: 1,
+        clientX: t1Rect.left + 10,
+        clientY: t1Rect.top + 10
+      })
+    )
+    await segmented.updateComplete
+    expect(inner.classList.contains('is-pressed')).toBe(true)
+
+    inner.dispatchEvent(new PointerEvent('pointerleave'))
+    await segmented.updateComplete
+    expect(inner.classList.contains('is-pressed')).toBe(true)
+
+    window.dispatchEvent(
+      new PointerEvent('pointerup', {
+        bubbles: true,
+        isPrimary: true,
+        pointerId: 1,
+        clientX: t1Rect.left + 10,
+        clientY: t1Rect.top + 10
+      })
+    )
+    await segmented.updateComplete
+    expect(inner.classList.contains('is-pressed')).toBe(false)
+  })
+
+  it('按下未选中的 trigger 不启动拖拽且指示器不产生 scale(1.2)', async () => {
     const { segmented, t2 } = createSegmented()
     await segmented.updateComplete
 

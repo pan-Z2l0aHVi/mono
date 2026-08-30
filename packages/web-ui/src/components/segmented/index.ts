@@ -198,7 +198,7 @@ export class WebUiSegmented extends LitElement {
   }
 
   private handlePointerLeave() {
-    if (!this._isDragging) {
+    if (!this._dragGestureHandle?.isDragging()) {
       this._pressed = false
     }
   }
