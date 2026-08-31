@@ -92,8 +92,13 @@ export class WebUiSegmented extends LitElement {
     this.style.setProperty('--indicator-left', `${left}px`)
     this.style.setProperty('--indicator-width', `${width}px`)
 
-    // 首帧只完成定位；若一开始就启用 left/width transition，indicator 会从 0 滑到初始选项。
-    if (!this._indicatorReady) this._indicatorReady = true
+    // 首帧只完成定位：先把当前定位以「未启用 left/width transition」状态提交为 before 值，
+    // 再打开移动动画。若同一趟里 set 定位与启用 transition，浏览器会把 0→选项 当作一次过渡。
+    if (!this._indicatorReady) {
+      const indicator = this.renderRoot.querySelector<HTMLElement>('.wui-segmented-indicator')
+      void indicator?.offsetWidth
+      this._indicatorReady = true
+    }
   }
 
   private handlePointerDown(e: PointerEvent) {

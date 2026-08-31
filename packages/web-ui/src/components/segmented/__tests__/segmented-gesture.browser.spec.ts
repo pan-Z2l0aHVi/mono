@@ -397,4 +397,21 @@ describe('WebUiSegmented 手势拖拽与吸附（浏览器）', () => {
 
     expect(segmented.value).toBe('weekly')
   })
+
+  it('首帧把 indicator 直接定位到选中项，不产生 0→选中 的 left/width 过渡', async () => {
+    const { segmented } = createSegmented()
+    await segmented.updateComplete
+
+    // 等首帧定位 rAF（_updateIndicator 在其中提交位置并开启 transition）执行完。
+    // 若实现有 bug，transition 会在首帧从 CSS 回退的 0 滑到选中项（160ms），
+    // 此刻仍在播放，getAnimations 应能捕获到 left/width。
+    await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())))
+    await segmented.updateComplete
+
+    const indicator = segmented.shadowRoot?.querySelector('.wui-segmented-indicator') as HTMLElement
+    expect(indicator).toBeTruthy()
+
+    // 首帧无交互，indicator 不应有任何过渡在播放（尤其不应有从 0 滑入的 left/width）
+    expect(indicator.getAnimations()).toHaveLength(0)
+  })
 })
