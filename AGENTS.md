@@ -42,7 +42,7 @@
 | instruction system / context 维护                 | [`docs/agents/context.md`](docs/agents/context.md)、[`CONTEXT.md`](CONTEXT.md) 和 ADR-0012                                                                                                                      |
 | 代码 review                                       | [`.agents/rules/review-checklist.md`](.agents/rules/review-checklist.md)、[`docs/agents/review.md`](docs/agents/review.md)；需要独立 reviewer 时再读 [`.agents/agents/reviewer.md`](.agents/agents/reviewer.md) |
 | 全局替换 / 重命名 / API 迁移 / 文件迁移           | [`.agents/rules/global-rename.md`](.agents/rules/global-rename.md)                                                                                                                                              |
-| Git commit                                        | [`.agents/rules/commit.md`](.agents/rules/commit.md) 和 [`docs/agents/commit.md`](docs/agents/commit.md)                                                                                                        |
+| Git commit                                        | [`.agents/rules/commit.md`](.agents/rules/commit.md)、[`docs/agents/commit.md`](docs/agents/commit.md) 和 [`CONTRIBUTING.md`](CONTRIBUTING.md)（AI 协作署名）                                                   |
 | GitHub issue                                      | [`docs/agents/issue-tracker.md`](docs/agents/issue-tracker.md)                                                                                                                                                  |
 
 涉及 UI、UX、交互、响应式或浏览器运行时的改动，必须按 [`browser-verification.md`](docs/agents/browser-verification.md) 在真实浏览器验证；构建成功或 jsdom 测试不能替代该验证。实现不熟悉或跨浏览器语义不明确的 Web Platform API 时，使用 MDN MCP 验证语义和兼容性。
