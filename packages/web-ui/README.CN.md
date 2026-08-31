@@ -616,7 +616,7 @@ ArrowUp/ArrowDown 键增减数值。空输入或 `-` 在提交时被忽略，值
 | `dialog-label`      | `string`                                 | `''`      | 内部原生 dialog 的可访问名称；headless 模式必须提供  |
 | `draggable`         | `boolean`                                | `false`   | 打开时在抽屉内缘显示 drag bar，支持拖拽关闭手势      |
 
-**事件：** `open-change` (`CustomEvent<{ open: boolean }>`)。启用 `controlled` 后，Escape、遮罩、内置关闭按钮和拖拽松手仅请求 `open=false`；Consumer 写入 `open=false` 前抽屉保持打开。程序化 API（`show()`/`close()`/直接赋值 `open`）不受影响，始终直通且不派发事件。若原生 dialog 在请求等待期间关闭，组件会恢复其打开的 top layer 状态并发出同一关闭请求。
+**事件：** `open-change` (`CustomEvent<{ open: boolean }>`)。启用 `controlled` 后，Escape、遮罩、内置关闭按钮和拖拽松手仅请求 `open=false`；Consumer 写入 `open=false` 前抽屉保持打开。程序化 API（`show()`/`close()`/直接赋值 `open`）不受影响，始终直通且不派发事件。若原生 dialog 在请求等待期间关闭，组件会恢复其打开的 top layer 状态并发出同一关闭请求。嵌套 drawer 时，内层 `open-change` 会 composed 冒泡穿过外层根，按 `event.target` 区分。
 
 **插槽：** `header`, `default`, `footer`；启用 `headless` 时仅渲染 `default` 插槽。
 
@@ -1054,23 +1054,24 @@ SVG 线条绘制动画，基于 `stroke-dashoffset`。直接在原元素上动�
 
 | 属性                               | 浅色默认值                                                   | 深色默认值                                                   | 说明                   |
 | ---------------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------ | ---------------------- |
-| `--wui-color-page`                 | `#fff`                                                       | `#18181a`                                                    | 页面背景               |
+| `--wui-color-page`                 | `#fff`                                                       | `#292c2e`                                                    | 页面背景               |
 | `--wui-color-surface`              | `#fff`                                                       | `#2c2c2e`                                                    | 普通 表面              |
 | `--wui-color-surface-raised`       | `#f2f2f7`                                                    | `#2c2c2e`                                                    | 抬升表面               |
-| `--wui-color-surface-control`      | `#dfdfdf`                                                    | `#3a3a3c`                                                    | 中性可交互控件表面     |
+| `--wui-color-surface-control`      | `#dfdfdf`                                                    | `#2c2c2e`                                                    | 中性可交互控件表面     |
 | `--wui-color-surface-track`        | `#e5e5ea`                                                    | `#444446`                                                    | Slider/Switch 轨道表面 |
+| `--wui-color-surface-menu`         | `rgb(246 246 246 / 0.82)`                                    | `rgb(30 30 32 / 0.92)`                                       | Menu 和浮动面板表面    |
 | `--wui-color-surface-glass`        | `rgb(250 250 250 / 0.34)`                                    | `rgb(44 44 46 / 0.42)`                                       | 液态玻璃表面           |
 | `--wui-color-surface-glass-hover`  | `color-mix(... text 6%, surface-glass)`                      | `color-mix(... text 6%, surface-glass)`                      | Glass 完整悬停背景     |
 | `--wui-color-surface-glass-active` | `color-mix(... text 15%, surface-glass)`                     | `color-mix(... text 15%, surface-glass)`                     | Glass 完整按下背景     |
-| `--wui-color-surface-overlay`      | `rgb(246 246 246 / 0.82)`                                    | `rgb(44 44 46 / 0.82)`                                       | 半透明浮层表面         |
-| `--wui-color-text`                 | `#1b1b1b`                                                    | `#f5f5f7`                                                    | 主要文本               |
+| `--wui-color-surface-overlay`      | `rgb(246 246 246 / 0.82)`                                    | `rgb(20 20 22 / 0.9)`                                        | 半透明浮层表面         |
+| `--wui-color-text`                 | `#1b1b1b`                                                    | `#e9eaea`                                                    | 主要文本               |
 | `--wui-color-text-secondary`       | `#6a6a6a`                                                    | `#a1a1a6`                                                    | 次要文本               |
 | `--wui-color-text-tertiary`        | `color-mix(in srgb, var(--wui-color-text) 35%, transparent)` | `color-mix(in srgb, var(--wui-color-text) 42%, transparent)` | 三级文本和弱意图图标   |
 | `--wui-color-text-disabled`        | `color-mix(in srgb, var(--wui-color-text) 32%, transparent)` | `color-mix(in srgb, var(--wui-color-text) 38%, transparent)` | 禁用态前景文本         |
 | `--wui-color-state-layer-hover`    | `color-mix(in srgb, var(--wui-color-text) 6%, transparent)`  | `color-mix(in srgb, var(--wui-color-text) 6%, transparent)`  | 透明悬停层             |
 | `--wui-color-state-layer-active`   | `color-mix(in srgb, var(--wui-color-text) 15%, transparent)` | `color-mix(in srgb, var(--wui-color-text) 15%, transparent)` | 透明按下层             |
 | `--wui-color-border`               | `rgb(0 0 0 / 0.1)`                                           | `rgb(255 255 255 / 0.14)`                                    | 常规边框和分隔线       |
-| `--wui-color-glass-border`         | `rgb(51 51 51 / 0.12)`                                       | `rgb(255 255 255 / 0.16)`                                    | Glass 边框色调         |
+| `--wui-color-glass-border`         | `rgb(51 51 51 / 0.12)`                                       | `rgb(255 255 255 / 0.05)`                                    | Glass 边框色调         |
 | `--wui-color-glass-highlight`      | `rgb(255 255 255 / 0.9)`                                     | `rgb(255 255 255 / 0.22)`                                    | Glass 高光边缘         |
 | `--wui-color-accent`               | `#08f`                                                       | `#0a84ff`                                                    | Accent 和输入焦点边框  |
 | `--wui-color-on-accent`            | `#fff`                                                       | `#fff`                                                       | Accent 上的前景色      |

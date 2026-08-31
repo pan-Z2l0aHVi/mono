@@ -88,7 +88,7 @@
   max-width: var(--wui-autocomplete-max-width, 500px);
   border-radius: 20px;
 
-  background-color: var(--wui-color-surface-overlay, rgb(246 246 246 / 0.82));
+  background-color: var(--wui-color-surface-menu, rgb(246 246 246 / 0.82));
 
   &.portal {
     position: fixed;

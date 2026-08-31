@@ -628,7 +628,7 @@ export class WebUiDrawer extends LitElement {
                           icon
                           size="26"
                         >
-                          <web-ui-icon .icon=${oouiClose}></web-ui-icon>
+                          <web-ui-icon size="14" .icon=${oouiClose}></web-ui-icon>
                         </web-ui-button>
                       `
                     : nothing

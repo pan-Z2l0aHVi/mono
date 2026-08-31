@@ -87,6 +87,7 @@
   --wui-color-surface-raised: #f2f2f7;
   --wui-color-surface-control: #dfdfdf;
   --wui-color-surface-track: #e5e5ea;
+  --wui-color-surface-menu: rgb(246 246 246 / 0.82);
   --wui-color-surface-glass: rgb(250 250 250 / 0.34);
   --wui-color-surface-glass-hover: color-mix(in srgb, var(--wui-color-text) 6%, var(--wui-color-surface-glass));
   --wui-color-surface-glass-active: color-mix(in srgb, var(--wui-color-text) 15%, var(--wui-color-surface-glass));
@@ -116,23 +117,24 @@
 }
 
 :host([appearance='dark']) {
-  --wui-color-page: #18181a;
+  --wui-color-page: #292c2e;
   --wui-color-surface: #2c2c2e;
   --wui-color-surface-raised: #2c2c2e;
-  --wui-color-surface-control: #3a3a3c;
+  --wui-color-surface-control: #2c2c2e;
   --wui-color-surface-track: #444446;
+  --wui-color-surface-menu: rgb(30 30 32 / 0.92);
   --wui-color-surface-glass: rgb(44 44 46 / 0.42);
   --wui-color-surface-glass-hover: color-mix(in srgb, var(--wui-color-text) 6%, var(--wui-color-surface-glass));
   --wui-color-surface-glass-active: color-mix(in srgb, var(--wui-color-text) 15%, var(--wui-color-surface-glass));
-  --wui-color-surface-overlay: rgb(44 44 46 / 0.82);
-  --wui-color-text: #f5f5f7;
+  --wui-color-surface-overlay: rgb(20 20 22 / 0.9);
+  --wui-color-text: #e9eaea;
   --wui-color-text-secondary: #a1a1a6;
   --wui-color-text-tertiary: color-mix(in srgb, var(--wui-color-text) 42%, transparent);
   --wui-color-text-disabled: color-mix(in srgb, var(--wui-color-text) 38%, transparent);
   --wui-color-state-layer-hover: color-mix(in srgb, var(--wui-color-text) 6%, transparent);
   --wui-color-state-layer-active: color-mix(in srgb, var(--wui-color-text) 15%, transparent);
   --wui-color-border: rgb(255 255 255 / 0.14);
-  --wui-color-glass-border: rgb(255 255 255 / 0.16);
+  --wui-color-glass-border: rgb(255 255 255 / 0.05);
   --wui-color-glass-highlight: rgb(255 255 255 / 0.22);
   --wui-color-accent: #0a84ff;
   --wui-color-on-accent: #fff;
@@ -150,23 +152,24 @@
 
 @media (prefers-color-scheme: dark) {
   :host([appearance='system']) {
-    --wui-color-page: #18181a;
+    --wui-color-page: #292c2e;
     --wui-color-surface: #2c2c2e;
     --wui-color-surface-raised: #2c2c2e;
-    --wui-color-surface-control: #3a3a3c;
+    --wui-color-surface-control: #2c2c2e;
     --wui-color-surface-track: #444446;
+    --wui-color-surface-menu: rgb(30 30 32 / 0.92);
     --wui-color-surface-glass: rgb(44 44 46 / 0.42);
     --wui-color-surface-glass-hover: color-mix(in srgb, var(--wui-color-text) 6%, var(--wui-color-surface-glass));
     --wui-color-surface-glass-active: color-mix(in srgb, var(--wui-color-text) 15%, var(--wui-color-surface-glass));
-    --wui-color-surface-overlay: rgb(44 44 46 / 0.82);
-    --wui-color-text: #f5f5f7;
+    --wui-color-surface-overlay: rgb(20 20 22 / 0.9);
+    --wui-color-text: #e9eaea;
     --wui-color-text-secondary: #a1a1a6;
     --wui-color-text-tertiary: color-mix(in srgb, var(--wui-color-text) 42%, transparent);
     --wui-color-text-disabled: color-mix(in srgb, var(--wui-color-text) 38%, transparent);
     --wui-color-state-layer-hover: color-mix(in srgb, var(--wui-color-text) 6%, transparent);
     --wui-color-state-layer-active: color-mix(in srgb, var(--wui-color-text) 15%, transparent);
     --wui-color-border: rgb(255 255 255 / 0.14);
-    --wui-color-glass-border: rgb(255 255 255 / 0.16);
+    --wui-color-glass-border: rgb(255 255 255 / 0.05);
     --wui-color-glass-highlight: rgb(255 255 255 / 0.22);
     --wui-color-accent: #0a84ff;
     --wui-color-on-accent: #fff;
