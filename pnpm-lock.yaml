@@ -42,6 +42,9 @@ catalogs:
     '@iconify/types':
       specifier: ^2.0.0
       version: 2.0.0
+    '@lit/context':
+      specifier: ^1.1.6
+      version: 1.1.6
     '@rolldown/plugin-babel':
       specifier: ^0.2.3
       version: 0.2.3
@@ -706,6 +709,9 @@ importers:
       '@greypan/js-kit':
         specifier: workspace:*
         version: link:../js-kit
+      '@lit/context':
+        specifier: 'catalog:'
+        version: 1.1.6
     devDependencies:
       '@greypan/tsconfig':
         specifier: workspace:*
@@ -1900,6 +1906,9 @@ packages:
 
   '@lit-labs/ssr-dom-shim@1.6.0':
     resolution: {integrity: sha512-VHb0ALPMTlgKjM6yIxxoQNnpKyUKLD04VzeQdsiXkMqkvYlAHxq9glGLmgbb889/1GsohSOAjvQYoiBppXFqrQ==}
+
+  '@lit/context@1.1.6':
+    resolution: {integrity: sha512-M26qDE6UkQbZA2mQ3RjJ3Gzd8TxP+/0obMgE5HfkfLhEEyYE3Bui4A5XHiGPjy0MUGAyxB3QgVuw2ciS0kHn6A==}
 
   '@lit/reactive-element@2.1.2':
     resolution: {integrity: sha512-pbCDiVMnne1lYUIaYNN5wrwQXDtHaYtg7YEFPeW+hws6U47WeFvISGUWekPGKWOP1ygrs0ef0o1VJMk1exos5A==}
@@ -7880,6 +7889,10 @@ snapshots:
   '@keyv/serialize@1.1.1': {}
 
   '@lit-labs/ssr-dom-shim@1.6.0': {}
+
+  '@lit/context@1.1.6':
+    dependencies:
+      '@lit/reactive-element': 2.1.2
 
   '@lit/reactive-element@2.1.2':
     dependencies:

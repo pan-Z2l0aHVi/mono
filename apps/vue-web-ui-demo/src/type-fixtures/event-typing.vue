@@ -77,9 +77,9 @@ const clickCount = ref(0)
   <!-- 2. kebab 自定义事件：$event.detail 精确类型 -->
   <web-ui-dialog :open="dialogOpen" no-escape-close @open-change="dialogOpen = $event.detail.open" />
   <web-ui-dialog @open-change="onDialogOpenChange" />
-  <web-ui-collapse :open="collapseOpen" @open-change="collapseOpen = $event.detail.open">
-    <web-ui-collapse-trigger>Trigger</web-ui-collapse-trigger>
-    <web-ui-collapse-content keep-mounted>Content</web-ui-collapse-content>
+  <web-ui-collapse :open="collapseOpen" keep-mounted @open-change="collapseOpen = $event.detail.open">
+    <button>Trigger</button>
+    <div slot="content">Content</div>
   </web-ui-collapse>
   <web-ui-collapse @open-change="onCollapseOpenChange" />
 

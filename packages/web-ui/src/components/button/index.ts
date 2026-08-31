@@ -7,7 +7,7 @@ import { styleMap } from 'lit/directives/style-map.js'
 import '@/components/icon'
 import glass from '@/assets/glass.css?inline'
 import { lucideLoaderCircle } from '@/icons'
-import { defineGroupManaged, type ButtonGroupContext } from '@/shared/group-management'
+import { buttonGroupContextKey, defineGroupManaged, type ButtonGroupContext } from '@/shared/group-management'
 import { normalizeLiteral } from '@/shared/normalize'
 
 import style from './style.css?inline'
@@ -51,6 +51,7 @@ export class WebUiButton extends LitElement {
   @property({ type: String, attribute: 'aria-label' }) override ariaLabel: string | null = null
 
   private readonly _groupManagement = defineGroupManaged<ButtonGroupContext>(this, {
+    context: buttonGroupContextKey,
     requestUpdate: () => this.requestUpdate(),
     equals: (a, b) => a?.direction === b?.direction && a?.isLast === b?.isLast
   }).make()

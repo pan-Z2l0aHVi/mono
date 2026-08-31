@@ -57,9 +57,9 @@ export function EventTypingFixture() {
           void host
         }}
       />
-      <web-ui-collapse open={collapseOpen} onopen-change={e => setCollapseOpen(e.detail.open)}>
-        <web-ui-collapse-trigger>Trigger</web-ui-collapse-trigger>
-        <web-ui-collapse-content keep-mounted>Content</web-ui-collapse-content>
+      <web-ui-collapse open={collapseOpen} onopen-change={e => setCollapseOpen(e.detail.open)} keep-mounted>
+        <button>Trigger</button>
+        <div slot="content">Content</div>
       </web-ui-collapse>
 
       {/* 3. 具体 Custom Element ref */}

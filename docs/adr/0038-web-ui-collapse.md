@@ -1,5 +1,7 @@
 # ADR-0038: Web UI Collapse 组件族
 
+> **状态（2026-08-30）**：本文档的三元素家族结构（第 3 节）与 trigger 实现（第 4 节）已被 [ADR-0040](0040-web-ui-collapse-single-element-and-lit-context.md) 的单组件 + slots 方案取代；动画选型（第 1 节）与三态关闭语义（第 2 节）仍有效并由 ADR-0040 继承。collapse 组件在首次发布前完成重构，无发布兼容成本。
+
 ## 背景
 
 组件库缺少折叠面板（Collapse / Disclosure）能力。与 Dialog/Drawer/Popover 等覆盖层组件不同，Collapse 是**文档流内**的展开收起组件：无 portal、无滚动锁定、无焦点管理、无 Escape/outside-click 语义（ADR-0005/0007 的 overlay 交互策略不适用）。

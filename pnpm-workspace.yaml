@@ -39,6 +39,7 @@ catalog:
   '@vue/tsconfig': ^0.9.1
   '@vueuse/core': ^14.3.0
   '@wailsio/runtime': 3.0.0-beta.12
+  '@lit/context': ^1.1.6
   babel-plugin-react-compiler: ^1.0.0
   browserslist: ^4.28.5
   change-case: ^5.4.4

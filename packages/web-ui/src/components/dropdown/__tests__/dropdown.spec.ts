@@ -58,6 +58,27 @@ describe('WebUiDropdown 组件', () => {
       expect(el.isOpen).toBe(false)
       cleanupElement(el)
     })
+
+    it('aria-haspopup / aria-expanded 回写到 trigger 元素', async () => {
+      const el = createDropdown({}, SIMPLE)
+      await waitForUpdate(el)
+
+      const trigger = el.querySelector<HTMLElement>('[slot="trigger"]')!
+      expect(trigger.getAttribute('aria-haspopup')).toBe('menu')
+      expect(trigger.getAttribute('aria-expanded')).toBe('false')
+      // 未打开时面板尚未创建，不写 aria-controls
+      expect(trigger.hasAttribute('aria-controls')).toBe(false)
+
+      clickTrigger(el)
+      await waitForUpdate(el)
+      await new Promise(resolve => requestAnimationFrame(resolve))
+      await waitForUpdate(el)
+
+      expect(trigger.getAttribute('aria-expanded')).toBe('true')
+      expect(trigger.getAttribute('aria-controls')).not.toBe('')
+
+      cleanupElement(el)
+    })
   })
 
   describe('属性：open', () => {

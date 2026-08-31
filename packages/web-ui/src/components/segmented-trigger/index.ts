@@ -2,7 +2,7 @@ import { html, LitElement, unsafeCSS } from 'lit'
 import { customElement, property } from 'lit/decorators.js'
 import { classMap } from 'lit/directives/class-map.js'
 
-import { defineGroupManaged, type SelectionGroupContext } from '@/shared/group-management'
+import { defineGroupManaged, selectionGroupContextKey, type SelectionGroupContext } from '@/shared/group-management'
 
 import style from './style.css?inline'
 
@@ -15,6 +15,7 @@ export class WebUiSegmentedTrigger extends LitElement {
   @property({ type: Boolean, reflect: true }) disabled = false
 
   private readonly _groupManagement = defineGroupManaged<SelectionGroupContext>(this, {
+    context: selectionGroupContextKey,
     requestUpdate: () => this.requestUpdate()
   }).make()
 

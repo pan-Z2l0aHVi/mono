@@ -180,6 +180,29 @@ ARIA 属性同样必须显式支持：使用组件文档化的命名属性，而
 `click`、`input`、`change` 等浏览器 composed 原生事件仍是主要交互 API。`open-change` 等 kebab-case 自定义事件
 仅描述用户操作导致的组件状态变化；程序化赋值 property 不会触发它们。
 
+### 受控状态语义
+
+`web-ui-*` 元素没有单一的「受控」契约；按交互性质分成三套状态模型，各组件族取其一。不要假设不同组件上的
+`controlled` 含义相同。
+
+**仅用户来源事件（所有 `open` 类组件：collapse、popover、dropdown、tooltip、dialog、drawer、back-top）。**
+`*-change` 事件（`open-change` 等）只在用户来源的切换时派发；程序化赋值（`el.open = true`）或命令式调用
+（`show()`、`close()`、`toggle()`）从不派发。组件**自管理**自己的 `open` 值，除非你在外部协调——你可以监听事件
+并写回自己的状态，但组件不要求、也不等待这个写回。
+
+**请求-写回模式（仅 dialog 与 drawer 的 `controlled`）。**
+`controlled=true` 时，用户关闭操作（Escape、backdrop、内置关闭、拖拽释放）只*请求* `open=false`；组件不改自己的
+状态，保持打开，直到消费者写回 `open=false`。这是模态确认语义——关对话框/抽屉通常是需要消费者批准的操作（未保存
+表单、需确认），与即时开合不同，不能由组件自行提交。只有这两个模态组件使用该模式；即时开合家族（collapse、popover、
+dropdown、tooltip）不需要它。
+
+**原生表单模型（input、textarea、input-number、select、checkbox、radio、switch、autocomplete）。**
+控件内部自管理 value/checked 状态；用户交互立即翻转，然后派发原生 `input`/`change` 事件。程序化赋值
+（`el.checked = true`）覆盖内部状态。这与原生 `<input type="checkbox">` 一致——**没有 `controlled` prop 是因为
+值总是可读可写**，React/Vue 层自备受控包装。若翻转的持久化需要外部往返（例如开关应只有 API 调用成功后保持开启），
+使用**乐观更新**路径：立即翻转、监听 `change`、请求期间设 `loading`（阻断后续交互并显示 spinner），失败后回写
+property（`el.checked = false`）并提示 toast。翻转先于批准的窗口被接受；不提供「批准前不翻转」的 `controlled` prop。
+
 ### 表单关联控件
 
 所有表单控件均参与原生 `FormData`、约束校验、`form.reset()` 和浏览器表单状态恢复。控件会在**首次连接且声明式属性完成初始化后**捕获一次重置默认值；之后的运行时 property 更新不会改写该默认值。祖先 `fieldset` 的禁用状态会禁用交互和校验，但不会改写控件公开的 `disabled` 属性。对于 checkbox/radio group，父 group 是提交、重置和状态恢复的唯一所有者；被管理的子项不会独立提交或恢复状态。
@@ -224,8 +247,6 @@ ARIA 属性同样必须显式支持：使用组件文档化的命名属性，而
 | **通知**        | [`<web-ui-toast>`](#web-ui-toast)                         |
 | **子项**        | [`<web-ui-option>`](#web-ui-option)                       |
 |                 | [`<web-ui-segmented-trigger>`](#web-ui-segmented-trigger) |
-|                 | [`<web-ui-collapse-trigger>`](#web-ui-collapse-trigger)   |
-|                 | [`<web-ui-collapse-content>`](#web-ui-collapse-content)   |
 
 ## API 参考
 
@@ -645,51 +666,35 @@ ArrowUp/ArrowDown 键增减数值。空输入或 `-` 在提交时被忽略，值
 
 #### `<web-ui-collapse>`
 
-文档流内的展开收起容器，带高度（或宽度）过渡动画。由 trigger 与 content 两个子元素组成；无 portal、无滚动锁定、无焦点管理。
+文档流内的展开收起容器，带高度（或宽度）过渡动画。单元素双插槽；无 portal、无滚动锁定、无焦点管理。
 
-| 属性         | 类型      | 默认值  | 说明                             |
-| ------------ | --------- | ------- | -------------------------------- |
-| `open`       | `boolean` | `false` | 展开状态（严格受控，唯一状态源） |
-| `disabled`   | `boolean` | `false` | 禁用触发器；已展开内容保持现状   |
-| `horizontal` | `boolean` | `false` | 沿宽度而非高度动画               |
+| 属性           | 类型      | 默认值  | 说明                                                                                |
+| -------------- | --------- | ------- | ----------------------------------------------------------------------------------- |
+| `open`         | `boolean` | `false` | 展开状态；交互时自管理，`open-change` 仅用户来源时派发                              |
+| `disabled`     | `boolean` | `false` | 忽略 trigger 点击并在 trigger 元素上设 `aria-disabled`；已展开内容保持现状          |
+| `horizontal`   | `boolean` | `false` | 沿宽度而非高度动画                                                                  |
+| `keep-mounted` | `boolean` | `false` | 关闭稳态以 `inert` 保留在 0fr 轨道内（滚动位置与布局可测量），而非内部容器 `hidden` |
 
 **事件：** `open-change` (`CustomEvent<{ open: boolean }>`)。仅用户来源的切换（trigger 点击）派发；程序化写入（`open`、`show()`、`close()`、`toggle()`）不派发。嵌套时内层 `open-change` 会冒泡穿过外层根（composed 事件），按 `event.target` 区分。
 
-**插槽：** `default`（一个 `web-ui-collapse-trigger` + 一个 `web-ui-collapse-content`）
+**插槽：** `default`（trigger）+ `content`（折叠内容）
 
 **方法：** `show()`、`close()`、`toggle()`
 
-初始即带 `open` attribute 时直接落稳态，不播动画。允许多个 trigger/content；第一个 content 用于 `aria-controls` 关联。
+```html
+<web-ui-collapse>
+  <button type="button">点击切换</button>
+  <div slot="content">折叠内容</div>
+</web-ui-collapse>
+```
 
-**已知限制：** `horizontal` 动画期间内容随宽度变化 reflow。trigger 内容建议保持非交互（按钮内嵌交互元素是非法 HTML）。
+初始即带 `open` attribute 时直接落稳态，不播动画。支持嵌套 collapse。
 
-#### `<web-ui-collapse-trigger>`
+**trigger 语义：** 交互语义完全来自 default slot 放入的元素——原生 `<button>`、`<web-ui-button>` 或其他可交互元素原生提供 Enter/Space 激活与焦点。collapse 把 `aria-expanded` / `aria-controls`（指向内容轨道）与 `aria-disabled` 回写到 trigger slot 的首个 assigned element。trigger 请使用可交互元素：纯 `<span>` 可点击但没有键盘/焦点语义。
 
-`<web-ui-collapse>` 的切换按钮。shadow 内渲染原生 `<button>` 包裹任意插槽内容，`aria-expanded`、`aria-controls` 与原生 disabled 由根 collapse 同步。
+**关闭稳态语义：** 消费者的 light DOM 永不移动或卸载。默认关闭稳态在内部内容容器上设 `hidden`；`keep-mounted` 时内部容器标记 `inert`，保留在收起轨道内可测量。
 
-触发器字号继承周围排版（`font: inherit`），不走 `--wui-font-size` 控件 token——它是文档流内的 disclosure 标签（同 `<summary>` 语义），不是独立控件。
-
-**事件：** 无（由根 collapse 派发 `open-change`）
-
-**插槽：** `default`（触发器内容；建议非交互内容）
-
-非表单关联（collapse 子项，非独立提交）。
-
-#### `<web-ui-collapse-content>`
-
-`<web-ui-collapse>` 的可折叠区域，使用 CSS grid `0fr ↔ 1fr` 过渡动画（ADR-0038）——高度自适应内容，零 JS 测量。
-
-| 属性           | 类型      | 默认值  | 说明                                                                            |
-| -------------- | --------- | ------- | ------------------------------------------------------------------------------- |
-| `keep-mounted` | `boolean` | `false` | 关闭稳态以 `inert` 保留在 0fr 轨道内（滚动位置与布局可测量），而非宿主 `hidden` |
-
-**事件：** 无
-
-**插槽：** `default`（折叠内容）
-
-非表单关联（collapse 子项，非独立提交）。
-
-**关闭稳态语义：** 消费者的 light DOM 永不移动或卸载。默认关闭稳态在宿主上设 `hidden`；`keep-mounted` 时内部容器标记 `inert`，保留在收起轨道内可测量。
+**已知限制：** `horizontal` 动画期间内容随宽度变化 reflow。
 
 ---
 
@@ -717,6 +722,8 @@ ArrowUp/ArrowDown 键增减数值。空输入或 `-` 在提交时被忽略，值
 
 Hover 模式使用 `pointerenter`/`pointerleave` 加延迟控制。Click 模式点击切换。Manual 模式仅响应命令式调用。
 
+**trigger ARIA：** 开合状态回写到 trigger 元素：`aria-expanded` 与 `aria-controls`（指向面板）设在 `trigger` slot 的首个 assigned element 上（包装结构上的同名属性保留兼容）。trigger slot 请放入可交互元素（原生 button、`web-ui-button`）。
+
 #### `<web-ui-tooltip>`
 
 工具提示，支持指针和焦点触发。
@@ -737,7 +744,7 @@ Hover 模式使用 `pointerenter`/`pointerleave` 加延迟控制。Click 模式�
 
 **插槽：** `default`（触发器）、`content`（提示面板）
 
-`open` 是受控可见性属性。指针/焦点触发会更新它，直接设置也会同步本地或 Portal 面板。第一个 Tooltip 显示后，相邻 Tooltip 会立即切换；其余 pointer/focus 触发使用延迟计时器。
+`open` 是自管理的可见性属性。指针/焦点触发会更新它，直接赋值 property 也会同步本地或 Portal 面板；`open-change` 仅用户来源的开关时派发。第一个 Tooltip 显示后，相邻 Tooltip 会立即切换；其余 pointer/focus 触发使用延迟计时器。
 
 **CSS 自定义属性：**
 
@@ -787,6 +794,8 @@ Hover 模式使用 `pointerenter`/`pointerleave` 加延迟控制。Click 模式�
 **方法：** `openMenu()`, `closeAll()`
 
 菜单项：`web-ui-dropdown-item`、`web-ui-dropdown-divider`、`web-ui-dropdown-header`。子菜单在 `web-ui-dropdown-item` 上通过 `submenu` 属性启用。完整键盘导航支持。
+
+**trigger ARIA：** `aria-haspopup="menu"`、`aria-expanded` 与 `aria-controls`（指向根菜单面板）回写到 `trigger` slot 的首个 assigned element。trigger slot 请放入可交互元素。
 
 #### `<web-ui-dropdown-item>`
 

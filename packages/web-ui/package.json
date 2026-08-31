@@ -48,7 +48,8 @@
   "dependencies": {
     "@floating-ui/dom": "catalog:",
     "@greypan/browser-kit": "workspace:*",
-    "@greypan/js-kit": "workspace:*"
+    "@greypan/js-kit": "workspace:*",
+    "@lit/context": "catalog:"
   },
   "devDependencies": {
     "@greypan/tsconfig": "workspace:*",

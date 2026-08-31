@@ -187,6 +187,34 @@ Components own their role and interaction state. Browser-native composed events 
 remain the primary interaction API. Kebab-case custom events such as `open-change` describe user-originated component
 state changes; assigning a property programmatically does not emit them.
 
+### Controlled state semantics
+
+`web-ui-*` elements do not use a single "controlled" contract; three distinct state models exist, chosen per component
+family by the nature of the interaction. Do not assume `controlled` means the same thing across components.
+
+**User-originated events only (all `open`-style components: collapse, popover, dropdown, tooltip, dialog, drawer, back-top).**
+`*-change` events (`open-change`, etc.) fire only for user-originated toggles; assigning the property programmatically
+(`el.open = true`) or calling an imperative method (`show()`, `close()`, `toggle()`) never emits. Components self-manage
+their `open` value unless you coordinate externally — you may observe the event and write it back for your own state, but
+the component does not require or wait for that write-back.
+
+**Request-then-write-back (`controlled` on dialog and drawer only).**
+With `controlled`, user close actions (Escape, backdrop, built-in close, drag-release) only _request_ `open=false`; the
+component does not change its own state, and it stays open until the consumer writes `open=false`. This is the modal
+confirmation semantics — closing a dialog or drawer is typically an operation that needs consumer approval (unsaved form,
+confirmation), and unlike instantaneous open/close, it is not safe for the component to self-commit. Only these two modal
+components use this mode; the instant open/close family (collapse, popover, dropdown, tooltip) does not need it.
+
+**Native form-model (input, textarea, input-number, select, checkbox, radio, switch, autocomplete).**
+The control manages its own value/checked state internally; user interaction flips it immediately and then dispatches
+native `input`/`change` events. Assigning the property programmatically (`el.checked = true`) overrides the internal
+state. This mirrors native `<input type="checkbox">` — there is no `controlled` prop because the value is always readable
+and writable, and React/Vue layers provide their own controlled wrappers on top. For interactions that need an external
+round-trip before the flip is durable (e.g. a switch that should only stay on after an API call succeeds), use the
+optimistic-update path: flip immediately, observe `change`, set the control's `loading` during the request (this blocks
+further interaction and shows a spinner), and on failure write the property back (`el.checked = false`) plus surface a
+toast. The flip-before-approval window is accepted; there is no `controlled` prop for a reject-before-flip contract.
+
 ### Form-associated controls
 
 All form controls participate in native `FormData`, constraint validation, `form.reset()` and browser form-state restoration. The control captures its reset default once, after declarative attributes have been applied on its first connection. Later runtime property updates do not redefine that default. A disabled ancestor `fieldset` disables validation and interaction without mutating the control's public `disabled` property. For checkbox/radio groups, the group is the single submission, reset and restoration owner; managed child controls do not submit or restore an independent state.
@@ -231,8 +259,6 @@ All form controls participate in native `FormData`, constraint validation, `form
 | **Notification**     | [`<web-ui-toast>`](#web-ui-toast)                         |
 | **Sub-items**        | [`<web-ui-option>`](#web-ui-option)                       |
 |                      | [`<web-ui-segmented-trigger>`](#web-ui-segmented-trigger) |
-|                      | [`<web-ui-collapse-trigger>`](#web-ui-collapse-trigger)   |
-|                      | [`<web-ui-collapse-content>`](#web-ui-collapse-content)   |
 
 ## API Reference
 
@@ -657,51 +683,35 @@ Closing keeps the native dialog in the top layer until the `--wui-duration-drawe
 
 #### `<web-ui-collapse>`
 
-In-flow expand/collapse container with animated height (or width) transition. Composed of a trigger and a content element; no portal, no scroll lock, no focus management.
-
-| Attribute    | Type      | Default | Description                                         |
-| ------------ | --------- | ------- | --------------------------------------------------- |
-| `open`       | `boolean` | `false` | Expanded state (strictly controlled, single source) |
-| `disabled`   | `boolean` | `false` | Disables the trigger; expanded content is kept      |
-| `horizontal` | `boolean` | `false` | Animate width instead of height                     |
-
-**Events:** `open-change` (`CustomEvent<{ open: boolean }>`). Emitted only for user-originated toggles (trigger click). Programmatic writes (`open`, `show()`, `close()`, `toggle()`) never emit. Nested collapses: an inner `open-change` bubbles through the outer root (composed event); distinguish by `event.target`.
-
-**Slots:** `default` (one `web-ui-collapse-trigger` + one `web-ui-collapse-content`)
-
-**Methods:** `show()`, `close()`, `toggle()`
-
-The initial `open` attribute settles instantly without playing the animation. Multiple triggers/contents are allowed; the first content supplies `aria-controls`.
-
-**Known limitations:** the `horizontal` animation reflows content while width changes. Keep trigger content non-interactive (an interactive child inside the trigger button is invalid HTML).
-
-#### `<web-ui-collapse-trigger>`
-
-Toggle button for `<web-ui-collapse>`. Renders a native `<button>` wrapping arbitrary slot content, with `aria-expanded`, `aria-controls` and native disabled wired from the root collapse.
-
-The trigger inherits the surrounding typography (`font: inherit`) instead of the `--wui-font-size` control token — it is an in-flow disclosure label (like `<summary>`), not a standalone control.
-
-**Events:** none (the root collapse emits `open-change`)
-
-**Slots:** `default` (trigger label; keep it non-interactive)
-
-Not form-associated (child of collapse, not independent submit).
-
-#### `<web-ui-collapse-content>`
-
-Collapsible region for `<web-ui-collapse>`, animated with a CSS grid `0fr ↔ 1fr` transition (ADR-0038) — height adapts to content with zero JS measurement.
+In-flow expand/collapse container with animated height (or width) transition. Single element with two slots; no portal, no scroll lock, no focus management.
 
 | Attribute      | Type      | Default | Description                                                                                                              |
 | -------------- | --------- | ------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `open`         | `boolean` | `false` | Expanded state; self-managed on interaction, `open-change` emits only for user-originated toggles                        |
+| `disabled`     | `boolean` | `false` | Ignores trigger clicks and sets `aria-disabled` on the trigger element; expanded content is kept                         |
+| `horizontal`   | `boolean` | `false` | Animate width instead of height                                                                                          |
 | `keep-mounted` | `boolean` | `false` | Closed state keeps the content in the 0fr track with `inert` (scroll position and layout measurable) instead of `hidden` |
 
-**Events:** none
+**Events:** `open-change` (`CustomEvent<{ open: boolean }>`). Emitted only for user-originated toggles (trigger click). Programmatic writes (`open`, `show()`, `close()`, `toggle()`) never emit. Nested collapses: an inner `open-change` bubbles through the outer root (composed event); distinguish by `event.target`.
 
-**Slots:** `default` (collapsible content)
+**Slots:** `default` (trigger) + `content` (collapsible content)
 
-Not form-associated (child of collapse, not independent submit).
+**Methods:** `show()`, `close()`, `toggle()`
 
-**Closed-state semantics:** the consumer's light DOM is never moved or unmounted. Default closed state applies `hidden` to the host; with `keep-mounted` the inner container is marked `inert` while staying measurable inside the collapsed track.
+```html
+<web-ui-collapse>
+  <button type="button">Toggle me</button>
+  <div slot="content">Collapsible content</div>
+</web-ui-collapse>
+```
+
+The initial `open` attribute settles instantly without playing the animation. Nested collapses are supported.
+
+**Trigger semantics:** interaction comes from the element you put in the default slot — a native `<button>`, `<web-ui-button>`, or any other interactive element supplies Enter/Space activation and focus natively. The collapse writes `aria-expanded` / `aria-controls` (pointing at its content track) and `aria-disabled` onto the first assigned element in the trigger slot. Use an interactive element as the trigger: a plain `<span>` is clickable but has no keyboard/focus semantics.
+
+**Closed-state semantics:** the consumer's light DOM is never moved or unmounted. Default closed state applies `hidden` to the internal content container; with `keep-mounted` the inner container is marked `inert` while staying measurable inside the collapsed track.
+
+**Known limitations:** the `horizontal` animation reflows content while width changes.
 
 ---
 
@@ -729,6 +739,8 @@ Popover overlay anchored to trigger element.
 
 Hover mode uses `pointerenter`/`pointerleave` with delay. Click mode toggles on trigger click. Manual mode only responds to imperative `show()`/`close()`.
 
+**Trigger ARIA:** open/close state is written back to the trigger element: `aria-expanded` and `aria-controls` (pointing at the panel) are set on the first assigned element in the `trigger` slot (the wrapper retains them for backward compatibility). Put an interactive element (native button, `web-ui-button`) in the trigger slot.
+
 #### `<web-ui-tooltip>`
 
 Tooltip overlay using pointer/focus triggers.
@@ -749,7 +761,7 @@ Tooltip overlay using pointer/focus triggers.
 
 **Slots:** `default` (trigger), `content` (tooltip panel)
 
-`open` is a controlled visibility property. Pointer/focus triggers update it, and direct updates synchronize the local or portal panel. Adjacent tooltips open immediately after the first tooltip is visible; pointer/focus triggers otherwise use delay timers.
+`open` is a self-managed visibility property. Pointer/focus triggers update it, and direct property writes synchronize the local or portal panel; `open-change` emits only for user-originated open/close. Adjacent tooltips open immediately after the first tooltip is visible; pointer/focus triggers otherwise use delay timers.
 
 **CSS Custom Properties:**
 
@@ -799,6 +811,8 @@ Dropdown menu with multi-level submenu support.
 **Methods:** `openMenu()`, `closeAll()`
 
 Items: `<web-ui-dropdown-item>`, `<web-ui-dropdown-divider>`, `<web-ui-dropdown-header>`. Submenus via `submenu` attribute on `<web-ui-dropdown-item>`. Full keyboard navigation (Arrow keys, Home, End, Enter, Space, Escape).
+
+**Trigger ARIA:** `aria-haspopup="menu"`, `aria-expanded` and `aria-controls` (pointing at the root menu panel) are written back to the first assigned element in the `trigger` slot. Put an interactive element in the trigger slot.
 
 #### `<web-ui-dropdown-item>`
 
