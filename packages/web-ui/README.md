@@ -1083,7 +1083,7 @@ Defines foundation, color, layer, shadow, and motion tokens for its subtree. `mo
 | `--wui-color-state-layer-hover`    | `color-mix(in srgb, var(--wui-color-text) 6%, transparent)`  | `color-mix(in srgb, var(--wui-color-text) 6%, transparent)`  | Transparent hover overlay       |
 | `--wui-color-state-layer-active`   | `color-mix(in srgb, var(--wui-color-text) 15%, transparent)` | `color-mix(in srgb, var(--wui-color-text) 15%, transparent)` | Transparent pressed overlay     |
 | `--wui-color-border`               | `rgb(0 0 0 / 0.1)`                                           | `rgb(255 255 255 / 0.14)`                                    | Normal border and divider       |
-| `--wui-color-glass-border`         | `rgb(51 51 51 / 0.12)`                                       | `rgb(255 255 255 / 0.05)`                                    | Glass border tint               |
+| `--wui-color-glass-border`         | `transparent`                                                | `rgb(255 255 255 / 0.05)`                                    | Glass border tint               |
 | `--wui-color-glass-highlight`      | `rgb(255 255 255 / 0.9)`                                     | `rgb(255 255 255 / 0.22)`                                    | Glass edge highlight            |
 | `--wui-color-accent`               | `#08f`                                                       | `#0a84ff`                                                    | Accent and focused input border |
 | `--wui-color-on-accent`            | `#fff`                                                       | `#fff`                                                       | Foreground on accent            |

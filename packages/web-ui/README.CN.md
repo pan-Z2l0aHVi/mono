@@ -1071,7 +1071,7 @@ SVG 线条绘制动画，基于 `stroke-dashoffset`。直接在原元素上动�
 | `--wui-color-state-layer-hover`    | `color-mix(in srgb, var(--wui-color-text) 6%, transparent)`  | `color-mix(in srgb, var(--wui-color-text) 6%, transparent)`  | 透明悬停层             |
 | `--wui-color-state-layer-active`   | `color-mix(in srgb, var(--wui-color-text) 15%, transparent)` | `color-mix(in srgb, var(--wui-color-text) 15%, transparent)` | 透明按下层             |
 | `--wui-color-border`               | `rgb(0 0 0 / 0.1)`                                           | `rgb(255 255 255 / 0.14)`                                    | 常规边框和分隔线       |
-| `--wui-color-glass-border`         | `rgb(51 51 51 / 0.12)`                                       | `rgb(255 255 255 / 0.05)`                                    | Glass 边框色调         |
+| `--wui-color-glass-border`         | `transparent`                                                | `rgb(255 255 255 / 0.05)`                                    | Glass 边框色调         |
 | `--wui-color-glass-highlight`      | `rgb(255 255 255 / 0.9)`                                     | `rgb(255 255 255 / 0.22)`                                    | Glass 高光边缘         |
 | `--wui-color-accent`               | `#08f`                                                       | `#0a84ff`                                                    | Accent 和输入焦点边框  |
 | `--wui-color-on-accent`            | `#fff`                                                       | `#fff`                                                       | Accent 上的前景色      |

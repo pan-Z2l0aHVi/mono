@@ -99,7 +99,7 @@
   --wui-color-state-layer-hover: color-mix(in srgb, var(--wui-color-text) 6%, transparent);
   --wui-color-state-layer-active: color-mix(in srgb, var(--wui-color-text) 15%, transparent);
   --wui-color-border: rgb(0 0 0 / 0.1);
-  --wui-color-glass-border: rgb(51 51 51 / 0.12);
+  --wui-color-glass-border: transparent;
   --wui-color-glass-highlight: rgb(255 255 255 / 0.9);
   --wui-color-accent: #08f;
   --wui-color-on-accent: #fff;
