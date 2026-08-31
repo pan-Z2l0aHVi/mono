@@ -44,6 +44,62 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
     expect(getMenus()[0]?.dataset.wuiPresence).toBe('entering')
   })
 
+  it('重定位打开后，宿主重建的嵌套子项重新隐藏（不叠加一级菜单）', async () => {
+    const menu = document.createElement('web-ui-context-menu')
+    menu.innerHTML = SUBMENU
+    document.body.append(menu)
+    await menu.updateComplete
+
+    menu.openAt(100, 100)
+    await menu.updateComplete
+    await nextFrame()
+
+    const parentItem = getMenus()[0]?.querySelector<HTMLElement>('web-ui-dropdown-item')
+    if (!parentItem) throw new Error('Expected a submenu parent item')
+    parentItem.replaceChildren()
+    const fresh = document.createElement('web-ui-dropdown-item')
+    fresh.textContent = 'DOCX'
+    parentItem.appendChild(fresh)
+
+    // 在另一个位置重新定位打开（等价于在另一列表项右键）
+    menu.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, composed: true, clientX: 200, clientY: 200 }))
+    await menu.updateComplete
+    await nextFrame()
+    await nextFrame()
+
+    const nested = parentItem.querySelector('web-ui-dropdown-item')!
+    expect(nested.getAttribute('slot')).toBe('context-menu-hidden')
+    expect(nested.getBoundingClientRect().width).toBe(0)
+  })
+
+  it('无重定位的宿主重建嵌套子项，观察者刷新后不再可见叠加', async () => {
+    const menu = document.createElement('web-ui-context-menu')
+    menu.innerHTML = SUBMENU
+    document.body.append(menu)
+    await menu.updateComplete
+
+    menu.openAt(100, 100)
+    await menu.updateComplete
+    await nextFrame()
+
+    const parentItem = getMenus()[0]?.querySelector<HTMLElement>('web-ui-dropdown-item')
+    if (!parentItem) throw new Error('Expected a submenu parent item')
+
+    // 不经重定位，宿主直接重建嵌套子项（等价于网络推送/定时器触发的重渲染）
+    parentItem.replaceChildren()
+    const fresh = document.createElement('web-ui-dropdown-item')
+    fresh.textContent = 'DOCX'
+    parentItem.appendChild(fresh)
+
+    await menu.updateComplete
+    await nextFrame()
+    await nextFrame()
+
+    expect(menu.isOpen).toBe(true)
+    expect(fresh.getAttribute('slot')).toBe('context-menu-hidden')
+    expect(fresh.getBoundingClientRect().width).toBe(0)
+  })
+
   it('键盘打开后，子菜单在退出中重新打开仍可用', async () => {
     const menu = document.createElement('web-ui-context-menu')
     menu.innerHTML = SUBMENU
