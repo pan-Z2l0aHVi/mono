@@ -499,13 +499,11 @@ export class WebUiDrawer extends LitElement {
     this._closeFromUser()
   }
 
-  // 打开抽屉（命令式）
   show() {
     if (this.open) return
     this.open = true
   }
 
-  // 关闭抽屉（带动画）
   close() {
     if (!this.open) return
     this.open = false

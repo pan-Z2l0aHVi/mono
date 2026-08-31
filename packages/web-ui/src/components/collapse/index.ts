@@ -100,19 +100,16 @@ export class WebUiCollapse extends LitElement {
     else this._beginCollapse()
   }
 
-  // 打开 collapse
   show() {
     if (this.open) return
     this.open = true
   }
 
-  // 关闭 collapse
   close() {
     if (!this.open) return
     this.open = false
   }
 
-  // 切换 collapse
   toggle() {
     if (this.open) this.close()
     else this.show()

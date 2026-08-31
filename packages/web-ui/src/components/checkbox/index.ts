@@ -90,7 +90,6 @@ export class WebUiCheckbox extends LitElement {
     internals.setValidity({ valueMissing: true }, '请选择此项')
   }
 
-  // 用户点击切换
   private handleClick() {
     if (this._isDisabled) return
     const old = this._checked

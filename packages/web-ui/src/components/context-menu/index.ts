@@ -44,7 +44,6 @@ export class WebUiContextMenu extends LitElement {
   private _restoreFocusTarget?: HTMLElement
   private _shouldOpenInstantly = true
 
-  // 当前菜单是否打开
   get isOpen(): boolean {
     return this._isOpen
   }

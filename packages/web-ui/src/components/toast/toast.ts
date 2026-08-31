@@ -93,7 +93,7 @@ export class WebUiToast extends LitElement {
     this.startAutoClose()
   }
 
-  // 关闭（含退场动画）
+  // 含退场动画，结束由 transitionend 驱动后派发 close。
   dismiss(reason: ToastCloseReason = 'programmatic') {
     if (!this.visible) return
     this.visible = false

@@ -126,7 +126,6 @@ export class WebUiSlider extends LitElement {
     this._slider?.focus(options)
   }
 
-  // 移除滑块焦点
   override blur() {
     this._slider?.blur()
   }

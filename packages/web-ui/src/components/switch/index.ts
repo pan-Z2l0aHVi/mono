@@ -93,7 +93,7 @@ export class WebUiSwitch extends LitElement {
     else internals.setValidity({ valueMissing: true }, '请启用此项')
   }
 
-  // 用户点击切换开关状态，阻止 label 默认行为避免原生 checkbox 重复触发
+  // 阻止 label 默认行为，避免原生 checkbox 重复触发点击。
   private handleClick(e: Event) {
     e.preventDefault()
     if (this._dragged) {
