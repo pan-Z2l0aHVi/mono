@@ -21,7 +21,7 @@ export function getEnabledMenuItems(container: ParentNode): HTMLElement[] {
   return getMenuChildren(container).filter(item => item.matches(`${MENU_ITEM_SELECTOR}:not([disabled])`))
 }
 
-function getMovableMenuSubtrees(container: ParentNode): HTMLElement[] {
+export function getMovableMenuSubtrees(container: ParentNode): HTMLElement[] {
   const subtrees: HTMLElement[] = []
   for (const child of Array.from(container.children)) {
     if (!(child instanceof HTMLElement)) continue

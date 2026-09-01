@@ -12,6 +12,7 @@ import {
   getEnabledMenuItems,
   getMenuChildren,
   getMenuItemFromEvent,
+  getMovableMenuSubtrees,
   hideNestedMenuChildren,
   moveMenuChildren
 } from '@/shared/menu-portal/menu-tree'
@@ -39,6 +40,7 @@ export class WebUiContextMenu extends LitElement {
   private _ignoreOutsideClickTimer?: ReturnType<typeof setTimeout>
   private _hoverCleanupFns: (() => void)[] = []
   private _menu?: MenuPortalOverlay
+  private readonly _menuItemAnchors = new Map<HTMLElement, Comment>()
   private readonly _scrollLock = defineScrollLockLease().make()
   private readonly _userOpenChange = new UserChangeController()
   private _restoreFocusTarget?: HTMLElement
@@ -226,12 +228,59 @@ export class WebUiContextMenu extends LitElement {
     const menu = this._menu
     if (!menu) return
 
+    this._pruneMenuItems(menu.content)
     this._hideMenuItems()
-    moveMenuChildren(this, menu.content)
+    this._moveHostItemsToMenu(menu.content)
+    this._orderMenuItems(menu.content)
     // 宿主可能在菜单打开期间动态改写 slot 子内容（如切换上下文后重建嵌套子项），
     // 新节点没有隐藏 slot 会落入父项默认 slot 可见渲染并叠到一级菜单上；
     // 因此对已移入 content 的嵌套子项也要重新隐藏。
     hideNestedMenuChildren(menu.content, 'context-menu-hidden')
+  }
+
+  private _moveHostItemsToMenu(content: HTMLElement) {
+    getMovableMenuSubtrees(this).forEach(subtree => {
+      const marker = this._menuItemAnchors.get(subtree)
+      if (!marker || marker.parentNode !== this) {
+        marker?.remove()
+        const nextMarker = document.createComment('wui-context-menu-item')
+        this.insertBefore(nextMarker, subtree)
+        this._menuItemAnchors.set(subtree, nextMarker)
+      }
+      content.appendChild(subtree)
+    })
+  }
+
+  private _pruneMenuItems(content: HTMLElement) {
+    this._menuItemAnchors.forEach((marker, subtree) => {
+      if (subtree.parentNode === content) {
+        if (marker.isConnected && marker.parentNode === this) return
+        subtree.remove()
+      } else {
+        marker.remove()
+      }
+      this._menuItemAnchors.delete(subtree)
+    })
+  }
+
+  private _orderMenuItems(content: HTMLElement) {
+    const targetItems: HTMLElement[] = []
+    for (const node of Array.from(this.childNodes)) {
+      if (node.nodeType !== Node.COMMENT_NODE) continue
+      this._menuItemAnchors.forEach((marker, subtree) => {
+        if (marker !== node || subtree.parentNode !== content) return
+        targetItems.push(subtree)
+      })
+    }
+
+    const currentItems = Array.from(content.children)
+    const isOrdered =
+      currentItems.length === targetItems.length && currentItems.every((item, index) => item === targetItems[index])
+    if (isOrdered) return
+
+    targetItems.forEach(subtree => {
+      content.appendChild(subtree)
+    })
   }
 
   private _returnItemsToSlot() {
@@ -240,7 +289,23 @@ export class WebUiContextMenu extends LitElement {
 
     this._closeSubmenusFrom(0, true)
     this._restoreClosingSubmenus()
-    moveMenuChildren(menu.content, this)
+    this._menuItemAnchors.forEach((marker, subtree) => {
+      if (subtree.parentNode !== menu.content) {
+        marker.remove()
+        this._menuItemAnchors.delete(subtree)
+        return
+      }
+
+      const shouldRestoreAtMarker = marker.isConnected && marker.parentNode === this
+      if (shouldRestoreAtMarker) {
+        this.insertBefore(subtree, marker)
+      } else {
+        this.appendChild(subtree)
+      }
+      marker.remove()
+      this._menuItemAnchors.delete(subtree)
+    })
+    this._menuItemAnchors.clear()
   }
 
   private async _closeMenuAfterPresence() {
