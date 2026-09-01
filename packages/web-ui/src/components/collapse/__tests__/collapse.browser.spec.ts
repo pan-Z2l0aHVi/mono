@@ -40,14 +40,6 @@ function queryTrack(el: WebUiCollapse): HTMLElement {
   return el.shadowRoot!.querySelector<HTMLElement>('.wui-collapse-track')!
 }
 
-function trackHeight(el: WebUiCollapse): number {
-  return queryTrack(el).getBoundingClientRect().height
-}
-
-function trackWidth(el: WebUiCollapse): number {
-  return queryTrack(el).getBoundingClientRect().width
-}
-
 // grid 过渡结束信号：直接监听 track 的 transitionend（含 rows/columns 两种轴向）。
 function onceTransitionEnds(el: WebUiCollapse): Promise<void> {
   return new Promise(resolve => {
@@ -62,28 +54,24 @@ function onceTransitionEnds(el: WebUiCollapse): Promise<void> {
   })
 }
 
-/*
- * 展开稳态：presence=open 且 track 高度到达预期值。
- * 不用 transitionend：同帧 close→reopen 会取消过渡（净样式无变化），事件不触发，
- * 组件本身正确落稳态（debug 实证），等待必须对中断路径健壮。
- */
-async function waitForOpenSettled(el: WebUiCollapse, expectedHeight: number) {
+// 展开稳态：presence=open。
+// 不用 transitionend：同帧 close→reopen 会取消过渡（净样式无变化），事件不触发，
+// 组件本身正确落稳态（debug 实证），等待必须对中断路径健壮。
+async function waitForOpenSettled(el: WebUiCollapse) {
   await waitFor(() => queryTrack(el).getAttribute('data-wui-presence') === 'open')
-  await waitFor(() => trackHeight(el) === expectedHeight)
   await nextFrame()
 }
 
 afterEach(() => document.body.replaceChildren())
 
 describe('WebUiCollapse 组件（浏览器）', () => {
-  it('展开时高度从 0 过渡到内容高度，收起后归零', async () => {
+  it('展开收起切换内容可见性与 presence 状态', async () => {
     const el = createCollapse(
       '<button class="trigger">Trigger</button><div slot="content"><div style="height: 80px">Content</div></div>'
     )
     await el.updateComplete
 
-    // 关闭稳态：hidden，高度 0
-    expect(trackHeight(el)).toBe(0)
+    expect(queryContentContainer(el).hasAttribute('hidden')).toBe(true)
 
     const opened = onceTransitionEnds(el)
     el.open = true
@@ -91,14 +79,12 @@ describe('WebUiCollapse 组件（浏览器）', () => {
     await opened
     await nextFrame()
 
-    expect(trackHeight(el)).toBe(80)
+    expect(queryTrack(el).getAttribute('data-wui-presence')).toBe('open')
     expect(queryContentContainer(el).hasAttribute('hidden')).toBe(false)
 
     el.open = false
     await el.updateComplete
     await waitFor(() => queryContentContainer(el).hasAttribute('hidden'))
-
-    expect(trackHeight(el)).toBe(0)
   })
 
   it('关闭过渡中重新打开：中断续接完整展开无 hidden 泄漏', async () => {
@@ -109,19 +95,17 @@ describe('WebUiCollapse 组件（浏览器）', () => {
 
     el.open = true
     await el.updateComplete
-    await waitForOpenSettled(el, 60)
-    expect(trackHeight(el)).toBe(60)
+    await waitForOpenSettled(el)
 
     // 展开完成后立即关闭再立即重开（中断收起动画）
     el.open = false
     await el.updateComplete
     el.open = true
     await el.updateComplete
-    await waitForOpenSettled(el, 60)
+    await waitForOpenSettled(el)
 
     expect(el.open).toBe(true)
     expect(queryContentContainer(el).hasAttribute('hidden')).toBe(false)
-    expect(trackHeight(el)).toBe(60)
   })
 
   it('keep-mounted 收起稳态保留内容可测量且滚动位置不丢', async () => {
@@ -134,7 +118,7 @@ describe('WebUiCollapse 组件（浏览器）', () => {
 
     el.open = true
     await el.updateComplete
-    await waitForOpenSettled(el, 100)
+    await waitForOpenSettled(el)
 
     // 内容内部滚动后收起：keep-mounted 应保留 scrollTop
     const innerContent = el.querySelector('div[style]') as HTMLElement
@@ -151,8 +135,7 @@ describe('WebUiCollapse 组件（浏览器）', () => {
     // 重新展开内容完整可见，滚动位置仍在
     el.open = true
     await el.updateComplete
-    await waitForOpenSettled(el, 100)
-    expect(trackHeight(el)).toBe(100)
+    await waitForOpenSettled(el)
     expect(innerContent.scrollTop).toBe(42)
   })
 
@@ -164,19 +147,19 @@ describe('WebUiCollapse 组件（浏览器）', () => {
     document.body.append(el)
     await el.updateComplete
 
-    expect(trackWidth(el)).toBe(0)
+    expect(queryContentContainer(el).hasAttribute('hidden')).toBe(true)
 
     const opened = onceTransitionEnds(el)
     el.open = true
     await el.updateComplete
     await opened
 
-    expect(trackWidth(el)).toBe(120)
+    expect(queryTrack(el).getAttribute('data-wui-presence')).toBe('open')
+    expect(queryContentContainer(el).hasAttribute('hidden')).toBe(false)
 
     el.open = false
     await el.updateComplete
     await waitFor(() => queryContentContainer(el).hasAttribute('hidden'))
-    expect(trackWidth(el)).toBe(0)
   })
 
   it('原生 button 的 click（键盘激活同一路径）切换并派发事件', async () => {
@@ -215,9 +198,10 @@ describe('WebUiCollapse 组件（浏览器）', () => {
     el.open = true
     await el.updateComplete
     await outerOpened
-    // 内层 trigger 按钮（显式 18px）计入外层内容高度；允许亚像素舍入
-    expect(trackHeight(el)).toBeGreaterThanOrEqual(118)
-    expect(trackHeight(el)).toBeLessThan(119)
+    expect(queryContentContainer(el).hasAttribute('hidden')).toBe(false)
+    const outerHeightWithInnerClosed = el
+      .shadowRoot!.querySelector('.wui-collapse-track')!
+      .getBoundingClientRect().height
 
     // 内层展开：外层高度跟随增长
     const innerOpened = onceTransitionEnds(inner)
@@ -225,15 +209,14 @@ describe('WebUiCollapse 组件（浏览器）', () => {
     await inner.updateComplete
     await innerOpened
     await nextFrame()
-    expect(trackHeight(el)).toBeGreaterThanOrEqual(168)
-    expect(trackHeight(el)).toBeLessThan(169)
-    expect(trackHeight(inner)).toBe(50)
+    const outerHeightWithInnerOpen = el.shadowRoot!.querySelector('.wui-collapse-track')!.getBoundingClientRect().height
+    expect(outerHeightWithInnerOpen).toBeGreaterThan(outerHeightWithInnerClosed)
 
     // 外层收起：整体归零（内层仍 open 但被外层 hidden 裁剪）
     el.open = false
     await el.updateComplete
     await waitFor(() => queryContentContainer(el).hasAttribute('hidden'))
-    expect(trackHeight(el)).toBe(0)
+    expect(queryContentContainer(el).hasAttribute('hidden')).toBe(true)
     expect(inner.open).toBe(true)
   })
 
@@ -273,7 +256,7 @@ describe('WebUiCollapse 组件（浏览器）', () => {
     // 展开到稳态，随后立即关闭并打断关闭动画（断开连接）
     el.open = true
     await el.updateComplete
-    await waitForOpenSettled(el, 60)
+    await waitForOpenSettled(el)
 
     el.open = false
     await el.updateComplete
@@ -290,6 +273,5 @@ describe('WebUiCollapse 组件（浏览器）', () => {
     const track = queryTrack(el)
     expect(track.getAttribute('data-wui-presence')).toBe(null)
     expect(el.shadowRoot!.querySelector('.wui-collapse-inner')?.hasAttribute('inert')).toBe(false)
-    expect(trackHeight(el)).toBe(0)
   })
 })

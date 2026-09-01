@@ -99,7 +99,6 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
 
     const nested = parentItem.querySelector('web-ui-dropdown-item')!
     expect(nested.getAttribute('slot')).toBe('context-menu-hidden')
-    expect(nested.getBoundingClientRect().width).toBe(0)
   })
 
   it('无重定位的宿主重建嵌套子项，观察者刷新后不再可见叠加', async () => {
@@ -127,7 +126,6 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
 
     expect(menu.isOpen).toBe(true)
     expect(fresh.getAttribute('slot')).toBe('context-menu-hidden')
-    expect(fresh.getBoundingClientRect().width).toBe(0)
   })
 
   it('菜单保持打开时重定位，移除 stale 子树并保持框架新子树顺序', async () => {

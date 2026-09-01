@@ -121,12 +121,14 @@ describe('WebUiContextMenu 组件', () => {
     it('菜单定位在指定坐标', async () => {
       const el = createContextMenu({}, SIMPLE)
       await waitForUpdate(el)
-      el.openAt(100, 200)
+      const x = 100
+      const y = 200
+      el.openAt(x, y)
       await waitForMenuOpen(el)
       const menu = getMenu()!
       expect(menu).toBeTruthy()
-      expect(menu.style.left).toBe('100px')
-      expect(menu.style.top).toBe('200px')
+      expect(menu.style.left).toBe(`${x}px`)
+      expect(menu.style.top).toBe(`${y}px`)
       cleanupElement(el)
     })
 
@@ -293,19 +295,21 @@ describe('WebUiContextMenu 组件', () => {
       const el = createContextMenu({}, SIMPLE)
       await waitForUpdate(el)
 
+      const x = 100
+      const y = 200
       el.dispatchEvent(
         new MouseEvent('contextmenu', {
           bubbles: true,
-          clientX: 100,
-          clientY: 200
+          clientX: x,
+          clientY: y
         })
       )
       await waitForMenuOpen(el)
 
       expect(el.isOpen).toBe(true)
       const menu = getMenu()!
-      expect(menu.style.left).toBe('100px')
-      expect(menu.style.top).toBe('200px')
+      expect(menu.style.left).toBe(`${x}px`)
+      expect(menu.style.top).toBe(`${y}px`)
 
       cleanupElement(el)
     })
