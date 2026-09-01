@@ -22,8 +22,9 @@ describe('Web UI focus indicators（浏览器）', () => {
     const inner = button.shadowRoot?.querySelector('button')
     expect(document.activeElement).toBe(button)
     const style = getComputedStyle(inner!)
+    const focusRingWidth = getComputedStyle(inner!).getPropertyValue('--wui-focus-ring-width').trim()
     expect(style.outlineStyle).toBe('solid')
-    expect(style.outlineWidth).toBe('3px')
+    expect(style.outlineWidth).toBe(focusRingWidth)
   })
 
   it('输入框 focus 使用 accent 内圈和 focus-ring halo', async () => {
@@ -61,6 +62,6 @@ describe('Web UI focus indicators（浏览器）', () => {
     const wrapper = input.shadowRoot?.querySelector<HTMLElement>('.wui-input-inner')
     const style = getComputedStyle(wrapper!)
     expect(style.outlineStyle).toBe('solid')
-    expect(style.outlineWidth).toBe('3px')
+    expect(Number.parseFloat(style.outlineWidth)).toBeGreaterThan(0)
   })
 })

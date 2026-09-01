@@ -27,8 +27,8 @@
 
   box-sizing: border-box;
   width: var(--wui-input-width, 200px);
-  min-width: var(--wui-control-size, 40px);
-  height: var(--wui-control-size, 40px);
+  min-width: var(--wui-control-size, 36px);
+  height: var(--wui-control-size, 36px);
   padding: 0 12px;
   border-radius: calc(infinity * 1px);
 

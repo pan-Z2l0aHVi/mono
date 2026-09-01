@@ -62,7 +62,7 @@ export class WebUiButton extends LitElement {
 
   private get _sizeStyle(): Record<string, string> {
     // size 仅控制按钮高度；icon 模式下 min-width 同步为相同值，天然保持正方形。
-    const size = this._groupContext ? '32' : this.size
+    const size = this._groupContext ? '30' : this.size
     return size ? { '--wui-control-size': `${size}px` } : {}
   }
 

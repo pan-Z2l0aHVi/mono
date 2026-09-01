@@ -25,8 +25,9 @@
 
   box-sizing: border-box;
   width: var(--wui-textarea-width, 200px);
-  min-width: var(--wui-control-size, 40px);
-  padding: 9px 12px;
+  min-width: var(--wui-control-size, 36px);
+  min-height: var(--wui-control-size, 36px);
+  padding: 7.5px 12px;
   border-radius: 20px;
 
   transition:
@@ -41,7 +42,7 @@
 /* ===== Borderless ===== */
 
 :host([borderless]) .wui-textarea-inner {
-  padding: 9px 0;
+  padding: 7.5px 0;
   border: none;
 
   background: transparent;
@@ -115,13 +116,14 @@ slot.empty {
 /* ===== Clear button ===== */
 
 /* 复用 web-ui-button icon ghost：仅覆盖颜色为 faint 并对齐首行，保持弱意图清除图标观感；
-   负 margin-left 抵消容器 8px flex gap，让清除按钮紧贴文本域内容 */
+  负 margin-left 抵消容器 flex gap，让清除按钮紧贴文本域内容
+  负 margin-right 抵消 button padding，让清除按钮右侧 spacing 视觉上协调 */
 .wui-textarea-inner web-ui-button[variant='ghost'] {
   --wui-button-color: var(--wui-textarea-clear-color);
 
-  /* 与首行文字垂直居中对齐：容器 align-items: flex-start 使按钮贴内容区顶部（9px 留白处），
-     而首行中心在 9px + 行高半程；要让 24px 按钮（18px 图标居中）的图标中心落在首行中心，
-     需上移 (行高 − 按钮高度) / 2，行高 = font-size × 1.5（与 textarea 的 line-height 一致） */
+  /* 与首行文字垂直居中对齐：容器 align-items: flex-start 使按钮贴内容区顶部，
+    首行中心 = padding-top + 行高/2；24px 按钮需相对内容区上移 (行高 − 按钮高度) / 2 */
   margin-top: calc((var(--wui-font-size, 14px) * 1.5 - 24px) / 2);
+  margin-right: -4px;
   margin-left: -8px;
 }

@@ -24,8 +24,8 @@ import {
 
     <h2>自定义尺寸</h2>
     <div class="mb-3 flex flex-wrap gap-2">
-      <web-ui-button variant="primary" size="32">小号 32</web-ui-button>
-      <web-ui-button variant="primary">默认 40</web-ui-button>
+      <web-ui-button variant="primary" size="28">小号 28</web-ui-button>
+      <web-ui-button variant="primary">默认 36</web-ui-button>
       <web-ui-button variant="primary" size="48">大号 48</web-ui-button>
       <web-ui-button variant="secondary" size="32" style="--wui-button-width: 100px">32×100</web-ui-button>
       <web-ui-button variant="secondary" size="40" style="--wui-button-width: 200px">40×200</web-ui-button>

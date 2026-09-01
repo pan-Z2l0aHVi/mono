@@ -22,8 +22,8 @@
 
   box-sizing: border-box;
   width: var(--wui-input-width, 200px);
-  min-width: var(--wui-control-size, 40px);
-  height: var(--wui-control-size, 40px);
+  min-width: var(--wui-control-size, 36px);
+  height: var(--wui-control-size, 36px);
   padding: 0 4px;
   border-radius: calc(infinity * 1px);
 
@@ -80,8 +80,8 @@ input {
   align-items: center;
   justify-content: center;
 
-  width: 32px;
-  height: 32px;
+  width: 30px;
+  height: 30px;
   padding: 0;
   border: none;
   border-radius: calc(infinity * 1px);

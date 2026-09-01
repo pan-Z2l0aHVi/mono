@@ -36,8 +36,8 @@ button {
 
   box-sizing: border-box;
   width: var(--wui-button-width, max-content);
-  min-width: var(--wui-control-size, 40px);
-  height: var(--wui-control-size, 40px);
+  min-width: var(--wui-control-size, 36px);
+  height: var(--wui-control-size, 36px);
   padding: 0 var(--wui-button-px, 12px);
   border: 1px solid transparent;
   border-radius: calc(infinity * 1px);
