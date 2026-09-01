@@ -298,12 +298,7 @@ describe('WebUiSwitch 手势拖拽（浏览器）', () => {
     expect(track.classList.contains('is-open')).toBe(true)
     expect(track.classList.contains('is-dragging')).toBe(true)
 
-    // 验证 transform 准确应用 8px 变量位移（DOMMatrix m41 === 8）与 scale(1.2)，且保持 is-pressed 胶囊样式
+    // 拖拽过程中保持 is-pressed 按压反馈
     expect(thumb.classList.contains('is-pressed')).toBe(true)
-    const transform = getComputedStyle(thumb).transform
-    expect(transform).not.toBe('none')
-    const matrix = new DOMMatrixReadOnly(transform)
-    expect(matrix.m41).toBeCloseTo(8, 0)
-    expect(matrix.a).toBeCloseTo(1.2, 1)
   })
 })

@@ -41,7 +41,7 @@ export class WebUiSwitch extends LitElement {
   @state() private _dragProgress = 0
 
   private _dragged = false
-  private _maxTravel = 24
+  private _maxTravel = 20
   private _startOffset = 0
   private _dragGestureHandle: DragGestureHandle | null = null
 
@@ -115,11 +115,12 @@ export class WebUiSwitch extends LitElement {
 
     const track = this.renderRoot.querySelector<HTMLElement>('.wui-switch-track')
     if (track) {
-      const trackWidth = track.getBoundingClientRect().width || 48
-      // 胶囊压感宽度为 32px，因此拖拽行程为 trackWidth - 4 - 32 = 12px
-      this._maxTravel = Math.max(1, trackWidth - 4 - 32)
+      const trackWidth = track.getBoundingClientRect().width || 40
+      // 拖拽时 thumb 的 pressed 布局盒为 20px（scale(1.5) 视觉放大），因此行程按 20px 布局盒钳制；
+      // 释放后的 checked 静止位移为 20px（16px thumb），两者由 transition 衔接。
+      this._maxTravel = Math.max(1, trackWidth - 4 - 20)
     } else {
-      this._maxTravel = 12
+      this._maxTravel = 16
     }
 
     this._startOffset = this._checked ? this._maxTravel : 0
