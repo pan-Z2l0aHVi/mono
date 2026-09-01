@@ -70,7 +70,7 @@
 
   position: absolute;
   z-index: 2;
-  top: calc(100% + 4px);
+  top: calc(100% + 2px);
   right: var(--wui-slider-marks-inset, 0);
   left: var(--wui-slider-marks-inset, 0);
 
@@ -83,7 +83,7 @@
   top: var(--wui-slider-marks-inset, 0);
   right: auto;
   bottom: var(--wui-slider-marks-inset, 0);
-  left: calc(100% + 4px);
+  left: calc(100% + 2px);
 
   width: 4px;
   height: auto;
@@ -120,8 +120,8 @@
   transform-origin: center center;
   transform: translate(-50%, -50%) scale(1);
 
-  width: var(--wui-slider-thumb-height, 32px);
-  height: var(--wui-slider-thumb-width, 24px);
+  width: var(--wui-slider-thumb-width, 30px);
+  height: var(--wui-slider-thumb-height, 20px);
   border-radius: calc(infinity * 1px);
 
   transition:
@@ -129,11 +129,11 @@
     background-color var(--wui-duration-press, 80ms) ease;
 
   &:not(.is-dragging) {
-    background-color: var(--wui-color-surface, #fff);
+    background-color: var(--wui-color-on-control, #fff);
   }
 
   &.is-dragging {
-    transform: translate(-50%, -50%) scale(1.2);
+    transform: translate(-50%, -50%) scale(1.5);
     background-color: transparent;
   }
 }
@@ -145,6 +145,6 @@
   transform: translate(-50%, 50%) scale(1);
 
   &.is-dragging {
-    transform: translate(-50%, 50%) scale(1.2);
+    transform: translate(-50%, 50%) scale(1.5);
   }
 }

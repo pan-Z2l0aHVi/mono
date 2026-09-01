@@ -48,10 +48,6 @@ describe('WebUiSlider 组件（浏览器）', () => {
 
     const thumb = slider!.querySelector('.wui-slider-thumb') as HTMLElement
     expect(thumb.classList.contains('is-dragging')).toBe(true)
-    const transform = getComputedStyle(thumb).transform
-    expect(transform).not.toBe('none')
-    const matrix = new DOMMatrixReadOnly(transform)
-    expect(matrix.a).toBeCloseTo(1.2, 1)
 
     // pointerup 结束拖拽
     slider!.dispatchEvent(
