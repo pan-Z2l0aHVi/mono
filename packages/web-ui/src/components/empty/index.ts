@@ -21,6 +21,10 @@ export class WebUiEmpty extends LitElement {
 
   @property({ type: String, reflect: true }) description = ''
 
+  private get _iconSize(): number {
+    return this._size === 'small' ? 16 : this._size === 'large' ? 32 : 24
+  }
+
   @property({ type: String, reflect: true })
   set size(value: string) {
     const normalized = normalizeLiteral(value, ALLOWED_SIZES, 'medium')
@@ -69,7 +73,7 @@ export class WebUiEmpty extends LitElement {
     return html`
       <section class="empty">
         <div class="empty-icon wui-glass" aria-hidden="true">
-          <slot name="icon"><web-ui-icon .icon=${lucideInbox}></web-ui-icon></slot>
+          <slot name="icon"><web-ui-icon .icon=${lucideInbox} .size=${this._iconSize}></web-ui-icon></slot>
         </div>
         <div class=${classMap({ 'empty-title': true, 'is-hidden': !showTitle })}>
           <slot @slotchange=${this._syncSlotContent}>${this.title}</slot>

@@ -654,7 +654,7 @@ Side drawer using native `<dialog>` with closing animation. In non-headless mode
 | `dialog-label`      | `string`                                 | `''`      | Accessible name for the internal native dialog; required in headless mode         |
 | `draggable`         | `boolean`                                | `false`   | Show a drag bar on the inner edge for drag-to-close gestures                      |
 
-**Events:** `open-change` (`CustomEvent<{ open: boolean }>`). With `controlled`, Escape, backdrop, the built-in close button and drag-release only request `open=false`; the drawer remains open until the consumer writes `open=false`. Programmatic APIs (`show()`, `close()`, assigning `open`) stay direct and never emit. If native dialog closure occurs while a request is pending, the drawer restores its open top-layer state and emits the same request.
+**Events:** `open-change` (`CustomEvent<{ open: boolean }>`). With `controlled`, Escape, backdrop, the built-in close button and drag-release only request `open=false`; the drawer remains open until the consumer writes `open=false`. Programmatic APIs (`show()`, `close()`, assigning `open`) stay direct and never emit. If native dialog closure occurs while a request is pending, the drawer restores its open top-layer state and emits the same request. With nested drawers, an inner `open-change` bubbles through the outer root (composed event); distinguish by `event.target`.
 
 **Slots:** `header`, `default`, `footer` — with `headless`, only the `default` slot is rendered.
 
@@ -1080,23 +1080,24 @@ Defines foundation, color, layer, shadow, and motion tokens for its subtree. `mo
 
 | Property                           | Light default                                                | Dark default                                                 | Description                     |
 | ---------------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------- |
-| `--wui-color-page`                 | `#fff`                                                       | `#18181a`                                                    | Page background                 |
+| `--wui-color-page`                 | `#fff`                                                       | `#292c2e`                                                    | Page background                 |
 | `--wui-color-surface`              | `#fff`                                                       | `#2c2c2e`                                                    | Plain surface                   |
 | `--wui-color-surface-raised`       | `#f2f2f7`                                                    | `#2c2c2e`                                                    | Raised surface                  |
-| `--wui-color-surface-control`      | `#dfdfdf`                                                    | `#3a3a3c`                                                    | Neutral control surface         |
+| `--wui-color-surface-control`      | `#dfdfdf`                                                    | `#2c2c2e`                                                    | Neutral control surface         |
 | `--wui-color-surface-track`        | `#e5e5ea`                                                    | `#444446`                                                    | Slider and switch track surface |
+| `--wui-color-surface-menu`         | `rgb(246 246 246 / 0.82)`                                    | `rgb(30 30 32 / 0.92)`                                       | Menu and floating panel surface |
 | `--wui-color-surface-glass`        | `rgb(250 250 250 / 0.34)`                                    | `rgb(44 44 46 / 0.42)`                                       | Liquid glass surface            |
 | `--wui-color-surface-glass-hover`  | `color-mix(... text 6%, surface-glass)`                      | `color-mix(... text 6%, surface-glass)`                      | Full glass hover background     |
 | `--wui-color-surface-glass-active` | `color-mix(... text 15%, surface-glass)`                     | `color-mix(... text 15%, surface-glass)`                     | Full glass pressed background   |
-| `--wui-color-surface-overlay`      | `rgb(246 246 246 / 0.82)`                                    | `rgb(44 44 46 / 0.82)`                                       | Translucent overlay surface     |
-| `--wui-color-text`                 | `#1b1b1b`                                                    | `#f5f5f7`                                                    | Primary text                    |
+| `--wui-color-surface-overlay`      | `rgb(246 246 246 / 0.82)`                                    | `rgb(20 20 22 / 0.9)`                                        | Translucent overlay surface     |
+| `--wui-color-text`                 | `#1b1b1b`                                                    | `#e9eaea`                                                    | Primary text                    |
 | `--wui-color-text-secondary`       | `#6a6a6a`                                                    | `#a1a1a6`                                                    | Secondary text                  |
 | `--wui-color-text-tertiary`        | `color-mix(in srgb, var(--wui-color-text) 35%, transparent)` | `color-mix(in srgb, var(--wui-color-text) 42%, transparent)` | Tertiary text and quiet icons   |
 | `--wui-color-text-disabled`        | `color-mix(in srgb, var(--wui-color-text) 32%, transparent)` | `color-mix(in srgb, var(--wui-color-text) 38%, transparent)` | Disabled foreground text        |
 | `--wui-color-state-layer-hover`    | `color-mix(in srgb, var(--wui-color-text) 6%, transparent)`  | `color-mix(in srgb, var(--wui-color-text) 6%, transparent)`  | Transparent hover overlay       |
 | `--wui-color-state-layer-active`   | `color-mix(in srgb, var(--wui-color-text) 15%, transparent)` | `color-mix(in srgb, var(--wui-color-text) 15%, transparent)` | Transparent pressed overlay     |
 | `--wui-color-border`               | `rgb(0 0 0 / 0.1)`                                           | `rgb(255 255 255 / 0.14)`                                    | Normal border and divider       |
-| `--wui-color-glass-border`         | `rgb(51 51 51 / 0.12)`                                       | `rgb(255 255 255 / 0.16)`                                    | Glass border tint               |
+| `--wui-color-glass-border`         | `transparent`                                                | `rgb(255 255 255 / 0.05)`                                    | Glass border tint               |
 | `--wui-color-glass-highlight`      | `rgb(255 255 255 / 0.9)`                                     | `rgb(255 255 255 / 0.22)`                                    | Glass edge highlight            |
 | `--wui-color-accent`               | `#08f`                                                       | `#0a84ff`                                                    | Accent and focused input border |
 | `--wui-color-on-accent`            | `#fff`                                                       | `#fff`                                                       | Foreground on accent            |

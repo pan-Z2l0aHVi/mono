@@ -164,7 +164,6 @@ button:active:not(:disabled) {
 /* ===== Group context ===== */
 
 button.is-grouped {
-  --wui-button-color: var(--wui-color-text, #1b1b1b);
   --wui-button-bg: transparent;
   --wui-button-bg-hover: var(
     --wui-color-state-layer-hover,

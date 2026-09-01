@@ -520,6 +520,177 @@ describe('WebUiContextMenu 组件', () => {
     })
   })
 
+  describe('已打开时再次定位', () => {
+    it('宿主重渲染嵌套子项后重新打开，新子项被重新隐藏', async () => {
+      const el = createContextMenu(
+        {},
+        '<web-ui-dropdown-item submenu>导出<web-ui-dropdown-item>PDF</web-ui-dropdown-item></web-ui-dropdown-item>'
+      )
+      await waitForUpdate(el)
+      el.openAt(100, 100)
+      await waitForMenuOpen(el)
+
+      // 模拟宿主切换上下文：重建嵌套子项（新节点不携带隐藏 slot）
+      const parentItem = getFirstMenuItem()
+      parentItem.replaceChildren()
+      const freshChild = document.createElement('web-ui-dropdown-item')
+      freshChild.textContent = 'DOCX'
+      parentItem.appendChild(freshChild)
+
+      // 在另一个位置重新定位打开
+      el.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, clientX: 200, clientY: 200 }))
+      await waitForMenuOpen(el)
+
+      const nested = parentItem.querySelector('web-ui-dropdown-item')!
+      expect(nested.getAttribute('slot')).toBe('context-menu-hidden')
+
+      // 隐藏不破坏子菜单打开：点击父项仍能以重建的子项打开子菜单
+      parentItem.click()
+      await waitForUpdate(el)
+      expect(getSubmenu()?.textContent).toContain('DOCX')
+
+      cleanupElement(el)
+    })
+
+    it('无重定位的宿主重建嵌套子项，观察者刷新后新子项被重新隐藏', async () => {
+      const el = createContextMenu(
+        {},
+        '<web-ui-dropdown-item submenu>导出<web-ui-dropdown-item>PDF</web-ui-dropdown-item></web-ui-dropdown-item>'
+      )
+      await waitForUpdate(el)
+      el.openAt(100, 100)
+      await waitForMenuOpen(el)
+
+      // 不经重定位（无 contextmenu/openAt），宿主直接重建父项的嵌套子项
+      const parentItem = getFirstMenuItem()
+      parentItem.replaceChildren()
+      const freshChild = document.createElement('web-ui-dropdown-item')
+      freshChild.textContent = 'DOCX'
+      parentItem.appendChild(freshChild)
+
+      // MutationObserver 微任务 + 刷新 rAF
+      await new Promise(resolve => requestAnimationFrame(resolve))
+      await new Promise(resolve => requestAnimationFrame(resolve))
+
+      expect(el.isOpen).toBe(true)
+      expect(freshChild.getAttribute('slot')).toBe('context-menu-hidden')
+
+      cleanupElement(el)
+    })
+
+    it('子菜单打开期间重建子项后关闭子菜单，归还的子项被重新隐藏', async () => {
+      const el = createContextMenu(
+        {},
+        '<web-ui-dropdown-item submenu>导出<web-ui-dropdown-item>PDF</web-ui-dropdown-item></web-ui-dropdown-item>'
+      )
+      await waitForUpdate(el)
+      el.openAt(100, 100)
+      await waitForMenuOpen(el)
+
+      const parentItem = getFirstMenuItem()
+      parentItem.click()
+      await waitForUpdate(el)
+      expect(getSubmenu()).toBeTruthy()
+
+      // 子菜单打开期间宿主重建父项内的嵌套子项
+      const freshChild = document.createElement('web-ui-dropdown-item')
+      freshChild.textContent = 'DOCX'
+      parentItem.appendChild(freshChild)
+      await new Promise(resolve => requestAnimationFrame(resolve))
+
+      // Escape 关闭子菜单，归还的子项必须回到隐藏态
+      el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+      await waitForUpdate(el)
+      await new Promise(resolve => requestAnimationFrame(resolve))
+
+      expect(getSubmenu()).toBeNull()
+      const nestedSlots = [...parentItem.querySelectorAll('web-ui-dropdown-item')].map(item =>
+        item.getAttribute('slot')
+      )
+      expect(nestedSlots).toEqual(['context-menu-hidden', 'context-menu-hidden'])
+
+      cleanupElement(el)
+    })
+
+    it('宿主替换整个父项节点，观察者刷新后新父项的嵌套子项被重新隐藏', async () => {
+      const el = createContextMenu(
+        {},
+        '<web-ui-dropdown-item submenu>导出<web-ui-dropdown-item>PDF</web-ui-dropdown-item></web-ui-dropdown-item>'
+      )
+      await waitForUpdate(el)
+      el.openAt(100, 100)
+      await waitForMenuOpen(el)
+
+      // 模拟宿主框架整体替换父项节点（旧父项连同隐藏子项一并丢弃）
+      const oldParent = getFirstMenuItem()
+      const newParent = document.createElement('web-ui-dropdown-item')
+      newParent.setAttribute('submenu', '')
+      newParent.textContent = '导出'
+      const nested = document.createElement('web-ui-dropdown-item')
+      nested.textContent = 'DOCX'
+      newParent.appendChild(nested)
+      oldParent.replaceWith(newParent)
+
+      await new Promise(resolve => requestAnimationFrame(resolve))
+      await new Promise(resolve => requestAnimationFrame(resolve))
+
+      expect(el.isOpen).toBe(true)
+      expect(nested.getAttribute('slot')).toBe('context-menu-hidden')
+
+      // 新父项仍可打开子菜单
+      newParent.click()
+      await waitForUpdate(el)
+      expect(getSubmenu()?.textContent).toContain('DOCX')
+
+      cleanupElement(el)
+    })
+
+    it('打开期间宿主新增顶层项，刷新后进入 portal 内容', async () => {
+      const el = createContextMenu({}, '<web-ui-dropdown-item>编辑</web-ui-dropdown-item>')
+      await waitForUpdate(el)
+      el.openAt(100, 100)
+      await waitForMenuOpen(el)
+
+      const freshItem = document.createElement('web-ui-dropdown-item')
+      freshItem.textContent = '复制'
+      el.appendChild(freshItem)
+
+      await new Promise(resolve => requestAnimationFrame(resolve))
+      await new Promise(resolve => requestAnimationFrame(resolve))
+
+      expect(el.isOpen).toBe(true)
+      expect(getMenuItems().map(item => item.textContent?.trim())).toContain('复制')
+
+      cleanupElement(el)
+    })
+  })
+
+  describe('生命周期', () => {
+    it('打开期间脱离文档后重连，状态复位且菜单可重新打开', async () => {
+      const el = createContextMenu({}, SIMPLE)
+      await waitForUpdate(el)
+      el.openAt(100, 100)
+      await waitForMenuOpen(el)
+      expect(el.isOpen).toBe(true)
+
+      // detach-while-open：菜单开着时移出文档再挂回
+      el.remove()
+      document.body.appendChild(el)
+      await waitForUpdate(el)
+
+      expect(el.isOpen).toBe(false)
+
+      // 重连后 openAt 走全新打开路径，portal 正常重建
+      el.openAt(200, 200)
+      await waitForMenuOpen(el)
+      expect(el.isOpen).toBe(true)
+      expect(getMenu()).toBeTruthy()
+      expect(getMenuItems().map(item => item.textContent?.trim())).toEqual(['编辑', '复制'])
+
+      cleanupElement(el)
+    })
+  })
+
   describe('键盘 ContextMenu 键', () => {
     it('ContextMenu 键打开菜单', async () => {
       const el = createContextMenu({}, SIMPLE)

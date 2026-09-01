@@ -7,6 +7,19 @@ import '..'
 afterEach(() => document.body.replaceChildren())
 
 describe('WebUiButton 组件（浏览器）', () => {
+  it('glass 按钮使用不占布局的 glass border ring', async () => {
+    const btn = document.createElement('web-ui-button')
+    btn.variant = 'glass'
+    btn.textContent = 'OK'
+    document.body.append(btn)
+    await btn.updateComplete
+
+    const inner = btn.shadowRoot?.querySelector('button') as HTMLElement
+    const boxShadow = getComputedStyle(inner).boxShadow
+    expect(boxShadow).toContain('0px 0px 0px 1px inset')
+    expect(boxShadow).toContain('51, 51, 51')
+  })
+
   it('将规范化后的 type 传给真实原生按钮', async () => {
     const button = document.createElement('web-ui-button')
     button.setAttribute('type', 'invalid')

@@ -12,6 +12,7 @@ import {
   getEnabledMenuItems,
   getMenuChildren,
   getMenuItemFromEvent,
+  getMovableMenuSubtrees,
   hideNestedMenuChildren,
   moveMenuChildren
 } from '@/shared/menu-portal/menu-tree'
@@ -39,10 +40,17 @@ export class WebUiContextMenu extends LitElement {
   private _ignoreOutsideClickTimer?: ReturnType<typeof setTimeout>
   private _hoverCleanupFns: (() => void)[] = []
   private _menu?: MenuPortalOverlay
+  private readonly _menuItemAnchors = new Map<HTMLElement, Comment>()
   private readonly _scrollLock = defineScrollLockLease().make()
   private readonly _userOpenChange = new UserChangeController()
   private _restoreFocusTarget?: HTMLElement
   private _shouldOpenInstantly = true
+  private _refreshScheduled = false
+  // 菜单打开期间宿主可能不经重定位直接改写子内容（网络推送、定时器等），
+  // 新节点缺隐藏 slot 会可见叠加到菜单上；观察 portal 内容并在下一帧重新同步。
+  private readonly _contentObserver = new MutationObserver(() => {
+    if (this._isOpen) this._scheduleRefresh()
+  })
 
   get isOpen(): boolean {
     return this._isOpen
@@ -71,6 +79,7 @@ export class WebUiContextMenu extends LitElement {
     document.removeEventListener('wheel', this._onWheel, true)
     document.removeEventListener('touchmove', this._onTouchMove, true)
     document.removeEventListener('keydown', this._onDocumentKeydown)
+    this._contentObserver.disconnect()
     clearTimeout(this._submenuTimer)
     clearTimeout(this._ignoreOutsideClickTimer)
     this._hoverCleanupFns.forEach(cleanup => cleanup())
@@ -80,6 +89,10 @@ export class WebUiContextMenu extends LitElement {
     this._menu = undefined
     this._closeSubmenusFrom(0, true)
     this._restoreClosingSubmenus()
+    // 脱离文档即视为关闭：否则重连后 _isOpen 仍为 true 而 _menu 已清空，
+    // 下次 openAt 会走已打开分支静默失败，菜单无法再打开。
+    this._isOpen = false
+    this._restoreFocusTarget = undefined
   }
 
   protected override updated(changed: Map<string, unknown>) {
@@ -98,17 +111,19 @@ export class WebUiContextMenu extends LitElement {
           this._menu.panel.setAttribute('aria-label', '上下文菜单')
           this._menu.panel.addEventListener('click', this._onMenuClick)
         }
+        // 父项始终留在 menu.content 内，观察它即可覆盖各级子菜单在打开期间的内容重建。
+        this._contentObserver.observe(this._menu.content, { childList: true, subtree: true })
         requestAnimationFrame(() => {
           if (!this._isOpen || !this._menu) return
-          this._setupMenuItems()
-          this._positionMenu()
+          this._refreshMenu()
           showOverlayPresence(this._menu.panel, { isInstant: this._shouldOpenInstantly })
           this._shouldOpenInstantly = true
           this._focusFirstItem()
-          this._bindLevelHovers()
         })
       } else {
         this._syncScrollLock(false)
+        this._contentObserver.disconnect()
+        this._refreshScheduled = false
         void this._closeMenuAfterPresence()
       }
       if (this._userOpenChange.consume()) this._dispatchChange(this._isOpen)
@@ -135,7 +150,7 @@ export class WebUiContextMenu extends LitElement {
     if (this._isOpen) {
       this._closeSubmenusFrom(0, true)
       this._restoreClosingSubmenus()
-      requestAnimationFrame(() => this._positionMenu())
+      this._scheduleRefresh()
       return false
     }
     this._restoreFocusTarget ??= document.activeElement instanceof HTMLElement ? document.activeElement : undefined
@@ -156,6 +171,25 @@ export class WebUiContextMenu extends LitElement {
     if (!this._isOpen) return
     this._userOpenChange.mark()
     this.close()
+  }
+
+  // 同一帧内多次内容变化只刷新一次，避免观察者与刷新自身 append 形成循环。
+  private _scheduleRefresh() {
+    if (this._refreshScheduled || !this._isOpen) return
+    this._refreshScheduled = true
+    requestAnimationFrame(() => {
+      this._refreshScheduled = false
+      if (!this._isOpen || !this._menu) return
+      this._refreshMenu()
+    })
+  }
+
+  // 重新同步 portal 内容并重定位；fresh-open、重定位与观察者触发的刷新共用。
+  private _refreshMenu() {
+    if (!this._menu) return
+    this._setupMenuItems()
+    this._positionMenu()
+    this._bindLevelHovers()
   }
 
   private _positionMenu() {
@@ -197,8 +231,59 @@ export class WebUiContextMenu extends LitElement {
     const menu = this._menu
     if (!menu) return
 
+    this._pruneMenuItems(menu.content)
     this._hideMenuItems()
-    moveMenuChildren(this, menu.content)
+    this._moveHostItemsToMenu(menu.content)
+    this._orderMenuItems(menu.content)
+    // 宿主可能在菜单打开期间动态改写 slot 子内容（如切换上下文后重建嵌套子项），
+    // 新节点没有隐藏 slot 会落入父项默认 slot 可见渲染并叠到一级菜单上；
+    // 因此对已移入 content 的嵌套子项也要重新隐藏。
+    hideNestedMenuChildren(menu.content, 'context-menu-hidden')
+  }
+
+  private _moveHostItemsToMenu(content: HTMLElement) {
+    getMovableMenuSubtrees(this).forEach(subtree => {
+      const marker = this._menuItemAnchors.get(subtree)
+      if (!marker || marker.parentNode !== this) {
+        marker?.remove()
+        const nextMarker = document.createComment('wui-context-menu-item')
+        this.insertBefore(nextMarker, subtree)
+        this._menuItemAnchors.set(subtree, nextMarker)
+      }
+      content.appendChild(subtree)
+    })
+  }
+
+  private _pruneMenuItems(content: HTMLElement) {
+    this._menuItemAnchors.forEach((marker, subtree) => {
+      if (subtree.parentNode === content) {
+        if (marker.isConnected && marker.parentNode === this) return
+        subtree.remove()
+      } else {
+        marker.remove()
+      }
+      this._menuItemAnchors.delete(subtree)
+    })
+  }
+
+  private _orderMenuItems(content: HTMLElement) {
+    const targetItems: HTMLElement[] = []
+    for (const node of Array.from(this.childNodes)) {
+      if (node.nodeType !== Node.COMMENT_NODE) continue
+      this._menuItemAnchors.forEach((marker, subtree) => {
+        if (marker !== node || subtree.parentNode !== content) return
+        targetItems.push(subtree)
+      })
+    }
+
+    const currentItems = Array.from(content.children)
+    const isOrdered =
+      currentItems.length === targetItems.length && currentItems.every((item, index) => item === targetItems[index])
+    if (isOrdered) return
+
+    targetItems.forEach(subtree => {
+      content.appendChild(subtree)
+    })
   }
 
   private _returnItemsToSlot() {
@@ -207,7 +292,23 @@ export class WebUiContextMenu extends LitElement {
 
     this._closeSubmenusFrom(0, true)
     this._restoreClosingSubmenus()
-    moveMenuChildren(menu.content, this)
+    this._menuItemAnchors.forEach((marker, subtree) => {
+      if (subtree.parentNode !== menu.content) {
+        marker.remove()
+        this._menuItemAnchors.delete(subtree)
+        return
+      }
+
+      const shouldRestoreAtMarker = marker.isConnected && marker.parentNode === this
+      if (shouldRestoreAtMarker) {
+        this.insertBefore(subtree, marker)
+      } else {
+        this.appendChild(subtree)
+      }
+      marker.remove()
+      this._menuItemAnchors.delete(subtree)
+    })
+    this._menuItemAnchors.clear()
   }
 
   private async _closeMenuAfterPresence() {
@@ -290,7 +391,10 @@ export class WebUiContextMenu extends LitElement {
   }
 
   private _restoreSubmenuItems(submenu: MenuPortalOverlay, item?: HTMLElement) {
-    if (item) moveMenuChildren(submenu.content, item)
+    if (!item) return
+    moveMenuChildren(submenu.content, item)
+    // 子菜单打开期间宿主可能重建了嵌套子项，归还时补隐藏，避免可见叠加。
+    hideNestedMenuChildren(item, 'context-menu-hidden')
   }
 
   private _restoreClosingSubmenus() {
@@ -549,9 +653,16 @@ export class WebUiContextMenu extends LitElement {
   override render() {
     return html`
       <div class="context-menu-anchor">
-        <slot @slotchange=${this._hideMenuItems}></slot>
+        <slot @slotchange=${this._onSlotChange}></slot>
       </div>
     `
+  }
+
+  private _onSlotChange() {
+    this._hideMenuItems()
+    // 打开期间宿主重建顶层项时，新成员要移入 portal 才对用户可见；
+    // 关闭状态下无需移动，等下次打开时由 _setupMenuItems 统一处理。
+    if (this._isOpen) this._scheduleRefresh()
   }
 
   declare readonly $events: {
