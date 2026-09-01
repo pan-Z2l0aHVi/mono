@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { WebUiAutocomplete, WebUiEvent, WebUiInput, WebUiLayout, WebUiSelect } from '@greypan/web-ui'
+import type { WebUiAutocomplete, WebUiDrawer, WebUiEvent, WebUiInput, WebUiLayout, WebUiSelect } from '@greypan/web-ui'
 import type { WebUiContextMenu } from '@greypan/web-ui/components/context-menu'
 import {
   lucideChevronLeft,
@@ -24,15 +24,15 @@ import {
   lucideRefreshCw,
   lucideSearch,
   lucideListFilter,
+  lucideTag,
   lucideTrash2,
   lucideTriangleAlert,
-  lucideX,
   lucideCode,
   heroiconsBarsArrowDown16Solid,
   heroiconsBarsArrowUp16Solid,
-  lucideListRestart
+  lucideListRestart,
+  tablerSortAscendingLetters
 } from '@greypan/web-ui/icons'
-import { useForm, useField } from 'vee-validate'
 import { computed, nextTick, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
@@ -41,6 +41,8 @@ import { canGoBack, canGoForward } from '@/composables/useHistoryNav'
 // --- Navigation ---
 const router = useRouter()
 const activeNav = ref<'library' | 'map'>('library')
+const navItemClass =
+  'nav-item flex items-center gap-2.5 w-full min-w-10 min-h-10 px-2.5 border-0 rounded-full font-medium cursor-pointer text-[#5b5b66] transition-all duration-150 active:bg-[rgb(34_33_42/0.12)] text-left dark:text-[var(--wui-color-text)] dark:active:bg-white/15'
 function selectNav(next: 'library' | 'map') {
   activeNav.value = next
 }
@@ -57,22 +59,28 @@ function updateSidebarOpen(event: WebUiEvent<WebUiLayout, 'sidebar-open-change'>
 
 // --- Tags ---
 const tagColors: Record<string, string> = {
-  设计: 'bg-blue-100 text-blue-700',
-  开发: 'bg-emerald-100 text-emerald-700',
-  素材: 'bg-purple-100 text-purple-700',
-  灵感: 'bg-amber-100 text-amber-700',
-  参考: 'bg-pink-100 text-pink-700',
-  工具: 'bg-cyan-100 text-cyan-700',
-  归档: 'bg-gray-100 text-gray-500',
-  文档: 'bg-teal-100 text-teal-700',
-  重要: 'bg-red-100 text-red-700',
-  紧急: 'bg-orange-100 text-orange-700',
-  草稿: 'bg-gray-100 text-gray-500',
-  审核: 'bg-indigo-100 text-indigo-700',
-  发布: 'bg-emerald-100 text-emerald-700',
-  原型: 'bg-violet-100 text-violet-700',
-  测试: 'bg-sky-100 text-sky-700',
-  备份: 'bg-yellow-100 text-yellow-700'
+  设计: 'bg-blue-100 text-blue-700 dark:bg-blue-400/15 dark:text-blue-200',
+  开发: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-400/15 dark:text-emerald-200',
+  素材: 'bg-purple-100 text-purple-700 dark:bg-purple-400/15 dark:text-purple-200',
+  灵感: 'bg-amber-100 text-amber-700 dark:bg-amber-400/15 dark:text-amber-200',
+  参考: 'bg-pink-100 text-pink-700 dark:bg-pink-400/15 dark:text-pink-200',
+  工具: 'bg-cyan-100 text-cyan-700 dark:bg-cyan-400/15 dark:text-cyan-200',
+  归档: 'bg-gray-100 text-gray-500 dark:bg-white/10 dark:text-neutral-300',
+  文档: 'bg-teal-100 text-teal-700 dark:bg-teal-400/15 dark:text-teal-200',
+  重要: 'bg-red-100 text-red-700 dark:bg-red-400/15 dark:text-red-200',
+  紧急: 'bg-orange-100 text-orange-700 dark:bg-orange-400/15 dark:text-orange-200',
+  草稿: 'bg-gray-100 text-gray-500 dark:bg-white/10 dark:text-neutral-300',
+  审核: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-400/15 dark:text-indigo-200',
+  发布: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-400/15 dark:text-emerald-200',
+  原型: 'bg-violet-100 text-violet-700 dark:bg-violet-400/15 dark:text-violet-200',
+  测试: 'bg-sky-100 text-sky-700 dark:bg-sky-400/15 dark:text-sky-200',
+  备份: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-400/15 dark:text-yellow-200'
+}
+
+const defaultTagClass =
+  'bg-gray-50 text-gray-500 ring-1 ring-gray-200 dark:bg-white/5 dark:text-neutral-300 dark:ring-white/15'
+function getTagClass(tag: string) {
+  return tagColors[tag] ?? defaultTagClass
 }
 
 // --- Resource data ---
@@ -225,10 +233,22 @@ const resources: Resource[] = [
 // --- Selection & Drawer ---
 const selectedId = ref<string | null>(null)
 const drawerOpen = ref(false)
+const previewDrawerOpen = ref(false)
 const selectedResource = computed(() => resources.find(r => r.id === selectedId.value) ?? null)
 function selectResource(id: string) {
   selectedId.value = id
   drawerOpen.value = true
+}
+function openPreviewDrawer() {
+  previewDrawerOpen.value = true
+}
+function handleDetailDrawerOpenChange(event: WebUiEvent<WebUiDrawer, 'open-change'>) {
+  if (event.target !== event.currentTarget) return
+  drawerOpen.value = event.detail.open
+}
+function handlePreviewDrawerOpenChange(event: WebUiEvent<WebUiDrawer, 'open-change'>) {
+  if (event.target !== event.currentTarget) return
+  previewDrawerOpen.value = event.detail.open
 }
 
 // --- Icon mapping ---
@@ -245,39 +265,56 @@ function getResourceIcon(resource: Resource) {
   return resourceTypeIcons[resource.resourceType]
 }
 const typeTint: Record<Resource['resourceType'], string> = {
-  image: 'bg-blue-100 text-blue-700',
-  video: 'bg-purple-100 text-purple-700',
-  audio: 'bg-red-100 text-red-700',
-  document: 'bg-amber-100 text-amber-700',
-  web: 'bg-cyan-100 text-cyan-700',
-  json: 'bg-green-100 text-green-700',
-  folder: 'bg-orange-100 text-orange-700'
+  image: 'bg-blue-100 text-blue-700 dark:bg-blue-400/15 dark:text-blue-200',
+  video: 'bg-purple-100 text-purple-700 dark:bg-purple-400/15 dark:text-purple-200',
+  audio: 'bg-red-100 text-red-700 dark:bg-red-400/15 dark:text-red-200',
+  document: 'bg-amber-100 text-amber-700 dark:bg-amber-400/15 dark:text-amber-200',
+  web: 'bg-cyan-100 text-cyan-700 dark:bg-cyan-400/15 dark:text-cyan-200',
+  json: 'bg-green-100 text-green-700 dark:bg-green-400/15 dark:text-green-200',
+  folder: 'bg-orange-100 text-orange-700 dark:bg-orange-400/15 dark:text-orange-200'
 }
 
 function getSourceIcon(resource: Resource) {
   return resource.sourceType === 'link' ? lucideLink : lucideFile
 }
 
+// "打开方式" 候选应用，按资源类型分组
+const openWithApps: Partial<Record<Resource['resourceType'], Array<{ label: string; icon: typeof lucideEye }>>> = {
+  image: [
+    { label: '预览', icon: lucideEye },
+    { label: '看图', icon: lucideImage }
+  ],
+  video: [
+    { label: '视频播放器', icon: lucidePlay },
+    { label: 'iMovie', icon: lucideClapperboard }
+  ],
+  audio: [
+    { label: '音乐播放器', icon: lucideMusic },
+    { label: 'GarageBand', icon: lucideHeadphones }
+  ],
+  document: [
+    { label: '文本编辑', icon: lucideFileText },
+    { label: 'Notion', icon: lucidePenLine }
+  ],
+  json: [{ label: 'VS Code', icon: lucideFile }],
+  web: [
+    { label: 'Safari', icon: lucideGlobe },
+    { label: 'Chrome', icon: lucideGlobe }
+  ]
+}
+
 // All unique tags from resources
 const allTags = [...new Set(resources.flatMap(r => r.tags ?? []))].sort()
 
-// --- Filter form with vee-validate ---
-// 筛选栏无需校验规则，仅借用 useForm/useField 管理字段状态与整体重置。
-const { handleReset } = useForm({
-  initialValues: {
-    source: 'all',
-    type: 'all',
-    status: 'all',
-    tag: '',
-    sort: 'desc'
-  }
-})
-
-const { value: filterSource } = useField<string>('source')
-const { value: filterType } = useField<string>('type')
-const { value: filterBroken } = useField<string>('status')
-const { value: filterTag } = useField<string>('tag')
-const { value: sortOrder } = useField<string>('sort')
+// --- Filter state ---
+const filterSource = ref<string>('all')
+const filterType = ref<string>('all')
+const filterBroken = ref<string>('all')
+const filterTag = ref<string>('')
+type SortOption = 'name' | 'tagName' | 'latest' | 'earliest'
+const sortOrder = ref<SortOption>('latest')
+const filterLabelClass =
+  'flex items-center gap-1.5 text-[#8a8a94] max-sm:basis-full dark:text-[var(--wui-color-text-secondary)]'
 
 const filterOpen = ref(false)
 const searchOpen = ref(false)
@@ -296,11 +333,24 @@ const filteredResources = computed(() => {
     return true
   })
 
-  const dir = sortOrder.value === 'desc' ? -1 : 1
+  const getTag = (resource: (typeof resources)[number]) => (resource.tags?.[0] ?? '').toLowerCase()
+  const getName = (resource: (typeof resources)[number]) => resource.name.toLowerCase()
+  const getTime = (resource: (typeof resources)[number]) =>
+    new Date(resource.modifiedAt ?? resource.createdAt ?? '').getTime()
+
+  const compareName = (a: (typeof resources)[number], b: (typeof resources)[number]) =>
+    getName(a).localeCompare(getName(b))
+  const compareTagName = (a: (typeof resources)[number], b: (typeof resources)[number]) => {
+    const byTag = getTag(a).localeCompare(getTag(b))
+    return byTag || compareName(a, b)
+  }
+  const compareTime = (a: (typeof resources)[number], b: (typeof resources)[number]) => getTime(a) - getTime(b)
+
   return filtered.sort((a, b) => {
-    const ta = a.modifiedAt ?? a.createdAt ?? ''
-    const tb = b.modifiedAt ?? b.createdAt ?? ''
-    return ta < tb ? -dir : ta > tb ? dir : 0
+    if (sortOrder.value === 'name') return compareName(a, b)
+    if (sortOrder.value === 'tagName') return compareTagName(a, b)
+    if (sortOrder.value === 'earliest') return compareTime(a, b)
+    return compareTime(b, a)
   })
 })
 const hasActiveFilter = computed(
@@ -317,7 +367,11 @@ function handleTagChange(e: WebUiEvent<WebUiAutocomplete, 'change'>) {
 
 function resetFilters() {
   searchQuery.value = ''
-  handleReset()
+  filterSource.value = 'all'
+  filterType.value = 'all'
+  filterBroken.value = 'all'
+  filterTag.value = ''
+  sortOrder.value = 'latest'
 }
 function openSearch() {
   searchOpen.value = true
@@ -347,7 +401,7 @@ function handleFilterBrokenChange(e: WebUiEvent<WebUiSelect, 'change'>) {
   filterBroken.value = e.target.value
 }
 function handleSortChange(e: WebUiEvent<WebUiSelect, 'change'>) {
-  sortOrder.value = e.target.value as 'desc' | 'asc'
+  sortOrder.value = e.target.value as SortOption
 }
 
 // --- Context menu ---
@@ -363,7 +417,7 @@ function onResourceContextmenu(resource: Resource, event: MouseEvent) {
 <template>
   <web-ui-layout
     header-glow
-    class="min-h-dvh overflow-x-clip color-[#22212a] bg-white"
+    class="min-h-dvh overflow-x-clip text-[#22212a] bg-white dark:text-[var(--wui-color-text)] dark:bg-[var(--wui-color-page)]"
     :sidebarCollapsed="sidebarCollapsed"
     :sidebarOpen="sidebarOpen"
     @sidebar-collapsed-change="updateSidebarCollapsed"
@@ -373,12 +427,13 @@ function onResourceContextmenu(resource: Resource, event: MouseEvent) {
     <div slot="sidebar" class="relative z-20 h-full pt-14 pb-4 px-2" aria-label="应用导航">
       <nav class="grid gap-1" aria-label="主导航">
         <button
-          class="nav-item flex items-center gap-2.5 w-full min-w-10 min-h-10 px-2.5 border-0 rounded-full font-medium cursor-pointer text-[#5b5b66] transition-all duration-150 active:bg-[rgb(34_33_42/0.12)] text-left"
           :class="[
-            activeNav === 'library' ? 'text-[var(--wui-color-accent,#08f)] bg-[#DFDFDF]' : 'hover:bg-black/[0.04]',
+            navItemClass,
+            activeNav === 'library' ? '' : 'hover:bg-black/[0.04] dark:hover:bg-white/[0.06]',
             sidebarCollapsed ? 'justify-center' : ''
           ]"
           type="button"
+          :data-active="activeNav === 'library'"
           @click="selectNav('library')"
         >
           <web-ui-tooltip
@@ -392,12 +447,13 @@ function onResourceContextmenu(resource: Resource, event: MouseEvent) {
           <span v-if="!sidebarCollapsed" class="text-sm whitespace-nowrap overflow-hidden">资料库</span>
         </button>
         <button
-          class="nav-item flex items-center gap-2.5 w-full min-w-10 min-h-10 px-2.5 border-0 rounded-full font-medium cursor-pointer text-[#5b5b66] transition-all duration-150 active:bg-[rgb(34_33_42/0.12)] text-left"
           :class="[
-            activeNav === 'map' ? 'text-[var(--wui-color-accent,#08f)] bg-[#DFDFDF]' : 'hover:bg-black/[0.04]',
+            navItemClass,
+            activeNav === 'map' ? '' : 'hover:bg-black/[0.04] dark:hover:bg-white/[0.06]',
             sidebarCollapsed ? 'justify-center' : ''
           ]"
           type="button"
+          :data-active="activeNav === 'map'"
           @click="selectNav('map')"
         >
           <web-ui-tooltip
@@ -441,7 +497,7 @@ function onResourceContextmenu(resource: Resource, event: MouseEvent) {
             </web-ui-button>
           </web-ui-tooltip>
           <web-ui-tooltip v-if="!searchOpen" content="搜索">
-            <web-ui-button icon :variant="searchQuery ? 'secondary' : 'glass'" aria-label="搜索" @click="openSearch">
+            <web-ui-button icon aria-label="搜索" @click="openSearch">
               <web-ui-icon :icon="lucideSearch"></web-ui-icon>
             </web-ui-button>
           </web-ui-tooltip>
@@ -456,7 +512,9 @@ function onResourceContextmenu(resource: Resource, event: MouseEvent) {
             @input="handleSearchInput"
             @keydown="handleSearchKeydown"
             @blur="closeSearch"
-          ></web-ui-input>
+          >
+            <web-ui-icon slot="prefix" :icon="lucideSearch"></web-ui-icon>
+          </web-ui-input>
         </div>
       </div>
 
@@ -464,15 +522,17 @@ function onResourceContextmenu(resource: Resource, event: MouseEvent) {
         class="transition-all duration-200 ease-in-out"
         :style="{ height: filterOpen ? 'auto' : '0px', overflow: filterOpen ? 'visible' : 'hidden' }"
       >
-        <div class="flex flex-wrap gap-3 items-center px-6 py-2.5 text-sm text-[#5b5b66]">
-          <label class="flex items-center gap-1.5 text-[#8a8a94] max-sm:basis-full">
+        <div
+          class="flex flex-wrap gap-3 items-center px-6 py-2.5 text-sm text-[#5b5b66] dark:text-[var(--wui-color-text-secondary)]"
+        >
+          <label :class="filterLabelClass">
             <web-ui-select :value="filterSource" @change="handleFilterSourceChange" style="--wui-input-width: 128px">
               <web-ui-option value="all" label="全部来源">全部来源</web-ui-option>
               <web-ui-option value="local" label="本地文件">本地文件</web-ui-option>
               <web-ui-option value="link" label="链接">链接</web-ui-option>
             </web-ui-select>
           </label>
-          <label class="flex items-center gap-1.5 text-[#8a8a94] max-sm:basis-full">
+          <label :class="filterLabelClass">
             <web-ui-select :value="filterType" @change="handleFilterTypeChange" style="--wui-input-width: 128px">
               <web-ui-option value="all" label="全部类型">全部类型</web-ui-option>
               <web-ui-option value="image" label="图片">图片</web-ui-option>
@@ -483,14 +543,14 @@ function onResourceContextmenu(resource: Resource, event: MouseEvent) {
               <web-ui-option value="json" label="源代码">源代码</web-ui-option>
             </web-ui-select>
           </label>
-          <label class="flex items-center gap-1.5 text-[#8a8a94] max-sm:basis-full">
+          <label :class="filterLabelClass">
             <web-ui-select :value="filterBroken" @change="handleFilterBrokenChange" style="--wui-input-width: 128px">
               <web-ui-option value="all" label="全部状态">全部状态</web-ui-option>
               <web-ui-option value="valid" label="有效">有效</web-ui-option>
               <web-ui-option value="broken" label="已失效">已失效</web-ui-option>
             </web-ui-select>
           </label>
-          <label class="flex items-center gap-1.5 text-[#8a8a94] max-sm:basis-full">
+          <label :class="filterLabelClass">
             <web-ui-autocomplete
               :value="filterTag"
               @change="handleTagChange"
@@ -500,15 +560,30 @@ function onResourceContextmenu(resource: Resource, event: MouseEvent) {
               <web-ui-option v-for="tag in allTags" :key="tag" :value="tag" :label="tag">{{ tag }}</web-ui-option>
             </web-ui-autocomplete>
           </label>
-          <label class="flex items-center gap-1.5 text-[#8a8a94] max-sm:basis-full">
-            <web-ui-select :value="sortOrder" @change="handleSortChange" style="--wui-input-width: 48px">
+          <label :class="filterLabelClass">
+            <web-ui-select
+              :value="sortOrder"
+              aria-label="排序"
+              @change="handleSortChange"
+              style="--wui-input-width: 48px"
+            >
               <web-ui-icon
                 slot="trigger"
-                :icon="sortOrder === 'desc' ? heroiconsBarsArrowDown16Solid : heroiconsBarsArrowUp16Solid"
+                :icon="
+                  sortOrder === 'name'
+                    ? tablerSortAscendingLetters
+                    : sortOrder === 'tagName'
+                      ? lucideTag
+                      : sortOrder === 'latest'
+                        ? heroiconsBarsArrowDown16Solid
+                        : heroiconsBarsArrowUp16Solid
+                "
                 :size="16"
               ></web-ui-icon>
-              <web-ui-option value="desc" label="按添加时间降序">按添加时间降序</web-ui-option>
-              <web-ui-option value="asc" label="按添加时间升序">按添加时间升序</web-ui-option>
+              <web-ui-option value="name" label="名称">名称</web-ui-option>
+              <web-ui-option value="tagName" label="标签名称">标签名称</web-ui-option>
+              <web-ui-option value="latest" label="最新">最新</web-ui-option>
+              <web-ui-option value="earliest" label="最早">最早</web-ui-option>
             </web-ui-select>
           </label>
           <web-ui-button v-if="hasActiveFilter" variant="ghost" @click="resetFilters"
@@ -534,7 +609,9 @@ function onResourceContextmenu(resource: Resource, event: MouseEvent) {
               :key="resource.id"
               class="resource-row group relative flex items-center gap-3 px-4 py-2.5 cursor-pointer transition-colors duration-100 rounded-xl"
               :class="[
-                selectedId === resource.id ? 'bg-black/[0.05]' : 'hover:bg-black/[0.035]',
+                selectedId === resource.id
+                  ? 'bg-black/[0.05] dark:bg-white/[0.08]'
+                  : 'hover:bg-black/[0.035] dark:hover:bg-white/[0.05]',
                 resource.broken ? 'opacity-60' : ''
               ]"
               @click="selectResource(resource.id)"
@@ -553,7 +630,11 @@ function onResourceContextmenu(resource: Resource, event: MouseEvent) {
                 <div class="flex items-center gap-1.5">
                   <span
                     class="block text-sm font-medium leading-snug break-words line-clamp-2 max-w-[60%]"
-                    :class="resource.broken ? 'text-[#b0b0b8] line-through' : 'text-[#22212a]'"
+                    :class="
+                      resource.broken
+                        ? 'text-[#b0b0b8] line-through dark:text-[var(--wui-color-text-disabled)]'
+                        : 'text-[#22212a] dark:text-[var(--wui-color-text)]'
+                    "
                     >{{ resource.name }}</span
                   >
                   <web-ui-icon
@@ -563,14 +644,24 @@ function onResourceContextmenu(resource: Resource, event: MouseEvent) {
                     class="shrink-0 text-amber-500"
                   ></web-ui-icon>
                 </div>
-                <div class="flex items-center gap-1.5 text-xs text-[#9a9aa4]">
+                <div
+                  class="flex items-center gap-1.5 text-xs text-[#9a9aa4] dark:text-[var(--wui-color-text-secondary)]"
+                >
                   <span class="inline-flex items-center gap-1">
-                    <web-ui-icon :icon="getSourceIcon(resource)" :size="12" class="text-[#bdbdc6]"></web-ui-icon>
+                    <web-ui-icon
+                      :icon="getSourceIcon(resource)"
+                      :size="12"
+                      class="text-[#bdbdc6] dark:text-[var(--wui-color-text-tertiary)]"
+                    ></web-ui-icon>
                     {{ resource.sourceType === 'link' ? '链接' : '本地文件' }}
                   </span>
-                  <template v-if="resource.size"><span class="text-[#d8d8de]">·</span>{{ resource.size }}</template>
+                  <template v-if="resource.size"
+                    ><span class="text-[#d8d8de] dark:text-[var(--wui-color-text-tertiary)]">·</span
+                    >{{ resource.size }}</template
+                  >
                   <template v-if="resource.modifiedAt"
-                    ><span class="text-[#d8d8de]">·</span>{{ resource.modifiedAt }}</template
+                    ><span class="text-[#d8d8de] dark:text-[var(--wui-color-text-tertiary)]">·</span
+                    >{{ resource.modifiedAt }}</template
                   >
                 </div>
               </div>
@@ -584,7 +675,7 @@ function onResourceContextmenu(resource: Resource, event: MouseEvent) {
                   v-for="tag in resource.tags"
                   :key="tag"
                   class="inline-block px-2 py-0.5 rounded-full text-xs leading-tight whitespace-nowrap"
-                  :class="tagColors[tag] || 'bg-gray-50 text-gray-500 ring-1 ring-gray-200'"
+                  :class="getTagClass(tag)"
                   >{{ tag }}</span
                 >
               </div>
@@ -592,60 +683,20 @@ function onResourceContextmenu(resource: Resource, event: MouseEvent) {
           </div>
 
           <!-- Context menu items -->
-          <web-ui-dropdown-item>
+          <web-ui-dropdown-item v-if="contextResource && !contextResource.broken">
             <web-ui-icon slot="prefix" :size="14" :icon="lucideEye"></web-ui-icon>
             预览
           </web-ui-dropdown-item>
-          <web-ui-dropdown-item submenu>
+          <web-ui-dropdown-item v-if="contextResource && !contextResource.broken" submenu>
             <web-ui-icon slot="prefix" :size="14" :icon="lucideExternalLink"></web-ui-icon>
             打开方式
             <web-ui-dropdown-item>
               <web-ui-icon slot="prefix" :size="14" :icon="lucideExternalLink"></web-ui-icon>
               系统默认应用
             </web-ui-dropdown-item>
-            <web-ui-dropdown-item v-if="contextResource?.resourceType === 'image'">
-              <web-ui-icon slot="prefix" :size="14" :icon="lucideEye"></web-ui-icon>
-              预览
-            </web-ui-dropdown-item>
-            <web-ui-dropdown-item v-if="contextResource?.resourceType === 'image'">
-              <web-ui-icon slot="prefix" :size="14" :icon="lucideImage"></web-ui-icon>
-              看图
-            </web-ui-dropdown-item>
-            <web-ui-dropdown-item v-if="contextResource?.resourceType === 'video'">
-              <web-ui-icon slot="prefix" :size="14" :icon="lucidePlay"></web-ui-icon>
-              视频播放器
-            </web-ui-dropdown-item>
-            <web-ui-dropdown-item v-if="contextResource?.resourceType === 'video'">
-              <web-ui-icon slot="prefix" :size="14" :icon="lucideClapperboard"></web-ui-icon>
-              iMovie
-            </web-ui-dropdown-item>
-            <web-ui-dropdown-item v-if="contextResource?.resourceType === 'audio'">
-              <web-ui-icon slot="prefix" :size="14" :icon="lucideMusic"></web-ui-icon>
-              音乐播放器
-            </web-ui-dropdown-item>
-            <web-ui-dropdown-item v-if="contextResource?.resourceType === 'audio'">
-              <web-ui-icon slot="prefix" :size="14" :icon="lucideHeadphones"></web-ui-icon>
-              GarageBand
-            </web-ui-dropdown-item>
-            <web-ui-dropdown-item v-if="contextResource?.resourceType === 'document'">
-              <web-ui-icon slot="prefix" :size="14" :icon="lucideFileText"></web-ui-icon>
-              文本编辑
-            </web-ui-dropdown-item>
-            <web-ui-dropdown-item v-if="contextResource?.resourceType === 'document'">
-              <web-ui-icon slot="prefix" :size="14" :icon="lucidePenLine"></web-ui-icon>
-              Notion
-            </web-ui-dropdown-item>
-            <web-ui-dropdown-item v-if="contextResource?.resourceType === 'json'">
-              <web-ui-icon slot="prefix" :size="14" :icon="lucideFile"></web-ui-icon>
-              VS Code
-            </web-ui-dropdown-item>
-            <web-ui-dropdown-item v-if="contextResource?.resourceType === 'web'">
-              <web-ui-icon slot="prefix" :size="14" :icon="lucideGlobe"></web-ui-icon>
-              Safari
-            </web-ui-dropdown-item>
-            <web-ui-dropdown-item v-if="contextResource?.resourceType === 'web'">
-              <web-ui-icon slot="prefix" :size="14" :icon="lucideGlobe"></web-ui-icon>
-              Chrome
+            <web-ui-dropdown-item v-for="app in openWithApps[contextResource.resourceType] ?? []" :key="app.label">
+              <web-ui-icon slot="prefix" :size="14" :icon="app.icon"></web-ui-icon>
+              {{ app.label }}
             </web-ui-dropdown-item>
           </web-ui-dropdown-item>
           <web-ui-dropdown-item v-if="contextResource?.broken">
@@ -653,7 +704,7 @@ function onResourceContextmenu(resource: Resource, event: MouseEvent) {
             找回资源
           </web-ui-dropdown-item>
           <web-ui-dropdown-divider></web-ui-dropdown-divider>
-          <web-ui-dropdown-item>
+          <web-ui-dropdown-item style="color: var(--wui-color-danger, #ef4444)">
             <web-ui-icon slot="prefix" :size="14" :icon="lucideTrash2"></web-ui-icon>
             删除
           </web-ui-dropdown-item>
@@ -668,15 +719,19 @@ function onResourceContextmenu(resource: Resource, event: MouseEvent) {
         draggable
         controlled
         style="--wui-drawer-width: min(640px, max(60vw, 320px))"
-        @open-change="drawerOpen = $event.detail.open"
+        @open-change="handleDetailDrawerOpenChange"
       >
         <div class="grid gap-5">
           <!-- Preview placeholder -->
           <div
             v-if="selectedResource"
-            class="flex items-center justify-center h-36 rounded-xl bg-[#f5f5f7] border border-black/5"
+            class="flex items-center justify-center h-36 rounded-xl bg-[#f5f5f7] border border-black/5 dark:bg-[var(--wui-color-surface-raised)] dark:border-[var(--wui-color-border)]"
           >
-            <web-ui-icon :icon="getResourceIcon(selectedResource)" :size="48" class="text-[#c0c0c8]"></web-ui-icon>
+            <web-ui-icon
+              :icon="getResourceIcon(selectedResource)"
+              :size="48"
+              class="text-[#c0c0c8] dark:text-[var(--wui-color-text-tertiary)]"
+            ></web-ui-icon>
           </div>
 
           <!-- Title -->
@@ -684,19 +739,24 @@ function onResourceContextmenu(resource: Resource, event: MouseEvent) {
             <web-ui-icon
               :icon="getResourceIcon(selectedResource)"
               :size="22"
-              class="shrink-0 text-[#5b5b66]"
+              class="shrink-0 text-[#5b5b66] dark:text-[var(--wui-color-text-secondary)]"
             ></web-ui-icon>
-            <span class="font-semibold text-[17px] leading-snug text-[#22212a] truncate">
+            <span
+              class="font-semibold text-[17px] leading-snug text-[#22212a] break-words min-w-0 dark:text-[var(--wui-color-text)]"
+            >
               {{ selectedResource.name }}
             </span>
           </h2>
 
           <!-- Quick actions -->
           <web-ui-button-group v-if="selectedResource" class="self-start">
-            <web-ui-button>预览</web-ui-button>
-            <web-ui-button>打开方式</web-ui-button>
+            <web-ui-button v-if="!selectedResource.broken" @click="openPreviewDrawer">
+              <web-ui-icon slot="prefix" :size="14" :icon="lucideEye"></web-ui-icon>
+              预览
+            </web-ui-button>
+            <web-ui-button v-if="!selectedResource.broken">打开方式</web-ui-button>
             <web-ui-button v-if="selectedResource.broken">找回资源</web-ui-button>
-            <web-ui-button style="--wui-button-color: #ef4444">删除</web-ui-button>
+            <web-ui-button style="--wui-button-color: var(--wui-color-danger, #ef4444)">删除</web-ui-button>
           </web-ui-button-group>
 
           <!-- Tags -->
@@ -705,70 +765,80 @@ function onResourceContextmenu(resource: Resource, event: MouseEvent) {
               v-for="tag in selectedResource.tags"
               :key="tag"
               class="inline-block px-2 py-0.5 rounded-full text-xs leading-tight whitespace-nowrap"
-              :class="tagColors[tag] || 'bg-gray-50 text-gray-500 ring-1 ring-gray-200'"
+              :class="getTagClass(tag)"
               >{{ tag }}</span
             >
           </div>
 
+          <!-- Preview nested drawer -->
+          <web-ui-drawer
+            :open="previewDrawerOpen"
+            closable
+            controlled
+            style="--wui-drawer-width: max(60vw, 320px)"
+            @open-change="handlePreviewDrawerOpenChange"
+          >
+            <h2
+              v-if="selectedResource"
+              slot="header"
+              class="m-0 w-full min-w-0 truncate px-12 text-center text-[17px] font-semibold leading-snug text-[#22212a] dark:text-[var(--wui-color-text)]"
+            >
+              {{ selectedResource.name }}
+            </h2>
+            <div v-if="selectedResource" class="grid gap-4">
+              <div
+                class="flex items-center justify-center h-52 rounded-xl bg-[#f5f5f7] border border-black/5 dark:bg-[var(--wui-color-surface-raised)] dark:border-[var(--wui-color-border)]"
+              >
+                <web-ui-icon
+                  :icon="getResourceIcon(selectedResource)"
+                  :size="40"
+                  class="text-[#c0c0c8] dark:text-[var(--wui-color-text-tertiary)]"
+                ></web-ui-icon>
+              </div>
+            </div>
+          </web-ui-drawer>
+
           <!-- Metadata -->
           <div
             v-if="selectedResource"
-            class="meta-table grid gap-0 text-[13px] rounded-xl border border-black/5 overflow-hidden"
+            class="meta-table grid gap-0 text-[13px] rounded-xl border border-black/5 overflow-hidden dark:border-[var(--wui-color-border)]"
           >
-            <div class="meta-row flex justify-between px-3.5 py-2.5">
-              <span class="text-[#8a8a94]">来源</span>
-              <span class="text-[#22212a]">{{ selectedResource.sourceType === 'local' ? '本地文件' : '链接' }}</span>
+            <div class="meta-row">
+              <span class="meta-label">来源</span>
+              <span class="meta-value">{{ selectedResource.sourceType === 'local' ? '本地文件' : '链接' }}</span>
             </div>
-            <div class="meta-row flex justify-between px-3.5 py-2.5 border-t border-black/5">
-              <span class="text-[#8a8a94]">类型</span>
-              <span class="text-[#22212a]">{{ selectedResource.resourceType }}</span>
+            <div class="meta-row">
+              <span class="meta-label">类型</span>
+              <span class="meta-value">{{ selectedResource.resourceType }}</span>
             </div>
-            <div
-              v-if="selectedResource.size"
-              class="meta-row flex justify-between px-3.5 py-2.5 border-t border-black/5"
-            >
-              <span class="text-[#8a8a94]">文件大小</span>
-              <span class="text-[#22212a] tabular-nums">{{ selectedResource.size }}</span>
+            <div v-if="selectedResource.size" class="meta-row">
+              <span class="meta-label">文件大小</span>
+              <span class="meta-value tabular-nums">{{ selectedResource.size }}</span>
             </div>
-            <div class="meta-row flex justify-between px-3.5 py-2.5 border-t border-black/5">
-              <span class="text-[#8a8a94]">状态</span>
-              <span :class="selectedResource.broken ? 'text-red-500' : 'text-emerald-600'">{{
-                selectedResource.broken ? '已失效' : '有效'
-              }}</span>
-            </div>
-            <div
-              v-if="selectedResource.createdAt"
-              class="meta-row flex justify-between px-3.5 py-2.5 border-t border-black/5"
-            >
-              <span class="text-[#8a8a94]">创建时间</span>
-              <span class="text-[#22212a] tabular-nums">{{ selectedResource.createdAt }}</span>
-            </div>
-            <div
-              v-if="selectedResource.modifiedAt"
-              class="meta-row flex justify-between px-3.5 py-2.5 border-t border-black/5"
-            >
-              <span class="text-[#8a8a94]">修改时间</span>
-              <span class="text-[#22212a] tabular-nums">{{ selectedResource.modifiedAt }}</span>
-            </div>
-            <div
-              v-if="selectedResource.path"
-              class="meta-row flex justify-between items-start px-3.5 py-2.5 border-t border-black/5"
-            >
-              <span class="text-[#8a8a94] shrink-0">路径</span>
-              <span class="text-[#22212a] text-right truncate ml-4" :title="selectedResource.path">{{
-                selectedResource.path
-              }}</span>
-            </div>
-            <div
-              v-if="selectedResource.url"
-              class="meta-row flex justify-between items-start px-3.5 py-2.5 border-t border-black/5"
-            >
-              <span class="text-[#8a8a94] shrink-0">URL</span>
+            <div class="meta-row">
+              <span class="meta-label">状态</span>
               <span
-                class="text-[var(--wui-color-accent,#08f)] text-right truncate ml-4"
-                :title="selectedResource.url"
-                >{{ selectedResource.url }}</span
+                :class="selectedResource.broken ? 'meta-value meta-value-danger' : 'meta-value meta-value-success'"
+                >{{ selectedResource.broken ? '已失效' : '有效' }}</span
               >
+            </div>
+            <div v-if="selectedResource.createdAt" class="meta-row">
+              <span class="meta-label">创建时间</span>
+              <span class="meta-value tabular-nums">{{ selectedResource.createdAt }}</span>
+            </div>
+            <div v-if="selectedResource.modifiedAt" class="meta-row">
+              <span class="meta-label">修改时间</span>
+              <span class="meta-value tabular-nums">{{ selectedResource.modifiedAt }}</span>
+            </div>
+            <div v-if="selectedResource.path" class="meta-row items-start">
+              <span class="meta-label shrink-0">路径</span>
+              <span class="meta-value truncate ml-4" :title="selectedResource.path">{{ selectedResource.path }}</span>
+            </div>
+            <div v-if="selectedResource.url" class="meta-row items-start">
+              <span class="meta-label shrink-0">URL</span>
+              <span class="meta-value meta-value-link truncate ml-4" :title="selectedResource.url">{{
+                selectedResource.url
+              }}</span>
             </div>
           </div>
         </div>
@@ -779,8 +849,78 @@ function onResourceContextmenu(resource: Resource, event: MouseEvent) {
 </template>
 
 <style scoped>
+.nav-item[data-active='true'] {
+  color: var(--wui-color-accent, #08f);
+  background-color: var(--wui-color-surface-control, #dfdfdf);
+}
+
+.nav-item[data-active='true']:hover {
+  background-color: color-mix(in srgb, var(--wui-color-surface-control, #dfdfdf) 90%, var(--wui-color-text, #1b1b1b));
+}
+
+.nav-item[data-active='true']:active {
+  background-color: color-mix(in srgb, var(--wui-color-surface-control, #dfdfdf) 70%, var(--wui-color-text, #1b1b1b));
+}
+
+.meta-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 14px;
+}
+
+.meta-row + .meta-row {
+  border-top: 1px solid rgb(0 0 0 / 0.05);
+}
+
+.meta-label {
+  color: #8a8a94;
+}
+
+.meta-value {
+  color: #22212a;
+  text-align: right;
+}
+
+.meta-value-success {
+  color: #059669;
+}
+
+.meta-value-danger {
+  color: #ef4444;
+}
+
+.meta-value-link {
+  color: var(--wui-color-accent, #08f);
+}
+
 .meta-table .meta-row:nth-child(odd) {
-  background-color: #fafafa;
+  background-color: color-mix(in srgb, var(--wui-color-text) 3%, var(--wui-color-page));
+}
+
+@media (prefers-color-scheme: dark) {
+  .meta-row + .meta-row {
+    border-top-color: var(--wui-color-border);
+  }
+
+  .meta-table .meta-row:nth-child(odd) {
+    background-color: color-mix(in srgb, var(--wui-color-text) 6%, var(--wui-color-page));
+  }
+
+  .meta-label {
+    color: var(--wui-color-text-secondary);
+  }
+
+  .meta-value {
+    color: var(--wui-color-text);
+  }
+
+  .meta-value-success {
+    color: var(--wui-color-success);
+  }
+
+  .meta-value-danger {
+    color: var(--wui-color-danger);
+  }
 }
 
 .resource-row + .resource-row::before {
@@ -793,8 +933,6 @@ function onResourceContextmenu(resource: Resource, event: MouseEvent) {
 
   height: 1px;
 
-  background: rgb(0 0 0 / 0.05);
+  background: color-mix(in srgb, var(--wui-color-text) 5%, transparent);
 }
 </style>
-json: lucideCode, audio: 'bg-red-50 text-red-500', json: 'bg-green-50 text-green-600', class="hidden md:flex gap-1.5
-flex-wrap justify-end max-w-[20%]"
