@@ -376,10 +376,12 @@ Child `<web-ui-option>` elements register via `option-register` / `option-unregi
 
 **CSS Custom Properties:**
 
-| Property                  | Default | Description        |
-| ------------------------- | ------- | ------------------ |
-| `--wui-select-max-width`  | `500px` | Dropdown max width |
-| `--wui-overlay-min-width` | `200px` | Dropdown min width |
+| Property                  | Default                            | Description                     |
+| ------------------------- | ---------------------------------- | ------------------------------- |
+| `--wui-select-max-width`  | `500px`                            | Dropdown max width              |
+| `--wui-overlay-min-width` | `200px`                            | Dropdown min width              |
+| `--wui-select-bg-hover`   | `--wui-color-surface-glass-hover`  | Trigger hover background        |
+| `--wui-select-bg-active`  | `--wui-color-surface-glass-active` | Trigger pressed/open background |
 
 #### `<web-ui-autocomplete>`
 
@@ -444,8 +446,8 @@ Supports ArrowLeft/Right/Up/Down, Home/End, PageUp/PageDown keyboard navigation.
 | `--wui-slider-vertical-height` | `200px`                             | Vertical slider height |
 | `--wui-slider-height`          | `var(--wui-slider-track-size, 6px)` | Track thickness        |
 | `--wui-slider-track-size`      | `6px`                               | Track size             |
-| `--wui-slider-thumb-width`     | `24px`                              | Thumb short axis       |
-| `--wui-slider-thumb-height`    | `32px`                              | Thumb long axis        |
+| `--wui-slider-thumb-width`     | `30px`                              | Thumb width            |
+| `--wui-slider-thumb-height`    | `20px`                              | Thumb height           |
 | `--wui-slider-marks-inset`     | `0`                                 | Marks inset from edges |
 
 #### `<web-ui-checkbox>`
@@ -984,9 +986,10 @@ At `640px` and below, the sidebar becomes a headless `web-ui-drawer`. The consum
 
 **CSS Custom Properties:**
 
-| Property                      | Default | Description                                      |
-| ----------------------------- | ------- | ------------------------------------------------ |
-| `--wui-layout-sidebar-radius` | `28px`  | Border radius of sidebar card (desktop & mobile) |
+| Property                      | Default                   | Description                                          |
+| ----------------------------- | ------------------------- | ---------------------------------------------------- |
+| `--wui-layout-sidebar-radius` | `24px`                    | Border radius of sidebar card (desktop & mobile)     |
+| `--wui-layout-sidebar-bg`     | `rgb(246 246 246 / 0.82)` | Sidebar card background (dark mode slightly lighter) |
 
 #### `<web-ui-back-top>`
 
@@ -1054,7 +1057,7 @@ Defines foundation, color, layer, shadow, and motion tokens for its subtree. `mo
 | ------------------------- | ------- | ------------------------------------------------ |
 | `--wui-font-size`         | `14px`  | Base font size for controls                      |
 | `--wui-input-width`       | `200px` | Default width for compact form controls          |
-| `--wui-control-size`      | `40px`  | Default height and square min-width for controls |
+| `--wui-control-size`      | `36px`  | Default height and square min-width for controls |
 | `--wui-overlay-min-width` | `200px` | Minimum anchored overlay width                   |
 | `--wui-focus-ring-width`  | `3px`   | Focus indicator width                            |
 
@@ -1083,13 +1086,16 @@ Defines foundation, color, layer, shadow, and motion tokens for its subtree. `mo
 | `--wui-color-page`                 | `#fff`                                                       | `#292c2e`                                                    | Page background                 |
 | `--wui-color-surface`              | `#fff`                                                       | `#2c2c2e`                                                    | Plain surface                   |
 | `--wui-color-surface-raised`       | `#f2f2f7`                                                    | `#2c2c2e`                                                    | Raised surface                  |
-| `--wui-color-surface-control`      | `#dfdfdf`                                                    | `#2c2c2e`                                                    | Neutral control surface         |
+| `--wui-color-surface-control`      | `#dfdfdf`                                                    | `#3a3a3c`                                                    | Neutral control surface         |
 | `--wui-color-surface-track`        | `#e5e5ea`                                                    | `#444446`                                                    | Slider and switch track surface |
 | `--wui-color-surface-menu`         | `rgb(246 246 246 / 0.82)`                                    | `rgb(30 30 32 / 0.92)`                                       | Menu and floating panel surface |
 | `--wui-color-surface-glass`        | `rgb(250 250 250 / 0.34)`                                    | `rgb(44 44 46 / 0.42)`                                       | Liquid glass surface            |
 | `--wui-color-surface-glass-hover`  | `color-mix(... text 6%, surface-glass)`                      | `color-mix(... text 6%, surface-glass)`                      | Full glass hover background     |
 | `--wui-color-surface-glass-active` | `color-mix(... text 15%, surface-glass)`                     | `color-mix(... text 15%, surface-glass)`                     | Full glass pressed background   |
 | `--wui-color-surface-overlay`      | `rgb(246 246 246 / 0.82)`                                    | `rgb(20 20 22 / 0.9)`                                        | Translucent overlay surface     |
+| `--wui-layout-sidebar-bg`          | `rgb(246 246 246 / 0.82)`                                    | `rgb(29 29 31 / 0.91)`                                       | Layout sidebar background       |
+| `--wui-color-surface-segmented`    | `#e5e5ea`                                                    | `#3a3a3c`                                                    | Segmented track surface         |
+| `--wui-color-surface-selected`     | `#fff`                                                       | `#5c5c5e`                                                    | Segmented selected indicator    |
 | `--wui-color-text`                 | `#1b1b1b`                                                    | `#e9eaea`                                                    | Primary text                    |
 | `--wui-color-text-secondary`       | `#6a6a6a`                                                    | `#a1a1a6`                                                    | Secondary text                  |
 | `--wui-color-text-tertiary`        | `color-mix(in srgb, var(--wui-color-text) 35%, transparent)` | `color-mix(in srgb, var(--wui-color-text) 42%, transparent)` | Tertiary text and quiet icons   |
@@ -1101,6 +1107,7 @@ Defines foundation, color, layer, shadow, and motion tokens for its subtree. `mo
 | `--wui-color-glass-highlight`      | `rgb(255 255 255 / 0.9)`                                     | `rgb(255 255 255 / 0.22)`                                    | Glass edge highlight            |
 | `--wui-color-accent`               | `#08f`                                                       | `#0a84ff`                                                    | Accent and focused input border |
 | `--wui-color-on-accent`            | `#fff`                                                       | `#fff`                                                       | Foreground on accent            |
+| `--wui-color-on-control`           | `#fff`                                                       | `#f2f2f7`                                                    | Foreground on control inner     |
 | `--wui-color-success`              | `#16a34a`                                                    | `#30d158`                                                    | Success                         |
 | `--wui-color-warning`              | `#d97706`                                                    | `#ff9f0a`                                                    | Warning                         |
 | `--wui-color-danger`               | `#dc2626`                                                    | `#ff453a`                                                    | Danger                          |
@@ -1112,9 +1119,9 @@ Defines foundation, color, layer, shadow, and motion tokens for its subtree. `mo
 
 | Property               | Light default                    | Dark default                    | Description                 |
 | ---------------------- | -------------------------------- | ------------------------------- | --------------------------- |
-| `--wui-shadow-overlay` | `2px 16px 40px rgb(0 0 0 / 0.4)` | `0 18px 48px rgb(0 0 0 / 0.54)` | Modal and drawer shadow     |
-| `--wui-shadow-panel`   | `0 3px 9px rgb(0 0 0 / 0.27)`    | `0 4px 16px rgb(0 0 0 / 0.35)`  | Small floating panel shadow |
-| `--wui-shadow-glass`   | four-layer diffuse shadow        | `0 12px 32px rgb(0 0 0 / 0.38)` | Base liquid glass shadow    |
+| `--wui-shadow-overlay` | `2px 16px 40px rgb(0 0 0 / 0.4)` | `0 18px 48px rgb(0 0 0 / 0.44)` | Modal and drawer shadow     |
+| `--wui-shadow-panel`   | `0 3px 9px rgb(0 0 0 / 0.27)`    | `0 4px 16px rgb(0 0 0 / 0.32)`  | Small floating panel shadow |
+| `--wui-shadow-glass`   | four-layer diffuse shadow        | `0 12px 32px rgb(0 0 0 / 0.12)` | Base liquid glass shadow    |
 
 **Internal tokens:** variables prefixed `--wui-internal-*` are private wiring between shadow DOM parts; they are not part of the public token API and must not be overridden by consumers.
 

@@ -130,7 +130,11 @@ export class WebUiCheckbox extends LitElement {
       >
         <span class="wui-checkbox-box">
           <span class="wui-checkbox-icon"
-            ><web-ui-icon .icon=${heroiconsCheck16Solid} size="18" color="#fff"></web-ui-icon
+            ><web-ui-icon
+              .icon=${heroiconsCheck16Solid}
+              size="18"
+              color="var(--wui-color-on-control, #fff)"
+            ></web-ui-icon
           ></span>
         </span>
         <span class="wui-checkbox-label"><slot></slot></span>

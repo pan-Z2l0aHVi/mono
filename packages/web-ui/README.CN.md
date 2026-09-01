@@ -362,10 +362,12 @@ ArrowUp/ArrowDown 键增减数值。空输入或 `-` 在提交时被忽略，值
 
 **CSS 自定义属性：**
 
-| 属性                      | 默认值  | 说明           |
-| ------------------------- | ------- | -------------- |
-| `--wui-select-max-width`  | `500px` | 下拉框最大宽度 |
-| `--wui-overlay-min-width` | `200px` | 下拉框最小宽度 |
+| 属性                      | 默认值                             | 说明                  |
+| ------------------------- | ---------------------------------- | --------------------- |
+| `--wui-select-max-width`  | `500px`                            | 下拉框最大宽度        |
+| `--wui-overlay-min-width` | `200px`                            | 下拉框最小宽度        |
+| `--wui-select-bg-hover`   | `--wui-color-surface-glass-hover`  | Trigger 悬停背景      |
+| `--wui-select-bg-active`  | `--wui-color-surface-glass-active` | Trigger 按下/打开背景 |
 
 #### `<web-ui-autocomplete>`
 
@@ -430,8 +432,8 @@ ArrowUp/ArrowDown 键增减数值。空输入或 `-` 在提交时被忽略，值
 | `--wui-slider-vertical-height` | `200px`                             | 垂直滑块高度 |
 | `--wui-slider-height`          | `var(--wui-slider-track-size, 6px)` | 轨道厚度     |
 | `--wui-slider-track-size`      | `6px`                               | 轨道尺寸     |
-| `--wui-slider-thumb-width`     | `24px`                              | 滑块短轴     |
-| `--wui-slider-thumb-height`    | `32px`                              | 滑块长轴     |
+| `--wui-slider-thumb-width`     | `30px`                              | 滑块宽度     |
+| `--wui-slider-thumb-height`    | `20px`                              | 滑块高度     |
 | `--wui-slider-marks-inset`     | `0`                                 | 刻度内缩     |
 
 #### `<web-ui-checkbox>`
@@ -967,9 +969,10 @@ WebUiSpinner.hide() // 隐藏
 
 **CSS 自定义属性：**
 
-| 属性                          | 默认值 | 说明                                 |
-| ----------------------------- | ------ | ------------------------------------ |
-| `--wui-layout-sidebar-radius` | `28px` | 侧边栏卡片圆角（桌面端和移动端共用） |
+| 属性                          | 默认值                    | 说明                                 |
+| ----------------------------- | ------------------------- | ------------------------------------ |
+| `--wui-layout-sidebar-radius` | `24px`                    | 侧边栏卡片圆角（桌面端和移动端共用） |
+| `--wui-layout-sidebar-bg`     | `rgb(246 246 246 / 0.82)` | 侧边栏卡片背景（深色模式下略浅）     |
 
 #### `<web-ui-back-top>`
 
@@ -1037,7 +1040,7 @@ SVG 线条绘制动画，基于 `stroke-dashoffset`。直接在原元素上动�
 | ------------------------- | ------- | ------------------------ |
 | `--wui-font-size`         | `14px`  | 控件基础字号             |
 | `--wui-input-width`       | `200px` | 紧凑表单控件默认宽度     |
-| `--wui-control-size`      | `40px`  | 控件默认高度和方形最小宽 |
+| `--wui-control-size`      | `36px`  | 控件默认高度和方形最小宽 |
 | `--wui-overlay-min-width` | `200px` | 锚定浮层最小宽度         |
 | `--wui-focus-ring-width`  | `3px`   | Focus 指示器宽度         |
 
@@ -1066,13 +1069,16 @@ SVG 线条绘制动画，基于 `stroke-dashoffset`。直接在原元素上动�
 | `--wui-color-page`                 | `#fff`                                                       | `#292c2e`                                                    | 页面背景               |
 | `--wui-color-surface`              | `#fff`                                                       | `#2c2c2e`                                                    | 普通 表面              |
 | `--wui-color-surface-raised`       | `#f2f2f7`                                                    | `#2c2c2e`                                                    | 抬升表面               |
-| `--wui-color-surface-control`      | `#dfdfdf`                                                    | `#2c2c2e`                                                    | 中性可交互控件表面     |
+| `--wui-color-surface-control`      | `#dfdfdf`                                                    | `#3a3a3c`                                                    | 中性可交互控件表面     |
 | `--wui-color-surface-track`        | `#e5e5ea`                                                    | `#444446`                                                    | Slider/Switch 轨道表面 |
 | `--wui-color-surface-menu`         | `rgb(246 246 246 / 0.82)`                                    | `rgb(30 30 32 / 0.92)`                                       | Menu 和浮动面板表面    |
 | `--wui-color-surface-glass`        | `rgb(250 250 250 / 0.34)`                                    | `rgb(44 44 46 / 0.42)`                                       | 液态玻璃表面           |
 | `--wui-color-surface-glass-hover`  | `color-mix(... text 6%, surface-glass)`                      | `color-mix(... text 6%, surface-glass)`                      | Glass 完整悬停背景     |
 | `--wui-color-surface-glass-active` | `color-mix(... text 15%, surface-glass)`                     | `color-mix(... text 15%, surface-glass)`                     | Glass 完整按下背景     |
 | `--wui-color-surface-overlay`      | `rgb(246 246 246 / 0.82)`                                    | `rgb(20 20 22 / 0.9)`                                        | 半透明浮层表面         |
+| `--wui-layout-sidebar-bg`          | `rgb(246 246 246 / 0.82)`                                    | `rgb(29 29 31 / 0.91)`                                       | Layout 侧边栏背景      |
+| `--wui-color-surface-segmented`    | `#e5e5ea`                                                    | `#3a3a3c`                                                    | Segmented 轨道表面     |
+| `--wui-color-surface-selected`     | `#fff`                                                       | `#5c5c5e`                                                    | Segmented 选中滑块表面 |
 | `--wui-color-text`                 | `#1b1b1b`                                                    | `#e9eaea`                                                    | 主要文本               |
 | `--wui-color-text-secondary`       | `#6a6a6a`                                                    | `#a1a1a6`                                                    | 次要文本               |
 | `--wui-color-text-tertiary`        | `color-mix(in srgb, var(--wui-color-text) 35%, transparent)` | `color-mix(in srgb, var(--wui-color-text) 42%, transparent)` | 三级文本和弱意图图标   |
@@ -1084,6 +1090,7 @@ SVG 线条绘制动画，基于 `stroke-dashoffset`。直接在原元素上动�
 | `--wui-color-glass-highlight`      | `rgb(255 255 255 / 0.9)`                                     | `rgb(255 255 255 / 0.22)`                                    | Glass 高光边缘         |
 | `--wui-color-accent`               | `#08f`                                                       | `#0a84ff`                                                    | Accent 和输入焦点边框  |
 | `--wui-color-on-accent`            | `#fff`                                                       | `#fff`                                                       | Accent 上的前景色      |
+| `--wui-color-on-control`           | `#fff`                                                       | `#f2f2f7`                                                    | 控件内芯前景色         |
 | `--wui-color-success`              | `#16a34a`                                                    | `#30d158`                                                    | 成功                   |
 | `--wui-color-warning`              | `#d97706`                                                    | `#ff9f0a`                                                    | 警告                   |
 | `--wui-color-danger`               | `#dc2626`                                                    | `#ff453a`                                                    | 危险                   |
@@ -1095,9 +1102,9 @@ SVG 线条绘制动画，基于 `stroke-dashoffset`。直接在原元素上动�
 
 | 属性                   | 浅色默认值                       | 深色默认值                      | 说明              |
 | ---------------------- | -------------------------------- | ------------------------------- | ----------------- |
-| `--wui-shadow-overlay` | `2px 16px 40px rgb(0 0 0 / 0.4)` | `0 18px 48px rgb(0 0 0 / 0.54)` | Modal/Drawer 阴影 |
-| `--wui-shadow-panel`   | `0 3px 9px rgb(0 0 0 / 0.27)`    | `0 4px 16px rgb(0 0 0 / 0.35)`  | 小型浮动面板阴影  |
-| `--wui-shadow-glass`   | 四层扩散阴影                     | `0 12px 32px rgb(0 0 0 / 0.38)` | 液态玻璃基础阴影  |
+| `--wui-shadow-overlay` | `2px 16px 40px rgb(0 0 0 / 0.4)` | `0 18px 48px rgb(0 0 0 / 0.44)` | Modal/Drawer 阴影 |
+| `--wui-shadow-panel`   | `0 3px 9px rgb(0 0 0 / 0.27)`    | `0 4px 16px rgb(0 0 0 / 0.32)`  | 小型浮动面板阴影  |
+| `--wui-shadow-glass`   | 四层扩散阴影                     | `0 12px 32px rgb(0 0 0 / 0.12)` | 液态玻璃基础阴影  |
 
 **内部 token：** 以 `--wui-internal-*` 为前缀的变量是 Shadow DOM 内部接线变量，不属于公共 token API，消费方不应覆盖。
 
