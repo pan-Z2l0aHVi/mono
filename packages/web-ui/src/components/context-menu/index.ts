@@ -90,6 +90,10 @@ export class WebUiContextMenu extends LitElement {
     this._menu = undefined
     this._closeSubmenusFrom(0, true)
     this._restoreClosingSubmenus()
+    // 脱离文档即视为关闭：否则重连后 _isOpen 仍为 true 而 _menu 已清空，
+    // 下次 openAt 会走已打开分支静默失败，菜单无法再打开。
+    this._isOpen = false
+    this._restoreFocusTarget = undefined
   }
 
   protected override updated(changed: Map<string, unknown>) {

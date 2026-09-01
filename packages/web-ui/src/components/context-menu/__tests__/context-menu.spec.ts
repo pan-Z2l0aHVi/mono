@@ -665,6 +665,32 @@ describe('WebUiContextMenu 组件', () => {
     })
   })
 
+  describe('生命周期', () => {
+    it('打开期间脱离文档后重连，状态复位且菜单可重新打开', async () => {
+      const el = createContextMenu({}, SIMPLE)
+      await waitForUpdate(el)
+      el.openAt(100, 100)
+      await waitForMenuOpen(el)
+      expect(el.isOpen).toBe(true)
+
+      // detach-while-open：菜单开着时移出文档再挂回
+      el.remove()
+      document.body.appendChild(el)
+      await waitForUpdate(el)
+
+      expect(el.isOpen).toBe(false)
+
+      // 重连后 openAt 走全新打开路径，portal 正常重建
+      el.openAt(200, 200)
+      await waitForMenuOpen(el)
+      expect(el.isOpen).toBe(true)
+      expect(getMenu()).toBeTruthy()
+      expect(getMenuItems().map(item => item.textContent?.trim())).toEqual(['编辑', '复制'])
+
+      cleanupElement(el)
+    })
+  })
+
   describe('键盘 ContextMenu 键', () => {
     it('ContextMenu 键打开菜单', async () => {
       const el = createContextMenu({}, SIMPLE)
