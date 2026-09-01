@@ -52,9 +52,9 @@
   height: calc(100dvh - 16px);
   min-height: 0;
   margin: 8px;
-  border-radius: var(--wui-layout-sidebar-radius, 28px);
+  border-radius: var(--wui-layout-sidebar-radius, 24px);
 
-  background-color: var(--wui-color-surface-overlay, rgb(246 246 246 / 0.82));
+  background-color: var(--wui-layout-sidebar-bg, rgb(246 246 246 / 0.82));
 }
 
 /*
@@ -85,9 +85,9 @@ aside {
     flex-direction: column;
 
     min-height: 0;
-    border-radius: var(--wui-layout-sidebar-radius, 28px);
+    border-radius: var(--wui-layout-sidebar-radius, 24px);
 
-    background-color: var(--wui-color-surface-overlay, rgb(246 246 246 / 0.82));
+    background-color: var(--wui-layout-sidebar-bg, rgb(246 246 246 / 0.82));
   }
 
   .sidebar-toggle-area {
@@ -97,7 +97,6 @@ aside {
   }
 
   .sidebar-toggle {
-    width: fit-content;
     margin: 8px;
   }
 

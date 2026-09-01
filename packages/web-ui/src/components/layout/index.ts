@@ -42,7 +42,7 @@ export class WebUiLayout extends LitElement {
   sidebarWidth = '240px'
 
   @property({ type: String, attribute: 'collapsed-width', reflect: true })
-  collapsedWidth = '72px'
+  collapsedWidth = '68px'
 
   /** 启用桌面端 Sidebar 拖拽调宽（折叠态隐藏 handle）。 */
   @property({ type: Boolean, attribute: 'sidebar-resizable', reflect: true })
@@ -133,8 +133,8 @@ export class WebUiLayout extends LitElement {
   private _resolveSidebarMinWidth(): number {
     // 未设置时回退为折叠宽度，防止拖到不可用宽度。
     return this.sidebarMinWidth
-      ? this._parsePx(this.sidebarMinWidth, this._parsePx(this.collapsedWidth, 72))
-      : this._parsePx(this.collapsedWidth, 72)
+      ? this._parsePx(this.sidebarMinWidth, this._parsePx(this.collapsedWidth, 68))
+      : this._parsePx(this.collapsedWidth, 68)
   }
 
   private _resolveSidebarMaxWidth(): number {
