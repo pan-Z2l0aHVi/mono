@@ -331,10 +331,8 @@ function DrawerDemo() {
       <h2>Nested 层叠抽屉</h2>
       <div className="mb-3 flex flex-wrap gap-2">
         <web-ui-button onClick={() => setNestedL1(true)}>等宽嵌套 (320px)</web-ui-button>
-        <web-ui-button variant="secondary" onClick={() => setDiffWidthL1(true)}>
-          级联收窄 (500px → 360px → 260px)
-        </web-ui-button>
-        <web-ui-button variant="secondary" onClick={() => setRandomWidthL1(true)}>
+        <web-ui-button onClick={() => setDiffWidthL1(true)}>级联收窄 (500px → 360px → 260px)</web-ui-button>
+        <web-ui-button onClick={() => setRandomWidthL1(true)}>
           乱序宽度交错 (300px → 520px → 240px → 400px)
         </web-ui-button>
       </div>
