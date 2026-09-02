@@ -6,6 +6,7 @@
 
 - 全局拓扑和快速定位：[`ARCHITECTURE.md`](ARCHITECTURE.md)。
 - 协作流程短入口：[`CONTRIBUTING.md`](CONTRIBUTING.md)；它不取代按任务加载的规则。
+- 会话角色：用户或 Manager 指定角色时，读取 [`.agents/agents/<role>.md`](.agents/agents/)；初始化见 [`CONTRIBUTING.md`](CONTRIBUTING.md)。
 
 1. 先查看工作区状态、目标文件和最近的 `AGENTS.md`；只有进入某个 `apps/` 或 `packages/` 时才加载其包级指令。
 2. 只按任务加载命中的 rule、guide 和包级指令；不要为普通局部任务预读 `CONTEXT.md`、ADR 或无关领域指南。
