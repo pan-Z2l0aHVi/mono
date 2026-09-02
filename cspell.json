@@ -65,6 +65,7 @@
     "dedup",
     "maint",
     "taggings",
-    "cooccurring"
+    "cooccurring",
+    "vnode"
   ]
 }
