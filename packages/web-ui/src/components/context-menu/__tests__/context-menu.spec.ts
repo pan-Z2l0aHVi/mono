@@ -1037,5 +1037,162 @@ describe('WebUiContextMenu 组件', () => {
         fixture.unmount()
       }
     })
+
+    it('打开态双向 v-if 翻转 + divider 中间插入，content 顺序保持模板序', async () => {
+      const warnings: string[] = []
+      const host = document.createElement('div')
+      document.body.append(host)
+      const broken = ref(false)
+      const app = createApp({
+        setup() {
+          return { broken }
+        },
+        // 与原型页一致：valid 分支包含「管理标签 + 条件 divider」，broken 分支替换为「找回资源」
+        template: `
+          <web-ui-context-menu>
+            <web-ui-dropdown-item v-if="!broken" key="preview">预览</web-ui-dropdown-item>
+            <web-ui-dropdown-item v-if="!broken" key="openwith">打开方式</web-ui-dropdown-item>
+            <web-ui-dropdown-item v-if="broken" key="recover">找回资源</web-ui-dropdown-item>
+            <web-ui-dropdown-divider key="d1"></web-ui-dropdown-divider>
+            <web-ui-dropdown-item v-if="!broken" key="tags">管理标签</web-ui-dropdown-item>
+            <web-ui-dropdown-divider v-if="!broken" key="d2"></web-ui-dropdown-divider>
+            <web-ui-dropdown-item key="del">删除</web-ui-dropdown-item>
+          </web-ui-context-menu>
+        `
+      })
+      app.config.compilerOptions = { isCustomElement: (tag: string) => tag.startsWith('web-ui-') }
+      app.config.warnHandler = (msg: string) => warnings.push('WARN: ' + msg.slice(0, 120))
+      app.config.errorHandler = (err: unknown) => warnings.push('ERROR: ' + String((err as Error)?.message ?? err))
+      app.mount(host)
+      const el = host.querySelector('web-ui-context-menu')!
+      // 读取 portal content 的真实子节点序（含 divider 与条件项的注释锚点）
+      const contentOrder = () => {
+        const content = getMenu()?.querySelector<HTMLElement>('.wui-menu-content')
+        return Array.from(content?.childNodes ?? [])
+          .filter(n => n instanceof HTMLElement)
+          .map(item => (item.tagName === 'WEB-UI-DROPDOWN-DIVIDER' ? 'DIV' : item.textContent?.trim()))
+      }
+      try {
+        el.openAt(10, 10)
+        await nextFrames()
+        await new Promise(resolve => setTimeout(resolve, 120))
+        expect(contentOrder()).toEqual(['预览', '打开方式', 'DIV', '管理标签', 'DIV', '删除'])
+
+        // 打开态 valid → broken：找回资源 应在无条件 divider 之前
+        broken.value = true
+        await nextFrames()
+        await new Promise(resolve => setTimeout(resolve, 120))
+        expect(contentOrder()).toEqual(['找回资源', 'DIV', '删除'])
+
+        // 打开态 broken → valid：管理标签与条件 divider 回到无条件 divider 之后
+        broken.value = false
+        await nextFrames()
+        await new Promise(resolve => setTimeout(resolve, 120))
+        expect(contentOrder()).toEqual(['预览', '打开方式', 'DIV', '管理标签', 'DIV', '删除'])
+
+        // close → reopen：顺序与无锚点残留
+        el.close()
+        await new Promise(resolve => setTimeout(resolve, 300))
+        el.openAt(20, 20)
+        await nextFrames()
+        await new Promise(resolve => setTimeout(resolve, 120))
+        expect(contentOrder()).toEqual(['预览', '打开方式', 'DIV', '管理标签', 'DIV', '删除'])
+
+        expect(warnings).toEqual([])
+      } finally {
+        el.remove()
+        app.unmount()
+      }
+    })
+
+    it('多轮 v-if 翻转+全序锚点断言+reopen 稳定', async () => {
+      const warnings: string[] = []
+      const host = document.createElement('div')
+      document.body.append(host)
+      const broken = ref(false)
+      const app = createApp({
+        setup() {
+          return { broken }
+        },
+        template: `
+          <web-ui-context-menu>
+            <web-ui-dropdown-item v-if="!broken" key="a">预览</web-ui-dropdown-item>
+            <web-ui-dropdown-item v-if="!broken" key="b">打开方式</web-ui-dropdown-item>
+            <web-ui-dropdown-item v-if="broken" key="c">找回资源</web-ui-dropdown-item>
+            <web-ui-dropdown-divider key="d1"></web-ui-dropdown-divider>
+            <web-ui-dropdown-item v-if="!broken" key="e">管理标签</web-ui-dropdown-item>
+            <web-ui-dropdown-divider v-if="!broken" key="f"></web-ui-dropdown-divider>
+            <web-ui-dropdown-item key="g">删除</web-ui-dropdown-item>
+          </web-ui-context-menu>
+        `
+      })
+      app.config.compilerOptions = { isCustomElement: (tag: string) => tag.startsWith('web-ui-') }
+      app.config.warnHandler = (msg: string) => warnings.push('WARN: ' + msg.slice(0, 120))
+      app.config.errorHandler = (err: unknown) => warnings.push('ERROR: ' + String((err as Error)?.message ?? err))
+      app.mount(host)
+      const el = host.querySelector('web-ui-context-menu')!
+      // 全序：childNodes 中每个子节点的类型/文本，包括注释
+      const fullOrder = () => {
+        const content = getMenu()?.querySelector<HTMLElement>('.wui-menu-content')
+        return Array.from(content?.childNodes ?? []).map(n => {
+          if (n.nodeType === Node.COMMENT_NODE) return n.textContent === 'wui-context-menu-item' ? 'M' : '#v-if'
+          if (n.nodeType === Node.TEXT_NODE) return '·'
+          if (n instanceof HTMLElement)
+            return n.tagName === 'WEB-UI-DROPDOWN-DIVIDER' ? 'DIV' : 'I:' + n.textContent?.trim()
+          return '?'
+        })
+      }
+      try {
+        el.openAt(10, 10)
+        await nextFrames()
+        await new Promise(resolve => setTimeout(resolve, 120))
+        expect(fullOrder()).toEqual(['I:预览', 'I:打开方式', 'DIV', 'I:管理标签', 'DIV', 'I:删除'])
+
+        // 两轮连续翻转 + 最后 reopen
+        for (let round = 0; round < 2; round++) {
+          broken.value = true
+          await nextFrames()
+          await new Promise(r => setTimeout(r, 120))
+          const brokenOrder = fullOrder()
+          expect(brokenOrder.filter(s => s.startsWith('I:') || s === 'DIV')).toEqual(['I:找回资源', 'DIV', 'I:删除'])
+          expect(brokenOrder.filter(s => s === '#v-if').length).toBe(4)
+
+          broken.value = false
+          await nextFrames()
+          await new Promise(r => setTimeout(r, 120))
+          const validOrder = fullOrder()
+          expect(validOrder.filter(s => s.startsWith('I:') || s === 'DIV')).toEqual([
+            'I:预览',
+            'I:打开方式',
+            'DIV',
+            'I:管理标签',
+            'DIV',
+            'I:删除'
+          ])
+          // 锚点可能在 1 个(找回资源 false)或 0 个(全部 true)
+          expect(validOrder.filter(s => s === '#v-if').length).toBeLessThanOrEqual(1)
+        }
+
+        // close → reopen
+        el.close()
+        await new Promise(r => setTimeout(r, 300))
+        el.openAt(20, 20)
+        await nextFrames()
+        await new Promise(r => setTimeout(r, 120))
+        expect(fullOrder().filter(s => s.startsWith('I:') || s === 'DIV')).toEqual([
+          'I:预览',
+          'I:打开方式',
+          'DIV',
+          'I:管理标签',
+          'DIV',
+          'I:删除'
+        ])
+
+        expect(warnings).toEqual([])
+      } finally {
+        el.remove()
+        app.unmount()
+      }
+    })
   })
 })

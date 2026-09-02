@@ -240,7 +240,46 @@ export class WebUiContextMenu extends LitElement {
     // 新节点没有隐藏 slot 会落入父项默认 slot 可见渲染并叠到一级菜单上；
     // 因此对已移入 content 的嵌套子项也要重新隐藏。
     hideNestedMenuChildren(content, 'context-menu-hidden')
+
+    // 框架 v-if 注释锚点的复位独立于元素重排：无论元素序是否已变都要执行。
+    // 若挂在「元素序已变才重排」之下，顺序恰好正确时会跳过复位，锚点漂移无法收敛，
+    // 而 Vue 下次翻转正依赖锚点引导新分支项的插入点。
+    const anchors = this._captureFrameworkAnchors(content)
     this._orderMenuItems(content)
+    this._restoreFrameworkAnchors(content, anchors)
+  }
+
+  /**
+   * 捕获框架 v-if 注释锚点相对其后继元素的绑定，供重排后复位。
+   * 后继以 nextElementSibling 解析（跳过注释/文本，多个相邻锚点绑定同一后继）。
+   * 锚点在 content 末尾、无后继元素时记为 null（尾部锚点，复位时保持末尾）。
+   */
+  private _captureFrameworkAnchors(content: HTMLElement): Map<Comment, HTMLElement | null> {
+    const anchors = new Map<Comment, HTMLElement | null>()
+    for (const node of Array.from(content.childNodes)) {
+      if (node instanceof Comment && node.textContent !== MARKER_TEXT) {
+        const nextEl = node.nextElementSibling
+        anchors.set(node, nextEl instanceof HTMLElement ? nextEl : null)
+      }
+    }
+    return anchors
+  }
+
+  /**
+   * 把锚点复位到捕获时其后继元素之前（尾部锚点保持末尾）。
+   * 元素重排用 insertBefore/appendChild 不会移动注释，锚点必须显式复位，
+   * 否则脱离模板位置后 Vue 下次 v-if 翻转会把新分支项插到错误插入点。
+   */
+  private _restoreFrameworkAnchors(content: HTMLElement, anchors: Map<Comment, HTMLElement | null>) {
+    for (const [anchor, successor] of anchors) {
+      if (anchor.parentNode !== content) continue
+      if (successor && successor.parentNode === content) {
+        if (anchor.nextElementSibling !== successor) content.insertBefore(anchor, successor)
+      } else {
+        // 尾部锚点：重排可能把元素 append 到末尾越过锚点，恢复其末尾位置。
+        content.appendChild(anchor)
+      }
+    }
   }
 
   /**
@@ -308,14 +347,25 @@ export class WebUiContextMenu extends LitElement {
       })
     }
 
-    const currentItems = Array.from(content.children)
-    const isOrdered =
-      currentItems.length === targetItems.length && currentItems.every((item, index) => item === targetItems[index])
-    if (isOrdered) return
+    if (targetItems.length === 0) return
 
-    targetItems.forEach(subtree => {
-      content.appendChild(subtree)
-    })
+    const currentItems = Array.from(content.children)
+    if (currentItems.length === targetItems.length && currentItems.every((item, index) => item === targetItems[index]))
+      return
+
+    // 把每个元素移动到目标序中下一个元素之前，而不是 appendChild 全部移到末尾。
+    // appendChild 会把元素越过 content 中的框架注释锚点（v-if 锚点），导致锚点脱离
+    // 模板位置，下次框架翻转时据此锚点插入新分支项就会落错位；insertBefore 只重排
+    // 元素相对顺序，锚点保持在原模板位置。锚点复位由 _restoreFrameworkAnchors 独立完成。
+    for (let index = targetItems.length - 1; index >= 0; index--) {
+      const item = targetItems[index]
+      const next = targetItems[index + 1]
+      if (next) {
+        if (item.nextElementSibling !== next) content.insertBefore(item, next)
+      } else {
+        content.appendChild(item)
+      }
+    }
   }
 
   private _returnItemsToSlot() {
