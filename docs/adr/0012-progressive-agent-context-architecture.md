@@ -22,6 +22,12 @@
 
 新增 instruction、rule、skill 提示或 hook 之前，必须先判断代码边界、类型、测试、lint 或脚本能否更可靠地表达该约束。只有无法自动验证、且确实影响工程选择的约束才写入 instruction system。
 
+## 角色实施补充（2026-09-01）
+
+`.agents/agents/` 是共享、显式选择的 Session Role 层，固定提供 `manager`、`designer`、`lib-coder`、`biz-coder` 与 `reviewer`。Role 定义会话身份、职责边界、协作与完成定义，并独立于会话内先后出现的多个 Task；Rules 定义约束，Skills 定义专业方法，Task 定义某一时刻的具体需求。
+
+Role 不与模型、CLI 或固定会话绑定。当前 Harness 不自动选择 Role；用户或 Manager 按 [`CONTRIBUTING.md`](../../CONTRIBUTING.md#角色会话) 显式加载，`.claude/agents` 以 symlink 复用该唯一来源。
+
 ## 后果
 
 - 根入口从详细操作手册收敛为稳定导航层，局部任务的初始 context 更小。
