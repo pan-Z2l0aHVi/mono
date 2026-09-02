@@ -1,6 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+// 全量构建的 vue：含运行时模板编译器，用于真实 v-if 翻转（false 分支产生注释锚点）
+import { createApp, ref } from 'vue/dist/vue.esm-bundler.js'
 
 import '..'
+import { getMenuChildren } from '@/shared/menu-portal/menu-tree'
 import { cleanupElement, waitForUpdate } from '@/shared/test-utils'
 
 import type { WebUiContextMenu } from '..'
@@ -669,6 +672,106 @@ describe('WebUiContextMenu 组件', () => {
     })
   })
 
+  describe('框架直接操作 portal 内容', () => {
+    function getPortalContent(): HTMLElement {
+      const content = getMenu()?.querySelector<HTMLElement>('.wui-menu-content')
+      if (!content) throw new Error('Expected portal content')
+      return content
+    }
+
+    function getManagedMarkers(el: WebUiContextMenu): Comment[] {
+      return Array.from(el.childNodes).filter(
+        (node): node is Comment => node.nodeType === Node.COMMENT_NODE && node.textContent === 'wui-context-menu-item'
+      )
+    }
+
+    it('框架把新项直接插入 portal，刷新后纳入托管且顺序正确', async () => {
+      const el = createContextMenu({}, '<web-ui-dropdown-item>编辑</web-ui-dropdown-item>')
+      await waitForUpdate(el)
+      el.openAt(100, 100)
+      await waitForMenuOpen(el)
+
+      // 模拟 Vue 以 portal 为插入点直接 append 新项（绕过宿主）
+      const fresh = document.createElement('web-ui-dropdown-item')
+      fresh.textContent = '直插项'
+      getPortalContent().appendChild(fresh)
+
+      await new Promise(resolve => requestAnimationFrame(resolve))
+      await new Promise(resolve => requestAnimationFrame(resolve))
+
+      expect(el.isOpen).toBe(true)
+      expect(getMenuItems().map(item => item.textContent?.trim())).toEqual(['编辑', '直插项'])
+      // 纳入托管：每个 content 中的托管元素都有 marker
+      expect(getManagedMarkers(el)).toHaveLength(getPortalContent().children.length)
+
+      cleanupElement(el)
+    })
+
+    it('框架卸载 portal 内旧项并以注释锚点与新项替换，刷新后菜单完整', async () => {
+      const el = createContextMenu({}, SIMPLE)
+      await waitForUpdate(el)
+      el.openAt(100, 100)
+      await waitForMenuOpen(el)
+
+      // 模拟 Vue v-if 翻转：portal 内「编辑」被替换为注释锚点 + 新元素（插入点 = portal）
+      const content = getPortalContent()
+      const [first] = getMenuChildren(content)
+      const anchor = document.createComment('v-if')
+      const fresh = document.createElement('web-ui-dropdown-item')
+      fresh.textContent = '找回资源'
+      first.replaceWith(anchor, fresh)
+
+      await new Promise(resolve => requestAnimationFrame(resolve))
+      await new Promise(resolve => requestAnimationFrame(resolve))
+
+      expect(el.isOpen).toBe(true)
+      expect(getMenuItems().map(item => item.textContent?.trim())).toEqual(['找回资源', '复制'])
+      expect(getManagedMarkers(el)).toHaveLength(2)
+
+      cleanupElement(el)
+    })
+
+    it('翻转多次后关闭重开，菜单项完整归还且 content 无残留注释', async () => {
+      const el = createContextMenu({}, SIMPLE)
+      await waitForUpdate(el)
+      el.openAt(100, 100)
+      await waitForMenuOpen(el)
+
+      const content = getPortalContent()
+      // 第一轮：替换 + 直插
+      const [first] = getMenuChildren(content)
+      const fresh = document.createElement('web-ui-dropdown-item')
+      fresh.textContent = '找回资源'
+      first.replaceWith(document.createComment('v-if'), fresh)
+      const extra = document.createElement('web-ui-dropdown-item')
+      extra.textContent = '直插项'
+      content.appendChild(extra)
+      await new Promise(resolve => requestAnimationFrame(resolve))
+      await new Promise(resolve => requestAnimationFrame(resolve))
+
+      // 关闭归还
+      el.close()
+      await waitForMenuClose(el)
+      await new Promise(resolve => requestAnimationFrame(resolve))
+
+      const restored = [...el.querySelectorAll(':scope > web-ui-dropdown-item')].map(item => item.textContent?.trim())
+      expect(restored).toEqual(['找回资源', '复制', '直插项'])
+      expect(getManagedMarkers(el)).toHaveLength(0)
+      // 框架 v-if 锚点随元素迁回宿主而非被销毁，否则框架持有 detached 引用下次 patch 崩溃
+      expect([...content.childNodes]).toHaveLength(0)
+      expect([...el.childNodes].some(node => node.nodeType === Node.COMMENT_NODE && node.textContent === 'v-if')).toBe(
+        true
+      )
+
+      // 重开后菜单完整
+      el.openAt(200, 200)
+      await waitForMenuOpen(el)
+      expect(getMenuItems().map(item => item.textContent?.trim())).toEqual(['找回资源', '复制', '直插项'])
+
+      cleanupElement(el)
+    })
+  })
+
   describe('生命周期', () => {
     it('打开期间脱离文档后重连，状态复位且菜单可重新打开', async () => {
       const el = createContextMenu({}, SIMPLE)
@@ -853,6 +956,86 @@ describe('WebUiContextMenu 组件', () => {
       expect(getSubmenu()?.querySelectorAll('web-ui-dropdown-item')).toHaveLength(0)
 
       cleanupElement(el)
+    })
+  })
+
+  describe('Vue v-if 消费者集成（真实渲染器）', () => {
+    interface VueMenuFixture {
+      broken: { value: boolean }
+      menuEl: () => WebUiContextMenu
+      hostTexts: () => string[]
+      unmount: () => void
+    }
+
+    function mountVueMenu(warnings: string[]): VueMenuFixture {
+      const host = document.createElement('div')
+      document.body.append(host)
+      const broken = ref(false)
+      const app = createApp({
+        setup() {
+          return { broken }
+        },
+        // 与原型页一致：v-if 切换 valid/broken 菜单项，false 分支产生注释锚点
+        template: `
+          <web-ui-context-menu>
+            <web-ui-dropdown-item v-if="!broken" key="a">预览</web-ui-dropdown-item>
+            <web-ui-dropdown-item v-if="broken" key="b">找回资源</web-ui-dropdown-item>
+            <web-ui-dropdown-item key="d">删除</web-ui-dropdown-item>
+          </web-ui-context-menu>
+        `
+      })
+      app.config.compilerOptions = {
+        isCustomElement: (tag: string) => tag.startsWith('web-ui-')
+      }
+      app.config.warnHandler = (msg: string) => warnings.push('WARN: ' + msg.slice(0, 120))
+      app.config.errorHandler = (err: unknown) => warnings.push('ERROR: ' + String((err as Error)?.message ?? err))
+      app.mount(host)
+      const getEl = () => {
+        const el = host.querySelector('web-ui-context-menu')
+        if (!el) throw new Error('Expected context menu element')
+        return el
+      }
+      return {
+        broken,
+        menuEl: getEl,
+        hostTexts: () =>
+          [...getEl().querySelectorAll(':scope > web-ui-dropdown-item')].map(item => item.textContent?.trim()),
+        unmount: () => app.unmount()
+      }
+    }
+
+    const nextFrames = () =>
+      new Promise(resolve => requestAnimationFrame(resolve)).then(
+        () => new Promise(resolve => requestAnimationFrame(resolve))
+      )
+
+    it('菜单开着时 v-if 翻转、关闭后锚点迁回宿主，再翻转不崩溃', async () => {
+      const warnings: string[] = []
+      const fixture = mountVueMenu(warnings)
+      try {
+        fixture.menuEl().openAt(10, 10)
+        await nextFrames()
+        await new Promise(resolve => setTimeout(resolve, 120))
+        // 开着时翻转：valid → broken，注释锚点写进 portal
+        fixture.broken.value = true
+        await nextFrames()
+        await new Promise(resolve => setTimeout(resolve, 120))
+
+        // 关闭：元素与框架锚点一并迁回宿主
+        fixture.menuEl().close()
+        await new Promise(resolve => setTimeout(resolve, 300))
+
+        // 再翻转回 valid：Vue 以宿主为容器 patch，不应崩溃
+        fixture.broken.value = false
+        await nextFrames()
+        await new Promise(resolve => setTimeout(resolve, 120))
+
+        expect(warnings).toEqual([])
+        expect(fixture.hostTexts()).toEqual(['预览', '删除'])
+      } finally {
+        fixture.menuEl().remove()
+        fixture.unmount()
+      }
     })
   })
 })

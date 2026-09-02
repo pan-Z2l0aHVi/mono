@@ -772,6 +772,8 @@ Hover 模式使用 `pointerenter`/`pointerleave` 加延迟控制。Click 模式�
 
 通过 `contextmenu` 事件打开。菜单项：`web-ui-dropdown-item`、`web-ui-dropdown-divider`、`web-ui-dropdown-header`。支持键盘导航和子菜单 hover。
 
+菜单打开期间，消费者可以安全地使用条件渲染（如 Vue `v-if`）切换、移动或删除菜单项，无需重新插入到宿主元素；portal 内的变更会自动 reconcile，关闭时框架锚点随元素迁回宿主，保证后续框架更新正常。
+
 ---
 
 ### 菜单

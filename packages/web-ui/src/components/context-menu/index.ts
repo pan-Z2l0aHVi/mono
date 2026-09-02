@@ -21,6 +21,8 @@ import { defineScrollLockLease } from '@/shared/scroll-lock/scroll-lock'
 
 import style from './style.css?inline'
 
+const MARKER_TEXT = 'wui-context-menu-item'
+
 @customElement('web-ui-context-menu')
 export class WebUiContextMenu extends LitElement {
   static override styles = unsafeCSS(style)
@@ -230,46 +232,76 @@ export class WebUiContextMenu extends LitElement {
   private _setupMenuItems() {
     const menu = this._menu
     if (!menu) return
+    const content = menu.content
 
-    this._pruneMenuItems(menu.content)
+    this._syncManagedItems(content)
     this._hideMenuItems()
-    this._moveHostItemsToMenu(menu.content)
-    this._orderMenuItems(menu.content)
     // 宿主可能在菜单打开期间动态改写 slot 子内容（如切换上下文后重建嵌套子项），
     // 新节点没有隐藏 slot 会落入父项默认 slot 可见渲染并叠到一级菜单上；
     // 因此对已移入 content 的嵌套子项也要重新隐藏。
-    hideNestedMenuChildren(menu.content, 'context-menu-hidden')
+    hideNestedMenuChildren(content, 'context-menu-hidden')
+    this._orderMenuItems(content)
   }
 
-  private _moveHostItemsToMenu(content: HTMLElement) {
-    getMovableMenuSubtrees(this).forEach(subtree => {
-      const marker = this._menuItemAnchors.get(subtree)
-      if (!marker || marker.parentNode !== this) {
-        marker?.remove()
-        const nextMarker = document.createComment('wui-context-menu-item')
-        this.insertBefore(nextMarker, subtree)
-        this._menuItemAnchors.set(subtree, nextMarker)
-      }
-      content.appendChild(subtree)
-    })
-  }
+  /**
+   * 全集 reconcile：以「content 现有元素 ∪ 宿主元素」为托管全集。
+   * 框架（如 Vue 的 v-if 翻转）可能不经宿主直接改写 portal 内节点——卸载旧项留下
+   * 注释锚点、把新项直接插进 content——它们都会被这里收编（补 marker + 补隐藏），
+   * 已被框架删除/移出两处的条目则被清理。
+   */
+  private _syncManagedItems(content: HTMLElement) {
+    // 宿主与 portal 面板分别位于不同容器，结构上不相交且收集只看直接子层，
+    // 两个集合不会重复。
+    const inContent = getMovableMenuSubtrees(content)
+    const inHost = getMovableMenuSubtrees(this)
+    const managed = new Set([...inContent, ...inHost])
 
-  private _pruneMenuItems(content: HTMLElement) {
+    // 清理已失效条目：托管元素既不在 content 也不在宿主，说明已被框架删除。
+    // 仍在 content 的元素必被上面收集进 managed，故这里只需处理宿主侧。
     this._menuItemAnchors.forEach((marker, subtree) => {
-      if (subtree.parentNode === content) {
-        if (marker.isConnected && marker.parentNode === this) return
-        subtree.remove()
-      } else {
-        marker.remove()
-      }
+      if (managed.has(subtree)) return
+      marker.remove()
       this._menuItemAnchors.delete(subtree)
     })
+
+    // 确保每个托管元素都有 marker：框架直接插入 content 的项在此收编。
+    // content 项按其当前 DOM 序（框架语义序）**反向**处理，新 marker 插到后继项 marker 之前——
+    // 这样补建的 marker 序无需重排即可与 content 对齐；宿主项的 marker 原地补插。
+    const ensureMarker = (subtree: HTMLElement, inHost: boolean, before?: Comment) => {
+      const existing = this._menuItemAnchors.get(subtree)
+      if (existing && existing.parentNode === this) return existing
+      existing?.remove()
+      const marker = document.createComment(MARKER_TEXT)
+      if (inHost) {
+        this.insertBefore(marker, subtree)
+      } else if (before && before.parentNode === this) {
+        this.insertBefore(marker, before)
+      } else {
+        this.appendChild(marker)
+      }
+      this._menuItemAnchors.set(subtree, marker)
+      return marker
+    }
+    for (let index = inContent.length - 1; index >= 0; index--) {
+      const subtree = inContent[index]
+      const next = inContent[index + 1]
+      const nextMarker = next ? this._menuItemAnchors.get(next) : undefined
+      ensureMarker(subtree, false, nextMarker)
+    }
+    for (const subtree of inHost) {
+      ensureMarker(subtree, true)
+    }
+
+    // 宿主中尚存的托管项移入 content。
+    for (const subtree of inHost) {
+      content.appendChild(subtree)
+    }
   }
 
   private _orderMenuItems(content: HTMLElement) {
     const targetItems: HTMLElement[] = []
     for (const node of Array.from(this.childNodes)) {
-      if (node.nodeType !== Node.COMMENT_NODE) continue
+      if (node.nodeType !== Node.COMMENT_NODE || node.textContent !== MARKER_TEXT) continue
       this._menuItemAnchors.forEach((marker, subtree) => {
         if (marker !== node || subtree.parentNode !== content) return
         targetItems.push(subtree)
@@ -292,22 +324,38 @@ export class WebUiContextMenu extends LitElement {
 
     this._closeSubmenusFrom(0, true)
     this._restoreClosingSubmenus()
-    this._menuItemAnchors.forEach((marker, subtree) => {
-      if (subtree.parentNode !== menu.content) {
-        marker.remove()
-        this._menuItemAnchors.delete(subtree)
-        return
-      }
 
-      const shouldRestoreAtMarker = marker.isConnected && marker.parentNode === this
-      if (shouldRestoreAtMarker) {
-        this.insertBefore(subtree, marker)
+    // 按 content 子节点序双向归还：元素回到 marker 位置，框架 v-if 注释锚点
+    // 插到对应元素之前。Vue 仍持有这些锚点的 vnode.el 引用，随元素一起迁回宿主
+    // 可确保框架下次 patch 以宿主为容器，不会因 parentNode === null 崩溃。
+    const content = menu.content
+    const pending: Comment[] = []
+    for (const node of Array.from(content.childNodes)) {
+      // instanceof 收窄：Comment 接口为空，nodeType 继承自 Node 的 number，无法用 === 收窄
+      if (node instanceof Comment) {
+        pending.push(node)
+        continue
+      }
+      if (!(node instanceof HTMLElement)) continue
+      const marker = this._menuItemAnchors.get(node)
+      if (!marker) continue
+      for (const c of pending) {
+        if (marker.parentNode === this) this.insertBefore(c, marker)
+        else this.appendChild(c)
+      }
+      pending.length = 0
+      if (marker.parentNode === this) {
+        this.insertBefore(node, marker)
       } else {
-        this.appendChild(subtree)
+        this.appendChild(node)
       }
       marker.remove()
-      this._menuItemAnchors.delete(subtree)
-    })
+      this._menuItemAnchors.delete(node)
+    }
+    // 尾部框架锚点追加到宿主末尾
+    for (const c of pending) this.appendChild(c)
+    // 映射中剩余 = 已不在 content 的条目(如翻转中被框架卸载的),仅清理 marker
+    this._menuItemAnchors.forEach(marker => marker.remove())
     this._menuItemAnchors.clear()
   }
 

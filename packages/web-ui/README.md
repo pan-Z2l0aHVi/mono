@@ -789,6 +789,8 @@ Right-click context menu.
 
 Opens on `contextmenu` event. Menu items: `<web-ui-dropdown-item>`, `<web-ui-dropdown-divider>`, `<web-ui-dropdown-header>`. Supports keyboard navigation (Arrow keys, Enter, Escape) and submenu hover with `pointerenter`.
 
+While the menu is open, consumer code may conditionally render, move, or remove menu items (e.g. Vue `v-if`) without re-inserting them at the host element; changes inside the portal are reconciled automatically, and framework anchors are returned to the host on close so subsequent framework patches keep working.
+
 ---
 
 ### Menu
