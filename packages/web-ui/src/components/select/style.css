@@ -31,6 +31,7 @@
 .select-trigger {
   cursor: pointer;
 
+  overflow: clip;
   display: flex;
   gap: 8px;
   align-items: center;
@@ -40,6 +41,7 @@
   min-width: var(--wui-control-size, 36px);
   height: var(--wui-control-size, 36px);
   padding: 0 12px;
+  border: 1px solid transparent;
   border-radius: calc(infinity * 1px);
 
   transition: background-color var(--wui-duration-trigger, 160ms) ease;

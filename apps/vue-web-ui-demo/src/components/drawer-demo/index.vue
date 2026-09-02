@@ -282,10 +282,8 @@ const randomWidthL4 = ref(false)
     <h2>Nested 层叠抽屉</h2>
     <div class="mb-3 flex flex-wrap gap-2">
       <web-ui-button @click="nestedL1 = true">等宽嵌套 (320px)</web-ui-button>
-      <web-ui-button variant="secondary" @click="diffWidthL1 = true"> 级联收窄 (500px → 360px → 260px) </web-ui-button>
-      <web-ui-button variant="secondary" @click="randomWidthL1 = true">
-        乱序宽度交错 (300px → 520px → 240px → 400px)
-      </web-ui-button>
+      <web-ui-button @click="diffWidthL1 = true"> 级联收窄 (500px → 360px → 260px) </web-ui-button>
+      <web-ui-button @click="randomWidthL1 = true"> 乱序宽度交错 (300px → 520px → 240px → 400px) </web-ui-button>
     </div>
     <p class="mb-3 text-sm text-[var(--wui-color-text-secondary)]">
       同组件声明式嵌套即 nested：后打开的位于顶层全尺寸，下层按 0.95<sup>n</sup>
