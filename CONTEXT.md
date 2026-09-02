@@ -190,6 +190,14 @@ _Avoid_: 文件树、画布编辑器、关系连线器、资源容器
 
 ## web-ui 组件组合词汇
 
+**语义色源 token（semantic hue token）**:
+表示 accent、success、warning、danger、info 等模式适配后的基础含义色；它不是某个组件的按钮背景或 hover/active 状态色。
+_Avoid_: primary 背景、variant 背景、状态色
+
+**Variant 状态色（variant state color）**:
+组件基于自身 variant surface 或语义色源派生的 hover/active 展示色；filled/neutral 状态向黑色加深，tonal variant 可保留自己的语义色状态比例。
+_Avoid_: 直接改写语义色源 token、用主题文本作为按压加深锚点
+
 **覆盖层 slot 组合（overlay slot composition）**:
 trigger 经命名 slot 提供、内容/面板由组件托管的组合模式；面板常脱离文档流（portal）。组件把 trigger 状态 ARIA（aria-expanded 等）回写到 trigger slot 的首个 assigned element，交互语义由 slot 内的可交互元素原生提供。
 _Avoid_: trigger/content 拆分为独立公开元素（React 式三元素）、在 trigger 包装结构上承载 ARIA

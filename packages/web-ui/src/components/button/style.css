@@ -98,8 +98,8 @@ button:active:not(:disabled) {
 :host([variant='primary']) {
   --wui-button-color: var(--wui-color-on-accent, #fff);
   --wui-button-bg: var(--wui-color-accent, #08f);
-  --wui-button-bg-hover: color-mix(in srgb, var(--wui-color-accent, #08f) 88%, var(--wui-color-text, #1b1b1b));
-  --wui-button-bg-active: color-mix(in srgb, var(--wui-color-accent, #08f) 65%, var(--wui-color-text, #1b1b1b));
+  --wui-button-bg-hover: color-mix(in srgb, var(--wui-button-bg, #08f) 88%, black);
+  --wui-button-bg-active: color-mix(in srgb, var(--wui-button-bg, #08f) 76%, black);
 }
 
 /* ===== Variant: secondary ===== */
@@ -107,16 +107,8 @@ button:active:not(:disabled) {
 :host([variant='secondary']) {
   --wui-button-color: var(--wui-color-text, #1b1b1b);
   --wui-button-bg: var(--wui-color-surface-control, #dfdfdf);
-  --wui-button-bg-hover: color-mix(
-    in srgb,
-    var(--wui-color-surface-control, #dfdfdf) 90%,
-    var(--wui-color-text, #1b1b1b)
-  );
-  --wui-button-bg-active: color-mix(
-    in srgb,
-    var(--wui-color-surface-control, #dfdfdf) 70%,
-    var(--wui-color-text, #1b1b1b)
-  );
+  --wui-button-bg-hover: color-mix(in srgb, var(--wui-button-bg, #dfdfdf) 92%, black);
+  --wui-button-bg-active: color-mix(in srgb, var(--wui-button-bg, #dfdfdf) 82%, black);
 }
 
 /* ===== Variant: ghost ===== */
