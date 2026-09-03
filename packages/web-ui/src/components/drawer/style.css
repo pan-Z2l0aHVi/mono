@@ -101,7 +101,7 @@ dialog[open].is-visible::backdrop {
   align-items: center;
   justify-content: center;
 
-  transition: opacity var(--wui-duration-feedback, 150ms) ease;
+  transition: opacity var(--wui-duration-feedback, 100ms) ease;
 }
 
 dialog.is-nested-lower .wui-drawer-drag-zone {
