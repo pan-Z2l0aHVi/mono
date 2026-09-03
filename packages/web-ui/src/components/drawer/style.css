@@ -214,6 +214,7 @@ dialog.is-dragging .wui-drawer-drag-zone {
 
 .wui-drawer-body {
   --wui-internal-glass-shadow: var(--wui-shadow-overlay, 2px 16px 40px rgb(0 0 0 / 0.4));
+  --wui-glass-corner-radius: var(--wui-drawer-radius, 28px);
   display: flex;
   flex-direction: column;
   height: 100%;

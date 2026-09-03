@@ -1088,6 +1088,8 @@ SVG 线条绘制动画，基于 `stroke-dashoffset`。直接在原元素上动�
 | `--wui-color-border`               | `rgb(0 0 0 / 0.1)`                                           | `rgb(255 255 255 / 0.14)`                                    | 常规边框和分隔线       |
 | `--wui-color-glass-border`         | `transparent`                                                | `rgb(255 255 255 / 0.05)`                                    | Glass 边框色调         |
 | `--wui-color-glass-highlight`      | `rgb(255 255 255 / 0.9)`                                     | `rgb(255 255 255 / 0.1)`                                     | Glass 高光边缘         |
+| `--wui-color-glass-corner`         | `rgb(255 255 255 / 0.08)`                                    | `rgb(255 255 255 / 0.2)`                                     | Glass 边框角落光泽     |
+| `--wui-color-glass-shade`          | `rgb(0 0 0 / 0.06)`                                          | `rgb(0 0 0 / 0.5)`                                           | Glass 边框背光角压暗   |
 | `--wui-color-accent`               | `#08f`                                                       | `#0a84ff`                                                    | Accent 和输入焦点边框  |
 | `--wui-color-on-accent`            | `#fff`                                                       | `#fff`                                                       | Accent 上的前景色      |
 | `--wui-color-on-control`           | `#fff`                                                       | `#f2f2f7`                                                    | 控件内芯前景色         |
@@ -1106,7 +1108,7 @@ SVG 线条绘制动画，基于 `stroke-dashoffset`。直接在原元素上动�
 | `--wui-shadow-panel`   | `0 3px 9px rgb(0 0 0 / 0.27)`    | `0 4px 16px rgb(0 0 0 / 0.32)`  | 小型浮动面板阴影  |
 | `--wui-shadow-glass`   | 四层扩散阴影                     | `0 8px 24px rgb(0 0 0 / 0.08)`  | 液态玻璃基础阴影  |
 
-**玻璃效果 token：** `--wui-glass-brightness` 浅色模式为 `1.06`，深色模式为 `1.02`。
+**玻璃效果 token：** `--wui-glass-brightness` 浅色模式为 `1.06`，深色模式为 `1.02`。`--wui-glass-corner-radius` 默认值为 `32px`；玻璃组件会以自身的圆角半径覆盖它，使对角描边光影与形状对齐。
 
 **内部 token：** 以 `--wui-internal-*` 为前缀的变量是 Shadow DOM 内部接线变量，不属于公共 token API，消费方不应覆盖。
 

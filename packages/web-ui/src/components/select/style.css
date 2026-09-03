@@ -41,7 +41,7 @@
   min-width: var(--wui-control-size, 36px);
   height: var(--wui-control-size, 36px);
   padding: 0 12px;
-  border: 1px solid transparent;
+  border: none;
   border-radius: calc(infinity * 1px);
 
   transition: background-color var(--wui-duration-trigger, 160ms) ease;
@@ -110,6 +110,7 @@
   --wui-internal-glass-shadow: var(--wui-shadow-panel, 0 3px 9px rgb(0 0 0 / 0.27));
   --wui-internal-duration-overlay-enter: var(--wui-duration-menu-enter, 140ms);
   --wui-internal-duration-overlay-exit: var(--wui-duration-menu-exit, 100ms);
+  --wui-glass-corner-radius: 20px;
   position: absolute;
   z-index: var(--wui-layer-inline-overlay, 1);
 

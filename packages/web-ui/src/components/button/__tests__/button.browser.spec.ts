@@ -13,9 +13,10 @@ describe('WebUiButton 组件（浏览器）', () => {
     await btn.updateComplete
 
     const inner = btn.shadowRoot?.querySelector('button') as HTMLElement
-    const boxShadow = getComputedStyle(inner).boxShadow
-    expect(boxShadow).toContain('inset')
-    expect(boxShadow).toContain('51, 51, 51')
+    const before = getComputedStyle(inner, '::before')
+    expect(before.content).toBe('""')
+    expect(before.background).toContain('radial-gradient')
+    expect(before.background).toContain('51, 51, 51')
   })
 
   it('将规范化后的 type 传给真实原生按钮', async () => {

@@ -103,6 +103,8 @@
   --wui-color-border: rgb(0 0 0 / 0.1);
   --wui-color-glass-border: transparent;
   --wui-color-glass-highlight: rgb(255 255 255 / 0.9);
+  --wui-color-glass-corner: rgb(255 255 255 / 0.08);
+  --wui-color-glass-shade: rgb(0 0 0 / 0.06);
   --wui-glass-brightness: 1.06;
   --wui-color-accent: #08f;
   --wui-color-on-accent: #fff;
@@ -142,6 +144,8 @@
   --wui-color-border: rgb(255 255 255 / 0.14);
   --wui-color-glass-border: rgb(255 255 255 / 0.05);
   --wui-color-glass-highlight: rgb(255 255 255 / 0.1);
+  --wui-color-glass-corner: rgb(255 255 255 / 0.2);
+  --wui-color-glass-shade: rgb(0 0 0 / 0.5);
   --wui-glass-brightness: 1.02;
   --wui-color-accent: #0a84ff;
   --wui-color-on-accent: #fff;
@@ -181,6 +185,8 @@
     --wui-color-border: rgb(255 255 255 / 0.14);
     --wui-color-glass-border: rgb(255 255 255 / 0.05);
     --wui-color-glass-highlight: rgb(255 255 255 / 0.1);
+    --wui-color-glass-corner: rgb(255 255 255 / 0.2);
+    --wui-color-glass-shade: rgb(0 0 0 / 0.5);
     --wui-glass-brightness: 1.02;
     --wui-color-accent: #0a84ff;
     --wui-color-on-accent: #fff;

@@ -17,6 +17,7 @@
 /* ===== Textarea ===== */
 
 .wui-textarea-inner {
+  --wui-glass-corner-radius: 20px;
   position: relative;
 
   display: flex;

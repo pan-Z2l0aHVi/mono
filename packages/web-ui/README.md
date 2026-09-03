@@ -1105,6 +1105,8 @@ Defines foundation, color, layer, shadow, and motion tokens for its subtree. `mo
 | `--wui-color-border`               | `rgb(0 0 0 / 0.1)`                                           | `rgb(255 255 255 / 0.14)`                                    | Normal border and divider       |
 | `--wui-color-glass-border`         | `transparent`                                                | `rgb(255 255 255 / 0.05)`                                    | Glass border tint               |
 | `--wui-color-glass-highlight`      | `rgb(255 255 255 / 0.9)`                                     | `rgb(255 255 255 / 0.1)`                                     | Glass edge highlight            |
+| `--wui-color-glass-corner`         | `rgb(255 255 255 / 0.08)`                                    | `rgb(255 255 255 / 0.2)`                                     | Glass corner sheen on border    |
+| `--wui-color-glass-shade`          | `rgb(0 0 0 / 0.06)`                                          | `rgb(0 0 0 / 0.5)`                                           | Glass corner shade on border    |
 | `--wui-color-accent`               | `#08f`                                                       | `#0a84ff`                                                    | Accent and focused input border |
 | `--wui-color-on-accent`            | `#fff`                                                       | `#fff`                                                       | Foreground on accent            |
 | `--wui-color-on-control`           | `#fff`                                                       | `#f2f2f7`                                                    | Foreground on control inner     |
@@ -1123,7 +1125,7 @@ Defines foundation, color, layer, shadow, and motion tokens for its subtree. `mo
 | `--wui-shadow-panel`   | `0 3px 9px rgb(0 0 0 / 0.27)`    | `0 4px 16px rgb(0 0 0 / 0.32)`  | Small floating panel shadow |
 | `--wui-shadow-glass`   | four-layer diffuse shadow        | `0 8px 24px rgb(0 0 0 / 0.08)`  | Base liquid glass shadow    |
 
-**Glass effect tokens:** `--wui-glass-brightness` is `1.06` in light mode and `1.02` in dark mode.
+**Glass effect tokens:** `--wui-glass-brightness` is `1.06` in light mode and `1.02` in dark mode. `--wui-glass-corner-radius` defaults to `32px`; glass components set it from their own corner radius so the diagonal border lighting aligns with their shape.
 
 **Internal tokens:** variables prefixed `--wui-internal-*` are private wiring between shadow DOM parts; they are not part of the public token API and must not be overridden by consumers.
 

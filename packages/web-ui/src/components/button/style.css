@@ -23,6 +23,7 @@
 }
 
 button {
+  --wui-glass-corner-radius: calc(var(--wui-control-size, 36px) / 2);
   cursor: pointer;
   user-select: none;
 
@@ -39,7 +40,7 @@ button {
   min-width: var(--wui-control-size, 36px);
   height: var(--wui-control-size, 36px);
   padding: 0 var(--wui-button-px, 12px);
-  border: 1px solid transparent;
+  border: none;
   border-radius: calc(infinity * 1px);
 
   /* 原生 button 不继承字体；显式继承以对齐宿主排版，避免 UA 默认 Arial 差异 */
