@@ -34,6 +34,7 @@
   --wui-duration-overlay-exit: 140ms;
   --wui-duration-drawer-enter: 280ms;
   --wui-duration-drawer-exit: 240ms;
+  --wui-duration-drawer-nested: 450ms;
   --wui-duration-collapse-enter: 200ms;
   --wui-duration-collapse-exit: 160ms;
   --wui-duration-layout: 200ms;
@@ -55,6 +56,7 @@
   --wui-duration-overlay-exit: 0ms;
   --wui-duration-drawer-enter: 0ms;
   --wui-duration-drawer-exit: 0ms;
+  --wui-duration-drawer-nested: 0ms;
   --wui-duration-collapse-enter: 0ms;
   --wui-duration-collapse-exit: 0ms;
   --wui-duration-layout: 0ms;
@@ -73,6 +75,7 @@
     --wui-duration-overlay-exit: 0ms;
     --wui-duration-drawer-enter: 0ms;
     --wui-duration-drawer-exit: 0ms;
+    --wui-duration-drawer-nested: 0ms;
     --wui-duration-collapse-enter: 0ms;
     --wui-duration-collapse-exit: 0ms;
     --wui-duration-layout: 0ms;
