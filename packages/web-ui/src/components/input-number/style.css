@@ -90,8 +90,6 @@ input {
 
   background: transparent;
 
-  transition: background-color var(--wui-duration-trigger, 160ms) ease;
-
   &:disabled {
     cursor: not-allowed;
     opacity: 0.4;
@@ -111,10 +109,4 @@ input {
 
 .num-btn:active:not(:disabled) {
   background: var(--wui-color-state-layer-active, color-mix(in srgb, var(--wui-color-text, #1b1b1b) 15%, transparent));
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .num-btn {
-    transition: background-color var(--wui-duration-trigger, 160ms) ease;
-  }
 }

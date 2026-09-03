@@ -123,3 +123,15 @@ it('非 icon 模式下宽度由内容决定', async () => {
   // 宽度由文本内容撑开，大于高度
   expect(rect.width).toBeGreaterThan(rect.height)
 })
+
+it('hover/active 背景反馈即时切换，不做过渡动画', async () => {
+  const btn = document.createElement('web-ui-button')
+  btn.textContent = 'OK'
+  document.body.append(btn)
+  await btn.updateComplete
+
+  const inner = btn.shadowRoot?.querySelector('button') as HTMLElement
+  expect(getComputedStyle(inner).transitionProperty).not.toContain('background-color')
+  // 拦截 transition: all 160ms 之类的回归写法：无过渡时 computed duration 必须为 0s
+  expect(getComputedStyle(inner).transitionDuration).toBe('0s')
+})

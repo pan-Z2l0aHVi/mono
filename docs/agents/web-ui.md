@@ -9,6 +9,7 @@
 - Overlay 关闭、焦点和滚动语义：[ADR-0005](../adr/0005-overlay-interaction-policy.md)；Portal 与层叠：[ADR-0006](../adr/0006-layout-layering.md)。
 - Drawer 拖拽关闭手势、drag bar 与关闭态无渲染约束：[ADR-0035](../adr/0035-web-ui-drawer-drag-close.md)；非 headless Drawer 的浮动卡片视觉容器（留边、圆角、闭合补偿）：[ADR-0036](../adr/0036-web-ui-drawer-floating-card.md)；Nested Drawer 声明式层叠与自适应阶梯露边：[ADR-0037](../adr/0037-web-ui-nested-drawer-stacking.md)。
 - Design token：[ADR-0010](../adr/0010-design-token-restructure.md)；图标 manifest、生成器和导出：[ADR-0008](../adr/0008-icon-system.md)。
+- hover/active 背景反馈即时切换（选中态/按压/focus/overlay 过渡不受影响）：[ADR-0043](../adr/0043-web-ui-instant-state-feedback.md)。
 - React/Vue 类型适配、`$events` 和复合控件事件边界：[ADR-0011](../adr/0011-framework-type-adaptation-narrowing.md)。
 - 跨框架 API 约定（Property camelCase / Attribute kebab-case / Event kebab-case）与布尔 converter 兜底：[ADR-0033](../adr/0033-cross-framework-api-convention.md)；README「框架集成」章节是面向消费者的规范。
 - Collapse 单组件形态（default slot trigger + `slot="content"`）、受管组合的下行通道迁移 @lit/context：[ADR-0040](../adr/0040-web-ui-collapse-single-element-and-lit-context.md)。
