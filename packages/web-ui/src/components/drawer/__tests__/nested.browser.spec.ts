@@ -324,3 +324,119 @@ describe('WebUiDrawer nested 层叠（浏览器）', () => {
     expect(r3.left).toBeLessThan(r4.left)
   })
 })
+
+describe('WebUiDrawer 同级（非 DOM 嵌套）层叠', () => {
+  it('两个同级 drawer 依次打开，先开的被缩放 0.95，后开的顶层全尺寸', async () => {
+    const theme = document.createElement('web-ui-theme')
+    theme.setAttribute('appearance', 'light')
+    document.body.append(theme)
+
+    const drawer1 = document.createElement('web-ui-drawer') as WebUiDrawer
+    drawer1.heading = 'drawer-1'
+    const drawer2 = document.createElement('web-ui-drawer') as WebUiDrawer
+    drawer2.heading = 'drawer-2'
+
+    // 同级挂载，非嵌套
+    theme.append(drawer1)
+    theme.append(drawer2)
+    await drawer1.updateComplete
+    await drawer2.updateComplete
+
+    drawer1.open = true
+    await drawer1.updateComplete
+    await waitForOpenTransition()
+
+    // 单层：depth 0
+    expect(nestedScale(drawer1)).toBe(1)
+
+    drawer2.open = true
+    await drawer2.updateComplete
+    await waitForOpenTransition()
+    await waitFor(() => nestedScale(drawer1) < 0.96)
+
+    // drawer1 先开 → depth 1 → scale 0.95
+    expect(nestedScale(drawer1)).toBeCloseTo(0.95, 2)
+    // drawer2 后开 → depth 0 → 全尺寸
+    expect(nestedScale(drawer2)).toBe(1)
+
+    // 关闭 drawer2 后 drawer1 回到全尺寸
+    drawer2.open = false
+    await drawer2.updateComplete
+    await waitFor(() => !getDialog(drawer2).open, 4000)
+    await waitFor(() => nestedScale(drawer1) > 0.99, 4000)
+    expect(drawer1.open).toBe(true)
+    expect(getDialog(drawer1).open).toBe(true)
+  })
+
+  it('三个同级 drawer 依次打开，逐层缩放 depth=2/1/0', async () => {
+    const d1 = document.createElement('web-ui-drawer') as WebUiDrawer
+    d1.heading = 'd1'
+    const d2 = document.createElement('web-ui-drawer') as WebUiDrawer
+    d2.heading = 'd2'
+    const d3 = document.createElement('web-ui-drawer') as WebUiDrawer
+    d3.heading = 'd3'
+
+    document.body.append(d1, d2, d3)
+    await d1.updateComplete
+    await d2.updateComplete
+    await d3.updateComplete
+
+    d1.open = true
+    await d1.updateComplete
+    await waitForOpenTransition()
+
+    d2.open = true
+    await d2.updateComplete
+    await waitForOpenTransition()
+    await waitFor(() => nestedScale(d1) < 0.96)
+
+    d3.open = true
+    await d3.updateComplete
+    await waitForOpenTransition()
+    await waitFor(() => nestedScale(d1) < 0.91)
+    await waitFor(() => nestedScale(d2) < 0.96)
+
+    // d1 depth=2: scale = 0.95^2 = 0.9025
+    expect(nestedScale(d1)).toBeCloseTo(0.9025, 2)
+    // d2 depth=1: scale = 0.95
+    expect(nestedScale(d2)).toBeCloseTo(0.95, 2)
+    // d3 depth=0: 全尺寸
+    expect(nestedScale(d3)).toBe(1)
+
+    // 关闭中间层 d2：d1 回到 depth=1，d3 不变
+    d2.open = false
+    await d2.updateComplete
+    await waitFor(() => !getDialog(d2).open, 4000)
+    await waitFor(() => nestedScale(d1) < 0.96)
+    await waitFor(() => nestedScale(d1) > 0.94)
+    expect(nestedScale(d1)).toBeCloseTo(0.95, 2)
+    expect(nestedScale(d3)).toBe(1)
+  })
+
+  it('同级 drawer 左缘阶梯露边：先开的被偏移，后开的全尺寸', async () => {
+    const d1 = document.createElement('web-ui-drawer') as WebUiDrawer
+    d1.heading = 'd1'
+    const d2 = document.createElement('web-ui-drawer') as WebUiDrawer
+    d2.heading = 'd2'
+
+    document.body.append(d1, d2)
+    await d1.updateComplete
+    await d2.updateComplete
+
+    d1.open = true
+    await d1.updateComplete
+    await waitForOpenTransition()
+
+    d2.open = true
+    await d2.updateComplete
+    await waitForOpenTransition()
+    await waitFor(() => nestedScale(d1) < 0.96)
+    await nextFrame()
+
+    const r1 = getDialog(d1).getBoundingClientRect()
+    const r2 = getDialog(d2).getBoundingClientRect()
+
+    // d1（底层）左缘比 d2（顶层）更靠左，卡片露出
+    expect(r1.left).toBeLessThan(r2.left)
+  })
+})
