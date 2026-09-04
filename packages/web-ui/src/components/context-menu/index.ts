@@ -37,6 +37,9 @@ export class WebUiContextMenu extends LitElement {
 
   private _activeSubmenus: MenuPortalOverlay[] = []
   private _activeSubmenuItems: HTMLElement[] = []
+  // 子菜单 dialog 定位的唯一写者代数（按 panel 键控）：同帧关闭→重开复用同一 panel
+  // 时只允许最新一次定位写入；不同层级子菜单各有 panel，互不作废。
+  private readonly _submenuPositionEpochs = new WeakMap<HTMLElement, number>()
   private readonly _closingSubmenus = new Map<HTMLElement, MenuPortalOverlay>()
   private _submenuTimer?: ReturnType<typeof setTimeout>
   private _ignoreOutsideClick = false
@@ -215,9 +218,13 @@ export class WebUiContextMenu extends LitElement {
       // crossAxis 必须显式开启：bottom-start 的 sideAxis 为 y，默认只钳制 x，
       // 视口下缘打开时菜单底部会溢出且无法滚动进入视野。
       middleware: [shift({ padding: 8, crossAxis: true })]
-    }).then(({ x, y }) => {
+    }).then(({ x, y, middlewareData }) => {
       if (!this._isOpen || this._menu?.panel !== panel) return
-      this._applyMenuPosition(panel, x, y)
+      // dialog 相对坐标不能与 viewport 的 _x/_y 比较推导 origin（原点非零时几乎恒判
+      // right/bottom）；shift 数据是该坐标系内的钳制位移增量，负值即被推向该轴起点侧。
+      const shiftX = middlewareData.shift?.x ?? 0
+      const shiftY = middlewareData.shift?.y ?? 0
+      this._applyMenuPosition(panel, x, y, shiftX < 0 ? 'right' : 'left', shiftY < 0 ? 'bottom' : 'top')
     })
   }
 
@@ -237,12 +244,19 @@ export class WebUiContextMenu extends LitElement {
     this._applyMenuPosition(panel, x, y)
   }
 
-  private _applyMenuPosition(panel: HTMLElement, x: number, y: number) {
+  private _applyMenuPosition(
+    panel: HTMLElement,
+    x: number,
+    y: number,
+    horizontalOrigin?: 'left' | 'right',
+    verticalOrigin?: 'top' | 'bottom'
+  ) {
     panel.style.left = `${x}px`
     panel.style.top = `${y}px`
-    const horizontalOrigin = x < this._x ? 'right' : 'left'
-    const verticalOrigin = y < this._y ? 'bottom' : 'top'
-    panel.style.setProperty('--wui-internal-overlay-transform-origin', `${verticalOrigin} ${horizontalOrigin}`)
+    // 非 dialog 路径保持 viewport 坐标比较；dialog 路径由调用方传入 shift 推导值。
+    const horizontal = horizontalOrigin ?? (x < this._x ? 'right' : 'left')
+    const vertical = verticalOrigin ?? (y < this._y ? 'bottom' : 'top')
+    panel.style.setProperty('--wui-internal-overlay-transform-origin', `${vertical} ${horizontal}`)
     panel.style.visibility = ''
   }
 
@@ -543,17 +557,26 @@ export class WebUiContextMenu extends LitElement {
       const itemRect = item.getBoundingClientRect()
       const padding = 8
       const canOpenRight = itemRect.right + submenu.panel.getBoundingClientRect().width + padding <= window.innerWidth
+      // 同帧关闭→重开会复用同一 panel 产生两个 in-flight 定位 promise，完成序不保证
+      // 后者胜出；按 panel 键控的代数 token 只允许最新一次调用写入，迟到旧 promise 丢弃。
+      const epoch = (this._submenuPositionEpochs.get(submenu.panel) ?? 0) + 1
+      this._submenuPositionEpochs.set(submenu.panel, epoch)
       void computePosition(item, submenu.panel, {
         strategy: 'fixed',
         placement: canOpenRight ? 'right-start' : 'left-start',
         middleware: [shift({ padding, crossAxis: true })]
-      }).then(({ x, y }) => {
-        if (!this._activeSubmenus.includes(submenu)) return
+      }).then(({ x, y, middlewareData }) => {
+        if (!this._activeSubmenus.includes(submenu) || epoch !== this._submenuPositionEpochs.get(submenu.panel)) return
+        // 与主菜单 dialog 路径一致：origin 由 shift 增量推导，视口预判只决定 placement。
+        const shiftX = middlewareData.shift?.x ?? 0
+        const shiftY = middlewareData.shift?.y ?? 0
+        const horizontalOrigin = shiftX < 0 ? 'right' : 'left'
+        const verticalOrigin = shiftY < 0 ? 'bottom' : 'top'
         submenu.panel.style.left = `${x}px`
         submenu.panel.style.top = `${y}px`
         submenu.panel.style.setProperty(
           '--wui-internal-overlay-transform-origin',
-          canOpenRight ? 'top left' : 'top right'
+          `${verticalOrigin} ${horizontalOrigin}`
         )
         submenu.panel.style.visibility = ''
       })
