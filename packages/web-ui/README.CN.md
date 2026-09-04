@@ -617,10 +617,11 @@ ArrowUp/ArrowDown 键增减数值。空输入或 `-` 在提交时被忽略，值
 
 **CSS 自定义属性：**
 
-| 属性                      | 默认值                      | 说明           |
-| ------------------------- | --------------------------- | -------------- |
-| `--wui-dialog-max-width`  | `360px`                     | 对话框最大宽度 |
-| `--wui-dialog-overlay-bg` | `var(--wui-color-backdrop)` | 遮罩背景色     |
+| 属性                      | 默认值                             | 说明                                             |
+| ------------------------- | ---------------------------------- | ------------------------------------------------ |
+| `--wui-dialog-max-width`  | `360px`                            | 对话框最大宽度                                   |
+| `--wui-dialog-overlay-bg` | `var(--wui-color-backdrop)`        | 遮罩背景色                                       |
+| `--wui-dialog-bg`         | `var(--wui-color-surface-overlay)` | 玻璃卡片背景色，回退到 `rgb(246 246 246 / 0.88)` |
 
 #### `<web-ui-drawer>`
 

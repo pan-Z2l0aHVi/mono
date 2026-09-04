@@ -634,10 +634,11 @@ Uses native `<dialog>` with `@cancel` prevention. Escape calls `close()` unless 
 
 **CSS Custom Properties:**
 
-| Property                  | Default                     | Description         |
-| ------------------------- | --------------------------- | ------------------- |
-| `--wui-dialog-max-width`  | `360px`                     | Dialog max width    |
-| `--wui-dialog-overlay-bg` | `var(--wui-color-backdrop)` | Backdrop background |
+| Property                  | Default                            | Description                                                    |
+| ------------------------- | ---------------------------------- | -------------------------------------------------------------- |
+| `--wui-dialog-max-width`  | `360px`                            | Dialog max width                                               |
+| `--wui-dialog-overlay-bg` | `var(--wui-color-backdrop)`        | Backdrop background                                            |
+| `--wui-dialog-bg`         | `var(--wui-color-surface-overlay)` | Glass card background, falls back to `rgb(246 246 246 / 0.88)` |
 
 #### `<web-ui-drawer>`
 

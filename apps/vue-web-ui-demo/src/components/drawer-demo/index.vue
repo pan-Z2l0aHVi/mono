@@ -61,6 +61,11 @@ const randomWidthL1 = ref(false)
 const randomWidthL2 = ref(false)
 const randomWidthL3 = ref(false)
 const randomWidthL4 = ref(false)
+
+// 同级（非 DOM 嵌套）自动层叠
+const siblingL1 = ref(false)
+const siblingL2 = ref(false)
+const siblingL3 = ref(false)
 </script>
 
 <template>
@@ -461,6 +466,57 @@ const randomWidthL4 = ref(false)
           </web-ui-drawer>
         </web-ui-drawer>
       </web-ui-drawer>
+    </web-ui-drawer>
+
+    <!-- 同级 Drawer 自动层叠（非 DOM 嵌套） -->
+    <h2>同级自动层叠</h2>
+    <p class="mb-3 text-sm text-gray-500">
+      多个 drawer 在同级 DOM 挂载，依次打开后由内部 <code>defineNestedDrawerLayers</code> 自动管理层序——先开的按
+      0.95^depth 缩放并向内侧偏移，后开的全尺寸在顶层。
+    </p>
+    <div class="mb-3 flex gap-2">
+      <web-ui-button @click="siblingL1 = true">打开 Drawer 1</web-ui-button>
+      <web-ui-button @click="siblingL2 = true">打开 Drawer 2</web-ui-button>
+      <web-ui-button @click="siblingL3 = true">打开 Drawer 3</web-ui-button>
+    </div>
+    <web-ui-drawer
+      :open="siblingL1"
+      heading="同级 Drawer 1"
+      closable
+      draggable
+      @open-change="
+        event => {
+          if (event.target === event.currentTarget) siblingL1 = event.detail.open
+        }
+      "
+    >
+      <p>第 1 层。依次打开 Drawer 2、3，本层会自动缩小并偏移露出卡片边缘。</p>
+    </web-ui-drawer>
+    <web-ui-drawer
+      :open="siblingL2"
+      heading="同级 Drawer 2"
+      closable
+      draggable
+      @open-change="
+        event => {
+          if (event.target === event.currentTarget) siblingL2 = event.detail.open
+        }
+      "
+    >
+      <p>第 2 层。在 Drawer 1 之上、Drawer 3 之下。</p>
+    </web-ui-drawer>
+    <web-ui-drawer
+      :open="siblingL3"
+      heading="同级 Drawer 3"
+      closable
+      draggable
+      @open-change="
+        event => {
+          if (event.target === event.currentTarget) siblingL3 = event.detail.open
+        }
+      "
+    >
+      <p>最顶层。关闭后下层逐级回弹至全尺寸。</p>
     </web-ui-drawer>
   </div>
 </template>

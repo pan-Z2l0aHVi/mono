@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vite-plus/test'
 
+import '..'
 import { cleanupElement, waitForUpdate } from '@/shared/test-utils'
 
-import '..'
 import type { WebUiEmpty } from '..'
 
 const createEmpty = (attrs?: Record<string, string>, content?: string): WebUiEmpty => {
@@ -68,9 +68,9 @@ describe('WebUiEmpty 组件', () => {
     ] as const)('%s 尺寸设置图标 size 属性为 %i', async (size, iconSize) => {
       const el = createEmpty({ size })
       await waitForUpdate(el)
-      const icon = el.shadowRoot?.querySelector('web-ui-icon')!
+      const icon = el.shadowRoot?.querySelector('web-ui-icon')
       expect(icon).not.toBeNull()
-      expect(icon.size).toBe(iconSize)
+      expect(icon?.size).toBe(iconSize)
       expect(el.getAttribute('size')).toBe(size)
       cleanupElement(el)
     })
