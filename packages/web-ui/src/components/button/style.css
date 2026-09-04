@@ -24,7 +24,7 @@
 
 button {
   --wui-glass-corner-radius: calc(var(--wui-control-size, 36px) / 2);
-  cursor: pointer;
+  cursor: default;
   user-select: none;
 
   position: relative;

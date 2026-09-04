@@ -14,7 +14,7 @@
 }
 
 .option-label {
-  cursor: pointer;
+  cursor: default;
   user-select: none;
 
   overflow: hidden;

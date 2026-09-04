@@ -19,7 +19,7 @@
 }
 
 .wui-slider-track {
-  cursor: pointer;
+  cursor: default;
   user-select: none;
 
   position: relative;
@@ -37,6 +37,10 @@
   &.is-disabled {
     cursor: not-allowed;
     opacity: 0.38;
+  }
+
+  &.is-dragging {
+    cursor: grabbing;
   }
 }
 
@@ -132,7 +136,13 @@
     background-color: var(--wui-color-on-control, #fff);
   }
 
+  &.is-pressed:not(.is-dragging) {
+    transform: translate(-50%, -50%) scale(1.5);
+    background-color: var(--wui-color-surface-glass, rgb(250 250 250 / 0.34));
+  }
+
   &.is-dragging {
+    cursor: grabbing;
     transform: translate(-50%, -50%) scale(1.5);
     background-color: transparent;
   }
@@ -143,6 +153,10 @@
   bottom: var(--percent);
   left: 50%;
   transform: translate(-50%, 50%) scale(1);
+
+  &.is-pressed:not(.is-dragging) {
+    transform: translate(-50%, 50%) scale(1.5);
+  }
 
   &.is-dragging {
     transform: translate(-50%, 50%) scale(1.5);

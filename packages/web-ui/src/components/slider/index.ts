@@ -65,6 +65,7 @@ export class WebUiSlider extends LitElement {
   }
 
   @state() private _dragging = false
+  @state() private _pressed = false
   // 避免未改变数值的点击被误认为一次表单提交
   private _interactionStartValue: number | undefined
   private _dragGestureHandle: DragGestureHandle | null = null
@@ -196,28 +197,34 @@ export class WebUiSlider extends LitElement {
 
   private _handlePointerDown(event: PointerEvent) {
     if (this._isDisabled) return
+    this._pressed = true
     this._interactionStartValue = this.value
     this._setValueFromPointer(event)
 
     this._dragGestureHandle?.destroy()
     this._dragGestureHandle = attachDragGesture(event, {
       axis: this.vertical ? 'y' : 'x',
-      onStart: () => {
-        this._dragging = true
-      },
+      threshold: 6,
       onMove: (_info, e) => {
         this._dragging = true
         this._setValueFromPointer(e)
       },
       onEnd: (_info, e) => {
         this._setValueFromPointer(e)
+        this._pressed = false
         this._dragging = false
         if (this._interactionStartValue !== this.value) {
           this.dispatchEvent(new Event('change', { bubbles: true, composed: true }))
         }
         this._interactionStartValue = undefined
       },
+      onTap: () => {
+        if (this._interactionStartValue !== this.value) {
+          this.dispatchEvent(new Event('change', { bubbles: true, composed: true }))
+        }
+      },
       onCancel: () => {
+        this._pressed = false
         this._dragging = false
         this._interactionStartValue = undefined
       }
@@ -246,11 +253,13 @@ export class WebUiSlider extends LitElement {
   override render() {
     const trackClass = classMap({
       'wui-slider-track': true,
+      'is-dragging': this._dragging,
       'is-disabled': this._isDisabled
     })
     const thumbClass = classMap({
       'wui-slider-thumb': true,
       'wui-glass': true,
+      'is-pressed': this._pressed,
       'is-dragging': this._dragging
     })
     const trackStyle = styleMap({ '--percent': `${this._percent}%` })

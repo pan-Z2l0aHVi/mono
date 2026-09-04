@@ -301,4 +301,36 @@ describe('WebUiSwitch 手势拖拽（浏览器）', () => {
     // 拖拽过程中保持 is-pressed 按压反馈
     expect(thumb.classList.contains('is-pressed')).toBe(true)
   })
+
+  it('拖拽中光标从 default 切换为 grabbing', async () => {
+    const el = createSwitch()
+    await el.updateComplete
+
+    const track = getTrack(el)
+    track.dispatchEvent(
+      new PointerEvent('pointerdown', {
+        bubbles: true,
+        isPrimary: true,
+        pointerId: 1,
+        clientX: 10,
+        clientY: 10
+      })
+    )
+    await el.updateComplete
+    expect(getComputedStyle(track).cursor).toBe('default')
+
+    window.dispatchEvent(
+      new PointerEvent('pointermove', {
+        bubbles: true,
+        isPrimary: true,
+        pointerId: 1,
+        clientX: 18,
+        clientY: 10
+      })
+    )
+    await el.updateComplete
+
+    expect(track.classList.contains('is-dragging')).toBe(true)
+    expect(getComputedStyle(track).cursor).toBe('grabbing')
+  })
 })

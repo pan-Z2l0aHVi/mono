@@ -36,7 +36,7 @@
 
 .wui-switch-track {
   touch-action: pan-y;
-  cursor: pointer;
+  cursor: default;
   user-select: none;
 
   position: relative;
@@ -109,6 +109,10 @@
   &.is-pressed {
     transform: translateX(16px) scale(1.5);
   }
+}
+
+.wui-switch-track.is-dragging {
+  cursor: grabbing;
 }
 
 .wui-switch-track.is-dragging .wui-switch-thumb,

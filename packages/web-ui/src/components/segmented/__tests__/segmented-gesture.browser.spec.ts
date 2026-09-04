@@ -279,6 +279,42 @@ describe('WebUiSegmented 手势拖拽与吸附（浏览器）', () => {
     expect(inner.classList.contains('is-pressed')).toBe(false)
   })
 
+  it('拖拽光标穿过 trigger shadow DOM 从 default 切换为 grabbing', async () => {
+    const { segmented, t1 } = createSegmented()
+    await segmented.updateComplete
+
+    const inner = segmented.shadowRoot?.querySelector('.wui-segmented') as HTMLElement
+    const triggerInner = t1.shadowRoot?.querySelector('.wui-segmented-trigger') as HTMLElement
+    const t1Rect = t1.getBoundingClientRect()
+
+    inner.dispatchEvent(
+      new PointerEvent('pointerdown', {
+        bubbles: true,
+        isPrimary: true,
+        pointerId: 1,
+        clientX: t1Rect.left + 10,
+        clientY: t1Rect.top + 10
+      })
+    )
+    await segmented.updateComplete
+    expect(inner.classList.contains('is-pressed')).toBe(true)
+    expect(getComputedStyle(triggerInner).cursor).toBe('default')
+
+    window.dispatchEvent(
+      new PointerEvent('pointermove', {
+        bubbles: true,
+        isPrimary: true,
+        pointerId: 1,
+        clientX: t1Rect.left + 20,
+        clientY: t1Rect.top + 10
+      })
+    )
+    await segmented.updateComplete
+    expect(inner.classList.contains('is-dragging')).toBe(true)
+    expect(getComputedStyle(inner).cursor).toBe('grabbing')
+    expect(getComputedStyle(triggerInner).cursor).toBe('grabbing')
+  })
+
   it('按住当前选项后 pointerleave 不清除按压反馈', async () => {
     const { segmented, t1 } = createSegmented()
     await segmented.updateComplete

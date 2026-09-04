@@ -180,6 +180,12 @@ ARIA 属性同样必须显式支持：使用组件文档化的命名属性，而
 `click`、`input`、`change` 等浏览器 composed 原生事件仍是主要交互 API。`open-change` 等 kebab-case 自定义事件
 仅描述用户操作导致的组件状态变化；程序化赋值 property 不会触发它们。
 
+### Cursor 行为
+
+交互控件使用原生箭头光标，而不是手型光标；disabled 控件使用 `not-allowed`。Slider、Switch 和 Segmented 在
+hover 与按压反馈阶段保持箭头光标，仅在真实拖拽进行中切换为 `grabbing`。专用拖拽把手和 resize 控件保留各自
+的专用光标。Cursor 样式位于 Shadow DOM 内，应用层普通选择器无法覆盖。
+
 ### 受控状态语义
 
 `web-ui-*` 元素没有单一的「受控」契约；按交互性质分成三套状态模型，各组件族取其一。不要假设不同组件上的

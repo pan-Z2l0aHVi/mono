@@ -11,6 +11,7 @@
 
 .wui-segmented {
   touch-action: pan-y;
+  cursor: default;
 
   position: relative;
 
@@ -75,4 +76,9 @@
   box-shadow:
     0 0 1px rgb(0 0 0 / 0.05),
     0 2px 8px rgb(0 0 0 / 0.04);
+}
+
+.wui-segmented.is-dragging:not(.is-disabled) {
+  --wui-internal-segmented-trigger-cursor: grabbing;
+  cursor: grabbing;
 }

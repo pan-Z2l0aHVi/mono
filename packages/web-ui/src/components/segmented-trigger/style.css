@@ -21,7 +21,7 @@
 }
 
 .wui-segmented-trigger {
-  cursor: pointer;
+  cursor: var(--wui-internal-segmented-trigger-cursor, default);
   user-select: none;
 
   position: relative;
