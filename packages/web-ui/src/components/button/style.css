@@ -52,8 +52,6 @@ button {
 
   background-color: var(--wui-button-bg);
 
-  transition: background-color var(--wui-duration-trigger, 160ms) ease;
-
   &:disabled {
     cursor: not-allowed;
     opacity: 0.4;
@@ -73,12 +71,6 @@ button {
 
 button:active:not(:disabled) {
   background-color: var(--wui-button-bg-active);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  button {
-    transition: background-color var(--wui-duration-trigger, 160ms) ease;
-  }
 }
 
 /* ===== Full width ===== */

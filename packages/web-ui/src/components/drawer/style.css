@@ -101,7 +101,7 @@ dialog[open].is-visible::backdrop {
   align-items: center;
   justify-content: center;
 
-  transition: opacity var(--wui-duration-feedback, 150ms) ease;
+  transition: opacity var(--wui-duration-feedback, 100ms) ease;
 }
 
 dialog.is-nested-lower .wui-drawer-drag-zone {
@@ -143,10 +143,7 @@ dialog.is-nested-lower .wui-drawer-drag-zone {
   width: 4px;
   height: 48px;
   border-radius: 999px;
-
   background: color-mix(in srgb, var(--wui-color-text, #1b1b1b) 24%, transparent);
-
-  transition: background-color var(--wui-duration-feedback, 100ms) ease;
 }
 
 :host([placement='top']) .wui-drawer-drag-bar,
@@ -420,9 +417,5 @@ dialog.is-dragging .wui-drawer-drag-zone {
     transform: none !important;
     translate: none !important;
     scale: none !important;
-  }
-
-  .wui-drawer-drag-bar {
-    transition: none !important;
   }
 }
