@@ -1,3 +1,4 @@
+import { computePosition, shift } from '@floating-ui/dom'
 import { html, LitElement, unsafeCSS } from 'lit'
 import { customElement, property, state } from 'lit/decorators.js'
 
@@ -201,6 +202,26 @@ export class WebUiContextMenu extends LitElement {
     panel.style.visibility = 'hidden'
     panel.style.display = ''
 
+    // 普通 overlay root 不经过 transformed containing block，保留轻量的同步定位。
+    // 只有 panel 已进入 open native dialog 时才需要 Floating UI 解析坐标。
+    if (!(panel.parentElement instanceof HTMLDialogElement && panel.parentElement.open)) {
+      this._positionMenuInViewport(panel)
+      return
+    }
+
+    void computePosition({ getBoundingClientRect: () => new DOMRect(this._x, this._y, 0, 0) }, panel, {
+      strategy: 'fixed',
+      placement: 'bottom-start',
+      // crossAxis 必须显式开启：bottom-start 的 sideAxis 为 y，默认只钳制 x，
+      // 视口下缘打开时菜单底部会溢出且无法滚动进入视野。
+      middleware: [shift({ padding: 8, crossAxis: true })]
+    }).then(({ x, y }) => {
+      if (!this._isOpen || this._menu?.panel !== panel) return
+      this._applyMenuPosition(panel, x, y)
+    })
+  }
+
+  private _positionMenuInViewport(panel: HTMLElement) {
     const { width, height } = panel.getBoundingClientRect()
     const vw = window.innerWidth
     const vh = window.innerHeight
@@ -213,6 +234,10 @@ export class WebUiContextMenu extends LitElement {
     if (x < 0) x = 8
     if (y < 0) y = 8
 
+    this._applyMenuPosition(panel, x, y)
+  }
+
+  private _applyMenuPosition(panel: HTMLElement, x: number, y: number) {
     panel.style.left = `${x}px`
     panel.style.top = `${y}px`
     const horizontalOrigin = x < this._x ? 'right' : 'left'
@@ -511,6 +536,30 @@ export class WebUiContextMenu extends LitElement {
   }
 
   private _positionSubmenu(item: HTMLElement, submenu: MenuPortalOverlay) {
+    // 与主菜单同因：panel 进入 open native dialog 后处于 transformed containing
+    // block，viewport 坐标的 left/top 会相对 dialog padding box 解析而整体偏移，
+    // 需改走 Floating UI 换算为 dialog 相对坐标；开合方向仍按视口坐标度量预判。
+    if (submenu.panel.parentElement instanceof HTMLDialogElement && submenu.panel.parentElement.open) {
+      const itemRect = item.getBoundingClientRect()
+      const padding = 8
+      const canOpenRight = itemRect.right + submenu.panel.getBoundingClientRect().width + padding <= window.innerWidth
+      void computePosition(item, submenu.panel, {
+        strategy: 'fixed',
+        placement: canOpenRight ? 'right-start' : 'left-start',
+        middleware: [shift({ padding, crossAxis: true })]
+      }).then(({ x, y }) => {
+        if (!this._activeSubmenus.includes(submenu)) return
+        submenu.panel.style.left = `${x}px`
+        submenu.panel.style.top = `${y}px`
+        submenu.panel.style.setProperty(
+          '--wui-internal-overlay-transform-origin',
+          canOpenRight ? 'top left' : 'top right'
+        )
+        submenu.panel.style.visibility = ''
+      })
+      return
+    }
+
     const itemRect = item.getBoundingClientRect()
     const submenuRect = submenu.panel.getBoundingClientRect()
     const padding = 8

@@ -26,6 +26,17 @@ async function waitForMenuOpen(el: WebUiContextMenu) {
   await el.updateComplete
   await new Promise(resolve => requestAnimationFrame(resolve))
   await el.updateComplete
+
+  const deadline = performance.now() + 1000
+  let menu = getMenu()
+  while (performance.now() < deadline && (!menu?.style.left || !menu?.style.top)) {
+    await new Promise(resolve => requestAnimationFrame(resolve))
+    await el.updateComplete
+    menu = getMenu()
+  }
+  if (!menu?.style.left || !menu?.style.top) {
+    throw new Error('Expected the context menu to be positioned')
+  }
 }
 
 async function waitForMenuClose(el: WebUiContextMenu) {
