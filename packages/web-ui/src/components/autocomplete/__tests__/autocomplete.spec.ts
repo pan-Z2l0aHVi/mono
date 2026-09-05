@@ -154,12 +154,14 @@ describe('WebUiAutocomplete 组件', () => {
       el.placeholder = '搜索'
       el.disabled = true
       el.name = 'fruit'
+      el.allowCustomValue = true
       await waitForUpdate(el)
 
       expect(el.getAttribute('placeholder')).toBe('搜索')
       expectReflected(el, 'disabled', true)
       expect(el.getAttribute('name')).toBe('fruit')
       expect(el.getAttribute('filter')).toBe('contains')
+      expectReflected(el, 'allow-custom-value', true)
 
       cleanupElement(el)
     })
@@ -424,6 +426,82 @@ describe('WebUiAutocomplete 组件', () => {
       expect(changeEvents).toHaveLength(1)
       expect(el.value).toBe('Apple')
       expect(el.open).toBe(false)
+
+      cleanupElement(el)
+    })
+
+    it('Enter 选择无活动项时的精确匹配候选', async () => {
+      const el = createAutocomplete(OPTIONS_HTML)
+      const [changeEvents] = spyEvents(el, 'change')
+      await waitForUpdate(el)
+
+      typeText(el, ' apple ')
+      await waitForUpdate(el)
+      el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
+      await waitForUpdate(el)
+
+      expect(el.value).toBe('Apple')
+      expect(el.selectedValue).toBe('apple')
+      expect(el.open).toBe(false)
+      expect(changeEvents).toHaveLength(1)
+
+      cleanupElement(el)
+    })
+
+    it('allow-custom-value 时 Enter 提交未匹配原文且 selected-value 为空', async () => {
+      const el = createAutocomplete(OPTIONS_HTML, { 'allow-custom-value': '' })
+      const [inputEvents] = spyEvents(el, 'input')
+      const [changeEvents] = spyEvents(el, 'change')
+      await waitForUpdate(el)
+
+      typeText(el, '  Custom Tag  ')
+      await waitForUpdate(el)
+      el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
+      await waitForUpdate(el)
+
+      expect(el.value).toBe('  Custom Tag  ')
+      expect(el.selectedValue).toBe('')
+      expect(el.open).toBe(false)
+      expect(inputEvents).toHaveLength(2)
+      expect(changeEvents).toHaveLength(1)
+
+      cleanupElement(el)
+    })
+
+    it('allow-custom-value 不绕过 disabled 精确匹配候选', async () => {
+      const el = createAutocomplete('<web-ui-option value="react" label="React" disabled></web-ui-option>', {
+        'allow-custom-value': ''
+      })
+      const [changeEvents] = spyEvents(el, 'change')
+      await waitForUpdate(el)
+
+      typeText(el, 'React')
+      await waitForUpdate(el)
+      el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
+      await waitForUpdate(el)
+
+      expect(el.value).toBe('React')
+      expect(el.selectedValue).toBe('')
+      expect(el.open).toBe(true)
+      expect(changeEvents).toHaveLength(0)
+
+      cleanupElement(el)
+    })
+
+    it('未开启 allow-custom-value 时无匹配 Enter 不提交', async () => {
+      const el = createAutocomplete(OPTIONS_HTML)
+      const [changeEvents] = spyEvents(el, 'change')
+      await waitForUpdate(el)
+
+      typeText(el, 'Custom Tag')
+      await waitForUpdate(el)
+      el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
+      await waitForUpdate(el)
+
+      expect(el.value).toBe('Custom Tag')
+      expect(el.selectedValue).toBe('')
+      expect(el.open).toBe(true)
+      expect(changeEvents).toHaveLength(0)
 
       cleanupElement(el)
     })

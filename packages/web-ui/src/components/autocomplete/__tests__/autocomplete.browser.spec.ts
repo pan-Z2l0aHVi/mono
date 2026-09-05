@@ -158,6 +158,88 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     expect(panel?.textContent).toContain('无匹配选项')
   })
 
+  it('allow-custom-value 时 Enter 提交未匹配 custom value', async () => {
+    const el = document.createElement('web-ui-autocomplete')
+    el.allowCustomValue = true
+    el.innerHTML = '<web-ui-option value="apple" label="Apple"></web-ui-option>'
+    document.body.append(el)
+    await el.updateComplete
+
+    const changes: Event[] = []
+    el.addEventListener('change', event => changes.push(event))
+    const input = el.shadowRoot!.querySelector<HTMLInputElement>('[role="combobox"]')!
+    input.focus()
+    input.value = '  Custom Tag  '
+    input.dispatchEvent(new Event('input', { bubbles: true, composed: true }))
+    await new Promise(resolve => requestAnimationFrame(resolve))
+    await el.updateComplete
+    expect(el.open).toBe(true)
+
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, composed: true }))
+    await new Promise(resolve => requestAnimationFrame(resolve))
+    await el.updateComplete
+
+    expect(el.value).toBe('  Custom Tag  ')
+    expect(el.selectedValue).toBe('')
+    expect(el.open).toBe(false)
+    expect(changes).toHaveLength(1)
+  })
+
+  it('Enter 时启用大小写和空格兼容的 exact option fallback', async () => {
+    const el = document.createElement('web-ui-autocomplete')
+    el.innerHTML =
+      '<web-ui-option value="apple" label="Apple"></web-ui-option><web-ui-option value="banana" label="Banana"></web-ui-option>'
+    document.body.append(el)
+    await el.updateComplete
+
+    const changes: Event[] = []
+    el.addEventListener('change', event => changes.push(event))
+    const input = el.shadowRoot!.querySelector<HTMLInputElement>('[role="combobox"]')!
+    input.focus()
+    input.value = '  apple  '
+    input.dispatchEvent(new Event('input', { bubbles: true, composed: true }))
+    await new Promise(resolve => requestAnimationFrame(resolve))
+    await el.updateComplete
+    expect(el.open).toBe(true)
+
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, composed: true }))
+    await new Promise(resolve => requestAnimationFrame(resolve))
+    await el.updateComplete
+
+    expect(el.value).toBe('Apple')
+    expect(el.selectedValue).toBe('apple')
+    expect(el.open).toBe(false)
+    expect(changes).toHaveLength(1)
+  })
+
+  it('exact 命中 disabled option 时阻断 custom value bypass', async () => {
+    const el = document.createElement('web-ui-autocomplete')
+    el.allowCustomValue = true
+    el.innerHTML =
+      '<web-ui-option value="apple" label="Apple" disabled></web-ui-option><web-ui-option value="banana" label="Banana"></web-ui-option>'
+    document.body.append(el)
+    await el.updateComplete
+
+    const changes: Event[] = []
+    el.addEventListener('change', event => changes.push(event))
+    const input = el.shadowRoot!.querySelector<HTMLInputElement>('[role="combobox"]')!
+    input.focus()
+    input.value = 'apple'
+    input.dispatchEvent(new Event('input', { bubbles: true, composed: true }))
+    await new Promise(resolve => requestAnimationFrame(resolve))
+    await el.updateComplete
+    expect(el.open).toBe(true)
+
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, composed: true }))
+    await new Promise(resolve => requestAnimationFrame(resolve))
+    await el.updateComplete
+
+    expect(el.value).toBe('apple')
+    expect(el.selectedValue).toBe('')
+    expect(el.open).toBe(true)
+    expect(changes).toHaveLength(0)
+  })
+
   it('表单提交与重置', async () => {
     const form = document.createElement('form')
     form.innerHTML = '<web-ui-autocomplete name="city" value="Beijing"></web-ui-autocomplete>'

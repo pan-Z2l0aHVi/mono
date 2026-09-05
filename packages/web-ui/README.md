@@ -394,27 +394,30 @@ Child `<web-ui-option>` elements register via `option-register` / `option-unregi
 
 Editable combobox with input filtering and single option selection.
 
-| Attribute          | Type                               | Default      | Description                                                               |
-| ------------------ | ---------------------------------- | ------------ | ------------------------------------------------------------------------- |
-| `value`            | `string`                           | `''`         | Current input text (form value)                                           |
-| `selected-value`   | `string`                           | `''`         | Value of the option exactly matching the input label (derived, read-only) |
-| `placeholder`      | `string`                           | `''`         | Placeholder text                                                          |
-| `filter`           | `'none' \| 'prefix' \| 'contains'` | `'contains'` | Candidate filtering mode (matched against option label)                   |
-| `name`             | `string`                           | `''`         | Form field name                                                           |
-| `disabled`         | `boolean`                          | `false`      | Disabled state                                                            |
-| `readonly`         | `boolean`                          | `false`      | Read-only state (no typing, no dropdown)                                  |
-| `required`         | `boolean`                          | `false`      | Required validation                                                       |
-| `portal`           | `boolean`                          | `false`      | Render dropdown in theme overlay                                          |
-| `no-scroll-lock`   | `boolean`                          | `false`      | Do not lock body scroll when open                                         |
-| `overlayContainer` | `HTMLElement \| () => HTMLElement` | —            | Explicit portal container                                                 |
-| `aria-label`       | `string`                           | —            | Accessible name                                                           |
-| `aria-labelledby`  | `string`                           | —            | Accessible name references                                                |
+| Attribute            | Type                               | Default      | Description                                                                       |
+| -------------------- | ---------------------------------- | ------------ | --------------------------------------------------------------------------------- |
+| `value`              | `string`                           | `''`         | Current input text (form value)                                                   |
+| `selected-value`     | `string`                           | `''`         | Value of the enabled option exactly matching the input label (derived, read-only) |
+| `placeholder`        | `string`                           | `''`         | Placeholder text                                                                  |
+| `filter`             | `'none' \| 'prefix' \| 'contains'` | `'contains'` | Candidate filtering mode (matched against option label)                           |
+| `name`               | `string`                           | `''`         | Form field name                                                                   |
+| `disabled`           | `boolean`                          | `false`      | Disabled state                                                                    |
+| `readonly`           | `boolean`                          | `false`      | Read-only state (no typing, no dropdown)                                          |
+| `required`           | `boolean`                          | `false`      | Required validation                                                               |
+| `allow-custom-value` | `boolean`                          | `false`      | Allow Enter to submit a custom value that is not among candidates                 |
+| `portal`             | `boolean`                          | `false`      | Render dropdown in theme overlay                                                  |
+| `no-scroll-lock`     | `boolean`                          | `false`      | Do not lock body scroll when open                                                 |
+| `overlayContainer`   | `HTMLElement \| () => HTMLElement` | —            | Explicit portal container                                                         |
+| `aria-label`         | `string`                           | —            | Accessible name                                                                   |
+| `aria-labelledby`    | `string`                           | —            | Accessible name references                                                        |
 
 **Events:** `input`, `change`, `focus`, `blur`, `open-change` (`CustomEvent<{ open: boolean }>`)
 
 **Slots:** `default` (project `<web-ui-option>` elements)
 
 Typing filters the option list by label (`contains` or `prefix`, or `none` to disable filtering). Selecting an option fills the input with its label and exposes the option's value via `selected-value`; `change` fires on selection commit. Supports ArrowDown/ArrowUp/Enter/Escape keyboard navigation.
+
+When `allow-custom-value` is enabled, pressing Enter with no active option and no matching candidate commits the raw input as a custom value and closes the panel. `change` fires and `selected-value` remains empty. The component does not create an option automatically or trim the raw value. Text matching a disabled option cannot bypass the disabled state or derive as a selected option.
 
 **CSS Custom Properties:**
 

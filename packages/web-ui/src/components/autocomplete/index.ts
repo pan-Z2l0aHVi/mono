@@ -25,6 +25,7 @@ type FilterMode = (typeof FILTER_MODES)[number]
  * 与 `web-ui-select` 共用 `<web-ui-option>` 子项注册协议与浮层能力，但触发区是
  * 可编辑输入框：`value` 即当前输入文本（表单值），键入时按 `filter` 模式过滤候选，
  * 选择 option 时文本回填为该项 label，`selected-value` 暴露该项的 value。
+ * `allow-custom-value` 开启后，Enter 可把不匹配候选的原文作为 custom value 显式提交。
  */
 @customElement('web-ui-autocomplete')
 export class WebUiAutocomplete extends LitElement {
@@ -39,6 +40,8 @@ export class WebUiAutocomplete extends LitElement {
   @property({ type: Boolean, reflect: true }) portal = false
   @property({ type: Boolean, reflect: true, attribute: 'no-scroll-lock' })
   noScrollLock = false
+  @property({ type: Boolean, reflect: true, attribute: 'allow-custom-value' })
+  allowCustomValue = false
   @property({ attribute: false }) overlayContainer?: OverlayContainer
   @property({ type: String, reflect: true }) name = ''
   @property({ type: String, attribute: 'aria-label' }) override ariaLabel: string | null = null
@@ -266,7 +269,9 @@ export class WebUiAutocomplete extends LitElement {
 
   private _syncSelectedValue() {
     const query = this._value.trim().toLowerCase()
-    const next = query ? (this._options.find(o => o.label.trim().toLowerCase() === query)?.value ?? '') : ''
+    const next = query
+      ? (this._options.find(o => !o.disabled && o.label.trim().toLowerCase() === query)?.value ?? '')
+      : ''
     this._setSelectedValue(next)
   }
 
@@ -386,12 +391,23 @@ export class WebUiAutocomplete extends LitElement {
         else this._navigateActive(-1)
         break
       case 'Enter':
-        // 面板打开时接管 Enter：选中活动项或拦截表单提交；关闭时不拦截
+        // 面板打开时接管 Enter：选择候选或提交 custom value；关闭时不拦截表单提交。
         if (this._isOpen) {
           e.preventDefault()
           const option = this._options[this._activeIndex]
           if (option && !option.disabled && !option.hasAttribute('data-filtered')) {
             this._selectOption(option)
+            return
+          }
+
+          const exactOption = this._findExactOption(this._value)
+          if (exactOption) {
+            this._selectOption(exactOption)
+            return
+          }
+
+          if (this.allowCustomValue && this._value && !this._hasExactOption(this._value)) {
+            this._selectCustomValue()
           }
         }
         break
@@ -426,6 +442,25 @@ export class WebUiAutocomplete extends LitElement {
     // value 即输入文本：选择后回填为 option label，selected-value 取 option value
     this.value = option.label
     this._setSelectedValue(option.value)
+    this._close()
+    this.dispatchEvent(new Event('input', { bubbles: true, composed: true }))
+    this.dispatchEvent(new Event('change', { bubbles: true, composed: true }))
+  }
+
+  private _findExactOption(value: string): WebUiOption | undefined {
+    const query = value.trim().toLowerCase()
+    if (!query) return undefined
+
+    return this._options.find(option => !option.disabled && option.label.trim().toLowerCase() === query)
+  }
+
+  private _hasExactOption(value: string): boolean {
+    const query = value.trim().toLowerCase()
+    return this._options.some(option => option.label.trim().toLowerCase() === query)
+  }
+
+  private _selectCustomValue() {
+    // Custom value 的 identity 由消费端管理；组件不隐式创建 option，selected-value 保持派生空值。
     this._close()
     this.dispatchEvent(new Event('input', { bubbles: true, composed: true }))
     this.dispatchEvent(new Event('change', { bubbles: true, composed: true }))

@@ -379,27 +379,30 @@ ArrowUp/ArrowDown 键增减数值。空输入或 `-` 在提交时被忽略，值
 
 可输入并过滤候选的单值选择器。
 
-| 属性               | 类型                               | 默认值       | 说明                                                    |
-| ------------------ | ---------------------------------- | ------------ | ------------------------------------------------------- |
-| `value`            | `string`                           | `''`         | 当前输入文本（表单值）                                  |
-| `selected-value`   | `string`                           | `''`         | 输入文本精确匹配 label 的 option 的 value（派生，只读） |
-| `placeholder`      | `string`                           | `''`         | 占位文本                                                |
-| `filter`           | `'none' \| 'prefix' \| 'contains'` | `'contains'` | 候选过滤模式（按 option label 匹配）                    |
-| `name`             | `string`                           | `''`         | 表单字段名                                              |
-| `disabled`         | `boolean`                          | `false`      | 禁用状态                                                |
-| `readonly`         | `boolean`                          | `false`      | 只读状态（不可输入、不可展开下拉）                      |
-| `required`         | `boolean`                          | `false`      | 必填校验                                                |
-| `portal`           | `boolean`                          | `false`      | 在主题浮层容器中渲染                                    |
-| `no-scroll-lock`   | `boolean`                          | `false`      | 打开时不锁定页面滚动                                    |
-| `overlayContainer` | `HTMLElement \| () => HTMLElement` | —            | 显式 Portal 容器                                        |
-| `aria-label`       | `string`                           | —            | 无障碍名称                                              |
-| `aria-labelledby`  | `string`                           | —            | 无障碍名称引用                                          |
+| 属性                 | 类型                               | 默认值       | 说明                                                          |
+| -------------------- | ---------------------------------- | ------------ | ------------------------------------------------------------- |
+| `value`              | `string`                           | `''`         | 当前输入文本（表单值）                                        |
+| `selected-value`     | `string`                           | `''`         | 输入文本精确匹配 label 的非禁用 option 的 value（派生，只读） |
+| `placeholder`        | `string`                           | `''`         | 占位文本                                                      |
+| `filter`             | `'none' \| 'prefix' \| 'contains'` | `'contains'` | 候选过滤模式（按 option label 匹配）                          |
+| `name`               | `string`                           | `''`         | 表单字段名                                                    |
+| `disabled`           | `boolean`                          | `false`      | 禁用状态                                                      |
+| `readonly`           | `boolean`                          | `false`      | 只读状态（不可输入、不可展开下拉）                            |
+| `required`           | `boolean`                          | `false`      | 必填校验                                                      |
+| `allow-custom-value` | `boolean`                          | `false`      | 允许 Enter 提交不在候选中的 custom value                      |
+| `portal`             | `boolean`                          | `false`      | 在主题浮层容器中渲染                                          |
+| `no-scroll-lock`     | `boolean`                          | `false`      | 打开时不锁定页面滚动                                          |
+| `overlayContainer`   | `HTMLElement \| () => HTMLElement` | —            | 显式 Portal 容器                                              |
+| `aria-label`         | `string`                           | —            | 无障碍名称                                                    |
+| `aria-labelledby`    | `string`                           | —            | 无障碍名称引用                                                |
 
 **事件：** `input`, `change`, `focus`, `blur`, `open-change` (`CustomEvent<{ open: boolean }>`)
 
 **插槽：** `default`（投影 `<web-ui-option>` 元素）
 
 键入时按 label 过滤候选（`contains` 或 `prefix`，`none` 关闭过滤）。选择 option 时文本回填为该项 label，`selected-value` 暴露该项的 value；`change` 在选择提交时触发。支持 ArrowDown/ArrowUp/Enter/Escape 键盘导航。
+
+启用 `allow-custom-value` 后，无匹配且无活动 option 时，Enter 会把当前输入原文作为 custom value 提交并关闭面板；`change` 会触发，`selected-value` 保持为空。组件不会自动创建 option，也不会 trim 原文。命中禁用 option 的文本不会绕过禁用语义，也不会派生为已选 option。
 
 **CSS 自定义属性：**
 
