@@ -323,7 +323,9 @@ export class WebUiDrawer extends LitElement {
     }))
     // 采样帧含首值与附加终点，实际时长为帧间隔数 × 采样周期。
     const duration = (samples.length - 1) * SPRING_SAMPLE_MS
-    const animation = dialog.animate(keyframes, { duration, easing: 'linear' })
+    // fill:'both' 与 _springRebound 对称：堵住 finish→onfinish 清理窗口，
+    // 防止该窗口内绘制的帧暴露内联位移、随清理触发跳变。
+    const animation = dialog.animate(keyframes, { duration, easing: 'linear', fill: 'both' })
     // onfinish 同步应用终态并取消动画：fill 会持续覆盖 transform，阻断后续 CSS 过渡。
     animation.onfinish = () => {
       animation.cancel()
@@ -356,7 +358,10 @@ export class WebUiDrawer extends LitElement {
     // 弹回期间抑制 transform/backdrop 的 CSS transition，避免与弹簧动画叠加。
     dialog.classList.add('is-dragging')
     const duration = (samples.length - 1) * SPRING_SAMPLE_MS
-    const animation = dialog.animate(keyframes, { duration, easing: 'linear' })
+    // fill:'both' 堵住 finish→onfinish 清理之间的竞态窗口：无 fill 时动画结束即
+    // 失效，窗口内被绘制的帧会暴露内联拖拽位移，随后的清理再触发 CSS 过渡滑回
+    // 打开位 —— 表现为回弹后又多弹一次。
+    const animation = dialog.animate(keyframes, { duration, easing: 'linear', fill: 'both' })
     // onfinish 同步清除内联样式并取消动画：fill 会持续覆盖 transform，阻断后续 CSS 过渡。
     animation.onfinish = () => {
       animation.cancel()

@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'vite-plus/test'
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
 
 import '..'
 import '@/components/theme'
@@ -53,6 +53,14 @@ function getCloseOffset(el: WebUiDrawer): number {
   return (horizontal ? matrix.m41 : matrix.m42) * sign
 }
 
+// 拖拽位移沿闭合方向映射成 transform；按 placement 推导方向，避免测试只适配 right。
+function getExpectedTransform(el: WebUiDrawer, closeOffset: number): string {
+  const horizontal = el.placement === 'left' || el.placement === 'right'
+  const sign = el.placement === 'left' || el.placement === 'top' ? -1 : 1
+  const value = closeOffset * sign
+  return horizontal ? `translateX(${value}px)` : `translateY(${value}px)`
+}
+
 afterEach(() => document.body.replaceChildren())
 
 describe('WebUiDrawer 拖拽关闭（浏览器）', () => {
@@ -99,6 +107,9 @@ describe('WebUiDrawer 拖拽关闭（浏览器）', () => {
     const openChangeEvents: CustomEvent<{ open: boolean }>[] = []
     el.addEventListener('open-change', event => openChangeEvents.push(event as CustomEvent<{ open: boolean }>))
 
+    const dialog = getDialog(el)
+    const animateSpy = vi.spyOn(dialog, 'animate')
+
     const dragZone = getDragZone(el)
     dragZone.dispatchEvent(
       new PointerEvent('pointerdown', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 100, clientY: 300 })
@@ -118,6 +129,11 @@ describe('WebUiDrawer 拖拽关闭（浏览器）', () => {
     // 用户手势关闭与点击关闭按钮同语义：派发一次 open-change(false)
     expect(openChangeEvents.map(event => event.detail.open)).toEqual([false])
     expect(getDialog(el).open).toBe(false)
+
+    // 关闭弹簧与回弹弹簧同享 fill:'both' 守卫：无 fill 时 finish→onfinish 清理
+    // 窗口内被绘制的帧会暴露内联闭合位移，随清理触发跳变。
+    expect(animateSpy).toHaveBeenCalledTimes(1)
+    expect(animateSpy.mock.calls[0]?.[1]).toMatchObject({ fill: 'both' })
   })
 
   it('未达阈值松手：弹回打开位，open 保持 true', async () => {
@@ -126,6 +142,9 @@ describe('WebUiDrawer 拖拽关闭（浏览器）', () => {
     el.open = true
     await el.updateComplete
     await waitForOpenTransition(el)
+
+    const dialog = getDialog(el)
+    const animateSpy = vi.spyOn(dialog, 'animate')
 
     const dragZone = getDragZone(el)
     dragZone.dispatchEvent(
@@ -145,11 +164,71 @@ describe('WebUiDrawer 拖拽关闭（浏览器）', () => {
     expect(el.open).toBe(true)
     expect(getDialog(el).open).toBe(true)
 
+    expect(animateSpy).toHaveBeenCalledTimes(1)
+    const reboundAnimation = animateSpy.mock.results[0]?.value as Animation
+    // onfinish 后才清理内联 transform；缺少 fill 会让最终帧和清理之间回跳到拖拽位。
+    expect(animateSpy.mock.calls[0]?.[1]).toMatchObject({ fill: 'both' })
+    await reboundAnimation.finished
+    const effect = reboundAnimation.effect
+    if (!(effect instanceof KeyframeEffect)) throw new Error('rebound must use a keyframe effect')
+    const keyframes = effect.getKeyframes()
+    expect(keyframes[0]?.transform).toBe(getExpectedTransform(el, 30))
+    expect(keyframes[keyframes.length - 1]?.transform).toBe(getExpectedTransform(el, 0))
+
     // 等弹回完成：finishRebound 移除 is-dragging 才算收敛
     //（欠阻尼弹簧会穿过 2px，位移条件可能在中途提前满足）
     await waitFor(() => !getDialog(el).classList.contains('is-dragging'))
     await nextFrame()
-    expect(getCloseOffset(el)).toBeLessThan(2)
+    await nextFrame()
+    await waitFor(() => dialog.getAnimations({ subtree: true }).length === 0)
+    expect(animateSpy).toHaveBeenCalledTimes(1)
+    expect(getCloseOffset(el)).toBeLessThan(0.5)
+  })
+
+  it('pointercancel 未达阈值松手：只弹回一次并回到打开位', async () => {
+    const el = createDrawer()
+    el.draggable = true
+    el.open = true
+    await el.updateComplete
+    await waitForOpenTransition(el)
+
+    const dialog = getDialog(el)
+    const animateSpy = vi.spyOn(dialog, 'animate')
+
+    const dragZone = getDragZone(el)
+    dragZone.dispatchEvent(
+      new PointerEvent('pointerdown', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 100, clientY: 300 })
+    )
+    await el.updateComplete
+    // 先建立非零拖拽位移，再模拟系统接管导致的 pointercancel。
+    dragZone.dispatchEvent(
+      new PointerEvent('pointermove', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 130, clientY: 300 })
+    )
+    await el.updateComplete
+    dragZone.dispatchEvent(
+      new PointerEvent('pointercancel', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 130, clientY: 300 })
+    )
+    await el.updateComplete
+
+    expect(el.open).toBe(true)
+    expect(dialog.open).toBe(true)
+    expect(animateSpy).toHaveBeenCalledTimes(1)
+
+    const reboundAnimation = animateSpy.mock.results[0]?.value as Animation
+    expect(animateSpy.mock.calls[0]?.[1]).toMatchObject({ fill: 'both' })
+    await reboundAnimation.finished
+    const effect = reboundAnimation.effect
+    if (!(effect instanceof KeyframeEffect)) throw new Error('rebound must use a keyframe effect')
+    const keyframes = effect.getKeyframes()
+    expect(keyframes[0]?.transform).toBe(getExpectedTransform(el, 30))
+    expect(keyframes[keyframes.length - 1]?.transform).toBe(getExpectedTransform(el, 0))
+
+    await waitFor(() => !dialog.classList.contains('is-dragging'))
+    await nextFrame()
+    await nextFrame()
+    await waitFor(() => dialog.getAnimations({ subtree: true }).length === 0)
+    expect(animateSpy).toHaveBeenCalledTimes(1)
+    expect(getCloseOffset(el)).toBeLessThan(0.5)
   })
 
   it('controlled 拒绝回写：等待窗口超时后弹回打开位', async () => {
