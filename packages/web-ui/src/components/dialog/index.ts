@@ -67,6 +67,9 @@ export class WebUiDialog extends LitElement {
   }
 
   private handleCancel(e: Event) {
+    // 子控件（例如 file input）可能派发冒泡的 cancel；只让 native dialog 自身的 cancel 关闭。
+    if (e.target !== e.currentTarget) return
+
     // 保留 top layer 直到视觉退场完成，避免原生关闭跳过退出动画。
     e.preventDefault()
     if (this.noEscapeClose) return

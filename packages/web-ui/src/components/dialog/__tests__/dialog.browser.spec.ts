@@ -51,6 +51,26 @@ describe('WebUiDialog 组件（浏览器）', () => {
     expect(component.open).toBe(true)
   })
 
+  it('子控件冒泡的 cancel 不关闭对话框，例如取消文件选择器', async () => {
+    const component = createDialog()
+    const input = document.createElement('input')
+    input.type = 'file'
+    component.append(input)
+    component.open = true
+    await component.updateComplete
+    await new Promise(resolve => requestAnimationFrame(resolve))
+
+    input.dispatchEvent(new Event('cancel', { bubbles: true, composed: true }))
+    await component.updateComplete
+    expect(component.open).toBe(true)
+
+    const dialog = component.shadowRoot?.querySelector('dialog')
+    dialog?.focus()
+    await userEvent.keyboard('{Escape}')
+    await component.updateComplete
+    expect(component.open).toBe(false)
+  })
+
   it('no-backdrop-close 只阻止遮罩 click，不阻止 Escape 触发的 cancel', async () => {
     const component = createDialog()
     component.noBackdropClose = true
