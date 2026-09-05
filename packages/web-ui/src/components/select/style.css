@@ -29,7 +29,7 @@
 }
 
 .select-trigger {
-  cursor: pointer;
+  cursor: default;
 
   overflow: clip;
   display: flex;

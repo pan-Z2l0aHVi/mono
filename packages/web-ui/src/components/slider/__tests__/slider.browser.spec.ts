@@ -48,6 +48,8 @@ describe('WebUiSlider 组件（浏览器）', () => {
 
     const thumb = slider!.querySelector('.wui-slider-thumb') as HTMLElement
     expect(thumb.classList.contains('is-dragging')).toBe(true)
+    expect(getComputedStyle(slider!).cursor).toBe('grabbing')
+    expect(getComputedStyle(thumb).cursor).toBe('grabbing')
 
     // pointerup 结束拖拽
     slider!.dispatchEvent(
@@ -64,6 +66,77 @@ describe('WebUiSlider 组件（浏览器）', () => {
     expect(afterMove).toBeGreaterThan(50)
     expect(inputEvents.length).toBeGreaterThan(0)
     expect(changeEvents).toHaveLength(1) // 拖拽结束时 value 已变化，触发一次 change
+  })
+
+  it('按住未移动时呈现按压反馈且不进入拖拽状态', async () => {
+    const el = document.createElement('web-ui-slider')
+    document.body.append(el)
+    await el.updateComplete
+
+    expect(el.shadowRoot).toBeTruthy()
+    const slider = el.shadowRoot!.querySelector<HTMLElement>('[role="slider"]') as HTMLElement
+    const thumb = slider.querySelector('.wui-slider-thumb') as HTMLElement
+    const rect = slider.getBoundingClientRect()
+
+    slider.dispatchEvent(
+      new PointerEvent('pointerdown', {
+        bubbles: true,
+        clientX: rect.left + rect.width * 0.25,
+        clientY: rect.top + rect.height / 2,
+        pointerId: 1
+      })
+    )
+    await el.updateComplete
+
+    expect(thumb.classList.contains('is-pressed')).toBe(true)
+    expect(thumb.classList.contains('is-dragging')).toBe(false)
+    expect(getComputedStyle(slider).cursor).toBe('default')
+  })
+
+  it('移动未超过意图阈值时不进入拖拽状态', async () => {
+    const el = document.createElement('web-ui-slider')
+    document.body.append(el)
+    await el.updateComplete
+
+    expect(el.shadowRoot).toBeTruthy()
+    const slider = el.shadowRoot!.querySelector<HTMLElement>('[role="slider"]') as HTMLElement
+    const thumb = slider.querySelector('.wui-slider-thumb') as HTMLElement
+    const rect = slider.getBoundingClientRect()
+    const y = rect.top + rect.height / 2
+
+    slider.dispatchEvent(
+      new PointerEvent('pointerdown', {
+        bubbles: true,
+        clientX: rect.left + rect.width * 0.25,
+        clientY: y,
+        pointerId: 1
+      })
+    )
+    await el.updateComplete
+
+    window.dispatchEvent(
+      new PointerEvent('pointermove', {
+        bubbles: true,
+        pointerId: 1,
+        clientX: rect.left + rect.width * 0.25 + 4,
+        clientY: y
+      })
+    )
+    await el.updateComplete
+    expect(thumb.classList.contains('is-dragging')).toBe(false)
+    expect(getComputedStyle(slider).cursor).toBe('default')
+
+    window.dispatchEvent(
+      new PointerEvent('pointermove', {
+        bubbles: true,
+        pointerId: 1,
+        clientX: rect.left + rect.width * 0.25 + 8,
+        clientY: y
+      })
+    )
+    await el.updateComplete
+    expect(thumb.classList.contains('is-dragging')).toBe(true)
+    expect(getComputedStyle(slider).cursor).toBe('grabbing')
   })
 
   it('pointerup 后继续移动不再更新 value', async () => {

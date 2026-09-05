@@ -83,6 +83,7 @@ describe('shared/gesture attachDragGesture', () => {
 
     const onMove = vi.fn<() => void>()
     const onEnd = vi.fn<() => void>()
+    const onTap = vi.fn<() => void>()
     const onCancel = vi.fn<() => void>()
 
     const handle = attachDragGesture(el, {
@@ -90,6 +91,7 @@ describe('shared/gesture attachDragGesture', () => {
       threshold: 10,
       onMove,
       onEnd,
+      onTap,
       onCancel
     })
 
@@ -101,6 +103,7 @@ describe('shared/gesture attachDragGesture', () => {
     // 释放时未越过 threshold 触发 onCancel 而非 onEnd
     window.dispatchEvent(new PointerEvent('pointerup', { pointerId: 1, clientX: 105, clientY: 100, isPrimary: true }))
     expect(onEnd).not.toHaveBeenCalled()
+    expect(onTap).toHaveBeenCalledTimes(1)
     expect(onCancel).toHaveBeenCalledTimes(1)
 
     handle.destroy()

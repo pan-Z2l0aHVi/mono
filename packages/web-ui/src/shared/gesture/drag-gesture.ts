@@ -59,6 +59,8 @@ export interface DragGestureOptions {
   onMove?: (info: DragMoveInfo, event: PointerEvent) => void
   /** 正常松手回调 */
   onEnd?: (info: DragEndInfo, event: PointerEvent) => void
+  /** 未通过意图阈值的 pointerup 回调，供点击定位类控件提交一次 tap */
+  onTap?: (info: DragEndInfo, event: PointerEvent) => void
   /** 手势取消/被打断回调（如 pointercancel、外部强行 cancel） */
   onCancel?: (event?: PointerEvent) => void
 }
@@ -84,7 +86,7 @@ export function attachDragGesture(
     ? (targetOrEvent.currentTarget as HTMLElement | null) || (targetOrEvent.target as HTMLElement | null)
     : (targetOrEvent as HTMLElement)
 
-  const { axis = 'both', threshold = 0, onStart, onMove, onEnd, onCancel } = options
+  const { axis = 'both', threshold = 0, onStart, onMove, onEnd, onTap, onCancel } = options
 
   let activePointerId: number | null = null
   let startX = 0
@@ -277,6 +279,7 @@ export function attachDragGesture(
     if (hadPassedThreshold) {
       onEnd?.(endInfo, e)
     } else {
+      onTap?.(endInfo, e)
       onCancel?.(e)
     }
   }

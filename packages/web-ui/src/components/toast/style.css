@@ -53,7 +53,7 @@
 
 web-ui-button.toast-close-btn {
   pointer-events: none;
-  cursor: pointer;
+  cursor: default;
 
   position: absolute;
   top: -8px;

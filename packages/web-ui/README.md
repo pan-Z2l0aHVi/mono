@@ -187,6 +187,13 @@ Components own their role and interaction state. Browser-native composed events 
 remain the primary interaction API. Kebab-case custom events such as `open-change` describe user-originated component
 state changes; assigning a property programmatically does not emit them.
 
+### Cursor behavior
+
+Interactive controls use the native arrow cursor instead of the hand cursor. Disabled controls use `not-allowed`.
+Slider, switch, and segmented controls keep the arrow cursor during hover and press feedback, then switch to
+`grabbing` only while a drag is active. Dedicated drag handles and resize controls keep their specialized cursors.
+Cursor styles live inside Shadow DOM, so a plain document-level selector cannot override them.
+
 ### Controlled state semantics
 
 `web-ui-*` elements do not use a single "controlled" contract; three distinct state models exist, chosen per component
