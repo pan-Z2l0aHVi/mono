@@ -1,4 +1,5 @@
-.wui-menu-portal-overlay {
+/* 双类选择器覆盖 .wui-glass { position: relative }，保持 fixed 定位。 */
+.wui-menu-portal-overlay.wui-glass {
   --wui-internal-glass-shadow: var(--wui-shadow-panel, 0 3px 9px rgb(0 0 0 / 0.27));
   --wui-internal-duration-overlay-enter: var(--wui-duration-menu-enter, 140ms);
   --wui-internal-duration-overlay-exit: var(--wui-duration-menu-exit, 100ms);
