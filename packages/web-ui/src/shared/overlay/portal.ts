@@ -15,7 +15,7 @@ export interface OverlayPortalOptions {
   target: Element
   style: string
   className: string
-  onContentChange?: () => void
+  onContentChange?: (mutations: MutationRecord[]) => void
 }
 
 export interface OverlayPortal {
@@ -45,7 +45,7 @@ export const defineOverlayPortal = () =>
     root.append(style, panel)
 
     const trackedNodes: Node[] = []
-    const contentObserver = new MutationObserver(() => ctx.onContentChange?.())
+    const contentObserver = new MutationObserver(mutations => ctx.onContentChange?.(mutations))
     const untrackNodes = (nodes: Node[]) => {
       nodes.forEach(node => {
         const index = trackedNodes.indexOf(node)

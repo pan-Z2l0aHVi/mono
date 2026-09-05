@@ -398,11 +398,13 @@ ArrowUp/ArrowDown 键增减数值。空输入或 `-` 在提交时被忽略，值
 
 **事件：** `input`, `change`, `focus`, `blur`, `open-change` (`CustomEvent<{ open: boolean }>`)
 
-**插槽：** `default`（投影 `<web-ui-option>` 元素）
+**插槽：** `default`（投影 `<web-ui-option>` 元素）、`empty`（替换无匹配空态；默认回退为“无匹配选项”）
 
 键入时按 label 过滤候选（`contains` 或 `prefix`，`none` 关闭过滤）。选择 option 时文本回填为该项 label，`selected-value` 暴露该项的 value；`change` 在选择提交时触发。支持 ArrowDown/ArrowUp/Enter/Escape 键盘导航。
 
 启用 `allow-custom-value` 后，无匹配且无活动 option 时，Enter 会把当前输入原文作为 custom value 提交并关闭面板；`change` 会触发，`selected-value` 保持为空。组件不会自动创建 option，也不会 trim 原文。命中禁用 option 的文本不会绕过禁用语义，也不会派生为已选 option。
+
+通过 `<div slot="empty">…</div>` 自定义静态、非交互的空态内容。Portal 渲染时该节点会迁入浮层，关闭后恢复到宿主。
 
 **CSS 自定义属性：**
 

@@ -413,11 +413,13 @@ Editable combobox with input filtering and single option selection.
 
 **Events:** `input`, `change`, `focus`, `blur`, `open-change` (`CustomEvent<{ open: boolean }>`)
 
-**Slots:** `default` (project `<web-ui-option>` elements)
+**Slots:** `default` (project `<web-ui-option>` elements), `empty` (replace the “no matches” state; falls back to “No matches”)
 
 Typing filters the option list by label (`contains` or `prefix`, or `none` to disable filtering). Selecting an option fills the input with its label and exposes the option's value via `selected-value`; `change` fires on selection commit. Supports ArrowDown/ArrowUp/Enter/Escape keyboard navigation.
 
 When `allow-custom-value` is enabled, pressing Enter with no active option and no matching candidate commits the raw input as a custom value and closes the panel. `change` fires and `selected-value` remains empty. The component does not create an option automatically or trim the raw value. Text matching a disabled option cannot bypass the disabled state or derive as a selected option.
+
+Use `<div slot="empty">…</div>` for static, non-interactive empty-state content. Portal rendering moves this node into the floating panel and restores it to the host after close.
 
 **CSS Custom Properties:**
 

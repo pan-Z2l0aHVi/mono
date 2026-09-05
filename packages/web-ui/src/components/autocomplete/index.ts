@@ -19,6 +19,10 @@ import style from './style.css?inline'
 const FILTER_MODES = ['none', 'prefix', 'contains'] as const
 type FilterMode = (typeof FILTER_MODES)[number]
 
+function isEmptySlotNode(node: Node): node is Element {
+  return node instanceof Element && node.getAttribute('slot') === 'empty'
+}
+
 /**
  * `web-ui-autocomplete`：可输入并过滤候选的单值选择器。
  *
@@ -133,9 +137,8 @@ export class WebUiAutocomplete extends LitElement {
     getPortal: () => this._portal,
     getPortalContent: () => this._portalContent,
     isOpen: () => this.portal && this._isOpen,
-    // autocomplete 迁移全部子节点：empty state 等面板内静态内容与 option 的相对顺序
-    // 由 childNodes 原序保持，迁移粒度与 select（裸 option）刻意不同
-    getMigratableNodes: () => Array.from(this.childNodes),
+    // 默认 slot 内容随面板迁移；slot="empty" 由 autocomplete 单独迁移并恢复。
+    getMigratableNodes: () => Array.from(this.childNodes).filter(node => !isEmptySlotNode(node)),
     hasUpdated: () => this.hasUpdated,
     requestUpdate: () => this.requestUpdate(),
     bindOption: option => this._bindOption(option),
@@ -311,11 +314,24 @@ export class WebUiAutocomplete extends LitElement {
 
   private _syncEmptyState() {
     const panel = this._panel.getPanel()
-    if (!panel) return
-    const empty = panel.querySelector<HTMLElement>('.autocomplete-empty')
-    if (!empty) return
+    const empty = panel?.querySelector<HTMLElement>('.autocomplete-empty')
     const matching = this._options.filter(o => !o.hasAttribute('data-filtered'))
-    empty.hidden = !(this._options.length > 0 && matching.length === 0)
+    const hasEmpty = this._isOpen && this._options.length > 0 && matching.length === 0
+    if (empty) empty.hidden = !hasEmpty
+
+    const slot = this.shadowRoot?.querySelector<HTMLSlotElement>('slot[name="empty"]')
+    const customText = slot
+      ?.assignedElements()
+      .map(element => element.textContent?.trim())
+      .filter(Boolean)
+      .join(' ')
+      .trim()
+    const message = customText || empty?.dataset.wuiA11yEmpty || '无匹配选项'
+    const a11yEmpty = this.shadowRoot?.querySelector<HTMLElement>('.autocomplete-empty-a11y')
+    if (a11yEmpty) {
+      a11yEmpty.textContent = message
+      a11yEmpty.hidden = !hasEmpty
+    }
   }
 
   private _bindOption = (option: WebUiOption) => {
@@ -565,7 +581,18 @@ export class WebUiAutocomplete extends LitElement {
       target: this,
       style: `${glass}\n${overlayMotion}\n${style}`,
       className: 'wui-glass autocomplete-overlay portal wui-floating-panel',
-      onContentChange: () => this._optionPortal.scheduleRefresh()
+      onContentChange: mutations => {
+        this._optionPortal.scheduleRefresh()
+        const removedEmptyNodes = mutations.flatMap(mutation => [...mutation.removedNodes]).filter(isEmptySlotNode)
+        if (removedEmptyNodes.length) {
+          this._portal?.removeContent(removedEmptyNodes)
+          const empty = this._portal?.panel.querySelector<HTMLElement>('.autocomplete-empty')
+          if (empty) {
+            empty.textContent = '无匹配选项'
+            empty.dataset.wuiA11yEmpty = '无匹配选项'
+          }
+        }
+      }
     })
     this._portal = portal
     portal.panel.setAttribute('aria-hidden', 'true')
@@ -578,11 +605,14 @@ export class WebUiAutocomplete extends LitElement {
     const empty = document.createElement('div')
     empty.className = 'autocomplete-empty'
     empty.hidden = true
-    empty.textContent = '无匹配选项'
+    empty.dataset.wuiA11yEmpty = this._getEmptySlotText()
     scroll.append(content)
     content.append(empty)
     portal.panel.append(scroll)
-    portal.moveContent(Array.from(this.children), content)
+    for (const node of Array.from(this.childNodes)) {
+      if (isEmptySlotNode(node)) portal.appendContent([node], empty)
+      else portal.appendContent([node], content)
+    }
     return portal
   }
 
@@ -601,6 +631,17 @@ export class WebUiAutocomplete extends LitElement {
       })
       .filter(Boolean)
       .join(' ')
+  }
+
+  private _getEmptySlotText(): string {
+    const slot = this.shadowRoot?.querySelector<HTMLSlotElement>('slot[name="empty"]')
+    const text = slot
+      ?.assignedElements()
+      .map(element => element.textContent?.trim())
+      .filter(Boolean)
+      .join(' ')
+      .trim()
+    return text || '无匹配选项'
   }
 
   override render() {
@@ -661,6 +702,7 @@ export class WebUiAutocomplete extends LitElement {
               </div>`
           )}
         </div>
+        <div class="autocomplete-a11y-only autocomplete-empty-a11y" role="status" hidden></div>
         <div
           class="wui-glass autocomplete-overlay wui-floating-panel"
           hidden
@@ -670,7 +712,9 @@ export class WebUiAutocomplete extends LitElement {
           <div class="autocomplete-scroll">
             <div class="autocomplete-content">
               <slot @slotchange=${this._onSlotChange}></slot>
-              <div class="autocomplete-empty" hidden>无匹配选项</div>
+              <div class="autocomplete-empty" hidden>
+                <slot name="empty">无匹配选项</slot>
+              </div>
             </div>
           </div>
         </div>

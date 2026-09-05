@@ -118,11 +118,12 @@ const cities = ['北京', '上海', '广州', '深圳', '杭州', '成都', '武
     <h2>custom value</h2>
     <p class="mb-2 text-sm text-[var(--wui-color-text-secondary)]">
       开启 <code>allow-custom-value</code> 后，输入不在候选中的文本并按 Enter 提交；此时
-      <code>selected-value</code> 为空。
+      <code>selected-value</code> 为空。无匹配提示可通过 <code>slot="empty"</code> 自定义。
     </p>
     <div class="mb-3 flex flex-col gap-3">
       <web-ui-autocomplete allow-custom-value placeholder="输入框架或新建标签" @change="handleCustomChange">
         <web-ui-option v-for="name in frameworks" :key="name" :value="name" :label="name">{{ name }}</web-ui-option>
+        <div slot="empty">没有匹配项，按 Enter 新建</div>
       </web-ui-autocomplete>
       <div>最近提交 value：{{ customValue || '无' }}</div>
       <div>最近提交 selected-value：{{ customSelectedValue || '无' }}</div>

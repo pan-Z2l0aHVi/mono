@@ -510,6 +510,104 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     expect(el.open).toBe(false)
   })
 
+  it('empty slot 替换默认空态，portal 打开时迁移并在关闭后恢复', async () => {
+    const theme = document.createElement('web-ui-theme')
+    theme.setAttribute('appearance', 'light')
+    const el = document.createElement('web-ui-autocomplete')
+    el.portal = true
+    el.innerHTML =
+      '<web-ui-option value="apple" label="Apple"></web-ui-option><div slot="empty">按 Enter 创建标签</div>'
+    theme.append(el)
+    document.body.append(theme)
+    await theme.updateComplete
+    await el.updateComplete
+
+    const input = page.getByRole('combobox')
+    input.element().focus()
+    ;(input.element() as HTMLElement).click()
+    await waitForFrame()
+    await waitForFrame()
+    await input.fill('zzz')
+    await el.updateComplete
+
+    const panel = getPortalPanel(theme)!
+    const empty = panel.querySelector<HTMLElement>('.autocomplete-empty')!
+    expect(empty.hidden).toBe(false)
+    expect(el.querySelector('[slot="empty"]')).toBeNull()
+    expect(empty.textContent?.trim()).toBe('按 Enter 创建标签')
+    expect(el.shadowRoot?.querySelector<HTMLElement>('.autocomplete-empty-a11y')?.textContent?.trim()).toBe(
+      '按 Enter 创建标签'
+    )
+
+    input.element().focus()
+    await userEvent.keyboard('{Escape}')
+    await new Promise(resolve => setTimeout(resolve, 300))
+    await el.updateComplete
+    expect(el.open).toBe(false)
+    expect(el.querySelector('[slot="empty"]')?.textContent?.trim()).toBe('按 Enter 创建标签')
+  })
+
+  it('portal 打开期间删除 empty slot 后不复活该节点并回退默认空态', async () => {
+    const theme = document.createElement('web-ui-theme')
+    theme.setAttribute('appearance', 'light')
+    const el = document.createElement('web-ui-autocomplete')
+    el.portal = true
+    el.innerHTML =
+      '<web-ui-option value="apple" label="Apple"></web-ui-option><div slot="empty">按 Enter 创建标签</div>'
+    theme.append(el)
+    document.body.append(theme)
+    await theme.updateComplete
+    await el.updateComplete
+
+    const input = page.getByRole('combobox')
+    input.element().focus()
+    ;(input.element() as HTMLElement).click()
+    await waitForFrame()
+    await waitForFrame()
+    await input.fill('zzz')
+    await el.updateComplete
+
+    const panel = getPortalPanel(theme)!
+    panel.querySelector<HTMLElement>('.autocomplete-empty')!.firstElementChild?.remove()
+    await new Promise(resolve => setTimeout(resolve, 0))
+    await el.updateComplete
+    expect(panel.querySelector('.autocomplete-empty')?.textContent?.trim()).toBe('无匹配选项')
+    expect(el.shadowRoot?.querySelector<HTMLElement>('.autocomplete-empty-a11y')?.textContent?.trim()).toBe(
+      '无匹配选项'
+    )
+
+    input.element().focus()
+    await userEvent.keyboard('{Escape}')
+    await new Promise(resolve => setTimeout(resolve, 300))
+    await el.updateComplete
+    expect(el.open).toBe(false)
+    expect(el.querySelector('[slot="empty"]')).toBeNull()
+  })
+
+  it('empty slot 在普通浮层中投影并替换默认空态', async () => {
+    const el = document.createElement('web-ui-autocomplete')
+    el.innerHTML = '<web-ui-option value="apple" label="Apple"></web-ui-option><div slot="empty">自定义空态</div>'
+    document.body.append(el)
+    await el.updateComplete
+
+    const input = el.shadowRoot!.querySelector<HTMLInputElement>('[role="combobox"]')!
+    input.focus()
+    input.click()
+    await el.updateComplete
+    input.value = 'zzz'
+    input.dispatchEvent(new Event('input', { bubbles: true, composed: true }))
+    await el.updateComplete
+
+    const empty = el.shadowRoot!.querySelector<HTMLElement>('.autocomplete-empty')!
+    expect(empty.hidden).toBe(false)
+    const emptySlot = empty.querySelector<HTMLSlotElement>('slot[name="empty"]')
+    expect(emptySlot?.assignedElements().map(node => node.textContent?.trim())).toEqual(['自定义空态'])
+    const a11yEmpty = el.shadowRoot!.querySelector<HTMLElement>('.autocomplete-empty-a11y')!
+    expect(a11yEmpty.hidden).toBe(false)
+    expect(a11yEmpty.getAttribute('role')).toBe('status')
+    expect(a11yEmpty.textContent?.trim()).toBe('自定义空态')
+  })
+
   it('浏览器中的 focus/blur 事件在宿主 retarget 且保持 composed contract', async () => {
     const el = document.createElement('web-ui-autocomplete')
     el.innerHTML = '<web-ui-option value="apple" label="Apple"></web-ui-option>'
