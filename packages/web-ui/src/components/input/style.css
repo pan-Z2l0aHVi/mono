@@ -15,6 +15,7 @@
 }
 
 .wui-input-inner {
+  --wui-glass-corner-radius: calc(var(--wui-control-size, 36px) / 2);
   position: relative;
 
   display: flex;
@@ -23,8 +24,8 @@
 
   box-sizing: border-box;
   width: var(--wui-input-width, 200px);
-  min-width: var(--wui-control-size, 40px);
-  height: var(--wui-control-size, 40px);
+  min-width: var(--wui-control-size, 36px);
+  height: var(--wui-control-size, 36px);
   padding: 0 12px;
   border-radius: calc(infinity * 1px);
 
@@ -114,9 +115,11 @@ slot.empty {
 /* ===== Clear button ===== */
 
 /* 复用 web-ui-button icon ghost：仅覆盖颜色为 faint，保持弱意图清除图标观感；
-   负 margin-left 抵消容器 8px flex gap，让清除按钮紧贴输入文本 */
+   负 margin-left 抵消容器 flex gap，让清除按钮紧贴输入文本
+   负 margin-right 抵消 button padding，让清除按钮右侧 spacing 视觉上协调 */
 .wui-input-inner web-ui-button[variant='ghost'] {
   --wui-button-color: var(--wui-input-clear-color);
+  margin-right: -4px;
   margin-left: -8px;
 }
 

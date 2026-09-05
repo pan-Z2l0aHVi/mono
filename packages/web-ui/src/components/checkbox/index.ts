@@ -5,7 +5,7 @@ import { classMap } from 'lit/directives/class-map.js'
 import '@/components/icon'
 import { heroiconsCheck16Solid } from '@/icons'
 import { defineFormAssociation, FormAssociationController } from '@/shared/form-association'
-import { defineGroupManaged, type SelectionGroupContext } from '@/shared/group-management'
+import { defineGroupManaged, selectionGroupContextKey, type SelectionGroupContext } from '@/shared/group-management'
 
 import style from './style.css?inline'
 
@@ -15,6 +15,7 @@ export class WebUiCheckbox extends LitElement {
   static formAssociated = true
 
   private readonly _groupManagement = defineGroupManaged<SelectionGroupContext>(this, {
+    context: selectionGroupContextKey,
     requestUpdate: () => this.requestUpdate()
   }).make()
 
@@ -89,7 +90,6 @@ export class WebUiCheckbox extends LitElement {
     internals.setValidity({ valueMissing: true }, '请选择此项')
   }
 
-  // 用户点击切换
   private handleClick() {
     if (this._isDisabled) return
     const old = this._checked
@@ -130,7 +130,11 @@ export class WebUiCheckbox extends LitElement {
       >
         <span class="wui-checkbox-box">
           <span class="wui-checkbox-icon"
-            ><web-ui-icon .icon=${heroiconsCheck16Solid} size="18" color="#fff"></web-ui-icon
+            ><web-ui-icon
+              .icon=${heroiconsCheck16Solid}
+              size="18"
+              color="var(--wui-color-on-control, #fff)"
+            ></web-ui-icon
           ></span>
         </span>
         <span class="wui-checkbox-label"><slot></slot></span>

@@ -33,7 +33,7 @@ const openApiMenu = () => {
     <div class="mb-6">
       <web-ui-context-menu id="demo-context-menu" @open-change="handleOpenChange">
         <div
-          class="flex h-48 w-full items-center justify-center rounded-2xl border-2 border-dashed border-gray-300 bg-gray-50 text-gray-500"
+          class="flex h-48 w-full items-center justify-center rounded-2xl border-2 border-dashed border-[var(--wui-color-border)] bg-[var(--wui-color-surface-control)] text-[var(--wui-color-text-secondary)]"
         >
           在此区域右键点击
         </div>
@@ -62,7 +62,7 @@ const openApiMenu = () => {
     <div class="mb-6">
       <web-ui-context-menu>
         <div
-          class="flex h-48 w-full items-center justify-center rounded-2xl border-2 border-dashed border-gray-300 bg-gray-50 text-gray-500"
+          class="flex h-48 w-full items-center justify-center rounded-2xl border-2 border-dashed border-[var(--wui-color-border)] bg-[var(--wui-color-surface-control)] text-[var(--wui-color-text-secondary)]"
         >
           在此区域右键点击
         </div>
@@ -106,7 +106,7 @@ const openApiMenu = () => {
     <div class="mb-6">
       <web-ui-context-menu :disabled="disabled">
         <div
-          class="flex h-48 w-full items-center justify-center rounded-2xl border-2 border-dashed border-gray-300 bg-gray-50 text-gray-500"
+          class="flex h-48 w-full items-center justify-center rounded-2xl border-2 border-dashed border-[var(--wui-color-border)] bg-[var(--wui-color-surface-control)] text-[var(--wui-color-text-secondary)]"
         >
           {{ disabled ? '菜单已禁用' : '右键点击试试' }}
         </div>
@@ -135,7 +135,7 @@ const openApiMenu = () => {
     <div class="mb-6">
       <web-ui-context-menu no-scroll-lock>
         <div
-          class="flex h-32 w-full items-center justify-center rounded-2xl border-2 border-dashed border-gray-300 bg-gray-50 text-gray-500"
+          class="flex h-32 w-full items-center justify-center rounded-2xl border-2 border-dashed border-[var(--wui-color-border)] bg-[var(--wui-color-surface-control)] text-[var(--wui-color-text-secondary)]"
         >
           右键打开时不锁定页面滚动
         </div>
@@ -149,7 +149,7 @@ const openApiMenu = () => {
     <div class="mb-6">
       <web-ui-context-menu>
         <div
-          class="flex h-48 w-full items-center justify-center rounded-2xl border-2 border-dashed border-gray-300 bg-gray-50 text-gray-500"
+          class="flex h-48 w-full items-center justify-center rounded-2xl border-2 border-dashed border-[var(--wui-color-border)] bg-[var(--wui-color-surface-control)] text-[var(--wui-color-text-secondary)]"
         >
           在此区域右键点击
         </div>
@@ -179,7 +179,7 @@ const openApiMenu = () => {
     <div class="mb-6">
       <web-ui-context-menu>
         <div
-          class="flex h-48 w-full items-center justify-center rounded-2xl border-2 border-dashed border-gray-300 bg-gray-50 text-gray-500"
+          class="flex h-48 w-full items-center justify-center rounded-2xl border-2 border-dashed border-[var(--wui-color-border)] bg-[var(--wui-color-surface-control)] text-[var(--wui-color-text-secondary)]"
         >
           在此区域右键点击
         </div>

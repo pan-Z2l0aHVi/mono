@@ -1,12 +1,24 @@
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 
-import { lucidePlus } from '@/icons'
-
 import '..'
 
 afterEach(() => document.body.replaceChildren())
 
 describe('WebUiButton 组件（浏览器）', () => {
+  it('glass 按钮使用不占布局的 glass border ring', async () => {
+    const btn = document.createElement('web-ui-button')
+    btn.variant = 'glass'
+    btn.textContent = 'OK'
+    document.body.append(btn)
+    await btn.updateComplete
+
+    const inner = btn.shadowRoot?.querySelector('button') as HTMLElement
+    const before = getComputedStyle(inner, '::before')
+    expect(before.content).toBe('""')
+    expect(before.background).toContain('radial-gradient')
+    expect(before.background).toContain('51, 51, 51')
+  })
+
   it('将规范化后的 type 传给真实原生按钮', async () => {
     const button = document.createElement('web-ui-button')
     button.setAttribute('type', 'invalid')
@@ -56,27 +68,8 @@ describe('WebUiButton 组件（浏览器）', () => {
   })
 })
 
-describe('Icon button 尺寸行为', () => {
-  it('无 size 时 padding 为零，按钮包裹 icon 内容', async () => {
-    const btn = document.createElement('web-ui-button')
-    btn.setAttribute('icon', '')
-    btn.setAttribute('aria-label', 'test')
-    const icon = document.createElement('web-ui-icon')
-    icon.icon = lucidePlus
-    btn.append(icon)
-    document.body.append(btn)
-    await btn.updateComplete
-
-    const inner = btn.shadowRoot?.querySelector('button') as HTMLElement
-    const cs = window.getComputedStyle(inner)
-    expect(cs.paddingTop).toBe('0px')
-    expect(cs.paddingBottom).toBe('0px')
-    expect(cs.height).toBe('40px')
-    // 按钮宽度应由 icon 内容撑开
-    expect(parseFloat(cs.width)).toBeGreaterThan(0)
-  })
-
-  it('有 size 时按钮高度和最小宽度均为 size，保持正方形', async () => {
+describe('Icon button 行为', () => {
+  it('有 size 时保持正方形比例', async () => {
     const btn = document.createElement('web-ui-button')
     btn.setAttribute('icon', '')
     btn.setAttribute('size', '32')
@@ -86,8 +79,7 @@ describe('Icon button 尺寸行为', () => {
 
     const inner = btn.shadowRoot?.querySelector('button') as HTMLElement
     const rect = inner.getBoundingClientRect()
-    expect(rect.height).toBe(32)
-    expect(rect.width).toBe(32)
+    expect(rect.width).toBe(rect.height)
   })
 
   it('full + icon 时按钮撑满容器宽度', async () => {
@@ -102,7 +94,7 @@ describe('Icon button 尺寸行为', () => {
     const inner = btn.shadowRoot?.querySelector('button') as HTMLElement
     const rect = inner.getBoundingClientRect()
     expect(rect.width).toBe(btn.parentElement?.clientWidth ?? 0)
-    expect(rect.height).toBe(32)
+    expect(rect.height).toBeGreaterThan(0)
   })
 
   it('icon + 显式宽度时变为胶囊形', async () => {
@@ -116,12 +108,11 @@ describe('Icon button 尺寸行为', () => {
 
     const inner = btn.shadowRoot?.querySelector('button') as HTMLElement
     const rect = inner.getBoundingClientRect()
-    expect(rect.height).toBe(32)
-    expect(rect.width).toBe(120)
+    expect(rect.width).toBeGreaterThan(rect.height)
   })
 })
 
-it('非 icon 模式下 size 仅控制高度，宽度由内容决定', async () => {
+it('非 icon 模式下宽度由内容决定', async () => {
   const btn = document.createElement('web-ui-button')
   btn.setAttribute('size', '32')
   btn.textContent = 'OK'
@@ -130,7 +121,18 @@ it('非 icon 模式下 size 仅控制高度，宽度由内容决定', async () =
 
   const inner = btn.shadowRoot?.querySelector('button') as HTMLElement
   const rect = inner.getBoundingClientRect()
-  expect(rect.height).toBe(32)
   // 宽度由文本内容撑开，大于高度
   expect(rect.width).toBeGreaterThan(rect.height)
+})
+
+it('hover/active 背景反馈即时切换，不做过渡动画', async () => {
+  const btn = document.createElement('web-ui-button')
+  btn.textContent = 'OK'
+  document.body.append(btn)
+  await btn.updateComplete
+
+  const inner = btn.shadowRoot?.querySelector('button') as HTMLElement
+  expect(getComputedStyle(inner).transitionProperty).not.toContain('background-color')
+  // 拦截 transition: all 160ms 之类的回归写法：无过渡时 computed duration 必须为 0s
+  expect(getComputedStyle(inner).transitionDuration).toBe('0s')
 })

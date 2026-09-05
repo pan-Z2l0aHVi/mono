@@ -17,6 +17,7 @@ import { Route as ComponentsBackTopRouteImport } from './routes/components/back-
 import { Route as ComponentsBadgeRouteImport } from './routes/components/badge'
 import { Route as ComponentsButtonRouteImport } from './routes/components/button'
 import { Route as ComponentsCheckboxRouteImport } from './routes/components/checkbox'
+import { Route as ComponentsCollapseRouteImport } from './routes/components/collapse'
 import { Route as ComponentsContextMenuRouteImport } from './routes/components/context-menu'
 import { Route as ComponentsDialogRouteImport } from './routes/components/dialog'
 import { Route as ComponentsDrawerRouteImport } from './routes/components/drawer'
@@ -77,6 +78,11 @@ const ComponentsButtonRoute = ComponentsButtonRouteImport.update({
 const ComponentsCheckboxRoute = ComponentsCheckboxRouteImport.update({
   id: '/components/checkbox',
   path: '/components/checkbox',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ComponentsCollapseRoute = ComponentsCollapseRouteImport.update({
+  id: '/components/collapse',
+  path: '/components/collapse',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ComponentsContextMenuRoute = ComponentsContextMenuRouteImport.update({
@@ -194,6 +200,7 @@ export interface FileRoutesByFullPath {
   '/components/badge': typeof ComponentsBadgeRoute
   '/components/button': typeof ComponentsButtonRoute
   '/components/checkbox': typeof ComponentsCheckboxRoute
+  '/components/collapse': typeof ComponentsCollapseRoute
   '/components/context-menu': typeof ComponentsContextMenuRoute
   '/components/dialog': typeof ComponentsDialogRoute
   '/components/drawer': typeof ComponentsDrawerRoute
@@ -225,6 +232,7 @@ export interface FileRoutesByTo {
   '/components/badge': typeof ComponentsBadgeRoute
   '/components/button': typeof ComponentsButtonRoute
   '/components/checkbox': typeof ComponentsCheckboxRoute
+  '/components/collapse': typeof ComponentsCollapseRoute
   '/components/context-menu': typeof ComponentsContextMenuRoute
   '/components/dialog': typeof ComponentsDialogRoute
   '/components/drawer': typeof ComponentsDrawerRoute
@@ -257,6 +265,7 @@ export interface FileRoutesById {
   '/components/badge': typeof ComponentsBadgeRoute
   '/components/button': typeof ComponentsButtonRoute
   '/components/checkbox': typeof ComponentsCheckboxRoute
+  '/components/collapse': typeof ComponentsCollapseRoute
   '/components/context-menu': typeof ComponentsContextMenuRoute
   '/components/dialog': typeof ComponentsDialogRoute
   '/components/drawer': typeof ComponentsDrawerRoute
@@ -290,6 +299,7 @@ export interface FileRouteTypes {
     | '/components/badge'
     | '/components/button'
     | '/components/checkbox'
+    | '/components/collapse'
     | '/components/context-menu'
     | '/components/dialog'
     | '/components/drawer'
@@ -321,6 +331,7 @@ export interface FileRouteTypes {
     | '/components/badge'
     | '/components/button'
     | '/components/checkbox'
+    | '/components/collapse'
     | '/components/context-menu'
     | '/components/dialog'
     | '/components/drawer'
@@ -352,6 +363,7 @@ export interface FileRouteTypes {
     | '/components/badge'
     | '/components/button'
     | '/components/checkbox'
+    | '/components/collapse'
     | '/components/context-menu'
     | '/components/dialog'
     | '/components/drawer'
@@ -384,6 +396,7 @@ export interface RootRouteChildren {
   ComponentsBadgeRoute: typeof ComponentsBadgeRoute
   ComponentsButtonRoute: typeof ComponentsButtonRoute
   ComponentsCheckboxRoute: typeof ComponentsCheckboxRoute
+  ComponentsCollapseRoute: typeof ComponentsCollapseRoute
   ComponentsContextMenuRoute: typeof ComponentsContextMenuRoute
   ComponentsDialogRoute: typeof ComponentsDialogRoute
   ComponentsDrawerRoute: typeof ComponentsDrawerRoute
@@ -463,6 +476,13 @@ declare module '@tanstack/react-router' {
       path: '/components/checkbox'
       fullPath: '/components/checkbox'
       preLoaderRoute: typeof ComponentsCheckboxRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/components/collapse': {
+      id: '/components/collapse'
+      path: '/components/collapse'
+      fullPath: '/components/collapse'
+      preLoaderRoute: typeof ComponentsCollapseRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/components/context-menu': {
@@ -624,6 +644,7 @@ const rootRouteChildren: RootRouteChildren = {
   ComponentsBadgeRoute: ComponentsBadgeRoute,
   ComponentsButtonRoute: ComponentsButtonRoute,
   ComponentsCheckboxRoute: ComponentsCheckboxRoute,
+  ComponentsCollapseRoute: ComponentsCollapseRoute,
   ComponentsContextMenuRoute: ComponentsContextMenuRoute,
   ComponentsDialogRoute: ComponentsDialogRoute,
   ComponentsDrawerRoute: ComponentsDrawerRoute,

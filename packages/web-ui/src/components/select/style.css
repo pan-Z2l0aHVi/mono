@@ -5,6 +5,14 @@
 }
 
 :host {
+  --wui-select-bg-hover: var(
+    --wui-color-surface-glass-hover,
+    color-mix(in srgb, var(--wui-color-text, #1b1b1b) 6%, var(--wui-color-surface-glass, rgb(250 250 250 / 0.34)))
+  );
+  --wui-select-bg-active: var(
+    --wui-color-surface-glass-active,
+    color-mix(in srgb, var(--wui-color-text, #1b1b1b) 15%, var(--wui-color-surface-glass, rgb(250 250 250 / 0.34)))
+  );
   user-select: none;
   display: inline-block;
 }
@@ -21,17 +29,19 @@
 }
 
 .select-trigger {
-  cursor: pointer;
+  cursor: default;
 
+  overflow: clip;
   display: flex;
   gap: 8px;
   align-items: center;
 
   box-sizing: border-box;
   width: var(--wui-input-width, 200px);
-  min-width: var(--wui-control-size, 40px);
-  height: var(--wui-control-size, 40px);
+  min-width: var(--wui-control-size, 36px);
+  height: var(--wui-control-size, 36px);
   padding: 0 12px;
+  border: none;
   border-radius: calc(infinity * 1px);
 
   &:focus-visible {
@@ -40,12 +50,23 @@
   }
 }
 
-.select-trigger[data-custom-trigger] {
-  width: auto;
-}
-
 :host([disabled]) .select-trigger {
   cursor: not-allowed;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  :host(:not([disabled])) .select-trigger:hover {
+    background-color: var(--wui-select-bg-hover);
+  }
+}
+
+:host(:not([disabled])) .select-trigger:active,
+:host([open]:not([disabled])) .select-trigger {
+  background-color: var(--wui-select-bg-active);
+}
+
+.select-trigger[data-custom-trigger] {
+  width: auto;
 }
 
 .label {
@@ -87,6 +108,7 @@
   --wui-internal-glass-shadow: var(--wui-shadow-panel, 0 3px 9px rgb(0 0 0 / 0.27));
   --wui-internal-duration-overlay-enter: var(--wui-duration-menu-enter, 140ms);
   --wui-internal-duration-overlay-exit: var(--wui-duration-menu-exit, 100ms);
+  --wui-glass-corner-radius: 20px;
   position: absolute;
   z-index: var(--wui-layer-inline-overlay, 1);
 
@@ -97,7 +119,7 @@
   max-width: var(--wui-select-max-width, 500px);
   border-radius: 20px;
 
-  background-color: var(--wui-color-surface-overlay, rgb(246 246 246 / 0.82));
+  background-color: var(--wui-color-surface-menu, rgb(246 246 246 / 0.82));
 
   &.portal {
     position: fixed;

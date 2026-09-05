@@ -80,6 +80,13 @@ declare module 'vue-router/auto-routes' {
       Record<never, never>,
       | never
     >,
+    '/components/collapse': RouteRecordInfo<
+      '/components/collapse',
+      '/components/collapse',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
     '/components/context-menu': RouteRecordInfo<
       '/components/context-menu',
       '/components/context-menu',
@@ -291,6 +298,14 @@ declare module 'vue-router/auto-routes' {
     'src/pages/components/checkbox.vue': {
       routes:
         | '/components/checkbox'
+      views:
+        | never
+      pathParamNames:
+        | never
+    }
+    'src/pages/components/collapse.vue': {
+      routes:
+        | '/components/collapse'
       views:
         | never
       pathParamNames:

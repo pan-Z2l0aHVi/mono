@@ -27,6 +27,9 @@ import style from './style.css?inline'
 export type { Placement }
 
 const SLOT_PREFIX = 'web-ui-menu-level-'
+
+let dropdownIdCounter = 0
+
 const ALLOWED_PLACEMENTS = [
   'top',
   'top-start',
@@ -100,6 +103,14 @@ export class WebUiDropdown extends LitElement {
     document.addEventListener('click', this._onClickOutside)
   }
 
+  override firstUpdated() {
+    // trigger slot 内容增删不触发宿主响应式更新：显式请求一轮渲染，
+    // 由 updated() 的 ARIA 回写覆盖晚到的 trigger 元素。
+    this.shadowRoot
+      ?.querySelector<HTMLSlotElement>('slot[name="trigger"]')
+      ?.addEventListener('slotchange', () => this.requestUpdate())
+  }
+
   override disconnectedCallback() {
     super.disconnectedCallback()
     this.removeEventListener('keydown', this._onKeydown)
@@ -112,6 +123,9 @@ export class WebUiDropdown extends LitElement {
   }
 
   protected override updated(changed: Map<string, unknown>) {
+    // ARIA 回写不依赖 open 分支，任何渲染后都保持与宿主状态同步。
+    this._syncTriggerAria()
+
     if (changed.has('open')) {
       if (this.open) {
         this._restoreFocusTarget ??= document.activeElement instanceof HTMLElement ? document.activeElement : undefined
@@ -123,6 +137,8 @@ export class WebUiDropdown extends LitElement {
           this._ensureOverlay(0, this._shouldOpenInstantly)
           this._shouldOpenInstantly = true
           this._focusMenuItem(this._getEnabledLevelItems(0)[0])
+          // 面板 id 在 overlay 构建后才有：回写 aria-controls 指向。
+          this._syncTriggerAria()
         })
         this._bindHoversAfterUpdate()
       } else {
@@ -150,7 +166,7 @@ export class WebUiDropdown extends LitElement {
     this._bindLevelHovers()
   }
 
-  // 打开菜单（命令式，不派发 `open-change`）。
+  // 命令式打开，不派发 open-change。
   openMenu() {
     this._openMenu(true, false)
   }
@@ -163,7 +179,7 @@ export class WebUiDropdown extends LitElement {
     this.open = true
   }
 
-  // 关闭所有层级（命令式，不派发 `open-change`）。
+  // 命令式关闭全部层级，不派发 open-change。
   closeAll() {
     this._closeAll(false)
   }
@@ -174,7 +190,7 @@ export class WebUiDropdown extends LitElement {
     this.open = false
   }
 
-  // 清理子菜单状态（不影响 open prop）
+  // 不影响 open prop。
   private _closeAllSubmenus() {
     this._closeSubmenuFrom(1, true)
     this._disposeClosingSubmenuOverlays()
@@ -310,6 +326,8 @@ export class WebUiDropdown extends LitElement {
   private _buildOverlay(level: number, isInstant = false) {
     const { panel: overlay, content } = createMenuPortalOverlay('dropdown-overlay', this)
     overlay.setAttribute('role', 'menu')
+    // 根层级面板带 id：trigger 的 aria-controls 指向它（Q9a）。
+    if (level === 0) overlay.id = `wui-dropdown-menu-${++dropdownIdCounter}`
     overlay.dataset.level = String(level)
     overlay.addEventListener('click', this._onMenuClick)
     overlay.addEventListener('keydown', this._onKeydown)
@@ -380,6 +398,21 @@ export class WebUiDropdown extends LitElement {
     const slot = this.shadowRoot?.querySelector<HTMLSlotElement>('slot[name="trigger"]')
     const el = slot?.assignedElements()[0]
     return el instanceof HTMLElement ? el : null
+  }
+
+  /*
+   * trigger 语义回写（Q9a）：slot 进来的元素是真正的可聚焦交互元素，
+   * aria-haspopup / aria-expanded / aria-controls 必须设在它身上；
+   * 组件没有 trigger 包装 div，此前完全没有 ARIA 接线。
+   */
+  private _syncTriggerAria() {
+    const trigger = this._queryTriggerAnchor()
+    if (!trigger) return
+    trigger.setAttribute('aria-haspopup', 'menu')
+    trigger.setAttribute('aria-expanded', String(this.open))
+    const rootOverlay = this._overlays.get(0)?.overlay
+    if (rootOverlay?.id) trigger.setAttribute('aria-controls', rootOverlay.id)
+    else trigger.removeAttribute('aria-controls')
   }
 
   private _getSubmenuTriggerAnchor(level: number): HTMLElement | null {

@@ -18,6 +18,13 @@ export class WebUiDialog extends LitElement {
   @property({ type: Boolean, reflect: true, attribute: 'no-backdrop-close' }) noBackdropClose = false
   @property({ type: Boolean, reflect: true, attribute: 'no-escape-close' }) noEscapeClose = false
 
+  /**
+   * Controlled 模式下，Escape 和遮罩点击只派发 `open-change` 请求，
+   * 不会自行修改 `open`。Consumer 回写 `open` 后才执行关闭动画。
+   * 程序化 API（showModal/close/直接赋值 open）不受此模式影响，始终直通。
+   */
+  @property({ type: Boolean, reflect: true }) controlled = false
+
   @state() private _hasBody = false
   private readonly _userOpenChange = new UserChangeController()
 
@@ -63,6 +70,10 @@ export class WebUiDialog extends LitElement {
     // 保留 top layer 直到视觉退场完成，避免原生关闭跳过退出动画。
     e.preventDefault()
     if (this.noEscapeClose) return
+    if (this.controlled) {
+      this.emitOpenChange(false)
+      return
+    }
     this._userOpenChange.mark()
     this.close()
   }
@@ -70,14 +81,19 @@ export class WebUiDialog extends LitElement {
   private handleBackdropClick(e: MouseEvent) {
     if (e.target !== (e.currentTarget as HTMLDialogElement)) return
     if (this.noBackdropClose) return
+    if (this.controlled) {
+      this.emitOpenChange(false)
+      return
+    }
     this._userOpenChange.mark()
     this.close()
   }
 
-  private emitOpenChange() {
+  // controlled 下派发关闭请求：detail 固定 false（用户只能请求关闭，打开永远由 Consumer 写）。
+  private emitOpenChange(open = this.open) {
     this.dispatchEvent(
       new CustomEvent('open-change', {
-        detail: { open: this.open },
+        detail: { open },
         bubbles: true,
         composed: true
       })
@@ -90,6 +106,15 @@ export class WebUiDialog extends LitElement {
 
   private _onNativeClose = () => {
     if (!this.open) return
+
+    // controlled 下原生关闭（如表单 method="dialog"）视为未经 Consumer 批准的状态丢失：
+    // 恢复受控状态并派发关闭请求，由 Consumer 决定是否关闭。
+    if (this.controlled) {
+      this._presence.sync(true)
+      this.emitOpenChange(false)
+      return
+    }
+
     this._presence.handleNativeClose()
     this._userOpenChange.mark()
     this.open = false

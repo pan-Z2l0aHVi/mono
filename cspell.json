@@ -35,6 +35,7 @@
     "iconify",
     "kalimahapps",
     "regen",
+    "tabler",
     "turborepo",
     "unplugin",
     "Vetur",
@@ -50,6 +51,7 @@
     "indexeddb",
     "ooui",
     "wailsio",
+    "WAAPI",
     "ENEEDAUTH",
     "oxfmt",
     "idref",
@@ -63,6 +65,7 @@
     "dedup",
     "maint",
     "taggings",
-    "cooccurring"
+    "cooccurring",
+    "vnode"
   ]
 }

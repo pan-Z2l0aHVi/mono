@@ -3,22 +3,32 @@
  */
 
 .wui-glass {
+  /*
+   * 内部变量在 glass 元素上自声明默认值，切断从祖先 glass 容器（drawer/dialog
+   * body 等声明了 overlay 阴影的元素）沿 flattened tree 继承进 slotted 内容的
+   * 通道；各组件在自身元素上的同变量配置（特异性/源顺序恒胜出）不受影响。
+   */
+  --wui-internal-glass-focus-ring: 0 0 0 0 transparent;
+  --wui-internal-glass-shadow: var(
+    --wui-shadow-glass,
+    0 0 1px rgb(0 0 0 / 0.05),
+    0 0 8px rgb(0 0 0 / 0.03),
+    0 2px 16px rgb(0 0 0 / 0.025),
+    0 8px 32px rgb(0 0 0 / 0.015)
+  );
+
   position: relative;
 
+  border: none;
+
   background-color: var(--wui-color-surface-glass, rgb(250 250 250 / 0.34));
-  background-image: linear-gradient(
-    to bottom,
-    color-mix(in srgb, var(--wui-color-glass-highlight, rgb(255 255 255 / 0.9)) 20%, transparent),
-    color-mix(in srgb, var(--wui-color-glass-highlight, rgb(255 255 255 / 0.9)) 4%, transparent) 48%,
-    transparent
-  );
   background-clip: padding-box;
 
   /* Safari 16.4 只支持带 -webkit- 前缀的 backdrop-filter（无前缀 18 才支持），
      lightningcss 对 ?inline 导入不做自动前缀，需手动写前缀版本 */
   /* stylelint-disable-next-line property-no-vendor-prefix */
-  -webkit-backdrop-filter: blur(4px) saturate(160%) brightness(1.06);
-  backdrop-filter: blur(4px) saturate(160%) brightness(1.06);
+  -webkit-backdrop-filter: blur(4px) saturate(160%) brightness(var(--wui-glass-brightness, 1.06));
+  backdrop-filter: blur(4px) saturate(160%) brightness(var(--wui-glass-brightness, 1.06));
   box-shadow:
     inset 0 0 0 0.5px color-mix(in srgb, var(--wui-color-glass-highlight, rgb(255 255 255 / 0.9)) 38%, transparent),
     inset 0 1px 0.5px color-mix(in srgb, var(--wui-color-glass-highlight, rgb(255 255 255 / 0.9)) 52%, transparent),
@@ -34,4 +44,59 @@
         0 8px 32px rgb(0 0 0 / 0.015)
       )
     );
+}
+
+/*
+ * 玻璃描边：底环 + 对角受光/背光。background-color 用 border 色铺满整圈（含圆角
+ * 弧段，修复胶囊弧段无着色发暗的问题）；叠两枚 corner→transparent radial 作左上/
+ * 右下受光光泽，再叠两枚 shade→transparent radial（置于最上层）压暗右上/左下背光
+ * 角，形成对角光影的玻璃立体感。四枚渐变均为锚定角点、半径 --wui-glass-corner-radius
+ * 的固定物理尺寸正圆——视觉覆盖范围不随元素宽高缩放（百分比方案在大面板上暗边
+ * 过长、小控件上过弱），各组件用与自身 border-radius 同源的值覆盖该变量即可联动。
+ * 颜色由 theme 按明暗主题提供 --wui-color-glass-corner / --wui-color-glass-shade /
+ * --wui-color-glass-border；-webkit-mask-composite 旧语法覆盖 Chrome 111-119，
+ * 无前缀 mask-composite 留给 Chrome 120+。
+ */
+.wui-glass::before {
+  pointer-events: none;
+  content: '';
+
+  position: absolute;
+  inset: 0;
+
+  padding: 1px;
+  border-radius: inherit;
+
+  background-color: var(--wui-color-glass-border, rgb(51 51 51 / 0.12));
+  background-image:
+    radial-gradient(
+      var(--wui-glass-corner-radius, 32px) at 100% 0,
+      var(--wui-color-glass-shade, rgb(0 0 0 / 0.2)),
+      transparent
+    ),
+    radial-gradient(
+      var(--wui-glass-corner-radius, 32px) at 0 100%,
+      var(--wui-color-glass-shade, rgb(0 0 0 / 0.2)),
+      transparent
+    ),
+    radial-gradient(
+      calc(var(--wui-glass-corner-radius, 32px) * 2) at 0 0,
+      var(--wui-color-glass-corner, rgb(255 255 255 / 0.08)),
+      transparent
+    ),
+    radial-gradient(
+      calc(var(--wui-glass-corner-radius, 32px) * 2) at 100% 100%,
+      var(--wui-color-glass-corner, rgb(255 255 255 / 0.08)),
+      transparent
+    );
+  /* stylelint-disable-next-line property-no-vendor-prefix */
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  /* stylelint-disable-next-line property-no-vendor-prefix */
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
 }

@@ -16,6 +16,7 @@
 
 .toast {
   --wui-internal-glass-shadow: var(--wui-shadow-panel, 0 3px 9px rgb(0 0 0 / 0.27));
+  --wui-glass-corner-radius: 20px;
   position: relative;
   transform: translate(var(--toast-slide-x, 0), var(--toast-slide-y, -8px)) scale(0.97);
 
@@ -52,7 +53,7 @@
 
 web-ui-button.toast-close-btn {
   pointer-events: none;
-  cursor: pointer;
+  cursor: default;
 
   position: absolute;
   top: -8px;

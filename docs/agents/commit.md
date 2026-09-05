@@ -13,3 +13,10 @@ bash scripts/commit.sh <type> <scope> "<subject>" --dry
 ```
 
 然后使用相同命令去掉 `--dry` 进行提交。不要绕过 Git hooks 或签名检查。
+
+## AI 署名与身份
+
+署名规则以 [`CONTRIBUTING.md`](../../CONTRIBUTING.md) 的「AI 协作署名」节为准。commit 层面只有两条操作差异：
+
+- `commit.sh` 不自动加尾注；提交后 `git commit --amend --trailer 'Co-authored-by: …'` 追加。
+- 提交前确认 `git config user.name` / `user.email` 与实际 author/committer 一致。

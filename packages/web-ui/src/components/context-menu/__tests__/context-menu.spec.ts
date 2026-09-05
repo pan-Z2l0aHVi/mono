@@ -1,6 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+// 全量构建的 vue：含运行时模板编译器，用于真实 v-if 翻转（false 分支产生注释锚点）
+import { createApp, ref } from 'vue/dist/vue.esm-bundler.js'
 
 import '..'
+import { getMenuChildren } from '@/shared/menu-portal/menu-tree'
 import { cleanupElement, waitForUpdate } from '@/shared/test-utils'
 
 import type { WebUiContextMenu } from '..'
@@ -23,6 +26,17 @@ async function waitForMenuOpen(el: WebUiContextMenu) {
   await el.updateComplete
   await new Promise(resolve => requestAnimationFrame(resolve))
   await el.updateComplete
+
+  const deadline = performance.now() + 1000
+  let menu = getMenu()
+  while (performance.now() < deadline && (!menu?.style.left || !menu?.style.top)) {
+    await new Promise(resolve => requestAnimationFrame(resolve))
+    await el.updateComplete
+    menu = getMenu()
+  }
+  if (!menu?.style.left || !menu?.style.top) {
+    throw new Error('Expected the context menu to be positioned')
+  }
 }
 
 async function waitForMenuClose(el: WebUiContextMenu) {
@@ -121,12 +135,14 @@ describe('WebUiContextMenu 组件', () => {
     it('菜单定位在指定坐标', async () => {
       const el = createContextMenu({}, SIMPLE)
       await waitForUpdate(el)
-      el.openAt(100, 200)
+      const x = 100
+      const y = 200
+      el.openAt(x, y)
       await waitForMenuOpen(el)
       const menu = getMenu()!
       expect(menu).toBeTruthy()
-      expect(menu.style.left).toBe('100px')
-      expect(menu.style.top).toBe('200px')
+      expect(menu.style.left).toBe(`${x}px`)
+      expect(menu.style.top).toBe(`${y}px`)
       cleanupElement(el)
     })
 
@@ -293,19 +309,21 @@ describe('WebUiContextMenu 组件', () => {
       const el = createContextMenu({}, SIMPLE)
       await waitForUpdate(el)
 
+      const x = 100
+      const y = 200
       el.dispatchEvent(
         new MouseEvent('contextmenu', {
           bubbles: true,
-          clientX: 100,
-          clientY: 200
+          clientX: x,
+          clientY: y
         })
       )
       await waitForMenuOpen(el)
 
       expect(el.isOpen).toBe(true)
       const menu = getMenu()!
-      expect(menu.style.left).toBe('100px')
-      expect(menu.style.top).toBe('200px')
+      expect(menu.style.left).toBe(`${x}px`)
+      expect(menu.style.top).toBe(`${y}px`)
 
       cleanupElement(el)
     })
@@ -520,6 +538,277 @@ describe('WebUiContextMenu 组件', () => {
     })
   })
 
+  describe('已打开时再次定位', () => {
+    it('宿主重渲染嵌套子项后重新打开，新子项被重新隐藏', async () => {
+      const el = createContextMenu(
+        {},
+        '<web-ui-dropdown-item submenu>导出<web-ui-dropdown-item>PDF</web-ui-dropdown-item></web-ui-dropdown-item>'
+      )
+      await waitForUpdate(el)
+      el.openAt(100, 100)
+      await waitForMenuOpen(el)
+
+      // 模拟宿主切换上下文：重建嵌套子项（新节点不携带隐藏 slot）
+      const parentItem = getFirstMenuItem()
+      parentItem.replaceChildren()
+      const freshChild = document.createElement('web-ui-dropdown-item')
+      freshChild.textContent = 'DOCX'
+      parentItem.appendChild(freshChild)
+
+      // 在另一个位置重新定位打开
+      el.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, clientX: 200, clientY: 200 }))
+      await waitForMenuOpen(el)
+
+      const nested = parentItem.querySelector('web-ui-dropdown-item')!
+      expect(nested.getAttribute('slot')).toBe('context-menu-hidden')
+
+      // 隐藏不破坏子菜单打开：点击父项仍能以重建的子项打开子菜单
+      parentItem.click()
+      await waitForUpdate(el)
+      expect(getSubmenu()?.textContent).toContain('DOCX')
+
+      cleanupElement(el)
+    })
+
+    it('无重定位的宿主重建嵌套子项，观察者刷新后新子项被重新隐藏', async () => {
+      const el = createContextMenu(
+        {},
+        '<web-ui-dropdown-item submenu>导出<web-ui-dropdown-item>PDF</web-ui-dropdown-item></web-ui-dropdown-item>'
+      )
+      await waitForUpdate(el)
+      el.openAt(100, 100)
+      await waitForMenuOpen(el)
+
+      // 不经重定位（无 contextmenu/openAt），宿主直接重建父项的嵌套子项
+      const parentItem = getFirstMenuItem()
+      parentItem.replaceChildren()
+      const freshChild = document.createElement('web-ui-dropdown-item')
+      freshChild.textContent = 'DOCX'
+      parentItem.appendChild(freshChild)
+
+      // MutationObserver 微任务 + 刷新 rAF
+      await new Promise(resolve => requestAnimationFrame(resolve))
+      await new Promise(resolve => requestAnimationFrame(resolve))
+
+      expect(el.isOpen).toBe(true)
+      expect(freshChild.getAttribute('slot')).toBe('context-menu-hidden')
+
+      cleanupElement(el)
+    })
+
+    it('子菜单打开期间重建子项后关闭子菜单，归还的子项被重新隐藏', async () => {
+      const el = createContextMenu(
+        {},
+        '<web-ui-dropdown-item submenu>导出<web-ui-dropdown-item>PDF</web-ui-dropdown-item></web-ui-dropdown-item>'
+      )
+      await waitForUpdate(el)
+      el.openAt(100, 100)
+      await waitForMenuOpen(el)
+
+      const parentItem = getFirstMenuItem()
+      parentItem.click()
+      await waitForUpdate(el)
+      expect(getSubmenu()).toBeTruthy()
+
+      // 子菜单打开期间宿主重建父项内的嵌套子项
+      const freshChild = document.createElement('web-ui-dropdown-item')
+      freshChild.textContent = 'DOCX'
+      parentItem.appendChild(freshChild)
+      await new Promise(resolve => requestAnimationFrame(resolve))
+
+      // Escape 关闭子菜单，归还的子项必须回到隐藏态
+      el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+      await waitForUpdate(el)
+      await new Promise(resolve => requestAnimationFrame(resolve))
+
+      expect(getSubmenu()).toBeNull()
+      const nestedSlots = [...parentItem.querySelectorAll('web-ui-dropdown-item')].map(item =>
+        item.getAttribute('slot')
+      )
+      expect(nestedSlots).toEqual(['context-menu-hidden', 'context-menu-hidden'])
+
+      cleanupElement(el)
+    })
+
+    it('宿主替换整个父项节点，观察者刷新后新父项的嵌套子项被重新隐藏', async () => {
+      const el = createContextMenu(
+        {},
+        '<web-ui-dropdown-item submenu>导出<web-ui-dropdown-item>PDF</web-ui-dropdown-item></web-ui-dropdown-item>'
+      )
+      await waitForUpdate(el)
+      el.openAt(100, 100)
+      await waitForMenuOpen(el)
+
+      // 模拟宿主框架整体替换父项节点（旧父项连同隐藏子项一并丢弃）
+      const oldParent = getFirstMenuItem()
+      const newParent = document.createElement('web-ui-dropdown-item')
+      newParent.setAttribute('submenu', '')
+      newParent.textContent = '导出'
+      const nested = document.createElement('web-ui-dropdown-item')
+      nested.textContent = 'DOCX'
+      newParent.appendChild(nested)
+      oldParent.replaceWith(newParent)
+
+      await new Promise(resolve => requestAnimationFrame(resolve))
+      await new Promise(resolve => requestAnimationFrame(resolve))
+
+      expect(el.isOpen).toBe(true)
+      expect(nested.getAttribute('slot')).toBe('context-menu-hidden')
+
+      // 新父项仍可打开子菜单
+      newParent.click()
+      await waitForUpdate(el)
+      expect(getSubmenu()?.textContent).toContain('DOCX')
+
+      cleanupElement(el)
+    })
+
+    it('打开期间宿主新增顶层项，刷新后进入 portal 内容', async () => {
+      const el = createContextMenu({}, '<web-ui-dropdown-item>编辑</web-ui-dropdown-item>')
+      await waitForUpdate(el)
+      el.openAt(100, 100)
+      await waitForMenuOpen(el)
+
+      const freshItem = document.createElement('web-ui-dropdown-item')
+      freshItem.textContent = '复制'
+      el.appendChild(freshItem)
+
+      await new Promise(resolve => requestAnimationFrame(resolve))
+      await new Promise(resolve => requestAnimationFrame(resolve))
+
+      expect(el.isOpen).toBe(true)
+      expect(getMenuItems().map(item => item.textContent?.trim())).toContain('复制')
+
+      cleanupElement(el)
+    })
+  })
+
+  describe('框架直接操作 portal 内容', () => {
+    function getPortalContent(): HTMLElement {
+      const content = getMenu()?.querySelector<HTMLElement>('.wui-menu-content')
+      if (!content) throw new Error('Expected portal content')
+      return content
+    }
+
+    function getManagedMarkers(el: WebUiContextMenu): Comment[] {
+      return Array.from(el.childNodes).filter(
+        (node): node is Comment => node.nodeType === Node.COMMENT_NODE && node.textContent === 'wui-context-menu-item'
+      )
+    }
+
+    it('框架把新项直接插入 portal，刷新后纳入托管且顺序正确', async () => {
+      const el = createContextMenu({}, '<web-ui-dropdown-item>编辑</web-ui-dropdown-item>')
+      await waitForUpdate(el)
+      el.openAt(100, 100)
+      await waitForMenuOpen(el)
+
+      // 模拟 Vue 以 portal 为插入点直接 append 新项（绕过宿主）
+      const fresh = document.createElement('web-ui-dropdown-item')
+      fresh.textContent = '直插项'
+      getPortalContent().appendChild(fresh)
+
+      await new Promise(resolve => requestAnimationFrame(resolve))
+      await new Promise(resolve => requestAnimationFrame(resolve))
+
+      expect(el.isOpen).toBe(true)
+      expect(getMenuItems().map(item => item.textContent?.trim())).toEqual(['编辑', '直插项'])
+      // 纳入托管：每个 content 中的托管元素都有 marker
+      expect(getManagedMarkers(el)).toHaveLength(getPortalContent().children.length)
+
+      cleanupElement(el)
+    })
+
+    it('框架卸载 portal 内旧项并以注释锚点与新项替换，刷新后菜单完整', async () => {
+      const el = createContextMenu({}, SIMPLE)
+      await waitForUpdate(el)
+      el.openAt(100, 100)
+      await waitForMenuOpen(el)
+
+      // 模拟 Vue v-if 翻转：portal 内「编辑」被替换为注释锚点 + 新元素（插入点 = portal）
+      const content = getPortalContent()
+      const [first] = getMenuChildren(content)
+      const anchor = document.createComment('v-if')
+      const fresh = document.createElement('web-ui-dropdown-item')
+      fresh.textContent = '找回资源'
+      first.replaceWith(anchor, fresh)
+
+      await new Promise(resolve => requestAnimationFrame(resolve))
+      await new Promise(resolve => requestAnimationFrame(resolve))
+
+      expect(el.isOpen).toBe(true)
+      expect(getMenuItems().map(item => item.textContent?.trim())).toEqual(['找回资源', '复制'])
+      expect(getManagedMarkers(el)).toHaveLength(2)
+
+      cleanupElement(el)
+    })
+
+    it('翻转多次后关闭重开，菜单项完整归还且 content 无残留注释', async () => {
+      const el = createContextMenu({}, SIMPLE)
+      await waitForUpdate(el)
+      el.openAt(100, 100)
+      await waitForMenuOpen(el)
+
+      const content = getPortalContent()
+      // 第一轮：替换 + 直插
+      const [first] = getMenuChildren(content)
+      const fresh = document.createElement('web-ui-dropdown-item')
+      fresh.textContent = '找回资源'
+      first.replaceWith(document.createComment('v-if'), fresh)
+      const extra = document.createElement('web-ui-dropdown-item')
+      extra.textContent = '直插项'
+      content.appendChild(extra)
+      await new Promise(resolve => requestAnimationFrame(resolve))
+      await new Promise(resolve => requestAnimationFrame(resolve))
+
+      // 关闭归还
+      el.close()
+      await waitForMenuClose(el)
+      await new Promise(resolve => requestAnimationFrame(resolve))
+
+      const restored = [...el.querySelectorAll(':scope > web-ui-dropdown-item')].map(item => item.textContent?.trim())
+      expect(restored).toEqual(['找回资源', '复制', '直插项'])
+      expect(getManagedMarkers(el)).toHaveLength(0)
+      // 框架 v-if 锚点随元素迁回宿主而非被销毁，否则框架持有 detached 引用下次 patch 崩溃
+      expect([...content.childNodes]).toHaveLength(0)
+      expect([...el.childNodes].some(node => node.nodeType === Node.COMMENT_NODE && node.textContent === 'v-if')).toBe(
+        true
+      )
+
+      // 重开后菜单完整
+      el.openAt(200, 200)
+      await waitForMenuOpen(el)
+      expect(getMenuItems().map(item => item.textContent?.trim())).toEqual(['找回资源', '复制', '直插项'])
+
+      cleanupElement(el)
+    })
+  })
+
+  describe('生命周期', () => {
+    it('打开期间脱离文档后重连，状态复位且菜单可重新打开', async () => {
+      const el = createContextMenu({}, SIMPLE)
+      await waitForUpdate(el)
+      el.openAt(100, 100)
+      await waitForMenuOpen(el)
+      expect(el.isOpen).toBe(true)
+
+      // detach-while-open：菜单开着时移出文档再挂回
+      el.remove()
+      document.body.appendChild(el)
+      await waitForUpdate(el)
+
+      expect(el.isOpen).toBe(false)
+
+      // 重连后 openAt 走全新打开路径，portal 正常重建
+      el.openAt(200, 200)
+      await waitForMenuOpen(el)
+      expect(el.isOpen).toBe(true)
+      expect(getMenu()).toBeTruthy()
+      expect(getMenuItems().map(item => item.textContent?.trim())).toEqual(['编辑', '复制'])
+
+      cleanupElement(el)
+    })
+  })
+
   describe('键盘 ContextMenu 键', () => {
     it('ContextMenu 键打开菜单', async () => {
       const el = createContextMenu({}, SIMPLE)
@@ -678,6 +967,243 @@ describe('WebUiContextMenu 组件', () => {
       expect(getSubmenu()?.querySelectorAll('web-ui-dropdown-item')).toHaveLength(0)
 
       cleanupElement(el)
+    })
+  })
+
+  describe('Vue v-if 消费者集成（真实渲染器）', () => {
+    interface VueMenuFixture {
+      broken: { value: boolean }
+      menuEl: () => WebUiContextMenu
+      hostTexts: () => string[]
+      unmount: () => void
+    }
+
+    function mountVueMenu(warnings: string[]): VueMenuFixture {
+      const host = document.createElement('div')
+      document.body.append(host)
+      const broken = ref(false)
+      const app = createApp({
+        setup() {
+          return { broken }
+        },
+        // 与原型页一致：v-if 切换 valid/broken 菜单项，false 分支产生注释锚点
+        template: `
+          <web-ui-context-menu>
+            <web-ui-dropdown-item v-if="!broken" key="a">预览</web-ui-dropdown-item>
+            <web-ui-dropdown-item v-if="broken" key="b">找回资源</web-ui-dropdown-item>
+            <web-ui-dropdown-item key="d">删除</web-ui-dropdown-item>
+          </web-ui-context-menu>
+        `
+      })
+      app.config.compilerOptions = {
+        isCustomElement: (tag: string) => tag.startsWith('web-ui-')
+      }
+      app.config.warnHandler = (msg: string) => warnings.push('WARN: ' + msg.slice(0, 120))
+      app.config.errorHandler = (err: unknown) => warnings.push('ERROR: ' + String((err as Error)?.message ?? err))
+      app.mount(host)
+      const getEl = () => {
+        const el = host.querySelector('web-ui-context-menu')
+        if (!el) throw new Error('Expected context menu element')
+        return el
+      }
+      return {
+        broken,
+        menuEl: getEl,
+        hostTexts: () =>
+          [...getEl().querySelectorAll(':scope > web-ui-dropdown-item')].map(item => item.textContent?.trim()),
+        unmount: () => app.unmount()
+      }
+    }
+
+    const nextFrames = () =>
+      new Promise(resolve => requestAnimationFrame(resolve)).then(
+        () => new Promise(resolve => requestAnimationFrame(resolve))
+      )
+
+    it('菜单开着时 v-if 翻转、关闭后锚点迁回宿主，再翻转不崩溃', async () => {
+      const warnings: string[] = []
+      const fixture = mountVueMenu(warnings)
+      try {
+        fixture.menuEl().openAt(10, 10)
+        await nextFrames()
+        await new Promise(resolve => setTimeout(resolve, 120))
+        // 开着时翻转：valid → broken，注释锚点写进 portal
+        fixture.broken.value = true
+        await nextFrames()
+        await new Promise(resolve => setTimeout(resolve, 120))
+
+        // 关闭：元素与框架锚点一并迁回宿主
+        fixture.menuEl().close()
+        await new Promise(resolve => setTimeout(resolve, 300))
+
+        // 再翻转回 valid：Vue 以宿主为容器 patch，不应崩溃
+        fixture.broken.value = false
+        await nextFrames()
+        await new Promise(resolve => setTimeout(resolve, 120))
+
+        expect(warnings).toEqual([])
+        expect(fixture.hostTexts()).toEqual(['预览', '删除'])
+      } finally {
+        fixture.menuEl().remove()
+        fixture.unmount()
+      }
+    })
+
+    it('打开态双向 v-if 翻转 + divider 中间插入，content 顺序保持模板序', async () => {
+      const warnings: string[] = []
+      const host = document.createElement('div')
+      document.body.append(host)
+      const broken = ref(false)
+      const app = createApp({
+        setup() {
+          return { broken }
+        },
+        // 与原型页一致：valid 分支包含「管理标签 + 条件 divider」，broken 分支替换为「找回资源」
+        template: `
+          <web-ui-context-menu>
+            <web-ui-dropdown-item v-if="!broken" key="preview">预览</web-ui-dropdown-item>
+            <web-ui-dropdown-item v-if="!broken" key="openwith">打开方式</web-ui-dropdown-item>
+            <web-ui-dropdown-item v-if="broken" key="recover">找回资源</web-ui-dropdown-item>
+            <web-ui-dropdown-divider key="d1"></web-ui-dropdown-divider>
+            <web-ui-dropdown-item v-if="!broken" key="tags">管理标签</web-ui-dropdown-item>
+            <web-ui-dropdown-divider v-if="!broken" key="d2"></web-ui-dropdown-divider>
+            <web-ui-dropdown-item key="del">删除</web-ui-dropdown-item>
+          </web-ui-context-menu>
+        `
+      })
+      app.config.compilerOptions = { isCustomElement: (tag: string) => tag.startsWith('web-ui-') }
+      app.config.warnHandler = (msg: string) => warnings.push('WARN: ' + msg.slice(0, 120))
+      app.config.errorHandler = (err: unknown) => warnings.push('ERROR: ' + String((err as Error)?.message ?? err))
+      app.mount(host)
+      const el = host.querySelector('web-ui-context-menu')!
+      // 读取 portal content 的真实子节点序（含 divider 与条件项的注释锚点）
+      const contentOrder = () => {
+        const content = getMenu()?.querySelector<HTMLElement>('.wui-menu-content')
+        return Array.from(content?.childNodes ?? [])
+          .filter(n => n instanceof HTMLElement)
+          .map(item => (item.tagName === 'WEB-UI-DROPDOWN-DIVIDER' ? 'DIV' : item.textContent?.trim()))
+      }
+      try {
+        el.openAt(10, 10)
+        await nextFrames()
+        await new Promise(resolve => setTimeout(resolve, 120))
+        expect(contentOrder()).toEqual(['预览', '打开方式', 'DIV', '管理标签', 'DIV', '删除'])
+
+        // 打开态 valid → broken：找回资源 应在无条件 divider 之前
+        broken.value = true
+        await nextFrames()
+        await new Promise(resolve => setTimeout(resolve, 120))
+        expect(contentOrder()).toEqual(['找回资源', 'DIV', '删除'])
+
+        // 打开态 broken → valid：管理标签与条件 divider 回到无条件 divider 之后
+        broken.value = false
+        await nextFrames()
+        await new Promise(resolve => setTimeout(resolve, 120))
+        expect(contentOrder()).toEqual(['预览', '打开方式', 'DIV', '管理标签', 'DIV', '删除'])
+
+        // close → reopen：顺序与无锚点残留
+        el.close()
+        await new Promise(resolve => setTimeout(resolve, 300))
+        el.openAt(20, 20)
+        await nextFrames()
+        await new Promise(resolve => setTimeout(resolve, 120))
+        expect(contentOrder()).toEqual(['预览', '打开方式', 'DIV', '管理标签', 'DIV', '删除'])
+
+        expect(warnings).toEqual([])
+      } finally {
+        el.remove()
+        app.unmount()
+      }
+    })
+
+    it('多轮 v-if 翻转+全序锚点断言+reopen 稳定', async () => {
+      const warnings: string[] = []
+      const host = document.createElement('div')
+      document.body.append(host)
+      const broken = ref(false)
+      const app = createApp({
+        setup() {
+          return { broken }
+        },
+        template: `
+          <web-ui-context-menu>
+            <web-ui-dropdown-item v-if="!broken" key="a">预览</web-ui-dropdown-item>
+            <web-ui-dropdown-item v-if="!broken" key="b">打开方式</web-ui-dropdown-item>
+            <web-ui-dropdown-item v-if="broken" key="c">找回资源</web-ui-dropdown-item>
+            <web-ui-dropdown-divider key="d1"></web-ui-dropdown-divider>
+            <web-ui-dropdown-item v-if="!broken" key="e">管理标签</web-ui-dropdown-item>
+            <web-ui-dropdown-divider v-if="!broken" key="f"></web-ui-dropdown-divider>
+            <web-ui-dropdown-item key="g">删除</web-ui-dropdown-item>
+          </web-ui-context-menu>
+        `
+      })
+      app.config.compilerOptions = { isCustomElement: (tag: string) => tag.startsWith('web-ui-') }
+      app.config.warnHandler = (msg: string) => warnings.push('WARN: ' + msg.slice(0, 120))
+      app.config.errorHandler = (err: unknown) => warnings.push('ERROR: ' + String((err as Error)?.message ?? err))
+      app.mount(host)
+      const el = host.querySelector('web-ui-context-menu')!
+      // 全序：childNodes 中每个子节点的类型/文本，包括注释
+      const fullOrder = () => {
+        const content = getMenu()?.querySelector<HTMLElement>('.wui-menu-content')
+        return Array.from(content?.childNodes ?? []).map(n => {
+          if (n.nodeType === Node.COMMENT_NODE) return n.textContent === 'wui-context-menu-item' ? 'M' : '#v-if'
+          if (n.nodeType === Node.TEXT_NODE) return '·'
+          if (n instanceof HTMLElement)
+            return n.tagName === 'WEB-UI-DROPDOWN-DIVIDER' ? 'DIV' : 'I:' + n.textContent?.trim()
+          return '?'
+        })
+      }
+      try {
+        el.openAt(10, 10)
+        await nextFrames()
+        await new Promise(resolve => setTimeout(resolve, 120))
+        expect(fullOrder()).toEqual(['I:预览', 'I:打开方式', 'DIV', 'I:管理标签', 'DIV', 'I:删除'])
+
+        // 两轮连续翻转 + 最后 reopen
+        for (let round = 0; round < 2; round++) {
+          broken.value = true
+          await nextFrames()
+          await new Promise(r => setTimeout(r, 120))
+          const brokenOrder = fullOrder()
+          expect(brokenOrder.filter(s => s.startsWith('I:') || s === 'DIV')).toEqual(['I:找回资源', 'DIV', 'I:删除'])
+          expect(brokenOrder.filter(s => s === '#v-if').length).toBe(4)
+
+          broken.value = false
+          await nextFrames()
+          await new Promise(r => setTimeout(r, 120))
+          const validOrder = fullOrder()
+          expect(validOrder.filter(s => s.startsWith('I:') || s === 'DIV')).toEqual([
+            'I:预览',
+            'I:打开方式',
+            'DIV',
+            'I:管理标签',
+            'DIV',
+            'I:删除'
+          ])
+          // 锚点可能在 1 个(找回资源 false)或 0 个(全部 true)
+          expect(validOrder.filter(s => s === '#v-if').length).toBeLessThanOrEqual(1)
+        }
+
+        // close → reopen
+        el.close()
+        await new Promise(r => setTimeout(r, 300))
+        el.openAt(20, 20)
+        await nextFrames()
+        await new Promise(r => setTimeout(r, 120))
+        expect(fullOrder().filter(s => s.startsWith('I:') || s === 'DIV')).toEqual([
+          'I:预览',
+          'I:打开方式',
+          'DIV',
+          'I:管理标签',
+          'DIV',
+          'I:删除'
+        ])
+
+        expect(warnings).toEqual([])
+      } finally {
+        el.remove()
+        app.unmount()
+      }
     })
   })
 })

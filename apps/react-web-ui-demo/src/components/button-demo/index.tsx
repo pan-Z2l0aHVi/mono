@@ -15,10 +15,10 @@ function ButtonDemo() {
 
       <h2>自定义尺寸</h2>
       <div className="mb-3 flex flex-wrap gap-2">
-        <web-ui-button variant="primary" size="32">
-          小号 32
+        <web-ui-button variant="primary" size="28">
+          小号 28
         </web-ui-button>
-        <web-ui-button variant="primary">默认 40</web-ui-button>
+        <web-ui-button variant="primary">默认 36</web-ui-button>
         <web-ui-button variant="primary" size="48">
           大号 48
         </web-ui-button>

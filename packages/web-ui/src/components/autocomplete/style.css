@@ -14,6 +14,12 @@
   opacity: 0.4;
 }
 
+.wui-autocomplete-inner {
+  /* 与 select 的 .wui-select-inner 对齐：为本地绝对定位面板提供包含块，
+     避免面板 offsetParent（BODY）与实际包含块（远端定位祖先，如 layout header）不一致导致定位偏移。 */
+  position: relative;
+}
+
 .input-wrapper {
   display: flex;
   gap: 8px;
@@ -21,8 +27,8 @@
 
   box-sizing: border-box;
   width: var(--wui-input-width, 200px);
-  min-width: var(--wui-control-size, 40px);
-  height: var(--wui-control-size, 40px);
+  min-width: var(--wui-control-size, 36px);
+  height: var(--wui-control-size, 36px);
   padding: 0 12px;
   border-radius: calc(infinity * 1px);
 
@@ -70,6 +76,7 @@
   /* autocomplete 不表示选中状态；隐藏共享 option 的勾选图标及其布局占位 */
   --wui-option-check-display: none;
   --wui-internal-glass-shadow: var(--wui-shadow-panel, 0 3px 9px rgb(0 0 0 / 0.27));
+  --wui-glass-corner-radius: 20px;
   --wui-internal-duration-overlay-enter: var(--wui-duration-menu-enter, 140ms);
   --wui-internal-duration-overlay-exit: var(--wui-duration-menu-exit, 100ms);
   position: absolute;
@@ -82,7 +89,7 @@
   max-width: var(--wui-autocomplete-max-width, 500px);
   border-radius: 20px;
 
-  background-color: var(--wui-color-surface-overlay, rgb(246 246 246 / 0.82));
+  background-color: var(--wui-color-surface-menu, rgb(246 246 246 / 0.82));
 
   &.portal {
     position: fixed;

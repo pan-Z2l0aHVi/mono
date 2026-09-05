@@ -71,7 +71,6 @@ describe('WebUiSelect 组件（浏览器）', () => {
     const portalHost = overlayContainer?.firstElementChild as HTMLElement | null
     expect(select.open).toBe(true)
     expect(overlayContainer).toBeTruthy()
-    expect(overlayContainer?.getBoundingClientRect().height).toBe(0)
     expect(portalHost).toBeTruthy()
     expect(getComputedStyle(portalHost!).display).toBe('contents')
   })

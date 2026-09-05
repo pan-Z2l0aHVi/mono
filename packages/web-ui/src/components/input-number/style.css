@@ -14,6 +14,7 @@
 }
 
 .wui-input-inner {
+  --wui-glass-corner-radius: calc(var(--wui-control-size, 36px) / 2);
   position: relative;
 
   display: flex;
@@ -22,8 +23,8 @@
 
   box-sizing: border-box;
   width: var(--wui-input-width, 200px);
-  min-width: var(--wui-control-size, 40px);
-  height: var(--wui-control-size, 40px);
+  min-width: var(--wui-control-size, 36px);
+  height: var(--wui-control-size, 36px);
   padding: 0 4px;
   border-radius: calc(infinity * 1px);
 
@@ -73,15 +74,15 @@ input {
 }
 
 .num-btn {
-  cursor: pointer;
+  cursor: default;
 
   display: flex;
   flex-shrink: 0;
   align-items: center;
   justify-content: center;
 
-  width: 32px;
-  height: 32px;
+  width: 30px;
+  height: 30px;
   padding: 0;
   border: none;
   border-radius: calc(infinity * 1px);
@@ -89,8 +90,6 @@ input {
   color: var(--wui-color-text-secondary, #6a6a6a);
 
   background: transparent;
-
-  transition: background-color var(--wui-duration-trigger, 160ms) ease;
 
   &:disabled {
     cursor: not-allowed;
@@ -111,10 +110,4 @@ input {
 
 .num-btn:active:not(:disabled) {
   background: var(--wui-color-state-layer-active, color-mix(in srgb, var(--wui-color-text, #1b1b1b) 15%, transparent));
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .num-btn {
-    transition: background-color var(--wui-duration-trigger, 160ms) ease;
-  }
 }

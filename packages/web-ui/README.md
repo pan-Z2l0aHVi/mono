@@ -187,6 +187,41 @@ Components own their role and interaction state. Browser-native composed events 
 remain the primary interaction API. Kebab-case custom events such as `open-change` describe user-originated component
 state changes; assigning a property programmatically does not emit them.
 
+### Cursor behavior
+
+Interactive controls use the native arrow cursor instead of the hand cursor. Disabled controls use `not-allowed`.
+Slider, switch, and segmented controls keep the arrow cursor during hover and press feedback, then switch to
+`grabbing` only while a drag is active. Dedicated drag handles and resize controls keep their specialized cursors.
+Cursor styles live inside Shadow DOM, so a plain document-level selector cannot override them.
+
+### Controlled state semantics
+
+`web-ui-*` elements do not use a single "controlled" contract; three distinct state models exist, chosen per component
+family by the nature of the interaction. Do not assume `controlled` means the same thing across components.
+
+**User-originated events only (all `open`-style components: collapse, popover, dropdown, tooltip, dialog, drawer, back-top).**
+`*-change` events (`open-change`, etc.) fire only for user-originated toggles; assigning the property programmatically
+(`el.open = true`) or calling an imperative method (`show()`, `close()`, `toggle()`) never emits. Components self-manage
+their `open` value unless you coordinate externally — you may observe the event and write it back for your own state, but
+the component does not require or wait for that write-back.
+
+**Request-then-write-back (`controlled` on dialog and drawer only).**
+With `controlled`, user close actions (Escape, backdrop, built-in close, drag-release) only _request_ `open=false`; the
+component does not change its own state, and it stays open until the consumer writes `open=false`. This is the modal
+confirmation semantics — closing a dialog or drawer is typically an operation that needs consumer approval (unsaved form,
+confirmation), and unlike instantaneous open/close, it is not safe for the component to self-commit. Only these two modal
+components use this mode; the instant open/close family (collapse, popover, dropdown, tooltip) does not need it.
+
+**Native form-model (input, textarea, input-number, select, checkbox, radio, switch, autocomplete).**
+The control manages its own value/checked state internally; user interaction flips it immediately and then dispatches
+native `input`/`change` events. Assigning the property programmatically (`el.checked = true`) overrides the internal
+state. This mirrors native `<input type="checkbox">` — there is no `controlled` prop because the value is always readable
+and writable, and React/Vue layers provide their own controlled wrappers on top. For interactions that need an external
+round-trip before the flip is durable (e.g. a switch that should only stay on after an API call succeeds), use the
+optimistic-update path: flip immediately, observe `change`, set the control's `loading` during the request (this blocks
+further interaction and shows a spinner), and on failure write the property back (`el.checked = false`) plus surface a
+toast. The flip-before-approval window is accepted; there is no `controlled` prop for a reject-before-flip contract.
+
 ### Form-associated controls
 
 All form controls participate in native `FormData`, constraint validation, `form.reset()` and browser form-state restoration. The control captures its reset default once, after declarative attributes have been applied on its first connection. Later runtime property updates do not redefine that default. A disabled ancestor `fieldset` disables validation and interaction without mutating the control's public `disabled` property. For checkbox/radio groups, the group is the single submission, reset and restoration owner; managed child controls do not submit or restore an independent state.
@@ -211,6 +246,7 @@ All form controls participate in native `FormData`, constraint validation, `form
 |                      | [`<web-ui-button-group>`](#web-ui-button-group)           |
 | **Overlay / Modal**  | [`<web-ui-dialog>`](#web-ui-dialog)                       |
 |                      | [`<web-ui-drawer>`](#web-ui-drawer)                       |
+|                      | [`<web-ui-collapse>`](#web-ui-collapse)                   |
 | **Floating**         | [`<web-ui-popover>`](#web-ui-popover)                     |
 |                      | [`<web-ui-tooltip>`](#web-ui-tooltip)                     |
 |                      | [`<web-ui-context-menu>`](#web-ui-context-menu)           |
@@ -347,10 +383,12 @@ Child `<web-ui-option>` elements register via `option-register` / `option-unregi
 
 **CSS Custom Properties:**
 
-| Property                  | Default | Description        |
-| ------------------------- | ------- | ------------------ |
-| `--wui-select-max-width`  | `500px` | Dropdown max width |
-| `--wui-overlay-min-width` | `200px` | Dropdown min width |
+| Property                  | Default                            | Description                     |
+| ------------------------- | ---------------------------------- | ------------------------------- |
+| `--wui-select-max-width`  | `500px`                            | Dropdown max width              |
+| `--wui-overlay-min-width` | `200px`                            | Dropdown min width              |
+| `--wui-select-bg-hover`   | `--wui-color-surface-glass-hover`  | Trigger hover background        |
+| `--wui-select-bg-active`  | `--wui-color-surface-glass-active` | Trigger pressed/open background |
 
 #### `<web-ui-autocomplete>`
 
@@ -415,8 +453,8 @@ Supports ArrowLeft/Right/Up/Down, Home/End, PageUp/PageDown keyboard navigation.
 | `--wui-slider-vertical-height` | `200px`                             | Vertical slider height |
 | `--wui-slider-height`          | `var(--wui-slider-track-size, 6px)` | Track thickness        |
 | `--wui-slider-track-size`      | `6px`                               | Track size             |
-| `--wui-slider-thumb-width`     | `24px`                              | Thumb short axis       |
-| `--wui-slider-thumb-height`    | `32px`                              | Thumb long axis        |
+| `--wui-slider-thumb-width`     | `30px`                              | Thumb width            |
+| `--wui-slider-thumb-height`    | `20px`                              | Thumb height           |
 | `--wui-slider-marks-inset`     | `0`                                 | Marks inset from edges |
 
 #### `<web-ui-checkbox>`
@@ -585,31 +623,33 @@ Applies the direction to the grouped button layout without changing child button
 
 Modal dialog using native `<dialog>` with `showModal()`.
 
-| Attribute           | Type      | Default | Description                         |
-| ------------------- | --------- | ------- | ----------------------------------- |
-| `open`              | `boolean` | `false` | Dialog visibility                   |
-| `no-scroll-lock`    | `boolean` | `false` | Do not lock body scroll when open   |
-| `no-backdrop-close` | `boolean` | `false` | Do not close on backdrop click      |
-| `no-escape-close`   | `boolean` | `false` | Do not close when Escape is pressed |
+| Attribute           | Type      | Default | Description                                                                    |
+| ------------------- | --------- | ------- | ------------------------------------------------------------------------------ |
+| `open`              | `boolean` | `false` | Dialog visibility                                                              |
+| `no-scroll-lock`    | `boolean` | `false` | Do not lock body scroll when open                                              |
+| `no-backdrop-close` | `boolean` | `false` | Do not close on backdrop click                                                 |
+| `no-escape-close`   | `boolean` | `false` | Do not close when Escape is pressed                                            |
+| `controlled`        | `boolean` | `false` | Escape and backdrop only request `open=false`; the consumer must update `open` |
 
-**Events:** `open-change` (`CustomEvent<{ open: boolean }>`)
+**Events:** `open-change` (`CustomEvent<{ open: boolean }>`). With `controlled`, Escape and backdrop clicks only request `open=false` and the dialog stays open until the consumer writes `open=false`. Programmatic APIs (`showModal()`, `close()`, assigning `open`) stay direct and never emit. Native dialog closure (e.g. form `method="dialog"`) is restored to the controlled open state and re-emits the request.
 
 **Slots:** `body`, `title`, `default`, `footer`
 
 **Methods:** `showModal()`, `close()`
 
-Uses native `<dialog>` with `@cancel` prevention. Escape calls `close()` unless `no-escape-close` is present. Click on backdrop closes dialog unless `no-backdrop-close` is present.
+Uses native `<dialog>` with `@cancel` prevention. Escape calls `close()` unless `no-escape-close` is present. Click on backdrop closes dialog unless `no-backdrop-close` is present. With `controlled`, both only emit the close request instead.
 
 **CSS Custom Properties:**
 
-| Property                  | Default                     | Description         |
-| ------------------------- | --------------------------- | ------------------- |
-| `--wui-dialog-max-width`  | `360px`                     | Dialog max width    |
-| `--wui-dialog-overlay-bg` | `var(--wui-color-backdrop)` | Backdrop background |
+| Property                  | Default                            | Description                                                    |
+| ------------------------- | ---------------------------------- | -------------------------------------------------------------- |
+| `--wui-dialog-max-width`  | `360px`                            | Dialog max width                                               |
+| `--wui-dialog-overlay-bg` | `var(--wui-color-backdrop)`        | Backdrop background                                            |
+| `--wui-dialog-bg`         | `var(--wui-color-surface-overlay)` | Glass card background, falls back to `rgb(246 246 246 / 0.88)` |
 
 #### `<web-ui-drawer>`
 
-Side drawer using native `<dialog>` with closing animation.
+Side drawer using native `<dialog>` with closing animation. In non-headless mode the drawer renders as a floating rounded card inset from all viewport edges (matching the layout sidebar's card language), so elastic drag distances read as margin changes rather than gaps.
 
 | Attribute           | Type                                     | Default   | Description                                                                       |
 | ------------------- | ---------------------------------------- | --------- | --------------------------------------------------------------------------------- |
@@ -619,11 +659,12 @@ Side drawer using native `<dialog>` with closing animation.
 | `closable`          | `boolean`                                | `false`   | Show close button                                                                 |
 | `no-scroll-lock`    | `boolean`                                | `false`   | Do not lock body scroll when open                                                 |
 | `no-backdrop-close` | `boolean`                                | `false`   | Do not close on backdrop click                                                    |
-| `request-only`      | `boolean`                                | `false`   | User close actions only request `open=false`; the consumer must update `open`     |
+| `controlled`        | `boolean`                                | `false`   | User close actions only request `open=false`; the consumer must update `open`     |
 | `headless`          | `boolean`                                | `false`   | Keep only overlay behavior and render the default slot without built-in drawer UI |
 | `dialog-label`      | `string`                                 | `''`      | Accessible name for the internal native dialog; required in headless mode         |
+| `draggable`         | `boolean`                                | `false`   | Show a drag bar on the inner edge for drag-to-close gestures                      |
 
-**Events:** `open-change` (`CustomEvent<{ open: boolean }>`). With `request-only`, Escape, backdrop and the built-in close button only request `open=false`; the drawer remains open until the consumer writes `open=false`. If native dialog closure occurs while that request is rejected, the drawer restores its open top-layer state and emits the same request.
+**Events:** `open-change` (`CustomEvent<{ open: boolean }>`). With `controlled`, Escape, backdrop, the built-in close button and drag-release only request `open=false`; the drawer remains open until the consumer writes `open=false`. Programmatic APIs (`show()`, `close()`, assigning `open`) stay direct and never emit. If native dialog closure occurs while a request is pending, the drawer restores its open top-layer state and emits the same request. With nested drawers, an inner `open-change` bubbles through the outer root (composed event); distinguish by `event.target`.
 
 **Slots:** `header`, `default`, `footer` — with `headless`, only the `default` slot is rendered.
 
@@ -633,14 +674,54 @@ Side drawer using native `<dialog>` with closing animation.
 
 Closing keeps the native dialog in the top layer until the `--wui-duration-drawer-exit` transition completes (240ms by default), then calls `dialog.close()`. Escape always follows this close path; `no-backdrop-close` controls backdrop clicks only.
 
+**Drag to close:** With `draggable`, a gray capsule drag bar appears on the drawer's inner edge (left edge for `right`, right edge for `left`, bottom edge for `top`, top edge for `bottom`) while open. Dragging follows the pointer in real time (backdrop fades proportionally); releasing past ~1/3 of the drawer size or with a fast closing flick springs the drawer shut, otherwise it springs back open. The close direction is placement-aware. With `controlled`, release past the threshold only emits `open-change(false)`; the drawer holds at the closed position briefly (120ms write-back window) and springs back open if the consumer rejects or misses the write-back. Drag-to-open is not supported because the closed drawer renders nothing outside the native dialog. Under `prefers-reduced-motion`, release snaps instantly without spring animation.
+
 **CSS Custom Properties:**
 
-| Property                  | Default                            | Description                |
-| ------------------------- | ---------------------------------- | -------------------------- |
-| `--wui-drawer-width`      | `320px`                            | Drawer width               |
-| `--wui-drawer-height`     | `300px`                            | Drawer height (top/bottom) |
-| `--wui-drawer-bg`         | `var(--wui-color-surface-overlay)` | Drawer body background     |
-| `--wui-drawer-overlay-bg` | `rgb(0 0 0 / 0.12)`                | Backdrop background        |
+| Property                  | Default                            | Description                                                                  |
+| ------------------------- | ---------------------------------- | ---------------------------------------------------------------------------- |
+| `--wui-drawer-width`      | `320px`                            | Drawer width                                                                 |
+| `--wui-drawer-height`     | `300px`                            | Drawer height (top/bottom)                                                   |
+| `--wui-drawer-bg`         | `var(--wui-color-surface-overlay)` | Drawer body background                                                       |
+| `--wui-drawer-radius`     | `28px`                             | Floating card corner radius (non-headless)                                   |
+| `--wui-drawer-inset`      | `8px`                              | Floating card viewport inset (non-headless); `0` gives edge-to-edge geometry |
+| `--wui-drawer-overlay-bg` | `rgb(0 0 0 / 0.12)`                | Backdrop background                                                          |
+
+---
+
+### In-flow Disclosure
+
+#### `<web-ui-collapse>`
+
+In-flow expand/collapse container with animated height (or width) transition. Single element with two slots; no portal, no scroll lock, no focus management.
+
+| Attribute      | Type      | Default | Description                                                                                                              |
+| -------------- | --------- | ------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `open`         | `boolean` | `false` | Expanded state; self-managed on interaction, `open-change` emits only for user-originated toggles                        |
+| `disabled`     | `boolean` | `false` | Ignores trigger clicks and sets `aria-disabled` on the trigger element; expanded content is kept                         |
+| `horizontal`   | `boolean` | `false` | Animate width instead of height                                                                                          |
+| `keep-mounted` | `boolean` | `false` | Closed state keeps the content in the 0fr track with `inert` (scroll position and layout measurable) instead of `hidden` |
+
+**Events:** `open-change` (`CustomEvent<{ open: boolean }>`). Emitted only for user-originated toggles (trigger click). Programmatic writes (`open`, `show()`, `close()`, `toggle()`) never emit. Nested collapses: an inner `open-change` bubbles through the outer root (composed event); distinguish by `event.target`.
+
+**Slots:** `default` (trigger) + `content` (collapsible content)
+
+**Methods:** `show()`, `close()`, `toggle()`
+
+```html
+<web-ui-collapse>
+  <button type="button">Toggle me</button>
+  <div slot="content">Collapsible content</div>
+</web-ui-collapse>
+```
+
+The initial `open` attribute settles instantly without playing the animation. Nested collapses are supported.
+
+**Trigger semantics:** interaction comes from the element you put in the default slot — a native `<button>`, `<web-ui-button>`, or any other interactive element supplies Enter/Space activation and focus natively. The collapse writes `aria-expanded` / `aria-controls` (pointing at its content track) and `aria-disabled` onto the first assigned element in the trigger slot. Use an interactive element as the trigger: a plain `<span>` is clickable but has no keyboard/focus semantics.
+
+**Closed-state semantics:** the consumer's light DOM is never moved or unmounted. Default closed state applies `hidden` to the internal content container; with `keep-mounted` the inner container is marked `inert` while staying measurable inside the collapsed track.
+
+**Known limitations:** the `horizontal` animation reflows content while width changes.
 
 ---
 
@@ -668,6 +749,8 @@ Popover overlay anchored to trigger element.
 
 Hover mode uses `pointerenter`/`pointerleave` with delay. Click mode toggles on trigger click. Manual mode only responds to imperative `show()`/`close()`.
 
+**Trigger ARIA:** open/close state is written back to the trigger element: `aria-expanded` and `aria-controls` (pointing at the panel) are set on the first assigned element in the `trigger` slot (the wrapper retains them for backward compatibility). Put an interactive element (native button, `web-ui-button`) in the trigger slot.
+
 #### `<web-ui-tooltip>`
 
 Tooltip overlay using pointer/focus triggers.
@@ -688,7 +771,7 @@ Tooltip overlay using pointer/focus triggers.
 
 **Slots:** `default` (trigger), `content` (tooltip panel)
 
-`open` is a controlled visibility property. Pointer/focus triggers update it, and direct updates synchronize the local or portal panel. Adjacent tooltips open immediately after the first tooltip is visible; pointer/focus triggers otherwise use delay timers.
+`open` is a self-managed visibility property. Pointer/focus triggers update it, and direct property writes synchronize the local or portal panel; `open-change` emits only for user-originated open/close. Adjacent tooltips open immediately after the first tooltip is visible; pointer/focus triggers otherwise use delay timers.
 
 **CSS Custom Properties:**
 
@@ -714,6 +797,8 @@ Right-click context menu.
 
 Opens on `contextmenu` event. Menu items: `<web-ui-dropdown-item>`, `<web-ui-dropdown-divider>`, `<web-ui-dropdown-header>`. Supports keyboard navigation (Arrow keys, Enter, Escape) and submenu hover with `pointerenter`.
 
+While the menu is open, consumer code may conditionally render, move, or remove menu items (e.g. Vue `v-if`) without re-inserting them at the host element; changes inside the portal are reconciled automatically, and framework anchors are returned to the host on close so subsequent framework patches keep working.
+
 ---
 
 ### Menu
@@ -738,6 +823,8 @@ Dropdown menu with multi-level submenu support.
 **Methods:** `openMenu()`, `closeAll()`
 
 Items: `<web-ui-dropdown-item>`, `<web-ui-dropdown-divider>`, `<web-ui-dropdown-header>`. Submenus via `submenu` attribute on `<web-ui-dropdown-item>`. Full keyboard navigation (Arrow keys, Home, End, Enter, Space, Escape).
+
+**Trigger ARIA:** `aria-haspopup="menu"`, `aria-expanded` and `aria-controls` (pointing at the root menu panel) are written back to the first assigned element in the `trigger` slot. Put an interactive element in the trigger slot.
 
 #### `<web-ui-dropdown-item>`
 
@@ -878,15 +965,20 @@ WebUiSpinner.hide() // hide
 
 Responsive page layout with an optional full-width banner, a collapsible desktop sidebar, and a headless-drawer mobile sidebar. The page itself scrolls; the desktop sidebar and header stick to the viewport after the banner scrolls away.
 
-| Attribute           | Type      | Default   | Description                                           |
-| ------------------- | --------- | --------- | ----------------------------------------------------- |
-| `sidebar-collapsed` | `boolean` | `false`   | Controlled desktop sidebar collapsed state            |
-| `sidebar-open`      | `boolean` | `false`   | Controlled mobile sidebar drawer open state           |
-| `header-glow`       | `boolean` | `false`   | Decorative Header background glow behind slot content |
-| `sidebar-width`     | `string`  | `'240px'` | Expanded desktop and mobile sidebar width             |
-| `collapsed-width`   | `string`  | `'72px'`  | Collapsed desktop sidebar width                       |
+| Attribute           | Type      | Default   | Description                                                                                        |
+| ------------------- | --------- | --------- | -------------------------------------------------------------------------------------------------- |
+| `sidebar-collapsed` | `boolean` | `false`   | Controlled desktop sidebar collapsed state                                                         |
+| `sidebar-open`      | `boolean` | `false`   | Controlled mobile sidebar drawer open state                                                        |
+| `header-glow`       | `boolean` | `false`   | Decorative Header background glow behind slot content                                              |
+| `sidebar-width`     | `string`  | `'240px'` | Expanded desktop and mobile sidebar width                                                          |
+| `collapsed-width`   | `string`  | `'72px'`  | Collapsed desktop sidebar width                                                                    |
+| `sidebar-resizable` | `boolean` | `false`   | Enable drag-to-resize on the desktop sidebar edge                                                  |
+| `sidebar-min-width` | `string`  | —         | Resize lower bound (px); falls back to `collapsed-width`                                           |
+| `sidebar-max-width` | `string`  | —         | Resize upper bound (px); clamped to half the viewport, which always wins over the configured value |
 
-**Events:** `sidebar-collapsed-change` (`CustomEvent<{ collapsed: boolean }>`) requests a desktop collapse-state update. `sidebar-open-change` (`CustomEvent<{ open: boolean }>`) requests a mobile drawer open-state update. Consumers must write the requested value back to the corresponding controlled property.
+**Events:** `sidebar-collapsed-change` (`CustomEvent<{ collapsed: boolean }>`) requests a desktop collapse-state update. `sidebar-open-change` (`CustomEvent<{ open: boolean }>`) requests a mobile drawer open-state update. `sidebar-width-change` (`CustomEvent<{ width: string }>`) requests a sidebar width update after a resize drag ends. Consumers must write the requested value back to the corresponding controlled property.
+
+**Sidebar resize:** With `sidebar-resizable`, a resize handle appears on the desktop sidebar's right edge (hidden while collapsed). Hovering or dragging shows a 3px accent vertical line with a `col-resize` cursor. Dragging updates the width in real time (transition suppressed, clamped to `[min, max]` and the viewport); releasing emits `sidebar-width-change` with the final pixel width and returns control to the `sidebar-width` property once the consumer writes it back. `pointercancel` restores the property-controlled width without emitting. The handle is keyboard-operable (WAI-ARIA splitter pattern): focus it and use ←/→ to step by 16px (Shift for 64px), Home/End to jump to min/max, Enter to commit via the same `sidebar-width-change` request, and Escape to revert an uncommitted adjustment. The mobile drawer always supports drag-to-close via its built-in `draggable` drawer.
 
 | Slot      | Description                                                                               |
 | --------- | ----------------------------------------------------------------------------------------- |
@@ -906,7 +998,7 @@ At `640px` and below, the sidebar becomes a headless `web-ui-drawer`. The consum
 
 | Property                      | Default | Description                                      |
 | ----------------------------- | ------- | ------------------------------------------------ |
-| `--wui-layout-sidebar-radius` | `28px`  | Border radius of sidebar card (desktop & mobile) |
+| `--wui-layout-sidebar-radius` | `24px`  | Border radius of sidebar card (desktop & mobile) |
 
 #### `<web-ui-back-top>`
 
@@ -974,7 +1066,7 @@ Defines foundation, color, layer, shadow, and motion tokens for its subtree. `mo
 | ------------------------- | ------- | ------------------------------------------------ |
 | `--wui-font-size`         | `14px`  | Base font size for controls                      |
 | `--wui-input-width`       | `200px` | Default width for compact form controls          |
-| `--wui-control-size`      | `40px`  | Default height and square min-width for controls |
+| `--wui-control-size`      | `36px`  | Default height and square min-width for controls |
 | `--wui-overlay-min-width` | `200px` | Minimum anchored overlay width                   |
 | `--wui-focus-ring-width`  | `3px`   | Focus indicator width                            |
 
@@ -994,32 +1086,38 @@ Defines foundation, color, layer, shadow, and motion tokens for its subtree. `mo
 | `--wui-layer-toast`          | `200`   | Toasts                       |
 | `--wui-layer-loading`        | `300`   | Blocking loading surfaces    |
 
-**Motion tokens:** duration defaults are `--wui-duration-press: 80ms`, `--wui-duration-feedback: 100ms`, `--wui-duration-trigger: 160ms`, `--wui-duration-focus: 200ms`, `--wui-duration-menu-enter: 140ms`, `--wui-duration-menu-exit: 100ms`, `--wui-duration-overlay-enter: 180ms`, `--wui-duration-overlay-exit: 140ms`, `--wui-duration-drawer-enter: 280ms`, `--wui-duration-drawer-exit: 240ms`, `--wui-duration-layout: 200ms`. Easing tokens are `--wui-ease-enter` and `--wui-ease-slide`; enter scale is `--wui-scale-enter: 0.97`.
+**Motion tokens:** duration defaults are `--wui-duration-press: 80ms`, `--wui-duration-feedback: 100ms`, `--wui-duration-trigger: 160ms`, `--wui-duration-focus: 200ms`, `--wui-duration-menu-enter: 140ms`, `--wui-duration-menu-exit: 100ms`, `--wui-duration-overlay-enter: 180ms`, `--wui-duration-overlay-exit: 140ms`, `--wui-duration-drawer-enter: 280ms`, `--wui-duration-drawer-exit: 240ms`, `--wui-duration-drawer-nested: 450ms`, `--wui-duration-collapse-enter: 200ms`, `--wui-duration-collapse-exit: 160ms`, `--wui-duration-layout: 200ms`. Easing tokens are `--wui-ease-enter` and `--wui-ease-slide`; enter scale is `--wui-scale-enter: 0.97`. Hover/active background feedback switches instantly with no transition; checked/pressed/focus and overlay enter/exit transitions are unaffected.
 
 **Color tokens:**
 
 | Property                           | Light default                                                | Dark default                                                 | Description                     |
 | ---------------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------- |
-| `--wui-color-page`                 | `#fff`                                                       | `#18181a`                                                    | Page background                 |
+| `--wui-color-page`                 | `#fff`                                                       | `#242628`                                                    | Page background                 |
 | `--wui-color-surface`              | `#fff`                                                       | `#2c2c2e`                                                    | Plain surface                   |
 | `--wui-color-surface-raised`       | `#f2f2f7`                                                    | `#2c2c2e`                                                    | Raised surface                  |
 | `--wui-color-surface-control`      | `#dfdfdf`                                                    | `#3a3a3c`                                                    | Neutral control surface         |
 | `--wui-color-surface-track`        | `#e5e5ea`                                                    | `#444446`                                                    | Slider and switch track surface |
+| `--wui-color-surface-menu`         | `rgb(246 246 246 / 0.82)`                                    | `rgb(30 30 32 / 0.92)`                                       | Menu and floating panel surface |
 | `--wui-color-surface-glass`        | `rgb(250 250 250 / 0.34)`                                    | `rgb(44 44 46 / 0.42)`                                       | Liquid glass surface            |
 | `--wui-color-surface-glass-hover`  | `color-mix(... text 6%, surface-glass)`                      | `color-mix(... text 6%, surface-glass)`                      | Full glass hover background     |
 | `--wui-color-surface-glass-active` | `color-mix(... text 15%, surface-glass)`                     | `color-mix(... text 15%, surface-glass)`                     | Full glass pressed background   |
-| `--wui-color-surface-overlay`      | `rgb(246 246 246 / 0.82)`                                    | `rgb(44 44 46 / 0.82)`                                       | Translucent overlay surface     |
-| `--wui-color-text`                 | `#1b1b1b`                                                    | `#f5f5f7`                                                    | Primary text                    |
+| `--wui-color-surface-overlay`      | `rgb(246 246 246 / 0.82)`                                    | `rgb(32 34 34 / 0.9)`                                        | Translucent overlay surface     |
+| `--wui-color-surface-segmented`    | `#e5e5ea`                                                    | `#3a3a3c`                                                    | Segmented track surface         |
+| `--wui-color-surface-selected`     | `#fff`                                                       | `#5c5c5e`                                                    | Segmented selected indicator    |
+| `--wui-color-text`                 | `#1b1b1b`                                                    | `#e9eaea`                                                    | Primary text                    |
 | `--wui-color-text-secondary`       | `#6a6a6a`                                                    | `#a1a1a6`                                                    | Secondary text                  |
 | `--wui-color-text-tertiary`        | `color-mix(in srgb, var(--wui-color-text) 35%, transparent)` | `color-mix(in srgb, var(--wui-color-text) 42%, transparent)` | Tertiary text and quiet icons   |
 | `--wui-color-text-disabled`        | `color-mix(in srgb, var(--wui-color-text) 32%, transparent)` | `color-mix(in srgb, var(--wui-color-text) 38%, transparent)` | Disabled foreground text        |
 | `--wui-color-state-layer-hover`    | `color-mix(in srgb, var(--wui-color-text) 6%, transparent)`  | `color-mix(in srgb, var(--wui-color-text) 6%, transparent)`  | Transparent hover overlay       |
 | `--wui-color-state-layer-active`   | `color-mix(in srgb, var(--wui-color-text) 15%, transparent)` | `color-mix(in srgb, var(--wui-color-text) 15%, transparent)` | Transparent pressed overlay     |
 | `--wui-color-border`               | `rgb(0 0 0 / 0.1)`                                           | `rgb(255 255 255 / 0.14)`                                    | Normal border and divider       |
-| `--wui-color-glass-border`         | `rgb(51 51 51 / 0.12)`                                       | `rgb(255 255 255 / 0.16)`                                    | Glass border tint               |
-| `--wui-color-glass-highlight`      | `rgb(255 255 255 / 0.9)`                                     | `rgb(255 255 255 / 0.22)`                                    | Glass edge highlight            |
+| `--wui-color-glass-border`         | `transparent`                                                | `rgb(255 255 255 / 0.05)`                                    | Glass border tint               |
+| `--wui-color-glass-highlight`      | `rgb(255 255 255 / 0.9)`                                     | `rgb(255 255 255 / 0.1)`                                     | Glass edge highlight            |
+| `--wui-color-glass-corner`         | `rgb(255 255 255 / 0.08)`                                    | `rgb(255 255 255 / 0.2)`                                     | Glass corner sheen on border    |
+| `--wui-color-glass-shade`          | `rgb(0 0 0 / 0.06)`                                          | `rgb(0 0 0 / 0.5)`                                           | Glass corner shade on border    |
 | `--wui-color-accent`               | `#08f`                                                       | `#0a84ff`                                                    | Accent and focused input border |
 | `--wui-color-on-accent`            | `#fff`                                                       | `#fff`                                                       | Foreground on accent            |
+| `--wui-color-on-control`           | `#fff`                                                       | `#f2f2f7`                                                    | Foreground on control inner     |
 | `--wui-color-success`              | `#16a34a`                                                    | `#30d158`                                                    | Success                         |
 | `--wui-color-warning`              | `#d97706`                                                    | `#ff9f0a`                                                    | Warning                         |
 | `--wui-color-danger`               | `#dc2626`                                                    | `#ff453a`                                                    | Danger                          |
@@ -1031,9 +1129,11 @@ Defines foundation, color, layer, shadow, and motion tokens for its subtree. `mo
 
 | Property               | Light default                    | Dark default                    | Description                 |
 | ---------------------- | -------------------------------- | ------------------------------- | --------------------------- |
-| `--wui-shadow-overlay` | `2px 16px 40px rgb(0 0 0 / 0.4)` | `0 18px 48px rgb(0 0 0 / 0.54)` | Modal and drawer shadow     |
-| `--wui-shadow-panel`   | `0 3px 9px rgb(0 0 0 / 0.27)`    | `0 4px 16px rgb(0 0 0 / 0.35)`  | Small floating panel shadow |
-| `--wui-shadow-glass`   | four-layer diffuse shadow        | `0 12px 32px rgb(0 0 0 / 0.38)` | Base liquid glass shadow    |
+| `--wui-shadow-overlay` | `2px 16px 40px rgb(0 0 0 / 0.4)` | `0 18px 48px rgb(0 0 0 / 0.48)` | Modal and drawer shadow     |
+| `--wui-shadow-panel`   | `0 3px 9px rgb(0 0 0 / 0.27)`    | `0 4px 16px rgb(0 0 0 / 0.32)`  | Small floating panel shadow |
+| `--wui-shadow-glass`   | four-layer diffuse shadow        | `0 8px 24px rgb(0 0 0 / 0.08)`  | Base liquid glass shadow    |
+
+**Glass effect tokens:** `--wui-glass-brightness` is `1.06` in light mode and `1.02` in dark mode. `--wui-glass-corner-radius` defaults to `32px`; glass components set it from their own corner radius so the diagonal border lighting aligns with their shape.
 
 **Internal tokens:** variables prefixed `--wui-internal-*` are private wiring between shadow DOM parts; they are not part of the public token API and must not be overridden by consumers.
 
