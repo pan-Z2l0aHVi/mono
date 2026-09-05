@@ -196,6 +196,7 @@ describe('Portal overlay 在已打开原生 dialog 内（top layer）', () => {
     await autocomplete.updateComplete
 
     autocomplete.shadowRoot?.querySelector<HTMLElement>('[role="combobox"]')?.focus()
+    autocomplete.shadowRoot?.querySelector<HTMLElement>('[role="combobox"]')?.click()
     await autocomplete.updateComplete
     await nextFrame()
 

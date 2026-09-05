@@ -450,8 +450,10 @@ export class WebUiAutocomplete extends LitElement {
   private _onFocus = () => {
     if (this._isDisabled) return
     this._focused = true
-    // readonly 仅可聚焦选中，不展开候选
-    if (this.readonly) return
+  }
+
+  private _onInputClick = () => {
+    if (this._isDisabled || this.readonly) return
     if (this._options.length > 0) this._open()
   }
 
@@ -599,6 +601,7 @@ export class WebUiAutocomplete extends LitElement {
             aria-activedescendant=${activeDescendant}
             @input=${this._onInput}
             @change=${this._onInnerChange}
+            @click=${this._onInputClick}
             @focus=${this._onFocus}
             @blur=${this._onBlur}
           />

@@ -35,6 +35,7 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
 
     const input = el.shadowRoot?.querySelector<HTMLElement>('[role="combobox"]')
     input?.focus()
+    input?.click()
     await new Promise(resolve => requestAnimationFrame(resolve))
     await el.updateComplete
 
@@ -67,6 +68,7 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
 
     const input = el.shadowRoot!.querySelector<HTMLInputElement>('[role="combobox"]')!
     input.focus()
+    input.click()
     await new Promise(resolve => requestAnimationFrame(resolve))
     input.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, composed: true }))
     await el.updateComplete
@@ -97,6 +99,7 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     await el.updateComplete
 
     el.shadowRoot?.querySelector<HTMLInputElement>('[role="combobox"]')?.focus()
+    el.shadowRoot?.querySelector<HTMLInputElement>('[role="combobox"]')?.click()
     await new Promise(resolve => requestAnimationFrame(resolve))
     const panel = getPortalPanel(theme)!
     panel
@@ -116,6 +119,7 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
 
     const input = el.shadowRoot!.querySelector<HTMLInputElement>('[role="combobox"]')!
     input.focus()
+    input.click()
     await el.updateComplete
 
     input.value = 'app'
@@ -207,6 +211,7 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     await el.updateComplete
 
     el.shadowRoot?.querySelector<HTMLElement>('[role="combobox"]')?.focus()
+    el.shadowRoot?.querySelector<HTMLElement>('[role="combobox"]')?.click()
     await el.updateComplete
     expect(document.body.style.position).toBe('fixed')
 
@@ -228,6 +233,7 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     expect(host.getByRole('listbox').length).toBe(0)
 
     input.element().focus()
+    ;(input.element() as HTMLElement).click()
     await waitForFrame()
     await waitForFrame()
     await el.updateComplete
@@ -262,6 +268,7 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     expect(page.getByRole('listbox').length).toBe(0)
 
     input.element().focus()
+    ;(input.element() as HTMLElement).click()
     await waitForFrame()
     await waitForFrame()
     await el.updateComplete
@@ -294,6 +301,7 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
 
     const input = page.getByRole('combobox')
     input.element().focus()
+    ;(input.element() as HTMLElement).click()
     await waitForFrame()
     await waitForFrame()
     await el.updateComplete
@@ -385,6 +393,7 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
 
     const input = page.getByRole('combobox')
     input.element().focus()
+    ;(input.element() as HTMLElement).click()
     await waitForFrame()
     await waitForFrame()
     await el.updateComplete
@@ -406,6 +415,7 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     expect(el.open).toBe(false)
 
     input.element().focus()
+    ;(input.element() as HTMLElement).click()
     await waitForFrame()
     await waitForFrame()
     expect(page.getByRole('listbox').length).toBe(1)
@@ -490,6 +500,7 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
 
     const input = el.shadowRoot!.querySelector<HTMLInputElement>('[role="combobox"]')!
     input.focus()
+    input.click()
     await el.updateComplete
     fieldset.disabled = true
     await el.updateComplete
@@ -570,6 +581,7 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
 
     const input = el.shadowRoot!.querySelector<HTMLInputElement>('[role="combobox"]')!
     input.focus()
+    input.click()
     await el.updateComplete
     await waitForFrame()
     await el.updateComplete
