@@ -39,15 +39,18 @@ Role Contract 位于 `.agents/agents/`，只定义当前会话的职责、边界
 
 ## AI 协作署名
 
-- 仅当 AI agent 对某项变更有实质贡献时，才在对应提交中添加共同作者尾注或独立署名；不要为展示署名创建空提交或伪造身份。
-- Codex、Claude Code 与 Gemini CLI 等 agent 参与时使用以下固定格式通过 Git trailers 机制进行透明署名：
+- 仅当 AI agent 对某项变更有实质贡献时，才记录署名；不要为展示署名创建空提交或伪造身份。
+- Agent 直接创建提交时，author 与 committer 使用该 agent 的官方身份（ZCode 即 Zed 生态的 coding agent，使用 `Zed Bot <hi@zed.dev>`），不再叠加同名 `Co-authored-by` 尾注。
+- AI agent 参与人类 author 的提交时，通过 Git trailers 机制追加共同作者尾注：
 
   ```text
   Co-authored-by: Codex <noreply@openai.com>
   Co-authored-by: Claude <noreply@anthropic.com>
   Co-authored-by: Gemini CLI <gemini-code-assist[bot]@users.noreply.github.com>
+  Co-authored-by: Zed Bot <hi@zed.dev>
   ```
 
+- ZCode 即 Zed 生态的 coding agent，署名尾注使用官方身份 `Zed Bot <hi@zed.dev>`。
 - 人类提交者仍对需求、设计、审查、测试和最终合并承担全部责任。
 - 共同作者尾注用于公开记录协作；GitHub 是否将其显示为独立 Contributors 条目取决于该邮箱能否被 GitHub 识别和归属。
 
