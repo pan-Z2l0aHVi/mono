@@ -176,7 +176,7 @@ catalogs:
       version: 7.87.0
     remeda:
       specifier: ^2.44.0
-      version: 2.45.0
+      version: 2.46.0
     stylelint:
       specifier: ^17.14.0
       version: 17.15.0
@@ -583,7 +583,7 @@ importers:
         version: 6.0.1
       remeda:
         specifier: 'catalog:'
-        version: 2.45.0
+        version: 2.46.0
     devDependencies:
       '@greypan/test-kit':
         specifier: workspace:*
@@ -633,7 +633,7 @@ importers:
         version: 6.0.1
       remeda:
         specifier: 'catalog:'
-        version: 2.45.0
+        version: 2.46.0
     devDependencies:
       '@greypan/tsconfig':
         specifier: workspace:*
@@ -4947,8 +4947,8 @@ packages:
   minimist@1.2.8:
     resolution: {integrity: sha512-2yyAR8qBkN3YuheJanUpWC5U3bb5osDywNB8RzDVlDwDHbocAJveqqj1u8+SVD7jkWT4yvsHCpWqqWqAxb0zCA==}
 
-  minimizer-webpack-plugin@5.9.0:
-    resolution: {integrity: sha512-OASqv+dewv8vjkOBjqMOHvxUaXhtGBLZAXq7JbmYE8TSzBvOswiGq5JcBdc8ypuLL/8YUT1OEyupga6/iqdyTA==}
+  minimizer-webpack-plugin@5.10.0:
+    resolution: {integrity: sha512-2//60T4S0X1Ug/dqLDOgDaGlZsN1Lv8hf8oB0NOV/KIHSaXlPwXBBIbim79dE2Z7NEs52ES8YHoSv6Lmsk+XNg==}
     engines: {node: '>= 10.13.0'}
     peerDependencies:
       '@minify-html/node': '*'
@@ -5387,8 +5387,8 @@ packages:
     resolution: {integrity: sha512-NgRBy2Nx/bE+9F27nVHnqcN5HjyLmecqsqx2PJHu3/IEtADD4WuxuXIVExD5PoSDFVrl78dOonfcOe5O+5nbzQ==}
     hasBin: true
 
-  remeda@2.45.0:
-    resolution: {integrity: sha512-CTftZ0GJSox3CH77OhJemj20sXXUScH/kpkExD6t2LP3IG+mPKASBMFkbvWtsvzhU+54gKcgH38WWVihfr7bCA==}
+  remeda@2.46.0:
+    resolution: {integrity: sha512-Apho8t3RLE97UKKop9GxqSunlzcJ2i6V52R9MECTlaokpjbmyNqjs6DV2mEce8/QVmI3c1Xsq8gtdKALqwRE4Q==}
     engines: {node: '>=18.0.0'}
 
   require-directory@2.1.1:
@@ -10603,7 +10603,7 @@ snapshots:
 
   minimist@1.2.8: {}
 
-  minimizer-webpack-plugin@5.9.0(lightningcss@1.33.0)(postcss@8.5.28)(webpack@5.110.3(lightningcss@1.33.0)(postcss@8.5.28)):
+  minimizer-webpack-plugin@5.10.0(lightningcss@1.33.0)(postcss@8.5.28)(webpack@5.110.3(lightningcss@1.33.0)(postcss@8.5.28)):
     dependencies:
       '@jridgewell/trace-mapping': 0.3.31
       jest-worker: 27.5.1
@@ -11002,7 +11002,7 @@ snapshots:
     dependencies:
       jsesc: 3.1.0
 
-  remeda@2.45.0: {}
+  remeda@2.46.0: {}
 
   require-directory@2.1.1: {}
 
@@ -12008,7 +12008,7 @@ snapshots:
       events: 3.3.0
       graceful-fs: 4.2.11
       mime-db: 1.54.0
-      minimizer-webpack-plugin: 5.9.0(lightningcss@1.33.0)(postcss@8.5.28)(webpack@5.110.3(lightningcss@1.33.0)(postcss@8.5.28))
+      minimizer-webpack-plugin: 5.10.0(lightningcss@1.33.0)(postcss@8.5.28)(webpack@5.110.3(lightningcss@1.33.0)(postcss@8.5.28))
       neo-async: 2.6.2
       schema-utils: 4.3.3
       tapable: 2.3.3
