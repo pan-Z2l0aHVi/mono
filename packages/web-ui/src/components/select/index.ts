@@ -10,7 +10,7 @@ import { lucideChevronDown } from '@/icons'
 import { defineFormAssociation, FormAssociationController } from '@/shared/form-association'
 import { defineOptionPortal } from '@/shared/option-portal'
 import { defineAnchoredPanel } from '@/shared/overlay/anchored-panel'
-import { defineOverlayPortal } from '@/shared/overlay/portal'
+import { applyOverlayVariables, defineOverlayPortal } from '@/shared/overlay/portal'
 import type { OverlayContainer, OverlayPortal } from '@/shared/overlay/portal'
 import { defineScrollLockLease } from '@/shared/scroll-lock/scroll-lock'
 
@@ -438,6 +438,11 @@ export class WebUiSelect extends LitElement {
       onContentChange: () => this._optionPortal.scheduleRefresh()
     })
     this._portal = portal
+    applyOverlayVariables(portal.panel, this, [
+      '--wui-overlay-min-width',
+      '--wui-select-max-width',
+      '--wui-select-max-height'
+    ])
     portal.panel.setAttribute('role', 'listbox')
     const scroll = document.createElement('div')
     scroll.className = 'select-scroll'

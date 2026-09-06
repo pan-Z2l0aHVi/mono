@@ -133,7 +133,7 @@
 
 .select-scroll {
   overflow-y: auto;
-  max-height: 320px;
+  max-height: var(--wui-select-max-height, 240px);
 }
 
 .select-content {

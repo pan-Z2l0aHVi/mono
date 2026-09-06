@@ -26,6 +26,44 @@ describe('WebUiSelect 组件（浏览器）', () => {
     expect(select.open).toBe(false)
   })
 
+  it('下拉滚动区域默认高度可通过 CSS variable 覆盖', async () => {
+    const select = document.createElement('web-ui-select')
+    select.innerHTML = '<web-ui-option value="apple">Apple</web-ui-option>'
+    document.body.append(select)
+    await select.updateComplete
+    const scroll = select.shadowRoot!.querySelector<HTMLElement>('.select-scroll')!
+    expect(getComputedStyle(scroll).maxHeight).toBe('240px')
+
+    select.style.setProperty('--wui-select-max-height', '160px')
+    await select.updateComplete
+    expect(getComputedStyle(scroll).maxHeight).toBe('160px')
+  })
+
+  it('Portal 下拉滚动区域继承 CSS variable', async () => {
+    const theme = document.createElement('web-ui-theme')
+    theme.setAttribute('appearance', 'light')
+    theme.className = 'block'
+    const select = document.createElement('web-ui-select')
+    select.portal = true
+    select.style.setProperty('--wui-select-max-height', '180px')
+    select.innerHTML = '<web-ui-option value="apple">Apple</web-ui-option>'
+    theme.append(select)
+    document.body.append(theme)
+    await theme.updateComplete
+    await select.updateComplete
+
+    select.shadowRoot?.querySelector<HTMLElement>('[role="combobox"]')?.click()
+    await new Promise(resolve => requestAnimationFrame(resolve))
+    await select.updateComplete
+
+    const overlayContainer = theme.shadowRoot?.querySelector<HTMLElement>('[data-wui-overlay-container]')
+    const portalHost = overlayContainer?.firstElementChild as HTMLElement | null
+    const scroll = portalHost?.shadowRoot?.querySelector<HTMLElement>('.select-scroll')
+    expect(select.open).toBe(true)
+    expect(scroll).toBeTruthy()
+    expect(getComputedStyle(scroll!).maxHeight).toBe('180px')
+  })
+
   it('退出过渡隐藏前重新打开 Portal 面板', async () => {
     const select = document.createElement('web-ui-select')
     select.portal = true

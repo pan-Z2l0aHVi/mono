@@ -10,7 +10,7 @@ import { defineFormAssociation, FormAssociationController } from '@/shared/form-
 import { normalizeLiteral } from '@/shared/normalize'
 import { defineOptionPortal } from '@/shared/option-portal'
 import { defineAnchoredPanel } from '@/shared/overlay/anchored-panel'
-import { defineOverlayPortal } from '@/shared/overlay/portal'
+import { applyOverlayVariables, defineOverlayPortal } from '@/shared/overlay/portal'
 import type { OverlayContainer, OverlayPortal } from '@/shared/overlay/portal'
 import { defineScrollLockLease } from '@/shared/scroll-lock/scroll-lock'
 
@@ -596,6 +596,11 @@ export class WebUiAutocomplete extends LitElement {
       }
     })
     this._portal = portal
+    applyOverlayVariables(portal.panel, this, [
+      '--wui-overlay-min-width',
+      '--wui-autocomplete-max-width',
+      '--wui-autocomplete-max-height'
+    ])
     portal.panel.setAttribute('aria-hidden', 'true')
     portal.panel.addEventListener('pointerdown', this._handlePanelPointerDown)
     const scroll = document.createElement('div')

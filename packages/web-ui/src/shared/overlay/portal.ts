@@ -28,6 +28,18 @@ export interface OverlayPortal {
 }
 
 /**
+ * Portal 面板位于独立 shadow root，宿主上的 CSS 自定义属性不会沿渲染树继承到 panel。
+ * 这里在创建时镜像锚点解析后的变量，让组件 host 上的尺寸配置对 portal 仍然生效。
+ */
+export function applyOverlayVariables(panel: HTMLElement, source: Element, variables: readonly string[]): void {
+  const computedStyle = getComputedStyle(source)
+  for (const variable of variables) {
+    const value = computedStyle.getPropertyValue(variable).trim()
+    if (value) panel.style.setProperty(variable, value)
+  }
+}
+
+/**
  * 构建带 Shadow DOM 样式边界的 Portal 面板，并追踪被迁移的内容节点以便恢复。
  */
 export const defineOverlayPortal = () =>

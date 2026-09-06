@@ -133,7 +133,7 @@
 
 .autocomplete-scroll {
   overflow-y: auto;
-  max-height: 320px;
+  max-height: var(--wui-autocomplete-max-height, 240px);
 }
 
 .autocomplete-content {

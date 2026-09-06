@@ -386,9 +386,12 @@ Child `<web-ui-option>` elements register via `option-register` / `option-unregi
 | Property                  | Default                            | Description                     |
 | ------------------------- | ---------------------------------- | ------------------------------- |
 | `--wui-select-max-width`  | `500px`                            | Dropdown max width              |
+| `--wui-select-max-height` | `240px`                            | Dropdown scroll area max height |
 | `--wui-overlay-min-width` | `200px`                            | Dropdown min width              |
 | `--wui-select-bg-hover`   | `--wui-color-surface-glass-hover`  | Trigger hover background        |
 | `--wui-select-bg-active`  | `--wui-color-surface-glass-active` | Trigger pressed/open background |
+
+Portal panels mirror these variables from the host element when created; change the host before opening a portal panel for a new value to apply.
 
 #### `<web-ui-autocomplete>`
 
@@ -424,10 +427,13 @@ Use `<div slot="empty">…</div>` for static, non-interactive empty-state conten
 
 **CSS Custom Properties:**
 
-| Property                       | Default | Description            |
-| ------------------------------ | ------- | ---------------------- |
-| `--wui-autocomplete-max-width` | `500px` | Dropdown max width     |
-| `--wui-overlay-min-width`      | `200px` | Dropdown minimum width |
+| Property                        | Default | Description                     |
+| ------------------------------- | ------- | ------------------------------- |
+| `--wui-autocomplete-max-width`  | `500px` | Dropdown max width              |
+| `--wui-autocomplete-max-height` | `240px` | Dropdown scroll area max height |
+| `--wui-overlay-min-width`       | `200px` | Dropdown minimum width          |
+
+Portal panels mirror these variables from the host element when created; change the host before opening a portal panel for a new value to apply.
 
 #### `<web-ui-slider>`
 

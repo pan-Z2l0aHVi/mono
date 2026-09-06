@@ -371,9 +371,12 @@ ArrowUp/ArrowDown 键增减数值。空输入或 `-` 在提交时被忽略，值
 | 属性                      | 默认值                             | 说明                  |
 | ------------------------- | ---------------------------------- | --------------------- |
 | `--wui-select-max-width`  | `500px`                            | 下拉框最大宽度        |
+| `--wui-select-max-height` | `240px`                            | 下拉滚动区域最大高度  |
 | `--wui-overlay-min-width` | `200px`                            | 下拉框最小宽度        |
 | `--wui-select-bg-hover`   | `--wui-color-surface-glass-hover`  | Trigger 悬停背景      |
 | `--wui-select-bg-active`  | `--wui-color-surface-glass-active` | Trigger 按下/打开背景 |
+
+Portal 面板创建时会镜像 host 上解析后的这些变量；更新 host 后需重新打开 Portal 面板才会生效。
 
 #### `<web-ui-autocomplete>`
 
@@ -409,10 +412,13 @@ ArrowUp/ArrowDown 键增减数值。空输入或 `-` 在提交时被忽略，值
 
 **CSS 自定义属性：**
 
-| 属性                           | 默认值  | 说明           |
-| ------------------------------ | ------- | -------------- |
-| `--wui-autocomplete-max-width` | `500px` | 下拉框最大宽度 |
-| `--wui-overlay-min-width`      | `200px` | 下拉框最小宽度 |
+| 属性                            | 默认值  | 说明                 |
+| ------------------------------- | ------- | -------------------- |
+| `--wui-autocomplete-max-width`  | `500px` | 下拉框最大宽度       |
+| `--wui-autocomplete-max-height` | `240px` | 下拉滚动区域最大高度 |
+| `--wui-overlay-min-width`       | `200px` | 下拉框最小宽度       |
+
+Portal 面板创建时会镜像 host 上解析后的这些变量；更新 host 后需重新打开 Portal 面板才会生效。
 
 #### `<web-ui-slider>`
 

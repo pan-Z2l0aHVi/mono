@@ -53,6 +53,43 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     expect(el.open).toBe(false)
   })
 
+  it('下拉滚动区域默认高度可通过 CSS variable 覆盖', async () => {
+    const el = document.createElement('web-ui-autocomplete')
+    el.innerHTML = '<web-ui-option value="apple" label="Apple"></web-ui-option>'
+    document.body.append(el)
+    await el.updateComplete
+    const scroll = el.shadowRoot!.querySelector<HTMLElement>('.autocomplete-scroll')!
+    expect(getComputedStyle(scroll).maxHeight).toBe('240px')
+
+    el.style.setProperty('--wui-autocomplete-max-height', '160px')
+    await el.updateComplete
+    expect(getComputedStyle(scroll).maxHeight).toBe('160px')
+  })
+
+  it('Portal 下拉滚动区域继承 CSS variable', async () => {
+    const theme = document.createElement('web-ui-theme')
+    theme.setAttribute('appearance', 'light')
+    theme.className = 'block'
+    const el = document.createElement('web-ui-autocomplete')
+    el.portal = true
+    el.style.setProperty('--wui-autocomplete-max-height', '180px')
+    el.innerHTML = '<web-ui-option value="apple" label="Apple"></web-ui-option>'
+    theme.append(el)
+    document.body.append(theme)
+    await theme.updateComplete
+    await el.updateComplete
+
+    el.shadowRoot?.querySelector<HTMLElement>('[role="combobox"]')?.focus()
+    el.shadowRoot?.querySelector<HTMLElement>('[role="combobox"]')?.click()
+    await new Promise(resolve => requestAnimationFrame(resolve))
+    await el.updateComplete
+
+    const scroll = getPortalPanel(theme)?.querySelector<HTMLElement>('.autocomplete-scroll')
+    expect(el.open).toBe(true)
+    expect(scroll).toBeTruthy()
+    expect(getComputedStyle(scroll!).maxHeight).toBe('180px')
+  })
+
   it('Portal 中 active option 通过同根 ARIA 镜像可被 combobox 获取', async () => {
     const theme = document.createElement('web-ui-theme')
     theme.setAttribute('appearance', 'light')
