@@ -1282,7 +1282,7 @@ watch(addDialogOpen, (open, _, onCleanup) => {
               选择本地文件、拖拽到上传区，或直接粘贴剪贴板内容。
             </p>
             <label
-              class="grid h-full cursor-pointer place-content-center justify-items-center gap-3 rounded-[20px] border-[1.5px] border-dashed border-[rgb(0_0_0/0.15)] bg-[#f5f5f7] px-6 py-7 transition-[border-color,background-color,transform] duration-[160ms] hover:bg-[#eeeef1] focus-within:border-[var(--wui-color-accent,#08f)] focus-within:[--wui-internal-glass-focus-ring:inset_0_0_0_1px_var(--wui-color-accent,#08f),0_0_0_var(--wui-focus-ring-width,3px)_var(--wui-color-focus-ring,rgb(0_136_255/0.4))] dark:border-[var(--wui-color-border)] dark:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_3%,transparent)] dark:hover:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_6%,transparent)] max-[640px]:gap-2 max-[640px]:px-4 max-[640px]:py-2 max-[900px]:p-5"
+              class="grid h-full cursor-pointer place-content-center justify-items-center gap-3 rounded-[20px] border-[1.5px] border-dashed border-[rgb(0_0_0/0.15)] bg-[#f5f5f7] px-6 py-7 transition-[background-color] duration-[160ms] hover:bg-[#eeeef1] dark:border-[var(--wui-color-border)] dark:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_3%,transparent)] dark:hover:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_6%,transparent)] max-[640px]:gap-2 max-[640px]:px-4 max-[640px]:py-2 max-[900px]:p-5"
               :class="
                 addDragActive
                   ? 'scale-[1.005] border-[var(--wui-color-accent,#08f)] bg-[color-mix(in_srgb,var(--wui-color-accent,#08f)_9%,transparent)]'
@@ -1405,7 +1405,7 @@ watch(addDialogOpen, (open, _, onCleanup) => {
                       >
                         {{ tag }}
                         <web-ui-button
-                          class="shrink-0"
+                          class="shrink-0 [--wui-button-color:currentColor]"
                           icon
                           variant="ghost"
                           size="16"
@@ -1423,7 +1423,7 @@ watch(addDialogOpen, (open, _, onCleanup) => {
                           v-if="queueTagEditingId === item.id"
                           class="shrink-0"
                           icon
-                          :variant="queueTagDraft.trim() ? 'primary' : 'secondary'"
+                          :variant="queueTagDraft.trim() ? 'primary' : 'glass'"
                           size="20"
                           :aria-label="queueTagDraft.trim() ? '确认标签' : '收起标签编辑'"
                           @pointerdown.prevent
@@ -1435,7 +1435,7 @@ watch(addDialogOpen, (open, _, onCleanup) => {
                           v-else
                           class="shrink-0"
                           icon
-                          variant="secondary"
+                          variant="glass"
                           size="20"
                           aria-label="添加标签"
                           @click="toggleQueueTagEditor(item)"
