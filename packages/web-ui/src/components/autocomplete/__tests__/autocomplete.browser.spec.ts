@@ -778,7 +778,7 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     expect(panelRect.top).toBeGreaterThanOrEqual(wrapperRect.bottom - 1)
   })
 
-  it('borderless 输入框仍保留可见 focus 指示器且浮层背景不受影响', async () => {
+  it('borderless 输入框键盘聚焦时保留 focus ring 且浮层背景不受影响', async () => {
     const el = document.createElement('web-ui-autocomplete')
     el.setAttribute('borderless', '')
     el.innerHTML = '<web-ui-option value="apple" label="Apple"></web-ui-option>'
@@ -791,11 +791,12 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     expect(wrapperStyle.boxShadow).toBe('none')
 
     const input = el.shadowRoot!.querySelector<HTMLInputElement>('[role="combobox"]')!
-    input.focus()
+    await userEvent.keyboard('{Tab}')
     await el.updateComplete
 
     const focusedStyle = getComputedStyle(wrapper)
     expect(el.hasAttribute('focused')).toBe(true)
+    expect(input.matches(':focus-visible')).toBe(true)
     expect(focusedStyle.outlineStyle).toBe('solid')
     expect(Number.parseFloat(focusedStyle.outlineWidth)).toBeGreaterThan(0)
 

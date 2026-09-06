@@ -50,7 +50,7 @@ describe('Web UI focus indicators（浏览器）', () => {
     expect(style.boxShadow).toContain(`0px 0px 0px ${focusRingWidth}`)
   })
 
-  it('borderless 输入框隐藏玻璃描边，并在键盘聚焦时保留 focus 指示器', async () => {
+  it('borderless 输入框隐藏玻璃描边并在键盘聚焦时保留 focus ring', async () => {
     const input = document.createElement('web-ui-input')
     input.setAttribute('borderless', '')
     document.body.append(input)

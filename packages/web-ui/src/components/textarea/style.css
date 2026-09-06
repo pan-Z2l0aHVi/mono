@@ -68,8 +68,10 @@
 
 :host([borderless][focused]) .wui-textarea-inner {
   border-color: transparent;
+  outline: none;
+}
 
-  /* borderless 移除了背景和玻璃阴影，但仍必须保留可感知的键盘/输入焦点边界 */
+:host([borderless][focused]) .wui-textarea-inner:has(textarea:focus-visible) {
   outline: var(--wui-focus-ring-width, 3px) solid var(--wui-color-focus-ring, rgb(0 136 255 / 0.4));
   outline-offset: 2px;
 }
