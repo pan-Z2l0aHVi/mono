@@ -1,5 +1,8 @@
 # ADR-0039: browser-kit 自研 history-nav（Navigation API 只读子集）
 
+- **Date**: 2026-08-30
+- **Status**: 已接受
+
 ## 背景
 
 Interweave shell 的 header 需要「后退 / 前进」按钮禁用态（`canGoBack` / `canGoForward`）。vue-router 只在 `router.push()` 时维护 `history.state.back/forward`；本应用没有 `router.push`，页面间导航全部来自地址栏输入与浏览器前进/后退，浏览器会克隆旧 state，导致 `back/forward` 恒为 `null`，无法据此判断可用性。

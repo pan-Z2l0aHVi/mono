@@ -31,13 +31,7 @@ Manager 面向交付结果组织其他专业 Agent，而不是默认承担所有
 
 ## Agent onboarding
 
-新启动或接入的 Agent 不会自动继承 Role。Manager 必须先发送初始化 prompt，并等待 Agent 确认 Role 已加载后再派发任务：
-
-```text
-本会话担任 <role>。读取并遵循 `.agents/agents/<role>.md`，将其作为本会话的角色与协作规范。
-```
-
-`<role>` 使用仓库内 Role Contract 的文件名，例如 `lib-coder` 或 `reviewer`。Herdr tab label 只是编排别名，不决定 Agent 的 Role；复用已有会话前必须确认其当前 Role，不清楚或已漂移时重新初始化。
+新启动或接入的 Agent 不会自动继承 Role。Manager 必须先发送角色初始化 prompt（`<role>` 使用仓库内 Role Contract 的文件名，例如 `lib-coder` 或 `reviewer`），并等待 Agent 确认 Role 已加载后再派发任务。prompt 的权威文案与可用 Role 列表以根目录 [`CONTRIBUTING.md`](../../CONTRIBUTING.md) 的「角色会话」节为准，不在此复制，避免两处漂移。Herdr tab label 只是编排别名，不决定 Agent 的 Role；复用已有会话前必须确认其当前 Role，不清楚或已漂移时重新初始化。
 
 ## Responsibilities
 

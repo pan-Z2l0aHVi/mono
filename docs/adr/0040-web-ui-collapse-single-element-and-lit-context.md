@@ -1,5 +1,9 @@
 # ADR-0040: Web UI Collapse 单组件化与受管组合下行通道迁移 @lit/context
 
+- **Date**: 2026-08-31
+- **Status**: 已接受
+- **Supersedes**: [ADR-0038](0038-web-ui-collapse.md) 的三元素家族结构（第 3 节）与 trigger 实现（第 4 节），并继承其动画选型与三态关闭语义
+
 ## 背景
 
 ADR-0038 将 collapse 设计为根 + trigger + content 三元素 compound 组件族。组件在首次发布前（changeset 尚未 release），作者对 API 形态提出重新审视，并对照了 React 生态（Radix/shadcn）与主流 Web Component 库（Web Awesome、Vaadin、Spectrum、FAST、Element Plus、Material Web）的组合模式谱系（证据链见 `docs/research/collapse-api-design-patterns.md`）。

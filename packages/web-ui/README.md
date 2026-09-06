@@ -228,44 +228,44 @@ All form controls participate in native `FormData`, constraint validation, `form
 
 ## All Components
 
-| Category             | Component                                                 |
-| -------------------- | --------------------------------------------------------- |
-| **Form Controls**    | [`<web-ui-input>`](#web-ui-input)                         |
-|                      | [`<web-ui-textarea>`](#web-ui-textarea)                   |
-|                      | [`<web-ui-input-number>`](#web-ui-input-number)           |
-|                      | [`<web-ui-select>`](#web-ui-select)                       |
-|                      | [`<web-ui-autocomplete>`](#web-ui-autocomplete)           |
-|                      | [`<web-ui-slider>`](#web-ui-slider)                       |
-|                      | [`<web-ui-checkbox>`](#web-ui-checkbox)                   |
-|                      | [`<web-ui-radio>`](#web-ui-radio)                         |
-|                      | [`<web-ui-switch>`](#web-ui-switch)                       |
-|                      | [`<web-ui-segmented>`](#web-ui-segmented)                 |
-|                      | [`<web-ui-checkbox-group>`](#web-ui-checkbox-group)       |
-|                      | [`<web-ui-radio-group>`](#web-ui-radio-group)             |
-| **Buttons**          | [`<web-ui-button>`](#web-ui-button)                       |
-|                      | [`<web-ui-button-group>`](#web-ui-button-group)           |
-| **Overlay / Modal**  | [`<web-ui-dialog>`](#web-ui-dialog)                       |
-|                      | [`<web-ui-drawer>`](#web-ui-drawer)                       |
-|                      | [`<web-ui-collapse>`](#web-ui-collapse)                   |
-| **Floating**         | [`<web-ui-popover>`](#web-ui-popover)                     |
-|                      | [`<web-ui-tooltip>`](#web-ui-tooltip)                     |
-|                      | [`<web-ui-context-menu>`](#web-ui-context-menu)           |
-| **Menu**             | [`<web-ui-dropdown>`](#web-ui-dropdown)                   |
-|                      | [`<web-ui-dropdown-item>`](#web-ui-dropdown-item)         |
-|                      | [`<web-ui-dropdown-divider>`](#web-ui-dropdown-divider)   |
-|                      | [`<web-ui-dropdown-header>`](#web-ui-dropdown-header)     |
-| **Data Display**     | [`<web-ui-avatar>`](#web-ui-avatar)                       |
-|                      | [`<web-ui-badge>`](#web-ui-badge)                         |
-|                      | [`<web-ui-empty>`](#web-ui-empty)                         |
-|                      | [`<web-ui-icon>`](#web-ui-icon)                           |
-|                      | [`<web-ui-spinner>`](#web-ui-spinner)                     |
-| **Layout & Utility** | [`<web-ui-layout>`](#web-ui-layout)                       |
-|                      | [`<web-ui-back-top>`](#web-ui-back-top)                   |
-|                      | [`<web-ui-svg-draw-lines>`](#web-ui-svg-draw-lines)       |
-|                      | [`<web-ui-theme>`](#web-ui-theme)                         |
-| **Notification**     | [`<web-ui-toast>`](#web-ui-toast)                         |
-| **Sub-items**        | [`<web-ui-option>`](#web-ui-option)                       |
-|                      | [`<web-ui-segmented-trigger>`](#web-ui-segmented-trigger) |
+| Category               | Component                                                 |
+| ---------------------- | --------------------------------------------------------- |
+| **Form Controls**      | [`<web-ui-input>`](#web-ui-input)                         |
+|                        | [`<web-ui-textarea>`](#web-ui-textarea)                   |
+|                        | [`<web-ui-input-number>`](#web-ui-input-number)           |
+|                        | [`<web-ui-select>`](#web-ui-select)                       |
+|                        | [`<web-ui-autocomplete>`](#web-ui-autocomplete)           |
+|                        | [`<web-ui-slider>`](#web-ui-slider)                       |
+|                        | [`<web-ui-checkbox>`](#web-ui-checkbox)                   |
+|                        | [`<web-ui-radio>`](#web-ui-radio)                         |
+|                        | [`<web-ui-switch>`](#web-ui-switch)                       |
+|                        | [`<web-ui-segmented>`](#web-ui-segmented)                 |
+|                        | [`<web-ui-checkbox-group>`](#web-ui-checkbox-group)       |
+|                        | [`<web-ui-radio-group>`](#web-ui-radio-group)             |
+| **Buttons**            | [`<web-ui-button>`](#web-ui-button)                       |
+|                        | [`<web-ui-button-group>`](#web-ui-button-group)           |
+| **Overlay / Modal**    | [`<web-ui-dialog>`](#web-ui-dialog)                       |
+|                        | [`<web-ui-drawer>`](#web-ui-drawer)                       |
+| **In-flow Disclosure** | [`<web-ui-collapse>`](#web-ui-collapse)                   |
+| **Floating**           | [`<web-ui-popover>`](#web-ui-popover)                     |
+|                        | [`<web-ui-tooltip>`](#web-ui-tooltip)                     |
+|                        | [`<web-ui-context-menu>`](#web-ui-context-menu)           |
+| **Menu**               | [`<web-ui-dropdown>`](#web-ui-dropdown)                   |
+|                        | [`<web-ui-dropdown-item>`](#web-ui-dropdown-item)         |
+|                        | [`<web-ui-dropdown-divider>`](#web-ui-dropdown-divider)   |
+|                        | [`<web-ui-dropdown-header>`](#web-ui-dropdown-header)     |
+| **Data Display**       | [`<web-ui-avatar>`](#web-ui-avatar)                       |
+|                        | [`<web-ui-badge>`](#web-ui-badge)                         |
+|                        | [`<web-ui-empty>`](#web-ui-empty)                         |
+|                        | [`<web-ui-icon>`](#web-ui-icon)                           |
+|                        | [`<web-ui-spinner>`](#web-ui-spinner)                     |
+| **Layout & Utility**   | [`<web-ui-layout>`](#web-ui-layout)                       |
+|                        | [`<web-ui-back-top>`](#web-ui-back-top)                   |
+|                        | [`<web-ui-svg-draw-lines>`](#web-ui-svg-draw-lines)       |
+|                        | [`<web-ui-theme>`](#web-ui-theme)                         |
+| **Notification**       | [`<web-ui-toast>`](#web-ui-toast)                         |
+| **Sub-items**          | [`<web-ui-option>`](#web-ui-option)                       |
+|                        | [`<web-ui-segmented-trigger>`](#web-ui-segmented-trigger) |
 
 ## API Reference
 
@@ -386,7 +386,7 @@ Child `<web-ui-option>` elements register via `option-register` / `option-unregi
 | Property                  | Default                            | Description                     |
 | ------------------------- | ---------------------------------- | ------------------------------- |
 | `--wui-select-max-width`  | `500px`                            | Dropdown max width              |
-| `--wui-select-max-height` | `240px`                            | Dropdown scroll area max height |
+| `--wui-select-max-height` | `200px`                            | Dropdown scroll area max height |
 | `--wui-overlay-min-width` | `200px`                            | Dropdown min width              |
 | `--wui-select-bg-hover`   | `--wui-color-surface-glass-hover`  | Trigger hover background        |
 | `--wui-select-bg-active`  | `--wui-color-surface-glass-active` | Trigger pressed/open background |
@@ -430,7 +430,7 @@ Use `<div slot="empty">…</div>` for static, non-interactive empty-state conten
 | Property                        | Default | Description                     |
 | ------------------------------- | ------- | ------------------------------- |
 | `--wui-autocomplete-max-width`  | `500px` | Dropdown max width              |
-| `--wui-autocomplete-max-height` | `240px` | Dropdown scroll area max height |
+| `--wui-autocomplete-max-height` | `200px` | Dropdown scroll area max height |
 | `--wui-overlay-min-width`       | `200px` | Dropdown minimum width          |
 
 Portal panels mirror these variables from the host element when created; change the host before opening a portal panel for a new value to apply.

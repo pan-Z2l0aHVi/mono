@@ -36,7 +36,7 @@ Role 是显式选择的按需 session context：读取 `.agents/agents/<role>.md
 
 - `AGENTS.md`、`CONTEXT.md`、`docs/agents/`、`.agents/rules/`、`.agents/skills/` 与 `.agents/agents/` 是 Codex、Claude Code、Gemini CLI 与 ZCode 等共用的规范。
 - Codex 通过层级 `AGENTS.md` 获得目录约束；根 `CLAUDE.md` 与 `GEMINI.md` 只说明对应客户端的加载顺序，不复制共享规则。客户端适配不自动选择 Role。
-- ZCode 原生读 workspace `AGENTS.md`（自当前目录向上解析），并自动发现 `.agents/skills/` 与 `.agents/commands/`；因此与 Codex 同策略，不设独立的薄适配入口文件。
+- ZCode 原生读 workspace `AGENTS.md`（自当前目录向上解析），并自动发现 `.agents/skills/`；因此与 Codex 同策略，不设独立的薄适配入口文件。
 - ACP plan 是当前会话的临时进度 UI；多阶段任务的创建、阶段同步和结束前收敛以 [`CONTRIBUTING.md`](../../CONTRIBUTING.md) 为权威。它不持久化为 `agent-state`，也不能替代源码、Git 或验证证据。
 - `.claude/rules`、`.claude/skills` 和 `.claude/agents` 必须通过 symlink 指向 `.agents/` 中的共享内容；Gemini CLI 自动发现 `.agents/skills/`。
 - `scripts/validate-context.mjs` 只检查这套共享 context 的可加载性，不能替代对规则语义、代码行为或 agent 输出质量的评审。

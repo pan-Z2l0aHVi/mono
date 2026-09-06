@@ -11,7 +11,7 @@
 涉及属性、slot、event、form、导出、框架类型、token 或组件可见行为时，按实际影响检查：
 
 - `src/components/` 或 `src/types/` 的实现与出口
-- 对应组件 README（`README.md` 与 `README.CN.md`）
+- 包 README（`README.md` 与 `README.CN.md`）中对应组件的章节
 - 受影响的 ADR（0003、0005、0006、0007、0008、0010、0011）
 - 聚焦测试和 browser-mode 测试
 - React/Vue demo 的 type fixtures 与集成表面

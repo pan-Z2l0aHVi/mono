@@ -1,5 +1,8 @@
 # ADR-0042: Web UI trigger 元素 ARIA 回写约定
 
+- **Date**: 2026-08-31
+- **Status**: 已接受
+
 ## 背景
 
 使用命名 slot 提供 trigger 的组件（popover、dropdown、tooltip、collapse）存在共同的可访问性缺口：trigger 包装结构（wrapper div 或 shadow 内容器）不可聚焦，AT 读不到其 aria 状态；消费者 slot 进来的元素才是真正的可聚焦交互元素，但组件此前没有把状态写回它身上。

@@ -1,5 +1,8 @@
 # ADR-0035: Drawer 边缘拖拽关闭
 
+- **Date**: 2026-08-27
+- **Status**: 已接受
+
 ## 背景
 
 `web-ui-drawer` 基于原生 `<dialog>` + `showModal()` 实现（ADR-0003/0005）。原生 dialog 在关闭态（`open` 为 false）**不渲染任何可见 DOM**——`:host` 为 `display: contents`，dialog 本身脱离文档流。这与移动端 App 或 React 第三方 drawer 库不同：后者在关闭态也常保留一个常驻的屏幕边缘热区供拖拽打开。

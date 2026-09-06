@@ -1,5 +1,8 @@
 # ADR-0043: Web UI hover/active 背景反馈即时切换
 
+- **Date**: 2026-09-03
+- **Status**: 已接受
+
 ## 背景
 
 web-ui 各组件的 hover/active 背景变化此前普遍声明 `background-color` transition（`--wui-duration-trigger` 160ms / `--wui-duration-feedback` 100ms），指针悬停或按压后背景颜色平滑渐变。这类渐变让控件状态响应显得迟滞，与目标平台（iOS/macOS 原生控件）的即时反馈手感不一致；且 hover 状态高频进出，过渡动画反而放大视觉噪声。
