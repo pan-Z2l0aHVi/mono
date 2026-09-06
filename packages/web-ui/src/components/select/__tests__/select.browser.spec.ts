@@ -32,7 +32,7 @@ describe('WebUiSelect 组件（浏览器）', () => {
     document.body.append(select)
     await select.updateComplete
     const scroll = select.shadowRoot!.querySelector<HTMLElement>('.select-scroll')!
-    expect(getComputedStyle(scroll).maxHeight).toBe('240px')
+    expect(getComputedStyle(scroll).maxHeight).toBe('200px')
 
     select.style.setProperty('--wui-select-max-height', '160px')
     await select.updateComplete
