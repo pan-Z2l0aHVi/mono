@@ -684,5 +684,22 @@ describe('WebUiPopover 组件', () => {
 
       cleanupElement(el)
     })
+
+    it('aria-expanded / aria-controls 回写到 trigger 元素', async () => {
+      const el = createPopover('Btn', 'Content')
+      await waitForUpdate(el)
+
+      const trigger = el.querySelector<HTMLElement>('[slot="trigger"]')!
+      expect(trigger.getAttribute('aria-expanded')).toBe('false')
+      expect(trigger.getAttribute('aria-controls')).toBe(el.shadowRoot?.querySelector('[role="dialog"]')?.id)
+
+      clickTrigger(el)
+      await waitForUpdate(el)
+      vi.advanceTimersToNextFrame()
+      await waitForUpdate(el)
+      expect(trigger.getAttribute('aria-expanded')).toBe('true')
+
+      cleanupElement(el)
+    })
   })
 })

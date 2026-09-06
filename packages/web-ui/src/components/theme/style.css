@@ -7,7 +7,7 @@
 :host {
   --wui-font-size: 14px;
   --wui-input-width: 200px;
-  --wui-control-size: 40px;
+  --wui-control-size: 36px;
   --wui-overlay-min-width: 200px;
 
   /* z-index layers - 基础结构 */
@@ -34,6 +34,9 @@
   --wui-duration-overlay-exit: 140ms;
   --wui-duration-drawer-enter: 280ms;
   --wui-duration-drawer-exit: 240ms;
+  --wui-duration-drawer-nested: 450ms;
+  --wui-duration-collapse-enter: 200ms;
+  --wui-duration-collapse-exit: 160ms;
   --wui-duration-layout: 200ms;
   --wui-ease-enter: cubic-bezier(0.23, 1, 0.32, 1);
   --wui-ease-slide: cubic-bezier(0.77, 0, 0.175, 1);
@@ -53,6 +56,9 @@
   --wui-duration-overlay-exit: 0ms;
   --wui-duration-drawer-enter: 0ms;
   --wui-duration-drawer-exit: 0ms;
+  --wui-duration-drawer-nested: 0ms;
+  --wui-duration-collapse-enter: 0ms;
+  --wui-duration-collapse-exit: 0ms;
   --wui-duration-layout: 0ms;
   --wui-scale-enter: 1;
 }
@@ -69,6 +75,9 @@
     --wui-duration-overlay-exit: 0ms;
     --wui-duration-drawer-enter: 0ms;
     --wui-duration-drawer-exit: 0ms;
+    --wui-duration-drawer-nested: 0ms;
+    --wui-duration-collapse-enter: 0ms;
+    --wui-duration-collapse-exit: 0ms;
     --wui-duration-layout: 0ms;
     --wui-scale-enter: 1;
   }
@@ -81,10 +90,13 @@
   --wui-color-surface-raised: #f2f2f7;
   --wui-color-surface-control: #dfdfdf;
   --wui-color-surface-track: #e5e5ea;
+  --wui-color-surface-menu: rgb(246 246 246 / 0.82);
   --wui-color-surface-glass: rgb(250 250 250 / 0.34);
   --wui-color-surface-glass-hover: color-mix(in srgb, var(--wui-color-text) 6%, var(--wui-color-surface-glass));
   --wui-color-surface-glass-active: color-mix(in srgb, var(--wui-color-text) 15%, var(--wui-color-surface-glass));
   --wui-color-surface-overlay: rgb(246 246 246 / 0.82);
+  --wui-color-surface-segmented: #e5e5ea;
+  --wui-color-surface-selected: #fff;
   --wui-color-text: #1b1b1b;
   --wui-color-text-secondary: #6a6a6a;
   --wui-color-text-tertiary: color-mix(in srgb, var(--wui-color-text) 35%, transparent);
@@ -92,10 +104,14 @@
   --wui-color-state-layer-hover: color-mix(in srgb, var(--wui-color-text) 6%, transparent);
   --wui-color-state-layer-active: color-mix(in srgb, var(--wui-color-text) 15%, transparent);
   --wui-color-border: rgb(0 0 0 / 0.1);
-  --wui-color-glass-border: rgb(51 51 51 / 0.12);
+  --wui-color-glass-border: transparent;
   --wui-color-glass-highlight: rgb(255 255 255 / 0.9);
+  --wui-color-glass-corner: rgb(255 255 255 / 0.08);
+  --wui-color-glass-shade: rgb(0 0 0 / 0.06);
+  --wui-glass-brightness: 1.06;
   --wui-color-accent: #08f;
   --wui-color-on-accent: #fff;
+  --wui-color-on-control: #fff;
   --wui-color-success: #16a34a;
   --wui-color-warning: #d97706;
   --wui-color-danger: #dc2626;
@@ -110,68 +126,82 @@
 }
 
 :host([appearance='dark']) {
-  --wui-color-page: #18181a;
+  --wui-color-page: #242628;
   --wui-color-surface: #2c2c2e;
   --wui-color-surface-raised: #2c2c2e;
   --wui-color-surface-control: #3a3a3c;
   --wui-color-surface-track: #444446;
+  --wui-color-surface-menu: rgb(30 30 32 / 0.92);
   --wui-color-surface-glass: rgb(44 44 46 / 0.42);
   --wui-color-surface-glass-hover: color-mix(in srgb, var(--wui-color-text) 6%, var(--wui-color-surface-glass));
   --wui-color-surface-glass-active: color-mix(in srgb, var(--wui-color-text) 15%, var(--wui-color-surface-glass));
-  --wui-color-surface-overlay: rgb(44 44 46 / 0.82);
-  --wui-color-text: #f5f5f7;
+  --wui-color-surface-overlay: rgb(32 34 34 / 0.9);
+  --wui-color-surface-segmented: #3a3a3c;
+  --wui-color-surface-selected: #5c5c5e;
+  --wui-color-text: #e9eaea;
   --wui-color-text-secondary: #a1a1a6;
   --wui-color-text-tertiary: color-mix(in srgb, var(--wui-color-text) 42%, transparent);
   --wui-color-text-disabled: color-mix(in srgb, var(--wui-color-text) 38%, transparent);
   --wui-color-state-layer-hover: color-mix(in srgb, var(--wui-color-text) 6%, transparent);
   --wui-color-state-layer-active: color-mix(in srgb, var(--wui-color-text) 15%, transparent);
   --wui-color-border: rgb(255 255 255 / 0.14);
-  --wui-color-glass-border: rgb(255 255 255 / 0.16);
-  --wui-color-glass-highlight: rgb(255 255 255 / 0.22);
+  --wui-color-glass-border: rgb(255 255 255 / 0.05);
+  --wui-color-glass-highlight: rgb(255 255 255 / 0.1);
+  --wui-color-glass-corner: rgb(255 255 255 / 0.2);
+  --wui-color-glass-shade: rgb(0 0 0 / 0.5);
+  --wui-glass-brightness: 1.02;
   --wui-color-accent: #0a84ff;
   --wui-color-on-accent: #fff;
+  --wui-color-on-control: #f2f2f7;
   --wui-color-success: #30d158;
   --wui-color-warning: #ff9f0a;
   --wui-color-danger: #ff453a;
   --wui-color-info: #64d2ff;
   --wui-color-backdrop: rgb(0 0 0 / 0.48);
-  --wui-shadow-overlay: 0 18px 48px rgb(0 0 0 / 0.54);
-  --wui-shadow-panel: 0 4px 16px rgb(0 0 0 / 0.35);
-  --wui-shadow-glass: 0 12px 32px rgb(0 0 0 / 0.38);
+  --wui-shadow-overlay: 0 18px 48px rgb(0 0 0 / 0.48);
+  --wui-shadow-panel: 0 4px 16px rgb(0 0 0 / 0.32);
+  --wui-shadow-glass: 0 8px 24px rgb(0 0 0 / 0.08);
   --wui-color-focus-ring: rgb(10 132 255 / 0.62);
   color-scheme: dark;
 }
 
 @media (prefers-color-scheme: dark) {
   :host([appearance='system']) {
-    --wui-color-page: #18181a;
+    --wui-color-page: #242628;
     --wui-color-surface: #2c2c2e;
     --wui-color-surface-raised: #2c2c2e;
     --wui-color-surface-control: #3a3a3c;
     --wui-color-surface-track: #444446;
+    --wui-color-surface-menu: rgb(30 30 32 / 0.92);
     --wui-color-surface-glass: rgb(44 44 46 / 0.42);
     --wui-color-surface-glass-hover: color-mix(in srgb, var(--wui-color-text) 6%, var(--wui-color-surface-glass));
     --wui-color-surface-glass-active: color-mix(in srgb, var(--wui-color-text) 15%, var(--wui-color-surface-glass));
-    --wui-color-surface-overlay: rgb(44 44 46 / 0.82);
-    --wui-color-text: #f5f5f7;
+    --wui-color-surface-overlay: rgb(32 34 34 / 0.9);
+    --wui-color-surface-segmented: #3a3a3c;
+    --wui-color-surface-selected: #5c5c5e;
+    --wui-color-text: #e9eaea;
     --wui-color-text-secondary: #a1a1a6;
     --wui-color-text-tertiary: color-mix(in srgb, var(--wui-color-text) 42%, transparent);
     --wui-color-text-disabled: color-mix(in srgb, var(--wui-color-text) 38%, transparent);
     --wui-color-state-layer-hover: color-mix(in srgb, var(--wui-color-text) 6%, transparent);
     --wui-color-state-layer-active: color-mix(in srgb, var(--wui-color-text) 15%, transparent);
     --wui-color-border: rgb(255 255 255 / 0.14);
-    --wui-color-glass-border: rgb(255 255 255 / 0.16);
-    --wui-color-glass-highlight: rgb(255 255 255 / 0.22);
+    --wui-color-glass-border: rgb(255 255 255 / 0.05);
+    --wui-color-glass-highlight: rgb(255 255 255 / 0.1);
+    --wui-color-glass-corner: rgb(255 255 255 / 0.2);
+    --wui-color-glass-shade: rgb(0 0 0 / 0.5);
+    --wui-glass-brightness: 1.02;
     --wui-color-accent: #0a84ff;
     --wui-color-on-accent: #fff;
+    --wui-color-on-control: #f2f2f7;
     --wui-color-success: #30d158;
     --wui-color-warning: #ff9f0a;
     --wui-color-danger: #ff453a;
     --wui-color-info: #64d2ff;
     --wui-color-backdrop: rgb(0 0 0 / 0.48);
-    --wui-shadow-overlay: 0 18px 48px rgb(0 0 0 / 0.54);
-    --wui-shadow-panel: 0 4px 16px rgb(0 0 0 / 0.35);
-    --wui-shadow-glass: 0 12px 32px rgb(0 0 0 / 0.38);
+    --wui-shadow-overlay: 0 18px 48px rgb(0 0 0 / 0.48);
+    --wui-shadow-panel: 0 4px 16px rgb(0 0 0 / 0.32);
+    --wui-shadow-glass: 0 8px 24px rgb(0 0 0 / 0.08);
     --wui-color-focus-ring: rgb(10 132 255 / 0.62);
     color-scheme: dark;
   }

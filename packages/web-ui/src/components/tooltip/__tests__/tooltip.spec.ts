@@ -303,14 +303,30 @@ describe('WebUiTooltip 组件', () => {
   })
 
   describe('焦点进入/离开', () => {
-    it('focusin 立即显示', async () => {
+    it('keyboard focusin 立即显示', async () => {
       const el = createTooltip({ content: '提示' })
       await waitForUpdate(el)
+      const trigger = el.querySelector('button')!
+      vi.spyOn(trigger, 'matches').mockReturnValue(true)
 
-      el.dispatchEvent(new FocusEvent('focusin', { bubbles: true }))
+      trigger.dispatchEvent(new FocusEvent('focusin', { bubbles: true }))
       await waitForUpdate(el)
 
       expect(el.isOpen).toBe(true)
+
+      cleanupElement(el)
+    })
+
+    it('pointer focusin 不显示', async () => {
+      const el = createTooltip({ content: '提示' })
+      await waitForUpdate(el)
+      const trigger = el.querySelector('button')!
+      vi.spyOn(trigger, 'matches').mockReturnValue(false)
+
+      trigger.dispatchEvent(new FocusEvent('focusin', { bubbles: true }))
+      await waitForUpdate(el)
+
+      expect(el.isOpen).toBe(false)
 
       cleanupElement(el)
     })
@@ -319,7 +335,9 @@ describe('WebUiTooltip 组件', () => {
       const el = createTooltip({ content: '提示' })
       await waitForUpdate(el)
 
-      el.dispatchEvent(new FocusEvent('focusin', { bubbles: true }))
+      const trigger = el.querySelector('button')!
+      vi.spyOn(trigger, 'matches').mockReturnValue(true)
+      trigger.dispatchEvent(new FocusEvent('focusin', { bubbles: true }))
       await waitForUpdate(el)
       expect(el.isOpen).toBe(true)
 

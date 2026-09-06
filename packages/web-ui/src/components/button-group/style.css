@@ -15,7 +15,7 @@
   align-items: center;
 
   width: max-content;
-  height: 40px;
+  height: var(--wui-control-size, 36px);
   padding: 0 4px;
   border-radius: calc(infinity * 1px);
 }
@@ -25,7 +25,7 @@
 }
 
 :host([direction='vertical']) .wui-button-group-inner {
-  width: 40px;
+  width: var(--wui-control-size, 36px);
   height: auto;
   padding: 4px 0;
 }

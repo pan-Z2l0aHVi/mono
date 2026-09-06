@@ -6,6 +6,7 @@
 
 - 全局拓扑和快速定位：[`ARCHITECTURE.md`](ARCHITECTURE.md)。
 - 协作流程短入口：[`CONTRIBUTING.md`](CONTRIBUTING.md)；它不取代按任务加载的规则。
+- 会话角色：用户或 Manager 指定角色时，读取 [`.agents/agents/<role>.md`](.agents/agents/)；初始化见 [`CONTRIBUTING.md`](CONTRIBUTING.md)。
 
 1. 先查看工作区状态、目标文件和最近的 `AGENTS.md`；只有进入某个 `apps/` 或 `packages/` 时才加载其包级指令。
 2. 只按任务加载命中的 rule、guide 和包级指令；不要为普通局部任务预读 `CONTEXT.md`、ADR 或无关领域指南。
@@ -42,7 +43,7 @@
 | instruction system / context 维护                 | [`docs/agents/context.md`](docs/agents/context.md)、[`CONTEXT.md`](CONTEXT.md) 和 ADR-0012                                                                                                                      |
 | 代码 review                                       | [`.agents/rules/review-checklist.md`](.agents/rules/review-checklist.md)、[`docs/agents/review.md`](docs/agents/review.md)；需要独立 reviewer 时再读 [`.agents/agents/reviewer.md`](.agents/agents/reviewer.md) |
 | 全局替换 / 重命名 / API 迁移 / 文件迁移           | [`.agents/rules/global-rename.md`](.agents/rules/global-rename.md)                                                                                                                                              |
-| Git commit                                        | [`.agents/rules/commit.md`](.agents/rules/commit.md) 和 [`docs/agents/commit.md`](docs/agents/commit.md)                                                                                                        |
+| Git commit                                        | [`.agents/rules/commit.md`](.agents/rules/commit.md)、[`docs/agents/commit.md`](docs/agents/commit.md) 和 [`CONTRIBUTING.md`](CONTRIBUTING.md)（AI 协作署名）                                                   |
 | GitHub issue                                      | [`docs/agents/issue-tracker.md`](docs/agents/issue-tracker.md)                                                                                                                                                  |
 
 涉及 UI、UX、交互、响应式或浏览器运行时的改动，必须按 [`browser-verification.md`](docs/agents/browser-verification.md) 在真实浏览器验证；构建成功或 jsdom 测试不能替代该验证。实现不熟悉或跨浏览器语义不明确的 Web Platform API 时，使用 MDN MCP 验证语义和兼容性。

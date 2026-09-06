@@ -13,6 +13,7 @@ const roots = [
   'CONTEXT.md',
   'ARCHITECTURE.md',
   'CONTRIBUTING.md',
+  '.agents/agents',
   '.agents/rules',
   '.agents/skills',
   'docs/agents',

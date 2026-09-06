@@ -3,7 +3,6 @@ import { customElement, property, state } from 'lit/decorators.js'
 import { classMap } from 'lit/directives/class-map.js'
 
 import '@/components/icon'
-import glass from '@/assets/glass.css?inline'
 import { lucideInbox } from '@/icons'
 import { normalizeLiteral } from '@/shared/normalize'
 
@@ -15,11 +14,15 @@ const ALLOWED_SIZES = ['small', 'medium', 'large'] as const
 
 @customElement('web-ui-empty')
 export class WebUiEmpty extends LitElement {
-  static override styles = [unsafeCSS(glass), unsafeCSS(style)]
+  static override styles = [unsafeCSS(style)]
 
   @property({ type: String, reflect: true }) override title = ''
 
   @property({ type: String, reflect: true }) description = ''
+
+  private get _iconSize(): number {
+    return this._size === 'small' ? 16 : this._size === 'large' ? 32 : 24
+  }
 
   @property({ type: String, reflect: true })
   set size(value: string) {
@@ -68,8 +71,8 @@ export class WebUiEmpty extends LitElement {
 
     return html`
       <section class="empty">
-        <div class="empty-icon wui-glass" aria-hidden="true">
-          <slot name="icon"><web-ui-icon .icon=${lucideInbox}></web-ui-icon></slot>
+        <div class="empty-icon" aria-hidden="true">
+          <slot name="icon"><web-ui-icon .icon=${lucideInbox} .size=${this._iconSize}></web-ui-icon></slot>
         </div>
         <div class=${classMap({ 'empty-title': true, 'is-hidden': !showTitle })}>
           <slot @slotchange=${this._syncSlotContent}>${this.title}</slot>

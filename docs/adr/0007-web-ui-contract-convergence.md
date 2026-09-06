@@ -1,5 +1,8 @@
 # ADR-0007: web-ui 全量契约收敛
 
+- **Date**: 2026-07-30
+- **Status**: 已接受
+
 ## 背景
 
 `@greypan/web-ui` 的 34 个 Lit Web Component 在 v1.x 迭代中积累了若干不一致：

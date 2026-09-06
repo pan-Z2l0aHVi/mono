@@ -5,7 +5,7 @@
 }
 
 :host {
-  cursor: pointer;
+  cursor: default;
   display: inline-block;
 }
 
@@ -14,7 +14,7 @@
 }
 
 .wui-checkbox {
-  cursor: pointer;
+  cursor: default;
   user-select: none;
 
   display: inline-flex;

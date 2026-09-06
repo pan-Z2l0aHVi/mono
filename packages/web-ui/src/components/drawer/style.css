@@ -49,6 +49,21 @@ dialog[open].is-visible {
   transform: translate(0, 0);
 }
 
+/*
+ * 拖拽跟手期间与弹簧弹回期间，transform/backdrop 由 JS 内联样式与 WAAPI 管辖。
+ * 特异性必须压过下方开放守卫块（:host(:not()) dialog[open].is-visible = (0,4,1)
+ * 的 nested transition 声明），否则拖拽写入的 transform 会被平滑掉、跟手失效。
+ * 复合选择器达 (0,6,1)，恒高于守卫。
+ */
+:host(:not([headless])) dialog.is-dragging[open].is-visible,
+dialog.is-dragging {
+  transition: none;
+
+  &::backdrop {
+    transition: none;
+  }
+}
+
 :host([placement='left']) dialog[open].is-visible,
 :host([placement='top']) dialog[open].is-visible,
 :host([placement='bottom']) dialog[open].is-visible {
@@ -65,7 +80,89 @@ dialog.is-closing::backdrop {
 }
 
 dialog[open].is-visible::backdrop {
-  opacity: 1;
+  /* 拖拽期间由 JS 写入 --wui-internal-drag-backdrop-opacity 实现遮罩跟手淡出。 */
+  opacity: var(--wui-internal-drag-backdrop-opacity, 1);
+}
+
+/* ===== Drag bar（拖拽关闭热区） ===== */
+
+/*
+ * 热区贴在抽屉内缘，宽度约 24px 便于触控命中；胶囊本身是约 4×48px 的灰色短条。
+ * 位置随 placement 切换：right 贴在左缘、left 贴在右缘、top 贴在底边、bottom 贴在顶边。
+ */
+.wui-drawer-drag-zone {
+  touch-action: none;
+  cursor: grab;
+
+  position: absolute;
+  z-index: 4;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  transition: opacity var(--wui-duration-feedback, 100ms) ease;
+}
+
+dialog.is-nested-lower .wui-drawer-drag-zone {
+  pointer-events: none;
+  opacity: 0;
+}
+
+:host([placement='right']) .wui-drawer-drag-zone {
+  top: 0;
+  left: 0;
+  width: 24px;
+  height: 100%;
+}
+
+:host([placement='left']) .wui-drawer-drag-zone {
+  top: 0;
+  right: 0;
+  width: 24px;
+  height: 100%;
+}
+
+:host([placement='top']) .wui-drawer-drag-zone,
+:host([placement='bottom']) .wui-drawer-drag-zone {
+  right: 0;
+  left: 0;
+  width: 100%;
+  height: 24px;
+}
+
+:host([placement='top']) .wui-drawer-drag-zone {
+  bottom: 0;
+}
+
+:host([placement='bottom']) .wui-drawer-drag-zone {
+  top: 0;
+}
+
+.wui-drawer-drag-bar {
+  width: 4px;
+  height: 48px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--wui-color-text, #1b1b1b) 24%, transparent);
+}
+
+:host([placement='top']) .wui-drawer-drag-bar,
+:host([placement='bottom']) .wui-drawer-drag-bar {
+  width: 48px;
+  height: 4px;
+}
+
+.wui-drawer-drag-zone:hover .wui-drawer-drag-bar,
+.wui-drawer-drag-zone:active .wui-drawer-drag-bar {
+  background: color-mix(in srgb, var(--wui-color-text, #1b1b1b) 40%, transparent);
+}
+
+/*
+ * 达到关闭阈值的 accent 确认需压过上方 :hover/:active 中性色（拖拽全程 capture
+ * 使 hover 恒成立），这里的选择器特异性 (0,3,1) 高于 hover/active 的 (0,3,0)。
+ */
+dialog.is-drag-close .wui-drawer-drag-zone .wui-drawer-drag-bar {
+  background: var(--wui-color-accent, #08f);
 }
 
 /* ===== Placement 变体 ===== */
@@ -100,10 +197,21 @@ dialog[open].is-visible::backdrop {
   transform: translateY(100%);
 }
 
+/*
+ * 拖拽中的 grabbing 光标。dialog 复合前缀使其特异性恒高于上方 placement 变体，
+ * stylelint 的顺序比较对这种结构必然告警；cascade 上此规则不依赖 placement，
+ * 置于其后仅为可读性，故显式豁免。
+ */
+/* stylelint-disable-next-line no-descending-specificity */
+dialog.is-dragging .wui-drawer-drag-zone {
+  cursor: grabbing;
+}
+
 /* ===== 抽屉主体 ===== */
 
 .wui-drawer-body {
   --wui-internal-glass-shadow: var(--wui-shadow-overlay, 2px 16px 40px rgb(0 0 0 / 0.4));
+  --wui-glass-corner-radius: var(--wui-drawer-radius, 28px);
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -153,20 +261,6 @@ dialog[open].is-visible::backdrop {
   border-top: 1px solid rgb(0 0 0 / 0.06);
 }
 
-@media (prefers-reduced-motion: reduce) {
-  dialog {
-    transition: opacity var(--wui-duration-feedback, 100ms) ease;
-  }
-
-  dialog::backdrop {
-    transition-duration: var(--wui-duration-feedback, 100ms);
-  }
-
-  dialog[open].is-visible {
-    transform: none;
-  }
-}
-
 .wui-drawer-footer[hidden] {
   display: none;
 }
@@ -184,7 +278,144 @@ dialog[open].is-visible::backdrop {
 
 /* Headless 模式下，dialog 只作为 overlay 容器，不渲染内置 UI */
 :host([headless]) dialog {
+  /*
+   * inset 只属于浮动卡片几何；headless 嵌套在非 headless 外层内时会沿
+   * flattened tree 继承到 8px，破坏 JS 读取该变量得到的贴边几何假设
+   * （parseFloat('0px') 与回退 0 语义一致），故显式归零。
+   */
+  --wui-internal-drawer-inset: 0px;
+
   /* 保持 overlay 基础设施，移除内置样式 */
   width: auto;
   max-width: none;
+}
+
+/* ===== 浮动卡片视觉语言（ADR-0036） ===== */
+
+/*
+ * 非 headless 时抽屉是四周留边的圆角卡片，与 layout sidebar 的设计语言一致；
+ * 弹性拖拽使边距变化（8px → 更大）是合法状态而非渲染缺口。
+ * headless 保持贴边几何，视觉由 Consumer 自绘。
+ *
+ * 留边经公开 token --wui-drawer-inset 暴露（默认 8px，ADR-0036 修订）；
+ * 置 0 即贴边几何（与 headless 相同），通常与 --wui-drawer-radius: 0 搭配。
+ *
+ * 闭合位移需要越过留边才能完全滑出视口，因此闭合态 transform 以
+ * --wui-internal-drawer-inset 补偿；JS 在 controlled 悬停终态读取同一变量，
+ * 保证两条关闭路径的行为一致。headless 将该变量显式归零（见上方 Headless 模式）。
+ */
+
+/* 默认 right：四周留边、高度随上下边距拉伸，闭合位移越过右侧留边 */
+:host(:not([headless])) dialog {
+  --wui-internal-drawer-inset: var(--wui-drawer-inset, 8px);
+  --wui-internal-drawer-nested-depth: 0;
+  --wui-internal-drawer-nested-scale: 1;
+  --wui-internal-drawer-nested-shift: 0px;
+
+  top: var(--wui-internal-drawer-inset);
+  right: var(--wui-internal-drawer-inset);
+  bottom: var(--wui-internal-drawer-inset);
+  left: auto;
+  transform: translateX(calc(100% + var(--wui-internal-drawer-inset)));
+
+  height: auto;
+  border-radius: var(--wui-drawer-radius, 28px);
+}
+
+:host(:not([headless])) .wui-drawer-body {
+  border-radius: inherit;
+}
+
+:host(:not([headless])[placement='left']) dialog {
+  top: var(--wui-internal-drawer-inset);
+  right: auto;
+  bottom: var(--wui-internal-drawer-inset);
+  left: var(--wui-internal-drawer-inset);
+  transform: translateX(calc(-100% - var(--wui-internal-drawer-inset)));
+
+  height: auto;
+}
+
+:host(:not([headless])[placement='top']) dialog {
+  top: var(--wui-internal-drawer-inset);
+  right: var(--wui-internal-drawer-inset);
+  bottom: auto;
+  left: var(--wui-internal-drawer-inset);
+  transform: translateY(calc(-100% - var(--wui-internal-drawer-inset)));
+
+  width: auto;
+  max-width: none;
+}
+
+:host(:not([headless])[placement='bottom']) dialog {
+  top: auto;
+  right: var(--wui-internal-drawer-inset);
+  bottom: var(--wui-internal-drawer-inset);
+  left: var(--wui-internal-drawer-inset);
+  transform: translateY(calc(100% + var(--wui-internal-drawer-inset)));
+
+  width: auto;
+  max-width: none;
+}
+
+/*
+ * 开放态守卫：上方闭合 transform 与基础 `dialog[open].is-visible` 特异性相同且
+ * 在文件更后方，必须以更高特异性显式恢复打开位，否则抽屉停在闭合位。
+ *
+ * Nested 层叠（对齐卡片堆栈效果）：非顶层抽屉按 0.95^depth 缩放并向屏幕内侧
+ * 平移（shift 为正，朝屏幕中心方向），使缩小的卡片在顶层后方露出阶梯式卡片边缘。
+ * 用独立 translate/scale 属性（而非并入 transform）：
+ * 它们是标准可过渡属性，变量变化即触发平滑过渡；且与 transform 轴上的
+ * 闭合/拖拽/弹簧位移互不覆写（独立属性先于 transform 应用后合并）。
+ * JS 层序管理写入 depth/scale/shift 三个内部变量，单层使用时全为中性值。
+ *
+ * 层叠变化的平滑过渡（Base UI nested 实测规格：450ms easeOutQuint 类曲线）。
+ * transform 保持既有 enter/exit 时长；translate/scale 只在层叠数变化时更新，
+ * 用更长的 nested 时长。
+ */
+:host(:not([headless])) dialog[open].is-visible {
+  transform: translate(0, 0);
+  translate: calc(var(--wui-internal-drawer-nested-shift) * -1) 0;
+  scale: var(--wui-internal-drawer-nested-scale);
+  transition:
+    transform var(--wui-duration-drawer-enter, 280ms) var(--wui-ease-enter, cubic-bezier(0.23, 1, 0.32, 1)),
+    translate var(--wui-duration-drawer-nested, 450ms) cubic-bezier(0.22, 1, 0.36, 1),
+    scale var(--wui-duration-drawer-nested, 450ms) cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+:host(:not([headless])[placement='left']) dialog[open].is-visible {
+  transform: translate(0, 0);
+  translate: var(--wui-internal-drawer-nested-shift) 0;
+}
+
+:host(:not([headless])[placement='top']) dialog[open].is-visible {
+  transform: translate(0, 0);
+  translate: 0 var(--wui-internal-drawer-nested-shift);
+}
+
+:host(:not([headless])[placement='bottom']) dialog[open].is-visible {
+  transform: translate(0, 0);
+  translate: 0 calc(var(--wui-internal-drawer-nested-shift) * -1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /*
+   * reduce 下：位移一律归零、transform 不参与过渡（仅 opacity 反馈）。
+   * 全部 !important：压过开放守卫（嵌套层叠变量的特异性猫鼠不可维护），
+   * 排除 .is-dragging —— reduce 下拖拽仍需实时跟手（ADR-0035）。
+   * JS 收尾移除内联 transform 后立即为终态，无 280ms 过渡尾巴。
+   */
+  dialog:not(.is-dragging) {
+    transition: opacity var(--wui-duration-feedback, 100ms) ease !important;
+
+    &::backdrop {
+      transition-duration: var(--wui-duration-feedback, 100ms) !important;
+    }
+  }
+
+  dialog[open].is-visible:not(.is-dragging) {
+    transform: none !important;
+    translate: none !important;
+    scale: none !important;
+  }
 }

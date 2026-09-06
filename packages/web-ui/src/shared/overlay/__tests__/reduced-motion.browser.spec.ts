@@ -10,6 +10,14 @@ async function nextFrame() {
   await new Promise(resolve => requestAnimationFrame(resolve))
 }
 
+// "移除位移"的行为断言：none 与 translate(0,0) 在渲染上等价，均视为零位移；
+// 不锁定浏览器对 transform 的序列化格式。
+function expectNoTranslation(transform: string): void {
+  const matrix = !transform || transform === 'none' ? new DOMMatrixReadOnly() : new DOMMatrixReadOnly(transform)
+  expect(matrix.m41).toBe(0)
+  expect(matrix.m42).toBe(0)
+}
+
 afterEach(() => document.body.replaceChildren())
 
 describe('减少动效（浏览器）', () => {
@@ -21,7 +29,7 @@ describe('减少动效（浏览器）', () => {
     await nextFrame()
 
     const dialogElement = dialog.shadowRoot?.querySelector('dialog')
-    expect(getComputedStyle(dialogElement!).transform).toBe('none')
+    expectNoTranslation(getComputedStyle(dialogElement!).transform)
     expect(getComputedStyle(dialogElement!).transitionProperty).toContain('opacity')
 
     dialog.remove()
@@ -33,7 +41,7 @@ describe('减少动效（浏览器）', () => {
     await nextFrame()
 
     const drawerElement = drawer.shadowRoot?.querySelector('dialog')
-    expect(getComputedStyle(drawerElement!).transform).toBe('none')
+    expectNoTranslation(getComputedStyle(drawerElement!).transform)
     expect(getComputedStyle(drawerElement!).transitionProperty).toContain('opacity')
   })
 

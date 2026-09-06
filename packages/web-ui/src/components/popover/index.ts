@@ -92,7 +92,6 @@ export class WebUiPopover extends LitElement {
     createPortal: () => this._createPortal()
   })
 
-  // 当前是否打开
   get isOpen(): boolean {
     return this.open
   }
@@ -103,6 +102,19 @@ export class WebUiPopover extends LitElement {
     document.addEventListener('keydown', this._onKeydown)
     this.addEventListener('focusout', this._onFocusOut)
     this._syncTriggerListeners()
+  }
+
+  override firstUpdated() {
+    // trigger slot 内容增删不触发宿主响应式更新：显式请求一轮渲染，
+    // 由 updated() 的 ARIA 回写覆盖晚到的 trigger 元素。
+    this.shadowRoot
+      ?.querySelector<HTMLSlotElement>('slot[name="trigger"]')
+      ?.addEventListener('slotchange', () => this.requestUpdate())
+
+    if (this.open) {
+      requestAnimationFrame(() => this._openOverlay(this._shouldOpenInstantly))
+      this._shouldOpenInstantly = true
+    }
   }
 
   override disconnectedCallback() {
@@ -117,14 +129,10 @@ export class WebUiPopover extends LitElement {
     this._panel.dispose()
   }
 
-  override firstUpdated() {
-    if (this.open) {
-      requestAnimationFrame(() => this._openOverlay(this._shouldOpenInstantly))
-      this._shouldOpenInstantly = true
-    }
-  }
-
   protected override updated(changed: Map<string, unknown>) {
+    // ARIA 回写不依赖 open 分支，任何渲染后都保持与宿主状态同步。
+    this._syncTriggerAria()
+
     if (changed.has('portal') || changed.has('overlayContainer'))
       requestAnimationFrame(() => this._reconfigureOverlay())
     else if (changed.has('placement') || changed.has('offset'))
@@ -153,19 +161,16 @@ export class WebUiPopover extends LitElement {
     }
   }
 
-  // 打开 popover
   show() {
     if (this.disabled || this.open) return
     this.open = true
   }
 
-  // 关闭 popover
   close() {
     if (!this.open) return
     this.open = false
   }
 
-  // 切换 popover
   toggle() {
     if (this.open) this.close()
     else this.show()
@@ -223,6 +228,18 @@ export class WebUiPopover extends LitElement {
         composed: true
       })
     )
+  }
+
+  /*
+   * trigger 包装 div 不可聚焦，AT 读不到其 aria 状态：把 aria-expanded /
+   * aria-controls 同步回写到 trigger slot 的首个 assigned element（Q8a）。
+   * 包装 div 上的同名属性保留（additive，兼容既有查询）。
+   */
+  private _syncTriggerAria() {
+    const trigger = this._queryTrigger()
+    if (!trigger) return
+    trigger.setAttribute('aria-expanded', String(this.open))
+    trigger.setAttribute('aria-controls', this._panelId)
   }
 
   private _focusPanel() {

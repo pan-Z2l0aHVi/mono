@@ -19,6 +19,7 @@ function SegmentedDemo() {
         </web-ui-segmented>
       </div>
       <p className="text-sm text-gray-500">选中值：{basicVal}</p>
+      <p className="text-xs text-gray-400">💡 支持按住当前选中项平滑拖拽跟踪、松手吸附至最近选项及抛掷手势</p>
 
       <h2>禁用状态</h2>
       <div className="mb-3">
