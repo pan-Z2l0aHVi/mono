@@ -13,7 +13,7 @@
 - Cursor 行为（普通控件 hover/press 保持 default、真实拖拽进入 grabbing、专用把手 grab -> grabbing）：[ADR-0044](../adr/0044-web-ui-tailwind-v4-cursor-specification.md)。
 - Autocomplete custom value 的开关、Enter 提交与候选匹配边界：[ADR-0045](../adr/0045-web-ui-autocomplete-custom-values.md)。
 - React/Vue 类型适配、`$events` 和复合控件事件边界：[ADR-0011](../adr/0011-framework-type-adaptation-narrowing.md)。
-- 跨框架 API 约定（Property camelCase / Attribute kebab-case / Event kebab-case）与布尔 converter 兜底：[ADR-0033](../adr/0033-cross-framework-api-convention.md)；README「框架集成」章节是面向消费者的规范。
+- 跨框架 API 约定（Property camelCase / Attribute kebab-case / Event kebab-case）与布尔 converter 兜底：[ADR-0033](../adr/0033-cross-framework-api-convention.md)；README 的「框架集成」（英文版 Framework Setup）章节是面向消费者的规范。
 - Collapse 单组件形态（default slot trigger + `slot="content"`）、受管组合的下行通道迁移 @lit/context：[ADR-0040](../adr/0040-web-ui-collapse-single-element-and-lit-context.md)。
 - 覆盖层内容迁移、menu 族关闭态隐藏与消费者节点写入边界：[ADR-0041](../adr/0041-web-ui-overlay-content-migration.md)。
 - slot-trigger 组件的 trigger 状态 ARIA 回写约定（popover/dropdown/collapse）：[ADR-0042](../adr/0042-web-ui-trigger-aria-writeback.md)。

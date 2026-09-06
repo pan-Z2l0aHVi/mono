@@ -1,5 +1,8 @@
 # ADR-0034: Web UI Semantic Token System
 
+- **Date**: 2026-08-26
+- **Status**: 已接受
+
 ## 背景
 
 Web UI 的 token 是已发布公共契约，但早期命名混合了视觉强度、组件来源和实现载体：`text-muted` / `text-faint` 难以表达层级边界；`border-strong` 实际是 focus 态颜色；`button-size` 同时服务 button、input、select 等控件；`shadow-pop` 和 `web-ui-back-top-*` 与整体命名规则不一致。部分内部接线变量也使用公开 `--wui-*` 前缀，容易被误解为可覆盖 API。

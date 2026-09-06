@@ -215,44 +215,44 @@ property（`el.checked = false`）并提示 toast。翻转先于批准的窗口�
 
 ## 所有组件
 
-| 分类            | 组件                                                      |
-| --------------- | --------------------------------------------------------- |
-| **表单控件**    | [`<web-ui-input>`](#web-ui-input)                         |
-|                 | [`<web-ui-textarea>`](#web-ui-textarea)                   |
-|                 | [`<web-ui-input-number>`](#web-ui-input-number)           |
-|                 | [`<web-ui-select>`](#web-ui-select)                       |
-|                 | [`<web-ui-autocomplete>`](#web-ui-autocomplete)           |
-|                 | [`<web-ui-slider>`](#web-ui-slider)                       |
-|                 | [`<web-ui-checkbox>`](#web-ui-checkbox)                   |
-|                 | [`<web-ui-radio>`](#web-ui-radio)                         |
-|                 | [`<web-ui-switch>`](#web-ui-switch)                       |
-|                 | [`<web-ui-segmented>`](#web-ui-segmented)                 |
-|                 | [`<web-ui-checkbox-group>`](#web-ui-checkbox-group)       |
-|                 | [`<web-ui-radio-group>`](#web-ui-radio-group)             |
-| **按钮**        | [`<web-ui-button>`](#web-ui-button)                       |
-|                 | [`<web-ui-button-group>`](#web-ui-button-group)           |
-| **浮层 / 模态** | [`<web-ui-dialog>`](#web-ui-dialog)                       |
-|                 | [`<web-ui-drawer>`](#web-ui-drawer)                       |
-|                 | [`<web-ui-collapse>`](#web-ui-collapse)                   |
-| **浮动**        | [`<web-ui-popover>`](#web-ui-popover)                     |
-|                 | [`<web-ui-tooltip>`](#web-ui-tooltip)                     |
-|                 | [`<web-ui-context-menu>`](#web-ui-context-menu)           |
-| **菜单**        | [`<web-ui-dropdown>`](#web-ui-dropdown)                   |
-|                 | [`<web-ui-dropdown-item>`](#web-ui-dropdown-item)         |
-|                 | [`<web-ui-dropdown-divider>`](#web-ui-dropdown-divider)   |
-|                 | [`<web-ui-dropdown-header>`](#web-ui-dropdown-header)     |
-| **数据展示**    | [`<web-ui-avatar>`](#web-ui-avatar)                       |
-|                 | [`<web-ui-badge>`](#web-ui-badge)                         |
-|                 | [`<web-ui-empty>`](#web-ui-empty)                         |
-|                 | [`<web-ui-icon>`](#web-ui-icon)                           |
-|                 | [`<web-ui-spinner>`](#web-ui-spinner)                     |
-| **布局与工具**  | [`<web-ui-layout>`](#web-ui-layout)                       |
-|                 | [`<web-ui-back-top>`](#web-ui-back-top)                   |
-|                 | [`<web-ui-svg-draw-lines>`](#web-ui-svg-draw-lines)       |
-|                 | [`<web-ui-theme>`](#web-ui-theme)                         |
-| **通知**        | [`<web-ui-toast>`](#web-ui-toast)                         |
-| **子项**        | [`<web-ui-option>`](#web-ui-option)                       |
-|                 | [`<web-ui-segmented-trigger>`](#web-ui-segmented-trigger) |
+| 分类                  | 组件                                                      |
+| --------------------- | --------------------------------------------------------- |
+| **表单控件**          | [`<web-ui-input>`](#web-ui-input)                         |
+|                       | [`<web-ui-textarea>`](#web-ui-textarea)                   |
+|                       | [`<web-ui-input-number>`](#web-ui-input-number)           |
+|                       | [`<web-ui-select>`](#web-ui-select)                       |
+|                       | [`<web-ui-autocomplete>`](#web-ui-autocomplete)           |
+|                       | [`<web-ui-slider>`](#web-ui-slider)                       |
+|                       | [`<web-ui-checkbox>`](#web-ui-checkbox)                   |
+|                       | [`<web-ui-radio>`](#web-ui-radio)                         |
+|                       | [`<web-ui-switch>`](#web-ui-switch)                       |
+|                       | [`<web-ui-segmented>`](#web-ui-segmented)                 |
+|                       | [`<web-ui-checkbox-group>`](#web-ui-checkbox-group)       |
+|                       | [`<web-ui-radio-group>`](#web-ui-radio-group)             |
+| **按钮**              | [`<web-ui-button>`](#web-ui-button)                       |
+|                       | [`<web-ui-button-group>`](#web-ui-button-group)           |
+| **浮层 / 模态**       | [`<web-ui-dialog>`](#web-ui-dialog)                       |
+|                       | [`<web-ui-drawer>`](#web-ui-drawer)                       |
+| **文档流 Disclosure** | [`<web-ui-collapse>`](#web-ui-collapse)                   |
+| **浮动**              | [`<web-ui-popover>`](#web-ui-popover)                     |
+|                       | [`<web-ui-tooltip>`](#web-ui-tooltip)                     |
+|                       | [`<web-ui-context-menu>`](#web-ui-context-menu)           |
+| **菜单**              | [`<web-ui-dropdown>`](#web-ui-dropdown)                   |
+|                       | [`<web-ui-dropdown-item>`](#web-ui-dropdown-item)         |
+|                       | [`<web-ui-dropdown-divider>`](#web-ui-dropdown-divider)   |
+|                       | [`<web-ui-dropdown-header>`](#web-ui-dropdown-header)     |
+| **数据展示**          | [`<web-ui-avatar>`](#web-ui-avatar)                       |
+|                       | [`<web-ui-badge>`](#web-ui-badge)                         |
+|                       | [`<web-ui-empty>`](#web-ui-empty)                         |
+|                       | [`<web-ui-icon>`](#web-ui-icon)                           |
+|                       | [`<web-ui-spinner>`](#web-ui-spinner)                     |
+| **布局与工具**        | [`<web-ui-layout>`](#web-ui-layout)                       |
+|                       | [`<web-ui-back-top>`](#web-ui-back-top)                   |
+|                       | [`<web-ui-svg-draw-lines>`](#web-ui-svg-draw-lines)       |
+|                       | [`<web-ui-theme>`](#web-ui-theme)                         |
+| **通知**              | [`<web-ui-toast>`](#web-ui-toast)                         |
+| **子项**              | [`<web-ui-option>`](#web-ui-option)                       |
+|                       | [`<web-ui-segmented-trigger>`](#web-ui-segmented-trigger) |
 
 ## API 参考
 
@@ -371,7 +371,7 @@ ArrowUp/ArrowDown 键增减数值。空输入或 `-` 在提交时被忽略，值
 | 属性                      | 默认值                             | 说明                  |
 | ------------------------- | ---------------------------------- | --------------------- |
 | `--wui-select-max-width`  | `500px`                            | 下拉框最大宽度        |
-| `--wui-select-max-height` | `240px`                            | 下拉滚动区域最大高度  |
+| `--wui-select-max-height` | `200px`                            | 下拉滚动区域最大高度  |
 | `--wui-overlay-min-width` | `200px`                            | 下拉框最小宽度        |
 | `--wui-select-bg-hover`   | `--wui-color-surface-glass-hover`  | Trigger 悬停背景      |
 | `--wui-select-bg-active`  | `--wui-color-surface-glass-active` | Trigger 按下/打开背景 |
@@ -415,7 +415,7 @@ Portal 面板创建时会镜像 host 上解析后的这些变量；更新 host �
 | 属性                            | 默认值  | 说明                 |
 | ------------------------------- | ------- | -------------------- |
 | `--wui-autocomplete-max-width`  | `500px` | 下拉框最大宽度       |
-| `--wui-autocomplete-max-height` | `240px` | 下拉滚动区域最大高度 |
+| `--wui-autocomplete-max-height` | `200px` | 下拉滚动区域最大高度 |
 | `--wui-overlay-min-width`       | `200px` | 下拉框最小宽度       |
 
 Portal 面板创建时会镜像 host 上解析后的这些变量；更新 host 后需重新打开 Portal 面板才会生效。

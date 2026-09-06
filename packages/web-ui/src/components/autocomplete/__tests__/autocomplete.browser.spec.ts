@@ -59,7 +59,7 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     document.body.append(el)
     await el.updateComplete
     const scroll = el.shadowRoot!.querySelector<HTMLElement>('.autocomplete-scroll')!
-    expect(getComputedStyle(scroll).maxHeight).toBe('240px')
+    expect(getComputedStyle(scroll).maxHeight).toBe('200px')
 
     el.style.setProperty('--wui-autocomplete-max-height', '160px')
     await el.updateComplete

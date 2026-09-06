@@ -1,5 +1,8 @@
 # ADR-0031: Layout 页面结构、Banner 与可折叠 Sidebar
 
+- **Date**: 2026-08-26
+- **Status**: 已接受
+
 ## 背景
 
 `web-ui-layout` 需要提供桌面端可折叠 Sidebar 与移动端 Drawer，同时保持页面级滚动。原 CSS Grid 方案将 Sidebar、Header 和内容区绑定在一个高度模型中，难以同时处理可选 Banner、sticky 定位、窄视口 Overlay 与 Consumer 自定义 Sidebar 内部布局。

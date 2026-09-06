@@ -1,5 +1,8 @@
 # ADR-0003: Web 组件策略
 
+- **Date**: 2026-07-21
+- **Status**: 已接受；「框架类型封装」与「新组件需要同时更新两个类型辅助文件」部分已被 [ADR-0011](0011-framework-type-adaptation-narrowing.md) 收窄
+
 ## 背景
 
 `@greypan/web-ui` 组件库需要在 React、Vue 和原生 JS 之间通用，且不产生重复代码。每个框架有不同的 JSX 类型系统和模板编译器。

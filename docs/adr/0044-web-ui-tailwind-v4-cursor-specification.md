@@ -1,5 +1,8 @@
 # ADR-0044: Web UI 遵循 Tailwind v4 与 Native HIG Cursor 光标行为规范
 
+- **Date**: 2026-09-04
+- **Status**: 已接受
+
 ## 背景
 
 在以往 WebUI 组件库开发中，几乎所有可点击的交互控件（`button`、`checkbox`、`radio`、`switch`、`segmented-trigger`、`select` 等）均被惯性指定为 `cursor: pointer`。

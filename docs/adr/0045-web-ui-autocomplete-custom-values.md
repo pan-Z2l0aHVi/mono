@@ -1,5 +1,8 @@
 # ADR-0045: Web UI autocomplete custom values
 
+- **Date**: 2026-09-05
+- **Status**: 已接受
+
 ## 背景
 
 `web-ui-autocomplete` 的 `value` 一直是表单值，输入可以保留候选之外的文本；但组件没有把这类文本作为一次选择提交的公共契约。面板打开时，`Enter` 只在有活动 option 时触发 `change`，消费端若要支持新建标签，只能监听未拦截的 `keydown` 并自行读取 `value`。
