@@ -826,16 +826,23 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     const wrapperStyle = getComputedStyle(wrapper)
     expect(wrapperStyle.backgroundColor).toBe('rgba(0, 0, 0, 0)')
     expect(wrapperStyle.boxShadow).toBe('none')
+    // ghost 形态只剥表面装饰，保留 padding 与高度度量
+    expect(wrapperStyle.paddingLeft).toBe('12px')
+    expect(wrapperStyle.paddingRight).toBe('12px')
 
     const input = el.shadowRoot!.querySelector<HTMLInputElement>('[role="combobox"]')!
     await userEvent.keyboard('{Tab}')
     await el.updateComplete
+    // focus ring 走 200ms box-shadow 过渡，等过渡完成后再断言终值
+    await new Promise(resolve => setTimeout(resolve, 300))
 
+    // 与 normal 变体同款：inset accent 内圈 + focus-ring halo 的 box-shadow
     const focusedStyle = getComputedStyle(wrapper)
     expect(el.hasAttribute('focused')).toBe(true)
     expect(input.matches(':focus-visible')).toBe(true)
-    expect(focusedStyle.outlineStyle).toBe('solid')
-    expect(Number.parseFloat(focusedStyle.outlineWidth)).toBeGreaterThan(0)
+    expect(focusedStyle.boxShadow).toContain('inset')
+    expect(focusedStyle.boxShadow).toContain('rgb(0, 136, 255)')
+    expect(focusedStyle.boxShadow).toContain('0px 0px 0px 3px')
 
     // borderless 只作用于输入容器；下拉浮层保留 glass 背景
     const panel = el.shadowRoot!.querySelector<HTMLElement>('.autocomplete-overlay')!

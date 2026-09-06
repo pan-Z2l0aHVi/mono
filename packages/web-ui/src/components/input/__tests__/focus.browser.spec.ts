@@ -50,7 +50,7 @@ describe('Web UI focus indicators（浏览器）', () => {
     expect(style.boxShadow).toContain(`0px 0px 0px ${focusRingWidth}`)
   })
 
-  it('borderless 输入框隐藏玻璃描边并在键盘聚焦时保留 focus ring', async () => {
+  it('borderless 输入框隐藏玻璃描边、保留 padding 并在键盘聚焦时保留 focus ring', async () => {
     const input = document.createElement('web-ui-input')
     input.setAttribute('borderless', '')
     document.body.append(input)
@@ -58,16 +58,24 @@ describe('Web UI focus indicators（浏览器）', () => {
 
     const wrapper = input.shadowRoot?.querySelector<HTMLElement>('.wui-input-inner')
     expect(getComputedStyle(wrapper!, '::before').content).toBe('none')
+    // ghost 形态只剥表面装饰，保留 padding 与高度度量
+    const baseStyle = getComputedStyle(wrapper!)
+    expect(baseStyle.paddingLeft).toBe('12px')
+    expect(baseStyle.paddingRight).toBe('12px')
 
     const nativeInput = input.shadowRoot?.querySelector<HTMLInputElement>('input')
     await userEvent.keyboard('{Tab}')
     await input.updateComplete
+    // focus ring 走 200ms box-shadow 过渡，等过渡完成后再断言终值
+    await new Promise(resolve => setTimeout(resolve, 300))
 
+    // 与 normal 变体同款：inset accent 内圈 + focus-ring halo 的 box-shadow
     const style = getComputedStyle(wrapper!)
     expect(nativeInput?.matches(':focus-visible')).toBe(true)
     expect(input.hasAttribute('focused')).toBe(true)
-    expect(style.outlineStyle).toBe('solid')
-    expect(Number.parseFloat(style.outlineWidth)).toBeGreaterThan(0)
+    expect(style.boxShadow).toContain('inset')
+    expect(style.boxShadow).toContain('rgb(0, 136, 255)')
+    expect(style.boxShadow).toContain(`0px 0px 0px 3px`)
   })
 
   it('borderless 输入框移除 glass 描边环（.wui-glass::before）', async () => {

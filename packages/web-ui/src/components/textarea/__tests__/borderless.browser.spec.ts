@@ -25,13 +25,21 @@ describe('WebUiTextarea borderless（浏览器）', () => {
     expect(style.backgroundColor).toBe('rgba(0, 0, 0, 0)')
     expect(style.boxShadow).toBe('none')
     expect(getComputedStyle(inner, '::before').content).toBe('none')
+    // ghost 形态只剥表面装饰，保留 padding 与高度度量
+    expect(style.paddingTop).toBe('7.5px')
+    expect(style.paddingLeft).toBe('12px')
+    expect(style.paddingRight).toBe('12px')
 
     await userEvent.keyboard('{Tab}')
     await el.updateComplete
+    // focus ring 走 200ms box-shadow 过渡，等过渡完成后再断言终值
+    await new Promise(resolve => setTimeout(resolve, 300))
     const focusedStyle = getComputedStyle(inner)
     expect(el.hasAttribute('focused')).toBe(true)
     expect(el.shadowRoot?.querySelector('textarea')?.matches(':focus-visible')).toBe(true)
-    expect(focusedStyle.outlineStyle).toBe('solid')
-    expect(Number.parseFloat(focusedStyle.outlineWidth)).toBeGreaterThan(0)
+    // 与 normal 变体同款：inset accent 内圈 + focus-ring halo 的 box-shadow
+    expect(focusedStyle.boxShadow).toContain('inset')
+    expect(focusedStyle.boxShadow).toContain('rgb(0, 136, 255)')
+    expect(focusedStyle.boxShadow).toContain('0px 0px 0px 3px')
   })
 })

@@ -46,7 +46,6 @@
 /* ===== Borderless ===== */
 
 :host([borderless]) .input-wrapper {
-  padding: 0;
   border: none;
 
   background: transparent;
@@ -63,14 +62,10 @@
   content: none;
 }
 
+/* borderless 基线的 box-shadow: none 压掉了 .wui-glass 的整列阴影，
+   聚焦时改为直接消费 focus ring 变量，与 normal 变体同款并走既有 box-shadow 过渡 */
 :host([borderless][focused]) .input-wrapper {
-  border-color: transparent;
-  outline: none;
-}
-
-:host([borderless][focused]) .input-wrapper:has(input:focus-visible) {
-  outline: var(--wui-focus-ring-width, 3px) solid var(--wui-color-focus-ring, rgb(0 136 255 / 0.4));
-  outline-offset: 2px;
+  box-shadow: var(--wui-internal-glass-focus-ring, 0 0 0 0 transparent);
 }
 
 .autocomplete-input {

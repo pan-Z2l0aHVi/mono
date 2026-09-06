@@ -264,19 +264,19 @@ property（`el.checked = false`）并提示 toast。翻转先于批准的窗口�
 
 文本输入框，支持清除按钮和前后缀插槽。
 
-| 属性          | 类型      | 默认值   | 说明            |
-| ------------- | --------- | -------- | --------------- |
-| `value`       | `string`  | `''`     | 输入值          |
-| `type`        | `string`  | `'text'` | HTML input 类型 |
-| `placeholder` | `string`  | `''`     | 占位文本        |
-| `name`        | `string`  | `''`     | 表单字段名      |
-| `disabled`    | `boolean` | `false`  | 禁用状态        |
-| `readonly`    | `boolean` | `false`  | 只读状态        |
-| `required`    | `boolean` | `false`  | 必填校验        |
-| `clearable`   | `boolean` | `false`  | 显示清除按钮    |
-| `full`        | `boolean` | `false`  | 全宽            |
-| `borderless`  | `boolean` | `false`  | 无边框          |
-| `aria-label`  | `string`  | —        | 无障碍标签      |
+| 属性          | 类型      | 默认值   | 说明                                                                  |
+| ------------- | --------- | -------- | --------------------------------------------------------------------- |
+| `value`       | `string`  | `''`     | 输入值                                                                |
+| `type`        | `string`  | `'text'` | HTML input 类型                                                       |
+| `placeholder` | `string`  | `''`     | 占位文本                                                              |
+| `name`        | `string`  | `''`     | 表单字段名                                                            |
+| `disabled`    | `boolean` | `false`  | 禁用状态                                                              |
+| `readonly`    | `boolean` | `false`  | 只读状态                                                              |
+| `required`    | `boolean` | `false`  | 必填校验                                                              |
+| `clearable`   | `boolean` | `false`  | 显示清除按钮                                                          |
+| `full`        | `boolean` | `false`  | 全宽                                                                  |
+| `borderless`  | `boolean` | `false`  | ghost 形态：移除边框、背景与阴影；保留 padding、高度度量与 focus ring |
+| `aria-label`  | `string`  | —        | 无障碍标签                                                            |
 
 **事件：** `input`, `change`, `focus`, `blur`
 
@@ -292,24 +292,24 @@ property（`el.checked = false`）并提示 toast。翻转先于批准的窗口�
 
 多行文本输入框，支持自动调整高度。
 
-| 属性              | 类型      | 默认值  | 说明                               |
-| ----------------- | --------- | ------- | ---------------------------------- |
-| `value`           | `string`  | `''`    | 输入值                             |
-| `placeholder`     | `string`  | `''`    | 占位文本                           |
-| `rows`            | `number`  | `3`     | 显示行数                           |
-| `name`            | `string`  | `''`    | 表单字段名                         |
-| `disabled`        | `boolean` | `false` | 禁用状态                           |
-| `readonly`        | `boolean` | `false` | 只读状态                           |
-| `required`        | `boolean` | `false` | 必填校验                           |
-| `clearable`       | `boolean` | `false` | 显示清除按钮                       |
-| `full`            | `boolean` | `false` | 全宽                               |
-| `borderless`      | `boolean` | `false` | 无边框                             |
-| `autosize`        | `boolean` | `false` | 自动调整高度                       |
-| `max-height`      | `number`  | `0`     | 自动高度上限（px），`0` 表示不限制 |
-| `minlength`       | `number`  | —       | 最小长度校验                       |
-| `maxlength`       | `number`  | —       | 最大长度校验                       |
-| `aria-label`      | `string`  | —       | 无障碍标签                         |
-| `aria-labelledby` | `string`  | —       | 无障碍标签引用                     |
+| 属性              | 类型      | 默认值  | 说明                                                                  |
+| ----------------- | --------- | ------- | --------------------------------------------------------------------- |
+| `value`           | `string`  | `''`    | 输入值                                                                |
+| `placeholder`     | `string`  | `''`    | 占位文本                                                              |
+| `rows`            | `number`  | `3`     | 显示行数                                                              |
+| `name`            | `string`  | `''`    | 表单字段名                                                            |
+| `disabled`        | `boolean` | `false` | 禁用状态                                                              |
+| `readonly`        | `boolean` | `false` | 只读状态                                                              |
+| `required`        | `boolean` | `false` | 必填校验                                                              |
+| `clearable`       | `boolean` | `false` | 显示清除按钮                                                          |
+| `full`            | `boolean` | `false` | 全宽                                                                  |
+| `borderless`      | `boolean` | `false` | ghost 形态：移除边框、背景与阴影；保留 padding、高度度量与 focus ring |
+| `autosize`        | `boolean` | `false` | 自动调整高度                                                          |
+| `max-height`      | `number`  | `0`     | 自动高度上限（px），`0` 表示不限制                                    |
+| `minlength`       | `number`  | —       | 最小长度校验                                                          |
+| `maxlength`       | `number`  | —       | 最大长度校验                                                          |
+| `aria-label`      | `string`  | —       | 无障碍标签                                                            |
+| `aria-labelledby` | `string`  | —       | 无障碍标签引用                                                        |
 
 **事件：** `input`, `change`, `focus`, `blur`
 
@@ -382,23 +382,23 @@ Portal 面板创建时会镜像 host 上解析后的这些变量；更新 host �
 
 可输入并过滤候选的单值选择器。
 
-| 属性                 | 类型                               | 默认值       | 说明                                                          |
-| -------------------- | ---------------------------------- | ------------ | ------------------------------------------------------------- |
-| `value`              | `string`                           | `''`         | 当前输入文本（表单值）                                        |
-| `selected-value`     | `string`                           | `''`         | 输入文本精确匹配 label 的非禁用 option 的 value（派生，只读） |
-| `placeholder`        | `string`                           | `''`         | 占位文本                                                      |
-| `borderless`         | `boolean`                          | `false`      | 无边框                                                        |
-| `filter`             | `'none' \| 'prefix' \| 'contains'` | `'contains'` | 候选过滤模式（按 option label 匹配）                          |
-| `name`               | `string`                           | `''`         | 表单字段名                                                    |
-| `disabled`           | `boolean`                          | `false`      | 禁用状态                                                      |
-| `readonly`           | `boolean`                          | `false`      | 只读状态（不可输入、不可展开下拉）                            |
-| `required`           | `boolean`                          | `false`      | 必填校验                                                      |
-| `allow-custom-value` | `boolean`                          | `false`      | 允许 Enter 提交不在候选中的 custom value                      |
-| `portal`             | `boolean`                          | `false`      | 在主题浮层容器中渲染                                          |
-| `no-scroll-lock`     | `boolean`                          | `false`      | 打开时不锁定页面滚动                                          |
-| `overlayContainer`   | `HTMLElement \| () => HTMLElement` | —            | 显式 Portal 容器                                              |
-| `aria-label`         | `string`                           | —            | 无障碍名称                                                    |
-| `aria-labelledby`    | `string`                           | —            | 无障碍名称引用                                                |
+| 属性                 | 类型                               | 默认值       | 说明                                                                  |
+| -------------------- | ---------------------------------- | ------------ | --------------------------------------------------------------------- |
+| `value`              | `string`                           | `''`         | 当前输入文本（表单值）                                                |
+| `selected-value`     | `string`                           | `''`         | 输入文本精确匹配 label 的非禁用 option 的 value（派生，只读）         |
+| `placeholder`        | `string`                           | `''`         | 占位文本                                                              |
+| `borderless`         | `boolean`                          | `false`      | ghost 形态：移除边框、背景与阴影；保留 padding、高度度量与 focus ring |
+| `filter`             | `'none' \| 'prefix' \| 'contains'` | `'contains'` | 候选过滤模式（按 option label 匹配）                                  |
+| `name`               | `string`                           | `''`         | 表单字段名                                                            |
+| `disabled`           | `boolean`                          | `false`      | 禁用状态                                                              |
+| `readonly`           | `boolean`                          | `false`      | 只读状态（不可输入、不可展开下拉）                                    |
+| `required`           | `boolean`                          | `false`      | 必填校验                                                              |
+| `allow-custom-value` | `boolean`                          | `false`      | 允许 Enter 提交不在候选中的 custom value                              |
+| `portal`             | `boolean`                          | `false`      | 在主题浮层容器中渲染                                                  |
+| `no-scroll-lock`     | `boolean`                          | `false`      | 打开时不锁定页面滚动                                                  |
+| `overlayContainer`   | `HTMLElement \| () => HTMLElement` | —            | 显式 Portal 容器                                                      |
+| `aria-label`         | `string`                           | —            | 无障碍名称                                                            |
+| `aria-labelledby`    | `string`                           | —            | 无障碍名称引用                                                        |
 
 **事件：** `input`, `change`, `focus`, `blur`, `open-change` (`CustomEvent<{ open: boolean }>`)
 

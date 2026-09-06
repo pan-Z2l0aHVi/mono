@@ -277,19 +277,19 @@ Form controls implement `static formAssociated = true` and integrate with native
 
 Text input with clearable, prefix/suffix slots.
 
-| Attribute     | Type      | Default  | Description         |
-| ------------- | --------- | -------- | ------------------- |
-| `value`       | `string`  | `''`     | Input value         |
-| `type`        | `string`  | `'text'` | HTML input type     |
-| `placeholder` | `string`  | `''`     | Placeholder text    |
-| `name`        | `string`  | `''`     | Form field name     |
-| `disabled`    | `boolean` | `false`  | Disabled state      |
-| `readonly`    | `boolean` | `false`  | Read-only state     |
-| `required`    | `boolean` | `false`  | Required validation |
-| `clearable`   | `boolean` | `false`  | Show clear button   |
-| `full`        | `boolean` | `false`  | Full width          |
-| `borderless`  | `boolean` | `false`  | No border           |
-| `aria-label`  | `string`  | —        | Accessible label    |
+| Attribute     | Type      | Default  | Description                                                                                       |
+| ------------- | --------- | -------- | ------------------------------------------------------------------------------------------------- |
+| `value`       | `string`  | `''`     | Input value                                                                                       |
+| `type`        | `string`  | `'text'` | HTML input type                                                                                   |
+| `placeholder` | `string`  | `''`     | Placeholder text                                                                                  |
+| `name`        | `string`  | `''`     | Form field name                                                                                   |
+| `disabled`    | `boolean` | `false`  | Disabled state                                                                                    |
+| `readonly`    | `boolean` | `false`  | Read-only state                                                                                   |
+| `required`    | `boolean` | `false`  | Required validation                                                                               |
+| `clearable`   | `boolean` | `false`  | Show clear button                                                                                 |
+| `full`        | `boolean` | `false`  | Full width                                                                                        |
+| `borderless`  | `boolean` | `false`  | Ghost form: removes border, background, and shadow; keeps padding, height metrics, and focus ring |
+| `aria-label`  | `string`  | —        | Accessible label                                                                                  |
 
 **Events:** `input`, `change`, `focus`, `blur`
 
@@ -305,24 +305,24 @@ Text input with clearable, prefix/suffix slots.
 
 Multi-line text input with auto-resize.
 
-| Attribute         | Type      | Default | Description                               |
-| ----------------- | --------- | ------- | ----------------------------------------- |
-| `value`           | `string`  | `''`    | Textarea value                            |
-| `placeholder`     | `string`  | `''`    | Placeholder text                          |
-| `rows`            | `number`  | `3`     | Visible rows                              |
-| `name`            | `string`  | `''`    | Form field name                           |
-| `disabled`        | `boolean` | `false` | Disabled state                            |
-| `readonly`        | `boolean` | `false` | Read-only state                           |
-| `required`        | `boolean` | `false` | Required validation                       |
-| `clearable`       | `boolean` | `false` | Show clear button                         |
-| `full`            | `boolean` | `false` | Full width                                |
-| `borderless`      | `boolean` | `false` | No border                                 |
-| `autosize`        | `boolean` | `false` | Auto-resize height                        |
-| `max-height`      | `number`  | `0`     | Autosize max height (px); `0` = unlimited |
-| `minlength`       | `number`  | —       | Minimum length validation                 |
-| `maxlength`       | `number`  | —       | Maximum length validation                 |
-| `aria-label`      | `string`  | —       | Accessible label                          |
-| `aria-labelledby` | `string`  | —       | Accessible label reference                |
+| Attribute         | Type      | Default | Description                                                                                       |
+| ----------------- | --------- | ------- | ------------------------------------------------------------------------------------------------- |
+| `value`           | `string`  | `''`    | Textarea value                                                                                    |
+| `placeholder`     | `string`  | `''`    | Placeholder text                                                                                  |
+| `rows`            | `number`  | `3`     | Visible rows                                                                                      |
+| `name`            | `string`  | `''`    | Form field name                                                                                   |
+| `disabled`        | `boolean` | `false` | Disabled state                                                                                    |
+| `readonly`        | `boolean` | `false` | Read-only state                                                                                   |
+| `required`        | `boolean` | `false` | Required validation                                                                               |
+| `clearable`       | `boolean` | `false` | Show clear button                                                                                 |
+| `full`            | `boolean` | `false` | Full width                                                                                        |
+| `borderless`      | `boolean` | `false` | Ghost form: removes border, background, and shadow; keeps padding, height metrics, and focus ring |
+| `autosize`        | `boolean` | `false` | Auto-resize height                                                                                |
+| `max-height`      | `number`  | `0`     | Autosize max height (px); `0` = unlimited                                                         |
+| `minlength`       | `number`  | —       | Minimum length validation                                                                         |
+| `maxlength`       | `number`  | —       | Maximum length validation                                                                         |
+| `aria-label`      | `string`  | —       | Accessible label                                                                                  |
+| `aria-labelledby` | `string`  | —       | Accessible label reference                                                                        |
 
 **Events:** `input`, `change`, `focus`, `blur`
 
@@ -397,23 +397,23 @@ Portal panels mirror these variables from the host element when created; change 
 
 Editable combobox with input filtering and single option selection.
 
-| Attribute            | Type                               | Default      | Description                                                                       |
-| -------------------- | ---------------------------------- | ------------ | --------------------------------------------------------------------------------- |
-| `value`              | `string`                           | `''`         | Current input text (form value)                                                   |
-| `selected-value`     | `string`                           | `''`         | Value of the enabled option exactly matching the input label (derived, read-only) |
-| `placeholder`        | `string`                           | `''`         | Placeholder text                                                                  |
-| `borderless`         | `boolean`                          | `false`      | Hide the trigger border and background                                            |
-| `filter`             | `'none' \| 'prefix' \| 'contains'` | `'contains'` | Candidate filtering mode (matched against option label)                           |
-| `name`               | `string`                           | `''`         | Form field name                                                                   |
-| `disabled`           | `boolean`                          | `false`      | Disabled state                                                                    |
-| `readonly`           | `boolean`                          | `false`      | Read-only state (no typing, no dropdown)                                          |
-| `required`           | `boolean`                          | `false`      | Required validation                                                               |
-| `allow-custom-value` | `boolean`                          | `false`      | Allow Enter to submit a custom value that is not among candidates                 |
-| `portal`             | `boolean`                          | `false`      | Render dropdown in theme overlay                                                  |
-| `no-scroll-lock`     | `boolean`                          | `false`      | Do not lock body scroll when open                                                 |
-| `overlayContainer`   | `HTMLElement \| () => HTMLElement` | —            | Explicit portal container                                                         |
-| `aria-label`         | `string`                           | —            | Accessible name                                                                   |
-| `aria-labelledby`    | `string`                           | —            | Accessible name references                                                        |
+| Attribute            | Type                               | Default      | Description                                                                                       |
+| -------------------- | ---------------------------------- | ------------ | ------------------------------------------------------------------------------------------------- |
+| `value`              | `string`                           | `''`         | Current input text (form value)                                                                   |
+| `selected-value`     | `string`                           | `''`         | Value of the enabled option exactly matching the input label (derived, read-only)                 |
+| `placeholder`        | `string`                           | `''`         | Placeholder text                                                                                  |
+| `borderless`         | `boolean`                          | `false`      | Ghost form: removes border, background, and shadow; keeps padding, height metrics, and focus ring |
+| `filter`             | `'none' \| 'prefix' \| 'contains'` | `'contains'` | Candidate filtering mode (matched against option label)                                           |
+| `name`               | `string`                           | `''`         | Form field name                                                                                   |
+| `disabled`           | `boolean`                          | `false`      | Disabled state                                                                                    |
+| `readonly`           | `boolean`                          | `false`      | Read-only state (no typing, no dropdown)                                                          |
+| `required`           | `boolean`                          | `false`      | Required validation                                                                               |
+| `allow-custom-value` | `boolean`                          | `false`      | Allow Enter to submit a custom value that is not among candidates                                 |
+| `portal`             | `boolean`                          | `false`      | Render dropdown in theme overlay                                                                  |
+| `no-scroll-lock`     | `boolean`                          | `false`      | Do not lock body scroll when open                                                                 |
+| `overlayContainer`   | `HTMLElement \| () => HTMLElement` | —            | Explicit portal container                                                                         |
+| `aria-label`         | `string`                           | —            | Accessible name                                                                                   |
+| `aria-labelledby`    | `string`                           | —            | Accessible name references                                                                        |
 
 **Events:** `input`, `change`, `focus`, `blur`, `open-change` (`CustomEvent<{ open: boolean }>`)
 
