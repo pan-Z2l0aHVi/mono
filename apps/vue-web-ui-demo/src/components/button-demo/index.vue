@@ -86,6 +86,19 @@ import {
       </web-ui-button>
     </div>
 
+    <h2>图标 + 加载</h2>
+    <div class="mb-3 flex gap-2">
+      <web-ui-button icon :loading="true" aria-label="加载中">
+        <web-ui-icon :icon="lucideSearch"></web-ui-icon>
+      </web-ui-button>
+      <web-ui-button icon :loading="true" :variant="'primary'" aria-label="加载中">
+        <web-ui-icon :icon="lucideSearch"></web-ui-icon>
+      </web-ui-button>
+      <web-ui-button icon :loading="true" :disabled="true" aria-label="禁用且加载中">
+        <web-ui-icon :icon="lucideSearch"></web-ui-icon>
+      </web-ui-button>
+    </div>
+
     <h2>按钮组</h2>
     <div class="mb-3 flex flex-col gap-4">
       <h3>纯文字</h3>

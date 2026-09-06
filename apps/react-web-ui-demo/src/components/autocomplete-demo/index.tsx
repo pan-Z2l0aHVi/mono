@@ -56,6 +56,24 @@ function AutocompleteDemo() {
         </web-ui-autocomplete>
       </div>
 
+      <h2>无边框</h2>
+      <div className="mb-3 flex flex-col gap-3">
+        <web-ui-autocomplete borderless placeholder="无边框自动补全">
+          {frameworks.map(name => (
+            <web-ui-option key={name} value={name} label={name}>
+              {name}
+            </web-ui-option>
+          ))}
+        </web-ui-autocomplete>
+        <web-ui-autocomplete borderless value="Vue" placeholder="无边框有值">
+          {frameworks.map(name => (
+            <web-ui-option key={name} value={name} label={name}>
+              {name}
+            </web-ui-option>
+          ))}
+        </web-ui-autocomplete>
+      </div>
+
       <h2>受控值</h2>
       <div className="mb-3 flex flex-col gap-3">
         <web-ui-autocomplete

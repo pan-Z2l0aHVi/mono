@@ -384,6 +384,7 @@ ArrowUp/ArrowDown 键增减数值。空输入或 `-` 在提交时被忽略，值
 | `value`              | `string`                           | `''`         | 当前输入文本（表单值）                                        |
 | `selected-value`     | `string`                           | `''`         | 输入文本精确匹配 label 的非禁用 option 的 value（派生，只读） |
 | `placeholder`        | `string`                           | `''`         | 占位文本                                                      |
+| `borderless`         | `boolean`                          | `false`      | 无边框                                                        |
 | `filter`             | `'none' \| 'prefix' \| 'contains'` | `'contains'` | 候选过滤模式（按 option label 匹配）                          |
 | `name`               | `string`                           | `''`         | 表单字段名                                                    |
 | `disabled`           | `boolean`                          | `false`      | 禁用状态                                                      |
@@ -564,7 +565,7 @@ ArrowUp/ArrowDown 键增减数值。空输入或 `-` 在提交时被忽略，值
 | `variant`    | `'primary' \| 'secondary' \| 'ghost' \| 'danger' \| 'glass'` | `'glass'`  | 按钮变体                                                      |
 | `type`       | `'button' \| 'submit' \| 'reset'`                            | `'button'` | 内部按钮类型；非法值回退为 `button`                           |
 | `disabled`   | `boolean`                                                    | `false`    | 禁用状态                                                      |
-| `loading`    | `boolean`                                                    | `false`    | 加载旋转动画                                                  |
+| `loading`    | `boolean`                                                    | `false`    | 加载旋转动画；与 `icon` 组合时 spinner 替换图标内容           |
 | `full`       | `boolean`                                                    | `false`    | 全宽                                                          |
 | `icon`       | `boolean`                                                    | `false`    | 纯图标模式                                                    |
 | `size`       | `string`                                                     | `''`       | 按钮高度（px）；icon 模式下同时设为 min-width，默认保持正方形 |
@@ -577,6 +578,8 @@ ArrowUp/ArrowDown 键增减数值。空输入或 `-` 在提交时被忽略，值
 `submit` 和 `reset` 不会提交或重置组件 Shadow DOM 外祖先 `<form>`。如需外部表单行为，请使用 form-associated 控件。
 
 禁用和加载状态阻止 `click` 事件。
+
+`icon` 与 `loading` 同时开启时，按钮只渲染 spinner，默认插槽图标不投影。默认 icon 几何保持正方形，`full` 或显式 width 除外。
 
 **CSS 自定义属性：**
 

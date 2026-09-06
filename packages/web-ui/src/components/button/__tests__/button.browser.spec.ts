@@ -110,6 +110,31 @@ describe('Icon button 行为', () => {
     const rect = inner.getBoundingClientRect()
     expect(rect.width).toBeGreaterThan(rect.height)
   })
+
+  it('icon + loading 只渲染 spinner，保持正方形且不可交互', async () => {
+    const btn = document.createElement('web-ui-button')
+    btn.setAttribute('icon', '')
+    btn.setAttribute('size', '32')
+    btn.setAttribute('loading', '')
+    btn.setAttribute('aria-label', 'test')
+    btn.innerHTML = '<web-ui-icon data-role="mine"></web-ui-icon>'
+    document.body.append(btn)
+    await btn.updateComplete
+
+    const inner = btn.shadowRoot?.querySelector<HTMLButtonElement>('button') as HTMLButtonElement
+    // spinner 替换 icon 内容：shadow 内唯一的 web-ui-icon 是 spinner，默认 slot 不渲染
+    expect(btn.shadowRoot!.querySelectorAll('web-ui-icon')).toHaveLength(1)
+    expect(btn.shadowRoot!.querySelector('slot:not([name])')).toBeNull()
+
+    // 组合尺寸保持正方形，与 icon-only 一致
+    const rect = inner.getBoundingClientRect()
+    expect(rect.width).toBe(rect.height)
+
+    // 不可点击 + 不可聚焦（原生 disabled 语义）
+    expect(inner.disabled).toBe(true)
+    inner.focus()
+    expect(document.activeElement).not.toBe(inner)
+  })
 })
 
 it('非 icon 模式下宽度由内容决定', async () => {

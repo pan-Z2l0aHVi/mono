@@ -57,7 +57,7 @@ describe('Web UI focus indicators（浏览器）', () => {
     await input.updateComplete
 
     const wrapper = input.shadowRoot?.querySelector<HTMLElement>('.wui-input-inner')
-    expect(getComputedStyle(wrapper!, '::before').display).toBe('none')
+    expect(getComputedStyle(wrapper!, '::before').content).toBe('none')
 
     const nativeInput = input.shadowRoot?.querySelector<HTMLInputElement>('input')
     await userEvent.keyboard('{Tab}')
@@ -68,5 +68,22 @@ describe('Web UI focus indicators（浏览器）', () => {
     expect(input.hasAttribute('focused')).toBe(true)
     expect(style.outlineStyle).toBe('solid')
     expect(Number.parseFloat(style.outlineWidth)).toBeGreaterThan(0)
+  })
+
+  it('borderless 输入框移除 glass 描边环（.wui-glass::before）', async () => {
+    // 非 borderless 基线：glass ::before 生成描边盒，确保断言非空转
+    const base = document.createElement('web-ui-input')
+    document.body.append(base)
+    await base.updateComplete
+    const baseInner = base.shadowRoot?.querySelector<HTMLElement>('.wui-input-inner')
+    expect(getComputedStyle(baseInner!, '::before').content).toBe('""')
+
+    const input = document.createElement('web-ui-input')
+    input.setAttribute('borderless', '')
+    document.body.append(input)
+    await input.updateComplete
+
+    const inner = input.shadowRoot?.querySelector<HTMLElement>('.wui-input-inner')
+    expect(getComputedStyle(inner!, '::before').content).toBe('none')
   })
 })

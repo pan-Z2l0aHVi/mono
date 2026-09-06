@@ -93,11 +93,14 @@ export class WebUiButton extends LitElement {
         ?disabled=${this.disabled || this.loading}
         @click=${this.handleClick}
       >
-        ${this.loading ? html`<web-ui-icon .icon=${lucideLoaderCircle} spin></web-ui-icon>` : ''}
         ${
           this.icon
-            ? html`<slot></slot>`
+            ? // loading 优先于 icon 内容：icon 模式下只展示 spinner，不投影默认 slot，避免双图标叠加
+              this.loading
+              ? html`<web-ui-icon .icon=${lucideLoaderCircle} spin></web-ui-icon>`
+              : html`<slot></slot>`
             : html`
+                ${this.loading ? html`<web-ui-icon .icon=${lucideLoaderCircle} spin></web-ui-icon>` : ''}
                 <slot name="prefix"></slot>
                 <span class="label"><slot></slot></span>
                 <slot name="suffix"></slot>
