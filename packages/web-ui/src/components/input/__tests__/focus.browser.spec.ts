@@ -78,6 +78,26 @@ describe('Web UI focus indicators（浏览器）', () => {
     expect(style.boxShadow).toContain(`0px 0px 0px 3px`)
   })
 
+  it('borderless 输入框鼠标/程序化聚焦同样显示 focus ring（不 gate 在 :focus-visible）', async () => {
+    const input = document.createElement('web-ui-input')
+    input.setAttribute('borderless', '')
+    document.body.append(input)
+    await input.updateComplete
+
+    // 无键盘路径的程序化聚焦：ring 由 focused 属性驱动，与 normal 变体一致
+    const nativeInput = input.shadowRoot?.querySelector<HTMLInputElement>('input')
+    nativeInput?.focus()
+    await input.updateComplete
+    // focus ring 走 200ms box-shadow 过渡，等过渡完成后再断言终值
+    await new Promise(resolve => setTimeout(resolve, 300))
+
+    const wrapper = input.shadowRoot?.querySelector<HTMLElement>('.wui-input-inner')
+    const style = getComputedStyle(wrapper!)
+    expect(input.hasAttribute('focused')).toBe(true)
+    expect(style.boxShadow).toContain('inset')
+    expect(style.boxShadow).toContain('rgb(0, 136, 255)')
+  })
+
   it('borderless 输入框移除 glass 描边环（.wui-glass::before）', async () => {
     // 非 borderless 基线：glass ::before 生成描边盒，确保断言非空转
     const base = document.createElement('web-ui-input')
