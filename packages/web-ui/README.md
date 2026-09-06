@@ -577,7 +577,7 @@ Styled button with variants and loading state.
 | `variant`    | `'primary' \| 'secondary' \| 'ghost' \| 'danger' \| 'glass'` | `'glass'`  | Button variant                                                          |
 | `type`       | `'button' \| 'submit' \| 'reset'`                            | `'button'` | Inner-button type; invalid values become `button`                       |
 | `disabled`   | `boolean`                                                    | `false`    | Disabled state                                                          |
-| `loading`    | `boolean`                                                    | `false`    | Loading spinner                                                         |
+| `loading`    | `boolean`                                                    | `false`    | Loading spinner; with `icon`, the spinner replaces the icon content     |
 | `full`       | `boolean`                                                    | `false`    | Full width                                                              |
 | `icon`       | `boolean`                                                    | `false`    | Icon-only mode                                                          |
 | `size`       | `string`                                                     | `''`       | Button height in px (icon mode: also sets min-width for square default) |
@@ -591,6 +591,9 @@ Styled button with variants and loading state.
 form-associated control when external form submission behavior is required.
 
 Disabled and loading states prevent `click` events.
+
+When `icon` and `loading` are both set, the button renders only the spinner, and the default-slot icon is not
+projected. The icon-mode geometry stays square by default, except for `full` or an explicit width.
 
 **CSS Custom Properties:**
 
