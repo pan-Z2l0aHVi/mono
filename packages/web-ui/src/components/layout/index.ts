@@ -385,7 +385,7 @@ export class WebUiLayout extends LitElement {
           <web-ui-button
             class="mobile-toggle"
             icon
-            variant="secondary"
+            variant="glass"
             @click="${this._toggleSidebar}"
             aria-label="打开导航菜单"
           >

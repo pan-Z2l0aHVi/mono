@@ -174,6 +174,12 @@ header {
   align-items: center;
 }
 
+/* 移动端 Toggle 属于组件自身，不随 Consumer 的 header 内边距缩进；
+   默认 8px 使其脱离视口边缘，Consumer 可用同名变量对齐自身内容左缘。 */
+.mobile-toggle {
+  margin-left: var(--wui-layout-mobile-toggle-inset, 8px);
+}
+
 /*
  * Header 的装饰性背景晕染
  * ========================

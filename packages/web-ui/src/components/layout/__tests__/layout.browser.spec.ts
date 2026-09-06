@@ -300,6 +300,20 @@ describe('WebUiLayout 组件（浏览器）', () => {
       expect(drawer?.getAttribute('dialog-label')).toBe('主导航')
     })
 
+    it('Toggle 为 glass 变体，左缩进默认 8px 且可通过 --wui-layout-mobile-toggle-inset 覆盖', async () => {
+      await page.viewport(390, 844)
+      const layout = createLayout()
+      await layout.updateComplete
+
+      const toggle = layout.shadowRoot?.querySelector('header .mobile-toggle') as HTMLElement
+      expect(toggle.getAttribute('variant')).toBe('glass')
+      expect(window.getComputedStyle(toggle).marginLeft).toBe('8px')
+
+      layout.style.setProperty('--wui-layout-mobile-toggle-inset', '24px')
+      await layout.updateComplete
+      expect(window.getComputedStyle(toggle).marginLeft).toBe('24px')
+    })
+
     it('Toggle 请求打开 Drawer；Consumer 回写后显示覆盖式圆角卡片', async () => {
       await page.viewport(390, 844)
       const layout = createLayout()

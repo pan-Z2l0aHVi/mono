@@ -1005,15 +1005,16 @@ Responsive page layout with an optional full-width banner, a collapsible desktop
 
 `web-ui-layout` constrains the sidebar card and owns the desktop toggle area, but does not create a sidebar scrollport. To make only part of the sidebar scroll, make the `sidebar` slot root a `height: 100%; min-height: 0` flex column and apply `overflow-y: auto` to the intended child. This keeps consumer-defined headers and footers fixed without adding extra public slots.
 
-At `640px` and below, the sidebar becomes a headless `web-ui-drawer`. The consumer content is rendered in the same rounded sidebar card; the mobile toggle appears in the header row.
+At `640px` and below, the sidebar becomes a headless `web-ui-drawer`. The consumer content is rendered in the same rounded sidebar card; the mobile toggle appears in the header row as a glass button. Its left inset defaults to `8px`; align it with your own header padding via `--wui-layout-mobile-toggle-inset`.
 
 `header-glow` adds a pointer-transparent decorative glow behind header-slot content and the mobile toggle. It is a Header background rather than a foreground layer, so slotted content remains above it. Override its color with `--wui-layout-header-glow-color` (default: `--wui-color-page`). The glow concentration and spread are controlled by the internal variable `--wui-layout-header-glow-height` (default: `150%`); increase for stronger coverage, decrease for a subtler effect. Layout layers are ordered as Header (`10`) < Auxiliary (`20`) < Banner (`30`) < Tabbar (`40`) < Sidebar (`50`).
 
 **CSS Custom Properties:**
 
-| Property                      | Default | Description                                      |
-| ----------------------------- | ------- | ------------------------------------------------ |
-| `--wui-layout-sidebar-radius` | `24px`  | Border radius of sidebar card (desktop & mobile) |
+| Property                           | Default | Description                                      |
+| ---------------------------------- | ------- | ------------------------------------------------ |
+| `--wui-layout-sidebar-radius`      | `24px`  | Border radius of sidebar card (desktop & mobile) |
+| `--wui-layout-mobile-toggle-inset` | `8px`   | Left inset of the mobile header toggle           |
 
 #### `<web-ui-back-top>`
 
