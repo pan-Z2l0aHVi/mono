@@ -10,6 +10,18 @@
 4. 对源码任务只加载命中的 rule/guide，避免把整个 instruction system 预加载进上下文；需要快速建立全局模型时优先看 `ARCHITECTURE.md`，不要默认加载全部 ADR。
 5. 对含有多个可观察阶段的任务，在 ACP 提供计划界面时创建并维护 plan；每完成分析、实施、验证或已获授权的提交阶段，立即同步其状态。最终答复前必须将已完成步骤标为 `completed`，避免客户端显示过期的“执行中”状态。plan 仅反映当前会话进度，不替代 Git、源码或验证证据，也不写入持久化 `agent-state`。
 
+## 角色会话
+
+Role Contract 位于 `.agents/agents/`，只定义当前会话的职责、边界和协作；仓库约束仍以 `AGENTS.md`、目标目录 `AGENTS.md`、rules、skills 和实现事实为准。
+
+当前 Harness 不会自动选择 Role。新会话先用一条消息初始化 Role：
+
+```text
+本会话担任 <role>。读取并遵循 `.agents/agents/<role>.md`，将其作为本会话的角色与协作规范。
+```
+
+`<role>` 为 `manager`、`designer`、`lib-coder`、`biz-coder` 或 `reviewer`。Role 在本会话内持续生效；任务可在之后分次提供，且不与某一个 task 绑定。任一模型或 CLI 都可承担任一 Role。
+
 ## 定位和影响分析
 
 - 先从目标 workspace 的 `package.json`、`src/`、测试和 README 定位。
@@ -27,13 +39,14 @@
 
 ## AI 协作署名
 
-- 仅当 AI agent 对某项变更有实质贡献时，才在对应提交中添加共同作者尾注或独立署名；不要为展示署名创建空提交或伪造身份。
-- Codex、Claude Code 与 Gemini CLI 等 agent 参与时使用以下固定格式通过 Git trailers 机制进行透明署名：
+- 仅当 AI agent 对某项变更有实质贡献时，才记录署名；不要为展示署名创建空提交或伪造身份。
+- Agent 直接创建提交时，author 与 committer 使用该 agent 的官方身份，不再叠加同名 `Co-authored-by` 尾注。
+- AI agent 参与人类 author 的提交时，通过 Git trailers 机制追加共同作者尾注：
 
   ```text
   Co-authored-by: Codex <noreply@openai.com>
   Co-authored-by: Claude <noreply@anthropic.com>
-  Co-authored-by: Gemini CLI <gemini-code-assist[bot]@users.noreply.github.com>
+  Co-authored-by: Gemini CLI <218195315+gemini-cli@users.noreply.github.com>
   ```
 
 - 人类提交者仍对需求、设计、审查、测试和最终合并承担全部责任。

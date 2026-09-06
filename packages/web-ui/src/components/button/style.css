@@ -23,7 +23,8 @@
 }
 
 button {
-  cursor: pointer;
+  --wui-glass-corner-radius: calc(var(--wui-control-size, 36px) / 2);
+  cursor: default;
   user-select: none;
 
   position: relative;
@@ -36,10 +37,10 @@ button {
 
   box-sizing: border-box;
   width: var(--wui-button-width, max-content);
-  min-width: var(--wui-control-size, 40px);
-  height: var(--wui-control-size, 40px);
+  min-width: var(--wui-control-size, 36px);
+  height: var(--wui-control-size, 36px);
   padding: 0 var(--wui-button-px, 12px);
-  border: 1px solid transparent;
+  border: none;
   border-radius: calc(infinity * 1px);
 
   /* 原生 button 不继承字体；显式继承以对齐宿主排版，避免 UA 默认 Arial 差异 */
@@ -50,8 +51,6 @@ button {
   white-space: nowrap;
 
   background-color: var(--wui-button-bg);
-
-  transition: background-color var(--wui-duration-trigger, 160ms) ease;
 
   &:disabled {
     cursor: not-allowed;
@@ -74,12 +73,6 @@ button:active:not(:disabled) {
   background-color: var(--wui-button-bg-active);
 }
 
-@media (prefers-reduced-motion: reduce) {
-  button {
-    transition: background-color var(--wui-duration-trigger, 160ms) ease;
-  }
-}
-
 /* ===== Full width ===== */
 
 :host([full]) button {
@@ -98,8 +91,8 @@ button:active:not(:disabled) {
 :host([variant='primary']) {
   --wui-button-color: var(--wui-color-on-accent, #fff);
   --wui-button-bg: var(--wui-color-accent, #08f);
-  --wui-button-bg-hover: color-mix(in srgb, var(--wui-color-accent, #08f) 88%, var(--wui-color-text, #1b1b1b));
-  --wui-button-bg-active: color-mix(in srgb, var(--wui-color-accent, #08f) 65%, var(--wui-color-text, #1b1b1b));
+  --wui-button-bg-hover: color-mix(in srgb, var(--wui-button-bg, #08f) 88%, black);
+  --wui-button-bg-active: color-mix(in srgb, var(--wui-button-bg, #08f) 76%, black);
 }
 
 /* ===== Variant: secondary ===== */
@@ -107,16 +100,8 @@ button:active:not(:disabled) {
 :host([variant='secondary']) {
   --wui-button-color: var(--wui-color-text, #1b1b1b);
   --wui-button-bg: var(--wui-color-surface-control, #dfdfdf);
-  --wui-button-bg-hover: color-mix(
-    in srgb,
-    var(--wui-color-surface-control, #dfdfdf) 90%,
-    var(--wui-color-text, #1b1b1b)
-  );
-  --wui-button-bg-active: color-mix(
-    in srgb,
-    var(--wui-color-surface-control, #dfdfdf) 70%,
-    var(--wui-color-text, #1b1b1b)
-  );
+  --wui-button-bg-hover: color-mix(in srgb, var(--wui-button-bg, #dfdfdf) 92%, black);
+  --wui-button-bg-active: color-mix(in srgb, var(--wui-button-bg, #dfdfdf) 82%, black);
 }
 
 /* ===== Variant: ghost ===== */
@@ -164,7 +149,6 @@ button:active:not(:disabled) {
 /* ===== Group context ===== */
 
 button.is-grouped {
-  --wui-button-color: var(--wui-color-text, #1b1b1b);
   --wui-button-bg: transparent;
   --wui-button-bg-hover: var(
     --wui-color-state-layer-hover,

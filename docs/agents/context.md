@@ -9,12 +9,17 @@
 | 层级               | 权威来源                                                         | 何时加载                               | 内容边界                             |
 | ------------------ | ---------------------------------------------------------------- | -------------------------------------- | ------------------------------------ |
 | Always available   | 根 `AGENTS.md`                                                   | 每次任务                               | 项目身份、不可绕过边界、任务路由     |
+| Session role       | `.agents/agents/<role>.md`                                       | 用户或 Manager 明确指定当前会话 Role   | 身份、职责、边界、协作与完成定义     |
 | Repository map     | 根 `ARCHITECTURE.md`                                             | 需要全局拓扑、workspace 定位或热点概览 | 稳定目录地图、依赖草图、影响热点     |
 | Project context    | `CONTEXT.md`                                                     | 架构、跨包、术语、长期设计             | 包边界、工程原则、领域词汇、ADR 索引 |
 | Task-specific      | `docs/agents/*.md`、`.agents/rules/*.md`、最近的包级 `AGENTS.md` | 任务命中对应领域                       | 可执行流程、质量门槛、局部约束       |
 | On-demand evidence | ADR、README、manifest、配置、源码、测试                          | 已确认受影响区域后                     | 历史取舍、公共契约、当前实现         |
 
 不要为“可能有用”批量加载文档。规则只保留无法由代码、类型、测试或工具配置可靠推导的约束；可自动验证的约束优先交给相应工具。
+
+## Session Role
+
+Role 是显式选择的按需 session context：读取 `.agents/agents/<role>.md` 后，它在整个会话中定义职责、边界和协作，不绑定某一个 task，也不覆盖 Rules、Skills、task requirement、`AGENTS.md` 或实现事实。初始化方式以 [`CONTRIBUTING.md`](../../CONTRIBUTING.md#角色会话) 为权威。
 
 ## 重复主题的权威来源
 
@@ -29,14 +34,15 @@
 
 ## 客户端适配
 
-- `AGENTS.md`、`CONTEXT.md`、`docs/agents/`、`.agents/rules/`、`.agents/skills/` 与 `.agents/agents/` 是 Codex、Claude Code 与 Gemini CLI 等共用的规范。
-- Codex 通过层级 `AGENTS.md` 获得目录约束；根 `CLAUDE.md` 与 `GEMINI.md` 只说明对应客户端的加载顺序，不复制共享规则。
+- `AGENTS.md`、`CONTEXT.md`、`docs/agents/`、`.agents/rules/`、`.agents/skills/` 与 `.agents/agents/` 是 Codex、Claude Code、Gemini CLI 与 ZCode 等共用的规范。
+- Codex 通过层级 `AGENTS.md` 获得目录约束；根 `CLAUDE.md` 与 `GEMINI.md` 只说明对应客户端的加载顺序，不复制共享规则。客户端适配不自动选择 Role。
+- ZCode 原生读 workspace `AGENTS.md`（自当前目录向上解析），并自动发现 `.agents/skills/`；因此与 Codex 同策略，不设独立的薄适配入口文件。
 - ACP plan 是当前会话的临时进度 UI；多阶段任务的创建、阶段同步和结束前收敛以 [`CONTRIBUTING.md`](../../CONTRIBUTING.md) 为权威。它不持久化为 `agent-state`，也不能替代源码、Git 或验证证据。
 - `.claude/rules`、`.claude/skills` 和 `.claude/agents` 必须通过 symlink 指向 `.agents/` 中的共享内容；Gemini CLI 自动发现 `.agents/skills/`。
 - `scripts/validate-context.mjs` 只检查这套共享 context 的可加载性，不能替代对规则语义、代码行为或 agent 输出质量的评审。
 - `scripts/repo-query.mjs` 是面向 Agent 的按需查询接口：`pnpm find:usages -- <paths...>` 一次输出受影响 workspace、最小读取 context、传递依赖、所需证据和最小充分验证建议；`pnpm inspect:contract -- <published-package>` 输出当前 exports、直接消费者和最小验证；`pnpm diff:contract -- --base <git-ref>` 输出 manifest-level semver 审阅候选。`find:usages` 支持 `--base <git-ref>`、`--staged` 与 `--worktree` 从 Git 变更集读取路径。它从 `pnpm-workspace.yaml` 的 `packages` patterns、当前 manifest 和路径规则派生结论，不把影响面复制成静态文档。
 - `scripts/check-pack.mjs` 在构建后校验发布 package 的 `files` 与 `exports` 目标可从 `pnpm pack --dry-run` 产物解析；它是发布产物边界的可执行证据，不替代 API 语义或 semver 评审。
-- `.claude/settings.local.json` 不得显式放行根 `AGENTS.md` 禁止的共享 worktree Git 改写操作（`stash`、`switch`、`checkout`、`reset`、`clean`）；`validate-context` 负责检测这一类显式权限冲突。
+- `.claude/settings.local.json` 不得显式放行根 `AGENTS.md` 禁止的共享 worktree Git 改写操作（`stash`、`switch`、`checkout`、`reset`、`clean`）；`validate-context` 负责检测这一类显式权限冲突。未来若引入 workspace 级 `.zcode/config.json`（MCP servers、hooks），只承担工具适配，并遵守同款守卫：不得显式放行上述共享 worktree Git 改写操作。
 
 ## 评测与审计
 

@@ -29,10 +29,6 @@
   white-space: nowrap;
 
   outline: none;
-
-  transition:
-    color var(--wui-duration-feedback, 100ms) var(--wui-ease-enter, cubic-bezier(0.23, 1, 0.32, 1)),
-    background-color var(--wui-duration-feedback, 100ms) var(--wui-ease-enter, cubic-bezier(0.23, 1, 0.32, 1));
 }
 
 .item-inner:focus-visible {

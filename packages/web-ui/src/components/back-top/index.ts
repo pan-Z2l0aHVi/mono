@@ -117,7 +117,7 @@ export class WebUiBackTop extends LitElement {
     return html`
       <div class="back-top-inner" role="button" tabindex="0" @click=${this.toTop} @keydown=${this.onEnter}>
         <slot>
-          <web-ui-button tabindex="-1" icon>
+          <web-ui-button variant="glass" tabindex="-1" icon>
             <web-ui-icon .icon=${lucideArrowUpToLine}></web-ui-icon>
           </web-ui-button>
         </slot>

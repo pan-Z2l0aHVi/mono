@@ -25,7 +25,7 @@ function ContextMenuDemo() {
       <p className="mb-4 text-sm text-gray-500">在下方区域右键点击打开菜单</p>
       <div className="mb-6">
         <web-ui-context-menu id="demo-context-menu">
-          <div className="flex h-48 w-full items-center justify-center rounded-2xl border-2 border-dashed border-gray-300 bg-gray-50 text-gray-500">
+          <div className="flex h-48 w-full items-center justify-center rounded-2xl border-2 border-dashed border-[var(--wui-color-border)] bg-[var(--wui-color-surface-control)] text-[var(--wui-color-text-secondary)]">
             在此区域右键点击
           </div>
           <web-ui-dropdown-item>
@@ -48,7 +48,7 @@ function ContextMenuDemo() {
       <p className="mb-4 text-sm text-gray-500">更丰富的菜单项展示</p>
       <div className="mb-6">
         <web-ui-context-menu>
-          <div className="flex h-48 w-full items-center justify-center rounded-2xl border-2 border-dashed border-gray-300 bg-gray-50 text-gray-500">
+          <div className="flex h-48 w-full items-center justify-center rounded-2xl border-2 border-dashed border-[var(--wui-color-border)] bg-[var(--wui-color-surface-control)] text-[var(--wui-color-text-secondary)]">
             在此区域右键点击
           </div>
           <web-ui-dropdown-item>
@@ -96,7 +96,7 @@ function ContextMenuDemo() {
       <p className="mb-4 text-sm text-gray-500">禁用时右键不会打开菜单</p>
       <div className="mb-6">
         <web-ui-context-menu disabled={disabled}>
-          <div className="flex h-48 w-full items-center justify-center rounded-2xl border-2 border-dashed border-gray-300 bg-gray-50 text-gray-500">
+          <div className="flex h-48 w-full items-center justify-center rounded-2xl border-2 border-dashed border-[var(--wui-color-border)] bg-[var(--wui-color-surface-control)] text-[var(--wui-color-text-secondary)]">
             {disabled ? '菜单已禁用' : '右键点击试试'}
           </div>
           <web-ui-dropdown-item>编辑</web-ui-dropdown-item>
@@ -123,7 +123,7 @@ function ContextMenuDemo() {
       <h2>不锁定滚动</h2>
       <div className="mb-6">
         <web-ui-context-menu noScrollLock>
-          <div className="flex h-32 w-full items-center justify-center rounded-2xl border-2 border-dashed border-gray-300 bg-gray-50 text-gray-500">
+          <div className="flex h-32 w-full items-center justify-center rounded-2xl border-2 border-dashed border-[var(--wui-color-border)] bg-[var(--wui-color-surface-control)] text-[var(--wui-color-text-secondary)]">
             右键打开时不锁定页面滚动
           </div>
           <web-ui-dropdown-item>编辑</web-ui-dropdown-item>
@@ -135,7 +135,7 @@ function ContextMenuDemo() {
       <p className="mb-4 text-sm text-gray-500">支持子菜单的右键菜单</p>
       <div className="mb-6">
         <web-ui-context-menu>
-          <div className="flex h-48 w-full items-center justify-center rounded-2xl border-2 border-dashed border-gray-300 bg-gray-50 text-gray-500">
+          <div className="flex h-48 w-full items-center justify-center rounded-2xl border-2 border-dashed border-[var(--wui-color-border)] bg-[var(--wui-color-surface-control)] text-[var(--wui-color-text-secondary)]">
             在此区域右键点击
           </div>
           <web-ui-dropdown-item submenu>
@@ -160,7 +160,7 @@ function ContextMenuDemo() {
       <p className="mb-4 text-sm text-gray-500">类似 macOS Finder 的右键菜单</p>
       <div className="mb-6">
         <web-ui-context-menu>
-          <div className="flex h-48 w-full items-center justify-center rounded-2xl border-2 border-dashed border-gray-300 bg-gray-50 text-gray-500">
+          <div className="flex h-48 w-full items-center justify-center rounded-2xl border-2 border-dashed border-[var(--wui-color-border)] bg-[var(--wui-color-surface-control)] text-[var(--wui-color-text-secondary)]">
             在此区域右键点击
           </div>
           <web-ui-dropdown-item>

@@ -1,4 +1,7 @@
-# Web UI Design Token 重构
+# ADR-0010: Web UI Design Token 重构
+
+- **Date**: 2026-08-07
+- **Status**: 已接受
 
 重新组织 duration、easing 和 scale Design Token，以提升语义清晰度和一致性。
 

@@ -32,7 +32,7 @@
 
   color: var(--wui-color-text-secondary, #6a6a6a);
 
-  background-color: var(--wui-color-surface-raised, #f2f2f7);
+  background-color: var(--wui-color-surface-track, #e5e5ea);
   box-shadow: none;
 }
 

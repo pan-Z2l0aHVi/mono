@@ -210,7 +210,46 @@ function parseFrontmatter(file) {
 }
 
 for (const file of walk('.agents/skills', file => path.basename(file) === 'SKILL.md')) parseFrontmatter(file)
-for (const file of walk('.agents/agents', file => file.endsWith('.md'))) parseFrontmatter(file)
+
+const roleProfiles = new Map([
+  ['manager.md', 'manager'],
+  ['designer.md', 'designer'],
+  ['lib-coder.md', 'lib-coder'],
+  ['biz-coder.md', 'biz-coder'],
+  ['reviewer.md', 'reviewer']
+])
+const roleSections = [
+  '# Role',
+  '## Identity',
+  '## Mission',
+  '## Responsibilities',
+  '## Boundaries',
+  '## Collaboration',
+  '## Definition of Done'
+]
+const roleFiles = walk('.agents/agents', file => file.endsWith('.md'))
+
+for (const file of roleFiles) {
+  parseFrontmatter(file)
+  const filename = path.basename(file)
+  if (!roleProfiles.has(filename)) {
+    addError(`${relative(file)}: unsupported Agent Role; .agents/agents only contains the five shared Role Contracts`)
+    continue
+  }
+
+  const source = fs.readFileSync(file, 'utf8')
+  const expectedName = roleProfiles.get(filename)
+  if (!new RegExp(`^name:\\s*${expectedName}\\s*$`, 'm').test(source))
+    addError(`${relative(file)}: frontmatter name must be ${expectedName}`)
+  for (const section of roleSections) {
+    if (!source.includes(`\n${section}\n`)) addError(`${relative(file)}: missing required Role section ${section}`)
+  }
+}
+
+for (const filename of roleProfiles.keys()) {
+  if (!roleFiles.some(file => path.basename(file) === filename))
+    addError(`.agents/agents: missing required Agent Role ${filename}`)
+}
 
 if (exists('CONTEXT.md')) {
   const context = read('CONTEXT.md')

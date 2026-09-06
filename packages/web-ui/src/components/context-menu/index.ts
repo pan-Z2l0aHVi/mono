@@ -1,3 +1,4 @@
+import { computePosition, shift } from '@floating-ui/dom'
 import { html, LitElement, unsafeCSS } from 'lit'
 import { customElement, property, state } from 'lit/decorators.js'
 
@@ -12,6 +13,7 @@ import {
   getEnabledMenuItems,
   getMenuChildren,
   getMenuItemFromEvent,
+  getMovableMenuSubtrees,
   hideNestedMenuChildren,
   moveMenuChildren
 } from '@/shared/menu-portal/menu-tree'
@@ -19,6 +21,8 @@ import { hideOverlayPresence, showOverlayPresence } from '@/shared/overlay/prese
 import { defineScrollLockLease } from '@/shared/scroll-lock/scroll-lock'
 
 import style from './style.css?inline'
+
+const MARKER_TEXT = 'wui-context-menu-item'
 
 @customElement('web-ui-context-menu')
 export class WebUiContextMenu extends LitElement {
@@ -33,18 +37,27 @@ export class WebUiContextMenu extends LitElement {
 
   private _activeSubmenus: MenuPortalOverlay[] = []
   private _activeSubmenuItems: HTMLElement[] = []
+  // 子菜单 dialog 定位的唯一写者代数（按 panel 键控）：同帧关闭→重开复用同一 panel
+  // 时只允许最新一次定位写入；不同层级子菜单各有 panel，互不作废。
+  private readonly _submenuPositionEpochs = new WeakMap<HTMLElement, number>()
   private readonly _closingSubmenus = new Map<HTMLElement, MenuPortalOverlay>()
   private _submenuTimer?: ReturnType<typeof setTimeout>
   private _ignoreOutsideClick = false
   private _ignoreOutsideClickTimer?: ReturnType<typeof setTimeout>
   private _hoverCleanupFns: (() => void)[] = []
   private _menu?: MenuPortalOverlay
+  private readonly _menuItemAnchors = new Map<HTMLElement, Comment>()
   private readonly _scrollLock = defineScrollLockLease().make()
   private readonly _userOpenChange = new UserChangeController()
   private _restoreFocusTarget?: HTMLElement
   private _shouldOpenInstantly = true
+  private _refreshScheduled = false
+  // 菜单打开期间宿主可能不经重定位直接改写子内容（网络推送、定时器等），
+  // 新节点缺隐藏 slot 会可见叠加到菜单上；观察 portal 内容并在下一帧重新同步。
+  private readonly _contentObserver = new MutationObserver(() => {
+    if (this._isOpen) this._scheduleRefresh()
+  })
 
-  // 当前菜单是否打开
   get isOpen(): boolean {
     return this._isOpen
   }
@@ -72,6 +85,7 @@ export class WebUiContextMenu extends LitElement {
     document.removeEventListener('wheel', this._onWheel, true)
     document.removeEventListener('touchmove', this._onTouchMove, true)
     document.removeEventListener('keydown', this._onDocumentKeydown)
+    this._contentObserver.disconnect()
     clearTimeout(this._submenuTimer)
     clearTimeout(this._ignoreOutsideClickTimer)
     this._hoverCleanupFns.forEach(cleanup => cleanup())
@@ -81,6 +95,10 @@ export class WebUiContextMenu extends LitElement {
     this._menu = undefined
     this._closeSubmenusFrom(0, true)
     this._restoreClosingSubmenus()
+    // 脱离文档即视为关闭：否则重连后 _isOpen 仍为 true 而 _menu 已清空，
+    // 下次 openAt 会走已打开分支静默失败，菜单无法再打开。
+    this._isOpen = false
+    this._restoreFocusTarget = undefined
   }
 
   protected override updated(changed: Map<string, unknown>) {
@@ -99,17 +117,19 @@ export class WebUiContextMenu extends LitElement {
           this._menu.panel.setAttribute('aria-label', '上下文菜单')
           this._menu.panel.addEventListener('click', this._onMenuClick)
         }
+        // 父项始终留在 menu.content 内，观察它即可覆盖各级子菜单在打开期间的内容重建。
+        this._contentObserver.observe(this._menu.content, { childList: true, subtree: true })
         requestAnimationFrame(() => {
           if (!this._isOpen || !this._menu) return
-          this._setupMenuItems()
-          this._positionMenu()
+          this._refreshMenu()
           showOverlayPresence(this._menu.panel, { isInstant: this._shouldOpenInstantly })
           this._shouldOpenInstantly = true
           this._focusFirstItem()
-          this._bindLevelHovers()
         })
       } else {
         this._syncScrollLock(false)
+        this._contentObserver.disconnect()
+        this._refreshScheduled = false
         void this._closeMenuAfterPresence()
       }
       if (this._userOpenChange.consume()) this._dispatchChange(this._isOpen)
@@ -136,7 +156,7 @@ export class WebUiContextMenu extends LitElement {
     if (this._isOpen) {
       this._closeSubmenusFrom(0, true)
       this._restoreClosingSubmenus()
-      requestAnimationFrame(() => this._positionMenu())
+      this._scheduleRefresh()
       return false
     }
     this._restoreFocusTarget ??= document.activeElement instanceof HTMLElement ? document.activeElement : undefined
@@ -159,6 +179,25 @@ export class WebUiContextMenu extends LitElement {
     this.close()
   }
 
+  // 同一帧内多次内容变化只刷新一次，避免观察者与刷新自身 append 形成循环。
+  private _scheduleRefresh() {
+    if (this._refreshScheduled || !this._isOpen) return
+    this._refreshScheduled = true
+    requestAnimationFrame(() => {
+      this._refreshScheduled = false
+      if (!this._isOpen || !this._menu) return
+      this._refreshMenu()
+    })
+  }
+
+  // 重新同步 portal 内容并重定位；fresh-open、重定位与观察者触发的刷新共用。
+  private _refreshMenu() {
+    if (!this._menu) return
+    this._setupMenuItems()
+    this._positionMenu()
+    this._bindLevelHovers()
+  }
+
   private _positionMenu() {
     const panel = this._menu?.panel
     if (!panel) return
@@ -166,6 +205,30 @@ export class WebUiContextMenu extends LitElement {
     panel.style.visibility = 'hidden'
     panel.style.display = ''
 
+    // 普通 overlay root 不经过 transformed containing block，保留轻量的同步定位。
+    // 只有 panel 已进入 open native dialog 时才需要 Floating UI 解析坐标。
+    if (!(panel.parentElement instanceof HTMLDialogElement && panel.parentElement.open)) {
+      this._positionMenuInViewport(panel)
+      return
+    }
+
+    void computePosition({ getBoundingClientRect: () => new DOMRect(this._x, this._y, 0, 0) }, panel, {
+      strategy: 'fixed',
+      placement: 'bottom-start',
+      // crossAxis 必须显式开启：bottom-start 的 sideAxis 为 y，默认只钳制 x，
+      // 视口下缘打开时菜单底部会溢出且无法滚动进入视野。
+      middleware: [shift({ padding: 8, crossAxis: true })]
+    }).then(({ x, y, middlewareData }) => {
+      if (!this._isOpen || this._menu?.panel !== panel) return
+      // dialog 相对坐标不能与 viewport 的 _x/_y 比较推导 origin（原点非零时几乎恒判
+      // right/bottom）；shift 数据是该坐标系内的钳制位移增量，负值即被推向该轴起点侧。
+      const shiftX = middlewareData.shift?.x ?? 0
+      const shiftY = middlewareData.shift?.y ?? 0
+      this._applyMenuPosition(panel, x, y, shiftX < 0 ? 'right' : 'left', shiftY < 0 ? 'bottom' : 'top')
+    })
+  }
+
+  private _positionMenuInViewport(panel: HTMLElement) {
     const { width, height } = panel.getBoundingClientRect()
     const vw = window.innerWidth
     const vh = window.innerHeight
@@ -178,11 +241,22 @@ export class WebUiContextMenu extends LitElement {
     if (x < 0) x = 8
     if (y < 0) y = 8
 
+    this._applyMenuPosition(panel, x, y)
+  }
+
+  private _applyMenuPosition(
+    panel: HTMLElement,
+    x: number,
+    y: number,
+    horizontalOrigin?: 'left' | 'right',
+    verticalOrigin?: 'top' | 'bottom'
+  ) {
     panel.style.left = `${x}px`
     panel.style.top = `${y}px`
-    const horizontalOrigin = x < this._x ? 'right' : 'left'
-    const verticalOrigin = y < this._y ? 'bottom' : 'top'
-    panel.style.setProperty('--wui-internal-overlay-transform-origin', `${verticalOrigin} ${horizontalOrigin}`)
+    // 非 dialog 路径保持 viewport 坐标比较；dialog 路径由调用方传入 shift 推导值。
+    const horizontal = horizontalOrigin ?? (x < this._x ? 'right' : 'left')
+    const vertical = verticalOrigin ?? (y < this._y ? 'bottom' : 'top')
+    panel.style.setProperty('--wui-internal-overlay-transform-origin', `${vertical} ${horizontal}`)
     panel.style.visibility = ''
   }
 
@@ -197,9 +271,140 @@ export class WebUiContextMenu extends LitElement {
   private _setupMenuItems() {
     const menu = this._menu
     if (!menu) return
+    const content = menu.content
 
+    this._syncManagedItems(content)
     this._hideMenuItems()
-    moveMenuChildren(this, menu.content)
+    // 宿主可能在菜单打开期间动态改写 slot 子内容（如切换上下文后重建嵌套子项），
+    // 新节点没有隐藏 slot 会落入父项默认 slot 可见渲染并叠到一级菜单上；
+    // 因此对已移入 content 的嵌套子项也要重新隐藏。
+    hideNestedMenuChildren(content, 'context-menu-hidden')
+
+    // 框架 v-if 注释锚点的复位独立于元素重排：无论元素序是否已变都要执行。
+    // 若挂在「元素序已变才重排」之下，顺序恰好正确时会跳过复位，锚点漂移无法收敛，
+    // 而 Vue 下次翻转正依赖锚点引导新分支项的插入点。
+    const anchors = this._captureFrameworkAnchors(content)
+    this._orderMenuItems(content)
+    this._restoreFrameworkAnchors(content, anchors)
+  }
+
+  /**
+   * 捕获框架 v-if 注释锚点相对其后继元素的绑定，供重排后复位。
+   * 后继以 nextElementSibling 解析（跳过注释/文本，多个相邻锚点绑定同一后继）。
+   * 锚点在 content 末尾、无后继元素时记为 null（尾部锚点，复位时保持末尾）。
+   */
+  private _captureFrameworkAnchors(content: HTMLElement): Map<Comment, HTMLElement | null> {
+    const anchors = new Map<Comment, HTMLElement | null>()
+    for (const node of Array.from(content.childNodes)) {
+      if (node instanceof Comment && node.textContent !== MARKER_TEXT) {
+        const nextEl = node.nextElementSibling
+        anchors.set(node, nextEl instanceof HTMLElement ? nextEl : null)
+      }
+    }
+    return anchors
+  }
+
+  /**
+   * 把锚点复位到捕获时其后继元素之前（尾部锚点保持末尾）。
+   * 元素重排用 insertBefore/appendChild 不会移动注释，锚点必须显式复位，
+   * 否则脱离模板位置后 Vue 下次 v-if 翻转会把新分支项插到错误插入点。
+   */
+  private _restoreFrameworkAnchors(content: HTMLElement, anchors: Map<Comment, HTMLElement | null>) {
+    for (const [anchor, successor] of anchors) {
+      if (anchor.parentNode !== content) continue
+      if (successor && successor.parentNode === content) {
+        if (anchor.nextElementSibling !== successor) content.insertBefore(anchor, successor)
+      } else {
+        // 尾部锚点：重排可能把元素 append 到末尾越过锚点，恢复其末尾位置。
+        content.appendChild(anchor)
+      }
+    }
+  }
+
+  /**
+   * 全集 reconcile：以「content 现有元素 ∪ 宿主元素」为托管全集。
+   * 框架（如 Vue 的 v-if 翻转）可能不经宿主直接改写 portal 内节点——卸载旧项留下
+   * 注释锚点、把新项直接插进 content——它们都会被这里收编（补 marker + 补隐藏），
+   * 已被框架删除/移出两处的条目则被清理。
+   */
+  private _syncManagedItems(content: HTMLElement) {
+    // 宿主与 portal 面板分别位于不同容器，结构上不相交且收集只看直接子层，
+    // 两个集合不会重复。
+    const inContent = getMovableMenuSubtrees(content)
+    const inHost = getMovableMenuSubtrees(this)
+    const managed = new Set([...inContent, ...inHost])
+
+    // 清理已失效条目：托管元素既不在 content 也不在宿主，说明已被框架删除。
+    // 仍在 content 的元素必被上面收集进 managed，故这里只需处理宿主侧。
+    this._menuItemAnchors.forEach((marker, subtree) => {
+      if (managed.has(subtree)) return
+      marker.remove()
+      this._menuItemAnchors.delete(subtree)
+    })
+
+    // 确保每个托管元素都有 marker：框架直接插入 content 的项在此收编。
+    // content 项按其当前 DOM 序（框架语义序）**反向**处理，新 marker 插到后继项 marker 之前——
+    // 这样补建的 marker 序无需重排即可与 content 对齐；宿主项的 marker 原地补插。
+    const ensureMarker = (subtree: HTMLElement, inHost: boolean, before?: Comment) => {
+      const existing = this._menuItemAnchors.get(subtree)
+      if (existing && existing.parentNode === this) return existing
+      existing?.remove()
+      const marker = document.createComment(MARKER_TEXT)
+      if (inHost) {
+        this.insertBefore(marker, subtree)
+      } else if (before && before.parentNode === this) {
+        this.insertBefore(marker, before)
+      } else {
+        this.appendChild(marker)
+      }
+      this._menuItemAnchors.set(subtree, marker)
+      return marker
+    }
+    for (let index = inContent.length - 1; index >= 0; index--) {
+      const subtree = inContent[index]
+      const next = inContent[index + 1]
+      const nextMarker = next ? this._menuItemAnchors.get(next) : undefined
+      ensureMarker(subtree, false, nextMarker)
+    }
+    for (const subtree of inHost) {
+      ensureMarker(subtree, true)
+    }
+
+    // 宿主中尚存的托管项移入 content。
+    for (const subtree of inHost) {
+      content.appendChild(subtree)
+    }
+  }
+
+  private _orderMenuItems(content: HTMLElement) {
+    const targetItems: HTMLElement[] = []
+    for (const node of Array.from(this.childNodes)) {
+      if (node.nodeType !== Node.COMMENT_NODE || node.textContent !== MARKER_TEXT) continue
+      this._menuItemAnchors.forEach((marker, subtree) => {
+        if (marker !== node || subtree.parentNode !== content) return
+        targetItems.push(subtree)
+      })
+    }
+
+    if (targetItems.length === 0) return
+
+    const currentItems = Array.from(content.children)
+    if (currentItems.length === targetItems.length && currentItems.every((item, index) => item === targetItems[index]))
+      return
+
+    // 把每个元素移动到目标序中下一个元素之前，而不是 appendChild 全部移到末尾。
+    // appendChild 会把元素越过 content 中的框架注释锚点（v-if 锚点），导致锚点脱离
+    // 模板位置，下次框架翻转时据此锚点插入新分支项就会落错位；insertBefore 只重排
+    // 元素相对顺序，锚点保持在原模板位置。锚点复位由 _restoreFrameworkAnchors 独立完成。
+    for (let index = targetItems.length - 1; index >= 0; index--) {
+      const item = targetItems[index]
+      const next = targetItems[index + 1]
+      if (next) {
+        if (item.nextElementSibling !== next) content.insertBefore(item, next)
+      } else {
+        content.appendChild(item)
+      }
+    }
   }
 
   private _returnItemsToSlot() {
@@ -208,7 +413,39 @@ export class WebUiContextMenu extends LitElement {
 
     this._closeSubmenusFrom(0, true)
     this._restoreClosingSubmenus()
-    moveMenuChildren(menu.content, this)
+
+    // 按 content 子节点序双向归还：元素回到 marker 位置，框架 v-if 注释锚点
+    // 插到对应元素之前。Vue 仍持有这些锚点的 vnode.el 引用，随元素一起迁回宿主
+    // 可确保框架下次 patch 以宿主为容器，不会因 parentNode === null 崩溃。
+    const content = menu.content
+    const pending: Comment[] = []
+    for (const node of Array.from(content.childNodes)) {
+      // instanceof 收窄：Comment 接口为空，nodeType 继承自 Node 的 number，无法用 === 收窄
+      if (node instanceof Comment) {
+        pending.push(node)
+        continue
+      }
+      if (!(node instanceof HTMLElement)) continue
+      const marker = this._menuItemAnchors.get(node)
+      if (!marker) continue
+      for (const c of pending) {
+        if (marker.parentNode === this) this.insertBefore(c, marker)
+        else this.appendChild(c)
+      }
+      pending.length = 0
+      if (marker.parentNode === this) {
+        this.insertBefore(node, marker)
+      } else {
+        this.appendChild(node)
+      }
+      marker.remove()
+      this._menuItemAnchors.delete(node)
+    }
+    // 尾部框架锚点追加到宿主末尾
+    for (const c of pending) this.appendChild(c)
+    // 映射中剩余 = 已不在 content 的条目(如翻转中被框架卸载的),仅清理 marker
+    this._menuItemAnchors.forEach(marker => marker.remove())
+    this._menuItemAnchors.clear()
   }
 
   private async _closeMenuAfterPresence() {
@@ -291,7 +528,10 @@ export class WebUiContextMenu extends LitElement {
   }
 
   private _restoreSubmenuItems(submenu: MenuPortalOverlay, item?: HTMLElement) {
-    if (item) moveMenuChildren(submenu.content, item)
+    if (!item) return
+    moveMenuChildren(submenu.content, item)
+    // 子菜单打开期间宿主可能重建了嵌套子项，归还时补隐藏，避免可见叠加。
+    hideNestedMenuChildren(item, 'context-menu-hidden')
   }
 
   private _restoreClosingSubmenus() {
@@ -310,6 +550,39 @@ export class WebUiContextMenu extends LitElement {
   }
 
   private _positionSubmenu(item: HTMLElement, submenu: MenuPortalOverlay) {
+    // 与主菜单同因：panel 进入 open native dialog 后处于 transformed containing
+    // block，viewport 坐标的 left/top 会相对 dialog padding box 解析而整体偏移，
+    // 需改走 Floating UI 换算为 dialog 相对坐标；开合方向仍按视口坐标度量预判。
+    if (submenu.panel.parentElement instanceof HTMLDialogElement && submenu.panel.parentElement.open) {
+      const itemRect = item.getBoundingClientRect()
+      const padding = 8
+      const canOpenRight = itemRect.right + submenu.panel.getBoundingClientRect().width + padding <= window.innerWidth
+      // 同帧关闭→重开会复用同一 panel 产生两个 in-flight 定位 promise，完成序不保证
+      // 后者胜出；按 panel 键控的代数 token 只允许最新一次调用写入，迟到旧 promise 丢弃。
+      const epoch = (this._submenuPositionEpochs.get(submenu.panel) ?? 0) + 1
+      this._submenuPositionEpochs.set(submenu.panel, epoch)
+      void computePosition(item, submenu.panel, {
+        strategy: 'fixed',
+        placement: canOpenRight ? 'right-start' : 'left-start',
+        middleware: [shift({ padding, crossAxis: true })]
+      }).then(({ x, y, middlewareData }) => {
+        if (!this._activeSubmenus.includes(submenu) || epoch !== this._submenuPositionEpochs.get(submenu.panel)) return
+        // 与主菜单 dialog 路径一致：origin 由 shift 增量推导，视口预判只决定 placement。
+        const shiftX = middlewareData.shift?.x ?? 0
+        const shiftY = middlewareData.shift?.y ?? 0
+        const horizontalOrigin = shiftX < 0 ? 'right' : 'left'
+        const verticalOrigin = shiftY < 0 ? 'bottom' : 'top'
+        submenu.panel.style.left = `${x}px`
+        submenu.panel.style.top = `${y}px`
+        submenu.panel.style.setProperty(
+          '--wui-internal-overlay-transform-origin',
+          `${verticalOrigin} ${horizontalOrigin}`
+        )
+        submenu.panel.style.visibility = ''
+      })
+      return
+    }
+
     const itemRect = item.getBoundingClientRect()
     const submenuRect = submenu.panel.getBoundingClientRect()
     const padding = 8
@@ -550,9 +823,16 @@ export class WebUiContextMenu extends LitElement {
   override render() {
     return html`
       <div class="context-menu-anchor">
-        <slot @slotchange=${this._hideMenuItems}></slot>
+        <slot @slotchange=${this._onSlotChange}></slot>
       </div>
     `
+  }
+
+  private _onSlotChange() {
+    this._hideMenuItems()
+    // 打开期间宿主重建顶层项时，新成员要移入 portal 才对用户可见；
+    // 关闭状态下无需移动，等下次打开时由 _setupMenuItems 统一处理。
+    if (this._isOpen) this._scheduleRefresh()
   }
 
   declare readonly $events: {

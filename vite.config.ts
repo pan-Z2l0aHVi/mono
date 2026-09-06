@@ -326,7 +326,7 @@ export default defineConfig({
       '**/auto-imports.d.ts',
       '**/typed-router.d.ts',
       'apps/interweave/frontend/bindings/**',
-      '**/.agents/skills/**', // third-party skill sources
+      '**/.agents/skills/**', // skill 源码（第三方与仓库自编写）不参与格式检查
       '**/CHANGELOG.md' // changesets 生成的 changelog，不参与格式检查
     ],
     experimentalSortImports: {
