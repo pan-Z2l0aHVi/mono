@@ -706,7 +706,7 @@ watch(addDialogOpen, (open, _, onCleanup) => {
   <web-ui-layout
     header-glow
     sidebarResizable
-    class="min-h-dvh overflow-x-clip text-[#22212a] bg-white dark:text-[var(--wui-color-text)] dark:bg-[var(--wui-color-page)]"
+    class="min-h-dvh overflow-x-clip text-[#22212a] bg-white [--wui-layout-mobile-toggle-inset:24px] dark:text-[var(--wui-color-text)] dark:bg-[var(--wui-color-page)]"
     :sidebarCollapsed="sidebarCollapsed"
     :sidebarOpen="sidebarOpen"
     :sidebarWidth="sidebarWidth"
@@ -762,7 +762,8 @@ watch(addDialogOpen, (open, _, onCleanup) => {
 
     <!-- Header -->
     <header slot="header" class="w-full">
-      <div class="flex gap-4 items-center justify-between px-6 py-2">
+      <div class="flex gap-4 items-center justify-between px-6 py-2 max-[640px]:pl-0">
+        <!-- 窄屏时布局组件的展开 Toggle 自带 24px 左缩进（--wui-layout-mobile-toggle-inset），header 内容去掉左内边距避免双重缩进。 -->
         <web-ui-button-group aria-label="页面导航">
           <web-ui-button icon variant="glass" aria-label="后退" :disabled="!canGoBack" @click="router.back()">
             <web-ui-icon :icon="lucideChevronLeft"></web-ui-icon>
