@@ -4,7 +4,12 @@ import { customElement, property } from 'lit/decorators.js'
 // web-ui-button 必须注册（Rolldown tree-shake 副作用 import，引用类名阻止删除）
 import '@/components/button'
 import glass from '@/assets/glass.css?inline'
-import { defineGroupPresentation, GroupController, type ButtonGroupContext } from '@/shared/group-management'
+import {
+  buttonGroupContextKey,
+  defineGroupPresentation,
+  GroupController,
+  type ButtonGroupContext
+} from '@/shared/group-management'
 import { normalizeLiteral } from '@/shared/normalize'
 
 import type { WebUiButton } from '../button'
@@ -31,6 +36,8 @@ export class WebUiButtonGroup extends LitElement {
   private readonly _groupController = new GroupController(
     this,
     defineGroupPresentation<WebUiButton, ButtonGroupContext>({
+      host: this,
+      context: buttonGroupContextKey,
       getItems: () => [...this.querySelectorAll<WebUiButton>('web-ui-button')],
       getContext: (_, index, buttons) => ({
         direction: this.direction,

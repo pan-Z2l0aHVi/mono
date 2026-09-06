@@ -10,6 +10,8 @@ type ThemeMotion = 'full' | 'reduced' | 'system'
 
 const STORAGE_KEY = 'theme-appearance'
 const MOTION_STORAGE_KEY = 'theme-motion'
+const SIDEBAR_WIDTH_STORAGE_KEY = 'sidebar-width'
+const DEFAULT_SIDEBAR_WIDTH = '240px'
 const THEME_APPEARANCES = new Set<ThemeAppearance>(['light', 'dark', 'system'])
 const THEME_MOTIONS = new Set<ThemeMotion>(['full', 'reduced', 'system'])
 
@@ -51,6 +53,11 @@ function getInitialThemeMotion(): ThemeMotion {
   return isThemeMotion(motion) ? motion : 'system'
 }
 
+function getInitialSidebarWidth(): string {
+  const width = readStoredTheme(SIDEBAR_WIDTH_STORAGE_KEY)
+  return typeof width === 'string' && /^\d+(\.\d+)?px$/.test(width) ? width : DEFAULT_SIDEBAR_WIDTH
+}
+
 interface NavItem {
   path: string
   label: string
@@ -69,6 +76,7 @@ const navItems: NavItem[] = [
   { path: '/components/select', label: 'Select 下拉选择' },
   { path: '/components/autocomplete', label: 'Autocomplete 自动补全' },
   { path: '/components/dropdown', label: 'Dropdown 下拉菜单' },
+  { path: '/components/collapse', label: 'Collapse 折叠面板' },
   { path: '/components/dialog', label: 'Dialog 对话框' },
   { path: '/components/drawer', label: 'Drawer 抽屉' },
   { path: '/components/empty', label: 'Empty 空状态' },
@@ -92,6 +100,7 @@ export function Root() {
   const [bannerVisible, setBannerVisible] = useState(true)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [sidebarWidth, setSidebarWidth] = useState<string>(getInitialSidebarWidth)
   const navSidebarRef = useRef<HTMLElement>(null)
   const router = useRouter()
   const pathname = useRouterState({ select: s => s.location.pathname })
@@ -131,6 +140,12 @@ export function Root() {
     setSidebarOpen(event.detail.open)
   }
 
+  // 拖拽调宽的受控回写 + localStorage 持久化
+  const updateSidebarWidth = (event: CustomEvent<{ width: string }>) => {
+    setSidebarWidth(event.detail.width)
+    writeStoredTheme(SIDEBAR_WIDTH_STORAGE_KEY, JSON.stringify(event.detail.width))
+  }
+
   return (
     <ErrorBoundary FallbackComponent={RootErrorFallback}>
       <web-ui-theme appearance={themeAppearance} motion={themeMotion}>
@@ -140,8 +155,13 @@ export function Root() {
             header-glow
             sidebarCollapsed={sidebarCollapsed}
             sidebarOpen={sidebarOpen}
+            sidebarWidth={sidebarWidth}
+            sidebar-resizable
+            sidebar-min-width="120px"
+            sidebar-max-width="400px"
             onsidebar-collapsed-change={updateSidebarCollapsed}
             onsidebar-open-change={updateSidebarOpen}
+            onsidebar-width-change={updateSidebarWidth}
           >
             {bannerVisible ? (
               <div

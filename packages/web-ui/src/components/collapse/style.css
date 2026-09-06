@@ -1,0 +1,69 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+/*
+ * :host 仅限 display/contain（ADR-0003）。
+ * headless 内核（ADR-0039）：不携带视觉样式，trigger 与内容的排版由消费者
+ * 提供；这里只保留动画与三态关闭稳态必需的结构规则。
+ */
+:host {
+  display: block;
+}
+
+/*
+ * grid 0fr↔1fr 高度动画（ADR-0038 选型）：
+ * 轨道行高在 0fr（收起）与 1fr（展开）间过渡，内容高度自适应、零 JS 测量；
+ * inner 的 min-height/min-width 归零是轨道能收缩到 0 的必要条件，
+ * overflow hidden 负责裁剪收起中的内容。
+ */
+.wui-collapse-track {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows var(--wui-duration-collapse-enter, 200ms)
+    var(--wui-ease-enter, cubic-bezier(0.23, 1, 0.32, 1));
+
+  /*
+   * 水平方向：块级 grid 默认撑满可用宽度，1fr 列会解析为剩余空间而非内容宽度；
+   * width: max-content 让 1fr 列按内容 max-content 贡献解析（与行向 auto 高度同理），
+   * 0fr 收缩依赖 inner 的 min-width: 0。
+   */
+  &.is-horizontal {
+    grid-template-columns: 0fr;
+    grid-template-rows: none;
+    width: max-content;
+    transition: grid-template-columns var(--wui-duration-collapse-enter, 200ms)
+      var(--wui-ease-enter, cubic-bezier(0.23, 1, 0.32, 1));
+  }
+}
+
+.wui-collapse-track[data-wui-presence='open'] {
+  grid-template-rows: 1fr;
+
+  &.is-horizontal {
+    grid-template-columns: 1fr;
+    grid-template-rows: none;
+  }
+}
+
+.wui-collapse-track[data-wui-presence='closing'] {
+  pointer-events: none;
+  transition: grid-template-rows var(--wui-duration-collapse-exit, 160ms)
+    var(--wui-ease-enter, cubic-bezier(0.23, 1, 0.32, 1));
+
+  &.is-horizontal {
+    transition: grid-template-columns var(--wui-duration-collapse-exit, 160ms)
+      var(--wui-ease-enter, cubic-bezier(0.23, 1, 0.32, 1));
+  }
+}
+
+.wui-collapse-inner {
+  overflow: hidden;
+  min-height: 0;
+}
+
+.is-horizontal .wui-collapse-inner {
+  min-width: 0;
+}

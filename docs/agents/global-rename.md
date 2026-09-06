@@ -21,7 +21,7 @@
 
 以 repository root 为搜索边界，确认 monorepo 结构和 workspace 范围：
 
-- `apps/`、`packages/`、`scripts/`、`tests/`、`docs/`、`examples/`、`configs/`
+- `apps/`、`packages/`、`scripts/`、`docs/` 等实际存在的顶层目录
 - `package.json`、workspace configuration、TypeScript project references
 - build/test/lint configuration
 

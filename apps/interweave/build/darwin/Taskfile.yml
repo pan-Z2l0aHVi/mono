@@ -118,6 +118,7 @@ tasks:
   create:app:bundle:
     summary: Creates an `.app` bundle
     cmds:
+      - rm -rf "{{.BIN_DIR}}/{{.APP_NAME}}.app"
       - mkdir -p "{{.BIN_DIR}}/{{.APP_NAME}}.app/Contents/MacOS"
       - mkdir -p "{{.BIN_DIR}}/{{.APP_NAME}}.app/Contents/Resources"
       - cp build/darwin/icons.icns "{{.BIN_DIR}}/{{.APP_NAME}}.app/Contents/Resources"

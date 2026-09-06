@@ -8,6 +8,7 @@
 
 - **Storage**：`defineLocal`/`defineSession` 支持命名空间、TTL 过期、跨标签页同步
 - **Tracker**：数据埋点上报，支持批量聚合、离线恢复、临终遗言
+- **History Nav**：Navigation API 只读子集，跟踪前进/后退可用性（`defineHistoryNav`）
 - **Env**：17 个环境检测标志（微信、钉钉、PWA、移动端等）
 - **DOM**：视口尺寸和滚动位置工具
 - **File**：文件下载、base64 转换、图片信息、文件类型校验
@@ -260,3 +261,7 @@ const tracker = defineTracker({ url: '/api/track' })
 | 参数 | 类型         | 默认值 | 说明             |
 | ---- | ------------ | ------ | ---------------- |
 | `fn` | `() => void` | -      | 待延迟执行的函数 |
+
+### `defineHistoryNav(options?)`
+
+通过 Navigation API 只读子集（`canGoBack` / `canGoForward` / `currentEntry` / `entries()` / `currententrychange`）跟踪用户在真实浏览器历史中能否前进/后退。幂等单例；完整 API 与已知限制见 [`src/history-nav/README.md`](./src/history-nav/README.md)。

@@ -8,6 +8,7 @@ English | [简体中文](./README.CN.md)
 
 - **Storage**: `defineLocal`/`defineSession` with namespace, TTL expiry, cross-tab sync
 - **Tracker**: Data tracking with batch aggregation, offline restore, and last-words flush
+- **History Nav**: Read-only Navigation API subset tracking back/forward availability (`defineHistoryNav`)
 - **Env**: 17 environment detection flags (WeChat, DingTalk, PWA, mobile, etc.)
 - **DOM**: Viewport size and scroll position helpers
 - **File**: Download, base64 conversion, image info, file type validation
@@ -258,3 +259,7 @@ Execute a function on the next microtask.
 | Parameter | Type         | Default | Description       |
 | --------- | ------------ | ------- | ----------------- |
 | `fn`      | `() => void` | -       | Function to defer |
+
+### `defineHistoryNav(options?)`
+
+Track whether the user can go back / forward in the real browser history via a read-only subset of the Navigation API (`canGoBack` / `canGoForward` / `currentEntry` / `entries()` / `currententrychange`). Idempotent singleton; see [`src/history-nav/README.md`](./src/history-nav/README.md) for the full API and known limitations.

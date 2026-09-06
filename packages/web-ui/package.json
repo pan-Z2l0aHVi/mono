@@ -48,13 +48,15 @@
   "dependencies": {
     "@floating-ui/dom": "catalog:",
     "@greypan/browser-kit": "workspace:*",
-    "@greypan/js-kit": "workspace:*"
+    "@greypan/js-kit": "workspace:*",
+    "@lit/context": "catalog:"
   },
   "devDependencies": {
     "@greypan/tsconfig": "workspace:*",
     "@iconify-json/jam": "catalog:",
     "@iconify-json/lucide": "catalog:",
     "@iconify-json/si": "catalog:",
+    "@iconify-json/tabler": "catalog:",
     "@iconify-json/heroicons": "catalog:",
     "@iconify-json/ooui": "catalog:",
     "@iconify-json/radix-icons": "catalog:",

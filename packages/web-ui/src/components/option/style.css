@@ -14,7 +14,7 @@
 }
 
 .option-label {
-  cursor: pointer;
+  cursor: default;
   user-select: none;
 
   overflow: hidden;
@@ -31,10 +31,6 @@
   color: var(--wui-color-text, #1b1b1b);
   text-overflow: ellipsis;
   white-space: nowrap;
-
-  transition:
-    color var(--wui-duration-feedback, 100ms) var(--wui-ease-enter, cubic-bezier(0.23, 1, 0.32, 1)),
-    background-color var(--wui-duration-feedback, 100ms) var(--wui-ease-enter, cubic-bezier(0.23, 1, 0.32, 1));
 }
 
 .check {

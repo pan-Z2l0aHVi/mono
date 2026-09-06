@@ -10,6 +10,8 @@ type ThemeMotion = 'full' | 'reduced' | 'system'
 
 const STORAGE_KEY = 'theme-appearance'
 const MOTION_STORAGE_KEY = 'theme-motion'
+const SIDEBAR_WIDTH_STORAGE_KEY = 'sidebar-width'
+const DEFAULT_SIDEBAR_WIDTH = '240px'
 const THEME_APPEARANCES = new Set<ThemeAppearance>(['light', 'dark', 'system'])
 const THEME_MOTIONS = new Set<ThemeMotion>(['full', 'reduced', 'system'])
 
@@ -31,11 +33,17 @@ function getInitialThemeMotion(): ThemeMotion {
   return isThemeMotion(motion) ? motion : 'system'
 }
 
+function getInitialSidebarWidth(): string {
+  const width = local.get<unknown>(SIDEBAR_WIDTH_STORAGE_KEY)
+  return typeof width === 'string' && /^\d+(\.\d+)?px$/.test(width) ? width : DEFAULT_SIDEBAR_WIDTH
+}
+
 const themeAppearance = ref(getInitialThemeAppearance())
 const themeMotion = ref(getInitialThemeMotion())
 const bannerVisible = ref(true)
 const sidebarCollapsed = ref(false)
 const sidebarOpen = ref(false)
+const sidebarWidth = ref(getInitialSidebarWidth())
 
 function updateThemeAppearance(event: WebUiEvent<WebUiSelect, 'change'>) {
   const appearance = event.currentTarget.value
@@ -59,6 +67,12 @@ function updateSidebarCollapsed(event: WebUiEvent<WebUiLayout, 'sidebar-collapse
 
 function updateSidebarOpen(event: WebUiEvent<WebUiLayout, 'sidebar-open-change'>) {
   sidebarOpen.value = event.detail.open
+}
+
+// 拖拽调宽的受控回写 + localStorage 持久化
+function updateSidebarWidth(event: WebUiEvent<WebUiLayout, 'sidebar-width-change'>) {
+  sidebarWidth.value = event.detail.width
+  local.set(SIDEBAR_WIDTH_STORAGE_KEY, event.detail.width)
 }
 
 const route = useRoute()
@@ -93,6 +107,7 @@ const navItems: NavItem[] = [
   { path: '/components/select', label: 'Select 下拉选择' },
   { path: '/components/autocomplete', label: 'Autocomplete 自动补全' },
   { path: '/components/dropdown', label: 'Dropdown 下拉菜单' },
+  { path: '/components/collapse', label: 'Collapse 折叠面板' },
   { path: '/components/dialog', label: 'Dialog 对话框' },
   { path: '/components/drawer', label: 'Drawer 抽屉' },
   { path: '/components/empty', label: 'Empty 空状态' },
@@ -122,8 +137,13 @@ const navItems: NavItem[] = [
         header-glow
         :sidebarCollapsed="sidebarCollapsed"
         :sidebarOpen="sidebarOpen"
+        :sidebarWidth="sidebarWidth"
+        sidebar-resizable
+        sidebar-min-width="120px"
+        sidebar-max-width="400px"
         @sidebar-collapsed-change="updateSidebarCollapsed"
         @sidebar-open-change="updateSidebarOpen"
+        @sidebar-width-change="updateSidebarWidth"
       >
         <div
           v-if="bannerVisible"

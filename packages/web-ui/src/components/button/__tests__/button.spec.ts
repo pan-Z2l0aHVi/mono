@@ -156,6 +156,110 @@ describe('WebUiButton 组件', () => {
     })
   })
 
+  describe('组合: icon + loading', () => {
+    const getShadowParts = (el: WebUiButton) => {
+      const shadow = el.shadowRoot!
+      const spinner = shadow.querySelector('web-ui-icon')
+      const defaultSlot = shadow.querySelector<HTMLSlotElement>('slot:not([name])')
+      const label = shadow.querySelector('.label')
+      return { spinner, defaultSlot, label }
+    }
+
+    it('icon 模式下 loading spinner 替换默认 slot 内容，只渲染 spinner', async () => {
+      const el = createButton()
+      el.setAttribute('icon', '')
+      el.innerHTML = '<web-ui-icon data-role="mine"></web-ui-icon>'
+      el.loading = true
+      await waitForUpdate(el)
+
+      const { spinner, defaultSlot, label } = getShadowParts(el)
+      expect(spinner).toBeTruthy()
+      expect(defaultSlot).toBeNull()
+      expect(label).toBeNull()
+      cleanupElement(el)
+    })
+
+    it('icon 模式未 loading 时仍投影默认 slot 且不渲染 spinner', async () => {
+      const el = createButton()
+      el.setAttribute('icon', '')
+      el.innerHTML = '<web-ui-icon data-role="mine"></web-ui-icon>'
+      await waitForUpdate(el)
+
+      const { spinner, defaultSlot, label } = getShadowParts(el)
+      expect(spinner).toBeNull()
+      expect(defaultSlot).toBeTruthy()
+      expect(label).toBeNull()
+      expect(
+        (defaultSlot?.assignedNodes({ flatten: true }) ?? []).some(
+          n => n instanceof Element && n.matches('[data-role="mine"]')
+        )
+      ).toBe(true)
+      cleanupElement(el)
+    })
+
+    it('icon + loading 恢复 false 后默认 slot 内容恢复投影', async () => {
+      const el = createButton()
+      el.setAttribute('icon', '')
+      el.innerHTML = '<web-ui-icon data-role="mine"></web-ui-icon>'
+      el.loading = true
+      await waitForUpdate(el)
+      expect(getShadowParts(el).spinner).toBeTruthy()
+
+      el.loading = false
+      await waitForUpdate(el)
+
+      const { spinner, defaultSlot } = getShadowParts(el)
+      expect(spinner).toBeNull()
+      expect(defaultSlot).toBeTruthy()
+      expect(
+        (defaultSlot?.assignedNodes({ flatten: true }) ?? []).some(
+          n => n instanceof Element && n.matches('[data-role="mine"]')
+        )
+      ).toBe(true)
+      cleanupElement(el)
+    })
+
+    it('非 icon 模式 loading 行为不回归：spinner 与 label 并存', async () => {
+      const el = createButton('Loading')
+      el.loading = true
+      await waitForUpdate(el)
+
+      const { spinner, defaultSlot, label } = getShadowParts(el)
+      expect(spinner).toBeTruthy()
+      expect(label).toBeTruthy()
+      expect(defaultSlot).toBeTruthy()
+      cleanupElement(el)
+    })
+
+    it('icon + loading 阻断 click，保持不可点击语义', async () => {
+      const el = createButton()
+      el.setAttribute('icon', '')
+      el.loading = true
+      await waitForUpdate(el)
+
+      const [events] = spyEvents(el, 'click')
+      el.shadowRoot?.querySelector('button')?.click()
+      expect(events).toHaveLength(0)
+
+      const inner = el.shadowRoot?.querySelector('button')
+      expect(inner?.disabled).toBe(true)
+      cleanupElement(el)
+    })
+
+    it('disabled + icon + loading 仍阻断 click', async () => {
+      const el = createButton()
+      el.setAttribute('icon', '')
+      el.disabled = true
+      el.loading = true
+      await waitForUpdate(el)
+
+      const [events] = spyEvents(el, 'click')
+      el.shadowRoot?.querySelector('button')?.click()
+      expect(events).toHaveLength(0)
+      cleanupElement(el)
+    })
+  })
+
   describe('属性: full', () => {
     it('full 属性反射到 host', async () => {
       const el = createButton()

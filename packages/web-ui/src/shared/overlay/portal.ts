@@ -15,7 +15,7 @@ export interface OverlayPortalOptions {
   target: Element
   style: string
   className: string
-  onContentChange?: () => void
+  onContentChange?: (mutations: MutationRecord[]) => void
 }
 
 export interface OverlayPortal {
@@ -25,6 +25,18 @@ export interface OverlayPortal {
   appendContent(nodes: Node[], target?: HTMLElement): void
   removeContent(nodes: Node[]): void
   remove(): void
+}
+
+/**
+ * Portal 面板位于独立 shadow root，宿主上的 CSS 自定义属性不会沿渲染树继承到 panel。
+ * 这里在创建时镜像锚点解析后的变量，让组件 host 上的尺寸配置对 portal 仍然生效。
+ */
+export function applyOverlayVariables(panel: HTMLElement, source: Element, variables: readonly string[]): void {
+  const computedStyle = getComputedStyle(source)
+  for (const variable of variables) {
+    const value = computedStyle.getPropertyValue(variable).trim()
+    if (value) panel.style.setProperty(variable, value)
+  }
 }
 
 /**
@@ -45,7 +57,7 @@ export const defineOverlayPortal = () =>
     root.append(style, panel)
 
     const trackedNodes: Node[] = []
-    const contentObserver = new MutationObserver(() => ctx.onContentChange?.())
+    const contentObserver = new MutationObserver(mutations => ctx.onContentChange?.(mutations))
     const untrackNodes = (nodes: Node[]) => {
       nodes.forEach(node => {
         const index = trackedNodes.indexOf(node)
@@ -86,6 +98,52 @@ export const defineOverlayPortal = () =>
     }
   })
 
+/**
+ * 判断 node 是否是 slot 已分配节点（或其 light DOM 后代），即 node 实际渲染在 shadowRoot 内。
+ * slotted 内容的 parentNode 仍停留在 light DOM，因此不能用普通祖先遍历跨过 shadow 边界，
+ * 只能通过 slot.assignedNodes() 判断内容被渲染到哪个 slot。
+ */
+function isAssignedIntoTarget(node: Node, assignedNode: Node, boundary: Node): boolean {
+  let current: Node | null = node
+  while (current && current !== boundary) {
+    if (current === assignedNode) return true
+    current = current.parentNode
+  }
+  return false
+}
+
+/**
+ * 查找包含 target 且处于打开态的最近原生 <dialog>。
+ * 原生 showModal() 会把 dialog 提升到浏览器 top layer，而常规 overlay 容器在普通文档流，
+ * 二者无法靠 z-index 叠序——overlay 会被 top layer 的 dialog 遮住。
+ * 因此 target 被渲染到某个已打开的原生 dialog 内时，应把 overlay 挂到该 dialog 上，
+ * 使其一并进入 top layer（抽屉 / 对话框内的 dropdown、tooltip、context-menu 均适用）。
+ */
+function findEnclosingOpenDialog(target: Element): HTMLDialogElement | null {
+  let current: Node | null = target
+  while (current && current !== document.documentElement) {
+    if (current instanceof HTMLDialogElement && current.open) return current
+
+    // 跨过 shadow host：检查其 shadowRoot 内已打开的 dialog 是否渲染了 target。
+    if (current instanceof Element && current.shadowRoot) {
+      const dialogs = current.shadowRoot.querySelectorAll('dialog')
+      for (const dialog of dialogs) {
+        if (!(dialog instanceof HTMLDialogElement) || !dialog.open) continue
+        const slots = dialog.querySelectorAll('slot')
+        for (const slot of slots) {
+          for (const assigned of slot.assignedNodes()) {
+            if (!(assigned instanceof Node)) continue
+            if (isAssignedIntoTarget(target, assigned, current)) return dialog
+          }
+        }
+      }
+    }
+
+    current = current.parentNode
+  }
+  return null
+}
+
 export function resolveOverlayContainer(
   container: OverlayContainer | undefined,
   target: Element,
@@ -93,6 +151,10 @@ export function resolveOverlayContainer(
 ): HTMLElement {
   const explicit = typeof container === 'function' ? container() : container
   if (explicit) return explicit
+
+  // target 在已打开的原生 dialog / drawer 内：挂到该 dialog，加入 top layer。
+  const enclosingDialog = findEnclosingOpenDialog(target)
+  if (enclosingDialog) return enclosingDialog
 
   // 无 target 的调用（如菜单）优先使用 root theme；有 target 时使用最近的 theme。
   const theme = options.preferRootTheme ? findRootTheme() : findNearestTheme(target)

@@ -13,7 +13,7 @@ English | [简体中文](./README.CN.md)
 | `node.json`  | 2     | Node.js packages (deps-reload, unplugin-web-components, test-kit) + all `tsconfig.node.json` | `@tsconfig/node24` + `./base.json` |
 | `dom.json`   | 3     | Browser/DOM packages (browser-kit, web-ui)                                                   | `./base.json`                      |
 | `react.json` | 4     | React app (react-web-ui-demo)                                                                | `./dom.json`                       |
-| `vue.json`   | 4     | Vue app (vue-web-ui-demo)                                                                    | `@vue/tsconfig` + `./dom.json`     |
+| `vue.json`   | 4     | Vue apps (vue-web-ui-demo, interweave frontend)                                              | `@vue/tsconfig` + `./dom.json`     |
 
 ## Why separate profiles?
 

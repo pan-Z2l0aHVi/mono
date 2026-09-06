@@ -10,7 +10,7 @@ import { defineFormAssociation, FormAssociationController } from '@/shared/form-
 import { normalizeLiteral } from '@/shared/normalize'
 import { defineOptionPortal } from '@/shared/option-portal'
 import { defineAnchoredPanel } from '@/shared/overlay/anchored-panel'
-import { defineOverlayPortal } from '@/shared/overlay/portal'
+import { applyOverlayVariables, defineOverlayPortal } from '@/shared/overlay/portal'
 import type { OverlayContainer, OverlayPortal } from '@/shared/overlay/portal'
 import { defineScrollLockLease } from '@/shared/scroll-lock/scroll-lock'
 
@@ -19,12 +19,17 @@ import style from './style.css?inline'
 const FILTER_MODES = ['none', 'prefix', 'contains'] as const
 type FilterMode = (typeof FILTER_MODES)[number]
 
+function isEmptySlotNode(node: Node): node is Element {
+  return node instanceof Element && node.getAttribute('slot') === 'empty'
+}
+
 /**
  * `web-ui-autocomplete`：可输入并过滤候选的单值选择器。
  *
  * 与 `web-ui-select` 共用 `<web-ui-option>` 子项注册协议与浮层能力，但触发区是
  * 可编辑输入框：`value` 即当前输入文本（表单值），键入时按 `filter` 模式过滤候选，
  * 选择 option 时文本回填为该项 label，`selected-value` 暴露该项的 value。
+ * `allow-custom-value` 开启后，Enter 可把不匹配候选的原文作为 custom value 显式提交。
  */
 @customElement('web-ui-autocomplete')
 export class WebUiAutocomplete extends LitElement {
@@ -33,12 +38,15 @@ export class WebUiAutocomplete extends LitElement {
   static formAssociated = true
 
   @property({ type: String, reflect: true }) placeholder = ''
+  @property({ type: Boolean, reflect: true }) borderless = false
   @property({ type: Boolean, reflect: true }) disabled = false
   @property({ type: Boolean, reflect: true }) readonly = false
   @property({ type: Boolean, reflect: true }) required = false
   @property({ type: Boolean, reflect: true }) portal = false
   @property({ type: Boolean, reflect: true, attribute: 'no-scroll-lock' })
   noScrollLock = false
+  @property({ type: Boolean, reflect: true, attribute: 'allow-custom-value' })
+  allowCustomValue = false
   @property({ attribute: false }) overlayContainer?: OverlayContainer
   @property({ type: String, reflect: true }) name = ''
   @property({ type: String, attribute: 'aria-label' }) override ariaLabel: string | null = null
@@ -130,9 +138,8 @@ export class WebUiAutocomplete extends LitElement {
     getPortal: () => this._portal,
     getPortalContent: () => this._portalContent,
     isOpen: () => this.portal && this._isOpen,
-    // autocomplete 迁移全部子节点：empty state 等面板内静态内容与 option 的相对顺序
-    // 由 childNodes 原序保持，迁移粒度与 select（裸 option）刻意不同
-    getMigratableNodes: () => Array.from(this.childNodes),
+    // 默认 slot 内容随面板迁移；slot="empty" 由 autocomplete 单独迁移并恢复。
+    getMigratableNodes: () => Array.from(this.childNodes).filter(node => !isEmptySlotNode(node)),
     hasUpdated: () => this.hasUpdated,
     requestUpdate: () => this.requestUpdate(),
     bindOption: option => this._bindOption(option),
@@ -266,7 +273,9 @@ export class WebUiAutocomplete extends LitElement {
 
   private _syncSelectedValue() {
     const query = this._value.trim().toLowerCase()
-    const next = query ? (this._options.find(o => o.label.trim().toLowerCase() === query)?.value ?? '') : ''
+    const next = query
+      ? (this._options.find(o => !o.disabled && o.label.trim().toLowerCase() === query)?.value ?? '')
+      : ''
     this._setSelectedValue(next)
   }
 
@@ -306,11 +315,24 @@ export class WebUiAutocomplete extends LitElement {
 
   private _syncEmptyState() {
     const panel = this._panel.getPanel()
-    if (!panel) return
-    const empty = panel.querySelector<HTMLElement>('.autocomplete-empty')
-    if (!empty) return
+    const empty = panel?.querySelector<HTMLElement>('.autocomplete-empty')
     const matching = this._options.filter(o => !o.hasAttribute('data-filtered'))
-    empty.hidden = !(this._options.length > 0 && matching.length === 0)
+    const hasEmpty = this._isOpen && this._options.length > 0 && matching.length === 0
+    if (empty) empty.hidden = !hasEmpty
+
+    const slot = this.shadowRoot?.querySelector<HTMLSlotElement>('slot[name="empty"]')
+    const customText = slot
+      ?.assignedElements()
+      .map(element => element.textContent?.trim())
+      .filter(Boolean)
+      .join(' ')
+      .trim()
+    const message = customText || empty?.dataset.wuiA11yEmpty || '无匹配选项'
+    const a11yEmpty = this.shadowRoot?.querySelector<HTMLElement>('.autocomplete-empty-a11y')
+    if (a11yEmpty) {
+      a11yEmpty.textContent = message
+      a11yEmpty.hidden = !hasEmpty
+    }
   }
 
   private _bindOption = (option: WebUiOption) => {
@@ -386,12 +408,23 @@ export class WebUiAutocomplete extends LitElement {
         else this._navigateActive(-1)
         break
       case 'Enter':
-        // 面板打开时接管 Enter：选中活动项或拦截表单提交；关闭时不拦截
+        // 面板打开时接管 Enter：选择候选或提交 custom value；关闭时不拦截表单提交。
         if (this._isOpen) {
           e.preventDefault()
           const option = this._options[this._activeIndex]
           if (option && !option.disabled && !option.hasAttribute('data-filtered')) {
             this._selectOption(option)
+            return
+          }
+
+          const exactOption = this._findExactOption(this._value)
+          if (exactOption) {
+            this._selectOption(exactOption)
+            return
+          }
+
+          if (this.allowCustomValue && this._value && !this._hasExactOption(this._value)) {
+            this._selectCustomValue()
           }
         }
         break
@@ -431,6 +464,25 @@ export class WebUiAutocomplete extends LitElement {
     this.dispatchEvent(new Event('change', { bubbles: true, composed: true }))
   }
 
+  private _findExactOption(value: string): WebUiOption | undefined {
+    const query = value.trim().toLowerCase()
+    if (!query) return undefined
+
+    return this._options.find(option => !option.disabled && option.label.trim().toLowerCase() === query)
+  }
+
+  private _hasExactOption(value: string): boolean {
+    const query = value.trim().toLowerCase()
+    return this._options.some(option => option.label.trim().toLowerCase() === query)
+  }
+
+  private _selectCustomValue() {
+    // Custom value 的 identity 由消费端管理；组件不隐式创建 option，selected-value 保持派生空值。
+    this._close()
+    this.dispatchEvent(new Event('input', { bubbles: true, composed: true }))
+    this.dispatchEvent(new Event('change', { bubbles: true, composed: true }))
+  }
+
   private _onInput = (e: Event) => {
     if (this._isDisabled || this.readonly) return
     const input = e.target as HTMLInputElement
@@ -450,8 +502,10 @@ export class WebUiAutocomplete extends LitElement {
   private _onFocus = () => {
     if (this._isDisabled) return
     this._focused = true
-    // readonly 仅可聚焦选中，不展开候选
-    if (this.readonly) return
+  }
+
+  private _onInputClick = () => {
+    if (this._isDisabled || this.readonly) return
     if (this._options.length > 0) this._open()
   }
 
@@ -528,9 +582,25 @@ export class WebUiAutocomplete extends LitElement {
       target: this,
       style: `${glass}\n${overlayMotion}\n${style}`,
       className: 'wui-glass autocomplete-overlay portal wui-floating-panel',
-      onContentChange: () => this._optionPortal.scheduleRefresh()
+      onContentChange: mutations => {
+        this._optionPortal.scheduleRefresh()
+        const removedEmptyNodes = mutations.flatMap(mutation => [...mutation.removedNodes]).filter(isEmptySlotNode)
+        if (removedEmptyNodes.length) {
+          this._portal?.removeContent(removedEmptyNodes)
+          const empty = this._portal?.panel.querySelector<HTMLElement>('.autocomplete-empty')
+          if (empty) {
+            empty.textContent = '无匹配选项'
+            empty.dataset.wuiA11yEmpty = '无匹配选项'
+          }
+        }
+      }
     })
     this._portal = portal
+    applyOverlayVariables(portal.panel, this, [
+      '--wui-overlay-min-width',
+      '--wui-autocomplete-max-width',
+      '--wui-autocomplete-max-height'
+    ])
     portal.panel.setAttribute('aria-hidden', 'true')
     portal.panel.addEventListener('pointerdown', this._handlePanelPointerDown)
     const scroll = document.createElement('div')
@@ -541,11 +611,14 @@ export class WebUiAutocomplete extends LitElement {
     const empty = document.createElement('div')
     empty.className = 'autocomplete-empty'
     empty.hidden = true
-    empty.textContent = '无匹配选项'
+    empty.dataset.wuiA11yEmpty = this._getEmptySlotText()
     scroll.append(content)
     content.append(empty)
     portal.panel.append(scroll)
-    portal.moveContent(Array.from(this.children), content)
+    for (const node of Array.from(this.childNodes)) {
+      if (isEmptySlotNode(node)) portal.appendContent([node], empty)
+      else portal.appendContent([node], content)
+    }
     return portal
   }
 
@@ -564,6 +637,17 @@ export class WebUiAutocomplete extends LitElement {
       })
       .filter(Boolean)
       .join(' ')
+  }
+
+  private _getEmptySlotText(): string {
+    const slot = this.shadowRoot?.querySelector<HTMLSlotElement>('slot[name="empty"]')
+    const text = slot
+      ?.assignedElements()
+      .map(element => element.textContent?.trim())
+      .filter(Boolean)
+      .join(' ')
+      .trim()
+    return text || '无匹配选项'
   }
 
   override render() {
@@ -599,6 +683,7 @@ export class WebUiAutocomplete extends LitElement {
             aria-activedescendant=${activeDescendant}
             @input=${this._onInput}
             @change=${this._onInnerChange}
+            @click=${this._onInputClick}
             @focus=${this._onFocus}
             @blur=${this._onBlur}
           />
@@ -623,6 +708,7 @@ export class WebUiAutocomplete extends LitElement {
               </div>`
           )}
         </div>
+        <div class="autocomplete-a11y-only autocomplete-empty-a11y" role="status" hidden></div>
         <div
           class="wui-glass autocomplete-overlay wui-floating-panel"
           hidden
@@ -632,7 +718,9 @@ export class WebUiAutocomplete extends LitElement {
           <div class="autocomplete-scroll">
             <div class="autocomplete-content">
               <slot @slotchange=${this._onSlotChange}></slot>
-              <div class="autocomplete-empty" hidden>无匹配选项</div>
+              <div class="autocomplete-empty" hidden>
+                <slot name="empty">无匹配选项</slot>
+              </div>
             </div>
           </div>
         </div>

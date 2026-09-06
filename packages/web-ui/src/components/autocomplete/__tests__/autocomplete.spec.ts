@@ -154,12 +154,27 @@ describe('WebUiAutocomplete 组件', () => {
       el.placeholder = '搜索'
       el.disabled = true
       el.name = 'fruit'
+      el.allowCustomValue = true
       await waitForUpdate(el)
 
       expect(el.getAttribute('placeholder')).toBe('搜索')
       expectReflected(el, 'disabled', true)
       expect(el.getAttribute('name')).toBe('fruit')
       expect(el.getAttribute('filter')).toBe('contains')
+      expectReflected(el, 'allow-custom-value', true)
+
+      cleanupElement(el)
+    })
+
+    it('borderless 属性反射', async () => {
+      const el = createAutocomplete(OPTIONS_HTML, { borderless: '' })
+      await waitForUpdate(el)
+      expect(el.borderless).toBe(true)
+      expect(el.hasAttribute('borderless')).toBe(true)
+
+      el.borderless = false
+      await waitForUpdate(el)
+      expect(el.hasAttribute('borderless')).toBe(false)
 
       cleanupElement(el)
     })
@@ -256,11 +271,15 @@ describe('WebUiAutocomplete 组件', () => {
   })
 
   describe('打开/关闭', () => {
-    it('输入框 focus 打开面板', async () => {
+    it('点击输入框打开面板，仅 focus 不打开', async () => {
       const el = createAutocomplete(OPTIONS_HTML)
       await waitForUpdate(el)
 
       comboboxInput(el).focus()
+      await waitForUpdate(el)
+      expect(el.open).toBe(false)
+
+      comboboxInput(el).click()
       await waitForUpdate(el)
 
       expect(el.open).toBe(true)
@@ -299,6 +318,8 @@ describe('WebUiAutocomplete 组件', () => {
 
       comboboxInput(el).focus()
       await waitForUpdate(el)
+      comboboxInput(el).click()
+      await waitForUpdate(el)
       expect(el.open).toBe(true)
 
       document.body.click()
@@ -313,6 +334,8 @@ describe('WebUiAutocomplete 组件', () => {
       await waitForUpdate(el)
 
       comboboxInput(el).focus()
+      await waitForUpdate(el)
+      comboboxInput(el).click()
       await waitForUpdate(el)
       expect(el.open).toBe(true)
 
@@ -388,6 +411,8 @@ describe('WebUiAutocomplete 组件', () => {
 
       comboboxInput(el).focus()
       await waitForUpdate(el)
+      comboboxInput(el).click()
+      await waitForUpdate(el)
       ;(el.querySelector('web-ui-option') as HTMLElement).click()
       await waitForUpdate(el)
 
@@ -418,12 +443,90 @@ describe('WebUiAutocomplete 组件', () => {
       cleanupElement(el)
     })
 
+    it('Enter 选择无活动项时的精确匹配候选', async () => {
+      const el = createAutocomplete(OPTIONS_HTML)
+      const [changeEvents] = spyEvents(el, 'change')
+      await waitForUpdate(el)
+
+      typeText(el, ' apple ')
+      await waitForUpdate(el)
+      el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
+      await waitForUpdate(el)
+
+      expect(el.value).toBe('Apple')
+      expect(el.selectedValue).toBe('apple')
+      expect(el.open).toBe(false)
+      expect(changeEvents).toHaveLength(1)
+
+      cleanupElement(el)
+    })
+
+    it('allow-custom-value 时 Enter 提交未匹配原文且 selected-value 为空', async () => {
+      const el = createAutocomplete(OPTIONS_HTML, { 'allow-custom-value': '' })
+      const [inputEvents] = spyEvents(el, 'input')
+      const [changeEvents] = spyEvents(el, 'change')
+      await waitForUpdate(el)
+
+      typeText(el, '  Custom Tag  ')
+      await waitForUpdate(el)
+      el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
+      await waitForUpdate(el)
+
+      expect(el.value).toBe('  Custom Tag  ')
+      expect(el.selectedValue).toBe('')
+      expect(el.open).toBe(false)
+      expect(inputEvents).toHaveLength(2)
+      expect(changeEvents).toHaveLength(1)
+
+      cleanupElement(el)
+    })
+
+    it('allow-custom-value 不绕过 disabled 精确匹配候选', async () => {
+      const el = createAutocomplete('<web-ui-option value="react" label="React" disabled></web-ui-option>', {
+        'allow-custom-value': ''
+      })
+      const [changeEvents] = spyEvents(el, 'change')
+      await waitForUpdate(el)
+
+      typeText(el, 'React')
+      await waitForUpdate(el)
+      el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
+      await waitForUpdate(el)
+
+      expect(el.value).toBe('React')
+      expect(el.selectedValue).toBe('')
+      expect(el.open).toBe(true)
+      expect(changeEvents).toHaveLength(0)
+
+      cleanupElement(el)
+    })
+
+    it('未开启 allow-custom-value 时无匹配 Enter 不提交', async () => {
+      const el = createAutocomplete(OPTIONS_HTML)
+      const [changeEvents] = spyEvents(el, 'change')
+      await waitForUpdate(el)
+
+      typeText(el, 'Custom Tag')
+      await waitForUpdate(el)
+      el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
+      await waitForUpdate(el)
+
+      expect(el.value).toBe('Custom Tag')
+      expect(el.selectedValue).toBe('')
+      expect(el.open).toBe(true)
+      expect(changeEvents).toHaveLength(0)
+
+      cleanupElement(el)
+    })
+
     it('开闭时触发 open-change', async () => {
       const el = createAutocomplete(OPTIONS_HTML)
       const [events] = spyEvents<CustomEvent<{ open: boolean }>>(el, 'open-change')
       await waitForUpdate(el)
 
       comboboxInput(el).focus()
+      await waitForUpdate(el)
+      comboboxInput(el).click()
       await waitForUpdate(el)
       expect(events[0].detail.open).toBe(true)
 
@@ -691,6 +794,8 @@ describe('WebUiAutocomplete 组件', () => {
       await waitForUpdate(el)
 
       comboboxInput(el).focus()
+      await waitForUpdate(el)
+      comboboxInput(el).click()
       await waitForUpdate(el)
       expect(el.open).toBe(true)
 

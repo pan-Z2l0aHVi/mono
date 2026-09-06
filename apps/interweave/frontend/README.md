@@ -5,7 +5,8 @@
 ## 结构
 
 - `src/components/`：通用应用壳；当前仅保留无业务内容的 `AppLayout`。
-- `src/pages/`：资源库、标签、Map 和设置的页面挂载点；当前均无内容实现。
+- `src/pages/`：资源库、标签、Map 和设置的页面挂载点；当前均为 3 行骨架。`src/pages/prototype/InterweaveShellPrototypePage.vue` 是唯一已实现内容的 prototype 页（路由 `/prototype/interweave-shell`）。
+- `src/composables/`：前端组合式函数（当前仅 `useHistoryNav`）。
 - `src/stores/`：Pinia 注入和未来领域状态的统一入口；当前不保存业务状态。
 - `src/router.ts`：前端路由骨架。
 - `src/assets/`：前端全局基础样式。

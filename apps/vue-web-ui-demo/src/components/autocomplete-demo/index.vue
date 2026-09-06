@@ -6,10 +6,17 @@ import { ref } from 'vue'
 const text = ref('')
 const changeValue = ref('')
 const changeSelectedValue = ref('')
+const customValue = ref('')
+const customSelectedValue = ref('')
 
 function handleChange(event: WebUiEvent<WebUiAutocomplete, 'change'>) {
   changeValue.value = event.currentTarget.value
   changeSelectedValue.value = event.currentTarget.selectedValue
+}
+
+function handleCustomChange(event: WebUiEvent<WebUiAutocomplete, 'change'>) {
+  customValue.value = event.currentTarget.value
+  customSelectedValue.value = event.currentTarget.selectedValue
 }
 
 // selected-value 由当前输入派生：文本不再精确匹配任何 option label 时自动清空
@@ -47,6 +54,16 @@ const cities = ['北京', '上海', '广州', '深圳', '杭州', '成都', '武
     </p>
     <div class="mb-3 flex flex-col gap-3">
       <web-ui-autocomplete placeholder="输入框架名">
+        <web-ui-option v-for="name in frameworks" :key="name" :value="name" :label="name">{{ name }}</web-ui-option>
+      </web-ui-autocomplete>
+    </div>
+
+    <h2>无边框</h2>
+    <div class="mb-3 flex flex-col gap-3">
+      <web-ui-autocomplete borderless placeholder="无边框自动补全">
+        <web-ui-option v-for="name in frameworks" :key="name" :value="name" :label="name">{{ name }}</web-ui-option>
+      </web-ui-autocomplete>
+      <web-ui-autocomplete borderless value="Vue" placeholder="无边框有值">
         <web-ui-option v-for="name in frameworks" :key="name" :value="name" :label="name">{{ name }}</web-ui-option>
       </web-ui-autocomplete>
     </div>
@@ -106,6 +123,20 @@ const cities = ['北京', '上海', '广州', '深圳', '杭州', '成都', '武
         <web-ui-option value="svelte" label="Svelte"></web-ui-option>
         <web-ui-option value="angular" label="Angular" disabled></web-ui-option>
       </web-ui-autocomplete>
+    </div>
+
+    <h2>custom value</h2>
+    <p class="mb-2 text-sm text-[var(--wui-color-text-secondary)]">
+      开启 <code>allow-custom-value</code> 后，输入不在候选中的文本并按 Enter 提交；此时
+      <code>selected-value</code> 为空。无匹配提示可通过 <code>slot="empty"</code> 自定义。
+    </p>
+    <div class="mb-3 flex flex-col gap-3">
+      <web-ui-autocomplete allow-custom-value placeholder="输入框架或新建标签" @change="handleCustomChange">
+        <web-ui-option v-for="name in frameworks" :key="name" :value="name" :label="name">{{ name }}</web-ui-option>
+        <div slot="empty">没有匹配项，按 Enter 新建</div>
+      </web-ui-autocomplete>
+      <div>最近提交 value：{{ customValue || '无' }}</div>
+      <div>最近提交 selected-value：{{ customSelectedValue || '无' }}</div>
     </div>
 
     <h2>Portal</h2>

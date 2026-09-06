@@ -10,6 +10,7 @@ const visible2 = ref(false)
 const visible3 = ref(false)
 const visible4 = ref(false)
 const visible5 = ref(false)
+const bgVisible = ref(false)
 </script>
 
 <template>
@@ -88,6 +89,20 @@ const visible5 = ref(false)
       <p>此对话框禁止点击遮罩关闭，必须通过按钮操作。</p>
       <web-ui-button slot="footer" variant="primary" full @click="visible5 = false">确认</web-ui-button>
       <web-ui-button slot="footer" variant="secondary" full @click="visible5 = false">取消</web-ui-button>
+    </web-ui-dialog>
+
+    <h2>自定义背景色</h2>
+    <div class="mb-3 flex gap-2">
+      <web-ui-button @click="bgVisible = true">打开对话框</web-ui-button>
+    </div>
+    <web-ui-dialog
+      :open="bgVisible"
+      @open-change="bgVisible = $event.detail.open"
+      style="--wui-dialog-bg: rgb(240 248 255 / 0.92)"
+    >
+      <span slot="title">自定义背景色</span>
+      <p>通过 <code>--wui-dialog-bg</code> CSS 自定义属性覆盖玻璃卡片背景。</p>
+      <web-ui-button slot="footer" variant="primary" full @click="bgVisible = false">确定</web-ui-button>
     </web-ui-dialog>
   </div>
 </template>

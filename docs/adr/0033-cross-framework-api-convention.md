@@ -1,5 +1,8 @@
 # ADR-0033: 跨框架 API 约定与框架调用方绑定约束
 
+- **Date**: 2026-08-26
+- **Status**: 已接受
+
 ## 背景
 
 `@greypan/web-ui` 是 Lit Web Components，同时被 React、Vue 与原生 HTML 消费。不同框架对 custom element 的属性绑定语义不同：

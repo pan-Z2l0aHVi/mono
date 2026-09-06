@@ -15,6 +15,7 @@
 }
 
 .wui-input-inner {
+  --wui-glass-corner-radius: calc(var(--wui-control-size, 36px) / 2);
   position: relative;
 
   display: flex;
@@ -23,8 +24,8 @@
 
   box-sizing: border-box;
   width: var(--wui-input-width, 200px);
-  min-width: var(--wui-control-size, 40px);
-  height: var(--wui-control-size, 40px);
+  min-width: var(--wui-control-size, 36px);
+  height: var(--wui-control-size, 36px);
   padding: 0 12px;
   border-radius: calc(infinity * 1px);
 
@@ -44,12 +45,20 @@
 /* ===== Borderless ===== */
 
 :host([borderless]) .wui-input-inner {
-  padding: 0;
   border: none;
 
   background: transparent;
+
+  /* stylelint-disable-next-line property-no-vendor-prefix */
+  -webkit-backdrop-filter: none;
   backdrop-filter: none;
   box-shadow: none;
+}
+
+/* borderless 必须移除 glass 描边环（.wui-glass::before 底环 + 对角光泽），
+   否则无框后仍残留 1px 胶囊描边 */
+:host([borderless]) .wui-input-inner::before {
+  content: none;
 }
 
 :host([focused]) .wui-input-inner {
@@ -58,12 +67,10 @@
     0 0 0 var(--wui-focus-ring-width, 3px) var(--wui-color-focus-ring, rgb(0 136 255 / 0.4));
 }
 
+/* borderless 基线的 box-shadow: none 压掉了 .wui-glass 的整列阴影，
+   聚焦时改为直接消费 focus ring 变量，与 normal 变体同款并走既有 box-shadow 过渡 */
 :host([borderless][focused]) .wui-input-inner {
-  border-color: transparent;
-
-  /* borderless 移除了背景和玻璃阴影，但仍必须保留可感知的键盘/输入焦点边界 */
-  outline: var(--wui-focus-ring-width, 3px) solid var(--wui-color-focus-ring, rgb(0 136 255 / 0.4));
-  outline-offset: 2px;
+  box-shadow: var(--wui-internal-glass-focus-ring, 0 0 0 0 transparent);
 }
 
 /* ===== Input ===== */
@@ -114,9 +121,11 @@ slot.empty {
 /* ===== Clear button ===== */
 
 /* 复用 web-ui-button icon ghost：仅覆盖颜色为 faint，保持弱意图清除图标观感；
-   负 margin-left 抵消容器 8px flex gap，让清除按钮紧贴输入文本 */
+   负 margin-left 抵消容器 flex gap，让清除按钮紧贴输入文本
+   负 margin-right 抵消 button padding，让清除按钮右侧 spacing 视觉上协调 */
 .wui-input-inner web-ui-button[variant='ghost'] {
   --wui-button-color: var(--wui-input-clear-color);
+  margin-right: -4px;
   margin-left: -8px;
 }
 

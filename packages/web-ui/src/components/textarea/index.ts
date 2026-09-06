@@ -157,11 +157,9 @@ export class WebUiTextarea extends LitElement {
   private _autosize() {
     if (!this._textarea || !this.autosize) return
     this._textarea.style.height = 'auto'
-    const computedMin = this.rows * 20
-    const scrollH = this._textarea.scrollHeight
+    // height:auto 时 rows 已驱动自然高，scrollHeight 恒 ≥ rows 行高，无需额外 floor；
     // 上限由 CSS max-height（maxHeight 属性）钳制，这里只负责随内容增高，默认无限
-    const height = Math.max(scrollH, computedMin)
-    this._textarea.style.height = `${height}px`
+    this._textarea.style.height = `${this._textarea.scrollHeight}px`
   }
 
   private handleInput(e: Event) {

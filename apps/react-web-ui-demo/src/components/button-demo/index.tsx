@@ -15,10 +15,10 @@ function ButtonDemo() {
 
       <h2>自定义尺寸</h2>
       <div className="mb-3 flex flex-wrap gap-2">
-        <web-ui-button variant="primary" size="32">
-          小号 32
+        <web-ui-button variant="primary" size="28">
+          小号 28
         </web-ui-button>
-        <web-ui-button variant="primary">默认 40</web-ui-button>
+        <web-ui-button variant="primary">默认 36</web-ui-button>
         <web-ui-button variant="primary" size="48">
           大号 48
         </web-ui-button>
@@ -88,6 +88,19 @@ function ButtonDemo() {
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24">
             <path fill="currentColor" d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6z" />
           </svg>
+        </web-ui-button>
+      </div>
+
+      <h2>图标 + 加载</h2>
+      <div className="mb-3 flex gap-2">
+        <web-ui-button icon loading aria-label="加载中">
+          <web-ui-icon icon={lucideSearch}></web-ui-icon>
+        </web-ui-button>
+        <web-ui-button icon loading variant="primary" aria-label="加载中">
+          <web-ui-icon icon={lucideSearch}></web-ui-icon>
+        </web-ui-button>
+        <web-ui-button icon loading disabled aria-label="禁用且加载中">
+          <web-ui-icon icon={lucideSearch}></web-ui-icon>
         </web-ui-button>
       </div>
 

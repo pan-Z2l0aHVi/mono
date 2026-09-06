@@ -167,10 +167,10 @@ describe('WebUiDrawer 组件', () => {
     })
   })
 
-  describe('属性：request-only', () => {
+  describe('属性：controlled', () => {
     it('用户通过 Escape 或遮罩关闭时仅请求 open=false，不自行修改 open', async () => {
       const el = createDrawer()
-      el.requestOnly = true
+      el.controlled = true
       el.open = true
       await waitForUpdate(el)
 
@@ -193,7 +193,7 @@ describe('WebUiDrawer 组件', () => {
     it('内置关闭按钮仅请求关闭，不自行修改 open', async () => {
       const el = createDrawer()
       el.closable = true
-      el.requestOnly = true
+      el.controlled = true
       el.open = true
       await waitForUpdate(el)
 
@@ -383,32 +383,10 @@ describe('WebUiDrawer 组件', () => {
   })
 
   describe('键盘：Escape', () => {
-    it('footer 按钮获得焦点时按 Escape 仍通过关闭过渡退出', async () => {
-      vi.useFakeTimers()
-      const el = createDrawer()
-      el.innerHTML = '<web-ui-button slot="footer">关闭</web-ui-button>'
-      el.open = true
-      await waitForUpdate(el)
-      await vi.advanceTimersByTimeAsync(16)
-
-      const dialog = el.shadowRoot?.querySelector('dialog')
-      const footerButton = el.querySelector('web-ui-button')
-      const nativeButton = footerButton?.shadowRoot?.querySelector('button')
-      nativeButton?.focus()
-
-      const event = nativeButton ? dispatchEscapeKey(nativeButton) : null
-      await waitForUpdate(el)
-
-      expect(event?.defaultPrevented).toBe(true)
-      expect(el.open).toBe(false)
-      expect(dialog?.open).toBe(true)
-
-      if (dialog) dispatchTransformTransitionEnd(dialog)
-      expect(dialog?.open).toBe(false)
-
-      vi.useRealTimers()
-      cleanupElement(el)
-    })
+    // 「footer 内按钮获得焦点时按 Escape」的行为依赖真实 UA 的 top layer 键盘
+    // 路由（焦点在 shadow 内 light DOM 时，Esc 仍派发到 top layer 的 dialog），
+    // jsdom 无此机制（composed keydown 不经过 dialog，handler 不会触发），
+    // 该场景由 nested.browser.spec.ts 的浏览器用例覆盖。
 
     it('no-backdrop-close 存在时 cancel 仍通过关闭过渡退出', async () => {
       vi.useFakeTimers()
@@ -436,9 +414,9 @@ describe('WebUiDrawer 组件', () => {
   })
 
   describe('原生 dialog 关闭', () => {
-    it('request-only 时恢复 native dialog 并仅请求关闭', async () => {
+    it('controlled 时恢复 native dialog 并仅请求关闭', async () => {
       const el = createDrawer()
-      el.requestOnly = true
+      el.controlled = true
       el.open = true
       await waitForUpdate(el)
       const dialog = el.shadowRoot?.querySelector('dialog') as HTMLDialogElement
@@ -504,6 +482,124 @@ describe('WebUiDrawer 组件', () => {
       await waitForUpdate(el)
       expect(el.open).toBe(true)
 
+      cleanupElement(el)
+    })
+  })
+
+  describe('属性：draggable', () => {
+    it('默认 draggable 为 false 且不反射', async () => {
+      const el = createDrawer()
+      await waitForUpdate(el)
+      expect(el.draggable).toBe(false)
+      expect(el.hasAttribute('draggable')).toBe(false)
+      cleanupElement(el)
+    })
+
+    it('draggable 反射到 host 属性', async () => {
+      const el = createDrawer()
+      el.draggable = true
+      await waitForUpdate(el)
+      expect(el.hasAttribute('draggable')).toBe(true)
+
+      el.draggable = false
+      await waitForUpdate(el)
+      expect(el.hasAttribute('draggable')).toBe(false)
+      cleanupElement(el)
+    })
+
+    it('draggable 时渲染 drag bar 热区；关闭后仍保留（同一 dialog 实例）', async () => {
+      const el = createDrawer()
+      el.draggable = true
+      el.open = true
+      await waitForUpdate(el)
+
+      const dialog = el.shadowRoot?.querySelector('dialog') as HTMLDialogElement
+      const dragZone = el.shadowRoot?.querySelector('.wui-drawer-drag-zone')
+      expect(dragZone).toBeTruthy()
+
+      el.open = false
+      await waitForUpdate(el)
+      expect(el.shadowRoot?.querySelector('.wui-drawer-drag-zone')).toBe(dragZone)
+      expect(dialog.classList.contains('is-dragging')).toBe(false)
+      cleanupElement(el)
+    })
+
+    it('未启用 draggable 时不渲染 drag bar', async () => {
+      const el = createDrawer()
+      el.open = true
+      await waitForUpdate(el)
+      expect(el.shadowRoot?.querySelector('.wui-drawer-drag-zone')).toBeFalsy()
+      cleanupElement(el)
+    })
+
+    it('拖拽进行中 Escape 被抑制且不派发 open-change', async () => {
+      vi.useFakeTimers()
+      const el = createDrawer()
+      el.draggable = true
+      el.open = true
+      await waitForUpdate(el)
+      await vi.advanceTimersByTimeAsync(16)
+
+      const dragZone = el.shadowRoot?.querySelector('.wui-drawer-drag-zone') as HTMLElement
+      const [events] = spyEvents<CustomEvent<{ open: boolean }>>(el, 'open-change')
+
+      // 模拟拖拽开始（is-visible 已添加，允许进入拖拽态）
+      dragZone.dispatchEvent(
+        new PointerEvent('pointerdown', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 300 })
+      )
+      await waitForUpdate(el)
+      const dialog = el.shadowRoot?.querySelector('dialog') as HTMLDialogElement
+      expect(dialog.classList.contains('is-dragging')).toBe(true)
+
+      dispatchEscapeKey(dialog)
+      await waitForUpdate(el)
+      expect(events).toHaveLength(0)
+      expect(el.open).toBe(true)
+
+      // 松手（小位移弹回）后 ESC 恢复正常关闭
+      dragZone.dispatchEvent(
+        new PointerEvent('pointerup', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 300 })
+      )
+      await waitForUpdate(el)
+      dispatchEscapeKey(dialog)
+      await waitForUpdate(el)
+      expect(events).toHaveLength(1)
+      expect(el.open).toBe(false)
+
+      vi.useRealTimers()
+      cleanupElement(el)
+    })
+
+    it('controlled 下拖拽松手只派发 open-change 请求，不修改 open', async () => {
+      vi.useFakeTimers()
+      const el = createDrawer()
+      el.draggable = true
+      el.controlled = true
+      el.open = true
+      await waitForUpdate(el)
+      await vi.advanceTimersByTimeAsync(16)
+
+      const dragZone = el.shadowRoot?.querySelector('.wui-drawer-drag-zone') as HTMLElement
+      const [events] = spyEvents<CustomEvent<{ open: boolean }>>(el, 'open-change')
+
+      dragZone.dispatchEvent(
+        new PointerEvent('pointerdown', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 300 })
+      )
+      await waitForUpdate(el)
+      // 右侧抽屉闭合方向为向右拖；位移 220px 超过默认宽度 320px 的 1/3 阈值
+      dragZone.dispatchEvent(
+        new PointerEvent('pointermove', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 520 })
+      )
+      await waitForUpdate(el)
+      dragZone.dispatchEvent(
+        new PointerEvent('pointerup', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 520 })
+      )
+      await waitForUpdate(el)
+
+      expect(el.open).toBe(true)
+      expect(events.map(event => event.detail.open)).toEqual([false])
+
+      vi.useRealTimers()
       cleanupElement(el)
     })
   })

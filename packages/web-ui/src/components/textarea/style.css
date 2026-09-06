@@ -17,6 +17,7 @@
 /* ===== Textarea ===== */
 
 .wui-textarea-inner {
+  --wui-glass-corner-radius: 20px;
   position: relative;
 
   display: flex;
@@ -25,8 +26,9 @@
 
   box-sizing: border-box;
   width: var(--wui-textarea-width, 200px);
-  min-width: var(--wui-control-size, 40px);
-  padding: 9px 12px;
+  min-width: var(--wui-control-size, 36px);
+  min-height: var(--wui-control-size, 36px);
+  padding: 7.5px 12px;
   border-radius: 20px;
 
   transition:
@@ -41,12 +43,20 @@
 /* ===== Borderless ===== */
 
 :host([borderless]) .wui-textarea-inner {
-  padding: 9px 0;
   border: none;
 
   background: transparent;
+
+  /* stylelint-disable-next-line property-no-vendor-prefix */
+  -webkit-backdrop-filter: none;
   backdrop-filter: none;
   box-shadow: none;
+}
+
+/* borderless 必须移除 glass 描边环（.wui-glass::before 底环 + 对角光泽），
+   否则无框后仍残留 1px 描边 */
+:host([borderless]) .wui-textarea-inner::before {
+  content: none;
 }
 
 :host([focused]) .wui-textarea-inner {
@@ -55,12 +65,10 @@
     0 0 0 var(--wui-focus-ring-width, 3px) var(--wui-color-focus-ring, rgb(0 136 255 / 0.4));
 }
 
+/* borderless 基线的 box-shadow: none 压掉了 .wui-glass 的整列阴影，
+   聚焦时改为直接消费 focus ring 变量，与 normal 变体同款并走既有 box-shadow 过渡 */
 :host([borderless][focused]) .wui-textarea-inner {
-  border-color: transparent;
-
-  /* borderless 移除了背景和玻璃阴影，但仍必须保留可感知的键盘/输入焦点边界 */
-  outline: var(--wui-focus-ring-width, 3px) solid var(--wui-color-focus-ring, rgb(0 136 255 / 0.4));
-  outline-offset: 2px;
+  box-shadow: var(--wui-internal-glass-focus-ring, 0 0 0 0 transparent);
 }
 
 textarea {
@@ -115,13 +123,14 @@ slot.empty {
 /* ===== Clear button ===== */
 
 /* 复用 web-ui-button icon ghost：仅覆盖颜色为 faint 并对齐首行，保持弱意图清除图标观感；
-   负 margin-left 抵消容器 8px flex gap，让清除按钮紧贴文本域内容 */
+  负 margin-left 抵消容器 flex gap，让清除按钮紧贴文本域内容
+  负 margin-right 抵消 button padding，让清除按钮右侧 spacing 视觉上协调 */
 .wui-textarea-inner web-ui-button[variant='ghost'] {
   --wui-button-color: var(--wui-textarea-clear-color);
 
-  /* 与首行文字垂直居中对齐：容器 align-items: flex-start 使按钮贴内容区顶部（9px 留白处），
-     而首行中心在 9px + 行高半程；要让 24px 按钮（18px 图标居中）的图标中心落在首行中心，
-     需上移 (行高 − 按钮高度) / 2，行高 = font-size × 1.5（与 textarea 的 line-height 一致） */
+  /* 与首行文字垂直居中对齐：容器 align-items: flex-start 使按钮贴内容区顶部，
+    首行中心 = padding-top + 行高/2；24px 按钮需相对内容区上移 (行高 − 按钮高度) / 2 */
   margin-top: calc((var(--wui-font-size, 14px) * 1.5 - 24px) / 2);
+  margin-right: -4px;
   margin-left: -8px;
 }

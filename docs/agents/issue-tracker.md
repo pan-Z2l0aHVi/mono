@@ -35,7 +35,7 @@ MCP 工具命名空间：`mcp__github__`
 
 ## Pull request 作为分诊入口
 
-**PR 作为请求入口：否**。_（如果本仓库将外部 PR 视为功能请求，则设为 `yes`；`/triage` 会读取此标志。）_
+**PR 作为请求入口：否**。_（如果本仓库将外部 PR 视为功能请求，则设为 `yes`；用户级命令 `/triage`——非仓库内资产——会读取此标志。）_
 
 设为 `yes` 时，PR 与 issue 使用相同的标签和状态：
 
@@ -55,7 +55,7 @@ GitHub 的 issue 和 PR 共享编号空间，因此裸 `#42` 可能是 issue 也
 
 ## 导航操作
 
-供 `/wayfinder` 使用。**地图**是一个 issue，其**子** issue 作为工单。
+供用户级命令 `/wayfinder`（非仓库内资产）使用。**地图**是一个 issue，其**子** issue 作为工单。
 
 - **地图**：一个标记为 `wayfinder:map` 的 issue，包含备注 / 当前决策 / 迷雾内容。调用 `create_issue` 并传入 labels=["wayfinder:map"]。
 - **子工单**：链接到地图的 issue，作为 GitHub 子 issue（通过 MCP 工具创建）。若子 issue 功能不可用，将子工单添加到地图正文的任务列表中，并在子工单正文顶部写上 `Part of #<map>`。标签：`wayfinder:<type>`（`research`/`prototype`/`grilling`/`task`）。认领后，工单分配给主导开发者。

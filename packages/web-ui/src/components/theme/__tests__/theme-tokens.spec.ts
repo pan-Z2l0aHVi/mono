@@ -35,6 +35,7 @@ describe('WebUiTheme token contract', () => {
       '--wui-color-surface-raised-mid',
       '--wui-color-surface-raised-deep',
       '--wui-shadow-pop',
+      '--wui-layout-sidebar-bg',
       '--wui-focus-ring:',
       '--wui-duration-regular'
     ]) {
@@ -64,6 +65,7 @@ describe('WebUiTheme token contract', () => {
       '--wui-color-surface-raised-mid',
       '--wui-color-surface-raised-deep',
       '--wui-shadow-pop',
+      '--wui-layout-sidebar-bg',
       '--wui-focus-ring:',
       '--wui-duration-regular',
       '--wui-ease-out'

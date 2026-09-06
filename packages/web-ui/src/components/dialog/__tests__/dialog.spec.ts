@@ -217,4 +217,50 @@ describe('WebUiDialog 组件', () => {
       cleanupElement(el)
     })
   })
+
+  describe('属性：controlled', () => {
+    it('property/attribute 按 Boolean 语义双向同步', async () => {
+      const el = createDialog()
+      el.controlled = true
+      await waitForUpdate(el)
+      expect(el.hasAttribute('controlled')).toBe(true)
+
+      el.controlled = false
+      await waitForUpdate(el)
+      expect(el.hasAttribute('controlled')).toBe(false)
+      cleanupElement(el)
+    })
+
+    it('controlled 下点击遮罩只派发 open-change(false) 请求，不修改 open', async () => {
+      const el = createDialog()
+      el.controlled = true
+      el.open = true
+      await waitForUpdate(el)
+      const [events] = spyEvents<CustomEvent<{ open: boolean }>>(el, 'open-change')
+      const dialog = el.shadowRoot?.querySelector('dialog')
+
+      dialog?.click()
+      await waitForUpdate(el)
+
+      expect(el.open).toBe(true)
+      expect(events).toHaveLength(1)
+      expect(events[0]?.detail).toEqual({ open: false })
+      cleanupElement(el)
+    })
+
+    it('controlled 下程序化 close() 依然直通关闭，不派发 open-change', async () => {
+      const el = createDialog()
+      el.controlled = true
+      el.open = true
+      await waitForUpdate(el)
+      const [events] = spyEvents<CustomEvent<{ open: boolean }>>(el, 'open-change')
+
+      el.close()
+      await waitForUpdate(el)
+
+      expect(el.open).toBe(false)
+      expect(events).toHaveLength(0)
+      cleanupElement(el)
+    })
+  })
 })

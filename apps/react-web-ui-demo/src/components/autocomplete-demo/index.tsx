@@ -6,10 +6,17 @@ function AutocompleteDemo() {
   const [text, setText] = useState('')
   const [changeValue, setChangeValue] = useState('')
   const [changeSelectedValue, setChangeSelectedValue] = useState('')
+  const [customValue, setCustomValue] = useState('')
+  const [customSelectedValue, setCustomSelectedValue] = useState('')
 
   function handleChange(event: React.ChangeEvent<WebUiAutocomplete>) {
     setChangeValue(event.currentTarget.value)
     setChangeSelectedValue(event.currentTarget.selectedValue)
+  }
+
+  function handleCustomChange(event: React.ChangeEvent<WebUiAutocomplete>) {
+    setCustomValue(event.currentTarget.value)
+    setCustomSelectedValue(event.currentTarget.selectedValue)
   }
 
   // selected-value 由当前输入派生：文本不再精确匹配任何 option label 时自动清空
@@ -41,6 +48,24 @@ function AutocompleteDemo() {
       </p>
       <div className="mb-3 flex flex-col gap-3">
         <web-ui-autocomplete placeholder="输入框架名">
+          {frameworks.map(name => (
+            <web-ui-option key={name} value={name} label={name}>
+              {name}
+            </web-ui-option>
+          ))}
+        </web-ui-autocomplete>
+      </div>
+
+      <h2>无边框</h2>
+      <div className="mb-3 flex flex-col gap-3">
+        <web-ui-autocomplete borderless placeholder="无边框自动补全">
+          {frameworks.map(name => (
+            <web-ui-option key={name} value={name} label={name}>
+              {name}
+            </web-ui-option>
+          ))}
+        </web-ui-autocomplete>
+        <web-ui-autocomplete borderless value="Vue" placeholder="无边框有值">
           {frameworks.map(name => (
             <web-ui-option key={name} value={name} label={name}>
               {name}
@@ -130,6 +155,24 @@ function AutocompleteDemo() {
             </web-ui-option>
           ))}
         </web-ui-autocomplete>
+      </div>
+
+      <h2>custom value</h2>
+      <p className="mb-2 text-sm text-[var(--wui-color-text-secondary)]">
+        开启 <code>allow-custom-value</code> 后，输入不在候选中的文本并按 Enter 提交；此时 <code>selected-value</code>{' '}
+        为空。无匹配提示可通过 <code>slot=&quot;empty&quot;</code> 自定义。
+      </p>
+      <div className="mb-3 flex flex-col gap-3">
+        <web-ui-autocomplete allowCustomValue placeholder="输入框架或新建标签" onChange={handleCustomChange}>
+          {frameworks.map(name => (
+            <web-ui-option key={name} value={name} label={name}>
+              {name}
+            </web-ui-option>
+          ))}
+          <div slot="empty">没有匹配项，按 Enter 新建</div>
+        </web-ui-autocomplete>
+        <div>最近提交 value：{customValue || '无'}</div>
+        <div>最近提交 selected-value：{customSelectedValue || '无'}</div>
       </div>
 
       <h2>无滚动锁定</h2>

@@ -21,7 +21,7 @@ export function getEnabledMenuItems(container: ParentNode): HTMLElement[] {
   return getMenuChildren(container).filter(item => item.matches(`${MENU_ITEM_SELECTOR}:not([disabled])`))
 }
 
-function getMovableMenuSubtrees(container: ParentNode): HTMLElement[] {
+export function getMovableMenuSubtrees(container: ParentNode): HTMLElement[] {
   const subtrees: HTMLElement[] = []
   for (const child of Array.from(container.children)) {
     if (!(child instanceof HTMLElement)) continue
@@ -31,7 +31,12 @@ function getMovableMenuSubtrees(container: ParentNode): HTMLElement[] {
 }
 
 export function moveMenuChildren(source: ParentNode, target: HTMLElement) {
-  getMovableMenuSubtrees(source).forEach(subtree => target.appendChild(subtree))
+  getMovableMenuSubtrees(source).forEach(subtree => {
+    // 正常调用 source !== target，移走后项不再属于 source，天然收敛；
+    // 这里兜底防御 source === target 的误用，避免 appendChild 自移动触发观察者刷新循环。
+    if (subtree.parentNode === target) return
+    target.appendChild(subtree)
+  })
 }
 
 export function hideNestedMenuChildren(root: ParentNode, slot: string) {

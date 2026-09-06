@@ -8,6 +8,7 @@ function DialogDemo() {
   const [visible3, setVisible3] = useState(false)
   const [visible4, setVisible4] = useState(false)
   const [visible5, setVisible5] = useState(false)
+  const [bgVisible, setBgVisible] = useState(false)
 
   return (
     <div>
@@ -102,6 +103,24 @@ function DialogDemo() {
         </web-ui-button>
         <web-ui-button slot="footer" variant="secondary" full onClick={() => setVisible5(false)}>
           取消
+        </web-ui-button>
+      </web-ui-dialog>
+
+      <h2>自定义背景色</h2>
+      <div className="mb-3 flex gap-2">
+        <web-ui-button onClick={() => setBgVisible(true)}>打开对话框</web-ui-button>
+      </div>
+      <web-ui-dialog
+        open={bgVisible}
+        onopen-change={event => setBgVisible(event.detail.open)}
+        style={{ '--wui-dialog-bg': 'rgb(240 248 255 / 0.92)' } as React.CSSProperties}
+      >
+        <span slot="title">自定义背景色</span>
+        <p>
+          通过 <code>--wui-dialog-bg</code> CSS 自定义属性覆盖玻璃卡片背景。
+        </p>
+        <web-ui-button slot="footer" variant="primary" full onClick={() => setBgVisible(false)}>
+          确定
         </web-ui-button>
       </web-ui-dialog>
     </div>
