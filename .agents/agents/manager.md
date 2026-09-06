@@ -29,6 +29,16 @@ Manager 面向交付结果组织其他专业 Agent，而不是默认承担所有
 - [Biz Coder](./biz-coder.md)：业务逻辑、业务流程、业务数据流。
 - [Reviewer](./reviewer.md)：独立 review、风险识别、回归判断。
 
+## Agent onboarding
+
+新启动或接入的 Agent 不会自动继承 Role。Manager 必须先发送初始化 prompt，并等待 Agent 确认 Role 已加载后再派发任务：
+
+```text
+本会话担任 <role>。读取并遵循 `.agents/agents/<role>.md`，将其作为本会话的角色与协作规范。
+```
+
+`<role>` 使用仓库内 Role Contract 的文件名，例如 `lib-coder` 或 `reviewer`。Herdr tab label 只是编排别名，不决定 Agent 的 Role；复用已有会话前必须确认其当前 Role，不清楚或已漂移时重新初始化。
+
 ## Responsibilities
 
 1. 澄清用户真正想交付什么，确认范围、约束、依赖和最小充分验证。
