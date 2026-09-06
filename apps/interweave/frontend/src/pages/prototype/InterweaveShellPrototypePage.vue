@@ -57,7 +57,7 @@ import { canGoBack, canGoForward } from '@/composables/useHistoryNav'
 const router = useRouter()
 const activeNav = ref<'library' | 'map'>('library')
 const navItemClass =
-  'nav-item flex items-center gap-2 w-full min-w-9 min-h-9 px-2.5 border-0 rounded-full font-medium cursor-pointer text-[#5b5b66] transition-all duration-150 active:bg-[rgb(34_33_42/0.12)] text-left dark:text-[var(--wui-color-text)] dark:active:bg-white/15'
+  'flex items-center gap-2 w-full min-w-9 min-h-9 px-2.5 border-0 rounded-full font-medium cursor-pointer text-left transition-all duration-150 text-[#5b5b66] active:bg-[rgb(34_33_42/0.12)] dark:text-[var(--wui-color-text)] dark:active:bg-white/15 data-[active=true]:text-[var(--wui-color-accent,#08f)] data-[active=true]:bg-[var(--wui-color-surface-control,#dfdfdf)] data-[active=true]:hover:bg-[color-mix(in_srgb,var(--wui-color-surface-control,#dfdfdf)_90%,var(--wui-color-text,#1b1b1b))] data-[active=true]:active:bg-[color-mix(in_srgb,var(--wui-color-surface-control,#dfdfdf)_70%,var(--wui-color-text,#1b1b1b))]'
 function selectNav(next: 'library' | 'map') {
   activeNav.value = next
 }
@@ -536,6 +536,11 @@ const addQueueSources = [
   { name: '需求说明.md', meta: '22 KB · 文档', icon: lucideFileText, tone: 'green', tags: ['开发'] },
   { name: '未命名截图.png', meta: '1.8 MB · 图片', icon: lucideImage, tone: 'blue', tags: [] }
 ]
+const queueToneClass: Record<string, string> = {
+  blue: 'bg-[rgb(2_132_199/0.1)] text-[#0284c7]',
+  green: 'bg-[rgb(5_150_105/0.1)] text-[#059669]',
+  purple: 'bg-[rgb(124_58_237/0.1)] text-[#7c3aed]'
+}
 const addQueue = reactive(
   Array.from({ length: 10 }, (_, index) => {
     const source = addQueueSources[index]
@@ -549,9 +554,8 @@ function openAddDialog() {
   addDragActive.value = false
   addPasteCaptured.value = false
   queueRenamingId.value = null
-  queueTagEditingId.value = null
+  closeQueueTagEditor()
   queueNameDraft.value = ''
-  queueTagDraft.value = ''
 }
 
 function handleAddDialogOpenChange(event: WebUiEvent<WebUiDialog, 'open-change'>) {
@@ -616,6 +620,7 @@ function toggleQueueTagEditor(item: (typeof addQueue)[number]) {
   void nextTick(() => {
     const input = queueTagInputRef.value?.shadowRoot?.querySelector<HTMLInputElement>('.autocomplete-input')
     input?.focus()
+    input?.click()
   })
 }
 
@@ -628,29 +633,58 @@ function addQueueTagFromField(item: (typeof addQueue)[number], field?: WebUiAuto
 
 function commitQueueTag(item: (typeof addQueue)[number]) {
   addQueueTagFromField(item, queueTagInputRef.value)
-  queueTagEditingId.value = null
-  queueTagDraft.value = ''
-  queueTagPresetTags.value = new Set()
+  closeQueueTagEditor()
 }
 
 function handleQueueTagInput(event: WebUiEvent<WebUiAutocomplete, 'input'>) {
   queueTagDraft.value = event.target.value
 }
 
-function handleQueueTagChange(event: WebUiEvent<WebUiAutocomplete, 'change'>, item: (typeof addQueue)[number]) {
-  addQueueTagFromField(item, event.target)
+function isQueueTagEditorTarget(target: EventTarget | null, itemId: string) {
+  if (!(target instanceof Element)) return false
+  return target.closest(`[data-queue-tag-editor="${itemId}"]`) !== null
+}
+
+function handleQueueTagBlur(event: Event, item: (typeof addQueue)[number]) {
+  setTimeout(() => {
+    if (queueTagEditingId.value !== item.id) return
+    const nextTarget =
+      event instanceof FocusEvent && event.relatedTarget instanceof Element
+        ? event.relatedTarget
+        : document.activeElement
+    if (isQueueTagEditorTarget(nextTarget, item.id)) return
+    closeQueueTagEditor()
+  }, 0)
+}
+
+function closeQueueTagEditor() {
   queueTagEditingId.value = null
   queueTagDraft.value = ''
   queueTagPresetTags.value = new Set()
+}
+
+function handleQueueTagChange(event: WebUiEvent<WebUiAutocomplete, 'change'>, item: (typeof addQueue)[number]) {
+  addQueueTagFromField(item, event.target)
+  closeQueueTagEditor()
 }
 
 function removeQueueTag(item: (typeof addQueue)[number], index: number) {
   item.tags.splice(index, 1)
 }
 
+function removeAddQueue(item: (typeof addQueue)[number]) {
+  const index = addQueue.findIndex(entry => entry.id === item.id)
+  if (index === -1) return
+
+  addQueue.splice(index, 1)
+  queueRenamingId.value = null
+  queueNameDraft.value = ''
+  if (queueTagEditingId.value === item.id) closeQueueTagEditor()
+}
+
 function getQueueTagClass(item: (typeof addQueue)[number], tag: string) {
   if (queueTagEditingId.value === item.id && !queueTagPresetTags.value.has(tag) && !allTags.includes(tag)) {
-    return 'add-queue-tag-new'
+    return 'bg-[var(--wui-color-surface-control,#dfdfdf)] text-[var(--wui-color-text-secondary,#5b5b66)] dark:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_12%,transparent)] dark:text-[var(--wui-color-text-secondary)]'
   }
   return getTagClass(tag)
 }
@@ -765,7 +799,7 @@ watch(addDialogOpen, (open, _, onCleanup) => {
             clearable
             placeholder="按名称搜索"
             aria-label="按名称搜索"
-            style="--wui-input-width: min(240px, calc(100vw - 180px))"
+            class="[--wui-input-width:min(240px,calc(100vw-180px))]"
             @input="handleSearchInput"
             @keydown="handleSearchKeydown"
             @blur="closeSearch"
@@ -783,14 +817,14 @@ watch(addDialogOpen, (open, _, onCleanup) => {
           class="flex flex-wrap gap-3 items-center px-6 py-2.5 text-sm text-[#5b5b66] dark:text-[var(--wui-color-text-secondary)]"
         >
           <label :class="filterLabelClass">
-            <web-ui-select :value="filterSource" @change="handleFilterSourceChange" style="--wui-input-width: 128px">
+            <web-ui-select :value="filterSource" class="[--wui-input-width:128px]" @change="handleFilterSourceChange">
               <web-ui-option value="all" label="全部来源">全部来源</web-ui-option>
               <web-ui-option value="local" label="本地文件">本地文件</web-ui-option>
               <web-ui-option value="link" label="链接">链接</web-ui-option>
             </web-ui-select>
           </label>
           <label :class="filterLabelClass">
-            <web-ui-select :value="filterType" @change="handleFilterTypeChange" style="--wui-input-width: 128px">
+            <web-ui-select :value="filterType" class="[--wui-input-width:128px]" @change="handleFilterTypeChange">
               <web-ui-option value="all" label="全部类型">全部类型</web-ui-option>
               <web-ui-option value="image" label="图片">图片</web-ui-option>
               <web-ui-option value="video" label="视频">视频</web-ui-option>
@@ -801,7 +835,7 @@ watch(addDialogOpen, (open, _, onCleanup) => {
             </web-ui-select>
           </label>
           <label :class="filterLabelClass">
-            <web-ui-select :value="filterBroken" @change="handleFilterBrokenChange" style="--wui-input-width: 128px">
+            <web-ui-select :value="filterBroken" class="[--wui-input-width:128px]" @change="handleFilterBrokenChange">
               <web-ui-option value="all" label="全部状态">全部状态</web-ui-option>
               <web-ui-option value="valid" label="有效">有效</web-ui-option>
               <web-ui-option value="broken" label="已失效">已失效</web-ui-option>
@@ -812,7 +846,7 @@ watch(addDialogOpen, (open, _, onCleanup) => {
               :value="filterTag"
               @input="handleTagInput"
               placeholder="标签"
-              style="--wui-input-width: 200px"
+              class="[--wui-input-width:200px]"
             >
               <web-ui-option v-for="tag in allTags" :key="tag" :value="tag" :label="tag">{{ tag }}</web-ui-option>
             </web-ui-autocomplete>
@@ -822,7 +856,7 @@ watch(addDialogOpen, (open, _, onCleanup) => {
               :value="sortOrder"
               aria-label="排序"
               @change="handleSortChange"
-              style="--wui-input-width: 48px"
+              class="[--wui-input-width:48px]"
             >
               <web-ui-icon
                 slot="trigger"
@@ -890,7 +924,7 @@ watch(addDialogOpen, (open, _, onCleanup) => {
                     :ref="setListResourceRenameRef"
                     :value="resourceNameDraft"
                     borderless
-                    class="resource-rename-input"
+                    class="block w-full min-w-0 max-w-[60%] [--wui-input-width:100%] [--wui-color-focus-ring:transparent]"
                     :aria-label="`修改 ${resource.name} 的名称`"
                     @click.stop
                     @input="handleResourceNameInput"
@@ -982,7 +1016,7 @@ watch(addDialogOpen, (open, _, onCleanup) => {
           </web-ui-dropdown-item>
           <web-ui-dropdown-divider v-if="contextResource && !contextResource.broken"></web-ui-dropdown-divider>
           <web-ui-dropdown-item
-            style="color: var(--wui-color-danger, #ef4444)"
+            class="text-[var(--wui-color-danger,#ef4444)]"
             @click="contextResource && confirmDeleteResource(contextResource)"
           >
             <web-ui-icon slot="prefix" :size="14" :icon="lucideTrash2"></web-ui-icon>
@@ -997,7 +1031,7 @@ watch(addDialogOpen, (open, _, onCleanup) => {
         placement="right"
         draggable
         controlled
-        style="--wui-drawer-width: min(640px, max(60vw, 320px))"
+        class="[--wui-drawer-width:min(640px,max(60vw,320px))]"
         @open-change="handleDetailDrawerOpenChange"
       >
         <div class="grid gap-5">
@@ -1014,7 +1048,7 @@ watch(addDialogOpen, (open, _, onCleanup) => {
           </div>
 
           <!-- Title -->
-          <h2 v-if="selectedResource" class="drawer-title flex items-center gap-3 m-0">
+          <h2 v-if="selectedResource" class="group/title flex items-center gap-3 m-0">
             <web-ui-icon
               :icon="getResourceIcon(selectedResource)"
               :size="22"
@@ -1025,7 +1059,7 @@ watch(addDialogOpen, (open, _, onCleanup) => {
               :ref="setDrawerResourceRenameRef"
               :value="resourceNameDraft"
               borderless
-              class="resource-rename-input drawer-rename-input"
+              class="block w-full min-w-0 max-w-full flex-[1_1_auto] [--wui-input-width:100%] [--wui-color-focus-ring:transparent]"
               :aria-label="`修改 ${selectedResource.name} 的名称`"
               @click.stop
               @input="handleResourceNameInput"
@@ -1040,7 +1074,7 @@ watch(addDialogOpen, (open, _, onCleanup) => {
             </span>
             <web-ui-button
               v-if="resourceRenamingId !== selectedResource.id"
-              class="drawer-title-edit"
+              class="ml-auto shrink-0 opacity-0 transition-opacity duration-120 group-hover/title:opacity-100 group-focus-within/title:opacity-100"
               icon
               variant="ghost"
               size="28"
@@ -1073,7 +1107,7 @@ watch(addDialogOpen, (open, _, onCleanup) => {
             </web-ui-dropdown>
             <web-ui-button v-if="selectedResource.broken">找回资源</web-ui-button>
             <web-ui-button
-              style="--wui-button-color: var(--wui-color-danger, #ef4444)"
+              class="[--wui-button-color:var(--wui-color-danger,#ef4444)]"
               @click="selectedResource && confirmDeleteResource(selectedResource)"
               >删除</web-ui-button
             >
@@ -1093,44 +1127,64 @@ watch(addDialogOpen, (open, _, onCleanup) => {
           <!-- Metadata -->
           <div
             v-if="selectedResource"
-            class="meta-table grid gap-0 text-[13px] rounded-xl border border-black/5 overflow-hidden dark:border-[var(--wui-color-border)]"
+            class="grid gap-0 overflow-hidden rounded-xl border border-black/5 text-[13px] dark:border-[var(--wui-color-border)] [&>*:nth-child(odd)]:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_3%,var(--wui-color-page,white))] dark:[&>*:nth-child(odd)]:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_6%,var(--wui-color-page,black))]"
           >
-            <div class="meta-row">
-              <span class="meta-label">来源</span>
-              <span class="meta-value">{{ selectedResource.sourceType === 'local' ? '本地文件' : '链接' }}</span>
+            <div class="flex justify-between px-3.5 py-2.5">
+              <span class="text-[#8a8a94] dark:text-[var(--wui-color-text-secondary)]">来源</span>
+              <span class="text-right text-[#22212a] dark:text-[var(--wui-color-text)]">{{
+                selectedResource.sourceType === 'local' ? '本地文件' : '链接'
+              }}</span>
             </div>
-            <div class="meta-row">
-              <span class="meta-label">类型</span>
-              <span class="meta-value">{{ selectedResource.resourceType }}</span>
+            <div class="flex justify-between px-3.5 py-2.5">
+              <span class="text-[#8a8a94] dark:text-[var(--wui-color-text-secondary)]">类型</span>
+              <span class="text-right text-[#22212a] dark:text-[var(--wui-color-text)]">{{
+                selectedResource.resourceType
+              }}</span>
             </div>
-            <div v-if="selectedResource.size" class="meta-row">
-              <span class="meta-label">文件大小</span>
-              <span class="meta-value tabular-nums">{{ selectedResource.size }}</span>
+            <div v-if="selectedResource.size" class="flex justify-between px-3.5 py-2.5">
+              <span class="text-[#8a8a94] dark:text-[var(--wui-color-text-secondary)]">文件大小</span>
+              <span class="text-right tabular-nums text-[#22212a] dark:text-[var(--wui-color-text)]">{{
+                selectedResource.size
+              }}</span>
             </div>
-            <div class="meta-row">
-              <span class="meta-label">状态</span>
+            <div class="flex justify-between px-3.5 py-2.5">
+              <span class="text-[#8a8a94] dark:text-[var(--wui-color-text-secondary)]">状态</span>
               <span
-                :class="selectedResource.broken ? 'meta-value meta-value-danger' : 'meta-value meta-value-success'"
+                :class="
+                  selectedResource.broken
+                    ? 'text-right text-[#ef4444] dark:text-[var(--wui-color-danger)]'
+                    : 'text-right text-[#059669] dark:text-[var(--wui-color-success)]'
+                "
                 >{{ selectedResource.broken ? '已失效' : '有效' }}</span
               >
             </div>
-            <div v-if="selectedResource.createdAt" class="meta-row">
-              <span class="meta-label">创建时间</span>
-              <span class="meta-value tabular-nums">{{ selectedResource.createdAt }}</span>
-            </div>
-            <div v-if="selectedResource.modifiedAt" class="meta-row">
-              <span class="meta-label">修改时间</span>
-              <span class="meta-value tabular-nums">{{ selectedResource.modifiedAt }}</span>
-            </div>
-            <div v-if="selectedResource.path" class="meta-row items-start">
-              <span class="meta-label shrink-0">路径</span>
-              <span class="meta-value truncate ml-4" :title="selectedResource.path">{{ selectedResource.path }}</span>
-            </div>
-            <div v-if="selectedResource.url" class="meta-row items-start">
-              <span class="meta-label shrink-0">URL</span>
-              <span class="meta-value meta-value-link truncate ml-4" :title="selectedResource.url">{{
-                selectedResource.url
+            <div v-if="selectedResource.createdAt" class="flex justify-between px-3.5 py-2.5">
+              <span class="text-[#8a8a94] dark:text-[var(--wui-color-text-secondary)]">创建时间</span>
+              <span class="text-right tabular-nums text-[#22212a] dark:text-[var(--wui-color-text)]">{{
+                selectedResource.createdAt
               }}</span>
+            </div>
+            <div v-if="selectedResource.modifiedAt" class="flex justify-between px-3.5 py-2.5">
+              <span class="text-[#8a8a94] dark:text-[var(--wui-color-text-secondary)]">修改时间</span>
+              <span class="text-right tabular-nums text-[#22212a] dark:text-[var(--wui-color-text)]">{{
+                selectedResource.modifiedAt
+              }}</span>
+            </div>
+            <div v-if="selectedResource.path" class="flex items-start justify-between px-3.5 py-2.5">
+              <span class="shrink-0 text-[#8a8a94] dark:text-[var(--wui-color-text-secondary)]">路径</span>
+              <span
+                class="ml-4 truncate text-right text-[#22212a] dark:text-[var(--wui-color-text)]"
+                :title="selectedResource.path"
+                >{{ selectedResource.path }}</span
+              >
+            </div>
+            <div v-if="selectedResource.url" class="flex items-start justify-between px-3.5 py-2.5">
+              <span class="shrink-0 text-[#8a8a94] dark:text-[var(--wui-color-text-secondary)]">URL</span>
+              <span
+                class="ml-4 truncate text-right text-[var(--wui-color-accent,#08f)]"
+                :title="selectedResource.url"
+                >{{ selectedResource.url }}</span
+              >
             </div>
           </div>
         </div>
@@ -1142,7 +1196,7 @@ watch(addDialogOpen, (open, _, onCleanup) => {
         placement="right"
         draggable
         controlled
-        style="--wui-drawer-width: max(60vw, 320px)"
+        class="[--wui-drawer-width:max(60vw,320px)]"
         @open-change="handlePreviewDrawerOpenChange"
       >
         <h2
@@ -1187,93 +1241,170 @@ watch(addDialogOpen, (open, _, onCleanup) => {
     <web-ui-dialog
       :open="addDialogOpen"
       controlled
-      style="--wui-dialog-max-width: min(80vw, 880px); --wui-dialog-max-height: min(90vh, 640px)"
+      class="[--wui-dialog-max-width:min(80vw,880px)] [--wui-dialog-max-height:min(90vh,640px)]"
       @open-change="handleAddDialogOpenChange"
     >
-      <div slot="body" class="add-dialog-body">
-        <header class="add-dialog-header">
-          <div class="add-dialog-heading">
-            <h2 id="add-dialog-title" class="add-dialog-title">添加资源</h2>
+      <div
+        slot="body"
+        class="m-[8px_4px_4px] grid h-[min(calc(90vh-56px),584px)] w-[min(calc(80vw-56px),824px)] grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden"
+      >
+        <header class="pb-3 max-[640px]:pb-1.5">
+          <div class="flex items-center justify-start">
+            <h2
+              id="add-dialog-title"
+              class="m-0 shrink-0 text-[20px] font-[650] leading-[1.3] text-[#22212a] dark:text-[var(--wui-color-text)]"
+            >
+              添加资源
+            </h2>
           </div>
 
-          <p v-if="addPasteCaptured" class="add-paste-status" role="status">
+          <p
+            v-if="addPasteCaptured"
+            class="mt-3 flex w-fit items-center gap-1.5 rounded-full border bg-[color-mix(in_srgb,var(--wui-color-accent,#08f)_8%,transparent)] px-2.5 py-1.5 text-xs text-[var(--wui-color-accent,#08f)]"
+            :class="
+              addDragActive
+                ? 'border-[var(--wui-color-accent,#08f)]'
+                : 'border-[color-mix(in_srgb,var(--wui-color-accent,#08f)_24%,transparent)]'
+            "
+            role="status"
+          >
             <web-ui-icon :icon="lucideClipboardPaste" :size="16"></web-ui-icon>
             已捕获剪贴板内容
           </p>
         </header>
 
-        <main class="add-dialog-main">
-          <section class="add-panel add-upload-panel">
-            <p class="add-upload-description">选择本地文件、拖拽到上传区，或直接粘贴剪贴板内容。</p>
+        <main class="grid min-h-0 grid-cols-2 gap-5 max-[640px]:gap-4 max-[900px]:grid-cols-1 max-[900px]:grid-rows-2">
+          <section class="grid min-h-0 min-w-0 grid-rows-[auto_minmax(0,1fr)] gap-2.5 overflow-hidden">
+            <p
+              class="m-0 min-w-0 truncate text-[13px] leading-normal text-[#6a6a6a] dark:text-[var(--wui-color-text-secondary)]"
+            >
+              选择本地文件、拖拽到上传区，或直接粘贴剪贴板内容。
+            </p>
             <label
-              class="add-dropzone"
-              :class="{ 'is-active': addDragActive }"
+              class="grid h-full cursor-pointer place-content-center justify-items-center gap-3 rounded-[20px] border-[1.5px] border-dashed border-[rgb(0_0_0/0.15)] bg-[#f5f5f7] px-6 py-7 transition-[border-color,background-color,transform] duration-[160ms] hover:bg-[#eeeef1] focus-within:border-[var(--wui-color-accent,#08f)] focus-within:[--wui-internal-glass-focus-ring:inset_0_0_0_1px_var(--wui-color-accent,#08f),0_0_0_var(--wui-focus-ring-width,3px)_var(--wui-color-focus-ring,rgb(0_136_255/0.4))] dark:border-[var(--wui-color-border)] dark:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_3%,transparent)] dark:hover:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_6%,transparent)] max-[640px]:gap-2 max-[640px]:px-4 max-[640px]:py-2 max-[900px]:p-5"
+              :class="
+                addDragActive
+                  ? 'scale-[1.005] border-[var(--wui-color-accent,#08f)] bg-[color-mix(in_srgb,var(--wui-color-accent,#08f)_9%,transparent)]'
+                  : ''
+              "
               @dragenter.prevent="addDragActive = true"
               @dragover.prevent="addDragActive = true"
               @dragleave.prevent="addDragActive = false"
               @drop.prevent="handleAddDrop"
             >
               <input type="file" multiple class="sr-only" aria-label="选择要添加的文件" />
-              <span class="add-dropzone-icon">
+              <span
+                class="grid size-[52px] place-items-center rounded-[18px] bg-[color-mix(in_srgb,var(--wui-color-accent,#08f)_10%,transparent)] text-[var(--wui-color-accent,#08f)] transition-[background-color] duration-[160ms] dark:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_8%,transparent)] dark:text-[var(--wui-color-text-secondary)] max-[640px]:size-10 max-[640px]:rounded-xl"
+              >
                 <web-ui-icon :icon="lucideUpload" :size="24"></web-ui-icon>
               </span>
-              <span class="add-dropzone-title">拖拽文件到此处，或点击选择</span>
-              <span class="add-dropzone-caption">支持图片、文档、音视频等格式，可批量添加</span>
+              <span
+                class="text-[15px] font-semibold leading-[1.4] text-[#22212a] dark:text-[var(--wui-color-text)] max-[640px]:text-[13px]"
+                >拖拽文件到此处，或点击选择</span
+              >
+              <span
+                class="text-xs leading-[1.4] text-[#6a6a6a] dark:text-[var(--wui-color-text-secondary)] max-[640px]:text-[11px]"
+                >支持图片、文档、音视频等格式，可批量添加</span
+              >
             </label>
           </section>
 
-          <aside class="add-panel add-queue" aria-labelledby="add-queue-title">
-            <div class="add-panel-head">
-              <h3 id="add-queue-title" class="add-panel-title">待添加</h3>
-              <span class="add-panel-tag">{{ addQueue.length }} 项</span>
+          <aside
+            class="relative grid min-h-0 min-w-0 grid-rows-[auto_minmax(0,1fr)] gap-2.5 overflow-hidden border-0 bg-transparent p-0"
+            aria-labelledby="add-queue-title"
+          >
+            <div class="flex items-center justify-between max-[640px]:h-5">
+              <h3
+                id="add-queue-title"
+                class="m-0 flex items-center gap-1.5 text-[13px] font-semibold text-[#22212a] dark:text-[var(--wui-color-text)]"
+              >
+                待添加
+              </h3>
+              <span
+                class="rounded-full bg-black/[0.04] px-2 py-1 text-xs leading-none text-[#6a6a6a] dark:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_6%,transparent)] dark:text-[var(--wui-color-text-secondary)]"
+                >{{ addQueue.length }} 项</span
+              >
             </div>
-            <ol class="add-queue-list">
-              <li v-for="(item, itemIndex) in addQueue" :key="item.id" class="add-queue-item" :data-tone="item.tone">
-                <span class="add-queue-icon">
+            <ol
+              class="m-0 flex h-full min-h-0 list-none flex-col gap-2 overflow-y-auto p-0 [scrollbar-gutter:auto] [scrollbar-width:auto]"
+            >
+              <li
+                v-for="(item, itemIndex) in addQueue"
+                :key="item.id"
+                class="flex items-start gap-2.5 rounded-2xl border border-black/5 bg-white p-2.5 px-3 dark:border-[var(--wui-color-border)] dark:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_5%,transparent)]"
+              >
+                <span class="grid size-8 shrink-0 place-items-center rounded-[10px]" :class="queueToneClass[item.tone]">
                   <web-ui-icon :icon="item.icon" :size="16"></web-ui-icon>
                 </span>
-                <span class="add-queue-main">
-                  <div class="add-queue-top">
-                    <span class="add-queue-copy">
+                <span class="grid min-w-0 flex-[1_1_auto] gap-[5px]">
+                  <div class="flex h-9 items-center gap-2">
+                    <span class="flex h-9 min-w-0 flex-[1_1_auto] items-center gap-1.5">
                       <web-ui-input
                         v-if="queueRenamingId === item.id"
                         :ref="setQueueRenameRef"
                         :value="queueNameDraft"
                         full
                         borderless
+                        class="min-w-0 flex-[1_1_auto] [--wui-color-focus-ring:transparent]"
                         :aria-label="`修改 ${item.name} 的名称`"
                         @input="handleQueueNameInput"
                         @keydown="handleQueueRenameKeydown($event, item)"
                         @blur="commitQueueRename(item)"
                       />
-                      <span v-else class="add-queue-name">{{ item.name }}</span>
-                    </span>
-                    <span class="add-queue-actions">
-                      <web-ui-tooltip content="修改名称" :placement="itemIndex < 5 ? 'bottom' : 'top'">
+                      <span
+                        v-else
+                        class="min-w-0 flex-[0_1_auto] overflow-hidden text-[14px] font-medium leading-[1.35] text-ellipsis whitespace-nowrap text-[#22212a] dark:text-[var(--wui-color-text)]"
+                        >{{ item.name }}</span
+                      >
+                      <web-ui-tooltip
+                        v-if="queueRenamingId !== item.id"
+                        content="编辑名称"
+                        :placement="itemIndex < 5 ? 'bottom' : 'top'"
+                      >
                         <web-ui-button
                           icon
                           variant="ghost"
                           size="28"
-                          aria-label="修改名称"
+                          aria-label="编辑名称"
                           @click="startQueueRename(item)"
                         >
                           <web-ui-icon :icon="lucidePenLine" :size="14"></web-ui-icon>
                         </web-ui-button>
                       </web-ui-tooltip>
                     </span>
+                    <span class="ml-auto flex shrink-0 items-center gap-1">
+                      <web-ui-tooltip content="移除" :placement="itemIndex < 5 ? 'bottom' : 'top'">
+                        <web-ui-button
+                          class="[--wui-button-color:var(--wui-color-danger,#dc2626)]"
+                          icon
+                          variant="ghost"
+                          size="28"
+                          aria-label="移除待添加项"
+                          @click="removeAddQueue(item)"
+                        >
+                          <web-ui-icon :icon="lucideTrash2" :size="14"></web-ui-icon>
+                        </web-ui-button>
+                      </web-ui-tooltip>
+                    </span>
                   </div>
-                  <div class="add-queue-tag-area">
-                    <span class="add-queue-meta">{{ item.meta }}</span>
-                    <div class="add-queue-tag-list">
+                  <div class="flex min-w-0 flex-wrap items-center gap-1.5">
+                    <span
+                      class="shrink-0 text-xs leading-5 whitespace-nowrap text-[#6a6a6a] dark:text-[var(--wui-color-text-secondary)]"
+                      >{{ item.meta }}</span
+                    >
+                    <div
+                      class="flex min-w-0 flex-[0_0_100%] flex-wrap items-center gap-[5px]"
+                      :data-queue-tag-editor="item.id"
+                    >
                       <span
                         v-for="(tag, tagIndex) in item.tags"
                         :key="tag"
-                        class="add-queue-tag"
+                        class="inline-flex h-5 items-center gap-0.5 rounded-full px-[7px] py-1 text-xs leading-none has-[web-ui-button]:pr-0.5"
                         :class="getQueueTagClass(item, tag)"
                       >
                         {{ tag }}
                         <web-ui-button
-                          v-if="queueTagEditingId === item.id"
+                          class="shrink-0"
                           icon
                           variant="ghost"
                           size="16"
@@ -1283,22 +1414,25 @@ watch(addDialogOpen, (open, _, onCleanup) => {
                           <web-ui-icon :icon="lucideX" :size="10"></web-ui-icon>
                         </web-ui-button>
                       </span>
-                      <web-ui-tooltip content="添加标签" :placement="itemIndex < 5 ? 'bottom' : 'top'">
+                      <web-ui-tooltip
+                        :content="queueTagDraft.trim() ? '确认标签' : '收起标签编辑'"
+                        :placement="itemIndex < 5 ? 'bottom' : 'top'"
+                      >
                         <web-ui-button
                           v-if="queueTagEditingId === item.id"
-                          class="add-queue-tag-toggle"
+                          class="shrink-0"
                           icon
-                          variant="primary"
+                          :variant="queueTagDraft.trim() ? 'primary' : 'secondary'"
                           size="20"
-                          aria-label="添加标签"
-                          :disabled="!queueTagDraft.trim()"
-                          @click="commitQueueTag(item)"
+                          :aria-label="queueTagDraft.trim() ? '确认标签' : '收起标签编辑'"
+                          @pointerdown.prevent
+                          @click="queueTagDraft.trim() ? commitQueueTag(item) : closeQueueTagEditor()"
                         >
-                          <web-ui-icon :icon="lucideCheck" :size="12"></web-ui-icon>
+                          <web-ui-icon :icon="queueTagDraft.trim() ? lucideCheck : lucideX" :size="12"></web-ui-icon>
                         </web-ui-button>
                         <web-ui-button
                           v-else
-                          class="add-queue-tag-toggle"
+                          class="shrink-0"
                           icon
                           variant="secondary"
                           size="20"
@@ -1309,34 +1443,37 @@ watch(addDialogOpen, (open, _, onCleanup) => {
                         </web-ui-button>
                       </web-ui-tooltip>
                     </div>
-                    <web-ui-autocomplete
-                      v-if="queueTagEditingId === item.id"
-                      :ref="setQueueTagInputRef"
-                      :value="queueTagDraft"
-                      class="add-queue-tag-input"
-                      borderless
-                      allow-custom-value
-                      portal
-                      placeholder="输入或选择标签"
-                      aria-label="添加标签"
-                      style="--wui-input-width: 100%; --wui-autocomplete-max-width: 240px"
-                      @input="handleQueueTagInput"
-                      @change="handleQueueTagChange($event, item)"
-                    >
-                      <web-ui-option v-for="tag in queueTagOptions" :key="tag" :value="tag" :label="tag">{{
-                        tag
-                      }}</web-ui-option>
-                      <div slot="empty">未找到「{{ queueTagDraft }}」，按 Enter 新建</div>
-                    </web-ui-autocomplete>
                   </div>
+                  <web-ui-autocomplete
+                    v-if="queueTagEditingId === item.id"
+                    :ref="setQueueTagInputRef"
+                    :value="queueTagDraft"
+                    :data-queue-tag-editor="item.id"
+                    class="mt-0.5 block w-[200px] min-w-0 max-w-[200px] [--wui-autocomplete-max-width:240px] [--wui-input-width:200px]"
+                    borderless
+                    allow-custom-value
+                    portal
+                    placeholder="输入或选择标签"
+                    aria-label="添加标签"
+                    @input="handleQueueTagInput"
+                    @blur="handleQueueTagBlur($event, item)"
+                    @change="handleQueueTagChange($event, item)"
+                  >
+                    <web-ui-option v-for="tag in queueTagOptions" :key="tag" :value="tag" :label="tag">{{
+                      tag
+                    }}</web-ui-option>
+                    <div slot="empty">未找到「{{ queueTagDraft }}」，按 Enter 新建</div>
+                  </web-ui-autocomplete>
                 </span>
               </li>
             </ol>
           </aside>
         </main>
 
-        <footer class="add-dialog-footer">
-          <div class="add-dialog-actions">
+        <footer
+          class="flex items-center justify-end border-t border-black/5 pt-3.5 dark:border-[var(--wui-color-border)] max-[640px]:pt-2.5"
+        >
+          <div class="flex gap-3">
             <web-ui-button variant="secondary" @click="addDialogOpen = false">取消</web-ui-button>
             <web-ui-button variant="primary" @click="addDialogOpen = false">
               <web-ui-icon slot="prefix" :icon="lucidePlus" :size="16"></web-ui-icon>
@@ -1351,592 +1488,7 @@ watch(addDialogOpen, (open, _, onCleanup) => {
 </template>
 
 <style scoped>
-.nav-item[data-active='true'] {
-  color: var(--wui-color-accent, #08f);
-  background-color: var(--wui-color-surface-control, #dfdfdf);
-}
-
-.nav-item[data-active='true']:hover {
-  background-color: color-mix(in srgb, var(--wui-color-surface-control, #dfdfdf) 90%, var(--wui-color-text, #1b1b1b));
-}
-
-.nav-item[data-active='true']:active {
-  background-color: color-mix(in srgb, var(--wui-color-surface-control, #dfdfdf) 70%, var(--wui-color-text, #1b1b1b));
-}
-
-.meta-row {
-  display: flex;
-  justify-content: space-between;
-  padding: 10px 14px;
-}
-
-.meta-row + .meta-row {
-  border-top: 1px solid rgb(0 0 0 / 0.05);
-}
-
-.meta-label {
-  color: #8a8a94;
-}
-
-.meta-value {
-  color: #22212a;
-  text-align: right;
-}
-
-.meta-value-success {
-  color: #059669;
-}
-
-.meta-value-danger {
-  color: #ef4444;
-}
-
-.meta-value-link {
-  color: var(--wui-color-accent, #08f);
-}
-
-.resource-rename-input {
-  --wui-input-width: 100%;
-  --wui-color-focus-ring: transparent;
-  display: block;
-  width: 100%;
-  min-width: 0;
-  max-width: 60%;
-}
-
-.drawer-rename-input {
-  flex: 1 1 auto;
-  max-width: 100%;
-}
-
-.drawer-title-edit {
-  flex-shrink: 0;
-  margin-left: auto;
-  opacity: 0;
-  transition: opacity 120ms;
-}
-
-.drawer-title-edit:focus-within,
-.drawer-title:hover .drawer-title-edit {
-  opacity: 1;
-}
-
-.add-dropzone {
-  cursor: pointer;
-
-  display: grid;
-  gap: 12px;
-  place-content: center;
-  justify-items: center;
-
-  height: 100%;
-  min-height: 240px;
-  padding: 28px 24px;
-  border: 1.5px dashed rgb(0 0 0 / 0.15);
-  border-radius: 20px;
-
-  color: inherit;
-
-  background: #f5f5f7;
-
-  transition:
-    border-color 160ms,
-    background-color 160ms,
-    transform 160ms;
-}
-
-.add-dropzone:hover {
-  background: #eeeef1;
-}
-
-.add-dropzone.is-active {
-  transform: scale(1.005);
-  border-color: var(--wui-color-accent, #08f);
-  background: color-mix(in srgb, var(--wui-color-accent, #08f) 9%, transparent);
-}
-
-.add-dropzone:focus-within {
-  --wui-internal-glass-focus-ring:
-    inset 0 0 0 1px var(--wui-color-accent, #08f),
-    0 0 0 var(--wui-focus-ring-width, 3px) var(--wui-color-focus-ring, rgb(0 136 255 / 0.4));
-
-  border-color: var(--wui-color-accent, #08f);
-}
-
-.add-dropzone-icon {
-  display: grid;
-  place-items: center;
-
-  width: 52px;
-  height: 52px;
-  border-radius: 18px;
-
-  color: var(--wui-color-accent, #08f);
-
-  background: color-mix(in srgb, var(--wui-color-accent, #08f) 10%, transparent);
-
-  transition: background-color 160ms;
-}
-
-.add-dropzone-title {
-  font-size: 15px;
-  font-weight: 600;
-  line-height: 1.4;
-}
-
-.add-dropzone-caption {
-  font-size: 12px;
-  line-height: 1.4;
-  color: #6a6a6a;
-}
-
-/* 扣除 .wui-dialog-body 的 padding，让外层 dialog 而不是 slot 内容占据 80vw/90vh。 */
-.add-dialog-body {
-  overflow: hidden;
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
-
-  width: min(calc(80vw - 56px), 824px);
-  height: min(calc(90vh - 56px), 584px);
-
-  /* 上/左/右对齐为 28px 视觉内边距，同时保持 dialog 占据 80vw/90vh。 */
-  margin: 8px 4px 4px;
-}
-
-.add-dialog-header {
-  padding-bottom: 12px;
-}
-
-.add-dialog-heading {
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-}
-
-.add-dialog-title {
-  flex-shrink: 0;
-
-  margin: 0;
-
-  font-size: 20px;
-  font-weight: 650;
-  line-height: 1.3;
-  color: #22212a;
-}
-
-.add-upload-description {
-  overflow: hidden;
-
-  min-width: 0;
-  margin: 0;
-
-  font-size: 13px;
-  line-height: 1.5;
-  color: #6a6a6a;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.add-dialog-main {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 20px;
-  min-height: 0;
-}
-
-.add-panel {
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
-  gap: 10px;
-
-  min-width: 0;
-  min-height: 0;
-}
-
-.add-upload-panel {
-  grid-template-rows: auto minmax(0, 1fr);
-}
-
-.add-panel-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.add-panel-title {
-  display: flex;
-  gap: 6px;
-  align-items: center;
-
-  margin: 0;
-
-  font-size: 13px;
-  font-weight: 600;
-  color: #22212a;
-}
-
-.add-panel-tag {
-  padding: 4px 8px;
-  border-radius: 999px;
-
-  font-size: 12px;
-  line-height: 1;
-  color: #6a6a6a;
-
-  background: rgb(0 0 0 / 0.04);
-}
-
-.add-queue {
-  position: relative;
-
-  overflow: hidden;
-
-  padding: 0;
-  border: 0;
-
-  background: transparent;
-}
-
-.add-queue-list {
-  scrollbar-width: auto;
-  scrollbar-gutter: auto;
-
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-
-  height: 100%;
-  min-height: 0;
-  margin: 0;
-  padding: 0;
-
-  list-style: none;
-}
-
-.add-queue-item {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-
-  padding: 10px 12px;
-  border: 1px solid rgb(0 0 0 / 0.05);
-  border-radius: 16px;
-
-  background: white;
-}
-
-.add-queue-icon {
-  display: grid;
-  flex-shrink: 0;
-  place-items: center;
-
-  width: 32px;
-  height: 32px;
-  border-radius: 10px;
-}
-
-.add-queue-item[data-tone='blue'] .add-queue-icon {
-  color: #0284c7;
-  background: rgb(2 132 199 / 0.1);
-}
-
-.add-queue-item[data-tone='green'] .add-queue-icon {
-  color: #059669;
-  background: rgb(5 150 105 / 0.1);
-}
-
-.add-queue-item[data-tone='purple'] .add-queue-icon {
-  color: #7c3aed;
-  background: rgb(124 58 237 / 0.1);
-}
-
-.add-queue-copy {
-  display: flex;
-  flex: 1 1 auto;
-  gap: 6px;
-  align-items: baseline;
-
-  min-width: 0;
-}
-
-.add-queue-copy web-ui-input {
-  --wui-color-focus-ring: transparent;
-  flex: 1 1 auto;
-  min-width: 0;
-}
-
-.add-queue-main {
-  display: grid;
-  flex: 1 1 auto;
-  gap: 5px;
-  min-width: 0;
-}
-
-.add-queue-top {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-
-.add-queue-name {
-  overflow: hidden;
-  flex: 0 1 auto;
-
-  min-width: 0;
-
-  font-size: 13px;
-  font-weight: 600;
-  line-height: 1.35;
-  color: #22212a;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.add-queue-meta {
-  flex-shrink: 0;
-
-  font-size: 12px;
-  line-height: 20px;
-  color: #6a6a6a;
-  white-space: nowrap;
-}
-
-.add-queue-actions {
-  display: flex;
-  flex-shrink: 0;
-  gap: 4px;
-  align-items: center;
-
-  margin-left: auto;
-}
-
-.add-queue-tag-input {
-  display: block;
-
-  width: 100%;
-  min-width: 0;
-  max-width: 240px;
-  margin-top: 8px;
-}
-
-.add-queue-tag-area {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  align-items: center;
-
-  min-width: 0;
-}
-
-.add-queue-tag-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 5px;
-  align-items: center;
-
-  min-width: 0;
-}
-
-.add-queue-tag,
-.add-queue-tag-empty {
-  display: inline-flex;
-  gap: 2px;
-  align-items: center;
-
-  height: 20px;
-  padding: 4px 7px;
-  border-radius: 999px;
-
-  font-size: 12px;
-  line-height: 1;
-}
-
-.add-queue-tag:has(web-ui-button) {
-  padding-right: 2px;
-}
-
-.add-queue-tag-empty {
-  padding: 4px 7px;
-  color: #9a9aa4;
-  background: rgb(0 0 0 / 0.05);
-}
-
-.add-queue-tag-new {
-  color: var(--wui-color-text-secondary, #5b5b66);
-  background: var(--wui-color-surface-control, #dfdfdf);
-}
-
-.add-queue-tag web-ui-button {
-  flex-shrink: 0;
-}
-
-.add-queue-tag-toggle {
-  flex-shrink: 0;
-}
-
-.add-paste-status {
-  display: flex;
-  gap: 6px;
-  align-items: center;
-
-  width: fit-content;
-  margin-top: 12px;
-  padding: 6px 10px;
-  border: 1px solid color-mix(in srgb, var(--wui-color-accent, #08f) 24%, transparent);
-  border-radius: 999px;
-
-  font-size: 12px;
-  color: var(--wui-color-accent, #08f);
-
-  background: color-mix(in srgb, var(--wui-color-accent, #08f) 8%, transparent);
-}
-
-.add-dialog-footer {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-
-  padding-top: 14px;
-  border-top: 1px solid rgb(0 0 0 / 0.05);
-}
-
-.add-dialog-actions {
-  display: flex;
-  gap: 12px;
-}
-
-@media (width <= 900px) {
-  .add-dialog-main {
-    overflow: hidden;
-    grid-template-columns: 1fr;
-    grid-template-rows: repeat(2, minmax(0, 1fr));
-  }
-
-  .add-dropzone {
-    padding: 20px;
-  }
-}
-
-@media (height <= 640px) {
-  .add-dialog-main {
-    overflow: hidden;
-    gap: 16px;
-  }
-
-  .add-dialog-header {
-    padding-bottom: 6px;
-  }
-
-  .add-dropzone {
-    gap: 8px;
-    min-height: 0;
-    padding: 8px 16px;
-  }
-
-  .add-dialog-footer {
-    padding-top: 10px;
-  }
-
-  .add-dropzone-icon {
-    width: 40px;
-    height: 40px;
-    border-radius: 12px;
-  }
-
-  .add-dropzone-title {
-    font-size: 13px;
-  }
-
-  .add-dropzone-caption {
-    font-size: 11px;
-  }
-
-  .add-panel-head {
-    height: 20px;
-  }
-}
-
-.meta-table .meta-row:nth-child(odd) {
-  background-color: color-mix(in srgb, var(--wui-color-text) 3%, var(--wui-color-page));
-}
-
-@media (prefers-color-scheme: dark) {
-  .meta-row + .meta-row {
-    border-top-color: var(--wui-color-border);
-  }
-
-  .meta-table .meta-row:nth-child(odd) {
-    background-color: color-mix(in srgb, var(--wui-color-text) 6%, var(--wui-color-page));
-  }
-
-  .meta-label {
-    color: var(--wui-color-text-secondary);
-  }
-
-  .meta-value {
-    color: var(--wui-color-text);
-  }
-
-  .meta-value-success {
-    color: var(--wui-color-success);
-  }
-
-  .meta-value-danger {
-    color: var(--wui-color-danger);
-  }
-
-  .add-dropzone {
-    border-color: var(--wui-color-border);
-    background: color-mix(in srgb, var(--wui-color-text) 3%, transparent);
-  }
-
-  .add-dropzone:hover {
-    background: color-mix(in srgb, var(--wui-color-text) 6%, transparent);
-  }
-
-  .add-dropzone-icon,
-  .add-panel-title,
-  .add-dropzone-title {
-    color: var(--wui-color-text);
-  }
-
-  .add-dropzone-icon {
-    color: var(--wui-color-text-secondary);
-    background: color-mix(in srgb, var(--wui-color-text) 8%, transparent);
-  }
-
-  .add-dropzone-caption,
-  .add-upload-description,
-  .add-queue-meta,
-  .add-panel-tag {
-    color: var(--wui-color-text-secondary);
-  }
-
-  .add-dialog-footer {
-    border-top-color: var(--wui-color-border);
-  }
-
-  .add-dialog-title,
-  .add-queue-name {
-    color: var(--wui-color-text);
-  }
-
-  .add-panel-tag {
-    background: color-mix(in srgb, var(--wui-color-text) 6%, transparent);
-  }
-
-  .add-queue-item {
-    border-color: var(--wui-color-border);
-    background: color-mix(in srgb, var(--wui-color-text) 5%, transparent);
-  }
-
-  .add-queue-tag-new {
-    color: var(--wui-color-text-secondary);
-    background: color-mix(in srgb, var(--wui-color-text) 12%, transparent);
-  }
-}
-
+/* 列表行之间的半透明分隔线依赖兄弟选择器和伪元素，Tailwind utility 不适合承载这个结构。 */
 .resource-row + .resource-row::before {
   content: '';
 
