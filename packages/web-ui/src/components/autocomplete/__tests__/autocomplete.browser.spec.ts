@@ -585,4 +585,94 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     // 面板纵向位于输入框下方
     expect(panelRect.top).toBeGreaterThanOrEqual(wrapperRect.bottom - 1)
   })
+
+  it('borderless 输入框仍保留可见 focus 指示器且浮层背景不受影响', async () => {
+    const el = document.createElement('web-ui-autocomplete')
+    el.setAttribute('borderless', '')
+    el.innerHTML = '<web-ui-option value="apple" label="Apple"></web-ui-option>'
+    document.body.append(el)
+    await el.updateComplete
+
+    const wrapper = el.shadowRoot!.querySelector<HTMLElement>('.input-wrapper')!
+    const wrapperStyle = getComputedStyle(wrapper)
+    expect(wrapperStyle.backgroundColor).toBe('rgba(0, 0, 0, 0)')
+    expect(wrapperStyle.boxShadow).toBe('none')
+
+    const input = el.shadowRoot!.querySelector<HTMLInputElement>('[role="combobox"]')!
+    input.focus()
+    await el.updateComplete
+
+    const focusedStyle = getComputedStyle(wrapper)
+    expect(el.hasAttribute('focused')).toBe(true)
+    expect(focusedStyle.outlineStyle).toBe('solid')
+    expect(Number.parseFloat(focusedStyle.outlineWidth)).toBeGreaterThan(0)
+
+    // borderless 只作用于输入容器；下拉浮层保留 glass 背景
+    const panel = el.shadowRoot!.querySelector<HTMLElement>('.autocomplete-overlay')!
+    expect(getComputedStyle(panel).backgroundColor).not.toBe('rgba(0, 0, 0, 0)')
+  })
+
+  it('borderless 移除输入容器的 glass 描边环（.wui-glass::before）', async () => {
+    // 非 borderless 基线：glass ::before 生成描边盒，确保断言非空转
+    const base = document.createElement('web-ui-autocomplete')
+    base.innerHTML = '<web-ui-option value="apple" label="Apple"></web-ui-option>'
+    document.body.append(base)
+    await base.updateComplete
+    const baseWrapper = base.shadowRoot!.querySelector<HTMLElement>('.input-wrapper')!
+    expect(getComputedStyle(baseWrapper, '::before').content).toBe('""')
+
+    const el = document.createElement('web-ui-autocomplete')
+    el.setAttribute('borderless', '')
+    el.innerHTML = '<web-ui-option value="apple" label="Apple"></web-ui-option>'
+    document.body.append(el)
+    await el.updateComplete
+
+    const wrapper = el.shadowRoot!.querySelector<HTMLElement>('.input-wrapper')!
+    expect(getComputedStyle(wrapper, '::before').content).toBe('none')
+  })
+
+  it('borderless 与 disabled/readonly/open 组合仍无框，且浮层 glass 不受影响', async () => {
+    const el = document.createElement('web-ui-autocomplete')
+    el.setAttribute('borderless', '')
+    el.innerHTML = '<web-ui-option value="apple" label="Apple"></web-ui-option>'
+    document.body.append(el)
+    await el.updateComplete
+
+    const wrapper = el.shadowRoot!.querySelector<HTMLElement>('.input-wrapper')!
+    const wrapperStyle = () => getComputedStyle(wrapper)
+
+    // disabled 组合
+    el.disabled = true
+    await el.updateComplete
+    expect(wrapperStyle().backgroundColor).toBe('rgba(0, 0, 0, 0)')
+    expect(wrapperStyle().boxShadow).toBe('none')
+    expect(getComputedStyle(wrapper, '::before').content).toBe('none')
+
+    // readonly 组合
+    el.disabled = false
+    el.readonly = true
+    await el.updateComplete
+    expect(wrapperStyle().backgroundColor).toBe('rgba(0, 0, 0, 0)')
+    expect(wrapperStyle().boxShadow).toBe('none')
+    expect(getComputedStyle(wrapper, '::before').content).toBe('none')
+
+    // open 组合：输入容器保持无框，浮层保留 glass 描边与背景
+    el.readonly = false
+    await el.updateComplete
+    const input = el.shadowRoot!.querySelector<HTMLInputElement>('[role="combobox"]')!
+    input.focus()
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true }))
+    await el.updateComplete
+    await waitForFrame()
+    await el.updateComplete
+
+    expect(el.open).toBe(true)
+    expect(wrapperStyle().backgroundColor).toBe('rgba(0, 0, 0, 0)')
+    expect(getComputedStyle(wrapper, '::before').content).toBe('none')
+
+    const panel = el.shadowRoot!.querySelector<HTMLElement>('.autocomplete-overlay')!
+    expect(getComputedStyle(panel).backgroundColor).not.toBe('rgba(0, 0, 0, 0)')
+    // 浮层是独立 glass 容器，其描边环不被 borderless 移除
+    expect(getComputedStyle(panel, '::before').content).toBe('""')
+  })
 })

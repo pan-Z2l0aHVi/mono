@@ -51,6 +51,16 @@ const cities = ['北京', '上海', '广州', '深圳', '杭州', '成都', '武
       </web-ui-autocomplete>
     </div>
 
+    <h2>无边框</h2>
+    <div class="mb-3 flex flex-col gap-3">
+      <web-ui-autocomplete borderless placeholder="无边框自动补全">
+        <web-ui-option v-for="name in frameworks" :key="name" :value="name" :label="name">{{ name }}</web-ui-option>
+      </web-ui-autocomplete>
+      <web-ui-autocomplete borderless value="Vue" placeholder="无边框有值">
+        <web-ui-option v-for="name in frameworks" :key="name" :value="name" :label="name">{{ name }}</web-ui-option>
+      </web-ui-autocomplete>
+    </div>
+
     <h2>v-model 绑定</h2>
     <div class="mb-3 flex flex-col gap-3">
       <web-ui-autocomplete v-model="text" placeholder="输入城市名">

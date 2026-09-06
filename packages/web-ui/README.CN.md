@@ -384,6 +384,7 @@ ArrowUp/ArrowDown 键增减数值。空输入或 `-` 在提交时被忽略，值
 | `value`            | `string`                           | `''`         | 当前输入文本（表单值）                                  |
 | `selected-value`   | `string`                           | `''`         | 输入文本精确匹配 label 的 option 的 value（派生，只读） |
 | `placeholder`      | `string`                           | `''`         | 占位文本                                                |
+| `borderless`       | `boolean`                          | `false`      | 无边框                                                  |
 | `filter`           | `'none' \| 'prefix' \| 'contains'` | `'contains'` | 候选过滤模式（按 option label 匹配）                    |
 | `name`             | `string`                           | `''`         | 表单字段名                                              |
 | `disabled`         | `boolean`                          | `false`      | 禁用状态                                                |

@@ -399,6 +399,7 @@ Editable combobox with input filtering and single option selection.
 | `value`            | `string`                           | `''`         | Current input text (form value)                                           |
 | `selected-value`   | `string`                           | `''`         | Value of the option exactly matching the input label (derived, read-only) |
 | `placeholder`      | `string`                           | `''`         | Placeholder text                                                          |
+| `borderless`       | `boolean`                          | `false`      | No border                                                                 |
 | `filter`           | `'none' \| 'prefix' \| 'contains'` | `'contains'` | Candidate filtering mode (matched against option label)                   |
 | `name`             | `string`                           | `''`         | Form field name                                                           |
 | `disabled`         | `boolean`                          | `false`      | Disabled state                                                            |

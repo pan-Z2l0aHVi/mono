@@ -33,6 +33,7 @@ export class WebUiAutocomplete extends LitElement {
   static formAssociated = true
 
   @property({ type: String, reflect: true }) placeholder = ''
+  @property({ type: Boolean, reflect: true }) borderless = false
   @property({ type: Boolean, reflect: true }) disabled = false
   @property({ type: Boolean, reflect: true }) readonly = false
   @property({ type: Boolean, reflect: true }) required = false

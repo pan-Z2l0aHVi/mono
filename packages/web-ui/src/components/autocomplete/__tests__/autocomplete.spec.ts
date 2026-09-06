@@ -164,6 +164,19 @@ describe('WebUiAutocomplete 组件', () => {
       cleanupElement(el)
     })
 
+    it('borderless 属性反射', async () => {
+      const el = createAutocomplete(OPTIONS_HTML, { borderless: '' })
+      await waitForUpdate(el)
+      expect(el.borderless).toBe(true)
+      expect(el.hasAttribute('borderless')).toBe(true)
+
+      el.borderless = false
+      await waitForUpdate(el)
+      expect(el.hasAttribute('borderless')).toBe(false)
+
+      cleanupElement(el)
+    })
+
     it('filter 非法值回退 contains', async () => {
       const el = createAutocomplete(OPTIONS_HTML)
       el.setAttribute('filter', 'fuzzy')

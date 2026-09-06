@@ -43,6 +43,34 @@
     0 0 0 var(--wui-focus-ring-width, 3px) var(--wui-color-focus-ring, rgb(0 136 255 / 0.4));
 }
 
+/* ===== Borderless ===== */
+
+:host([borderless]) .input-wrapper {
+  padding: 0;
+  border: none;
+
+  background: transparent;
+
+  /* stylelint-disable-next-line property-no-vendor-prefix */
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  box-shadow: none;
+}
+
+/* borderless 只移除输入容器的 glass 描边环（.wui-glass::before），
+   下拉浮层 .autocomplete-overlay 的 glass 描边不受影响 */
+:host([borderless]) .input-wrapper::before {
+  content: none;
+}
+
+:host([borderless][focused]) .input-wrapper {
+  border-color: transparent;
+
+  /* borderless 移除了背景和玻璃阴影，但仍必须保留可感知的键盘/输入焦点边界 */
+  outline: var(--wui-focus-ring-width, 3px) solid var(--wui-color-focus-ring, rgb(0 136 255 / 0.4));
+  outline-offset: 2px;
+}
+
 .autocomplete-input {
   flex: 1;
 

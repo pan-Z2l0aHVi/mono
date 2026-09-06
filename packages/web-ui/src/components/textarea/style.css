@@ -47,8 +47,17 @@
   border: none;
 
   background: transparent;
+
+  /* stylelint-disable-next-line property-no-vendor-prefix */
+  -webkit-backdrop-filter: none;
   backdrop-filter: none;
   box-shadow: none;
+}
+
+/* borderless 必须移除 glass 描边环（.wui-glass::before 底环 + 对角光泽），
+   否则无框后仍残留 1px 描边 */
+:host([borderless]) .wui-textarea-inner::before {
+  content: none;
 }
 
 :host([focused]) .wui-textarea-inner {
