@@ -1,5 +1,145 @@
 # @greypan/web-ui
 
+## 5.0.0
+
+### Major Changes
+
+- ab8dfb7: style(web-ui): unify sidebar overlay token
+  
+  - Remove `--wui-layout-sidebar-bg`; layout sidebars use `--wui-color-surface-overlay`.
+  - Set the dark overlay surface to `rgb(32 34 34 / 0.9)`, compositing to about `#202223` over the page background.
+
+### Minor Changes
+
+- ab8dfb7: Add `--wui-drawer-inset` token to control drawer floating-card viewport inset.
+  
+  - New public token `--wui-drawer-inset` (default `8px`, non-headless drawers). Set to `0` for edge-to-edge geometry, typically paired with `--wui-drawer-radius: 0`.
+  - The token is registered via `@property` as `<length>`, so a unitless `0` from consumers is normalized to `0px` instead of silently breaking the closed-state `calc(100% + 0)` transform (exit animation would be dropped).
+  - ADR-0036 updated: the inset is no longer a hard-coded internal value; all other floating-card behavior (drag-close distance math, controlled hover end-state) reads the same variable and follows the token automatically.
+- ab8dfb7: Add Layout desktop sidebar drag-to-resize and Drawer drag-to-close features.
+  
+  **Layout (`<web-ui-layout>`):**
+  
+  - New props: `sidebar-resizable`, `sidebar-min-width`, `sidebar-max-width`
+  - New event: `sidebar-width-change`
+  - Accent resize handle on right edge (hidden when collapsed); keyboard-operable (WAI-ARIA splitter: arrows step, Home/End to bounds, Enter commits, Escape reverts)
+  - Real-time width follow with clamping; emits on release
+  - Built-in hard cap: the sidebar can never exceed half the viewport width, even if `sidebar-max-width` is configured higher
+  
+  **Drawer (`<web-ui-drawer>`):**
+  
+  - New prop: `draggable` (default `false`)
+  - Gray capsule drag bar on inner edge (placement-aware)
+  - Real-time follow + spring snap on release
+  - Closes when displacement > 1/3 of size OR flick > 500px/s; otherwise rebounds
+  - Native dialog renders nothing when closed ⇒ drag-to-open NOT supported
+  - Spring via WAAPI (no new `--wui-*` tokens)
+  - `prefers-reduced-motion` snaps instantly
+  - `controlled` mode: user close actions only emit `open-change(false)` with writeback await + timeout rebound
+  - Declarative nested drawer stacking: open drawers below the top layer automatically scale down (0.95^depth) and shift towards the inner side to expose card edges; Escape and backdrop clicks dismiss only the topmost layer
+  
+  **Drawer visual language (breaking visual, no API change):**
+  
+  - Non-headless drawers now render as floating rounded cards inset 8px from all viewport edges (see ADR-0036); elastic drag distances read as margin changes instead of gaps
+  - New token `--wui-drawer-radius` (default `28px`); closed-state transforms compensate the inset so the drawer always exits the viewport fully
+  - `headless` geometry unchanged (consumer-owned visuals)
+  
+  **Glass variable isolation (bug fix):**
+  
+  - `.wui-glass` now declares its own `--wui-internal-glass-shadow` / `--wui-internal-glass-focus-ring` defaults, cutting the flattened-tree inheritance path from ancestor glass containers (drawer/dialog bodies, overlay panels) into slotted content. Previously a glass-variant button or input inside a drawer/dialog silently picked up the huge overlay shadow instead of the soft glass fallback.
+  - Headless drawers explicitly zero `--wui-internal-drawer-inset` on their dialog: a headless drawer nested inside a non-headless one used to inherit the 8px inset, breaking the drag-close distance / controlled hover end-state math for edge-to-edge geometry.
+  - **Breaking visual:** `<web-ui-back-top>`'s default glass button now uses the glass fallback shadow (`--wui-shadow-glass`) instead of the small panel shadow (`--wui-shadow-panel`). The old `:host`-level `--wui-internal-glass-shadow` config could no longer reach the inner glass element under the new isolation and was removed; pass `--wui-shadow-glass` on the element if the previous look is required.
+  
+  **Controlled mode rename (was `request-only`) + dialog support:**
+  
+  - `web-ui-drawer`: prop `request-only` (attribute) / `requestOnly` (property) is renamed to `controlled` / `controlled` (same semantics — user close actions only emit `open-change(false)`; the consumer writes `open` back; programmatic `show()`/`close()` stay direct). No alias is kept.
+  - `web-ui-dialog`: new `controlled` prop with the same contract (Escape and backdrop only request; native dialog closure while controlled is restored to the open state and re-emits the request).
+  
+  **Switch, Segmented & Slider Gesture Enhancements (`<web-ui-switch>`, `<web-ui-segmented>`, `<web-ui-slider>`):**
+  
+  - `Switch`: Full-track draggable gesture with real-time capsule glass thumb following, 6px intent deadzone against vertical scrolling, `scale(1.2)` press/drag micro-interaction, toggle commit on >50% travel (12px total travel) or flick velocity (>300px/s), with instant tap toggling preserved.
+  - `Segmented`: Active indicator smooth drag tracking (initiated by pressing on the currently active trigger), `scale(1.2)` press/drag micro-interaction with glass visual, snap to nearest non-disabled trigger on release, and flick gesture support.
+  - `Slider`: Refactored internal pointer handling to adopt unified `shared/gesture/` (`attachDragGesture` + `clamp`), with `scale(1.2)` drag micro-interaction and translucent glass thumb when dragging.
+  - `Gesture Utilities`: Added `snapToNearest` and `normalizeProgress` helper functions in `packages/web-ui/src/shared/gesture/physics.ts`.
+- ab8dfb7: feat(autocomplete): add allow-custom-value for explicit custom value commits
+- ab8dfb7: feat(autocomplete): add empty state slot
+- ab8dfb7: feat(web-ui): redefine borderless inputs as ghost form with normal-variant focus ring
+  
+  - `borderless` on input, textarea, and autocomplete now removes only surface decoration (border, glass background/blur, shadow, and glass outline ring) while keeping padding, height metrics, and the focus ring.
+  - The borderless focus ring is the same double box-shadow as the normal variant (1px inset accent + focus-ring halo, 200ms transition) and shows on mouse and programmatic focus as well as keyboard focus; the previous `:focus-visible`-gated outline is removed.
+  - Compatibility note: consumers that suppressed the focus ring with `[--wui-color-focus-ring:transparent]` now only hide the outer halo — the 1px inset accent line remains visible on focus.
+- ab8dfb7: Redesign collapse as a single element with two slots: trigger via the default slot, content via `slot="content"`. The `web-ui-collapse-trigger` and `web-ui-collapse-content` elements are removed before first release.
+  
+  - Interaction semantics come from the slotted trigger element (native `<button>`, `<web-ui-button>`, etc.); the collapse writes `aria-expanded`/`aria-controls`/`aria-disabled` onto the first assigned trigger element. A plain-text trigger has no keyboard/focus semantics (documented limitation).
+  - Strictly controlled `open` contract unchanged: `open-change` (`CustomEvent<{ open: boolean }>`) fires only on user-originated toggles; `show()`/`close()`/`toggle()` and programmatic writes never emit.
+  - Height/width animation via CSS grid `0fr ↔ 1fr` transition — content-adaptive, zero JS measurement, interruptible (grid-transition selection carried over from ADR-0038; superseded by ADR-0039 for the API shape). `horizontal` switches the axis (default vertical).
+  - Three-state closed semantics; consumer light DOM is never moved: default closed state sets `hidden` on the internal content container, `keep-mounted` (now on the root element) keeps content measurable inside the collapsed track with `inert` (scroll position preserved).
+  - Headless kernel: the component carries no visual styling beyond the animation structure; trigger and content typography come from the consumer (new ADR-0039).
+  - Unchanged tokens `--wui-duration-collapse-enter: 200ms` / `--wui-duration-collapse-exit: 160ms`, included in the reduced-motion zeroing lists.
+- ab8dfb7: feat(overlay): support dropdown size variables in portal and keep borderless keyboard focus rings
+  
+  - Portal panels now mirror `--wui-overlay-min-width`, `--wui-autocomplete-max-width`/`--wui-autocomplete-max-height` and `--wui-select-max-width`/`--wui-select-max-height` from the host at portal creation.
+  - Select/Autocomplete dropdown default scroll max-height reduced from 320px to 200px; override via `--wui-autocomplete-max-height` / `--wui-select-max-height`.
+  - Borderless `input`, `textarea` and `autocomplete` keep a keyboard focus ring via `:focus-visible`; pointer focus stays borderless.
+- ab8dfb7: feat(layout): add mobile toggle inset variable and glass variant
+  
+  - The mobile header toggle renders as a glass button and gains an 8px left inset by default, so it no longer sits flush against the viewport edge.
+  - Consumers can align the toggle with their own header padding via `--wui-layout-mobile-toggle-inset`.
+
+### Patch Changes
+
+- ab8dfb7: fix(autocomplete): anchor non-portal panel to its inner wrapper so it stays aligned inside positioned ancestors
+- ab8dfb7: fix(web-ui): preserve grouped button colors and refine dark surface hierarchy
+  
+  - Preserve the danger variant and consumer `--wui-button-color` overrides inside groups.
+  - Refine dark page, text, control, overlay, and menu surface hierarchy.
+  - Add a lightweight glass border ring using `--wui-color-glass-border`; make light mode transparent and dark mode subtler.
+- ab8dfb7: fix(web-ui): align control baseline to 36px
+  
+  - Move the shared `--wui-control-size` baseline from 40px to 36px across buttons, inputs, selects, autocomplete, textarea, segmented, and related demos/docs.
+  - Reduce switch track/thumb to 40x20/16x16 and adjust drag travel constants.
+  - Set slider thumb to 30x20, align segmented/textarea geometry, and keep marks consistent across axes.
+- ab8dfb7: fix(web-ui): replace icon button content while loading
+  
+  - Render only the loading spinner when `icon` and `loading` are set.
+  - Keep the default slot icon unprojected while loading and restore projection when `loading` returns to `false`.
+- ab8dfb7: fix(web-ui): darken primary and secondary state colors
+  
+  - Derive primary and secondary hover/active backgrounds toward black.
+  - Preserve the existing tonal danger state ramp.
+- ab8dfb7: fix(web-ui): align cursor behavior with Tailwind v4 and gesture states
+  
+  - Use default cursors for action, selection, and gesture-control hover and pressed states.
+  - Switch slider, switch, and segmented cursors to grabbing only after dragging starts.
+  - Align slider with switch and segmented gesture intent thresholds.
+  - Propagate segmented gesture cursors through the trigger shadow boundary.
+- ab8dfb7: style(web-ui): refine dark glass controls
+  
+  - Remove the glass background gradient highlight.
+  - Add `--wui-glass-brightness` and lower dark backdrop brightness to `1.02`.
+  - Deepen the dark page background.
+  - Make the dark overlay shadow slightly more visible.
+  - Align the select trigger with the button glass border.
+- ab8dfb7: fix(dialog): ignore cancel events bubbled from child controls such as file inputs
+- ab8dfb7: Fix drawer drag rebound firing twice on release below the close threshold.
+  
+  - The rebound spring's WAAPI animation now uses `fill: 'both'`. Without it, the animation stopped applying at its end while the inline drag transform was still present: any frame rendered between the animation's finish and the `onfinish` cleanup (main-thread congestion, compositor scheduling) painted a jump back to the drag position, and the subsequent inline-style cleanup then triggered the 280ms CSS enter transition from that position — visible as a second rebound.
+  - `_springToClose()` gets the same `fill: 'both'` for the symmetric window (spring end → close pipeline takeover), keeping both gesture springs consistent.
+  - Regression tests assert exactly one `animate()` call per gesture (pointerup and pointercancel) with `fill: 'both'`, and that the final close offset settles below 0.5px with no remaining animations.
+- ab8dfb7: fix(web-ui): make hover/active background feedback instant
+  
+  - Remove background-color transitions driven by :hover/:active from button, select, input-number, segmented-trigger, option, dropdown-item, and drawer drag bar.
+  - Keep transitions for checked/pressed/focus states and overlay enter/exit animations unchanged.
+- ab8dfb7: fix(overlay): avoid reopening autocomplete and tooltip from pointer-initiated focus restoration
+- ab8dfb7: fix(web-ui): resolve overlays inside an open native dialog into that dialog
+  
+  - Keep dropdown, context-menu, popover, tooltip, select and autocomplete panels above drawer or dialog content by joining the browser top layer.
+  - Bundle menu panel styles so panels render correctly when the dialog has no pre-injected overlay styles.
+  - Position context menus with a Floating UI virtual anchor so transformed dialog containing blocks keep viewport coordinates.
+  - Preserve fixed menu positioning when a global glass rule would otherwise reset it to relative.
+- Updated dependencies [ab8dfb7]
+  - @greypan/browser-kit@2.1.0
+
 ## 4.0.0
 
 ### Major Changes
