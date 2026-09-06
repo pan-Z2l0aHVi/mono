@@ -66,6 +66,7 @@
     "maint",
     "taggings",
     "cooccurring",
-    "vnode"
+    "vnode",
+    "zcode"
   ]
 }
