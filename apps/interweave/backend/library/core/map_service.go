@@ -8,21 +8,21 @@ import (
 
 // 仅从 Tagging 推导可解释的资源关系，不存储手工网络。
 type MapService struct {
-	db              *storage.DB
-	resourceService *ResourceService
-	resources       storage.ResourceStore
-	tags            storage.TagStore
-	mapQueries      storage.MapStore
+	db         *storage.DB
+	views      viewAssembler
+	resources  storage.ResourceStore
+	tags       storage.TagStore
+	mapQueries storage.MapStore
 }
 
 // 保持 Map 推导与持久化实现解耦。
-func NewMapService(db *storage.DB, resourceService *ResourceService) *MapService {
+func NewMapService(db *storage.DB) *MapService {
 	return &MapService{
-		db:              db,
-		resourceService: resourceService,
-		resources:       storage.ResourceStore{},
-		tags:            storage.TagStore{},
-		mapQueries:      storage.MapStore{},
+		db:         db,
+		views:      viewAssembler{},
+		resources:  storage.ResourceStore{},
+		tags:       storage.TagStore{},
+		mapQueries: storage.MapStore{},
 	}
 }
 
@@ -79,12 +79,11 @@ func (s *MapService) GetLocalMap(ctx context.Context, tagID string) (*LocalMap, 
 		return nil, err
 	}
 
-	resList := make([]ResourceView, 0, len(resIDs))
-	for _, resID := range resIDs {
-		view, err := s.resourceService.GetResource(ctx, resID)
-		if err == nil && view != nil {
-			resList = append(resList, *view)
-		}
+	// 装配失败必须让整次探索失败：静默丢弃资源会呈现缺少关系依据的残缺网络，
+	// 破坏 ADR-0018 要求的“任意关系可解释”。
+	resList, err := s.views.assembleByIDs(ctx, s.db.SqlDB(), resIDs)
+	if err != nil {
+		return nil, err
 	}
 
 	// 仅展示能由当前资源归属解释的相邻主题。

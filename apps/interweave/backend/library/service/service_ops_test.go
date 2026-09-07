@@ -20,7 +20,7 @@ func newTestServices(t *testing.T) (*service.ResourceService, *service.SourceSer
 	coreResource := coreLibrary.NewResourceService(db, fetcher)
 	coreSource := coreLibrary.NewSourceService(db, fetcher)
 	coreTag := coreLibrary.NewTagService(db)
-	coreMap := coreLibrary.NewMapService(db, coreResource)
+	coreMap := coreLibrary.NewMapService(db)
 	resService := service.NewResourceService(coreResource)
 	srcService := service.NewSourceService(coreSource)
 	tagService := service.NewTagService(coreTag)
