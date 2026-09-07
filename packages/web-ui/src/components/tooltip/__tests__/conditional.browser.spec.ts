@@ -8,10 +8,19 @@ import type { WebUiTooltip } from '..'
 
 afterEach(() => document.body.replaceChildren())
 
+// CI 无头浏览器的静止光标停在视口左上角：portal 面板隐藏时 Chrome 会在光标下
+// 重算 hover 并对 tooltip 派发 pointerenter（show-delay=0 时立即重开），
+// 干扰 close 断言。挂载点用 pointer-events 隔离真实指针。
+const mountIsolated = () => {
+  const mountPoint = document.createElement('div')
+  mountPoint.style.pointerEvents = 'none'
+  document.body.append(mountPoint)
+  return mountPoint
+}
+
 describe('WebUiTooltip portal 条件渲染边界（浏览器）', () => {
   it('打开期 v-if 删除的 slot 内容关闭后不复活', async () => {
-    const mountPoint = document.createElement('div')
-    document.body.append(mountPoint)
+    const mountPoint = mountIsolated()
     const show = ref(true)
     const app = createApp({
       setup: () => ({ show }),
@@ -48,8 +57,7 @@ describe('WebUiTooltip portal 条件渲染边界（浏览器）', () => {
   })
 
   it('打开期 v-if 新增的 slot 内容实时迁入面板并在关闭后恢复', async () => {
-    const mountPoint = document.createElement('div')
-    document.body.append(mountPoint)
+    const mountPoint = mountIsolated()
     const show = ref(false)
     const app = createApp({
       setup: () => ({ show }),
@@ -89,8 +97,7 @@ describe('WebUiTooltip portal 条件渲染边界（浏览器）', () => {
   })
 
   it('同 flush 关闭重开容器级 v-if：占位注释归还宿主，重开内容实时迁入面板', async () => {
-    const mountPoint = document.createElement('div')
-    document.body.append(mountPoint)
+    const mountPoint = mountIsolated()
     const open = ref(false)
     const show = ref(false)
     const app = createApp({
