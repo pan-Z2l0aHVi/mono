@@ -26,17 +26,17 @@ command = "pnpm run test"
 [[actions]]
 name = "react demo"
 icon = "run"
-command = "pnpm run dev:react-web-ui-demo"
+command = "pnpm exec turbo dev --filter=@greypan/react-web-ui-demo..."
 
 [[actions]]
 name = "vue demo"
 icon = "run"
-command = "pnpm run dev:vue-web-ui-demo"
+command = "pnpm exec turbo dev --filter=@greypan/vue-web-ui-demo..."
 
 [[actions]]
 name = "interweave app"
 icon = "run"
-command = "pnpm run dev:interweave"
+command = "pnpm exec turbo dev --filter=@greypan/interweave --filter=\"@greypan/interweave-frontend^...\""
 
 [[actions]]
 name = "validate context"

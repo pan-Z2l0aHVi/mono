@@ -6,6 +6,8 @@
  * 2.状态可控：支持随时 start、pause、resume、stop
  * 3.链路稳健：基于递归 setTimeout 实现，避免原生 setInterval 在回调耗时过长时的“堆积”效应
  * 4.环境兼容：适配浏览器与 Node.js (SSR)，自动处理 Timeout 类型差异
+ * 5.手动补触发：tick(delay) 在 delay 后额外触发一次回调，不改变暂停状态机；
+ *   start/resume 会清理挂起的手动触发，只保留一个调度句柄
  * @example
  * const timer = defineControllableInterval(() => {
  *   console.log('tick')
@@ -35,6 +37,9 @@ export function defineControllableInterval(options: Options) {
     let lastStartTime = 0
 
     function tick(delay: number) {
+      // 单一调度句柄：start/resume/手动 tick 共用它，设置前先清理旧句柄，
+      // 否则运行中或暂停中手动 tick 后再 resume 会留下旧 timeout 双触发。
+      if (timerId) clearTimeout(timerId)
       lastStartTime = Date.now()
       timerId = setTimeout(() => {
         callback()

@@ -20,12 +20,13 @@ Tracker is a composable tracking system built on the plugin architecture. It mai
 
 ### `defineTracker(options)`
 
-| Option               | Type                       | Default           | Description                                                                           |
-| -------------------- | -------------------------- | ----------------- | ------------------------------------------------------------------------------------- |
-| `url`                | `string`                   | -                 | Tracking endpoint URL                                                                 |
-| `transform`          | `(data: object) => object` | Identity function | Transforms every event before serialization and byte-size calculation                 |
-| `disablePersistence` | `boolean`                  | `false`           | Disables reading and writing the localStorage pending transport outbox                |
-| `persistenceKey`     | `string`                   | `url` value       | Stable localStorage outbox key; independent Tracker instances must use different keys |
+| Option               | Type                                      | Default           | Description                                                                                                                                |
+| -------------------- | ----------------------------------------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `url`                | `string`                                  | -                 | Tracking endpoint URL                                                                                                                      |
+| `transform`          | `(data: object) => object`                | Identity function | Transforms every event before serialization and byte-size calculation                                                                      |
+| `transport`          | `(item: object) => Promise<void> \| void` | Beacon adapter    | Replaces the single-entry delivery path and receives the transformed payload; an entry is removed only after the returned Promise fulfills |
+| `disablePersistence` | `boolean`                                 | `false`           | Disables reading and writing the localStorage pending transport outbox                                                                     |
+| `persistenceKey`     | `string`                                  | `url` value       | Stable localStorage outbox key; independent Tracker instances must use different keys                                                      |
 
 ```ts
 import { defineTracker } from '@greypan/browser-kit'

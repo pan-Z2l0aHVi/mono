@@ -1,8 +1,11 @@
 import { afterEach, describe, expect, it } from 'vite-plus/test'
+import { createApp, nextTick, ref } from 'vue/dist/vue.esm-bundler.js'
+
+import type { WebUiOption } from '@/components/option'
 
 import '..'
 import '@/components/option'
-import type { WebUiOption } from '@/components/option'
+import { getPortalPanel, waitForFrame } from '@/shared/test-utils'
 
 import type { WebUiSelect } from '..'
 
@@ -26,23 +29,6 @@ function createSelect(optionsHtml: string, attrs?: Record<string, string>): WebU
   return select
 }
 
-async function waitForFrame() {
-  await new Promise(resolve => requestAnimationFrame(resolve))
-}
-
-// 浏览器中 fallback overlay root 结构为 [data-wui-overlay-root]#shadow >
-// [data-wui-overlay-container] > portal host div#shadow > listbox panel。
-function getPortalPanel(): HTMLElement | null {
-  const container = document
-    .querySelector<HTMLElement>('[data-wui-overlay-root]')
-    ?.shadowRoot?.querySelector<HTMLElement>('[data-wui-overlay-container]')
-  return (
-    container
-      ?.querySelector<HTMLElement>('[data-wui-overlay-container] > div')
-      ?.shadowRoot?.querySelector<HTMLElement>('[role="listbox"]') ?? null
-  )
-}
-
 describe('WebUiSelect 条件组合边界（浏览器）', () => {
   it('Portal 快速关闭再重新打开后内容完整恢复且可继续选择', async () => {
     const select = createSelect(OPTIONS_HTML_THREE, { portal: '' })
@@ -54,24 +40,24 @@ describe('WebUiSelect 条件组合边界（浏览器）', () => {
     await waitForFrame()
     await select.updateComplete
     expect(select.open).toBe(true)
-    expect(getPortalPanel()?.querySelectorAll('web-ui-option').length).toBe(3)
+    expect(getPortalPanel('listbox')?.querySelectorAll('web-ui-option').length).toBe(3)
 
     document.body.click()
     await select.updateComplete
     // 真实浏览器有退出过渡；等过渡完成后 portal 才被 dispose
     await new Promise(resolve => setTimeout(resolve, 300))
-    expect(getPortalPanel()).toBeNull()
+    expect(getPortalPanel('listbox')).toBeNull()
     expect(select.querySelectorAll('web-ui-option').length).toBe(3)
 
     trigger.click()
     await waitForFrame()
     await select.updateComplete
     expect(select.open).toBe(true)
-    expect(getPortalPanel()?.querySelectorAll('web-ui-option').length).toBe(3)
+    expect(getPortalPanel('listbox')?.querySelectorAll('web-ui-option').length).toBe(3)
 
     // 真实浏览器中 option 点击监听器必须挂在 option 元素上；
     // 宿主泄漏监听器会让这次点击清空 value 并立即关闭
-    const banana = getPortalPanel()!.querySelector<WebUiOption>('web-ui-option[value="banana"]')!
+    const banana = getPortalPanel('listbox')!.querySelector<WebUiOption>('web-ui-option[value="banana"]')!
     banana.click()
     await select.updateComplete
 
@@ -146,7 +132,7 @@ describe('WebUiSelect 条件组合边界（浏览器）', () => {
     await select.updateComplete
     expect(select.open).toBe(true)
 
-    const apple = getPortalPanel()!.querySelector<WebUiOption>('web-ui-option[value="apple"]')!
+    const apple = getPortalPanel('listbox')!.querySelector<WebUiOption>('web-ui-option[value="apple"]')!
     apple.remove()
     await new Promise(resolve => setTimeout(resolve, 0))
     await select.updateComplete
@@ -165,7 +151,7 @@ describe('WebUiSelect 条件组合边界（浏览器）', () => {
     await waitForFrame()
     await select.updateComplete
     expect(select.open).toBe(true)
-    expect(getPortalPanel()?.querySelectorAll('web-ui-option').length).toBe(3)
+    expect(getPortalPanel('listbox')?.querySelectorAll('web-ui-option').length).toBe(3)
 
     // 模拟框架条件渲染：异步数据到达后插入新选项
     const wrapper = document.createElement('div')
@@ -174,7 +160,7 @@ describe('WebUiSelect 条件组合边界（浏览器）', () => {
     await new Promise(resolve => setTimeout(resolve, 0))
     await select.updateComplete
 
-    const panel = getPortalPanel()!
+    const panel = getPortalPanel('listbox')!
     expect(panel.querySelectorAll('web-ui-option').length).toBe(4)
     expect(select.querySelectorAll('web-ui-option').length).toBe(0)
 
@@ -210,5 +196,65 @@ describe('WebUiSelect 条件组合边界（浏览器）', () => {
 
     expect(select.value).toBe('banana')
     expect(select.open).toBe(false)
+  })
+
+  it('打开期 v-if 删除中段 option 后跨关闭重开：占位注释归还宿主，重开保模板序', async () => {
+    const mountPoint = document.createElement('div')
+    document.body.append(mountPoint)
+    const show = ref(false)
+    const app = createApp({
+      setup: () => ({ show }),
+      template: `
+        <web-ui-select :portal="true">
+          <web-ui-option value="apple" label="Apple"></web-ui-option>
+          <web-ui-option v-if="show" value="banana" label="Banana"></web-ui-option>
+          <web-ui-option value="cherry" label="Cherry"></web-ui-option>
+        </web-ui-select>
+      `
+    })
+    app.mount(mountPoint)
+
+    const select = mountPoint.querySelector('web-ui-select') as WebUiSelect
+    await select.updateComplete
+    const trigger = select.shadowRoot!.querySelector<HTMLElement>('[role="combobox"]')!
+
+    // 打开与 v-if 同 flush：banana 实时迁入面板（option 内容位于面板的嵌套内容容器）
+    show.value = true
+    trigger.click()
+    await nextTick()
+    await waitForFrame()
+    await select.updateComplete
+    expect(select.open).toBe(true)
+    expect(getPortalPanel('listbox')?.querySelectorAll('web-ui-option').length).toBe(3)
+
+    // 打开期 v-if 删除中段 option：占位注释被框架插进面板嵌套容器，portal 必须
+    // 归还宿主 banana 的 marker 位（apple/cherry 的 marker 之间），否则注释随面板
+    // 销毁，重开时 Vue 会把 banana 插进已脱离文档的旧面板
+    show.value = false
+    await nextTick()
+    await new Promise(resolve => setTimeout(resolve, 50))
+    await select.updateComplete
+    expect(getPortalPanel('listbox')?.querySelectorAll('web-ui-option').length).toBe(2)
+    const hostSkeleton = [...select.childNodes].map(node => node.nodeType)
+    expect(hostSkeleton.some(type => type === Node.COMMENT_NODE)).toBe(true)
+
+    // 关闭销毁面板，注释在宿主存活
+    document.body.click()
+    await select.updateComplete
+    await new Promise(resolve => setTimeout(resolve, 300))
+    expect(getPortalPanel('listbox')).toBeNull()
+    expect([...select.childNodes].some(node => node.nodeType === Node.COMMENT_NODE)).toBe(true)
+
+    // 重开与 v-if 同 flush：banana 按模板序实时迁入面板（apple/banana/cherry）
+    show.value = true
+    trigger.click()
+    await nextTick()
+    await waitForFrame()
+    await select.updateComplete
+    const panel = getPortalPanel('listbox')
+    expect(panel?.querySelectorAll('web-ui-option').length).toBe(3)
+    const values = [...panel!.querySelectorAll('web-ui-option')].map(option => option.getAttribute('value'))
+    expect(values).toEqual(['apple', 'banana', 'cherry'])
+    app.unmount()
   })
 })

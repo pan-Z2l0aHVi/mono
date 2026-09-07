@@ -12,8 +12,13 @@ fi
 echo "🧹 开始清理项目..."
 
 # 1. 停止可能占用文件的进程 (可选，按需开启)
-pkill -f "vite" || true
-pkill -f "wails" || true
+# 裸 "vite"/"wails" 会匹配命令行任意位置的子串（如编辑器在名为 vite 的目录中打开的会话），
+# 因此用仓库根路径锚定本仓库的开发进程：根路径先经 ERE 转义再拼入模式，并要求其后跟
+# 分隔符，避免误匹配共享路径前缀的其他目录。wails3 主进程的二进制在仓库外（mise shim），
+# 命令行不含仓库路径，改用精确进程名匹配（-x 不做子串匹配）兜底。
+REPO_ROOT_RE=$(printf '%s' "$PWD" | sed 's/[][\\.*^$()+?{}|]/\\&/g')
+pkill -f "${REPO_ROOT_RE}[/[:space:]].*(vite|wails)" || true
+pkill -x wails3 || true
 
 # 2. 清理核心构建产物与缓存
 # 使用 find 替代 globstar，兼容性更好且更精确

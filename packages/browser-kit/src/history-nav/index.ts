@@ -14,6 +14,8 @@ import { defineSession } from '@/storage'
  * - 全局 patch `history.pushState` / `history.replaceState`，只在旁路记录，
  *   不向 history.state 写入任何元数据（区别于注入式 ponyfill）；
  * - `popstate` 处理浏览器前进/后退与地址栏导航，按 URL 在栈中查找定位；
+ *   `hashchange` 兜底 fragment 导航（`location.hash` 赋值、同页锚点）——
+ *   规范引擎两类事件都会派发，trackTraverse 按 URL 判重保证幂等；
  * - 通过 sessionStorage（复用 storage 模块）持久化，刷新后仍能恢复；
  * - 存储被禁（隐私模式、受限 webview）时静默降级为内存态，功能不崩。
  *
@@ -133,7 +135,8 @@ class HistoryNavImpl implements HistoryNav {
 
   dispose(): void {
     if (!this.installed) return
-    off(window, 'popstate', this.onPopstate)
+    off(window, 'popstate', this.onHistoryEvent)
+    off(window, 'hashchange', this.onHistoryEvent)
     // 删除实例上的 patch 属性，还原 History 原型上的原生方法。
     delete (window.history as unknown as Record<string, unknown>).pushState
     delete (window.history as unknown as Record<string, unknown>).replaceState
@@ -144,7 +147,11 @@ class HistoryNavImpl implements HistoryNav {
     if (instance === this) instance = null
   }
 
-  private readonly onPopstate = (): void => {
+  // popstate 覆盖前进/后退与地址栏导航；hashchange 兜底 fragment 导航
+  // （location.hash 赋值、同页锚点），后者在部分 webview 引擎不派发 popstate。
+  // 规范引擎一次 fragment 导航会同时派发两个事件，trackTraverse 按 URL 判重，
+  // 第二次调用返回 null，不会重复记录或重复派发 currententrychange。
+  private readonly onHistoryEvent = (): void => {
     const from = this.currentEntry
     const type = this.trackTraverse(window.location.href)
     if (type) this.emit(type, from)
@@ -168,7 +175,8 @@ class HistoryNavImpl implements HistoryNav {
       this.replaceCurrent(resolveUrl(url), window.history.state)
     }) as History['replaceState']
 
-    on(window, 'popstate', this.onPopstate)
+    on(window, 'popstate', this.onHistoryEvent)
+    on(window, 'hashchange', this.onHistoryEvent)
   }
 
   private pushEntry(url: string, state: unknown): void {

@@ -163,7 +163,7 @@ func TestMapServiceDerivedExploration(t *testing.T) {
 	fetcher := remote.NewFetcher()
 	coreResource := coreLibrary.NewResourceService(db, fetcher)
 	coreTag := coreLibrary.NewTagService(db)
-	coreMap := coreLibrary.NewMapService(db, coreResource)
+	coreMap := coreLibrary.NewMapService(db)
 	resService := service.NewResourceService(coreResource)
 	tagService := service.NewTagService(coreTag)
 	mapService := service.NewMapService(coreMap)

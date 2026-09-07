@@ -69,8 +69,8 @@ Mono 是一个 `pnpm` workspace + `Turborepo` monorepo：发布 `@greypan/*` 工
 1. 先读根 `AGENTS.md`，再读目标目录最近的 `AGENTS.md`。
 2. 只按任务读取命中的 `.agents/rules/*` 和 `docs/agents/*`；普通局部任务不预读全部 ADR。
 3. 跨包、架构、术语或 instruction system 任务才读 `CONTEXT.md` 和相关 ADR；需要全局拓扑时先读本文件。
-4. 变更影响、所需证据和验证建议优先使用 `find:usages`；公共 package 变更再使用 `inspect:contract` 或 `diff:contract`。
-5. 公共行为的最终证据来自源码、测试和配置；UI/交互还需要真实浏览器验证，构建成功不能替代它。
+4. 变更影响与验证建议优先用 `pnpm find:usages`（工具语义见 [`docs/agents/context.md`](docs/agents/context.md)）；公共 package 变更再使用 `inspect:contract` 或 `diff:contract`。
+5. 公共行为的最终证据来自源码、测试和配置；UI/交互类改动按根 `AGENTS.md` 的浏览器验证边界执行，流程见 [`docs/agents/browser-verification.md`](docs/agents/browser-verification.md)。
 
 ## 6. 生成物边界
 

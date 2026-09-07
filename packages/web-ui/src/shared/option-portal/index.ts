@@ -161,7 +161,8 @@ export const defineOptionPortal = () =>
 
         // Portal 打开期间框架条件渲染（v-if）可能在 light DOM 插入新节点；
         // 面板内已有内容时 queryOptions 不会回退 light DOM，必须显式迁入面板。
-        const nodes = host.getMigratableNodes()
+        // 注释（框架锚点与 portal 的 marker）不迁移：锚点留守宿主是实时渲染契约。
+        const nodes = host.getMigratableNodes().filter(node => !(node instanceof Comment))
         if (nodes.length) portal.appendContent(nodes, portalContent)
       },
 

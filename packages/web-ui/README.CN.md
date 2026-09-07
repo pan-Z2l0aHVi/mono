@@ -120,9 +120,20 @@ useEffect(() => {
 <web-ui-dropdown-item ref={itemRef}>粘贴并关闭</web-ui-dropdown-item>
 ```
 
+在 `portal` 模式下，库会把面板内容物理移入浮层 Shadow DOM。这类内容中的 React 条件子元素
+（`{condition && <el/>}`）不受支持：React 按记录的插入父节点执行删除，已迁移节点的删除会以
+commit-phase error 失败，且该节点可能在面板关闭时重新出现。请保持面板内容始终挂载、仅切换可见性。
+
 ### Vue
 
 需要 `vue >= 3.5` 作为可选 peer 依赖。
+
+Portal 面板支持实时渲染：浮层打开期间条件新增或删除的内容（`web-ui-select`、`web-ui-autocomplete`、
+`web-ui-popover`、`web-ui-tooltip`、`web-ui-dropdown`、`web-ui-context-menu` 内的 Vue `v-if`）会按模板序
+自动迁入打开中的面板；关闭时所有内容按原锚点位置恢复，后续 patch 继续正常工作。边界：面板打开期间对
+keyed `v-for` 列表做中段 splice 或重排不受支持——Vue 的 keyed children diff 会以已迁入面板的兄弟节点
+计算插入锚点，patch 失败且可能丢项；与编译路径无关（编译模板同样命中）。此类列表更新请在面板关闭后
+进行，或只做尾部追加/删除。
 
 ```ts
 // vite.config.ts

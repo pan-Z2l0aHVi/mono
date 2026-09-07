@@ -3,11 +3,17 @@ package storage
 import (
 	"context"
 	"database/sql"
+	"strings"
 )
 
 // 同时适配 *sql.Row 与 *sql.Rows 的行扫描入口，避免读写路径各自复制扫描逻辑。
 type rowScanner interface {
 	Scan(dest ...any) error
+}
+
+// 为 IN 子句生成与参数数量一致的占位符；调用方需保证 n > 0。
+func placeholders(n int) string {
+	return strings.TrimSuffix(strings.Repeat("?,", n), ",")
 }
 
 // 执行写语句并把“影响 0 行”映射为调用方指定的不存在哨兵，统一 not-found 语义。

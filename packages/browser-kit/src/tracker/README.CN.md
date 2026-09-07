@@ -20,12 +20,13 @@ Tracker 是一个基于插件架构的可组合埋点系统。它维护一个待
 
 ### `defineTracker(options)`
 
-| 配置                 | 类型                       | 默认值     | 说明                                                              |
-| -------------------- | -------------------------- | ---------- | ----------------------------------------------------------------- |
-| `url`                | `string`                   | -          | 埋点接口 URL                                                      |
-| `transform`          | `(data: object) => object` | 恒等函数   | 在序列化和计算字节大小前转换每条事件                              |
-| `disablePersistence` | `boolean`                  | `false`    | 禁止读取和写入 localStorage 待传输 outbox                         |
-| `persistenceKey`     | `string`                   | `url` 的值 | localStorage outbox 的稳定键；多个独立 Tracker 必须使用不同的 key |
+| 配置                 | 类型                                      | 默认值        | 说明                                                                               |
+| -------------------- | ----------------------------------------- | ------------- | ---------------------------------------------------------------------------------- |
+| `url`                | `string`                                  | -             | 埋点接口 URL                                                                       |
+| `transform`          | `(data: object) => object`                | 恒等函数      | 在序列化和计算字节大小前转换每条事件                                               |
+| `transport`          | `(item: object) => Promise<void> \| void` | Beacon 适配器 | 替换单条传输路径，接收 transform 后的载荷；返回的 Promise fulfilled 后条目才会移除 |
+| `disablePersistence` | `boolean`                                 | `false`       | 禁止读取和写入 localStorage 待传输 outbox                                          |
+| `persistenceKey`     | `string`                                  | `url` 的值    | localStorage outbox 的稳定键；多个独立 Tracker 必须使用不同的 key                  |
 
 ```ts
 import { defineTracker } from '@greypan/browser-kit'
