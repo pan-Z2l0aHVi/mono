@@ -2,6 +2,8 @@ import { execFileSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 
+import { listPnpmWorkspaceManifests } from './workspace-manifests.mjs'
+
 const args = process.argv.slice(2)
 const rootOptionIndex = args.indexOf('--root')
 const quiet = args.includes('--quiet')
@@ -74,15 +76,10 @@ function getPackedFiles(packageRoot, packageName) {
   }
 }
 
-for (const entry of fs.readdirSync(path.join(root, 'packages'), { withFileTypes: true })) {
-  if (!entry.isDirectory()) continue
-
-  const packageRoot = path.join(root, 'packages', entry.name)
-  const manifestFile = path.join(packageRoot, 'package.json')
-  if (!fs.existsSync(manifestFile)) continue
-
+for (const manifestFile of listPnpmWorkspaceManifests(root)) {
+  const packageRoot = path.dirname(manifestFile)
   const manifest = readJson(manifestFile)
-  const packageName = manifest.name ?? `packages/${entry.name}`
+  const packageName = manifest.name ?? path.relative(root, packageRoot).split(path.sep).join('/')
 
   if (manifest.private === true) continue
   if (!fs.existsSync(path.join(packageRoot, 'README.md'))) addError(`${packageName}: missing consumer README.md`)

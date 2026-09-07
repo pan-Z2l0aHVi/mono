@@ -83,6 +83,8 @@ function defineStorage(type: StorageType, options: StorageOptions = {}) {
 
       try {
         const pkg: unknown = JSON.parse(raw)
+        // 非 pkg 包装的值（外部代码或旧版本直接写入的裸 JSON）按原字符串返回、
+        // 不做隐式解析：外部写入的 5 读出为 '5'。这是兼容外部数据的既有契约。
         if (!isPkg<T>(pkg)) return raw as T
         return pkg.v
       } catch {
@@ -123,6 +125,7 @@ function defineStorage(type: StorageType, options: StorageOptions = {}) {
         return pkg.v
       }
 
+      // 同 unPkg：非 pkg 包装的原样返回字符串（legacy 兼容契约），不隐式解析。
       return raw as T
     }
 

@@ -2,6 +2,7 @@ package main
 
 import (
 	"embed"
+	"fmt"
 	"log"
 	"os"
 	"path/filepath"
@@ -20,18 +21,23 @@ import (
 //go:embed all:frontend/dist
 var assets embed.FS
 
-func getDatabasePath() string {
+func getDatabasePath() (string, error) {
 	configDir, err := os.UserConfigDir()
 	if err != nil {
 		configDir = "."
 	}
 	appDir := filepath.Join(configDir, "interweave")
-	_ = os.MkdirAll(appDir, 0755)
-	return filepath.Join(appDir, "library.db")
+	if err := os.MkdirAll(appDir, 0755); err != nil {
+		return "", fmt.Errorf("failed to create data directory %s: %w", appDir, err)
+	}
+	return filepath.Join(appDir, "library.db"), nil
 }
 
 func main() {
-	dbPath := getDatabasePath()
+	dbPath, err := getDatabasePath()
+	if err != nil {
+		log.Fatalf("failed to prepare database location: %v", err)
+	}
 	db, err := storage.Open(dbPath)
 	if err != nil {
 		log.Fatalf("failed to open database at %s: %v", dbPath, err)
@@ -43,7 +49,7 @@ func main() {
 	coreResourceService := coreLibrary.NewResourceService(db, fetcher)
 	coreSourceService := coreLibrary.NewSourceService(db, fetcher)
 	coreTagService := coreLibrary.NewTagService(db)
-	coreMapService := coreLibrary.NewMapService(db, coreResourceService)
+	coreMapService := coreLibrary.NewMapService(db)
 
 	resourceService := libraryService.NewResourceService(coreResourceService)
 	sourceService := libraryService.NewSourceService(coreSourceService)

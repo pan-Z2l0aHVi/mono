@@ -90,6 +90,7 @@ export class WebUiTooltip extends LitElement {
   private _isCountedVisible = false
   private readonly _userOpenChange = new UserChangeController()
   private _shouldOpenInstantly = true
+  private _portal?: OverlayPortal
   private readonly _panel = defineAnchoredPanel().make({
     getAnchor: () => this.shadowRoot?.querySelector<HTMLElement>('.tooltip-trigger') ?? null,
     getLocalPanel: () => this.shadowRoot?.querySelector<HTMLElement>('.tooltip-panel') ?? null,
@@ -202,8 +203,23 @@ export class WebUiTooltip extends LitElement {
       container: this.overlayContainer,
       target: this,
       style: `${glass}\n${overlayMotion}\n${style}`,
-      className: 'tooltip-panel portal wui-glass wui-floating-panel'
+      className: 'tooltip-panel portal wui-glass wui-floating-panel',
+      onContentChange: mutations => {
+        // Vue 等框架在打开期物理删除已迁移节点：从追踪列表摘除，否则关闭恢复时
+        // 会把已删除节点复活回宿主 light DOM。面板内部的移动（重排 insertBefore）
+        // 在同一 mutation record 中同时出现在 removed/added，不属于删除，须排除。
+        const addedNodes = new Set(mutations.flatMap(mutation => [...mutation.addedNodes]))
+        const removedNodes = mutations
+          .flatMap(mutation => [...mutation.removedNodes])
+          .filter(node => !addedNodes.has(node))
+        if (removedNodes.length) this._portal?.removeContent(removedNodes)
+      },
+      // 打开期实时渲染：新增的 slot=content 元素实时迁入面板（注释锚点无法携带
+      // slot 属性，天然留在宿主作为框架 patch 的插入基准）。
+      migrateAddedNodes: addedNodes =>
+        addedNodes.filter(node => node instanceof Element && node.getAttribute('slot') === 'content')
     })
+    this._portal = portal
     if (this.content) {
       const text = document.createElement('span')
       text.className = 'tooltip-text'

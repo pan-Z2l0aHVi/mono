@@ -3,138 +3,104 @@ package core
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
 	"time"
 
-	"github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/internal/id"
-	"github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/internal/normalize"
 	"github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage"
 	"github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/remote"
 )
 
 // 维护 Resource 的外部入口，同时保证 Resource 始终可被保留。
 type SourceService struct {
-	db      *storage.DB
-	fetcher *remote.Fetcher
-	sources storage.SourceStore
+	db        *storage.DB
+	ingest    *ingestion
+	resources storage.ResourceStore
+	sources   storage.SourceStore
 }
 
 // 保持 Source 规则与持久化实现解耦。
 func NewSourceService(db *storage.DB, fetcher *remote.Fetcher) *SourceService {
 	return &SourceService{
-		db:      db,
-		fetcher: fetcher,
-		sources: storage.SourceStore{},
+		db:        db,
+		ingest:    newIngestion(db, fetcher),
+		resources: storage.ResourceStore{},
+		sources:   storage.SourceStore{},
 	}
 }
 
 // 补充备用入口不应意外改变用户当前的首选入口。
 func (s *SourceService) AddFileSource(ctx context.Context, resourceID string, inputPath string) (Source, error) {
-	cleanPath, err := normalize.FilePath(inputPath)
+	location, err := s.ingest.normalizeInput(inputPath, storage.SourceTypeFile)
 	if err != nil {
-		return Source{}, fmt.Errorf("invalid file path: %w", err)
+		return Source{}, err
 	}
 
-	available := false
-	if _, err := os.Stat(cleanPath); err == nil {
-		available = true
+	// 归属目标的存在性是产品规则，不依赖外键约束兜底。
+	if err := s.requireResource(ctx, resourceID); err != nil {
+		return Source{}, err
 	}
 
-	now := time.Now().UnixMilli()
-	sourceID := id.NewID()
-
-	err = s.db.WithTx(ctx, func(tx *sql.Tx) error {
-		maxOrder, err := s.sources.MaxOrder(ctx, tx, resourceID)
-		if err != nil {
-			return err
-		}
-		src := Source{
-			ID:          sourceID,
-			ResourceID:  resourceID,
-			Type:        storage.SourceTypeFile,
-			Location:    cleanPath,
-			Available:   available,
-			IsPreferred: false,
-			OrderIndex:  maxOrder + 1,
-			CreatedAt:   now,
-			UpdatedAt:   now,
-		}
-		return s.sources.Insert(ctx, tx, src)
+	outcome := s.ingest.probe(ctx, location, storage.SourceTypeFile)
+	result, err := s.ingest.write(ctx, ingestWrite{
+		mode:       ingestAppendSource,
+		resourceID: resourceID,
+		srcType:    storage.SourceTypeFile,
+		location:   location,
+		probe:      outcome,
 	})
 	if err != nil {
 		return Source{}, fmt.Errorf("failed to add file source: %w", err)
 	}
 
-	return s.getSource(ctx, sourceID)
+	return s.getSource(ctx, result.sourceID)
 }
 
 // 补充 URL 入口不应覆盖用户已维护的资源语义。
 func (s *SourceService) AddURLSource(ctx context.Context, resourceID string, inputURL string) (Source, error) {
-	normURL, err := normalize.URL(inputURL)
+	location, err := s.ingest.normalizeInput(inputURL, storage.SourceTypeURL)
 	if err != nil {
-		return Source{}, fmt.Errorf("invalid URL: %w", err)
+		return Source{}, err
 	}
 
-	fetchCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
-	defer cancel()
-
-	meta, available, _ := s.fetcher.FetchURL(fetchCtx, normURL)
-
-	metadataJSON := ""
-	if meta != nil {
-		bytes, err := json.Marshal(meta)
-		if err == nil {
-			metadataJSON = string(bytes)
-		}
+	// 抓取最多阻塞 10 秒，必须在不存在的归属目标上先短路。
+	if err := s.requireResource(ctx, resourceID); err != nil {
+		return Source{}, err
 	}
 
-	now := time.Now().UnixMilli()
-	sourceID := id.NewID()
-
-	err = s.db.WithTx(ctx, func(tx *sql.Tx) error {
-		maxOrder, err := s.sources.MaxOrder(ctx, tx, resourceID)
-		if err != nil {
-			return err
-		}
-		src := Source{
-			ID:           sourceID,
-			ResourceID:   resourceID,
-			Type:         storage.SourceTypeURL,
-			Location:     normURL,
-			Available:    available,
-			IsPreferred:  false,
-			OrderIndex:   maxOrder + 1,
-			MetadataJSON: metadataJSON,
-			CreatedAt:    now,
-			UpdatedAt:    now,
-		}
-		return s.sources.Insert(ctx, tx, src)
+	outcome := s.ingest.probe(ctx, location, storage.SourceTypeURL)
+	result, err := s.ingest.write(ctx, ingestWrite{
+		mode:       ingestAppendSource,
+		resourceID: resourceID,
+		srcType:    storage.SourceTypeURL,
+		location:   location,
+		probe:      outcome,
 	})
 	if err != nil {
 		return Source{}, fmt.Errorf("failed to add URL source: %w", err)
 	}
 
-	return s.getSource(ctx, sourceID)
+	return s.getSource(ctx, result.sourceID)
 }
 
 // 替换入口时保留其在 Resource 中的角色与顺位。
 func (s *SourceService) ReplaceFileSource(ctx context.Context, sourceID string, inputPath string) (Source, error) {
-	cleanPath, err := normalize.FilePath(inputPath)
+	location, err := s.ingest.normalizeInput(inputPath, storage.SourceTypeFile)
 	if err != nil {
-		return Source{}, fmt.Errorf("invalid file path: %w", err)
+		return Source{}, err
 	}
 
-	available := false
-	if _, err := os.Stat(cleanPath); err == nil {
-		available = true
+	if err := s.requireSource(ctx, sourceID); err != nil {
+		return Source{}, err
 	}
 
-	now := time.Now().UnixMilli()
-	err = s.db.WithTx(ctx, func(tx *sql.Tx) error {
-		return mapNotFound(s.sources.Replace(ctx, tx, sourceID, storage.SourceTypeFile, cleanPath, available, "", now))
+	outcome := s.ingest.probe(ctx, location, storage.SourceTypeFile)
+	_, err = s.ingest.write(ctx, ingestWrite{
+		mode:     ingestReplaceSource,
+		sourceID: sourceID,
+		srcType:  storage.SourceTypeFile,
+		location: location,
+		probe:    outcome,
 	})
 	if err != nil {
 		return Source{}, fmt.Errorf("failed to replace source: %w", err)
@@ -145,26 +111,23 @@ func (s *SourceService) ReplaceFileSource(ctx context.Context, sourceID string, 
 
 // 替换入口时保留其在 Resource 中的角色与顺位。
 func (s *SourceService) ReplaceURLSource(ctx context.Context, sourceID string, inputURL string) (Source, error) {
-	normURL, err := normalize.URL(inputURL)
+	location, err := s.ingest.normalizeInput(inputURL, storage.SourceTypeURL)
 	if err != nil {
-		return Source{}, fmt.Errorf("invalid URL: %w", err)
+		return Source{}, err
 	}
 
-	fetchCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
-	defer cancel()
-
-	meta, available, _ := s.fetcher.FetchURL(fetchCtx, normURL)
-	metadataJSON := ""
-	if meta != nil {
-		bytes, err := json.Marshal(meta)
-		if err == nil {
-			metadataJSON = string(bytes)
-		}
+	// 抓取最多阻塞 10 秒，必须在不存在的 Source 上先短路。
+	if err := s.requireSource(ctx, sourceID); err != nil {
+		return Source{}, err
 	}
 
-	now := time.Now().UnixMilli()
-	err = s.db.WithTx(ctx, func(tx *sql.Tx) error {
-		return mapNotFound(s.sources.Replace(ctx, tx, sourceID, storage.SourceTypeURL, normURL, available, metadataJSON, now))
+	outcome := s.ingest.probe(ctx, location, storage.SourceTypeURL)
+	_, err = s.ingest.write(ctx, ingestWrite{
+		mode:     ingestReplaceSource,
+		sourceID: sourceID,
+		srcType:  storage.SourceTypeURL,
+		location: location,
+		probe:    outcome,
 	})
 	if err != nil {
 		return Source{}, fmt.Errorf("failed to replace source: %w", err)
@@ -233,21 +196,12 @@ func (s *SourceService) RefreshURLSource(ctx context.Context, sourceID string) (
 		return Source{}, ErrOnlyURLSourceRefreshable
 	}
 
-	fetchCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
-	defer cancel()
-
-	meta, available, _ := s.fetcher.FetchURL(fetchCtx, src.Location)
-	metadataJSON := ""
-	if meta != nil {
-		bytes, err := json.Marshal(meta)
-		if err == nil {
-			metadataJSON = string(bytes)
-		}
-	}
-
-	now := time.Now().UnixMilli()
-	err = s.db.WithTx(ctx, func(tx *sql.Tx) error {
-		return mapNotFound(s.sources.UpdateAvailability(ctx, tx, sourceID, available, metadataJSON, now))
+	// 位置在纳入时已归一化，刷新直接探测原位置，不回写 Resource 标题（ADR-0023）。
+	outcome := s.ingest.probe(ctx, src.Location, storage.SourceTypeURL)
+	_, err = s.ingest.write(ctx, ingestWrite{
+		mode:     ingestRefreshSource,
+		sourceID: sourceID,
+		probe:    outcome,
 	})
 	if err != nil {
 		return Source{}, err
@@ -262,4 +216,24 @@ func (s *SourceService) getSource(ctx context.Context, sourceID string) (Source,
 		return Source{}, mapNotFound(err)
 	}
 	return src, nil
+}
+
+// 写入归属前确认目标 Resource 存在，返回用户可见的哨兵文案而非 SQL 错误。
+func (s *SourceService) requireResource(ctx context.Context, resourceID string) error {
+	exists, err := s.resources.Exists(ctx, s.db.SqlDB(), resourceID)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return ErrResourceNotFound
+	}
+	return nil
+}
+
+// 替换与抓取前确认目标 Source 存在，避免对无效目标做无效工作。
+func (s *SourceService) requireSource(ctx context.Context, sourceID string) error {
+	if _, err := s.sources.Get(ctx, s.db.SqlDB(), sourceID); err != nil {
+		return mapNotFound(err)
+	}
+	return nil
 }

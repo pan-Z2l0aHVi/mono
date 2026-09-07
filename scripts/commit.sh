@@ -14,9 +14,10 @@
 # type 白名单（与 commitlint.config.js 同步）:
 #   build | chore | ci | docs | feat | fix | perf | refactor | revert | style | test
 #
-# scope 白名单:
-#   root | apps | packages | js-kit | browser-kit | web-ui | unplugin-web-components |
-#   deps-reload | react-web-ui-demo | vue-web-ui-demo
+# scope 白名单（手动维护，尚未从 workspace manifests 自动派生，派生方案另行处理）:
+#   root | apps | packages
+#   packages: browser-kit | deps-reload | js-kit | test-kit | tsconfig | unplugin-web-components | web-ui
+#   apps: interweave | react-web-ui-demo | vue-web-ui-demo
 #   支持逗号分隔多 scope: "browser-kit,web-ui"
 #
 # emoji 前缀（自动添加，与 git-cz 风格一致）:
@@ -63,7 +64,7 @@ if [ -z "${TYPE:-}" ] || [ -z "${SCOPE:-}" ] || [ -z "${SUBJECT:-}" ]; then
   echo "  bash scripts/commit.sh fix web-ui,js-kit \"resolve hydration mismatch\" -b \"Fix race condition in SSR\"" >&2
   echo "" >&2
   echo "type 白名单: build | chore | ci | docs | feat | fix | perf | refactor | revert | style | test" >&2
-  echo "scope 白名单: root | apps | packages | js-kit | browser-kit | web-ui | unplugin-web-components | deps-reload | react-web-ui-demo | vue-web-ui-demo" >&2
+  echo "scope 白名单: root | apps | packages | browser-kit | deps-reload | js-kit | test-kit | tsconfig | unplugin-web-components | web-ui | interweave | react-web-ui-demo | vue-web-ui-demo" >&2
   exit 1
 fi
 

@@ -31,31 +31,37 @@ func (SourceStore) Get(ctx context.Context, q Queryer, id string) (SourceModel, 
 	return src, err
 }
 
-// 按添加顺位读取某 Resource 的全部 Source。
-func (SourceStore) ListByResource(ctx context.Context, q Queryer, resourceID string) ([]SourceModel, error) {
+// 批量读取多个 Resource 的全部 Source 并按资源分组，各自保持添加顺位；
+// 供批量视图装配避免逐资源查询。
+func (SourceStore) ListByResources(ctx context.Context, q Queryer, resourceIDs []string) (map[string][]SourceModel, error) {
+	result := make(map[string][]SourceModel, len(resourceIDs))
+	if len(resourceIDs) == 0 {
+		return result, nil
+	}
+
+	args := make([]any, len(resourceIDs))
+	for i, id := range resourceIDs {
+		args[i] = id
+	}
 	rows, err := q.QueryContext(ctx, `
 		SELECT id, resource_id, type, location, available, is_preferred, order_index, metadata_json, created_at, updated_at
-		FROM sources WHERE resource_id = ?
-		ORDER BY order_index ASC
-	`, resourceID)
+		FROM sources WHERE resource_id IN (`+placeholders(len(resourceIDs))+`)
+		ORDER BY resource_id ASC, order_index ASC
+	`, args...)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var result []SourceModel
 	for rows.Next() {
 		src, err := scanSource(rows)
 		if err != nil {
 			return nil, err
 		}
-		result = append(result, src)
+		result[src.ResourceID] = append(result[src.ResourceID], src)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
-	}
-	if result == nil {
-		result = []SourceModel{}
 	}
 	return result, nil
 }
