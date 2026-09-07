@@ -8,14 +8,18 @@ import '@/components/dropdown-item'
 import { UserChangeController } from '@/shared/events/user-change'
 import { createMenuPortalOverlay, type MenuPortalOverlay } from '@/shared/menu-portal/menu-portal'
 import {
+  captureFrameworkAnchors,
   findFocusedMenuItem,
   focusMenuItem,
   getEnabledMenuItems,
   getMenuChildren,
   getMenuItemFromEvent,
-  getMovableMenuSubtrees,
   hideNestedMenuChildren,
-  moveMenuChildren
+  moveMenuChildren,
+  orderManagedMenuItems,
+  reconcileManagedMenuItems,
+  restoreFrameworkAnchors,
+  returnManagedMenuItemsToSlot
 } from '@/shared/menu-portal/menu-tree'
 import { hideOverlayPresence, showOverlayPresence } from '@/shared/overlay/presence'
 import { defineScrollLockLease } from '@/shared/scroll-lock/scroll-lock'
@@ -273,7 +277,7 @@ export class WebUiContextMenu extends LitElement {
     if (!menu) return
     const content = menu.content
 
-    this._syncManagedItems(content)
+    reconcileManagedMenuItems(this, content, this._menuItemAnchors, MARKER_TEXT)
     this._hideMenuItems()
     // 宿主可能在菜单打开期间动态改写 slot 子内容（如切换上下文后重建嵌套子项），
     // 新节点没有隐藏 slot 会落入父项默认 slot 可见渲染并叠到一级菜单上；
@@ -283,128 +287,9 @@ export class WebUiContextMenu extends LitElement {
     // 框架 v-if 注释锚点的复位独立于元素重排：无论元素序是否已变都要执行。
     // 若挂在「元素序已变才重排」之下，顺序恰好正确时会跳过复位，锚点漂移无法收敛，
     // 而 Vue 下次翻转正依赖锚点引导新分支项的插入点。
-    const anchors = this._captureFrameworkAnchors(content)
-    this._orderMenuItems(content)
-    this._restoreFrameworkAnchors(content, anchors)
-  }
-
-  /**
-   * 捕获框架 v-if 注释锚点相对其后继元素的绑定，供重排后复位。
-   * 后继以 nextElementSibling 解析（跳过注释/文本，多个相邻锚点绑定同一后继）。
-   * 锚点在 content 末尾、无后继元素时记为 null（尾部锚点，复位时保持末尾）。
-   */
-  private _captureFrameworkAnchors(content: HTMLElement): Map<Comment, HTMLElement | null> {
-    const anchors = new Map<Comment, HTMLElement | null>()
-    for (const node of Array.from(content.childNodes)) {
-      if (node instanceof Comment && node.textContent !== MARKER_TEXT) {
-        const nextEl = node.nextElementSibling
-        anchors.set(node, nextEl instanceof HTMLElement ? nextEl : null)
-      }
-    }
-    return anchors
-  }
-
-  /**
-   * 把锚点复位到捕获时其后继元素之前（尾部锚点保持末尾）。
-   * 元素重排用 insertBefore/appendChild 不会移动注释，锚点必须显式复位，
-   * 否则脱离模板位置后 Vue 下次 v-if 翻转会把新分支项插到错误插入点。
-   */
-  private _restoreFrameworkAnchors(content: HTMLElement, anchors: Map<Comment, HTMLElement | null>) {
-    for (const [anchor, successor] of anchors) {
-      if (anchor.parentNode !== content) continue
-      if (successor && successor.parentNode === content) {
-        if (anchor.nextElementSibling !== successor) content.insertBefore(anchor, successor)
-      } else {
-        // 尾部锚点：重排可能把元素 append 到末尾越过锚点，恢复其末尾位置。
-        content.appendChild(anchor)
-      }
-    }
-  }
-
-  /**
-   * 全集 reconcile：以「content 现有元素 ∪ 宿主元素」为托管全集。
-   * 框架（如 Vue 的 v-if 翻转）可能不经宿主直接改写 portal 内节点——卸载旧项留下
-   * 注释锚点、把新项直接插进 content——它们都会被这里收编（补 marker + 补隐藏），
-   * 已被框架删除/移出两处的条目则被清理。
-   */
-  private _syncManagedItems(content: HTMLElement) {
-    // 宿主与 portal 面板分别位于不同容器，结构上不相交且收集只看直接子层，
-    // 两个集合不会重复。
-    const inContent = getMovableMenuSubtrees(content)
-    const inHost = getMovableMenuSubtrees(this)
-    const managed = new Set([...inContent, ...inHost])
-
-    // 清理已失效条目：托管元素既不在 content 也不在宿主，说明已被框架删除。
-    // 仍在 content 的元素必被上面收集进 managed，故这里只需处理宿主侧。
-    this._menuItemAnchors.forEach((marker, subtree) => {
-      if (managed.has(subtree)) return
-      marker.remove()
-      this._menuItemAnchors.delete(subtree)
-    })
-
-    // 确保每个托管元素都有 marker：框架直接插入 content 的项在此收编。
-    // content 项按其当前 DOM 序（框架语义序）**反向**处理，新 marker 插到后继项 marker 之前——
-    // 这样补建的 marker 序无需重排即可与 content 对齐；宿主项的 marker 原地补插。
-    const ensureMarker = (subtree: HTMLElement, inHost: boolean, before?: Comment) => {
-      const existing = this._menuItemAnchors.get(subtree)
-      if (existing && existing.parentNode === this) return existing
-      existing?.remove()
-      const marker = document.createComment(MARKER_TEXT)
-      if (inHost) {
-        this.insertBefore(marker, subtree)
-      } else if (before && before.parentNode === this) {
-        this.insertBefore(marker, before)
-      } else {
-        this.appendChild(marker)
-      }
-      this._menuItemAnchors.set(subtree, marker)
-      return marker
-    }
-    for (let index = inContent.length - 1; index >= 0; index--) {
-      const subtree = inContent[index]
-      const next = inContent[index + 1]
-      const nextMarker = next ? this._menuItemAnchors.get(next) : undefined
-      ensureMarker(subtree, false, nextMarker)
-    }
-    for (const subtree of inHost) {
-      ensureMarker(subtree, true)
-    }
-
-    // 宿主中尚存的托管项移入 content。
-    for (const subtree of inHost) {
-      content.appendChild(subtree)
-    }
-  }
-
-  private _orderMenuItems(content: HTMLElement) {
-    const targetItems: HTMLElement[] = []
-    for (const node of Array.from(this.childNodes)) {
-      if (node.nodeType !== Node.COMMENT_NODE || node.textContent !== MARKER_TEXT) continue
-      this._menuItemAnchors.forEach((marker, subtree) => {
-        if (marker !== node || subtree.parentNode !== content) return
-        targetItems.push(subtree)
-      })
-    }
-
-    if (targetItems.length === 0) return
-
-    const currentItems = Array.from(content.children)
-    if (currentItems.length === targetItems.length && currentItems.every((item, index) => item === targetItems[index]))
-      return
-
-    // 把每个元素移动到目标序中下一个元素之前，而不是 appendChild 全部移到末尾。
-    // appendChild 会把元素越过 content 中的框架注释锚点（v-if 锚点），导致锚点脱离
-    // 模板位置，下次框架翻转时据此锚点插入新分支项就会落错位；insertBefore 只重排
-    // 元素相对顺序，锚点保持在原模板位置。锚点复位由 _restoreFrameworkAnchors 独立完成。
-    for (let index = targetItems.length - 1; index >= 0; index--) {
-      const item = targetItems[index]
-      const next = targetItems[index + 1]
-      if (next) {
-        if (item.nextElementSibling !== next) content.insertBefore(item, next)
-      } else {
-        content.appendChild(item)
-      }
-    }
+    const anchors = captureFrameworkAnchors(content, MARKER_TEXT)
+    orderManagedMenuItems(this, content, this._menuItemAnchors, MARKER_TEXT)
+    restoreFrameworkAnchors(content, anchors)
   }
 
   private _returnItemsToSlot() {
@@ -414,38 +299,7 @@ export class WebUiContextMenu extends LitElement {
     this._closeSubmenusFrom(0, true)
     this._restoreClosingSubmenus()
 
-    // 按 content 子节点序双向归还：元素回到 marker 位置，框架 v-if 注释锚点
-    // 插到对应元素之前。Vue 仍持有这些锚点的 vnode.el 引用，随元素一起迁回宿主
-    // 可确保框架下次 patch 以宿主为容器，不会因 parentNode === null 崩溃。
-    const content = menu.content
-    const pending: Comment[] = []
-    for (const node of Array.from(content.childNodes)) {
-      // instanceof 收窄：Comment 接口为空，nodeType 继承自 Node 的 number，无法用 === 收窄
-      if (node instanceof Comment) {
-        pending.push(node)
-        continue
-      }
-      if (!(node instanceof HTMLElement)) continue
-      const marker = this._menuItemAnchors.get(node)
-      if (!marker) continue
-      for (const c of pending) {
-        if (marker.parentNode === this) this.insertBefore(c, marker)
-        else this.appendChild(c)
-      }
-      pending.length = 0
-      if (marker.parentNode === this) {
-        this.insertBefore(node, marker)
-      } else {
-        this.appendChild(node)
-      }
-      marker.remove()
-      this._menuItemAnchors.delete(node)
-    }
-    // 尾部框架锚点追加到宿主末尾
-    for (const c of pending) this.appendChild(c)
-    // 映射中剩余 = 已不在 content 的条目(如翻转中被框架卸载的),仅清理 marker
-    this._menuItemAnchors.forEach(marker => marker.remove())
-    this._menuItemAnchors.clear()
+    returnManagedMenuItemsToSlot(this, menu.content, this._menuItemAnchors)
   }
 
   private async _closeMenuAfterPresence() {

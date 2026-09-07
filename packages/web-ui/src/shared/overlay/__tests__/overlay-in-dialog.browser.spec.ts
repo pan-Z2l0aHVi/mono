@@ -167,6 +167,35 @@ describe('Portal overlay 在已打开原生 dialog 内（top layer）', () => {
     expect(tooltip.open).toBe(true)
   })
 
+  it('dialog 内 portal popover 迁移内容中的嵌套 tooltip 仍解析进 dialog', async () => {
+    const dialog = await openDrawerDialog()
+    const popover = document.createElement('web-ui-popover') as WebUiPopover
+    popover.portal = true
+    popover.innerHTML =
+      '<button slot="trigger">Trigger</button><web-ui-tooltip portal content="nested"><span class="tooltip-anchor">anchor</span></web-ui-tooltip>'
+    drawerDialogAppend(dialog, popover)
+    await popover.updateComplete
+
+    popover.open = true
+    await popover.updateComplete
+    await nextFrame()
+
+    const popoverPanel = getPortalPanel(dialog, '.popover-panel')
+    expectVisibleInDialog(popoverPanel, dialog)
+
+    // tooltip 宿主已随内容迁入 popover 的 portal shadow（跨过 shadow 边界后
+    // parentNode 链断裂），其容器解析必须仍能找到 dialog，面板不得落入 fallback root。
+    const tooltip = popoverPanel.querySelector('web-ui-tooltip') as WebUiTooltip
+    expect(tooltip).toBeTruthy()
+    tooltip.open = true
+    await tooltip.updateComplete
+    await nextFrame()
+
+    const tooltipPanel = getPortalPanel(dialog, '.tooltip-panel')
+    expectVisibleInDialog(tooltipPanel, dialog)
+    expect(tooltip.open).toBe(true)
+  })
+
   it('select 面板挂载到 dialog 内并可交互', async () => {
     const dialog = await openDrawerDialog()
     const select = document.createElement('web-ui-select') as WebUiSelect

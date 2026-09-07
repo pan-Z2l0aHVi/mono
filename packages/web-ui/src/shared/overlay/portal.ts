@@ -16,6 +16,15 @@ export interface OverlayPortalOptions {
   style: string
   className: string
   onContentChange?: (mutations: MutationRecord[]) => void
+  /**
+   * 打开期实时渲染契约：框架（Vue/React 条件渲染）可能在浮层打开期间向宿主
+   * light DOM 持续插入节点。提供该回调时，portal 监听宿主直接子节点的 childList，
+   * 把回调认定的可迁移节点增量迁入面板；关闭恢复时与初始迁移节点一样按原位回插。
+   * 回调应只返回渲染性内容（元素/文本），框架注释锚点必须留在宿主，
+   * 否则框架后续 patch 会以面板内节点为插入基准。
+   * 返回空数组表示本次新增无需迁移。
+   */
+  migrateAddedNodes?: (addedNodes: Node[]) => Node[]
 }
 
 export interface OverlayPortal {
@@ -40,6 +49,20 @@ export function applyOverlayVariables(panel: HTMLElement, source: Element, varia
 }
 
 /**
+ * 迁移节点的追踪条目。每个节点迁入面板时在宿主 light DOM 原位留一个 marker 注释：
+ * 宿主因此始终持有完整有序的骨架（marker + 框架注释锚点 + 未迁移节点），
+ * 框架（Vue/React 条件渲染）打开期的插入以宿主为容器、以真实锚点为基准；
+ * 面板内节点按宿主骨架序重排（中段插入不落到面板末尾）；关闭时按 marker 位
+ * 双向归还、marker 摘除。机制与 menu-tree 的托管菜单项锚一致（context-menu/dropdown 共用）。
+ */
+interface TrackedNodeEntry {
+  node: Node
+  marker: Comment
+}
+
+const PORTAL_CONTENT_MARKER = 'wui-portal-content-anchor'
+
+/**
  * 构建带 Shadow DOM 样式边界的 Portal 面板，并追踪被迁移的内容节点以便恢复。
  */
 export const defineOverlayPortal = () =>
@@ -56,30 +79,92 @@ export const defineOverlayPortal = () =>
     panel.dataset.wuiPresence = 'entering'
     root.append(style, panel)
 
-    const trackedNodes: Node[] = []
+    const trackedNodes: TrackedNodeEntry[] = []
     const contentObserver = new MutationObserver(mutations => ctx.onContentChange?.(mutations))
+    // 同一 observer 批次内被插入又移除的游离节点没有宿主位可锚，不追踪不迁移
+    // （insertBefore 要求 node 是 parent 的子节点）；其归宿由框架的删除语义决定。
+    const recordEntry = (node: Node): TrackedNodeEntry | null => {
+      const parent = node.parentNode
+      if (!parent) return null
+      const marker = document.createComment(PORTAL_CONTENT_MARKER)
+      parent.insertBefore(marker, node)
+      const entry: TrackedNodeEntry = { node, marker }
+      trackedNodes.push(entry)
+      return entry
+    }
     const untrackNodes = (nodes: Node[]) => {
-      nodes.forEach(node => {
-        const index = trackedNodes.indexOf(node)
-        if (index >= 0) trackedNodes.splice(index, 1)
-      })
+      for (const node of nodes) {
+        const index = trackedNodes.findIndex(entry => entry.node === node)
+        if (index >= 0) {
+          trackedNodes[index].marker.remove()
+          trackedNodes.splice(index, 1)
+        }
+      }
+    }
+    // 面板内节点按宿主骨架序重排：骨架 = 宿主 childNodes 中本 portal 的 marker 序。
+    // 只在已跟踪节点之间移动（insertBefore 相对定位），不触碰面板内的组件自有节点
+    // （如 autocomplete 的空态占位）；末位节点 append，越过面板内注释锚点的情形由
+    // restoreContent 的相邻注释随迁兜底。
+    const orderTargetBySkeleton = (target: HTMLElement) => {
+      const skeleton: Node[] = []
+      for (const node of Array.from(ctx.target.childNodes)) {
+        if (node instanceof Comment && node.textContent === PORTAL_CONTENT_MARKER) {
+          const entry = trackedNodes.find(e => e.marker === node)
+          if (entry && entry.node.parentNode === target) skeleton.push(entry.node)
+        }
+      }
+      if (skeleton.length === 0) return
+      const current = Array.from(target.childNodes).filter(
+        node => skeleton.includes(node) || !(node instanceof Comment)
+      )
+      if (current.length === skeleton.length && current.every((node, index) => node === skeleton[index])) return
+      for (let index = skeleton.length - 1; index >= 0; index--) {
+        const node = skeleton[index]
+        const next = skeleton[index + 1]
+        if (next) {
+          if ((node as Element).nextElementSibling !== next) target.insertBefore(node, next)
+        } else {
+          target.appendChild(node)
+        }
+      }
     }
 
     resolveOverlayContainer(ctx.container, ctx.target).appendChild(host)
     if (ctx.onContentChange) contentObserver.observe(panel, { childList: true, subtree: true })
 
-    return {
+    // 打开期实时渲染：观察宿主直接子节点的新增（不含子树，框架 patch 嵌套组件的
+    // light DOM 不属于本面板内容）。portal 实例的生命周期即打开期，随恢复/移除断开。
+    const migrateAddedNodes = ctx.migrateAddedNodes
+    const hostObserver = migrateAddedNodes
+      ? new MutationObserver(mutations => {
+          const addedNodes = mutations.flatMap(mutation => [...mutation.addedNodes])
+          if (!addedNodes.length) return
+          const migratable = migrateAddedNodes(addedNodes)
+          if (migratable.length) api.appendContent(migratable)
+        })
+      : null
+    if (hostObserver) hostObserver.observe(ctx.target, { childList: true })
+
+    const api: OverlayPortal = {
       panel,
 
       moveContent(nodes, target = panel) {
-        trackedNodes.splice(0, trackedNodes.length, ...nodes)
-        target.append(...trackedNodes)
+        trackedNodes.forEach(entry => entry.marker.remove())
+        const entries = nodes.map(recordEntry).filter((entry): entry is TrackedNodeEntry => entry !== null)
+        trackedNodes.length = 0
+        trackedNodes.push(...entries)
+        target.append(...nodes)
+        orderTargetBySkeleton(target)
       },
 
       appendContent(nodes, target = panel) {
-        untrackNodes(nodes)
-        trackedNodes.push(...nodes)
-        target.append(...nodes)
+        for (const node of nodes) {
+          untrackNodes([node])
+          const entry = recordEntry(node)
+          if (!entry) continue
+          target.appendChild(entry.node)
+        }
+        orderTargetBySkeleton(target)
       },
 
       removeContent(nodes) {
@@ -87,15 +172,41 @@ export const defineOverlayPortal = () =>
       },
 
       restoreContent() {
-        ctx.target.append(...trackedNodes)
+        // 先停掉实时迁移：恢复动作本身会改动宿主 childList，
+        // 否则回插的节点会被当成新增内容再次迁入面板形成回环。
+        hostObserver?.disconnect()
+
+        // 节点回到宿主中自己的 marker 位；面板内紧邻其前的框架注释锚点（v-if 占位）
+        // 随元素一起迁回——Vue 仍持有这些锚点的 vnode.el 引用，留在面板会随面板销毁，
+        // 下次翻转将因 parentNode === null 崩溃。
+        for (const entry of trackedNodes) {
+          const pending: Comment[] = []
+          let previous = entry.node.previousSibling
+          while (previous instanceof Comment && previous.textContent !== PORTAL_CONTENT_MARKER) {
+            pending.unshift(previous)
+            previous = previous.previousSibling
+          }
+          for (const comment of pending) {
+            if (entry.marker.parentNode === ctx.target) ctx.target.insertBefore(comment, entry.marker)
+            else ctx.target.appendChild(comment)
+          }
+          if (entry.marker.parentNode === ctx.target) ctx.target.insertBefore(entry.node, entry.marker)
+          else ctx.target.appendChild(entry.node)
+          entry.marker.remove()
+        }
         trackedNodes.length = 0
       },
 
       remove() {
+        hostObserver?.disconnect()
         contentObserver.disconnect()
+        // 防御：正常 dispose 先 restore（marker 已清），异常路径下避免 marker 泄漏在宿主。
+        trackedNodes.forEach(entry => entry.marker.remove())
+        trackedNodes.length = 0
         host.remove()
       }
     }
+    return api
   })
 
 /**
@@ -112,12 +223,21 @@ function isAssignedIntoTarget(node: Node, assignedNode: Node, boundary: Node): b
   return false
 }
 
+/** parentNode 为 null 时跨过 shadow 边界上行到 host（portal 面板等 shadow 子树的 parentNode 链会断裂）。 */
+function getParentAcrossShadow(node: Node): Node | null {
+  if (node.parentNode) return node.parentNode
+  const root = node.getRootNode()
+  return root instanceof ShadowRoot ? root.host : null
+}
+
 /**
  * 查找包含 target 且处于打开态的最近原生 <dialog>。
  * 原生 showModal() 会把 dialog 提升到浏览器 top layer，而常规 overlay 容器在普通文档流，
  * 二者无法靠 z-index 叠序——overlay 会被 top layer 的 dialog 遮住。
  * 因此 target 被渲染到某个已打开的原生 dialog 内时，应把 overlay 挂到该 dialog 上，
  * 使其一并进入 top layer（抽屉 / 对话框内的 dropdown、tooltip、context-menu 均适用）。
+ * 上行路径必须跨 shadow 边界：target 可能位于 portal 面板（shadow 子树）内，
+ * 纯 parentNode 链在该处断裂会误判为 dialog 外，浮层落进 fallback root 被遮挡。
  */
 function findEnclosingOpenDialog(target: Element): HTMLDialogElement | null {
   let current: Node | null = target
@@ -139,7 +259,7 @@ function findEnclosingOpenDialog(target: Element): HTMLDialogElement | null {
       }
     }
 
-    current = current.parentNode
+    current = getParentAcrossShadow(current)
   }
   return null
 }

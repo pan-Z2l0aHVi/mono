@@ -23,7 +23,7 @@ export interface OverlayOptions {
   strategy?: Strategy
 }
 
-/** 虚拟锚点：无对应 DOM 元素的定位基准（如右键菜单的鼠标坐标）。 */
+/** 虚拟锚点：无对应 DOM 元素的定位基准。context-menu 未走 defineOverlay（定位语义分歧见 ADR-0046）。 */
 export interface OverlayVirtualAnchor {
   getBoundingClientRect(): DOMRect
 }
