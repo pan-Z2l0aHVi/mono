@@ -36,3 +36,8 @@
 测试应使用 Arrange、Act、Assert 结构；每个测试验证一个行为；避免依赖实现细节；保持独立性。使用中文描述。仅在需要调用断言时使用带类型的 `vi.fn<Type>()`，并等待确定性的生命周期信号而非任意超时。
 
 对于保持行为不变的重构，应在编辑前记录现有的行为清单，保留行为或获得移除审批后进行变更，并更新相应的测试和文档。
+
+## 本地复现与浏览器 spec 环境隔离
+
+- **压力/负载进程清理**：本地复现慢环境（CPU 忙循环、后台负载等）时，负载进程 PID 必须显式写入文件（如 `pgrep -f <pattern> > /tmp/load.pids`），复现结束后 `kill`（必要时 `-9`），并用 `ps` 验证已退出。不要依赖 shell job 控制（`jobs -p`）：命令被会话移入后台执行或跨 shell 调用时 job 表不可靠，残留的空转循环会占满 CPU 并拖慢后续所有验证。
+- **浏览器 spec 指针隔离**：CI 无头浏览器的虚拟光标固定停在视口左上角；overlay 面板隐藏时 Chrome 会在光标下重算 hover 并对命中元素派发 `pointerenter`，配合 `show-delay="0"` 会立即重开浮层，造成仅在 CI 出现的 flaky（案例：tooltip `conditional.browser.spec.ts`）。直接驱动组件 `open` 等状态、不模拟真实指针交互的 `*.browser.spec.ts`，挂载点应设 `pointer-events: none` 隔离真实指针（见该 spec 的 `mountIsolated()`）。诊断此类 CI-only 问题：在源码加 `console.warn` 埋点（browser mode 只回传 warn，不回传 log）并在超时时 dump DOM 状态，推 CI 读取轨迹。
