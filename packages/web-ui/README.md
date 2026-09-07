@@ -123,9 +123,23 @@ useEffect(() => {
 <web-ui-dropdown-item ref={itemRef}>Paste and close</web-ui-dropdown-item>
 ```
 
+In `portal` mode the library physically moves panel content into the overlay Shadow DOM. React-conditional
+children inside such content (`{condition && <el/>}`) are not supported: React removes nodes through its
+recorded insertion parent, so removing an already-migrated node fails with a commit-phase error and the node
+can reappear when the panel closes. Keep portal panel content mounted and toggle visibility instead.
+
 ### Vue
 
 Requires `vue >= 3.5` as optional peer dependency.
+
+Portal panels support live rendering: content conditionally added or removed while a panel is open (Vue
+`v-if` inside `web-ui-select`, `web-ui-autocomplete`, `web-ui-popover`, `web-ui-tooltip`, `web-ui-dropdown`,
+`web-ui-context-menu`) migrates into the open panel automatically in template order, and on close everything
+is restored to its original anchor position so subsequent patches keep working. Boundary: splicing or
+reordering a keyed `v-for` list while a panel is open is not supported — Vue's keyed children diff resolves
+insertion anchors against sibling nodes already migrated into the panel, so its patch fails and items can be
+lost, regardless of compilation path (compiled templates included). Apply such list updates while the panel
+is closed, or keep to appends/removals at the list tail.
 
 ```ts
 // vite.config.ts
