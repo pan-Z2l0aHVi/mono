@@ -47,17 +47,22 @@ export function showOverlayPresence(panel: HTMLElement, options: OverlayPresence
 
 // 播放退出过渡；若在结束前重新显示则返回 false。
 export function hideOverlayPresence(panel: HTMLElement): Promise<boolean> {
+  // eslint-disable-next-line no-console -- 临时诊断埋点，定位 CI flake 后移除
+  console.warn('[wui-debug]', 'hide:start', panel.dataset.wuiPresence, getTransitionDuration(panel, 0))
   pendingExits.get(panel)?.()
   panel.dataset.wuiPresence = 'closing'
 
   // jsdom 等没有计算 CSS transition 的环境无需伪造退场等待。
   if (getTransitionDuration(panel, 0) === 0) {
     panel.hidden = true
+    // eslint-disable-next-line no-console -- 临时诊断埋点，定位 CI flake 后移除
+    console.warn('[wui-debug]', 'hide:zero-duration')
     return Promise.resolve(true)
   }
 
   return new Promise(resolve => {
     let settled = false
+    const tag = (globalThis as { __wuiDebugTag?: string }).__wuiDebugTag ?? ''
     const finish = (didClose: boolean) => {
       if (settled) return
       settled = true
@@ -65,10 +70,14 @@ export function hideOverlayPresence(panel: HTMLElement): Promise<boolean> {
       clearTimeout(timeout)
       pendingExits.delete(panel)
       if (didClose && panel.dataset.wuiPresence === 'closing') panel.hidden = true
+      // eslint-disable-next-line no-console -- 临时诊断埋点，定位 CI flake 后移除
+      console.warn('[wui-debug]', 'hide:finish', didClose, tag)
       resolve(didClose)
     }
 
     const onTransitionEnd = (event: TransitionEvent) => {
+      // eslint-disable-next-line no-console -- 临时诊断埋点，定位 CI flake 后移除
+      console.warn('[wui-debug]', 'hide:transitionend', event.propertyName, String(event.target === panel), tag)
       if (event.target === panel && (event.propertyName === 'opacity' || event.propertyName === 'transform'))
         finish(true)
     }
