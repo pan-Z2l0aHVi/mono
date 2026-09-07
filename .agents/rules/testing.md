@@ -4,3 +4,4 @@
 - 跨包引用、导出或运行时契约变更在迭代期用 `pnpm run test:affected` 或包级聚焦测试快速回归；提交确认前必须在根目录运行全量 `pnpm test`。单包测试用于开发中的快速定位。
 - 构建配置、发布产物或导出变更在迭代期用 `pnpm run build:affected` 验证；提交确认前必须运行根目录全量 `pnpm build`；其他改动按风险选择验证，不要求无条件全仓构建。
 - 浏览器原生行为、UI 交互和 reduced motion 的测试层级与命令见 [`docs/agents/testing.md`](../../docs/agents/testing.md)。
+- 生成系统负载做本地复现时，负载进程 PID 必须显式记录、结束后 kill 并用 `ps` 验证清理，不得依赖 shell job 控制；直接驱动组件状态的 `*.browser.spec.ts` 挂载点需设 `pointer-events: none` 隔离 CI 光标 hover 重算。细节见 [`docs/agents/testing.md`](../../docs/agents/testing.md)。
