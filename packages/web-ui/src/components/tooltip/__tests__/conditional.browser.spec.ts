@@ -8,10 +8,19 @@ import type { WebUiTooltip } from '..'
 
 afterEach(() => document.body.replaceChildren())
 
+// CI 无头浏览器的静止光标停在视口左上角：portal 面板隐藏时 Chrome 会在光标下
+// 重算 hover 并对 tooltip 派发 pointerenter（show-delay=0 时立即重开），
+// 干扰 close 断言。挂载点用 pointer-events 隔离真实指针。
+const mountIsolated = () => {
+  const mountPoint = document.createElement('div')
+  mountPoint.style.pointerEvents = 'none'
+  document.body.append(mountPoint)
+  return mountPoint
+}
+
 describe('WebUiTooltip portal 条件渲染边界（浏览器）', () => {
   it('打开期 v-if 删除的 slot 内容关闭后不复活', async () => {
-    const mountPoint = document.createElement('div')
-    document.body.append(mountPoint)
+    const mountPoint = mountIsolated()
     const show = ref(true)
     const app = createApp({
       setup: () => ({ show }),
@@ -40,15 +49,15 @@ describe('WebUiTooltip portal 条件渲染边界（浏览器）', () => {
 
     tooltip.open = false
     await tooltip.updateComplete
-    await new Promise(resolve => setTimeout(resolve, 300))
+    // close 的 teardown 链（退出过渡 + 兜底 timer）在慢环境下可能超过固定延时，用条件等待替代固定 sleep
+    await pollUntil(() => getPortalPanel('tooltip') === null, 'Expected portal panel to be disposed after close')
     expect(mountPoint.querySelectorAll('.probe-flag').length).toBe(0)
     expect(document.querySelectorAll('.probe-flag').length).toBe(0)
     app.unmount()
   })
 
   it('打开期 v-if 新增的 slot 内容实时迁入面板并在关闭后恢复', async () => {
-    const mountPoint = document.createElement('div')
-    document.body.append(mountPoint)
+    const mountPoint = mountIsolated()
     const show = ref(false)
     const app = createApp({
       setup: () => ({ show }),
@@ -82,14 +91,13 @@ describe('WebUiTooltip portal 条件渲染边界（浏览器）', () => {
 
     tooltip.open = false
     await tooltip.updateComplete
-    await new Promise(resolve => setTimeout(resolve, 300))
+    await pollUntil(() => getPortalPanel('tooltip') === null, 'Expected portal panel to be disposed after close')
     expect(mountPoint.querySelectorAll('.probe-flag').length).toBe(1)
     app.unmount()
   })
 
   it('同 flush 关闭重开容器级 v-if：占位注释归还宿主，重开内容实时迁入面板', async () => {
-    const mountPoint = document.createElement('div')
-    document.body.append(mountPoint)
+    const mountPoint = mountIsolated()
     const open = ref(false)
     const show = ref(false)
     const app = createApp({
@@ -127,7 +135,7 @@ describe('WebUiTooltip portal 条件渲染边界（浏览器）', () => {
     // 关闭销毁面板，注释在宿主存活
     open.value = false
     await tooltip.updateComplete
-    await new Promise(resolve => setTimeout(resolve, 300))
+    await pollUntil(() => getPortalPanel('tooltip') === null, 'Expected portal panel to be disposed after close')
     expect(getPortalPanel('tooltip')).toBeNull()
     expect([...tooltip.childNodes].some(node => node instanceof Comment)).toBe(true)
 
