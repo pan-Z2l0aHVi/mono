@@ -76,7 +76,7 @@
 | ------------------------- | ------------------------------------------------------------------------ | ---------------- |
 | `js-kit`                  | `@greypan/*`、`remeda`、`nanoid`                                         | 无               |
 | `browser-kit`             | `@greypan/*`、`nanoid`、`remeda`、`copy-to-clipboard`、`msw`             | 无               |
-| `test-kit`                | 通过 tsdown 自动处理：`@greypan/js-kit`、`msw`                           | 无               |
+| `test-kit`                | 通过 tsdown 自动处理：`@greypan/js-kit`、`msw`、`vite-plus`              | 无               |
 | `web-ui`                  | `@greypan/*` 加框架正则匹配 `lit`、`@lit`、`react`、`react-dom` 和 `vue` | 无               |
 | `unplugin-web-components` | 通过 tsdown 自动处理：`@greypan/js-kit`、`change-case`、`unplugin`       | 无               |
 | `deps-reload`             | 通过 tsdown 自动处理：`node:*`、`@greypan/js-kit`、`unplugin`            | 无               |

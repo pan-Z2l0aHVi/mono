@@ -16,6 +16,7 @@
   - `defineMsw(handlers)` — MSW service worker 生命周期管理（start/stop/reset）
   - `defineCapturedRequests()` — 请求捕获与断言工具
   - 使用模式：`defineMsw(handlers).use(defineCapturedRequests()).make()`
+  - 推荐：`createMswTestEnv({ handlers })` — 一体化测试环境，返回 `{ worker, start, stop, reset, capturedRequests, clearCapturedRequests, settle }`；自动捕获请求（内置兜底 recorder，业务 handler 优先），`settle` 提供稳定窗口排空并保留 fake timers
 - **Browser mode 配置**：使用 browser mode 的包需要在 `vite.config.ts` 中配置 `browser.provider: playwright()`（来自 `vite-plus/test/browser-playwright`）
 
 ## 验证选择
