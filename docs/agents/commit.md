@@ -20,3 +20,10 @@ bash scripts/commit.sh <type> <scope> "<subject>" --dry
 
 - `commit.sh` 不处理署名：agent 直接创建提交时，提交后用 `git commit --amend --author=…` 并配合 `GIT_COMMITTER_NAME` / `GIT_COMMITTER_EMAIL` 环境变量改为 agent 官方身份；为人类提交追加 AI 共同作者时，提交后 `git commit --amend --trailer 'Co-authored-by: …'` 追加。
 - 提交前确认实际 author/committer 与意图一致：以人类身份提交时对应 `git config user.name` / `user.email`；以 agent 身份提交时使用其官方身份（见 [`CONTRIBUTING.md`](../../CONTRIBUTING.md) 的「AI 协作署名」）。
+
+## Changesets 与 PR
+
+CI 在每个 `pull_request` 上运行 `changeset status --since=origin/<base>`（`changeset-release/main` 分支除外），PR 不携带 changeset 会导致该检查失败。因此每个 PR 至少包含一个 changeset：
+
+- 涉及公共包行为、导出或依赖变更：按正常 Changesets 流程写明 patch/minor/major 与变更描述。
+- 纯 test/docs/chore 等不影响包版本的变更：创建空 changeset——只含两行 `---` 的 `.changeset/<kebab-name>.md`，frontmatter 内不写包与版本号，changesets 版本 PR 会原样消费它而不产生版本变更。
