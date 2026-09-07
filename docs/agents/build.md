@@ -6,7 +6,7 @@
 
 ## 各包命令
 
-每个包暴露其所需的命令：所有可构建的包都有 `build`，大多数有 `dev`（监听模式），只有包含维护的自动化测试覆盖率的包才暴露 `test`。使用 `pnpm --filter @greypan/<name> <script>` 运行它们；例如，`pnpm --filter @greypan/js-kit test`。根目录提供全局编排的 `pnpm run build`、`pnpm run test` 以及增量受影响命令 `pnpm run build:affected` 与 `pnpm run test:affected`。
+每个包暴露其所需的命令：所有可构建的包都有 `build`，大多数有 `dev`（监听模式），只有包含维护的自动化测试覆盖率的包才暴露 `test`。使用 `pnpm --filter @greypan/<name> <script>` 运行它们；例如，`pnpm --filter @greypan/js-kit test`。根目录提供全局编排的 `pnpm run build`、`pnpm run test` 以及增量受影响命令 `pnpm run build:affected` 与 `pnpm run test:affected`。迭代与调试优先使用受影响命令；全量 `pnpm run build` / `pnpm run test` 仅在最终提交确认前运行（CI 会在 pull request 上完整执行）。
 
 ## Demo 开发
 
@@ -76,7 +76,7 @@
 | ------------------------- | ------------------------------------------------------------------------ | ---------------- |
 | `js-kit`                  | `@greypan/*`、`remeda`、`nanoid`                                         | 无               |
 | `browser-kit`             | `@greypan/*`、`nanoid`、`remeda`、`copy-to-clipboard`、`msw`             | 无               |
-| `test-kit`                | 通过 tsdown 自动处理：`@greypan/js-kit`、`msw`                           | 无               |
+| `test-kit`                | 通过 tsdown 自动处理：`@greypan/js-kit`、`msw`、`vite-plus`              | 无               |
 | `web-ui`                  | `@greypan/*` 加框架正则匹配 `lit`、`@lit`、`react`、`react-dom` 和 `vue` | 无               |
 | `unplugin-web-components` | 通过 tsdown 自动处理：`@greypan/js-kit`、`change-case`、`unplugin`       | 无               |
 | `deps-reload`             | 通过 tsdown 自动处理：`node:*`、`@greypan/js-kit`、`unplugin`            | 无               |

@@ -106,3 +106,38 @@ export function expectReflected(el: HTMLElement, attr: string, value: boolean): 
 export function cleanupElement(el: HTMLElement | null | undefined): void {
   el?.remove()
 }
+
+/**
+ * 查询 fallback overlay root 中的 portal 面板。结构为公开契约：
+ * [data-wui-overlay-root]#shadow > [data-wui-overlay-container] > portal host div#shadow > 面板。
+ * role 按组件语义传入（popover/tooltip 的 dialog、select 的 listbox 等）。
+ */
+export function getPortalPanel(role = 'dialog'): HTMLElement | null {
+  const container = document
+    .querySelector<HTMLElement>('[data-wui-overlay-root]')
+    ?.shadowRoot?.querySelector<HTMLElement>('[data-wui-overlay-container]')
+  return (
+    container
+      ?.querySelector<HTMLElement>('[data-wui-overlay-container] > div')
+      ?.shadowRoot?.querySelector(`[role="${role}"]`) ?? null
+  )
+}
+
+/**
+ * 等待一帧，供打开浮层的 requestAnimationFrame 生命周期消费。
+ */
+export async function waitForFrame(): Promise<void> {
+  await new Promise(resolve => requestAnimationFrame(resolve))
+}
+
+/**
+ * 轮询到条件满足为止（默认 2s），用于消费 MutationObserver / presence 过渡的异步链路。
+ */
+export async function pollUntil(check: () => boolean, message: string): Promise<void> {
+  const deadline = performance.now() + 2000
+  while (performance.now() < deadline) {
+    if (check()) return
+    await new Promise(resolve => requestAnimationFrame(resolve))
+  }
+  throw new Error(message)
+}

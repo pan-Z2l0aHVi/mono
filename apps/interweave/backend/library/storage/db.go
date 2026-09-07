@@ -4,6 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"runtime"
+	"strings"
 	"sync"
 
 	_ "modernc.org/sqlite"
@@ -24,22 +26,21 @@ type DB struct {
 
 // 以本地优先的可靠性配置打开资源库。
 func Open(dsn string) (*DB, error) {
-	db, err := sql.Open("sqlite", dsn)
+	db, err := sql.Open("sqlite", withConnPragmas(dsn))
 	if err != nil {
 		return nil, fmt.Errorf("failed to open sqlite database: %w", err)
 	}
 
-	pragmas := []string{
-		"PRAGMA journal_mode = WAL;",
-		"PRAGMA foreign_keys = ON;",
-		"PRAGMA busy_timeout = 5000;",
-	}
+	// WAL 允许读写并行，写路径由 WithTx 的互斥锁串行化，busy_timeout 兜底瞬时锁竞争；
+	// 因此放宽连接上限支持并发读，并保留等量空闲连接避免反复重建连接重放 pragma。
+	maxConns := max(4, runtime.NumCPU())
+	db.SetMaxOpenConns(maxConns)
+	db.SetMaxIdleConns(maxConns)
 
-	for _, pragma := range pragmas {
-		if _, err := db.Exec(pragma); err != nil {
-			_ = db.Close()
-			return nil, fmt.Errorf("failed to execute %q: %w", pragma, err)
-		}
+	// journal_mode 持久化在库文件中，设置一次即可；其余 pragma 随 DSN 在每个连接上生效。
+	if _, err := db.Exec("PRAGMA journal_mode = WAL;"); err != nil {
+		_ = db.Close()
+		return nil, fmt.Errorf("failed to execute %q: %w", "PRAGMA journal_mode = WAL;", err)
 	}
 
 	sdb := &DB{db: db}
@@ -49,6 +50,16 @@ func Open(dsn string) (*DB, error) {
 	}
 
 	return sdb, nil
+}
+
+// busy_timeout 与 foreign_keys 是每连接生效的运行时 pragma，必须随 DSN 下发，
+// 使连接池后续打开的每个连接都与首连配置一致，而不是只作用于执行 PRAGMA 的那条连接。
+func withConnPragmas(dsn string) string {
+	separator := "?"
+	if strings.Contains(dsn, "?") {
+		separator = "&"
+	}
+	return dsn + separator + "_pragma=busy_timeout(5000)&_pragma=foreign_keys(1)"
 }
 
 // 让应用退出时有序释放本地资源。

@@ -10,6 +10,12 @@ function waitPopstate() {
   })
 }
 
+function waitHashchange() {
+  return new Promise<void>(resolve => {
+    window.addEventListener('hashchange', () => resolve(), { once: true })
+  })
+}
+
 describe('history-nav 测试', () => {
   let nav: HistoryNav
 
@@ -109,6 +115,27 @@ describe('history-nav 测试', () => {
     expect(nav.entries()).toHaveLength(2)
     expect(nav.currentEntry?.url).toContain('#/typed')
     expect(nav.canGoBack).toBe(true)
+  })
+
+  it('连续 hash 赋值逐条跟踪，双事件派发不重复记录', async () => {
+    const changes: string[] = []
+    nav.onCurrentEntryChange(e => changes.push(e.navigationType))
+
+    const first = waitHashchange()
+    window.location.hash = '#/h1'
+    await first
+    expect(nav.currentEntry?.url).toContain('#/h1')
+    expect(nav.canGoBack).toBe(true)
+
+    const second = waitHashchange()
+    window.location.hash = '#/h2'
+    await second
+    expect(nav.currentEntry?.url).toContain('#/h2')
+    expect(nav.canGoBack).toBe(true)
+    expect(nav.entries()).toHaveLength(3)
+    // 规范引擎一次 fragment 导航同时派发 popstate 与 hashchange，
+    // trackTraverse 按 URL 判重，每次导航只产生一条 currententrychange。
+    expect(changes).toEqual(['push', 'push'])
   })
 
   it('dispose 后重新 defineHistoryNav 从 sessionStorage 恢复', () => {

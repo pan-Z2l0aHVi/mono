@@ -89,6 +89,9 @@ function createDependencyConfig({
   }
 }
 
+// 路径比较键：统一分隔符并整体小写，用于大小写不敏感地匹配文件事件与配置路径
+// （用户输入 path 的大小写常与真实路径不一致，如 ../Packages/Foo vs packages/foo）。
+// 仅用于匹配比较：webpack contextDependencies 等存储/解析使用保留原始大小写的 outputPath。
 function normalizePath(path: string): string {
   const normalizedPath = path.split(sep).join('/').toLowerCase()
   return normalizedPath.length > 1 ? normalizedPath.replace(/\/+$/, '') : normalizedPath

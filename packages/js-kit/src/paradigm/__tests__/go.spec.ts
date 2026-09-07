@@ -29,6 +29,26 @@ describe('Result 工具函数（Go 风格）测试', () => {
     expect(isErr(failure)).toBe(true)
   })
 
+  it('ok(null) 应当被识别为 Ok（判别只看 error 位）', () => {
+    const result = ok(null)
+
+    expect(isOk(result)).toBe(true)
+    expect(isErr(result)).toBe(false)
+    expect(unwrap(result)).toBeNull()
+  })
+
+  it('value 为 falsy 值不影响 Ok 判别', () => {
+    expect(isOk(ok(0))).toBe(true)
+    expect(isOk(ok(''))).toBe(true)
+    expect(isOk(ok(false))).toBe(true)
+  })
+
+  it('error 为 falsy 值仍识别为 Err', () => {
+    expect(isErr(err(0))).toBe(true)
+    expect(isErr(err(''))).toBe(true)
+    expect(isOk(err(0))).toBe(false)
+  })
+
   it('to() 应当把成功的 Promise 包装成 Ok', async () => {
     const result = await to(Promise.resolve('hi'))
     expect(isOk(result)).toBe(true)

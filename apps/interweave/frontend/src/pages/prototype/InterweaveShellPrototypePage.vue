@@ -7,6 +7,7 @@ import type {
   WebUiEvent,
   WebUiInput,
   WebUiLayout,
+  WebUiPopover,
   WebUiSelect
 } from '@greypan/web-ui'
 import type { WebUiContextMenu } from '@greypan/web-ui/components/context-menu'
@@ -96,8 +97,7 @@ const tagColors: Record<string, string> = {
   备份: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-400/15 dark:text-yellow-200'
 }
 
-const defaultTagClass =
-  'bg-gray-50 text-gray-500 ring-1 ring-gray-200 dark:bg-white/5 dark:text-neutral-300 dark:ring-white/15'
+const defaultTagClass = 'bg-black/[0.05] text-gray-500 dark:bg-white/10 dark:text-neutral-300'
 function getTagClass(tag: string) {
   return tagColors[tag] ?? defaultTagClass
 }
@@ -106,6 +106,7 @@ function getTagClass(tag: string) {
 interface Resource {
   id: string
   name: string
+  ext?: string
   sourceType: 'local' | 'link'
   resourceType: 'image' | 'video' | 'audio' | 'document' | 'web' | 'json' | 'folder'
   tags?: string[]
@@ -120,7 +121,8 @@ interface Resource {
 const resources = reactive<Resource[]>([
   {
     id: '1',
-    name: '图片名称aaa.png',
+    name: '图片名称aaa',
+    ext: 'png',
     sourceType: 'local',
     resourceType: 'image',
     tags: ['素材', '设计'],
@@ -131,7 +133,8 @@ const resources = reactive<Resource[]>([
   },
   {
     id: '2',
-    name: '文件名称11.md',
+    name: '文件名称11',
+    ext: 'md',
     sourceType: 'local',
     resourceType: 'document',
     tags: ['开发'],
@@ -142,7 +145,8 @@ const resources = reactive<Resource[]>([
   },
   {
     id: '3',
-    name: '视频xxx.mp4',
+    name: '视频xxx',
+    ext: 'mp4',
     sourceType: 'local',
     resourceType: 'video',
     size: '156 MB',
@@ -152,7 +156,8 @@ const resources = reactive<Resource[]>([
   },
   {
     id: '4',
-    name: '音频123.mp3',
+    name: '音频123',
+    ext: 'mp3',
     sourceType: 'local',
     resourceType: 'audio',
     tags: ['灵感'],
@@ -163,7 +168,8 @@ const resources = reactive<Resource[]>([
   },
   {
     id: '5',
-    name: '文档xyz.word',
+    name: '文档xyz',
+    ext: 'word',
     sourceType: 'local',
     resourceType: 'document',
     tags: ['参考', '设计'],
@@ -194,7 +200,8 @@ const resources = reactive<Resource[]>([
   },
   {
     id: '8',
-    name: '文档yyy.json',
+    name: '文档yyy',
+    ext: 'json',
     sourceType: 'local',
     resourceType: 'json',
     tags: ['开发', '工具'],
@@ -205,7 +212,8 @@ const resources = reactive<Resource[]>([
   },
   {
     id: '9',
-    name: '失效文件名称22.md',
+    name: '失效文件名称22',
+    ext: 'md',
     sourceType: 'local',
     resourceType: 'document',
     broken: true,
@@ -217,7 +225,8 @@ const resources = reactive<Resource[]>([
   },
   {
     id: '10',
-    name: '音频123.mp3',
+    name: '音频123',
+    ext: 'mp3',
     sourceType: 'local',
     resourceType: 'audio',
     size: '5.6 MB',
@@ -238,7 +247,8 @@ const resources = reactive<Resource[]>([
   },
   {
     id: '12',
-    name: '标签极多的资源.json',
+    name: '标签极多的资源',
+    ext: 'json',
     sourceType: 'local',
     resourceType: 'json',
     tags: ['设计', '开发', '素材', '灵感', '参考', '工具', '文档', '重要', '紧急', '草稿'],
@@ -256,6 +266,8 @@ const previewDrawerOpen = ref(false)
 const selectedResource = computed(() => resources.find(r => r.id === selectedId.value) ?? null)
 function selectResource(id: string) {
   selectedId.value = id
+  closeTagPopover()
+  closeDrawerTagEditor()
   drawerOpen.value = true
 }
 function openPreviewDrawer() {
@@ -264,6 +276,7 @@ function openPreviewDrawer() {
 function handleDetailDrawerOpenChange(event: WebUiEvent<WebUiDrawer, 'open-change'>) {
   if (event.target !== event.currentTarget) return
   drawerOpen.value = event.detail.open
+  if (!event.detail.open) closeDrawerTagEditor()
 }
 function handlePreviewDrawerOpenChange(event: WebUiEvent<WebUiDrawer, 'open-change'>) {
   if (event.target !== event.currentTarget) return
@@ -291,6 +304,16 @@ const typeTint: Record<Resource['resourceType'], string> = {
   web: 'bg-cyan-100 text-cyan-700 dark:bg-cyan-400/15 dark:text-cyan-200',
   json: 'bg-green-100 text-green-700 dark:bg-green-400/15 dark:text-green-200',
   folder: 'bg-orange-100 text-orange-700 dark:bg-orange-400/15 dark:text-orange-200'
+}
+
+const resourceTypeLabels: Record<Resource['resourceType'], string> = {
+  image: '图片',
+  video: '视频',
+  audio: '音频',
+  document: '文档',
+  web: '网页',
+  json: '源代码',
+  folder: '文件夹'
 }
 
 function getSourceIcon(resource: Resource) {
@@ -437,16 +460,21 @@ function onResourceContextmenu(resource: Resource, event: MouseEvent) {
   ctxMenuRef.value?.openAt(event.clientX, event.clientY)
 }
 
-const resourceRenamingId = ref<string | null>(null)
+const listRenamingId = ref<string | null>(null)
+const drawerRenamingId = ref<string | null>(null)
 const resourceNameDraft = ref('')
 const listResourceRenameInputRef = ref<WebUiInput | null>(null)
 const drawerResourceRenameInputRef = ref<WebUiInput | null>(null)
-const resourceRenameSurface = ref<'list' | 'drawer'>('list')
 
 function startResourceRename(resource: Resource, surface: 'list' | 'drawer' = 'list') {
-  resourceRenamingId.value = resource.id
+  if (surface === 'drawer') {
+    drawerRenamingId.value = resource.id
+    listRenamingId.value = null
+  } else {
+    listRenamingId.value = resource.id
+    drawerRenamingId.value = null
+  }
   resourceNameDraft.value = resource.name
-  resourceRenameSurface.value = surface
   void nextTick(() => {
     const host = surface === 'drawer' ? drawerResourceRenameInputRef.value : listResourceRenameInputRef.value
     const input = host?.shadowRoot?.querySelector<HTMLInputElement>('input')
@@ -455,23 +483,26 @@ function startResourceRename(resource: Resource, surface: 'list' | 'drawer' = 'l
   })
 }
 
-function commitResourceRename(resource: Resource) {
-  if (resourceRenamingId.value !== resource.id) return
+function commitResourceRename(resource: Resource, surface: 'list' | 'drawer' = 'list') {
+  const renamingId = surface === 'drawer' ? drawerRenamingId.value : listRenamingId.value
+  if (renamingId !== resource.id) return
   const name = resourceNameDraft.value.trim()
   if (name) resource.name = name
-  resourceRenamingId.value = null
+  if (surface === 'drawer') drawerRenamingId.value = null
+  else listRenamingId.value = null
   resourceNameDraft.value = ''
 }
 
-function handleResourceRenameKeydown(event: KeyboardEvent, resource: Resource) {
+function handleResourceRenameKeydown(event: KeyboardEvent, resource: Resource, surface: 'list' | 'drawer' = 'list') {
   if (event.key === 'Enter') {
     event.preventDefault()
-    commitResourceRename(resource)
+    commitResourceRename(resource, surface)
   }
   if (event.key === 'Escape') {
     event.preventDefault()
     event.stopPropagation()
-    resourceRenamingId.value = null
+    listRenamingId.value = null
+    drawerRenamingId.value = null
     resourceNameDraft.value = ''
   }
 }
@@ -525,16 +556,16 @@ const queueTagPresetTags = ref<Set<string>>(new Set())
 const queueRenameInputRef = ref<WebUiInput | null>(null)
 const queueTagInputRef = ref<WebUiAutocomplete | null>(null)
 const addQueueSources = [
-  { name: '设计稿.png', meta: '2.4 MB · 图片', icon: lucideImage, tone: 'blue', tags: ['设计'] },
-  { name: '会议记录.md', meta: '18 KB · 文档', icon: lucideFileText, tone: 'green', tags: ['会议'] },
-  { name: '产品演示.mp4', meta: '156 MB · 视频', icon: lucideFilm, tone: 'purple', tags: ['演示'] },
+  { name: '设计稿', ext: 'png', meta: '2.4 MB · 图片', icon: lucideImage, tone: 'blue', tags: ['设计'] },
+  { name: '会议记录', ext: 'md', meta: '18 KB · 文档', icon: lucideFileText, tone: 'green', tags: ['会议'] },
+  { name: '产品演示', ext: 'mp4', meta: '156 MB · 视频', icon: lucideFilm, tone: 'purple', tags: ['演示'] },
   { name: '产品发布流程', meta: '链接 · Notion 页面', icon: lucideLink, tone: 'green', tags: ['参考'] },
   { name: '竞品功能对比', meta: '链接 · 在线表格', icon: lucideGlobe, tone: 'blue', tags: ['工具'] },
-  { name: '用户访谈录音.mp3', meta: '8.2 MB · 音频', icon: lucideHeadphones, tone: 'green', tags: [] },
-  { name: '网页收藏.url', meta: '链接 · 网页', icon: lucideGlobe, tone: 'blue', tags: [] },
-  { name: '原始素材包.zip', meta: '248 MB · 压缩包', icon: lucideFile, tone: 'purple', tags: [] },
-  { name: '需求说明.md', meta: '22 KB · 文档', icon: lucideFileText, tone: 'green', tags: ['开发'] },
-  { name: '未命名截图.png', meta: '1.8 MB · 图片', icon: lucideImage, tone: 'blue', tags: [] }
+  { name: '用户访谈录音', ext: 'mp3', meta: '8.2 MB · 音频', icon: lucideHeadphones, tone: 'green', tags: [] },
+  { name: '网页收藏', meta: '链接 · 网页', icon: lucideGlobe, tone: 'blue', tags: [] },
+  { name: '原始素材包', ext: 'zip', meta: '248 MB · 压缩包', icon: lucideFile, tone: 'purple', tags: [] },
+  { name: '需求说明', ext: 'md', meta: '22 KB · 文档', icon: lucideFileText, tone: 'green', tags: ['开发'] },
+  { name: '未命名截图', ext: 'png', meta: '1.8 MB · 图片', icon: lucideImage, tone: 'blue', tags: [] }
 ]
 const queueToneClass: Record<string, string> = {
   blue: 'bg-[rgb(2_132_199/0.1)] text-[#0284c7]',
@@ -547,7 +578,10 @@ const addQueue = reactive(
     return { ...source, id: `add-item-${index + 1}`, tags: [...source.tags] }
   })
 )
-const queueTagOptions = computed(() => [...new Set([...allTags, ...addQueue.flatMap(item => item.tags)])].sort())
+function getQueueTagOptions(item: (typeof addQueue)[number]) {
+  const candidates = [...new Set([...allTags, ...addQueue.flatMap(entry => entry.tags)])]
+  return candidates.filter(tag => !item.tags.includes(tag)).sort()
+}
 
 function openAddDialog() {
   addDialogOpen.value = true
@@ -688,6 +722,216 @@ function getQueueTagClass(item: (typeof addQueue)[number], tag: string) {
   }
   return getTagClass(tag)
 }
+
+// --- Drawer tag editing ---
+const drawerTagEditing = ref(false)
+const drawerTagDraft = ref('')
+const drawerTagPresetTags = ref<Set<string>>(new Set())
+const drawerTagAutocompleteRef = ref<WebUiAutocomplete | null>(null)
+
+const drawerTagOptions = computed(() =>
+  [...new Set(allTags)].filter(tag => !selectedResource.value?.tags?.includes(tag)).sort()
+)
+
+function setDrawerTagAutocompleteRef(el: Element | ComponentPublicInstance | null) {
+  drawerTagAutocompleteRef.value = el instanceof Element ? (el as WebUiAutocomplete) : null
+}
+
+function closeDrawerTagEditor() {
+  drawerTagEditing.value = false
+  drawerTagDraft.value = ''
+  drawerTagPresetTags.value = new Set()
+}
+
+function toggleDrawerTagEditor() {
+  const next = !drawerTagEditing.value
+  drawerTagEditing.value = next
+  drawerTagDraft.value = ''
+  drawerTagPresetTags.value = next ? new Set(selectedResource.value?.tags ?? []) : new Set()
+  if (!next) return
+  void nextTick(() => {
+    const input = drawerTagAutocompleteRef.value?.shadowRoot?.querySelector<HTMLInputElement>('.autocomplete-input')
+    input?.focus()
+    input?.click()
+  })
+}
+
+function addDrawerTagFromField(field?: WebUiAutocomplete | null) {
+  const resource = selectedResource.value
+  const tag = (field?.value ?? drawerTagDraft.value).trim()
+  if (resource && tag && resource.tags && !resource.tags.includes(tag)) resource.tags.push(tag)
+  if (field) field.value = ''
+  drawerTagDraft.value = ''
+}
+
+function commitDrawerTag() {
+  addDrawerTagFromField(drawerTagAutocompleteRef.value)
+  closeDrawerTagEditor()
+}
+
+function handleDrawerTagInput(event: WebUiEvent<WebUiAutocomplete, 'input'>) {
+  drawerTagDraft.value = event.target.value
+}
+
+function handleDrawerTagChange(event: WebUiEvent<WebUiAutocomplete, 'change'>) {
+  addDrawerTagFromField(event.target)
+  closeDrawerTagEditor()
+}
+
+function removeDrawerTag(index: number) {
+  selectedResource.value?.tags?.splice(index, 1)
+}
+
+function isDrawerTagEditorTarget(target: EventTarget | null) {
+  if (!(target instanceof Element)) return false
+  return target.closest('[data-drawer-tag-editor]') !== null
+}
+
+function handleDrawerTagBlur(event: Event) {
+  setTimeout(() => {
+    if (!drawerTagEditing.value) return
+    const nextTarget =
+      event instanceof FocusEvent && event.relatedTarget instanceof Element
+        ? event.relatedTarget
+        : document.activeElement
+    if (isDrawerTagEditorTarget(nextTarget)) return
+    closeDrawerTagEditor()
+  }, 0)
+}
+
+function getDrawerTagClass(tag: string) {
+  if (drawerTagEditing.value && !drawerTagPresetTags.value.has(tag) && !allTags.includes(tag)) {
+    return 'bg-[var(--wui-color-surface-control,#dfdfdf)] text-[var(--wui-color-text-secondary,#5b5b66)] dark:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_12%,transparent)] dark:text-[var(--wui-color-text-secondary)]'
+  }
+  return getTagClass(tag)
+}
+
+// --- Context menu tag popover ---
+const tagPopoverResourceId = ref<string | null>(null)
+const tagPopoverResource = computed(() => resources.find(r => r.id === tagPopoverResourceId.value) ?? null)
+const contextTagEditing = ref(false)
+const contextTagDraft = ref('')
+const contextTagPresetTags = ref<Set<string>>(new Set())
+const contextTagAutocompleteRef = ref<WebUiAutocomplete | null>(null)
+
+const contextTagOptions = computed(() =>
+  [...new Set(allTags)].filter(tag => !tagPopoverResource.value?.tags?.includes(tag)).sort()
+)
+
+function setContextTagAutocompleteRef(el: Element | ComponentPublicInstance | null) {
+  contextTagAutocompleteRef.value = el instanceof Element ? (el as WebUiAutocomplete) : null
+}
+
+function closeContextTagEditor() {
+  contextTagEditing.value = false
+  contextTagDraft.value = ''
+  contextTagPresetTags.value = new Set()
+}
+
+function closeTagPopover() {
+  closeContextTagEditor()
+  tagPopoverResourceId.value = null
+}
+
+function focusContextTagInput() {
+  const input = contextTagAutocompleteRef.value?.shadowRoot?.querySelector<HTMLInputElement>('.autocomplete-input')
+  input?.focus()
+  input?.click()
+}
+
+function openContextTagEditor() {
+  if (!contextResource.value) return
+  tagPopoverResourceId.value = contextResource.value.id
+  contextTagEditing.value = true
+  contextTagPresetTags.value = new Set(contextResource.value.tags ?? [])
+  ctxMenuRef.value?.close()
+  void nextTick(focusContextTagInput)
+}
+
+function toggleContextTagEditor() {
+  const next = !contextTagEditing.value
+  contextTagEditing.value = next
+  contextTagDraft.value = ''
+  contextTagPresetTags.value = next ? new Set(tagPopoverResource.value?.tags ?? []) : new Set()
+  if (!next) return
+  void nextTick(focusContextTagInput)
+}
+
+function handleTagPopoverOpenChange(event: WebUiEvent<WebUiPopover, 'open-change'>) {
+  if (event.target !== event.currentTarget) return
+  if (!event.detail.open) closeTagPopover()
+}
+
+function addContextTagFromField(field?: WebUiAutocomplete | null) {
+  const resource = tagPopoverResource.value
+  const tag = (field?.value ?? contextTagDraft.value).trim()
+  if (resource && tag && resource.tags && !resource.tags.includes(tag)) resource.tags.push(tag)
+  if (field) field.value = ''
+  contextTagDraft.value = ''
+}
+
+function commitContextTag() {
+  addContextTagFromField(contextTagAutocompleteRef.value)
+  closeContextTagEditor()
+}
+
+function handleContextTagInput(event: WebUiEvent<WebUiAutocomplete, 'input'>) {
+  contextTagDraft.value = event.target.value
+}
+
+function handleContextTagChange(event: WebUiEvent<WebUiAutocomplete, 'change'>) {
+  addContextTagFromField(event.target)
+  closeContextTagEditor()
+}
+
+function removeContextTag(index: number) {
+  tagPopoverResource.value?.tags?.splice(index, 1)
+}
+
+function isContextTagEditorTarget(target: EventTarget | null) {
+  if (!(target instanceof Element)) return false
+  return (
+    target.closest('[data-context-tag-editor], [data-context-tag-autocomplete], [data-context-tag-popover]') !== null
+  )
+}
+
+function handleContextTagBlur(event: Event) {
+  setTimeout(() => {
+    if (!contextTagEditing.value) return
+    const nextTarget =
+      event instanceof FocusEvent && event.relatedTarget instanceof Element
+        ? event.relatedTarget
+        : document.activeElement
+    if (isContextTagEditorTarget(nextTarget)) return
+    closeContextTagEditor()
+  }, 0)
+}
+
+function getContextTagClass(tag: string) {
+  if (contextTagEditing.value && !contextTagPresetTags.value.has(tag) && !allTags.includes(tag)) {
+    return 'bg-[var(--wui-color-surface-control,#dfdfdf)] text-[var(--wui-color-text-secondary,#5b5b66)] dark:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_12%,transparent)] dark:text-[var(--wui-color-text-secondary)]'
+  }
+  return getTagClass(tag)
+}
+
+watch(tagPopoverResourceId, (id, _, onCleanup) => {
+  if (!id) return
+  const handleDocumentClick = (event: Event) => {
+    const path = event.composedPath?.() ?? []
+    if (path.some(node => node instanceof Element && node.hasAttribute('data-context-tag-option'))) return
+    if (isContextTagEditorTarget(event.target)) return
+    closeTagPopover()
+  }
+  const handleDocumentKeydown = (event: KeyboardEvent) => {
+    if (event.key === 'Escape') closeTagPopover()
+  }
+  document.addEventListener('click', handleDocumentClick)
+  document.addEventListener('keydown', handleDocumentKeydown)
+  onCleanup(() => {
+    document.removeEventListener('click', handleDocumentClick)
+    document.removeEventListener('keydown', handleDocumentKeydown)
+  })
+})
 
 watch(addDialogOpen, (open, _, onCleanup) => {
   if (!open) return
@@ -887,7 +1131,7 @@ watch(addDialogOpen, (open, _, onCleanup) => {
 
     <!-- Resource list + Detail drawer -->
     <div class="flex min-h-0 flex-1">
-      <div class="flex-1 min-w-0 px-6 pb-16">
+      <div class="flex-1 min-w-0 px-6 pb-16 pt-2">
         <web-ui-context-menu ref="ctxMenuRef" class="block w-full">
           <!-- Empty state -->
           <div v-if="filteredResources.length === 0" class="flex flex-col items-center justify-center py-24">
@@ -899,7 +1143,7 @@ watch(addDialogOpen, (open, _, onCleanup) => {
             <div
               v-for="resource in filteredResources"
               :key="resource.id"
-              class="resource-row group relative flex items-center gap-3 px-4 py-2.5 cursor-pointer transition-colors duration-100 rounded-xl"
+              class="group relative flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors duration-100 rounded-xl"
               :class="[
                 selectedId === resource.id
                   ? 'bg-black/[0.05] dark:bg-white/[0.08]'
@@ -921,20 +1165,20 @@ watch(addDialogOpen, (open, _, onCleanup) => {
               <div class="flex flex-col min-w-0 gap-1 flex-1">
                 <div class="flex items-center gap-1.5">
                   <web-ui-input
-                    v-if="resourceRenamingId === resource.id"
+                    v-if="listRenamingId === resource.id"
                     :ref="setListResourceRenameRef"
                     :value="resourceNameDraft"
                     borderless
-                    class="block w-full min-w-0 max-w-[60%] [--wui-input-width:100%] [--wui-color-focus-ring:transparent]"
+                    class="block w-full min-w-0 max-w-[60%] [--wui-input-width:100%]"
                     :aria-label="`修改 ${resource.name} 的名称`"
                     @click.stop
                     @input="handleResourceNameInput"
-                    @keydown="handleResourceRenameKeydown($event, resource)"
-                    @blur="commitResourceRename(resource)"
+                    @keydown="handleResourceRenameKeydown($event, resource, 'list')"
+                    @blur="commitResourceRename(resource, 'list')"
                   />
                   <template v-else>
                     <span
-                      class="block text-sm font-medium leading-snug break-words line-clamp-2 max-w-[60%]"
+                      class="text-sm font-medium leading-snug break-words line-clamp-2 max-w-[60%] max-[640px]:max-w-full"
                       :class="
                         resource.broken
                           ? 'text-[#b0b0b8] line-through dark:text-[var(--wui-color-text-disabled)]'
@@ -961,6 +1205,10 @@ watch(addDialogOpen, (open, _, onCleanup) => {
                     ></web-ui-icon>
                     {{ resource.sourceType === 'link' ? '链接' : '本地文件' }}
                   </span>
+                  <template v-if="resource.ext"
+                    ><span class="text-[#d8d8de] dark:text-[var(--wui-color-text-tertiary)]">·</span
+                    >{{ resource.ext.toUpperCase() }}</template
+                  >
                   <template v-if="resource.size"
                     ><span class="text-[#d8d8de] dark:text-[var(--wui-color-text-tertiary)]">·</span
                     >{{ resource.size }}</template
@@ -982,6 +1230,103 @@ watch(addDialogOpen, (open, _, onCleanup) => {
                   >{{ tag }}</span
                 >
               </div>
+
+              <web-ui-popover
+                trigger="manual"
+                placement="bottom-start"
+                portal
+                class="absolute inset-x-0 top-full h-0"
+                data-context-tag-popover
+                :open="tagPopoverResourceId === resource.id"
+                @open-change="handleTagPopoverOpenChange"
+              >
+                <span slot="trigger"></span>
+                <div
+                  v-if="tagPopoverResourceId === resource.id"
+                  class="grid w-[240px] gap-2"
+                  data-context-tag-editor
+                  @click.stop
+                  @contextmenu.stop
+                >
+                  <div class="flex flex-wrap items-center gap-1.5">
+                    <span
+                      v-for="(tag, tagIndex) in tagPopoverResource?.tags"
+                      :key="tag"
+                      class="inline-flex h-5 items-center gap-0.5 rounded-full px-[7px] py-1 text-xs leading-none has-[web-ui-button]:pr-0.5"
+                      :class="getContextTagClass(tag)"
+                    >
+                      {{ tag }}
+                      <web-ui-button
+                        class="shrink-0 [--wui-button-color:currentColor]"
+                        icon
+                        variant="ghost"
+                        size="16"
+                        :aria-label="`移除标签 ${tag}`"
+                        @click="removeContextTag(tagIndex)"
+                      >
+                        <web-ui-icon :icon="lucideX" :size="10"></web-ui-icon>
+                      </web-ui-button>
+                    </span>
+                    <web-ui-tooltip
+                      :content="contextTagDraft.trim() ? '确认标签' : contextTagEditing ? '收起标签编辑' : '添加标签'"
+                      placement="top"
+                    >
+                      <web-ui-button
+                        v-if="contextTagEditing"
+                        icon
+                        :variant="contextTagDraft.trim() ? 'primary' : 'glass'"
+                        size="20"
+                        :aria-label="contextTagDraft.trim() ? '确认标签' : '收起标签编辑'"
+                        @pointerdown.prevent
+                        @click="contextTagDraft.trim() ? commitContextTag() : closeContextTagEditor()"
+                      >
+                        <web-ui-icon :icon="contextTagDraft.trim() ? lucideCheck : lucideX" :size="12"></web-ui-icon>
+                      </web-ui-button>
+                      <web-ui-button
+                        v-else
+                        icon
+                        variant="glass"
+                        size="20"
+                        aria-label="添加标签"
+                        @click="toggleContextTagEditor()"
+                      >
+                        <web-ui-icon :icon="lucidePlus" :size="12"></web-ui-icon>
+                      </web-ui-button>
+                    </web-ui-tooltip>
+                  </div>
+                  <web-ui-autocomplete
+                    v-if="contextTagEditing"
+                    :ref="setContextTagAutocompleteRef"
+                    :value="contextTagDraft"
+                    data-context-tag-autocomplete
+                    class="block w-full min-w-0 [--wui-autocomplete-max-width:100%] [--wui-input-width:100%]"
+                    borderless
+                    allow-custom-value
+                    portal
+                    placeholder="输入或选择标签"
+                    aria-label="添加标签"
+                    @input="handleContextTagInput"
+                    @blur="handleContextTagBlur"
+                    @change="handleContextTagChange"
+                  >
+                    <web-ui-option
+                      v-for="tag in contextTagOptions"
+                      :key="tag"
+                      :value="tag"
+                      :label="tag"
+                      data-context-tag-option
+                      >{{ tag }}</web-ui-option
+                    >
+                    <div slot="empty">
+                      {{
+                        tagPopoverResource?.tags?.includes(contextTagDraft.trim())
+                          ? '该标签已添加'
+                          : `未找到「${contextTagDraft}」，按 Enter 新建`
+                      }}
+                    </div>
+                  </web-ui-autocomplete>
+                </div>
+              </web-ui-popover>
             </div>
           </div>
 
@@ -1011,7 +1356,10 @@ watch(addDialogOpen, (open, _, onCleanup) => {
             找回资源
           </web-ui-dropdown-item>
           <web-ui-dropdown-divider></web-ui-dropdown-divider>
-          <web-ui-dropdown-item v-if="contextResource && !contextResource.broken">
+          <web-ui-dropdown-item
+            v-if="contextResource && !contextResource.broken"
+            @click="contextResource && openContextTagEditor()"
+          >
             <web-ui-icon slot="prefix" :size="14" :icon="lucideTags"></web-ui-icon>
             管理标签
           </web-ui-dropdown-item>
@@ -1039,7 +1387,7 @@ watch(addDialogOpen, (open, _, onCleanup) => {
           <!-- Preview placeholder -->
           <div
             v-if="selectedResource"
-            class="flex items-center justify-center h-36 rounded-xl bg-[#f5f5f7] border border-black/5 dark:bg-[var(--wui-color-surface-raised)] dark:border-[var(--wui-color-border)]"
+            class="flex items-center justify-center h-36 rounded-xl bg-[#f5f5f7] dark:bg-[var(--wui-color-surface-raised)]"
           >
             <web-ui-icon
               :icon="getResourceIcon(selectedResource)"
@@ -1049,23 +1397,23 @@ watch(addDialogOpen, (open, _, onCleanup) => {
           </div>
 
           <!-- Title -->
-          <h2 v-if="selectedResource" class="group/title flex items-center gap-3 m-0">
+          <h2 v-if="selectedResource" class="group/title flex items-center gap-3 min-h-9 m-0">
             <web-ui-icon
               :icon="getResourceIcon(selectedResource)"
               :size="22"
               class="shrink-0 text-[#5b5b66] dark:text-[var(--wui-color-text-secondary)]"
             ></web-ui-icon>
             <web-ui-input
-              v-if="resourceRenamingId === selectedResource.id"
+              v-if="drawerRenamingId === selectedResource.id"
               :ref="setDrawerResourceRenameRef"
               :value="resourceNameDraft"
               borderless
-              class="block w-full min-w-0 max-w-full flex-[1_1_auto] [--wui-input-width:100%] [--wui-color-focus-ring:transparent]"
+              class="block w-full min-w-0 max-w-full flex-[1_1_auto] [--wui-input-width:100%]"
               :aria-label="`修改 ${selectedResource.name} 的名称`"
               @click.stop
               @input="handleResourceNameInput"
-              @keydown="handleResourceRenameKeydown($event, selectedResource)"
-              @blur="commitResourceRename(selectedResource)"
+              @keydown="handleResourceRenameKeydown($event, selectedResource, 'drawer')"
+              @blur="commitResourceRename(selectedResource, 'drawer')"
             />
             <span
               v-else
@@ -1074,8 +1422,8 @@ watch(addDialogOpen, (open, _, onCleanup) => {
               {{ selectedResource.name }}
             </span>
             <web-ui-button
-              v-if="resourceRenamingId !== selectedResource.id"
-              class="ml-auto shrink-0 opacity-0 transition-opacity duration-120 group-hover/title:opacity-100 group-focus-within/title:opacity-100"
+              v-if="drawerRenamingId !== selectedResource.id"
+              class="shrink-0 opacity-0 transition-opacity duration-120 group-hover/title:opacity-100 group-focus-within/title:opacity-100"
               icon
               variant="ghost"
               size="28"
@@ -1115,77 +1463,142 @@ watch(addDialogOpen, (open, _, onCleanup) => {
           </web-ui-button-group>
 
           <!-- Tags -->
-          <div v-if="selectedResource?.tags && selectedResource.tags.length > 0" class="flex gap-1.5 flex-wrap">
-            <span
-              v-for="tag in selectedResource.tags"
-              :key="tag"
-              class="inline-block px-2 py-0.5 rounded-full text-xs leading-tight whitespace-nowrap"
-              :class="getTagClass(tag)"
-              >{{ tag }}</span
+          <div v-if="selectedResource" class="flex flex-col items-start gap-1.5" data-drawer-tag-editor>
+            <div class="flex flex-wrap items-center gap-1.5">
+              <span
+                v-for="(tag, tagIndex) in selectedResource.tags"
+                :key="tag"
+                class="inline-flex h-5 items-center gap-0.5 rounded-full px-[7px] py-1 text-xs leading-none has-[web-ui-button]:pr-0.5"
+                :class="getDrawerTagClass(tag)"
+              >
+                {{ tag }}
+                <web-ui-button
+                  class="shrink-0 [--wui-button-color:currentColor]"
+                  icon
+                  variant="ghost"
+                  size="16"
+                  :aria-label="`移除标签 ${tag}`"
+                  @click="removeDrawerTag(tagIndex)"
+                >
+                  <web-ui-icon :icon="lucideX" :size="10"></web-ui-icon>
+                </web-ui-button>
+              </span>
+              <web-ui-tooltip
+                :content="drawerTagDraft.trim() ? '确认标签' : drawerTagEditing ? '收起标签编辑' : '添加标签'"
+                placement="top"
+              >
+                <web-ui-button
+                  v-if="drawerTagEditing"
+                  icon
+                  :variant="drawerTagDraft.trim() ? 'primary' : 'glass'"
+                  size="20"
+                  :aria-label="drawerTagDraft.trim() ? '确认标签' : '收起标签编辑'"
+                  @pointerdown.prevent
+                  @click="drawerTagDraft.trim() ? commitDrawerTag() : closeDrawerTagEditor()"
+                >
+                  <web-ui-icon :icon="drawerTagDraft.trim() ? lucideCheck : lucideX" :size="12"></web-ui-icon>
+                </web-ui-button>
+                <web-ui-button
+                  v-else
+                  icon
+                  variant="glass"
+                  size="20"
+                  aria-label="添加标签"
+                  @click="toggleDrawerTagEditor()"
+                >
+                  <web-ui-icon :icon="lucidePlus" :size="12"></web-ui-icon>
+                </web-ui-button>
+              </web-ui-tooltip>
+            </div>
+            <web-ui-autocomplete
+              v-if="drawerTagEditing"
+              :ref="setDrawerTagAutocompleteRef"
+              :value="drawerTagDraft"
+              class="block w-[200px] min-w-0 max-w-[200px] [--wui-autocomplete-max-width:240px] [--wui-input-width:200px]"
+              borderless
+              allow-custom-value
+              portal
+              placeholder="输入或选择标签"
+              aria-label="添加标签"
+              @input="handleDrawerTagInput"
+              @blur="handleDrawerTagBlur"
+              @change="handleDrawerTagChange"
             >
+              <web-ui-option v-for="tag in drawerTagOptions" :key="tag" :value="tag" :label="tag">{{
+                tag
+              }}</web-ui-option>
+              <div slot="empty">
+                {{
+                  selectedResource?.tags?.includes(drawerTagDraft.trim())
+                    ? '该标签已添加'
+                    : `未找到「${drawerTagDraft}」，按 Enter 新建`
+                }}
+              </div>
+            </web-ui-autocomplete>
           </div>
 
           <!-- Metadata -->
-          <div
-            v-if="selectedResource"
-            class="grid gap-0 overflow-hidden rounded-xl border border-black/5 text-[13px] dark:border-[var(--wui-color-border)] [&>*:nth-child(odd)]:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_3%,var(--wui-color-page,white))] dark:[&>*:nth-child(odd)]:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_6%,var(--wui-color-page,black))]"
-          >
-            <div class="flex justify-between px-3.5 py-2.5">
+          <div v-if="selectedResource" class="grid text-[13px]">
+            <div class="grid grid-cols-[80px_minmax(0,1fr)] items-baseline gap-x-6 py-2.5">
               <span class="text-[#8a8a94] dark:text-[var(--wui-color-text-secondary)]">来源</span>
-              <span class="text-right text-[#22212a] dark:text-[var(--wui-color-text)]">{{
+              <span class="min-w-0 text-[#22212a] dark:text-[var(--wui-color-text)]">{{
                 selectedResource.sourceType === 'local' ? '本地文件' : '链接'
               }}</span>
             </div>
-            <div class="flex justify-between px-3.5 py-2.5">
+            <div class="grid grid-cols-[80px_minmax(0,1fr)] items-baseline gap-x-6 py-2.5">
               <span class="text-[#8a8a94] dark:text-[var(--wui-color-text-secondary)]">类型</span>
-              <span class="text-right text-[#22212a] dark:text-[var(--wui-color-text)]">{{
-                selectedResource.resourceType
+              <span class="min-w-0 text-[#22212a] dark:text-[var(--wui-color-text)]">{{
+                resourceTypeLabels[selectedResource.resourceType]
               }}</span>
             </div>
-            <div v-if="selectedResource.size" class="flex justify-between px-3.5 py-2.5">
+            <div v-if="selectedResource.size" class="grid grid-cols-[80px_minmax(0,1fr)] items-baseline gap-x-6 py-2.5">
               <span class="text-[#8a8a94] dark:text-[var(--wui-color-text-secondary)]">文件大小</span>
-              <span class="text-right tabular-nums text-[#22212a] dark:text-[var(--wui-color-text)]">{{
+              <span class="min-w-0 tabular-nums text-[#22212a] dark:text-[var(--wui-color-text)]">{{
                 selectedResource.size
               }}</span>
             </div>
-            <div class="flex justify-between px-3.5 py-2.5">
+            <div class="grid grid-cols-[80px_minmax(0,1fr)] items-baseline gap-x-6 py-2.5">
               <span class="text-[#8a8a94] dark:text-[var(--wui-color-text-secondary)]">状态</span>
               <span
                 :class="
                   selectedResource.broken
-                    ? 'text-right text-[#ef4444] dark:text-[var(--wui-color-danger)]'
-                    : 'text-right text-[#059669] dark:text-[var(--wui-color-success)]'
+                    ? 'min-w-0 text-[#ef4444] dark:text-[var(--wui-color-danger)]'
+                    : 'min-w-0 text-[#059669] dark:text-[var(--wui-color-success)]'
                 "
                 >{{ selectedResource.broken ? '已失效' : '有效' }}</span
               >
             </div>
-            <div v-if="selectedResource.createdAt" class="flex justify-between px-3.5 py-2.5">
+            <div
+              v-if="selectedResource.createdAt"
+              class="grid grid-cols-[80px_minmax(0,1fr)] items-baseline gap-x-6 py-2.5"
+            >
               <span class="text-[#8a8a94] dark:text-[var(--wui-color-text-secondary)]">创建时间</span>
-              <span class="text-right tabular-nums text-[#22212a] dark:text-[var(--wui-color-text)]">{{
+              <span class="min-w-0 tabular-nums text-[#22212a] dark:text-[var(--wui-color-text)]">{{
                 selectedResource.createdAt
               }}</span>
             </div>
-            <div v-if="selectedResource.modifiedAt" class="flex justify-between px-3.5 py-2.5">
+            <div
+              v-if="selectedResource.modifiedAt"
+              class="grid grid-cols-[80px_minmax(0,1fr)] items-baseline gap-x-6 py-2.5"
+            >
               <span class="text-[#8a8a94] dark:text-[var(--wui-color-text-secondary)]">修改时间</span>
-              <span class="text-right tabular-nums text-[#22212a] dark:text-[var(--wui-color-text)]">{{
+              <span class="min-w-0 tabular-nums text-[#22212a] dark:text-[var(--wui-color-text)]">{{
                 selectedResource.modifiedAt
               }}</span>
             </div>
-            <div v-if="selectedResource.path" class="flex items-start justify-between px-3.5 py-2.5">
-              <span class="shrink-0 text-[#8a8a94] dark:text-[var(--wui-color-text-secondary)]">路径</span>
+            <div v-if="selectedResource.path" class="grid grid-cols-[80px_minmax(0,1fr)] items-baseline gap-x-6 py-2.5">
+              <span class="text-[#8a8a94] dark:text-[var(--wui-color-text-secondary)]">路径</span>
               <span
-                class="ml-4 truncate text-right text-[#22212a] dark:text-[var(--wui-color-text)]"
+                class="min-w-0 truncate text-[#22212a] dark:text-[var(--wui-color-text)]"
                 :title="selectedResource.path"
                 >{{ selectedResource.path }}</span
               >
             </div>
-            <div v-if="selectedResource.url" class="flex items-start justify-between px-3.5 py-2.5">
-              <span class="shrink-0 text-[#8a8a94] dark:text-[var(--wui-color-text-secondary)]">URL</span>
-              <span
-                class="ml-4 truncate text-right text-[var(--wui-color-accent,#08f)]"
-                :title="selectedResource.url"
-                >{{ selectedResource.url }}</span
-              >
+            <div v-if="selectedResource.url" class="grid grid-cols-[80px_minmax(0,1fr)] items-baseline gap-x-6 py-2.5">
+              <span class="text-[#8a8a94] dark:text-[var(--wui-color-text-secondary)]">URL</span>
+              <span class="min-w-0 truncate text-[var(--wui-color-accent,#08f)]" :title="selectedResource.url">{{
+                selectedResource.url
+              }}</span>
             </div>
           </div>
         </div>
@@ -1209,7 +1622,7 @@ watch(addDialogOpen, (open, _, onCleanup) => {
         </h2>
         <div v-if="selectedResource" class="grid gap-4">
           <div
-            class="flex items-center justify-center h-52 rounded-xl bg-[#f5f5f7] border border-black/5 dark:bg-[var(--wui-color-surface-raised)] dark:border-[var(--wui-color-border)]"
+            class="flex items-center justify-center h-52 rounded-xl bg-[#f5f5f7] dark:bg-[var(--wui-color-surface-raised)]"
           >
             <web-ui-icon
               :icon="getResourceIcon(selectedResource)"
@@ -1261,12 +1674,7 @@ watch(addDialogOpen, (open, _, onCleanup) => {
 
           <p
             v-if="addPasteCaptured"
-            class="mt-3 flex w-fit items-center gap-1.5 rounded-full border bg-[color-mix(in_srgb,var(--wui-color-accent,#08f)_8%,transparent)] px-2.5 py-1.5 text-xs text-[var(--wui-color-accent,#08f)]"
-            :class="
-              addDragActive
-                ? 'border-[var(--wui-color-accent,#08f)]'
-                : 'border-[color-mix(in_srgb,var(--wui-color-accent,#08f)_24%,transparent)]'
-            "
+            class="mt-3 flex w-fit items-center gap-1.5 rounded-full bg-[color-mix(in_srgb,var(--wui-color-accent,#08f)_8%,transparent)] px-2.5 py-1.5 text-xs text-[var(--wui-color-accent,#08f)]"
             role="status"
           >
             <web-ui-icon :icon="lucideClipboardPaste" :size="16"></web-ui-icon>
@@ -1277,16 +1685,14 @@ watch(addDialogOpen, (open, _, onCleanup) => {
         <main class="grid min-h-0 grid-cols-2 gap-5 max-[640px]:gap-4 max-[900px]:grid-cols-1 max-[900px]:grid-rows-2">
           <section class="grid min-h-0 min-w-0 grid-rows-[auto_minmax(0,1fr)] gap-2.5 overflow-hidden">
             <p
-              class="m-0 min-w-0 truncate text-[13px] leading-normal text-[#6a6a6a] dark:text-[var(--wui-color-text-secondary)]"
+              class="m-0 min-w-0 truncate text-[13px] leading-6 text-[#6a6a6a] dark:text-[var(--wui-color-text-secondary)]"
             >
               选择本地文件、拖拽到上传区，或直接粘贴剪贴板内容。
             </p>
             <label
-              class="grid h-full cursor-pointer place-content-center justify-items-center gap-3 rounded-[20px] border-[1.5px] border-dashed border-[rgb(0_0_0/0.15)] bg-[#f5f5f7] px-6 py-7 transition-[background-color] duration-[160ms] hover:bg-[#eeeef1] dark:border-[var(--wui-color-border)] dark:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_3%,transparent)] dark:hover:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_6%,transparent)] max-[640px]:gap-2 max-[640px]:px-4 max-[640px]:py-2 max-[900px]:p-5"
+              class="grid h-full cursor-pointer place-content-center justify-items-center gap-3 rounded-[20px] bg-[#f0f0f4] px-6 py-7 transition-[background-color] duration-[160ms] hover:bg-[#e9e9ee] dark:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_4%,transparent)] dark:hover:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_7%,transparent)] max-[640px]:gap-2 max-[640px]:px-4 max-[640px]:py-2 max-[900px]:p-5"
               :class="
-                addDragActive
-                  ? 'scale-[1.005] border-[var(--wui-color-accent,#08f)] bg-[color-mix(in_srgb,var(--wui-color-accent,#08f)_9%,transparent)]'
-                  : ''
+                addDragActive ? 'scale-[1.005] bg-[color-mix(in_srgb,var(--wui-color-accent,#08f)_9%,transparent)]' : ''
               "
               @dragenter.prevent="addDragActive = true"
               @dragover.prevent="addDragActive = true"
@@ -1314,7 +1720,7 @@ watch(addDialogOpen, (open, _, onCleanup) => {
             class="relative grid min-h-0 min-w-0 grid-rows-[auto_minmax(0,1fr)] gap-2.5 overflow-hidden border-0 bg-transparent p-0"
             aria-labelledby="add-queue-title"
           >
-            <div class="flex items-center justify-between max-[640px]:h-5">
+            <div class="flex min-h-6 items-center justify-between">
               <h3
                 id="add-queue-title"
                 class="m-0 flex items-center gap-1.5 text-[13px] font-semibold text-[#22212a] dark:text-[var(--wui-color-text)]"
@@ -1332,21 +1738,21 @@ watch(addDialogOpen, (open, _, onCleanup) => {
               <li
                 v-for="(item, itemIndex) in addQueue"
                 :key="item.id"
-                class="flex items-start gap-2.5 rounded-2xl border border-black/5 bg-white p-2.5 px-3 dark:border-[var(--wui-color-border)] dark:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_5%,transparent)]"
+                class="flex items-start gap-2.5 rounded-2xl px-3 py-2.5 transition-colors duration-100 hover:bg-black/[0.03] dark:hover:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_5%,transparent)]"
               >
                 <span class="grid size-8 shrink-0 place-items-center rounded-[10px]" :class="queueToneClass[item.tone]">
                   <web-ui-icon :icon="item.icon" :size="16"></web-ui-icon>
                 </span>
                 <span class="grid min-w-0 flex-[1_1_auto] gap-[5px]">
-                  <div class="flex h-9 items-center gap-2">
-                    <span class="flex h-9 min-w-0 flex-[1_1_auto] items-center gap-1.5">
+                  <div class="flex h-8 items-center gap-2">
+                    <span class="flex h-8 min-w-0 flex-[1_1_auto] items-center gap-1.5">
                       <web-ui-input
                         v-if="queueRenamingId === item.id"
                         :ref="setQueueRenameRef"
                         :value="queueNameDraft"
                         full
                         borderless
-                        class="min-w-0 flex-[1_1_auto] [--wui-color-focus-ring:transparent]"
+                        class="min-w-0 flex-[1_1_auto]"
                         :aria-label="`修改 ${item.name} 的名称`"
                         @input="handleQueueNameInput"
                         @keydown="handleQueueRenameKeydown($event, item)"
@@ -1391,7 +1797,7 @@ watch(addDialogOpen, (open, _, onCleanup) => {
                   <div class="flex min-w-0 flex-wrap items-center gap-1.5">
                     <span
                       class="shrink-0 text-xs leading-5 whitespace-nowrap text-[#6a6a6a] dark:text-[var(--wui-color-text-secondary)]"
-                      >{{ item.meta }}</span
+                      >{{ item.ext ? `${item.meta} · ${item.ext.toUpperCase()}` : item.meta }}</span
                     >
                     <div
                       class="flex min-w-0 flex-[0_0_100%] flex-wrap items-center gap-[5px]"
@@ -1460,10 +1866,16 @@ watch(addDialogOpen, (open, _, onCleanup) => {
                     @blur="handleQueueTagBlur($event, item)"
                     @change="handleQueueTagChange($event, item)"
                   >
-                    <web-ui-option v-for="tag in queueTagOptions" :key="tag" :value="tag" :label="tag">{{
+                    <web-ui-option v-for="tag in getQueueTagOptions(item)" :key="tag" :value="tag" :label="tag">{{
                       tag
                     }}</web-ui-option>
-                    <div slot="empty">未找到「{{ queueTagDraft }}」，按 Enter 新建</div>
+                    <div slot="empty">
+                      {{
+                        item.tags.includes(queueTagDraft.trim())
+                          ? '该标签已添加'
+                          : `未找到「${queueTagDraft}」，按 Enter 新建`
+                      }}
+                    </div>
                   </web-ui-autocomplete>
                 </span>
               </li>
@@ -1471,9 +1883,7 @@ watch(addDialogOpen, (open, _, onCleanup) => {
           </aside>
         </main>
 
-        <footer
-          class="flex items-center justify-end border-t border-black/5 pt-3.5 dark:border-[var(--wui-color-border)] max-[640px]:pt-2.5"
-        >
+        <footer class="flex items-center justify-end pt-3.5 max-[640px]:pt-2.5">
           <div class="flex gap-3">
             <web-ui-button variant="secondary" @click="addDialogOpen = false">取消</web-ui-button>
             <web-ui-button variant="primary" @click="addDialogOpen = false">
@@ -1487,19 +1897,3 @@ watch(addDialogOpen, (open, _, onCleanup) => {
     <web-ui-back-top></web-ui-back-top>
   </web-ui-layout>
 </template>
-
-<style scoped>
-/* 列表行之间的半透明分隔线依赖兄弟选择器和伪元素，Tailwind utility 不适合承载这个结构。 */
-.resource-row + .resource-row::before {
-  content: '';
-
-  position: absolute;
-  top: 0;
-  right: 16px;
-  left: 16px;
-
-  height: 1px;
-
-  background: color-mix(in srgb, var(--wui-color-text) 5%, transparent);
-}
-</style>

@@ -1,61 +1,61 @@
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
-import { clearCapturedRequests, capturedRequests, settleCapturedRequests } from '../../../test-helper'
 import { defineTracker } from '../core'
 import { defineBatchTrack } from '../plugins/batch-track'
 
 vi.useFakeTimers()
 
-/** 临时切换到真实计时器，轮询断言条件直到满足或超时。 */
-async function waitFor(predicate: () => boolean, timeout = 5000) {
-  vi.useRealTimers()
-  const start = Date.now()
-  while (!predicate() && Date.now() - start < timeout) {
-    await new Promise(resolve => setTimeout(resolve, 10))
-  }
-  vi.useFakeTimers()
+/** 记录条目的 fake transport；替代 sendBeacon 桩与 MSW 捕获。 */
+function createTransportStub() {
+  const items: object[] = []
+  const transport = vi.fn<(item: object) => Promise<void>>(async item => {
+    items.push(item)
+  })
+  return { items, transport }
 }
 
-/** 等待 MSW 捕获指定数量的请求。 */
-async function waitForMsw(minCount = 1, timeout = 5000) {
-  await waitFor(() => capturedRequests.length >= minCount, timeout)
+/**
+ * 注入 fake transport 后，队列调度只经过 microtask；自旋等待断言条件收敛，
+ * 不依赖真实时间。超过上限视为未收敛，让断言以超时信息失败。
+ */
+async function waitUntil(predicate: () => boolean, maxSpins = 1000): Promise<void> {
+  for (let spin = 0; spin < maxSpins && !predicate(); spin += 1) {
+    await Promise.resolve()
+  }
+  expect(predicate(), '等待队列调度收敛超时').toBe(true)
 }
 
 describe('聚合上报测试用例', () => {
-  beforeEach(async () => {
-    // 上一用例的在途请求可能在本用例断言窗口才落地，排空后再清空。
-    await settleCapturedRequests()
+  let transport: ReturnType<typeof createTransportStub>['transport']
 
-    vi.clearAllMocks()
-    clearCapturedRequests()
+  beforeEach(() => {
+    vi.clearAllTimers()
+    vi.restoreAllMocks()
     localStorage.clear()
 
-    // sendBeacon 始终返回 false，强制走 fetch 降级，由 MSW 拦截
-    Object.defineProperty(navigator, 'sendBeacon', {
-      configurable: true,
-      enumerable: true,
-      value: vi.fn<Navigator['sendBeacon']>(() => false)
-    })
+    const stub = createTransportStub()
+    transport = stub.transport
   })
 
   it('批量聚合：在延迟内合并多次上报', async () => {
-    const tracker = defineTracker({ url: 'https://example.com' })
+    const tracker = defineTracker({ url: 'https://example.com', transport })
       .use(defineBatchTrack({ defaultBatchDelay: 200 }))
       .make()
 
     tracker.track({ event: 'click' })
     tracker.track({ event: 'view' })
 
-    expect(capturedRequests).toHaveLength(0)
+    expect(transport).not.toHaveBeenCalled()
 
     vi.advanceTimersByTime(200)
-    await waitForMsw()
+    await waitUntil(() => transport.mock.calls.length === 1)
 
-    expect(capturedRequests).toHaveLength(1)
+    expect(transport).toHaveBeenCalledTimes(1)
+    expect(transport.mock.calls[0][0]).toEqual([{ event: 'click' }, { event: 'view' }])
   })
 
   it('数据分片：超过阈值时分片生效', async () => {
-    const tracker = defineTracker({ url: 'https://example.com' })
+    const tracker = defineTracker({ url: 'https://example.com', transport })
       .use(defineBatchTrack({ defaultBatchDelay: 200 }))
       .make()
 
@@ -65,26 +65,17 @@ describe('聚合上报测试用例', () => {
     }
 
     vi.advanceTimersByTime(200)
-    await waitForMsw()
+    await waitUntil(() => transport.mock.calls.length >= 1)
 
-    // 分片生效：请求 body 是部分数据（不是全部），证明递归分片切分了批次
-    expect(capturedRequests.length).toBeGreaterThanOrEqual(1)
-    const body = capturedRequests[0].body as unknown[]
+    // 分片生效：请求 payload 是部分数据（不是全部），证明递归分片切分了批次
+    const body = transport.mock.calls[0][0] as unknown[]
     expect(Array.isArray(body)).toBe(true)
     expect(body.length).toBeLessThan(totalCount)
   })
 
-  it('分片后所有数据无丢失（sendBeacon 累计条数一致）', async () => {
-    // keepalive fetch 在 Chromium 有并发限制（并发分片请求只有第一个能被 MSW
-    // 捕获），因此改用 sendBeacon 同步路径统计分片完整性。
-    const sendBeacon = vi.fn<Navigator['sendBeacon']>(() => true)
-    Object.defineProperty(navigator, 'sendBeacon', {
-      configurable: true,
-      enumerable: true,
-      value: sendBeacon
-    })
-
-    const tracker = defineTracker({ url: 'https://example.com' })
+  it('分片后所有数据无丢失（transport 累计条数一致）', async () => {
+    // fake transport 同步记录每个分片，不依赖浏览器并发请求行为。
+    const tracker = defineTracker({ url: 'https://example.com', transport })
       .use(defineBatchTrack({ defaultBatchDelay: 200 }))
       .make()
 
@@ -95,61 +86,56 @@ describe('聚合上报测试用例', () => {
 
     vi.advanceTimersByTime(200)
 
-    // 常规 drain 按顺序确认每个分片；等待全部 sendBeacon 调用完成后再统计。
-    await waitFor(() => sendBeacon.mock.calls.length >= 2)
-    expect(sendBeacon.mock.calls.length).toBeGreaterThanOrEqual(2)
-    let total = 0
-    for (const call of sendBeacon.mock.calls) {
-      const payload = call[1] as string
-      const arr = JSON.parse(payload) as unknown[]
-      total += arr.length
-    }
-    expect(total).toBe(totalCount)
+    // 常规 drain 按顺序确认每个分片；等待全部分片送达后再统计。
+    const deliveredCount = () => transport.mock.calls.reduce((total, call) => total + (call[0] as unknown[]).length, 0)
+    await waitUntil(() => deliveredCount() >= totalCount)
+
+    expect(transport.mock.calls.length).toBeGreaterThanOrEqual(2)
+    expect(deliveredCount()).toBe(totalCount)
   })
 
   it('flush 应立即发送批量数据', async () => {
-    const tracker = defineTracker({ url: 'https://example.com' })
+    const tracker = defineTracker({ url: 'https://example.com', transport })
       .use(defineBatchTrack({ defaultBatchDelay: 200 }))
       .make()
 
     tracker.track({ event: 'queued' })
     await tracker.flush()
-    await waitForMsw()
 
-    expect(capturedRequests.length).toBeGreaterThanOrEqual(1)
+    expect(transport.mock.calls.length).toBeGreaterThanOrEqual(1)
   })
 
   it('batchDelay <= 0 时应立即上报，不经过批处理', async () => {
-    const tracker = defineTracker({ url: 'https://example.com' })
+    const tracker = defineTracker({ url: 'https://example.com', transport })
       .use(defineBatchTrack({ defaultBatchDelay: 200 }))
       .make()
 
     tracker.track({ event: 'immediate' }, 0)
-    await waitForMsw()
+    await waitUntil(() => transport.mock.calls.length === 1)
 
-    expect(capturedRequests.length).toBeGreaterThanOrEqual(1)
+    expect(transport.mock.calls[0][0]).toEqual({ event: 'immediate' })
   })
 
   it('defaultBatchDelay=0 时不延迟，直接上报', async () => {
-    const tracker = defineTracker({ url: 'https://example.com' })
+    const tracker = defineTracker({ url: 'https://example.com', transport })
       .use(defineBatchTrack({ defaultBatchDelay: 0 }))
       .make()
 
     tracker.track({ event: 'instant-1' })
     // defaultBatchDelay=0 时 track 使用 setTimeout(0)，advance 任意正数即可触发
     vi.advanceTimersByTime(1)
-    await waitForMsw(1)
+    await waitUntil(() => transport.mock.calls.length === 1)
 
     tracker.track({ event: 'instant-2' })
     vi.advanceTimersByTime(1)
-    await waitForMsw(2)
+    await waitUntil(() => transport.mock.calls.length === 2)
 
     // 两条数据应该被分两次单独发送（不经过批处理合并）
-    expect(capturedRequests.length).toBe(2)
+    expect(transport).toHaveBeenCalledTimes(2)
   })
 
   it('未超过 maxBeaconSize 时整批单次发送', async () => {
-    const tracker = defineTracker({ url: 'https://example.com' })
+    const tracker = defineTracker({ url: 'https://example.com', transport })
       .use(defineBatchTrack({ defaultBatchDelay: 200, maxBeaconSize: 64 }))
       .make()
 
@@ -158,35 +144,28 @@ describe('聚合上报测试用例', () => {
     tracker.track({ event: 'b' })
     tracker.track({ event: 'c' })
     vi.advanceTimersByTime(200)
-    await waitForMsw()
+    await waitUntil(() => transport.mock.calls.length === 1)
 
-    expect(capturedRequests).toHaveLength(1)
-    const body = capturedRequests[0].body as unknown[]
+    expect(transport).toHaveBeenCalledTimes(1)
+    const body = transport.mock.calls[0][0] as unknown[]
     expect(Array.isArray(body)).toBe(true)
     expect(body).toHaveLength(3)
   })
 
   it('单条数据应直接发送', async () => {
-    const tracker = defineTracker({ url: 'https://example.com' })
+    const tracker = defineTracker({ url: 'https://example.com', transport })
       .use(defineBatchTrack({ defaultBatchDelay: 200 }))
       .make()
 
     tracker.track({ event: 'single' })
     vi.advanceTimersByTime(200)
-    await waitForMsw()
+    await waitUntil(() => transport.mock.calls.length === 1)
 
-    expect(capturedRequests).toHaveLength(1)
+    expect(transport).toHaveBeenCalledTimes(1)
   })
 
   it('自定义 maxBeaconSize 应生效', async () => {
-    const sendBeacon = vi.fn<Navigator['sendBeacon']>(() => true)
-    Object.defineProperty(navigator, 'sendBeacon', {
-      configurable: true,
-      enumerable: true,
-      value: sendBeacon
-    })
-
-    const tracker = defineTracker({ url: 'https://example.com' })
+    const tracker = defineTracker({ url: 'https://example.com', transport })
       .use(defineBatchTrack({ defaultBatchDelay: 200, maxBeaconSize: 0.001 }))
       .make()
 
@@ -196,8 +175,8 @@ describe('聚合上报测试用例', () => {
     }
 
     vi.advanceTimersByTime(200)
-    await waitFor(() => sendBeacon.mock.calls.length === 5)
+    await waitUntil(() => transport.mock.calls.length === 5)
 
-    expect(sendBeacon).toHaveBeenCalledTimes(5)
+    expect(transport).toHaveBeenCalledTimes(5)
   })
 })

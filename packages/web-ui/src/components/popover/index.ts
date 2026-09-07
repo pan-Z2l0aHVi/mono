@@ -80,6 +80,7 @@ export class WebUiPopover extends LitElement {
   private _shouldOpenInstantly = true
 
   private _panelId = `wui-popover-panel-${++popoverIdCounter}`
+  private _portal?: OverlayPortal
   private readonly _panel = defineAnchoredPanel().make({
     getAnchor: () => this.shadowRoot?.querySelector<HTMLElement>('.popover-trigger') ?? null,
     getLocalPanel: () => this.shadowRoot?.querySelector<HTMLElement>('.popover-panel') ?? null,
@@ -194,21 +195,37 @@ export class WebUiPopover extends LitElement {
     this._panel.open(isInstant)
   }
 
+  private _migratableContentNodes(nodes: Node[]): Node[] {
+    // 框架注释锚点（v-if/v-for 占位）必须留在宿主：面板内容是实时渲染契约，
+    // 框架后续 patch 以宿主内锚点为插入基准，锚点进面板会让插入落空。
+    return nodes.filter(node => !(node instanceof Comment) && !(node instanceof HTMLElement && node.slot === 'trigger'))
+  }
+
   private _createPortal(): OverlayPortal {
     const portal = defineOverlayPortal().make({
       container: this.overlayContainer,
       target: this,
       style: `${glass}\n${overlayMotion}\n${style}`,
-      className: 'popover-panel portal wui-glass wui-floating-panel'
+      className: 'popover-panel portal wui-glass wui-floating-panel',
+      onContentChange: mutations => {
+        // Vue 等框架在打开期物理删除已迁移节点：从追踪列表摘除，否则关闭恢复时
+        // 会把已删除节点复活回宿主 light DOM。面板内部的移动（重排 insertBefore）
+        // 在同一 mutation record 中同时出现在 removed/added，不属于删除，须排除。
+        const addedNodes = new Set(mutations.flatMap(mutation => [...mutation.addedNodes]))
+        const removedNodes = mutations
+          .flatMap(mutation => [...mutation.removedNodes])
+          .filter(node => !addedNodes.has(node))
+        if (removedNodes.length) this._portal?.removeContent(removedNodes)
+      },
+      migrateAddedNodes: addedNodes => this._migratableContentNodes(addedNodes)
     })
+    this._portal = portal
     portal.panel.id = this._panelId
     portal.panel.setAttribute('role', 'dialog')
     portal.panel.tabIndex = -1
     portal.panel.addEventListener('pointerenter', this._onPanelPointerEnter)
     portal.panel.addEventListener('pointerleave', this._onPanelPointerLeave)
-    portal.moveContent(
-      Array.from(this.childNodes).filter(node => !(node instanceof HTMLElement && node.slot === 'trigger'))
-    )
+    portal.moveContent(this._migratableContentNodes(Array.from(this.childNodes)))
     return portal
   }
 

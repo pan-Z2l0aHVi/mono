@@ -1,0 +1,49 @@
+---
+'@greypan/web-ui': minor
+---
+
+Add Layout desktop sidebar drag-to-resize and Drawer drag-to-close features.
+
+**Layout (`<web-ui-layout>`):**
+
+- New props: `sidebar-resizable`, `sidebar-min-width`, `sidebar-max-width`
+- New event: `sidebar-width-change`
+- Accent resize handle on right edge (hidden when collapsed); keyboard-operable (WAI-ARIA splitter: arrows step, Home/End to bounds, Enter commits, Escape reverts)
+- Real-time width follow with clamping; emits on release
+- Built-in hard cap: the sidebar can never exceed half the viewport width, even if `sidebar-max-width` is configured higher
+
+**Drawer (`<web-ui-drawer>`):**
+
+- New prop: `draggable` (default `false`)
+- Gray capsule drag bar on inner edge (placement-aware)
+- Real-time follow + spring snap on release
+- Closes when displacement > 1/3 of size OR flick > 500px/s; otherwise rebounds
+- Native dialog renders nothing when closed ⇒ drag-to-open NOT supported
+- Spring via WAAPI (no new `--wui-*` tokens)
+- `prefers-reduced-motion` snaps instantly
+- `controlled` mode: user close actions only emit `open-change(false)` with writeback await + timeout rebound
+- Declarative nested drawer stacking: open drawers below the top layer automatically scale down (0.95^depth) and shift towards the inner side to expose card edges; Escape and backdrop clicks dismiss only the topmost layer
+
+**Drawer visual language (breaking visual, no API change):**
+
+- Non-headless drawers now render as floating rounded cards inset 8px from all viewport edges (see ADR-0036); elastic drag distances read as margin changes instead of gaps
+- New token `--wui-drawer-radius` (default `28px`); closed-state transforms compensate the inset so the drawer always exits the viewport fully
+- `headless` geometry unchanged (consumer-owned visuals)
+
+**Glass variable isolation (bug fix):**
+
+- `.wui-glass` now declares its own `--wui-internal-glass-shadow` / `--wui-internal-glass-focus-ring` defaults, cutting the flattened-tree inheritance path from ancestor glass containers (drawer/dialog bodies, overlay panels) into slotted content. Previously a glass-variant button or input inside a drawer/dialog silently picked up the huge overlay shadow instead of the soft glass fallback.
+- Headless drawers explicitly zero `--wui-internal-drawer-inset` on their dialog: a headless drawer nested inside a non-headless one used to inherit the 8px inset, breaking the drag-close distance / controlled hover end-state math for edge-to-edge geometry.
+- **Breaking visual:** `<web-ui-back-top>`'s default glass button now uses the glass fallback shadow (`--wui-shadow-glass`) instead of the small panel shadow (`--wui-shadow-panel`). The old `:host`-level `--wui-internal-glass-shadow` config could no longer reach the inner glass element under the new isolation and was removed; pass `--wui-shadow-glass` on the element if the previous look is required.
+
+**Controlled mode rename (was `request-only`) + dialog support:**
+
+- `web-ui-drawer`: prop `request-only` (attribute) / `requestOnly` (property) is renamed to `controlled` / `controlled` (same semantics — user close actions only emit `open-change(false)`; the consumer writes `open` back; programmatic `show()`/`close()` stay direct). No alias is kept.
+- `web-ui-dialog`: new `controlled` prop with the same contract (Escape and backdrop only request; native dialog closure while controlled is restored to the open state and re-emits the request).
+
+**Switch, Segmented & Slider Gesture Enhancements (`<web-ui-switch>`, `<web-ui-segmented>`, `<web-ui-slider>`):**
+
+- `Switch`: Full-track draggable gesture with real-time capsule glass thumb following, 6px intent deadzone against vertical scrolling, `scale(1.2)` press/drag micro-interaction, toggle commit on >50% travel (12px total travel) or flick velocity (>300px/s), with instant tap toggling preserved.
+- `Segmented`: Active indicator smooth drag tracking (initiated by pressing on the currently active trigger), `scale(1.2)` press/drag micro-interaction with glass visual, snap to nearest non-disabled trigger on release, and flick gesture support.
+- `Slider`: Refactored internal pointer handling to adopt unified `shared/gesture/` (`attachDragGesture` + `clamp`), with `scale(1.2)` drag micro-interaction and translucent glass thumb when dragging.
+- `Gesture Utilities`: Added `snapToNearest` and `normalizeProgress` helper functions in `packages/web-ui/src/shared/gesture/physics.ts`.

@@ -28,8 +28,39 @@ assert.ok(webUiContract.verification.includes('pnpm run check:pack'))
 assert.throws(() => runFailure('contract', '--json', '@greypan/react-web-ui-demo'))
 
 const noContractDiff = JSON.parse(run('contract-diff', '--json', '--base', 'HEAD'))
-assert.deepEqual(noContractDiff.changes, [])
-assert.equal(noContractDiff.requiresSemverReview, false)
+// contract-diff 只暴露 manifest 级候选；semver 决策记录在 .changeset/。
+// 待定契约变更必须携带 changeset 决策（含 breaking 候选时 bump 须为 major/minor，正文须写明理由）；
+// 变更提交后 diff 归零，本段自然跳过，因此不做「diff 必为空」的临时断言。
+const readChangesetDecisions = () => {
+  const decisions = new Map()
+  const dir = path.join(process.cwd(), '.changeset')
+  if (!fs.existsSync(dir)) return decisions
+  for (const file of fs.readdirSync(dir).filter(name => name.endsWith('.md'))) {
+    const match = /^---\n([\s\S]*?)\n---\n?([\s\S]*)$/.exec(fs.readFileSync(path.join(dir, file), 'utf8'))
+    if (!match) continue
+    for (const line of match[1].split('\n')) {
+      const entry = /^'([^']+)':\s*(major|minor|patch)\s*$/.exec(line.trim())
+      if (entry) decisions.set(entry[1], { bump: entry[2], documented: match[2].trim().length > 0 })
+    }
+  }
+  return decisions
+}
+const changesetDecisions = readChangesetDecisions()
+for (const change of noContractDiff.changes) {
+  const decision = changesetDecisions.get(change.name)
+  assert.ok(decision, `pending contract change for ${change.name} requires a changeset recording its semver decision`)
+  if (change.semverReview.breakingCandidates.length > 0) {
+    assert.ok(
+      ['major', 'minor'].includes(decision.bump),
+      `${change.name} has breaking candidates (${change.semverReview.breakingCandidates.join('; ')}); changeset bump must be major or minor, got ${decision.bump}`
+    )
+  }
+  assert.ok(decision.documented, `${change.name} changeset must document the semver rationale (release note)`)
+}
+assert.equal(
+  noContractDiff.requiresSemverReview,
+  noContractDiff.changes.some(change => change.semverReview.breakingCandidates.length > 0)
+)
 assert.throws(() => runFailure('impact', '--json', 'packages/web-ui/src/components/select/index.ts'))
 assert.throws(() => runFailure('route', '--json', 'packages/web-ui/src/components/select/index.ts'))
 
@@ -160,6 +191,7 @@ assert.match(runContextCheck(), /validate-context passed/)
 assert.match(runContractCheck(), /check-pack passed/)
 
 const fixtureRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'greypan-contract-'))
+fs.writeFileSync(path.join(fixtureRoot, 'pnpm-workspace.yaml'), "packages:\n  - 'packages/*'\n")
 const fixturePackageRoot = path.join(fixtureRoot, 'packages', 'fixture')
 fs.mkdirSync(path.join(fixturePackageRoot, 'dist'), { recursive: true })
 fs.writeFileSync(path.join(fixturePackageRoot, 'README.md'), '# fixture\n')

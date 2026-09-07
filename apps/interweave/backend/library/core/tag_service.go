@@ -39,7 +39,7 @@ func (s *TagService) AddTagToResource(ctx context.Context, resourceID string, in
 	}
 
 	now := time.Now().UnixMilli()
-	var tagID string
+	var tag Tag
 
 	err = s.db.WithTx(ctx, func(tx *sql.Tx) error {
 		// 不为不存在的资源制造悬挂归属。
@@ -52,21 +52,21 @@ func (s *TagService) AddTagToResource(ctx context.Context, resourceID string, in
 		}
 
 		// 优先复用既有标签，保持资源网络收敛。
-		tag, err := s.tags.GetByName(ctx, tx, stdName)
+		stored, err := s.tags.GetByName(ctx, tx, stdName)
 		if errors.Is(err, storage.ErrTagNotFound) {
-			tag = Tag{ID: id.NewID(), Name: stdName, CreatedAt: now}
-			if err := s.tags.Insert(ctx, tx, tag); err != nil {
+			stored = Tag{ID: id.NewID(), Name: stdName, CreatedAt: now}
+			if err := s.tags.Insert(ctx, tx, stored); err != nil {
 				return err
 			}
 		} else if err != nil {
 			return err
 		}
-		tagID = tag.ID
+		tag = stored
 
 		// 同一 Resource 对同一标签只能保留一份归属。
 		return s.taggings.Insert(ctx, tx, storage.TaggingModel{
 			ResourceID: resourceID,
-			TagID:      tagID,
+			TagID:      tag.ID,
 			CreatedAt:  now,
 		})
 	})
@@ -74,7 +74,7 @@ func (s *TagService) AddTagToResource(ctx context.Context, resourceID string, in
 		return Tag{}, err
 	}
 
-	return Tag{ID: tagID, Name: stdName, CreatedAt: now}, nil
+	return tag, nil
 }
 
 // 解除单个 Resource 的归属，不暗中改变其他资源。
@@ -97,7 +97,7 @@ func (s *TagService) SuggestTags(ctx context.Context, query string, limit int) (
 	if trimmed == "" {
 		tags, err = s.tags.List(ctx, s.db.SqlDB(), limit)
 	} else {
-		likePattern := "%" + trimmed + "%"
+		likePattern := "%" + escapeLike(trimmed) + "%"
 		tags, err = s.tags.SearchByName(ctx, s.db.SqlDB(), likePattern, limit)
 	}
 	if err != nil {

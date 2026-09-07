@@ -123,9 +123,50 @@ useEffect(() => {
 <web-ui-dropdown-item ref={itemRef}>Paste and close</web-ui-dropdown-item>
 ```
 
+In `portal` mode the library physically moves panel content into the overlay Shadow DOM. React removes nodes
+through its recorded insertion parent, so a bare conditional child (`{condition && <el/>}`) whose node was
+already migrated cannot be removed while the panel is open: the commit fails and the node can reappear when
+the panel closes. Conditionally render inside a stable wrapper element instead — React records the wrapper as
+the insertion parent, so wrapper-local additions and removals keep working while the panel is open and across
+open/close cycles:
+
+```tsx
+<web-ui-popover portal open={open} trigger="manual">
+  <div className="panel-body">{editing && <TagEditor />}</div>
+</web-ui-popover>
+```
+
+Bare conditional additions while the panel is open (appending to the host) keep working and migrate into the
+panel automatically. Keeping content mounted and toggling visibility remains a valid fallback.
+
+### Lit
+
+Portal panels support live rendering for Lit child parts: `${condition ? html`<el/>` : nothing}` inside
+`web-ui-popover`, `web-ui-tooltip`, `web-ui-select` and `web-ui-autocomplete` migrates into the open panel
+automatically, removals and element-to-element swaps work while the panel is open, and on close content is
+restored to its original anchor position. lit-html child-part markers stay in the host light DOM, so
+subsequent patches keep anchoring correctly. Boundary: reordering a `repeat()` list while a panel is open is
+not supported — lit inserts relative to host part markers while sibling items already live in the panel, the
+same cross-container anchoring boundary as Vue's keyed `v-for`. Apply list reorders while the panel is closed.
+
+`web-ui-dropdown` manages menu items through the shared menu portal, which reconciles from both the host and
+the panel: child-part additions while the panel is open work, but lit cannot reach items that already live in
+the panel, so removals and element swaps there are not supported — apply them while the panel is closed.
+`web-ui-context-menu` does not observe host-side insertions and is not covered by these live-rendering
+guarantees.
+
 ### Vue
 
 Requires `vue >= 3.5` as optional peer dependency.
+
+Portal panels support live rendering: content conditionally added or removed while a panel is open (Vue
+`v-if` inside `web-ui-select`, `web-ui-autocomplete`, `web-ui-popover`, `web-ui-tooltip`, `web-ui-dropdown`,
+`web-ui-context-menu`) migrates into the open panel automatically in template order, and on close everything
+is restored to its original anchor position so subsequent patches keep working. Boundary: splicing or
+reordering a keyed `v-for` list while a panel is open is not supported — Vue's keyed children diff resolves
+insertion anchors against sibling nodes already migrated into the panel, so its patch fails and items can be
+lost, regardless of compilation path (compiled templates included). Apply such list updates while the panel
+is closed, or keep to appends/removals at the list tail.
 
 ```ts
 // vite.config.ts

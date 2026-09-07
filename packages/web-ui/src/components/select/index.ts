@@ -451,7 +451,11 @@ export class WebUiSelect extends LitElement {
     this._portalContent = content
     scroll.append(content)
     portal.panel.append(scroll)
-    portal.moveContent(Array.from(this.children), content)
+    // 自定义 trigger 必须留在宿主内，不能随 options 迁入 portal 面板
+    portal.moveContent(
+      Array.from(this.children).filter(child => child.slot !== 'trigger'),
+      content
+    )
     return portal
   }
 

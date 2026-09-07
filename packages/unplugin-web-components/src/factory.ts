@@ -53,14 +53,20 @@ function stripHtmlNoise(html: string): string {
     .replace(/<!--[\s\S]*?(?:-->|$)/g, '')
 }
 
+// tagPrefix 来自用户 options：拼入正则前必须转义，防止元字符破坏匹配
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
 export const factory = (options: UnpluginWebComponentsOptions): UnpluginOptions => {
   const { tagPrefix, packageName, sideEffects = false, withStyle } = options
 
   const kebabTagPrefix = kebabCase(tagPrefix)
   const pascalTagPrefix = pascalCase(tagPrefix)
 
-  const kebabReg = new RegExp(`<\\s*${kebabTagPrefix}-([a-z0-9-]+)(?=[\\s/>])`, 'gi')
-  const pascalReg = new RegExp(`<\\s*${pascalTagPrefix}([A-Z][a-zA-Z0-9]+)(?=[\\s/>])`, 'g')
+  const kebabReg = new RegExp(`<\\s*${escapeRegExp(kebabTagPrefix)}-([a-z0-9-]+)(?=[\\s/>])`, 'gi')
+  // 后缀允许单字母（<WebUiA />）；组件目录与导出名均派生自捕获组，kebabCase('A') -> 'a'
+  const pascalReg = new RegExp(`<\\s*${escapeRegExp(pascalTagPrefix)}([A-Z][a-zA-Z0-9]*)(?=[\\s/>])`, 'g')
 
   function makeImports(code: string, detectPascal = true): rust.Result<string, Error> {
     const dirs = new Set<string>()

@@ -540,6 +540,38 @@ describe('WebUiSelect 组件', () => {
 
       cleanupElement(el)
     })
+
+    it('portal 打开时不迁移 trigger slot 内容，关闭后仍是宿主第一个子元素', async () => {
+      const el = createSelect(OPTIONS_HTML)
+      el.portal = true
+      el.innerHTML = `
+        <span slot="trigger">Custom Trigger</span>
+        ${OPTIONS_HTML}
+      `
+      await waitForUpdate(el)
+
+      const triggerEl = el.querySelector('[slot="trigger"]') as HTMLElement
+      const combobox = queryA11y(el, '[role="combobox"]') as HTMLElement
+      combobox.click()
+      await waitForUpdate(el)
+      await new Promise(resolve => requestAnimationFrame(resolve))
+      await waitForUpdate(el)
+
+      expect(el.open).toBe(true)
+      expect(triggerEl.parentElement).toBe(el)
+      expect(el.firstElementChild).toBe(triggerEl)
+
+      document.body.click()
+      await waitForUpdate(el)
+      await new Promise(resolve => requestAnimationFrame(resolve))
+      await waitForUpdate(el)
+
+      expect(el.open).toBe(false)
+      expect(triggerEl.parentElement).toBe(el)
+      expect(el.firstElementChild).toBe(triggerEl)
+
+      cleanupElement(el)
+    })
   })
 
   describe('条件渲染边界', () => {

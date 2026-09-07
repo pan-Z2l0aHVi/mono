@@ -31,6 +31,27 @@ func (ResourceStore) Get(ctx context.Context, q Queryer, id string) (ResourceMod
 	return res, err
 }
 
+// 以稳定身份批量读取 Resource；结果顺序与传入顺序无关，由调用方负责重排。
+func (ResourceStore) GetByIDs(ctx context.Context, q Queryer, ids []string) ([]ResourceModel, error) {
+	if len(ids) == 0 {
+		return []ResourceModel{}, nil
+	}
+
+	args := make([]any, len(ids))
+	for i, id := range ids {
+		args[i] = id
+	}
+	rows, err := q.QueryContext(ctx, `
+		SELECT id, title, note, created_at, updated_at
+		FROM resources WHERE id IN (`+placeholders(len(ids))+`)
+	`, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return scanResources(rows)
+}
+
 // 以最近纳入优先的顺序读取全部 Resource。
 func (ResourceStore) List(ctx context.Context, q Queryer) ([]ResourceModel, error) {
 	rows, err := q.QueryContext(ctx, `
@@ -52,11 +73,11 @@ func (ResourceStore) Search(ctx context.Context, q Queryer, likePattern string) 
 		LEFT JOIN sources s ON s.resource_id = r.id
 		LEFT JOIN taggings tg ON tg.resource_id = r.id
 		LEFT JOIN tags t ON t.id = tg.tag_id
-		WHERE r.title LIKE ?
-		   OR r.note LIKE ?
-		   OR t.name LIKE ?
-		   OR s.location LIKE ?
-		   OR s.metadata_json LIKE ?
+		WHERE r.title LIKE ? ESCAPE '\'
+		   OR r.note LIKE ? ESCAPE '\'
+		   OR t.name LIKE ? ESCAPE '\'
+		   OR s.location LIKE ? ESCAPE '\'
+		   OR s.metadata_json LIKE ? ESCAPE '\'
 		ORDER BY r.created_at DESC
 	`, likePattern, likePattern, likePattern, likePattern, likePattern)
 	if err != nil {

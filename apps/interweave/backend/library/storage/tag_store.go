@@ -56,7 +56,7 @@ func (TagStore) List(ctx context.Context, q Queryer, limit int) ([]TagModel, err
 // 按名称模糊匹配读取前 limit 个标签，作为用户输入时的建议。
 func (TagStore) SearchByName(ctx context.Context, q Queryer, likePattern string, limit int) ([]TagModel, error) {
 	rows, err := q.QueryContext(ctx, `
-		SELECT id, name, created_at FROM tags WHERE name LIKE ?
+		SELECT id, name, created_at FROM tags WHERE name LIKE ? ESCAPE '\'
 		ORDER BY name ASC LIMIT ?
 	`, likePattern, limit)
 	if err != nil {
@@ -66,20 +66,42 @@ func (TagStore) SearchByName(ctx context.Context, q Queryer, likePattern string,
 	return scanTags(rows)
 }
 
-// 读取某 Resource 直接拥有的全部标签，按归属时间排序。
-func (TagStore) TagsByResource(ctx context.Context, q Queryer, resourceID string) ([]TagModel, error) {
+// 批量读取多个 Resource 的标签并按资源分组，各自保持归属时间顺序；
+// 供批量视图装配避免逐资源查询。
+func (TagStore) TagsByResources(ctx context.Context, q Queryer, resourceIDs []string) (map[string][]TagModel, error) {
+	result := make(map[string][]TagModel, len(resourceIDs))
+	if len(resourceIDs) == 0 {
+		return result, nil
+	}
+
+	args := make([]any, len(resourceIDs))
+	for i, id := range resourceIDs {
+		args[i] = id
+	}
 	rows, err := q.QueryContext(ctx, `
-		SELECT t.id, t.name, t.created_at
+		SELECT tg.resource_id, t.id, t.name, t.created_at
 		FROM tags t
 		INNER JOIN taggings tg ON tg.tag_id = t.id
-		WHERE tg.resource_id = ?
-		ORDER BY tg.created_at ASC
-	`, resourceID)
+		WHERE tg.resource_id IN (`+placeholders(len(resourceIDs))+`)
+		ORDER BY tg.resource_id ASC, tg.created_at ASC
+	`, args...)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	return scanTags(rows)
+
+	for rows.Next() {
+		var resourceID string
+		var tag TagModel
+		if err := rows.Scan(&resourceID, &tag.ID, &tag.Name, &tag.CreatedAt); err != nil {
+			return nil, err
+		}
+		result[resourceID] = append(result[resourceID], tag)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return result, nil
 }
 
 func scanTag(sc rowScanner) (TagModel, error) {

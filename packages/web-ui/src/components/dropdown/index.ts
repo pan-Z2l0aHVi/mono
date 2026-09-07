@@ -8,13 +8,19 @@ import '@/components/dropdown-item'
 import { UserChangeController } from '@/shared/events/user-change'
 import { createMenuPortalOverlay } from '@/shared/menu-portal/menu-portal'
 import {
+  captureFrameworkAnchors,
   findFocusedMenuItem,
   focusMenuItem,
   getEnabledMenuItems,
   getMenuChildren,
   getMenuItemFromEvent,
   hideNestedMenuChildren,
-  moveMenuChildren
+  moveMenuChildren,
+  orderManagedMenuItems,
+  reconcileManagedMenuItems,
+  restoreFrameworkAnchors,
+  returnManagedMenuItemsToSlot,
+  type MenuItemAnchors
 } from '@/shared/menu-portal/menu-tree'
 import { normalizeLiteral, normalizeNumber } from '@/shared/normalize'
 import { defineOverlay } from '@/shared/overlay/overlay'
@@ -27,6 +33,8 @@ import style from './style.css?inline'
 export type { Placement }
 
 const SLOT_PREFIX = 'web-ui-menu-level-'
+// 一级菜单项的模板位 marker（机制与 context-menu 共用，见 menu-tree 的托管项锚说明）。
+const MENU_ITEM_MARKER = 'wui-dropdown-menu-item'
 
 let dropdownIdCounter = 0
 
@@ -92,6 +100,15 @@ export class WebUiDropdown extends LitElement {
   private readonly _userOpenChange = new UserChangeController()
   private _restoreFocusTarget?: HTMLElement
   private _shouldOpenInstantly = true
+  private _menuSyncScheduled = false
+  private readonly _level0ItemAnchors: MenuItemAnchors = new Map()
+  // 打开期实时渲染：框架（Vue/React 条件渲染）可能在菜单打开期间持续插入菜单项。
+  // 观察宿主子树（新增项可能被框架 wrapper 包裹）与各层级面板 content 的子树
+  // （打开中的 submenu 父项已被迁入 content，其新增子项只在这里可见），下一帧统一
+  // 把新子树迁入对应层级面板；面板尺寸变化由 defineOverlay 的 autoUpdate 跟进重定位。
+  private readonly _menuContentObserver = new MutationObserver(() => {
+    if (this.open) this._scheduleMenuSync()
+  })
 
   get isOpen(): boolean {
     return this.open || this._activePath.length > 0
@@ -101,6 +118,7 @@ export class WebUiDropdown extends LitElement {
     super.connectedCallback()
     this.addEventListener('keydown', this._onKeydown)
     document.addEventListener('click', this._onClickOutside)
+    this._menuContentObserver.observe(this, { childList: true, subtree: true })
   }
 
   override firstUpdated() {
@@ -113,6 +131,7 @@ export class WebUiDropdown extends LitElement {
 
   override disconnectedCallback() {
     super.disconnectedCallback()
+    this._menuContentObserver.disconnect()
     this.removeEventListener('keydown', this._onKeydown)
     document.removeEventListener('click', this._onClickOutside)
     clearTimeout(this._openTimer)
@@ -283,12 +302,52 @@ export class WebUiDropdown extends LitElement {
 
   private _populateLevel0() {
     const content = this._overlays.get(0)?.content
-    if (content) moveMenuChildren(this, content)
+    if (!content) return
+    // 初次打开即建立 marker 锚：宿主此后始终持有模板序骨架，打开期框架插入与
+    // 关闭归还都以它为基准（机制与 context-menu 共用，见 menu-tree）。
+    reconcileManagedMenuItems(this, content, this._level0ItemAnchors, MENU_ITEM_MARKER)
+    orderManagedMenuItems(this, content, this._level0ItemAnchors, MENU_ITEM_MARKER)
+  }
+
+  private _scheduleMenuSync() {
+    if (this._menuSyncScheduled) return
+    this._menuSyncScheduled = true
+    requestAnimationFrame(() => {
+      this._menuSyncScheduled = false
+      if (!this.open) return
+      this._syncOpenMenuContent()
+    })
+  }
+
+  // 打开期的统一内容同步：把打开期间框架新增的菜单子树迁入对应层级面板。
+  // 一级项走 marker 锚 reconcile（保序 + 关闭按模板位归还）；面板尺寸变化由
+  // defineOverlay 的 autoUpdate 跟进重定位。
+  private _syncOpenMenuContent() {
+    const level0Content = this._overlays.get(0)?.content
+    // 迁移前隐藏宿主中新项的嵌套子项（hidden slot 属性随元素一起迁移）。
+    this._hideAllSubmenuChildren()
+    if (level0Content) {
+      reconcileManagedMenuItems(this, level0Content, this._level0ItemAnchors, MENU_ITEM_MARKER)
+      // 新迁入项的嵌套子项未打 hidden slot，会经 dropdown-item 默认 slot 渲染进
+      // 父项 label 叠到菜单上；面板项在面板内渲染，宿主查询够不到，须对 content 补隐藏。
+      hideNestedMenuChildren(level0Content, `${SLOT_PREFIX}-hidden`)
+      // 框架注释锚点复位独立于元素重排：锚点漂移不收敛会破坏后续翻转的插入点（同 context-menu）。
+      const frameworkAnchors = captureFrameworkAnchors(level0Content, MENU_ITEM_MARKER)
+      orderManagedMenuItems(this, level0Content, this._level0ItemAnchors, MENU_ITEM_MARKER)
+      restoreFrameworkAnchors(level0Content, frameworkAnchors)
+    }
+    for (const [level, overlay] of this._overlays) {
+      if (level === 0) continue
+      const parentItem = this._getLevelItems(level - 1)[this._activePath[level - 1]]
+      if (parentItem) moveMenuChildren(parentItem, overlay.content)
+      hideNestedMenuChildren(overlay.content, `${SLOT_PREFIX}-hidden`)
+    }
+    this._bindLevelHovers()
   }
 
   private _returnLevel0Items() {
     const content = this._overlays.get(0)?.content
-    if (content) moveMenuChildren(content, this)
+    if (content) returnManagedMenuItemsToSlot(this, content, this._level0ItemAnchors)
   }
 
   private _populateOverlay(level: number, submenuItem: HTMLElement) {
@@ -347,18 +406,30 @@ export class WebUiDropdown extends LitElement {
       })
       this._overlays.set(level, { api: ctrl, overlay, content })
       if (level === 0) this._populateLevel0()
+      // submenu 父项在面板 content 内，其新增子项只有观察 content 子树才能看到
+      this._menuContentObserver.observe(content, { childList: true, subtree: true })
       ctrl.open()
       showOverlayPresence(overlay, { isInstant })
     }
   }
 
   private _disposeOverlay(level: number) {
-    const overlay = this._overlays.get(level)?.overlay
-    overlay?.removeEventListener('click', this._onMenuClick)
-    overlay?.removeEventListener('keydown', this._onKeydown)
-    overlay?.remove()
-    this._overlays.get(level)?.api.dispose()
+    const overlay = this._overlays.get(level)
+    overlay?.overlay.removeEventListener('click', this._onMenuClick)
+    overlay?.overlay.removeEventListener('keydown', this._onKeydown)
+    overlay?.overlay.remove()
+    overlay?.api.dispose()
     this._overlays.delete(level)
+    this._rebindMenuContentObservers()
+  }
+
+  // jsdom 的 MutationObserver 不实现 unobserve；统一 disconnect 后重绑剩余目标。
+  private _rebindMenuContentObservers() {
+    this._menuContentObserver.disconnect()
+    this._menuContentObserver.observe(this, { childList: true, subtree: true })
+    for (const overlay of this._overlays.values()) {
+      this._menuContentObserver.observe(overlay.content, { childList: true, subtree: true })
+    }
   }
 
   private _disposeAll() {
@@ -498,10 +569,6 @@ export class WebUiDropdown extends LitElement {
       case 'Enter':
       case ' ':
         focused?.click()
-        break
-      case 'Escape':
-        if (this._activePath.length > 0) this._closeSubmenuFrom(this._activePath.length)
-        else this._closeAll(true)
         break
       default:
         return

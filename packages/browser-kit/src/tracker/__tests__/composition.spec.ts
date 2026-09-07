@@ -1,37 +1,49 @@
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
-import { capturedRequests, clearCapturedRequests, settleCapturedRequests } from '../../../test-helper'
 import { defineTracker } from '../core'
 import { defineBatchTrack } from '../plugins/batch-track'
 import { defineLastWords } from '../plugins/last-words'
 import { defineOfflineRestore } from '../plugins/offline-restore'
 
-/** 等待 MSW 捕获指定数量的请求。 */
-async function waitForMsw(minCount = 1, timeout = 5000) {
-  const start = Date.now()
-  while (capturedRequests.length < minCount && Date.now() - start < timeout) {
-    await new Promise(resolve => setTimeout(resolve, 10))
+vi.useFakeTimers()
+
+/** 记录条目的 fake transport；替代 sendBeacon 桩与 MSW 捕获。 */
+function createTransportStub() {
+  const items: object[] = []
+  const transport = vi.fn<(item: object) => Promise<void>>(async item => {
+    items.push(item)
+  })
+  return { items, transport }
+}
+
+/**
+ * 注入 fake transport 后，队列调度只经过 microtask；自旋等待断言条件收敛，
+ * 不依赖真实时间。超过上限视为未收敛，让断言以超时信息失败。
+ */
+async function waitUntil(predicate: () => boolean, maxSpins = 1000): Promise<void> {
+  for (let spin = 0; spin < maxSpins && !predicate(); spin += 1) {
+    await Promise.resolve()
+  }
+  expect(predicate(), '等待队列调度收敛超时').toBe(true)
+}
+
+/** 排空已调度的 microtask，用于「没有发生 X」类断言前的收敛。 */
+async function settleMicrotasks(spins = 50): Promise<void> {
+  for (let spin = 0; spin < spins; spin += 1) {
+    await Promise.resolve()
   }
 }
 
 describe('插件组合测试', () => {
-  let sendBeaconSpy: ReturnType<typeof vi.fn<Navigator['sendBeacon']>>
+  let transport: ReturnType<typeof createTransportStub>['transport']
 
-  beforeEach(async () => {
-    // 上一用例的在途请求可能在本用例断言窗口才落地，排空后再清空。
-    await settleCapturedRequests()
-
-    vi.clearAllMocks()
-    clearCapturedRequests()
+  beforeEach(() => {
+    vi.clearAllTimers()
+    vi.restoreAllMocks()
     localStorage.clear()
 
-    // 始终返回 false，强制走 fetch 降级路径，由 MSW 拦截
-    sendBeaconSpy = vi.fn<Navigator['sendBeacon']>(() => false)
-    Object.defineProperty(navigator, 'sendBeacon', {
-      configurable: true,
-      enumerable: true,
-      value: sendBeaconSpy
-    })
+    const stub = createTransportStub()
+    transport = stub.transport
 
     Object.defineProperty(navigator, 'onLine', {
       value: true,
@@ -41,7 +53,7 @@ describe('插件组合测试', () => {
 
   describe('推荐顺序：batch → offline → last-words', () => {
     function createTracker() {
-      return defineTracker({ url: 'https://example.com' })
+      return defineTracker({ url: 'https://example.com', transport })
         .use(defineBatchTrack())
         .use(defineOfflineRestore())
         .use(defineLastWords())
@@ -51,82 +63,79 @@ describe('插件组合测试', () => {
     it('正常上报：track 成功发送数据', async () => {
       const tracker = createTracker()
       tracker.track({ event: 'click' })
-      await waitForMsw()
+      // batch 默认延迟 500ms，advance 后由队列 drain 发送。
+      vi.advanceTimersByTime(500)
+      await waitUntil(() => transport.mock.calls.length === 1)
 
-      expect(capturedRequests.length).toBeGreaterThan(0)
-      expect(capturedRequests[0].url).toBe('/')
+      expect(transport.mock.calls[0][0]).toEqual([{ event: 'click' }])
     })
 
     it('离线缓存：离线时暂停 outbox，不发送数据', async () => {
       Object.defineProperty(navigator, 'onLine', { value: false })
       const tracker = createTracker()
 
-      sendBeaconSpy.mockClear()
       tracker.track({ event: 'offline' })
-      await waitForMsw()
+      vi.advanceTimersByTime(500)
+      await settleMicrotasks()
 
-      expect(sendBeaconSpy).not.toHaveBeenCalled()
-      expect(capturedRequests).toHaveLength(0)
+      expect(transport).not.toHaveBeenCalled()
     })
 
     it('临终遗言：flush 立即发送积压数据', async () => {
-      // 真实 beforeunload 会让 keepalive fetch 挂起、阻塞后续用例（MSW handler
-      // 无法完成），因此改用 flush() 覆盖 last-words 调用的发送路径。
+      // beforeunload 触发的是 flush 路径；真实页面卸载会让传输请求挂起，
+      // 这里直接用 flush() 覆盖 last-words 调用的发送路径。
       const tracker = createTracker()
 
       tracker.track({ event: 'before-close' })
-      clearCapturedRequests()
       await tracker.flush()
-      await waitForMsw()
 
-      expect(capturedRequests.length).toBeGreaterThan(0)
+      expect(transport).toHaveBeenCalledTimes(1)
+      expect(transport.mock.calls[0][0]).toEqual([{ event: 'before-close' }])
     })
   })
 
   describe('不同顺序：batch → offline', () => {
     it('仍然能正常上报', async () => {
-      const tracker = defineTracker({ url: 'https://example.com' })
+      const tracker = defineTracker({ url: 'https://example.com', transport })
         .use(defineBatchTrack())
         .use(defineOfflineRestore())
         .make()
 
       tracker.track({ event: 'click' })
-      await waitForMsw()
+      vi.advanceTimersByTime(500)
+      await waitUntil(() => transport.mock.calls.length === 1)
 
-      expect(capturedRequests.length).toBeGreaterThan(0)
-
-      // 等待 batch 发送完成，避免污染后续测试
-      await new Promise(resolve => setTimeout(resolve, 600))
+      expect(transport.mock.calls[0][0]).toEqual([{ event: 'click' }])
     })
 
     it('离线时仍然不发送', async () => {
       Object.defineProperty(navigator, 'onLine', { value: false })
-      const tracker = defineTracker({ url: 'https://example.com' })
+      const tracker = defineTracker({ url: 'https://example.com', transport })
         .use(defineBatchTrack())
         .use(defineOfflineRestore())
         .make()
 
       tracker.track({ event: 'offline' })
-      // 等待 batch delay (500ms) + buffer，确保 batch 发送尝试
-      await new Promise(resolve => setTimeout(resolve, 600))
+      // 等待 batch delay (500ms) 触发发送尝试，确认离线时队列不消费
+      vi.advanceTimersByTime(500)
+      await settleMicrotasks()
 
-      expect(sendBeaconSpy).not.toHaveBeenCalled()
-      expect(capturedRequests).toHaveLength(0)
+      expect(transport).not.toHaveBeenCalled()
     })
   })
 
   describe('最小组合：只有 core', () => {
     it('正常上报', async () => {
-      const tracker = defineTracker({ url: 'https://example.com' }).make()
+      const tracker = defineTracker({ url: 'https://example.com', transport }).make()
 
       tracker.track({ event: 'click' })
-      await waitForMsw()
+      await waitUntil(() => transport.mock.calls.length === 1)
 
-      expect(sendBeaconSpy).toHaveBeenCalled()
+      expect(transport.mock.calls[0][0]).toEqual({ event: 'click' })
     })
 
     it('core 有 flush 方法', () => {
-      const tracker = defineTracker({ url: 'https://example.com' }).make()
+      const tracker = defineTracker({ url: 'https://example.com', transport }).make()
 
       expect('flush' in tracker).toBe(true)
     })
@@ -136,35 +145,34 @@ describe('插件组合测试', () => {
     it('离线积累的数据 flush 时立即发送', async () => {
       Object.defineProperty(navigator, 'onLine', { value: false })
 
-      const tracker = defineTracker({ url: 'https://example.com' })
+      const tracker = defineTracker({ url: 'https://example.com', transport })
         .use(defineBatchTrack())
         .use(defineOfflineRestore())
         .use(defineLastWords())
         .make()
 
       tracker.track({ action: 'offline-data' })
-      await waitForMsw()
-      expect(sendBeaconSpy).not.toHaveBeenCalled()
-      expect(capturedRequests).toHaveLength(0)
+      await settleMicrotasks()
+      expect(transport).not.toHaveBeenCalled()
 
-      // 离线积压的数据通过 flush 立即发送（beforeunload 内部调用同一路径）
+      // 离线积压的数据通过 flush 立即发送（beforeunload 内部调用同一路径）；
+      // flush 忽略暂停状态但不解除暂停。
       await tracker.flush()
-      await waitForMsw()
-      expect(sendBeaconSpy).toHaveBeenCalled()
-      const payload = sendBeaconSpy.mock.calls[0][1] as string
-      expect(payload).toContain('offline-data')
+
+      expect(transport).toHaveBeenCalledTimes(1)
+      expect(transport.mock.calls[0][0]).toEqual([{ action: 'offline-data' }])
     })
   })
 
   describe('无 batch-track 组合', () => {
     it('core + offline + last-words flush 不应报错', async () => {
-      const tracker = defineTracker({ url: 'https://example.com' })
+      const tracker = defineTracker({ url: 'https://example.com', transport })
         .use(defineOfflineRestore())
         .use(defineLastWords())
         .make()
 
       tracker.track({ event: 'click' })
-      await waitForMsw()
+      await waitUntil(() => transport.mock.calls.length === 1)
 
       await expect(tracker.flush()).resolves.toBeUndefined()
     })

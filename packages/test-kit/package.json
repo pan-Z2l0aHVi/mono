@@ -38,7 +38,8 @@
     "vite-plus": "catalog:"
   },
   "peerDependencies": {
-    "msw": "catalog:"
+    "msw": "catalog:",
+    "vite-plus": "catalog:"
   },
   "engines": {
     "node": ">=20.11.0"

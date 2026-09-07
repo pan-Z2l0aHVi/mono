@@ -106,6 +106,18 @@ describe('depsReload', () => {
     expect(plugin.hotUpdate!(createHotUpdateContext('/repo/packages/web-ui/tools/index.js', server))).toBeUndefined()
   })
 
+  it('matches a configured path whose casing differs from the reported file', async () => {
+    vi.useFakeTimers()
+    const plugin = createVitePlugin([{ name: '@greypan/web-ui', path: '/repo/Packages/Foo' }])
+    const { server, send } = createServer()
+
+    const result = plugin.hotUpdate!(createHotUpdateContext('/repo/packages/foo/dist/index.js', server))
+    await vi.advanceTimersByTimeAsync(300)
+
+    expect(result).toEqual([])
+    expect(send).toHaveBeenCalledWith({ type: 'full-reload', path: '*' })
+  })
+
   it('does not match sibling directories with the same prefix', () => {
     const plugin = createVitePlugin([{ name: '@greypan/web-ui', path: '/repo/packages/web-ui' }])
     const { server } = createServer()
@@ -144,5 +156,33 @@ describe('depsReload', () => {
     compilationHandler!({ contextDependencies } as unknown as Compilation)
 
     expect(contextDependencies).toContain(resolve('/repo/packages/web-ui', 'build'))
+  })
+
+  it('stores case-variant dependency paths distinctly with their original casing', () => {
+    const plugin = depsReloadFactory(
+      [
+        { name: '@greypan/web-ui', path: '/repo/Packages/Foo' },
+        { name: '@greypan/web-ui', path: '/repo/packages/foo' }
+      ],
+      {} as UnpluginContextMeta
+    ) as UnpluginOptions
+    let compilationHandler: ((compilation: Compilation) => void) | undefined
+    const compiler = {
+      hooks: {
+        thisCompilation: {
+          tap: (_name: string, handler: (compilation: Compilation) => void) => {
+            compilationHandler = handler
+          }
+        }
+      }
+    } as unknown as Compiler
+    const contextDependencies = new Set<string>()
+
+    plugin.webpack!(compiler)
+    compilationHandler!({ contextDependencies } as unknown as Compilation)
+
+    expect(contextDependencies).toContain(resolve('/repo/Packages/Foo', 'dist'))
+    expect(contextDependencies).toContain(resolve('/repo/packages/foo', 'dist'))
+    expect(contextDependencies.size).toBe(2)
   })
 })

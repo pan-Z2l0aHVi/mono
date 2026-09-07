@@ -616,6 +616,9 @@ export class WebUiAutocomplete extends LitElement {
     content.append(empty)
     portal.panel.append(scroll)
     for (const node of Array.from(this.childNodes)) {
+      // 框架注释锚点（v-if/v-for 占位）必须留在宿主：锚点进面板后 Vue 下次翻转
+      // 会以面板内节点为插入基准；portal 的 marker 注释同理不参与迁移。
+      if (node instanceof Comment) continue
       if (isEmptySlotNode(node)) portal.appendContent([node], empty)
       else portal.appendContent([node], content)
     }
