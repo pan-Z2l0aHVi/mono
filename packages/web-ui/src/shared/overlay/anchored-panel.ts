@@ -36,8 +36,6 @@ export const defineAnchoredPanel = () =>
 
     const disposePortal = () => {
       if (!portal) return
-      // eslint-disable-next-line no-console -- 临时诊断埋点，定位 CI flake 后移除
-      console.warn('[wui-debug]', 'disposePortal', (globalThis as { __wuiDebugTag?: string }).__wuiDebugTag ?? '')
       portal.restoreContent()
       portal.remove()
       portal = undefined
@@ -83,21 +81,9 @@ export const defineAnchoredPanel = () =>
       open,
 
       async close(isStillOpen) {
-        // eslint-disable-next-line no-console -- 临时诊断埋点，定位 CI flake 后移除
-        console.warn('[wui-debug]', 'close:start', (globalThis as { __wuiDebugTag?: string }).__wuiDebugTag ?? '')
         overlay?.close()
         const panel = getPanel()
-        const hidden = panel ? await hideOverlayPresence(panel) : true
-        // eslint-disable-next-line no-console -- 临时诊断埋点，定位 CI flake 后移除
-        console.warn(
-          '[wui-debug]',
-          'close:hideResolved',
-          hidden,
-          'stillOpen',
-          isStillOpen(),
-          (globalThis as { __wuiDebugTag?: string }).__wuiDebugTag ?? ''
-        )
-        if (!hidden) return false
+        if (panel && !(await hideOverlayPresence(panel))) return false
         if (isStillOpen()) return false
         disposePortal()
         return true

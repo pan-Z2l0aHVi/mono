@@ -141,8 +141,6 @@ export class WebUiTooltip extends LitElement {
       requestAnimationFrame(() => this._panel.updatePosition())
 
     if (changed.has('open')) {
-      // eslint-disable-next-line no-console -- 临时诊断埋点，定位 CI flake 后移除
-      console.warn('[wui-debug]', 'tooltip:updated-open', this.open)
       this._syncVisibleTooltipCount(this.open)
       if (this.open) {
         this._openOverlay(this._shouldOpenInstantly)

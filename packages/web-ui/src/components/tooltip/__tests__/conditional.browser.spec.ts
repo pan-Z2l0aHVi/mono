@@ -48,7 +48,6 @@ describe('WebUiTooltip portal 条件渲染边界（浏览器）', () => {
   })
 
   it('打开期 v-if 新增的 slot 内容实时迁入面板并在关闭后恢复', async () => {
-    ;(globalThis as { __wuiDebugTag?: string }).__wuiDebugTag = 'tooltip-t2'
     const mountPoint = document.createElement('div')
     document.body.append(mountPoint)
     const show = ref(false)
@@ -84,44 +83,7 @@ describe('WebUiTooltip portal 条件渲染边界（浏览器）', () => {
 
     tooltip.open = false
     await tooltip.updateComplete
-    try {
-      await pollUntil(() => getPortalPanel('tooltip') === null, 'Expected portal panel to be disposed after close')
-    } catch (error) {
-      const panel = getPortalPanel('tooltip')
-      // eslint-disable-next-line no-console -- 临时诊断埋点，定位 CI flake 后移除
-      console.warn(
-        '[wui-debug]',
-        't2-timeout-state',
-        JSON.stringify({
-          open: tooltip.open,
-          openAttr: tooltip.hasAttribute('open'),
-          tooltipConnected: tooltip.isConnected,
-          tooltipChildren: [...tooltip.childNodes].map(node => String(node).slice(0, 40)),
-          overlayRoots: document.querySelectorAll('[data-wui-overlay-root]').length,
-          panelFound: Boolean(panel),
-          panelPresence: panel?.dataset.wuiPresence ?? null,
-          panelHidden: panel?.hidden ?? null,
-          panelInDocument: panel ? document.contains(panel) : null,
-          panelParentChain: panel
-            ? (() => {
-                const chain: string[] = []
-                let current: Node | null = panel
-                while (current && current !== document) {
-                  chain.push(
-                    current instanceof Element
-                      ? `${current.tagName}.${String(current.className).slice(0, 30)}`
-                      : String(current).slice(0, 20)
-                  )
-                  current = current.parentNode
-                }
-                return chain
-              })()
-            : null,
-          panelChildren: panel ? [...panel.childNodes].map(node => String(node).slice(0, 40)) : null
-        })
-      )
-      throw error
-    }
+    await pollUntil(() => getPortalPanel('tooltip') === null, 'Expected portal panel to be disposed after close')
     expect(mountPoint.querySelectorAll('.probe-flag').length).toBe(1)
     app.unmount()
   })
