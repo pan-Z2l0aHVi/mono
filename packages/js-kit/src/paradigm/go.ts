@@ -14,12 +14,15 @@ export function err<E>(error: E): Err<E> {
   return [error, null]
 }
 
+// 只以 error 位（首位）判别：value 位无法承担判别——ok(null) 的 tuple 与 err 的
+// 形状重叠，检查 value 会把 ok(null) 误判为既非 Ok 也非 Err。代价是 err(null)
+// 与 ok(null) 同形而退化为 Ok（Go typed-nil 陷阱的镜像），在此编码下不可表示。
 export function isOk<T, E>(result: Result<T, E>): result is Ok<T> {
-  return result[0] === null && result[1] !== null
+  return result[0] === null
 }
 
 export function isErr<T, E>(result: Result<T, E>): result is Err<E> {
-  return result[0] !== null && result[1] === null
+  return result[0] !== null
 }
 
 export async function to<T, E = unknown>(promise: Promise<T>): Promise<Result<Awaited<T>, E>> {

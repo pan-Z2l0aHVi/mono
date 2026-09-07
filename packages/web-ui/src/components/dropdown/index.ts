@@ -499,10 +499,6 @@ export class WebUiDropdown extends LitElement {
       case ' ':
         focused?.click()
         break
-      case 'Escape':
-        if (this._activePath.length > 0) this._closeSubmenuFrom(this._activePath.length)
-        else this._closeAll(true)
-        break
       default:
         return
     }

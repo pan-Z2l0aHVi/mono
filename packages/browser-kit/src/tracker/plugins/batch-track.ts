@@ -24,6 +24,8 @@ export function defineBatchTrack(options?: Options) {
     function sliceTrack(dataList: object[]) {
       if (dataList.length === 0) return
       // 后端批量接口统一接收数组格式，单项也需要包装
+      // 单条数据无法再分片（分片要求至少两条），即使超出 maxBeaconSize 也照发：
+      // sendBeacon 可能拒收（>64KB），fetch 降级同样受 keepalive 64KB 限制，投递属 best-effort。
       if (dataList.length === 1) return ctx.track(dataList as object)
 
       const totalSize = dataList.reduce((pre, cur) => pre + ctx.computeDataSize(cur), 0)
