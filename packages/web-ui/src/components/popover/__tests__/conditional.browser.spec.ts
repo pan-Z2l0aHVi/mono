@@ -1,27 +1,12 @@
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 import { createApp, nextTick, ref } from 'vue/dist/vue.esm-bundler.js'
 
+import { getPortalPanel, pollUntil, waitForFrame } from '@/shared/test-utils'
+
 import '..'
 import type { WebUiPopover } from '..'
 
 afterEach(() => document.body.replaceChildren())
-
-// fallback overlay root 结构：[data-wui-overlay-root]#shadow >
-// [data-wui-overlay-container] > portal host div#shadow > panel。
-function getPortalPanel(): HTMLElement | null {
-  const container = document
-    .querySelector<HTMLElement>('[data-wui-overlay-root]')
-    ?.shadowRoot?.querySelector<HTMLElement>('[data-wui-overlay-container]')
-  return (
-    container
-      ?.querySelector<HTMLElement>('[data-wui-overlay-container] > div')
-      ?.shadowRoot?.querySelector<HTMLElement>('[role="dialog"]') ?? null
-  )
-}
-
-async function waitForFrame() {
-  await new Promise(resolve => requestAnimationFrame(resolve))
-}
 
 function mountPopover(initialShow = true): {
   mountPoint: HTMLElement
@@ -44,15 +29,6 @@ function mountPopover(initialShow = true): {
   app.mount(mountPoint)
   const popover = mountPoint.querySelector('web-ui-popover') as WebUiPopover
   return { mountPoint, popover, show, app }
-}
-
-async function pollUntil(check: () => boolean, message: string) {
-  const deadline = performance.now() + 2000
-  while (performance.now() < deadline) {
-    if (check()) return
-    await new Promise(resolve => requestAnimationFrame(resolve))
-  }
-  throw new Error(message)
 }
 
 describe('WebUiPopover portal 条件渲染边界（浏览器）', () => {
@@ -138,6 +114,65 @@ describe('WebUiPopover portal 条件渲染边界（浏览器）', () => {
     await nextTick()
     await popover.updateComplete
     expect(mountPoint.querySelectorAll('.probe-flag').length).toBe(1)
+    app.unmount()
+  })
+
+  it('同 flush 关闭重开容器级 v-if：占位注释归还宿主，重开内容实时迁入面板', async () => {
+    const mountPoint = document.createElement('div')
+    document.body.append(mountPoint)
+    const open = ref(false)
+    const editing = ref(false)
+    const app = createApp({
+      setup: () => ({ open, editing }),
+      template: `
+        <web-ui-popover trigger="manual" :portal="true" :open="open">
+          <button slot="trigger">t</button>
+          <div v-if="open && editing" class="probe-flag">flag</div>
+        </web-ui-popover>
+      `
+    })
+    app.mount(mountPoint)
+
+    const popover = mountPoint.querySelector('web-ui-popover') as WebUiPopover
+    await popover.updateComplete
+
+    // 首周期：打开与 v-if 同 flush，内容实时迁入面板
+    open.value = true
+    editing.value = true
+    await nextTick()
+    await popover.updateComplete
+    await waitForFrame()
+    expect(getPortalPanel()?.querySelector('.probe-flag')).not.toBeNull()
+
+    // 打开期 v-if 删除：框架会把 v-if 占位注释插进面板（block patch 以旧 el 的
+    // 实际父节点重定 container）；portal 必须把注释归还宿主，否则它随面板销毁，
+    // 下次翻转 Vue 会以死注释为基准把内容插进已脱离文档的旧面板。
+    editing.value = false
+    await nextTick()
+    await popover.updateComplete
+    await new Promise(resolve => setTimeout(resolve, 50))
+    expect(getPortalPanel()?.querySelector('.probe-flag')).toBeNull()
+    expect([...popover.childNodes].some(node => node instanceof Comment)).toBe(true)
+    expect(getPortalPanel()?.childNodes.length).toBe(0)
+
+    // 关闭销毁面板，注释在宿主存活
+    open.value = false
+    await popover.updateComplete
+    await new Promise(resolve => setTimeout(resolve, 300))
+    expect(getPortalPanel()).toBeNull()
+    expect([...popover.childNodes].some(node => node instanceof Comment)).toBe(true)
+
+    // 重开与 v-if 同 flush：内容实时迁入新面板，宿主无残留、全文档无重复
+    open.value = true
+    editing.value = true
+    await nextTick()
+    await popover.updateComplete
+    await pollUntil(
+      () => Boolean(getPortalPanel()?.querySelector('.probe-flag')),
+      'Expected reopened content to migrate live into the new panel'
+    )
+    expect(mountPoint.querySelectorAll('.probe-flag').length).toBe(0)
+    expect(getPortalPanel()?.querySelectorAll('.probe-flag').length).toBe(1)
     app.unmount()
   })
 

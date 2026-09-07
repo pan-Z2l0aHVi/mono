@@ -80,7 +80,11 @@ export const defineOverlayPortal = () =>
     root.append(style, panel)
 
     const trackedNodes: TrackedNodeEntry[] = []
-    const contentObserver = new MutationObserver(mutations => ctx.onContentChange?.(mutations))
+    const contentObserver = new MutationObserver(mutations => {
+      // 内部不变量先于消费方回调执行：配对依赖 trackedNodes 尚未被消费方 untrack 的状态。
+      returnStrayFrameworkComments(mutations)
+      ctx.onContentChange?.(mutations)
+    })
     // 同一 observer 批次内被插入又移除的游离节点没有宿主位可锚，不追踪不迁移
     // （insertBefore 要求 node 是 parent 的子节点）；其归宿由框架的删除语义决定。
     const recordEntry = (node: Node): TrackedNodeEntry | null => {
@@ -129,21 +133,80 @@ export const defineOverlayPortal = () =>
       }
     }
 
+    /**
+     * 打开期不变量：框架删除已迁移节点时，其条件渲染占位注释（v-if 等）会被插进
+     * 面板内容区而不是宿主——block 子树 patch 以 hostParentNode(oldVNode.el) 重定
+     * container，而旧 el 已在面板（可能是 panel 自身或组件的内容子容器）。
+     * 注释是框架后续翻转依赖的 vnode.el：留在面板会随面板销毁，下次翻转把内容插进
+     * 已脱离文档的旧面板（内容"既不在宿主也不在面板"且无法恢复）。
+     * 每个面板 mutation 批次内即时归还：与同批次被框架删除的 tracked 节点按宿主
+     * marker 序配对，插到其 marker 位（多注释对多删除为近似配对；无配对时落宿主
+     * 骨架末尾兜底）。tracked 子树内的注释是迁移内容自身的嵌套条件渲染，不属游离
+     * 锚点，必须留在原位；随整个子树被删的注释已不在面板内，无需救援。
+     */
+    const returnStrayFrameworkComments = (mutations: MutationRecord[]) => {
+      const isInsideTrackedSubtree = (start: Node): boolean => {
+        let current: Node | null = start
+        while (current && current !== panel) {
+          if (trackedNodes.some(entry => entry.node === current)) return true
+          current = current.parentNode
+        }
+        return false
+      }
+      const addedNodes = new Set(mutations.flatMap(mutation => [...mutation.addedNodes]))
+      const strays: Comment[] = []
+      for (const mutation of mutations) {
+        for (const node of mutation.addedNodes) {
+          if (!(node instanceof Comment) || node.textContent === PORTAL_CONTENT_MARKER) continue
+          // 同批次移入又移除的游离注释、随删除子树一起消失的注释都不在面板内，跳过
+          if (!panel.contains(node)) continue
+          if (isInsideTrackedSubtree(mutation.target)) continue
+          strays.push(node)
+        }
+      }
+      if (!strays.length) return
+      const hostChildren = Array.from(ctx.target.childNodes)
+      const removedEntries = trackedNodes
+        .filter(
+          entry =>
+            !addedNodes.has(entry.node) && mutations.some(mutation => [...mutation.removedNodes].includes(entry.node))
+        )
+        .sort((a, b) => hostChildren.indexOf(a.marker) - hostChildren.indexOf(b.marker))
+      for (const [index, comment] of strays.entries()) {
+        const marker = removedEntries[Math.min(index, removedEntries.length - 1)]?.marker
+        if (marker && marker.parentNode === ctx.target) ctx.target.insertBefore(comment, marker)
+        else ctx.target.appendChild(comment)
+      }
+    }
+
     resolveOverlayContainer(ctx.container, ctx.target).appendChild(host)
     if (ctx.onContentChange) contentObserver.observe(panel, { childList: true, subtree: true })
 
-    // 打开期实时渲染：观察宿主直接子节点的新增（不含子树，框架 patch 嵌套组件的
-    // light DOM 不属于本面板内容）。portal 实例的生命周期即打开期，随恢复/移除断开。
+    // 打开期宿主 childList 观察（不含子树，框架 patch 嵌套组件的 light DOM 不属于
+    // 本面板内容）。portal 实例的生命周期即打开期，随恢复/移除断开。
     const migrateAddedNodes = ctx.migrateAddedNodes
-    const hostObserver = migrateAddedNodes
-      ? new MutationObserver(mutations => {
-          const addedNodes = mutations.flatMap(mutation => [...mutation.addedNodes])
-          if (!addedNodes.length) return
-          const migratable = migrateAddedNodes(addedNodes)
-          if (migratable.length) api.appendContent(migratable)
-        })
-      : null
-    if (hostObserver) hostObserver.observe(ctx.target, { childList: true })
+    const hostObserver = new MutationObserver(mutations => {
+      // 框架清除逻辑（如 lit 的 _$clear）按宿主 marker 邻位遍历已迁移内容：元素
+      // 物理上在面板，遍历找不到本体，会把 portal marker 当作内容本体移除。
+      // marker 被框架摘除即框架删除语义——解除追踪并清掉滞留面板的游离元素；
+      // 同批次移入又移回的 marker（框架重排）不属于删除。实时迁移仍以
+      // migrateAddedNodes 的回调为准，无该回调的 portal（如 option 域）只做删除清理。
+      const addedNodes = new Set(mutations.flatMap(mutation => [...mutation.addedNodes]))
+      const strandedNodes = mutations
+        .flatMap(mutation => [...mutation.removedNodes])
+        .filter(node => node instanceof Comment && node.textContent === PORTAL_CONTENT_MARKER && !addedNodes.has(node))
+        .map(marker => trackedNodes.find(entry => entry.marker === marker)?.node)
+        .filter((node): node is Node => node !== undefined)
+      if (strandedNodes.length) {
+        api.removeContent(strandedNodes)
+        // remove() 的规范语义即 parentNode.removeChild：宿主/类型层面都以 Node 表达
+        for (const node of strandedNodes) node.parentNode?.removeChild(node)
+      }
+      if (!migrateAddedNodes) return
+      const migratable = migrateAddedNodes(mutations.flatMap(mutation => [...mutation.addedNodes]))
+      if (migratable.length) api.appendContent(migratable)
+    })
+    hostObserver.observe(ctx.target, { childList: true })
 
     const api: OverlayPortal = {
       panel,
@@ -168,13 +231,15 @@ export const defineOverlayPortal = () =>
       },
 
       removeContent(nodes) {
+        // 框架删除节点时插进面板的占位注释由 contentObserver 的内部不变量
+        // （returnStrayFrameworkComments）即时归还宿主，这里只负责解除追踪。
         untrackNodes(nodes)
       },
 
       restoreContent() {
         // 先停掉实时迁移：恢复动作本身会改动宿主 childList，
         // 否则回插的节点会被当成新增内容再次迁入面板形成回环。
-        hostObserver?.disconnect()
+        hostObserver.disconnect()
 
         // 节点回到宿主中自己的 marker 位；面板内紧邻其前的框架注释锚点（v-if 占位）
         // 随元素一起迁回——Vue 仍持有这些锚点的 vnode.el 引用，留在面板会随面板销毁，
@@ -198,7 +263,7 @@ export const defineOverlayPortal = () =>
       },
 
       remove() {
-        hostObserver?.disconnect()
+        hostObserver.disconnect()
         contentObserver.disconnect()
         // 防御：正常 dispose 先 restore（marker 已清），异常路径下避免 marker 泄漏在宿主。
         trackedNodes.forEach(entry => entry.marker.remove())
