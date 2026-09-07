@@ -1,7 +1,7 @@
-import { http, HttpResponse } from 'msw'
-import { describe, expect, it, vi } from 'vite-plus/test'
+import { http, HttpResponse, type RequestHandler } from 'msw'
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
 
-import { defineCapturedRequests, defineMsw } from '..'
+import { createMswTestEnv, defineCapturedRequests, defineMsw } from '..'
 
 // test-kit 在 Node 环境跑，真实 setupWorker 会抛
 // "Failed to execute setupWorker in a non-browser environment"，
@@ -111,6 +111,70 @@ describe('test-kit 插件测试', () => {
       ctx.capturedRequests.push({ url: '/x', body: {}, method: 'POST', timestamp: 0 })
       ctx.clearCapturedRequests()
       expect(ctx.capturedRequests).toHaveLength(0)
+    })
+  })
+
+  describe('createMswTestEnv', () => {
+    afterEach(() => {
+      vi.useRealTimers()
+      vi.clearAllMocks()
+    })
+
+    it('应当注册自动捕获 handler，且业务 handlers 先于捕获 handler', () => {
+      const customHandler: RequestHandler = http.get('/api/user', () => HttpResponse.json({ name: 'Alice' }))
+      const env = createMswTestEnv({ handlers: [customHandler] })
+
+      expect(env.worker).toBeDefined()
+      const registered = mockedSetupWorker.mock.calls.at(-1) as unknown[]
+      expect(registered).toHaveLength(2)
+      expect(registered[0]).toBe(customHandler)
+      expect(registered[1]).not.toBe(customHandler)
+    })
+
+    it('无业务 handlers 时只注册捕获 handler', () => {
+      const env = createMswTestEnv()
+
+      expect(mockedSetupWorker.mock.calls.at(-1)).toHaveLength(1)
+      expect(env.capturedRequests).toHaveLength(0)
+    })
+
+    it('start/stop/reset 应委托到 worker 生命周期', async () => {
+      const env = createMswTestEnv()
+
+      await env.start()
+      expect(env.worker.start).toHaveBeenCalledWith({ quiet: true })
+
+      env.stop()
+      expect(env.worker.stop).toHaveBeenCalled()
+
+      env.reset()
+      expect(env.worker.resetHandlers).toHaveBeenCalled()
+    })
+
+    it('capturedRequests 与 clearCapturedRequests 应操作同一捕获数组', () => {
+      const env = createMswTestEnv()
+
+      env.capturedRequests.push({ url: '/api/test', body: {}, method: 'POST', timestamp: 0 })
+      expect(env.capturedRequests).toHaveLength(1)
+
+      env.clearCapturedRequests()
+      expect(env.capturedRequests).toHaveLength(0)
+    })
+
+    it('settle 应在 fake timers 激活时保持计时器状态', async () => {
+      const env = createMswTestEnv()
+      vi.useFakeTimers()
+
+      await env.settle(50)
+
+      expect(vi.isFakeTimers()).toBe(true)
+    })
+
+    it('settle 在真实计时器下无在途请求时应快速返回', async () => {
+      const env = createMswTestEnv()
+
+      await expect(env.settle(100)).resolves.toBeUndefined()
+      expect(vi.isFakeTimers()).toBe(false)
     })
   })
 })

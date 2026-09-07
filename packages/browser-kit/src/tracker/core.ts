@@ -2,9 +2,17 @@ import { defineAckQueue, definePlugin } from '@greypan/js-kit'
 
 import { defineLocal } from '@/storage'
 
+import { beaconTransport } from './transport'
+
 interface Options {
   url: string
   transform?: (data: object) => object
+  /**
+   * 单条传输函数，接收 transform 后的载荷；默认使用 beaconTransport
+   * （sendBeacon → fetch keepalive no-cors）。队列在其 Promise fulfilled
+   * 后才移除条目，rejection 会保留条目等待 resume/flush 重试。
+   */
+  transport?: (item: object) => Promise<void> | void
   disablePersistence?: boolean
   /** 同一页面存在多个独立 Tracker 时使用的稳定持久化键。 */
   persistenceKey?: string
@@ -13,6 +21,7 @@ interface Options {
 interface Config {
   url: string
   transform: (data: object) => object
+  transport: (item: object) => Promise<void> | void
   disablePersistence: boolean
   persistenceKey: string
 }
@@ -39,27 +48,9 @@ export function defineTracker(options: Options) {
     const config: Config = {
       ...DEFAULT_OPTIONS,
       ...options,
-      persistenceKey: options.persistenceKey ?? options.url
-    }
-
-    // 单条传输：sendBeacon 优先，浏览器拒绝排队时降级到 fetch。
-    async function transport(data: object) {
-      const body = JSON.stringify(config.transform(data))
-      try {
-        // 保持字符串载荷以使用 CORS-safelisted 的 text/plain，避免跨域采集端触发预检。
-        const accepted = navigator.sendBeacon(config.url, body)
-        if (!accepted) throw new Error('sendBeacon 未接受数据.')
-      } catch (error) {
-        console.warn(error, '[track 降级使用 fetch]')
-        // no-cors 模式下浏览器只放行 CORS-safelisted 的 Content-Type，application/json
-        // 会被剥掉（实际按 text/plain 发送），因此不声明该 header，避免误导后端。
-        await fetch(config.url, {
-          method: 'POST',
-          keepalive: true,
-          mode: 'no-cors',
-          body
-        })
-      }
+      persistenceKey: options.persistenceKey ?? options.url,
+      // transport 闭包惰性读取 config.url；首次消费发生在 make() 之后，config 已初始化。
+      transport: options.transport ?? (data => beaconTransport(config.url, data))
     }
 
     const storage = defineLocal('tracker')
@@ -144,7 +135,8 @@ export function defineTracker(options: Options) {
 
     const queue = defineAckQueue<object>({
       initialItems: restoreQueue(),
-      onConsume: transport,
+      // transform 先于 transport 应用，使自定义 transport 也拿到转换后的载荷。
+      onConsume: data => config.transport(config.transform(data)),
       // 这里故意使用 AckQueue：transport fulfilled 后才移除内存条目；这只是
       // 浏览器传输 Promise 的本地确认，不是服务端确认。storage 故障由上面的适配器
       // best-effort 吸收，允许当前 Tracker 继续发送，但可能留下旧快照。
