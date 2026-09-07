@@ -40,7 +40,8 @@ describe('WebUiTooltip portal 条件渲染边界（浏览器）', () => {
 
     tooltip.open = false
     await tooltip.updateComplete
-    await new Promise(resolve => setTimeout(resolve, 300))
+    // close 的 teardown 链（退出过渡 + 兜底 timer）在慢环境下可能超过固定延时，用条件等待替代固定 sleep
+    await pollUntil(() => getPortalPanel('tooltip') === null, 'Expected portal panel to be disposed after close')
     expect(mountPoint.querySelectorAll('.probe-flag').length).toBe(0)
     expect(document.querySelectorAll('.probe-flag').length).toBe(0)
     app.unmount()
@@ -82,7 +83,7 @@ describe('WebUiTooltip portal 条件渲染边界（浏览器）', () => {
 
     tooltip.open = false
     await tooltip.updateComplete
-    await new Promise(resolve => setTimeout(resolve, 300))
+    await pollUntil(() => getPortalPanel('tooltip') === null, 'Expected portal panel to be disposed after close')
     expect(mountPoint.querySelectorAll('.probe-flag').length).toBe(1)
     app.unmount()
   })
@@ -127,7 +128,7 @@ describe('WebUiTooltip portal 条件渲染边界（浏览器）', () => {
     // 关闭销毁面板，注释在宿主存活
     open.value = false
     await tooltip.updateComplete
-    await new Promise(resolve => setTimeout(resolve, 300))
+    await pollUntil(() => getPortalPanel('tooltip') === null, 'Expected portal panel to be disposed after close')
     expect(getPortalPanel('tooltip')).toBeNull()
     expect([...tooltip.childNodes].some(node => node instanceof Comment)).toBe(true)
 
