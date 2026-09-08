@@ -10,6 +10,8 @@
 }
 
 .avatar-inner {
+  --wui-glass-corner-radius: calc(var(--wui-avatar-size, 40px) / 2);
+
   position: relative;
 
   overflow: hidden;
@@ -17,13 +19,15 @@
   align-items: center;
   justify-content: center;
 
-  border-radius: calc(infinity * 1px);
+  border-radius: var(--wui-radius-control, calc(infinity * 1px));
 
   background-color: rgb(229 229 229 / 0.6);
 }
 
 :host([shape='square']) .avatar-inner {
-  border-radius: 12px;
+  --wui-glass-corner-radius: var(--wui-internal-avatar-square-radius, 12px);
+
+  border-radius: var(--wui-internal-avatar-square-radius, 12px);
 }
 
 .avatar-img {

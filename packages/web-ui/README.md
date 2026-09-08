@@ -730,18 +730,21 @@ Side drawer using native `<dialog>` with closing animation. In non-headless mode
 
 Closing keeps the native dialog in the top layer until the `--wui-duration-drawer-exit` transition completes (240ms by default), then calls `dialog.close()`. Escape always follows this close path; `no-backdrop-close` controls backdrop clicks only.
 
-**Drag to close:** With `draggable`, a gray capsule drag bar appears on the drawer's inner edge (left edge for `right`, right edge for `left`, bottom edge for `top`, top edge for `bottom`) while open. Dragging follows the pointer in real time (backdrop fades proportionally); releasing past ~1/3 of the drawer size or with a fast closing flick springs the drawer shut, otherwise it springs back open. The close direction is placement-aware. With `controlled`, release past the threshold only emits `open-change(false)`; the drawer holds at the closed position briefly (120ms write-back window) and springs back open if the consumer rejects or misses the write-back. Drag-to-open is not supported because the closed drawer renders nothing outside the native dialog. Under `prefers-reduced-motion`, release snaps instantly without spring animation.
+**Drag to close:** With `draggable`, a gray capsule drag bar (4×56px by default, visually centered 10px from the inner edge inside a 32px-thick hit zone) appears on the drawer's inner edge (left edge for `right`, right edge for `left`, bottom edge for `top`, top edge for `bottom`) while open. Dragging follows the pointer in real time (backdrop fades proportionally); releasing past ~1/3 of the drawer size or with a fast closing flick springs the drawer shut, otherwise it springs back open. The close direction is placement-aware. With `controlled`, release past the threshold only emits `open-change(false)`; the drawer holds at the closed position briefly (120ms write-back window) and springs back open if the consumer rejects or misses the write-back. Drag-to-open is not supported because the closed drawer renders nothing outside the native dialog. Under `prefers-reduced-motion`, release snaps instantly without spring animation.
 
 **CSS Custom Properties:**
 
-| Property                  | Default                            | Description                                                                  |
-| ------------------------- | ---------------------------------- | ---------------------------------------------------------------------------- |
-| `--wui-drawer-width`      | `320px`                            | Drawer width                                                                 |
-| `--wui-drawer-height`     | `300px`                            | Drawer height (top/bottom)                                                   |
-| `--wui-drawer-bg`         | `var(--wui-color-surface-overlay)` | Drawer body background                                                       |
-| `--wui-drawer-radius`     | `28px`                             | Floating card corner radius (non-headless)                                   |
-| `--wui-drawer-inset`      | `8px`                              | Floating card viewport inset (non-headless); `0` gives edge-to-edge geometry |
-| `--wui-drawer-overlay-bg` | `rgb(0 0 0 / 0.12)`                | Backdrop background                                                          |
+| Property                          | Default                            | Description                                                                  |
+| --------------------------------- | ---------------------------------- | ---------------------------------------------------------------------------- |
+| `--wui-drawer-width`              | `320px`                            | Drawer width                                                                 |
+| `--wui-drawer-height`             | `300px`                            | Drawer height (top/bottom)                                                   |
+| `--wui-drawer-bg`                 | `var(--wui-color-surface-overlay)` | Drawer body background                                                       |
+| `--wui-drawer-radius`             | `var(--wui-radius-overlay, 28px)`  | Floating card corner radius (non-headless)                                   |
+| `--wui-drawer-inset`              | `8px`                              | Floating card viewport inset (non-headless); `0` gives edge-to-edge geometry |
+| `--wui-drawer-overlay-bg`         | `rgb(0 0 0 / 0.12)`                | Backdrop background                                                          |
+| `--wui-drawer-drag-zone-size`     | `32px`                             | Drag-to-close hit zone thickness on the inner edge (draggable)               |
+| `--wui-drawer-drag-bar-thickness` | `4px`                              | Drag bar capsule thickness (short axis)                                      |
+| `--wui-drawer-drag-bar-length`    | `56px`                             | Drag bar capsule length (along the drawer edge)                              |
 
 ---
 
@@ -1052,10 +1055,10 @@ At `640px` and below, the sidebar becomes a headless `web-ui-drawer`. The consum
 
 **CSS Custom Properties:**
 
-| Property                           | Default | Description                                      |
-| ---------------------------------- | ------- | ------------------------------------------------ |
-| `--wui-layout-sidebar-radius`      | `24px`  | Border radius of sidebar card (desktop & mobile) |
-| `--wui-layout-mobile-toggle-inset` | `8px`   | Left inset of the mobile header toggle           |
+| Property                           | Default                           | Description                                      |
+| ---------------------------------- | --------------------------------- | ------------------------------------------------ |
+| `--wui-layout-sidebar-radius`      | `var(--wui-radius-overlay, 28px)` | Border radius of sidebar card (desktop & mobile) |
+| `--wui-layout-mobile-toggle-inset` | `8px`                             | Left inset of the mobile header toggle           |
 
 #### `<web-ui-back-top>`
 
@@ -1127,6 +1130,14 @@ Defines foundation, color, layer, shadow, and motion tokens for its subtree. `mo
 | `--wui-overlay-min-width` | `200px` | Minimum anchored overlay width                   |
 | `--wui-focus-ring-width`  | `3px`   | Focus indicator width                            |
 
+**Radius tokens:**
+
+| Property               | Default                | Description                                                     |
+| ---------------------- | ---------------------- | --------------------------------------------------------------- |
+| `--wui-radius-control` | `calc(infinity * 1px)` | Pill radius for small controls (button, input, switch, option…) |
+| `--wui-radius-menu`    | `18px`                 | Menu/popover floating panels and multiline textarea             |
+| `--wui-radius-overlay` | `28px`                 | Large overlay surfaces: dialog, drawer, layout sidebar, toast   |
+
 **Layer tokens:**
 
 | Property                     | Default | Description                  |
@@ -1190,7 +1201,7 @@ Defines foundation, color, layer, shadow, and motion tokens for its subtree. `mo
 | `--wui-shadow-panel`   | `0 3px 9px rgb(0 0 0 / 0.27)`    | `0 4px 16px rgb(0 0 0 / 0.32)`  | Small floating panel shadow |
 | `--wui-shadow-glass`   | four-layer diffuse shadow        | `0 8px 24px rgb(0 0 0 / 0.08)`  | Base liquid glass shadow    |
 
-**Glass effect tokens:** `--wui-glass-brightness` is `1.06` in light mode and `1.02` in dark mode. `--wui-glass-corner-radius` defaults to `32px`; glass components set it from their own corner radius so the diagonal border lighting aligns with their shape.
+**Glass effect tokens:** `--wui-glass-brightness` is `1.06` in light mode and `1.02` in dark mode. `--wui-glass-corner-radius` defaults to `32px`; non-pill glass surfaces set it from their own semantic radius (`--wui-radius-menu` / `--wui-radius-overlay`, or `--wui-drawer-radius` for the drawer) so the diagonal border lighting follows token overrides. Pill controls keep a finite corner radius derived from their physical size or internal size token instead, because the lighting gradient needs a physical size.
 
 **Internal tokens:** variables prefixed `--wui-internal-*` are private wiring between shadow DOM parts; they are not part of the public token API and must not be overridden by consumers.
 

@@ -87,19 +87,20 @@ dialog[open].is-visible::backdrop {
 /* ===== Drag bar（拖拽关闭热区） ===== */
 
 /*
- * 热区贴在抽屉内缘，宽度约 24px 便于触控命中；胶囊本身是约 4×48px 的灰色短条。
+ * 热区贴在抽屉内缘，宽度由 --wui-drawer-drag-zone-size（默认 32px）控制便于触控命中；
+ * 胶囊本身由 --wui-drawer-drag-bar-thickness × --wui-drawer-drag-bar-length（默认 4×56px）控制。
+ * 胶囊绝对定位在内容 padding（20px）的视觉中线：胶囊中心距抽屉内缘 10px；
+ * 热区仍覆盖内缘起 32px，保证触控命中面积不随胶囊收窄。
  * 位置随 placement 切换：right 贴在左缘、left 贴在右缘、top 贴在底边、bottom 贴在顶边。
  */
 .wui-drawer-drag-zone {
+  --wui-internal-drag-bar-center: 10px;
+
   touch-action: none;
   cursor: grab;
 
   position: absolute;
   z-index: 4;
-
-  display: flex;
-  align-items: center;
-  justify-content: center;
 
   transition: opacity var(--wui-duration-feedback, 100ms) ease;
 }
@@ -112,14 +113,14 @@ dialog.is-nested-lower .wui-drawer-drag-zone {
 :host([placement='right']) .wui-drawer-drag-zone {
   top: 0;
   left: 0;
-  width: 24px;
+  width: var(--wui-drawer-drag-zone-size, 32px);
   height: 100%;
 }
 
 :host([placement='left']) .wui-drawer-drag-zone {
   top: 0;
   right: 0;
-  width: 24px;
+  width: var(--wui-drawer-drag-zone-size, 32px);
   height: 100%;
 }
 
@@ -128,7 +129,7 @@ dialog.is-nested-lower .wui-drawer-drag-zone {
   right: 0;
   left: 0;
   width: 100%;
-  height: 24px;
+  height: var(--wui-drawer-drag-zone-size, 32px);
 }
 
 :host([placement='top']) .wui-drawer-drag-zone {
@@ -140,16 +141,39 @@ dialog.is-nested-lower .wui-drawer-drag-zone {
 }
 
 .wui-drawer-drag-bar {
-  width: 4px;
-  height: 48px;
-  border-radius: 999px;
+  position: absolute;
+
+  width: var(--wui-drawer-drag-bar-thickness, 4px);
+  height: var(--wui-drawer-drag-bar-length, 56px);
+  border-radius: var(--wui-radius-control, calc(infinity * 1px));
+
   background: color-mix(in srgb, var(--wui-color-text, #1b1b1b) 24%, transparent);
+}
+
+:host([placement='right']) .wui-drawer-drag-bar {
+  top: calc(50% - var(--wui-drawer-drag-bar-length, 56px) / 2);
+  left: calc(var(--wui-internal-drag-bar-center) - var(--wui-drawer-drag-bar-thickness, 4px) / 2);
+}
+
+:host([placement='left']) .wui-drawer-drag-bar {
+  top: calc(50% - var(--wui-drawer-drag-bar-length, 56px) / 2);
+  right: calc(var(--wui-internal-drag-bar-center) - var(--wui-drawer-drag-bar-thickness, 4px) / 2);
 }
 
 :host([placement='top']) .wui-drawer-drag-bar,
 :host([placement='bottom']) .wui-drawer-drag-bar {
-  width: 48px;
-  height: 4px;
+  width: var(--wui-drawer-drag-bar-length, 56px);
+  height: var(--wui-drawer-drag-bar-thickness, 4px);
+}
+
+:host([placement='top']) .wui-drawer-drag-bar {
+  bottom: calc(var(--wui-internal-drag-bar-center) - var(--wui-drawer-drag-bar-thickness, 4px) / 2);
+  left: calc(50% - var(--wui-drawer-drag-bar-length, 56px) / 2);
+}
+
+:host([placement='bottom']) .wui-drawer-drag-bar {
+  top: calc(var(--wui-internal-drag-bar-center) - var(--wui-drawer-drag-bar-thickness, 4px) / 2);
+  left: calc(50% - var(--wui-drawer-drag-bar-length, 56px) / 2);
 }
 
 .wui-drawer-drag-zone:hover .wui-drawer-drag-bar,
@@ -211,7 +235,7 @@ dialog.is-dragging .wui-drawer-drag-zone {
 
 .wui-drawer-body {
   --wui-internal-glass-shadow: var(--wui-shadow-overlay, 2px 16px 40px rgb(0 0 0 / 0.4));
-  --wui-glass-corner-radius: var(--wui-drawer-radius, 28px);
+  --wui-glass-corner-radius: var(--wui-drawer-radius, var(--wui-radius-overlay, 28px));
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -319,7 +343,7 @@ dialog.is-dragging .wui-drawer-drag-zone {
   transform: translateX(calc(100% + var(--wui-internal-drawer-inset)));
 
   height: auto;
-  border-radius: var(--wui-drawer-radius, 28px);
+  border-radius: var(--wui-drawer-radius, var(--wui-radius-overlay, 28px));
 }
 
 :host(:not([headless])) .wui-drawer-body {

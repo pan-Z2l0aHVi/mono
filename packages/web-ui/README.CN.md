@@ -681,18 +681,21 @@ Portal 面板创建时会镜像 host 上解析后的这些变量；更新 host �
 
 关闭时保留原生 dialog 的 top layer，待退出过渡完成后调用 `dialog.close()`。Escape 始终走此关闭路径；`no-backdrop-close` 仅控制遮罩点击。
 
-**拖拽关闭：** 启用 `draggable` 后，打开的抽屉在内缘显示灰色胶囊 drag bar（`right` 在左缘、`left` 在右缘、`top` 在下缘、`bottom` 在上缘）。拖拽实时跟手（遮罩透明度按比例淡出）；松手时位移超过抽屉尺寸约 1/3 或快速甩动即弹簧关闭，否则弹回打开位，方向随 placement 适配。启用 `controlled` 后，超过阈值松手仅派发 `open-change(false)`；抽屉在闭合位短暂等待（120ms 回写窗口），Consumer 拒绝或超时未回写时弹回打开位。不支持拖拽打开——关闭态的抽屉在原生 dialog 之外没有任何渲染物。`prefers-reduced-motion` 下松手即时到位，不播放弹簧动画。
+**拖拽关闭：** 启用 `draggable` 后，打开的抽屉在内缘显示灰色胶囊 drag bar（默认 4×56px，视觉中线距内缘 10px，位于 32px 厚的命中热区内；`right` 在左缘、`left` 在右缘、`top` 在下缘、`bottom` 在上缘）。拖拽实时跟手（遮罩透明度按比例淡出）；松手时位移超过抽屉尺寸约 1/3 或快速甩动即弹簧关闭，否则弹回打开位，方向随 placement 适配。启用 `controlled` 后，超过阈值松手仅派发 `open-change(false)`；抽屉在闭合位短暂等待（120ms 回写窗口），Consumer 拒绝或超时未回写时弹回打开位。不支持拖拽打开——关闭态的抽屉在原生 dialog 之外没有任何渲染物。`prefers-reduced-motion` 下松手即时到位，不播放弹簧动画。
 
 **CSS 自定义属性：**
 
-| 属性                      | 默认值                             | 说明                                               |
-| ------------------------- | ---------------------------------- | -------------------------------------------------- |
-| `--wui-drawer-width`      | `320px`                            | 抽屉宽度                                           |
-| `--wui-drawer-height`     | `300px`                            | 抽屉高度（上/下）                                  |
-| `--wui-drawer-bg`         | `var(--wui-color-surface-overlay)` | 抽屉背景色                                         |
-| `--wui-drawer-radius`     | `28px`                             | 浮动卡片圆角（非 headless）                        |
-| `--wui-drawer-inset`      | `8px`                              | 浮动卡片视口留边（非 headless）；置 `0` 为贴边几何 |
-| `--wui-drawer-overlay-bg` | `rgb(0 0 0 / 0.12)`                | 遮罩背景色                                         |
+| 属性                              | 默认值                             | 说明                                               |
+| --------------------------------- | ---------------------------------- | -------------------------------------------------- |
+| `--wui-drawer-width`              | `320px`                            | 抽屉宽度                                           |
+| `--wui-drawer-height`             | `300px`                            | 抽屉高度（上/下）                                  |
+| `--wui-drawer-bg`                 | `var(--wui-color-surface-overlay)` | 抽屉背景色                                         |
+| `--wui-drawer-radius`             | `var(--wui-radius-overlay, 28px)`  | 浮动卡片圆角（非 headless）                        |
+| `--wui-drawer-inset`              | `8px`                              | 浮动卡片视口留边（非 headless）；置 `0` 为贴边几何 |
+| `--wui-drawer-overlay-bg`         | `rgb(0 0 0 / 0.12)`                | 遮罩背景色                                         |
+| `--wui-drawer-drag-zone-size`     | `32px`                             | Drag-to-close 命中热区厚度（draggable）            |
+| `--wui-drawer-drag-bar-thickness` | `4px`                              | Drag bar 胶囊厚度（短轴）                          |
+| `--wui-drawer-drag-bar-length`    | `56px`                             | Drag bar 胶囊长度（沿抽屉边缘）                    |
 
 ---
 
@@ -1003,10 +1006,10 @@ WebUiSpinner.hide() // 隐藏
 
 **CSS 自定义属性：**
 
-| 属性                               | 默认值 | 说明                                 |
-| ---------------------------------- | ------ | ------------------------------------ |
-| `--wui-layout-sidebar-radius`      | `24px` | 侧边栏卡片圆角（桌面端和移动端共用） |
-| `--wui-layout-mobile-toggle-inset` | `8px`  | 移动端 header Toggle 的左缩进        |
+| 属性                               | 默认值                            | 说明                                 |
+| ---------------------------------- | --------------------------------- | ------------------------------------ |
+| `--wui-layout-sidebar-radius`      | `var(--wui-radius-overlay, 28px)` | 侧边栏卡片圆角（桌面端和移动端共用） |
+| `--wui-layout-mobile-toggle-inset` | `8px`                             | 移动端 header Toggle 的左缩进        |
 
 #### `<web-ui-back-top>`
 
@@ -1078,6 +1081,14 @@ SVG 线条绘制动画，基于 `stroke-dashoffset`。直接在原元素上动�
 | `--wui-overlay-min-width` | `200px` | 锚定浮层最小宽度         |
 | `--wui-focus-ring-width`  | `3px`   | Focus 指示器宽度         |
 
+**圆角 token：**
+
+| 属性                   | 默认值                 | 说明                                                 |
+| ---------------------- | ---------------------- | ---------------------------------------------------- |
+| `--wui-radius-control` | `calc(infinity * 1px)` | 小型控件的胶囊圆角（button、input、switch、option…） |
+| `--wui-radius-menu`    | `18px`                 | 菜单/Popover 浮动面板与多行 textarea                 |
+| `--wui-radius-overlay` | `28px`                 | 大型覆盖层：dialog、drawer、layout sidebar、toast    |
+
 **层级 token：**
 
 | 属性                         | 默认值 | 说明           |
@@ -1141,7 +1152,7 @@ SVG 线条绘制动画，基于 `stroke-dashoffset`。直接在原元素上动�
 | `--wui-shadow-panel`   | `0 3px 9px rgb(0 0 0 / 0.27)`    | `0 4px 16px rgb(0 0 0 / 0.32)`  | 小型浮动面板阴影  |
 | `--wui-shadow-glass`   | 四层扩散阴影                     | `0 8px 24px rgb(0 0 0 / 0.08)`  | 液态玻璃基础阴影  |
 
-**玻璃效果 token：** `--wui-glass-brightness` 浅色模式为 `1.06`，深色模式为 `1.02`。`--wui-glass-corner-radius` 默认值为 `32px`；玻璃组件会以自身的圆角半径覆盖它，使对角描边光影与形状对齐。
+**玻璃效果 token：** `--wui-glass-brightness` 浅色模式为 `1.06`，深色模式为 `1.02`。`--wui-glass-corner-radius` 默认值为 `32px`；非 pill 玻璃表面以自身语义圆角（`--wui-radius-menu` / `--wui-radius-overlay`，drawer 为 `--wui-drawer-radius`）覆盖它，使对角描边光影跟随 token 覆盖联动。pill 控件例外：光影渐变需要物理尺寸，继续使用由控件实际尺寸或内部尺寸 token 派生的有限圆角值。
 
 **内部 token：** 以 `--wui-internal-*` 为前缀的变量是 Shadow DOM 内部接线变量，不属于公共 token API，消费方不应覆盖。
 

@@ -66,9 +66,9 @@ dialog[open].is-visible::backdrop {
 
 .wui-dialog-body {
   --wui-internal-glass-shadow: var(--wui-shadow-overlay, 2px 16px 40px rgb(0 0 0 / 0.4));
-  --wui-glass-corner-radius: 32px;
+  --wui-glass-corner-radius: var(--wui-radius-overlay, 28px);
   padding: 20px 24px 24px;
-  border-radius: 32px;
+  border-radius: var(--wui-radius-overlay, 28px);
   background-color: var(--wui-dialog-bg, var(--wui-color-surface-overlay, rgb(246 246 246 / 0.88)));
 }
 
