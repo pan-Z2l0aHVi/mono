@@ -10,11 +10,17 @@
 
 ## Demo 开发
 
-根目录的 demo 命令首先构建上游工作区包，然后使用 `turbo run dev --filter=<demo>...` 启动每个包的持久 `dev` 进程。不要对这些命令使用 `turbo watch`：包级别的 Vite 和 tsdown 监听器已经会重建源文件变更，而 `turbo watch` 还会监控 Git 控制文件，当编辑器或 agent 工具更新 Git 工作树时可能会重启所有 dev 进程。
+| 应用                 | 开发命令                     |
+| -------------------- | ---------------------------- |
+| React Web UI demo    | `pnpm dev:react-web-ui-demo` |
+| Vue Web UI demo      | `pnpm dev:vue-web-ui-demo`   |
+| Interweave Wails app | `pnpm dev:interweave`        |
 
-在修改包图、lockfile 或 Turbo 配置后，需要重启 demo 命令。普通的源文件变更会由运行中的包级监听器继续处理。
+根目录 aliases 通过 Turbo `dev` task 构建上游工作区包，并启动每个包的持久 `dev` 进程。不要对这些命令改用 `turbo watch`：包级别的 Vite 和 tsdown 监听器已经会重建源文件变更，而 `turbo watch` 还会监控 Git 控制文件，当编辑器或 agent 工具更新 Git 工作树时可能会重启所有 dev 进程。
 
-对于由宿主运行时管理嵌套前端的集成应用，先从目标应用的 `package.json`、最近的 `AGENTS.md` 与任务配置确认依赖筛选器。若宿主任务已负责前端开发服务器，只构建前端的上游依赖，不要额外启动重复的前端进程。在修改 Vite 插件、TypeScript 配置或工作区依赖图后，需要重启宿主开发进程。
+在修改包图、lockfile 或 Turbo 配置后，需要重启开发命令。普通的源文件变更会由运行中的包级监听器继续处理。
+
+Interweave 由 Wails 宿主管理嵌套前端，因此其 alias 只启动 Wails host，并构建/监听 WebView frontend 的上游依赖；不要额外启动重复的前端进程。在修改 Vite 插件、TypeScript 配置或工作区依赖图后，需要重启宿主开发进程。
 
 不同包类型的构建脚本不同：
 
