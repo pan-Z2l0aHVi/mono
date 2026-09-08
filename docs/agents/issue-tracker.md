@@ -24,7 +24,7 @@ MCP 工具命名空间：`mcp__github__`
 
 ## 约定
 
-- **创建 issue**：调用 `create_issue`，传入 owner、repo、title 和 body。labels 通过数组传入。
+- **创建 issue**：调用 `create_issue`，传入 owner、repo、title 和 body；必须传入至少一个有效 label，否则无法按需求类型或领域筛选。若创建时 label 缺失或写入失败，立即用 `update_issue` 补齐后再交付 issue 链接。labels 通过数组传入。
 - **查看 issue**：调用 `get_issue`，返回 issue 详情（含标签、评论）。
 - **列出 issue**：调用 `list_issues`，使用 state、labels、sort 过滤。
 - **在 issue 上评论**：调用 `add_issue_comment`。
