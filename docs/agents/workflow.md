@@ -31,7 +31,8 @@
 ## 多 agent 协作
 
 - 流程:用户提需求 → manager 使用 herdr 编排、按需创建 designer / lib-coder / biz-coder / reviewer 到对应 worktree 的分支进行开发(角色职责见 [`.agents/agents/`](../../.agents/agents/))→ manager 汇总结果 → 用户审批。
+- **Reviewer worktree 归属**:reviewer 直接进入承载目标 diff 的 dev worktree 做只读 review;不为其创建独立 worktree,也不把未提交变更复制到第二个分支。release worktree 只用于发布聚合与 PR;reviewer 需要审查聚合结果时,在已存在的 release worktree 内只读 review,不另行复制 dev diff。
 - **创建 agent 前先询问 harness 并给出推荐**:manager、designer 优先用 codex;lib-coder、biz-coder、reviewer 优先用 claude。manager 创建 agent 前必须向用户询问并等待 10 秒,让用户手动指定 harness;超时未响应则按上述推荐优先级创建。
 - **审批在 commit 之前,按变更规模分档**:agent 完成后保持工作区变更,manager 汇总 diff 与验证证据交用户审批(见 [`.agents/rules/commit.md`](../../.agents/rules/commit.md))。默认**单次审批**——commit、聚合、提 PR 与合并一次授权;跨包、公共 API 或高风险变更采用**两道**——commit 前审 diff,合并前审 CI 证据。
-- **reviewer 强制条件**:跨包变更、公共 API/导出变更、UI 行为变更必须有独立 reviewer;纯 docs、测试基建、单包内部实现可跳过。reviewer 必须独立于实施,review 对象是 release 分支的聚合 diff,而非实施过程的描述(见 [`review.md`](review.md))。
+- **reviewer 强制条件**:跨包变更、公共 API/导出变更、UI 行为变更必须有独立 reviewer;纯 docs、测试基建、单包内部实现可跳过。reviewer 必须独立于实施;pre-commit review 的对象是目标 dev worktree 的最终 diff,跨包聚合后的 review 对象是 release worktree 的聚合 diff,而非实施过程的描述(见 [`review.md`](review.md))。
 - manager 不直接实施;其职责是拆解、编排、聚合与汇总状态。

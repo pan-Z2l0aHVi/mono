@@ -1,6 +1,6 @@
 # Tracker
 
-Data tracking and analytics with batch aggregation, offline restore, and last-words flush.
+Data tracking and analytics with batch aggregation, page errors, offline restore, and last-words flush.
 
 English | [简体中文](./README.CN.md)
 
@@ -12,6 +12,7 @@ Tracker is a composable tracking system built on the plugin architecture. It mai
 - **Ordered normal drain**: Regular `track()` calls send entries in enqueue order, one request at a time.
 - **Batch aggregation**: Collects events and sends arrays after a configurable delay.
 - **Beacon splitting**: Recursively splits oversized batches around the configured `maxBeaconSize` (64 KB by default).
+- **Page errors**: Collects uncaught errors and unhandled promise rejections through the normal Tracker transport.
 - **Offline restore**: Pauses while offline and resumes retained work after the browser comes back online.
 - **Last-words flush**: Makes a best-effort flush when the page is leaving or hidden.
 - **Auto-fallback**: Falls back from `sendBeacon()` to `fetch()` with `keepalive: true` when needed.
@@ -82,6 +83,51 @@ tracker.track({ event: 'scroll', position: 100 }, 0)
 
 Pauses the Tracker while the browser is offline, including when the Tracker starts offline, and calls `resume()` after the `online` event. It does not change persistence: persistence belongs to the core Tracker and can be disabled with `disablePersistence`.
 
+### `definePageErrors(options?)`
+
+Collects browser-global uncaught errors and unhandled promise rejections, then sends them through the composed `track()`. It does not collect resource load failures, `console` messages, or framework callback errors.
+
+| Option             | Type                       | Default     | Description                                                    |
+| ------------------ | -------------------------- | ----------- | -------------------------------------------------------------- |
+| `maxErrors`        | `number`                   | `20`        | Maximum number of events actually reported per plugin instance |
+| `dedupeWindowMs`   | `number`                   | `5000`      | Deduplication window for an error signature; `≤ 0` disables it |
+| `maxMessageLength` | `number`                   | `1000`      | Maximum length of the reported message                         |
+| `maxStackLength`   | `number`                   | `8000`      | Maximum length of the reported stack                           |
+| `metadata`         | `object \| (() => object)` | `undefined` | Per-report context; it cannot override standard event fields   |
+
+The payload nests normalized error data and does not retain the original rejection reason:
+
+```ts
+{
+  event: 'page_error',
+  timestamp: 1760000000000,
+  error: {
+    category: 'uncaught', // or 'unhandled_rejection'
+    message: 'boom',
+    filename: '/assets/app.js',
+    lineno: 12,
+    colno: 34,
+    stack: 'Error: boom\n    at ...'
+  },
+  metadata: { app: 'demo' }
+}
+```
+
+Messages and stacks are truncated by default but are not automatically scrubbed for PII. If a metadata callback throws or returns a non-object, metadata is omitted and the error is still reported. `make()` installs the listeners; `stop()` removes them, does not restart collection, and does not reset protection counters.
+
+Metadata is business-owned data: keep it bounded and serializable. Do not install this plugin more than once on the same page; each installation adds separate listeners and protection state.
+
+```ts
+import { definePageErrors, defineTracker } from '@greypan/browser-kit'
+
+const tracker = defineTracker({ url: '/api/track' })
+  .use(definePageErrors({ metadata: { app: 'demo' } }))
+  .make()
+
+// Later, for HMR or test cleanup:
+tracker.stop()
+```
+
 ### `defineLastWords()`
 
 Calls the composed `flush()` on `beforeunload`, `pagehide`, and when `visibilitychange` changes the document to hidden. The flush returns a Promise, but the exit path remains best-effort; it does not wait for server acknowledgement and persistence errors do not block page exit.
@@ -89,11 +135,18 @@ Calls the composed `flush()` on `beforeunload`, `pagehide`, and when `visibility
 ## Recommended composition
 
 ```ts
-import { defineBatchTrack, defineLastWords, defineOfflineRestore, defineTracker } from '@greypan/browser-kit'
+import {
+  defineBatchTrack,
+  defineLastWords,
+  defineOfflineRestore,
+  definePageErrors,
+  defineTracker
+} from '@greypan/browser-kit'
 
 const tracker = defineTracker({ url: '/api/track' })
   .use(defineBatchTrack())
   .use(defineOfflineRestore())
+  .use(definePageErrors())
   .use(defineLastWords())
   .make()
 

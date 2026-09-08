@@ -82,6 +82,51 @@ tracker.track({ event: 'scroll', position: 100 }, 0)
 
 浏览器离线时暂停 Tracker（包括初始化时已离线），并在收到 `online` 事件后调用 `resume()`。它不改变持久化策略：持久化属于核心 Tracker，可通过 `disablePersistence` 关闭。
 
+### `definePageErrors(options?)`
+
+收集浏览器全局的 uncaught error 和 unhandled promise rejection，并通过组合后的 `track()` 上报。它不收集资源加载失败、console 消息或框架回调错误。
+
+| 配置               | 类型                       | 默认值      | 说明                                     |
+| ------------------ | -------------------------- | ----------- | ---------------------------------------- |
+| `maxErrors`        | `number`                   | `20`        | 插件实例生命周期内最多实际上报的事件数量 |
+| `dedupeWindowMs`   | `number`                   | `5000`      | 错误签名去重窗口；`≤ 0` 表示关闭去重     |
+| `maxMessageLength` | `number`                   | `1000`      | 上报 message 的最大长度                  |
+| `maxStackLength`   | `number`                   | `8000`      | 上报 stack 的最大长度                    |
+| `metadata`         | `object \| (() => object)` | `undefined` | 每次上报时求值的上下文；不能覆盖标准字段 |
+
+事件会把标准化后的错误信息嵌套在 `error` 中，并且不保留原始 rejection reason：
+
+```ts
+{
+  event: 'page_error',
+  timestamp: 1760000000000,
+  error: {
+    category: 'uncaught', // 或 'unhandled_rejection'
+    message: 'boom',
+    filename: '/assets/app.js',
+    lineno: 12,
+    colno: 34,
+    stack: 'Error: boom\n    at ...'
+  },
+  metadata: { app: 'demo' }
+}
+```
+
+message 和 stack 默认截断，但不做自动 PII 脱敏。metadata 回调抛异常或返回非 object 时，只丢弃 metadata，错误仍会上报。`make()` 自动安装监听器；`stop()` 移除监听器，不支持重新启动，也不会重置保护计数。
+
+metadata 属于业务数据：请保证其大小有界且可序列化。不建议在同一页面重复安装本插件；每个安装都会添加独立监听器并维护独立保护状态。
+
+```ts
+import { definePageErrors, defineTracker } from '@greypan/browser-kit'
+
+const tracker = defineTracker({ url: '/api/track' })
+  .use(definePageErrors({ metadata: { app: 'demo' } }))
+  .make()
+
+// HMR 或测试清理时可调用：
+tracker.stop()
+```
+
 ### `defineLastWords()`
 
 在 `beforeunload`、`pagehide` 和文档因 `visibilitychange` 进入隐藏状态时调用组合后的 `flush()`。刷新返回 Promise，但退出路径只做异步 best-effort 尝试；不会等待服务端确认，持久化失败也不会阻塞页面退出。
@@ -89,11 +134,18 @@ tracker.track({ event: 'scroll', position: 100 }, 0)
 ## 推荐组合
 
 ```ts
-import { defineBatchTrack, defineLastWords, defineOfflineRestore, defineTracker } from '@greypan/browser-kit'
+import {
+  defineBatchTrack,
+  defineLastWords,
+  defineOfflineRestore,
+  definePageErrors,
+  defineTracker
+} from '@greypan/browser-kit'
 
 const tracker = defineTracker({ url: '/api/track' })
   .use(defineBatchTrack())
   .use(defineOfflineRestore())
+  .use(definePageErrors())
   .use(defineLastWords())
   .make()
 

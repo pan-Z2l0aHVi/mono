@@ -7,9 +7,11 @@
  * 3. 断网重发：重连或下次初始化时，继续处理 localStorage 中待传输的数据。
  * 4. 数据分片：超过 `maxBeaconSize`（默认 64 KB）的批次会二分递归分片。
  * 5. 自动降级：浏览器未接受 sendBeacon 时，使用 fetch keepalive 兜底。
+ * 6. 页面错误收集：捕获 uncaught error 与 unhandled promise rejection，并复用上报链路。
  */
 
 export * from './core'
 export * from './plugins/batch-track'
 export * from './plugins/last-words'
 export * from './plugins/offline-restore'
+export * from './plugins/page-errors'
