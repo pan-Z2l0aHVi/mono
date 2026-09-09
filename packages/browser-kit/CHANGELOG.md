@@ -4,14 +4,7 @@
 
 ### Minor Changes
 
-- c310d9f: Add `history-nav` module: track whether the user can go back/forward in real browser history, exposing a read-only subset of the Navigation API.
-  
-  **`defineHistoryNav(options?)`:**
-  
-  - Read-only subset: `canGoBack` / `canGoForward` / `currentEntry` / `entries()` / `currententrychange`
-  - Tracks `history.pushState` / `replaceState` via side-table patch (no state injection) and `popstate` traversals with an entry id/key stack
-  - Persists through `sessionStorage` (reuses the `storage` module) with `namespace` isolation; degrades to in-memory when storage is blocked
-  - Idempotent singleton with `dispose()` to restore the patched `history` methods
+- c310d9f: Add the `transport` option to `defineTracker`: a custom single-entry delivery function `(item: object) => Promise<void> | void` that replaces the default `sendBeacon()` → `fetch(keepalive)` adapter. The transformed payload is passed to custom transports, and an entry is removed only after the returned Promise fulfills. A single oversized event is still sent as one item.
 
 ## 2.1.0
 

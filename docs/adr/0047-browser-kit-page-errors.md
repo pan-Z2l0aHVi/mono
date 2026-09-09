@@ -1,4 +1,4 @@
-# ADR-0047: Browser Kit Page Errors
+# ADR-0047: Browser Kit 页面错误收集
 
 - **Date**: 2026-09-08
 - **Status**: 已接受

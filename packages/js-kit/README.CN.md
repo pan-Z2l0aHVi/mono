@@ -98,29 +98,13 @@ ctx.emit({ id: 2 })
 
 ### `defineQueue<T>(options)`
 
-“交付即消费”的通用队列。调用 `onConsume` 后立即移除条目，不等待消费者返回的 Promise；适合 fire-and-forget 任务。消费者错误可通过 `onConsumeError` 观察，但不会自动重试已交付的条目。
+“交付即消费”的通用队列。调用 `onConsume` 后立即移除条目，不等待消费者返回的 Promise；适合 fire-and-forget 任务。
 
 ### `defineAckQueue<T>(options)`
 
-“消费者确认后消费”的通用队列。只有 `onConsume` 返回的 Promise fulfilled 后才移除条目；rejection 只影响当前项，后续项仍会继续处理，失败项可由 `resume()` 或 `flush()` 再次尝试。
+“消费者确认后消费”的通用队列。只有 `onConsume` 返回的 Promise fulfilled 后才移除条目；rejection 只影响当前项，失败项可由 `resume()` 或 `flush()` 再次尝试。
 
-两种队列都提供 `enqueue()`、`pause()`、`resume()` 和异步 `flush()`，并支持 `initialItems`、同步 `onPersist` 快照持久化以及 `onConsumeError` 错误观察。普通 drain 严格串行；`flush()` 会并发启动调用时的 pending/failed 项，但不解除暂停，也不包含调用后新入队的项。`onPersist` 必须同步完成；运行时会拒绝返回的 thenable，以保持 persist-before-commit。
-
-消费者可以返回 Promise，但不要在同一个队列消费者的异步 continuation 中调用该队列自己的 `flush()`，否则会与 `flush()` 等待在途消费者的语义形成循环等待。请从消费者外部触发 `flush()`；同步执行期间的自身 `flush()` 会被立即拒绝。
-
-```ts
-import { defineAckQueue } from '@greypan/js-kit'
-
-const queue = defineAckQueue<string>({
-  onConsume: item => sendTask(item),
-  onPersist: items => savePendingItems(items)
-}).make()
-
-queue.enqueue('task-1')
-await queue.flush()
-```
-
-`defineAckQueue` 的“确认”是消费者 Promise fulfilled，不是服务端确认；需要交付后立即移除时使用 `defineQueue`。
+两种队列都提供 `enqueue()`、`pause()`、`resume()` 和异步 `flush()`，并支持 `initialItems`、同步 `onPersist` 快照持久化以及 `onConsumeError`。完整选项表、flush 与 persist-before-commit 语义、以及在消费者内调用 `flush()` 的循环等待约束见 [`src/plugin-system/README.md`](./src/plugin-system/README.md)。
 
 ## API
 
@@ -152,6 +136,8 @@ await queue.flush()
 | --------- | -------------------- | ------ | --------------------------------- |
 | `opts`    | `Partial<URLObject>` | -      | URL 组件：`base`、`query`、`hash` |
 | `omitNil` | `boolean`            | `true` | 是否移除查询参数中的空值          |
+
+完整的 `URLObject` 结构、相对路径行为与示例见 [`src/url/README.md`](./src/url/README.md)。
 
 ### `clamp(val, min, max)`
 

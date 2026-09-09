@@ -123,21 +123,18 @@ useEffect(() => {
 <web-ui-dropdown-item ref={itemRef}>Paste and close</web-ui-dropdown-item>
 ```
 
-In `portal` mode the library physically moves panel content into the overlay Shadow DOM. React removes nodes
-through its recorded insertion parent, so a bare conditional child (`{condition && <el/>}`) whose node was
-already migrated cannot be removed while the panel is open: the commit fails and the node can reappear when
-the panel closes. Conditionally render inside a stable wrapper element instead — React records the wrapper as
-the insertion parent, so wrapper-local additions and removals keep working while the panel is open and across
-open/close cycles:
+In `portal` mode the library physically moves panel content into the overlay Shadow DOM:
+
+- React removes nodes through its recorded insertion parent, so a bare conditional child (`{condition && <el/>}`) whose node was already migrated cannot be removed while the panel is open: the commit fails and the node can reappear when the panel closes.
+- Conditionally render inside a stable wrapper element instead — React records the wrapper as the insertion parent, so wrapper-local additions and removals keep working while the panel is open and across open/close cycles (example below).
+- Bare conditional additions while the panel is open (appending to the host) keep working and migrate into the panel automatically.
+- Keeping content mounted and toggling visibility remains a valid fallback.
 
 ```tsx
 <web-ui-popover portal open={open} trigger="manual">
   <div className="panel-body">{editing && <TagEditor />}</div>
 </web-ui-popover>
 ```
-
-Bare conditional additions while the panel is open (appending to the host) keep working and migrate into the
-panel automatically. Keeping content mounted and toggling visibility remains a valid fallback.
 
 ### Lit
 
@@ -257,11 +254,16 @@ components use this mode; the instant open/close family (collapse, popover, drop
 The control manages its own value/checked state internally; user interaction flips it immediately and then dispatches
 native `input`/`change` events. Assigning the property programmatically (`el.checked = true`) overrides the internal
 state. This mirrors native `<input type="checkbox">` — there is no `controlled` prop because the value is always readable
-and writable, and React/Vue layers provide their own controlled wrappers on top. For interactions that need an external
-round-trip before the flip is durable (e.g. a switch that should only stay on after an API call succeeds), use the
-optimistic-update path: flip immediately, observe `change`, set the control's `loading` during the request (this blocks
-further interaction and shows a spinner), and on failure write the property back (`el.checked = false`) plus surface a
-toast. The flip-before-approval window is accepted; there is no `controlled` prop for a reject-before-flip contract.
+and writable, and React/Vue layers provide their own controlled wrappers on top.
+
+For interactions that need an external round-trip before the flip is durable (e.g. a switch that should only stay on
+after an API call succeeds), use the optimistic-update path:
+
+- Flip immediately, then observe `change`.
+- Set the control's `loading` during the request; this blocks further interaction and shows a spinner.
+- On failure, write the property back (`el.checked = false`) and surface a toast.
+
+The flip-before-approval window is accepted; there is no `controlled` prop for a reject-before-flip contract.
 
 ### Form-associated controls
 
@@ -730,7 +732,13 @@ Side drawer using native `<dialog>` with closing animation. In non-headless mode
 
 Closing keeps the native dialog in the top layer until the `--wui-duration-drawer-exit` transition completes (240ms by default), then calls `dialog.close()`. Escape always follows this close path; `no-backdrop-close` controls backdrop clicks only.
 
-**Drag to close:** With `draggable`, a gray capsule drag bar (4×56px by default, visually centered 10px from the inner edge inside a 32px-thick hit zone) appears on the drawer's inner edge (left edge for `right`, right edge for `left`, bottom edge for `top`, top edge for `bottom`) while open. Dragging follows the pointer in real time (backdrop fades proportionally); releasing past ~1/3 of the drawer size or with a fast closing flick springs the drawer shut, otherwise it springs back open. The close direction is placement-aware. With `controlled`, release past the threshold only emits `open-change(false)`; the drawer holds at the closed position briefly (120ms write-back window) and springs back open if the consumer rejects or misses the write-back. Drag-to-open is not supported because the closed drawer renders nothing outside the native dialog. Under `prefers-reduced-motion`, release snaps instantly without spring animation.
+**Drag to close:** With `draggable`, a gray capsule drag bar (4×56px by default, visually centered 10px from the inner edge inside a 32px-thick hit zone) appears on the drawer's inner edge (left edge for `right`, right edge for `left`, bottom edge for `top`, top edge for `bottom`) while open:
+
+- Dragging follows the pointer in real time; the backdrop fades proportionally.
+- Releasing past ~1/3 of the drawer size, or with a fast closing flick, springs the drawer shut; otherwise it springs back open. The close direction is placement-aware.
+- With `controlled`, release past the threshold only emits `open-change(false)`; the drawer holds at the closed position briefly (120ms write-back window) and springs back open if the consumer rejects or misses the write-back.
+- Drag-to-open is not supported because the closed drawer renders nothing outside the native dialog.
+- Under `prefers-reduced-motion`, release snaps instantly without spring animation.
 
 **CSS Custom Properties:**
 
@@ -1037,7 +1045,12 @@ Responsive page layout with an optional full-width banner, a collapsible desktop
 
 **Events:** `sidebar-collapsed-change` (`CustomEvent<{ collapsed: boolean }>`) requests a desktop collapse-state update. `sidebar-open-change` (`CustomEvent<{ open: boolean }>`) requests a mobile drawer open-state update. `sidebar-width-change` (`CustomEvent<{ width: string }>`) requests a sidebar width update after a resize drag ends. Consumers must write the requested value back to the corresponding controlled property.
 
-**Sidebar resize:** With `sidebar-resizable`, a resize handle appears on the desktop sidebar's right edge (hidden while collapsed). Hovering or dragging shows a 3px accent vertical line with a `col-resize` cursor. Dragging updates the width in real time (transition suppressed, clamped to `[min, max]` and the viewport); releasing emits `sidebar-width-change` with the final pixel width and returns control to the `sidebar-width` property once the consumer writes it back. `pointercancel` restores the property-controlled width without emitting. The handle is keyboard-operable (WAI-ARIA splitter pattern): focus it and use ←/→ to step by 16px (Shift for 64px), Home/End to jump to min/max, Enter to commit via the same `sidebar-width-change` request, and Escape to revert an uncommitted adjustment. The mobile drawer always supports drag-to-close via its built-in `draggable` drawer.
+**Sidebar resize:** With `sidebar-resizable`, a resize handle appears on the desktop sidebar's right edge (hidden while collapsed); hovering or dragging shows a 3px accent vertical line with a `col-resize` cursor.
+
+- Dragging updates the width in real time (transition suppressed, clamped to `[min, max]` and the viewport).
+- Releasing emits `sidebar-width-change` with the final pixel width; the width is property-controlled again once the consumer writes it back. `pointercancel` restores the property-controlled width without emitting.
+- Keyboard (WAI-ARIA splitter pattern): focus the handle and use ←/→ to step by 16px (Shift for 64px), Home/End to jump to min/max, Enter to commit via the same `sidebar-width-change` request, and Escape to revert an uncommitted adjustment.
+- The mobile drawer always supports drag-to-close via its built-in `draggable` drawer.
 
 | Slot      | Description                                                                               |
 | --------- | ----------------------------------------------------------------------------------------- |
@@ -1047,7 +1060,33 @@ Responsive page layout with an optional full-width banner, a collapsible desktop
 | `default` | Main content                                                                              |
 | `tabbar`  | Bottom tab bar                                                                            |
 
-`web-ui-layout` constrains the sidebar card and owns the desktop toggle area, but does not create a sidebar scrollport. To make only part of the sidebar scroll, make the `sidebar` slot root a `height: 100%; min-height: 0` flex column and apply `overflow-y: auto` to the intended child. This keeps consumer-defined headers and footers fixed without adding extra public slots.
+`web-ui-layout` constrains the sidebar card and owns the desktop toggle area, but does not create a sidebar scrollport. To make only part of the sidebar scroll, make the `sidebar` slot root a `height: 100%; min-height: 0` flex column and apply `overflow-y: auto` to the intended child. This keeps consumer-defined headers and footers fixed without adding extra public slots:
+
+```html
+<div slot="sidebar" class="sidebar-root">
+  <div class="sidebar-title">Components</div>
+  <nav class="sidebar-nav">...</nav>
+</div>
+```
+
+```css
+.sidebar-root {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.sidebar-title {
+  flex-shrink: 0;
+}
+
+.sidebar-nav {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+```
 
 At `640px` and below, the sidebar becomes a headless `web-ui-drawer`. The consumer content is rendered in the same rounded sidebar card; the mobile toggle appears in the header row as a glass button. Its left inset defaults to `8px`; align it with your own header padding via `--wui-layout-mobile-toggle-inset`.
 

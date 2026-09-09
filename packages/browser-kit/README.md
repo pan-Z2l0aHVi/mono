@@ -7,7 +7,7 @@ English | [简体中文](./README.CN.md)
 ## Features
 
 - **Storage**: `defineLocal`/`defineSession` with namespace, TTL expiry, cross-tab sync
-- **Tracker**: Data tracking with batch aggregation, offline restore, and last-words flush
+- **Tracker**: Data tracking with batch aggregation, page-error collection, offline restore, and last-words flush
 - **History Nav**: Read-only Navigation API subset tracking back/forward availability (`defineHistoryNav`)
 - **Env**: 17 environment detection flags (WeChat, DingTalk, PWA, mobile, etc.)
 - **DOM**: Viewport size and scroll position helpers
@@ -53,58 +53,30 @@ const unwatch = storage.watch('user', (newVal, oldVal) => {
 
 ## Plugins
 
-### `defineTracker(options)`
-
-Core tracking plugin. It serializes data with `JSON.stringify`, tries `navigator.sendBeacon()` first, and falls back to `fetch()` with `keepalive: true` when the browser does not accept the beacon.
-
-| Option               | Type                       | Default           | Description                                                                           |
-| -------------------- | -------------------------- | ----------------- | ------------------------------------------------------------------------------------- |
-| `url`                | `string`                   | -                 | Tracking endpoint URL                                                                 |
-| `transform`          | `(data: object) => object` | Identity function | Transforms each event before serialization and batch-size calculation                 |
-| `disablePersistence` | `boolean`                  | `false`           | Disables reading and writing the pending transport outbox in localStorage             |
-| `persistenceKey`     | `string`                   | `url` value       | Stable localStorage outbox key; independent Tracker instances must use different keys |
-
-```ts
-import { defineTracker } from '@greypan/browser-kit'
-
-const tracker = defineTracker({ url: '/api/track' }).make()
-tracker.track({ event: 'page_view', path: '/' })
-```
-
-The core context provides `track(data)`, `pause()`, `resume()`, and `flush()`. `pause()` keeps newly tracked events in the in-memory and persisted outbox; `resume()` retries retained events. `flush()` returns a Promise and is best-effort: it bypasses pause and per-item consumer failures for entries that are not already in flight, but it does not resume the Tracker or wait for server acknowledgement. Tracker storage failures are warned once and switch the instance to memory-only mode, so localStorage failures do not reject `flush()`; a stale snapshot may remain and cause at-least-once duplicates on a later initialization.
-
-### `defineBatchTrack(options?)`
-
-Batch aggregation plugin. It collects events and sends arrays after a delay. Batches larger than `maxBeaconSize` are split recursively; a single oversized event is still sent as one item.
-
-| Option              | Type     | Default | Description                                            |
-| ------------------- | -------- | ------- | ------------------------------------------------------ |
-| `defaultBatchDelay` | `number` | `500`   | Default delay before flushing a batch, in milliseconds |
-| `maxBeaconSize`     | `number` | `64`    | Maximum batch size, in KB, before recursive splitting  |
-
-The composed `track(data, batchDelay?)` accepts a per-call delay. Pass `0` or a negative value to bypass batching for that event.
-
-### `defineOfflineRestore()`
-
-Offline restore plugin. It pauses the Tracker while the browser is offline, including when it starts offline, and calls `resume()` after the `online` event.
-
-### `defineLastWords()`
-
-Last-words plugin. It calls `flush()` on `beforeunload`, `pagehide`, and when the page becomes hidden to make a best-effort attempt to send pending data.
+Tracking plugins compose on a core Tracker: `defineTracker(options)` (core transport with a `sendBeacon()` → `fetch(keepalive)` fallback and a persisted pending-transport outbox), `defineBatchTrack(options?)` (delayed batch aggregation with recursive splitting), `defineOfflineRestore()` (pause while offline, resume on `online`), `definePageErrors(options?)` (collect uncaught errors and unhandled promise rejections as tracker events), and `defineLastWords()` (best-effort `flush()` when the page leaves or hides).
 
 **Recommended composition:**
 
 ```ts
-import { defineBatchTrack, defineLastWords, defineOfflineRestore, defineTracker } from '@greypan/browser-kit'
+import {
+  defineBatchTrack,
+  defineLastWords,
+  defineOfflineRestore,
+  definePageErrors,
+  defineTracker
+} from '@greypan/browser-kit'
 
 const tracker = defineTracker({ url: '/api/track' })
   .use(defineBatchTrack())
   .use(defineOfflineRestore())
+  .use(definePageErrors())
   .use(defineLastWords())
   .make()
+
+tracker.track({ event: 'page_view', path: '/' })
 ```
 
-Pending entries are stored in localStorage until the browser transport accepts them. A `true` return from `sendBeacon()` means that the browser accepted the data for transmission; it is not server delivery confirmation. If both `sendBeacon()` and the `fetch()` fallback fail, the entry remains pending. `flush()` retries the pending and failed entries in its call-time snapshot, without restarting entries that are already in flight; automatic retry otherwise occurs through `resume()`, an `online` event when `defineOfflineRestore()` is installed, or a later Tracker initialization. `flush()` does not clear the paused state.
+See [`src/tracker/README.md`](./src/tracker/README.md) for the full option tables (including `transport` and `transform`), flush/outbox semantics, and the page-error payload contract.
 
 ## API
 
@@ -115,6 +87,8 @@ Create namespaced localStorage/sessionStorage instances. Returns singleton per n
 | Parameter   | Type     | Default | Description              |
 | ----------- | -------- | ------- | ------------------------ |
 | `namespace` | `string` | `''`    | Storage namespace prefix |
+
+Full TTL semantics, `watch` cross-tab behavior, and storage-degradation details: see [`src/storage/README.md`](./src/storage/README.md).
 
 ### `local` / `session`
 

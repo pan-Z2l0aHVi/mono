@@ -2,6 +2,8 @@
 
 本仓库的 issue 和 PRD 以 GitHub issue 形式存储。所有操作使用 GitHub MCP 工具完成。
 
+前置条件：客户端需已配置 GitHub MCP（工具命名空间 `mcp__github__`）；本仓库不提供该配置，缺失时本指南不适用。
+
 ## 工具参考
 
 MCP 工具命名空间：`mcp__github__`
@@ -33,23 +35,15 @@ MCP 工具命名空间：`mcp__github__`
 
 仓库信息从 `git remote -v` 推断，格式为 `owner/repo`。
 
-## Pull request 作为分诊入口
+## Pull request 与 issue 的关系
 
-**PR 作为请求入口：否**。_（如果本仓库将外部 PR 视为功能请求，则设为 `yes`；用户级命令 `/triage`——非仓库内资产——会读取此标志。）_
+本仓库不把外部 PR 作为功能请求入口，用户级命令 `/triage`（非仓库内资产）不在本仓库启用 PR 分诊。注意 GitHub 的 issue 和 PR 共享编号空间：裸 `#42` 可能是 issue 也可能是 PR——先用 `get_pull_request` 尝试解析，不存在再回退 `get_issue`。
 
-设为 `yes` 时，PR 与 issue 使用相同的标签和状态：
-
-- **查看 PR**：调用 `get_pull_request` 获取详情，调用 `get_pull_request_files` 查看变更文件。
-- **列出待分诊的外部 PR**：调用 `list_pull_requests`，过滤外部贡献者。
-- **评论/审查/关闭**：调用 `create_pull_request_review`、`update_issue`（设置 state）。
-
-GitHub 的 issue 和 PR 共享编号空间，因此裸 `#42` 可能是 issue 也可能是 PR——通过 `get_pull_request` 尝试解析，若不存在则回退到 `get_issue`。
-
-## 当技能说"发布到 issue 跟踪器"
+## 当技能说「发布到 issue 跟踪器」
 
 调用 `create_issue` 创建 GitHub issue。
 
-## 当技能说"获取相关工单"
+## 当技能说「获取相关工单」
 
 调用 `get_issue` 获取 issue 详情（含评论）。
 
@@ -62,4 +56,4 @@ GitHub 的 issue 和 PR 共享编号空间，因此裸 `#42` 可能是 issue 也
 - **阻塞**：GitHub 的**原生 issue 依赖关系**——这是规范的、UI 可见的表示方式。在依赖功能不可用时，回退到在子工单正文顶部写 `Blocked by: #<n>, #<n>`。当所有阻塞者关闭后，工单解除阻塞。
 - **前沿查询**：列出地图的 open 子 issue（调用 `list_issues`），排除有 open 阻塞者的或已分配的；按地图顺序优先。
 - **认领**：调用 `update_issue`，设置 assignees=["@me"]——会话中的第一次写入。
-- **解决**：调用 `add_issue_comment` 添加解答，然后调用 `update_issue` 设置 state="closed"，再在地图的"当前决策"部分追加上下文指针（gist + 链接）。
+- **解决**：调用 `add_issue_comment` 添加解答，然后调用 `update_issue` 设置 state="closed"，再在地图的「当前决策」部分追加上下文指针（gist + 链接）。

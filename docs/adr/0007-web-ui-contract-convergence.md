@@ -86,7 +86,7 @@ input, textarea, input-number, select, slider, checkbox, radio, switch, segmente
 - **jsdom 层**：所有组件的契约测试，验证属性、事件、a11y 语义、FormData
 - **Chromium 层**（Vitest Browser Mode + Playwright）：交互组件的 Pointer 事件、键盘导航、焦点管理、portal、原生 dialog、滚动锁、表单提交/重置
 
-## 影响
+## 后果
 
 - **破坏性变更**：所有组件。属性名（switch.open→checked）、事件名（update:checked→input+change）、方法签名（switch.show/close 移除）、表单行为（新增 formAssociated 实现）均有变更
 - **类型变更**：React/Vue 包装类型从新的 `$events` 接口推导，移除 `update:checked`、`value-changed`、`visible-change` 的事件监听器类型
