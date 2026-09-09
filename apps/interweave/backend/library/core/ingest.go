@@ -16,7 +16,7 @@ import (
 	"github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/remote"
 )
 
-// ADR-0022 的单次纳入总时限；core 内唯一的 10 秒时钟，所有 URL 纳入路径经 probe 共享。
+// ADR-0014 的单次纳入总时限；core 内唯一的 10 秒时钟，所有 URL 纳入路径经 probe 共享。
 // var 仅为测试注入（缩短预算验证 probe 真正受它约束）；生产代码不得在运行期改写。
 var ingestBudget = 10 * time.Second
 
@@ -41,7 +41,7 @@ type probeOutcome struct {
 	defaultTitle string
 }
 
-// normalizeInput 把用户输入归一化为稳定位置（ADR-0021），错误文案与既有纳入路径一致。
+// normalizeInput 把用户输入归一化为稳定位置（ADR-0013），错误文案与既有纳入路径一致。
 // 归一化独立于 probe，使调用方能在存在性检查之后再开始探测而不重复归一化。
 func (*ingestion) normalizeInput(input string, srcType storage.SourceType) (string, error) {
 	switch srcType {
@@ -62,7 +62,7 @@ func (*ingestion) normalizeInput(input string, srcType storage.SourceType) (stri
 	}
 }
 
-// probe 在 ADR-0022 预算内判定入口可达性并整理展示上下文：文件只做轻量 stat，
+// probe 在 ADR-0014 预算内判定入口可达性并整理展示上下文：文件只做轻量 stat，
 // URL 做一次限时基础元数据抓取；探测失败不是错误，只决定 available 的取值。
 // 位置必须是 normalizeInput 的产物。
 func (ing *ingestion) probe(ctx context.Context, location string, srcType storage.SourceType) probeOutcome {
@@ -74,7 +74,7 @@ func (ing *ingestion) probe(ctx context.Context, location string, srcType storag
 		}
 		return outcome
 	case storage.SourceTypeURL:
-		// ADR-0023：无可用页面标题时，默认标题在创建时由 hostname 一次性确定。
+		// ADR-0015：无可用页面标题时，默认标题在创建时由 hostname 一次性确定。
 		parsed, _ := url.Parse(location)
 		outcome := probeOutcome{defaultTitle: parsed.Hostname()}
 
@@ -98,7 +98,7 @@ func (ing *ingestion) probe(ctx context.Context, location string, srcType storag
 	}
 }
 
-// ADR-0023：文件入口以文件名作为默认标题，异常路径名回退到清理后的完整路径。
+// ADR-0015：文件入口以文件名作为默认标题，异常路径名回退到清理后的完整路径。
 func fileDefaultTitle(cleanPath string) string {
 	base := filepath.Base(cleanPath)
 	if base == "" || base == "." || base == "/" {
@@ -111,11 +111,11 @@ func fileDefaultTitle(cleanPath string) string {
 type ingestMode int
 
 const (
-	// 新建 Resource 并写入首个 Source：该 Source 依 ADR-0024 自动成为首选，顺位从 0 开始。
+	// 新建 Resource 并写入首个 Source：该 Source 依 ADR-0016 自动成为首选，顺位从 0 开始。
 	ingestNewResource ingestMode = iota
 	// 为既有 Resource 追加 Source：顺位接续最大值，不改变用户已选定的首选。
 	ingestAppendSource
-	// 原位替换 Source 数据：保留添加顺位与首选角色（ADR-0024）。
+	// 原位替换 Source 数据：保留添加顺位与首选角色（ADR-0016）。
 	ingestReplaceSource
 	// 仅更新 URL Source 的可用状态与展示元数据。
 	ingestRefreshSource
@@ -124,7 +124,7 @@ const (
 // ingestWrite 携带一次纳入事务的输入；身份、时间戳与顺位由 write 在事务内分配。
 type ingestWrite struct {
 	mode         ingestMode
-	defaultTitle string // 仅 ingestNewResource 使用：ADR-0023 首次纳入的默认标题
+	defaultTitle string // 仅 ingestNewResource 使用：ADR-0015 首次纳入的默认标题
 	resourceID   string // 仅 ingestAppendSource 使用：归属目标
 	sourceID     string // ingestReplaceSource / ingestRefreshSource：原位目标
 	srcType      storage.SourceType
@@ -139,7 +139,7 @@ type ingestResult struct {
 }
 
 // write 是所有纳入路径共享的事务写入：在单一事务内分配身份与时间戳，并维持
-// ADR-0024 的“至少一个 Source 且恰有一个首选”不变量与 ADR-0023 的标题所有权。
+// ADR-0016 的“至少一个 Source 且恰有一个首选”不变量与 ADR-0015 的标题所有权。
 func (ing *ingestion) write(ctx context.Context, w ingestWrite) (ingestResult, error) {
 	now := time.Now().UnixMilli()
 	result := ingestResult{resourceID: w.resourceID, sourceID: w.sourceID}

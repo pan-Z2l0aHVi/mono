@@ -3,7 +3,7 @@ import { ContextConsumer, ContextProvider, createContext, type Context } from '@
 import type { ReactiveController, ReactiveControllerHost } from 'lit'
 
 /*
- * 下行通道基于 @lit/context（ADR-0040）：root 上的 ContextProvider 以
+ * 下行通道基于 @lit/context（ADR-0032）：root 上的 ContextProvider 以
  * `ReadonlyMap<HTMLElement, Context>` 为载荷向全子树广播，子项侧
  * ContextConsumer 订阅并按自身元素取条目。context-request 事件 composed，
  * 可穿过中间 shadow 边界；custom element 升级顺序保证祖先先于后代升级，

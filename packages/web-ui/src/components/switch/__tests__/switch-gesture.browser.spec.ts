@@ -333,4 +333,11 @@ describe('WebUiSwitch 手势拖拽（浏览器）', () => {
     expect(track.classList.contains('is-dragging')).toBe(true)
     expect(getComputedStyle(track).cursor).toBe('grabbing')
   })
+
+  it('移动端轨道保留纵向滚动，横向拖拽交给组件手势处理', async () => {
+    const el = createSwitch()
+    await el.updateComplete
+
+    expect(getComputedStyle(getTrack(el)).touchAction).toBe('pan-y')
+  })
 })

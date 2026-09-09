@@ -109,6 +109,13 @@ input {
   }
 }
 
+/* Coarse pointers include iOS Safari, where a sub-16px font triggers focus zoom. */
+@media (pointer: coarse) {
+  input {
+    font-size: max(16px, var(--wui-font-size, 14px));
+  }
+}
+
 /* ===== Prefix / Suffix ===== */
 
 slot {

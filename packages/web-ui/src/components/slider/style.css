@@ -19,6 +19,7 @@
 }
 
 .wui-slider-track {
+  touch-action: pan-y;
   cursor: default;
   user-select: none;
 
@@ -45,6 +46,7 @@
 }
 
 :host([vertical]) .wui-slider-track {
+  touch-action: pan-x;
   width: var(--wui-slider-height, var(--wui-slider-track-size, 6px));
   height: 100%;
 }

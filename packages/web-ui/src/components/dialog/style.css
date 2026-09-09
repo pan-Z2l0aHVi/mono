@@ -16,6 +16,7 @@ dialog {
   box-sizing: border-box;
   max-width: min(90vw, var(--wui-dialog-max-width, 360px));
   max-height: 90vh;
+  max-height: min(90vh, 90dvh);
   padding: 0;
   border: none;
 
