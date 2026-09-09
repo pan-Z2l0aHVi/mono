@@ -21,6 +21,13 @@ export default {
   resolve: {
     tsconfigPaths: true
   },
+  optimizeDeps: {
+    // workspace 依赖未构建（fresh clone）时 dep scan 会失败并跳过预打包；
+    // expect-type 是 browser 运行时当前已知唯一的 CJS 依赖，必须显式预打包，
+    // 否则浏览器直接加载裸 CJS 报 "does not provide an export named 'expectTypeOf'" 并挂起。
+    // vitest 仅由 vite-plus 间接提供，需要从 vite-plus 上下文逐级解析。
+    include: ['vite-plus > vitest > expect-type']
+  },
   plugins: [
     iconsPlugin(),
     dts({

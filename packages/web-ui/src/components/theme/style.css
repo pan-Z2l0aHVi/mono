@@ -42,6 +42,11 @@
   --wui-ease-slide: cubic-bezier(0.77, 0, 0.175, 1);
   --wui-scale-enter: 0.97;
   --wui-focus-ring-width: 3px;
+
+  /* control=胶囊控件、menu=浮动菜单面板、overlay=大型覆盖层卡片 */
+  --wui-radius-control: calc(infinity * 1px);
+  --wui-radius-menu: 18px;
+  --wui-radius-overlay: 28px;
   display: contents;
 }
 

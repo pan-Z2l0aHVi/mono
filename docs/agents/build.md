@@ -1,6 +1,6 @@
 # 构建与发布架构
 
-在修改包脚本、Vite/Turbo 配置、外部化或 CI/发布流程之前，请先阅读本指南。当这些细节发生变化时，应在同一变更中更新本文档。
+修改包脚本、Vite/Turbo 配置、外部化或 CI/发布流程前，先阅读本指南。当这些细节发生变化时，应在同一变更中更新本文档。
 
 包清单和依赖边界以 [`CONTEXT.md`](../../CONTEXT.md) 为权威来源；release terminology 以 [ADR-0009](../adr/0009-release-planes.md) 为权威来源，本指南只描述构建、验证和发布流程。
 
@@ -10,11 +10,17 @@
 
 ## Demo 开发
 
-根目录的 demo 命令首先构建上游工作区包，然后使用 `turbo run dev --filter=<demo>...` 启动每个包的持久 `dev` 进程。不要对这些命令使用 `turbo watch`：包级别的 Vite 和 tsdown 监听器已经会重建源文件变更，而 `turbo watch` 还会监控 Git 控制文件，当编辑器或 agent 工具更新 Git 工作树时可能会重启所有 dev 进程。
+| 应用                 | 开发命令                     |
+| -------------------- | ---------------------------- |
+| React Web UI demo    | `pnpm dev:react-web-ui-demo` |
+| Vue Web UI demo      | `pnpm dev:vue-web-ui-demo`   |
+| Interweave Wails app | `pnpm dev:interweave`        |
 
-在修改包图、lockfile 或 Turbo 配置后，需要重启 demo 命令。普通的源文件变更会由运行中的包级监听器继续处理。
+根目录 aliases 通过 Turbo `dev` task 构建上游工作区包，并启动每个包的持久 `dev` 进程。不要对这些命令改用 `turbo watch`：包级别的 Vite 和 tsdown 监听器已经会重建源文件变更，而 `turbo watch` 还会监控 Git 控制文件，当编辑器或 agent 工具更新 Git 工作树时可能会重启所有 dev 进程。
 
-对于由宿主运行时管理嵌套前端的集成应用，先从目标应用的 `package.json`、最近的 `AGENTS.md` 与任务配置确认依赖筛选器。若宿主任务已负责前端开发服务器，只构建前端的上游依赖，不要额外启动重复的前端进程。在修改 Vite 插件、TypeScript 配置或工作区依赖图后，需要重启宿主开发进程。
+在修改包图、lockfile 或 Turbo 配置后，需要重启开发命令。普通的源文件变更会由运行中的包级监听器继续处理。
+
+Interweave 由 Wails 宿主管理嵌套前端，因此其 alias 只启动 Wails host，并构建/监听 WebView frontend 的上游依赖；不要额外启动重复的前端进程。在修改 Vite 插件、TypeScript 配置或工作区依赖图后，需要重启宿主开发进程。
 
 不同包类型的构建脚本不同：
 
@@ -24,9 +30,17 @@
 - **Vue 应用**：`vue-tsc --build && vp build`。
 - **tsconfig**：无构建步骤；它提供通过 TypeScript `extends` 消费的 JSON 文件。
 
-在工作区根目录运行 `CI=true pnpm run check:code` 进行 CI 代码质量检查（聚合 `check:cspell`、`vp check`、`check:go`）：`vp check` 运行格式化、lint 与 TypeScript 类型检查（通过 `fmt.ignorePatterns` 排除第三方 `.agents/skills/`）；`check:go` 自动发现所有 `go.mod` 并运行 `go vet`。出现格式或静态问题时，运行 `CI=true pnpm run fix:code` 一键全量修复（聚合 `vp check --fix`、`fix:go` 与 `fix:stylelint`）。提交 hook 的 `vp staged` 则对暂存路径做增量修复与检查。包构建命令不能替代这些命令；Wails 的 macOS/Windows 原生构建仍负责验证 host package 与平台集成。
+代码质量检查与修复的命令矩阵（`CI=true pnpm run check:code` 聚合 `check:cspell`、`vp check`、`check:go`、`check:stylelint`；`CI=true pnpm run fix:code` 一键全量修复）以 [`linting.md`](linting.md) 为权威；提交 hook 的 `vp staged` 对暂存路径做增量修复与检查。包构建命令不能替代这些命令；Wails 的 macOS/Windows 原生构建仍负责验证 host package 与平台集成。
 
-清理构建产物与缓存时使用 `pnpm run clean`（执行 `scripts/clean.sh`，安全重置各工作区的 `dist/`、`.turbo/` 和临时产物）；验证仓库内部工具脚本时运行 `pnpm run test:scripts`。构建可发布 package 或修改其 `exports`、`files`、Vite 输出时，在根构建成功后运行 `pnpm run check:pack`。该检查使用 `pnpm pack --dry-run` 验证实际发布文件与 manifest export targets；它不判断 API 语义或版本级别。任务开始时使用 `pnpm find:usages -- <paths...>`，取得由 `pnpm-workspace.yaml` 纳入的受影响 workspace、最小读取 context、所需证据与最小充分验证建议；需要确认公开入口时使用 `pnpm inspect:contract -- <published-package>`，需要审阅 Git 变更集的 manifest-level semver 候选时使用 `pnpm diff:contract -- --base <git-ref>`；对 Git 变更集可传入 `--base <git-ref>`、`--staged` 或 `--worktree`。
+| 命令                    | 用途                 | 说明                                                                            |
+| ----------------------- | -------------------- | ------------------------------------------------------------------------------- |
+| `pnpm run clean`        | 清理构建产物与缓存   | 执行 `scripts/clean.sh`，安全重置各工作区的 `dist/`、`.turbo/` 和临时产物       |
+| `pnpm run test:scripts` | 验证仓库内部工具脚本 | -                                                                               |
+| `pnpm run check:pack`   | 发布产物边界检查     | 构建可发布 package 或修改其 `exports`、`files`、Vite 输出时，在根构建成功后运行 |
+
+`check:pack` 使用 `pnpm pack --dry-run` 验证实际发布文件与 manifest export targets；它不判断 API 语义或版本级别。
+
+变更影响与验证命令选择使用仓库内查询工具 `find:usages` / `inspect:contract` / `diff:contract`；工具语义、参数与输出说明见 [`context.md`](context.md)，此处不复述。
 
 对于 `web-ui`，`pnpm --filter @greypan/web-ui generate-icons` 从 `icons.used.json` 重新生成图标模块。Vite 插件也会在 `vp build` 期间自动运行它。
 
@@ -74,7 +88,7 @@
 
 | 包                        | 外部化                                                                   | 打包的第三方依赖 |
 | ------------------------- | ------------------------------------------------------------------------ | ---------------- |
-| `js-kit`                  | `@greypan/*`、`remeda`、`nanoid`                                         | 无               |
+| `js-kit`                  | `@greypan/*`、`remeda`                                                   | 无               |
 | `browser-kit`             | `@greypan/*`、`nanoid`、`remeda`、`copy-to-clipboard`、`msw`             | 无               |
 | `test-kit`                | 通过 tsdown 自动处理：`@greypan/js-kit`、`msw`、`vite-plus`              | 无               |
 | `web-ui`                  | `@greypan/*` 加框架正则匹配 `lit`、`@lit`、`react`、`react-dom` 和 `vue` | 无               |
@@ -92,15 +106,28 @@
 
 ## CI 与发布
 
-- `ci.yml` 是针对 pull request 和推送到 `main` 的完整验证工作流：共享 agent context、changeset 状态、构建、格式化/lint/类型检查和测试。它还接受 `workflow_dispatch` 触发来处理版本 PR，覆盖由自动化令牌创建的版本 PR 可能不会触发初始 pull request 事件的情形。PR 和手动触发的运行共享一个以分支为键的 `concurrency` 组（`github.head_ref || github.ref_name`），因此 `cancel-in-progress` 会将两者合并为单次运行而非重复构建。原生应用所需的系统前置条件以当前 workflow 和工具配置为准。
-- `changeset-version.yml` 在推送到 `main` 时创建或更新 Changesets 版本 PR，并通过 `changesets/action` 的 `version` 输入调用 `pnpm run release:version`。包专属的版本同步由相应脚本负责；默认更新与 `--check` 验证的语义以该脚本为准。公共包与私有原生应用所需的工具链和后续验证分别由当前 workflow 决定；版本 workflow 不直接发布包或安装程序。
-- `npm-publish.yml` 仅发布公共 npm 包。其 `pull_request.closed` 触发器限定为 `packages/**`，然后仅在 `changeset-release/main` 合并到 `main` 时运行，检测实际的公共包版本变更，在合并 SHA 上重建 `packages/*` Turbo 图并通过 npm Trusted Publishing 发布。发布成功后，一个独立的最小权限作业为每个包版本创建幂等的 GitHub Release 和标签，附带 npm 和包 changelog 的链接。它不使用私有原生应用的工具链或长期 npm token。
-- 私有原生应用的验证 workflow 处理目标应用路径、其 WebView frontend 的直接 workspace runtime dependencies 或手动触发，校验同步元数据并在对应的原生目标上构建验证产物；当前 Wails 验证还覆盖 `packages/web-ui/**`、`packages/browser-kit/**` 和 `packages/js-kit/**`。发布 workflow 保持只在目标应用版本变更后的受控合并上创建带校验和的安装程序 Release，且私有应用永远不会发布到 npm。workflow 文件、路径筛选器、平台矩阵、产物保留期和 Release 命名均以当前配置为准。
-- `main` 必须受到保护，确保产品变更通过 pull request 合入。在 GitHub 分支保护中要求 `CI` 通过；原生应用验证保持路径触发而非全局必需检查，因此不相关的 PR 无需等待原生运行环境。
-- Changesets 版本 PR 使用 `GITHUB_TOKEN` 创建，因此其自身的 `pull_request` 触发的 CI 会被 GitHub 的 pwn-request 保护标记为 `action_required`，在获批准前不会运行。由于 `main` 规则集要求 `check` 上下文，合并版本 PR 需要先批准那个被挂起的运行（Actions 运行页面，或 `gh api repos/<owner>/<repo>/actions/runs/<id>/approve`）。`changeset-version.yml` 触发的 `workflow_dispatch` 运行已经验证了相同的提交，因此批准只是为了满足合并门控；分支键控的 `concurrency` 组随后会在两者同时运行时将已批准的运行与调度运行合并。
-- `deploy-pages.yml` 中的部署是手动触发的，通过一个 `actions/deploy-pages` 产物部署作业级 `DEMO_APPS` 列表中的每个可部署 Demo。它仅安装 Node 和 pnpm，因为 Pages 不需要私有原生应用的工具链。每个条目是 `apps/<name>` 目录，服务路径为 `/mono/<name>/`；构建命令使用 pnpm 的 `{./apps/<name>}...` 目录选择器而非 npm 包名。站点没有根落地页。
-- 每个可部署 Demo 必须支持 History 路由深层链接。GitHub Pages 将未匹配的请求路由到根 `404.html`；它根据 `DEMO_APPS` 验证应用名称，将请求的路由保存在 `redirect` 中，并加载应用根目录。在生产环境中，应用必须在创建路由器之前恢复 `redirect`。未知路径保持 404 响应。
+| Workflow                | 触发                                                               | 职责                                                                                                  |
+| ----------------------- | ------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------- |
+| `ci.yml`                | `pull_request`、push 到 `main`、`workflow_dispatch`                | 共享 agent context、changeset 状态、构建、格式化/lint/类型检查和测试                                  |
+| `changeset-version.yml` | push 到 `main`                                                     | 创建/更新 Changesets 版本 PR，经 `changesets/action` 的 `version` 输入调用 `pnpm run release:version` |
+| `npm-publish.yml`       | `pull_request.closed`，限定 `changeset-release/main` 合并到 `main` | 检测公共包版本变更，在合并 SHA 上重建 `packages/*` Turbo 图并通过 npm Trusted Publishing 发布         |
+| 应用验证 workflow       | 目标应用路径、其 WebView frontend 的直接 workspace 依赖或手动触发  | 校验同步元数据并在对应的原生目标上构建验证产物                                                        |
+| 应用发布 workflow       | 目标应用版本变更后的受控合并                                       | 创建带校验和的安装程序 Release；私有应用永不发布到 npm                                                |
+| `deploy-pages.yml`      | 手动触发                                                           | 通过 `actions/deploy-pages` 产物部署作业级 `DEMO_APPS` 列表中的每个可部署 Demo                        |
+
+- `ci.yml` 的 PR 运行与手动触发运行共享一个以分支为键的 `concurrency` 组（`github.head_ref || github.ref_name`），因此 `cancel-in-progress` 会将两者合并为单次运行而非重复构建。`workflow_dispatch` 触发用于覆盖自动化令牌创建的版本 PR 可能不触发初始 `pull_request` 事件的情形。原生应用所需的系统前置条件以当前 workflow 和工具配置为准。
+- 包专属的版本同步由 `release:version` 对应脚本负责；默认更新与 `--check` 验证的语义以该脚本为准。版本 workflow 不直接发布包或安装程序。
+- `npm-publish.yml` 仅发布公共 npm 包。发布成功后，一个独立的最小权限作业为每个包版本创建幂等的 GitHub Release 和标签，附带 npm 和包 changelog 的链接。它不使用私有原生应用的工具链或长期 npm token。
+- 私有原生应用的验证保持路径触发而非全局必需检查，不相关的 PR 无需等待原生运行环境；`main` 分支保护只要求 `CI` 通过，产品变更必须经 pull request 合入。
+- `deploy-pages.yml` 每个条目是 `apps/<name>` 目录，服务路径为 `/mono/<name>/`；构建命令使用 pnpm 的 `{./apps/<name>}...` 目录选择器而非 npm 包名。它仅安装 Node 和 pnpm，因为 Pages 不需要私有原生应用的工具链。站点没有根落地页。
+- 每个 Demo 的 History 路由深层链接依赖 GitHub Pages 的 404 回退：未匹配请求路由到根 `404.html`，它按 `DEMO_APPS` 验证应用名、把请求路由保存在 `redirect` 并加载应用根目录；应用必须在创建路由器之前恢复 `redirect`，未知路径保持 404。
 - npm Trusted Publishing 通过 OIDC `job_workflow_ref` 声明绑定到工作流文件路径。重命名或移动 `npm-publish.yml` 会使现有的 trusted-publisher 注册失效：即使设置了 `id-token: write`，`pnpm changeset publish` 也会因 `ENEEDAUTH` 失败。在重命名工作流的同一变更中更新 npmjs.com 上对应的 trusted publisher。
+
+### 版本 PR 的 CI 门控
+
+- **症状**：Changesets 版本 PR 的 CI 被标记为 `action_required`，在获批准前不会运行；由于 `main` 规则集要求 `check` 上下文，合并版本 PR 被阻塞。
+- **原因**：版本 PR 使用 `GITHUB_TOKEN` 创建，其自身的 `pull_request` 触发的 CI 会被 GitHub 的 pwn-request 保护挂起，需要人工批准。
+- **操作**：在 Actions 运行页面批准该次运行，或执行 `gh api repos/<owner>/<repo>/actions/runs/<id>/approve`。`changeset-version.yml` 触发的 `workflow_dispatch` 运行已经验证了相同的提交，因此批准只是为了满足合并门控；分支键控的 `concurrency` 组随后会在两者同时运行时将已批准的运行与调度运行合并。
 
 ## Release context
 

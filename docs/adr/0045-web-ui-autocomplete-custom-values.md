@@ -1,4 +1,4 @@
-# ADR-0045: Web UI autocomplete custom values
+# ADR-0045: Web UI autocomplete 自定义值
 
 - **Date**: 2026-09-05
 - **Status**: 已接受

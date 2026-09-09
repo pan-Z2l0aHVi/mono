@@ -39,9 +39,11 @@ describe('Web UI focus indicators（浏览器）', () => {
     const nativeInput = input.shadowRoot?.querySelector<HTMLInputElement>('input')
     nativeInput?.focus()
     await input.updateComplete
+    // focus ring 有 200ms 过渡，等动画完成后再断言终值
+    await new Promise(resolve => setTimeout(resolve, 300))
 
     const wrapper = input.shadowRoot?.querySelector<HTMLElement>('.wui-input-inner')
-    const style = getComputedStyle(wrapper!)
+    const style = getComputedStyle(wrapper!, '::after')
     expect(input.hasAttribute('focused')).toBe(true)
     expect(style.boxShadow).toContain('inset')
     expect(style.boxShadow).toContain('rgb(0, 136, 255)')
@@ -70,7 +72,7 @@ describe('Web UI focus indicators（浏览器）', () => {
     await new Promise(resolve => setTimeout(resolve, 300))
 
     // 与 normal 变体同款：inset accent 内圈 + focus-ring halo 的 box-shadow
-    const style = getComputedStyle(wrapper!)
+    const style = getComputedStyle(wrapper!, '::after')
     expect(nativeInput?.matches(':focus-visible')).toBe(true)
     expect(input.hasAttribute('focused')).toBe(true)
     expect(style.boxShadow).toContain('inset')
@@ -92,7 +94,7 @@ describe('Web UI focus indicators（浏览器）', () => {
     await new Promise(resolve => setTimeout(resolve, 300))
 
     const wrapper = input.shadowRoot?.querySelector<HTMLElement>('.wui-input-inner')
-    const style = getComputedStyle(wrapper!)
+    const style = getComputedStyle(wrapper!, '::after')
     expect(input.hasAttribute('focused')).toBe(true)
     expect(style.boxShadow).toContain('inset')
     expect(style.boxShadow).toContain('rgb(0, 136, 255)')

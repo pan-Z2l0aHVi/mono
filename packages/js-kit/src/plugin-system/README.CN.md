@@ -72,24 +72,6 @@ db.query('SELECT 1')
 
 ## 插件
 
-### `defineEventEmitter<E>(options?)`
-
-类型安全的事件发射器，提供 `on`、`off`、`emit` 方法。
-
-```ts
-import { defineEventEmitter } from '@greypan/js-kit'
-
-const emitter = defineEventEmitter<{
-  data: [payload: { id: number }]
-  error: [err: Error]
-}>()
-
-const ctx = emitter.make()
-ctx.on('data', payload => console.log(payload.id))
-ctx.emit('data', { id: 1 })
-ctx.off('data', handler)
-```
-
 ### `defineBatchEmitter<S>(options?)`
 
 批量事件发射器。收集事件并在延迟后批量触发。

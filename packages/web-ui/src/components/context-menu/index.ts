@@ -6,12 +6,20 @@ import '@/components/dropdown-divider'
 import '@/components/dropdown-header'
 import '@/components/dropdown-item'
 import { UserChangeController } from '@/shared/events/user-change'
+import {
+  createClosingSubmenuStack,
+  createMenuHoverBinder,
+  createMenuOutsideClickGuard,
+  getEnabledMenuLevelItems,
+  getFocusedMenuItemFromPanels,
+  handleMenuKeyboard,
+  type MenuHoverDelegate,
+  type MenuKeyboardDelegate
+} from '@/shared/menu-behavior'
 import { createMenuPortalOverlay, type MenuPortalOverlay } from '@/shared/menu-portal/menu-portal'
 import {
   captureFrameworkAnchors,
-  findFocusedMenuItem,
   focusMenuItem,
-  getEnabledMenuItems,
   getMenuChildren,
   getMenuItemFromEvent,
   hideNestedMenuChildren,
@@ -21,6 +29,7 @@ import {
   restoreFrameworkAnchors,
   returnManagedMenuItemsToSlot
 } from '@/shared/menu-portal/menu-tree'
+import { dispatchOpenChangeEvent } from '@/shared/open-state'
 import { hideOverlayPresence, showOverlayPresence } from '@/shared/overlay/presence'
 import { defineScrollLockLease } from '@/shared/scroll-lock/scroll-lock'
 
@@ -44,12 +53,51 @@ export class WebUiContextMenu extends LitElement {
   // 子菜单 dialog 定位的唯一写者代数（按 panel 键控）：同帧关闭→重开复用同一 panel
   // 时只允许最新一次定位写入；不同层级子菜单各有 panel，互不作废。
   private readonly _submenuPositionEpochs = new WeakMap<HTMLElement, number>()
-  private readonly _closingSubmenus = new Map<HTMLElement, MenuPortalOverlay>()
-  private _submenuTimer?: ReturnType<typeof setTimeout>
-  private _ignoreOutsideClick = false
-  private _ignoreOutsideClickTimer?: ReturnType<typeof setTimeout>
-  private _hoverCleanupFns: (() => void)[] = []
   private _menu?: MenuPortalOverlay
+  // 行为层（hover / outside-click / 键盘 / submenu 收尾）由 shared/menu-behavior 驱动
+  private readonly _outsideClickGuard = createMenuOutsideClickGuard(
+    this,
+    node => this._menu?.panel.contains(node) === true || this._activeSubmenus.some(menu => menu.panel.contains(node))
+  )
+  private readonly _closingSubmenus = createClosingSubmenuStack<MenuPortalOverlay>({
+    getPanel: container => container.panel,
+    restoreItems: (container, parentItem) => this._restoreSubmenuItems(container, parentItem),
+    dispose: container => container.panel.remove()
+  })
+  private readonly _hoverDelegate: MenuHoverDelegate = {
+    getOpenDepth: () => this._activeSubmenus.length,
+    getLevelItems: level => this._getLevelItems(level),
+    getActiveItem: level => this._activeSubmenuItems[level],
+    isSubmenuItem: item => item.hasAttribute('submenu'),
+    openSubmenu: item => this._openSubmenu(item),
+    closeFrom: level => {
+      this._closeSubmenusFrom(level)
+      this._hoverBinder.bind()
+    }
+  }
+  private readonly _hoverBinder = createMenuHoverBinder(this._hoverDelegate, 'web-ui-dropdown-item')
+  private readonly _keyboardDelegate: MenuKeyboardDelegate = {
+    getFocusedItem: event =>
+      getFocusedMenuItemFromPanels(
+        event,
+        [this._menu?.content, ...this._activeSubmenus.map(submenu => submenu.content)],
+        'web-ui-dropdown-item'
+      ),
+    getLevelOf: item => {
+      const level = this._getItemLevel(item)
+      return level === -1 ? undefined : level
+    },
+    getEnabledItems: level => getEnabledMenuLevelItems(this._getLevelContainer(level)?.content),
+    isSubmenuItem: item => item.hasAttribute('submenu'),
+    openSubmenuInstant: item => this._openSubmenu(item, true),
+    closeToParent: level => {
+      const parent = this._activeSubmenuItems[level - 1]
+      this._closeSubmenusFrom(level - 1)
+      this._hoverBinder.bind()
+      return parent
+    },
+    closeDeepestOrAll: () => this._closeLastSubmenuOrMenu()
+  }
   private readonly _menuItemAnchors = new Map<HTMLElement, Comment>()
   private readonly _scrollLock = defineScrollLockLease().make()
   private readonly _userOpenChange = new UserChangeController()
@@ -90,15 +138,14 @@ export class WebUiContextMenu extends LitElement {
     document.removeEventListener('touchmove', this._onTouchMove, true)
     document.removeEventListener('keydown', this._onDocumentKeydown)
     this._contentObserver.disconnect()
-    clearTimeout(this._submenuTimer)
-    clearTimeout(this._ignoreOutsideClickTimer)
-    this._hoverCleanupFns.forEach(cleanup => cleanup())
+    this._outsideClickGuard.dispose()
+    this._hoverBinder.dispose()
     this._scrollLock.release()
     this._returnItemsToSlot()
     this._menu?.panel.remove()
     this._menu = undefined
     this._closeSubmenusFrom(0, true)
-    this._restoreClosingSubmenus()
+    this._closingSubmenus.restoreAll()
     // 脱离文档即视为关闭：否则重连后 _isOpen 仍为 true 而 _menu 已清空，
     // 下次 openAt 会走已打开分支静默失败，菜单无法再打开。
     this._isOpen = false
@@ -156,10 +203,10 @@ export class WebUiContextMenu extends LitElement {
     this._x = x
     this._y = y
     this._shouldOpenInstantly = isInstant
-    this._ignoreCurrentOutsideClick()
+    this._outsideClickGuard.arm()
     if (this._isOpen) {
       this._closeSubmenusFrom(0, true)
-      this._restoreClosingSubmenus()
+      this._closingSubmenus.restoreAll()
       this._scheduleRefresh()
       return false
     }
@@ -199,7 +246,7 @@ export class WebUiContextMenu extends LitElement {
     if (!this._menu) return
     this._setupMenuItems()
     this._positionMenu()
-    this._bindLevelHovers()
+    this._hoverBinder.bind()
   }
 
   private _positionMenu() {
@@ -268,7 +315,7 @@ export class WebUiContextMenu extends LitElement {
     const items = this._menu?.content.querySelectorAll<HTMLElement>('web-ui-dropdown-item:not([disabled])')
     const firstItem = items?.[0]
     if (firstItem) {
-      this._focusMenuItem(firstItem)
+      focusMenuItem(firstItem)
     }
   }
 
@@ -297,7 +344,7 @@ export class WebUiContextMenu extends LitElement {
     if (!menu) return
 
     this._closeSubmenusFrom(0, true)
-    this._restoreClosingSubmenus()
+    this._closingSubmenus.restoreAll()
 
     returnManagedMenuItemsToSlot(this, menu.content, this._menuItemAnchors)
   }
@@ -326,15 +373,14 @@ export class WebUiContextMenu extends LitElement {
     if (level === -1 || this._activeSubmenuItems[level] === item) return
 
     this._closeSubmenusFrom(level)
-    const closingSubmenu = this._closingSubmenus.get(item)
+    const closingSubmenu = this._closingSubmenus.take(item)
     if (closingSubmenu) {
-      this._closingSubmenus.delete(item)
       this._activeSubmenus[level] = closingSubmenu
       this._activeSubmenuItems[level] = item
       item.setAttribute('active', '')
       this._positionSubmenu(item, closingSubmenu)
       showOverlayPresence(closingSubmenu.panel, { isInstant })
-      this._bindLevelHovers()
+      this._hoverBinder.bind()
       return
     }
     if (getMenuChildren(item).length === 0) return
@@ -352,7 +398,7 @@ export class WebUiContextMenu extends LitElement {
     item.setAttribute('active', '')
     this._positionSubmenu(item, submenu)
     showOverlayPresence(submenu.panel, { isInstant })
-    this._bindLevelHovers()
+    this._hoverBinder.bind()
   }
 
   private _closeSubmenusFrom(level: number, isInstant = false) {
@@ -364,21 +410,11 @@ export class WebUiContextMenu extends LitElement {
         this._restoreSubmenuItems(submenu, item)
         submenu.panel.remove()
       } else {
-        this._closingSubmenus.set(item, submenu)
-        void this._closeSubmenuAfterPresence(submenu, item)
+        this._closingSubmenus.closeAsync(item, submenu)
       }
     }
     this._activeSubmenus.length = level
     this._activeSubmenuItems.length = level
-  }
-
-  private async _closeSubmenuAfterPresence(submenu: MenuPortalOverlay, item: HTMLElement) {
-    if (!(await hideOverlayPresence(submenu.panel))) return
-    if (this._closingSubmenus.get(item) !== submenu) return
-
-    this._closingSubmenus.delete(item)
-    this._restoreSubmenuItems(submenu, item)
-    submenu.panel.remove()
   }
 
   private _restoreSubmenuItems(submenu: MenuPortalOverlay, item?: HTMLElement) {
@@ -386,14 +422,6 @@ export class WebUiContextMenu extends LitElement {
     moveMenuChildren(submenu.content, item)
     // 子菜单打开期间宿主可能重建了嵌套子项，归还时补隐藏，避免可见叠加。
     hideNestedMenuChildren(item, 'context-menu-hidden')
-  }
-
-  private _restoreClosingSubmenus() {
-    this._closingSubmenus.forEach((submenu, item) => {
-      this._restoreSubmenuItems(submenu, item)
-      submenu.panel.remove()
-    })
-    this._closingSubmenus.clear()
   }
 
   private _getItemLevel(item: HTMLElement): number {
@@ -451,27 +479,7 @@ export class WebUiContextMenu extends LitElement {
   }
 
   private _dispatchChange(open: boolean) {
-    this.dispatchEvent(
-      new CustomEvent('open-change', {
-        detail: { open },
-        bubbles: true,
-        composed: true
-      })
-    )
-  }
-
-  private _isInsideShadowRoot(e: MouseEvent): boolean {
-    for (const node of e.composedPath()) {
-      if (node === this || node === this.shadowRoot) return true
-      if (node instanceof Node && node.getRootNode() === this.shadowRoot) return true
-      if (
-        node instanceof Node &&
-        (this._menu?.panel.contains(node) || this._activeSubmenus.some(menu => menu.panel.contains(node)))
-      ) {
-        return true
-      }
-    }
-    return false
+    dispatchOpenChangeEvent(this, open)
   }
 
   private _onContextMenu = (e: MouseEvent) => {
@@ -482,7 +490,7 @@ export class WebUiContextMenu extends LitElement {
   }
 
   private _onContextMenuOutside = (e: MouseEvent) => {
-    if (this._isOpen && !this._isInsideShadowRoot(e)) {
+    if (this._isOpen && !this._outsideClickGuard.isInside(e)) {
       this._closeFromUser()
     }
   }
@@ -505,8 +513,8 @@ export class WebUiContextMenu extends LitElement {
   }
 
   private _onClickOutside = (e: MouseEvent) => {
-    if (!this._isOpen || this._ignoreOutsideClick) return
-    if (this._isInsideShadowRoot(e)) return
+    if (!this._isOpen || this._outsideClickGuard.isArmed()) return
+    if (this._outsideClickGuard.isInside(e)) return
     this._closeFromUser()
   }
 
@@ -520,43 +528,14 @@ export class WebUiContextMenu extends LitElement {
     this._closeFromUser()
   }
 
+  private _getLevelContainer(level: number) {
+    return level === 0 ? this._menu : this._activeSubmenus[level - 1]
+  }
+
   private _getLevelItems(level: number): HTMLElement[] {
-    const container = level === 0 ? this._menu?.content : this._activeSubmenus[level - 1]?.content
+    const container = this._getLevelContainer(level)
     if (!container) return []
-    return getMenuChildren(container)
-  }
-
-  private _bindLevelHovers() {
-    this._hoverCleanupFns.forEach(cleanup => cleanup())
-    this._hoverCleanupFns.length = 0
-
-    for (let level = 0; level <= this._activeSubmenus.length; level++) {
-      this._getLevelItems(level).forEach(item => {
-        if (!item.matches('web-ui-dropdown-item') || item.hasAttribute('disabled')) return
-        const handler = (event: PointerEvent) => {
-          if (event.pointerType === 'touch') return
-          clearTimeout(this._submenuTimer)
-          if (item.hasAttribute('submenu')) {
-            if (this._activeSubmenuItems[level] !== item) {
-              this._submenuTimer = setTimeout(() => this._openSubmenu(item), 200)
-            }
-          } else if (this._activeSubmenus.length > level) {
-            this._closeSubmenusFrom(level)
-            this._bindLevelHovers()
-          }
-        }
-        item.addEventListener('pointerenter', handler, { passive: true })
-        this._hoverCleanupFns.push(() => item.removeEventListener('pointerenter', handler))
-      })
-    }
-  }
-
-  private _ignoreCurrentOutsideClick() {
-    this._ignoreOutsideClick = true
-    clearTimeout(this._ignoreOutsideClickTimer)
-    this._ignoreOutsideClickTimer = setTimeout(() => {
-      this._ignoreOutsideClick = false
-    })
+    return getMenuChildren(container.content)
   }
 
   private _onWheel = (e: WheelEvent) => {
@@ -571,55 +550,7 @@ export class WebUiContextMenu extends LitElement {
     if (!this._isOpen) return
     // 鼠标右键打开的菜单焦点不在菜单内，e.target !== this 时也必须能 Escape 关闭；
     // 菜单为模态浮层，按 Escape 即关闭，无需限定焦点位置
-    if (e.key === 'Escape') {
-      this._closeLastSubmenuOrMenu()
-      e.preventDefault()
-      return
-    }
-    const level = this._getFocusedLevel()
-    if (level === undefined) return
-    const items = this._getEnabledLevelItems(level)
-    const focused = this._getFocusedItem()
-    const currentIndex = focused ? items.indexOf(focused) : -1
-
-    switch (e.key) {
-      case 'ArrowDown':
-        this._focusMenuItem(items[(currentIndex + 1 + items.length) % items.length])
-        break
-      case 'ArrowUp':
-        this._focusMenuItem(items[(currentIndex - 1 + items.length) % items.length])
-        break
-      case 'Home':
-        this._focusMenuItem(items[0])
-        break
-      case 'End':
-        this._focusMenuItem(items.at(-1))
-        break
-      case 'ArrowRight':
-        if (focused?.hasAttribute('submenu')) {
-          this._openSubmenu(focused, true)
-          requestAnimationFrame(() => this._focusMenuItem(this._getEnabledLevelItems(level + 1)[0]))
-        }
-        break
-      case 'ArrowLeft':
-        if (level > 0) {
-          const parent = this._activeSubmenuItems[level - 1]
-          this._closeSubmenusFrom(level - 1)
-          this._focusMenuItem(parent)
-          this._bindLevelHovers()
-        }
-        break
-      case 'Enter':
-      case ' ':
-        focused?.click()
-        break
-      case 'Escape':
-        this._closeLastSubmenuOrMenu()
-        break
-      default:
-        return
-    }
-    e.preventDefault()
+    handleMenuKeyboard(this._keyboardDelegate, e)
   }
 
   private _closeLastSubmenuOrMenu() {
@@ -627,8 +558,8 @@ export class WebUiContextMenu extends LitElement {
       const level = this._activeSubmenus.length - 1
       const parent = this._activeSubmenuItems[level]
       this._closeSubmenusFrom(level)
-      this._focusMenuItem(parent)
-      this._bindLevelHovers()
+      focusMenuItem(parent)
+      this._hoverBinder.bind()
     } else {
       this._closeFromUser()
     }
@@ -641,27 +572,6 @@ export class WebUiContextMenu extends LitElement {
 
   private _syncScrollLock(isOpen = this._isOpen) {
     this._scrollLock.sync(isOpen && !this.noScrollLock)
-  }
-
-  private _getEnabledLevelItems(level: number) {
-    const container = level === 0 ? this._menu?.content : this._activeSubmenus[level - 1]?.content
-    return container ? getEnabledMenuItems(container) : []
-  }
-
-  private _getFocusedItem(): HTMLElement | undefined {
-    return findFocusedMenuItem([this._menu?.content, ...this._activeSubmenus.map(submenu => submenu.content)])
-  }
-
-  private _getFocusedLevel(): number | undefined {
-    const item = this._getFocusedItem()
-    if (!item) return undefined
-    if (this._menu?.panel.contains(item)) return 0
-    const submenuIndex = this._activeSubmenus.findIndex(menu => menu.panel.contains(item))
-    return submenuIndex < 0 ? undefined : submenuIndex + 1
-  }
-
-  private _focusMenuItem(item: HTMLElement | undefined) {
-    focusMenuItem(item)
   }
 
   private _isMenuPanelEvent(e: Event): boolean {

@@ -32,9 +32,48 @@ describe('safeCall 测试', () => {
     expect(result).toBeUndefined()
   })
 
-  it('正常函数会执行并透传参数', () => {
-    const fn = vi.fn<(a: number, b: string) => void>()
-    safeCall(fn, 1, 'x')
-    expect(fn).toHaveBeenCalledWith(1, 'x')
+  it('同步异常会交给 options.onError', async () => {
+    const onError = vi.fn<(error: unknown) => void>()
+    const boom = new Error('sync boom')
+    safeCall(
+      () => {
+        throw boom
+      },
+      { onError }
+    )
+
+    // catch 回调在微任务中执行
+    await new Promise(resolve => setTimeout(resolve, 0))
+    expect(onError).toHaveBeenCalledWith(boom)
+  })
+
+  it('异步 rejection 会交给 options.onError', async () => {
+    const onError = vi.fn<(error: unknown) => void>()
+    const boom = new Error('async boom')
+    safeCall(() => Promise.reject(boom), { onError })
+
+    await new Promise(resolve => setTimeout(resolve, 0))
+    expect(onError).toHaveBeenCalledWith(boom)
+  })
+
+  it('onError 自身抛错不产生 unhandled rejection', async () => {
+    const unhandled = vi.fn<(reason: unknown) => void>()
+    const handler = (reason: unknown) => unhandled(reason)
+    process.on('unhandledRejection', handler)
+
+    safeCall(
+      () => {
+        throw new Error('boom')
+      },
+      {
+        onError: () => {
+          throw new Error('reporter boom')
+        }
+      }
+    )
+
+    await new Promise(resolve => setTimeout(resolve, 0))
+    process.off('unhandledRejection', handler)
+    expect(unhandled).not.toHaveBeenCalled()
   })
 })

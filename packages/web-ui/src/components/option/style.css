@@ -25,7 +25,7 @@
   box-sizing: border-box;
   height: 32px;
   padding: 0 8px;
-  border-radius: calc(infinity * 1px);
+  border-radius: var(--wui-radius-control, calc(infinity * 1px));
 
   font-size: var(--wui-font-size, 14px);
   color: var(--wui-color-text, #1b1b1b);

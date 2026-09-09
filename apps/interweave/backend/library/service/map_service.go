@@ -27,22 +27,8 @@ func (s *MapService) GetGlobalMap(ctx context.Context) (*GlobalMapDTO, error) {
 		UnconnectedCount:   m.UnconnectedCount,
 		TotalResourceCount: m.TotalResourceCount,
 	}
-	for _, n := range m.TagNodes {
-		dto.TagNodes = append(dto.TagNodes, toTagNodeDTO(n))
-	}
-	for _, e := range m.TagEdges {
-		dto.TagEdges = append(dto.TagEdges, TagEdgeDTO{
-			SourceTagID: e.SourceTagID,
-			TargetTagID: e.TargetTagID,
-			Weight:      e.Weight,
-		})
-	}
-	if dto.TagNodes == nil {
-		dto.TagNodes = []TagNodeDTO{}
-	}
-	if dto.TagEdges == nil {
-		dto.TagEdges = []TagEdgeDTO{}
-	}
+	dto.TagNodes = mapped(m.TagNodes, toTagNodeDTO)
+	dto.TagEdges = mapped(m.TagEdges, toTagEdgeDTO)
 	return dto, nil
 }
 
@@ -56,17 +42,9 @@ func (s *MapService) GetLocalMap(ctx context.Context, tagID string) (*LocalMapDT
 	dto := &LocalMapDTO{
 		FocusedTag: tagToDTO(m.FocusedTag),
 	}
-	for i := range m.Resources {
-		dto.Resources = append(dto.Resources, *resourceViewToDTO(&m.Resources[i]))
-	}
-	if dto.Resources == nil {
-		dto.Resources = []ResourceDTO{}
-	}
-	for _, n := range m.CooccurringTags {
-		dto.CooccurringTags = append(dto.CooccurringTags, toTagNodeDTO(n))
-	}
-	if dto.CooccurringTags == nil {
-		dto.CooccurringTags = []TagNodeDTO{}
-	}
+	dto.Resources = mapped(m.Resources, func(v core.ResourceView) ResourceDTO {
+		return *resourceViewToDTO(&v)
+	})
+	dto.CooccurringTags = mapped(m.CooccurringTags, toTagNodeDTO)
 	return dto, nil
 }

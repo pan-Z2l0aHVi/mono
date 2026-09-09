@@ -6,17 +6,15 @@ import { styleMap } from 'lit/directives/style-map.js'
 import '@/components/icon'
 import glass from '@/assets/glass.css?inline'
 import { lucideLoaderCircle } from '@/icons'
-import { defineFormAssociation, FormAssociationController } from '@/shared/form-association'
+import { FormAssociated, defineFormAssociation, FormAssociationController } from '@/shared/form-association'
 import { attachDragGesture, type DragGestureHandle } from '@/shared/gesture/drag-gesture'
 import { clamp, normalizeProgress } from '@/shared/gesture/physics'
 
 import style from './style.css?inline'
 
 @customElement('web-ui-switch')
-export class WebUiSwitch extends LitElement {
+export class WebUiSwitch extends FormAssociated(LitElement) {
   static override styles = [unsafeCSS(glass), unsafeCSS(style)]
-  static formAssociated = true
-
   @state() private _checked = false
 
   get checked(): boolean {
@@ -73,18 +71,6 @@ export class WebUiSwitch extends LitElement {
   }).make()
 
   private readonly _formAssociationController = new FormAssociationController(this, this._formAssociation)
-
-  formResetCallback() {
-    this._formAssociation.reset()
-  }
-
-  formDisabledCallback(disabled: boolean) {
-    this._formAssociation.setDisabled(disabled)
-  }
-
-  formStateRestoreCallback(state: string | File | FormData | null) {
-    this._formAssociation.restore(state)
-  }
 
   private _syncValidity() {
     const internals = this._formAssociation.getInternals()

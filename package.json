@@ -6,6 +6,9 @@
   "scripts": {
     "prepare": "vp config",
     "clean": "bash scripts/clean.sh",
+    "dev:react-web-ui-demo": "turbo run dev --filter=@greypan/react-web-ui-demo...",
+    "dev:vue-web-ui-demo": "turbo run dev --filter=@greypan/vue-web-ui-demo...",
+    "dev:interweave": "turbo run dev --filter=@greypan/interweave --filter=\"@greypan/interweave-frontend^...\"",
     "build": "turbo build",
     "build:affected": "turbo build --filter=\"...[origin/main]\"",
     "test": "turbo test",

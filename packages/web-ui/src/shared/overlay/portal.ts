@@ -15,6 +15,11 @@ export interface OverlayPortalOptions {
   target: Element
   style: string
   className: string
+  /**
+   * 额外的面板内容变化反应。注意：已迁移节点被框架物理删除后的解除追踪
+   * （removeContent）是 portal 的内建默认行为，不经过该回调；这里只承载
+   * 组件自己的附加逻辑（如 option 域的刷新、空态占位改写）。
+   */
   onContentChange?: (mutations: MutationRecord[]) => void
   /**
    * 打开期实时渲染契约：框架（Vue/React 条件渲染）可能在浮层打开期间向宿主
@@ -83,6 +88,14 @@ export const defineOverlayPortal = () =>
     const contentObserver = new MutationObserver(mutations => {
       // 内部不变量先于消费方回调执行：配对依赖 trackedNodes 尚未被消费方 untrack 的状态。
       returnStrayFrameworkComments(mutations)
+      // 框架在打开期物理删除已迁移节点：即时解除追踪，否则关闭恢复时会把已删除
+      // 节点复活回宿主 light DOM。面板内部移动（重排 insertBefore）在同一 mutation
+      // record 中同时出现在 removed/added，不属于删除，须排除。
+      const addedInBatch = new Set(mutations.flatMap(mutation => [...mutation.addedNodes]))
+      const removedNodes = mutations
+        .flatMap(mutation => [...mutation.removedNodes])
+        .filter(node => !addedInBatch.has(node))
+      if (removedNodes.length) untrackNodes(removedNodes)
       ctx.onContentChange?.(mutations)
     })
     // 同一 observer 批次内被插入又移除的游离节点没有宿主位可锚，不追踪不迁移
@@ -180,7 +193,9 @@ export const defineOverlayPortal = () =>
     }
 
     resolveOverlayContainer(ctx.container, ctx.target).appendChild(host)
-    if (ctx.onContentChange) contentObserver.observe(panel, { childList: true, subtree: true })
+    // 面板内容观察是 portal 自身的不变量（游离注释救援 + 删除节点解除追踪），
+    // 不依赖消费方是否注册 onContentChange。
+    contentObserver.observe(panel, { childList: true, subtree: true })
 
     // 打开期宿主 childList 观察（不含子树，框架 patch 嵌套组件的 light DOM 不属于
     // 本面板内容）。portal 实例的生命周期即打开期，随恢复/移除断开。

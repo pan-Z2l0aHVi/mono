@@ -38,9 +38,5 @@ func (s *TagService) SuggestTags(ctx context.Context, query string, limit int) (
 		return nil, err
 	}
 
-	result := make([]TagDTO, 0, len(tags))
-	for _, tag := range tags {
-		result = append(result, tagToDTO(tag))
-	}
-	return result, nil
+	return mapped(tags, tagToDTO), nil
 }

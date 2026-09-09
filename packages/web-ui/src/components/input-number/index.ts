@@ -4,14 +4,18 @@ import { customElement, property, state } from 'lit/decorators.js'
 import '@/components/icon'
 import glass from '@/assets/glass.css?inline'
 import { lucideMinus, lucidePlus } from '@/icons'
-import { defineFormAssociation, FormAssociationController } from '@/shared/form-association'
+import {
+  FormAssociated,
+  defineFormAssociation,
+  forwardInputValidity,
+  FormAssociationController
+} from '@/shared/form-association'
 import { normalizeNumber } from '@/shared/normalize'
 
 import style from './style.css?inline'
 
 @customElement('web-ui-input-number')
-export class WebUiInputNumber extends LitElement {
-  static formAssociated = true
+export class WebUiInputNumber extends FormAssociated(LitElement) {
   static override styles = [unsafeCSS(glass), unsafeCSS(style)]
 
   @property({ type: String, reflect: true }) placeholder = ''
@@ -117,18 +121,6 @@ export class WebUiInputNumber extends LitElement {
 
   private readonly _formAssociationController = new FormAssociationController(this, this._formAssociation)
 
-  formResetCallback() {
-    this._formAssociation.reset()
-  }
-
-  formDisabledCallback(disabled: boolean) {
-    this._formAssociation.setDisabled(disabled)
-  }
-
-  formStateRestoreCallback(state: string | File | FormData | null) {
-    this._formAssociation.restore(state)
-  }
-
   override updated() {
     this._syncValidity()
     this.toggleAttribute('focused', this._focused)
@@ -138,16 +130,12 @@ export class WebUiInputNumber extends LitElement {
     const input = this.shadowRoot?.querySelector('input')
     const internals = this._formAssociation.getInternals()
     if (!internals || !input || typeof internals.setValidity !== 'function') return
-    if (this._isDisabled || input.validity.valid) {
-      internals.setValidity({})
-      return
-    }
-    const flags: ValidityStateFlags = {}
-    if (input.validity.valueMissing) flags.valueMissing = true
-    if (input.validity.rangeUnderflow) flags.rangeUnderflow = true
-    if (input.validity.rangeOverflow) flags.rangeOverflow = true
-    if (input.validity.stepMismatch) flags.stepMismatch = true
-    internals.setValidity(flags, input.validationMessage, input)
+    forwardInputValidity(
+      internals,
+      input,
+      ['valueMissing', 'rangeUnderflow', 'rangeOverflow', 'stepMismatch'],
+      this._isDisabled
+    )
   }
 
   private clamp(v: number): number {

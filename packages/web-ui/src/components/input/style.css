@@ -5,7 +5,7 @@
 }
 
 :host {
-  --wui-input-clear-color: var(--wui-color-text-tertiary, rgb(27 27 27 / 0.35));
+  --wui-input-clear-color: var(--wui-color-text-tertiary, color-mix(in srgb, var(--wui-color-text) 35%, transparent));
   display: inline-block;
 }
 
@@ -27,11 +27,7 @@
   min-width: var(--wui-control-size, 36px);
   height: var(--wui-control-size, 36px);
   padding: 0 12px;
-  border-radius: calc(infinity * 1px);
-
-  transition:
-    border-color var(--wui-duration-focus, 200ms),
-    box-shadow var(--wui-duration-focus, 200ms);
+  border-radius: var(--wui-radius-control, calc(infinity * 1px));
 }
 
 :host([full]) {
@@ -61,16 +57,27 @@
   content: none;
 }
 
-:host([focused]) .wui-input-inner {
-  --wui-internal-glass-focus-ring:
-    inset 0 0 0 1px var(--wui-color-accent, #08f),
-    0 0 0 var(--wui-focus-ring-width, 3px) var(--wui-color-focus-ring, rgb(0 136 255 / 0.4));
+/* Focus ring 独立成 ::after 层：base/focused 都是显式 box-shadow，保证所有变体都能过渡 */
+.wui-input-inner::after {
+  pointer-events: none;
+  content: '';
+
+  position: absolute;
+  inset: 0;
+
+  border-radius: inherit;
+
+  box-shadow:
+    inset 0 0 0 1px transparent,
+    0 0 0 var(--wui-focus-ring-width, 3px) transparent;
+
+  transition: box-shadow var(--wui-duration-focus, 200ms);
 }
 
-/* borderless 基线的 box-shadow: none 压掉了 .wui-glass 的整列阴影，
-   聚焦时改为直接消费 focus ring 变量，与 normal 变体同款并走既有 box-shadow 过渡 */
-:host([borderless][focused]) .wui-input-inner {
-  box-shadow: var(--wui-internal-glass-focus-ring, 0 0 0 0 transparent);
+:host([focused]) .wui-input-inner::after {
+  box-shadow:
+    inset 0 0 0 1px var(--wui-color-accent, #08f),
+    0 0 0 var(--wui-focus-ring-width, 3px) var(--wui-color-focus-ring, rgb(0 136 255 / 0.4));
 }
 
 /* ===== Input ===== */
