@@ -1,5 +1,26 @@
 # @greypan/browser-kit
 
+## 3.0.0
+
+### Major Changes
+
+- d0a9f32: Clean up duplicated and transport-specific public utilities.
+  
+  - Rename `maxBeaconSize` to `maxBatchKB`.
+  - Remove `sleep`, `sleepSync` and `defer`.
+  - Move `getFileExtension` and `formatFileSize` to `@greypan/js-kit`.
+
+### Minor Changes
+
+- d0a9f32: Expose narrow tracker capability interfaces (`TrackCapability`, `FlushCapability` and `PauseCapability`) so plugins depend only on the tracker methods they use.
+- d0a9f32: Add a `definePageErrors()` plugin to the Tracker that collects uncaught errors and unhandled promise rejections through the existing transport pipeline. Includes error-count limits, a signature dedupe window, and message/stack truncation protection by default.
+
+### Patch Changes
+
+- Updated dependencies [d0a9f32]
+- Updated dependencies [d0a9f32]
+  - @greypan/js-kit@3.0.0
+
 ## 2.2.0
 
 ### Minor Changes
