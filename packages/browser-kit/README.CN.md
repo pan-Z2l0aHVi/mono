@@ -53,7 +53,7 @@ const unwatch = storage.watch('user', (newVal, oldVal) => {
 
 ## 插件
 
-埋点插件组合在一个核心 Tracker 上：`defineTracker(options)`（核心传输，优先 `sendBeacon()` 并降级 `fetch(keepalive)`，带持久化待传输 outbox）、`defineBatchTrack(options?)`（延迟批量聚合与递归分片）、`defineOfflineRestore()`（离线暂停，`online` 后恢复）、`definePageErrors(options?)`（收集 uncaught error 与 unhandled promise rejection 作为埋点事件）、`defineLastWords()`（页面离开或隐藏时 best-effort `flush()`）。
+埋点插件组合在一个核心 Tracker 上：`defineTracker(options)`（核心传输，优先 `sendBeacon()` 并降级 `fetch(keepalive)`，带持久化待传输 outbox）、`defineBatchTrack(options?)`（延迟批量聚合并按 `maxBatchKB` 递归分片）、`defineOfflineRestore()`（离线暂停，`online` 后恢复）、`definePageErrors(options?)`（收集 uncaught error 与 unhandled promise rejection 作为埋点事件）、`defineLastWords()`（页面离开或隐藏时 best-effort `flush()`）。
 
 **推荐组合顺序：**
 

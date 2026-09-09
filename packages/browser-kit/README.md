@@ -53,7 +53,7 @@ const unwatch = storage.watch('user', (newVal, oldVal) => {
 
 ## Plugins
 
-Tracking plugins compose on a core Tracker: `defineTracker(options)` (core transport with a `sendBeacon()` → `fetch(keepalive)` fallback and a persisted pending-transport outbox), `defineBatchTrack(options?)` (delayed batch aggregation with recursive splitting), `defineOfflineRestore()` (pause while offline, resume on `online`), `definePageErrors(options?)` (collect uncaught errors and unhandled promise rejections as tracker events), and `defineLastWords()` (best-effort `flush()` when the page leaves or hides).
+Tracking plugins compose on a core Tracker: `defineTracker(options)` (core transport with a `sendBeacon()` → `fetch(keepalive)` fallback and a persisted pending-transport outbox), `defineBatchTrack(options?)` (delayed batch aggregation with recursive splitting at `maxBatchKB`), `defineOfflineRestore()` (pause while offline, resume on `online`), `definePageErrors(options?)` (collect uncaught errors and unhandled promise rejections as tracker events), and `defineLastWords()` (best-effort `flush()` when the page leaves or hides).
 
 **Recommended composition:**
 

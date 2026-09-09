@@ -134,6 +134,7 @@ interweave（含 interweave-frontend）──共享包的 Wails 桌面集成表�
 | [0046](docs/adr/0046-web-ui-overlay-positioning-engine.md)              | Web UI 浮层定位引擎策略                                                                                            | 修改浮层定位路径、defineOverlay 能力面或浮层私有定位准入          |
 | [0047](docs/adr/0047-browser-kit-page-errors.md)                        | Browser Kit 页面错误收集                                                                                           | 修改 tracker 页面错误收集、事件契约或保护策略                     |
 | [0048](docs/adr/0048-web-ui-semantic-radius-tokens.md)                  | Web UI 语义 Radius Token 体系                                                                                      | 修改组件圆角、radius token 映射或 glass corner 联动               |
+| [0049](docs/adr/0049-interweave-source-dto-typed-metadata.md)           | Interweave Source DTO 元数据类型化（修订 0032 §6 DTO 冻结）                                                        | 修改 interweave Source DTO 元数据或 Wails DTO 演进方式            |
 
 ## Interweave 产品与领域词汇
 

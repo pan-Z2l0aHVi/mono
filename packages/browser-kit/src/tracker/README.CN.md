@@ -11,7 +11,7 @@ Tracker 是一个基于插件架构的可组合埋点系统。它维护一个待
 - **待传输 outbox**：默认持久化到 localStorage，并会在下次创建 Tracker 时恢复。
 - **有序常规 drain**：普通 `track()` 按入队顺序逐条发送。
 - **批量聚合**：收集事件，并在可配置的延迟后以数组形式发送。
-- **Beacon 分片**：超过配置的 `maxBeaconSize` 时递归分片，默认阈值为 64 KB。
+- **Beacon 分片**：超过配置的 `maxBatchKB` 时递归分片，默认阈值为 64 KB。
 - **离线恢复**：离线时暂停，浏览器重新联网后继续处理保留的事件。
 - **临终遗言**：页面离开或隐藏时 best-effort 刷新待发数据。
 - **自动降级**：必要时从 `sendBeacon()` 降级到带 `keepalive: true` 的 `fetch()`。
@@ -63,9 +63,9 @@ tracker.track({ event: 'page_view', path: '/' })
 | 配置                | 类型     | 默认值 | 说明                                    |
 | ------------------- | -------- | ------ | --------------------------------------- |
 | `defaultBatchDelay` | `number` | `500`  | 默认批量延迟，单位为毫秒                |
-| `maxBeaconSize`     | `number` | `64`   | 触发递归分片前的最大批次大小，单位为 KB |
+| `maxBatchKB`        | `number` | `64`   | 触发递归分片前的最大批次大小，单位为 KB |
 
-组合后的 `track(data, batchDelay?)` 支持逐次指定延迟。传入 `0` 或负数可跳过该事件的批量聚合。批次大于 `maxBeaconSize` 时会递归分片；单条超大事件仍会作为一个条目发送，以保持其数据结构。
+组合后的 `track(data, batchDelay?)` 支持逐次指定延迟。传入 `0` 或负数可跳过该事件的批量聚合。批次大于 `maxBatchKB` 时会递归分片；单条超大事件仍会作为一个条目发送，以保持其数据结构。
 
 ```ts
 import { defineBatchTrack, defineTracker } from '@greypan/browser-kit'

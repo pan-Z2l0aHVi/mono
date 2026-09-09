@@ -21,10 +21,6 @@
       "types": "./dist/*/index.d.ts",
       "import": "./dist/*/index.js"
     },
-    "./go": {
-      "types": "./dist/paradigm/go.d.ts",
-      "import": "./dist/paradigm/go.js"
-    },
     "./rust": {
       "types": "./dist/paradigm/rust.d.ts",
       "import": "./dist/paradigm/rust.js"
@@ -41,8 +37,7 @@
     "dev": "vp build --watch"
   },
   "dependencies": {
-    "remeda": "catalog:",
-    "nanoid": "catalog:"
+    "remeda": "catalog:"
   },
   "devDependencies": {
     "@greypan/tsconfig": "workspace:*",

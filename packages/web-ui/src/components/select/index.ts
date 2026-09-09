@@ -7,7 +7,14 @@ import glass from '@/assets/glass.css?inline'
 import overlayMotion from '@/assets/overlay-motion.css?inline'
 import type { WebUiOption } from '@/components/option'
 import { lucideChevronDown } from '@/icons'
-import { defineFormAssociation, FormAssociationController } from '@/shared/form-association'
+import { FormAssociated, defineFormAssociation, FormAssociationController } from '@/shared/form-association'
+import { dispatchOpenChangeEvent } from '@/shared/open-state'
+import {
+  createComboboxOpenController,
+  createOptionListenerBinding,
+  handleComboboxFocusOut,
+  nextWrappingIndex
+} from '@/shared/option-portal'
 import { defineOptionPortal } from '@/shared/option-portal'
 import { defineAnchoredPanel } from '@/shared/overlay/anchored-panel'
 import { applyOverlayVariables, defineOverlayPortal } from '@/shared/overlay/portal'
@@ -17,10 +24,8 @@ import { defineScrollLockLease } from '@/shared/scroll-lock/scroll-lock'
 import style from './style.css?inline'
 
 @customElement('web-ui-select')
-export class WebUiSelect extends LitElement {
+export class WebUiSelect extends FormAssociated(LitElement) {
   static override styles = [unsafeCSS(glass), unsafeCSS(overlayMotion), unsafeCSS(style)]
-
-  static formAssociated = true
 
   @property({ type: String, reflect: true }) placeholder = ''
   @property({ type: Boolean, reflect: true }) disabled = false
@@ -138,11 +143,12 @@ export class WebUiSelect extends LitElement {
   }
 
   private _onFocusOut = () => {
-    requestAnimationFrame(() => {
-      if (this._isOpen && !this.matches(':focus-within') && !this._panel.getPanel()?.matches(':focus-within')) {
-        this._close()
-      }
-    })
+    handleComboboxFocusOut(
+      this,
+      () => this._panel.getPanel(),
+      () => this._isOpen,
+      () => this._close()
+    )
   }
 
   override connectedCallback() {
@@ -187,18 +193,6 @@ export class WebUiSelect extends LitElement {
     this._syncValidity()
   }
 
-  formResetCallback() {
-    this._formAssociation.reset()
-  }
-
-  formDisabledCallback(disabled: boolean) {
-    this._formAssociation.setDisabled(disabled)
-  }
-
-  formStateRestoreCallback(state: string | File | FormData | null) {
-    this._formAssociation.restore(state)
-  }
-
   private _syncValidity() {
     const internals = this._formAssociation.getInternals()
     if (!internals || typeof internals.setValidity !== 'function') return
@@ -230,19 +224,15 @@ export class WebUiSelect extends LitElement {
     this._selectedLabel = option?.label || this.placeholder
   }
 
-  private _bindOption = (option: WebUiOption) => {
-    option.addEventListener('click', this._handleOptionClick)
-    option.addEventListener('pointerover', this._handleOptionPointerOver)
-    option.addEventListener('pointerdown', this._handleOptionPointerDown)
-    option.addEventListener('option-update', this._onOptionUpdate)
-  }
-
-  private _unbindOption = (option: WebUiOption) => {
-    option.removeEventListener('click', this._handleOptionClick)
-    option.removeEventListener('pointerover', this._handleOptionPointerOver)
-    option.removeEventListener('pointerdown', this._handleOptionPointerDown)
-    option.removeEventListener('option-update', this._onOptionUpdate)
-  }
+  private readonly _optionListeners = createOptionListenerBinding({
+    // 惰性解引用：handler 字段声明在后者仍可在调用期取到
+    onClick: event => this._handleOptionClick(event),
+    onPointerOver: event => this._handleOptionPointerOver(event),
+    onPointerDown: event => this._handleOptionPointerDown(event),
+    onUpdate: () => this._onOptionUpdate()
+  })
+  private _bindOption = (option: WebUiOption) => this._optionListeners.bind(option)
+  private _unbindOption = (option: WebUiOption) => this._optionListeners.unbind(option)
 
   private _refreshOptions() {
     const activeOption = this._options[this._activeIndex]
@@ -348,51 +338,46 @@ export class WebUiSelect extends LitElement {
           : delta > 0
             ? -1
             : 0
-    let nextIdx = currentIdx + delta
-    if (nextIdx < 0) nextIdx = enabled.length - 1
-    if (nextIdx >= enabled.length) nextIdx = 0
-
-    const nextOption = enabled[nextIdx]
+    const nextOption = enabled[nextWrappingIndex(enabled.length, currentIdx, delta)]
     this._activeIndex = this._options.indexOf(nextOption)
 
     this._syncActiveOption()
   }
 
-  private _open(isKeyboardNavigation = false) {
-    if (this._isDisabled || this._isOpen) return
-    this._isOpen = true
-    this._dispatchOpenChange()
-    this._syncSelected()
-    if (isKeyboardNavigation) this._setInitialActiveOption()
-    else this._syncActiveOption()
-    this._syncScrollLock()
-    if (this.portal) {
-      requestAnimationFrame(() => {
-        if (this._isOpen) this._openOverlay(isKeyboardNavigation)
-      })
-    } else {
-      this._openOverlay(isKeyboardNavigation)
+  // 开合生命周期不变量（guard / 派发顺序 / scroll-lock 配对 / portal rAF dance）
+  // 收敛在 shared combobox-shell；select 只注入差异点
+  private readonly _openController = createComboboxOpenController({
+    canOpen: () => !this._isDisabled,
+    getIsOpen: () => this._isOpen,
+    setIsOpen: open => {
+      this._isOpen = open
+    },
+    dispatchOpenChange: () => this._dispatchOpenChange(),
+    syncScrollLock: open => this._syncScrollLock(open),
+    isPortal: () => this.portal,
+    openOverlay: isKeyboardNavigation => this._openOverlay(isKeyboardNavigation),
+    closeOverlay: () => void this._closeOverlay(),
+    onOpen: isKeyboardNavigation => {
+      this._syncSelected()
+      if (isKeyboardNavigation) this._setInitialActiveOption()
+      else this._syncActiveOption()
+    },
+    onAfterClose: () => {
+      this._activeIndex = -1
+      this._options.forEach(o => o.removeAttribute('active'))
     }
+  })
+
+  private _open(isKeyboardNavigation = false) {
+    this._openController.open(isKeyboardNavigation)
   }
 
   private _close() {
-    if (!this._isOpen) return
-    this._isOpen = false
-    this._dispatchOpenChange()
-    this._activeIndex = -1
-    this._options.forEach(o => o.removeAttribute('active'))
-    this._syncScrollLock(false)
-    void this._closeOverlay()
+    this._openController.close()
   }
 
   private _dispatchOpenChange() {
-    this.dispatchEvent(
-      new CustomEvent('open-change', {
-        detail: { open: this._isOpen },
-        bubbles: true,
-        composed: true
-      })
-    )
+    dispatchOpenChangeEvent(this, this._isOpen)
   }
 
   private _setInitialActiveOption() {
