@@ -1,3 +1,5 @@
+engineStrict: true
+
 packages:
   - 'apps/**'
   - 'packages/**'
@@ -98,3 +100,6 @@ peerDependencyRules:
     - vite
   allowedVersions:
     vite: '*'
+allowBuilds:
+  core-js: false
+  msw: false
