@@ -1,5 +1,13 @@
 # @greypan/unplugin-web-components
 
+## 1.4.3
+
+### Patch Changes
+
+- Updated dependencies [d0a9f32]
+- Updated dependencies [d0a9f32]
+  - @greypan/js-kit@3.0.0
+
 ## 1.4.2
 
 ### Patch Changes

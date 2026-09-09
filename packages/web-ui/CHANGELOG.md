@@ -1,5 +1,45 @@
 # @greypan/web-ui
 
+## 6.1.0
+
+### Minor Changes
+
+- d0a9f32: Expand drawer draggable drag zone and bar, and expose their sizes as public tokens.
+  
+  - Drag hit zone grows from 24px to 32px; the drag bar capsule grows from 4×48px to 4×56px and is centered 10px from the drawer's inner edge, for all four placements (`right` / `left` / `top` / `bottom`).
+  - New public tokens: `--wui-drawer-drag-zone-size` (default `32px`), `--wui-drawer-drag-bar-thickness` (default `4px`), `--wui-drawer-drag-bar-length` (default `56px`). The hit zone and visual bar position are independent so a wider zone does not move the capsule into drawer content.
+  - Drawer inset, close threshold, controlled write-back and reduced-motion behavior are unchanged.
+- d0a9f32: Align observable token fallbacks with the theme definitions.
+  
+  These fallbacks are observable when host theme variables are absent, so the value changes ship separately from the internal consolidation patch:
+  
+  - Dialog backdrop: `rgb(0 0 0 / 0.1)` → `rgb(0 0 0 / 0.12)`
+  - Dialog surface overlay: `rgb(246 246 246 / 0.88)` → `rgb(246 246 246 / 0.82)`
+  - Text tertiary (input/textarea clear color): `rgb(27 27 27 / 0.35)` → `color-mix(in srgb, var(--wui-color-text) 35%, transparent)`
+  - Glass border: `rgb(51 51 51 / 0.12)` → `transparent`
+  - Glass shade: `rgb(0 0 0 / 0.2)` → `rgb(0 0 0 / 0.06)`
+- d0a9f32: Remove the invalid `./icons/*` subpath export.
+  
+  The `./icons/*` targets never existed in `dist/`, so there was no resolvable import path and no working consumer could depend on it. It still ships as minor because contract-diff classifies any export removal as a breaking candidate, and the semver decision for a removal must be carried by this file rather than by the internal-consolidation patch changeset.
+- d0a9f32: Add semantic radius tokens `--wui-radius-control` (pill), `--wui-radius-menu` (18px) and `--wui-radius-overlay` (28px) to `<web-ui-theme>`; migrate control/menu/overlay components to them. `--wui-drawer-radius` and `--wui-layout-sidebar-radius` now default to `--wui-radius-overlay` (sidebar default 24px → 28px; dialog 32px → 28px; menu panels, textarea and toast 20px → 18px). Non-pill glass surfaces drive `--wui-glass-corner-radius` from their semantic radius so border lighting follows token overrides; pill controls keep a finite physical-size-derived corner. Checkbox, avatar square and empty icon shapes stay component-internal (6/12/16px).
+
+### Patch Changes
+
+- d0a9f32: Fix focus ring transitions for input, textarea, autocomplete and input-number. The ring now animates consistently in normal and borderless variants on a dedicated pseudo-element layer.
+- d0a9f32: Consolidate shared component architecture and align semantic defaults.
+  
+  - Extract menu behavior, combobox lifecycle, open-change dispatch and form-association helpers.
+  - Clean up portal nodes when hosts are removed and centralize floating placements.
+  
+  Observable token fallback alignment and the invalid `./icons/*` export removal are tracked in separate minor changesets.
+- Updated dependencies [d0a9f32]
+- Updated dependencies [d0a9f32]
+- Updated dependencies [d0a9f32]
+- Updated dependencies [d0a9f32]
+- Updated dependencies [d0a9f32]
+  - @greypan/browser-kit@3.0.0
+  - @greypan/js-kit@3.0.0
+
 ## 6.0.0
 
 ### Major Changes
