@@ -1,6 +1,6 @@
 {
   "name": "@greypan/unplugin-web-components",
-  "version": "1.4.2",
+  "version": "1.4.3",
   "description": "Unplugin for web components auto-import",
   "license": "MIT",
   "repository": {

@@ -1,5 +1,19 @@
 # @greypan/js-kit
 
+## 3.0.0
+
+### Major Changes
+
+- d0a9f32: Remove dead public surface and collapse the asynchronous call helper.
+  
+  - Remove `asyncCompose`, the event-emitter plugin, the Go paradigm helper, the random utilities and the `nanoid` dependency.
+  - Change `safeCall(fn, options?)` from spreading arguments to calling a thunk and add an optional `onError` escape hatch so failures are no longer silently swallowed.
+  - Remove the dedicated `./go` subpath export.
+
+### Minor Changes
+
+- d0a9f32: Add string and number utilities for extension detection and human-readable file sizes, and expose an `onError` option for `safeCall`.
+
 ## 2.0.0
 
 ### Major Changes
