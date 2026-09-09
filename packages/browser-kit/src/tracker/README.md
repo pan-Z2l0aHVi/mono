@@ -11,7 +11,7 @@ Tracker is a composable tracking system built on the plugin architecture. It mai
 - **Pending transport outbox**: Persists pending entries in localStorage by default and restores them when a Tracker is created again.
 - **Ordered normal drain**: Regular `track()` calls send entries in enqueue order, one request at a time.
 - **Batch aggregation**: Collects events and sends arrays after a configurable delay.
-- **Beacon splitting**: Recursively splits oversized batches around the configured `maxBeaconSize` (64 KB by default).
+- **Beacon splitting**: Recursively splits oversized batches around the configured `maxBatchKB` (64 KB by default).
 - **Page errors**: Collects uncaught errors and unhandled promise rejections through the normal Tracker transport.
 - **Offline restore**: Pauses while offline and resumes retained work after the browser comes back online.
 - **Last-words flush**: Makes a best-effort flush when the page is leaving or hidden.
@@ -64,9 +64,9 @@ Collects events and sends arrays after a delay.
 | Option              | Type     | Default | Description                                         |
 | ------------------- | -------- | ------- | --------------------------------------------------- |
 | `defaultBatchDelay` | `number` | `500`   | Default batch delay in milliseconds                 |
-| `maxBeaconSize`     | `number` | `64`    | Maximum batch size in KB before recursive splitting |
+| `maxBatchKB`        | `number` | `64`    | Maximum batch size in KB before recursive splitting |
 
-The composed `track(data, batchDelay?)` accepts an optional per-call delay. Pass `0` or a negative value to bypass batching for that event. Batches larger than `maxBeaconSize` are split recursively; a single oversized event remains one item so its schema is preserved.
+The composed `track(data, batchDelay?)` accepts an optional per-call delay. Pass `0` or a negative value to bypass batching for that event. Batches larger than `maxBatchKB` are split recursively; a single oversized event remains one item so its schema is preserved.
 
 ```ts
 import { defineBatchTrack, defineTracker } from '@greypan/browser-kit'

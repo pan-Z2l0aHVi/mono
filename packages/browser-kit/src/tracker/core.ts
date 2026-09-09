@@ -6,6 +6,11 @@ import { beaconTransport } from './transport'
 
 interface Options {
   url: string
+  /**
+   * 载荷变换。注意它会在一次上报生命周期里被应用多次：批量分片估算体积
+   * （computeDataSize）与实际传输（onConsume）各一次，因此必须可重复
+   * 应用（幂等）且不依赖调用时序。
+   */
   transform?: (data: object) => object
   /**
    * 单条传输函数，接收 transform 后的载荷；默认使用 beaconTransport

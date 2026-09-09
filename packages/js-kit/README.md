@@ -9,11 +9,9 @@ English | [简体中文](./README.CN.md)
 - **Plugin system**: Composable plugins with `definePlugin`, chainable `.use()` and `.make()`
 - **URL**: Parse and stringify URLs with query params and hash
 - **Number**: Precision rounding and range clamping
-- **Random**: Integers, floats, RGB and hex color generation
 - **Timer**: Debounce with leading/trailing/both timing, controllable interval with pause/resume
-- **Fetch**: Async middleware composition with `asyncCompose`
 - **Shortcut**: Fire-and-forget `safeCall` wrapper
-- **Paradigms**: Go-style and Rust-style `Result` type utilities
+- **Paradigm**: Rust-style `Result` type utilities
 
 ## Install
 
@@ -63,23 +61,6 @@ const ctx = defineConfig().make()
 console.log(ctx.apiUrl) // 'https://api.example.com'
 ```
 
-### `defineEventEmitter<E>(options?)`
-
-Type-safe event emitter plugin with `on`, `off`, `emit` methods.
-
-```ts
-import { defineEventEmitter } from '@greypan/js-kit'
-
-const emitter = defineEventEmitter<{
-  data: [payload: { id: number }]
-  error: [err: Error]
-}>()
-
-const ctx = emitter.make()
-ctx.on('data', payload => console.log(payload.id))
-ctx.emit('data', { id: 1 })
-```
-
 ### `defineBatchEmitter<S>(options?)`
 
 Batched event emitter. Collects events and flushes them as a batch after a delay.
@@ -92,8 +73,8 @@ const batch = defineBatchEmitter<{ id: number }>({
 })
 
 const ctx = batch.make()
-ctx.emit({ id: 1 })
-ctx.emit({ id: 2 })
+await ctx.batchEmit({ id: 1 })
+await ctx.batchEmit({ id: 2 })
 ```
 
 ### `defineQueue<T>(options)`
@@ -163,31 +144,22 @@ Clamp a number to a range. Automatically swaps min/max if inverted.
 | `min`     | `number` | -       | Minimum value  |
 | `max`     | `number` | -       | Maximum value  |
 
-### `random(min, max)`
+### `getFileExtension(filename)`
 
-Generate a random integer in `[min, max]`.
+Extract file extension from filename. Throws when the input is empty or has no extension.
 
-| Parameter | Type     | Default | Description   |
-| --------- | -------- | ------- | ------------- |
-| `min`     | `number` | -       | Minimum value |
-| `max`     | `number` | -       | Maximum value |
+| Parameter  | Type     | Default | Description     |
+| ---------- | -------- | ------- | --------------- |
+| `filename` | `string` | -       | Filename string |
 
-### `randomFloat(min, max)`
+### `formatFileSize(bytes, decimals?)`
 
-Generate a random float in `[min, max)`.
+Format byte count to a human-readable string, e.g. `'1.23 KB'`.
 
-| Parameter | Type     | Default | Description   |
-| --------- | -------- | ------- | ------------- |
-| `min`     | `number` | -       | Minimum value |
-| `max`     | `number` | -       | Maximum value |
-
-### `randomRgb()`
-
-Generate a random RGB color string, e.g. `rgb(255, 0, 0)`.
-
-### `randomHex()`
-
-Generate a random hex color string, e.g. `#ff0000`.
+| Parameter  | Type     | Default | Description    |
+| ---------- | -------- | ------- | -------------- |
+| `bytes`    | `number` | -       | Byte count     |
+| `decimals` | `number` | `2`     | Decimal places |
 
 ### `defineControllableInterval(options)`
 
@@ -206,26 +178,18 @@ Debounce a function with configurable timing mode.
 | `func`    | `Function`                                                                           | -       | Function to debounce |
 | `options` | `{ timing?: 'trailing' \| 'leading' \| 'both'; waitMs: number; maxWaitMs?: number }` | -       | Debounce options     |
 
-### `safeCall(fn, ...args)`
+### `safeCall(fn, options?)`
 
-Fire-and-forget wrapper. Catches sync exceptions and async rejections silently.
+Fire-and-forget wrapper. Catches sync exceptions and async rejections; silently by default, or forwards them to `options.onError` when provided. `onError` failures are swallowed too — the call stays fire-and-forget.
 
-| Parameter | Type                   | Default | Description       |
-| --------- | ---------------------- | ------- | ----------------- |
-| `fn`      | `(...args) => unknown` | -       | Function to call  |
-| `...args` | `Parameters<T>`        | -       | Arguments to pass |
+| Parameter | Type                                 | Default | Description           |
+| --------- | ------------------------------------ | ------- | --------------------- |
+| `fn`      | `() => unknown`                      | -       | Thunk to call         |
+| `options` | `{ onError?: (e: unknown) => void }` | -       | Optional error outlet |
 
-### `asyncCompose(...fns)`
+### `rust`
 
-Compose async middleware functions into a single pipeline.
-
-| Parameter | Type           | Default | Description                     |
-| --------- | -------------- | ------- | ------------------------------- |
-| `...fns`  | `Middleware[]` | -       | Middleware functions to compose |
-
-### `go` / `rust`
-
-Result type namespaces for Go-style and Rust-style error handling.
+Result type namespace for Rust-style error handling.
 
 | Method           | Description                    |
 | ---------------- | ------------------------------ |
@@ -236,10 +200,9 @@ Result type namespaces for Go-style and Rust-style error handling.
 | `to(fn)`         | Wrap function to return Result |
 | `unwrap(result)` | Extract value or throw error   |
 
-**Import paths:**
+**Import path:**
 
 ```ts
-import { go } from '@greypan/js-kit/go'
 import { rust } from '@greypan/js-kit/rust'
 ```
 

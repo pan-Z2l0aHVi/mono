@@ -13,7 +13,7 @@ English | [简体中文](./README.CN.md)
 - **DOM**: Viewport size and scroll position helpers
 - **File**: Download, base64 conversion, image info, file type validation
 - **Copy**: Cross-browser clipboard API with Blob support
-- **Shortcut**: Event helpers (`on`/`off`), async helpers (`sleep`/`sleepSync`/`defer`)
+- **Shortcut**: Event helpers (`on`/`off`)
 
 ## Install
 
@@ -75,12 +75,12 @@ The core context provides `track(data)`, `pause()`, `resume()`, and `flush()`. `
 
 ### `defineBatchTrack(options?)`
 
-Batch aggregation plugin. It collects events and sends arrays after a delay. Batches larger than `maxBeaconSize` are split recursively; a single oversized event is still sent as one item.
+Batch aggregation plugin. It collects events and sends arrays after a delay. Batches larger than `maxBatchKB` are split recursively; a single oversized event is still sent as one item. The absolute limit follows the transport (sendBeacon / fetch keepalive cap at 64 KB)
 
 | Option              | Type     | Default | Description                                            |
 | ------------------- | -------- | ------- | ------------------------------------------------------ |
 | `defaultBatchDelay` | `number` | `500`   | Default delay before flushing a batch, in milliseconds |
-| `maxBeaconSize`     | `number` | `64`    | Maximum batch size, in KB, before recursive splitting  |
+| `maxBatchKB`        | `number` | `64`    | Maximum batch size, in KB, before recursive splitting  |
 
 The composed `track(data, batchDelay?)` accepts a per-call delay. Pass `0` or a negative value to bypass batching for that event.
 
@@ -151,23 +151,6 @@ Get current viewport dimensions.
 ### `getRootScrollTop()` / `getRootScrollLeft()`
 
 Get document scroll position.
-
-### `getFileExtension(filename)`
-
-Extract file extension from filename.
-
-| Parameter  | Type     | Default | Description     |
-| ---------- | -------- | ------- | --------------- |
-| `filename` | `string` | -       | Filename string |
-
-### `formatFileSize(bytes, decimals?)`
-
-Format byte count to human-readable string.
-
-| Parameter  | Type     | Default | Description    |
-| ---------- | -------- | ------- | -------------- |
-| `bytes`    | `number` | -       | Byte count     |
-| `decimals` | `number` | `2`     | Decimal places |
 
 ### `downloadFile(arg, filename?, onProgress?)`
 
@@ -243,22 +226,6 @@ Add event listener with automatic cleanup on disconnect.
 ### `off(element, event, handler, options?)`
 
 Remove event listener.
-
-### `sleep(ms)` / `sleepSync(ms)`
-
-Async/sync delay helpers.
-
-| Parameter | Type     | Default | Description           |
-| --------- | -------- | ------- | --------------------- |
-| `ms`      | `number` | -       | Delay in milliseconds |
-
-### `defer(fn)`
-
-Execute a function on the next microtask.
-
-| Parameter | Type         | Default | Description       |
-| --------- | ------------ | ------- | ----------------- |
-| `fn`      | `() => void` | -       | Function to defer |
 
 ### `defineHistoryNav(options?)`
 

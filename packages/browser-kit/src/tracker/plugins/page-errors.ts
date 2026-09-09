@@ -5,11 +5,11 @@
  * 或框架回调错误，也不建立独立传输通道。
  */
 
-import { definePlugin, safeCall, type PluginMade } from '@greypan/js-kit'
+import { definePlugin, safeCall } from '@greypan/js-kit'
 
 import { on } from '@/shortcut'
 
-import type { defineTracker } from '../core'
+import type { TrackCapability } from '../capabilities'
 
 export type PageErrorCategory = 'uncaught' | 'unhandled_rejection'
 
@@ -84,7 +84,7 @@ function resolveMetadata(options: PageErrorsOptions): object | undefined {
 }
 
 export function definePageErrors(options: PageErrorsOptions = {}) {
-  return definePlugin((ctx: PluginMade<typeof defineTracker>) => {
+  return definePlugin((ctx: TrackCapability) => {
     const stopNoop = () => {}
 
     // SSR / 非浏览器环境没有全局错误事件；保持 stop() 契约一致，便于调用方无条件释放。

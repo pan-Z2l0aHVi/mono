@@ -80,7 +80,7 @@ Interweave 由 Wails 宿主管理嵌套前端，因此其 alias 只启动 Wails 
 
 | 包                        | 外部化                                                                   | 打包的第三方依赖 |
 | ------------------------- | ------------------------------------------------------------------------ | ---------------- |
-| `js-kit`                  | `@greypan/*`、`remeda`、`nanoid`                                         | 无               |
+| `js-kit`                  | `@greypan/*`、`remeda`                                                   | 无               |
 | `browser-kit`             | `@greypan/*`、`nanoid`、`remeda`、`copy-to-clipboard`、`msw`             | 无               |
 | `test-kit`                | 通过 tsdown 自动处理：`@greypan/js-kit`、`msw`、`vite-plus`              | 无               |
 | `web-ui`                  | `@greypan/*` 加框架正则匹配 `lit`、`@lit`、`react`、`react-dom` 和 `vue` | 无               |

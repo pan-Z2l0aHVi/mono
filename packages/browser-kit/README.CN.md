@@ -13,7 +13,7 @@
 - **DOM**：视口尺寸和滚动位置工具
 - **File**：文件下载、base64 转换、图片信息、文件类型校验
 - **Copy**：跨浏览器剪贴板 API，支持 Blob
-- **Shortcut**：事件辅助（`on`/`off`）、异步辅助（`sleep`/`sleepSync`/`defer`）
+- **Shortcut**：事件辅助（`on`/`off`）
 
 ## 安装
 
@@ -75,12 +75,12 @@ tracker.track({ event: 'page_view', path: '/' })
 
 ### `defineBatchTrack(options?)`
 
-批量聚合插件。它收集事件，并在延迟后以数组形式发送。批次超过 `maxBeaconSize` 时会递归分片；单条超大事件仍会作为一个条目发送。
+批量聚合插件。它收集事件，并在延迟后以数组形式发送。批次超过 `maxBatchKB` 时会递归分片；单条超大事件仍会作为一个条目发送。
 
 | 配置                | 类型     | 默认值 | 说明                                    |
 | ------------------- | -------- | ------ | --------------------------------------- |
 | `defaultBatchDelay` | `number` | `500`  | 默认批量刷新延迟，单位为毫秒            |
-| `maxBeaconSize`     | `number` | `64`   | 触发递归分片前的最大批次大小，单位为 KB |
+| `maxBatchKB`        | `number` | `64`   | 触发递归分片前的最大批次大小，单位为 KB |
 
 组合后的 `track(data, batchDelay?)` 支持逐次指定延迟；传入 `0` 或负数可跳过该事件的批量聚合。
 
@@ -153,23 +153,6 @@ const tracker = defineTracker({ url: '/api/track' })
 ### `getRootScrollTop()` / `getRootScrollLeft()`
 
 获取文档滚动位置。
-
-### `getFileExtension(filename)`
-
-从文件名中提取扩展名。
-
-| 参数       | 类型     | 默认值 | 说明   |
-| ---------- | -------- | ------ | ------ |
-| `filename` | `string` | -      | 文件名 |
-
-### `formatFileSize(bytes, decimals?)`
-
-将字节数格式化为可读字符串。
-
-| 参数       | 类型     | 默认值 | 说明     |
-| ---------- | -------- | ------ | -------- |
-| `bytes`    | `number` | -      | 字节数   |
-| `decimals` | `number` | `2`    | 小数位数 |
 
 ### `downloadFile(arg, filename?, onProgress?)`
 
@@ -245,22 +228,6 @@ const tracker = defineTracker({ url: '/api/track' })
 ### `off(element, event, handler, options?)`
 
 移除事件监听器。
-
-### `sleep(ms)` / `sleepSync(ms)`
-
-异步/同步延迟辅助函数。
-
-| 参数 | 类型     | 默认值 | 说明       |
-| ---- | -------- | ------ | ---------- |
-| `ms` | `number` | -      | 延迟毫秒数 |
-
-### `defer(fn)`
-
-在下一个微任务中执行函数。
-
-| 参数 | 类型         | 默认值 | 说明             |
-| ---- | ------------ | ------ | ---------------- |
-| `fn` | `() => void` | -      | 待延迟执行的函数 |
 
 ### `defineHistoryNav(options?)`
 

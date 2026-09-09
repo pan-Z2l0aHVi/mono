@@ -9,11 +9,9 @@
 - **插件系统**：基于 `definePlugin` 的可组合插件，支持 `.use()` 链式组合和 `.make()` 实例化
 - **URL**：解析和构建 URL，支持查询参数和 hash
 - **Number**：精度舍入和范围限制
-- **Random**：随机整数、浮点数、RGB 和十六进制颜色生成
 - **Timer**：支持 leading/trailing/both 三种模式的防抖，支持暂停/恢复的可控定时器
-- **Fetch**：基于 `asyncCompose` 的异步中间件组合
 - **Shortcut**：fire-and-forget 的 `safeCall` 包装器
-- **Paradigms**：Go 风格和 Rust 风格的 `Result` 类型工具
+- **Paradigm**：Rust 风格的 `Result` 类型工具
 
 ## 安装
 
@@ -63,23 +61,6 @@ const ctx = defineConfig().make()
 console.log(ctx.apiUrl) // 'https://api.example.com'
 ```
 
-### `defineEventEmitter<E>(options?)`
-
-类型安全的事件发射器插件，提供 `on`、`off`、`emit` 方法。
-
-```ts
-import { defineEventEmitter } from '@greypan/js-kit'
-
-const emitter = defineEventEmitter<{
-  data: [payload: { id: number }]
-  error: [err: Error]
-}>()
-
-const ctx = emitter.make()
-ctx.on('data', payload => console.log(payload.id))
-ctx.emit('data', { id: 1 })
-```
-
 ### `defineBatchEmitter<S>(options?)`
 
 批量事件发射器。收集事件并在延迟后批量触发。
@@ -92,8 +73,8 @@ const batch = defineBatchEmitter<{ id: number }>({
 })
 
 const ctx = batch.make()
-ctx.emit({ id: 1 })
-ctx.emit({ id: 2 })
+await ctx.batchEmit({ id: 1 })
+await ctx.batchEmit({ id: 2 })
 ```
 
 ### `defineQueue<T>(options)`
@@ -163,31 +144,22 @@ await queue.flush()
 | `min` | `number` | -      | 最小值     |
 | `max` | `number` | -      | 最大值     |
 
-### `random(min, max)`
+### `getFileExtension(filename)`
 
-生成 `[min, max]` 范围内的随机整数。
+从文件名中提取扩展名。输入为空或没有扩展名时抛错。
 
-| 参数  | 类型     | 默认值 | 说明   |
-| ----- | -------- | ------ | ------ |
-| `min` | `number` | -      | 最小值 |
-| `max` | `number` | -      | 最大值 |
+| 参数       | 类型     | 默认值 | 说明   |
+| ---------- | -------- | ------ | ------ |
+| `filename` | `string` | -      | 文件名 |
 
-### `randomFloat(min, max)`
+### `formatFileSize(bytes, decimals?)`
 
-生成 `[min, max)` 范围内的随机浮点数。
+将字节数格式化为可读字符串，例如 `'1.23 KB'`。
 
-| 参数  | 类型     | 默认值 | 说明   |
-| ----- | -------- | ------ | ------ |
-| `min` | `number` | -      | 最小值 |
-| `max` | `number` | -      | 最大值 |
-
-### `randomRgb()`
-
-生成随机 RGB 颜色字符串，例如 `rgb(255, 0, 0)`。
-
-### `randomHex()`
-
-生成随机十六进制颜色字符串，例如 `#ff0000`。
+| 参数       | 类型     | 默认值 | 说明     |
+| ---------- | -------- | ------ | -------- |
+| `bytes`    | `number` | -      | 字节数   |
+| `decimals` | `number` | `2`    | 小数位数 |
 
 ### `defineControllableInterval(options)`
 
@@ -206,26 +178,18 @@ await queue.flush()
 | `func`    | `Function`                                                                           | -      | 待防抖的函数 |
 | `options` | `{ timing?: 'trailing' \| 'leading' \| 'both'; waitMs: number; maxWaitMs?: number }` | -      | 防抖选项     |
 
-### `safeCall(fn, ...args)`
+### `safeCall(fn, options?)`
 
-fire-and-forget 包装器。静默捕获同步异常和异步 rejection。
+fire-and-forget 包装器。捕获同步异常和异步 rejection；默认静默吞掉，传入 `options.onError` 时转发给它。`onError` 自身的失败同样被吞掉，调用始终保持 fire-and-forget。
 
-| 参数      | 类型                   | 默认值 | 说明         |
-| --------- | ---------------------- | ------ | ------------ |
-| `fn`      | `(...args) => unknown` | -      | 待调用的函数 |
-| `...args` | `Parameters<T>`        | -      | 传递的参数   |
+| 参数      | 类型                                 | 默认值 | 说明           |
+| --------- | ------------------------------------ | ------ | -------------- |
+| `fn`      | `() => unknown`                      | -      | 待调用的 thunk |
+| `options` | `{ onError?: (e: unknown) => void }` | -      | 可选错误出口   |
 
-### `asyncCompose(...fns)`
+### `rust`
 
-将异步中间件函数组合为单一管道。
-
-| 参数     | 类型           | 默认值 | 说明               |
-| -------- | -------------- | ------ | ------------------ |
-| `...fns` | `Middleware[]` | -      | 待组合的中间件函数 |
-
-### `go` / `rust`
-
-Result 类型命名空间，提供 Go 风格和 Rust 风格的错误处理。
+Result 类型命名空间，提供 Rust 风格的错误处理。
 
 | 方法             | 说明                    |
 | ---------------- | ----------------------- |
@@ -239,7 +203,6 @@ Result 类型命名空间，提供 Go 风格和 Rust 风格的错误处理。
 **导入路径：**
 
 ```ts
-import { go } from '@greypan/js-kit/go'
 import { rust } from '@greypan/js-kit/rust'
 ```
 

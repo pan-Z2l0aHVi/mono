@@ -72,24 +72,6 @@ db.query('SELECT 1')
 
 ## Plugins
 
-### `defineEventEmitter<E>(options?)`
-
-Type-safe event emitter with `on`, `off`, `emit` methods.
-
-```ts
-import { defineEventEmitter } from '@greypan/js-kit'
-
-const emitter = defineEventEmitter<{
-  data: [payload: { id: number }]
-  error: [err: Error]
-}>()
-
-const ctx = emitter.make()
-ctx.on('data', payload => console.log(payload.id))
-ctx.emit('data', { id: 1 })
-ctx.off('data', handler)
-```
-
 ### `defineBatchEmitter<S>(options?)`
 
 Batched event emitter. Collects events and flushes them as a batch after a delay.

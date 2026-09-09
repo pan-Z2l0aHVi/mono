@@ -1,5 +1,4 @@
 export * from './core'
 export * from './plugins/ack-queue'
 export * from './plugins/batching-emitter'
-export * from './plugins/event-emitter'
 export * from './plugins/queue'
