@@ -1135,8 +1135,8 @@ Defines foundation, color, layer, shadow, and motion tokens for its subtree. `mo
 | Property               | Default                | Description                                                     |
 | ---------------------- | ---------------------- | --------------------------------------------------------------- |
 | `--wui-radius-control` | `calc(infinity * 1px)` | Pill radius for small controls (button, input, switch, option…) |
-| `--wui-radius-menu`    | `18px`                 | Menu/popover floating panels and multiline textarea             |
-| `--wui-radius-overlay` | `28px`                 | Large overlay surfaces: dialog, drawer, layout sidebar, toast   |
+| `--wui-radius-menu`    | `18px`                 | Menu/popover floating panels, multiline textarea and toast      |
+| `--wui-radius-overlay` | `28px`                 | Large overlay surfaces: dialog, drawer, layout sidebar          |
 
 **Layer tokens:**
 

@@ -15,10 +15,12 @@ import '@/components/select'
 import '@/components/slider'
 import '@/components/switch'
 import '@/components/textarea'
+import '@/components/toast'
 import type { WebUiDialog } from '@/components/dialog'
 import type { WebUiDrawer } from '@/components/drawer'
 import type { WebUiLayout } from '@/components/layout'
 import type { WebUiTheme } from '@/components/theme'
+import type { WebUiToast } from '@/components/toast'
 
 async function nextFrame() {
   await new Promise(resolve => requestAnimationFrame(resolve))
@@ -153,6 +155,21 @@ describe('语义 radius token（浏览器）', () => {
     theme.style.setProperty('--wui-radius-menu', '12px')
     expect(radius(box)).toBe('12px')
     expect(cssVar(box, '--wui-glass-corner-radius')).toBe('12px')
+  })
+
+  it('toast 使用 menu radius，且 glass corner 与之联动', async () => {
+    const theme = createTheme()
+    const toast = document.createElement('web-ui-toast') as WebUiToast
+    theme.append(toast)
+    await toast.updateComplete
+
+    const panel = inner(toast, '.toast')
+    expect(radius(panel)).toBe('18px')
+    expect(cssVar(panel, '--wui-glass-corner-radius')).toBe('18px')
+
+    theme.style.setProperty('--wui-radius-menu', '12px')
+    expect(radius(panel)).toBe('12px')
+    expect(cssVar(panel, '--wui-glass-corner-radius')).toBe('12px')
   })
 
   it('dialog 使用 overlay radius 并驱动 glass corner', async () => {

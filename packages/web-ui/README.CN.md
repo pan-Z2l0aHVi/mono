@@ -1086,8 +1086,8 @@ SVG 线条绘制动画，基于 `stroke-dashoffset`。直接在原元素上动�
 | 属性                   | 默认值                 | 说明                                                 |
 | ---------------------- | ---------------------- | ---------------------------------------------------- |
 | `--wui-radius-control` | `calc(infinity * 1px)` | 小型控件的胶囊圆角（button、input、switch、option…） |
-| `--wui-radius-menu`    | `18px`                 | 菜单/Popover 浮动面板与多行 textarea                 |
-| `--wui-radius-overlay` | `28px`                 | 大型覆盖层：dialog、drawer、layout sidebar、toast    |
+| `--wui-radius-menu`    | `18px`                 | 菜单/Popover 浮动面板、多行 textarea 与 toast        |
+| `--wui-radius-overlay` | `28px`                 | 大型覆盖层：dialog、drawer、layout sidebar           |
 
 **层级 token：**
 
