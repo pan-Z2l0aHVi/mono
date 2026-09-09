@@ -134,9 +134,9 @@ describe('聚合上报测试用例', () => {
     expect(transport).toHaveBeenCalledTimes(2)
   })
 
-  it('未超过 maxBeaconSize 时整批单次发送', async () => {
+  it('未超过 maxBatchKB 时整批单次发送', async () => {
     const tracker = defineTracker({ url: 'https://example.com', transport })
-      .use(defineBatchTrack({ defaultBatchDelay: 200, maxBeaconSize: 64 }))
+      .use(defineBatchTrack({ defaultBatchDelay: 200, maxBatchKB: 64 }))
       .make()
 
     // 3 条小数据总大小远小于 64KB，flush 时 sliceTrack 判断不超限，整批单次发送
@@ -164,12 +164,12 @@ describe('聚合上报测试用例', () => {
     expect(transport).toHaveBeenCalledTimes(1)
   })
 
-  it('自定义 maxBeaconSize 应生效', async () => {
+  it('自定义 maxBatchKB 应生效', async () => {
     const tracker = defineTracker({ url: 'https://example.com', transport })
-      .use(defineBatchTrack({ defaultBatchDelay: 200, maxBeaconSize: 0.001 }))
+      .use(defineBatchTrack({ defaultBatchDelay: 200, maxBatchKB: 0.001 }))
       .make()
 
-    // 每条数据约 20 字节，maxBeaconSize=0.001KB ≈ 1 字节，应触发分片
+    // 每条数据约 20 字节，maxBatchKB=0.001KB ≈ 1 字节，应触发分片
     for (let i = 0; i < 5; i++) {
       tracker.track({ event: `item-${i}` })
     }

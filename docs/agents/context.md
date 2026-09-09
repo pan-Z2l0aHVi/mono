@@ -34,7 +34,7 @@ Role 是显式选择的按需 session context：读取 `.agents/agents/<role>.md
 
 ## 客户端适配
 
-- `AGENTS.md`、`CONTEXT.md`、`docs/agents/`、`.agents/rules/`、`.agents/skills/` 与 `.agents/agents/` 是 Codex、Claude Code、Gemini CLI 与 ZCode 等共用的规范。
+- `AGENTS.md`、`CONTEXT.md`、`docs/agents/`、`.agents/rules/`、`.agents/skills/`、`.agents/agents/` 与 `.agents/references/` 是 Codex、Claude Code、Gemini CLI 与 ZCode 等共用的规范。
 - Codex 通过层级 `AGENTS.md` 获得目录约束；根 `CLAUDE.md` 与 `GEMINI.md` 只说明对应客户端的加载顺序，不复制共享规则。客户端适配不自动选择 Role。
 - ZCode 原生读 workspace `AGENTS.md`（自当前目录向上解析），并自动发现 `.agents/skills/`；因此与 Codex 同策略，不设独立的薄适配入口文件。
 - ACP plan 是当前会话的临时进度 UI；多阶段任务的创建、阶段同步和结束前收敛以 [`CONTRIBUTING.md`](../../CONTRIBUTING.md) 为权威。它不持久化为 `agent-state`，也不能替代源码、Git 或验证证据。
@@ -48,6 +48,7 @@ Role 是显式选择的按需 session context：读取 `.agents/agents/<role>.md
 
 - 快速审计规则密度和重复主题：`pnpm audit:instructions -- --json`。它只生成候选，不自动判断语义冲突或删除规则；重复主题应回到权威来源、加载条件和实现证据人工复核。
 - 真实任务评测定义：[`context-benchmark.md`](context-benchmark.md)。它定义 C01–C10、首次成功率、读取量、影响范围和验证选择的比较口径；真实 trace 由外部 evaluation harness 保存，不是普通源码任务的必跑测试。
+- Skills 路由与分工（含主题重叠的 skill 选择和不可用的上游指针）：[`.agents/skills/README.md`](../../.agents/skills/README.md)。
 
 ## 最小 context 组合
 
@@ -57,7 +58,7 @@ Role 是显式选择的按需 session context：读取 `.agents/agents/<role>.md
 | `web-ui` 组件或类型   | 根/包级 `AGENTS.md` + `docs/agents/web-ui.md` + 组件源码/测试                             | 对应 ADR、React/Vue demo type fixtures                       |
 | 跨包公共 API          | `contract-change-review` skill + `find:usages`/`inspect:contract` 输出 + 受影响包 context | `docs/agents/testing.md`、相关消费者和 ADR                   |
 | 构建/依赖/发布        | `ARCHITECTURE.md` + `docs/agents/build.md` 或 `dependencies.md` + manifests               | CI workflow、ADR-0001/0002/0009                              |
-| InterWeave/Wails/领域 | `apps/interweave/AGENTS.md` + 产品基线 + 相关源码                                         | ADR-0017/0018、Wails 3 官方文档、Go tests、frontend consumer |
+| Interweave/Wails/领域 | `apps/interweave/AGENTS.md` + 产品基线 + 相关源码                                         | ADR-0017/0018、Wails 3 官方文档、Go tests、frontend consumer |
 | context system        | `ARCHITECTURE.md` + `CONTEXT.md` + 本文件 + ADR-0012                                      | `scripts/validate-context.mjs`、共享 symlinks 和当前 diff    |
 
 不要把“最小入口”理解为足够完成实现；它只是开始定位的最小上下文。实现和交付前必须读取工具输出指出的证据，并按风险升级验证。

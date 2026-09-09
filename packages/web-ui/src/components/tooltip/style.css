@@ -19,7 +19,7 @@
 
 .tooltip-panel {
   --wui-internal-glass-shadow: var(--wui-shadow-panel, 0 3px 9px rgb(0 0 0 / 0.27));
-  --wui-glass-corner-radius: 20px;
+  --wui-glass-corner-radius: var(--wui-radius-menu, 18px);
 
   pointer-events: none;
 
@@ -32,7 +32,7 @@
   width: max-content;
   max-width: var(--wui-tooltip-max-width, 240px);
   padding: 6px 10px;
-  border-radius: 20px;
+  border-radius: var(--wui-radius-menu, 18px);
 
   font-size: var(--wui-tooltip-font-size, 13px);
   color: var(--wui-color-text, #1b1b1b);

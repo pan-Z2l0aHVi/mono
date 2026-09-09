@@ -25,8 +25,7 @@ Role Contract 位于 `.agents/agents/`，只定义当前会话的职责、边界
 ## 定位和影响分析
 
 - 先从目标 workspace 的 `package.json`、`src/`、测试和 README 定位。
-- 变更路径明确后使用 `pnpm find:usages -- <paths...>`（工具语义见 [`docs/agents/context.md`](docs/agents/context.md)）。
-- 修改已发布 package 的 exports、类型或运行时契约时，使用 `pnpm inspect:contract -- <package-name>`；比较基线时使用 `pnpm diff:contract -- --base <git-ref>`。
+- 变更路径明确后使用仓库内查询工具（`find:usages` / `inspect:contract` / `diff:contract`）做影响分析；工具语义与参数见 [`docs/agents/context.md`](docs/agents/context.md)。
 - 不把 `dist/`、`.turbo/`、生成 bindings、route tree 或测试附件当作源码入口。
 
 ## 变更分级

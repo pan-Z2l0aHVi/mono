@@ -20,7 +20,7 @@ pnpm install
 
 # Start the Wails host; Turbo builds its WebView workspace dependencies first
 # (`dev` dependsOn `^build`) and watches them alongside Wails.
-pnpm exec turbo dev --filter=@greypan/interweave --filter="@greypan/interweave-frontend^..."
+pnpm dev:interweave
 
 # Build the complete monorepo graph (the CI build entry point).
 pnpm build
@@ -47,10 +47,9 @@ Native artifacts are emitted to `apps/interweave/bin/`:
 The WebView uses workspace dependencies from `packages/` through
 `apps/interweave/frontend/`.
 
-`turbo dev --filter=@greypan/interweave --filter="@greypan/interweave-frontend^..."` starts Wails and
-watches every buildable workspace dependency of the WebView frontend. Adding a local workspace
-dependency does not require changing the command. Restart the command after changing Vite plugins,
-TypeScript configuration, or the workspace dependency graph.
+`pnpm dev:interweave` starts Wails and watches every buildable workspace dependency of the WebView
+frontend. Adding a local workspace dependency does not require changing the command. Restart the
+command after changing Vite plugins, TypeScript configuration, or the workspace dependency graph.
 
 ## Releases
 

@@ -38,4 +38,4 @@ collapse 的内容 track 位于 shadow root 内，`aria-controls` 的 IDREF 从 
 - **不受影响的场景**：dropdown 的 `aria-controls` 指向 portal overlay——面板挂载在 document body 下的 overlay 容器，id 在 document 层可解析。
 - **同类残余风险**：popover 的 `_panelId` 指向其 shadow 内面板，与 collapse 同款跨边界写法。
 - **缓解**：`aria-expanded` 仍由 AT 可靠解析（不依赖 IDREF），disclosure 语义的主要信号不受影响；`aria-controls` 属增强关联，跨边界失效不阻断核心开合状态通告。
-- **处置**：合入前不做代码改动（避免为可解析性引入 light DOM 锚点元素）；排期 VoiceOver/NVDA 真机验证，若确认失效则后续在 ADR 修订中评估「把 track id 复制到 light DOM 可解析锚点」方案。
+- **处置**：合入前不做代码改动（避免为可解析性引入 light DOM 锚点元素）；若 VoiceOver/NVDA 真机验证确认关联失效，再在 ADR 修订中评估「把 track id 复制到 light DOM 可解析锚点」方案。

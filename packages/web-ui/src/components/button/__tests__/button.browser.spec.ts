@@ -16,7 +16,7 @@ describe('WebUiButton 组件（浏览器）', () => {
     const before = getComputedStyle(inner, '::before')
     expect(before.content).toBe('""')
     expect(before.background).toContain('radial-gradient')
-    expect(before.background).toContain('51, 51, 51')
+    expect(before.background).toContain('0, 0, 0, 0.06')
   })
 
   it('将规范化后的 type 传给真实原生按钮', async () => {

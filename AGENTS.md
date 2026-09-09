@@ -19,9 +19,9 @@
 ## 不可绕过的仓库边界
 
 - 不得改写 `.npmrc` 或 `.mise.toml` 的 registry/mirror，或任何 Git 配置。
-- 不手动编辑生成文件：`**/routeTree.gen.ts`、`**/auto-imports.d.ts`、`apps/*/frontend/bindings/**`、`**/__screenshots__/`、`**/.vitest-attachments/`。当源码或配置变更要求更新受版本控制的代码生成物时，必须运行其所属 generator，并核对生成 diff 与消费者；不得复制、伪造或手改输出。精确入口见 [`docs/agents/build.md`](docs/agents/build.md)。
+- 不手动编辑生成文件：`**/routeTree.gen.ts`、`**/typed-router.d.ts`、`**/auto-imports.d.ts`、`apps/*/frontend/bindings/**`、`**/__screenshots__/`、`**/.vitest-attachments/`。当源码或配置变更要求更新受版本控制的代码生成物时，必须运行其所属 generator，并核对生成 diff 与消费者；不得复制、伪造或手改输出。精确入口见 [`docs/agents/build.md`](docs/agents/build.md)。
 - `**/__screenshots__/` 和 `**/.vitest-attachments/` 是测试证据，不是常规源码产物；除非任务明确要求更新已验证的视觉基线，否则不创建、编辑或提交它们。
-- `AGENTS.md`（含包级）、`docs/adr/`、`docs/agents/`、`.agents/rules/` 和仓库自编写的 `.agents/skills/` 下文档使用中文；第三方引入的 `.agents/skills/` 必须保持上游原文的语言与内容，更新时不得翻译或本地改写；其通用流程若与仓库规则、task guide 或实现事实冲突，以后者为准。技术术语、命令、路径和包名保留英文。
+- `AGENTS.md`（含包级）、`docs/adr/`、`docs/agents/`、`.agents/rules/`、`.agents/agents/` 和仓库自编写的 `.agents/skills/` 下文档使用中文；`.agents/references/` 是语言无关的通用检查清单，保持英文；第三方引入的 `.agents/skills/` 必须保持上游原文的语言与内容，更新时不得翻译或本地改写；其通用流程若与仓库规则、task guide 或实现事实冲突，以后者为准。技术术语、命令、路径和包名保留英文。
 - 缺少 Node、pnpm 或 Go 时先运行 `mise install`；准确版本以 `.mise.toml`、`package.json` 与目标包 manifest 为准。
 - 并行 agent 必须使用不同的 branch/worktree；不得在共享工作区执行 `git switch`、`git checkout`、`git stash`、`git reset` 或 `git clean`。新建 worktree 统一放在仓库旁的 `<仓库目录名>-worktrees/<worktree 名>`（例：仓库在 `path/to/mono`，worktree 放 `path/to/mono-worktrees/<name>`）；工具自带的 worktree 默认路径（如 `.claude/worktrees/`）不采用。
 
@@ -37,10 +37,10 @@
 | UI、UX、交互或浏览器运行时                           | [`docs/agents/browser-verification.md`](docs/agents/browser-verification.md)；`web-ui` 任务再读 [`docs/agents/web-ui.md`](docs/agents/web-ui.md)                                                                |
 | 构建脚本、Vite/Turbo、包图、外部化、CI 或发布        | [`docs/agents/build.md`](docs/agents/build.md)                                                                                                                                                                  |
 | 格式化、lint、拼写或类型检查配置                     | [`docs/agents/linting.md`](docs/agents/linting.md)                                                                                                                                                              |
-| 变更影响或验证命令选择                               | `pnpm find:usages -- <paths...>`；`pnpm inspect:contract -- <package>`；`pnpm diff:contract -- --base <git-ref>`；改动查询也可使用 `--base <git-ref>`、`--staged` 或 `--worktree`                               |
+| 变更影响或验证命令选择                               | [`docs/agents/context.md`](docs/agents/context.md)（仓库内查询工具 `find:usages` / `inspect:contract` / `diff:contract` 的语义与参数）                                                                          |
 | 全局拓扑和快速导航                                   | [`ARCHITECTURE.md`](ARCHITECTURE.md)；实现事实仍以源码、manifest、配置和测试为准                                                                                                                                |
 | 架构探索、术语或 ADR                                 | [`docs/agents/domain.md`](docs/agents/domain.md)、[`CONTEXT.md`](CONTEXT.md) 和相关 ADR                                                                                                                         |
-| instruction system / context 维护                    | [`docs/agents/context.md`](docs/agents/context.md)、[`CONTEXT.md`](CONTEXT.md) 和 ADR-0012                                                                                                                      |
+| instruction system / context 维护                    | [`.agents/skills/audit-instructions/SKILL.md`](.agents/skills/audit-instructions/SKILL.md)、[`docs/agents/context.md`](docs/agents/context.md)、[`CONTEXT.md`](CONTEXT.md) 和 ADR-0012                          |
 | 代码 review                                          | [`.agents/rules/review-checklist.md`](.agents/rules/review-checklist.md)、[`docs/agents/review.md`](docs/agents/review.md)；需要独立 reviewer 时再读 [`.agents/agents/reviewer.md`](.agents/agents/reviewer.md) |
 | 全局替换 / 重命名 / API 迁移 / 文件迁移              | [`.agents/rules/global-rename.md`](.agents/rules/global-rename.md)                                                                                                                                              |
 | Git commit                                           | [`.agents/rules/commit.md`](.agents/rules/commit.md)、[`docs/agents/commit.md`](docs/agents/commit.md) 和 [`CONTRIBUTING.md`](CONTRIBUTING.md)（AI 协作署名）                                                   |

@@ -28,7 +28,7 @@
   height: 18px;
   padding: 0 4px;
   border: 1px solid var(--wui-color-page, #fff);
-  border-radius: calc(infinity * 1px);
+  border-radius: var(--wui-radius-control, calc(infinity * 1px));
 
   font-size: 12px;
   font-weight: 500;

@@ -15,5 +15,5 @@
 
   font-size: 12px;
   font-weight: 600;
-  color: var(--wui-color-text-tertiary, rgb(27 27 27 / 0.35));
+  color: var(--wui-color-text-tertiary, color-mix(in srgb, var(--wui-color-text) 35%, transparent));
 }

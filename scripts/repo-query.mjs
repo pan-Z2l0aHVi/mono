@@ -196,6 +196,7 @@ function classifyContractChange(name, previous = {}, current = {}) {
     name,
     added: !previous.name,
     removed: !current.name,
+    removedExports,
     addedExports,
     changedExports,
     changedFields,
@@ -247,6 +248,7 @@ if (command === 'contract-diff') {
       change =>
         change.added ||
         change.removed ||
+        change.removedExports.length > 0 ||
         change.addedExports.length > 0 ||
         change.changedExports.length > 0 ||
         change.changedFields.length > 0

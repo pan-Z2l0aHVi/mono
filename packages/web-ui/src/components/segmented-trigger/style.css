@@ -33,7 +33,7 @@
 
   height: calc(var(--wui-control-size, 36px) - 8px);
   padding: 0 var(--wui-segmented-trigger-px, 12px);
-  border-radius: calc(infinity * 1px);
+  border-radius: var(--wui-radius-control, calc(infinity * 1px));
 
   font-size: var(--wui-font-size, 14px);
   line-height: 1;

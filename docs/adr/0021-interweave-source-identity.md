@@ -1,7 +1,8 @@
 # ADR-0021: Interweave Source 同一性与去重
 
 - **Date**: 2026-08-16
-- **Status**: 已被 ADR-0025 取代
+- **Status**: 已接受
+- **Superseded-by**: [ADR-0025](0025-interweave-duplicate-sources-are-user-managed.md)
 
 ## 背景
 

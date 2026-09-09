@@ -28,10 +28,6 @@
       "types": "./dist/icons/index.d.ts",
       "import": "./dist/icons/index.js"
     },
-    "./icons/*": {
-      "types": "./dist/icons/*.d.ts",
-      "import": "./dist/icons/*.js"
-    },
     "./types/*": "./dist/types/*.d.ts",
     "./package.json": "./package.json"
   },

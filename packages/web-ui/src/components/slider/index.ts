@@ -4,7 +4,7 @@ import { classMap } from 'lit/directives/class-map.js'
 import { styleMap } from 'lit/directives/style-map.js'
 
 import glass from '@/assets/glass.css?inline'
-import { defineFormAssociation, FormAssociationController } from '@/shared/form-association'
+import { FormAssociated, defineFormAssociation, FormAssociationController } from '@/shared/form-association'
 import { attachDragGesture, type DragGestureHandle } from '@/shared/gesture/drag-gesture'
 import { clamp } from '@/shared/gesture/physics'
 import { normalizeNumber } from '@/shared/normalize'
@@ -12,10 +12,8 @@ import { normalizeNumber } from '@/shared/normalize'
 import style from './style.css?inline'
 
 @customElement('web-ui-slider')
-export class WebUiSlider extends LitElement {
+export class WebUiSlider extends FormAssociated(LitElement) {
   static override styles = [unsafeCSS(glass), unsafeCSS(style)]
-
-  static formAssociated = true
 
   @property({ type: Boolean, reflect: true }) disabled = false
   @property({ type: Boolean, reflect: true }) marks = false
@@ -108,18 +106,6 @@ export class WebUiSlider extends LitElement {
       const normalizedValue = this._normalizeValue(this.value)
       if (normalizedValue !== this.value) this.value = normalizedValue
     }
-  }
-
-  formResetCallback() {
-    this._formAssociation.reset()
-  }
-
-  formDisabledCallback(disabled: boolean) {
-    this._formAssociation.setDisabled(disabled)
-  }
-
-  formStateRestoreCallback(state: string | File | FormData | null) {
-    this._formAssociation.restore(state)
   }
 
   // 将焦点移至滑块，供表单或外部控制使用

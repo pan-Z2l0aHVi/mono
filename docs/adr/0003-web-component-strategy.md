@@ -1,7 +1,8 @@
 # ADR-0003: Web 组件策略
 
 - **Date**: 2026-07-21
-- **Status**: 已接受；「框架类型封装」与「新组件需要同时更新两个类型辅助文件」部分已被 [ADR-0011](0011-framework-type-adaptation-narrowing.md) 收窄
+- **Status**: 已接受
+- **Superseded-by**: [ADR-0011](0011-framework-type-adaptation-narrowing.md)（收窄「框架类型封装」与「新组件需要同时更新两个类型辅助文件」部分）
 
 ## 背景
 

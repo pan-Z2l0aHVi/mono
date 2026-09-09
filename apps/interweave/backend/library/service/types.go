@@ -2,18 +2,28 @@ package service
 
 import "github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage"
 
+// Source 抓取到的展示元数据。结构对应 remote.URLMetadata 的序列化形态，
+// 在 service 层解析为类型化对象，前端不再接触 JSON 字符串。
+type SourceMetadataDTO struct {
+	Title       string `json:"title"`
+	SiteName    string `json:"site_name"`
+	Description string `json:"description"`
+	FaviconURL  string `json:"favicon_url"`
+}
+
 // 为前端呈现 Resource 的外部入口。
 type SourceDTO struct {
-	ID           string             `json:"id"`
-	ResourceID   string             `json:"resource_id"`
-	Type         storage.SourceType `json:"type"`
-	Location     string             `json:"location"`
-	Available    bool               `json:"available"`
-	IsPreferred  bool               `json:"is_preferred"`
-	OrderIndex   int                `json:"order_index"`
-	MetadataJSON string             `json:"metadata_json"`
-	CreatedAt    int64              `json:"created_at"`
-	UpdatedAt    int64              `json:"updated_at"`
+	ID          string             `json:"id"`
+	ResourceID  string             `json:"resource_id"`
+	Type        storage.SourceType `json:"type"`
+	Location    string             `json:"location"`
+	Available   bool               `json:"available"`
+	IsPreferred bool               `json:"is_preferred"`
+	OrderIndex  int                `json:"order_index"`
+	// Metadata 为抓取到的展示元数据；无元数据（本地文件或抓取失败）时为 nil。
+	Metadata  *SourceMetadataDTO `json:"metadata,omitempty"`
+	CreatedAt int64              `json:"created_at"`
+	UpdatedAt int64              `json:"updated_at"`
 }
 
 // 为前端呈现可复用的语义标签。

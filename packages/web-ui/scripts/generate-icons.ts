@@ -35,6 +35,49 @@ interface IconData {
   height?: number
 }
 
+interface IconAliasData extends IconData {
+  parent: string
+  rotate?: number
+  hFlip?: boolean
+  vFlip?: boolean
+}
+
+interface IconSetData {
+  icons: Record<string, IconData>
+  aliases: Record<string, IconAliasData>
+  root: IconData
+}
+
+/** 解析 alias 引用的实际图标；Iconify 版本升级可能把 icon 迁移为 alias */
+function resolveIconData(set: string, name: string, setData: IconSetData, ancestors = new Set([name])): IconData {
+  const direct = setData.icons[name]
+  if (direct) return direct
+
+  const alias = setData.aliases[name]
+  if (!alias) {
+    throw new Error(`Icon "${set}:${name}" was not found in icons or aliases`)
+  }
+  if (alias.rotate || alias.hFlip || alias.vFlip) {
+    throw new Error(`Icon alias "${set}:${name}" uses transformations that are not supported by the generator`)
+  }
+
+  if (ancestors.has(alias.parent)) {
+    throw new Error(`Icon alias "${set}:${name}" creates a parent cycle at "${set}:${alias.parent}"`)
+  }
+  ancestors.add(alias.parent)
+
+  // Iconify 升级时 parent 本身也可能是 alias，递归展开到真实 icon。
+  const parent = resolveIconData(set, alias.parent, setData, ancestors)
+
+  return {
+    body: parent.body,
+    left: alias.left ?? parent.left,
+    top: alias.top ?? parent.top,
+    width: alias.width ?? parent.width,
+    height: alias.height ?? parent.height
+  }
+}
+
 /** 写入单个图标文件 */
 function writeIconFile(outDir: string, iconName: string, data: IconData) {
   const extra: string[] = []
@@ -80,7 +123,7 @@ export async function generateIcons(pkgRoot: string) {
   })
 
   // 按 set 分组加载，同时保留根级默认值
-  const setCache = new Map<string, { icons: Record<string, IconData>; root: IconData }>()
+  const setCache = new Map<string, IconSetData>()
   for (const { set } of used) {
     if (!setCache.has(set)) {
       const mod = await import(`@iconify-json/${set}/icons.json`, { with: { type: 'json' } })
@@ -93,27 +136,21 @@ export async function generateIcons(pkgRoot: string) {
         width: raw.width,
         height: raw.height
       }
-      setCache.set(set, { icons: raw.icons, root })
+      setCache.set(set, { icons: raw.icons, aliases: raw.aliases ?? {}, root })
     }
   }
 
   const barrel: Array<{ name: string; camelName: string }> = []
 
   for (const { set, name } of used) {
-    const { icons, root } = setCache.get(set)!
-    const data = icons[name]
-    if (!data) {
-      console.warn(`  ⚠️  icon "${set}:${name}" not found, skipping`)
-      continue
-    }
-
-    // 合并：图标自身字段 > 根级默认值
+    const setData = setCache.get(set)!
+    const data = resolveIconData(set, name, setData)
     const merged: IconData = {
       body: data.body,
-      left: data.left ?? root.left,
-      top: data.top ?? root.top,
-      width: data.width ?? root.width,
-      height: data.height ?? root.height
+      left: data.left ?? setData.root.left,
+      top: data.top ?? setData.root.top,
+      width: data.width ?? setData.root.width,
+      height: data.height ?? setData.root.height
     }
 
     const fileName = `${set}-${name}`

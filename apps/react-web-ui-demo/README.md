@@ -9,6 +9,16 @@
 - `src/type-fixtures/`：React 事件和组件类型集成样例。
 - `src/assets/global.css`：应用级样式；组件内部样式仍属于 `web-ui` Shadow DOM。
 
+## Commands
+
+在仓库根目录启动该 demo 及其 workspace 依赖的开发进程：
+
+```bash
+pnpm dev:react-web-ui-demo
+```
+
+不要只运行包内 `pnpm dev` 来验证跨包集成；它不会编排本地依赖包的构建和监听。
+
 ## Agent 入口
 
 修改 React 集成或交互前先读同目录 `AGENTS.md`，再按任务读取根 `.agents/rules/react.md`、`docs/agents/browser-verification.md` 和 `packages/web-ui/AGENTS.md`。修改组件公共契约时还要回到 `packages/web-ui` 的文档、类型和测试。

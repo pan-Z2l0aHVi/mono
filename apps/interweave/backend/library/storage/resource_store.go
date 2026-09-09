@@ -49,7 +49,7 @@ func (ResourceStore) GetByIDs(ctx context.Context, q Queryer, ids []string) ([]R
 		return nil, err
 	}
 	defer rows.Close()
-	return scanResources(rows)
+	return collectRows(rows, scanResource)
 }
 
 // 以最近纳入优先的顺序读取全部 Resource。
@@ -62,7 +62,7 @@ func (ResourceStore) List(ctx context.Context, q Queryer) ([]ResourceModel, erro
 		return nil, err
 	}
 	defer rows.Close()
-	return scanResources(rows)
+	return collectRows(rows, scanResource)
 }
 
 // 仅搜索用户维护的上下文与来源基础信息，不扩展为内容索引。
@@ -84,7 +84,7 @@ func (ResourceStore) Search(ctx context.Context, q Queryer, likePattern string) 
 		return nil, err
 	}
 	defer rows.Close()
-	return scanResources(rows)
+	return collectRows(rows, scanResource)
 }
 
 // 更新库内标题，不触碰外部内容；目标不存在时返回 ErrResourceNotFound。
@@ -124,22 +124,4 @@ func scanResource(sc rowScanner) (ResourceModel, error) {
 	var res ResourceModel
 	err := sc.Scan(&res.ID, &res.Title, &res.Note, &res.CreatedAt, &res.UpdatedAt)
 	return res, err
-}
-
-func scanResources(rows *sql.Rows) ([]ResourceModel, error) {
-	var result []ResourceModel
-	for rows.Next() {
-		res, err := scanResource(rows)
-		if err != nil {
-			return nil, err
-		}
-		result = append(result, res)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	if result == nil {
-		result = []ResourceModel{}
-	}
-	return result, nil
 }

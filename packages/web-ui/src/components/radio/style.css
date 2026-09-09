@@ -26,7 +26,7 @@
   color: var(--wui-color-text, #1b1b1b);
 
   &:focus-visible {
-    border-radius: calc(infinity * 1px);
+    border-radius: var(--wui-radius-control, calc(infinity * 1px));
     outline: var(--wui-focus-ring-width, 3px) solid var(--wui-color-focus-ring, rgb(0 136 255 / 0.4));
     outline-offset: 2px;
   }
@@ -46,7 +46,7 @@
 
   width: 18px;
   height: 18px;
-  border-radius: calc(infinity * 1px);
+  border-radius: var(--wui-radius-control, calc(infinity * 1px));
 
   background-color: var(--wui-color-surface-raised, #f2f2f7);
 
@@ -64,7 +64,7 @@
 
   width: 8px;
   height: 8px;
-  border-radius: calc(infinity * 1px);
+  border-radius: var(--wui-radius-control, calc(infinity * 1px));
 
   opacity: 0;
   background-color: var(--wui-color-on-control, #fff);

@@ -19,19 +19,21 @@
   - 推荐：`createMswTestEnv({ handlers })` — 一体化测试环境，返回 `{ worker, start, stop, reset, capturedRequests, clearCapturedRequests, settle }`；自动捕获请求（内置兜底 recorder，业务 handler 优先），`settle` 提供稳定窗口排空并保留 fake timers
 - **Browser mode 配置**：使用 browser mode 的包需要在 `vite.config.ts` 中配置 `browser.provider: playwright()`（来自 `vite-plus/test/browser-playwright`）
 
-## 验证选择
+## 验证选择与证据
 
-开始跨包或 UI 改动前，可运行 `pnpm find:usages -- <paths...>` 获取最小验证建议（工具语义见 [`context.md`](context.md)）；它不替代对实际 diff、公共行为和浏览器语义的判断。
+对变更路径运行 `pnpm find:usages -- <paths...>`（review 或基线对比按范围加 `--base <git-ref>`、`--staged` 或 `--worktree`）。输出是验证计划的起点，不替代对实际 diff、公共行为和浏览器语义的判断；工具语义见 [`context.md`](context.md)。
 
 根据受影响的契约选择验证方式：
 
-| 变更类型                   | 所需验证                                      |
-| -------------------------- | --------------------------------------------- |
-| 本地行为                   | 聚焦的包测试                                  |
-| 跨包导出、引用或运行时契约 | 根目录 `pnpm test`                            |
-| 构建配置、发布产物或导出   | 根目录 `pnpm build`                           |
-| 浏览器原生行为             | 相关的 `*.browser.spec.ts` 测试               |
-| UI、UX 或运行时浏览器行为  | 按 `browser-verification.md` 的真实浏览器验证 |
+| 变更类型                   | 所需验证                                                              |
+| -------------------------- | --------------------------------------------------------------------- |
+| 本地行为                   | 聚焦的包测试                                                          |
+| 跨包导出、引用或运行时契约 | 迭代期用 `pnpm run test:affected`；提交确认前运行根目录 `pnpm test`   |
+| 构建配置、发布产物或导出   | 迭代期用 `pnpm run build:affected`；提交确认前运行根目录 `pnpm build` |
+| 浏览器原生行为             | 相关的 `*.browser.spec.ts` 测试                                       |
+| UI、UX 或运行时浏览器行为  | 按 `browser-verification.md` 的真实浏览器验证                         |
+
+先运行最快的聚焦验证，再按跨包或发布风险升级到 affected 命令；全量根命令只在最终提交确认前运行，不要无理由扩大验证范围。记录准确命令、结果、浏览器 URL/操作和未验证缺口。失败时保留失败输出，并区分环境问题、现有失败和本次回归；不要用删除测试或跳过检查代替修复。
 
 测试应使用 Arrange、Act、Assert 结构；每个测试验证一个行为；避免依赖实现细节；保持独立性。使用中文描述。仅在需要调用断言时使用带类型的 `vi.fn<Type>()`，并等待确定性的生命周期信号而非任意超时。
 

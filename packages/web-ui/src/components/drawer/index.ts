@@ -8,6 +8,7 @@ import { oouiClose } from '@/icons'
 import { UserChangeController } from '@/shared/events/user-change'
 import { attachDragGesture, type DragGestureHandle, rubberband, SPRING_PRESETS, springOffsets } from '@/shared/gesture'
 import { normalizeLiteral } from '@/shared/normalize'
+import { dispatchOpenChangeEvent } from '@/shared/open-state'
 import { defineNativeDialogPresence } from '@/shared/overlay/native-dialog-presence'
 import { defineNestedDrawerLayers } from '@/shared/overlay/nested-drawer-layers'
 import { defineScrollLockLease } from '@/shared/scroll-lock/scroll-lock'
@@ -565,13 +566,7 @@ export class WebUiDrawer extends LitElement {
   }
 
   private emitOpenChange(open = this.open) {
-    this.dispatchEvent(
-      new CustomEvent('open-change', {
-        detail: { open },
-        bubbles: true,
-        composed: true
-      })
-    )
+    dispatchOpenChangeEvent(this, open)
   }
 
   private _syncScrollLock(isOpen = this.open) {

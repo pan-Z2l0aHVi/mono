@@ -16,7 +16,7 @@
 
 .toast {
   --wui-internal-glass-shadow: var(--wui-shadow-panel, 0 3px 9px rgb(0 0 0 / 0.27));
-  --wui-glass-corner-radius: 20px;
+  --wui-glass-corner-radius: var(--wui-radius-menu, 18px);
   position: relative;
   transform: translate(var(--toast-slide-x, 0), var(--toast-slide-y, -8px)) scale(0.97);
 
@@ -26,7 +26,7 @@
   width: 320px;
   min-height: 36px;
   padding: 8px;
-  border-radius: 20px;
+  border-radius: var(--wui-radius-menu, 18px);
 
   font-size: var(--wui-font-size, 14px);
   line-height: 1.5;
@@ -94,7 +94,7 @@ web-ui-button.toast-close-btn {
   width: 20px;
   height: 20px;
   margin-bottom: auto;
-  border-radius: calc(infinity * 1px);
+  border-radius: var(--wui-radius-control, calc(infinity * 1px));
 }
 
 .toast.success .toast-icon {

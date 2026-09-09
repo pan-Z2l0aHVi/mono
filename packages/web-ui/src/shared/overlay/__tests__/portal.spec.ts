@@ -72,4 +72,42 @@ describe('浮层 Portal', () => {
     portal.restoreContent()
     portal.remove()
   })
+
+  it('框架在打开期物理删除已迁移节点时，内建解除追踪且不再恢复该节点', async () => {
+    const target = document.createElement('div')
+    const kept = document.createElement('button')
+    const removed = document.createElement('button')
+    const container = document.createElement('div')
+    target.append(kept, removed)
+    document.body.append(target, container)
+
+    let sawMutations = false
+    const portal = defineOverlayPortal().make({
+      container,
+      target,
+      style: '',
+      className: 'panel',
+      onContentChange: mutations => {
+        sawMutations = true
+        expect(mutations.length).toBeGreaterThan(0)
+      }
+    })
+    portal.moveContent([kept, removed])
+    expect(portal.panel.contains(removed)).toBe(true)
+
+    // 迁移批次的 observer 回调先独立结算，与真实组件"打开帧迁移、后续帧删除"一致
+    await new Promise(resolve => setTimeout(resolve, 0))
+
+    // 模拟 Vue 打开期物理删除面板内的已迁移节点
+    removed.remove()
+    // MutationObserver 回调在微任务中派发
+    await new Promise(resolve => setTimeout(resolve, 0))
+    expect(sawMutations).toBe(true)
+
+    // 关闭恢复：被框架删除的节点不复活，仍在宿主的节点按原位归还
+    portal.restoreContent()
+    portal.remove()
+    expect(target.contains(kept)).toBe(true)
+    expect(target.contains(removed)).toBe(false)
+  })
 })

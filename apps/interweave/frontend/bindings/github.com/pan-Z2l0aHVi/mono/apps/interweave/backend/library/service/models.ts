@@ -168,7 +168,11 @@ export class SourceDTO {
     "available": boolean;
     "is_preferred": boolean;
     "order_index": number;
-    "metadata_json": string;
+
+    /**
+     * Metadata 为抓取到的展示元数据；无元数据（本地文件或抓取失败）时为 nil。
+     */
+    "metadata"?: SourceMetadataDTO | null;
     "created_at": number;
     "updated_at": number;
 
@@ -195,9 +199,6 @@ export class SourceDTO {
         if (!("order_index" in $$source)) {
             this["order_index"] = 0;
         }
-        if (!("metadata_json" in $$source)) {
-            this["metadata_json"] = "";
-        }
         if (!("created_at" in $$source)) {
             this["created_at"] = 0;
         }
@@ -212,8 +213,49 @@ export class SourceDTO {
      * Creates a new SourceDTO instance from a string or object.
      */
     static createFrom($$source: any = {}): SourceDTO {
+        const $$createField7_0 = $$createType11;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("metadata" in $$parsedSource) {
+            $$parsedSource["metadata"] = $$createField7_0($$parsedSource["metadata"]);
+        }
         return new SourceDTO($$parsedSource as Partial<SourceDTO>);
+    }
+}
+
+/**
+ * Source 抓取到的展示元数据。结构对应 remote.URLMetadata 的序列化形态，
+ * 在 service 层解析为类型化对象，前端不再接触 JSON 字符串。
+ */
+export class SourceMetadataDTO {
+    "title": string;
+    "site_name": string;
+    "description": string;
+    "favicon_url": string;
+
+    /** Creates a new SourceMetadataDTO instance. */
+    constructor($$source: Partial<SourceMetadataDTO> = {}) {
+        if (!("title" in $$source)) {
+            this["title"] = "";
+        }
+        if (!("site_name" in $$source)) {
+            this["site_name"] = "";
+        }
+        if (!("description" in $$source)) {
+            this["description"] = "";
+        }
+        if (!("favicon_url" in $$source)) {
+            this["favicon_url"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new SourceMetadataDTO instance from a string or object.
+     */
+    static createFrom($$source: any = {}): SourceMetadataDTO {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new SourceMetadataDTO($$parsedSource as Partial<SourceMetadataDTO>);
     }
 }
 
@@ -328,3 +370,5 @@ const $$createType6 = $Create.Array($$createType5);
 const $$createType7 = SourceDTO.createFrom;
 const $$createType8 = $Create.Array($$createType7);
 const $$createType9 = $Create.Array($$createType4);
+const $$createType10 = SourceMetadataDTO.createFrom;
+const $$createType11 = $Create.Nullable($$createType10);

@@ -1,6 +1,6 @@
 # @greypan/deps-reload
 
-> A Plugin that watches dist folder for changes and reloads the page
+> A build plugin that watches dist output for changes and reloads the page, with Vite and Webpack entries
 
 English | [简体中文](./README.CN.md)
 

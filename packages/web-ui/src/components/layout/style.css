@@ -43,6 +43,8 @@
 
 /* headless drawer 只提供 overlay 基础设施；此卡片与桌面端 aside-panel 相同。 */
 .mobile-sidebar {
+  --wui-glass-corner-radius: var(--wui-layout-sidebar-radius, var(--wui-radius-overlay, 28px));
+
   display: flex;
   flex-direction: column;
 
@@ -52,7 +54,7 @@
   height: calc(100dvh - 16px);
   min-height: 0;
   margin: 8px;
-  border-radius: var(--wui-layout-sidebar-radius, 24px);
+  border-radius: var(--wui-layout-sidebar-radius, var(--wui-radius-overlay, 28px));
 
   background-color: var(--wui-color-surface-overlay, rgb(246 246 246 / 0.82));
 }
@@ -80,12 +82,14 @@ aside {
   transition: width var(--wui-duration-layout, 200ms) var(--wui-ease-enter, cubic-bezier(0.23, 1, 0.32, 1));
 
   .aside-panel {
+    --wui-glass-corner-radius: var(--wui-layout-sidebar-radius, var(--wui-radius-overlay, 28px));
+
     display: flex;
     flex: 1;
     flex-direction: column;
 
     min-height: 0;
-    border-radius: var(--wui-layout-sidebar-radius, 24px);
+    border-radius: var(--wui-layout-sidebar-radius, var(--wui-radius-overlay, 28px));
 
     background-color: var(--wui-color-surface-overlay, rgb(246 246 246 / 0.82));
   }
@@ -136,7 +140,7 @@ aside {
   translate: -50%;
 
   width: 3px;
-  border-radius: 999px;
+  border-radius: var(--wui-radius-control, calc(infinity * 1px));
 
   opacity: 0;
   background: var(--wui-color-accent, #08f);

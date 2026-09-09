@@ -8,13 +8,17 @@ import '@/components/icon'
 import '@/components/button'
 import glass from '@/assets/glass.css?inline'
 import { jamCloseCircleF } from '@/icons'
-import { defineFormAssociation, FormAssociationController } from '@/shared/form-association'
+import {
+  FormAssociated,
+  defineFormAssociation,
+  forwardInputValidity,
+  FormAssociationController
+} from '@/shared/form-association'
 
 import style from './style.css?inline'
 
 @customElement('web-ui-textarea')
-export class WebUiTextarea extends LitElement {
-  static formAssociated = true
+export class WebUiTextarea extends FormAssociated(LitElement) {
   static override styles = [unsafeCSS(glass), unsafeCSS(style)]
 
   @property({ type: String, reflect: true }) placeholder = ''
@@ -74,18 +78,6 @@ export class WebUiTextarea extends LitElement {
 
   private readonly _formAssociationController = new FormAssociationController(this, this._formAssociation)
 
-  formResetCallback() {
-    this._formAssociation.reset()
-  }
-
-  formDisabledCallback(disabled: boolean) {
-    this._formAssociation.setDisabled(disabled)
-  }
-
-  formStateRestoreCallback(state: string | File | FormData | null) {
-    this._formAssociation.restore(state)
-  }
-
   override disconnectedCallback() {
     super.disconnectedCallback()
     this._teardownAutosize()
@@ -123,16 +115,7 @@ export class WebUiTextarea extends LitElement {
     const textarea = this._getTextarea()
     if (!internals || !textarea || typeof internals.setValidity !== 'function') return
 
-    if (this._isDisabled || textarea.validity.valid) {
-      internals.setValidity({})
-      return
-    }
-
-    const validity: ValidityStateFlags = {}
-    if (textarea.validity.valueMissing) validity.valueMissing = true
-    if (textarea.validity.tooShort) validity.tooShort = true
-    if (textarea.validity.tooLong) validity.tooLong = true
-    internals.setValidity(validity, textarea.validationMessage, textarea)
+    forwardInputValidity(internals, textarea, ['valueMissing', 'tooShort', 'tooLong'], this._isDisabled)
   }
 
   private _setupAutosize() {

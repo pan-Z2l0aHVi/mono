@@ -3,6 +3,7 @@
   --wui-internal-glass-shadow: var(--wui-shadow-panel, 0 3px 9px rgb(0 0 0 / 0.27));
   --wui-internal-duration-overlay-enter: var(--wui-duration-menu-enter, 140ms);
   --wui-internal-duration-overlay-exit: var(--wui-duration-menu-exit, 100ms);
+  --wui-glass-corner-radius: var(--wui-radius-menu, 18px);
   user-select: none;
 
   position: fixed;
@@ -14,7 +15,7 @@
   min-width: var(--wui-overlay-min-width, 200px);
   max-width: 90vw;
   max-height: 80vh;
-  border-radius: 20px;
+  border-radius: var(--wui-radius-menu, 18px);
 
   color: var(--wui-color-text, #1b1b1b);
 

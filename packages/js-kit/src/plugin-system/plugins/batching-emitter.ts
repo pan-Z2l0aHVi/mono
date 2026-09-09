@@ -20,7 +20,7 @@ export function defineBatchEmitter<S>(options?: Options<S>) {
      */
     function batchEmit(data: S, batchingDelay = 0): Promise<S[]> {
       if (batchingDelay <= 0) {
-        safeCall(config.onFlushed, [data])
+        safeCall(() => config.onFlushed([data]))
         return Promise.resolve([data])
       }
 
@@ -57,7 +57,7 @@ export function defineBatchEmitter<S>(options?: Options<S>) {
       }
 
       // onFlushed 放在后面，不阻塞 resolve
-      safeCall(config.onFlushed, currentQueue)
+      safeCall(() => config.onFlushed(currentQueue))
     }
 
     return { batchEmit, flush }

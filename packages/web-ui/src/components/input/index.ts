@@ -7,13 +7,17 @@ import '@/components/icon'
 import '@/components/button'
 import glass from '@/assets/glass.css?inline'
 import { jamCloseCircleF } from '@/icons'
-import { defineFormAssociation, FormAssociationController } from '@/shared/form-association'
+import {
+  FormAssociated,
+  defineFormAssociation,
+  forwardInputValidity,
+  FormAssociationController
+} from '@/shared/form-association'
 
 import style from './style.css?inline'
 
 @customElement('web-ui-input')
-export class WebUiInput extends LitElement {
-  static formAssociated = true
+export class WebUiInput extends FormAssociated(LitElement) {
   static override styles = [unsafeCSS(glass), unsafeCSS(style)]
 
   @property({ type: String, reflect: true }) type = 'text'
@@ -75,34 +79,16 @@ export class WebUiInput extends LitElement {
     this.toggleAttribute('focused', this._focused)
   }
 
-  formResetCallback() {
-    this._formAssociation.reset()
-  }
-
-  formDisabledCallback(disabled: boolean) {
-    this._formAssociation.setDisabled(disabled)
-  }
-
-  formStateRestoreCallback(state: string | File | FormData | null) {
-    this._formAssociation.restore(state)
-  }
-
   private _syncValidity() {
     const input = this.shadowRoot?.querySelector('input')
     const internals = this._formAssociation.getInternals()
     if (!internals || !input || typeof internals.setValidity !== 'function') return
-    if (this._isDisabled || input.validity.valid) {
-      internals.setValidity({})
-      return
-    }
-
-    const flags: ValidityStateFlags = {}
-    if (input.validity.valueMissing) flags.valueMissing = true
-    if (input.validity.typeMismatch) flags.typeMismatch = true
-    if (input.validity.patternMismatch) flags.patternMismatch = true
-    if (input.validity.tooLong) flags.tooLong = true
-    if (input.validity.tooShort) flags.tooShort = true
-    internals.setValidity(flags, input.validationMessage, input)
+    forwardInputValidity(
+      internals,
+      input,
+      ['valueMissing', 'typeMismatch', 'patternMismatch', 'tooLong', 'tooShort'],
+      this._isDisabled
+    )
   }
 
   private _onSlotChange(e: Event) {

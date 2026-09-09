@@ -7,7 +7,7 @@
 ## 功能
 
 - **Storage**：`defineLocal`/`defineSession` 支持命名空间、TTL 过期、跨标签页同步
-- **Tracker**：数据埋点上报，支持批量聚合、离线恢复、临终遗言
+- **Tracker**：数据埋点上报，支持批量聚合、页面错误收集、离线恢复、临终遗言
 - **History Nav**：Navigation API 只读子集，跟踪前进/后退可用性（`defineHistoryNav`）
 - **Env**：17 个环境检测标志（微信、钉钉、PWA、移动端等）
 - **DOM**：视口尺寸和滚动位置工具
@@ -53,60 +53,30 @@ const unwatch = storage.watch('user', (newVal, oldVal) => {
 
 ## 插件
 
-### `defineTracker(options)`
-
-核心埋点插件。它会用 `JSON.stringify` 序列化数据，优先调用 `navigator.sendBeacon()`；浏览器未接受 Beacon 时，降级为带 `keepalive: true` 的 `fetch()`。
-
-| 配置                 | 类型                       | 默认值     | 说明                                                              |
-| -------------------- | -------------------------- | ---------- | ----------------------------------------------------------------- |
-| `url`                | `string`                   | -          | 埋点接口 URL                                                      |
-| `transform`          | `(data: object) => object` | 恒等函数   | 在序列化和计算批次大小前转换每一条事件                            |
-| `disablePersistence` | `boolean`                  | `false`    | 禁止从 localStorage 读取和向其中写入待传输 outbox                 |
-| `persistenceKey`     | `string`                   | `url` 的值 | localStorage outbox 的稳定键；多个独立 Tracker 必须使用不同的 key |
-
-```ts
-import { defineTracker } from '@greypan/browser-kit'
-
-const tracker = defineTracker({ url: '/api/track' }).make()
-tracker.track({ event: 'page_view', path: '/' })
-```
-
-核心上下文提供 `track(data)`、`pause()`、`resume()` 和 `flush()`。`pause()` 会让后续事件继续保留在内存和持久化待传输 outbox 中；`resume()` 会重试仍保留的事件。`flush()` 返回 Promise，是 best-effort：它会绕过暂停和单条消费失败状态，发送调用时尚未在途的事件并等待传输 Promise settle；但不会解除暂停，也不会等待服务端确认。Tracker 的 storage 故障会只告警一次并降级为 memory-only，因此 `flush()` 不会因 localStorage 失败 reject；旧快照可能残留，并在下次初始化时造成 at-least-once 重复发送。
-
-### `defineBatchTrack(options?)`
-
-批量聚合插件。它收集事件，并在延迟后以数组形式发送。批次超过 `maxBeaconSize` 时会递归分片；单条超大事件仍会作为一个条目发送。
-
-| 配置                | 类型     | 默认值 | 说明                                    |
-| ------------------- | -------- | ------ | --------------------------------------- |
-| `defaultBatchDelay` | `number` | `500`  | 默认批量刷新延迟，单位为毫秒            |
-| `maxBeaconSize`     | `number` | `64`   | 触发递归分片前的最大批次大小，单位为 KB |
-
-组合后的 `track(data, batchDelay?)` 支持逐次指定延迟；传入 `0` 或负数可跳过该事件的批量聚合。
-
-### `defineOfflineRestore()`
-
-离线恢复插件。浏览器离线时（包括初始化时已离线）暂停 Tracker，并在收到 `online` 事件后调用 `resume()`。
-
-### `defineLastWords()`
-
-临终遗言插件。在 `beforeunload`、`pagehide` 以及页面变为隐藏状态时调用 `flush()`，以 best-effort 方式尝试发送待发数据。
+埋点插件组合在一个核心 Tracker 上：`defineTracker(options)`（核心传输，优先 `sendBeacon()` 并降级 `fetch(keepalive)`，带持久化待传输 outbox）、`defineBatchTrack(options?)`（延迟批量聚合并按 `maxBatchKB` 递归分片）、`defineOfflineRestore()`（离线暂停，`online` 后恢复）、`definePageErrors(options?)`（收集 uncaught error 与 unhandled promise rejection 作为埋点事件）、`defineLastWords()`（页面离开或隐藏时 best-effort `flush()`）。
 
 **推荐组合顺序：**
 
 ```ts
-import { defineBatchTrack, defineLastWords, defineOfflineRestore, defineTracker } from '@greypan/browser-kit'
+import {
+  defineBatchTrack,
+  defineLastWords,
+  defineOfflineRestore,
+  definePageErrors,
+  defineTracker
+} from '@greypan/browser-kit'
 
 const tracker = defineTracker({ url: '/api/track' })
   .use(defineBatchTrack())
   .use(defineOfflineRestore())
+  .use(definePageErrors())
   .use(defineLastWords())
   .make()
+
+tracker.track({ event: 'page_view', path: '/' })
 ```
 
-待传输条目会保存在 localStorage，直到浏览器传输层接受它们。`sendBeacon()` 返回 `true` 只表示浏览器已经接受数据并安排传输，并不表示服务端已确认接收。若 `sendBeacon()` 与 `fetch()` 降级都失败，条目会继续保留。`flush()` 会重试调用时快照中的 `pending` 和 `failed` 条目，但不会重新启动已经处于 in-flight 的条目；其他自动重试路径仍是调用 `resume()`、安装 `defineOfflineRestore()` 后触发 `online` 事件，或下次初始化 Tracker。`flush()` 不会解除暂停状态。
-
-`persistenceKey` 默认使用 `url`。同一页面中多个相互独立的 Tracker 如果复用同一个 key，会读取和覆盖同一份快照；应为每个独立实例提供不同且稳定的 key。localStorage 受限、配额耗尽或读写失败时，Tracker 会停止后续持久化并继续以内存模式发送；这是一种明确的 best-effort 降级，不提供 exactly-once 保证。
+完整选项表（含 `transport` 与 `transform`）、flush/outbox 语义与 page-error 事件契约见 [`src/tracker/README.md`](./src/tracker/README.md)。
 
 ## API
 
@@ -117,6 +87,8 @@ const tracker = defineTracker({ url: '/api/track' })
 | 参数        | 类型     | 默认值 | 说明             |
 | ----------- | -------- | ------ | ---------------- |
 | `namespace` | `string` | `''`   | 存储命名空间前缀 |
+
+TTL 语义、`watch` 跨标签页行为与存储降级细节见 [`src/storage/README.md`](./src/storage/README.md)。
 
 ### `local` / `session`
 

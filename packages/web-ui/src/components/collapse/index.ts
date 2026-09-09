@@ -3,6 +3,7 @@ import { customElement, property, query } from 'lit/decorators.js'
 import { classMap } from 'lit/directives/class-map.js'
 
 import { UserChangeController } from '@/shared/events/user-change'
+import { dispatchOpenChangeEvent } from '@/shared/open-state'
 import { getTransitionDuration } from '@/shared/overlay/presence'
 
 import style from './style.css?inline'
@@ -118,13 +119,7 @@ export class WebUiCollapse extends LitElement {
   // ===== trigger slot =====
 
   private _dispatchChange(open: boolean) {
-    this.dispatchEvent(
-      new CustomEvent('open-change', {
-        detail: { open },
-        bubbles: true,
-        composed: true
-      })
-    )
+    dispatchOpenChangeEvent(this, open)
   }
 
   /*

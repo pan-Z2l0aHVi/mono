@@ -19,7 +19,7 @@
 
 实现流程文档见 [`docs/agents/web-ui.md`](../agents/web-ui.md)。
 
-## 影响
+## 后果
 
 - 图标是带类型的、可 Tree Shaking 的模块，无运行时查找依赖。
 - 添加内置图标需要更新清单文件并重新生成产物。

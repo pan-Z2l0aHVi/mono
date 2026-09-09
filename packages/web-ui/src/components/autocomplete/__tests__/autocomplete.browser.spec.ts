@@ -837,7 +837,7 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     await new Promise(resolve => setTimeout(resolve, 300))
 
     // 与 normal 变体同款：inset accent 内圈 + focus-ring halo 的 box-shadow
-    const focusedStyle = getComputedStyle(wrapper)
+    const focusedStyle = getComputedStyle(wrapper, '::after')
     expect(el.hasAttribute('focused')).toBe(true)
     expect(input.matches(':focus-visible')).toBe(true)
     expect(focusedStyle.boxShadow).toContain('inset')

@@ -36,34 +36,17 @@ _Avoid_: ack、传输确认、服务端响应
 
 ### Runtime queue design decisions
 
-以下是 `defineQueue` 与 `defineAckQueue` 公共化方案的已实现行为和边界：
+队列能力的完整决策与行为边界以 [ADR-0004](docs/adr/0004-plugin-system.md) 的「队列能力补充」为权威；此处只保留跨包一致的术语级边界：
 
-- 公共能力并列命名为 `defineQueue` 与 `defineAckQueue`；`defineLoopQueue` 直接删除，不保留兼容别名。
-- 两种队列都可以通过可选的 `onPersist(readonly T[])` 持久化待处理项快照；持久化与消费者确认是两个正交维度。
-- `defineAckQueue` 以消费者返回的 fulfilled Promise 作为确认；rejection 会保留该项。
-- 消费失败是 item-local：失败项进入待重试状态，不阻塞后续项；因此成功交付顺序不保证严格 FIFO。
-- 第一版不自动重试；`resume()`、`flush()` 和下次实例化是恢复入口。
-- `flush()` 返回 `Promise<void>`，会尝试 pending 与 failed 项并跳过 in-flight 项；传输失败只保留条目，不因单项失败拒绝整个刷新 Promise。
-- 持久化失败与消费失败不同：它是 queue-global 的 fail-closed 条件，应停止会改变队列成员关系的新消费，避免在无法保存快照时静默丢失数据。
+- 公共能力并列命名为 `defineQueue` 与 `defineAckQueue`，经 `definePlugin(...).make()` 暴露；`defineLoopQueue` 已删除，不保留兼容别名。
+- 持久化与消费者确认是两个正交维度：可选 `onPersist(readonly T[])` 是同步持久化快照接缝；`defineAckQueue` 以消费者返回的 fulfilled Promise 作为确认。
+- 持久化失败是 queue-global 的 fail-closed 条件；消费失败是 item-local 的可重试状态。这两个词的完整语义以 ADR-0004 为准。
+- Tracker core 沿用 `transport` 表示单条传输函数，其 ack 只表示浏览器传输路径成功，不代表服务端确认。
 
-- 消费者回调只接收业务数据 `T`，不暴露内部 ID、剩余队列或调度状态；`defineQueue` 不等待消费者 Promise，`defineAckQueue` 等待其确认。
-- `onConsume` 是必需选项；不提供消费者不构成有效的公共队列实例。
-- 普通 drain 固定串行；`flush()` 并发启动调用时的 pending/failed 项，以适配页面退出时的 best-effort 发送。
-- `flush()` 忽略暂停状态但不修改暂停状态，并以调用时的快照为边界；调用后新入队项不属于本次 Promise。
-- `defineAckQueue` 的消费者 rejection 是可重试失败；`defineQueue` 在交付后不重试。第一版不加入 `drop`、dead-letter 或最大重试次数。
-- 持久化采用 persist-before-commit：快照成功写入后才提交内存成员变更；写入失败时保留原状态，已成功传输但未能持久化删除的项可能重复发送。
-- 初始数据选项命名为 `initialItems`，类型为 `readonly T[]`。
+## Tracker event vocabulary
 
-- 消费者错误通过独立的可选 `onConsumeError(error, item)` 观察；队列捕获同步 throw 与异步 rejection，避免 unhandled rejection。
-- `enqueue()` 遇到持久化提交失败同步抛出原始错误；`flush()` 对传输失败 resolve，对持久化提交失败 reject；持久化错误不伪装为消费者错误。
-- `resume()` 在 persistence-blocked 时先尝试重新写入当前快照；成功后解除阻塞，失败则继续 blocked；不做后台自动重试。
-- persistence-blocked 时 `flush()` 不启动新的 dispatch，只允许已有 in-flight 操作 settle。
-- `flush()` 不重复启动 in-flight 项，但等待调用时已经存在的 in-flight 操作；failed 项恢复时保留原队列位置。
-- `initialItems` 在实例创建后通过 microtask 自动调度，给插件组合中的 pause 留出接线时间。
-- 队列第一版不提供 `dispose()`；没有外部资源的通用队列不额外引入生命周期协议。
-- `onPersist` 每次收到新的浅层 `readonly T[]` 快照；成员关系变化时调用，恢复 `persistence-blocked` 时可能额外执行一次当前快照 probe；不持久化内部 ID 或调度状态，恢复初始数据时不重复写入。
-- `onPersist` 是同步提交接缝；公共队列不等待它返回 Promise。`defineQueue` 与 `defineAckQueue` 都通过 `definePlugin(...).make()` 暴露，私有 queue core 不单独导出。
-- Tracker core 内部继续使用 `transport` 表示单条传输函数，并通过 `defineAckQueue` 等待 transport Promise fulfilled；这里的 ack 只表示浏览器传输路径成功，不代表服务端确认。
+**页面错误（Page Error）**：Tracker 收集的浏览器全局运行时失败，包含 uncaught error 与 unhandled promise rejection；不包含资源加载失败、console 消息或框架回调错误。
+_Avoid_: JS error、异常监控、资源错误
 
 ## 历史导航词汇（History Nav）
 
@@ -147,12 +130,15 @@ interweave（含 interweave-frontend）──共享包的 Wails 桌面集成表�
 | [0042](docs/adr/0042-web-ui-trigger-aria-writeback.md)                  | Web UI trigger 元素 ARIA 回写约定                                                                                  | 修改 slot-trigger 组件的 aria-expanded/controls 回写行为          |
 | [0043](docs/adr/0043-web-ui-instant-state-feedback.md)                  | Web UI hover/active 背景反馈即时切换                                                                               | 修改 web-ui 组件 hover/active 背景反馈的过渡行为                  |
 | [0044](docs/adr/0044-web-ui-tailwind-v4-cursor-specification.md)        | Web UI Tailwind v4 与原生 HIG Cursor 行为                                                                          | 修改 web-ui 组件 cursor、手势拖拽 cursor 或专用把手 cursor        |
-| [0045](docs/adr/0045-web-ui-autocomplete-custom-values.md)              | Web UI autocomplete custom values                                                                                  | 修改 autocomplete 自定义值提交、候选匹配或相关事件语义            |
+| [0045](docs/adr/0045-web-ui-autocomplete-custom-values.md)              | Web UI autocomplete 自定义值                                                                                       | 修改 autocomplete 自定义值提交、候选匹配或相关事件语义            |
 | [0046](docs/adr/0046-web-ui-overlay-positioning-engine.md)              | Web UI 浮层定位引擎策略                                                                                            | 修改浮层定位路径、defineOverlay 能力面或浮层私有定位准入          |
+| [0047](docs/adr/0047-browser-kit-page-errors.md)                        | Browser Kit 页面错误收集                                                                                           | 修改 tracker 页面错误收集、事件契约或保护策略                     |
+| [0048](docs/adr/0048-web-ui-semantic-radius-tokens.md)                  | Web UI 语义 Radius Token 体系                                                                                      | 修改组件圆角、radius token 映射或 glass corner 联动               |
+| [0049](docs/adr/0049-interweave-source-dto-typed-metadata.md)           | Interweave Source DTO 元数据类型化（修订 0032 §6 DTO 冻结）                                                        | 修改 interweave Source DTO 元数据或 Wails DTO 演进方式            |
 
 ## Interweave 产品与领域词汇
 
-Interweave 当前已确认的产品基线见 [`apps/interweave/docs/product.md`](apps/interweave/docs/product.md)。产品、领域模型、Map、标签、Source 或 MCP 路线任务按需读取该文档和 ADR-0017/0018；修改本地资源库初始化或旧库兼容策略时还读取 ADR-0020；修改 Source 输入规范化、重复添加或去重策略时还读取 ADR-0021/0025；修改 Source 可用状态或 URL 抓取规则时还读取 ADR-0022；修改 Resource 标题或 Source 元数据更新规则时还读取 ADR-0023；修改 Source 删除、首选或基数不变量时还读取 ADR-0024；修改标签创建、名称标准化或同名复用策略时还读取 ADR-0026；修改 Tag ID 或 Resource—Tag 关联键时还读取 ADR-0027；修改标签操作作用域或全局标签管理策略时还读取 ADR-0028；修改 Map 交互边界或探索操作模型时还读取 ADR-0029；修改 SQLite 配置、并发或持久化基础设施时还读取 ADR-0030；修改 interweave library 分层或产品规则归属时还读取 ADR-0032；修改 web-ui 的 Property/Attribute/Event 命名或跨框架绑定兼容性时还读取 ADR-0033；修改 web-ui 的 `--wui-*` token 契约、focus 指示器或组件 token 文档矩阵时还读取 ADR-0034；修改 drawer 拖拽手势、drag bar、关闭态无渲染约束或弹簧动画时还读取 ADR-0035；修改 drawer 视觉容器（留边、圆角或贴边语义）时还读取 ADR-0036；修改 drawer 声明式层叠、等比缩放、上方最大宽度补偿或卡片露边策略时还读取 ADR-0037；修改 collapse 组件形态、受管组合下行通道或 headless 内核方向时还读取 ADR-0040；修改覆盖层 portal 迁移、menu 族关闭态隐藏或消费者节点写入面时还读取 ADR-0041；修改 slot-trigger 组件的 ARIA 回写行为时还读取 ADR-0042；修改 web-ui 组件 hover/active 背景反馈的过渡行为时还读取 ADR-0043；修改 web-ui 组件 cursor 或手势拖拽 cursor 行为时还读取 ADR-0044；修改 autocomplete 自定义值提交、候选匹配或相关事件语义时还读取 ADR-0045；修改 web-ui 浮层定位路径、`defineOverlay` 能力面或浮层私有定位准入时还读取 ADR-0046；修改 Go 模块、Wails Service 或 frontend bindings 时还读取 ADR-0019。
+Interweave 当前已确认的产品基线见 [`apps/interweave/docs/product.md`](apps/interweave/docs/product.md)。产品、领域模型、Map、标签、Source 或 MCP 路线任务按需读取该文档和 ADR-0017/0018；各改动主题对应的 ADR 以上方索引表的「何时读取」列为准，此处不再逐条复述。
 
 **资源（Resource）**:
 用户希望长期找回、理解或使用的原子概念对象；保存独立标题、短备注、语义标签与一个或多个 Source。

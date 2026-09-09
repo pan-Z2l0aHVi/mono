@@ -2,7 +2,7 @@ import { html, LitElement, unsafeCSS } from 'lit'
 import { customElement, property, state } from 'lit/decorators.js'
 import { classMap } from 'lit/directives/class-map.js'
 
-import { defineFormAssociation, FormAssociationController } from '@/shared/form-association'
+import { FormAssociated, defineFormAssociation, FormAssociationController } from '@/shared/form-association'
 import { attachDragGesture, type DragGestureHandle } from '@/shared/gesture/drag-gesture'
 import { clamp, snapToNearest } from '@/shared/gesture/physics'
 import { defineGroupCoordinator, GroupController } from '@/shared/group-management'
@@ -12,10 +12,8 @@ import type { WebUiSegmentedTrigger } from '../segmented-trigger'
 import style from './style.css?inline'
 
 @customElement('web-ui-segmented')
-export class WebUiSegmented extends LitElement {
+export class WebUiSegmented extends FormAssociated(LitElement) {
   static override styles = unsafeCSS(style)
-  static formAssociated = true
-
   @property({ type: String, reflect: true }) name = ''
   @property({ type: Boolean, reflect: true }) disabled = false
   @property({ type: Boolean, reflect: true }) required = false
@@ -227,17 +225,9 @@ export class WebUiSegmented extends LitElement {
 
   private readonly _formAssociationController = new FormAssociationController(this, this._formAssociation)
 
-  formResetCallback() {
-    this._formAssociation.reset()
-  }
-
-  formDisabledCallback(disabled: boolean) {
+  override formDisabledCallback(disabled: boolean) {
     this._formAssociation.setDisabled(disabled)
     this._groupController.sync()
-  }
-
-  formStateRestoreCallback(state: string | File | FormData | null) {
-    this._formAssociation.restore(state)
   }
 
   override render() {

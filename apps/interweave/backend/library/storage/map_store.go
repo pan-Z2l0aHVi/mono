@@ -2,7 +2,6 @@ package storage
 
 import (
 	"context"
-	"database/sql"
 )
 
 // 收敛 Map 推导所需的聚合查询，保持派生逻辑与业务层解耦。
@@ -32,7 +31,7 @@ func (MapStore) TagNodes(ctx context.Context, q Queryer) ([]TagAggregate, error)
 		return nil, err
 	}
 	defer rows.Close()
-	return scanTagAggregates(rows)
+	return collectRows(rows, scanTagAggregate)
 }
 
 // 返回可追溯到共享资源的标签共现关系。
@@ -48,22 +47,7 @@ func (MapStore) TagEdges(ctx context.Context, q Queryer) ([]TagEdgeAggregate, er
 		return nil, err
 	}
 	defer rows.Close()
-
-	var result []TagEdgeAggregate
-	for rows.Next() {
-		var e TagEdgeAggregate
-		if err := rows.Scan(&e.SourceTagID, &e.TargetTagID, &e.Weight); err != nil {
-			return nil, err
-		}
-		result = append(result, e)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	if result == nil {
-		result = []TagEdgeAggregate{}
-	}
-	return result, nil
+	return collectRows(rows, scanTagEdge)
 }
 
 // 按纳入时间返回直接拥有某标签的 Resource ID，作为局部探索的资源范围。
@@ -79,22 +63,7 @@ func (MapStore) ResourceIDsByTag(ctx context.Context, q Queryer, tagID string) (
 		return nil, err
 	}
 	defer rows.Close()
-
-	var result []string
-	for rows.Next() {
-		var id string
-		if err := rows.Scan(&id); err != nil {
-			return nil, err
-		}
-		result = append(result, id)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	if result == nil {
-		result = []string{}
-	}
-	return result, nil
+	return collectRows(rows, scanString)
 }
 
 // 返回与当前主题共享 Resource 的相邻标签，排除主题自身。
@@ -112,23 +81,17 @@ func (MapStore) CooccurringTags(ctx context.Context, q Queryer, tagID string) ([
 		return nil, err
 	}
 	defer rows.Close()
-	return scanTagAggregates(rows)
+	return collectRows(rows, scanTagAggregate)
 }
 
-func scanTagAggregates(rows *sql.Rows) ([]TagAggregate, error) {
-	var result []TagAggregate
-	for rows.Next() {
-		var n TagAggregate
-		if err := rows.Scan(&n.TagID, &n.Name, &n.ResourceCount); err != nil {
-			return nil, err
-		}
-		result = append(result, n)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	if result == nil {
-		result = []TagAggregate{}
-	}
-	return result, nil
+func scanTagAggregate(sc rowScanner) (TagAggregate, error) {
+	var n TagAggregate
+	err := sc.Scan(&n.TagID, &n.Name, &n.ResourceCount)
+	return n, err
+}
+
+func scanTagEdge(sc rowScanner) (TagEdgeAggregate, error) {
+	var e TagEdgeAggregate
+	err := sc.Scan(&e.SourceTagID, &e.TargetTagID, &e.Weight)
+	return e, err
 }

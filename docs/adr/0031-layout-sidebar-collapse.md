@@ -55,33 +55,7 @@ Layout **不负责**：
 - Consumer 的 Logo、搜索、分组标题、用户区或多滚动区如何排列；
 - Consumer 的内部 header/footer 是否固定。
 
-因此 layout 内部的 sidebar viewport 仅提供受约束的 `flex: 1; min-height: 0` 几何区域，不设置 `overflow-y: auto`。Consumer 若要滚动，应自行传入一个高度受约束的 root，例如：
-
-```html
-<div slot="sidebar" class="sidebar-root">
-  <div class="sidebar-title">组件列表</div>
-  <nav class="sidebar-nav">...</nav>
-</div>
-```
-
-```css
-.sidebar-root {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  min-height: 0;
-}
-
-.sidebar-title {
-  flex-shrink: 0;
-}
-
-.sidebar-nav {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-}
-```
+因此 layout 内部的 sidebar viewport 仅提供受约束的 `flex: 1; min-height: 0` 几何区域，不设置 `overflow-y: auto`。Consumer 若要滚动，应自行传入一个高度受约束的 root（`height: 100%` 的 flex column，对目标子元素应用 `min-height: 0; overflow-y: auto`）；完整模板见 [`packages/web-ui/README.md`](../../packages/web-ui/README.md#web-ui-layout) 的 `<web-ui-layout>` 一节。
 
 此前的 `sidebar-header` 与 `sidebar-footer` slot 不属于公共契约。它们把 Consumer 的内部信息架构固化为“固定头部 / 强制滚动中间区 / 固定底部”，不适合作为通用组件库的默认模型。
 
@@ -109,31 +83,7 @@ Desktop Toggle 是 layout 自己的固定 footer，而不是 `sidebar` slot 内�
 
 `headless` 切换不得替换已打开的原生 `<dialog>`；组件必须保留同一个 dialog 实例，避免脱离 top layer。
 
-### 6. 公共 API
-
-```ts
-// 属性
-sidebarCollapsed: boolean // attribute: sidebar-collapsed，桌面端受控折叠状态，默认 false
-sidebarOpen: boolean      // attribute: sidebar-open，移动端 Drawer 受控打开状态，默认 false
-sidebarWidth: string      // attribute: sidebar-width，默认 '240px'
-collapsedWidth: string    // attribute: collapsed-width，默认 '72px'
-
-// 事件：用户交互只请求变更，Consumer 负责回写相应属性
-'sidebar-collapsed-change': CustomEvent<{ collapsed: boolean }>
-'sidebar-open-change': CustomEvent<{ open: boolean }>
-```
-
-插槽：`banner`、`header`、`sidebar`、`tabbar`、默认插槽。
-
-## 后果
-
-- Sidebar 内部结构不再被 layout 强制拆成多个 slot，Consumer 可以实现单滚动区、多滚动区或完全不滚动的 Sidebar。
-- Demo 必须显式展示 Consumer-owned scrollport：其根元素填满可用高度，真正的导航元素使用 `flex: 1; min-height: 0; overflow-y: auto`。
-- React 与 Vue demo 都必须将 `sidebar-collapsed-change` / `sidebar-open-change` 回写到对应的受控属性，作为两个状态模型的集成验证。
-- Banner 的可见高度成为 Sidebar 尺寸计算的一部分，增加了 ResizeObserver 与滚动同步实现，但保证圆角卡片在 Banner 出现、收缩和消失时视觉完整。
-- 不引入 `sidebar-header` / `sidebar-footer`：它们曾作为候选设计被否决，因为会将 Consumer 的内部信息架构固化为固定头部、强制滚动中间区和固定底部。
-
-### 7. 桌面端 Sidebar 拖拽调宽
+### 6. 桌面端 Sidebar 拖拽调宽
 
 `sidebar-resizable` 启用后，桌面 Sidebar 右缘渲染 resize handle（折叠态隐藏）。拖拽调宽与折叠解耦：仅夹紧在 `[min, max]` 与视口内，不联动 `sidebar-collapsed`。
 
@@ -145,3 +95,31 @@ collapsedWidth: string    // attribute: collapsed-width，默认 '72px'
 **键盘交互**：handle 采用 WAI-ARIA splitter 模式（`role="separator"` + 方向键）。←/→ 以 16px 步进（Shift 64px）调整临时宽度，Home/End 到 min/max，Enter 以同一 `sidebar-width-change` 请求提交，Escape 撤回。键盘调整与指针拖拽共用同一临时宽度字段；指针抓取会隐式放弃键盘未提交的调整。
 
 宽度状态由 prop 持有，组件不持久化、不引入“第三种宽度”。双击重置等额外手势不在范围内。
+
+### 7. 公共 API
+
+```ts
+// 属性
+sidebarCollapsed: boolean // attribute: sidebar-collapsed，桌面端受控折叠状态，默认 false
+sidebarOpen: boolean      // attribute: sidebar-open，移动端 Drawer 受控打开状态，默认 false
+sidebarWidth: string      // attribute: sidebar-width，默认 '240px'
+collapsedWidth: string    // attribute: collapsed-width，默认 '72px'
+sidebarResizable: boolean // attribute: sidebar-resizable，桌面端拖拽调宽开关，默认 false
+sidebarMinWidth: string   // attribute: sidebar-min-width，拖拽下限，默认回退 collapsed-width
+sidebarMaxWidth: string   // attribute: sidebar-max-width，拖拽上限，内置 50vw 硬上限优先
+
+// 事件：用户交互只请求变更，Consumer 负责回写相应属性
+'sidebar-collapsed-change': CustomEvent<{ collapsed: boolean }>
+'sidebar-open-change': CustomEvent<{ open: boolean }>
+'sidebar-width-change': CustomEvent<{ width: string }>
+```
+
+插槽：`banner`、`header`、`sidebar`、`tabbar`、默认插槽。
+
+## 后果
+
+- Sidebar 内部结构不再被 layout 强制拆成多个 slot，Consumer 可以实现单滚动区、多滚动区或完全不滚动的 Sidebar。
+- Demo 必须显式展示 Consumer-owned scrollport：其根元素填满可用高度，真正的导航元素使用 `flex: 1; min-height: 0; overflow-y: auto`。
+- React 与 Vue demo 都必须将 `sidebar-collapsed-change` / `sidebar-open-change` 回写到对应的受控属性，作为两个状态模型的集成验证。
+- Banner 的可见高度成为 Sidebar 尺寸计算的一部分，增加了 ResizeObserver 与滚动同步实现，但保证圆角卡片在 Banner 出现、收缩和消失时视觉完整。
+- 不引入 `sidebar-header` / `sidebar-footer`：它们曾作为候选设计被否决，因为会将 Consumer 的内部信息架构固化为固定头部、强制滚动中间区和固定底部。

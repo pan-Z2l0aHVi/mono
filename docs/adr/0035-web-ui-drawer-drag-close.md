@@ -19,9 +19,11 @@
 
 ### 2. Drag bar 仅存在于打开态，位置随 placement 适配
 
-打开且 `draggable` 时，在 dialog 内缘渲染 drag bar（灰色胶囊 `~4×48px` + 约 `24px` 加宽命中条，便于触屏命中）。位置随 placement 切换：
+打开且 `draggable` 时，在 dialog 内缘渲染 drag bar（灰色胶囊 `4×56px` + `32px` 宽命中区，便于触屏命中）。位置随 placement 切换：
 
 > 注：非 headless 抽屉的视觉容器已改为浮动圆角卡片（ADR-0036），drag bar 仍贴 dialog 内缘定位，机制不变。
+>
+> 修订（2026-09-09）：初版为 `~4×48px` 胶囊 + `24px` 命中条；现调整为 `4×56px` + `32px`，并公开 token `--wui-drawer-drag-bar-thickness`（4px）、`--wui-drawer-drag-bar-length`（56px）与 `--wui-drawer-drag-zone-size`（32px），命中区与胶囊位置解耦。
 
 - `right` → 左缘（抽屉向右闭合）；
 - `left` → 右缘（向左闭合）；

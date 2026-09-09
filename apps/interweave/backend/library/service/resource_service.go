@@ -73,11 +73,9 @@ func (s *ResourceService) ListResources(ctx context.Context) ([]ResourceDTO, err
 		return nil, err
 	}
 
-	result := make([]ResourceDTO, 0, len(views))
-	for i := range views {
-		result = append(result, *resourceViewToDTO(&views[i]))
-	}
-	return result, nil
+	return mapped(views, func(view core.ResourceView) ResourceDTO {
+		return *resourceViewToDTO(&view)
+	}), nil
 }
 
 // 仅搜索用户维护的上下文与来源基础信息，不扩展为内容索引。
@@ -87,9 +85,7 @@ func (s *ResourceService) SearchResources(ctx context.Context, query string) ([]
 		return nil, err
 	}
 
-	result := make([]ResourceDTO, 0, len(views))
-	for i := range views {
-		result = append(result, *resourceViewToDTO(&views[i]))
-	}
-	return result, nil
+	return mapped(views, func(view core.ResourceView) ResourceDTO {
+		return *resourceViewToDTO(&view)
+	}), nil
 }

@@ -120,9 +120,18 @@ useEffect(() => {
 <web-ui-dropdown-item ref={itemRef}>粘贴并关闭</web-ui-dropdown-item>
 ```
 
-在 `portal` 模式下，库会把面板内容物理移入浮层 Shadow DOM。这类内容中的 React 条件子元素
-（`{condition && <el/>}`）不受支持：React 按记录的插入父节点执行删除，已迁移节点的删除会以
-commit-phase error 失败，且该节点可能在面板关闭时重新出现。请保持面板内容始终挂载、仅切换可见性。
+在 `portal` 模式下，库会把面板内容物理移入浮层 Shadow DOM：
+
+- React 按记录的插入父节点执行删除，因此裸条件子元素（`{condition && <el/>}`）的节点一旦已迁移，在面板打开期间无法删除：commit 失败，且该节点可能在面板关闭时重新出现。
+- 请改为在稳定的包装元素内部做条件渲染——React 记录的插入父节点是包装元素，包装元素内部的增删在面板打开期间与开合周期内都保持可用（示例如下）。
+- 面板打开期间的裸条件新增（向宿主追加内容）不受影响，会自动迁入面板。
+- 保持内容始终挂载、仅切换可见性仍是有效的回退方案。
+
+```tsx
+<web-ui-popover portal open={open} trigger="manual">
+  <div className="panel-body">{editing && <TagEditor />}</div>
+</web-ui-popover>
+```
 
 ### Vue
 
@@ -209,16 +218,22 @@ hover 与按压反馈阶段保持箭头光标，仅在真实拖拽进行中切�
 
 **请求-写回模式（仅 dialog 与 drawer 的 `controlled`）。**
 `controlled=true` 时，用户关闭操作（Escape、backdrop、内置关闭、拖拽释放）只*请求* `open=false`；组件不改自己的
-状态，保持打开，直到消费者写回 `open=false`。这是模态确认语义——关对话框/抽屉通常是需要消费者批准的操作（未保存
+状态，保持打开，直到Consumer写回 `open=false`。这是模态确认语义——关对话框/抽屉通常是需要Consumer批准的操作（未保存
 表单、需确认），与即时开合不同，不能由组件自行提交。只有这两个模态组件使用该模式；即时开合家族（collapse、popover、
 dropdown、tooltip）不需要它。
 
 **原生表单模型（input、textarea、input-number、select、checkbox、radio、switch、autocomplete）。**
 控件内部自管理 value/checked 状态；用户交互立即翻转，然后派发原生 `input`/`change` 事件。程序化赋值
 （`el.checked = true`）覆盖内部状态。这与原生 `<input type="checkbox">` 一致——**没有 `controlled` prop 是因为
-值总是可读可写**，React/Vue 层自备受控包装。若翻转的持久化需要外部往返（例如开关应只有 API 调用成功后保持开启），
-使用**乐观更新**路径：立即翻转、监听 `change`、请求期间设 `loading`（阻断后续交互并显示 spinner），失败后回写
-property（`el.checked = false`）并提示 toast。翻转先于批准的窗口被接受；不提供「批准前不翻转」的 `controlled` prop。
+值总是可读可写**，React/Vue 层自备受控包装。
+
+若翻转的持久化需要外部往返（例如开关应只有 API 调用成功后保持开启），使用**乐观更新**路径：
+
+- 立即翻转，然后监听 `change`。
+- 请求期间设 `loading`，阻断后续交互并显示 spinner。
+- 失败后回写 property（`el.checked = false`）并提示 toast。
+
+翻转先于批准的窗口被接受；不提供「批准前不翻转」的 `controlled` prop。
 
 ### 表单关联控件
 
@@ -681,18 +696,27 @@ Portal 面板创建时会镜像 host 上解析后的这些变量；更新 host �
 
 关闭时保留原生 dialog 的 top layer，待退出过渡完成后调用 `dialog.close()`。Escape 始终走此关闭路径；`no-backdrop-close` 仅控制遮罩点击。
 
-**拖拽关闭：** 启用 `draggable` 后，打开的抽屉在内缘显示灰色胶囊 drag bar（`right` 在左缘、`left` 在右缘、`top` 在下缘、`bottom` 在上缘）。拖拽实时跟手（遮罩透明度按比例淡出）；松手时位移超过抽屉尺寸约 1/3 或快速甩动即弹簧关闭，否则弹回打开位，方向随 placement 适配。启用 `controlled` 后，超过阈值松手仅派发 `open-change(false)`；抽屉在闭合位短暂等待（120ms 回写窗口），Consumer 拒绝或超时未回写时弹回打开位。不支持拖拽打开——关闭态的抽屉在原生 dialog 之外没有任何渲染物。`prefers-reduced-motion` 下松手即时到位，不播放弹簧动画。
+**拖拽关闭：** 启用 `draggable` 后，打开的抽屉在内缘显示灰色胶囊 drag bar（默认 4×56px，视觉中线距内缘 10px，位于 32px 厚的命中热区内；`right` 在左缘、`left` 在右缘、`top` 在下缘、`bottom` 在上缘）：
+
+- 拖拽实时跟手，遮罩透明度按比例淡出。
+- 松手时位移超过抽屉尺寸约 1/3 或快速甩动即弹簧关闭，否则弹回打开位；方向随 placement 适配。
+- 启用 `controlled` 后，超过阈值松手仅派发 `open-change(false)`；抽屉在闭合位短暂等待（120ms 回写窗口），Consumer 拒绝或超时未回写时弹回打开位。
+- 不支持拖拽打开——关闭态的抽屉在原生 dialog 之外没有任何渲染物。
+- `prefers-reduced-motion` 下松手即时到位，不播放弹簧动画。
 
 **CSS 自定义属性：**
 
-| 属性                      | 默认值                             | 说明                                               |
-| ------------------------- | ---------------------------------- | -------------------------------------------------- |
-| `--wui-drawer-width`      | `320px`                            | 抽屉宽度                                           |
-| `--wui-drawer-height`     | `300px`                            | 抽屉高度（上/下）                                  |
-| `--wui-drawer-bg`         | `var(--wui-color-surface-overlay)` | 抽屉背景色                                         |
-| `--wui-drawer-radius`     | `28px`                             | 浮动卡片圆角（非 headless）                        |
-| `--wui-drawer-inset`      | `8px`                              | 浮动卡片视口留边（非 headless）；置 `0` 为贴边几何 |
-| `--wui-drawer-overlay-bg` | `rgb(0 0 0 / 0.12)`                | 遮罩背景色                                         |
+| 属性                              | 默认值                             | 说明                                               |
+| --------------------------------- | ---------------------------------- | -------------------------------------------------- |
+| `--wui-drawer-width`              | `320px`                            | 抽屉宽度                                           |
+| `--wui-drawer-height`             | `300px`                            | 抽屉高度（上/下）                                  |
+| `--wui-drawer-bg`                 | `var(--wui-color-surface-overlay)` | 抽屉背景色                                         |
+| `--wui-drawer-radius`             | `var(--wui-radius-overlay, 28px)`  | 浮动卡片圆角（非 headless）                        |
+| `--wui-drawer-inset`              | `8px`                              | 浮动卡片视口留边（非 headless）；置 `0` 为贴边几何 |
+| `--wui-drawer-overlay-bg`         | `rgb(0 0 0 / 0.12)`                | 遮罩背景色                                         |
+| `--wui-drawer-drag-zone-size`     | `32px`                             | Drag-to-close 命中热区厚度（draggable）            |
+| `--wui-drawer-drag-bar-thickness` | `4px`                              | Drag bar 胶囊厚度（短轴）                          |
+| `--wui-drawer-drag-bar-length`    | `56px`                             | Drag bar 胶囊长度（沿抽屉边缘）                    |
 
 ---
 
@@ -726,7 +750,7 @@ Portal 面板创建时会镜像 host 上解析后的这些变量；更新 host �
 
 **trigger 语义：** 交互语义完全来自 default slot 放入的元素——原生 `<button>`、`<web-ui-button>` 或其他可交互元素原生提供 Enter/Space 激活与焦点。collapse 把 `aria-expanded` / `aria-controls`（指向内容轨道）与 `aria-disabled` 回写到 trigger slot 的首个 assigned element。trigger 请使用可交互元素：纯 `<span>` 可点击但没有键盘/焦点语义。
 
-**关闭稳态语义：** 消费者的 light DOM 永不移动或卸载。默认关闭稳态在内部内容容器上设 `hidden`；`keep-mounted` 时内部容器标记 `inert`，保留在收起轨道内可测量。
+**关闭稳态语义：** Consumer的 light DOM 永不移动或卸载。默认关闭稳态在内部内容容器上设 `hidden`；`keep-mounted` 时内部容器标记 `inert`，保留在收起轨道内可测量。
 
 **已知限制：** `horizontal` 动画期间内容随宽度变化 reflow。
 
@@ -804,7 +828,7 @@ Hover 模式使用 `pointerenter`/`pointerleave` 加延迟控制。Click 模式�
 
 通过 `contextmenu` 事件打开。菜单项：`web-ui-dropdown-item`、`web-ui-dropdown-divider`、`web-ui-dropdown-header`。支持键盘导航和子菜单 hover。
 
-菜单打开期间，消费者可以安全地使用条件渲染（如 Vue `v-if`）切换、移动或删除菜单项，无需重新插入到宿主元素；portal 内的变更会自动 reconcile，关闭时框架锚点随元素迁回宿主，保证后续框架更新正常。
+菜单打开期间，Consumer可以安全地使用条件渲染（如 Vue `v-if`）切换、移动或删除菜单项，无需重新插入到宿主元素；portal 内的变更会自动 reconcile，关闭时框架锚点随元素迁回宿主，保证后续框架更新正常。
 
 ---
 
@@ -985,7 +1009,12 @@ WebUiSpinner.hide() // 隐藏
 
 **事件：** `sidebar-collapsed-change`（`CustomEvent<{ collapsed: boolean }>`）用于请求更新桌面端折叠状态；`sidebar-open-change`（`CustomEvent<{ open: boolean }>`）用于请求更新移动端 Drawer 打开状态；`sidebar-width-change`（`CustomEvent<{ width: string }>`）用于请求在拖拽调整结束后更新侧边栏宽度。Consumer 必须将请求值回写到对应的受控属性。
 
-**侧边栏调整宽度：** 启用 `sidebar-resizable` 后，桌面端侧边栏右边缘会出现调整手柄（折叠状态下隐藏）。悬停或拖拽时显示 3px 宽的强调色垂直线和 `col-resize` 光标。拖拽时实时更新宽度（禁止过渡动画，限制在 `[min, max]` 和视口范围内）；释放时触发 `sidebar-width-change` 事件并携带最终像素宽度，控制权交还给 `sidebar-width` 属性等待 Consumer 回写。`pointercancel` 会恢复属性控制的宽度且不触发事件。手柄同时支持键盘（WAI-ARIA splitter 模式）：聚焦后用 ←/→ 以 16px 步进调整（Shift 加速到 64px），Home/End 跳到 min/max，Enter 以同一 `sidebar-width-change` 请求提交，Escape 撤回未提交的调整。移动端 Drawer 始终通过其内置 `draggable` 抽屉支持拖拽关闭。
+**侧边栏调整宽度：** 启用 `sidebar-resizable` 后，桌面端侧边栏右边缘会出现调整手柄（折叠状态下隐藏）；悬停或拖拽时显示 3px 宽的强调色垂直线和 `col-resize` 光标。
+
+- 拖拽时实时更新宽度（禁止过渡动画，限制在 `[min, max]` 和视口范围内）。
+- 释放时触发 `sidebar-width-change` 事件并携带最终像素宽度，Consumer 回写后宽度重新由 `sidebar-width` 属性接管；`pointercancel` 会恢复属性控制的宽度且不触发事件。
+- 键盘操作（WAI-ARIA splitter 模式）：聚焦后用 ←/→ 以 16px 步进调整（Shift 加速到 64px），Home/End 跳到 min/max，Enter 以同一 `sidebar-width-change` 请求提交，Escape 撤回未提交的调整。
+- 移动端 Drawer 始终通过其内置 `draggable` 抽屉支持拖拽关闭。
 
 | 插槽      | 说明                                                         |
 | --------- | ------------------------------------------------------------ |
@@ -995,7 +1024,33 @@ WebUiSpinner.hide() // 隐藏
 | `default` | 主内容区                                                     |
 | `tabbar`  | 底部 tabbar                                                  |
 
-`web-ui-layout` 只约束侧边栏卡片的可用空间并管理桌面端 Toggle，不创建侧边栏 scrollport。若仅让侧边栏的一部分滚动，请将 `sidebar` 插槽根节点设为 `height: 100%; min-height: 0` 的 flex column，再将 `overflow-y: auto` 设置到目标子元素。这样 Consumer 可自行固定头部和底部，无需额外的公共 slot。
+`web-ui-layout` 只约束侧边栏卡片的可用空间并管理桌面端 Toggle，不创建侧边栏 scrollport。若仅让侧边栏的一部分滚动，请将 `sidebar` 插槽根节点设为 `height: 100%; min-height: 0` 的 flex column，再将 `overflow-y: auto` 设置到目标子元素。这样 Consumer 可自行固定头部和底部，无需额外的公共 slot：
+
+```html
+<div slot="sidebar" class="sidebar-root">
+  <div class="sidebar-title">组件列表</div>
+  <nav class="sidebar-nav">...</nav>
+</div>
+```
+
+```css
+.sidebar-root {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.sidebar-title {
+  flex-shrink: 0;
+}
+
+.sidebar-nav {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+```
 
 在 `640px` 及以下，侧边栏会切换为 headless 模式的 `web-ui-drawer`。Consumer 内容仍渲染在相同的圆角侧边栏卡片中，移动端 Toggle 以 glass 变体位于 header 行内。其左缩进默认 `8px`，可通过 `--wui-layout-mobile-toggle-inset` 与 Consumer 自身的 header 内边距对齐。
 
@@ -1003,10 +1058,10 @@ WebUiSpinner.hide() // 隐藏
 
 **CSS 自定义属性：**
 
-| 属性                               | 默认值 | 说明                                 |
-| ---------------------------------- | ------ | ------------------------------------ |
-| `--wui-layout-sidebar-radius`      | `24px` | 侧边栏卡片圆角（桌面端和移动端共用） |
-| `--wui-layout-mobile-toggle-inset` | `8px`  | 移动端 header Toggle 的左缩进        |
+| 属性                               | 默认值                            | 说明                                 |
+| ---------------------------------- | --------------------------------- | ------------------------------------ |
+| `--wui-layout-sidebar-radius`      | `var(--wui-radius-overlay, 28px)` | 侧边栏卡片圆角（桌面端和移动端共用） |
+| `--wui-layout-mobile-toggle-inset` | `8px`                             | 移动端 header Toggle 的左缩进        |
 
 #### `<web-ui-back-top>`
 
@@ -1078,6 +1133,14 @@ SVG 线条绘制动画，基于 `stroke-dashoffset`。直接在原元素上动�
 | `--wui-overlay-min-width` | `200px` | 锚定浮层最小宽度         |
 | `--wui-focus-ring-width`  | `3px`   | Focus 指示器宽度         |
 
+**圆角 token：**
+
+| 属性                   | 默认值                 | 说明                                                 |
+| ---------------------- | ---------------------- | ---------------------------------------------------- |
+| `--wui-radius-control` | `calc(infinity * 1px)` | 小型控件的胶囊圆角（button、input、switch、option…） |
+| `--wui-radius-menu`    | `18px`                 | 菜单/Popover 浮动面板、多行 textarea 与 toast        |
+| `--wui-radius-overlay` | `28px`                 | 大型覆盖层：dialog、drawer、layout sidebar           |
+
 **层级 token：**
 
 | 属性                         | 默认值 | 说明           |
@@ -1141,9 +1204,9 @@ SVG 线条绘制动画，基于 `stroke-dashoffset`。直接在原元素上动�
 | `--wui-shadow-panel`   | `0 3px 9px rgb(0 0 0 / 0.27)`    | `0 4px 16px rgb(0 0 0 / 0.32)`  | 小型浮动面板阴影  |
 | `--wui-shadow-glass`   | 四层扩散阴影                     | `0 8px 24px rgb(0 0 0 / 0.08)`  | 液态玻璃基础阴影  |
 
-**玻璃效果 token：** `--wui-glass-brightness` 浅色模式为 `1.06`，深色模式为 `1.02`。`--wui-glass-corner-radius` 默认值为 `32px`；玻璃组件会以自身的圆角半径覆盖它，使对角描边光影与形状对齐。
+**玻璃效果 token：** `--wui-glass-brightness` 浅色模式为 `1.06`，深色模式为 `1.02`。`--wui-glass-corner-radius` 默认值为 `32px`；非 pill 玻璃表面以自身语义圆角（`--wui-radius-menu` / `--wui-radius-overlay`，drawer 为 `--wui-drawer-radius`）覆盖它，使对角描边光影跟随 token 覆盖联动。pill 控件例外：光影渐变需要物理尺寸，继续使用由控件实际尺寸或内部尺寸 token 派生的有限圆角值。
 
-**内部 token：** 以 `--wui-internal-*` 为前缀的变量是 Shadow DOM 内部接线变量，不属于公共 token API，消费方不应覆盖。
+**内部 token：** 以 `--wui-internal-*` 为前缀的变量是 Shadow DOM 内部接线变量，不属于公共 token API，Consumer 不应覆盖。
 
 ---
 

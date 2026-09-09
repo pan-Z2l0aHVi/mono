@@ -1,6 +1,10 @@
 # ADR-0038: Web UI Collapse 组件族
 
-> **状态（2026-08-30）**：本文档的三元素家族结构（第 3 节）与 trigger 实现（第 4 节）已被 [ADR-0040](0040-web-ui-collapse-single-element-and-lit-context.md) 的单组件 + slots 方案取代；动画选型（第 1 节）与三态关闭语义（第 2 节）仍有效并由 ADR-0040 继承。collapse 组件在首次发布前完成重构，无发布兼容成本。
+- **Date**: 2026-08-30
+- **Status**: 已接受
+- **Superseded-by**: [ADR-0040](0040-web-ui-collapse-single-element-and-lit-context.md)（取代三元素家族结构与 trigger 实现；动画选型与三态关闭语义被继承）
+
+> collapse 组件在首次发布前完成重构，无发布兼容成本。
 
 ## 背景
 

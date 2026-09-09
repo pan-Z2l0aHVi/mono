@@ -42,6 +42,32 @@ describe('definePlugin 测试', () => {
     })
   })
 
+  describe('key 冲突的优先级（运行时语义，wrapper 插件依赖它）', () => {
+    it('后 use 的插件在同名 key 上覆盖前者（last-wins）', () => {
+      const base = definePlugin(() => ({
+        who: 'base',
+        send: (data: string) => `base:${data}`
+      }))
+      const wrapper = definePlugin(() => ({
+        send: (data: string) => `wrapped:${data}`
+      }))
+
+      const composed = base.use(wrapper).make()
+      // batch-track 等 wrapper 插件依赖这一行为：自己的 track/flush 覆盖 core 的
+      expect(composed.send('x')).toBe('wrapped:x')
+      expect(composed.who).toBe('base')
+
+      // 顺序对调时覆盖关系跟着对调，而非固定某一方
+      const reversed = wrapper.use(base).make()
+      expect(reversed.send('x')).toBe('base:x')
+    })
+
+    it('make() 显式 ctx 与插件成员同名时，插件成员覆盖 ctx', () => {
+      const plugin = definePlugin(() => ({ a: 2 }))
+      expect(plugin.make({ a: 1 }).a).toBe(2)
+    })
+  })
+
   describe('use', () => {
     const defineStore = (initial: Record<string, number>) =>
       definePlugin(() => {
