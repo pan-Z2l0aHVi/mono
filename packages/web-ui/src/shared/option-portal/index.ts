@@ -193,3 +193,4 @@ export const defineOptionPortal = () =>
 
     return api
   })
+export * from './combobox-shell'

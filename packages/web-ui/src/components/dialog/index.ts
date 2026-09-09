@@ -4,6 +4,7 @@ import { customElement, property, state } from 'lit/decorators.js'
 import '@/components/button'
 import glass from '@/assets/glass.css?inline'
 import { UserChangeController } from '@/shared/events/user-change'
+import { dispatchOpenChangeEvent } from '@/shared/open-state'
 import { defineNativeDialogPresence } from '@/shared/overlay/native-dialog-presence'
 import { defineScrollLockLease } from '@/shared/scroll-lock/scroll-lock'
 
@@ -94,13 +95,7 @@ export class WebUiDialog extends LitElement {
 
   // controlled 下派发关闭请求：detail 固定 false（用户只能请求关闭，打开永远由 Consumer 写）。
   private emitOpenChange(open = this.open) {
-    this.dispatchEvent(
-      new CustomEvent('open-change', {
-        detail: { open },
-        bubbles: true,
-        composed: true
-      })
-    )
+    dispatchOpenChangeEvent(this, open)
   }
 
   private _onTransitionEnd = (event: TransitionEvent) => {

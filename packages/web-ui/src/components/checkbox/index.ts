@@ -4,16 +4,14 @@ import { classMap } from 'lit/directives/class-map.js'
 
 import '@/components/icon'
 import { heroiconsCheck16Solid } from '@/icons'
-import { defineFormAssociation, FormAssociationController } from '@/shared/form-association'
+import { FormAssociated, defineFormAssociation, FormAssociationController } from '@/shared/form-association'
 import { defineGroupManaged, selectionGroupContextKey, type SelectionGroupContext } from '@/shared/group-management'
 
 import style from './style.css?inline'
 
 @customElement('web-ui-checkbox')
-export class WebUiCheckbox extends LitElement {
+export class WebUiCheckbox extends FormAssociated(LitElement) {
   static override styles = unsafeCSS(style)
-  static formAssociated = true
-
   private readonly _groupManagement = defineGroupManaged<SelectionGroupContext>(this, {
     context: selectionGroupContextKey,
     requestUpdate: () => this.requestUpdate()
@@ -67,18 +65,6 @@ export class WebUiCheckbox extends LitElement {
   }).make()
 
   private readonly _formAssociationController = new FormAssociationController(this, this._formAssociation)
-
-  formResetCallback() {
-    this._formAssociation.reset()
-  }
-
-  formDisabledCallback(disabled: boolean) {
-    this._formAssociation.setDisabled(disabled)
-  }
-
-  formStateRestoreCallback(state: string | File | FormData | null) {
-    this._formAssociation.restore(state)
-  }
 
   private _syncValidity() {
     const internals = this._formAssociation.getInternals()
