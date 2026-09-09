@@ -17,6 +17,7 @@ export {
     LocalMapDTO,
     ResourceDTO,
     SourceDTO,
+    SourceMetadataDTO,
     TagDTO,
     TagEdgeDTO,
     TagNodeDTO

@@ -6,26 +6,13 @@ import glass from '@/assets/glass.css?inline'
 import overlayMotion from '@/assets/overlay-motion.css?inline'
 import { UserChangeController } from '@/shared/events/user-change'
 import { normalizeLiteral, normalizeNumber } from '@/shared/normalize'
+import { dispatchOpenChangeEvent } from '@/shared/open-state'
 import { defineAnchoredPanel } from '@/shared/overlay/anchored-panel'
+import { FLOATING_PLACEMENTS } from '@/shared/overlay/placement-props'
 import { defineOverlayPortal } from '@/shared/overlay/portal'
 import type { OverlayContainer, OverlayPortal } from '@/shared/overlay/portal'
 
 import style from './style.css?inline'
-
-const ALLOWED_PLACEMENTS = [
-  'top',
-  'top-start',
-  'top-end',
-  'bottom',
-  'bottom-start',
-  'bottom-end',
-  'left',
-  'left-start',
-  'left-end',
-  'right',
-  'right-start',
-  'right-end'
-] as const
 
 const ALLOWED_TRIGGERS = ['click', 'hover', 'manual'] as const
 
@@ -44,7 +31,7 @@ export class WebUiPopover extends LitElement {
   }
   set placement(v: string) {
     const old = this._placement
-    this._placement = normalizeLiteral(v, ALLOWED_PLACEMENTS, 'bottom')
+    this._placement = normalizeLiteral(v, FLOATING_PLACEMENTS, 'bottom')
     this.requestUpdate('placement', old)
   }
   private _placement: Placement = 'bottom'
@@ -207,16 +194,7 @@ export class WebUiPopover extends LitElement {
       target: this,
       style: `${glass}\n${overlayMotion}\n${style}`,
       className: 'popover-panel portal wui-glass wui-floating-panel',
-      onContentChange: mutations => {
-        // Vue 等框架在打开期物理删除已迁移节点：从追踪列表摘除，否则关闭恢复时
-        // 会把已删除节点复活回宿主 light DOM。面板内部的移动（重排 insertBefore）
-        // 在同一 mutation record 中同时出现在 removed/added，不属于删除，须排除。
-        const addedNodes = new Set(mutations.flatMap(mutation => [...mutation.addedNodes]))
-        const removedNodes = mutations
-          .flatMap(mutation => [...mutation.removedNodes])
-          .filter(node => !addedNodes.has(node))
-        if (removedNodes.length) this._portal?.removeContent(removedNodes)
-      },
+      // 已迁移节点被框架删除后的解除追踪是 portal 内建默认行为，这里无需 onContentChange
       migrateAddedNodes: addedNodes => this._migratableContentNodes(addedNodes)
     })
     this._portal = portal
@@ -238,13 +216,7 @@ export class WebUiPopover extends LitElement {
   }
 
   private _dispatchChange(open: boolean) {
-    this.dispatchEvent(
-      new CustomEvent('open-change', {
-        detail: { open },
-        bubbles: true,
-        composed: true
-      })
-    )
+    dispatchOpenChangeEvent(this, open)
   }
 
   /*

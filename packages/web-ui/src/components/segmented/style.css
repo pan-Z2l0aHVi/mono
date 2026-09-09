@@ -19,7 +19,7 @@
   align-items: stretch;
 
   padding: 4px;
-  border-radius: calc(infinity * 1px);
+  border-radius: var(--wui-radius-control, calc(infinity * 1px));
 
   background-color: var(--wui-color-surface-segmented, #e5e5ea);
 
@@ -45,7 +45,7 @@
   display: block;
 
   width: var(--indicator-width, 0);
-  border-radius: calc(infinity * 1px);
+  border-radius: var(--wui-radius-control, calc(infinity * 1px));
 
   background-color: var(--wui-color-surface-selected, #fff);
   box-shadow:

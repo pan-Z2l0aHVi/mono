@@ -5,4 +5,4 @@
 - 不得使用 `--no-verify` 或 `--no-gpg-sign` 绕过 Git 检查。
 - commit message 必须使用英文，不得使用中文。
 - 提交前用 `git config user.name` / `user.email` 确认实际 author/committer；不要假定本地 Git 配置与预期一致。
-- 每个 PR 必须携带至少一个 changeset（CI 运行 `changeset status`，无 changeset 即失败）；不影响包版本的变更用只含两行 `---` 的空 changeset，格式见 [`docs/agents/commit.md`](../../docs/agents/commit.md)。
+- 每个 PR 必须携带至少一个 changeset（CI 运行 `changeset status`，无 changeset 即失败）；不影响包版本的变更使用空 changeset，格式见 [`docs/agents/commit.md`](../../docs/agents/commit.md)。

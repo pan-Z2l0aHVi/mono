@@ -28,7 +28,7 @@
 
   width: var(--wui-empty-icon-size, 56px);
   height: var(--wui-empty-icon-size, 56px);
-  border-radius: 16px;
+  border-radius: var(--wui-internal-empty-icon-radius, 16px);
 
   color: var(--wui-color-text-secondary, #6a6a6a);
 

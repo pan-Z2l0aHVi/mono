@@ -34,7 +34,7 @@ describe('WebUiTextarea borderless（浏览器）', () => {
     await el.updateComplete
     // focus ring 走 200ms box-shadow 过渡，等过渡完成后再断言终值
     await new Promise(resolve => setTimeout(resolve, 300))
-    const focusedStyle = getComputedStyle(inner)
+    const focusedStyle = getComputedStyle(inner, '::after')
     expect(el.hasAttribute('focused')).toBe(true)
     expect(el.shadowRoot?.querySelector('textarea')?.matches(':focus-visible')).toBe(true)
     // 与 normal 变体同款：inset accent 内圈 + focus-ring halo 的 box-shadow

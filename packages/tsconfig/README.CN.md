@@ -28,7 +28,7 @@ TypeScript 的 `lib` 选项是按运行环境分组的，而非按项目类型�
 
 纯 JS 库（如 `js-kit`）需要 `setTimeout`、`EventTarget`、`URL` 等运行时 API。这些 API 跨平台可用（浏览器和 Node.js 都支持），但 TypeScript 只把它们放在 `DOM` lib 中，和 `window`/`document` 混在一起。
 
-`webworker` 是最接近的选择：它提供这些运行时 API 但暴露 `window`/`document`，而 Worker 额外的 API（`postMessage`、`Cache`）足够冷门，误用概率极低。`DOM`、`@types/node`、`ESNext` 单独都无法提供合适的 API 集合而不带来多余的全局类型。
+`webworker` 是最接近的选择：它提供这些运行时 API 但不暴露 `window`/`document`，而 Worker 额外的 API（`postMessage`、`Cache`）足够冷门，误用概率极低。`DOM`、`@types/node`、`ESNext` 单独都无法提供合适的 API 集合而不带来多余的全局类型。
 
 本包将其组织为渐进式 4 层结构，每个包只使用它实际需要的运行时 API。
 

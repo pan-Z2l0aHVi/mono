@@ -5,7 +5,7 @@
       "source": "vercel-labs/agent-browser",
       "sourceType": "github",
       "skillPath": "skills/agent-browser/SKILL.md",
-      "computedHash": "dd491d53824ad9286ec950aee667098446332429a6d41fe28b4ba11f1959264c"
+      "computedHash": "80161e6836b3b40f4e83730a290deb40ac14d877d38c97ad5f6d71be37ce74c3"
     },
     "api-and-interface-design": {
       "source": "addyosmani/agent-skills",
@@ -42,6 +42,12 @@
       "sourceType": "github",
       "skillPath": "skills/context-engineering/SKILL.md",
       "computedHash": "2818e477e47885026e5ab7a622c0bfb18f1b609c49a55505f2cefe9d365401a7"
+    },
+    "deprecation-and-migration": {
+      "source": "addyosmani/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/deprecation-and-migration/SKILL.md",
+      "computedHash": "0d7b2002e250c02a260f6bc502d7a798ab8e8ca0c020c54d7b0f16053935c72c"
     },
     "domain-modeling": {
       "source": "mattpocock/skills",
@@ -83,7 +89,7 @@
       "source": "herdrdev/herdr",
       "sourceType": "github",
       "skillPath": "skills/herdr/SKILL.md",
-      "computedHash": "77b9fb624aebcbfccfbc84d7ef3b938c70ecb9198c8bbfee95b11751ba20bfb7"
+      "computedHash": "d2ee5846631446f22067c52980d100c9355df48106a679a04aab1c7a383b5f41"
     },
     "improve-codebase-architecture": {
       "source": "mattpocock/skills",

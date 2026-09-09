@@ -6,8 +6,15 @@ import '@/components/option'
 import glass from '@/assets/glass.css?inline'
 import overlayMotion from '@/assets/overlay-motion.css?inline'
 import type { WebUiOption } from '@/components/option'
-import { defineFormAssociation, FormAssociationController } from '@/shared/form-association'
+import { FormAssociated, defineFormAssociation, FormAssociationController } from '@/shared/form-association'
 import { normalizeLiteral } from '@/shared/normalize'
+import { dispatchOpenChangeEvent } from '@/shared/open-state'
+import {
+  createComboboxOpenController,
+  createOptionListenerBinding,
+  handleComboboxFocusOut,
+  nextWrappingIndex
+} from '@/shared/option-portal'
 import { defineOptionPortal } from '@/shared/option-portal'
 import { defineAnchoredPanel } from '@/shared/overlay/anchored-panel'
 import { applyOverlayVariables, defineOverlayPortal } from '@/shared/overlay/portal'
@@ -32,10 +39,8 @@ function isEmptySlotNode(node: Node): node is Element {
  * `allow-custom-value` 开启后，Enter 可把不匹配候选的原文作为 custom value 显式提交。
  */
 @customElement('web-ui-autocomplete')
-export class WebUiAutocomplete extends LitElement {
+export class WebUiAutocomplete extends FormAssociated(LitElement) {
   static override styles = [unsafeCSS(glass), unsafeCSS(overlayMotion), unsafeCSS(style)]
-
-  static formAssociated = true
 
   @property({ type: String, reflect: true }) placeholder = ''
   @property({ type: Boolean, reflect: true }) borderless = false
@@ -175,11 +180,12 @@ export class WebUiAutocomplete extends LitElement {
   }
 
   private _onFocusOut = () => {
-    requestAnimationFrame(() => {
-      if (this._isOpen && !this.matches(':focus-within') && !this._panel.getPanel()?.matches(':focus-within')) {
-        this._close()
-      }
-    })
+    handleComboboxFocusOut(
+      this,
+      () => this._panel.getPanel(),
+      () => this._isOpen,
+      () => this._close()
+    )
   }
 
   private _handlePanelPointerDown = (e: PointerEvent) => {
@@ -246,17 +252,9 @@ export class WebUiAutocomplete extends LitElement {
     this._syncEmptyState()
   }
 
-  formResetCallback() {
-    this._formAssociation.reset()
-  }
-
-  formDisabledCallback(disabled: boolean) {
+  override formDisabledCallback(disabled: boolean) {
     this._formAssociation.setDisabled(disabled)
     if (disabled && this._isOpen) this._close()
-  }
-
-  formStateRestoreCallback(state: string | File | FormData | null) {
-    this._formAssociation.restore(state)
   }
 
   private _syncValidity() {
@@ -335,19 +333,15 @@ export class WebUiAutocomplete extends LitElement {
     }
   }
 
-  private _bindOption = (option: WebUiOption) => {
-    option.addEventListener('click', this._handleOptionClick)
-    option.addEventListener('pointerover', this._handleOptionPointerOver)
-    option.addEventListener('pointerdown', this._handleOptionPointerDown)
-    option.addEventListener('option-update', this._onOptionUpdate)
-  }
-
-  private _unbindOption = (option: WebUiOption) => {
-    option.removeEventListener('click', this._handleOptionClick)
-    option.removeEventListener('pointerover', this._handleOptionPointerOver)
-    option.removeEventListener('pointerdown', this._handleOptionPointerDown)
-    option.removeEventListener('option-update', this._onOptionUpdate)
-  }
+  private readonly _optionListeners = createOptionListenerBinding({
+    // 惰性解引用：handler 字段声明在后者仍可在调用期取到
+    onClick: event => this._handleOptionClick(event),
+    onPointerOver: event => this._handleOptionPointerOver(event),
+    onPointerDown: event => this._handleOptionPointerDown(event),
+    onUpdate: () => this._onOptionUpdate()
+  })
+  private _bindOption = (option: WebUiOption) => this._optionListeners.bind(option)
+  private _unbindOption = (option: WebUiOption) => this._optionListeners.unbind(option)
 
   private _refreshOptions() {
     const activeOption = this._options[this._activeIndex]
@@ -436,11 +430,7 @@ export class WebUiAutocomplete extends LitElement {
     if (!enabled.length) return
 
     const currentIdx = this._activeIndex >= 0 ? enabled.indexOf(this._options[this._activeIndex]) : delta > 0 ? -1 : 0
-    let nextIdx = currentIdx + delta
-    if (nextIdx < 0) nextIdx = enabled.length - 1
-    if (nextIdx >= enabled.length) nextIdx = 0
-
-    this._activeIndex = this._options.indexOf(enabled[nextIdx])
+    this._activeIndex = this._options.indexOf(enabled[nextWrappingIndex(enabled.length, currentIdx, delta)])
     this._syncActiveOption()
   }
 
@@ -513,44 +503,45 @@ export class WebUiAutocomplete extends LitElement {
     this._focused = false
   }
 
-  private _open(isKeyboardNavigation = false) {
-    if (this._isDisabled || this.readonly || this._isOpen) return
-    this._isOpen = true
-    this._dispatchOpenChange()
-    if (isKeyboardNavigation) this._setInitialActiveOption()
-    else this._syncActiveOption()
-    this._syncScrollLock()
-    if (this.portal) {
-      requestAnimationFrame(() => {
-        if (this._isOpen) this._openOverlay(isKeyboardNavigation)
-      })
-    } else {
-      this._openOverlay(isKeyboardNavigation)
+  // 开合生命周期不变量收敛在 shared combobox-shell；autocomplete 注入
+  // readonly guard 与 close 前的 portal 内容收敛钩子
+  private readonly _openController = createComboboxOpenController({
+    canOpen: () => !this._isDisabled && !this.readonly,
+    getIsOpen: () => this._isOpen,
+    setIsOpen: open => {
+      this._isOpen = open
+    },
+    dispatchOpenChange: () => this._dispatchOpenChange(),
+    syncScrollLock: open => this._syncScrollLock(open),
+    isPortal: () => this.portal,
+    openOverlay: isKeyboardNavigation => this._openOverlay(isKeyboardNavigation),
+    closeOverlay: () => void this._closeOverlay(),
+    onOpen: isKeyboardNavigation => {
+      if (isKeyboardNavigation) this._setInitialActiveOption()
+      else this._syncActiveOption()
+    },
+    onBeforeClose: () => {
+      // Portal 内容可能在当前微任务尚未完成同步；先把 light DOM 中新增或重排的节点
+      // 收回当前 content，再关闭并 restore，避免 restoreContent() 按旧 tracking 顺序把
+      // 新 option 插到旧 option 前面。
+      this._optionPortal.syncPortalContent()
+    },
+    onAfterClose: () => {
+      this._activeIndex = -1
+      this._options.forEach(o => o.removeAttribute('active'))
     }
+  })
+
+  private _open(isKeyboardNavigation = false) {
+    this._openController.open(isKeyboardNavigation)
   }
 
   private _close() {
-    if (!this._isOpen) return
-    // Portal 内容可能在当前微任务尚未完成同步；先把 light DOM 中新增或重排的节点
-    // 收回当前 content，再关闭并 restore，避免 restoreContent() 按旧 tracking 顺序把
-    // 新 option 插到旧 option 前面。
-    this._optionPortal.syncPortalContent()
-    this._isOpen = false
-    this._dispatchOpenChange()
-    this._activeIndex = -1
-    this._options.forEach(o => o.removeAttribute('active'))
-    this._syncScrollLock(false)
-    void this._closeOverlay()
+    this._openController.close()
   }
 
   private _dispatchOpenChange() {
-    this.dispatchEvent(
-      new CustomEvent('open-change', {
-        detail: { open: this._isOpen },
-        bubbles: true,
-        composed: true
-      })
-    )
+    dispatchOpenChangeEvent(this, this._isOpen)
   }
 
   private _openOverlay(isKeyboardNavigation = false) {

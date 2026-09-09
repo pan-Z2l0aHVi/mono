@@ -5,14 +5,15 @@
  * 如果上游插件（如 batch-track）提供了 flush 方法，会自动调用
  */
 
-import { definePlugin, safeCall, type PluginMade } from '@greypan/js-kit'
+import { definePlugin, safeCall } from '@greypan/js-kit'
 
 import { on } from '@/shortcut'
 
-import type { defineTracker } from '../core'
+import type { FlushCapability } from '../capabilities'
 
 export function defineLastWords() {
-  return definePlugin((ctx: PluginMade<typeof defineTracker>) => {
+  // flush 是可选能力：组合 batch-track 时覆盖为批量冲刷，未组合时回落 core 的 flush。
+  return definePlugin((ctx: Partial<FlushCapability>) => {
     // SSR / 非浏览器环境无 window 与 document，插件空转，避免 ReferenceError
     if (typeof window === 'undefined' || typeof document === 'undefined') return {}
 
@@ -23,10 +24,8 @@ export function defineLastWords() {
     const handleFlush = () => {
       if (hasSent) return
       hasSent = true
-      // flush 由上游 batch-track 等插件提供，可选依赖。退出路径是 best-effort，
-      // 持久化提交失败不能变成 unhandled rejection。
-      const { flush } = ctx as { flush?: () => void | Promise<void> }
-      safeCall(() => flush?.())
+      // 退出路径是 best-effort；持久化提交失败不能变成 unhandled rejection。
+      safeCall(() => ctx.flush?.())
     }
 
     on(window, 'beforeunload', handleFlush, { signal })

@@ -4,7 +4,7 @@
 
 ## 适用任务类型
 
-以下任务必须视为"完整性敏感"变更：
+以下任务必须视为「完整性敏感」变更：
 
 - 全局重命名 / 全局字符串替换
 - API / symbol rename
@@ -13,7 +13,7 @@
 - 配置项 rename
 - 文件名 / 路径迁移
 - deprecated API migration
-- 用户明确要求"全部替换""全局修改""整个 monorepo 修改"
+- 用户明确要求「全部替换」「全局修改」「整个 monorepo 修改」
 
 ## 工作流程
 
@@ -121,4 +121,4 @@ post-change search 发现旧名称时，逐项判断：
 
 ### 用户范围
 
-用户明确要求只修改某些 package/目录/文件时，以用户范围为准。"全局"默认指当前 repository/workspace 范围，不包括 node_modules、缓存、构建产物或外部依赖。
+用户明确要求只修改某些 package/目录/文件时，以用户范围为准。「全局」默认指当前 repository/workspace 范围，不包括 node_modules、缓存、构建产物或外部依赖。

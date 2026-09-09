@@ -50,7 +50,7 @@ func (TagStore) List(ctx context.Context, q Queryer, limit int) ([]TagModel, err
 		return nil, err
 	}
 	defer rows.Close()
-	return scanTags(rows)
+	return collectRows(rows, scanTag)
 }
 
 // 按名称模糊匹配读取前 limit 个标签，作为用户输入时的建议。
@@ -63,7 +63,7 @@ func (TagStore) SearchByName(ctx context.Context, q Queryer, likePattern string,
 		return nil, err
 	}
 	defer rows.Close()
-	return scanTags(rows)
+	return collectRows(rows, scanTag)
 }
 
 // 批量读取多个 Resource 的标签并按资源分组，各自保持归属时间顺序；
@@ -108,22 +108,4 @@ func scanTag(sc rowScanner) (TagModel, error) {
 	var tag TagModel
 	err := sc.Scan(&tag.ID, &tag.Name, &tag.CreatedAt)
 	return tag, err
-}
-
-func scanTags(rows *sql.Rows) ([]TagModel, error) {
-	var result []TagModel
-	for rows.Next() {
-		tag, err := scanTag(rows)
-		if err != nil {
-			return nil, err
-		}
-		result = append(result, tag)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	if result == nil {
-		result = []TagModel{}
-	}
-	return result, nil
 }
