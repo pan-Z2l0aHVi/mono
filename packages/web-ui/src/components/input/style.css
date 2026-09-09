@@ -5,7 +5,7 @@
 }
 
 :host {
-  --wui-input-clear-color: var(--wui-color-text-tertiary, rgb(27 27 27 / 0.35));
+  --wui-input-clear-color: var(--wui-color-text-tertiary, color-mix(in srgb, var(--wui-color-text) 35%, transparent));
   display: inline-block;
 }
 

@@ -31,7 +31,7 @@ dialog {
 
   &::backdrop {
     opacity: 0;
-    background: var(--wui-dialog-overlay-bg, var(--wui-color-backdrop, rgb(0 0 0 / 0.1)));
+    background: var(--wui-dialog-overlay-bg, var(--wui-color-backdrop, rgb(0 0 0 / 0.12)));
     transition: opacity var(--wui-duration-overlay-enter, 180ms) ease;
   }
 }
@@ -69,7 +69,7 @@ dialog[open].is-visible::backdrop {
   --wui-glass-corner-radius: var(--wui-radius-overlay, 28px);
   padding: 20px 24px 24px;
   border-radius: var(--wui-radius-overlay, 28px);
-  background-color: var(--wui-dialog-bg, var(--wui-color-surface-overlay, rgb(246 246 246 / 0.88)));
+  background-color: var(--wui-dialog-bg, var(--wui-color-surface-overlay, rgb(246 246 246 / 0.82)));
 }
 
 /* ===== 标题 ===== */

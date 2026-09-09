@@ -65,16 +65,16 @@
   padding: 1px;
   border-radius: inherit;
 
-  background-color: var(--wui-color-glass-border, rgb(51 51 51 / 0.12));
+  background-color: var(--wui-color-glass-border, transparent);
   background-image:
     radial-gradient(
       var(--wui-glass-corner-radius, 32px) at 100% 0,
-      var(--wui-color-glass-shade, rgb(0 0 0 / 0.2)),
+      var(--wui-color-glass-shade, rgb(0 0 0 / 0.06)),
       transparent
     ),
     radial-gradient(
       var(--wui-glass-corner-radius, 32px) at 0 100%,
-      var(--wui-color-glass-shade, rgb(0 0 0 / 0.2)),
+      var(--wui-color-glass-shade, rgb(0 0 0 / 0.06)),
       transparent
     ),
     radial-gradient(
