@@ -242,4 +242,23 @@ describe('WebUiSlider 组件（浏览器）', () => {
 
     expect(el.value).toBe(0)
   })
+
+  it('移动端水平轨道保留纵向滚动，横向拖拽交给组件手势处理', async () => {
+    const el = document.createElement('web-ui-slider')
+    document.body.append(el)
+    await el.updateComplete
+
+    const slider = el.shadowRoot?.querySelector<HTMLElement>('[role="slider"]')
+    expect(getComputedStyle(slider!).touchAction).toBe('pan-y')
+  })
+
+  it('移动端垂直轨道保留横向滚动，纵向拖拽交给组件手势处理', async () => {
+    const el = document.createElement('web-ui-slider')
+    el.setAttribute('vertical', '')
+    document.body.append(el)
+    await el.updateComplete
+
+    const slider = el.shadowRoot?.querySelector<HTMLElement>('[role="slider"]')
+    expect(getComputedStyle(slider!).touchAction).toBe('pan-x')
+  })
 })

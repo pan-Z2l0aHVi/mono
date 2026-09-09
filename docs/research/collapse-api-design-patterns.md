@@ -1,12 +1,12 @@
 # Collapse / Accordion 组件 API 设计模式研究：Compound Components vs 单组件 Slots
 
-> 针对 Lit + Shadow DOM web component 组件库（`packages/web-ui`）的 collapse 组件（ADR-0038）公开 API 设计模式调研。对比两种模式：**模式 A**（shadcn/Radix 式 compound components，根 + trigger + content 多元素）与**模式 B**（Element Plus 式单组件 + slots）。所有论断均追溯一手来源（官方文档、源码、spec、MDN BCD），来源以「源码事实」或「推断」标注。
+> 针对 Lit + Shadow DOM web component 组件库（`packages/web-ui`）的 collapse 组件（ADR-0030）公开 API 设计模式调研。对比两种模式：**模式 A**（shadcn/Radix 式 compound components，根 + trigger + content 多元素）与**模式 B**（Element Plus 式单组件 + slots）。所有论断均追溯一手来源（官方文档、源码、spec、MDN BCD），来源以「源码事实」或「推断」标注。
 
 ---
 
-## 1. 当前仓库实现（web-ui，ADR-0038）
+## 1. 当前仓库实现（web-ui，ADR-0030）
 
-当前实现选择了**模式 A：三元素 compound 组件族**，与 segmented/segmented-trigger 先例对齐（ADR-0038 第 3 节）。
+当前实现选择了**模式 A：三元素 compound 组件族**，与 segmented/segmented-trigger 先例对齐（ADR-0030 第 3 节）。
 
 用法（`apps/react-web-ui-demo/src/components/collapse-demo/index.tsx`）：
 
@@ -26,9 +26,9 @@
 | 点击处理 | trigger 内部真实 `<button>` 的 click 经 composed path 冒泡到根，根用 `event.composedPath().find(node => node instanceof WebUiCollapseTrigger)` + `closest` 归属识别后统一 `toggle()`；trigger 自身无业务逻辑                                                                                                                                                                                            | `collapse/index.ts:116-124`                                                                     |
 | 事件     | `open-change`（`CustomEvent<{open: boolean}>`，`bubbles + composed`），**仅用户来源**（`UserChangeController` 标记）；程序化写入与 `show()/close()/toggle()` 不发音——与 dialog/drawer/popover 契约一致（ADR-0007）                                                                                                                                                                                      | `collapse/index.ts:110-134`、`shared/events/user-change.ts`                                     |
 | a11y     | trigger shadow 内渲染原生 `<button type="button">`，`aria-expanded` / `aria-controls`（指向第一个 content 自动生成的 id）/ `?disabled` 全部设在真按钮上；`font: inherit` 继承消费者排版（disclosure 惯例，非 `--wui-font-size`）                                                                                                                                                                        | `collapse-trigger/index.ts:34-44`                                                               |
-| 动画     | CSS Grid `0fr ↔ 1fr` 过渡（track + inner 结构），零 JS 测量；水平时切 `grid-template-columns`；reduced motion 由 token 清零 + `getTransitionDuration` 读 computed duration 直落稳态；`transitionend` 失效有 duration + 80ms 兜底定时器；代际计数（`_generation`）丢弃过期管线                                                                                                                           | `collapse-content/index.ts:118-201`、`collapse-content/style.css:30-68`、ADR-0038 第 1 节       |
-| 关闭稳态 | 三态：默认宿主 `hidden`（display:none）；`keep-mounted` 时内部 `inert`（保留在 0fr 轨道内，滚动位置与布局可测量）；动画中 `inert` + `pointer-events: none`。消费者 light DOM 永不移动/卸载                                                                                                                                                                                                              | `collapse-content/index.ts:95-114`、ADR-0038 第 2 节                                            |
-| 嵌套     | 支持嵌套 collapse：`closest` 过滤保证内层子元素归属内层根；内层 `open-change` 会冒泡穿过外层根，消费者按 `event.target` 区分                                                                                                                                                                                                                                                                            | `collapse.spec.ts:186-215`、ADR-0038「后果」                                                    |
+| 动画     | CSS Grid `0fr ↔ 1fr` 过渡（track + inner 结构），零 JS 测量；水平时切 `grid-template-columns`；reduced motion 由 token 清零 + `getTransitionDuration` 读 computed duration 直落稳态；`transitionend` 失效有 duration + 80ms 兜底定时器；代际计数（`_generation`）丢弃过期管线                                                                                                                           | `collapse-content/index.ts:118-201`、`collapse-content/style.css:30-68`、ADR-0030 第 1 节       |
+| 关闭稳态 | 三态：默认宿主 `hidden`（display:none）；`keep-mounted` 时内部 `inert`（保留在 0fr 轨道内，滚动位置与布局可测量）；动画中 `inert` + `pointer-events: none`。消费者 light DOM 永不移动/卸载                                                                                                                                                                                                              | `collapse-content/index.ts:95-114`、ADR-0030 第 2 节                                            |
+| 嵌套     | 支持嵌套 collapse：`closest` 过滤保证内层子元素归属内层根；内层 `open-change` 会冒泡穿过外层根，消费者按 `event.target` 区分                                                                                                                                                                                                                                                                            | `collapse.spec.ts:186-215`、ADR-0030「后果」                                                    |
 | token    | `--wui-duration-collapse-enter: 200ms` / `--wui-duration-collapse-exit: 160ms`，已加入 reduced-motion 清零列表                                                                                                                                                                                                                                                                                          | `packages/web-ui/src/components/theme/style.css:37-38,58-59,76-77`                              |
 
 ### 库内一致性（源码事实）
@@ -37,7 +37,7 @@ web-ui 现有组件有两种 slot 惯例，collapse 的选型处在两者交汇�
 
 - **覆盖层组件用具名 slot**（模式 B 风格）：`popover` 用 `slot="trigger"` + 默认 slot（`popover/index.ts:337,348`，面板 DOM 由组件 portal 移动）；`dialog` 用 `slot="title"/"body"/"footer"`（`dialog/index.ts:143-148`）；`drawer` 用 `slot="header"/"footer"`（`drawer/index.ts:605-617`）；`tooltip` 会把 `[slot="content"]` 节点 move 进 portal（`tooltip/index.ts:210`）。这些场景的共同点是**面板脱离文档流**（portal/floating），内容归属由组件托管。
 - **受管子元素组合用独立 custom element**：`select` + `option`（option 在 `connectedCallback` 派发 `option-register` 向根注册，`option/index.ts:20-37`）、`segmented` + `segmented-trigger`、`radio-group` + `radio`、`checkbox-group` + `checkbox`、`button-group`——后四者与 collapse 共用 `defineGroupPresentation`/`defineGroupCoordinator` 基础设施。
-- collapse 的内容是**文档流内**的消费者布局（ADR-0038 背景节），不需要 portal，因此选择了与文档流内组合一致的第二种惯例。
+- collapse 的内容是**文档流内**的消费者布局（ADR-0030 背景节），不需要 portal，因此选择了与文档流内组合一致的第二种惯例。
 
 ---
 
@@ -46,7 +46,7 @@ web-ui 现有组件有两种 slot 惯例，collapse 的选型处在两者交汇�
 ### Radix（源码事实，`packages/react/collapsible/src/collapsible.tsx`）
 
 - **为什么拆三个组件**：Root 持有状态并通过 React Context（`createContextScope`，第 20/30 行）向 Trigger/Content 分发 `{ contentId, disabled, open, onOpenToggle }`（第 24-26 行）。Trigger 是 `Primitive.button type="button"`，从 context 读 `aria-expanded` / `aria-controls`，`onClick` compose `context.onOpenToggle`（第 100-106 行）。
-- **Content 隐藏机制**：`Presence` 组件包装（第 136 行）控制挂载/卸载，`forceMount` 可强制常驻（配合 `data-state` 供 CSS 动画）；关闭稳态是 `hidden={!isOpen}`（第 213 行）——React 下「卸载 children」是安全操作（`{isOpen && children}`，第 221 行），这正是 web component 做不到的（消费者 light DOM 不能由组件移除，见 ADR-0038 背景节第 2 点）。
+- **Content 隐藏机制**：`Presence` 组件包装（第 136 行）控制挂载/卸载，`forceMount` 可强制常驻（配合 `data-state` 供 CSS 动画）；关闭稳态是 `hidden={!isOpen}`（第 213 行）——React 下「卸载 children」是安全操作（`{isOpen && children}`，第 221 行），这正是 web component 做不到的（消费者 light DOM 不能由组件移除，见 ADR-0030 背景节第 2 点）。
 - **动画**：JS 测量。`useLayoutEffect` 中把 `transitionDuration='0s'` 阻断过渡、读 `getBoundingClientRect` 得到目标 height/width（第 183-189 行），以 CSS 变量 `--radix-collapsible-content-height/width` 暴露（第 217-218 行），由消费者在 keyframes 里引用（官方文档「Animating content size」示例）。文档 API Reference 同时列出 `data-state`、`data-disabled`、`forceMount` 与这两个 CSS 变量（https://www.radix-ui.com/primitives/docs/components/collapsible）。
 - **Accordion 复用 Collapsible**：`packages/react/accordion/src/accordion.tsx:8-9` 直接 `import * as CollapsiblePrimitive from '@radix-ui/react-collapsible'` 并以 `createCollapsibleScope` 组合——compound 拆分使上游模式可被下游模式整体复用（推断：这是该设计在 React 生态被广泛模仿的主因之一）。
 - **a11y**：文档声明遵循 Disclosure pattern，Space/Enter 开合；`aria-expanded`/`aria-controls` 在 Trigger 的真 `<button>` 上。
@@ -120,7 +120,7 @@ shadcn 是 Radix 的纯 re-export 薄封装：`apps/v4/registry/new-york-v4/ui/c
 仓库 browserslist floor 为 Chrome 111 / Safari 16.4 / Firefox 128，两者均晚于 floor。这意味着在 floor 约束下：
 
 - `interpolate-size` 不可用，「以原生 `<details>` 为基座 + 伪元素做纯 CSS 动画」的捷径在可预见期内不成立；
-- grid `0fr↔1fr`（当前实现）仍是唯一纯 CSS 的 height:auto 动画方案，印证 ADR-0038 第 1 节的选型。
+- grid `0fr↔1fr`（当前实现）仍是唯一纯 CSS 的 height:auto 动画方案，印证 ADR-0030 第 1 节的选型。
 
 ---
 
@@ -152,6 +152,6 @@ shadcn 是 Radix 的纯 re-export 薄封装：`apps/v4/registry/new-york-v4/ui/c
 ## 7. 结论
 
 1. **「Element Plus 式」的前提需要修正**：Element Plus 实际是根 + item 两组件、trigger 内置在 item，不是「单组件 + trigger/content slot」；真正符合该描述的先行者是 wa-details / vaadin-details 单元素 disclosure。
-2. **web component 生态没有一家做 Radix 式三元素拆分**。主流只有单元素 disclosure 与根 + item 两种形态；三元素拆分是 React 生态特有，其成立依赖 Context 分发与「安全卸载 children」——后者恰是 web component 做不到的（消费者 light DOM 不能由组件移除，ADR-0038 背景节第 2 点）。三元素拆分并非不可行（当前实现即是证明），但它不是任何 web component 库验证过的路线。
+2. **web component 生态没有一家做 Radix 式三元素拆分**。主流只有单元素 disclosure 与根 + item 两种形态；三元素拆分是 React 生态特有，其成立依赖 Context 分发与「安全卸载 children」——后者恰是 web component 做不到的（消费者 light DOM 不能由组件移除，ADR-0030 背景节第 2 点）。三元素拆分并非不可行（当前实现即是证明），但它不是任何 web component 库验证过的路线。
 3. **模式 A 在 Lit 下有结构性优势**：真 button a11y 完全可控、`closest` 嵌套归属、三态 hidden/inert、与 GroupController 基建同轨；模式 B′ 的优势是标签更少、用法更轻，且单元素也能做对 a11y。两条路线能力上限相近，差异主要在结构惯性与基建复用。
-4. **当前实现已完成（测试 / demo / ADR 齐全），推翻重写的成本收益不成立**。合理演进是按 ADR-0038 预留增加 accordion：根与 GroupController 复用，每个 panel 仍是 collapse 族元素——与 Radix Collapsible→Accordion 的复用路径同构，也与 wa-accordion / sp-accordion / fluent-accordion 的根 + item 形态收敛。
+4. **当前实现已完成（测试 / demo / ADR 齐全），推翻重写的成本收益不成立**。合理演进是按 ADR-0030 预留增加 accordion：根与 GroupController 复用，每个 panel 仍是 collapse 族元素——与 Radix Collapsible→Accordion 的复用路径同构，也与 wa-accordion / sp-accordion / fluent-accordion 的根 + item 形态收敛。

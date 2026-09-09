@@ -21,7 +21,7 @@ let collapseIdCounter = 0
  * element（与 popover trigger 的既定回写模式一致）。wrapper 仅负责点击代理，
  * 不可聚焦，不承载 ARIA。
  *
- * 内容区在 shadow 内以 grid `0fr ↔ 1fr` track 过渡驱动高度/宽度动画（ADR-0038
+ * 内容区在 shadow 内以 grid `0fr ↔ 1fr` track 过渡驱动高度/宽度动画（ADR-0030
  * 选型保留）。关闭稳态三态（消费者 light DOM 永不移动，hidden 全部命令式管理，
  * 避免渲染绑定在关闭动画起点抢先 display:none）：
  * - 默认：content 容器 `hidden`（display:none，脱离渲染与可访问性树）；
@@ -162,7 +162,7 @@ export class WebUiCollapse extends LitElement {
     else trigger.removeAttribute('aria-disabled')
   }
 
-  // ===== 内容区动画管线（三态语义自 ADR-0038 迁移） =====
+  // ===== 内容区动画管线（三态语义自 ADR-0030 迁移） =====
 
   private _applyOpenSteadyState() {
     this._generation++
