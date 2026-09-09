@@ -39,6 +39,54 @@ for (const file of [
   if (!exists(file)) addError(`missing required context file: ${file}`)
 }
 
+for (const file of [
+  'docs/agents/workflow.md',
+  'docs/agents/worktrees.md',
+  'docs/agents/release.md',
+  'docs/agents/task-packet.md'
+]) {
+  if (!exists(file)) addError(`missing required workflow context file: ${file}`)
+}
+
+if (exists('AGENTS.md')) {
+  const agents = read('AGENTS.md')
+  for (const marker of ['## Mutation Gate', 'docs/agents/workflow.md', 'agent:workflow init']) {
+    if (!agents.includes(marker)) addError(`AGENTS.md is missing mandatory mutation gate marker: ${marker}`)
+  }
+}
+
+if (exists('.vite-hooks/pre-commit') && !read('.vite-hooks/pre-commit').includes('agent:workflow guard-commit'))
+  addError('.vite-hooks/pre-commit is missing the workflow commit guard')
+
+if (
+  exists('CONTRIBUTING.md') &&
+  !read('CONTRIBUTING.md').includes('agent:workflow check --task <task-id> --phase edit')
+)
+  addError('CONTRIBUTING.md is missing the workflow edit gate')
+
+if (
+  exists('.agents/agents/manager.md') &&
+  !read('.agents/agents/manager.md').includes('Manager 启动后第一项工作必须读取')
+)
+  addError('.agents/agents/manager.md is missing the Manager workflow gate')
+
+if (exists('docs/agents/workflow.md')) {
+  const workflow = read('docs/agents/workflow.md')
+  for (const section of [
+    '## 先建立任务',
+    '## 状态机',
+    '## 角色和边界',
+    '## 并发原则',
+    '## Release 和 hotfix',
+    '## 失败和恢复'
+  ]) {
+    if (!workflow.includes(section)) addError(`docs/agents/workflow.md is missing required section ${section}`)
+  }
+  for (const forbidden of ['持久开发 worktree：每个活跃子包', 'Reviewer worktree', 'Harness 选择', 'Agent 启动权限']) {
+    if (workflow.includes(forbidden)) addError(`docs/agents/workflow.md contains retired workflow model: ${forbidden}`)
+  }
+}
+
 if (exists('CLAUDE.md')) {
   const claudeStat = fs.lstatSync(path.join(root, 'CLAUDE.md'))
   const claudeSource = read('CLAUDE.md')
@@ -76,6 +124,7 @@ if (exists('package.json')) {
   try {
     const packageJson = JSON.parse(read('package.json'))
     for (const script of [
+      'agent:workflow',
       'validate:context',
       'check:pack',
       'find:usages',

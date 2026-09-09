@@ -32,11 +32,13 @@ Interweave 由 Wails 宿主管理嵌套前端，因此其 alias 只启动 Wails 
 
 代码质量检查与修复的命令矩阵（`CI=true pnpm run check:code` 聚合 `check:cspell`、`vp check`、`check:go`、`check:stylelint`；`CI=true pnpm run fix:code` 一键全量修复）以 [`linting.md`](linting.md) 为权威；提交 hook 的 `vp staged` 对暂存路径做增量修复与检查。包构建命令不能替代这些命令；Wails 的 macOS/Windows 原生构建仍负责验证 host package 与平台集成。
 
-| 命令                    | 用途                 | 说明                                                                            |
-| ----------------------- | -------------------- | ------------------------------------------------------------------------------- |
-| `pnpm run clean`        | 清理构建产物与缓存   | 执行 `scripts/clean.sh`，安全重置各工作区的 `dist/`、`.turbo/` 和临时产物       |
-| `pnpm run test:scripts` | 验证仓库内部工具脚本 | -                                                                               |
-| `pnpm run check:pack`   | 发布产物边界检查     | 构建可发布 package 或修改其 `exports`、`files`、Vite 输出时，在根构建成功后运行 |
+| 命令                                             | 用途                                                      | 说明                                                                            |
+| ------------------------------------------------ | --------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| `pnpm run clean`                                 | 清理构建产物与缓存                                        | 执行 `scripts/clean.sh`，安全重置各工作区的 `dist/`、`.turbo/` 和临时产物       |
+| `pnpm run test:scripts`                          | 验证仓库内部工具脚本                                      | -                                                                               |
+| `pnpm run validate:context`                      | 验证 Agent context 路由、必需文档和结构约束               | 修改 `AGENTS.md`、角色、rules、skills 或 `docs/agents/**` 时必须通过            |
+| `pnpm run audit:instructions -- --strict --json` | 验证 instruction system 的 workflow gate 和配套文档未回退 | instruction system 或 workflow 变更时必须通过                                   |
+| `pnpm run check:pack`                            | 发布产物边界检查                                          | 构建可发布 package 或修改其 `exports`、`files`、Vite 输出时，在根构建成功后运行 |
 
 `check:pack` 使用 `pnpm pack --dry-run` 验证实际发布文件与 manifest export targets；它不判断 API 语义或版本级别。
 

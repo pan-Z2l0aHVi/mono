@@ -164,6 +164,10 @@ assert.equal(
 const toolPlan = JSON.parse(run('verify', '--json', 'scripts/repo-query.mjs'))
 assert.ok(toolPlan.verification.some(item => item.command === 'pnpm run test:scripts'))
 
+const workflowToolPlan = JSON.parse(run('verify', '--json', 'scripts/agent-workflow.mjs'))
+assert.ok(workflowToolPlan.context.includes('docs/agents/context.md'))
+assert.ok(workflowToolPlan.verification.some(item => item.command === 'pnpm run test:scripts'))
+
 const workspaceConfigPlan = JSON.parse(run('verify', '--json', 'pnpm-workspace.yaml'))
 assert.ok(workspaceConfigPlan.verification.some(item => item.command === 'pnpm run test:scripts'))
 

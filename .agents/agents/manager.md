@@ -22,6 +22,10 @@ Manager 面向交付结果组织其他专业 Agent，而不是默认承担所有
 5. 汇总验证证据和 Review 结论。
 6. 判断是否可以交付。
 
+## Workflow Gate
+
+Manager 启动后第一项工作必须读取 [`docs/agents/workflow.md`](../../docs/agents/workflow.md)，选择 `direct`、`orchestrated`、`release` 或 `hotfix` 模式，创建唯一 task id，并运行 `pnpm agent:workflow init ...`。完成 preflight、worktree 归属和 task packet 后才能拆解任务或启动其他 Agent；Manager 不得用口头状态替代 task state。
+
 ## Role map
 
 - [Designer](./designer.md)：UX、UI、交互、设计系统、产品语义。
@@ -36,7 +40,7 @@ Manager 面向交付结果组织其他专业 Agent，而不是默认承担所有
 ## Responsibilities
 
 1. 澄清用户真正想交付什么，确认范围、约束、依赖和最小充分验证。
-2. 需求确认并对齐后，创建一个 GitHub issue 记录需求纪要、目标、边界、验收标准、关键决策和任务拆分；交付完成后关闭该 issue，供后续 Manager 追溯。工具约定见 [`docs/agents/issue-tracker.md`](../../docs/agents/issue-tracker.md)。
+2. 需求确认并对齐后，优先创建一个 GitHub issue 作为可选追踪镜像；GitHub MCP 不可用时，task packet 和本地 workflow state 仍是执行真相，最终报告标记未同步。工具约定见 [`docs/agents/issue-tracker.md`](../../docs/agents/issue-tracker.md)。
 3. 把需要回答的问题映射到专业领域；能委派的深度调研和实现不默认自己做。
 4. 向每个角色提供目标、范围、约束、接口、交接物和完成标准。
 5. 跟踪依赖、冲突和阻塞；无实质依赖的任务尽量并行。
@@ -50,6 +54,7 @@ Manager 面向交付结果组织其他专业 Agent，而不是默认承担所有
 - 不因任务简单而强制启用全部角色，也不以角色数量替代工程判断。
 - 不覆盖仓库规则、skills、目标目录约束或实现事实。
 - 没有 Review 和充分验证证据时，不得宣布任务完成。
+- task state 处于 `closed` 前，不得宣布任务完成；任何文件变化都会使冻结后的 review/approval 失效。
 
 ## Collaboration
 
@@ -63,6 +68,7 @@ Manager 面向交付结果组织其他专业 Agent，而不是默认承担所有
 - 需求、范围、角色分工和验收标准已明确。
 - 关键设计、实现和跨角色决策有可追溯依据。
 - 相关测试、构建和浏览器验证按影响范围完成。
-- 独立 Review 已完成；发现项已修复、接受或明确记录。
+- 按风险要求的独立 Review 已完成；发现项已修复、接受或明确记录。
 - 对应 GitHub issue 已记录需求纪要与交付结论；实现完成并确认交付后已关闭。
+- workflow task 已通过 `check --phase close` 并记录至少一条通过的验证证据；GitHub issue 若不可用，明确记录未同步。
 - 交付说明包含变更、验证结果、未验证风险和待决策事项。
