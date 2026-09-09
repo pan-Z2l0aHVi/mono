@@ -1,8 +1,8 @@
 # Issue 跟踪器：GitHub
 
-本仓库的 issue 和 PRD 以 GitHub issue 形式存储。所有操作使用 GitHub MCP 工具完成。
+GitHub issue 是本仓库的可选追踪镜像，适合记录需求、决策和交付结论；实施执行真相是本地 task packet 与 Git common dir 中的 workflow state。需要同步或查询 GitHub 时使用 GitHub MCP 工具完成；GitHub 不可用时继续本地 workflow，不得阻塞实施。
 
-前置条件：客户端需已配置 GitHub MCP（工具命名空间 `mcp__github__`）；本仓库不提供该配置，缺失时本指南不适用。
+前置条件：客户端需已配置 GitHub MCP（工具命名空间 `mcp__github__`）。缺少配置时，本指南只是不适用于同步操作，不影响本地 task workflow。
 
 ## 工具参考
 
@@ -24,14 +24,14 @@ MCP 工具命名空间：`mcp__github__`
 | 搜索代码   | `search_code`                | q                                                      |
 | 搜索 issue | `search_issues`              | q, sort?                                               |
 
-## 约定
+## 同步约定
 
-- **创建 issue**：调用 `create_issue`，传入 owner、repo、title 和 body；必须传入至少一个有效 label，否则无法按需求类型或领域筛选。若创建时 label 缺失或写入失败，立即用 `update_issue` 补齐后再交付 issue 链接。labels 通过数组传入。
+- **创建 issue**：当用户或 Manager 要求同步时，调用 `create_issue`，传入 owner、repo、title 和 body；必须传入至少一个有效 label，否则无法按需求类型或领域筛选。若创建时 label 缺失或写入失败，立即用 `update_issue` 补齐后再交付 issue 链接。labels 通过数组传入。
 - **查看 issue**：调用 `get_issue`，返回 issue 详情（含标签、评论）。
 - **列出 issue**：调用 `list_issues`，使用 state、labels、sort 过滤。
 - **在 issue 上评论**：调用 `add_issue_comment`。
 - **添加/移除标签**：调用 `update_issue`，传入 labels 数组。
-- **关闭 issue**：调用 `update_issue`，设置 state="closed"。
+- **关闭 issue**：只有本地 task 已满足 workflow 的 close gate 后，才调用 `update_issue` 设置 state="closed"；关闭 GitHub issue 不能替代本地 task close。
 
 仓库信息从 `git remote -v` 推断，格式为 `owner/repo`。
 
@@ -41,7 +41,7 @@ MCP 工具命名空间：`mcp__github__`
 
 ## 当技能说「发布到 issue 跟踪器」
 
-调用 `create_issue` 创建 GitHub issue。
+调用 `create_issue` 创建 GitHub issue，并把返回的 issue 编号记录到 task packet；不要把它当作 workflow state 的替代品。
 
 ## 当技能说「获取相关工单」
 

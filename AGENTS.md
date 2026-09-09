@@ -8,6 +8,12 @@
 - 协作流程短入口：[`CONTRIBUTING.md`](CONTRIBUTING.md)；它不取代按任务加载的规则。
 - 会话角色：用户或 Manager 指定角色时，读取 [`.agents/agents/<role>.md`](.agents/agents/)；初始化见 [`CONTRIBUTING.md`](CONTRIBUTING.md)。
 
+## Mutation Gate
+
+凡会创建、修改、删除、重命名、生成文件，或执行 commit、merge、release 的任务，**在第一次文件变更前必须读取 [`docs/agents/workflow.md`](docs/agents/workflow.md)，并为任务运行 `pnpm agent:workflow init --task <task-id> --mode <direct|orchestrated|release|hotfix>`**。没有 workflow 状态、当前 worktree 归属和 preflight 结果，不得开始实施；后续按 workflow 的 `check` gate 推进。只读调查可以不初始化任务，但一旦转为实施必须回到此 gate。
+
+`AGENTS.md` 只承载这个必经入口和不可绕过边界；状态、冻结 diff、review、approval 和验证证据以 `.git/agent-workflow/<task-id>.json` 为执行真相，详细工具适配不写入本文件。
+
 1. 先查看工作区状态、目标文件和最近的 `AGENTS.md`；只有进入某个 `apps/` 或 `packages/` 时才加载其包级指令。
 2. 只按任务加载命中的 rule、guide 和包级指令；不要为普通局部任务预读 `CONTEXT.md`、ADR 或无关领域指南。
 3. 需要全局拓扑时先阅读 [`ARCHITECTURE.md`](ARCHITECTURE.md)；只有架构、跨包、仓库拓扑、术语、长期设计或 instruction system 维护时，才继续阅读 [`CONTEXT.md`](CONTEXT.md)、[`docs/agents/context.md`](docs/agents/context.md) 和相关 ADR。

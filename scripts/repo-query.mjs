@@ -420,6 +420,7 @@ const hasContextChange = normalizedPaths.some(
     file.startsWith('docs/adr/') ||
     file.startsWith('scripts/validate-context') ||
     file.startsWith('scripts/audit-instructions') ||
+    file.startsWith('scripts/agent-workflow') ||
     file.startsWith('scripts/repo-query') ||
     file.startsWith('scripts/workspace-manifests')
 )
@@ -429,6 +430,7 @@ const hasAgentToolChange = normalizedPaths.some(
     file.startsWith('scripts/repo-query') ||
     file.startsWith('scripts/validate-context') ||
     file.startsWith('scripts/audit-instructions') ||
+    file.startsWith('scripts/agent-workflow') ||
     file.startsWith('scripts/workspace-manifests') ||
     file.startsWith('scripts/scripts.test')
 )
