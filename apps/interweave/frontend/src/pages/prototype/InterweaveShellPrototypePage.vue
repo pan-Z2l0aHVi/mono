@@ -112,6 +112,11 @@ function getTagClass(tag: string) {
   return tagColors[tag] ?? defaultTagClass
 }
 
+function getTagActionLabel(editing: boolean, draft: string) {
+  if (!editing) return '添加标签'
+  return draft.trim() ? '确认添加' : '取消'
+}
+
 // --- Resource data ---
 interface Resource {
   id: string
@@ -726,11 +731,6 @@ function removeAddQueue(item: (typeof addQueue)[number]) {
   if (queueTagEditingId.value === item.id) closeQueueTagEditor()
 }
 
-function getQueueTagActionLabel(item: (typeof addQueue)[number]) {
-  if (queueTagEditingId.value !== item.id) return '添加标签'
-  return queueTagDraft.value.trim() ? '确认添加' : '取消'
-}
-
 function getQueueTagClass(item: (typeof addQueue)[number], tag: string) {
   if (queueTagEditingId.value === item.id && !queueTagPresetTags.value.has(tag) && !allTags.includes(tag)) {
     return 'bg-[var(--wui-color-surface-control,#dfdfdf)] text-[var(--wui-color-text-secondary,#5b5b66)] dark:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_12%,transparent)] dark:text-[var(--wui-color-text-secondary)]'
@@ -1282,16 +1282,13 @@ watch(addDialogOpen, (open, _, onCleanup) => {
                         <web-ui-icon :icon="lucideX" :size="10"></web-ui-icon>
                       </web-ui-button>
                     </span>
-                    <web-ui-tooltip
-                      :content="contextTagDraft.trim() ? '确认标签' : contextTagEditing ? '收起标签编辑' : '添加标签'"
-                      placement="top"
-                    >
+                    <web-ui-tooltip :content="getTagActionLabel(contextTagEditing, contextTagDraft)" placement="top">
                       <web-ui-button
                         v-if="contextTagEditing"
                         icon
                         :variant="contextTagDraft.trim() ? 'primary' : 'glass'"
                         size="20"
-                        :aria-label="contextTagDraft.trim() ? '确认标签' : '收起标签编辑'"
+                        :aria-label="getTagActionLabel(contextTagEditing, contextTagDraft)"
                         @pointerdown.prevent
                         @click="contextTagDraft.trim() ? commitContextTag() : closeContextTagEditor()"
                       >
@@ -1498,16 +1495,13 @@ watch(addDialogOpen, (open, _, onCleanup) => {
                   <web-ui-icon :icon="lucideX" :size="10"></web-ui-icon>
                 </web-ui-button>
               </span>
-              <web-ui-tooltip
-                :content="drawerTagDraft.trim() ? '确认标签' : drawerTagEditing ? '收起标签编辑' : '添加标签'"
-                placement="top"
-              >
+              <web-ui-tooltip :content="getTagActionLabel(drawerTagEditing, drawerTagDraft)" placement="top">
                 <web-ui-button
                   v-if="drawerTagEditing"
                   icon
                   :variant="drawerTagDraft.trim() ? 'primary' : 'glass'"
                   size="20"
-                  :aria-label="drawerTagDraft.trim() ? '确认标签' : '收起标签编辑'"
+                  :aria-label="getTagActionLabel(drawerTagEditing, drawerTagDraft)"
                   @pointerdown.prevent
                   @click="drawerTagDraft.trim() ? commitDrawerTag() : closeDrawerTagEditor()"
                 >
@@ -1837,7 +1831,7 @@ watch(addDialogOpen, (open, _, onCleanup) => {
                         </web-ui-button>
                       </span>
                       <web-ui-tooltip
-                        :content="getQueueTagActionLabel(item)"
+                        :content="getTagActionLabel(queueTagEditingId === item.id, queueTagDraft)"
                         :placement="itemIndex < 5 ? 'bottom' : 'top'"
                       >
                         <web-ui-button
@@ -1846,7 +1840,7 @@ watch(addDialogOpen, (open, _, onCleanup) => {
                           icon
                           :variant="queueTagDraft.trim() ? 'primary' : 'glass'"
                           size="20"
-                          :aria-label="getQueueTagActionLabel(item)"
+                          :aria-label="getTagActionLabel(queueTagEditingId === item.id, queueTagDraft)"
                           @pointerdown.prevent
                           @click="queueTagDraft.trim() ? commitQueueTag(item) : closeQueueTagEditor()"
                         >
