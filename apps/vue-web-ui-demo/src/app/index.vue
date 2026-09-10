@@ -2,7 +2,7 @@
 import { local } from '@greypan/browser-kit/storage'
 import type { WebUiEvent, WebUiLayout, WebUiSelect } from '@greypan/web-ui'
 import { useHead } from '@unhead/vue'
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, onScopeDispose, ref } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 
 type ThemeAppearance = 'light' | 'dark' | 'system'
@@ -43,7 +43,18 @@ const themeMotion = ref(getInitialThemeMotion())
 const bannerVisible = ref(true)
 const sidebarCollapsed = ref(false)
 const sidebarOpen = ref(false)
-const sidebarWidth = ref(getInitialSidebarWidth())
+
+const mobileSidebarWidth = 'min(320px, 80vw)'
+const mobileSidebarQuery = window.matchMedia('(max-width: 640px)')
+const isMobileSidebarViewport = ref(mobileSidebarQuery.matches)
+const desktopSidebarWidth = ref(getInitialSidebarWidth())
+const sidebarWidth = computed(() => (isMobileSidebarViewport.value ? mobileSidebarWidth : desktopSidebarWidth.value))
+function syncMobileSidebarViewport() {
+  isMobileSidebarViewport.value = mobileSidebarQuery.matches
+}
+syncMobileSidebarViewport()
+mobileSidebarQuery.addEventListener('change', syncMobileSidebarViewport)
+onScopeDispose(() => mobileSidebarQuery.removeEventListener('change', syncMobileSidebarViewport))
 
 function updateThemeAppearance(event: WebUiEvent<WebUiSelect, 'change'>) {
   const appearance = event.currentTarget.value
@@ -69,9 +80,9 @@ function updateSidebarOpen(event: WebUiEvent<WebUiLayout, 'sidebar-open-change'>
   sidebarOpen.value = event.detail.open
 }
 
-// 拖拽调宽的受控回写 + localStorage 持久化
+// 拖拽调宽的受控回写 + localStorage 持久化（仅桌面端生效）
 function updateSidebarWidth(event: WebUiEvent<WebUiLayout, 'sidebar-width-change'>) {
-  sidebarWidth.value = event.detail.width
+  desktopSidebarWidth.value = event.detail.width
   local.set(SIDEBAR_WIDTH_STORAGE_KEY, event.detail.width)
 }
 
@@ -176,10 +187,12 @@ const navItems: NavItem[] = [
           </web-ui-select>
         </div>
         <div class="flex h-full min-h-0 flex-col" slot="sidebar">
-          <div class="shrink-0 px-5 pt-4 pb-2 text-xs font-semibold uppercase text-[var(--wui-color-text-secondary)]">
+          <div
+            class="shrink-0 px-5 pt-4 pb-2 text-xs font-semibold uppercase text-[var(--wui-color-text-secondary)] max-[640px]:px-0"
+          >
             组件列表
           </div>
-          <nav ref="navSidebar" class="min-h-0 flex-1 p-2 overflow-y-auto">
+          <nav ref="navSidebar" class="min-h-0 flex-1 p-2 max-[640px]:px-0 overflow-y-auto">
             <RouterLink
               v-for="item in navItems"
               :key="item.path"
