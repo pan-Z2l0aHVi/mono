@@ -39,6 +39,19 @@ function getDialog(el: WebUiDrawer): HTMLDialogElement {
   return el.shadowRoot?.querySelector('dialog') as HTMLDialogElement
 }
 
+// 层叠几何在 nested shift 过渡后才收敛；轮询最终左缘顺序，不在过渡中间态断言。
+async function waitForLeftOrder(...drawers: WebUiDrawer[]) {
+  await waitFor(() => {
+    let previousLeft = Number.NEGATIVE_INFINITY
+    for (const drawer of drawers) {
+      const left = getDialog(drawer).getBoundingClientRect().left
+      if (left <= previousLeft) return false
+      previousLeft = left
+    }
+    return true
+  }, 4000)
+}
+
 // 读取 nested 层序内部变量（写在 dialog 内联样式上）。
 function nestedScale(el: WebUiDrawer): number {
   const raw = getDialog(el).style.getPropertyValue('--wui-internal-drawer-nested-scale')
@@ -248,10 +261,10 @@ describe('WebUiDrawer nested 层叠（浏览器）', () => {
 
     const parentDialog = getDialog(parent)
     const childDialog = getDialog(child)
+    // 父层（底层）左缘比子层（顶层）左缘更靠左，卡片露出
+    await waitForLeftOrder(parent, child)
     const parentRect = parentDialog.getBoundingClientRect()
     const childRect = childDialog.getBoundingClientRect()
-
-    // 父层（底层）左缘比子层（顶层）左缘更靠左，卡片露出
     expect(parentRect.left).toBeLessThan(childRect.left)
   })
 
@@ -278,10 +291,10 @@ describe('WebUiDrawer nested 层叠（浏览器）', () => {
 
     const parentDialog = getDialog(parent)
     const childDialog = getDialog(child)
+    // 即使子层比父层宽 140px，父层也因上层最大宽度补偿而在子层左侧露出了边缘
+    await waitForLeftOrder(parent, child)
     const parentRect = parentDialog.getBoundingClientRect()
     const childRect = childDialog.getBoundingClientRect()
-
-    // 即使子层比父层宽 140px，父层也因上层最大宽度补偿而在子层左侧露出了边缘
     expect(parentRect.left).toBeLessThan(childRect.left)
   })
 
@@ -326,12 +339,12 @@ describe('WebUiDrawer nested 层叠（浏览器）', () => {
     await waitFor(() => nestedScale(d1) < 0.88)
     await nextFrame()
 
+    // 严格满足由底至顶从左至右阶梯露边：left(d1) < left(d2) < left(d3) < left(d4)
+    await waitForLeftOrder(d1, d2, d3, d4)
     const r1 = getDialog(d1).getBoundingClientRect()
     const r2 = getDialog(d2).getBoundingClientRect()
     const r3 = getDialog(d3).getBoundingClientRect()
     const r4 = getDialog(d4).getBoundingClientRect()
-
-    // 严格满足由底至顶从左至右阶梯露边：left(d1) < left(d2) < left(d3) < left(d4)
     expect(r1.left).toBeLessThan(r2.left)
     expect(r2.left).toBeLessThan(r3.left)
     expect(r3.left).toBeLessThan(r4.left)
@@ -446,10 +459,10 @@ describe('WebUiDrawer 同级（非 DOM 嵌套）层叠', () => {
     await waitFor(() => nestedScale(d1) < 0.96)
     await nextFrame()
 
+    // d1（底层）左缘比 d2（顶层）更靠左，卡片露出
+    await waitForLeftOrder(d1, d2)
     const r1 = getDialog(d1).getBoundingClientRect()
     const r2 = getDialog(d2).getBoundingClientRect()
-
-    // d1（底层）左缘比 d2（顶层）更靠左，卡片露出
     expect(r1.left).toBeLessThan(r2.left)
   })
 })
