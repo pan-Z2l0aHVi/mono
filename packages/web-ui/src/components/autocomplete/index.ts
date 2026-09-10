@@ -584,6 +584,8 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
             empty.textContent = '无匹配选项'
             empty.dataset.wuiA11yEmpty = '无匹配选项'
           }
+          // 只改 panel 内 dataset 不会触发 Lit update；同步刷新 shadow 内 role=status 空态。
+          this._syncEmptyState()
         }
       }
     })

@@ -9,8 +9,16 @@ async function nextFrame() {
   await new Promise(resolve => requestAnimationFrame(resolve))
 }
 
-async function waitForOpenTransition() {
-  await new Promise(resolve => setTimeout(resolve, 350))
+// 等到 presence 挂上 is-visible；在并行负载下不能假设 350ms 足够。
+async function waitForOpenTransition(el: WebUiDrawer) {
+  const dialog = el.shadowRoot?.querySelector('dialog') as HTMLDialogElement | null
+  if (!dialog) throw new Error('Expected the drawer to contain a dialog')
+  const deadline = performance.now() + 2000
+  while (!(dialog.open && dialog.classList.contains('is-visible'))) {
+    if (performance.now() > deadline) throw new Error('Expected the drawer dialog to become visible')
+    await new Promise(resolve => requestAnimationFrame(resolve))
+  }
+  await el.updateComplete
 }
 
 // 轮询条件直至满足（弹簧/过渡时长在并行负载下不可预测）。
@@ -49,7 +57,7 @@ describe('WebUiDrawer nested 层叠（浏览器）', () => {
     parent.append(child)
     theme.append(parent)
     await parent.updateComplete
-    await waitForOpenTransition()
+    await waitForOpenTransition(parent)
 
     // 单层：depth 0，无缩放
     expect(nestedScale(parent)).toBe(1)
@@ -57,7 +65,7 @@ describe('WebUiDrawer nested 层叠（浏览器）', () => {
     // 打开子层（子层在父的 default slot 内，声明式嵌套）
     child.open = true
     await child.updateComplete
-    await waitForOpenTransition()
+    await waitForOpenTransition(child)
 
     expect(parent.open).toBe(true)
     expect(child.open).toBe(true)
@@ -83,10 +91,10 @@ describe('WebUiDrawer nested 层叠（浏览器）', () => {
 
     parent.open = true
     await parent.updateComplete
-    await waitForOpenTransition()
+    await waitForOpenTransition(parent)
     child.open = true
     await child.updateComplete
-    await waitForOpenTransition()
+    await waitForOpenTransition(child)
     await waitFor(() => nestedScale(parent) < 0.96)
 
     child.open = false
@@ -109,10 +117,10 @@ describe('WebUiDrawer nested 层叠（浏览器）', () => {
 
     parent.open = true
     await parent.updateComplete
-    await waitForOpenTransition()
+    await waitForOpenTransition(parent)
     child.open = true
     await child.updateComplete
-    await waitForOpenTransition()
+    await waitForOpenTransition(child)
 
     // 子层是 top layer 顶层：Esc keydown 派发到子层 dialog
     const childDialog = getDialog(child)
@@ -135,10 +143,10 @@ describe('WebUiDrawer nested 层叠（浏览器）', () => {
 
     parent.open = true
     await parent.updateComplete
-    await waitForOpenTransition()
+    await waitForOpenTransition(parent)
     child.open = true
     await child.updateComplete
-    await waitForOpenTransition()
+    await waitForOpenTransition(child)
 
     // 两层都开：documentElement overflow 被锁定
     expect(document.documentElement.style.overflow).toBe('hidden')
@@ -162,7 +170,7 @@ describe('WebUiDrawer nested 层叠（浏览器）', () => {
     document.body.append(el)
     el.open = true
     await el.updateComplete
-    await waitForOpenTransition()
+    await waitForOpenTransition(el)
 
     const dialog = getDialog(el)
     const footerButton = el.querySelector('web-ui-button')
@@ -194,13 +202,13 @@ describe('WebUiDrawer nested 层叠（浏览器）', () => {
 
     parent.open = true
     await parent.updateComplete
-    await waitForOpenTransition()
+    await waitForOpenTransition(parent)
     const parentDialog = getDialog(parent)
     const leftBefore = parentDialog.getBoundingClientRect().left
 
     child.open = true
     await child.updateComplete
-    await waitForOpenTransition()
+    await waitForOpenTransition(child)
     await waitFor(() => nestedScale(parent) < 0.96)
     await nextFrame()
 
@@ -225,11 +233,11 @@ describe('WebUiDrawer nested 层叠（浏览器）', () => {
 
     parent.open = true
     await parent.updateComplete
-    await waitForOpenTransition()
+    await waitForOpenTransition(parent)
 
     child.open = true
     await child.updateComplete
-    await waitForOpenTransition()
+    await waitForOpenTransition(child)
     await waitFor(() => nestedScale(parent) < 0.96)
     await nextFrame()
 
@@ -255,11 +263,11 @@ describe('WebUiDrawer nested 层叠（浏览器）', () => {
 
     parent.open = true
     await parent.updateComplete
-    await waitForOpenTransition()
+    await waitForOpenTransition(parent)
 
     child.open = true
     await child.updateComplete
-    await waitForOpenTransition()
+    await waitForOpenTransition(child)
     await waitFor(() => nestedScale(parent) < 0.96)
     await nextFrame()
 
@@ -297,19 +305,19 @@ describe('WebUiDrawer nested 层叠（浏览器）', () => {
 
     d1.open = true
     await d1.updateComplete
-    await waitForOpenTransition()
+    await waitForOpenTransition(d1)
 
     d2.open = true
     await d2.updateComplete
-    await waitForOpenTransition()
+    await waitForOpenTransition(d2)
 
     d3.open = true
     await d3.updateComplete
-    await waitForOpenTransition()
+    await waitForOpenTransition(d3)
 
     d4.open = true
     await d4.updateComplete
-    await waitForOpenTransition()
+    await waitForOpenTransition(d4)
     await waitFor(() => nestedScale(d1) < 0.88)
     await nextFrame()
 
@@ -344,14 +352,14 @@ describe('WebUiDrawer 同级（非 DOM 嵌套）层叠', () => {
 
     drawer1.open = true
     await drawer1.updateComplete
-    await waitForOpenTransition()
+    await waitForOpenTransition(drawer1)
 
     // 单层：depth 0
     expect(nestedScale(drawer1)).toBe(1)
 
     drawer2.open = true
     await drawer2.updateComplete
-    await waitForOpenTransition()
+    await waitForOpenTransition(drawer2)
     await waitFor(() => nestedScale(drawer1) < 0.96)
 
     // drawer1 先开 → depth 1 → scale 0.95
@@ -383,16 +391,16 @@ describe('WebUiDrawer 同级（非 DOM 嵌套）层叠', () => {
 
     d1.open = true
     await d1.updateComplete
-    await waitForOpenTransition()
+    await waitForOpenTransition(d1)
 
     d2.open = true
     await d2.updateComplete
-    await waitForOpenTransition()
+    await waitForOpenTransition(d2)
     await waitFor(() => nestedScale(d1) < 0.96)
 
     d3.open = true
     await d3.updateComplete
-    await waitForOpenTransition()
+    await waitForOpenTransition(d3)
     await waitFor(() => nestedScale(d1) < 0.91)
     await waitFor(() => nestedScale(d2) < 0.96)
 
@@ -425,11 +433,11 @@ describe('WebUiDrawer 同级（非 DOM 嵌套）层叠', () => {
 
     d1.open = true
     await d1.updateComplete
-    await waitForOpenTransition()
+    await waitForOpenTransition(d1)
 
     d2.open = true
     await d2.updateComplete
-    await waitForOpenTransition()
+    await waitForOpenTransition(d2)
     await waitFor(() => nestedScale(d1) < 0.96)
     await nextFrame()
 

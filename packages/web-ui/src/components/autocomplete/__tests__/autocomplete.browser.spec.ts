@@ -5,6 +5,7 @@ import '..'
 import '../../theme'
 import '@/components/popover'
 import type { WebUiOption } from '@/components/option'
+import { pollUntil } from '@/shared/test-utils'
 
 import type { WebUiAutocomplete } from '..'
 
@@ -523,7 +524,7 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     ])
     await userEvent.keyboard('{Escape}')
     expect(page.getByRole('listbox').length).toBe(0)
-    await new Promise(resolve => setTimeout(resolve, 300))
+    await pollUntil(() => !getPortalPanel(theme), 'Expected autocomplete portal to dispose after Escape')
     expect([...el.querySelectorAll<WebUiOption>('web-ui-option')].map(option => option.value)).toEqual([
       'cherry',
       'apple'
@@ -545,7 +546,7 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     late.label = 'Date'
     el.append(late)
     await userEvent.keyboard('{Escape}')
-    await new Promise(resolve => setTimeout(resolve, 300))
+    await pollUntil(() => !getPortalPanel(theme), 'Expected autocomplete portal to dispose after Escape')
     expect([...el.querySelectorAll<WebUiOption>('web-ui-option')].map(option => option.value)).toEqual([
       'cherry',
       'apple',
@@ -632,9 +633,8 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
 
     input.element().focus()
     await userEvent.keyboard('{Escape}')
-    await new Promise(resolve => setTimeout(resolve, 300))
     await el.updateComplete
-    expect(el.open).toBe(false)
+    await pollUntil(() => !el.open && !getPortalPanel(theme), 'Expected empty-state autocomplete to close and dispose')
     expect(el.querySelector('[slot="empty"]')?.textContent?.trim()).toBe('按 Enter 创建标签')
   })
 
@@ -660,18 +660,19 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
 
     const panel = getPortalPanel(theme)!
     panel.querySelector<HTMLElement>('.autocomplete-empty')!.firstElementChild?.remove()
-    await new Promise(resolve => setTimeout(resolve, 0))
     await el.updateComplete
-    expect(panel.querySelector('.autocomplete-empty')?.textContent?.trim()).toBe('无匹配选项')
+    await pollUntil(
+      () => panel.querySelector('.autocomplete-empty')?.textContent?.trim() === '无匹配选项',
+      'Expected removed empty slot to fall back to the default empty state'
+    )
     expect(el.shadowRoot?.querySelector<HTMLElement>('.autocomplete-empty-a11y')?.textContent?.trim()).toBe(
       '无匹配选项'
     )
 
     input.element().focus()
     await userEvent.keyboard('{Escape}')
-    await new Promise(resolve => setTimeout(resolve, 300))
     await el.updateComplete
-    expect(el.open).toBe(false)
+    await pollUntil(() => !el.open && !getPortalPanel(theme), 'Expected autocomplete to close and dispose')
     expect(el.querySelector('[slot="empty"]')).toBeNull()
   })
 
@@ -821,9 +822,7 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
 
     fieldset.disabled = true
     await el.updateComplete
-    await new Promise(resolve => setTimeout(resolve, 300))
-    expect(getPortalPanel(theme)).toBeNull()
-    expect(el.open).toBe(false)
+    await pollUntil(() => !getPortalPanel(theme) && !el.open, 'Expected disabled autocomplete to close and dispose')
     const input = el.shadowRoot!.querySelector<HTMLInputElement>('[role="combobox"]')!
     expect(input.getAttribute('aria-expanded')).toBe('false')
     expect(input.getAttribute('aria-activedescendant')).toBeFalsy()
@@ -887,8 +886,11 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     const input = el.shadowRoot!.querySelector<HTMLInputElement>('[role="combobox"]')!
     await userEvent.keyboard('{Tab}')
     await el.updateComplete
-    // focus ring 走 200ms box-shadow 过渡，等过渡完成后再断言终值
-    await new Promise(resolve => setTimeout(resolve, 300))
+    // focus ring 走 200ms box-shadow 过渡；轮询终值，不依赖固定过渡时长
+    await pollUntil(
+      () => getComputedStyle(wrapper, '::after').boxShadow.includes('rgb(0, 136, 255)'),
+      'Expected the borderless focus ring transition to settle'
+    )
 
     // 与 normal 变体同款：inset accent 内圈 + focus-ring halo 的 box-shadow
     const focusedStyle = getComputedStyle(wrapper, '::after')
