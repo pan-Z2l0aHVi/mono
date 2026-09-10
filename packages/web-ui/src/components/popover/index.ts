@@ -100,7 +100,12 @@ export class WebUiPopover extends LitElement {
       ?.addEventListener('slotchange', () => this.requestUpdate())
 
     if (this.open) {
-      requestAnimationFrame(() => this._openOverlay(this._shouldOpenInstantly))
+      // 初始 open 也可能在本帧内被受控翻回 false；回调统一复查状态，
+      // 避免关闭空转后创建 portal 并迁入空面板内容。
+      requestAnimationFrame(() => {
+        if (!this.open || !this.isConnected) return
+        this._openOverlay(this._shouldOpenInstantly)
+      })
       this._shouldOpenInstantly = true
     }
   }
@@ -130,7 +135,13 @@ export class WebUiPopover extends LitElement {
       if (this.open) {
         const isInstant = this._shouldOpenInstantly
         this._shouldOpenInstantly = true
-        requestAnimationFrame(() => this._openOverlay(isInstant))
+        // 受控 open 可能在同一帧内先翻 true 再翻回 false；此时关闭分支已经清理浮层。
+        // 宿主也可能在回调前移除。回调必须复查 open/isConnected，
+        // 避免关闭或卸载后空转时又创建 portal 并迁入空面板内容。
+        requestAnimationFrame(() => {
+          if (!this.open || !this.isConnected) return
+          this._openOverlay(isInstant)
+        })
         if (this._userOpenChange.consume()) this._dispatchChange(true)
         this._focusPanel()
       } else {
@@ -212,6 +223,8 @@ export class WebUiPopover extends LitElement {
   }
 
   private _reconfigureOverlay() {
+    // portal 变更也会登记 rAF；宿主卸载后不得再通过 reconfigure 重建面板。
+    if (!this.isConnected) return
     this._panel.reconfigure(this.open)
   }
 
