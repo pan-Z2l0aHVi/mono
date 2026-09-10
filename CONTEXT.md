@@ -97,6 +97,7 @@ interweave（含 interweave-frontend）──共享包的 Wails 桌面集成表�
 | [0007](docs/adr/0007-plugin-system.md)                             | Plugin System                               | 设计可组合状态或行为模块                                                |
 | [0008](docs/adr/0008-interweave-backend-architecture.md)           | Interweave Backend Architecture             | 修改 interweave Go 模块、Wails Service 或 frontend bindings             |
 | [0009](docs/adr/0009-interweave-sqlite-persistence-wal.md)         | SQLite Persistence WAL                      | 修改 interweave 持久化层或 SQLite 并发模型                              |
+| [0010](docs/adr/0010-agent-role-orchestration.md)                  | Agent Role Orchestration                    | 修改角色分工、执行体绑定、编排路由或 handoff 契约                       |
 
 ## Interweave 产品与领域词汇
 

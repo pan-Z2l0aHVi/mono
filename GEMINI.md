@@ -11,4 +11,8 @@
 3. 只有跨包、架构、术语或 instruction system 任务才读取 [`CONTEXT.md`](CONTEXT.md) 与相关 ADR。
 4. Gemini 专属的 setting、hook 和 memory 只提供工具适配，不得复制或覆盖共享规范。
 
+## 角色绑定说明
+
+本仓库的默认角色绑定为 Claude Code（Manager、Designer、Lib Coder）与 Codex CLI（Biz Coder、Reviewer 主审），见根 [`AGENTS.md`](AGENTS.md) 的「多 Agent 编排」节。Gemini CLI 未被默认绑定到任何角色；若由 Gemini 承担某个角色，Manager 必须在 task packet 中显式记录替代执行体与理由，并遵守同样的包边界与 handoff 要求。
+
 当前实现事实以源码、manifest、配置和测试为准。

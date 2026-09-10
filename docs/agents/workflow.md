@@ -69,20 +69,50 @@ pnpm agent:workflow close --task <task-id>
 
 提交边界由受版本控制的 `.vite-hooks/pre-commit` 再次检查。它通过 `guard-commit` 自动发现当前 worktree 的 active task；若存在 task，只有 `approved` 且冻结 diff 未变化时才允许提交。提交 hook 保护的是 commit 边界，不能替代实施前的 `init` 和 `check --phase edit`。
 
+## 角色与执行体
+
+角色定义会话身份、职责边界和协作方式，与单个 task 解耦；执行体是承担该角色的模型/CLI。本仓库使用默认绑定，执行体不可用时由 Manager 在 task packet 中记录替代执行体与理由：
+
+| 角色      | 执行体            | 负责范围                                         |
+| --------- | ----------------- | ------------------------------------------------ |
+| Manager   | Claude Code       | 需求接收、扁平编排、任务分解、依赖管理、最终总结 |
+| Designer  | Claude Code       | 产品设计、UI/UX、交互与状态设计                  |
+| Lib Coder | Claude Code       | `packages/*`：共享库与基础包                     |
+| Biz Coder | Codex CLI         | `apps/*`：业务包实现                             |
+| Reviewer  | Codex CLI（主审） | 独立验收；高风险变更加 Claude Code 二次审查      |
+
+- Role Contract 位于 [`.agents/agents/`](../../.agents/agents/)，只定义职责、边界和协作；仓库约束仍以 `AGENTS.md`、包级 `AGENTS.md`、rules、skills 和实现事实为准。
+- 执行体绑定不改变状态机、gate 和证据要求；任一执行体承担角色后都必须遵守同一套 handoff、worktree 和 review 规则。
+- Reviewer 主审与二次审查都必须独立于实施者，并以同一个冻结 `diffHash` 为审查对象；二次审查不替代主审，只在主审通过后追加。
+
+## 编排模式
+
+Manager 统一接收需求并编排，保持扁平，不引入 Integrator 或其他中间层级。模式按需求是否涉及产品设计/UI 分流：
+
+1. **产品/设计需求**：Manager → Designer → 并行 Lib Coder + Biz Coder → Reviewer 验收 → Manager 总结汇报。
+2. **纯技术需求**：Manager → 并行 Lib Coder + Biz Coder → Reviewer 验收 → Manager 总结汇报。
+
+- 是否启用 Designer 由 Manager 判断；判据是需求是否涉及产品设计/UI，而不是改动大小。判断结论、理由和范围写入 task packet。
+- 路由只决定是否启用 Designer。Lib Coder 与 Biz Coder 之间没有实质依赖时必须并行，不串行化。
+- 目录边界固定：Lib Coder 只在 `packages/*` 写入，Biz Coder 只在 `apps/*` 写入。跨边界需求拆成两个独立 task、两个 worktree，由 Manager 通过 handoff 传递契约。
+- 每个角色一个独立 worktree（或严格目录隔离）与唯一 owner；同一 worktree 同时只服务一个可变 task。
+- 角色之间统一使用结构化 handoff：`Goal（目标）`、`Scope（范围）`、`Acceptance（验收标准）`、`Test commands（测试命令）`、`Open decisions（未解决决策）`；模板见 [`task-packet.md`](task-packet.md)。缺少任一项不得进入实施或验收。
+- 集成与 release 聚合由 Manager 直接协调（见「Release 和 hotfix」），不再拆出独立编排角色。
+
 ## 角色和边界
 
-- **Manager**：建立 task state，拆解任务，分配 owner，维护依赖，汇总证据，组织 review 和交付判断；不以个人口头记录替代状态。
-- **实施 Agent**：只在被分配的 task worktree 工作，遵守允许路径，保持变更待 review，不擅自 commit、push、merge 或关闭任务。
-- **Reviewer**：只读审查冻结的目标 diff 和验证证据，结果绑定 `diffHash`；发现问题交回实施 Agent，修复后必须重新 freeze/review。
-- **Integrator**：只在 release worktree 聚合已批准任务，解决聚合冲突并运行集成验证；聚合后的新 diff 必须重新 review/approve。
-- **Designer**：输出可实现的交互、视觉和验收决策，不改变代码归属和状态 gate。
+- **Manager**：建立 task state，拆解任务，分配 owner，按「编排模式」选择路径并派发，维护依赖，汇总证据，组织 review 和交付判断；直接协调 release 聚合与集成验证，不新增 Integrator 层级。
+- **实施 Agent**：只在被分配的 task worktree 工作，遵守允许路径和角色目录边界，保持变更待 review，不擅自 commit、push、merge 或关闭任务。
+- **Reviewer**：只读审查冻结的目标 diff 和验证证据，结果绑定 `diffHash`；发现问题交回实施 Agent，修复后必须重新 freeze/review。高风险变更由 Manager 追加二次审查。
+- **Designer**：仅在产品/设计需求下启用，输出可实现的交互、视觉和验收决策，不修改 `packages/*` 与 `apps/*` 生产代码，不改变代码归属和状态 gate。
 
-Reviewer 是否必需按风险决定：跨 workspace、公共 API/exports、UI 行为、构建/release 和高风险迁移必须独立 review；纯文档或低风险测试基建可以用 `init --review skip` 并在 task packet 中记录跳过理由，但仍须有用户/Manager approval 和验证证据。需要独立 review 时，脚本要求显式提供不同于 owner 的 reviewer id。
+Reviewer 是否必需按风险决定：跨 workspace、公共 API/exports、UI 行为、构建/release 和高风险迁移必须独立 review，并在主审通过后追加 Claude Code 二次审查；纯文档或低风险测试基建可以用 `init --review skip` 并在 task packet 中记录跳过理由，但仍须有用户/Manager approval 和验证证据。需要独立 review 时，脚本要求显式提供不同于 owner 的 reviewer id。
 
 ## 并发原则
 
 - 一个可变任务对应一个 task worktree 和一个 owner；同一 worktree 不得被两个实施任务同时写入。
-- package worktree 可以作为缓存或验证 lane，但不能作为任务身份；跨包 vertical slice 使用任务级 worktree。
+- package worktree 可以作为缓存或验证 lane，但不能作为任务身份；跨包 vertical slice 使用任务级 worktree，并在其中以严格目录隔离区分写入范围（Lib Coder 仅 `packages/*`，Biz Coder 仅 `apps/*`）；无法严格隔离时必须拆成独立 task 与独立 worktree。
+- 角色目录边界即 worktree 内的写入边界：同一 worktree 中，任一角色不得修改对方目录下的文件；需要对方改动时通过 handoff 派发，而不是越界编辑。
 - Reviewer 不在持续变化的实施 worktree 上复用旧结论；review 前冻结，修复后重新冻结。
 - 共享主工作区不用于并行实施；不得在其中执行 `git switch`、`git checkout`、`git stash`、`git reset` 或 `git clean`。
 - 并行编排可使用 Herdr，也可使用其他 harness；Herdr 的 pane、tab、workspace 生命周期规则见 [`herdr/SKILL.md`](../../.agents/skills/herdr/SKILL.md)，不在本文件重复。
@@ -98,4 +128,4 @@ Reviewer 是否必需按风险决定：跨 workspace、公共 API/exports、UI �
 - 命令失败时保留 task state 和工作树，先用 `status --json` 判断当前 phase，不要重建或覆盖状态文件。
 - session、Herdr 或 harness 重启后，从 task state 的 `phase`、`worktree`、`baseSha` 和 live stale 结果恢复，不从聊天记忆猜测进度。
 - GitHub issue 不可用时继续本地流程，最终报告注明“未同步”；issue 只作追踪镜像，不是执行真相。
-- release CI 失败时，机械性修复可由 integrator 处理；逻辑或测试修复回到原 task owner，并在聚合 diff 变化后重新 review。
+- release CI 失败时，机械性修复可由 Manager 直接处理；逻辑或测试修复回到原 task owner，并在聚合 diff 变化后重新 review。
