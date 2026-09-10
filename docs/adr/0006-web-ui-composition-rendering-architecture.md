@@ -2,7 +2,6 @@
 
 - **Date**: 2026-07-30
 - **Status**: 已接受
-- **合并自**: ADR-0005（Overlay 交互策略）、ADR-0006（布局层叠）、ADR-0010（Design Token 重构）、ADR-0030（Semantic Token System）、ADR-0036（@lit/context 受管组合）、ADR-0037（覆盖层内容迁移）、ADR-0042（浮层定位引擎）、ADR-0044（语义 Radius Token）
 
 ## 1. Overlay 交互策略
 

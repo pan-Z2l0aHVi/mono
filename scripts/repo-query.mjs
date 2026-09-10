@@ -476,7 +476,7 @@ if (hasCodeChange) addContext(context, '.agents/rules/code-style.md')
 if (hasContextChange) {
   addContext(context, 'docs/agents/context.md')
   addContext(context, 'CONTEXT.md')
-  addContext(context, 'docs/adr/0012-progressive-agent-context-architecture.md')
+  addContext(context, 'docs/adr/0004-progressive-agent-context-architecture.md')
 }
 if (
   hasPackageContractChange ||
