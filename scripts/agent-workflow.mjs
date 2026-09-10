@@ -18,7 +18,7 @@ const phases = new Set([
   'closed'
 ])
 const modes = new Set(['direct', 'orchestrated', 'release', 'hotfix'])
-const roles = new Set(['manager', 'designer', 'lib-coder', 'biz-coder', 'reviewer', 'integrator'])
+const roles = new Set(['manager', 'designer', 'lib-coder', 'biz-coder', 'reviewer'])
 
 function fail(message) {
   throw new Error(message)

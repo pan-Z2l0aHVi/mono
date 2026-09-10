@@ -101,8 +101,12 @@ const workflow = readRoot('docs/agents/workflow.md')
 const manager = readRoot('.agents/agents/manager.md')
 const preCommit = readRoot('.vite-hooks/pre-commit')
 for (const [file, content, markers] of [
-  ['AGENTS.md', rootAgents, ['## Mutation Gate', 'docs/agents/workflow.md', 'agent:workflow init']],
-  ['docs/agents/workflow.md', workflow, ['## 先建立任务', '## 状态机', '## 失败和恢复']],
+  ['AGENTS.md', rootAgents, ['## Mutation Gate', '## 多 Agent 编排', 'docs/agents/workflow.md', 'agent:workflow init']],
+  [
+    'docs/agents/workflow.md',
+    workflow,
+    ['## 先建立任务', '## 状态机', '## 角色与执行体', '## 编排模式', '## 失败和恢复']
+  ],
   ['.agents/agents/manager.md', manager, ['Manager 启动后第一项工作必须读取']],
   ['.vite-hooks/pre-commit', preCommit, ['agent:workflow guard-commit']]
 ]) {

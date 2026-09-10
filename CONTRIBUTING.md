@@ -13,7 +13,7 @@
 
 ## 角色会话
 
-Role Contract 位于 `.agents/agents/`，只定义当前会话的职责、边界和协作；仓库约束仍以 `AGENTS.md`、目标目录 `AGENTS.md`、rules、skills 和实现事实为准。
+Role Contract 位于 `.agents/agents/`，只定义当前会话的职责、边界和协作；仓库约束仍以 `AGENTS.md`、目标目录 `AGENTS.md`、rules、skills 和实现事实为准。角色分工、编排路由和 handoff 契约见根 [`AGENTS.md`](AGENTS.md) 的「多 Agent 编排」节与 [`docs/agents/workflow.md`](docs/agents/workflow.md)。
 
 当前 Harness 不会自动选择 Role。新会话先用一条消息初始化 Role：
 
@@ -21,7 +21,19 @@ Role Contract 位于 `.agents/agents/`，只定义当前会话的职责、边界
 本会话担任 <role>。读取并遵循 `.agents/agents/<role>.md`，将其作为本会话的角色与协作规范。
 ```
 
-`<role>` 为 `manager`、`designer`、`lib-coder`、`biz-coder` 或 `reviewer`。Role 在本会话内持续生效；任务可在之后分次提供，且不与某一个 task 绑定。任一模型或 CLI 都可承担任一 Role。
+`<role>` 为 `manager`、`designer`、`lib-coder`、`biz-coder` 或 `reviewer`。Role 在本会话内持续生效；任务可在之后分次提供，且不与某一个 task 绑定。
+
+本仓库使用默认执行体绑定：
+
+| 角色      | 执行体                                               |
+| --------- | ---------------------------------------------------- |
+| manager   | Claude Code                                          |
+| designer  | Claude Code                                          |
+| lib-coder | Claude Code                                          |
+| biz-coder | Codex CLI                                            |
+| reviewer  | Codex CLI（主审）；高风险变更加 Claude Code 二次审查 |
+
+执行体绑定是默认分工：任一执行体在技术上都能承担任一 Role，但偏离默认绑定必须由 Manager 在 task packet 中记录替代执行体与理由。无论由哪个执行体承担，角色目录边界（lib-coder 只写 `packages/*`，biz-coder 只写 `apps/*`）与结构化 handoff 要求都不变。
 
 ## 定位和影响分析
 
