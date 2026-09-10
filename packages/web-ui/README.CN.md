@@ -994,7 +994,7 @@ WebUiSpinner.hide() // 隐藏
 
 #### `<web-ui-layout>`
 
-响应式页面布局：支持可选全宽 Banner、桌面端可折叠侧边栏，以及移动端 headless drawer。页面本身滚动；Banner 滚出后，桌面端 sidebar 和 header 固定在视口内。
+响应式页面布局：支持可选全宽 Banner、桌面端可折叠侧边栏，以及移动端默认 drawer。页面本身滚动；Banner 滚出后，桌面端 sidebar 和 header 固定在视口内。
 
 | 属性                | 类型      | 默认值    | 说明                                                           |
 | ------------------- | --------- | --------- | -------------------------------------------------------------- |
@@ -1016,15 +1016,15 @@ WebUiSpinner.hide() // 隐藏
 - 键盘操作（WAI-ARIA splitter 模式）：聚焦后用 ←/→ 以 16px 步进调整（Shift 加速到 64px），Home/End 跳到 min/max，Enter 以同一 `sidebar-width-change` 请求提交，Escape 撤回未提交的调整。
 - 移动端 Drawer 始终通过其内置 `draggable` 抽屉支持拖拽关闭。
 
-| 插槽      | 说明                                                         |
-| --------- | ------------------------------------------------------------ |
-| `banner`  | 位于布局主体上方的可选全宽 Banner                            |
-| `header`  | 内容区的 sticky header                                       |
-| `sidebar` | 侧边栏卡片内容；内部固定区域与滚动容器均由 Consumer 自行定义 |
-| `default` | 主内容区                                                     |
-| `tabbar`  | 底部 tabbar                                                  |
+| 插槽      | 说明                                                             |
+| --------- | ---------------------------------------------------------------- |
+| `banner`  | 位于布局主体上方的可选全宽 Banner                                |
+| `header`  | 内容区的 sticky header                                           |
+| `sidebar` | 侧边栏卡片内容；桌面端内部固定区域与滚动容器由 Consumer 自行定义 |
+| `default` | 主内容区                                                         |
+| `tabbar`  | 底部 tabbar                                                      |
 
-`web-ui-layout` 只约束侧边栏卡片的可用空间并管理桌面端 Toggle，不创建侧边栏 scrollport。若仅让侧边栏的一部分滚动，请将 `sidebar` 插槽根节点设为 `height: 100%; min-height: 0` 的 flex column，再将 `overflow-y: auto` 设置到目标子元素。这样 Consumer 可自行固定头部和底部，无需额外的公共 slot：
+`web-ui-layout` 只约束侧边栏卡片的可用空间并管理桌面端 Toggle，不创建桌面端侧边栏 scrollport。若仅让桌面端侧边栏的一部分滚动，请将 `sidebar` 插槽根节点设为 `height: 100%; min-height: 0` 的 flex column，再将 `overflow-y: auto` 设置到目标子元素。这样 Consumer 可自行固定头部和底部，无需额外的公共 slot：
 
 ```html
 <div slot="sidebar" class="sidebar-root">
@@ -1052,7 +1052,7 @@ WebUiSpinner.hide() // 隐藏
 }
 ```
 
-在 `640px` 及以下，侧边栏会切换为 headless 模式的 `web-ui-drawer`。Consumer 内容仍渲染在相同的圆角侧边栏卡片中，移动端 Toggle 以 glass 变体位于 header 行内。其左缩进默认 `8px`，可通过 `--wui-layout-mobile-toggle-inset` 与 Consumer 自身的 header 内边距对齐。
+在 `640px` 及以下，侧边栏会切换为使用内置 glass body、可滚动 content 和 drag zone 的 `web-ui-drawer`。Layout 会将 `sidebar-width` 映射为 `--wui-drawer-width`，将 `--wui-layout-sidebar-radius` 映射为 `--wui-drawer-radius`。移动端 Toggle 以 glass 变体位于 header 行内。其左缩进默认 `8px`，可通过 `--wui-layout-mobile-toggle-inset` 与 Consumer 自身的 header 内边距对齐。
 
 `header-glow` 会在 header 插槽内容和移动端 Toggle 的背后添加 `pointer-events: none` 的装饰性晕染。它属于 Header 背景而非前景层，因此插槽内容始终位于其上方；可通过 `--wui-layout-header-glow-color` 覆盖颜色，默认值为 `--wui-color-page`。晕染浓度和范围由内部变量 `--wui-layout-header-glow-height`（默认 `150%`）控制；增大可加强覆盖，减小则更柔和。布局层级顺序为 Header（`10`）< Auxiliary（`20`）< Banner（`30`）< Tabbar（`40`）< Sidebar（`50`）。
 
