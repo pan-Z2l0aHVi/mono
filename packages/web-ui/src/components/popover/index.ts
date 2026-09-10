@@ -8,6 +8,7 @@ import { UserChangeController } from '@/shared/events/user-change'
 import { normalizeLiteral, normalizeNumber } from '@/shared/normalize'
 import { dispatchOpenChangeEvent } from '@/shared/open-state'
 import { defineAnchoredPanel } from '@/shared/overlay/anchored-panel'
+import { defineOverlayLifecycle } from '@/shared/overlay/lifecycle'
 import { FLOATING_PLACEMENTS } from '@/shared/overlay/placement-props'
 import { defineOverlayPortal } from '@/shared/overlay/portal'
 import type { OverlayContainer, OverlayPortal } from '@/shared/overlay/portal'
@@ -68,6 +69,10 @@ export class WebUiPopover extends LitElement {
 
   private _panelId = `wui-popover-panel-${++popoverIdCounter}`
   private _portal?: OverlayPortal
+  private readonly _lifecycle = defineOverlayLifecycle().make({
+    isConnected: () => this.isConnected,
+    isOpen: () => this.open
+  })
   private readonly _panel = defineAnchoredPanel().make({
     getAnchor: () => this.shadowRoot?.querySelector<HTMLElement>('.popover-trigger') ?? null,
     getLocalPanel: () => this.shadowRoot?.querySelector<HTMLElement>('.popover-panel') ?? null,
@@ -86,6 +91,7 @@ export class WebUiPopover extends LitElement {
 
   override connectedCallback() {
     super.connectedCallback()
+    this._lifecycle.resume()
     document.addEventListener('click', this._onClickOutside)
     document.addEventListener('keydown', this._onKeydown)
     this.addEventListener('focusout', this._onFocusOut)
@@ -100,12 +106,12 @@ export class WebUiPopover extends LitElement {
       ?.addEventListener('slotchange', () => this.requestUpdate())
 
     if (this.open) {
-      // 初始 open 也可能在本帧内被受控翻回 false；回调统一复查状态，
-      // 避免关闭空转后创建 portal 并迁入空面板内容。
-      requestAnimationFrame(() => {
-        if (!this.open || !this.isConnected) return
-        this._openOverlay(this._shouldOpenInstantly)
-      })
+      this._lifecycle.scheduleFrame(
+        () => {
+          this._openOverlay(this._shouldOpenInstantly)
+        },
+        { expectedOpen: true }
+      )
       this._shouldOpenInstantly = true
     }
   }
@@ -117,6 +123,7 @@ export class WebUiPopover extends LitElement {
     this.removeEventListener('focusout', this._onFocusOut)
     this.removeEventListener('pointerenter', this._onPointerEnter)
     this.removeEventListener('pointerleave', this._onPointerLeave)
+    this._lifecycle.dispose()
     clearTimeout(this._showTimer)
     clearTimeout(this._hideTimer)
     this._panel.dispose()
@@ -126,25 +133,27 @@ export class WebUiPopover extends LitElement {
     // ARIA 回写不依赖 open 分支，任何渲染后都保持与宿主状态同步。
     this._syncTriggerAria()
 
-    if (changed.has('portal') || changed.has('overlayContainer'))
-      requestAnimationFrame(() => this._reconfigureOverlay())
-    else if (changed.has('placement') || changed.has('offset'))
+    if (changed.has('portal') || changed.has('overlayContainer')) {
+      // 同帧 open + reconfigure 可能排两个回调；先结束旧事务，让 reconfigure 成为本帧唯一入口。
+      this._lifecycle.invalidate()
+      this._lifecycle.scheduleFrame(() => this._reconfigureOverlay())
+    } else if (changed.has('placement') || changed.has('offset'))
       requestAnimationFrame(() => this._panel.updatePosition())
 
     if (changed.has('open')) {
       if (this.open) {
         const isInstant = this._shouldOpenInstantly
         this._shouldOpenInstantly = true
-        // 受控 open 可能在同一帧内先翻 true 再翻回 false；此时关闭分支已经清理浮层。
-        // 宿主也可能在回调前移除。回调必须复查 open/isConnected，
-        // 避免关闭或卸载后空转时又创建 portal 并迁入空面板内容。
-        requestAnimationFrame(() => {
-          if (!this.open || !this.isConnected) return
-          this._openOverlay(isInstant)
-        })
+        this._lifecycle.scheduleFrame(
+          () => {
+            this._openOverlay(isInstant)
+          },
+          { expectedOpen: true }
+        )
         if (this._userOpenChange.consume()) this._dispatchChange(true)
         this._focusPanel()
       } else {
+        this._lifecycle.invalidate()
         this._returnFocus()
         void this._closeOverlay()
         if (this._userOpenChange.consume()) this._dispatchChange(false)
@@ -245,11 +254,14 @@ export class WebUiPopover extends LitElement {
   }
 
   private _focusPanel() {
-    requestAnimationFrame(() => {
-      const panel = this._panel.getPanel()
-      const autofocus = panel?.querySelector<HTMLElement>('[autofocus]')
-      if (autofocus && !autofocus.matches(':disabled, [disabled]')) autofocus.focus()
-    })
+    this._lifecycle.scheduleFrame(
+      () => {
+        const panel = this._panel.getPanel()
+        const autofocus = panel?.querySelector<HTMLElement>('[autofocus]')
+        if (autofocus && !autofocus.matches(':disabled, [disabled]')) autofocus.focus()
+      },
+      { expectedOpen: true }
+    )
   }
 
   private _returnFocus() {
@@ -287,12 +299,15 @@ export class WebUiPopover extends LitElement {
   private _onFocusOut = () => {
     if (this.trigger === 'manual' || this.trigger === 'hover') return
 
-    requestAnimationFrame(() => {
-      if (this.open && !this.matches(':focus-within') && !this._panel.getPanel()?.matches(':focus-within')) {
-        this._userOpenChange.mark()
-        this.open = false
-      }
-    })
+    this._lifecycle.scheduleFrame(
+      () => {
+        if (!this.matches(':focus-within') && !this._panel.getPanel()?.matches(':focus-within')) {
+          this._userOpenChange.mark()
+          this.open = false
+        }
+      },
+      { expectedOpen: true }
+    )
   }
 
   private _onKeydown = (e: KeyboardEvent) => {

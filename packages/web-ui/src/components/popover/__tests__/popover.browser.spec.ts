@@ -111,4 +111,59 @@ describe('WebUiPopover 组件（浏览器）', () => {
     expect(getPortalPanel()).toBeNull()
     expect(popover.querySelector('div')?.textContent).toBe('Content')
   })
+
+  it('temporary disconnect 后 reconnect 仍可打开', async () => {
+    const popover = document.createElement('web-ui-popover')
+    popover.innerHTML = '<button slot="trigger">Trigger</button><div>Content</div>'
+    document.body.append(popover)
+    await popover.updateComplete
+
+    popover.remove()
+    document.body.append(popover)
+    await popover.updateComplete
+    popover.show()
+    await popover.updateComplete
+    await waitForFrame()
+
+    const panel = popover.shadowRoot?.querySelector<HTMLElement>('[role="dialog"]')
+    expect(panel?.dataset.wuiPresence).toBe('open')
+  })
+
+  it('同帧 open + portal reconfigure 只保留一个 portal 面板', async () => {
+    const popover = document.createElement('web-ui-popover')
+    popover.innerHTML = '<button slot="trigger">Trigger</button><div>Content</div>'
+    document.body.append(popover)
+    await popover.updateComplete
+
+    // Lit 会把同一轮属性修改合并进一次 updated：reconfigure 必须先 invalidate，
+    // 避免和 open 事务叠成两个 frame 回调。
+    popover.portal = true
+    popover.open = true
+    await popover.updateComplete
+    await waitForFrame()
+
+    const panel = getPortalPanel()
+    expect(panel).not.toBeNull()
+    expect(panel?.textContent).toBe('Content')
+    expect(popover.querySelector('div')).toBeNull()
+  })
+
+  it('focusout 帧回调前卸载不派发 open-change', async () => {
+    const popover = document.createElement('web-ui-popover')
+    popover.innerHTML = '<button slot="trigger">Trigger</button><div>Content</div>'
+    document.body.append(popover)
+    await popover.updateComplete
+
+    const changes: CustomEvent[] = []
+    popover.addEventListener('open-change', event => changes.push(event as CustomEvent))
+    popover.open = true
+    await popover.updateComplete
+    await waitForFrame()
+    popover.dispatchEvent(new FocusEvent('focusout'))
+    popover.remove()
+    await waitForFrame()
+    await waitForFrame()
+
+    expect(changes).toHaveLength(0)
+  })
 })

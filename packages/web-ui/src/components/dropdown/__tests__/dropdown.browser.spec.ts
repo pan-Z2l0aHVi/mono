@@ -83,6 +83,43 @@ describe('WebUiDropdown 组件（浏览器）', () => {
     }
   })
 
+  it('根菜单打开后同帧卸载不重建 panel 或焦点', async () => {
+    const menu = document.createElement('web-ui-dropdown')
+    menu.innerHTML = '<button slot="trigger">Menu</button><web-ui-dropdown-item>Open</web-ui-dropdown-item>'
+    document.body.append(menu)
+    await menu.updateComplete
+
+    menu.open = true
+    await menu.updateComplete
+    menu.remove()
+    await nextFrame()
+    await nextFrame()
+
+    expect(getMenus()).toHaveLength(0)
+    expect(document.activeElement).toBe(document.body)
+  })
+
+  it('子菜单打开后同帧卸载不重建子面板', async () => {
+    const menu = document.createElement('web-ui-dropdown')
+    menu.innerHTML = SUBMENU
+    document.body.append(menu)
+    await menu.updateComplete
+
+    menu.open = true
+    await menu.updateComplete
+    await nextFrame()
+    await nextFrame()
+
+    const parentItem = getMenus()[0]?.querySelector<HTMLElement>('web-ui-dropdown-item')
+    parentItem?.click()
+    await menu.updateComplete
+    menu.remove()
+    await nextFrame()
+    await nextFrame()
+
+    expect(getMenus()).toHaveLength(0)
+  })
+
   it('键盘语义激活可以关闭并重新打开子菜单', async () => {
     const menu = document.createElement('web-ui-dropdown')
     menu.innerHTML = SUBMENU
