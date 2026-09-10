@@ -2,6 +2,8 @@ import { afterEach, describe, expect, it } from 'vite-plus/test'
 import { page } from 'vite-plus/test/browser'
 
 import '..'
+import { pollUntil } from '@/shared/test-utils'
+
 import type { WebUiLayout } from '..'
 
 function createLayout({
@@ -29,8 +31,14 @@ async function nextFrame() {
   await new Promise(resolve => requestAnimationFrame(resolve))
 }
 
-async function waitForLayoutTransition() {
-  await new Promise(resolve => setTimeout(resolve, 350))
+async function waitForLayoutTransition(layout: WebUiLayout) {
+  await layout.updateComplete
+  await nextFrame()
+
+  // 浏览器动画完成是布局状态稳定的确切终点，避免用固定 350ms 猜测过渡时长。
+  const animations = [...(layout.shadowRoot?.getAnimations() ?? []), ...layout.getAnimations({ subtree: true })]
+  await Promise.allSettled(animations.map(animation => animation.finished))
+  await layout.updateComplete
 }
 
 function syncControlledSidebarState(layout: WebUiLayout) {
@@ -72,7 +80,7 @@ describe('WebUiLayout 组件（浏览器）', () => {
 
       toggle.click()
       await layout.updateComplete
-      await waitForLayoutTransition()
+      await waitForLayoutTransition(layout)
 
       expect(requested).toEqual([true])
       expect(layout.sidebarCollapsed).toBe(true)
@@ -90,7 +98,7 @@ describe('WebUiLayout 组件（浏览器）', () => {
       layout.addEventListener('sidebar-collapsed-change', () => eventCount++)
       layout.sidebarCollapsed = true
       await layout.updateComplete
-      await waitForLayoutTransition()
+      await waitForLayoutTransition(layout)
 
       const aside = layout.shadowRoot?.querySelector('aside') as HTMLElement
       expect(aside.classList.contains('collapsed')).toBe(true)
@@ -331,9 +339,13 @@ describe('WebUiLayout 组件（浏览器）', () => {
 
       toggle.click()
       await layout.updateComplete
-      await waitForLayoutTransition()
+      await waitForLayoutTransition(layout)
 
       const drawer = layout.shadowRoot?.querySelector('web-ui-drawer') as HTMLElement
+      await pollUntil(
+        () => (drawer.shadowRoot?.querySelector('.wui-drawer-body') as HTMLElement)?.getBoundingClientRect().left > 0,
+        'Expected drawer panel to settle into the viewport'
+      )
       const panel = (drawer.shadowRoot?.querySelector('.wui-drawer-body') as HTMLElement) ?? null
       const dialog = drawer.shadowRoot?.querySelector('dialog') as HTMLDialogElement
       const sidebarViewport = layout.shadowRoot?.querySelector('.sidebar-viewport') as HTMLElement
@@ -364,7 +376,7 @@ describe('WebUiLayout 组件（浏览器）', () => {
 
       layout.sidebarOpen = true
       await layout.updateComplete
-      await waitForLayoutTransition()
+      await waitForLayoutTransition(layout)
 
       const drawer = layout.shadowRoot?.querySelector('web-ui-drawer') as HTMLElement
       const dialog = drawer.shadowRoot?.querySelector('dialog') as HTMLDialogElement
@@ -374,7 +386,7 @@ describe('WebUiLayout 组件（浏览器）', () => {
       dialog.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'Escape' }))
       dialog.click()
       await layout.updateComplete
-      await waitForLayoutTransition()
+      await waitForLayoutTransition(layout)
 
       expect(layout.sidebarOpen).toBe(true)
       expect(drawer.hasAttribute('open')).toBe(true)
@@ -383,7 +395,7 @@ describe('WebUiLayout 组件（浏览器）', () => {
 
       layout.sidebarOpen = false
       await layout.updateComplete
-      await waitForLayoutTransition()
+      await waitForLayoutTransition(layout)
       expect(drawer.hasAttribute('open')).toBe(false)
     })
 
@@ -400,13 +412,17 @@ describe('WebUiLayout 组件（浏览器）', () => {
       const toggle = layout.shadowRoot?.querySelector('.mobile-toggle') as HTMLElement
       toggle.click()
       await layout.updateComplete
-      await waitForLayoutTransition()
+      await waitForLayoutTransition(layout)
 
       const drawer = layout.shadowRoot?.querySelector('web-ui-drawer') as HTMLElement
+      await pollUntil(
+        () => (drawer.shadowRoot?.querySelector('.wui-drawer-body') as HTMLElement)?.getBoundingClientRect().left > 0,
+        'Expected drawer panel to settle into the viewport'
+      )
       const dialog = drawer.shadowRoot?.querySelector('dialog') as HTMLDialogElement
       dialog.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'Escape' }))
       await layout.updateComplete
-      await waitForLayoutTransition()
+      await waitForLayoutTransition(layout)
 
       expect(requested).toEqual([true, false])
       expect(layout.sidebarOpen).toBe(false)
@@ -599,7 +615,7 @@ describe('WebUiLayout 组件（浏览器）', () => {
         new PointerEvent('pointerup', { bubbles: true, pointerId: 1, isPrimary: true, clientX: handleRect.left })
       )
       await layout.updateComplete
-      await waitForLayoutTransition()
+      await waitForLayoutTransition(layout)
 
       expect(widthRequests).toHaveLength(0)
       expect(parseFloat(window.getComputedStyle(aside).width)).toBeCloseTo(startWidth, 0)
@@ -630,7 +646,7 @@ describe('WebUiLayout 组件（浏览器）', () => {
       await layout.updateComplete
       handle.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'ArrowRight' }))
       await layout.updateComplete
-      await waitForLayoutTransition()
+      await waitForLayoutTransition(layout)
       const expectedWidth = startWidth + 32
       expect(parseFloat(window.getComputedStyle(aside).width)).toBeCloseTo(expectedWidth, 0)
 
@@ -652,7 +668,7 @@ describe('WebUiLayout 组件（浏览器）', () => {
 
       layout.sidebarCollapsed = true
       await layout.updateComplete
-      await waitForLayoutTransition()
+      await waitForLayoutTransition(layout)
       expect(layout.shadowRoot?.querySelector('.sidebar-resize-handle')).toBeFalsy()
 
       layout.sidebarCollapsed = false
@@ -712,7 +728,7 @@ describe('WebUiLayout 组件（浏览器）', () => {
       await nextFrame()
       handle.dispatchEvent(new PointerEvent('pointercancel', { bubbles: true, pointerId: 1, isPrimary: true }))
       await layout.updateComplete
-      await waitForLayoutTransition()
+      await waitForLayoutTransition(layout)
 
       expect(widthRequests).toHaveLength(0)
       expect(parseFloat(window.getComputedStyle(aside).width)).toBeCloseTo(startWidth, 0)
@@ -797,13 +813,19 @@ describe('WebUiLayout 组件（浏览器）', () => {
 
       // 缩到移动端宽度：桌面 layout 卸载，resize 防抖后 _checkMobile 必须终结悬挂手势
       await page.viewport(390, 844)
-      await waitForLayoutTransition()
-      await new Promise(resolve => setTimeout(resolve, 250))
+      await waitForLayoutTransition(layout)
+      await pollUntil(
+        () => !layout.shadowRoot?.querySelector('.sidebar-resize-handle'),
+        'Expected desktop resize handle to unmount after switching to mobile'
+      )
 
       // 切回桌面后新手势不被旧的悬挂状态拦截
       await page.viewport(1280, 720)
-      await waitForLayoutTransition()
-      await new Promise(resolve => setTimeout(resolve, 250))
+      await waitForLayoutTransition(layout)
+      await pollUntil(
+        () => Boolean(layout.shadowRoot?.querySelector('.sidebar-resize-handle')),
+        'Expected desktop resize handle to mount after switching back to desktop'
+      )
       const freshHandle = layout.shadowRoot?.querySelector('.sidebar-resize-handle') as HTMLElement
       expect(freshHandle).toBeTruthy()
       // 悬挂手势的终结不应派发任何宽度请求
