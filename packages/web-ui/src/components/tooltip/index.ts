@@ -8,6 +8,7 @@ import { UserChangeController } from '@/shared/events/user-change'
 import { normalizeLiteral, normalizeNumber } from '@/shared/normalize'
 import { dispatchOpenChangeEvent } from '@/shared/open-state'
 import { defineAnchoredPanel } from '@/shared/overlay/anchored-panel'
+import { defineOverlayLifecycle } from '@/shared/overlay/lifecycle'
 import { FLOATING_PLACEMENTS } from '@/shared/overlay/placement-props'
 import { defineOverlayPortal } from '@/shared/overlay/portal'
 import type { OverlayContainer, OverlayPortal } from '@/shared/overlay/portal'
@@ -78,6 +79,10 @@ export class WebUiTooltip extends LitElement {
   private readonly _userOpenChange = new UserChangeController()
   private _shouldOpenInstantly = true
   private _portal?: OverlayPortal
+  private readonly _lifecycle = defineOverlayLifecycle().make({
+    isConnected: () => this.isConnected,
+    isOpen: () => this.open
+  })
   private readonly _panel = defineAnchoredPanel().make({
     getAnchor: () => this.shadowRoot?.querySelector<HTMLElement>('.tooltip-trigger') ?? null,
     getLocalPanel: () => this.shadowRoot?.querySelector<HTMLElement>('.tooltip-panel') ?? null,
@@ -96,6 +101,7 @@ export class WebUiTooltip extends LitElement {
 
   override connectedCallback() {
     super.connectedCallback()
+    this._lifecycle.resume()
     this.addEventListener('pointerenter', this._onPointerEnter)
     this.addEventListener('pointerleave', this._onPointerLeave)
     this.addEventListener('focusin', this._onFocusIn)
@@ -110,6 +116,7 @@ export class WebUiTooltip extends LitElement {
     this.removeEventListener('focusout', this._onFocusOut)
     clearTimeout(this._showTimer)
     clearTimeout(this._hideTimer)
+    this._lifecycle.dispose()
     this._syncVisibleTooltipCount(false)
     this._panel.dispose()
   }
@@ -123,7 +130,9 @@ export class WebUiTooltip extends LitElement {
 
   protected override updated(changed: Map<string, unknown>) {
     if (changed.has('portal') || changed.has('overlayContainer')) {
-      requestAnimationFrame(() => this._reconfigureOverlay())
+      // 同帧 open + reconfigure 可能重复建事务；invalidate 保证 reconfigure 是当前唯一帧回调。
+      this._lifecycle.invalidate()
+      this._lifecycle.scheduleFrame(() => this._reconfigureOverlay())
     } else if (changed.has('placement') || changed.has('offset'))
       requestAnimationFrame(() => this._panel.updatePosition())
 
@@ -133,6 +142,7 @@ export class WebUiTooltip extends LitElement {
         this._openOverlay(this._shouldOpenInstantly)
         this._shouldOpenInstantly = true
       } else {
+        this._lifecycle.invalidate()
         void this._closeOverlay()
       }
       if (this._userOpenChange.consume()) this._dispatchChange(this.open)
