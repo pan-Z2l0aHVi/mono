@@ -508,8 +508,9 @@ Supports ArrowLeft/Right/Up/Down, Home/End, PageUp/PageDown keyboard navigation.
 | `--wui-slider-vertical-height` | `200px`                             | Vertical slider height |
 | `--wui-slider-height`          | `var(--wui-slider-track-size, 6px)` | Track thickness        |
 | `--wui-slider-track-size`      | `6px`                               | Track size             |
-| `--wui-slider-thumb-width`     | `30px`                              | Thumb width            |
-| `--wui-slider-thumb-height`    | `20px`                              | Thumb height           |
+| `--wui-slider-thumb-width`     | `24px`                              | Thumb width            |
+| `--wui-slider-thumb-height`    | `18px`                              | Thumb height           |
+| `--wui-slider-thumb-radius`    | `8px`                               | Thumb border radius    |
 | `--wui-slider-marks-inset`     | `0`                                 | Marks inset from edges |
 
 #### `<web-ui-checkbox>`
@@ -699,11 +700,13 @@ Uses native `<dialog>` with `@cancel` prevention. Escape calls `close()` unless 
 
 **CSS Custom Properties:**
 
-| Property                  | Default                            | Description                                                    |
-| ------------------------- | ---------------------------------- | -------------------------------------------------------------- |
-| `--wui-dialog-max-width`  | `360px`                            | Dialog max width                                               |
-| `--wui-dialog-overlay-bg` | `var(--wui-color-backdrop)`        | Backdrop background                                            |
-| `--wui-dialog-bg`         | `var(--wui-color-surface-overlay)` | Glass card background, falls back to `rgb(246 246 246 / 0.88)` |
+| Property                      | Default                                      | Description                                                                           |
+| ----------------------------- | -------------------------------------------- | ------------------------------------------------------------------------------------- |
+| `--wui-dialog-max-width`      | `360px`                                      | Dialog max width                                                                      |
+| `--wui-dialog-max-height`     | `90vh`                                       | Dialog max height                                                                     |
+| `--wui-dialog-overlay-bg`     | `var(--wui-color-backdrop)`                  | Backdrop background                                                                   |
+| `--wui-dialog-bg`             | `var(--wui-color-surface-overlay)`           | Glass card background, falls back to `rgb(246 246 246 / 0.88)`                        |
+| `--wui-dialog-footer-justify` | `flex-end` (default) / `center` (horizontal) | Footer `justify-content`; override to `flex-end` for right-aligned horizontal buttons |
 
 #### `<web-ui-drawer>`
 
@@ -732,7 +735,7 @@ Side drawer using native `<dialog>` with closing animation. In non-headless mode
 
 Closing keeps the native dialog in the top layer until the `--wui-duration-drawer-exit` transition completes (240ms by default), then calls `dialog.close()`. Escape always follows this close path; `no-backdrop-close` controls backdrop clicks only.
 
-**Drag to close:** With `draggable`, a gray capsule drag bar (4×56px by default, visually centered 10px from the inner edge inside a 32px-thick hit zone) appears on the drawer's inner edge (left edge for `right`, right edge for `left`, bottom edge for `top`, top edge for `bottom`) while open:
+**Drag to close:** With `draggable`, a gray capsule drag bar (4×56px by default, visually centered 10px from the inner edge inside a 20px-thick hit zone) appears on the drawer's inner edge (left edge for `right`, right edge for `left`, bottom edge for `top`, top edge for `bottom`) while open:
 
 - Dragging follows the pointer in real time; the backdrop fades proportionally.
 - Releasing past ~1/3 of the drawer size, or with a fast closing flick, springs the drawer shut; otherwise it springs back open. The close direction is placement-aware.
@@ -750,9 +753,12 @@ Closing keeps the native dialog in the top layer until the `--wui-duration-drawe
 | `--wui-drawer-radius`             | `var(--wui-radius-overlay, 28px)`  | Floating card corner radius (non-headless)                                   |
 | `--wui-drawer-inset`              | `8px`                              | Floating card viewport inset (non-headless); `0` gives edge-to-edge geometry |
 | `--wui-drawer-overlay-bg`         | `rgb(0 0 0 / 0.12)`                | Backdrop background                                                          |
-| `--wui-drawer-drag-zone-size`     | `32px`                             | Drag-to-close hit zone thickness on the inner edge (draggable)               |
+| `--wui-drawer-drag-zone-size`     | `20px`                             | Drag-to-close hit zone thickness on the inner edge (draggable)               |
 | `--wui-drawer-drag-bar-thickness` | `4px`                              | Drag bar capsule thickness (short axis)                                      |
 | `--wui-drawer-drag-bar-length`    | `56px`                             | Drag bar capsule length (along the drawer edge)                              |
+| `--wui-drawer-header-padding`     | `16px 20px`                        | Header section padding                                                       |
+| `--wui-drawer-content-padding`    | `20px`                             | Content area padding; also drives drag bar visual center (half value)        |
+| `--wui-drawer-footer-padding`     | `16px 20px`                        | Footer section padding                                                       |
 
 ---
 

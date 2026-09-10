@@ -102,6 +102,7 @@ dialog[open].is-visible::backdrop {
   display: flex;
   flex-direction: column;
   gap: 10px;
+  justify-content: var(--wui-dialog-footer-justify, flex-end);
 
   /* ===== 按钮全宽（默认垂直排列） ===== */
 
@@ -116,7 +117,7 @@ dialog[open].is-visible::backdrop {
 :host([horizontal]) .wui-dialog-footer {
   flex-direction: row;
   gap: 12px;
-  justify-content: center;
+  justify-content: var(--wui-dialog-footer-justify, center);
 
   /* 非 full 按钮：居中，不拉伸 */
 

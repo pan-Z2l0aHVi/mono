@@ -87,14 +87,15 @@ dialog[open].is-visible::backdrop {
 /* ===== Drag bar（拖拽关闭热区） ===== */
 
 /*
- * 热区贴在抽屉内缘，宽度由 --wui-drawer-drag-zone-size（默认 32px）控制便于触控命中；
+ * 热区贴在抽屉内缘，宽度由 --wui-drawer-drag-zone-size（默认 20px）控制便于触控命中；
  * 胶囊本身由 --wui-drawer-drag-bar-thickness × --wui-drawer-drag-bar-length（默认 4×56px）控制。
- * 胶囊绝对定位在内容 padding（20px）的视觉中线：胶囊中心距抽屉内缘 10px；
- * 热区仍覆盖内缘起 32px，保证触控命中面积不随胶囊收窄。
+ * 胶囊绝对定位在 --wui-drawer-content-padding 的视觉中线（默认 20px → 中线 10px）；
+ * 热区仍覆盖内缘起 --wui-drawer-drag-zone-size，保证触控命中面积不随胶囊收窄。
  * 位置随 placement 切换：right 贴在左缘、left 贴在右缘、top 贴在底边、bottom 贴在顶边。
  */
 .wui-drawer-drag-zone {
-  --wui-internal-drag-bar-center: 10px;
+  /* 胶囊中线跟随内容区 padding，consumer 覆盖 --wui-drawer-content-padding 后拖拽条自动居中。 */
+  --wui-internal-drag-bar-center: calc(var(--wui-drawer-content-padding, 20px) / 2);
 
   touch-action: none;
   cursor: grab;
@@ -113,14 +114,14 @@ dialog.is-nested-lower .wui-drawer-drag-zone {
 :host([placement='right']) .wui-drawer-drag-zone {
   top: 0;
   left: 0;
-  width: var(--wui-drawer-drag-zone-size, 32px);
+  width: var(--wui-drawer-drag-zone-size, 20px);
   height: 100%;
 }
 
 :host([placement='left']) .wui-drawer-drag-zone {
   top: 0;
   right: 0;
-  width: var(--wui-drawer-drag-zone-size, 32px);
+  width: var(--wui-drawer-drag-zone-size, 20px);
   height: 100%;
 }
 
@@ -129,7 +130,7 @@ dialog.is-nested-lower .wui-drawer-drag-zone {
   right: 0;
   left: 0;
   width: 100%;
-  height: var(--wui-drawer-drag-zone-size, 32px);
+  height: var(--wui-drawer-drag-zone-size, 20px);
 }
 
 :host([placement='top']) .wui-drawer-drag-zone {
@@ -249,7 +250,7 @@ dialog.is-dragging .wui-drawer-drag-zone {
   align-items: center;
   justify-content: space-between;
 
-  padding: 16px 20px;
+  padding: var(--wui-drawer-header-padding, 16px 20px);
   border-bottom: 1px solid rgb(0 0 0 / 0.06);
 
   font-size: 18px;
@@ -270,7 +271,7 @@ dialog.is-dragging .wui-drawer-drag-zone {
   overscroll-behavior: contain;
   flex: 1;
 
-  padding: 20px;
+  padding: var(--wui-drawer-content-padding, 20px);
 
   font-size: var(--wui-font-size, 14px);
   line-height: 1.5;
@@ -281,7 +282,7 @@ dialog.is-dragging .wui-drawer-drag-zone {
 
 .wui-drawer-footer {
   flex-shrink: 0;
-  padding: 16px 20px;
+  padding: var(--wui-drawer-footer-padding, 16px 20px);
   border-top: 1px solid rgb(0 0 0 / 0.06);
 }
 
@@ -289,13 +290,12 @@ dialog.is-dragging .wui-drawer-drag-zone {
   display: none;
 }
 
-/* ===== 关闭按钮（独立定位，与 header 解耦） ===== */
+/* ===== 关闭按钮（绝对定位，top/right 与 header-padding 垂直/水平分量对齐） ===== */
 
 .wui-drawer-close {
   position: absolute;
   z-index: 3;
-  top: 16px;
-  right: 16px;
+  inset: var(--wui-drawer-header-padding, 16px 20px);
 }
 
 /* ===== Headless 模式 ===== */
