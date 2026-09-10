@@ -1,4 +1,4 @@
-# ADR-0026: Interweave 本地 SQLite 持久化与 WAL 并发模型
+# ADR-0009: Interweave 本地 SQLite 持久化与 WAL 并发模型
 
 - **Date**: 2026-08-16
 - **Status**: 已接受
@@ -22,5 +22,5 @@ Interweave 是本地优先应用，每个设备独立维护一个资源库。后
 ## 后果
 
 - 资源库完全自包含在单个 SQLite 文件中，备份与重置直观明确。
-- 外键级联与事务保证了 ADR-0020（至少一个 Source）、ADR-0023（`Tagging` 引用不可变 Tag）与 ADR-0024（按 Resource 增删标签）的一致性。
+- 外键级联与事务保证了 领域模型的不变量约束（由产品文档定义）的一致性。
 - SQLite 为 `backend/library` 模块的私有实现细节，禁止被 `backend/native` 或 `frontend` 直接访问。

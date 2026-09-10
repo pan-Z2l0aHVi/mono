@@ -1,4 +1,4 @@
-# ADR-0012: 渐进式 Agent Context 架构
+# ADR-0004: 渐进式 Agent Context 架构
 
 - **Date**: 2026-08-09
 - **Status**: 已接受
@@ -35,7 +35,7 @@ ZCode 原生读 workspace `AGENTS.md`（自当前目录向上解析），并自�
 ## 后果
 
 - 根入口从详细操作手册收敛为稳定导航层，局部任务的初始 context 更小。
-- `docs/agents/web-ui.md` 只负责把 `web-ui` 任务路由到对应 ADR；组件契约和框架事件边界仍以 ADR-0003/0007/0011 为准。`docs/agents/build.md` 只承载部署与 release workflow，release plane 术语以 ADR-0009 为准，避免污染通用 project context。
+- `docs/agents/web-ui.md` 只负责把 `web-ui` 任务路由到对应 ADR；组件契约和框架事件边界仍以 ADR-0005 为准。`docs/agents/build.md` 只承载部署与 release workflow，release plane 术语以 ADR-0003 为准，避免污染通用 project context。
 - 文档同步要求集中在 `docs/agents/context.md`，减少根入口与 task guide 的重复；影响未来取舍的变更仍需 ADR，并更新 `CONTEXT.md` 索引。
 - Agent 需要遵循路由选择 context，而不是把“读完所有文档”视为完成探索。缺少所需证据时，应回到 manifest、配置、源码、测试或相关 ADR。
 - Codex、Claude Code、Gemini CLI 与 ZCode 通过共享入口、规则、skills 和 agent profile 复用同一套规范；客户端专属配置只承担工具适配。公共契约 review skill 以窄触发条件将任务路由到 `find:usages`、`inspect:contract*` 与发布产物验证，不把这类流程加入所有任务的常驻 context。
