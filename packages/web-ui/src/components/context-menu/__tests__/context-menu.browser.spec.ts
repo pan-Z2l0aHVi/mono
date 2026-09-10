@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 
 import '..'
+import '@/components/popover'
+import type { WebUiPopover } from '@/components/popover'
 import { getMenuChildren } from '@/shared/menu-portal/menu-tree'
 
 import type { WebUiContextMenu } from '..'
@@ -11,6 +13,15 @@ const SUBMENU =
 function getMenus(): HTMLElement[] {
   const root = document.querySelector<HTMLElement>('[data-wui-overlay-root]')?.shadowRoot
   return Array.from(root?.querySelectorAll<HTMLElement>('[role="menu"]') ?? [])
+}
+
+function getPortalDialogPanels(): HTMLElement[] {
+  return Array.from(document.querySelectorAll<HTMLElement>('[data-wui-overlay-root]'))
+    .flatMap(root =>
+      Array.from(root.shadowRoot?.querySelectorAll<HTMLElement>('[data-wui-overlay-container] > div') ?? [])
+    )
+    .map(host => host?.shadowRoot?.querySelector<HTMLElement>('[role="dialog"]'))
+    .filter((panel): panel is HTMLElement => panel instanceof HTMLElement)
 }
 
 async function nextFrame() {
@@ -72,6 +83,39 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
     await nextFrame()
 
     expect(getMenus()[0]?.dataset.wuiPresence).toBe('entering')
+  })
+
+  it('menu panel 内嵌套子 overlay 的 wheel 不被父菜单抑制', async () => {
+    const menu = document.createElement('web-ui-context-menu')
+    menu.innerHTML = `
+      <web-ui-dropdown-item>
+        Actions
+        <web-ui-popover portal>
+          <button slot="trigger">Nested</button>
+          <div>Nested panel</div>
+        </web-ui-popover>
+      </web-ui-dropdown-item>
+    `
+    document.body.append(menu)
+    await menu.updateComplete
+
+    menu.openAt(100, 100)
+    await menu.updateComplete
+    await nextFrame()
+
+    const nested = getMenuContent().querySelector<WebUiPopover>('web-ui-popover')
+    expect(nested).toBeTruthy()
+    nested!.show()
+    await nested!.updateComplete
+    await nextFrame()
+
+    const nestedPanel = getPortalDialogPanels().find(panel => panel.textContent?.includes('Nested panel'))
+    expect(nestedPanel).toBeTruthy()
+    const wheel = new WheelEvent('wheel', { bubbles: true, composed: true, cancelable: true })
+    nestedPanel?.dispatchEvent(wheel)
+
+    expect(wheel.defaultPrevented).toBe(false)
+    expect(menu.isOpen).toBe(true)
   })
 
   it('重定位打开后，宿主重建的嵌套子项重新隐藏（不叠加一级菜单）', async () => {

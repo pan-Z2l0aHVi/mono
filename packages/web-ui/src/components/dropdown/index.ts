@@ -32,6 +32,7 @@ import {
 } from '@/shared/menu-portal/menu-tree'
 import { normalizeLiteral, normalizeNumber } from '@/shared/normalize'
 import { dispatchOpenChangeEvent } from '@/shared/open-state'
+import { overlayComposition } from '@/shared/overlay/composition'
 import { defineOverlayLifecycle } from '@/shared/overlay/lifecycle'
 import { defineOverlay } from '@/shared/overlay/overlay'
 import type { OverlayApi } from '@/shared/overlay/overlay'
@@ -94,12 +95,13 @@ export class WebUiDropdown extends LitElement {
   private readonly _scrollLock = defineScrollLockLease().make()
   // 行为层（hover / outside-click / 键盘 / submenu 收尾）由 shared/menu-behavior 驱动
   private readonly _outsideClickGuard = createMenuOutsideClickGuard(this, node =>
-    [...this._overlays.values()].some(({ overlay }) => overlay.contains(node))
+    [...this._overlays.values()].some(({ overlay }) => overlayComposition.contains(overlay, node))
   )
   private readonly _closingSubmenus = createClosingSubmenuStack<MenuOverlay>({
     getPanel: container => container.overlay,
     restoreItems: (container, parentItem) => moveMenuChildren(container.content, parentItem),
     dispose: container => {
+      overlayComposition.unregisterPanel(container.overlay)
       container.overlay.remove()
       container.api.dispose()
     }
@@ -445,6 +447,7 @@ export class WebUiDropdown extends LitElement {
         strategy: 'fixed'
       })
       this._overlays.set(level, { api: ctrl, overlay, content })
+      overlayComposition.registerPanel(overlay, this._overlays.get(level - 1)?.overlay)
       if (level === 0) this._populateLevel0()
       // submenu 父项在面板 content 内，其新增子项只有观察 content 子树才能看到
       this._menuContentObserver.observe(content, { childList: true, subtree: true })
@@ -455,6 +458,7 @@ export class WebUiDropdown extends LitElement {
 
   private _disposeOverlay(level: number) {
     const overlay = this._overlays.get(level)
+    if (overlay) overlayComposition.unregisterPanel(overlay.overlay)
     overlay?.overlay.removeEventListener('click', this._onMenuClick)
     overlay?.overlay.removeEventListener('keydown', this._onKeydown)
     overlay?.overlay.remove()

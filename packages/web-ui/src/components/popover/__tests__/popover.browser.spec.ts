@@ -7,6 +7,15 @@ import type { WebUiPopover } from '..'
 
 afterEach(() => document.body.replaceChildren())
 
+function getPortalPanels(): HTMLElement[] {
+  return Array.from(document.querySelectorAll<HTMLElement>('[data-wui-overlay-root]'))
+    .flatMap(root =>
+      Array.from(root.shadowRoot?.querySelectorAll<HTMLElement>('[data-wui-overlay-container] > div') ?? [])
+    )
+    .map(host => host?.shadowRoot?.querySelector<HTMLElement>('[role="dialog"]'))
+    .filter((panel): panel is HTMLElement => panel instanceof HTMLElement)
+}
+
 describe('WebUiPopover 组件（浏览器）', () => {
   it('show() 以即时状态打开面板', async () => {
     const popover = document.createElement('web-ui-popover')
@@ -165,5 +174,92 @@ describe('WebUiPopover 组件（浏览器）', () => {
     await waitForFrame()
 
     expect(changes).toHaveLength(0)
+  })
+
+  it('嵌套 portal 子 popover 打开时父面板不误判 outside', async () => {
+    const parent = document.createElement('web-ui-popover')
+    parent.portal = true
+    parent.innerHTML = `
+      <button slot="trigger">Parent</button>
+      <web-ui-popover portal>
+        <button slot="trigger">Child</button>
+        <div>Child content</div>
+      </web-ui-popover>
+    `
+    document.body.append(parent)
+    await parent.updateComplete
+    const diagnostics: string[] = []
+    parent.addEventListener('focusout', () => diagnostics.push('focusout'))
+    parent.addEventListener('open-change', event =>
+      diagnostics.push(`open-change:${(event as CustomEvent).detail.open}`)
+    )
+    ;(window as unknown as { __overlayCompositionLog?: string[] }).__overlayCompositionLog = []
+
+    parent.open = true
+    await parent.updateComplete
+    await waitForFrame()
+
+    const child = getPortalPanels()
+      .map(panel => panel.querySelector<WebUiPopover>('web-ui-popover'))
+      .find((element): element is WebUiPopover => element?.localName === 'web-ui-popover')
+    expect(child).toBeTruthy()
+    if (!child) throw new Error('Expected nested popover')
+    child.open = true
+    await child.updateComplete
+    await waitForFrame()
+
+    const childPanel = getPortalPanels().find(panel => panel.textContent?.includes('Child content'))
+    expect(childPanel).toBeTruthy()
+    const parentPanel = getPortalPanels().find(panel => panel.id.endsWith('-1'))
+    expect(diagnostics, 'diagnostics before interaction').toEqual([])
+    expect(parent.open, 'before child panel interaction').toBe(true)
+    childPanel?.click()
+    await parent.updateComplete
+    await child.updateComplete
+
+    expect(parent.open).toBe(true)
+    expect(child.open).toBe(true)
+
+    document.body.click()
+    await parent.updateComplete
+    await child.updateComplete
+
+    expect(parent.open).toBe(false)
+    expect(child.open).toBe(false)
+  })
+
+  it('focusout 落入嵌套子 portal 面板时不关闭父 popover', async () => {
+    const parent = document.createElement('web-ui-popover')
+    parent.portal = true
+    parent.innerHTML = `
+      <button slot="trigger">Parent</button>
+      <web-ui-popover portal trigger="manual">
+        <button slot="trigger">Child</button>
+        <div>Child content</div>
+      </web-ui-popover>
+    `
+    document.body.append(parent)
+    await parent.updateComplete
+
+    parent.open = true
+    await parent.updateComplete
+    await waitForFrame()
+
+    const child = getPortalPanels()
+      .map(panel => panel.querySelector<WebUiPopover>('web-ui-popover'))
+      .find((element): element is WebUiPopover => element?.localName === 'web-ui-popover')
+    expect(child).toBeTruthy()
+    if (!child) throw new Error('Expected nested popover')
+    child.open = true
+    await child.updateComplete
+    await waitForFrame()
+
+    const childPanel = getPortalPanels().find(panel => panel.textContent?.includes('Child content'))
+    childPanel?.focus()
+    parent.dispatchEvent(new FocusEvent('focusout'))
+    await new Promise(resolve => requestAnimationFrame(resolve))
+    await parent.updateComplete
+
+    expect(parent.open).toBe(true)
   })
 })
