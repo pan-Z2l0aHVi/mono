@@ -32,6 +32,10 @@ Role 不与模型、CLI 或固定会话绑定。当前 Harness 不自动选择 R
 
 ZCode 原生读 workspace `AGENTS.md`（自当前目录向上解析），并自动发现 `.agents/skills/` 与 `.agents/commands/`。因此 ZCode 与 Codex 同策略：直接消费共享规范，不设独立的薄适配入口文件；`CLAUDE.md` 与 `GEMINI.md` 仅为无法直接读取共享入口的客户端保留。未来若引入 workspace 级 `.zcode/` 配置（如 MCP servers、hooks），只承担工具适配，并遵守与 `.claude/settings.local.json` 同款的守卫：不得显式放行共享 worktree 的 Git 改写操作。
 
+## 角色执行体绑定补充（2026-09-10）
+
+「角色实施补充（2026-09-01）」中“Role 不与模型、CLI 或固定会话绑定”的结论已被 [ADR-0010](0010-agent-role-orchestration.md) 取代：本仓库对五个角色采用默认执行体绑定（manager、designer、lib-coder 为 Claude Code；biz-coder 与 reviewer 主审为 Codex CLI，高风险变更加 Claude Code 二次审查），并固定「编排模式」与结构化 handoff。Role 仍然与会话内先后出现的多个 Task 解耦，Rules、Skills、Task 的分层不变。
+
 ## 后果
 
 - 根入口从详细操作手册收敛为稳定导航层，局部任务的初始 context 更小。

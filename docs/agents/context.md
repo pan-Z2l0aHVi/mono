@@ -21,21 +21,27 @@
 
 Role 是显式选择的按需 session context：读取 `.agents/agents/<role>.md` 后，它在整个会话中定义职责、边界和协作，不绑定某一个 task，也不覆盖 Rules、Skills、task requirement、`AGENTS.md` 或实现事实。初始化方式以 [`CONTRIBUTING.md`](../../CONTRIBUTING.md#角色会话) 为权威。
 
+角色的执行体默认绑定（manager / designer / lib-coder 为 Claude Code；biz-coder 与 reviewer 主审为 Codex CLI，高风险变更加 Claude Code 二次审查）、编排路由和结构化 handoff 契约，流程权威是 [`workflow.md`](workflow.md) 的「角色与执行体」「编排模式」两节与 [`task-packet.md`](task-packet.md)；根 `AGENTS.md` 的「多 Agent 编排」节只保留不可绕过的分工、边界与禁止事项。执行体绑定不改变状态机、gate 和证据要求。
+
 ## 重复主题的权威来源
 
 不同层级可以为路由而短暂提及同一主题，但只能有一个流程权威来源；其他位置只说明何时加载或链接到它，不能复制完整处方。
 
-| 主题               | 规则边界                                                 | 流程权威来源                          | 自动证据                                               |
-| ------------------ | -------------------------------------------------------- | ------------------------------------- | ------------------------------------------------------ |
-| 生成物             | 根/包级 `AGENTS.md` 说明“不可手改”与局部 source of truth | `docs/agents/build.md`                | generator diff、build、消费者类型检查                  |
-| 真实浏览器         | 根/包级 `AGENTS.md` 仅声明需要浏览器层                   | `docs/agents/browser-verification.md` | `pnpm run test` 中的 `*.browser.spec.ts`、MCP 操作记录 |
-| `repo:*` 工具      | 根入口只提供命令路由                                     | 本文件的工具接口说明                  | `scripts/scripts.test.mjs`                             |
-| 公共 `web-ui` 契约 | `packages/web-ui/AGENTS.md` 指向受影响消费者             | `docs/agents/web-ui.md`               | fixtures、contracts、browser/integration tests         |
+| 主题               | 规则边界                                                  | 流程权威来源                              | 自动证据                                                        |
+| ------------------ | --------------------------------------------------------- | ----------------------------------------- | --------------------------------------------------------------- |
+| 生成物             | 根/包级 `AGENTS.md` 说明“不可手改”与局部 source of truth  | `docs/agents/build.md`                    | generator diff、build、消费者类型检查                           |
+| 真实浏览器         | 根/包级 `AGENTS.md` 仅声明需要浏览器层                    | `docs/agents/browser-verification.md`     | `pnpm run test` 中的 `*.browser.spec.ts`、MCP 操作记录          |
+| `repo:*` 工具      | 根入口只提供命令路由                                      | 本文件的工具接口说明                      | `scripts/scripts.test.mjs`                                      |
+| 多 Agent 编排      | 根 `AGENTS.md`「多 Agent 编排」只保留分工、边界与禁止事项 | `docs/agents/workflow.md`                 | `agent-workflow` state、review/approval 记录                    |
+| 角色与执行体绑定   | `.agents/agents/*` 只声明角色职责、边界与自身执行体       | `docs/agents/workflow.md`                 | `validate:context` 绑定一致性校验、`scripts/agent-workflow.mjs` |
+| 角色间 handoff     | `.agents/agents/*` 不复制交接字段                         | `docs/agents/task-packet.md`              | task packet、handoff 记录                                       |
+| 角色目录边界       | 根/包级 `AGENTS.md` 声明 `packages/*` 与 `apps/*` 归属    | `docs/agents/workflow.md`、`worktrees.md` | `find:usages` 输出、变更路径                                    |
+| 公共 `web-ui` 契约 | `packages/web-ui/AGENTS.md` 指向受影响消费者              | `docs/agents/web-ui.md`                   | fixtures、contracts、browser/integration tests                  |
 
 ## 客户端适配
 
 - `AGENTS.md`、`CONTEXT.md`、`docs/agents/`、`.agents/rules/`、`.agents/skills/`、`.agents/agents/` 与 `.agents/references/` 是 Codex、Claude Code、Gemini CLI 与 ZCode 等共用的规范。
-- Codex 通过层级 `AGENTS.md` 获得目录约束；根 `CLAUDE.md` 与 `GEMINI.md` 只说明对应客户端的加载顺序，不复制共享规则。客户端适配不自动选择 Role。
+- Codex 通过层级 `AGENTS.md` 获得目录约束与「多 Agent 编排」分工；根 `CLAUDE.md` 与 `GEMINI.md` 只说明对应客户端的加载顺序和默认角色绑定，不复制共享规则正文。客户端适配不自动选择 Role；默认执行体绑定与编排路由以 [`workflow.md`](workflow.md) 为权威。
 - ZCode 原生读 workspace `AGENTS.md`（自当前目录向上解析），并自动发现 `.agents/skills/`；因此与 Codex 同策略，不设独立的薄适配入口文件。
 - ACP plan 是当前会话的临时进度 UI；多阶段任务的创建、阶段同步和结束前收敛以 [`CONTRIBUTING.md`](../../CONTRIBUTING.md) 为权威。它不持久化为 `agent-state`，也不能替代源码、Git 或验证证据。
 - `.claude/rules`、`.claude/skills` 和 `.claude/agents` 必须通过 symlink 指向 `.agents/` 中的共享内容；Gemini CLI 自动发现 `.agents/skills/`。
@@ -75,17 +81,18 @@ Role 是显式选择的按需 session context：读取 `.agents/agents/<role>.md
 
 普通源码任务不需要阅读本表。修改以下工程资产时，在同一变更中同步对应权威文档；范围不明确时先查本表和相邻包 `AGENTS.md`。
 
-| 变更类别                                            | 必须同步的文档                                                         | 事实来源                                           |
-| --------------------------------------------------- | ---------------------------------------------------------------------- | -------------------------------------------------- |
-| 构建脚本、Vite/Turbo、CI/CD                         | `docs/agents/build.md`；根命令还更新 `AGENTS.md`                       | `package.json`、`turbo.json`、`.github/workflows/` |
-| 包新增、移除或重命名                                | `CONTEXT.md`                                                           | `packages/`、`apps/` 目录与 manifest               |
-| lint、formatter、stylelint、cspell                  | `docs/agents/linting.md`                                               | 对应配置                                           |
-| workspace catalog 或 Changesets 策略                | `docs/agents/dependencies.md`                                          | `pnpm-workspace.yaml`、Changesets 配置             |
-| 测试框架或 Vite 测试配置                            | `docs/agents/testing.md`                                               | 测试配置                                           |
-| `packages/web-ui` 组件、图标或公共契约              | `packages/web-ui/AGENTS.md`、`docs/agents/web-ui.md` 与受影响 ADR      | 组件源码、类型、测试                               |
-| commitlint 或提交流程                               | `docs/agents/commit.md`                                                | commit 配置或工作流                                |
-| 影响未来工程取舍的架构决定                          | 对应 ADR，并更新 `CONTEXT.md` ADR 索引                                 | 可行替代方案之间的长期选择                         |
-| client adapter、共享 rules、skills 或 agent profile | `context.md`、`CONTEXT.md`、ADR-0004 与 `scripts/validate-context.mjs` | `CLAUDE.md`、`GEMINI.md`、`.agents/`、root scripts |
+| 变更类别                                            | 必须同步的文档                                                                                            | 事实来源                                                                        |
+| --------------------------------------------------- | --------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| 构建脚本、Vite/Turbo、CI/CD                         | `docs/agents/build.md`；根命令还更新 `AGENTS.md`                                                          | `package.json`、`turbo.json`、`.github/workflows/`                              |
+| 包新增、移除或重命名                                | `CONTEXT.md`                                                                                              | `packages/`、`apps/` 目录与 manifest                                            |
+| lint、formatter、stylelint、cspell                  | `docs/agents/linting.md`                                                                                  | 对应配置                                                                        |
+| workspace catalog 或 Changesets 策略                | `docs/agents/dependencies.md`                                                                             | `pnpm-workspace.yaml`、Changesets 配置                                          |
+| 测试框架或 Vite 测试配置                            | `docs/agents/testing.md`                                                                                  | 测试配置                                                                        |
+| `packages/web-ui` 组件、图标或公共契约              | `packages/web-ui/AGENTS.md`、`docs/agents/web-ui.md` 与受影响 ADR                                         | 组件源码、类型、测试                                                            |
+| commitlint 或提交流程                               | `docs/agents/commit.md`                                                                                   | commit 配置或工作流                                                             |
+| 影响未来工程取舍的架构决定                          | 对应 ADR，并更新 `CONTEXT.md` ADR 索引                                                                    | 可行替代方案之间的长期选择                                                      |
+| client adapter、共享 rules、skills 或 agent profile | `context.md`、`CONTEXT.md`、ADR-0004 / ADR-0010 与 `scripts/validate-context.mjs`                         | `CLAUDE.md`、`GEMINI.md`、`.agents/`、root scripts                              |
+| 角色、执行体绑定、编排路由或 handoff 模板           | `AGENTS.md`、`CONTRIBUTING.md`、`context.md`、`workflow.md`、`task-packet.md`、`worktrees.md` 与 ADR-0010 | `.agents/agents/`、`scripts/agent-workflow.mjs`、`scripts/validate-context.mjs` |
 
 ## 维护 instruction system
 
