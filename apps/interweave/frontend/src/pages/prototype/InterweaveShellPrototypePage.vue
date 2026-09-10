@@ -971,7 +971,7 @@ watch(addDialogOpen, (open, _, onCleanup) => {
   <web-ui-layout
     header-glow
     sidebarResizable
-    class="min-h-dvh overflow-x-clip text-[#22212a] bg-white [--wui-layout-mobile-toggle-inset:24px] max-[640px]:[--wui-layout-mobile-toggle-inset:12px] dark:text-[var(--wui-color-text)] dark:bg-[var(--wui-color-page)]"
+    class="min-h-dvh overflow-x-clip text-[#22212a] bg-white [--wui-layout-mobile-toggle-inset:24px] dark:text-[var(--wui-color-text)] dark:bg-[var(--wui-color-page)]"
     :sidebarCollapsed="sidebarCollapsed"
     :sidebarOpen="sidebarOpen"
     :sidebarWidth="sidebarWidth"
@@ -1027,7 +1027,7 @@ watch(addDialogOpen, (open, _, onCleanup) => {
 
     <!-- Header -->
     <header slot="header" class="w-full">
-      <div class="flex gap-4 items-center justify-between px-6 py-2 max-[640px]:px-3 max-[640px]:pl-0">
+      <div class="flex gap-4 items-center justify-between px-6 py-2 max-[640px]:pl-0">
         <!-- 窄屏时布局组件的展开 Toggle 自带 24px 左缩进（--wui-layout-mobile-toggle-inset），header 内容去掉左内边距避免双重缩进。 -->
         <web-ui-button-group aria-label="页面导航">
           <web-ui-button icon variant="glass" aria-label="后退" :disabled="!canGoBack" @click="router.back()">
@@ -1080,7 +1080,7 @@ watch(addDialogOpen, (open, _, onCleanup) => {
         :style="{ height: filterOpen ? 'auto' : '0px', overflow: filterOpen ? 'visible' : 'hidden' }"
       >
         <div
-          class="flex flex-wrap gap-3 items-center px-6 max-[640px]:pl-[56px] max-[640px]:pr-3 py-2.5 text-sm text-[#5b5b66] dark:text-[var(--wui-color-text-secondary)]"
+          class="flex flex-wrap gap-3 items-center px-6 py-2.5 text-sm text-[#5b5b66] dark:text-[var(--wui-color-text-secondary)]"
         >
           <label :class="filterLabelClass">
             <web-ui-select :value="filterSource" class="[--wui-input-width:128px]" @change="handleFilterSourceChange">
@@ -1152,7 +1152,7 @@ watch(addDialogOpen, (open, _, onCleanup) => {
 
     <!-- Resource list + Detail drawer -->
     <div class="flex min-h-0 flex-1">
-      <div class="flex-1 min-w-0 px-6 max-[640px]:pl-[56px] max-[640px]:pr-3 pb-16 pt-2">
+      <div class="flex-1 min-w-0 px-6 pb-16 pt-2">
         <web-ui-context-menu ref="ctxMenuRef" class="block w-full">
           <!-- Empty state -->
           <div v-if="filteredResources.length === 0" class="flex flex-col items-center justify-center py-24">
@@ -1164,7 +1164,7 @@ watch(addDialogOpen, (open, _, onCleanup) => {
             <div
               v-for="resource in filteredResources"
               :key="resource.id"
-              class="group relative flex items-center gap-3 px-4 max-[640px]:px-2 py-3 cursor-pointer transition-colors duration-100 rounded-xl"
+              class="group relative flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors duration-100 rounded-xl"
               :class="[
                 selectedId === resource.id
                   ? 'bg-black/[0.05] dark:bg-white/[0.08]'
@@ -1216,7 +1216,7 @@ watch(addDialogOpen, (open, _, onCleanup) => {
                   </template>
                 </div>
                 <div
-                  class="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-[#9a9aa4] dark:text-[var(--wui-color-text-secondary)]"
+                  class="flex items-center gap-1.5 text-xs text-[#9a9aa4] dark:text-[var(--wui-color-text-secondary)]"
                 >
                   <span class="inline-flex items-center gap-1">
                     <web-ui-icon
