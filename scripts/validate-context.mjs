@@ -100,6 +100,8 @@ function checkBindingMirrors() {
 }
 
 const relative = file => path.relative(root, file) || '.'
+// context index 要与 worktree 的绝对路径无关：先归一为正斜杠，跨平台才能得到稳定指纹。
+const relativePosix = file => relative(file).split(path.sep).join('/')
 const exists = file => fs.existsSync(path.join(root, file))
 const read = file => fs.readFileSync(path.join(root, file), 'utf8')
 
@@ -437,5 +439,6 @@ if (errors.length) {
   process.exit(1)
 }
 
-const digest = crypto.createHash('sha256').update(markdownFiles.sort().join('\n')).digest('hex').slice(0, 12)
-console.log(`validate-context passed (${markdownFiles.length} Markdown files, index ${digest})`)
+const contextIndex = [...new Set(markdownFiles.map(relativePosix))].sort()
+const digest = crypto.createHash('sha256').update(contextIndex.join('\n')).digest('hex').slice(0, 12)
+console.log(`validate-context passed (${contextIndex.length} Markdown files, index ${digest})`)
