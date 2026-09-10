@@ -52,14 +52,14 @@ Role 是显式选择的按需 session context：读取 `.agents/agents/<role>.md
 
 ## 最小 context 组合
 
-| 任务                  | 最小入口                                                                                  | 需要升级时再读                                               |
-| --------------------- | ----------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
-| 局部工具函数          | 根 `AGENTS.md` + 目标包 `AGENTS.md` + 目标源码/测试                                       | `.agents/rules/code-style.md`、包 README                     |
-| `web-ui` 组件或类型   | 根/包级 `AGENTS.md` + `docs/agents/web-ui.md` + 组件源码/测试                             | 对应 ADR、React/Vue demo type fixtures                       |
-| 跨包公共 API          | `contract-change-review` skill + `find:usages`/`inspect:contract` 输出 + 受影响包 context | `docs/agents/testing.md`、相关消费者和 ADR                   |
-| 构建/依赖/发布        | `ARCHITECTURE.md` + `docs/agents/build.md` 或 `dependencies.md` + manifests               | CI workflow、ADR-0001/0002/0009                              |
-| Interweave/Wails/领域 | `apps/interweave/AGENTS.md` + 产品基线 + 相关源码                                         | ADR-0013/0018、Wails 3 官方文档、Go tests、frontend consumer |
-| context system        | `ARCHITECTURE.md` + `CONTEXT.md` + 本文件 + ADR-0012                                      | `scripts/validate-context.mjs`、共享 symlinks 和当前 diff    |
+| 任务                  | 最小入口                                                                                  | 需要升级时再读                                            |
+| --------------------- | ----------------------------------------------------------------------------------------- | --------------------------------------------------------- |
+| 局部工具函数          | 根 `AGENTS.md` + 目标包 `AGENTS.md` + 目标源码/测试                                       | `.agents/rules/code-style.md`、包 README                  |
+| `web-ui` 组件或类型   | 根/包级 `AGENTS.md` + `docs/agents/web-ui.md` + 组件源码/测试                             | 对应 ADR、React/Vue demo type fixtures                    |
+| 跨包公共 API          | `contract-change-review` skill + `find:usages`/`inspect:contract` 输出 + 受影响包 context | `docs/agents/testing.md`、相关消费者和 ADR                |
+| 构建/依赖/发布        | `ARCHITECTURE.md` + `docs/agents/build.md` 或 `dependencies.md` + manifests               | CI workflow、ADR-0001/0002/0003                           |
+| Interweave/Wails/领域 | `apps/interweave/AGENTS.md` + 产品基线 + 相关源码                                         | ADR-0008、Wails 3 官方文档、Go tests、frontend consumer   |
+| context system        | `ARCHITECTURE.md` + `CONTEXT.md` + 本文件 + ADR-0004                                      | `scripts/validate-context.mjs`、共享 symlinks 和当前 diff |
 
 不要把“最小入口”理解为足够完成实现；它只是开始定位的最小上下文。实现和交付前必须读取工具输出指出的证据，并按风险升级验证。
 
@@ -85,7 +85,7 @@ Role 是显式选择的按需 session context：读取 `.agents/agents/<role>.md
 | `packages/web-ui` 组件、图标或公共契约              | `packages/web-ui/AGENTS.md`、`docs/agents/web-ui.md` 与受影响 ADR      | 组件源码、类型、测试                               |
 | commitlint 或提交流程                               | `docs/agents/commit.md`                                                | commit 配置或工作流                                |
 | 影响未来工程取舍的架构决定                          | 对应 ADR，并更新 `CONTEXT.md` ADR 索引                                 | 可行替代方案之间的长期选择                         |
-| client adapter、共享 rules、skills 或 agent profile | `context.md`、`CONTEXT.md`、ADR-0012 与 `scripts/validate-context.mjs` | `CLAUDE.md`、`GEMINI.md`、`.agents/`、root scripts |
+| client adapter、共享 rules、skills 或 agent profile | `context.md`、`CONTEXT.md`、ADR-0004 与 `scripts/validate-context.mjs` | `CLAUDE.md`、`GEMINI.md`、`.agents/`、root scripts |
 
 ## 维护 instruction system
 

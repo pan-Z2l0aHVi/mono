@@ -2,7 +2,7 @@
 
 修改包脚本、Vite/Turbo 配置、外部化或 CI/发布流程前，先阅读本指南。当这些细节发生变化时，应在同一变更中更新本文档。
 
-包清单和依赖边界以 [`CONTEXT.md`](../../CONTEXT.md) 为权威来源；release terminology 以 [ADR-0009](../adr/0009-release-planes.md) 为权威来源，本指南只描述构建、验证和发布流程。
+包清单和依赖边界以 [`CONTEXT.md`](../../CONTEXT.md) 为权威来源；release terminology 以 [ADR-0003](../adr/0003-release-planes.md) 为权威来源，本指南只描述构建、验证和发布流程。
 
 ## 各包命令
 
@@ -133,4 +133,4 @@ Interweave 由 Wails 宿主管理嵌套前端，因此其 alias 只启动 Wails 
 
 ## Release context
 
-发布流程和 release plane 的术语、边界与授权模型见 [ADR-0009](../adr/0009-release-planes.md)。本指南只保留执行流程和 release safety boundary：未经用户授权不执行发布；不得直接运行 `npm publish`，首次发布使用 `pnpm publish:new <package-dir>`；不得使用 `--no-verify` 或 `--no-gpg-sign`。后续公共包和私有原生应用安装程序按对应 workflow 与 Changesets 配置执行。修改 `.github/workflows/`、Changesets 或发布脚本时，先阅读本指南和相关 ADR，并以当前 workflow、manifest 与脚本为事实来源。
+发布流程和 release plane 的术语、边界与授权模型见 [ADR-0003](../adr/0003-release-planes.md)。本指南只保留执行流程和 release safety boundary：未经用户授权不执行发布；不得直接运行 `npm publish`，首次发布使用 `pnpm publish:new <package-dir>`；不得使用 `--no-verify` 或 `--no-gpg-sign`。后续公共包和私有原生应用安装程序按对应 workflow 与 Changesets 配置执行。修改 `.github/workflows/`、Changesets 或发布脚本时，先阅读本指南和相关 ADR，并以当前 workflow、manifest 与脚本为事实来源。
