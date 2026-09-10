@@ -372,7 +372,7 @@
 
   运行时契约收敛：`checkbox-group`/`radio-group`/`segmented` 管理的子项（checkbox/radio/segmented-trigger）不再把同名 `input`/`change` 冒泡到 group 外——子项自身派发事件（`bubbles: false, composed: false`），group 以 capture 相位监听并只派发一次自己的 `input`/`change`，两者 `target`/`currentTarget` 均为 group。独立使用子控件时保持 `bubbles: true, composed: true`。group 上的消费端事件监听不再重复触发。
 
-  详见 `docs/adr/0011-framework-type-adaptation-narrowing.md`。
+  详见 `docs/adr/0005-web-ui-component-architecture.md`。
 
 ### Minor Changes
 

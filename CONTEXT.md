@@ -36,11 +36,11 @@ _Avoid_: ack、传输确认、服务端响应
 
 ### Runtime queue design decisions
 
-队列能力的完整决策与行为边界以 [ADR-0004](docs/adr/0007-plugin-system.md) 的「队列能力补充」为权威；此处只保留跨包一致的术语级边界：
+队列能力的完整决策与行为边界以 [ADR-0007](docs/adr/0007-plugin-system.md) 的「队列能力补充」为权威；此处只保留跨包一致的术语级边界：
 
 - 公共能力并列命名为 `defineQueue` 与 `defineAckQueue`，经 `definePlugin(...).make()` 暴露；`defineLoopQueue` 已删除，不保留兼容别名。
 - 持久化与消费者确认是两个正交维度：可选 `onPersist(readonly T[])` 是同步持久化快照接缝；`defineAckQueue` 以消费者返回的 fulfilled Promise 作为确认。
-- 持久化失败是 queue-global 的 fail-closed 条件；消费失败是 item-local 的可重试状态。这两个词的完整语义以 ADR-0004 为准。
+- 持久化失败是 queue-global 的 fail-closed 条件；消费失败是 item-local 的可重试状态。这两个词的完整语义以 ADR-0007 为准。
 - Tracker core 沿用 `transport` 表示单条传输函数，其 ack 只表示浏览器传输路径成功，不代表服务端确认。
 
 ## Tracker event vocabulary
@@ -167,4 +167,4 @@ _Avoid_: 用 context 承载成员追踪或上行写回、在子项上用公开�
 - 应用均为私有包，不发布到 npm；React/Vue demo 部署到 GitHub Pages，Wails starter 通过 GitHub Release 交付安装程序。
 - registry 使用 npmmirror，CI 覆盖为官方 npm registry；不得为局部任务改写 registry/mirror。
 
-组件、token、overlay 与事件语义按需读取 `docs/agents/web-ui.md` 及其指向的 ADR；公共 package 或跨 workspace 契约审查按需读取 `contract-change-review` skill，并以 manifest、消费者和测试为事实；构建、部署与 release workflow 按需读取 `docs/agents/build.md` 和 ADR-0009。
+组件、token、overlay 与事件语义按需读取 `docs/agents/web-ui.md` 及其指向的 ADR；公共 package 或跨 workspace 契约审查按需读取 `contract-change-review` skill，并以 manifest、消费者和测试为事实；构建、部署与 release workflow 按需读取 `docs/agents/build.md` 和 ADR-0003。
