@@ -31,6 +31,7 @@ import {
 } from '@/shared/menu-portal/menu-tree'
 import { dispatchOpenChangeEvent } from '@/shared/open-state'
 import { overlayComposition } from '@/shared/overlay/composition'
+import { defineOverlayPositioningGeneration } from '@/shared/overlay/positioning-generation'
 import { hideOverlayPresence, showOverlayPresence } from '@/shared/overlay/presence'
 import { defineScrollLockLease } from '@/shared/scroll-lock/scroll-lock'
 
@@ -110,6 +111,9 @@ export class WebUiContextMenu extends LitElement {
   private _restoreFocusTarget?: HTMLElement
   private _shouldOpenInstantly = true
   private _refreshScheduled = false
+  // 主菜单 dialog 路径与子菜单一样使用代数令牌；快速 openAt/refresh 或 close 后，
+  // 迟到的 positioning promise 只能被丢弃，不能覆盖最新坐标。
+  private readonly _menuPositionGeneration = defineOverlayPositioningGeneration().make()
   // 菜单打开期间宿主可能不经重定位直接改写子内容（网络推送、定时器等），
   // 新节点缺隐藏 slot 会可见叠加到菜单上；观察 portal 内容并在下一帧重新同步。
   private readonly _contentObserver = new MutationObserver(() => {
@@ -144,6 +148,7 @@ export class WebUiContextMenu extends LitElement {
     document.removeEventListener('touchmove', this._onTouchMove, true)
     document.removeEventListener('keydown', this._onDocumentKeydown)
     this._contentObserver.disconnect()
+    this._menuPositionGeneration.invalidate()
     this._outsideClickGuard.dispose()
     this._hoverBinder.dispose()
     this._scrollLock.release()
@@ -188,6 +193,7 @@ export class WebUiContextMenu extends LitElement {
       } else {
         this._syncScrollLock(false)
         this._contentObserver.disconnect()
+        this._menuPositionGeneration.invalidate()
         this._refreshScheduled = false
         void this._closeMenuAfterPresence()
       }
@@ -215,6 +221,8 @@ export class WebUiContextMenu extends LitElement {
     if (this._isOpen) {
       this._closeSubmenusFrom(0, true)
       this._closingSubmenus.restoreAll()
+      // 先失效尚未完成的旧定位，再调度下一帧新代；避免新请求前的旧 promise 胜出。
+      this._menuPositionGeneration.invalidate()
       this._scheduleRefresh()
       return false
     }
@@ -230,6 +238,7 @@ export class WebUiContextMenu extends LitElement {
   close() {
     if (!this._isOpen) return
     this._isOpen = false
+    this._menuPositionGeneration.invalidate()
   }
 
   private readonly _closeFromUser = () => {
@@ -271,6 +280,7 @@ export class WebUiContextMenu extends LitElement {
       return
     }
 
+    const generation = this._menuPositionGeneration.next()
     void computePosition({ getBoundingClientRect: () => new DOMRect(this._x, this._y, 0, 0) }, panel, {
       strategy: 'fixed',
       placement: 'bottom-start',
@@ -278,7 +288,7 @@ export class WebUiContextMenu extends LitElement {
       // 视口下缘打开时菜单底部会溢出且无法滚动进入视野。
       middleware: [shift({ padding: 8, crossAxis: true })]
     }).then(({ x, y, middlewareData }) => {
-      if (!this._isOpen || this._menu?.panel !== panel) return
+      if (!this._isOpen || this._menu?.panel !== panel || !this._menuPositionGeneration.isCurrent(generation)) return
       // dialog 相对坐标不能与 viewport 的 _x/_y 比较推导 origin（原点非零时几乎恒判
       // right/bottom）；shift 数据是该坐标系内的钳制位移增量，负值即被推向该轴起点侧。
       const shiftX = middlewareData.shift?.x ?? 0

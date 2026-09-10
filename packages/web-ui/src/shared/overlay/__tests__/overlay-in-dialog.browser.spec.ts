@@ -14,10 +14,10 @@ import type { WebUiPopover } from '@/components/popover'
 import type { WebUiSelect } from '@/components/select'
 import type { WebUiTooltip } from '@/components/tooltip'
 
-// 默认直通 @floating-ui/dom；enabled 时扣住 context-submenu 面板的首次定位结果，
+// 默认直通 @floating-ui/dom；enabled 时扣住 context-menu/context-submenu 面板的首次定位结果，
 // 供竞态用例以受控顺序放行「迟到的旧定位写入」（真实 dom platform 完成序恒 FIFO）。
-const submenuStaleGate = vi.hoisted(() => ({
-  // 计数门控：enabled 时各 submenu 面板的第 1 次定位被扣住，第 2 次起直通，
+const positioningStaleGate = vi.hoisted(() => ({
+  // 计数门控：enabled 时目标面板的第 1 次定位被扣住，第 2 次起直通，
   // 供竞态用例构造「旧定位迟到、新定位先落位」的受控完成序。
   enabled: false,
   offset: { x: 0, y: 0 },
@@ -30,9 +30,9 @@ vi.mock('@floating-ui/dom', async importOriginal => {
   const computePosition: typeof actual.computePosition = (reference, floating, config) => {
     const promise = actual.computePosition(reference, floating, config)
     if (
-      !submenuStaleGate.enabled ||
+      !positioningStaleGate.enabled ||
       !(floating instanceof HTMLElement) ||
-      !floating.classList.contains('context-submenu')
+      (!floating.classList.contains('context-menu') && !floating.classList.contains('context-submenu'))
     ) {
       return promise
     }
@@ -42,8 +42,12 @@ vi.mock('@floating-ui/dom', async importOriginal => {
     return promise.then(
       result =>
         new Promise<typeof result>(resolve => {
-          submenuStaleGate.release = () =>
-            resolve({ ...result, x: result.x + submenuStaleGate.offset.x, y: result.y + submenuStaleGate.offset.y })
+          positioningStaleGate.release = () =>
+            resolve({
+              ...result,
+              x: result.x + positioningStaleGate.offset.x,
+              y: result.y + positioningStaleGate.offset.y
+            })
         })
     )
   }
@@ -51,8 +55,8 @@ vi.mock('@floating-ui/dom', async importOriginal => {
 })
 
 afterEach(() => {
-  submenuStaleGate.enabled = false
-  submenuStaleGate.release = null
+  positioningStaleGate.enabled = false
+  positioningStaleGate.release = null
   document.body.replaceChildren()
 })
 
@@ -255,6 +259,45 @@ describe('Portal overlay 在已打开原生 dialog 内（top layer）', () => {
     expect(panel?.textContent).toContain('Preview')
   })
 
+  it('context-menu 主菜单快速 openAt 后最终定位为最新代', async () => {
+    const dialog = await openDrawerDialog()
+    const menu = document.createElement('web-ui-context-menu') as WebUiContextMenu
+    menu.innerHTML = '<web-ui-dropdown-item>Preview</web-ui-dropdown-item>'
+    drawerDialogAppend(dialog, menu)
+    await menu.updateComplete
+
+    // 扣住首次 dialog 定位，随后快速换坐标触发第二次定位并先行完成；
+    // 再放行旧 promise，验证迟到的旧写入不会覆盖最新 left/top。
+    positioningStaleGate.enabled = true
+    positioningStaleGate.offset = { x: 400, y: 400 }
+    menu.openAt(20, 20)
+    await menu.updateComplete
+    const panel = await waitFor(
+      () => dialog.querySelector<HTMLElement>('.context-menu'),
+      value => value !== null && value.style.visibility === 'hidden',
+      'Expected the gated context menu panel to be created'
+    )
+
+    menu.openAt(80, 80)
+    await menu.updateComplete
+    await nextFrame()
+    await nextFrame()
+    await waitForPanelPositioned(panel, 'Expected the latest context menu positioning to complete')
+
+    const latestLeft = panel.style.left
+    const latestTop = panel.style.top
+    expect(latestLeft).not.toBe('')
+    expect(latestTop).not.toBe('')
+
+    positioningStaleGate.release?.()
+    await nextFrame()
+    await nextFrame()
+
+    expect(panel.style.left).toBe(latestLeft)
+    expect(panel.style.top).toBe(latestTop)
+    expect(menu.isOpen).toBe(true)
+  })
+
   it('context-menu 子菜单在 dialog 内与触发项相邻且在视口内', async () => {
     const dialog = await openDrawerDialog()
     const menu = document.createElement('web-ui-context-menu') as WebUiContextMenu
@@ -344,8 +387,8 @@ describe('Portal overlay 在已打开原生 dialog 内（top layer）', () => {
 
     // 子菜单打开走 hover 延时路径（modal dialog 内 focus() 受 :modal 焦点约束，
     // 键盘导航不可用），全程不依赖焦点即可构造同帧关闭→重开。
-    submenuStaleGate.enabled = true
-    submenuStaleGate.offset = { x: 300, y: 0 }
+    positioningStaleGate.enabled = true
+    positioningStaleGate.offset = { x: 300, y: 0 }
     // 拉长退出过渡：hover 关闭走 200ms 定时器重开，需保证重开时面板仍在 closing
     // 缓存内（默认 100ms+80ms buffer 会先于重开完成收尾并移除面板，复用不成立）。
     dialog.style.setProperty('--wui-duration-menu-exit', '2000ms')
@@ -378,7 +421,7 @@ describe('Portal overlay 在已打开原生 dialog 内（top layer）', () => {
     )
 
     // 放行被扣的首次定位：其坐标已被重开定位覆盖，迟到写入必须被丢弃而非覆盖。
-    submenuStaleGate.release?.()
+    positioningStaleGate.release?.()
     await nextFrame()
     await nextFrame()
 
