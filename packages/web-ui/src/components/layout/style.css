@@ -59,7 +59,7 @@ aside {
   height: calc(100dvh - var(--wui-layout-visible-banner-height));
   max-height: calc(100vh - var(--wui-layout-visible-banner-height));
   max-height: calc(100dvh - var(--wui-layout-visible-banner-height));
-  padding: 8px;
+  padding: 8px 0 8px 8px;
 
   transition: width var(--wui-duration-layout, 200ms) var(--wui-ease-enter, cubic-bezier(0.23, 1, 0.32, 1));
 

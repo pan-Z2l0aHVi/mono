@@ -476,8 +476,9 @@ Portal 面板创建时会镜像 host 上解析后的这些变量；更新 host �
 | `--wui-slider-vertical-height` | `200px`                             | 垂直滑块高度 |
 | `--wui-slider-height`          | `var(--wui-slider-track-size, 6px)` | 轨道厚度     |
 | `--wui-slider-track-size`      | `6px`                               | 轨道尺寸     |
-| `--wui-slider-thumb-width`     | `30px`                              | 滑块宽度     |
-| `--wui-slider-thumb-height`    | `20px`                              | 滑块高度     |
+| `--wui-slider-thumb-width`     | `24px`                              | 滑块宽度     |
+| `--wui-slider-thumb-height`    | `18px`                              | 滑块高度     |
+| `--wui-slider-thumb-radius`    | `8px`                               | 滑块圆角     |
 | `--wui-slider-marks-inset`     | `0`                                 | 刻度内缩     |
 
 #### `<web-ui-checkbox>`
@@ -663,11 +664,13 @@ Portal 面板创建时会镜像 host 上解析后的这些变量；更新 host �
 
 **CSS 自定义属性：**
 
-| 属性                      | 默认值                             | 说明                                             |
-| ------------------------- | ---------------------------------- | ------------------------------------------------ |
-| `--wui-dialog-max-width`  | `360px`                            | 对话框最大宽度                                   |
-| `--wui-dialog-overlay-bg` | `var(--wui-color-backdrop)`        | 遮罩背景色                                       |
-| `--wui-dialog-bg`         | `var(--wui-color-surface-overlay)` | 玻璃卡片背景色，回退到 `rgb(246 246 246 / 0.88)` |
+| 属性                          | 默认值                                     | 说明                                                                  |
+| ----------------------------- | ------------------------------------------ | --------------------------------------------------------------------- |
+| `--wui-dialog-max-width`      | `360px`                                    | 对话框最大宽度                                                        |
+| `--wui-dialog-max-height`     | `90vh`                                     | 对话框最大高度                                                        |
+| `--wui-dialog-overlay-bg`     | `var(--wui-color-backdrop)`                | 遮罩背景色                                                            |
+| `--wui-dialog-bg`             | `var(--wui-color-surface-overlay)`         | 玻璃卡片背景色，回退到 `rgb(246 246 246 / 0.88)`                      |
+| `--wui-dialog-footer-justify` | `flex-end`（默认）/ `center`（horizontal） | Footer `justify-content`；horizontal 模式下覆盖为 `flex-end` 可右对齐 |
 
 #### `<web-ui-drawer>`
 
@@ -696,7 +699,7 @@ Portal 面板创建时会镜像 host 上解析后的这些变量；更新 host �
 
 关闭时保留原生 dialog 的 top layer，待退出过渡完成后调用 `dialog.close()`。Escape 始终走此关闭路径；`no-backdrop-close` 仅控制遮罩点击。
 
-**拖拽关闭：** 启用 `draggable` 后，打开的抽屉在内缘显示灰色胶囊 drag bar（默认 4×56px，视觉中线距内缘 10px，位于 32px 厚的命中热区内；`right` 在左缘、`left` 在右缘、`top` 在下缘、`bottom` 在上缘）：
+**拖拽关闭：** 启用 `draggable` 后，打开的抽屉在内缘显示灰色胶囊 drag bar（默认 4×56px，视觉中线距内缘 10px，位于 20px 厚的命中热区内；`right` 在左缘、`left` 在右缘、`top` 在下缘、`bottom` 在上缘）：
 
 - 拖拽实时跟手，遮罩透明度按比例淡出。
 - 松手时位移超过抽屉尺寸约 1/3 或快速甩动即弹簧关闭，否则弹回打开位；方向随 placement 适配。
@@ -706,17 +709,20 @@ Portal 面板创建时会镜像 host 上解析后的这些变量；更新 host �
 
 **CSS 自定义属性：**
 
-| 属性                              | 默认值                             | 说明                                               |
-| --------------------------------- | ---------------------------------- | -------------------------------------------------- |
-| `--wui-drawer-width`              | `320px`                            | 抽屉宽度                                           |
-| `--wui-drawer-height`             | `300px`                            | 抽屉高度（上/下）                                  |
-| `--wui-drawer-bg`                 | `var(--wui-color-surface-overlay)` | 抽屉背景色                                         |
-| `--wui-drawer-radius`             | `var(--wui-radius-overlay, 28px)`  | 浮动卡片圆角（非 headless）                        |
-| `--wui-drawer-inset`              | `8px`                              | 浮动卡片视口留边（非 headless）；置 `0` 为贴边几何 |
-| `--wui-drawer-overlay-bg`         | `rgb(0 0 0 / 0.12)`                | 遮罩背景色                                         |
-| `--wui-drawer-drag-zone-size`     | `32px`                             | Drag-to-close 命中热区厚度（draggable）            |
-| `--wui-drawer-drag-bar-thickness` | `4px`                              | Drag bar 胶囊厚度（短轴）                          |
-| `--wui-drawer-drag-bar-length`    | `56px`                             | Drag bar 胶囊长度（沿抽屉边缘）                    |
+| 属性                              | 默认值                             | 说明                                                 |
+| --------------------------------- | ---------------------------------- | ---------------------------------------------------- |
+| `--wui-drawer-width`              | `320px`                            | 抽屉宽度                                             |
+| `--wui-drawer-height`             | `300px`                            | 抽屉高度（上/下）                                    |
+| `--wui-drawer-bg`                 | `var(--wui-color-surface-overlay)` | 抽屉背景色                                           |
+| `--wui-drawer-radius`             | `var(--wui-radius-overlay, 28px)`  | 浮动卡片圆角（非 headless）                          |
+| `--wui-drawer-inset`              | `8px`                              | 浮动卡片视口留边（非 headless）；置 `0` 为贴边几何   |
+| `--wui-drawer-overlay-bg`         | `rgb(0 0 0 / 0.12)`                | 遮罩背景色                                           |
+| `--wui-drawer-drag-zone-size`     | `20px`                             | Drag-to-close 命中热区厚度（draggable）              |
+| `--wui-drawer-drag-bar-thickness` | `4px`                              | Drag bar 胶囊厚度（短轴）                            |
+| `--wui-drawer-drag-bar-length`    | `56px`                             | Drag bar 胶囊长度（沿抽屉边缘）                      |
+| `--wui-drawer-header-padding`     | `16px 20px`                        | Header 区域 padding                                  |
+| `--wui-drawer-content-padding`    | `20px`                             | 内容区 padding；同时驱动 drag bar 视觉中线（取半值） |
+| `--wui-drawer-footer-padding`     | `16px 20px`                        | Footer 区域 padding                                  |
 
 ---
 
