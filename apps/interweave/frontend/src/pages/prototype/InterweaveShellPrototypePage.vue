@@ -49,7 +49,7 @@ import {
   lucideListRestart,
   tablerSortAscendingLetters
 } from '@greypan/web-ui/icons'
-import { computed, nextTick, reactive, ref, watch, type ComponentPublicInstance } from 'vue'
+import { computed, nextTick, onScopeDispose, reactive, ref, watch, type ComponentPublicInstance } from 'vue'
 import { useRouter } from 'vue-router'
 
 import { canGoBack, canGoForward } from '@/composables/useHistoryNav'
@@ -66,12 +66,22 @@ function selectNav(next: 'library' | 'map') {
 // --- Sidebar toggle ---
 const sidebarCollapsed = ref(false)
 const sidebarOpen = ref(false)
-const sidebarWidth = ref('240px')
+const desktopSidebarWidth = ref('240px')
+const mobileSidebarWidth = 'min(320px, 80vw)'
+const mobileSidebarQuery = window.matchMedia('(max-width: 640px)')
+const isMobileSidebarViewport = ref(mobileSidebarQuery.matches)
+const sidebarWidth = computed(() => (isMobileSidebarViewport.value ? mobileSidebarWidth : desktopSidebarWidth.value))
+function syncMobileSidebarViewport() {
+  isMobileSidebarViewport.value = mobileSidebarQuery.matches
+}
+syncMobileSidebarViewport()
+mobileSidebarQuery.addEventListener('change', syncMobileSidebarViewport)
+onScopeDispose(() => mobileSidebarQuery.removeEventListener('change', syncMobileSidebarViewport))
 function updateSidebarCollapsed(event: WebUiEvent<WebUiLayout, 'sidebar-collapsed-change'>) {
   sidebarCollapsed.value = event.detail.collapsed
 }
 function handleSidebarWidthChange(event: WebUiEvent<WebUiLayout, 'sidebar-width-change'>) {
-  sidebarWidth.value = event.detail.width
+  desktopSidebarWidth.value = event.detail.width
 }
 function updateSidebarOpen(event: WebUiEvent<WebUiLayout, 'sidebar-open-change'>) {
   sidebarOpen.value = event.detail.open
@@ -964,7 +974,7 @@ watch(addDialogOpen, (open, _, onCleanup) => {
     @sidebar-width-change="handleSidebarWidthChange"
   >
     <!-- Sidebar -->
-    <div slot="sidebar" class="relative z-20 h-full pt-14 pb-4 px-2" aria-label="应用导航">
+    <div slot="sidebar" class="relative z-20 h-full pt-14 pb-4 px-2 max-[640px]:px-0" aria-label="应用导航">
       <nav class="grid gap-1" aria-label="主导航">
         <button
           :class="[
