@@ -19,6 +19,11 @@ async function waitForOpenTransition(el: WebUiDrawer) {
     await new Promise(resolve => requestAnimationFrame(resolve))
   }
   await el.updateComplete
+
+  // nested 层变化会让下层 dialog 同步做 450ms translate/scale 过渡。
+  // 等待全部文档动画结束后再读几何，避免 is-visible 刚挂上时 left 仍处于过渡起点。
+  await Promise.allSettled(document.getAnimations().map(animation => animation.finished))
+  await el.updateComplete
 }
 
 // 轮询条件直至满足（弹簧/过渡时长在并行负载下不可预测）。
