@@ -288,7 +288,7 @@ describe('WebUiLayout 组件（浏览器）', () => {
   })
 
   describe('移动端行为', () => {
-    it('不渲染桌面 aside，改用受控的 headless web-ui-drawer', async () => {
+    it('不渲染桌面 aside，改用受控的默认 web-ui-drawer', async () => {
       await page.viewport(390, 844)
       const layout = createLayout()
       await layout.updateComplete
@@ -296,7 +296,7 @@ describe('WebUiLayout 组件（浏览器）', () => {
       expect(layout.shadowRoot?.querySelector('aside')).toBeFalsy()
       const drawer = layout.shadowRoot?.querySelector('web-ui-drawer')
       expect(drawer).toBeTruthy()
-      expect(drawer?.hasAttribute('headless')).toBe(true)
+      expect(drawer?.hasAttribute('headless')).toBe(false)
       expect(drawer?.getAttribute('dialog-label')).toBe('主导航')
     })
 
@@ -334,16 +334,19 @@ describe('WebUiLayout 组件（浏览器）', () => {
       await waitForLayoutTransition()
 
       const drawer = layout.shadowRoot?.querySelector('web-ui-drawer') as HTMLElement
-      const panel = layout.shadowRoot?.querySelector('.mobile-sidebar') as HTMLElement
+      const panel = (drawer.shadowRoot?.querySelector('.wui-drawer-body') as HTMLElement) ?? null
+      const dialog = drawer.shadowRoot?.querySelector('dialog') as HTMLDialogElement
+      const sidebarViewport = layout.shadowRoot?.querySelector('.sidebar-viewport') as HTMLElement
       const panelRect = panel.getBoundingClientRect()
       expect(requested).toEqual([true])
       expect(layout.sidebarOpen).toBe(true)
       expect(drawer.getAttribute('open')).toBe('')
+      expect(parseFloat(window.getComputedStyle(dialog).width)).toBeCloseTo(parseFloat(layout.sidebarWidth), 0)
       expect(panelRect.left).toBeGreaterThan(0)
       expect(panelRect.top).toBeGreaterThan(0)
       expect(panelRect.right).toBeLessThanOrEqual(window.innerWidth)
       expect(panelRect.bottom).toBeLessThanOrEqual(window.innerHeight)
-      expect(panel.querySelector('.sidebar-viewport')).toBeTruthy()
+      expect(sidebarViewport).toBeTruthy()
       expect(panel.querySelector('.sidebar-toggle-area')).toBeFalsy()
     })
 

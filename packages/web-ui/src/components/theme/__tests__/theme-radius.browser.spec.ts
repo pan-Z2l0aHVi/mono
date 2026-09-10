@@ -51,9 +51,19 @@ async function waitForInner(el: HTMLElement, selector: string, absentSelector?: 
 }
 
 function waitForLayoutShell(el: WebUiLayout, mode: 'desktop' | 'mobile'): Promise<HTMLElement> {
-  return mode === 'desktop'
-    ? waitForInner(el, 'aside .aside-panel', '.mobile-sidebar')
-    : waitForInner(el, '.mobile-sidebar', 'aside .aside-panel')
+  if (mode === 'desktop') return waitForInner(el, 'aside .aside-panel', '.wui-drawer-body')
+  return waitForMobileDrawerShell(el)
+}
+
+async function waitForMobileDrawerShell(el: WebUiLayout): Promise<HTMLElement> {
+  const deadline = Date.now() + 500
+  do {
+    const drawer = el.shadowRoot?.querySelector('web-ui-drawer') as HTMLElement | null
+    const found = drawer?.shadowRoot?.querySelector<HTMLElement>('.wui-drawer-body')
+    if (found && !el.shadowRoot?.querySelector('aside .aside-panel')) return found
+    await nextFrame()
+  } while (Date.now() < deadline)
+  throw new Error('timeout waiting for mobile drawer shell')
 }
 
 function radius(el: HTMLElement): string {

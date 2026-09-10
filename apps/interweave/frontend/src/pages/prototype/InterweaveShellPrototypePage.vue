@@ -716,6 +716,11 @@ function removeAddQueue(item: (typeof addQueue)[number]) {
   if (queueTagEditingId.value === item.id) closeQueueTagEditor()
 }
 
+function getQueueTagActionLabel(item: (typeof addQueue)[number]) {
+  if (queueTagEditingId.value !== item.id) return '添加标签'
+  return queueTagDraft.value.trim() ? '确认添加' : '取消'
+}
+
 function getQueueTagClass(item: (typeof addQueue)[number], tag: string) {
   if (queueTagEditingId.value === item.id && !queueTagPresetTags.value.has(tag) && !allTags.includes(tag)) {
     return 'bg-[var(--wui-color-surface-control,#dfdfdf)] text-[var(--wui-color-text-secondary,#5b5b66)] dark:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_12%,transparent)] dark:text-[var(--wui-color-text-secondary)]'
@@ -1022,11 +1027,11 @@ watch(addDialogOpen, (open, _, onCleanup) => {
               <web-ui-icon :icon="lucidePlus"></web-ui-icon>
             </web-ui-button>
           </web-ui-tooltip>
-          <web-ui-tooltip :content="filterOpen ? '收起筛选' : '筛选'">
+          <web-ui-tooltip content="筛选和排序">
             <web-ui-button
               icon
               :variant="hasActiveFilter ? 'secondary' : 'glass'"
-              :aria-label="filterOpen ? '收起筛选' : '筛选'"
+              aria-label="筛选和排序"
               @click="filterOpen = !filterOpen"
             >
               <web-ui-icon :icon="filterOpen ? lucideChevronUp : lucideListFilter"></web-ui-icon>
@@ -1822,7 +1827,7 @@ watch(addDialogOpen, (open, _, onCleanup) => {
                         </web-ui-button>
                       </span>
                       <web-ui-tooltip
-                        :content="queueTagDraft.trim() ? '确认标签' : '收起标签编辑'"
+                        :content="getQueueTagActionLabel(item)"
                         :placement="itemIndex < 5 ? 'bottom' : 'top'"
                       >
                         <web-ui-button
@@ -1831,7 +1836,7 @@ watch(addDialogOpen, (open, _, onCleanup) => {
                           icon
                           :variant="queueTagDraft.trim() ? 'primary' : 'glass'"
                           size="20"
-                          :aria-label="queueTagDraft.trim() ? '确认标签' : '收起标签编辑'"
+                          :aria-label="getQueueTagActionLabel(item)"
                           @pointerdown.prevent
                           @click="queueTagDraft.trim() ? commitQueueTag(item) : closeQueueTagEditor()"
                         >

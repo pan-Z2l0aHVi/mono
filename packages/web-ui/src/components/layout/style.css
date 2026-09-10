@@ -35,28 +35,10 @@
   align-self: stretch;
 }
 
-/* Layout 只提供可用高度；Consumer 决定其内部 scrollport。 */
+/* Layout 只提供可用高度；桌面端由 Consumer 决定 scrollport，移动端由 Drawer content 提供。 */
 .sidebar-viewport {
   flex: 1;
   min-height: 0;
-}
-
-/* headless drawer 只提供 overlay 基础设施；此卡片与桌面端 aside-panel 相同。 */
-.mobile-sidebar {
-  --wui-glass-corner-radius: var(--wui-layout-sidebar-radius, var(--wui-radius-overlay, 28px));
-
-  display: flex;
-  flex-direction: column;
-
-  width: calc(var(--wui-layout-mobile-sidebar-width, 240px) - 16px);
-  max-width: calc(100vw - 16px);
-  height: calc(100vh - 16px);
-  height: calc(100dvh - 16px);
-  min-height: 0;
-  margin: 8px;
-  border-radius: var(--wui-layout-sidebar-radius, var(--wui-radius-overlay, 28px));
-
-  background-color: var(--wui-color-surface-overlay, rgb(246 246 246 / 0.82));
 }
 
 /*
