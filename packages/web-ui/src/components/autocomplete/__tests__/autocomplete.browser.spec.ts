@@ -3,6 +3,7 @@ import { page, userEvent } from 'vite-plus/test/browser'
 
 import '..'
 import '../../theme'
+import '@/components/popover'
 import type { WebUiOption } from '@/components/option'
 
 import type { WebUiAutocomplete } from '..'
@@ -17,6 +18,15 @@ function getPortalPanel(theme: HTMLElement): HTMLElement | null {
   const overlayContainer = theme.shadowRoot?.querySelector<HTMLElement>('[data-wui-overlay-container]')
   const portalHost = overlayContainer?.firstElementChild as HTMLElement | null
   return portalHost?.shadowRoot?.querySelector<HTMLElement>('.autocomplete-overlay') ?? null
+}
+
+function getAllPortalPanels(selector: string): HTMLElement[] {
+  return Array.from(document.querySelectorAll<HTMLElement>('[data-wui-overlay-root]'))
+    .flatMap(root =>
+      Array.from(root.shadowRoot?.querySelectorAll<HTMLElement>('[data-wui-overlay-container] > div') ?? [])
+    )
+    .map(host => host?.shadowRoot?.querySelector<HTMLElement>(selector))
+    .filter((panel): panel is HTMLElement => panel instanceof HTMLElement)
 }
 
 describe('WebUiAutocomplete 组件（浏览器）', () => {
@@ -145,6 +155,50 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     await el.updateComplete
 
     expect(el.open).toBe(true)
+  })
+
+  it('popover panel 内嵌套 autocomplete 不被父 popover outside 关闭', async () => {
+    const parent = document.createElement('web-ui-popover')
+    parent.portal = true
+    parent.innerHTML = `
+      <button slot="trigger">Parent</button>
+      <web-ui-autocomplete portal>
+        <web-ui-option value="apple" label="Apple"></web-ui-option>
+      </web-ui-autocomplete>
+    `
+    document.body.append(parent)
+    await parent.updateComplete
+
+    parent.open = true
+    await parent.updateComplete
+    await waitForFrame()
+
+    const autocomplete = getAllPortalPanels('[role="dialog"]')
+      .map(panel => panel.querySelector('web-ui-autocomplete'))
+      .find((element): element is WebUiAutocomplete => element?.localName === 'web-ui-autocomplete')!
+    expect(autocomplete).toBeTruthy()
+    autocomplete.shadowRoot?.querySelector<HTMLElement>('[role="combobox"]')?.focus()
+    autocomplete.shadowRoot?.querySelector<HTMLElement>('[role="combobox"]')?.click()
+    await autocomplete.updateComplete
+    await waitForFrame()
+
+    const childPanel = getAllPortalPanels('.autocomplete-overlay')
+    expect(autocomplete.open).toBe(true)
+    expect(childPanel.length).toBeGreaterThan(0)
+    const focusTarget = childPanel[0]!
+    focusTarget.tabIndex = -1
+    focusTarget.focus()
+    parent.dispatchEvent(new FocusEvent('focusout'))
+    await waitForFrame()
+    await parent.updateComplete
+    expect(parent.open).toBe(true)
+
+    childPanel[0]?.click()
+    await parent.updateComplete
+    await autocomplete.updateComplete
+
+    expect(parent.open).toBe(true)
+    expect(autocomplete.open).toBe(true)
   })
 
   it('键入过滤后键盘选择匹配项', async () => {

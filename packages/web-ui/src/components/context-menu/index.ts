@@ -30,6 +30,7 @@ import {
   returnManagedMenuItemsToSlot
 } from '@/shared/menu-portal/menu-tree'
 import { dispatchOpenChangeEvent } from '@/shared/open-state'
+import { overlayComposition } from '@/shared/overlay/composition'
 import { hideOverlayPresence, showOverlayPresence } from '@/shared/overlay/presence'
 import { defineScrollLockLease } from '@/shared/scroll-lock/scroll-lock'
 
@@ -55,14 +56,19 @@ export class WebUiContextMenu extends LitElement {
   private readonly _submenuPositionEpochs = new WeakMap<HTMLElement, number>()
   private _menu?: MenuPortalOverlay
   // 行为层（hover / outside-click / 键盘 / submenu 收尾）由 shared/menu-behavior 驱动
-  private readonly _outsideClickGuard = createMenuOutsideClickGuard(
-    this,
-    node => this._menu?.panel.contains(node) === true || this._activeSubmenus.some(menu => menu.panel.contains(node))
-  )
+  private readonly _outsideClickGuard = createMenuOutsideClickGuard(this, node => {
+    const panels = [this._menu?.panel, ...this._activeSubmenus.map(menu => menu.panel)].filter(
+      (panel): panel is HTMLElement => panel instanceof HTMLElement
+    )
+    return panels.some(panel => overlayComposition.contains(panel, node))
+  })
   private readonly _closingSubmenus = createClosingSubmenuStack<MenuPortalOverlay>({
     getPanel: container => container.panel,
     restoreItems: (container, parentItem) => this._restoreSubmenuItems(container, parentItem),
-    dispose: container => container.panel.remove()
+    dispose: container => {
+      overlayComposition.unregisterPanel(container.panel)
+      container.panel.remove()
+    }
   })
   private readonly _hoverDelegate: MenuHoverDelegate = {
     getOpenDepth: () => this._activeSubmenus.length,
@@ -141,6 +147,7 @@ export class WebUiContextMenu extends LitElement {
     this._outsideClickGuard.dispose()
     this._hoverBinder.dispose()
     this._scrollLock.release()
+    if (this._menu) overlayComposition.unregisterPanel(this._menu.panel)
     this._returnItemsToSlot()
     this._menu?.panel.remove()
     this._menu = undefined
@@ -167,6 +174,7 @@ export class WebUiContextMenu extends LitElement {
           this._menu.panel.setAttribute('role', 'menu')
           this._menu.panel.setAttribute('aria-label', '上下文菜单')
           this._menu.panel.addEventListener('click', this._onMenuClick)
+          overlayComposition.registerPanel(this._menu.panel)
         }
         // 父项始终留在 menu.content 内，观察它即可覆盖各级子菜单在打开期间的内容重建。
         this._contentObserver.observe(this._menu.content, { childList: true, subtree: true })
@@ -354,6 +362,7 @@ export class WebUiContextMenu extends LitElement {
     if (menu && !(await hideOverlayPresence(menu.panel))) return
     if (this._isOpen || !this.isConnected || this._menu !== menu) return
 
+    if (menu) overlayComposition.unregisterPanel(menu.panel)
     this._returnItemsToSlot()
     menu?.panel.remove()
     this._menu = undefined
@@ -395,6 +404,10 @@ export class WebUiContextMenu extends LitElement {
 
     this._activeSubmenus[level] = submenu
     this._activeSubmenuItems[level] = item
+    overlayComposition.registerPanel(
+      submenu.panel,
+      level === 0 ? this._menu?.panel : this._activeSubmenus[level - 1]?.panel
+    )
     item.setAttribute('active', '')
     this._positionSubmenu(item, submenu)
     showOverlayPresence(submenu.panel, { isInstant })
@@ -407,6 +420,7 @@ export class WebUiContextMenu extends LitElement {
       const item = this._activeSubmenuItems[index]
       item?.removeAttribute('active')
       if (!item || isInstant) {
+        if (submenu) overlayComposition.unregisterPanel(submenu.panel)
         this._restoreSubmenuItems(submenu, item)
         submenu.panel.remove()
       } else {
@@ -575,13 +589,10 @@ export class WebUiContextMenu extends LitElement {
   }
 
   private _isMenuPanelEvent(e: Event): boolean {
-    return e
-      .composedPath()
-      .some(
-        node =>
-          node instanceof HTMLElement &&
-          (node.classList.contains('context-menu') || node.classList.contains('context-submenu'))
-      )
+    const panels = [this._menu?.panel, ...this._activeSubmenus.map(menu => menu.panel)].filter(
+      (panel): panel is HTMLElement => panel instanceof HTMLElement
+    )
+    return panels.some(panel => overlayComposition.containsEvent(panel, e))
   }
 
   override render() {

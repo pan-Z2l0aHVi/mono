@@ -8,6 +8,7 @@ import { UserChangeController } from '@/shared/events/user-change'
 import { normalizeLiteral, normalizeNumber } from '@/shared/normalize'
 import { dispatchOpenChangeEvent } from '@/shared/open-state'
 import { defineAnchoredPanel } from '@/shared/overlay/anchored-panel'
+import { overlayComposition } from '@/shared/overlay/composition'
 import { defineOverlayLifecycle } from '@/shared/overlay/lifecycle'
 import { FLOATING_PLACEMENTS } from '@/shared/overlay/placement-props'
 import { defineOverlayPortal } from '@/shared/overlay/portal'
@@ -200,6 +201,9 @@ export class WebUiPopover extends LitElement {
 
   private _openOverlay(isInstant = false) {
     this._panel.open(isInstant)
+    const panel = this._panel.getPanel()
+    // popover host 才是稳定组合 owner：trigger 可能被 slot 重定向，portal 面板与宿主分离。
+    if (panel) overlayComposition.registerPanelFromAncestry(panel, this)
   }
 
   private _migratableContentNodes(nodes: Node[]): Node[] {
@@ -290,7 +294,8 @@ export class WebUiPopover extends LitElement {
   private _onClickOutside = (e: MouseEvent) => {
     if (!this.open) return
     if (this.trigger === 'manual' || this.trigger === 'hover') return
-    if (e.target instanceof Node && this.portal && this._panel.getPanel()?.contains(e.target)) return
+    const panel = this._panel.getPanel()
+    if (panel && overlayComposition.containsEvent(panel, e)) return
     if (this._isInsideShadowRoot(e)) return
     this._userOpenChange.mark()
     this.open = false
@@ -301,7 +306,8 @@ export class WebUiPopover extends LitElement {
 
     this._lifecycle.scheduleFrame(
       () => {
-        if (!this.matches(':focus-within') && !this._panel.getPanel()?.matches(':focus-within')) {
+        const panel = this._panel.getPanel()
+        if (!this.matches(':focus-within') && !(panel && overlayComposition.hasFocusWithin(panel))) {
           this._userOpenChange.mark()
           this.open = false
         }
