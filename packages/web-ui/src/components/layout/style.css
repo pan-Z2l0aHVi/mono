@@ -205,6 +205,16 @@ footer {
   .sidebar-wrapper {
     display: none;
   }
+
+  /* Slot 可能包含展开后的多行 header；Toggle 对齐首行，而不是被整段 header 高度居中。 */
+  header {
+    align-items: flex-start;
+  }
+
+  .mobile-toggle {
+    align-self: flex-start;
+    margin-top: 8px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
