@@ -118,15 +118,17 @@
  * "露出的部分"之间柔和过渡，提示下方还有内容。设置 `peek` 即启用——渐隐长度由
  * `peek` 推导，不是独立入参。
  *
- * 长度推导：`peek * --wui-collapse-peek-edge-ratio`（默认 0.25），并夹在
- * `--wui-collapse-peek-edge-max`（默认 64px）以内，避免大 peek 算出过长的虚化带。
+ * 长度推导：`peek * --wui-collapse-peek-edge-ratio`（默认 0.4），并夹在
+ * `--wui-collapse-peek-edge-max`（默认 112px）以内，避免大 peek 算出过长的虚化带。
  * 纯 CSS 的 `calc(length * number)` —— 不需要 JS 解析单位，peek 用 rem/em 时
  * 渐隐长度自动跟着字号缩放。需要绝对长度时直接设 `--wui-collapse-peek-edge`
  * 覆盖（它优先于推导值），把比例设成 0 即可关掉渐隐。
  *
- * 渐变是三段式而非线性：主体全黑延伸到渐变带起点，中段先降到 0.5 alpha（长而缓
- * 的虚化带），末端才落到 edge-color（默认全透明）。纯线性渐变在同样长度下"发虚"
- * 的范围只有靠末端一小截，视觉上弱到难以察觉；三段式把虚化铺满整个渐变带。
+ * 渐变是四段「先陡后缓」而非线性：主体全黑延伸到渐变带起点后，前 30% 距离就
+ * 掉到 0.6 alpha，65% 处 0.26，末端落到 edge-color（默认全透明）。线性渐变的
+ * alpha 曲线前 40% 几乎贴着 1.0，人眼感知到的虚化远短于声明长度——实测同样
+ * 50px 的带子，线性只让人觉得"末尾一小截发虚"，先陡后缓从带子起点就明显发虚，
+ * 感知长度接近翻倍。
  *
  * 渐变带的位置用百分比而非绝对长度：百分比相对 inner 的**当前渲染高度**，而该高度
  * 在动画期间随 max-height 逐帧变化——mask 字符串本身不需要插值，渲染结果会自动
@@ -139,7 +141,8 @@
     to bottom,
     black 0%,
     black calc(100% - var(--wui-collapse-peek-edge-active, 0px)),
-    rgb(0 0 0 / 0.5) calc(100% - var(--wui-collapse-peek-edge-active, 0px) * 0.5),
+    rgb(0 0 0 / 0.6) calc(100% - var(--wui-collapse-peek-edge-active, 0px) * 0.7),
+    rgb(0 0 0 / 0.26) calc(100% - var(--wui-collapse-peek-edge-active, 0px) * 0.35),
     var(--wui-collapse-peek-edge-color, transparent) 100%
   );
 }
@@ -149,7 +152,8 @@
     to right,
     black 0%,
     black calc(100% - var(--wui-collapse-peek-edge-active, 0px)),
-    rgb(0 0 0 / 0.5) calc(100% - var(--wui-collapse-peek-edge-active, 0px) * 0.5),
+    rgb(0 0 0 / 0.6) calc(100% - var(--wui-collapse-peek-edge-active, 0px) * 0.7),
+    rgb(0 0 0 / 0.26) calc(100% - var(--wui-collapse-peek-edge-active, 0px) * 0.35),
     var(--wui-collapse-peek-edge-color, transparent) 100%
   );
 }
@@ -177,8 +181,8 @@
     --wui-collapse-peek-edge,
     clamp(
       0px,
-      calc(var(--wui-collapse-peek, 0px) * var(--wui-collapse-peek-edge-ratio, 0.25)),
-      var(--wui-collapse-peek-edge-max, 64px)
+      calc(var(--wui-collapse-peek, 0px) * var(--wui-collapse-peek-edge-ratio, 0.4)),
+      var(--wui-collapse-peek-edge-max, 112px)
     )
   );
 }
