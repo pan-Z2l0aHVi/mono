@@ -259,6 +259,7 @@ dropdown、tooltip）不需要它。
 |                       | [`<web-ui-button-group>`](#web-ui-button-group)           |
 | **浮层 / 模态**       | [`<web-ui-dialog>`](#web-ui-dialog)                       |
 |                       | [`<web-ui-drawer>`](#web-ui-drawer)                       |
+|                       | [`imagePreview()`](#imagepreview)                         |
 | **文档流 Disclosure** | [`<web-ui-collapse>`](#web-ui-collapse)                   |
 | **浮动**              | [`<web-ui-popover>`](#web-ui-popover)                     |
 |                       | [`<web-ui-tooltip>`](#web-ui-tooltip)                     |
@@ -723,6 +724,60 @@ Portal 面板创建时会镜像 host 上解析后的这些变量；更新 host �
 | `--wui-drawer-header-padding`     | `16px 20px`                        | Header 区域 padding                                  |
 | `--wui-drawer-content-padding`    | `20px`                             | 内容区 padding；同时驱动 drag bar 视觉中线（取半值） |
 | `--wui-drawer-footer-padding`     | `16px 20px`                        | Footer 区域 padding                                  |
+
+#### `imagePreview()`
+
+命令式图片预览，没有声明式标签契约：只能通过 `imagePreview()` 打开，并用返回的句柄控制。内部使用原生 `<dialog>` 的 `showModal()`，默认挂载到目标 `web-ui-theme` 的 overlay 容器（无主题作用域时回退到全局 fallback root）。
+
+```ts
+import { imagePreview } from '@greypan/web-ui'
+
+const preview = imagePreview({
+  images: [{ src: '/a.jpg', alt: '图 A' }, { src: '/b.jpg' }],
+  index: 0
+})
+
+preview.next()
+preview.zoomIn()
+
+await preview.closed
+```
+
+**选项：**
+
+| 选项        | 类型                 | 默认值 | 说明                               |
+| ----------- | -------------------- | ------ | ---------------------------------- |
+| `images`    | `ImagePreviewItem[]` | —      | 图片列表，至少一项，否则抛错       |
+| `index`     | `number`             | `0`    | 初始索引，越界时钳制到有效区间     |
+| `loop`      | `boolean`            | `true` | 首尾循环切换                       |
+| `target`    | `Element`            | —      | 用于解析最近主题作用域的触发元素   |
+| `container` | `HTMLElement`        | —      | 显式挂载容器，优先级高于主题作用域 |
+
+`ImagePreviewItem` 为 `{ src: string; alt?: string }`；`alt` 缺省为空字符串。
+
+**返回句柄：**
+
+| 成员                                     | 类型                          | 说明                             |
+| ---------------------------------------- | ----------------------------- | -------------------------------- |
+| `index`                                  | `number`                      | 当前索引，关闭后保留最后一次的值 |
+| `scale`                                  | `number`                      | 当前缩放倍率，区间 `[1, 4]`      |
+| `images`                                 | `readonly ImagePreviewItem[]` | 归一化后的图片列表               |
+| `closed`                                 | `Promise<void>`               | 退场结束且宿主移除后兑现         |
+| `next()` / `prev()`                      | `() => void`                  | 相对切换                         |
+| `goTo(index)`                            | `(index: number) => void`     | 跳转；`loop` 关闭时在边界钳制    |
+| `zoomIn()` / `zoomOut()` / `resetZoom()` | `() => void`                  | 缩放控制                         |
+| `close()`                                | `() => void`                  | 关闭并播放退场动画               |
+
+**交互：** 左右按钮与方向键切换图片，计数器用 `aria-live` 宣告当前位置；`+` / `-` 键和滚轮缩放，`0` 重置，放大后可拖拽平移，双击图片在 1x 与 2x 之间切换；点击图片以外的空白区域或按 Escape 关闭，原生 dialog 始终暴露 `图片预览` 这一可访问名称。
+
+关闭请求不会立刻销毁原生 dialog：它保持在 top layer，等退场过渡结束后才调用 `dialog.close()`，随后宿主从 DOM 移除并兑现 `closed`。打开期间锁定页面滚动。
+
+**CSS 自定义属性：**
+
+| 属性                             | 默认值              | 说明                     |
+| -------------------------------- | ------------------- | ------------------------ |
+| `--wui-image-preview-overlay-bg` | `rgb(0 0 0 / 0.72)` | 全视口遮罩背景色         |
+| `--wui-image-preview-edge-gap`   | `20px`              | 控件到视口边缘的可见距离 |
 
 ---
 
