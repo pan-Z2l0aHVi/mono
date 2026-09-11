@@ -95,6 +95,23 @@ import { lucideChevronDown, radixIconsPanelLeftMinimized } from '@greypan/web-ui
       </web-ui-collapse>
     </div>
 
+    <h2>peek + peek-edge（边缘渐隐）</h2>
+    <div class="mb-3">
+      <web-ui-collapse peek="80px" peek-edge="24px">
+        <button
+          type="button"
+          class="block w-full cursor-pointer rounded-md bg-[var(--wui-color-surface-control)] px-3 py-2 text-left"
+        >
+          展开长文本（带渐隐）
+        </button>
+        <div slot="content">
+          <div class="p-3">
+            <p v-for="i in 8" :key="i">段落 {{ i }}：底部 24px 渐隐到背景，提示下方还有更多内容。</p>
+          </div>
+        </div>
+      </web-ui-collapse>
+    </div>
+
     <h2>水平方向（trigger 与内容同行）</h2>
     <div class="mb-3">
       <web-ui-collapse horizontal class="flex items-center gap-2">

@@ -60,6 +60,17 @@ export class WebUiCollapse extends LitElement {
    */
   @property({ type: String, reflect: true }) peek: string | null = null
 
+  /**
+   * peek 露出区域末端的边缘晕染长度（CSS 长度，如 `24px`、`2rem`）。
+   *
+   * 沿动画轴末端（默认底边、`horizontal` 时右边）做 alpha 渐变，让"被裁掉的部分"
+   * 与"露出的部分"之间柔和过渡，提示下方还有内容。默认空字符串表示关闭晕染。
+   *
+   * 颜色通过 CSS 变量 `--wui-collapse-peek-edge-color` 覆盖，值需为带 alpha 通道
+   * 的色值（如 `rgba(0,0,0,0)`）——mask-image 默认按 alpha 模式解析。
+   */
+  @property({ type: String, reflect: true, attribute: 'peek-edge' }) peekEdge = ''
+
   @query('.wui-collapse-trigger-wrapper') private _triggerWrapper!: HTMLElement
 
   private _contentId = `wui-collapse-content-${++collapseIdCounter}`
@@ -366,8 +377,28 @@ export class WebUiCollapse extends LitElement {
     const track = this._contentTrack()
     if (!track) return
     track.toggleAttribute('data-wui-peek', this._peeks)
-    if (this._peeks) track.style.setProperty('--wui-collapse-peek', this.peek ?? '')
-    else track.style.removeProperty('--wui-collapse-peek')
+    if (this._peeks) {
+      track.style.setProperty('--wui-collapse-peek', this.peek ?? '')
+      // `[data-wui-peek-edge]` 与 `--wui-collapse-peek-edge` 配合：attribute 让 mask
+      // 规则选择器命中（未设 peek-edge 时不命中 → mask-image 保持默认 none），
+      // CSS 变量负责渐变长度的运行时同步。
+      if (this._peekEdges) {
+        track.setAttribute('data-wui-peek-edge', '')
+        track.style.setProperty('--wui-collapse-peek-edge', this.peekEdge)
+      } else {
+        track.removeAttribute('data-wui-peek-edge')
+        track.style.removeProperty('--wui-collapse-peek-edge')
+      }
+    } else {
+      track.style.removeProperty('--wui-collapse-peek')
+      track.removeAttribute('data-wui-peek-edge')
+      track.style.removeProperty('--wui-collapse-peek-edge')
+    }
+  }
+
+  /** peek 露出区域是否启用边缘晕染；`peek` 未设置或 `peekEdge` 为空都视为关闭。 */
+  private get _peekEdges(): boolean {
+    return this._peeks && this.peekEdge.trim() !== ''
   }
 
   private _clampProperty(): 'max-height' | 'max-width' {

@@ -823,13 +823,14 @@ A close request does not destroy the native dialog immediately: it stays in the 
 
 In-flow expand/collapse container with animated height (or width) transition. Single element with two slots; no portal, no scroll lock, no focus management.
 
-| Attribute      | Type      | Default | Description                                                                                                              |
-| -------------- | --------- | ------- | ------------------------------------------------------------------------------------------------------------------------ |
-| `open`         | `boolean` | `false` | Expanded state; self-managed on interaction, `open-change` emits only for user-originated toggles                        |
-| `disabled`     | `boolean` | `false` | Ignores trigger clicks and sets `aria-disabled` on the trigger element; expanded content is kept                         |
-| `horizontal`   | `boolean` | `false` | Animate width instead of height                                                                                          |
-| `keep-mounted` | `boolean` | `false` | Closed state keeps the content in the 0fr track with `inert` (scroll position and layout measurable) instead of `hidden` |
-| `peek`         | `string`  | —       | Closed state reveals this much of the content (CSS length, e.g. `120px`); along the animation axis                       |
+| Attribute      | Type      | Default | Description                                                                                                               |
+| -------------- | --------- | ------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `open`         | `boolean` | `false` | Expanded state; self-managed on interaction, `open-change` emits only for user-originated toggles                         |
+| `disabled`     | `boolean` | `false` | Ignores trigger clicks and sets `aria-disabled` on the trigger element; expanded content is kept                          |
+| `horizontal`   | `boolean` | `false` | Animate width instead of height                                                                                           |
+| `keep-mounted` | `boolean` | `false` | Closed state keeps the content in the 0fr track with `inert` (scroll position and layout measurable) instead of `hidden`  |
+| `peek`         | `string`  | —       | Closed state reveals this much of the content (CSS length, e.g. `120px`); along the animation axis                        |
+| `peek-edge`    | `string`  | `''`    | Length of the alpha-gradient fade at the cut edge of the revealed area (CSS length, e.g. `24px`); empty disables the fade |
 
 **Events:** `open-change` (`CustomEvent<{ open: boolean }>`). Emitted only for user-originated toggles (trigger click). Programmatic writes (`open`, `show()`, `close()`, `toggle()`) never emit. Nested collapses: an inner `open-change` bubbles through the outer root (composed event); distinguish by `event.target`.
 
@@ -856,6 +857,15 @@ The initial `open` attribute settles instantly without playing the animation. Ne
 <web-ui-collapse peek="120px">
   <button type="button">Toggle me</button>
   <div slot="content">Long content — only the first 120px show while closed</div>
+</web-ui-collapse>
+```
+
+**`peek-edge` (cut-edge fade):** adds an alpha-gradient fade at the cut edge of the revealed area (`to right` when `horizontal`) so the clipped portion melts into the background instead of ending in a hard line. Length is a CSS length (e.g. `24px`); empty disables the fade. Customise the fade-stop color via the `--wui-collapse-peek-edge-color` CSS variable (must carry alpha — `mask-image` reads the alpha channel by default). Only active in the closed state; the fade appears instantly when the close animation settles.
+
+```html
+<web-ui-collapse peek="120px" peek-edge="32px">
+  <button type="button">Toggle me</button>
+  <div slot="content">Long content with a soft fade at the bottom of the 120px peek</div>
 </web-ui-collapse>
 ```
 

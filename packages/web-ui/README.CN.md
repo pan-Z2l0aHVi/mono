@@ -794,6 +794,7 @@ await preview.closed
 | `horizontal`   | `boolean` | `false` | 沿宽度而非高度动画                                                                  |
 | `keep-mounted` | `boolean` | `false` | 关闭稳态以 `inert` 保留在 0fr 轨道内（滚动位置与布局可测量），而非内部容器 `hidden` |
 | `peek`         | `string`  | —       | 关闭稳态露出的尺寸（CSS 长度，如 `120px`），沿动画轴生效                            |
+| `peek-edge`    | `string`  | `''`    | 露出区域裁剪边缘的 alpha 渐变长度（CSS 长度，如 `24px`）；空字符串关闭渐变          |
 
 **事件：** `open-change` (`CustomEvent<{ open: boolean }>`)。仅用户来源的切换（trigger 点击）派发；程序化写入（`open`、`show()`、`close()`、`toggle()`）不派发。嵌套时内层 `open-change` 会冒泡穿过外层根（composed 事件），按 `event.target` 区分。
 
@@ -820,6 +821,15 @@ await preview.closed
 <web-ui-collapse peek="120px">
   <button type="button">点击切换</button>
   <div slot="content">很长的内容——关闭时只露出前 120px</div>
+</web-ui-collapse>
+```
+
+**`peek-edge`（边缘渐隐）：** 在露出区域的裁剪边缘加一段 alpha 渐变（`horizontal` 时改为右边），让被裁掉的部分柔和过渡到背景而不是硬切。长度是 CSS 长度（如 `24px`）；空字符串关闭渐变。渐变末端颜色通过 CSS 变量 `--wui-collapse-peek-edge-color` 覆盖（需带 alpha 通道，mask-image 默认按 alpha 解析）。仅在关闭稳态生效——渐变在关闭动画落稳态时瞬时出现。
+
+```html
+<web-ui-collapse peek="120px" peek-edge="32px">
+  <button type="button">点击切换</button>
+  <div slot="content">很长的内容——120px 露出区域的底部有 32px 柔和渐隐</div>
 </web-ui-collapse>
 ```
 
