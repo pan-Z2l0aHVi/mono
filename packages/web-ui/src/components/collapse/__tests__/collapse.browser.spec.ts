@@ -48,10 +48,30 @@ function trackWidth(el: WebUiCollapse): number {
   return queryTrack(el).getBoundingClientRect().width
 }
 
+function queryInner(el: WebUiCollapse): HTMLElement {
+  return el.shadowRoot!.querySelector<HTMLElement>('.wui-collapse-inner')!
+}
+
 // peek 用例：轨道尺寸由内容高度与 peek 的较小值决定，先设属性再挂载避免首帧动画。
 function createPeekCollapse(peek: string, html: string, setup?: (el: WebUiCollapse) => void): WebUiCollapse {
   const el = document.createElement('web-ui-collapse')
   el.peek = peek
+  el.innerHTML = html
+  setup?.(el)
+  document.body.append(el)
+  return el
+}
+
+// peek + peek-edge 用例：边缘晕染长度与 peek 同步设置。
+function createPeekEdgeCollapse(
+  peek: string,
+  peekEdge: string,
+  html: string,
+  setup?: (el: WebUiCollapse) => void
+): WebUiCollapse {
+  const el = document.createElement('web-ui-collapse')
+  el.peek = peek
+  el.peekEdge = peekEdge
   el.innerHTML = html
   setup?.(el)
   document.body.append(el)
@@ -427,5 +447,93 @@ describe('WebUiCollapse 组件（浏览器）', () => {
     const track = queryTrack(el)
     expect(track.getAttribute('data-wui-presence')).toBe(null)
     expect(el.shadowRoot!.querySelector('.wui-collapse-inner')?.hasAttribute('inert')).toBe(false)
+  })
+
+  describe('属性：peek-edge', () => {
+    it('关闭稳态下 inner 计算样式含 mask-image 且按 alpha 模式解析（默认底边）', async () => {
+      const el = createPeekEdgeCollapse(
+        '300px',
+        '24px',
+        '<button class="trigger">Trigger</button><div slot="content">Long enough content to exceed peek so the track has measurable height.</div>'
+      )
+      await el.updateComplete
+      // Chromium 把 `black` 序列化为 `rgb(0, 0, 0)`、`transparent` 序列化为 `rgba(0, 0, 0, 0)`，
+      // 并把 `to bottom` 标准化为角度；这里用 stop 列表与长度匹配验证渐变形态。
+      const mask = getComputedStyle(queryInner(el)).maskImage
+      expect(mask).toContain('linear-gradient')
+      expect(mask).toContain('calc(100% - 24px)')
+      expect(mask).toContain('rgba(0, 0, 0, 0)')
+
+      el.remove()
+    })
+
+    it('horizontal 时 mask 渐变有效（沿宽度轴方向）', async () => {
+      const el = createPeekEdgeCollapse(
+        '300px',
+        '24px',
+        '<button class="trigger">Trigger</button><div slot="content">Wide content</div>',
+        e => {
+          e.horizontal = true
+        }
+      )
+      await el.updateComplete
+      // 渐变 stop 序列与 vertical 形态相同（to 方向不同），但 track 在水平模式下选择
+      // `[data-wui-peek-edge].is-horizontal` 规则；验证 `[data-wui-peek-edge]` 命中即足以。
+      const mask = getComputedStyle(queryInner(el)).maskImage
+      expect(mask).toContain('linear-gradient')
+      expect(mask).toContain('calc(100% - 24px)')
+
+      el.remove()
+    })
+
+    it('peek-edge 为空时 mask-image 保持默认 none（attribute 不在 → 规则不命中）', async () => {
+      const el = createPeekCollapse(
+        '120px',
+        '<button class="trigger">Trigger</button><div slot="content">Content</div>'
+      )
+      await el.updateComplete
+      const inner = queryInner(el)
+      // peek-edge 属性未设：CSS 选择器 `[data-wui-peek-edge]` 不命中，mask 不应用。
+      expect(getComputedStyle(inner).maskImage).toBe('none')
+
+      el.remove()
+    })
+
+    it('peek-edge 设值后切到非 peek：track 上 attribute 与 CSS 变量都被清除', async () => {
+      const el = createPeekEdgeCollapse(
+        '120px',
+        '24px',
+        '<button class="trigger">Trigger</button><div slot="content">Content</div>'
+      )
+      await el.updateComplete
+      el.peek = null
+      await el.updateComplete
+      const track = queryTrack(el)
+      expect(track.hasAttribute('data-wui-peek-edge')).toBe(false)
+      expect(track.style.getPropertyValue('--wui-collapse-peek-edge')).toBe('')
+      expect(track.style.getPropertyValue('--wui-collapse-peek')).toBe('')
+
+      el.remove()
+    })
+
+    it('水平 peek-edge 在打开稳态下 mask 不应用', async () => {
+      const el = createPeekEdgeCollapse(
+        '120px',
+        '24px',
+        '<button class="trigger">Trigger</button><div slot="content">Content</div>',
+        e => {
+          e.horizontal = true
+        }
+      )
+      await el.updateComplete
+
+      el.open = true
+      await el.updateComplete
+      await waitForOpenSettled(el)
+      // 打开稳态：presence=open，关闭稳态规则不命中，mask-image 自然不应用。
+      expect(getComputedStyle(queryInner(el)).maskImage).toBe('none')
+
+      el.remove()
+    })
   })
 })

@@ -105,3 +105,35 @@
 .wui-collapse-track[data-wui-peek]:not([data-wui-presence]).is-horizontal .wui-collapse-inner {
   max-width: var(--wui-collapse-peek, 0);
 }
+
+/*
+ * peek 露出区域的边缘晕染（mask-image）：
+ * 沿动画轴末端（默认底边、horizontal 时右边）做 alpha 渐变，让"被裁掉的部分"与
+ * "露出的部分"之间柔和过渡，提示下方还有内容。
+ *
+ * 仅在 `[data-wui-peek-edge]` attribute 存在时启用——即 peek-edge 属性被设值。
+ * 未设时整条规则不命中，mask-image 保持默认 none；这避免了"未设也声明带 fallback
+ * 的 mask-image 但浏览器解析退化为 none"的不一致行为。渐变长度由
+ * `--wui-collapse-peek-edge` 控制（peek-edge 属性同步），颜色由
+ * `--wui-collapse-peek-edge-color` 覆盖（需带 alpha 通道，mask 默认按 alpha 解析）。
+ *
+ * 只在关闭稳态启用：动画过程中 inner 的 max-height/max-width 逐帧过渡，
+ * mask-image 字符串本身不能插值，落稳态瞬间出现，避免动画中内容底部渐变位置闪动。
+ */
+.wui-collapse-track[data-wui-peek][data-wui-peek-edge]:not([data-wui-presence]) .wui-collapse-inner {
+  mask-image: linear-gradient(
+    to bottom,
+    black 0%,
+    black calc(100% - var(--wui-collapse-peek-edge, 0)),
+    var(--wui-collapse-peek-edge-color, transparent) 100%
+  );
+}
+
+.wui-collapse-track[data-wui-peek][data-wui-peek-edge]:not([data-wui-presence]).is-horizontal .wui-collapse-inner {
+  mask-image: linear-gradient(
+    to right,
+    black 0%,
+    black calc(100% - var(--wui-collapse-peek-edge, 0)),
+    var(--wui-collapse-peek-edge-color, transparent) 100%
+  );
+}
