@@ -117,6 +117,14 @@ describe('减少动效下的 Collapse（浏览器）', () => {
     const track = queryTrack(el)
     expect(track.getBoundingClientRect().height).toBeCloseTo(100, 0)
 
+    // reduced 只把过渡时长归零，渐隐本身仍然生效（不依赖动画）：100px * 0.25 = 25px。
+    const inner = el.shadowRoot!.querySelector<HTMLElement>('.wui-collapse-inner')!
+    expect(getComputedStyle(inner).maskImage).toContain('linear-gradient')
+    expect(Number.parseFloat(getComputedStyle(inner).getPropertyValue('--wui-collapse-peek-edge-active'))).toBeCloseTo(
+      25,
+      0
+    )
+
     el.open = true
     await el.updateComplete
     await nextFrame()
