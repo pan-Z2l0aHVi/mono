@@ -52,6 +52,16 @@ function queryInner(el: WebUiCollapse): HTMLElement {
   return el.shadowRoot!.querySelector<HTMLElement>('.wui-collapse-inner')!
 }
 
+// 边缘晕染的活动长度（px）：由 CSS.registerProperty 注册成 <length> 后可被 transition
+// 插值，读到的中间值即渐变带正在淡入/淡出的证据。
+function activeEdge(el: WebUiCollapse): number {
+  return Number.parseFloat(getComputedStyle(queryInner(el)).getPropertyValue('--wui-collapse-peek-edge-active')) || 0
+}
+
+function waitForActiveEdge(el: WebUiCollapse, expected: number, tolerance = 0.05): Promise<void> {
+  return waitFor(() => Math.abs(activeEdge(el) - expected) < tolerance)
+}
+
 // peek 用例：轨道尺寸由内容高度与 peek 的较小值决定，先设属性再挂载避免首帧动画。
 function createPeekCollapse(peek: string, html: string, setup?: (el: WebUiCollapse) => void): WebUiCollapse {
   const el = document.createElement('web-ui-collapse')
@@ -486,6 +496,57 @@ describe('WebUiCollapse 组件（浏览器）', () => {
       el.remove()
     })
 
+    it('收起动画期间渐变带即已生效：活动长度在动画中增长（无落稳态延迟）', async () => {
+      const el = createPeekEdgeCollapse(
+        '300px',
+        '24px',
+        '<button class="trigger">Trigger</button><div slot="content"><div style="height: 300px">Tall content</div></div>'
+      )
+      await el.updateComplete
+
+      el.open = true
+      await el.updateComplete
+      await waitForOpenSettled(el)
+      await waitForActiveEdge(el, 0)
+
+      // 收起：动画刚开始（presence='closing'）时渐变带就必须在增长——旧实现把 mask
+      // 限定在关闭稳态，要等动画结束落稳态才出现，表现为肉眼可见的延迟。
+      el.open = false
+      await el.updateComplete
+      await nextFrame()
+      await nextFrame()
+      const early = activeEdge(el)
+      expect(early).toBeGreaterThan(0)
+
+      // 收敛到 peek-edge 全长
+      await waitForActiveEdge(el, 24)
+      el.remove()
+    })
+
+    it('展开稳态：活动长度收敛到 0，内容不再有底部淡出', async () => {
+      const el = createPeekEdgeCollapse(
+        '120px',
+        '24px',
+        '<button class="trigger">Trigger</button><div slot="content"><div style="height: 300px">Tall content</div></div>'
+      )
+      await el.updateComplete
+
+      el.open = true
+      await el.updateComplete
+      await waitForOpenSettled(el)
+      // 活动长度随展开动画淡出到 0：mask 仍是有效声明（不是 none），但整段不透明。
+      await waitForActiveEdge(el, 0)
+      const mask = getComputedStyle(queryInner(el)).maskImage
+      expect(mask).toContain('linear-gradient')
+      // 渐变带长度收敛到 1px 以内（过渡是渐近的，不追求精确 0）：整段 mask 已不透明，
+      // 完全展开的内容不再有底部淡出。
+      const used = Number.parseFloat(mask.match(/calc\(100% - ([\d.]+)px\)/)?.[1] ?? '0')
+      expect(used).toBeLessThan(1)
+      expect(mask).not.toContain('24px')
+
+      el.remove()
+    })
+
     it('peek-edge 为空时 mask-image 保持默认 none（attribute 不在 → 规则不命中）', async () => {
       const el = createPeekCollapse(
         '120px',
@@ -516,11 +577,11 @@ describe('WebUiCollapse 组件（浏览器）', () => {
       el.remove()
     })
 
-    it('水平 peek-edge 在打开稳态下 mask 不应用', async () => {
+    it('收起后回到关闭稳态：活动长度保持 peek-edge 全长', async () => {
       const el = createPeekEdgeCollapse(
         '120px',
         '24px',
-        '<button class="trigger">Trigger</button><div slot="content">Content</div>',
+        '<button class="trigger">Trigger</button><div slot="content"><div style="height: 300px">Tall content</div></div>',
         e => {
           e.horizontal = true
         }
@@ -530,8 +591,14 @@ describe('WebUiCollapse 组件（浏览器）', () => {
       el.open = true
       await el.updateComplete
       await waitForOpenSettled(el)
-      // 打开稳态：presence=open，关闭稳态规则不命中，mask-image 自然不应用。
-      expect(getComputedStyle(queryInner(el)).maskImage).toBe('none')
+      await waitForActiveEdge(el, 0)
+
+      el.open = false
+      await el.updateComplete
+      await waitForActiveEdge(el, 24)
+      // 关闭稳态：动画结束后 presence 移除，但规则仍命中（:not([data-wui-presence='open'])）。
+      await waitFor(() => queryTrack(el).getAttribute('data-wui-presence') === null)
+      expect(activeEdge(el)).toBeCloseTo(24, 0)
 
       el.remove()
     })

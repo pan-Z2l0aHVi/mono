@@ -860,7 +860,11 @@ The initial `open` attribute settles instantly without playing the animation. Ne
 </web-ui-collapse>
 ```
 
-**`peek-edge` (cut-edge fade):** adds an alpha-gradient fade at the cut edge of the revealed area (`to right` when `horizontal`) so the clipped portion melts into the background instead of ending in a hard line. Length is a CSS length (e.g. `24px`); empty disables the fade. Customise the fade-stop color via the `--wui-collapse-peek-edge-color` CSS variable (must carry alpha — `mask-image` reads the alpha channel by default). Only active in the closed state; the fade appears instantly when the close animation settles.
+**`peek-edge` (cut-edge fade):** adds an alpha-gradient fade at the cut edge of the revealed area (`to right` when `horizontal`) so the clipped portion melts into the background instead of ending in a hard line. Length is a CSS length (e.g. `24px`); empty disables the fade. Customise the fade-stop color via the `--wui-collapse-peek-edge-color` CSS variable (must carry alpha — `mask-image` reads the alpha channel by default).
+
+The fade is a three-stop gradient rather than a linear one: the body stays fully opaque to the start of the fade band, drops to 50% alpha across its middle, then reaches the edge color. A plain linear gradient only visibly softens the last sliver of the band; spreading the fade across the whole band reads far more clearly at the same length.
+
+The fade band is positioned in percentages, relative to the container's **current rendered height** — which is what `max-height` animates. So the band tracks the cut edge frame by frame during the collapse animation without the `mask-image` string ever needing to interpolate. Its length is driven by a registered `<length>` custom property so it can fade in and out with the toggle instead of popping in once the close animation settles.
 
 ```html
 <web-ui-collapse peek="120px" peek-edge="32px">

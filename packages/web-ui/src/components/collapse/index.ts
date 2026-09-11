@@ -10,6 +10,35 @@ import style from './style.css?inline'
 
 const EXIT_FALLBACK_BUFFER = 80
 
+/** peek 边缘晕染的活动长度：关闭/收起态取 peek-edge，展开态归 0。 */
+const PEEK_EDGE_ACTIVE = '--wui-collapse-peek-edge-active'
+
+/*
+ * 注册成 `<length>` 才能被 transition 插值（未注册的自定义属性是离散值，只能瞬变）。
+ *
+ * 必须用 JS 的 `CSS.registerProperty` 而不是 CSS 里的 `@property`：实测后者写在
+ * shadow root 的样式表里不产生注册（getComputedStyle 读打开态得到空串而非
+ * initial-value），而自定义属性的注册本质上是 document 级的。
+ * 注册失败（jsdom、旧浏览器、重复注册）时降级为离散过渡——渐变带长度瞬变，
+ * 但位置百分比仍跟随裁剪边缘，行为依旧正确。
+ */
+function registerPeekEdgeActive() {
+  // jsdom 与不支持的环境直接跳过；样式里的 var() fallback 保证声明仍然有效。
+  if (typeof CSS === 'undefined' || typeof CSS.registerProperty !== 'function') return
+  try {
+    CSS.registerProperty({
+      name: PEEK_EDGE_ACTIVE,
+      syntax: '<length>',
+      inherits: false,
+      initialValue: '0px'
+    })
+  } catch {
+    // 已注册过（HMR、多份副本）或定义冲突：保持现有注册即可。
+  }
+}
+
+registerPeekEdgeActive()
+
 let collapseIdCounter = 0
 
 /**
