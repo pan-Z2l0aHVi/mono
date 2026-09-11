@@ -31,7 +31,7 @@ const brokenSrc = ref('https://broken.invalid/avatar.jpg')
     </div>
 
     <h2>不同尺寸</h2>
-    <div class="mb-3 flex items-end gap-3">
+    <div class="mb-3 flex flex-wrap items-end gap-3">
       <web-ui-avatar name="S" :size="24" />
       <web-ui-avatar name="M" :size="32" />
       <web-ui-avatar name="L" :size="40" />

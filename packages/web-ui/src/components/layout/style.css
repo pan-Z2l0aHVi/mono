@@ -155,6 +155,12 @@ header {
   z-index: var(--wui-layer-header, 10);
   top: 0;
 
+  /*
+   * glow 伪元素用 scale + translate 向外扩展，会溢出 header 盒子并撑出页面横向滚动条
+   * （移动端约 30px）。这里只裁横向：纵向保持 visible，下拉浮层等槽位内容仍可溢出。
+   * clip 不创建滚动容器，因此不影响 header 自身的 sticky。
+   */
+  overflow-x: clip;
   display: flex;
   gap: 8px;
   align-items: center;
