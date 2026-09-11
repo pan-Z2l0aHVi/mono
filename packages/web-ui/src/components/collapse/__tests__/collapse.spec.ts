@@ -28,6 +28,11 @@ async function clickTrigger(el: WebUiCollapse) {
   await waitForUpdate(el)
 }
 
+// peek 的动画写入落在 rAF 回调里；jsdom 无过渡时长，一帧后即落稳态。
+async function nextFrame() {
+  await new Promise(resolve => requestAnimationFrame(resolve))
+}
+
 describe('WebUiCollapse 组件', () => {
   describe('属性：open', () => {
     it('默认关闭', async () => {
@@ -134,6 +139,130 @@ describe('WebUiCollapse 组件', () => {
       el.keepMounted = true
       await waitForUpdate(el)
       expectReflected(el, 'keep-mounted', true)
+
+      cleanupElement(el)
+    })
+  })
+
+  describe('属性：peek', () => {
+    it('默认未设置且不反射属性', async () => {
+      const el = createCollapse()
+      await waitForUpdate(el)
+
+      expect(el.peek).toBe(null)
+      expect(el.hasAttribute('peek')).toBe(false)
+
+      cleanupElement(el)
+    })
+
+    it('peek 反射到 host 元素', async () => {
+      const el = createCollapse()
+      el.peek = '120px'
+      await waitForUpdate(el)
+
+      expect(el.getAttribute('peek')).toBe('120px')
+
+      cleanupElement(el)
+    })
+
+    it('peek 关闭稳态：内容可见但阻断交互', async () => {
+      const el = createCollapse()
+      el.peek = '120px'
+      await waitForUpdate(el)
+
+      const container = el.shadowRoot?.querySelector('.wui-collapse-content') as HTMLElement
+      const inner = el.shadowRoot?.querySelector('.wui-collapse-inner') as HTMLElement
+      expect(container.hasAttribute('hidden')).toBe(false)
+      expect(inner.getAttribute('inert')).toBe('')
+
+      cleanupElement(el)
+    })
+
+    it('peek 清空后回落默认关闭稳态', async () => {
+      const el = createCollapse()
+      el.peek = '120px'
+      await waitForUpdate(el)
+
+      el.peek = null
+      await waitForUpdate(el)
+
+      const container = el.shadowRoot?.querySelector('.wui-collapse-content') as HTMLElement
+      const inner = el.shadowRoot?.querySelector('.wui-collapse-inner') as HTMLElement
+      expect(container.hasAttribute('hidden')).toBe(true)
+      expect(inner.hasAttribute('inert')).toBe(false)
+
+      cleanupElement(el)
+    })
+
+    it('peek 下开合：展开解除 inert，收起回到裁剪态', async () => {
+      const el = createCollapse()
+      el.peek = '120px'
+      await waitForUpdate(el)
+
+      el.open = true
+      await waitForUpdate(el)
+      await nextFrame()
+
+      const inner = el.shadowRoot?.querySelector('.wui-collapse-inner') as HTMLElement
+      expect(inner.hasAttribute('inert')).toBe(false)
+
+      el.open = false
+      await waitForUpdate(el)
+      await nextFrame()
+
+      const container = el.shadowRoot?.querySelector('.wui-collapse-content') as HTMLElement
+      expect(container.hasAttribute('hidden')).toBe(false)
+      expect(inner.getAttribute('inert')).toBe('')
+
+      cleanupElement(el)
+    })
+
+    // jsdom 无布局，peek 的裁剪长度只能在浏览器用例里验证；这里只验挂载与交互语义。
+    it('peek 与 keep-mounted 并存时内容仍保留挂载且阻断交互', async () => {
+      const el = createCollapse()
+      el.peek = '120px'
+      el.keepMounted = true
+      await waitForUpdate(el)
+
+      const container = el.shadowRoot?.querySelector('.wui-collapse-content') as HTMLElement
+      const inner = el.shadowRoot?.querySelector('.wui-collapse-inner') as HTMLElement
+      expect(container.hasAttribute('hidden')).toBe(false)
+      expect(inner.getAttribute('inert')).toBe('')
+
+      cleanupElement(el)
+    })
+
+    it('peek 清空后但 keep-mounted 仍在：落到 inert 而非 hidden', async () => {
+      const el = createCollapse()
+      el.peek = '120px'
+      el.keepMounted = true
+      await waitForUpdate(el)
+
+      el.peek = null
+      await waitForUpdate(el)
+
+      const container = el.shadowRoot?.querySelector('.wui-collapse-content') as HTMLElement
+      const inner = el.shadowRoot?.querySelector('.wui-collapse-inner') as HTMLElement
+      expect(container.hasAttribute('hidden')).toBe(false)
+      expect(inner.getAttribute('inert')).toBe('')
+
+      cleanupElement(el)
+    })
+
+    it('peek 下开合不派发程序来源事件', async () => {
+      const el = createCollapse()
+      el.peek = '120px'
+      await waitForUpdate(el)
+
+      const [events] = spyEvents<CustomEvent<{ open: boolean }>>(el, 'open-change')
+      el.open = true
+      await waitForUpdate(el)
+      await nextFrame()
+      el.open = false
+      await waitForUpdate(el)
+      await nextFrame()
+
+      expect(events).toHaveLength(0)
 
       cleanupElement(el)
     })

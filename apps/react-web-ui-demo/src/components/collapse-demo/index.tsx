@@ -83,6 +83,25 @@ function CollapseDemo() {
         </web-ui-collapse>
       </div>
 
+      <h2>peek（只露一部分）</h2>
+      <div className="mb-3">
+        <web-ui-collapse peek="80px">
+          <button
+            type="button"
+            className="block w-full cursor-pointer rounded-md bg-[var(--wui-color-surface-control)] px-3 py-2 text-left"
+          >
+            展开长文本
+          </button>
+          <div slot="content">
+            <div className="p-3">
+              {Array.from({ length: 8 }, (_, i) => (
+                <p key={i}>段落 {i + 1}：关闭时只露出前 80px，其余被裁剪且不可交互。</p>
+              ))}
+            </div>
+          </div>
+        </web-ui-collapse>
+      </div>
+
       <h2>水平方向（trigger 与内容同行）</h2>
       <div className="mb-3">
         <web-ui-collapse horizontal className="flex items-center gap-2">

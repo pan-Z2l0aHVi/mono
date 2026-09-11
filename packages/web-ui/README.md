@@ -774,6 +774,7 @@ In-flow expand/collapse container with animated height (or width) transition. Si
 | `disabled`     | `boolean` | `false` | Ignores trigger clicks and sets `aria-disabled` on the trigger element; expanded content is kept                         |
 | `horizontal`   | `boolean` | `false` | Animate width instead of height                                                                                          |
 | `keep-mounted` | `boolean` | `false` | Closed state keeps the content in the 0fr track with `inert` (scroll position and layout measurable) instead of `hidden` |
+| `peek`         | `string`  | —       | Closed state reveals this much of the content (CSS length, e.g. `120px`); along the animation axis                       |
 
 **Events:** `open-change` (`CustomEvent<{ open: boolean }>`). Emitted only for user-originated toggles (trigger click). Programmatic writes (`open`, `show()`, `close()`, `toggle()`) never emit. Nested collapses: an inner `open-change` bubbles through the outer root (composed event); distinguish by `event.target`.
 
@@ -793,6 +794,15 @@ The initial `open` attribute settles instantly without playing the animation. Ne
 **Trigger semantics:** interaction comes from the element you put in the default slot — a native `<button>`, `<web-ui-button>`, or any other interactive element supplies Enter/Space activation and focus natively. The collapse writes `aria-expanded` / `aria-controls` (pointing at its content track) and `aria-disabled` onto the first assigned element in the trigger slot. Use an interactive element as the trigger: a plain `<span>` is clickable but has no keyboard/focus semantics.
 
 **Closed-state semantics:** the consumer's light DOM is never moved or unmounted. Default closed state applies `hidden` to the internal content container; with `keep-mounted` the inner container is marked `inert` while staying measurable inside the collapsed track.
+
+**`peek` (partial reveal):** setting `peek` makes the closed state reveal the first `peek` of the content along the animation axis (`horizontal` switches it to width) instead of collapsing to zero — the track stays at the content height and the inner container is clamped. It implies `keep-mounted` semantics: the content stays mounted but is `inert`, so the clipped portion is not focusable or clickable. Content shorter than `peek` collapses to its own size rather than leaving blank space. Because a fixed length and an auto height cannot be interpolated by CSS, the two `peek` ↔ expanded directions are driven by explicit pixel lengths (measured once per toggle); every other animation path stays a zero-measurement grid `fr` transition.
+
+```html
+<web-ui-collapse peek="120px">
+  <button type="button">Toggle me</button>
+  <div slot="content">Long content — only the first 120px show while closed</div>
+</web-ui-collapse>
+```
 
 **Known limitations:** the `horizontal` animation reflows content while width changes.
 
