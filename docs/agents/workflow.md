@@ -1,6 +1,6 @@
 # 开发与协作工作流
 
-本文件是 monorepo 所有实施任务的必经流程。它定义任务状态、变更证据和角色交接；工具命令见 [`agent-workflow.mjs`](../../scripts/agent-workflow.mjs)，worktree 细节见 [`worktrees.md`](worktrees.md)，release 细节见 [`release.md`](release.md)，任务交接包见 [`task-packet.md`](task-packet.md)。Herdr、Claude、Codex、Gemini 等只是执行适配层，不改变本流程的状态和 gate。
+本文件是 monorepo 所有实施任务的必经流程。它定义任务状态、变更证据和角色交接；工具命令见 [`agent-workflow.mjs`](../../scripts/agent-workflow.mjs)，worktree 细节见 [`worktrees.md`](worktrees.md)，release 细节见 [`release.md`](release.md)，任务交接包见 [`task-packet.md`](task-packet.md)。Herdr、Claude、Codex 等只是执行适配层，不改变本流程的状态和 gate。
 
 ## 先建立任务
 

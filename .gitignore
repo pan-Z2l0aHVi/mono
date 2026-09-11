@@ -139,10 +139,9 @@ report.html
 # Aider
 .aider*/
 
-# WorkBuddy — 工具侧本地会话与记忆数据，不随仓库分发
+# 工具侧本地会话与记忆数据，不随仓库分发
 .workbuddy/
-
-# ZCode
+.codebuddy/
 .zcode/
 
 # ==========================================

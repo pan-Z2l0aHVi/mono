@@ -51,7 +51,7 @@ Lib Coder 只写 `packages/*`，Biz Coder 只写 `apps/*`；任何角色不得�
 
 - `scripts/agent-workflow.mjs` 的角色集合移除 `integrator`，与“不新增层级”一致；集成与 release 由 Manager 承担。
 - `scripts/validate-context.mjs` 增加对「多 Agent 编排」「角色与执行体」「编排模式」章节及 handoff 字段名的校验，避免文档与流程漂移。
-- `.agents/agents/*` 增加执行体声明与目录边界；`CLAUDE.md`、`GEMINI.md` 只声明客户端默认绑定与加载顺序，不复制共享规则正文。
+- `.agents/agents/*` 增加执行体声明与目录边界；`CLAUDE.md` 只声明客户端默认绑定与加载顺序，不复制共享规则正文。
 - 跨包需求的最小执行单元从“一条 vertical slice worktree”收紧为“按 `packages/*` 与 `apps/*` 拆分的 task，或在同一 worktree 内严格目录隔离”，代价是交接次数增加。
 
 ## 替代方案

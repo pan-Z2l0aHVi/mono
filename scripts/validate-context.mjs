@@ -55,7 +55,7 @@ const declaresExecutor = (declared, executor) => new RegExp(`^${escapeRegExp(exe
 // 绑定表镜像一致性：绑定表内每一行的执行体都必须与默认绑定一致。
 function checkBindingMirrors() {
   const scope = [
-    ...['AGENTS.md', 'CONTRIBUTING.md', 'CLAUDE.md', 'GEMINI.md'].filter(exists),
+    ...['AGENTS.md', 'CONTRIBUTING.md', 'CLAUDE.md'].filter(exists),
     ...walk('docs/agents', file => file.endsWith('.md')).map(relative),
     ...walk('.agents/agents', file => file.endsWith('.md')).map(relative)
   ]
@@ -124,7 +124,6 @@ function addError(message) {
 for (const file of [
   'AGENTS.md',
   'CLAUDE.md',
-  'GEMINI.md',
   'CONTEXT.md',
   'ARCHITECTURE.md',
   'CONTRIBUTING.md',
@@ -214,14 +213,6 @@ if (exists('CLAUDE.md')) {
   if (claudeStat.isSymbolicLink()) addError('CLAUDE.md must remain a thin regular-file adapter, not a symlink')
   if (!claudeSource.includes('薄适配入口') || !claudeSource.includes('AGENTS.md'))
     addError('CLAUDE.md is missing the shared-entry adapter contract')
-}
-
-if (exists('GEMINI.md')) {
-  const geminiStat = fs.lstatSync(path.join(root, 'GEMINI.md'))
-  const geminiSource = read('GEMINI.md')
-  if (geminiStat.isSymbolicLink()) addError('GEMINI.md must remain a thin regular-file adapter, not a symlink')
-  if (!geminiSource.includes('薄适配入口') || !geminiSource.includes('AGENTS.md'))
-    addError('GEMINI.md is missing the shared-entry adapter contract')
 }
 
 if (exists('.claude/settings.local.json')) {
@@ -338,7 +329,7 @@ for (const [file, expectedTarget] of Object.entries(symlinks)) {
 }
 
 const markdownFiles = [
-  ...['AGENTS.md', 'CLAUDE.md', 'GEMINI.md', 'CONTEXT.md', 'ARCHITECTURE.md', 'CONTRIBUTING.md']
+  ...['AGENTS.md', 'CLAUDE.md', 'CONTEXT.md', 'ARCHITECTURE.md', 'CONTRIBUTING.md']
     .filter(exists)
     .map(file => path.join(root, file)),
   ...walk('docs/agents', file => file.endsWith('.md')),
