@@ -165,6 +165,91 @@ describe('WebUiCollapse 组件', () => {
       cleanupElement(el)
     })
 
+    it('peek-edge 默认空字符串、反射到 host 元素为空属性', async () => {
+      const el = createCollapse()
+      await waitForUpdate(el)
+
+      expect(el.peekEdge).toBe('')
+      // Lit `reflect: true` 在 String type 下对空字符串也调用 setAttribute。
+      expect(el.getAttribute('peek-edge')).toBe('')
+
+      cleanupElement(el)
+    })
+
+    it('peek-edge 反射到 host 元素', async () => {
+      const el = createCollapse()
+      el.peek = '120px'
+      el.peekEdge = '24px'
+      await waitForUpdate(el)
+
+      expect(el.getAttribute('peek-edge')).toBe('24px')
+
+      cleanupElement(el)
+    })
+
+    it('peek-edge 不下发 CSS 变量当 peek 未设置', async () => {
+      const el = createCollapse()
+      el.peekEdge = '24px'
+      await waitForUpdate(el)
+
+      const track = el.shadowRoot?.querySelector('.wui-collapse-track') as HTMLElement
+      // 未开启 peek：peek-edge 单独设值无意义，不应下发任何 peek 相关变量。
+      expect(track.style.getPropertyValue('--wui-collapse-peek-edge')).toBe('')
+      expect(track.style.getPropertyValue('--wui-collapse-peek')).toBe('')
+
+      cleanupElement(el)
+    })
+
+    it('peek-edge 下发 CSS 变量与 attribute 到 track', async () => {
+      const el = createCollapse()
+      el.peek = '120px'
+      el.peekEdge = '24px'
+      await waitForUpdate(el)
+
+      const track = el.shadowRoot?.querySelector('.wui-collapse-track') as HTMLElement
+      expect(track.style.getPropertyValue('--wui-collapse-peek-edge')).toBe('24px')
+      expect(track.style.getPropertyValue('--wui-collapse-peek')).toBe('120px')
+      // `[data-wui-peek-edge]` 让 CSS mask 规则选择器命中。
+      expect(track.hasAttribute('data-wui-peek-edge')).toBe(true)
+
+      cleanupElement(el)
+    })
+
+    it('peek 清空后清除 peek-edge 下发的 attribute 与 CSS 变量', async () => {
+      const el = createCollapse()
+      el.peek = '120px'
+      el.peekEdge = '24px'
+      await waitForUpdate(el)
+
+      el.peek = null
+      await waitForUpdate(el)
+
+      const track = el.shadowRoot?.querySelector('.wui-collapse-track') as HTMLElement
+      expect(track.hasAttribute('data-wui-peek-edge')).toBe(false)
+      expect(track.style.getPropertyValue('--wui-collapse-peek-edge')).toBe('')
+      expect(track.style.getPropertyValue('--wui-collapse-peek')).toBe('')
+
+      cleanupElement(el)
+    })
+
+    it('peek 清空但 peek-edge 仍在：attribute 与 CSS 变量随 peek 一起清除', async () => {
+      const el = createCollapse()
+      el.peek = '120px'
+      el.peekEdge = '24px'
+      await waitForUpdate(el)
+
+      el.peekEdge = ''
+      await waitForUpdate(el)
+
+      const track = el.shadowRoot?.querySelector('.wui-collapse-track') as HTMLElement
+      // peek 仍在，但 peek-edge 为空 → mask 规则不命中
+      expect(track.hasAttribute('data-wui-peek-edge')).toBe(false)
+      expect(track.style.getPropertyValue('--wui-collapse-peek-edge')).toBe('')
+      expect(track.hasAttribute('data-wui-peek')).toBe(true)
+
+      cleanupElement(el)
+    })
+
     it('peek 关闭稳态：内容可见但阻断交互', async () => {
       const el = createCollapse()
       el.peek = '120px'
