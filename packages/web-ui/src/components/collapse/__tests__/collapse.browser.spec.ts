@@ -72,22 +72,6 @@ function createPeekCollapse(peek: string, html: string, setup?: (el: WebUiCollap
   return el
 }
 
-// peek + peek-edge 用例：边缘晕染长度与 peek 同步设置。
-function createPeekEdgeCollapse(
-  peek: string,
-  peekEdge: string,
-  html: string,
-  setup?: (el: WebUiCollapse) => void
-): WebUiCollapse {
-  const el = document.createElement('web-ui-collapse')
-  el.peek = peek
-  el.peekEdge = peekEdge
-  el.innerHTML = html
-  setup?.(el)
-  document.body.append(el)
-  return el
-}
-
 // grid 过渡结束信号：直接监听 track 的 transitionend（含 rows/columns 两种轴向）。
 function onceTransitionEnds(el: WebUiCollapse): Promise<void> {
   return new Promise(resolve => {
@@ -459,47 +443,102 @@ describe('WebUiCollapse 组件（浏览器）', () => {
     expect(el.shadowRoot!.querySelector('.wui-collapse-inner')?.hasAttribute('inert')).toBe(false)
   })
 
-  describe('属性：peek-edge', () => {
-    it('关闭稳态下 inner 计算样式含 mask-image 且按 alpha 模式解析（默认底边）', async () => {
-      const el = createPeekEdgeCollapse(
-        '300px',
-        '24px',
+  describe('peek 边缘渐隐（长度由 peek 推导）', () => {
+    it('关闭稳态含 mask-image，渐变长度取 peek 的默认比例（0.25）', async () => {
+      const el = createPeekCollapse(
+        '80px',
         '<button class="trigger">Trigger</button><div slot="content">Long enough content to exceed peek so the track has measurable height.</div>'
       )
       await el.updateComplete
-      // Chromium 把 `black` 序列化为 `rgb(0, 0, 0)`、`transparent` 序列化为 `rgba(0, 0, 0, 0)`，
-      // 并把 `to bottom` 标准化为角度；这里用 stop 列表与长度匹配验证渐变形态。
+      // Chromium 把 `black` 序列化为 `rgb(0, 0, 0)`、`transparent` 序列化为
+      // `rgba(0, 0, 0, 0)`，并把 `to bottom` 标准化为角度；渐变形态用 stop 列表验证，
+      // 长度直接读活动长度（比匹配 mask 字符串稳：第三段 stop 是它的半值，字符串
+      // 可能与其他长度巧合重合）。80px * 0.25 = 20px。
       const mask = getComputedStyle(queryInner(el)).maskImage
       expect(mask).toContain('linear-gradient')
-      expect(mask).toContain('calc(100% - 24px)')
       expect(mask).toContain('rgba(0, 0, 0, 0)')
+      expect(activeEdge(el)).toBeCloseTo(20, 3)
 
       el.remove()
     })
 
-    it('horizontal 时 mask 渐变有效（沿宽度轴方向）', async () => {
-      const el = createPeekEdgeCollapse(
-        '300px',
-        '24px',
+    it('horizontal 时 mask 沿宽度轴生效，长度同样按 peek 推导', async () => {
+      const el = createPeekCollapse(
+        '80px',
         '<button class="trigger">Trigger</button><div slot="content">Wide content</div>',
         e => {
           e.horizontal = true
         }
       )
       await el.updateComplete
-      // 渐变 stop 序列与 vertical 形态相同（to 方向不同），但 track 在水平模式下选择
-      // `[data-wui-peek-edge].is-horizontal` 规则；验证 `[data-wui-peek-edge]` 命中即足以。
-      const mask = getComputedStyle(queryInner(el)).maskImage
-      expect(mask).toContain('linear-gradient')
-      expect(mask).toContain('calc(100% - 24px)')
+      // 渐变形态与 vertical 一致（只有 to 方向不同），命中 `[data-wui-peek].is-horizontal`。
+      expect(getComputedStyle(queryInner(el)).maskImage).toContain('linear-gradient')
+      expect(activeEdge(el)).toBeCloseTo(20, 3)
+
+      el.remove()
+    })
+
+    it('--wui-collapse-peek-edge-ratio 覆盖推导比例', async () => {
+      const el = createPeekCollapse(
+        '80px',
+        '<button class="trigger">Trigger</button><div slot="content">Content</div>',
+        e => {
+          e.style.setProperty('--wui-collapse-peek-edge-ratio', '0.5')
+        }
+      )
+      await el.updateComplete
+      // 80px * 0.5 = 40px
+      expect(activeEdge(el)).toBeCloseTo(40, 3)
+
+      el.remove()
+    })
+
+    it('--wui-collapse-peek-edge 显式长度优先于推导值', async () => {
+      const el = createPeekCollapse(
+        '80px',
+        '<button class="trigger">Trigger</button><div slot="content">Content</div>',
+        e => {
+          e.style.setProperty('--wui-collapse-peek-edge', '12px')
+        }
+      )
+      await el.updateComplete
+      expect(activeEdge(el)).toBeCloseTo(12, 3)
+
+      el.remove()
+    })
+
+    it('推导长度夹在 --wui-collapse-peek-edge-max 以内（默认 64px）', async () => {
+      const el = createPeekCollapse(
+        '400px',
+        '<button class="trigger">Trigger</button><div slot="content"><div style="height: 400px">Tall content</div></div>'
+      )
+      await el.updateComplete
+      // 400px * 0.25 = 100px，被上限夹到 64px：大 peek 不会算出过长的虚化带。
+      expect(activeEdge(el)).toBeCloseTo(64, 3)
+
+      el.remove()
+    })
+
+    it('比例设为 0 关闭渐隐：渐变带长度为 0', async () => {
+      const el = createPeekCollapse(
+        '80px',
+        '<button class="trigger">Trigger</button><div slot="content">Content</div>',
+        e => {
+          e.style.setProperty('--wui-collapse-peek-edge-ratio', '0')
+        }
+      )
+      await el.updateComplete
+      // 渐变带退化为 0：所有 stop 落在同一位置，mask 整段不透明（视觉上无淡出）。
+      // Chromium 会把 `calc(100% - 0px)` 归一化成 `100%`，故按 stop 位置而非字符串断言。
+      expect(activeEdge(el)).toBe(0)
+      expect(getComputedStyle(queryInner(el)).maskImage).toContain('rgb(0, 0, 0) 100%')
 
       el.remove()
     })
 
     it('收起动画期间渐变带即已生效：活动长度在动画中增长（无落稳态延迟）', async () => {
-      const el = createPeekEdgeCollapse(
+      const el = createPeekCollapse(
         '300px',
-        '24px',
         '<button class="trigger">Trigger</button><div slot="content"><div style="height: 300px">Tall content</div></div>'
       )
       await el.updateComplete
@@ -515,18 +554,16 @@ describe('WebUiCollapse 组件（浏览器）', () => {
       await el.updateComplete
       await nextFrame()
       await nextFrame()
-      const early = activeEdge(el)
-      expect(early).toBeGreaterThan(0)
+      expect(activeEdge(el)).toBeGreaterThan(0)
 
-      // 收敛到 peek-edge 全长
-      await waitForActiveEdge(el, 24)
+      // 收敛到推导值：300px * 0.25 = 75px，夹到上限 64px。
+      await waitForActiveEdge(el, 64)
       el.remove()
     })
 
     it('展开稳态：活动长度收敛到 0，内容不再有底部淡出', async () => {
-      const el = createPeekEdgeCollapse(
-        '120px',
-        '24px',
+      const el = createPeekCollapse(
+        '80px',
         '<button class="trigger">Trigger</button><div slot="content"><div style="height: 300px">Tall content</div></div>'
       )
       await el.updateComplete
@@ -538,49 +575,23 @@ describe('WebUiCollapse 组件（浏览器）', () => {
       await waitForActiveEdge(el, 0)
       const mask = getComputedStyle(queryInner(el)).maskImage
       expect(mask).toContain('linear-gradient')
-      // 渐变带长度收敛到 1px 以内（过渡是渐近的，不追求精确 0）：整段 mask 已不透明，
-      // 完全展开的内容不再有底部淡出。
       const used = Number.parseFloat(mask.match(/calc\(100% - ([\d.]+)px\)/)?.[1] ?? '0')
       expect(used).toBeLessThan(1)
-      expect(mask).not.toContain('24px')
 
       el.remove()
     })
 
-    it('peek-edge 为空时 mask-image 保持默认 none（attribute 不在 → 规则不命中）', async () => {
+    it('未设 peek 时 mask-image 保持默认 none（规则不命中）', async () => {
+      const el = createCollapse('<button class="trigger">Trigger</button><div slot="content">Content</div>')
+      await el.updateComplete
+      expect(getComputedStyle(queryInner(el)).maskImage).toBe('none')
+
+      el.remove()
+    })
+
+    it('收起后回到关闭稳态：活动长度保持推导值', async () => {
       const el = createPeekCollapse(
-        '120px',
-        '<button class="trigger">Trigger</button><div slot="content">Content</div>'
-      )
-      await el.updateComplete
-      const inner = queryInner(el)
-      // peek-edge 属性未设：CSS 选择器 `[data-wui-peek-edge]` 不命中，mask 不应用。
-      expect(getComputedStyle(inner).maskImage).toBe('none')
-
-      el.remove()
-    })
-
-    it('peek-edge 设值后切到非 peek：track 上 attribute 与 CSS 变量都被清除', async () => {
-      const el = createPeekEdgeCollapse(
-        '120px',
-        '24px',
-        '<button class="trigger">Trigger</button><div slot="content">Content</div>'
-      )
-      await el.updateComplete
-      el.peek = null
-      await el.updateComplete
-      const track = queryTrack(el)
-      expect(track.hasAttribute('data-wui-peek-edge')).toBe(false)
-      expect(track.style.getPropertyValue('--wui-collapse-peek-edge')).toBe('')
-      expect(track.style.getPropertyValue('--wui-collapse-peek')).toBe('')
-
-      el.remove()
-    })
-
-    it('收起后回到关闭稳态：活动长度保持 peek-edge 全长', async () => {
-      const el = createPeekEdgeCollapse(
-        '120px',
-        '24px',
+        '80px',
         '<button class="trigger">Trigger</button><div slot="content"><div style="height: 300px">Tall content</div></div>',
         e => {
           e.horizontal = true
@@ -595,10 +606,23 @@ describe('WebUiCollapse 组件（浏览器）', () => {
 
       el.open = false
       await el.updateComplete
-      await waitForActiveEdge(el, 24)
+      await waitForActiveEdge(el, 20)
       // 关闭稳态：动画结束后 presence 移除，但规则仍命中（:not([data-wui-presence='open'])）。
       await waitFor(() => queryTrack(el).getAttribute('data-wui-presence') === null)
-      expect(activeEdge(el)).toBeCloseTo(24, 0)
+      expect(activeEdge(el)).toBeCloseTo(20, 0)
+
+      el.remove()
+    })
+
+    it('peek 清空后：CSS 变量清除且 mask 回落 none', async () => {
+      const el = createPeekCollapse('80px', '<button class="trigger">Trigger</button><div slot="content">Content</div>')
+      await el.updateComplete
+      el.peek = null
+      await el.updateComplete
+
+      const track = queryTrack(el)
+      expect(track.style.getPropertyValue('--wui-collapse-peek')).toBe('')
+      expect(getComputedStyle(queryInner(el)).maskImage).toBe('none')
 
       el.remove()
     })

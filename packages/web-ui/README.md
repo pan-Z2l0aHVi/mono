@@ -823,14 +823,13 @@ A close request does not destroy the native dialog immediately: it stays in the 
 
 In-flow expand/collapse container with animated height (or width) transition. Single element with two slots; no portal, no scroll lock, no focus management.
 
-| Attribute      | Type      | Default | Description                                                                                                               |
-| -------------- | --------- | ------- | ------------------------------------------------------------------------------------------------------------------------- |
-| `open`         | `boolean` | `false` | Expanded state; self-managed on interaction, `open-change` emits only for user-originated toggles                         |
-| `disabled`     | `boolean` | `false` | Ignores trigger clicks and sets `aria-disabled` on the trigger element; expanded content is kept                          |
-| `horizontal`   | `boolean` | `false` | Animate width instead of height                                                                                           |
-| `keep-mounted` | `boolean` | `false` | Closed state keeps the content in the 0fr track with `inert` (scroll position and layout measurable) instead of `hidden`  |
-| `peek`         | `string`  | —       | Closed state reveals this much of the content (CSS length, e.g. `120px`); along the animation axis                        |
-| `peek-edge`    | `string`  | `''`    | Length of the alpha-gradient fade at the cut edge of the revealed area (CSS length, e.g. `24px`); empty disables the fade |
+| Attribute      | Type      | Default | Description                                                                                                                         |
+| -------------- | --------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `open`         | `boolean` | `false` | Expanded state; self-managed on interaction, `open-change` emits only for user-originated toggles                                   |
+| `disabled`     | `boolean` | `false` | Ignores trigger clicks and sets `aria-disabled` on the trigger element; expanded content is kept                                    |
+| `horizontal`   | `boolean` | `false` | Animate width instead of height                                                                                                     |
+| `keep-mounted` | `boolean` | `false` | Closed state keeps the content in the 0fr track with `inert` (scroll position and layout measurable) instead of `hidden`            |
+| `peek`         | `string`  | —       | Closed state reveals this much of the content (CSS length, e.g. `120px`); along the animation axis; ends in an auto-sized edge fade |
 
 **Events:** `open-change` (`CustomEvent<{ open: boolean }>`). Emitted only for user-originated toggles (trigger click). Programmatic writes (`open`, `show()`, `close()`, `toggle()`) never emit. Nested collapses: an inner `open-change` bubbles through the outer root (composed event); distinguish by `event.target`.
 
@@ -860,14 +859,24 @@ The initial `open` attribute settles instantly without playing the animation. Ne
 </web-ui-collapse>
 ```
 
-**`peek-edge` (cut-edge fade):** adds an alpha-gradient fade at the cut edge of the revealed area (`to right` when `horizontal`) so the clipped portion melts into the background instead of ending in a hard line. Length is a CSS length (e.g. `24px`); empty disables the fade. Customise the fade-stop color via the `--wui-collapse-peek-edge-color` CSS variable (must carry alpha — `mask-image` reads the alpha channel by default).
+**Edge fade:** the revealed area ends in an alpha-gradient fade (right edge when `horizontal`) so the clipped portion melts into the background instead of ending in a hard line. The length is derived from `peek` — there is no second attribute to set. Tune it with CSS custom properties instead:
+
+| Custom property                  | Default       | Description                                                           |
+| -------------------------------- | ------------- | --------------------------------------------------------------------- |
+| `--wui-collapse-peek-edge-ratio` | `0.25`        | Fade length as a fraction of `peek`                                   |
+| `--wui-collapse-peek-edge-max`   | `64px`        | Upper bound, so a large `peek` cannot produce an oversized fade band  |
+| `--wui-collapse-peek-edge`       | —             | Explicit fade length; wins over the derived value                     |
+| `--wui-collapse-peek-edge-color` | `transparent` | Fade-stop color (must carry alpha — `mask-image` reads alpha channel) |
+
+Set the ratio to `0` to turn the fade off. The derivation is pure CSS `calc(peek * ratio)`, so a `rem`-based `peek` scales the fade with the root font size and nothing has to be measured in JS. Known limitation: a percentage `peek` does not derive to a length, so the fade silently falls back to "none" — set `--wui-collapse-peek-edge` explicitly in that case.
 
 The fade is a three-stop gradient rather than a linear one: the body stays fully opaque to the start of the fade band, drops to 50% alpha across its middle, then reaches the edge color. A plain linear gradient only visibly softens the last sliver of the band; spreading the fade across the whole band reads far more clearly at the same length.
 
 The fade band is positioned in percentages, relative to the container's **current rendered height** — which is what `max-height` animates. So the band tracks the cut edge frame by frame during the collapse animation without the `mask-image` string ever needing to interpolate. Its length is driven by a registered `<length>` custom property so it can fade in and out with the toggle instead of popping in once the close animation settles.
 
 ```html
-<web-ui-collapse peek="120px" peek-edge="32px">
+<!-- 120px peek with a 30px fade (0.25 ratio) at its cut edge -->
+<web-ui-collapse peek="120px">
   <button type="button">Toggle me</button>
   <div slot="content">Long content with a soft fade at the bottom of the 120px peek</div>
 </web-ui-collapse>
