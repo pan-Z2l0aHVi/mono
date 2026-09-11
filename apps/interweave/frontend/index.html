@@ -3,7 +3,25 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/png" href="/interweave-icon.png" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+    />
+    <script>
+      // 禁止移动端手势缩放页面：iOS Safari 无视 viewport 的 user-scalable=no，
+      // 需拦截 WebKit 的 gesture 事件，并以多指 touchmove 兜底。
+      document.addEventListener('gesturestart', event => event.preventDefault())
+      document.addEventListener('gesturechange', event => event.preventDefault())
+      document.addEventListener(
+        'touchmove',
+        event => {
+          if (event.touches.length > 1) {
+            event.preventDefault()
+          }
+        },
+        { passive: false }
+      )
+    </script>
     <title>Interweave</title>
   </head>
   <body>
