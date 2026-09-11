@@ -10,7 +10,7 @@ import style from './style.css?inline'
 
 const EXIT_FALLBACK_BUFFER = 80
 
-/** peek 边缘晕染的活动长度：关闭/收起态取 peek-edge，展开态归 0。 */
+/** peek 边缘渐隐的活动长度：关闭/收起态取由 peek 推导的长度，展开态归 0。 */
 const PEEK_EDGE_ACTIVE = '--wui-collapse-peek-edge-active'
 
 /*
@@ -86,19 +86,12 @@ export class WebUiCollapse extends LitElement {
    * 注意 `peek` 是固定长度与内容自适应高度之间的过渡：CSS 无法在两者之间插值，
    * 因此这两个方向的动画由本组件读出内容尺寸后以显式长度驱动（其余路径仍是
    * 零测量的 grid fr 过渡）。
+   *
+   * 露出区域末端自带一段边缘渐隐（提示下方还有内容），长度由 `peek` 按比例推导，
+   * 无需也不接受调用方单独指定——见 style.css 中 `--wui-collapse-peek-edge-*`
+   * 系列变量（比例、上限、末端颜色可用 CSS 覆盖，属于主题级调优而非组件 API）。
    */
   @property({ type: String, reflect: true }) peek: string | null = null
-
-  /**
-   * peek 露出区域末端的边缘晕染长度（CSS 长度，如 `24px`、`2rem`）。
-   *
-   * 沿动画轴末端（默认底边、`horizontal` 时右边）做 alpha 渐变，让"被裁掉的部分"
-   * 与"露出的部分"之间柔和过渡，提示下方还有内容。默认空字符串表示关闭晕染。
-   *
-   * 颜色通过 CSS 变量 `--wui-collapse-peek-edge-color` 覆盖，值需为带 alpha 通道
-   * 的色值（如 `rgba(0,0,0,0)`）——mask-image 默认按 alpha 模式解析。
-   */
-  @property({ type: String, reflect: true, attribute: 'peek-edge' }) peekEdge = ''
 
   @query('.wui-collapse-trigger-wrapper') private _triggerWrapper!: HTMLElement
 
@@ -408,26 +401,9 @@ export class WebUiCollapse extends LitElement {
     track.toggleAttribute('data-wui-peek', this._peeks)
     if (this._peeks) {
       track.style.setProperty('--wui-collapse-peek', this.peek ?? '')
-      // `[data-wui-peek-edge]` 与 `--wui-collapse-peek-edge` 配合：attribute 让 mask
-      // 规则选择器命中（未设 peek-edge 时不命中 → mask-image 保持默认 none），
-      // CSS 变量负责渐变长度的运行时同步。
-      if (this._peekEdges) {
-        track.setAttribute('data-wui-peek-edge', '')
-        track.style.setProperty('--wui-collapse-peek-edge', this.peekEdge)
-      } else {
-        track.removeAttribute('data-wui-peek-edge')
-        track.style.removeProperty('--wui-collapse-peek-edge')
-      }
     } else {
       track.style.removeProperty('--wui-collapse-peek')
-      track.removeAttribute('data-wui-peek-edge')
-      track.style.removeProperty('--wui-collapse-peek-edge')
     }
-  }
-
-  /** peek 露出区域是否启用边缘晕染；`peek` 未设置或 `peekEdge` 为空都视为关闭。 */
-  private get _peekEdges(): boolean {
-    return this._peeks && this.peekEdge.trim() !== ''
   }
 
   private _clampProperty(): 'max-height' | 'max-width' {

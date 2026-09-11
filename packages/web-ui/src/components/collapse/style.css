@@ -78,8 +78,8 @@
 }
 
 /*
- * peek 边缘晕染的「活动长度」（替代直接读 peek-edge）：
- * 关闭/收起态取 `peek-edge`，展开态归 0（fallback）——渐变带因此跟随开合动画
+ * peek 边缘渐隐的「活动长度」（替代直接读推导长度）：
+ * 关闭/收起态取推导值，展开态归 0（fallback）——渐变带因此跟随开合动画
  * 平滑出现/消失，而不是在某一帧突然出现（旧实现把 mask 限定在关闭稳态，收起动画
  * 结束才显示，表现为明显的延迟）。
  *
@@ -113,26 +113,20 @@
 }
 
 /*
- * 裁剪长度只在关闭稳态由 CSS 声明；动画期间由内联长度覆盖，落稳态清除后回到这里。
- */
-.wui-collapse-track[data-wui-peek]:not([data-wui-presence]) .wui-collapse-inner {
-  max-height: var(--wui-collapse-peek, 0);
-}
-
-/*
- * peek 露出区域的边缘晕染（mask-image）：
+ * peek 露出区域的边缘渐隐（mask-image）：
  * 沿动画轴末端（默认底边、horizontal 时右边）做 alpha 渐变，让"被裁掉的部分"与
- * "露出的部分"之间柔和过渡，提示下方还有内容。
+ * "露出的部分"之间柔和过渡，提示下方还有内容。设置 `peek` 即启用——渐隐长度由
+ * `peek` 推导，不是独立入参。
+ *
+ * 长度推导：`peek * --wui-collapse-peek-edge-ratio`（默认 0.25），并夹在
+ * `--wui-collapse-peek-edge-max`（默认 64px）以内，避免大 peek 算出过长的虚化带。
+ * 纯 CSS 的 `calc(length * number)` —— 不需要 JS 解析单位，peek 用 rem/em 时
+ * 渐隐长度自动跟着字号缩放。需要绝对长度时直接设 `--wui-collapse-peek-edge`
+ * 覆盖（它优先于推导值），把比例设成 0 即可关掉渐隐。
  *
  * 渐变是三段式而非线性：主体全黑延伸到渐变带起点，中段先降到 0.5 alpha（长而缓
  * 的虚化带），末端才落到 edge-color（默认全透明）。纯线性渐变在同样长度下"发虚"
- * 的范围只有靠末端一小截，视觉上弱到难以察觉；三段式把虚化铺满整个渐变带，
- * 同样的 peek-edge 长度读起来明显得多。
- *
- * 仅在 `[data-wui-peek-edge]` attribute 存在时启用——即 peek-edge 属性被设值。
- * 未设时整条规则不命中，mask-image 保持默认 none（旧实现用 `var()` fallback 让
- * 未设也解析成"整段不透明"，但 Chromium 对 mask-image 里嵌套 var() 的 fallback
- * 解析不可靠，会整条退回 none，故改用 attribute 切换规则命中）。
+ * 的范围只有靠末端一小截，视觉上弱到难以察觉；三段式把虚化铺满整个渐变带。
  *
  * 渐变带的位置用百分比而非绝对长度：百分比相对 inner 的**当前渲染高度**，而该高度
  * 在动画期间随 max-height 逐帧变化——mask 字符串本身不需要插值，渲染结果会自动
@@ -140,7 +134,7 @@
  * 渐变长度由活动长度变量控制，其过渡见上方说明。
  * 末端颜色由 `--wui-collapse-peek-edge-color` 覆盖（需带 alpha，mask 按 alpha 解析）。
  */
-.wui-collapse-track[data-wui-peek][data-wui-peek-edge] .wui-collapse-inner {
+.wui-collapse-track[data-wui-peek] .wui-collapse-inner {
   mask-image: linear-gradient(
     to bottom,
     black 0%,
@@ -150,11 +144,7 @@
   );
 }
 
-.wui-collapse-track[data-wui-peek]:not([data-wui-presence]).is-horizontal .wui-collapse-inner {
-  max-width: var(--wui-collapse-peek, 0);
-}
-
-.wui-collapse-track[data-wui-peek][data-wui-peek-edge].is-horizontal .wui-collapse-inner {
+.wui-collapse-track[data-wui-peek].is-horizontal .wui-collapse-inner {
   mask-image: linear-gradient(
     to right,
     black 0%,
@@ -165,11 +155,34 @@
 }
 
 /*
- * 非展开态（关闭稳态 + 收起动画进行中）让活动长度取 peek-edge：
+ * 裁剪长度只在关闭稳态由 CSS 声明；动画期间由内联长度覆盖，落稳态清除后回到这里。
+ * 下面几条 peek 规则按选择器特异性升序排列（`no-descending-specificity`）：
+ * 不带 presence 限定的两条 mask 在最前，horizontal 的裁剪（多一个类）在最后。
+ */
+.wui-collapse-track[data-wui-peek]:not([data-wui-presence]) .wui-collapse-inner {
+  max-height: var(--wui-collapse-peek, 0);
+}
+
+/*
+ * 非展开态（关闭稳态 + 收起动画进行中）让活动长度取推导值：
  * 收起动画一开始渐变带就开始淡入，与裁剪长度同步，而不是落稳态才出现。
  * 展开态（presence='open'）不命中 → 活动长度回落到 0 → mask 整段不透明，
  * 完全展开的内容不再有底部淡出。
+ *
+ * 推导写成 `var(--wui-collapse-peek-edge, <推导式>)`：显式设了长度就听调用方的，
+ * 没设才按比例算——逃生舱仍然是纯 CSS 变量，不占组件属性名额。
  */
-.wui-collapse-track[data-wui-peek][data-wui-peek-edge]:not([data-wui-presence='open']) .wui-collapse-inner {
-  --wui-collapse-peek-edge-active: var(--wui-collapse-peek-edge);
+.wui-collapse-track[data-wui-peek]:not([data-wui-presence='open']) .wui-collapse-inner {
+  --wui-collapse-peek-edge-active: var(
+    --wui-collapse-peek-edge,
+    clamp(
+      0px,
+      calc(var(--wui-collapse-peek, 0px) * var(--wui-collapse-peek-edge-ratio, 0.25)),
+      var(--wui-collapse-peek-edge-max, 64px)
+    )
+  );
+}
+
+.wui-collapse-track[data-wui-peek]:not([data-wui-presence]).is-horizontal .wui-collapse-inner {
+  max-width: var(--wui-collapse-peek, 0);
 }
