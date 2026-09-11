@@ -106,7 +106,7 @@ import { lucideChevronDown, radixIconsPanelLeftMinimized } from '@greypan/web-ui
         </button>
         <div slot="content">
           <div class="p-3">
-            <p v-for="i in 8" :key="i">段落 {{ i }}：渐隐长度取 peek 的 25%（200px → 50px），无需单独指定。</p>
+            <p v-for="i in 8" :key="i">段落 {{ i }}：渐隐长度取 peek 的 40%（200px → 80px），无需单独指定。</p>
           </div>
         </div>
       </web-ui-collapse>

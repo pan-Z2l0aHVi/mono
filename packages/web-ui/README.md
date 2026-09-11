@@ -863,14 +863,14 @@ The initial `open` attribute settles instantly without playing the animation. Ne
 
 | Custom property                  | Default       | Description                                                           |
 | -------------------------------- | ------------- | --------------------------------------------------------------------- |
-| `--wui-collapse-peek-edge-ratio` | `0.25`        | Fade length as a fraction of `peek`                                   |
-| `--wui-collapse-peek-edge-max`   | `64px`        | Upper bound, so a large `peek` cannot produce an oversized fade band  |
+| `--wui-collapse-peek-edge-ratio` | `0.4`         | Fade length as a fraction of `peek`                                   |
+| `--wui-collapse-peek-edge-max`   | `112px`       | Upper bound, so a large `peek` cannot produce an oversized fade band  |
 | `--wui-collapse-peek-edge`       | —             | Explicit fade length; wins over the derived value                     |
 | `--wui-collapse-peek-edge-color` | `transparent` | Fade-stop color (must carry alpha — `mask-image` reads alpha channel) |
 
 Set the ratio to `0` to turn the fade off. The derivation is pure CSS `calc(peek * ratio)`, so a `rem`-based `peek` scales the fade with the root font size and nothing has to be measured in JS. Known limitation: a percentage `peek` does not derive to a length, so the fade silently falls back to "none" — set `--wui-collapse-peek-edge` explicitly in that case.
 
-The fade is a three-stop gradient rather than a linear one: the body stays fully opaque to the start of the fade band, drops to 50% alpha across its middle, then reaches the edge color. A plain linear gradient only visibly softens the last sliver of the band; spreading the fade across the whole band reads far more clearly at the same length.
+The fade is a four-stop ease-out gradient rather than a linear one: the body stays fully opaque to the start of the fade band, drops to 60% alpha within the first 30% of the band, then 26%, then reaches the edge color. A linear gradient hugs 1.0 alpha across the first 40% of the band, so the eye perceives a much shorter fade than declared — front-loading the drop makes the band visibly soft from its very start, nearly doubling the perceived length at the same size.
 
 The fade band is positioned in percentages, relative to the container's **current rendered height** — which is what `max-height` animates. So the band tracks the cut edge frame by frame during the collapse animation without the `mask-image` string ever needing to interpolate. Its length is driven by a registered `<length>` custom property so it can fade in and out with the toggle instead of popping in once the close animation settles.
 

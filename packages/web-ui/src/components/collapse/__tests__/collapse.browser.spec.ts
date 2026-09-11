@@ -444,7 +444,7 @@ describe('WebUiCollapse 组件（浏览器）', () => {
   })
 
   describe('peek 边缘渐隐（长度由 peek 推导）', () => {
-    it('关闭稳态含 mask-image，渐变长度取 peek 的默认比例（0.25）', async () => {
+    it('关闭稳态含 mask-image，渐变长度取 peek 的默认比例（0.4）', async () => {
       const el = createPeekCollapse(
         '80px',
         '<button class="trigger">Trigger</button><div slot="content">Long enough content to exceed peek so the track has measurable height.</div>'
@@ -452,12 +452,12 @@ describe('WebUiCollapse 组件（浏览器）', () => {
       await el.updateComplete
       // Chromium 把 `black` 序列化为 `rgb(0, 0, 0)`、`transparent` 序列化为
       // `rgba(0, 0, 0, 0)`，并把 `to bottom` 标准化为角度；渐变形态用 stop 列表验证，
-      // 长度直接读活动长度（比匹配 mask 字符串稳：第三段 stop 是它的半值，字符串
-      // 可能与其他长度巧合重合）。80px * 0.25 = 20px。
+      // 长度直接读活动长度（比匹配 mask 字符串稳：中段 stop 是它的 0.7/0.35 倍，
+      // 字符串可能与其他长度巧合重合）。80px * 0.4 = 32px。
       const mask = getComputedStyle(queryInner(el)).maskImage
       expect(mask).toContain('linear-gradient')
       expect(mask).toContain('rgba(0, 0, 0, 0)')
-      expect(activeEdge(el)).toBeCloseTo(20, 3)
+      expect(activeEdge(el)).toBeCloseTo(32, 3)
 
       el.remove()
     })
@@ -473,7 +473,7 @@ describe('WebUiCollapse 组件（浏览器）', () => {
       await el.updateComplete
       // 渐变形态与 vertical 一致（只有 to 方向不同），命中 `[data-wui-peek].is-horizontal`。
       expect(getComputedStyle(queryInner(el)).maskImage).toContain('linear-gradient')
-      expect(activeEdge(el)).toBeCloseTo(20, 3)
+      expect(activeEdge(el)).toBeCloseTo(32, 3)
 
       el.remove()
     })
@@ -507,14 +507,14 @@ describe('WebUiCollapse 组件（浏览器）', () => {
       el.remove()
     })
 
-    it('推导长度夹在 --wui-collapse-peek-edge-max 以内（默认 64px）', async () => {
+    it('推导长度夹在 --wui-collapse-peek-edge-max 以内（默认 112px）', async () => {
       const el = createPeekCollapse(
         '400px',
         '<button class="trigger">Trigger</button><div slot="content"><div style="height: 400px">Tall content</div></div>'
       )
       await el.updateComplete
-      // 400px * 0.25 = 100px，被上限夹到 64px：大 peek 不会算出过长的虚化带。
-      expect(activeEdge(el)).toBeCloseTo(64, 3)
+      // 400px * 0.4 = 160px，被上限夹到 112px：大 peek 不会算出过长的虚化带。
+      expect(activeEdge(el)).toBeCloseTo(112, 3)
 
       el.remove()
     })
@@ -556,8 +556,8 @@ describe('WebUiCollapse 组件（浏览器）', () => {
       await nextFrame()
       expect(activeEdge(el)).toBeGreaterThan(0)
 
-      // 收敛到推导值：300px * 0.25 = 75px，夹到上限 64px。
-      await waitForActiveEdge(el, 64)
+      // 收敛到推导值：300px * 0.4 = 120px，夹到上限 112px。
+      await waitForActiveEdge(el, 112)
       el.remove()
     })
 
@@ -606,10 +606,10 @@ describe('WebUiCollapse 组件（浏览器）', () => {
 
       el.open = false
       await el.updateComplete
-      await waitForActiveEdge(el, 20)
+      await waitForActiveEdge(el, 32)
       // 关闭稳态：动画结束后 presence 移除，但规则仍命中（:not([data-wui-presence='open'])）。
       await waitFor(() => queryTrack(el).getAttribute('data-wui-presence') === null)
-      expect(activeEdge(el)).toBeCloseTo(20, 0)
+      expect(activeEdge(el)).toBeCloseTo(32, 0)
 
       el.remove()
     })
