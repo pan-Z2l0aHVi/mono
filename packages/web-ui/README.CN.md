@@ -787,14 +787,13 @@ await preview.closed
 
 文档流内的展开收起容器，带高度（或宽度）过渡动画。单元素双插槽；无 portal、无滚动锁定、无焦点管理。
 
-| 属性           | 类型      | 默认值  | 说明                                                                                |
-| -------------- | --------- | ------- | ----------------------------------------------------------------------------------- |
-| `open`         | `boolean` | `false` | 展开状态；交互时自管理，`open-change` 仅用户来源时派发                              |
-| `disabled`     | `boolean` | `false` | 忽略 trigger 点击并在 trigger 元素上设 `aria-disabled`；已展开内容保持现状          |
-| `horizontal`   | `boolean` | `false` | 沿宽度而非高度动画                                                                  |
-| `keep-mounted` | `boolean` | `false` | 关闭稳态以 `inert` 保留在 0fr 轨道内（滚动位置与布局可测量），而非内部容器 `hidden` |
-| `peek`         | `string`  | —       | 关闭稳态露出的尺寸（CSS 长度，如 `120px`），沿动画轴生效                            |
-| `peek-edge`    | `string`  | `''`    | 露出区域裁剪边缘的 alpha 渐变长度（CSS 长度，如 `24px`）；空字符串关闭渐变          |
+| 属性           | 类型      | 默认值  | 说明                                                                                 |
+| -------------- | --------- | ------- | ------------------------------------------------------------------------------------ |
+| `open`         | `boolean` | `false` | 展开状态；交互时自管理，`open-change` 仅用户来源时派发                               |
+| `disabled`     | `boolean` | `false` | 忽略 trigger 点击并在 trigger 元素上设 `aria-disabled`；已展开内容保持现状           |
+| `horizontal`   | `boolean` | `false` | 沿宽度而非高度动画                                                                   |
+| `keep-mounted` | `boolean` | `false` | 关闭稳态以 `inert` 保留在 0fr 轨道内（滚动位置与布局可测量），而非内部容器 `hidden`  |
+| `peek`         | `string`  | —       | 关闭稳态露出的尺寸（CSS 长度，如 `120px`），沿动画轴生效；末端自带自动长度的边缘渐隐 |
 
 **事件：** `open-change` (`CustomEvent<{ open: boolean }>`)。仅用户来源的切换（trigger 点击）派发；程序化写入（`open`、`show()`、`close()`、`toggle()`）不派发。嵌套时内层 `open-change` 会冒泡穿过外层根（composed 事件），按 `event.target` 区分。
 
@@ -824,16 +823,26 @@ await preview.closed
 </web-ui-collapse>
 ```
 
-**`peek-edge`（边缘渐隐）：** 在露出区域的裁剪边缘加一段 alpha 渐变（`horizontal` 时改为右边），让被裁掉的部分柔和过渡到背景而不是硬切。长度是 CSS 长度（如 `24px`）；空字符串关闭渐变。渐变末端颜色通过 CSS 变量 `--wui-collapse-peek-edge-color` 覆盖（需带 alpha 通道，mask-image 默认按 alpha 解析）。
+**边缘渐隐：** 露出区域的裁剪边缘自带一段 alpha 渐变（`horizontal` 时改为右边），让被裁掉的部分柔和过渡到背景而不是硬切。渐变长度由 `peek` 推导，不需要也没有第二个属性可调——需要时用 CSS 变量微调：
 
-渐变是三段式而非线性：主体全黑延伸到渐变带起点，中段降到 50% alpha，末端才落到边缘颜色。纯线性渐变在同样长度下只有末端一小截"发虚"，三段式把虚化铺满整个渐变带，同样的 `peek-edge` 读起来明显得多。
+| CSS 变量                         | 默认值        | 说明                                           |
+| -------------------------------- | ------------- | ---------------------------------------------- |
+| `--wui-collapse-peek-edge-ratio` | `0.25`        | 渐变长度占 `peek` 的比例                       |
+| `--wui-collapse-peek-edge-max`   | `64px`        | 长度上限，避免大 `peek` 算出过长的虚化带       |
+| `--wui-collapse-peek-edge`       | —             | 显式指定长度，优先于推导值                     |
+| `--wui-collapse-peek-edge-color` | `transparent` | 渐变末端颜色（需带 alpha，mask 按 alpha 解析） |
+
+比例设为 `0` 即关闭渐隐。推导是纯 CSS 的 `calc(peek * ratio)`：`peek` 用 rem 时渐变长度自动跟随根字号缩放，JS 侧不需要做任何单位解析。已知限制：`peek` 取百分比时推导结果不是长度、无法被注册属性插值，会静默回落为「无渐隐」，此时请用 `--wui-collapse-peek-edge` 显式指定长度。
+
+渐变是三段式而非线性：主体全黑延伸到渐变带起点，中段降到 50% alpha，末端才落到边缘颜色。纯线性渐变在同样长度下只有末端一小截"发虚"，三段式把虚化铺满整个渐变带。
 
 渐变带位置用百分比声明、相对容器的**当前渲染高度**（即 `max-height` 动画的那个高度），因此收起动画期间渐变带逐帧跟随裁剪边缘移动，`mask-image` 字符串本身无需插值。渐变带长度由注册的 `<length>` 自定义属性驱动，随开合动画平滑淡入淡出，而不是等收起动画落稳态才突然出现。
 
 ```html
-<web-ui-collapse peek="120px" peek-edge="32px">
+<!-- 120px 露出区域，末端 30px 渐隐（比例 0.25） -->
+<web-ui-collapse peek="120px">
   <button type="button">点击切换</button>
-  <div slot="content">很长的内容——120px 露出区域的底部有 32px 柔和渐隐</div>
+  <div slot="content">很长的内容——120px 露出区域的底部柔和渐隐到背景</div>
 </web-ui-collapse>
 ```
 
