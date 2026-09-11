@@ -59,11 +59,49 @@
   }
 }
 
+/*
+ * peek 模式下轨道恒为 1fr（高度始终由内容驱动），裁剪长度交给 inner 的
+ * max-height/max-width：这样 `peek` 与内容尺寸的较小值由 CSS 原生解析——内容不足
+ * `peek` 时不残留空白，也不会被撑到 `peek`——而动画两端都是长度，可被浏览器插值
+ * （fit-content 或 minmax 的关态与内容高度之间无法插值，实测会退化成跳变）。
+ *
+ * 注意不能限定 `:not([data-wui-presence])`：收起动画期间 presence='closing'，
+ * 轨道会掉回 0fr 先把内容压成 0 再弹回，动画被毁。
+ */
+.wui-collapse-track[data-wui-peek] {
+  grid-template-rows: 1fr;
+
+  &.is-horizontal {
+    grid-template-columns: 1fr;
+    grid-template-rows: none;
+  }
+}
+
 .wui-collapse-inner {
   overflow: hidden;
   min-height: 0;
+
+  /* peek 展开/收起的过渡落在裁剪长度上；轨道静止在 1fr，只跟随 inner 的高度变化。 */
+  transition: max-height var(--wui-duration-collapse-enter, 200ms) var(--wui-ease-enter, cubic-bezier(0.23, 1, 0.32, 1));
 }
 
 .is-horizontal .wui-collapse-inner {
   min-width: 0;
+  transition-property: max-width;
+}
+
+.wui-collapse-track[data-wui-presence='closing'] .wui-collapse-inner {
+  transition-duration: var(--wui-duration-collapse-exit, 160ms);
+}
+
+/*
+ * 裁剪长度只在关闭稳态由 CSS 声明；动画期间由内联长度覆盖，落稳态清除后回到这里。
+ * 必须排在 inner 各规则之后：特异性最高，no-descending-specificity 要求低特异性先行。
+ */
+.wui-collapse-track[data-wui-peek]:not([data-wui-presence]) .wui-collapse-inner {
+  max-height: var(--wui-collapse-peek, 0);
+}
+
+.wui-collapse-track[data-wui-peek]:not([data-wui-presence]).is-horizontal .wui-collapse-inner {
+  max-width: var(--wui-collapse-peek, 0);
 }

@@ -100,4 +100,32 @@ describe('减少动效下的 Collapse（浏览器）', () => {
     expect(el.shadowRoot!.querySelector<HTMLElement>('.wui-collapse-content')!.hidden).toBe(false)
     expect(el.shadowRoot!.querySelector('.wui-collapse-inner')?.getAttribute('inert')).not.toBeNull()
   })
+
+  it('peek 开合在 reduced 下瞬时完成，无中间高度', async () => {
+    const theme = document.createElement('web-ui-theme')
+    theme.setAttribute('appearance', 'light')
+    theme.setAttribute('motion', 'reduced')
+    document.body.append(theme)
+
+    const el = document.createElement('web-ui-collapse')
+    el.peek = '100px'
+    el.innerHTML =
+      '<button class="trigger">Trigger</button><div slot="content"><div style="height: 300px">Content</div></div>'
+    theme.append(el)
+    await el.updateComplete
+
+    const track = queryTrack(el)
+    expect(track.getBoundingClientRect().height).toBeCloseTo(100, 0)
+
+    el.open = true
+    await el.updateComplete
+    await nextFrame()
+    expect(track.getBoundingClientRect().height).toBeCloseTo(300, 0)
+
+    el.open = false
+    await el.updateComplete
+    await nextFrame()
+    expect(track.getBoundingClientRect().height).toBeCloseTo(100, 0)
+    expect(el.shadowRoot!.querySelector('.wui-collapse-inner')?.getAttribute('inert')).not.toBeNull()
+  })
 })
