@@ -289,6 +289,7 @@ All form controls participate in native `FormData`, constraint validation, `form
 |                        | [`<web-ui-button-group>`](#web-ui-button-group)           |
 | **Overlay / Modal**    | [`<web-ui-dialog>`](#web-ui-dialog)                       |
 |                        | [`<web-ui-drawer>`](#web-ui-drawer)                       |
+|                        | [`imagePreview()`](#imagepreview)                         |
 | **In-flow Disclosure** | [`<web-ui-collapse>`](#web-ui-collapse)                   |
 | **Floating**           | [`<web-ui-popover>`](#web-ui-popover)                     |
 |                        | [`<web-ui-tooltip>`](#web-ui-tooltip)                     |
@@ -759,6 +760,60 @@ Closing keeps the native dialog in the top layer until the `--wui-duration-drawe
 | `--wui-drawer-header-padding`     | `16px 20px`                        | Header section padding                                                       |
 | `--wui-drawer-content-padding`    | `20px`                             | Content area padding; also drives drag bar visual center (half value)        |
 | `--wui-drawer-footer-padding`     | `16px 20px`                        | Footer section padding                                                       |
+
+#### `imagePreview()`
+
+Imperative image preview with no declarative tag contract: open it through `imagePreview()` and drive it through the returned handle. It uses the native `<dialog>` `showModal()` and mounts into the nearest `web-ui-theme` overlay container, falling back to the global fallback root when no theme scope exists.
+
+```ts
+import { imagePreview } from '@greypan/web-ui'
+
+const preview = imagePreview({
+  images: [{ src: '/a.jpg', alt: 'Image A' }, { src: '/b.jpg' }],
+  index: 0
+})
+
+preview.next()
+preview.zoomIn()
+
+await preview.closed
+```
+
+**Options:**
+
+| Option      | Type                 | Default | Description                                                |
+| ----------- | -------------------- | ------- | ---------------------------------------------------------- |
+| `images`    | `ImagePreviewItem[]` | —       | Image list; must contain at least one item, else it throws |
+| `index`     | `number`             | `0`     | Initial index, clamped into range                          |
+| `loop`      | `boolean`            | `true`  | Wrap around at both ends                                   |
+| `target`    | `Element`            | —       | Trigger element used to resolve the nearest theme scope    |
+| `container` | `HTMLElement`        | —       | Explicit mount container, highest priority                 |
+
+`ImagePreviewItem` is `{ src: string; alt?: string }`; a missing `alt` defaults to an empty string.
+
+**Returned handle:**
+
+| Member                                   | Type                          | Description                                     |
+| ---------------------------------------- | ----------------------------- | ----------------------------------------------- |
+| `index`                                  | `number`                      | Current index; keeps its last value after close |
+| `scale`                                  | `number`                      | Current zoom factor within `[1, 4]`             |
+| `images`                                 | `readonly ImagePreviewItem[]` | Normalized image list                           |
+| `closed`                                 | `Promise<void>`               | Resolves after the exit transition and unmount  |
+| `next()` / `prev()`                      | `() => void`                  | Relative navigation                             |
+| `goTo(index)`                            | `(index: number) => void`     | Jump; clamps at the bounds when `loop` is off   |
+| `zoomIn()` / `zoomOut()` / `resetZoom()` | `() => void`                  | Zoom controls                                   |
+| `close()`                                | `() => void`                  | Close and play the exit animation               |
+
+**Interaction:** Prev/next buttons and arrow keys navigate, a counter announces the position through `aria-live`, `+` / `-` and the wheel zoom, `0` resets, a zoomed image can be dragged to pan, and double-clicking the image toggles between 1x and 2x. Clicking anywhere outside the image, or pressing Escape, closes the preview. The native dialog always exposes the accessible name `图片预览`.
+
+A close request does not destroy the native dialog immediately: it stays in the top layer until the exit transition completes, then `dialog.close()` runs, the host is removed from the DOM, and `closed` resolves. Page scroll is locked while open.
+
+**CSS Custom Properties:**
+
+| Property                         | Default             | Description                             |
+| -------------------------------- | ------------------- | --------------------------------------- |
+| `--wui-image-preview-overlay-bg` | `rgb(0 0 0 / 0.72)` | Full-viewport backdrop background color |
+| `--wui-image-preview-edge-gap`   | `20px`              | Distance from controls to viewport edge |
 
 ---
 

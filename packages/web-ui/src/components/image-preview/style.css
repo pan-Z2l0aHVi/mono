@@ -1,0 +1,187 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+:host {
+  display: contents;
+}
+
+/*
+ * 全视口 dialog：遮罩由 dialog 自身的背景提供（而非 ::backdrop），
+ * 这样进/退场只需淡出一个元素，图片与控件随整体一起过渡。
+ */
+dialog {
+  transform: scale(var(--wui-scale-enter, 0.97));
+
+  overflow: hidden;
+
+  box-sizing: border-box;
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  height: 100dvh;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: none;
+
+  font-family: inherit;
+  color: var(--wui-color-text, #1b1b1b);
+
+  opacity: 0;
+  background: var(--wui-image-preview-overlay-bg, rgb(0 0 0 / 0.72));
+
+  transition:
+    opacity var(--wui-duration-overlay-enter, 180ms) var(--wui-ease-enter, cubic-bezier(0.23, 1, 0.32, 1)),
+    transform var(--wui-duration-overlay-enter, 180ms) var(--wui-ease-enter, cubic-bezier(0.23, 1, 0.32, 1));
+}
+
+/* dialog 已铺满视口，原生遮罩不再叠加着色，避免双重变暗。 */
+dialog::backdrop {
+  background: transparent;
+}
+
+dialog[open].is-visible {
+  transform: scale(1);
+  opacity: 1;
+}
+
+dialog.is-closing {
+  pointer-events: none;
+  transition-duration: var(--wui-duration-overlay-exit, 140ms);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  dialog,
+  dialog[open].is-visible {
+    transform: none;
+    transition-duration: var(--wui-duration-feedback, 100ms);
+  }
+}
+
+/* ===== 图像舞台 ===== */
+
+.wui-image-preview-stage {
+  touch-action: none;
+  cursor: zoom-in;
+
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+
+  width: 100%;
+  height: 100%;
+}
+
+.wui-image-preview-stage.is-zoomed {
+  cursor: grab;
+}
+
+.wui-image-preview-stage.is-panning {
+  cursor: grabbing;
+}
+
+.wui-image-preview-image {
+  user-select: none;
+
+  display: block;
+
+  max-width: 100%;
+  max-height: 100%;
+
+  opacity: 0;
+  object-fit: contain;
+
+  /* 拖拽缩放不参与 transform 过渡（见 .is-panning），避免跟手位移滞后。 */
+  transition:
+    opacity var(--wui-duration-trigger, 160ms) var(--wui-ease-enter, cubic-bezier(0.23, 1, 0.32, 1)),
+    transform var(--wui-duration-trigger, 160ms) var(--wui-ease-enter, cubic-bezier(0.23, 1, 0.32, 1));
+
+  -webkit-user-drag: none;
+}
+
+.wui-image-preview-image.is-loaded {
+  opacity: 1;
+}
+
+.wui-image-preview-stage.is-panning .wui-image-preview-image {
+  transition: opacity var(--wui-duration-trigger, 160ms) var(--wui-ease-enter, cubic-bezier(0.23, 1, 0.32, 1));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wui-image-preview-image,
+  .wui-image-preview-stage.is-panning .wui-image-preview-image {
+    transition: opacity var(--wui-duration-feedback, 100ms);
+  }
+}
+
+/* ===== 控件层 ===== */
+
+/* 整层不接收指针事件，命中测试穿透到舞台，空白处点击仍视为遮罩。 */
+.wui-image-preview-controls {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+}
+
+.wui-image-preview-controls > * {
+  pointer-events: auto;
+}
+
+.wui-image-preview-counter {
+  position: absolute;
+  top: var(--wui-image-preview-edge-gap, 20px);
+  left: var(--wui-image-preview-edge-gap, 20px);
+
+  padding: 4px 12px;
+  border-radius: var(--wui-radius-control, calc(infinity * 1px));
+
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  color: var(--wui-color-text, #1b1b1b);
+}
+
+.wui-image-preview-close {
+  position: absolute;
+  top: var(--wui-image-preview-edge-gap, 20px);
+  right: var(--wui-image-preview-edge-gap, 20px);
+}
+
+.wui-image-preview-nav {
+  position: absolute;
+  top: 50%;
+  translate: 0 -50%;
+}
+
+.wui-image-preview-nav-prev {
+  left: var(--wui-image-preview-edge-gap, 20px);
+}
+
+.wui-image-preview-nav-next {
+  right: var(--wui-image-preview-edge-gap, 20px);
+}
+
+.wui-image-preview-toolbar {
+  position: absolute;
+  bottom: var(--wui-image-preview-edge-gap, 20px);
+  left: 50%;
+  translate: -50% 0;
+
+  display: flex;
+  gap: 6px;
+  align-items: center;
+
+  padding: 6px 10px;
+  border-radius: var(--wui-radius-control, calc(infinity * 1px));
+}
+
+.wui-image-preview-scale {
+  min-width: 48px;
+
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  color: var(--wui-color-text, #1b1b1b);
+  text-align: center;
+}
