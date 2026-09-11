@@ -1,8 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
 
 import '@/components/drawer'
+import '@/components/popover'
 
 import '..'
+import type { WebUiPopover } from '@/components/popover'
+
 import type { WebUiDropdown } from '..'
 
 const SUBMENU =
@@ -11,6 +14,15 @@ const SUBMENU =
 function getMenus(): HTMLElement[] {
   const root = document.querySelector<HTMLElement>('[data-wui-overlay-root]')?.shadowRoot
   return Array.from(root?.querySelectorAll<HTMLElement>('[role="menu"]') ?? [])
+}
+
+function getPortalPanels(selector: string): HTMLElement[] {
+  return Array.from(document.querySelectorAll<HTMLElement>('[data-wui-overlay-root]'))
+    .flatMap(root =>
+      Array.from(root.shadowRoot?.querySelectorAll<HTMLElement>('[data-wui-overlay-container] > div') ?? [])
+    )
+    .map(host => host?.shadowRoot?.querySelector<HTMLElement>(selector))
+    .filter((panel): panel is HTMLElement => panel instanceof HTMLElement)
 }
 
 async function nextFrame() {
@@ -81,6 +93,85 @@ describe('WebUiDropdown 组件（浏览器）', () => {
     } finally {
       warn.mockRestore()
     }
+  })
+
+  it('根菜单打开后同帧卸载不重建 panel 或焦点', async () => {
+    const menu = document.createElement('web-ui-dropdown')
+    menu.innerHTML = '<button slot="trigger">Menu</button><web-ui-dropdown-item>Open</web-ui-dropdown-item>'
+    document.body.append(menu)
+    await menu.updateComplete
+
+    menu.open = true
+    await menu.updateComplete
+    menu.remove()
+    await nextFrame()
+    await nextFrame()
+
+    expect(getMenus()).toHaveLength(0)
+    expect(document.activeElement).toBe(document.body)
+  })
+
+  it('子菜单打开后同帧卸载不重建子面板', async () => {
+    const menu = document.createElement('web-ui-dropdown')
+    menu.innerHTML = SUBMENU
+    document.body.append(menu)
+    await menu.updateComplete
+
+    menu.open = true
+    await menu.updateComplete
+    await nextFrame()
+    await nextFrame()
+
+    const parentItem = getMenus()[0]?.querySelector<HTMLElement>('web-ui-dropdown-item')
+    parentItem?.click()
+    await menu.updateComplete
+    menu.remove()
+    await nextFrame()
+    await nextFrame()
+
+    expect(getMenus()).toHaveLength(0)
+  })
+
+  it('dropdown panel 内的嵌套子 overlay 不会被 outside click 关闭', async () => {
+    const menu = document.createElement('web-ui-dropdown')
+    menu.innerHTML = `
+      <button slot="trigger">Menu</button>
+      <web-ui-dropdown-item>
+        Actions
+        <web-ui-popover portal>
+          <button slot="trigger">Nested</button>
+          <div>Nested panel</div>
+        </web-ui-popover>
+      </web-ui-dropdown-item>
+    `
+    document.body.append(menu)
+    await menu.updateComplete
+
+    menu.open = true
+    await menu.updateComplete
+    await nextFrame()
+    await nextFrame()
+
+    const nested = getMenus()[0]?.querySelector<WebUiPopover>('web-ui-popover')
+    expect(nested).toBeTruthy()
+    nested!.show()
+    await nested!.updateComplete
+    await nextFrame()
+
+    const nestedPanel = getPortalPanels('[role="dialog"]').find(panel => panel.textContent?.includes('Nested panel'))
+    expect(nestedPanel).toBeTruthy()
+    nestedPanel?.click()
+    await menu.updateComplete
+    await nested!.updateComplete
+
+    expect(menu.open).toBe(true)
+    expect(nested!.open).toBe(true)
+
+    document.body.click()
+    await menu.updateComplete
+    await nested!.updateComplete
+    expect(menu.open).toBe(false)
+    expect(nested!.open).toBe(false)
   })
 
   it('键盘语义激活可以关闭并重新打开子菜单', async () => {

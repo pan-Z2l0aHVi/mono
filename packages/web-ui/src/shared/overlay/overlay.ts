@@ -11,6 +11,8 @@ import {
 } from '@floating-ui/dom'
 import { definePlugin } from '@greypan/js-kit'
 
+import { defineOverlayPositioningGeneration, type OverlayPositioningGeneration } from './positioning-generation'
+
 export interface OverlayOptions {
   placement?: Placement
   offset?: number
@@ -23,7 +25,7 @@ export interface OverlayOptions {
   strategy?: Strategy
 }
 
-/** 虚拟锚点：无对应 DOM 元素的定位基准。context-menu 未走 defineOverlay（定位语义分歧见 ADR-0046）。 */
+/** 虚拟锚点：无对应 DOM 元素的定位基准。context-menu 未走 defineOverlay（定位语义分歧见 ADR-0038）。 */
 export interface OverlayVirtualAnchor {
   getBoundingClientRect(): DOMRect
 }
@@ -73,14 +75,18 @@ function clearManagedWidthStyles(overlay: HTMLElement) {
 function createWidthMiddleware(
   overlay: HTMLElement,
   options: Required<OverlayOptions>,
-  widthStyles: WidthStyleState
+  widthStyles: WidthStyleState,
+  positioningGeneration: OverlayPositioningGeneration,
+  generation: number
 ): Middleware | undefined {
+  const isCurrentGeneration = () => positioningGeneration.isCurrent(generation)
   if (options.matchWidth) {
     // matchWidth 必须移除之前 minAnchorWidth 写入的 min-width，才能精确跟随 trigger。
     overlay.style.removeProperty('min-width')
     widthStyles.hasManagedStyles = true
     return size({
       apply({ rects }) {
+        if (!isCurrentGeneration()) return
         overlay.style.width = `${rects.reference.width}px`
       }
     })
@@ -91,6 +97,7 @@ function createWidthMiddleware(
     widthStyles.hasManagedStyles = true
     return size({
       apply({ rects }) {
+        if (!isCurrentGeneration()) return
         // max-content 让内容决定宽度，min-width 再提供 trigger 与 floor 两个下限。
         overlay.style.width = 'max-content'
         overlay.style.minWidth = `${Math.max(rects.reference.width, minWidth)}px`
@@ -109,13 +116,15 @@ function createWidthMiddleware(
 function createPositioningMiddleware(
   overlay: HTMLElement,
   options: Required<OverlayOptions>,
-  widthStyles: WidthStyleState
+  widthStyles: WidthStyleState,
+  positioningGeneration: OverlayPositioningGeneration,
+  generation: number
 ): Middleware[] {
   const middleware: Middleware[] = [offset(options.offset)]
   if (options.flip) middleware.push(flip())
   if (options.shift) middleware.push(shift({ padding: 8 }))
 
-  const widthMiddleware = createWidthMiddleware(overlay, options, widthStyles)
+  const widthMiddleware = createWidthMiddleware(overlay, options, widthStyles, positioningGeneration, generation)
   if (widthMiddleware) middleware.push(widthMiddleware)
 
   return middleware
@@ -149,9 +158,13 @@ export const defineOverlay = () =>
     let isOpen = false
     let cleanupAutoUpdate: (() => void) | null = null
     let currentAnchor = ctx.anchor
+    // 每次刷新都是新定位代；open 期间 autoUpdate 的多次回调属于同一代。
+    // reposition/close 会让上一代 promise 失效，避免乱序完成覆盖最新坐标。
+    const positioningGeneration = defineOverlayPositioningGeneration().make()
 
     function updatePosition() {
-      const middleware = createPositioningMiddleware(overlay, options, widthStyles)
+      const generation = positioningGeneration.next()
+      const middleware = createPositioningMiddleware(overlay, options, widthStyles, positioningGeneration, generation)
 
       const applyPosition = () => {
         void computePosition(currentAnchor, overlay, {
@@ -159,6 +172,7 @@ export const defineOverlay = () =>
           strategy: options.strategy,
           middleware
         }).then(({ x, y, placement }) => {
+          if (!positioningGeneration.isCurrent(generation) || !isOpen) return
           overlay.style.left = `${x}px`
           overlay.style.top = `${y}px`
           overlay.style.setProperty('--wui-internal-overlay-transform-origin', getTransformOrigin(placement))
@@ -187,6 +201,7 @@ export const defineOverlay = () =>
       close() {
         if (!isOpen) return
         isOpen = false
+        positioningGeneration.invalidate()
         cleanupAutoUpdate?.()
         cleanupAutoUpdate = null
       },

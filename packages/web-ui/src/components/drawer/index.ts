@@ -235,7 +235,7 @@ export class WebUiDrawer extends LitElement {
         const raw = this._dragInitialOffset + pointerDelta * this._dragCloseSign
         this._dragOffset = rubberband(raw, this._measureDragSize() * 0.1, 0.15)
 
-        // 达到关闭阈值时胶囊变 accent 色作视觉确认（ADR-0035）。
+        // 达到关闭阈值时胶囊变 accent 色作视觉确认（ADR-0027）。
         const dragSize = this._measureDragSize()
         dialog.classList.toggle('is-drag-close', dragSize > 0 && this._dragOffset > dragSize * DRAG_CLOSE_RATIO)
         this._applyDragOffset(dialog, this._dragOffset)

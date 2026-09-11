@@ -60,6 +60,9 @@ jobs:
       - name: Check shared agent context
         run: pnpm run validate:context
 
+      - name: Audit agent instruction gates
+        run: pnpm run audit:instructions -- --strict --json
+
       - name: Check changesets
         if: github.event_name == 'pull_request' && github.head_ref != 'changeset-release/main'
         run: pnpm exec changeset status --since=origin/${{ github.base_ref }}

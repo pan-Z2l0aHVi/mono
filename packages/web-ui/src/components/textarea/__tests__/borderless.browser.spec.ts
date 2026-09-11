@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from 'vite-plus/test'
 import { userEvent } from 'vite-plus/test/browser'
 
 import '..'
+import { pollUntil } from '@/shared/test-utils'
 
 afterEach(() => document.body.replaceChildren())
 
@@ -32,8 +33,11 @@ describe('WebUiTextarea borderless（浏览器）', () => {
 
     await userEvent.keyboard('{Tab}')
     await el.updateComplete
-    // focus ring 走 200ms box-shadow 过渡，等过渡完成后再断言终值
-    await new Promise(resolve => setTimeout(resolve, 300))
+    // focus ring 走 200ms box-shadow 过渡；轮询终值，不依赖固定时长
+    await pollUntil(
+      () => getComputedStyle(inner, '::after').boxShadow.includes('rgb(0, 136, 255)'),
+      'Expected textarea focus ring transition to settle'
+    )
     const focusedStyle = getComputedStyle(inner, '::after')
     expect(el.hasAttribute('focused')).toBe(true)
     expect(el.shadowRoot?.querySelector('textarea')?.matches(':focus-visible')).toBe(true)

@@ -259,6 +259,7 @@ dropdown、tooltip）不需要它。
 |                       | [`<web-ui-button-group>`](#web-ui-button-group)           |
 | **浮层 / 模态**       | [`<web-ui-dialog>`](#web-ui-dialog)                       |
 |                       | [`<web-ui-drawer>`](#web-ui-drawer)                       |
+|                       | [`imagePreview()`](#imagepreview)                         |
 | **文档流 Disclosure** | [`<web-ui-collapse>`](#web-ui-collapse)                   |
 | **浮动**              | [`<web-ui-popover>`](#web-ui-popover)                     |
 |                       | [`<web-ui-tooltip>`](#web-ui-tooltip)                     |
@@ -476,8 +477,9 @@ Portal 面板创建时会镜像 host 上解析后的这些变量；更新 host �
 | `--wui-slider-vertical-height` | `200px`                             | 垂直滑块高度 |
 | `--wui-slider-height`          | `var(--wui-slider-track-size, 6px)` | 轨道厚度     |
 | `--wui-slider-track-size`      | `6px`                               | 轨道尺寸     |
-| `--wui-slider-thumb-width`     | `30px`                              | 滑块宽度     |
-| `--wui-slider-thumb-height`    | `20px`                              | 滑块高度     |
+| `--wui-slider-thumb-width`     | `24px`                              | 滑块宽度     |
+| `--wui-slider-thumb-height`    | `18px`                              | 滑块高度     |
+| `--wui-slider-thumb-radius`    | `8px`                               | 滑块圆角     |
 | `--wui-slider-marks-inset`     | `0`                                 | 刻度内缩     |
 
 #### `<web-ui-checkbox>`
@@ -663,11 +665,13 @@ Portal 面板创建时会镜像 host 上解析后的这些变量；更新 host �
 
 **CSS 自定义属性：**
 
-| 属性                      | 默认值                             | 说明                                             |
-| ------------------------- | ---------------------------------- | ------------------------------------------------ |
-| `--wui-dialog-max-width`  | `360px`                            | 对话框最大宽度                                   |
-| `--wui-dialog-overlay-bg` | `var(--wui-color-backdrop)`        | 遮罩背景色                                       |
-| `--wui-dialog-bg`         | `var(--wui-color-surface-overlay)` | 玻璃卡片背景色，回退到 `rgb(246 246 246 / 0.88)` |
+| 属性                          | 默认值                                     | 说明                                                                  |
+| ----------------------------- | ------------------------------------------ | --------------------------------------------------------------------- |
+| `--wui-dialog-max-width`      | `360px`                                    | 对话框最大宽度                                                        |
+| `--wui-dialog-max-height`     | `90vh`                                     | 对话框最大高度                                                        |
+| `--wui-dialog-overlay-bg`     | `var(--wui-color-backdrop)`                | 遮罩背景色                                                            |
+| `--wui-dialog-bg`             | `var(--wui-color-surface-overlay)`         | 玻璃卡片背景色，回退到 `rgb(246 246 246 / 0.88)`                      |
+| `--wui-dialog-footer-justify` | `flex-end`（默认）/ `center`（horizontal） | Footer `justify-content`；horizontal 模式下覆盖为 `flex-end` 可右对齐 |
 
 #### `<web-ui-drawer>`
 
@@ -696,7 +700,7 @@ Portal 面板创建时会镜像 host 上解析后的这些变量；更新 host �
 
 关闭时保留原生 dialog 的 top layer，待退出过渡完成后调用 `dialog.close()`。Escape 始终走此关闭路径；`no-backdrop-close` 仅控制遮罩点击。
 
-**拖拽关闭：** 启用 `draggable` 后，打开的抽屉在内缘显示灰色胶囊 drag bar（默认 4×56px，视觉中线距内缘 10px，位于 32px 厚的命中热区内；`right` 在左缘、`left` 在右缘、`top` 在下缘、`bottom` 在上缘）：
+**拖拽关闭：** 启用 `draggable` 后，打开的抽屉在内缘显示灰色胶囊 drag bar（默认 4×56px，视觉中线距内缘 10px，位于 20px 厚的命中热区内；`right` 在左缘、`left` 在右缘、`top` 在下缘、`bottom` 在上缘）：
 
 - 拖拽实时跟手，遮罩透明度按比例淡出。
 - 松手时位移超过抽屉尺寸约 1/3 或快速甩动即弹簧关闭，否则弹回打开位；方向随 placement 适配。
@@ -706,17 +710,74 @@ Portal 面板创建时会镜像 host 上解析后的这些变量；更新 host �
 
 **CSS 自定义属性：**
 
-| 属性                              | 默认值                             | 说明                                               |
-| --------------------------------- | ---------------------------------- | -------------------------------------------------- |
-| `--wui-drawer-width`              | `320px`                            | 抽屉宽度                                           |
-| `--wui-drawer-height`             | `300px`                            | 抽屉高度（上/下）                                  |
-| `--wui-drawer-bg`                 | `var(--wui-color-surface-overlay)` | 抽屉背景色                                         |
-| `--wui-drawer-radius`             | `var(--wui-radius-overlay, 28px)`  | 浮动卡片圆角（非 headless）                        |
-| `--wui-drawer-inset`              | `8px`                              | 浮动卡片视口留边（非 headless）；置 `0` 为贴边几何 |
-| `--wui-drawer-overlay-bg`         | `rgb(0 0 0 / 0.12)`                | 遮罩背景色                                         |
-| `--wui-drawer-drag-zone-size`     | `32px`                             | Drag-to-close 命中热区厚度（draggable）            |
-| `--wui-drawer-drag-bar-thickness` | `4px`                              | Drag bar 胶囊厚度（短轴）                          |
-| `--wui-drawer-drag-bar-length`    | `56px`                             | Drag bar 胶囊长度（沿抽屉边缘）                    |
+| 属性                              | 默认值                             | 说明                                                 |
+| --------------------------------- | ---------------------------------- | ---------------------------------------------------- |
+| `--wui-drawer-width`              | `320px`                            | 抽屉宽度                                             |
+| `--wui-drawer-height`             | `300px`                            | 抽屉高度（上/下）                                    |
+| `--wui-drawer-bg`                 | `var(--wui-color-surface-overlay)` | 抽屉背景色                                           |
+| `--wui-drawer-radius`             | `var(--wui-radius-overlay, 28px)`  | 浮动卡片圆角（非 headless）                          |
+| `--wui-drawer-inset`              | `8px`                              | 浮动卡片视口留边（非 headless）；置 `0` 为贴边几何   |
+| `--wui-drawer-overlay-bg`         | `rgb(0 0 0 / 0.12)`                | 遮罩背景色                                           |
+| `--wui-drawer-drag-zone-size`     | `20px`                             | Drag-to-close 命中热区厚度（draggable）              |
+| `--wui-drawer-drag-bar-thickness` | `4px`                              | Drag bar 胶囊厚度（短轴）                            |
+| `--wui-drawer-drag-bar-length`    | `56px`                             | Drag bar 胶囊长度（沿抽屉边缘）                      |
+| `--wui-drawer-header-padding`     | `16px 20px`                        | Header 区域 padding                                  |
+| `--wui-drawer-content-padding`    | `20px`                             | 内容区 padding；同时驱动 drag bar 视觉中线（取半值） |
+| `--wui-drawer-footer-padding`     | `16px 20px`                        | Footer 区域 padding                                  |
+
+#### `imagePreview()`
+
+命令式图片预览，没有声明式标签契约：只能通过 `imagePreview()` 打开，并用返回的句柄控制。内部使用原生 `<dialog>` 的 `showModal()`，默认挂载到目标 `web-ui-theme` 的 overlay 容器（无主题作用域时回退到全局 fallback root）。
+
+```ts
+import { imagePreview } from '@greypan/web-ui'
+
+const preview = imagePreview({
+  images: [{ src: '/a.jpg', alt: '图 A' }, { src: '/b.jpg' }],
+  index: 0
+})
+
+preview.next()
+preview.zoomIn()
+
+await preview.closed
+```
+
+**选项：**
+
+| 选项        | 类型                 | 默认值 | 说明                               |
+| ----------- | -------------------- | ------ | ---------------------------------- |
+| `images`    | `ImagePreviewItem[]` | —      | 图片列表，至少一项，否则抛错       |
+| `index`     | `number`             | `0`    | 初始索引，越界时钳制到有效区间     |
+| `loop`      | `boolean`            | `true` | 首尾循环切换                       |
+| `target`    | `Element`            | —      | 用于解析最近主题作用域的触发元素   |
+| `container` | `HTMLElement`        | —      | 显式挂载容器，优先级高于主题作用域 |
+
+`ImagePreviewItem` 为 `{ src: string; alt?: string }`；`alt` 缺省为空字符串。
+
+**返回句柄：**
+
+| 成员                                     | 类型                          | 说明                             |
+| ---------------------------------------- | ----------------------------- | -------------------------------- |
+| `index`                                  | `number`                      | 当前索引，关闭后保留最后一次的值 |
+| `scale`                                  | `number`                      | 当前缩放倍率，区间 `[1, 4]`      |
+| `images`                                 | `readonly ImagePreviewItem[]` | 归一化后的图片列表               |
+| `closed`                                 | `Promise<void>`               | 退场结束且宿主移除后兑现         |
+| `next()` / `prev()`                      | `() => void`                  | 相对切换                         |
+| `goTo(index)`                            | `(index: number) => void`     | 跳转；`loop` 关闭时在边界钳制    |
+| `zoomIn()` / `zoomOut()` / `resetZoom()` | `() => void`                  | 缩放控制                         |
+| `close()`                                | `() => void`                  | 关闭并播放退场动画               |
+
+**交互：** 左右按钮与方向键切换图片，计数器用 `aria-live` 宣告当前位置；`+` / `-` 键和滚轮缩放，`0` 重置，放大后可拖拽平移，双击图片在 1x 与 2x 之间切换；点击图片以外的空白区域或按 Escape 关闭，原生 dialog 始终暴露 `图片预览` 这一可访问名称。
+
+关闭请求不会立刻销毁原生 dialog：它保持在 top layer，等退场过渡结束后才调用 `dialog.close()`，随后宿主从 DOM 移除并兑现 `closed`。打开期间锁定页面滚动。
+
+**CSS 自定义属性：**
+
+| 属性                             | 默认值              | 说明                     |
+| -------------------------------- | ------------------- | ------------------------ |
+| `--wui-image-preview-overlay-bg` | `rgb(0 0 0 / 0.72)` | 全视口遮罩背景色         |
+| `--wui-image-preview-edge-gap`   | `20px`              | 控件到视口边缘的可见距离 |
 
 ---
 
@@ -726,12 +787,13 @@ Portal 面板创建时会镜像 host 上解析后的这些变量；更新 host �
 
 文档流内的展开收起容器，带高度（或宽度）过渡动画。单元素双插槽；无 portal、无滚动锁定、无焦点管理。
 
-| 属性           | 类型      | 默认值  | 说明                                                                                |
-| -------------- | --------- | ------- | ----------------------------------------------------------------------------------- |
-| `open`         | `boolean` | `false` | 展开状态；交互时自管理，`open-change` 仅用户来源时派发                              |
-| `disabled`     | `boolean` | `false` | 忽略 trigger 点击并在 trigger 元素上设 `aria-disabled`；已展开内容保持现状          |
-| `horizontal`   | `boolean` | `false` | 沿宽度而非高度动画                                                                  |
-| `keep-mounted` | `boolean` | `false` | 关闭稳态以 `inert` 保留在 0fr 轨道内（滚动位置与布局可测量），而非内部容器 `hidden` |
+| 属性           | 类型      | 默认值  | 说明                                                                                 |
+| -------------- | --------- | ------- | ------------------------------------------------------------------------------------ |
+| `open`         | `boolean` | `false` | 展开状态；交互时自管理，`open-change` 仅用户来源时派发                               |
+| `disabled`     | `boolean` | `false` | 忽略 trigger 点击并在 trigger 元素上设 `aria-disabled`；已展开内容保持现状           |
+| `horizontal`   | `boolean` | `false` | 沿宽度而非高度动画                                                                   |
+| `keep-mounted` | `boolean` | `false` | 关闭稳态以 `inert` 保留在 0fr 轨道内（滚动位置与布局可测量），而非内部容器 `hidden`  |
+| `peek`         | `string`  | —       | 关闭稳态露出的尺寸（CSS 长度，如 `120px`），沿动画轴生效；末端自带自动长度的边缘渐隐 |
 
 **事件：** `open-change` (`CustomEvent<{ open: boolean }>`)。仅用户来源的切换（trigger 点击）派发；程序化写入（`open`、`show()`、`close()`、`toggle()`）不派发。嵌套时内层 `open-change` 会冒泡穿过外层根（composed 事件），按 `event.target` 区分。
 
@@ -751,6 +813,38 @@ Portal 面板创建时会镜像 host 上解析后的这些变量；更新 host �
 **trigger 语义：** 交互语义完全来自 default slot 放入的元素——原生 `<button>`、`<web-ui-button>` 或其他可交互元素原生提供 Enter/Space 激活与焦点。collapse 把 `aria-expanded` / `aria-controls`（指向内容轨道）与 `aria-disabled` 回写到 trigger slot 的首个 assigned element。trigger 请使用可交互元素：纯 `<span>` 可点击但没有键盘/焦点语义。
 
 **关闭稳态语义：** Consumer的 light DOM 永不移动或卸载。默认关闭稳态在内部内容容器上设 `hidden`；`keep-mounted` 时内部容器标记 `inert`，保留在收起轨道内可测量。
+
+**`peek`（只露一部分）：** 设置 `peek` 后关闭稳态不再收拢到 0，而是沿动画轴露出内容的头部 `peek` 长度（`horizontal` 时改为宽度）：轨道保持在内容高度，裁剪长度落在内部容器上。其语义等同 `keep-mounted`——内容保留挂载但被 `inert` 阻断，被裁掉的部分不可聚焦、不可点击。内容本身不足 `peek` 时按内容实际尺寸收起，不留空白。由于固定长度与自适应高度无法由 CSS 插值，`peek` ↔ 展开这两个方向改为读出像素后以显式长度驱动（每次开合测量一次）；其余动画路径仍是零测量的 grid `fr` 过渡。
+
+```html
+<web-ui-collapse peek="120px">
+  <button type="button">点击切换</button>
+  <div slot="content">很长的内容——关闭时只露出前 120px</div>
+</web-ui-collapse>
+```
+
+**边缘渐隐：** 露出区域的裁剪边缘自带一段 alpha 渐变（`horizontal` 时改为右边），让被裁掉的部分柔和过渡到背景而不是硬切。渐变长度由 `peek` 推导，不需要也没有第二个属性可调——需要时用 CSS 变量微调：
+
+| CSS 变量                         | 默认值        | 说明                                           |
+| -------------------------------- | ------------- | ---------------------------------------------- |
+| `--wui-collapse-peek-edge-ratio` | `0.4`         | 渐变长度占 `peek` 的比例                       |
+| `--wui-collapse-peek-edge-max`   | `112px`       | 长度上限，避免大 `peek` 算出过长的虚化带       |
+| `--wui-collapse-peek-edge`       | —             | 显式指定长度，优先于推导值                     |
+| `--wui-collapse-peek-edge-color` | `transparent` | 渐变末端颜色（需带 alpha，mask 按 alpha 解析） |
+
+比例设为 `0` 即关闭渐隐。推导是纯 CSS 的 `calc(peek * ratio)`：`peek` 用 rem 时渐变长度自动跟随根字号缩放，JS 侧不需要做任何单位解析。已知限制：`peek` 取百分比时推导结果不是长度、无法被注册属性插值，会静默回落为「无渐隐」，此时请用 `--wui-collapse-peek-edge` 显式指定长度。
+
+渐变是四段「先陡后缓」而非线性：主体全黑延伸到渐变带起点后，前 30% 距离就降到 60% alpha，65% 处 26%，末端落到边缘颜色。线性渐变的 alpha 在带子前 40% 几乎贴着 1.0，人眼感知到的虚化远短于声明长度——把下降前置后，带子从起点就明显发虚，同样长度的感知长度接近翻倍。
+
+渐变带位置用百分比声明、相对容器的**当前渲染高度**（即 `max-height` 动画的那个高度），因此收起动画期间渐变带逐帧跟随裁剪边缘移动，`mask-image` 字符串本身无需插值。渐变带长度由注册的 `<length>` 自定义属性驱动，随开合动画平滑淡入淡出，而不是等收起动画落稳态才突然出现。
+
+```html
+<!-- 调强渐隐：比例 0.5 → 120px peek 配 60px 渐隐 -->
+<web-ui-collapse peek="120px" style="--wui-collapse-peek-edge-ratio: 0.5">
+  <button type="button">点击切换</button>
+  <div slot="content">很长的内容——120px 露出区域的底部渐隐更强</div>
+</web-ui-collapse>
+```
 
 **已知限制：** `horizontal` 动画期间内容随宽度变化 reflow。
 
@@ -994,7 +1088,7 @@ WebUiSpinner.hide() // 隐藏
 
 #### `<web-ui-layout>`
 
-响应式页面布局：支持可选全宽 Banner、桌面端可折叠侧边栏，以及移动端 headless drawer。页面本身滚动；Banner 滚出后，桌面端 sidebar 和 header 固定在视口内。
+响应式页面布局：支持可选全宽 Banner、桌面端可折叠侧边栏，以及移动端默认 drawer。页面本身滚动；Banner 滚出后，桌面端 sidebar 和 header 固定在视口内。
 
 | 属性                | 类型      | 默认值    | 说明                                                           |
 | ------------------- | --------- | --------- | -------------------------------------------------------------- |
@@ -1016,15 +1110,15 @@ WebUiSpinner.hide() // 隐藏
 - 键盘操作（WAI-ARIA splitter 模式）：聚焦后用 ←/→ 以 16px 步进调整（Shift 加速到 64px），Home/End 跳到 min/max，Enter 以同一 `sidebar-width-change` 请求提交，Escape 撤回未提交的调整。
 - 移动端 Drawer 始终通过其内置 `draggable` 抽屉支持拖拽关闭。
 
-| 插槽      | 说明                                                         |
-| --------- | ------------------------------------------------------------ |
-| `banner`  | 位于布局主体上方的可选全宽 Banner                            |
-| `header`  | 内容区的 sticky header                                       |
-| `sidebar` | 侧边栏卡片内容；内部固定区域与滚动容器均由 Consumer 自行定义 |
-| `default` | 主内容区                                                     |
-| `tabbar`  | 底部 tabbar                                                  |
+| 插槽      | 说明                                                             |
+| --------- | ---------------------------------------------------------------- |
+| `banner`  | 位于布局主体上方的可选全宽 Banner                                |
+| `header`  | 内容区的 sticky header                                           |
+| `sidebar` | 侧边栏卡片内容；桌面端内部固定区域与滚动容器由 Consumer 自行定义 |
+| `default` | 主内容区                                                         |
+| `tabbar`  | 底部 tabbar                                                      |
 
-`web-ui-layout` 只约束侧边栏卡片的可用空间并管理桌面端 Toggle，不创建侧边栏 scrollport。若仅让侧边栏的一部分滚动，请将 `sidebar` 插槽根节点设为 `height: 100%; min-height: 0` 的 flex column，再将 `overflow-y: auto` 设置到目标子元素。这样 Consumer 可自行固定头部和底部，无需额外的公共 slot：
+`web-ui-layout` 只约束侧边栏卡片的可用空间并管理桌面端 Toggle，不创建桌面端侧边栏 scrollport。若仅让桌面端侧边栏的一部分滚动，请将 `sidebar` 插槽根节点设为 `height: 100%; min-height: 0` 的 flex column，再将 `overflow-y: auto` 设置到目标子元素。这样 Consumer 可自行固定头部和底部，无需额外的公共 slot：
 
 ```html
 <div slot="sidebar" class="sidebar-root">
@@ -1052,7 +1146,7 @@ WebUiSpinner.hide() // 隐藏
 }
 ```
 
-在 `640px` 及以下，侧边栏会切换为 headless 模式的 `web-ui-drawer`。Consumer 内容仍渲染在相同的圆角侧边栏卡片中，移动端 Toggle 以 glass 变体位于 header 行内。其左缩进默认 `8px`，可通过 `--wui-layout-mobile-toggle-inset` 与 Consumer 自身的 header 内边距对齐。
+在 `640px` 及以下，侧边栏会切换为使用内置 glass body、可滚动 content 和 drag zone 的 `web-ui-drawer`。Layout 会将 `sidebar-width` 映射为 `--wui-drawer-width`，将 `--wui-layout-sidebar-radius` 映射为 `--wui-drawer-radius`。移动端 Toggle 以 glass 变体位于 header 行内。其左缩进默认 `8px`，可通过 `--wui-layout-mobile-toggle-inset` 与 Consumer 自身的 header 内边距对齐。
 
 `header-glow` 会在 header 插槽内容和移动端 Toggle 的背后添加 `pointer-events: none` 的装饰性晕染。它属于 Header 背景而非前景层，因此插槽内容始终位于其上方；可通过 `--wui-layout-header-glow-color` 覆盖颜色，默认值为 `--wui-color-page`。晕染浓度和范围由内部变量 `--wui-layout-header-glow-height`（默认 `150%`）控制；增大可加强覆盖，减小则更柔和。布局层级顺序为 Header（`10`）< Auxiliary（`20`）< Banner（`30`）< Tabbar（`40`）< Sidebar（`50`）。
 

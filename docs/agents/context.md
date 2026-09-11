@@ -21,28 +21,33 @@
 
 Role 是显式选择的按需 session context：读取 `.agents/agents/<role>.md` 后，它在整个会话中定义职责、边界和协作，不绑定某一个 task，也不覆盖 Rules、Skills、task requirement、`AGENTS.md` 或实现事实。初始化方式以 [`CONTRIBUTING.md`](../../CONTRIBUTING.md#角色会话) 为权威。
 
+角色的执行体默认绑定（manager / designer / lib-coder 为 Claude Code；biz-coder 与 reviewer 主审为 Codex CLI，高风险变更加 Claude Code 二次审查）、编排路由和结构化 handoff 契约，流程权威是 [`workflow.md`](workflow.md) 的「角色与执行体」「编排模式」两节与 [`task-packet.md`](task-packet.md)；根 `AGENTS.md` 的「多 Agent 编排」节只保留不可绕过的分工、边界与禁止事项。执行体绑定不改变状态机、gate 和证据要求。
+
 ## 重复主题的权威来源
 
 不同层级可以为路由而短暂提及同一主题，但只能有一个流程权威来源；其他位置只说明何时加载或链接到它，不能复制完整处方。
 
-| 主题               | 规则边界                                                 | 流程权威来源                          | 自动证据                                               |
-| ------------------ | -------------------------------------------------------- | ------------------------------------- | ------------------------------------------------------ |
-| 生成物             | 根/包级 `AGENTS.md` 说明“不可手改”与局部 source of truth | `docs/agents/build.md`                | generator diff、build、消费者类型检查                  |
-| 真实浏览器         | 根/包级 `AGENTS.md` 仅声明需要浏览器层                   | `docs/agents/browser-verification.md` | `pnpm run test` 中的 `*.browser.spec.ts`、MCP 操作记录 |
-| `repo:*` 工具      | 根入口只提供命令路由                                     | 本文件的工具接口说明                  | `scripts/scripts.test.mjs`                             |
-| 公共 `web-ui` 契约 | `packages/web-ui/AGENTS.md` 指向受影响消费者             | `docs/agents/web-ui.md`               | fixtures、contracts、browser/integration tests         |
+| 主题               | 规则边界                                                  | 流程权威来源                              | 自动证据                                                        |
+| ------------------ | --------------------------------------------------------- | ----------------------------------------- | --------------------------------------------------------------- |
+| 生成物             | 根/包级 `AGENTS.md` 说明“不可手改”与局部 source of truth  | `docs/agents/build.md`                    | generator diff、build、消费者类型检查                           |
+| 真实浏览器         | 根/包级 `AGENTS.md` 仅声明需要浏览器层                    | `docs/agents/browser-verification.md`     | `pnpm run test` 中的 `*.browser.spec.ts`、MCP 操作记录          |
+| `repo:*` 工具      | 根入口只提供命令路由                                      | 本文件的工具接口说明                      | `scripts/scripts.test.mjs`                                      |
+| 多 Agent 编排      | 根 `AGENTS.md`「多 Agent 编排」只保留分工、边界与禁止事项 | `docs/agents/workflow.md`                 | `agent-workflow` state、review/approval 记录                    |
+| 角色与执行体绑定   | `.agents/agents/*` 只声明角色职责、边界与自身执行体       | `docs/agents/workflow.md`                 | `validate:context` 绑定一致性校验、`scripts/agent-workflow.mjs` |
+| 角色间 handoff     | `.agents/agents/*` 不复制交接字段                         | `docs/agents/task-packet.md`              | task packet、handoff 记录                                       |
+| 角色目录边界       | 根/包级 `AGENTS.md` 声明 `packages/*` 与 `apps/*` 归属    | `docs/agents/workflow.md`、`worktrees.md` | `find:usages` 输出、变更路径                                    |
+| 公共 `web-ui` 契约 | `packages/web-ui/AGENTS.md` 指向受影响消费者              | `docs/agents/web-ui.md`                   | fixtures、contracts、browser/integration tests                  |
 
 ## 客户端适配
 
-- `AGENTS.md`、`CONTEXT.md`、`docs/agents/`、`.agents/rules/`、`.agents/skills/`、`.agents/agents/` 与 `.agents/references/` 是 Codex、Claude Code、Gemini CLI 与 ZCode 等共用的规范。
-- Codex 通过层级 `AGENTS.md` 获得目录约束；根 `CLAUDE.md` 与 `GEMINI.md` 只说明对应客户端的加载顺序，不复制共享规则。客户端适配不自动选择 Role。
-- ZCode 原生读 workspace `AGENTS.md`（自当前目录向上解析），并自动发现 `.agents/skills/`；因此与 Codex 同策略，不设独立的薄适配入口文件。
+- `AGENTS.md`、`CONTEXT.md`、`docs/agents/`、`.agents/rules/`、`.agents/skills/`、`.agents/agents/` 与 `.agents/references/` 是 Codex、Claude Code 等共用的规范。
+- Codex 通过层级 `AGENTS.md` 获得目录约束与「多 Agent 编排」分工；根 `CLAUDE.md` 只说明对应客户端的加载顺序和默认角色绑定，不复制共享规则正文。客户端适配不自动选择 Role；默认执行体绑定与编排路由以 [`workflow.md`](workflow.md) 为权威。
 - ACP plan 是当前会话的临时进度 UI；多阶段任务的创建、阶段同步和结束前收敛以 [`CONTRIBUTING.md`](../../CONTRIBUTING.md) 为权威。它不持久化为 `agent-state`，也不能替代源码、Git 或验证证据。
-- `.claude/rules`、`.claude/skills` 和 `.claude/agents` 必须通过 symlink 指向 `.agents/` 中的共享内容；Gemini CLI 自动发现 `.agents/skills/`。
+- `.claude/rules`、`.claude/skills` 和 `.claude/agents` 必须通过 symlink 指向 `.agents/` 中的共享内容。
 - `scripts/validate-context.mjs` 只检查这套共享 context 的可加载性，不能替代对规则语义、代码行为或 agent 输出质量的评审。
 - `scripts/repo-query.mjs` 是面向 Agent 的按需查询接口：`pnpm find:usages -- <paths...>` 一次输出受影响 workspace、最小读取 context、传递依赖、所需证据和最小充分验证建议；`pnpm inspect:contract -- <published-package>` 输出当前 exports、直接消费者和最小验证；`pnpm diff:contract -- --base <git-ref>` 输出 manifest-level semver 审阅候选。`find:usages` 支持 `--base <git-ref>`、`--staged` 与 `--worktree` 从 Git 变更集读取路径。它从 `pnpm-workspace.yaml` 的 `packages` patterns、当前 manifest 和路径规则派生结论，不把影响面复制成静态文档。
 - `scripts/check-pack.mjs` 在构建后校验发布 package 的 `files` 与 `exports` 目标可从 `pnpm pack --dry-run` 产物解析；它是发布产物边界的可执行证据，不替代 API 语义或 semver 评审。
-- `.claude/settings.local.json` 不得显式放行根 `AGENTS.md` 禁止的共享 worktree Git 改写操作（`stash`、`switch`、`checkout`、`reset`、`clean`）；`validate-context` 负责检测这一类显式权限冲突。未来若引入 workspace 级 `.zcode/config.json`（MCP servers、hooks），只承担工具适配，并遵守同款守卫：不得显式放行上述共享 worktree Git 改写操作。
+- `.claude/settings.local.json` 不得显式放行根 `AGENTS.md` 禁止的共享 worktree Git 改写操作（`stash`、`switch`、`checkout`、`reset`、`clean`）；`validate-context` 负责检测这一类显式权限冲突。
 
 ## 评测与审计
 
@@ -52,14 +57,14 @@ Role 是显式选择的按需 session context：读取 `.agents/agents/<role>.md
 
 ## 最小 context 组合
 
-| 任务                  | 最小入口                                                                                  | 需要升级时再读                                               |
-| --------------------- | ----------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
-| 局部工具函数          | 根 `AGENTS.md` + 目标包 `AGENTS.md` + 目标源码/测试                                       | `.agents/rules/code-style.md`、包 README                     |
-| `web-ui` 组件或类型   | 根/包级 `AGENTS.md` + `docs/agents/web-ui.md` + 组件源码/测试                             | 对应 ADR、React/Vue demo type fixtures                       |
-| 跨包公共 API          | `contract-change-review` skill + `find:usages`/`inspect:contract` 输出 + 受影响包 context | `docs/agents/testing.md`、相关消费者和 ADR                   |
-| 构建/依赖/发布        | `ARCHITECTURE.md` + `docs/agents/build.md` 或 `dependencies.md` + manifests               | CI workflow、ADR-0001/0002/0009                              |
-| Interweave/Wails/领域 | `apps/interweave/AGENTS.md` + 产品基线 + 相关源码                                         | ADR-0017/0018、Wails 3 官方文档、Go tests、frontend consumer |
-| context system        | `ARCHITECTURE.md` + `CONTEXT.md` + 本文件 + ADR-0012                                      | `scripts/validate-context.mjs`、共享 symlinks 和当前 diff    |
+| 任务                  | 最小入口                                                                                  | 需要升级时再读                                            |
+| --------------------- | ----------------------------------------------------------------------------------------- | --------------------------------------------------------- |
+| 局部工具函数          | 根 `AGENTS.md` + 目标包 `AGENTS.md` + 目标源码/测试                                       | `.agents/rules/code-style.md`、包 README                  |
+| `web-ui` 组件或类型   | 根/包级 `AGENTS.md` + `docs/agents/web-ui.md` + 组件源码/测试                             | 对应 ADR、React/Vue demo type fixtures                    |
+| 跨包公共 API          | `contract-change-review` skill + `find:usages`/`inspect:contract` 输出 + 受影响包 context | `docs/agents/testing.md`、相关消费者和 ADR                |
+| 构建/依赖/发布        | `ARCHITECTURE.md` + `docs/agents/build.md` 或 `dependencies.md` + manifests               | CI workflow、ADR-0001/0002/0003                           |
+| Interweave/Wails/领域 | `apps/interweave/AGENTS.md` + 产品基线 + 相关源码                                         | ADR-0008、Wails 3 官方文档、Go tests、frontend consumer   |
+| context system        | `ARCHITECTURE.md` + `CONTEXT.md` + 本文件 + ADR-0004                                      | `scripts/validate-context.mjs`、共享 symlinks 和当前 diff |
 
 不要把“最小入口”理解为足够完成实现；它只是开始定位的最小上下文。实现和交付前必须读取工具输出指出的证据，并按风险升级验证。
 
@@ -68,24 +73,25 @@ Role 是显式选择的按需 session context：读取 `.agents/agents/<role>.md
 - **当前实现优先**：源码、测试、`package.json`、workspace 配置和构建配置是当前行为的证据；地图或 README 与它们冲突时，以实现为准，并记录是否需要同步文档。
 - **局部约束优先**：目标目录最近的 `AGENTS.md` 负责局部不可绕过约束；根 `AGENTS.md` 负责仓库级边界和路由。
 - **流程与背景分离**：`docs/agents/*` 和 `.agents/rules/*` 描述按任务加载的流程；`CONTEXT.md` 和 ADR 描述架构、术语和长期取舍；`ARCHITECTURE.md` 只做快速地图。
-- **适配入口不复制规则**：`CLAUDE.md` 与 `GEMINI.md` 只负责对应客户端的入口提示；`.claude/{rules,skills,agents}` 通过 symlink 复用 `.agents/`，不建立第二套规范。
+- **适配入口不复制规则**：`CLAUDE.md` 只负责对应客户端的入口提示；`.claude/{rules,skills,agents}` 通过 symlink 复用 `.agents/`，不建立第二套规范。
 - **不确定时不要猜**：当文档、类型、配置和源码不能共同证明边界时，停在最小受影响范围，读取相关测试/ADR或报告未决风险。
 
 ## 变更与文档同步
 
 普通源码任务不需要阅读本表。修改以下工程资产时，在同一变更中同步对应权威文档；范围不明确时先查本表和相邻包 `AGENTS.md`。
 
-| 变更类别                                            | 必须同步的文档                                                         | 事实来源                                           |
-| --------------------------------------------------- | ---------------------------------------------------------------------- | -------------------------------------------------- |
-| 构建脚本、Vite/Turbo、CI/CD                         | `docs/agents/build.md`；根命令还更新 `AGENTS.md`                       | `package.json`、`turbo.json`、`.github/workflows/` |
-| 包新增、移除或重命名                                | `CONTEXT.md`                                                           | `packages/`、`apps/` 目录与 manifest               |
-| lint、formatter、stylelint、cspell                  | `docs/agents/linting.md`                                               | 对应配置                                           |
-| workspace catalog 或 Changesets 策略                | `docs/agents/dependencies.md`                                          | `pnpm-workspace.yaml`、Changesets 配置             |
-| 测试框架或 Vite 测试配置                            | `docs/agents/testing.md`                                               | 测试配置                                           |
-| `packages/web-ui` 组件、图标或公共契约              | `packages/web-ui/AGENTS.md`、`docs/agents/web-ui.md` 与受影响 ADR      | 组件源码、类型、测试                               |
-| commitlint 或提交流程                               | `docs/agents/commit.md`                                                | commit 配置或工作流                                |
-| 影响未来工程取舍的架构决定                          | 对应 ADR，并更新 `CONTEXT.md` ADR 索引                                 | 可行替代方案之间的长期选择                         |
-| client adapter、共享 rules、skills 或 agent profile | `context.md`、`CONTEXT.md`、ADR-0012 与 `scripts/validate-context.mjs` | `CLAUDE.md`、`GEMINI.md`、`.agents/`、root scripts |
+| 变更类别                                            | 必须同步的文档                                                                                            | 事实来源                                                                        |
+| --------------------------------------------------- | --------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| 构建脚本、Vite/Turbo、CI/CD                         | `docs/agents/build.md`；根命令还更新 `AGENTS.md`                                                          | `package.json`、`turbo.json`、`.github/workflows/`                              |
+| 包新增、移除或重命名                                | `CONTEXT.md`                                                                                              | `packages/`、`apps/` 目录与 manifest                                            |
+| lint、formatter、stylelint、cspell                  | `docs/agents/linting.md`                                                                                  | 对应配置                                                                        |
+| workspace catalog 或 Changesets 策略                | `docs/agents/dependencies.md`                                                                             | `pnpm-workspace.yaml`、Changesets 配置                                          |
+| 测试框架或 Vite 测试配置                            | `docs/agents/testing.md`                                                                                  | 测试配置                                                                        |
+| `packages/web-ui` 组件、图标或公共契约              | `packages/web-ui/AGENTS.md`、`docs/agents/web-ui.md` 与受影响 ADR                                         | 组件源码、类型、测试                                                            |
+| commitlint 或提交流程                               | `docs/agents/commit.md`                                                                                   | commit 配置或工作流                                                             |
+| 影响未来工程取舍的架构决定                          | 对应 ADR，并更新 `CONTEXT.md` ADR 索引                                                                    | 可行替代方案之间的长期选择                                                      |
+| client adapter、共享 rules、skills 或 agent profile | `context.md`、`CONTEXT.md`、ADR-0004 / ADR-0010 与 `scripts/validate-context.mjs`                         | `CLAUDE.md`、`.agents/`、root scripts                                           |
+| 角色、执行体绑定、编排路由或 handoff 模板           | `AGENTS.md`、`CONTRIBUTING.md`、`context.md`、`workflow.md`、`task-packet.md`、`worktrees.md` 与 ADR-0010 | `.agents/agents/`、`scripts/agent-workflow.mjs`、`scripts/validate-context.mjs` |
 
 ## 维护 instruction system
 
@@ -99,4 +105,4 @@ Role 是显式选择的按需 session context：读取 `.agents/agents/<role>.md
    - 仓库自建的 `.agents/skills/`，其 frontmatter `description` 属于常驻提示词指针，必须精炼为高意图密度的触发词（首词前置、合并近义词分支），将详细工作流置于正文中按需激活。
    - 第三方引入的 `.agents/skills/` 严格保持上游原文，不本地改写，以保障未来版本升级与维护的一致性。
 3. **Prompt Cache（前缀缓存）稳定性**：
-   - 根入口（`AGENTS.md`、`CLAUDE.md`、`GEMINI.md`）与 `.agents/rules/` 保持高度静态化与格式稳定，严禁混入动态时间戳、易变临时状态或频繁变动的操作日志，以最大化大模型服务商（Anthropic、Google、OpenAI 等）的 Prefix Cache 命中率。
+   - 根入口（`AGENTS.md`、`CLAUDE.md`）与 `.agents/rules/` 保持高度静态化与格式稳定，严禁混入动态时间戳、易变临时状态或频繁变动的操作日志，以最大化大模型服务商（Anthropic、Google、OpenAI 等）的 Prefix Cache 命中率。

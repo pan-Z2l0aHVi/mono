@@ -63,6 +63,13 @@ input {
   }
 }
 
+/* Coarse pointers include iOS Safari, where a sub-16px font triggers focus zoom. */
+@media (pointer: coarse) {
+  input {
+    font-size: max(16px, var(--wui-font-size, 14px));
+  }
+}
+
 /* Focus ring 独立成 ::after 层：base/focused 都是显式 box-shadow，保证所有变体都能过渡 */
 .wui-input-inner::after {
   pointer-events: none;

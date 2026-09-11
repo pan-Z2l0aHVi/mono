@@ -411,15 +411,14 @@ const focusedTests = Object.fromEntries(
 )
 const hasContextChange = normalizedPaths.some(
   file =>
-    ['AGENTS.md', 'CLAUDE.md', 'GEMINI.md', 'CONTEXT.md', 'package.json', 'pnpm-workspace.yaml', 'turbo.json'].includes(
-      file
-    ) ||
+    ['AGENTS.md', 'CLAUDE.md', 'CONTEXT.md', 'package.json', 'pnpm-workspace.yaml', 'turbo.json'].includes(file) ||
     file.startsWith('.agents/') ||
     file.startsWith('.claude/') ||
     file.startsWith('docs/agents/') ||
     file.startsWith('docs/adr/') ||
     file.startsWith('scripts/validate-context') ||
     file.startsWith('scripts/audit-instructions') ||
+    file.startsWith('scripts/agent-workflow') ||
     file.startsWith('scripts/repo-query') ||
     file.startsWith('scripts/workspace-manifests')
 )
@@ -429,6 +428,7 @@ const hasAgentToolChange = normalizedPaths.some(
     file.startsWith('scripts/repo-query') ||
     file.startsWith('scripts/validate-context') ||
     file.startsWith('scripts/audit-instructions') ||
+    file.startsWith('scripts/agent-workflow') ||
     file.startsWith('scripts/workspace-manifests') ||
     file.startsWith('scripts/scripts.test')
 )
@@ -474,7 +474,7 @@ if (hasCodeChange) addContext(context, '.agents/rules/code-style.md')
 if (hasContextChange) {
   addContext(context, 'docs/agents/context.md')
   addContext(context, 'CONTEXT.md')
-  addContext(context, 'docs/adr/0012-progressive-agent-context-architecture.md')
+  addContext(context, 'docs/adr/0004-progressive-agent-context-architecture.md')
 }
 if (
   hasPackageContractChange ||

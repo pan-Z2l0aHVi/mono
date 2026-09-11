@@ -1,40 +1,131 @@
 # 开发与协作工作流
 
-本文件是 vibecoding 多 agent 协作、分支与 worktree 布局的权威流程。角色定义见 [`.agents/agents/`](../../.agents/agents/)，review 检查项见 [`review.md`](review.md)，提交规范见 [`commit.md`](commit.md)，验证选择见 [`testing.md`](testing.md)。
+本文件是 monorepo 所有实施任务的必经流程。它定义任务状态、变更证据和角色交接；工具命令见 [`agent-workflow.mjs`](../../scripts/agent-workflow.mjs)，worktree 细节见 [`worktrees.md`](worktrees.md)，release 细节见 [`release.md`](release.md)，任务交接包见 [`task-packet.md`](task-packet.md)。Herdr、Claude、Codex 等只是执行适配层，不改变本流程的状态和 gate。
 
-## 分支与 worktree 布局
+## 先建立任务
 
-- 新建 worktree 的目录约定与共享工作区的 Git 改写禁令属于仓库边界，权威定义见根 [`AGENTS.md`](../../AGENTS.md)「不可绕过的仓库边界」。
-- **持久开发 worktree**：每个活跃子包（`apps/*`、`packages/*`）一个 worktree，分支名 `dev/<package-name>`（如 `dev/web-ui`）。worktree 与分支持久保留以沉淀缓存/验证环境；dev 分支仅存本地，最终内容由 main 通过 squash 承担。
-- **release worktree**：需要提 PR 时新建，分支名 `release/<YYMMDD>`（同日多轮加 `-2`、`-3`）；worktree 名与分支后缀一致。合并完成后删除分支与 worktree。
+凡会写入仓库的任务都必须先完成以下 preflight，不能以“改动很小”跳过：
 
-## 开发循环
+1. 查看 `git status --short --branch`，确认当前工作区和目标 worktree 的已有变更归属。
+2. 读取根 `AGENTS.md`、本文件和命中的 rule/guide；进入 workspace 后读取最近的包级 `AGENTS.md`。
+3. 为任务选择唯一、不可变的 task id 和模式：`direct`、`orchestrated`、`release` 或 `hotfix`。
+4. 在目标 worktree 执行：
 
-1. 开始新任务前，若 main 已前进：在对应 worktree 执行 `git switch -C dev/<name> origin/main`，紧接着 `git branch --unset-upstream dev/<name>`，避免 upstream 指向 origin/main 导致裸 push 误推；重置前确认 worktree 无未提交变更、无未合并独有提交。
-2. agent 只在自己的 dev worktree 内开发，不得操作他人 worktree 或共享主工作区。
-3. 完成后保持工作区变更待 review；验证范围按 [`testing.md`](testing.md) 选择。
+   ```sh
+   pnpm agent:workflow init --task <task-id> --mode <mode>
+   pnpm agent:workflow assign --task <task-id> --role <role> --worktree <path>
+   pnpm agent:workflow check --task <task-id> --phase edit
+   ```
 
-## 发布循环（release 分支）
+5. 记录范围、影响 workspace、允许路径、验收标准和所需验证；推荐写入 task packet。GitHub issue 是可选同步镜像，本地 task state 不能依赖外部服务。
 
-1. 需要提 PR 时，由 manager 或指定 integrator 从最新 `origin/main` 新建 release worktree；每个 worktree 同时只归属一个操作者。创建后先 `pnpm install`，否则 pre-commit hooks 与本地验证不完整。
-2. 同一时间只允许一个未合并的 release 分支；上一轮未完成两段验证与删除收尾前，不开新一轮。
-3. 各 dev 分支已获用户审批的改动以 `git merge` 汇入 release worktree；跨包冲突由该操作者在 release worktree 内解决。
-4. 各 dev worktree 的 agent 为自己改动的包编写 changeset（文件名带包名前缀，如 `web-ui-<slug>.md`；空 changeset 无包可归属，文件名可不带包名前缀），随 merge 汇入；integrator 合并后确认至少一个 changeset，缺失时补空 changeset。
-5. release 分支向 main 提 PR，合并方式为 **squash**；PR CI 通过且用户批准后合并。
-6. release PR 的 CI 失败时，格式化、笔误等机械性小修由 integrator 直接修复；逻辑或测试问题回对应 dev worktree 修复后再 merge，实现始终归属 dev 线。
-7. 合并后验证两段：main push 触发的 CI 全绿；若包含版本变更，changesets 版本 PR 的批准、合并与 npm 发布链全部成功。
-8. 两段验证后删除 release 分支与 worktree，并关闭对应 Herdr workspace；否则会残留指向已删目录的僵尸面板。
-9. 各 dev 分支按「开发循环」第 1 步重切到最新 main。
+## 状态机
 
-**hotfix 例外**：线上紧急修复可跳过 dev 线，由 manager 指定单个 agent 直接在新建 release worktree 实施；其余流程不变。
+任务状态保存在 Git common dir 的 `agent-workflow/<task-id>.json`，不进入工作树版本控制。状态只能按以下顺序推进：
 
-## 多 agent 协作
+```text
+initialized -> assigned -> editing -> frozen -> reviewed -> approved
+                                                        -> committed -> integrated -> verified -> closed
+```
 
-- 流程：用户提需求 → manager 用 Herdr 按需创建对应角色到 worktree 开发 → manager 汇总结果 → 用户审批。
-- **Reviewer worktree**：reviewer 直接在承载目标 diff 的 dev worktree 只读 review；不另建 worktree 或复制 diff。release worktree 只用于聚合/PR，审聚合 diff 时也在该 worktree 只读 review。
-- **Harness 选择**：manager、designer 优先用 codex；lib-coder、biz-coder、reviewer 优先用 claude。创建前询问用户指定 harness 并等待 10 秒，超时按推荐创建。
-- **Agent 启动权限**：Codex 与 Gemini CLI 用 `--yolo`，Claude 用 `--dangerously-skip-permissions`；不要额外指定 model 或 effort 参数。仅用于隔离 task worktree；实施 agent 不得擅自 commit/push，Manager 负责汇总 diff 与验证。
-- **Herdr workspace 布局**：并行独立任务按 worktree 建 Herdr workspace，内部保持一个 tab + 一个 panel；workspace label 使用任务/worktree 短名。新建 agent 的 tab label 以 role 后缀结尾，格式 `<task>-<role>`（如 `drawer-lib-coder`、`ci-review-reviewer`）；role 取自 [`.agents/agents/`](../../.agents/agents/) 文件名。Manager 保留聚合 workspace。单 tab 多 panel 仅用于短时对比或强耦合子任务。通信按 agent name / pane id 寻址；任务完成后关闭 workspace。
-- **提交前审批**：agent 完成后保持工作区变更，Manager 汇总 diff 与验证交用户审批。默认单次审批覆盖 commit、聚合、PR 和合并；跨包、公共 API 或高风险变更采用两道审批：先审 diff，再审 CI 证据。
-- **Reviewer 条件**：跨包、公共 API/导出、UI 行为变更必须有独立 reviewer；纯 docs、测试基建或单包内部实现可跳过。pre-commit 审 dev worktree 最终 diff，聚合后审 release worktree diff。
-- manager 不直接实施，只负责拆解、编排、聚合与汇总。
+实际命令与状态的关系：
+
+| 阶段          | 必要条件                                                | 命令或交接                             |
+| ------------- | ------------------------------------------------------- | -------------------------------------- |
+| `initialized` | 有 task id、mode、base SHA、branch、worktree            | `init`                                 |
+| `assigned`    | 有唯一 owner、worktree 和至少一个 role                  | `assign`                               |
+| `editing`     | 已完成 preflight，允许实施                              | `check --phase edit`                   |
+| `frozen`      | 变更路径和内容已形成稳定快照                            | `freeze`                               |
+| `reviewed`    | reviewer 对冻结 hash 给出 `pass`；可选任务可记录 `skip` | `review --result pass --reviewer <id>` |
+| `approved`    | 用户或授权 Manager 对同一个 hash 批准，并记录 approver  | `approve --approver <id>`              |
+| `committed`   | commit 包含完整冻结快照且工作区干净                     | `check --phase integrate` 自动确认     |
+| `integrated`  | 已通过聚合/集成前检查                                   | `check --phase integrate`              |
+| `verified`    | 至少一条通过的测试、构建或浏览器验证证据                | `verify --name <evidence>`             |
+| `closed`      | 交付结论已记录，验证 gate 通过                          | `close`                                |
+
+以下 gate 是硬条件：
+
+- 未 `init` 不得实施；未 `assign` 不得 freeze。
+- 未 freeze 不得 review；review 和 approval 必须绑定同一个 `diffHash`。
+- freeze、review 或 approval 后任何文件变化都会使证据 stale；必须重新 freeze、review、approve。
+- `check --phase edit` 只允许 `assigned` 或 `editing` 状态；冻结、review 或 approval 后不能把旧状态当作继续编辑许可。
+- `check --phase commit` 是提交前 gate；approval 必须记录 approver；实施 Agent 默认不擅自 commit、push、merge。
+- `check --phase integrate` 会核对 commit 已发生、冻结快照仍一致且工作区干净，然后记录 `integrated`。
+- `verify` 只接受已完成 `integrated` gate 且工作区干净的结果；不能从 `committed` 直接跳过集成检查，失败验证不能推进到 `verified`。
+- `closed` 不是“脚本跑完”的同义词；必须能追溯到 task id、base SHA、diff hash、review、approval 和验证证据。
+
+常用命令：
+
+```sh
+pnpm agent:workflow status --task <task-id> --json
+pnpm agent:workflow freeze --task <task-id>
+pnpm agent:workflow review --task <task-id> --result pass --reviewer <reviewer-id>
+pnpm agent:workflow approve --task <task-id> --approver <manager-or-user-id>
+pnpm agent:workflow check --task <task-id> --phase commit
+pnpm agent:workflow check --task <task-id> --phase integrate
+pnpm agent:workflow verify --task <task-id> --name "pnpm test"
+pnpm agent:workflow close --task <task-id>
+```
+
+提交边界由受版本控制的 `.vite-hooks/pre-commit` 再次检查。它通过 `guard-commit` 自动发现当前 worktree 的 active task；若存在 task，只有 `approved` 且冻结 diff 未变化时才允许提交。提交 hook 保护的是 commit 边界，不能替代实施前的 `init` 和 `check --phase edit`。
+
+## 角色与执行体
+
+角色定义会话身份、职责边界和协作方式，与单个 task 解耦；执行体是承担该角色的模型/CLI。本仓库使用默认绑定，执行体不可用时由 Manager 在 task packet 中记录替代执行体与理由：
+
+| 角色      | 执行体            | 负责范围                                         |
+| --------- | ----------------- | ------------------------------------------------ |
+| Manager   | Claude Code       | 需求接收、扁平编排、任务分解、依赖管理、最终总结 |
+| Designer  | Claude Code       | 产品设计、UI/UX、交互与状态设计                  |
+| Lib Coder | Claude Code       | `packages/*`：共享库与基础包                     |
+| Biz Coder | Codex CLI         | `apps/*`：业务包实现                             |
+| Reviewer  | Codex CLI（主审） | 独立验收；高风险变更加 Claude Code 二次审查      |
+
+- Role Contract 位于 [`.agents/agents/`](../../.agents/agents/)，只定义职责、边界和协作；仓库约束仍以 `AGENTS.md`、包级 `AGENTS.md`、rules、skills 和实现事实为准。
+- 执行体绑定不改变状态机、gate 和证据要求；任一执行体承担角色后都必须遵守同一套 handoff、worktree 和 review 规则。
+- Reviewer 主审与二次审查都必须独立于实施者，并以同一个冻结 `diffHash` 为审查对象；二次审查不替代主审，只在主审通过后追加。
+
+## 编排模式
+
+Manager 统一接收需求并编排，保持扁平，不引入 Integrator 或其他中间层级。模式按需求是否涉及产品设计/UI 分流：
+
+1. **产品/设计需求**：Manager → Designer → 并行 Lib Coder + Biz Coder → Reviewer 验收 → Manager 总结汇报。
+2. **纯技术需求**：Manager → 并行 Lib Coder + Biz Coder → Reviewer 验收 → Manager 总结汇报。
+
+- 是否启用 Designer 由 Manager 判断；判据是需求是否涉及产品设计/UI，而不是改动大小。判断结论、理由和范围写入 task packet。
+- 路由只决定是否启用 Designer。Lib Coder 与 Biz Coder 之间没有实质依赖时必须并行，不串行化。
+- 目录边界固定：Lib Coder 只在 `packages/*` 写入，Biz Coder 只在 `apps/*` 写入。跨边界需求拆成两个独立 task、两个 worktree，由 Manager 通过 handoff 传递契约。
+- 每个角色一个独立 worktree（或严格目录隔离）与唯一 owner；同一 worktree 同时只服务一个可变 task。
+- 角色之间统一使用结构化 handoff：`Goal（目标）`、`Scope（范围）`、`Acceptance（验收标准）`、`Test commands（测试命令）`、`Open decisions（未解决决策）`；模板见 [`task-packet.md`](task-packet.md)。缺少任一项不得进入实施或验收。
+- 集成与 release 聚合由 Manager 直接协调（见「Release 和 hotfix」），不再拆出独立编排角色。
+
+## 角色和边界
+
+- **Manager**：建立 task state，拆解任务，分配 owner，按「编排模式」选择路径并派发，维护依赖，汇总证据，组织 review 和交付判断；直接协调 release 聚合与集成验证，不新增 Integrator 层级。
+- **实施 Agent**：只在被分配的 task worktree 工作，遵守允许路径和角色目录边界，保持变更待 review，不擅自 commit、push、merge 或关闭任务。
+- **Reviewer**：只读审查冻结的目标 diff 和验证证据，结果绑定 `diffHash`；发现问题交回实施 Agent，修复后必须重新 freeze/review。高风险变更由 Manager 追加二次审查。
+- **Designer**：仅在产品/设计需求下启用，输出可实现的交互、视觉和验收决策，不修改 `packages/*` 与 `apps/*` 生产代码，不改变代码归属和状态 gate。
+
+Reviewer 是否必需按风险决定：跨 workspace、公共 API/exports、UI 行为、构建/release 和高风险迁移必须独立 review，并在主审通过后追加 Claude Code 二次审查；纯文档或低风险测试基建可以用 `init --review skip` 并在 task packet 中记录跳过理由，但仍须有用户/Manager approval 和验证证据。需要独立 review 时，脚本要求显式提供不同于 owner 的 reviewer id。
+
+## 并发原则
+
+- 一个可变任务对应一个 task worktree 和一个 owner；同一 worktree 不得被两个实施任务同时写入。
+- package worktree 可以作为缓存或验证 lane，但不能作为任务身份；跨包 vertical slice 使用任务级 worktree，并在其中以严格目录隔离区分写入范围（Lib Coder 仅 `packages/*`，Biz Coder 仅 `apps/*`）；无法严格隔离时必须拆成独立 task 与独立 worktree。
+- 角色目录边界即 worktree 内的写入边界：同一 worktree 中，任一角色不得修改对方目录下的文件；需要对方改动时通过 handoff 派发，而不是越界编辑。
+- Reviewer 不在持续变化的实施 worktree 上复用旧结论；review 前冻结，修复后重新冻结。
+- 共享主工作区不用于并行实施；不得在其中执行 `git switch`、`git checkout`、`git stash`、`git reset` 或 `git clean`。
+- 并行编排可使用 Herdr，也可使用其他 harness；Herdr 的 pane、tab、workspace 生命周期规则见 [`herdr/SKILL.md`](../../.agents/skills/herdr/SKILL.md)，不在本文件重复。
+
+## Release 和 hotfix
+
+正常 release 必须从最新 `origin/main` 创建独立 release worktree，聚合已批准 task，确认 changeset、运行集成验证，然后创建 PR。PR 合并和 main/版本发布后的两段验证完成后，才能清理 release worktree 和对应编排资源。完整操作见 [`release.md`](release.md)。
+
+`hotfix` 仅用于线上紧急修复：可以跳过长期 dev lane，但仍必须有 task state、独立 worktree、冻结 diff、review/approval、验证和交付记录，不能把紧急性当作删除证据链的理由。
+
+## 失败和恢复
+
+- 命令失败时保留 task state 和工作树，先用 `status --json` 判断当前 phase，不要重建或覆盖状态文件。
+- session、Herdr 或 harness 重启后，从 task state 的 `phase`、`worktree`、`baseSha` 和 live stale 结果恢复，不从聊天记忆猜测进度。
+- GitHub issue 不可用时继续本地流程，最终报告注明“未同步”；issue 只作追踪镜像，不是执行真相。
+- release CI 失败时，机械性修复可由 Manager 直接处理；逻辑或测试修复回到原 task owner，并在聚合 diff 变化后重新 review。

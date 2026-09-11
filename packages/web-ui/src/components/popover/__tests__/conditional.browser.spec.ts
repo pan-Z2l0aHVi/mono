@@ -45,14 +45,15 @@ describe('WebUiPopover portal 条件渲染边界（浏览器）', () => {
     show.value = false
     await nextTick()
     await popover.updateComplete
-    await new Promise(resolve => setTimeout(resolve, 50))
-    expect(getPortalPanel()?.querySelector('.probe-flag')).toBeNull()
+    await pollUntil(() => !getPortalPanel()?.querySelector('.probe-flag'), 'Expected deleted flag to leave the panel')
 
     // 关闭恢复不得把已删除节点复活回宿主 light DOM
     popover.open = false
     await popover.updateComplete
-    await new Promise(resolve => setTimeout(resolve, 300))
-    expect(mountPoint.querySelectorAll('.probe-flag').length).toBe(0)
+    await pollUntil(
+      () => !getPortalPanel() && document.querySelectorAll('.probe-flag').length === 0,
+      'Expected portal disposal without reviving the flag'
+    )
     expect(document.querySelectorAll('.probe-flag').length).toBe(0)
     app.unmount()
   })
@@ -71,8 +72,7 @@ describe('WebUiPopover portal 条件渲染边界（浏览器）', () => {
 
     popover.open = false
     await popover.updateComplete
-    await new Promise(resolve => setTimeout(resolve, 300))
-    expect(getPortalPanel()).toBeNull()
+    await pollUntil(() => !getPortalPanel(), 'Expected portal to dispose after close')
 
     // 恢复按迁移前原位回插，而不是追加到宿主末尾；
     // Vue 以锚点定位 fragment 内容，错位恢复会打乱后续条件渲染的插入点。
@@ -102,8 +102,10 @@ describe('WebUiPopover portal 条件渲染边界（浏览器）', () => {
     // 关闭恢复后锚点完好：继续翻转不产生重复节点
     popover.open = false
     await popover.updateComplete
-    await new Promise(resolve => setTimeout(resolve, 300))
-    expect(mountPoint.querySelectorAll('.probe-flag').length).toBe(1)
+    await pollUntil(
+      () => !getPortalPanel() && mountPoint.querySelectorAll('.probe-flag').length === 1,
+      'Expected restored flag at its original host position'
+    )
 
     show.value = false
     await nextTick()
@@ -150,16 +152,14 @@ describe('WebUiPopover portal 条件渲染边界（浏览器）', () => {
     editing.value = false
     await nextTick()
     await popover.updateComplete
-    await new Promise(resolve => setTimeout(resolve, 50))
-    expect(getPortalPanel()?.querySelector('.probe-flag')).toBeNull()
+    await pollUntil(() => !getPortalPanel()?.querySelector('.probe-flag'), 'Expected deleted flag to leave the panel')
     expect([...popover.childNodes].some(node => node instanceof Comment)).toBe(true)
     expect(getPortalPanel()?.childNodes.length).toBe(0)
 
     // 关闭销毁面板，注释在宿主存活
     open.value = false
     await popover.updateComplete
-    await new Promise(resolve => setTimeout(resolve, 300))
-    expect(getPortalPanel()).toBeNull()
+    await pollUntil(() => !getPortalPanel(), 'Expected portal to dispose after close')
     expect([...popover.childNodes].some(node => node instanceof Comment)).toBe(true)
 
     // 重开与 v-if 同 flush：内容实时迁入新面板，宿主无残留、全文档无重复
@@ -215,7 +215,7 @@ describe('WebUiPopover portal 条件渲染边界（浏览器）', () => {
     // 关闭恢复原位：flag 回到 before/after 之间
     popover.open = false
     await popover.updateComplete
-    await new Promise(resolve => setTimeout(resolve, 300))
+    await pollUntil(() => !getPortalPanel(), 'Expected portal to dispose after close')
     const hostOrder = [...mountPoint.querySelectorAll('p')].map(el => el.className)
     expect(hostOrder).toEqual(['probe-before', 'probe-flag', 'probe-after'])
     app.unmount()

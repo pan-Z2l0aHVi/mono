@@ -17,6 +17,7 @@ import {
 } from '@/shared/option-portal'
 import { defineOptionPortal } from '@/shared/option-portal'
 import { defineAnchoredPanel } from '@/shared/overlay/anchored-panel'
+import { overlayComposition } from '@/shared/overlay/composition'
 import { applyOverlayVariables, defineOverlayPortal } from '@/shared/overlay/portal'
 import type { OverlayContainer, OverlayPortal } from '@/shared/overlay/portal'
 import { defineScrollLockLease } from '@/shared/scroll-lock/scroll-lock'
@@ -176,7 +177,7 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
 
     const path = e.composedPath()
     const panel = this._panel.getPanel()
-    if (!path.includes(this) && (!panel || !path.includes(panel))) this._close()
+    if (!path.includes(this) && !(panel && overlayComposition.containsEvent(panel, e))) this._close()
   }
 
   private _onFocusOut = () => {
@@ -583,6 +584,8 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
             empty.textContent = '无匹配选项'
             empty.dataset.wuiA11yEmpty = '无匹配选项'
           }
+          // 只改 panel 内 dataset 不会触发 Lit update；同步刷新 shadow 内 role=status 空态。
+          this._syncEmptyState()
         }
       }
     })

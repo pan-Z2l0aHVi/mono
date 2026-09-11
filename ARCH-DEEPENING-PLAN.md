@@ -35,7 +35,7 @@
 | browser-kit 死接口面                          | sleep / sleepSync / defer / 重复文件工具暴露                                              | sleep 系列删除；文件工具迁入 js-kit；`maxBeaconSize` → `maxBatchKB`                        | manifest、dist d.ts、tests                                                         |
 | theme token drift                             | 组件 fallback 与 theme 定义漂移                                                           | `theme-token-parity.spec.ts` 四类守卫；修复 7 处漂移                                       | theme-token-parity.spec.ts；glass/dialog/input/textarea/dropdown-header CSS        |
 | layout 断点双源                               | 断点 640 可能漂移                                                                         | breakpoint parity spec 守卫                                                                | `breakpoint-parity.spec.ts`                                                        |
-| interweave metadata JSON 字符串               | 前端需理解 `metadata_json: string` + JSON shape + 失败策略                                | `SourceMetadataDTO *` + facade 解析一次，失败回 nil；ADR-0049 落盘                         | Go service/types、bindings、ADR-0049                                               |
+| interweave metadata JSON 字符串               | 前端需理解 `metadata_json: string` + JSON shape + 失败策略                                | `SourceMetadataDTO *` + facade 解析一次，失败回 nil                                        | Go service/types、bindings                                                         |
 | interweave frontend 数据翻译散点              | 页面直接处理 DTO 细节                                                                     | headless `library.ts` view-model store，filter / sort / search / preferred / kind 翻译一次 | `apps/interweave/frontend/src/stores/library.ts`、9 tests                          |
 
 ## Descope 与残余 friction
@@ -44,7 +44,7 @@
 | ---------------------------------------------------------------------------- | ------------------ | ------------------------------------------------------------------------------------------------------------------------------ |
 | toast presence 与 open-state 合并                                            | descope            | host-visible flag 与 panel-presence dataset 是不同机制；强行合并会改变行为且无第二消费者。                                     |
 | context-menu `stopPropagation`                                               | 接受               | shared 化后键盘事件语义对齐；事件已冒泡到 document，实际路径无回归。                                                           |
-| `parseSourceMetadata` 非法 JSON 静默回 nil                                   | 接受，记录残余风险 | ADR-0049 显式决策：解析失败回 nil；本轮不引入日志策略，保留为可诊断性 friction。                                               |
+| `parseSourceMetadata` 非法 JSON 静默回 nil                                   | 接受，记录残余风险 | 解析失败回 nil；本轮不引入日志策略，保留为可诊断性 friction。                                                                  |
 | form validity disabled 测试使用 `ElementInternals.prototype.setValidity` spy | 接受               | 表单 API 对 barred 元素不聚合错误，只有直接观测 setValidity 才能锁定窗口期行为；实现方式变更时测试需跟进。                     |
 | changeset 跨检是包级 max bump                                                | 接受               | 机制保证包级 semver 决策不为 patch；removal 文件自身承载说明目前是文档纪律，当前 `./icons/*` 已在独立 minor changeset 中说明。 |
 | `glass.css` 未纳入 theme-token parity 自动守卫                               | 记录               | parity spec 显式排除 assets 层；当前靠人工同步，后续可扩展守卫。                                                               |
@@ -56,7 +56,7 @@
 
 - Block：0。
 - Should fix：S1 `contract-diff` 漏报 `removedExports`；S2 plugin-system README 仍写 `defineEventEmitter`；S3 web-ui token fallback 可见变化应为 minor；S4 `forwardInputValidity` 丢失 disabled 短路。
-- Nit：N1 js-kit nanoid external/doc 残留；N2 ADR-0049 表述矛盾；N3 context-menu `stopPropagation`；N4 metadata parse 静默 nil。
+- Nit：N1 js-kit nanoid external/doc 残留；N2 metadata parse 表述矛盾；N3 context-menu `stopPropagation`；N4 metadata parse 静默 nil。
 - 处理：S1-S4、N1、N2 已修；N3、N4 按上表记录。
 
 第二轮：

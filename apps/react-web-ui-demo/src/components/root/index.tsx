@@ -100,8 +100,17 @@ export function Root() {
   const [bannerVisible, setBannerVisible] = useState(true)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [sidebarWidth, setSidebarWidth] = useState<string>(getInitialSidebarWidth)
+  const [desktopSidebarWidth, setDesktopSidebarWidth] = useState<string>(getInitialSidebarWidth)
   const navSidebarRef = useRef<HTMLElement>(null)
+
+  const [isMobileSidebar, setIsMobileSidebar] = useState(() => window.matchMedia('(max-width: 640px)').matches)
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 640px)')
+    const handler = (e: MediaQueryListEvent) => setIsMobileSidebar(e.matches)
+    mq.addEventListener('change', handler)
+    return () => mq.removeEventListener('change', handler)
+  }, [])
+  const sidebarWidth = isMobileSidebar ? 'min(320px, 80vw)' : desktopSidebarWidth
   const router = useRouter()
   const pathname = useRouterState({ select: s => s.location.pathname })
 
@@ -140,9 +149,9 @@ export function Root() {
     setSidebarOpen(event.detail.open)
   }
 
-  // 拖拽调宽的受控回写 + localStorage 持久化
+  // 拖拽调宽的受控回写 + localStorage 持久化（仅桌面端生效）
   const updateSidebarWidth = (event: CustomEvent<{ width: string }>) => {
-    setSidebarWidth(event.detail.width)
+    setDesktopSidebarWidth(event.detail.width)
     writeStoredTheme(SIDEBAR_WIDTH_STORAGE_KEY, JSON.stringify(event.detail.width))
   }
 
@@ -215,10 +224,10 @@ export function Root() {
               </web-ui-select>
             </div>
             <div slot="sidebar" className="flex h-full min-h-0 flex-col">
-              <div className="shrink-0 px-5 pt-4 pb-2 text-xs font-semibold uppercase text-[var(--wui-color-text-secondary)]">
+              <div className="shrink-0 px-5 pt-4 pb-2 text-xs font-semibold uppercase text-[var(--wui-color-text-secondary)] max-[640px]:px-0">
                 组件列表
               </div>
-              <nav ref={navSidebarRef} className="min-h-0 flex-1 p-2 overflow-y-auto">
+              <nav ref={navSidebarRef} className="min-h-0 flex-1 p-2 max-[640px]:px-0 overflow-y-auto">
                 {navItems.map(item => (
                   <Link
                     key={item.path}

@@ -289,6 +289,7 @@ All form controls participate in native `FormData`, constraint validation, `form
 |                        | [`<web-ui-button-group>`](#web-ui-button-group)           |
 | **Overlay / Modal**    | [`<web-ui-dialog>`](#web-ui-dialog)                       |
 |                        | [`<web-ui-drawer>`](#web-ui-drawer)                       |
+|                        | [`imagePreview()`](#imagepreview)                         |
 | **In-flow Disclosure** | [`<web-ui-collapse>`](#web-ui-collapse)                   |
 | **Floating**           | [`<web-ui-popover>`](#web-ui-popover)                     |
 |                        | [`<web-ui-tooltip>`](#web-ui-tooltip)                     |
@@ -508,8 +509,9 @@ Supports ArrowLeft/Right/Up/Down, Home/End, PageUp/PageDown keyboard navigation.
 | `--wui-slider-vertical-height` | `200px`                             | Vertical slider height |
 | `--wui-slider-height`          | `var(--wui-slider-track-size, 6px)` | Track thickness        |
 | `--wui-slider-track-size`      | `6px`                               | Track size             |
-| `--wui-slider-thumb-width`     | `30px`                              | Thumb width            |
-| `--wui-slider-thumb-height`    | `20px`                              | Thumb height           |
+| `--wui-slider-thumb-width`     | `24px`                              | Thumb width            |
+| `--wui-slider-thumb-height`    | `18px`                              | Thumb height           |
+| `--wui-slider-thumb-radius`    | `8px`                               | Thumb border radius    |
 | `--wui-slider-marks-inset`     | `0`                                 | Marks inset from edges |
 
 #### `<web-ui-checkbox>`
@@ -699,11 +701,13 @@ Uses native `<dialog>` with `@cancel` prevention. Escape calls `close()` unless 
 
 **CSS Custom Properties:**
 
-| Property                  | Default                            | Description                                                    |
-| ------------------------- | ---------------------------------- | -------------------------------------------------------------- |
-| `--wui-dialog-max-width`  | `360px`                            | Dialog max width                                               |
-| `--wui-dialog-overlay-bg` | `var(--wui-color-backdrop)`        | Backdrop background                                            |
-| `--wui-dialog-bg`         | `var(--wui-color-surface-overlay)` | Glass card background, falls back to `rgb(246 246 246 / 0.88)` |
+| Property                      | Default                                      | Description                                                                           |
+| ----------------------------- | -------------------------------------------- | ------------------------------------------------------------------------------------- |
+| `--wui-dialog-max-width`      | `360px`                                      | Dialog max width                                                                      |
+| `--wui-dialog-max-height`     | `90vh`                                       | Dialog max height                                                                     |
+| `--wui-dialog-overlay-bg`     | `var(--wui-color-backdrop)`                  | Backdrop background                                                                   |
+| `--wui-dialog-bg`             | `var(--wui-color-surface-overlay)`           | Glass card background, falls back to `rgb(246 246 246 / 0.88)`                        |
+| `--wui-dialog-footer-justify` | `flex-end` (default) / `center` (horizontal) | Footer `justify-content`; override to `flex-end` for right-aligned horizontal buttons |
 
 #### `<web-ui-drawer>`
 
@@ -732,7 +736,7 @@ Side drawer using native `<dialog>` with closing animation. In non-headless mode
 
 Closing keeps the native dialog in the top layer until the `--wui-duration-drawer-exit` transition completes (240ms by default), then calls `dialog.close()`. Escape always follows this close path; `no-backdrop-close` controls backdrop clicks only.
 
-**Drag to close:** With `draggable`, a gray capsule drag bar (4×56px by default, visually centered 10px from the inner edge inside a 32px-thick hit zone) appears on the drawer's inner edge (left edge for `right`, right edge for `left`, bottom edge for `top`, top edge for `bottom`) while open:
+**Drag to close:** With `draggable`, a gray capsule drag bar (4×56px by default, visually centered 10px from the inner edge inside a 20px-thick hit zone) appears on the drawer's inner edge (left edge for `right`, right edge for `left`, bottom edge for `top`, top edge for `bottom`) while open:
 
 - Dragging follows the pointer in real time; the backdrop fades proportionally.
 - Releasing past ~1/3 of the drawer size, or with a fast closing flick, springs the drawer shut; otherwise it springs back open. The close direction is placement-aware.
@@ -750,9 +754,66 @@ Closing keeps the native dialog in the top layer until the `--wui-duration-drawe
 | `--wui-drawer-radius`             | `var(--wui-radius-overlay, 28px)`  | Floating card corner radius (non-headless)                                   |
 | `--wui-drawer-inset`              | `8px`                              | Floating card viewport inset (non-headless); `0` gives edge-to-edge geometry |
 | `--wui-drawer-overlay-bg`         | `rgb(0 0 0 / 0.12)`                | Backdrop background                                                          |
-| `--wui-drawer-drag-zone-size`     | `32px`                             | Drag-to-close hit zone thickness on the inner edge (draggable)               |
+| `--wui-drawer-drag-zone-size`     | `20px`                             | Drag-to-close hit zone thickness on the inner edge (draggable)               |
 | `--wui-drawer-drag-bar-thickness` | `4px`                              | Drag bar capsule thickness (short axis)                                      |
 | `--wui-drawer-drag-bar-length`    | `56px`                             | Drag bar capsule length (along the drawer edge)                              |
+| `--wui-drawer-header-padding`     | `16px 20px`                        | Header section padding                                                       |
+| `--wui-drawer-content-padding`    | `20px`                             | Content area padding; also drives drag bar visual center (half value)        |
+| `--wui-drawer-footer-padding`     | `16px 20px`                        | Footer section padding                                                       |
+
+#### `imagePreview()`
+
+Imperative image preview with no declarative tag contract: open it through `imagePreview()` and drive it through the returned handle. It uses the native `<dialog>` `showModal()` and mounts into the nearest `web-ui-theme` overlay container, falling back to the global fallback root when no theme scope exists.
+
+```ts
+import { imagePreview } from '@greypan/web-ui'
+
+const preview = imagePreview({
+  images: [{ src: '/a.jpg', alt: 'Image A' }, { src: '/b.jpg' }],
+  index: 0
+})
+
+preview.next()
+preview.zoomIn()
+
+await preview.closed
+```
+
+**Options:**
+
+| Option      | Type                 | Default | Description                                                |
+| ----------- | -------------------- | ------- | ---------------------------------------------------------- |
+| `images`    | `ImagePreviewItem[]` | —       | Image list; must contain at least one item, else it throws |
+| `index`     | `number`             | `0`     | Initial index, clamped into range                          |
+| `loop`      | `boolean`            | `true`  | Wrap around at both ends                                   |
+| `target`    | `Element`            | —       | Trigger element used to resolve the nearest theme scope    |
+| `container` | `HTMLElement`        | —       | Explicit mount container, highest priority                 |
+
+`ImagePreviewItem` is `{ src: string; alt?: string }`; a missing `alt` defaults to an empty string.
+
+**Returned handle:**
+
+| Member                                   | Type                          | Description                                     |
+| ---------------------------------------- | ----------------------------- | ----------------------------------------------- |
+| `index`                                  | `number`                      | Current index; keeps its last value after close |
+| `scale`                                  | `number`                      | Current zoom factor within `[1, 4]`             |
+| `images`                                 | `readonly ImagePreviewItem[]` | Normalized image list                           |
+| `closed`                                 | `Promise<void>`               | Resolves after the exit transition and unmount  |
+| `next()` / `prev()`                      | `() => void`                  | Relative navigation                             |
+| `goTo(index)`                            | `(index: number) => void`     | Jump; clamps at the bounds when `loop` is off   |
+| `zoomIn()` / `zoomOut()` / `resetZoom()` | `() => void`                  | Zoom controls                                   |
+| `close()`                                | `() => void`                  | Close and play the exit animation               |
+
+**Interaction:** Prev/next buttons and arrow keys navigate, a counter announces the position through `aria-live`, `+` / `-` and the wheel zoom, `0` resets, a zoomed image can be dragged to pan, and double-clicking the image toggles between 1x and 2x. Clicking anywhere outside the image, or pressing Escape, closes the preview. The native dialog always exposes the accessible name `图片预览`.
+
+A close request does not destroy the native dialog immediately: it stays in the top layer until the exit transition completes, then `dialog.close()` runs, the host is removed from the DOM, and `closed` resolves. Page scroll is locked while open.
+
+**CSS Custom Properties:**
+
+| Property                         | Default             | Description                             |
+| -------------------------------- | ------------------- | --------------------------------------- |
+| `--wui-image-preview-overlay-bg` | `rgb(0 0 0 / 0.72)` | Full-viewport backdrop background color |
+| `--wui-image-preview-edge-gap`   | `20px`              | Distance from controls to viewport edge |
 
 ---
 
@@ -762,12 +823,13 @@ Closing keeps the native dialog in the top layer until the `--wui-duration-drawe
 
 In-flow expand/collapse container with animated height (or width) transition. Single element with two slots; no portal, no scroll lock, no focus management.
 
-| Attribute      | Type      | Default | Description                                                                                                              |
-| -------------- | --------- | ------- | ------------------------------------------------------------------------------------------------------------------------ |
-| `open`         | `boolean` | `false` | Expanded state; self-managed on interaction, `open-change` emits only for user-originated toggles                        |
-| `disabled`     | `boolean` | `false` | Ignores trigger clicks and sets `aria-disabled` on the trigger element; expanded content is kept                         |
-| `horizontal`   | `boolean` | `false` | Animate width instead of height                                                                                          |
-| `keep-mounted` | `boolean` | `false` | Closed state keeps the content in the 0fr track with `inert` (scroll position and layout measurable) instead of `hidden` |
+| Attribute      | Type      | Default | Description                                                                                                                         |
+| -------------- | --------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `open`         | `boolean` | `false` | Expanded state; self-managed on interaction, `open-change` emits only for user-originated toggles                                   |
+| `disabled`     | `boolean` | `false` | Ignores trigger clicks and sets `aria-disabled` on the trigger element; expanded content is kept                                    |
+| `horizontal`   | `boolean` | `false` | Animate width instead of height                                                                                                     |
+| `keep-mounted` | `boolean` | `false` | Closed state keeps the content in the 0fr track with `inert` (scroll position and layout measurable) instead of `hidden`            |
+| `peek`         | `string`  | —       | Closed state reveals this much of the content (CSS length, e.g. `120px`); along the animation axis; ends in an auto-sized edge fade |
 
 **Events:** `open-change` (`CustomEvent<{ open: boolean }>`). Emitted only for user-originated toggles (trigger click). Programmatic writes (`open`, `show()`, `close()`, `toggle()`) never emit. Nested collapses: an inner `open-change` bubbles through the outer root (composed event); distinguish by `event.target`.
 
@@ -787,6 +849,38 @@ The initial `open` attribute settles instantly without playing the animation. Ne
 **Trigger semantics:** interaction comes from the element you put in the default slot — a native `<button>`, `<web-ui-button>`, or any other interactive element supplies Enter/Space activation and focus natively. The collapse writes `aria-expanded` / `aria-controls` (pointing at its content track) and `aria-disabled` onto the first assigned element in the trigger slot. Use an interactive element as the trigger: a plain `<span>` is clickable but has no keyboard/focus semantics.
 
 **Closed-state semantics:** the consumer's light DOM is never moved or unmounted. Default closed state applies `hidden` to the internal content container; with `keep-mounted` the inner container is marked `inert` while staying measurable inside the collapsed track.
+
+**`peek` (partial reveal):** setting `peek` makes the closed state reveal the first `peek` of the content along the animation axis (`horizontal` switches it to width) instead of collapsing to zero — the track stays at the content height and the inner container is clamped. It implies `keep-mounted` semantics: the content stays mounted but is `inert`, so the clipped portion is not focusable or clickable. Content shorter than `peek` collapses to its own size rather than leaving blank space. Because a fixed length and an auto height cannot be interpolated by CSS, the two `peek` ↔ expanded directions are driven by explicit pixel lengths (measured once per toggle); every other animation path stays a zero-measurement grid `fr` transition.
+
+```html
+<web-ui-collapse peek="120px">
+  <button type="button">Toggle me</button>
+  <div slot="content">Long content — only the first 120px show while closed</div>
+</web-ui-collapse>
+```
+
+**Edge fade:** the revealed area ends in an alpha-gradient fade (right edge when `horizontal`) so the clipped portion melts into the background instead of ending in a hard line. The length is derived from `peek` — there is no second attribute to set. Tune it with CSS custom properties instead:
+
+| Custom property                  | Default       | Description                                                           |
+| -------------------------------- | ------------- | --------------------------------------------------------------------- |
+| `--wui-collapse-peek-edge-ratio` | `0.4`         | Fade length as a fraction of `peek`                                   |
+| `--wui-collapse-peek-edge-max`   | `112px`       | Upper bound, so a large `peek` cannot produce an oversized fade band  |
+| `--wui-collapse-peek-edge`       | —             | Explicit fade length; wins over the derived value                     |
+| `--wui-collapse-peek-edge-color` | `transparent` | Fade-stop color (must carry alpha — `mask-image` reads alpha channel) |
+
+Set the ratio to `0` to turn the fade off. The derivation is pure CSS `calc(peek * ratio)`, so a `rem`-based `peek` scales the fade with the root font size and nothing has to be measured in JS. Known limitation: a percentage `peek` does not derive to a length, so the fade silently falls back to "none" — set `--wui-collapse-peek-edge` explicitly in that case.
+
+The fade is a four-stop ease-out gradient rather than a linear one: the body stays fully opaque to the start of the fade band, drops to 60% alpha within the first 30% of the band, then 26%, then reaches the edge color. A linear gradient hugs 1.0 alpha across the first 40% of the band, so the eye perceives a much shorter fade than declared — front-loading the drop makes the band visibly soft from its very start, nearly doubling the perceived length at the same size.
+
+The fade band is positioned in percentages, relative to the container's **current rendered height** — which is what `max-height` animates. So the band tracks the cut edge frame by frame during the collapse animation without the `mask-image` string ever needing to interpolate. Its length is driven by a registered `<length>` custom property so it can fade in and out with the toggle instead of popping in once the close animation settles.
+
+```html
+<!-- 调强渐隐：比例 0.5 → 120px peek 配 60px 渐隐 -->
+<web-ui-collapse peek="120px" style="--wui-collapse-peek-edge-ratio: 0.5">
+  <button type="button">Toggle me</button>
+  <div slot="content">Long content with a stronger fade at the bottom of the 120px peek</div>
+</web-ui-collapse>
+```
 
 **Known limitations:** the `horizontal` animation reflows content while width changes.
 
@@ -1030,7 +1124,7 @@ WebUiSpinner.hide() // hide
 
 #### `<web-ui-layout>`
 
-Responsive page layout with an optional full-width banner, a collapsible desktop sidebar, and a headless-drawer mobile sidebar. The page itself scrolls; the desktop sidebar and header stick to the viewport after the banner scrolls away.
+Responsive page layout with an optional full-width banner, a collapsible desktop sidebar, and a default-drawer mobile sidebar. The page itself scrolls; the desktop sidebar and header stick to the viewport after the banner scrolls away.
 
 | Attribute           | Type      | Default   | Description                                                                                        |
 | ------------------- | --------- | --------- | -------------------------------------------------------------------------------------------------- |
@@ -1052,15 +1146,15 @@ Responsive page layout with an optional full-width banner, a collapsible desktop
 - Keyboard (WAI-ARIA splitter pattern): focus the handle and use ←/→ to step by 16px (Shift for 64px), Home/End to jump to min/max, Enter to commit via the same `sidebar-width-change` request, and Escape to revert an uncommitted adjustment.
 - The mobile drawer always supports drag-to-close via its built-in `draggable` drawer.
 
-| Slot      | Description                                                                               |
-| --------- | ----------------------------------------------------------------------------------------- |
-| `banner`  | Optional full-width banner above the layout body                                          |
-| `header`  | Sticky content-area header                                                                |
-| `sidebar` | Sidebar-card content. The consumer owns its internal fixed regions and scroll containers. |
-| `default` | Main content                                                                              |
-| `tabbar`  | Bottom tab bar                                                                            |
+| Slot      | Description                                                                                          |
+| --------- | ---------------------------------------------------------------------------------------------------- |
+| `banner`  | Optional full-width banner above the layout body                                                     |
+| `header`  | Sticky content-area header                                                                           |
+| `sidebar` | Sidebar-card content. On desktop, the consumer owns its internal fixed regions and scroll container. |
+| `default` | Main content                                                                                         |
+| `tabbar`  | Bottom tab bar                                                                                       |
 
-`web-ui-layout` constrains the sidebar card and owns the desktop toggle area, but does not create a sidebar scrollport. To make only part of the sidebar scroll, make the `sidebar` slot root a `height: 100%; min-height: 0` flex column and apply `overflow-y: auto` to the intended child. This keeps consumer-defined headers and footers fixed without adding extra public slots:
+`web-ui-layout` constrains the sidebar card and owns the desktop toggle area, but does not create a desktop sidebar scrollport. To make only part of the desktop sidebar scroll, make the `sidebar` slot root a `height: 100%; min-height: 0` flex column and apply `overflow-y: auto` to the intended child. This keeps consumer-defined headers and footers fixed without adding extra public slots:
 
 ```html
 <div slot="sidebar" class="sidebar-root">
@@ -1088,7 +1182,7 @@ Responsive page layout with an optional full-width banner, a collapsible desktop
 }
 ```
 
-At `640px` and below, the sidebar becomes a headless `web-ui-drawer`. The consumer content is rendered in the same rounded sidebar card; the mobile toggle appears in the header row as a glass button. Its left inset defaults to `8px`; align it with your own header padding via `--wui-layout-mobile-toggle-inset`.
+At `640px` and below, the sidebar becomes a `web-ui-drawer` with its built-in glass body, scrollable content, and drag zone. The layout maps `sidebar-width` to `--wui-drawer-width` and `--wui-layout-sidebar-radius` to `--wui-drawer-radius`. The mobile toggle appears in the header row as a glass button. Its left inset defaults to `8px`; align it with your own header padding via `--wui-layout-mobile-toggle-inset`.
 
 `header-glow` adds a pointer-transparent decorative glow behind header-slot content and the mobile toggle. It is a Header background rather than a foreground layer, so slotted content remains above it. Override its color with `--wui-layout-header-glow-color` (default: `--wui-color-page`). The glow concentration and spread are controlled by the internal variable `--wui-layout-header-glow-height` (default: `150%`); increase for stronger coverage, decrease for a subtler effect. Layout layers are ordered as Header (`10`) < Auxiliary (`20`) < Banner (`30`) < Tabbar (`40`) < Sidebar (`50`).
 

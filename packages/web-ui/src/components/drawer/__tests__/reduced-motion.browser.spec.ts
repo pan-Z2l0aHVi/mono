@@ -9,8 +9,16 @@ async function nextFrame() {
   await new Promise(resolve => requestAnimationFrame(resolve))
 }
 
-async function waitForOpenTransition() {
-  await new Promise(resolve => setTimeout(resolve, 350))
+// 等到 presence 挂上 is-visible；在并行负载下不能假设 350ms 足够。
+async function waitForOpenTransition(el: WebUiDrawer) {
+  const dialog = el.shadowRoot?.querySelector('dialog') as HTMLDialogElement | null
+  if (!dialog) throw new Error('Expected the drawer to contain a dialog')
+  const deadline = performance.now() + 2000
+  while (!(dialog.open && dialog.classList.contains('is-visible'))) {
+    if (performance.now() > deadline) throw new Error('Expected the drawer dialog to become visible')
+    await new Promise(resolve => requestAnimationFrame(resolve))
+  }
+  await el.updateComplete
 }
 
 afterEach(() => document.body.replaceChildren())
@@ -22,7 +30,7 @@ describe('减少动效下的 Drawer 拖拽关闭（浏览器）', () => {
     el.draggable = true
     el.open = true
     await el.updateComplete
-    await waitForOpenTransition()
+    await waitForOpenTransition(el)
 
     const dragZone = el.shadowRoot?.querySelector('.wui-drawer-drag-zone') as HTMLElement
     dragZone.dispatchEvent(
@@ -49,7 +57,7 @@ describe('减少动效下的 Drawer 拖拽关闭（浏览器）', () => {
     el.draggable = true
     el.open = true
     await el.updateComplete
-    await waitForOpenTransition()
+    await waitForOpenTransition(el)
 
     const dialog = el.shadowRoot?.querySelector('dialog') as HTMLDialogElement
     const dragZone = el.shadowRoot?.querySelector('.wui-drawer-drag-zone') as HTMLElement
@@ -89,7 +97,7 @@ describe('减少动效下的 Drawer 拖拽关闭（浏览器）', () => {
     el.draggable = true
     el.open = true
     await el.updateComplete
-    await waitForOpenTransition()
+    await waitForOpenTransition(el)
 
     const dragZone = el.shadowRoot?.querySelector('.wui-drawer-drag-zone') as HTMLElement
     dragZone.dispatchEvent(

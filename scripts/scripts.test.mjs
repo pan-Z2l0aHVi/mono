@@ -146,12 +146,8 @@ assert.match(run('verify', 'packages/web-ui/src/components/select/index.ts'), /e
 
 const contextPlan = JSON.parse(run('verify', '--json', 'docs/agents/context.md'))
 assert.equal(contextPlan.risk.context, true)
-assert.ok(contextPlan.context.includes('docs/adr/0012-progressive-agent-context-architecture.md'))
+assert.ok(contextPlan.context.includes('docs/adr/0004-progressive-agent-context-architecture.md'))
 assert.ok(contextPlan.verification.some(item => item.command === 'pnpm run validate:context'))
-
-const geminiContextPlan = JSON.parse(run('verify', '--json', 'GEMINI.md'))
-assert.equal(geminiContextPlan.risk.context, true)
-assert.ok(geminiContextPlan.verification.some(item => item.command === 'pnpm run validate:context'))
 
 const typePlan = JSON.parse(run('verify', '--json', 'packages/web-ui/src/types/react.ts'))
 assert.equal(typePlan.command, 'verify')
@@ -163,6 +159,10 @@ assert.equal(
 
 const toolPlan = JSON.parse(run('verify', '--json', 'scripts/repo-query.mjs'))
 assert.ok(toolPlan.verification.some(item => item.command === 'pnpm run test:scripts'))
+
+const workflowToolPlan = JSON.parse(run('verify', '--json', 'scripts/agent-workflow.mjs'))
+assert.ok(workflowToolPlan.context.includes('docs/agents/context.md'))
+assert.ok(workflowToolPlan.verification.some(item => item.command === 'pnpm run test:scripts'))
 
 const workspaceConfigPlan = JSON.parse(run('verify', '--json', 'pnpm-workspace.yaml'))
 assert.ok(workspaceConfigPlan.verification.some(item => item.command === 'pnpm run test:scripts'))
