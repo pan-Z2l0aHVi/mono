@@ -59,7 +59,6 @@ Role Contract 位于 `.agents/agents/`，只定义当前会话的职责、边界
   ```text
   Co-authored-by: Codex <noreply@openai.com>
   Co-authored-by: Claude <noreply@anthropic.com>
-  Co-authored-by: Gemini CLI <218195315+gemini-cli@users.noreply.github.com>
   ```
 
 - 人类提交者仍对需求、设计、审查、测试和最终合并承担全部责任。
