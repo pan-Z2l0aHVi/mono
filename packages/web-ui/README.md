@@ -875,10 +875,10 @@ The fade is a three-stop gradient rather than a linear one: the body stays fully
 The fade band is positioned in percentages, relative to the container's **current rendered height** — which is what `max-height` animates. So the band tracks the cut edge frame by frame during the collapse animation without the `mask-image` string ever needing to interpolate. Its length is driven by a registered `<length>` custom property so it can fade in and out with the toggle instead of popping in once the close animation settles.
 
 ```html
-<!-- 120px peek with a 30px fade (0.25 ratio) at its cut edge -->
-<web-ui-collapse peek="120px">
+<!-- 调强渐隐：比例 0.5 → 120px peek 配 60px 渐隐 -->
+<web-ui-collapse peek="120px" style="--wui-collapse-peek-edge-ratio: 0.5">
   <button type="button">Toggle me</button>
-  <div slot="content">Long content with a soft fade at the bottom of the 120px peek</div>
+  <div slot="content">Long content with a stronger fade at the bottom of the 120px peek</div>
 </web-ui-collapse>
 ```
 
