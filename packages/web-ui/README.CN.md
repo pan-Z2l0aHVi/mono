@@ -839,10 +839,10 @@ await preview.closed
 渐变带位置用百分比声明、相对容器的**当前渲染高度**（即 `max-height` 动画的那个高度），因此收起动画期间渐变带逐帧跟随裁剪边缘移动，`mask-image` 字符串本身无需插值。渐变带长度由注册的 `<length>` 自定义属性驱动，随开合动画平滑淡入淡出，而不是等收起动画落稳态才突然出现。
 
 ```html
-<!-- 120px 露出区域，末端 30px 渐隐（比例 0.25） -->
-<web-ui-collapse peek="120px">
+<!-- 调强渐隐：比例 0.5 → 120px peek 配 60px 渐隐 -->
+<web-ui-collapse peek="120px" style="--wui-collapse-peek-edge-ratio: 0.5">
   <button type="button">点击切换</button>
-  <div slot="content">很长的内容——120px 露出区域的底部柔和渐隐到背景</div>
+  <div slot="content">很长的内容——120px 露出区域的底部渐隐更强</div>
 </web-ui-collapse>
 ```
 
