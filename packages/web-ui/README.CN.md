@@ -824,7 +824,11 @@ await preview.closed
 </web-ui-collapse>
 ```
 
-**`peek-edge`（边缘渐隐）：** 在露出区域的裁剪边缘加一段 alpha 渐变（`horizontal` 时改为右边），让被裁掉的部分柔和过渡到背景而不是硬切。长度是 CSS 长度（如 `24px`）；空字符串关闭渐变。渐变末端颜色通过 CSS 变量 `--wui-collapse-peek-edge-color` 覆盖（需带 alpha 通道，mask-image 默认按 alpha 解析）。仅在关闭稳态生效——渐变在关闭动画落稳态时瞬时出现。
+**`peek-edge`（边缘渐隐）：** 在露出区域的裁剪边缘加一段 alpha 渐变（`horizontal` 时改为右边），让被裁掉的部分柔和过渡到背景而不是硬切。长度是 CSS 长度（如 `24px`）；空字符串关闭渐变。渐变末端颜色通过 CSS 变量 `--wui-collapse-peek-edge-color` 覆盖（需带 alpha 通道，mask-image 默认按 alpha 解析）。
+
+渐变是三段式而非线性：主体全黑延伸到渐变带起点，中段降到 50% alpha，末端才落到边缘颜色。纯线性渐变在同样长度下只有末端一小截"发虚"，三段式把虚化铺满整个渐变带，同样的 `peek-edge` 读起来明显得多。
+
+渐变带位置用百分比声明、相对容器的**当前渲染高度**（即 `max-height` 动画的那个高度），因此收起动画期间渐变带逐帧跟随裁剪边缘移动，`mask-image` 字符串本身无需插值。渐变带长度由注册的 `<length>` 自定义属性驱动，随开合动画平滑淡入淡出，而不是等收起动画落稳态才突然出现。
 
 ```html
 <web-ui-collapse peek="120px" peek-edge="32px">
