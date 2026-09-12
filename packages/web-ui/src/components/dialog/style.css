@@ -27,13 +27,13 @@ dialog {
   background: transparent;
 
   transition:
-    opacity var(--wui-duration-overlay-enter, 180ms) var(--wui-ease-enter, cubic-bezier(0.23, 1, 0.32, 1)),
-    transform var(--wui-duration-overlay-enter, 180ms) var(--wui-ease-enter, cubic-bezier(0.23, 1, 0.32, 1));
+    opacity var(--wui-duration-overlay-enter, 280ms) var(--wui-ease-enter, cubic-bezier(0.23, 1, 0.32, 1)),
+    transform var(--wui-duration-overlay-enter, 280ms) var(--wui-ease-enter, cubic-bezier(0.23, 1, 0.32, 1));
 
   &::backdrop {
     opacity: 0;
     background: var(--wui-dialog-overlay-bg, var(--wui-color-backdrop, rgb(0 0 0 / 0.12)));
-    transition: opacity var(--wui-duration-overlay-enter, 180ms) ease;
+    transition: opacity var(--wui-duration-overlay-enter, 280ms) ease;
   }
 }
 
@@ -50,11 +50,11 @@ dialog[open].is-visible {
 
 dialog.is-closing {
   pointer-events: none;
-  transition-duration: var(--wui-duration-overlay-exit, 140ms);
+  transition-duration: var(--wui-duration-overlay-exit, 200ms);
 }
 
 dialog.is-closing::backdrop {
-  transition-duration: var(--wui-duration-overlay-exit, 140ms);
+  transition-duration: var(--wui-duration-overlay-exit, 200ms);
 }
 
 dialog[open].is-visible::backdrop {
