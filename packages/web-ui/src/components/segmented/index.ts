@@ -2,6 +2,7 @@ import { html, LitElement, unsafeCSS } from 'lit'
 import { customElement, property, state } from 'lit/decorators.js'
 import { classMap } from 'lit/directives/class-map.js'
 
+import { installPointerFocusSuppression } from '@/shared/focus/pointer-focus'
 import { FormAssociated, defineFormAssociation, FormAssociationController } from '@/shared/form-association'
 import { attachDragGesture, type DragGestureHandle } from '@/shared/gesture/drag-gesture'
 import { clamp, snapToNearest } from '@/shared/gesture/physics'
@@ -10,6 +11,8 @@ import { defineGroupCoordinator, GroupController } from '@/shared/group-manageme
 import type { WebUiSegmentedTrigger } from '../segmented-trigger'
 
 import style from './style.css?inline'
+
+installPointerFocusSuppression()
 
 @customElement('web-ui-segmented')
 export class WebUiSegmented extends FormAssociated(LitElement) {

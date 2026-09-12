@@ -86,6 +86,11 @@ button:active:not(:disabled) {
   padding: 0;
 }
 
+/* pointer-focus helper 把标记写到 shadow host 上；这里抑制 Shadow DOM 内按钮的 focus ring。 */
+:host([data-wui-pointer-focus]) button:focus-visible {
+  outline-color: transparent;
+}
+
 /* ===== Variant: primary (默认) ===== */
 
 :host([variant='primary']) {

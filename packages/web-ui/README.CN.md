@@ -467,7 +467,7 @@ Portal 面板创建时会镜像 host 上解析后的这些变量；更新 host �
 
 **方法：** `focus()`, `blur()`
 
-支持 ArrowLeft/Right/Up/Down、Home/End、PageUp/PageDown 键盘导航。使用 pointer capture 处理鼠标、触控笔和触摸交互。
+支持 ArrowLeft/Right/Up/Down、Home/End、PageUp/PageDown 键盘导航。使用 pointer capture 处理鼠标、触控笔和触摸交互；触控轨道设置 `touch-action: none`，避免 iOS Safari 在横/纵拖拽过程中接管手势。
 
 **CSS 自定义属性：**
 
@@ -700,6 +700,8 @@ Portal 面板创建时会镜像 host 上解析后的这些变量；更新 host �
 
 关闭时保留原生 dialog 的 top layer，待退出过渡完成后调用 `dialog.close()`。Escape 始终走此关闭路径；`no-backdrop-close` 仅控制遮罩点击。
 
+启用 `closable` 时，内置关闭按钮固定在 header 右上角（默认顶部 `16px`、右侧 `20px`），不会再拉伸到抽屉中间。
+
 **拖拽关闭：** 启用 `draggable` 后，打开的抽屉在内缘显示灰色胶囊 drag bar（默认 4×56px，视觉中线距内缘 10px，位于 20px 厚的命中热区内；`right` 在左缘、`left` 在右缘、`top` 在下缘、`bottom` 在上缘）：
 
 - 拖拽实时跟手，遮罩透明度按比例淡出。
@@ -722,6 +724,8 @@ Portal 面板创建时会镜像 host 上解析后的这些变量；更新 host �
 | `--wui-drawer-drag-bar-thickness` | `4px`                              | Drag bar 胶囊厚度（短轴）                            |
 | `--wui-drawer-drag-bar-length`    | `56px`                             | Drag bar 胶囊长度（沿抽屉边缘）                      |
 | `--wui-drawer-header-padding`     | `16px 20px`                        | Header 区域 padding                                  |
+| `--wui-drawer-close-top`          | `16px`                             | 内置关闭按钮相对 header 顶部的偏移                   |
+| `--wui-drawer-close-right`        | `20px`                             | 内置关闭按钮相对抽屉右缘的偏移                       |
 | `--wui-drawer-content-padding`    | `20px`                             | 内容区 padding；同时驱动 drag bar 视觉中线（取半值） |
 | `--wui-drawer-footer-padding`     | `16px 20px`                        | Footer 区域 padding                                  |
 
@@ -1235,6 +1239,8 @@ SVG 线条绘制动画，基于 `stroke-dashoffset`。直接在原元素上动�
 **方法：** `getOverlayRoot()` — 返回 Portal 浮层容器
 
 在其子树中定义基础、颜色、层级、阴影和动效 token。`motion="system"` 跟随 `prefers-reduced-motion`；使用 `motion="reduced"` 降低当前作用域动效，或在嵌套主题中使用 `motion="full"` 恢复默认 token。System 配色模式跟随 `prefers-color-scheme`。
+
+主题宿主使用 block 盒并绘制 `--wui-color-page`，确保 iOS Safari 上页面背景稳定，同时让自定义属性可靠继承到 slotted 内容。
 
 **基础 token：**
 

@@ -64,6 +64,22 @@ function getExpectedTransform(el: WebUiDrawer, closeOffset: number): string {
 afterEach(() => document.body.replaceChildren())
 
 describe('WebUiDrawer 拖拽关闭（浏览器）', () => {
+  it('内置关闭按钮定位在 header 右上角，不拉伸到抽屉中间', async () => {
+    const el = createDrawer()
+    el.closable = true
+    el.open = true
+    await el.updateComplete
+    await waitForOpenTransition(el)
+
+    const close = el.shadowRoot?.querySelector<HTMLElement>('.wui-drawer-close')
+    expect(close).toBeTruthy()
+    const style = getComputedStyle(close!)
+    expect(style.position).toBe('absolute')
+    expect(style.top).toBe('16px')
+    expect(style.right).toBe('20px')
+    expect(close!.getBoundingClientRect().width).toBeLessThan(200)
+  })
+
   it('pointermove 实时跟手：transform 位移随指针变化', async () => {
     const el = createDrawer()
     el.draggable = true

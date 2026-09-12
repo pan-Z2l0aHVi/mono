@@ -447,11 +447,11 @@ describe('WebUiSegmented 手势拖拽与吸附（浏览器）', () => {
     expect(indicator.getAnimations()).toHaveLength(0)
   })
 
-  it('移动端分组保留纵向滚动，横向拖拽交给组件手势处理', async () => {
+  it('移动端分组禁止浏览器手势接管，横向拖拽交给组件手势处理', async () => {
     const { segmented } = createSegmented()
     await segmented.updateComplete
 
     const inner = segmented.shadowRoot?.querySelector('.wui-segmented') as HTMLElement
-    expect(getComputedStyle(inner).touchAction).toBe('pan-y')
+    expect(getComputedStyle(inner).touchAction).toBe('none')
   })
 })

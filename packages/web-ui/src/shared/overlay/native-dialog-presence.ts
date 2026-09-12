@@ -59,6 +59,9 @@ export const defineNativeDialogPresence = () =>
           // 保留未打开状态
         }
       }
+      // 强制计算初始 top-layer 布局，确保 Safari 等浏览器在下一帧切换 class 时
+      // 有稳定的 transition 起点，而不是偶发跳过进场过渡。
+      void dialog.offsetWidth
 
       cancelOpenFrame()
       openFrame = requestAnimationFrame(() => {

@@ -19,7 +19,7 @@
 }
 
 .wui-slider-track {
-  touch-action: pan-y;
+  touch-action: none;
   cursor: default;
   user-select: none;
 
@@ -46,7 +46,7 @@
 }
 
 :host([vertical]) .wui-slider-track {
-  touch-action: pan-x;
+  touch-action: none;
   width: var(--wui-slider-height, var(--wui-slider-track-size, 6px));
   height: 100%;
 }
@@ -165,4 +165,8 @@
   &.is-dragging {
     transform: translate(-50%, 50%) scale(1.5);
   }
+}
+
+:host([data-wui-pointer-focus]) .wui-slider-track:focus-visible {
+  outline-color: transparent;
 }

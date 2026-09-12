@@ -7,6 +7,7 @@ import glass from '@/assets/glass.css?inline'
 import overlayMotion from '@/assets/overlay-motion.css?inline'
 import type { WebUiOption } from '@/components/option'
 import { lucideChevronDown } from '@/icons'
+import { installPointerFocusSuppression } from '@/shared/focus/pointer-focus'
 import { FormAssociated, defineFormAssociation, FormAssociationController } from '@/shared/form-association'
 import { dispatchOpenChangeEvent } from '@/shared/open-state'
 import {
@@ -23,6 +24,8 @@ import type { OverlayContainer, OverlayPortal } from '@/shared/overlay/portal'
 import { defineScrollLockLease } from '@/shared/scroll-lock/scroll-lock'
 
 import style from './style.css?inline'
+
+installPointerFocusSuppression()
 
 @customElement('web-ui-select')
 export class WebUiSelect extends FormAssociated(LitElement) {

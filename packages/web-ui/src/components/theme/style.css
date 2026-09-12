@@ -47,7 +47,8 @@
   --wui-radius-control: calc(infinity * 1px);
   --wui-radius-menu: 18px;
   --wui-radius-overlay: 28px;
-  display: contents;
+  display: block;
+  background-color: var(--wui-color-page, #fff);
 }
 
 :host([motion='reduced']) {

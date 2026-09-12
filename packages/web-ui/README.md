@@ -499,7 +499,7 @@ Range slider with marks and vertical orientation.
 
 **Methods:** `focus()`, `blur()`
 
-Supports ArrowLeft/Right/Up/Down, Home/End, PageUp/PageDown keyboard navigation. Uses pointer capture for drag interaction across mouse, touch, and pen.
+Supports ArrowLeft/Right/Up/Down, Home/End, PageUp/PageDown keyboard navigation. Uses pointer capture for drag interaction across mouse, touch, and pen. Touch tracks set `touch-action: none` so iOS Safari does not interrupt horizontal or vertical drag gestures.
 
 **CSS Custom Properties:**
 
@@ -736,6 +736,8 @@ Side drawer using native `<dialog>` with closing animation. In non-headless mode
 
 Closing keeps the native dialog in the top layer until the `--wui-duration-drawer-exit` transition completes (240ms by default), then calls `dialog.close()`. Escape always follows this close path; `no-backdrop-close` controls backdrop clicks only.
 
+When `closable` is set, the built-in close button is positioned at the header's top-right corner (defaults `16px` down and `20px` in from the edge) instead of stretching across the drawer body.
+
 **Drag to close:** With `draggable`, a gray capsule drag bar (4×56px by default, visually centered 10px from the inner edge inside a 20px-thick hit zone) appears on the drawer's inner edge (left edge for `right`, right edge for `left`, bottom edge for `top`, top edge for `bottom`) while open:
 
 - Dragging follows the pointer in real time; the backdrop fades proportionally.
@@ -758,6 +760,8 @@ Closing keeps the native dialog in the top layer until the `--wui-duration-drawe
 | `--wui-drawer-drag-bar-thickness` | `4px`                              | Drag bar capsule thickness (short axis)                                      |
 | `--wui-drawer-drag-bar-length`    | `56px`                             | Drag bar capsule length (along the drawer edge)                              |
 | `--wui-drawer-header-padding`     | `16px 20px`                        | Header section padding                                                       |
+| `--wui-drawer-close-top`          | `16px`                             | Built-in close button offset from the top of the header                      |
+| `--wui-drawer-close-right`        | `20px`                             | Built-in close button offset from the right edge of the drawer               |
 | `--wui-drawer-content-padding`    | `20px`                             | Content area padding; also drives drag bar visual center (half value)        |
 | `--wui-drawer-footer-padding`     | `16px 20px`                        | Footer section padding                                                       |
 
@@ -1271,6 +1275,8 @@ Theme provider defining CSS custom property tokens.
 **Methods:** `getOverlayRoot()` — returns the portal overlay container
 
 Defines foundation, color, layer, shadow, and motion tokens for its subtree. `motion="system"` follows `prefers-reduced-motion`; use `motion="reduced"` to reduce animation in a scope or `motion="full"` in a nested theme to restore normal token values. System appearance follows `prefers-color-scheme`.
+
+The host uses a block box and paints `--wui-color-page` so page backgrounds stay stable on iOS Safari and custom properties inherit to slotted content reliably.
 
 **Foundation tokens:**
 

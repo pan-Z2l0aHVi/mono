@@ -2,9 +2,12 @@ import { html, LitElement, unsafeCSS } from 'lit'
 import { customElement, property } from 'lit/decorators.js'
 import { classMap } from 'lit/directives/class-map.js'
 
+import { installPointerFocusSuppression } from '@/shared/focus/pointer-focus'
 import { defineGroupManaged, selectionGroupContextKey, type SelectionGroupContext } from '@/shared/group-management'
 
 import style from './style.css?inline'
+
+installPointerFocusSuppression()
 
 @customElement('web-ui-segmented-trigger')
 export class WebUiSegmentedTrigger extends LitElement {
