@@ -15,6 +15,19 @@ const IMAGES = [
   { src: IMAGE_SRC, alt: '图 C' }
 ]
 
+/*
+ * 1x 平移只在图片两个方向都不顶满舞台时才有余量：图片被宽度或高度约束时，
+ * 该轴上的尺寸差为 0、拖不动。小图在 1x 下按原始尺寸渲染，两个方向都留有余量。
+ */
+const SMALL_SVG =
+  '<svg xmlns="http://www.w3.org/2000/svg" width="200" height="100"><rect width="200" height="100" fill="#fb0"/></svg>'
+const SMALL_IMAGE_SRC = `data:image/svg+xml,${encodeURIComponent(SMALL_SVG)}`
+const SMALL_IMAGES = [
+  { src: SMALL_IMAGE_SRC, alt: '小图 A' },
+  { src: SMALL_IMAGE_SRC, alt: '小图 B' },
+  { src: SMALL_IMAGE_SRC, alt: '小图 C' }
+]
+
 afterEach(() => document.body.replaceChildren())
 
 // 默认挂载到 fallback overlay root 的 shadow DOM 内（公开结构见 test-utils.getPortalPanel）。
@@ -74,6 +87,30 @@ async function waitForTransformSettled(image: HTMLImageElement, previous: string
 
 function offsetXOf(image: HTMLImageElement): number {
   return new DOMMatrixReadOnly(getComputedStyle(image).transform).m41
+}
+
+function offsetYOf(image: HTMLImageElement): number {
+  return new DOMMatrixReadOnly(getComputedStyle(image).transform).m42
+}
+
+/**
+ * 等 transform 过渡把位移带到目标值（亚像素容差）。
+ * 不假设是否发生过渡：合成事件之间没有真实帧，浏览器可能从旧值起一段过渡，
+ * 也可能直接落位，两种情形轮询到目标即返回。
+ */
+async function waitForOffset(image: HTMLImageElement, x: number, y: number): Promise<void> {
+  await pollUntil(() => {
+    const matrix = new DOMMatrixReadOnly(getComputedStyle(image).transform)
+    return Math.abs(matrix.m41 - x) < 0.5 && Math.abs(matrix.m42 - y) < 0.5
+  }, `image offset did not reach (${x}, ${y})`)
+}
+
+/** 平移边界 = 图片在给定倍率下的绘制尺寸与舞台尺寸差的一半，与实现同一口径。 */
+function panBounds(image: HTMLImageElement, stage: HTMLElement, scale = 1): { x: number; y: number } {
+  return {
+    x: Math.abs(image.offsetWidth * scale - stage.clientWidth) / 2,
+    y: Math.abs(image.offsetHeight * scale - stage.clientHeight) / 2
+  }
 }
 
 /** 等 dialog 进入动画结束：舞台几何连续两次相同即认为稳定，否则锚点坐标会偏。 */
@@ -237,30 +274,140 @@ describe('imagePreview 命令式 API（浏览器）', () => {
     await handle.closed
   })
 
-  it('放大后拖拽平移，位移被钳制在图片溢出范围内', async () => {
+  it('放大后拖拽平移，位移被钳制在图片与舞台的尺寸差内', async () => {
     const { handle, host } = await openPreview()
     const image = queryA11y(host, 'img') as HTMLImageElement
 
     await pollUntil(() => image.complete && image.offsetWidth > 0, 'image did not load')
     const stage = image.parentElement as HTMLElement
+    await waitForStageSettled(stage)
 
     handle.zoomIn()
     await host.updateComplete
 
-    const scale = handle.scale
-    const maxX = Math.max(0, (image.offsetWidth * scale - stage.clientWidth) / 2)
-    const maxY = Math.max(0, (image.offsetHeight * scale - stage.clientHeight) / 2)
-    expect(maxX).toBeGreaterThan(0)
+    const bounds = panBounds(image, stage, handle.scale)
+    expect(bounds.x).toBeGreaterThan(0)
 
     stage.dispatchEvent(pointer('pointerdown', { button: 0, clientX: 0, clientY: 0 }))
+    await host.updateComplete
     stage.dispatchEvent(pointer('pointermove', { clientX: 10_000, clientY: 10_000 }))
     await host.updateComplete
 
-    const matrix = new DOMMatrixReadOnly(getComputedStyle(image).transform)
-    expect(matrix.m41).toBeCloseTo(maxX, 0)
-    expect(matrix.m42).toBeCloseTo(maxY, 0)
+    // 两个方向都被钳制在边界上；某一方向没有溢出时钳制到「可在视口内移动」的极限。
+    expect(offsetXOf(image)).toBeCloseTo(bounds.x, 0)
+    expect(offsetYOf(image)).toBeCloseTo(bounds.y, 0)
 
     stage.dispatchEvent(pointer('pointerup', {}))
+    handle.close()
+    await handle.closed
+  })
+
+  it('1x 时鼠标与单指拖拽都能移动图片，方向不限且不会被拖出视口', async () => {
+    const { handle, host } = await openPreview({ images: SMALL_IMAGES })
+    const image = queryA11y(host, 'img') as HTMLImageElement
+
+    await pollUntil(() => image.complete && image.offsetWidth > 0, 'image did not load')
+    const stage = image.parentElement as HTMLElement
+    await waitForStageSettled(stage)
+
+    expect(handle.scale).toBe(1)
+    const bounds = panBounds(image, stage)
+    expect(bounds.x).toBeGreaterThan(0)
+    expect(bounds.y).toBeGreaterThan(0)
+
+    // 桌面鼠标按住拖拽：两个方向都跟手。拖拽期间 transform 过渡被关闭，
+    // 读到的就是跟手位移本身。
+    stage.dispatchEvent(pointer('pointerdown', { pointerType: 'mouse', clientX: 100, clientY: 100 }))
+    await host.updateComplete
+    stage.dispatchEvent(
+      pointer('pointermove', { pointerType: 'mouse', clientX: 100 + bounds.x / 2, clientY: 100 + bounds.y / 2 })
+    )
+    await host.updateComplete
+    expect(offsetXOf(image)).toBeCloseTo(bounds.x / 2, 0)
+    expect(offsetYOf(image)).toBeCloseTo(bounds.y / 2, 0)
+
+    // 继续拖到远超边界：位移被钳制，图片恰好贴住视口边缘而不是被拖出去。
+    stage.dispatchEvent(pointer('pointermove', { pointerType: 'mouse', clientX: 100_000, clientY: 100_000 }))
+    await host.updateComplete
+    expect(offsetXOf(image)).toBeCloseTo(bounds.x, 0)
+    expect(offsetYOf(image)).toBeCloseTo(bounds.y, 0)
+    stage.dispatchEvent(pointer('pointerup', { pointerType: 'mouse', clientX: 100_000, clientY: 100_000 }))
+    await host.updateComplete
+
+    const stageRect = stage.getBoundingClientRect()
+    let imageRect = image.getBoundingClientRect()
+    expect(imageRect.right).toBeLessThanOrEqual(stageRect.right + 1)
+    expect(imageRect.bottom).toBeLessThanOrEqual(stageRect.bottom + 1)
+
+    // 平移结束后的余波 click 不是遮罩点击。
+    stage.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1 }))
+    await host.updateComplete
+    expect(isMounted()).toBe(true)
+
+    // 移动端单指按住拖拽：与鼠标同一条 Pointer 路径，反向拖到负边界。
+    stage.dispatchEvent(pointer('pointerdown', { pointerType: 'touch', pointerId: 7, clientX: 400, clientY: 400 }))
+    await host.updateComplete
+    stage.dispatchEvent(
+      pointer('pointermove', { pointerType: 'touch', pointerId: 7, clientX: -100_000, clientY: -100_000 })
+    )
+    await host.updateComplete
+    expect(offsetXOf(image)).toBeCloseTo(-bounds.x, 0)
+    expect(offsetYOf(image)).toBeCloseTo(-bounds.y, 0)
+    stage.dispatchEvent(
+      pointer('pointerup', { pointerType: 'touch', pointerId: 7, clientX: -100_000, clientY: -100_000 })
+    )
+    await host.updateComplete
+
+    imageRect = image.getBoundingClientRect()
+    expect(imageRect.left).toBeGreaterThanOrEqual(stageRect.left - 1)
+    expect(imageRect.top).toBeGreaterThanOrEqual(stageRect.top - 1)
+
+    handle.close()
+    await handle.closed
+  })
+
+  it('1x 平移后「重置缩放」可用，点击后图片移回视口中心', async () => {
+    const { handle, host } = await openPreview({ images: SMALL_IMAGES, toolbar: true })
+    const image = queryA11y(host, 'img') as HTMLImageElement
+
+    await pollUntil(() => image.complete && image.offsetWidth > 0, 'image did not load')
+    const stage = image.parentElement as HTMLElement
+    await waitForStageSettled(stage)
+
+    const reset = () => queryA11y(host, '[aria-label="重置缩放"]') as HTMLElement
+    // 1x 且未位移时没有可重置的东西。
+    expect(reset().hasAttribute('disabled')).toBe(true)
+
+    const bounds = panBounds(image, stage)
+    expect(bounds.x).toBeGreaterThan(0)
+
+    stage.dispatchEvent(pointer('pointerdown', { pointerType: 'mouse', clientX: 100, clientY: 100 }))
+    await host.updateComplete
+    stage.dispatchEvent(pointer('pointermove', { pointerType: 'mouse', clientX: 100_000, clientY: 100_000 }))
+    await host.updateComplete
+
+    // 拖拽期间 transform 过渡被关闭，读到的是跟手位移本身。
+    expect(offsetXOf(image)).toBeCloseTo(bounds.x, 0)
+    expect(offsetYOf(image)).toBeCloseTo(bounds.y, 0)
+    // 位移来自平移而非缩放：倍率仍是 1x，但已经有东西可重置。
+    expect(handle.scale).toBe(1)
+    expect(reset().hasAttribute('disabled')).toBe(false)
+
+    stage.dispatchEvent(pointer('pointerup', { pointerType: 'mouse', clientX: 100_000, clientY: 100_000 }))
+    await host.updateComplete
+
+    await userEvent.click(reset())
+    await host.updateComplete
+    // 重置同时还原倍率与位移；等位移被过渡带回 0 再断言。
+    await waitForOffset(image, 0, 0)
+
+    expect(handle.scale).toBe(1)
+    // 过渡结束时允许亚像素残差。
+    expect(offsetXOf(image)).toBeCloseTo(0, 0)
+    expect(offsetYOf(image)).toBeCloseTo(0, 0)
+    // 回到原位后按钮重新不可用。
+    expect(reset().hasAttribute('disabled')).toBe(true)
+
     handle.close()
     await handle.closed
   })
@@ -383,18 +530,17 @@ describe('imagePreview 命令式 API（浏览器）', () => {
 
     handle.zoomIn()
     await host.updateComplete
-    const scale = handle.scale
-    expect(scale).toBeGreaterThan(1)
-    const maxX = Math.max(0, (image.offsetWidth * scale - stage.clientWidth) / 2)
-    expect(maxX).toBeGreaterThan(0)
+    expect(handle.scale).toBeGreaterThan(1)
+    const bounds = panBounds(image, stage, handle.scale)
+    expect(bounds.x).toBeGreaterThan(0)
 
     // 与未放大时相同的横向拖拽方向：放大后必须走平移而不是切图。
     stage.dispatchEvent(pointer('pointerdown', { clientX: 400, clientY: 300 }))
-    stage.dispatchEvent(pointer('pointermove', { clientX: 100, clientY: 300 }))
+    await host.updateComplete
+    stage.dispatchEvent(pointer('pointermove', { clientX: 400 - 100_000, clientY: 300 }))
     await host.updateComplete
 
-    const matrix = new DOMMatrixReadOnly(getComputedStyle(image).transform)
-    expect(matrix.m41).toBeCloseTo(-maxX, 0)
+    expect(offsetXOf(image)).toBeCloseTo(-bounds.x, 0)
 
     stage.dispatchEvent(pointer('pointerup', { clientX: 100, clientY: 300 }))
     await host.updateComplete
@@ -404,24 +550,63 @@ describe('imagePreview 命令式 API（浏览器）', () => {
     await handle.closed
   })
 
-  it('swipe 开启但只有一张图时，横向拖拽既不位移也不切换', async () => {
-    const { handle, host } = await openPreview({ swipe: true, images: [IMAGES[0]] })
+  it('swipe 开启但只有一张图时，横向拖拽退回平移而不是切图', async () => {
+    const { handle, host } = await openPreview({ swipe: true, images: [SMALL_IMAGES[0]] })
     const image = queryA11y(host, 'img') as HTMLImageElement
 
     await pollUntil(() => image.complete && image.offsetWidth > 0, 'image did not load')
     const stage = image.parentElement as HTMLElement
+    await waitForStageSettled(stage)
+
+    // 单图没有可切换的邻居，swipe 不接管横向轴，拖拽因此退回平移。
+    const bounds = panBounds(image, stage)
+    expect(bounds.x).toBeGreaterThan(0)
 
     stage.dispatchEvent(pointer('pointerdown', { clientX: 400, clientY: 300 }))
-    stage.dispatchEvent(pointer('pointermove', { clientX: 200, clientY: 300 }))
+    await host.updateComplete
+    stage.dispatchEvent(pointer('pointermove', { clientX: -100_000, clientY: 300 }))
     await host.updateComplete
 
-    // 单图时手势不应启动，因此拖拽过程中没有跟手位移。
-    const during = new DOMMatrixReadOnly(getComputedStyle(image).transform)
-    expect(during.m41).toBe(0)
+    expect(offsetXOf(image)).toBeCloseTo(-bounds.x, 0)
 
-    stage.dispatchEvent(pointer('pointerup', { clientX: 100, clientY: 300 }))
+    stage.dispatchEvent(pointer('pointerup', { clientX: -100_000, clientY: 300 }))
     await host.updateComplete
     expect(handle.index).toBe(0)
+
+    handle.close()
+    await handle.closed
+  })
+
+  it('1x + swipe 多图时，纵向拖拽平移、横向拖拽仍然切图', async () => {
+    const { handle, host } = await openPreview({ swipe: true, images: SMALL_IMAGES })
+    const image = queryA11y(host, 'img') as HTMLImageElement
+
+    await pollUntil(() => image.complete && image.offsetWidth > 0, 'image did not load')
+    const stage = image.parentElement as HTMLElement
+    await waitForStageSettled(stage)
+
+    const bounds = panBounds(image, stage)
+    expect(bounds.y).toBeGreaterThan(0)
+
+    // 纵向拖拽：swipe 只接管横向分量，纵向仍然平移，且不切换图片。
+    stage.dispatchEvent(pointer('pointerdown', { clientX: 400, clientY: 300 }))
+    await host.updateComplete
+    stage.dispatchEvent(pointer('pointermove', { clientX: 400, clientY: 300 + bounds.y / 2 }))
+    await host.updateComplete
+
+    expect(offsetYOf(image)).toBeCloseTo(bounds.y / 2, 0)
+    expect(offsetXOf(image)).toBeCloseTo(0, 0)
+
+    stage.dispatchEvent(pointer('pointerup', { clientX: 400, clientY: 300 + bounds.y / 2 }))
+    await host.updateComplete
+    expect(handle.index).toBe(0)
+
+    // 横向拖拽：越过阈值即切图（swipe 的既有语义不变）。
+    stage.dispatchEvent(pointer('pointerdown', { clientX: 400, clientY: 300, pointerId: 3 }))
+    stage.dispatchEvent(pointer('pointermove', { clientX: 200, clientY: 300, pointerId: 3 }))
+    stage.dispatchEvent(pointer('pointerup', { clientX: 100, clientY: 300, pointerId: 3 }))
+    await host.updateComplete
+    expect(handle.index).toBe(1)
 
     handle.close()
     await handle.closed
@@ -462,16 +647,25 @@ describe('imagePreview 命令式 API（浏览器）', () => {
     await handle.closed
   })
 
-  it('swipe 默认关闭，横向拖拽不切换图片', async () => {
-    const { handle, host } = await openPreview()
+  it('swipe 默认关闭时，横向拖拽平移图片而不是切换', async () => {
+    const { handle, host } = await openPreview({ images: SMALL_IMAGES })
     const image = queryA11y(host, 'img') as HTMLImageElement
 
     await pollUntil(() => image.complete && image.offsetWidth > 0, 'image did not load')
     const stage = image.parentElement as HTMLElement
+    await waitForStageSettled(stage)
+
+    const bounds = panBounds(image, stage)
+    expect(bounds.x).toBeGreaterThan(0)
 
     stage.dispatchEvent(pointer('pointerdown', { clientX: 400, clientY: 300 }))
-    stage.dispatchEvent(pointer('pointermove', { clientX: 200, clientY: 300 }))
-    stage.dispatchEvent(pointer('pointerup', { clientX: 100, clientY: 300 }))
+    await host.updateComplete
+    stage.dispatchEvent(pointer('pointermove', { clientX: -100_000, clientY: 300 }))
+    await host.updateComplete
+
+    expect(offsetXOf(image)).toBeCloseTo(-bounds.x, 0)
+
+    stage.dispatchEvent(pointer('pointerup', { clientX: -100_000, clientY: 300 }))
     await host.updateComplete
     expect(handle.index).toBe(0)
 

@@ -46,7 +46,10 @@ export interface ImagePreviewOptions {
   closable?: boolean
   /** 展示「当前 / 总数」指示器。默认 false。 */
   indicator?: boolean
-  /** 允许左右滑动切换图片。默认 false。 */
+  /**
+   * 1x 且图片多于一张时，允许左右滑动切换图片：该手势接管横向分量，纵向仍然平移。
+   * 放大后拖拽一律平移、不再切图。默认 false。
+   */
   swipe?: boolean
   /** 打开期间不锁定页面滚动，语义与 `<web-ui-dialog>` 的 `noScrollLock` 一致。默认 false。 */
   noScrollLock?: boolean
@@ -78,7 +81,7 @@ const MAX_SCALE = 4
 const ZOOM_STEP = 0.5
 // 滚轮 deltaY(px) 到缩放的指数系数；每 120px 步进约放大 27%。
 const WHEEL_ZOOM_SENSITIVITY = 0.002
-// 放大后判定为平移而非点击的最小位移。
+// 判定为拖拽（平移或滑动）而非点击的最小位移。
 const PAN_MOVE_THRESHOLD = 3
 // 滑动切图的最小位移与甩动速度，任一满足即切图。
 const SWIPE_DISTANCE = 48
@@ -299,7 +302,10 @@ class WebUiImagePreview extends LitElement {
   }
 
   /**
-   * 平移边界 = 缩放后图片相对舞台的溢出的一半。
+   * 平移边界 = 图片与舞台在缩放后「尺寸差」的一半。
+   *
+   * 图片比舞台大时它是「能露出多少边缘」，比舞台小时它是「能在视口内移动多远」——
+   * 两种情形是同一个绝对差，所以 1x 也能拖动，且图片永远拖不出视口。
    * 图片只受 max-width/max-height 收缩（不放大），因此 offsetWidth/offsetHeight
    * 就是绘制尺寸，不受 CSS transform 影响。
    */
@@ -313,9 +319,14 @@ class WebUiImagePreview extends LitElement {
     if (!width || !height) return { x: 0, y: 0 }
 
     return {
-      x: Math.max(0, (width * this._scale - stage.clientWidth) / 2),
-      y: Math.max(0, (height * this._scale - stage.clientHeight) / 2)
+      x: Math.abs(width * this._scale - stage.clientWidth) / 2,
+      y: Math.abs(height * this._scale - stage.clientHeight) / 2
     }
+  }
+
+  /** 当前是否存在位移。1x 也能平移，因此「重置缩放」是否可用不能只看倍率。 */
+  private get _isPanned() {
+    return this._offsetX !== 0 || this._offsetY !== 0
   }
 
   private _clampOffsets() {
@@ -489,6 +500,10 @@ class WebUiImagePreview extends LitElement {
    * 因此不会像立即捕获那样破坏图片自身的 click / dblclick 命中；
    * 拖拽过程中的窗口级监听同时兜住指针移出元素甚至移出视口的情况。
    *
+   * 拖拽默认平移且不限方向，与倍率无关：放大后是查看被裁切的边缘，1x 是在视口内
+   * 移动图片。唯一的例外是 `swipe` 独占 1x——未放大、开启 swipe 且多于一张图时，
+   * 横向拖拽归切图，此时不做平移。鼠标按住拖拽与单指拖拽走的是同一条 Pointer 路径。
+   *
    * 监听挂在 dialog 而非舞台上：控件层里的按下不会经过舞台，挂在舞台会漏掉
    * 这些按下而留下过期的「起于空白」标记。
    */
@@ -508,20 +523,24 @@ class WebUiImagePreview extends LitElement {
     const stage = this._stage
     if (!stage || (event.target !== stage && !stage.contains(event.target as Node))) return
 
-    const panning = this._scale > MIN_SCALE
-    if (!panning && !(this.swipe && this.images.length > 1)) return
-
-    this._swipeGesture = !panning
+    // swipe 独占 1x：只有未放大、开启 swipe 且多于一张图时，横向拖拽才归切图；
+    // 其余情形拖拽一律平移，且不限方向（边界见 _offsetBounds）。
+    this._swipeGesture = this._scale === MIN_SCALE && this.swipe && this.images.length > 1
     this._panOriginX = this._offsetX
     this._panOriginY = this._offsetY
 
     this._gesture?.destroy()
     this._gesture = attachDragGesture(event, {
-      axis: panning ? 'both' : 'x',
+      // 不能用 axis: 'x'：那会把以纵向为主的拖拽整体判定为「取消」，1x 下纵向就
+      // 无法平移了。这里始终按 both 追踪，让 swipe 只接管横向分量。
+      axis: 'both',
       threshold: PAN_MOVE_THRESHOLD,
       onMove: info => {
-        if (this._swipeGesture) this._swipeOffset = info.deltaX
-        else this._panTo(info.deltaX, info.deltaY)
+        if (this._swipeGesture) {
+          // 横向跟手位移用于切图（松手回弹），纵向仍然平移。
+          this._swipeOffset = info.deltaX
+          this._panTo(0, info.deltaY)
+        } else this._panTo(info.deltaX, info.deltaY)
       },
       onEnd: info => {
         this._dragged = true
@@ -665,7 +684,7 @@ class WebUiImagePreview extends LitElement {
                       icon
                       size="30"
                       aria-label="重置缩放"
-                      ?disabled=${this._scale <= MIN_SCALE}
+                      ?disabled=${this._scale <= MIN_SCALE && !this._isPanned}
                       @click=${this.resetZoom}
                     >
                       <web-ui-icon size="16" .icon=${radixIconsReset}></web-ui-icon>

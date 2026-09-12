@@ -259,6 +259,50 @@ describe('imagePreview 命令式 API', () => {
     expect(isMounted()).toBe(false)
   })
 
+  it('1x 拖拽进入平移手势路径，释放后的余波 click 不关闭浮层', async () => {
+    const handle = await openPreview()
+    const image = queryA11y(hostElement(), 'img') as HTMLImageElement
+    const stage = image.parentElement as HTMLElement
+
+    // jsdom 没有布局（offsetWidth/stage.clientWidth 均为 0），位移边界恒为 0，
+    // 因此这里只覆盖 1x 已进入手势路径这一可观测事实：拖拽结束会置 _dragged，
+    // 同一次指针交互补发的 click 不再被当作遮罩点击。位移本身由浏览器用例断言。
+    stage.dispatchEvent(
+      new PointerEvent('pointerdown', {
+        bubbles: true,
+        button: 0,
+        pointerId: 1,
+        isPrimary: true,
+        clientX: 400,
+        clientY: 300
+      })
+    )
+    stage.dispatchEvent(
+      new PointerEvent('pointermove', {
+        bubbles: true,
+        cancelable: true,
+        pointerId: 1,
+        isPrimary: true,
+        clientX: 200,
+        clientY: 300
+      })
+    )
+    stage.dispatchEvent(
+      new PointerEvent('pointerup', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 200, clientY: 300 })
+    )
+    await hostElement().updateComplete
+
+    stage.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1 }))
+    await hostElement().updateComplete
+    expect(isMounted()).toBe(true)
+
+    // 余波 click 被吞掉后，遮罩关闭仍可用。
+    stage.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0, pointerId: 2, isPrimary: true }))
+    stage.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1 }))
+    await handle.closed
+    expect(isMounted()).toBe(false)
+  })
+
   it('noBackdropClose 时点击空白区域不关闭', async () => {
     const handle = await openPreview({ noBackdropClose: true })
     const image = queryA11y(hostElement(), 'img') as HTMLImageElement

@@ -249,7 +249,8 @@ onBeforeUnmount(() => {
 
     <h2>缩放与平移</h2>
     <p class="mb-3 text-sm text-gray-500">
-      大尺寸图片放大后可拖拽平移，倍率限制在 1x–4x；1x 时图片收缩到视口内，不被裁切。
+      大尺寸图片可按住拖拽平移，方向不限且与倍率无关：放大后查看被裁切的边缘，1x 时在视口内移动图片；倍率限制在
+      1x–4x，边界是图片与舞台尺寸差的一半，因此图片始终不会被拖出视口。
     </p>
     <div class="mb-6 flex flex-wrap gap-2">
       <web-ui-button @click="openLarge">打开大图</web-ui-button>
@@ -257,8 +258,9 @@ onBeforeUnmount(() => {
 
     <h2>左右滑动切换</h2>
     <p class="mb-3 text-sm text-gray-500">
-      <code>swipe: true</code> 时横向拖拽越过阈值即切换图片，跟手位移松手后回弹；<code>loop: false</code>
-      时在边界回弹。该手势复用 shared 的 <code>attachDragGesture</code>。
+      <code>swipe: true</code> 且图片多于一张时，1x 下横向拖拽越过阈值即切换图片，跟手位移松手后回弹；
+      <code>loop: false</code> 时在边界回弹。该手势生效期间横向轴归它，因此 1x 下纵向拖拽仍用于平移；
+      放大后拖拽一律平移。该手势复用 shared 的 <code>attachDragGesture</code>。
     </p>
     <div class="mb-6 flex flex-wrap gap-2">
       <web-ui-button @click="openSwipe">swipe = true</web-ui-button>

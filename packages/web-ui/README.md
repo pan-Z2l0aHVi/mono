@@ -787,20 +787,20 @@ await preview.closed
 
 **Options:**
 
-| Option            | Type                 | Default | Description                                                     |
-| ----------------- | -------------------- | ------- | --------------------------------------------------------------- |
-| `images`          | `ImagePreviewItem[]` | —       | Image list; must contain at least one item, else it throws      |
-| `index`           | `number`             | `0`     | Initial index, clamped into range                               |
-| `loop`            | `boolean`            | `true`  | Wrap around at both ends                                        |
-| `target`          | `Element`            | —       | Trigger element used to resolve the nearest theme scope         |
-| `container`       | `HTMLElement`        | —       | Explicit mount container, highest priority                      |
-| `nav`             | `boolean`            | `false` | Show prev/next buttons; rendered only when more than one image  |
-| `toolbar`         | `boolean`            | `false` | Show the zoom toolbar (out / factor / in / reset)               |
-| `closable`        | `boolean`            | `false` | Show the close button                                           |
-| `indicator`       | `boolean`            | `false` | Show the "current / total" indicator, announced via `aria-live` |
-| `swipe`           | `boolean`            | `false` | Allow horizontal swiping to change images                       |
-| `noScrollLock`    | `boolean`            | `false` | Do not lock page scroll while open                              |
-| `noBackdropClose` | `boolean`            | `false` | Clicking the blank area outside the image does not close        |
+| Option            | Type                 | Default | Description                                                                 |
+| ----------------- | -------------------- | ------- | --------------------------------------------------------------------------- |
+| `images`          | `ImagePreviewItem[]` | —       | Image list; must contain at least one item, else it throws                  |
+| `index`           | `number`             | `0`     | Initial index, clamped into range                                           |
+| `loop`            | `boolean`            | `true`  | Wrap around at both ends                                                    |
+| `target`          | `Element`            | —       | Trigger element used to resolve the nearest theme scope                     |
+| `container`       | `HTMLElement`        | —       | Explicit mount container, highest priority                                  |
+| `nav`             | `boolean`            | `false` | Show prev/next buttons; rendered only when more than one image              |
+| `toolbar`         | `boolean`            | `false` | Show the zoom toolbar (out / factor / in / reset)                           |
+| `closable`        | `boolean`            | `false` | Show the close button                                                       |
+| `indicator`       | `boolean`            | `false` | Show the "current / total" indicator, announced via `aria-live`             |
+| `swipe`           | `boolean`            | `false` | At 1x, swipe horizontally to change images; owns that axis while it applies |
+| `noScrollLock`    | `boolean`            | `false` | Do not lock page scroll while open                                          |
+| `noBackdropClose` | `boolean`            | `false` | Clicking the blank area outside the image does not close                    |
 
 `ImagePreviewItem` is `{ src: string; alt?: string }`; a missing `alt` defaults to an empty string.
 
@@ -819,11 +819,11 @@ Every presentation option defaults to off: with no options passed only the image
 | `zoomIn()` / `zoomOut()` / `resetZoom()` | `() => void`                  | Zoom controls                                   |
 | `close()`                                | `() => void`                  | Close and play the exit animation               |
 
-**Interaction:** Arrow keys always navigate, independently of `nav`; `+` / `-` and the mouse wheel zoom, and `0` resets. Zooming is anchored: the wheel keeps the point under the cursor fixed and a pinch keeps the midpoint between the two fingers fixed, while the toolbar buttons, keyboard shortcuts and double-click expand around the viewport center. A zoomed image can be dragged to pan, and double-clicking the image toggles between 1x and 2x.
+**Interaction:** Arrow keys always navigate, independently of `nav`; `+` / `-` and the mouse wheel zoom, and `0` resets. Zooming is anchored: the wheel keeps the point under the cursor fixed and a pinch keeps the midpoint between the two fingers fixed, while the toolbar buttons, keyboard shortcuts and double-click expand around the viewport center. Holding the mouse button down or resting a single finger drags the image to pan in any direction, at any zoom level: zoomed in it reveals the cropped edges, and at 1x it moves the image around within the viewport. Either way the drag is bounded by half the size difference between the image and the stage, so the image can never be dragged outside the viewport, and it is clamped (not snapped back) when you keep dragging past the edge. Double-clicking the image toggles between 1x and 2x.
 
 Pinch-to-zoom is always on and has no option: the stage already owns pointer interaction, so there is nothing for a gesture to conflict with. The first finger still drives pan/swipe as usual and the second finger starts the pinch, which aborts any in-flight pan or swipe. A pinch does not close the preview, and the compatibility `click` that mixed input may synthesize afterwards is swallowed rather than treated as a backdrop click.
 
-Clicking anywhere outside the image, or pressing Escape, closes the preview. The native dialog always exposes the accessible name `图片预览`. With `swipe` on and more than one image, a horizontal drag past the threshold changes images, bouncing back at the bounds when `loop` is off. Once zoomed in, dragging yields to panning instead — press `0` (or call `resetZoom()`) to return to 1x before swiping again.
+Clicking anywhere outside the image, or pressing Escape, closes the preview. The native dialog always exposes the accessible name `图片预览`. With `swipe` on and more than one image, a horizontal drag at 1x past the threshold changes images, bouncing back at the bounds when `loop` is off; while it applies, that gesture owns the horizontal axis, so at 1x you drag horizontally to change images and vertically to pan. Once zoomed in, dragging always pans and never changes images. Because panning also works at 1x, `resetZoom()` is offered whenever the image is zoomed _or_ displaced — the reset button in the toolbar is enabled for a panned 1x image too.
 
 A close request does not destroy the native dialog immediately: it stays in the top layer until the exit transition completes, then `dialog.close()` runs, the host is removed from the DOM, and `closed` resolves. Page scroll is locked while open unless `noScrollLock` is `true`.
 
