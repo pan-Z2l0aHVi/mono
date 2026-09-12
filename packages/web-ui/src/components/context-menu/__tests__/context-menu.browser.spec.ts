@@ -46,7 +46,7 @@ async function waitForObserverRefresh() {
 }
 
 async function waitForItemsReturned(menu: WebUiContextMenu, count: number) {
-  // 关闭动画（transitionend ~100ms + 80ms 兜底）后才归还，预算按 500ms 计；
+  // 关闭动画（transitionend ~120ms + 80ms 兜底）后才归还，预算按 500ms 计；
   // 不能用帧数表达——帧时长随刷新率变化，120Hz 下 20 帧不足 180ms 会假失败。
   const deadline = performance.now() + 500
   while (performance.now() < deadline) {

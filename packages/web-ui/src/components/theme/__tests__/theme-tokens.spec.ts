@@ -37,7 +37,11 @@ describe('WebUiTheme token contract', () => {
       '--wui-shadow-pop',
       '--wui-layout-sidebar-bg',
       '--wui-focus-ring:',
-      '--wui-duration-regular'
+      '--wui-duration-regular',
+      '--wui-duration-menu-enter',
+      '--wui-duration-menu-exit',
+      '--wui-duration-overlay-enter',
+      '--wui-duration-overlay-exit'
     ]) {
       expect(style).not.toContain(name)
     }
@@ -68,7 +72,11 @@ describe('WebUiTheme token contract', () => {
       '--wui-layout-sidebar-bg',
       '--wui-focus-ring:',
       '--wui-duration-regular',
-      '--wui-ease-out'
+      '--wui-ease-out',
+      '--wui-duration-menu-enter',
+      '--wui-duration-menu-exit',
+      '--wui-duration-overlay-enter',
+      '--wui-duration-overlay-exit'
     ]) {
       expect(readme).not.toContain(name)
       expect(readmeCN).not.toContain(name)
