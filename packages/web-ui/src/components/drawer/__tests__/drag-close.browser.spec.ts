@@ -64,6 +64,23 @@ function getExpectedTransform(el: WebUiDrawer, closeOffset: number): string {
 afterEach(() => document.body.replaceChildren())
 
 describe('WebUiDrawer 拖拽关闭（浏览器）', () => {
+  it('drawer 面板自身不显示 focus ring，内置关闭按钮仍可聚焦', async () => {
+    const el = createDrawer()
+    el.closable = true
+    el.open = true
+    await el.updateComplete
+    await waitForOpenTransition(el)
+
+    const dialog = getDialog(el)
+    dialog.focus()
+    expect(getComputedStyle(dialog).outlineStyle).toBe('none')
+
+    const close = el.shadowRoot?.querySelector<HTMLElement>('.wui-drawer-close')
+    const nativeButton = close?.shadowRoot?.querySelector('button') as HTMLButtonElement | null
+    nativeButton?.focus()
+    expect(close?.shadowRoot?.activeElement).toBe(nativeButton)
+  })
+
   it('内置关闭按钮定位在 header 右上角，不拉伸到抽屉中间', async () => {
     const el = createDrawer()
     el.closable = true

@@ -38,6 +38,12 @@ dialog {
     transform var(--wui-duration-overlay-enter, 180ms) var(--wui-ease-enter, cubic-bezier(0.23, 1, 0.32, 1));
 }
 
+/* 面板本身是模态表面，不作为可聚焦控件；Safari showModal() 会把焦点放到 dialog，不应画 UA ring。内部控件保留 focus ring。 */
+dialog:focus,
+dialog:focus-visible {
+  outline: none;
+}
+
 /* dialog 已铺满视口，原生遮罩不再叠加着色，避免双重变暗。 */
 dialog::backdrop {
   background: transparent;
