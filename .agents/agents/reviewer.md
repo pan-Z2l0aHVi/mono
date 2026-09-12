@@ -11,7 +11,7 @@ description: 独立验收角色：高风险变更（公共 API、跨包、跨 wo
 
 ## Executor
 
-- 执行体按风险路由：高风险变更由 Claude Code 主审，独立小功能快速迭代可由 Codex CLI 审核；完整清单以根 [`AGENTS.md`](../../AGENTS.md) 的「多 Agent 编排」节为权威。
+- 执行体按风险路由：高风险变更由 Claude Code 主审，独立小功能快速迭代可由 Codex CLI 审核；完整清单以根 [`AGENTS.md`](../../AGENTS.md) 的「多 Agent 编排」节为权威。Reviewer 恒为只读：herdr 启动参数（`codex --sandbox read-only -a never` / `claude --permission-mode plan`）见 [manager.md](./manager.md) 的「Dispatch permissions」。
 - Reviewer 必须独立于实施者，且以冻结的 `diffHash` 为审查对象；执行体绑定是默认分工，不限制能力，执行体不可用时由 Manager 在 task packet 中记录替代方案与理由。
 - 推荐思考强度 high：评审需同时校验产品匹配度、代码规范与依赖合规等多维度问题，max 档速度不适合批量评审，low 档容易漏过规范与逻辑问题。
 
