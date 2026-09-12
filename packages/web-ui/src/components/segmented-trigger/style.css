@@ -68,3 +68,7 @@
   cursor: not-allowed;
   opacity: 0.4;
 }
+
+:host([data-wui-pointer-focus]) .wui-segmented-trigger:focus-visible {
+  outline-color: transparent;
+}

@@ -295,7 +295,10 @@ dialog.is-dragging .wui-drawer-drag-zone {
 .wui-drawer-close {
   position: absolute;
   z-index: 3;
-  inset: var(--wui-drawer-header-padding, 16px 20px);
+  top: var(--wui-drawer-close-top, 16px);
+  right: var(--wui-drawer-close-right, 20px);
+  bottom: auto;
+  left: auto;
 }
 
 /* ===== Headless 模式 ===== */

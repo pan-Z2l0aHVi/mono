@@ -145,3 +145,7 @@
 :host([portal]) .select-overlay {
   display: none;
 }
+
+:host([data-wui-pointer-focus]) .select-trigger:focus-visible {
+  outline-color: transparent;
+}

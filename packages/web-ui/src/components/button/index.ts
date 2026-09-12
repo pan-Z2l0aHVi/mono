@@ -7,6 +7,7 @@ import { styleMap } from 'lit/directives/style-map.js'
 import '@/components/icon'
 import glass from '@/assets/glass.css?inline'
 import { lucideLoaderCircle } from '@/icons'
+import { installPointerFocusSuppression } from '@/shared/focus/pointer-focus'
 import { buttonGroupContextKey, defineGroupManaged, type ButtonGroupContext } from '@/shared/group-management'
 import { normalizeLiteral } from '@/shared/normalize'
 
@@ -14,6 +15,8 @@ import style from './style.css?inline'
 
 const ALLOWED_VARIANTS = ['primary', 'secondary', 'ghost', 'danger', 'glass'] as const
 const ALLOWED_TYPES = ['button', 'submit', 'reset'] as const
+
+installPointerFocusSuppression()
 
 @customElement('web-ui-button')
 export class WebUiButton extends LitElement {

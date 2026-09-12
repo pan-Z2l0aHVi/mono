@@ -10,7 +10,7 @@
 }
 
 .wui-segmented {
-  touch-action: pan-y;
+  touch-action: none;
   cursor: default;
 
   position: relative;

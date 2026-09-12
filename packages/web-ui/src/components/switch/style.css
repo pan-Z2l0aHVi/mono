@@ -35,7 +35,7 @@
 }
 
 .wui-switch-track {
-  touch-action: pan-y;
+  touch-action: none;
   cursor: default;
   user-select: none;
 
@@ -115,6 +115,10 @@
 
 .wui-switch-track.is-dragging {
   cursor: grabbing;
+}
+
+:host([data-wui-pointer-focus]) .wui-switch-track:focus-within {
+  outline-color: transparent;
 }
 
 .wui-switch-track.is-dragging .wui-switch-thumb,

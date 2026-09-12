@@ -13,6 +13,18 @@ function createTheme(appearance: 'light' | 'dark' | 'system' = 'light'): WebUiTh
 afterEach(() => document.body.replaceChildren())
 
 describe('WebUiTheme motion（浏览器）', () => {
+  it('host 使用 block 盒并绘制页面背景，避免 iOS Safari 上 display:contents 的 token 继承缺口', async () => {
+    const theme = createTheme()
+    await theme.updateComplete
+
+    expect(getComputedStyle(theme).display).toBe('block')
+    expect(getComputedStyle(theme).backgroundColor).toBe('rgb(255, 255, 255)')
+
+    theme.appearance = 'dark'
+    await theme.updateComplete
+    expect(getComputedStyle(theme).backgroundColor).toBe('rgb(36, 38, 40)')
+  })
+
   it('reduced scope 覆盖 motion token，嵌套 full scope 可恢复默认值', async () => {
     const outer = createTheme()
     outer.motion = 'reduced'
