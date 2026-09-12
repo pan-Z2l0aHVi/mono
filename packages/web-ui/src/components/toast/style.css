@@ -36,8 +36,8 @@
   background-color: var(--wui-color-surface-overlay, rgb(246 246 246 / 0.82));
 
   transition:
-    opacity var(--wui-duration-overlay-enter, 180ms) var(--wui-ease-enter, cubic-bezier(0.23, 1, 0.32, 1)),
-    transform var(--wui-duration-overlay-enter, 180ms) var(--wui-ease-enter, cubic-bezier(0.23, 1, 0.32, 1));
+    opacity var(--wui-duration-overlay-enter, 280ms) var(--wui-ease-enter, cubic-bezier(0.23, 1, 0.32, 1)),
+    transform var(--wui-duration-overlay-enter, 280ms) var(--wui-ease-enter, cubic-bezier(0.23, 1, 0.32, 1));
 }
 
 :host([visible]) .toast {
@@ -46,7 +46,7 @@
 }
 
 :host(:not([visible])) .toast {
-  transition-duration: var(--wui-duration-overlay-exit, 140ms);
+  transition-duration: var(--wui-duration-overlay-exit, 200ms);
 }
 
 /* ===== 关闭按钮（放在 hover 规则之前，避免 specificity 降序） ===== */

@@ -30,8 +30,8 @@
   --wui-duration-focus: 200ms;
   --wui-duration-menu-enter: 140ms;
   --wui-duration-menu-exit: 100ms;
-  --wui-duration-overlay-enter: 180ms;
-  --wui-duration-overlay-exit: 140ms;
+  --wui-duration-overlay-enter: 280ms;
+  --wui-duration-overlay-exit: 200ms;
   --wui-duration-drawer-enter: 280ms;
   --wui-duration-drawer-exit: 240ms;
   --wui-duration-drawer-nested: 450ms;
