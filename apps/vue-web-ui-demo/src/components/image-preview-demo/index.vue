@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { imagePreview, type ImagePreviewHandle, type ImagePreviewItem } from '@greypan/web-ui'
-import { onBeforeUnmount, ref } from 'vue'
+import { imagePreview, type ImagePreviewHandle, type ImagePreviewItem, type ImagePreviewOptions } from '@greypan/web-ui'
+import { computed, onBeforeUnmount, ref } from 'vue'
 
 /*
  * 内联 SVG 生成示例图：不引入二进制素材，同时能精确控制宽高比，
@@ -135,6 +135,41 @@ function openWithContainer() {
   imagePreview({ images: IMAGES, container, ...FULL_UI })
 }
 
+// 四个展示类选项彼此独立、默认全关；拆开控制，便于逐个对照哪块 UI 由哪个选项负责。
+const partNav = ref(false)
+const partToolbar = ref(false)
+const partClosable = ref(false)
+const partIndicator = ref(false)
+
+// 实时回显当前组合，让读者看到勾选与 options 字段的对应关系。
+const partsCode = computed(
+  () =>
+    `imagePreview({ images, nav: ${partNav.value}, toolbar: ${partToolbar.value}, ` +
+    `closable: ${partClosable.value}, indicator: ${partIndicator.value} })`
+)
+
+function openParts() {
+  imagePreview({
+    images: IMAGES,
+    nav: partNav.value,
+    toolbar: partToolbar.value,
+    closable: partClosable.value,
+    indicator: partIndicator.value
+  })
+}
+
+// 单项预设：每次只开启一个选项，用来确认每个选项负责哪块 UI。
+const partPresets: { label: string; options: Partial<ImagePreviewOptions> }[] = [
+  { label: '仅 nav', options: { nav: true } },
+  { label: '仅 toolbar', options: { toolbar: true } },
+  { label: '仅 closable', options: { closable: true } },
+  { label: '仅 indicator', options: { indicator: true } }
+]
+
+function openPartPreset(options: Partial<ImagePreviewOptions>) {
+  imagePreview({ images: IMAGES, ...options })
+}
+
 onBeforeUnmount(() => {
   stopTracking()
   activeHandle.value?.close()
@@ -153,12 +188,49 @@ onBeforeUnmount(() => {
     <p class="mb-3 text-sm text-gray-500">
       展示类选项默认全关，只渲染图片本身；下面第一个按钮显式开启导航、工具条、关闭按钮与指示器。方向键始终可切图，
       滚轮与 <code>+</code> / <code>-</code> 缩放，<code>0</code> 重置，双击图片在 1x 与 2x 之间切换，Escape
-      或点击图片外空白处关闭。
+      或点击图片外空白处关闭。各选项各自的效果见下方「各部分显隐」。
     </p>
     <div class="mb-6 flex flex-wrap gap-2">
       <web-ui-button @click="openFull()">打开预览（全部开启）</web-ui-button>
       <web-ui-button variant="secondary" @click="openMinimal">默认选项</web-ui-button>
       <web-ui-button variant="secondary" @click="openFull(2)">从第 3 张打开</web-ui-button>
+    </div>
+
+    <h2>各部分显隐</h2>
+    <p class="mb-3 text-sm text-gray-500">
+      四个展示类选项彼此独立、默认全关。勾选后打开预览即可看到对应控件出现；下方四项预设每次只开启一个选项，
+      便于对照每个选项负责哪块 UI。除「仅 closable」外，其余预设都没有可见的关闭按钮，此时点击图片外空白处或按
+      <code>Escape</code> 仍可关闭。
+    </p>
+    <div class="mb-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
+      <web-ui-checkbox :checked="partNav" @change="partNav = $event.target.checked">
+        <code>nav</code>（上/下一张）
+      </web-ui-checkbox>
+      <web-ui-checkbox :checked="partToolbar" @change="partToolbar = $event.target.checked">
+        <code>toolbar</code>（缩放工具条）
+      </web-ui-checkbox>
+      <web-ui-checkbox :checked="partClosable" @change="partClosable = $event.target.checked">
+        <code>closable</code>（关闭按钮）
+      </web-ui-checkbox>
+      <web-ui-checkbox :checked="partIndicator" @change="partIndicator = $event.target.checked">
+        <code>indicator</code>（指示器）
+      </web-ui-checkbox>
+    </div>
+    <div class="mb-3 flex flex-wrap gap-2">
+      <web-ui-button @click="openParts">按当前勾选打开</web-ui-button>
+    </div>
+    <div class="mb-3 rounded-lg bg-[var(--wui-color-surface-raised)] px-3 py-2 text-sm">
+      <code>{{ partsCode }}</code>
+    </div>
+    <div class="mb-6 flex flex-wrap gap-2">
+      <web-ui-button
+        v-for="preset in partPresets"
+        :key="preset.label"
+        variant="secondary"
+        @click="openPartPreset(preset.options)"
+      >
+        {{ preset.label }}
+      </web-ui-button>
     </div>
 
     <h2>单图预览</h2>
