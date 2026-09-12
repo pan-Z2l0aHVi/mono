@@ -19,6 +19,8 @@
 
 5. 记录范围、影响 workspace、允许路径、验收标准和所需验证；推荐写入 task packet。GitHub issue 是可选同步镜像，本地 task state 不能依赖外部服务。
 
+**Fast lane**：仅限当前 worktree、单 agent 即可完成且无行为影响的琐碎变更（错别字、注释与文档措辞、纯格式修正），可直接修改、不建 task state；是否适用由 agent 按实际影响自行判断，拿不准就走上述 preflight。git 操作、依赖、发布、跨包契约与公共 API 变更不适用本例外。
+
 ## 状态机
 
 任务状态保存在 Git common dir 的 `agent-workflow/<task-id>.json`，不进入工作树版本控制。状态只能按以下顺序推进：

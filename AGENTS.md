@@ -14,6 +14,8 @@
 
 `AGENTS.md` 只承载这个必经入口和不可绕过边界；状态、冻结 diff、review、approval 和验证证据以 `.git/agent-workflow/<task-id>.json` 为执行真相，详细工具适配不写入本文件。
 
+**Fast lane（琐碎变更例外）**：仅限当前 worktree、单 agent 即可完成、无行为影响的琐碎变更——错别字、注释与文档措辞、纯格式修正——可不经 init 直接修改；是否适用由 agent 按实际影响自行判断，拿不准就走正常 gate。涉及 git 操作、依赖、发布、跨包契约或公共 API 的变更不适用本例外。
+
 1. 先查看工作区状态、目标文件和最近的 `AGENTS.md`；只有进入某个 `apps/` 或 `packages/` 时才加载其包级指令。
 2. 只按任务加载命中的 rule、guide 和包级指令；不要为普通局部任务预读 `CONTEXT.md`、ADR 或无关领域指南。
 3. 需要全局拓扑时先阅读 [`ARCHITECTURE.md`](ARCHITECTURE.md)；只有架构、跨包、仓库拓扑、术语、长期设计或 instruction system 维护时，才继续阅读 [`CONTEXT.md`](CONTEXT.md)、[`docs/agents/context.md`](docs/agents/context.md) 和相关 ADR。
