@@ -3,9 +3,9 @@
   transform: scale(1);
   opacity: 1;
   transition:
-    opacity var(--wui-internal-duration-overlay-enter, var(--wui-duration-overlay-enter, 280ms))
+    opacity var(--wui-internal-duration-float-enter, var(--wui-duration-float-enter, 160ms))
       var(--wui-ease-enter, cubic-bezier(0.23, 1, 0.32, 1)),
-    transform var(--wui-internal-duration-overlay-enter, var(--wui-duration-overlay-enter, 280ms))
+    transform var(--wui-internal-duration-float-enter, var(--wui-duration-float-enter, 160ms))
       var(--wui-ease-enter, cubic-bezier(0.23, 1, 0.32, 1));
 }
 
@@ -17,7 +17,7 @@
 
 .wui-floating-panel[data-wui-presence='closing'] {
   pointer-events: none;
-  transition-duration: var(--wui-internal-duration-overlay-exit, var(--wui-duration-overlay-exit, 200ms));
+  transition-duration: var(--wui-internal-duration-float-exit, var(--wui-duration-float-exit, 120ms));
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -390,8 +390,8 @@ describe('Portal overlay 在已打开原生 dialog 内（top layer）', () => {
     positioningStaleGate.enabled = true
     positioningStaleGate.offset = { x: 300, y: 0 }
     // 拉长退出过渡：hover 关闭走 200ms 定时器重开，需保证重开时面板仍在 closing
-    // 缓存内（默认 100ms+80ms buffer 会先于重开完成收尾并移除面板，复用不成立）。
-    dialog.style.setProperty('--wui-duration-menu-exit', '2000ms')
+    // 缓存内（默认 120ms+80ms buffer 会先于重开完成收尾并移除面板，复用不成立）。
+    dialog.style.setProperty('--wui-duration-float-exit', '2000ms')
     menu.openAt(8, 60)
     await menu.updateComplete
     const mainPanel = await waitForPanelPositioned(
