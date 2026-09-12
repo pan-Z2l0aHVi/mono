@@ -14,6 +14,24 @@ function createDialog(): WebUiDialog {
 }
 
 describe('WebUiDialog 组件（浏览器）', () => {
+  it('面板自身聚焦不显示 focus ring，内部按钮仍可聚焦', async () => {
+    const component = createDialog()
+    const button = document.createElement('button')
+    button.textContent = '打开'
+    component.append(button)
+    component.open = true
+    await component.updateComplete
+    await new Promise(resolve => requestAnimationFrame(resolve))
+
+    const dialog = component.shadowRoot?.querySelector('dialog')
+    expect(dialog).toBeTruthy()
+    dialog?.focus()
+    expect(getComputedStyle(dialog!).outlineStyle).toBe('none')
+
+    button.focus()
+    expect(document.activeElement).toBe(button)
+  })
+
   it('退出过渡完成前保持原生 dialog 位于 top layer', async () => {
     const component = createDialog()
     component.open = true

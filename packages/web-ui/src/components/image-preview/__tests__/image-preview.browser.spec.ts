@@ -126,6 +126,21 @@ async function waitForStageSettled(stage: HTMLElement): Promise<void> {
 }
 
 describe('imagePreview 命令式 API（浏览器）', () => {
+  it('预览面板自身不显示 focus ring，内部关闭按钮仍可聚焦', async () => {
+    const { handle, host } = await openPreview({ closable: true, nav: true, toolbar: true })
+    const dialog = dialogElement()
+    dialog.focus()
+    expect(getComputedStyle(dialog).outlineStyle).toBe('none')
+
+    const close = host.shadowRoot?.querySelector<HTMLElement>('.wui-image-preview-close')
+    const nativeButton = close?.shadowRoot?.querySelector('button') as HTMLButtonElement | null
+    nativeButton?.focus()
+    expect(close?.shadowRoot?.activeElement).toBe(nativeButton)
+
+    handle.close()
+    await handle.closed
+  })
+
   it('退出过渡完成前保持原生 dialog 位于 top layer', async () => {
     const { handle, host } = await openPreview()
     const dialog = dialogElement()

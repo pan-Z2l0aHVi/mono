@@ -45,6 +45,12 @@ dialog {
   }
 }
 
+/* 面板本身是模态表面，不作为可聚焦控件；Safari showModal() 会把焦点放到 dialog，不应画 UA ring。内部控件保留 focus ring。 */
+dialog:focus,
+dialog:focus-visible {
+  outline: none;
+}
+
 dialog[open].is-visible {
   transform: translate(0, 0);
 }
