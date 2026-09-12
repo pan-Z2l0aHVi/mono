@@ -50,6 +50,44 @@ function pointer(type: string, init: PointerEventInit) {
   return new PointerEvent(type, { bubbles: true, cancelable: true, pointerId: 1, isPrimary: true, ...init })
 }
 
+/**
+ * 等图片的 transform 完成过渡。
+ * 必须先观察到取值脱离过渡前的值，再要求跨帧出现相同取值——否则首次 check
+ * 会与基准同帧，直接判成稳定而停在过渡中间态。
+ */
+async function waitForTransformSettled(image: HTMLImageElement, previous: string): Promise<void> {
+  let changed = false
+  let last = previous
+  await pollUntil(() => {
+    const current = getComputedStyle(image).transform
+    if (!changed) {
+      if (current === previous) return false
+      changed = true
+      last = current
+      return false
+    }
+    if (current === last) return true
+    last = current
+    return false
+  }, 'image transform did not settle')
+}
+
+function offsetXOf(image: HTMLImageElement): number {
+  return new DOMMatrixReadOnly(getComputedStyle(image).transform).m41
+}
+
+/** 等 dialog 进入动画结束：舞台几何连续两次相同即认为稳定，否则锚点坐标会偏。 */
+async function waitForStageSettled(stage: HTMLElement): Promise<void> {
+  let last = ''
+  await pollUntil(() => {
+    const rect = stage.getBoundingClientRect()
+    const current = `${rect.left.toFixed(2)}:${rect.width.toFixed(2)}`
+    if (current === last) return true
+    last = current
+    return false
+  }, 'stage geometry did not settle')
+}
+
 describe('imagePreview 命令式 API（浏览器）', () => {
   it('退出过渡完成前保持原生 dialog 位于 top layer', async () => {
     const { handle, host } = await openPreview()
@@ -107,6 +145,93 @@ describe('imagePreview 命令式 API（浏览器）', () => {
     }
     await host.updateComplete
     expect(handle.scale).toBe(4)
+
+    handle.close()
+    await handle.closed
+  })
+
+  it('滚轮以光标位置为锚点缩放，锚点覆盖的图片内容保持不动', async () => {
+    const { handle, host } = await openPreview()
+    const image = queryA11y(host, 'img') as HTMLImageElement
+
+    await pollUntil(() => image.complete && image.offsetWidth > 0, 'image did not load')
+    const stage = image.parentElement as HTMLElement
+    await waitForStageSettled(stage)
+    const rect = stage.getBoundingClientRect()
+    const centerX = rect.left + rect.width / 2
+    const centerY = rect.top + rect.height / 2
+    // 锚点用相对舞台中心的偏移表示，光标放在它右侧 120px 处。
+    const anchorX = 120
+    const cursorX = centerX + anchorX
+
+    const wheel = () =>
+      dialogElement().dispatchEvent(
+        new WheelEvent('wheel', { bubbles: true, cancelable: true, deltaY: -120, clientX: cursorX, clientY: centerY })
+      )
+
+    // 先放大到图片溢出舞台，否则横向平移被边界钳制，锚点无法保持。
+    let previous = getComputedStyle(image).transform
+    wheel()
+    await host.updateComplete
+    await waitForTransformSettled(image, previous)
+
+    const offsetBefore = offsetXOf(image)
+    const localBefore = (anchorX - offsetBefore) / handle.scale
+
+    previous = getComputedStyle(image).transform
+    wheel()
+    await host.updateComplete
+    await waitForTransformSettled(image, previous)
+
+    // 图片向左让位，把光标右侧的内容留在原处。
+    expect(offsetXOf(image)).toBeLessThan(offsetBefore)
+    expect((anchorX - offsetXOf(image)) / handle.scale).toBeCloseTo(localBefore, 0)
+
+    handle.close()
+    await handle.closed
+  })
+
+  it('双指拉开按距离比例放大图片', async () => {
+    const { handle, host } = await openPreview()
+    const image = queryA11y(host, 'img') as HTMLImageElement
+
+    await pollUntil(() => image.complete && image.offsetWidth > 0, 'image did not load')
+    const stage = image.parentElement as HTMLElement
+    await waitForStageSettled(stage)
+    const rect = stage.getBoundingClientRect()
+    const centerX = rect.left + rect.width / 2
+    const centerY = rect.top + rect.height / 2
+
+    // 两指以舞台中心为中点、相距 120px 落下，再对称拉开到 240px。
+    stage.dispatchEvent(
+      pointer('pointerdown', { pointerId: 11, pointerType: 'touch', clientX: centerX - 60, clientY: centerY })
+    )
+    stage.dispatchEvent(
+      pointer('pointerdown', {
+        pointerId: 12,
+        pointerType: 'touch',
+        isPrimary: false,
+        clientX: centerX + 60,
+        clientY: centerY
+      })
+    )
+    window.dispatchEvent(
+      pointer('pointermove', { pointerId: 11, pointerType: 'touch', clientX: centerX - 120, clientY: centerY })
+    )
+    window.dispatchEvent(
+      pointer('pointermove', {
+        pointerId: 12,
+        pointerType: 'touch',
+        isPrimary: false,
+        clientX: centerX + 120,
+        clientY: centerY
+      })
+    )
+    await host.updateComplete
+
+    expect(handle.scale).toBeCloseTo(2, 1)
+    // 锚点是两指中点（舞台中心），因此不产生横向平移。
+    expect(Math.abs(offsetXOf(image))).toBeLessThan(1)
 
     handle.close()
     await handle.closed

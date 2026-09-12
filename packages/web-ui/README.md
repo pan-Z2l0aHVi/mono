@@ -819,7 +819,11 @@ Every presentation option defaults to off: with no options passed only the image
 | `zoomIn()` / `zoomOut()` / `resetZoom()` | `() => void`                  | Zoom controls                                   |
 | `close()`                                | `() => void`                  | Close and play the exit animation               |
 
-**Interaction:** Arrow keys always navigate, independently of `nav`; `+` / `-` and the wheel zoom, `0` resets, a zoomed image can be dragged to pan, and double-clicking the image toggles between 1x and 2x. Clicking anywhere outside the image, or pressing Escape, closes the preview. The native dialog always exposes the accessible name `图片预览`. With `swipe` on and more than one image, a horizontal drag past the threshold changes images, bouncing back at the bounds when `loop` is off. Once zoomed in, dragging yields to panning instead — press `0` (or call `resetZoom()`) to return to 1x before swiping again.
+**Interaction:** Arrow keys always navigate, independently of `nav`; `+` / `-` and the mouse wheel zoom, and `0` resets. Zooming is anchored: the wheel keeps the point under the cursor fixed and a pinch keeps the midpoint between the two fingers fixed, while the toolbar buttons, keyboard shortcuts and double-click expand around the viewport center. A zoomed image can be dragged to pan, and double-clicking the image toggles between 1x and 2x.
+
+Pinch-to-zoom is always on and has no option: the stage already owns pointer interaction, so there is nothing for a gesture to conflict with. The first finger still drives pan/swipe as usual and the second finger starts the pinch, which aborts any in-flight pan or swipe. A pinch does not close the preview, and the compatibility `click` that mixed input may synthesize afterwards is swallowed rather than treated as a backdrop click.
+
+Clicking anywhere outside the image, or pressing Escape, closes the preview. The native dialog always exposes the accessible name `图片预览`. With `swipe` on and more than one image, a horizontal drag past the threshold changes images, bouncing back at the bounds when `loop` is off. Once zoomed in, dragging yields to panning instead — press `0` (or call `resetZoom()`) to return to 1x before swiping again.
 
 A close request does not destroy the native dialog immediately: it stays in the top layer until the exit transition completes, then `dialog.close()` runs, the host is removed from the DOM, and `closed` resolves. Page scroll is locked while open unless `noScrollLock` is `true`.
 

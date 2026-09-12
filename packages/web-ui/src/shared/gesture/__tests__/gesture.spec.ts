@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vite-plus/test'
 
 import { attachDragGesture } from '../drag-gesture'
 import { clamp, normalizeProgress, rubberband, snapToNearest, springOffsets, SPRING_PRESETS } from '../physics'
+import { attachPinchGesture } from '../pinch-gesture'
 
 describe('shared/gesture physics', () => {
   it('clamp 正确限制在 [min, max] 范围内', () => {
@@ -107,6 +108,121 @@ describe('shared/gesture attachDragGesture', () => {
     expect(onCancel).toHaveBeenCalledTimes(1)
 
     handle.destroy()
+    el.remove()
+  })
+})
+
+describe('shared/gesture attachPinchGesture', () => {
+  function pointer(type: string, init: PointerEventInit): PointerEvent {
+    return new PointerEvent(type, { bubbles: true, cancelable: true, pointerType: 'touch', ...init })
+  }
+
+  it('基本生命周期：两指就位后按距离比例产出 ratio 与中点位移', () => {
+    const el = document.createElement('div')
+    document.body.append(el)
+
+    const onStart = vi.fn<(info: { distance: number }) => void>()
+    const onMove = vi.fn<(info: { ratio: number; deltaX: number }) => void>()
+    const onEnd = vi.fn<() => void>()
+
+    const handle = attachPinchGesture(el, { onStart, onMove, onEnd })
+
+    el.dispatchEvent(pointer('pointerdown', { pointerId: 1, clientX: 100, clientY: 100 }))
+    expect(handle.isPinching()).toBe(false)
+
+    el.dispatchEvent(pointer('pointerdown', { pointerId: 2, clientX: 200, clientY: 100 }))
+    expect(handle.isPinching()).toBe(true)
+    expect(onStart).toHaveBeenCalledTimes(1)
+    expect(onStart.mock.calls[0][0].distance).toBe(100)
+
+    // 距离翻倍，中点同时右移 50px；每个被追踪指针的移动各产出一次几何。
+    window.dispatchEvent(pointer('pointermove', { pointerId: 1, clientX: 100, clientY: 100 }))
+    window.dispatchEvent(pointer('pointermove', { pointerId: 2, clientX: 300, clientY: 100 }))
+    expect(onMove).toHaveBeenCalledTimes(2)
+    expect(onMove.mock.calls[1][0].ratio).toBe(2)
+    expect(onMove.mock.calls[1][0].deltaX).toBe(50)
+
+    // 少于两指就位即结束（剩下一指不再能维持捏合）。
+    window.dispatchEvent(pointer('pointerup', { pointerId: 1, clientX: 100, clientY: 100 }))
+    expect(onEnd).toHaveBeenCalledTimes(1)
+    expect(handle.isPinching()).toBe(false)
+
+    window.dispatchEvent(pointer('pointerup', { pointerId: 2, clientX: 300, clientY: 100 }))
+    expect(onEnd).toHaveBeenCalledTimes(1)
+
+    handle.destroy()
+    el.remove()
+  })
+
+  it('起始距离过近时不产出比例，等两指拉开后以新基准重新开始', () => {
+    const el = document.createElement('div')
+    document.body.append(el)
+
+    const onStart = vi.fn<(info: { distance: number }) => void>()
+    const onMove = vi.fn<(info: { ratio: number }) => void>()
+    const handle = attachPinchGesture(el, { onStart, onMove })
+
+    el.dispatchEvent(pointer('pointerdown', { pointerId: 1, clientX: 100, clientY: 100 }))
+    el.dispatchEvent(pointer('pointerdown', { pointerId: 2, clientX: 110, clientY: 100 }))
+    expect(onStart).not.toHaveBeenCalled()
+
+    window.dispatchEvent(pointer('pointermove', { pointerId: 2, clientX: 130, clientY: 100 }))
+    expect(onStart).toHaveBeenCalledTimes(1)
+    expect(onStart.mock.calls[0][0].distance).toBe(30)
+    expect(onMove).not.toHaveBeenCalled()
+
+    window.dispatchEvent(pointer('pointermove', { pointerId: 2, clientX: 160, clientY: 100 }))
+    expect(onMove).toHaveBeenCalledTimes(1)
+    expect(onMove.mock.calls[0][0].ratio).toBe(2)
+
+    handle.destroy()
+    el.remove()
+  })
+
+  it('第三个指针不参与捏合，抬回两指后重建基准', () => {
+    const el = document.createElement('div')
+    document.body.append(el)
+
+    const onStart = vi.fn<(info: { distance: number }) => void>()
+    const onMove = vi.fn<(info: { ratio: number }) => void>()
+    const handle = attachPinchGesture(el, { onStart, onMove })
+
+    el.dispatchEvent(pointer('pointerdown', { pointerId: 1, clientX: 100, clientY: 100 }))
+    el.dispatchEvent(pointer('pointerdown', { pointerId: 2, clientX: 200, clientY: 100 }))
+    expect(onStart).toHaveBeenCalledTimes(1)
+
+    // 第三指就位后不再产出几何，也不产生比例。
+    el.dispatchEvent(pointer('pointerdown', { pointerId: 3, clientX: 300, clientY: 100 }))
+    window.dispatchEvent(pointer('pointermove', { pointerId: 2, clientX: 250, clientY: 100 }))
+    expect(onMove).not.toHaveBeenCalled()
+
+    window.dispatchEvent(pointer('pointerup', { pointerId: 3, clientX: 300, clientY: 100 }))
+    expect(onStart).toHaveBeenCalledTimes(2)
+    expect(onStart.mock.calls[1][0].distance).toBe(150)
+
+    window.dispatchEvent(pointer('pointermove', { pointerId: 2, clientX: 400, clientY: 100 }))
+    expect(onMove).toHaveBeenCalledTimes(1)
+    expect(onMove.mock.calls[0][0].ratio).toBe(2)
+
+    handle.destroy()
+    el.remove()
+  })
+
+  it('destroy 打断进行中的手势并触发 onCancel', () => {
+    const el = document.createElement('div')
+    document.body.append(el)
+
+    const onCancel = vi.fn<() => void>()
+    const handle = attachPinchGesture(el, { onCancel })
+
+    el.dispatchEvent(pointer('pointerdown', { pointerId: 1, clientX: 100, clientY: 100 }))
+    el.dispatchEvent(pointer('pointerdown', { pointerId: 2, clientX: 200, clientY: 100 }))
+    expect(handle.isPinching()).toBe(true)
+
+    handle.destroy()
+    expect(onCancel).toHaveBeenCalledTimes(1)
+    expect(handle.isPinching()).toBe(false)
+
     el.remove()
   })
 })

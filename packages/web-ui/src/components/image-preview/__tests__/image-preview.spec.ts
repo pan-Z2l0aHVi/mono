@@ -40,6 +40,11 @@ async function openPreview(options: Partial<Parameters<typeof imagePreview>[0]> 
   return handle
 }
 
+/** 合成触摸指针事件；捏合依赖 pointerId 区分两指。 */
+function touchPointer(type: string, init: PointerEventInit): PointerEvent {
+  return new PointerEvent(type, { bubbles: true, cancelable: true, pointerType: 'touch', ...init })
+}
+
 describe('imagePreview 命令式 API', () => {
   it('images 为空时抛出可诊断错误', () => {
     expect(() => imagePreview({ images: [] })).toThrowError(/at least one image/)
@@ -138,6 +143,78 @@ describe('imagePreview 命令式 API', () => {
 
     handle.close()
     await handle.closed
+  })
+
+  it('双指拉开按距离比例放大，捏合到下限时复位为 1x', async () => {
+    const handle = await openPreview()
+    const image = queryA11y(hostElement(), 'img') as HTMLImageElement
+    const stage = image.parentElement as HTMLElement
+
+    // 两指相距 100px 落下即进入捏合。第一根手指在真实浏览器里一定是主指针。
+    stage.dispatchEvent(touchPointer('pointerdown', { pointerId: 11, clientX: 100, clientY: 100, isPrimary: true }))
+    stage.dispatchEvent(touchPointer('pointerdown', { pointerId: 12, clientX: 200, clientY: 100, isPrimary: false }))
+
+    // 拉开到 200px：比例 2。
+    window.dispatchEvent(touchPointer('pointermove', { pointerId: 12, clientX: 300, clientY: 100 }))
+    await hostElement().updateComplete
+    expect(handle.scale).toBe(2)
+
+    // 捏合到 25px：比例 0.25，被下限钳回 1x。
+    window.dispatchEvent(touchPointer('pointermove', { pointerId: 12, clientX: 125, clientY: 100 }))
+    await hostElement().updateComplete
+    expect(handle.scale).toBe(1)
+
+    window.dispatchEvent(touchPointer('pointerup', { pointerId: 11, clientX: 100, clientY: 100 }))
+    window.dispatchEvent(touchPointer('pointerup', { pointerId: 12, clientX: 125, clientY: 100 }))
+
+    handle.close()
+    await handle.closed
+  })
+
+  it('双指缩放不触发遮罩关闭，余波 click 被吞掉后遮罩关闭仍可用', async () => {
+    const handle = await openPreview()
+    const image = queryA11y(hostElement(), 'img') as HTMLImageElement
+    const stage = image.parentElement as HTMLElement
+
+    // 第一根手指必须标记为主指针：真实浏览器的首指恒为 primary，也只有它会走
+    // 「记录空白命中」的分支。漏掉 isPrimary 会让用例绕过该分支而恒真。
+    stage.dispatchEvent(touchPointer('pointerdown', { pointerId: 21, clientX: 100, clientY: 100, isPrimary: true }))
+    stage.dispatchEvent(touchPointer('pointerdown', { pointerId: 22, clientX: 200, clientY: 100, isPrimary: false }))
+    window.dispatchEvent(touchPointer('pointermove', { pointerId: 22, clientX: 300, clientY: 100 }))
+    await hostElement().updateComplete
+    expect(isMounted()).toBe(true)
+
+    window.dispatchEvent(touchPointer('pointerup', { pointerId: 21, clientX: 100, clientY: 100 }))
+    window.dispatchEvent(touchPointer('pointerup', { pointerId: 22, clientX: 300, clientY: 100 }))
+    // 混合输入可能补发一次兼容 click，它不是遮罩点击，不得关闭浮层。
+    stage.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1 }))
+    await hostElement().updateComplete
+    expect(isMounted()).toBe(true)
+
+    // 余波 click 被吞掉后，遮罩关闭不能被永久破坏：真正起于空白的点击仍应关闭。
+    stage.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0, pointerId: 23, isPrimary: true }))
+    stage.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1 }))
+    await handle.closed
+    expect(isMounted()).toBe(false)
+  })
+
+  it('关闭后不再响应仍在进行中的双指缩放', async () => {
+    const handle = await openPreview()
+    const image = queryA11y(hostElement(), 'img') as HTMLImageElement
+    const stage = image.parentElement as HTMLElement
+
+    stage.dispatchEvent(touchPointer('pointerdown', { pointerId: 31, clientX: 100, clientY: 100, isPrimary: true }))
+    stage.dispatchEvent(touchPointer('pointerdown', { pointerId: 32, clientX: 200, clientY: 100, isPrimary: false }))
+    window.dispatchEvent(touchPointer('pointermove', { pointerId: 32, clientX: 300, clientY: 100 }))
+    await hostElement().updateComplete
+    expect(handle.scale).toBe(2)
+
+    handle.close()
+    // 退场动画期间宿主仍在 DOM 中、指针监听也还挂着，但已关闭的浮层不该再被缩放改写。
+    window.dispatchEvent(touchPointer('pointermove', { pointerId: 32, clientX: 500, clientY: 100 }))
+    await handle.closed
+
+    expect(handle.scale).toBe(2)
   })
 
   it('方向键切换图片', async () => {

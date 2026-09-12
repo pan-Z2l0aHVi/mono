@@ -9,6 +9,12 @@ import glass from '@/assets/glass.css?inline'
 import { lucideChevronLeft, lucideChevronRight, lucideMinus, lucidePlus, oouiClose, radixIconsReset } from '@/icons'
 import { attachDragGesture, type DragGestureHandle } from '@/shared/gesture/drag-gesture'
 import { clamp } from '@/shared/gesture/physics'
+import {
+  attachPinchGesture,
+  type PinchGestureHandle,
+  type PinchMoveInfo,
+  type PinchStartInfo
+} from '@/shared/gesture/pinch-gesture'
 import { defineNativeDialogPresence } from '@/shared/overlay/native-dialog-presence'
 import { defineScrollLockLease } from '@/shared/scroll-lock/scroll-lock'
 import { getFallbackOverlayRoot } from '@/shared/theme/overlay-root'
@@ -125,6 +131,11 @@ class WebUiImagePreview extends LitElement {
   private _panOriginY = 0
   private _dragged = false
   private _blankPointerDown = false
+  private _pinch: PinchGestureHandle | undefined
+  /** 双指手势起始倍率，以及起始两指中点所对应的图片局部（1x）坐标。 */
+  private _pinchScale = MIN_SCALE
+  private _pinchLocalX = 0
+  private _pinchLocalY = 0
 
   private get dialog() {
     return this.shadowRoot?.querySelector('dialog') ?? null
@@ -208,6 +219,18 @@ class WebUiImagePreview extends LitElement {
     this._offsetY = 0
   }
 
+  protected override firstUpdated() {
+    const stage = this._stage
+    if (!stage) return
+
+    this._pinch = attachPinchGesture(stage, {
+      onStart: this._handlePinchStart,
+      onMove: this._handlePinchMove,
+      onEnd: this._handlePinchEnd,
+      onCancel: this._handlePinchCancel
+    })
+  }
+
   protected override updated(props: PropertyValues) {
     super.updated(props)
     if (!this.isConnected) return
@@ -223,6 +246,8 @@ class WebUiImagePreview extends LitElement {
   override disconnectedCallback() {
     super.disconnectedCallback()
     this._endGesture()
+    this._pinch?.destroy()
+    this._pinch = undefined
     this._presence.dispose()
     this._scrollLock.release()
   }
@@ -237,17 +262,40 @@ class WebUiImagePreview extends LitElement {
     this.dispatchEvent(new CustomEvent('preview-dismissed'))
   }
 
-  private _setScale(next: number) {
+  /**
+   * 以锚点缩放：锚点是相对舞台中心的偏移，它覆盖的图片内容在缩放前后保持不动。
+   * 滚轮传光标位置，两指传两指中点，工具栏与键盘传 (0, 0)（即视口中心）。
+   */
+  private _zoomAt(next: number, anchorX: number, anchorY: number) {
     const scale = clamp(next, MIN_SCALE, MAX_SCALE)
     if (scale === this._scale) return
 
+    const ratio = scale / this._scale
+    this._applyScale(scale, anchorX - (anchorX - this._offsetX) * ratio, anchorY - (anchorY - this._offsetY) * ratio)
+  }
+
+  private _applyScale(scale: number, offsetX: number, offsetY: number) {
     this._scale = scale
     if (scale === MIN_SCALE) {
       this._offsetX = 0
       this._offsetY = 0
       return
     }
+    this._offsetX = offsetX
+    this._offsetY = offsetY
     this._clampOffsets()
+  }
+
+  private _setScale(next: number) {
+    this._zoomAt(next, 0, 0)
+  }
+
+  /** 舞台中心的视口坐标；所有缩放锚点都以它为原点。 */
+  private _stageOrigin(): { x: number; y: number } {
+    const stage = this._stage
+    if (!stage) return { x: 0, y: 0 }
+    const rect = stage.getBoundingClientRect()
+    return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 }
   }
 
   /**
@@ -343,7 +391,12 @@ class WebUiImagePreview extends LitElement {
     event.preventDefault()
     // deltaMode 1 为按行滚动（Firefox），折算成像素后再套用同一系数。
     const delta = event.deltaMode === 1 ? event.deltaY * 16 : event.deltaY
-    this._setScale(this._scale * Math.exp(-delta * WHEEL_ZOOM_SENSITIVITY))
+    const origin = this._stageOrigin()
+    this._zoomAt(
+      this._scale * Math.exp(-delta * WHEEL_ZOOM_SENSITIVITY),
+      event.clientX - origin.x,
+      event.clientY - origin.y
+    )
   }
 
   private _handleClick = (event: MouseEvent) => {
@@ -370,6 +423,44 @@ class WebUiImagePreview extends LitElement {
     if (!this._open || event.target !== this._image) return
     if (this._scale > MIN_SCALE) this.resetZoom()
     else this._setScale(MAX_SCALE / 2)
+  }
+
+  /**
+   * 双指接管时先中止可能已开始的单指平移/滑动，避免两套手势同时写 offset。
+   * 手势起点在图片上的位置被记住，缩放与两指中点位移都以它为基准。
+   */
+  private _handlePinchStart = (info: PinchStartInfo) => {
+    if (!this._open) return
+
+    this._endGesture()
+    this._dragging = true
+    // 双指操作后浏览器不会补发 click，但混合输入的兼容 click 不应被当作遮罩点击。
+    this._dragged = true
+
+    const origin = this._stageOrigin()
+    this._pinchScale = this._scale
+    this._pinchLocalX = (info.centerX - origin.x - this._offsetX) / this._scale
+    this._pinchLocalY = (info.centerY - origin.y - this._offsetY) / this._scale
+  }
+
+  private _handlePinchMove = (info: PinchMoveInfo) => {
+    if (!this._open) return
+
+    const scale = clamp(this._pinchScale * info.ratio, MIN_SCALE, MAX_SCALE)
+    const origin = this._stageOrigin()
+    this._applyScale(
+      scale,
+      info.centerX - origin.x - this._pinchLocalX * scale,
+      info.centerY - origin.y - this._pinchLocalY * scale
+    )
+  }
+
+  private _handlePinchEnd = () => {
+    this._dragging = false
+  }
+
+  private _handlePinchCancel = () => {
+    this._dragging = false
   }
 
   private _endGesture() {
