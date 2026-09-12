@@ -55,7 +55,7 @@ Manager 启动后按根 [`AGENTS.md`](../../AGENTS.md) 的 Mutation Gate 建立�
 
 ## Dispatch permissions（herdr 启动参数）
 
-通过 herdr 启动各角色的 CLI agent 时按角色传权限参数，目标是无人工弹窗的编排；Agent tool 派发的子 agent 自动继承 Manager 的权限模式，无需额外参数：
+通过 herdr 启动各角色的 CLI agent 时按角色传权限参数（Agent tool 派发的子 agent 自动继承 Manager 权限，无需参数），目标是无人工弹窗的编排：
 
 | 角色                                       | Codex CLI                                        | Claude Code                                         |
 | ------------------------------------------ | ------------------------------------------------ | --------------------------------------------------- |
