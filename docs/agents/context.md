@@ -27,16 +27,16 @@ Role 是显式选择的按需 session context：读取 `.agents/agents/<role>.md
 
 不同层级可以为路由而短暂提及同一主题，但只能有一个流程权威来源；其他位置只说明何时加载或链接到它，不能复制完整处方。
 
-| 主题               | 规则边界                                                                    | 流程权威来源                              | 自动证据                                                        |
-| ------------------ | --------------------------------------------------------------------------- | ----------------------------------------- | --------------------------------------------------------------- |
-| 生成物             | 根/包级 `AGENTS.md` 说明“不可手改”与局部 source of truth                    | `docs/agents/build.md`                    | generator diff、build、消费者类型检查                           |
-| 真实浏览器         | 根/包级 `AGENTS.md` 仅声明需要浏览器层                                      | `docs/agents/browser-verification.md`     | `pnpm run test` 中的 `*.browser.spec.ts`、MCP 操作记录          |
-| `repo:*` 工具      | 根入口只提供命令路由                                                        | 本文件的工具接口说明                      | `scripts/scripts.test.mjs`                                      |
-| 多 Agent 编排      | 根 `AGENTS.md`「多 Agent 编排」只保留分工、边界与禁止事项                   | `docs/agents/workflow.md`                 | `agent-workflow` state、review/approval 记录                    |
-| 角色与执行体绑定   | `.agents/agents/*` 只声明角色职责、边界与自身执行体、默认模型与思考强度档位 | `docs/agents/workflow.md`                 | `validate:context` 绑定一致性校验、`scripts/agent-workflow.mjs` |
-| 角色间 handoff     | `.agents/agents/*` 不复制交接字段                                           | `docs/agents/task-packet.md`              | task packet、handoff 记录                                       |
-| 角色目录边界       | 根/包级 `AGENTS.md` 声明 `packages/*` 与 `apps/*` 归属                      | `docs/agents/workflow.md`、`worktrees.md` | `find:usages` 输出、变更路径                                    |
-| 公共 `web-ui` 契约 | `packages/web-ui/AGENTS.md` 指向受影响消费者                                | `docs/agents/web-ui.md`                   | fixtures、contracts、browser/integration tests                  |
+| 主题               | 规则边界                                                                    | 流程权威来源                                                        | 自动证据                                                        |
+| ------------------ | --------------------------------------------------------------------------- | ------------------------------------------------------------------- | --------------------------------------------------------------- |
+| 生成物             | 根/包级 `AGENTS.md` 说明“不可手改”与局部 source of truth                    | `docs/agents/build.md`                                              | generator diff、build、消费者类型检查                           |
+| 真实浏览器         | 根/包级 `AGENTS.md` 仅声明需要浏览器层                                      | `docs/agents/browser-verification.md`                               | `pnpm run test` 中的 `*.browser.spec.ts`、MCP 操作记录          |
+| `repo:*` 工具      | 根入口只提供命令路由                                                        | 本文件的工具接口说明                                                | `scripts/scripts.test.mjs`                                      |
+| 多 Agent 编排      | 根 `AGENTS.md`「多 Agent 编排」只保留分工、边界与禁止事项                   | `docs/agents/workflow.md`                                           | `agent-workflow` state、review/approval 记录                    |
+| 角色与执行体绑定   | `.agents/agents/*` 只声明角色职责、边界与自身执行体、默认模型与思考强度档位 | 根 `AGENTS.md`（唯一权威绑定表）、`docs/agents/workflow.md`（流程） | `validate:context` 绑定一致性校验、`scripts/agent-workflow.mjs` |
+| 角色间 handoff     | `.agents/agents/*` 不复制交接字段                                           | `docs/agents/task-packet.md`                                        | task packet、handoff 记录                                       |
+| 角色目录边界       | 根/包级 `AGENTS.md` 声明 `packages/*` 与 `apps/*` 归属                      | `docs/agents/workflow.md`、`worktrees.md`                           | `find:usages` 输出、变更路径                                    |
+| 公共 `web-ui` 契约 | `packages/web-ui/AGENTS.md` 指向受影响消费者                                | `docs/agents/web-ui.md`                                             | fixtures、contracts、browser/integration tests                  |
 
 ## 客户端适配
 
@@ -52,7 +52,6 @@ Role 是显式选择的按需 session context：读取 `.agents/agents/<role>.md
 ## 评测与审计
 
 - 快速审计规则密度和重复主题：`pnpm audit:instructions -- --json`。它只生成候选，不自动判断语义冲突或删除规则；重复主题应回到权威来源、加载条件和实现证据人工复核。
-- 真实任务评测定义：[`context-benchmark.md`](context-benchmark.md)。它定义 C01–C10、首次成功率、读取量、影响范围和验证选择的比较口径；真实 trace 由外部 evaluation harness 保存，不是普通源码任务的必跑测试。
 - Skills 路由与分工（含主题重叠的 skill 选择和不可用的上游指针）：[`.agents/skills/README.md`](../../.agents/skills/README.md)。
 
 ## 最小 context 组合

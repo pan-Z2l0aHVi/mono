@@ -89,11 +89,11 @@ Manager 统一接收需求并编排，保持扁平，不引入 Integrator 或其
 1. **产品/设计需求**：Manager → Designer → 并行 Lib Coder + Biz Coder → Reviewer 验收 → Manager 总结汇报。
 2. **纯技术需求**：Manager → 并行 Lib Coder + Biz Coder → Reviewer 验收 → Manager 总结汇报。
 
-- 是否启用 Designer 由 Manager 判断；判据是需求是否涉及产品设计/UI，而不是改动大小。判断结论、理由和范围写入 task packet。
+- 是否启用 Designer 由 Manager 判断（判据见根 `AGENTS.md`「多 Agent 编排」）；判断结论、理由和范围写入 task packet。
 - 路由只决定是否启用 Designer。Lib Coder 与 Biz Coder 之间没有实质依赖时必须并行，不串行化。
 - 目录边界固定：Lib Coder 只在 `packages/*` 写入，Biz Coder 只在 `apps/*` 写入。跨边界需求拆成两个独立 task、两个 worktree，由 Manager 通过 handoff 传递契约。
 - 每个角色一个独立 worktree（或严格目录隔离）与唯一 owner；同一 worktree 同时只服务一个可变 task。
-- 角色之间统一使用结构化 handoff：`Goal（目标）`、`Scope（范围）`、`Acceptance（验收标准）`、`Test commands（测试命令）`、`Open decisions（未解决决策）`；模板见 [`task-packet.md`](task-packet.md)。缺少任一项不得进入实施或验收。
+- 角色之间统一使用结构化 handoff，五个必填字段以 [`task-packet.md`](task-packet.md) 的模板为权威；缺少任一项不得进入实施或验收。
 - 集成与 release 聚合由 Manager 直接协调（见「Release 和 hotfix」），不再拆出独立编排角色。
 
 ## 角色和边界
@@ -103,7 +103,7 @@ Manager 统一接收需求并编排，保持扁平，不引入 Integrator 或其
 - **Reviewer**：只读审查冻结的目标 diff 和验证证据，结果绑定 `diffHash`；发现问题交回实施 Agent，修复后必须重新 freeze/review。执行体按风险路由（见根 `AGENTS.md`「多 Agent 编排」）。
 - **Designer**：仅在产品/设计需求下启用，输出可实现的交互、视觉和验收决策，不修改 `packages/*` 与 `apps/*` 生产代码，不改变代码归属和状态 gate。
 
-Reviewer 是否必需按风险决定：跨 workspace、公共 API/exports、跨包契约、跨 worktree、UI 行为、构建/release 和高风险迁移必须独立 review，由 Claude Code 主审；独立小功能快速迭代的 review 可由 Codex CLI 承担；纯文档或低风险测试基建可以用 `init --review skip` 并在 task packet 中记录跳过理由，但仍须有用户/Manager approval 和验证证据。需要独立 review 时，脚本要求显式提供不同于 owner 的 reviewer id。
+Reviewer 是否必需按风险决定：高风险清单（见根 `AGENTS.md`「多 Agent 编排」）内的变更必须独立 review，由清单路由的执行体主审；独立小功能快速迭代的 review 可由 Codex CLI 承担；纯文档或低风险测试基建可以用 `init --review skip` 并在 task packet 中记录跳过理由，但仍须有用户/Manager approval 和验证证据。需要独立 review 时，脚本要求显式提供不同于 owner 的 reviewer id。
 
 ## 并发原则
 

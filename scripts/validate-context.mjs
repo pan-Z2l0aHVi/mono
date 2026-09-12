@@ -183,11 +183,12 @@ if (
 )
   addError('CONTRIBUTING.md is missing the workflow edit gate')
 
-if (
-  exists('.agents/agents/manager.md') &&
-  !read('.agents/agents/manager.md').includes('Manager 启动后第一项工作必须读取')
-)
-  addError('.agents/agents/manager.md is missing the Manager workflow gate')
+// Manager 契约只需自包含 workflow gate 指针与 init 命令；gate 处方以根 AGENTS.md Mutation Gate 和 workflow.md 为权威，不复制。
+if (exists('.agents/agents/manager.md')) {
+  const manager = read('.agents/agents/manager.md')
+  if (!manager.includes('agent:workflow init') || !manager.includes('docs/agents/workflow.md'))
+    addError('.agents/agents/manager.md is missing the Manager workflow gate pointer')
+}
 
 if (exists('docs/agents/workflow.md')) {
   const workflow = read('docs/agents/workflow.md')
@@ -213,9 +214,9 @@ if (exists('docs/agents/workflow.md')) {
   ]) {
     if (pattern.test(workflow)) addError('docs/agents/workflow.md must not keep a separate Integrator role layer')
   }
-  for (const field of handoffFields) {
-    if (!workflow.includes(field)) addError(`docs/agents/workflow.md is missing handoff field ${field}`)
-  }
+  // handoff 字段枚举只保留在根 AGENTS.md 与 task-packet.md 两处权威；workflow.md 改为指针后不再复制字段名。
+  if (workflow.includes('Goal（目标）') && !workflow.includes('task-packet.md'))
+    addError('docs/agents/workflow.md must point to task-packet.md for the handoff template')
 }
 
 checkBindingMirrors()

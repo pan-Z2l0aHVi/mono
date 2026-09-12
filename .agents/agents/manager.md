@@ -32,17 +32,11 @@ Manager 面向交付结果扁平地组织其他专业 Agent：统一接收需求
 
 ## Workflow Gate
 
-Manager 启动后第一项工作必须读取 [`docs/agents/workflow.md`](../../docs/agents/workflow.md)，选择 `direct`、`orchestrated`、`release` 或 `hotfix` 模式，创建唯一 task id，并运行 `pnpm agent:workflow init ...`。完成 preflight、worktree 归属和 task packet 后才能拆解任务或启动其他 Agent；Manager 不得用口头状态替代 task state。
+Manager 启动后按根 [`AGENTS.md`](../../AGENTS.md) 的 Mutation Gate 建立任务：读取 [`docs/agents/workflow.md`](../../docs/agents/workflow.md)，选择模式、创建唯一 task id 并运行 `pnpm agent:workflow init ...`；完成 preflight 与 task packet 前不得拆解任务或启动其他 Agent，不得用口头状态替代 task state。
 
 ## Orchestration routing
 
-统一按 [`docs/agents/workflow.md`](../../docs/agents/workflow.md) 的「编排模式」节执行，Manager 负责选择路径：
-
-1. **产品/设计需求**（涉及产品语义、UI、交互、视觉、信息架构、状态设计）：Manager → Designer → 并行派发 Lib Coder + Biz Coder → Reviewer 验收 → Manager 总结汇报。
-2. **纯技术需求**（重构、内部能力、工具链、非用户可见的工程改动）：Manager → 并行派发 Lib Coder + Biz Coder → Reviewer 验收 → Manager 总结汇报。
-3. **是否跳过 Designer 由 Manager 判断**，判据是需求是否涉及产品设计/UI，而不是改动大小；判断结论必须写入 task packet。
-
-路由只决定是否启用 Designer。Lib Coder 与 Biz Coder 之间只要没有实质依赖就并行执行，不串行化。
+统一按 [`docs/agents/workflow.md`](../../docs/agents/workflow.md) 的「编排模式」节执行，Manager 负责选择路径：产品/设计需求先经 Designer，纯技术需求直接并行派发 Lib Coder + Biz Coder。两条路由、Designer 启用判据与并行原则以根 [`AGENTS.md`](../../AGENTS.md)「多 Agent 编排」为权威，本文件不复制。
 
 ## Role map
 
