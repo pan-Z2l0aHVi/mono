@@ -200,6 +200,31 @@ describe('imagePreview 命令式 API（浏览器）', () => {
     await handle.closed
   })
 
+  it('toolbar 重置按钮用 radix-icons:reset 字形，真实点击后回到 1x', async () => {
+    const { handle, host } = await openPreview({ toolbar: true })
+
+    handle.zoomIn()
+    await host.updateComplete
+    expect(handle.scale).toBeGreaterThan(1)
+
+    const resetIcon = queryA11y(host, '[aria-label="重置缩放"] web-ui-icon') as LitElement | null
+    if (!resetIcon) throw new Error('reset icon is not rendered')
+    await resetIcon.updateComplete
+    const svg = resetIcon.shadowRoot?.querySelector('svg')
+    if (!svg) throw new Error('reset icon did not render an svg')
+
+    // radix-icons 是 15 网格的实心字形；lucide 的 refresh-cw 是 24 网格的描边字形。
+    expect(svg.getAttribute('viewBox')).toBe('0 0 15 15')
+    expect(svg.getBoundingClientRect().width).toBeGreaterThan(0)
+
+    await userEvent.click(queryA11y(host, '[aria-label="重置缩放"]') as HTMLElement)
+    await host.updateComplete
+    expect(handle.scale).toBe(1)
+
+    handle.close()
+    await handle.closed
+  })
+
   it('放大后拖拽平移并释放不关闭浮层', async () => {
     const { handle, host } = await openPreview()
     const image = queryA11y(host, 'img') as HTMLImageElement

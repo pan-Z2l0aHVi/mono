@@ -6,7 +6,7 @@ import { styleMap } from 'lit/directives/style-map.js'
 import '@/components/button'
 import '@/components/icon'
 import glass from '@/assets/glass.css?inline'
-import { lucideChevronLeft, lucideChevronRight, lucideMinus, lucidePlus, lucideRefreshCw, oouiClose } from '@/icons'
+import { lucideChevronLeft, lucideChevronRight, lucideMinus, lucidePlus, oouiClose, radixIconsReset } from '@/icons'
 import { attachDragGesture, type DragGestureHandle } from '@/shared/gesture/drag-gesture'
 import { clamp } from '@/shared/gesture/physics'
 import { defineNativeDialogPresence } from '@/shared/overlay/native-dialog-presence'
@@ -577,7 +577,7 @@ class WebUiImagePreview extends LitElement {
                       ?disabled=${this._scale <= MIN_SCALE}
                       @click=${this.resetZoom}
                     >
-                      <web-ui-icon size="16" .icon=${lucideRefreshCw}></web-ui-icon>
+                      <web-ui-icon size="16" .icon=${radixIconsReset}></web-ui-icon>
                     </web-ui-button>
                   </div>
                 `
