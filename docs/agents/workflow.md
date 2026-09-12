@@ -69,6 +69,8 @@ pnpm agent:workflow verify --task <task-id> --name "pnpm test"
 pnpm agent:workflow close --task <task-id>
 ```
 
+freeze 前先跑一次 `CI=true pnpm run fix:code`（或确保等价格式化已应用）：commit 时 lint-staged 还会对 staged 文件格式化，若 freeze 后 diff 再被格式化改变，guard-commit 会以 stale 拒绝提交。
+
 提交边界由受版本控制的 `.vite-hooks/pre-commit` 再次检查。它通过 `guard-commit` 自动发现当前 worktree 的 active task；若存在 task，只有 `approved` 且冻结 diff 未变化时才允许提交。提交 hook 保护的是 commit 边界，不能替代实施前的 `init` 和 `check --phase edit`。
 
 ## 角色与执行体

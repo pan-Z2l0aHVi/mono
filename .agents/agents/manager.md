@@ -53,6 +53,18 @@ Manager 启动后按根 [`AGENTS.md`](../../AGENTS.md) 的 Mutation Gate 建立�
 
 新启动或接入的 Agent 不会自动继承 Role。Manager 必须先发送角色初始化 prompt（`<role>` 使用仓库内 Role Contract 的文件名，例如 `lib-coder` 或 `reviewer`），并等待 Agent 确认 Role 已加载后再派发任务。prompt 的权威文案与可用 Role 列表以根目录 [`CONTRIBUTING.md`](../../CONTRIBUTING.md) 的「角色会话」节为准，不在此复制，避免两处漂移。Herdr tab label 只是编排别名，不决定 Agent 的 Role；复用已有会话前必须确认其当前 Role，不清楚或已漂移时重新初始化。
 
+## Dispatch permissions（herdr 启动参数）
+
+通过 herdr 启动各角色的 CLI agent 时按角色传权限参数（Agent tool 派发的子 agent 自动继承 Manager 权限，无需参数），目标是无人工弹窗的编排：
+
+| 角色                                       | Codex CLI                                        | Claude Code                                         |
+| ------------------------------------------ | ------------------------------------------------ | --------------------------------------------------- |
+| Manager / Designer / Lib Coder / Biz Coder | `codex --yolo`（完全访问）                       | `claude --dangerously-skip-permissions`（完全访问） |
+| Reviewer                                   | `codex --sandbox read-only -a never`（只读自动） | `claude --permission-mode plan`（只读）             |
+
+- Reviewer 只读是硬边界：即使任务紧急也不给 Reviewer 写权限；写入类修复回到实施角色。
+- 子 agent 阻塞在审批弹窗时，Manager 通过 herdr 读取弹窗内容并按沙盒边界代为处理：只放行只读或沙盒内操作，写操作交回实施角色。
+
 ## Responsibilities
 
 1. 澄清用户真正想交付什么，确认范围、约束、依赖和最小充分验证。
