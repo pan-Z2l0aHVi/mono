@@ -4,10 +4,15 @@
 
 ### Minor Changes
 
+- Add `imagePreview()`, an imperative full-viewport image preview. It has no declarative tag contract: it is opened through `imagePreview(options)`, mounted into the nearest `web-ui-theme` overlay container (or an explicit `container`) and driven through the returned handle (`index`, `scale`, `images`, `closed`, `next`, `prev`, `goTo`, `zoomIn`, `zoomOut`, `resetZoom`, `close`). It shares the `native-dialog-presence` and `scroll-lock` plugins with `<web-ui-dialog>` rather than wrapping that component, because the preview needs a dialog that fills the viewport itself with its own pointer interaction.
+- Add presentation options to `imagePreview()`: `nav`, `toolbar`, `closable`, `indicator`, `swipe`, `noScrollLock` and `noBackdropClose`. Every presentation option defaults to `false`, so a preview now renders only the image itself unless the consumer opts in. `noScrollLock` and `noBackdropClose` mirror the same-named `<web-ui-dialog>` properties in naming and semantics.
 - Expose drawer section padding tokens: `--wui-drawer-header-padding` (default `16px 20px`), `--wui-drawer-content-padding` (default `20px`), `--wui-drawer-footer-padding` (default `16px 20px`). The content padding token also drives the drag bar visual center via `calc(var(--wui-drawer-content-padding) / 2)`, so changing content padding automatically repositions the drag bar.
 
 ### Patch Changes
 
+- Fix `imagePreview()` closing when the user clicked the image. As soon as the stage held pointer capture, the compatibility `click` event was retargeted to the stage and treated as a backdrop click; the same retargeting also broke double-click zoom while zoomed. Pan and swipe now share `attachDragGesture`, which defers pointer capture until the drag threshold is crossed, and backdrop detection relies on the (un-retargeted) `pointerdown` origin instead of the `click` target. That origin is recorded only for the primary left-button pointer and ignored for non-pointer clicks (keyboard activation, programmatic `.click()`), so a secondary touch or a synthetic click cannot close the preview by accident.
+- Constrain `imagePreview()` images to the viewport at 1x. The stage relied on an implicit grid row sized by its content, so `max-width` / `max-height: 100%` had no definite reference and large images were clipped by the viewport instead of contained inside it.
+- Align the `imagePreview()` toolbar padding with the other glass pills (`6px 10px` → `6px`).
 - Reduce drawer drag zone default from `32px` to `20px` (`--wui-drawer-drag-zone-size`). Consumer can override back to 32px+ if needed.
 - Reduce slider thumb default dimensions: width `30px` → `24px`, height `20px` → `18px`. Add `--wui-slider-thumb-radius` token (default `8px`) replacing the auto-derived pill shape. Glass corner radius now uses this token instead of `calc(min(width, height) / 2)`.
 

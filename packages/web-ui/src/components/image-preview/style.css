@@ -69,6 +69,10 @@ dialog.is-closing {
 
   overflow: hidden;
   display: grid;
+
+  /* 显式约束轨道：否则唯一隐式行会按图片内容撑高，
+     max-width/max-height: 100% 失去确定参照，大图会被视口裁切。 */
+  grid-template: minmax(0, 1fr) / minmax(0, 1fr);
   place-items: center;
 
   width: 100%;
@@ -79,7 +83,7 @@ dialog.is-closing {
   cursor: grab;
 }
 
-.wui-image-preview-stage.is-panning {
+.wui-image-preview-stage.is-dragging {
   cursor: grabbing;
 }
 
@@ -94,7 +98,7 @@ dialog.is-closing {
   opacity: 0;
   object-fit: contain;
 
-  /* 拖拽缩放不参与 transform 过渡（见 .is-panning），避免跟手位移滞后。 */
+  /* 拖拽（平移与滑动）不参与 transform 过渡（见 .is-dragging），避免跟手位移滞后。 */
   transition:
     opacity var(--wui-duration-trigger, 160ms) var(--wui-ease-enter, cubic-bezier(0.23, 1, 0.32, 1)),
     transform var(--wui-duration-trigger, 160ms) var(--wui-ease-enter, cubic-bezier(0.23, 1, 0.32, 1));
@@ -106,13 +110,13 @@ dialog.is-closing {
   opacity: 1;
 }
 
-.wui-image-preview-stage.is-panning .wui-image-preview-image {
+.wui-image-preview-stage.is-dragging .wui-image-preview-image {
   transition: opacity var(--wui-duration-trigger, 160ms) var(--wui-ease-enter, cubic-bezier(0.23, 1, 0.32, 1));
 }
 
 @media (prefers-reduced-motion: reduce) {
   .wui-image-preview-image,
-  .wui-image-preview-stage.is-panning .wui-image-preview-image {
+  .wui-image-preview-stage.is-dragging .wui-image-preview-image {
     transition: opacity var(--wui-duration-feedback, 100ms);
   }
 }
@@ -173,7 +177,7 @@ dialog.is-closing {
   gap: 6px;
   align-items: center;
 
-  padding: 6px 10px;
+  padding: 6px;
   border-radius: var(--wui-radius-control, calc(infinity * 1px));
 }
 

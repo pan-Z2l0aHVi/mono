@@ -33,6 +33,9 @@ const LARGE_IMAGE: ImagePreviewItem[] = [
   { src: createImage('滚轮缩放 · 拖拽平移', 2400, 1600, '#1d1d1f', '#0a84ff'), alt: '用于验证缩放与平移的大尺寸示例图' }
 ]
 
+// 展示类选项默认全关，多数示例用这份「全部开启」预设把控件带出来。
+const FULL_UI = { nav: true, toolbar: true, closable: true, indicator: true }
+
 const handleCommands: { label: string; run: (handle: ImagePreviewHandle) => void }[] = [
   { label: '上一张', run: handle => handle.prev() },
   { label: '下一张', run: handle => handle.next() },
@@ -82,24 +85,45 @@ function runHandleCommand(run: (handle: ImagePreviewHandle) => void) {
   syncStatus()
 }
 
-function openBasic(index = 0) {
-  imagePreview({ images: IMAGES, index })
+function openFull(index = 0) {
+  imagePreview({ images: IMAGES, index, ...FULL_UI })
+}
+
+// 不传任何展示类选项：只有图片本身，空白点击与 Escape 仍可关闭。
+function openMinimal() {
+  imagePreview({ images: IMAGES })
 }
 
 function openSingle() {
-  imagePreview({ images: SINGLE_IMAGE })
+  imagePreview({ images: SINGLE_IMAGE, ...FULL_UI })
 }
 
 function openWithoutLoop() {
-  imagePreview({ images: IMAGES, loop: false })
+  imagePreview({ images: IMAGES, loop: false, ...FULL_UI })
 }
 
 function openLarge() {
-  imagePreview({ images: LARGE_IMAGE })
+  imagePreview({ images: LARGE_IMAGE, ...FULL_UI })
+}
+
+function openSwipe() {
+  imagePreview({ images: IMAGES, swipe: true, ...FULL_UI })
+}
+
+function openSwipeBounded() {
+  imagePreview({ images: IMAGES, swipe: true, loop: false, ...FULL_UI })
+}
+
+function openNoBackdropClose() {
+  imagePreview({ images: IMAGES, noBackdropClose: true, ...FULL_UI })
+}
+
+function openNoScrollLock() {
+  imagePreview({ images: IMAGES, noScrollLock: true, ...FULL_UI })
 }
 
 function openHandleDemo() {
-  trackHandle(imagePreview({ images: IMAGES, index: 1 }))
+  trackHandle(imagePreview({ images: IMAGES, index: 1, ...FULL_UI }))
 }
 
 // container 优先级高于主题作用域，用来演示自定义挂载点与 CSS 变量覆盖。
@@ -108,7 +132,7 @@ const styledContainer = ref<HTMLElement>()
 function openWithContainer() {
   const container = styledContainer.value
   if (!container) return
-  imagePreview({ images: IMAGES, container })
+  imagePreview({ images: IMAGES, container, ...FULL_UI })
 }
 
 onBeforeUnmount(() => {
@@ -127,16 +151,20 @@ onBeforeUnmount(() => {
 
     <h2>基础用法</h2>
     <p class="mb-3 text-sm text-gray-500">
-      三张图默认可首尾循环；方向键或左右按钮切换，滚轮与 <code>+</code> / <code>-</code> 缩放，<code>0</code>
-      重置，双击图片在 1x 与 2x 之间切换，Escape 或点击图片外空白处关闭。
+      展示类选项默认全关，只渲染图片本身；下面第一个按钮显式开启导航、工具条、关闭按钮与指示器。方向键始终可切图，
+      滚轮与 <code>+</code> / <code>-</code> 缩放，<code>0</code> 重置，双击图片在 1x 与 2x 之间切换，Escape
+      或点击图片外空白处关闭。
     </p>
     <div class="mb-6 flex flex-wrap gap-2">
-      <web-ui-button @click="openBasic()">打开预览</web-ui-button>
-      <web-ui-button variant="secondary" @click="openBasic(2)">从第 3 张打开</web-ui-button>
+      <web-ui-button @click="openFull()">打开预览（全部开启）</web-ui-button>
+      <web-ui-button variant="secondary" @click="openMinimal">默认选项</web-ui-button>
+      <web-ui-button variant="secondary" @click="openFull(2)">从第 3 张打开</web-ui-button>
     </div>
 
     <h2>单图预览</h2>
-    <p class="mb-3 text-sm text-gray-500">只有一张图时不渲染上/下一张按钮，计数器为 <code>1 / 1</code>。</p>
+    <p class="mb-3 text-sm text-gray-500">
+      即使开启 <code>nav</code>，只有一张图时也不渲染上/下一张按钮，指示器为 <code>1 / 1</code>。
+    </p>
     <div class="mb-6 flex flex-wrap gap-2">
       <web-ui-button @click="openSingle">打开单图预览</web-ui-button>
     </div>
@@ -148,9 +176,31 @@ onBeforeUnmount(() => {
     </div>
 
     <h2>缩放与平移</h2>
-    <p class="mb-3 text-sm text-gray-500">大尺寸图片放大后可拖拽平移，倍率限制在 1x–4x。</p>
+    <p class="mb-3 text-sm text-gray-500">
+      大尺寸图片放大后可拖拽平移，倍率限制在 1x–4x；1x 时图片收缩到视口内，不被裁切。
+    </p>
     <div class="mb-6 flex flex-wrap gap-2">
       <web-ui-button @click="openLarge">打开大图</web-ui-button>
+    </div>
+
+    <h2>左右滑动切换</h2>
+    <p class="mb-3 text-sm text-gray-500">
+      <code>swipe: true</code> 时横向拖拽越过阈值即切换图片，跟手位移松手后回弹；<code>loop: false</code>
+      时在边界回弹。该手势复用 shared 的 <code>attachDragGesture</code>。
+    </p>
+    <div class="mb-6 flex flex-wrap gap-2">
+      <web-ui-button @click="openSwipe">swipe = true</web-ui-button>
+      <web-ui-button variant="secondary" @click="openSwipeBounded">swipe = true + loop = false</web-ui-button>
+    </div>
+
+    <h2>遮罩与滚动</h2>
+    <p class="mb-3 text-sm text-gray-500">
+      <code>noBackdropClose</code> 与 <code>noScrollLock</code> 的语义对齐 <code>web-ui-dialog</code>
+      的同名属性：前者让空白点击不再关闭（下方示例仍保留关闭按钮），后者跳过打开期间的页面滚动锁定。
+    </p>
+    <div class="mb-6 flex flex-wrap gap-2">
+      <web-ui-button @click="openNoBackdropClose">noBackdropClose = true</web-ui-button>
+      <web-ui-button variant="secondary" @click="openNoScrollLock">noScrollLock = true</web-ui-button>
     </div>
 
     <h2>句柄控制</h2>

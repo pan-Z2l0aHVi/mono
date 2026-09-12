@@ -165,18 +165,134 @@ describe('imagePreview 命令式 API', () => {
 
   it('点击空白区域关闭，点击图片不关闭', async () => {
     const handle = await openPreview()
-    const image = queryA11y(hostElement(), 'img')
+    const host = hostElement()
+    const image = queryA11y(host, 'img') as HTMLImageElement
+    const stage = image.parentElement as HTMLElement
 
-    image?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    // 真实指针 click 一定带 detail>=1；实现据此排除键盘/程序化激活的 click。
+    // 起于图片的按下 + 被重定向到舞台的 click：指针捕获后 click 的真实形态，不得关闭。
+    image.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0, pointerId: 1, isPrimary: true }))
+    stage.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1 }))
     expect(isMounted()).toBe(true)
 
-    dialogElement().dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    // 起于空白区域（舞台）的按下 + click 才关闭。
+    stage.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0, pointerId: 2, isPrimary: true }))
+    stage.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1 }))
     await handle.closed
     expect(isMounted()).toBe(false)
   })
 
-  it('原生 dialog 暴露可访问名称，计数器宣告当前位置', async () => {
+  it('noBackdropClose 时点击空白区域不关闭', async () => {
+    const handle = await openPreview({ noBackdropClose: true })
+    const image = queryA11y(hostElement(), 'img') as HTMLImageElement
+    const stage = image.parentElement as HTMLElement
+
+    stage.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0, pointerId: 1, isPrimary: true }))
+    // detail>=1 才能走到 noBackdropClose 分支；否则会被「非指针 click」提前拦下，用例就失去意义。
+    stage.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1 }))
+    await hostElement().updateComplete
+
+    expect(isMounted()).toBe(true)
+
+    handle.close()
+    await handle.closed
+  })
+
+  it('非指针来源的 click（detail 为 0）不当作遮罩点击', async () => {
     const handle = await openPreview()
+    const stage = (queryA11y(hostElement(), 'img') as HTMLImageElement).parentElement as HTMLElement
+
+    // 先留下一次「起于空白」的按下，再模拟键盘激活控件产生的 click：
+    // 它不是遮罩点击，不得关闭浮层。
+    stage.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0, pointerId: 1, isPrimary: true }))
+    dialogElement().dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    await hostElement().updateComplete
+
+    expect(isMounted()).toBe(true)
+
+    handle.close()
+    await handle.closed
+  })
+
+  it('副指针的按下不覆盖主指针记录的空白判定', async () => {
+    const handle = await openPreview()
+    const image = queryA11y(hostElement(), 'img') as HTMLImageElement
+    const stage = image.parentElement as HTMLElement
+
+    // 主指针起于空白区域：应判定为遮罩点击。
+    stage.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0, pointerId: 1, isPrimary: true }))
+    // 副指针按在图片上：它不会产生 click，也不得改写上面的判定。
+    image.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0, pointerId: 2, isPrimary: false }))
+    // 主指针释放产生的 click 仍应关闭浮层。
+    stage.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1 }))
+    await handle.closed
+    expect(isMounted()).toBe(false)
+  })
+
+  it('noScrollLock 时打开期间不锁定页面滚动', async () => {
+    const handle = await openPreview({ noScrollLock: true })
+
+    expect(isMounted()).toBe(true)
+    expect(document.body.style.position).toBe('')
+
+    handle.close()
+    await handle.closed
+  })
+
+  it('展示类选项默认全关，只渲染图片本身', async () => {
+    const handle = await openPreview()
+    const host = hostElement()
+
+    expect(queryA11y(host, 'img')).not.toBeNull()
+    expect(queryA11y(host, '[aria-live]')).toBeNull()
+    expect(queryA11y(host, '[aria-label="关闭"]')).toBeNull()
+    expect(queryA11y(host, '[aria-label="上一张"]')).toBeNull()
+    expect(queryA11y(host, '[aria-label="下一张"]')).toBeNull()
+    expect(queryA11y(host, '[aria-label="放大"]')).toBeNull()
+
+    handle.close()
+    await handle.closed
+  })
+
+  it('nav / toolbar / closable / indicator 各自独立开启对应 UI', async () => {
+    const handle = await openPreview({ nav: true, toolbar: true, closable: true, indicator: true })
+    const host = hostElement()
+
+    expect(queryA11y(host, '[aria-live]')?.textContent?.trim()).toBe(`1 / ${IMAGES.length}`)
+    expect(queryA11y(host, '[aria-label="关闭"]')).not.toBeNull()
+    expect(queryA11y(host, '[aria-label="上一张"]')).not.toBeNull()
+    expect(queryA11y(host, '[aria-label="下一张"]')).not.toBeNull()
+    expect(queryA11y(host, '[aria-label="放大"]')).not.toBeNull()
+    expect(queryA11y(host, '[aria-label="缩小"]')).not.toBeNull()
+    expect(queryA11y(host, '[aria-label="重置缩放"]')).not.toBeNull()
+
+    handle.close()
+    await handle.closed
+  })
+
+  it('closable 时点击关闭按钮关闭浮层', async () => {
+    const handle = await openPreview({ closable: true })
+    const closeButton = queryA11y(hostElement(), '[aria-label="关闭"]') as HTMLElement
+    expect(closeButton).not.toBeNull()
+
+    closeButton.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1 }))
+    await handle.closed
+    expect(isMounted()).toBe(false)
+  })
+
+  it('nav 在只有一张图时不渲染切换按钮', async () => {
+    const handle = await openPreview({ nav: true, images: [IMAGES[0]] })
+    const host = hostElement()
+
+    expect(queryA11y(host, '[aria-label="上一张"]')).toBeNull()
+    expect(queryA11y(host, '[aria-label="下一张"]')).toBeNull()
+
+    handle.close()
+    await handle.closed
+  })
+
+  it('原生 dialog 暴露可访问名称，计数器宣告当前位置', async () => {
+    const handle = await openPreview({ indicator: true })
     const host = hostElement()
 
     expect(queryA11y(host, 'dialog')?.getAttribute('aria-label')).toBe('图片预览')

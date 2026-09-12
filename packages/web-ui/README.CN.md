@@ -729,12 +729,18 @@ Portal 面板创建时会镜像 host 上解析后的这些变量；更新 host �
 
 命令式图片预览，没有声明式标签契约：只能通过 `imagePreview()` 打开，并用返回的句柄控制。内部使用原生 `<dialog>` 的 `showModal()`，默认挂载到目标 `web-ui-theme` 的 overlay 容器（无主题作用域时回退到全局 fallback root）。
 
+它不复用 `<web-ui-dialog>` 组件：预览需要自身铺满视口的 dialog（遮罩即 dialog 背景）与自有指针交互，与 dialog 组件的玻璃卡片 / 插槽契约不同源。两者共享 `native-dialog-presence` 与 `scroll-lock` 两个底层插件，`noScrollLock` / `noBackdropClose` 的命名与语义也对齐同名属性。
+
 ```ts
 import { imagePreview } from '@greypan/web-ui'
 
 const preview = imagePreview({
   images: [{ src: '/a.jpg', alt: '图 A' }, { src: '/b.jpg' }],
-  index: 0
+  index: 0,
+  nav: true,
+  toolbar: true,
+  closable: true,
+  indicator: true
 })
 
 preview.next()
@@ -745,15 +751,24 @@ await preview.closed
 
 **选项：**
 
-| 选项        | 类型                 | 默认值 | 说明                               |
-| ----------- | -------------------- | ------ | ---------------------------------- |
-| `images`    | `ImagePreviewItem[]` | —      | 图片列表，至少一项，否则抛错       |
-| `index`     | `number`             | `0`    | 初始索引，越界时钳制到有效区间     |
-| `loop`      | `boolean`            | `true` | 首尾循环切换                       |
-| `target`    | `Element`            | —      | 用于解析最近主题作用域的触发元素   |
-| `container` | `HTMLElement`        | —      | 显式挂载容器，优先级高于主题作用域 |
+| 选项              | 类型                 | 默认值  | 说明                                                 |
+| ----------------- | -------------------- | ------- | ---------------------------------------------------- |
+| `images`          | `ImagePreviewItem[]` | —       | 图片列表，至少一项，否则抛错                         |
+| `index`           | `number`             | `0`     | 初始索引，越界时钳制到有效区间                       |
+| `loop`            | `boolean`            | `true`  | 首尾循环切换                                         |
+| `target`          | `Element`            | —       | 用于解析最近主题作用域的触发元素                     |
+| `container`       | `HTMLElement`        | —       | 显式挂载容器，优先级高于主题作用域                   |
+| `nav`             | `boolean`            | `false` | 展示上一张 / 下一张按钮；仅图片多于一张时渲染        |
+| `toolbar`         | `boolean`            | `false` | 展示缩放工具条（缩小 / 倍率 / 放大 / 重置）          |
+| `closable`        | `boolean`            | `false` | 展示关闭按钮                                         |
+| `indicator`       | `boolean`            | `false` | 展示「当前 / 总数」指示器，并用 `aria-live` 宣告位置 |
+| `swipe`           | `boolean`            | `false` | 允许左右滑动切换图片                                 |
+| `noScrollLock`    | `boolean`            | `false` | 打开期间不锁定页面滚动                               |
+| `noBackdropClose` | `boolean`            | `false` | 点击图片以外的空白区域不关闭                         |
 
 `ImagePreviewItem` 为 `{ src: string; alt?: string }`；`alt` 缺省为空字符串。
+
+展示类选项默认全关：不传任何选项时只渲染图片本身，导航、工具条、关闭按钮与指示器都需要显式开启。
 
 **返回句柄：**
 
@@ -768,9 +783,9 @@ await preview.closed
 | `zoomIn()` / `zoomOut()` / `resetZoom()` | `() => void`                  | 缩放控制                         |
 | `close()`                                | `() => void`                  | 关闭并播放退场动画               |
 
-**交互：** 左右按钮与方向键切换图片，计数器用 `aria-live` 宣告当前位置；`+` / `-` 键和滚轮缩放，`0` 重置，放大后可拖拽平移，双击图片在 1x 与 2x 之间切换；点击图片以外的空白区域或按 Escape 关闭，原生 dialog 始终暴露 `图片预览` 这一可访问名称。
+**交互：** 方向键始终可切换图片，与 `nav` 无关；`+` / `-` 键和滚轮缩放，`0` 重置，放大后可拖拽平移，双击图片在 1x 与 2x 之间切换；点击图片以外的空白区域或按 Escape 关闭，原生 dialog 始终暴露 `图片预览` 这一可访问名称。`swipe` 开启且图片多于一张时，横向拖拽越过阈值即切换图片，`loop` 关闭时在边界回弹；但放大后拖拽会让位于平移，需要先按 `0`（或 `resetZoom()`）把缩放还原到 1x 才能继续滑动切图。
 
-关闭请求不会立刻销毁原生 dialog：它保持在 top layer，等退场过渡结束后才调用 `dialog.close()`，随后宿主从 DOM 移除并兑现 `closed`。打开期间锁定页面滚动。
+关闭请求不会立刻销毁原生 dialog：它保持在 top layer，等退场过渡结束后才调用 `dialog.close()`，随后宿主从 DOM 移除并兑现 `closed`。打开期间锁定页面滚动，除非 `noScrollLock` 为 `true`。
 
 **CSS 自定义属性：**
 

@@ -765,12 +765,18 @@ Closing keeps the native dialog in the top layer until the `--wui-duration-drawe
 
 Imperative image preview with no declarative tag contract: open it through `imagePreview()` and drive it through the returned handle. It uses the native `<dialog>` `showModal()` and mounts into the nearest `web-ui-theme` overlay container, falling back to the global fallback root when no theme scope exists.
 
+It does not reuse the `<web-ui-dialog>` component: the preview needs a dialog that fills the viewport itself (the backdrop is the dialog background) plus its own pointer interaction, which is a different source than the dialog's glass panel and slot contract. The two share the `native-dialog-presence` and `scroll-lock` plugins, and `noScrollLock` / `noBackdropClose` mirror the same-named properties in naming and semantics.
+
 ```ts
 import { imagePreview } from '@greypan/web-ui'
 
 const preview = imagePreview({
   images: [{ src: '/a.jpg', alt: 'Image A' }, { src: '/b.jpg' }],
-  index: 0
+  index: 0,
+  nav: true,
+  toolbar: true,
+  closable: true,
+  indicator: true
 })
 
 preview.next()
@@ -781,15 +787,24 @@ await preview.closed
 
 **Options:**
 
-| Option      | Type                 | Default | Description                                                |
-| ----------- | -------------------- | ------- | ---------------------------------------------------------- |
-| `images`    | `ImagePreviewItem[]` | —       | Image list; must contain at least one item, else it throws |
-| `index`     | `number`             | `0`     | Initial index, clamped into range                          |
-| `loop`      | `boolean`            | `true`  | Wrap around at both ends                                   |
-| `target`    | `Element`            | —       | Trigger element used to resolve the nearest theme scope    |
-| `container` | `HTMLElement`        | —       | Explicit mount container, highest priority                 |
+| Option            | Type                 | Default | Description                                                     |
+| ----------------- | -------------------- | ------- | --------------------------------------------------------------- |
+| `images`          | `ImagePreviewItem[]` | —       | Image list; must contain at least one item, else it throws      |
+| `index`           | `number`             | `0`     | Initial index, clamped into range                               |
+| `loop`            | `boolean`            | `true`  | Wrap around at both ends                                        |
+| `target`          | `Element`            | —       | Trigger element used to resolve the nearest theme scope         |
+| `container`       | `HTMLElement`        | —       | Explicit mount container, highest priority                      |
+| `nav`             | `boolean`            | `false` | Show prev/next buttons; rendered only when more than one image  |
+| `toolbar`         | `boolean`            | `false` | Show the zoom toolbar (out / factor / in / reset)               |
+| `closable`        | `boolean`            | `false` | Show the close button                                           |
+| `indicator`       | `boolean`            | `false` | Show the "current / total" indicator, announced via `aria-live` |
+| `swipe`           | `boolean`            | `false` | Allow horizontal swiping to change images                       |
+| `noScrollLock`    | `boolean`            | `false` | Do not lock page scroll while open                              |
+| `noBackdropClose` | `boolean`            | `false` | Clicking the blank area outside the image does not close        |
 
 `ImagePreviewItem` is `{ src: string; alt?: string }`; a missing `alt` defaults to an empty string.
+
+Every presentation option defaults to off: with no options passed only the image itself is rendered, so navigation, toolbar, close button and indicator all have to be enabled explicitly.
 
 **Returned handle:**
 
@@ -804,9 +819,9 @@ await preview.closed
 | `zoomIn()` / `zoomOut()` / `resetZoom()` | `() => void`                  | Zoom controls                                   |
 | `close()`                                | `() => void`                  | Close and play the exit animation               |
 
-**Interaction:** Prev/next buttons and arrow keys navigate, a counter announces the position through `aria-live`, `+` / `-` and the wheel zoom, `0` resets, a zoomed image can be dragged to pan, and double-clicking the image toggles between 1x and 2x. Clicking anywhere outside the image, or pressing Escape, closes the preview. The native dialog always exposes the accessible name `图片预览`.
+**Interaction:** Arrow keys always navigate, independently of `nav`; `+` / `-` and the wheel zoom, `0` resets, a zoomed image can be dragged to pan, and double-clicking the image toggles between 1x and 2x. Clicking anywhere outside the image, or pressing Escape, closes the preview. The native dialog always exposes the accessible name `图片预览`. With `swipe` on and more than one image, a horizontal drag past the threshold changes images, bouncing back at the bounds when `loop` is off. Once zoomed in, dragging yields to panning instead — press `0` (or call `resetZoom()`) to return to 1x before swiping again.
 
-A close request does not destroy the native dialog immediately: it stays in the top layer until the exit transition completes, then `dialog.close()` runs, the host is removed from the DOM, and `closed` resolves. Page scroll is locked while open.
+A close request does not destroy the native dialog immediately: it stays in the top layer until the exit transition completes, then `dialog.close()` runs, the host is removed from the DOM, and `closed` resolves. Page scroll is locked while open unless `noScrollLock` is `true`.
 
 **CSS Custom Properties:**
 

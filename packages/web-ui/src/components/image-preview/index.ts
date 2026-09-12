@@ -7,6 +7,8 @@ import '@/components/button'
 import '@/components/icon'
 import glass from '@/assets/glass.css?inline'
 import { lucideChevronLeft, lucideChevronRight, lucideMinus, lucidePlus, lucideRefreshCw, oouiClose } from '@/icons'
+import { attachDragGesture, type DragGestureHandle } from '@/shared/gesture/drag-gesture'
+import { clamp } from '@/shared/gesture/physics'
 import { defineNativeDialogPresence } from '@/shared/overlay/native-dialog-presence'
 import { defineScrollLockLease } from '@/shared/scroll-lock/scroll-lock'
 import { getFallbackOverlayRoot } from '@/shared/theme/overlay-root'
@@ -30,6 +32,20 @@ export interface ImagePreviewOptions {
   target?: Element
   /** 显式挂载容器，优先级高于 target 和主题作用域。 */
   container?: HTMLElement
+  /** 展示上一张 / 下一张按钮；仅在图片多于一张时渲染。默认 false。 */
+  nav?: boolean
+  /** 展示缩放工具条。默认 false。 */
+  toolbar?: boolean
+  /** 展示关闭按钮。默认 false。 */
+  closable?: boolean
+  /** 展示「当前 / 总数」指示器。默认 false。 */
+  indicator?: boolean
+  /** 允许左右滑动切换图片。默认 false。 */
+  swipe?: boolean
+  /** 打开期间不锁定页面滚动，语义与 `<web-ui-dialog>` 的 `noScrollLock` 一致。默认 false。 */
+  noScrollLock?: boolean
+  /** 点击图片以外的空白区域不关闭，语义与 `<web-ui-dialog>` 的 `noBackdropClose` 一致。默认 false。 */
+  noBackdropClose?: boolean
 }
 
 export interface ImagePreviewHandle {
@@ -49,39 +65,27 @@ export interface ImagePreviewHandle {
   close(): void
 }
 
+type ResolvedImagePreviewOptions = Required<Omit<ImagePreviewOptions, 'target' | 'container'>>
+
 const MIN_SCALE = 1
 const MAX_SCALE = 4
 const ZOOM_STEP = 0.5
 // 滚轮 deltaY(px) 到缩放的指数系数；每 120px 步进约放大 27%。
 const WHEEL_ZOOM_SENSITIVITY = 0.002
-// 小于该位移视为点击而非拖拽平移。
+// 放大后判定为平移而非点击的最小位移。
 const PAN_MOVE_THRESHOLD = 3
-
-function clamp(value: number, min: number, max: number): number {
-  return Math.min(Math.max(value, min), max)
-}
-
-/*
- * Pointer Capture 在部分 DOM 实现（如 jsdom）中缺失，合成事件也可能携带
- * 不活跃的 pointerId。两种情况都不影响冒泡事件继续驱动平移，因此静默降级。
- */
-function capturePointer(target: HTMLElement, pointerId: number): void {
-  if (typeof target.setPointerCapture !== 'function') return
-  try {
-    target.setPointerCapture(pointerId)
-  } catch {
-    // 忽略不具备捕获资格的指针
-  }
-}
-
-function releasePointer(target: HTMLElement, pointerId: number): void {
-  if (typeof target.hasPointerCapture !== 'function' || !target.hasPointerCapture(pointerId)) return
-  target.releasePointerCapture(pointerId)
-}
+// 滑动切图的最小位移与甩动速度，任一满足即切图。
+const SWIPE_DISTANCE = 48
+const SWIPE_VELOCITY = 320
 
 /**
  * 图像预览的内部宿主。对外只通过 `imagePreview()` 使用，因此不导出类、
  * 不注册 `HTMLElementTagNameMap`，避免形成声明式标签契约。
+ *
+ * 内部使用原生 `<dialog>.showModal()`，与 `<web-ui-dialog>` 共享
+ * `native-dialog-presence` 与 `scroll-lock` 两个底层插件，而不是复用该组件：
+ * 本组件需要自身铺满视口的 dialog（遮罩即 dialog 背景）与自有指针交互，
+ * 与 dialog 组件的玻璃卡片 / 插槽契约不同源。
  */
 @customElement('web-ui-image-preview')
 class WebUiImagePreview extends LitElement {
@@ -89,14 +93,23 @@ class WebUiImagePreview extends LitElement {
 
   @property({ attribute: false }) images: ImagePreviewItem[] = []
   @property({ attribute: false }) loop = true
+  @property({ attribute: false }) nav = false
+  @property({ attribute: false }) toolbar = false
+  @property({ attribute: false }) closable = false
+  @property({ attribute: false }) indicator = false
+  @property({ attribute: false }) swipe = false
+  @property({ attribute: false }) noScrollLock = false
+  @property({ attribute: false }) noBackdropClose = false
 
   @state() private _open = false
   @state() private _index = 0
   @state() private _scale = MIN_SCALE
   @state() private _offsetX = 0
   @state() private _offsetY = 0
+  /** 滑动跟手位移，只作用于左右方向；可叠加在平移位移之上。 */
+  @state() private _swipeOffset = 0
   @state() private _loaded = false
-  @state() private _panning = false
+  @state() private _dragging = false
 
   private readonly _scrollLock = defineScrollLockLease().make()
   private readonly _presence = defineNativeDialogPresence().make({
@@ -106,12 +119,12 @@ class WebUiImagePreview extends LitElement {
   })
 
   private _dismissed = false
-  private _panPointerId: number | null = null
-  private _panStartX = 0
-  private _panStartY = 0
+  private _gesture: DragGestureHandle | undefined
+  private _swipeGesture = false
   private _panOriginX = 0
   private _panOriginY = 0
-  private _panMoved = false
+  private _dragged = false
+  private _blankPointerDown = false
 
   private get dialog() {
     return this.shadowRoot?.querySelector('dialog') ?? null
@@ -133,9 +146,16 @@ class WebUiImagePreview extends LitElement {
     return this._scale
   }
 
-  configure(options: { images: ImagePreviewItem[]; loop: boolean; index: number }): void {
+  configure(options: ResolvedImagePreviewOptions): void {
     this.images = options.images
     this.loop = options.loop
+    this.nav = options.nav
+    this.toolbar = options.toolbar
+    this.closable = options.closable
+    this.indicator = options.indicator
+    this.swipe = options.swipe
+    this.noScrollLock = options.noScrollLock
+    this.noBackdropClose = options.noBackdropClose
     this._index = clamp(options.index, 0, Math.max(0, options.images.length - 1))
   }
 
@@ -147,6 +167,7 @@ class WebUiImagePreview extends LitElement {
 
   close(): void {
     if (!this._open) return
+    this._endGesture()
     this._open = false
   }
 
@@ -193,16 +214,21 @@ class WebUiImagePreview extends LitElement {
 
     if (props.has('_open')) {
       this._presence.sync(this._open)
-      this._scrollLock.sync(this._open)
       // 无原生 dialog 支持或 dialog 未能打开时不会收到 close 事件，这里补齐退场结算。
       if (!this._open && !this.dialog?.open) queueMicrotask(() => this._notifyDismissed())
     }
+    if (props.has('_open') || props.has('noScrollLock')) this._syncScrollLock()
   }
 
   override disconnectedCallback() {
     super.disconnectedCallback()
+    this._endGesture()
     this._presence.dispose()
     this._scrollLock.release()
+  }
+
+  private _syncScrollLock() {
+    this._scrollLock.sync(this._open && !this.noScrollLock)
   }
 
   private _notifyDismissed() {
@@ -248,6 +274,17 @@ class WebUiImagePreview extends LitElement {
     const bounds = this._offsetBounds()
     this._offsetX = clamp(this._offsetX, -bounds.x, bounds.x)
     this._offsetY = clamp(this._offsetY, -bounds.y, bounds.y)
+  }
+
+  /**
+   * 空白 = dialog 本体或未被图片 / 控件覆盖的舞台区域。
+   *
+   * 只能在 pointerdown（指针捕获生效前）判定：一旦舞台通过 setPointerCapture
+   * 取得捕获，后续 click 的 target 会被重定向到舞台，用它判断会把「点图片」
+   * 误判成「点空白」而关闭浮层。
+   */
+  private _isBlank(target: EventTarget | null): boolean {
+    return target === this.dialog || target === this._stage
   }
 
   private _handleImageSettled = () => {
@@ -312,15 +349,20 @@ class WebUiImagePreview extends LitElement {
   private _handleClick = (event: MouseEvent) => {
     if (!this._open) return
 
-    const target = event.target as Node | null
-    // 只有空白区域（dialog 本体或舞台自身）是遮罩；命中图片或控件不关闭。
-    if (target !== this.dialog && target !== this._stage) return
+    const blank = this._blankPointerDown
+    this._blankPointerDown = false
+    if (!blank) return
 
-    // 平移结束后的 click 不再当作遮罩点击。
-    if (this._panMoved) {
-      this._panMoved = false
+    // detail 为 0 表示这次 click 不来自指针（键盘激活按钮、程序化 .click()），
+    // 此时 pointerdown 起点可能是上一次指针交互的残留，不能据此判定遮罩点击。
+    if (event.detail === 0) return
+
+    // 拖拽（平移或滑动）结束后的 click 不再当作遮罩点击。
+    if (this._dragged) {
+      this._dragged = false
       return
     }
+    if (this.noBackdropClose) return
     this.close()
   }
 
@@ -330,54 +372,97 @@ class WebUiImagePreview extends LitElement {
     else this._setScale(MAX_SCALE / 2)
   }
 
-  private _handlePointerDown = (event: PointerEvent) => {
-    if (!this._open || this._scale <= MIN_SCALE) return
-    if (event.button !== 0 || event.isPrimary === false) return
-
-    const stage = event.currentTarget as HTMLElement
-    this._panPointerId = event.pointerId
-    this._panStartX = event.clientX
-    this._panStartY = event.clientY
-    this._panOriginX = this._offsetX
-    this._panOriginY = this._offsetY
-    this._panMoved = false
-    this._panning = true
-    capturePointer(stage, event.pointerId)
+  private _endGesture() {
+    this._gesture?.destroy()
+    this._gesture = undefined
+    this._dragging = false
+    this._swipeOffset = 0
   }
 
-  private _handlePointerMove = (event: PointerEvent) => {
-    if (this._panPointerId !== event.pointerId) return
-
-    const deltaX = event.clientX - this._panStartX
-    const deltaY = event.clientY - this._panStartY
-    if (!this._panMoved && Math.abs(deltaX) + Math.abs(deltaY) < PAN_MOVE_THRESHOLD) return
-
-    this._panMoved = true
+  private _panTo(deltaX: number, deltaY: number) {
     const bounds = this._offsetBounds()
     this._offsetX = clamp(this._panOriginX + deltaX, -bounds.x, bounds.x)
     this._offsetY = clamp(this._panOriginY + deltaY, -bounds.y, bounds.y)
   }
 
-  private _handlePointerEnd = (event: PointerEvent) => {
-    if (this._panPointerId !== event.pointerId) return
+  private _commitSwipe(deltaX: number, velocityX: number) {
+    const crossed = Math.abs(deltaX) >= SWIPE_DISTANCE || Math.abs(velocityX) >= SWIPE_VELOCITY
+    if (!crossed) return
+    // 向左拖动进入下一张；越界时 goTo 自身会拒绝并回弹。
+    if (deltaX < 0) this.next()
+    else this.prev()
+  }
 
-    const stage = event.currentTarget as HTMLElement
-    this._panPointerId = null
-    this._panning = false
-    releasePointer(stage, event.pointerId)
+  /**
+   * 平移与左右滑动共用 `attachDragGesture`：它把指针捕获推迟到确认拖拽之后，
+   * 因此不会像立即捕获那样破坏图片自身的 click / dblclick 命中；
+   * 拖拽过程中的窗口级监听同时兜住指针移出元素甚至移出视口的情况。
+   *
+   * 监听挂在 dialog 而非舞台上：控件层里的按下不会经过舞台，挂在舞台会漏掉
+   * 这些按下而留下过期的「起于空白」标记。
+   */
+  private _handlePointerDown = (event: PointerEvent) => {
+    if (!this._open) return
+
+    // 只有主指针左键才可能生成 click；副指针或其它键的按下不产生 click，
+    // 若让它们覆盖标记，主指针随后释放时的 click 会拿副指针的命中结果误判遮罩点击。
+    const primary = event.button === 0 && event.isPrimary !== false
+    if (!primary) return
+
+    // 指针捕获会把后续 click 的 target 重定向到捕获元素，因此在按下时（捕获生效前）
+    // 记录真实命中元素，作为「是否起于空白区域」的唯一判据。
+    this._blankPointerDown = this._isBlank(event.target)
+    this._dragged = false
+
+    const stage = this._stage
+    if (!stage || (event.target !== stage && !stage.contains(event.target as Node))) return
+
+    const panning = this._scale > MIN_SCALE
+    if (!panning && !(this.swipe && this.images.length > 1)) return
+
+    this._swipeGesture = !panning
+    this._panOriginX = this._offsetX
+    this._panOriginY = this._offsetY
+
+    this._gesture?.destroy()
+    this._gesture = attachDragGesture(event, {
+      axis: panning ? 'both' : 'x',
+      threshold: PAN_MOVE_THRESHOLD,
+      onMove: info => {
+        if (this._swipeGesture) this._swipeOffset = info.deltaX
+        else this._panTo(info.deltaX, info.deltaY)
+      },
+      onEnd: info => {
+        this._dragged = true
+        this._dragging = false
+        if (this._swipeGesture) {
+          this._swipeOffset = 0
+          this._commitSwipe(info.deltaX, info.velocityX)
+        }
+      },
+      onTap: () => {
+        this._dragging = false
+      },
+      onCancel: () => {
+        this._dragging = false
+        this._swipeOffset = 0
+      }
+    })
+    this._dragging = true
   }
 
   override render() {
     const item = this.images[this._index]
     const count = this.images.length
     const zoomed = this._scale > MIN_SCALE
-    const transform = `translate3d(${this._offsetX}px, ${this._offsetY}px, 0) scale(${this._scale})`
+    const transform = `translate3d(${this._offsetX + this._swipeOffset}px, ${this._offsetY}px, 0) scale(${this._scale})`
 
     return html`
       <dialog
         aria-label="图片预览"
         @cancel=${this._handleCancel}
         @close=${this._handleNativeClose}
+        @pointerdown=${this._handlePointerDown}
         @click=${this._handleClick}
         @dblclick=${this._handleDoubleClick}
         @keydown=${this._handleKeydown}
@@ -388,12 +473,8 @@ class WebUiImagePreview extends LitElement {
           class=${classMap({
             'wui-image-preview-stage': true,
             'is-zoomed': zoomed,
-            'is-panning': this._panning
+            'is-dragging': this._dragging
           })}
-          @pointerdown=${this._handlePointerDown}
-          @pointermove=${this._handlePointerMove}
-          @pointerup=${this._handlePointerEnd}
-          @pointercancel=${this._handlePointerEnd}
         >
           ${
             item
@@ -412,19 +493,31 @@ class WebUiImagePreview extends LitElement {
           }
         </div>
         <div class="wui-image-preview-controls">
-          <span class="wui-image-preview-counter wui-glass" aria-live="polite">${this._index + 1} / ${count}</span>
-          <web-ui-button
-            class="wui-image-preview-close"
-            variant="glass"
-            icon
-            size="36"
-            aria-label="关闭"
-            @click=${this.close}
-          >
-            <web-ui-icon size="16" .icon=${oouiClose}></web-ui-icon>
-          </web-ui-button>
           ${
-            count > 1
+            this.indicator
+              ? html`<span class="wui-image-preview-counter wui-glass" aria-live="polite"
+                  >${this._index + 1} / ${count}</span
+                >`
+              : nothing
+          }
+          ${
+            this.closable
+              ? html`
+                  <web-ui-button
+                    class="wui-image-preview-close"
+                    variant="glass"
+                    icon
+                    size="36"
+                    aria-label="关闭"
+                    @click=${this.close}
+                  >
+                    <web-ui-icon size="16" .icon=${oouiClose}></web-ui-icon>
+                  </web-ui-button>
+                `
+              : nothing
+          }
+          ${
+            this.nav && count > 1
               ? html`
                   <web-ui-button
                     class="wui-image-preview-nav wui-image-preview-nav-prev"
@@ -451,39 +544,45 @@ class WebUiImagePreview extends LitElement {
                 `
               : nothing
           }
-          <div class="wui-image-preview-toolbar wui-glass">
-            <web-ui-button
-              variant="glass"
-              icon
-              size="30"
-              aria-label="缩小"
-              ?disabled=${this._scale <= MIN_SCALE}
-              @click=${this.zoomOut}
-            >
-              <web-ui-icon size="16" .icon=${lucideMinus}></web-ui-icon>
-            </web-ui-button>
-            <span class="wui-image-preview-scale">${Math.round(this._scale * 100)}%</span>
-            <web-ui-button
-              variant="glass"
-              icon
-              size="30"
-              aria-label="放大"
-              ?disabled=${this._scale >= MAX_SCALE}
-              @click=${this.zoomIn}
-            >
-              <web-ui-icon size="16" .icon=${lucidePlus}></web-ui-icon>
-            </web-ui-button>
-            <web-ui-button
-              variant="glass"
-              icon
-              size="30"
-              aria-label="重置缩放"
-              ?disabled=${this._scale <= MIN_SCALE}
-              @click=${this.resetZoom}
-            >
-              <web-ui-icon size="16" .icon=${lucideRefreshCw}></web-ui-icon>
-            </web-ui-button>
-          </div>
+          ${
+            this.toolbar
+              ? html`
+                  <div class="wui-image-preview-toolbar wui-glass">
+                    <web-ui-button
+                      variant="glass"
+                      icon
+                      size="30"
+                      aria-label="缩小"
+                      ?disabled=${this._scale <= MIN_SCALE}
+                      @click=${this.zoomOut}
+                    >
+                      <web-ui-icon size="16" .icon=${lucideMinus}></web-ui-icon>
+                    </web-ui-button>
+                    <span class="wui-image-preview-scale">${Math.round(this._scale * 100)}%</span>
+                    <web-ui-button
+                      variant="glass"
+                      icon
+                      size="30"
+                      aria-label="放大"
+                      ?disabled=${this._scale >= MAX_SCALE}
+                      @click=${this.zoomIn}
+                    >
+                      <web-ui-icon size="16" .icon=${lucidePlus}></web-ui-icon>
+                    </web-ui-button>
+                    <web-ui-button
+                      variant="glass"
+                      icon
+                      size="30"
+                      aria-label="重置缩放"
+                      ?disabled=${this._scale <= MIN_SCALE}
+                      @click=${this.resetZoom}
+                    >
+                      <web-ui-icon size="16" .icon=${lucideRefreshCw}></web-ui-icon>
+                    </web-ui-button>
+                  </div>
+                `
+              : nothing
+          }
         </div>
       </dialog>
     `
@@ -494,7 +593,8 @@ class WebUiImagePreview extends LitElement {
  * 打开一个命令式图片预览。
  *
  * 组件挂载到目标 `web-ui-theme` 的 overlay 容器（无主题作用域时回退到全局
- * fallback root），返回的句柄是唯一的控制入口。
+ * fallback root），返回的句柄是唯一的控制入口。所有展示类选项默认关闭，
+ * 默认只渲染图片本身。
  */
 export function imagePreview(options: ImagePreviewOptions): ImagePreviewHandle {
   const images = (options.images ?? []).map(item => ({ src: item.src, alt: item.alt ?? '' }))
@@ -506,7 +606,18 @@ export function imagePreview(options: ImagePreviewOptions): ImagePreviewHandle {
   const container = options.container ?? theme?.getOverlayRoot() ?? getFallbackOverlayRoot()
 
   const element = document.createElement('web-ui-image-preview') as WebUiImagePreview
-  element.configure({ images, loop: options.loop ?? true, index: options.index ?? 0 })
+  element.configure({
+    images,
+    index: options.index ?? 0,
+    loop: options.loop ?? true,
+    nav: options.nav ?? false,
+    toolbar: options.toolbar ?? false,
+    closable: options.closable ?? false,
+    indicator: options.indicator ?? false,
+    swipe: options.swipe ?? false,
+    noScrollLock: options.noScrollLock ?? false,
+    noBackdropClose: options.noBackdropClose ?? false
+  })
 
   let settle: (() => void) | undefined
   const closed = new Promise<void>(resolve => {

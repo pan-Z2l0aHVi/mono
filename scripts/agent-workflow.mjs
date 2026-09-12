@@ -253,7 +253,9 @@ function assign(options) {
 function freeze(options) {
   const taskId = validateTaskId(requireOption(options, 'task'))
   const { file, state } = loadState(taskId)
-  assertPhase(state, ['assigned', 'editing', 'reviewed', 'approved'])
+  // 'frozen' 也在允许集合内：freeze 之后任何文件变化都会让证据 stale，
+  // 文档要求「必须重新 freeze」，因此对当前 diff 再次冻结必须可行。
+  assertPhase(state, ['assigned', 'editing', 'frozen', 'reviewed', 'approved'])
   const live = liveState(state)
   assertTaskBranch(state, live, 'freeze')
   if (!options['allow-empty']) {

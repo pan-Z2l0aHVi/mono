@@ -150,4 +150,200 @@ describe('imagePreview 命令式 API（浏览器）', () => {
     handle.close()
     await handle.closed
   })
+
+  it('1x 时图片收缩到视口内，不被舞台裁切', async () => {
+    const { handle, host } = await openPreview()
+    const image = queryA11y(host, 'img') as HTMLImageElement
+
+    await pollUntil(() => image.complete && image.offsetWidth > 0, 'image did not load')
+    const stage = image.parentElement as HTMLElement
+
+    expect(image.offsetWidth).toBeLessThanOrEqual(stage.clientWidth)
+    expect(image.offsetHeight).toBeLessThanOrEqual(stage.clientHeight)
+
+    handle.close()
+    await handle.closed
+  })
+
+  it('放大后连续点击图片不关闭浮层', async () => {
+    const { handle, host } = await openPreview()
+    const image = queryA11y(host, 'img') as HTMLImageElement
+
+    await pollUntil(() => image.complete && image.offsetWidth > 0, 'image did not load')
+    handle.zoomIn()
+    await host.updateComplete
+
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      await userEvent.click(image)
+      await host.updateComplete
+      expect(isMounted()).toBe(true)
+    }
+
+    handle.close()
+    await handle.closed
+  })
+
+  it('放大后双击图片仍重置缩放', async () => {
+    const { handle, host } = await openPreview()
+    const image = queryA11y(host, 'img') as HTMLImageElement
+
+    await pollUntil(() => image.complete && image.offsetWidth > 0, 'image did not load')
+    handle.zoomIn()
+    await host.updateComplete
+    expect(handle.scale).toBeGreaterThan(1)
+
+    await userEvent.dblClick(image)
+    await host.updateComplete
+    expect(handle.scale).toBe(1)
+
+    handle.close()
+    await handle.closed
+  })
+
+  it('放大后拖拽平移并释放不关闭浮层', async () => {
+    const { handle, host } = await openPreview()
+    const image = queryA11y(host, 'img') as HTMLImageElement
+
+    await pollUntil(() => image.complete && image.offsetWidth > 0, 'image did not load')
+    const stage = image.parentElement as HTMLElement
+
+    handle.zoomIn()
+    await host.updateComplete
+
+    stage.dispatchEvent(pointer('pointerdown', { clientX: 400, clientY: 300 }))
+    stage.dispatchEvent(pointer('pointermove', { clientX: 300, clientY: 300 }))
+    stage.dispatchEvent(pointer('pointerup', { clientX: 300, clientY: 300 }))
+    await host.updateComplete
+
+    // 真实浏览器在指针起止于同一元素时会补发 click，拖拽产生的这次不得被当作遮罩点击。
+    stage.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1 }))
+    await host.updateComplete
+    expect(isMounted()).toBe(true)
+
+    handle.close()
+    await handle.closed
+  })
+
+  it('放大后横向拖拽让位于平移，不切换图片', async () => {
+    const { handle, host } = await openPreview({ swipe: true })
+    const image = queryA11y(host, 'img') as HTMLImageElement
+
+    await pollUntil(() => image.complete && image.offsetWidth > 0, 'image did not load')
+    const stage = image.parentElement as HTMLElement
+
+    handle.zoomIn()
+    await host.updateComplete
+    const scale = handle.scale
+    expect(scale).toBeGreaterThan(1)
+    const maxX = Math.max(0, (image.offsetWidth * scale - stage.clientWidth) / 2)
+    expect(maxX).toBeGreaterThan(0)
+
+    // 与未放大时相同的横向拖拽方向：放大后必须走平移而不是切图。
+    stage.dispatchEvent(pointer('pointerdown', { clientX: 400, clientY: 300 }))
+    stage.dispatchEvent(pointer('pointermove', { clientX: 100, clientY: 300 }))
+    await host.updateComplete
+
+    const matrix = new DOMMatrixReadOnly(getComputedStyle(image).transform)
+    expect(matrix.m41).toBeCloseTo(-maxX, 0)
+
+    stage.dispatchEvent(pointer('pointerup', { clientX: 100, clientY: 300 }))
+    await host.updateComplete
+    expect(handle.index).toBe(0)
+
+    handle.close()
+    await handle.closed
+  })
+
+  it('swipe 开启但只有一张图时，横向拖拽既不位移也不切换', async () => {
+    const { handle, host } = await openPreview({ swipe: true, images: [IMAGES[0]] })
+    const image = queryA11y(host, 'img') as HTMLImageElement
+
+    await pollUntil(() => image.complete && image.offsetWidth > 0, 'image did not load')
+    const stage = image.parentElement as HTMLElement
+
+    stage.dispatchEvent(pointer('pointerdown', { clientX: 400, clientY: 300 }))
+    stage.dispatchEvent(pointer('pointermove', { clientX: 200, clientY: 300 }))
+    await host.updateComplete
+
+    // 单图时手势不应启动，因此拖拽过程中没有跟手位移。
+    const during = new DOMMatrixReadOnly(getComputedStyle(image).transform)
+    expect(during.m41).toBe(0)
+
+    stage.dispatchEvent(pointer('pointerup', { clientX: 100, clientY: 300 }))
+    await host.updateComplete
+    expect(handle.index).toBe(0)
+
+    handle.close()
+    await handle.closed
+  })
+
+  it('noBackdropClose 时关闭按钮仍可关闭', async () => {
+    const { handle, host } = await openPreview({ noBackdropClose: true, closable: true })
+    const closeButton = queryA11y(host, '[aria-label="关闭"]') as HTMLElement
+    expect(closeButton).not.toBeNull()
+
+    await userEvent.click(closeButton)
+    await handle.closed
+    expect(isMounted()).toBe(false)
+  })
+
+  it('swipe 开启时横向拖拽切换图片', async () => {
+    const { handle, host } = await openPreview({ swipe: true })
+    const image = queryA11y(host, 'img') as HTMLImageElement
+
+    await pollUntil(() => image.complete && image.offsetWidth > 0, 'image did not load')
+    const stage = image.parentElement as HTMLElement
+
+    // 向左拖 300px：越过滑动阈值，进入下一张。
+    stage.dispatchEvent(pointer('pointerdown', { clientX: 400, clientY: 300 }))
+    stage.dispatchEvent(pointer('pointermove', { clientX: 200, clientY: 300 }))
+    stage.dispatchEvent(pointer('pointerup', { clientX: 100, clientY: 300 }))
+    await host.updateComplete
+    expect(handle.index).toBe(1)
+
+    // 向右拖回：回到上一张。
+    stage.dispatchEvent(pointer('pointerdown', { clientX: 200, clientY: 300, pointerId: 2 }))
+    stage.dispatchEvent(pointer('pointermove', { clientX: 380, clientY: 300, pointerId: 2 }))
+    stage.dispatchEvent(pointer('pointerup', { clientX: 500, clientY: 300, pointerId: 2 }))
+    await host.updateComplete
+    expect(handle.index).toBe(0)
+
+    handle.close()
+    await handle.closed
+  })
+
+  it('swipe 默认关闭，横向拖拽不切换图片', async () => {
+    const { handle, host } = await openPreview()
+    const image = queryA11y(host, 'img') as HTMLImageElement
+
+    await pollUntil(() => image.complete && image.offsetWidth > 0, 'image did not load')
+    const stage = image.parentElement as HTMLElement
+
+    stage.dispatchEvent(pointer('pointerdown', { clientX: 400, clientY: 300 }))
+    stage.dispatchEvent(pointer('pointermove', { clientX: 200, clientY: 300 }))
+    stage.dispatchEvent(pointer('pointerup', { clientX: 100, clientY: 300 }))
+    await host.updateComplete
+    expect(handle.index).toBe(0)
+
+    handle.close()
+    await handle.closed
+  })
+
+  it('swipe 开启且 loop 关闭时，边界方向的拖拽保持不动', async () => {
+    const { handle, host } = await openPreview({ swipe: true, loop: false, index: 0 })
+    const image = queryA11y(host, 'img') as HTMLImageElement
+
+    await pollUntil(() => image.complete && image.offsetWidth > 0, 'image did not load')
+    const stage = image.parentElement as HTMLElement
+
+    // 首张向右拖（请求上一张）在 loop 关闭时应被钳制。
+    stage.dispatchEvent(pointer('pointerdown', { clientX: 200, clientY: 300 }))
+    stage.dispatchEvent(pointer('pointermove', { clientX: 420, clientY: 300 }))
+    stage.dispatchEvent(pointer('pointerup', { clientX: 560, clientY: 300 }))
+    await host.updateComplete
+    expect(handle.index).toBe(0)
+
+    handle.close()
+    await handle.closed
+  })
 })

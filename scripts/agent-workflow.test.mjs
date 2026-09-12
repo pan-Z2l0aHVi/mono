@@ -79,6 +79,12 @@ try {
   assert.ok(frozen.diffHash)
   assert.deepEqual(frozen.live.current.untrackedFiles, ['src/change.ts'])
 
+  // 冻结后继续编辑：旧证据 stale，必须能对当前 diff 重新冻结。
+  fs.appendFileSync(path.join(fixture, 'src', 'change.ts'), '// refined after freeze\n')
+  const refrozenFromFrozen = JSON.parse(run('freeze', '--task', 'workflow-fixture'))
+  assert.equal(refrozenFromFrozen.phase, 'frozen')
+  assert.notEqual(refrozenFromFrozen.diffHash, frozen.diffHash)
+
   const reviewed = JSON.parse(
     run('review', '--task', 'workflow-fixture', '--result', 'pass', '--reviewer', 'reviewer-1')
   )
