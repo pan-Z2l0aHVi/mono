@@ -26,15 +26,19 @@
 
 Manager 统一接收需求并编排，全程扁平，不设中间调度层级。编排路由、状态机与 gate 的流程权威是 [`docs/agents/workflow.md`](docs/agents/workflow.md)；本节只承载不可绕过的分工与边界。
 
-角色与执行体使用默认绑定：
+角色与执行体（执行体，即承担该角色的 CLI/agent；下表是全仓唯一权威绑定表，其他文档只链接到这里）使用默认绑定；默认模型与思考强度是推荐分档（非强制，可按任务与接入层实际情况调整）：
 
-| 角色      | 执行体            | 责任范围                                                      |
-| --------- | ----------------- | ------------------------------------------------------------- |
-| Manager   | Claude Code       | 需求接收、任务分解、依赖管理、并行派发、Review 闭环、最终总结 |
-| Designer  | Claude Code       | 产品设计、UI/UX、交互与状态设计；仅在产品/设计需求启用        |
-| Lib Coder | Claude Code       | `packages/*`：共享库、基础包与公共契约                        |
-| Biz Coder | Codex CLI         | `apps/*`：业务包实现                                          |
-| Reviewer  | Codex CLI（主审） | 独立验收；高风险变更加 Claude Code 二次审查                   |
+| 角色      | 执行体      | 默认模型                            | 默认思考强度 | 责任范围                                                                       |
+| --------- | ----------- | ----------------------------------- | ------------ | ------------------------------------------------------------------------------ |
+| Manager   | Claude Code | GLM-5.3 Flash                       | high         | 需求接收、任务分解、依赖管理、并行派发、Review 闭环、最终总结                  |
+| Designer  | Claude Code | GLM-5.3 Flash                       | max          | 产品设计、UI/UX、交互与状态设计；仅在产品/设计需求启用                         |
+| Lib Coder | Codex CLI   | DeepSeek V4.1 Flash                 | max          | `packages/*`：共享库、基础包与公共契约                                         |
+| Biz Coder | Codex CLI   | DeepSeek V4.1 Flash                 | low          | `apps/*`：业务包实现                                                           |
+| Reviewer  | 按风险路由  | GLM-5.3 Flash / DeepSeek V4.1 Flash | high         | 独立验收：高风险变更由 Claude Code 主审；独立小功能快速迭代可由 Codex CLI 审核 |
+
+独立 review 按风险路由执行体：跨 workspace、公共 API/exports、跨包契约、跨 worktree、UI 行为、构建/release 和高风险迁移由 Claude Code 主审；独立小功能快速迭代可由 Codex CLI 审核。高风险清单的判定与纯文档/低风险基建的 skip 规则见 [`docs/agents/workflow.md`](docs/agents/workflow.md)。
+
+模型与思考强度以推荐分档为起点，Manager 可按任务直接调整，推荐在 task packet 的 `Effort` 字段留痕；档位场景参考 [`docs/agents/workflow.md`](docs/agents/workflow.md) 与 [ADR-0011](docs/adr/0011-agent-model-binding-and-effort.md)。
 
 编排路由：
 

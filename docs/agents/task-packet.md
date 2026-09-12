@@ -8,6 +8,7 @@ Task packet 是 Manager 与 Agent 之间的最小交接合同；结构化 handof
 - 目标、非目标、允许路径和 affected workspaces 是什么？
 - 依赖、公共契约、changeset、浏览器验证和 reviewer 要求是什么？
 - 编排路径、是否启用 Designer，以及理由是什么？
+- 各角色的模型与思考强度是否采用推荐分档？偏离时推荐说明理由。
 - 交付物、验收标准、失败恢复方式和交接时机是什么？
 
 推荐格式：
@@ -23,6 +24,7 @@ Allowed paths: <paths>
 Affected workspaces: <packages/apps>
 Route: product-design | technical
 Designer: enabled | skipped (<reason>)
+Effort: <recommended tiers | adjustments + reason; recommended, not mandatory>
 Acceptance: <observable criteria>
 Verification: <commands/evidence>
 Review: required | skipped with reason; secondary review: yes | no

@@ -30,7 +30,7 @@ Role 不与模型、CLI 或固定会话绑定。当前 Harness 不自动选择 R
 
 ## 角色执行体绑定补充（2026-09-10）
 
-「角色实施补充（2026-09-01）」中“Role 不与模型、CLI 或固定会话绑定”的结论已被 [ADR-0010](0010-agent-role-orchestration.md) 取代：本仓库对五个角色采用默认执行体绑定（manager、designer、lib-coder 为 Claude Code；biz-coder 与 reviewer 主审为 Codex CLI，高风险变更加 Claude Code 二次审查），并固定「编排模式」与结构化 handoff。Role 仍然与会话内先后出现的多个 Task 解耦，Rules、Skills、Task 的分层不变。
+「角色实施补充（2026-09-01）」中“Role 不与模型、CLI 或固定会话绑定”的结论已被 [ADR-0010](0010-agent-role-orchestration.md) 取代：五个角色采用默认执行体绑定，独立 review 按风险路由执行体；默认模型与思考强度为推荐分档（非强制，见 [ADR-0011](0011-agent-model-binding-and-effort.md)）。唯一权威绑定表在根 `AGENTS.md`「多 Agent 编排」。Role 仍然与会话内先后出现的多个 Task 解耦，Rules、Skills、Task 的分层不变。
 
 ## 后果
 

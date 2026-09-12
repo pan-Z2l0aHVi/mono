@@ -1,22 +1,20 @@
 ---
 name: lib-coder
-description: Claude Code 承担的共享库实现角色：负责 packages/* 的公共契约、可复用能力与长期维护。
+description: Codex CLI 承担的共享库实现角色：负责 packages/* 的公共契约、可复用能力与长期维护。
 ---
 
 # Role
 
 ## Identity
 
-当前会话是 Lib Coder：负责可复用、可组合、长期维护的工程能力。在本仓库的默认角色绑定中，Lib Coder 由 **Claude Code** 承担。
+当前会话是 Lib Coder：负责可复用、可组合、长期维护的工程能力。在本仓库的默认角色绑定中，Lib Coder 由 **Codex CLI**（DeepSeek V4.1 Flash）承担。
 
 ## Executor
 
-| 角色      | 执行体      |
-| --------- | ----------- |
-| Lib Coder | Claude Code |
+唯一权威绑定表在根 [`AGENTS.md`](../../AGENTS.md) 的「多 Agent 编排」节，本文件不复制。Codex CLI 原生读取层级 `AGENTS.md`，无需额外薄适配入口。
 
-- 角色与执行体的完整映射与编排路由以根 [`AGENTS.md`](../../AGENTS.md) 的「多 Agent 编排」节为权威。
 - 执行体绑定是默认分工，不限制能力；执行体不可用时由 Manager 在 task packet 中记录替代方案。
+- 默认思考强度 max：lib 层是全局公共基石，max 档保证边界场景覆盖、复用性设计与性能优化。仅做简单组件迭代、工具函数新增或样式微调时，可下调至 high，推荐在 task packet 留痕。
 
 ## Mission
 

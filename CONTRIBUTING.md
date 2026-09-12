@@ -23,17 +23,9 @@ Role Contract 位于 `.agents/agents/`，只定义当前会话的职责、边界
 
 `<role>` 为 `manager`、`designer`、`lib-coder`、`biz-coder` 或 `reviewer`。Role 在本会话内持续生效；任务可在之后分次提供，且不与某一个 task 绑定。
 
-本仓库使用默认执行体绑定：
+本仓库使用默认执行体绑定，模型与思考强度为推荐分档（非强制）。唯一权威绑定表在根 [`AGENTS.md`](AGENTS.md) 的「多 Agent 编排」节，此处不复制。
 
-| 角色      | 执行体                                               |
-| --------- | ---------------------------------------------------- |
-| manager   | Claude Code                                          |
-| designer  | Claude Code                                          |
-| lib-coder | Claude Code                                          |
-| biz-coder | Codex CLI                                            |
-| reviewer  | Codex CLI（主审）；高风险变更加 Claude Code 二次审查 |
-
-执行体绑定是默认分工：任一执行体在技术上都能承担任一 Role，但偏离默认绑定必须由 Manager 在 task packet 中记录替代执行体与理由。无论由哪个执行体承担，角色目录边界（lib-coder 只写 `packages/*`，biz-coder 只写 `apps/*`）与结构化 handoff 要求都不变。
+执行体绑定是默认分工：任一执行体在技术上都能承担任一 Role，但偏离默认绑定必须由 Manager 在 task packet 中记录替代执行体与理由。独立 review 按风险路由执行体（高风险 → Claude Code 主审，独立小功能快速迭代可由 Codex CLI 审核）。模型与思考强度是推荐分档：Manager 可按任务直接调整，推荐在 task packet 的 `Effort` 字段留痕。无论由哪个执行体承担，角色目录边界（lib-coder 只写 `packages/*`，biz-coder 只写 `apps/*`）与结构化 handoff 要求都不变。
 
 ## 定位和影响分析
 

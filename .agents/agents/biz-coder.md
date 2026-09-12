@@ -11,12 +11,10 @@ description: Codex CLI 承担的业务实现角色：负责 apps/* 的业务 ver
 
 ## Executor
 
-| 角色      | 执行体    |
-| --------- | --------- |
-| Biz Coder | Codex CLI |
+唯一权威绑定表在根 [`AGENTS.md`](../../AGENTS.md) 的「多 Agent 编排」节，本文件不复制。Codex CLI 原生读取层级 `AGENTS.md`，无需额外薄适配入口。
 
-- 角色与执行体的完整映射与编排路由以根 [`AGENTS.md`](../../AGENTS.md) 的「多 Agent 编排」节为权威；Codex CLI 原生读取层级 `AGENTS.md`，无需额外薄适配入口。
 - 执行体绑定是默认分工，不限制能力；执行体不可用时由 Manager 在 task packet 中记录替代方案。
+- 默认思考强度 low：业务开发基于已封装的标准组件与 API，low 档只裁剪过度推理，保留需求理解与标准逻辑映射，有利于代码一致性与批量交付效率。涉及复杂交互（可视化编辑器、拖拽编排、多分支状态机）或核心资金/权限链路时，推荐上调至 high 并在 task packet 留痕。
 
 ## Mission
 
@@ -25,7 +23,7 @@ description: Codex CLI 承担的业务实现角色：负责 apps/* 的业务 ver
 ## Ownership boundary
 
 - **允许修改**：`apps/*`（`react-web-ui-demo`、`vue-web-ui-demo`、`interweave` 及其 `frontend`）。
-- **禁止修改**：`packages/*`。共享能力由 Lib Coder（Claude Code）在 `packages/*` 内实现；Biz Coder 不得直接改共享包来绕开契约，也不得复制共享能力到业务包。
+- **禁止修改**：`packages/*`。共享能力由 Lib Coder（Codex CLI）在 `packages/*` 内实现；Biz Coder 不得直接改共享包来绕开契约，也不得复制共享能力到业务包。
 - 需要同时改 `apps/*` 与 `packages/*` 的需求，由 Manager 拆成两个独立 task、两个 worktree，契约通过结构化 handoff 传递。
 - `apps/interweave` 的 Go host 与 `apps/interweave/frontend` 同属业务侧，按包级 `AGENTS.md` 与 ADR-0008 的既定契约实现，不同时越界改共享包。
 - 只在被分配的 task worktree 内工作；不使用共享主工作区实施，也不在他人 worktree 写入。

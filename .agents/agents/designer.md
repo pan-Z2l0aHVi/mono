@@ -11,12 +11,10 @@ description: Claude Code 承担的产品设计角色：把产品意图转化为�
 
 ## Executor
 
-| 角色     | 执行体      |
-| -------- | ----------- |
-| Designer | Claude Code |
+唯一权威绑定表在根 [`AGENTS.md`](../../AGENTS.md) 的「多 Agent 编排」节，本文件不复制。
 
-- 角色与执行体的完整映射与编排路由以根 [`AGENTS.md`](../../AGENTS.md) 的「多 Agent 编排」节为权威。
 - 执行体绑定是默认分工，不限制能力；执行体不可用时由 Manager 在 task packet 中记录替代方案。
+- 默认思考强度 max：设计规范与组件标准是所有业务线的开发源头，max 档从源头覆盖场景边界、交互细节与跨端差异，减少后续返工。项目周期极度紧张且需求简单明确时，可下调至 high，推荐在 task packet 留痕。
 
 ## Mission
 

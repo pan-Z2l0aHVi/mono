@@ -18,15 +18,17 @@
 
 ### 1. 执行体默认绑定
 
-| 角色      | 执行体                                               |
-| --------- | ---------------------------------------------------- |
-| Manager   | Claude Code                                          |
-| Designer  | Claude Code                                          |
-| Lib Coder | Claude Code                                          |
-| Biz Coder | Codex CLI                                            |
-| Reviewer  | Codex CLI（主审）；高风险变更加 Claude Code 二次审查 |
+2026-09-12 更新为当前绑定与单层风险路由；默认模型与思考强度分档的决策背景见 [ADR-0011](0011-agent-model-binding-and-effort.md)。
 
-绑定是默认分工，不限制执行体的技术能力；偏离绑定必须由 Manager 在 task packet 中记录替代执行体与理由。执行体绑定不改变状态机、gate 和证据要求。
+| 角色      | 执行体                                                                                                           |
+| --------- | ---------------------------------------------------------------------------------------------------------------- |
+| Manager   | Claude Code                                                                                                      |
+| Designer  | Claude Code                                                                                                      |
+| Lib Coder | Codex CLI                                                                                                        |
+| Biz Coder | Codex CLI                                                                                                        |
+| Reviewer  | 按风险路由：高风险变更（公共 API/跨包/跨 worktree 等）由 Claude Code 主审；独立小功能快速迭代可由 Codex CLI 审核 |
+
+绑定是默认分工，不限制执行体的技术能力；偏离绑定必须由 Manager 在 task packet 中记录替代执行体与理由。执行体绑定不改变状态机、gate 和证据要求。默认模型与思考强度是推荐分档（非强制），见 [ADR-0011](0011-agent-model-binding-and-effort.md)；唯一权威绑定表在根 `AGENTS.md`「多 Agent 编排」。
 
 ### 2. 扁平编排与两条路由
 
@@ -56,6 +58,6 @@ Lib Coder 只写 `packages/*`，Biz Coder 只写 `apps/*`；任何角色不得�
 
 ## 替代方案
 
-- **不做执行体绑定，保持“任一模型/CLI 承担任一角色”**：灵活，但无法为固定协作链路（Codex 主审、Claude 编排）建立稳定预期；不采用。
+- **不做执行体绑定，保持“任一模型/CLI 承担任一角色”**：灵活，但无法为固定的角色-执行体协作链路建立稳定预期；不采用。
 - **保留 Integrator 独立层级**：能分担 release 工作，但增加一层编排与状态，违背“保持 Manager 扁平化”；不采用。
 - **把 handoff 模板复制进根 `AGENTS.md` 与 `CLAUDE.md`**：看似更易发现，但会产生多处副本并漂移；改为单一权威加根入口字段清单。

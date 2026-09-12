@@ -16,14 +16,15 @@ const handoffFields = [
   'Open decisions（未解决决策）'
 ]
 
-// 角色 → 执行体的默认绑定。权威表述在根 AGENTS.md「多 Agent 编排」，docs/agents/workflow.md 是流程侧镜像；
-// 副本之间的一致性由本文件机械校验，避免任一处改表后静默漂移。ADR 是历史快照，不参与校验。
+// 角色 → 执行体的默认绑定。唯一权威绑定表在根 AGENTS.md「多 Agent 编排」；角色契约各自述执行体。
+// 副本之间的一致性由本文件机械校验，避免任一处改表后静默漂移。默认模型与思考强度是推荐分档（非强制，见 ADR-0011），不参与机械校验。
+// 默认模型与思考强度是推荐分档（非强制，见 ADR-0011），不参与机械校验。
 const roleBindings = [
   { label: 'Manager', executor: 'Claude Code' },
   { label: 'Designer', executor: 'Claude Code' },
-  { label: 'Lib Coder', executor: 'Claude Code' },
+  { label: 'Lib Coder', executor: 'Codex CLI' },
   { label: 'Biz Coder', executor: 'Codex CLI' },
-  { label: 'Reviewer', executor: 'Codex CLI' }
+  { label: 'Reviewer', executor: 'Claude Code' }
 ]
 const executors = roleBindings
   .map(binding => binding.executor)
@@ -78,24 +79,43 @@ function checkBindingMirrors() {
       const binding = bindings.get(normalizeRole(cells[columns.role] ?? ''))
       if (!binding) continue
       const declared = normalizeExecutor(cells[columns.executor] ?? '')
+      // Reviewer 按风险路由执行体（高风险 -> Claude Code，小功能快速迭代 -> Codex CLI），表中允许精确写「按风险路由」而非单一执行体；
+      // 全等比对避免「Codex CLI 按风险路由」这类丢掉高风险一路的写法静默通过。
+      if (binding.label === 'Reviewer' && declared.replace(/（[^）]*）$/, '').trim() === '按风险路由') continue
       if (!declaresExecutor(declared, binding.executor))
         addError(`${file}: ${binding.label} is bound to "${declared}" but the default binding is "${binding.executor}"`)
     }
   }
 
-  // 角色契约必须自述执行体，且不得同时声明另一个执行体。
+  // 角色契约必须自述执行体，且不得同时声明另一个执行体。模型与思考强度是推荐分档，不参与校验。
   for (const binding of roleBindings) {
     const file = roleContractFile(binding.label)
     if (!exists(file)) continue
     const source = read(file)
-    const selfBinding = new RegExp(`${binding.label}\\s*由\\s*\\*{0,2}${binding.executor}\\*{0,2}\\s*(?:承担|担任)`)
-    if (!selfBinding.test(source))
+    // 自述句允许在执行体后附带模型括注，如「Reviewer 由 **Claude Code**（GLM-5.3 Flash）担任主审」。
+    const executorClause = executor =>
+      `${binding.label}\\s*由\\s*\\*{0,2}${executor}\\*{0,2}(?:\\s*（[^）]*）)?\\s*(?:承担|担任)`
+    if (!new RegExp(executorClause(binding.executor)).test(source))
       addError(`${file}: must self-declare its executor binding as "${binding.label} 由 ${binding.executor} 承担"`)
     for (const executor of executors) {
       if (executor === binding.executor) continue
-      const conflict = new RegExp(`${binding.label}\\s*由\\s*\\*{0,2}${executor}\\*{0,2}\\s*(?:承担|担任)`)
-      if (conflict.test(source)) addError(`${file}: ${binding.label} must not also be bound to ${executor}`)
+      if (new RegExp(executorClause(executor)).test(source))
+        addError(`${file}: ${binding.label} must not also be bound to ${executor}`)
     }
+  }
+}
+
+// Reviewer 按风险路由执行体后不再有「审查层级」两层结构；这里的自述断言只要求高风险主审执行体。
+// 「二次审查」是单层风险路由之前的旧结构表述；除 ADR 历史快照外不得再出现。
+function checkRetiredReviewStructure() {
+  const scope = [
+    ...['AGENTS.md', 'CONTRIBUTING.md', 'CLAUDE.md'].filter(exists),
+    ...walk('docs/agents', file => file.endsWith('.md')).map(relative),
+    ...walk('.agents/agents', file => file.endsWith('.md')).map(relative)
+  ]
+  for (const file of scope) {
+    if (read(file).includes('二次审查'))
+      addError(`${file}: contains retired review structure "二次审查"; review is single-layer risk-routed per ADR-0010`)
   }
 }
 
@@ -199,6 +219,7 @@ if (exists('docs/agents/workflow.md')) {
 }
 
 checkBindingMirrors()
+checkRetiredReviewStructure()
 
 if (exists('docs/agents/task-packet.md')) {
   const taskPacket = read('docs/agents/task-packet.md')

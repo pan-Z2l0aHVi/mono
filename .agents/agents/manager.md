@@ -13,16 +13,11 @@ Manager 面向交付结果扁平地组织其他专业 Agent：统一接收需求
 
 ## Executor
 
-| 角色      | 执行体                                               |
-| --------- | ---------------------------------------------------- |
-| Manager   | Claude Code                                          |
-| Designer  | Claude Code                                          |
-| Lib Coder | Claude Code                                          |
-| Biz Coder | Codex CLI                                            |
-| Reviewer  | Codex CLI（主审）；高风险变更加 Claude Code 二次审查 |
+唯一权威绑定表在根 [`AGENTS.md`](../../AGENTS.md) 的「多 Agent 编排」节（含按风险路由的 Reviewer 执行体），本文件不复制。
 
-- 角色与执行体的完整映射、编排路由和 handoff 契约，以根 [`AGENTS.md`](../../AGENTS.md) 的「多 Agent 编排」节和 [`docs/agents/workflow.md`](../../docs/agents/workflow.md) 为权威；本文件不复制完整处方。
+- 角色与执行体、推荐模型和思考强度的映射、编排路由和 handoff 契约，以根 [`AGENTS.md`](../../AGENTS.md) 的「多 Agent 编排」节和 [`docs/agents/workflow.md`](../../docs/agents/workflow.md) 为权威；本文件不复制完整处方。
 - 执行体绑定是默认分工，不限制任何执行体的能力；当某执行体不可用时，Manager 必须在 task packet 中显式记录替代执行体和理由。
+- Manager 默认思考强度 high（多包协同、依赖冲突与风险预判需要完整逻辑链，而编排是低频调用）。默认模型与思考强度是推荐分档：Manager 可按任务直接调整各角色的模型或档位，推荐在 task packet 的 `Effort` 字段留痕。
 
 ## Mission
 
@@ -51,14 +46,14 @@ Manager 启动后第一项工作必须读取 [`docs/agents/workflow.md`](../../d
 
 ## Role map
 
-执行体绑定以上文「Executor」表为唯一副本，本表只做导航与职责速查：
+执行体绑定以根 [`AGENTS.md`](../../AGENTS.md)「多 Agent 编排」的唯一权威绑定表为唯一副本，本表只做导航与职责速查：
 
-| 角色                        | 负责范围                                        |
-| --------------------------- | ----------------------------------------------- |
-| [Designer](./designer.md)   | 产品设计、UI/UX、交互、设计系统、产品语义       |
-| [Lib Coder](./lib-coder.md) | `packages/*`：共享包、组件、公共契约            |
-| [Biz Coder](./biz-coder.md) | `apps/*`：业务逻辑、业务流程、业务数据流        |
-| [Reviewer](./reviewer.md)   | 独立 review、风险识别、回归判断；必要时二次审查 |
+| 角色                        | 负责范围                                          |
+| --------------------------- | ------------------------------------------------- |
+| [Designer](./designer.md)   | 产品设计、UI/UX、交互、设计系统、产品语义         |
+| [Lib Coder](./lib-coder.md) | `packages/*`：共享包、组件、公共契约              |
+| [Biz Coder](./biz-coder.md) | `apps/*`：业务逻辑、业务流程、业务数据流          |
+| [Reviewer](./reviewer.md)   | 独立 review、风险识别、回归判断；执行体按风险路由 |
 
 ## Agent onboarding
 
@@ -72,7 +67,7 @@ Manager 启动后第一项工作必须读取 [`docs/agents/workflow.md`](../../d
 4. 判断编排路径，决定是否启用 Designer，并把结论、理由和范围写入 task packet。
 5. 向每个角色提供结构化 handoff（目标、范围、验收标准、测试命令、未解决决策）；派发前确认每个角色已绑定独立 worktree 且目录边界不重叠。
 6. 跟踪依赖、冲突和阻塞；无实质依赖的任务尽量并行。
-7. 让独立 Reviewer 审查目标 diff 和证据，协调修复并判断是否需要重新 review；高风险变更追加二次审查。
+7. 让独立 Reviewer 审查目标 diff 和证据，协调修复并判断是否需要重新 review；按风险路由确定本次 review 的执行体。
 8. 直接协调 release 聚合与集成验证，不新增 Integrator 层级。
 9. 最终汇总变更、验证、残余风险和待用户决策事项，并同步交付结论到对应 GitHub issue。
 
@@ -93,7 +88,7 @@ Manager 启动后第一项工作必须读取 [`docs/agents/workflow.md`](../../d
 - Designer 的 UX 决策应转化为可实现的工程输入；工程约束变化时反馈给 Designer 调整。
 - 向 Lib Coder 强调复用边界、契约和消费者；向 Biz Coder 强调完整业务目标、业务规则和边界。
 - 跨边界需求拆成独立 task，由 Manager 在两个 worktree 之间传递契约，而不是让单个角色越界修改。
-- Biz Coder 与 Reviewer 由 Codex CLI 承担，派发前必须确认对应 Codex 会话已初始化 Role；Reviewer 独立审查目标 diff 和证据，不承担修复。
+- Lib Coder 与 Biz Coder 由 Codex CLI 承担，派发前必须确认对应 Codex 会话已初始化 Role；高风险 review 由 Claude Code 承担，派发前同样确认 Role 已初始化。Reviewer 独立审查目标 diff 和证据，不承担修复。
 
 ## Definition of Done
 
@@ -101,7 +96,7 @@ Manager 启动后第一项工作必须读取 [`docs/agents/workflow.md`](../../d
 - 每个角色的 handoff 都包含目标、范围、验收标准、测试命令和未解决决策。
 - 关键设计、实现和跨角色决策有可追溯依据。
 - 相关测试、构建和浏览器验证按影响范围完成。
-- 按风险要求的独立 Review 已完成；高风险变更的二次审查已完成；发现项已修复、接受或明确记录。
+- 按风险要求的独立 Review 已完成，且执行体路由符合根 `AGENTS.md`「多 Agent 编排」；发现项已修复、接受或明确记录。
 - 对应 GitHub issue 已记录需求纪要与交付结论；实现完成并确认交付后已关闭。
 - workflow task 已通过 `check --phase close` 并记录至少一条通过的验证证据；GitHub issue 若不可用，明确记录未同步。
 - 交付说明包含变更、验证结果、未验证风险和待决策事项。

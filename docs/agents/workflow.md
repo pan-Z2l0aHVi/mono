@@ -71,19 +71,16 @@ pnpm agent:workflow close --task <task-id>
 
 ## 角色与执行体
 
-角色定义会话身份、职责边界和协作方式，与单个 task 解耦；执行体是承担该角色的模型/CLI。本仓库使用默认绑定，执行体不可用时由 Manager 在 task packet 中记录替代执行体与理由：
-
-| 角色      | 执行体            | 负责范围                                         |
-| --------- | ----------------- | ------------------------------------------------ |
-| Manager   | Claude Code       | 需求接收、扁平编排、任务分解、依赖管理、最终总结 |
-| Designer  | Claude Code       | 产品设计、UI/UX、交互与状态设计                  |
-| Lib Coder | Claude Code       | `packages/*`：共享库与基础包                     |
-| Biz Coder | Codex CLI         | `apps/*`：业务包实现                             |
-| Reviewer  | Codex CLI（主审） | 独立验收；高风险变更加 Claude Code 二次审查      |
+角色定义会话身份、职责边界和协作方式，与单个 task 解耦；执行体是承担该角色的 CLI/agent。角色 → 执行体 → 推荐模型/思考强度的唯一权威绑定表在根 [`AGENTS.md`](../../AGENTS.md) 的「多 Agent 编排」节，本文件不复制表格。执行体不可用时由 Manager 在 task packet 中记录替代执行体与理由。
 
 - Role Contract 位于 [`.agents/agents/`](../../.agents/agents/)，只定义职责、边界和协作；仓库约束仍以 `AGENTS.md`、包级 `AGENTS.md`、rules、skills 和实现事实为准。
 - 执行体绑定不改变状态机、gate 和证据要求；任一执行体承担角色后都必须遵守同一套 handoff、worktree 和 review 规则。
-- Reviewer 主审与二次审查都必须独立于实施者，并以同一个冻结 `diffHash` 为审查对象；二次审查不替代主审，只在主审通过后追加。
+- Reviewer 独立于实施者，以冻结的 `diffHash` 为审查对象；执行体按风险路由（高风险 → Claude Code 主审，独立小功能快速迭代可由 Codex CLI 审核），路由清单见根 `AGENTS.md`「多 Agent 编排」。
+- 默认模型与思考强度是推荐分档，表达角色适用的推理深度起点；Manager 可按任务直接调整模型或档位，调整是常规操作而非流程偏离，推荐在 task packet 的 `Effort` 字段留痕。以下场景仅供参考：
+  - Biz Coder 涉及复杂交互（可视化编辑器、拖拽编排、多分支状态机）或核心资金/权限链路时，推荐上调至 high。
+  - Lib Coder 仅做简单组件迭代、工具函数新增或样式微调时，可下调至 high。
+  - Designer 项目周期极度紧张且需求简单明确时，可下调至 high。
+  - 决策依据与理由详见 [ADR-0011](../adr/0011-agent-model-binding-and-effort.md)。
 
 ## 编排模式
 
@@ -103,10 +100,10 @@ Manager 统一接收需求并编排，保持扁平，不引入 Integrator 或其
 
 - **Manager**：建立 task state，拆解任务，分配 owner，按「编排模式」选择路径并派发，维护依赖，汇总证据，组织 review 和交付判断；直接协调 release 聚合与集成验证，不新增 Integrator 层级。
 - **实施 Agent**：只在被分配的 task worktree 工作，遵守允许路径和角色目录边界，保持变更待 review，不擅自 commit、push、merge 或关闭任务。
-- **Reviewer**：只读审查冻结的目标 diff 和验证证据，结果绑定 `diffHash`；发现问题交回实施 Agent，修复后必须重新 freeze/review。高风险变更由 Manager 追加二次审查。
+- **Reviewer**：只读审查冻结的目标 diff 和验证证据，结果绑定 `diffHash`；发现问题交回实施 Agent，修复后必须重新 freeze/review。执行体按风险路由（见根 `AGENTS.md`「多 Agent 编排」）。
 - **Designer**：仅在产品/设计需求下启用，输出可实现的交互、视觉和验收决策，不修改 `packages/*` 与 `apps/*` 生产代码，不改变代码归属和状态 gate。
 
-Reviewer 是否必需按风险决定：跨 workspace、公共 API/exports、UI 行为、构建/release 和高风险迁移必须独立 review，并在主审通过后追加 Claude Code 二次审查；纯文档或低风险测试基建可以用 `init --review skip` 并在 task packet 中记录跳过理由，但仍须有用户/Manager approval 和验证证据。需要独立 review 时，脚本要求显式提供不同于 owner 的 reviewer id。
+Reviewer 是否必需按风险决定：跨 workspace、公共 API/exports、跨包契约、跨 worktree、UI 行为、构建/release 和高风险迁移必须独立 review，由 Claude Code 主审；独立小功能快速迭代的 review 可由 Codex CLI 承担；纯文档或低风险测试基建可以用 `init --review skip` 并在 task packet 中记录跳过理由，但仍须有用户/Manager approval 和验证证据。需要独立 review 时，脚本要求显式提供不同于 owner 的 reviewer id。
 
 ## 并发原则
 
