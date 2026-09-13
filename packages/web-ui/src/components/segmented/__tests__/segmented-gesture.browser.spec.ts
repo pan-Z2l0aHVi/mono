@@ -454,4 +454,73 @@ describe('WebUiSegmented 手势拖拽与吸附（浏览器）', () => {
     const inner = segmented.shadowRoot?.querySelector('.wui-segmented') as HTMLElement
     expect(getComputedStyle(inner).touchAction).toBe('none')
   })
+
+  it('trigger 的 shadow 内容命中时，touchmove 由 composedPath 守护阻止，松手后解除', async () => {
+    const { segmented, t1 } = createSegmented()
+    await segmented.updateComplete
+    await t1.updateComplete
+
+    // 本轮修复：trigger host 也是拖拽热区，声明 touch-action: none。
+    expect(getComputedStyle(t1).touchAction).toBe('none')
+
+    const t1Inner = t1.shadowRoot?.querySelector('.wui-segmented-trigger') as HTMLElement
+    expect(t1Inner).toBeTruthy()
+
+    const t1Rect = t1.getBoundingClientRect()
+    const x = t1Rect.left + 10
+    const y = t1Rect.top + t1Rect.height / 2
+
+    // pointerdown 从 trigger 的 shadow 内容派发（真实触摸落点），沿 composed 路径冒泡到手势元素。
+    t1Inner.dispatchEvent(
+      new PointerEvent('pointerdown', {
+        bubbles: true,
+        composed: true,
+        isPrimary: true,
+        pointerId: 1,
+        clientX: x,
+        clientY: y
+      })
+    )
+    await segmented.updateComplete
+
+    // 非 composed touchmove（不跨 shadow 边界）在 trigger tree 内被 composedPath 挂载的守护阻止。
+    const onInner = new TouchEvent('touchmove', { bubbles: true, cancelable: true })
+    t1Inner.dispatchEvent(onInner)
+    expect(onInner.defaultPrevented).toBe(true)
+
+    // 确认拖拽后守护持续有效。
+    window.dispatchEvent(
+      new PointerEvent('pointermove', {
+        bubbles: true,
+        isPrimary: true,
+        pointerId: 1,
+        clientX: x + 30,
+        clientY: y
+      })
+    )
+    await segmented.updateComplete
+    const onInnerAfterCommit = new TouchEvent('touchmove', { bubbles: true, cancelable: true })
+    t1Inner.dispatchEvent(onInnerAfterCommit)
+    expect(onInnerAfterCommit.defaultPrevented).toBe(true)
+
+    // document/window 收不到 shadow 内 touchmove：不挂死代码。
+    const onWindow = new TouchEvent('touchmove', { bubbles: true, cancelable: true })
+    window.dispatchEvent(onWindow)
+    expect(onWindow.defaultPrevented).toBe(false)
+
+    // 松手后守护全部卸载。
+    window.dispatchEvent(
+      new PointerEvent('pointerup', {
+        bubbles: true,
+        isPrimary: true,
+        pointerId: 1,
+        clientX: x + 30,
+        clientY: y
+      })
+    )
+    await segmented.updateComplete
+    const onInnerAfter = new TouchEvent('touchmove', { bubbles: true, cancelable: true })
+    t1Inner.dispatchEvent(onInnerAfter)
+    expect(onInnerAfter.defaultPrevented).toBe(false)
+  })
 })

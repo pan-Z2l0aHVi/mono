@@ -5,6 +5,7 @@
 }
 
 :host {
+  touch-action: none;
   display: inline-block;
 }
 

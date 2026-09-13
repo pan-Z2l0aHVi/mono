@@ -261,4 +261,144 @@ describe('WebUiSlider 组件（浏览器）', () => {
     const slider = el.shadowRoot?.querySelector<HTMLElement>('[role="slider"]')
     expect(getComputedStyle(slider!).touchAction).toBe('none')
   })
+
+  it('host 同时声明 touch-action: none，覆盖 light DOM 命中链', async () => {
+    const el = document.createElement('web-ui-slider')
+    document.body.append(el)
+    await el.updateComplete
+
+    expect(getComputedStyle(el).touchAction).toBe('none')
+  })
+
+  it('拖拽期间 touchmove 默认滚动被阻止，松手后解除', async () => {
+    const el = document.createElement('web-ui-slider')
+    document.body.append(el)
+    await el.updateComplete
+
+    const slider = el.shadowRoot!.querySelector<HTMLElement>('[role="slider"]') as HTMLElement
+    const thumb = slider.querySelector('.wui-slider-thumb') as HTMLElement
+    const rect = slider.getBoundingClientRect()
+    const y = rect.top + rect.height / 2
+
+    slider.dispatchEvent(
+      new PointerEvent('pointerdown', {
+        bubbles: true,
+        clientX: rect.left + rect.width * 0.25,
+        clientY: y,
+        pointerId: 1
+      })
+    )
+    await el.updateComplete
+
+    // 意图判定前：命中深层 thumb 的非 composed touchmove（不跨 shadow 边界）也被
+    // composedPath 挂载的守护阻止，这正是 iOS Safari 滚动接管前需要的关键兜底。
+    const onThumb = new TouchEvent('touchmove', { bubbles: true, composed: false, cancelable: true })
+    thumb.dispatchEvent(onThumb)
+    expect(onThumb.defaultPrevented).toBe(true)
+
+    // 确认拖拽后：命中链上的守护持续有效。
+    window.dispatchEvent(
+      new PointerEvent('pointermove', {
+        bubbles: true,
+        pointerId: 1,
+        clientX: rect.left + rect.width * 0.75,
+        clientY: y
+      })
+    )
+    await el.updateComplete
+
+    const onThumbAfterCommit = new TouchEvent('touchmove', { bubbles: true, composed: false, cancelable: true })
+    thumb.dispatchEvent(onThumbAfterCommit)
+    expect(onThumbAfterCommit.defaultPrevented).toBe(true)
+
+    // document/window 收不到 shadow 内 touchmove，不挂死代码。
+    const onWindow = new TouchEvent('touchmove', { bubbles: true, cancelable: true })
+    window.dispatchEvent(onWindow)
+    expect(onWindow.defaultPrevented).toBe(false)
+
+    // 松手后守护全部卸载，页面滚动恢复。
+    window.dispatchEvent(
+      new PointerEvent('pointerup', {
+        bubbles: true,
+        pointerId: 1,
+        clientX: rect.left + rect.width * 0.75,
+        clientY: y
+      })
+    )
+    await el.updateComplete
+
+    const onThumbAfter = new TouchEvent('touchmove', { bubbles: true, composed: false, cancelable: true })
+    thumb.dispatchEvent(onThumbAfter)
+    expect(onThumbAfter.defaultPrevented).toBe(false)
+  })
+
+  it('捕获转手：命中元素的 lostpointercapture 不取消拖拽，track 自身丢失才取消', async () => {
+    const el = document.createElement('web-ui-slider')
+    document.body.append(el)
+    await el.updateComplete
+
+    const slider = el.shadowRoot!.querySelector<HTMLElement>('[role="slider"]') as HTMLElement
+    const thumb = slider.querySelector('.wui-slider-thumb') as HTMLElement
+    const rect = slider.getBoundingClientRect()
+    const y = rect.top + rect.height / 2
+
+    // 触摸落在 thumb（命中元素），指针隐式捕获到 thumb；组件随后把捕获转手到 track。
+    slider.dispatchEvent(
+      new PointerEvent('pointerdown', {
+        bubbles: true,
+        clientX: rect.left + rect.width * 0.25,
+        clientY: y,
+        pointerId: 1
+      })
+    )
+    await el.updateComplete
+
+    // 越过 6px 意图阈值：组件 setPointerCapture(track)（真实捕获）。
+    window.dispatchEvent(
+      new PointerEvent('pointermove', {
+        bubbles: true,
+        pointerId: 1,
+        clientX: rect.left + rect.width * 0.25 + 10,
+        clientY: y
+      })
+    )
+    await el.updateComplete
+    expect(thumb.classList.contains('is-dragging')).toBe(true)
+
+    // 命中元素（thumb）收到 lostpointercapture（隐式捕获被 track 抢走）——必须忽略。
+    thumb.dispatchEvent(new PointerEvent('lostpointercapture', { bubbles: true, composed: true, pointerId: 1 }))
+    await el.updateComplete
+    expect(thumb.classList.contains('is-dragging')).toBe(true)
+
+    // 拖拽继续跟手。
+    window.dispatchEvent(
+      new PointerEvent('pointermove', {
+        bubbles: true,
+        pointerId: 1,
+        clientX: rect.left + rect.width * 0.75,
+        clientY: y
+      })
+    )
+    await el.updateComplete
+    expect(el.value).toBeGreaterThan(50)
+
+    // track 自身意外丢失捕获：取消拖拽。
+    slider.dispatchEvent(new PointerEvent('lostpointercapture', { bubbles: true, composed: true, pointerId: 1 }))
+    await el.updateComplete
+    expect(thumb.classList.contains('is-dragging')).toBe(false)
+    expect(thumb.classList.contains('is-pressed')).toBe(false)
+
+    // 取消后 value 不再跟随。
+    const afterCancel = el.value
+    window.dispatchEvent(
+      new PointerEvent('pointermove', {
+        bubbles: true,
+        pointerId: 1,
+        clientX: rect.left + rect.width * 0.2,
+        clientY: y
+      })
+    )
+    await el.updateComplete
+    expect(el.value).toBe(afterCancel)
+  })
 })
