@@ -107,7 +107,6 @@
 /* ===== 浮层（glass 样式参考 dialog） ===== */
 
 .select-overlay {
-  --wui-internal-glass-shadow: var(--wui-shadow-panel, 0 3px 9px rgb(0 0 0 / 0.27));
   --wui-internal-duration-float-enter: var(--wui-duration-float-enter, 160ms);
   --wui-internal-duration-float-exit: var(--wui-duration-float-exit, 120ms);
   --wui-glass-corner-radius: var(--wui-radius-menu, 18px);
@@ -121,8 +120,6 @@
   max-width: var(--wui-select-max-width, 500px);
   border-radius: var(--wui-radius-menu, 18px);
 
-  background-color: var(--wui-color-surface-menu, rgb(246 246 246 / 0.82));
-
   &.portal {
     position: fixed;
     z-index: var(--wui-layer-menu, 100);
@@ -131,6 +128,11 @@
   &.hidden {
     display: none;
   }
+}
+
+/* 玻璃背景落在 surface 层（面板自身透明，见 overlay-motion.css 迁移说明）。 */
+.select-overlay .wui-floating-panel-surface {
+  background-color: var(--wui-color-surface-menu, rgb(246 246 246 / 0.82));
 }
 
 .select-scroll {

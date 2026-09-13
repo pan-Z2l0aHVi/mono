@@ -262,9 +262,9 @@ export class WebUiTooltip extends LitElement {
     return html`
       <div class="tooltip-anchor">
         <div class="tooltip-trigger"><slot></slot></div>
-        <div class="tooltip-panel wui-glass wui-floating-panel" hidden role="tooltip">
+        <div class="tooltip-panel wui-floating-panel" hidden role="tooltip">
           <div class="wui-floating-panel-blur" aria-hidden="true"></div>
-          <div class="wui-floating-panel-surface">
+          <div class="wui-floating-panel-surface wui-glass">
             ${this.content ? html`<span class="tooltip-text">${this.content}</span>` : html`<slot name="content"></slot>`}
           </div>
         </div>

@@ -376,8 +376,13 @@ describe('WebUiSwitch 手势拖拽（浏览器）', () => {
     expect(getComputedStyle(thumb).backgroundColor).toBe('rgba(0, 0, 0, 0)')
     const pressedShadow = getComputedStyle(thumb).boxShadow
     expect(pressedShadow).not.toBe(restShadow)
-    expect(pressedShadow).toContain('0px 12px 30px')
-    expect(pressedShadow).toContain('rgba(0, 0, 0, 0.22)')
+    // 用户两次要求减档后的最终值：三层投影逐值断言（直接写值，不经 var 中转）。
+    expect(pressedShadow).toContain('0px 1px 6px')
+    expect(pressedShadow).toContain('0px 6px 16px')
+    expect(pressedShadow).toContain('0px 14px 28px')
+    expect(pressedShadow).toContain('rgba(0, 0, 0, 0.2)')
+    expect(pressedShadow).toContain('rgba(0, 0, 0, 0.16)')
+    expect(pressedShadow).toContain('rgba(0, 0, 0, 0.1)')
 
     // 拖拽：玻璃组成与按压态一致（背景透明 + backdrop blur），阴影保持加深。
     window.dispatchEvent(

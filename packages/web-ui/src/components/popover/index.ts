@@ -378,7 +378,7 @@ export class WebUiPopover extends LitElement {
         </div>
         <div
           id=${this._panelId}
-          class="popover-panel wui-glass wui-floating-panel"
+          class="popover-panel wui-floating-panel"
           hidden
           role="dialog"
           tabindex="-1"
@@ -386,7 +386,7 @@ export class WebUiPopover extends LitElement {
           @pointerleave=${this._onPanelPointerLeave}
         >
           <div class="wui-floating-panel-blur" aria-hidden="true"></div>
-          <div class="wui-floating-panel-surface"><slot></slot></div>
+          <div class="wui-floating-panel-surface wui-glass"><slot></slot></div>
         </div>
       </div>
     `

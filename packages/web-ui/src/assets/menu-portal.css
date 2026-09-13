@@ -1,6 +1,6 @@
-/* 双类选择器覆盖 .wui-glass { position: relative }，保持 fixed 定位。 */
-.wui-menu-portal-overlay.wui-glass {
-  --wui-internal-glass-shadow: var(--wui-shadow-panel, 0 3px 9px rgb(0 0 0 / 0.27));
+/* 面板只承载定位/尺寸/圆角/裁切；玻璃背景与描边（wui-glass）由 surface 层
+   （.wui-menu-scroll）承接，随 surface opacity 淡出、不被 blur 层采进 backdrop。 */
+.wui-menu-portal-overlay {
   --wui-internal-duration-float-enter: var(--wui-duration-float-enter, 160ms);
   --wui-internal-duration-float-exit: var(--wui-duration-float-exit, 120ms);
   --wui-glass-corner-radius: var(--wui-radius-menu, 18px);
@@ -19,11 +19,13 @@
 
   color: var(--wui-color-text, #1b1b1b);
 
-  background-color: var(--wui-color-surface-menu, rgb(246 246 246 / 0.82));
-
   & .wui-menu-scroll {
     overflow-y: auto;
     max-height: 80vh;
+  }
+
+  & .wui-floating-panel-surface {
+    background-color: var(--wui-color-surface-menu, rgb(246 246 246 / 0.82));
   }
 
   & .wui-menu-content {

@@ -1,6 +1,6 @@
 import type { LitElement } from 'lit'
 import { afterEach, describe, expect, it } from 'vite-plus/test'
-import { userEvent } from 'vite-plus/test/browser'
+import { page, userEvent } from 'vite-plus/test/browser'
 
 import { pollUntil, queryA11y, waitForFrame } from '@/shared/test-utils'
 
@@ -73,6 +73,18 @@ async function openPreview(options: Partial<ImagePreviewOptions> = {}) {
 
 function pointer(type: string, init: PointerEventInit) {
   return new PointerEvent(type, { bubbles: true, cancelable: true, pointerId: 1, isPrimary: true, ...init })
+}
+
+/**
+ * 带时间戳的指针事件：PointerEventInit 不含 timeStamp，事件创建时间戳无法从构造
+ * 参数传入，这里用实例属性遮蔽（defineProperty）注入合成时间线，驱动 drag-gesture
+ * 的滑动窗口速度估算（真实浏览器由输入管线提供时间戳）。
+ */
+function timedPointer(type: string, init: PointerEventInit & { timeStamp?: number }) {
+  const { timeStamp, ...rest } = init
+  const event = new PointerEvent(type, { bubbles: true, cancelable: true, pointerId: 1, isPrimary: true, ...rest })
+  if (timeStamp !== undefined) Object.defineProperty(event, 'timeStamp', { value: timeStamp })
+  return event
 }
 
 /**
@@ -900,7 +912,7 @@ describe('imagePreview 命令式 API（浏览器）', () => {
     const track = host.shadowRoot?.querySelector('.wui-image-preview-track') as HTMLElement
     const trackX = () => new DOMMatrixReadOnly(getComputedStyle(track).transform).m41
 
-    // 只拖 30px（低于 48px 阈值），松手后弹回原点。
+    // 只拖 30px（低于舞台宽度 15% 阈值），松手后弹回原点。
     stage.dispatchEvent(pointer('pointerdown', { clientX: 400, clientY: 300 }))
     stage.dispatchEvent(pointer('pointermove', { clientX: 370, clientY: 300 }))
     stage.dispatchEvent(pointer('pointerup', { clientX: 370, clientY: 300 }))
@@ -909,6 +921,61 @@ describe('imagePreview 命令式 API（浏览器）', () => {
 
     handle.close()
     await handle.closed
+  })
+
+  it('快速轻扫（位移低于距离阈值但速度足够）按速度提交切图', async () => {
+    const { handle, host } = await openPreview({ swipe: true })
+    const image = currentImage(host)
+    await pollUntil(() => image.complete && image.offsetWidth > 0, 'image did not load')
+    const stage = stageOf(image)
+    await waitForStageSettled(stage)
+
+    const threshold = Math.round(stage.clientWidth * 0.15)
+    // 位移只有阈值一半：距离不达标，靠 <100ms 内的速度（约 500px/s > 320px/s）提交。
+    // 真实触摸事件流可能被合并/延迟稀释（CDP 取证：40px/167ms 被 100ms 速度窗口
+    // 低估到 ~164px/s），兜底分支（小距离 + 过半速度）也覆盖该场景。
+    const flick = Math.max(16, Math.floor(threshold * 0.5))
+    stage.dispatchEvent(timedPointer('pointerdown', { clientX: 400, clientY: 300, timeStamp: 0 }))
+    stage.dispatchEvent(timedPointer('pointermove', { clientX: 400 - flick, clientY: 300, timeStamp: 30 }))
+    stage.dispatchEvent(timedPointer('pointerup', { clientX: 400 - flick, clientY: 300, timeStamp: 60 }))
+    await pollUntil(() => handle.index === 1, 'fast flick did not commit by velocity')
+    expect(handle.index).toBe(1)
+
+    handle.close()
+    await handle.closed
+  })
+
+  it('swipe 距离阈值随舞台宽度按 15% 缩放：不同宽度下越阈提交、未达弹回', async () => {
+    for (const width of [320, 800]) {
+      await page.viewport(width, 600)
+      const { handle, host } = await openPreview({ swipe: true })
+      const image = currentImage(host)
+      await pollUntil(() => image.complete && image.offsetWidth > 0, 'image did not load')
+      const stage = stageOf(image)
+      await waitForStageSettled(stage)
+      expect(stage.clientWidth).toBe(width)
+
+      const threshold = Math.round(width * 0.15)
+      const below = Math.max(4, threshold - 8)
+      const above = threshold + 8
+
+      // 慢拖（速度 0）未达阈值：弹回不切图。
+      stage.dispatchEvent(pointer('pointerdown', { clientX: 400, clientY: 300 }))
+      stage.dispatchEvent(pointer('pointermove', { clientX: 400 - below, clientY: 300 }))
+      stage.dispatchEvent(pointer('pointerup', { clientX: 400 - below, clientY: 300 }))
+      await host.updateComplete
+      expect(handle.index).toBe(0)
+
+      // 慢拖越过阈值：滑入相邻图。
+      stage.dispatchEvent(pointer('pointerdown', { clientX: 400, clientY: 300, pointerId: 2 }))
+      stage.dispatchEvent(pointer('pointermove', { clientX: 400 - above, clientY: 300, pointerId: 2 }))
+      stage.dispatchEvent(pointer('pointerup', { clientX: 400 - above, clientY: 300, pointerId: 2 }))
+      await pollUntil(() => handle.index === 1, `swipe did not commit at ${width}px stage`)
+
+      handle.close()
+      await handle.closed
+    }
+    await page.viewport(1280, 720)
   })
 
   it('玻璃控件 blur 由独立层承担：dialog 不过渡 opacity，遮罩/舞台层 opacity 过渡', async () => {

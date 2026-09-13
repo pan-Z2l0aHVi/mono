@@ -215,6 +215,11 @@ describe('WebUiDialog 组件（浏览器）', () => {
     expect(getComputedStyle(dialog).opacity).toBe('1')
     expect(getComputedStyle(dialog).transitionProperty).toContain('transform')
 
+    // 玻璃背景迁移：dialog 自身透明（blur 层采样纯页面、白底随 surface 淡出），
+    // 玻璃背景保留在 surface 内的 body 上。
+    expect(getComputedStyle(dialog).backgroundColor).toBe('rgba(0, 0, 0, 0)')
+    expect(getComputedStyle(body).backgroundColor).not.toBe('rgba(0, 0, 0, 0)')
+
     // body 自身不再带 backdrop-filter：模糊由独立层提供，避免静止态双重模糊。
     expect(getComputedStyle(body).backdropFilter).toBe('none')
 

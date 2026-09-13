@@ -84,9 +84,18 @@ const ZOOM_STEP = 0.5
 const WHEEL_ZOOM_SENSITIVITY = 0.002
 // 判定为拖拽（平移或滑动）而非点击的最小位移。
 const PAN_MOVE_THRESHOLD = 3
-// 滑动切图的最小位移与甩动速度，任一满足即切图。
-const SWIPE_DISTANCE = 48
+// 滑动切图的距离阈值 = 舞台宽度 × 该比例（取整），速度阈值任一满足即切图。
+// 用户决策：阈值参考舞台宽度百分比而非固定 px（48px 在 320px 舞台 ≈ 15%），
+// 不同舞台宽度下切图手感一致（窄屏更容易、宽屏要求更长距离）。
+const SWIPE_DISTANCE_RATIO = 0.15
 const SWIPE_VELOCITY = 320
+// 快速轻扫兜底：真实触摸事件流可能被合并/延迟稀释（CDP 取证：40px/167ms 的轻扫被
+// 100ms 速度窗口低估到 ~115-165px/s），单靠 320px/s 会把快速轻扫误判为回弹。方向明确
+// （位移达到小距离）且速度过半阈值时仍提交；速度取「窗口速度」与「整段位移平均速度」
+// 的较大者——后者对稀释的事件流鲁棒（CDP 复现下整段平均约 240px/s）。慢拖两种速度
+// 都趋近 0，不会误提交。
+const SWIPE_FLICK_DISTANCE = 16
+const SWIPE_FLICK_VELOCITY = 160
 // 滑入/回位的兜底时长：正常由 transform 的 transitionend 提前收尾；jsdom、无过渡
 // （prefers-reduced-motion）等场景没有 transitionend，按该时长兜底提交。
 const SWIPE_SETTLE_MS = 320
@@ -130,6 +139,8 @@ class WebUiImagePreview extends LitElement {
 
   /** 相邻图方向：1 = 下一张（位于右侧），-1 = 上一张（位于左侧）。非响应式，随 _swipeOffset 一同更新。 */
   private _swipeDir: 1 | -1 | 0 = 0
+  /** 当前滑动手势的起始时间戳；松手时与 endInfo.timeStamp 求整段平均速度（对稀释事件流鲁棒）。 */
+  private _swipeStartTime = 0
   private _swipeSettleCommit = false
   private _swipeSettleDir: 1 | -1 = 1
   private _swipeSettleTimer: ReturnType<typeof setTimeout> | undefined
@@ -545,7 +556,7 @@ class WebUiImagePreview extends LitElement {
   }
 
   /** 释放后的滑入/回位：把 _swipeOffset 从跟手位移过渡到目标位（越界滑入相邻图，否则回 0）。 */
-  private _settleSwipe(deltaX: number, velocityX: number) {
+  private _settleSwipe(deltaX: number, velocityX: number, endTime: number) {
     const dir = this._swipeDir
     const stageW = this._stage?.clientWidth ?? 0
     if (dir === 0 || stageW <= 0) {
@@ -553,7 +564,17 @@ class WebUiImagePreview extends LitElement {
       this._swipeOffset = 0
       return
     }
-    const crossed = Math.abs(deltaX) >= SWIPE_DISTANCE || Math.abs(velocityX) >= SWIPE_VELOCITY
+    const distanceThreshold = Math.max(1, Math.round(stageW * SWIPE_DISTANCE_RATIO))
+    // 整段位移平均速度：事件流被合并/延迟稀释时，100ms 窗口速度只采到中后段而偏低，
+    // 平均速度（整段位移 / 整段时间）对快速轻扫更鲁棒。合成事件时间戳相同/缺失时
+    // 跨度不足 2ms，视为 0（与 drag-gesture 的速度守卫一致），慢拖不会误提交。
+    const spanMs = endTime - this._swipeStartTime
+    const fullSpanVelocity = spanMs >= 2 ? (deltaX / spanMs) * 1000 : 0
+    const flickVelocity = Math.max(Math.abs(velocityX), Math.abs(fullSpanVelocity))
+    const crossed =
+      Math.abs(deltaX) >= distanceThreshold ||
+      Math.abs(velocityX) >= SWIPE_VELOCITY ||
+      (Math.abs(deltaX) >= SWIPE_FLICK_DISTANCE && flickVelocity >= SWIPE_FLICK_VELOCITY)
     const commit = crossed && this._adjacentIndex(dir) !== -1
     this._swipeSettling = true
     this._swipeSettleCommit = commit
@@ -612,6 +633,7 @@ class WebUiImagePreview extends LitElement {
     // swipe 独占 1x：只有未放大、开启 swipe 且多于一张图时，横向拖拽才归切图；
     // 其余情形拖拽一律平移，且不限方向（边界见 _offsetBounds）。
     this._swipeGesture = this._scale === MIN_SCALE && this.swipe && this.images.length > 1
+    this._swipeStartTime = event.timeStamp
     this._panOriginX = this._offsetX
     this._panOriginY = this._offsetY
 
@@ -633,7 +655,7 @@ class WebUiImagePreview extends LitElement {
       onEnd: info => {
         this._dragged = true
         this._dragging = false
-        if (this._swipeGesture) this._settleSwipe(info.deltaX, info.velocityX)
+        if (this._swipeGesture) this._settleSwipe(info.deltaX, info.velocityX, info.timeStamp)
       },
       onTap: () => {
         this._dragging = false

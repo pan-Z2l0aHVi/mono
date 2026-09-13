@@ -561,8 +561,12 @@ describe('WebUiSegmented 手势拖拽与吸附（浏览器）', () => {
     expect(getComputedStyle(indicator).backgroundColor).toBe('rgba(250, 250, 250, 0.34)')
     const pressedShadow = getComputedStyle(indicator).boxShadow
     expect(pressedShadow).not.toBe(restShadow)
-    expect(pressedShadow).toContain('0px 8px 22px')
-    expect(pressedShadow).toContain('rgba(0, 0, 0, 0.22)')
+    // 用户两次要求减档后的最终值：三层投影逐值断言（直接写值，不经 var 中转）。
+    expect(pressedShadow).toContain('0px 0px 1px')
+    expect(pressedShadow).toContain('0px 5px 14px')
+    expect(pressedShadow).toContain('0px 12px 28px')
+    expect(pressedShadow).toContain('rgba(0, 0, 0, 0.1)')
+    expect(pressedShadow).toContain('rgba(0, 0, 0, 0.16)')
 
     // 拖拽：玻璃组成与按压态一致。
     window.dispatchEvent(

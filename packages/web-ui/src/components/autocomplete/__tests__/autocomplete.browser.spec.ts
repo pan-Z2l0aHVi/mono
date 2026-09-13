@@ -87,6 +87,12 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     expect(getComputedStyle(blur).backdropFilter).not.toBe('none')
     expect(getComputedStyle(blur).transitionProperty).toContain('opacity')
     expect(getComputedStyle(surface).transitionProperty).toContain('opacity')
+
+    // 玻璃背景迁移：面板自身透明（blur 层采样纯页面、白底随 surface 淡出），
+    // 背景与 wui-glass 描边落在 surface 层。
+    expect(getComputedStyle(panel!).backgroundColor).toBe('rgba(0, 0, 0, 0)')
+    expect(surface.classList.contains('wui-glass')).toBe(true)
+    expect(getComputedStyle(surface).backgroundColor).not.toBe('rgba(0, 0, 0, 0)')
   })
 
   it('下拉滚动区域默认高度可通过 CSS variable 覆盖', async () => {
@@ -925,9 +931,12 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     expect(focusedStyle.boxShadow).toContain('rgb(0, 136, 255)')
     expect(focusedStyle.boxShadow).toContain('0px 0px 0px 3px')
 
-    // borderless 只作用于输入容器；下拉浮层保留 glass 背景
+    // borderless 只作用于输入容器；下拉浮层保留 glass 背景——背景在 surface 层，
+    // 面板自身透明（blur 层采样纯页面，白底随 surface 淡出）。
     const panel = el.shadowRoot!.querySelector<HTMLElement>('.autocomplete-overlay')!
-    expect(getComputedStyle(panel).backgroundColor).not.toBe('rgba(0, 0, 0, 0)')
+    const surface = panel.querySelector<HTMLElement>('.wui-floating-panel-surface')!
+    expect(getComputedStyle(panel).backgroundColor).toBe('rgba(0, 0, 0, 0)')
+    expect(getComputedStyle(surface).backgroundColor).not.toBe('rgba(0, 0, 0, 0)')
   })
 
   it('borderless 移除输入容器的 glass 描边环（.wui-glass::before）', async () => {
@@ -990,8 +999,10 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     expect(getComputedStyle(wrapper, '::before').content).toBe('none')
 
     const panel = el.shadowRoot!.querySelector<HTMLElement>('.autocomplete-overlay')!
-    expect(getComputedStyle(panel).backgroundColor).not.toBe('rgba(0, 0, 0, 0)')
-    // 浮层是独立 glass 容器，其描边环不被 borderless 移除
-    expect(getComputedStyle(panel, '::before').content).toBe('""')
+    const surface = panel.querySelector<HTMLElement>('.wui-floating-panel-surface')!
+    expect(getComputedStyle(panel).backgroundColor).toBe('rgba(0, 0, 0, 0)')
+    expect(getComputedStyle(surface).backgroundColor).not.toBe('rgba(0, 0, 0, 0)')
+    // 浮层是独立 glass 容器，其描边环（wui-glass::before 随类搬到 surface）不被 borderless 移除
+    expect(getComputedStyle(surface, '::before').content).toBe('""')
   })
 })

@@ -143,7 +143,10 @@ export function attachDragGesture(
     const first = samples[0]
     const last = samples[samples.length - 1]
     const dt = last.t - first.t
-    if (dt < 8) return { vx: 0, vy: 0, v: 0 } // 采样跨度不足 8ms 时不可信
+    // 采样跨度不足 2ms（同帧/同毫秒的合成或极端快速事件）时不可信，置 0；
+    // 2-8ms 的超短轻扫仍按真实跨度上报速度，避免「快速轻扫」被误判为无速度
+    // 而回弹（旧守卫 <8ms 会把真实超短轻扫的速度清零）。
+    if (dt < 2) return { vx: 0, vy: 0, v: 0 }
     const vx = ((last.x - first.x) / dt) * 1000
     const vy = ((last.y - first.y) / dt) * 1000
     let v = 0

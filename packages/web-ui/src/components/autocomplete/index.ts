@@ -707,13 +707,13 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
         </div>
         <div class="autocomplete-a11y-only autocomplete-empty-a11y" role="status" hidden></div>
         <div
-          class="wui-glass autocomplete-overlay wui-floating-panel"
+          class="autocomplete-overlay wui-floating-panel"
           hidden
           aria-hidden="true"
           @pointerdown=${this._handlePanelPointerDown}
         >
           <div class="wui-floating-panel-blur" aria-hidden="true"></div>
-          <div class="wui-floating-panel-surface">
+          <div class="wui-floating-panel-surface wui-glass">
             <div class="autocomplete-scroll">
               <div class="autocomplete-content">
                 <slot @slotchange=${this._onSlotChange}></slot>

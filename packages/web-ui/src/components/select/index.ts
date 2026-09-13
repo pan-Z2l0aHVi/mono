@@ -488,9 +488,9 @@ export class WebUiSelect extends FormAssociated(LitElement) {
           ${!this._hasTriggerSlot ? html`<span class="label">${this._selectedLabel}</span>` : nothing}
           <web-ui-icon class="arrow" .icon=${lucideChevronDown}></web-ui-icon>
         </div>
-        <div class="wui-glass select-overlay wui-floating-panel" hidden role="listbox" id=${listboxId}>
+        <div class="select-overlay wui-floating-panel" hidden role="listbox" id=${listboxId}>
           <div class="wui-floating-panel-blur" aria-hidden="true"></div>
-          <div class="wui-floating-panel-surface">
+          <div class="wui-floating-panel-surface wui-glass">
             <div class="select-scroll">
               <div class="select-content">
                 <slot @slotchange=${this._onSlotChange}></slot>
