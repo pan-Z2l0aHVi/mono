@@ -367,14 +367,13 @@ describe('WebUiSwitch 手势拖拽（浏览器）', () => {
     expect(thumb.classList.contains('is-pressed')).toBe(true)
     expect(getComputedStyle(thumb).backdropFilter).toBe(restBackdrop)
     expect(getComputedStyle(thumb).backgroundColor).toBe(restBg)
-    // 立体玻璃感：按压时投影加深。--wui-internal-glass-shadow 立即解析为深色三层
-    // （0 10px 28px 层），等待 80ms box-shadow 过渡收敛后计算值含该层、静止态没有。
-    const pressedVar = getComputedStyle(thumb).getPropertyValue('--wui-internal-glass-shadow')
-    expect(pressedVar).toContain('0 10px 28px')
+    // 立体玻璃感：按压时投影加深。box-shadow 直接写值（不经自定义属性中转，iOS 可靠），
+    // 等待 80ms 过渡收敛后计算值含加深层（0 14px 36px / 0.28）、静止态没有。
     await new Promise(resolve => setTimeout(resolve, 120))
     const pressedShadow = getComputedStyle(thumb).boxShadow
     expect(pressedShadow).not.toBe(restShadow)
-    expect(pressedShadow).toContain('0px 10px 28px')
+    expect(pressedShadow).toContain('0px 14px 36px')
+    expect(pressedShadow).toContain('rgba(0, 0, 0, 0.28)')
 
     // 拖拽：仍一致。
     window.dispatchEvent(
