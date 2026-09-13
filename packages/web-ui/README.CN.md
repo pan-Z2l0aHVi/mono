@@ -467,7 +467,7 @@ Portal 面板创建时会镜像 host 上解析后的这些变量；更新 host �
 
 **方法：** `focus()`, `blur()`
 
-支持 ArrowLeft/Right/Up/Down、Home/End、PageUp/PageDown 键盘导航。使用 pointer capture 处理鼠标、触控笔和触摸交互；触控轨道设置 `touch-action: none`，避免 iOS Safari 在横/纵拖拽过程中接管手势。
+支持 ArrowLeft/Right/Up/Down、Home/End、PageUp/PageDown 键盘导航。使用 pointer capture 处理鼠标、触控笔和触摸交互；组件 host 与触控轨道均声明 `touch-action: none`，拖拽激活期间同时阻止 `touchmove` 默认滚动，避免 iOS Safari 在横/纵拖拽过程中接管手势。
 
 **CSS 自定义属性：**
 
@@ -551,6 +551,8 @@ Portal 面板创建时会镜像 host 上解析后的这些变量；更新 host �
 与原生 `<form>` 集成（通过 `ElementInternals`）。
 
 根据 `value` 同步子 trigger 的 `checked` 状态。`disabled` 提供继承的有效禁用状态，不改写 trigger 自身的 `disabled` 属性。直接设 `value` 不派发事件。
+
+按住当前选中项横向拖拽可滑动指示器，松手吸附到最近选项（快速抛掷按速度切换）。触摸面声明 `touch-action: none`，拖拽激活期间阻止 `touchmove` 默认滚动，避免 iOS Safari 中断手势。
 
 #### `<web-ui-checkbox-group>`
 

@@ -499,7 +499,7 @@ Range slider with marks and vertical orientation.
 
 **Methods:** `focus()`, `blur()`
 
-Supports ArrowLeft/Right/Up/Down, Home/End, PageUp/PageDown keyboard navigation. Uses pointer capture for drag interaction across mouse, touch, and pen. Touch tracks set `touch-action: none` so iOS Safari does not interrupt horizontal or vertical drag gestures.
+Supports ArrowLeft/Right/Up/Down, Home/End, PageUp/PageDown keyboard navigation. Uses pointer capture for drag interaction across mouse, touch, and pen. Both the component host and the track declare `touch-action: none`, and an active drag suppresses `touchmove` defaulting, so iOS Safari never takes over horizontal or vertical drags mid-gesture.
 
 **CSS Custom Properties:**
 
@@ -585,6 +585,8 @@ Segmented control — single-select button group.
 Form-associated: integrates with native `<form>` via `ElementInternals`.
 
 Manages child trigger `checked` state based on `value`. `disabled` supplies inherited effective disabled state without changing a trigger's own `disabled` property. Setting `value` directly does not dispatch `input`/`change`.
+
+Press the selected segment and drag horizontally to slide the indicator; on release it snaps to the nearest option (a fast flick switches by velocity). Touch surfaces declare `touch-action: none` and suppress `touchmove` defaulting during an active drag, so iOS Safari does not interrupt the gesture.
 
 #### `<web-ui-checkbox-group>`
 

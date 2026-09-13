@@ -94,6 +94,49 @@ export function attachDragGesture(
   let isThresholdPassed = threshold <= 0
   let samples: DragSample[] = []
   let handledMoveEvent: PointerEvent | null = null
+  let touchGuardTargets: Set<EventTarget> | null = null
+
+  /**
+   * iOS Safari 滚动接管兜底：
+   * WebKit 对 shadow DOM 内 touch-action 的交集计算存在怪癖，触摸落在深层子元素
+   * （如 slider thumb、segmented-trigger 的 shadow 内容）时，声明在手势元素上的
+   * touch-action: none 可能不生效，iOS 会把触摸判为滚动意图并在越过阈值前触发
+   * pointercancel，拖拽因此中断。非被动 touchmove + preventDefault 是 WebKit 也
+   * 尊重的最后手段：页面显式处理触摸移动后，滚动识别器不会获胜，也就不会接管。
+   */
+  function handleTouchMove(e: Event) {
+    if (e.cancelable) e.preventDefault()
+  }
+
+  /**
+   * 沿 pointerdown 的 composedPath 在每个 Element/ShadowRoot 挂非被动 touchmove
+   * 监听。TouchEvent 不像 PointerEvent 那样可组合：非 composed 的 touchmove 只在
+   * 落点所在的 shadow tree 内传播（连 host 都不经过），所以单一手势元素上的监听
+   * 对 segmented-trigger 这类深层 shadow 内容完全失效。composedPath 覆盖落点的
+   * 全部 shadow tree 链，无论 touchmove 在哪一层传播，路径上必有我们挂载的节点
+   * 能收到事件并 preventDefault。document/window 不在挂载范围：touchmove 到不了
+   * 它们，挂上也只是死代码。
+   */
+  function attachTouchGuards(e: PointerEvent) {
+    const targets = new Set<EventTarget>()
+    const path = typeof e.composedPath === 'function' ? e.composedPath() : []
+    for (const node of path) {
+      const type = (node as Node).nodeType
+      if (type === Node.ELEMENT_NODE || type === Node.DOCUMENT_FRAGMENT_NODE) {
+        node.addEventListener('touchmove', handleTouchMove, { capture: true, passive: false })
+        targets.add(node)
+      }
+    }
+    touchGuardTargets = targets
+  }
+
+  function detachTouchGuards() {
+    if (!touchGuardTargets) return
+    for (const node of touchGuardTargets) {
+      node.removeEventListener('touchmove', handleTouchMove, true)
+    }
+    touchGuardTargets = null
+  }
 
   function estimateVelocity(): { vx: number; vy: number; v: number } {
     if (samples.length < 2) return { vx: 0, vy: 0, v: 0 }
@@ -114,14 +157,14 @@ export function attachDragGesture(
     window.removeEventListener('pointermove', handlePointerMove, true)
     window.removeEventListener('pointerup', handlePointerUp, true)
     window.removeEventListener('pointercancel', handlePointerCancel, true)
-    window.removeEventListener('lostpointercapture', handlePointerCancel, true)
+    window.removeEventListener('lostpointercapture', handleLostPointerCapture, true)
   }
 
   function attachWindowListeners() {
     window.addEventListener('pointermove', handlePointerMove, true)
     window.addEventListener('pointerup', handlePointerUp, true)
     window.addEventListener('pointercancel', handlePointerCancel, true)
-    window.addEventListener('lostpointercapture', handlePointerCancel, true)
+    window.addEventListener('lostpointercapture', handleLostPointerCapture, true)
   }
 
   function detachTargetListeners() {
@@ -129,7 +172,7 @@ export function attachDragGesture(
     target.removeEventListener('pointermove', handlePointerMove)
     target.removeEventListener('pointerup', handlePointerUp)
     target.removeEventListener('pointercancel', handlePointerCancel)
-    target.removeEventListener('lostpointercapture', handlePointerCancel)
+    target.removeEventListener('lostpointercapture', handleLostPointerCapture)
   }
 
   function attachTargetListeners() {
@@ -137,7 +180,7 @@ export function attachDragGesture(
     target.addEventListener('pointermove', handlePointerMove)
     target.addEventListener('pointerup', handlePointerUp)
     target.addEventListener('pointercancel', handlePointerCancel)
-    target.addEventListener('lostpointercapture', handlePointerCancel)
+    target.addEventListener('lostpointercapture', handleLostPointerCapture)
   }
 
   function resetState() {
@@ -156,6 +199,7 @@ export function attachDragGesture(
     handledMoveEvent = null
     detachWindowListeners()
     detachTargetListeners()
+    detachTouchGuards()
   }
 
   function handlePointerDown(e: PointerEvent) {
@@ -181,6 +225,7 @@ export function attachDragGesture(
 
     attachWindowListeners()
     attachTargetListeners()
+    attachTouchGuards(e)
 
     // 仅在无意图死区时立即捕获指针；若存在死区，延迟至确认拖拽后捕获，避免干扰子元素原生点击
     if (isThresholdPassed) {
@@ -286,6 +331,23 @@ export function attachDragGesture(
 
   function handlePointerCancel(e: PointerEvent) {
     if (activePointerId !== e.pointerId) return
+    resetState()
+    onCancel?.(e)
+  }
+
+  /**
+   * lostpointercapture 不能当作 pointercancel：touch 指针在 pointerdown 时会被浏览器
+   * 隐式捕获到命中元素（如 slider thumb、segmented-trigger 内容），组件随后
+   * setPointerCapture(target) 把捕获转手到手势元素，命中元素先收到 lostpointercapture——
+   * 这是正常转手而非取消，若直接走 cancel 会把刚启动的拖拽杀死（值只走一步即冻结）。
+   * 只有手势元素自身意外丢失捕获（如元素被移出文档）才应取消。
+   *
+   * resetState 内 releasePointerCapture 产生的 lostpointercapture 会在 activePointerId
+   * 置空之后异步到达，被 pointerId 守卫挡住，不会误伤。
+   */
+  function handleLostPointerCapture(e: PointerEvent) {
+    if (activePointerId !== e.pointerId) return
+    if (e.target !== target) return
     resetState()
     onCancel?.(e)
   }

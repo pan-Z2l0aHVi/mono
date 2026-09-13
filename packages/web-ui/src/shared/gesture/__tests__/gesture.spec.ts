@@ -82,7 +82,7 @@ describe('shared/gesture attachDragGesture', () => {
     const el = document.createElement('div')
     document.body.append(el)
 
-    const onMove = vi.fn<() => void>()
+    const onMove = vi.fn<(info: { deltaX: number }) => void>()
     const onEnd = vi.fn<() => void>()
     const onTap = vi.fn<() => void>()
     const onCancel = vi.fn<() => void>()
@@ -106,6 +106,235 @@ describe('shared/gesture attachDragGesture', () => {
     expect(onEnd).not.toHaveBeenCalled()
     expect(onTap).toHaveBeenCalledTimes(1)
     expect(onCancel).toHaveBeenCalledTimes(1)
+
+    handle.destroy()
+    el.remove()
+  })
+
+  it('触摸守护：按下即在命中链各层阻止 touchmove，window 不挂死代码', () => {
+    const el = document.createElement('div')
+    const child = document.createElement('div')
+    el.append(child)
+    document.body.append(el)
+
+    const handle = attachDragGesture(el, { axis: 'x', threshold: 6 })
+
+    el.dispatchEvent(new PointerEvent('pointerdown', { pointerId: 1, clientX: 100, clientY: 100, isPrimary: true }))
+
+    // 未越过 threshold 前：触摸落在目标元素的子元素（模拟 thumb 命中）时，命中链上的
+    // capture 级非被动 touchmove 监听也要阻止默认滚动。
+    const onChild = new Event('touchmove', { bubbles: true, cancelable: true })
+    child.dispatchEvent(onChild)
+    expect(onChild.defaultPrevented).toBe(true)
+
+    const onEl = new Event('touchmove', { bubbles: true, cancelable: true })
+    el.dispatchEvent(onEl)
+    expect(onEl.defaultPrevented).toBe(true)
+
+    // document/window 收不到 shadow 内 touchmove，挂上只是死代码：不挂。
+    const onWindow = new Event('touchmove', { bubbles: true, cancelable: true })
+    window.dispatchEvent(onWindow)
+    expect(onWindow.defaultPrevented).toBe(false)
+
+    handle.destroy()
+    el.remove()
+  })
+
+  it('触摸守护：pointerup 后守护全部卸载', () => {
+    const el = document.createElement('div')
+    document.body.append(el)
+
+    const handle = attachDragGesture(el, { axis: 'x', threshold: 6 })
+
+    el.dispatchEvent(new PointerEvent('pointerdown', { pointerId: 1, clientX: 100, clientY: 100, isPrimary: true }))
+    window.dispatchEvent(new PointerEvent('pointermove', { pointerId: 1, clientX: 110, clientY: 100, isPrimary: true }))
+
+    // 确认拖拽后命中链上仍被阻止
+    const onEl = new Event('touchmove', { bubbles: true, cancelable: true })
+    el.dispatchEvent(onEl)
+    expect(onEl.defaultPrevented).toBe(true)
+
+    window.dispatchEvent(new PointerEvent('pointerup', { pointerId: 1, clientX: 110, clientY: 100, isPrimary: true }))
+
+    const onTargetAfter = new Event('touchmove', { bubbles: true, cancelable: true })
+    el.dispatchEvent(onTargetAfter)
+    expect(onTargetAfter.defaultPrevented).toBe(false)
+
+    handle.destroy()
+    el.remove()
+  })
+
+  it('触摸守护：pointercancel 打断后守护同样卸载', () => {
+    const el = document.createElement('div')
+    document.body.append(el)
+
+    const handle = attachDragGesture(el, { axis: 'x', threshold: 6 })
+
+    el.dispatchEvent(new PointerEvent('pointerdown', { pointerId: 1, clientX: 100, clientY: 100, isPrimary: true }))
+    window.dispatchEvent(new PointerEvent('pointermove', { pointerId: 1, clientX: 110, clientY: 100, isPrimary: true }))
+    window.dispatchEvent(
+      new PointerEvent('pointercancel', { pointerId: 1, clientX: 110, clientY: 100, isPrimary: true })
+    )
+
+    const onEl = new Event('touchmove', { bubbles: true, cancelable: true })
+    el.dispatchEvent(onEl)
+    expect(onEl.defaultPrevented).toBe(false)
+
+    handle.destroy()
+    el.remove()
+  })
+
+  it('触摸守护：无意图死区（threshold 0）时按下即挂载', () => {
+    const el = document.createElement('div')
+    document.body.append(el)
+
+    const handle = attachDragGesture(el, { axis: 'x' })
+
+    el.dispatchEvent(new PointerEvent('pointerdown', { pointerId: 1, clientX: 100, clientY: 100, isPrimary: true }))
+
+    const onEl = new Event('touchmove', { bubbles: true, cancelable: true })
+    el.dispatchEvent(onEl)
+    expect(onEl.defaultPrevented).toBe(true)
+
+    window.dispatchEvent(new PointerEvent('pointerup', { pointerId: 1, clientX: 100, clientY: 100, isPrimary: true }))
+    const onElAfter = new Event('touchmove', { bubbles: true, cancelable: true })
+    el.dispatchEvent(onElAfter)
+    expect(onElAfter.defaultPrevented).toBe(false)
+
+    handle.destroy()
+    el.remove()
+  })
+
+  it('触摸守护：touchmove 目标在嵌套 shadow root 内时，composedPath 各层可拦截非 composed 事件', () => {
+    // 结构模拟 web-ui-segmented > (shadow) > web-ui-segmented-trigger > (shadow) > 内容
+    const host = document.createElement('div')
+    document.body.append(host)
+    const hostShadow = host.attachShadow({ mode: 'open' })
+    const triggerHost = document.createElement('div')
+    hostShadow.append(triggerHost)
+    const triggerShadow = triggerHost.attachShadow({ mode: 'open' })
+    const inner = document.createElement('div')
+    triggerShadow.append(inner)
+
+    const handle = attachDragGesture(host, { axis: 'x', threshold: 6 })
+
+    // 真实 pointerdown 沿 composed 路径冒泡到手势元素；touch 落点在 trigger 的 shadow 内容上。
+    let path: EventTarget[] = []
+    host.addEventListener('pointerdown', e => {
+      path = e.composedPath()
+    })
+    const down = new PointerEvent('pointerdown', {
+      bubbles: true,
+      composed: true,
+      pointerId: 1,
+      clientX: 100,
+      clientY: 100,
+      isPrimary: true
+    })
+    inner.dispatchEvent(down)
+    expect(path).toContain(host)
+    expect(path).toContain(triggerHost)
+    expect(path).toContain(inner)
+
+    // 非 composed touchmove 只在落点 shadow tree 内传播（不到 host）；composedPath 挂载
+    // 保证路径上必有守护节点 → preventDefault 生效。
+    const onInner = new Event('touchmove', { bubbles: true, cancelable: true, composed: false })
+    inner.dispatchEvent(onInner)
+    expect(onInner.defaultPrevented).toBe(true)
+
+    const onTriggerHost = new Event('touchmove', { bubbles: true, cancelable: true, composed: false })
+    triggerHost.dispatchEvent(onTriggerHost)
+    expect(onTriggerHost.defaultPrevented).toBe(true)
+
+    // composed touchmove（若浏览器实现为可组合）同样被命中链上的守护拦截。
+    const onInnerComposed = new Event('touchmove', { bubbles: true, cancelable: true, composed: true })
+    inner.dispatchEvent(onInnerComposed)
+    expect(onInnerComposed.defaultPrevented).toBe(true)
+
+    // 松手后全部卸载：同一落点的 touchmove 不再被阻止。
+    window.dispatchEvent(new PointerEvent('pointerup', { pointerId: 1, clientX: 100, clientY: 100, isPrimary: true }))
+    const onInnerAfter = new Event('touchmove', { bubbles: true, cancelable: true, composed: false })
+    inner.dispatchEvent(onInnerAfter)
+    expect(onInnerAfter.defaultPrevented).toBe(false)
+
+    handle.destroy()
+    host.remove()
+  })
+
+  it('捕获转手：pointerdown 目标被 setPointerCapture 抢走后 lostpointercapture 不取消拖拽', () => {
+    const el = document.createElement('div')
+    const child = document.createElement('div')
+    el.append(child)
+    document.body.append(el)
+
+    const onMove = vi.fn<(info: { deltaX: number }) => void>()
+    const onEnd = vi.fn<() => void>()
+    const onCancel = vi.fn<() => void>()
+    const handle = attachDragGesture(el, { axis: 'x', threshold: 0, onMove, onEnd, onCancel })
+
+    // 触摸落在子元素（命中元素 A = child），threshold=0 使组件立即 setPointerCapture(el)。
+    child.dispatchEvent(
+      new PointerEvent('pointerdown', { bubbles: true, pointerId: 1, clientX: 100, clientY: 100, isPrimary: true })
+    )
+    expect(handle.isDragging()).toBe(true)
+
+    // 浏览器把捕获从命中元素转手到手势元素：命中元素先收到 lostpointercapture——必须忽略。
+    child.dispatchEvent(new PointerEvent('lostpointercapture', { bubbles: true, pointerId: 1 }))
+
+    expect(handle.isDragging()).toBe(true)
+    expect(onCancel).not.toHaveBeenCalled()
+
+    // onMove 持续跟手。
+    window.dispatchEvent(new PointerEvent('pointermove', { pointerId: 1, clientX: 150, clientY: 100 }))
+    expect(onMove).toHaveBeenCalledTimes(1)
+    expect(onMove.mock.calls[0][0].deltaX).toBe(50)
+
+    // 正常松手收尾。
+    window.dispatchEvent(new PointerEvent('pointerup', { pointerId: 1, clientX: 150, clientY: 100 }))
+    expect(onEnd).toHaveBeenCalledTimes(1)
+    expect(onCancel).not.toHaveBeenCalled()
+
+    handle.destroy()
+    el.remove()
+  })
+
+  it('捕获丢失：手势元素自身意外 lostpointercapture 才取消拖拽', () => {
+    const el = document.createElement('div')
+    document.body.append(el)
+
+    const onCancel = vi.fn<() => void>()
+    const handle = attachDragGesture(el, { axis: 'x', threshold: 0, onCancel })
+
+    el.dispatchEvent(
+      new PointerEvent('pointerdown', { bubbles: true, pointerId: 1, clientX: 100, clientY: 100, isPrimary: true })
+    )
+    expect(handle.isDragging()).toBe(true)
+
+    el.dispatchEvent(new PointerEvent('lostpointercapture', { bubbles: true, pointerId: 1 }))
+    expect(onCancel).toHaveBeenCalledTimes(1)
+    expect(handle.isDragging()).toBe(false)
+
+    handle.destroy()
+    el.remove()
+  })
+
+  it('捕获转手：pointerup 后释放捕获产生的 lostpointercapture 不误伤', () => {
+    const el = document.createElement('div')
+    document.body.append(el)
+
+    const onCancel = vi.fn<() => void>()
+    const handle = attachDragGesture(el, { axis: 'x', threshold: 0, onCancel })
+
+    el.dispatchEvent(
+      new PointerEvent('pointerdown', { bubbles: true, pointerId: 1, clientX: 100, clientY: 100, isPrimary: true })
+    )
+    window.dispatchEvent(new PointerEvent('pointerup', { pointerId: 1, clientX: 100, clientY: 100, isPrimary: true }))
+
+    // resetState 里 releasePointerCapture 触发的 lostpointercapture 在 activePointerId
+    // 置空后异步到达：pointerId 守卫直接忽略，不触发二次取消。
+    el.dispatchEvent(new PointerEvent('lostpointercapture', { bubbles: true, pointerId: 1 }))
+    expect(onCancel).not.toHaveBeenCalled()
+    expect(handle.isDragging()).toBe(false)
 
     handle.destroy()
     el.remove()

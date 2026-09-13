@@ -327,24 +327,59 @@ export class WebUiDrawer extends LitElement {
     // fill:'both' 与 _springRebound 对称：堵住 finish→onfinish 清理窗口，
     // 防止该窗口内绘制的帧暴露内联位移、随清理触发跳变。
     const animation = dialog.animate(keyframes, { duration, easing: 'linear', fill: 'both' })
-    // onfinish 同步应用终态并取消动画：fill 会持续覆盖 transform，阻断后续 CSS 过渡。
+    // 审计（Safari 不采信 fill 覆盖的 before-change style）：受控分支 finishClose
+    // 把内联写入闭合位，cancel 时内联 == fill 终态 == 生效闭合位，三值一致；非受控
+    // 分支 finishClose 在 fill 覆盖期间完成 is-visible 切换并清内联，cancel 后
+    // computed 落到 CSS 闭合位且 == fill 终态 to，同样无中间旧值可被采样。因此
+    // 「先应用终态再 cancel」对关闭路径已满足，无需像弹回那样保留内联终值。
     animation.onfinish = () => {
-      animation.cancel()
       finishClose()
+      animation.cancel()
     }
   }
 
-  // 弹回打开：从 from 位移弹回 0；结束后清内联样式交还 CSS transition 管辖。
+  // 弹回打开：从 from 位移弹回 0；结束后把内联样式交还打开态/CSS transition 管辖。
   private _springRebound(dialog: HTMLDialogElement, velocity: number, from: number) {
     this._dragOffset = 0
 
+    // 弹回结束把内联样式覆写为打开态终值而非删除：Safari 计算 CSS transition 的
+    // before-change style 时不采信 WAAPI fill 动画的覆盖值，删除内联会让它采样到
+    // 拖拽残留位移（如 -64px）作为旧值，与打开态 0 之间触发一次额外的 transform
+    // 过渡 —— 即弹回结束后再次多弹一次（Chrome 采信 fill 故不复现）。
+    // translateX(0px)/translateY(0px) 与打开态 CSS transform translate(0,0) 数学等价，
+    // backdrop opacity 1 与 --wui-internal-drag-backdrop-opacity 的默认值一致；内联
+    // 保留到关闭管线：关闭时 _springToClose 的 animate 会覆盖它，其 finishClose 清理
+    // 内联时 dialog 已进入关闭流程（is-visible 移除/闭合位写入），无 before-change
+    // 采样窗口。
+    const applyOpenInlineState = () => {
+      dialog.style.transform = this._dragAxis === 'x' ? 'translateX(0px)' : 'translateY(0px)'
+      dialog.style.setProperty('--wui-internal-drag-backdrop-opacity', '1')
+    }
+
+    // 同步收尾，顺序不可调换：
+    // 1. 把内联覆写为打开态终值（保留 is-dragging，transition:none 仍在抑制）；
+    // 2. void dialog.offsetWidth 强制一次同步样式重算：Safari 的 before-change
+    //    style 不采信 WAAPI fill 覆盖，此刻计算样式已真实归 0，重算把 0「烘焙」为
+    //    它内部 transition 参考值。rAF 不够：rAF 回调与 onfinish 常落在同一渲染帧，
+    //    Safari 在抑制解除时还没把 0 写进 transition 状态，会按旧值 -offset 补触发
+    //    （MutationObserver 实测：onfinish 与 is-dragging 移除同毫秒、transitionstart
+    //    延后 16ms 仍以 -9.6 为 from）。
+    // 3. 同步移除 is-dragging：重算后解除抑制是 0→0，无 before-change/after 差异，
+    //    无过渡可触发。顺序若反（先移除类再重算），解除抑制的瞬间 Safari 仍以旧值
+    //    为参考，过渡照旧触发。
+    // 防御：dialog 已关闭/断连时跳过样式收尾（is-dragging 随元素销毁自然消失）。
     const finishRebound = () => {
       this._dragAnimation = null
+      if (!dialog.isConnected) return
+      applyOpenInlineState()
+      void dialog.offsetWidth
       dialog.classList.remove('is-dragging')
-      this._clearDragStyles(dialog)
     }
 
     if (this._isReducedMotion() || typeof dialog.animate !== 'function' || Math.abs(from) < 1) {
+      // 无动画路径同样先加 is-dragging 抑制过渡，再走同一收尾；
+      // 保证所有 _springRebound 出口（onfinish/onCancel/受控回写弹回）行为一致。
+      dialog.classList.add('is-dragging')
       finishRebound()
       return
     }
@@ -363,10 +398,11 @@ export class WebUiDrawer extends LitElement {
     // 失效，窗口内被绘制的帧会暴露内联拖拽位移，随后的清理再触发 CSS 过渡滑回
     // 打开位 —— 表现为回弹后又多弹一次。
     const animation = dialog.animate(keyframes, { duration, easing: 'linear', fill: 'both' })
-    // onfinish 同步清除内联样式并取消动画：fill 会持续覆盖 transform，阻断后续 CSS 过渡。
+    // onfinish 时保持 is-dragging（transition 仍被抑制）走 finishRebound：
+    // 覆写内联 → 强制重算烘焙 0 → 移除类，Safari 无旧值可采信、无过渡可触发。
     animation.onfinish = () => {
-      animation.cancel()
       finishRebound()
+      animation.cancel()
     }
     this._dragAnimation = animation
   }
