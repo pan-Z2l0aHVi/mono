@@ -523,4 +523,72 @@ describe('WebUiSegmented 手势拖拽与吸附（浏览器）', () => {
     t1Inner.dispatchEvent(onInnerAfter)
     expect(onInnerAfter.defaultPrevented).toBe(false)
   })
+
+  it('按压与拖拽期间指示器的毛玻璃表面组成恒定（backdrop-filter 与背景不变）', async () => {
+    const { segmented, t1 } = createSegmented()
+    await segmented.updateComplete
+
+    const inner = segmented.shadowRoot?.querySelector('.wui-segmented') as HTMLElement
+    const indicator = inner.querySelector('.wui-segmented-indicator') as HTMLElement
+    const restBackdrop = getComputedStyle(indicator).backdropFilter
+    const restBg = getComputedStyle(indicator).backgroundColor
+    const restShadow = getComputedStyle(indicator).boxShadow
+    expect(restBackdrop).not.toBe('none')
+    expect(restBg).not.toBe('rgba(0, 0, 0, 0)')
+
+    const t1Rect = t1.getBoundingClientRect()
+    const x = t1Rect.left + t1Rect.width / 2
+    const y = t1Rect.top + t1Rect.height / 2
+
+    // 按压选中的 trigger（pointerdown）：背景与 backdrop-filter 必须与静止态完全一致。
+    inner.dispatchEvent(
+      new PointerEvent('pointerdown', {
+        bubbles: true,
+        isPrimary: true,
+        pointerId: 1,
+        clientX: x,
+        clientY: y
+      })
+    )
+    await segmented.updateComplete
+    expect(inner.classList.contains('is-pressed')).toBe(true)
+    expect(getComputedStyle(indicator).backdropFilter).toBe(restBackdrop)
+    expect(getComputedStyle(indicator).backgroundColor).toBe(restBg)
+    // 立体玻璃感：按压时投影加深。--wui-segmented-indicator-shadow-pressed 立即解析为
+    // 深色三层（0 6px 18px 层），等待 80ms box-shadow 过渡收敛后计算值含该层、静止态没有。
+    const pressedVar = getComputedStyle(indicator).getPropertyValue('--wui-segmented-indicator-shadow-pressed')
+    expect(pressedVar).toContain('0 6px 18px')
+    await new Promise(resolve => setTimeout(resolve, 120))
+    const pressedShadow = getComputedStyle(indicator).boxShadow
+    expect(pressedShadow).not.toBe(restShadow)
+    expect(pressedShadow).toContain('0px 6px 18px')
+
+    // 拖拽：仍一致。
+    window.dispatchEvent(
+      new PointerEvent('pointermove', {
+        bubbles: true,
+        isPrimary: true,
+        pointerId: 1,
+        clientX: x + 30,
+        clientY: y
+      })
+    )
+    await segmented.updateComplete
+    expect(inner.classList.contains('is-dragging')).toBe(true)
+    expect(getComputedStyle(indicator).backdropFilter).toBe(restBackdrop)
+    expect(getComputedStyle(indicator).backgroundColor).toBe(restBg)
+
+    window.dispatchEvent(
+      new PointerEvent('pointerup', {
+        bubbles: true,
+        isPrimary: true,
+        pointerId: 1,
+        clientX: x + 30,
+        clientY: y
+      })
+    )
+    await segmented.updateComplete
+    expect(getComputedStyle(indicator).backdropFilter).toBe(restBackdrop)
+    expect(getComputedStyle(indicator).backgroundColor).toBe(restBg)
+  })
 })

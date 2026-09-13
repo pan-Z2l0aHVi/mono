@@ -340,4 +340,68 @@ describe('WebUiSwitch 手势拖拽（浏览器）', () => {
 
     expect(getComputedStyle(getTrack(el)).touchAction).toBe('none')
   })
+
+  it('按压与拖拽期间 handle 的毛玻璃表面组成恒定（backdrop-filter 与背景不变）', async () => {
+    const el = createSwitch()
+    await el.updateComplete
+
+    const track = getTrack(el)
+    const thumb = track.querySelector('.wui-switch-thumb') as HTMLElement
+    const restBackdrop = getComputedStyle(thumb).backdropFilter
+    const restBg = getComputedStyle(thumb).backgroundColor
+    const restShadow = getComputedStyle(thumb).boxShadow
+    expect(restBackdrop).not.toBe('none')
+    expect(restBg).not.toBe('rgba(0, 0, 0, 0)')
+
+    // 按压（pointerdown）：背景与 backdrop-filter 必须与静止态完全一致。
+    track.dispatchEvent(
+      new PointerEvent('pointerdown', {
+        bubbles: true,
+        isPrimary: true,
+        pointerId: 1,
+        clientX: 10,
+        clientY: 10
+      })
+    )
+    await el.updateComplete
+    expect(thumb.classList.contains('is-pressed')).toBe(true)
+    expect(getComputedStyle(thumb).backdropFilter).toBe(restBackdrop)
+    expect(getComputedStyle(thumb).backgroundColor).toBe(restBg)
+    // 立体玻璃感：按压时投影加深。--wui-internal-glass-shadow 立即解析为深色三层
+    // （0 10px 28px 层），等待 80ms box-shadow 过渡收敛后计算值含该层、静止态没有。
+    const pressedVar = getComputedStyle(thumb).getPropertyValue('--wui-internal-glass-shadow')
+    expect(pressedVar).toContain('0 10px 28px')
+    await new Promise(resolve => setTimeout(resolve, 120))
+    const pressedShadow = getComputedStyle(thumb).boxShadow
+    expect(pressedShadow).not.toBe(restShadow)
+    expect(pressedShadow).toContain('0px 10px 28px')
+
+    // 拖拽：仍一致。
+    window.dispatchEvent(
+      new PointerEvent('pointermove', {
+        bubbles: true,
+        isPrimary: true,
+        pointerId: 1,
+        clientX: 18,
+        clientY: 10
+      })
+    )
+    await el.updateComplete
+    expect(track.classList.contains('is-dragging')).toBe(true)
+    expect(getComputedStyle(thumb).backdropFilter).toBe(restBackdrop)
+    expect(getComputedStyle(thumb).backgroundColor).toBe(restBg)
+
+    window.dispatchEvent(
+      new PointerEvent('pointerup', {
+        bubbles: true,
+        isPrimary: true,
+        pointerId: 1,
+        clientX: 18,
+        clientY: 10
+      })
+    )
+    await el.updateComplete
+    expect(getComputedStyle(thumb).backdropFilter).toBe(restBackdrop)
+    expect(getComputedStyle(thumb).backgroundColor).toBe(restBg)
+  })
 })

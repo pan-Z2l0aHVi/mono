@@ -86,6 +86,9 @@ const PAN_MOVE_THRESHOLD = 3
 // 滑动切图的最小位移与甩动速度，任一满足即切图。
 const SWIPE_DISTANCE = 48
 const SWIPE_VELOCITY = 320
+// 滑入/回位的兜底时长：正常由 transform 的 transitionend 提前收尾；jsdom、无过渡
+// （prefers-reduced-motion）等场景没有 transitionend，按该时长兜底提交。
+const SWIPE_SETTLE_MS = 320
 
 /**
  * 图像预览的内部宿主。对外只通过 `imagePreview()` 使用，因此不导出类、
@@ -117,8 +120,18 @@ class WebUiImagePreview extends LitElement {
   @state() private _offsetY = 0
   /** 滑动跟手位移，只作用于左右方向；可叠加在平移位移之上。 */
   @state() private _swipeOffset = 0
-  @state() private _loaded = false
+  /** 滑入/回位过渡中：stage 挂 is-settling，启用轨道 transform 过渡。 */
+  @state() private _swipeSettling = false
   @state() private _dragging = false
+
+  /** 已加载完成的图片 src 集合；每张图首次 load/error 后淡入，切换回已加载图不再闪烁。 */
+  private _loadedSources = new Set<string>()
+
+  /** 相邻图方向：1 = 下一张（位于右侧），-1 = 上一张（位于左侧）。非响应式，随 _swipeOffset 一同更新。 */
+  private _swipeDir: 1 | -1 | 0 = 0
+  private _swipeSettleCommit = false
+  private _swipeSettleDir: 1 | -1 = 1
+  private _swipeSettleTimer: ReturnType<typeof setTimeout> | undefined
 
   private readonly _scrollLock = defineScrollLockLease().make()
   private readonly _presence = defineNativeDialogPresence().make({
@@ -149,7 +162,11 @@ class WebUiImagePreview extends LitElement {
   }
 
   private get _image() {
-    return this.shadowRoot?.querySelector<HTMLImageElement>('.wui-image-preview-image') ?? null
+    return (
+      this.shadowRoot?.querySelector<HTMLImageElement>(
+        '.wui-image-preview-slide.is-current .wui-image-preview-image'
+      ) ?? null
+    )
   }
 
   get index(): number {
@@ -192,11 +209,9 @@ class WebUiImagePreview extends LitElement {
     const next = this.loop ? ((target % count) + count) % count : clamp(target, 0, count - 1)
     if (next === this._index) return
 
-    const previousSrc = this.images[this._index]?.src
     this._index = next
     this.resetZoom()
-    // 复用同一个 <img>：src 变化时先退回未加载态，由 load 事件淡入。
-    if (this.images[next]?.src !== previousSrc) this._loaded = false
+    // 轨道渲染所有图：目标图若已加载直接展示（无淡入闪烁），未加载由图自身 load 淡入。
   }
 
   next(): void {
@@ -346,8 +361,11 @@ class WebUiImagePreview extends LitElement {
     return target === this.dialog || target === this._stage
   }
 
-  private _handleImageSettled = () => {
-    this._loaded = true
+  private _handleImageSettled = (event: Event) => {
+    const image = event.currentTarget as HTMLImageElement | null
+    if (!image) return
+    this._loadedSources.add(image.src)
+    this.requestUpdate()
   }
 
   private _handleCancel = (event: Event) => {
@@ -478,21 +496,82 @@ class WebUiImagePreview extends LitElement {
     this._gesture?.destroy()
     this._gesture = undefined
     this._dragging = false
+    this._cancelSwipeSettle()
+    this._swipeDir = 0
     this._swipeOffset = 0
+  }
+
+  /** 轮播滑动的相邻图索引；loop 环绕，非 loop 越界返回 -1（表示没有可滑入的图）。 */
+  private _adjacentIndex(dir: 1 | -1): number {
+    const count = this.images.length
+    if (count === 0) return -1
+    if (this.loop) return (((this._index + dir) % count) + count) % count
+    const target = this._index + dir
+    return target >= 0 && target < count ? target : -1
+  }
+
+  /** 取消未完成的滑入/回位过渡（新手势、pointercancel、关闭等接管时）。 */
+  private _cancelSwipeSettle() {
+    if (this._swipeSettleTimer !== undefined) {
+      clearTimeout(this._swipeSettleTimer)
+      this._swipeSettleTimer = undefined
+    }
+    this._swipeSettling = false
+    this._swipeSettleCommit = false
+    this._swipeSettleDir = 1
+  }
+
+  /** 滑入/回位过渡结束：按目标提交索引切换，或复位到单图静止态。 */
+  private _finishSwipeSettle() {
+    if (this._swipeSettleTimer === undefined) return
+    clearTimeout(this._swipeSettleTimer)
+    this._swipeSettleTimer = undefined
+    const commit = this._swipeSettleCommit
+    const dir = this._swipeSettleDir
+    this._swipeSettling = false
+    this._swipeSettleCommit = false
+    this._swipeDir = 0
+    this._swipeOffset = 0
+    if (commit) this._commitSwipeTo(dir)
+  }
+
+  /** 把当前索引切换到相邻图；相邻图在滑动期间已在 DOM 中呈现，提交后直接以已加载态展示，避免重复淡入闪烁。 */
+  private _commitSwipeTo(dir: 1 | -1) {
+    const target = this._adjacentIndex(dir)
+    if (target < 0 || target === this._index) return
+    this._index = target
+    this.resetZoom()
+  }
+
+  /** 释放后的滑入/回位：把 _swipeOffset 从跟手位移过渡到目标位（越界滑入相邻图，否则回 0）。 */
+  private _settleSwipe(deltaX: number, velocityX: number) {
+    const dir = this._swipeDir
+    const stageW = this._stage?.clientWidth ?? 0
+    if (dir === 0 || stageW <= 0) {
+      // 无横向位移或无布局（jsdom）：直接复位。
+      this._swipeOffset = 0
+      return
+    }
+    const crossed = Math.abs(deltaX) >= SWIPE_DISTANCE || Math.abs(velocityX) >= SWIPE_VELOCITY
+    const commit = crossed && this._adjacentIndex(dir) !== -1
+    this._swipeSettling = true
+    this._swipeSettleCommit = commit
+    this._swipeSettleDir = dir
+    // 过渡目标：越过阈值 → 轨道再滑一个舞台宽度让相邻图入位（相邻图本就在 ±100% 处，
+    // 提交后新当前图回到轨道原点，视觉位置不变、无跳变）；否则弹回原位。
+    this._swipeOffset = commit ? -dir * stageW : 0
+    this._swipeSettleTimer = setTimeout(() => this._finishSwipeSettle(), SWIPE_SETTLE_MS)
+  }
+
+  private _handleSwipeSettleEnd = (event: TransitionEvent) => {
+    if (!this._swipeSettling || event.propertyName !== 'transform') return
+    this._finishSwipeSettle()
   }
 
   private _panTo(deltaX: number, deltaY: number) {
     const bounds = this._offsetBounds()
     this._offsetX = clamp(this._panOriginX + deltaX, -bounds.x, bounds.x)
     this._offsetY = clamp(this._panOriginY + deltaY, -bounds.y, bounds.y)
-  }
-
-  private _commitSwipe(deltaX: number, velocityX: number) {
-    const crossed = Math.abs(deltaX) >= SWIPE_DISTANCE || Math.abs(velocityX) >= SWIPE_VELOCITY
-    if (!crossed) return
-    // 向左拖动进入下一张；越界时 goTo 自身会拒绝并回弹。
-    if (deltaX < 0) this.next()
-    else this.prev()
   }
 
   /**
@@ -509,6 +588,11 @@ class WebUiImagePreview extends LitElement {
    */
   private _handlePointerDown = (event: PointerEvent) => {
     if (!this._open) return
+
+    // 新手势接管：中止可能未完成的滑入/回位过渡并复位轮播状态。
+    this._cancelSwipeSettle()
+    this._swipeDir = 0
+    this._swipeOffset = 0
 
     // 只有主指针左键才可能生成 click；副指针或其它键的按下不产生 click，
     // 若让它们覆盖标记，主指针随后释放时的 click 会拿副指针的命中结果误判遮罩点击。
@@ -537,24 +621,25 @@ class WebUiImagePreview extends LitElement {
       threshold: PAN_MOVE_THRESHOLD,
       onMove: info => {
         if (this._swipeGesture) {
-          // 横向跟手位移用于切图（松手回弹），纵向仍然平移。
+          // 横向跟手位移驱动轨道整体平移（单轨道轮播），纵向仍然平移；
+          // 方向随拖拽符号更新，轨道位移随 _swipeOffset 反转时自然换向。
           this._swipeOffset = info.deltaX
+          if (info.deltaX !== 0) this._swipeDir = info.deltaX < 0 ? 1 : -1
           this._panTo(0, info.deltaY)
         } else this._panTo(info.deltaX, info.deltaY)
       },
       onEnd: info => {
         this._dragged = true
         this._dragging = false
-        if (this._swipeGesture) {
-          this._swipeOffset = 0
-          this._commitSwipe(info.deltaX, info.velocityX)
-        }
+        if (this._swipeGesture) this._settleSwipe(info.deltaX, info.velocityX)
       },
       onTap: () => {
         this._dragging = false
       },
       onCancel: () => {
         this._dragging = false
+        this._cancelSwipeSettle()
+        this._swipeDir = 0
         this._swipeOffset = 0
       }
     })
@@ -562,10 +647,20 @@ class WebUiImagePreview extends LitElement {
   }
 
   override render() {
-    const item = this.images[this._index]
     const count = this.images.length
     const zoomed = this._scale > MIN_SCALE
-    const transform = `translate3d(${this._offsetX + this._swipeOffset}px, ${this._offsetY}px, 0) scale(${this._scale})`
+    // 单轨道轮播（相邻图渲染）：轨道只放当前图与左右相邻，当前图恒在轨道原点。
+    // 相邻图用绝对定位放在 ±100%（= 舞台宽度）处，与当前图同尺寸同基线；loop
+    // 环绕时首尾相邻恒在两侧，任何索引拖拽（含首尾环绕）相邻图都真实跟手，不会
+    // 出现「越过轨道末端滑空」的空白（全量渲染轨道在 last→first 环绕时相邻图在
+    // 远端，拖拽中间态必然空白）。
+    // 轨道整体随 _swipeOffset 平移：松手越过阈值再滑一个舞台宽度让相邻图入位，
+    // 否则弹回原点。图片自身只负责平移/缩放（swipe 只动轨道、不碰图片 transform，
+    // 缩放锚点数学不变）。
+    const prevIndex = count > 0 ? this._adjacentIndex(-1) : -1
+    const nextIndex = count > 0 ? this._adjacentIndex(1) : -1
+    const trackTransform = `translate3d(${this._swipeOffset}px, 0, 0)`
+    const imageTransform = `translate3d(${this._offsetX}px, ${this._offsetY}px, 0) scale(${this._scale})`
 
     return html`
       <dialog
@@ -583,24 +678,76 @@ class WebUiImagePreview extends LitElement {
           class=${classMap({
             'wui-image-preview-stage': true,
             'is-zoomed': zoomed,
-            'is-dragging': this._dragging
+            'is-dragging': this._dragging,
+            'is-settling': this._swipeSettling
           })}
         >
-          ${
-            item
-              ? html`
-                  <img
-                    class=${classMap({ 'wui-image-preview-image': true, 'is-loaded': this._loaded })}
-                    src=${item.src}
-                    alt=${item.alt ?? ''}
-                    draggable="false"
-                    style=${styleMap({ transform })}
-                    @load=${this._handleImageSettled}
-                    @error=${this._handleImageSettled}
-                  />
-                `
-              : nothing
-          }
+          <div
+            class="wui-image-preview-track"
+            style=${styleMap({ transform: trackTransform })}
+            @transitionend=${this._handleSwipeSettleEnd}
+          >
+            ${
+              prevIndex >= 0
+                ? html`
+                    <div class="wui-image-preview-slide is-prev" aria-hidden="true">
+                      <img
+                        class=${classMap({
+                          'wui-image-preview-image': true,
+                          'is-loaded': this._loadedSources.has(this.images[prevIndex].src)
+                        })}
+                        src=${this.images[prevIndex].src}
+                        alt=${this.images[prevIndex].alt ?? ''}
+                        draggable="false"
+                        style=${styleMap({ transform: imageTransform })}
+                        @load=${this._handleImageSettled}
+                        @error=${this._handleImageSettled}
+                      />
+                    </div>
+                  `
+                : nothing
+            }
+            ${
+              count > 0
+                ? html`
+                    <div class="wui-image-preview-slide is-current">
+                      <img
+                        class=${classMap({
+                          'wui-image-preview-image': true,
+                          'is-loaded': this._loadedSources.has(this.images[this._index].src)
+                        })}
+                        src=${this.images[this._index].src}
+                        alt=${this.images[this._index].alt ?? ''}
+                        draggable="false"
+                        style=${styleMap({ transform: imageTransform })}
+                        @load=${this._handleImageSettled}
+                        @error=${this._handleImageSettled}
+                      />
+                    </div>
+                  `
+                : nothing
+            }
+            ${
+              nextIndex >= 0
+                ? html`
+                    <div class="wui-image-preview-slide is-next" aria-hidden="true">
+                      <img
+                        class=${classMap({
+                          'wui-image-preview-image': true,
+                          'is-loaded': this._loadedSources.has(this.images[nextIndex].src)
+                        })}
+                        src=${this.images[nextIndex].src}
+                        alt=${this.images[nextIndex].alt ?? ''}
+                        draggable="false"
+                        style=${styleMap({ transform: imageTransform })}
+                        @load=${this._handleImageSettled}
+                        @error=${this._handleImageSettled}
+                      />
+                    </div>
+                  `
+                : nothing
+            }
+          </div>
         </div>
         <div class="wui-image-preview-controls">
           ${
