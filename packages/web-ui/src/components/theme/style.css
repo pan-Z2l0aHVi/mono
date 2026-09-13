@@ -50,8 +50,10 @@
   --wui-radius-control: calc(infinity * 1px);
   --wui-radius-menu: 18px;
   --wui-radius-overlay: 28px;
-  display: block;
-  background-color: var(--wui-color-page, #fff);
+
+  /* contents：主题宿主不生成盒、不绘制页面背景，嵌入方保留对宿主背景的完全控制
+     （组件库不在宿主页面画背景）。自定义属性仍沿 DOM 树正常继承到 slotted 内容。 */
+  display: contents;
 }
 
 :host([motion='reduced']) {

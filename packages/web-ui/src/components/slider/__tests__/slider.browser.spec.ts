@@ -401,4 +401,60 @@ describe('WebUiSlider 组件（浏览器）', () => {
     await el.updateComplete
     expect(el.value).toBe(afterCancel)
   })
+
+  it('按压与拖拽期间 handle 的毛玻璃表面组成恒定（backdrop-filter 与背景不变）', async () => {
+    const el = document.createElement('web-ui-slider')
+    document.body.append(el)
+    await el.updateComplete
+
+    const slider = el.shadowRoot?.querySelector<HTMLElement>('[role="slider"]')
+    expect(slider).toBeTruthy()
+    const thumb = slider!.querySelector('.wui-slider-thumb') as HTMLElement
+    const rect = slider!.getBoundingClientRect()
+    const restBackdrop = getComputedStyle(thumb).backdropFilter
+    const restBg = getComputedStyle(thumb).backgroundColor
+    expect(restBackdrop).not.toBe('none')
+    expect(restBg).not.toBe('rgba(0, 0, 0, 0)')
+
+    const y = rect.top + rect.height / 2
+    // 按压（pointerdown）：背景与 backdrop-filter 必须与静止态完全一致。
+    slider!.dispatchEvent(
+      new PointerEvent('pointerdown', {
+        bubbles: true,
+        clientX: rect.left + rect.width * 0.25,
+        clientY: y,
+        pointerId: 1
+      })
+    )
+    await el.updateComplete
+    expect(thumb.classList.contains('is-pressed')).toBe(true)
+    expect(getComputedStyle(thumb).backdropFilter).toBe(restBackdrop)
+    expect(getComputedStyle(thumb).backgroundColor).toBe(restBg)
+
+    // 拖拽：仍一致。
+    slider!.dispatchEvent(
+      new PointerEvent('pointermove', {
+        bubbles: true,
+        clientX: rect.left + rect.width * 0.75,
+        clientY: y,
+        pointerId: 1
+      })
+    )
+    await el.updateComplete
+    expect(thumb.classList.contains('is-dragging')).toBe(true)
+    expect(getComputedStyle(thumb).backdropFilter).toBe(restBackdrop)
+    expect(getComputedStyle(thumb).backgroundColor).toBe(restBg)
+
+    slider!.dispatchEvent(
+      new PointerEvent('pointerup', {
+        bubbles: true,
+        clientX: rect.left + rect.width * 0.75,
+        clientY: y,
+        pointerId: 1
+      })
+    )
+    await el.updateComplete
+    expect(getComputedStyle(thumb).backdropFilter).toBe(restBackdrop)
+    expect(getComputedStyle(thumb).backgroundColor).toBe(restBg)
+  })
 })

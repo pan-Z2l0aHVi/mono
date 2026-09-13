@@ -829,16 +829,18 @@ Every presentation option defaults to off: with no options passed only the image
 
 Pinch-to-zoom is always on and has no option: the stage already owns pointer interaction, so there is nothing for a gesture to conflict with. The first finger still drives pan/swipe as usual and the second finger starts the pinch, which aborts any in-flight pan or swipe. A pinch does not close the preview, and the compatibility `click` that mixed input may synthesize afterwards is swallowed rather than treated as a backdrop click.
 
-Clicking anywhere outside the image, or pressing Escape, closes the preview. The native dialog always exposes the accessible name `图片预览`. With `swipe` on and more than one image, a horizontal drag at 1x past the threshold changes images, bouncing back at the bounds when `loop` is off; while it applies, that gesture owns the horizontal axis, so at 1x you drag horizontally to change images and vertically to pan. Once zoomed in, dragging always pans and never changes images. Because panning also works at 1x, `resetZoom()` is offered whenever the image is zoomed _or_ displaced — the reset button in the toolbar is enabled for a panned 1x image too.
+Clicking anywhere outside the image, or pressing Escape, closes the preview. The native dialog always exposes the accessible name `图片预览`. With `swipe` on and more than one image, the images live on a single carousel track: the current image and its neighbors sit side by side in slides of equal size, the stage clips the overflow, and the whole track translates with the finger. Releasing past the threshold slides the next image in (or bounces back below it); with `loop` on the wrap-around neighbor is always present beside the current image, and at the non-looping bounds the strip bounces back instead of crossing the boundary. While it applies, that gesture owns the horizontal axis, so at 1x you drag horizontally to change images and vertically to pan. Once zoomed in, dragging always pans and never changes images. Because panning also works at 1x, `resetZoom()` is offered whenever the image is zoomed _or_ displaced — the reset button in the toolbar is enabled for a panned 1x image too.
 
 A close request does not destroy the native dialog immediately: it stays in the top layer until the exit transition completes, then `dialog.close()` runs, the host is removed from the DOM, and `closed` resolves. Page scroll is locked while open unless `noScrollLock` is `true`.
 
 **CSS Custom Properties:**
 
-| Property                         | Default             | Description                             |
-| -------------------------------- | ------------------- | --------------------------------------- |
-| `--wui-image-preview-overlay-bg` | `rgb(0 0 0 / 0.72)` | Full-viewport backdrop background color |
-| `--wui-image-preview-edge-gap`   | `20px`              | Distance from controls to viewport edge |
+| Property                         | Default                          | Description                                       |
+| -------------------------------- | -------------------------------- | ------------------------------------------------- |
+| `--wui-image-preview-overlay-bg` | `rgb(0 0 0 / 0.72)`              | Full-viewport backdrop background color           |
+| `--wui-image-preview-edge-gap`   | `20px`                           | Distance from controls to viewport edge           |
+| `--wui-duration-swipe-settle`    | `220ms`                          | Carousel settle (slide-in / bounce-back) duration |
+| `--wui-ease-swipe`               | `cubic-bezier(0.32, 0.72, 0, 1)` | Carousel settle (slide-in / bounce-back) easing   |
 
 ---
 
@@ -1280,7 +1282,7 @@ Theme provider defining CSS custom property tokens.
 
 Defines foundation, color, layer, shadow, and motion tokens for its subtree. `motion="system"` follows `prefers-reduced-motion`; use `motion="reduced"` to reduce animation in a scope or `motion="full"` in a nested theme to restore normal token values. System appearance follows `prefers-color-scheme`.
 
-The host uses a block box and paints `--wui-color-page` so page backgrounds stay stable on iOS Safari and custom properties inherit to slotted content reliably.
+The host uses `display: contents` and does not paint any background: the library never draws on the host page, so the embedding application keeps full control of the surface behind the themed subtree. Custom properties still inherit to slotted content reliably.
 
 **Foundation tokens:**
 

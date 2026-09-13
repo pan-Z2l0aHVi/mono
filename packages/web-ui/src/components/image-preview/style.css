@@ -73,13 +73,9 @@ dialog.is-closing {
   touch-action: none;
   cursor: zoom-in;
 
-  overflow: hidden;
-  display: grid;
+  position: relative;
 
-  /* 显式约束轨道：否则唯一隐式行会按图片内容撑高，
-     max-width/max-height: 100% 失去确定参照，大图会被视口裁切。 */
-  grid-template: minmax(0, 1fr) / minmax(0, 1fr);
-  place-items: center;
+  overflow: hidden;
 
   width: 100%;
   height: 100%;
@@ -93,7 +89,48 @@ dialog.is-closing {
   cursor: grabbing;
 }
 
+/* 单轨道轮播（相邻图渲染）：轨道撑满舞台，当前图在原点、左右相邻用绝对定位放在
+   ±100%（= 舞台宽度）处，与当前图同尺寸同基线；舞台 overflow 裁切，轨道整体随跟手
+   位移平移。相邻图只在当前索引两侧各渲染一张（loop 环绕、非 loop 缺省一侧），任何
+   索引拖拽（含首尾环绕）相邻图都真实跟手，不会越过轨道末端滑空。
+   pointer-events: none 让空白的轨道区域穿透命中到舞台（空白点击仍算遮罩），图片自身
+   恢复 auto 接收手势。 */
+.wui-image-preview-track {
+  pointer-events: none;
+
+  position: absolute;
+  inset: 0;
+
+  width: 100%;
+  height: 100%;
+}
+
+.wui-image-preview-slide {
+  pointer-events: none;
+
+  /* 每个 slide 与舞台等宽等高，图片居中：相邻图与当前图同尺寸同基线。 */
+  position: absolute;
+  top: 0;
+  left: 0;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 100%;
+  height: 100%;
+}
+
+.wui-image-preview-slide.is-prev {
+  left: -100%;
+}
+
+.wui-image-preview-slide.is-next {
+  left: 100%;
+}
+
 .wui-image-preview-image {
+  pointer-events: auto;
   user-select: none;
 
   display: block;
@@ -104,7 +141,8 @@ dialog.is-closing {
   opacity: 0;
   object-fit: contain;
 
-  /* 拖拽（平移与滑动）不参与 transform 过渡（见 .is-dragging），避免跟手位移滞后。 */
+  /* 拖拽（平移）不参与 transform 过渡（见 .is-dragging），避免跟手位移滞后；
+     swipe 只动轨道，图片 transform 在滑动期间不变。 */
   transition:
     opacity var(--wui-duration-trigger, 160ms) var(--wui-ease-enter, cubic-bezier(0.23, 1, 0.32, 1)),
     transform var(--wui-duration-trigger, 160ms) var(--wui-ease-enter, cubic-bezier(0.23, 1, 0.32, 1));
@@ -120,9 +158,20 @@ dialog.is-closing {
   transition: opacity var(--wui-duration-trigger, 160ms) var(--wui-ease-enter, cubic-bezier(0.23, 1, 0.32, 1));
 }
 
+/* 轮播滑入/回位：跟手结束后把轨道 transform 过渡到目标位（当前图滑出、相邻图入位或
+   弹回）。transitionend 会触发组件内的收尾提交；时长/缓动可用组件级变量覆盖。 */
+.wui-image-preview-stage.is-settling .wui-image-preview-track {
+  transition: transform var(--wui-duration-swipe-settle, 220ms) var(--wui-ease-swipe, cubic-bezier(0.32, 0.72, 0, 1));
+}
+
+.wui-image-preview-stage.is-dragging .wui-image-preview-track {
+  transition: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .wui-image-preview-image,
-  .wui-image-preview-stage.is-dragging .wui-image-preview-image {
+  .wui-image-preview-stage.is-dragging .wui-image-preview-image,
+  .wui-image-preview-stage.is-settling .wui-image-preview-track {
     transition: opacity var(--wui-duration-feedback, 100ms);
   }
 }
