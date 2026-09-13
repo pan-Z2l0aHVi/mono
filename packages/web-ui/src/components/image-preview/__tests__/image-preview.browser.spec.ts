@@ -604,7 +604,7 @@ describe('imagePreview 命令式 API（浏览器）', () => {
     await handle.closed
   })
 
-  it('1x + swipe 多图时，纵向拖拽平移、横向拖拽仍然切图', async () => {
+  it('1x + swipe 多图时，纵向拖拽被忽略、横向拖拽仍然切图', async () => {
     const { handle, host } = await openPreview({ swipe: true, images: SMALL_IMAGES })
     const image = currentImage(host)
 
@@ -612,19 +612,17 @@ describe('imagePreview 命令式 API（浏览器）', () => {
     const stage = stageOf(image)
     await waitForStageSettled(stage)
 
-    const bounds = panBounds(image, stage)
-    expect(bounds.y).toBeGreaterThan(0)
-
-    // 纵向拖拽：swipe 只接管横向分量，纵向仍然平移，且不切换图片。
+    // 纵向拖拽：swipe 接管整个拖拽，纵向 delta 完全忽略——图片不位移、也不切图。
     stage.dispatchEvent(pointer('pointerdown', { clientX: 400, clientY: 300 }))
     await host.updateComplete
-    stage.dispatchEvent(pointer('pointermove', { clientX: 400, clientY: 300 + bounds.y / 2 }))
+    stage.dispatchEvent(pointer('pointermove', { clientX: 400, clientY: 200 }))
     await host.updateComplete
+    await waitForFrame()
 
-    expect(offsetYOf(image)).toBeCloseTo(bounds.y / 2, 0)
+    expect(offsetYOf(image)).toBeCloseTo(0, 0)
     expect(offsetXOf(image)).toBeCloseTo(0, 0)
 
-    stage.dispatchEvent(pointer('pointerup', { clientX: 400, clientY: 300 + bounds.y / 2 }))
+    stage.dispatchEvent(pointer('pointerup', { clientX: 400, clientY: 200 }))
     await host.updateComplete
     expect(handle.index).toBe(0)
 
