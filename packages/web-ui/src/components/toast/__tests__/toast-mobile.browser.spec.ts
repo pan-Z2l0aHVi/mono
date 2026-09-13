@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 import { page } from 'vite-plus/test/browser'
 
+import { pollUntil } from '@/shared/test-utils'
+
 import '..'
 
 afterEach(async () => {
@@ -40,5 +42,18 @@ describe('WebUiToast 移动端适配（浏览器）', () => {
     expect(getComputedStyle(blur).backdropFilter).not.toBe('none')
     expect(getComputedStyle(blur).transitionProperty).toContain('opacity')
     expect(getComputedStyle(surface).transitionProperty).toContain('opacity')
+
+    // 玻璃背景迁移：toast 自身透明（blur 层采样纯页面、白底随 surface 淡出），
+    // 背景与 padding 落在 surface 层。
+    expect(getComputedStyle(toast!).backgroundColor).toBe('rgba(0, 0, 0, 0)')
+    expect(getComputedStyle(surface).backgroundColor).not.toBe('rgba(0, 0, 0, 0)')
+
+    // 退场全程无白底残留：toast 自身保持透明，唯一不透明的玻璃背景随 surface 淡出。
+    el.visible = false
+    await el.updateComplete
+    expect(getComputedStyle(toast!).backgroundColor).toBe('rgba(0, 0, 0, 0)')
+    expect(getComputedStyle(surface).transitionProperty).toContain('opacity')
+    // 退场过渡进行中：唯一不透明的玻璃背景随 surface opacity 从 1 淡出（无白底残影）。
+    await pollUntil(() => getComputedStyle(surface).opacity !== '1', 'toast surface did not fade out')
   })
 })

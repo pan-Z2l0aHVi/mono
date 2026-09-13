@@ -84,6 +84,12 @@ describe('WebUiDropdown 组件（浏览器）', () => {
     expect(getComputedStyle(blur!).backdropFilter).not.toBe('none')
     expect(getComputedStyle(blur!).transitionProperty).toContain('opacity')
     expect(getComputedStyle(surface!).transitionProperty).toContain('opacity')
+
+    // 玻璃背景迁移：面板自身透明（blur 层采样纯页面、白底随 surface 淡出），
+    // 背景与 wui-glass 描边落在 surface 层。
+    expect(getComputedStyle(panel).backgroundColor).toBe('rgba(0, 0, 0, 0)')
+    expect(surface!.classList.contains('wui-glass')).toBe(true)
+    expect(getComputedStyle(surface!).backgroundColor).not.toBe('rgba(0, 0, 0, 0)')
   })
 
   it('指针点击可以打开子菜单', async () => {

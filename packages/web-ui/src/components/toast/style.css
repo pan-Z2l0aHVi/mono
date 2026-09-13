@@ -26,15 +26,15 @@
 
   width: min(320px, calc(100dvw - 2 * var(--wui-toast-viewport-gap, 16px)));
   min-height: 36px;
-  padding: 8px;
   border-radius: var(--wui-radius-menu, 18px);
 
   font-size: var(--wui-font-size, 14px);
   line-height: 1.5;
   color: var(--wui-color-text, #1b1b1b);
 
+  /* 玻璃背景随 surface 层淡出：toast 自身透明，blur 层采样纯页面不被提亮。 */
   opacity: 1;
-  background-color: var(--wui-color-surface-overlay, rgb(246 246 246 / 0.82));
+  background: transparent;
 
   /* 模糊由独立 .toast-blur 提供：面板自身不再 blur，避免与 blur 层双重模糊
      （blur 层采样 toast 半透明背景 + 页面，与旧效果线性等价）。 */
@@ -45,11 +45,18 @@
   transition: transform var(--wui-duration-toast-enter, 280ms) var(--wui-ease-enter, cubic-bezier(0.23, 1, 0.32, 1));
 }
 
-/* 内容层：承接原先 toast 的淡入淡出，自身 opacity 过渡不构成 backdrop root。 */
+/* 内容层：承接原先 toast 的淡入淡出与玻璃背景，自身 opacity 过渡不构成 backdrop
+   root。padding/圆角/背景随 surface 淡出，关闭过程无白底残影。 */
 .toast-surface {
   display: flex;
   gap: 8px;
+
+  padding: 8px;
+  border-radius: inherit;
+
   opacity: 0;
+  background-color: var(--wui-color-surface-overlay, rgb(246 246 246 / 0.82));
+
   transition: opacity var(--wui-duration-toast-enter, 280ms) var(--wui-ease-enter, cubic-bezier(0.23, 1, 0.32, 1));
 }
 

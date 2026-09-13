@@ -22,7 +22,6 @@
 }
 
 .popover-panel {
-  --wui-internal-glass-shadow: var(--wui-shadow-panel, 0 3px 9px rgb(0 0 0 / 0.27));
   --wui-glass-corner-radius: var(--wui-radius-menu, 18px);
   position: absolute;
   z-index: var(--wui-layer-inline-overlay, 1);
@@ -32,14 +31,11 @@
   box-sizing: border-box;
   width: max-content;
   max-width: min(90vw, 400px);
-  padding: 8px 12px;
   border-radius: var(--wui-radius-menu, 18px);
 
   font-size: var(--wui-font-size, 14px);
   line-height: 1.5;
   color: var(--wui-color-text, #1b1b1b);
-
-  background-color: var(--wui-color-surface-menu, rgb(246 246 246 / 0.82));
 
   &:where([hidden]) {
     display: none;
@@ -54,6 +50,13 @@
 .popover-panel.portal {
   position: fixed;
   z-index: var(--wui-layer-menu, 100);
+}
+
+/* 玻璃背景与 padding 落在 surface 层：面板自身背景透明（blur 层采样纯页面），
+   surface 位于 blur 之后绘制、随自身 opacity 淡出（关闭无白底残影）。 */
+.popover-panel .wui-floating-panel-surface {
+  padding: 8px 12px;
+  background-color: var(--wui-color-surface-menu, rgb(246 246 246 / 0.82));
 }
 
 :host([portal]) .popover-panel {

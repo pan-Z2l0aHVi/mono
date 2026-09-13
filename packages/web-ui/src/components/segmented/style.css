@@ -84,9 +84,9 @@
   /* 按下/拖拽时加深投影（立体玻璃感）。直接写死值、不经过 var 中转：iOS Safari 对
      var 离散切换驱动的 box-shadow 不触发过渡且可能整体不生效（上一轮真机「回退之前」）。 */
   box-shadow:
-    0 0 1px rgb(0 0 0 / 0.12),
-    0 8px 22px rgb(0 0 0 / 0.22),
-    0 18px 44px rgb(0 0 0 / 0.16);
+    0 0 1px rgb(0 0 0 / 0.1),
+    0 5px 14px rgb(0 0 0 / 0.16),
+    0 12px 28px rgb(0 0 0 / 0.1);
 }
 
 .wui-segmented.is-dragging:not(.is-disabled) {

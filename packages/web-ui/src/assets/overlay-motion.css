@@ -7,6 +7,16 @@
  * 独立 .wui-floating-panel-blur 层用自身 opacity 淡入淡出，内容由
  * .wui-floating-panel-surface 层承接同样的淡入淡出；两层都不在 opacity < 1 的
  * 祖先内，任何引擎下 blur 全程连续。面板自身只做 transform（scale）过渡。
+ *
+ * 玻璃背景迁移（surface 层承接）：
+ * 面板自身背景必须为透明、永不绘制半透明玻璃底色——blur 子层（.wui-floating-panel-blur）
+ * 的 backdrop 采样的是它背后的全部已绘制内容；若面板仍画 0.82 白底，blur 层会把它
+ * 连同页面一起模糊提亮（变白），且该白底不随 surface 的 opacity 淡出（关闭残影）。
+ * 玻璃背景与 padding 因此由各组件声明在 surface 上（surface 位于 blur 之后绘制，
+ * 覆盖在已模糊的纯页面之上，与旧效果数学等价）；wui-glass 类也由 portal / 模板在
+ * 构建时搬到 surface 层（surface 同时中和 wui-glass 自带的 backdrop-filter，模糊
+ * 只由 blur 层提供，避免双重模糊；阴影配置在 surface 作用域承接），面板只保留
+ * 定位/尺寸/圆角/裁切。
  */
 
 .wui-floating-panel {
@@ -15,9 +25,12 @@
 
   opacity: 1;
 
-  /* 面板本体不再承担模糊：blur 由独立 .wui-floating-panel-blur 提供。面板玻璃背景
-     保留在半透明表面层，blur 层采样「面板背景 + 页面」，与旧效果线性等价（blur 是
-     线性运算，恒定白色被 blur 不改变结果），避免静止态双重模糊。 */
+  /* 面板本体不承担模糊也不绘制玻璃背景：blur 由独立 .wui-floating-panel-blur 提供，
+     玻璃背景（含 padding 覆盖）由 .wui-floating-panel-surface 承接并随自身 opacity
+     淡出。面板若保留半透明背景，blur 层会把它采进 backdrop 提亮（变白）且永不淡出
+     （关闭残影）——见文件头注释。 */
+  background: transparent;
+
   /* stylelint-disable-next-line property-no-vendor-prefix */
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
@@ -56,10 +69,29 @@
     var(--wui-ease-enter, cubic-bezier(0.23, 1, 0.32, 1));
 }
 
-/* 内容层：承接原先面板自身的淡入淡出；自身 opacity 过渡不构成 backdrop root（见上）。 */
+/* 内容层：承接原先面板自身的淡入淡出与玻璃背景；自身 opacity 过渡不构成 backdrop
+   root（见上）。border-radius 跟随面板圆角，玻璃背景（含 wui-glass 描边）覆盖到
+   与 blur 层一致的圆角范围。 */
 .wui-floating-panel-surface {
+  /* wui-glass 在自身元素声明 --wui-internal-glass-shadow 弱默认值，切断面板（祖先）
+     沿继承传入的阴影配置；玻璃背景搬到 surface 后，面板上的 --wui-shadow-panel
+     配置必须在这里承接（surface 自身声明恒胜出继承），各浮层阴影才保持 panel 级。 */
+  --wui-internal-glass-shadow: var(--wui-shadow-panel, 0 3px 9px rgb(0 0 0 / 0.27));
+
   position: relative;
+
+  border-radius: inherit;
+
   opacity: 0;
+
+  /* 玻璃背景与描边（wui-glass）在 surface 上自声明 backdrop-filter；但模糊必须只由
+     独立 .wui-floating-panel-blur 层提供（与 dialog 的 .wui-dialog-surface 同构）——
+     否则静止态与过渡期 blur/brightness/saturate 全部双重叠加（过亮）。surface 自身
+     不绘制半透明底，取消 backdrop-filter 不改变任何采样结果。 */
+  /* stylelint-disable-next-line property-no-vendor-prefix */
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+
   transition: opacity var(--wui-internal-duration-float-enter, var(--wui-duration-float-enter, 160ms))
     var(--wui-ease-enter, cubic-bezier(0.23, 1, 0.32, 1));
 }

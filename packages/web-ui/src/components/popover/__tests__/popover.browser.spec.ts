@@ -262,4 +262,33 @@ describe('WebUiPopover 组件（浏览器）', () => {
 
     expect(parent.open).toBe(true)
   })
+
+  it('浮层面板双层玻璃：blur + surface 各自 opacity 过渡，玻璃背景落在 surface 层', async () => {
+    const popover = document.createElement('web-ui-popover')
+    popover.innerHTML = '<button slot="trigger">Trigger</button><div>Content</div>'
+    document.body.append(popover)
+    await popover.updateComplete
+
+    popover.show()
+    await popover.updateComplete
+    await new Promise(resolve => requestAnimationFrame(resolve))
+    await new Promise(resolve => requestAnimationFrame(resolve))
+
+    const panel = popover.shadowRoot?.querySelector<HTMLElement>('[role="dialog"]')
+    const blur = panel?.querySelector('.wui-floating-panel-blur') as HTMLElement
+    const surface = panel?.querySelector('.wui-floating-panel-surface') as HTMLElement
+    expect(blur).toBeTruthy()
+    expect(surface).toBeTruthy()
+    // 面板自身 opacity 恒 1、只做 transform 过渡（避免成为 backdrop root）
+    expect(getComputedStyle(panel!).transitionProperty).not.toContain('opacity')
+    expect(getComputedStyle(blur).backdropFilter).not.toBe('none')
+    expect(getComputedStyle(blur).transitionProperty).toContain('opacity')
+    expect(getComputedStyle(surface).transitionProperty).toContain('opacity')
+
+    // 玻璃背景迁移：面板自身透明（blur 层采样纯页面、白底随 surface 淡出），
+    // 背景与 wui-glass 描边落在 surface 层。
+    expect(getComputedStyle(panel!).backgroundColor).toBe('rgba(0, 0, 0, 0)')
+    expect(surface.classList.contains('wui-glass')).toBe(true)
+    expect(getComputedStyle(surface).backgroundColor).not.toBe('rgba(0, 0, 0, 0)')
+  })
 })

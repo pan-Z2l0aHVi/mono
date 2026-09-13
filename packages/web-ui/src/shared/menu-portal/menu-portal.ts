@@ -23,15 +23,17 @@ ${overlayMotion}`
  */
 export function createMenuPortalOverlay(className: string, target?: Element): MenuPortalOverlay {
   const panel = document.createElement('div')
-  panel.className = `wui-menu-portal-overlay wui-floating-panel wui-glass ${className}`
+  // wui-glass 不留在面板：玻璃背景/描边由 surface 层（wui-menu-scroll）承接并随其
+  // opacity 淡出；面板若保留玻璃底，blur 层会把它采进 backdrop 提亮且永不淡出。
+  panel.className = `wui-menu-portal-overlay wui-floating-panel ${className}`
   panel.dataset.wuiPresence = 'entering'
-  // 双层玻璃：blur 层 + surface 层（scroll 容器承接内容淡入淡出），面板自身 opacity 恒 1，
-  // 保证过渡期不成为 backdrop root、blur 连续（见 overlay-motion.css）。
+  // 双层玻璃：blur 层 + surface 层（scroll 容器承接内容淡入淡出），面板自身 opacity 恒 1、
+  // 背景透明，保证过渡期不成为 backdrop root、blur 连续（见 overlay-motion.css）。
   const blur = document.createElement('div')
   blur.className = 'wui-floating-panel-blur'
   blur.setAttribute('aria-hidden', 'true')
   const scroll = document.createElement('div')
-  scroll.className = 'wui-menu-scroll wui-floating-panel-surface'
+  scroll.className = 'wui-menu-scroll wui-floating-panel-surface wui-glass'
   const content = document.createElement('div')
   content.className = 'wui-menu-content'
   scroll.append(content)
