@@ -181,9 +181,11 @@ export class WebUiSwitch extends FormAssociated(LitElement) {
       'is-dragging': this._isDragging,
       'is-disabled': this._isDisabled || this.loading
     }
+    // wui-glass 恒开：backdrop-filter 持续存在，按下/拖拽只做背景与阴影过渡，
+    // 避免 Chrome 在 class 切换瞬间重光栅化毛玻璃造成闪变。
     const thumbCls = {
       'wui-switch-thumb': true,
-      'wui-glass': this._pressed || this._isDragging,
+      'wui-glass': true,
       'is-pressed': this._pressed || this._isDragging
     }
     const trackStyle = this._isDragging ? { '--wui-switch-drag-offset': `${this._dragOffset}px` } : {}

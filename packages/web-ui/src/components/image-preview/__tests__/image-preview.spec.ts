@@ -34,6 +34,18 @@ function dialogElement(): HTMLDialogElement {
   return dialog as HTMLDialogElement
 }
 
+/** 图片所在的舞台：单轨道结构下图片的父元素是 slide，舞台上溯一层。 */
+function stageOf(image: HTMLImageElement): HTMLElement {
+  return (image.closest('.wui-image-preview-stage') as HTMLElement) ?? image.parentElement!
+}
+
+/** 当前图片：相邻图渲染下首张 img 是 prev 邻居，必须按 is-current 槽取当前图。 */
+function currentImage(host: HTMLElement): HTMLImageElement {
+  return host.shadowRoot?.querySelector(
+    '.wui-image-preview-slide.is-current .wui-image-preview-image'
+  ) as HTMLImageElement
+}
+
 async function openPreview(options: Partial<Parameters<typeof imagePreview>[0]> = {}) {
   const handle = imagePreview({ images: IMAGES, ...options })
   await hostElement().updateComplete
@@ -147,8 +159,8 @@ describe('imagePreview 命令式 API', () => {
 
   it('双指拉开按距离比例放大，捏合到下限时复位为 1x', async () => {
     const handle = await openPreview()
-    const image = queryA11y(hostElement(), 'img') as HTMLImageElement
-    const stage = image.parentElement as HTMLElement
+    const image = currentImage(hostElement())
+    const stage = stageOf(image)
 
     // 两指相距 100px 落下即进入捏合。第一根手指在真实浏览器里一定是主指针。
     stage.dispatchEvent(touchPointer('pointerdown', { pointerId: 11, clientX: 100, clientY: 100, isPrimary: true }))
@@ -173,8 +185,8 @@ describe('imagePreview 命令式 API', () => {
 
   it('双指缩放不触发遮罩关闭，余波 click 被吞掉后遮罩关闭仍可用', async () => {
     const handle = await openPreview()
-    const image = queryA11y(hostElement(), 'img') as HTMLImageElement
-    const stage = image.parentElement as HTMLElement
+    const image = currentImage(hostElement())
+    const stage = stageOf(image)
 
     // 第一根手指必须标记为主指针：真实浏览器的首指恒为 primary，也只有它会走
     // 「记录空白命中」的分支。漏掉 isPrimary 会让用例绕过该分支而恒真。
@@ -200,8 +212,8 @@ describe('imagePreview 命令式 API', () => {
 
   it('关闭后不再响应仍在进行中的双指缩放', async () => {
     const handle = await openPreview()
-    const image = queryA11y(hostElement(), 'img') as HTMLImageElement
-    const stage = image.parentElement as HTMLElement
+    const image = currentImage(hostElement())
+    const stage = stageOf(image)
 
     stage.dispatchEvent(touchPointer('pointerdown', { pointerId: 31, clientX: 100, clientY: 100, isPrimary: true }))
     stage.dispatchEvent(touchPointer('pointerdown', { pointerId: 32, clientX: 200, clientY: 100, isPrimary: false }))
@@ -244,7 +256,7 @@ describe('imagePreview 命令式 API', () => {
     const handle = await openPreview()
     const host = hostElement()
     const image = queryA11y(host, 'img') as HTMLImageElement
-    const stage = image.parentElement as HTMLElement
+    const stage = stageOf(image)
 
     // 真实指针 click 一定带 detail>=1；实现据此排除键盘/程序化激活的 click。
     // 起于图片的按下 + 被重定向到舞台的 click：指针捕获后 click 的真实形态，不得关闭。
@@ -261,8 +273,8 @@ describe('imagePreview 命令式 API', () => {
 
   it('1x 拖拽进入平移手势路径，释放后的余波 click 不关闭浮层', async () => {
     const handle = await openPreview()
-    const image = queryA11y(hostElement(), 'img') as HTMLImageElement
-    const stage = image.parentElement as HTMLElement
+    const image = currentImage(hostElement())
+    const stage = stageOf(image)
 
     // jsdom 没有布局（offsetWidth/stage.clientWidth 均为 0），位移边界恒为 0，
     // 因此这里只覆盖 1x 已进入手势路径这一可观测事实：拖拽结束会置 _dragged，
@@ -305,8 +317,8 @@ describe('imagePreview 命令式 API', () => {
 
   it('noBackdropClose 时点击空白区域不关闭', async () => {
     const handle = await openPreview({ noBackdropClose: true })
-    const image = queryA11y(hostElement(), 'img') as HTMLImageElement
-    const stage = image.parentElement as HTMLElement
+    const image = currentImage(hostElement())
+    const stage = stageOf(image)
 
     stage.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0, pointerId: 1, isPrimary: true }))
     // detail>=1 才能走到 noBackdropClose 分支；否则会被「非指针 click」提前拦下，用例就失去意义。
@@ -321,7 +333,7 @@ describe('imagePreview 命令式 API', () => {
 
   it('非指针来源的 click（detail 为 0）不当作遮罩点击', async () => {
     const handle = await openPreview()
-    const stage = (queryA11y(hostElement(), 'img') as HTMLImageElement).parentElement as HTMLElement
+    const stage = stageOf(currentImage(hostElement()))
 
     // 先留下一次「起于空白」的按下，再模拟键盘激活控件产生的 click：
     // 它不是遮罩点击，不得关闭浮层。
@@ -337,8 +349,8 @@ describe('imagePreview 命令式 API', () => {
 
   it('副指针的按下不覆盖主指针记录的空白判定', async () => {
     const handle = await openPreview()
-    const image = queryA11y(hostElement(), 'img') as HTMLImageElement
-    const stage = image.parentElement as HTMLElement
+    const image = currentImage(hostElement())
+    const stage = stageOf(image)
 
     // 主指针起于空白区域：应判定为遮罩点击。
     stage.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0, pointerId: 1, isPrimary: true }))

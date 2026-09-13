@@ -710,6 +710,82 @@ describe('WebUiDrawer 组件', () => {
       }
     })
 
+    it('tap 拖拽区收尾移除内联拖拽样式：不残留 translateX(0px) 盖住后续开关过渡', async () => {
+      vi.useFakeTimers()
+      const el = createDrawer()
+      el.draggable = true
+      el.open = true
+      await waitForUpdate(el)
+      await vi.advanceTimersByTimeAsync(16)
+
+      const dialog = el.shadowRoot?.querySelector('dialog') as HTMLDialogElement
+      const dragZone = dialog.querySelector('.wui-drawer-drag-zone') as HTMLElement
+
+      // 无位移 tap：pointerdown + pointerup，走 _springRebound(0) 的无动画收尾。
+      dragZone.dispatchEvent(
+        new PointerEvent('pointerdown', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 100, clientY: 300 })
+      )
+      await waitForUpdate(el)
+      dragZone.dispatchEvent(
+        new PointerEvent('pointerup', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 100, clientY: 300 })
+      )
+      await waitForUpdate(el)
+
+      // 根因锁：tap 收尾必须移除内联拖拽样式。残留 translateX(0px) 会盖住闭合态
+      // CSS transform，之后用按钮/遮罩/Esc 关闭时开与关都失去过渡动画（快速连点
+      // 后「后续开关丢失过渡」的根因）。
+      expect(dialog.style.transform).toBe('')
+      expect(dialog.style.getPropertyValue('--wui-internal-drag-backdrop-opacity')).toBe('')
+      expect(dialog.classList.contains('is-dragging')).toBe(false)
+
+      vi.useRealTimers()
+      cleanupElement(el)
+    })
+
+    it('重开后到达的过期 close 事件不误关刚重开的 drawer；真实外部关闭仍生效', async () => {
+      vi.useFakeTimers()
+      const el = createDrawer()
+      el.open = true
+      await waitForUpdate(el)
+      await vi.advanceTimersByTimeAsync(16)
+
+      const dialog = el.shadowRoot?.querySelector('dialog') as HTMLDialogElement
+      expect(dialog.classList.contains('is-visible')).toBe(true)
+
+      // 关闭：jsdom 的 dialog.close() 不派发 close 事件，finishClosing 置位
+      // self-close 标志后事件永远「在路上」——等价于真实浏览器中异步 close 事件
+      // 尚未送达的状态。等待 fallback 计时器触发 finishClosing → dialog.close()。
+      el.open = false
+      await waitForUpdate(el)
+      await vi.advanceTimersByTimeAsync(500)
+      expect(dialog.open).toBe(false)
+
+      // 快速重开：真实浏览器中上一会话排队的 close 事件可能在此之后才到达。
+      el.open = true
+      await waitForUpdate(el)
+      await vi.advanceTimersByTimeAsync(16)
+      expect(dialog.open).toBe(true)
+      expect(dialog.classList.contains('is-visible')).toBe(true)
+
+      // 模拟上一会话的过期 close 事件此刻才到达：不得把刚重开的 drawer 误关
+      // （否则重开即被误关，表现为连续开关丢失过渡动画——真机「快速连点后后续
+      // drawer 开关丢失过渡」的根因之一）。
+      dialog.dispatchEvent(new Event('close'))
+      await waitForUpdate(el)
+      expect(el.open).toBe(true)
+      expect(dialog.open).toBe(true)
+      expect(dialog.classList.contains('is-visible')).toBe(true)
+
+      // self-close 标志已被上一步消费：真实外部关闭（如表单 method="dialog"）
+      // 仍走正常关闭管线。
+      dialog.dispatchEvent(new Event('close'))
+      await waitForUpdate(el)
+      expect(el.open).toBe(false)
+
+      vi.useRealTimers()
+      cleanupElement(el)
+    })
+
     it('关闭 onfinish 先写终态再 cancel：cancel 时内联已处于闭合位', async () => {
       vi.useFakeTimers()
       const removePropertySpy = vi.spyOn(CSSStyleDeclaration.prototype, 'removeProperty')

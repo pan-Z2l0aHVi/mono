@@ -13,16 +13,24 @@ function createTheme(appearance: 'light' | 'dark' | 'system' = 'light'): WebUiTh
 afterEach(() => document.body.replaceChildren())
 
 describe('WebUiTheme motion（浏览器）', () => {
-  it('host 使用 block 盒并绘制页面背景，避免 iOS Safari 上 display:contents 的 token 继承缺口', async () => {
+  it('host 使用 contents 盒且不绘制页面背景，自定义属性仍继承到内容', async () => {
     const theme = createTheme()
+    const child = document.createElement('span')
+    child.textContent = 'content'
+    theme.appendChild(child)
     await theme.updateComplete
 
-    expect(getComputedStyle(theme).display).toBe('block')
-    expect(getComputedStyle(theme).backgroundColor).toBe('rgb(255, 255, 255)')
+    // contents：宿主不生成盒、不绘制页面背景（嵌入方保留背景控制权）。
+    expect(getComputedStyle(theme).display).toBe('contents')
+    expect(getComputedStyle(theme).backgroundColor).toBe('rgba(0, 0, 0, 0)')
+
+    // display 不影响自定义属性继承：slotted/子树内容仍取到主题 token。
+    expect(getComputedStyle(child).getPropertyValue('--wui-duration-trigger').trim()).toBe('.16s')
+    expect(getComputedStyle(child).getPropertyValue('--wui-color-accent').trim()).toBe('#08f')
 
     theme.appearance = 'dark'
     await theme.updateComplete
-    expect(getComputedStyle(theme).backgroundColor).toBe('rgb(36, 38, 40)')
+    expect(getComputedStyle(child).getPropertyValue('--wui-color-accent').trim()).toBe('#0a84ff')
   })
 
   it('reduced scope 覆盖 motion token，嵌套 full scope 可恢复默认值', async () => {

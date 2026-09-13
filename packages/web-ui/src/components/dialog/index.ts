@@ -103,7 +103,17 @@ export class WebUiDialog extends LitElement {
   }
 
   private _onNativeClose = () => {
-    if (!this.open) return
+    // 关闭态下的 close 事件只可能是我们自己 finishClosing 排队的异步事件（或冗余的
+    // 外部关闭）：交给 presence 消费 self-close 标志，避免标志泄漏到下一次真实关闭。
+    if (!this.open) {
+      this._presence.handleNativeClose()
+      return
+    }
+
+    // 我们自己 dialog.close() 排队的 close 事件是异步任务：正常时序在本关闭会话内
+    // 到达，快速「关闭→重开」时它在重新打开之后才到达（过期事件）。两种情况都已
+    // 完成清理，由 presence 消费并返回 true，不能当成外部关闭把刚重开的 dialog 关掉。
+    if (this._presence.handleNativeClose()) return
 
     // controlled 下原生关闭（如表单 method="dialog"）视为未经 Consumer 批准的状态丢失：
     // 恢复受控状态并派发关闭请求，由 Consumer 决定是否关闭。
@@ -113,7 +123,6 @@ export class WebUiDialog extends LitElement {
       return
     }
 
-    this._presence.handleNativeClose()
     this._userOpenChange.mark()
     this.open = false
   }
