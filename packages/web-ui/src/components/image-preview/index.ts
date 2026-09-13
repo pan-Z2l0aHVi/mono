@@ -16,9 +16,9 @@ import {
   type PinchStartInfo
 } from '@/shared/gesture/pinch-gesture'
 import { defineNativeDialogPresence } from '@/shared/overlay/native-dialog-presence'
+import { getFallbackOverlayRoot } from '@/shared/overlay/overlay-root'
+import { findNearestTheme, findRootTheme } from '@/shared/overlay/theme-overlay-scope'
 import { defineScrollLockLease } from '@/shared/scroll-lock/scroll-lock'
-import { getFallbackOverlayRoot } from '@/shared/theme/overlay-root'
-import { findNearestTheme, findRootTheme } from '@/shared/theme/theme-scope'
 
 import style from './style.css?inline'
 
@@ -702,8 +702,9 @@ class WebUiImagePreview extends LitElement {
 /**
  * 打开一个命令式图片预览。
  *
- * 组件挂载到目标 `web-ui-theme` 的 overlay 容器（无主题作用域时回退到全局
- * fallback root），返回的句柄是唯一的控制入口。所有展示类选项默认关闭，
+ * 组件挂载到目标 `web-ui-theme` 的 theme-owned overlay root（无可用
+ * theme-owned root 时回退到全局 fallback overlay root），返回的句柄是唯一的
+ * 控制入口。所有展示类选项默认关闭，
  * 默认只渲染图片本身。
  */
 export function imagePreview(options: ImagePreviewOptions): ImagePreviewHandle {

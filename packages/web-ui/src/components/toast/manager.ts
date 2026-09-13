@@ -1,5 +1,5 @@
-import { getFallbackOverlayRoot } from '@/shared/theme/overlay-root'
-import { findNearestTheme, findRootTheme } from '@/shared/theme/theme-scope'
+import { getFallbackOverlayRoot } from '@/shared/overlay/overlay-root'
+import { findNearestTheme, findRootTheme } from '@/shared/overlay/theme-overlay-scope'
 
 import type { WebUiToast } from './toast'
 import type {

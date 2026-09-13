@@ -31,7 +31,7 @@ function getAllPortalPanels(selector: string): HTMLElement[] {
 }
 
 describe('WebUiAutocomplete 组件（浏览器）', () => {
-  it('Portal 打开后选项移入主题 overlay 容器并可点击选择', async () => {
+  it('Portal 打开后选项移入 theme-owned overlay root 并可点击选择', async () => {
     const theme = document.createElement('web-ui-theme')
     theme.setAttribute('appearance', 'light')
     theme.className = 'block'

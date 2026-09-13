@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it } from 'vite-plus/test'
 import '@/components/theme'
 import type { WebUiTheme } from '@/components/theme'
 
-import { findNearestTheme, findRootTheme } from '../theme-scope'
+import { findNearestTheme, findRootTheme } from '../theme-overlay-scope'
 
 afterEach(() => document.body.replaceChildren())
 
@@ -13,7 +13,7 @@ const createTheme = (): WebUiTheme => {
   return el
 }
 
-describe('shared/theme theme-scope', () => {
+describe('shared/overlay theme-overlay-scope', () => {
   it('findNearestTheme 沿父链命中最近的可承载浮层的主题宿主', async () => {
     const outer = createTheme()
     const inner = createTheme()

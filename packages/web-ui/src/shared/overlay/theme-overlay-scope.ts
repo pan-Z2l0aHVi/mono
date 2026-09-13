@@ -1,5 +1,9 @@
 import type { WebUiTheme } from '@/components/theme'
 
+/**
+ * Resolves the web-ui-theme element that owns the nearest scoped overlay root.
+ * Theme remains a public component; this module is overlay plumbing only.
+ */
 function getParentElement(element: Element): Element | null {
   if (element.parentElement) return element.parentElement
   const root = element.getRootNode()

@@ -3,6 +3,10 @@ import menuPortalStyle from '@/assets/menu-portal.css?inline'
 import overlayMotion from '@/assets/overlay-motion.css?inline'
 import toastContainerStyle from '@/assets/toast-containers.css?inline'
 
+/**
+ * Theme-owned overlay root plumbing: applies shared overlay styles to a theme
+ * root and lazily creates the document-level fallback overlay root.
+ */
 const FALLBACK_ROOT_ATTRIBUTE = 'data-wui-overlay-root'
 
 const overlayStyle = `${glass}\n${toastContainerStyle}\n${menuPortalStyle}\n${overlayMotion}`

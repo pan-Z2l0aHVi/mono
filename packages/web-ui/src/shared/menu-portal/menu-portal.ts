@@ -8,7 +8,7 @@ export interface MenuPortalOverlay {
   readonly content: HTMLElement
 }
 
-// 菜单面板所需的共享样式。常规 overlay 容器已预注入这些样式；但当 overlay 因
+// 菜单面板所需的共享样式。theme-owned/fallback overlay root 已预注入这些样式；但当 overlay 因
 // target 位于已打开原生 dialog 内而被挂到该 dialog（top layer）时，dialog 的
 // shadow root 并不包含这些样式。故面板自携带一份，保证在任何容器下都能正确渲染。
 const MENU_PANEL_STYLES = `${glass}
@@ -34,7 +34,7 @@ export function createMenuPortalOverlay(className: string, target?: Element): Me
   const container = resolveOverlayContainer(undefined, target ?? document.body, {
     preferRootTheme: target === undefined
   })
-  // 常规 overlay root 已预注入共享样式；只有 dialog 没有，因此按容器条件注入。
+  // theme-owned/fallback overlay root 已预注入共享样式；只有 dialog 没有，因此按容器条件注入。
   if (container instanceof HTMLDialogElement) {
     const style = document.createElement('style')
     style.textContent = MENU_PANEL_STYLES

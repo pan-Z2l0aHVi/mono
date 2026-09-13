@@ -88,7 +88,7 @@ describe('WebUiSelect 组件（浏览器）', () => {
     expect(panel?.querySelector(':scope > .select-scroll > .select-content web-ui-option')).toBeTruthy()
   })
 
-  it('主题作用域内打开 Portal Select 不撑开 overlay 容器', async () => {
+  it('主题作用域内打开 Portal Select 不撑开 theme-owned overlay root', async () => {
     const theme = document.createElement('web-ui-theme')
     theme.setAttribute('appearance', 'light')
     theme.className = 'block'
