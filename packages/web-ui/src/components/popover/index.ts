@@ -385,7 +385,8 @@ export class WebUiPopover extends LitElement {
           @pointerenter=${this._onPanelPointerEnter}
           @pointerleave=${this._onPanelPointerLeave}
         >
-          <slot></slot>
+          <div class="wui-floating-panel-blur" aria-hidden="true"></div>
+          <div class="wui-floating-panel-surface"><slot></slot></div>
         </div>
       </div>
     `

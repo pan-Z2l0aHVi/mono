@@ -26,6 +26,31 @@ describe('WebUiSelect 组件（浏览器）', () => {
     expect(select.open).toBe(false)
   })
 
+  it('浮层面板使用双层玻璃结构：blur 层 + surface 层各自 opacity 过渡', async () => {
+    const select = document.createElement('web-ui-select')
+    select.innerHTML = '<web-ui-option value="apple" label="Apple"></web-ui-option>'
+    document.body.append(select)
+    await select.updateComplete
+
+    const trigger = select.shadowRoot?.querySelector<HTMLElement>('[role="combobox"]')
+    trigger?.click()
+    await select.updateComplete
+    await new Promise(resolve => requestAnimationFrame(resolve))
+    await new Promise(resolve => requestAnimationFrame(resolve))
+
+    const panel = select.shadowRoot?.querySelector<HTMLElement>('.select-overlay')
+    expect(panel).toBeTruthy()
+    const blur = panel?.querySelector('.wui-floating-panel-blur') as HTMLElement
+    const surface = panel?.querySelector('.wui-floating-panel-surface') as HTMLElement
+    expect(blur).toBeTruthy()
+    expect(surface).toBeTruthy()
+    // 面板自身 opacity 恒 1、只做 transform 过渡（避免成为 backdrop root）
+    expect(getComputedStyle(panel!).transitionProperty).not.toContain('opacity')
+    expect(getComputedStyle(blur).backdropFilter).not.toBe('none')
+    expect(getComputedStyle(blur).transitionProperty).toContain('opacity')
+    expect(getComputedStyle(surface).transitionProperty).toContain('opacity')
+  })
+
   it('下拉滚动区域默认高度可通过 CSS variable 覆盖', async () => {
     const select = document.createElement('web-ui-select')
     select.innerHTML = '<web-ui-option value="apple">Apple</web-ui-option>'
@@ -85,7 +110,9 @@ describe('WebUiSelect 组件（浏览器）', () => {
     const panel = portalHost?.shadowRoot?.querySelector<HTMLElement>('[role="listbox"]')
     expect(select.open).toBe(true)
     expect(panel?.hasAttribute('hidden')).toBe(false)
-    expect(panel?.querySelector(':scope > .select-scroll > .select-content web-ui-option')).toBeTruthy()
+    expect(
+      panel?.querySelector(':scope > .wui-floating-panel-surface > .select-scroll > .select-content web-ui-option')
+    ).toBeTruthy()
   })
 
   it('主题作用域内打开 Portal Select 不撑开 overlay 容器', async () => {

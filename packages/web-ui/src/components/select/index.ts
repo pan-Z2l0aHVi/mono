@@ -436,7 +436,7 @@ export class WebUiSelect extends FormAssociated(LitElement) {
     content.className = 'select-content'
     this._portalContent = content
     scroll.append(content)
-    portal.panel.append(scroll)
+    ;(portal.surface ?? portal.panel).append(scroll)
     // 自定义 trigger 必须留在宿主内，不能随 options 迁入 portal 面板
     portal.moveContent(
       Array.from(this.children).filter(child => child.slot !== 'trigger'),
@@ -489,9 +489,12 @@ export class WebUiSelect extends FormAssociated(LitElement) {
           <web-ui-icon class="arrow" .icon=${lucideChevronDown}></web-ui-icon>
         </div>
         <div class="wui-glass select-overlay wui-floating-panel" hidden role="listbox" id=${listboxId}>
-          <div class="select-scroll">
-            <div class="select-content">
-              <slot @slotchange=${this._onSlotChange}></slot>
+          <div class="wui-floating-panel-blur" aria-hidden="true"></div>
+          <div class="wui-floating-panel-surface">
+            <div class="select-scroll">
+              <div class="select-content">
+                <slot @slotchange=${this._onSlotChange}></slot>
+              </div>
             </div>
           </div>
         </div>

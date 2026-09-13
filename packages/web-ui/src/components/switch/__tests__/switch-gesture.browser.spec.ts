@@ -376,8 +376,8 @@ describe('WebUiSwitch 手势拖拽（浏览器）', () => {
     expect(getComputedStyle(thumb).backgroundColor).toBe('rgba(0, 0, 0, 0)')
     const pressedShadow = getComputedStyle(thumb).boxShadow
     expect(pressedShadow).not.toBe(restShadow)
-    expect(pressedShadow).toContain('0px 14px 36px')
-    expect(pressedShadow).toContain('rgba(0, 0, 0, 0.28)')
+    expect(pressedShadow).toContain('0px 12px 30px')
+    expect(pressedShadow).toContain('rgba(0, 0, 0, 0.22)')
 
     // 拖拽：玻璃组成与按压态一致（背景透明 + backdrop blur），阴影保持加深。
     window.dispatchEvent(

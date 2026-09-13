@@ -910,4 +910,54 @@ describe('imagePreview 命令式 API（浏览器）', () => {
     handle.close()
     await handle.closed
   })
+
+  it('玻璃控件 blur 由独立层承担：dialog 不过渡 opacity，遮罩/舞台层 opacity 过渡', async () => {
+    const { host } = await openPreview({ toolbar: true, indicator: true, closable: true, nav: true })
+    const dialog = dialogElement()
+
+    // dialog 自身 opacity 恒 1、只做 transform 过渡（opacity < 1 会让 dialog 成为
+    // backdrop root，后代玻璃控件的 backdrop-filter 在过渡期被禁用、端点生硬跳变）。
+    expect(getComputedStyle(dialog).transitionProperty).not.toContain('opacity')
+    expect(getComputedStyle(dialog).opacity).toBe('1')
+    expect(getComputedStyle(dialog).transitionProperty).toContain('transform')
+
+    const backdrop = dialog.querySelector('.wui-image-preview-backdrop') as HTMLElement
+    const surface = dialog.querySelector('.wui-image-preview-surface') as HTMLElement
+    expect(backdrop).toBeTruthy()
+    expect(surface).toBeTruthy()
+    expect(getComputedStyle(backdrop).transitionProperty).toContain('opacity')
+    expect(getComputedStyle(surface).transitionProperty).toContain('opacity')
+
+    // 玻璃控件各自做 own opacity 过渡（is-visible 已打开 → 收敛到 1）：counter/toolbar
+    // 自身即玻璃元素，own opacity 不禁用自身 blur；nav/close 是 glass 按钮，blur 在
+    // shadow 内层原生 button 上，opacity 过渡须经 ::part(button) 落在该玻璃元素自身。
+    const toolbar = host.shadowRoot?.querySelector('.wui-image-preview-toolbar') as HTMLElement
+    const counter = host.shadowRoot?.querySelector('.wui-image-preview-counter') as HTMLElement
+    const closeHost = host.shadowRoot?.querySelector('.wui-image-preview-close') as HTMLElement
+    const navHost = host.shadowRoot?.querySelector('.wui-image-preview-nav-prev') as HTMLElement
+    const closeNative = closeHost.shadowRoot?.querySelector('button') as HTMLElement
+    const navNative = navHost.shadowRoot?.querySelector('button') as HTMLElement
+    expect(getComputedStyle(toolbar).backdropFilter).not.toBe('none')
+    expect(getComputedStyle(counter).backdropFilter).not.toBe('none')
+    expect(getComputedStyle(closeNative).backdropFilter).not.toBe('none')
+    expect(closeNative.getAttribute('part')).toBe('button')
+    expect(getComputedStyle(toolbar).transitionProperty).toContain('opacity')
+    expect(getComputedStyle(counter).transitionProperty).toContain('opacity')
+    expect(getComputedStyle(closeNative).transitionProperty).toContain('opacity')
+    expect(getComputedStyle(navNative).transitionProperty).toContain('opacity')
+    // 打开动画途中 opacity 处于 0→1 过渡，轮询等控件淡入收敛（验证 is-visible 驱动生效）。
+    await pollUntil(() => getComputedStyle(toolbar).opacity === '1', 'glass control did not fade in')
+    expect(getComputedStyle(counter).opacity).toBe('1')
+    expect(getComputedStyle(closeNative).opacity).toBe('1')
+
+    // 玻璃控件不在任何 opacity 过渡的祖先内（控件层、dialog 都恒 1）：向上到 dialog
+    // 的链条上没有任何元素声明 opacity 过渡——祖先 opacity 才会禁后代 blur。
+    for (const glass of [toolbar, counter, closeHost, navHost]) {
+      let node: HTMLElement | null = glass.parentElement
+      while (node && node !== dialog) {
+        expect(getComputedStyle(node).transitionProperty).not.toContain('opacity')
+        node = node.parentElement
+      }
+    }
+  })
 })

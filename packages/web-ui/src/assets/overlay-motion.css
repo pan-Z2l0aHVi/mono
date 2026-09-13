@@ -1,22 +1,76 @@
+/*
+ * 浮层面板共享动效。
+ *
+ * 双层玻璃结构（与 dialog 的 .wui-dialog-blur/.wui-dialog-surface 同构）：
+ * 面板自身 opacity 恒为 1，过渡期不成为 backdrop root——opacity < 1 的元素会关闭
+ * 后代（或自身含玻璃元素的）backdrop-filter，模糊会在过渡端点生硬跳变。模糊改由
+ * 独立 .wui-floating-panel-blur 层用自身 opacity 淡入淡出，内容由
+ * .wui-floating-panel-surface 层承接同样的淡入淡出；两层都不在 opacity < 1 的
+ * 祖先内，任何引擎下 blur 全程连续。面板自身只做 transform（scale）过渡。
+ */
+
 .wui-floating-panel {
   transform-origin: var(--wui-internal-overlay-transform-origin, center);
   transform: scale(1);
+
   opacity: 1;
-  transition:
-    opacity var(--wui-internal-duration-float-enter, var(--wui-duration-float-enter, 160ms))
-      var(--wui-ease-enter, cubic-bezier(0.23, 1, 0.32, 1)),
-    transform var(--wui-internal-duration-float-enter, var(--wui-duration-float-enter, 160ms))
-      var(--wui-ease-enter, cubic-bezier(0.23, 1, 0.32, 1));
+
+  /* 面板本体不再承担模糊：blur 由独立 .wui-floating-panel-blur 提供。面板玻璃背景
+     保留在半透明表面层，blur 层采样「面板背景 + 页面」，与旧效果线性等价（blur 是
+     线性运算，恒定白色被 blur 不改变结果），避免静止态双重模糊。 */
+  /* stylelint-disable-next-line property-no-vendor-prefix */
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+
+  transition: transform var(--wui-internal-duration-float-enter, var(--wui-duration-float-enter, 160ms))
+    var(--wui-ease-enter, cubic-bezier(0.23, 1, 0.32, 1));
 }
 
 .wui-floating-panel[data-wui-presence='entering'],
 .wui-floating-panel[data-wui-presence='closing'] {
   transform: scale(var(--wui-scale-enter, 0.97));
-  opacity: 0;
 }
 
 .wui-floating-panel[data-wui-presence='closing'] {
   pointer-events: none;
+  transition-duration: var(--wui-internal-duration-float-exit, var(--wui-duration-float-exit, 120ms));
+}
+
+/* 模糊层：覆盖整块玻璃表面，backdrop-filter 始终生效（面板自身 opacity 恒 1，
+   不构成 backdrop root），用自身 opacity 淡入淡出，模糊连续无跳变。 */
+.wui-floating-panel-blur {
+  pointer-events: none;
+
+  position: absolute;
+  inset: 0;
+
+  border-radius: inherit;
+
+  opacity: 0;
+
+  /* stylelint-disable-next-line property-no-vendor-prefix */
+  -webkit-backdrop-filter: blur(4px) saturate(160%) brightness(var(--wui-glass-brightness, 1.06));
+  backdrop-filter: blur(4px) saturate(160%) brightness(var(--wui-glass-brightness, 1.06));
+
+  transition: opacity var(--wui-internal-duration-float-enter, var(--wui-duration-float-enter, 160ms))
+    var(--wui-ease-enter, cubic-bezier(0.23, 1, 0.32, 1));
+}
+
+/* 内容层：承接原先面板自身的淡入淡出；自身 opacity 过渡不构成 backdrop root（见上）。 */
+.wui-floating-panel-surface {
+  position: relative;
+  opacity: 0;
+  transition: opacity var(--wui-internal-duration-float-enter, var(--wui-duration-float-enter, 160ms))
+    var(--wui-ease-enter, cubic-bezier(0.23, 1, 0.32, 1));
+}
+
+.wui-floating-panel[data-wui-presence='open'] .wui-floating-panel-blur,
+.wui-floating-panel[data-wui-presence='open'] .wui-floating-panel-surface {
+  opacity: 1;
+}
+
+.wui-floating-panel[data-wui-presence='closing'] .wui-floating-panel-blur,
+.wui-floating-panel[data-wui-presence='closing'] .wui-floating-panel-surface {
   transition-duration: var(--wui-internal-duration-float-exit, var(--wui-duration-float-exit, 120ms));
 }
 
@@ -25,6 +79,11 @@
   .wui-floating-panel[data-wui-presence='entering'],
   .wui-floating-panel[data-wui-presence='closing'] {
     transform: none;
+    transition-duration: 120ms;
+  }
+
+  .wui-floating-panel-blur,
+  .wui-floating-panel-surface {
     transition-duration: 120ms;
   }
 }

@@ -34,6 +34,11 @@ export interface OverlayPortalOptions {
 
 export interface OverlayPortal {
   readonly panel: HTMLElement
+  /**
+   * 浮层面板的内容层（承接淡入淡出）。面板创建时若 className 含 wui-floating-panel，
+   * 会构建 blur + surface 双层结构；否则为 null（内容仍直接挂在 panel）。
+   */
+  readonly surface: HTMLElement | null
   restoreContent(): void
   moveContent(nodes: Node[], target?: HTMLElement): void
   appendContent(nodes: Node[], target?: HTMLElement): void
@@ -82,6 +87,20 @@ export const defineOverlayPortal = () =>
     const panel = document.createElement('div')
     panel.className = ctx.className
     panel.dataset.wuiPresence = 'entering'
+
+    // 浮层面板双层玻璃结构：blur 层（独立 backdrop-filter）+ surface 层（内容淡入淡出）。
+    // 面板自身 opacity 恒 1（见 overlay-motion.css），内容与模糊各自过渡，保证任何
+    // 状态切换下 blur 连续。非浮层面板（无 wui-floating-panel）保持原单层结构。
+    let surface: HTMLElement | null = null
+    if (ctx.className.includes('wui-floating-panel')) {
+      const blur = document.createElement('div')
+      blur.className = 'wui-floating-panel-blur'
+      blur.setAttribute('aria-hidden', 'true')
+      surface = document.createElement('div')
+      surface.className = 'wui-floating-panel-surface'
+      panel.append(blur, surface)
+    }
+    const contentTarget = surface ?? panel
     root.append(style, panel)
 
     const trackedNodes: TrackedNodeEntry[] = []
@@ -225,8 +244,9 @@ export const defineOverlayPortal = () =>
 
     const api: OverlayPortal = {
       panel,
+      surface,
 
-      moveContent(nodes, target = panel) {
+      moveContent(nodes, target = contentTarget) {
         trackedNodes.forEach(entry => entry.marker.remove())
         const entries = nodes.map(recordEntry).filter((entry): entry is TrackedNodeEntry => entry !== null)
         trackedNodes.length = 0
@@ -235,7 +255,7 @@ export const defineOverlayPortal = () =>
         orderTargetBySkeleton(target)
       },
 
-      appendContent(nodes, target = panel) {
+      appendContent(nodes, target = contentTarget) {
         for (const node of nodes) {
           untrackNodes([node])
           const entry = recordEntry(node)

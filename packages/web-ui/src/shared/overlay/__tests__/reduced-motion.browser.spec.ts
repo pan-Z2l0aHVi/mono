@@ -64,6 +64,12 @@ describe('减少动效（浏览器）', () => {
     const root = document.querySelector<HTMLElement>('[data-wui-overlay-root]')?.shadowRoot
     const panel = root?.querySelector<HTMLElement>('[role="menu"]')
     expect(getComputedStyle(panel!).transform).toBe('none')
-    expect(getComputedStyle(panel!).transitionProperty).toContain('opacity')
+    // 双层玻璃：面板自身只过渡 transform（opacity 恒 1，避免成为 backdrop root），
+    // 内容与模糊由 surface/blur 层保留 opacity 过渡，reduce 下模糊仍连续。
+    expect(getComputedStyle(panel!).transitionProperty).not.toContain('opacity')
+    const surface = panel?.querySelector('.wui-floating-panel-surface') as HTMLElement
+    const blur = panel?.querySelector('.wui-floating-panel-blur') as HTMLElement
+    expect(getComputedStyle(surface).transitionProperty).toContain('opacity')
+    expect(getComputedStyle(blur).transitionProperty).toContain('opacity')
   })
 })

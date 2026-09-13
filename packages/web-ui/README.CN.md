@@ -735,7 +735,7 @@ Portal 面板创建时会镜像 host 上解析后的这些变量；更新 host �
 
 命令式图片预览，没有声明式标签契约：只能通过 `imagePreview()` 打开，并用返回的句柄控制。内部使用原生 `<dialog>` 的 `showModal()`，默认挂载到目标 `web-ui-theme` 的 overlay 容器（无主题作用域时回退到全局 fallback root）。
 
-它不复用 `<web-ui-dialog>` 组件：预览需要自身铺满视口的 dialog（遮罩即 dialog 背景）与自有指针交互，与 dialog 组件的玻璃卡片 / 插槽契约不同源。两者共享 `native-dialog-presence` 与 `scroll-lock` 两个底层插件，`noScrollLock` / `noBackdropClose` 的命名与语义也对齐同名属性。
+它不复用 `<web-ui-dialog>` 组件：预览需要自身铺满视口的 dialog（全视口遮罩由 dialog 内独立遮罩层渲染，dialog 元素自身不做 opacity 过渡，玻璃控件的 backdrop blur 全程连续）与自有指针交互，与 dialog 组件的玻璃卡片 / 插槽契约不同源。两者共享 `native-dialog-presence` 与 `scroll-lock` 两个底层插件，`noScrollLock` / `noBackdropClose` 的命名与语义也对齐同名属性。
 
 ```ts
 import { imagePreview } from '@greypan/web-ui'
