@@ -554,14 +554,13 @@ describe('WebUiSegmented 手势拖拽与吸附（浏览器）', () => {
     expect(inner.classList.contains('is-pressed')).toBe(true)
     expect(getComputedStyle(indicator).backdropFilter).toBe(restBackdrop)
     expect(getComputedStyle(indicator).backgroundColor).toBe(restBg)
-    // 立体玻璃感：按压时投影加深。--wui-segmented-indicator-shadow-pressed 立即解析为
-    // 深色三层（0 6px 18px 层），等待 80ms box-shadow 过渡收敛后计算值含该层、静止态没有。
-    const pressedVar = getComputedStyle(indicator).getPropertyValue('--wui-segmented-indicator-shadow-pressed')
-    expect(pressedVar).toContain('0 6px 18px')
+    // 立体玻璃感：按压时投影加深。box-shadow 直接写值（不经自定义属性中转，iOS 可靠），
+    // 等待 80ms 过渡收敛后计算值含加深层（0 10px 28px / 0.28）、静止态没有。
     await new Promise(resolve => setTimeout(resolve, 120))
     const pressedShadow = getComputedStyle(indicator).boxShadow
     expect(pressedShadow).not.toBe(restShadow)
-    expect(pressedShadow).toContain('0px 6px 18px')
+    expect(pressedShadow).toContain('0px 10px 28px')
+    expect(pressedShadow).toContain('rgba(0, 0, 0, 0.28)')
 
     // 拖拽：仍一致。
     window.dispatchEvent(

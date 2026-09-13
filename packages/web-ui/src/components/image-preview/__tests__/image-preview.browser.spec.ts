@@ -827,6 +827,72 @@ describe('imagePreview 命令式 API（浏览器）', () => {
     await handle.closed
   })
 
+  it('放大状态下：缩放/平移只作用于当前图，相邻图恒 1x 且不进入视口', async () => {
+    const { handle, host } = await openPreview({ swipe: true })
+    const image = currentImage(host)
+    await pollUntil(() => image.complete && image.offsetWidth > 0, 'image did not load')
+    const stage = stageOf(image)
+
+    const slides = host.shadowRoot?.querySelectorAll('.wui-image-preview-slide') as NodeListOf<HTMLElement>
+    const scaleOf = (img: HTMLImageElement) => new DOMMatrixReadOnly(getComputedStyle(img).transform).a
+    const track = host.shadowRoot?.querySelector('.wui-image-preview-track') as HTMLElement
+    const trackX = () => new DOMMatrixReadOnly(getComputedStyle(track).transform).m41
+
+    // 放大到 2x：只有当前图被缩放，相邻图保持 1x（不会「穿过来」）。
+    handle.zoomIn()
+    await host.updateComplete
+    handle.zoomIn()
+    await host.updateComplete
+    expect(handle.scale).toBeGreaterThan(1)
+    // 等 160ms 缩放 transform 过渡收敛后，当前图 scale 才反映目标倍率。
+    await pollUntil(() => scaleOf(currentImage(host)) > 1.2, 'current image scale did not settle above 1')
+    expect(scaleOf(currentImage(host))).toBeGreaterThan(1)
+    const neighborImgs = Array.from(
+      slides,
+      slide => slide.querySelector('.wui-image-preview-image') as HTMLImageElement
+    )
+    for (const [i, img] of neighborImgs.entries()) {
+      if (i === 1) continue
+      expect(scaleOf(img)).toBe(1)
+    }
+
+    // 放大状态下横向拖拽走 pan：轨道停在基准位、相邻 slide 不动不进入视口，pan 只动当前图。
+    const stageRect = stage.getBoundingClientRect()
+    const rectsBefore = Array.from(slides, slide => slide.getBoundingClientRect())
+    expect(rectsBefore[0].right).toBeLessThanOrEqual(stageRect.left + 1)
+    expect(rectsBefore[2].left).toBeGreaterThanOrEqual(stageRect.right - 1)
+
+    stage.dispatchEvent(pointer('pointerdown', { button: 0, clientX: 300, clientY: 300 }))
+    stage.dispatchEvent(pointer('pointermove', { clientX: 150, clientY: 300 }))
+    await host.updateComplete
+
+    expect(Math.abs(offsetXOf(currentImage(host)))).toBeGreaterThan(0)
+    expect(trackX()).toBe(0)
+    const rects = Array.from(slides, slide => slide.getBoundingClientRect())
+    expect(rects[0].left).toBeCloseTo(rectsBefore[0].left, 0)
+    expect(rects[0].right).toBeCloseTo(rectsBefore[0].right, 0)
+    expect(rects[2].left).toBeCloseTo(rectsBefore[2].left, 0)
+    expect(rects[2].right).toBeCloseTo(rectsBefore[2].right, 0)
+    // 当前 slide 不动，pan 只作用于其中的当前 img（slide 内相对位移）。
+    expect(rects[1].left).toBeCloseTo(rectsBefore[1].left, 0)
+    expect(Math.abs(currentImage(host).getBoundingClientRect().left - rectsBefore[1].left)).toBeGreaterThan(0)
+
+    // 回到 1x 后 swipe 恢复：横向拖拽仍切图（相邻图重新跟手）。
+    stage.dispatchEvent(pointer('pointerup', { clientX: 150, clientY: 300 }))
+    await host.updateComplete
+    handle.resetZoom()
+    await host.updateComplete
+    expect(handle.scale).toBe(1)
+
+    stage.dispatchEvent(pointer('pointerdown', { clientX: 400, clientY: 300, pointerId: 2 }))
+    stage.dispatchEvent(pointer('pointermove', { clientX: 100, clientY: 300, pointerId: 2 }))
+    stage.dispatchEvent(pointer('pointerup', { clientX: 100, clientY: 300, pointerId: 2 }))
+    await pollUntil(() => handle.index === 1, 'swipe did not recover after resetting zoom')
+
+    handle.close()
+    await handle.closed
+  })
+
   it('swipe 未达阈值释放：弹回原位且不切换图片', async () => {
     const { handle, host } = await openPreview({ swipe: true })
     const image = currentImage(host)

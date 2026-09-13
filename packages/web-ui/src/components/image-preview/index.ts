@@ -660,7 +660,13 @@ class WebUiImagePreview extends LitElement {
     const prevIndex = count > 0 ? this._adjacentIndex(-1) : -1
     const nextIndex = count > 0 ? this._adjacentIndex(1) : -1
     const trackTransform = `translate3d(${this._swipeOffset}px, 0, 0)`
+    // 缩放/平移只作用于当前图的 img：相邻 slide 永远 1x（scale(1)），放大态连纵向 pan
+    // 也不跟随（pan 只动当前图），避免放大后相邻图被带大/带进视口「穿过来」。
+    // 1x 时相邻图共享纵向 pan（offsetY），保持拖拽斜向时行内对齐——swipe 行为与上一轮一致。
     const imageTransform = `translate3d(${this._offsetX}px, ${this._offsetY}px, 0) scale(${this._scale})`
+    const neighborTransform = zoomed
+      ? 'translate3d(0, 0, 0) scale(1)'
+      : `translate3d(0, ${this._offsetY}px, 0) scale(1)`
 
     return html`
       <dialog
@@ -699,7 +705,7 @@ class WebUiImagePreview extends LitElement {
                         src=${this.images[prevIndex].src}
                         alt=${this.images[prevIndex].alt ?? ''}
                         draggable="false"
-                        style=${styleMap({ transform: imageTransform })}
+                        style=${styleMap({ transform: neighborTransform })}
                         @load=${this._handleImageSettled}
                         @error=${this._handleImageSettled}
                       />
@@ -739,7 +745,7 @@ class WebUiImagePreview extends LitElement {
                         src=${this.images[nextIndex].src}
                         alt=${this.images[nextIndex].alt ?? ''}
                         draggable="false"
-                        style=${styleMap({ transform: imageTransform })}
+                        style=${styleMap({ transform: neighborTransform })}
                         @load=${this._handleImageSettled}
                         @error=${this._handleImageSettled}
                       />
@@ -849,9 +855,8 @@ class WebUiImagePreview extends LitElement {
 /**
  * 打开一个命令式图片预览。
  *
- * 组件挂载到目标 `web-ui-theme` 的 theme-owned overlay root（无可用
- * theme-owned root 时回退到全局 fallback overlay root），返回的句柄是唯一的
- * 控制入口。所有展示类选项默认关闭，
+ * 组件挂载到目标 `web-ui-theme` 的 overlay 容器（无主题作用域时回退到全局
+ * fallback root），返回的句柄是唯一的控制入口。所有展示类选项默认关闭，
  * 默认只渲染图片本身。
  */
 export function imagePreview(options: ImagePreviewOptions): ImagePreviewHandle {
