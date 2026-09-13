@@ -285,7 +285,7 @@ describe('WebUiDropdown 在已打开原生 dialog 内（top layer）', () => {
       'Expected the dropdown menu to mount inside the drawer dialog'
     )
 
-    // 面板应被挂到 drawer 的 dialog 上（top layer），而不是 fallback/theme overlay 容器。
+    // 面板应被挂到 drawer 的 dialog 上（top layer），而不是 fallback/theme-owned overlay 容器。
     expect(drawerDialog.querySelector('[role="menu"]')).toBeTruthy()
     // 普通 overlay 容器内不应出现该面板。
     const overlayPanel = document.querySelector('[data-wui-overlay-root]')?.shadowRoot?.querySelector('[role="menu"]')

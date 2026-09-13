@@ -7,7 +7,7 @@ afterEach(() => {
   document.querySelector('[data-wui-overlay-root]')?.remove()
 })
 
-describe('shared/theme overlay-root', () => {
+describe('shared/overlay overlay-root', () => {
   it('fallback root 惰性创建一次并跨调用复用', () => {
     const first = getFallbackOverlayRoot()
     const second = getFallbackOverlayRoot()

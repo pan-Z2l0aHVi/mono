@@ -376,16 +376,16 @@ ArrowUp/ArrowDown 键增减数值。空输入或 `-` 在提交时被忽略，值
 
 选择器下拉框，支持键盘导航和 Portal。
 
-| 属性               | 类型                               | 默认值  | 说明                 |
-| ------------------ | ---------------------------------- | ------- | -------------------- |
-| `value`            | `string`                           | `''`    | 选中值               |
-| `placeholder`      | `string`                           | `''`    | 占位文本             |
-| `name`             | `string`                           | `''`    | 表单字段名           |
-| `disabled`         | `boolean`                          | `false` | 禁用状态             |
-| `required`         | `boolean`                          | `false` | 必填校验             |
-| `portal`           | `boolean`                          | `false` | 在主题浮层容器中渲染 |
-| `no-scroll-lock`   | `boolean`                          | `false` | 打开时不锁定页面滚动 |
-| `overlayContainer` | `HTMLElement \| () => HTMLElement` | —       | 显式 Portal 容器     |
+| 属性               | 类型                               | 默认值  | 说明                               |
+| ------------------ | ---------------------------------- | ------- | ---------------------------------- |
+| `value`            | `string`                           | `''`    | 选中值                             |
+| `placeholder`      | `string`                           | `''`    | 占位文本                           |
+| `name`             | `string`                           | `''`    | 表单字段名                         |
+| `disabled`         | `boolean`                          | `false` | 禁用状态                           |
+| `required`         | `boolean`                          | `false` | 必填校验                           |
+| `portal`           | `boolean`                          | `false` | 在 theme-owned overlay root 中渲染 |
+| `no-scroll-lock`   | `boolean`                          | `false` | 打开时不锁定页面滚动               |
+| `overlayContainer` | `HTMLElement \| () => HTMLElement` | —       | 显式 Portal 容器                   |
 
 **事件：** `input`, `change`, `open-change` (`CustomEvent<{ open: boolean }>`)
 
@@ -421,7 +421,7 @@ Portal 面板创建时会镜像 host 上解析后的这些变量；更新 host �
 | `readonly`           | `boolean`                          | `false`      | 只读状态（不可输入、不可展开下拉）                                    |
 | `required`           | `boolean`                          | `false`      | 必填校验                                                              |
 | `allow-custom-value` | `boolean`                          | `false`      | 允许 Enter 提交不在候选中的 custom value                              |
-| `portal`             | `boolean`                          | `false`      | 在主题浮层容器中渲染                                                  |
+| `portal`             | `boolean`                          | `false`      | 在 theme-owned overlay root 中渲染                                    |
 | `no-scroll-lock`     | `boolean`                          | `false`      | 打开时不锁定页面滚动                                                  |
 | `overlayContainer`   | `HTMLElement \| () => HTMLElement` | —            | 显式 Portal 容器                                                      |
 | `aria-label`         | `string`                           | —            | 无障碍名称                                                            |
@@ -731,7 +731,7 @@ Portal 面板创建时会镜像 host 上解析后的这些变量；更新 host �
 
 #### `imagePreview()`
 
-命令式图片预览，没有声明式标签契约：只能通过 `imagePreview()` 打开，并用返回的句柄控制。内部使用原生 `<dialog>` 的 `showModal()`，默认挂载到目标 `web-ui-theme` 的 overlay 容器（无主题作用域时回退到全局 fallback root）。
+命令式图片预览，没有声明式标签契约：只能通过 `imagePreview()` 打开，并用返回的句柄控制。内部使用原生 `<dialog>` 的 `showModal()`，默认挂载到最近的 `web-ui-theme` theme-owned overlay root（无可用 theme-owned root 时回退到全局 fallback overlay root）。
 
 它不复用 `<web-ui-dialog>` 组件：预览需要自身铺满视口的 dialog（遮罩即 dialog 背景）与自有指针交互，与 dialog 组件的玻璃卡片 / 插槽契约不同源。两者共享 `native-dialog-presence` 与 `scroll-lock` 两个底层插件，`noScrollLock` / `noBackdropClose` 的命名与语义也对齐同名属性。
 
@@ -760,7 +760,7 @@ await preview.closed
 | `images`          | `ImagePreviewItem[]` | —       | 图片列表，至少一项，否则抛错                         |
 | `index`           | `number`             | `0`     | 初始索引，越界时钳制到有效区间                       |
 | `loop`            | `boolean`            | `true`  | 首尾循环切换                                         |
-| `target`          | `Element`            | —       | 用于解析最近主题作用域的触发元素                     |
+| `target`          | `Element`            | —       | 用于解析最近 theme-owned overlay root 的触发元素     |
 | `container`       | `HTMLElement`        | —       | 显式挂载容器，优先级高于主题作用域                   |
 | `nav`             | `boolean`            | `false` | 展示上一张 / 下一张按钮；仅图片多于一张时渲染        |
 | `toolbar`         | `boolean`            | `false` | 展示缩放工具条（缩小 / 倍率 / 放大 / 重置）          |
@@ -879,15 +879,15 @@ await preview.closed
 
 锚定触发元素的弹出层。
 
-| 属性               | 类型                               | 默认值     | 说明                 |
-| ------------------ | ---------------------------------- | ---------- | -------------------- |
-| `open`             | `boolean`                          | `false`    | 弹出层可见性         |
-| `disabled`         | `boolean`                          | `false`    | 禁用状态             |
-| `placement`        | `Placement`                        | `'bottom'` | Floating UI 位置     |
-| `trigger`          | `'click' \| 'hover' \| 'manual'`   | `'click'`  | 触发方式             |
-| `offset`           | `number`                           | `8`        | 与锚点距离           |
-| `portal`           | `boolean`                          | `false`    | 在主题浮层容器中渲染 |
-| `overlayContainer` | `HTMLElement \| () => HTMLElement` | —          | 显式 Portal 容器     |
+| 属性               | 类型                               | 默认值     | 说明                               |
+| ------------------ | ---------------------------------- | ---------- | ---------------------------------- |
+| `open`             | `boolean`                          | `false`    | 弹出层可见性                       |
+| `disabled`         | `boolean`                          | `false`    | 禁用状态                           |
+| `placement`        | `Placement`                        | `'bottom'` | Floating UI 位置                   |
+| `trigger`          | `'click' \| 'hover' \| 'manual'`   | `'click'`  | 触发方式                           |
+| `offset`           | `number`                           | `8`        | 与锚点距离                         |
+| `portal`           | `boolean`                          | `false`    | 在 theme-owned overlay root 中渲染 |
+| `overlayContainer` | `HTMLElement \| () => HTMLElement` | —          | 显式 Portal 容器                   |
 
 **事件：** `open-change` (`CustomEvent<{ open: boolean }>`)
 
@@ -903,17 +903,17 @@ Hover 模式使用 `pointerenter`/`pointerleave` 加延迟控制。Click 模式�
 
 工具提示，支持指针和焦点触发。
 
-| 属性               | 类型                               | 默认值  | 说明                 |
-| ------------------ | ---------------------------------- | ------- | -------------------- |
-| `placement`        | `Placement`                        | `'top'` | Floating UI 位置     |
-| `content`          | `string`                           | `''`    | 提示文本（替代插槽） |
-| `open`             | `boolean`                          | `false` | 可见性               |
-| `disabled`         | `boolean`                          | `false` | 禁用状态             |
-| `show-delay`       | `number`                           | `200`   | 显示延迟（毫秒）     |
-| `hide-delay`       | `number`                           | `100`   | 隐藏延迟（毫秒）     |
-| `offset`           | `number`                           | `6`     | 与触发器的距离       |
-| `portal`           | `boolean`                          | `false` | 在主题浮层容器中渲染 |
-| `overlayContainer` | `HTMLElement \| () => HTMLElement` | —       | 显式 Portal 容器     |
+| 属性               | 类型                               | 默认值  | 说明                               |
+| ------------------ | ---------------------------------- | ------- | ---------------------------------- |
+| `placement`        | `Placement`                        | `'top'` | Floating UI 位置                   |
+| `content`          | `string`                           | `''`    | 提示文本（替代插槽）               |
+| `open`             | `boolean`                          | `false` | 可见性                             |
+| `disabled`         | `boolean`                          | `false` | 禁用状态                           |
+| `show-delay`       | `number`                           | `200`   | 显示延迟（毫秒）                   |
+| `hide-delay`       | `number`                           | `100`   | 隐藏延迟（毫秒）                   |
+| `offset`           | `number`                           | `6`     | 与触发器的距离                     |
+| `portal`           | `boolean`                          | `false` | 在 theme-owned overlay root 中渲染 |
+| `overlayContainer` | `HTMLElement \| () => HTMLElement` | —       | 显式 Portal 容器                   |
 
 **事件：** `open-change` (`CustomEvent<{ open: boolean }>`)
 
@@ -1236,7 +1236,9 @@ SVG 线条绘制动画，基于 `stroke-dashoffset`。直接在原元素上动�
 | `appearance` | `'light' \| 'dark' \| 'system'`   | `'light'`  | 配色方案                   |
 | `motion`     | `'full' \| 'reduced' \| 'system'` | `'system'` | 当前嵌套主题范围的动效偏好 |
 
-**方法：** `getOverlayRoot()` — 返回 Portal 浮层容器
+**方法：** `getOverlayRoot()` — 返回该主题拥有的 theme-owned overlay root
+
+**Portal 挂载契约：** 每个 active `<web-ui-theme>` 同时是默认的 scoped theme-owned overlay root。Portal 类组件在未显式传入 `overlayContainer` 时，会解析到最近的 active theme 的 `getOverlayRoot()`；无 target 的调用优先使用 root theme 的 theme-owned overlay root。没有 active theme 提供 root 时，回退到全局 fallback overlay root。
 
 在其子树中定义基础、颜色、层级、阴影和动效 token。`motion="system"` 跟随 `prefers-reduced-motion`；使用 `motion="reduced"` 降低当前作用域动效，或在嵌套主题中使用 `motion="full"` 恢复默认 token。System 配色模式跟随 `prefers-color-scheme`。
 
@@ -1361,17 +1363,17 @@ toast.updateMessage(id, { message: '上传已完成 60%', heading: '正在上传
 
 **ToastOptions：**
 
-| 选项        | 类型                                          | 默认值                    | 说明                         |
-| ----------- | --------------------------------------------- | ------------------------- | ---------------------------- |
-| `message`   | `string`                                      | —                         | 通知文本                     |
-| `type`      | `'success' \| 'info' \| 'warning' \| 'error'` | `'info'`                  | 类型                         |
-| `duration`  | `number`                                      | `3000`（error 为 `5000`） | 自动关闭时间（0=不自动关闭） |
-| `closable`  | `boolean`                                     | `true`                    | 显示关闭按钮                 |
-| `id`        | `string`                                      | auto                      | 去重标识符                   |
-| `heading`   | `string`                                      | `''`                      | 粗体标题                     |
-| `position`  | 6 种位置                                      | `'top-right'`             | 屏幕位置                     |
-| `target`    | `Element`                                     | —                         | 用于查找最近主题作用域       |
-| `container` | `HTMLElement`                                 | —                         | 显式挂载容器（最高优先级）   |
+| 选项        | 类型                                          | 默认值                    | 说明                                  |
+| ----------- | --------------------------------------------- | ------------------------- | ------------------------------------- |
+| `message`   | `string`                                      | —                         | 通知文本                              |
+| `type`      | `'success' \| 'info' \| 'warning' \| 'error'` | `'info'`                  | 类型                                  |
+| `duration`  | `number`                                      | `3000`（error 为 `5000`） | 自动关闭时间（0=不自动关闭）          |
+| `closable`  | `boolean`                                     | `true`                    | 显示关闭按钮                          |
+| `id`        | `string`                                      | auto                      | 去重标识符                            |
+| `heading`   | `string`                                      | `''`                      | 粗体标题                              |
+| `position`  | 6 种位置                                      | `'top-right'`             | 屏幕位置                              |
+| `target`    | `Element`                                     | —                         | 用于查找最近 theme-owned overlay root |
+| `container` | `HTMLElement`                                 | —                         | 显式挂载容器（最高优先级）            |
 
 **`toast.updateMessage(id, options)`** 更新可见 Toast 的 `message`，并在传入时更新 `heading`；不会重置自动关闭计时。`options` 类型为 `ToastMessageUpdateOptions`：`{ message: string; heading?: string }`。
 

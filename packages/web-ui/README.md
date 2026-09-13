@@ -406,16 +406,16 @@ ArrowUp/ArrowDown keyboard increments and decrements the value. Empty or `-` inp
 
 Select dropdown with option items, keyboard navigation, and portal support.
 
-| Attribute          | Type                               | Default | Description                       |
-| ------------------ | ---------------------------------- | ------- | --------------------------------- |
-| `value`            | `string`                           | `''`    | Selected value                    |
-| `placeholder`      | `string`                           | `''`    | Placeholder text                  |
-| `name`             | `string`                           | `''`    | Form field name                   |
-| `disabled`         | `boolean`                          | `false` | Disabled state                    |
-| `required`         | `boolean`                          | `false` | Required validation               |
-| `portal`           | `boolean`                          | `false` | Render dropdown in theme overlay  |
-| `no-scroll-lock`   | `boolean`                          | `false` | Do not lock body scroll when open |
-| `overlayContainer` | `HTMLElement \| () => HTMLElement` | —       | Explicit portal container         |
+| Attribute          | Type                               | Default | Description                                 |
+| ------------------ | ---------------------------------- | ------- | ------------------------------------------- |
+| `value`            | `string`                           | `''`    | Selected value                              |
+| `placeholder`      | `string`                           | `''`    | Placeholder text                            |
+| `name`             | `string`                           | `''`    | Form field name                             |
+| `disabled`         | `boolean`                          | `false` | Disabled state                              |
+| `required`         | `boolean`                          | `false` | Required validation                         |
+| `portal`           | `boolean`                          | `false` | Render dropdown in theme-owned overlay root |
+| `no-scroll-lock`   | `boolean`                          | `false` | Do not lock body scroll when open           |
+| `overlayContainer` | `HTMLElement \| () => HTMLElement` | —       | Explicit portal container                   |
 
 **Events:** `input`, `change`, `open-change` (`CustomEvent<{ open: boolean }>`)
 
@@ -453,7 +453,7 @@ Editable combobox with input filtering and single option selection.
 | `readonly`           | `boolean`                          | `false`      | Read-only state (no typing, no dropdown)                                                          |
 | `required`           | `boolean`                          | `false`      | Required validation                                                                               |
 | `allow-custom-value` | `boolean`                          | `false`      | Allow Enter to submit a custom value that is not among candidates                                 |
-| `portal`             | `boolean`                          | `false`      | Render dropdown in theme overlay                                                                  |
+| `portal`             | `boolean`                          | `false`      | Render dropdown in theme-owned overlay root                                                       |
 | `no-scroll-lock`     | `boolean`                          | `false`      | Do not lock body scroll when open                                                                 |
 | `overlayContainer`   | `HTMLElement \| () => HTMLElement` | —            | Explicit portal container                                                                         |
 | `aria-label`         | `string`                           | —            | Accessible name                                                                                   |
@@ -767,7 +767,7 @@ When `closable` is set, the built-in close button is positioned at the header's 
 
 #### `imagePreview()`
 
-Imperative image preview with no declarative tag contract: open it through `imagePreview()` and drive it through the returned handle. It uses the native `<dialog>` `showModal()` and mounts into the nearest `web-ui-theme` overlay container, falling back to the global fallback root when no theme scope exists.
+Imperative image preview with no declarative tag contract: open it through `imagePreview()` and drive it through the returned handle. It uses the native `<dialog>` `showModal()` and mounts into the nearest `web-ui-theme` theme-owned overlay root, falling back to the global fallback overlay root when no theme-owned root exists.
 
 It does not reuse the `<web-ui-dialog>` component: the preview needs a dialog that fills the viewport itself (the backdrop is the dialog background) plus its own pointer interaction, which is a different source than the dialog's glass panel and slot contract. The two share the `native-dialog-presence` and `scroll-lock` plugins, and `noScrollLock` / `noBackdropClose` mirror the same-named properties in naming and semantics.
 
@@ -796,7 +796,7 @@ await preview.closed
 | `images`          | `ImagePreviewItem[]` | —       | Image list; must contain at least one item, else it throws                  |
 | `index`           | `number`             | `0`     | Initial index, clamped into range                                           |
 | `loop`            | `boolean`            | `true`  | Wrap around at both ends                                                    |
-| `target`          | `Element`            | —       | Trigger element used to resolve the nearest theme scope                     |
+| `target`          | `Element`            | —       | Trigger element used to resolve the nearest theme-owned overlay root        |
 | `container`       | `HTMLElement`        | —       | Explicit mount container, highest priority                                  |
 | `nav`             | `boolean`            | `false` | Show prev/next buttons; rendered only when more than one image              |
 | `toolbar`         | `boolean`            | `false` | Show the zoom toolbar (out / factor / in / reset)                           |
@@ -915,15 +915,15 @@ The fade band is positioned in percentages, relative to the container's **curren
 
 Popover overlay anchored to trigger element.
 
-| Attribute          | Type                               | Default    | Description               |
-| ------------------ | ---------------------------------- | ---------- | ------------------------- |
-| `open`             | `boolean`                          | `false`    | Popover visibility        |
-| `disabled`         | `boolean`                          | `false`    | Disabled state            |
-| `placement`        | `Placement`                        | `'bottom'` | Floating UI placement     |
-| `trigger`          | `'click' \| 'hover' \| 'manual'`   | `'click'`  | Open trigger              |
-| `offset`           | `number`                           | `8`        | Offset from anchor        |
-| `portal`           | `boolean`                          | `false`    | Render in theme overlay   |
-| `overlayContainer` | `HTMLElement \| () => HTMLElement` | —          | Explicit portal container |
+| Attribute          | Type                               | Default    | Description                        |
+| ------------------ | ---------------------------------- | ---------- | ---------------------------------- |
+| `open`             | `boolean`                          | `false`    | Popover visibility                 |
+| `disabled`         | `boolean`                          | `false`    | Disabled state                     |
+| `placement`        | `Placement`                        | `'bottom'` | Floating UI placement              |
+| `trigger`          | `'click' \| 'hover' \| 'manual'`   | `'click'`  | Open trigger                       |
+| `offset`           | `number`                           | `8`        | Offset from anchor                 |
+| `portal`           | `boolean`                          | `false`    | Render in theme-owned overlay root |
+| `overlayContainer` | `HTMLElement \| () => HTMLElement` | —          | Explicit portal container          |
 
 **Events:** `open-change` (`CustomEvent<{ open: boolean }>`)
 
@@ -948,7 +948,7 @@ Tooltip overlay using pointer/focus triggers.
 | `show-delay`       | `number`                           | `200`   | Show delay in ms                   |
 | `hide-delay`       | `number`                           | `100`   | Hide delay in ms                   |
 | `offset`           | `number`                           | `6`     | Offset from trigger                |
-| `portal`           | `boolean`                          | `false` | Render in theme overlay            |
+| `portal`           | `boolean`                          | `false` | Render in theme-owned overlay root |
 | `overlayContainer` | `HTMLElement \| () => HTMLElement` | —       | Explicit portal container          |
 
 **Events:** `open-change` (`CustomEvent<{ open: boolean }>`)
@@ -1272,7 +1272,9 @@ Theme provider defining CSS custom property tokens.
 | `appearance` | `'light' \| 'dark' \| 'system'`   | `'light'`  | Color scheme                                  |
 | `motion`     | `'full' \| 'reduced' \| 'system'` | `'system'` | Motion preference for this nested theme scope |
 
-**Methods:** `getOverlayRoot()` — returns the portal overlay container
+**Methods:** `getOverlayRoot()` — returns this theme-owned overlay root
+
+**Portal mounting contract:** Every active `<web-ui-theme>` is also the default scoped theme-owned overlay root. Portal-based components without an explicit `overlayContainer` resolve to the nearest active theme's `getOverlayRoot()`; target-less portal calls prefer the root theme's theme-owned overlay root. When no active theme provides a root, they fall back to the global fallback overlay root.
 
 Defines foundation, color, layer, shadow, and motion tokens for its subtree. `motion="system"` follows `prefers-reduced-motion`; use `motion="reduced"` to reduce animation in a scope or `motion="full"` in a nested theme to restore normal token values. System appearance follows `prefers-color-scheme`.
 
@@ -1397,17 +1399,17 @@ toast.updateMessage(id, { message: 'Upload 60% complete', heading: 'Uploading' }
 
 **ToastOptions:**
 
-| Option      | Type                                                                                              | Default                   | Description                                 |
-| ----------- | ------------------------------------------------------------------------------------------------- | ------------------------- | ------------------------------------------- |
-| `message`   | `string`                                                                                          | —                         | Notification text                           |
-| `type`      | `'success' \| 'info' \| 'warning' \| 'error'`                                                     | `'info'`                  | Toast type                                  |
-| `duration`  | `number`                                                                                          | `3000` (`5000` for error) | Auto-close duration (0 = no auto-close)     |
-| `closable`  | `boolean`                                                                                         | `true`                    | Show close button                           |
-| `id`        | `string`                                                                                          | auto                      | Deduplication identifier                    |
-| `heading`   | `string`                                                                                          | `''`                      | Bold heading text                           |
-| `position`  | `'top-left' \| 'top-center' \| 'top-right' \| 'bottom-left' \| 'bottom-center' \| 'bottom-right'` | `'top-right'`             | Screen position                             |
-| `target`    | `Element`                                                                                         | —                         | Used to find nearest theme scope            |
-| `container` | `HTMLElement`                                                                                     | —                         | Explicit mount container (highest priority) |
+| Option      | Type                                                                                              | Default                   | Description                                   |
+| ----------- | ------------------------------------------------------------------------------------------------- | ------------------------- | --------------------------------------------- |
+| `message`   | `string`                                                                                          | —                         | Notification text                             |
+| `type`      | `'success' \| 'info' \| 'warning' \| 'error'`                                                     | `'info'`                  | Toast type                                    |
+| `duration`  | `number`                                                                                          | `3000` (`5000` for error) | Auto-close duration (0 = no auto-close)       |
+| `closable`  | `boolean`                                                                                         | `true`                    | Show close button                             |
+| `id`        | `string`                                                                                          | auto                      | Deduplication identifier                      |
+| `heading`   | `string`                                                                                          | `''`                      | Bold heading text                             |
+| `position`  | `'top-left' \| 'top-center' \| 'top-right' \| 'bottom-left' \| 'bottom-center' \| 'bottom-right'` | `'top-right'`             | Screen position                               |
+| `target`    | `Element`                                                                                         | —                         | Used to find nearest theme-owned overlay root |
+| `container` | `HTMLElement`                                                                                     | —                         | Explicit mount container (highest priority)   |
 
 **`toast.updateMessage(id, options)`** updates the visible toast's `message` and, when supplied, `heading`. It does not restart the auto-close timer. `options` is `ToastMessageUpdateOptions`: `{ message: string; heading?: string }`.
 

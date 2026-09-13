@@ -2,7 +2,7 @@ import { html, LitElement, nothing, unsafeCSS } from 'lit'
 import { customElement, property } from 'lit/decorators.js'
 
 import { normalizeNumber } from '@/shared/normalize'
-import { findNearestTheme } from '@/shared/theme/theme-scope'
+import { findNearestTheme } from '@/shared/overlay/theme-overlay-scope'
 
 import style from './style.css?inline'
 
