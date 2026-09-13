@@ -185,49 +185,37 @@ describe('WebUiDialog 组件（浏览器）', () => {
     expect(component.open).toBe(false)
     expect(events).toHaveLength(0)
   })
-  it('玻璃背景 blur 由独立模糊层承担，opacity 过渡保证任何状态切换模糊连续', async () => {
+  it('玻璃卡片单层：opacity + backdrop-filter 插值过渡，任何状态切换模糊连续', async () => {
     const component = createDialog()
     component.open = true
     await component.updateComplete
     await new Promise(resolve => requestAnimationFrame(resolve))
 
     const dialog = component.shadowRoot?.querySelector('dialog') as HTMLDialogElement
-    const blurLayer = dialog.querySelector('.wui-dialog-blur') as HTMLElement
-    const surface = dialog.querySelector('.wui-dialog-surface') as HTMLElement
     const body = dialog.querySelector('.wui-dialog-body') as HTMLElement
-    expect(blurLayer).toBeTruthy()
-    expect(surface).toBeTruthy()
     expect(body).toBeTruthy()
 
-    // 打开态：模糊层可见、backdrop-filter 生效并带 opacity 过渡（淡入淡出而非离散跳变）。
-    // opacity 从 0 起过渡，轮询等它收敛到 1。
-    const blurBackdrop = getComputedStyle(blurLayer).backdropFilter
-    expect(blurBackdrop).not.toBe('none')
-    expect(blurBackdrop).toContain('blur(4px)')
-    await pollUntil(() => getComputedStyle(blurLayer).opacity === '1', 'blur layer did not fade in')
-    expect(getComputedStyle(surface).opacity).toBe('1')
-    expect(getComputedStyle(blurLayer).transitionProperty).toContain('opacity')
-    expect(getComputedStyle(surface).transitionProperty).toContain('opacity')
-
     // dialog 元素本身不参与 opacity 过渡：opacity < 1 会让 dialog 成为 backdrop root，
-    // 后代 backdrop-filter 在过渡期间被禁用、blur 在端点生硬跳变。transform 过渡保留。
+    // 后代 backdrop-filter 在过渡期间被禁用。transform 过渡保留。
     expect(getComputedStyle(dialog).transitionProperty).not.toContain('opacity')
     expect(getComputedStyle(dialog).opacity).toBe('1')
     expect(getComputedStyle(dialog).transitionProperty).toContain('transform')
 
-    // 玻璃背景迁移：dialog 自身透明（blur 层采样纯页面、白底随 surface 淡出），
-    // 玻璃背景保留在 surface 内的 body 上。
-    expect(getComputedStyle(dialog).backgroundColor).toBe('rgba(0, 0, 0, 0)')
-    expect(getComputedStyle(body).backgroundColor).not.toBe('rgba(0, 0, 0, 0)')
+    // 打开态：玻璃卡片自身承担玻璃，opacity 收敛到 1、blur 收敛到 4px，
+    // opacity + backdrop-filter 都有过渡（blur(0px)↔blur(4px) 平滑插值）。
+    const bodyStyle = getComputedStyle(body)
+    expect(body.classList.contains('wui-glass')).toBe(true)
+    expect(bodyStyle.backgroundColor).not.toBe('rgba(0, 0, 0, 0)')
+    expect(bodyStyle.transitionProperty).toContain('opacity')
+    expect(bodyStyle.transitionProperty).toContain('backdrop-filter')
+    await pollUntil(() => getComputedStyle(body).opacity === '1', 'dialog body did not fade in')
+    // 过渡收敛后 blur 插值到目标态 4px。
+    expect(getComputedStyle(body).backdropFilter).toContain('blur(4px)')
 
-    // body 自身不再带 backdrop-filter：模糊由独立层提供，避免静止态双重模糊。
-    expect(getComputedStyle(body).backdropFilter).toBe('none')
-
-    // 关闭：模糊层与内容层切到退场时长，opacity 过渡仍在（退场同样连续）。
+    // 关闭：卡片切到退场时长，opacity 与 backdrop-filter 过渡仍在（退场同样连续）。
     component.close()
     await component.updateComplete
-    expect(getComputedStyle(blurLayer).transitionDuration).not.toBe('0s')
-    expect(getComputedStyle(surface).transitionDuration).not.toBe('0s')
+    expect(getComputedStyle(body).transitionDuration).not.toBe('0s')
 
     dialog.dispatchEvent(new TransitionEvent('transitionend', { propertyName: 'transform' }))
     await new Promise(resolve => setTimeout(resolve))

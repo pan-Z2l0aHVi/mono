@@ -608,7 +608,7 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
     empty.dataset.wuiA11yEmpty = this._getEmptySlotText()
     scroll.append(content)
     content.append(empty)
-    ;(portal.surface ?? portal.panel).append(scroll)
+    portal.panel.append(scroll)
     for (const node of Array.from(this.childNodes)) {
       // 框架注释锚点（v-if/v-for 占位）必须留在宿主：锚点进面板后 Vue 下次翻转
       // 会以面板内节点为插入基准；portal 的 marker 注释同理不参与迁移。
@@ -707,19 +707,16 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
         </div>
         <div class="autocomplete-a11y-only autocomplete-empty-a11y" role="status" hidden></div>
         <div
-          class="autocomplete-overlay wui-floating-panel"
+          class="autocomplete-overlay wui-floating-panel wui-glass"
           hidden
           aria-hidden="true"
           @pointerdown=${this._handlePanelPointerDown}
         >
-          <div class="wui-floating-panel-blur" aria-hidden="true"></div>
-          <div class="wui-floating-panel-surface wui-glass">
-            <div class="autocomplete-scroll">
-              <div class="autocomplete-content">
-                <slot @slotchange=${this._onSlotChange}></slot>
-                <div class="autocomplete-empty" hidden>
-                  <slot name="empty">无匹配选项</slot>
-                </div>
+          <div class="autocomplete-scroll">
+            <div class="autocomplete-content">
+              <slot @slotchange=${this._onSlotChange}></slot>
+              <div class="autocomplete-empty" hidden>
+                <slot name="empty">无匹配选项</slot>
               </div>
             </div>
           </div>

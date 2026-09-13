@@ -74,7 +74,7 @@ describe('WebUiTooltip 组件（浏览器）', () => {
     expect(panel).toBeUndefined()
   })
 
-  it('浮层面板双层玻璃：blur + surface 各自 opacity 过渡，玻璃背景落在 surface 层', async () => {
+  it('浮层面板单层玻璃：面板自身 opacity + backdrop-filter 插值过渡', async () => {
     const tooltip = document.createElement('web-ui-tooltip')
     tooltip.content = 'Tooltip'
     tooltip.innerHTML = '<button>Trigger</button>'
@@ -87,19 +87,16 @@ describe('WebUiTooltip 组件（浏览器）', () => {
     await new Promise(resolve => requestAnimationFrame(resolve))
 
     const panel = tooltip.shadowRoot?.querySelector<HTMLElement>('[role="tooltip"]')
-    const blur = panel?.querySelector('.wui-floating-panel-blur') as HTMLElement
-    const surface = panel?.querySelector('.wui-floating-panel-surface') as HTMLElement
-    expect(blur).toBeTruthy()
-    expect(surface).toBeTruthy()
-    expect(getComputedStyle(panel!).transitionProperty).not.toContain('opacity')
-    expect(getComputedStyle(blur).backdropFilter).not.toBe('none')
-    expect(getComputedStyle(blur).transitionProperty).toContain('opacity')
-    expect(getComputedStyle(surface).transitionProperty).toContain('opacity')
-
-    // 玻璃背景迁移：面板自身透明（blur 层采样纯页面、白底随 surface 淡出），
-    // 背景与 wui-glass 描边落在 surface 层。
-    expect(getComputedStyle(panel!).backgroundColor).toBe('rgba(0, 0, 0, 0)')
-    expect(surface.classList.contains('wui-glass')).toBe(true)
-    expect(getComputedStyle(surface).backgroundColor).not.toBe('rgba(0, 0, 0, 0)')
+    expect(panel).toBeTruthy()
+    // 单层玻璃：wui-glass 在面板自身，背景/阴影/blur 都由面板承担，
+    // opacity + backdrop-filter（blur(0px)↔blur(4px)）+ transform 一起过渡。
+    expect(panel!.classList.contains('wui-glass')).toBe(true)
+    expect(getComputedStyle(panel!).backgroundColor).not.toBe('rgba(0, 0, 0, 0)')
+    expect(getComputedStyle(panel!).transitionProperty).toContain('opacity')
+    expect(getComputedStyle(panel!).transitionProperty).toContain('backdrop-filter')
+    expect(getComputedStyle(panel!).transitionProperty).toContain('transform')
+    // blur 随 float 过渡（160ms）从 0px 插值到 4px：等待收敛再断言目标态。
+    await new Promise(resolve => setTimeout(resolve, 250))
+    expect(getComputedStyle(panel!).backdropFilter).toContain('blur(4px)')
   })
 })

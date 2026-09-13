@@ -212,7 +212,7 @@ export class WebUiTooltip extends LitElement {
       const text = document.createElement('span')
       text.className = 'tooltip-text'
       text.textContent = this.content
-      ;(portal.surface ?? portal.panel).append(text)
+      portal.panel.append(text)
     } else portal.moveContent(Array.from(this.querySelectorAll('[slot="content"]')))
     portal.panel.setAttribute('role', 'tooltip')
     return portal
@@ -228,20 +228,20 @@ export class WebUiTooltip extends LitElement {
 
   private _syncPortalContent() {
     if (!this.portal || !this.open) return
-    const panel = this._panel.getPanel()
-    if (!panel) return
-    const surface = this._portal?.surface ?? panel
-    const text = panel.querySelector<HTMLElement>('.tooltip-text')
+    const localPanel = this._panel.getPanel()
+    if (!localPanel) return
+    const panel = this._portal?.panel ?? localPanel
+    const text = localPanel.querySelector<HTMLElement>('.tooltip-text')
     if (text) {
       text.textContent = this.content
       return
     }
     if (!this.content) return
-    surface.replaceChildren()
+    panel.replaceChildren()
     const nextText = document.createElement('span')
     nextText.className = 'tooltip-text'
     nextText.textContent = this.content
-    surface.append(nextText)
+    panel.append(nextText)
   }
 
   private _dispatchChange(open: boolean) {
@@ -262,11 +262,8 @@ export class WebUiTooltip extends LitElement {
     return html`
       <div class="tooltip-anchor">
         <div class="tooltip-trigger"><slot></slot></div>
-        <div class="tooltip-panel wui-floating-panel" hidden role="tooltip">
-          <div class="wui-floating-panel-blur" aria-hidden="true"></div>
-          <div class="wui-floating-panel-surface wui-glass">
-            ${this.content ? html`<span class="tooltip-text">${this.content}</span>` : html`<slot name="content"></slot>`}
-          </div>
+        <div class="tooltip-panel wui-floating-panel wui-glass" hidden role="tooltip">
+          ${this.content ? html`<span class="tooltip-text">${this.content}</span>` : html`<slot name="content"></slot>`}
         </div>
       </div>
     `
