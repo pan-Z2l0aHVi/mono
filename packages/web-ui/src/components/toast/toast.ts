@@ -148,33 +148,30 @@ export class WebUiToast extends LitElement {
 
     return html`
       <div class="toast wui-glass ${this.type}" role=${role} aria-live=${ariaLive} aria-atomic="true">
-        <div class="toast-blur" aria-hidden="true"></div>
-        <div class="toast-surface">
-          <span class="toast-icon" aria-hidden="true">
-            <web-ui-icon .icon=${icon} size="14"></web-ui-icon>
-          </span>
-          <div class="toast-body">
-            ${this.heading ? html`<div class="toast-heading">${this.heading}</div>` : nothing}
-            <div class="toast-message">${this.message}</div>
-          </div>
-          <span class="toast-time">${_formatTime()}</span>
-          ${
-            !this.noCloseButton
-              ? html`
-                  <web-ui-button
-                    class="toast-close-btn"
-                    icon
-                    variant="secondary"
-                    size="24"
-                    aria-label="关闭"
-                    @click=${this._onCloseClick}
-                  >
-                    <web-ui-icon .icon=${heroiconsXMark16Solid} size="16"></web-ui-icon>
-                  </web-ui-button>
-                `
-              : nothing
-          }
+        <span class="toast-icon" aria-hidden="true">
+          <web-ui-icon .icon=${icon} size="14"></web-ui-icon>
+        </span>
+        <div class="toast-body">
+          ${this.heading ? html`<div class="toast-heading">${this.heading}</div>` : nothing}
+          <div class="toast-message">${this.message}</div>
         </div>
+        <span class="toast-time">${_formatTime()}</span>
+        ${
+          !this.noCloseButton
+            ? html`
+                <web-ui-button
+                  class="toast-close-btn"
+                  icon
+                  variant="secondary"
+                  size="24"
+                  aria-label="关闭"
+                  @click=${this._onCloseClick}
+                >
+                  <web-ui-icon .icon=${heroiconsXMark16Solid} size="16"></web-ui-icon>
+                </web-ui-button>
+              `
+            : nothing
+        }
       </div>
     `
   }

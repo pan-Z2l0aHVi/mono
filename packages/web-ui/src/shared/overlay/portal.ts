@@ -34,11 +34,6 @@ export interface OverlayPortalOptions {
 
 export interface OverlayPortal {
   readonly panel: HTMLElement
-  /**
-   * 浮层面板的内容层（承接淡入淡出）。面板创建时若 className 含 wui-floating-panel，
-   * 会构建 blur + surface 双层结构；否则为 null（内容仍直接挂在 panel）。
-   */
-  readonly surface: HTMLElement | null
   restoreContent(): void
   moveContent(nodes: Node[], target?: HTMLElement): void
   appendContent(nodes: Node[], target?: HTMLElement): void
@@ -85,27 +80,10 @@ export const defineOverlayPortal = () =>
     const style = document.createElement('style')
     style.textContent = ctx.style
     const panel = document.createElement('div')
+    // 单层玻璃：wui-glass 原样留在面板自身，背景/阴影/backdrop-filter 随面板
+    // opacity 与 blur 插值一起过渡（见 overlay-motion.css），无 blur/surface 双层。
+    panel.className = ctx.className
     panel.dataset.wuiPresence = 'entering'
-
-    // 浮层面板双层玻璃结构：blur 层（独立 backdrop-filter）+ surface 层（内容淡入淡出）。
-    // 面板自身 opacity 恒 1、背景透明（见 overlay-motion.css），内容与模糊各自过渡，
-    // 保证任何状态切换下 blur 连续。玻璃背景与 wui-glass 类必须落在 surface 层——
-    // 面板若保留半透明玻璃底，blur 层会把面板背景采进 backdrop 提亮（变白）且不随
-    // surface 淡出（关闭残影）。因此这里把 className 中的 wui-glass 搬到 surface；
-    // 非浮层面板（无 wui-floating-panel）保持原单层结构、类原样保留在面板。
-    const panelClasses = ctx.className.split(/\s+/).filter(Boolean)
-    const hasGlass = panelClasses.includes('wui-glass')
-    panel.className = hasGlass ? panelClasses.filter(className => className !== 'wui-glass').join(' ') : ctx.className
-    let surface: HTMLElement | null = null
-    if (ctx.className.includes('wui-floating-panel')) {
-      const blur = document.createElement('div')
-      blur.className = 'wui-floating-panel-blur'
-      blur.setAttribute('aria-hidden', 'true')
-      surface = document.createElement('div')
-      surface.className = `wui-floating-panel-surface${hasGlass ? ' wui-glass' : ''}`
-      panel.append(blur, surface)
-    }
-    const contentTarget = surface ?? panel
     root.append(style, panel)
 
     const trackedNodes: TrackedNodeEntry[] = []
@@ -249,9 +227,8 @@ export const defineOverlayPortal = () =>
 
     const api: OverlayPortal = {
       panel,
-      surface,
 
-      moveContent(nodes, target = contentTarget) {
+      moveContent(nodes, target = panel) {
         trackedNodes.forEach(entry => entry.marker.remove())
         const entries = nodes.map(recordEntry).filter((entry): entry is TrackedNodeEntry => entry !== null)
         trackedNodes.length = 0
@@ -260,7 +237,7 @@ export const defineOverlayPortal = () =>
         orderTargetBySkeleton(target)
       },
 
-      appendContent(nodes, target = contentTarget) {
+      appendContent(nodes, target = panel) {
         for (const node of nodes) {
           untrackNodes([node])
           const entry = recordEntry(node)

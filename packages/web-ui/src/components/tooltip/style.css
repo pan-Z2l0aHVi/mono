@@ -18,6 +18,7 @@
 }
 
 .tooltip-panel {
+  --wui-internal-glass-shadow: var(--wui-shadow-panel, 0 3px 9px rgb(0 0 0 / 0.27));
   --wui-glass-corner-radius: var(--wui-radius-menu, 18px);
 
   pointer-events: none;
@@ -30,21 +31,19 @@
   box-sizing: border-box;
   width: max-content;
   max-width: var(--wui-tooltip-max-width, 240px);
+  padding: 6px 10px;
   border-radius: var(--wui-radius-menu, 18px);
 
   font-size: var(--wui-tooltip-font-size, 13px);
   color: var(--wui-color-text, #1b1b1b);
+
+  /* 玻璃背景：wui-glass 在面板自身，这里覆盖其默认玻璃底为菜单表面色 */
+  background-color: var(--wui-color-surface-menu, rgb(246 246 246 / 0.82));
 }
 
 .tooltip-panel.portal {
   position: fixed;
   z-index: var(--wui-layer-menu, 100);
-}
-
-/* 玻璃背景与 padding 落在 surface 层（见 popover 同构说明）。 */
-.tooltip-panel .wui-floating-panel-surface {
-  padding: 6px 10px;
-  background-color: var(--wui-color-surface-menu, rgb(246 246 246 / 0.82));
 }
 
 .tooltip-panel.hidden {

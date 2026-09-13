@@ -83,20 +83,16 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
     await nextFrame()
 
     const panel = getMenus()[0]!
-    const blur = panel.querySelector<HTMLElement>('.wui-floating-panel-blur')
-    const surface = panel.querySelector<HTMLElement>('.wui-floating-panel-surface')
-    expect(blur).toBeTruthy()
-    expect(surface).toBeTruthy()
-    expect(getComputedStyle(panel).transitionProperty).not.toContain('opacity')
-    expect(getComputedStyle(blur!).backdropFilter).not.toBe('none')
-    expect(getComputedStyle(blur!).transitionProperty).toContain('opacity')
-    expect(getComputedStyle(surface!).transitionProperty).toContain('opacity')
-
-    // 玻璃背景迁移：面板自身透明（blur 层采样纯页面、白底随 surface 淡出），
-    // 背景与 wui-glass 描边落在 surface 层。
-    expect(getComputedStyle(panel).backgroundColor).toBe('rgba(0, 0, 0, 0)')
-    expect(surface!.classList.contains('wui-glass')).toBe(true)
-    expect(getComputedStyle(surface!).backgroundColor).not.toBe('rgba(0, 0, 0, 0)')
+    // 单层玻璃：wui-glass 在面板自身，背景/阴影/blur 都由面板承担，
+    // opacity + backdrop-filter（blur(0px)↔blur(4px)）+ transform 一起过渡。
+    expect(panel.classList.contains('wui-glass')).toBe(true)
+    expect(getComputedStyle(panel).backgroundColor).not.toBe('rgba(0, 0, 0, 0)')
+    expect(getComputedStyle(panel).transitionProperty).toContain('opacity')
+    expect(getComputedStyle(panel).transitionProperty).toContain('backdrop-filter')
+    expect(getComputedStyle(panel).transitionProperty).toContain('transform')
+    // blur 随 float 过渡（160ms）从 0px 插值到 4px：等待收敛再断言目标态。
+    await new Promise(resolve => setTimeout(resolve, 250))
+    expect(getComputedStyle(panel).backdropFilter).toContain('blur(4px)')
   })
 
   it('指针右键以入场状态打开根菜单', async () => {

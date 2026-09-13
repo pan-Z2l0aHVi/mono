@@ -30,12 +30,11 @@ describe('减少动效（浏览器）', () => {
 
     const dialogElement = dialog.shadowRoot?.querySelector('dialog')
     expectNoTranslation(getComputedStyle(dialogElement!).transform)
-    // dialog 元素自身不再过渡 opacity（opacity<1 会形成 backdrop root、禁用玻璃模糊），
-    // 淡入淡出由内容层与模糊层承担，reduce 下两者仍保留 opacity 过渡。
-    const surface = dialogElement?.querySelector('.wui-dialog-surface') as HTMLElement
-    const blurLayer = dialogElement?.querySelector('.wui-dialog-blur') as HTMLElement
-    expect(getComputedStyle(surface).transitionProperty).toContain('opacity')
-    expect(getComputedStyle(blurLayer).transitionProperty).toContain('opacity')
+    // 单层玻璃：dialog 自身不过渡 opacity（opacity<1 会禁后代 blur），玻璃卡片
+    // .wui-dialog-body 保留 opacity + backdrop-filter 插值过渡，reduce 下仍连续。
+    const body = dialogElement?.querySelector('.wui-dialog-body') as HTMLElement
+    expect(getComputedStyle(body).transitionProperty).toContain('opacity')
+    expect(getComputedStyle(body).transitionProperty).toContain('backdrop-filter')
 
     dialog.remove()
 
@@ -64,12 +63,9 @@ describe('减少动效（浏览器）', () => {
     const root = document.querySelector<HTMLElement>('[data-wui-overlay-root]')?.shadowRoot
     const panel = root?.querySelector<HTMLElement>('[role="menu"]')
     expect(getComputedStyle(panel!).transform).toBe('none')
-    // 双层玻璃：面板自身只过渡 transform（opacity 恒 1，避免成为 backdrop root），
-    // 内容与模糊由 surface/blur 层保留 opacity 过渡，reduce 下模糊仍连续。
-    expect(getComputedStyle(panel!).transitionProperty).not.toContain('opacity')
-    const surface = panel?.querySelector('.wui-floating-panel-surface') as HTMLElement
-    const blur = panel?.querySelector('.wui-floating-panel-blur') as HTMLElement
-    expect(getComputedStyle(surface).transitionProperty).toContain('opacity')
-    expect(getComputedStyle(blur).transitionProperty).toContain('opacity')
+    // 单层玻璃：面板自身保留 opacity + backdrop-filter 插值过渡（blur(0px)↔blur(4px)），
+    // reduce 下时长缩短但模糊仍连续（减弱动效 ≠ 保留跳变）。
+    expect(getComputedStyle(panel!).transitionProperty).toContain('opacity')
+    expect(getComputedStyle(panel!).transitionProperty).toContain('backdrop-filter')
   })
 })

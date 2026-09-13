@@ -154,8 +154,8 @@ describe('WebUiPopover portal 条件渲染边界（浏览器）', () => {
     await popover.updateComplete
     await pollUntil(() => !getPortalPanel()?.querySelector('.probe-flag'), 'Expected deleted flag to leave the panel')
     expect([...popover.childNodes].some(node => node instanceof Comment)).toBe(true)
-    // 面板内的结构节点（blur/surface）保留，迁移内容已全部归还宿主、无残留。
-    expect(getPortalPanel()?.querySelector('.wui-floating-panel-surface')?.childNodes.length).toBe(0)
+    // 面板内迁移内容已全部归还宿主、无残留（单层玻璃下面板自身即内容容器）。
+    expect(getPortalPanel()?.childNodes.length).toBe(0)
 
     // 关闭销毁面板，注释在宿主存活
     open.value = false

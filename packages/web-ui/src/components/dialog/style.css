@@ -12,10 +12,8 @@ dialog {
   position: relative;
 
   /* 本元素不参与 opacity 过渡：opacity < 1 会让 dialog 成为 backdrop root，后代
-     backdrop-filter 在该过渡期间被整体禁用，blur 在端点处生硬跳变（Safari/Chrome
-     实测：祖先 opacity 或 filter 关闭后代 blur，transform 不关闭）。内容淡入改由
-     .wui-dialog-surface 承担，模糊改由独立 .wui-dialog-blur 层用自身 opacity 淡入，
-     两层都不在 opacity < 1 的祖先内，blur 全程连续。 */
+     backdrop-filter 在该过渡期间被整体禁用。玻璃卡片（.wui-dialog-body）自身
+     opacity + backdrop-filter 插值过渡（own opacity 不禁用自身 blur，见下）。 */
   transform: scale(var(--wui-scale-enter, 0.97));
 
   overflow: visible;
@@ -41,33 +39,6 @@ dialog {
   }
 }
 
-/* 模糊层：覆盖整块玻璃表面，backdrop-filter 始终生效（不在任何 opacity < 1 祖先内），
-   用自身 opacity 淡入淡出，任何状态切换下 blur 连续、无生硬跳变。 */
-.wui-dialog-blur {
-  pointer-events: none;
-
-  position: absolute;
-  inset: 0;
-
-  border-radius: var(--wui-radius-overlay, 28px);
-
-  opacity: 0;
-
-  /* stylelint-disable-next-line property-no-vendor-prefix */
-  -webkit-backdrop-filter: blur(4px) saturate(160%) brightness(var(--wui-glass-brightness, 1.06));
-  backdrop-filter: blur(4px) saturate(160%) brightness(var(--wui-glass-brightness, 1.06));
-
-  transition: opacity var(--wui-duration-dialog-enter, 320ms) var(--wui-ease-dialog, cubic-bezier(0.2, 0, 0, 1));
-}
-
-/* 内容层：承接原先 dialog 元素的淡入淡出；自身 opacity 过渡不构成 backdrop root
-   （见上），玻璃表面的模糊已由 .wui-dialog-blur 独立提供。 */
-.wui-dialog-surface {
-  position: relative;
-  opacity: 0;
-  transition: opacity var(--wui-duration-dialog-enter, 320ms) var(--wui-ease-dialog, cubic-bezier(0.2, 0, 0, 1));
-}
-
 /* 面板本身是模态表面，不作为可聚焦控件；Safari showModal() 会把焦点放到 dialog，不应画 UA ring。内部控件保留 focus ring。 */
 dialog:focus,
 dialog:focus-visible {
@@ -76,21 +47,11 @@ dialog:focus-visible {
 
 dialog[open].is-visible {
   transform: scale(1);
-
-  .wui-dialog-surface,
-  .wui-dialog-blur {
-    opacity: 1;
-  }
 }
 
 dialog[open].is-closing {
   pointer-events: none;
   transition-duration: var(--wui-duration-dialog-exit, 260ms);
-
-  .wui-dialog-surface,
-  .wui-dialog-blur {
-    transition-duration: var(--wui-duration-dialog-exit, 260ms);
-  }
 }
 
 dialog.is-closing::backdrop {
@@ -106,30 +67,50 @@ dialog[open].is-visible::backdrop {
   dialog[open].is-visible {
     transform: none;
     transition-duration: var(--wui-duration-feedback, 100ms);
-
-    .wui-dialog-surface,
-    .wui-dialog-blur {
-      transition-duration: var(--wui-duration-feedback, 100ms);
-    }
   }
 }
 
 /* ===== 玻璃卡片主体（样式由 glass.css 提供） ===== */
 
+/* 单层玻璃：卡片自身承担背景/阴影/backdrop-filter。blur(0px) ↔ blur(4px) 平滑插值
+   （none↔blur 不可插值才是当年生硬跳变的根因），own opacity 过渡不禁用自身 blur，
+   因此卡片直接 opacity + backdrop-filter 同步过渡即可，无需双层。 */
 .wui-dialog-body {
   --wui-internal-glass-shadow: var(--wui-shadow-overlay, 2px 16px 40px rgb(0 0 0 / 0.4));
   --wui-glass-corner-radius: var(--wui-radius-overlay, 28px);
   padding: 20px 24px 24px;
   border-radius: var(--wui-radius-overlay, 28px);
 
+  opacity: 0;
   background-color: var(--wui-dialog-bg, var(--wui-color-surface-overlay, rgb(246 246 246 / 0.82)));
 
-  /* 模糊由独立 .wui-dialog-blur 层提供：body 若保留 wui-glass 的 backdrop-filter，
-     静止态会与 blur 层双重模糊，且关闭/打开过程中 body 处于 .wui-dialog-surface
-     （opacity < 1）内时自身 blur 又被 backdrop root 禁用，端点仍会跳变。 */
   /* stylelint-disable-next-line property-no-vendor-prefix */
-  -webkit-backdrop-filter: none;
-  backdrop-filter: none;
+  -webkit-backdrop-filter: blur(0) saturate(160%) brightness(var(--wui-glass-brightness, 1.06));
+  backdrop-filter: blur(0) saturate(160%) brightness(var(--wui-glass-brightness, 1.06));
+
+  transition:
+    opacity var(--wui-duration-dialog-enter, 320ms) var(--wui-ease-dialog, cubic-bezier(0.2, 0, 0, 1)),
+    -webkit-backdrop-filter var(--wui-duration-dialog-enter, 320ms) var(--wui-ease-dialog, cubic-bezier(0.2, 0, 0, 1)),
+    backdrop-filter var(--wui-duration-dialog-enter, 320ms) var(--wui-ease-dialog, cubic-bezier(0.2, 0, 0, 1));
+}
+
+dialog.is-closing .wui-dialog-body {
+  transition-duration: var(--wui-duration-dialog-exit, 260ms);
+}
+
+dialog[open].is-visible .wui-dialog-body {
+  opacity: 1;
+
+  /* stylelint-disable-next-line property-no-vendor-prefix */
+  -webkit-backdrop-filter: blur(4px) saturate(160%) brightness(var(--wui-glass-brightness, 1.06));
+  backdrop-filter: blur(4px) saturate(160%) brightness(var(--wui-glass-brightness, 1.06));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  dialog.is-closing .wui-dialog-body,
+  dialog[open].is-visible .wui-dialog-body {
+    transition-duration: var(--wui-duration-feedback, 100ms);
+  }
 }
 
 /* ===== 标题 ===== */

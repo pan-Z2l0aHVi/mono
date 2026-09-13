@@ -79,20 +79,16 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
 
     const panel = el.shadowRoot?.querySelector<HTMLElement>('.autocomplete-overlay')
     expect(panel).toBeTruthy()
-    const blur = panel?.querySelector('.wui-floating-panel-blur') as HTMLElement
-    const surface = panel?.querySelector('.wui-floating-panel-surface') as HTMLElement
-    expect(blur).toBeTruthy()
-    expect(surface).toBeTruthy()
-    expect(getComputedStyle(panel!).transitionProperty).not.toContain('opacity')
-    expect(getComputedStyle(blur).backdropFilter).not.toBe('none')
-    expect(getComputedStyle(blur).transitionProperty).toContain('opacity')
-    expect(getComputedStyle(surface).transitionProperty).toContain('opacity')
-
-    // 玻璃背景迁移：面板自身透明（blur 层采样纯页面、白底随 surface 淡出），
-    // 背景与 wui-glass 描边落在 surface 层。
-    expect(getComputedStyle(panel!).backgroundColor).toBe('rgba(0, 0, 0, 0)')
-    expect(surface.classList.contains('wui-glass')).toBe(true)
-    expect(getComputedStyle(surface).backgroundColor).not.toBe('rgba(0, 0, 0, 0)')
+    // 单层玻璃：wui-glass 在面板自身，背景/阴影/blur 都由面板承担，
+    // opacity + backdrop-filter（blur(0px)↔blur(4px)）+ transform 一起过渡。
+    expect(panel!.classList.contains('wui-glass')).toBe(true)
+    expect(getComputedStyle(panel!).backgroundColor).not.toBe('rgba(0, 0, 0, 0)')
+    expect(getComputedStyle(panel!).transitionProperty).toContain('opacity')
+    expect(getComputedStyle(panel!).transitionProperty).toContain('backdrop-filter')
+    expect(getComputedStyle(panel!).transitionProperty).toContain('transform')
+    // blur 随 float 过渡（160ms）从 0px 插值到 4px：等待收敛再断言目标态。
+    await new Promise(resolve => setTimeout(resolve, 250))
+    expect(getComputedStyle(panel!).backdropFilter).toContain('blur(4px)')
   })
 
   it('下拉滚动区域默认高度可通过 CSS variable 覆盖', async () => {
@@ -931,12 +927,9 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     expect(focusedStyle.boxShadow).toContain('rgb(0, 136, 255)')
     expect(focusedStyle.boxShadow).toContain('0px 0px 0px 3px')
 
-    // borderless 只作用于输入容器；下拉浮层保留 glass 背景——背景在 surface 层，
-    // 面板自身透明（blur 层采样纯页面，白底随 surface 淡出）。
+    // borderless 只作用于输入容器；下拉浮层保留单层 glass 背景（在面板自身）。
     const panel = el.shadowRoot!.querySelector<HTMLElement>('.autocomplete-overlay')!
-    const surface = panel.querySelector<HTMLElement>('.wui-floating-panel-surface')!
-    expect(getComputedStyle(panel).backgroundColor).toBe('rgba(0, 0, 0, 0)')
-    expect(getComputedStyle(surface).backgroundColor).not.toBe('rgba(0, 0, 0, 0)')
+    expect(getComputedStyle(panel).backgroundColor).not.toBe('rgba(0, 0, 0, 0)')
   })
 
   it('borderless 移除输入容器的 glass 描边环（.wui-glass::before）', async () => {
@@ -999,10 +992,8 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     expect(getComputedStyle(wrapper, '::before').content).toBe('none')
 
     const panel = el.shadowRoot!.querySelector<HTMLElement>('.autocomplete-overlay')!
-    const surface = panel.querySelector<HTMLElement>('.wui-floating-panel-surface')!
-    expect(getComputedStyle(panel).backgroundColor).toBe('rgba(0, 0, 0, 0)')
-    expect(getComputedStyle(surface).backgroundColor).not.toBe('rgba(0, 0, 0, 0)')
-    // 浮层是独立 glass 容器，其描边环（wui-glass::before 随类搬到 surface）不被 borderless 移除
-    expect(getComputedStyle(surface, '::before').content).toBe('""')
+    expect(getComputedStyle(panel).backgroundColor).not.toBe('rgba(0, 0, 0, 0)')
+    // 浮层是独立 glass 容器，其描边环（wui-glass::before 在面板自身）不被 borderless 移除
+    expect(getComputedStyle(panel, '::before').content).toBe('""')
   })
 })

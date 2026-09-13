@@ -25,7 +25,7 @@ describe('WebUiToast 移动端适配（浏览器）', () => {
     expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(320)
   })
 
-  it('toast 玻璃使用双层结构：blur 层 + surface 层各自 opacity 过渡', async () => {
+  it('toast 单层玻璃：toast 自身 opacity + backdrop-filter 插值过渡', async () => {
     const el = document.createElement('web-ui-toast')
     el.message = 'blur continuity'
     el.visible = true
@@ -33,27 +33,21 @@ describe('WebUiToast 移动端适配（浏览器）', () => {
     await el.updateComplete
 
     const toast = el.shadowRoot?.querySelector<HTMLElement>('.toast')
-    const blur = toast?.querySelector('.toast-blur') as HTMLElement
-    const surface = toast?.querySelector('.toast-surface') as HTMLElement
-    expect(blur).toBeTruthy()
-    expect(surface).toBeTruthy()
-    // toast 自身 opacity 恒 1、只做 transform 过渡（避免成为 backdrop root）
-    expect(getComputedStyle(toast!).transitionProperty).not.toContain('opacity')
-    expect(getComputedStyle(blur).backdropFilter).not.toBe('none')
-    expect(getComputedStyle(blur).transitionProperty).toContain('opacity')
-    expect(getComputedStyle(surface).transitionProperty).toContain('opacity')
+    expect(toast).toBeTruthy()
+    // 单层玻璃：wui-glass 在 toast 自身，背景/阴影/blur 都由它承担，
+    // opacity + backdrop-filter（blur(0px)↔blur(4px)）+ transform 一起过渡。
+    expect(toast!.classList.contains('wui-glass')).toBe(true)
+    expect(getComputedStyle(toast!).backgroundColor).not.toBe('rgba(0, 0, 0, 0)')
+    expect(getComputedStyle(toast!).transitionProperty).toContain('opacity')
+    expect(getComputedStyle(toast!).transitionProperty).toContain('backdrop-filter')
+    expect(getComputedStyle(toast!).transitionProperty).toContain('transform')
+    expect(getComputedStyle(toast!).backdropFilter).toContain('blur(4px)')
 
-    // 玻璃背景迁移：toast 自身透明（blur 层采样纯页面、白底随 surface 淡出），
-    // 背景与 padding 落在 surface 层。
-    expect(getComputedStyle(toast!).backgroundColor).toBe('rgba(0, 0, 0, 0)')
-    expect(getComputedStyle(surface).backgroundColor).not.toBe('rgba(0, 0, 0, 0)')
-
-    // 退场全程无白底残留：toast 自身保持透明，唯一不透明的玻璃背景随 surface 淡出。
+    // 退场：toast 自身 opacity 从 1 淡出、blur 回 0px 插值起点，背景随自身淡出
+    // （无独立 surface，自然无白底残影层）。
     el.visible = false
     await el.updateComplete
-    expect(getComputedStyle(toast!).backgroundColor).toBe('rgba(0, 0, 0, 0)')
-    expect(getComputedStyle(surface).transitionProperty).toContain('opacity')
-    // 退场过渡进行中：唯一不透明的玻璃背景随 surface opacity 从 1 淡出（无白底残影）。
-    await pollUntil(() => getComputedStyle(surface).opacity !== '1', 'toast surface did not fade out')
+    expect(getComputedStyle(toast!).transitionProperty).toContain('opacity')
+    await pollUntil(() => getComputedStyle(toast!).opacity !== '1', 'toast did not fade out')
   })
 })
