@@ -10,6 +10,11 @@
 
 /* ===== Dialog 容器 ===== */
 dialog {
+  /* 显式 position: fixed（防御性）：UA 的 dialog:modal 默认 fixed，但作者样式若覆盖
+     position 会把它退回文档流——top layer 里的 modal dialog 变成按文档流定位，出现在
+     页面顶部且跟随页面滚动。 */
+  position: fixed;
+
   /* 默认：右侧滑出 — 需显式 left:auto 覆盖 UA dialog:modal 的 left:0 */
   top: 0;
   right: 0;
