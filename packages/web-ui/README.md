@@ -771,7 +771,7 @@ When `closable` is set, the built-in close button is positioned at the header's 
 
 Imperative image preview with no declarative tag contract: open it through `imagePreview()` and drive it through the returned handle. It uses the native `<dialog>` `showModal()` and mounts into the nearest `web-ui-theme` theme-owned overlay root, falling back to the global fallback overlay root when no theme-owned root exists.
 
-It does not reuse the `<web-ui-dialog>` component: the preview needs a dialog that fills the viewport itself (the backdrop is the dialog background) plus its own pointer interaction, which is a different source than the dialog's glass panel and slot contract. The two share the `native-dialog-presence` and `scroll-lock` plugins, and `noScrollLock` / `noBackdropClose` mirror the same-named properties in naming and semantics.
+It does not reuse the `<web-ui-dialog>` component: the preview needs a dialog that fills the viewport itself (the full-viewport backdrop scrim is rendered by a dedicated overlay layer inside the dialog, so the dialog element never fades its own opacity and the glass controls' backdrop blur stays continuous) plus its own pointer interaction, which is a different source than the dialog's glass panel and slot contract. The two share the `native-dialog-presence` and `scroll-lock` plugins, and `noScrollLock` / `noBackdropClose` mirror the same-named properties in naming and semantics.
 
 ```ts
 import { imagePreview } from '@greypan/web-ui'

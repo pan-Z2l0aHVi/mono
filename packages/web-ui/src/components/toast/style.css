@@ -14,14 +14,15 @@
 
 /* ===== 入场 / 退场动画 ===== */
 
+/* 双层玻璃：.toast 自身 opacity 恒 1，过渡期不成为 backdrop root（opacity < 1 会关闭
+   玻璃元素自身的 backdrop-filter，blur 在端点生硬跳变）。模糊由独立 .toast-blur 层、
+   内容由 .toast-surface 层各自 opacity 过渡，任何状态切换下 blur 连续（与 dialog/
+   floating-panel 双层结构同构）。.toast 本体只做 transform（slide + scale）过渡。 */
 .toast {
   --wui-internal-glass-shadow: var(--wui-shadow-panel, 0 3px 9px rgb(0 0 0 / 0.27));
   --wui-glass-corner-radius: var(--wui-radius-menu, 18px);
   position: relative;
   transform: translate(var(--toast-slide-x, 0), var(--toast-slide-y, -8px)) scale(0.97);
-
-  display: flex;
-  gap: 8px;
 
   width: min(320px, calc(100dvw - 2 * var(--wui-toast-viewport-gap, 16px)));
   min-height: 36px;
@@ -32,21 +33,60 @@
   line-height: 1.5;
   color: var(--wui-color-text, #1b1b1b);
 
-  opacity: 0;
+  opacity: 1;
   background-color: var(--wui-color-surface-overlay, rgb(246 246 246 / 0.82));
 
-  transition:
-    opacity var(--wui-duration-toast-enter, 280ms) var(--wui-ease-enter, cubic-bezier(0.23, 1, 0.32, 1)),
-    transform var(--wui-duration-toast-enter, 280ms) var(--wui-ease-enter, cubic-bezier(0.23, 1, 0.32, 1));
+  /* 模糊由独立 .toast-blur 提供：面板自身不再 blur，避免与 blur 层双重模糊
+     （blur 层采样 toast 半透明背景 + 页面，与旧效果线性等价）。 */
+  /* stylelint-disable-next-line property-no-vendor-prefix */
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+
+  transition: transform var(--wui-duration-toast-enter, 280ms) var(--wui-ease-enter, cubic-bezier(0.23, 1, 0.32, 1));
+}
+
+/* 内容层：承接原先 toast 的淡入淡出，自身 opacity 过渡不构成 backdrop root。 */
+.toast-surface {
+  display: flex;
+  gap: 8px;
+  opacity: 0;
+  transition: opacity var(--wui-duration-toast-enter, 280ms) var(--wui-ease-enter, cubic-bezier(0.23, 1, 0.32, 1));
+}
+
+/* 模糊层：覆盖整块玻璃表面，backdrop-filter 始终生效，用自身 opacity 淡入淡出。 */
+.toast-blur {
+  pointer-events: none;
+
+  position: absolute;
+  inset: 0;
+
+  border-radius: inherit;
+
+  opacity: 0;
+
+  /* stylelint-disable-next-line property-no-vendor-prefix */
+  -webkit-backdrop-filter: blur(4px) saturate(160%) brightness(var(--wui-glass-brightness, 1.06));
+  backdrop-filter: blur(4px) saturate(160%) brightness(var(--wui-glass-brightness, 1.06));
+
+  transition: opacity var(--wui-duration-toast-enter, 280ms) var(--wui-ease-enter, cubic-bezier(0.23, 1, 0.32, 1));
 }
 
 :host([visible]) .toast {
   transform: translate(0, 0) scale(1);
-  opacity: 1;
+
+  .toast-surface,
+  .toast-blur {
+    opacity: 1;
+  }
 }
 
 :host(:not([visible])) .toast {
   transition-duration: var(--wui-duration-toast-exit, 200ms);
+
+  .toast-surface,
+  .toast-blur {
+    transition-duration: var(--wui-duration-toast-exit, 200ms);
+  }
 }
 
 /* ===== 关闭按钮（放在 hover 规则之前，避免 specificity 降序） ===== */
@@ -159,5 +199,11 @@ web-ui-button.toast-close-btn {
   .toast,
   :host([visible]) .toast {
     transform: none;
+    transition-duration: var(--wui-duration-feedback, 100ms);
+
+    .toast-surface,
+    .toast-blur {
+      transition-duration: var(--wui-duration-feedback, 100ms);
+    }
   }
 }

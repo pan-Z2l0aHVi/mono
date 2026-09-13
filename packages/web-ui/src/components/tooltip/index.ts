@@ -212,7 +212,7 @@ export class WebUiTooltip extends LitElement {
       const text = document.createElement('span')
       text.className = 'tooltip-text'
       text.textContent = this.content
-      portal.panel.append(text)
+      ;(portal.surface ?? portal.panel).append(text)
     } else portal.moveContent(Array.from(this.querySelectorAll('[slot="content"]')))
     portal.panel.setAttribute('role', 'tooltip')
     return portal
@@ -230,17 +230,18 @@ export class WebUiTooltip extends LitElement {
     if (!this.portal || !this.open) return
     const panel = this._panel.getPanel()
     if (!panel) return
+    const surface = this._portal?.surface ?? panel
     const text = panel.querySelector<HTMLElement>('.tooltip-text')
     if (text) {
       text.textContent = this.content
       return
     }
     if (!this.content) return
-    panel.replaceChildren()
+    surface.replaceChildren()
     const nextText = document.createElement('span')
     nextText.className = 'tooltip-text'
     nextText.textContent = this.content
-    panel.append(nextText)
+    surface.append(nextText)
   }
 
   private _dispatchChange(open: boolean) {
@@ -262,7 +263,10 @@ export class WebUiTooltip extends LitElement {
       <div class="tooltip-anchor">
         <div class="tooltip-trigger"><slot></slot></div>
         <div class="tooltip-panel wui-glass wui-floating-panel" hidden role="tooltip">
-          ${this.content ? html`<span class="tooltip-text">${this.content}</span>` : html`<slot name="content"></slot>`}
+          <div class="wui-floating-panel-blur" aria-hidden="true"></div>
+          <div class="wui-floating-panel-surface">
+            ${this.content ? html`<span class="tooltip-text">${this.content}</span>` : html`<slot name="content"></slot>`}
+          </div>
         </div>
       </div>
     `

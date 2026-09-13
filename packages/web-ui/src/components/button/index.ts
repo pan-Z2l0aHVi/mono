@@ -92,6 +92,7 @@ export class WebUiButton extends LitElement {
         type=${this.type}
         aria-label=${ifDefined(this.ariaLabel)}
         class=${classMap(btnClass)}
+        part="button"
         style=${Object.keys(this._sizeStyle).length > 0 ? styleMap(this._sizeStyle) : nothing}
         ?disabled=${this.disabled || this.loading}
         @click=${this.handleClick}

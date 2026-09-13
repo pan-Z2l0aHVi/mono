@@ -9,8 +9,11 @@
 }
 
 /*
- * 全视口 dialog：遮罩由 dialog 自身的背景提供（而非 ::backdrop），
- * 这样进/退场只需淡出一个元素，图片与控件随整体一起过渡。
+ * 全视口 dialog：遮罩由独立 .wui-image-preview-backdrop 层提供（而非 ::backdrop /
+ * dialog 自身背景）。dialog 自身 opacity 恒 1、只做 transform 过渡——opacity < 1 会
+ * 让 dialog 成为 backdrop root，后代玻璃控件（toolbar/counter/nav）的 backdrop-filter
+ * 在过渡期被禁用、blur 在端点生硬跳变。遮罩、图片舞台各自用独立层 opacity 过渡；
+ * 控件层不参与 opacity 过渡，玻璃控件永不在 opacity < 1 的祖先内，blur 全程连续。
  */
 dialog {
   transform: scale(var(--wui-scale-enter, 0.97));
@@ -30,12 +33,45 @@ dialog {
   font-family: inherit;
   color: var(--wui-color-text, #1b1b1b);
 
+  opacity: 1;
+  background: transparent;
+
+  transition: transform var(--wui-duration-dialog-enter, 320ms) var(--wui-ease-dialog, cubic-bezier(0.2, 0, 0, 1));
+}
+
+/* 遮罩层：承接原先 dialog 背景的淡入淡出，自身 opacity 过渡不构成 backdrop root。 */
+.wui-image-preview-backdrop {
+  pointer-events: none;
+
+  position: absolute;
+  inset: 0;
+
   opacity: 0;
   background: var(--wui-image-preview-overlay-bg, rgb(0 0 0 / 0.72));
 
-  transition:
-    opacity var(--wui-duration-dialog-enter, 320ms) var(--wui-ease-dialog, cubic-bezier(0.2, 0, 0, 1)),
-    transform var(--wui-duration-dialog-enter, 320ms) var(--wui-ease-dialog, cubic-bezier(0.2, 0, 0, 1));
+  transition: opacity var(--wui-duration-dialog-enter, 320ms) var(--wui-ease-dialog, cubic-bezier(0.2, 0, 0, 1));
+}
+
+/* 图片舞台层：与遮罩同尺寸叠放，承接图片淡入淡出。内部无玻璃元素，自身 opacity
+   过渡不会影响任何 backdrop-filter。 */
+.wui-image-preview-surface {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity var(--wui-duration-dialog-enter, 320ms) var(--wui-ease-dialog, cubic-bezier(0.2, 0, 0, 1));
+}
+
+/* 玻璃控件（counter/toolbar）各自做 own opacity 过渡：玻璃元素自身 opacity 淡入
+   不禁用自身 backdrop-filter（backdrop root 只关闭后代 blur），因此控件淡入淡出时
+   blur 仍连续；nav/close 是 glass 按钮，blur 在其 shadow 内层原生 button 上，必须
+   经 ::part(button) 落在该玻璃元素自身，若对按钮 host 做 opacity 过渡反而会让
+   host 成为 backdrop root、禁掉内层 blur（与祖先 opacity 禁后代 blur 同一机制）。 */
+.wui-image-preview-counter,
+.wui-image-preview-toolbar,
+.wui-image-preview-close::part(button),
+.wui-image-preview-nav::part(button) {
+  opacity: 0;
+  transition: opacity var(--wui-duration-dialog-enter, 320ms) var(--wui-ease-dialog, cubic-bezier(0.2, 0, 0, 1));
 }
 
 /* 面板本身是模态表面，不作为可聚焦控件；Safari showModal() 会把焦点放到 dialog，不应画 UA ring。内部控件保留 focus ring。 */
@@ -47,24 +83,6 @@ dialog:focus-visible {
 /* dialog 已铺满视口，原生遮罩不再叠加着色，避免双重变暗。 */
 dialog::backdrop {
   background: transparent;
-}
-
-dialog[open].is-visible {
-  transform: scale(1);
-  opacity: 1;
-}
-
-dialog.is-closing {
-  pointer-events: none;
-  transition-duration: var(--wui-duration-dialog-exit, 260ms);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  dialog,
-  dialog[open].is-visible {
-    transform: none;
-    transition-duration: var(--wui-duration-feedback, 100ms);
-  }
 }
 
 /* ===== 图像舞台 ===== */
@@ -243,4 +261,57 @@ dialog.is-closing {
   font-variant-numeric: tabular-nums;
   color: var(--wui-color-text, #1b1b1b);
   text-align: center;
+}
+
+dialog[open].is-visible {
+  transform: scale(1);
+
+  .wui-image-preview-backdrop,
+  .wui-image-preview-surface,
+  .wui-image-preview-counter,
+  .wui-image-preview-toolbar {
+    opacity: 1;
+  }
+
+  .wui-image-preview-close::part(button),
+  .wui-image-preview-nav::part(button) {
+    opacity: 1;
+  }
+}
+
+dialog[open].is-closing {
+  pointer-events: none;
+  transition-duration: var(--wui-duration-dialog-exit, 260ms);
+
+  .wui-image-preview-backdrop,
+  .wui-image-preview-surface,
+  .wui-image-preview-counter,
+  .wui-image-preview-toolbar {
+    transition-duration: var(--wui-duration-dialog-exit, 260ms);
+  }
+
+  .wui-image-preview-close::part(button),
+  .wui-image-preview-nav::part(button) {
+    transition-duration: var(--wui-duration-dialog-exit, 260ms);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  dialog,
+  dialog[open].is-visible {
+    transform: none;
+    transition-duration: var(--wui-duration-feedback, 100ms);
+
+    .wui-image-preview-backdrop,
+    .wui-image-preview-surface,
+    .wui-image-preview-counter,
+    .wui-image-preview-toolbar {
+      transition-duration: var(--wui-duration-feedback, 100ms);
+    }
+
+    .wui-image-preview-close::part(button),
+    .wui-image-preview-nav::part(button) {
+      transition-duration: var(--wui-duration-feedback, 100ms);
+    }
+  }
 }

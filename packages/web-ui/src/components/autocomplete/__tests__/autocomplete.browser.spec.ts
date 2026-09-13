@@ -64,6 +64,31 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     expect(el.open).toBe(false)
   })
 
+  it('浮层面板使用双层玻璃结构：blur 层 + surface 层各自 opacity 过渡', async () => {
+    const el = document.createElement('web-ui-autocomplete')
+    el.innerHTML = '<web-ui-option value="apple" label="Apple"></web-ui-option>'
+    document.body.append(el)
+    await el.updateComplete
+
+    const input = el.shadowRoot?.querySelector<HTMLElement>('[role="combobox"]')
+    input?.focus()
+    input?.click()
+    await new Promise(resolve => requestAnimationFrame(resolve))
+    await new Promise(resolve => requestAnimationFrame(resolve))
+    await el.updateComplete
+
+    const panel = el.shadowRoot?.querySelector<HTMLElement>('.autocomplete-overlay')
+    expect(panel).toBeTruthy()
+    const blur = panel?.querySelector('.wui-floating-panel-blur') as HTMLElement
+    const surface = panel?.querySelector('.wui-floating-panel-surface') as HTMLElement
+    expect(blur).toBeTruthy()
+    expect(surface).toBeTruthy()
+    expect(getComputedStyle(panel!).transitionProperty).not.toContain('opacity')
+    expect(getComputedStyle(blur).backdropFilter).not.toBe('none')
+    expect(getComputedStyle(blur).transitionProperty).toContain('opacity')
+    expect(getComputedStyle(surface).transitionProperty).toContain('opacity')
+  })
+
   it('下拉滚动区域默认高度可通过 CSS variable 覆盖', async () => {
     const el = document.createElement('web-ui-autocomplete')
     el.innerHTML = '<web-ui-option value="apple" label="Apple"></web-ui-option>'

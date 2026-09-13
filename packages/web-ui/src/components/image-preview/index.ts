@@ -683,79 +683,82 @@ class WebUiImagePreview extends LitElement {
         @wheel=${this._handleWheel}
         @transitionend=${this._handleTransitionEnd}
       >
-        <div
-          class=${classMap({
-            'wui-image-preview-stage': true,
-            'is-zoomed': zoomed,
-            'is-dragging': this._dragging,
-            'is-settling': this._swipeSettling
-          })}
-        >
+        <div class="wui-image-preview-backdrop" aria-hidden="true"></div>
+        <div class="wui-image-preview-surface">
           <div
-            class="wui-image-preview-track"
-            style=${styleMap({ transform: trackTransform })}
-            @transitionend=${this._handleSwipeSettleEnd}
+            class=${classMap({
+              'wui-image-preview-stage': true,
+              'is-zoomed': zoomed,
+              'is-dragging': this._dragging,
+              'is-settling': this._swipeSettling
+            })}
           >
-            ${
-              prevIndex >= 0
-                ? html`
-                    <div class="wui-image-preview-slide is-prev" aria-hidden="true">
-                      <img
-                        class=${classMap({
-                          'wui-image-preview-image': true,
-                          'is-loaded': this._loadedSources.has(this.images[prevIndex].src)
-                        })}
-                        src=${this.images[prevIndex].src}
-                        alt=${this.images[prevIndex].alt ?? ''}
-                        draggable="false"
-                        style=${styleMap({ transform: neighborTransform })}
-                        @load=${this._handleImageSettled}
-                        @error=${this._handleImageSettled}
-                      />
-                    </div>
-                  `
-                : nothing
-            }
-            ${
-              count > 0
-                ? html`
-                    <div class="wui-image-preview-slide is-current">
-                      <img
-                        class=${classMap({
-                          'wui-image-preview-image': true,
-                          'is-loaded': this._loadedSources.has(this.images[this._index].src)
-                        })}
-                        src=${this.images[this._index].src}
-                        alt=${this.images[this._index].alt ?? ''}
-                        draggable="false"
-                        style=${styleMap({ transform: imageTransform })}
-                        @load=${this._handleImageSettled}
-                        @error=${this._handleImageSettled}
-                      />
-                    </div>
-                  `
-                : nothing
-            }
-            ${
-              nextIndex >= 0
-                ? html`
-                    <div class="wui-image-preview-slide is-next" aria-hidden="true">
-                      <img
-                        class=${classMap({
-                          'wui-image-preview-image': true,
-                          'is-loaded': this._loadedSources.has(this.images[nextIndex].src)
-                        })}
-                        src=${this.images[nextIndex].src}
-                        alt=${this.images[nextIndex].alt ?? ''}
-                        draggable="false"
-                        style=${styleMap({ transform: neighborTransform })}
-                        @load=${this._handleImageSettled}
-                        @error=${this._handleImageSettled}
-                      />
-                    </div>
-                  `
-                : nothing
-            }
+            <div
+              class="wui-image-preview-track"
+              style=${styleMap({ transform: trackTransform })}
+              @transitionend=${this._handleSwipeSettleEnd}
+            >
+              ${
+                prevIndex >= 0
+                  ? html`
+                      <div class="wui-image-preview-slide is-prev" aria-hidden="true">
+                        <img
+                          class=${classMap({
+                            'wui-image-preview-image': true,
+                            'is-loaded': this._loadedSources.has(this.images[prevIndex].src)
+                          })}
+                          src=${this.images[prevIndex].src}
+                          alt=${this.images[prevIndex].alt ?? ''}
+                          draggable="false"
+                          style=${styleMap({ transform: neighborTransform })}
+                          @load=${this._handleImageSettled}
+                          @error=${this._handleImageSettled}
+                        />
+                      </div>
+                    `
+                  : nothing
+              }
+              ${
+                count > 0
+                  ? html`
+                      <div class="wui-image-preview-slide is-current">
+                        <img
+                          class=${classMap({
+                            'wui-image-preview-image': true,
+                            'is-loaded': this._loadedSources.has(this.images[this._index].src)
+                          })}
+                          src=${this.images[this._index].src}
+                          alt=${this.images[this._index].alt ?? ''}
+                          draggable="false"
+                          style=${styleMap({ transform: imageTransform })}
+                          @load=${this._handleImageSettled}
+                          @error=${this._handleImageSettled}
+                        />
+                      </div>
+                    `
+                  : nothing
+              }
+              ${
+                nextIndex >= 0
+                  ? html`
+                      <div class="wui-image-preview-slide is-next" aria-hidden="true">
+                        <img
+                          class=${classMap({
+                            'wui-image-preview-image': true,
+                            'is-loaded': this._loadedSources.has(this.images[nextIndex].src)
+                          })}
+                          src=${this.images[nextIndex].src}
+                          alt=${this.images[nextIndex].alt ?? ''}
+                          draggable="false"
+                          style=${styleMap({ transform: neighborTransform })}
+                          @load=${this._handleImageSettled}
+                          @error=${this._handleImageSettled}
+                        />
+                      </div>
+                    `
+                  : nothing
+              }
+            </div>
           </div>
         </div>
         <div class="wui-image-preview-controls">

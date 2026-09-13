@@ -115,9 +115,14 @@
       inset 0 0 0 0.5px color-mix(in srgb, var(--wui-color-glass-highlight, rgb(255 255 255 / 0.9)) 38%, transparent),
       inset 0 1px 0.5px color-mix(in srgb, var(--wui-color-glass-highlight, rgb(255 255 255 / 0.9)) 52%, transparent),
       inset 0 -0.5px 1px rgb(0 0 0 / 0.03),
-      0 2px 12px rgb(0 0 0 / 0.32),
-      0 14px 36px rgb(0 0 0 / 0.28),
-      0 28px 64px rgb(0 0 0 / 0.2);
+      0 2px 10px rgb(0 0 0 / 0.26),
+      0 12px 30px rgb(0 0 0 / 0.22),
+      0 24px 52px rgb(0 0 0 / 0.16);
+  }
+
+  &:not(.is-pressed) {
+    background-color: var(--wui-color-on-control, #fff);
+    box-shadow: 1px 2px 6px rgb(0 0 0 / 0.2);
   }
 
   &:not(.is-pressed) {

@@ -72,6 +72,27 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
     expect(getMenus()[0]?.dataset.wuiPresence).toBe('open')
   })
 
+  it('菜单浮层面板使用双层玻璃结构：blur 层 + surface 层各自 opacity 过渡', async () => {
+    const menu = document.createElement('web-ui-context-menu')
+    menu.innerHTML = '<web-ui-dropdown-item>Open</web-ui-dropdown-item>'
+    document.body.append(menu)
+    await menu.updateComplete
+
+    menu.openAt(100, 100)
+    await menu.updateComplete
+    await nextFrame()
+
+    const panel = getMenus()[0]!
+    const blur = panel.querySelector<HTMLElement>('.wui-floating-panel-blur')
+    const surface = panel.querySelector<HTMLElement>('.wui-floating-panel-surface')
+    expect(blur).toBeTruthy()
+    expect(surface).toBeTruthy()
+    expect(getComputedStyle(panel).transitionProperty).not.toContain('opacity')
+    expect(getComputedStyle(blur!).backdropFilter).not.toBe('none')
+    expect(getComputedStyle(blur!).transitionProperty).toContain('opacity')
+    expect(getComputedStyle(surface!).transitionProperty).toContain('opacity')
+  })
+
   it('指针右键以入场状态打开根菜单', async () => {
     const menu = document.createElement('web-ui-context-menu')
     menu.innerHTML = '<web-ui-dropdown-item>Open</web-ui-dropdown-item>'
