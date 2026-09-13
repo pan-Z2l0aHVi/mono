@@ -30,7 +30,12 @@ describe('减少动效（浏览器）', () => {
 
     const dialogElement = dialog.shadowRoot?.querySelector('dialog')
     expectNoTranslation(getComputedStyle(dialogElement!).transform)
-    expect(getComputedStyle(dialogElement!).transitionProperty).toContain('opacity')
+    // dialog 元素自身不再过渡 opacity（opacity<1 会形成 backdrop root、禁用玻璃模糊），
+    // 淡入淡出由内容层与模糊层承担，reduce 下两者仍保留 opacity 过渡。
+    const surface = dialogElement?.querySelector('.wui-dialog-surface') as HTMLElement
+    const blurLayer = dialogElement?.querySelector('.wui-dialog-blur') as HTMLElement
+    expect(getComputedStyle(surface).transitionProperty).toContain('opacity')
+    expect(getComputedStyle(blurLayer).transitionProperty).toContain('opacity')
 
     dialog.remove()
 

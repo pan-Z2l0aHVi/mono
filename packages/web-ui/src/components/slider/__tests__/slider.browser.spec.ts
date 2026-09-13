@@ -402,7 +402,7 @@ describe('WebUiSlider 组件（浏览器）', () => {
     expect(el.value).toBe(afterCancel)
   })
 
-  it('按压与拖拽期间 handle 的毛玻璃表面组成恒定（backdrop-filter 与背景不变）', async () => {
+  it('静止态实体白 thumb，按压切玻璃背景、拖拽转透明（backdrop blur 恒开 + 放大 + 深阴影）', async () => {
     const el = document.createElement('web-ui-slider')
     document.body.append(el)
     await el.updateComplete
@@ -411,13 +411,15 @@ describe('WebUiSlider 组件（浏览器）', () => {
     expect(slider).toBeTruthy()
     const thumb = slider!.querySelector('.wui-slider-thumb') as HTMLElement
     const rect = slider!.getBoundingClientRect()
+
+    // 静止态：wui-glass 恒开（backdrop-filter 存在），背景被白色覆盖（实体白 thumb）。
     const restBackdrop = getComputedStyle(thumb).backdropFilter
     const restBg = getComputedStyle(thumb).backgroundColor
     expect(restBackdrop).not.toBe('none')
-    expect(restBg).not.toBe('rgba(0, 0, 0, 0)')
+    expect(restBg).toBe('rgb(255, 255, 255)')
 
     const y = rect.top + rect.height / 2
-    // 按压（pointerdown）：背景与 backdrop-filter 必须与静止态完全一致。
+    // 按压：背景切为半透明玻璃、放大 1.5x；backdrop-filter 保持存在。
     slider!.dispatchEvent(
       new PointerEvent('pointerdown', {
         bubbles: true,
@@ -428,10 +430,13 @@ describe('WebUiSlider 组件（浏览器）', () => {
     )
     await el.updateComplete
     expect(thumb.classList.contains('is-pressed')).toBe(true)
-    expect(getComputedStyle(thumb).backdropFilter).toBe(restBackdrop)
-    expect(getComputedStyle(thumb).backgroundColor).toBe(restBg)
+    expect(thumb.classList.contains('is-dragging')).toBe(false)
+    expect(getComputedStyle(thumb).backdropFilter).not.toBe('none')
+    // 背景从白切玻璃有 80ms 过渡，等收敛后再断言。
+    await new Promise(resolve => setTimeout(resolve, 120))
+    expect(getComputedStyle(thumb).backgroundColor).toBe('rgba(250, 250, 250, 0.34)')
 
-    // 拖拽：仍一致。
+    // 拖拽：背景转透明（backdrop blur 直接透出），backdrop-filter 仍存在。
     slider!.dispatchEvent(
       new PointerEvent('pointermove', {
         bubbles: true,
@@ -442,9 +447,11 @@ describe('WebUiSlider 组件（浏览器）', () => {
     )
     await el.updateComplete
     expect(thumb.classList.contains('is-dragging')).toBe(true)
-    expect(getComputedStyle(thumb).backdropFilter).toBe(restBackdrop)
-    expect(getComputedStyle(thumb).backgroundColor).toBe(restBg)
+    expect(getComputedStyle(thumb).backdropFilter).not.toBe('none')
+    await new Promise(resolve => setTimeout(resolve, 120))
+    expect(getComputedStyle(thumb).backgroundColor).toBe('rgba(0, 0, 0, 0)')
 
+    // 松手：回到实体白静止态。
     slider!.dispatchEvent(
       new PointerEvent('pointerup', {
         bubbles: true,
@@ -454,7 +461,9 @@ describe('WebUiSlider 组件（浏览器）', () => {
       })
     )
     await el.updateComplete
-    expect(getComputedStyle(thumb).backdropFilter).toBe(restBackdrop)
-    expect(getComputedStyle(thumb).backgroundColor).toBe(restBg)
+    // 背景从透明切回实体白有 80ms 过渡，等收敛后再断言静止态。
+    await new Promise(resolve => setTimeout(resolve, 120))
+    expect(getComputedStyle(thumb).backgroundColor).toBe('rgb(255, 255, 255)')
+    expect(getComputedStyle(thumb).backdropFilter).not.toBe('none')
   })
 })
