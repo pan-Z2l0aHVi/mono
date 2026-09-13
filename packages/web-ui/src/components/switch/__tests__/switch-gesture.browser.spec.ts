@@ -341,19 +341,22 @@ describe('WebUiSwitch 手势拖拽（浏览器）', () => {
     expect(getComputedStyle(getTrack(el)).touchAction).toBe('none')
   })
 
-  it('按压与拖拽期间 handle 的毛玻璃表面组成恒定（backdrop-filter 与背景不变）', async () => {
+  it('静止态实体白 thumb，按压/拖拽切换为玻璃（backdrop blur + 透明背景 + 放大 + 深阴影）', async () => {
     const el = createSwitch()
     await el.updateComplete
 
     const track = getTrack(el)
     const thumb = track.querySelector('.wui-switch-thumb') as HTMLElement
+
+    // 静止态：无玻璃类，backdrop-filter 为 none，背景为实体白。
     const restBackdrop = getComputedStyle(thumb).backdropFilter
     const restBg = getComputedStyle(thumb).backgroundColor
     const restShadow = getComputedStyle(thumb).boxShadow
-    expect(restBackdrop).not.toBe('none')
-    expect(restBg).not.toBe('rgba(0, 0, 0, 0)')
+    expect(thumb.classList.contains('wui-glass')).toBe(false)
+    expect(restBackdrop).toBe('none')
+    expect(restBg).toBe('rgb(255, 255, 255)')
 
-    // 按压（pointerdown）：背景与 backdrop-filter 必须与静止态完全一致。
+    // 按压：切换为玻璃（wui-glass），背景透明让 backdrop blur 透出，放大 1.5x。
     track.dispatchEvent(
       new PointerEvent('pointerdown', {
         bubbles: true,
@@ -365,17 +368,18 @@ describe('WebUiSwitch 手势拖拽（浏览器）', () => {
     )
     await el.updateComplete
     expect(thumb.classList.contains('is-pressed')).toBe(true)
-    expect(getComputedStyle(thumb).backdropFilter).toBe(restBackdrop)
-    expect(getComputedStyle(thumb).backgroundColor).toBe(restBg)
-    // 立体玻璃感：按压时投影加深。box-shadow 直接写值（不经自定义属性中转，iOS 可靠），
-    // 等待 80ms 过渡收敛后计算值含加深层（0 14px 36px / 0.28）、静止态没有。
+    expect(thumb.classList.contains('wui-glass')).toBe(true)
+    expect(getComputedStyle(thumb).backdropFilter).not.toBe('none')
+    // 立体玻璃感：按压时背景切透明（backdrop blur 透出）、投影加深。box-shadow 与
+    // 背景都直接写值（不经自定义属性中转，iOS 可靠），等 80ms 过渡收敛后计算值才到位。
     await new Promise(resolve => setTimeout(resolve, 120))
+    expect(getComputedStyle(thumb).backgroundColor).toBe('rgba(0, 0, 0, 0)')
     const pressedShadow = getComputedStyle(thumb).boxShadow
     expect(pressedShadow).not.toBe(restShadow)
     expect(pressedShadow).toContain('0px 14px 36px')
     expect(pressedShadow).toContain('rgba(0, 0, 0, 0.28)')
 
-    // 拖拽：仍一致。
+    // 拖拽：玻璃组成与按压态一致（背景透明 + backdrop blur），阴影保持加深。
     window.dispatchEvent(
       new PointerEvent('pointermove', {
         bubbles: true,
@@ -387,9 +391,11 @@ describe('WebUiSwitch 手势拖拽（浏览器）', () => {
     )
     await el.updateComplete
     expect(track.classList.contains('is-dragging')).toBe(true)
-    expect(getComputedStyle(thumb).backdropFilter).toBe(restBackdrop)
-    expect(getComputedStyle(thumb).backgroundColor).toBe(restBg)
+    expect(thumb.classList.contains('wui-glass')).toBe(true)
+    expect(getComputedStyle(thumb).backdropFilter).not.toBe('none')
+    expect(getComputedStyle(thumb).backgroundColor).toBe('rgba(0, 0, 0, 0)')
 
+    // 松手：回到实体白静止态。
     window.dispatchEvent(
       new PointerEvent('pointerup', {
         bubbles: true,
@@ -400,7 +406,10 @@ describe('WebUiSwitch 手势拖拽（浏览器）', () => {
       })
     )
     await el.updateComplete
-    expect(getComputedStyle(thumb).backdropFilter).toBe(restBackdrop)
-    expect(getComputedStyle(thumb).backgroundColor).toBe(restBg)
+    // 背景从透明切回实体白有 80ms 过渡，等收敛后再断言静止态。
+    await new Promise(resolve => setTimeout(resolve, 120))
+    expect(thumb.classList.contains('wui-glass')).toBe(false)
+    expect(getComputedStyle(thumb).backdropFilter).toBe('none')
+    expect(getComputedStyle(thumb).backgroundColor).toBe('rgb(255, 255, 255)')
   })
 })

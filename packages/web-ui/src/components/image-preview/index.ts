@@ -47,8 +47,9 @@ export interface ImagePreviewOptions {
   /** 展示「当前 / 总数」指示器。默认 false。 */
   indicator?: boolean
   /**
-   * 1x 且图片多于一张时，允许左右滑动切换图片：该手势接管横向分量，纵向仍然平移。
-   * 放大后拖拽一律平移、不再切图。默认 false。
+   * 1x 且图片多于一张时，允许左右滑动切换图片：该手势接管整个拖拽，纵向位移被忽略
+   * （不驱平移、不跟手），横向用于切图。放大后拖拽一律平移（纵横都跟）、不再切图。
+   * 默认 false。
    */
   swipe?: boolean
   /** 打开期间不锁定页面滚动，语义与 `<web-ui-dialog>` 的 `noScrollLock` 一致。默认 false。 */
@@ -581,7 +582,8 @@ class WebUiImagePreview extends LitElement {
    *
    * 拖拽默认平移且不限方向，与倍率无关：放大后是查看被裁切的边缘，1x 是在视口内
    * 移动图片。唯一的例外是 `swipe` 独占 1x——未放大、开启 swipe 且多于一张图时，
-   * 横向拖拽归切图，此时不做平移。鼠标按住拖拽与单指拖拽走的是同一条 Pointer 路径。
+   * 整个拖拽归切图（横向驱动轮播、纵向 delta 完全忽略，不做任何平移）。鼠标按住
+   * 拖拽与单指拖拽走的是同一条 Pointer 路径。
    *
    * 监听挂在 dialog 而非舞台上：控件层里的按下不会经过舞台，挂在舞台会漏掉
    * 这些按下而留下过期的「起于空白」标记。
@@ -621,11 +623,11 @@ class WebUiImagePreview extends LitElement {
       threshold: PAN_MOVE_THRESHOLD,
       onMove: info => {
         if (this._swipeGesture) {
-          // 横向跟手位移驱动轨道整体平移（单轨道轮播），纵向仍然平移；
-          // 方向随拖拽符号更新，轨道位移随 _swipeOffset 反转时自然换向。
+          // 横向跟手位移驱动轨道整体平移（单轨道轮播）；方向随拖拽符号更新，
+          // 轨道位移随 _swipeOffset 反转时自然换向。纵向 delta 完全忽略：
+          // 该手势独占拖拽，不驱平移、不产生纵向跟手（放大态的 pan 不受影响）。
           this._swipeOffset = info.deltaX
           if (info.deltaX !== 0) this._swipeDir = info.deltaX < 0 ? 1 : -1
-          this._panTo(0, info.deltaY)
         } else this._panTo(info.deltaX, info.deltaY)
       },
       onEnd: info => {
@@ -662,7 +664,8 @@ class WebUiImagePreview extends LitElement {
     const trackTransform = `translate3d(${this._swipeOffset}px, 0, 0)`
     // 缩放/平移只作用于当前图的 img：相邻 slide 永远 1x（scale(1)），放大态连纵向 pan
     // 也不跟随（pan 只动当前图），避免放大后相邻图被带大/带进视口「穿过来」。
-    // 1x 时相邻图共享纵向 pan（offsetY），保持拖拽斜向时行内对齐——swipe 行为与上一轮一致。
+    // 1x 非 swipe 的平移路径仍可纵向拖拽，相邻图共享 offsetY 保持行内对齐；swipe 生效
+    // 期间纵向 delta 被忽略（offsetY 恒 0），相邻图同样不产生纵向跟手。
     const imageTransform = `translate3d(${this._offsetX}px, ${this._offsetY}px, 0) scale(${this._scale})`
     const neighborTransform = zoomed
       ? 'translate3d(0, 0, 0) scale(1)'

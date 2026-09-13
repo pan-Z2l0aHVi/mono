@@ -48,21 +48,16 @@
   width: var(--indicator-width, 0);
   border-radius: var(--wui-radius-control, calc(infinity * 1px));
 
-  background-color: var(--wui-color-surface-glass, rgb(250 250 250 / 0.34));
-
-  /* 毛玻璃组成恒定：backdrop-filter 与半透明玻璃背景静止/按下/拖拽三者一致，只改变
-     transform 与 box-shadow。背景从实体白切到半透明的瞬间 Chrome 会重光栅化 backdrop
-     区域，表现为长按/拖动时毛玻璃生硬闪一下 —— 上一轮「恒开 backdrop-filter」修不掉
-     的原因就是切换的其实是背景不透明度而非 backdrop-filter 属性本身。 */
-  /* stylelint-disable-next-line property-no-vendor-prefix */
-  -webkit-backdrop-filter: blur(4px) saturate(160%);
-  backdrop-filter: blur(4px) saturate(160%);
+  /* 静止态实体白指示器；按压/拖拽时切换为玻璃（半透明玻璃背景 + backdrop blur +
+     描边）并放大 1.5x，回到最初修复不跟手问题时期的视觉结构。 */
+  background-color: var(--wui-color-surface-selected, #fff);
   box-shadow:
     0 1px 3px rgb(0 0 0 / 0.12),
     0 1px 2px rgb(0 0 0 / 0.08);
 
   transition:
     transform var(--wui-duration-press, 80ms) cubic-bezier(0.4, 0, 0.2, 1),
+    background-color var(--wui-duration-press, 80ms) ease,
     box-shadow var(--wui-duration-press, 80ms) ease;
 
   /* transition 只在首帧定位后且非拖拽状态启用，避免组件进入视口时触发初始化动画或拖拽跟手产生延迟 */
@@ -71,6 +66,7 @@
       left var(--wui-duration-trigger, 160ms) var(--wui-ease-slide, cubic-bezier(0.77, 0, 0.175, 1)),
       width var(--wui-duration-trigger, 160ms) var(--wui-ease-slide, cubic-bezier(0.77, 0, 0.175, 1)),
       transform var(--wui-duration-press, 80ms) cubic-bezier(0.4, 0, 0.2, 1),
+      background-color var(--wui-duration-press, 80ms) ease,
       box-shadow var(--wui-duration-press, 80ms) ease;
   }
 }
@@ -78,6 +74,12 @@
 .wui-segmented.is-pressed .wui-segmented-indicator,
 .wui-segmented.is-dragging .wui-segmented-indicator {
   transform: scale(1.5);
+
+  background-color: var(--wui-color-surface-glass, rgb(250 250 250 / 0.34));
+
+  /* stylelint-disable-next-line property-no-vendor-prefix */
+  -webkit-backdrop-filter: blur(4px) saturate(160%);
+  backdrop-filter: blur(4px) saturate(160%);
 
   /* 按下/拖拽时加深投影（立体玻璃感）。直接写死值、不经过 var 中转：iOS Safari 对
      var 离散切换驱动的 box-shadow 不触发过渡且可能整体不生效（上一轮真机「回退之前」）。 */
