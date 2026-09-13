@@ -706,174 +706,176 @@ class WebUiImagePreview extends LitElement {
         @transitionend=${this._handleTransitionEnd}
       >
         <div class="wui-image-preview-backdrop" aria-hidden="true"></div>
-        <div class="wui-image-preview-surface">
-          <div
-            class=${classMap({
-              'wui-image-preview-stage': true,
-              'is-zoomed': zoomed,
-              'is-dragging': this._dragging,
-              'is-settling': this._swipeSettling
-            })}
-          >
+        <div class="wui-image-preview-content">
+          <div class="wui-image-preview-surface">
             <div
-              class="wui-image-preview-track"
-              style=${styleMap({ transform: trackTransform })}
-              @transitionend=${this._handleSwipeSettleEnd}
+              class=${classMap({
+                'wui-image-preview-stage': true,
+                'is-zoomed': zoomed,
+                'is-dragging': this._dragging,
+                'is-settling': this._swipeSettling
+              })}
             >
-              ${
-                prevIndex >= 0
-                  ? html`
-                      <div class="wui-image-preview-slide is-prev" aria-hidden="true">
-                        <img
-                          class=${classMap({
-                            'wui-image-preview-image': true,
-                            'is-loaded': this._loadedSources.has(this.images[prevIndex].src)
-                          })}
-                          src=${this.images[prevIndex].src}
-                          alt=${this.images[prevIndex].alt ?? ''}
-                          draggable="false"
-                          style=${styleMap({ transform: neighborTransform })}
-                          @load=${this._handleImageSettled}
-                          @error=${this._handleImageSettled}
-                        />
-                      </div>
-                    `
-                  : nothing
-              }
-              ${
-                count > 0
-                  ? html`
-                      <div class="wui-image-preview-slide is-current">
-                        <img
-                          class=${classMap({
-                            'wui-image-preview-image': true,
-                            'is-loaded': this._loadedSources.has(this.images[this._index].src)
-                          })}
-                          src=${this.images[this._index].src}
-                          alt=${this.images[this._index].alt ?? ''}
-                          draggable="false"
-                          style=${styleMap({ transform: imageTransform })}
-                          @load=${this._handleImageSettled}
-                          @error=${this._handleImageSettled}
-                        />
-                      </div>
-                    `
-                  : nothing
-              }
-              ${
-                nextIndex >= 0
-                  ? html`
-                      <div class="wui-image-preview-slide is-next" aria-hidden="true">
-                        <img
-                          class=${classMap({
-                            'wui-image-preview-image': true,
-                            'is-loaded': this._loadedSources.has(this.images[nextIndex].src)
-                          })}
-                          src=${this.images[nextIndex].src}
-                          alt=${this.images[nextIndex].alt ?? ''}
-                          draggable="false"
-                          style=${styleMap({ transform: neighborTransform })}
-                          @load=${this._handleImageSettled}
-                          @error=${this._handleImageSettled}
-                        />
-                      </div>
-                    `
-                  : nothing
-              }
+              <div
+                class="wui-image-preview-track"
+                style=${styleMap({ transform: trackTransform })}
+                @transitionend=${this._handleSwipeSettleEnd}
+              >
+                ${
+                  prevIndex >= 0
+                    ? html`
+                        <div class="wui-image-preview-slide is-prev" aria-hidden="true">
+                          <img
+                            class=${classMap({
+                              'wui-image-preview-image': true,
+                              'is-loaded': this._loadedSources.has(this.images[prevIndex].src)
+                            })}
+                            src=${this.images[prevIndex].src}
+                            alt=${this.images[prevIndex].alt ?? ''}
+                            draggable="false"
+                            style=${styleMap({ transform: neighborTransform })}
+                            @load=${this._handleImageSettled}
+                            @error=${this._handleImageSettled}
+                          />
+                        </div>
+                      `
+                    : nothing
+                }
+                ${
+                  count > 0
+                    ? html`
+                        <div class="wui-image-preview-slide is-current">
+                          <img
+                            class=${classMap({
+                              'wui-image-preview-image': true,
+                              'is-loaded': this._loadedSources.has(this.images[this._index].src)
+                            })}
+                            src=${this.images[this._index].src}
+                            alt=${this.images[this._index].alt ?? ''}
+                            draggable="false"
+                            style=${styleMap({ transform: imageTransform })}
+                            @load=${this._handleImageSettled}
+                            @error=${this._handleImageSettled}
+                          />
+                        </div>
+                      `
+                    : nothing
+                }
+                ${
+                  nextIndex >= 0
+                    ? html`
+                        <div class="wui-image-preview-slide is-next" aria-hidden="true">
+                          <img
+                            class=${classMap({
+                              'wui-image-preview-image': true,
+                              'is-loaded': this._loadedSources.has(this.images[nextIndex].src)
+                            })}
+                            src=${this.images[nextIndex].src}
+                            alt=${this.images[nextIndex].alt ?? ''}
+                            draggable="false"
+                            style=${styleMap({ transform: neighborTransform })}
+                            @load=${this._handleImageSettled}
+                            @error=${this._handleImageSettled}
+                          />
+                        </div>
+                      `
+                    : nothing
+                }
+              </div>
             </div>
           </div>
-        </div>
-        <div class="wui-image-preview-controls">
-          ${
-            this.indicator
-              ? html`<span class="wui-image-preview-counter wui-glass" aria-live="polite"
-                  >${this._index + 1} / ${count}</span
-                >`
-              : nothing
-          }
-          ${
-            this.closable
-              ? html`
-                  <web-ui-button
-                    class="wui-image-preview-close"
-                    variant="glass"
-                    icon
-                    size="36"
-                    aria-label="关闭"
-                    @click=${this.close}
-                  >
-                    <web-ui-icon size="16" .icon=${oouiClose}></web-ui-icon>
-                  </web-ui-button>
-                `
-              : nothing
-          }
-          ${
-            this.nav && count > 1
-              ? html`
-                  <web-ui-button
-                    class="wui-image-preview-nav wui-image-preview-nav-prev"
-                    variant="glass"
-                    icon
-                    size="44"
-                    aria-label="上一张"
-                    ?disabled=${!this.loop && this._index === 0}
-                    @click=${this.prev}
-                  >
-                    <web-ui-icon size="20" .icon=${lucideChevronLeft}></web-ui-icon>
-                  </web-ui-button>
-                  <web-ui-button
-                    class="wui-image-preview-nav wui-image-preview-nav-next"
-                    variant="glass"
-                    icon
-                    size="44"
-                    aria-label="下一张"
-                    ?disabled=${!this.loop && this._index === count - 1}
-                    @click=${this.next}
-                  >
-                    <web-ui-icon size="20" .icon=${lucideChevronRight}></web-ui-icon>
-                  </web-ui-button>
-                `
-              : nothing
-          }
-          ${
-            this.toolbar
-              ? html`
-                  <div class="wui-image-preview-toolbar wui-glass">
+          <div class="wui-image-preview-controls">
+            ${
+              this.indicator
+                ? html`<span class="wui-image-preview-counter wui-glass" aria-live="polite"
+                    >${this._index + 1} / ${count}</span
+                  >`
+                : nothing
+            }
+            ${
+              this.closable
+                ? html`
                     <web-ui-button
+                      class="wui-image-preview-close"
                       variant="glass"
                       icon
-                      size="30"
-                      aria-label="缩小"
-                      ?disabled=${this._scale <= MIN_SCALE}
-                      @click=${this.zoomOut}
+                      size="36"
+                      aria-label="关闭"
+                      @click=${this.close}
                     >
-                      <web-ui-icon size="16" .icon=${lucideMinus}></web-ui-icon>
+                      <web-ui-icon size="16" .icon=${oouiClose}></web-ui-icon>
                     </web-ui-button>
-                    <span class="wui-image-preview-scale">${Math.round(this._scale * 100)}%</span>
+                  `
+                : nothing
+            }
+            ${
+              this.nav && count > 1
+                ? html`
                     <web-ui-button
+                      class="wui-image-preview-nav wui-image-preview-nav-prev"
                       variant="glass"
                       icon
-                      size="30"
-                      aria-label="放大"
-                      ?disabled=${this._scale >= MAX_SCALE}
-                      @click=${this.zoomIn}
+                      size="44"
+                      aria-label="上一张"
+                      ?disabled=${!this.loop && this._index === 0}
+                      @click=${this.prev}
                     >
-                      <web-ui-icon size="16" .icon=${lucidePlus}></web-ui-icon>
+                      <web-ui-icon size="20" .icon=${lucideChevronLeft}></web-ui-icon>
                     </web-ui-button>
                     <web-ui-button
+                      class="wui-image-preview-nav wui-image-preview-nav-next"
                       variant="glass"
                       icon
-                      size="30"
-                      aria-label="重置缩放"
-                      ?disabled=${this._scale <= MIN_SCALE && !this._isPanned}
-                      @click=${this.resetZoom}
+                      size="44"
+                      aria-label="下一张"
+                      ?disabled=${!this.loop && this._index === count - 1}
+                      @click=${this.next}
                     >
-                      <web-ui-icon size="16" .icon=${radixIconsReset}></web-ui-icon>
+                      <web-ui-icon size="20" .icon=${lucideChevronRight}></web-ui-icon>
                     </web-ui-button>
-                  </div>
-                `
-              : nothing
-          }
+                  `
+                : nothing
+            }
+            ${
+              this.toolbar
+                ? html`
+                    <div class="wui-image-preview-toolbar wui-glass">
+                      <web-ui-button
+                        variant="glass"
+                        icon
+                        size="30"
+                        aria-label="缩小"
+                        ?disabled=${this._scale <= MIN_SCALE}
+                        @click=${this.zoomOut}
+                      >
+                        <web-ui-icon size="16" .icon=${lucideMinus}></web-ui-icon>
+                      </web-ui-button>
+                      <span class="wui-image-preview-scale">${Math.round(this._scale * 100)}%</span>
+                      <web-ui-button
+                        variant="glass"
+                        icon
+                        size="30"
+                        aria-label="放大"
+                        ?disabled=${this._scale >= MAX_SCALE}
+                        @click=${this.zoomIn}
+                      >
+                        <web-ui-icon size="16" .icon=${lucidePlus}></web-ui-icon>
+                      </web-ui-button>
+                      <web-ui-button
+                        variant="glass"
+                        icon
+                        size="30"
+                        aria-label="重置缩放"
+                        ?disabled=${this._scale <= MIN_SCALE && !this._isPanned}
+                        @click=${this.resetZoom}
+                      >
+                        <web-ui-icon size="16" .icon=${radixIconsReset}></web-ui-icon>
+                      </web-ui-button>
+                    </div>
+                  `
+                : nothing
+            }
+          </div>
         </div>
       </dialog>
     `

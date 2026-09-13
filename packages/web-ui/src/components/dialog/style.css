@@ -9,7 +9,11 @@
 }
 
 dialog {
-  position: relative;
+  /* 必须显式 position: fixed：UA 的 dialog:modal 默认就是 fixed，但作者样式若出现
+     position: relative（本轮单层重构曾引入）会把它覆盖回文档流——top layer 里的
+     modal dialog 变成按文档流定位：渲染在页面顶部（用户看到的“残影”）且跟随页面
+     滚动（“没有固定居中”）。显式写死 fixed 防御未来任何作者类再覆盖。 */
+  position: fixed;
 
   /* 本元素不参与 opacity 过渡：opacity < 1 会让 dialog 成为 backdrop root，后代
      backdrop-filter 在该过渡期间被整体禁用。玻璃卡片（.wui-dialog-body）自身

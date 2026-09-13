@@ -10,13 +10,18 @@
 
 /*
  * 全视口 dialog：遮罩由独立 .wui-image-preview-backdrop 层提供（而非 ::backdrop /
- * dialog 自身背景）。dialog 自身 opacity 恒 1、只做 transform 过渡——opacity < 1 会
- * 让 dialog 成为 backdrop root，后代玻璃控件（toolbar/counter/nav）的 backdrop-filter
- * 在过渡期被禁用、blur 在端点生硬跳变。遮罩、图片舞台各自用独立层 opacity 过渡；
- * 控件层不参与 opacity 过渡，玻璃控件永不在 opacity < 1 的祖先内，blur 全程连续。
+ * dialog 自身背景）。dialog 自身 opacity 恒 1、无任何 transform——opacity < 1 会让
+ * dialog 成为 backdrop root，后代玻璃控件（toolbar/counter/nav）的 backdrop-filter
+ * 在过渡期被禁用、blur 在端点生硬跳变；transform 会把遮罩一起缩放。进场缩放
+ * （scale 0.97→1）由 .wui-image-preview-content 内容包裹层承担（见下）。遮罩、图片
+ * 舞台各自用独立层 opacity 过渡；控件层不参与 opacity 过渡，玻璃控件永不在
+ * opacity < 1 的祖先内，blur 全程连续。
  */
 dialog {
-  transform: scale(var(--wui-scale-enter, 0.97));
+  /* 显式 position: fixed（防御性）：UA 的 dialog:modal 默认 fixed，但作者样式若覆盖
+     position 会把它退回文档流——top layer 里的 modal dialog 变成按文档流定位，出现在
+     页面顶部且跟随页面滚动。image-preview 的 dialog 铺满视口，fixed 是硬前提。 */
+  position: fixed;
 
   overflow: hidden;
 
@@ -35,8 +40,6 @@ dialog {
 
   opacity: 1;
   background: transparent;
-
-  transition: transform var(--wui-duration-dialog-enter, 320ms) var(--wui-ease-dialog, cubic-bezier(0.2, 0, 0, 1));
 }
 
 /* 遮罩层：承接原先 dialog 背景的淡入淡出，自身 opacity 过渡不构成 backdrop root。 */
@@ -50,6 +53,17 @@ dialog {
   background: var(--wui-image-preview-overlay-bg, rgb(0 0 0 / 0.72));
 
   transition: opacity var(--wui-duration-dialog-enter, 320ms) var(--wui-ease-dialog, cubic-bezier(0.2, 0, 0, 1));
+}
+
+/* 内容包裹层：舞台与控件整体做进场缩放（0.97→1）。scale 不能放在 dialog 上——
+   那会让作为 dialog 子层的遮罩（.wui-image-preview-backdrop）跟着缩放（用户反馈的
+   “遮罩被缩放”）。本层只做 transform、不做 opacity：transform 不构成 backdrop root，
+   后代玻璃控件（toolbar/counter/nav）的 backdrop-filter 不受影响。 */
+.wui-image-preview-content {
+  position: absolute;
+  inset: 0;
+  transform: scale(var(--wui-scale-enter, 0.97));
+  transition: transform var(--wui-duration-dialog-enter, 320ms) var(--wui-ease-dialog, cubic-bezier(0.2, 0, 0, 1));
 }
 
 /* 图片舞台层：与遮罩同尺寸叠放，承接图片淡入淡出。内部无玻璃元素，自身 opacity
@@ -264,7 +278,9 @@ dialog::backdrop {
 }
 
 dialog[open].is-visible {
-  transform: scale(1);
+  .wui-image-preview-content {
+    transform: scale(1);
+  }
 
   .wui-image-preview-backdrop,
   .wui-image-preview-surface,
@@ -283,6 +299,10 @@ dialog[open].is-closing {
   pointer-events: none;
   transition-duration: var(--wui-duration-dialog-exit, 260ms);
 
+  .wui-image-preview-content {
+    transition-duration: var(--wui-duration-dialog-exit, 260ms);
+  }
+
   .wui-image-preview-backdrop,
   .wui-image-preview-surface,
   .wui-image-preview-counter,
@@ -299,8 +319,12 @@ dialog[open].is-closing {
 @media (prefers-reduced-motion: reduce) {
   dialog,
   dialog[open].is-visible {
-    transform: none;
     transition-duration: var(--wui-duration-feedback, 100ms);
+
+    .wui-image-preview-content {
+      transform: none;
+      transition-duration: var(--wui-duration-feedback, 100ms);
+    }
 
     .wui-image-preview-backdrop,
     .wui-image-preview-surface,
