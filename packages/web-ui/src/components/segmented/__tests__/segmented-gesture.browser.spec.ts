@@ -121,16 +121,23 @@ describe('WebUiSegmented 手势拖拽与吸附（浏览器）', () => {
     )
     await segmented.updateComplete
 
-    // 移动距离越过 6px 阈值但未越过中点 (targetDistance * 0.3)
-    window.dispatchEvent(
-      new PointerEvent('pointermove', {
-        bubbles: true,
-        isPrimary: true,
-        pointerId: 1,
-        clientX: t1Rect.left + 10 + Math.max(8, targetDistance * 0.3),
-        clientY: t1Rect.top + 10
-      })
-    )
+    // 移动距离越过 6px 阈值但未越过中点 (targetDistance * 0.3)。
+    // CI 慢环境渲染会跨毫秒，单次合成 move 的速度会被判 flick（>300px/s）
+    // 误吸附下一项；用间隔 32ms 的多段 move 模拟真实慢拖。
+    const dragDistance = Math.max(8, targetDistance * 0.3)
+    const startX = t1Rect.left + 10
+    for (let step = 1; step <= 10; step += 1) {
+      window.dispatchEvent(
+        new PointerEvent('pointermove', {
+          bubbles: true,
+          isPrimary: true,
+          pointerId: 1,
+          clientX: startX + (dragDistance * step) / 10,
+          clientY: t1Rect.top + 10
+        })
+      )
+      await new Promise(resolve => setTimeout(resolve, 32))
+    }
     await segmented.updateComplete
     expect(inner.classList.contains('is-dragging')).toBe(true)
 
@@ -139,7 +146,7 @@ describe('WebUiSegmented 手势拖拽与吸附（浏览器）', () => {
         bubbles: true,
         isPrimary: true,
         pointerId: 1,
-        clientX: t1Rect.left + 10 + Math.max(8, targetDistance * 0.3),
+        clientX: startX + dragDistance,
         clientY: t1Rect.top + 10
       })
     )
