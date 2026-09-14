@@ -669,10 +669,14 @@ Portal 面板创建时会镜像 host 上解析后的这些变量；更新 host �
 
 | 属性                          | 默认值                                     | 说明                                                                  |
 | ----------------------------- | ------------------------------------------ | --------------------------------------------------------------------- |
-| `--wui-dialog-max-width`      | `360px`                                    | 对话框最大宽度                                                        |
+| `--wui-dialog-width`          | `360px`                                    | 对话框宽度                                                            |
 | `--wui-dialog-max-height`     | `90vh`                                     | 对话框最大高度                                                        |
 | `--wui-dialog-overlay-bg`     | `var(--wui-color-backdrop)`                | 遮罩背景色                                                            |
 | `--wui-dialog-bg`             | `var(--wui-color-surface-overlay)`         | 玻璃卡片背景色，回退到 `rgb(246 246 246 / 0.88)`                      |
+| `--wui-dialog-padding`        | `20px 24px 24px`                           | 对话框表面内边距                                                      |
+| `--wui-dialog-title-gap`      | `16px`                                     | 标题下方间距                                                          |
+| `--wui-dialog-desc-gap`       | `24px`                                     | 正文内容下方间距                                                      |
+| `--wui-dialog-footer-gap`     | `10px` / horizontal `12px`                 | Footer 按钮间距                                                       |
 | `--wui-dialog-footer-justify` | `flex-end`（默认）/ `center`（horizontal） | Footer `justify-content`；horizontal 模式下覆盖为 `flex-end` 可右对齐 |
 
 #### `<web-ui-drawer>`

@@ -21,7 +21,7 @@ dialog {
   overflow: visible;
 
   box-sizing: border-box;
-  max-width: min(90vw, var(--wui-dialog-max-width, 360px));
+  width: min(90vw, var(--wui-dialog-width, 360px));
   max-height: 90vh;
   max-height: min(90vh, 90dvh);
   padding: 0;
@@ -119,7 +119,7 @@ dialog[open].is-visible::backdrop {
 .wui-dialog-body {
   --wui-internal-glass-shadow: var(--wui-shadow-overlay, 2px 16px 40px rgb(0 0 0 / 0.4));
   --wui-glass-corner-radius: var(--wui-radius-overlay, 28px);
-  padding: 20px 24px 24px;
+  padding: var(--wui-dialog-padding, 20px 24px 24px);
   border-radius: var(--wui-radius-overlay, 28px);
 
   background-color: var(--wui-dialog-bg, var(--wui-color-surface-overlay, rgb(246 246 246 / 0.82)));
@@ -135,7 +135,7 @@ dialog[open].is-visible::backdrop {
 /* ===== 标题 ===== */
 
 .title {
-  margin: 0 0 16px;
+  margin: 0 0 var(--wui-dialog-title-gap, 16px);
   padding: 0;
 
   font-size: 18px;
@@ -147,7 +147,7 @@ dialog[open].is-visible::backdrop {
 /* ===== 描述 ===== */
 
 .desc {
-  margin: 0 0 24px;
+  margin: 0 0 var(--wui-dialog-desc-gap, 24px);
   padding: 0;
 
   font-size: 14px;
@@ -160,7 +160,7 @@ dialog[open].is-visible::backdrop {
 .wui-dialog-footer {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--wui-dialog-footer-gap, 10px);
   justify-content: var(--wui-dialog-footer-justify, flex-end);
 
   /* ===== 按钮全宽（默认垂直排列） ===== */
