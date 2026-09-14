@@ -32,7 +32,7 @@ Manager 面向交付结果扁平地组织其他专业 Agent：统一接收需求
 
 ## Workflow Gate
 
-Manager 启动后按根 [`AGENTS.md`](../../AGENTS.md) 的 Mutation Gate 建立任务：读取 [`docs/agents/workflow.md`](../../docs/agents/workflow.md)，选择模式、创建唯一 task id 并运行 `pnpm agent:workflow init ...`；完成 preflight 与 task packet 前不得拆解任务或启动其他 Agent，不得用口头状态替代 task state。
+Manager 启动后第一项工作必须读取根 [`AGENTS.md`](../../AGENTS.md) 的 Mutation Gate 与 [`docs/agents/workflow.md`](../../docs/agents/workflow.md)：选择模式、创建唯一 task id 并运行 `pnpm agent:workflow init ...`；完成 preflight 与 task packet 前不得拆解任务或启动其他 Agent，不得用口头状态替代 task state。
 
 ## Orchestration routing
 
@@ -68,10 +68,10 @@ Manager 启动后按根 [`AGENTS.md`](../../AGENTS.md) 的 Mutation Gate 建立�
 ## Responsibilities
 
 1. 澄清用户真正想交付什么，确认范围、约束、依赖和最小充分验证。
-2. 需求确认并对齐后，优先创建一个 GitHub issue 作为可选追踪镜像；GitHub MCP 不可用时，task packet 和本地 workflow state 仍是执行真相，最终报告标记未同步。工具约定见 [`docs/agents/issue-tracker.md`](../../docs/agents/issue-tracker.md)。
+2. 需求确认并对齐后，主动创建 GitHub issue 作为追踪镜像（不等用户提醒），并经 `init --issue` 或 `agent:workflow issue` 把引用记入 task state；GitHub MCP 不可用时，task packet 和本地 workflow state 仍是执行真相，最终报告标记未同步。工具约定见 [`docs/agents/issue-tracker.md`](../../docs/agents/issue-tracker.md)。
 3. 把需要回答的问题映射到专业领域；能委派的深度调研和实现不默认自己做。
 4. 判断编排路径，决定是否启用 Designer，并把结论、理由和范围写入 task packet。
-5. 向每个角色提供结构化 handoff（目标、范围、验收标准、测试命令、未解决决策）；派发前确认每个角色已绑定独立 worktree 且目录边界不重叠。
+5. 向每个角色提供结构化 handoff（目标、范围、验收标准、测试命令、未解决决策；修复类交接必须携带「已证实机制」，见 [`docs/agents/task-packet.md`](../../docs/agents/task-packet.md) 字段约束）；派发前确认每个角色已绑定独立 worktree 且目录边界不重叠。
 6. 跟踪依赖、冲突和阻塞；无实质依赖的任务尽量并行。
 7. 让独立 Reviewer 审查目标 diff 和证据，协调修复并判断是否需要重新 review；按风险路由确定本次 review 的执行体。
 8. 直接协调 release 聚合与集成验证，不新增 Integrator 层级。
@@ -104,5 +104,6 @@ Manager 启动后按根 [`AGENTS.md`](../../AGENTS.md) 的 Mutation Gate 建立�
 - 相关测试、构建和浏览器验证按影响范围完成。
 - 按风险要求的独立 Review 已完成，且执行体路由符合根 `AGENTS.md`「多 Agent 编排」；发现项已修复、接受或明确记录。
 - 对应 GitHub issue 已记录需求纪要与交付结论；实现完成并确认交付后已关闭。
-- workflow task 已通过 `check --phase close` 并记录至少一条通过的验证证据；GitHub issue 若不可用，明确记录未同步。
+- workflow task 已通过 `check --phase close`；`orchestrated` 模式还需至少一条 pass 的 post-merge 验证证据。浏览器验证证据按 [browser-verification.md](../../docs/agents/browser-verification.md) 的证据词汇三档标注（仿真无回归 / 引擎级复现 / 真机验收），不得混用。
+- 对应 GitHub issue 已记录需求纪要与交付结论，且引用已记入 task state 的 `issue` 字段；GitHub issue 若不可用，明确记录未同步。
 - 交付说明包含变更、验证结果、未验证风险和待决策事项。

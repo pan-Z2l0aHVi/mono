@@ -16,6 +16,7 @@ Task packet 是 Manager 与 Agent 之间的最小交接合同；结构化 handof
 ```text
 Task: <task-id>
 Mode: direct | orchestrated | release | hotfix
+Issue: <issue-url | N/A>
 Owner: <role/agent>
 Worktree: <absolute path>
 Base: <sha>
@@ -33,7 +34,7 @@ Handoff: <what is returned and when>
 
 ## 结构化 Handoff
 
-角色之间（Manager → Designer / Lib Coder / Biz Coder → Reviewer → Manager）统一使用本模板，五个字段缺一不可：
+角色之间（Manager → Designer / Lib Coder / Biz Coder → Reviewer → Manager）统一使用本模板：五个必填字段缺一不可，`Proven mechanism（已证实机制）` 在修复类交接时为必填（见字段约束）：
 
 ```text
 Handoff: <task-id>
@@ -42,6 +43,7 @@ Goal（目标）: <本次交接要达成的单一目标>
 Scope（范围）: <允许改动的目录/包 + 明确非目标>
 Acceptance（验收标准）: <可观察、可判定的通过条件>
 Test commands（测试命令）: <确切命令 + 期望结果 + 已执行/未执行>
+Proven mechanism（已证实机制）: <修复类必填：指向真实根因的机制描述 + 复现/排除证据>
 Open decisions（未解决决策）: <需要对方或 Manager 决策的问题 + 当前默认处理>
 ```
 
@@ -51,6 +53,7 @@ Open decisions（未解决决策）: <需要对方或 Manager 决策的问题 + 
 - `Scope（范围）` 必须写明目录边界与角色归属：Lib Coder 的交接只允许 `packages/*`，Biz Coder 的交接只允许 `apps/*`；跨边界需求由 Manager 拆成两个 handoff，而不是让一个角色越界。
 - `Acceptance（验收标准）` 必须是可观察、可判定的结果，不能是“已完成”这类描述。
 - `Test commands（测试命令）` 给出确切命令与期望输出；未执行的验证必须显式标注，不能用推断代替。
+- `Proven mechanism（已证实机制）` 是条件性必填字段：修复类 handoff 必须写明已证实的根因机制（不是猜测）与支撑证据档位（引擎级复现或真机验收，见 browser-verification.md 的证据词汇三档），防止绕过根因调研直接返工方案。非修复类（新功能、重构、文档）可省略。
 - `Open decisions（未解决决策）` 列出未决问题与当前默认处理；没有未决问题也必须写“无”，不得省略该字段。
 
 ## 记录与恢复
