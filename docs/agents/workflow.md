@@ -4,7 +4,9 @@
 
 ## 先建立任务
 
-凡会写入仓库的任务都必须先完成以下 preflight，不能以“改动很小”跳过：
+<!-- invariant:workflow-states -->
+
+档 1 与档 2 的任务（判据见「变更风险分级」）必须先完成以下 preflight：
 
 1. 查看 `git status --short --branch`，确认当前工作区和目标 worktree 的已有变更归属。
 2. 读取根 `AGENTS.md`、本文件和命中的 rule/guide；进入 workspace 后读取最近的包级 `AGENTS.md`。
@@ -17,9 +19,39 @@
    pnpm agent:workflow check --task <task-id> --phase edit
    ```
 
-5. 记录范围、影响 workspace、允许路径、验收标准和所需验证；推荐写入 task packet。GitHub issue 在任务确认时创建并经 `--issue` 记入 task state；`status` 会对缺失 issue 的 task 打 stderr 提示，事后补挂用 `issue` 子命令。issue 只作追踪镜像，不是执行真相，本地 task state 不能依赖外部服务。
+5. 记录范围、验收标准和所需验证；推荐写入 task packet。GitHub issue 在任务确认时创建并经 `--issue` 记入 task state；`status` 会对缺失 issue 的 task 打 stderr 提示，事后补挂用 `issue` 子命令。issue 只作追踪镜像，不是执行真相，本地 task state 不能依赖外部服务。
 
-**Fast lane**：仅限当前 worktree、单 agent 即可完成且无行为影响的琐碎变更（错别字、注释与文档措辞、纯格式修正），可直接修改、不建 task state；是否适用由 agent 按实际影响自行判断，拿不准就走上述 preflight。git 操作、依赖、发布、跨包契约与公共 API 变更不适用本例外。
+## 变更风险分级
+
+<!-- invariant:risk-tiering -->
+
+分级判据全部可从变更路径、manifest 和 `pnpm find:usages` 输出查证，不依赖主观的「大改/小改」判断。
+
+| 档                     | 判据（命中任一即属该档）                                                                                                                                                                                                                          | task state          | 独立 review | approval |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------- | ----------- | -------- |
+| 档 0（免 task state）  | 改动全部落在一个 workspace 内，或只落在 `docs/` 等仓库根文档目录；且不改依赖字段与 lockfile、不改 CI 与 workspace 配置、不改被其它 workspace 消费的导出符号、不改 instruction system 与根 `scripts/*.mjs` 的行为；也不属于 release 或 hotfix 流程 | 不需要              | 不需要      | 不需要   |
+| 档 1（`direct`）       | 跨多个 `apps/*`；公共导出变更但消费者仍在同一 workspace；改动 instruction system、`.agents/` 或根 `scripts/*.mjs` 的行为                                                                                                                          | 需要，模式 `direct` | 按风险决定  | 必须     |
+| 档 2（`orchestrated`） | 跨 workspace 的公共 API/exports/事件/类型契约；依赖、catalog、lockfile、构建配置或 CI；release 或 hotfix；多 worktree 并行                                                                                                                        | 需要，用对应模式    | 必须独立    | 必须     |
+
+多档同时命中时取最高档（档 2 > 档 1 > 档 0）。`commit` 本身不参与分档：档 0 的改动提交时同样走正常提交流程，只是不需要先建 task state。
+
+判据的机器可查部分：`pnpm find:usages -- <paths...>` 输出的受影响 workspace 只有一个时，档 0 的单 workspace 条件成立；输出含 2 个以上 workspace 且涉及公共导出时进入档 2。
+
+档 0 不建 task state，提交 hook 的 `guard-commit` 找不到 active task 时直接放行。需要独立 review 时脚本要求显式提供不同于 owner 的 reviewer id；纯文档或低风险测试基建可以用 `init --review skip`，但必须在 task packet 记录跳过理由，且仍须有 approval 与验证证据。高风险变更的 review 由 Claude Code 主审，独立小功能快速迭代可由 Codex CLI 审核。
+
+## 预授权操作
+
+<!-- invariant:pre-authorized-ops -->
+
+以下操作属于已知安全的工作流，直接执行并修复本次改动导致的问题即可，不必逐步请示：
+
+- 运行仓库既有测试与校验命令：`pnpm test`、`pnpm run test:scripts`、`pnpm run test:affected`、包级 `test`、`pnpm run check:code`、`pnpm run check:cspell`、`pnpm run validate:context`、`pnpm run audit:instructions`。
+- 修复本次改动导致的失败并重跑受影响的测试。
+- 包级 build 与 `pnpm run build`、`pnpm run build:affected`。
+- 只读查询：`pnpm find:usages`、`pnpm inspect:contract`、`pnpm diff:contract`、`pnpm agent:workflow status`、`git status`、`git diff`、`git log`。
+- 在目标 worktree 内读取任意文件。
+
+以下操作仍必须逐次获得用户明确授权：commit、push、merge、tag、publish、release；依赖、catalog、lockfile 的任何改动；`.npmrc`、`.mise.toml` 与 Git 配置；凭证、密钥与 `.env` 的读写；破坏性 git 操作（`reset --hard`、`push --force`、`clean`、`stash`）。
 
 ## 状态机
 
@@ -57,6 +89,7 @@ initialized -> assigned -> editing -> frozen -> reviewed -> approved
 - `verify` 只接受已完成 `integrated` gate 且工作区干净的结果；不能从 `committed` 直接跳过集成检查，失败验证不能推进到 `verified`。
 - `verify --post-merge` 在整合 worktree（如 release 分支）上验证合并结果：要求整合 worktree 干净、task 已有通过的 task-scope 验证，并以 `merge-base --is-ancestor` 证明 task 验证点真实进入整合 head（squash merge 不产生祖先关系，不受支持）。
 - `close` 与 `check --phase close` 共享同一硬校验：最近一条 task-scope 验证必须 `pass`、task diff 与验证时一致且工作区干净；`orchestrated` 模式额外要求至少一条 `pass` 的 post-merge 验证（`direct`/`hotfix`/`release` 豁免——release 的合并目标是 main，由 release.md 的两段验证覆盖）。
+- 建 changeset、跑格式化必须在 `freeze` 之前完成。`freeze` 之后的任何文件变化——包括新建 empty changeset、`vp staged` 重排表格——都会让冻结 diff 失效，必须重新 freeze、review、approve。
 - `closed` 不是“脚本跑完”的同义词；必须能追溯到 task id、base SHA、diff hash、review、approval 和验证证据。
 
 常用命令：
@@ -85,13 +118,11 @@ freeze 自身会执行与 commit 相同的归一化管线：先 `git add -A` 全
 - Role Contract 位于 [`.agents/agents/`](../../.agents/agents/)，只定义职责、边界和协作；仓库约束仍以 `AGENTS.md`、包级 `AGENTS.md`、rules、skills 和实现事实为准。
 - 执行体绑定不改变状态机、gate 和证据要求；任一执行体承担角色后都必须遵守同一套 handoff、worktree 和 review 规则。
 - Reviewer 独立于实施者，以冻结的 `diffHash` 为审查对象；执行体按风险路由（高风险 → Claude Code 主审，独立小功能快速迭代可由 Codex CLI 审核），路由清单见根 `AGENTS.md`「多 Agent 编排」。
-- 默认模型与思考强度是推荐分档，表达角色适用的推理深度起点；Manager 可按任务直接调整模型或档位，调整是常规操作而非流程偏离，推荐在 task packet 的 `Effort` 字段留痕。以下场景仅供参考：
-  - Biz Coder 涉及复杂交互（可视化编辑器、拖拽编排、多分支状态机）或核心资金/权限链路时，推荐上调至 high。
-  - Lib Coder 仅做简单组件迭代、工具函数新增或样式微调时，可下调至 high。
-  - Designer 项目周期极度紧张且需求简单明确时，可下调至 high。
-  - 决策依据与理由详见 [ADR-0011](../adr/0011-agent-model-binding-and-effort.md)。
+- 默认模型与思考强度是推荐分档，表达角色适用的推理深度起点；Manager 可按任务直接调整模型或档位，调整是常规操作而非流程偏离，推荐在 task packet 的 `Effort` 字段留痕。各档位的取值理由与常见调整场景见 [ADR-0011](../adr/0011-agent-model-binding-and-effort.md)，本文件不复制。
 
 ## 编排模式
+
+<!-- invariant:orchestration-routing -->
 
 Manager 统一接收需求并编排，保持扁平，不引入 Integrator 或其他中间层级。模式按需求是否涉及产品设计/UI 分流：
 
@@ -108,16 +139,16 @@ Manager 统一接收需求并编排，保持扁平，不引入 Integrator 或其
 ## 角色和边界
 
 - **Manager**：建立 task state，拆解任务，分配 owner，按「编排模式」选择路径并派发，维护依赖，汇总证据，组织 review 和交付判断；直接协调 release 聚合与集成验证，不新增 Integrator 层级。
-- **实施 Agent**：只在被分配的 task worktree 工作，遵守允许路径和角色目录边界，保持变更待 review，不擅自 commit、push、merge 或关闭任务。
+- **实施 Agent**：只在被分配的 task worktree 工作，遵守 handoff 声明的 Scope 与角色目录边界，保持变更待 review，不擅自 commit、push、merge 或关闭任务。
 - **Reviewer**：只读审查冻结的目标 diff 和验证证据，结果绑定 `diffHash`；发现问题交回实施 Agent，修复后必须重新 freeze/review。执行体按风险路由（见根 `AGENTS.md`「多 Agent 编排」）。
 - **Designer**：仅在产品/设计需求下启用，输出可实现的交互、视觉和验收决策，不修改 `packages/*` 与 `apps/*` 生产代码，不改变代码归属和状态 gate。
 
-Reviewer 是否必需按风险决定：高风险清单（见根 `AGENTS.md`「多 Agent 编排」）内的变更必须独立 review，由清单路由的执行体主审；独立小功能快速迭代的 review 可由 Codex CLI 承担；纯文档或低风险测试基建可以用 `init --review skip` 并在 task packet 中记录跳过理由，但仍须有用户/Manager approval 和验证证据。需要独立 review 时，脚本要求显式提供不同于 owner 的 reviewer id。
+Reviewer 是否必需由「变更风险分级」判定；`init --review skip` 只用于纯文档或低风险测试基建，且仍须有 approval 与验证证据。
 
 ## 并发原则
 
 - 一个可变任务对应一个 task worktree 和一个 owner；同一 worktree 不得被两个实施任务同时写入。
-- package worktree 可以作为缓存或验证 lane，但不能作为任务身份；跨包 vertical slice 使用任务级 worktree，并在其中以严格目录隔离区分写入范围（Lib Coder 仅 `packages/*`，Biz Coder 仅 `apps/*`）；无法严格隔离时必须拆成独立 task 与独立 worktree。
+- package worktree 可以作为缓存或验证 lane，但不能作为任务身份；跨包 vertical slice 使用任务级 worktree，并按「编排模式」固定的目录边界做严格隔离；无法严格隔离时必须拆成独立 task 与独立 worktree。
 - 角色目录边界即 worktree 内的写入边界：同一 worktree 中，任一角色不得修改对方目录下的文件；需要对方改动时通过 handoff 派发，而不是越界编辑。
 - Reviewer 不在持续变化的实施 worktree 上复用旧结论；review 前冻结，修复后重新冻结。
 - 共享主工作区不用于并行实施；不得在其中执行 `git switch`、`git checkout`、`git stash`、`git reset` 或 `git clean`。

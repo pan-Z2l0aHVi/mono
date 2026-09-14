@@ -418,6 +418,8 @@ const hasContextChange = normalizedPaths.some(
     file.startsWith('docs/adr/') ||
     file.startsWith('scripts/validate-context') ||
     file.startsWith('scripts/audit-instructions') ||
+    file.startsWith('scripts/instruction-budget') ||
+    file.startsWith('scripts/tool-enforced-rules') ||
     file.startsWith('scripts/agent-workflow') ||
     file.startsWith('scripts/repo-query') ||
     file.startsWith('scripts/workspace-manifests')

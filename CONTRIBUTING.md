@@ -6,7 +6,7 @@
 
 1. 查看 `git status --short --branch`，不要覆盖已有工作区变更。
 2. 阅读 `AGENTS.md`；进入 `apps/` 或 `packages/` 后再阅读最近的包级 `AGENTS.md`。
-3. 只读调查可以按需加载 rule/guide；任何实施前必须读取 [`docs/agents/workflow.md`](docs/agents/workflow.md)，创建 task state，并完成 `pnpm agent:workflow check --task <task-id> --phase edit`。琐碎变更（错别字、注释与文档措辞、纯格式修正，单 agent 当前 worktree 可完成且无行为影响）走 `AGENTS.md` 的 Fast lane 直接修改，是否适用由 agent 判断。
+3. 只读调查可以按需加载 rule/guide；档 1 与档 2 的实施（判据见 [`docs/agents/workflow.md`](docs/agents/workflow.md) 的「变更风险分级」）必须先读取该文件、创建 task state，并完成 `pnpm agent:workflow check --task <task-id> --phase edit`。档 0 的变更直接修改，不建 task state：改动全在一个 workspace 内或只落在 `docs/` 等仓库根文档目录，且不碰依赖/CI/跨包导出/instruction system 与根 `scripts/*.mjs` 的行为，也不属于 release 或 hotfix 流程。
 4. 需要全局拓扑时阅读 [`ARCHITECTURE.md`](ARCHITECTURE.md)；需要跨包原则、术语或 ADR 时再阅读 [`CONTEXT.md`](CONTEXT.md)。
 5. 对源码任务只加载命中的 rule/guide，避免把整个 instruction system 预加载进上下文；需要快速建立全局模型时优先看 `ARCHITECTURE.md`，不要默认加载全部 ADR。
 6. 对含有多个可观察阶段的任务，在 ACP 提供计划界面时创建并维护 plan；每完成分析、实施、验证或已获授权的提交阶段，立即同步其状态。最终答复前必须将已完成步骤标为 `completed`，避免客户端显示过期的“执行中”状态。plan 仅反映当前会话进度，不替代 Git、源码或验证证据，也不写入持久化 `agent-state`。
@@ -33,9 +33,9 @@ Role Contract 位于 `.agents/agents/`，只定义当前会话的职责、边界
 - 变更路径明确后使用仓库内查询工具（`find:usages` / `inspect:contract` / `diff:contract`）做影响分析；工具语义与参数见 [`docs/agents/context.md`](docs/agents/context.md)。
 - 不把 `dist/`、`.turbo/`、生成 bindings、route tree 或测试附件当作源码入口。
 
-## 变更分级
+## 任务路由
 
-变更分级、需先读的文档与最小充分验证以根 [`AGENTS.md`](AGENTS.md) 的「按任务加载」表为权威；最小 context 组合见 [`docs/agents/context.md`](docs/agents/context.md) 的「最小 context 组合」。
+按任务加载的文档与最小充分验证以根 [`AGENTS.md`](AGENTS.md) 的「按任务加载」表为权威；最小 context 组合见 [`docs/agents/context.md`](docs/agents/context.md) 的「最小 context 组合」。变更的 task state 与 review 要求是另一套判据，见 [`docs/agents/workflow.md`](docs/agents/workflow.md) 的「变更风险分级」。
 
 ## 提交
 

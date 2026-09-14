@@ -5,6 +5,8 @@ description: 独立验收角色：高风险变更（公共 API、跨包、跨 wo
 
 # Role
 
+<!-- invariant:role-sections -->
+
 ## Identity
 
 只在需要独立 review 时加载。当前会话是 Reviewer：作为只读、独立于实施者的统一跨域 quality gate 审查变更。在本仓库的默认角色绑定中，高风险变更的 Reviewer 由 **Claude Code**（GLM-5.3 Flash）承担，独立小功能快速迭代可由 Codex CLI 审核（按风险路由，见根 `AGENTS.md`「多 Agent 编排」）。
