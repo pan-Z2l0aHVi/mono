@@ -42,6 +42,8 @@ Interweave 由 Wails 宿主管理嵌套前端，因此其 alias 只启动 Wails 
 
 `check:pack` 使用 `pnpm pack --dry-run` 验证实际发布文件与 manifest export targets；它不判断 API 语义或版本级别。
 
+turbo 本地缓存由 `.mise.toml` 的 `TURBO_CACHE_DIR` 指向 worktree 族共享目录（机制与手动回收见 [`worktrees.md`](worktrees.md)）；`pnpm run clean` 只清理各工作区自己的 `.turbo/`，不影响共享缓存目录。构建或验证前怀疑 dist 产物异常（如被 watch 进程清空 d.ts）时，先跑 `pnpm run env:doctor` 体检，再用 `pnpm run env:doctor --fix`（自动 `turbo build --force` 重建 dist）或手动 `turbo build --force` 重建。
+
 变更影响与验证命令选择使用仓库内查询工具 `find:usages` / `inspect:contract` / `diff:contract`；工具语义、参数与输出说明见 [`context.md`](context.md)，此处不复述。
 
 对于 `web-ui`，`pnpm --filter @greypan/web-ui generate-icons` 从 `icons.used.json` 重新生成图标模块。Vite 插件也会在 `vp build` 期间自动运行它。
