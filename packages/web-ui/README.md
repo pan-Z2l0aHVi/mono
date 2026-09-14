@@ -705,10 +705,14 @@ Uses native `<dialog>` with `@cancel` prevention. Escape calls `close()` unless 
 
 | Property                      | Default                                      | Description                                                                           |
 | ----------------------------- | -------------------------------------------- | ------------------------------------------------------------------------------------- |
-| `--wui-dialog-max-width`      | `360px`                                      | Dialog max width                                                                      |
+| `--wui-dialog-width`          | `360px`                                      | Dialog width                                                                          |
 | `--wui-dialog-max-height`     | `90vh`                                       | Dialog max height                                                                     |
 | `--wui-dialog-overlay-bg`     | `var(--wui-color-backdrop)`                  | Backdrop background                                                                   |
 | `--wui-dialog-bg`             | `var(--wui-color-surface-overlay)`           | Glass card background, falls back to `rgb(246 246 246 / 0.88)`                        |
+| `--wui-dialog-padding`        | `20px 24px 24px`                             | Dialog surface padding                                                                |
+| `--wui-dialog-title-gap`      | `16px`                                       | Spacing below the title                                                               |
+| `--wui-dialog-desc-gap`       | `24px`                                       | Spacing below the body content                                                        |
+| `--wui-dialog-footer-gap`     | `10px` / `12px` (horizontal)                 | Spacing between footer buttons                                                        |
 | `--wui-dialog-footer-justify` | `flex-end` (default) / `center` (horizontal) | Footer `justify-content`; override to `flex-end` for right-aligned horizontal buttons |
 
 #### `<web-ui-drawer>`
