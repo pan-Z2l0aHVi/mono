@@ -1,7 +1,0 @@
----
-'@greypan/web-ui': patch
----
-
-Fix the pressed/dragging handle shadow on `web-ui-switch` and `web-ui-segmented` not showing on iOS. The previous round drove the pressed `box-shadow` through a CSS custom property (`--wui-internal-glass-shadow` / a shadow-list variable); iOS Safari does not transition a property when only its custom-property input changes and can skip the discrete `var()` switch entirely, so the pressed look "reverted" on device. The pressed state now writes the `box-shadow` value directly in the class (regular property change, reliably transitioned everywhere), keeping the glass inset highlight, and the shadows are deepened further for a clearly lifted look: switch `0 2px 12px rgb(0 0 0 / 0.32), 0 14px 36px rgb(0 0 0 / 0.28), 0 28px 64px rgb(0 0 0 / 0.2)`, segmented `0 0 1px rgb(0 0 0 / 0.16), 0 10px 28px rgb(0 0 0 / 0.28), 0 24px 56px rgb(0 0 0 / 0.2)`.
-
-Fix image-preview carousel neighbors "bleeding through" while zoomed. The swipe track keeps the two neighbors rendered beside the current image, but the shared per-image transform previously applied the zoom scale and the pan offsets to every slide, so at scale > 1 the adjacent images were scaled up too and their edges entered the viewport. Now the zoom scale (and, while zoomed, the pan offsets) apply only to the current image; the neighbor slides stay at 1x and frozen in their track positions, so panning while zoomed never brings them into the viewport. At 1x the neighbors still share the vertical pan to stay aligned during diagonal swipes, and swipe behavior is unchanged.
