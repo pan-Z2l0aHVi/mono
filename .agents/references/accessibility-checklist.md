@@ -1,6 +1,6 @@
 # Accessibility Checklist
 
-Quick reference for WCAG 2.1 AA compliance. Use alongside the `frontend-ui-engineering` skill.
+Quick reference for WCAG 2.1 AA compliance. Use when building or reviewing UI that must meet accessibility requirements.
 
 ## Table of Contents
 

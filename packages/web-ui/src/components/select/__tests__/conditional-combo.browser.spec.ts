@@ -5,7 +5,7 @@ import type { WebUiOption } from '@/components/option'
 
 import '..'
 import '@/components/option'
-import { getPortalPanel, waitForFrame } from '@/shared/test-utils'
+import { getPortalPanel, pollUntil, waitForFrame } from '@/shared/test-utils'
 
 import type { WebUiSelect } from '..'
 
@@ -44,9 +44,8 @@ describe('WebUiSelect 条件组合边界（浏览器）', () => {
 
     document.body.click()
     await select.updateComplete
-    // 真实浏览器有退出过渡；等过渡完成后 portal 才被 dispose
-    await new Promise(resolve => setTimeout(resolve, 300))
-    expect(getPortalPanel('listbox')).toBeNull()
+    // 真实浏览器有退出过渡；轮询 portal 真正 dispose，不依赖过渡时长
+    await pollUntil(() => !getPortalPanel('listbox'), 'Expected select portal to dispose after close')
     expect(select.querySelectorAll('web-ui-option').length).toBe(3)
 
     trigger.click()
@@ -76,8 +75,7 @@ describe('WebUiSelect 条件组合边界（浏览器）', () => {
     await select.updateComplete
     select.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, composed: true }))
     await select.updateComplete
-    await new Promise(resolve => setTimeout(resolve, 300))
-    expect(select.open).toBe(false)
+    await pollUntil(() => !select.open && !getPortalPanel('listbox'), 'Expected Escape to close and dispose select')
 
     const inputEvents: Event[] = []
     select.addEventListener('input', e => inputEvents.push(e))
@@ -157,11 +155,13 @@ describe('WebUiSelect 条件组合边界（浏览器）', () => {
     const wrapper = document.createElement('div')
     wrapper.innerHTML = '<web-ui-option value="durian" label="Durian"></web-ui-option>'
     select.appendChild(wrapper)
-    await new Promise(resolve => setTimeout(resolve, 0))
+    await pollUntil(
+      () => getPortalPanel('listbox')?.querySelectorAll('web-ui-option').length === 4,
+      'Expected asynchronously added option to migrate into the panel'
+    )
     await select.updateComplete
 
     const panel = getPortalPanel('listbox')!
-    expect(panel.querySelectorAll('web-ui-option').length).toBe(4)
     expect(select.querySelectorAll('web-ui-option').length).toBe(0)
 
     const durian = panel.querySelector<WebUiOption>('web-ui-option[value="durian"]')!
@@ -232,17 +232,18 @@ describe('WebUiSelect 条件组合边界（浏览器）', () => {
     // 销毁，重开时 Vue 会把 banana 插进已脱离文档的旧面板
     show.value = false
     await nextTick()
-    await new Promise(resolve => setTimeout(resolve, 50))
     await select.updateComplete
-    expect(getPortalPanel('listbox')?.querySelectorAll('web-ui-option').length).toBe(2)
+    await pollUntil(
+      () => getPortalPanel('listbox')?.querySelectorAll('web-ui-option').length === 2,
+      'Expected removed option to leave the select panel'
+    )
     const hostSkeleton = [...select.childNodes].map(node => node.nodeType)
     expect(hostSkeleton.some(type => type === Node.COMMENT_NODE)).toBe(true)
 
     // 关闭销毁面板，注释在宿主存活
     document.body.click()
     await select.updateComplete
-    await new Promise(resolve => setTimeout(resolve, 300))
-    expect(getPortalPanel('listbox')).toBeNull()
+    await pollUntil(() => !getPortalPanel('listbox'), 'Expected select portal to dispose after close')
     expect([...select.childNodes].some(node => node.nodeType === Node.COMMENT_NODE)).toBe(true)
 
     // 重开与 v-if 同 flush：banana 按模板序实时迁入面板（apple/banana/cherry）

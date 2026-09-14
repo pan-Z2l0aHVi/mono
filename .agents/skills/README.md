@@ -9,6 +9,26 @@
 
 ## 主题重叠的分工
 
+### 架构与代码质量
+
+| Skill                          | 职责                                                                                       |
+| ------------------------------ | ------------------------------------------------------------------------------------------ |
+| `improve-codebase-architecture` | 评估工作流：对既有代码产出架构评估（HTML 报告），回答“现在哪里值得改”                       |
+| `codebase-design`               | 设计词汇：实施前用深度模块、接口与 seam 词汇做设计决策（含 DESIGN-IT-TWICE、DEEPENING 参考） |
+
+两者分别对应「评估 → 设计」；行为不变的简化清理由 Claude Code 内置 `/simplify` 承担，不再单设 skill。
+
+### Context 与 instruction system
+
+`audit-instructions` 是本仓 instruction system 的权威审计入口（绑定 `validate:context`）；仓库侧约束（`docs/agents/context.md`、`AGENTS.md`）永远优先，通用 context 方法论不单设第三方 skill。
+
+### UI 实现与设计品味
+
+| Skill             | 职责                                             |
+| ----------------- | ------------------------------------------------ |
+| `emil-design-eng` | 品味参考：交互细节与动效判断（见上文动画分工表） |
+| `apple-design`    | 平台语义：手势、物理动效与系统设计原则           |
+
 交互动画知识在三个第三方 skill 中均有覆盖，按需求选其一加载，避免同时全文加载：
 
 | Skill               | 职责                                                                                                   |

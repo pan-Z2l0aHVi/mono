@@ -5,12 +5,13 @@
 }
 
 :host {
+  touch-action: none;
   user-select: none;
   display: inline-block;
 }
 
 .wui-segmented {
-  touch-action: pan-y;
+  touch-action: none;
   cursor: default;
 
   position: relative;
@@ -47,6 +48,8 @@
   width: var(--indicator-width, 0);
   border-radius: var(--wui-radius-control, calc(infinity * 1px));
 
+  /* 静止态实体白指示器；按压/拖拽时切换为玻璃（半透明玻璃背景 + backdrop blur +
+     描边）并放大 1.5x，回到最初修复不跟手问题时期的视觉结构。 */
   background-color: var(--wui-color-surface-selected, #fff);
   box-shadow:
     0 1px 3px rgb(0 0 0 / 0.12),
@@ -71,11 +74,19 @@
 .wui-segmented.is-pressed .wui-segmented-indicator,
 .wui-segmented.is-dragging .wui-segmented-indicator {
   transform: scale(1.5);
+
   background-color: var(--wui-color-surface-glass, rgb(250 250 250 / 0.34));
+
+  /* stylelint-disable-next-line property-no-vendor-prefix */
+  -webkit-backdrop-filter: blur(4px) saturate(160%);
   backdrop-filter: blur(4px) saturate(160%);
+
+  /* 按下/拖拽时加深投影（立体玻璃感）。直接写死值、不经过 var 中转：iOS Safari 对
+     var 离散切换驱动的 box-shadow 不触发过渡且可能整体不生效（上一轮真机「回退之前」）。 */
   box-shadow:
-    0 0 1px rgb(0 0 0 / 0.05),
-    0 2px 8px rgb(0 0 0 / 0.04);
+    0 0 1px rgb(0 0 0 / 0.1),
+    0 5px 14px rgb(0 0 0 / 0.16),
+    0 12px 28px rgb(0 0 0 / 0.1);
 }
 
 .wui-segmented.is-dragging:not(.is-disabled) {

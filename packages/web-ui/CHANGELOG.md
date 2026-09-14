@@ -1,5 +1,24 @@
 # @greypan/web-ui
 
+## Unreleased
+
+### Minor Changes
+
+- Add `imagePreview()`, an imperative full-viewport image preview. It has no declarative tag contract: it is opened through `imagePreview(options)`, mounted into the nearest `web-ui-theme` overlay container (or an explicit `container`) and driven through the returned handle (`index`, `scale`, `images`, `closed`, `next`, `prev`, `goTo`, `zoomIn`, `zoomOut`, `resetZoom`, `close`). It shares the `native-dialog-presence` and `scroll-lock` plugins with `<web-ui-dialog>` rather than wrapping that component, because the preview needs a dialog that fills the viewport itself with its own pointer interaction.
+- Add presentation options to `imagePreview()`: `nav`, `toolbar`, `closable`, `indicator`, `swipe`, `noScrollLock` and `noBackdropClose`. Every presentation option defaults to `false`, so a preview now renders only the image itself unless the consumer opts in. `noScrollLock` and `noBackdropClose` mirror the same-named `<web-ui-dialog>` properties in naming and semantics.
+- Anchor every `imagePreview()` zoom to a point that stays visually fixed, and add built-in pinch-to-zoom. The wheel now keeps the content under the cursor still and a pinch keeps the midpoint between the two fingers still, while the toolbar buttons, keyboard shortcuts and double-click keep expanding around the viewport center. Pinch has no option because the stage already owns pointer interaction: the first finger still drives pan/swipe, the second finger both starts the pinch and aborts any in-flight pan or swipe, and the compatibility `click` that mixed input may synthesize afterwards is swallowed instead of closing the preview. The pinch handling itself lives in the internal shared gesture layer (`attachPinchGesture`, not part of the package's export map) and reports only geometry — the distance ratio plus the midpoint and its delta — leaving the mapping to scale and translation to the component.
+- Let `imagePreview()` be dragged to pan in any direction at any zoom level, and make that the stage's default drag behaviour. Previously a drag only did something while zoomed in, and the offsets were clamped to how far the image overflowed the stage — which is zero at 1x. The bound is now half the absolute size difference between the image and the stage: zoomed in it still reveals the cropped edges, at 1x it moves the image around inside the viewport, and either way the image can never be dragged out of the viewport. Holding the mouse button down and resting a single finger take the same Pointer path, so desktop and mobile behave identically. `swipe` is narrowed to own the horizontal axis only when it actually applies (1x, more than one image); everything else pans, direction free. Because panning also works at 1x, `resetZoom()` now has something to reset when the image is merely displaced, so the toolbar reset button is enabled whenever the image is zoomed *or* panned rather than only above 1x.
+- Expose drawer section padding tokens: `--wui-drawer-header-padding` (default `16px 20px`), `--wui-drawer-content-padding` (default `20px`), `--wui-drawer-footer-padding` (default `16px 20px`). The content padding token also drives the drag bar visual center via `calc(var(--wui-drawer-content-padding) / 2)`, so changing content padding automatically repositions the drag bar.
+
+### Patch Changes
+
+- Fix `imagePreview()` closing when the user clicked the image. As soon as the stage held pointer capture, the compatibility `click` event was retargeted to the stage and treated as a backdrop click; the same retargeting also broke double-click zoom while zoomed. Pan and swipe now share `attachDragGesture`, which defers pointer capture until the drag threshold is crossed, and backdrop detection relies on the (un-retargeted) `pointerdown` origin instead of the `click` target. That origin is recorded only for the primary left-button pointer and ignored for non-pointer clicks (keyboard activation, programmatic `.click()`), so a secondary touch or a synthetic click cannot close the preview by accident.
+- Constrain `imagePreview()` images to the viewport at 1x. The stage relied on an implicit grid row sized by its content, so `max-width` / `max-height: 100%` had no definite reference and large images were clipped by the viewport instead of contained inside it.
+- Align the `imagePreview()` toolbar padding with the other glass pills (`6px 10px` → `6px`).
+- Use the `radix-icons:reset` glyph for the `imagePreview()` reset-zoom button instead of `lucide:refresh-cw`, so the affordance reads as "back to 1x" rather than "reload".
+- Reduce drawer drag zone default from `32px` to `20px` (`--wui-drawer-drag-zone-size`). Consumer can override back to 32px+ if needed.
+- Reduce slider thumb default dimensions: width `30px` → `24px`, height `20px` → `18px`. Add `--wui-slider-thumb-radius` token (default `8px`) replacing the auto-derived pill shape. Glass corner radius now uses this token instead of `calc(min(width, height) / 2)`.
+
 ## 6.1.0
 
 ### Minor Changes
@@ -55,7 +74,7 @@
   
   - New public token `--wui-drawer-inset` (default `8px`, non-headless drawers). Set to `0` for edge-to-edge geometry, typically paired with `--wui-drawer-radius: 0`.
   - The token is registered via `@property` as `<length>`, so a unitless `0` from consumers is normalized to `0px` instead of silently breaking the closed-state `calc(100% + 0)` transform (exit animation would be dropped).
-  - ADR-0036 updated: the inset is no longer a hard-coded internal value; all other floating-card behavior (drag-close distance math, controlled hover end-state) reads the same variable and follows the token automatically.
+  - The inset is no longer a hard-coded internal value; all other floating-card behavior (drag-close distance math, controlled hover end-state) reads the same variable and follows the token automatically.
 - c310d9f: Add Layout desktop sidebar drag-to-resize and Drawer drag-to-close features.
   
   **Layout (`<web-ui-layout>`):**
@@ -80,7 +99,7 @@
   
   **Drawer visual language (breaking visual, no API change):**
   
-  - Non-headless drawers now render as floating rounded cards inset 8px from all viewport edges (see ADR-0036); elastic drag distances read as margin changes instead of gaps
+  - Non-headless drawers now render as floating rounded cards inset 8px from all viewport edges; elastic drag distances read as margin changes instead of gaps
   - New token `--wui-drawer-radius` (default `28px`); closed-state transforms compensate the inset so the drawer always exits the viewport fully
   - `headless` geometry unchanged (consumer-owned visuals)
   
@@ -112,9 +131,9 @@
   
   - Interaction semantics come from the slotted trigger element (native `<button>`, `<web-ui-button>`, etc.); the collapse writes `aria-expanded`/`aria-controls`/`aria-disabled` onto the first assigned trigger element. A plain-text trigger has no keyboard/focus semantics (documented limitation).
   - Strictly controlled `open` contract unchanged: `open-change` (`CustomEvent<{ open: boolean }>`) fires only on user-originated toggles; `show()`/`close()`/`toggle()` and programmatic writes never emit.
-  - Height/width animation via CSS grid `0fr ↔ 1fr` transition — content-adaptive, zero JS measurement, interruptible (grid-transition selection carried over from ADR-0038; superseded by ADR-0039 for the API shape). `horizontal` switches the axis (default vertical).
+  - Height/width animation via CSS grid `0fr ↔ 1fr` transition — content-adaptive, zero JS measurement, interruptible (grid-transition selection carried over from the collapse design iteration; API shape superseded by the single-element form). `horizontal` switches the axis (default vertical).
   - Three-state closed semantics; consumer light DOM is never moved: default closed state sets `hidden` on the internal content container, `keep-mounted` (now on the root element) keeps content measurable inside the collapsed track with `inert` (scroll position preserved).
-  - Headless kernel: the component carries no visual styling beyond the animation structure; trigger and content typography come from the consumer (new ADR-0039).
+  - Headless kernel: the component carries no visual styling beyond the animation structure; trigger and content typography come from the consumer.
   - Unchanged tokens `--wui-duration-collapse-enter: 200ms` / `--wui-duration-collapse-exit: 160ms`, included in the reduced-motion zeroing lists.
 - c310d9f: feat(overlay): support dropdown size variables in portal and keep borderless keyboard focus rings
   
@@ -202,7 +221,7 @@
   
   - New public token `--wui-drawer-inset` (default `8px`, non-headless drawers). Set to `0` for edge-to-edge geometry, typically paired with `--wui-drawer-radius: 0`.
   - The token is registered via `@property` as `<length>`, so a unitless `0` from consumers is normalized to `0px` instead of silently breaking the closed-state `calc(100% + 0)` transform (exit animation would be dropped).
-  - ADR-0036 updated: the inset is no longer a hard-coded internal value; all other floating-card behavior (drag-close distance math, controlled hover end-state) reads the same variable and follows the token automatically.
+  - The inset is no longer a hard-coded internal value; all other floating-card behavior (drag-close distance math, controlled hover end-state) reads the same variable and follows the token automatically.
 - ab8dfb7: Add Layout desktop sidebar drag-to-resize and Drawer drag-to-close features.
   
   **Layout (`<web-ui-layout>`):**
@@ -227,7 +246,7 @@
   
   **Drawer visual language (breaking visual, no API change):**
   
-  - Non-headless drawers now render as floating rounded cards inset 8px from all viewport edges (see ADR-0036); elastic drag distances read as margin changes instead of gaps
+  - Non-headless drawers now render as floating rounded cards inset 8px from all viewport edges; elastic drag distances read as margin changes instead of gaps
   - New token `--wui-drawer-radius` (default `28px`); closed-state transforms compensate the inset so the drawer always exits the viewport fully
   - `headless` geometry unchanged (consumer-owned visuals)
   
@@ -259,9 +278,9 @@
   
   - Interaction semantics come from the slotted trigger element (native `<button>`, `<web-ui-button>`, etc.); the collapse writes `aria-expanded`/`aria-controls`/`aria-disabled` onto the first assigned trigger element. A plain-text trigger has no keyboard/focus semantics (documented limitation).
   - Strictly controlled `open` contract unchanged: `open-change` (`CustomEvent<{ open: boolean }>`) fires only on user-originated toggles; `show()`/`close()`/`toggle()` and programmatic writes never emit.
-  - Height/width animation via CSS grid `0fr ↔ 1fr` transition — content-adaptive, zero JS measurement, interruptible (grid-transition selection carried over from ADR-0038; superseded by ADR-0039 for the API shape). `horizontal` switches the axis (default vertical).
+  - Height/width animation via CSS grid `0fr ↔ 1fr` transition — content-adaptive, zero JS measurement, interruptible (grid-transition selection carried over from the collapse design iteration; API shape superseded by the single-element form). `horizontal` switches the axis (default vertical).
   - Three-state closed semantics; consumer light DOM is never moved: default closed state sets `hidden` on the internal content container, `keep-mounted` (now on the root element) keeps content measurable inside the collapsed track with `inert` (scroll position preserved).
-  - Headless kernel: the component carries no visual styling beyond the animation structure; trigger and content typography come from the consumer (new ADR-0039).
+  - Headless kernel: the component carries no visual styling beyond the animation structure; trigger and content typography come from the consumer.
   - Unchanged tokens `--wui-duration-collapse-enter: 200ms` / `--wui-duration-collapse-exit: 160ms`, included in the reduced-motion zeroing lists.
 - ab8dfb7: feat(overlay): support dropdown size variables in portal and keep borderless keyboard focus rings
   
@@ -372,7 +391,7 @@
 
   运行时契约收敛：`checkbox-group`/`radio-group`/`segmented` 管理的子项（checkbox/radio/segmented-trigger）不再把同名 `input`/`change` 冒泡到 group 外——子项自身派发事件（`bubbles: false, composed: false`），group 以 capture 相位监听并只派发一次自己的 `input`/`change`，两者 `target`/`currentTarget` 均为 group。独立使用子控件时保持 `bubbles: true, composed: true`。group 上的消费端事件监听不再重复触发。
 
-  详见 `docs/adr/0011-framework-type-adaptation-narrowing.md`。
+  详见 `docs/adr/0005-web-ui-component-architecture.md`。
 
 ### Minor Changes
 

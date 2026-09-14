@@ -22,6 +22,10 @@ async function pollUntil(check: () => boolean, message: string) {
   throw new Error(message)
 }
 
+async function nextFrame() {
+  await new Promise(resolve => requestAnimationFrame(resolve))
+}
+
 describe('WebUiDropdown 打开期实时渲染（浏览器）', () => {
   it('打开期新增菜单项实时迁入面板，关闭后回到宿主且可重开', async () => {
     const mountPoint = document.createElement('div')
@@ -58,9 +62,10 @@ describe('WebUiDropdown 打开期实时渲染（浏览器）', () => {
     // 关闭恢复：新项随其余项回到宿主 light DOM
     dropdown.open = false
     await dropdown.updateComplete
-    await new Promise(resolve => setTimeout(resolve, 300))
-    expect(mountPoint.querySelectorAll('web-ui-dropdown-item').length).toBe(3)
-    expect(getPortalPanel()).toBeNull()
+    await pollUntil(
+      () => !getPortalPanel() && mountPoint.querySelectorAll('web-ui-dropdown-item').length === 3,
+      'Expected dropdown items to return to the host and the portal to dispose'
+    )
 
     // 重开仍完整
     dropdown.open = true
@@ -77,16 +82,14 @@ describe('WebUiDropdown 打开期实时渲染（浏览器）', () => {
         node => node.nodeType === Node.COMMENT_NODE && node.textContent === 'wui-dropdown-menu-item'
       ).length
     expect(markerCount()).toBe(3)
-    await new Promise(resolve => setTimeout(resolve, 80))
+    await nextFrame()
     await dropdown.updateComplete
-    await new Promise(resolve => setTimeout(resolve, 80))
+    await nextFrame()
     expect(markerCount()).toBe(3)
 
     dropdown.open = false
     await dropdown.updateComplete
-    await new Promise(resolve => setTimeout(resolve, 300))
-    // 关闭后 marker 全部摘除，宿主不留骨架残留
-    expect(markerCount()).toBe(0)
+    await pollUntil(() => !getPortalPanel() && markerCount() === 0, 'Expected portal disposal without marker residue')
     app.unmount()
   })
 
@@ -128,7 +131,7 @@ describe('WebUiDropdown 打开期实时渲染（浏览器）', () => {
     // 关闭归还按 marker 模板位：宿主 DOM 序与模板一致（无漂移）
     dropdown.open = false
     await dropdown.updateComplete
-    await new Promise(resolve => setTimeout(resolve, 300))
+    await pollUntil(() => !getPortalPanel(), 'Expected dropdown portal to dispose after close')
     const hostOrder = [...mountPoint.querySelectorAll('web-ui-dropdown-item')].map(el => el.textContent?.trim())
     expect(hostOrder).toEqual(['cut', 'mid', 'copy'])
 
@@ -145,7 +148,7 @@ describe('WebUiDropdown 打开期实时渲染（浏览器）', () => {
     expect(reopenOrder).toEqual(['cut', 'mid', 'copy'])
     dropdown.open = false
     await dropdown.updateComplete
-    await new Promise(resolve => setTimeout(resolve, 300))
+    await pollUntil(() => !getPortalPanel(), 'Expected dropdown portal to dispose after close')
     app.unmount()
   })
 })

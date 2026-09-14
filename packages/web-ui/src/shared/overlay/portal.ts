@@ -1,12 +1,12 @@
 import { definePlugin } from '@greypan/js-kit'
 
-import { getFallbackOverlayRoot } from '@/shared/theme/overlay-root'
-import { findNearestTheme, findRootTheme } from '@/shared/theme/theme-scope'
+import { getFallbackOverlayRoot } from '@/shared/overlay/overlay-root'
+import { findNearestTheme, findRootTheme } from '@/shared/overlay/theme-overlay-scope'
 
 export type OverlayContainer = HTMLElement | (() => HTMLElement | undefined)
 
 export interface OverlayContainerResolutionOptions {
-  /** 无 target 时优先使用文档中的 root theme。 */
+  /** 无 target 时优先使用文档中 root theme 的 theme-owned overlay root。 */
   preferRootTheme?: boolean
 }
 
@@ -80,6 +80,8 @@ export const defineOverlayPortal = () =>
     const style = document.createElement('style')
     style.textContent = ctx.style
     const panel = document.createElement('div')
+    // 单层玻璃：wui-glass 原样留在面板自身，背景/阴影/backdrop-filter 随面板
+    // opacity 与 blur 插值一起过渡（见 overlay-motion.css），无 blur/surface 双层。
     panel.className = ctx.className
     panel.dataset.wuiPresence = 'entering'
     root.append(style, panel)
@@ -356,7 +358,8 @@ export function resolveOverlayContainer(
   const enclosingDialog = findEnclosingOpenDialog(target)
   if (enclosingDialog) return enclosingDialog
 
-  // 无 target 的调用（如菜单）优先使用 root theme；有 target 时使用最近的 theme。
+  // 无 target 的调用（如菜单）优先使用 root theme 的 theme-owned overlay root；
+  // 有 target 时使用最近 theme 的 theme-owned overlay root。
   const theme = options.preferRootTheme ? findRootTheme() : findNearestTheme(target)
   return theme?.getOverlayRoot() ?? getFallbackOverlayRoot()
 }

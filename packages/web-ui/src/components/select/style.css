@@ -108,8 +108,8 @@
 
 .select-overlay {
   --wui-internal-glass-shadow: var(--wui-shadow-panel, 0 3px 9px rgb(0 0 0 / 0.27));
-  --wui-internal-duration-overlay-enter: var(--wui-duration-menu-enter, 140ms);
-  --wui-internal-duration-overlay-exit: var(--wui-duration-menu-exit, 100ms);
+  --wui-internal-duration-float-enter: var(--wui-duration-float-enter, 160ms);
+  --wui-internal-duration-float-exit: var(--wui-duration-float-exit, 120ms);
   --wui-glass-corner-radius: var(--wui-radius-menu, 18px);
   position: absolute;
   z-index: var(--wui-layer-inline-overlay, 1);
@@ -121,6 +121,7 @@
   max-width: var(--wui-select-max-width, 500px);
   border-radius: var(--wui-radius-menu, 18px);
 
+  /* 玻璃背景：wui-glass 在面板自身，这里覆盖其默认玻璃底为菜单表面色 */
   background-color: var(--wui-color-surface-menu, rgb(246 246 246 / 0.82));
 
   &.portal {
@@ -144,4 +145,8 @@
 
 :host([portal]) .select-overlay {
   display: none;
+}
+
+:host([data-wui-pointer-focus]) .select-trigger:focus-visible {
+  outline-color: transparent;
 }

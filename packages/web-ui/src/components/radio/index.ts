@@ -2,10 +2,13 @@ import { html, LitElement, unsafeCSS } from 'lit'
 import { customElement, property, state } from 'lit/decorators.js'
 import { classMap } from 'lit/directives/class-map.js'
 
+import { installPointerFocusSuppression } from '@/shared/focus/pointer-focus'
 import { FormAssociated, defineFormAssociation, FormAssociationController } from '@/shared/form-association'
 import { defineGroupManaged, selectionGroupContextKey, type SelectionGroupContext } from '@/shared/group-management'
 
 import style from './style.css?inline'
+
+installPointerFocusSuppression()
 
 @customElement('web-ui-radio')
 export class WebUiRadio extends FormAssociated(LitElement) {

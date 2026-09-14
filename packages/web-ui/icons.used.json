@@ -64,5 +64,6 @@
   "lucide:ellipsis-vertical",
   "heroicons:bars-arrow-down-16-solid",
   "heroicons:bars-arrow-up-16-solid",
-  "lucide:list-restart"
+  "lucide:list-restart",
+  "radix-icons:reset"
 ]

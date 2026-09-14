@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it } from 'vite-plus/test'
 import '..'
 import '@/components/option'
 import type { WebUiOption } from '@/components/option'
-import { cleanupElement, queryA11y, spyEvents, waitForUpdate } from '@/shared/test-utils'
+import { cleanupElement, pollUntil, queryA11y, spyEvents, waitForUpdate } from '@/shared/test-utils'
 
 import type { WebUiSelect } from '..'
 
@@ -169,8 +169,7 @@ describe('WebUiSelect 条件组合边界', () => {
 
       document.body.click()
       await waitForUpdate(el)
-      await new Promise(resolve => setTimeout(resolve, 300))
-      expect(el.open).toBe(false)
+      await pollUntil(() => !el.open && !getPortalPanel(el), 'Expected deleted-option select to close and dispose')
 
       // 关闭后 light DOM 只应包含未删除的 banana/cherry
       const values = [...el.querySelectorAll<WebUiOption>('web-ui-option')].map(o => o.value).sort()
@@ -191,8 +190,7 @@ describe('WebUiSelect 条件组合边界', () => {
 
       document.body.click()
       await waitForUpdate(el)
-      await new Promise(resolve => setTimeout(resolve, 300))
-      expect(el.open).toBe(false)
+      await pollUntil(() => !el.open && !getPortalPanel(el), 'Expected select portal to dispose after close')
       expect(el.querySelectorAll('web-ui-option').length).toBe(3)
 
       trigger.click()
@@ -218,8 +216,7 @@ describe('WebUiSelect 条件组合边界', () => {
       await flushFrame(el)
       el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
       await waitForUpdate(el)
-      await new Promise(resolve => setTimeout(resolve, 300))
-      expect(el.open).toBe(false)
+      await pollUntil(() => !el.open && !getPortalPanel(el), 'Expected Escape to close and dispose select')
 
       // 回归：Portal 迁移触发的 composed register 曾把 option 监听器挂到宿主上，
       // 第二次点击会以宿主为 currentTarget 误清空 value 并立即关闭

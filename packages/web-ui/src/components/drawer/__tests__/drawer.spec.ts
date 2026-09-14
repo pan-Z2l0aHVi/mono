@@ -602,5 +602,248 @@ describe('WebUiDrawer 组件', () => {
       vi.useRealTimers()
       cleanupElement(el)
     })
+
+    it('弹回 onfinish 覆写内联为打开态终值并保留：cancel 后无跳变窗口', async () => {
+      vi.useFakeTimers()
+      const order: string[] = []
+      const originalSetProperty = CSSStyleDeclaration.prototype.setProperty
+      const setPropertySpy = vi.spyOn(CSSStyleDeclaration.prototype, 'setProperty').mockImplementation(function (
+        this: CSSStyleDeclaration,
+        property: string,
+        value: string | null
+      ) {
+        order.push(`set:${property}=${String(value)}`)
+        return originalSetProperty.call(this, property, value)
+      })
+      const originalRemoveProperty = CSSStyleDeclaration.prototype.removeProperty
+      const removePropertySpy = vi.spyOn(CSSStyleDeclaration.prototype, 'removeProperty').mockImplementation(function (
+        this: CSSStyleDeclaration,
+        property: string
+      ) {
+        order.push(`remove:${property}`)
+        return originalRemoveProperty.call(this, property)
+      })
+      const originalAnimate = HTMLDialogElement.prototype.animate
+
+      let dialog: HTMLDialogElement | null = null
+      let transformAtCancel = ''
+      const cancelSpy = vi.fn<() => void>(() => {
+        transformAtCancel = dialog?.style.transform ?? ''
+        order.push('cancel')
+      })
+      const fakeAnimation = { cancel: cancelSpy, onfinish: null as (() => void) | null }
+      const proto = HTMLDialogElement.prototype as unknown as { animate?: unknown }
+      // jsdom 未实现 Element.animate：无条件覆写为可控 fake，让弹簧走动画分支。
+      proto.animate = function () {
+        return fakeAnimation
+      }
+
+      const el = createDrawer()
+      try {
+        el.draggable = true
+        el.open = true
+        await waitForUpdate(el)
+        await vi.advanceTimersByTimeAsync(16)
+
+        dialog = el.shadowRoot?.querySelector('dialog') as HTMLDialogElement
+        // jsdom 无布局：offsetWidth 为 0 会让任何正向位移都超过关闭阈值（0/3），
+        // 永远走 _springToClose。补一个尺寸让 30px 位移落在弹回区间（< 320/3）；
+        // 用 getter 记录 finishRebound 强制重算读取 offsetWidth 时的 is-dragging 状态。
+        const reflowIsDraggingAtRead: boolean[] = []
+        Object.defineProperty(dialog, 'offsetWidth', {
+          configurable: true,
+          get() {
+            reflowIsDraggingAtRead.push(dialog?.classList.contains('is-dragging') ?? false)
+            order.push('reflow')
+            return 320
+          }
+        })
+        Object.defineProperty(dialog, 'offsetHeight', { configurable: true, value: 320 })
+        const dragZone = dialog.querySelector('.wui-drawer-drag-zone') as HTMLElement
+
+        dragZone.dispatchEvent(
+          new PointerEvent('pointerdown', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 100, clientY: 300 })
+        )
+        await waitForUpdate(el)
+        dragZone.dispatchEvent(
+          new PointerEvent('pointermove', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 130, clientY: 300 })
+        )
+        await waitForUpdate(el)
+        dragZone.dispatchEvent(
+          new PointerEvent('pointerup', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 130, clientY: 300 })
+        )
+        await waitForUpdate(el)
+
+        expect(fakeAnimation.onfinish).toBeTruthy()
+        fakeAnimation.onfinish!()
+
+        // Safari 不采信 fill 覆盖的 before-change style：onfinish 同步边界上
+        // computed 存在 -offset→0 的真实变化，任何内联处理顺序都绕不开；唯一可靠
+        // 的抑制是保持 is-dragging（transition:none），同时把内联覆写为打开态终值
+        // （transform 0 + backdrop 1）并取消动画。
+        expect(transformAtCancel).toBe('translateX(0px)')
+        expect(dialog.style.transform).toBe('translateX(0px)')
+        expect(dialog.style.getPropertyValue('--wui-internal-drag-backdrop-opacity')).toBe('1')
+        // 内联终值保留到关闭管线：不调用 removeProperty。
+        expect(removePropertySpy).not.toHaveBeenCalled()
+
+        // 收尾顺序必须为「覆写内联 → 强制重算读取 offsetWidth → cancel」：
+        // backdrop 覆写先于重算，重算先于 cancel。
+        const cancelIndex = order.indexOf('cancel')
+        const reflowIndex = order.lastIndexOf('reflow')
+        expect(cancelIndex).toBeGreaterThanOrEqual(0)
+        expect(reflowIndex).toBeGreaterThanOrEqual(0)
+        expect(order.indexOf('set:--wui-internal-drag-backdrop-opacity=1')).toBeLessThan(reflowIndex)
+        expect(reflowIndex).toBeLessThan(cancelIndex)
+        // 重算读取发生在 is-dragging 移除之前（读取瞬间类仍保留、transition 仍被
+        // 抑制）：这次被抑制的重算把 0 烘焙进 Safari 的 transition 参考值。
+        expect(reflowIsDraggingAtRead[reflowIsDraggingAtRead.length - 1]).toBe(true)
+        // 重算后同步移除 is-dragging（0→0 无过渡），无需 rAF。
+        expect(dialog.classList.contains('is-dragging')).toBe(false)
+      } finally {
+        setPropertySpy.mockRestore()
+        removePropertySpy.mockRestore()
+        if (originalAnimate === undefined) delete (proto as Record<string, unknown>).animate
+        else proto.animate = originalAnimate
+        vi.useRealTimers()
+        cleanupElement(el)
+      }
+    })
+
+    it('tap 拖拽区收尾移除内联拖拽样式：不残留 translateX(0px) 盖住后续开关过渡', async () => {
+      vi.useFakeTimers()
+      const el = createDrawer()
+      el.draggable = true
+      el.open = true
+      await waitForUpdate(el)
+      await vi.advanceTimersByTimeAsync(16)
+
+      const dialog = el.shadowRoot?.querySelector('dialog') as HTMLDialogElement
+      const dragZone = dialog.querySelector('.wui-drawer-drag-zone') as HTMLElement
+
+      // 无位移 tap：pointerdown + pointerup，走 _springRebound(0) 的无动画收尾。
+      dragZone.dispatchEvent(
+        new PointerEvent('pointerdown', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 100, clientY: 300 })
+      )
+      await waitForUpdate(el)
+      dragZone.dispatchEvent(
+        new PointerEvent('pointerup', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 100, clientY: 300 })
+      )
+      await waitForUpdate(el)
+
+      // 根因锁：tap 收尾必须移除内联拖拽样式。残留 translateX(0px) 会盖住闭合态
+      // CSS transform，之后用按钮/遮罩/Esc 关闭时开与关都失去过渡动画（快速连点
+      // 后「后续开关丢失过渡」的根因）。
+      expect(dialog.style.transform).toBe('')
+      expect(dialog.style.getPropertyValue('--wui-internal-drag-backdrop-opacity')).toBe('')
+      expect(dialog.classList.contains('is-dragging')).toBe(false)
+
+      vi.useRealTimers()
+      cleanupElement(el)
+    })
+
+    it('重开后到达的过期 close 事件不误关刚重开的 drawer；真实外部关闭仍生效', async () => {
+      vi.useFakeTimers()
+      const el = createDrawer()
+      el.open = true
+      await waitForUpdate(el)
+      await vi.advanceTimersByTimeAsync(16)
+
+      const dialog = el.shadowRoot?.querySelector('dialog') as HTMLDialogElement
+      expect(dialog.classList.contains('is-visible')).toBe(true)
+
+      // 关闭：jsdom 的 dialog.close() 不派发 close 事件，finishClosing 置位
+      // self-close 标志后事件永远「在路上」——等价于真实浏览器中异步 close 事件
+      // 尚未送达的状态。等待 fallback 计时器触发 finishClosing → dialog.close()。
+      el.open = false
+      await waitForUpdate(el)
+      await vi.advanceTimersByTimeAsync(500)
+      expect(dialog.open).toBe(false)
+
+      // 快速重开：真实浏览器中上一会话排队的 close 事件可能在此之后才到达。
+      el.open = true
+      await waitForUpdate(el)
+      await vi.advanceTimersByTimeAsync(16)
+      expect(dialog.open).toBe(true)
+      expect(dialog.classList.contains('is-visible')).toBe(true)
+
+      // 模拟上一会话的过期 close 事件此刻才到达：不得把刚重开的 drawer 误关
+      // （否则重开即被误关，表现为连续开关丢失过渡动画——真机「快速连点后后续
+      // drawer 开关丢失过渡」的根因之一）。
+      dialog.dispatchEvent(new Event('close'))
+      await waitForUpdate(el)
+      expect(el.open).toBe(true)
+      expect(dialog.open).toBe(true)
+      expect(dialog.classList.contains('is-visible')).toBe(true)
+
+      // self-close 标志已被上一步消费：真实外部关闭（如表单 method="dialog"）
+      // 仍走正常关闭管线。
+      dialog.dispatchEvent(new Event('close'))
+      await waitForUpdate(el)
+      expect(el.open).toBe(false)
+
+      vi.useRealTimers()
+      cleanupElement(el)
+    })
+
+    it('关闭 onfinish 先写终态再 cancel：cancel 时内联已处于闭合位', async () => {
+      vi.useFakeTimers()
+      const removePropertySpy = vi.spyOn(CSSStyleDeclaration.prototype, 'removeProperty')
+      const originalAnimate = HTMLDialogElement.prototype.animate
+
+      let dialog: HTMLDialogElement | null = null
+      let transformAtCancel = ''
+      const cancelSpy = vi.fn<() => void>(() => {
+        transformAtCancel = dialog?.style.transform ?? ''
+      })
+      const fakeAnimation = { cancel: cancelSpy, onfinish: null as (() => void) | null }
+      const proto = HTMLDialogElement.prototype as unknown as { animate?: unknown }
+      proto.animate = function () {
+        return fakeAnimation
+      }
+
+      const el = createDrawer()
+      try {
+        el.draggable = true
+        el.controlled = true
+        el.open = true
+        await waitForUpdate(el)
+        await vi.advanceTimersByTimeAsync(16)
+
+        dialog = el.shadowRoot?.querySelector('dialog') as HTMLDialogElement
+        Object.defineProperty(dialog, 'offsetWidth', { configurable: true, value: 320 })
+        Object.defineProperty(dialog, 'offsetHeight', { configurable: true, value: 320 })
+        const dragZone = dialog.querySelector('.wui-drawer-drag-zone') as HTMLElement
+
+        dragZone.dispatchEvent(
+          new PointerEvent('pointerdown', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 100, clientY: 300 })
+        )
+        await waitForUpdate(el)
+        // 220px 位移 > 320/3 阈值：走关闭弹簧。
+        dragZone.dispatchEvent(
+          new PointerEvent('pointermove', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 320, clientY: 300 })
+        )
+        await waitForUpdate(el)
+        dragZone.dispatchEvent(
+          new PointerEvent('pointerup', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 320, clientY: 300 })
+        )
+        await waitForUpdate(el)
+
+        expect(fakeAnimation.onfinish).toBeTruthy()
+        fakeAnimation.onfinish!()
+
+        // finishClose（controlled）先写入闭合位内联 transform，cancel 时内联已是终态；
+        // 若反序，cancel 会让 computed 先回落到拖拽残留再被终态纠正，Safari 会捕获该跳变。
+        expect(cancelSpy).toHaveBeenCalledTimes(1)
+        expect(transformAtCancel).toMatch(/translate/)
+        expect(removePropertySpy).not.toHaveBeenCalled()
+      } finally {
+        removePropertySpy.mockRestore()
+        if (originalAnimate === undefined) delete (proto as Record<string, unknown>).animate
+        else proto.animate = originalAnimate
+        vi.useRealTimers()
+        cleanupElement(el)
+      }
+    })
   })
 })

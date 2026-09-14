@@ -259,6 +259,7 @@ dropdown、tooltip）不需要它。
 |                       | [`<web-ui-button-group>`](#web-ui-button-group)           |
 | **浮层 / 模态**       | [`<web-ui-dialog>`](#web-ui-dialog)                       |
 |                       | [`<web-ui-drawer>`](#web-ui-drawer)                       |
+|                       | [`imagePreview()`](#imagepreview)                         |
 | **文档流 Disclosure** | [`<web-ui-collapse>`](#web-ui-collapse)                   |
 | **浮动**              | [`<web-ui-popover>`](#web-ui-popover)                     |
 |                       | [`<web-ui-tooltip>`](#web-ui-tooltip)                     |
@@ -375,16 +376,16 @@ ArrowUp/ArrowDown 键增减数值。空输入或 `-` 在提交时被忽略，值
 
 选择器下拉框，支持键盘导航和 Portal。
 
-| 属性               | 类型                               | 默认值  | 说明                 |
-| ------------------ | ---------------------------------- | ------- | -------------------- |
-| `value`            | `string`                           | `''`    | 选中值               |
-| `placeholder`      | `string`                           | `''`    | 占位文本             |
-| `name`             | `string`                           | `''`    | 表单字段名           |
-| `disabled`         | `boolean`                          | `false` | 禁用状态             |
-| `required`         | `boolean`                          | `false` | 必填校验             |
-| `portal`           | `boolean`                          | `false` | 在主题浮层容器中渲染 |
-| `no-scroll-lock`   | `boolean`                          | `false` | 打开时不锁定页面滚动 |
-| `overlayContainer` | `HTMLElement \| () => HTMLElement` | —       | 显式 Portal 容器     |
+| 属性               | 类型                               | 默认值  | 说明                               |
+| ------------------ | ---------------------------------- | ------- | ---------------------------------- |
+| `value`            | `string`                           | `''`    | 选中值                             |
+| `placeholder`      | `string`                           | `''`    | 占位文本                           |
+| `name`             | `string`                           | `''`    | 表单字段名                         |
+| `disabled`         | `boolean`                          | `false` | 禁用状态                           |
+| `required`         | `boolean`                          | `false` | 必填校验                           |
+| `portal`           | `boolean`                          | `false` | 在 theme-owned overlay root 中渲染 |
+| `no-scroll-lock`   | `boolean`                          | `false` | 打开时不锁定页面滚动               |
+| `overlayContainer` | `HTMLElement \| () => HTMLElement` | —       | 显式 Portal 容器                   |
 
 **事件：** `input`, `change`, `open-change` (`CustomEvent<{ open: boolean }>`)
 
@@ -420,7 +421,7 @@ Portal 面板创建时会镜像 host 上解析后的这些变量；更新 host �
 | `readonly`           | `boolean`                          | `false`      | 只读状态（不可输入、不可展开下拉）                                    |
 | `required`           | `boolean`                          | `false`      | 必填校验                                                              |
 | `allow-custom-value` | `boolean`                          | `false`      | 允许 Enter 提交不在候选中的 custom value                              |
-| `portal`             | `boolean`                          | `false`      | 在主题浮层容器中渲染                                                  |
+| `portal`             | `boolean`                          | `false`      | 在 theme-owned overlay root 中渲染                                    |
 | `no-scroll-lock`     | `boolean`                          | `false`      | 打开时不锁定页面滚动                                                  |
 | `overlayContainer`   | `HTMLElement \| () => HTMLElement` | —            | 显式 Portal 容器                                                      |
 | `aria-label`         | `string`                           | —            | 无障碍名称                                                            |
@@ -466,7 +467,7 @@ Portal 面板创建时会镜像 host 上解析后的这些变量；更新 host �
 
 **方法：** `focus()`, `blur()`
 
-支持 ArrowLeft/Right/Up/Down、Home/End、PageUp/PageDown 键盘导航。使用 pointer capture 处理鼠标、触控笔和触摸交互。
+支持 ArrowLeft/Right/Up/Down、Home/End、PageUp/PageDown 键盘导航。使用 pointer capture 处理鼠标、触控笔和触摸交互；组件 host 与触控轨道均声明 `touch-action: none`，拖拽激活期间同时阻止 `touchmove` 默认滚动，避免 iOS Safari 在横/纵拖拽过程中接管手势。
 
 **CSS 自定义属性：**
 
@@ -476,8 +477,9 @@ Portal 面板创建时会镜像 host 上解析后的这些变量；更新 host �
 | `--wui-slider-vertical-height` | `200px`                             | 垂直滑块高度 |
 | `--wui-slider-height`          | `var(--wui-slider-track-size, 6px)` | 轨道厚度     |
 | `--wui-slider-track-size`      | `6px`                               | 轨道尺寸     |
-| `--wui-slider-thumb-width`     | `30px`                              | 滑块宽度     |
-| `--wui-slider-thumb-height`    | `20px`                              | 滑块高度     |
+| `--wui-slider-thumb-width`     | `24px`                              | 滑块宽度     |
+| `--wui-slider-thumb-height`    | `18px`                              | 滑块高度     |
+| `--wui-slider-thumb-radius`    | `8px`                               | 滑块圆角     |
 | `--wui-slider-marks-inset`     | `0`                                 | 刻度内缩     |
 
 #### `<web-ui-checkbox>`
@@ -549,6 +551,8 @@ Portal 面板创建时会镜像 host 上解析后的这些变量；更新 host �
 与原生 `<form>` 集成（通过 `ElementInternals`）。
 
 根据 `value` 同步子 trigger 的 `checked` 状态。`disabled` 提供继承的有效禁用状态，不改写 trigger 自身的 `disabled` 属性。直接设 `value` 不派发事件。
+
+按住当前选中项横向拖拽可滑动指示器，松手吸附到最近选项（快速抛掷按速度切换）。触摸面声明 `touch-action: none`，拖拽激活期间阻止 `touchmove` 默认滚动，避免 iOS Safari 中断手势。
 
 #### `<web-ui-checkbox-group>`
 
@@ -663,11 +667,17 @@ Portal 面板创建时会镜像 host 上解析后的这些变量；更新 host �
 
 **CSS 自定义属性：**
 
-| 属性                      | 默认值                             | 说明                                             |
-| ------------------------- | ---------------------------------- | ------------------------------------------------ |
-| `--wui-dialog-max-width`  | `360px`                            | 对话框最大宽度                                   |
-| `--wui-dialog-overlay-bg` | `var(--wui-color-backdrop)`        | 遮罩背景色                                       |
-| `--wui-dialog-bg`         | `var(--wui-color-surface-overlay)` | 玻璃卡片背景色，回退到 `rgb(246 246 246 / 0.88)` |
+| 属性                          | 默认值                                     | 说明                                                                  |
+| ----------------------------- | ------------------------------------------ | --------------------------------------------------------------------- |
+| `--wui-dialog-width`          | `360px`                                    | 对话框宽度                                                            |
+| `--wui-dialog-max-height`     | `90vh`                                     | 对话框最大高度                                                        |
+| `--wui-dialog-overlay-bg`     | `var(--wui-color-backdrop)`                | 遮罩背景色                                                            |
+| `--wui-dialog-bg`             | `var(--wui-color-surface-overlay)`         | 玻璃卡片背景色，回退到 `rgb(246 246 246 / 0.88)`                      |
+| `--wui-dialog-padding`        | `20px 24px 24px`                           | 对话框表面内边距                                                      |
+| `--wui-dialog-title-gap`      | `16px`                                     | 标题下方间距                                                          |
+| `--wui-dialog-desc-gap`       | `24px`                                     | 正文内容下方间距                                                      |
+| `--wui-dialog-footer-gap`     | `10px` / horizontal `12px`                 | Footer 按钮间距                                                       |
+| `--wui-dialog-footer-justify` | `flex-end`（默认）/ `center`（horizontal） | Footer `justify-content`；horizontal 模式下覆盖为 `flex-end` 可右对齐 |
 
 #### `<web-ui-drawer>`
 
@@ -696,7 +706,9 @@ Portal 面板创建时会镜像 host 上解析后的这些变量；更新 host �
 
 关闭时保留原生 dialog 的 top layer，待退出过渡完成后调用 `dialog.close()`。Escape 始终走此关闭路径；`no-backdrop-close` 仅控制遮罩点击。
 
-**拖拽关闭：** 启用 `draggable` 后，打开的抽屉在内缘显示灰色胶囊 drag bar（默认 4×56px，视觉中线距内缘 10px，位于 32px 厚的命中热区内；`right` 在左缘、`left` 在右缘、`top` 在下缘、`bottom` 在上缘）：
+启用 `closable` 时，内置关闭按钮固定在 header 右上角（默认顶部 `16px`、右侧 `20px`），不会再拉伸到抽屉中间。
+
+**拖拽关闭：** 启用 `draggable` 后，打开的抽屉在内缘显示灰色胶囊 drag bar（默认 4×56px，视觉中线距内缘 10px，位于 20px 厚的命中热区内；`right` 在左缘、`left` 在右缘、`top` 在下缘、`bottom` 在上缘）：
 
 - 拖拽实时跟手，遮罩透明度按比例淡出。
 - 松手时位移超过抽屉尺寸约 1/3 或快速甩动即弹簧关闭，否则弹回打开位；方向随 placement 适配。
@@ -706,17 +718,97 @@ Portal 面板创建时会镜像 host 上解析后的这些变量；更新 host �
 
 **CSS 自定义属性：**
 
-| 属性                              | 默认值                             | 说明                                               |
-| --------------------------------- | ---------------------------------- | -------------------------------------------------- |
-| `--wui-drawer-width`              | `320px`                            | 抽屉宽度                                           |
-| `--wui-drawer-height`             | `300px`                            | 抽屉高度（上/下）                                  |
-| `--wui-drawer-bg`                 | `var(--wui-color-surface-overlay)` | 抽屉背景色                                         |
-| `--wui-drawer-radius`             | `var(--wui-radius-overlay, 28px)`  | 浮动卡片圆角（非 headless）                        |
-| `--wui-drawer-inset`              | `8px`                              | 浮动卡片视口留边（非 headless）；置 `0` 为贴边几何 |
-| `--wui-drawer-overlay-bg`         | `rgb(0 0 0 / 0.12)`                | 遮罩背景色                                         |
-| `--wui-drawer-drag-zone-size`     | `32px`                             | Drag-to-close 命中热区厚度（draggable）            |
-| `--wui-drawer-drag-bar-thickness` | `4px`                              | Drag bar 胶囊厚度（短轴）                          |
-| `--wui-drawer-drag-bar-length`    | `56px`                             | Drag bar 胶囊长度（沿抽屉边缘）                    |
+| 属性                              | 默认值                             | 说明                                                 |
+| --------------------------------- | ---------------------------------- | ---------------------------------------------------- |
+| `--wui-drawer-width`              | `320px`                            | 抽屉宽度                                             |
+| `--wui-drawer-height`             | `300px`                            | 抽屉高度（上/下）                                    |
+| `--wui-drawer-bg`                 | `var(--wui-color-surface-overlay)` | 抽屉背景色                                           |
+| `--wui-drawer-radius`             | `var(--wui-radius-overlay, 28px)`  | 浮动卡片圆角（非 headless）                          |
+| `--wui-drawer-inset`              | `8px`                              | 浮动卡片视口留边（非 headless）；置 `0` 为贴边几何   |
+| `--wui-drawer-overlay-bg`         | `rgb(0 0 0 / 0.12)`                | 遮罩背景色                                           |
+| `--wui-drawer-drag-zone-size`     | `20px`                             | Drag-to-close 命中热区厚度（draggable）              |
+| `--wui-drawer-drag-bar-thickness` | `4px`                              | Drag bar 胶囊厚度（短轴）                            |
+| `--wui-drawer-drag-bar-length`    | `56px`                             | Drag bar 胶囊长度（沿抽屉边缘）                      |
+| `--wui-drawer-header-padding`     | `16px 20px`                        | Header 区域 padding                                  |
+| `--wui-drawer-close-top`          | `16px`                             | 内置关闭按钮相对 header 顶部的偏移                   |
+| `--wui-drawer-close-right`        | `20px`                             | 内置关闭按钮相对抽屉右缘的偏移                       |
+| `--wui-drawer-content-padding`    | `20px`                             | 内容区 padding；同时驱动 drag bar 视觉中线（取半值） |
+| `--wui-drawer-footer-padding`     | `16px 20px`                        | Footer 区域 padding                                  |
+
+#### `imagePreview()`
+
+命令式图片预览，没有声明式标签契约：只能通过 `imagePreview()` 打开，并用返回的句柄控制。内部使用原生 `<dialog>` 的 `showModal()`，默认挂载到最近的 `web-ui-theme` theme-owned overlay root（无可用 theme-owned root 时回退到全局 fallback overlay root）。
+
+它不复用 `<web-ui-dialog>` 组件：预览需要自身铺满视口的 dialog（全视口遮罩由 dialog 内独立遮罩层渲染，dialog 元素自身不做 opacity 过渡，玻璃控件的 backdrop blur 全程连续）与自有指针交互，与 dialog 组件的玻璃卡片 / 插槽契约不同源。两者共享 `native-dialog-presence` 与 `scroll-lock` 两个底层插件，`noScrollLock` / `noBackdropClose` 的命名与语义也对齐同名属性。
+
+```ts
+import { imagePreview } from '@greypan/web-ui'
+
+const preview = imagePreview({
+  images: [{ src: '/a.jpg', alt: '图 A' }, { src: '/b.jpg' }],
+  index: 0,
+  nav: true,
+  toolbar: true,
+  closable: true,
+  indicator: true
+})
+
+preview.next()
+preview.zoomIn()
+
+await preview.closed
+```
+
+**选项：**
+
+| 选项              | 类型                 | 默认值  | 说明                                                 |
+| ----------------- | -------------------- | ------- | ---------------------------------------------------- |
+| `images`          | `ImagePreviewItem[]` | —       | 图片列表，至少一项，否则抛错                         |
+| `index`           | `number`             | `0`     | 初始索引，越界时钳制到有效区间                       |
+| `loop`            | `boolean`            | `true`  | 首尾循环切换                                         |
+| `target`          | `Element`            | —       | 用于解析最近 theme-owned overlay root 的触发元素     |
+| `container`       | `HTMLElement`        | —       | 显式挂载容器，优先级高于主题作用域                   |
+| `nav`             | `boolean`            | `false` | 展示上一张 / 下一张按钮；仅图片多于一张时渲染        |
+| `toolbar`         | `boolean`            | `false` | 展示缩放工具条（缩小 / 倍率 / 放大 / 重置）          |
+| `closable`        | `boolean`            | `false` | 展示关闭按钮                                         |
+| `indicator`       | `boolean`            | `false` | 展示「当前 / 总数」指示器，并用 `aria-live` 宣告位置 |
+| `swipe`           | `boolean`            | `false` | 1x 下允许左右滑动切换图片；生效期间横向轴归它        |
+| `noScrollLock`    | `boolean`            | `false` | 打开期间不锁定页面滚动                               |
+| `noBackdropClose` | `boolean`            | `false` | 点击图片以外的空白区域不关闭                         |
+
+`ImagePreviewItem` 为 `{ src: string; alt?: string }`；`alt` 缺省为空字符串。
+
+展示类选项默认全关：不传任何选项时只渲染图片本身，导航、工具条、关闭按钮与指示器都需要显式开启。
+
+**返回句柄：**
+
+| 成员                                     | 类型                          | 说明                             |
+| ---------------------------------------- | ----------------------------- | -------------------------------- |
+| `index`                                  | `number`                      | 当前索引，关闭后保留最后一次的值 |
+| `scale`                                  | `number`                      | 当前缩放倍率，区间 `[1, 4]`      |
+| `images`                                 | `readonly ImagePreviewItem[]` | 归一化后的图片列表               |
+| `closed`                                 | `Promise<void>`               | 退场结束且宿主移除后兑现         |
+| `next()` / `prev()`                      | `() => void`                  | 相对切换                         |
+| `goTo(index)`                            | `(index: number) => void`     | 跳转；`loop` 关闭时在边界钳制    |
+| `zoomIn()` / `zoomOut()` / `resetZoom()` | `() => void`                  | 缩放控制                         |
+| `close()`                                | `() => void`                  | 关闭并播放退场动画               |
+
+**交互：** 方向键始终可切换图片，与 `nav` 无关；`+` / `-` 键和滚轮缩放，`0` 重置。缩放带锚点：滚轮固定光标下的那一点，双指捏合固定两指中点，工具条按钮、键盘快捷键与双击则以视口中心为中心放大。按住鼠标拖拽或单指按住拖拽都能平移图片，方向不限，且与倍率无关：放大后是查看被裁切的边缘，1x 是在视口内移动图片。两种情形共用同一个边界——图片与舞台尺寸差的一半，因此图片永远不会被拖出视口；拖到边界后继续拖是钳制而非回弹。双击图片在 1x 与 2x 之间切换。
+
+双指缩放始终开启且不提供选项：舞台本身就持有指针交互，没有会冲突的手势。第一根手指照常负责平移 / 滑动，第二根手指落下才进入捏合，并中止进行中的平移或滑动。捏合不会关闭浮层；混合输入事后可能补发的兼容 `click` 会被吞掉，而不是当作遮罩点击。
+
+点击图片以外的空白区域或按 Escape 关闭，原生 dialog 始终暴露 `图片预览` 这一可访问名称。`swipe` 开启且图片多于一张时，图片排布在单条轮播轨道上：当前图与相邻图各占等宽等高的 slide，舞台裁切溢出，整条轨道随手指平移；松手时越过距离阈值（舞台宽度的 15%，取整）滑入相邻图，位移未达阈值但快速轻扫的采样速度达到 320px/s 以上、或位移至少 16px 且速度（窗口采样或整段平均）达到 160px/s 以上的轻扫同样提交，否则弹回；`loop` 开启时首尾环绕的相邻图恒在当前图两侧，`loop` 关闭时边界方向回弹不越界。该手势生效期间接管整个拖拽：1x 下横向拖拽用于切图，纵向位移被完全忽略（不驱平移、不跟手）。放大后拖拽一律平移（纵横都跟），不再切换图片。由于 1x 也能平移，`resetZoom()` 在「已放大」和「已位移」两种情况下都可用——工具条里的重置按钮对已平移的 1x 图片同样可点。
+
+关闭请求不会立刻销毁原生 dialog：它保持在 top layer，等退场过渡结束后才调用 `dialog.close()`，随后宿主从 DOM 移除并兑现 `closed`。打开期间锁定页面滚动，除非 `noScrollLock` 为 `true`。
+
+**CSS 自定义属性：**
+
+| 属性                             | 默认值                           | 说明                     |
+| -------------------------------- | -------------------------------- | ------------------------ |
+| `--wui-image-preview-overlay-bg` | `rgb(0 0 0 / 0.72)`              | 全视口遮罩背景色         |
+| `--wui-image-preview-edge-gap`   | `20px`                           | 控件到视口边缘的可见距离 |
+| `--wui-duration-swipe-settle`    | `220ms`                          | 轮播滑入/回位的过渡时长  |
+| `--wui-ease-swipe`               | `cubic-bezier(0.32, 0.72, 0, 1)` | 轮播滑入/回位的缓动曲线  |
 
 ---
 
@@ -726,12 +818,13 @@ Portal 面板创建时会镜像 host 上解析后的这些变量；更新 host �
 
 文档流内的展开收起容器，带高度（或宽度）过渡动画。单元素双插槽；无 portal、无滚动锁定、无焦点管理。
 
-| 属性           | 类型      | 默认值  | 说明                                                                                |
-| -------------- | --------- | ------- | ----------------------------------------------------------------------------------- |
-| `open`         | `boolean` | `false` | 展开状态；交互时自管理，`open-change` 仅用户来源时派发                              |
-| `disabled`     | `boolean` | `false` | 忽略 trigger 点击并在 trigger 元素上设 `aria-disabled`；已展开内容保持现状          |
-| `horizontal`   | `boolean` | `false` | 沿宽度而非高度动画                                                                  |
-| `keep-mounted` | `boolean` | `false` | 关闭稳态以 `inert` 保留在 0fr 轨道内（滚动位置与布局可测量），而非内部容器 `hidden` |
+| 属性           | 类型      | 默认值  | 说明                                                                                 |
+| -------------- | --------- | ------- | ------------------------------------------------------------------------------------ |
+| `open`         | `boolean` | `false` | 展开状态；交互时自管理，`open-change` 仅用户来源时派发                               |
+| `disabled`     | `boolean` | `false` | 忽略 trigger 点击并在 trigger 元素上设 `aria-disabled`；已展开内容保持现状           |
+| `horizontal`   | `boolean` | `false` | 沿宽度而非高度动画                                                                   |
+| `keep-mounted` | `boolean` | `false` | 关闭稳态以 `inert` 保留在 0fr 轨道内（滚动位置与布局可测量），而非内部容器 `hidden`  |
+| `peek`         | `string`  | —       | 关闭稳态露出的尺寸（CSS 长度，如 `120px`），沿动画轴生效；末端自带自动长度的边缘渐隐 |
 
 **事件：** `open-change` (`CustomEvent<{ open: boolean }>`)。仅用户来源的切换（trigger 点击）派发；程序化写入（`open`、`show()`、`close()`、`toggle()`）不派发。嵌套时内层 `open-change` 会冒泡穿过外层根（composed 事件），按 `event.target` 区分。
 
@@ -752,6 +845,38 @@ Portal 面板创建时会镜像 host 上解析后的这些变量；更新 host �
 
 **关闭稳态语义：** Consumer的 light DOM 永不移动或卸载。默认关闭稳态在内部内容容器上设 `hidden`；`keep-mounted` 时内部容器标记 `inert`，保留在收起轨道内可测量。
 
+**`peek`（只露一部分）：** 设置 `peek` 后关闭稳态不再收拢到 0，而是沿动画轴露出内容的头部 `peek` 长度（`horizontal` 时改为宽度）：轨道保持在内容高度，裁剪长度落在内部容器上。其语义等同 `keep-mounted`——内容保留挂载但被 `inert` 阻断，被裁掉的部分不可聚焦、不可点击。内容本身不足 `peek` 时按内容实际尺寸收起，不留空白。由于固定长度与自适应高度无法由 CSS 插值，`peek` ↔ 展开这两个方向改为读出像素后以显式长度驱动（每次开合测量一次）；其余动画路径仍是零测量的 grid `fr` 过渡。
+
+```html
+<web-ui-collapse peek="120px">
+  <button type="button">点击切换</button>
+  <div slot="content">很长的内容——关闭时只露出前 120px</div>
+</web-ui-collapse>
+```
+
+**边缘渐隐：** 露出区域的裁剪边缘自带一段 alpha 渐变（`horizontal` 时改为右边），让被裁掉的部分柔和过渡到背景而不是硬切。渐变长度由 `peek` 推导，不需要也没有第二个属性可调——需要时用 CSS 变量微调：
+
+| CSS 变量                         | 默认值        | 说明                                           |
+| -------------------------------- | ------------- | ---------------------------------------------- |
+| `--wui-collapse-peek-edge-ratio` | `0.4`         | 渐变长度占 `peek` 的比例                       |
+| `--wui-collapse-peek-edge-max`   | `112px`       | 长度上限，避免大 `peek` 算出过长的虚化带       |
+| `--wui-collapse-peek-edge`       | —             | 显式指定长度，优先于推导值                     |
+| `--wui-collapse-peek-edge-color` | `transparent` | 渐变末端颜色（需带 alpha，mask 按 alpha 解析） |
+
+比例设为 `0` 即关闭渐隐。推导是纯 CSS 的 `calc(peek * ratio)`：`peek` 用 rem 时渐变长度自动跟随根字号缩放，JS 侧不需要做任何单位解析。已知限制：`peek` 取百分比时推导结果不是长度、无法被注册属性插值，会静默回落为「无渐隐」，此时请用 `--wui-collapse-peek-edge` 显式指定长度。
+
+渐变是四段「先陡后缓」而非线性：主体全黑延伸到渐变带起点后，前 30% 距离就降到 60% alpha，65% 处 26%，末端落到边缘颜色。线性渐变的 alpha 在带子前 40% 几乎贴着 1.0，人眼感知到的虚化远短于声明长度——把下降前置后，带子从起点就明显发虚，同样长度的感知长度接近翻倍。
+
+渐变带位置用百分比声明、相对容器的**当前渲染高度**（即 `max-height` 动画的那个高度），因此收起动画期间渐变带逐帧跟随裁剪边缘移动，`mask-image` 字符串本身无需插值。渐变带长度由注册的 `<length>` 自定义属性驱动，随开合动画平滑淡入淡出，而不是等收起动画落稳态才突然出现。
+
+```html
+<!-- 调强渐隐：比例 0.5 → 120px peek 配 60px 渐隐 -->
+<web-ui-collapse peek="120px" style="--wui-collapse-peek-edge-ratio: 0.5">
+  <button type="button">点击切换</button>
+  <div slot="content">很长的内容——120px 露出区域的底部渐隐更强</div>
+</web-ui-collapse>
+```
+
 **已知限制：** `horizontal` 动画期间内容随宽度变化 reflow。
 
 ---
@@ -762,15 +887,15 @@ Portal 面板创建时会镜像 host 上解析后的这些变量；更新 host �
 
 锚定触发元素的弹出层。
 
-| 属性               | 类型                               | 默认值     | 说明                 |
-| ------------------ | ---------------------------------- | ---------- | -------------------- |
-| `open`             | `boolean`                          | `false`    | 弹出层可见性         |
-| `disabled`         | `boolean`                          | `false`    | 禁用状态             |
-| `placement`        | `Placement`                        | `'bottom'` | Floating UI 位置     |
-| `trigger`          | `'click' \| 'hover' \| 'manual'`   | `'click'`  | 触发方式             |
-| `offset`           | `number`                           | `8`        | 与锚点距离           |
-| `portal`           | `boolean`                          | `false`    | 在主题浮层容器中渲染 |
-| `overlayContainer` | `HTMLElement \| () => HTMLElement` | —          | 显式 Portal 容器     |
+| 属性               | 类型                               | 默认值     | 说明                               |
+| ------------------ | ---------------------------------- | ---------- | ---------------------------------- |
+| `open`             | `boolean`                          | `false`    | 弹出层可见性                       |
+| `disabled`         | `boolean`                          | `false`    | 禁用状态                           |
+| `placement`        | `Placement`                        | `'bottom'` | Floating UI 位置                   |
+| `trigger`          | `'click' \| 'hover' \| 'manual'`   | `'click'`  | 触发方式                           |
+| `offset`           | `number`                           | `8`        | 与锚点距离                         |
+| `portal`           | `boolean`                          | `false`    | 在 theme-owned overlay root 中渲染 |
+| `overlayContainer` | `HTMLElement \| () => HTMLElement` | —          | 显式 Portal 容器                   |
 
 **事件：** `open-change` (`CustomEvent<{ open: boolean }>`)
 
@@ -786,17 +911,17 @@ Hover 模式使用 `pointerenter`/`pointerleave` 加延迟控制。Click 模式�
 
 工具提示，支持指针和焦点触发。
 
-| 属性               | 类型                               | 默认值  | 说明                 |
-| ------------------ | ---------------------------------- | ------- | -------------------- |
-| `placement`        | `Placement`                        | `'top'` | Floating UI 位置     |
-| `content`          | `string`                           | `''`    | 提示文本（替代插槽） |
-| `open`             | `boolean`                          | `false` | 可见性               |
-| `disabled`         | `boolean`                          | `false` | 禁用状态             |
-| `show-delay`       | `number`                           | `200`   | 显示延迟（毫秒）     |
-| `hide-delay`       | `number`                           | `100`   | 隐藏延迟（毫秒）     |
-| `offset`           | `number`                           | `6`     | 与触发器的距离       |
-| `portal`           | `boolean`                          | `false` | 在主题浮层容器中渲染 |
-| `overlayContainer` | `HTMLElement \| () => HTMLElement` | —       | 显式 Portal 容器     |
+| 属性               | 类型                               | 默认值  | 说明                               |
+| ------------------ | ---------------------------------- | ------- | ---------------------------------- |
+| `placement`        | `Placement`                        | `'top'` | Floating UI 位置                   |
+| `content`          | `string`                           | `''`    | 提示文本（替代插槽）               |
+| `open`             | `boolean`                          | `false` | 可见性                             |
+| `disabled`         | `boolean`                          | `false` | 禁用状态                           |
+| `show-delay`       | `number`                           | `200`   | 显示延迟（毫秒）                   |
+| `hide-delay`       | `number`                           | `100`   | 隐藏延迟（毫秒）                   |
+| `offset`           | `number`                           | `6`     | 与触发器的距离                     |
+| `portal`           | `boolean`                          | `false` | 在 theme-owned overlay root 中渲染 |
+| `overlayContainer` | `HTMLElement \| () => HTMLElement` | —       | 显式 Portal 容器                   |
 
 **事件：** `open-change` (`CustomEvent<{ open: boolean }>`)
 
@@ -994,7 +1119,7 @@ WebUiSpinner.hide() // 隐藏
 
 #### `<web-ui-layout>`
 
-响应式页面布局：支持可选全宽 Banner、桌面端可折叠侧边栏，以及移动端 headless drawer。页面本身滚动；Banner 滚出后，桌面端 sidebar 和 header 固定在视口内。
+响应式页面布局：支持可选全宽 Banner、桌面端可折叠侧边栏，以及移动端默认 drawer。页面本身滚动；Banner 滚出后，桌面端 sidebar 和 header 固定在视口内。
 
 | 属性                | 类型      | 默认值    | 说明                                                           |
 | ------------------- | --------- | --------- | -------------------------------------------------------------- |
@@ -1016,15 +1141,15 @@ WebUiSpinner.hide() // 隐藏
 - 键盘操作（WAI-ARIA splitter 模式）：聚焦后用 ←/→ 以 16px 步进调整（Shift 加速到 64px），Home/End 跳到 min/max，Enter 以同一 `sidebar-width-change` 请求提交，Escape 撤回未提交的调整。
 - 移动端 Drawer 始终通过其内置 `draggable` 抽屉支持拖拽关闭。
 
-| 插槽      | 说明                                                         |
-| --------- | ------------------------------------------------------------ |
-| `banner`  | 位于布局主体上方的可选全宽 Banner                            |
-| `header`  | 内容区的 sticky header                                       |
-| `sidebar` | 侧边栏卡片内容；内部固定区域与滚动容器均由 Consumer 自行定义 |
-| `default` | 主内容区                                                     |
-| `tabbar`  | 底部 tabbar                                                  |
+| 插槽      | 说明                                                             |
+| --------- | ---------------------------------------------------------------- |
+| `banner`  | 位于布局主体上方的可选全宽 Banner                                |
+| `header`  | 内容区的 sticky header                                           |
+| `sidebar` | 侧边栏卡片内容；桌面端内部固定区域与滚动容器由 Consumer 自行定义 |
+| `default` | 主内容区                                                         |
+| `tabbar`  | 底部 tabbar                                                      |
 
-`web-ui-layout` 只约束侧边栏卡片的可用空间并管理桌面端 Toggle，不创建侧边栏 scrollport。若仅让侧边栏的一部分滚动，请将 `sidebar` 插槽根节点设为 `height: 100%; min-height: 0` 的 flex column，再将 `overflow-y: auto` 设置到目标子元素。这样 Consumer 可自行固定头部和底部，无需额外的公共 slot：
+`web-ui-layout` 只约束侧边栏卡片的可用空间并管理桌面端 Toggle，不创建桌面端侧边栏 scrollport。若仅让桌面端侧边栏的一部分滚动，请将 `sidebar` 插槽根节点设为 `height: 100%; min-height: 0` 的 flex column，再将 `overflow-y: auto` 设置到目标子元素。这样 Consumer 可自行固定头部和底部，无需额外的公共 slot：
 
 ```html
 <div slot="sidebar" class="sidebar-root">
@@ -1052,7 +1177,7 @@ WebUiSpinner.hide() // 隐藏
 }
 ```
 
-在 `640px` 及以下，侧边栏会切换为 headless 模式的 `web-ui-drawer`。Consumer 内容仍渲染在相同的圆角侧边栏卡片中，移动端 Toggle 以 glass 变体位于 header 行内。其左缩进默认 `8px`，可通过 `--wui-layout-mobile-toggle-inset` 与 Consumer 自身的 header 内边距对齐。
+在 `640px` 及以下，侧边栏会切换为使用内置 glass body、可滚动 content 和 drag zone 的 `web-ui-drawer`。Layout 会将 `sidebar-width` 映射为 `--wui-drawer-width`，将 `--wui-layout-sidebar-radius` 映射为 `--wui-drawer-radius`。移动端 Toggle 以 glass 变体位于 header 行内。其左缩进默认 `8px`，可通过 `--wui-layout-mobile-toggle-inset` 与 Consumer 自身的 header 内边距对齐。
 
 `header-glow` 会在 header 插槽内容和移动端 Toggle 的背后添加 `pointer-events: none` 的装饰性晕染。它属于 Header 背景而非前景层，因此插槽内容始终位于其上方；可通过 `--wui-layout-header-glow-color` 覆盖颜色，默认值为 `--wui-color-page`。晕染浓度和范围由内部变量 `--wui-layout-header-glow-height`（默认 `150%`）控制；增大可加强覆盖，减小则更柔和。布局层级顺序为 Header（`10`）< Auxiliary（`20`）< Banner（`30`）< Tabbar（`40`）< Sidebar（`50`）。
 
@@ -1119,9 +1244,13 @@ SVG 线条绘制动画，基于 `stroke-dashoffset`。直接在原元素上动�
 | `appearance` | `'light' \| 'dark' \| 'system'`   | `'light'`  | 配色方案                   |
 | `motion`     | `'full' \| 'reduced' \| 'system'` | `'system'` | 当前嵌套主题范围的动效偏好 |
 
-**方法：** `getOverlayRoot()` — 返回 Portal 浮层容器
+**方法：** `getOverlayRoot()` — 返回该主题拥有的 theme-owned overlay root
+
+**Portal 挂载契约：** 每个 active `<web-ui-theme>` 同时是默认的 scoped theme-owned overlay root。Portal 类组件在未显式传入 `overlayContainer` 时，会解析到最近的 active theme 的 `getOverlayRoot()`；无 target 的调用优先使用 root theme 的 theme-owned overlay root。没有 active theme 提供 root 时，回退到全局 fallback overlay root。
 
 在其子树中定义基础、颜色、层级、阴影和动效 token。`motion="system"` 跟随 `prefers-reduced-motion`；使用 `motion="reduced"` 降低当前作用域动效，或在嵌套主题中使用 `motion="full"` 恢复默认 token。System 配色模式跟随 `prefers-color-scheme`。
+
+主题宿主使用 `display: contents` 且不绘制任何背景：组件库不在宿主页面画背景，嵌入方对主题子树背后的表面保留完全控制权。自定义属性仍可靠继承到 slotted 内容。
 
 **基础 token：**
 
@@ -1157,7 +1286,7 @@ SVG 线条绘制动画，基于 `stroke-dashoffset`。直接在原元素上动�
 | `--wui-layer-toast`          | `200`  | Toast          |
 | `--wui-layer-loading`        | `300`  | 阻塞式 Loading |
 
-**动效 token：** duration 默认值为 `--wui-duration-press: 80ms`、`--wui-duration-feedback: 100ms`、`--wui-duration-trigger: 160ms`、`--wui-duration-focus: 200ms`、`--wui-duration-menu-enter: 140ms`、`--wui-duration-menu-exit: 100ms`、`--wui-duration-overlay-enter: 180ms`、`--wui-duration-overlay-exit: 140ms`、`--wui-duration-drawer-enter: 280ms`、`--wui-duration-drawer-exit: 240ms`、`--wui-duration-drawer-nested: 450ms`、`--wui-duration-collapse-enter: 200ms`、`--wui-duration-collapse-exit: 160ms`、`--wui-duration-layout: 200ms`。Easing token 是 `--wui-ease-enter` 和 `--wui-ease-slide`；进入缩放是 `--wui-scale-enter: 0.97`。hover/active 背景反馈即时切换、无过渡动画；选中态、按压、focus 与 overlay 进出场过渡不受影响。
+**动效 token：** duration 默认值为 `--wui-duration-press: 80ms`、`--wui-duration-feedback: 100ms`、`--wui-duration-trigger: 160ms`、`--wui-duration-focus: 200ms`、`--wui-duration-float-enter: 160ms`、`--wui-duration-float-exit: 120ms`、`--wui-duration-dialog-enter: 320ms`、`--wui-duration-dialog-exit: 260ms`、`--wui-duration-drawer-enter: 280ms`、`--wui-duration-drawer-exit: 240ms`、`--wui-duration-drawer-nested: 450ms`、`--wui-duration-toast-enter: 280ms`、`--wui-duration-toast-exit: 200ms`、`--wui-duration-collapse-enter: 200ms`、`--wui-duration-collapse-exit: 160ms`、`--wui-duration-layout: 200ms`。Easing token 是 `--wui-ease-enter`、`--wui-ease-dialog`（`cubic-bezier(0.2, 0, 0, 1)`）和 `--wui-ease-slide`；进入缩放是 `--wui-scale-enter: 0.97`。hover/active 背景反馈即时切换、无过渡动画；选中态、按压与 focus 过渡不受影响。
 
 **颜色 token：**
 
@@ -1242,17 +1371,17 @@ toast.updateMessage(id, { message: '上传已完成 60%', heading: '正在上传
 
 **ToastOptions：**
 
-| 选项        | 类型                                          | 默认值                    | 说明                         |
-| ----------- | --------------------------------------------- | ------------------------- | ---------------------------- |
-| `message`   | `string`                                      | —                         | 通知文本                     |
-| `type`      | `'success' \| 'info' \| 'warning' \| 'error'` | `'info'`                  | 类型                         |
-| `duration`  | `number`                                      | `3000`（error 为 `5000`） | 自动关闭时间（0=不自动关闭） |
-| `closable`  | `boolean`                                     | `true`                    | 显示关闭按钮                 |
-| `id`        | `string`                                      | auto                      | 去重标识符                   |
-| `heading`   | `string`                                      | `''`                      | 粗体标题                     |
-| `position`  | 6 种位置                                      | `'top-right'`             | 屏幕位置                     |
-| `target`    | `Element`                                     | —                         | 用于查找最近主题作用域       |
-| `container` | `HTMLElement`                                 | —                         | 显式挂载容器（最高优先级）   |
+| 选项        | 类型                                          | 默认值                    | 说明                                  |
+| ----------- | --------------------------------------------- | ------------------------- | ------------------------------------- |
+| `message`   | `string`                                      | —                         | 通知文本                              |
+| `type`      | `'success' \| 'info' \| 'warning' \| 'error'` | `'info'`                  | 类型                                  |
+| `duration`  | `number`                                      | `3000`（error 为 `5000`） | 自动关闭时间（0=不自动关闭）          |
+| `closable`  | `boolean`                                     | `true`                    | 显示关闭按钮                          |
+| `id`        | `string`                                      | auto                      | 去重标识符                            |
+| `heading`   | `string`                                      | `''`                      | 粗体标题                              |
+| `position`  | 6 种位置                                      | `'top-right'`             | 屏幕位置                              |
+| `target`    | `Element`                                     | —                         | 用于查找最近 theme-owned overlay root |
+| `container` | `HTMLElement`                                 | —                         | 显式挂载容器（最高优先级）            |
 
 **`toast.updateMessage(id, options)`** 更新可见 Toast 的 `message`，并在传入时更新 `heading`；不会重置自动关闭计时。`options` 类型为 `ToastMessageUpdateOptions`：`{ message: string; heading?: string }`。
 

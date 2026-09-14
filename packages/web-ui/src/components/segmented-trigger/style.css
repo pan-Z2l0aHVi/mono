@@ -13,6 +13,7 @@
     --wui-color-state-layer-active,
     color-mix(in srgb, var(--wui-color-text, #1b1b1b) 15%, transparent)
   );
+  touch-action: none;
   display: inline-block;
 }
 
@@ -67,4 +68,8 @@
 .wui-segmented-trigger.is-disabled {
   cursor: not-allowed;
   opacity: 0.4;
+}
+
+:host([data-wui-pointer-focus]) .wui-segmented-trigger:focus-visible {
+  outline-color: transparent;
 }

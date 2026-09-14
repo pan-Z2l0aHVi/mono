@@ -60,7 +60,7 @@ export class WebUiLayout extends LitElement {
   sidebarMaxWidth = ''
 
   /**
-   * 移动端 headless Drawer 的瞬时可见性。
+   * 移动端 web-ui-drawer 的瞬时可见性。
    *
    * Drawer Toggle、Escape 和遮罩关闭都通过 `sidebar-open-change` 请求更新它；它不会改变桌面端的折叠偏好。
    * 因而不与 `sidebarCollapsed` 合并，避免响应式切换时将一次移动端交互误写为桌面端布局选择。
@@ -404,10 +404,12 @@ export class WebUiLayout extends LitElement {
         draggable
         dialog-label="主导航"
         @open-change="${this._onDrawerChange}"
-        style="${styleMap({ '--wui-layout-mobile-sidebar-width': this.sidebarWidth })}"
-        headless
+        style="${styleMap({
+          '--wui-drawer-width': this.sidebarWidth,
+          '--wui-drawer-radius': 'var(--wui-layout-sidebar-radius, var(--wui-radius-overlay, 28px))'
+        })}"
       >
-        <div class="aside-panel wui-glass mobile-sidebar">${sidebarViewport}</div>
+        ${sidebarViewport}
       </web-ui-drawer>
     `
 

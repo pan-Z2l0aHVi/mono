@@ -4,7 +4,7 @@ import { createApp, ref } from 'vue/dist/vue.esm-bundler.js'
 
 import '..'
 import { getMenuChildren } from '@/shared/menu-portal/menu-tree'
-import { cleanupElement, waitForUpdate } from '@/shared/test-utils'
+import { cleanupElement, pollUntil, waitForUpdate } from '@/shared/test-utils'
 
 import type { WebUiContextMenu } from '..'
 
@@ -41,6 +41,15 @@ async function waitForMenuOpen(el: WebUiContextMenu) {
 
 async function waitForMenuClose(el: WebUiContextMenu) {
   await el.updateComplete
+  await pollUntil(() => !el.isOpen && !getMenu(), 'Expected the context menu to close and dispose')
+}
+
+function sameOrder(actual: unknown[], expected: unknown[]) {
+  return JSON.stringify(actual) === JSON.stringify(expected)
+}
+
+async function waitForMenuItemTexts(expected: string[], read: () => string[]) {
+  await pollUntil(() => sameOrder(read(), expected), `Expected menu items to settle to ${expected.join(', ')}`)
 }
 
 function getMenu(): HTMLElement | null {
@@ -68,14 +77,6 @@ function touchPointerEvent(type: string): PointerEvent {
   Object.defineProperty(event, 'pointerType', { value: 'touch' })
   return event
 }
-
-beforeEach(() => {
-  document.body.innerHTML = ''
-})
-
-afterEach(() => {
-  document.body.innerHTML = ''
-})
 
 describe('WebUiContextMenu 组件', () => {
   describe('基础渲染', () => {
@@ -937,10 +938,10 @@ describe('WebUiContextMenu 组件', () => {
       await waitForMenuOpen(el)
 
       wrapper.remove()
-      await waitForMenuClose(el)
-      await new Promise(resolve => requestAnimationFrame(resolve))
+      await waitForUpdate(el)
+      await waitForMenuItemTexts(['编辑'], () => getMenuItems().map(item => item.textContent?.trim() ?? ''))
 
-      expect(getMenuItems().map(item => item.textContent?.trim())).toEqual(['编辑'])
+      expect(el.isOpen).toBe(true)
 
       cleanupElement(el)
     })
@@ -978,7 +979,7 @@ describe('WebUiContextMenu 组件', () => {
       unmount: () => void
     }
 
-    function mountVueMenu(warnings: string[]): VueMenuFixture {
+    function mountVueMenu(warnings: string[], template?: string): VueMenuFixture {
       const host = document.createElement('div')
       document.body.append(host)
       const broken = ref(false)
@@ -987,13 +988,15 @@ describe('WebUiContextMenu 组件', () => {
           return { broken }
         },
         // 与原型页一致：v-if 切换 valid/broken 菜单项，false 分支产生注释锚点
-        template: `
-          <web-ui-context-menu>
-            <web-ui-dropdown-item v-if="!broken" key="a">预览</web-ui-dropdown-item>
-            <web-ui-dropdown-item v-if="broken" key="b">找回资源</web-ui-dropdown-item>
-            <web-ui-dropdown-item key="d">删除</web-ui-dropdown-item>
-          </web-ui-context-menu>
-        `
+        template:
+          template ??
+          `
+            <web-ui-context-menu>
+              <web-ui-dropdown-item v-if="!broken" key="a">预览</web-ui-dropdown-item>
+              <web-ui-dropdown-item v-if="broken" key="b">找回资源</web-ui-dropdown-item>
+              <web-ui-dropdown-item key="d">删除</web-ui-dropdown-item>
+            </web-ui-context-menu>
+          `
       })
       app.config.compilerOptions = {
         isCustomElement: (tag: string) => tag.startsWith('web-ui-')
@@ -1025,24 +1028,25 @@ describe('WebUiContextMenu 组件', () => {
       const fixture = mountVueMenu(warnings)
       try {
         fixture.menuEl().openAt(10, 10)
-        await nextFrames()
-        await new Promise(resolve => setTimeout(resolve, 120))
+        await waitForMenuOpen(fixture.menuEl())
+        await waitForMenuItemTexts(['预览', '删除'], () => getMenuItems().map(item => item.textContent?.trim() ?? ''))
+
         // 开着时翻转：valid → broken，注释锚点写进 portal
         fixture.broken.value = true
-        await nextFrames()
-        await new Promise(resolve => setTimeout(resolve, 120))
+        await waitForMenuItemTexts(['找回资源', '删除'], () =>
+          getMenuItems().map(item => item.textContent?.trim() ?? '')
+        )
 
         // 关闭：元素与框架锚点一并迁回宿主
         fixture.menuEl().close()
-        await new Promise(resolve => setTimeout(resolve, 300))
+        await waitForMenuClose(fixture.menuEl())
 
         // 再翻转回 valid：Vue 以宿主为容器 patch，不应崩溃
         fixture.broken.value = false
         await nextFrames()
-        await new Promise(resolve => setTimeout(resolve, 120))
+        await waitForMenuItemTexts(['预览', '删除'], () => fixture.hostTexts())
 
         expect(warnings).toEqual([])
-        expect(fixture.hostTexts()).toEqual(['预览', '删除'])
       } finally {
         fixture.menuEl().remove()
         fixture.unmount()
@@ -1051,15 +1055,9 @@ describe('WebUiContextMenu 组件', () => {
 
     it('打开态双向 v-if 翻转 + divider 中间插入，content 顺序保持模板序', async () => {
       const warnings: string[] = []
-      const host = document.createElement('div')
-      document.body.append(host)
-      const broken = ref(false)
-      const app = createApp({
-        setup() {
-          return { broken }
-        },
-        // 与原型页一致：valid 分支包含「管理标签 + 条件 divider」，broken 分支替换为「找回资源」
-        template: `
+      const fixture = mountVueMenu(
+        warnings,
+        `
           <web-ui-context-menu>
             <web-ui-dropdown-item v-if="!broken" key="preview">预览</web-ui-dropdown-item>
             <web-ui-dropdown-item v-if="!broken" key="openwith">打开方式</web-ui-dropdown-item>
@@ -1070,12 +1068,9 @@ describe('WebUiContextMenu 组件', () => {
             <web-ui-dropdown-item key="del">删除</web-ui-dropdown-item>
           </web-ui-context-menu>
         `
-      })
-      app.config.compilerOptions = { isCustomElement: (tag: string) => tag.startsWith('web-ui-') }
-      app.config.warnHandler = (msg: string) => warnings.push('WARN: ' + msg.slice(0, 120))
-      app.config.errorHandler = (err: unknown) => warnings.push('ERROR: ' + String((err as Error)?.message ?? err))
-      app.mount(host)
-      const el = host.querySelector('web-ui-context-menu')!
+      )
+      const el = fixture.menuEl()
+      const broken = fixture.broken
       // 读取 portal content 的真实子节点序（含 divider 与条件项的注释锚点）
       const contentOrder = () => {
         const content = getMenu()?.querySelector<HTMLElement>('.wui-menu-content')
@@ -1084,48 +1079,43 @@ describe('WebUiContextMenu 组件', () => {
           .map(item => (item.tagName === 'WEB-UI-DROPDOWN-DIVIDER' ? 'DIV' : item.textContent?.trim()))
       }
       try {
+        const validOrder = ['预览', '打开方式', 'DIV', '管理标签', 'DIV', '删除']
+        const brokenOrder = ['找回资源', 'DIV', '删除']
+        const waitForContentOrder = (expected: string[]) =>
+          pollUntil(
+            () => sameOrder(contentOrder(), expected),
+            `Expected context menu content order to settle to ${expected.join(', ')}`
+          )
+
         el.openAt(10, 10)
-        await nextFrames()
-        await new Promise(resolve => setTimeout(resolve, 120))
-        expect(contentOrder()).toEqual(['预览', '打开方式', 'DIV', '管理标签', 'DIV', '删除'])
+        await waitForContentOrder(validOrder)
 
         // 打开态 valid → broken：找回资源 应在无条件 divider 之前
         broken.value = true
-        await nextFrames()
-        await new Promise(resolve => setTimeout(resolve, 120))
-        expect(contentOrder()).toEqual(['找回资源', 'DIV', '删除'])
+        await waitForContentOrder(brokenOrder)
 
         // 打开态 broken → valid：管理标签与条件 divider 回到无条件 divider 之后
         broken.value = false
-        await nextFrames()
-        await new Promise(resolve => setTimeout(resolve, 120))
-        expect(contentOrder()).toEqual(['预览', '打开方式', 'DIV', '管理标签', 'DIV', '删除'])
+        await waitForContentOrder(validOrder)
 
         // close → reopen：顺序与无锚点残留
         el.close()
-        await new Promise(resolve => setTimeout(resolve, 300))
+        await waitForMenuClose(el)
         el.openAt(20, 20)
-        await nextFrames()
-        await new Promise(resolve => setTimeout(resolve, 120))
-        expect(contentOrder()).toEqual(['预览', '打开方式', 'DIV', '管理标签', 'DIV', '删除'])
+        await waitForContentOrder(validOrder)
 
         expect(warnings).toEqual([])
       } finally {
         el.remove()
-        app.unmount()
+        fixture.unmount()
       }
     })
 
     it('多轮 v-if 翻转+全序锚点断言+reopen 稳定', async () => {
       const warnings: string[] = []
-      const host = document.createElement('div')
-      document.body.append(host)
-      const broken = ref(false)
-      const app = createApp({
-        setup() {
-          return { broken }
-        },
-        template: `
+      const fixture = mountVueMenu(
+        warnings,
+        `
           <web-ui-context-menu>
             <web-ui-dropdown-item v-if="!broken" key="a">预览</web-ui-dropdown-item>
             <web-ui-dropdown-item v-if="!broken" key="b">打开方式</web-ui-dropdown-item>
@@ -1136,12 +1126,9 @@ describe('WebUiContextMenu 组件', () => {
             <web-ui-dropdown-item key="g">删除</web-ui-dropdown-item>
           </web-ui-context-menu>
         `
-      })
-      app.config.compilerOptions = { isCustomElement: (tag: string) => tag.startsWith('web-ui-') }
-      app.config.warnHandler = (msg: string) => warnings.push('WARN: ' + msg.slice(0, 120))
-      app.config.errorHandler = (err: unknown) => warnings.push('ERROR: ' + String((err as Error)?.message ?? err))
-      app.mount(host)
-      const el = host.querySelector('web-ui-context-menu')!
+      )
+      const el = fixture.menuEl()
+      const broken = fixture.broken
       // 全序：childNodes 中每个子节点的类型/文本，包括注释
       const fullOrder = () => {
         const content = getMenu()?.querySelector<HTMLElement>('.wui-menu-content')
@@ -1154,55 +1141,37 @@ describe('WebUiContextMenu 组件', () => {
         })
       }
       try {
+        const validItems = ['I:预览', 'I:打开方式', 'DIV', 'I:管理标签', 'DIV', 'I:删除']
+        const brokenItems = ['I:找回资源', 'DIV', 'I:删除']
+        const itemOrder = () => fullOrder().filter(s => s.startsWith('I:') || s === 'DIV')
+        const waitForItemOrder = (expected: string[]) =>
+          pollUntil(() => sameOrder(itemOrder(), expected), `Expected full order to settle to ${expected.join(', ')}`)
+
         el.openAt(10, 10)
-        await nextFrames()
-        await new Promise(resolve => setTimeout(resolve, 120))
-        expect(fullOrder()).toEqual(['I:预览', 'I:打开方式', 'DIV', 'I:管理标签', 'DIV', 'I:删除'])
+        await waitForItemOrder(validItems)
 
         // 两轮连续翻转 + 最后 reopen
         for (let round = 0; round < 2; round++) {
           broken.value = true
-          await nextFrames()
-          await new Promise(r => setTimeout(r, 120))
-          const brokenOrder = fullOrder()
-          expect(brokenOrder.filter(s => s.startsWith('I:') || s === 'DIV')).toEqual(['I:找回资源', 'DIV', 'I:删除'])
-          expect(brokenOrder.filter(s => s === '#v-if').length).toBe(4)
+          await waitForItemOrder(brokenItems)
+          expect(fullOrder().filter(s => s === '#v-if').length).toBe(4)
 
           broken.value = false
-          await nextFrames()
-          await new Promise(r => setTimeout(r, 120))
-          const validOrder = fullOrder()
-          expect(validOrder.filter(s => s.startsWith('I:') || s === 'DIV')).toEqual([
-            'I:预览',
-            'I:打开方式',
-            'DIV',
-            'I:管理标签',
-            'DIV',
-            'I:删除'
-          ])
+          await waitForItemOrder(validItems)
           // 锚点可能在 1 个(找回资源 false)或 0 个(全部 true)
-          expect(validOrder.filter(s => s === '#v-if').length).toBeLessThanOrEqual(1)
+          expect(fullOrder().filter(s => s === '#v-if').length).toBeLessThanOrEqual(1)
         }
 
         // close → reopen
         el.close()
-        await new Promise(r => setTimeout(r, 300))
+        await waitForMenuClose(el)
         el.openAt(20, 20)
-        await nextFrames()
-        await new Promise(r => setTimeout(r, 120))
-        expect(fullOrder().filter(s => s.startsWith('I:') || s === 'DIV')).toEqual([
-          'I:预览',
-          'I:打开方式',
-          'DIV',
-          'I:管理标签',
-          'DIV',
-          'I:删除'
-        ])
+        await waitForItemOrder(validItems)
 
         expect(warnings).toEqual([])
       } finally {
         el.remove()
-        app.unmount()
+        fixture.unmount()
       }
     })
   })

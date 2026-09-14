@@ -129,6 +129,13 @@ declare module 'vue-router/auto-routes' {
       Record<never, never>,
       | never
     >,
+    '/components/image-preview': RouteRecordInfo<
+      '/components/image-preview',
+      '/components/image-preview',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
     '/components/input': RouteRecordInfo<
       '/components/input',
       '/components/input',
@@ -354,6 +361,14 @@ declare module 'vue-router/auto-routes' {
     'src/pages/components/icon.vue': {
       routes:
         | '/components/icon'
+      views:
+        | never
+      pathParamNames:
+        | never
+    }
+    'src/pages/components/image-preview.vue': {
+      routes:
+        | '/components/image-preview'
       views:
         | never
       pathParamNames:

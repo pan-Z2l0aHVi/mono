@@ -4,12 +4,12 @@ import path from 'node:path'
 const root = path.resolve(import.meta.dirname, '..')
 const args = process.argv.slice(2)
 const json = args.includes('--json')
+const strict = args.includes('--strict')
 const includeGenerated = args.includes('--include-generated')
 
 const roots = [
   'AGENTS.md',
   'CLAUDE.md',
-  'GEMINI.md',
   'CONTEXT.md',
   'ARCHITECTURE.md',
   'CONTRIBUTING.md',
@@ -70,12 +70,13 @@ const duplicates = repeatedTerms
   }))
   .filter(item => item.files.length > 1)
 
-const alwaysLoaded = filesReport.filter(item => ['AGENTS.md', 'CLAUDE.md', 'GEMINI.md'].includes(item.file))
+const alwaysLoaded = filesReport.filter(item => ['AGENTS.md', 'CLAUDE.md'].includes(item.file))
 const highDensity = filesReport
   .filter(item => item.imperatives >= 5)
   .sort((left, right) => right.imperatives - left.imperatives)
 const result = {
   command: 'audit-instructions',
+  strict,
   scope: files.sort(),
   summary: {
     markdownFiles: files.length,
@@ -92,6 +93,31 @@ const result = {
   ]
 }
 
+const strictErrors = []
+const readRoot = file => (fs.existsSync(path.join(root, file)) ? fs.readFileSync(path.join(root, file), 'utf8') : '')
+const rootAgents = readRoot('AGENTS.md')
+const workflow = readRoot('docs/agents/workflow.md')
+const manager = readRoot('.agents/agents/manager.md')
+const preCommit = readRoot('.vite-hooks/pre-commit')
+for (const [file, content, markers] of [
+  ['AGENTS.md', rootAgents, ['## Mutation Gate', '## 多 Agent 编排', 'docs/agents/workflow.md', 'agent:workflow init']],
+  [
+    'docs/agents/workflow.md',
+    workflow,
+    ['## 先建立任务', '## 状态机', '## 角色与执行体', '## 编排模式', '## 失败和恢复']
+  ],
+  ['.agents/agents/manager.md', manager, ['Manager 启动后第一项工作必须读取']],
+  ['.vite-hooks/pre-commit', preCommit, ['agent:workflow guard-commit']]
+]) {
+  for (const marker of markers)
+    if (!content.includes(marker)) strictErrors.push(`${file}: missing mandatory marker ${marker}`)
+}
+for (const file of ['docs/agents/worktrees.md', 'docs/agents/release.md', 'docs/agents/task-packet.md'])
+  if (!fs.existsSync(path.join(root, file))) strictErrors.push(`missing workflow companion document: ${file}`)
+for (const legacy of ['持久开发 worktree：每个活跃子包', 'Reviewer worktree', 'Harness 选择', 'Agent 启动权限'])
+  if (workflow.includes(legacy)) strictErrors.push(`docs/agents/workflow.md: retired workflow model remains: ${legacy}`)
+result.strictErrors = strictErrors
+
 if (json) console.log(JSON.stringify(result, null, 2))
 else {
   console.log('audit-instructions report')
@@ -99,9 +125,16 @@ else {
   console.log(`total lines: ${result.summary.totalLines}`)
   console.log(`imperative terms: ${result.summary.totalImperatives}`)
   console.log(`always-loaded lines: ${result.summary.alwaysLoadedLines}`)
+  if (strict) console.log(`strict errors: ${strictErrors.length}`)
   console.log('high-density files:')
   for (const item of highDensity)
     console.log(`- ${item.file}: ${item.imperatives} imperative terms / ${item.lines} lines`)
   console.log('repeated topic candidates:')
   for (const item of duplicates) console.log(`- ${item.term}: ${item.files.join(', ')}`)
+}
+
+if (strict && strictErrors.length) {
+  console.error(`audit-instructions --strict failed with ${strictErrors.length} error(s):`)
+  console.error(strictErrors.map(error => `- ${error}`).join('\n'))
+  process.exitCode = 1
 }

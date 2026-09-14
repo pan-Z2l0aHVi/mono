@@ -1,1 +1,2 @@
 vp staged
+mise exec -- pnpm agent:workflow guard-commit

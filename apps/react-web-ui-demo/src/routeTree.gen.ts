@@ -24,6 +24,7 @@ import { Route as ComponentsDrawerRouteImport } from './routes/components/drawer
 import { Route as ComponentsDropdownRouteImport } from './routes/components/dropdown'
 import { Route as ComponentsEmptyRouteImport } from './routes/components/empty'
 import { Route as ComponentsIconRouteImport } from './routes/components/icon'
+import { Route as ComponentsImagePreviewRouteImport } from './routes/components/image-preview'
 import { Route as ComponentsInputRouteImport } from './routes/components/input'
 import { Route as ComponentsInputNumberRouteImport } from './routes/components/input-number'
 import { Route as ComponentsPopoverRouteImport } from './routes/components/popover'
@@ -113,6 +114,11 @@ const ComponentsEmptyRoute = ComponentsEmptyRouteImport.update({
 const ComponentsIconRoute = ComponentsIconRouteImport.update({
   id: '/components/icon',
   path: '/components/icon',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ComponentsImagePreviewRoute = ComponentsImagePreviewRouteImport.update({
+  id: '/components/image-preview',
+  path: '/components/image-preview',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ComponentsInputRoute = ComponentsInputRouteImport.update({
@@ -207,6 +213,7 @@ export interface FileRoutesByFullPath {
   '/components/dropdown': typeof ComponentsDropdownRoute
   '/components/empty': typeof ComponentsEmptyRoute
   '/components/icon': typeof ComponentsIconRoute
+  '/components/image-preview': typeof ComponentsImagePreviewRoute
   '/components/input': typeof ComponentsInputRoute
   '/components/input-number': typeof ComponentsInputNumberRoute
   '/components/popover': typeof ComponentsPopoverRoute
@@ -239,6 +246,7 @@ export interface FileRoutesByTo {
   '/components/dropdown': typeof ComponentsDropdownRoute
   '/components/empty': typeof ComponentsEmptyRoute
   '/components/icon': typeof ComponentsIconRoute
+  '/components/image-preview': typeof ComponentsImagePreviewRoute
   '/components/input': typeof ComponentsInputRoute
   '/components/input-number': typeof ComponentsInputNumberRoute
   '/components/popover': typeof ComponentsPopoverRoute
@@ -272,6 +280,7 @@ export interface FileRoutesById {
   '/components/dropdown': typeof ComponentsDropdownRoute
   '/components/empty': typeof ComponentsEmptyRoute
   '/components/icon': typeof ComponentsIconRoute
+  '/components/image-preview': typeof ComponentsImagePreviewRoute
   '/components/input': typeof ComponentsInputRoute
   '/components/input-number': typeof ComponentsInputNumberRoute
   '/components/popover': typeof ComponentsPopoverRoute
@@ -306,6 +315,7 @@ export interface FileRouteTypes {
     | '/components/dropdown'
     | '/components/empty'
     | '/components/icon'
+    | '/components/image-preview'
     | '/components/input'
     | '/components/input-number'
     | '/components/popover'
@@ -338,6 +348,7 @@ export interface FileRouteTypes {
     | '/components/dropdown'
     | '/components/empty'
     | '/components/icon'
+    | '/components/image-preview'
     | '/components/input'
     | '/components/input-number'
     | '/components/popover'
@@ -370,6 +381,7 @@ export interface FileRouteTypes {
     | '/components/dropdown'
     | '/components/empty'
     | '/components/icon'
+    | '/components/image-preview'
     | '/components/input'
     | '/components/input-number'
     | '/components/popover'
@@ -403,6 +415,7 @@ export interface RootRouteChildren {
   ComponentsDropdownRoute: typeof ComponentsDropdownRoute
   ComponentsEmptyRoute: typeof ComponentsEmptyRoute
   ComponentsIconRoute: typeof ComponentsIconRoute
+  ComponentsImagePreviewRoute: typeof ComponentsImagePreviewRoute
   ComponentsInputRoute: typeof ComponentsInputRoute
   ComponentsInputNumberRoute: typeof ComponentsInputNumberRoute
   ComponentsPopoverRoute: typeof ComponentsPopoverRoute
@@ -525,6 +538,13 @@ declare module '@tanstack/react-router' {
       path: '/components/icon'
       fullPath: '/components/icon'
       preLoaderRoute: typeof ComponentsIconRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/components/image-preview': {
+      id: '/components/image-preview'
+      path: '/components/image-preview'
+      fullPath: '/components/image-preview'
+      preLoaderRoute: typeof ComponentsImagePreviewRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/components/input': {
@@ -651,6 +671,7 @@ const rootRouteChildren: RootRouteChildren = {
   ComponentsDropdownRoute: ComponentsDropdownRoute,
   ComponentsEmptyRoute: ComponentsEmptyRoute,
   ComponentsIconRoute: ComponentsIconRoute,
+  ComponentsImagePreviewRoute: ComponentsImagePreviewRoute,
   ComponentsInputRoute: ComponentsInputRoute,
   ComponentsInputNumberRoute: ComponentsInputNumberRoute,
   ComponentsPopoverRoute: ComponentsPopoverRoute,

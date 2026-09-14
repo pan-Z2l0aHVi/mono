@@ -3,7 +3,7 @@ import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 
-import { getPortalPanel, waitForFrame } from '@/shared/test-utils'
+import { getPortalPanel, pollUntil, waitForFrame } from '@/shared/test-utils'
 
 import '..'
 import type { WebUiPopover } from '..'
@@ -71,15 +71,19 @@ describe('WebUiPopover portal 条件渲染边界（React，浏览器）', () => 
     show = true
     await render(show ? createElement('p', { className: 'probe-flag' }, 'flag') : null)
     await popover.updateComplete
-    await new Promise(resolve => setTimeout(resolve, 80))
-    expect(getPortalPanel()?.querySelector('.probe-flag')).not.toBeNull()
-    expect(document.querySelectorAll('.probe-flag').length).toBe(0)
+    await pollUntil(
+      () =>
+        Boolean(getPortalPanel()?.querySelector('.probe-flag')) &&
+        document.querySelectorAll('.probe-flag').length === 0,
+      'Expected added React content to migrate into the panel'
+    )
 
     popover.open = false
     await popover.updateComplete
-    await new Promise(resolve => setTimeout(resolve, 400))
-    expect(getPortalPanel()).toBeNull()
-    expect(document.querySelectorAll('.probe-flag').length).toBe(1)
+    await pollUntil(
+      () => !getPortalPanel() && document.querySelectorAll('.probe-flag').length === 1,
+      'Expected bare React conditional content to restore'
+    )
     await unmount()
   })
 
@@ -102,16 +106,20 @@ describe('WebUiPopover portal 条件渲染边界（React，浏览器）', () => 
     show = false
     await render(wrap(null))
     await popover.updateComplete
-    await new Promise(resolve => setTimeout(resolve, 80))
-    expect(getPortalPanel()?.querySelector('.probe-wrap')).not.toBeNull()
-    expect(getPortalPanel()?.querySelector('.probe-flag')).toBeNull()
+    await pollUntil(
+      () => !getPortalPanel()?.querySelector('.probe-flag'),
+      'Expected removed React flag to leave the panel'
+    )
 
     popover.open = false
     await popover.updateComplete
-    await new Promise(resolve => setTimeout(resolve, 400))
-    expect(getPortalPanel()).toBeNull()
-    expect(document.querySelectorAll('.probe-flag').length).toBe(0)
-    expect(document.querySelectorAll('.probe-wrap').length).toBe(1)
+    await pollUntil(
+      () =>
+        !getPortalPanel() &&
+        document.querySelectorAll('.probe-flag').length === 0 &&
+        document.querySelectorAll('.probe-wrap').length === 1,
+      'Expected wrapper removal and portal disposal to settle'
+    )
     await unmount()
   })
 
@@ -132,16 +140,21 @@ describe('WebUiPopover portal 条件渲染边界（React，浏览器）', () => 
     show = true
     await render(wrap(createElement('p', { className: 'probe-flag' }, 'flag')))
     await popover.updateComplete
-    await new Promise(resolve => setTimeout(resolve, 80))
-    expect(getPortalPanel()?.querySelector('.probe-flag')).not.toBeNull()
+    await pollUntil(
+      () => Boolean(getPortalPanel()?.querySelector('.probe-flag')),
+      'Expected wrapped React content to enter the panel'
+    )
 
     // 关闭恢复：wrapper 连同内部条件内容回到宿主原位
     popover.open = false
     await popover.updateComplete
-    await new Promise(resolve => setTimeout(resolve, 400))
-    expect(getPortalPanel()).toBeNull()
-    expect(document.querySelectorAll('.probe-flag').length).toBe(1)
-    expect(document.querySelectorAll('.probe-wrap').length).toBe(1)
+    await pollUntil(
+      () =>
+        !getPortalPanel() &&
+        document.querySelectorAll('.probe-flag').length === 1 &&
+        document.querySelectorAll('.probe-wrap').length === 1,
+      'Expected wrapped React content to restore'
+    )
 
     // 重开：wrapper 再次迁入，内容保持
     popover.open = true

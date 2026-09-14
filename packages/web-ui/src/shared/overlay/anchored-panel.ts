@@ -1,5 +1,6 @@
 import { definePlugin } from '@greypan/js-kit'
 
+import { overlayComposition } from './composition'
 import type { OverlayOptions } from './overlay'
 import { defineOverlay } from './overlay'
 import type { OverlayApi } from './overlay'
@@ -36,6 +37,7 @@ export const defineAnchoredPanel = () =>
 
     const disposePortal = () => {
       if (!portal) return
+      overlayComposition.unregisterPanel(portal.panel)
       portal.restoreContent()
       portal.remove()
       portal = undefined
@@ -62,6 +64,9 @@ export const defineAnchoredPanel = () =>
       if (!anchor) return
       const panel = getOrCreatePanel()
       if (!panel) return
+      // portal panel 与宿主物理分离；本地 panel 也可能隔着 shadow 边界。
+      // 以 anchor 祖先链寻找最近的已登记 overlay，建立统一逻辑父子关系。
+      overlayComposition.registerPanelFromAncestry(panel, anchor)
       ensureOverlay(anchor, panel)
       overlay?.open()
       showOverlayPresence(panel, { isInstant })
@@ -70,6 +75,8 @@ export const defineAnchoredPanel = () =>
     const dispose = () => {
       overlay?.dispose()
       overlay = undefined
+      const panel = getPanel()
+      if (panel) overlayComposition.unregisterPanel(panel)
       disposePortal()
     }
 
@@ -85,6 +92,7 @@ export const defineAnchoredPanel = () =>
         const panel = getPanel()
         if (panel && !(await hideOverlayPresence(panel))) return false
         if (isStillOpen()) return false
+        if (panel) overlayComposition.unregisterPanel(panel)
         disposePortal()
         return true
       },

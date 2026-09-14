@@ -32,6 +32,8 @@ import {
 } from '@/shared/menu-portal/menu-tree'
 import { normalizeLiteral, normalizeNumber } from '@/shared/normalize'
 import { dispatchOpenChangeEvent } from '@/shared/open-state'
+import { overlayComposition } from '@/shared/overlay/composition'
+import { defineOverlayLifecycle } from '@/shared/overlay/lifecycle'
 import { defineOverlay } from '@/shared/overlay/overlay'
 import type { OverlayApi } from '@/shared/overlay/overlay'
 import { FLOATING_PLACEMENTS } from '@/shared/overlay/placement-props'
@@ -86,15 +88,20 @@ export class WebUiDropdown extends LitElement {
   @state() private _activePath: number[] = []
 
   private readonly _overlays = new Map<number, MenuOverlay>()
+  private readonly _lifecycle = defineOverlayLifecycle().make({
+    isConnected: () => this.isConnected,
+    isOpen: () => this.open
+  })
   private readonly _scrollLock = defineScrollLockLease().make()
   // 行为层（hover / outside-click / 键盘 / submenu 收尾）由 shared/menu-behavior 驱动
   private readonly _outsideClickGuard = createMenuOutsideClickGuard(this, node =>
-    [...this._overlays.values()].some(({ overlay }) => overlay.contains(node))
+    [...this._overlays.values()].some(({ overlay }) => overlayComposition.contains(overlay, node))
   )
   private readonly _closingSubmenus = createClosingSubmenuStack<MenuOverlay>({
     getPanel: container => container.overlay,
     restoreItems: (container, parentItem) => moveMenuChildren(container.content, parentItem),
     dispose: container => {
+      overlayComposition.unregisterPanel(container.overlay)
       container.overlay.remove()
       container.api.dispose()
     }
@@ -157,6 +164,7 @@ export class WebUiDropdown extends LitElement {
 
   override connectedCallback() {
     super.connectedCallback()
+    this._lifecycle.resume()
     this.addEventListener('keydown', this._onKeydown)
     document.addEventListener('click', this._onClickOutside)
     this._menuContentObserver.observe(this, { childList: true, subtree: true })
@@ -177,6 +185,7 @@ export class WebUiDropdown extends LitElement {
     document.removeEventListener('click', this._onClickOutside)
     this._outsideClickGuard.dispose()
     this._hoverBinder.dispose()
+    this._lifecycle.dispose()
     this._scrollLock.release()
     this._cleanupClosedMenu()
   }
@@ -191,8 +200,8 @@ export class WebUiDropdown extends LitElement {
         this._outsideClickGuard.arm()
         this._syncScrollLock()
         this._hideAllSubmenuChildren()
-        requestAnimationFrame(() => {
-          if (!this.open) return
+        this._lifecycle.invalidate()
+        this._lifecycle.scheduleFrame(() => {
           this._ensureOverlay(0, this._shouldOpenInstantly)
           this._shouldOpenInstantly = true
           focusMenuItem(getEnabledMenuLevelItems(this._overlays.get(0)?.content)[0])
@@ -201,6 +210,7 @@ export class WebUiDropdown extends LitElement {
         })
         this._bindHoversAfterUpdate()
       } else {
+        this._lifecycle.invalidate()
         this._syncScrollLock()
         void this._closeRootAfterPresence()
       }
@@ -282,7 +292,7 @@ export class WebUiDropdown extends LitElement {
 
     const item = this._getLevelItems(level)[itemIndex]
     if (item?.hasAttribute('submenu')) {
-      requestAnimationFrame(() => {
+      this._lifecycle.scheduleFrame(() => {
         if (!this.open || this._activePath[level] !== itemIndex) return
         const restored = this._ensureOverlay(level + 1, isInstant, item)
         if (!restored) this._populateOverlay(level + 1, item)
@@ -437,6 +447,7 @@ export class WebUiDropdown extends LitElement {
         strategy: 'fixed'
       })
       this._overlays.set(level, { api: ctrl, overlay, content })
+      overlayComposition.registerPanel(overlay, this._overlays.get(level - 1)?.overlay)
       if (level === 0) this._populateLevel0()
       // submenu 父项在面板 content 内，其新增子项只有观察 content 子树才能看到
       this._menuContentObserver.observe(content, { childList: true, subtree: true })
@@ -447,6 +458,7 @@ export class WebUiDropdown extends LitElement {
 
   private _disposeOverlay(level: number) {
     const overlay = this._overlays.get(level)
+    if (overlay) overlayComposition.unregisterPanel(overlay.overlay)
     overlay?.overlay.removeEventListener('click', this._onMenuClick)
     overlay?.overlay.removeEventListener('keydown', this._onKeydown)
     overlay?.overlay.remove()

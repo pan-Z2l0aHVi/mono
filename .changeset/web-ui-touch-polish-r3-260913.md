@@ -1,0 +1,9 @@
+---
+'@greypan/web-ui': patch
+---
+
+Restore the `web-ui-switch`, `web-ui-slider` and `web-ui-segmented` handles to their original pressed-glass structure: the resting handle is a solid white thumb / indicator, and pressing or dragging switches it to frosted glass — backdrop blur + translucent glass background + 1.5x scale + a clearly lifted shadow. The previous round made the glass composition constant (backdrop blur always on, background never changing), which hid the press transition on iOS; that was the wrong target and is reverted. The iOS-safe pressed `box-shadow` from the last round is kept: the class writes the shadow value directly (no CSS custom-property indirection, which iOS Safari does not transition).
+
+Make `web-ui-dialog`'s background blur continuous across every state switch. The dialog element's own `opacity` transition made the `dialog` a backdrop root while `opacity < 1`, which completely disabled the glass body's `backdrop-filter` during the transition — the blur popped in/out at the opacity endpoints instead of fading (verified in a real browser: an ancestor with `opacity` or `filter` disables descendant backdrop-filter, while `transform` and the element's own opacity fade do not). The dialog now keeps `opacity: 1` on the element (only the transform scale animates there), fades the content through a `.wui-dialog-surface` wrapper, and blurs through a dedicated `.wui-dialog-blur` layer whose own opacity transition fades the blur smoothly; the body no longer carries its own `backdrop-filter`, so there is no double blur at rest.
+
+Lock the image-preview `swipe` gesture to horizontal at 1x. While the swipe gesture applies, the vertical delta is now ignored entirely — no vertical pan and no vertical follow (previously a 1x swipe drag still panned vertically). Zoomed-in dragging is unchanged and pans on both axes.

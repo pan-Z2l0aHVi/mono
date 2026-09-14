@@ -9,45 +9,57 @@
 }
 
 dialog {
+  /* 必须显式 position: fixed：UA 的 dialog:modal 默认就是 fixed，但作者样式若出现
+     position: relative（本轮单层重构曾引入）会把它覆盖回文档流——top layer 里的
+     modal dialog 变成按文档流定位：渲染在页面顶部（用户看到的“残影”）且跟随页面
+     滚动（“没有固定居中”）。显式写死 fixed 防御未来任何作者类再覆盖。 */
+  position: fixed;
+
+  /* 本元素不参与 opacity 过渡：opacity < 1 会让 dialog 成为 backdrop root，后代
+     backdrop-filter 在该过渡期间被整体禁用。玻璃卡片（.wui-dialog-body）自身
+     opacity + backdrop-filter 插值过渡（own opacity 不禁用自身 blur，见下）。 */
   transform: scale(var(--wui-scale-enter, 0.97));
 
   overflow: visible;
 
   box-sizing: border-box;
-  max-width: min(90vw, var(--wui-dialog-max-width, 360px));
+  width: min(90vw, var(--wui-dialog-width, 360px));
   max-height: 90vh;
+  max-height: min(90vh, 90dvh);
   padding: 0;
   border: none;
 
   font-family: inherit;
   color: var(--wui-color-text, #1b1b1b);
 
-  opacity: 0;
   background: transparent;
 
-  transition:
-    opacity var(--wui-duration-overlay-enter, 180ms) var(--wui-ease-enter, cubic-bezier(0.23, 1, 0.32, 1)),
-    transform var(--wui-duration-overlay-enter, 180ms) var(--wui-ease-enter, cubic-bezier(0.23, 1, 0.32, 1));
+  transition: transform var(--wui-duration-dialog-enter, 320ms) var(--wui-ease-dialog, cubic-bezier(0.2, 0, 0, 1));
 
   &::backdrop {
     opacity: 0;
     background: var(--wui-dialog-overlay-bg, var(--wui-color-backdrop, rgb(0 0 0 / 0.12)));
-    transition: opacity var(--wui-duration-overlay-enter, 180ms) ease;
+    transition: opacity var(--wui-duration-dialog-enter, 320ms) ease;
   }
+}
+
+/* 面板本身是模态表面，不作为可聚焦控件；Safari showModal() 会把焦点放到 dialog，不应画 UA ring。内部控件保留 focus ring。 */
+dialog:focus,
+dialog:focus-visible {
+  outline: none;
 }
 
 dialog[open].is-visible {
   transform: scale(1);
-  opacity: 1;
 }
 
-dialog.is-closing {
+dialog[open].is-closing {
   pointer-events: none;
-  transition-duration: var(--wui-duration-overlay-exit, 140ms);
+  transition-duration: var(--wui-duration-dialog-exit, 260ms);
 }
 
 dialog.is-closing::backdrop {
-  transition-duration: var(--wui-duration-overlay-exit, 140ms);
+  transition-duration: var(--wui-duration-dialog-exit, 260ms);
 }
 
 dialog[open].is-visible::backdrop {
@@ -64,18 +76,51 @@ dialog[open].is-visible::backdrop {
 
 /* ===== 玻璃卡片主体（样式由 glass.css 提供） ===== */
 
+/* 单层玻璃：卡片自身承担背景/阴影/backdrop-filter。blur(0px) ↔ blur(4px) 平滑插值
+   （none↔blur 不可插值才是当年生硬跳变的根因），own opacity 过渡不禁用自身 blur，
+   因此卡片直接 opacity + backdrop-filter 同步过渡即可，无需双层。 */
 .wui-dialog-body {
   --wui-internal-glass-shadow: var(--wui-shadow-overlay, 2px 16px 40px rgb(0 0 0 / 0.4));
   --wui-glass-corner-radius: var(--wui-radius-overlay, 28px);
-  padding: 20px 24px 24px;
+  padding: var(--wui-dialog-padding, 20px 24px 24px);
   border-radius: var(--wui-radius-overlay, 28px);
+
+  opacity: 0;
   background-color: var(--wui-dialog-bg, var(--wui-color-surface-overlay, rgb(246 246 246 / 0.82)));
+
+  /* stylelint-disable-next-line property-no-vendor-prefix */
+  -webkit-backdrop-filter: blur(0) saturate(160%) brightness(var(--wui-glass-brightness, 1.06));
+  backdrop-filter: blur(0) saturate(160%) brightness(var(--wui-glass-brightness, 1.06));
+
+  transition:
+    opacity var(--wui-duration-dialog-enter, 320ms) var(--wui-ease-dialog, cubic-bezier(0.2, 0, 0, 1)),
+    -webkit-backdrop-filter var(--wui-duration-dialog-enter, 320ms) var(--wui-ease-dialog, cubic-bezier(0.2, 0, 0, 1)),
+    backdrop-filter var(--wui-duration-dialog-enter, 320ms) var(--wui-ease-dialog, cubic-bezier(0.2, 0, 0, 1));
+}
+
+dialog.is-closing .wui-dialog-body {
+  transition-duration: var(--wui-duration-dialog-exit, 260ms);
+}
+
+dialog[open].is-visible .wui-dialog-body {
+  opacity: 1;
+
+  /* stylelint-disable-next-line property-no-vendor-prefix */
+  -webkit-backdrop-filter: blur(4px) saturate(160%) brightness(var(--wui-glass-brightness, 1.06));
+  backdrop-filter: blur(4px) saturate(160%) brightness(var(--wui-glass-brightness, 1.06));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  dialog.is-closing .wui-dialog-body,
+  dialog[open].is-visible .wui-dialog-body {
+    transition-duration: var(--wui-duration-feedback, 100ms);
+  }
 }
 
 /* ===== 标题 ===== */
 
 .title {
-  margin: 0 0 16px;
+  margin: 0 0 var(--wui-dialog-title-gap, 16px);
   padding: 0;
 
   font-size: 18px;
@@ -87,7 +132,7 @@ dialog[open].is-visible::backdrop {
 /* ===== 描述 ===== */
 
 .desc {
-  margin: 0 0 24px;
+  margin: 0 0 var(--wui-dialog-desc-gap, 24px);
   padding: 0;
 
   font-size: 14px;
@@ -100,7 +145,8 @@ dialog[open].is-visible::backdrop {
 .wui-dialog-footer {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--wui-dialog-footer-gap, 10px);
+  justify-content: var(--wui-dialog-footer-justify, flex-end);
 
   /* ===== 按钮全宽（默认垂直排列） ===== */
 
@@ -115,7 +161,7 @@ dialog[open].is-visible::backdrop {
 :host([horizontal]) .wui-dialog-footer {
   flex-direction: row;
   gap: 12px;
-  justify-content: center;
+  justify-content: var(--wui-dialog-footer-justify, center);
 
   /* 非 full 按钮：居中，不拉伸 */
 

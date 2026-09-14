@@ -26,6 +26,32 @@ describe('WebUiSelect 组件（浏览器）', () => {
     expect(select.open).toBe(false)
   })
 
+  it('浮层面板使用双层玻璃结构：blur 层 + surface 层各自 opacity 过渡', async () => {
+    const select = document.createElement('web-ui-select')
+    select.innerHTML = '<web-ui-option value="apple" label="Apple"></web-ui-option>'
+    document.body.append(select)
+    await select.updateComplete
+
+    const trigger = select.shadowRoot?.querySelector<HTMLElement>('[role="combobox"]')
+    trigger?.click()
+    await select.updateComplete
+    await new Promise(resolve => requestAnimationFrame(resolve))
+    await new Promise(resolve => requestAnimationFrame(resolve))
+
+    const panel = select.shadowRoot?.querySelector<HTMLElement>('.select-overlay')
+    expect(panel).toBeTruthy()
+    // 单层玻璃：wui-glass 在面板自身，背景/阴影/blur 都由面板承担，
+    // opacity + backdrop-filter（blur(0px)↔blur(4px)）+ transform 一起过渡。
+    expect(panel!.classList.contains('wui-glass')).toBe(true)
+    expect(getComputedStyle(panel!).backgroundColor).not.toBe('rgba(0, 0, 0, 0)')
+    expect(getComputedStyle(panel!).transitionProperty).toContain('opacity')
+    expect(getComputedStyle(panel!).transitionProperty).toContain('backdrop-filter')
+    expect(getComputedStyle(panel!).transitionProperty).toContain('transform')
+    // blur 随 float 过渡（160ms）从 0px 插值到 4px：等待收敛再断言目标态。
+    await new Promise(resolve => setTimeout(resolve, 250))
+    expect(getComputedStyle(panel!).backdropFilter).toContain('blur(4px)')
+  })
+
   it('下拉滚动区域默认高度可通过 CSS variable 覆盖', async () => {
     const select = document.createElement('web-ui-select')
     select.innerHTML = '<web-ui-option value="apple">Apple</web-ui-option>'
@@ -88,7 +114,7 @@ describe('WebUiSelect 组件（浏览器）', () => {
     expect(panel?.querySelector(':scope > .select-scroll > .select-content web-ui-option')).toBeTruthy()
   })
 
-  it('主题作用域内打开 Portal Select 不撑开 overlay 容器', async () => {
+  it('主题作用域内打开 Portal Select 不撑开 theme-owned overlay root', async () => {
     const theme = document.createElement('web-ui-theme')
     theme.setAttribute('appearance', 'light')
     theme.className = 'block'

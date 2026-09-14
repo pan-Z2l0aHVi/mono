@@ -2,7 +2,7 @@ import { html, LitElement, nothing, unsafeCSS } from 'lit'
 import { customElement, property } from 'lit/decorators.js'
 
 import { normalizeLiteral } from '@/shared/normalize'
-import { applyOverlayRootStyles } from '@/shared/theme/overlay-root'
+import { applyOverlayRootStyles } from '@/shared/overlay/overlay-root'
 
 import style from './style.css?inline'
 
@@ -49,7 +49,7 @@ export class WebUiTheme extends LitElement {
     this._warnWhenAppearanceIsMissing()
   }
 
-  // 返回此主题范围内的浮层挂载点；未设置 appearance 时不创建。
+  // 返回该主题拥有的浮层挂载点；未设置 appearance 时不创建。
   getOverlayRoot(): HTMLElement | undefined {
     if (!this._hasAppearance()) return undefined
     return this.renderRoot.querySelector<HTMLElement>('[data-wui-overlay-container]') ?? undefined

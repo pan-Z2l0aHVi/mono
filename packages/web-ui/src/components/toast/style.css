@@ -14,6 +14,9 @@
 
 /* ===== 入场 / 退场动画 ===== */
 
+/* 单层玻璃：.toast 自身承担背景/阴影/backdrop-filter。blur(0px) ↔ blur(4px) 平滑
+   插值（none↔blur 不可插值才是当年生硬跳变的根因），own opacity 过渡不禁用自身
+   blur，因此 toast 直接 opacity + backdrop-filter + transform 同步过渡，无需双层。 */
 .toast {
   --wui-internal-glass-shadow: var(--wui-shadow-panel, 0 3px 9px rgb(0 0 0 / 0.27));
   --wui-glass-corner-radius: var(--wui-radius-menu, 18px);
@@ -23,7 +26,7 @@
   display: flex;
   gap: 8px;
 
-  width: 320px;
+  width: min(320px, calc(100dvw - 2 * var(--wui-toast-viewport-gap, 16px)));
   min-height: 36px;
   padding: 8px;
   border-radius: var(--wui-radius-menu, 18px);
@@ -35,18 +38,28 @@
   opacity: 0;
   background-color: var(--wui-color-surface-overlay, rgb(246 246 246 / 0.82));
 
+  /* stylelint-disable-next-line property-no-vendor-prefix */
+  -webkit-backdrop-filter: blur(0) saturate(160%) brightness(var(--wui-glass-brightness, 1.06));
+  backdrop-filter: blur(0) saturate(160%) brightness(var(--wui-glass-brightness, 1.06));
+
   transition:
-    opacity var(--wui-duration-overlay-enter, 180ms) var(--wui-ease-enter, cubic-bezier(0.23, 1, 0.32, 1)),
-    transform var(--wui-duration-overlay-enter, 180ms) var(--wui-ease-enter, cubic-bezier(0.23, 1, 0.32, 1));
+    opacity var(--wui-duration-toast-enter, 280ms) var(--wui-ease-enter, cubic-bezier(0.23, 1, 0.32, 1)),
+    -webkit-backdrop-filter var(--wui-duration-toast-enter, 280ms) var(--wui-ease-enter, cubic-bezier(0.23, 1, 0.32, 1)),
+    backdrop-filter var(--wui-duration-toast-enter, 280ms) var(--wui-ease-enter, cubic-bezier(0.23, 1, 0.32, 1)),
+    transform var(--wui-duration-toast-enter, 280ms) var(--wui-ease-enter, cubic-bezier(0.23, 1, 0.32, 1));
 }
 
 :host([visible]) .toast {
   transform: translate(0, 0) scale(1);
   opacity: 1;
+
+  /* stylelint-disable-next-line property-no-vendor-prefix */
+  -webkit-backdrop-filter: blur(4px) saturate(160%) brightness(var(--wui-glass-brightness, 1.06));
+  backdrop-filter: blur(4px) saturate(160%) brightness(var(--wui-glass-brightness, 1.06));
 }
 
 :host(:not([visible])) .toast {
-  transition-duration: var(--wui-duration-overlay-exit, 140ms);
+  transition-duration: var(--wui-duration-toast-exit, 200ms);
 }
 
 /* ===== 关闭按钮（放在 hover 规则之前，避免 specificity 降序） ===== */
@@ -159,5 +172,6 @@ web-ui-button.toast-close-btn {
   .toast,
   :host([visible]) .toast {
     transform: none;
+    transition-duration: var(--wui-duration-feedback, 100ms);
   }
 }

@@ -11,8 +11,8 @@ import { normalizeLiteral } from '@/shared/normalize'
 import { dispatchOpenChangeEvent } from '@/shared/open-state'
 import { defineNativeDialogPresence } from '@/shared/overlay/native-dialog-presence'
 import { defineNestedDrawerLayers } from '@/shared/overlay/nested-drawer-layers'
+import { findNearestTheme } from '@/shared/overlay/theme-overlay-scope'
 import { defineScrollLockLease } from '@/shared/scroll-lock/scroll-lock'
-import { findNearestTheme } from '@/shared/theme/theme-scope'
 
 import style from './style.css?inline'
 
@@ -235,7 +235,7 @@ export class WebUiDrawer extends LitElement {
         const raw = this._dragInitialOffset + pointerDelta * this._dragCloseSign
         this._dragOffset = rubberband(raw, this._measureDragSize() * 0.1, 0.15)
 
-        // 达到关闭阈值时胶囊变 accent 色作视觉确认（ADR-0035）。
+        // 达到关闭阈值时胶囊变 accent 色作视觉确认（ADR-0027）。
         const dragSize = this._measureDragSize()
         dialog.classList.toggle('is-drag-close', dragSize > 0 && this._dragOffset > dragSize * DRAG_CLOSE_RATIO)
         this._applyDragOffset(dialog, this._dragOffset)
@@ -327,25 +327,66 @@ export class WebUiDrawer extends LitElement {
     // fill:'both' 与 _springRebound 对称：堵住 finish→onfinish 清理窗口，
     // 防止该窗口内绘制的帧暴露内联位移、随清理触发跳变。
     const animation = dialog.animate(keyframes, { duration, easing: 'linear', fill: 'both' })
-    // onfinish 同步应用终态并取消动画：fill 会持续覆盖 transform，阻断后续 CSS 过渡。
+    // 审计（Safari 不采信 fill 覆盖的 before-change style）：受控分支 finishClose
+    // 把内联写入闭合位，cancel 时内联 == fill 终态 == 生效闭合位，三值一致；非受控
+    // 分支 finishClose 在 fill 覆盖期间完成 is-visible 切换并清内联，cancel 后
+    // computed 落到 CSS 闭合位且 == fill 终态 to，同样无中间旧值可被采样。因此
+    // 「先应用终态再 cancel」对关闭路径已满足，无需像弹回那样保留内联终值。
     animation.onfinish = () => {
-      animation.cancel()
       finishClose()
+      animation.cancel()
     }
   }
 
-  // 弹回打开：从 from 位移弹回 0；结束后清内联样式交还 CSS transition 管辖。
+  // 弹回打开：从 from 位移弹回 0；结束后把内联样式交还打开态/CSS transition 管辖。
   private _springRebound(dialog: HTMLDialogElement, velocity: number, from: number) {
     this._dragOffset = 0
 
-    const finishRebound = () => {
+    // 弹回结束把内联样式覆写为打开态终值而非删除：Safari 计算 CSS transition 的
+    // before-change style 时不采信 WAAPI fill 动画的覆盖值，删除内联会让它采样到
+    // 拖拽残留位移（如 -64px）作为旧值，与打开态 0 之间触发一次额外的 transform
+    // 过渡 —— 即弹回结束后再次多弹一次（Chrome 采信 fill 故不复现）。
+    // translateX(0px)/translateY(0px) 与打开态 CSS transform translate(0,0) 数学等价，
+    // backdrop opacity 1 与 --wui-internal-drag-backdrop-opacity 的默认值一致；内联
+    // 保留到关闭管线：关闭时 _springToClose 的 animate 会覆盖它，其 finishClose 清理
+    // 内联时 dialog 已进入关闭流程（is-visible 移除/闭合位写入），无 before-change
+    // 采样窗口。
+    const applyOpenInlineState = () => {
+      dialog.style.transform = this._dragAxis === 'x' ? 'translateX(0px)' : 'translateY(0px)'
+      dialog.style.setProperty('--wui-internal-drag-backdrop-opacity', '1')
+    }
+
+    // 同步收尾，顺序不可调换：
+    // 1. 把内联覆写为打开态终值（保留 is-dragging，transition:none 仍在抑制）；
+    // 2. void dialog.offsetWidth 强制一次同步样式重算：Safari 的 before-change
+    //    style 不采信 WAAPI fill 覆盖，此刻计算样式已真实归 0，重算把 0「烘焙」为
+    //    它内部 transition 参考值。rAF 不够：rAF 回调与 onfinish 常落在同一渲染帧，
+    //    Safari 在抑制解除时还没把 0 写进 transition 状态，会按旧值 -offset 补触发
+    //    （MutationObserver 实测：onfinish 与 is-dragging 移除同毫秒、transitionstart
+    //    延后 16ms 仍以 -9.6 为 from）。
+    // 3. 同步移除 is-dragging：重算后解除抑制是 0→0，无 before-change/after 差异，
+    //    无过渡可触发。顺序若反（先移除类再重算），解除抑制的瞬间 Safari 仍以旧值
+    //    为参考，过渡照旧触发。
+    // 防御：dialog 已关闭/断连时跳过样式收尾（is-dragging 随元素销毁自然消失）。
+    // clearInline：无动画路径（tap、from≈0、reduced-motion、无 WAAPI）没有需要「烘焙」
+    // 的拖拽残留，直接移除内联拖拽样式回到 CSS 打开态即可。不能像动画路径那样把内联
+    // 写成 translateX(0px) 长期保留：0px 内联会盖住闭合态 CSS transform，用户之后用
+    // 按钮/遮罩/Esc（不走 _springToClose 的 animate）关闭时计算值恒为 0、开与关都
+    // 不再触发过渡 —— 快速连点后「后续开关丢失过渡动画」的根因。
+    const finishRebound = (clearInline: boolean) => {
       this._dragAnimation = null
+      if (!dialog.isConnected) return
+      if (clearInline) this._clearDragStyles(dialog)
+      else applyOpenInlineState()
+      void dialog.offsetWidth
       dialog.classList.remove('is-dragging')
-      this._clearDragStyles(dialog)
     }
 
     if (this._isReducedMotion() || typeof dialog.animate !== 'function' || Math.abs(from) < 1) {
-      finishRebound()
+      // 无动画路径同样先加 is-dragging 抑制过渡，再走同一收尾；
+      // 保证所有 _springRebound 出口（onfinish/onCancel/受控回写弹回）行为一致。
+      dialog.classList.add('is-dragging')
+      finishRebound(true)
       return
     }
 
@@ -363,10 +404,11 @@ export class WebUiDrawer extends LitElement {
     // 失效，窗口内被绘制的帧会暴露内联拖拽位移，随后的清理再触发 CSS 过渡滑回
     // 打开位 —— 表现为回弹后又多弹一次。
     const animation = dialog.animate(keyframes, { duration, easing: 'linear', fill: 'both' })
-    // onfinish 同步清除内联样式并取消动画：fill 会持续覆盖 transform，阻断后续 CSS 过渡。
+    // onfinish 时保持 is-dragging（transition 仍被抑制）走 finishRebound：
+    // 覆写内联 → 强制重算烘焙 0 → 移除类，Safari 无旧值可采信、无过渡可触发。
     animation.onfinish = () => {
+      finishRebound(false)
       animation.cancel()
-      finishRebound()
     }
     this._dragAnimation = animation
   }
@@ -466,6 +508,14 @@ export class WebUiDrawer extends LitElement {
           this._springRebound(dialog, 0, this._dragCloseDistance(dialog))
         }
       }
+      // 关闭且无进行中的拖拽动画时，清理可能残留的内联拖拽样式（如弹回路径按
+      // Safari 双回弹修复保留的 translateX(0px)）。若不清理，0px 内联会盖住闭合态
+      // CSS transform，后续开/关都不再触发过渡。拖拽动画进行中（_dragAnimation 非空）
+      // 由各自的 onfinish 收尾，这里不干预。
+      if (!this.open && this._dragAnimation === null && !this._isDragging()) {
+        const dialog = this.dialog
+        if (dialog) this._clearDragStyles(dialog)
+      }
       this._presence.sync(this.open)
       if (this.open) {
         // presence.sync 已同步发起 showModal：此刻 dialog.open 为真，计数出正确
@@ -536,7 +586,18 @@ export class WebUiDrawer extends LitElement {
   }
 
   private handleNativeClose() {
-    if (!this.open) return
+    // 关闭态下的 close 事件只可能是我们自己 finishClosing 排队的异步事件（或冗余的
+    // 外部关闭）：交给 presence 消费 self-close 标志，避免标志泄漏到下一次真实关闭。
+    if (!this.open) {
+      this._presence.handleNativeClose()
+      return
+    }
+
+    // 我们自己 dialog.close() 排队的 close 事件是异步任务：正常时序在本关闭会话内
+    // 到达，快速「关闭→重开」时它在重新打开之后才到达（过期事件）。两种情况都已在
+    // finishClosing 完成全部清理，由 presence 消费并返回 true，不能当成外部关闭把
+    // 刚重开的 dialog 关掉——否则重开即被误关，表现为连续开关丢失过渡动画。
+    if (this._presence.handleNativeClose()) return
 
     // 悬停等待期间的原生关闭（如表单 method="dialog"）：视为回写窗口内的重复
     // 关闭意图，取消等待不补发请求；已原生关闭的 dialog 不再被超时弹回拉起。
@@ -552,7 +613,6 @@ export class WebUiDrawer extends LitElement {
       return
     }
 
-    this._presence.handleNativeClose()
     this._userOpenChange.mark()
     this.open = false
   }

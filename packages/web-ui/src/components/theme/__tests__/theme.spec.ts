@@ -88,7 +88,7 @@ describe('WebUiTheme 组件', () => {
       theme.remove()
     })
 
-    it('设置 appearance 时创建 overlay root', async () => {
+    it('设置 appearance 时创建 theme-owned overlay root', async () => {
       const theme = createTheme('light')
       await theme.updateComplete
       expect(theme.getOverlayRoot()).toBeTruthy()
@@ -107,7 +107,7 @@ describe('WebUiTheme 组件', () => {
   })
 
   describe('嵌套主题', () => {
-    it('内层主题保持独立 overlay root', async () => {
+    it('内层主题保持独立 theme-owned overlay root', async () => {
       const outer = createTheme('light')
       const inner = document.createElement('web-ui-theme')
       inner.appearance = 'dark'
@@ -125,7 +125,7 @@ describe('WebUiTheme 组件', () => {
   })
 
   describe('Toast 集成', () => {
-    it('Toast target 使用最近主题的 overlay root', async () => {
+    it('Toast target 使用最近主题的 theme-owned overlay root', async () => {
       const theme = createTheme('dark')
       const trigger = document.createElement('button')
       theme.appendChild(trigger)
@@ -155,7 +155,7 @@ describe('WebUiTheme 组件', () => {
   })
 
   describe('Context Menu 集成', () => {
-    it('使用最近主题的 overlay root', async () => {
+    it('使用最近主题的 theme-owned overlay root', async () => {
       const theme = createTheme('dark')
       const menu = document.createElement('web-ui-context-menu')
       menu.innerHTML = '<web-ui-dropdown-item>编辑</web-ui-dropdown-item>'

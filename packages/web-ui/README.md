@@ -289,6 +289,7 @@ All form controls participate in native `FormData`, constraint validation, `form
 |                        | [`<web-ui-button-group>`](#web-ui-button-group)           |
 | **Overlay / Modal**    | [`<web-ui-dialog>`](#web-ui-dialog)                       |
 |                        | [`<web-ui-drawer>`](#web-ui-drawer)                       |
+|                        | [`imagePreview()`](#imagepreview)                         |
 | **In-flow Disclosure** | [`<web-ui-collapse>`](#web-ui-collapse)                   |
 | **Floating**           | [`<web-ui-popover>`](#web-ui-popover)                     |
 |                        | [`<web-ui-tooltip>`](#web-ui-tooltip)                     |
@@ -405,16 +406,16 @@ ArrowUp/ArrowDown keyboard increments and decrements the value. Empty or `-` inp
 
 Select dropdown with option items, keyboard navigation, and portal support.
 
-| Attribute          | Type                               | Default | Description                       |
-| ------------------ | ---------------------------------- | ------- | --------------------------------- |
-| `value`            | `string`                           | `''`    | Selected value                    |
-| `placeholder`      | `string`                           | `''`    | Placeholder text                  |
-| `name`             | `string`                           | `''`    | Form field name                   |
-| `disabled`         | `boolean`                          | `false` | Disabled state                    |
-| `required`         | `boolean`                          | `false` | Required validation               |
-| `portal`           | `boolean`                          | `false` | Render dropdown in theme overlay  |
-| `no-scroll-lock`   | `boolean`                          | `false` | Do not lock body scroll when open |
-| `overlayContainer` | `HTMLElement \| () => HTMLElement` | —       | Explicit portal container         |
+| Attribute          | Type                               | Default | Description                                 |
+| ------------------ | ---------------------------------- | ------- | ------------------------------------------- |
+| `value`            | `string`                           | `''`    | Selected value                              |
+| `placeholder`      | `string`                           | `''`    | Placeholder text                            |
+| `name`             | `string`                           | `''`    | Form field name                             |
+| `disabled`         | `boolean`                          | `false` | Disabled state                              |
+| `required`         | `boolean`                          | `false` | Required validation                         |
+| `portal`           | `boolean`                          | `false` | Render dropdown in theme-owned overlay root |
+| `no-scroll-lock`   | `boolean`                          | `false` | Do not lock body scroll when open           |
+| `overlayContainer` | `HTMLElement \| () => HTMLElement` | —       | Explicit portal container                   |
 
 **Events:** `input`, `change`, `open-change` (`CustomEvent<{ open: boolean }>`)
 
@@ -452,7 +453,7 @@ Editable combobox with input filtering and single option selection.
 | `readonly`           | `boolean`                          | `false`      | Read-only state (no typing, no dropdown)                                                          |
 | `required`           | `boolean`                          | `false`      | Required validation                                                                               |
 | `allow-custom-value` | `boolean`                          | `false`      | Allow Enter to submit a custom value that is not among candidates                                 |
-| `portal`             | `boolean`                          | `false`      | Render dropdown in theme overlay                                                                  |
+| `portal`             | `boolean`                          | `false`      | Render dropdown in theme-owned overlay root                                                       |
 | `no-scroll-lock`     | `boolean`                          | `false`      | Do not lock body scroll when open                                                                 |
 | `overlayContainer`   | `HTMLElement \| () => HTMLElement` | —            | Explicit portal container                                                                         |
 | `aria-label`         | `string`                           | —            | Accessible name                                                                                   |
@@ -498,7 +499,7 @@ Range slider with marks and vertical orientation.
 
 **Methods:** `focus()`, `blur()`
 
-Supports ArrowLeft/Right/Up/Down, Home/End, PageUp/PageDown keyboard navigation. Uses pointer capture for drag interaction across mouse, touch, and pen.
+Supports ArrowLeft/Right/Up/Down, Home/End, PageUp/PageDown keyboard navigation. Uses pointer capture for drag interaction across mouse, touch, and pen. Both the component host and the track declare `touch-action: none`, and an active drag suppresses `touchmove` defaulting, so iOS Safari never takes over horizontal or vertical drags mid-gesture.
 
 **CSS Custom Properties:**
 
@@ -508,8 +509,9 @@ Supports ArrowLeft/Right/Up/Down, Home/End, PageUp/PageDown keyboard navigation.
 | `--wui-slider-vertical-height` | `200px`                             | Vertical slider height |
 | `--wui-slider-height`          | `var(--wui-slider-track-size, 6px)` | Track thickness        |
 | `--wui-slider-track-size`      | `6px`                               | Track size             |
-| `--wui-slider-thumb-width`     | `30px`                              | Thumb width            |
-| `--wui-slider-thumb-height`    | `20px`                              | Thumb height           |
+| `--wui-slider-thumb-width`     | `24px`                              | Thumb width            |
+| `--wui-slider-thumb-height`    | `18px`                              | Thumb height           |
+| `--wui-slider-thumb-radius`    | `8px`                               | Thumb border radius    |
 | `--wui-slider-marks-inset`     | `0`                                 | Marks inset from edges |
 
 #### `<web-ui-checkbox>`
@@ -583,6 +585,8 @@ Segmented control — single-select button group.
 Form-associated: integrates with native `<form>` via `ElementInternals`.
 
 Manages child trigger `checked` state based on `value`. `disabled` supplies inherited effective disabled state without changing a trigger's own `disabled` property. Setting `value` directly does not dispatch `input`/`change`.
+
+Press the selected segment and drag horizontally to slide the indicator; on release it snaps to the nearest option (a fast flick switches by velocity). Touch surfaces declare `touch-action: none` and suppress `touchmove` defaulting during an active drag, so iOS Safari does not interrupt the gesture.
 
 #### `<web-ui-checkbox-group>`
 
@@ -699,11 +703,17 @@ Uses native `<dialog>` with `@cancel` prevention. Escape calls `close()` unless 
 
 **CSS Custom Properties:**
 
-| Property                  | Default                            | Description                                                    |
-| ------------------------- | ---------------------------------- | -------------------------------------------------------------- |
-| `--wui-dialog-max-width`  | `360px`                            | Dialog max width                                               |
-| `--wui-dialog-overlay-bg` | `var(--wui-color-backdrop)`        | Backdrop background                                            |
-| `--wui-dialog-bg`         | `var(--wui-color-surface-overlay)` | Glass card background, falls back to `rgb(246 246 246 / 0.88)` |
+| Property                      | Default                                      | Description                                                                           |
+| ----------------------------- | -------------------------------------------- | ------------------------------------------------------------------------------------- |
+| `--wui-dialog-width`          | `360px`                                      | Dialog width                                                                          |
+| `--wui-dialog-max-height`     | `90vh`                                       | Dialog max height                                                                     |
+| `--wui-dialog-overlay-bg`     | `var(--wui-color-backdrop)`                  | Backdrop background                                                                   |
+| `--wui-dialog-bg`             | `var(--wui-color-surface-overlay)`           | Glass card background, falls back to `rgb(246 246 246 / 0.88)`                        |
+| `--wui-dialog-padding`        | `20px 24px 24px`                             | Dialog surface padding                                                                |
+| `--wui-dialog-title-gap`      | `16px`                                       | Spacing below the title                                                               |
+| `--wui-dialog-desc-gap`       | `24px`                                       | Spacing below the body content                                                        |
+| `--wui-dialog-footer-gap`     | `10px` / `12px` (horizontal)                 | Spacing between footer buttons                                                        |
+| `--wui-dialog-footer-justify` | `flex-end` (default) / `center` (horizontal) | Footer `justify-content`; override to `flex-end` for right-aligned horizontal buttons |
 
 #### `<web-ui-drawer>`
 
@@ -732,7 +742,9 @@ Side drawer using native `<dialog>` with closing animation. In non-headless mode
 
 Closing keeps the native dialog in the top layer until the `--wui-duration-drawer-exit` transition completes (240ms by default), then calls `dialog.close()`. Escape always follows this close path; `no-backdrop-close` controls backdrop clicks only.
 
-**Drag to close:** With `draggable`, a gray capsule drag bar (4×56px by default, visually centered 10px from the inner edge inside a 32px-thick hit zone) appears on the drawer's inner edge (left edge for `right`, right edge for `left`, bottom edge for `top`, top edge for `bottom`) while open:
+When `closable` is set, the built-in close button is positioned at the header's top-right corner (defaults `16px` down and `20px` in from the edge) instead of stretching across the drawer body.
+
+**Drag to close:** With `draggable`, a gray capsule drag bar (4×56px by default, visually centered 10px from the inner edge inside a 20px-thick hit zone) appears on the drawer's inner edge (left edge for `right`, right edge for `left`, bottom edge for `top`, top edge for `bottom`) while open:
 
 - Dragging follows the pointer in real time; the backdrop fades proportionally.
 - Releasing past ~1/3 of the drawer size, or with a fast closing flick, springs the drawer shut; otherwise it springs back open. The close direction is placement-aware.
@@ -750,9 +762,89 @@ Closing keeps the native dialog in the top layer until the `--wui-duration-drawe
 | `--wui-drawer-radius`             | `var(--wui-radius-overlay, 28px)`  | Floating card corner radius (non-headless)                                   |
 | `--wui-drawer-inset`              | `8px`                              | Floating card viewport inset (non-headless); `0` gives edge-to-edge geometry |
 | `--wui-drawer-overlay-bg`         | `rgb(0 0 0 / 0.12)`                | Backdrop background                                                          |
-| `--wui-drawer-drag-zone-size`     | `32px`                             | Drag-to-close hit zone thickness on the inner edge (draggable)               |
+| `--wui-drawer-drag-zone-size`     | `20px`                             | Drag-to-close hit zone thickness on the inner edge (draggable)               |
 | `--wui-drawer-drag-bar-thickness` | `4px`                              | Drag bar capsule thickness (short axis)                                      |
 | `--wui-drawer-drag-bar-length`    | `56px`                             | Drag bar capsule length (along the drawer edge)                              |
+| `--wui-drawer-header-padding`     | `16px 20px`                        | Header section padding                                                       |
+| `--wui-drawer-close-top`          | `16px`                             | Built-in close button offset from the top of the header                      |
+| `--wui-drawer-close-right`        | `20px`                             | Built-in close button offset from the right edge of the drawer               |
+| `--wui-drawer-content-padding`    | `20px`                             | Content area padding; also drives drag bar visual center (half value)        |
+| `--wui-drawer-footer-padding`     | `16px 20px`                        | Footer section padding                                                       |
+
+#### `imagePreview()`
+
+Imperative image preview with no declarative tag contract: open it through `imagePreview()` and drive it through the returned handle. It uses the native `<dialog>` `showModal()` and mounts into the nearest `web-ui-theme` theme-owned overlay root, falling back to the global fallback overlay root when no theme-owned root exists.
+
+It does not reuse the `<web-ui-dialog>` component: the preview needs a dialog that fills the viewport itself (the full-viewport backdrop scrim is rendered by a dedicated overlay layer inside the dialog, so the dialog element never fades its own opacity and the glass controls' backdrop blur stays continuous) plus its own pointer interaction, which is a different source than the dialog's glass panel and slot contract. The two share the `native-dialog-presence` and `scroll-lock` plugins, and `noScrollLock` / `noBackdropClose` mirror the same-named properties in naming and semantics.
+
+```ts
+import { imagePreview } from '@greypan/web-ui'
+
+const preview = imagePreview({
+  images: [{ src: '/a.jpg', alt: 'Image A' }, { src: '/b.jpg' }],
+  index: 0,
+  nav: true,
+  toolbar: true,
+  closable: true,
+  indicator: true
+})
+
+preview.next()
+preview.zoomIn()
+
+await preview.closed
+```
+
+**Options:**
+
+| Option            | Type                 | Default | Description                                                                 |
+| ----------------- | -------------------- | ------- | --------------------------------------------------------------------------- |
+| `images`          | `ImagePreviewItem[]` | —       | Image list; must contain at least one item, else it throws                  |
+| `index`           | `number`             | `0`     | Initial index, clamped into range                                           |
+| `loop`            | `boolean`            | `true`  | Wrap around at both ends                                                    |
+| `target`          | `Element`            | —       | Trigger element used to resolve the nearest theme-owned overlay root        |
+| `container`       | `HTMLElement`        | —       | Explicit mount container, highest priority                                  |
+| `nav`             | `boolean`            | `false` | Show prev/next buttons; rendered only when more than one image              |
+| `toolbar`         | `boolean`            | `false` | Show the zoom toolbar (out / factor / in / reset)                           |
+| `closable`        | `boolean`            | `false` | Show the close button                                                       |
+| `indicator`       | `boolean`            | `false` | Show the "current / total" indicator, announced via `aria-live`             |
+| `swipe`           | `boolean`            | `false` | At 1x, swipe horizontally to change images; owns that axis while it applies |
+| `noScrollLock`    | `boolean`            | `false` | Do not lock page scroll while open                                          |
+| `noBackdropClose` | `boolean`            | `false` | Clicking the blank area outside the image does not close                    |
+
+`ImagePreviewItem` is `{ src: string; alt?: string }`; a missing `alt` defaults to an empty string.
+
+Every presentation option defaults to off: with no options passed only the image itself is rendered, so navigation, toolbar, close button and indicator all have to be enabled explicitly.
+
+**Returned handle:**
+
+| Member                                   | Type                          | Description                                     |
+| ---------------------------------------- | ----------------------------- | ----------------------------------------------- |
+| `index`                                  | `number`                      | Current index; keeps its last value after close |
+| `scale`                                  | `number`                      | Current zoom factor within `[1, 4]`             |
+| `images`                                 | `readonly ImagePreviewItem[]` | Normalized image list                           |
+| `closed`                                 | `Promise<void>`               | Resolves after the exit transition and unmount  |
+| `next()` / `prev()`                      | `() => void`                  | Relative navigation                             |
+| `goTo(index)`                            | `(index: number) => void`     | Jump; clamps at the bounds when `loop` is off   |
+| `zoomIn()` / `zoomOut()` / `resetZoom()` | `() => void`                  | Zoom controls                                   |
+| `close()`                                | `() => void`                  | Close and play the exit animation               |
+
+**Interaction:** Arrow keys always navigate, independently of `nav`; `+` / `-` and the mouse wheel zoom, and `0` resets. Zooming is anchored: the wheel keeps the point under the cursor fixed and a pinch keeps the midpoint between the two fingers fixed, while the toolbar buttons, keyboard shortcuts and double-click expand around the viewport center. Holding the mouse button down or resting a single finger drags the image to pan in any direction, at any zoom level: zoomed in it reveals the cropped edges, and at 1x it moves the image around within the viewport. Either way the drag is bounded by half the size difference between the image and the stage, so the image can never be dragged outside the viewport, and it is clamped (not snapped back) when you keep dragging past the edge. Double-clicking the image toggles between 1x and 2x.
+
+Pinch-to-zoom is always on and has no option: the stage already owns pointer interaction, so there is nothing for a gesture to conflict with. The first finger still drives pan/swipe as usual and the second finger starts the pinch, which aborts any in-flight pan or swipe. A pinch does not close the preview, and the compatibility `click` that mixed input may synthesize afterwards is swallowed rather than treated as a backdrop click.
+
+Clicking anywhere outside the image, or pressing Escape, closes the preview. The native dialog always exposes the accessible name `图片预览`. With `swipe` on and more than one image, the images live on a single carousel track: the current image and its neighbors sit side by side in slides of equal size, the stage clips the overflow, and the whole track translates with the finger. Releasing past the distance threshold (15% of the stage width, rounded) slides the next image in, as does a fast flick whose sampled velocity is at least 320px/s even below that distance; a flick covering at least 16px whose velocity (windowed sample or whole-gesture average) reaches 160px/s also commits; otherwise it bounces back. With `loop` on the wrap-around neighbor is always present beside the current image, and at the non-looping bounds the strip bounces back instead of crossing the boundary. While it applies, the swipe gesture takes over the drag entirely: at 1x only horizontal movement changes images, and vertical movement is ignored (no pan, no vertical follow). Once zoomed in, dragging always pans on both axes and never changes images. Because panning also works at 1x, `resetZoom()` is offered whenever the image is zoomed _or_ displaced — the reset button in the toolbar is enabled for a panned 1x image too.
+
+A close request does not destroy the native dialog immediately: it stays in the top layer until the exit transition completes, then `dialog.close()` runs, the host is removed from the DOM, and `closed` resolves. Page scroll is locked while open unless `noScrollLock` is `true`.
+
+**CSS Custom Properties:**
+
+| Property                         | Default                          | Description                                       |
+| -------------------------------- | -------------------------------- | ------------------------------------------------- |
+| `--wui-image-preview-overlay-bg` | `rgb(0 0 0 / 0.72)`              | Full-viewport backdrop background color           |
+| `--wui-image-preview-edge-gap`   | `20px`                           | Distance from controls to viewport edge           |
+| `--wui-duration-swipe-settle`    | `220ms`                          | Carousel settle (slide-in / bounce-back) duration |
+| `--wui-ease-swipe`               | `cubic-bezier(0.32, 0.72, 0, 1)` | Carousel settle (slide-in / bounce-back) easing   |
 
 ---
 
@@ -762,12 +854,13 @@ Closing keeps the native dialog in the top layer until the `--wui-duration-drawe
 
 In-flow expand/collapse container with animated height (or width) transition. Single element with two slots; no portal, no scroll lock, no focus management.
 
-| Attribute      | Type      | Default | Description                                                                                                              |
-| -------------- | --------- | ------- | ------------------------------------------------------------------------------------------------------------------------ |
-| `open`         | `boolean` | `false` | Expanded state; self-managed on interaction, `open-change` emits only for user-originated toggles                        |
-| `disabled`     | `boolean` | `false` | Ignores trigger clicks and sets `aria-disabled` on the trigger element; expanded content is kept                         |
-| `horizontal`   | `boolean` | `false` | Animate width instead of height                                                                                          |
-| `keep-mounted` | `boolean` | `false` | Closed state keeps the content in the 0fr track with `inert` (scroll position and layout measurable) instead of `hidden` |
+| Attribute      | Type      | Default | Description                                                                                                                         |
+| -------------- | --------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `open`         | `boolean` | `false` | Expanded state; self-managed on interaction, `open-change` emits only for user-originated toggles                                   |
+| `disabled`     | `boolean` | `false` | Ignores trigger clicks and sets `aria-disabled` on the trigger element; expanded content is kept                                    |
+| `horizontal`   | `boolean` | `false` | Animate width instead of height                                                                                                     |
+| `keep-mounted` | `boolean` | `false` | Closed state keeps the content in the 0fr track with `inert` (scroll position and layout measurable) instead of `hidden`            |
+| `peek`         | `string`  | —       | Closed state reveals this much of the content (CSS length, e.g. `120px`); along the animation axis; ends in an auto-sized edge fade |
 
 **Events:** `open-change` (`CustomEvent<{ open: boolean }>`). Emitted only for user-originated toggles (trigger click). Programmatic writes (`open`, `show()`, `close()`, `toggle()`) never emit. Nested collapses: an inner `open-change` bubbles through the outer root (composed event); distinguish by `event.target`.
 
@@ -788,6 +881,38 @@ The initial `open` attribute settles instantly without playing the animation. Ne
 
 **Closed-state semantics:** the consumer's light DOM is never moved or unmounted. Default closed state applies `hidden` to the internal content container; with `keep-mounted` the inner container is marked `inert` while staying measurable inside the collapsed track.
 
+**`peek` (partial reveal):** setting `peek` makes the closed state reveal the first `peek` of the content along the animation axis (`horizontal` switches it to width) instead of collapsing to zero — the track stays at the content height and the inner container is clamped. It implies `keep-mounted` semantics: the content stays mounted but is `inert`, so the clipped portion is not focusable or clickable. Content shorter than `peek` collapses to its own size rather than leaving blank space. Because a fixed length and an auto height cannot be interpolated by CSS, the two `peek` ↔ expanded directions are driven by explicit pixel lengths (measured once per toggle); every other animation path stays a zero-measurement grid `fr` transition.
+
+```html
+<web-ui-collapse peek="120px">
+  <button type="button">Toggle me</button>
+  <div slot="content">Long content — only the first 120px show while closed</div>
+</web-ui-collapse>
+```
+
+**Edge fade:** the revealed area ends in an alpha-gradient fade (right edge when `horizontal`) so the clipped portion melts into the background instead of ending in a hard line. The length is derived from `peek` — there is no second attribute to set. Tune it with CSS custom properties instead:
+
+| Custom property                  | Default       | Description                                                           |
+| -------------------------------- | ------------- | --------------------------------------------------------------------- |
+| `--wui-collapse-peek-edge-ratio` | `0.4`         | Fade length as a fraction of `peek`                                   |
+| `--wui-collapse-peek-edge-max`   | `112px`       | Upper bound, so a large `peek` cannot produce an oversized fade band  |
+| `--wui-collapse-peek-edge`       | —             | Explicit fade length; wins over the derived value                     |
+| `--wui-collapse-peek-edge-color` | `transparent` | Fade-stop color (must carry alpha — `mask-image` reads alpha channel) |
+
+Set the ratio to `0` to turn the fade off. The derivation is pure CSS `calc(peek * ratio)`, so a `rem`-based `peek` scales the fade with the root font size and nothing has to be measured in JS. Known limitation: a percentage `peek` does not derive to a length, so the fade silently falls back to "none" — set `--wui-collapse-peek-edge` explicitly in that case.
+
+The fade is a four-stop ease-out gradient rather than a linear one: the body stays fully opaque to the start of the fade band, drops to 60% alpha within the first 30% of the band, then 26%, then reaches the edge color. A linear gradient hugs 1.0 alpha across the first 40% of the band, so the eye perceives a much shorter fade than declared — front-loading the drop makes the band visibly soft from its very start, nearly doubling the perceived length at the same size.
+
+The fade band is positioned in percentages, relative to the container's **current rendered height** — which is what `max-height` animates. So the band tracks the cut edge frame by frame during the collapse animation without the `mask-image` string ever needing to interpolate. Its length is driven by a registered `<length>` custom property so it can fade in and out with the toggle instead of popping in once the close animation settles.
+
+```html
+<!-- 调强渐隐：比例 0.5 → 120px peek 配 60px 渐隐 -->
+<web-ui-collapse peek="120px" style="--wui-collapse-peek-edge-ratio: 0.5">
+  <button type="button">Toggle me</button>
+  <div slot="content">Long content with a stronger fade at the bottom of the 120px peek</div>
+</web-ui-collapse>
+```
+
 **Known limitations:** the `horizontal` animation reflows content while width changes.
 
 ---
@@ -798,15 +923,15 @@ The initial `open` attribute settles instantly without playing the animation. Ne
 
 Popover overlay anchored to trigger element.
 
-| Attribute          | Type                               | Default    | Description               |
-| ------------------ | ---------------------------------- | ---------- | ------------------------- |
-| `open`             | `boolean`                          | `false`    | Popover visibility        |
-| `disabled`         | `boolean`                          | `false`    | Disabled state            |
-| `placement`        | `Placement`                        | `'bottom'` | Floating UI placement     |
-| `trigger`          | `'click' \| 'hover' \| 'manual'`   | `'click'`  | Open trigger              |
-| `offset`           | `number`                           | `8`        | Offset from anchor        |
-| `portal`           | `boolean`                          | `false`    | Render in theme overlay   |
-| `overlayContainer` | `HTMLElement \| () => HTMLElement` | —          | Explicit portal container |
+| Attribute          | Type                               | Default    | Description                        |
+| ------------------ | ---------------------------------- | ---------- | ---------------------------------- |
+| `open`             | `boolean`                          | `false`    | Popover visibility                 |
+| `disabled`         | `boolean`                          | `false`    | Disabled state                     |
+| `placement`        | `Placement`                        | `'bottom'` | Floating UI placement              |
+| `trigger`          | `'click' \| 'hover' \| 'manual'`   | `'click'`  | Open trigger                       |
+| `offset`           | `number`                           | `8`        | Offset from anchor                 |
+| `portal`           | `boolean`                          | `false`    | Render in theme-owned overlay root |
+| `overlayContainer` | `HTMLElement \| () => HTMLElement` | —          | Explicit portal container          |
 
 **Events:** `open-change` (`CustomEvent<{ open: boolean }>`)
 
@@ -831,7 +956,7 @@ Tooltip overlay using pointer/focus triggers.
 | `show-delay`       | `number`                           | `200`   | Show delay in ms                   |
 | `hide-delay`       | `number`                           | `100`   | Hide delay in ms                   |
 | `offset`           | `number`                           | `6`     | Offset from trigger                |
-| `portal`           | `boolean`                          | `false` | Render in theme overlay            |
+| `portal`           | `boolean`                          | `false` | Render in theme-owned overlay root |
 | `overlayContainer` | `HTMLElement \| () => HTMLElement` | —       | Explicit portal container          |
 
 **Events:** `open-change` (`CustomEvent<{ open: boolean }>`)
@@ -1030,7 +1155,7 @@ WebUiSpinner.hide() // hide
 
 #### `<web-ui-layout>`
 
-Responsive page layout with an optional full-width banner, a collapsible desktop sidebar, and a headless-drawer mobile sidebar. The page itself scrolls; the desktop sidebar and header stick to the viewport after the banner scrolls away.
+Responsive page layout with an optional full-width banner, a collapsible desktop sidebar, and a default-drawer mobile sidebar. The page itself scrolls; the desktop sidebar and header stick to the viewport after the banner scrolls away.
 
 | Attribute           | Type      | Default   | Description                                                                                        |
 | ------------------- | --------- | --------- | -------------------------------------------------------------------------------------------------- |
@@ -1052,15 +1177,15 @@ Responsive page layout with an optional full-width banner, a collapsible desktop
 - Keyboard (WAI-ARIA splitter pattern): focus the handle and use ←/→ to step by 16px (Shift for 64px), Home/End to jump to min/max, Enter to commit via the same `sidebar-width-change` request, and Escape to revert an uncommitted adjustment.
 - The mobile drawer always supports drag-to-close via its built-in `draggable` drawer.
 
-| Slot      | Description                                                                               |
-| --------- | ----------------------------------------------------------------------------------------- |
-| `banner`  | Optional full-width banner above the layout body                                          |
-| `header`  | Sticky content-area header                                                                |
-| `sidebar` | Sidebar-card content. The consumer owns its internal fixed regions and scroll containers. |
-| `default` | Main content                                                                              |
-| `tabbar`  | Bottom tab bar                                                                            |
+| Slot      | Description                                                                                          |
+| --------- | ---------------------------------------------------------------------------------------------------- |
+| `banner`  | Optional full-width banner above the layout body                                                     |
+| `header`  | Sticky content-area header                                                                           |
+| `sidebar` | Sidebar-card content. On desktop, the consumer owns its internal fixed regions and scroll container. |
+| `default` | Main content                                                                                         |
+| `tabbar`  | Bottom tab bar                                                                                       |
 
-`web-ui-layout` constrains the sidebar card and owns the desktop toggle area, but does not create a sidebar scrollport. To make only part of the sidebar scroll, make the `sidebar` slot root a `height: 100%; min-height: 0` flex column and apply `overflow-y: auto` to the intended child. This keeps consumer-defined headers and footers fixed without adding extra public slots:
+`web-ui-layout` constrains the sidebar card and owns the desktop toggle area, but does not create a desktop sidebar scrollport. To make only part of the desktop sidebar scroll, make the `sidebar` slot root a `height: 100%; min-height: 0` flex column and apply `overflow-y: auto` to the intended child. This keeps consumer-defined headers and footers fixed without adding extra public slots:
 
 ```html
 <div slot="sidebar" class="sidebar-root">
@@ -1088,7 +1213,7 @@ Responsive page layout with an optional full-width banner, a collapsible desktop
 }
 ```
 
-At `640px` and below, the sidebar becomes a headless `web-ui-drawer`. The consumer content is rendered in the same rounded sidebar card; the mobile toggle appears in the header row as a glass button. Its left inset defaults to `8px`; align it with your own header padding via `--wui-layout-mobile-toggle-inset`.
+At `640px` and below, the sidebar becomes a `web-ui-drawer` with its built-in glass body, scrollable content, and drag zone. The layout maps `sidebar-width` to `--wui-drawer-width` and `--wui-layout-sidebar-radius` to `--wui-drawer-radius`. The mobile toggle appears in the header row as a glass button. Its left inset defaults to `8px`; align it with your own header padding via `--wui-layout-mobile-toggle-inset`.
 
 `header-glow` adds a pointer-transparent decorative glow behind header-slot content and the mobile toggle. It is a Header background rather than a foreground layer, so slotted content remains above it. Override its color with `--wui-layout-header-glow-color` (default: `--wui-color-page`). The glow concentration and spread are controlled by the internal variable `--wui-layout-header-glow-height` (default: `150%`); increase for stronger coverage, decrease for a subtler effect. Layout layers are ordered as Header (`10`) < Auxiliary (`20`) < Banner (`30`) < Tabbar (`40`) < Sidebar (`50`).
 
@@ -1155,9 +1280,13 @@ Theme provider defining CSS custom property tokens.
 | `appearance` | `'light' \| 'dark' \| 'system'`   | `'light'`  | Color scheme                                  |
 | `motion`     | `'full' \| 'reduced' \| 'system'` | `'system'` | Motion preference for this nested theme scope |
 
-**Methods:** `getOverlayRoot()` — returns the portal overlay container
+**Methods:** `getOverlayRoot()` — returns this theme-owned overlay root
+
+**Portal mounting contract:** Every active `<web-ui-theme>` is also the default scoped theme-owned overlay root. Portal-based components without an explicit `overlayContainer` resolve to the nearest active theme's `getOverlayRoot()`; target-less portal calls prefer the root theme's theme-owned overlay root. When no active theme provides a root, they fall back to the global fallback overlay root.
 
 Defines foundation, color, layer, shadow, and motion tokens for its subtree. `motion="system"` follows `prefers-reduced-motion`; use `motion="reduced"` to reduce animation in a scope or `motion="full"` in a nested theme to restore normal token values. System appearance follows `prefers-color-scheme`.
+
+The host uses `display: contents` and does not paint any background: the library never draws on the host page, so the embedding application keeps full control of the surface behind the themed subtree. Custom properties still inherit to slotted content reliably.
 
 **Foundation tokens:**
 
@@ -1193,7 +1322,7 @@ Defines foundation, color, layer, shadow, and motion tokens for its subtree. `mo
 | `--wui-layer-toast`          | `200`   | Toasts                       |
 | `--wui-layer-loading`        | `300`   | Blocking loading surfaces    |
 
-**Motion tokens:** duration defaults are `--wui-duration-press: 80ms`, `--wui-duration-feedback: 100ms`, `--wui-duration-trigger: 160ms`, `--wui-duration-focus: 200ms`, `--wui-duration-menu-enter: 140ms`, `--wui-duration-menu-exit: 100ms`, `--wui-duration-overlay-enter: 180ms`, `--wui-duration-overlay-exit: 140ms`, `--wui-duration-drawer-enter: 280ms`, `--wui-duration-drawer-exit: 240ms`, `--wui-duration-drawer-nested: 450ms`, `--wui-duration-collapse-enter: 200ms`, `--wui-duration-collapse-exit: 160ms`, `--wui-duration-layout: 200ms`. Easing tokens are `--wui-ease-enter` and `--wui-ease-slide`; enter scale is `--wui-scale-enter: 0.97`. Hover/active background feedback switches instantly with no transition; checked/pressed/focus and overlay enter/exit transitions are unaffected.
+**Motion tokens:** duration defaults are `--wui-duration-press: 80ms`, `--wui-duration-feedback: 100ms`, `--wui-duration-trigger: 160ms`, `--wui-duration-focus: 200ms`, `--wui-duration-float-enter: 160ms`, `--wui-duration-float-exit: 120ms`, `--wui-duration-dialog-enter: 320ms`, `--wui-duration-dialog-exit: 260ms`, `--wui-duration-drawer-enter: 280ms`, `--wui-duration-drawer-exit: 240ms`, `--wui-duration-drawer-nested: 450ms`, `--wui-duration-toast-enter: 280ms`, `--wui-duration-toast-exit: 200ms`, `--wui-duration-collapse-enter: 200ms`, `--wui-duration-collapse-exit: 160ms`, `--wui-duration-layout: 200ms`. Easing tokens are `--wui-ease-enter`, `--wui-ease-dialog` (`cubic-bezier(0.2, 0, 0, 1)`), and `--wui-ease-slide`; enter scale is `--wui-scale-enter: 0.97`. Hover/active background feedback switches instantly with no transition; checked/pressed/focus transitions are unaffected.
 
 **Color tokens:**
 
@@ -1278,17 +1407,17 @@ toast.updateMessage(id, { message: 'Upload 60% complete', heading: 'Uploading' }
 
 **ToastOptions:**
 
-| Option      | Type                                                                                              | Default                   | Description                                 |
-| ----------- | ------------------------------------------------------------------------------------------------- | ------------------------- | ------------------------------------------- |
-| `message`   | `string`                                                                                          | —                         | Notification text                           |
-| `type`      | `'success' \| 'info' \| 'warning' \| 'error'`                                                     | `'info'`                  | Toast type                                  |
-| `duration`  | `number`                                                                                          | `3000` (`5000` for error) | Auto-close duration (0 = no auto-close)     |
-| `closable`  | `boolean`                                                                                         | `true`                    | Show close button                           |
-| `id`        | `string`                                                                                          | auto                      | Deduplication identifier                    |
-| `heading`   | `string`                                                                                          | `''`                      | Bold heading text                           |
-| `position`  | `'top-left' \| 'top-center' \| 'top-right' \| 'bottom-left' \| 'bottom-center' \| 'bottom-right'` | `'top-right'`             | Screen position                             |
-| `target`    | `Element`                                                                                         | —                         | Used to find nearest theme scope            |
-| `container` | `HTMLElement`                                                                                     | —                         | Explicit mount container (highest priority) |
+| Option      | Type                                                                                              | Default                   | Description                                   |
+| ----------- | ------------------------------------------------------------------------------------------------- | ------------------------- | --------------------------------------------- |
+| `message`   | `string`                                                                                          | —                         | Notification text                             |
+| `type`      | `'success' \| 'info' \| 'warning' \| 'error'`                                                     | `'info'`                  | Toast type                                    |
+| `duration`  | `number`                                                                                          | `3000` (`5000` for error) | Auto-close duration (0 = no auto-close)       |
+| `closable`  | `boolean`                                                                                         | `true`                    | Show close button                             |
+| `id`        | `string`                                                                                          | auto                      | Deduplication identifier                      |
+| `heading`   | `string`                                                                                          | `''`                      | Bold heading text                             |
+| `position`  | `'top-left' \| 'top-center' \| 'top-right' \| 'bottom-left' \| 'bottom-center' \| 'bottom-right'` | `'top-right'`             | Screen position                               |
+| `target`    | `Element`                                                                                         | —                         | Used to find nearest theme-owned overlay root |
+| `container` | `HTMLElement`                                                                                     | —                         | Explicit mount container (highest priority)   |
 
 **`toast.updateMessage(id, options)`** updates the visible toast's `message` and, when supplied, `heading`. It does not restart the auto-close timer. `options` is `ToastMessageUpdateOptions`: `{ message: string; heading?: string }`.
 
