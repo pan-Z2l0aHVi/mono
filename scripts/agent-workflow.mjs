@@ -544,11 +544,12 @@ function guardCommit(options) {
 
 // init 不接受重跑，因此事后补挂 issue 必须有独立入口；这是杀死「事后 reactive」
 // 漏建 issue 模式的兜底通道，不是常态路径——常态是 init --issue 一步到位。
+// closed 任务也接受补挂：issue 只是追踪元数据而非证据链，「事后才建 issue」
+// 恰恰是本入口存在的原因，拒绝会让迟到 issue 永远无法关联。
 function issue(options) {
   const taskId = validateTaskId(requireOption(options, 'task'))
   const ref = normalizeIssue(requireOption(options, 'ref'))
   const { file, state } = loadState(taskId)
-  if (state.phase === 'closed') fail(`task ${taskId} is closed; an issue reference can no longer be attached`)
   state.issue = ref
   state.updatedAt = now()
   saveState(file, state)
