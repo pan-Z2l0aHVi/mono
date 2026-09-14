@@ -12,12 +12,12 @@
 4. 在目标 worktree 执行：
 
    ```sh
-   pnpm agent:workflow init --task <task-id> --mode <mode>
+   pnpm agent:workflow init --task <task-id> --mode <mode> --issue <issue-url|N/A>
    pnpm agent:workflow assign --task <task-id> --role <role> --worktree <path>
    pnpm agent:workflow check --task <task-id> --phase edit
    ```
 
-5. 记录范围、影响 workspace、允许路径、验收标准和所需验证；推荐写入 task packet。GitHub issue 是可选同步镜像，本地 task state 不能依赖外部服务。
+5. 记录范围、影响 workspace、允许路径、验收标准和所需验证；推荐写入 task packet。GitHub issue 在任务确认时创建并经 `--issue` 记入 task state；`status` 会对缺失 issue 的 task 打 stderr 提示，事后补挂用 `issue` 子命令。issue 只作追踪镜像，不是执行真相，本地 task state 不能依赖外部服务。
 
 **Fast lane**：仅限当前 worktree、单 agent 即可完成且无行为影响的琐碎变更（错别字、注释与文档措辞、纯格式修正），可直接修改、不建 task state；是否适用由 agent 按实际影响自行判断，拿不准就走上述 preflight。git 操作、依赖、发布、跨包契约与公共 API 变更不适用本例外。
 
@@ -32,18 +32,19 @@ initialized -> assigned -> editing -> frozen -> reviewed -> approved
 
 实际命令与状态的关系：
 
-| 阶段          | 必要条件                                                | 命令或交接                             |
-| ------------- | ------------------------------------------------------- | -------------------------------------- |
-| `initialized` | 有 task id、mode、base SHA、branch、worktree            | `init`                                 |
-| `assigned`    | 有唯一 owner、worktree 和至少一个 role                  | `assign`                               |
-| `editing`     | 已完成 preflight，允许实施                              | `check --phase edit`                   |
-| `frozen`      | 变更路径和内容已形成稳定快照                            | `freeze`                               |
-| `reviewed`    | reviewer 对冻结 hash 给出 `pass`；可选任务可记录 `skip` | `review --result pass --reviewer <id>` |
-| `approved`    | 用户或授权 Manager 对同一个 hash 批准，并记录 approver  | `approve --approver <id>`              |
-| `committed`   | commit 包含完整冻结快照且工作区干净                     | `check --phase integrate` 自动确认     |
-| `integrated`  | 已通过聚合/集成前检查                                   | `check --phase integrate`              |
-| `verified`    | 至少一条通过的测试、构建或浏览器验证证据                | `verify --name <evidence>`             |
-| `closed`      | 交付结论已记录，验证 gate 通过                          | `close`                                |
+| 阶段            | 必要条件                                                     | 命令或交接                                     |
+| --------------- | ------------------------------------------------------------ | ---------------------------------------------- |
+| `initialized`   | 有 task id、mode、base SHA、branch、worktree                 | `init`                                         |
+| `assigned`      | 有唯一 owner、worktree 和至少一个 role                       | `assign`                                       |
+| `editing`       | 已完成 preflight，允许实施                                   | `check --phase edit`                           |
+| `frozen`        | 变更路径和内容已形成稳定快照                                 | `freeze`                                       |
+| `reviewed`      | reviewer 对冻结 hash 给出 `pass`；可选任务可记录 `skip`      | `review --result pass --reviewer <id>`         |
+| `approved`      | 用户或授权 Manager 对同一个 hash 批准，并记录 approver       | `approve --approver <id>`                      |
+| `committed`     | commit 包含完整冻结快照且工作区干净                          | `check --phase integrate` 自动确认             |
+| `integrated`    | 已通过聚合/集成前检查                                        | `check --phase integrate`                      |
+| `verified`      | 至少一条通过的测试、构建或浏览器验证证据                     | `verify --name <evidence>`                     |
+| post-merge 证据 | 合并结果在整合 worktree 上再次验证（证据条目，不推进 phase） | `verify --post-merge --worktree <integration>` |
+| `closed`        | 交付结论已记录，验证 gate 通过                               | `close`                                        |
 
 以下 gate 是硬条件：
 
@@ -54,6 +55,8 @@ initialized -> assigned -> editing -> frozen -> reviewed -> approved
 - `check --phase commit` 是提交前 gate；approval 必须记录 approver；实施 Agent 默认不擅自 commit、push、merge。
 - `check --phase integrate` 会核对 commit 已发生、冻结快照仍一致且工作区干净，然后记录 `integrated`。
 - `verify` 只接受已完成 `integrated` gate 且工作区干净的结果；不能从 `committed` 直接跳过集成检查，失败验证不能推进到 `verified`。
+- `verify --post-merge` 在整合 worktree（如 release 分支）上验证合并结果：要求整合 worktree 干净、task 已有通过的 task-scope 验证，并以 `merge-base --is-ancestor` 证明 task 验证点真实进入整合 head（squash merge 不产生祖先关系，不受支持）。
+- `close` 与 `check --phase close` 共享同一硬校验：最近一条 task-scope 验证必须 `pass`、task diff 与验证时一致且工作区干净；`orchestrated` 模式额外要求至少一条 `pass` 的 post-merge 验证（`direct`/`hotfix`/`release` 豁免——release 的合并目标是 main，由 release.md 的两段验证覆盖）。
 - `closed` 不是“脚本跑完”的同义词；必须能追溯到 task id、base SHA、diff hash、review、approval 和验证证据。
 
 常用命令：
@@ -66,10 +69,12 @@ pnpm agent:workflow approve --task <task-id> --approver <manager-or-user-id>
 pnpm agent:workflow check --task <task-id> --phase commit
 pnpm agent:workflow check --task <task-id> --phase integrate
 pnpm agent:workflow verify --task <task-id> --name "pnpm test"
+pnpm agent:workflow verify --task <task-id> --name "post-merge pnpm test" --post-merge --worktree <integration-worktree>
+pnpm agent:workflow issue --task <task-id> --ref <issue-url|N/A>
 pnpm agent:workflow close --task <task-id>
 ```
 
-freeze 前先跑一次 `CI=true pnpm run fix:code`（或确保等价格式化已应用）：commit 时 lint-staged 还会对 staged 文件格式化，若 freeze 后 diff 再被格式化改变，guard-commit 会以 stale 拒绝提交。
+freeze 自身会执行与 commit 相同的归一化管线：先 `git add -A` 全量 staging（快照语义本就覆盖全部 tracked+untracked 文件），再运行 staged 修复（与 pre-commit 的 `vp staged` 同一 fixer 集），并把归一化后的内容计入 `diffHash`。因此 commit 时的 staged 格式化是收敛确认（幂等 no-op），不会再改写已冻结的 diff；若 commit 时 staged 仍产生变化（fixer 非幂等等罕见情形），guard-commit 会以 stale 拒绝提交，此时重新 freeze（自动重新归一化并 staging）并重新 review/approve 即可。staged 修复管线失败（如拼写检查不通过）时 freeze 直接失败并保留可观察原因，修复后重新 freeze。
 
 提交边界由受版本控制的 `.vite-hooks/pre-commit` 再次检查。它通过 `guard-commit` 自动发现当前 worktree 的 active task；若存在 task，只有 `approved` 且冻结 diff 未变化时才允许提交。提交 hook 保护的是 commit 边界，不能替代实施前的 `init` 和 `check --phase edit`。
 
@@ -128,5 +133,5 @@ Reviewer 是否必需按风险决定：高风险清单（见根 `AGENTS.md`「�
 
 - 命令失败时保留 task state 和工作树，先用 `status --json` 判断当前 phase，不要重建或覆盖状态文件。
 - session、Herdr 或 harness 重启后，从 task state 的 `phase`、`worktree`、`baseSha` 和 live stale 结果恢复，不从聊天记忆猜测进度。
-- GitHub issue 不可用时继续本地流程，最终报告注明“未同步”；issue 只作追踪镜像，不是执行真相。
+- GitHub issue 不可用时继续本地流程，最终报告注明“未同步”；issue 只作追踪镜像，不是执行真相。task state 缺失 issue 引用时用 `issue` 子命令补挂，不要为绕过 `status` 提示而填写假引用。
 - release CI 失败时，机械性修复可由 Manager 直接处理；逻辑或测试修复回到原 task owner，并在聚合 diff 变化后重新 review。
