@@ -55,11 +55,13 @@ describe('聚合上报测试用例', () => {
   })
 
   it('数据分片：超过阈值时分片生效', async () => {
+    // maxBatchKB 压到 4 让小数据量也能触发分片：测试只关心分片语义，
+    // 数据量放大到 10000 会在 CI 高负载下撞 vitest 默认 15s 超时（实测 18.4s）。
     const tracker = defineTracker({ url: 'https://example.com', transport })
-      .use(defineBatchTrack({ defaultBatchDelay: 200 }))
+      .use(defineBatchTrack({ defaultBatchDelay: 200, maxBatchKB: 4 }))
       .make()
 
-    const totalCount = 10000
+    const totalCount = 2000
     for (let i = 0; i < totalCount; i++) {
       tracker.track({ event: 'view' })
     }
@@ -75,11 +77,12 @@ describe('聚合上报测试用例', () => {
 
   it('分片后所有数据无丢失（transport 累计条数一致）', async () => {
     // fake transport 同步记录每个分片，不依赖浏览器并发请求行为。
+    // 数据量与 maxBatchKB 的取舍见上一个用例；30s 显式超时兜底 CI 负载尖峰。
     const tracker = defineTracker({ url: 'https://example.com', transport })
-      .use(defineBatchTrack({ defaultBatchDelay: 200 }))
+      .use(defineBatchTrack({ defaultBatchDelay: 200, maxBatchKB: 4 }))
       .make()
 
-    const totalCount = 10000
+    const totalCount = 2000
     for (let i = 0; i < totalCount; i++) {
       tracker.track({ event: 'view' })
     }
@@ -92,7 +95,7 @@ describe('聚合上报测试用例', () => {
 
     expect(transport.mock.calls.length).toBeGreaterThanOrEqual(2)
     expect(deliveredCount()).toBe(totalCount)
-  })
+  }, 30000)
 
   it('flush 应立即发送批量数据', async () => {
     const tracker = defineTracker({ url: 'https://example.com', transport })
