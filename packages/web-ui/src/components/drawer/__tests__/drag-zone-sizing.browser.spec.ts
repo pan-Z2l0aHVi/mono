@@ -57,7 +57,7 @@ function innerEdgeBarCenter(placement: WebUiDrawer['placement'], barRect: DOMRec
 afterEach(() => document.body.replaceChildren())
 
 describe('WebUiDrawer drag zone 尺寸与 token（浏览器）', () => {
-  it('默认规格：zone 32px、bar 4×56px、胶囊圆角', async () => {
+  it('默认规格：zone 20px、bar 4×56px、胶囊圆角', async () => {
     const el = createDrawer()
     el.draggable = true
     el.open = true
@@ -65,14 +65,14 @@ describe('WebUiDrawer drag zone 尺寸与 token（浏览器）', () => {
     await waitForOpenTransition(el)
 
     const zoneStyle = getComputedStyle(getDragZone(el))
-    expect(px(zoneStyle.width)).toBeCloseTo(32, 0)
+    expect(px(zoneStyle.width)).toBeCloseTo(20, 0)
 
     const barStyle = getComputedStyle(getDragBar(el))
     expect(px(barStyle.width)).toBeCloseTo(4, 0)
     expect(px(barStyle.height)).toBeCloseTo(56, 0)
     // 胶囊形：圆角不小于一半厚度（calc(infinity * 1px) 计算为天文数字长度）
     expect(px(barStyle.borderRadius)).toBeGreaterThanOrEqual(2)
-    // 视觉中线位于 20px 内容 padding 的中央
+    // 视觉中线位于 --wui-drawer-content-padding（默认 20px）的中央
     expect(
       innerEdgeBarCenter('right', getDragBar(el).getBoundingClientRect(), getDialog(el).getBoundingClientRect())
     ).toBeCloseTo(10, 1)
@@ -110,7 +110,7 @@ describe('WebUiDrawer drag zone 尺寸与 token（浏览器）', () => {
       const barStyle = getComputedStyle(bar)
 
       // 闭合方向轴上的热区厚度 = zone size；另一轴铺满抽屉
-      expect(px(horizontal ? zoneStyle.width : zoneStyle.height)).toBeCloseTo(32, 0)
+      expect(px(horizontal ? zoneStyle.width : zoneStyle.height)).toBeCloseTo(20, 0)
       // bar 长边沿抽屉边缘方向，短边沿闭合方向
       expect(px(horizontal ? barStyle.width : barStyle.height)).toBeCloseTo(4, 0)
       expect(px(horizontal ? barStyle.height : barStyle.width)).toBeCloseTo(56, 0)

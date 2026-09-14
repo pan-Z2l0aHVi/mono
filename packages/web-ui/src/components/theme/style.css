@@ -28,17 +28,20 @@
   --wui-duration-feedback: 100ms;
   --wui-duration-trigger: 160ms;
   --wui-duration-focus: 200ms;
-  --wui-duration-menu-enter: 140ms;
-  --wui-duration-menu-exit: 100ms;
-  --wui-duration-overlay-enter: 180ms;
-  --wui-duration-overlay-exit: 140ms;
+  --wui-duration-float-enter: 160ms;
+  --wui-duration-float-exit: 120ms;
+  --wui-duration-dialog-enter: 320ms;
+  --wui-duration-dialog-exit: 260ms;
   --wui-duration-drawer-enter: 280ms;
   --wui-duration-drawer-exit: 240ms;
   --wui-duration-drawer-nested: 450ms;
+  --wui-duration-toast-enter: 280ms;
+  --wui-duration-toast-exit: 200ms;
   --wui-duration-collapse-enter: 200ms;
   --wui-duration-collapse-exit: 160ms;
   --wui-duration-layout: 200ms;
   --wui-ease-enter: cubic-bezier(0.23, 1, 0.32, 1);
+  --wui-ease-dialog: cubic-bezier(0.2, 0, 0, 1);
   --wui-ease-slide: cubic-bezier(0.77, 0, 0.175, 1);
   --wui-scale-enter: 0.97;
   --wui-focus-ring-width: 3px;
@@ -47,6 +50,9 @@
   --wui-radius-control: calc(infinity * 1px);
   --wui-radius-menu: 18px;
   --wui-radius-overlay: 28px;
+
+  /* contents：主题宿主不生成盒、不绘制页面背景，嵌入方保留对宿主背景的完全控制
+     （组件库不在宿主页面画背景）。自定义属性仍沿 DOM 树正常继承到 slotted 内容。 */
   display: contents;
 }
 
@@ -55,13 +61,15 @@
   --wui-duration-feedback: 0ms;
   --wui-duration-trigger: 0ms;
   --wui-duration-focus: 0ms;
-  --wui-duration-menu-enter: 0ms;
-  --wui-duration-menu-exit: 0ms;
-  --wui-duration-overlay-enter: 0ms;
-  --wui-duration-overlay-exit: 0ms;
+  --wui-duration-float-enter: 0ms;
+  --wui-duration-float-exit: 0ms;
+  --wui-duration-dialog-enter: 0ms;
+  --wui-duration-dialog-exit: 0ms;
   --wui-duration-drawer-enter: 0ms;
   --wui-duration-drawer-exit: 0ms;
   --wui-duration-drawer-nested: 0ms;
+  --wui-duration-toast-enter: 0ms;
+  --wui-duration-toast-exit: 0ms;
   --wui-duration-collapse-enter: 0ms;
   --wui-duration-collapse-exit: 0ms;
   --wui-duration-layout: 0ms;
@@ -74,13 +82,15 @@
     --wui-duration-feedback: 0ms;
     --wui-duration-trigger: 0ms;
     --wui-duration-focus: 0ms;
-    --wui-duration-menu-enter: 0ms;
-    --wui-duration-menu-exit: 0ms;
-    --wui-duration-overlay-enter: 0ms;
-    --wui-duration-overlay-exit: 0ms;
+    --wui-duration-float-enter: 0ms;
+    --wui-duration-float-exit: 0ms;
+    --wui-duration-dialog-enter: 0ms;
+    --wui-duration-dialog-exit: 0ms;
     --wui-duration-drawer-enter: 0ms;
     --wui-duration-drawer-exit: 0ms;
     --wui-duration-drawer-nested: 0ms;
+    --wui-duration-toast-enter: 0ms;
+    --wui-duration-toast-exit: 0ms;
     --wui-duration-collapse-enter: 0ms;
     --wui-duration-collapse-exit: 0ms;
     --wui-duration-layout: 0ms;

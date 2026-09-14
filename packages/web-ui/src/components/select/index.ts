@@ -7,6 +7,7 @@ import glass from '@/assets/glass.css?inline'
 import overlayMotion from '@/assets/overlay-motion.css?inline'
 import type { WebUiOption } from '@/components/option'
 import { lucideChevronDown } from '@/icons'
+import { installPointerFocusSuppression } from '@/shared/focus/pointer-focus'
 import { FormAssociated, defineFormAssociation, FormAssociationController } from '@/shared/form-association'
 import { dispatchOpenChangeEvent } from '@/shared/open-state'
 import {
@@ -17,11 +18,14 @@ import {
 } from '@/shared/option-portal'
 import { defineOptionPortal } from '@/shared/option-portal'
 import { defineAnchoredPanel } from '@/shared/overlay/anchored-panel'
+import { overlayComposition } from '@/shared/overlay/composition'
 import { applyOverlayVariables, defineOverlayPortal } from '@/shared/overlay/portal'
 import type { OverlayContainer, OverlayPortal } from '@/shared/overlay/portal'
 import { defineScrollLockLease } from '@/shared/scroll-lock/scroll-lock'
 
 import style from './style.css?inline'
+
+installPointerFocusSuppression()
 
 @customElement('web-ui-select')
 export class WebUiSelect extends FormAssociated(LitElement) {
@@ -132,12 +136,9 @@ export class WebUiSelect extends FormAssociated(LitElement) {
   }
 
   private _onClickOutside = (e: MouseEvent) => {
-    if (
-      this._isOpen &&
-      e.target instanceof Node &&
-      !this.contains(e.target) &&
-      !this._panel.getPanel()?.contains(e.target)
-    ) {
+    const panel = this._panel.getPanel()
+    const isInside = e.composedPath().includes(this) || (panel && overlayComposition.containsEvent(panel, e))
+    if (this._isOpen && !isInside) {
       this._close()
     }
   }
@@ -487,7 +488,7 @@ export class WebUiSelect extends FormAssociated(LitElement) {
           ${!this._hasTriggerSlot ? html`<span class="label">${this._selectedLabel}</span>` : nothing}
           <web-ui-icon class="arrow" .icon=${lucideChevronDown}></web-ui-icon>
         </div>
-        <div class="wui-glass select-overlay wui-floating-panel" hidden role="listbox" id=${listboxId}>
+        <div class="select-overlay wui-floating-panel wui-glass" hidden role="listbox" id=${listboxId}>
           <div class="select-scroll">
             <div class="select-content">
               <slot @slotchange=${this._onSlotChange}></slot>

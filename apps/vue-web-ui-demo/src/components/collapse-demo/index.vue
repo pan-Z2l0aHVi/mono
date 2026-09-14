@@ -78,6 +78,40 @@ import { lucideChevronDown, radixIconsPanelLeftMinimized } from '@greypan/web-ui
       </web-ui-collapse>
     </div>
 
+    <h2>peek（只露一部分）</h2>
+    <div class="mb-3">
+      <web-ui-collapse peek="80px">
+        <button
+          type="button"
+          class="block w-full cursor-pointer rounded-md bg-[var(--wui-color-surface-control)] px-3 py-2 text-left"
+        >
+          展开长文本
+        </button>
+        <div slot="content">
+          <div class="p-3">
+            <p v-for="i in 8" :key="i">段落 {{ i }}：关闭时只露出前 80px，其余被裁剪且不可交互。</p>
+          </div>
+        </div>
+      </web-ui-collapse>
+    </div>
+
+    <h2>peek 边缘渐隐（长度随 peek 自动推导）</h2>
+    <div class="mb-3">
+      <web-ui-collapse peek="200px">
+        <button
+          type="button"
+          class="block w-full cursor-pointer rounded-md bg-[var(--wui-color-surface-control)] px-3 py-2 text-left"
+        >
+          展开长文本（大 peek）
+        </button>
+        <div slot="content">
+          <div class="p-3">
+            <p v-for="i in 8" :key="i">段落 {{ i }}：渐隐长度取 peek 的 40%（200px → 80px），无需单独指定。</p>
+          </div>
+        </div>
+      </web-ui-collapse>
+    </div>
+
     <h2>水平方向（trigger 与内容同行）</h2>
     <div class="mb-3">
       <web-ui-collapse horizontal class="flex items-center gap-2">

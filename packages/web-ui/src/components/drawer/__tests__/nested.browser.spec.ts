@@ -9,8 +9,21 @@ async function nextFrame() {
   await new Promise(resolve => requestAnimationFrame(resolve))
 }
 
-async function waitForOpenTransition() {
-  await new Promise(resolve => setTimeout(resolve, 350))
+// 等到 presence 挂上 is-visible；在并行负载下不能假设 350ms 足够。
+async function waitForOpenTransition(el: WebUiDrawer) {
+  const dialog = el.shadowRoot?.querySelector('dialog') as HTMLDialogElement | null
+  if (!dialog) throw new Error('Expected the drawer to contain a dialog')
+  const deadline = performance.now() + 2000
+  while (!(dialog.open && dialog.classList.contains('is-visible'))) {
+    if (performance.now() > deadline) throw new Error('Expected the drawer dialog to become visible')
+    await new Promise(resolve => requestAnimationFrame(resolve))
+  }
+  await el.updateComplete
+
+  // nested 层变化会让下层 dialog 同步做 450ms translate/scale 过渡。
+  // 等待全部文档动画结束后再读几何，避免 is-visible 刚挂上时 left 仍处于过渡起点。
+  await Promise.allSettled(document.getAnimations().map(animation => animation.finished))
+  await el.updateComplete
 }
 
 // 轮询条件直至满足（弹簧/过渡时长在并行负载下不可预测）。
@@ -24,6 +37,19 @@ async function waitFor(condition: () => boolean, timeoutMs = 3000): Promise<void
 
 function getDialog(el: WebUiDrawer): HTMLDialogElement {
   return el.shadowRoot?.querySelector('dialog') as HTMLDialogElement
+}
+
+// 层叠几何在 nested shift 过渡后才收敛；轮询最终左缘顺序，不在过渡中间态断言。
+async function waitForLeftOrder(...drawers: WebUiDrawer[]) {
+  await waitFor(() => {
+    let previousLeft = Number.NEGATIVE_INFINITY
+    for (const drawer of drawers) {
+      const left = getDialog(drawer).getBoundingClientRect().left
+      if (left <= previousLeft) return false
+      previousLeft = left
+    }
+    return true
+  }, 4000)
 }
 
 // 读取 nested 层序内部变量（写在 dialog 内联样式上）。
@@ -49,7 +75,7 @@ describe('WebUiDrawer nested 层叠（浏览器）', () => {
     parent.append(child)
     theme.append(parent)
     await parent.updateComplete
-    await waitForOpenTransition()
+    await waitForOpenTransition(parent)
 
     // 单层：depth 0，无缩放
     expect(nestedScale(parent)).toBe(1)
@@ -57,7 +83,7 @@ describe('WebUiDrawer nested 层叠（浏览器）', () => {
     // 打开子层（子层在父的 default slot 内，声明式嵌套）
     child.open = true
     await child.updateComplete
-    await waitForOpenTransition()
+    await waitForOpenTransition(child)
 
     expect(parent.open).toBe(true)
     expect(child.open).toBe(true)
@@ -83,10 +109,10 @@ describe('WebUiDrawer nested 层叠（浏览器）', () => {
 
     parent.open = true
     await parent.updateComplete
-    await waitForOpenTransition()
+    await waitForOpenTransition(parent)
     child.open = true
     await child.updateComplete
-    await waitForOpenTransition()
+    await waitForOpenTransition(child)
     await waitFor(() => nestedScale(parent) < 0.96)
 
     child.open = false
@@ -109,10 +135,10 @@ describe('WebUiDrawer nested 层叠（浏览器）', () => {
 
     parent.open = true
     await parent.updateComplete
-    await waitForOpenTransition()
+    await waitForOpenTransition(parent)
     child.open = true
     await child.updateComplete
-    await waitForOpenTransition()
+    await waitForOpenTransition(child)
 
     // 子层是 top layer 顶层：Esc keydown 派发到子层 dialog
     const childDialog = getDialog(child)
@@ -135,10 +161,10 @@ describe('WebUiDrawer nested 层叠（浏览器）', () => {
 
     parent.open = true
     await parent.updateComplete
-    await waitForOpenTransition()
+    await waitForOpenTransition(parent)
     child.open = true
     await child.updateComplete
-    await waitForOpenTransition()
+    await waitForOpenTransition(child)
 
     // 两层都开：documentElement overflow 被锁定
     expect(document.documentElement.style.overflow).toBe('hidden')
@@ -162,7 +188,7 @@ describe('WebUiDrawer nested 层叠（浏览器）', () => {
     document.body.append(el)
     el.open = true
     await el.updateComplete
-    await waitForOpenTransition()
+    await waitForOpenTransition(el)
 
     const dialog = getDialog(el)
     const footerButton = el.querySelector('web-ui-button')
@@ -194,13 +220,13 @@ describe('WebUiDrawer nested 层叠（浏览器）', () => {
 
     parent.open = true
     await parent.updateComplete
-    await waitForOpenTransition()
+    await waitForOpenTransition(parent)
     const parentDialog = getDialog(parent)
     const leftBefore = parentDialog.getBoundingClientRect().left
 
     child.open = true
     await child.updateComplete
-    await waitForOpenTransition()
+    await waitForOpenTransition(child)
     await waitFor(() => nestedScale(parent) < 0.96)
     await nextFrame()
 
@@ -225,20 +251,20 @@ describe('WebUiDrawer nested 层叠（浏览器）', () => {
 
     parent.open = true
     await parent.updateComplete
-    await waitForOpenTransition()
+    await waitForOpenTransition(parent)
 
     child.open = true
     await child.updateComplete
-    await waitForOpenTransition()
+    await waitForOpenTransition(child)
     await waitFor(() => nestedScale(parent) < 0.96)
     await nextFrame()
 
     const parentDialog = getDialog(parent)
     const childDialog = getDialog(child)
+    // 父层（底层）左缘比子层（顶层）左缘更靠左，卡片露出
+    await waitForLeftOrder(parent, child)
     const parentRect = parentDialog.getBoundingClientRect()
     const childRect = childDialog.getBoundingClientRect()
-
-    // 父层（底层）左缘比子层（顶层）左缘更靠左，卡片露出
     expect(parentRect.left).toBeLessThan(childRect.left)
   })
 
@@ -255,20 +281,20 @@ describe('WebUiDrawer nested 层叠（浏览器）', () => {
 
     parent.open = true
     await parent.updateComplete
-    await waitForOpenTransition()
+    await waitForOpenTransition(parent)
 
     child.open = true
     await child.updateComplete
-    await waitForOpenTransition()
+    await waitForOpenTransition(child)
     await waitFor(() => nestedScale(parent) < 0.96)
     await nextFrame()
 
     const parentDialog = getDialog(parent)
     const childDialog = getDialog(child)
+    // 即使子层比父层宽 140px，父层也因上层最大宽度补偿而在子层左侧露出了边缘
+    await waitForLeftOrder(parent, child)
     const parentRect = parentDialog.getBoundingClientRect()
     const childRect = childDialog.getBoundingClientRect()
-
-    // 即使子层比父层宽 140px，父层也因上层最大宽度补偿而在子层左侧露出了边缘
     expect(parentRect.left).toBeLessThan(childRect.left)
   })
 
@@ -297,28 +323,28 @@ describe('WebUiDrawer nested 层叠（浏览器）', () => {
 
     d1.open = true
     await d1.updateComplete
-    await waitForOpenTransition()
+    await waitForOpenTransition(d1)
 
     d2.open = true
     await d2.updateComplete
-    await waitForOpenTransition()
+    await waitForOpenTransition(d2)
 
     d3.open = true
     await d3.updateComplete
-    await waitForOpenTransition()
+    await waitForOpenTransition(d3)
 
     d4.open = true
     await d4.updateComplete
-    await waitForOpenTransition()
+    await waitForOpenTransition(d4)
     await waitFor(() => nestedScale(d1) < 0.88)
     await nextFrame()
 
+    // 严格满足由底至顶从左至右阶梯露边：left(d1) < left(d2) < left(d3) < left(d4)
+    await waitForLeftOrder(d1, d2, d3, d4)
     const r1 = getDialog(d1).getBoundingClientRect()
     const r2 = getDialog(d2).getBoundingClientRect()
     const r3 = getDialog(d3).getBoundingClientRect()
     const r4 = getDialog(d4).getBoundingClientRect()
-
-    // 严格满足由底至顶从左至右阶梯露边：left(d1) < left(d2) < left(d3) < left(d4)
     expect(r1.left).toBeLessThan(r2.left)
     expect(r2.left).toBeLessThan(r3.left)
     expect(r3.left).toBeLessThan(r4.left)
@@ -344,14 +370,14 @@ describe('WebUiDrawer 同级（非 DOM 嵌套）层叠', () => {
 
     drawer1.open = true
     await drawer1.updateComplete
-    await waitForOpenTransition()
+    await waitForOpenTransition(drawer1)
 
     // 单层：depth 0
     expect(nestedScale(drawer1)).toBe(1)
 
     drawer2.open = true
     await drawer2.updateComplete
-    await waitForOpenTransition()
+    await waitForOpenTransition(drawer2)
     await waitFor(() => nestedScale(drawer1) < 0.96)
 
     // drawer1 先开 → depth 1 → scale 0.95
@@ -383,16 +409,16 @@ describe('WebUiDrawer 同级（非 DOM 嵌套）层叠', () => {
 
     d1.open = true
     await d1.updateComplete
-    await waitForOpenTransition()
+    await waitForOpenTransition(d1)
 
     d2.open = true
     await d2.updateComplete
-    await waitForOpenTransition()
+    await waitForOpenTransition(d2)
     await waitFor(() => nestedScale(d1) < 0.96)
 
     d3.open = true
     await d3.updateComplete
-    await waitForOpenTransition()
+    await waitForOpenTransition(d3)
     await waitFor(() => nestedScale(d1) < 0.91)
     await waitFor(() => nestedScale(d2) < 0.96)
 
@@ -425,18 +451,18 @@ describe('WebUiDrawer 同级（非 DOM 嵌套）层叠', () => {
 
     d1.open = true
     await d1.updateComplete
-    await waitForOpenTransition()
+    await waitForOpenTransition(d1)
 
     d2.open = true
     await d2.updateComplete
-    await waitForOpenTransition()
+    await waitForOpenTransition(d2)
     await waitFor(() => nestedScale(d1) < 0.96)
     await nextFrame()
 
+    // d1（底层）左缘比 d2（顶层）更靠左，卡片露出
+    await waitForLeftOrder(d1, d2)
     const r1 = getDialog(d1).getBoundingClientRect()
     const r2 = getDialog(d2).getBoundingClientRect()
-
-    // d1（底层）左缘比 d2（顶层）更靠左，卡片露出
     expect(r1.left).toBeLessThan(r2.left)
   })
 })

@@ -28,4 +28,8 @@ CI 在每个 `pull_request` 上运行 `changeset status --since=origin/<base>`�
 - 涉及公共包行为、导出或依赖变更：按正常 Changesets 流程写明 patch/minor/major 与变更描述。
 - 纯 test/docs/chore 等不影响包版本的变更：创建空 changeset——只含两行 `---` 的 `.changeset/<kebab-name>.md`，frontmatter 内不写包与版本号，changesets 版本 PR 会原样消费它而不产生版本变更。
 
-已填写 changeset 的描述统一使用英文：changesets 版本 PR 会把这些描述写入公共包 CHANGELOG，面向 npm 上的外部读者。空 changeset 没有包可归属，文件名不带包名前缀属于正常情况（详见 [`workflow.md`](./workflow.md) 的分支与文件命名约定）。
+已填写 changeset 的描述统一使用英文：changesets 版本 PR 会把这些描述写入公共包 CHANGELOG，面向 npm 上的外部读者。空 changeset 没有包可归属，文件名不带包名前缀属于正常情况。
+
+## Workflow commit gate
+
+提交前必须先通过 [`workflow.md`](./workflow.md) 的 `check --phase commit`，并用 `--approver <manager-or-user-id>` 记录批准者。仓库已在受版本控制的 `.vite-hooks/pre-commit` 中接入 `pnpm agent:workflow guard-commit`：当前 worktree 存在 active task 时，hook 会拒绝未批准、冻结快照已过期或状态不一致的提交。不要使用 `--no-verify`、`HUSKY=0`、`VP_GIT_HOOKS=0` 或其他方式绕过该 gate。

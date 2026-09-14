@@ -1,5 +1,8 @@
 import { afterEach, describe, expect, it } from 'vite-plus/test'
+import { page } from 'vite-plus/test/browser'
 import { userEvent } from 'vite-plus/test/browser'
+
+import { pollUntil } from '@/shared/test-utils'
 
 import '..'
 import type { WebUiDialog } from '..'
@@ -14,6 +17,24 @@ function createDialog(): WebUiDialog {
 }
 
 describe('WebUiDialog 组件（浏览器）', () => {
+  it('面板自身聚焦不显示 focus ring，内部按钮仍可聚焦', async () => {
+    const component = createDialog()
+    const button = document.createElement('button')
+    button.textContent = '打开'
+    component.append(button)
+    component.open = true
+    await component.updateComplete
+    await new Promise(resolve => requestAnimationFrame(resolve))
+
+    const dialog = component.shadowRoot?.querySelector('dialog')
+    expect(dialog).toBeTruthy()
+    dialog?.focus()
+    expect(getComputedStyle(dialog!).outlineStyle).toBe('none')
+
+    button.focus()
+    expect(document.activeElement).toBe(button)
+  })
+
   it('退出过渡完成前保持原生 dialog 位于 top layer', async () => {
     const component = createDialog()
     component.open = true
@@ -164,5 +185,80 @@ describe('WebUiDialog 组件（浏览器）', () => {
     await component.updateComplete
     expect(component.open).toBe(false)
     expect(events).toHaveLength(0)
+  })
+  it('modal dialog 固定定位：position fixed，视口滚动后视口位置不变', async () => {
+    // 固定小视口 + 撑高文档制造滚动空间，验证 fixed 语义（回归：单层重构曾把
+    // dialog 覆盖成 position: relative，导致 top layer 里的 modal 回到文档流——
+    // 出现在页面顶部且跟随页面滚动，用户看到的“残影”与“没有固定居中”）。
+    await page.viewport(800, 600)
+    const spacer = document.createElement('div')
+    spacer.style.height = '2000px'
+    document.body.append(spacer)
+    try {
+      const component = createDialog()
+      // 本用例验证的是定位语义，必须关掉 scroll-lock：dialog 打开时默认锁滚动
+      // （html overflow hidden + body fixed），页面根本滚不动，fixed 语义无从验证。
+      component.noScrollLock = true
+      component.open = true
+      await component.updateComplete
+      // 等进场 scale 过渡收敛再采样，避免缩放中的 rect 抖动。
+      const dialog = component.shadowRoot?.querySelector('dialog') as HTMLDialogElement
+      await pollUntil(
+        () => new DOMMatrixReadOnly(getComputedStyle(dialog).transform).a === 1,
+        'dialog scale did not settle'
+      )
+      expect(getComputedStyle(dialog).position).toBe('fixed')
+
+      const before = dialog.getBoundingClientRect()
+      const scrolled = new Promise<void>(resolve => window.addEventListener('scroll', () => resolve(), { once: true }))
+      window.scrollTo(0, 500)
+      await scrolled
+      await new Promise(resolve => requestAnimationFrame(resolve))
+      expect(window.scrollY).toBeGreaterThan(0)
+
+      const after = dialog.getBoundingClientRect()
+      expect(after.top).toBeCloseTo(before.top, 0)
+      expect(after.left).toBeCloseTo(before.left, 0)
+    } finally {
+      document.body.replaceChildren()
+      window.scrollTo(0, 0)
+      await page.viewport(1280, 720)
+    }
+  })
+  it('玻璃卡片单层：opacity + backdrop-filter 插值过渡，任何状态切换模糊连续', async () => {
+    const component = createDialog()
+    component.open = true
+    await component.updateComplete
+    await new Promise(resolve => requestAnimationFrame(resolve))
+
+    const dialog = component.shadowRoot?.querySelector('dialog') as HTMLDialogElement
+    const body = dialog.querySelector('.wui-dialog-body') as HTMLElement
+    expect(body).toBeTruthy()
+
+    // dialog 元素本身不参与 opacity 过渡：opacity < 1 会让 dialog 成为 backdrop root，
+    // 后代 backdrop-filter 在过渡期间被禁用。transform 过渡保留。
+    expect(getComputedStyle(dialog).transitionProperty).not.toContain('opacity')
+    expect(getComputedStyle(dialog).opacity).toBe('1')
+    expect(getComputedStyle(dialog).transitionProperty).toContain('transform')
+
+    // 打开态：玻璃卡片自身承担玻璃，opacity 收敛到 1、blur 收敛到 4px，
+    // opacity + backdrop-filter 都有过渡（blur(0px)↔blur(4px) 平滑插值）。
+    const bodyStyle = getComputedStyle(body)
+    expect(body.classList.contains('wui-glass')).toBe(true)
+    expect(bodyStyle.backgroundColor).not.toBe('rgba(0, 0, 0, 0)')
+    expect(bodyStyle.transitionProperty).toContain('opacity')
+    expect(bodyStyle.transitionProperty).toContain('backdrop-filter')
+    await pollUntil(() => getComputedStyle(body).opacity === '1', 'dialog body did not fade in')
+    // 过渡收敛后 blur 插值到目标态 4px。
+    expect(getComputedStyle(body).backdropFilter).toContain('blur(4px)')
+
+    // 关闭：卡片切到退场时长，opacity 与 backdrop-filter 过渡仍在（退场同样连续）。
+    component.close()
+    await component.updateComplete
+    expect(getComputedStyle(body).transitionDuration).not.toBe('0s')
+
+    dialog.dispatchEvent(new TransitionEvent('transitionend', { propertyName: 'transform' }))
+    await new Promise(resolve => setTimeout(resolve))
+    expect(dialog.open).toBe(false)
   })
 })

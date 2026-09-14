@@ -5,6 +5,7 @@
 }
 
 :host {
+  touch-action: none;
   display: inline-block;
   width: var(--wui-slider-width, 200px);
 }
@@ -19,6 +20,7 @@
 }
 
 .wui-slider-track {
+  touch-action: none;
   cursor: default;
   user-select: none;
 
@@ -45,6 +47,7 @@
 }
 
 :host([vertical]) .wui-slider-track {
+  touch-action: none;
   width: var(--wui-slider-height, var(--wui-slider-track-size, 6px));
   height: 100%;
 }
@@ -115,7 +118,7 @@
 }
 
 .wui-slider-thumb {
-  --wui-glass-corner-radius: calc(min(var(--wui-slider-thumb-width, 30px), var(--wui-slider-thumb-height, 20px)) / 2);
+  --wui-glass-corner-radius: var(--wui-slider-thumb-radius, 8px);
 
   cursor: inherit;
 
@@ -126,14 +129,21 @@
   transform-origin: center center;
   transform: translate(-50%, -50%) scale(1);
 
-  width: var(--wui-slider-thumb-width, 30px);
-  height: var(--wui-slider-thumb-height, 20px);
-  border-radius: var(--wui-radius-control, calc(infinity * 1px));
+  width: var(--wui-slider-thumb-width, 24px);
+  height: var(--wui-slider-thumb-height, 18px);
+  border-radius: var(--wui-slider-thumb-radius, 8px);
 
   transition:
     transform var(--wui-duration-press, 80ms) cubic-bezier(0.4, 0, 0.2, 1),
-    background-color var(--wui-duration-press, 80ms) ease;
+    background-color var(--wui-duration-press, 80ms) ease,
+    box-shadow var(--wui-duration-press, 80ms) ease;
 
+  /* 静止态实体白 thumb（wui-glass 恒开仅提供描边/高光，背景被白色覆盖）；
+     按压时切到半透明玻璃背景并放大 1.5x，拖拽时背景转透明让 backdrop blur 透出。
+     box-shadow 直接写死值（不经自定义属性中转）：iOS Safari 对 var 离散切换驱动的
+     box-shadow 不触发过渡且可能整体不生效（r2 真机「回退之前」的根因），直接写值
+     后是普通属性变化，transition 正常插值；同时复制 wui-glass 的三条 inset 高光，
+     避免整段覆盖后按压态丢失玻璃描边。 */
   &:not(.is-dragging) {
     background-color: var(--wui-color-on-control, #fff);
   }
@@ -141,12 +151,26 @@
   &.is-pressed:not(.is-dragging) {
     transform: translate(-50%, -50%) scale(1.5);
     background-color: var(--wui-color-surface-glass, rgb(250 250 250 / 0.34));
+    box-shadow:
+      inset 0 0 0 0.5px color-mix(in srgb, var(--wui-color-glass-highlight, rgb(255 255 255 / 0.9)) 38%, transparent),
+      inset 0 1px 0.5px color-mix(in srgb, var(--wui-color-glass-highlight, rgb(255 255 255 / 0.9)) 52%, transparent),
+      inset 0 -0.5px 1px rgb(0 0 0 / 0.03),
+      0 2px 10px rgb(0 0 0 / 0.28),
+      0 10px 28px rgb(0 0 0 / 0.24),
+      0 18px 44px rgb(0 0 0 / 0.16);
   }
 
   &.is-dragging {
     cursor: grabbing;
     transform: translate(-50%, -50%) scale(1.5);
     background-color: transparent;
+    box-shadow:
+      inset 0 0 0 0.5px color-mix(in srgb, var(--wui-color-glass-highlight, rgb(255 255 255 / 0.9)) 38%, transparent),
+      inset 0 1px 0.5px color-mix(in srgb, var(--wui-color-glass-highlight, rgb(255 255 255 / 0.9)) 52%, transparent),
+      inset 0 -0.5px 1px rgb(0 0 0 / 0.03),
+      0 2px 10px rgb(0 0 0 / 0.28),
+      0 10px 28px rgb(0 0 0 / 0.24),
+      0 18px 44px rgb(0 0 0 / 0.16);
   }
 }
 
@@ -163,4 +187,8 @@
   &.is-dragging {
     transform: translate(-50%, 50%) scale(1.5);
   }
+}
+
+:host([data-wui-pointer-focus]) .wui-slider-track:focus-visible {
+  outline-color: transparent;
 }

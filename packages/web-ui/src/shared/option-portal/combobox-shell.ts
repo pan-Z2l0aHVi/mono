@@ -1,4 +1,5 @@
 import type { WebUiOption } from '@/components/option'
+import { overlayComposition } from '@/shared/overlay/composition'
 
 /**
  * combobox 开合与 option 交互的共享骨架（select / autocomplete）。
@@ -102,7 +103,8 @@ export function handleComboboxFocusOut(
   close: () => void
 ): void {
   requestAnimationFrame(() => {
-    if (getIsOpen() && !host.matches(':focus-within') && !getPanel()?.matches(':focus-within')) {
+    const panel = getPanel()
+    if (getIsOpen() && !host.matches(':focus-within') && !(panel && overlayComposition.hasFocusWithin(panel))) {
       close()
     }
   })

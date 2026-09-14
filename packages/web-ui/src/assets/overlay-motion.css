@@ -1,11 +1,35 @@
+/*
+ * 浮层面板共享动效（单层玻璃）。
+ *
+ * backdrop-filter 的 blur(0px) ↔ blur(4px) 在 Chrome/Safari 均平滑插值（Manager
+ * 双引擎实测，Safari 逐帧采样 blur 值连续），当年「生硬跳变」的根因是 none↔blur
+ * 不可插值，而不是 backdrop-filter 不可动画。因此面板自身直接承担玻璃：背景、
+ * 阴影与 backdrop-filter 都在面板元素上（wui-glass 类也回面板），打开/关闭时
+ * opacity 与 backdrop-filter 同步过渡，无需双层结构——双层带来的全部层间问题
+ * （变白、关闭残影、双重模糊、阴影作用域承接）一并消失。
+ */
+
 .wui-floating-panel {
   transform-origin: var(--wui-internal-overlay-transform-origin, center);
   transform: scale(1);
+
   opacity: 1;
+
+  /* 玻璃由面板自身承担（wui-glass 提供背景/描边/阴影）。打开目标态 blur(4px)，
+     entering/closing 切到 blur(0px) 作为插值起点——blur(0px) 与 blur(4px) 平滑过渡
+     （none↔blur 不可插值才是当年生硬跳变的根因）。 */
+  /* stylelint-disable-next-line property-no-vendor-prefix */
+  -webkit-backdrop-filter: blur(4px) saturate(160%) brightness(var(--wui-glass-brightness, 1.06));
+  backdrop-filter: blur(4px) saturate(160%) brightness(var(--wui-glass-brightness, 1.06));
+
   transition:
-    opacity var(--wui-internal-duration-overlay-enter, var(--wui-duration-overlay-enter, 180ms))
+    opacity var(--wui-internal-duration-float-enter, var(--wui-duration-float-enter, 160ms))
       var(--wui-ease-enter, cubic-bezier(0.23, 1, 0.32, 1)),
-    transform var(--wui-internal-duration-overlay-enter, var(--wui-duration-overlay-enter, 180ms))
+    -webkit-backdrop-filter var(--wui-internal-duration-float-enter, var(--wui-duration-float-enter, 160ms))
+      var(--wui-ease-enter, cubic-bezier(0.23, 1, 0.32, 1)),
+    backdrop-filter var(--wui-internal-duration-float-enter, var(--wui-duration-float-enter, 160ms))
+      var(--wui-ease-enter, cubic-bezier(0.23, 1, 0.32, 1)),
+    transform var(--wui-internal-duration-float-enter, var(--wui-duration-float-enter, 160ms))
       var(--wui-ease-enter, cubic-bezier(0.23, 1, 0.32, 1));
 }
 
@@ -13,11 +37,15 @@
 .wui-floating-panel[data-wui-presence='closing'] {
   transform: scale(var(--wui-scale-enter, 0.97));
   opacity: 0;
+
+  /* stylelint-disable-next-line property-no-vendor-prefix */
+  -webkit-backdrop-filter: blur(0) saturate(160%) brightness(var(--wui-glass-brightness, 1.06));
+  backdrop-filter: blur(0) saturate(160%) brightness(var(--wui-glass-brightness, 1.06));
 }
 
 .wui-floating-panel[data-wui-presence='closing'] {
   pointer-events: none;
-  transition-duration: var(--wui-internal-duration-overlay-exit, var(--wui-duration-overlay-exit, 140ms));
+  transition-duration: var(--wui-internal-duration-float-exit, var(--wui-duration-float-exit, 120ms));
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -446,4 +446,157 @@ describe('WebUiSegmented 手势拖拽与吸附（浏览器）', () => {
     // 首帧无交互，indicator 不应有任何过渡在播放（尤其不应有从 0 滑入的 left/width）
     expect(indicator.getAnimations()).toHaveLength(0)
   })
+
+  it('移动端分组禁止浏览器手势接管，横向拖拽交给组件手势处理', async () => {
+    const { segmented } = createSegmented()
+    await segmented.updateComplete
+
+    const inner = segmented.shadowRoot?.querySelector('.wui-segmented') as HTMLElement
+    expect(getComputedStyle(inner).touchAction).toBe('none')
+  })
+
+  it('trigger 的 shadow 内容命中时，touchmove 由 composedPath 守护阻止，松手后解除', async () => {
+    const { segmented, t1 } = createSegmented()
+    await segmented.updateComplete
+    await t1.updateComplete
+
+    // 本轮修复：trigger host 也是拖拽热区，声明 touch-action: none。
+    expect(getComputedStyle(t1).touchAction).toBe('none')
+
+    const t1Inner = t1.shadowRoot?.querySelector('.wui-segmented-trigger') as HTMLElement
+    expect(t1Inner).toBeTruthy()
+
+    const t1Rect = t1.getBoundingClientRect()
+    const x = t1Rect.left + 10
+    const y = t1Rect.top + t1Rect.height / 2
+
+    // pointerdown 从 trigger 的 shadow 内容派发（真实触摸落点），沿 composed 路径冒泡到手势元素。
+    t1Inner.dispatchEvent(
+      new PointerEvent('pointerdown', {
+        bubbles: true,
+        composed: true,
+        isPrimary: true,
+        pointerId: 1,
+        clientX: x,
+        clientY: y
+      })
+    )
+    await segmented.updateComplete
+
+    // 非 composed touchmove（不跨 shadow 边界）在 trigger tree 内被 composedPath 挂载的守护阻止。
+    const onInner = new TouchEvent('touchmove', { bubbles: true, cancelable: true })
+    t1Inner.dispatchEvent(onInner)
+    expect(onInner.defaultPrevented).toBe(true)
+
+    // 确认拖拽后守护持续有效。
+    window.dispatchEvent(
+      new PointerEvent('pointermove', {
+        bubbles: true,
+        isPrimary: true,
+        pointerId: 1,
+        clientX: x + 30,
+        clientY: y
+      })
+    )
+    await segmented.updateComplete
+    const onInnerAfterCommit = new TouchEvent('touchmove', { bubbles: true, cancelable: true })
+    t1Inner.dispatchEvent(onInnerAfterCommit)
+    expect(onInnerAfterCommit.defaultPrevented).toBe(true)
+
+    // document/window 收不到 shadow 内 touchmove：不挂死代码。
+    const onWindow = new TouchEvent('touchmove', { bubbles: true, cancelable: true })
+    window.dispatchEvent(onWindow)
+    expect(onWindow.defaultPrevented).toBe(false)
+
+    // 松手后守护全部卸载。
+    window.dispatchEvent(
+      new PointerEvent('pointerup', {
+        bubbles: true,
+        isPrimary: true,
+        pointerId: 1,
+        clientX: x + 30,
+        clientY: y
+      })
+    )
+    await segmented.updateComplete
+    const onInnerAfter = new TouchEvent('touchmove', { bubbles: true, cancelable: true })
+    t1Inner.dispatchEvent(onInnerAfter)
+    expect(onInnerAfter.defaultPrevented).toBe(false)
+  })
+
+  it('静止态实体白指示器，按压/拖拽切换为玻璃（backdrop blur + 半透明背景 + 放大 + 深阴影）', async () => {
+    const { segmented, t1 } = createSegmented()
+    await segmented.updateComplete
+
+    const inner = segmented.shadowRoot?.querySelector('.wui-segmented') as HTMLElement
+    const indicator = inner.querySelector('.wui-segmented-indicator') as HTMLElement
+
+    // 静止态：实体白指示器，无 backdrop-filter。
+    const restBackdrop = getComputedStyle(indicator).backdropFilter
+    const restBg = getComputedStyle(indicator).backgroundColor
+    const restShadow = getComputedStyle(indicator).boxShadow
+    expect(restBackdrop).toBe('none')
+    expect(restBg).toBe('rgb(255, 255, 255)')
+
+    const t1Rect = t1.getBoundingClientRect()
+    const x = t1Rect.left + t1Rect.width / 2
+    const y = t1Rect.top + t1Rect.height / 2
+
+    // 按压选中的 trigger：指示器切为玻璃（backdrop blur + 半透明背景）并放大。
+    inner.dispatchEvent(
+      new PointerEvent('pointerdown', {
+        bubbles: true,
+        isPrimary: true,
+        pointerId: 1,
+        clientX: x,
+        clientY: y
+      })
+    )
+    await segmented.updateComplete
+    expect(inner.classList.contains('is-pressed')).toBe(true)
+    expect(getComputedStyle(indicator).backdropFilter).not.toBe('none')
+    // 背景从白切玻璃、投影加深都有 80ms 过渡，等收敛后再断言（box-shadow 直接写值，
+    // 不经自定义属性中转，iOS 可靠）。
+    await new Promise(resolve => setTimeout(resolve, 120))
+    expect(getComputedStyle(indicator).backgroundColor).toBe('rgba(250, 250, 250, 0.34)')
+    const pressedShadow = getComputedStyle(indicator).boxShadow
+    expect(pressedShadow).not.toBe(restShadow)
+    // 用户两次要求减档后的最终值：三层投影逐值断言（直接写值，不经 var 中转）。
+    expect(pressedShadow).toContain('0px 0px 1px')
+    expect(pressedShadow).toContain('0px 5px 14px')
+    expect(pressedShadow).toContain('0px 12px 28px')
+    expect(pressedShadow).toContain('rgba(0, 0, 0, 0.1)')
+    expect(pressedShadow).toContain('rgba(0, 0, 0, 0.16)')
+
+    // 拖拽：玻璃组成与按压态一致。
+    window.dispatchEvent(
+      new PointerEvent('pointermove', {
+        bubbles: true,
+        isPrimary: true,
+        pointerId: 1,
+        clientX: x + 30,
+        clientY: y
+      })
+    )
+    await segmented.updateComplete
+    expect(inner.classList.contains('is-dragging')).toBe(true)
+    expect(getComputedStyle(indicator).backdropFilter).not.toBe('none')
+    expect(getComputedStyle(indicator).backgroundColor).toBe('rgba(250, 250, 250, 0.34)')
+
+    // 松手：回到实体白静止态。
+    window.dispatchEvent(
+      new PointerEvent('pointerup', {
+        bubbles: true,
+        isPrimary: true,
+        pointerId: 1,
+        clientX: x + 30,
+        clientY: y
+      })
+    )
+    await segmented.updateComplete
+    // 背景从玻璃切回实体白有 80ms 过渡，等收敛后再断言静止态。
+    await new Promise(resolve => setTimeout(resolve, 120))
+    expect(getComputedStyle(indicator).backdropFilter).toBe('none')
+    expect(getComputedStyle(indicator).backgroundColor).toBe('rgb(255, 255, 255)')
+  })
 })

@@ -32,6 +32,10 @@
   }
 }
 
+:host([data-wui-pointer-focus]) .wui-radio:focus-visible {
+  outline-color: transparent;
+}
+
 .wui-radio.is-disabled {
   cursor: not-allowed;
   color: var(--wui-color-text-secondary, #6a6a6a);

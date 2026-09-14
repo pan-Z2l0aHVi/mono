@@ -7,14 +7,13 @@ import type {
   WebUiEvent,
   WebUiInput,
   WebUiLayout,
-  WebUiPopover,
-  WebUiSelect
+  WebUiSelect,
+  WebUiSvgDrawLines
 } from '@greypan/web-ui'
 import type { WebUiContextMenu } from '@greypan/web-ui/components/context-menu'
 import {
   lucideChevronLeft,
   lucideChevronRight,
-  lucideCheck,
   lucideChevronUp,
   lucideClapperboard,
   lucideEye,
@@ -49,7 +48,7 @@ import {
   lucideListRestart,
   tablerSortAscendingLetters
 } from '@greypan/web-ui/icons'
-import { computed, nextTick, reactive, ref, watch, type ComponentPublicInstance } from 'vue'
+import { computed, nextTick, onScopeDispose, reactive, ref, watch, type ComponentPublicInstance } from 'vue'
 import { useRouter } from 'vue-router'
 
 import { canGoBack, canGoForward } from '@/composables/useHistoryNav'
@@ -57,21 +56,48 @@ import { canGoBack, canGoForward } from '@/composables/useHistoryNav'
 // --- Navigation ---
 const router = useRouter()
 const activeNav = ref<'library' | 'map'>('library')
+const navDrawRefs = ref<Record<'library' | 'map', WebUiSvgDrawLines | null>>({
+  library: null,
+  map: null
+})
+function setNavDrawRef(key: 'library' | 'map', element: unknown) {
+  navDrawRefs.value[key] = (element as WebUiSvgDrawLines | null) ?? null
+}
 const navItemClass =
   'flex items-center gap-2 w-full min-w-9 min-h-9 px-2.5 border-0 rounded-full font-medium cursor-pointer text-left transition-all duration-150 text-[#5b5b66] active:bg-[rgb(34_33_42/0.12)] dark:text-[var(--wui-color-text)] dark:active:bg-white/15 data-[active=true]:text-[var(--wui-color-accent,#08f)] data-[active=true]:bg-[var(--wui-color-surface-control,#dfdfdf)] data-[active=true]:hover:bg-[color-mix(in_srgb,var(--wui-color-surface-control,#dfdfdf)_90%,var(--wui-color-text,#1b1b1b))] data-[active=true]:active:bg-[color-mix(in_srgb,var(--wui-color-surface-control,#dfdfdf)_70%,var(--wui-color-text,#1b1b1b))]'
 function selectNav(next: 'library' | 'map') {
   activeNav.value = next
+  void navDrawRefs.value[next]?.replay()
+
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+  const iconHost = navDrawRefs.value[next]
+  if (!iconHost?.animate) return
+  iconHost.animate([{ transform: 'scale(1)' }, { transform: 'scale(1.3)', offset: 0.4 }, { transform: 'scale(1)' }], {
+    duration: 720,
+    easing: 'ease-out'
+  })
 }
 
 // --- Sidebar toggle ---
 const sidebarCollapsed = ref(false)
 const sidebarOpen = ref(false)
-const sidebarWidth = ref('240px')
+const desktopSidebarWidth = ref('240px')
+const mobileSidebarWidth = 'min(320px, 80vw)'
+const mobileSidebarQuery = window.matchMedia('(max-width: 640px)')
+const isMobileSidebarViewport = ref(mobileSidebarQuery.matches)
+const isMobile = isMobileSidebarViewport
+const sidebarWidth = computed(() => (isMobileSidebarViewport.value ? mobileSidebarWidth : desktopSidebarWidth.value))
+function syncMobileSidebarViewport() {
+  isMobileSidebarViewport.value = mobileSidebarQuery.matches
+}
+syncMobileSidebarViewport()
+mobileSidebarQuery.addEventListener('change', syncMobileSidebarViewport)
+onScopeDispose(() => mobileSidebarQuery.removeEventListener('change', syncMobileSidebarViewport))
 function updateSidebarCollapsed(event: WebUiEvent<WebUiLayout, 'sidebar-collapsed-change'>) {
   sidebarCollapsed.value = event.detail.collapsed
 }
 function handleSidebarWidthChange(event: WebUiEvent<WebUiLayout, 'sidebar-width-change'>) {
-  sidebarWidth.value = event.detail.width
+  desktopSidebarWidth.value = event.detail.width
 }
 function updateSidebarOpen(event: WebUiEvent<WebUiLayout, 'sidebar-open-change'>) {
   sidebarOpen.value = event.detail.open
@@ -103,6 +129,15 @@ function getTagClass(tag: string) {
 }
 
 // --- Resource data ---
+interface ResourceOrigin {
+  id: string
+  kind: 'local' | 'link'
+  label: string
+  status: 'normal' | 'broken'
+  path?: string
+  url?: string
+}
+
 interface Resource {
   id: string
   name: string
@@ -110,6 +145,7 @@ interface Resource {
   sourceType: 'local' | 'link'
   resourceType: 'image' | 'video' | 'audio' | 'document' | 'web' | 'json' | 'folder'
   tags?: string[]
+  origins?: ResourceOrigin[]
   url?: string
   broken?: boolean
   size?: string
@@ -252,6 +288,22 @@ const resources = reactive<Resource[]>([
     sourceType: 'local',
     resourceType: 'json',
     tags: ['设计', '开发', '素材', '灵感', '参考', '工具', '文档', '重要', '紧急', '草稿'],
+    origins: [
+      {
+        id: '12-local',
+        kind: 'local',
+        label: '文件系统',
+        status: 'normal',
+        path: '/Users/me/Projects/multi-tag-resource.json'
+      },
+      {
+        id: '12-remote',
+        kind: 'link',
+        label: '远程链接',
+        status: 'normal',
+        url: 'https://example.com/multi-tag-resource.json'
+      }
+    ],
     size: '12 KB',
     createdAt: '2025-07-15',
     modifiedAt: '2025-08-20',
@@ -263,11 +315,11 @@ const resources = reactive<Resource[]>([
 const selectedId = ref<string | null>(null)
 const drawerOpen = ref(false)
 const previewDrawerOpen = ref(false)
+const detailDrawerRef = ref<WebUiDrawer>()
+const previewDrawerRef = ref<WebUiDrawer>()
 const selectedResource = computed(() => resources.find(r => r.id === selectedId.value) ?? null)
 function selectResource(id: string) {
   selectedId.value = id
-  closeTagPopover()
-  closeDrawerTagEditor()
   drawerOpen.value = true
 }
 function openPreviewDrawer() {
@@ -276,12 +328,26 @@ function openPreviewDrawer() {
 function handleDetailDrawerOpenChange(event: WebUiEvent<WebUiDrawer, 'open-change'>) {
   if (event.target !== event.currentTarget) return
   drawerOpen.value = event.detail.open
-  if (!event.detail.open) closeDrawerTagEditor()
 }
 function handlePreviewDrawerOpenChange(event: WebUiEvent<WebUiDrawer, 'open-change'>) {
   if (event.target !== event.currentTarget) return
   previewDrawerOpen.value = event.detail.open
 }
+
+async function syncDrawerSheetHeight(drawer: WebUiDrawer | undefined) {
+  if (!drawer) return
+  await drawer.updateComplete
+  const dialog = drawer.shadowRoot?.querySelector('dialog')
+  if (!dialog) return
+  dialog.style.height = isMobile.value && drawer.placement === 'bottom' ? '80vh' : ''
+}
+
+watch([isMobile, drawerOpen, previewDrawerOpen], () => {
+  void nextTick(() => {
+    void syncDrawerSheetHeight(detailDrawerRef.value)
+    void syncDrawerSheetHeight(previewDrawerRef.value)
+  })
+})
 
 // --- Icon mapping ---
 const resourceTypeIcons: Record<Resource['resourceType'], typeof lucideFile> = {
@@ -305,6 +371,36 @@ const typeTint: Record<Resource['resourceType'], string> = {
   json: 'bg-green-100 text-green-700 dark:bg-green-400/15 dark:text-green-200',
   folder: 'bg-orange-100 text-orange-700 dark:bg-orange-400/15 dark:text-orange-200'
 }
+
+function getOriginValue(origin: ResourceOrigin) {
+  return origin.kind === 'local' ? origin.path : origin.url
+}
+
+function getOriginIcon(origin: ResourceOrigin) {
+  return origin.kind === 'local' ? lucideFile : lucideLink
+}
+
+const metadataRowClass =
+  "relative flex min-w-0 items-center justify-between gap-4 px-4 py-3 after:absolute after:inset-x-4 after:bottom-0 after:h-px after:bg-black/[0.06] after:content-[''] last:after:hidden dark:after:bg-white/[0.08]"
+const metadataLabelClass = 'shrink-0 text-[13px] leading-5 text-[#8a8a94] dark:text-[var(--wui-color-text-secondary)]'
+const metadataValueClass =
+  'min-w-0 truncate text-right text-[13px] font-medium leading-5 text-[#22212a] dark:text-[var(--wui-color-text)]'
+
+const selectedOrigins = computed<Array<ResourceOrigin>>(() => {
+  const resource = selectedResource.value
+  if (!resource) return []
+  if (resource.origins?.length) return resource.origins
+  return [
+    {
+      id: `${resource.id}-primary`,
+      kind: resource.sourceType,
+      label: resource.sourceType === 'local' ? '文件系统' : '远程链接',
+      status: resource.broken ? 'broken' : 'normal',
+      path: resource.path,
+      url: resource.url
+    }
+  ]
+})
 
 const resourceTypeLabels: Record<Resource['resourceType'], string> = {
   image: '图片',
@@ -550,11 +646,7 @@ const addDragActive = ref(false)
 const addPasteCaptured = ref(false)
 const queueRenamingId = ref<string | null>(null)
 const queueNameDraft = ref('')
-const queueTagEditingId = ref<string | null>(null)
-const queueTagDraft = ref('')
-const queueTagPresetTags = ref<Set<string>>(new Set())
 const queueRenameInputRef = ref<WebUiInput | null>(null)
-const queueTagInputRef = ref<WebUiAutocomplete | null>(null)
 const addQueueSources = [
   { name: '设计稿', ext: 'png', meta: '2.4 MB · 图片', icon: lucideImage, tone: 'blue', tags: ['设计'] },
   { name: '会议记录', ext: 'md', meta: '18 KB · 文档', icon: lucideFileText, tone: 'green', tags: ['会议'] },
@@ -578,17 +670,12 @@ const addQueue = reactive(
     return { ...source, id: `add-item-${index + 1}`, tags: [...source.tags] }
   })
 )
-function getQueueTagOptions(item: (typeof addQueue)[number]) {
-  const candidates = [...new Set([...allTags, ...addQueue.flatMap(entry => entry.tags)])]
-  return candidates.filter(tag => !item.tags.includes(tag)).sort()
-}
 
 function openAddDialog() {
   addDialogOpen.value = true
   addDragActive.value = false
   addPasteCaptured.value = false
   queueRenamingId.value = null
-  closeQueueTagEditor()
   queueNameDraft.value = ''
 }
 
@@ -602,7 +689,6 @@ function handleAddDrop() {
 }
 
 function startQueueRename(item: (typeof addQueue)[number]) {
-  queueTagEditingId.value = null
   queueRenamingId.value = item.id
   queueNameDraft.value = item.name
   void nextTick(() => {
@@ -640,298 +726,123 @@ function setQueueRenameRef(el: Element | ComponentPublicInstance | null) {
   queueRenameInputRef.value = el instanceof Element ? (el as WebUiInput) : null
 }
 
-function setQueueTagInputRef(el: Element | ComponentPublicInstance | null) {
-  queueTagInputRef.value = el instanceof Element ? (el as WebUiAutocomplete) : null
-}
-
-function toggleQueueTagEditor(item: (typeof addQueue)[number]) {
-  queueRenamingId.value = null
-  const nextId = queueTagEditingId.value === item.id ? null : item.id
-  queueTagEditingId.value = nextId
-  queueTagDraft.value = ''
-  queueTagPresetTags.value = nextId ? new Set(item.tags) : new Set()
-  if (!nextId) return
-  void nextTick(() => {
-    const input = queueTagInputRef.value?.shadowRoot?.querySelector<HTMLInputElement>('.autocomplete-input')
-    input?.focus()
-    input?.click()
-  })
-}
-
-function addQueueTagFromField(item: (typeof addQueue)[number], field?: WebUiAutocomplete | null) {
-  const tag = (field?.value ?? queueTagDraft.value).trim()
-  if (tag && !item.tags.includes(tag)) item.tags.push(tag)
-  if (field) field.value = ''
-  queueTagDraft.value = ''
-}
-
-function commitQueueTag(item: (typeof addQueue)[number]) {
-  addQueueTagFromField(item, queueTagInputRef.value)
-  closeQueueTagEditor()
-}
-
-function handleQueueTagInput(event: WebUiEvent<WebUiAutocomplete, 'input'>) {
-  queueTagDraft.value = event.target.value
-}
-
-function isQueueTagEditorTarget(target: EventTarget | null, itemId: string) {
-  if (!(target instanceof Element)) return false
-  return target.closest(`[data-queue-tag-editor="${itemId}"]`) !== null
-}
-
-function handleQueueTagBlur(event: Event, item: (typeof addQueue)[number]) {
-  setTimeout(() => {
-    if (queueTagEditingId.value !== item.id) return
-    const nextTarget =
-      event instanceof FocusEvent && event.relatedTarget instanceof Element
-        ? event.relatedTarget
-        : document.activeElement
-    if (isQueueTagEditorTarget(nextTarget, item.id)) return
-    closeQueueTagEditor()
-  }, 0)
-}
-
-function closeQueueTagEditor() {
-  queueTagEditingId.value = null
-  queueTagDraft.value = ''
-  queueTagPresetTags.value = new Set()
-}
-
-function handleQueueTagChange(event: WebUiEvent<WebUiAutocomplete, 'change'>, item: (typeof addQueue)[number]) {
-  addQueueTagFromField(item, event.target)
-  closeQueueTagEditor()
-}
-
-function removeQueueTag(item: (typeof addQueue)[number], index: number) {
-  item.tags.splice(index, 1)
-}
-
 function removeAddQueue(item: (typeof addQueue)[number]) {
-  const index = addQueue.findIndex(entry => entry.id === item.id)
-  if (index === -1) return
+  requestRemovalConfirmation({
+    title: '移除待添加项',
+    message: `移除「${item.name}」后不会加入资料库。`,
+    confirmLabel: '移除',
+    action: () => {
+      const index = addQueue.findIndex(entry => entry.id === item.id)
+      if (index === -1) return
 
-  addQueue.splice(index, 1)
-  queueRenamingId.value = null
-  queueNameDraft.value = ''
-  if (queueTagEditingId.value === item.id) closeQueueTagEditor()
+      addQueue.splice(index, 1)
+      queueRenamingId.value = null
+      queueNameDraft.value = ''
+    }
+  })
 }
 
-function getQueueTagClass(item: (typeof addQueue)[number], tag: string) {
-  if (queueTagEditingId.value === item.id && !queueTagPresetTags.value.has(tag) && !allTags.includes(tag)) {
-    return 'bg-[var(--wui-color-surface-control,#dfdfdf)] text-[var(--wui-color-text-secondary,#5b5b66)] dark:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_12%,transparent)] dark:text-[var(--wui-color-text-secondary)]'
-  }
-  return getTagClass(tag)
-}
+// --- Edit tags dialog ---
+type EditTagsTarget = Resource | (typeof addQueue)[number]
+const editTagsDialogOpen = ref(false)
+const editTagsTarget = ref<EditTagsTarget | null>(null)
+const editTagsDraftTags = ref<string[]>([])
+const editTagsDraft = ref('')
+const editTagsAutocompleteRef = ref<WebUiAutocomplete | null>(null)
 
-// --- Drawer tag editing ---
-const drawerTagEditing = ref(false)
-const drawerTagDraft = ref('')
-const drawerTagPresetTags = ref<Set<string>>(new Set())
-const drawerTagAutocompleteRef = ref<WebUiAutocomplete | null>(null)
-
-const drawerTagOptions = computed(() =>
-  [...new Set(allTags)].filter(tag => !selectedResource.value?.tags?.includes(tag)).sort()
+const editTagsOptions = computed(() =>
+  [...new Set(allTags)].filter(tag => !editTagsDraftTags.value.includes(tag)).sort()
 )
 
-function setDrawerTagAutocompleteRef(el: Element | ComponentPublicInstance | null) {
-  drawerTagAutocompleteRef.value = el instanceof Element ? (el as WebUiAutocomplete) : null
+function setEditTagsAutocompleteRef(el: Element | ComponentPublicInstance | null) {
+  editTagsAutocompleteRef.value = el instanceof Element ? (el as WebUiAutocomplete) : null
 }
 
-function closeDrawerTagEditor() {
-  drawerTagEditing.value = false
-  drawerTagDraft.value = ''
-  drawerTagPresetTags.value = new Set()
-}
-
-function toggleDrawerTagEditor() {
-  const next = !drawerTagEditing.value
-  drawerTagEditing.value = next
-  drawerTagDraft.value = ''
-  drawerTagPresetTags.value = next ? new Set(selectedResource.value?.tags ?? []) : new Set()
-  if (!next) return
+function openEditTagsDialog(target: EditTagsTarget) {
+  if (!target.tags) target.tags = []
+  editTagsTarget.value = target
+  editTagsDraftTags.value = [...target.tags]
+  editTagsDraft.value = ''
+  editTagsDialogOpen.value = true
   void nextTick(() => {
-    const input = drawerTagAutocompleteRef.value?.shadowRoot?.querySelector<HTMLInputElement>('.autocomplete-input')
+    const input = editTagsAutocompleteRef.value?.shadowRoot?.querySelector<HTMLInputElement>('.autocomplete-input')
     input?.focus()
     input?.click()
   })
 }
 
-function addDrawerTagFromField(field?: WebUiAutocomplete | null) {
-  const resource = selectedResource.value
-  const tag = (field?.value ?? drawerTagDraft.value).trim()
-  if (resource && tag && resource.tags && !resource.tags.includes(tag)) resource.tags.push(tag)
-  if (field) field.value = ''
-  drawerTagDraft.value = ''
+function closeEditTagsDialog() {
+  editTagsDialogOpen.value = false
+  editTagsTarget.value = null
+  editTagsDraftTags.value = []
+  editTagsDraft.value = ''
 }
 
-function commitDrawerTag() {
-  addDrawerTagFromField(drawerTagAutocompleteRef.value)
-  closeDrawerTagEditor()
-}
-
-function handleDrawerTagInput(event: WebUiEvent<WebUiAutocomplete, 'input'>) {
-  drawerTagDraft.value = event.target.value
-}
-
-function handleDrawerTagChange(event: WebUiEvent<WebUiAutocomplete, 'change'>) {
-  addDrawerTagFromField(event.target)
-  closeDrawerTagEditor()
-}
-
-function removeDrawerTag(index: number) {
-  selectedResource.value?.tags?.splice(index, 1)
-}
-
-function isDrawerTagEditorTarget(target: EventTarget | null) {
-  if (!(target instanceof Element)) return false
-  return target.closest('[data-drawer-tag-editor]') !== null
-}
-
-function handleDrawerTagBlur(event: Event) {
-  setTimeout(() => {
-    if (!drawerTagEditing.value) return
-    const nextTarget =
-      event instanceof FocusEvent && event.relatedTarget instanceof Element
-        ? event.relatedTarget
-        : document.activeElement
-    if (isDrawerTagEditorTarget(nextTarget)) return
-    closeDrawerTagEditor()
-  }, 0)
-}
-
-function getDrawerTagClass(tag: string) {
-  if (drawerTagEditing.value && !drawerTagPresetTags.value.has(tag) && !allTags.includes(tag)) {
-    return 'bg-[var(--wui-color-surface-control,#dfdfdf)] text-[var(--wui-color-text-secondary,#5b5b66)] dark:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_12%,transparent)] dark:text-[var(--wui-color-text-secondary)]'
-  }
-  return getTagClass(tag)
-}
-
-// --- Context menu tag popover ---
-const tagPopoverResourceId = ref<string | null>(null)
-const tagPopoverResource = computed(() => resources.find(r => r.id === tagPopoverResourceId.value) ?? null)
-const contextTagEditing = ref(false)
-const contextTagDraft = ref('')
-const contextTagPresetTags = ref<Set<string>>(new Set())
-const contextTagAutocompleteRef = ref<WebUiAutocomplete | null>(null)
-
-const contextTagOptions = computed(() =>
-  [...new Set(allTags)].filter(tag => !tagPopoverResource.value?.tags?.includes(tag)).sort()
-)
-
-function setContextTagAutocompleteRef(el: Element | ComponentPublicInstance | null) {
-  contextTagAutocompleteRef.value = el instanceof Element ? (el as WebUiAutocomplete) : null
-}
-
-function closeContextTagEditor() {
-  contextTagEditing.value = false
-  contextTagDraft.value = ''
-  contextTagPresetTags.value = new Set()
-}
-
-function closeTagPopover() {
-  closeContextTagEditor()
-  tagPopoverResourceId.value = null
-}
-
-function focusContextTagInput() {
-  const input = contextTagAutocompleteRef.value?.shadowRoot?.querySelector<HTMLInputElement>('.autocomplete-input')
-  input?.focus()
-  input?.click()
-}
-
-function openContextTagEditor() {
-  if (!contextResource.value) return
-  tagPopoverResourceId.value = contextResource.value.id
-  contextTagEditing.value = true
-  contextTagPresetTags.value = new Set(contextResource.value.tags ?? [])
-  ctxMenuRef.value?.close()
-  void nextTick(focusContextTagInput)
-}
-
-function toggleContextTagEditor() {
-  const next = !contextTagEditing.value
-  contextTagEditing.value = next
-  contextTagDraft.value = ''
-  contextTagPresetTags.value = next ? new Set(tagPopoverResource.value?.tags ?? []) : new Set()
-  if (!next) return
-  void nextTick(focusContextTagInput)
-}
-
-function handleTagPopoverOpenChange(event: WebUiEvent<WebUiPopover, 'open-change'>) {
+function handleEditTagsDialogOpenChange(event: WebUiEvent<WebUiDialog, 'open-change'>) {
   if (event.target !== event.currentTarget) return
-  if (!event.detail.open) closeTagPopover()
+  if (!event.detail.open) closeEditTagsDialog()
 }
 
-function addContextTagFromField(field?: WebUiAutocomplete | null) {
-  const resource = tagPopoverResource.value
-  const tag = (field?.value ?? contextTagDraft.value).trim()
-  if (resource && tag && resource.tags && !resource.tags.includes(tag)) resource.tags.push(tag)
+function addEditTagFromField(field?: WebUiAutocomplete | null) {
+  const tag = (field?.value ?? editTagsDraft.value).trim()
+  if (tag && !editTagsDraftTags.value.includes(tag)) editTagsDraftTags.value.push(tag)
   if (field) field.value = ''
-  contextTagDraft.value = ''
+  editTagsDraft.value = ''
 }
 
-function commitContextTag() {
-  addContextTagFromField(contextTagAutocompleteRef.value)
-  closeContextTagEditor()
+function handleEditTagsInput(event: WebUiEvent<WebUiAutocomplete, 'input'>) {
+  editTagsDraft.value = event.target.value
 }
 
-function handleContextTagInput(event: WebUiEvent<WebUiAutocomplete, 'input'>) {
-  contextTagDraft.value = event.target.value
+function handleEditTagsChange(event: WebUiEvent<WebUiAutocomplete, 'change'>) {
+  addEditTagFromField(event.target)
 }
 
-function handleContextTagChange(event: WebUiEvent<WebUiAutocomplete, 'change'>) {
-  addContextTagFromField(event.target)
-  closeContextTagEditor()
-}
+function removeEditTag(index: number) {
+  const tag = editTagsDraftTags.value[index]
+  if (!tag) return
 
-function removeContextTag(index: number) {
-  tagPopoverResource.value?.tags?.splice(index, 1)
-}
-
-function isContextTagEditorTarget(target: EventTarget | null) {
-  if (!(target instanceof Element)) return false
-  return (
-    target.closest('[data-context-tag-editor], [data-context-tag-autocomplete], [data-context-tag-popover]') !== null
-  )
-}
-
-function handleContextTagBlur(event: Event) {
-  setTimeout(() => {
-    if (!contextTagEditing.value) return
-    const nextTarget =
-      event instanceof FocusEvent && event.relatedTarget instanceof Element
-        ? event.relatedTarget
-        : document.activeElement
-    if (isContextTagEditorTarget(nextTarget)) return
-    closeContextTagEditor()
-  }, 0)
-}
-
-function getContextTagClass(tag: string) {
-  if (contextTagEditing.value && !contextTagPresetTags.value.has(tag) && !allTags.includes(tag)) {
-    return 'bg-[var(--wui-color-surface-control,#dfdfdf)] text-[var(--wui-color-text-secondary,#5b5b66)] dark:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_12%,transparent)] dark:text-[var(--wui-color-text-secondary)]'
-  }
-  return getTagClass(tag)
-}
-
-watch(tagPopoverResourceId, (id, _, onCleanup) => {
-  if (!id) return
-  const handleDocumentClick = (event: Event) => {
-    const path = event.composedPath?.() ?? []
-    if (path.some(node => node instanceof Element && node.hasAttribute('data-context-tag-option'))) return
-    if (isContextTagEditorTarget(event.target)) return
-    closeTagPopover()
-  }
-  const handleDocumentKeydown = (event: KeyboardEvent) => {
-    if (event.key === 'Escape') closeTagPopover()
-  }
-  document.addEventListener('click', handleDocumentClick)
-  document.addEventListener('keydown', handleDocumentKeydown)
-  onCleanup(() => {
-    document.removeEventListener('click', handleDocumentClick)
-    document.removeEventListener('keydown', handleDocumentKeydown)
+  requestRemovalConfirmation({
+    title: '移除标签',
+    message: `移除「${tag}」后需重新添加。`,
+    confirmLabel: '移除',
+    action: () => {
+      const currentIndex = editTagsDraftTags.value.indexOf(tag)
+      if (currentIndex !== -1) editTagsDraftTags.value.splice(currentIndex, 1)
+    }
   })
-})
+}
+
+// --- Removal confirmation ---
+interface PendingRemoval {
+  title: string
+  message: string
+  confirmLabel: string
+  action: () => void
+}
+
+const removalConfirmOpen = ref(false)
+const pendingRemoval = ref<PendingRemoval | null>(null)
+
+function requestRemovalConfirmation(pending: PendingRemoval) {
+  pendingRemoval.value = pending
+  removalConfirmOpen.value = true
+}
+
+function handleRemovalConfirm() {
+  pendingRemoval.value?.action()
+  removalConfirmOpen.value = false
+}
+
+function handleRemovalCancel() {
+  removalConfirmOpen.value = false
+}
+
+function confirmEditTags() {
+  const target = editTagsTarget.value
+  if (target) target.tags = [...editTagsDraftTags.value]
+  closeEditTagsDialog()
+}
 
 watch(addDialogOpen, (open, _, onCleanup) => {
   if (!open) return
@@ -950,7 +861,7 @@ watch(addDialogOpen, (open, _, onCleanup) => {
   <web-ui-layout
     header-glow
     sidebarResizable
-    class="min-h-dvh overflow-x-clip text-[#22212a] bg-white [--wui-layout-mobile-toggle-inset:24px] dark:text-[var(--wui-color-text)] dark:bg-[var(--wui-color-page)]"
+    class="min-h-dvh overflow-x-clip text-[#22212a] bg-white dark:text-[var(--wui-color-text)] dark:bg-[var(--wui-color-page)]"
     :sidebarCollapsed="sidebarCollapsed"
     :sidebarOpen="sidebarOpen"
     :sidebarWidth="sidebarWidth"
@@ -959,7 +870,7 @@ watch(addDialogOpen, (open, _, onCleanup) => {
     @sidebar-width-change="handleSidebarWidthChange"
   >
     <!-- Sidebar -->
-    <div slot="sidebar" class="relative z-20 h-full pt-14 pb-4 px-2" aria-label="应用导航">
+    <div slot="sidebar" class="relative z-20 h-full pt-14 pb-4 px-2 max-[640px]:px-0" aria-label="应用导航">
       <nav class="grid gap-1" aria-label="主导航">
         <button
           :class="[
@@ -977,7 +888,13 @@ watch(addDialogOpen, (open, _, onCleanup) => {
             :content="sidebarCollapsed ? '资料库' : ''"
             :disabled="!sidebarCollapsed"
           >
-            <web-ui-icon :icon="lucideFolderOpen"></web-ui-icon>
+            <web-ui-svg-draw-lines
+              :ref="element => setNavDrawRef('library', element)"
+              :duration="720"
+              easing="ease-out"
+            >
+              <web-ui-icon :icon="lucideFolderOpen"></web-ui-icon>
+            </web-ui-svg-draw-lines>
           </web-ui-tooltip>
           <span v-if="!sidebarCollapsed" class="text-sm whitespace-nowrap overflow-hidden">资料库</span>
         </button>
@@ -997,7 +914,9 @@ watch(addDialogOpen, (open, _, onCleanup) => {
             :content="sidebarCollapsed ? '关系图谱' : ''"
             :disabled="!sidebarCollapsed"
           >
-            <web-ui-icon :icon="lucideLayoutGrid"></web-ui-icon>
+            <web-ui-svg-draw-lines :ref="element => setNavDrawRef('map', element)" :duration="720" easing="ease-out">
+              <web-ui-icon :icon="lucideLayoutGrid"></web-ui-icon>
+            </web-ui-svg-draw-lines>
           </web-ui-tooltip>
           <span v-if="!sidebarCollapsed" class="text-sm whitespace-nowrap overflow-hidden">关系图谱</span>
         </button>
@@ -1006,9 +925,9 @@ watch(addDialogOpen, (open, _, onCleanup) => {
 
     <!-- Header -->
     <header slot="header" class="w-full">
-      <div class="flex gap-4 items-center justify-between px-6 py-2 max-[640px]:pl-0">
-        <!-- 窄屏时布局组件的展开 Toggle 自带 24px 左缩进（--wui-layout-mobile-toggle-inset），header 内容去掉左内边距避免双重缩进。 -->
-        <web-ui-button-group aria-label="页面导航">
+      <div class="flex gap-4 items-center px-6 py-2 max-[640px]:px-3 max-[640px]:pl-0">
+        <!-- 窄屏时布局组件的展开 Toggle 自带左缩进（--wui-layout-mobile-toggle-inset，8px），header 内容去掉左内边距避免双重缩进。 -->
+        <web-ui-button-group aria-label="页面导航" class="max-[640px]:hidden">
           <web-ui-button icon variant="glass" aria-label="后退" :disabled="!canGoBack" @click="router.back()">
             <web-ui-icon :icon="lucideChevronLeft"></web-ui-icon>
           </web-ui-button>
@@ -1016,23 +935,23 @@ watch(addDialogOpen, (open, _, onCleanup) => {
             <web-ui-icon :icon="lucideChevronRight"></web-ui-icon>
           </web-ui-button>
         </web-ui-button-group>
-        <div class="flex gap-1.5 items-center">
-          <web-ui-tooltip content="新建">
-            <web-ui-button icon variant="primary" aria-label="新建" @click="openAddDialog">
+        <div class="flex gap-1.5 items-center ml-auto">
+          <web-ui-tooltip v-if="!(searchOpen && isMobile)" content="添加资源" portal>
+            <web-ui-button icon variant="primary" aria-label="添加资源" @click="openAddDialog">
               <web-ui-icon :icon="lucidePlus"></web-ui-icon>
             </web-ui-button>
           </web-ui-tooltip>
-          <web-ui-tooltip :content="filterOpen ? '收起筛选' : '筛选'">
+          <web-ui-tooltip v-if="!(searchOpen && isMobile)" content="筛选和排序" portal>
             <web-ui-button
               icon
               :variant="hasActiveFilter ? 'secondary' : 'glass'"
-              :aria-label="filterOpen ? '收起筛选' : '筛选'"
+              aria-label="筛选和排序"
               @click="filterOpen = !filterOpen"
             >
               <web-ui-icon :icon="filterOpen ? lucideChevronUp : lucideListFilter"></web-ui-icon>
             </web-ui-button>
           </web-ui-tooltip>
-          <web-ui-tooltip v-if="!searchOpen" content="搜索">
+          <web-ui-tooltip v-if="!searchOpen" content="搜索" portal>
             <web-ui-button icon aria-label="搜索" @click="openSearch">
               <web-ui-icon :icon="lucideSearch"></web-ui-icon>
             </web-ui-button>
@@ -1042,8 +961,8 @@ watch(addDialogOpen, (open, _, onCleanup) => {
             ref="searchInputRef"
             :value="searchQuery"
             clearable
-            placeholder="按名称搜索"
-            aria-label="按名称搜索"
+            placeholder="搜索资源"
+            aria-label="搜索资源"
             class="[--wui-input-width:min(240px,calc(100vw-180px))]"
             @input="handleSearchInput"
             @keydown="handleSearchKeydown"
@@ -1058,18 +977,29 @@ watch(addDialogOpen, (open, _, onCleanup) => {
         class="transition-all duration-200 ease-in-out"
         :style="{ height: filterOpen ? 'auto' : '0px', overflow: filterOpen ? 'visible' : 'hidden' }"
       >
+        <!-- 移动端负 margin 补偿 toggle 按钮宽度，使筛选内容左边缘与 header slot 内容对齐。 -->
         <div
-          class="flex flex-wrap gap-3 items-center px-6 py-2.5 text-sm text-[#5b5b66] dark:text-[var(--wui-color-text-secondary)]"
+          class="flex flex-wrap gap-3 items-center px-6 max-[640px]:px-3 max-[640px]:-ml-[56px] py-2.5 text-sm text-[#5b5b66] dark:text-[var(--wui-color-text-secondary)]"
         >
           <label :class="filterLabelClass">
-            <web-ui-select :value="filterSource" class="[--wui-input-width:128px]" @change="handleFilterSourceChange">
+            <web-ui-select
+              portal
+              :value="filterSource"
+              class="[--wui-input-width:128px]"
+              @change="handleFilterSourceChange"
+            >
               <web-ui-option value="all" label="全部来源">全部来源</web-ui-option>
               <web-ui-option value="local" label="本地文件">本地文件</web-ui-option>
               <web-ui-option value="link" label="链接">链接</web-ui-option>
             </web-ui-select>
           </label>
           <label :class="filterLabelClass">
-            <web-ui-select :value="filterType" class="[--wui-input-width:128px]" @change="handleFilterTypeChange">
+            <web-ui-select
+              portal
+              :value="filterType"
+              class="[--wui-input-width:128px]"
+              @change="handleFilterTypeChange"
+            >
               <web-ui-option value="all" label="全部类型">全部类型</web-ui-option>
               <web-ui-option value="image" label="图片">图片</web-ui-option>
               <web-ui-option value="video" label="视频">视频</web-ui-option>
@@ -1080,14 +1010,20 @@ watch(addDialogOpen, (open, _, onCleanup) => {
             </web-ui-select>
           </label>
           <label :class="filterLabelClass">
-            <web-ui-select :value="filterBroken" class="[--wui-input-width:128px]" @change="handleFilterBrokenChange">
-              <web-ui-option value="all" label="全部状态">全部状态</web-ui-option>
-              <web-ui-option value="valid" label="有效">有效</web-ui-option>
+            <web-ui-select
+              portal
+              :value="filterBroken"
+              class="[--wui-input-width:128px]"
+              @change="handleFilterBrokenChange"
+            >
+              <web-ui-option value="all" label="可用性">可用性</web-ui-option>
+              <web-ui-option value="valid" label="正常">正常</web-ui-option>
               <web-ui-option value="broken" label="已失效">已失效</web-ui-option>
             </web-ui-select>
           </label>
           <label :class="filterLabelClass">
             <web-ui-autocomplete
+              portal
               :value="filterTag"
               @input="handleTagInput"
               placeholder="标签"
@@ -1098,6 +1034,7 @@ watch(addDialogOpen, (open, _, onCleanup) => {
           </label>
           <label :class="filterLabelClass">
             <web-ui-select
+              portal
               :value="sortOrder"
               aria-label="排序"
               @change="handleSortChange"
@@ -1118,12 +1055,12 @@ watch(addDialogOpen, (open, _, onCleanup) => {
               ></web-ui-icon>
               <web-ui-option value="name" label="名称">名称</web-ui-option>
               <web-ui-option value="tagName" label="标签名称">标签名称</web-ui-option>
-              <web-ui-option value="latest" label="最新">最新</web-ui-option>
-              <web-ui-option value="earliest" label="最早">最早</web-ui-option>
+              <web-ui-option value="latest" label="最新">最近修改</web-ui-option>
+              <web-ui-option value="earliest" label="最早">较早修改</web-ui-option>
             </web-ui-select>
           </label>
           <web-ui-button v-if="hasActiveFilter" variant="ghost" @click="resetFilters"
-            ><web-ui-icon slot="prefix" :icon="lucideListRestart"></web-ui-icon>重置</web-ui-button
+            ><web-ui-icon slot="prefix" :icon="lucideListRestart"></web-ui-icon>重置筛选</web-ui-button
           >
         </div>
       </div>
@@ -1131,11 +1068,11 @@ watch(addDialogOpen, (open, _, onCleanup) => {
 
     <!-- Resource list + Detail drawer -->
     <div class="flex min-h-0 flex-1">
-      <div class="flex-1 min-w-0 px-6 pb-16 pt-2">
+      <div class="flex-1 min-w-0 px-6 max-[640px]:px-3 pb-16 pt-2">
         <web-ui-context-menu ref="ctxMenuRef" class="block w-full">
           <!-- Empty state -->
           <div v-if="filteredResources.length === 0" class="flex flex-col items-center justify-center py-24">
-            <web-ui-empty size="large" description="没有匹配的资源"></web-ui-empty>
+            <web-ui-empty size="large" description="没有符合条件的资源"></web-ui-empty>
           </div>
 
           <!-- Resource rows -->
@@ -1143,7 +1080,7 @@ watch(addDialogOpen, (open, _, onCleanup) => {
             <div
               v-for="resource in filteredResources"
               :key="resource.id"
-              class="group relative flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors duration-100 rounded-xl"
+              class="group relative flex items-center gap-3 px-4 max-[640px]:px-2 py-3 cursor-pointer transition-colors duration-100 rounded-xl"
               :class="[
                 selectedId === resource.id
                   ? 'bg-black/[0.05] dark:bg-white/[0.08]'
@@ -1195,7 +1132,7 @@ watch(addDialogOpen, (open, _, onCleanup) => {
                   </template>
                 </div>
                 <div
-                  class="flex items-center gap-1.5 text-xs text-[#9a9aa4] dark:text-[var(--wui-color-text-secondary)]"
+                  class="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-[#9a9aa4] dark:text-[var(--wui-color-text-secondary)]"
                 >
                   <span class="inline-flex items-center gap-1">
                     <web-ui-icon
@@ -1230,103 +1167,6 @@ watch(addDialogOpen, (open, _, onCleanup) => {
                   >{{ tag }}</span
                 >
               </div>
-
-              <web-ui-popover
-                trigger="manual"
-                placement="bottom-start"
-                portal
-                class="absolute inset-x-0 top-full h-0"
-                data-context-tag-popover
-                :open="tagPopoverResourceId === resource.id"
-                @open-change="handleTagPopoverOpenChange"
-              >
-                <span slot="trigger"></span>
-                <div
-                  v-if="tagPopoverResourceId === resource.id"
-                  class="grid w-[240px] gap-2"
-                  data-context-tag-editor
-                  @click.stop
-                  @contextmenu.stop
-                >
-                  <div class="flex flex-wrap items-center gap-1.5">
-                    <span
-                      v-for="(tag, tagIndex) in tagPopoverResource?.tags"
-                      :key="tag"
-                      class="inline-flex h-5 items-center gap-0.5 rounded-full px-[7px] py-1 text-xs leading-none has-[web-ui-button]:pr-0.5"
-                      :class="getContextTagClass(tag)"
-                    >
-                      {{ tag }}
-                      <web-ui-button
-                        class="shrink-0 [--wui-button-color:currentColor]"
-                        icon
-                        variant="ghost"
-                        size="16"
-                        :aria-label="`移除标签 ${tag}`"
-                        @click="removeContextTag(tagIndex)"
-                      >
-                        <web-ui-icon :icon="lucideX" :size="10"></web-ui-icon>
-                      </web-ui-button>
-                    </span>
-                    <web-ui-tooltip
-                      :content="contextTagDraft.trim() ? '确认标签' : contextTagEditing ? '收起标签编辑' : '添加标签'"
-                      placement="top"
-                    >
-                      <web-ui-button
-                        v-if="contextTagEditing"
-                        icon
-                        :variant="contextTagDraft.trim() ? 'primary' : 'glass'"
-                        size="20"
-                        :aria-label="contextTagDraft.trim() ? '确认标签' : '收起标签编辑'"
-                        @pointerdown.prevent
-                        @click="contextTagDraft.trim() ? commitContextTag() : closeContextTagEditor()"
-                      >
-                        <web-ui-icon :icon="contextTagDraft.trim() ? lucideCheck : lucideX" :size="12"></web-ui-icon>
-                      </web-ui-button>
-                      <web-ui-button
-                        v-else
-                        icon
-                        variant="glass"
-                        size="20"
-                        aria-label="添加标签"
-                        @click="toggleContextTagEditor()"
-                      >
-                        <web-ui-icon :icon="lucidePlus" :size="12"></web-ui-icon>
-                      </web-ui-button>
-                    </web-ui-tooltip>
-                  </div>
-                  <web-ui-autocomplete
-                    v-if="contextTagEditing"
-                    :ref="setContextTagAutocompleteRef"
-                    :value="contextTagDraft"
-                    data-context-tag-autocomplete
-                    class="block w-full min-w-0 [--wui-autocomplete-max-width:100%] [--wui-input-width:100%]"
-                    borderless
-                    allow-custom-value
-                    portal
-                    placeholder="输入或选择标签"
-                    aria-label="添加标签"
-                    @input="handleContextTagInput"
-                    @blur="handleContextTagBlur"
-                    @change="handleContextTagChange"
-                  >
-                    <web-ui-option
-                      v-for="tag in contextTagOptions"
-                      :key="tag"
-                      :value="tag"
-                      :label="tag"
-                      data-context-tag-option
-                      >{{ tag }}</web-ui-option
-                    >
-                    <div slot="empty">
-                      {{
-                        tagPopoverResource?.tags?.includes(contextTagDraft.trim())
-                          ? '该标签已添加'
-                          : `未找到「${contextTagDraft}」，按 Enter 新建`
-                      }}
-                    </div>
-                  </web-ui-autocomplete>
-                </div>
-              </web-ui-popover>
             </div>
           </div>
 
@@ -1358,17 +1198,27 @@ watch(addDialogOpen, (open, _, onCleanup) => {
           <web-ui-dropdown-divider></web-ui-dropdown-divider>
           <web-ui-dropdown-item
             v-if="contextResource && !contextResource.broken"
-            @click="contextResource && openContextTagEditor()"
+            @click="contextResource && openEditTagsDialog(contextResource)"
           >
-            <web-ui-icon slot="prefix" :size="14" :icon="lucideTags"></web-ui-icon>
-            管理标签
+            <web-ui-icon
+              slot="prefix"
+              :size="14"
+              :icon="lucideTags"
+              class="text-[var(--wui-color-accent,#08f)]"
+            ></web-ui-icon>
+            编辑标签
           </web-ui-dropdown-item>
           <web-ui-dropdown-divider v-if="contextResource && !contextResource.broken"></web-ui-dropdown-divider>
           <web-ui-dropdown-item
-            class="text-[var(--wui-color-danger,#ef4444)]"
+            style="color: var(--wui-color-danger, #ef4444)"
             @click="contextResource && confirmDeleteResource(contextResource)"
           >
-            <web-ui-icon slot="prefix" :size="14" :icon="lucideTrash2"></web-ui-icon>
+            <web-ui-icon
+              slot="prefix"
+              :size="14"
+              :icon="lucideTrash2"
+              class="text-[var(--wui-color-danger,#ef4444)]"
+            ></web-ui-icon>
             删除
           </web-ui-dropdown-item>
         </web-ui-context-menu>
@@ -1376,11 +1226,12 @@ watch(addDialogOpen, (open, _, onCleanup) => {
 
       <!-- Detail Drawer -->
       <web-ui-drawer
+        ref="detailDrawerRef"
         :open="drawerOpen"
-        placement="right"
+        :placement="isMobile ? 'bottom' : 'right'"
         draggable
         controlled
-        class="[--wui-drawer-width:min(640px,max(60vw,320px))]"
+        class="max-[640px]:[--wui-drawer-height:80vh] max-[640px]:[--wui-drawer-inset:0px] max-[640px]:[--wui-drawer-radius:28px_28px_0_0] [--wui-drawer-width:min(640px,max(60vw,320px))]"
         @open-change="handleDetailDrawerOpenChange"
       >
         <div class="grid gap-5">
@@ -1436,7 +1287,11 @@ watch(addDialogOpen, (open, _, onCleanup) => {
 
           <!-- Quick actions -->
           <web-ui-button-group v-if="selectedResource" class="self-start">
-            <web-ui-button v-if="!selectedResource.broken" @click="openPreviewDrawer">
+            <web-ui-button
+              v-if="!selectedResource.broken"
+              class="[--wui-button-color:var(--wui-color-accent,#08f)]"
+              @click="openPreviewDrawer"
+            >
               <web-ui-icon slot="prefix" :size="14" :icon="lucideEye"></web-ui-icon>
               预览
             </web-ui-button>
@@ -1454,7 +1309,7 @@ watch(addDialogOpen, (open, _, onCleanup) => {
                 {{ app.label }}
               </web-ui-dropdown-item>
             </web-ui-dropdown>
-            <web-ui-button v-if="selectedResource.broken">找回资源</web-ui-button>
+            <web-ui-button v-if="selectedResource.broken">恢复资源</web-ui-button>
             <web-ui-button
               class="[--wui-button-color:var(--wui-color-danger,#ef4444)]"
               @click="selectedResource && confirmDeleteResource(selectedResource)"
@@ -1463,142 +1318,93 @@ watch(addDialogOpen, (open, _, onCleanup) => {
           </web-ui-button-group>
 
           <!-- Tags -->
-          <div v-if="selectedResource" class="flex flex-col items-start gap-1.5" data-drawer-tag-editor>
-            <div class="flex flex-wrap items-center gap-1.5">
-              <span
-                v-for="(tag, tagIndex) in selectedResource.tags"
-                :key="tag"
-                class="inline-flex h-5 items-center gap-0.5 rounded-full px-[7px] py-1 text-xs leading-none has-[web-ui-button]:pr-0.5"
-                :class="getDrawerTagClass(tag)"
-              >
-                {{ tag }}
-                <web-ui-button
-                  class="shrink-0 [--wui-button-color:currentColor]"
-                  icon
-                  variant="ghost"
-                  size="16"
-                  :aria-label="`移除标签 ${tag}`"
-                  @click="removeDrawerTag(tagIndex)"
-                >
-                  <web-ui-icon :icon="lucideX" :size="10"></web-ui-icon>
-                </web-ui-button>
-              </span>
-              <web-ui-tooltip
-                :content="drawerTagDraft.trim() ? '确认标签' : drawerTagEditing ? '收起标签编辑' : '添加标签'"
-                placement="top"
-              >
-                <web-ui-button
-                  v-if="drawerTagEditing"
-                  icon
-                  :variant="drawerTagDraft.trim() ? 'primary' : 'glass'"
-                  size="20"
-                  :aria-label="drawerTagDraft.trim() ? '确认标签' : '收起标签编辑'"
-                  @pointerdown.prevent
-                  @click="drawerTagDraft.trim() ? commitDrawerTag() : closeDrawerTagEditor()"
-                >
-                  <web-ui-icon :icon="drawerTagDraft.trim() ? lucideCheck : lucideX" :size="12"></web-ui-icon>
-                </web-ui-button>
-                <web-ui-button
-                  v-else
-                  icon
-                  variant="glass"
-                  size="20"
-                  aria-label="添加标签"
-                  @click="toggleDrawerTagEditor()"
-                >
-                  <web-ui-icon :icon="lucidePlus" :size="12"></web-ui-icon>
-                </web-ui-button>
-              </web-ui-tooltip>
-            </div>
-            <web-ui-autocomplete
-              v-if="drawerTagEditing"
-              :ref="setDrawerTagAutocompleteRef"
-              :value="drawerTagDraft"
-              class="block w-[200px] min-w-0 max-w-[200px] [--wui-autocomplete-max-width:240px] [--wui-input-width:200px]"
-              borderless
-              allow-custom-value
-              portal
-              placeholder="输入或选择标签"
-              aria-label="添加标签"
-              @input="handleDrawerTagInput"
-              @blur="handleDrawerTagBlur"
-              @change="handleDrawerTagChange"
+          <div v-if="selectedResource" class="flex flex-wrap items-center gap-1.5">
+            <span
+              v-for="tag in selectedResource.tags"
+              :key="tag"
+              class="inline-block px-2 py-0.5 rounded-full text-xs leading-tight whitespace-nowrap"
+              :class="getTagClass(tag)"
+              >{{ tag }}</span
             >
-              <web-ui-option v-for="tag in drawerTagOptions" :key="tag" :value="tag" :label="tag">{{
-                tag
-              }}</web-ui-option>
-              <div slot="empty">
-                {{
-                  selectedResource?.tags?.includes(drawerTagDraft.trim())
-                    ? '该标签已添加'
-                    : `未找到「${drawerTagDraft}」，按 Enter 新建`
-                }}
-              </div>
-            </web-ui-autocomplete>
+            <web-ui-tooltip content="编辑标签" placement="top">
+              <web-ui-button
+                class="[--wui-button-color:var(--wui-color-accent,#08f)]"
+                icon
+                variant="ghost"
+                size="20"
+                aria-label="编辑标签"
+                @click="selectedResource && openEditTagsDialog(selectedResource)"
+              >
+                <web-ui-icon :icon="lucideTags" :size="12"></web-ui-icon>
+              </web-ui-button>
+            </web-ui-tooltip>
           </div>
 
           <!-- Metadata -->
-          <div v-if="selectedResource" class="grid text-[13px]">
-            <div class="grid grid-cols-[80px_minmax(0,1fr)] items-baseline gap-x-6 py-2.5">
-              <span class="text-[#8a8a94] dark:text-[var(--wui-color-text-secondary)]">来源</span>
-              <span class="min-w-0 text-[#22212a] dark:text-[var(--wui-color-text)]">{{
-                selectedResource.sourceType === 'local' ? '本地文件' : '链接'
-              }}</span>
+          <div
+            v-if="selectedResource"
+            class="mt-2 overflow-hidden rounded-3xl bg-white shadow-[0_0_0_0.5px_rgb(0_0_0/0.08),0_1px_3px_rgb(0_0_0/0.06)] dark:bg-[var(--wui-color-surface-raised)] dark:shadow-[0_0_0_0.5px_rgb(255_255_255/0.12)]"
+          >
+            <div v-for="origin in selectedOrigins" :key="origin.id" :class="metadataRowClass" class="items-start">
+              <span class="flex min-w-0 flex-[1_1_auto] items-start gap-2.5">
+                <web-ui-icon
+                  class="mt-0.5 shrink-0 text-[#8a8a94] dark:text-[var(--wui-color-text-secondary)]"
+                  :icon="getOriginIcon(origin)"
+                  :size="15"
+                ></web-ui-icon>
+                <span class="grid min-w-0 flex-[1_1_auto] gap-0.5">
+                  <span class="text-[13px] font-medium leading-5 text-[#22212a] dark:text-[var(--wui-color-text)]">{{
+                    origin.label
+                  }}</span>
+                  <span
+                    v-if="getOriginValue(origin)"
+                    class="block min-w-0 truncate text-xs leading-5"
+                    :class="
+                      origin.kind === 'link'
+                        ? 'text-[var(--wui-color-accent,#08f)]'
+                        : 'text-[#78716c] dark:text-[#a8a29e]'
+                    "
+                    :title="getOriginValue(origin)"
+                    >{{ getOriginValue(origin) }}</span
+                  >
+                </span>
+              </span>
+              <span
+                class="shrink-0 rounded-full px-2 py-0.5 text-xs leading-none"
+                :class="
+                  origin.status === 'broken'
+                    ? 'bg-red-100 text-red-700 dark:bg-red-400/15 dark:text-red-200'
+                    : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-400/15 dark:text-emerald-200'
+                "
+                >{{ origin.status === 'broken' ? '已失效' : '正常' }}</span
+              >
             </div>
-            <div class="grid grid-cols-[80px_minmax(0,1fr)] items-baseline gap-x-6 py-2.5">
-              <span class="text-[#8a8a94] dark:text-[var(--wui-color-text-secondary)]">类型</span>
-              <span class="min-w-0 text-[#22212a] dark:text-[var(--wui-color-text)]">{{
-                resourceTypeLabels[selectedResource.resourceType]
-              }}</span>
+            <div :class="metadataRowClass">
+              <span :class="metadataLabelClass">类型</span>
+              <span :class="metadataValueClass">{{ resourceTypeLabels[selectedResource.resourceType] }}</span>
             </div>
-            <div v-if="selectedResource.size" class="grid grid-cols-[80px_minmax(0,1fr)] items-baseline gap-x-6 py-2.5">
-              <span class="text-[#8a8a94] dark:text-[var(--wui-color-text-secondary)]">文件大小</span>
-              <span class="min-w-0 tabular-nums text-[#22212a] dark:text-[var(--wui-color-text)]">{{
-                selectedResource.size
-              }}</span>
+            <div v-if="selectedResource.size" :class="metadataRowClass">
+              <span :class="metadataLabelClass">大小</span>
+              <span :class="[metadataValueClass, 'tabular-nums']">{{ selectedResource.size }}</span>
             </div>
-            <div class="grid grid-cols-[80px_minmax(0,1fr)] items-baseline gap-x-6 py-2.5">
-              <span class="text-[#8a8a94] dark:text-[var(--wui-color-text-secondary)]">状态</span>
+            <div :class="metadataRowClass">
+              <span :class="metadataLabelClass">状态</span>
               <span
                 :class="
                   selectedResource.broken
-                    ? 'min-w-0 text-[#ef4444] dark:text-[var(--wui-color-danger)]'
-                    : 'min-w-0 text-[#059669] dark:text-[var(--wui-color-success)]'
+                    ? 'text-right text-[13px] font-medium leading-5 text-[#ef4444] dark:text-[var(--wui-color-danger)]'
+                    : metadataValueClass
                 "
-                >{{ selectedResource.broken ? '已失效' : '有效' }}</span
+                >{{ selectedResource.broken ? '已失效' : '正常' }}</span
               >
             </div>
-            <div
-              v-if="selectedResource.createdAt"
-              class="grid grid-cols-[80px_minmax(0,1fr)] items-baseline gap-x-6 py-2.5"
-            >
-              <span class="text-[#8a8a94] dark:text-[var(--wui-color-text-secondary)]">创建时间</span>
-              <span class="min-w-0 tabular-nums text-[#22212a] dark:text-[var(--wui-color-text)]">{{
-                selectedResource.createdAt
-              }}</span>
+            <div v-if="selectedResource.createdAt" :class="metadataRowClass">
+              <span :class="metadataLabelClass">创建于</span>
+              <span :class="[metadataValueClass, 'tabular-nums']">{{ selectedResource.createdAt }}</span>
             </div>
-            <div
-              v-if="selectedResource.modifiedAt"
-              class="grid grid-cols-[80px_minmax(0,1fr)] items-baseline gap-x-6 py-2.5"
-            >
-              <span class="text-[#8a8a94] dark:text-[var(--wui-color-text-secondary)]">修改时间</span>
-              <span class="min-w-0 tabular-nums text-[#22212a] dark:text-[var(--wui-color-text)]">{{
-                selectedResource.modifiedAt
-              }}</span>
-            </div>
-            <div v-if="selectedResource.path" class="grid grid-cols-[80px_minmax(0,1fr)] items-baseline gap-x-6 py-2.5">
-              <span class="text-[#8a8a94] dark:text-[var(--wui-color-text-secondary)]">路径</span>
-              <span
-                class="min-w-0 truncate text-[#22212a] dark:text-[var(--wui-color-text)]"
-                :title="selectedResource.path"
-                >{{ selectedResource.path }}</span
-              >
-            </div>
-            <div v-if="selectedResource.url" class="grid grid-cols-[80px_minmax(0,1fr)] items-baseline gap-x-6 py-2.5">
-              <span class="text-[#8a8a94] dark:text-[var(--wui-color-text-secondary)]">URL</span>
-              <span class="min-w-0 truncate text-[var(--wui-color-accent,#08f)]" :title="selectedResource.url">{{
-                selectedResource.url
-              }}</span>
+            <div v-if="selectedResource.modifiedAt" :class="metadataRowClass">
+              <span :class="metadataLabelClass">修改于</span>
+              <span :class="[metadataValueClass, 'tabular-nums']">{{ selectedResource.modifiedAt }}</span>
             </div>
           </div>
         </div>
@@ -1606,11 +1412,12 @@ watch(addDialogOpen, (open, _, onCleanup) => {
 
       <!-- Standalone Preview Drawer (opened from context menu and detail drawer's "预览" button) -->
       <web-ui-drawer
+        ref="previewDrawerRef"
         :open="previewDrawerOpen"
-        placement="right"
+        :placement="isMobile ? 'bottom' : 'right'"
         draggable
         controlled
-        class="[--wui-drawer-width:max(60vw,320px)]"
+        class="max-[640px]:[--wui-drawer-height:80vh] max-[640px]:[--wui-drawer-inset:0px] max-[640px]:[--wui-drawer-radius:28px_28px_0_0] [--wui-drawer-width:max(60vw,320px)]"
         @open-change="handlePreviewDrawerOpenChange"
       >
         <h2
@@ -1636,13 +1443,13 @@ watch(addDialogOpen, (open, _, onCleanup) => {
 
     <!-- Delete confirmation dialog -->
     <web-ui-dialog :open="deleteConfirmOpen" controlled no-backdrop-close @open-change="handleDeleteCancel">
-      <div slot="title">确认删除</div>
+      <div slot="title">删除资源</div>
       <template v-if="deleteTargetResource">
         <p class="m-0 text-[14px] text-[#5b5b66] dark:text-[var(--wui-color-text-secondary)]">
-          确定要删除「<span class="font-medium text-[#22212a] dark:text-[var(--wui-color-text)]">{{
+          删除「<span class="font-medium text-[#22212a] dark:text-[var(--wui-color-text)]">{{
             deleteTargetResource.name
           }}</span
-          >」吗？此操作无法撤销。
+          >」后无法恢复。
         </p>
       </template>
       <div slot="footer" class="flex gap-3">
@@ -1651,247 +1458,275 @@ watch(addDialogOpen, (open, _, onCleanup) => {
       </div>
     </web-ui-dialog>
 
+    <!-- Removal confirmation dialog -->
+    <web-ui-dialog
+      :open="removalConfirmOpen"
+      controlled
+      no-backdrop-close
+      class="max-[640px]:[--wui-dialog-width:90vw] [--wui-dialog-width:320px]"
+      @open-change="handleRemovalCancel"
+    >
+      <div slot="title">{{ pendingRemoval?.title }}</div>
+      <p class="m-0 text-[14px] text-[#5b5b66] dark:text-[var(--wui-color-text-secondary)]">
+        {{ pendingRemoval?.message }}
+      </p>
+      <div slot="footer" class="flex gap-3">
+        <web-ui-button full variant="secondary" @click="handleRemovalCancel">取消</web-ui-button>
+        <web-ui-button full variant="danger" @click="handleRemovalConfirm">
+          {{ pendingRemoval?.confirmLabel }}
+        </web-ui-button>
+      </div>
+    </web-ui-dialog>
+
     <!-- Add dialog (prototype only) -->
     <web-ui-dialog
       :open="addDialogOpen"
       controlled
-      class="[--wui-dialog-max-width:min(80vw,880px)] [--wui-dialog-max-height:min(90vh,640px)]"
+      no-backdrop-close
+      horizontal
+      :style="{ '--wui-dialog-footer-justify': isMobile ? undefined : 'flex-end' }"
+      class="[--wui-dialog-width:min(90vw,880px)] [--wui-dialog-max-height:min(90vh,640px)]"
       @open-change="handleAddDialogOpenChange"
     >
-      <div
-        slot="body"
-        class="m-[8px_4px_4px] grid h-[min(calc(90vh-56px),584px)] w-[min(calc(80vw-56px),824px)] grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden"
+      <span slot="title">添加资源</span>
+
+      <p
+        v-if="addPasteCaptured"
+        class="mb-3 flex w-fit items-center gap-1.5 rounded-full bg-[color-mix(in_srgb,var(--wui-color-accent,#08f)_8%,transparent)] px-2.5 py-1.5 text-xs text-[var(--wui-color-accent,#08f)]"
+        role="status"
       >
-        <header class="pb-3 max-[640px]:pb-1.5">
-          <div class="flex items-center justify-start">
-            <h2
-              id="add-dialog-title"
-              class="m-0 shrink-0 text-[20px] font-[650] leading-[1.3] text-[#22212a] dark:text-[var(--wui-color-text)]"
-            >
-              添加资源
-            </h2>
-          </div>
+        <web-ui-icon :icon="lucideClipboardPaste" :size="16"></web-ui-icon>
+        已读取剪贴板内容
+      </p>
 
+      <main
+        class="grid min-h-0 grid-cols-2 gap-5 max-[640px]:gap-4 max-[900px]:grid-cols-1 max-[900px]:grid-rows-2"
+        style="height: min(calc(90vh - 108px), calc(var(--wui-dialog-max-height, 640px) - 108px))"
+      >
+        <section class="grid min-h-0 min-w-0 grid-rows-[auto_minmax(0,1fr)] gap-2.5 overflow-hidden">
           <p
-            v-if="addPasteCaptured"
-            class="mt-3 flex w-fit items-center gap-1.5 rounded-full bg-[color-mix(in_srgb,var(--wui-color-accent,#08f)_8%,transparent)] px-2.5 py-1.5 text-xs text-[var(--wui-color-accent,#08f)]"
-            role="status"
+            class="m-0 min-w-0 truncate text-[13px] leading-6 text-[#6a6a6a] dark:text-[var(--wui-color-text-secondary)]"
           >
-            <web-ui-icon :icon="lucideClipboardPaste" :size="16"></web-ui-icon>
-            已捕获剪贴板内容
+            选择本地文件，或将其拖入上传区；也可以直接粘贴内容。
           </p>
-        </header>
-
-        <main class="grid min-h-0 grid-cols-2 gap-5 max-[640px]:gap-4 max-[900px]:grid-cols-1 max-[900px]:grid-rows-2">
-          <section class="grid min-h-0 min-w-0 grid-rows-[auto_minmax(0,1fr)] gap-2.5 overflow-hidden">
-            <p
-              class="m-0 min-w-0 truncate text-[13px] leading-6 text-[#6a6a6a] dark:text-[var(--wui-color-text-secondary)]"
-            >
-              选择本地文件、拖拽到上传区，或直接粘贴剪贴板内容。
-            </p>
-            <label
-              class="grid h-full cursor-pointer place-content-center justify-items-center gap-3 rounded-[20px] bg-[#f0f0f4] px-6 py-7 transition-[background-color] duration-[160ms] hover:bg-[#e9e9ee] dark:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_4%,transparent)] dark:hover:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_7%,transparent)] max-[640px]:gap-2 max-[640px]:px-4 max-[640px]:py-2 max-[900px]:p-5"
-              :class="
-                addDragActive ? 'scale-[1.005] bg-[color-mix(in_srgb,var(--wui-color-accent,#08f)_9%,transparent)]' : ''
-              "
-              @dragenter.prevent="addDragActive = true"
-              @dragover.prevent="addDragActive = true"
-              @dragleave.prevent="addDragActive = false"
-              @drop.prevent="handleAddDrop"
-            >
-              <input type="file" multiple class="sr-only" aria-label="选择要添加的文件" />
-              <span
-                class="grid size-[52px] place-items-center rounded-[18px] bg-[color-mix(in_srgb,var(--wui-color-accent,#08f)_10%,transparent)] text-[var(--wui-color-accent,#08f)] transition-[background-color] duration-[160ms] dark:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_8%,transparent)] dark:text-[var(--wui-color-text-secondary)] max-[640px]:size-10 max-[640px]:rounded-xl"
-              >
-                <web-ui-icon :icon="lucideUpload" :size="24"></web-ui-icon>
-              </span>
-              <span
-                class="text-[15px] font-semibold leading-[1.4] text-[#22212a] dark:text-[var(--wui-color-text)] max-[640px]:text-[13px]"
-                >拖拽文件到此处，或点击选择</span
-              >
-              <span
-                class="text-xs leading-[1.4] text-[#6a6a6a] dark:text-[var(--wui-color-text-secondary)] max-[640px]:text-[11px]"
-                >支持图片、文档、音视频等格式，可批量添加</span
-              >
-            </label>
-          </section>
-
-          <aside
-            class="relative grid min-h-0 min-w-0 grid-rows-[auto_minmax(0,1fr)] gap-2.5 overflow-hidden border-0 bg-transparent p-0"
-            aria-labelledby="add-queue-title"
+          <label
+            class="grid h-full cursor-pointer place-content-center justify-items-center gap-3 rounded-3xl bg-[#f0f0f4] px-6 py-7 transition-[background-color] duration-[160ms] hover:bg-[#e9e9ee] dark:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_4%,transparent)] dark:hover:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_7%,transparent)] max-[640px]:gap-2 max-[640px]:px-4 max-[640px]:py-2 max-[900px]:p-5"
+            :class="
+              addDragActive ? 'scale-[1.005] bg-[color-mix(in_srgb,var(--wui-color-accent,#08f)_9%,transparent)]' : ''
+            "
+            @dragenter.prevent="addDragActive = true"
+            @dragover.prevent="addDragActive = true"
+            @dragleave.prevent="addDragActive = false"
+            @drop.prevent="handleAddDrop"
           >
-            <div class="flex min-h-6 items-center justify-between">
-              <h3
-                id="add-queue-title"
-                class="m-0 flex items-center gap-1.5 text-[13px] font-semibold text-[#22212a] dark:text-[var(--wui-color-text)]"
-              >
-                待添加
-              </h3>
-              <span
-                class="rounded-full bg-black/[0.04] px-2 py-1 text-xs leading-none text-[#6a6a6a] dark:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_6%,transparent)] dark:text-[var(--wui-color-text-secondary)]"
-                >{{ addQueue.length }} 项</span
-              >
-            </div>
-            <ol
-              class="m-0 flex h-full min-h-0 list-none flex-col gap-2 overflow-y-auto p-0 [scrollbar-gutter:auto] [scrollbar-width:auto]"
+            <input type="file" multiple class="sr-only" aria-label="选择要添加的文件" />
+            <span
+              class="grid size-[52px] place-items-center rounded-[18px] bg-[color-mix(in_srgb,var(--wui-color-accent,#08f)_10%,transparent)] text-[var(--wui-color-accent,#08f)] transition-[background-color] duration-[160ms] dark:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_8%,transparent)] dark:text-[var(--wui-color-text-secondary)] max-[640px]:size-10 max-[640px]:rounded-xl"
             >
-              <li
-                v-for="(item, itemIndex) in addQueue"
-                :key="item.id"
-                class="flex items-start gap-2.5 rounded-2xl px-3 py-2.5 transition-colors duration-100 hover:bg-black/[0.03] dark:hover:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_5%,transparent)]"
-              >
-                <span class="grid size-8 shrink-0 place-items-center rounded-[10px]" :class="queueToneClass[item.tone]">
-                  <web-ui-icon :icon="item.icon" :size="16"></web-ui-icon>
-                </span>
-                <span class="grid min-w-0 flex-[1_1_auto] gap-[5px]">
-                  <div class="flex h-8 items-center gap-2">
-                    <span class="flex h-8 min-w-0 flex-[1_1_auto] items-center gap-1.5">
-                      <web-ui-input
-                        v-if="queueRenamingId === item.id"
-                        :ref="setQueueRenameRef"
-                        :value="queueNameDraft"
-                        full
-                        borderless
-                        class="min-w-0 flex-[1_1_auto]"
-                        :aria-label="`修改 ${item.name} 的名称`"
-                        @input="handleQueueNameInput"
-                        @keydown="handleQueueRenameKeydown($event, item)"
-                        @blur="commitQueueRename(item)"
-                      />
-                      <span
-                        v-else
-                        class="min-w-0 flex-[0_1_auto] overflow-hidden text-[14px] font-medium leading-[1.35] text-ellipsis whitespace-nowrap text-[#22212a] dark:text-[var(--wui-color-text)]"
-                        >{{ item.name }}</span
-                      >
-                      <web-ui-tooltip
-                        v-if="queueRenamingId !== item.id"
-                        content="编辑名称"
-                        :placement="itemIndex < 5 ? 'bottom' : 'top'"
-                      >
-                        <web-ui-button
-                          icon
-                          variant="ghost"
-                          size="28"
-                          aria-label="编辑名称"
-                          @click="startQueueRename(item)"
-                        >
-                          <web-ui-icon :icon="lucidePenLine" :size="14"></web-ui-icon>
-                        </web-ui-button>
-                      </web-ui-tooltip>
-                    </span>
-                    <span class="ml-auto flex shrink-0 items-center gap-1">
-                      <web-ui-tooltip content="移除" :placement="itemIndex < 5 ? 'bottom' : 'top'">
-                        <web-ui-button
-                          class="[--wui-button-color:var(--wui-color-danger,#dc2626)]"
-                          icon
-                          variant="ghost"
-                          size="28"
-                          aria-label="移除待添加项"
-                          @click="removeAddQueue(item)"
-                        >
-                          <web-ui-icon :icon="lucideTrash2" :size="14"></web-ui-icon>
-                        </web-ui-button>
-                      </web-ui-tooltip>
-                    </span>
-                  </div>
-                  <div class="flex min-w-0 flex-wrap items-center gap-1.5">
-                    <span
-                      class="shrink-0 text-xs leading-5 whitespace-nowrap text-[#6a6a6a] dark:text-[var(--wui-color-text-secondary)]"
-                      >{{ item.ext ? `${item.meta} · ${item.ext.toUpperCase()}` : item.meta }}</span
-                    >
-                    <div
-                      class="flex min-w-0 flex-[0_0_100%] flex-wrap items-center gap-[5px]"
-                      :data-queue-tag-editor="item.id"
-                    >
-                      <span
-                        v-for="(tag, tagIndex) in item.tags"
-                        :key="tag"
-                        class="inline-flex h-5 items-center gap-0.5 rounded-full px-[7px] py-1 text-xs leading-none has-[web-ui-button]:pr-0.5"
-                        :class="getQueueTagClass(item, tag)"
-                      >
-                        {{ tag }}
-                        <web-ui-button
-                          class="shrink-0 [--wui-button-color:currentColor]"
-                          icon
-                          variant="ghost"
-                          size="16"
-                          :aria-label="`移除标签 ${tag}`"
-                          @click="removeQueueTag(item, tagIndex)"
-                        >
-                          <web-ui-icon :icon="lucideX" :size="10"></web-ui-icon>
-                        </web-ui-button>
-                      </span>
-                      <web-ui-tooltip
-                        :content="queueTagDraft.trim() ? '确认标签' : '收起标签编辑'"
-                        :placement="itemIndex < 5 ? 'bottom' : 'top'"
-                      >
-                        <web-ui-button
-                          v-if="queueTagEditingId === item.id"
-                          class="shrink-0"
-                          icon
-                          :variant="queueTagDraft.trim() ? 'primary' : 'glass'"
-                          size="20"
-                          :aria-label="queueTagDraft.trim() ? '确认标签' : '收起标签编辑'"
-                          @pointerdown.prevent
-                          @click="queueTagDraft.trim() ? commitQueueTag(item) : closeQueueTagEditor()"
-                        >
-                          <web-ui-icon :icon="queueTagDraft.trim() ? lucideCheck : lucideX" :size="12"></web-ui-icon>
-                        </web-ui-button>
-                        <web-ui-button
-                          v-else
-                          class="shrink-0"
-                          icon
-                          variant="glass"
-                          size="20"
-                          aria-label="添加标签"
-                          @click="toggleQueueTagEditor(item)"
-                        >
-                          <web-ui-icon :icon="lucidePlus" :size="12"></web-ui-icon>
-                        </web-ui-button>
-                      </web-ui-tooltip>
-                    </div>
-                  </div>
-                  <web-ui-autocomplete
-                    v-if="queueTagEditingId === item.id"
-                    :ref="setQueueTagInputRef"
-                    :value="queueTagDraft"
-                    :data-queue-tag-editor="item.id"
-                    class="mt-0.5 block w-[200px] min-w-0 max-w-[200px] [--wui-autocomplete-max-width:240px] [--wui-input-width:200px]"
-                    borderless
-                    allow-custom-value
-                    portal
-                    placeholder="输入或选择标签"
-                    aria-label="添加标签"
-                    @input="handleQueueTagInput"
-                    @blur="handleQueueTagBlur($event, item)"
-                    @change="handleQueueTagChange($event, item)"
-                  >
-                    <web-ui-option v-for="tag in getQueueTagOptions(item)" :key="tag" :value="tag" :label="tag">{{
-                      tag
-                    }}</web-ui-option>
-                    <div slot="empty">
-                      {{
-                        item.tags.includes(queueTagDraft.trim())
-                          ? '该标签已添加'
-                          : `未找到「${queueTagDraft}」，按 Enter 新建`
-                      }}
-                    </div>
-                  </web-ui-autocomplete>
-                </span>
-              </li>
-            </ol>
-          </aside>
-        </main>
+              <web-ui-icon :icon="lucideUpload" :size="24"></web-ui-icon>
+            </span>
+            <span
+              class="text-[15px] font-semibold leading-[1.4] text-[#22212a] dark:text-[var(--wui-color-text)] max-[640px]:text-[13px]"
+              >拖入文件，或点按选择</span
+            >
+            <span
+              class="text-xs leading-[1.4] text-[#6a6a6a] dark:text-[var(--wui-color-text-secondary)] max-[640px]:text-[11px]"
+              >支持图片、文档、音频和视频，可一次添加多项</span
+            >
+          </label>
+        </section>
 
-        <footer class="flex items-center justify-end pt-3.5 max-[640px]:pt-2.5">
-          <div class="flex gap-3">
-            <web-ui-button variant="secondary" @click="addDialogOpen = false">取消</web-ui-button>
-            <web-ui-button variant="primary" @click="addDialogOpen = false">
-              <web-ui-icon slot="prefix" :icon="lucidePlus" :size="16"></web-ui-icon>
-              {{ addQueue.length > 1 ? '批量添加' : '添加' }}
-            </web-ui-button>
+        <aside
+          class="relative grid min-h-0 min-w-0 grid-rows-[auto_minmax(0,1fr)] gap-2.5 overflow-hidden border-0 bg-transparent p-0"
+          aria-labelledby="add-queue-title"
+        >
+          <div class="flex min-h-6 items-center justify-between">
+            <h3
+              id="add-queue-title"
+              class="m-0 flex items-center gap-1.5 text-[13px] font-semibold text-[#22212a] dark:text-[var(--wui-color-text)]"
+            >
+              将添加
+            </h3>
+            <span
+              class="rounded-full bg-black/[0.04] px-2 py-1 text-xs leading-none text-[#6a6a6a] dark:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_6%,transparent)] dark:text-[var(--wui-color-text-secondary)]"
+              >{{ addQueue.length }} 项</span
+            >
           </div>
-        </footer>
+          <ol
+            class="m-0 h-full min-h-0 list-none overflow-y-auto rounded-3xl bg-white p-0 [scrollbar-gutter:auto] [scrollbar-width:auto] dark:bg-[var(--wui-color-surface-raised)]"
+          >
+            <li
+              v-for="(item, itemIndex) in addQueue"
+              :key="item.id"
+              :class="metadataRowClass"
+              class="items-start transition-colors duration-100 hover:bg-black/[0.03] dark:hover:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_5%,transparent)]"
+            >
+              <span class="grid size-8 shrink-0 place-items-center rounded-[10px]" :class="queueToneClass[item.tone]">
+                <web-ui-icon :icon="item.icon" :size="16"></web-ui-icon>
+              </span>
+              <span class="grid min-w-0 flex-[1_1_auto] gap-[5px]">
+                <div class="flex h-8 items-center gap-2">
+                  <span class="flex h-8 min-w-0 flex-[1_1_auto] items-center gap-1.5">
+                    <web-ui-input
+                      v-if="queueRenamingId === item.id"
+                      :ref="setQueueRenameRef"
+                      :value="queueNameDraft"
+                      full
+                      borderless
+                      class="min-w-0 flex-[1_1_auto]"
+                      :aria-label="`修改 ${item.name} 的名称`"
+                      @input="handleQueueNameInput"
+                      @keydown="handleQueueRenameKeydown($event, item)"
+                      @blur="commitQueueRename(item)"
+                    />
+                    <span
+                      v-else
+                      class="min-w-0 flex-[0_1_auto] overflow-hidden text-[14px] font-medium leading-[1.35] text-ellipsis whitespace-nowrap text-[#22212a] dark:text-[var(--wui-color-text)]"
+                      >{{ item.name }}</span
+                    >
+                    <web-ui-tooltip
+                      v-if="queueRenamingId !== item.id"
+                      content="编辑名称"
+                      :placement="itemIndex < 5 ? 'bottom' : 'top'"
+                    >
+                      <web-ui-button
+                        icon
+                        variant="ghost"
+                        size="28"
+                        aria-label="编辑名称"
+                        @click="startQueueRename(item)"
+                      >
+                        <web-ui-icon :icon="lucidePenLine" :size="14"></web-ui-icon>
+                      </web-ui-button>
+                    </web-ui-tooltip>
+                  </span>
+                  <span class="ml-auto flex shrink-0 items-center gap-1">
+                    <web-ui-tooltip content="移除" :placement="itemIndex < 5 ? 'bottom' : 'top'">
+                      <web-ui-button
+                        class="[--wui-button-color:var(--wui-color-danger,#dc2626)]"
+                        icon
+                        variant="ghost"
+                        size="28"
+                        aria-label="从添加列表中移除"
+                        @click="removeAddQueue(item)"
+                      >
+                        <web-ui-icon :icon="lucideTrash2" :size="14"></web-ui-icon>
+                      </web-ui-button>
+                    </web-ui-tooltip>
+                  </span>
+                </div>
+                <div class="flex min-w-0 flex-wrap items-center gap-1.5">
+                  <span
+                    class="shrink-0 text-xs leading-5 whitespace-nowrap text-[#6a6a6a] dark:text-[var(--wui-color-text-secondary)]"
+                    >{{ item.ext ? `${item.meta} · ${item.ext.toUpperCase()}` : item.meta }}</span
+                  >
+                  <div class="flex min-w-0 flex-[0_0_100%] flex-wrap items-center gap-[5px]">
+                    <span
+                      v-for="tag in item.tags"
+                      :key="tag"
+                      class="inline-block px-2 py-0.5 rounded-full text-xs leading-tight whitespace-nowrap"
+                      :class="getTagClass(tag)"
+                      >{{ tag }}</span
+                    >
+                    <web-ui-tooltip content="编辑标签" :placement="itemIndex < 5 ? 'bottom' : 'top'">
+                      <web-ui-button
+                        class="shrink-0 [--wui-button-color:var(--wui-color-accent,#08f)]"
+                        icon
+                        variant="ghost"
+                        size="20"
+                        aria-label="编辑标签"
+                        @click="openEditTagsDialog(item)"
+                      >
+                        <web-ui-icon :icon="lucideTags" :size="12"></web-ui-icon>
+                      </web-ui-button>
+                    </web-ui-tooltip>
+                  </div>
+                </div>
+              </span>
+            </li>
+          </ol>
+        </aside>
+      </main>
+
+      <web-ui-button slot="footer" :full="isMobile" variant="secondary" @click="addDialogOpen = false"
+        >取消</web-ui-button
+      >
+      <web-ui-button slot="footer" :full="isMobile" variant="primary" @click="addDialogOpen = false">
+        <web-ui-icon slot="prefix" :icon="lucidePlus" :size="16"></web-ui-icon>
+        {{ addQueue.length > 1 ? '批量添加' : '添加' }}
+      </web-ui-button>
+    </web-ui-dialog>
+
+    <!-- Edit tags dialog -->
+    <web-ui-dialog
+      :open="editTagsDialogOpen"
+      controlled
+      no-backdrop-close
+      class="max-[640px]:[--wui-dialog-desc-gap:22px] max-[640px]:[--wui-dialog-footer-gap:12px] max-[640px]:[--wui-dialog-padding:22px_20px_20px] max-[640px]:[--wui-dialog-title-gap:18px] max-[640px]:[--wui-dialog-width:90vw] [--wui-dialog-width:320px]"
+      @open-change="handleEditTagsDialogOpenChange"
+    >
+      <span slot="title">编辑标签</span>
+      <div class="grid gap-4">
+        <div class="grid gap-1.5">
+          <span class="text-xs font-medium text-[#6a6a6a] dark:text-[var(--wui-color-text-secondary)]">添加标签</span>
+          <web-ui-autocomplete
+            :ref="setEditTagsAutocompleteRef"
+            :value="editTagsDraft"
+            class="block w-full min-w-0 [--wui-autocomplete-max-width:100%] [--wui-input-width:100%]"
+            allow-custom-value
+            portal
+            placeholder="输入或选择标签"
+            aria-label="添加标签"
+            @input="handleEditTagsInput"
+            @change="handleEditTagsChange"
+          >
+            <web-ui-option v-for="tag in editTagsOptions" :key="tag" :value="tag" :label="tag">{{ tag }}</web-ui-option>
+            <div slot="empty">
+              {{
+                editTagsDraftTags.includes(editTagsDraft.trim())
+                  ? '标签已存在'
+                  : `未找到「${editTagsDraft}」，按 Enter 键新建`
+              }}
+            </div>
+          </web-ui-autocomplete>
+        </div>
+        <div class="grid gap-2">
+          <span class="text-xs font-medium text-[#6a6a6a] dark:text-[var(--wui-color-text-secondary)]">当前标签</span>
+          <div
+            v-if="editTagsDraftTags.length"
+            class="flex min-h-[66px] flex-wrap items-center gap-1.5 rounded-2xl bg-black/[0.03] p-2.5 dark:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_4%,transparent)]"
+          >
+            <span
+              v-for="(tag, tagIndex) in editTagsDraftTags"
+              :key="tag"
+              class="inline-flex h-5 items-center gap-0.5 rounded-full px-[7px] py-1 text-xs leading-none has-[web-ui-button]:pr-0.5"
+              :class="getTagClass(tag)"
+            >
+              {{ tag }}
+              <web-ui-button
+                class="shrink-0 [--wui-button-color:currentColor]"
+                icon
+                variant="ghost"
+                size="16"
+                :aria-label="`移除标签 ${tag}`"
+                @click="removeEditTag(tagIndex)"
+              >
+                <web-ui-icon :icon="lucideX" :size="10"></web-ui-icon>
+              </web-ui-button>
+            </span>
+          </div>
+          <div
+            v-else
+            class="flex items-center gap-2 rounded-2xl border border-dashed border-black/10 px-3 py-3 text-xs text-[#9a9aa4] dark:border-white/10 dark:text-[var(--wui-color-text-tertiary)]"
+          >
+            <web-ui-icon :icon="lucideTags" :size="14"></web-ui-icon>
+            暂无标签
+          </div>
+        </div>
+      </div>
+      <div slot="footer" class="grid gap-2">
+        <web-ui-button full variant="primary" @click="confirmEditTags">确认</web-ui-button>
+        <web-ui-button full variant="secondary" @click="closeEditTagsDialog">取消</web-ui-button>
       </div>
     </web-ui-dialog>
     <web-ui-back-top></web-ui-back-top>

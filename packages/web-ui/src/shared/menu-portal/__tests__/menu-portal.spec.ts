@@ -15,7 +15,7 @@ describe('菜单 Portal 容器', () => {
     expect(panel.contains(content)).toBe(true)
   })
 
-  it('省略 target 时挂到 root theme 的 overlay root', () => {
+  it('省略 target 时挂到 root theme 的 theme-owned overlay root', () => {
     const theme = document.createElement('web-ui-theme')
     const fakeRoot = document.createElement('div')
     ;(theme as unknown as { getOverlayRoot: () => HTMLElement }).getOverlayRoot = () => fakeRoot

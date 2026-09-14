@@ -1,7 +1,7 @@
 import { html, nothing, render } from 'lit'
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 
-import { getPortalPanel, waitForFrame } from '@/shared/test-utils'
+import { getPortalPanel, pollUntil, waitForFrame } from '@/shared/test-utils'
 
 import '..'
 import type { WebUiPopover } from '..'
@@ -38,9 +38,10 @@ describe('WebUiPopover portal 条件渲染边界（Lit，浏览器）', () => {
     // 关闭恢复后 lit marker 完好，宿主内容复位，可继续翻转
     popover.open = false
     await popover.updateComplete
-    await new Promise(resolve => setTimeout(resolve, 400))
-    expect(getPortalPanel()).toBeNull()
-    expect(document.querySelectorAll('.probe-flag').length).toBe(1)
+    await pollUntil(
+      () => !getPortalPanel() && document.querySelectorAll('.probe-flag').length === 1,
+      'Expected lit conditional content to restore at its host marker'
+    )
   })
 
   it('打开期 lit 条件翻 false：内容从面板移除且关闭后不复活', async () => {
@@ -60,14 +61,12 @@ describe('WebUiPopover portal 条件渲染边界（Lit，浏览器）', () => {
     show = false
     render(html`<button slot="trigger">t</button>${show ? html`<p class="probe-flag">flag</p>` : nothing}`, popover)
     await popover.updateComplete
-    await new Promise(resolve => setTimeout(resolve, 80))
-    expect(getPortalPanel()?.querySelector('.probe-flag')).toBeNull()
+    await pollUntil(() => !getPortalPanel()?.querySelector('.probe-flag'), 'Expected removed flag to leave the panel')
 
     // 关闭恢复不得把已删除内容复活回宿主
     popover.open = false
     await popover.updateComplete
-    await new Promise(resolve => setTimeout(resolve, 400))
-    expect(document.querySelectorAll('.probe-flag').length).toBe(0)
+    await pollUntil(() => document.querySelectorAll('.probe-flag').length === 0, 'Expected removed flag not to revive')
   })
 
   it('打开期 lit 三元换元素：旧元素不滞留面板，新元素实时迁入', async () => {
@@ -85,13 +84,17 @@ describe('WebUiPopover portal 条件渲染边界（Lit，浏览器）', () => {
     show = false
     render(template(), popover)
     await popover.updateComplete
-    await new Promise(resolve => setTimeout(resolve, 80))
-    expect(getPortalPanel()?.querySelector('.probe-b')).not.toBeNull()
-    expect(getPortalPanel()?.querySelector('.probe-a')).toBeNull()
+    await pollUntil(
+      () => Boolean(getPortalPanel()?.querySelector('.probe-b')) && !getPortalPanel()?.querySelector('.probe-a'),
+      'Expected lit replacement to move into the panel'
+    )
 
     popover.open = false
     await popover.updateComplete
-    await new Promise(resolve => setTimeout(resolve, 400))
+    await pollUntil(
+      () => document.querySelectorAll('.probe-a').length === 0 && document.querySelectorAll('.probe-b').length === 1,
+      'Expected lit replacement to restore to the host'
+    )
     expect(document.querySelectorAll('.probe-a').length).toBe(0)
     expect(document.querySelectorAll('.probe-b').length).toBe(1)
   })
@@ -111,14 +114,18 @@ describe('WebUiPopover portal 条件渲染边界（Lit，浏览器）', () => {
     show = true
     render(html`<button slot="trigger">t</button>${show ? html`<p class="probe-flag">flag</p>` : nothing}`, popover)
     await popover.updateComplete
-    await new Promise(resolve => setTimeout(resolve, 80))
-    expect(getPortalPanel()?.querySelector('.probe-flag')).not.toBeNull()
-    expect(document.querySelectorAll('.probe-flag').length).toBe(0)
+    await pollUntil(
+      () =>
+        Boolean(getPortalPanel()?.querySelector('.probe-flag')) &&
+        document.querySelectorAll('.probe-flag').length === 0,
+      'Expected added lit content to migrate into the panel'
+    )
 
     popover.open = false
     await popover.updateComplete
-    await new Promise(resolve => setTimeout(resolve, 400))
-    expect(getPortalPanel()).toBeNull()
-    expect(document.querySelectorAll('.probe-flag').length).toBe(1)
+    await pollUntil(
+      () => !getPortalPanel() && document.querySelectorAll('.probe-flag').length === 1,
+      'Expected lit conditional content to restore at its host marker'
+    )
   })
 })

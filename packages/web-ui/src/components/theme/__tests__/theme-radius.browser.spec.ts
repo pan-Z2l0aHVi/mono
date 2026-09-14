@@ -51,9 +51,19 @@ async function waitForInner(el: HTMLElement, selector: string, absentSelector?: 
 }
 
 function waitForLayoutShell(el: WebUiLayout, mode: 'desktop' | 'mobile'): Promise<HTMLElement> {
-  return mode === 'desktop'
-    ? waitForInner(el, 'aside .aside-panel', '.mobile-sidebar')
-    : waitForInner(el, '.mobile-sidebar', 'aside .aside-panel')
+  if (mode === 'desktop') return waitForInner(el, 'aside .aside-panel', '.wui-drawer-body')
+  return waitForMobileDrawerShell(el)
+}
+
+async function waitForMobileDrawerShell(el: WebUiLayout): Promise<HTMLElement> {
+  const deadline = Date.now() + 500
+  do {
+    const drawer = el.shadowRoot?.querySelector('web-ui-drawer') as HTMLElement | null
+    const found = drawer?.shadowRoot?.querySelector<HTMLElement>('.wui-drawer-body')
+    if (found && !el.shadowRoot?.querySelector('aside .aside-panel')) return found
+    await nextFrame()
+  } while (Date.now() < deadline)
+  throw new Error('timeout waiting for mobile drawer shell')
 }
 
 function radius(el: HTMLElement): string {
@@ -93,7 +103,7 @@ describe('语义 radius token（浏览器）', () => {
     expect(radius(inner(button, 'button'))).toBe('9px')
   })
 
-  it('pill glass corner 保持各控件尺寸派生的有限值，不随语义 radius 覆盖', async () => {
+  it('pill glass corner 保持控件自身派生的有限值，不随语义 radius 覆盖', async () => {
     const theme = createTheme()
     const button = document.createElement('web-ui-button')
     button.variant = 'glass'
@@ -117,7 +127,7 @@ describe('语义 radius token（浏览器）', () => {
     expect(cssVar(inner(select, '.select-trigger'), '--wui-glass-corner-radius')).toBe('calc(36px / 2)')
     expect(cssVar(inner(autocomplete, '.input-wrapper'), '--wui-glass-corner-radius')).toBe('calc(36px / 2)')
     expect(cssVar(inner(buttonGroup, '.wui-button-group-inner'), '--wui-glass-corner-radius')).toBe('calc(36px / 2)')
-    expect(cssVar(inner(slider, '.wui-slider-thumb'), '--wui-glass-corner-radius')).toBe('calc(min(30px, 20px) / 2)')
+    expect(cssVar(inner(slider, '.wui-slider-thumb'), '--wui-glass-corner-radius')).toBe('8px')
     expect(cssVar(inner(avatar, '.avatar-inner'), '--wui-glass-corner-radius')).toBe('calc(48px / 2)')
     expect(cssVar(inner(squareAvatar, '.avatar-inner'), '--wui-glass-corner-radius')).toBe('12px')
 
@@ -136,10 +146,14 @@ describe('语义 radius token（浏览器）', () => {
     expect(cssVar(inner(select, '.select-trigger'), '--wui-glass-corner-radius')).toBe('calc(36px / 2)')
     expect(cssVar(inner(autocomplete, '.input-wrapper'), '--wui-glass-corner-radius')).toBe('calc(36px / 2)')
     expect(cssVar(inner(buttonGroup, '.wui-button-group-inner'), '--wui-glass-corner-radius')).toBe('calc(36px / 2)')
-    expect(cssVar(inner(slider, '.wui-slider-thumb'), '--wui-glass-corner-radius')).toBe('calc(min(30px, 20px) / 2)')
+    expect(cssVar(inner(slider, '.wui-slider-thumb'), '--wui-glass-corner-radius')).toBe('8px')
     expect(cssVar(inner(avatar, '.avatar-inner'), '--wui-glass-corner-radius')).toBe('calc(48px / 2)')
     expect(cssVar(inner(squareAvatar, '.avatar-inner'), '--wui-glass-corner-radius')).toBe('12px')
     expect(cssVar(switchThumb, '--wui-glass-corner-radius')).toBe('calc(16px / 2)')
+
+    // slider 的 glass corner 由组件自身 token 驱动，与语义 radius 解耦
+    theme.style.setProperty('--wui-slider-thumb-radius', '6px')
+    expect(cssVar(inner(slider, '.wui-slider-thumb'), '--wui-glass-corner-radius')).toBe('6px')
   })
 
   it('textarea 使用 menu radius，且 glass corner 与之联动', async () => {

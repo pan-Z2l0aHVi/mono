@@ -30,17 +30,17 @@ portal.moveContent(
 ```
 
 | 5 | 与消费者框架 vdom 的冲突补偿：`onContentChange` MutationObserver → `scheduleRefresh`；已删除节点 `removeContent` 防关闭时"复活" | `select/index.ts:437,589`、`select/__tests__/conditional-combo.spec.ts` | 领域（React/Vue 内建 portal 由 vdom 拥有节点，无此问题） |
-| 6 | menu 族专用形态：无 shadow 共享面板（复用容器预注入样式）；dialog 容器例外自注入；submenu 独立 overlay；关闭态 slot 属性隐藏（`context-menu-hidden` / `web-ui-menu-level-*-hidden`） | `src/shared/menu-portal/menu-portal.ts`、ADR-0041 | **领域** |
+| 6 | menu 族专用形态：无 shadow 共享面板（复用容器预注入样式）；dialog 容器例外自注入；submenu 独立 overlay；关闭态 slot 属性隐藏（`context-menu-hidden` / `web-ui-menu-level-*-hidden`） | `src/shared/menu-portal/menu-portal.ts`、ADR-0033 | **领域** |
 | 7 | presence 进出场协调：`data-wuiPresence` 状态机（entering/open/closing）、可中断、transitionend + duration+80ms 兜底、jsdom 短路；native dialog top layer 退出动画生命周期 | `src/shared/overlay/presence.ts`、`native-dialog-presence.ts` | 领域 |
-| 8 | 与定位引擎分层：portal 只管容器与内容归属，定位由 `defineOverlay`（`@floating-ui/dom`）负责，`defineAnchoredPanel` 组合三者 | `src/shared/overlay/anchored-panel.ts`、ADR-0046 | 通用（该分层正是业界共识） |
+| 8 | 与定位引擎分层：portal 只管容器与内容归属，定位由 `defineOverlay`（`@floating-ui/dom`）负责，`defineAnchoredPanel` 组合三者 | `src/shared/overlay/anchored-panel.ts`、ADR-0038 | 通用（该分层正是业界共识） |
 
-ADR-0041 还约束了组件对消费者节点的写入边界（仅位置移动 + menu 关闭态 slot 属性两类）——需求 #4 的契约化表述。
+ADR-0033 还约束了组件对消费者节点的写入边界（仅位置移动 + menu 关闭态 slot 属性两类）——需求 #4 的契约化表述。
 
 ## 2. Floating UI：明确不提供 portal（官方立场）
 
 - Getting Started（官网文档仓库 MDX 源文）列出两大能力：**Positioning** 与 **Interactions**；且 Interactions 明确是 "Floating UI's **React package** offers a toolkit of primitive Hooks"——vanilla 包（`@floating-ui/dom`）只有定位。https://github.com/floating-ui/floating-ui/blob/master/website/pages/docs/getting-started.mdx
 - `FloatingPortal` 文档原文："**Portals the floating element into a given container element** — by default, outside of the app root and into the body. … `<PackageLimited>@floating-ui/react only</PackageLimited>`"。https://floating-ui.com/docs/floatingPortal （源文 https://github.com/floating-ui/floating-ui/blob/master/website/pages/docs/FloatingPortal.mdx ）
-- 即官方立场：**portal 属于渲染层（框架包装）的职责，定位库不做**。本仓库 ADR-0046 的分层与此一致。
+- 即官方立场：**portal 属于渲染层（框架包装）的职责，定位库不做**。本仓库 ADR-0038 的分层与此一致。
 
 ## 3. Lit 官方生态：无 portal/overlay 原语
 
@@ -81,8 +81,8 @@ npm registry 搜索（`lit portal`、`web components portal`、`dom portal`、`l
 
 1. **需求面错位**：通用库只覆盖 §1 中的"通用"行（约 1/8），且我们已有等价物；"领域"行全部要自写适配层，引入库反而多一层间接。
 2. **生态空位**：Lit 官方无原语（§3），npm 无活跃独立库（§4），没有"现成成熟"可选。
-3. **架构分层已正确**：ADR-0046 已把定位交给 `@floating-ui/dom`（Shoelace/Web Awesome 同款策略），portal 独立成层与 Floating UI 官方立场（§2）一致。
-4. **演进方向是更细的所有权边界**：release/260909 的 select trigger-slot 过滤表明需求在向"选择性迁移 + slot 归属"深化（ADR-0041 的写入边界约束），这类细粒度控制没有任何通用 portal 库预置。
+3. **架构分层已正确**：ADR-0038 已把定位交给 `@floating-ui/dom`（Shoelace/Web Awesome 同款策略），portal 独立成层与 Floating UI 官方立场（§2）一致。
+4. **演进方向是更细的所有权边界**：release/260909 的 select trigger-slot 过滤表明需求在向"选择性迁移 + slot 归属"深化（ADR-0033 的写入边界约束），这类细粒度控制没有任何通用 portal 库预置。
 5. **可借鉴而非引入**：Radix/React Aria 的"薄 portal + a11y/scroll-lock 关注点分离"、Vaadin 的 renderer 式内容归属、Shoelace 的 `composed-offset-position` Shadow DOM 修正，均为后续 portal 层演进时的参考模式，不需要以依赖形式获得。
 
 ## 8. 来源与方法说明

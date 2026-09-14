@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 
 import '..'
+import '@/components/popover'
+import type { WebUiPopover } from '@/components/popover'
 import { getMenuChildren } from '@/shared/menu-portal/menu-tree'
 
 import type { WebUiContextMenu } from '..'
@@ -11,6 +13,15 @@ const SUBMENU =
 function getMenus(): HTMLElement[] {
   const root = document.querySelector<HTMLElement>('[data-wui-overlay-root]')?.shadowRoot
   return Array.from(root?.querySelectorAll<HTMLElement>('[role="menu"]') ?? [])
+}
+
+function getPortalDialogPanels(): HTMLElement[] {
+  return Array.from(document.querySelectorAll<HTMLElement>('[data-wui-overlay-root]'))
+    .flatMap(root =>
+      Array.from(root.shadowRoot?.querySelectorAll<HTMLElement>('[data-wui-overlay-container] > div') ?? [])
+    )
+    .map(host => host?.shadowRoot?.querySelector<HTMLElement>('[role="dialog"]'))
+    .filter((panel): panel is HTMLElement => panel instanceof HTMLElement)
 }
 
 async function nextFrame() {
@@ -35,7 +46,7 @@ async function waitForObserverRefresh() {
 }
 
 async function waitForItemsReturned(menu: WebUiContextMenu, count: number) {
-  // 关闭动画（transitionend ~100ms + 80ms 兜底）后才归还，预算按 500ms 计；
+  // 关闭动画（transitionend ~120ms + 80ms 兜底）后才归还，预算按 500ms 计；
   // 不能用帧数表达——帧时长随刷新率变化，120Hz 下 20 帧不足 180ms 会假失败。
   const deadline = performance.now() + 500
   while (performance.now() < deadline) {
@@ -61,6 +72,29 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
     expect(getMenus()[0]?.dataset.wuiPresence).toBe('open')
   })
 
+  it('菜单浮层面板使用双层玻璃结构：blur 层 + surface 层各自 opacity 过渡', async () => {
+    const menu = document.createElement('web-ui-context-menu')
+    menu.innerHTML = '<web-ui-dropdown-item>Open</web-ui-dropdown-item>'
+    document.body.append(menu)
+    await menu.updateComplete
+
+    menu.openAt(100, 100)
+    await menu.updateComplete
+    await nextFrame()
+
+    const panel = getMenus()[0]!
+    // 单层玻璃：wui-glass 在面板自身，背景/阴影/blur 都由面板承担，
+    // opacity + backdrop-filter（blur(0px)↔blur(4px)）+ transform 一起过渡。
+    expect(panel.classList.contains('wui-glass')).toBe(true)
+    expect(getComputedStyle(panel).backgroundColor).not.toBe('rgba(0, 0, 0, 0)')
+    expect(getComputedStyle(panel).transitionProperty).toContain('opacity')
+    expect(getComputedStyle(panel).transitionProperty).toContain('backdrop-filter')
+    expect(getComputedStyle(panel).transitionProperty).toContain('transform')
+    // blur 随 float 过渡（160ms）从 0px 插值到 4px：等待收敛再断言目标态。
+    await new Promise(resolve => setTimeout(resolve, 250))
+    expect(getComputedStyle(panel).backdropFilter).toContain('blur(4px)')
+  })
+
   it('指针右键以入场状态打开根菜单', async () => {
     const menu = document.createElement('web-ui-context-menu')
     menu.innerHTML = '<web-ui-dropdown-item>Open</web-ui-dropdown-item>'
@@ -72,6 +106,39 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
     await nextFrame()
 
     expect(getMenus()[0]?.dataset.wuiPresence).toBe('entering')
+  })
+
+  it('menu panel 内嵌套子 overlay 的 wheel 不被父菜单抑制', async () => {
+    const menu = document.createElement('web-ui-context-menu')
+    menu.innerHTML = `
+      <web-ui-dropdown-item>
+        Actions
+        <web-ui-popover portal>
+          <button slot="trigger">Nested</button>
+          <div>Nested panel</div>
+        </web-ui-popover>
+      </web-ui-dropdown-item>
+    `
+    document.body.append(menu)
+    await menu.updateComplete
+
+    menu.openAt(100, 100)
+    await menu.updateComplete
+    await nextFrame()
+
+    const nested = getMenuContent().querySelector<WebUiPopover>('web-ui-popover')
+    expect(nested).toBeTruthy()
+    nested!.show()
+    await nested!.updateComplete
+    await nextFrame()
+
+    const nestedPanel = getPortalDialogPanels().find(panel => panel.textContent?.includes('Nested panel'))
+    expect(nestedPanel).toBeTruthy()
+    const wheel = new WheelEvent('wheel', { bubbles: true, composed: true, cancelable: true })
+    nestedPanel?.dispatchEvent(wheel)
+
+    expect(wheel.defaultPrevented).toBe(false)
+    expect(menu.isOpen).toBe(true)
   })
 
   it('重定位打开后，宿主重建的嵌套子项重新隐藏（不叠加一级菜单）', async () => {

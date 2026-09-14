@@ -15,6 +15,10 @@ jobs:
   check:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      # mise 配置会把 TURBO_CACHE_DIR 指到 workspace 外（worktree 共享缓存）；
+      # CI 显式固定回 workspace 内，保证 actions/cache 的 .turbo 路径不被绕过。
+      TURBO_CACHE_DIR: ${{ github.workspace }}/.turbo
 
     steps:
       - uses: actions/checkout@v7
@@ -59,6 +63,9 @@ jobs:
 
       - name: Check shared agent context
         run: pnpm run validate:context
+
+      - name: Audit agent instruction gates
+        run: pnpm run audit:instructions -- --strict --json
 
       - name: Check changesets
         if: github.event_name == 'pull_request' && github.head_ref != 'changeset-release/main'

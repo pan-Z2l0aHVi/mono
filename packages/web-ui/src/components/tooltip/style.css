@@ -37,6 +37,7 @@
   font-size: var(--wui-tooltip-font-size, 13px);
   color: var(--wui-color-text, #1b1b1b);
 
+  /* 玻璃背景：wui-glass 在面板自身，这里覆盖其默认玻璃底为菜单表面色 */
   background-color: var(--wui-color-surface-menu, rgb(246 246 246 / 0.82));
 }
 

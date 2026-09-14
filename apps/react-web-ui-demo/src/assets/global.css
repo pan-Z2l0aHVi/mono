@@ -37,6 +37,12 @@
   --breakpoint-2xl: 1536px; /* 大桌面显示器 */
 }
 
+/* 消除双击缩放与 300ms 点击延迟；保留双指缩放以符合 WCAG 2.1 SC 1.4.4 */
+html,
+body {
+  touch-action: manipulation;
+}
+
 /* 防止页面闪烁。隐藏所有未注册的 web components 元素 */
 :not(:defined) {
   display: none;

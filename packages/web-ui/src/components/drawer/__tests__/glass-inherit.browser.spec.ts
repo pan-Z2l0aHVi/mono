@@ -15,8 +15,16 @@ async function nextFrame() {
   await new Promise(resolve => requestAnimationFrame(resolve))
 }
 
-async function waitForOpenTransition() {
-  await new Promise(resolve => setTimeout(resolve, 350))
+// 等到 presence 挂上 is-visible；在并行负载下不能假设 350ms 足够。
+async function waitForOpenTransition(el: WebUiDrawer) {
+  const dialog = el.shadowRoot?.querySelector('dialog') as HTMLDialogElement | null
+  if (!dialog) throw new Error('Expected the drawer to contain a dialog')
+  const deadline = performance.now() + 2000
+  while (!(dialog.open && dialog.classList.contains('is-visible'))) {
+    if (performance.now() > deadline) throw new Error('Expected the drawer dialog to become visible')
+    await new Promise(resolve => requestAnimationFrame(resolve))
+  }
+  await el.updateComplete
 }
 
 // 轮询条件直至满足（弹簧/过渡时长在并行负载下不可预测）。
@@ -68,7 +76,7 @@ describe('glass 内部变量不跨边界继承（浏览器）', () => {
     drawer.append(btnInside)
     theme.append(drawer)
     await drawer.updateComplete
-    await waitForOpenTransition()
+    await waitForOpenTransition(drawer)
 
     const btnOutside = document.createElement('web-ui-button') as WebUiButton
     btnOutside.variant = 'glass'
@@ -97,7 +105,7 @@ describe('glass 内部变量不跨边界继承（浏览器）', () => {
     drawer.append(input)
     theme.append(drawer)
     await drawer.updateComplete
-    await waitForOpenTransition()
+    await waitForOpenTransition(drawer)
 
     const inherited = glassShadow(input, '.wui-input-inner')
     expect(inherited).not.toContain('2px 16px 40px')
@@ -135,9 +143,9 @@ describe('glass 内部变量不跨边界继承（浏览器）', () => {
     outer.append(inner)
     theme.append(outer)
     await outer.updateComplete
-    await waitForOpenTransition()
+    await waitForOpenTransition(outer)
     await inner.updateComplete
-    await waitForOpenTransition()
+    await waitForOpenTransition(inner)
 
     const nestedInset = getComputedStyle(getDialog(inner)).getPropertyValue('--wui-internal-drawer-inset').trim()
     expect(nestedInset === '0px' || nestedInset === '').toBe(true)
@@ -160,7 +168,7 @@ describe('--wui-drawer-inset 公开 token（浏览器）', () => {
     drawer.style.setProperty('--wui-drawer-inset', '0')
     theme.append(drawer)
     await drawer.updateComplete
-    await waitForOpenTransition()
+    await waitForOpenTransition(drawer)
 
     const dialog = getDialog(drawer)
     const cs = getComputedStyle(dialog)
@@ -176,7 +184,7 @@ describe('--wui-drawer-inset 公开 token（浏览器）', () => {
     defaultDrawer.open = true
     theme.append(defaultDrawer)
     await defaultDrawer.updateComplete
-    await waitForOpenTransition()
+    await waitForOpenTransition(defaultDrawer)
     const defaultDialog = getDialog(defaultDrawer)
     expect(getComputedStyle(defaultDialog).top).toBe('8px')
     expect(getComputedStyle(defaultDialog).getPropertyValue('--wui-internal-drawer-inset').trim()).toBe('8px')

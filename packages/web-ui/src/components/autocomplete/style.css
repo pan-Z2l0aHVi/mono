@@ -81,6 +81,13 @@
   }
 }
 
+/* Coarse pointers include iOS Safari, where a sub-16px font triggers focus zoom. */
+@media (pointer: coarse) {
+  .autocomplete-input {
+    font-size: max(16px, var(--wui-font-size, 14px));
+  }
+}
+
 /* Focus ring 独立成 ::after 层：base/focused 都是显式 box-shadow，保证所有变体都能过渡 */
 .input-wrapper::after {
   pointer-events: none;
@@ -111,8 +118,8 @@
   --wui-option-check-display: none;
   --wui-internal-glass-shadow: var(--wui-shadow-panel, 0 3px 9px rgb(0 0 0 / 0.27));
   --wui-glass-corner-radius: var(--wui-radius-menu, 18px);
-  --wui-internal-duration-overlay-enter: var(--wui-duration-menu-enter, 140ms);
-  --wui-internal-duration-overlay-exit: var(--wui-duration-menu-exit, 100ms);
+  --wui-internal-duration-float-enter: var(--wui-duration-float-enter, 160ms);
+  --wui-internal-duration-float-exit: var(--wui-duration-float-exit, 120ms);
   position: absolute;
   z-index: var(--wui-layer-inline-overlay, 1);
 
@@ -123,6 +130,7 @@
   max-width: var(--wui-autocomplete-max-width, 500px);
   border-radius: var(--wui-radius-menu, 18px);
 
+  /* 玻璃背景：wui-glass 在面板自身，这里覆盖其默认玻璃底为菜单表面色 */
   background-color: var(--wui-color-surface-menu, rgb(246 246 246 / 0.82));
 
   &.portal {

@@ -9,8 +9,16 @@ async function nextFrame() {
   await new Promise(resolve => requestAnimationFrame(resolve))
 }
 
-async function waitForOpenTransition() {
-  await new Promise(resolve => setTimeout(resolve, 350))
+// 等到 presence 挂上 is-visible；在并行负载下不能假设 350ms 足够。
+async function waitForOpenTransition(el: WebUiDrawer) {
+  const dialog = el.shadowRoot?.querySelector('dialog') as HTMLDialogElement | null
+  if (!dialog) throw new Error('Expected the drawer to contain a dialog')
+  const deadline = performance.now() + 2000
+  while (!(dialog.open && dialog.classList.contains('is-visible'))) {
+    if (performance.now() > deadline) throw new Error('Expected the drawer dialog to become visible')
+    await new Promise(resolve => requestAnimationFrame(resolve))
+  }
+  await el.updateComplete
 }
 
 afterEach(() => document.body.replaceChildren())
@@ -22,7 +30,7 @@ describe('减少动效下的 Drawer 拖拽关闭（浏览器）', () => {
     el.draggable = true
     el.open = true
     await el.updateComplete
-    await waitForOpenTransition()
+    await waitForOpenTransition(el)
 
     const dragZone = el.shadowRoot?.querySelector('.wui-drawer-drag-zone') as HTMLElement
     dragZone.dispatchEvent(
@@ -49,7 +57,7 @@ describe('减少动效下的 Drawer 拖拽关闭（浏览器）', () => {
     el.draggable = true
     el.open = true
     await el.updateComplete
-    await waitForOpenTransition()
+    await waitForOpenTransition(el)
 
     const dialog = el.shadowRoot?.querySelector('dialog') as HTMLDialogElement
     const dragZone = el.shadowRoot?.querySelector('.wui-drawer-drag-zone') as HTMLElement
@@ -57,9 +65,15 @@ describe('减少动效下的 Drawer 拖拽关闭（浏览器）', () => {
       new PointerEvent('pointerdown', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 100, clientY: 300 })
     )
     await el.updateComplete
-    dragZone.dispatchEvent(
-      new PointerEvent('pointermove', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 130, clientY: 300 })
-    )
+    // CI 慢环境下 updateComplete 渲染会跨毫秒边界，单次合成 move 的整程速度被
+    // 判定为 flick（>DRAG_FLICK_VELOCITY）而误关抽屉；用间隔 16ms 的多段 move
+    // 模拟真实的未达阈值慢拖（窗口速度与整程平均都低于 flick 阈值）。
+    for (const x of [106, 112, 118, 124, 130]) {
+      dragZone.dispatchEvent(
+        new PointerEvent('pointermove', { bubbles: true, pointerId: 1, isPrimary: true, clientX: x, clientY: 300 })
+      )
+      await new Promise(resolve => setTimeout(resolve, 16))
+    }
     await el.updateComplete
     dragZone.dispatchEvent(
       new PointerEvent('pointerup', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 130, clientY: 300 })
@@ -89,7 +103,7 @@ describe('减少动效下的 Drawer 拖拽关闭（浏览器）', () => {
     el.draggable = true
     el.open = true
     await el.updateComplete
-    await waitForOpenTransition()
+    await waitForOpenTransition(el)
 
     const dragZone = el.shadowRoot?.querySelector('.wui-drawer-drag-zone') as HTMLElement
     dragZone.dispatchEvent(
