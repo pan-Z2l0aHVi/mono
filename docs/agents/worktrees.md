@@ -9,6 +9,11 @@ worktree 是任务隔离边界，不是包名的别名。每个可变 task 只�
 - 跨包变更使用一个 task worktree；不要按包拆成多个互相无法独立 review 的 worktree。
 - worktree 交接时更新 task state 的 owner 和 path，并重新执行 `assign`；禁止依靠 pane 名称推断归属。
 
+### turbo 缓存共享
+
+- `.mise.toml` 的 `[env]` 把 `TURBO_CACHE_DIR` 指向 `<仓库目录>/../.turbo-cache`：同族 task worktree 共享一份本地 turbo 缓存（构建产物含 dist d.ts），新 worktree 不必冷缓存全量重建。
+- 缓存按仓库位置分组（主仓与 worktree 族各一份）；手动回收直接删除 `.turbo-cache` 目录，turbo 下次运行自动重建。CI 在 `ci.yml` 显式覆盖回 workspace 内路径，mise 注入不影响 CI 缓存键。
+
 ## 角色隔离边界
 
 - Lib Coder 只在 `packages/*` 写入，Biz Coder 只在 `apps/*` 写入；同一条 worktree 内以此为写入边界，任一角色不得修改对方目录下的文件。
