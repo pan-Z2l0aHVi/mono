@@ -16,7 +16,7 @@ description: 审计仓库 instruction system 的加载路径、重复约束、�
 
 ## 校验器是双向门，不是单向棘轮
 
-2026-09-14 起（ADR-0012）两个校验器都改为双向门：**锚点覆盖的正文措辞**可以随模型换代自由重写，加重约束才需要动文件。入口与契约字面量（handoff 字段名、角色绑定表、CLAUDE.md 必含 `AGENTS.md` 等）仍由 `validate-context.mjs` 钉住，那些不是零摩擦改动的对象。
+2026-09-14 起（ADR-0012）两个校验器都改为双向门：**锚点覆盖的正文措辞**可以随模型换代自由重写，加重约束才需要动文件。入口与契约字面量——`AGENTS.md` 必经 `docs/agents/workflow.md`、`CONTRIBUTING.md` 必含 edit gate 命令、handoff 字段名、角色绑定表——仍由 `validate-context.mjs` 钉住，那些不是零摩擦改动的对象。
 
 - **锚点**：`audit-instructions.mjs` 只校验 `<!-- invariant:... -->` 锚点是否存在——8 个锚点名展开为 14 条「文件 × 锚点」断言，落在 `AGENTS.md`、`docs/agents/workflow.md`、`docs/agents/task-packet.md` 和 `.agents/agents/*` 的 5 个角色文件（`role-sections` 一项按目录展开）。删锚点才需要改脚本。CLAUDE.md 例外——它没有锚点，改由 `validate-context.mjs` 的三条断言管：必须是常规文件（非 symlink）、必须含字面量 `AGENTS.md`、长度不超过 `CLAUDE_ADAPTER_MAX_CHARACTERS`（800）。
 - **预算基线**：`scripts/instruction-budget.json` 记录逐文件字符数与祈使词数（`tolerance: 0`）及 `repeatedBlockPairs`（当前 8）；`scripts/tool-enforced-rules.json` 记录已被工具强制的规则。预算 scope 是约束层（根入口 + rules + agents + references + docs/agents），**不含 `.agents/skills/`**，因此改 skill 文本不牵动基线。
