@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 
 import '..'
+import { pollUntil } from '@/shared/test-utils'
+
 import type { WebUiSlider } from '..'
 
 afterEach(() => document.body.replaceChildren())
@@ -448,8 +450,12 @@ describe('WebUiSlider 组件（浏览器）', () => {
     await el.updateComplete
     expect(thumb.classList.contains('is-dragging')).toBe(true)
     expect(getComputedStyle(thumb).backdropFilter).not.toBe('none')
-    await new Promise(resolve => setTimeout(resolve, 120))
-    expect(getComputedStyle(thumb).backgroundColor).toBe('rgba(0, 0, 0, 0)')
+    // 按压玻璃→透明的 80ms 过渡在 CI 慢环境可能尚未收敛（fixed sleep 观测到
+    // alpha 残留 0.004），轮询到 alpha 归零后再断言。
+    await pollUntil(() => {
+      const color = getComputedStyle(thumb).backgroundColor
+      return color === 'rgba(0, 0, 0, 0)' || Number(/,\s*([\d.]+)\)$/.exec(color)?.[1] ?? 1) < 0.01
+    }, 'thumb pressed background did not become transparent')
 
     // 松手：回到实体白静止态。
     slider!.dispatchEvent(
@@ -461,9 +467,11 @@ describe('WebUiSlider 组件（浏览器）', () => {
       })
     )
     await el.updateComplete
-    // 背景从透明切回实体白有 80ms 过渡，等收敛后再断言静止态。
-    await new Promise(resolve => setTimeout(resolve, 120))
-    expect(getComputedStyle(thumb).backgroundColor).toBe('rgb(255, 255, 255)')
+    // 背景从透明切回实体白有 80ms 过渡，轮询收敛后再断言静止态。
+    await pollUntil(
+      () => getComputedStyle(thumb).backgroundColor === 'rgb(255, 255, 255)',
+      'thumb background did not return to solid white'
+    )
     expect(getComputedStyle(thumb).backdropFilter).not.toBe('none')
   })
 })

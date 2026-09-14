@@ -65,9 +65,15 @@ describe('减少动效下的 Drawer 拖拽关闭（浏览器）', () => {
       new PointerEvent('pointerdown', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 100, clientY: 300 })
     )
     await el.updateComplete
-    dragZone.dispatchEvent(
-      new PointerEvent('pointermove', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 130, clientY: 300 })
-    )
+    // CI 慢环境下 updateComplete 渲染会跨毫秒边界，单次合成 move 的整程速度被
+    // 判定为 flick（>DRAG_FLICK_VELOCITY）而误关抽屉；用间隔 16ms 的多段 move
+    // 模拟真实的未达阈值慢拖（窗口速度与整程平均都低于 flick 阈值）。
+    for (const x of [106, 112, 118, 124, 130]) {
+      dragZone.dispatchEvent(
+        new PointerEvent('pointermove', { bubbles: true, pointerId: 1, isPrimary: true, clientX: x, clientY: 300 })
+      )
+      await new Promise(resolve => setTimeout(resolve, 16))
+    }
     await el.updateComplete
     dragZone.dispatchEvent(
       new PointerEvent('pointerup', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 130, clientY: 300 })
