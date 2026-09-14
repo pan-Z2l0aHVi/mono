@@ -245,9 +245,19 @@ describe('WebUiDrawer 拖拽关闭（浏览器）', () => {
     )
     await el.updateComplete
     // 先建立非零拖拽位移，再模拟系统接管导致的 pointercancel。
-    dragZone.dispatchEvent(
-      new PointerEvent('pointermove', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 130, clientY: 300 })
-    )
+    // CI 慢环境同款隐患：单次合成 move 会被判 flick 误关，多段慢拖。
+    for (let step = 1; step <= 10; step += 1) {
+      dragZone.dispatchEvent(
+        new PointerEvent('pointermove', {
+          bubbles: true,
+          pointerId: 1,
+          isPrimary: true,
+          clientX: 100 + step * 3,
+          clientY: 300
+        })
+      )
+      await new Promise(resolve => setTimeout(resolve, 32))
+    }
     await el.updateComplete
     dragZone.dispatchEvent(
       new PointerEvent('pointercancel', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 130, clientY: 300 })
