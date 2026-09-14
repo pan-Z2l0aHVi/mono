@@ -245,7 +245,12 @@ try {
   assert.equal(JSON.parse(run('issue', '--task', 'issue-plain', '--ref', 'N/A')).issue, 'N/A')
   for (const bad of ['http://github.com/example/repo/issues/9', '#9', 'https://x.dev/a b', 'issue-9'])
     runFailure('issue', '--task', 'issue-plain', '--ref', bad)
-  runFailure('issue', '--task', 'optional-review', '--ref', 'https://github.com/example/repo/issues/1')
+  // closed 任务也接受补挂：issue 是追踪元数据而非证据链。
+  const backfilled = JSON.parse(
+    run('issue', '--task', 'optional-review', '--ref', 'https://github.com/example/repo/issues/1')
+  )
+  assert.equal(backfilled.issue, 'https://github.com/example/repo/issues/1')
+  assert.equal(backfilled.phase, 'closed')
 
   // legacy v1 状态容忍：缺 issue 补 null、缺 scope 的 verification 条目按 task 处理。
   const legacy = JSON.parse(fs.readFileSync(path.join(fixture, '.git', 'agent-workflow', 'issue-plain.json'), 'utf8'))
