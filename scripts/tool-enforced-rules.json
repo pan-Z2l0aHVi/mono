@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "note": "已被 lint / CI 强制的规则在这里登记。命中 pattern 即失败，避免删掉的规则换个写法长回来；要重新引入同一处方，必须先删除这里的条目，这个动作会出现在 diff 里。pattern 是正则源码，files 为约束层内的路径或目录前缀（省略则全约束层）。",
+  "rules": [
+    {
+      "id": "no-anonymous-default-export",
+      "pattern": "(?:禁止|不得|不要|严禁|不用)\\s*(?:使用)?\\s*匿名\\s*default\\s*export",
+      "files": [".agents/rules/react.md"],
+      "evidence": "vite.config.ts:262 oxlint unicorn/no-anonymous-default-export = error",
+      "reason": "oxlint 已强制，rules 只保留加载入口与指针，不复制处方"
+    },
+    {
+      "id": "full-suite-before-commit",
+      "pattern": "提交确认前必须运行根目录全量|提交确认前必须在根目录运行全量",
+      "files": [".agents/rules/", "docs/agents/"],
+      "evidence": ".github/workflows/ci.yml:75,98 runs pnpm run build and pnpm run test on every pull_request",
+      "reason": "全量 build / test 由 CI 强制；本地只保留受影响命令，避免把 CI 的职责复制成常驻约束"
+    },
+    {
+      "id": "changeset-required-for-pr",
+      "pattern": "CI 运行 changeset status|无 changeset 即失败",
+      "files": [".agents/rules/commit.md"],
+      "evidence": ".github/workflows/ci.yml:72 runs pnpm exec changeset status --since=origin/<base>",
+      "reason": "changeset 的必要性由 CI 强制，rules 只保留何时需要 changeset"
+    }
+  ]
+}

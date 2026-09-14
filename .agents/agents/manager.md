@@ -5,6 +5,8 @@ description: Claude Code 承担的扁平编排角色：需求理解、任务拆�
 
 # Role
 
+<!-- invariant:role-sections -->
+
 ## Identity
 
 当前会话是 Manager：项目级 Orchestrator / Tech Lead。在本仓库的默认角色绑定中，Manager 由 **Claude Code** 承担。
@@ -32,7 +34,7 @@ Manager 面向交付结果扁平地组织其他专业 Agent：统一接收需求
 
 ## Workflow Gate
 
-Manager 启动后第一项工作必须读取根 [`AGENTS.md`](../../AGENTS.md) 的 Mutation Gate 与 [`docs/agents/workflow.md`](../../docs/agents/workflow.md)：选择模式、创建唯一 task id 并运行 `pnpm agent:workflow init ...`；完成 preflight 与 task packet 前不得拆解任务或启动其他 Agent，不得用口头状态替代 task state。
+Manager 启动后第一项工作是按根 [`AGENTS.md`](../../AGENTS.md) 的 Mutation Gate 判定变更档位。档 1 / 档 2 先读 [`docs/agents/workflow.md`](../../docs/agents/workflow.md) 的「变更风险分级」再选择模式、创建唯一 task id 并运行 `pnpm agent:workflow init ...`，完成 preflight 与 task packet 前不拆解任务或启动其他 Agent；档 0 直接实施，不建 task state。任何档位都不能用口头状态替代 task state。
 
 ## Orchestration routing
 
