@@ -101,6 +101,63 @@ export function contractReflection<T extends TestableElement>(
 }
 
 /**
+ * 表驱动事件契约：为每个用例生成一条 `it`，断言目标元素在指定交互下各事件的派发次数。
+ *
+ * 生成器（而非断言封装）是本仓库唯一可行的复用形态：门禁 `vitest/expect-expect`
+ * 只认可测试体内字面出现的 `expect(...)`，形如 `expectReflected(el, …)` 的封装
+ * 无法满足它。此处每个生成块内含字面 `expect`，因此调用方无需另写断言。
+ *
+ * `create()` 内的准备动作不计入派发——spy 在 `create()` 与首次渲染完成后才挂载。
+ * 组件事件均为 `new Event(...)`、无 `detail`，故本运行器不建模 detail 形状。
+ *
+ * 使用方式：
+ * ```
+ * contractEvent('WebUiInput 事件契约', () => mountElement<WebUiInput>('web-ui-input'), [
+ *   {
+ *     title: '编程式设值不派发事件',
+ *     act: el => setProperty(el, 'value', 'hello'),
+ *     counts: { input: 0, change: 0 }
+ *   }
+ * ])
+ * ```
+ */
+export function contractEvent<T extends TestableElement>(
+  title: string,
+  create: () => T,
+  cases: ReadonlyArray<{
+    title: string
+    act: (el: T) => void | Promise<void>
+    counts: Record<string, number>
+  }>
+): void {
+  describe(title, () => {
+    for (const testCase of cases) {
+      it(testCase.title, async () => {
+        const el = create()
+        const detachers: Array<() => void> = []
+        try {
+          await waitForUpdate(el)
+          const seen = new Map<string, Event[]>()
+          for (const name of Object.keys(testCase.counts)) {
+            const [events, detach] = spyEvents(el, name)
+            seen.set(name, events)
+            detachers.push(detach)
+          }
+          await testCase.act(el)
+          await waitForUpdate(el)
+          for (const [name, expected] of Object.entries(testCase.counts)) {
+            expect(seen.get(name) ?? [], `事件 ${name} 派发次数`).toHaveLength(expected)
+          }
+        } finally {
+          for (const detach of detachers) detach()
+          cleanupElement(el)
+        }
+      })
+    }
+  })
+}
+
+/**
  * 监听目标元素上指定事件类型的派发。
  * 返回事件数组和取消监听的函数。
  *
