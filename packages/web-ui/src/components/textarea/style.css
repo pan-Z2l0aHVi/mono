@@ -43,11 +43,7 @@
 
 :host([borderless]) .wui-textarea-inner {
   border: none;
-
   background: transparent;
-
-  /* stylelint-disable-next-line property-no-vendor-prefix */
-  -webkit-backdrop-filter: none;
   backdrop-filter: none;
   box-shadow: none;
 }

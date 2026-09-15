@@ -74,11 +74,7 @@
 .wui-segmented.is-pressed .wui-segmented-indicator,
 .wui-segmented.is-dragging .wui-segmented-indicator {
   transform: scale(1.5);
-
   background-color: var(--wui-color-surface-glass, rgb(250 250 250 / 0.34));
-
-  /* stylelint-disable-next-line property-no-vendor-prefix */
-  -webkit-backdrop-filter: blur(4px) saturate(160%);
   backdrop-filter: blur(4px) saturate(160%);
 
   /* 按下/拖拽时加深投影（立体玻璃感）。直接写死值、不经过 var 中转：iOS Safari 对
