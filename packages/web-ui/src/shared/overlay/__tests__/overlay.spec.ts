@@ -17,12 +17,12 @@ function createOverlay(): HTMLElement {
 }
 
 describe('defineOverlay 工具', () => {
-  it('创建实例', () => {
+  it('新建实例初始为未打开', () => {
     const trigger = createTrigger()
     const overlay = createOverlay()
     const ctx = defineOverlay().make({ anchor: trigger, overlay })
-    expect(ctx).toBeTruthy()
-    expect(ctx.open).toBeTypeOf('function')
+
+    expect(ctx.isOpen()).toBe(false)
     trigger.remove()
     overlay.remove()
   })
@@ -43,7 +43,7 @@ describe('defineOverlay 工具', () => {
     overlay.remove()
   })
 
-  it('close 时隐藏 overlay', async () => {
+  it('close 后将实例置为未打开', async () => {
     const trigger = createTrigger()
     const overlay = createOverlay()
     const ctx = defineOverlay().make({ anchor: trigger, overlay })
@@ -114,7 +114,7 @@ describe('defineOverlay 工具', () => {
     overlay.remove()
   })
 
-  it('打开后更新定位选项并重新定位', async () => {
+  it('打开后 update 透传新的定位选项', async () => {
     const trigger = createTrigger()
     const overlay = createOverlay()
     const ctx = defineOverlay().make({ anchor: trigger, overlay, placement: 'bottom', offset: 4 })
