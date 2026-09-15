@@ -379,6 +379,7 @@ describe('Portal overlay 在已打开原生 dialog 内（top layer）', () => {
     positioningStaleGate.offset = { x: 300, y: 0 }
     // 拉长退出过渡：hover 关闭走 200ms 定时器重开，需保证重开时面板仍在 closing
     // 缓存内（默认 160ms 出场 + 80ms 兜底会在重开前完成收尾并移除面板，复用不成立）。
+    // 注意「声明 2000ms」不等于「实际 2000ms」——必须同时等入场过渡跑完，见下方注释。
     dialog.style.setProperty('--wui-duration-float-exit', '2000ms')
     menu.openAt(8, 60)
     await menu.updateComplete
@@ -392,6 +393,17 @@ describe('Portal overlay 在已打开原生 dialog 内（top layer）', () => {
       () => dialog.querySelector<HTMLElement>('.context-submenu'),
       submenu => submenu !== null && submenu.dataset.wuiPresence === 'open',
       'Expected the gated submenu panel to be present'
+    )
+
+    // 等入场过渡跑完再触发关闭：入场尚未结束时关闭会形成**反向过渡**，
+    // 其实际时长 = 反向缩短因子 × 声明时长（实测把 2000ms 压到 ~151ms），
+    // 于是面板在 200ms 的 hover 重开定时器之前就完成收尾并被移出 closing 缓存，
+    // 重开退化为重建新面板——复用前提不成立，本用例的竞态也就无从发生。
+    // 入场结束后关闭是全新过渡，声明时长如实生效，面板得以存活到重开。
+    await waitFor(
+      () => dialog.querySelector<HTMLElement>('.context-submenu'),
+      submenu => submenu !== null && submenu.dataset.wuiPresence === 'open' && submenu.getAnimations().length === 0,
+      'Expected the gated submenu enter transition to settle'
     )
 
     // 悬停普通项触发关闭（非即时，面板进 closing 缓存），同帧悬停回父项重开：

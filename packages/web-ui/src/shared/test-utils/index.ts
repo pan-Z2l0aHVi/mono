@@ -272,6 +272,9 @@ export function cleanupElement(el: HTMLElement | null | undefined): void {
  * 查询 fallback overlay root 中的 portal 面板。结构为公开契约：
  * [data-wui-overlay-root]#shadow > [data-wui-overlay-container] > portal host div#shadow > 面板。
  * role 按组件语义传入（popover/tooltip 的 dialog、select 的 listbox 等）。
+ *
+ * **只在无主题时适用**：挂了 `web-ui-theme` 时面板改挂 theme-owned overlay root
+ * （`theme.getOverlayRoot()`），那条路径用 `getThemedPortalPanel()`。
  */
 export function getPortalPanel(role = 'dialog'): HTMLElement | null {
   const container = document
@@ -281,6 +284,26 @@ export function getPortalPanel(role = 'dialog'): HTMLElement | null {
     container
       ?.querySelector<HTMLElement>('[data-wui-overlay-container] > div')
       ?.shadowRoot?.querySelector(`[role="${role}"]`) ?? null
+  )
+}
+
+/**
+ * 查询 **theme-owned** overlay root 中的 portal 面板。
+ *
+ * 与 `getPortalPanel()` 的区别只在起点：后者从 document 上的 fallback
+ * `[data-wui-overlay-root]` 出发，本函数从 theme 的公开方法 `getOverlayRoot()`
+ * （= theme shadow 内的 `[data-wui-overlay-container]`）出发，其后各层结构相同。
+ * 参数用结构化类型而非导入 `WebUiTheme`，避免 `shared/` 反向依赖 `components/`。
+ */
+export function getThemedPortalPanel(
+  theme: { getOverlayRoot(): HTMLElement | undefined },
+  role = 'dialog'
+): HTMLElement | null {
+  return (
+    theme
+      .getOverlayRoot()
+      ?.querySelector<HTMLElement>('[data-wui-overlay-container] > div')
+      ?.shadowRoot?.querySelector<HTMLElement>(`[role="${role}"]`) ?? null
   )
 }
 

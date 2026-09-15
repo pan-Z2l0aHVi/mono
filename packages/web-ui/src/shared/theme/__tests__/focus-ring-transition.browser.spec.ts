@@ -1,74 +1,23 @@
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 
-import '@/components/autocomplete'
-import '@/components/input'
-import '@/components/textarea'
-import '@/components/theme'
-import type { WebUiAutocomplete } from '@/components/autocomplete'
-import type { WebUiInput } from '@/components/input'
-import type { WebUiTextarea } from '@/components/textarea'
+import {
+  FOCUS_RING_MS,
+  findFocusRingTransition,
+  fixtures,
+  focusAndSettle,
+  flushStyles,
+  mountField
+} from './focus-ring-fixtures'
 
-type FixtureElement = WebUiInput | WebUiTextarea | WebUiAutocomplete
-
-type Fixture = {
-  tag: string
-  innerSelector: string
-  create: () => FixtureElement
-}
-
-const fixtures: Fixture[] = [
-  {
-    tag: 'web-ui-input',
-    innerSelector: '.wui-input-inner',
-    create: (): WebUiInput => document.createElement('web-ui-input') as WebUiInput
-  },
-  {
-    tag: 'web-ui-textarea',
-    innerSelector: '.wui-textarea-inner',
-    create: (): WebUiTextarea => document.createElement('web-ui-textarea') as WebUiTextarea
-  },
-  {
-    tag: 'web-ui-autocomplete',
-    innerSelector: '.input-wrapper',
-    create: () => {
-      const el = document.createElement('web-ui-autocomplete') as WebUiAutocomplete
-      el.innerHTML = '<web-ui-option value="apple" label="Apple"></web-ui-option>'
-      return el
-    }
-  }
-]
-
-async function mountInner(
-  fixture: Fixture,
-  { borderless, motion }: { borderless: boolean; motion?: string }
-): Promise<HTMLElement> {
-  const theme = document.createElement('web-ui-theme')
-  theme.setAttribute('appearance', 'light')
-  if (motion !== undefined) theme.setAttribute('motion', motion)
-  document.body.append(theme)
-
-  const el = fixture.create()
-  if (borderless) el.setAttribute('borderless', '')
-  theme.append(el)
-  await el.updateComplete
-  return el.shadowRoot!.querySelector<HTMLElement>(fixture.innerSelector)!
-}
-
-function findFocusRingTransition(inner: HTMLElement) {
-  return inner.getAnimations({ subtree: true }).find(animation => {
-    const effect = animation.effect as KeyframeEffect | null
-    return (
-      effect?.pseudoElement === '::after' &&
-      effect.target === inner &&
-      (animation as CSSTransition).transitionProperty === 'box-shadow'
-    )
-  })
-}
-
-function fixtureHost(inner: HTMLElement): FixtureElement {
-  return (inner.getRootNode() as ShadowRoot).host as FixtureElement
-}
-
+/**
+ * focus ring 过渡契约 —— 显式 `motion` 属性通道。
+ *
+ * 全部断言走 Web Animations API（`DELETION-RUBRIC.md` §10 S2）：原来读
+ * `getComputedStyle(inner, '::after').transitionProperty / transitionDuration` 的断言
+ * 是 §5 明令禁止的 CSS 取值，且只证明"声明存在"、证明不了"过渡真的启动"。
+ * 系统偏好通道（`prefers-reduced-motion: reduce`）在 `reduced-motion.browser.spec.ts`，
+ * 两者共用 `focus-ring-fixtures.ts` 的同一观察函数。
+ */
 afterEach(() => document.body.replaceChildren())
 
 describe('focus ring transition 统一契约（浏览器）', () => {
@@ -77,50 +26,38 @@ describe('focus ring transition 统一契约（浏览器）', () => {
       const variant = borderless ? 'borderless' : 'normal'
 
       it(`${fixture.tag} ${variant}：focus ring 走 --wui-duration-focus 的 box-shadow 过渡`, async () => {
-        const inner = await mountInner(fixture, { borderless })
-        const style = getComputedStyle(inner, '::after')
-        // duration 复用 focus token（200ms），blur 回退共用同一 transition 定义
-        expect(style.transitionProperty).toContain('box-shadow')
-        for (const duration of style.transitionDuration.split(', ')) {
-          expect(duration).toBe('0.2s')
-        }
-
-        // 只声明 transition 不够：必须确认 focused 伪类切换真的在 ::after 上启动动画
-        const host = fixtureHost(inner)
-        const nativeField =
-          inner.shadowRoot?.querySelector<HTMLElement>('input, textarea') ??
-          host.shadowRoot?.querySelector<HTMLElement>('input, textarea')
-        nativeField?.dispatchEvent(new FocusEvent('focus'))
-        await host.updateComplete
-        await new Promise(resolve => requestAnimationFrame(resolve))
+        const { host, inner } = await mountField(fixture, { borderless })
+        await focusAndSettle(host, inner)
 
         const transition = findFocusRingTransition(inner)
-        expect(transition).toBeTruthy()
-        expect((transition as CSSTransition).transitionProperty).toBe('box-shadow')
-        expect(transition!.effect!.getComputedTiming().duration).toBe(200)
+        expect(transition, `${fixture.tag} ${variant} 聚焦后未启动 box-shadow 过渡`).toBeDefined()
+        expect(transition!.transitionProperty).toBe('box-shadow')
+        expect(transition!.effect!.getComputedTiming().duration).toBe(FOCUS_RING_MS)
       })
 
-      it(`${fixture.tag} ${variant}：theme motion=reduced 时过渡归零`, async () => {
-        const inner = await mountInner(fixture, { borderless, motion: 'reduced' })
-        const style = getComputedStyle(inner, '::after')
-        expect(style.transitionProperty).toContain('box-shadow')
-        for (const duration of style.transitionDuration.split(', ')) {
-          expect(duration).toBe('0s')
-        }
+      it(`${fixture.tag} ${variant}：theme motion=reduced 时不启动 focus ring 过渡`, async () => {
+        const { host, inner } = await mountField(fixture, { borderless, motion: 'reduced' })
+        await focusAndSettle(host, inner)
+
+        // 同文件上一条用例已证明该观察函数对同一 fixture 能采到过渡，故此处的空集非空转。
+        expect(findFocusRingTransition(inner)).toBeUndefined()
       })
     }
   }
 
-  it('无 theme 时 fallback 与 theme light 一致为 200ms', async () => {
+  it('无 theme 时 fallback 与 theme light 一致：focus ring 仍走 200ms', async () => {
     for (const fixture of fixtures) {
-      const el = fixture.create()
-      document.body.append(el)
-      await el.updateComplete
-      const inner = el.shadowRoot!.querySelector<HTMLElement>(fixture.innerSelector)!
-      for (const duration of getComputedStyle(inner, '::after').transitionDuration.split(', ')) {
-        expect(duration).toBe('0.2s')
-      }
-      el.remove()
+      const host = fixture.create()
+      document.body.append(host)
+      await host.updateComplete
+      const inner = host.shadowRoot!.querySelector<HTMLElement>(fixture.innerSelector)!
+      flushStyles(inner)
+      await focusAndSettle(host, inner)
+
+      const transition = findFocusRingTransition(inner)
+      expect(transition, `${fixture.tag} 无 theme 时未启动 box-shadow 过渡`).toBeDefined()
+      expect(transition!.effect!.getComputedTiming().duration).toBe(FOCUS_RING_MS)
+      host.remove()
     }
   })
 })
