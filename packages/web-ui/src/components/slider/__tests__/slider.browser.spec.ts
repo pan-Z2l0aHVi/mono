@@ -404,7 +404,7 @@ describe('WebUiSlider 组件（浏览器）', () => {
     expect(el.value).toBe(afterCancel)
   })
 
-  it('静止态实体白 thumb，按压切玻璃背景、拖拽转透明（backdrop blur 恒开 + 放大 + 深阴影）', async () => {
+  it('静止态实体白 thumb，按压切玻璃背景、拖拽转透明（backdrop blur 恒开 + 放大 + 阴影切换）', async () => {
     const el = document.createElement('web-ui-slider')
     document.body.append(el)
     await el.updateComplete
