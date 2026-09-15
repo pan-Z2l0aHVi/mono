@@ -42,7 +42,7 @@ jobs:
       - name: Build demo apps
         run: |
           for APP_DIR in $DEMO_APPS; do
-            GITHUB_BASE_PATH="/mono/${APP_DIR}" pnpm --filter "{./apps/${APP_DIR}}..." build
+            GITHUB_BASE_PATH="/mono/${APP_DIR}/" pnpm --filter "{./apps/${APP_DIR}}..." build
           done
 
       - name: Prepare deployment directory

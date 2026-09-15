@@ -18,10 +18,10 @@
   /* 玻璃由面板自身承担（wui-glass 提供背景/描边/阴影）。打开目标态 blur(4px)，
      entering/closing 切到 blur(0px) 作为插值起点——blur(0px) 与 blur(4px) 平滑过渡
      （none↔blur 不可插值才是当年生硬跳变的根因）。 */
-  /* stylelint-disable-next-line property-no-vendor-prefix */
-  -webkit-backdrop-filter: blur(4px) saturate(160%) brightness(var(--wui-glass-brightness, 1.06));
   backdrop-filter: blur(4px) saturate(160%) brightness(var(--wui-glass-brightness, 1.06));
 
+  /* transition 列表需手写 -webkit-backdrop-filter：lightningcss 不会在 transition
+   value 内追加 -webkit 项，iOS 16.4 上 blur 过渡依赖它（属性前缀会自动生成）。 */
   transition:
     opacity var(--wui-internal-duration-float-enter, var(--wui-duration-float-enter, 160ms))
       var(--wui-ease-enter, cubic-bezier(0.23, 1, 0.32, 1)),
@@ -37,9 +37,6 @@
 .wui-floating-panel[data-wui-presence='closing'] {
   transform: scale(var(--wui-scale-enter, 0.97));
   opacity: 0;
-
-  /* stylelint-disable-next-line property-no-vendor-prefix */
-  -webkit-backdrop-filter: blur(0) saturate(160%) brightness(var(--wui-glass-brightness, 1.06));
   backdrop-filter: blur(0) saturate(160%) brightness(var(--wui-glass-brightness, 1.06));
 }
 
