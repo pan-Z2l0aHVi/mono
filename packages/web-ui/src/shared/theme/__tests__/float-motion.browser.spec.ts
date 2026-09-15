@@ -42,14 +42,14 @@ describe('floating panel motion（浏览器）', () => {
 
       const enterStyle = getComputedStyle(panel)
       // 单层玻璃：面板自身过渡 opacity / backdrop-filter / transform（blur(0px)↔blur(4px)
-      // 平滑插值，无需 surface/blur 双层）。时长全部取 float token 0.16s。
+      // 平滑插值，无需 surface/blur 双层）。时长全部取 float token 0.24s。
       expect(enterStyle.transitionProperty.split(', ')).toEqual([
         'opacity',
         '-webkit-backdrop-filter',
         'backdrop-filter',
         'transform'
       ])
-      expect(enterStyle.transitionDuration.split(', ')).toEqual(['0.16s', '0.16s', '0.16s', '0.16s'])
+      expect(enterStyle.transitionDuration.split(', ')).toEqual(['0.24s', '0.24s', '0.24s', '0.24s'])
 
       // 打开态：面板自身承担玻璃，blur 收敛到 4px。
       expect(panel.classList.contains('wui-glass')).toBe(true)
@@ -59,7 +59,12 @@ describe('floating panel motion（浏览器）', () => {
       panel.setAttribute('data-wui-presence', 'closing')
       const closingStyle = getComputedStyle(panel)
       // transition-duration 单值覆盖应用到全部属性（CSSOM 不展开为重复列表）。
-      expect(closingStyle.transitionDuration.split(', ')).toEqual(['0.12s'])
+      expect(closingStyle.transitionDuration.split(', ')).toEqual(['0.16s'])
+
+      // 进场/退场共用同一起点 token。先冻结过渡再读，否则读到的是过渡中间帧。
+      panel.style.transition = 'none'
+      panel.setAttribute('data-wui-presence', 'entering')
+      expect(new DOMMatrixReadOnly(getComputedStyle(panel).transform).a).toBeCloseTo(0.95)
     })
 
     it(`${tag} 在 theme motion=reduced 下过渡归零`, async () => {

@@ -984,7 +984,7 @@ describe('imagePreview 命令式 API（浏览器）', () => {
 
     // dialog 自身 opacity 恒 1、无 transform 过渡（opacity < 1 会让 dialog 成为
     // backdrop root，后代玻璃控件的 backdrop-filter 在过渡期被禁用、端点生硬跳变；
-    // transform 会带着遮罩一起缩放，进场缩放已移到内容包裹层，见「遮罩不随进场缩放」）。
+    // transform 会带着遮罩一起缩放，进场缩放已移到图片舞台层，见「遮罩不随进场缩放」）。
     expect(getComputedStyle(dialog).transitionProperty).not.toContain('opacity')
     expect(getComputedStyle(dialog).opacity).toBe('1')
     expect(getComputedStyle(dialog).transitionProperty).not.toContain('transform')
@@ -1029,38 +1029,44 @@ describe('imagePreview 命令式 API（浏览器）', () => {
     }
   })
 
-  it('遮罩不随进场缩放：dialog/遮罩无 transform，scale 落在内容包裹层，dialog 固定定位', async () => {
+  it('遮罩不随进场缩放：dialog/遮罩/控件层无 transform，scale 落在图片舞台层，dialog 固定定位', async () => {
     const { host } = await openPreview({ toolbar: true, indicator: true, closable: true, nav: true })
     const dialog = dialogElement()
     const backdrop = dialog.querySelector('.wui-image-preview-backdrop') as HTMLElement
     const surface = dialog.querySelector('.wui-image-preview-surface') as HTMLElement
     const content = dialog.querySelector('.wui-image-preview-content') as HTMLElement
+    const controls = dialog.querySelector('.wui-image-preview-controls') as HTMLElement
     expect(backdrop).toBeTruthy()
     expect(surface).toBeTruthy()
     expect(content).toBeTruthy()
-    // 内容包裹层包住舞台层与控件层（toolbar/counter/nav/close 随内容一起缩放）。
+    expect(controls).toBeTruthy()
+    // 内容包裹层只是结构容器，不声明任何过渡：否则贴边的 counter/close/toolbar 会随
+    // 进场缩放从视口边缘向内飞行。
     expect(content.contains(surface)).toBe(true)
-    expect(content.contains(dialog.querySelector('.wui-image-preview-controls'))).toBe(true)
+    expect(content.contains(controls)).toBe(true)
+    // 判据取 transition-duration（未声明即 0s），property 默认恒为 all，区分不了。
+    expect(getComputedStyle(content).transitionDuration).toBe('0s')
 
     // Bug A：全视口 modal 固定定位（显式防御作者样式覆盖 UA 默认）。
     expect(getComputedStyle(dialog).position).toBe('fixed')
 
     // Bug B：打开过渡中 dialog 与遮罩都无 transform（遮罩不进场缩放），
-    // scale 只落在内容包裹层上。
+    // scale 只落在图片舞台层上。
     expect(new DOMMatrixReadOnly(getComputedStyle(dialog).transform).a).toBe(1)
     expect(new DOMMatrixReadOnly(getComputedStyle(backdrop).transform).a).toBe(1)
-    expect(getComputedStyle(content).transitionProperty).toContain('transform')
+    expect(getComputedStyle(surface).transitionProperty).toContain('transform')
 
-    // 内容层经历 0.97→1 缩放并收敛到 scale(1)（sawMidScale 证明过渡真实发生）。
+    // 图片舞台层 0.95→1 收敛到 scale(1)（sawMidScale 证明过渡真实发生）。
     let sawMidScale = false
     await pollUntil(() => {
-      const a = new DOMMatrixReadOnly(getComputedStyle(content).transform).a
+      const a = new DOMMatrixReadOnly(getComputedStyle(surface).transform).a
       if (a < 1) sawMidScale = true
       return a === 1
-    }, 'content wrapper did not scale in')
+    }, 'image surface did not scale in')
     expect(sawMidScale).toBe(true)
-    // 收敛后 dialog 与遮罩仍无 transform。
+    // 收敛后 dialog、遮罩与控件层仍无 transform。
     expect(new DOMMatrixReadOnly(getComputedStyle(dialog).transform).a).toBe(1)
     expect(new DOMMatrixReadOnly(getComputedStyle(backdrop).transform).a).toBe(1)
+    expect(new DOMMatrixReadOnly(getComputedStyle(controls).transform).a).toBe(1)
   })
 })

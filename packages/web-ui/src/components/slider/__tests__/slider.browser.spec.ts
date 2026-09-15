@@ -417,6 +417,7 @@ describe('WebUiSlider 组件（浏览器）', () => {
     // 静止态：wui-glass 恒开（backdrop-filter 存在），背景被白色覆盖（实体白 thumb）。
     const restBackdrop = getComputedStyle(thumb).backdropFilter
     const restBg = getComputedStyle(thumb).backgroundColor
+    const restShadow = getComputedStyle(thumb).boxShadow
     expect(restBackdrop).not.toBe('none')
     expect(restBg).toBe('rgb(255, 255, 255)')
 
@@ -437,6 +438,10 @@ describe('WebUiSlider 组件（浏览器）', () => {
     // 背景从白切玻璃有 80ms 过渡，等收敛后再断言。
     await new Promise(resolve => setTimeout(resolve, 120))
     expect(getComputedStyle(thumb).backgroundColor).toBe('rgba(250, 250, 250, 0.34)')
+    // 压态 box-shadow 整段覆盖写入，必须自带 wui-glass 的 inset 描边，不能只写外投影。
+    const pressedShadow = getComputedStyle(thumb).boxShadow
+    expect(pressedShadow).not.toBe(restShadow)
+    expect(pressedShadow).toContain('inset')
 
     // 拖拽：背景转透明（backdrop blur 直接透出），backdrop-filter 仍存在。
     slider!.dispatchEvent(

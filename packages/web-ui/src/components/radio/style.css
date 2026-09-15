@@ -55,8 +55,8 @@
   background-color: var(--wui-color-surface-raised, #f2f2f7);
 
   transition:
-    background-color 0.2s ease,
-    border-color 0.2s ease;
+    background-color var(--wui-duration-focus, 200ms) ease,
+    border-color var(--wui-duration-focus, 200ms) ease;
 }
 
 .is-checked .wui-radio-circle {

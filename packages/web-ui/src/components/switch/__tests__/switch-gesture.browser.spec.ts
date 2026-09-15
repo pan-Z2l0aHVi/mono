@@ -381,6 +381,8 @@ describe('WebUiSwitch 手势拖拽（浏览器）', () => {
     expect(getComputedStyle(thumb).backgroundColor).toBe('rgba(0, 0, 0, 0)')
     const pressedShadow = getComputedStyle(thumb).boxShadow
     expect(pressedShadow).not.toBe(restShadow)
+    // 压态 box-shadow 整段覆盖写入，必须自带 wui-glass 的 inset 描边，不能只写外投影。
+    expect(pressedShadow).toContain('inset')
 
     // 拖拽：玻璃组成与按压态一致（背景透明 + backdrop blur），阴影保持加深。
     window.dispatchEvent(

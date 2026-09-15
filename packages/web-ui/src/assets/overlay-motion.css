@@ -21,28 +21,30 @@
   backdrop-filter: blur(4px) saturate(160%) brightness(var(--wui-glass-brightness, 1.06));
 
   /* transition 列表需手写 -webkit-backdrop-filter：lightningcss 不会在 transition
-   value 内追加 -webkit 项，iOS 16.4 上 blur 过渡依赖它（属性前缀会自动生成）。 */
+   value 内追加 -webkit 项，iOS 16.4 上 blur 过渡依赖它（属性前缀会自动生成）。
+   缓动取 --wui-ease-float：--wui-ease-enter 会在开局就冲到 85% 进度，锚定面板的展开
+   需要可读的过程。 */
   transition:
-    opacity var(--wui-internal-duration-float-enter, var(--wui-duration-float-enter, 160ms))
-      var(--wui-ease-enter, cubic-bezier(0.23, 1, 0.32, 1)),
-    -webkit-backdrop-filter var(--wui-internal-duration-float-enter, var(--wui-duration-float-enter, 160ms))
-      var(--wui-ease-enter, cubic-bezier(0.23, 1, 0.32, 1)),
-    backdrop-filter var(--wui-internal-duration-float-enter, var(--wui-duration-float-enter, 160ms))
-      var(--wui-ease-enter, cubic-bezier(0.23, 1, 0.32, 1)),
-    transform var(--wui-internal-duration-float-enter, var(--wui-duration-float-enter, 160ms))
-      var(--wui-ease-enter, cubic-bezier(0.23, 1, 0.32, 1));
+    opacity var(--wui-internal-duration-float-enter, var(--wui-duration-float-enter, 240ms))
+      var(--wui-ease-float, cubic-bezier(0.4, 0.38, 0.2, 1)),
+    -webkit-backdrop-filter var(--wui-internal-duration-float-enter, var(--wui-duration-float-enter, 240ms))
+      var(--wui-ease-float, cubic-bezier(0.4, 0.38, 0.2, 1)),
+    backdrop-filter var(--wui-internal-duration-float-enter, var(--wui-duration-float-enter, 240ms))
+      var(--wui-ease-float, cubic-bezier(0.4, 0.38, 0.2, 1)),
+    transform var(--wui-internal-duration-float-enter, var(--wui-duration-float-enter, 240ms))
+      var(--wui-ease-float, cubic-bezier(0.4, 0.38, 0.2, 1));
 }
 
 .wui-floating-panel[data-wui-presence='entering'],
 .wui-floating-panel[data-wui-presence='closing'] {
-  transform: scale(var(--wui-scale-enter, 0.97));
+  transform: scale(var(--wui-scale-enter, 0.95));
   opacity: 0;
   backdrop-filter: blur(0) saturate(160%) brightness(var(--wui-glass-brightness, 1.06));
 }
 
 .wui-floating-panel[data-wui-presence='closing'] {
   pointer-events: none;
-  transition-duration: var(--wui-internal-duration-float-exit, var(--wui-duration-float-exit, 120ms));
+  transition-duration: var(--wui-internal-duration-float-exit, var(--wui-duration-float-exit, 160ms));
 }
 
 @media (prefers-reduced-motion: reduce) {

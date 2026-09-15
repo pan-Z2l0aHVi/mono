@@ -7,8 +7,8 @@
    顶掉 fixed、背景/阴影变量回弱默认）。 */
 .wui-menu-portal-overlay.wui-floating-panel {
   --wui-internal-glass-shadow: var(--wui-shadow-panel, 0 3px 9px rgb(0 0 0 / 0.27));
-  --wui-internal-duration-float-enter: var(--wui-duration-float-enter, 160ms);
-  --wui-internal-duration-float-exit: var(--wui-duration-float-exit, 120ms);
+  --wui-internal-duration-float-enter: var(--wui-duration-float-enter, 240ms);
+  --wui-internal-duration-float-exit: var(--wui-duration-float-exit, 160ms);
   --wui-glass-corner-radius: var(--wui-radius-menu, 18px);
   user-select: none;
 

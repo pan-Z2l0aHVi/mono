@@ -1,0 +1,13 @@
+---
+'@greypan/web-ui': minor
+---
+
+Align overlay motion with the platform motion language. Timing and scale defaults change visibly across anchored floating panels (popover, menu, dropdown, select, tooltip, autocomplete), the dialog and image preview.
+
+- The dialog now enters by shrinking and exits by growing back, through a new `--wui-dialog-scale-enter` token (default `1.2`, `1` under reduced motion). It replaces the shared `--wui-scale-enter` that used to grow the dialog in from `0.97`. A resting card wider than `(100 / 1.2)vw ≈ 83.33vw` overhangs the viewport while the scale is still above `1`. With the default `360px` width that means viewports narrower than `432px`, and any card in the `90vw` branch. The exact no-overflow ceiling for `min(90vw, var(--wui-dialog-width))` is `1 / 0.9 ≈ 1.111`, because the two branches meet at a `400px` viewport (`0.9 × 400 = 360`). Lower the token to that if a hard geometric guarantee matters more than the `1.2` start. At `1.2` the overhang lasts about `57ms` of the `320ms`. The scale shares `--wui-ease-dialog` with the card's own opacity, and solving `cubic-bezier(0.2, 0, 0, 1)` numerically puts progress `0.4444` at `x = 0.1793`, so the card is never more than `44.4%` opaque while it overhangs. On a `390px` viewport the total overhang is `31px`.
+- The image preview's enter scale moves off the wrapper that also contains the control layer and onto the image surface alone. Scaling the wrapper dragged the edge-anchored glass chrome (counter, close, nav, toolbar) inward, on a `1440px` viewport by `36px` and `22px` from its final corner position, and drew it at a non-integer scale mid-flight. The chrome now holds its position and fades in while the image materializes. The image preview is a full-viewport surface, so `--wui-scale-enter` stays below `1` there and it can never take a shrink-in start the way the dialog does.
+- Anchored floating panels get a dedicated easing token, `--wui-ease-float` (`cubic-bezier(0.4, 0.38, 0.2, 1)`), shaped as a no-bounce spring (about `11%` of the progress at `10%` of the duration, `53%` at `30%`, `85%` at `50%`). They previously shared `--wui-ease-enter`, which put `85%` of the transition inside the first `30%` of the duration and read as a pop rather than an unfold. The anchor-relative `transform-origin` and the grow-in direction are unchanged.
+- `--wui-duration-float-enter` moves from `160ms` to `240ms` and `--wui-duration-float-exit` from `120ms` to `160ms`, keeping exit faster than enter.
+- `--wui-scale-enter` moves from `0.97` to `0.95` for anchored panels and image preview.
+
+Reduced-motion behavior is unchanged: durations still collapse to `0ms` and both scale tokens still resolve to `1`.

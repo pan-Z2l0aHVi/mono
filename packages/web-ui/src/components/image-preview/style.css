@@ -13,9 +13,11 @@
  * dialog 自身背景）。dialog 自身 opacity 恒 1、无任何 transform——opacity < 1 会让
  * dialog 成为 backdrop root，后代玻璃控件（toolbar/counter/nav）的 backdrop-filter
  * 在过渡期被禁用、blur 在端点生硬跳变；transform 会把遮罩一起缩放。进场缩放
- * （scale 0.97→1）由 .wui-image-preview-content 内容包裹层承担（见下）。遮罩、图片
- * 舞台各自用独立层 opacity 过渡；控件层不参与 opacity 过渡，玻璃控件永不在
- * opacity < 1 的祖先内，blur 全程连续。
+ * （scale 0.95→1）由 .wui-image-preview-surface 图片舞台层承担（见下）。本组件是满视口
+ * 表面，起点 >1 会越出视口，只能用 <1 的档位；缩放也不能落在包住控件层的
+ * .wui-image-preview-content 上，否则贴边控件会随缩放从视口边缘向内飞行。遮罩、图片
+ * 舞台各自用独立层 opacity 过渡；控件层不参与 opacity 过渡，玻璃控件永不在 opacity < 1
+ * 的祖先内，blur 全程连续。
  */
 dialog {
   /* 显式 position: fixed（防御性）：UA 的 dialog:modal 默认 fixed，但作者样式若覆盖
@@ -55,24 +57,27 @@ dialog {
   transition: opacity var(--wui-duration-dialog-enter, 320ms) var(--wui-ease-dialog, cubic-bezier(0.2, 0, 0, 1));
 }
 
-/* 内容包裹层：舞台与控件整体做进场缩放（0.97→1）。scale 不能放在 dialog 上——
-   那会让作为 dialog 子层的遮罩（.wui-image-preview-backdrop）跟着缩放（用户反馈的
-   “遮罩被缩放”）。本层只做 transform、不做 opacity：transform 不构成 backdrop root，
-   后代玻璃控件（toolbar/counter/nav）的 backdrop-filter 不受影响。 */
+/* 内容包裹层：仅作「图片舞台层 + 控件层」的结构容器，自身不做任何过渡。
+   scale 不能放在 dialog 上（会带着遮罩一起缩放），也不能放在本层（控件层在其内，
+   带 transform 会让贴边控件从视口边缘向内飞行）。 */
 .wui-image-preview-content {
   position: absolute;
   inset: 0;
-  transform: scale(var(--wui-scale-enter, 0.97));
-  transition: transform var(--wui-duration-dialog-enter, 320ms) var(--wui-ease-dialog, cubic-bezier(0.2, 0, 0, 1));
 }
 
-/* 图片舞台层：与遮罩同尺寸叠放，承接图片淡入淡出。内部无玻璃元素，自身 opacity
-   过渡不会影响任何 backdrop-filter。 */
+/* 图片舞台层：与遮罩同尺寸叠放，承接图片的进场缩放与淡入淡出（0.95→1）。内部无玻璃
+   元素，自身 opacity 过渡不影响 backdrop-filter；transform 不构成 backdrop root，
+   也不会波及兄弟的控件层。 */
 .wui-image-preview-surface {
   position: absolute;
   inset: 0;
+  transform: scale(var(--wui-scale-enter, 0.95));
+
   opacity: 0;
-  transition: opacity var(--wui-duration-dialog-enter, 320ms) var(--wui-ease-dialog, cubic-bezier(0.2, 0, 0, 1));
+
+  transition:
+    opacity var(--wui-duration-dialog-enter, 320ms) var(--wui-ease-dialog, cubic-bezier(0.2, 0, 0, 1)),
+    transform var(--wui-duration-dialog-enter, 320ms) var(--wui-ease-dialog, cubic-bezier(0.2, 0, 0, 1));
 }
 
 /* 玻璃控件（counter/toolbar）各自做 own opacity 过渡：玻璃元素自身 opacity 淡入
@@ -278,7 +283,7 @@ dialog::backdrop {
 }
 
 dialog[open].is-visible {
-  .wui-image-preview-content {
+  .wui-image-preview-surface {
     transform: scale(1);
   }
 
@@ -299,10 +304,6 @@ dialog[open].is-closing {
   pointer-events: none;
   transition-duration: var(--wui-duration-dialog-exit, 260ms);
 
-  .wui-image-preview-content {
-    transition-duration: var(--wui-duration-dialog-exit, 260ms);
-  }
-
   .wui-image-preview-backdrop,
   .wui-image-preview-surface,
   .wui-image-preview-counter,
@@ -321,7 +322,7 @@ dialog[open].is-closing {
   dialog[open].is-visible {
     transition-duration: var(--wui-duration-feedback, 100ms);
 
-    .wui-image-preview-content {
+    .wui-image-preview-surface {
       transform: none;
       transition-duration: var(--wui-duration-feedback, 100ms);
     }

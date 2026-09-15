@@ -568,6 +568,8 @@ describe('WebUiSegmented 手势拖拽与吸附（浏览器）', () => {
     expect(getComputedStyle(indicator).backgroundColor).toBe('rgba(250, 250, 250, 0.34)')
     const pressedShadow = getComputedStyle(indicator).boxShadow
     expect(pressedShadow).not.toBe(restShadow)
+    // 压态 box-shadow 整段覆盖写入，必须自带 wui-glass 的 inset 描边，不能只写外投影。
+    expect(pressedShadow).toContain('inset')
 
     // 拖拽：玻璃组成与按压态一致。
     window.dispatchEvent(

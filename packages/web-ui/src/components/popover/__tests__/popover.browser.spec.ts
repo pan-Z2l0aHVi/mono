@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 
-import { getPortalPanel, waitForFrame } from '@/shared/test-utils'
+import { getPortalPanel, pollUntil, waitForFrame } from '@/shared/test-utils'
 
 import '..'
 import type { WebUiPopover } from '..'
@@ -283,8 +283,8 @@ describe('WebUiPopover 组件（浏览器）', () => {
     expect(getComputedStyle(panel!).transitionProperty).toContain('opacity')
     expect(getComputedStyle(panel!).transitionProperty).toContain('backdrop-filter')
     expect(getComputedStyle(panel!).transitionProperty).toContain('transform')
-    // blur 随 float 过渡（160ms）从 0px 插值到 4px：等待收敛再断言目标态。
-    await new Promise(resolve => setTimeout(resolve, 250))
+    // blur 从 0px 插值到 4px：轮询到收敛再断言目标态。
+    await pollUntil(() => getComputedStyle(panel!).backdropFilter.includes('blur(4px)'), 'blur did not converge')
     expect(getComputedStyle(panel!).backdropFilter).toContain('blur(4px)')
   })
 })

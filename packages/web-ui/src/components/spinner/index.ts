@@ -81,7 +81,7 @@ export class WebUiSpinner extends LitElement {
           Array.from({ length: LEAF_COUNT }, (_, i) => i),
           i =>
             html`<span
-              style="transform:rotate(${i * 45}deg);animation-delay:calc(-${LEAF_COUNT - i} / ${LEAF_COUNT} * 0.8s)"
+              style="transform:rotate(${i * 45}deg);animation-delay:calc(-${LEAF_COUNT - i} / ${LEAF_COUNT} * var(--wui-duration-spinner, 800ms))"
             ></span>`
         )}
       </div>

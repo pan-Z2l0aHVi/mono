@@ -4,6 +4,7 @@ import '..'
 import '@/components/popover'
 import type { WebUiPopover } from '@/components/popover'
 import { getMenuChildren } from '@/shared/menu-portal/menu-tree'
+import { pollUntil } from '@/shared/test-utils'
 
 import type { WebUiContextMenu } from '..'
 
@@ -46,7 +47,7 @@ async function waitForObserverRefresh() {
 }
 
 async function waitForItemsReturned(menu: WebUiContextMenu, count: number) {
-  // 关闭动画（transitionend ~120ms + 80ms 兜底）后才归还，预算按 500ms 计；
+  // 关闭动画（transitionend ~160ms + 80ms 兜底）后才归还，预算按 500ms 计；
   // 不能用帧数表达——帧时长随刷新率变化，120Hz 下 20 帧不足 180ms 会假失败。
   const deadline = performance.now() + 500
   while (performance.now() < deadline) {
@@ -90,8 +91,8 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
     expect(getComputedStyle(panel).transitionProperty).toContain('opacity')
     expect(getComputedStyle(panel).transitionProperty).toContain('backdrop-filter')
     expect(getComputedStyle(panel).transitionProperty).toContain('transform')
-    // blur 随 float 过渡（160ms）从 0px 插值到 4px：等待收敛再断言目标态。
-    await new Promise(resolve => setTimeout(resolve, 250))
+    // blur 从 0px 插值到 4px：轮询到收敛再断言目标态。
+    await pollUntil(() => getComputedStyle(panel).backdropFilter.includes('blur(4px)'), 'blur did not converge')
     expect(getComputedStyle(panel).backdropFilter).toContain('blur(4px)')
   })
 
