@@ -104,6 +104,35 @@ describe('WebUiSvgDrawLines 组件（浏览器）', () => {
     el.remove()
   })
 
+  it('host 布局中性：不抬高图标盒高，但仍保持可 transform 的盒子', async () => {
+    const btn = document.createElement('button')
+    btn.style.cssText =
+      'display:flex;align-items:center;justify-content:center;width:60px;height:36px;padding:0;border:0'
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
+    svg.setAttribute('width', '18')
+    svg.setAttribute('height', '18')
+    svg.setAttribute('viewBox', '0 0 18 18')
+    const host = document.createElement('web-ui-svg-draw-lines')
+    host.appendChild(svg)
+    btn.appendChild(host)
+    document.body.appendChild(btn)
+    await host.updateComplete
+
+    // 宿主盒收缩到内容尺寸（inline-flex + line-height:0），不因行盒抬升成 >18px
+    // 的盒子；若仍用 inline-block 会被 line box 抬高，flex 居中时偏移图标（#126）。
+    const hostH = host.getBoundingClientRect().height
+    const svgH = svg.getBoundingClientRect().height
+    expect(svgH).toBe(18)
+    expect(hostH).toBe(svgH)
+
+    // 宿主仍是可 transform 的盒子（interweave prototype 依赖对宿主的 scale 动画）；
+    // 若改为 display: contents（无盒子）则此断言必失败。
+    host.style.transform = 'scale(1.3)'
+    expect(host.getBoundingClientRect().height).toBeCloseTo(svgH * 1.3, 0)
+
+    btn.remove()
+  })
+
   it('最近的嵌套 theme motion 决定是否播放', async () => {
     const outer = document.createElement('web-ui-theme')
     outer.appearance = 'light'

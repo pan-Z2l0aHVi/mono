@@ -773,9 +773,10 @@ function openEditTagsDialog(target: EditTagsTarget) {
 
 function closeEditTagsDialog() {
   editTagsDialogOpen.value = false
-  editTagsTarget.value = null
-  editTagsDraftTags.value = []
-  editTagsDraft.value = ''
+  // 关闭动画期间不清空 draft/target：若此刻清空 editTagsDraftTags，标签块
+  // （v-if="editTagsDraftTags.length"）会在退场动画的第一帧卸载，对话框内容高度
+  // 骤降 ~50px，造成关闭时的高度跳变（#124）。这些状态在下次 openEditTagsDialog()
+  // 打开时统一重置，关闭期间保留不产生可见影响。
 }
 
 function handleEditTagsDialogOpenChange(event: WebUiEvent<WebUiDialog, 'open-change'>) {
