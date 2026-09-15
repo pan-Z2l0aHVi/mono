@@ -265,6 +265,35 @@ export function getPortalPanel(role = 'dialog'): HTMLElement | null {
 }
 
 /**
+ * 查询 fallback overlay root 中**所有** portal 面板（`getPortalPanel` 的多面板版）。
+ * 供嵌套浮层场景使用（祖先与后代面板同时在场时需要全量枚举）。
+ */
+export function getPortalPanels(role = 'dialog'): HTMLElement[] {
+  return Array.from(document.querySelectorAll<HTMLElement>('[data-wui-overlay-root]')).flatMap(root => {
+    const hosts = Array.from(root.shadowRoot?.querySelectorAll<HTMLElement>('[data-wui-overlay-container] > div') ?? [])
+    return hosts
+      .map(host => host.shadowRoot?.querySelector<HTMLElement>(`[role="${role}"]`))
+      .filter((panel): panel is HTMLElement => panel !== null && panel !== undefined)
+  })
+}
+
+/**
+ * 查询 fallback overlay root 中的菜单面板（dropdown / context-menu 族）。
+ *
+ * 菜单族的面板**直接**挂到 `[data-wui-overlay-container]` 且自身带 `role="menu"`，
+ * 不像 anchored panel 那样再包一层带 shadow 的 portal host —— 因此不能复用
+ * `getPortalPanel()`（后者要穿过内层 shadow）。`ariaLabel` 用于区分同族面板，
+ * 例如 context-menu 的 `'上下文菜单'` 与 `'子菜单'`。
+ */
+export function getMenuPanels(ariaLabel?: string): HTMLElement[] {
+  const container = document
+    .querySelector<HTMLElement>('[data-wui-overlay-root]')
+    ?.shadowRoot?.querySelector<HTMLElement>('[data-wui-overlay-container]')
+  const panels = Array.from(container?.querySelectorAll<HTMLElement>('[role="menu"]') ?? [])
+  return ariaLabel === undefined ? panels : panels.filter(panel => panel.getAttribute('aria-label') === ariaLabel)
+}
+
+/**
  * 等待一帧，供打开浮层的 requestAnimationFrame 生命周期消费。
  */
 export async function waitForFrame(): Promise<void> {

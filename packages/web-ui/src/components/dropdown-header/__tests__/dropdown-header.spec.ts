@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vite-plus/test'
 
 import '..'
-import { cleanupElement, waitForUpdate } from '@/shared/test-utils'
+import { cleanupElement, queryA11y, waitForUpdate } from '@/shared/test-utils'
 
 import type { WebUiDropdownHeader } from '..'
 
@@ -12,30 +12,29 @@ function createHeader(content = ''): WebUiDropdownHeader {
   return el
 }
 
+/** 默认 slot 实际投影到的节点数——slot 投影是公开契约（ADR-0005 §5）。 */
+function projectedCount(el: WebUiDropdownHeader): number {
+  const slot = queryA11y(el, 'slot:not([name])') as HTMLSlotElement | null
+  return slot?.assignedNodes().length ?? 0
+}
+
 describe('WebUiDropdownHeader 组件', () => {
-  it('slot 文本内容可通过 textContent 访问', async () => {
-    const el = createHeader('分组标题')
-    await waitForUpdate(el)
-
-    expect(el.textContent?.trim()).toBe('分组标题')
-
-    cleanupElement(el)
-  })
-
-  it('slot HTML 内容渲染到宿主', async () => {
+  it('默认 slot 内容投影到内部容器', async () => {
     const el = createHeader('<span>分组A</span>')
     await waitForUpdate(el)
 
-    expect(el.innerHTML).toContain('分组A')
+    expect(projectedCount(el)).toBe(1)
+    expect(el.textContent?.trim()).toBe('分组A')
 
     cleanupElement(el)
   })
 
-  it('空内容不中断渲染', async () => {
+  it('无内容时仍完成渲染且不投影任何节点', async () => {
     const el = createHeader()
     await waitForUpdate(el)
 
-    expect(el).toBeInstanceOf(HTMLElement)
+    expect(projectedCount(el)).toBe(0)
+    expect(queryA11y(el, 'slot')).not.toBeNull()
 
     cleanupElement(el)
   })

@@ -31,8 +31,22 @@ function mount(label: string): WebUiTooltip {
 }
 
 /**
- * 逐帧采集面板 presence。entering 只存在于「写入它」的任务与紧随其后的 rAF 翻态之间，
- * 逐帧采样必落在这一窗口内。
+ * 逐帧采集面板 presence 序列。
+ *
+ * **本用例是判据 §8 R1 明列的例外（待 Batch 6 动效判据裁决）。**
+ * R1 要求把 `data-wui-presence` 换成公开可观察量；R1 的首选替代是 Web Animations API，
+ * 但实测在本例中**不可行**——面板一经创建就带着 `opacity / backdrop-filter / transform`
+ * 三条运行中的过渡（首次与第二次逐帧采集到的属性集合完全相同），`getAnimations()`
+ * 无法区分「重播入场」与「跳过入场」：
+ *
+ * ```
+ * FIRST  f0 presence=entering 运行过渡=[]   f1..f7 presence=open 运行过渡=[backdrop-filter,opacity,transform]
+ * SECOND f0..f7               presence=open 运行过渡=[backdrop-filter,opacity,transform]
+ * ```
+ *
+ * 本用例的**全部主题**就是这段瞬时序列（不是"顺带断言一下"），且差异纯粹体现在帧级
+ * 视觉渐变上，不存在行为层可观察量。因此暂按 R1 的兜底条款保留 presence 序列断言，
+ * 并移交 Batch 6 与「减少动效」缺口一并按动效判据重新裁定。
  */
 async function hoverAndCollectPresence(
   el: WebUiTooltip,
