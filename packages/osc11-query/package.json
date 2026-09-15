@@ -1,0 +1,11 @@
+{
+  "name": "@greypan/osc11-query",
+  "version": "1.0.0",
+  "description": "Terminal background-colour query, as a Turborepo task",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node src/query-terminal.mjs"
+  }
+}

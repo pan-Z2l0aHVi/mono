@@ -12,15 +12,11 @@
     "registry": "https://registry.npmjs.org/"
   },
   "dependencies": {
-    "@vue/tsconfig": "catalog:",
     "@tsconfig/node24": "catalog:"
   },
   "files": [
     "base.json",
     "core.json",
-    "dom.json",
-    "node.json",
-    "react.json",
-    "vue.json"
+    "node.json"
   ]
 }

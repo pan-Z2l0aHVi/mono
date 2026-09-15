@@ -1,12 +1,3 @@
 [tools]
 node = "24.18.0"
 pnpm = "12.4.0"
-go = "1.26.4"
-"go:github.com/wailsapp/wails/v3/cmd/wails3" = "3.0.0-beta.12"
-
-[env]
-# worktree 族共享同一份 turbo 本地缓存：TURBO_CACHE_DIR 覆盖所有 turbo 调用（含
-# ad-hoc 命令），兄弟 worktree 间复用构建产物（含 dist d.ts），避免每 worktree 冷缓存
-# 全量重建。{{ config_root }} 由 mise 解析为本文件所在目录。CI 在 ci.yml 显式覆盖回
-# workspace 内路径，防止 mise 环境泄漏导致 actions/cache 静默丢失。
-TURBO_CACHE_DIR = "{{ config_root }}/../.turbo-cache"

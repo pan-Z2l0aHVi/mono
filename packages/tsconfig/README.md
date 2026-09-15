@@ -6,14 +6,11 @@ English | [简体中文](./README.CN.md)
 
 ## Profiles
 
-| Profile      | Layer | Used by                                                                                      | Extends                            |
-| ------------ | ----- | -------------------------------------------------------------------------------------------- | ---------------------------------- |
-| `base.json`  | 0     | All profiles internally                                                                      | —                                  |
-| `core.json`  | 1     | Pure JS libraries (js-kit)                                                                   | `./base.json`                      |
-| `node.json`  | 2     | Node.js packages (deps-reload, unplugin-web-components, test-kit) + all `tsconfig.node.json` | `@tsconfig/node24` + `./base.json` |
-| `dom.json`   | 3     | Browser/DOM packages (browser-kit, web-ui)                                                   | `./base.json`                      |
-| `react.json` | 4     | React app (react-web-ui-demo)                                                                | `./dom.json`                       |
-| `vue.json`   | 4     | Vue apps (vue-web-ui-demo, interweave frontend)                                              | `@vue/tsconfig` + `./dom.json`     |
+| Profile     | Layer | Used by                                                   | Extends                            |
+| ----------- | ----- | --------------------------------------------------------- | ---------------------------------- |
+| `base.json` | 0     | All profiles internally                                   | —                                  |
+| `core.json` | 1     | Pure JS libraries (js-kit)                                | `./base.json`                      |
+| `node.json` | 2     | Node.js packages (deps-reload) + all `tsconfig.node.json` | `@tsconfig/node24` + `./base.json` |
 
 ## Why separate profiles?
 
@@ -57,8 +54,5 @@ pnpm add -D @greypan/tsconfig
 ```
 base.json (strict / module / bundler settings)
 ├── core.json (ESNext + webworker, types: [])
-├── node.json (@tsconfig/node24 + base, types: [node])
-└── dom.json (ESNext + DOM + DOM.Iterable, types: [])
-    ├── react.json (+ JSX / React settings)
-    └── vue.json (@vue/tsconfig + dom)
+└── node.json (@tsconfig/node24 + base, types: [node])
 ```

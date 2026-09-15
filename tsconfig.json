@@ -1,13 +1,4 @@
 {
   "files": [],
-  "references": [
-    { "path": "./packages/js-kit" },
-    { "path": "./packages/browser-kit" },
-    { "path": "./packages/web-ui" },
-    { "path": "./packages/unplugin-web-components" },
-    { "path": "./packages/deps-reload" },
-
-    { "path": "./apps/react-web-ui-demo" },
-    { "path": "./apps/vue-web-ui-demo" }
-  ]
+  "references": [{ "path": "./packages/js-kit" }]
 }
