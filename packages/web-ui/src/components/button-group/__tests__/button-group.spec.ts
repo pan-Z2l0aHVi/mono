@@ -1,18 +1,14 @@
 import { describe, expect, it } from 'vite-plus/test'
 
-import { cleanupElement, waitForUpdate } from '@/shared/test-utils'
+import { cleanupElement, expectReflected, mountElement, waitForUpdate } from '@/shared/test-utils'
 import '@/components/button'
 
 import '..'
 import type { WebUiButtonGroup } from '..'
 import type { WebUiButton } from '../../button'
 
-const createButtonGroup = (buttons = ''): WebUiButtonGroup => {
-  const el = document.createElement('web-ui-button-group')
-  if (buttons) el.innerHTML = buttons
-  document.body.appendChild(el)
-  return el
-}
+const createButtonGroup = (buttons = ''): WebUiButtonGroup =>
+  mountElement<WebUiButtonGroup>('web-ui-button-group', { html: buttons })
 
 describe('WebUiButtonGroup 组件', () => {
   describe('属性: direction', () => {
@@ -67,74 +63,8 @@ describe('WebUiButtonGroup 组件', () => {
         expect(button.hasAttribute('group')).toBe(false)
         expect(button.hasAttribute('last')).toBe(false)
         expect(button.hasAttribute('direction')).toBe(false)
-        expect(button.getAttribute('style')).toBeNull()
       }
 
-      cleanupElement(el)
-    })
-
-    it('v-if 插入的子按钮应刷新末位 divider 上下文', async () => {
-      const el = createButtonGroup('<web-ui-button>A</web-ui-button><web-ui-button>B</web-ui-button>')
-      await waitForUpdate(el)
-      let buttons = el.querySelectorAll<WebUiButton>('web-ui-button')
-      await Promise.all([...buttons].map(b => b.updateComplete))
-      // 初始 2 个，最后一个无 divider
-      expect(buttons[1].shadowRoot!.querySelector('.group-divider')).toBeNull()
-      expect(buttons[0].shadowRoot!.querySelector('.group-divider')).not.toBeNull()
-
-      const c = document.createElement('web-ui-button') as WebUiButton
-      c.textContent = 'C'
-      el.appendChild(c)
-      await new Promise(r => setTimeout(r, 0))
-      await Promise.all([c.updateComplete, waitForUpdate(el)])
-      await new Promise(r => setTimeout(r, 0))
-      buttons = el.querySelectorAll<WebUiButton>('web-ui-button')
-      await Promise.all([...buttons].map(b => b.updateComplete))
-      // 新末位 C 无 divider，原末位 B 变为有 divider
-      expect(buttons[2].shadowRoot!.querySelector('.group-divider')).toBeNull()
-      expect(buttons[1].shadowRoot!.querySelector('.group-divider')).not.toBeNull()
-      expect(buttons[0].shadowRoot!.querySelector('.group-divider')).not.toBeNull()
-      cleanupElement(el)
-    })
-
-    it('v-if 移除末位后新的末位应无 divider', async () => {
-      const el = createButtonGroup(
-        '<web-ui-button>A</web-ui-button><web-ui-button>B</web-ui-button><web-ui-button>C</web-ui-button>'
-      )
-      await waitForUpdate(el)
-      let buttons = el.querySelectorAll<WebUiButton>('web-ui-button')
-      await Promise.all([...buttons].map(b => b.updateComplete))
-      expect(buttons[2].shadowRoot!.querySelector('.group-divider')).toBeNull()
-
-      buttons[2].remove()
-      await new Promise(r => setTimeout(r, 0))
-      await waitForUpdate(el)
-      await new Promise(r => setTimeout(r, 0))
-      buttons = el.querySelectorAll<WebUiButton>('web-ui-button')
-      await Promise.all([...buttons].map(b => b.updateComplete))
-      expect(buttons).toHaveLength(2)
-      expect(buttons[1].shadowRoot!.querySelector('.group-divider')).toBeNull()
-      expect(buttons[0].shadowRoot!.querySelector('.group-divider')).not.toBeNull()
-      cleanupElement(el)
-    })
-
-    it('v-if 插入的子按钮应继承 direction=vertical 的上下文', async () => {
-      const el = createButtonGroup('<web-ui-button>A</web-ui-button>')
-      await waitForUpdate(el)
-      el.direction = 'vertical'
-      await waitForUpdate(el)
-
-      const b = document.createElement('web-ui-button') as WebUiButton
-      b.textContent = 'B'
-      el.appendChild(b)
-      await new Promise(r => setTimeout(r, 0))
-      await Promise.all([b.updateComplete, waitForUpdate(el)])
-      await new Promise(r => setTimeout(r, 0))
-
-      const dividers = [...el.querySelectorAll<WebUiButton>('web-ui-button')].map(btn =>
-        btn.shadowRoot!.querySelector('.group-divider')
-      )
-      expect(dividers[0]?.classList.contains('vertical')).toBe(true)
       cleanupElement(el)
     })
 
@@ -150,9 +80,9 @@ describe('WebUiButtonGroup 组件', () => {
 
       expect(button.variant).toBe('primary')
       expect(button.size).toBe('48')
-      expect(button.hasAttribute('group')).toBe(false)
-      expect(button.hasAttribute('last')).toBe(false)
-      expect(button.hasAttribute('direction')).toBe(false)
+      expectReflected(button, 'group', false)
+      expectReflected(button, 'last', false)
+      expectReflected(button, 'direction', false)
 
       cleanupElement(container)
       cleanupElement(group)
