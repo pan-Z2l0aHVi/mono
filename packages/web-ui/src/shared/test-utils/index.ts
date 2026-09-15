@@ -101,6 +101,24 @@ export function contractReflection<T extends TestableElement>(
 }
 
 /**
+ * `contractEvent` 的空 `counts` 护栏。
+ *
+ * 门禁 `vitest/expect-expect` 只看**语法上有无 `expect(...)`**，而生成本模块的用例体里
+ * 那个 `expect` 写在循环里——因此 `counts: {}` 会生成一条**零断言的空过用例**，静态检查拦不住、
+ * 运行也永远绿。这里把它变成收集期的硬失败。
+ */
+export function assertNonEmptyCounts(
+  title: string,
+  cases: ReadonlyArray<{ title: string; counts: Record<string, number> }>
+): void {
+  for (const testCase of cases) {
+    if (Object.keys(testCase.counts).length === 0) {
+      throw new Error(`contractEvent(${title}): 用例「${testCase.title}」的 counts 为空，会生成无断言的空过用例`)
+    }
+  }
+}
+
+/**
  * 表驱动事件契约：为每个用例生成一条 `it`，断言目标元素在指定交互下各事件的派发次数。
  *
  * 生成器（而非断言封装）是本仓库唯一可行的复用形态：门禁 `vitest/expect-expect`
@@ -130,6 +148,8 @@ export function contractEvent<T extends TestableElement>(
     counts: Record<string, number>
   }>
 ): void {
+  assertNonEmptyCounts(title, cases)
+
   describe(title, () => {
     for (const testCase of cases) {
       it(testCase.title, async () => {
