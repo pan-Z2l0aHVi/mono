@@ -63,7 +63,7 @@ afterEach(() => document.body.replaceChildren())
  * 后者是 §12 C1 的几何。**层序本身没有公开观察面**，因此改用层的**行为后果**来承载：
  * Escape 只作用于最顶层，且关闭一层后由次层接管（UA top layer 的键盘路由）。
  *
- * 不承接的部分（已删，见 `batch-6c.md`）：0.95^depth 的具体缩放值、左缘阶梯露边的像素量、
+ * 不承接的部分（已删，见 `docs/testing/BATCH-LEDGER.md` §Batch 6c）：0.95^depth 的具体缩放值、左缘阶梯露边的像素量、
  * 多宽度嵌套的宽度补偿——全是视觉契约，无行为判据，锁住只能锁像素。
  */
 describe('WebUiDrawer nested 层叠（浏览器）', () => {

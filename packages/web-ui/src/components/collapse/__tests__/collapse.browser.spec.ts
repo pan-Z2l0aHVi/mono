@@ -45,7 +45,7 @@ function queryInner(el: WebUiCollapse): HTMLElement {
 }
 
 /*
- * 落稳态观察面用 Web Animations API（DELETION-RUBRIC §10 S2），不读内部状态标记：
+ * 落稳态观察面用 Web Animations API（docs/testing/DELETION-RUBRIC.md §10 S2），不读内部状态标记：
  * `getAnimations()` 对「有动效 vs 没有动效」有完全区分力，过渡跑完即为空集。
  * 不用 `transitionend`：同帧 close→reopen 会取消过渡（净样式无变化），事件不触发，
  * 而组件本身正确落稳态（实测），等待必须对中断路径健壮。
@@ -60,7 +60,7 @@ afterEach(() => document.body.replaceChildren())
  * 本文件只保留浏览器里才能观察到的契约：真实的过渡生命周期（中断/续接/落稳态）、
  * 真实布局下的内容挂载与滚动位置、真实焦点归宿。
  *
- * 已按判据删除（见 `batch-6b.md` 的 D 清单）：
+ * 已按判据删除（见 `docs/testing/BATCH-LEDGER.md` 的 D 清单）：
  * - 全部 peek 尺寸断言（轨道高/宽、`getBoundingClientRect()` 增量、"内容不足 peek 时不
  *   留空白"、horizontal 轴宽）→ §12 C1：几何/像素度量属纯视觉契约，不承接；
  * - 'peek 边缘渐隐' 整个 describe（11 例：`maskImage` 字符串、`--wui-collapse-peek-edge-*`

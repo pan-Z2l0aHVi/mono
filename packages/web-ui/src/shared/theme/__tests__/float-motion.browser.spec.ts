@@ -33,7 +33,7 @@ const FLOAT_ENTER_MS = 240
  *
  * b4 的 R2 把 8 个组件各写一遍的「单层玻璃」CSS 断言收敛到本文件
  * （popover / tooltip / dropdown / context-menu / select / autocomplete / toast / dialog），
- * 并注明「由 b6 按动效判据重新裁定」。b6 的裁定见 `DELETION-RUBRIC.md` §10 S4：
+ * 并注明「由 b6 按动效判据重新裁定」。b6 的裁定见 `docs/testing/DELETION-RUBRIC.md` §10 S4：
  * 玻璃的**视觉**契约（`wui-glass` class / blur 半径 / 背景色 / transition-property 列表）
  * 按 ADR-0005 §5 删除且**不承接**（仓库不做视觉基线）；本文件存活主题改为**动效行为**，
  * 观察面用 Web Animations API 而非 computed style（§10 S2）。
@@ -44,7 +44,7 @@ const FLOAT_ENTER_MS = 240
  * - `portal=false`（**本文件不断言**）：本地面板打开时 `getAnimations()` 恒为空 —— 它从
  *   `display: none` 变为可见，没有 before-change style，CSS 过渡不会启动。
  *   即"入场动画"只存在于 portal 路径；本地面板的**退场**仍走过渡（元素已渲染）。该不对称
- *   记入 `batch-6a.md` 发现项，不改产品代码（§6）。
+ *   记入 `docs/testing/BATCH-LEDGER.md` §Batch 6a 发现项，不改产品代码（§6）。
  */
 async function openPanel({ tag, role }: (typeof fixtures)[number], motion: string): Promise<HTMLElement> {
   const theme = document.createElement('web-ui-theme') as ThemedHost

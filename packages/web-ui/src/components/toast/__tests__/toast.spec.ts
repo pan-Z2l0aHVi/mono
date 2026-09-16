@@ -342,7 +342,7 @@ describe('toast 命令式 API', () => {
     /*
      * 观察面从内部测试钩子 `toast._visibleCount()`（私有 Map 的 size）换成**实际挂载的
      * `web-ui-toast` 元素**后，暴露出一个既有缺陷：**同一次批量里重复的 id 不会被去重**。
-     * 实测（`batch-6b.md` §4，探针取证，探针已删）：
+     * 实测（探针取证，探针已删；背景见 `docs/testing/BATCH-LEDGER.md` §Batch 6b）：
      *   toast({message:'first', id:'dup'}); toast({message:'second', id:'dup'})  →  DOM 里 2 条，
      *   都 visible=true、都 toastId='dup'（用户会看到两条），而 `_visibleCount()` 报 1 —— 旧断言
      *   只读内部 Map，恰好看不到这个重复挂载。根因在 `manager.ts` 的 `createToast()`：只查

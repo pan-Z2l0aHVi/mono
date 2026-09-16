@@ -34,7 +34,7 @@ function queryInner(el: WebUiCollapse): HTMLElement {
 }
 
 /*
- * 动效观察面用 Web Animations API（DELETION-RUBRIC §10 S2）：`getAnimations()` 对
+ * 动效观察面用 Web Animations API（docs/testing/DELETION-RUBRIC.md §10 S2）：`getAnimations()` 对
  * 「有动效 vs 没有动效」有完全区分力，而 `transitionDuration` 取值只是它的实现手段。
  */
 function runningTransitions(el: WebUiCollapse): string[] {

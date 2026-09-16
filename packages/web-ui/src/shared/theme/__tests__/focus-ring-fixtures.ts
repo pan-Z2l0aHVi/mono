@@ -103,7 +103,7 @@ export async function focusAndSettle(host: FixtureElement, inner: HTMLElement): 
 /**
  * 聚焦后 `::after` 上启动的 focus ring 过渡（`box-shadow`）。
  * 用 Web Animations API 观察"过渡真的被启动"，而不是读 `transition` 声明或 computed style
- * （`DELETION-RUBRIC.md` §10 S2；也是仓内既有范式）。
+ * （`docs/testing/DELETION-RUBRIC.md` §10 S2；也是仓内既有范式）。
  */
 export function findFocusRingTransition(inner: HTMLElement): CSSTransition | undefined {
   return inner

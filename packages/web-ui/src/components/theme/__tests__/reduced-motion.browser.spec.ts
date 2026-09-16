@@ -16,7 +16,7 @@ import type { WebUiTheme } from '@/components/theme'
  * 契约是"**放慢而不停**"——一个冻结的加载指示器读起来就是界面卡死，所以 reduce 下转场归零、
  * 但这两个循环只把周期拉长（600ms → 1600ms、800ms → 1600ms）。
  *
- * 断言全部走 Web Animations API（`DELETION-RUBRIC.md` §10 S2）：原实现读
+ * 断言全部走 Web Animations API（`docs/testing/DELETION-RUBRIC.md` §10 S2）：原实现读
  * `getComputedStyle(svg).animationDuration / animationIterationCount` 与 theme 的
  * `--wui-duration-*` 取值，既是 §5 禁止的 CSS 取值，也只证明"声明存在"、证明不了"循环真的在转"。
  *
