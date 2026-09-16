@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vite-plus/test'
 
 import '..'
-import { cleanupElement, waitForUpdate } from '@/shared/test-utils'
+import { cleanupElement, contractReflection, queryA11y, waitForUpdate } from '@/shared/test-utils'
 
 import type { WebUiDropdownItem } from '..'
 
@@ -17,87 +17,84 @@ function createItem(attrs?: Record<string, string>, content = ''): WebUiDropdown
   return el
 }
 
+/** 命名 slot（或默认 slot）实际投影到的节点数——slot 投影是公开契约（ADR-0005 §5）。 */
+function projectedCount(el: WebUiDropdownItem, slotName?: string): number {
+  const selector = slotName ? `slot[name="${slotName}"]` : 'slot:not([name])'
+  const slot = queryA11y(el, selector) as HTMLSlotElement | null
+  return slot?.assignedNodes().length ?? 0
+}
+
 describe('WebUiDropdownItem 组件', () => {
-  it('渲染文本内容', async () => {
-    const el = createItem({}, 'Edit')
-    await waitForUpdate(el)
+  contractReflection('WebUiDropdownItem 属性反射', () => createItem(), [
+    ['disabled', true, 'disabled', ''],
+    ['pl', '24px', 'pl', '24px'],
+    ['value', 'copy', 'value', 'copy'],
+    ['submenu', true, 'submenu', '']
+  ] as const)
 
-    expect(el.textContent?.trim()).toBe('Edit')
+  describe('slot 投影', () => {
+    it('默认 slot 内容投影到标签区', async () => {
+      const el = createItem({}, 'Edit')
+      await waitForUpdate(el)
 
-    cleanupElement(el)
+      expect(projectedCount(el)).toBe(1)
+      expect(el.textContent?.trim()).toBe('Edit')
+
+      cleanupElement(el)
+    })
+
+    it('prefix 与 suffix 按 name 各自投影', async () => {
+      const el = createItem({}, '<span slot="prefix">#</span>Item<span slot="suffix">Ctrl+S</span>')
+      await waitForUpdate(el)
+
+      expect(projectedCount(el, 'prefix')).toBe(1)
+      expect(projectedCount(el, 'suffix')).toBe(1)
+
+      cleanupElement(el)
+    })
+
+    it('submenu 为 true 时以展开指示替代 suffix 投影', async () => {
+      const el = createItem({ submenu: '' }, 'Sub<span slot="suffix">Ctrl+S</span>')
+      await waitForUpdate(el)
+
+      expect(projectedCount(el, 'suffix'), 'submenu 项不投影 suffix，改为展开指示').toBe(0)
+
+      cleanupElement(el)
+    })
   })
 
-  it('disabled 属性反射到 host', async () => {
-    const el = createItem({ disabled: '' })
-    await waitForUpdate(el)
+  describe('焦点与可访问性', () => {
+    it('渲染 role="menuitem"，未禁用时可聚焦', async () => {
+      const el = createItem({}, 'Item')
+      await waitForUpdate(el)
 
-    expect(el.hasAttribute('disabled')).toBe(true)
+      const control = queryA11y(el, '[role="menuitem"]')
+      expect(control?.getAttribute('tabindex')).toBe('0')
 
-    cleanupElement(el)
-  })
+      cleanupElement(el)
+    })
 
-  it('disabled 设置 tabindex=-1', async () => {
-    const el = createItem({ disabled: '' })
-    await waitForUpdate(el)
+    it('disabled 时 menuitem 不可聚焦', async () => {
+      const el = createItem({ disabled: '' })
+      await waitForUpdate(el)
 
-    const inner = el.shadowRoot?.querySelector('[role="menuitem"][tabindex="-1"]')
-    expect(inner).toBeTruthy()
+      const control = queryA11y(el, '[role="menuitem"]')
+      expect(control?.getAttribute('tabindex')).toBe('-1')
 
-    cleanupElement(el)
-  })
+      cleanupElement(el)
+    })
 
-  it('suffix slot 渲染', async () => {
-    const el = createItem({}, 'Edit<span slot="suffix">Ctrl+S</span>')
-    await waitForUpdate(el)
+    it('focusItem() 使内部 menuitem 取得焦点', async () => {
+      const el = createItem({}, 'Item')
+      await waitForUpdate(el)
 
-    // prefix 区域无内容
-    const prefixSlot = el.shadowRoot?.querySelector<HTMLSlotElement>('slot[name="prefix"]')
-    expect(prefixSlot?.assignedNodes()).toHaveLength(0)
+      el.focusItem()
+      await waitForUpdate(el)
 
-    cleanupElement(el)
-  })
+      const control = queryA11y(el, '[role="menuitem"]')
+      expect(el.shadowRoot?.activeElement).toBe(control)
 
-  it('submenu 属性显示右侧箭头图标', async () => {
-    const el = createItem({ submenu: '' }, 'Sub')
-    await waitForUpdate(el)
-
-    const icon = el.shadowRoot?.querySelector('web-ui-icon')
-    expect(icon).toBeTruthy()
-
-    cleanupElement(el)
-  })
-
-  it('focusItem() 聚焦内部元素', async () => {
-    const el = createItem({}, 'Item')
-    await waitForUpdate(el)
-
-    el.focusItem()
-    await waitForUpdate(el)
-
-    const inner = el.shadowRoot?.querySelector('[role="menuitem"]')
-    expect(el.shadowRoot?.activeElement).toBe(inner)
-
-    cleanupElement(el)
-  })
-
-  it('prefix slot 渲染', async () => {
-    const el = createItem({}, '<span slot="prefix">#</span>Item')
-    await waitForUpdate(el)
-
-    const prefixSlot = el.shadowRoot?.querySelector<HTMLSlotElement>('slot[name="prefix"]')
-    expect(prefixSlot?.assignedNodes()).toHaveLength(1)
-
-    cleanupElement(el)
-  })
-
-  it('pl 属性反射到 host', async () => {
-    const el = createItem({ pl: '24px' }, 'Item')
-    await waitForUpdate(el)
-
-    // pl 是公开 prop，反射到 host；内边距样式是内部实现，不做样式断言
-    expect(el.pl).toBe('24px')
-    expect(el.getAttribute('pl')).toBe('24px')
-
-    cleanupElement(el)
+      cleanupElement(el)
+    })
   })
 })

@@ -114,8 +114,8 @@
   --wui-option-check-display: none;
   --wui-internal-glass-shadow: var(--wui-shadow-panel, 0 3px 9px rgb(0 0 0 / 0.27));
   --wui-glass-corner-radius: var(--wui-radius-menu, 18px);
-  --wui-internal-duration-float-enter: var(--wui-duration-float-enter, 160ms);
-  --wui-internal-duration-float-exit: var(--wui-duration-float-exit, 120ms);
+  --wui-internal-duration-float-enter: var(--wui-duration-float-enter, 240ms);
+  --wui-internal-duration-float-exit: var(--wui-duration-float-exit, 160ms);
   position: absolute;
   z-index: var(--wui-layer-inline-overlay, 1);
 

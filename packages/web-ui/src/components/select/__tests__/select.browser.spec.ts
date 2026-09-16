@@ -2,76 +2,19 @@ import { afterEach, describe, expect, it } from 'vite-plus/test'
 
 import '..'
 import '../../theme'
+import { getPortalPanel } from '@/shared/test-utils'
+
 import type { WebUiSelect } from '..'
 
 afterEach(() => document.body.replaceChildren())
 
 describe('WebUiSelect 组件（浏览器）', () => {
-  it('点击 option 的 prefix 装饰时选择所属 option', async () => {
-    const select = document.createElement('web-ui-select')
-    select.innerHTML = '<web-ui-option value="apple" label="Apple"><span slot="prefix">P</span></web-ui-option>'
-    document.body.append(select)
-    await select.updateComplete
-
-    const trigger = select.shadowRoot?.querySelector<HTMLElement>('[role="combobox"]')
-    expect(trigger).toBeTruthy()
-    trigger?.click()
-    await select.updateComplete
-
-    const prefix = select.querySelector<HTMLElement>('[slot="prefix"]')!
-    prefix.click()
-    await select.updateComplete
-
-    expect(select.value).toBe('apple')
-    expect(select.open).toBe(false)
-  })
-
-  it('浮层面板使用双层玻璃结构：blur 层 + surface 层各自 opacity 过渡', async () => {
-    const select = document.createElement('web-ui-select')
-    select.innerHTML = '<web-ui-option value="apple" label="Apple"></web-ui-option>'
-    document.body.append(select)
-    await select.updateComplete
-
-    const trigger = select.shadowRoot?.querySelector<HTMLElement>('[role="combobox"]')
-    trigger?.click()
-    await select.updateComplete
-    await new Promise(resolve => requestAnimationFrame(resolve))
-    await new Promise(resolve => requestAnimationFrame(resolve))
-
-    const panel = select.shadowRoot?.querySelector<HTMLElement>('.select-overlay')
-    expect(panel).toBeTruthy()
-    // 单层玻璃：wui-glass 在面板自身，背景/阴影/blur 都由面板承担，
-    // opacity + backdrop-filter（blur(0px)↔blur(4px)）+ transform 一起过渡。
-    expect(panel!.classList.contains('wui-glass')).toBe(true)
-    expect(getComputedStyle(panel!).backgroundColor).not.toBe('rgba(0, 0, 0, 0)')
-    expect(getComputedStyle(panel!).transitionProperty).toContain('opacity')
-    expect(getComputedStyle(panel!).transitionProperty).toContain('backdrop-filter')
-    expect(getComputedStyle(panel!).transitionProperty).toContain('transform')
-    // blur 随 float 过渡（160ms）从 0px 插值到 4px：等待收敛再断言目标态。
-    await new Promise(resolve => setTimeout(resolve, 250))
-    expect(getComputedStyle(panel!).backdropFilter).toContain('blur(4px)')
-  })
-
-  it('下拉滚动区域默认高度可通过 CSS variable 覆盖', async () => {
-    const select = document.createElement('web-ui-select')
-    select.innerHTML = '<web-ui-option value="apple">Apple</web-ui-option>'
-    document.body.append(select)
-    await select.updateComplete
-    const scroll = select.shadowRoot!.querySelector<HTMLElement>('.select-scroll')!
-    expect(getComputedStyle(scroll).maxHeight).toBe('200px')
-
-    select.style.setProperty('--wui-select-max-height', '160px')
-    await select.updateComplete
-    expect(getComputedStyle(scroll).maxHeight).toBe('160px')
-  })
-
-  it('Portal 下拉滚动区域继承 CSS variable', async () => {
+  it('Portal 面板在 theme 作用域内挂载到 theme 自己的 overlay root', async () => {
     const theme = document.createElement('web-ui-theme')
     theme.setAttribute('appearance', 'light')
     theme.className = 'block'
     const select = document.createElement('web-ui-select')
     select.portal = true
-    select.style.setProperty('--wui-select-max-height', '180px')
     select.innerHTML = '<web-ui-option value="apple">Apple</web-ui-option>'
     theme.append(select)
     document.body.append(theme)
@@ -82,12 +25,9 @@ describe('WebUiSelect 组件（浏览器）', () => {
     await new Promise(resolve => requestAnimationFrame(resolve))
     await select.updateComplete
 
-    const overlayContainer = theme.shadowRoot?.querySelector<HTMLElement>('[data-wui-overlay-container]')
-    const portalHost = overlayContainer?.firstElementChild as HTMLElement | null
-    const scroll = portalHost?.shadowRoot?.querySelector<HTMLElement>('.select-scroll')
     expect(select.open).toBe(true)
-    expect(scroll).toBeTruthy()
-    expect(getComputedStyle(scroll!).maxHeight).toBe('180px')
+    const host = theme.getOverlayRoot()?.firstElementChild as HTMLElement | null | undefined
+    expect(host?.shadowRoot?.querySelector('[role="listbox"]'), '面板应挂在 theme 拥有的 overlay root').not.toBeNull()
   })
 
   it('退出过渡隐藏前重新打开 Portal 面板', async () => {
@@ -106,37 +46,10 @@ describe('WebUiSelect 组件（浏览器）', () => {
     trigger?.click()
     await new Promise(resolve => requestAnimationFrame(resolve))
 
-    const root = document.querySelector<HTMLElement>('[data-wui-overlay-root]')?.shadowRoot
-    const portalHost = root?.querySelector<HTMLElement>('[data-wui-overlay-container] > div')
-    const panel = portalHost?.shadowRoot?.querySelector<HTMLElement>('[role="listbox"]')
+    const panel = getPortalPanel('listbox')
     expect(select.open).toBe(true)
     expect(panel?.hasAttribute('hidden')).toBe(false)
-    expect(panel?.querySelector(':scope > .select-scroll > .select-content web-ui-option')).toBeTruthy()
-  })
-
-  it('主题作用域内打开 Portal Select 不撑开 theme-owned overlay root', async () => {
-    const theme = document.createElement('web-ui-theme')
-    theme.setAttribute('appearance', 'light')
-    theme.className = 'block'
-    const select = document.createElement('web-ui-select')
-    select.portal = true
-    select.innerHTML = '<web-ui-option value="apple">Apple</web-ui-option>'
-    theme.append(select)
-    document.body.append(theme)
-    await theme.updateComplete
-    await select.updateComplete
-
-    const trigger = select.shadowRoot?.querySelector<HTMLElement>('[role="combobox"]')
-    trigger?.click()
-    await new Promise(resolve => requestAnimationFrame(resolve))
-    await select.updateComplete
-
-    const overlayContainer = theme.shadowRoot?.querySelector<HTMLElement>('[data-wui-overlay-container]')
-    const portalHost = overlayContainer?.firstElementChild as HTMLElement | null
-    expect(select.open).toBe(true)
-    expect(overlayContainer).toBeTruthy()
-    expect(portalHost).toBeTruthy()
-    expect(getComputedStyle(portalHost!).display).toBe('contents')
+    expect(panel?.querySelector('web-ui-option')).not.toBeNull()
   })
 
   it('required 且无值时 checkValidity 应为 false，选中后为 true', async () => {

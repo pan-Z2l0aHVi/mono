@@ -1,95 +1,30 @@
-import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
+import { afterEach, describe, expect, it } from 'vite-plus/test'
 
 import '..'
-import { cleanupElement, queryA11y, spyEvents, waitForUpdate } from '@/shared/test-utils'
+import { cleanupElement, mountElement, queryA11y, spyEvents, waitForUpdate } from '@/shared/test-utils'
 
 import type { WebUiInputNumber } from '..'
 
-function createNumber(attrs?: Record<string, string>): WebUiInputNumber {
-  const el = document.createElement('web-ui-input-number')
-  if (attrs) {
-    for (const [k, v] of Object.entries(attrs)) {
-      el.setAttribute(k, v)
-    }
-  }
-  document.body.appendChild(el)
-  return el
-}
+afterEach(() => document.body.replaceChildren())
 
-describe('WebUiInputNumber 组件', () => {
-  afterEach(() => {
-    document.body.innerHTML = ''
-  })
+/**
+ * 共有契约（value/disabled 默认值、属性反射、input・change・focus・blur 事件、
+ * value 双向同步、formAssociated）见
+ * `src/shared/form-association/__tests__/text-control-contract.spec.ts`。
+ * 本文件只保留 input-number 特有的公开契约：步进按钮、min/max 收敛、精度、键盘。
+ */
+const createNumber = (attrs?: Record<string, string>): WebUiInputNumber =>
+  mountElement<WebUiInputNumber>('web-ui-input-number', { attrs })
 
-  describe('默认值', () => {
-    it('value 默认 0', () => {
-      const el = createNumber()
-      expect(el.value).toBe(0)
-      cleanupElement(el)
-    })
+const nativeInput = (el: WebUiInputNumber): HTMLInputElement => queryA11y(el, 'input') as HTMLInputElement
+const stepButton = (el: WebUiInputNumber, direction: 'Increase' | 'Decrease'): HTMLButtonElement =>
+  queryA11y(el, `button[aria-label="${direction}"]`) as HTMLButtonElement
 
-    it('disabled 默认 false', () => {
-      const el = createNumber()
-      expect(el.disabled).toBe(false)
-      cleanupElement(el)
-    })
-
-    it('precision 默认 0', () => {
-      const el = createNumber()
-      expect(el.precision).toBe(0)
-      cleanupElement(el)
-    })
-
-    it('formAssociated 已声明', () => {
-      expect((customElements.get('web-ui-input-number') as typeof WebUiInputNumber).formAssociated).toBe(true)
-    })
-  })
-
-  describe('属性反射', () => {
-    it('disabled 属性反射', async () => {
-      const el = createNumber()
-      el.disabled = true
-      await waitForUpdate(el)
-      expect(el.hasAttribute('disabled')).toBe(true)
-      cleanupElement(el)
-    })
-
-    it('placeholder 属性反射', async () => {
-      const el = createNumber({ placeholder: '输入数字' })
-      await waitForUpdate(el)
-      expect(el.getAttribute('placeholder')).toBe('输入数字')
-      cleanupElement(el)
-    })
-
-    it('name 属性反射', async () => {
-      const el = createNumber({ name: 'count' })
-      await waitForUpdate(el)
-      expect(el.getAttribute('name')).toBe('count')
-      cleanupElement(el)
-    })
-
-    it('required 属性反射', async () => {
-      const el = createNumber()
-      el.required = true
-      await waitForUpdate(el)
-      expect(el.hasAttribute('required')).toBe(true)
-      cleanupElement(el)
-    })
-
-    it('readonly 属性反射并同步到原生 input', async () => {
-      const el = createNumber()
-      el.readonly = true
-      await waitForUpdate(el)
-      expect(el.hasAttribute('readonly')).toBe(true)
-      expect(queryA11y(el, 'input')?.hasAttribute('readonly')).toBe(true)
-      cleanupElement(el)
-    })
-
-    it('precision 属性反射', () => {
-      const el = createNumber({ precision: '2' })
-      expect(el.getAttribute('precision')).toBe('2')
-      cleanupElement(el)
-    })
+describe('WebUiInputNumber 组件特有契约', () => {
+  it('precision 默认 0', () => {
+    const el = createNumber()
+    expect(el.precision).toBe(0)
+    cleanupElement(el)
   })
 
   describe('步进按钮', () => {
@@ -98,8 +33,7 @@ describe('WebUiInputNumber 组件', () => {
       el.value = 5
       await waitForUpdate(el)
 
-      const incBtn = queryA11y(el, 'button[aria-label="Increase"]') as HTMLButtonElement
-      incBtn.click()
+      stepButton(el, 'Increase').click()
       await waitForUpdate(el)
 
       expect(el.value).toBe(6)
@@ -111,23 +45,24 @@ describe('WebUiInputNumber 组件', () => {
       el.value = 5
       await waitForUpdate(el)
 
-      const decBtn = queryA11y(el, 'button[aria-label="Decrease"]') as HTMLButtonElement
-      decBtn.click()
+      stepButton(el, 'Decrease').click()
       await waitForUpdate(el)
 
       expect(el.value).toBe(4)
       cleanupElement(el)
     })
 
-    it('点击增加按钮触发 input 事件', async () => {
+    it('点击增加按钮只派发 input，不派发 change', async () => {
       const el = createNumber()
       await waitForUpdate(el)
 
-      const [events] = spyEvents(el, 'input')
-      const incBtn = queryA11y(el, 'button[aria-label="Increase"]') as HTMLButtonElement
-      incBtn.click()
+      const [inputEvents] = spyEvents(el, 'input')
+      const [changeEvents] = spyEvents(el, 'change')
+      stepButton(el, 'Increase').click()
+      await waitForUpdate(el)
 
-      expect(events).toHaveLength(1)
+      expect(inputEvents).toHaveLength(1)
+      expect(changeEvents).toHaveLength(0)
       cleanupElement(el)
     })
 
@@ -137,8 +72,8 @@ describe('WebUiInputNumber 组件', () => {
       await waitForUpdate(el)
 
       const [events] = spyEvents(el, 'input')
-      const incBtn = queryA11y(el, 'button[aria-label="Increase"]') as HTMLButtonElement
-      incBtn.click()
+      stepButton(el, 'Increase').click()
+      await waitForUpdate(el)
 
       expect(events).toHaveLength(0)
       cleanupElement(el)
@@ -149,25 +84,12 @@ describe('WebUiInputNumber 组件', () => {
       el.readonly = true
       await waitForUpdate(el)
 
-      const incBtn = queryA11y(el, 'button[aria-label="Increase"]') as HTMLButtonElement
-      const decBtn = queryA11y(el, 'button[aria-label="Decrease"]') as HTMLButtonElement
-      expect(incBtn.disabled).toBe(true)
-      expect(decBtn.disabled).toBe(true)
+      expect(stepButton(el, 'Increase').disabled).toBe(true)
+      expect(stepButton(el, 'Decrease').disabled).toBe(true)
 
       const [events] = spyEvents(el, 'input')
-      incBtn.click()
-      expect(events).toHaveLength(0)
-      cleanupElement(el)
-    })
-
-    it('设置属性时不派发 input 事件', async () => {
-      const el = createNumber()
+      stepButton(el, 'Increase').click()
       await waitForUpdate(el)
-
-      const [events] = spyEvents(el, 'input')
-      el.value = 5
-      await waitForUpdate(el)
-
       expect(events).toHaveLength(0)
       cleanupElement(el)
     })
@@ -180,11 +102,8 @@ describe('WebUiInputNumber 组件', () => {
       el.value = 0
       await waitForUpdate(el)
 
-      const decBtn = queryA11y(el, 'button[aria-label="Decrease"]') as HTMLButtonElement
-      expect(decBtn.disabled).toBe(true)
-
-      const incBtn = queryA11y(el, 'button[aria-label="Increase"]') as HTMLButtonElement
-      expect(incBtn.disabled).toBe(false)
+      expect(stepButton(el, 'Decrease').disabled).toBe(true)
+      expect(stepButton(el, 'Increase').disabled).toBe(false)
       cleanupElement(el)
     })
 
@@ -194,11 +113,8 @@ describe('WebUiInputNumber 组件', () => {
       el.value = 10
       await waitForUpdate(el)
 
-      const incBtn = queryA11y(el, 'button[aria-label="Increase"]') as HTMLButtonElement
-      expect(incBtn.disabled).toBe(true)
-
-      const decBtn = queryA11y(el, 'button[aria-label="Decrease"]') as HTMLButtonElement
-      expect(decBtn.disabled).toBe(false)
+      expect(stepButton(el, 'Increase').disabled).toBe(true)
+      expect(stepButton(el, 'Decrease').disabled).toBe(false)
       cleanupElement(el)
     })
 
@@ -246,12 +162,13 @@ describe('WebUiInputNumber 组件', () => {
       cleanupElement(el)
     })
 
-    it('precision 变化后重算现有值', async () => {
+    it('precision 变化不恢复设值时已按旧精度舍入的值', async () => {
       const el = createNumber()
       // value 在设入时已按当前精度舍入，精度变更不会恢复已丢失的精度
       el.value = 1.234
       await waitForUpdate(el)
       expect(el.value).toBe(1)
+
       el.precision = 2
       await waitForUpdate(el)
       expect(el.value).toBe(1)
@@ -268,8 +185,7 @@ describe('WebUiInputNumber 组件', () => {
       const [inputEvents] = spyEvents(el, 'input')
       const [changeEvents] = spyEvents(el, 'change')
 
-      const input = queryA11y(el, 'input') as HTMLInputElement
-      input.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true, composed: true }))
+      nativeInput(el).dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true, composed: true }))
       await waitForUpdate(el)
 
       expect(el.value).toBe(6)
@@ -286,8 +202,7 @@ describe('WebUiInputNumber 组件', () => {
       const [inputEvents] = spyEvents(el, 'input')
       const [changeEvents] = spyEvents(el, 'change')
 
-      const input = queryA11y(el, 'input') as HTMLInputElement
-      input.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, composed: true }))
+      nativeInput(el).dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, composed: true }))
       await waitForUpdate(el)
 
       expect(el.value).toBe(4)
@@ -303,8 +218,7 @@ describe('WebUiInputNumber 组件', () => {
       await waitForUpdate(el)
 
       const [inputEvents] = spyEvents(el, 'input')
-      const input = queryA11y(el, 'input') as HTMLInputElement
-      input.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true, composed: true }))
+      nativeInput(el).dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true, composed: true }))
       await waitForUpdate(el)
 
       expect(el.value).toBe(5)
@@ -319,8 +233,7 @@ describe('WebUiInputNumber 组件', () => {
       await waitForUpdate(el)
 
       const [inputEvents] = spyEvents(el, 'input')
-      const input = queryA11y(el, 'input') as HTMLInputElement
-      input.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true, composed: true }))
+      nativeInput(el).dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true, composed: true }))
       await waitForUpdate(el)
 
       expect(el.value).toBe(5)
@@ -329,14 +242,14 @@ describe('WebUiInputNumber 组件', () => {
     })
   })
 
-  describe('change 事件', () => {
+  describe('readonly 时的原生 change', () => {
     it('文本失焦提交时原生 change 转发为宿主 change', async () => {
       const el = createNumber()
       el.value = 5
       await waitForUpdate(el)
 
       const [changeEvents] = spyEvents(el, 'change')
-      const input = queryA11y(el, 'input') as HTMLInputElement
+      const input = nativeInput(el)
       // 真实浏览器派发的 change 不 composed，被 shadow root 挡住；组件补发 composed change
       input.value = '8'
       input.dispatchEvent(new Event('change', { bubbles: true }))
@@ -354,7 +267,7 @@ describe('WebUiInputNumber 组件', () => {
       await waitForUpdate(el)
 
       const [changeEvents] = spyEvents(el, 'change')
-      const input = queryA11y(el, 'input') as HTMLInputElement
+      const input = nativeInput(el)
       input.value = '8'
       input.dispatchEvent(new Event('change', { bubbles: true }))
       await waitForUpdate(el)

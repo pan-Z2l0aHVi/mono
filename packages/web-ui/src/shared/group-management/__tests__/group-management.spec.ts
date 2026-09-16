@@ -4,7 +4,7 @@ import '@/components/checkbox'
 import '@/components/checkbox-group'
 import type { WebUiCheckbox } from '@/components/checkbox'
 import type { WebUiCheckboxGroup } from '@/components/checkbox-group'
-import { waitForUpdate } from '@/shared/test-utils'
+import { queryA11y, waitForUpdate } from '@/shared/test-utils'
 
 afterEach(() => document.body.replaceChildren())
 
@@ -53,7 +53,7 @@ describe('shared/group-management', () => {
 
     // 值同步生效；disabled 不写子项属性，经上下文继承表达在 aria 上
     expect(added.disabled).toBe(false)
-    expect(added.shadowRoot!.querySelector('[role="checkbox"]')!.getAttribute('aria-disabled')).toBe('true')
+    expect(queryA11y(added, '[role="checkbox"]')!.getAttribute('aria-disabled')).toBe('true')
 
     el.disabled = false
     await waitForUpdate(el)
@@ -72,7 +72,7 @@ describe('shared/group-management', () => {
     expect(checkboxA.checked).toBe(true)
 
     const slotChanged = new Promise<void>(resolve =>
-      el.shadowRoot!.querySelector('slot')!.addEventListener('slotchange', () => resolve(), { once: true })
+      queryA11y(el, 'slot')!.addEventListener('slotchange', () => resolve(), { once: true })
     )
     const container = document.createElement('div')
     document.body.append(container)

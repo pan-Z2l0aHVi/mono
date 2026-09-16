@@ -1,0 +1,14 @@
+---
+'@greypan/web-ui': minor
+---
+
+Close the gaps a full motion review of `@greypan/web-ui` turned up. Three motion values were reachable only through a component-local literal, so they ignored the `motion` contract, and one repeating transition was never suppressed.
+
+- `--wui-duration-swipe-settle` (`220ms`) and `--wui-ease-swipe` (`cubic-bezier(0.32, 0.72, 0, 1)`) are now declared by the theme in addition to documenting them on `<web-ui-image-preview>`. They were previously referenced only through component-level fallbacks, so under `motion="reduced"` the carousel settle still ran its full `220ms` transform, because the theme had no definition to zero out. Declaring them also brings both tokens under the `theme-token-parity` guard, which silently skipped them while the theme did not define them.
+- Icon rotation and the spinner leaf chase are now driven by `--wui-duration-spin` (`600ms`) and `--wui-duration-spinner` (`800ms`). Both are infinite loops and neither had any reduced-motion branch at all. A component-level `@media (prefers-reduced-motion: reduce)` block cannot see the `motion` attribute, and these animations read no token, so neither path could reach them. Under reduced motion they now run at `1600ms` instead of stopping, because a frozen loading indicator reads as a hung UI. The spinner's per-leaf `animation-delay` is derived from the same token, so the phase spread follows the period instead of breaking when it changes.
+- `<web-ui-toast>` enters at `scale(var(--wui-scale-enter, 0.95))` instead of a literal `scale(0.97)`. This aligns it with every other glass materialization in the library and makes the scale collapse under `motion="reduced"`.
+- The dialog backdrop now uses `var(--wui-ease-dialog)`. Sharing the card's easing keeps the backdrop from finishing most of its fade after the card has already landed, which was the visible effect of the weak built-in `ease` it used before.
+- `<web-ui-checkbox>` and `<web-ui-radio>` use `var(--wui-duration-focus, 200ms)` for their background-color and border-color transitions instead of a literal `0.2s`. The focus ring on the same elements already used that token, so the two now collapse together under reduced motion. These were the last hard-coded transition durations outside the reduced-motion blocks. The anchored panel keeps a literal `120ms` fade there on purpose, because the token it would otherwise read is the one reduced motion zeroes.
+- A tooltip that opens while another tooltip is already showing now skips its enter animation as well as its delay. It previously set the delay to `0` but still played the `240ms` unfold, so sweeping across a row of icons replayed a full unfold per target.
+
+This amends the "reduced-motion behavior is unchanged" note in the accompanying motion-alignment changeset: durations still collapse to `0ms` and both scale tokens still resolve to `1`, but the two infinite loading loops are now slowed rather than left alone.

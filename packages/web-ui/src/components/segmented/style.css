@@ -76,13 +76,11 @@
   transform: scale(1.5);
   background-color: var(--wui-color-surface-glass, rgb(250 250 250 / 0.34));
   backdrop-filter: blur(4px) saturate(160%);
-
-  /* 按下/拖拽时加深投影（立体玻璃感）。直接写死值、不经过 var 中转：iOS Safari 对
-     var 离散切换驱动的 box-shadow 不触发过渡且可能整体不生效（上一轮真机「回退之前」）。 */
   box-shadow:
-    0 0 1px rgb(0 0 0 / 0.1),
-    0 5px 14px rgb(0 0 0 / 0.16),
-    0 12px 28px rgb(0 0 0 / 0.1);
+    inset 0 0 0 0.5px color-mix(in srgb, var(--wui-color-glass-highlight, rgb(255 255 255 / 0.9)) 38%, transparent),
+    inset 0 1px 0.5px color-mix(in srgb, var(--wui-color-glass-highlight, rgb(255 255 255 / 0.9)) 52%, transparent),
+    inset 0 -0.5px 1px rgb(0 0 0 / 0.03),
+    0 2px 20px rgb(0 0 0 / 0.2);
 }
 
 .wui-segmented.is-dragging:not(.is-disabled) {

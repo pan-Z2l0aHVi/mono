@@ -100,13 +100,20 @@ describe('WebUiSelect 条件组合边界（浏览器）', () => {
     await select.updateComplete
     select.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, composed: true }))
     await select.updateComplete
-    expect(select.querySelector('web-ui-option[active]')?.getAttribute('value')).toBe('banana')
 
-    select.querySelector('web-ui-option[active]')!.remove()
+    // 非 portal 模式下「当前激活项」的公开通道：combobox 的 aria-activedescendant 指向的 option id
+    const trigger = select.shadowRoot!.querySelector<HTMLElement>('[role="combobox"]')!
+    const resolveActive = (): WebUiOption | null => {
+      const id = trigger.getAttribute('aria-activedescendant')
+      return id ? select.querySelector<WebUiOption>(`#${id}`) : null
+    }
+    expect(resolveActive()?.getAttribute('value'), '前置：第二项应为激活项').toBe('banana')
+
+    resolveActive()!.remove()
     await select.updateComplete
 
     // 激活项已移除：不得静默偏移到 cherry
-    expect(select.querySelector('web-ui-option[active]')).toBeNull()
+    expect(resolveActive(), '激活索引不应偏移到相邻项').toBeNull()
 
     select.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, composed: true }))
     await select.updateComplete
@@ -186,7 +193,10 @@ describe('WebUiSelect 条件组合边界（浏览器）', () => {
     await waitForFrame()
     await select.updateComplete
     expect(select.open).toBe(true)
-    expect(container.querySelector('div')?.shadowRoot?.querySelector('[role="listbox"] web-ui-option')).toBeTruthy()
+    expect(
+      container.querySelector('div')?.shadowRoot?.querySelectorAll('[role="listbox"] web-ui-option').length,
+      '指定容器内应挂载全部 option'
+    ).toBe(3)
 
     const banana = container
       .querySelector('div')!
@@ -198,7 +208,7 @@ describe('WebUiSelect 条件组合边界（浏览器）', () => {
     expect(select.open).toBe(false)
   })
 
-  it('打开期 v-if 删除中段 option 后跨关闭重开：占位注释归还宿主，重开保模板序', async () => {
+  it('打开期 v-if 删除中段 option 后跨关闭重开仍保模板序', async () => {
     const mountPoint = document.createElement('div')
     document.body.append(mountPoint)
     const show = ref(false)
@@ -227,9 +237,8 @@ describe('WebUiSelect 条件组合边界（浏览器）', () => {
     expect(select.open).toBe(true)
     expect(getPortalPanel('listbox')?.querySelectorAll('web-ui-option').length).toBe(3)
 
-    // 打开期 v-if 删除中段 option：占位注释被框架插进面板嵌套容器，portal 必须
-    // 归还宿主 banana 的 marker 位（apple/cherry 的 marker 之间），否则注释随面板
-    // 销毁，重开时 Vue 会把 banana 插进已脱离文档的旧面板
+    // 打开期 v-if 删除中段 option：被删项必须离开面板。内部占位注释的归属不是公开契约，
+    // 由「关闭后重开时面板仍按模板序完整恢复」这一可观察后果覆盖。
     show.value = false
     await nextTick()
     await select.updateComplete
@@ -237,14 +246,11 @@ describe('WebUiSelect 条件组合边界（浏览器）', () => {
       () => getPortalPanel('listbox')?.querySelectorAll('web-ui-option').length === 2,
       'Expected removed option to leave the select panel'
     )
-    const hostSkeleton = [...select.childNodes].map(node => node.nodeType)
-    expect(hostSkeleton.some(type => type === Node.COMMENT_NODE)).toBe(true)
 
-    // 关闭销毁面板，注释在宿主存活
+    // 关闭销毁面板后再重开：banana 按模板序实时迁入面板（apple/banana/cherry）
     document.body.click()
     await select.updateComplete
     await pollUntil(() => !getPortalPanel('listbox'), 'Expected select portal to dispose after close')
-    expect([...select.childNodes].some(node => node.nodeType === Node.COMMENT_NODE)).toBe(true)
 
     // 重开与 v-if 同 flush：banana 按模板序实时迁入面板（apple/banana/cherry）
     show.value = true

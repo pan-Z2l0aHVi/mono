@@ -154,7 +154,9 @@ export class WebUiTooltip extends LitElement {
     if (e.pointerType === 'touch') return
     if (this.disabled) return
     clearTimeout(this._hideTimer)
-    this._showTimer = setTimeout(() => this._show(), visibleTooltipCount > 0 ? 0 : this.showDelay)
+    // 已有 tooltip 在场时（指针滑到相邻目标）：既不等延迟，也不播入场动画。
+    const isRepeat = visibleTooltipCount > 0
+    this._showTimer = setTimeout(() => this._show(isRepeat), isRepeat ? 0 : this.showDelay)
   }
 
   private _onPointerLeave = (e: PointerEvent) => {

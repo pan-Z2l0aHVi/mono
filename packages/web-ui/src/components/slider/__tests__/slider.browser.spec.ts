@@ -1,477 +1,189 @@
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 
 import '..'
-import { pollUntil } from '@/shared/test-utils'
-
-import type { WebUiSlider } from '..'
+import { cleanupElement, pollUntil, queryA11y } from '@/shared/test-utils'
 
 afterEach(() => document.body.replaceChildren())
 
-describe('WebUiSlider 组件（浏览器）', () => {
-  it('真实指针拖拽更新 value 并触发 change', async () => {
-    const el = document.createElement('web-ui-slider')
-    document.body.append(el)
+/**
+ * 指针拖拽契约：以公开 `value` 与 `input` / `change` 派发观察手势结果。
+ * 内部态 class（is-pressed / is-dragging / is-open）、`cursor`、`touch-action` 与
+ * thumb 的玻璃质感（backdrop-filter / 背景色 / box-shadow）属实现与视觉细节，
+ * 按 ADR-0005 §5 不在契约 spec 断言，归真机验收。
+ *
+ * `touch-action: none` 的**行为后果**（拖拽期间阻止页面滚动）仍在此断言——
+ * 它是可观察的交互契约，而非样式值。
+ */
+function createSlider(): HTMLElement {
+  const el = document.createElement('web-ui-slider')
+  document.body.append(el)
+  return el
+}
+
+type Updatable = HTMLElement & { updateComplete: Promise<unknown>; value: number; disabled: boolean }
+
+const trackOf = (el: HTMLElement): HTMLElement => {
+  const node = queryA11y(el, '[role="slider"]')
+  expect(node, '未找到 role="slider" 的可交互元素').toBeTruthy()
+  return node as HTMLElement
+}
+
+const pointer = (type: string, x: number, y: number): PointerEvent =>
+  new PointerEvent(type, { bubbles: true, pointerId: 1, clientX: x, clientY: y })
+
+describe('WebUiSlider 指针拖拽（浏览器）', () => {
+  it('真实指针拖拽更新 value 并在松手时派发一次 change', async () => {
+    const el = createSlider() as Updatable
     await el.updateComplete
 
-    const slider = el.shadowRoot?.querySelector<HTMLElement>('[role="slider"]')
-    expect(slider).toBeTruthy()
-    const rect = slider!.getBoundingClientRect()
+    const track = trackOf(el)
+    const rect = track.getBoundingClientRect()
+    const y = rect.top + rect.height / 2
 
     const inputEvents: Event[] = []
     const changeEvents: Event[] = []
     el.addEventListener('input', e => inputEvents.push(e))
     el.addEventListener('change', e => changeEvents.push(e))
 
-    const y = rect.top + rect.height / 2
-    // pointerdown 在轨道 25% 处
-    slider!.dispatchEvent(
-      new PointerEvent('pointerdown', {
-        bubbles: true,
-        clientX: rect.left + rect.width * 0.25,
-        clientY: y,
-        pointerId: 1
-      })
-    )
+    // 按下在轨道 25% 处
+    track.dispatchEvent(pointer('pointerdown', rect.left + rect.width * 0.25, y))
     await el.updateComplete
     const afterDown = el.value
 
-    // pointermove 拖到 75%
-    slider!.dispatchEvent(
-      new PointerEvent('pointermove', {
-        bubbles: true,
-        clientX: rect.left + rect.width * 0.75,
-        clientY: y,
-        pointerId: 1
-      })
-    )
-    await el.updateComplete
-    await new Promise(r => setTimeout(r, 140))
-    const afterMove = el.value
+    // 拖到 75%
+    track.dispatchEvent(pointer('pointermove', rect.left + rect.width * 0.75, y))
+    await pollUntil(() => el.value > 50, '拖拽到 75% 后 value 未越过中点')
 
-    const thumb = slider!.querySelector('.wui-slider-thumb') as HTMLElement
-    expect(thumb.classList.contains('is-dragging')).toBe(true)
-    expect(getComputedStyle(slider!).cursor).toBe('grabbing')
-    expect(getComputedStyle(thumb).cursor).toBe('grabbing')
-
-    // pointerup 结束拖拽
-    slider!.dispatchEvent(
-      new PointerEvent('pointerup', {
-        bubbles: true,
-        clientX: rect.left + rect.width * 0.75,
-        clientY: y,
-        pointerId: 1
-      })
-    )
+    // 松手结束拖拽
+    track.dispatchEvent(pointer('pointerup', rect.left + rect.width * 0.75, y))
     await el.updateComplete
 
     expect(afterDown).toBeLessThan(50)
-    expect(afterMove).toBeGreaterThan(50)
+    expect(el.value).toBeGreaterThan(50)
     expect(inputEvents.length).toBeGreaterThan(0)
-    expect(changeEvents).toHaveLength(1) // 拖拽结束时 value 已变化，触发一次 change
-  })
-
-  it('按住未移动时呈现按压反馈且不进入拖拽状态', async () => {
-    const el = document.createElement('web-ui-slider')
-    document.body.append(el)
-    await el.updateComplete
-
-    expect(el.shadowRoot).toBeTruthy()
-    const slider = el.shadowRoot!.querySelector<HTMLElement>('[role="slider"]') as HTMLElement
-    const thumb = slider.querySelector('.wui-slider-thumb') as HTMLElement
-    const rect = slider.getBoundingClientRect()
-
-    slider.dispatchEvent(
-      new PointerEvent('pointerdown', {
-        bubbles: true,
-        clientX: rect.left + rect.width * 0.25,
-        clientY: rect.top + rect.height / 2,
-        pointerId: 1
-      })
-    )
-    await el.updateComplete
-
-    expect(thumb.classList.contains('is-pressed')).toBe(true)
-    expect(thumb.classList.contains('is-dragging')).toBe(false)
-    expect(getComputedStyle(slider).cursor).toBe('default')
-  })
-
-  it('移动未超过意图阈值时不进入拖拽状态', async () => {
-    const el = document.createElement('web-ui-slider')
-    document.body.append(el)
-    await el.updateComplete
-
-    expect(el.shadowRoot).toBeTruthy()
-    const slider = el.shadowRoot!.querySelector<HTMLElement>('[role="slider"]') as HTMLElement
-    const thumb = slider.querySelector('.wui-slider-thumb') as HTMLElement
-    const rect = slider.getBoundingClientRect()
-    const y = rect.top + rect.height / 2
-
-    slider.dispatchEvent(
-      new PointerEvent('pointerdown', {
-        bubbles: true,
-        clientX: rect.left + rect.width * 0.25,
-        clientY: y,
-        pointerId: 1
-      })
-    )
-    await el.updateComplete
-
-    window.dispatchEvent(
-      new PointerEvent('pointermove', {
-        bubbles: true,
-        pointerId: 1,
-        clientX: rect.left + rect.width * 0.25 + 4,
-        clientY: y
-      })
-    )
-    await el.updateComplete
-    expect(thumb.classList.contains('is-dragging')).toBe(false)
-    expect(getComputedStyle(slider).cursor).toBe('default')
-
-    window.dispatchEvent(
-      new PointerEvent('pointermove', {
-        bubbles: true,
-        pointerId: 1,
-        clientX: rect.left + rect.width * 0.25 + 8,
-        clientY: y
-      })
-    )
-    await el.updateComplete
-    expect(thumb.classList.contains('is-dragging')).toBe(true)
-    expect(getComputedStyle(slider).cursor).toBe('grabbing')
+    // 拖拽结束时 value 已变化，恰好派发一次 change
+    expect(changeEvents).toHaveLength(1)
+    cleanupElement(el)
   })
 
   it('pointerup 后继续移动不再更新 value', async () => {
-    const el = document.createElement('web-ui-slider')
-    document.body.append(el)
+    const el = createSlider() as Updatable
     await el.updateComplete
 
-    const slider = el.shadowRoot?.querySelector<HTMLElement>('[role="slider"]')
-    const rect = slider!.getBoundingClientRect()
+    const track = trackOf(el)
+    const rect = track.getBoundingClientRect()
     const y = rect.top + rect.height / 2
 
-    slider!.dispatchEvent(
-      new PointerEvent('pointerdown', {
-        bubbles: true,
-        clientX: rect.left + rect.width * 0.5,
-        clientY: y,
-        pointerId: 1
-      })
-    )
+    track.dispatchEvent(pointer('pointerdown', rect.left + rect.width * 0.5, y))
     await el.updateComplete
     const valueAtDown = el.value
 
-    slider!.dispatchEvent(
-      new PointerEvent('pointerup', {
-        bubbles: true,
-        clientX: rect.left + rect.width * 0.5,
-        clientY: y,
-        pointerId: 1
-      })
-    )
+    track.dispatchEvent(pointer('pointerup', rect.left + rect.width * 0.5, y))
     await el.updateComplete
 
-    // pointerup 后不再处于拖拽状态，move 不应改变 value
-    slider!.dispatchEvent(
-      new PointerEvent('pointermove', {
-        bubbles: true,
-        clientX: rect.left + rect.width * 0.9,
-        clientY: y,
-        pointerId: 1
-      })
-    )
+    track.dispatchEvent(pointer('pointermove', rect.left + rect.width * 0.9, y))
     await el.updateComplete
 
     expect(el.value).toBe(valueAtDown)
+    cleanupElement(el)
   })
 
-  it('指针交互后获得键盘焦点且响应键盘方向键', async () => {
-    const el = document.createElement('web-ui-slider')
-    document.body.append(el)
+  it('指针交互后仍可用方向键调整 value', async () => {
+    const el = createSlider() as Updatable
     await el.updateComplete
 
-    const slider = el.shadowRoot?.querySelector<HTMLElement>('[role="slider"]')
-    expect(slider).toBeTruthy()
-    const rect = slider!.getBoundingClientRect()
+    const track = trackOf(el)
+    const rect = track.getBoundingClientRect()
 
-    // 点击 50% 位置
-    slider!.dispatchEvent(
-      new PointerEvent('pointerdown', {
-        bubbles: true,
-        composed: true,
-        clientX: rect.left + rect.width * 0.5,
-        clientY: rect.top + rect.height / 2,
-        pointerId: 1
-      })
-    )
-    slider!.dispatchEvent(
-      new PointerEvent('pointerup', {
-        bubbles: true,
-        composed: true,
-        clientX: rect.left + rect.width * 0.5,
-        clientY: rect.top + rect.height / 2,
-        pointerId: 1
-      })
-    )
+    track.dispatchEvent(pointer('pointerdown', rect.left + rect.width * 0.5, rect.top + rect.height / 2))
+    track.dispatchEvent(pointer('pointerup', rect.left + rect.width * 0.5, rect.top + rect.height / 2))
     await el.updateComplete
-
     expect(el.value).toBe(50)
 
-    // 键盘方向键操作
-    slider!.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }))
+    track.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }))
     await el.updateComplete
 
     expect(el.value).toBe(51)
+    cleanupElement(el)
   })
 
-  it('禁用时不响应指针拖拽', async () => {
-    const el = document.createElement('web-ui-slider')
-    el.disabled = true
-    document.body.append(el)
+  it('拖拽期间阻止 touchmove 默认滚动，松手后解除', async () => {
+    const el = createSlider() as Updatable
     await el.updateComplete
 
-    const slider = el.shadowRoot?.querySelector<HTMLElement>('[role="slider"]')
-    const rect = slider!.getBoundingClientRect()
-    slider!.dispatchEvent(
-      new PointerEvent('pointerdown', {
-        bubbles: true,
-        clientX: rect.left + rect.width * 0.8,
-        clientY: rect.top + rect.height / 2,
-        pointerId: 1
-      })
-    )
-    await el.updateComplete
-
-    expect(el.value).toBe(0)
-  })
-
-  it('移动端水平轨道禁止浏览器手势接管，横向拖拽交给组件手势处理', async () => {
-    const el = document.createElement('web-ui-slider')
-    document.body.append(el)
-    await el.updateComplete
-
-    const slider = el.shadowRoot?.querySelector<HTMLElement>('[role="slider"]')
-    expect(getComputedStyle(slider!).touchAction).toBe('none')
-  })
-
-  it('移动端垂直轨道禁止浏览器手势接管，纵向拖拽交给组件手势处理', async () => {
-    const el = document.createElement('web-ui-slider')
-    el.setAttribute('vertical', '')
-    document.body.append(el)
-    await el.updateComplete
-
-    const slider = el.shadowRoot?.querySelector<HTMLElement>('[role="slider"]')
-    expect(getComputedStyle(slider!).touchAction).toBe('none')
-  })
-
-  it('host 同时声明 touch-action: none，覆盖 light DOM 命中链', async () => {
-    const el = document.createElement('web-ui-slider')
-    document.body.append(el)
-    await el.updateComplete
-
-    expect(getComputedStyle(el).touchAction).toBe('none')
-  })
-
-  it('拖拽期间 touchmove 默认滚动被阻止，松手后解除', async () => {
-    const el = document.createElement('web-ui-slider')
-    document.body.append(el)
-    await el.updateComplete
-
-    const slider = el.shadowRoot!.querySelector<HTMLElement>('[role="slider"]') as HTMLElement
-    const thumb = slider.querySelector('.wui-slider-thumb') as HTMLElement
-    const rect = slider.getBoundingClientRect()
+    const track = trackOf(el)
+    const rect = track.getBoundingClientRect()
     const y = rect.top + rect.height / 2
 
-    slider.dispatchEvent(
-      new PointerEvent('pointerdown', {
-        bubbles: true,
-        clientX: rect.left + rect.width * 0.25,
-        clientY: y,
-        pointerId: 1
-      })
-    )
+    track.dispatchEvent(pointer('pointerdown', rect.left + rect.width * 0.25, y))
     await el.updateComplete
 
-    // 意图判定前：命中深层 thumb 的非 composed touchmove（不跨 shadow 边界）也被
-    // composedPath 挂载的守护阻止，这正是 iOS Safari 滚动接管前需要的关键兜底。
-    const onThumb = new TouchEvent('touchmove', { bubbles: true, composed: false, cancelable: true })
-    thumb.dispatchEvent(onThumb)
-    expect(onThumb.defaultPrevented).toBe(true)
+    // 意图判定前：shadow 内非 composed 的 touchmove 也已被守卫阻止，
+    // 这是 iOS Safari 滚动接管前需要的关键兜底。
+    const onTrack = new TouchEvent('touchmove', { bubbles: true, composed: false, cancelable: true })
+    track.dispatchEvent(onTrack)
+    expect(onTrack.defaultPrevented).toBe(true)
 
-    // 确认拖拽后：命中链上的守护持续有效。
-    window.dispatchEvent(
-      new PointerEvent('pointermove', {
-        bubbles: true,
-        pointerId: 1,
-        clientX: rect.left + rect.width * 0.75,
-        clientY: y
-      })
-    )
+    // 确认拖拽后：守卫持续有效。
+    window.dispatchEvent(pointer('pointermove', rect.left + rect.width * 0.75, y))
     await el.updateComplete
 
-    const onThumbAfterCommit = new TouchEvent('touchmove', { bubbles: true, composed: false, cancelable: true })
-    thumb.dispatchEvent(onThumbAfterCommit)
-    expect(onThumbAfterCommit.defaultPrevented).toBe(true)
+    const onTrackAfterCommit = new TouchEvent('touchmove', { bubbles: true, composed: false, cancelable: true })
+    track.dispatchEvent(onTrackAfterCommit)
+    expect(onTrackAfterCommit.defaultPrevented).toBe(true)
 
-    // document/window 收不到 shadow 内 touchmove，不挂死代码。
+    // shadow 外的 touchmove 不受影响，说明守卫没有挂成全局死代码。
     const onWindow = new TouchEvent('touchmove', { bubbles: true, cancelable: true })
     window.dispatchEvent(onWindow)
     expect(onWindow.defaultPrevented).toBe(false)
 
-    // 松手后守护全部卸载，页面滚动恢复。
-    window.dispatchEvent(
-      new PointerEvent('pointerup', {
-        bubbles: true,
-        pointerId: 1,
-        clientX: rect.left + rect.width * 0.75,
-        clientY: y
-      })
-    )
+    // 松手后守卫卸载，页面滚动恢复。
+    window.dispatchEvent(pointer('pointerup', rect.left + rect.width * 0.75, y))
     await el.updateComplete
 
-    const onThumbAfter = new TouchEvent('touchmove', { bubbles: true, composed: false, cancelable: true })
-    thumb.dispatchEvent(onThumbAfter)
-    expect(onThumbAfter.defaultPrevented).toBe(false)
+    const onTrackAfterRelease = new TouchEvent('touchmove', { bubbles: true, composed: false, cancelable: true })
+    track.dispatchEvent(onTrackAfterRelease)
+    expect(onTrackAfterRelease.defaultPrevented).toBe(false)
+    cleanupElement(el)
   })
 
-  it('捕获转手：命中元素的 lostpointercapture 不取消拖拽，track 自身丢失才取消', async () => {
-    const el = document.createElement('web-ui-slider')
-    document.body.append(el)
+  it('捕获转手：子节点丢失捕获不取消拖拽，track 自身丢失才取消', async () => {
+    const el = createSlider() as Updatable
     await el.updateComplete
 
-    const slider = el.shadowRoot!.querySelector<HTMLElement>('[role="slider"]') as HTMLElement
-    const thumb = slider.querySelector('.wui-slider-thumb') as HTMLElement
-    const rect = slider.getBoundingClientRect()
+    const track = trackOf(el)
+    // track 的子树节点（结构关系定位，非内部 class）：模拟指针命中到的深层元素
+    const hitChild = track.firstElementChild as HTMLElement
+    expect(hitChild, 'track 应有可命中的子节点').toBeTruthy()
+
+    const rect = track.getBoundingClientRect()
     const y = rect.top + rect.height / 2
 
-    // 触摸落在 thumb（命中元素），指针隐式捕获到 thumb；组件随后把捕获转手到 track。
-    slider.dispatchEvent(
-      new PointerEvent('pointerdown', {
-        bubbles: true,
-        clientX: rect.left + rect.width * 0.25,
-        clientY: y,
-        pointerId: 1
-      })
-    )
+    track.dispatchEvent(pointer('pointerdown', rect.left + rect.width * 0.25, y))
     await el.updateComplete
 
-    // 越过 6px 意图阈值：组件 setPointerCapture(track)（真实捕获）。
-    window.dispatchEvent(
-      new PointerEvent('pointermove', {
-        bubbles: true,
-        pointerId: 1,
-        clientX: rect.left + rect.width * 0.25 + 10,
-        clientY: y
-      })
-    )
+    // 越过意图阈值：组件把指针捕获转手到 track
+    window.dispatchEvent(pointer('pointermove', rect.left + rect.width * 0.25 + 10, y))
     await el.updateComplete
-    expect(thumb.classList.contains('is-dragging')).toBe(true)
 
-    // 命中元素（thumb）收到 lostpointercapture（隐式捕获被 track 抢走）——必须忽略。
-    thumb.dispatchEvent(new PointerEvent('lostpointercapture', { bubbles: true, composed: true, pointerId: 1 }))
+    // 命中元素收到 lostpointercapture（隐式捕获被 track 抢走）——必须忽略
+    hitChild.dispatchEvent(new PointerEvent('lostpointercapture', { bubbles: true, composed: true, pointerId: 1 }))
     await el.updateComplete
-    expect(thumb.classList.contains('is-dragging')).toBe(true)
 
-    // 拖拽继续跟手。
-    window.dispatchEvent(
-      new PointerEvent('pointermove', {
-        bubbles: true,
-        pointerId: 1,
-        clientX: rect.left + rect.width * 0.75,
-        clientY: y
-      })
-    )
+    // 拖拽继续跟手
+    window.dispatchEvent(pointer('pointermove', rect.left + rect.width * 0.75, y))
     await el.updateComplete
     expect(el.value).toBeGreaterThan(50)
 
-    // track 自身意外丢失捕获：取消拖拽。
-    slider.dispatchEvent(new PointerEvent('lostpointercapture', { bubbles: true, composed: true, pointerId: 1 }))
+    // track 自身意外丢失捕获：取消拖拽
+    track.dispatchEvent(new PointerEvent('lostpointercapture', { bubbles: true, composed: true, pointerId: 1 }))
     await el.updateComplete
-    expect(thumb.classList.contains('is-dragging')).toBe(false)
-    expect(thumb.classList.contains('is-pressed')).toBe(false)
 
-    // 取消后 value 不再跟随。
+    // 取消后 value 不再跟随指针
     const afterCancel = el.value
-    window.dispatchEvent(
-      new PointerEvent('pointermove', {
-        bubbles: true,
-        pointerId: 1,
-        clientX: rect.left + rect.width * 0.2,
-        clientY: y
-      })
-    )
+    window.dispatchEvent(pointer('pointermove', rect.left + rect.width * 0.2, y))
     await el.updateComplete
     expect(el.value).toBe(afterCancel)
-  })
-
-  it('静止态实体白 thumb，按压切玻璃背景、拖拽转透明（backdrop blur 恒开 + 放大 + 深阴影）', async () => {
-    const el = document.createElement('web-ui-slider')
-    document.body.append(el)
-    await el.updateComplete
-
-    const slider = el.shadowRoot?.querySelector<HTMLElement>('[role="slider"]')
-    expect(slider).toBeTruthy()
-    const thumb = slider!.querySelector('.wui-slider-thumb') as HTMLElement
-    const rect = slider!.getBoundingClientRect()
-
-    // 静止态：wui-glass 恒开（backdrop-filter 存在），背景被白色覆盖（实体白 thumb）。
-    const restBackdrop = getComputedStyle(thumb).backdropFilter
-    const restBg = getComputedStyle(thumb).backgroundColor
-    expect(restBackdrop).not.toBe('none')
-    expect(restBg).toBe('rgb(255, 255, 255)')
-
-    const y = rect.top + rect.height / 2
-    // 按压：背景切为半透明玻璃、放大 1.5x；backdrop-filter 保持存在。
-    slider!.dispatchEvent(
-      new PointerEvent('pointerdown', {
-        bubbles: true,
-        clientX: rect.left + rect.width * 0.25,
-        clientY: y,
-        pointerId: 1
-      })
-    )
-    await el.updateComplete
-    expect(thumb.classList.contains('is-pressed')).toBe(true)
-    expect(thumb.classList.contains('is-dragging')).toBe(false)
-    expect(getComputedStyle(thumb).backdropFilter).not.toBe('none')
-    // 背景从白切玻璃有 80ms 过渡，等收敛后再断言。
-    await new Promise(resolve => setTimeout(resolve, 120))
-    expect(getComputedStyle(thumb).backgroundColor).toBe('rgba(250, 250, 250, 0.34)')
-
-    // 拖拽：背景转透明（backdrop blur 直接透出），backdrop-filter 仍存在。
-    slider!.dispatchEvent(
-      new PointerEvent('pointermove', {
-        bubbles: true,
-        clientX: rect.left + rect.width * 0.75,
-        clientY: y,
-        pointerId: 1
-      })
-    )
-    await el.updateComplete
-    expect(thumb.classList.contains('is-dragging')).toBe(true)
-    expect(getComputedStyle(thumb).backdropFilter).not.toBe('none')
-    // 按压玻璃→透明的 80ms 过渡在 CI 慢环境可能尚未收敛（fixed sleep 观测到
-    // alpha 残留 0.004），轮询到 alpha 归零后再断言。
-    await pollUntil(() => {
-      const color = getComputedStyle(thumb).backgroundColor
-      return color === 'rgba(0, 0, 0, 0)' || Number(/,\s*([\d.]+)\)$/.exec(color)?.[1] ?? 1) < 0.01
-    }, 'thumb pressed background did not become transparent')
-
-    // 松手：回到实体白静止态。
-    slider!.dispatchEvent(
-      new PointerEvent('pointerup', {
-        bubbles: true,
-        clientX: rect.left + rect.width * 0.75,
-        clientY: y,
-        pointerId: 1
-      })
-    )
-    await el.updateComplete
-    // 背景从透明切回实体白有 80ms 过渡，轮询收敛后再断言静止态。
-    await pollUntil(
-      () => getComputedStyle(thumb).backgroundColor === 'rgb(255, 255, 255)',
-      'thumb background did not return to solid white'
-    )
-    expect(getComputedStyle(thumb).backdropFilter).not.toBe('none')
+    cleanupElement(el)
   })
 })

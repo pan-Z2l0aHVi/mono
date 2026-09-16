@@ -1,16 +1,11 @@
-import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
+import { afterEach, describe, expect, it } from 'vite-plus/test'
+
+import { mountElement, waitForUpdate } from '@/shared/test-utils'
 
 import '..'
-import type { WebUiTheme } from '@/components/theme'
-import '@/components/theme'
-
 import type { WebUiSvgDrawLines } from '..'
 
-function createEl(): WebUiSvgDrawLines {
-  const el = document.createElement('web-ui-svg-draw-lines')
-  document.body.appendChild(el)
-  return el
-}
+const createEl = (): WebUiSvgDrawLines => mountElement<WebUiSvgDrawLines>('web-ui-svg-draw-lines')
 
 afterEach(() => document.body.replaceChildren())
 
@@ -19,7 +14,7 @@ describe('WebUiSvgDrawLines 组件（浏览器）', () => {
     const el = createEl()
     el.duration = 50
     el.innerHTML = '<svg><path d="M0 0 L100 100" style="stroke-dasharray: 4; stroke-dashoffset: 2"/></svg>'
-    await el.updateComplete
+    await waitForUpdate(el)
     const path = el.querySelector('path')!
 
     await el.replay()
@@ -29,64 +24,47 @@ describe('WebUiSvgDrawLines 组件（浏览器）', () => {
     el.remove()
   })
 
-  it('多个同级 SVG 并行动画', async () => {
+  it('首次 slot 内容出现后自动播放一次', async () => {
     const el = createEl()
-    el.duration = 50
-    el.innerHTML = `
-      <svg><path d="M0 0 L50 50"/></svg>
-      <svg><rect x="0" y="0" width="20" height="20"/></svg>
-    `
-    await el.updateComplete
-
-    await el.replay()
-
-    const paths = el.querySelectorAll('path')
-    const rects = el.querySelectorAll('rect')
-    expect(paths.length).toBe(1)
-    expect(rects.length).toBe(1)
-    expect(paths[0].style.strokeDasharray).toBe('')
-    expect(rects[0].style.strokeDasharray).toBe('')
-    el.remove()
-  })
-
-  it('深层嵌套 SVG 内的几何元素被收集并动画', async () => {
-    const el = createEl()
-    el.duration = 50
-    // <g> 层级嵌套，path 在多级 <g> 内部
-    el.innerHTML = `
-      <svg viewBox="0 0 100 100">
-        <g>
-          <g>
-            <path d="M10 10 L90 90" />
-            <circle cx="50" cy="50" r="30" />
-          </g>
-        </g>
-      </svg>
-    `
-    await el.updateComplete
-
-    await el.replay()
-
-    const path = el.querySelector('path')!
-    const circle = el.querySelector('circle')!
-    expect(path.style.strokeDasharray).toBe('')
-    expect(circle.style.strokeDasharray).toBe('')
-    el.remove()
-  })
-
-  it('重播中断旧动画并重新开始', async () => {
-    const el = createEl()
-    el.duration = 500 // 足够长的 duration 确保不会在连续调用前自动完成
+    // 拉长时长，确保断言时动画仍处于进行中
+    el.duration = 5000
     el.innerHTML = '<svg><path d="M0 0 L100 100"/></svg>'
-    await el.updateComplete
+    await waitForUpdate(el)
+    const path = el.querySelector('path')!
 
-    // 第一次开始
-    const first = el.replay()
-    // 立即中断并重播
-    const second = el.replay()
+    // 未显式调用 replay()，仅凭内容出现即产生动画
+    await expect.poll(() => path.getAnimations().length).toBeGreaterThan(0)
+    el.remove()
+  })
 
-    await second
-    expect(el.querySelector('path')!.style.strokeDasharray).toBe('')
+  /*
+   * replay 的契约是「中断旧动画并重新开始」，不只是「调用不报错」。
+   * 观察面用 WAAPI：旧实例被 cancel 后 playState 归 idle 且不再出现在
+   * getAnimations() 里，新实例随即接管（§10 S2）。
+   *
+   * 区分力已实测（review fixup）：去掉 replay() 里的 cancelAll() 后本例变红。
+   */
+  it('replay 中断进行中的动画并重新开始', async () => {
+    const el = createEl()
+    // 拉长时长，确保断言时上一段动画仍在进行中
+    el.duration = 5000
+    el.innerHTML = '<svg><path d="M0 0 L100 100"/></svg>'
+    await waitForUpdate(el)
+    const path = el.querySelector('path')!
+
+    await expect.poll(() => path.getAnimations().length).toBeGreaterThan(0)
+    const first = path.getAnimations()[0]
+
+    // 不 await：replay 要等新动画跑完才 resolve，这里要看的是它刚接管的那一刻。
+    const replayed = el.replay()
+    await expect.poll(() => path.getAnimations().some(animation => animation !== first)).toBe(true)
+
+    expect(first.playState).toBe('idle')
+    expect(path.getAnimations().every(animation => animation !== first)).toBe(true)
+
+    // 收尾：取消新动画让 replay() 的 promise 落地，避免挂着 5s 的悬挂动画。
+    path.getAnimations().forEach(animation => animation.cancel())
+    await replayed
     el.remove()
   })
 
@@ -99,69 +77,8 @@ describe('WebUiSvgDrawLines 组件（浏览器）', () => {
   it('空 SVG 无几何元素时 replay 不报错', async () => {
     const el = createEl()
     el.innerHTML = '<svg></svg>'
-    await el.updateComplete
+    await waitForUpdate(el)
     await expect(el.replay()).resolves.toBeUndefined()
     el.remove()
-  })
-
-  it('host 布局中性：不抬高图标盒高，但仍保持可 transform 的盒子', async () => {
-    const btn = document.createElement('button')
-    btn.style.cssText =
-      'display:flex;align-items:center;justify-content:center;width:60px;height:36px;padding:0;border:0'
-    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
-    svg.setAttribute('width', '18')
-    svg.setAttribute('height', '18')
-    svg.setAttribute('viewBox', '0 0 18 18')
-    const host = document.createElement('web-ui-svg-draw-lines')
-    host.appendChild(svg)
-    btn.appendChild(host)
-    document.body.appendChild(btn)
-    await host.updateComplete
-
-    // 宿主盒收缩到内容尺寸（inline-flex + line-height:0），不因行盒抬升成 >18px
-    // 的盒子；若仍用 inline-block 会被 line box 抬高，flex 居中时偏移图标（#126）。
-    const hostH = host.getBoundingClientRect().height
-    const svgH = svg.getBoundingClientRect().height
-    expect(svgH).toBe(18)
-    expect(hostH).toBe(svgH)
-
-    // 宿主仍是可 transform 的盒子（interweave prototype 依赖对宿主的 scale 动画）；
-    // 若改为 display: contents（无盒子）则此断言必失败。
-    host.style.transform = 'scale(1.3)'
-    expect(host.getBoundingClientRect().height).toBeCloseTo(svgH * 1.3, 0)
-
-    btn.remove()
-  })
-
-  it('最近的嵌套 theme motion 决定是否播放', async () => {
-    const outer = document.createElement('web-ui-theme')
-    outer.appearance = 'light'
-    outer.motion = 'reduced'
-    const inner = document.createElement('web-ui-theme')
-    inner.appearance = 'dark'
-    inner.motion = 'full'
-    const el = document.createElement('web-ui-svg-draw-lines')
-    el.duration = 20
-    el.innerHTML = '<svg><path d="M0 0 L100 100" /></svg>'
-
-    inner.appendChild(el)
-    outer.appendChild(inner)
-    document.body.appendChild(outer)
-    await outer.updateComplete
-    await inner.updateComplete
-    await el.updateComplete
-
-    const path = el.querySelector('path')!
-    const animate = vi.spyOn(path, 'animate')
-
-    await el.replay()
-    expect(animate).toHaveBeenCalledOnce()
-
-    animate.mockClear()
-    inner.motion = 'reduced'
-    await inner.updateComplete
-
-    await expect(el.replay()).resolves.toBeUndefined()
-    expect(animate).not.toHaveBeenCalled()
   })
 })

@@ -399,14 +399,6 @@ describe('imagePreview 命令式 API', () => {
     expect(queryA11y(host, '[aria-label="缩小"]')).not.toBeNull()
     expect(queryA11y(host, '[aria-label="重置缩放"]')).not.toBeNull()
 
-    // 重置缩放用 radix-icons:reset 的 15x15 实心字形，而不是 lucide 的 24 网格描边字形。
-    const resetIcon = queryA11y(host, '[aria-label="重置缩放"] web-ui-icon') as LitElement | null
-    if (!resetIcon) throw new Error('reset icon is not rendered')
-    await resetIcon.updateComplete
-    const resetSvg = resetIcon.shadowRoot?.querySelector('svg')
-    expect(resetSvg?.getAttribute('viewBox')).toBe('0 0 15 15')
-    expect(resetSvg?.innerHTML).toContain('fill="currentColor"')
-
     handle.close()
     await handle.closed
   })

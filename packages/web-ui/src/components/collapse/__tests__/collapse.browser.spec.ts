@@ -35,91 +35,62 @@ function queryContentContainer(el: WebUiCollapse): HTMLElement {
   return el.shadowRoot!.querySelector<HTMLElement>('.wui-collapse-content')!
 }
 
+// 定位器（非断言）：track 是动画承载节点，用于观察过渡生命周期。
 function queryTrack(el: WebUiCollapse): HTMLElement {
-  // 动画尺寸以 shadow 内 track 为准。
   return el.shadowRoot!.querySelector<HTMLElement>('.wui-collapse-track')!
-}
-
-function trackHeight(el: WebUiCollapse): number {
-  return queryTrack(el).getBoundingClientRect().height
-}
-
-function trackWidth(el: WebUiCollapse): number {
-  return queryTrack(el).getBoundingClientRect().width
 }
 
 function queryInner(el: WebUiCollapse): HTMLElement {
   return el.shadowRoot!.querySelector<HTMLElement>('.wui-collapse-inner')!
 }
 
-// 边缘晕染的活动长度（px）：由 CSS.registerProperty 注册成 <length> 后可被 transition
-// 插值，读到的中间值即渐变带正在淡入/淡出的证据。
-function activeEdge(el: WebUiCollapse): number {
-  return Number.parseFloat(getComputedStyle(queryInner(el)).getPropertyValue('--wui-collapse-peek-edge-active')) || 0
-}
-
-function waitForActiveEdge(el: WebUiCollapse, expected: number, tolerance = 0.05): Promise<void> {
-  return waitFor(() => Math.abs(activeEdge(el) - expected) < tolerance)
-}
-
-// peek 用例：轨道尺寸由内容高度与 peek 的较小值决定，先设属性再挂载避免首帧动画。
-function createPeekCollapse(peek: string, html: string, setup?: (el: WebUiCollapse) => void): WebUiCollapse {
-  const el = document.createElement('web-ui-collapse')
-  el.peek = peek
-  el.innerHTML = html
-  setup?.(el)
-  document.body.append(el)
-  return el
-}
-
-// grid 过渡结束信号：直接监听 track 的 transitionend（含 rows/columns 两种轴向）。
-function onceTransitionEnds(el: WebUiCollapse): Promise<void> {
-  return new Promise(resolve => {
-    const track = queryTrack(el)
-    const handler = (event: TransitionEvent) => {
-      if (event.propertyName === 'grid-template-rows' || event.propertyName === 'grid-template-columns') {
-        track.removeEventListener('transitionend', handler)
-        resolve()
-      }
-    }
-    track.addEventListener('transitionend', handler)
-  })
-}
-
-// 展开稳态：presence=open。
-// 不用 transitionend：同帧 close→reopen 会取消过渡（净样式无变化），事件不触发，
-// 组件本身正确落稳态（debug 实证），等待必须对中断路径健壮。
-async function waitForOpenSettled(el: WebUiCollapse) {
-  await waitFor(() => queryTrack(el).getAttribute('data-wui-presence') === 'open')
-  await nextFrame()
+/*
+ * 落稳态观察面用 Web Animations API（docs/testing/DELETION-RUBRIC.md §10 S2），不读内部状态标记：
+ * `getAnimations()` 对「有动效 vs 没有动效」有完全区分力，过渡跑完即为空集。
+ * 不用 `transitionend`：同帧 close→reopen 会取消过渡（净样式无变化），事件不触发，
+ * 而组件本身正确落稳态（实测），等待必须对中断路径健壮。
+ */
+function settle(el: WebUiCollapse): Promise<void> {
+  return waitFor(() => queryTrack(el).getAnimations().length === 0)
 }
 
 afterEach(() => document.body.replaceChildren())
 
+/*
+ * 本文件只保留浏览器里才能观察到的契约：真实的过渡生命周期（中断/续接/落稳态）、
+ * 真实布局下的内容挂载与滚动位置、真实焦点归宿。
+ *
+ * 已按判据删除（见 `docs/testing/BATCH-LEDGER.md` 的 D 清单）：
+ * - 全部 peek 尺寸断言（轨道高/宽、`getBoundingClientRect()` 增量、"内容不足 peek 时不
+ *   留空白"、horizontal 轴宽）→ §12 C1：几何/像素度量属纯视觉契约，不承接；
+ * - 'peek 边缘渐隐' 整个 describe（11 例：`maskImage` 字符串、`--wui-collapse-peek-edge-*`
+ *   取值、活动长度推导）→ §12 C1 + §10 S1（组件消费自定义令牌的结果）；
+ * - 与 jsdom 重复的四例（click 派发事件 / disabled / aria-controls / 初始 open 展开语义）
+ *   → §2 D4，存活覆盖在 `collapse.spec.ts` 的对应用例；
+ * - `data-wui-presence` 断言（原 8 处）→ §12 C4（R1 同源：内部状态标记只可作轮询谓词，
+ *   且优先换 `getAnimations()`）。
+ */
 describe('WebUiCollapse 组件（浏览器）', () => {
-  it('展开收起切换内容可见性与 presence 状态', async () => {
+  it('展开收起切换内容可见性', async () => {
     const el = createCollapse(
       '<button class="trigger">Trigger</button><div slot="content"><div style="height: 80px">Content</div></div>'
     )
     await el.updateComplete
 
-    expect(queryContentContainer(el).hasAttribute('hidden')).toBe(true)
+    expect(queryContentContainer(el).hidden).toBe(true)
 
-    const opened = onceTransitionEnds(el)
     el.open = true
     await el.updateComplete
-    await opened
-    await nextFrame()
+    await settle(el)
 
-    expect(queryTrack(el).getAttribute('data-wui-presence')).toBe('open')
-    expect(queryContentContainer(el).hasAttribute('hidden')).toBe(false)
+    expect(queryContentContainer(el).hidden).toBe(false)
 
     el.open = false
     await el.updateComplete
-    await waitFor(() => queryContentContainer(el).hasAttribute('hidden'))
+    await waitFor(() => queryContentContainer(el).hidden === true)
   })
 
-  it('关闭过渡中重新打开：中断续接完整展开无 hidden 泄漏', async () => {
+  it('关闭过渡中重新打开：中断续接完整展开，无 hidden 泄漏', async () => {
     const el = createCollapse(
       '<button class="trigger">Trigger</button><div slot="content"><div style="height: 60px">Content</div></div>'
     )
@@ -127,20 +98,21 @@ describe('WebUiCollapse 组件（浏览器）', () => {
 
     el.open = true
     await el.updateComplete
-    await waitForOpenSettled(el)
+    await settle(el)
 
     // 展开完成后立即关闭再立即重开（中断收起动画）
     el.open = false
     await el.updateComplete
     el.open = true
     await el.updateComplete
-    await waitForOpenSettled(el)
+    await settle(el)
 
     expect(el.open).toBe(true)
-    expect(queryContentContainer(el).hasAttribute('hidden')).toBe(false)
+    expect(el.hasAttribute('open')).toBe(true)
+    expect(queryContentContainer(el).hidden).toBe(false)
   })
 
-  it('keep-mounted 收起稳态保留内容可测量且滚动位置不丢', async () => {
+  it('keep-mounted 收起稳态保留内容挂载，内部滚动位置不丢', async () => {
     const el = createCollapse(
       '<button class="trigger">Trigger</button><div slot="content"><div style="height: 100px; overflow-y: auto">Content<div style="height: 300px"></div></div></div>'
     )
@@ -150,271 +122,95 @@ describe('WebUiCollapse 组件（浏览器）', () => {
 
     el.open = true
     await el.updateComplete
-    await waitForOpenSettled(el)
+    await settle(el)
 
     // 内容内部滚动后收起：keep-mounted 应保留 scrollTop
     const innerContent = el.querySelector('div[style]') as HTMLElement
     innerContent.scrollTop = 42
-    expect(innerContent.scrollTop).toBe(42)
 
     el.open = false
     await el.updateComplete
-    await waitFor(() => el.shadowRoot!.querySelector('.wui-collapse-inner')?.getAttribute('inert') !== null)
+    await waitFor(() => queryInner(el).hasAttribute('inert'))
 
-    expect(queryContentContainer(el).hasAttribute('hidden')).toBe(false)
+    expect(queryContentContainer(el).hidden).toBe(false)
     expect(innerContent.scrollTop).toBe(42)
 
     // 重新展开内容完整可见，滚动位置仍在
     el.open = true
     await el.updateComplete
-    await waitForOpenSettled(el)
+    await settle(el)
     expect(innerContent.scrollTop).toBe(42)
   })
 
-  it('horizontal 沿宽度展开收起', async () => {
-    const el = createCollapse(
-      '<button class="trigger">Trigger</button><div slot="content"><div style="width: 120px; height: 30px; white-space: nowrap">Content</div></div>'
-    )
-    el.horizontal = true
-    document.body.append(el)
-    await el.updateComplete
-
-    expect(queryContentContainer(el).hasAttribute('hidden')).toBe(true)
-
-    const opened = onceTransitionEnds(el)
-    el.open = true
-    await el.updateComplete
-    await opened
-
-    expect(queryTrack(el).getAttribute('data-wui-presence')).toBe('open')
-    expect(queryContentContainer(el).hasAttribute('hidden')).toBe(false)
-
-    el.open = false
-    await el.updateComplete
-    await waitFor(() => queryContentContainer(el).hasAttribute('hidden'))
-  })
-
-  it('原生 button 的 click（键盘激活同一路径）切换并派发事件', async () => {
-    const el = createCollapse()
-    await el.updateComplete
-
-    const button = el.querySelector<HTMLButtonElement>('button.trigger')!
-    const events: CustomEvent[] = []
-    el.addEventListener('open-change', e => events.push(e as CustomEvent))
-
-    // 原生 button 的键盘激活（Enter/Space）在浏览器内走同一条 click 事件路径；
-    // 直接调用 click() 断言组件对 click 的响应（键盘合成由浏览器负责）。
-    button.click()
-    await el.updateComplete
-
-    expect(el.open).toBe(true)
-    expect(events).toHaveLength(1)
-    expect((events[0] as CustomEvent<{ open: boolean }>).detail.open).toBe(true)
-
-    button.click()
-    await el.updateComplete
-    expect(el.open).toBe(false)
-    expect(events).toHaveLength(2)
-  })
-
-  it('嵌套 collapse：内层展开外层跟随，外层收起裁剪内层', async () => {
-    const el = createCollapse(
-      '<button class="trigger">Outer</button><div slot="content"><div><div style="height: 100px">Body</div><web-ui-collapse id="inner"><button class="trigger" style="height: 18px; margin: 0; border: 0; padding: 0; box-sizing: border-box">Inner</button><div slot="content"><div style="height: 50px">InnerContent</div></div></web-ui-collapse></div></div>'
-    )
-    document.body.append(el)
-    await el.updateComplete
-    const inner = document.getElementById('inner') as WebUiCollapse
-    await inner.updateComplete
-
-    const outerOpened = onceTransitionEnds(el)
-    el.open = true
-    await el.updateComplete
-    await outerOpened
-    expect(queryContentContainer(el).hasAttribute('hidden')).toBe(false)
-    const outerHeightWithInnerClosed = el
-      .shadowRoot!.querySelector('.wui-collapse-track')!
-      .getBoundingClientRect().height
-
-    // 内层展开：外层高度跟随增长
-    const innerOpened = onceTransitionEnds(inner)
-    inner.open = true
-    await inner.updateComplete
-    await innerOpened
-    await nextFrame()
-    const outerHeightWithInnerOpen = el.shadowRoot!.querySelector('.wui-collapse-track')!.getBoundingClientRect().height
-    expect(outerHeightWithInnerOpen).toBeGreaterThan(outerHeightWithInnerClosed)
-
-    // 外层收起：整体归零（内层仍 open 但被外层 hidden 裁剪）
-    el.open = false
-    await el.updateComplete
-    await waitFor(() => queryContentContainer(el).hasAttribute('hidden'))
-    expect(queryContentContainer(el).hasAttribute('hidden')).toBe(true)
-    expect(inner.open).toBe(true)
-  })
-
-  it('disabled 时点击 trigger 无效且 aria-disabled 回写', async () => {
-    const el = createCollapse()
-    el.disabled = true
-    document.body.append(el)
-    await el.updateComplete
-
-    expect(el.querySelector('button.trigger')!.getAttribute('aria-disabled')).toBe('true')
-
-    el.querySelector<HTMLButtonElement>('button.trigger')!.click()
-    await el.updateComplete
-    expect(el.open).toBe(false)
-  })
-
-  it('aria-controls 指向 shadow track id，aria-expanded 同步', async () => {
-    const el = createCollapse()
-    await el.updateComplete
-
-    const button = el.querySelector('button.trigger')!
-    expect(button.getAttribute('aria-expanded')).toBe('false')
-    expect(button.getAttribute('aria-controls')).toBe(queryTrack(el).id)
-
-    el.open = true
-    await el.updateComplete
-    expect(button.getAttribute('aria-expanded')).toBe('true')
-  })
-
-  it('peek：关闭态裁剪到指定长度，展开平滑过渡到内容完整高度', async () => {
-    const el = createPeekCollapse(
-      '100px',
-      '<button class="trigger">Trigger</button><div slot="content"><div style="height: 300px">Content</div></div>'
-    )
-    await el.updateComplete
-
-    // 关闭稳态：容器可见，轨道停在 peek 长度
-    expect(queryContentContainer(el).hasAttribute('hidden')).toBe(false)
-    expect(queryTrack(el).getAttribute('data-wui-presence')).toBe(null)
-    expect(trackHeight(el)).toBeCloseTo(100, 0)
-
-    // 展开：中间帧必须出现两端之间的高度（显式长度过渡确实在播放）
-    el.open = true
-    await el.updateComplete
-    await nextFrame()
-    await waitFor(() => {
-      const height = trackHeight(el)
-      return height > 110 && height < 290
-    })
-    await waitFor(() => Math.abs(trackHeight(el) - 300) < 0.5)
-    expect(queryTrack(el).getAttribute('data-wui-presence')).toBe('open')
-
-    // 收起：同样平滑回到 peek 长度，落稳态以 presence 清除为信号
-    el.open = false
-    await el.updateComplete
-    await nextFrame()
-    await waitFor(() => {
-      const height = trackHeight(el)
-      return height > 110 && height < 290
-    })
-    await waitFor(() => queryTrack(el).getAttribute('data-wui-presence') === null)
-    expect(queryContentContainer(el).hasAttribute('hidden')).toBe(false)
-    expect(trackHeight(el)).toBeCloseTo(100, 0)
-  })
-
-  it('peek：展开落稳态后由内容驱动高度，无残留的动画尺寸', async () => {
-    const el = createPeekCollapse(
-      '100px',
-      '<button class="trigger">Trigger</button><div slot="content"><div style="height: 300px">Content</div></div>'
-    )
-    await el.updateComplete
-
-    el.open = true
-    await el.updateComplete
-    await waitFor(() => Math.abs(trackHeight(el) - 300) < 1)
-
-    // 展开稳态由 grid 1fr 解析：内容变化必须继续驱动轨道高度，不被动画残留的
-    // 显式长度钉死。
-    const content = el.querySelector<HTMLElement>('div[style]')!
-    content.style.height = '460px'
-    await waitFor(() => Math.abs(trackHeight(el) - 460) < 1)
-    expect(trackHeight(el)).toBeCloseTo(460, 0)
-  })
-
   it('peek：露出的内容是只读预览，展开后恢复可交互', async () => {
-    const el = createPeekCollapse(
-      '100px',
+    const el = document.createElement('web-ui-collapse')
+    el.peek = '100px'
+    el.innerHTML =
       '<button class="trigger">Trigger</button><div slot="content"><button class="inside" style="height: 200px">Inside</button></div>'
-    )
+    document.body.append(el)
     await el.updateComplete
 
     const inside = el.querySelector<HTMLButtonElement>('button.inside')!
+    // 先钉住 peek 的**可观察后果**：关闭态内容容器不是 hidden（默认关闭态是 hidden）。
+    // 少了这一条，"关闭态不可聚焦"在无 peek 的默认路径上同样成立，本例就区分不出 peek 了
+    // ——长度语义已按 §12 C1 删除，"露出"必须靠这个可见性差异来体现。
+    expect(queryContentContainer(el).hidden).toBe(false)
     inside.focus()
     expect(document.activeElement).not.toBe(inside)
 
     el.open = true
     await el.updateComplete
-    await waitFor(() => Math.abs(trackHeight(el) - 200) < 1)
+    await settle(el)
 
     inside.focus()
     expect(document.activeElement).toBe(inside)
   })
 
-  it('peek：内容不足 peek 长度时按内容尺寸收起，不留空白', async () => {
-    const el = createPeekCollapse(
-      '200px',
-      '<button class="trigger">Trigger</button><div slot="content"><div style="height: 60px">Content</div></div>'
+  it('嵌套 collapse：外层收起只裁剪内容，不改写内层 open', async () => {
+    const el = createCollapse(
+      '<button class="trigger">Outer</button><div slot="content"><div><div style="height: 100px">Body</div><web-ui-collapse id="inner"><button class="trigger">Inner</button><div slot="content"><div style="height: 50px">InnerContent</div></div></web-ui-collapse></div></div>'
     )
-    await el.updateComplete
-
-    expect(trackHeight(el)).toBeCloseTo(60, 0)
-  })
-
-  it('peek：horizontal 沿宽度裁剪与展开', async () => {
-    const el = createPeekCollapse(
-      '60px',
-      '<button class="trigger">Trigger</button><div slot="content"><div style="width: 200px; height: 30px; white-space: nowrap">Content</div></div>',
-      collapse => {
-        collapse.horizontal = true
-      }
-    )
-    await el.updateComplete
-
-    expect(trackWidth(el)).toBeCloseTo(60, 0)
-
-    el.open = true
-    await el.updateComplete
-    await waitFor(() => Math.abs(trackWidth(el) - 200) < 1)
-
-    el.open = false
-    await el.updateComplete
-    await waitFor(() => Math.abs(trackWidth(el) - 60) < 1)
-  })
-
-  it('peek：嵌套内层展开外层跟随，外层收起回到 peek 长度而非归零', async () => {
-    const el = createPeekCollapse(
-      '60px',
-      '<button class="trigger">Outer</button><div slot="content"><div><div style="height: 100px">Body</div><web-ui-collapse id="inner"><button class="trigger" style="height: 18px; margin: 0; border: 0; padding: 0; box-sizing: border-box">Inner</button><div slot="content"><div style="height: 50px">InnerContent</div></div></web-ui-collapse></div></div>'
-    )
+    document.body.append(el)
     await el.updateComplete
     const inner = document.getElementById('inner') as WebUiCollapse
     await inner.updateComplete
 
-    expect(trackHeight(el)).toBeCloseTo(60, 0)
-
-    // 外层展开：内层仍收起时外层停在内容高度
     el.open = true
     await el.updateComplete
-    await waitFor(() => trackHeight(el) > 110)
-    const outerWithInnerClosed = trackHeight(el)
+    await settle(el)
+    expect(queryContentContainer(el).hidden).toBe(false)
 
-    // 内层展开：外层高度继续跟随增长
     inner.open = true
     await inner.updateComplete
-    await waitFor(() => trackHeight(el) > outerWithInnerClosed + 20)
-    expect(trackHeight(el)).toBeGreaterThan(outerWithInnerClosed)
+    await settle(inner)
+    // 内层展开不改写外层 open，外层内容仍可见
+    expect(el.open).toBe(true)
+    expect(queryContentContainer(el).hidden).toBe(false)
 
-    // 外层收起：回到 peek 长度，容器保持可见（内层仍 open，只是被裁剪）
+    // 外层收起：只裁剪（容器 hidden），内层自身 open 不被连动
     el.open = false
     await el.updateComplete
-    await waitFor(() => Math.abs(trackHeight(el) - 60) < 1)
-    expect(queryContentContainer(el).hasAttribute('hidden')).toBe(false)
+    await waitFor(() => queryContentContainer(el).hidden === true)
+    expect(queryContentContainer(el).hidden).toBe(true)
     expect(inner.open).toBe(true)
   })
 
-  it('关闭动画中断后断连-重连：清瞬态并落到稳态，无 presence 残留', async () => {
+  it('初始带 open attribute 直接落稳态，不播放展开过渡', async () => {
+    const el = document.createElement('web-ui-collapse')
+    el.setAttribute('open', '')
+    el.innerHTML =
+      '<button class="trigger">Trigger</button><div slot="content"><div style="height: 80px">Content</div></div>'
+    document.body.append(el)
+    await el.updateComplete
+    await nextFrame()
+
+    // 首帧即展开态：没有可过渡的 before-change 样式，故一条动画都不启动
+    expect(el.open).toBe(true)
+    expect(queryContentContainer(el).hidden).toBe(false)
+    expect(queryTrack(el).getAnimations()).toHaveLength(0)
+  })
+
+  it('关闭动画中断后断连-重连：清瞬态并落到关闭稳态，无残留', async () => {
     const el = createCollapse(
       '<button class="trigger">Trigger</button><div slot="content"><div style="height: 60px">Content</div></div>'
     )
@@ -424,207 +220,21 @@ describe('WebUiCollapse 组件（浏览器）', () => {
     // 展开到稳态，随后立即关闭并打断关闭动画（断开连接）
     el.open = true
     await el.updateComplete
-    await waitForOpenSettled(el)
+    await settle(el)
 
     el.open = false
     await el.updateComplete
     // 进入关闭动画后立刻卸载——_settle(false) 的兜底定时器被 clear，稳态不落
-    const container = queryContentContainer(el)
-    expect(container.hasAttribute('hidden')).toBe(false)
+    expect(queryContentContainer(el).hidden).toBe(false)
     el.remove()
 
     // 重连（open 未变）时组件必须自我收敛：清瞬态、丢在途管线、落关闭稳态
     document.body.append(el)
     await el.updateComplete
-    await waitFor(() => queryContentContainer(el).hasAttribute('hidden'))
+    await waitFor(() => queryContentContainer(el).hidden === true)
 
-    const track = queryTrack(el)
-    expect(track.getAttribute('data-wui-presence')).toBe(null)
-    expect(el.shadowRoot!.querySelector('.wui-collapse-inner')?.hasAttribute('inert')).toBe(false)
-  })
-
-  describe('peek 边缘渐隐（长度由 peek 推导）', () => {
-    it('关闭稳态含 mask-image，渐变长度取 peek 的默认比例（0.4）', async () => {
-      const el = createPeekCollapse(
-        '80px',
-        '<button class="trigger">Trigger</button><div slot="content">Long enough content to exceed peek so the track has measurable height.</div>'
-      )
-      await el.updateComplete
-      // Chromium 把 `black` 序列化为 `rgb(0, 0, 0)`、`transparent` 序列化为
-      // `rgba(0, 0, 0, 0)`，并把 `to bottom` 标准化为角度；渐变形态用 stop 列表验证，
-      // 长度直接读活动长度（比匹配 mask 字符串稳：中段 stop 是它的 0.7/0.35 倍，
-      // 字符串可能与其他长度巧合重合）。80px * 0.4 = 32px。
-      const mask = getComputedStyle(queryInner(el)).maskImage
-      expect(mask).toContain('linear-gradient')
-      expect(mask).toContain('rgba(0, 0, 0, 0)')
-      expect(activeEdge(el)).toBeCloseTo(32, 3)
-
-      el.remove()
-    })
-
-    it('horizontal 时 mask 沿宽度轴生效，长度同样按 peek 推导', async () => {
-      const el = createPeekCollapse(
-        '80px',
-        '<button class="trigger">Trigger</button><div slot="content">Wide content</div>',
-        e => {
-          e.horizontal = true
-        }
-      )
-      await el.updateComplete
-      // 渐变形态与 vertical 一致（只有 to 方向不同），命中 `[data-wui-peek].is-horizontal`。
-      expect(getComputedStyle(queryInner(el)).maskImage).toContain('linear-gradient')
-      expect(activeEdge(el)).toBeCloseTo(32, 3)
-
-      el.remove()
-    })
-
-    it('--wui-collapse-peek-edge-ratio 覆盖推导比例', async () => {
-      const el = createPeekCollapse(
-        '80px',
-        '<button class="trigger">Trigger</button><div slot="content">Content</div>',
-        e => {
-          e.style.setProperty('--wui-collapse-peek-edge-ratio', '0.5')
-        }
-      )
-      await el.updateComplete
-      // 80px * 0.5 = 40px
-      expect(activeEdge(el)).toBeCloseTo(40, 3)
-
-      el.remove()
-    })
-
-    it('--wui-collapse-peek-edge 显式长度优先于推导值', async () => {
-      const el = createPeekCollapse(
-        '80px',
-        '<button class="trigger">Trigger</button><div slot="content">Content</div>',
-        e => {
-          e.style.setProperty('--wui-collapse-peek-edge', '12px')
-        }
-      )
-      await el.updateComplete
-      expect(activeEdge(el)).toBeCloseTo(12, 3)
-
-      el.remove()
-    })
-
-    it('推导长度夹在 --wui-collapse-peek-edge-max 以内（默认 112px）', async () => {
-      const el = createPeekCollapse(
-        '400px',
-        '<button class="trigger">Trigger</button><div slot="content"><div style="height: 400px">Tall content</div></div>'
-      )
-      await el.updateComplete
-      // 400px * 0.4 = 160px，被上限夹到 112px：大 peek 不会算出过长的虚化带。
-      expect(activeEdge(el)).toBeCloseTo(112, 3)
-
-      el.remove()
-    })
-
-    it('比例设为 0 关闭渐隐：渐变带长度为 0', async () => {
-      const el = createPeekCollapse(
-        '80px',
-        '<button class="trigger">Trigger</button><div slot="content">Content</div>',
-        e => {
-          e.style.setProperty('--wui-collapse-peek-edge-ratio', '0')
-        }
-      )
-      await el.updateComplete
-      // 渐变带退化为 0：所有 stop 落在同一位置，mask 整段不透明（视觉上无淡出）。
-      // Chromium 会把 `calc(100% - 0px)` 归一化成 `100%`，故按 stop 位置而非字符串断言。
-      expect(activeEdge(el)).toBe(0)
-      expect(getComputedStyle(queryInner(el)).maskImage).toContain('rgb(0, 0, 0) 100%')
-
-      el.remove()
-    })
-
-    it('收起动画期间渐变带即已生效：活动长度在动画中增长（无落稳态延迟）', async () => {
-      const el = createPeekCollapse(
-        '300px',
-        '<button class="trigger">Trigger</button><div slot="content"><div style="height: 300px">Tall content</div></div>'
-      )
-      await el.updateComplete
-
-      el.open = true
-      await el.updateComplete
-      await waitForOpenSettled(el)
-      await waitForActiveEdge(el, 0)
-
-      // 收起：动画刚开始（presence='closing'）时渐变带就必须在增长——旧实现把 mask
-      // 限定在关闭稳态，要等动画结束落稳态才出现，表现为肉眼可见的延迟。
-      el.open = false
-      await el.updateComplete
-      await nextFrame()
-      await nextFrame()
-      expect(activeEdge(el)).toBeGreaterThan(0)
-
-      // 收敛到推导值：300px * 0.4 = 120px，夹到上限 112px。
-      await waitForActiveEdge(el, 112)
-      el.remove()
-    })
-
-    it('展开稳态：活动长度收敛到 0，内容不再有底部淡出', async () => {
-      const el = createPeekCollapse(
-        '80px',
-        '<button class="trigger">Trigger</button><div slot="content"><div style="height: 300px">Tall content</div></div>'
-      )
-      await el.updateComplete
-
-      el.open = true
-      await el.updateComplete
-      await waitForOpenSettled(el)
-      // 活动长度随展开动画淡出到 0：mask 仍是有效声明（不是 none），但整段不透明。
-      await waitForActiveEdge(el, 0)
-      const mask = getComputedStyle(queryInner(el)).maskImage
-      expect(mask).toContain('linear-gradient')
-      const used = Number.parseFloat(mask.match(/calc\(100% - ([\d.]+)px\)/)?.[1] ?? '0')
-      expect(used).toBeLessThan(1)
-
-      el.remove()
-    })
-
-    it('未设 peek 时 mask-image 保持默认 none（规则不命中）', async () => {
-      const el = createCollapse('<button class="trigger">Trigger</button><div slot="content">Content</div>')
-      await el.updateComplete
-      expect(getComputedStyle(queryInner(el)).maskImage).toBe('none')
-
-      el.remove()
-    })
-
-    it('收起后回到关闭稳态：活动长度保持推导值', async () => {
-      const el = createPeekCollapse(
-        '80px',
-        '<button class="trigger">Trigger</button><div slot="content"><div style="height: 300px">Tall content</div></div>',
-        e => {
-          e.horizontal = true
-        }
-      )
-      await el.updateComplete
-
-      el.open = true
-      await el.updateComplete
-      await waitForOpenSettled(el)
-      await waitForActiveEdge(el, 0)
-
-      el.open = false
-      await el.updateComplete
-      await waitForActiveEdge(el, 32)
-      // 关闭稳态：动画结束后 presence 移除，但规则仍命中（:not([data-wui-presence='open'])）。
-      await waitFor(() => queryTrack(el).getAttribute('data-wui-presence') === null)
-      expect(activeEdge(el)).toBeCloseTo(32, 0)
-
-      el.remove()
-    })
-
-    it('peek 清空后：CSS 变量清除且 mask 回落 none', async () => {
-      const el = createPeekCollapse('80px', '<button class="trigger">Trigger</button><div slot="content">Content</div>')
-      await el.updateComplete
-      el.peek = null
-      await el.updateComplete
-
-      const track = queryTrack(el)
-      expect(track.style.getPropertyValue('--wui-collapse-peek')).toBe('')
-      expect(getComputedStyle(queryInner(el)).maskImage).toBe('none')
-
-      el.remove()
-    })
+    expect(queryContentContainer(el).hidden).toBe(true)
+    expect(queryTrack(el).getAnimations()).toHaveLength(0)
+    expect(queryInner(el).hasAttribute('inert')).toBe(false)
   })
 })

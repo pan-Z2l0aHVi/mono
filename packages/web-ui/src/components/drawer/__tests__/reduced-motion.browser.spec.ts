@@ -9,118 +9,183 @@ async function nextFrame() {
   await new Promise(resolve => requestAnimationFrame(resolve))
 }
 
-// 等到 presence 挂上 is-visible；在并行负载下不能假设 350ms 足够。
-async function waitForOpenTransition(el: WebUiDrawer) {
-  const dialog = el.shadowRoot?.querySelector('dialog') as HTMLDialogElement | null
-  if (!dialog) throw new Error('Expected the drawer to contain a dialog')
-  const deadline = performance.now() + 2000
-  while (!(dialog.open && dialog.classList.contains('is-visible'))) {
-    if (performance.now() > deadline) throw new Error('Expected the drawer dialog to become visible')
-    await new Promise(resolve => requestAnimationFrame(resolve))
+function getDialog(el: WebUiDrawer): HTMLDialogElement {
+  return el.shadowRoot?.querySelector('dialog') as HTMLDialogElement
+}
+
+function getDragZone(el: WebUiDrawer): HTMLElement {
+  return el.shadowRoot?.querySelector('.wui-drawer-drag-zone') as HTMLElement
+}
+
+function waitFor(condition: () => boolean, message: string, timeoutMs = 5000): Promise<void> {
+  const start = performance.now()
+  return new Promise((resolve, reject) => {
+    const tick = () => {
+      if (condition()) return resolve()
+      if (performance.now() - start > timeoutMs) return reject(new Error(message))
+      setTimeout(tick, 25)
+    }
+    tick()
+  })
+}
+
+/**
+ * 等打开动画收敛。
+ * reduced 下打开是**即时**的（压根没有过渡），所以只能要求「动画已收敛」，
+ * 不能要求「动画已启动」。但 full 下过渡在 presence 翻转后才起（rAF 之后 1–2 帧），
+ * 若一上来就判 0 会撞上那个空窗，故先放几帧让该启动的启动。
+ */
+async function waitForOpenSettled(el: WebUiDrawer) {
+  const dialog = getDialog(el)
+  await waitFor(() => dialog.open, 'drawer did not open')
+  await nextFrame()
+  await nextFrame()
+  await nextFrame()
+  await waitFor(() => dialog.getAnimations().length === 0, 'drawer open transition did not settle')
+}
+
+/** 在 web-ui-theme 作用域内挂载 drawer；motion 为 null 时不套 theme（走系统 reduce）。 */
+function mountDrawer(motion: string | null): WebUiDrawer {
+  let parent: HTMLElement = document.body
+  if (motion) {
+    const theme = document.createElement('web-ui-theme')
+    theme.setAttribute('appearance', 'light')
+    theme.setAttribute('motion', motion)
+    document.body.append(theme)
+    parent = theme
   }
+  const el = document.createElement('web-ui-drawer')
+  parent.append(el)
+  return el
+}
+
+async function openDrawer(el: WebUiDrawer) {
+  el.draggable = true
+  el.open = true
   await el.updateComplete
+  await waitForOpenSettled(el)
+}
+
+/** 沿闭合方向（默认 right → 向右）拖到指定 clientX 后松手。 */
+async function dragToClose(el: WebUiDrawer, toX: number) {
+  const dragZone = getDragZone(el)
+  dragZone.dispatchEvent(
+    new PointerEvent('pointerdown', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 100, clientY: 300 })
+  )
+  await el.updateComplete
+  dragZone.dispatchEvent(
+    new PointerEvent('pointermove', { bubbles: true, pointerId: 1, isPrimary: true, clientX: toX, clientY: 300 })
+  )
+  await el.updateComplete
+  dragZone.dispatchEvent(
+    new PointerEvent('pointerup', { bubbles: true, pointerId: 1, isPrimary: true, clientX: toX, clientY: 300 })
+  )
+}
+
+/**
+ * 在若干帧内采样 dialog 上出现过的过渡属性（§10 S2：动效一律用 WAAPI 观察）。
+ * 只采 dialog 自身（含 ::backdrop），不带 subtree——避免把后代元素的动画算进来。
+ */
+async function sampleTransitions(el: WebUiDrawer, frames = 12): Promise<string[]> {
+  const dialog = getDialog(el)
+  const seen = new Set<string>()
+  for (let i = 0; i < frames; i += 1) {
+    for (const animation of dialog.getAnimations()) {
+      seen.add((animation as CSSTransition).transitionProperty ?? (animation as CSSAnimation).animationName ?? '?')
+    }
+    await nextFrame()
+  }
+  return [...seen]
 }
 
 afterEach(() => document.body.replaceChildren())
 
+/*
+ * 减少动效下的 Drawer 拖拽关闭。
+ *
+ * 本文件跑在 `browser-reduced-motion` 工程（按文件名路由），系统 `prefers-reduced-motion`
+ * 即为真实环境。§10 S3 要求**自带控制组**：只断言「松手后 open 立即变 false」在有动效的
+ * 实现下也可能成立（如果恰好同步），真正的区分点是**弹簧动画有没有跑**，而对照组
+ * （显式 `motion='full'`）必须证明「同样的手势在没有 reduce 时会走弹簧」。
+ *
+ * 原实现读 `getComputedStyle(dialog).transform` 的 m41/m42 断言「reduced 下零位移」——
+ * 那是几何取值（§12 C1），已换成 `getAnimations()`：无弹簧 == 一条动画都没有。
+ */
 describe('减少动效下的 Drawer 拖拽关闭（浏览器）', () => {
-  it('超过阈值松手：跳过弹簧动画即时关闭', async () => {
-    const el = document.createElement('web-ui-drawer')
-    document.body.append(el)
-    el.draggable = true
-    el.open = true
-    await el.updateComplete
-    await waitForOpenTransition(el)
+  it('超过阈值松手：不走弹簧，open 立即落 false（对照组 full 会走弹簧）', async () => {
+    const reduced = mountDrawer(null)
+    await openDrawer(reduced)
+    await dragToClose(reduced, 300)
 
-    const dragZone = el.shadowRoot?.querySelector('.wui-drawer-drag-zone') as HTMLElement
-    dragZone.dispatchEvent(
-      new PointerEvent('pointerdown', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 100, clientY: 300 })
-    )
-    await el.updateComplete
-    dragZone.dispatchEvent(
-      new PointerEvent('pointermove', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 300, clientY: 300 })
-    )
-    await el.updateComplete
-    dragZone.dispatchEvent(
-      new PointerEvent('pointerup', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 300, clientY: 300 })
-    )
+    // 无弹簧：松手瞬间即到位，且窗口内采不到任何动画。
+    expect(reduced.open).toBe(false)
+    expect(await sampleTransitions(reduced, 4)).toHaveLength(0)
 
-    // reduced-motion 下松手即时到位：无需等待弹簧动画，open 立即变化
-    expect(el.open).toBe(false)
-    await nextFrame()
-    expect(el.shadowRoot?.querySelector('dialog')?.open).toBe(false)
+    // 对照组：显式 motion='full' 覆盖系统 reduce → 松手瞬间仍未关闭（在等弹簧）。
+    const full = mountDrawer('full')
+    await openDrawer(full)
+    await dragToClose(full, 300)
+    expect(full.open).toBe(true)
+    await waitFor(() => !full.open, 'drawer did not close after the spring settled', 10_000)
   })
 
-  it('未达阈值松手：即时弹回打开位', async () => {
-    const el = document.createElement('web-ui-drawer')
-    document.body.append(el)
-    el.draggable = true
-    el.open = true
-    await el.updateComplete
-    await waitForOpenTransition(el)
+  it('未达阈值松手：即时弹回打开位且无残留动画（对照组 full 会产生弹簧）', async () => {
+    const reduced = mountDrawer(null)
+    await openDrawer(reduced)
 
-    const dialog = el.shadowRoot?.querySelector('dialog') as HTMLDialogElement
-    const dragZone = el.shadowRoot?.querySelector('.wui-drawer-drag-zone') as HTMLElement
+    // CI 慢环境下单次合成 move 的整程速度会被判为 flick 而误关，用多段慢拖。
+    const dragZone = getDragZone(reduced)
     dragZone.dispatchEvent(
       new PointerEvent('pointerdown', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 100, clientY: 300 })
     )
-    await el.updateComplete
-    // CI 慢环境下 updateComplete 渲染会跨毫秒边界，单次合成 move 的整程速度被
-    // 判定为 flick（>DRAG_FLICK_VELOCITY）而误关抽屉；用间隔 16ms 的多段 move
-    // 模拟真实的未达阈值慢拖（窗口速度与整程平均都低于 flick 阈值）。
+    await reduced.updateComplete
     for (const x of [106, 112, 118, 124, 130]) {
       dragZone.dispatchEvent(
         new PointerEvent('pointermove', { bubbles: true, pointerId: 1, isPrimary: true, clientX: x, clientY: 300 })
       )
       await new Promise(resolve => setTimeout(resolve, 16))
     }
-    await el.updateComplete
+    await reduced.updateComplete
     dragZone.dispatchEvent(
       new PointerEvent('pointerup', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 130, clientY: 300 })
     )
-    await el.updateComplete
-    await nextFrame()
+    await reduced.updateComplete
 
-    expect(el.open).toBe(true)
-    expect(dialog.open).toBe(true)
-    // 即时清除拖拽内联样式，交还 CSS 管辖；reduced-motion 打开态为零位移
-    //（none 与 translate(0,0) 渲染等价，不锁定序列化格式）
-    const transform = getComputedStyle(dialog).transform
-    const matrix = !transform || transform === 'none' ? new DOMMatrixReadOnly() : new DOMMatrixReadOnly(transform)
-    expect(matrix.m41).toBe(0)
-    expect(matrix.m42).toBe(0)
-    expect(dialog.classList.contains('is-dragging')).toBe(false)
-  })
+    expect(reduced.open).toBe(true)
+    expect(getDialog(reduced).open).toBe(true)
+    expect(await sampleTransitions(reduced, 4)).toHaveLength(0)
 
-  it('所在 web-ui-theme 设置 motion=reduced 时：跳过弹簧动画即时关闭', async () => {
-    const theme = document.createElement('web-ui-theme')
-    theme.setAttribute('appearance', 'light')
-    theme.setAttribute('motion', 'reduced')
-    document.body.append(theme)
-
-    const el = document.createElement('web-ui-drawer')
-    theme.append(el)
-    el.draggable = true
-    el.open = true
-    await el.updateComplete
-    await waitForOpenTransition(el)
-
-    const dragZone = el.shadowRoot?.querySelector('.wui-drawer-drag-zone') as HTMLElement
-    dragZone.dispatchEvent(
+    // 对照组：full 下同样的未达阈值松手会真的跑一条弹回弹簧。
+    const full = mountDrawer('full')
+    await openDrawer(full)
+    const fullZone = getDragZone(full)
+    fullZone.dispatchEvent(
       new PointerEvent('pointerdown', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 100, clientY: 300 })
     )
-    await el.updateComplete
-    dragZone.dispatchEvent(
-      new PointerEvent('pointermove', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 300, clientY: 300 })
+    await full.updateComplete
+    for (const x of [106, 112, 118, 124, 130]) {
+      fullZone.dispatchEvent(
+        new PointerEvent('pointermove', { bubbles: true, pointerId: 1, isPrimary: true, clientX: x, clientY: 300 })
+      )
+      await new Promise(resolve => setTimeout(resolve, 16))
+    }
+    await full.updateComplete
+    fullZone.dispatchEvent(
+      new PointerEvent('pointerup', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 130, clientY: 300 })
     )
-    await el.updateComplete
-    dragZone.dispatchEvent(
-      new PointerEvent('pointerup', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 300, clientY: 300 })
-    )
+    await full.updateComplete
+    expect(full.open).toBe(true)
+    expect(await sampleTransitions(full, 6)).not.toHaveLength(0)
+  })
 
-    // theme motion=reduced 时松手即时到位：无需等待弹簧动画，open 立即变化
-    expect(el.open).toBe(false)
-    await nextFrame()
-    expect(el.shadowRoot?.querySelector('dialog')?.open).toBe(false)
+  it('theme 作用域优先于系统：motion=full 覆盖系统 reduce，松手后走弹簧', async () => {
+    const full = mountDrawer('full')
+    await openDrawer(full)
+    await dragToClose(full, 300)
+
+    // 系统虽为 reduce，但所在 theme 显式要求完整动效 → 松手瞬间仍未关闭。
+    expect(full.open).toBe(true)
+    await waitFor(() => !full.open, 'drawer did not close after the spring settled', 10_000)
+    expect(getDialog(full).open).toBe(false)
   })
 })

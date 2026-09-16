@@ -1,71 +1,85 @@
 import type { IconifyIcon } from '@iconify/types'
-import { describe, expect, it, afterEach } from 'vite-plus/test'
+import { afterEach, describe, expect, it } from 'vite-plus/test'
 
-import type { WebUiIcon } from '..'
+import {
+  cleanupElement,
+  contractReflection,
+  expectReflected,
+  mountElement,
+  queryA11y,
+  waitForUpdate
+} from '@/shared/test-utils'
+
 import '..'
+import type { WebUiIcon } from '..'
 
 const aIcon: IconifyIcon = { body: '<path d="M3 2h18v20H3z"/>' }
 
+const createIcon = (): WebUiIcon => {
+  const el = mountElement<WebUiIcon>('web-ui-icon')
+  el.icon = aIcon
+  return el
+}
+
 describe('WebUiIcon 组件', () => {
   afterEach(() => {
-    document.body.innerHTML = ''
+    document.body.replaceChildren()
   })
 
   describe('属性：icon', () => {
     it('无 icon 时不渲染 SVG', async () => {
-      const el = document.createElement('web-ui-icon')
+      const el = mountElement<WebUiIcon>('web-ui-icon')
+      await waitForUpdate(el)
 
-      document.body.appendChild(el)
-      await el.updateComplete
-
-      expect(el.shadowRoot?.querySelector('svg[aria-hidden="true"]')).toBeNull()
+      expect(queryA11y(el, '[aria-hidden="true"]')).toBeNull()
+      cleanupElement(el)
     })
 
     it('有 icon 时渲染带 aria-hidden 的 SVG', async () => {
-      const el = document.createElement('web-ui-icon')
-      el.icon = aIcon
+      const el = createIcon()
+      await waitForUpdate(el)
 
-      document.body.appendChild(el)
-      await el.updateComplete
-
-      const svg = el.shadowRoot?.querySelector('svg[aria-hidden="true"]')
-      expect(svg).toBeTruthy()
+      expect(queryA11y(el, '[aria-hidden="true"]')).toBeTruthy()
+      cleanupElement(el)
     })
   })
 
-  describe('默认属性与反射（合并）', () => {
+  describe('默认属性与反射', () => {
     it('默认值符合契约', async () => {
-      const el = document.createElement('web-ui-icon')
-      document.body.appendChild(el)
-      await el.updateComplete
+      const el = mountElement<WebUiIcon>('web-ui-icon')
+      await waitForUpdate(el)
       expect(el.size).toBe(18)
       expect(el.spin).toBe(false)
-      expect(el.hasAttribute('spin')).toBe(false)
+      expectReflected(el, 'spin', false)
+      cleanupElement(el)
     })
 
-    it.each([
-      ['size', 32, '32'],
-      ['color', 'red', 'red']
-    ] as const)('%s 反射到宿主 attribute', async (prop, value, expected) => {
-      const el = document.createElement('web-ui-icon') as any
-      el.icon = aIcon
-      document.body.appendChild(el)
-      await el.updateComplete
-      el[prop] = value
-      await el.updateComplete
-      expect(el.getAttribute(prop)).toBe(expected)
+    contractReflection('property 写入后同步到宿主 attribute', () => createIcon(), [
+      ['size', 32, 'size', '32'],
+      ['color', 'red', 'color', 'red']
+    ])
+
+    it('size attribute 写入反映到 property', async () => {
+      const el = createIcon()
+      await waitForUpdate(el)
+      el.setAttribute('size', '32')
+      await waitForUpdate(el)
+      expect(el.size).toBe(32)
+      cleanupElement(el)
     })
 
     it('spin 布尔存在语义', async () => {
-      const el = document.createElement('web-ui-icon')
-      document.body.appendChild(el)
-      await el.updateComplete
+      const el = createIcon()
+      await waitForUpdate(el)
       el.spin = true
-      await el.updateComplete
-      expect(el.hasAttribute('spin')).toBe(true)
+      await waitForUpdate(el)
+      expect(el.spin).toBe(true)
+      expectReflected(el, 'spin', true)
       el.spin = false
-      await el.updateComplete
-      expect(el.hasAttribute('spin')).toBe(false)
+      await waitForUpdate(el)
+      expect(el.spin).toBe(false)
+      expectReflected(el, 'spin', false)
+      cleanupElement(el)
     })
   })
 })

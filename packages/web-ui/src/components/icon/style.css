@@ -14,8 +14,10 @@ svg {
   color: var(--wui-icon-color, inherit);
 }
 
+/* 周期走主题 token：组件级 @media 块看不到 motion 属性，只有 token 能同时响应
+   显式 motion="reduced" 与系统 prefers-reduced-motion。 */
 svg.spin {
-  animation: wui-icon-spin 0.6s linear infinite;
+  animation: wui-icon-spin var(--wui-duration-spin, 600ms) linear infinite;
 }
 
 @keyframes wui-icon-spin {

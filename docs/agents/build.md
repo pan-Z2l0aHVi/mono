@@ -6,7 +6,7 @@
 
 ## 各包命令
 
-每个包暴露其所需的命令：所有可构建的包都有 `build`，大多数有 `dev`（监听模式），只有包含维护的自动化测试覆盖率的包才暴露 `test`。使用 `pnpm --filter @greypan/<name> <script>` 运行它们；例如，`pnpm --filter @greypan/js-kit test`。根目录提供全局编排的 `pnpm run build`、`pnpm run test` 以及增量受影响命令 `pnpm run build:affected` 与 `pnpm run test:affected`。迭代与调试优先使用受影响命令；全量 `pnpm run build` / `pnpm run test` 仅在最终提交确认前运行（CI 会在 pull request 上完整执行）。
+每个包暴露其所需的命令：所有可构建的包都有 `build`，大多数有 `dev`（监听模式），只有包含维护的自动化测试覆盖率的包才暴露 `test`。使用 `pnpm --filter @greypan/<name> <script>` 运行它们；例如，`pnpm --filter @greypan/js-kit test`。根目录提供全局编排的 `pnpm run build`、`pnpm run test` 以及增量受影响命令 `pnpm run build:affected` 与 `pnpm run test:affected`。迭代与调试优先使用受影响命令；全量 `pnpm run build` / `pnpm run test` 由 CI 在 pull request 上执行，本地只在需要复现全仓范围问题时运行。
 
 ## Demo 开发
 
@@ -32,13 +32,13 @@ Interweave 由 Wails 宿主管理嵌套前端，因此其 alias 只启动 Wails 
 
 代码质量检查与修复的命令矩阵（`CI=true pnpm run check:code` 聚合 `check:cspell`、`vp check`、`check:go`、`check:stylelint`；`CI=true pnpm run fix:code` 一键全量修复）以 [`linting.md`](linting.md) 为权威；提交 hook 的 `vp staged` 对暂存路径做增量修复与检查。包构建命令不能替代这些命令；Wails 的 macOS/Windows 原生构建仍负责验证 host package 与平台集成。
 
-| 命令                                             | 用途                                                      | 说明                                                                            |
-| ------------------------------------------------ | --------------------------------------------------------- | ------------------------------------------------------------------------------- |
-| `pnpm run clean`                                 | 清理构建产物与缓存                                        | 执行 `scripts/clean.sh`，安全重置各工作区的 `dist/`、`.turbo/` 和临时产物       |
-| `pnpm run test:scripts`                          | 验证仓库内部工具脚本                                      | -                                                                               |
-| `pnpm run validate:context`                      | 验证 Agent context 路由、必需文档和结构约束               | 修改 `AGENTS.md`、角色、rules、skills 或 `docs/agents/**` 时必须通过            |
-| `pnpm run audit:instructions -- --strict --json` | 验证 instruction system 的 workflow gate 和配套文档未回退 | instruction system 或 workflow 变更时必须通过                                   |
-| `pnpm run check:pack`                            | 发布产物边界检查                                          | 构建可发布 package 或修改其 `exports`、`files`、Vite 输出时，在根构建成功后运行 |
+| 命令                                             | 用途                                                   | 说明                                                                            |
+| ------------------------------------------------ | ------------------------------------------------------ | ------------------------------------------------------------------------------- |
+| `pnpm run clean`                                 | 清理构建产物与缓存                                     | 执行 `scripts/clean.sh`，安全重置各工作区的 `dist/`、`.turbo/` 和临时产物       |
+| `pnpm run test:scripts`                          | 验证仓库内部工具脚本                                   | -                                                                               |
+| `pnpm run validate:context`                      | 验证 Agent context 路由、必需文档、软链与结构约束      | 修改 `AGENTS.md`、角色、rules、skills 或 `docs/agents/**` 时必须通过            |
+| `pnpm run audit:instructions -- --strict --json` | 验证不变量锚点、约束预算、工具已强制规则与重述块未回退 | instruction system 或 workflow 变更时必须通过                                   |
+| `pnpm run check:pack`                            | 发布产物边界检查                                       | 构建可发布 package 或修改其 `exports`、`files`、Vite 输出时，在根构建成功后运行 |
 
 `check:pack` 使用 `pnpm pack --dry-run` 验证实际发布文件与 manifest export targets；它不判断 API 语义或版本级别。
 
@@ -135,4 +135,4 @@ turbo 本地缓存由 `.mise.toml` 的 `TURBO_CACHE_DIR` 指向 worktree 族共�
 
 ## Release context
 
-发布流程和 release plane 的术语、边界与授权模型见 [ADR-0003](../adr/0003-release-planes.md)。本指南只保留执行流程和 release safety boundary：未经用户授权不执行发布；不得直接运行 `npm publish`，首次发布使用 `pnpm publish:new <package-dir>`；不得使用 `--no-verify` 或 `--no-gpg-sign`。后续公共包和私有原生应用安装程序按对应 workflow 与 Changesets 配置执行。修改 `.github/workflows/`、Changesets 或发布脚本时，先阅读本指南和相关 ADR，并以当前 workflow、manifest 与脚本为事实来源。
+发布流程和 release plane 的术语、边界与授权模型见 [ADR-0003](../adr/0003-release-planes.md)。本指南只保留执行流程和 release safety boundary：未经用户授权不执行发布；不得直接运行 `npm publish`，首次发布使用 `pnpm publish:new <package-dir>`；Git 检查的绕过禁令见 [`commit.md`](./commit.md)。后续公共包和私有原生应用安装程序按对应 workflow 与 Changesets 配置执行。修改 `.github/workflows/`、Changesets 或发布脚本时，先阅读本指南和相关 ADR，并以当前 workflow、manifest 与脚本为事实来源。

@@ -142,7 +142,6 @@ describe('WebUiAutocomplete 组件', () => {
       await waitForUpdate(el)
 
       const labelledby = comboboxInput(el).getAttribute('aria-labelledby')
-      expect(labelledby).toBeTruthy()
       expect(el.shadowRoot?.querySelector(`#${labelledby}`)?.textContent).toBe('水果')
 
       cleanupElement(el)
@@ -351,7 +350,6 @@ describe('WebUiAutocomplete 组件', () => {
       await waitForUpdate(el)
 
       const controls = comboboxInput(el).getAttribute('aria-controls')
-      expect(controls).toBeTruthy()
       const listbox = queryA11y(el, '[role="listbox"]')
       expect(listbox?.id).toBe(controls)
 
@@ -680,20 +678,30 @@ describe('WebUiAutocomplete 组件', () => {
       cleanupElement(second)
     })
 
-    it('删除活动 option 后清理 active、selected-value 与 aria-activedescendant', async () => {
+    it('删除活动 option 后清理 selected-value 与 aria-activedescendant', async () => {
       const el = createAutocomplete(OPTIONS_HTML)
       el.value = 'Apple'
       await waitForUpdate(el)
 
       el.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }))
       await waitForUpdate(el)
-      const active = el.querySelector<WebUiOption>('web-ui-option[active]')!
-      active.remove()
+
+      // 激活项只通过公开通道（aria-activedescendant → shadow 内 role=option 镜像）暴露
+      const input = comboboxInput(el)
+      const activeId = input.getAttribute('aria-activedescendant')
+      const activeLabel = el.shadowRoot?.querySelector(`#${activeId}`)?.textContent?.trim()
+      expect(activeLabel).toBe('Apple')
+
+      // 断言候选唯一：避免 label 重名时静默选到错误的节点（fixture 的 label 本就唯一）
+      const active = [...el.querySelectorAll<WebUiOption>('web-ui-option')].filter(
+        option => option.label === activeLabel
+      )
+      expect(active).toHaveLength(1)
+      active[0]!.remove()
       await waitForUpdate(el)
 
       expect(el.selectedValue).toBe('')
-      expect(el.querySelector('[active]')).toBeNull()
-      expect(comboboxInput(el).getAttribute('aria-activedescendant')).toBeFalsy()
+      expect(input.getAttribute('aria-activedescendant')).toBeFalsy()
 
       cleanupElement(el)
     })

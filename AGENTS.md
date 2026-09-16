@@ -10,11 +10,11 @@
 
 ## Mutation Gate
 
-凡会创建、修改、删除、重命名、生成文件，或执行 commit、merge、release 的任务，**在第一次文件变更前必须读取 [`docs/agents/workflow.md`](docs/agents/workflow.md)，并为任务运行 `pnpm agent:workflow init --task <task-id> --mode <direct|orchestrated|release|hotfix>`**。没有 workflow 状态、当前 worktree 归属和 preflight 结果，不得开始实施；后续按 workflow 的 `check` gate 推进。只读调查可以不初始化任务，但一旦转为实施必须回到此 gate。
+<!-- invariant:task-state-trigger -->
 
-`AGENTS.md` 只承载这个必经入口和不可绕过边界；状态、冻结 diff、review、approval 和验证证据以 `.git/agent-workflow/<task-id>.json` 为执行真相，详细工具适配不写入本文件。
+档 1 与档 2 的变更**在第一次文件变更前必须读取 [`docs/agents/workflow.md`](docs/agents/workflow.md)，并运行 `pnpm agent:workflow init --task <task-id> --mode <direct|orchestrated|release|hotfix>`**；档 0 的变更直接实施，不建 task state。分级判据、每档的 review/approval 要求与预授权操作清单，以 workflow.md 的「变更风险分级」与「预授权操作」为权威，本节不复制。
 
-**Fast lane（琐碎变更例外）**：仅限当前 worktree、单 agent 即可完成、无行为影响的琐碎变更——错别字、注释与文档措辞、纯格式修正——可不经 init 直接修改；是否适用由 agent 按实际影响自行判断，拿不准就走正常 gate。涉及 git 操作、依赖、发布、跨包契约或公共 API 的变更不适用本例外。
+档位判定不靠感觉：`pnpm find:usages -- <paths>` 输出的受影响 workspace 只有一个时，档 0 的「单 workspace」条件成立。只读调查不需要 task state，一旦转为实施就回到这个 gate。`AGENTS.md` 只承载这个必经入口和不可绕过边界；状态、冻结 diff、review、approval 和验证证据以 `.git/agent-workflow/<task-id>.json` 为执行真相。
 
 1. 先查看工作区状态、目标文件和最近的 `AGENTS.md`；只有进入某个 `apps/` 或 `packages/` 时才加载其包级指令。
 2. 只按任务加载命中的 rule、guide 和包级指令；不要为普通局部任务预读 `CONTEXT.md`、ADR 或无关领域指南。
@@ -26,7 +26,11 @@
 
 ## 多 Agent 编排
 
+<!-- invariant:orchestration-routing -->
+
 Manager 统一接收需求并编排，全程扁平，不设中间调度层级。编排路由、状态机与 gate 的流程权威是 [`docs/agents/workflow.md`](docs/agents/workflow.md)；本节只承载不可绕过的分工与边界。
+
+<!-- invariant:executor-binding -->
 
 角色与执行体（执行体，即承担该角色的 CLI/agent；下表是全仓唯一权威绑定表，其他文档只链接到这里）使用默认绑定；默认模型与思考强度是推荐分档（非强制，可按任务与接入层实际情况调整）：
 
@@ -38,9 +42,9 @@ Manager 统一接收需求并编排，全程扁平，不设中间调度层级。
 | Biz Coder | Codex CLI   | DeepSeek V4.1 Flash                 | low          | `apps/*`：业务包实现                                                           |
 | Reviewer  | 按风险路由  | GLM-5.3 Flash / DeepSeek V4.1 Flash | high         | 独立验收：高风险变更由 Claude Code 主审；独立小功能快速迭代可由 Codex CLI 审核 |
 
-独立 review 按风险路由执行体：跨 workspace、公共 API/exports、跨包契约、跨 worktree、UI 行为、构建/release 和高风险迁移由 Claude Code 主审；独立小功能快速迭代可由 Codex CLI 审核。高风险清单的判定与纯文档/低风险基建的 skip 规则见 [`docs/agents/workflow.md`](docs/agents/workflow.md)。
+独立 review 的执行体按风险路由：高风险变更由 Claude Code 主审，独立小功能快速迭代可由 Codex CLI 审核。哪些变更需要独立 review、以及纯文档或低风险测试基建的 skip 规则，见 [`docs/agents/workflow.md`](docs/agents/workflow.md) 的「变更风险分级」。
 
-模型与思考强度以推荐分档为起点，Manager 可按任务直接调整，推荐在 task packet 的 `Effort` 字段留痕；档位场景参考 [`docs/agents/workflow.md`](docs/agents/workflow.md) 与 [ADR-0011](docs/adr/0011-agent-model-binding-and-effort.md)。
+模型与思考强度以推荐分档为起点，Manager 可按任务直接调整，推荐在 task packet 的 `Effort` 字段留痕；档位取值理由与常见调整场景见 [ADR-0011](docs/adr/0011-agent-model-binding-and-effort.md)。
 
 编排路由：
 
@@ -55,6 +59,8 @@ Manager 统一接收需求并编排，全程扁平，不设中间调度层级。
 - 跨边界需求由 Manager 拆成独立 task 在各自 worktree 完成，并通过 handoff 传递契约，而不是由单个角色越界实现。
 - Manager 不代替 Coder 修改生产代码，也不引入 Integrator 等额外层级。
 
+<!-- invariant:handoff-fields -->
+
 结构化 handoff 是角色之间唯一的交接方式，完整模板以 [`docs/agents/task-packet.md`](docs/agents/task-packet.md) 为权威；每次交接必须显式给出 `Goal（目标）`、`Scope（范围）`、`Acceptance（验收标准）`、`Test commands（测试命令）`、`Open decisions（未解决决策）`，缺少任何一项不得进入实施或验收。
 
 ## 不可绕过的仓库边界
@@ -65,7 +71,8 @@ Manager 统一接收需求并编排，全程扁平，不设中间调度层级。
 - `AGENTS.md`（含包级）、`docs/adr/`、`docs/agents/`、`.agents/rules/`、`.agents/agents/` 和仓库自编写的 `.agents/skills/` 下文档使用中文；`.agents/references/` 是语言无关的通用检查清单，保持英文；第三方引入的 `.agents/skills/` 必须保持上游原文的语言与内容，更新时不得翻译或本地改写；其通用流程若与仓库规则、task guide 或实现事实冲突，以后者为准。技术术语、命令、路径和包名保留英文。
 - 缺少 Node、pnpm 或 Go 时先运行 `mise install`；准确版本以 `.mise.toml`、`package.json` 与目标包 manifest 为准。
 - 并行 agent 必须使用不同的 branch/worktree；不得在共享工作区执行 `git switch`、`git checkout`、`git stash`、`git reset` 或 `git clean`。新建 worktree 统一放在仓库旁的 `<仓库目录名>-worktrees/<worktree 名>`（例：仓库在 `path/to/mono`，worktree 放 `path/to/mono-worktrees/<name>`）；工具自带的 worktree 默认路径（如 `.claude/worktrees/`）不采用。
-- 角色目录边界不可跨越：Lib Coder 只写 `packages/*`，Biz Coder 只写 `apps/*`；跨边界需求必须由 Manager 拆成独立 task 与独立 worktree。分工与 handoff 要求见「多 Agent 编排」，流程细节见 [`docs/agents/workflow.md`](docs/agents/workflow.md)。
+- 角色目录边界不可跨越；分工、边界与跨边界拆 task 的要求统一见「包边界与禁止事项」，worktree 布局见 [`docs/agents/worktrees.md`](docs/agents/worktrees.md)。
+- 预授权操作（本地测试与校验命令、包级构建、`find:usages` / `inspect:contract` / `diff:contract` 等只读查询、在目标 worktree 内读文件）直接执行，不必逐步请示；需要逐次授权的是 commit/push/merge/publish、依赖与 lockfile、`.npmrc` / `.mise.toml` / Git 配置、凭证读写和破坏性 git 操作。清单见 [`docs/agents/workflow.md`](docs/agents/workflow.md) 的「预授权操作」。
 
 ## 按任务加载
 

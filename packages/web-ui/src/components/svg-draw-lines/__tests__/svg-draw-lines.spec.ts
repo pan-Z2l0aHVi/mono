@@ -1,27 +1,27 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test'
 
 import '..'
+import { mountElement, waitForUpdate } from '@/shared/test-utils'
+
 import type { WebUiSvgDrawLines } from '..'
 
 function createSvgDrawLines(): WebUiSvgDrawLines {
-  const el = document.createElement('web-ui-svg-draw-lines')
-  document.body.appendChild(el)
-  return el
+  return mountElement<WebUiSvgDrawLines>('web-ui-svg-draw-lines')
 }
 
 beforeEach(() => {
-  document.body.innerHTML = ''
+  document.body.replaceChildren()
 })
 
 afterEach(() => {
-  document.body.innerHTML = ''
+  document.body.replaceChildren()
 })
 
 describe('WebUiSvgDrawLines 组件', () => {
   describe('属性：duration', () => {
     it('默认值为 1000', async () => {
       const el = createSvgDrawLines()
-      await el.updateComplete
+      await waitForUpdate(el)
       expect(el.duration).toBe(1000)
       expect(el.getAttribute('duration')).toBe('1000')
       el.remove()
@@ -30,7 +30,7 @@ describe('WebUiSvgDrawLines 组件', () => {
     it('duration 反射到 host', async () => {
       const el = createSvgDrawLines()
       el.duration = 2000
-      await el.updateComplete
+      await waitForUpdate(el)
       expect(el.getAttribute('duration')).toBe('2000')
       el.remove()
     })
@@ -38,7 +38,7 @@ describe('WebUiSvgDrawLines 组件', () => {
     it('负数 duration 归零', async () => {
       const el = createSvgDrawLines()
       el.duration = -1
-      await el.updateComplete
+      await waitForUpdate(el)
       expect(el.duration).toBe(0)
       el.remove()
     })
@@ -46,7 +46,7 @@ describe('WebUiSvgDrawLines 组件', () => {
     it('超标 duration 上限 30000', async () => {
       const el = createSvgDrawLines()
       el.duration = 99999
-      await el.updateComplete
+      await waitForUpdate(el)
       expect(el.duration).toBe(30000)
       el.remove()
     })
@@ -54,7 +54,7 @@ describe('WebUiSvgDrawLines 组件', () => {
     it('非数值 duration 回退到默认值 1000', async () => {
       const el = createSvgDrawLines()
       ;(el as unknown as Record<string, unknown>).duration = 'invalid'
-      await el.updateComplete
+      await waitForUpdate(el)
       expect(el.duration).toBe(1000)
       el.remove()
     })
@@ -63,7 +63,7 @@ describe('WebUiSvgDrawLines 组件', () => {
   describe('属性：easing', () => {
     it('默认值为 linear', async () => {
       const el = createSvgDrawLines()
-      await el.updateComplete
+      await waitForUpdate(el)
       expect(el.easing).toBe('linear')
       expect(el.getAttribute('easing')).toBe('linear')
       el.remove()
@@ -72,7 +72,7 @@ describe('WebUiSvgDrawLines 组件', () => {
     it('easing 反射到 host', async () => {
       const el = createSvgDrawLines()
       el.easing = 'ease-in-out'
-      await el.updateComplete
+      await waitForUpdate(el)
       expect(el.getAttribute('easing')).toBe('ease-in-out')
       el.remove()
     })
@@ -94,7 +94,7 @@ describe('WebUiSvgDrawLines 组件', () => {
     it('有 SVG 内容时 replay 不报错', async () => {
       const el = createSvgDrawLines()
       el.innerHTML = '<svg><path d="M0 0 L100 100"/></svg>'
-      await el.updateComplete
+      await waitForUpdate(el)
       await expect(el.replay()).resolves.toBeUndefined()
       el.remove()
     })
@@ -102,7 +102,7 @@ describe('WebUiSvgDrawLines 组件', () => {
     it('连续多次 replay 不报错', async () => {
       const el = createSvgDrawLines()
       el.innerHTML = '<svg><path d="M0 0 L100 100"/></svg>'
-      await el.updateComplete
+      await waitForUpdate(el)
       await expect(el.replay()).resolves.toBeUndefined()
       await expect(el.replay()).resolves.toBeUndefined()
       await expect(el.replay()).resolves.toBeUndefined()
@@ -115,7 +115,7 @@ describe('WebUiSvgDrawLines 组件', () => {
     it('默认 slot 投影 SVG 内容', async () => {
       const el = createSvgDrawLines()
       el.innerHTML = '<svg><path d="M0 0 L100 100"/></svg>'
-      await el.updateComplete
+      await waitForUpdate(el)
       expect(el.querySelector('svg')).toBeTruthy()
       el.remove()
     })
@@ -126,7 +126,7 @@ describe('WebUiSvgDrawLines 组件', () => {
         <svg><path d="M0 0 L50 50"/></svg>
         <svg><rect x="0" y="0" width="20" height="20"/></svg>
       `
-      await el.updateComplete
+      await waitForUpdate(el)
       const svgs = el.querySelectorAll('svg')
       expect(svgs.length).toBe(2)
       el.remove()
@@ -144,7 +144,7 @@ describe('WebUiSvgDrawLines 组件', () => {
           </g>
         </svg>
       `
-      await el.updateComplete
+      await waitForUpdate(el)
       expect(el.querySelector('path')).toBeTruthy()
       expect(el.querySelector('circle')).toBeTruthy()
       el.remove()
@@ -153,7 +153,7 @@ describe('WebUiSvgDrawLines 组件', () => {
     it('连续 replay 不应抛异常', async () => {
       const el = createSvgDrawLines()
       el.innerHTML = '<svg><path d="M0 0 L100 100"/></svg>'
-      await el.updateComplete
+      await waitForUpdate(el)
 
       await expect(el.replay()).resolves.toBeUndefined()
       // 第二次 replay 先 cancelAll 再重新设置，不应抛错

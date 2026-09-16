@@ -2,14 +2,16 @@
 
 Task packet 是 Manager 与 Agent 之间的最小交接合同；结构化 handoff 是角色之间传递工作的唯一方式。两者可以写在 issue、任务描述或本地记录中，但必须能回答以下问题，并在进入实施或验收前完整存在。
 
+<!-- invariant:handoff-fields -->
+
 ## Task Packet
 
 - `taskId`、模式、owner、worktree 和 base SHA 是什么？
-- 目标、非目标、允许路径和 affected workspaces 是什么？
+- 目标、非目标、验收标准和所需验证是什么？
 - 依赖、公共契约、changeset、浏览器验证和 reviewer 要求是什么？
 - 编排路径、是否启用 Designer，以及理由是什么？
 - 各角色的模型与思考强度是否采用推荐分档？偏离时推荐说明理由。
-- 交付物、验收标准、失败恢复方式和交接时机是什么？
+- 交付物、失败恢复方式和交接时机是什么？
 
 推荐格式：
 
@@ -21,16 +23,18 @@ Owner: <role/agent>
 Worktree: <absolute path>
 Base: <sha>
 Scope: <goal and non-goals>
-Allowed paths: <paths>
-Affected workspaces: <packages/apps>
+Allowed paths: <档 2 才记录；档 0 与单 workspace 的档 1 写 N/A>
+Affected workspaces: <档 2 才记录，来自 find:usages；其他档写 N/A>
 Route: product-design | technical
 Designer: enabled | skipped (<reason>)
 Effort: <recommended tiers | adjustments + reason; recommended, not mandatory>
 Acceptance: <observable criteria>
 Verification: <commands/evidence>
-Review: required | skipped with reason; secondary review: yes | no
+Review: required | skipped with reason
 Handoff: <what is returned and when>
 ```
+
+`Allowed paths` 与 `Affected workspaces` 的取值用 `pnpm find:usages -- <paths...>` 的输出填写。档 0 与单 workspace 的档 1 任务填 `N/A`；跨多个 `apps/*` 的档 1 任务与档 2 任务必须按工具输出如实填写，不要把空数组当作已记录的字段。
 
 ## 结构化 Handoff
 

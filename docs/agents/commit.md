@@ -32,4 +32,4 @@ CI 在每个 `pull_request` 上运行 `changeset status --since=origin/<base>`�
 
 ## Workflow commit gate
 
-提交前必须先通过 [`workflow.md`](./workflow.md) 的 `check --phase commit`，并用 `--approver <manager-or-user-id>` 记录批准者。仓库已在受版本控制的 `.vite-hooks/pre-commit` 中接入 `pnpm agent:workflow guard-commit`：当前 worktree 存在 active task 时，hook 会拒绝未批准、冻结快照已过期或状态不一致的提交。不要使用 `--no-verify`、`HUSKY=0`、`VP_GIT_HOOKS=0` 或其他方式绕过该 gate。
+提交前必须先通过 [`workflow.md`](./workflow.md) 的 `check --phase commit`，并用 `--approver <manager-or-user-id>` 记录批准者。仓库已在受版本控制的 `.vite-hooks/pre-commit` 中接入 `pnpm agent:workflow guard-commit`：当前 worktree 存在 active task 时，hook 会拒绝未批准、冻结快照已过期或状态不一致的提交。本文件是「禁止绕过 Git 检查」的唯一权威清单：不要使用 `--no-verify`、`--no-gpg-sign`、`HUSKY=0`、`VP_GIT_HOOKS=0` 或其他方式绕过提交 hook 与签名检查。

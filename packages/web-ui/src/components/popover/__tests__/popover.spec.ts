@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, afterEach, beforeEach } from 'vite-plus/test'
 
 import '..'
-import { cleanupElement, queryA11y, waitForUpdate } from '@/shared/test-utils'
+import { cleanupElement, contractReflection, queryA11y, waitForUpdate } from '@/shared/test-utils'
 
 import type { WebUiPopover } from '..'
 
@@ -113,7 +113,7 @@ describe('WebUiPopover 组件', () => {
       cleanupElement(el)
     })
 
-    it('open 属性反射到 host', async () => {
+    it('open=false 时移除 host 的 open 属性', async () => {
       const el = createPopover('Btn', 'Content')
       el.open = true
       await waitForUpdate(el)
@@ -125,19 +125,23 @@ describe('WebUiPopover 组件', () => {
 
       cleanupElement(el)
     })
+
+    contractReflection('open 反射到 host attribute', () => createPopover('Btn', 'Content'), [
+      ['open', true, 'open', '']
+    ])
   })
 
   describe('属性：portal', () => {
-    it('默认关闭且可反射到 host', async () => {
+    it('默认关闭', async () => {
       const el = createPopover('Btn', 'Content')
       expect(el.portal).toBe(false)
 
-      el.portal = true
-      await waitForUpdate(el)
-
-      expect(el.hasAttribute('portal')).toBe(true)
       cleanupElement(el)
     })
+
+    contractReflection('portal 反射到 host attribute', () => createPopover('Btn', 'Content'), [
+      ['portal', true, 'portal', '']
+    ])
   })
 
   describe('属性：disabled', () => {
@@ -164,14 +168,9 @@ describe('WebUiPopover 组件', () => {
       cleanupElement(el)
     })
 
-    it('disabled 属性反射到 host', async () => {
-      const el = createPopover('Btn', 'Content')
-      el.disabled = true
-      await waitForUpdate(el)
-      expect(el.hasAttribute('disabled')).toBe(true)
-
-      cleanupElement(el)
-    })
+    contractReflection('disabled 反射到 host attribute', () => createPopover('Btn', 'Content'), [
+      ['disabled', true, 'disabled', '']
+    ])
   })
 
   describe('属性：placement', () => {
@@ -193,14 +192,9 @@ describe('WebUiPopover 组件', () => {
       cleanupElement(el)
     })
 
-    it('placement 属性反射到 host', async () => {
-      const el = createPopover('Btn', 'Content')
-      el.placement = 'left'
-      await waitForUpdate(el)
-      expect(el.getAttribute('placement')).toBe('left')
-
-      cleanupElement(el)
-    })
+    contractReflection('placement 反射到 host attribute', () => createPopover('Btn', 'Content'), [
+      ['placement', 'left', 'placement', 'left']
+    ])
 
     it('非法值时回退到默认值', async () => {
       const el = createPopover('Btn', 'Content')
@@ -492,92 +486,10 @@ describe('WebUiPopover 组件', () => {
     })
   })
 
+  // 注：`open-change` 的 notification 语义（程序式静默、用户手势通知、detail.open 为变更后值）
+  // 已由共享矩阵 `shared/open-state/__tests__/open-change-contract.spec.ts` 在 4 个浮层组件上统一覆盖。
+  // 下方仅保留 popover 特有的「hover 重入」边界，其余等价用例按 D4 删除、存活覆盖指向该矩阵。
   describe('事件：open-change', () => {
-    it('程序打开不触发', async () => {
-      const el = createPopover('Btn', 'Content')
-      await waitForUpdate(el)
-
-      const handler = vi.fn<(e: Event) => void>()
-      el.addEventListener('open-change', handler)
-
-      el.open = true
-      await waitForUpdate(el)
-
-      expect(handler).not.toHaveBeenCalled()
-
-      cleanupElement(el)
-    })
-
-    it('程序关闭不触发', async () => {
-      const el = createPopover('Btn', 'Content')
-      el.open = true
-      await el.updateComplete
-      vi.advanceTimersToNextFrame()
-      await waitForUpdate(el)
-
-      const handler = vi.fn<(e: Event) => void>()
-      el.addEventListener('open-change', handler)
-
-      el.open = false
-      await waitForUpdate(el)
-
-      expect(handler).not.toHaveBeenCalled()
-
-      cleanupElement(el)
-    })
-
-    it('通过 show() 不触发', async () => {
-      const el = createPopover('Btn', 'Content')
-      await waitForUpdate(el)
-
-      const handler = vi.fn<(e: Event) => void>()
-      el.addEventListener('open-change', handler)
-
-      el.show()
-      await waitForUpdate(el)
-
-      expect(handler).not.toHaveBeenCalled()
-
-      cleanupElement(el)
-    })
-
-    it('通过 close() 不触发', async () => {
-      const el = createPopover('Btn', 'Content')
-      el.show()
-      await el.updateComplete
-      vi.advanceTimersToNextFrame()
-      await waitForUpdate(el)
-
-      const handler = vi.fn<(e: Event) => void>()
-      el.addEventListener('open-change', handler)
-
-      el.close()
-      await waitForUpdate(el)
-
-      expect(handler).not.toHaveBeenCalled()
-
-      cleanupElement(el)
-    })
-
-    it('相同值不重复触发', async () => {
-      const el = createPopover('Btn', 'Content')
-      await waitForUpdate(el)
-
-      const handler = vi.fn<(e: Event) => void>()
-      el.addEventListener('open-change', handler)
-
-      el.open = true
-      await waitForUpdate(el)
-      expect(handler).not.toHaveBeenCalled()
-
-      handler.mockClear()
-      el.open = true
-      await waitForUpdate(el)
-      expect(handler).not.toHaveBeenCalled()
-
-      cleanupElement(el)
-    })
-
     it('hover 重入不让后续命令式关闭派发残留事件', async () => {
       vi.useFakeTimers()
       const el = createPopover('Btn', 'Content', { trigger: 'hover' })
@@ -664,7 +576,7 @@ describe('WebUiPopover 组件', () => {
       await waitForUpdate(el)
 
       const panel = queryA11y(el, '[role="dialog"]')
-      expect(panel).toBeTruthy()
+      expect(panel?.getAttribute('role')).toBe('dialog')
 
       cleanupElement(el)
     })

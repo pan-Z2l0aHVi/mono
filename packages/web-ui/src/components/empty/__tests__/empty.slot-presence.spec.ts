@@ -1,20 +1,15 @@
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 
 import '..'
-import { cleanupElement, queryA11y, waitForUpdate } from '@/shared/test-utils'
+import { cleanupElement, flush, mountElement, queryA11y, waitForUpdate } from '@/shared/test-utils'
 
 import type { WebUiEmpty } from '..'
 
 afterEach(() => document.body.replaceChildren())
 
 function createEmpty(initialHTML = ''): WebUiEmpty {
-  const el = document.createElement('web-ui-empty')
-  el.innerHTML = initialHTML
-  document.body.append(el)
-  return el
+  return mountElement<WebUiEmpty>('web-ui-empty', { html: initialHTML })
 }
-
-const flush = () => new Promise<void>(resolve => setTimeout(resolve, 0))
 
 function getSlot(el: WebUiEmpty, selector: string): HTMLSlotElement {
   return queryA11y(el, selector) as HTMLSlotElement

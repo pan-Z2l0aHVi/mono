@@ -28,7 +28,7 @@ const createGroup = (checkboxHtml = GROUP_HTML, attrs?: Record<string, string>):
 // 点击子 checkbox 触发用户交互
 const clickChild = (group: WebUiCheckboxGroup, index: number) => {
   const checkbox = group.querySelectorAll<WebUiCheckbox>('web-ui-checkbox')[index]
-  const label = checkbox.shadowRoot!.querySelector('label')!
+  const label = queryA11y(checkbox, 'label') as HTMLElement
   label.click()
 }
 
@@ -287,7 +287,7 @@ describe('WebUiCheckboxGroup 组件', () => {
       const [inputEvents, detachInput] = spyEvents(container, 'input')
       const [changeEvents, detachChange] = spyEvents(container, 'change')
 
-      const label = checkbox.shadowRoot!.querySelector('label')!
+      const label = queryA11y(checkbox, 'label') as HTMLElement
       label.click()
       await waitForUpdate(checkbox)
 
@@ -388,7 +388,7 @@ describe('WebUiCheckboxGroup 组件', () => {
       container.append(el)
       document.body.append(container)
       await waitForUpdate(el)
-      const slot = el.shadowRoot!.querySelector('slot')!
+      const slot = queryA11y(el, 'slot')!
       const slotChanged = new Promise<void>(resolve =>
         slot.addEventListener('slotchange', () => resolve(), { once: true })
       )
@@ -482,7 +482,7 @@ describe('WebUiCheckboxGroup 组件', () => {
     document.body.append(container)
     await waitForUpdate(el)
 
-    const slot = el.shadowRoot!.querySelector('slot')!
+    const slot = queryA11y(el, 'slot')!
     const slotChanged = new Promise<void>(resolve =>
       slot.addEventListener('slotchange', () => resolve(), { once: true })
     )

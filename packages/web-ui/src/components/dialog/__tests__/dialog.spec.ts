@@ -150,17 +150,13 @@ describe('WebUiDialog 组件', () => {
     })
   })
 
-  describe('无障碍', () => {
-    it('打开时 shadow DOM 内存在原生 dialog 元素', async () => {
-      const el = createDialog()
-      el.open = true
-      await waitForUpdate(el)
-
-      const dialog = el.shadowRoot?.querySelector('dialog')
-      expect(dialog).toBeTruthy()
-      cleanupElement(el)
-    })
-  })
+  /*
+   * 已删（§2 D3 存在性恒真）：'无障碍 > 打开时 shadow DOM 内存在原生 dialog 元素'
+   * 的唯一断言是 `expect(el.shadowRoot?.querySelector('dialog')).toBeTruthy()`。
+   * "用原生 <dialog> 承载" 是实现选择（换成 div + 自建 top layer 的等价实现不该被这条断言判失败），
+   * 故不再断言元素存在；其中**有行为语义**的那一半 —— "打开后确实处在 modal 层" —— 改由
+   * `dialog.browser.spec.ts` 用平台语义 `dialog.matches(':modal')` 断言。
+   */
 
   describe('属性：noEscapeClose', () => {
     it('property/attribute 按 Boolean 语义双向同步', async () => {

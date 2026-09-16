@@ -3,20 +3,8 @@ import { afterEach, describe, expect, it } from 'vite-plus/test'
 import '..'
 import type { WebUiDrawer } from '..'
 
-async function waitForOpenTransition(el: WebUiDrawer) {
-  await waitFor(() => getDialog(el).classList.contains('is-visible'), 'drawer did not become visible')
-  // 等打开过渡真正收敛到 0（280ms transition）。若在过渡中途 tap，_springRebound 会
-  // 从中间位移走动画分支、is-dragging 留到弹簧结束，测试时序就失真了。
-  await waitFor(() => {
-    const matrix = new DOMMatrixReadOnly(getComputedStyle(getDialog(el)).transform)
-    return Math.abs(matrix.m41) < 0.5 && Math.abs(matrix.m42) < 0.5
-  }, 'drawer open transform did not settle')
-}
-
-function createDrawer(): WebUiDrawer {
-  const el = document.createElement('web-ui-drawer')
-  document.body.appendChild(el)
-  return el
+async function nextFrame() {
+  await new Promise(resolve => requestAnimationFrame(resolve))
 }
 
 function getDialog(el: WebUiDrawer): HTMLDialogElement {
@@ -25,6 +13,23 @@ function getDialog(el: WebUiDrawer): HTMLDialogElement {
 
 function getDragZone(el: WebUiDrawer): HTMLElement {
   return el.shadowRoot?.querySelector('.wui-drawer-drag-zone') as HTMLElement
+}
+
+/**
+ * 在若干帧内采样 dialog 上出现过的过渡属性（§10 S2：动效一律用 WAAPI 观察，
+ * 不读 `getComputedStyle().transform` 的矩阵分量）。
+ */
+async function sampleTransitions(el: WebUiDrawer, frames = 20): Promise<string[]> {
+  const dialog = getDialog(el)
+  const seen = new Set<string>()
+  for (let i = 0; i < frames; i += 1) {
+    for (const animation of dialog.getAnimations({ subtree: true })) {
+      const property = (animation as CSSTransition).transitionProperty
+      seen.add(property ?? (animation as CSSAnimation).animationName ?? 'animation')
+    }
+    await nextFrame()
+  }
+  return [...seen]
 }
 
 function waitFor(condition: () => boolean, message: string, timeoutMs = 5000): Promise<void> {
@@ -39,15 +44,42 @@ function waitFor(condition: () => boolean, message: string, timeoutMs = 5000): P
   })
 }
 
+// 打开过渡收敛：先等它真的启动（presence 在 rAF 后才翻转，f0 可能还没有动画），再等它结束。
+async function waitForOpenSettled(el: WebUiDrawer) {
+  const dialog = getDialog(el)
+  await waitFor(() => dialog.open, 'drawer did not open')
+  await waitFor(() => dialog.getAnimations({ subtree: true }).length > 0, 'drawer open transition did not start')
+  await waitFor(() => dialog.getAnimations({ subtree: true }).length === 0, 'drawer open transition did not settle')
+}
+
+function createDrawer(): WebUiDrawer {
+  const el = document.createElement('web-ui-drawer')
+  document.body.appendChild(el)
+  return el
+}
+
 afterEach(() => document.body.replaceChildren())
 
+/*
+ * 连续 tap 拖拽区后，后续开关仍必须走 transform 过渡（回归锁）。
+ *
+ * 原实现把「根因」当断言：读 `dialog.style.transform` 是否为空串、`is-dragging` 是否残留。
+ * 两者都是内部实现态（§12 C3：内部 class 名单不得断言；内联样式清理同理）。
+ * 真正的契约是**行为**：连点收尾后，关闭与重新打开仍各自触发过渡。
+ *
+ * 区分力已实测（b6c）：把 dialog 的 transform 过渡整体关掉后本例会红
+ * （`expected [ 'opacity' ] to include 'transform'`）——即它确实在盯 transform 过渡本身，
+ * 不是空转。**但**原 bug 的触发条件（tap 收尾残留内联 `translateX(0px)`）无法从测试侧
+ * 重新注入：组件会在关闭时清掉内联 transform。所以本例覆盖的是「后续开关必须有 transform
+ * 过渡」这一行为，而非「内联样式被清除」这一机制。
+ */
 describe('WebUiDrawer 连续 tap 后过渡动画（浏览器）', () => {
   it('快速 6 次 tap 拖拽区后，后续开关仍触发 transform 过渡（回归锁）', { timeout: 30_000 }, async () => {
     const el = createDrawer()
     el.draggable = true
     el.open = true
     await el.updateComplete
-    await waitForOpenTransition(el)
+    await waitForOpenSettled(el)
 
     const dialog = getDialog(el)
     const dragZone = getDragZone(el)
@@ -64,33 +96,18 @@ describe('WebUiDrawer 连续 tap 后过渡动画（浏览器）', () => {
       await el.updateComplete
     }
 
-    // tap 收尾不应在 dialog 上留下内联 transform（0px 的 translateX 也会盖住闭合态 CSS，
-    // 让后续开关失去过渡）——这是「后续开关丢失过渡动画」的根因锁。
-    expect(dialog.style.transform).toBe('')
-    expect(dialog.classList.contains('is-dragging')).toBe(false)
-
-    // 关闭 → 重新打开，断言 close/open 的 transform 过渡都真实触发。
-    let transformStarts = 0
-    dialog.addEventListener('transitionstart', e => {
-      if ((e as TransitionEvent).propertyName === 'transform') transformStarts += 1
-    })
-
+    // 关闭：必须真的跑一条 transform 过渡（不是直接落位）。
     el.open = false
     await el.updateComplete
-    await waitFor(() => transformStarts >= 1 && !dialog.open, 'close transform transition did not run', 10_000)
+    const closing = await sampleTransitions(el)
+    expect(closing).toContain('transform')
+    await waitFor(() => !dialog.open, 'drawer did not close', 10_000)
 
+    // 重新打开：同样必须有 transform 过渡。
     el.open = true
     await el.updateComplete
-    // 并行浏览器用例下 rAF 可能被节流，is-visible 的出现被推迟；这里是产品行为断言
-    // （重开必须触发 transform 过渡），等待给足余量。
-    await waitFor(
-      () => transformStarts >= 2,
-      `reopen transform transition did not run (dialog.open=${dialog.open}, is-visible=${dialog.classList.contains(
-        'is-visible'
-      )}, is-closing=${dialog.classList.contains('is-closing')}, inline=${dialog.style.transform})`,
-      15_000
-    )
-
-    expect(dialog.classList.contains('is-visible')).toBe(true)
+    const reopening = await sampleTransitions(el)
+    expect(reopening).toContain('transform')
+    await waitFor(() => dialog.open, 'drawer did not reopen', 15_000)
   })
 })

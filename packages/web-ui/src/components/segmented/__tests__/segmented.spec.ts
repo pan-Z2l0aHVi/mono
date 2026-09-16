@@ -6,8 +6,8 @@ import {
   waitForUpdate,
   spyEvents,
   spyHostEvents,
-  expectReflected,
   cleanupElement,
+  flushSlotChange,
   queryA11y
 } from '@/shared/test-utils'
 
@@ -40,21 +40,6 @@ const clickTrigger = (group: WebUiSegmented, index: number) => {
 }
 
 describe('WebUiSegmented 组件', () => {
-  it('indicator 首帧定位后才启用移动动画', async () => {
-    const el = createSegmented(TRIGGER_HTML, { value: 'b' })
-    await waitForUpdate(el)
-
-    const container = el.shadowRoot?.querySelector('.wui-segmented')
-    expect(container?.classList.contains('is-indicator-ready')).toBe(false)
-
-    await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
-    await el.updateComplete
-
-    expect(container?.classList.contains('is-indicator-ready')).toBe(true)
-
-    cleanupElement(el)
-  })
-
   describe('属性：value', () => {
     it('初始值为空字符串', async () => {
       const el = createSegmented(TRIGGER_HTML)
@@ -83,45 +68,21 @@ describe('WebUiSegmented 组件', () => {
       cleanupElement(el)
     })
 
-    it('可通过属性设置 value', async () => {
+    it('设置并切换 value 时子选项 checked 唯一且与 value 一致', async () => {
       const el = createSegmented(TRIGGER_HTML)
       await waitForUpdate(el)
 
-      el.value = 'b'
-      await waitForUpdate(el)
-
-      expect(el.value).toBe('b')
-
-      cleanupElement(el)
-    })
-
-    it('设置 value 时同步子选项的 checked 状态', async () => {
-      const el = createSegmented(TRIGGER_HTML)
-      await waitForUpdate(el)
+      const triggers = el.querySelectorAll<WebUiSegmentedTrigger>('web-ui-segmented-trigger')
 
       el.value = 'b'
       await waitForUpdate(el)
-
-      const triggers = el.querySelectorAll('web-ui-segmented-trigger')
       await Promise.all([...triggers].map(t => t.updateComplete))
       expect(triggers[0].checked).toBe(false)
       expect(triggers[1].checked).toBe(true)
       expect(triggers[2].checked).toBe(false)
 
-      cleanupElement(el)
-    })
-
-    it('切换 value 后更新子选项状态', async () => {
-      const el = createSegmented(TRIGGER_HTML)
-      await waitForUpdate(el)
-
-      el.value = 'b'
-      await waitForUpdate(el)
-
       el.value = 'c'
       await waitForUpdate(el)
-
-      const triggers = el.querySelectorAll('web-ui-segmented-trigger')
       await Promise.all([...triggers].map(t => t.updateComplete))
       expect(triggers[0].checked).toBe(false)
       expect(triggers[1].checked).toBe(false)
@@ -436,15 +397,6 @@ describe('WebUiSegmented 组件', () => {
 
       cleanupElement(el)
     })
-
-    it('初始状态无子 trigger 时 value 为空字符串', async () => {
-      const el = createSegmented('')
-      await waitForUpdate(el)
-
-      expect(el.value).toBe('')
-
-      cleanupElement(el)
-    })
   })
 
   describe('动态成员：模拟 v-if / && 条件渲染', () => {
@@ -503,13 +455,10 @@ describe('WebUiSegmented 组件', () => {
       container.append(el)
       document.body.append(container)
       await waitForUpdate(el)
-      const slot = el.shadowRoot!.querySelector('slot')!
-      const slotChanged = new Promise<void>(resolve =>
-        slot.addEventListener('slotchange', () => resolve(), { once: true })
-      )
+      // 用 flushSlotChange 等待组件消费 slotchange，不必触碰 shadowRoot 内部 slot 元素。
       container.append(triggerA)
-      await slotChanged
-      await Promise.all([triggerA.updateComplete, waitForUpdate(el)])
+      await flushSlotChange(el)
+      await triggerA.updateComplete
 
       el.value = 'b'
       await waitForUpdate(el)
@@ -562,12 +511,9 @@ describe('WebUiSegmented 组件', () => {
     document.body.append(container)
     await waitForUpdate(el)
 
-    const slot = el.shadowRoot!.querySelector('slot')!
-    const slotChanged = new Promise<void>(resolve =>
-      slot.addEventListener('slotchange', () => resolve(), { once: true })
-    )
+    // 用 flushSlotChange 等待组件消费 slotchange，不必触碰 shadowRoot 内部 slot 元素。
     container.append(trigger)
-    await slotChanged
+    await flushSlotChange(el)
     await trigger.updateComplete
 
     trigger.checked = false

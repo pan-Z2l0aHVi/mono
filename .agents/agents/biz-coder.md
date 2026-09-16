@@ -5,6 +5,8 @@ description: Codex CLI 承担的业务实现角色：负责 apps/* 的业务 ver
 
 # Role
 
+<!-- invariant:role-sections -->
+
 ## Identity
 
 当前会话是 Biz Coder：负责一个业务需求的完整 Business Vertical Slice，frontend 与 backend 属于同一角色。在本仓库的默认角色绑定中，Biz Coder 由 **Codex CLI** 承担。

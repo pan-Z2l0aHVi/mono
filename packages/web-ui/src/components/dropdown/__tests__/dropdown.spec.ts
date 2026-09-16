@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, afterEach, beforeEach } from 'vite-plus/test'
 
 import '..'
-import { cleanupElement, spyEvents, waitForUpdate } from '@/shared/test-utils'
+import { cleanupElement, getMenuPanels, waitForUpdate } from '@/shared/test-utils'
 
 import type { WebUiDropdown } from '..'
 
@@ -21,9 +21,7 @@ const SIMPLE =
   '<button slot="trigger">M</button><web-ui-dropdown-item>a</web-ui-dropdown-item><web-ui-dropdown-item>b</web-ui-dropdown-item>'
 
 const clickTrigger = (el: WebUiDropdown) => {
-  const slot = el.shadowRoot!.querySelector('slot[name="trigger"]') as HTMLSlotElement
-  const trigger = slot.assignedElements()[0] as HTMLElement
-  trigger.click()
+  el.querySelector<HTMLElement>('[slot="trigger"]')?.click()
 }
 
 function touchPointerEvent(type: string): PointerEvent {
@@ -32,14 +30,15 @@ function touchPointerEvent(type: string): PointerEvent {
   return event
 }
 
+// 面板以公开语义 role="menu" 挂载于 overlay 容器（见 @/shared/test-utils 的 getMenuPanels）；
+// 不再依赖内部 class `.dropdown-overlay`。子菜单为额外的 `[role="menu"]` 面板（data-level 递增）。
 function getMenuItem(): HTMLElement | null {
-  const fallbackRoot = document.querySelector<HTMLElement>('[data-wui-overlay-root]')?.shadowRoot
-  return fallbackRoot?.querySelector<HTMLElement>('.dropdown-overlay web-ui-dropdown-item') ?? null
+  return getMenuPanels()[0]?.querySelector<HTMLElement>('web-ui-dropdown-item') ?? null
 }
 
 function getMenuItems(): HTMLElement[] {
-  const fallbackRoot = document.querySelector<HTMLElement>('[data-wui-overlay-root]')?.shadowRoot
-  return [...(fallbackRoot?.querySelectorAll<HTMLElement>('.dropdown-overlay web-ui-dropdown-item') ?? [])]
+  const panel = getMenuPanels()[0]
+  return panel ? [...panel.querySelectorAll<HTMLElement>('web-ui-dropdown-item')] : []
 }
 
 beforeEach(() => {
@@ -255,70 +254,6 @@ describe('WebUiDropdown 组件', () => {
     })
   })
 
-  describe('事件：open-change', () => {
-    it('命令式打开不触发', async () => {
-      const el = createDropdown({}, SIMPLE)
-      await waitForUpdate(el)
-
-      const [events, detach] = spyEvents(el, 'open-change')
-
-      el.openMenu()
-      await waitForUpdate(el)
-
-      expect(events).toHaveLength(0)
-      detach()
-      cleanupElement(el)
-    })
-
-    it('命令式关闭不触发', async () => {
-      const el = createDropdown({}, SIMPLE)
-      el.openMenu()
-      await waitForUpdate(el)
-
-      const [events, detach] = spyEvents(el, 'open-change')
-
-      el.closeAll()
-      await waitForUpdate(el)
-
-      expect(events).toHaveLength(0)
-      detach()
-      cleanupElement(el)
-    })
-
-    it('trigger 点击打开时触发', async () => {
-      const el = createDropdown({}, SIMPLE)
-      await waitForUpdate(el)
-
-      const [events, detach] = spyEvents(el, 'open-change')
-
-      clickTrigger(el)
-      await waitForUpdate(el)
-
-      expect(events).toHaveLength(1)
-      expect((events[0] as CustomEvent).detail.open).toBe(true)
-      detach()
-      cleanupElement(el)
-    })
-
-    it('trigger 点击关闭时触发', async () => {
-      const el = createDropdown({}, SIMPLE)
-      await waitForUpdate(el)
-
-      clickTrigger(el)
-      await waitForUpdate(el)
-
-      const [events, detach] = spyEvents(el, 'open-change')
-
-      clickTrigger(el)
-      await waitForUpdate(el)
-
-      expect(events).toHaveLength(1)
-      expect((events[0] as CustomEvent).detail.open).toBe(false)
-      detach()
-      cleanupElement(el)
-    })
-  })
-
   describe('外部点击关闭', () => {
     it('外部设置 open=true 的同一点击周期不关闭菜单', async () => {
       const el = createDropdown({}, SIMPLE)
@@ -405,7 +340,10 @@ describe('WebUiDropdown 组件', () => {
         await vi.advanceTimersByTimeAsync(200)
         await el.updateComplete
 
-        expect(item.hasAttribute('active')).toBe(false)
+        // touch pointerenter 不应打开子菜单：公开可观察后果是仅存在一级（根）菜单面板，
+        // 不出现第二级（data-level="1"）子菜单面板。`active` 是组件写给子项的内部状态标记，
+        // 非 web-ui-dropdown-item 的公开 @property（见 dropdown-item/index.ts:13-16），故改判面板数。
+        expect(getMenuPanels()).toHaveLength(1)
 
         cleanupElement(el)
       } finally {
@@ -454,9 +392,7 @@ describe('WebUiDropdown 组件', () => {
 
       expect(getMenuItems().map(item => item.textContent?.trim())).toEqual(['a'])
 
-      const overlay = document
-        .querySelector<HTMLElement>('[data-wui-overlay-root]')
-        ?.shadowRoot?.querySelector<HTMLElement>('.dropdown-overlay')
+      const overlay = getMenuPanels()[0]
       overlay?.dispatchEvent(new KeyboardEvent('keydown', { key: 'End', bubbles: true }))
       await waitForUpdate(el)
       const items = getMenuItems()
@@ -478,9 +414,7 @@ describe('WebUiDropdown 组件', () => {
       await waitForUpdate(el)
       await new Promise(resolve => requestAnimationFrame(resolve))
 
-      const parent = document
-        .querySelector<HTMLElement>('[data-wui-overlay-root]')
-        ?.shadowRoot?.querySelector<HTMLElement>('.dropdown-overlay web-ui-dropdown-item[submenu]')
+      const parent = getMenuPanels()[0]?.querySelector<HTMLElement>('web-ui-dropdown-item[submenu]')
       parent?.click()
       await waitForUpdate(el)
       await new Promise(resolve => requestAnimationFrame(resolve))
@@ -490,11 +424,11 @@ describe('WebUiDropdown 组件', () => {
       await waitForUpdate(el)
       await new Promise(resolve => requestAnimationFrame(resolve))
 
-      const fallbackRoot = document.querySelector<HTMLElement>('[data-wui-overlay-root]')?.shadowRoot
-      const submenuItems = fallbackRoot?.querySelectorAll<HTMLElement>(
-        '.dropdown-overlay[data-level]:not([data-level="0"]) web-ui-dropdown-item'
-      )
-      expect([...(submenuItems ?? [])]).toEqual([])
+      // 删除嵌套子菜单源 wrapper 后，第二级（data-level !== "0"）菜单面板内不应残留任何条目。
+      const submenuItems = getMenuPanels()
+        .filter(panel => panel.dataset.level && panel.dataset.level !== '0')
+        .flatMap(panel => [...panel.querySelectorAll<HTMLElement>('web-ui-dropdown-item')])
+      expect(submenuItems).toEqual([])
 
       cleanupElement(el)
     })

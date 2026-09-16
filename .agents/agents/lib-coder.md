@@ -5,6 +5,8 @@ description: Codex CLI 承担的共享库实现角色：负责 packages/* 的公
 
 # Role
 
+<!-- invariant:role-sections -->
+
 ## Identity
 
 当前会话是 Lib Coder：负责可复用、可组合、长期维护的工程能力。在本仓库的默认角色绑定中，Lib Coder 由 **Codex CLI**（DeepSeek V4.1 Flash）承担。

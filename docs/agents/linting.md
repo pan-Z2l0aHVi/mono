@@ -2,7 +2,7 @@
 
 - **格式化工具**：`vp check` 运行格式化、lint 与类型检查（通过 `fmt.ignorePatterns` 排除第三方 `.agents/skills/`）；提交 hook 的 `vp staged` 对暂存路径运行 `vp check --fix`，并额外对暂存的 `.go` 文件运行 `gofmt -w`、对 `.css/.vue` 运行 `stylelint --fix`。workflow 的 `freeze` 会在快照前运行同一管线（先 `git add -A` 全量 staging），因此 commit 时的 staged 修复是收敛确认（幂等 no-op）而不是新的变更来源；机制见 [`workflow.md`](workflow.md)。
 - **自动修复**：运行 `CI=true pnpm run fix:code` 一键执行全仓代码格式化、Go 格式化与样式修复（聚合 `vp check --fix` + `pnpm run fix:go` + `pnpm run fix:stylelint`）。在非交互环境/Agent 会话中指定 `CI=true` 可避免 `vp` 版本更新检查阻塞。
-- **代码风格**：Vite Plus 使用单引号、无分号、120 字符打印宽度、无尾逗号、省略箭头函数括号；启用 Import 排序（内置 → 外部 → 内部 → 父级 → 同级 → index）；强制使用 LF（`.editorconfig`：`end_of_line = lf`）。
+- **代码风格**：由 `vite.config.ts` 的 Vite Plus / oxlint 配置与 `.editorconfig`（LF）强制；按配置输出，不手工对抗工具。
 - **第三方 skills 排除**：`.agents/skills/` 整体通过 `fmt.ignorePatterns` 排除格式化（覆盖第三方与仓库自编写 skill）；更新或新增第三方 skill 时，通过 `npx skills@latest` 同步 lock。
 - **Linter**：`vp check` 运行 oxlint（支持类型感知）与 TypeScript 类型检查。`CI=true pnpm run check:code` 聚合 `check:cspell`、`vp check`、`check:go` 与 `check:stylelint`。
 - **拼写检查**：执行 `pnpm run check:cspell`。自定义词典条目位于根目录 `cspell.json` 的 `words` 数组中；将工具/协议标识符添加到该处，而非使用行内 `cspell:disable` 注释。

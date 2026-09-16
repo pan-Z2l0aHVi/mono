@@ -60,7 +60,9 @@ describe('WebUiCollapse 组件', () => {
       cleanupElement(el)
     })
 
-    it('初始 open attribute 直接展开不播动画', async () => {
+    it('初始 open attribute 直接展开，不隐藏内容', async () => {
+      // 「不播放展开动画」这一半需要真实过渡才能观察，见
+      // `collapse.browser.spec.ts` 的「初始带 open attribute 直接落稳态，不播放展开过渡」。
       const el = createCollapse()
       el.setAttribute('open', '')
       document.body.appendChild(el)
@@ -165,31 +167,12 @@ describe('WebUiCollapse 组件', () => {
       cleanupElement(el)
     })
 
-    it('peek 下发 CSS 变量到 track（渐隐长度由样式层按此推导）', async () => {
-      const el = createCollapse()
-      el.peek = '120px'
-      await waitForUpdate(el)
-
-      const track = el.shadowRoot?.querySelector('.wui-collapse-track') as HTMLElement
-      expect(track.style.getPropertyValue('--wui-collapse-peek')).toBe('120px')
-
-      cleanupElement(el)
-    })
-
-    it('peek 清空后清除下发的 CSS 变量', async () => {
-      const el = createCollapse()
-      el.peek = '120px'
-      await waitForUpdate(el)
-
-      el.peek = null
-      await waitForUpdate(el)
-
-      const track = el.shadowRoot?.querySelector('.wui-collapse-track') as HTMLElement
-      expect(track.style.getPropertyValue('--wui-collapse-peek')).toBe('')
-      expect(track.hasAttribute('data-wui-peek')).toBe(false)
-
-      cleanupElement(el)
-    })
+    /*
+     * 已删（§12 C1 + §10 S1）：'peek 下发 CSS 变量到 track' 与 'peek 清空后清除下发的
+     * CSS 变量' 两例，断言分别落在 `track.style.getPropertyValue('--wui-collapse-peek')`
+     * 与 `track.hasAttribute('data-wui-peek')` —— 下发给样式层的自定义属性与内部标记属实现态；
+     * 「peek 清空后回落」的行为后果由下方 'peek 清空后回落默认关闭稳态' 承接（hidden + inert）。
+     */
 
     it('peek 关闭稳态：内容可见但阻断交互', async () => {
       const el = createCollapse()
@@ -560,16 +543,24 @@ describe('WebUiCollapse 组件', () => {
   })
 
   describe('内容投影', () => {
-    it('trigger 与 content 支持任意 slot 内容', async () => {
+    it('trigger 与 content 接受任意标记：非 button trigger 亦被回写 ARIA 并驱动开合', async () => {
+      // 原用例只把注入的 light DOM 再读回来（恒真），已改为断言真实后果：
+      // trigger slot 的首个 assigned 元素（此处是 <span>）被当作 trigger 回写 ARIA，
+      // 且点击它沿同一条 click 代理路径切换 open。
       const el = createCollapse(
         '<span class="trigger">自定义 <b>触发</b> 内容</span><div slot="content"><p>段落</p><ul><li>列表</li></ul></div>'
       )
       await waitForUpdate(el)
 
-      expect(el.querySelector('.trigger')?.textContent).toContain('自定义')
-      const content = queryContentNode(el)
-      expect(content.querySelector('p')).toBeTruthy()
-      expect(content.querySelector('li')).toBeTruthy()
+      const trigger = el.querySelector<HTMLElement>('span.trigger')!
+      expect(trigger.getAttribute('aria-expanded')).toBe('false')
+      expect(trigger.getAttribute('aria-controls')).not.toBe('')
+
+      trigger.click()
+      await waitForUpdate(el)
+
+      expect(el.open).toBe(true)
+      expect(trigger.getAttribute('aria-expanded')).toBe('true')
 
       cleanupElement(el)
     })

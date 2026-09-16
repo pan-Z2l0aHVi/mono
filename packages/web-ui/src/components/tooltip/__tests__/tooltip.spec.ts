@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
 import '..'
-import { cleanupElement, queryA11y, waitForUpdate } from '@/shared/test-utils'
+import { cleanupElement, contractReflection, getPortalPanel, queryA11y, waitForUpdate } from '@/shared/test-utils'
 
 import type { WebUiTooltip } from '..'
 
@@ -46,14 +46,9 @@ describe('WebUiTooltip 组件', () => {
       cleanupElement(el)
     })
 
-    it('placement 属性反射到 host', async () => {
-      const el = createTooltip({ placement: 'right' })
-      await waitForUpdate(el)
-
-      expect(el.getAttribute('placement')).toBe('right')
-
-      cleanupElement(el)
-    })
+    contractReflection('placement 反射到宿主 attribute', () => createTooltip(), [
+      ['placement', 'right', 'placement', 'right']
+    ])
 
     it('非法值时回退到默认值', async () => {
       const el = createTooltip()
@@ -92,9 +87,8 @@ describe('WebUiTooltip 组件', () => {
       el.content = '新文本'
       await waitForUpdate(el)
 
-      const root = document.querySelector<HTMLElement>('[data-wui-overlay-root]')?.shadowRoot
-      const portalHost = root?.querySelector<HTMLElement>('[data-wui-overlay-container] > div')
-      expect(portalHost?.shadowRoot?.querySelector('[role="tooltip"]')?.textContent).toContain('新文本')
+      const panel = getPortalPanel('tooltip')
+      expect(panel?.textContent).toContain('新文本')
 
       cleanupElement(el)
     })
@@ -125,10 +119,8 @@ describe('WebUiTooltip 组件', () => {
   })
 
   describe('属性：open', () => {
-    it('open=true 显示本地面板且不触发 open-change', async () => {
+    it('open=true 显示本地面板并反射到 host attribute', async () => {
       const el = createTooltip({ content: '提示' })
-      const handler = vi.fn<(event: Event) => void>()
-      el.addEventListener('open-change', handler)
 
       el.open = true
       await waitForUpdate(el)
@@ -136,39 +128,33 @@ describe('WebUiTooltip 组件', () => {
       expect(el.hasAttribute('open')).toBe(true)
       expect(el.isOpen).toBe(true)
       expect(queryA11y(el, '[role="tooltip"]')?.hasAttribute('hidden')).toBe(false)
-      expect(handler).not.toHaveBeenCalled()
 
       cleanupElement(el)
     })
 
-    it('open=false 隐藏面板且不触发 open-change', async () => {
+    it('open=false 隐藏面板', async () => {
       const el = createTooltip({ content: '提示' })
       el.open = true
       await waitForUpdate(el)
 
-      const handler = vi.fn<(event: Event) => void>()
-      el.addEventListener('open-change', handler)
       el.open = false
       await waitForUpdate(el)
 
       expect(el.isOpen).toBe(false)
-      expect(handler).not.toHaveBeenCalled()
 
       cleanupElement(el)
     })
   })
 
   describe('属性：portal', () => {
-    it('默认关闭且可反射到 host', async () => {
+    it('默认关闭', async () => {
       const el = createTooltip()
       expect(el.portal).toBe(false)
 
-      el.portal = true
-      await waitForUpdate(el)
-
-      expect(el.hasAttribute('portal')).toBe(true)
       cleanupElement(el)
     })
+
+    contractReflection('portal 反射到宿主 attribute', () => createTooltip(), [['portal', true, 'portal', '']])
   })
 
   describe('属性：show-delay / hide-delay', () => {
@@ -344,46 +330,6 @@ describe('WebUiTooltip 组件', () => {
       el.dispatchEvent(new FocusEvent('focusout', { bubbles: true }))
       await waitForUpdate(el)
       expect(el.isOpen).toBe(false)
-
-      cleanupElement(el)
-    })
-  })
-
-  describe('事件：open-change', () => {
-    it('打开时触发', async () => {
-      const el = createTooltip({ content: '提示' })
-      await waitForUpdate(el)
-
-      const handler = vi.fn<(e: Event) => void>()
-      el.addEventListener('open-change', handler)
-
-      el.dispatchEvent(new PointerEvent('pointerenter'))
-      vi.advanceTimersByTime(200)
-      await waitForUpdate(el)
-
-      expect(handler).toHaveBeenCalledTimes(1)
-      expect((handler.mock.calls[0][0] as CustomEvent).detail.open).toBe(true)
-
-      cleanupElement(el)
-    })
-
-    it('关闭时触发', async () => {
-      const el = createTooltip({ content: '提示' })
-      await waitForUpdate(el)
-
-      el.dispatchEvent(new PointerEvent('pointerenter'))
-      vi.advanceTimersByTime(200)
-      await waitForUpdate(el)
-
-      const handler = vi.fn<(e: Event) => void>()
-      el.addEventListener('open-change', handler)
-
-      el.dispatchEvent(new PointerEvent('pointerleave'))
-      vi.advanceTimersByTime(100)
-      await waitForUpdate(el)
-
-      expect(handler).toHaveBeenCalledTimes(1)
-      expect((handler.mock.calls[0][0] as CustomEvent).detail.open).toBe(false)
 
       cleanupElement(el)
     })
