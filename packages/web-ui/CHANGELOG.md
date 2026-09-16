@@ -1,5 +1,33 @@
 # @greypan/web-ui
 
+## 6.4.0
+
+### Minor Changes
+
+- 4151251: Align overlay motion with the platform motion language. Timing and scale defaults change visibly across anchored floating panels (popover, menu, dropdown, select, tooltip, autocomplete), the dialog and image preview.
+  
+  - The dialog now enters by shrinking and exits by growing back, through a new `--wui-dialog-scale-enter` token (default `1.2`, `1` under reduced motion). It replaces the shared `--wui-scale-enter` that used to grow the dialog in from `0.97`. A resting card wider than `(100 / 1.2)vw ≈ 83.33vw` overhangs the viewport while the scale is still above `1`. With the default `360px` width that means viewports narrower than `432px`, and any card in the `90vw` branch. The exact no-overflow ceiling for `min(90vw, var(--wui-dialog-width))` is `1 / 0.9 ≈ 1.111`, because the two branches meet at a `400px` viewport (`0.9 × 400 = 360`). Lower the token to that if a hard geometric guarantee matters more than the `1.2` start. At `1.2` the overhang lasts about `57ms` of the `320ms`. The scale shares `--wui-ease-dialog` with the card's own opacity, and solving `cubic-bezier(0.2, 0, 0, 1)` numerically puts progress `0.4444` at `x = 0.1793`, so the card is never more than `44.4%` opaque while it overhangs. On a `390px` viewport the total overhang is `31px`.
+  - The image preview's enter scale moves off the wrapper that also contains the control layer and onto the image surface alone. Scaling the wrapper dragged the edge-anchored glass chrome (counter, close, nav, toolbar) inward, on a `1440px` viewport by `36px` and `22px` from its final corner position, and drew it at a non-integer scale mid-flight. The chrome now holds its position and fades in while the image materializes. The image preview is a full-viewport surface, so `--wui-scale-enter` stays below `1` there and it can never take a shrink-in start the way the dialog does.
+  - Anchored floating panels get a dedicated easing token, `--wui-ease-float` (`cubic-bezier(0.4, 0.38, 0.2, 1)`), shaped as a no-bounce spring (about `11%` of the progress at `10%` of the duration, `53%` at `30%`, `85%` at `50%`). They previously shared `--wui-ease-enter`, which put `85%` of the transition inside the first `30%` of the duration and read as a pop rather than an unfold. The anchor-relative `transform-origin` and the grow-in direction are unchanged.
+  - `--wui-duration-float-enter` moves from `160ms` to `240ms` and `--wui-duration-float-exit` from `120ms` to `160ms`, keeping exit faster than enter.
+  - `--wui-scale-enter` moves from `0.97` to `0.95` for anchored panels and image preview.
+  
+  Reduced-motion behavior is unchanged: durations still collapse to `0ms` and both scale tokens still resolve to `1`.
+- 4151251: Close the gaps a full motion review of `@greypan/web-ui` turned up. Three motion values were reachable only through a component-local literal, so they ignored the `motion` contract, and one repeating transition was never suppressed.
+  
+  - `--wui-duration-swipe-settle` (`220ms`) and `--wui-ease-swipe` (`cubic-bezier(0.32, 0.72, 0, 1)`) are now declared by the theme in addition to documenting them on `<web-ui-image-preview>`. They were previously referenced only through component-level fallbacks, so under `motion="reduced"` the carousel settle still ran its full `220ms` transform, because the theme had no definition to zero out. Declaring them also brings both tokens under the `theme-token-parity` guard, which silently skipped them while the theme did not define them.
+  - Icon rotation and the spinner leaf chase are now driven by `--wui-duration-spin` (`600ms`) and `--wui-duration-spinner` (`800ms`). Both are infinite loops and neither had any reduced-motion branch at all. A component-level `@media (prefers-reduced-motion: reduce)` block cannot see the `motion` attribute, and these animations read no token, so neither path could reach them. Under reduced motion they now run at `1600ms` instead of stopping, because a frozen loading indicator reads as a hung UI. The spinner's per-leaf `animation-delay` is derived from the same token, so the phase spread follows the period instead of breaking when it changes.
+  - `<web-ui-toast>` enters at `scale(var(--wui-scale-enter, 0.95))` instead of a literal `scale(0.97)`. This aligns it with every other glass materialization in the library and makes the scale collapse under `motion="reduced"`.
+  - The dialog backdrop now uses `var(--wui-ease-dialog)`. Sharing the card's easing keeps the backdrop from finishing most of its fade after the card has already landed, which was the visible effect of the weak built-in `ease` it used before.
+  - `<web-ui-checkbox>` and `<web-ui-radio>` use `var(--wui-duration-focus, 200ms)` for their background-color and border-color transitions instead of a literal `0.2s`. The focus ring on the same elements already used that token, so the two now collapse together under reduced motion. These were the last hard-coded transition durations outside the reduced-motion blocks. The anchored panel keeps a literal `120ms` fade there on purpose, because the token it would otherwise read is the one reduced motion zeroes.
+  - A tooltip that opens while another tooltip is already showing now skips its enter animation as well as its delay. It previously set the delay to `0` but still played the `240ms` unfold, so sweeping across a row of icons replayed a full unfold per target.
+  
+  This amends the "reduced-motion behavior is unchanged" note in the accompanying motion-alignment changeset: durations still collapse to `0ms` and both scale tokens still resolve to `1`, but the two infinite loading loops are now slowed rather than left alone.
+
+### Patch Changes
+
+- 4151251: Flatten the pressed and dragging shadow of `switch`, `segmented` and `slider` to a single soft `0 2px 20px rgb(0 0 0 / 0.2)` layer, replacing the previous three-layer stack. All three now share the same pressed composition: `switch` and `slider` keep the rest of their values, and `segmented` picks up the inset highlight stroke the other two already had. A pressed thumb or indicator reads as one flat lift instead of a deep stack.
+
 ## 6.3.1
 
 ### Patch Changes
