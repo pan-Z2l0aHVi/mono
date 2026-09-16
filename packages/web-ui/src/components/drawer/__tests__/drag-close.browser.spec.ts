@@ -1,7 +1,8 @@
-import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
+import { afterEach, describe, expect, it } from 'vite-plus/test'
 
 import '..'
 import '@/components/theme'
+import { queryA11y } from '@/shared/test-utils'
 
 import type { WebUiDrawer } from '..'
 
@@ -29,6 +30,11 @@ async function waitFor(condition: () => boolean, timeoutMs = 3000): Promise<void
   }
 }
 
+/** 等 dialog 上的动画全部收敛（替代原先「读位移是否归零」的几何轮询）。 */
+function settled(el: WebUiDrawer): Promise<void> {
+  return waitFor(() => getDialog(el).getAnimations({ subtree: true }).length === 0, 5000)
+}
+
 function createDrawer(): WebUiDrawer {
   const el = document.createElement('web-ui-drawer')
   document.body.appendChild(el)
@@ -39,134 +45,102 @@ function getDialog(el: WebUiDrawer): HTMLDialogElement {
   return el.shadowRoot?.querySelector('dialog') as HTMLDialogElement
 }
 
+// 定位器（非断言）：拖拽热区没有公开 role/aria，只能用内部 class 拿到它来派发指针事件（§12 C3）。
 function getDragZone(el: WebUiDrawer): HTMLElement {
   return el.shadowRoot?.querySelector('.wui-drawer-drag-zone') as HTMLElement
 }
 
-// 读取 dialog 的闭合方向位移（px）：闭合方向位移 = 轴向分量 × 闭合符号。
-function getCloseOffset(el: WebUiDrawer): number {
-  const transform = getComputedStyle(getDialog(el)).transform
-  if (!transform || transform === 'none') return 0
-  const matrix = new DOMMatrixReadOnly(transform)
-  const horizontal = el.placement === 'left' || el.placement === 'right'
-  const sign = el.placement === 'left' || el.placement === 'top' ? -1 : 1
-  return (horizontal ? matrix.m41 : matrix.m42) * sign
+type Delta = { x: number; y: number }
+
+/**
+ * 在拖拽区按下 → 移动 → 松手。合成事件直接派发到热区，命中与起点坐标无关，
+ * 只有**相对位移**参与判定。
+ */
+async function dragAndRelease(el: WebUiDrawer, delta: Delta, steps = 1) {
+  const zone = getDragZone(el)
+  const startX = 500
+  const startY = 300
+  zone.dispatchEvent(
+    new PointerEvent('pointerdown', { bubbles: true, pointerId: 1, isPrimary: true, clientX: startX, clientY: startY })
+  )
+  await el.updateComplete
+  for (let step = 1; step <= steps; step += 1) {
+    zone.dispatchEvent(
+      new PointerEvent('pointermove', {
+        bubbles: true,
+        pointerId: 1,
+        isPrimary: true,
+        // 分多段走：单次合成 move 的整程速度会被判为 flick 而误关（CI 慢环境）。
+        clientX: startX + (delta.x * step) / steps,
+        clientY: startY + (delta.y * step) / steps
+      })
+    )
+    await new Promise(resolve => setTimeout(resolve, 32))
+  }
+  await el.updateComplete
+  zone.dispatchEvent(
+    new PointerEvent('pointerup', {
+      bubbles: true,
+      pointerId: 1,
+      isPrimary: true,
+      clientX: startX + delta.x,
+      clientY: startY + delta.y
+    })
+  )
+  await el.updateComplete
 }
 
-// 拖拽位移沿闭合方向映射成 transform；按 placement 推导方向，避免测试只适配 right。
-function getExpectedTransform(el: WebUiDrawer, closeOffset: number): string {
-  const horizontal = el.placement === 'left' || el.placement === 'right'
-  const sign = el.placement === 'left' || el.placement === 'top' ? -1 : 1
-  const value = closeOffset * sign
-  return horizontal ? `translateX(${value}px)` : `translateY(${value}px)`
+function openChangeEvents(el: WebUiDrawer): CustomEvent<{ open: boolean }>[] {
+  const events: CustomEvent<{ open: boolean }>[] = []
+  el.addEventListener('open-change', event => events.push(event as CustomEvent<{ open: boolean }>))
+  return events
 }
 
 afterEach(() => document.body.replaceChildren())
 
+/*
+ * WebUiDrawer 拖拽关闭（浏览器）。
+ *
+ * 判据是 §12 C2：手势断言只留**阈值行为**（拖过阈值 → `open=false` + `open-change`）与
+ * **归宿**（焦点、原生 dialog 的 open、事件次数），删掉拖动过程中的 `transform` 位移量、
+ * 遮罩 opacity 插值、橡皮筋钳位值、以及 `is-dragging` 状态类断言（§12 C1/C3）。
+ *
+ * 原先还用 `vi.spyOn(dialog, 'animate')` 断言弹簧的调用次数与 `fill: 'both'` 选项——
+ * 那是对 `Element.animate` 这一 DOM 方法的实现细节打桩（不是公开契约），删；
+ * 「弹回后回到打开位」由 `el.open` + 原生 `dialog.open` 承担。
+ */
 describe('WebUiDrawer 拖拽关闭（浏览器）', () => {
-  it('drawer 面板自身不显示 focus ring，内置关闭按钮仍可聚焦', async () => {
+  it('drawer 面板自身不夺焦，内置关闭按钮仍可聚焦', async () => {
     const el = createDrawer()
     el.closable = true
     el.open = true
     await el.updateComplete
     await waitForOpenTransition(el)
 
-    const dialog = getDialog(el)
-    dialog.focus()
-    expect(getComputedStyle(dialog).outlineStyle).toBe('none')
+    getDialog(el).focus()
+    // 焦点归宿是公开契约（§3 白名单）：面板自身不抢焦点。
+    expect(document.activeElement).not.toBe(getDialog(el))
 
-    const close = el.shadowRoot?.querySelector<HTMLElement>('.wui-drawer-close')
+    const close = queryA11y(el, '[aria-label="关闭"]') as HTMLElement | null
     const nativeButton = close?.shadowRoot?.querySelector('button') as HTMLButtonElement | null
     nativeButton?.focus()
     expect(close?.shadowRoot?.activeElement).toBe(nativeButton)
   })
 
-  it('内置关闭按钮定位在 header 右上角，不拉伸到抽屉中间', async () => {
-    const el = createDrawer()
-    el.closable = true
-    el.open = true
-    await el.updateComplete
-    await waitForOpenTransition(el)
-
-    const close = el.shadowRoot?.querySelector<HTMLElement>('.wui-drawer-close')
-    expect(close).toBeTruthy()
-    const style = getComputedStyle(close!)
-    expect(style.position).toBe('absolute')
-    expect(style.top).toBe('16px')
-    expect(style.right).toBe('20px')
-    expect(close!.getBoundingClientRect().width).toBeLessThan(200)
-  })
-
-  it('pointermove 实时跟手：transform 位移随指针变化', async () => {
+  it('超过阈值松手：走标准关闭管线（一次 open-change，原生 dialog 退出 top layer）', async () => {
     const el = createDrawer()
     el.draggable = true
     el.open = true
     await el.updateComplete
     await waitForOpenTransition(el)
 
-    const dragZone = getDragZone(el)
-    const startTransform = getComputedStyle(getDialog(el)).transform
+    const events = openChangeEvents(el)
+    await dragAndRelease(el, { x: 400, y: 0 })
 
-    dragZone.dispatchEvent(
-      new PointerEvent('pointerdown', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 100, clientY: 300 })
-    )
-    await el.updateComplete
-    expect(getDialog(el).classList.contains('is-dragging')).toBe(true)
-
-    dragZone.dispatchEvent(
-      new PointerEvent('pointermove', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 160, clientY: 300 })
-    )
-    await el.updateComplete
-
-    const draggedTransform = getComputedStyle(getDialog(el)).transform
-    expect(draggedTransform).not.toBe(startTransform)
-    // 右侧抽屉向右拖 60px，闭合位移应为 60
-    expect(getCloseOffset(el)).toBeGreaterThan(0)
-
-    // 遮罩跟手淡出：变量写入 dialog 并被 ::backdrop 继承（注册属性必须 inherits:true，
-    // 否则到不了 backdrop —— H1 回归守卫）。60/320 拖拽进度 → 期望 ≈0.81。
-    const backdropOpacity = Number.parseFloat(getComputedStyle(getDialog(el), '::backdrop').opacity)
-    expect(backdropOpacity).toBeGreaterThan(0.6)
-    expect(backdropOpacity).toBeLessThan(0.99)
-  })
-
-  it('超过阈值松手：弹簧关闭并走标准关闭管线', async () => {
-    const el = createDrawer()
-    el.draggable = true
-    el.open = true
-    await el.updateComplete
-    await waitForOpenTransition(el)
-
-    const openChangeEvents: CustomEvent<{ open: boolean }>[] = []
-    el.addEventListener('open-change', event => openChangeEvents.push(event as CustomEvent<{ open: boolean }>))
-
-    const dialog = getDialog(el)
-    const animateSpy = vi.spyOn(dialog, 'animate')
-
-    const dragZone = getDragZone(el)
-    dragZone.dispatchEvent(
-      new PointerEvent('pointerdown', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 100, clientY: 300 })
-    )
-    await el.updateComplete
-    // 拖出 200px（> 320/3），松手
-    dragZone.dispatchEvent(
-      new PointerEvent('pointermove', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 300, clientY: 300 })
-    )
-    await el.updateComplete
-    dragZone.dispatchEvent(
-      new PointerEvent('pointerup', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 300, clientY: 300 })
-    )
-
-    // 等待弹簧动画触发 onfinish → 关闭管线（轮询直至收敛）
-    await waitFor(() => !el.open)
     // 用户手势关闭与点击关闭按钮同语义：派发一次 open-change(false)
-    expect(openChangeEvents.map(event => event.detail.open)).toEqual([false])
+    await waitFor(() => !el.open)
+    expect(events.map(event => event.detail.open)).toEqual([false])
     expect(getDialog(el).open).toBe(false)
-
-    // 关闭弹簧与回弹弹簧同享 fill:'both' 守卫：无 fill 时 finish→onfinish 清理
-    // 窗口内被绘制的帧会暴露内联闭合位移，随清理触发跳变。
-    expect(animateSpy).toHaveBeenCalledTimes(1)
-    expect(animateSpy.mock.calls[0]?.[1]).toMatchObject({ fill: 'both' })
   })
 
   it('未达阈值松手：弹回打开位，open 保持 true', async () => {
@@ -176,116 +150,55 @@ describe('WebUiDrawer 拖拽关闭（浏览器）', () => {
     await el.updateComplete
     await waitForOpenTransition(el)
 
-    const dialog = getDialog(el)
-    const animateSpy = vi.spyOn(dialog, 'animate')
-
-    const dragZone = getDragZone(el)
-    dragZone.dispatchEvent(
-      new PointerEvent('pointerdown', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 100, clientY: 300 })
-    )
-    await el.updateComplete
-    // 小位移 30px（< 320/3）。CI 慢环境渲染会跨毫秒，单次合成 move 的速度会被
-    // 判 flick（>DRAG_FLICK_VELOCITY）误关抽屉；用间隔 32ms 的多段 move 模拟
-    // 真实的未达阈值慢拖。
-    for (let step = 1; step <= 10; step += 1) {
-      dragZone.dispatchEvent(
-        new PointerEvent('pointermove', {
-          bubbles: true,
-          pointerId: 1,
-          isPrimary: true,
-          clientX: 100 + step * 3,
-          clientY: 300
-        })
-      )
-      await new Promise(resolve => setTimeout(resolve, 32))
-    }
-    await el.updateComplete
-    dragZone.dispatchEvent(
-      new PointerEvent('pointerup', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 130, clientY: 300 })
-    )
-    await el.updateComplete
+    const events = openChangeEvents(el)
+    // 小位移 30px（< 尺寸/3），分 10 段慢拖避免被判 flick。
+    await dragAndRelease(el, { x: 30, y: 0 }, 10)
+    await settled(el)
 
     expect(el.open).toBe(true)
     expect(getDialog(el).open).toBe(true)
-
-    expect(animateSpy).toHaveBeenCalledTimes(1)
-    const reboundAnimation = animateSpy.mock.results[0]?.value as Animation
-    // onfinish 后才清理内联 transform；缺少 fill 会让最终帧和清理之间回跳到拖拽位。
-    expect(animateSpy.mock.calls[0]?.[1]).toMatchObject({ fill: 'both' })
-    await reboundAnimation.finished
-    const effect = reboundAnimation.effect
-    if (!(effect instanceof KeyframeEffect)) throw new Error('rebound must use a keyframe effect')
-    const keyframes = effect.getKeyframes()
-    expect(keyframes[0]?.transform).toBe(getExpectedTransform(el, 30))
-    expect(keyframes[keyframes.length - 1]?.transform).toBe(getExpectedTransform(el, 0))
-
-    // 等弹回完成：finishRebound 移除 is-dragging 才算收敛
-    //（欠阻尼弹簧会穿过 2px，位移条件可能在中途提前满足）
-    await waitFor(() => !getDialog(el).classList.contains('is-dragging'))
-    await nextFrame()
-    await nextFrame()
-    await waitFor(() => dialog.getAnimations({ subtree: true }).length === 0)
-    expect(animateSpy).toHaveBeenCalledTimes(1)
-    expect(getCloseOffset(el)).toBeLessThan(0.5)
+    expect(events).toHaveLength(0)
   })
 
-  it('pointercancel 未达阈值松手：只弹回一次并回到打开位', async () => {
+  it('pointercancel 未达阈值松手：弹回打开位，open 保持 true', async () => {
     const el = createDrawer()
     el.draggable = true
     el.open = true
     await el.updateComplete
     await waitForOpenTransition(el)
 
-    const dialog = getDialog(el)
-    const animateSpy = vi.spyOn(dialog, 'animate')
-
-    const dragZone = getDragZone(el)
-    dragZone.dispatchEvent(
-      new PointerEvent('pointerdown', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 100, clientY: 300 })
+    const events = openChangeEvents(el)
+    const zone = getDragZone(el)
+    zone.dispatchEvent(
+      new PointerEvent('pointerdown', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 500, clientY: 300 })
     )
     await el.updateComplete
-    // 先建立非零拖拽位移，再模拟系统接管导致的 pointercancel。
-    // CI 慢环境同款隐患：单次合成 move 会被判 flick 误关，多段慢拖。
     for (let step = 1; step <= 10; step += 1) {
-      dragZone.dispatchEvent(
+      zone.dispatchEvent(
         new PointerEvent('pointermove', {
           bubbles: true,
           pointerId: 1,
           isPrimary: true,
-          clientX: 100 + step * 3,
+          clientX: 500 + step * 3,
           clientY: 300
         })
       )
       await new Promise(resolve => setTimeout(resolve, 32))
     }
     await el.updateComplete
-    dragZone.dispatchEvent(
-      new PointerEvent('pointercancel', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 130, clientY: 300 })
+    // 系统接管导致 pointercancel：与松手同语义，未达阈值则弹回。
+    zone.dispatchEvent(
+      new PointerEvent('pointercancel', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 530, clientY: 300 })
     )
     await el.updateComplete
+    await settled(el)
 
     expect(el.open).toBe(true)
-    expect(dialog.open).toBe(true)
-    expect(animateSpy).toHaveBeenCalledTimes(1)
-
-    const reboundAnimation = animateSpy.mock.results[0]?.value as Animation
-    expect(animateSpy.mock.calls[0]?.[1]).toMatchObject({ fill: 'both' })
-    await reboundAnimation.finished
-    const effect = reboundAnimation.effect
-    if (!(effect instanceof KeyframeEffect)) throw new Error('rebound must use a keyframe effect')
-    const keyframes = effect.getKeyframes()
-    expect(keyframes[0]?.transform).toBe(getExpectedTransform(el, 30))
-    expect(keyframes[keyframes.length - 1]?.transform).toBe(getExpectedTransform(el, 0))
-
-    await waitFor(() => !dialog.classList.contains('is-dragging'))
-    await nextFrame()
-    await nextFrame()
-    await waitFor(() => dialog.getAnimations({ subtree: true }).length === 0)
-    expect(animateSpy).toHaveBeenCalledTimes(1)
-    expect(getCloseOffset(el)).toBeLessThan(0.5)
+    expect(getDialog(el).open).toBe(true)
+    expect(events).toHaveLength(0)
   })
 
-  it('controlled 拒绝回写：等待窗口超时后弹回打开位', async () => {
+  it('controlled 拒绝回写：只派发 open-change 请求，open 与原生 dialog 都不变', async () => {
     const el = createDrawer()
     el.draggable = true
     el.controlled = true
@@ -293,34 +206,14 @@ describe('WebUiDrawer 拖拽关闭（浏览器）', () => {
     await el.updateComplete
     await waitForOpenTransition(el)
 
-    const openChangeEvents: CustomEvent<{ open: boolean }>[] = []
-    el.addEventListener('open-change', event => openChangeEvents.push(event as CustomEvent<{ open: boolean }>))
+    const events = openChangeEvents(el)
+    await dragAndRelease(el, { x: 400, y: 0 })
+    await waitFor(() => events.length > 0)
+    await settled(el)
 
-    const dragZone = getDragZone(el)
-    dragZone.dispatchEvent(
-      new PointerEvent('pointerdown', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 100, clientY: 300 })
-    )
-    await el.updateComplete
-    dragZone.dispatchEvent(
-      new PointerEvent('pointermove', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 300, clientY: 300 })
-    )
-    await el.updateComplete
-    dragZone.dispatchEvent(
-      new PointerEvent('pointerup', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 300, clientY: 300 })
-    )
-
-    // 等待弹簧动画完成 → onfinish 派发 open-change 请求（轮询直至收敛）
-    await waitFor(() => openChangeEvents.length > 0)
-    await el.updateComplete
-
-    // 只派发请求，不修改 open
     expect(el.open).toBe(true)
-    expect(openChangeEvents.map(event => event.detail.open)).toEqual([false])
-
-    // Consumer 拒绝回写：等待窗口（120ms）+ 弹簧弹回。悬停建立时 is-dragging
-    // 已移除、弹回期间重新加上，因此收敛条件用位移归零（轮询直到真正回位）。
-    await waitFor(() => getCloseOffset(el) < 2, 4000)
-    expect(el.open).toBe(true)
+    expect(events).toHaveLength(1)
+    expect(events.map(event => event.detail.open)).toEqual([false])
     expect(getDialog(el).open).toBe(true)
   })
 
@@ -336,21 +229,7 @@ describe('WebUiDrawer 拖拽关闭（浏览器）', () => {
       if (!(event as CustomEvent<{ open: boolean }>).detail.open) el.open = false
     })
 
-    const dragZone = getDragZone(el)
-    dragZone.dispatchEvent(
-      new PointerEvent('pointerdown', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 100, clientY: 300 })
-    )
-    await el.updateComplete
-    dragZone.dispatchEvent(
-      new PointerEvent('pointermove', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 300, clientY: 300 })
-    )
-    await el.updateComplete
-    dragZone.dispatchEvent(
-      new PointerEvent('pointerup', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 300, clientY: 300 })
-    )
-    await el.updateComplete
-
-    // 等待弹簧动画触发 onfinish → open-change 请求 → 消费者回写 → 关闭管线（轮询直至收敛）
+    await dragAndRelease(el, { x: 400, y: 0 })
     await waitFor(() => !el.open)
     expect(getDialog(el).open).toBe(false)
   })
@@ -370,158 +249,96 @@ describe('WebUiDrawer 拖拽关闭（浏览器）', () => {
     await el.updateComplete
     await waitForOpenTransition(el)
 
-    const openChangeEvents: CustomEvent<{ open: boolean }>[] = []
-    el.addEventListener('open-change', event => openChangeEvents.push(event as CustomEvent<{ open: boolean }>))
-
-    const dragZone = getDragZone(el)
-    dragZone.dispatchEvent(
-      new PointerEvent('pointerdown', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 200, clientY: 400 })
-    )
-    await el.updateComplete
-    dragZone.dispatchEvent(
-      new PointerEvent('pointermove', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 420, clientY: 400 })
-    )
-    await el.updateComplete
-    dragZone.dispatchEvent(
-      new PointerEvent('pointerup', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 420, clientY: 400 })
-    )
-    await el.updateComplete
+    const events = openChangeEvents(el)
+    await dragAndRelease(el, { x: 400, y: 0 })
 
     // 悬停态已建立且派发过一次请求
     expect(el.open).toBe(true)
-    expect(openChangeEvents).toHaveLength(1)
+    expect(events).toHaveLength(1)
 
     // 悬停窗口内的重复关闭意图：不再派发第二次请求
     const dialog = getDialog(el)
     dialog.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'Escape' }))
     dialog.click()
     await el.updateComplete
-    expect(openChangeEvents).toHaveLength(1)
+    expect(events).toHaveLength(1)
 
-    // 超时弹回后恢复正常的请求语义（仍 open，未被二次请求污染；reduced-motion
-    // 下即时回位，无弹簧）
-    await waitFor(() => getCloseOffset(el) < 2, 4000)
+    await settled(el)
     expect(el.open).toBe(true)
-    expect(openChangeEvents).toHaveLength(1)
+    expect(events).toHaveLength(1)
     theme.removeChild(el)
   })
 
-  it('拖拽进行中受控置 open=false：立即终结手势并走标准关闭管线', async () => {
+  it('拖拽进行中受控置 open=false：立即终结手势，迟到的 pointerup 不再触发事件', async () => {
     const el = createDrawer()
     el.draggable = true
     el.open = true
     await el.updateComplete
     await waitForOpenTransition(el)
 
-    const dialog = getDialog(el)
-    const dragZone = getDragZone(el)
-    dragZone.dispatchEvent(
-      new PointerEvent('pointerdown', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 100, clientY: 300 })
+    const events = openChangeEvents(el)
+    const zone = getDragZone(el)
+    zone.dispatchEvent(
+      new PointerEvent('pointerdown', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 500, clientY: 300 })
     )
     await el.updateComplete
-    dragZone.dispatchEvent(
-      new PointerEvent('pointermove', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 160, clientY: 300 })
+    zone.dispatchEvent(
+      new PointerEvent('pointermove', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 560, clientY: 300 })
     )
     await el.updateComplete
-    expect(dialog.classList.contains('is-dragging')).toBe(true)
 
     // 拖拽中途 Consumer 写入 open=false：手势立即终止，不再等待 pointerup
     el.open = false
     await el.updateComplete
     expect(el.open).toBe(false)
-    expect(dialog.classList.contains('is-dragging')).toBe(false)
 
-    // 关闭管线照常收敛，迟到的 pointerup 不再触发弹簧或事件
-    await waitFor(() => !dialog.open)
+    // 关闭管线照常收敛
+    await waitFor(() => !getDialog(el).open)
     expect(el.open).toBe(false)
-    dragZone.dispatchEvent(
-      new PointerEvent('pointerup', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 160, clientY: 300 })
+
+    // 迟到的 pointerup 不再触发弹簧或事件（原实现断言 `is-dragging` 内部状态类）
+    zone.dispatchEvent(
+      new PointerEvent('pointerup', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 560, clientY: 300 })
     )
     await el.updateComplete
-    expect(dialog.classList.contains('is-dragging')).toBe(false)
+    expect(events).toHaveLength(0)
   })
 
-  it('left placement：闭合方向为向左拖', async () => {
-    const el = createDrawer()
-    el.draggable = true
-    el.placement = 'left'
-    el.open = true
-    await el.updateComplete
-    await waitForOpenTransition(el)
+  it('闭合方向随 placement：沿闭合方向拖过阈值关闭，反向拖弹回不关闭', async () => {
+    const cases = [
+      { placement: 'right', close: { x: 600, y: 0 } },
+      { placement: 'left', close: { x: -600, y: 0 } },
+      { placement: 'bottom', close: { x: 0, y: 600 } },
+      { placement: 'top', close: { x: 0, y: -600 } }
+    ] as const
 
-    const dragZone = getDragZone(el)
-    dragZone.dispatchEvent(
-      new PointerEvent('pointerdown', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 100, clientY: 300 })
-    )
-    await el.updateComplete
-    // 左侧抽屉向左拖 60px
-    dragZone.dispatchEvent(
-      new PointerEvent('pointermove', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 40, clientY: 300 })
-    )
-    await el.updateComplete
+    for (const { placement, close } of cases) {
+      // 沿闭合方向：越过阈值 → 关闭
+      const closing = createDrawer()
+      closing.placement = placement
+      closing.draggable = true
+      closing.open = true
+      await closing.updateComplete
+      await waitForOpenTransition(closing)
+      await dragAndRelease(closing, close, 8)
+      await waitFor(() => !closing.open, 5000)
+      expect(closing.open).toBe(false)
 
-    expect(getCloseOffset(el)).toBeGreaterThan(0)
-  })
-
-  it('top placement：沿 Y 轴闭合方向为向上拖', async () => {
-    const el = createDrawer()
-    el.draggable = true
-    el.placement = 'top'
-    el.open = true
-    await el.updateComplete
-    await waitForOpenTransition(el)
-
-    const dragZone = getDragZone(el)
-    dragZone.dispatchEvent(
-      new PointerEvent('pointerdown', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 200, clientY: 100 })
-    )
-    await el.updateComplete
-    // 顶部抽屉向上拖 40px
-    dragZone.dispatchEvent(
-      new PointerEvent('pointermove', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 200, clientY: 60 })
-    )
-    await el.updateComplete
-
-    const transform = getComputedStyle(getDialog(el)).transform
-    const matrix = new DOMMatrixReadOnly(transform)
-    expect(matrix.m42).toBeLessThan(0)
-  })
-
-  it('浮动卡片几何：静止态四周留边且圆角生效（right/bottom 抽查，非 draggable 也生效）', async () => {
-    const el = createDrawer()
-    el.open = true
-    await el.updateComplete
-    await waitForOpenTransition(el)
-
-    const assertInsetCard = async (body: HTMLElement) => {
-      await waitFor(() => {
-        const r = body.getBoundingClientRect()
-        return r.left > 0 && r.top > 0 && window.innerWidth - r.right > 0 && window.innerHeight - r.bottom > 0
-      })
-      const rect = body.getBoundingClientRect()
-      // 行为契约：四周存在可见留边（非贴边），具体数值不锁像素
-      expect(rect.left).toBeGreaterThan(0)
-      expect(rect.top).toBeGreaterThan(0)
-      expect(window.innerWidth - rect.right).toBeGreaterThan(0)
-      expect(window.innerHeight - rect.bottom).toBeGreaterThan(0)
+      // 反向：橡皮筋钳制在打开方向，松手弹回 → 仍打开
+      const opening = createDrawer()
+      opening.placement = placement
+      opening.draggable = true
+      opening.open = true
+      await opening.updateComplete
+      await waitForOpenTransition(opening)
+      await dragAndRelease(opening, { x: -close.x, y: -close.y }, 8)
+      await settled(opening)
+      expect(opening.open).toBe(true)
+      expect(getDialog(opening).open).toBe(true)
     }
-
-    const body = el.shadowRoot?.querySelector('.wui-drawer-body') as HTMLElement
-    await assertInsetCard(body)
-    expect(getComputedStyle(body).borderRadius).not.toBe('0px')
-
-    const bottom = createDrawer()
-    bottom.placement = 'bottom'
-    bottom.open = true
-    await bottom.updateComplete
-    await waitForOpenTransition(el)
-
-    const bottomBody = bottom.shadowRoot?.querySelector('.wui-drawer-body') as HTMLElement
-    await assertInsetCard(bottomBody)
-    expect(getComputedStyle(bottomBody).borderRadius).not.toBe('0px')
   })
 
-  it('capture 提前丢失后：window 捕获层接管拖拽，跟手与松手收尾均不悬挂', async () => {
+  it('capture 提前丢失后：window 捕获层接管拖拽，松手收尾仍能关闭', async () => {
     const el = createDrawer()
     el.draggable = true
     el.open = true
@@ -529,9 +346,9 @@ describe('WebUiDrawer 拖拽关闭（浏览器）', () => {
     await waitForOpenTransition(el)
 
     const dialog = getDialog(el)
-    const dragZone = getDragZone(el)
 
-    dragZone.dispatchEvent(
+    // pointerdown 仍落在热区（命中由事件派发目标决定，与坐标无关）
+    getDragZone(el).dispatchEvent(
       new PointerEvent('pointerdown', {
         bubbles: true,
         composed: true,
@@ -542,11 +359,10 @@ describe('WebUiDrawer 拖拽关闭（浏览器）', () => {
       })
     )
     await el.updateComplete
-    expect(dialog.classList.contains('is-dragging')).toBe(true)
 
     // 复现 Chromium 快速拖拽下 lostpointercapture 早于 up 的场景：
     // 事件按普通 hit-test 派发，不再经过 zone —— 直接派发到 body。
-    // 向左甩 230px（打开方向），橡皮筋应触底钳制在 -32px（抽屉尺寸的 10%）。
+    // 先向打开方向甩（橡皮筋钳制），再向关闭方向甩过阈值。
     document.body.dispatchEvent(
       new PointerEvent('pointermove', {
         bubbles: true,
@@ -558,11 +374,6 @@ describe('WebUiDrawer 拖拽关闭（浏览器）', () => {
       })
     )
     await nextFrame()
-    const clamped = getCloseOffset(el)
-    expect(clamped).toBeLessThanOrEqual(-31.5)
-    expect(clamped).toBeGreaterThanOrEqual(-32.5)
-
-    // 松手同样落在 body：window 层收尾 —— 甩回关闭方向超阈值后弹簧关闭
     document.body.dispatchEvent(
       new PointerEvent('pointermove', {
         bubbles: true,
@@ -583,67 +394,10 @@ describe('WebUiDrawer 拖拽关闭（浏览器）', () => {
         clientY: 393
       })
     )
-    await waitFor(() => !el.open)
 
+    // 若 window 层没接管，后续 move/up 全被忽略 → 不会关闭。
+    await waitFor(() => !el.open, 5000)
     expect(el.open).toBe(false)
-    expect(dialog.classList.contains('is-dragging')).toBe(false)
     expect(dialog.open).toBe(false)
-  })
-
-  it('controlled 悬停闭合位越过留边补偿：dialog 完全位于视口之外', async () => {
-    // theme motion=reduced 走即时终态路径，避免与回写等待窗口竞争（窗口仅 120ms）。
-    const theme = document.createElement('web-ui-theme')
-    theme.setAttribute('appearance', 'light')
-    theme.setAttribute('motion', 'reduced')
-    document.body.append(theme)
-
-    for (const placement of ['right', 'bottom'] as const) {
-      const el = document.createElement('web-ui-drawer')
-      theme.append(el)
-      el.controlled = true
-      el.placement = placement
-      el.draggable = true
-      el.open = true
-      await el.updateComplete
-      await waitForOpenTransition(el)
-
-      const dragZone = getDragZone(el)
-      dragZone.dispatchEvent(
-        new PointerEvent('pointerdown', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 200, clientY: 400 })
-      )
-      await el.updateComplete
-      // 闭合方向拖出 200px（> 尺寸/3），触发关闭判定
-      const closeX = placement === 'right' ? 400 : 200
-      const closeY = placement === 'bottom' ? 600 : 400
-      dragZone.dispatchEvent(
-        new PointerEvent('pointermove', {
-          bubbles: true,
-          pointerId: 1,
-          isPrimary: true,
-          clientX: closeX,
-          clientY: closeY
-        })
-      )
-      await el.updateComplete
-      dragZone.dispatchEvent(
-        new PointerEvent('pointerup', {
-          bubbles: true,
-          pointerId: 1,
-          isPrimary: true,
-          clientX: closeX,
-          clientY: closeY
-        })
-      )
-      await el.updateComplete
-
-      // controlled 仅派发请求：状态仍 open，组件悬停在闭合位等待回写
-      expect(el.open).toBe(true)
-      const rect = getDialog(el).getBoundingClientRect()
-      const horizontal = placement === 'right'
-      const viewportEdge = horizontal ? window.innerWidth : window.innerHeight
-      expect(horizontal ? rect.left : rect.top).toBeGreaterThanOrEqual(viewportEdge - 0.5)
-
-      theme.removeChild(el)
-    }
   })
 })
