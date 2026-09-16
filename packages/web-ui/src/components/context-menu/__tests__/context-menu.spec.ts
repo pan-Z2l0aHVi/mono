@@ -3,8 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { createApp, ref } from 'vue/dist/vue.esm-bundler.js'
 
 import '..'
-import { getMenuChildren } from '@/shared/menu-portal/menu-tree'
-import { cleanupElement, pollUntil, waitForUpdate } from '@/shared/test-utils'
+import { cleanupElement, getMenuPanels, pollUntil, waitForUpdate } from '@/shared/test-utils'
 
 import type { WebUiContextMenu } from '..'
 
@@ -52,14 +51,23 @@ async function waitForMenuItemTexts(expected: string[], read: () => string[]) {
   await pollUntil(() => sameOrder(read(), expected), `Expected menu items to settle to ${expected.join(', ')}`)
 }
 
+// 根面板 / 子菜单面板都以公开语义 role="menu" + aria-label 挂载于 overlay 容器，
+// 用 @/shared/test-utils 的共享定位器按 aria-label 区分（不再自建 root shadow 直查）。
 function getMenu(): HTMLElement | null {
-  const fallbackRoot = document.querySelector<HTMLElement>('[data-wui-overlay-root]')?.shadowRoot
-  return fallbackRoot?.querySelector<HTMLElement>('[role="menu"][aria-label="上下文菜单"]') ?? null
+  return getMenuPanels('上下文菜单')[0] ?? null
 }
 
 function getSubmenu(): HTMLElement | null {
-  const fallbackRoot = document.querySelector<HTMLElement>('[data-wui-overlay-root]')?.shadowRoot
-  return fallbackRoot?.querySelector<HTMLElement>('[role="menu"][aria-label="子菜单"]') ?? null
+  return getMenuPanels('子菜单')[0] ?? null
+}
+
+// 面板内容容器 = 菜单条目的直接父级（公开 DOM 可查询），不依赖内部 class `.wui-menu-content`。
+// 通过任一 `web-ui-dropdown-item` 的 parentElement 定位，避免断言实现态的选择器。
+function getPortalContent(): HTMLElement {
+  const panel = getMenu()
+  const content = panel?.querySelector<HTMLElement>('web-ui-dropdown-item')?.parentElement ?? null
+  if (!content) throw new Error('Expected portal content container')
+  return content
 }
 
 function getFirstMenuItem(): HTMLElement {
@@ -142,6 +150,7 @@ describe('WebUiContextMenu 组件', () => {
       await waitForMenuOpen(el)
       const menu = getMenu()!
       expect(menu).toBeTruthy()
+      // R3 例外：openAt(x,y) 的坐标→定位映射是唯一可观察通道，保留精确值断言（非视觉细节）
       expect(menu.style.left).toBe(`${x}px`)
       expect(menu.style.top).toBe(`${y}px`)
       cleanupElement(el)
@@ -189,74 +198,8 @@ describe('WebUiContextMenu 组件', () => {
   })
 
   describe('事件：open-change', () => {
-    it('命令式打开不触发', async () => {
-      const el = createContextMenu({}, SIMPLE)
-      await waitForUpdate(el)
-
-      const handler = vi.fn<(e: Event) => void>()
-      el.addEventListener('open-change', handler)
-
-      el.openAt(100, 100)
-      await waitForMenuOpen(el)
-
-      expect(handler).not.toHaveBeenCalled()
-
-      cleanupElement(el)
-    })
-
-    it('命令式关闭不触发', async () => {
-      const el = createContextMenu({}, SIMPLE)
-      el.openAt(100, 100)
-      await waitForMenuOpen(el)
-
-      const handler = vi.fn<(e: Event) => void>()
-      el.addEventListener('open-change', handler)
-
-      el.close()
-      await waitForMenuClose(el)
-
-      expect(handler).not.toHaveBeenCalled()
-
-      cleanupElement(el)
-    })
-
-    it('右键打开时触发', async () => {
-      const el = createContextMenu({}, SIMPLE)
-      await waitForUpdate(el)
-
-      const handler = vi.fn<(e: Event) => void>()
-      el.addEventListener('open-change', handler)
-
-      el.dispatchEvent(
-        new MouseEvent('contextmenu', {
-          bubbles: true,
-          clientX: 50,
-          clientY: 60
-        })
-      )
-      await waitForMenuOpen(el)
-
-      expect(handler).toHaveBeenCalledTimes(1)
-      expect((handler.mock.calls[0][0] as CustomEvent).detail.open).toBe(true)
-
-      cleanupElement(el)
-    })
-
-    it('按 Escape 关闭时触发', async () => {
-      const el = createContextMenu({}, SIMPLE)
-      el.openAt(100, 100)
-      await waitForMenuOpen(el)
-
-      const handler = vi.fn<(e: Event) => void>()
-      el.addEventListener('open-change', handler)
-      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
-      await waitForMenuClose(el)
-
-      expect(el.isOpen).toBe(false)
-      expect(handler).toHaveBeenCalledTimes(1)
-      expect((handler.mock.calls[0][0] as CustomEvent).detail.open).toBe(false)
-      cleanupElement(el)
-    })
+    // 以下「程序式静默 / 用户手势通知」四条契约已由共享矩阵
+    // open-change-contract.spec.ts（web-ui-context-menu 覆盖）等价承接，本文件不再重复。
 
     it('重新定位已打开菜单后，命令式关闭不派发残留事件', async () => {
       const el = createContextMenu({}, SIMPLE)
@@ -302,6 +245,7 @@ describe('WebUiContextMenu 组件', () => {
       cleanupElement(el)
       await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
 
+      // R3 例外：滚动锁的文档级副作用是唯一观察面（组件之外的副作用）
       expect(document.documentElement.style.overflow).toBe('')
       expect(document.body.style.position).toBe('')
     })
@@ -323,6 +267,7 @@ describe('WebUiContextMenu 组件', () => {
 
       expect(el.isOpen).toBe(true)
       const menu = getMenu()!
+      // R3 例外：右键打开的坐标→定位映射是唯一可观察通道，保留精确值断言
       expect(menu.style.left).toBe(`${x}px`)
       expect(menu.style.top).toBe(`${y}px`)
 
@@ -393,6 +338,7 @@ describe('WebUiContextMenu 组件', () => {
       el.openAt(100, 100)
       await waitForMenuOpen(el)
 
+      // R3 例外：滚动锁的文档级副作用是唯一观察面
       expect(document.documentElement.style.overflow).toBe('hidden')
 
       el.close()
@@ -409,6 +355,7 @@ describe('WebUiContextMenu 组件', () => {
       el.openAt(100, 100)
       await waitForMenuOpen(el)
 
+      // R3 例外：滚动锁的文档级副作用是唯一观察面
       expect(document.body.style.position).toBe('')
       cleanupElement(el)
     })
@@ -425,6 +372,7 @@ describe('WebUiContextMenu 组件', () => {
       const event = new WheelEvent('wheel', { bubbles: true, cancelable: true })
       container.dispatchEvent(event)
 
+      // R3 例外：打开态阻止外部容器滚动是公开事件的默认行为（组件之外的副作用）
       expect(event.defaultPrevented).toBe(true)
 
       cleanupElement(el)
@@ -685,18 +633,6 @@ describe('WebUiContextMenu 组件', () => {
   })
 
   describe('框架直接操作 portal 内容', () => {
-    function getPortalContent(): HTMLElement {
-      const content = getMenu()?.querySelector<HTMLElement>('.wui-menu-content')
-      if (!content) throw new Error('Expected portal content')
-      return content
-    }
-
-    function getManagedMarkers(el: WebUiContextMenu): Comment[] {
-      return Array.from(el.childNodes).filter(
-        (node): node is Comment => node.nodeType === Node.COMMENT_NODE && node.textContent === 'wui-context-menu-item'
-      )
-    }
-
     it('框架把新项直接插入 portal，刷新后纳入托管且顺序正确', async () => {
       const el = createContextMenu({}, '<web-ui-dropdown-item>编辑</web-ui-dropdown-item>')
       await waitForUpdate(el)
@@ -713,8 +649,13 @@ describe('WebUiContextMenu 组件', () => {
 
       expect(el.isOpen).toBe(true)
       expect(getMenuItems().map(item => item.textContent?.trim())).toEqual(['编辑', '直插项'])
-      // 纳入托管：每个 content 中的托管元素都有 marker
-      expect(getManagedMarkers(el)).toHaveLength(getPortalContent().children.length)
+      // R4：纳入托管的可观察后果——关闭后框架直插的新项随其它项一起归还宿主 light DOM（无残留、顺序稳定）
+      el.close()
+      await waitForMenuClose(el)
+      expect([...el.querySelectorAll(':scope > web-ui-dropdown-item')].map(item => item.textContent?.trim())).toEqual([
+        '编辑',
+        '直插项'
+      ])
 
       cleanupElement(el)
     })
@@ -727,7 +668,8 @@ describe('WebUiContextMenu 组件', () => {
 
       // 模拟 Vue v-if 翻转：portal 内「编辑」被替换为注释锚点 + 新元素（插入点 = portal）
       const content = getPortalContent()
-      const [first] = getMenuChildren(content)
+      const first = content.querySelector<HTMLElement>('web-ui-dropdown-item')
+      if (!first) throw new Error('Expected first menu item')
       const anchor = document.createComment('v-if')
       const fresh = document.createElement('web-ui-dropdown-item')
       fresh.textContent = '找回资源'
@@ -738,7 +680,13 @@ describe('WebUiContextMenu 组件', () => {
 
       expect(el.isOpen).toBe(true)
       expect(getMenuItems().map(item => item.textContent?.trim())).toEqual(['找回资源', '复制'])
-      expect(getManagedMarkers(el)).toHaveLength(2)
+      // R4：卸载+锚点替换的可观察后果——关闭后旧项被框架卸载、新项与未变项一并归还宿主 light DOM
+      el.close()
+      await waitForMenuClose(el)
+      expect([...el.querySelectorAll(':scope > web-ui-dropdown-item')].map(item => item.textContent?.trim())).toEqual([
+        '找回资源',
+        '复制'
+      ])
 
       cleanupElement(el)
     })
@@ -751,7 +699,8 @@ describe('WebUiContextMenu 组件', () => {
 
       const content = getPortalContent()
       // 第一轮：替换 + 直插
-      const [first] = getMenuChildren(content)
+      const first = content.querySelector<HTMLElement>('web-ui-dropdown-item')
+      if (!first) throw new Error('Expected first menu item')
       const fresh = document.createElement('web-ui-dropdown-item')
       fresh.textContent = '找回资源'
       first.replaceWith(document.createComment('v-if'), fresh)
@@ -768,7 +717,7 @@ describe('WebUiContextMenu 组件', () => {
 
       const restored = [...el.querySelectorAll(':scope > web-ui-dropdown-item')].map(item => item.textContent?.trim())
       expect(restored).toEqual(['找回资源', '复制', '直插项'])
-      expect(getManagedMarkers(el)).toHaveLength(0)
+      // R4：关闭后无残留的可观察后果 = 宿主 light DOM 项集合 == 期望项（marker 计数属内部机制，已删除）
       // 框架 v-if 锚点随元素迁回宿主而非被销毁，否则框架持有 detached 引用下次 patch 崩溃
       expect([...content.childNodes]).toHaveLength(0)
       expect([...el.childNodes].some(node => node.nodeType === Node.COMMENT_NODE && node.textContent === 'v-if')).toBe(
@@ -867,6 +816,7 @@ describe('WebUiContextMenu 组件', () => {
       expect(menu).toBeTruthy()
       const left = Number.parseInt(menu.style.left)
       const top = Number.parseInt(menu.style.top)
+      // R3 例外：断言「不出视口」的行为约束（left < innerWidth），而非某个像素值
       expect(left).toBeLessThan(window.innerWidth)
       expect(top).toBeLessThan(window.innerHeight)
 
@@ -884,6 +834,7 @@ describe('WebUiContextMenu 组件', () => {
       expect(menu).toBeTruthy()
       const left = Number.parseInt(menu.style.left)
       const top = Number.parseInt(menu.style.top)
+      // R3 例外：断言「不出视口」的行为约束（left >= 0），而非某个像素值
       expect(left).toBeGreaterThanOrEqual(0)
       expect(top).toBeGreaterThanOrEqual(0)
 
@@ -1071,12 +1022,12 @@ describe('WebUiContextMenu 组件', () => {
       )
       const el = fixture.menuEl()
       const broken = fixture.broken
-      // 读取 portal content 的真实子节点序（含 divider 与条件项的注释锚点）
+      // 读取 portal 内容顺序（项 + 分隔符）：直接在面板内按文档序查询，不依赖内部 class
       const contentOrder = () => {
-        const content = getMenu()?.querySelector<HTMLElement>('.wui-menu-content')
-        return Array.from(content?.childNodes ?? [])
-          .filter(n => n instanceof HTMLElement)
-          .map(item => (item.tagName === 'WEB-UI-DROPDOWN-DIVIDER' ? 'DIV' : item.textContent?.trim()))
+        const panel = getMenu()
+        return Array.from(panel?.querySelectorAll('web-ui-dropdown-item, web-ui-dropdown-divider') ?? []).map(item =>
+          item.tagName === 'WEB-UI-DROPDOWN-DIVIDER' ? 'DIV' : item.textContent?.trim()
+        )
       }
       try {
         const validOrder = ['预览', '打开方式', 'DIV', '管理标签', 'DIV', '删除']
@@ -1129,21 +1080,17 @@ describe('WebUiContextMenu 组件', () => {
       )
       const el = fixture.menuEl()
       const broken = fixture.broken
-      // 全序：childNodes 中每个子节点的类型/文本，包括注释
+      // 全序（派生 itemOrder）：直接在面板内按文档序查询项 + 分隔符，不依赖内部 class
       const fullOrder = () => {
-        const content = getMenu()?.querySelector<HTMLElement>('.wui-menu-content')
-        return Array.from(content?.childNodes ?? []).map(n => {
-          if (n.nodeType === Node.COMMENT_NODE) return n.textContent === 'wui-context-menu-item' ? 'M' : '#v-if'
-          if (n.nodeType === Node.TEXT_NODE) return '·'
-          if (n instanceof HTMLElement)
-            return n.tagName === 'WEB-UI-DROPDOWN-DIVIDER' ? 'DIV' : 'I:' + n.textContent?.trim()
-          return '?'
-        })
+        const panel = getMenu()
+        return Array.from(panel?.querySelectorAll('web-ui-dropdown-item, web-ui-dropdown-divider') ?? []).map(item =>
+          item.tagName === 'WEB-UI-DROPDOWN-DIVIDER' ? 'DIV' : 'I:' + item.textContent?.trim()
+        )
       }
       try {
         const validItems = ['I:预览', 'I:打开方式', 'DIV', 'I:管理标签', 'DIV', 'I:删除']
         const brokenItems = ['I:找回资源', 'DIV', 'I:删除']
-        const itemOrder = () => fullOrder().filter(s => s.startsWith('I:') || s === 'DIV')
+        const itemOrder = () => fullOrder()
         const waitForItemOrder = (expected: string[]) =>
           pollUntil(() => sameOrder(itemOrder(), expected), `Expected full order to settle to ${expected.join(', ')}`)
 
@@ -1151,15 +1098,14 @@ describe('WebUiContextMenu 组件', () => {
         await waitForItemOrder(validItems)
 
         // 两轮连续翻转 + 最后 reopen
+        // R4：Vue 的占位注释（#v-if 计数）不是本组件契约，已删除；
+        // 改为断言每次翻转后菜单项+分隔符的「顺序/集合稳定」（itemOrder 即等价可观察后果）。
         for (let round = 0; round < 2; round++) {
           broken.value = true
           await waitForItemOrder(brokenItems)
-          expect(fullOrder().filter(s => s === '#v-if').length).toBe(4)
 
           broken.value = false
           await waitForItemOrder(validItems)
-          // 锚点可能在 1 个(找回资源 false)或 0 个(全部 true)
-          expect(fullOrder().filter(s => s === '#v-if').length).toBeLessThanOrEqual(1)
         }
 
         // close → reopen

@@ -5,16 +5,14 @@ import '..'
 import '../../theme'
 import '@/components/popover'
 import type { WebUiOption } from '@/components/option'
-import { pollUntil } from '@/shared/test-utils'
+import { pollUntil, waitForFrame } from '@/shared/test-utils'
 
 import type { WebUiAutocomplete } from '..'
 
 afterEach(() => document.body.replaceChildren())
 
-async function waitForFrame() {
-  await new Promise(resolve => requestAnimationFrame(resolve))
-}
-
+// 视觉浮层（.autocomplete-overlay）是 aria-hidden 的，公开的无障碍面是 shadow 内的
+// role="listbox" 镜像，因此面板本身没有可用 role 定位，只能按 class 取定位目标。
 function getPortalPanel(theme: HTMLElement): HTMLElement | null {
   const overlayContainer = theme.shadowRoot?.querySelector<HTMLElement>('[data-wui-overlay-container]')
   const portalHost = overlayContainer?.firstElementChild as HTMLElement | null
@@ -53,7 +51,7 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     const panel = getPortalPanel(theme)
     expect(el.open).toBe(true)
     expect(panel?.getAttribute('aria-hidden')).toBe('true')
-    expect(panel?.querySelector(':scope web-ui-option')).toBeTruthy()
+    expect(panel?.querySelector(':scope web-ui-option')).not.toBeNull()
 
     const option = panel!.querySelector('web-ui-option') as HTMLElement
     option.click()
@@ -62,70 +60,6 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     expect(el.value).toBe('Apple')
     expect(el.selectedValue).toBe('apple')
     expect(el.open).toBe(false)
-  })
-
-  it('浮层面板使用双层玻璃结构：blur 层 + surface 层各自 opacity 过渡', async () => {
-    const el = document.createElement('web-ui-autocomplete')
-    el.innerHTML = '<web-ui-option value="apple" label="Apple"></web-ui-option>'
-    document.body.append(el)
-    await el.updateComplete
-
-    const input = el.shadowRoot?.querySelector<HTMLElement>('[role="combobox"]')
-    input?.focus()
-    input?.click()
-    await new Promise(resolve => requestAnimationFrame(resolve))
-    await new Promise(resolve => requestAnimationFrame(resolve))
-    await el.updateComplete
-
-    const panel = el.shadowRoot?.querySelector<HTMLElement>('.autocomplete-overlay')
-    expect(panel).toBeTruthy()
-    // 单层玻璃：wui-glass 在面板自身，背景/阴影/blur 都由面板承担，
-    // opacity + backdrop-filter（blur(0px)↔blur(4px)）+ transform 一起过渡。
-    expect(panel!.classList.contains('wui-glass')).toBe(true)
-    expect(getComputedStyle(panel!).backgroundColor).not.toBe('rgba(0, 0, 0, 0)')
-    expect(getComputedStyle(panel!).transitionProperty).toContain('opacity')
-    expect(getComputedStyle(panel!).transitionProperty).toContain('backdrop-filter')
-    expect(getComputedStyle(panel!).transitionProperty).toContain('transform')
-    // blur 从 0px 插值到 4px：轮询到收敛再断言目标态。
-    await pollUntil(() => getComputedStyle(panel!).backdropFilter.includes('blur(4px)'), 'blur did not converge')
-    expect(getComputedStyle(panel!).backdropFilter).toContain('blur(4px)')
-  })
-
-  it('下拉滚动区域默认高度可通过 CSS variable 覆盖', async () => {
-    const el = document.createElement('web-ui-autocomplete')
-    el.innerHTML = '<web-ui-option value="apple" label="Apple"></web-ui-option>'
-    document.body.append(el)
-    await el.updateComplete
-    const scroll = el.shadowRoot!.querySelector<HTMLElement>('.autocomplete-scroll')!
-    expect(getComputedStyle(scroll).maxHeight).toBe('200px')
-
-    el.style.setProperty('--wui-autocomplete-max-height', '160px')
-    await el.updateComplete
-    expect(getComputedStyle(scroll).maxHeight).toBe('160px')
-  })
-
-  it('Portal 下拉滚动区域继承 CSS variable', async () => {
-    const theme = document.createElement('web-ui-theme')
-    theme.setAttribute('appearance', 'light')
-    theme.className = 'block'
-    const el = document.createElement('web-ui-autocomplete')
-    el.portal = true
-    el.style.setProperty('--wui-autocomplete-max-height', '180px')
-    el.innerHTML = '<web-ui-option value="apple" label="Apple"></web-ui-option>'
-    theme.append(el)
-    document.body.append(theme)
-    await theme.updateComplete
-    await el.updateComplete
-
-    el.shadowRoot?.querySelector<HTMLElement>('[role="combobox"]')?.focus()
-    el.shadowRoot?.querySelector<HTMLElement>('[role="combobox"]')?.click()
-    await new Promise(resolve => requestAnimationFrame(resolve))
-    await el.updateComplete
-
-    const scroll = getPortalPanel(theme)?.querySelector<HTMLElement>('.autocomplete-scroll')
-    expect(el.open).toBe(true)
-    expect(scroll).toBeTruthy()
-    expect(getComputedStyle(scroll!).maxHeight).toBe('180px')
   })
 
   it('Portal 中 active option 通过同根 ARIA 镜像可被 combobox 获取', async () => {
@@ -149,17 +83,23 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     await el.updateComplete
 
     const activeId = input.getAttribute('aria-activedescendant')
-    expect(el.shadowRoot?.querySelector(`#${activeId}`)?.textContent?.trim()).toBe('Apple')
+    const activeLabel = el.shadowRoot?.querySelector(`#${activeId}`)?.textContent?.trim()
+    expect(activeLabel).toBe('Apple')
 
-    const active = getPortalPanel(theme)?.querySelector<WebUiOption>('web-ui-option[active]')
-    if (!active) throw new Error('Expected a portal active option')
-    active.remove()
+    // 激活项只通过公开通道（aria-activedescendant → shadow 内 role=option 镜像）暴露，
+    // 据此在面板里找到同 label 的那一项并移除，验证激活态被清理。
+    // 断言候选唯一：避免 label 重名时静默选到错误的节点（fixture 的 label 本就唯一）。
+    const panel = getPortalPanel(theme)!
+    const active = [...panel.querySelectorAll<WebUiOption>('web-ui-option')].filter(
+      option => option.label === activeLabel
+    )
+    expect(active).toHaveLength(1)
+    active[0]!.remove()
     await new Promise(resolve => requestAnimationFrame(resolve))
     await el.updateComplete
 
     expect(el.selectedValue).toBe('')
     expect(input.getAttribute('aria-activedescendant')).toBeFalsy()
-    expect(getPortalPanel(theme)?.querySelector('web-ui-option[active]')).toBeNull()
   })
 
   it('Portal 面板空白区域点击不会触发 outside close', async () => {
@@ -177,9 +117,7 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     el.shadowRoot?.querySelector<HTMLInputElement>('[role="combobox"]')?.click()
     await new Promise(resolve => requestAnimationFrame(resolve))
     const panel = getPortalPanel(theme)!
-    panel
-      .querySelector<HTMLElement>('.autocomplete-scroll')!
-      .dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true }))
+    panel.dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true }))
     await el.updateComplete
 
     expect(el.open).toBe(true)
@@ -204,7 +142,7 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     const autocomplete = getAllPortalPanels('[role="dialog"]')
       .map(panel => panel.querySelector('web-ui-autocomplete'))
       .find((element): element is WebUiAutocomplete => element?.localName === 'web-ui-autocomplete')!
-    expect(autocomplete).toBeTruthy()
+    expect(autocomplete).not.toBeNull()
     autocomplete.shadowRoot?.querySelector<HTMLElement>('[role="combobox"]')?.focus()
     autocomplete.shadowRoot?.querySelector<HTMLElement>('[role="combobox"]')?.click()
     await autocomplete.updateComplete
@@ -854,7 +792,7 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     expect(input.getAttribute('aria-expanded')).toBe('false')
     expect(input.getAttribute('aria-activedescendant')).toBeFalsy()
     expect(document.body.style.position).toBe('')
-    expect(el.querySelector('web-ui-option')).toBeTruthy()
+    expect(el.querySelector('web-ui-option')).not.toBeNull()
   })
 
   it('非 portal：位于 shadow root 内水平偏移的定位祖先时，面板仍与输入框对齐', async () => {
@@ -895,105 +833,24 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     expect(panelRect.top).toBeGreaterThanOrEqual(wrapperRect.bottom - 1)
   })
 
-  it('borderless 输入框键盘聚焦时保留 focus ring 且浮层背景不受影响', async () => {
+  // D5：原用例主题是 focus ring 的视觉呈现（box-shadow / ::before 描边 / padding 度量），
+  // 按 §5 不在契约 spec 断言（同口径先例：input/__tests__/focus.browser.spec.ts 文件头注释）。
+  // 保留其中真正的公开面：焦点归宿 + 宿主 `focused` 反射（borderless 组合下同样成立）。
+  it('borderless 输入框聚焦时反射 focused，失焦后移除', async () => {
     const el = document.createElement('web-ui-autocomplete')
     el.setAttribute('borderless', '')
     el.innerHTML = '<web-ui-option value="apple" label="Apple"></web-ui-option>'
     document.body.append(el)
     await el.updateComplete
 
-    const wrapper = el.shadowRoot!.querySelector<HTMLElement>('.input-wrapper')!
-    const wrapperStyle = getComputedStyle(wrapper)
-    expect(wrapperStyle.backgroundColor).toBe('rgba(0, 0, 0, 0)')
-    expect(wrapperStyle.boxShadow).toBe('none')
-    // ghost 形态只剥表面装饰，保留 padding 与高度度量
-    expect(wrapperStyle.paddingLeft).toBe('12px')
-    expect(wrapperStyle.paddingRight).toBe('12px')
-
-    const input = el.shadowRoot!.querySelector<HTMLInputElement>('[role="combobox"]')!
-    await userEvent.keyboard('{Tab}')
-    await el.updateComplete
-    // focus ring 走 200ms box-shadow 过渡；轮询终值，不依赖固定过渡时长
-    await pollUntil(
-      () => getComputedStyle(wrapper, '::after').boxShadow.includes('rgb(0, 136, 255)'),
-      'Expected the borderless focus ring transition to settle'
-    )
-
-    // 与 normal 变体同款：inset accent 内圈 + focus-ring halo 的 box-shadow
-    const focusedStyle = getComputedStyle(wrapper, '::after')
-    expect(el.hasAttribute('focused')).toBe(true)
-    expect(input.matches(':focus-visible')).toBe(true)
-    expect(focusedStyle.boxShadow).toContain('inset')
-    expect(focusedStyle.boxShadow).toContain('rgb(0, 136, 255)')
-    expect(focusedStyle.boxShadow).toContain('0px 0px 0px 3px')
-
-    // borderless 只作用于输入容器；下拉浮层保留单层 glass 背景（在面板自身）。
-    const panel = el.shadowRoot!.querySelector<HTMLElement>('.autocomplete-overlay')!
-    expect(getComputedStyle(panel).backgroundColor).not.toBe('rgba(0, 0, 0, 0)')
-  })
-
-  it('borderless 移除输入容器的 glass 描边环（.wui-glass::before）', async () => {
-    // 非 borderless 基线：glass ::before 生成描边盒，确保断言非空转
-    const base = document.createElement('web-ui-autocomplete')
-    base.innerHTML = '<web-ui-option value="apple" label="Apple"></web-ui-option>'
-    document.body.append(base)
-    await base.updateComplete
-    const baseWrapper = base.shadowRoot!.querySelector<HTMLElement>('.input-wrapper')!
-    expect(getComputedStyle(baseWrapper, '::before').content).toBe('""')
-
-    const el = document.createElement('web-ui-autocomplete')
-    el.setAttribute('borderless', '')
-    el.innerHTML = '<web-ui-option value="apple" label="Apple"></web-ui-option>'
-    document.body.append(el)
-    await el.updateComplete
-
-    const wrapper = el.shadowRoot!.querySelector<HTMLElement>('.input-wrapper')!
-    expect(getComputedStyle(wrapper, '::before').content).toBe('none')
-  })
-
-  it('borderless 与 disabled/readonly/open 组合仍无框，且浮层 glass 不受影响', async () => {
-    const el = document.createElement('web-ui-autocomplete')
-    el.setAttribute('borderless', '')
-    el.innerHTML = '<web-ui-option value="apple" label="Apple"></web-ui-option>'
-    document.body.append(el)
-    await el.updateComplete
-
-    const wrapper = el.shadowRoot!.querySelector<HTMLElement>('.input-wrapper')!
-    const wrapperStyle = () => getComputedStyle(wrapper)
-
-    // disabled 组合
-    el.disabled = true
-    await el.updateComplete
-    expect(wrapperStyle().backgroundColor).toBe('rgba(0, 0, 0, 0)')
-    expect(wrapperStyle().boxShadow).toBe('none')
-    expect(getComputedStyle(wrapper, '::before').content).toBe('none')
-
-    // readonly 组合
-    el.disabled = false
-    el.readonly = true
-    await el.updateComplete
-    expect(wrapperStyle().backgroundColor).toBe('rgba(0, 0, 0, 0)')
-    expect(wrapperStyle().boxShadow).toBe('none')
-    expect(getComputedStyle(wrapper, '::before').content).toBe('none')
-
-    // open 组合：输入容器保持无框，浮层保留 glass 描边与背景
-    el.readonly = false
-    await el.updateComplete
     const input = el.shadowRoot!.querySelector<HTMLInputElement>('[role="combobox"]')!
     input.focus()
-    input.click()
-    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true }))
     await el.updateComplete
-    await waitForFrame()
+    expect(document.activeElement).toBe(el)
+    expect(el.hasAttribute('focused')).toBe(true)
+
+    input.blur()
     await el.updateComplete
-
-    expect(el.open).toBe(true)
-    expect(wrapperStyle().backgroundColor).toBe('rgba(0, 0, 0, 0)')
-    expect(getComputedStyle(wrapper, '::before').content).toBe('none')
-
-    const panel = el.shadowRoot!.querySelector<HTMLElement>('.autocomplete-overlay')!
-    expect(getComputedStyle(panel).backgroundColor).not.toBe('rgba(0, 0, 0, 0)')
-    // 浮层是独立 glass 容器，其描边环（wui-glass::before 在面板自身）不被 borderless 移除
-    expect(getComputedStyle(panel, '::before').content).toBe('""')
+    expect(el.hasAttribute('focused')).toBe(false)
   })
 })

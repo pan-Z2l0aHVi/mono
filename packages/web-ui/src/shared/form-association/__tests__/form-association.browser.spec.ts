@@ -20,6 +20,7 @@ import type { WebUiInputNumber } from '@/components/input-number'
 import type { WebUiRadio } from '@/components/radio'
 import type { WebUiSelect } from '@/components/select'
 import type { WebUiSwitch } from '@/components/switch'
+import { queryA11y } from '@/shared/test-utils'
 
 afterEach(() => document.body.replaceChildren())
 
@@ -395,9 +396,10 @@ describe('表单关联组件（浏览器）', () => {
     const checkbox = form.querySelector<WebUiCheckbox>('web-ui-checkbox')!
     await Promise.all([group.updateComplete, checkbox.updateComplete])
 
-    const slot = group.shadowRoot!.querySelector('slot')!
+    const slot = queryA11y(group, 'slot')
+    expect(slot, 'group 应渲染默认 slot').toBeTruthy()
     const slotChanged = new Promise<void>(resolve =>
-      slot.addEventListener('slotchange', () => resolve(), { once: true })
+      slot!.addEventListener('slotchange', () => resolve(), { once: true })
     )
     form.append(checkbox)
     await slotChanged

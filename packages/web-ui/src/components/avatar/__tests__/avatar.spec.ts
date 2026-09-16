@@ -1,31 +1,24 @@
 import { describe, expect, it } from 'vite-plus/test'
 
-import { cleanupElement, queryA11y, waitForUpdate } from '@/shared/test-utils'
+import {
+  cleanupElement,
+  contractReflection,
+  flushSlotChange,
+  mountElement,
+  queryA11y,
+  waitForUpdate
+} from '@/shared/test-utils'
 
 import '..'
 import type { WebUiAvatar } from '..'
 
-const createAvatar = (attrs?: Record<string, string>): WebUiAvatar => {
-  const el = document.createElement('web-ui-avatar')
-  if (attrs) {
-    for (const [k, v] of Object.entries(attrs)) {
-      el.setAttribute(k, v)
-    }
-  }
-  document.body.appendChild(el)
-  return el
-}
+const createAvatar = (attrs?: Record<string, string>): WebUiAvatar =>
+  mountElement<WebUiAvatar>('web-ui-avatar', { attrs })
 
-async function waitForSlotChange(el: WebUiAvatar, mutate: () => void): Promise<void> {
-  const slot = el.shadowRoot!.querySelector('slot:not([name])')!
-  const slotChanged = new Promise<void>(resolve => slot.addEventListener('slotchange', () => resolve(), { once: true }))
-  mutate()
-  await slotChanged
-  await waitForUpdate(el)
-}
+const innerOf = (el: WebUiAvatar): HTMLElement | null => queryA11y(el, '[role="img"]') as HTMLElement | null
 
 describe('WebUiAvatar 组件', () => {
-  describe('默认属性与反射（合并）', () => {
+  describe('默认属性与反射', () => {
     it('默认值符合契约', async () => {
       const el = createAvatar()
       await waitForUpdate(el)
@@ -37,20 +30,13 @@ describe('WebUiAvatar 组件', () => {
       cleanupElement(el)
     })
 
-    it.each([
-      ['size', 64, '64'],
-      ['shape', 'square', 'square'],
-      ['src', '/avatar.png', '/avatar.png'],
-      ['alt', '用户头像', '用户头像'],
-      ['name', 'John Doe', 'John Doe']
-    ] as const)('%s 反射到宿主 attribute', async (prop, value, expected) => {
-      const el = createAvatar()
-      await waitForUpdate(el)
-      ;(el as any)[prop] = value
-      await waitForUpdate(el)
-      expect(el.getAttribute(prop)).toBe(expected)
-      cleanupElement(el)
-    })
+    contractReflection('property 写入后同步到宿主 attribute', () => createAvatar(), [
+      ['size', 64, 'size', '64'],
+      ['shape', 'square', 'shape', 'square'],
+      ['src', '/avatar.png', 'src', '/avatar.png'],
+      ['alt', '用户头像', 'alt', '用户头像'],
+      ['name', 'John Doe', 'name', 'John Doe']
+    ])
 
     it('非法 shape 回退为 circle', async () => {
       const el = createAvatar()
@@ -101,6 +87,14 @@ describe('WebUiAvatar 组件', () => {
       expect(node?.getAttribute(expectedLabel ? 'aria-label' : 'aria-hidden')).toBe(expectedLabel ?? 'true')
       cleanupElement(el)
     })
+
+    it('alt 传递到内部 img 的 alt', async () => {
+      const el = createAvatar({ src: '/a.png', alt: '用户头像' })
+      await waitForUpdate(el)
+      const img = innerOf(el)?.querySelector('img')
+      expect(img?.getAttribute('alt')).toBe('用户头像')
+      cleanupElement(el)
+    })
   })
 
   describe('边界与极端', () => {
@@ -120,6 +114,37 @@ describe('WebUiAvatar 组件', () => {
       expect(el.getAttribute('size')).toBe('999')
       cleanupElement(el)
     })
+  })
+
+  describe('回退渲染', () => {
+    it('单词 name 取首字母作为回退内容', async () => {
+      const el = createAvatar({ name: 'Alice' })
+      await waitForUpdate(el)
+      expect(innerOf(el)?.textContent?.trim()).toBe('A')
+      cleanupElement(el)
+    })
+
+    it('多词 name 取前两个词首字母', async () => {
+      const el = createAvatar({ name: 'John Doe' })
+      await waitForUpdate(el)
+      expect(innerOf(el)?.textContent?.trim()).toBe('JD')
+      cleanupElement(el)
+    })
+
+    it('图片加载失败时移除 img 并回退到 initials', async () => {
+      const el = createAvatar({ src: '/missing.png', name: 'Alice' })
+      await waitForUpdate(el)
+      const img = innerOf(el)?.querySelector('img')
+      expect(img).toBeTruthy()
+
+      img?.dispatchEvent(new Event('error'))
+      await waitForUpdate(el)
+
+      // 重新查询渲染面，避免复用可能已被重建的节点引用
+      expect(innerOf(el)?.querySelector('img')).toBeNull()
+      expect(innerOf(el)?.textContent?.trim()).toBe('A')
+      cleanupElement(el)
+    })
 
     it('动态插入和删除默认 slot 时同步 fallback', async () => {
       const el = createAvatar({ name: 'Alice' })
@@ -127,11 +152,13 @@ describe('WebUiAvatar 组件', () => {
 
       const content = document.createElement('span')
       content.textContent = 'VIP'
-      await waitForSlotChange(el, () => el.append(content))
-      expect(queryA11y(el, '[role="img"]')?.textContent?.includes('Alice')).toBe(false)
+      el.append(content)
+      await flushSlotChange(el)
+      expect(innerOf(el)?.textContent?.includes('Alice')).toBe(false)
 
-      await waitForSlotChange(el, () => content.remove())
-      expect(queryA11y(el, '[role="img"]')?.textContent?.trim()).toBe('A')
+      content.remove()
+      await flushSlotChange(el)
+      expect(innerOf(el)?.textContent?.trim()).toBe('A')
 
       cleanupElement(el)
     })
@@ -149,11 +176,13 @@ describe('WebUiAvatar 组件', () => {
 
       const content = document.createElement('span')
       content.textContent = 'VIP'
-      await waitForSlotChange(el, () => el.append(content))
-      expect(queryA11y(el, '[role="img"]')?.textContent?.includes('Alice')).toBe(false)
+      el.append(content)
+      await flushSlotChange(el)
+      expect(innerOf(el)?.textContent?.includes('Alice')).toBe(false)
 
-      await waitForSlotChange(el, () => content.remove())
-      expect(queryA11y(el, '[role="img"]')?.textContent?.trim()).toBe('A')
+      content.remove()
+      await flushSlotChange(el)
+      expect(innerOf(el)?.textContent?.trim()).toBe('A')
 
       cleanupElement(el)
     })

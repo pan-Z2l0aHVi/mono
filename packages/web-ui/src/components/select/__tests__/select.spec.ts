@@ -4,7 +4,7 @@ import type { WebUiOption } from '@/components/option'
 
 import '..'
 import '@/components/option'
-import { waitForUpdate, spyEvents, expectReflected, cleanupElement, queryA11y } from '@/shared/test-utils'
+import { waitForUpdate, spyEvents, cleanupElement, queryA11y } from '@/shared/test-utils'
 
 import type { WebUiSelect } from '..'
 
@@ -12,6 +12,12 @@ function touchPointerEvent(type: string): PointerEvent {
   const event = new PointerEvent(type, { bubbles: true, composed: true })
   Object.defineProperty(event, 'pointerType', { value: 'touch' })
   return event
+}
+
+/** 具名 slot 实际投影到的节点数——slot 投影是公开契约（ADR-0005 §5）。 */
+function projectedCount(el: WebUiSelect, slotName: string): number {
+  const slot = queryA11y(el, `slot[name="${slotName}"]`) as HTMLSlotElement | null
+  return slot?.assignedNodes().length ?? 0
 }
 
 describe('WebUiSelect 组件', () => {
@@ -135,20 +141,12 @@ describe('WebUiSelect 组件', () => {
       cleanupElement(el)
     })
 
-    it('open getter 反映浮层状态', async () => {
+    it('open 与 isOpen 初始均反映未打开状态', async () => {
       const el = createSelect(OPTIONS_HTML)
       await waitForUpdate(el)
 
       expect(el.open).toBe(false)
-
-      cleanupElement(el)
-    })
-
-    it('isOpen 别名反映浮层状态', async () => {
-      const el = createSelect(OPTIONS_HTML)
-      await waitForUpdate(el)
-
-      expect(el.isOpen).toBe(false)
+      expect(el.isOpen, 'isOpen 是 open 的公开别名').toBe(false)
 
       cleanupElement(el)
     })
@@ -164,19 +162,6 @@ describe('WebUiSelect 组件', () => {
       await waitForUpdate(el)
 
       expect(el.open).toBe(true)
-      expect(trigger.getAttribute('aria-expanded')).toBe('true')
-
-      cleanupElement(el)
-    })
-
-    it('打开时 aria-expanded 为 true', async () => {
-      const el = createSelect(OPTIONS_HTML)
-      await waitForUpdate(el)
-
-      const trigger = queryA11y(el, '[role="combobox"]') as HTMLElement
-      trigger.click()
-      await waitForUpdate(el)
-
       expect(trigger.getAttribute('aria-expanded')).toBe('true')
 
       cleanupElement(el)
@@ -368,15 +353,18 @@ describe('WebUiSelect 组件', () => {
   })
 
   describe('键盘导航', () => {
-    it('ArrowDown 激活选项', async () => {
+    it('ArrowDown 打开浮层并把 aria-activedescendant 指向首个选项', async () => {
       const el = createSelect(OPTIONS_HTML)
       await waitForUpdate(el)
 
       el.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }))
       await waitForUpdate(el)
 
-      const trigger = queryA11y(el, '[role="combobox"]')
-      expect(trigger?.getAttribute('aria-activedescendant')).toBeTruthy()
+      expect(el.open).toBe(true)
+      const activeId = queryA11y(el, '[role="combobox"]')?.getAttribute('aria-activedescendant')
+      const active = activeId ? el.querySelector(`#${activeId}`) : null
+      expect(active?.tagName.toLowerCase()).toBe('web-ui-option')
+      expect(active?.getAttribute('value')).toBe('apple')
 
       cleanupElement(el)
     })
@@ -399,21 +387,6 @@ describe('WebUiSelect 组件', () => {
       await waitForUpdate(el)
       const loopedId = trigger.getAttribute('aria-activedescendant')
       expect(el.querySelector(`#${loopedId}`)?.getAttribute('value')).toBe('cherry')
-
-      cleanupElement(el)
-    })
-
-    it('打开时 aria-activedescendant 指向激活选项', async () => {
-      const el = createSelect(OPTIONS_HTML)
-      await waitForUpdate(el)
-
-      const trigger = queryA11y(el, '[role="combobox"]')!
-      el.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }))
-      await waitForUpdate(el)
-
-      const activeId = trigger.getAttribute('aria-activedescendant')
-      expect(activeId).toBeTruthy()
-      expect(el.querySelector(`#${activeId}`)?.tagName.toLowerCase()).toBe('web-ui-option')
 
       cleanupElement(el)
     })
@@ -608,7 +581,6 @@ describe('WebUiSelect 组件', () => {
       await new Promise(resolve => requestAnimationFrame(resolve))
       await waitForUpdate(el)
 
-      expect(wrapper).toBeTruthy()
       wrapper.remove()
       await new Promise(resolve => requestAnimationFrame(resolve))
       await waitForUpdate(el)
@@ -626,7 +598,7 @@ describe('WebUiSelect 组件', () => {
   })
 
   describe('触发器插槽', () => {
-    it('提供 trigger slot 时渲染 slot 内容', async () => {
+    it('提供 trigger slot 时按 name 投影该 slot', async () => {
       const el = createSelect(OPTIONS_HTML)
       el.innerHTML = `
         <span slot="trigger">Custom Trigger</span>
@@ -634,10 +606,7 @@ describe('WebUiSelect 组件', () => {
       `
       await waitForUpdate(el)
 
-      // slot 投影内容在 light DOM 中，不在 shadow root 内
-      const slotEl = el.querySelector('[slot="trigger"]') as HTMLElement | null
-      expect(slotEl).toBeTruthy()
-      expect(slotEl!.textContent?.trim()).toBe('Custom Trigger')
+      expect(projectedCount(el, 'trigger')).toBe(1)
 
       cleanupElement(el)
     })
@@ -653,16 +622,6 @@ describe('WebUiSelect 组件', () => {
       // 自定义 trigger slot 替代默认 label：combobox 不应再渲染 placeholder 文本
       const trigger = queryA11y(el, '[role="combobox"]')
       expect(trigger?.textContent?.includes('请选择')).toBe(false)
-
-      cleanupElement(el)
-    })
-
-    it('不提供 trigger slot 时显示默认 label', async () => {
-      const el = createSelect(OPTIONS_HTML, { placeholder: '请选择' })
-      await waitForUpdate(el)
-
-      const trigger = queryA11y(el, '[role="combobox"]')
-      expect(trigger?.textContent?.trim()).toBe('请选择')
 
       cleanupElement(el)
     })

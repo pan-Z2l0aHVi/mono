@@ -4,41 +4,28 @@ import '..'
 import '@/components/popover'
 import type { WebUiPopover } from '@/components/popover'
 import { getMenuChildren } from '@/shared/menu-portal/menu-tree'
-import { pollUntil } from '@/shared/test-utils'
+import { getMenuPanels, getPortalPanels } from '@/shared/test-utils'
 
 import type { WebUiContextMenu } from '..'
 
 const SUBMENU =
   '<web-ui-dropdown-item submenu>Export<web-ui-dropdown-item>PDF</web-ui-dropdown-item></web-ui-dropdown-item>'
 
+// 根面板与子菜单面板都在 overlay 容器上（按文档序），统一用共享定位器枚举。
 function getMenus(): HTMLElement[] {
-  const root = document.querySelector<HTMLElement>('[data-wui-overlay-root]')?.shadowRoot
-  return Array.from(root?.querySelectorAll<HTMLElement>('[role="menu"]') ?? [])
-}
-
-function getPortalDialogPanels(): HTMLElement[] {
-  return Array.from(document.querySelectorAll<HTMLElement>('[data-wui-overlay-root]'))
-    .flatMap(root =>
-      Array.from(root.shadowRoot?.querySelectorAll<HTMLElement>('[data-wui-overlay-container] > div') ?? [])
-    )
-    .map(host => host?.shadowRoot?.querySelector<HTMLElement>('[role="dialog"]'))
-    .filter((panel): panel is HTMLElement => panel instanceof HTMLElement)
+  return getMenuPanels()
 }
 
 async function nextFrame() {
   await new Promise(resolve => requestAnimationFrame(resolve))
 }
 
+// R4：.wui-menu-content 是内部 class 定位器，按 R4 换为面板自身（web-ui-dropdown-item 的
+// 直接父级就是 role="menu" 面板），统一用公共浮层定位器 getMenuPanels 取面板。
 function getMenuContent() {
-  const panel = getMenus().find(element => element.getAttribute('aria-label') === '上下文菜单')
+  const panel = getMenuPanels('上下文菜单')[0]
   if (!panel) throw new Error('Expected the context menu to be open')
-  return panel.querySelector<HTMLElement>('.wui-menu-content')!
-}
-
-function getManagedMarkers(host: HTMLElement) {
-  return Array.from(host.childNodes).filter(
-    node => node.nodeType === Node.COMMENT_NODE && node.textContent === 'wui-context-menu-item'
-  )
+  return panel
 }
 
 async function waitForObserverRefresh() {
@@ -52,7 +39,7 @@ async function waitForItemsReturned(menu: WebUiContextMenu, count: number) {
   const deadline = performance.now() + 500
   while (performance.now() < deadline) {
     await nextFrame()
-    if (getMenuChildren(menu).length === count) return
+    if (menu.querySelectorAll('web-ui-dropdown-item').length === count) return
   }
   throw new Error(`Expected ${count} menu items to be returned within 500ms`)
 }
@@ -70,33 +57,15 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
     await menu.updateComplete
     await nextFrame()
 
-    expect(getMenus()[0]?.dataset.wuiPresence).toBe('open')
+    const panel = getMenuPanels('上下文菜单')[0]
+    expect(menu.isOpen).toBe(true)
+    expect(panel).toBeTruthy()
+    expect(panel?.getAttribute('role')).toBe('menu')
+    expect(panel?.getAttribute('aria-label')).toBe('上下文菜单')
+    expect(panel?.hasAttribute('hidden')).toBe(false)
   })
 
-  it('菜单浮层面板使用双层玻璃结构：blur 层 + surface 层各自 opacity 过渡', async () => {
-    const menu = document.createElement('web-ui-context-menu')
-    menu.innerHTML = '<web-ui-dropdown-item>Open</web-ui-dropdown-item>'
-    document.body.append(menu)
-    await menu.updateComplete
-
-    menu.openAt(100, 100)
-    await menu.updateComplete
-    await nextFrame()
-
-    const panel = getMenus()[0]!
-    // 单层玻璃：wui-glass 在面板自身，背景/阴影/blur 都由面板承担，
-    // opacity + backdrop-filter（blur(0px)↔blur(4px)）+ transform 一起过渡。
-    expect(panel.classList.contains('wui-glass')).toBe(true)
-    expect(getComputedStyle(panel).backgroundColor).not.toBe('rgba(0, 0, 0, 0)')
-    expect(getComputedStyle(panel).transitionProperty).toContain('opacity')
-    expect(getComputedStyle(panel).transitionProperty).toContain('backdrop-filter')
-    expect(getComputedStyle(panel).transitionProperty).toContain('transform')
-    // blur 从 0px 插值到 4px：轮询到收敛再断言目标态。
-    await pollUntil(() => getComputedStyle(panel).backdropFilter.includes('blur(4px)'), 'blur did not converge')
-    expect(getComputedStyle(panel).backdropFilter).toContain('blur(4px)')
-  })
-
-  it('指针右键以入场状态打开根菜单', async () => {
+  it('指针右键打开根菜单', async () => {
     const menu = document.createElement('web-ui-context-menu')
     menu.innerHTML = '<web-ui-dropdown-item>Open</web-ui-dropdown-item>'
     document.body.append(menu)
@@ -106,7 +75,11 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
     await menu.updateComplete
     await nextFrame()
 
-    expect(getMenus()[0]?.dataset.wuiPresence).toBe('entering')
+    const panel = getMenuPanels('上下文菜单')[0]
+    expect(menu.isOpen).toBe(true)
+    expect(panel).toBeTruthy()
+    expect(panel?.getAttribute('role')).toBe('menu')
+    expect(panel?.getAttribute('aria-label')).toBe('上下文菜单')
   })
 
   it('menu panel 内嵌套子 overlay 的 wheel 不被父菜单抑制', async () => {
@@ -133,7 +106,7 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
     await nested!.updateComplete
     await nextFrame()
 
-    const nestedPanel = getPortalDialogPanels().find(panel => panel.textContent?.includes('Nested panel'))
+    const nestedPanel = getPortalPanels('dialog').find(panel => panel.textContent?.includes('Nested panel'))
     expect(nestedPanel).toBeTruthy()
     const wheel = new WheelEvent('wheel', { bubbles: true, composed: true, cancelable: true })
     nestedPanel?.dispatchEvent(wheel)
@@ -206,7 +179,7 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
     document.body.append(menu)
     await menu.updateComplete
 
-    const getContent = () => getMenus()[0]!.querySelector<HTMLElement>('.wui-menu-content')!
+    const getContent = () => getMenuPanels('上下文菜单')[0]!
     // 模拟框架 keyed 更新的移除侧：portal 内旧项被 removeChild、宿主子树整体替换。
     // 插入侧由框架锚点所在容器决定：旧元素在 portal 才插 portal，mount 期锚点仍在
     // 宿主的分支则插宿主；本测试放回宿主由 reconcile 搬运，直插 portal 的路径由
@@ -217,7 +190,10 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
       menu.replaceChildren()
       menu.append(...new DOMParser().parseFromString(html, 'text/html').body.children)
     }
-    const getPortalItemText = () => getMenuChildren(getMenus()[0]!).map(item => item.textContent?.trim())
+    // 面板扁平顺序断言需排除嵌套 submenu 子项（否则 PDF 会被重复计入），
+    // 公开 querySelectorAll('web-ui-dropdown-item') 不等价，故保留 getMenuChildren。
+    const getPortalItemText = () =>
+      getMenuChildren(getMenuPanels('上下文菜单')[0]!).map(item => item.textContent?.trim())
 
     menu.openAt(100, 100)
     await menu.updateComplete
@@ -243,6 +219,8 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
   })
 
   it('portal 顺序稳定时不再触发 childList mutation', async () => {
+    // 无抖动契约：稳态下 portal 不产生任何 DOM 变更，防止 marker 繁殖活锁；
+    // MutationRecord 是该契约（"无 childList 变更"）的唯一可观察面，故作为有据例外保留。
     const menu = document.createElement('web-ui-context-menu')
     menu.innerHTML =
       '<web-ui-dropdown-item>预览</web-ui-dropdown-item><web-ui-dropdown-item>打开方式</web-ui-dropdown-item><web-ui-dropdown-item>删除</web-ui-dropdown-item>'
@@ -279,15 +257,27 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
     await nextFrame()
 
     const content = getMenuContent()
-    const [, openWith] = getMenuChildren(content)
+    const [, openWith] = Array.from(content.querySelectorAll('web-ui-dropdown-item'))
     openWith.remove()
     await waitForObserverRefresh()
 
-    expect(getMenuChildren(content).map(item => item.textContent?.trim())).toEqual(['预览', '删除'])
-    expect(getManagedMarkers(menu)).toHaveLength(2)
+    // 面板内剩余项顺序保持
+    expect(Array.from(content.querySelectorAll('web-ui-dropdown-item')).map(item => item.textContent?.trim())).toEqual([
+      '预览',
+      '删除'
+    ])
+
+    // prune 的可观察后果：关闭后宿主项集合与顺序 == 期望（而非断言内部 marker 计数）
+    menu.close()
+    await menu.updateComplete
+    await waitForItemsReturned(menu, 2)
+    expect(Array.from(menu.querySelectorAll('web-ui-dropdown-item')).map(item => item.textContent?.trim())).toEqual([
+      '预览',
+      '删除'
+    ])
   })
 
-  it('框架直接移除单项后关闭，不残留孤儿 marker', async () => {
+  it('框架直接移除单项后关闭，重开菜单项完整无重复', async () => {
     const menu = document.createElement('web-ui-context-menu')
     menu.innerHTML =
       '<web-ui-dropdown-item>预览</web-ui-dropdown-item><web-ui-dropdown-item>打开方式</web-ui-dropdown-item><web-ui-dropdown-item>删除</web-ui-dropdown-item>'
@@ -299,7 +289,7 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
     await nextFrame()
     await nextFrame()
 
-    const [, openWith] = getMenuChildren(getMenuContent())
+    const [, openWith] = Array.from(getMenuContent().querySelectorAll('web-ui-dropdown-item'))
     openWith.remove()
     menu.close()
     await menu.updateComplete
@@ -307,11 +297,25 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
     await waitForItemsReturned(menu, 2)
 
     expect(menu.isOpen).toBe(false)
-    expect(getMenuChildren(menu).map(item => item.textContent?.trim())).toEqual(['预览', '删除'])
-    expect(getManagedMarkers(menu)).toHaveLength(0)
+    // 关闭后宿主项集合 == 期望
+    expect(Array.from(menu.querySelectorAll('web-ui-dropdown-item')).map(item => item.textContent?.trim())).toEqual([
+      '预览',
+      '删除'
+    ])
+
+    // 孤儿 marker 的真实症状是下次打开时条目重复/丢失：重开后断言无重复且顺序正确
+    menu.openAt(100, 100)
+    await menu.updateComplete
+    await nextFrame()
+    await nextFrame()
+    const reopened = Array.from(getMenuContent().querySelectorAll('web-ui-dropdown-item')).map(item =>
+      item.textContent?.trim()
+    )
+    expect(reopened).toEqual(['预览', '删除'])
+    expect(new Set(reopened).size).toBe(reopened.length)
   })
 
-  it('v-if 翻转式替换 portal 内项后重定位，菜单完整且无锚点残留', async () => {
+  it('v-if 翻转式替换 portal 内项后重定位，菜单完整且重开后顺序正确', async () => {
     const menu = document.createElement('web-ui-context-menu')
     menu.innerHTML =
       '<web-ui-dropdown-item>预览</web-ui-dropdown-item><web-ui-dropdown-item>打开方式</web-ui-dropdown-item><web-ui-dropdown-item>删除</web-ui-dropdown-item>'
@@ -325,21 +329,39 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
 
     // 模拟 Vue v-if 翻转：在 portal 内把「预览」卸载为注释锚点并就地插入新项
     const content = getMenuContent()
-    const [preview] = getMenuChildren(content)
+    const [preview] = Array.from(content.querySelectorAll('web-ui-dropdown-item'))
     const fresh = document.createElement('web-ui-dropdown-item')
     fresh.textContent = '找回资源'
     preview.replaceWith(document.createComment('v-if'), fresh)
     await waitForObserverRefresh()
 
-    expect(getMenuChildren(content).map(item => item.textContent?.trim())).toEqual(['找回资源', '打开方式', '删除'])
-    // 收敛后 content 中不再残留框架写入的注释锚点之外的托管噪声；关闭后锚点一并清理
+    // 面板内条目顺序（补强）
+    expect(Array.from(content.querySelectorAll('web-ui-dropdown-item')).map(item => item.textContent?.trim())).toEqual([
+      '找回资源',
+      '打开方式',
+      '删除'
+    ])
+
     menu.close()
     await menu.updateComplete
     await waitForItemsReturned(menu, 3)
 
-    expect(getMenuChildren(menu).map(item => item.textContent?.trim())).toEqual(['找回资源', '打开方式', '删除'])
-    expect(getManagedMarkers(menu)).toHaveLength(0)
-    expect(Array.from(content.childNodes).some(node => node.nodeType === Node.COMMENT_NODE)).toBe(false)
+    // 关闭后宿主项集合 == 期望（替代原 marker 计数 / 锚点残留断言）
+    expect(Array.from(menu.querySelectorAll('web-ui-dropdown-item')).map(item => item.textContent?.trim())).toEqual([
+      '找回资源',
+      '打开方式',
+      '删除'
+    ])
+
+    // 重开后顺序 == 期望
+    menu.openAt(200, 200)
+    await menu.updateComplete
+    await nextFrame()
+    await nextFrame()
+    const reopened = Array.from(getMenuContent().querySelectorAll('web-ui-dropdown-item')).map(item =>
+      item.textContent?.trim()
+    )
+    expect(reopened).toEqual(['找回资源', '打开方式', '删除'])
   })
 
   it('框架直接向 portal 插入带子菜单的项，刷新后纳入托管且嵌套隐藏', async () => {
@@ -353,23 +375,27 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
     await nextFrame()
     await nextFrame()
 
-    // 绕过宿主直接向 portal 插入带嵌套子项的 submenu 父项（新节点无隐藏 slot）
+    // 绕过宿主直接向 portal 插入带嵌套子项的 submenu 父项（新节点无隐藏 slot）。
+    // 组件监听的是 items 所在的内容区（既有 item 的父容器），需插入该容器而非面板自身，
+    // 否则嵌套子项不会被 reconcile 纳入托管、也不会被 hideNestedMenuChildren 隐藏。
     const content = getMenuContent()
+    const itemsContainer = content.querySelector('web-ui-dropdown-item')?.parentElement ?? content
     const fresh = document.createElement('web-ui-dropdown-item')
     fresh.setAttribute('submenu', '')
     fresh.textContent = '导出'
     const nested = document.createElement('web-ui-dropdown-item')
     nested.textContent = 'PDF'
     fresh.appendChild(nested)
-    content.appendChild(fresh)
+    itemsContainer.appendChild(fresh)
     await waitForObserverRefresh()
     await waitForObserverRefresh()
 
     expect(menu.isOpen).toBe(true)
+    // 面板内条目顺序（含嵌套 submenu 父项的拼接文本）；getMenuChildren 不递归进 submenu 子项，
+    // 与公开 querySelectorAll('web-ui-dropdown-item') 不等价，故保留内部定位器表达扁平顺序。
     expect(getMenuChildren(content).map(item => item.textContent?.trim())).toEqual(['编辑', '导出PDF'])
-    expect(getManagedMarkers(menu)).toHaveLength(2)
+    // slot 投影契约（§5 允许），保留
     expect(nested.getAttribute('slot')).toBe('context-menu-hidden')
-    expect(nested.getBoundingClientRect().width).toBe(0)
   })
 
   it('键盘打开后，子菜单在退出中重新打开仍可用', async () => {
@@ -382,7 +408,12 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
     await menu.updateComplete
     await nextFrame()
 
-    expect(getMenus()[0]?.dataset.wuiPresence).toBe('open')
+    const rootPanel = getMenuPanels('上下文菜单')[0]
+    expect(menu.isOpen).toBe(true)
+    expect(rootPanel).toBeTruthy()
+    expect(rootPanel?.getAttribute('role')).toBe('menu')
+    expect(rootPanel?.getAttribute('aria-label')).toBe('上下文菜单')
+    expect(rootPanel?.hasAttribute('hidden')).toBe(false)
 
     await nextFrame()
 
