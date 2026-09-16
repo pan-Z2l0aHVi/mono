@@ -28,7 +28,7 @@ const createGroup = (radioHtml = RADIO_HTML, attrs?: Record<string, string>): We
 // 点击子 radio 触发用户交互
 const clickChild = (group: WebUiRadioGroup, index: number) => {
   const radio = group.querySelectorAll<WebUiRadio>('web-ui-radio')[index]
-  const label = radio.shadowRoot!.querySelector('label')!
+  const label = queryA11y(radio, 'label') as HTMLElement
   label.click()
 }
 
@@ -308,7 +308,7 @@ describe('WebUiRadioGroup 组件', () => {
       const [inputEvents, detachInput] = spyEvents(container, 'input')
       const [changeEvents, detachChange] = spyEvents(container, 'change')
 
-      const label = radio.shadowRoot!.querySelector('label')!
+      const label = queryA11y(radio, 'label') as HTMLElement
       label.click()
       await waitForUpdate(radio)
 
@@ -406,7 +406,7 @@ describe('WebUiRadioGroup 组件', () => {
       container.append(el)
       document.body.append(container)
       await waitForUpdate(el)
-      const slot = el.shadowRoot!.querySelector('slot')!
+      const slot = queryA11y(el, 'slot')!
       const slotChanged = new Promise<void>(resolve =>
         slot.addEventListener('slotchange', () => resolve(), { once: true })
       )
@@ -515,7 +515,7 @@ describe('WebUiRadioGroup 组件', () => {
     document.body.append(container)
     await waitForUpdate(el)
 
-    const slot = el.shadowRoot!.querySelector('slot')!
+    const slot = queryA11y(el, 'slot')!
     const slotChanged = new Promise<void>(resolve =>
       slot.addEventListener('slotchange', () => resolve(), { once: true })
     )

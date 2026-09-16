@@ -62,13 +62,20 @@ describe('WebUiSelect 条件组合边界', () => {
       el.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }))
       await waitForUpdate(el)
 
-      const active = el.querySelector<WebUiOption>('web-ui-option[active]')!
-      expect(active.value).toBe('banana')
-      active.remove()
+      const trigger = queryA11y(el, '[role="combobox"]')
+      // 非 portal 模式下「当前激活项」的公开通道是 combobox 的 aria-activedescendant
+      // 指向的 option id（`option[active]` 是 select 写入的内部高亮标记，不是公开 API）。
+      const resolveActive = (): WebUiOption | null => {
+        const id = trigger?.getAttribute('aria-activedescendant')
+        return id ? el.querySelector<WebUiOption>(`#${id}`) : null
+      }
+
+      expect(resolveActive()?.value, '前置：第二项应先成为激活项').toBe('banana')
+      resolveActive()?.remove()
       await waitForUpdate(el)
 
       // 激活项已移除：不得把索引静默偏移到 cherry 并保持高亮
-      expect(el.querySelector('web-ui-option[active]')).toBeNull()
+      expect(resolveActive(), '激活索引不应偏移到相邻项').toBeNull()
 
       const [events] = spyEvents(el, 'input')
       el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
@@ -78,7 +85,7 @@ describe('WebUiSelect 条件组合边界', () => {
       // 激活索引重置为 -1 时面板保持打开且无选中（与「无可激活项」的语义一致）。
       expect(events).toHaveLength(0)
       expect(el.value).toBe('')
-      expect(el.querySelector('web-ui-option[active]')).toBeNull()
+      expect(resolveActive()).toBeNull()
       cleanupElement(el)
     })
 
@@ -142,7 +149,7 @@ describe('WebUiSelect 条件组合边界', () => {
 
       // portal 打开后 option 位于浮层 shadow root 内，从面板中移除
       const appleInPanel = getPortalPanel(el)?.querySelector('web-ui-option[value="apple"]') as WebUiOption | null
-      expect(appleInPanel).toBeTruthy()
+      expect(appleInPanel, '前置：面板内应有已选项 apple').not.toBeNull()
       appleInPanel?.remove()
       await new Promise<void>(resolve => queueMicrotask(resolve))
       await waitForUpdate(el)
@@ -162,7 +169,7 @@ describe('WebUiSelect 条件组合边界', () => {
       expect(el.open).toBe(true)
 
       const appleInPanel = getPortalPanel(el)?.querySelector('web-ui-option[value="apple"]') as WebUiOption | null
-      expect(appleInPanel).toBeTruthy()
+      expect(appleInPanel, '前置：面板内应有 apple').not.toBeNull()
       appleInPanel?.remove()
       await new Promise<void>(resolve => queueMicrotask(resolve))
       await waitForUpdate(el)
@@ -283,7 +290,7 @@ describe('WebUiSelect 条件组合边界', () => {
       cleanupElement(el)
     })
 
-    it('打开期间新增 option 后触发器标签与激活索引保持一致', async () => {
+    it('打开期间新增 option 后可被键盘导航选中，且已选标签不丢失', async () => {
       const el = createSelect('<web-ui-option value="apple" label="Apple"></web-ui-option>', {
         portal: '',
         placeholder: 'Pick'
@@ -301,10 +308,10 @@ describe('WebUiSelect 条件组合边界', () => {
 
       // 已选标签不因新增项丢失；键盘导航能看到新增项
       expect(trigger.textContent?.includes('Apple')).toBe(true)
-      // 从已选 apple 出发 ArrowDown 确定性落到新增的 fig(portal 打开时 option 位于面板内)
+      // 从已选 apple 出发 ArrowDown 确定性落到新增的 fig（portal 打开时 option 位于面板内），
+      // 选中结果是「激活索引指向新增项」的公开可观察后果。
       el.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }))
       await waitForUpdate(el)
-      expect(getPortalPanel(el)?.querySelector('web-ui-option[active]')?.getAttribute('value')).toBe('fig')
       el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
       await waitForUpdate(el)
       expect(el.value).toBe('fig')

@@ -27,7 +27,6 @@ describe('浮层 Portal', () => {
     const portal = defineOverlayPortal().make({ container, target, style: '', className: 'panel' })
     portal.moveContent([content])
 
-    expect(portal.panel.dataset.wuiPresence).toBe('entering')
     expect(portal.panel.contains(content)).toBe(true)
 
     portal.restoreContent()
@@ -55,22 +54,6 @@ describe('浮层 Portal', () => {
     portal.remove()
 
     expect(target.contains(content)).toBe(true)
-  })
-
-  it('宿主固定 display: contents，避免 :host 规则泄漏撑开容器', () => {
-    const target = document.createElement('div')
-    const container = document.createElement('div')
-    document.body.append(target, container)
-
-    // 模拟 select/popover/tooltip 组件样式中泄漏到宿主的 :host 规则
-    const leakyStyle = ':host { display: inline-block; } .panel { position: fixed; }'
-    const portal = defineOverlayPortal().make({ container, target, style: leakyStyle, className: 'panel' })
-
-    const host = container.firstElementChild as HTMLElement
-    expect(getComputedStyle(host).display).toBe('contents')
-
-    portal.restoreContent()
-    portal.remove()
   })
 
   it('框架在打开期物理删除已迁移节点时，内建解除追踪且不再恢复该节点', async () => {

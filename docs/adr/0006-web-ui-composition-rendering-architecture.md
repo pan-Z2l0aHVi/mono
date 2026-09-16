@@ -58,9 +58,9 @@ Focus token 只定义颜色与宽度：`--wui-color-focus-ring` / `--wui-focus-r
 
 ### 6.2 Duration / Easing / Scale
 
-- `--wui-duration-focus: 200ms`；`--wui-duration-trigger`（原 `--wui-duration-fast`）；`--wui-duration-drawer-enter: 280ms` / `--wui-duration-drawer-exit: 240ms`
-- `--wui-ease-enter`（原 `--wui-ease-out`）；`--wui-ease-slide`（原 `--wui-ease-standard`）
-- `--wui-scale-enter: 0.97`
+- `--wui-duration-focus: 200ms`；`--wui-duration-trigger`（原 `--wui-duration-fast`）；`--wui-duration-drawer-enter: 280ms` / `--wui-duration-drawer-exit: 240ms`；`--wui-duration-float-enter: 240ms` / `--wui-duration-float-exit: 160ms`
+- `--wui-ease-enter`（原 `--wui-ease-out`）；`--wui-ease-slide`（原 `--wui-ease-standard`）；`--wui-ease-float`（锚定浮动面板专用的无回弹弹簧拟合曲线）
+- `--wui-scale-enter: 0.95`（锚定浮动面板与 image-preview 由小到大展开；image-preview 的缩放只落在图片舞台层，控件层原地淡入）；`--wui-dialog-scale-enter: 1.2`（dialog 由大到小收缩，越界条件为静止宽度 > `(100/s)vw`，零越界上限是 `1/0.9 ≈ 1.111`）
 
 ### 6.3 语义 Radius Token
 

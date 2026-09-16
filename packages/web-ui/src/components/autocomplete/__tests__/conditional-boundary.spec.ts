@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vite-plus/test'
 
 import '..'
 import '@/components/option'
-import { cleanupElement, spyEvents, waitForUpdate } from '@/shared/test-utils'
+import { cleanupElement, queryA11y, spyEvents, waitForUpdate } from '@/shared/test-utils'
 
 import type { WebUiAutocomplete } from '..'
 
@@ -19,14 +19,16 @@ describe('WebUiAutocomplete 条件渲染边界', () => {
     el.replaceChild(wrapper, comment)
     await waitForUpdate(el)
 
-    const input = el.shadowRoot!.querySelector('input')!
+    const input = queryA11y(el, '[role="combobox"]') as HTMLInputElement
     input.focus()
     await waitForUpdate(el)
 
     el.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }))
     await waitForUpdate(el)
 
-    expect(el.shadowRoot!.querySelector('.autocomplete-a11y-listbox')?.textContent).toContain('Apple')
+    // 激活项经公开的 aria-activedescendant（同根 ARIA 镜像的 id）可解析
+    const activeId = input.getAttribute('aria-activedescendant')
+    expect(el.shadowRoot?.querySelector(`#${activeId}`)?.textContent).toContain('Apple')
 
     el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
     await waitForUpdate(el)
@@ -49,7 +51,7 @@ describe('WebUiAutocomplete 条件渲染边界', () => {
     await waitForUpdate(el)
 
     const wrapper = el.querySelector('div')!
-    const input = el.shadowRoot!.querySelector('input')!
+    const input = queryA11y(el, '[role="combobox"]') as HTMLInputElement
     input.focus()
     await waitForUpdate(el)
     await new Promise(resolve => requestAnimationFrame(resolve))

@@ -2,35 +2,24 @@ import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
 
 import '@/components/drawer'
 import '@/components/popover'
+import type { WebUiPopover } from '@/components/popover'
 
 import '..'
-import type { WebUiPopover } from '@/components/popover'
+import { getMenuPanels, getPortalPanels, queryA11y } from '@/shared/test-utils'
 
 import type { WebUiDropdown } from '..'
 
 const SUBMENU =
   '<button slot="trigger">Menu</button><web-ui-dropdown-item submenu>Export<web-ui-dropdown-item>PDF</web-ui-dropdown-item></web-ui-dropdown-item>'
 
-function getMenus(): HTMLElement[] {
-  const root = document.querySelector<HTMLElement>('[data-wui-overlay-root]')?.shadowRoot
-  return Array.from(root?.querySelectorAll<HTMLElement>('[role="menu"]') ?? [])
-}
-
-function getPortalPanels(selector: string): HTMLElement[] {
-  return Array.from(document.querySelectorAll<HTMLElement>('[data-wui-overlay-root]'))
-    .flatMap(root =>
-      Array.from(root.shadowRoot?.querySelectorAll<HTMLElement>('[data-wui-overlay-container] > div') ?? [])
-    )
-    .map(host => host?.shadowRoot?.querySelector<HTMLElement>(selector))
-    .filter((panel): panel is HTMLElement => panel instanceof HTMLElement)
-}
+const SIMPLE = '<button slot="trigger">Menu</button><web-ui-dropdown-item>Open</web-ui-dropdown-item>'
 
 async function nextFrame() {
   await new Promise(resolve => requestAnimationFrame(resolve))
 }
 
 // drawer/dialog 的入场由多帧 rAF + presence 驱动，时钟时长不可依赖；
-// 轮询到确定性信号（is-visible / 面板挂载）为止，避免固定 sleep 的竞态。
+// 轮询到确定性信号（面板挂载）为止，避免固定 sleep 的竞态。
 async function waitFor(predicate: () => boolean, message: string): Promise<void> {
   const deadline = performance.now() + 1000
   while (performance.now() < deadline) {
@@ -40,11 +29,9 @@ async function waitFor(predicate: () => boolean, message: string): Promise<void>
   throw new Error(message)
 }
 
-async function waitForDrawerVisible(drawer: HTMLElement, drawerDialog: HTMLDialogElement): Promise<void> {
-  await waitFor(
-    () => drawerDialog.open && drawerDialog.classList.contains('is-visible'),
-    'Expected the drawer dialog to become visible'
-  )
+/** 焦点是组件内部元素时可观察的焦点落点（文档级 activeElement 会重定位到宿主）。 */
+function focusedControl(host: HTMLElement): Element | null {
+  return queryA11y(host, '[role="menuitem"]')
 }
 
 afterEach(() => document.body.replaceChildren())
@@ -52,7 +39,7 @@ afterEach(() => document.body.replaceChildren())
 describe('WebUiDropdown 组件（浏览器）', () => {
   it('直接设置 open 时以即时状态显示根菜单', async () => {
     const menu = document.createElement('web-ui-dropdown')
-    menu.innerHTML = '<button slot="trigger">Menu</button><web-ui-dropdown-item>Open</web-ui-dropdown-item>'
+    menu.innerHTML = SIMPLE
     document.body.append(menu)
     await menu.updateComplete
 
@@ -61,31 +48,12 @@ describe('WebUiDropdown 组件（浏览器）', () => {
     await nextFrame()
     await nextFrame()
 
-    expect(getMenus()[0]?.dataset.wuiPresence).toBe('open')
-  })
-
-  it('菜单浮层面板使用双层玻璃结构：blur 层 + surface 层各自 opacity 过渡', async () => {
-    const menu = document.createElement('web-ui-dropdown')
-    menu.innerHTML = '<button slot="trigger">Menu</button><web-ui-dropdown-item>Open</web-ui-dropdown-item>'
-    document.body.append(menu)
-    await menu.updateComplete
-
-    menu.open = true
-    await menu.updateComplete
-    await nextFrame()
-    await nextFrame()
-
-    const panel = getMenus()[0]!
-    // 单层玻璃：wui-glass 在面板自身，背景/阴影/blur 都由面板承担，
-    // opacity + backdrop-filter（blur(0px)↔blur(4px)）+ transform 一起过渡。
-    expect(panel.classList.contains('wui-glass')).toBe(true)
-    expect(getComputedStyle(panel).backgroundColor).not.toBe('rgba(0, 0, 0, 0)')
-    expect(getComputedStyle(panel).transitionProperty).toContain('opacity')
-    expect(getComputedStyle(panel).transitionProperty).toContain('backdrop-filter')
-    expect(getComputedStyle(panel).transitionProperty).toContain('transform')
-    // blur 随 float 过渡（160ms）从 0px 插值到 4px：等待收敛再断言目标态。
-    await new Promise(resolve => setTimeout(resolve, 250))
-    expect(getComputedStyle(panel).backdropFilter).toContain('blur(4px)')
+    // 「即时」指不经入场过渡；可观察后果是菜单面板已就位且带 aria 语义。
+    const panels = getMenuPanels()
+    expect(menu.open).toBe(true)
+    expect(panels).toHaveLength(1)
+    expect(panels[0]?.getAttribute('role')).toBe('menu')
+    expect(panels[0]?.textContent).toContain('Open')
   })
 
   it('指针点击可以打开子菜单', async () => {
@@ -102,17 +70,18 @@ describe('WebUiDropdown 组件（浏览器）', () => {
       await menu.updateComplete
       await nextFrame()
 
-      expect(getMenus()[0]?.dataset.wuiPresence).toBe('entering')
+      expect(getMenuPanels()).toHaveLength(1)
 
       await nextFrame()
 
-      const parentItem = getMenus()[0]?.querySelector<HTMLElement>('web-ui-dropdown-item')
+      const parentItem = getMenuPanels()[0]?.querySelector<HTMLElement>('web-ui-dropdown-item')
       parentItem?.click()
       await nextFrame()
       await nextFrame()
 
-      expect(getMenus()).toHaveLength(2)
-      expect(getMenus()[1]?.textContent).toContain('PDF')
+      const panels = getMenuPanels()
+      expect(panels).toHaveLength(2)
+      expect(panels[1]?.textContent).toContain('PDF')
       expect(warn).not.toHaveBeenCalledWith(expect.stringContaining('Element web-ui-dropdown scheduled an update'))
     } finally {
       warn.mockRestore()
@@ -121,7 +90,7 @@ describe('WebUiDropdown 组件（浏览器）', () => {
 
   it('根菜单打开后同帧卸载不重建 panel 或焦点', async () => {
     const menu = document.createElement('web-ui-dropdown')
-    menu.innerHTML = '<button slot="trigger">Menu</button><web-ui-dropdown-item>Open</web-ui-dropdown-item>'
+    menu.innerHTML = SIMPLE
     document.body.append(menu)
     await menu.updateComplete
 
@@ -131,7 +100,7 @@ describe('WebUiDropdown 组件（浏览器）', () => {
     await nextFrame()
     await nextFrame()
 
-    expect(getMenus()).toHaveLength(0)
+    expect(getMenuPanels()).toHaveLength(0)
     expect(document.activeElement).toBe(document.body)
   })
 
@@ -146,14 +115,14 @@ describe('WebUiDropdown 组件（浏览器）', () => {
     await nextFrame()
     await nextFrame()
 
-    const parentItem = getMenus()[0]?.querySelector<HTMLElement>('web-ui-dropdown-item')
+    const parentItem = getMenuPanels()[0]?.querySelector<HTMLElement>('web-ui-dropdown-item')
     parentItem?.click()
     await menu.updateComplete
     menu.remove()
     await nextFrame()
     await nextFrame()
 
-    expect(getMenus()).toHaveLength(0)
+    expect(getMenuPanels()).toHaveLength(0)
   })
 
   it('dropdown panel 内的嵌套子 overlay 不会被 outside click 关闭', async () => {
@@ -176,13 +145,13 @@ describe('WebUiDropdown 组件（浏览器）', () => {
     await nextFrame()
     await nextFrame()
 
-    const nested = getMenus()[0]?.querySelector<WebUiPopover>('web-ui-popover')
+    const nested = getMenuPanels()[0]?.querySelector<WebUiPopover>('web-ui-popover')
     expect(nested).toBeTruthy()
     nested!.show()
     await nested!.updateComplete
     await nextFrame()
 
-    const nestedPanel = getPortalPanels('[role="dialog"]').find(panel => panel.textContent?.includes('Nested panel'))
+    const nestedPanel = getPortalPanels('dialog').find(panel => panel.textContent?.includes('Nested panel'))
     expect(nestedPanel).toBeTruthy()
     nestedPanel?.click()
     await menu.updateComplete
@@ -208,10 +177,10 @@ describe('WebUiDropdown 组件（浏览器）', () => {
     await menu.updateComplete
     await nextFrame()
     await nextFrame()
-    const parentItem = getMenus()[0]?.querySelector<HTMLElement>('web-ui-dropdown-item')
-    const parentControl = parentItem?.shadowRoot?.querySelector<HTMLElement>('[role="menuitem"]')
+    const parentItem = getMenuPanels()[0]?.querySelector<HTMLElement>('web-ui-dropdown-item')
+    const parentControl = parentItem ? (focusedControl(parentItem) as HTMLElement | null) : null
     parentControl?.focus()
-    expect(parentItem?.shadowRoot?.activeElement).toBe(parentControl)
+    expect(parentItem?.shadowRoot?.activeElement, '父项内部的 menuitem 应取得焦点').toBe(parentControl)
 
     parentItem?.click()
     await nextFrame()
@@ -219,30 +188,31 @@ describe('WebUiDropdown 组件（浏览器）', () => {
     await nextFrame()
     await nextFrame()
 
-    expect(getMenus()).toHaveLength(2)
-    expect(getMenus()[1]?.textContent).toContain('PDF')
+    expect(getMenuPanels()).toHaveLength(2)
+    expect(getMenuPanels()[1]?.textContent).toContain('PDF')
 
-    const submenuItem = getMenus()[1]?.querySelector<HTMLElement>('web-ui-dropdown-item')
-    const submenuControl = submenuItem?.shadowRoot?.querySelector<HTMLElement>('[role="menuitem"]')
+    const submenuItem = getMenuPanels()[1]?.querySelector<HTMLElement>('web-ui-dropdown-item')
+    const submenuControl = submenuItem ? (focusedControl(submenuItem) as HTMLElement | null) : null
     expect(submenuItem).toBeTruthy()
     expect(submenuControl).toBeTruthy()
 
     submenuControl!.focus()
     submenuControl!.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true, composed: true }))
-    const closingSubmenu = getMenus()[1]
+    const closingSubmenu = getMenuPanels()[1]
     closingSubmenu?.dispatchEvent(new TransitionEvent('transitionend', { propertyName: 'opacity', bubbles: true }))
     await nextFrame()
     await nextFrame()
 
-    expect(getMenus()).toHaveLength(1)
+    expect(getMenuPanels()).toHaveLength(1)
 
     parentControl!.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, composed: true }))
     await nextFrame()
     await nextFrame()
 
-    expect(getMenus()).toHaveLength(2)
-    expect(getMenus()[1]?.hasAttribute('hidden')).toBe(false)
-    expect(getMenus()[1]?.textContent).toContain('PDF')
+    const reopened = getMenuPanels()
+    expect(reopened).toHaveLength(2)
+    expect(reopened[1]?.hasAttribute('hidden')).toBe(false)
+    expect(reopened[1]?.textContent).toContain('PDF')
   })
 
   it('子菜单退出过渡中可以被键盘重新打开', async () => {
@@ -256,32 +226,32 @@ describe('WebUiDropdown 组件（浏览器）', () => {
     await nextFrame()
     await nextFrame()
 
-    const parentItem = getMenus()[0]?.querySelector<HTMLElement>('web-ui-dropdown-item')
-    const parentControl = parentItem?.shadowRoot?.querySelector<HTMLElement>('[role="menuitem"]')
+    const parentItem = getMenuPanels()[0]?.querySelector<HTMLElement>('web-ui-dropdown-item')
+    const parentControl = parentItem ? (focusedControl(parentItem) as HTMLElement | null) : null
     expect(parentControl).toBeTruthy()
     parentItem?.click()
     await nextFrame()
     await nextFrame()
 
-    const submenu = getMenus()[1]
-    const submenuControl = submenu
-      ?.querySelector<HTMLElement>('web-ui-dropdown-item')
-      ?.shadowRoot?.querySelector<HTMLElement>('[role="menuitem"]')
+    const submenu = getMenuPanels()[1]
+    const submenuItem = submenu?.querySelector<HTMLElement>('web-ui-dropdown-item')
+    const submenuControl = submenuItem ? (focusedControl(submenuItem) as HTMLElement | null) : null
     expect(submenuControl).toBeTruthy()
 
     submenuControl!.focus()
     submenuControl!.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true, composed: true }))
-    expect(submenu?.dataset.wuiPresence).toBe('closing')
 
+    // 退场进行中被重新打开：面板不得被销毁，且最终仍可见。
     parentControl!.focus()
     parentControl!.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, composed: true }))
     submenu?.dispatchEvent(new TransitionEvent('transitionend', { propertyName: 'opacity', bubbles: true }))
     await nextFrame()
     await nextFrame()
 
-    expect(getMenus()).toHaveLength(2)
-    expect(getMenus()[1]?.hasAttribute('hidden')).toBe(false)
-    expect(getMenus()[1]?.textContent).toContain('PDF')
+    const panels = getMenuPanels()
+    expect(panels).toHaveLength(2)
+    expect(panels[1]?.hasAttribute('hidden')).toBe(false)
+    expect(panels[1]?.textContent).toContain('PDF')
   })
 })
 
@@ -300,7 +270,7 @@ describe('WebUiDropdown 在已打开原生 dialog 内（top layer）', () => {
 
     drawer.open = true
     await drawer.updateComplete
-    await waitForDrawerVisible(drawer, drawerDialog)
+    await waitFor(() => drawerDialog.open, 'Expected the drawer dialog to open')
 
     menu.open = true
     await menu.updateComplete
@@ -312,7 +282,6 @@ describe('WebUiDropdown 在已打开原生 dialog 内（top layer）', () => {
     // 面板应被挂到 drawer 的 dialog 上（top layer），而不是 fallback/theme-owned overlay 容器。
     expect(drawerDialog.querySelector('[role="menu"]')).toBeTruthy()
     // 普通 overlay 容器内不应出现该面板。
-    const overlayPanel = document.querySelector('[data-wui-overlay-root]')?.shadowRoot?.querySelector('[role="menu"]')
-    expect(overlayPanel).toBeFalsy()
+    expect(getMenuPanels()).toHaveLength(0)
   })
 })

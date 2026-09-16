@@ -16,9 +16,9 @@ const handoffFields = [
   'Open decisions（未解决决策）'
 ]
 
-// 角色 → 执行体的默认绑定。唯一权威绑定表在根 AGENTS.md「多 Agent 编排」；角色契约各自述执行体。
-// 副本之间的一致性由本文件机械校验，避免任一处改表后静默漂移。默认模型与思考强度是推荐分档（非强制，见 ADR-0011），不参与机械校验。
-// 默认模型与思考强度是推荐分档（非强制，见 ADR-0011），不参与机械校验。
+// 角色 → 执行体的默认绑定表镜像。唯一权威绑定表在根 AGENTS.md「多 Agent 编排」。
+// 本文件只校验各处绑定表副本不静默漂移；角色契约的自述措辞改由 <!-- invariant:role-sections --> 锚点覆盖，
+// 不再用正则钉「X 由 Y 承担」这类句式。默认模型与思考强度是推荐分档（非强制，见 ADR-0011），不参与机械校验。
 const roleBindings = [
   { label: 'Manager', executor: 'Claude Code' },
   { label: 'Designer', executor: 'Claude Code' },
@@ -26,15 +26,11 @@ const roleBindings = [
   { label: 'Biz Coder', executor: 'Codex CLI' },
   { label: 'Reviewer', executor: 'Claude Code' }
 ]
-const executors = roleBindings
-  .map(binding => binding.executor)
-  .filter((value, index, all) => all.indexOf(value) === index)
 // 单元格可能写成 Markdown 链接、加粗或行内代码；归一化后再比对，避免格式变化绕过校验。
 const stripMarkup = value => value.replace(/\[([^\]]*)\]\([^)]*\)/g, '$1').replace(/[*`]/g, '')
 const normalizeRole = value => stripMarkup(value).trim().toLowerCase().replace(/[-_]+/g, ' ').replace(/\s+/g, ' ')
 const normalizeExecutor = value => stripMarkup(value).trim()
 const bindings = new Map(roleBindings.map(binding => [normalizeRole(binding.label), binding]))
-const roleContractFile = label => `.agents/agents/${label.toLowerCase().replace(/ /g, '-')}.md`
 
 // 表头必须精确是「角色/Role」与「执行体/Executor」两列。用精确匹配而不是子串匹配，
 // 避免 Reviewer、Controller 这类含 "role" 的列名被误判成绑定表。
@@ -86,26 +82,8 @@ function checkBindingMirrors() {
         addError(`${file}: ${binding.label} is bound to "${declared}" but the default binding is "${binding.executor}"`)
     }
   }
-
-  // 角色契约必须自述执行体，且不得同时声明另一个执行体。模型与思考强度是推荐分档，不参与校验。
-  for (const binding of roleBindings) {
-    const file = roleContractFile(binding.label)
-    if (!exists(file)) continue
-    const source = read(file)
-    // 自述句允许在执行体后附带模型括注，如「Reviewer 由 **Claude Code**（GLM-5.3 Flash）担任主审」。
-    const executorClause = executor =>
-      `${binding.label}\\s*由\\s*\\*{0,2}${executor}\\*{0,2}(?:\\s*（[^）]*）)?\\s*(?:承担|担任)`
-    if (!new RegExp(executorClause(binding.executor)).test(source))
-      addError(`${file}: must self-declare its executor binding as "${binding.label} 由 ${binding.executor} 承担"`)
-    for (const executor of executors) {
-      if (executor === binding.executor) continue
-      if (new RegExp(executorClause(executor)).test(source))
-        addError(`${file}: ${binding.label} must not also be bound to ${executor}`)
-    }
-  }
 }
 
-// Reviewer 按风险路由执行体后不再有「审查层级」两层结构；这里的自述断言只要求高风险主审执行体。
 // 「二次审查」是单层风险路由之前的旧结构表述；除 ADR 历史快照外不得再出现。
 function checkRetiredReviewStructure() {
   const scope = [
@@ -161,15 +139,11 @@ for (const file of [
   if (!exists(file)) addError(`missing required workflow context file: ${file}`)
 }
 
+// AGENTS.md 的章节标题与叙述措辞不再是契约。入口断言只保留「必经链接 + init 命令」两条；
+// 结构不变量改由 <!-- invariant:... --> 锚点在 audit-instructions --strict 中校验。
 if (exists('AGENTS.md')) {
   const agents = read('AGENTS.md')
-  for (const marker of [
-    '## Mutation Gate',
-    '## 多 Agent 编排',
-    'docs/agents/workflow.md',
-    'agent:workflow init',
-    ...handoffFields
-  ]) {
+  for (const marker of ['docs/agents/workflow.md', 'agent:workflow init']) {
     if (!agents.includes(marker)) addError(`AGENTS.md is missing mandatory marker: ${marker}`)
   }
 }
@@ -190,20 +164,10 @@ if (exists('.agents/agents/manager.md')) {
     addError('.agents/agents/manager.md is missing the Manager workflow gate pointer')
 }
 
+// workflow.md 的章节标题不再逐个钉字；结构不变量由 <!-- invariant:workflow-states --> 等锚点覆盖。
+// 这里只保留必须否决的 retired 模型，防止旧结构换个写法长回来。
 if (exists('docs/agents/workflow.md')) {
   const workflow = read('docs/agents/workflow.md')
-  for (const section of [
-    '## 先建立任务',
-    '## 状态机',
-    '## 角色与执行体',
-    '## 编排模式',
-    '## 角色和边界',
-    '## 并发原则',
-    '## Release 和 hotfix',
-    '## 失败和恢复'
-  ]) {
-    if (!workflow.includes(section)) addError(`docs/agents/workflow.md is missing required section ${section}`)
-  }
   for (const forbidden of ['持久开发 worktree：每个活跃子包', 'Reviewer worktree', 'Harness 选择', 'Agent 启动权限']) {
     if (workflow.includes(forbidden)) addError(`docs/agents/workflow.md contains retired workflow model: ${forbidden}`)
   }
@@ -229,12 +193,17 @@ if (exists('docs/agents/task-packet.md')) {
   }
 }
 
+// 薄适配入口用尺寸契约替代措辞契约：措辞可以随模型换代重写，只要它仍是不复制规则的短入口。
+const CLAUDE_ADAPTER_MAX_CHARACTERS = 800
 if (exists('CLAUDE.md')) {
   const claudeStat = fs.lstatSync(path.join(root, 'CLAUDE.md'))
   const claudeSource = read('CLAUDE.md')
   if (claudeStat.isSymbolicLink()) addError('CLAUDE.md must remain a thin regular-file adapter, not a symlink')
-  if (!claudeSource.includes('薄适配入口') || !claudeSource.includes('AGENTS.md'))
-    addError('CLAUDE.md is missing the shared-entry adapter contract')
+  if (!claudeSource.includes('AGENTS.md')) addError('CLAUDE.md must point at the shared AGENTS.md entry')
+  if (claudeSource.length > CLAUDE_ADAPTER_MAX_CHARACTERS)
+    addError(
+      `CLAUDE.md is ${claudeSource.length} characters; the thin adapter ceiling is ${CLAUDE_ADAPTER_MAX_CHARACTERS}`
+    )
 }
 
 if (exists('.claude/settings.local.json')) {
@@ -401,15 +370,6 @@ const roleProfiles = new Map([
   ['biz-coder.md', 'biz-coder'],
   ['reviewer.md', 'reviewer']
 ])
-const roleSections = [
-  '# Role',
-  '## Identity',
-  '## Mission',
-  '## Responsibilities',
-  '## Boundaries',
-  '## Collaboration',
-  '## Definition of Done'
-]
 const roleFiles = walk('.agents/agents', file => file.endsWith('.md'))
 
 for (const file of roleFiles) {
@@ -420,13 +380,12 @@ for (const file of roleFiles) {
     continue
   }
 
+  // Role Contract 的章节清单不再是硬编码契约；每个文件必须携带 <!-- invariant:role-sections --> 锚点，
+  // 具体章节可以随角色职责演进重写（锚点断言在 audit-instructions --strict 中执行）。
   const source = fs.readFileSync(file, 'utf8')
   const expectedName = roleProfiles.get(filename)
   if (!new RegExp(`^name:\\s*${expectedName}\\s*$`, 'm').test(source))
     addError(`${relative(file)}: frontmatter name must be ${expectedName}`)
-  for (const section of roleSections) {
-    if (!source.includes(`\n${section}\n`)) addError(`${relative(file)}: missing required Role section ${section}`)
-  }
 }
 
 for (const filename of roleProfiles.keys()) {

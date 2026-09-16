@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vite-plus/test'
 
 import '..'
-import { waitForUpdate, expectReflected, cleanupElement } from '@/shared/test-utils'
+import { cleanupElement, contractReflection, queryA11y, waitForUpdate } from '@/shared/test-utils'
 
 import type { WebUiOption } from '..'
 
@@ -17,76 +17,30 @@ const createOption = (attrs?: Record<string, string>, label = 'Option'): WebUiOp
   return el
 }
 
+/** 命名 slot（或默认 slot）实际投影到的节点数——slot 投影是公开契约（ADR-0005 §5）。 */
+function projectedCount(el: WebUiOption, slotName?: string): number {
+  const selector = slotName ? `slot[name="${slotName}"]` : 'slot:not([name])'
+  const slot = queryA11y(el, selector) as HTMLSlotElement | null
+  return slot?.assignedNodes().length ?? 0
+}
+
 describe('WebUiOption 组件', () => {
-  describe('属性：value', () => {
-    it('value 可设置和获取', async () => {
-      const el = createOption()
-      el.value = 'apple'
-      await waitForUpdate(el)
-      expect(el.value).toBe('apple')
-      cleanupElement(el)
-    })
-
-    it('value 反映到 host 属性', async () => {
-      const el = createOption({ value: 'apple' })
-      await waitForUpdate(el)
-      expect(el.getAttribute('value')).toBe('apple')
-      cleanupElement(el)
-    })
-  })
-
-  describe('属性：disabled', () => {
-    it('disabled 属性反射到 host', async () => {
-      const el = createOption()
-      await waitForUpdate(el)
-      expect(el.hasAttribute('disabled')).toBe(false)
-
-      el.disabled = true
-      await waitForUpdate(el)
-      expect(el.hasAttribute('disabled')).toBe(true)
-
-      cleanupElement(el)
-    })
-  })
-
-  describe('属性：selected', () => {
-    it('selected 属性反射到 host', async () => {
-      const el = createOption()
-      await waitForUpdate(el)
-      expect(el.hasAttribute('selected')).toBe(false)
-
-      el.selected = true
-      await waitForUpdate(el)
-      expect(el.hasAttribute('selected')).toBe(true)
-
-      cleanupElement(el)
-    })
-  })
+  contractReflection('WebUiOption 属性反射', () => createOption(), [
+    ['value', 'apple', 'value', 'apple'],
+    ['disabled', true, 'disabled', ''],
+    ['selected', true, 'selected', '']
+  ] as const)
 
   describe('属性：label', () => {
-    it('label 可设置和获取', async () => {
-      const el = createOption()
+    it('显式 label 优先于默认 slot 文本', async () => {
+      const el = createOption({ value: 'a' }, '')
+      el.textContent = 'Slotted'
+      await waitForUpdate(el)
+      expect(el.label, '未设 label 时取默认 slot 文本').toBe('Slotted')
+
       el.label = 'Apple'
       await waitForUpdate(el)
-      expect(el.label).toBe('Apple')
-      cleanupElement(el)
-    })
-
-    it('未设置 label 时回退到默认 slot 文本', async () => {
-      const el = createOption({ value: 'a' }, '')
-      el.textContent = 'Default label'
-      await waitForUpdate(el)
-
-      expect(el.label).toBe('Default label')
-
-      cleanupElement(el)
-    })
-
-    it('label 渲染到 shadow DOM', async () => {
-      const el = createOption({ value: 'a' }, 'Hello World')
-      await waitForUpdate(el)
-
-      expect(el.shadowRoot?.textContent?.trim()).toBe('Hello World')
+      expect(el.label, '显式 label 应覆盖 slot 文本').toBe('Apple')
 
       cleanupElement(el)
     })
@@ -128,47 +82,23 @@ describe('WebUiOption 组件', () => {
   })
 
   describe('插槽：prefix / suffix', () => {
-    it('提供 prefix slot 时渲染 prefix 内容', async () => {
+    it('prefix 与 suffix 按 name 各自投影', async () => {
       const el = createOption({ value: 'a' })
-      el.innerHTML = '<span slot="prefix">P</span>Option A'
+      el.innerHTML = '<span slot="prefix">P</span>Option A<span slot="suffix">S</span>'
       await waitForUpdate(el)
 
-      const prefix = el.querySelector('[slot="prefix"]')
-      expect(prefix).toBeTruthy()
-      expect(prefix!.textContent?.trim()).toBe('P')
+      expect(projectedCount(el, 'prefix')).toBe(1)
+      expect(projectedCount(el, 'suffix')).toBe(1)
 
       cleanupElement(el)
     })
 
-    it('提供 suffix slot 时渲染 suffix 内容', async () => {
-      const el = createOption({ value: 'a' })
-      el.innerHTML = 'Option A<span slot="suffix">S</span>'
+    it('默认 slot 在未设 label 时参与投影', async () => {
+      const el = createOption({ value: 'a' }, '')
+      el.innerHTML = '<span slot="prefix">★</span>Apple<span slot="suffix">10</span>'
       await waitForUpdate(el)
 
-      const suffix = el.querySelector('[slot="suffix"]')
-      expect(suffix).toBeTruthy()
-      expect(suffix!.textContent?.trim()).toBe('S')
-
-      cleanupElement(el)
-    })
-
-    it('无 prefix/suffix 时 label 正常显示', async () => {
-      const el = createOption({ value: 'a' }, 'Hello')
-      await waitForUpdate(el)
-
-      expect(el.label).toBe('Hello')
-      expect(el.shadowRoot?.textContent?.trim()).toContain('Hello')
-
-      cleanupElement(el)
-    })
-
-    it('prefix + label + suffix 同时存在', async () => {
-      const el = createOption({ value: 'a' }, 'Apple')
-      el.innerHTML = '<span slot="prefix">★</span><span slot="suffix">10</span>'
-      await waitForUpdate(el)
-
-      expect(el.querySelector('[slot="prefix"]')?.textContent?.trim()).toBe('★')
-      expect(el.querySelector('[slot="suffix"]')?.textContent?.trim()).toBe('10')
+      expect(projectedCount(el), '未设 label 时默认 slot 承载可见文本').toBe(1)
 
       cleanupElement(el)
     })

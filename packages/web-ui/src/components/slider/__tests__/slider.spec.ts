@@ -1,6 +1,13 @@
 import { describe, expect, it, vi } from 'vite-plus/test'
 
-import { waitForUpdate, spyEvents, expectReflected, cleanupElement, queryA11y } from '@/shared/test-utils'
+import {
+  cleanupElement,
+  contractReflection,
+  expectReflected,
+  queryA11y,
+  spyEvents,
+  waitForUpdate
+} from '@/shared/test-utils'
 
 import '..'
 import type { WebUiSlider } from '..'
@@ -13,19 +20,19 @@ describe('WebUiSlider 组件', () => {
   }
 
   describe('host 属性', () => {
-    it('提供默认值并反射数值属性', async () => {
+    contractReflection('数值属性与 name 反射到宿主', createSlider, [
+      ['value', 20, 'value', '20'],
+      ['min', 10, 'min', '10'],
+      ['max', 30, 'max', '30'],
+      ['step', 2, 'step', '2'],
+      ['name', 'volume', 'name', 'volume']
+    ])
+
+    it('提供默认值', async () => {
       const el = createSlider()
-      el.value = 20
-      el.min = 10
-      el.max = 30
-      el.step = 2
       await waitForUpdate(el)
 
-      expect([el.value, el.min, el.max, el.step]).toEqual([20, 10, 30, 2])
-      expect(el.getAttribute('value')).toBe('20')
-      expect(el.getAttribute('min')).toBe('10')
-      expect(el.getAttribute('max')).toBe('30')
-      expect(el.getAttribute('step')).toBe('2')
+      expect([el.value, el.min, el.max, el.step]).toEqual([0, 0, 100, 1])
 
       cleanupElement(el)
     })
@@ -71,16 +78,6 @@ describe('WebUiSlider 组件', () => {
       const el = createSlider()
 
       expect('glass' in el).toBe(false)
-
-      cleanupElement(el)
-    })
-
-    it('name 属性反射到宿主', async () => {
-      const el = createSlider()
-      el.name = 'volume'
-      await waitForUpdate(el)
-
-      expect(el.getAttribute('name')).toBe('volume')
 
       cleanupElement(el)
     })
@@ -265,12 +262,27 @@ describe('WebUiSlider 组件', () => {
   })
 
   describe('公开方法', () => {
-    it('focus() 和 blur() 存在且可调用', async () => {
+    it('focus() 把焦点移入 role="slider" 元素', async () => {
       const el = createSlider()
       await waitForUpdate(el)
 
-      expect(typeof el.focus).toBe('function')
-      expect(typeof el.blur).toBe('function')
+      el.focus()
+
+      // shadow 内焦点在文档层会重定位到宿主；组件内活动元素用 ShadowRoot.activeElement 观察。
+      expect(el.shadowRoot!.activeElement, 'focus() 应把焦点移到滑块').toBe(queryA11y(el, '[role="slider"]'))
+      expect(document.activeElement, '宿主应成为文档级活动元素').toBe(el)
+
+      cleanupElement(el)
+    })
+
+    it('blur() 移走焦点', async () => {
+      const el = createSlider()
+      await waitForUpdate(el)
+
+      el.focus()
+      el.blur()
+
+      expect(el.shadowRoot!.activeElement, 'blur() 应清空组件内焦点').toBeNull()
 
       cleanupElement(el)
     })

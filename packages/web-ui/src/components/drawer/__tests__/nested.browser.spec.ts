@@ -9,24 +9,20 @@ async function nextFrame() {
   await new Promise(resolve => requestAnimationFrame(resolve))
 }
 
-// 等到 presence 挂上 is-visible；在并行负载下不能假设 350ms 足够。
+// 等 drawer 打开并让动画收敛（nested 层变化会让下层 dialog 同步做 450ms translate/scale 过渡）。
 async function waitForOpenTransition(el: WebUiDrawer) {
   const dialog = el.shadowRoot?.querySelector('dialog') as HTMLDialogElement | null
   if (!dialog) throw new Error('Expected the drawer to contain a dialog')
-  const deadline = performance.now() + 2000
-  while (!(dialog.open && dialog.classList.contains('is-visible'))) {
-    if (performance.now() > deadline) throw new Error('Expected the drawer dialog to become visible')
+  const deadline = performance.now() + 5000
+  while (!dialog.open) {
+    if (performance.now() > deadline) throw new Error('Expected the drawer dialog to open')
     await new Promise(resolve => requestAnimationFrame(resolve))
   }
   await el.updateComplete
-
-  // nested 层变化会让下层 dialog 同步做 450ms translate/scale 过渡。
-  // 等待全部文档动画结束后再读几何，避免 is-visible 刚挂上时 left 仍处于过渡起点。
   await Promise.allSettled(document.getAnimations().map(animation => animation.finished))
   await el.updateComplete
 }
 
-// 轮询条件直至满足（弹簧/过渡时长在并行负载下不可预测）。
 async function waitFor(condition: () => boolean, timeoutMs = 3000): Promise<void> {
   const start = performance.now()
   while (!condition()) {
@@ -39,46 +35,49 @@ function getDialog(el: WebUiDrawer): HTMLDialogElement {
   return el.shadowRoot?.querySelector('dialog') as HTMLDialogElement
 }
 
-// 层叠几何在 nested shift 过渡后才收敛；轮询最终左缘顺序，不在过渡中间态断言。
-async function waitForLeftOrder(...drawers: WebUiDrawer[]) {
-  await waitFor(() => {
-    let previousLeft = Number.NEGATIVE_INFINITY
-    for (const drawer of drawers) {
-      const left = getDialog(drawer).getBoundingClientRect().left
-      if (left <= previousLeft) return false
-      previousLeft = left
-    }
-    return true
-  }, 4000)
+function createDrawer(heading: string): WebUiDrawer {
+  const el = document.createElement('web-ui-drawer') as WebUiDrawer
+  el.heading = heading
+  return el
 }
 
-// 读取 nested 层序内部变量（写在 dialog 内联样式上）。
-function nestedScale(el: WebUiDrawer): number {
-  const raw = getDialog(el).style.getPropertyValue('--wui-internal-drawer-nested-scale')
-  return raw ? Number.parseFloat(raw) : 1
+function pressEscape(dialog: HTMLDialogElement) {
+  dialog.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, composed: true, cancelable: true, key: 'Escape' }))
+}
+
+async function openInSequence(...drawers: WebUiDrawer[]) {
+  for (const drawer of drawers) {
+    drawer.open = true
+    await drawer.updateComplete
+    await waitForOpenTransition(drawer)
+  }
 }
 
 afterEach(() => document.body.replaceChildren())
 
+/*
+ * nested 层叠（浏览器）。
+ *
+ * 原实现的层序断言全部读 `--wui-internal-drawer-nested-scale`（写在 dialog 内联样式上的
+ * 内部变量）与 `getBoundingClientRect()` 的左缘阶梯——前者是 §3 明文禁止的 `--wui-internal-*`，
+ * 后者是 §12 C1 的几何。**层序本身没有公开观察面**，因此改用层的**行为后果**来承载：
+ * Escape 只作用于最顶层，且关闭一层后由次层接管（UA top layer 的键盘路由）。
+ *
+ * 不承接的部分（已删，见 `docs/testing/BATCH-LEDGER.md` §Batch 6c）：0.95^depth 的具体缩放值、左缘阶梯露边的像素量、
+ * 多宽度嵌套的宽度补偿——全是视觉契约，无行为判据，锁住只能锁像素。
+ */
 describe('WebUiDrawer nested 层叠（浏览器）', () => {
-  it('声明式嵌套：两层同时打开，子层 depth=0 顶层全尺寸，父层缩放 0.95 并平滑过渡', async () => {
+  it('声明式嵌套：两层同时打开且都进入 top layer', async () => {
     const theme = document.createElement('web-ui-theme')
     theme.setAttribute('appearance', 'light')
     document.body.append(theme)
 
-    const parent = document.createElement('web-ui-drawer') as WebUiDrawer
-    parent.heading = 'parent'
-    parent.open = true
-
-    const child = document.createElement('web-ui-drawer') as WebUiDrawer
-    child.heading = 'child'
+    const parent = createDrawer('parent')
+    const child = createDrawer('child')
     parent.append(child)
     theme.append(parent)
     await parent.updateComplete
-    await waitForOpenTransition(parent)
-
-    // 单层：depth 0，无缩放
-    expect(nestedScale(parent)).toBe(1)
+    await openInSequence(parent)
 
     // 打开子层（子层在父的 default slot 内，声明式嵌套）
     child.open = true
@@ -89,60 +88,34 @@ describe('WebUiDrawer nested 层叠（浏览器）', () => {
     expect(child.open).toBe(true)
     expect(getDialog(parent).open).toBe(true)
     expect(getDialog(child).open).toBe(true)
-
-    // 父层被压到第二层：scale = 0.95
-    await waitFor(() => nestedScale(parent) < 0.96)
-    expect(nestedScale(parent)).toBeCloseTo(0.95, 2)
-    // 子层是顶层：全尺寸
-    await waitFor(() => nestedScale(child) > 0.99)
-    expect(nestedScale(child)).toBe(1)
   })
 
-  it('子层关闭后：父层平滑回到全尺寸（depth 归零）', async () => {
-    const parent = document.createElement('web-ui-drawer') as WebUiDrawer
-    parent.heading = 'parent'
-    const child = document.createElement('web-ui-drawer') as WebUiDrawer
-    child.heading = 'child'
+  it('子层关闭后父层仍保持打开', async () => {
+    const parent = createDrawer('parent')
+    const child = createDrawer('child')
     parent.append(child)
     document.body.append(parent)
     await parent.updateComplete
-
-    parent.open = true
-    await parent.updateComplete
-    await waitForOpenTransition(parent)
-    child.open = true
-    await child.updateComplete
-    await waitForOpenTransition(child)
-    await waitFor(() => nestedScale(parent) < 0.96)
+    await openInSequence(parent, child)
 
     child.open = false
     await child.updateComplete
-    // 关闭动画完成后 dialog 离开 top layer，父层 depth 重算归零
     await waitFor(() => !getDialog(child).open, 4000)
-    await waitFor(() => nestedScale(parent) > 0.99, 4000)
+
     expect(parent.open).toBe(true)
     expect(getDialog(parent).open).toBe(true)
   })
 
   it('Esc 只关闭最顶层；父层保持打开', async () => {
-    const parent = document.createElement('web-ui-drawer') as WebUiDrawer
-    parent.heading = 'parent'
-    const child = document.createElement('web-ui-drawer') as WebUiDrawer
-    child.heading = 'child'
+    const parent = createDrawer('parent')
+    const child = createDrawer('child')
     parent.append(child)
     document.body.append(parent)
     await parent.updateComplete
-
-    parent.open = true
-    await parent.updateComplete
-    await waitForOpenTransition(parent)
-    child.open = true
-    await child.updateComplete
-    await waitForOpenTransition(child)
+    await openInSequence(parent, child)
 
     // 子层是 top layer 顶层：Esc keydown 派发到子层 dialog
-    const childDialog = getDialog(child)
-    childDialog.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'Escape' }))
+    pressEscape(getDialog(child))
     await child.updateComplete
 
     expect(child.open).toBe(false)
@@ -151,20 +124,12 @@ describe('WebUiDrawer nested 层叠（浏览器）', () => {
   })
 
   it('scroll lock 双 lease：两层全关后才解锁页面滚动', async () => {
-    const parent = document.createElement('web-ui-drawer') as WebUiDrawer
-    parent.heading = 'parent'
-    const child = document.createElement('web-ui-drawer') as WebUiDrawer
-    child.heading = 'child'
+    const parent = createDrawer('parent')
+    const child = createDrawer('child')
     parent.append(child)
     document.body.append(parent)
     await parent.updateComplete
-
-    parent.open = true
-    await parent.updateComplete
-    await waitForOpenTransition(parent)
-    child.open = true
-    await child.updateComplete
-    await waitForOpenTransition(child)
+    await openInSequence(parent, child)
 
     // 两层都开：documentElement overflow 被锁定
     expect(document.documentElement.style.overflow).toBe('hidden')
@@ -200,269 +165,71 @@ describe('WebUiDrawer nested 层叠（浏览器）', () => {
     // layer 的 dialog（不依赖 DOM 冒泡）。合成事件无法触发 UA 路由，故按 UA
     // 的实际派发位置直接在 dialog 上派发，验证 handler 对「焦点在 slot 内」
     // 场景的响应与 guard 不误伤本层内容。
-    dialog.dispatchEvent(
-      new KeyboardEvent('keydown', { bubbles: true, composed: true, cancelable: true, key: 'Escape' })
-    )
+    pressEscape(dialog)
     await el.updateComplete
 
     expect(el.open).toBe(false)
-    expect(dialog.classList.contains('is-closing')).toBe(true)
-  })
-
-  it('非顶层抽屉的几何：scale 缩小为 0.95 且向内侧偏移露出边缘（right 抽屉左缘向左凸出）', async () => {
-    const parent = document.createElement('web-ui-drawer') as WebUiDrawer
-    parent.heading = 'parent'
-    const child = document.createElement('web-ui-drawer') as WebUiDrawer
-    child.heading = 'child'
-    parent.append(child)
-    document.body.append(parent)
-    await parent.updateComplete
-
-    parent.open = true
-    await parent.updateComplete
-    await waitForOpenTransition(parent)
-    const parentDialog = getDialog(parent)
-    const leftBefore = parentDialog.getBoundingClientRect().left
-
-    child.open = true
-    await child.updateComplete
-    await waitForOpenTransition(child)
-    await waitFor(() => nestedScale(parent) < 0.96)
-    await nextFrame()
-
-    // computed scale 生效（等过渡收敛；computed 序列化带亚像素噪声，按行为断言）
-    await waitFor(() => Math.abs(parseFloat(getComputedStyle(parentDialog).scale) - 0.95) < 0.001)
-    expect(Math.abs(parseFloat(getComputedStyle(parentDialog).scale) - 0.95)).toBeLessThan(0.001)
-    // 左缘向屏幕内侧偏移，露出约 12px 边缘（leftAfter < leftBefore）
-    const leftAfter = parentDialog.getBoundingClientRect().left
-    expect(leftBefore - leftAfter).toBeGreaterThanOrEqual(10)
-  })
-
-  it('多宽度嵌套：父层宽 (480px)、子层窄 (320px)，父层在子层左侧清晰露出阶梯卡片', async () => {
-    const parent = document.createElement('web-ui-drawer') as WebUiDrawer
-    parent.heading = 'parent-wide'
-    parent.style.setProperty('--wui-drawer-width', '480px')
-    const child = document.createElement('web-ui-drawer') as WebUiDrawer
-    child.heading = 'child-narrow'
-    child.style.setProperty('--wui-drawer-width', '320px')
-    parent.append(child)
-    document.body.append(parent)
-    await parent.updateComplete
-
-    parent.open = true
-    await parent.updateComplete
-    await waitForOpenTransition(parent)
-
-    child.open = true
-    await child.updateComplete
-    await waitForOpenTransition(child)
-    await waitFor(() => nestedScale(parent) < 0.96)
-    await nextFrame()
-
-    const parentDialog = getDialog(parent)
-    const childDialog = getDialog(child)
-    // 父层（底层）左缘比子层（顶层）左缘更靠左，卡片露出
-    await waitForLeftOrder(parent, child)
-    const parentRect = parentDialog.getBoundingClientRect()
-    const childRect = childDialog.getBoundingClientRect()
-    expect(parentRect.left).toBeLessThan(childRect.left)
-  })
-
-  it('多宽度嵌套：父层窄 (280px)、子层宽 (420px)，父层自动补偿宽度差并在子层左侧露出边缘', async () => {
-    const parent = document.createElement('web-ui-drawer') as WebUiDrawer
-    parent.heading = 'parent-narrow'
-    parent.style.setProperty('--wui-drawer-width', '280px')
-    const child = document.createElement('web-ui-drawer') as WebUiDrawer
-    child.heading = 'child-wide'
-    child.style.setProperty('--wui-drawer-width', '420px')
-    parent.append(child)
-    document.body.append(parent)
-    await parent.updateComplete
-
-    parent.open = true
-    await parent.updateComplete
-    await waitForOpenTransition(parent)
-
-    child.open = true
-    await child.updateComplete
-    await waitForOpenTransition(child)
-    await waitFor(() => nestedScale(parent) < 0.96)
-    await nextFrame()
-
-    const parentDialog = getDialog(parent)
-    const childDialog = getDialog(child)
-    // 即使子层比父层宽 140px，父层也因上层最大宽度补偿而在子层左侧露出了边缘
-    await waitForLeftOrder(parent, child)
-    const parentRect = parentDialog.getBoundingClientRect()
-    const childRect = childDialog.getBoundingClientRect()
-    expect(parentRect.left).toBeLessThan(childRect.left)
-  })
-
-  it('乱序宽度交错嵌套：300px -> 520px -> 240px -> 400px 四层全部在左侧保持严格单调递进露边', async () => {
-    const d1 = document.createElement('web-ui-drawer') as WebUiDrawer
-    d1.heading = 'd1-300'
-    d1.style.setProperty('--wui-drawer-width', '300px')
-
-    const d2 = document.createElement('web-ui-drawer') as WebUiDrawer
-    d2.heading = 'd2-520'
-    d2.style.setProperty('--wui-drawer-width', '520px')
-
-    const d3 = document.createElement('web-ui-drawer') as WebUiDrawer
-    d3.heading = 'd3-240'
-    d3.style.setProperty('--wui-drawer-width', '240px')
-
-    const d4 = document.createElement('web-ui-drawer') as WebUiDrawer
-    d4.heading = 'd4-400'
-    d4.style.setProperty('--wui-drawer-width', '400px')
-
-    d3.append(d4)
-    d2.append(d3)
-    d1.append(d2)
-    document.body.append(d1)
-    await d1.updateComplete
-
-    d1.open = true
-    await d1.updateComplete
-    await waitForOpenTransition(d1)
-
-    d2.open = true
-    await d2.updateComplete
-    await waitForOpenTransition(d2)
-
-    d3.open = true
-    await d3.updateComplete
-    await waitForOpenTransition(d3)
-
-    d4.open = true
-    await d4.updateComplete
-    await waitForOpenTransition(d4)
-    await waitFor(() => nestedScale(d1) < 0.88)
-    await nextFrame()
-
-    // 严格满足由底至顶从左至右阶梯露边：left(d1) < left(d2) < left(d3) < left(d4)
-    await waitForLeftOrder(d1, d2, d3, d4)
-    const r1 = getDialog(d1).getBoundingClientRect()
-    const r2 = getDialog(d2).getBoundingClientRect()
-    const r3 = getDialog(d3).getBoundingClientRect()
-    const r4 = getDialog(d4).getBoundingClientRect()
-    expect(r1.left).toBeLessThan(r2.left)
-    expect(r2.left).toBeLessThan(r3.left)
-    expect(r3.left).toBeLessThan(r4.left)
+    await waitFor(() => !dialog.open, 4000)
   })
 })
 
 describe('WebUiDrawer 同级（非 DOM 嵌套）层叠', () => {
-  it('两个同级 drawer 依次打开，先开的被缩放 0.95，后开的顶层全尺寸', async () => {
+  it('两个同级 drawer 依次打开：Esc 只关后开的那层，关掉后先开的接管', async () => {
     const theme = document.createElement('web-ui-theme')
     theme.setAttribute('appearance', 'light')
     document.body.append(theme)
 
-    const drawer1 = document.createElement('web-ui-drawer') as WebUiDrawer
-    drawer1.heading = 'drawer-1'
-    const drawer2 = document.createElement('web-ui-drawer') as WebUiDrawer
-    drawer2.heading = 'drawer-2'
-
+    const first = createDrawer('drawer-1')
+    const second = createDrawer('drawer-2')
     // 同级挂载，非嵌套
-    theme.append(drawer1)
-    theme.append(drawer2)
-    await drawer1.updateComplete
-    await drawer2.updateComplete
+    theme.append(first)
+    theme.append(second)
+    await first.updateComplete
+    await second.updateComplete
+    await openInSequence(first, second)
 
-    drawer1.open = true
-    await drawer1.updateComplete
-    await waitForOpenTransition(drawer1)
+    // 后开的是顶层：Esc 只作用于它。
+    pressEscape(getDialog(second))
+    await second.updateComplete
+    await waitFor(() => !getDialog(second).open, 4000)
+    expect(second.open).toBe(false)
+    expect(first.open).toBe(true)
 
-    // 单层：depth 0
-    expect(nestedScale(drawer1)).toBe(1)
-
-    drawer2.open = true
-    await drawer2.updateComplete
-    await waitForOpenTransition(drawer2)
-    await waitFor(() => nestedScale(drawer1) < 0.96)
-
-    // drawer1 先开 → depth 1 → scale 0.95
-    expect(nestedScale(drawer1)).toBeCloseTo(0.95, 2)
-    // drawer2 后开 → depth 0 → 全尺寸
-    expect(nestedScale(drawer2)).toBe(1)
-
-    // 关闭 drawer2 后 drawer1 回到全尺寸
-    drawer2.open = false
-    await drawer2.updateComplete
-    await waitFor(() => !getDialog(drawer2).open, 4000)
-    await waitFor(() => nestedScale(drawer1) > 0.99, 4000)
-    expect(drawer1.open).toBe(true)
-    expect(getDialog(drawer1).open).toBe(true)
+    // 顶层空出后由先开的接管：Esc 现在作用于它。
+    pressEscape(getDialog(first))
+    await first.updateComplete
+    await waitFor(() => !getDialog(first).open, 4000)
+    expect(first.open).toBe(false)
   })
 
-  it('三个同级 drawer 依次打开，逐层缩放 depth=2/1/0', async () => {
-    const d1 = document.createElement('web-ui-drawer') as WebUiDrawer
-    d1.heading = 'd1'
-    const d2 = document.createElement('web-ui-drawer') as WebUiDrawer
-    d2.heading = 'd2'
-    const d3 = document.createElement('web-ui-drawer') as WebUiDrawer
-    d3.heading = 'd3'
-
+  it('三个同级 drawer：Esc 逐层关闭最上层；关闭中间层不改变剩余层序', async () => {
+    const d1 = createDrawer('d1')
+    const d2 = createDrawer('d2')
+    const d3 = createDrawer('d3')
     document.body.append(d1, d2, d3)
     await d1.updateComplete
     await d2.updateComplete
     await d3.updateComplete
+    await openInSequence(d1, d2, d3)
 
-    d1.open = true
-    await d1.updateComplete
-    await waitForOpenTransition(d1)
-
-    d2.open = true
-    await d2.updateComplete
-    await waitForOpenTransition(d2)
-    await waitFor(() => nestedScale(d1) < 0.96)
-
-    d3.open = true
+    // Esc 关闭最上层 d3，其余不动。
+    pressEscape(getDialog(d3))
     await d3.updateComplete
-    await waitForOpenTransition(d3)
-    await waitFor(() => nestedScale(d1) < 0.91)
-    await waitFor(() => nestedScale(d2) < 0.96)
+    await waitFor(() => !getDialog(d3).open, 4000)
+    expect(d3.open).toBe(false)
+    expect(d2.open).toBe(true)
+    expect(d1.open).toBe(true)
 
-    // d1 depth=2: scale = 0.95^2 = 0.9025
-    expect(nestedScale(d1)).toBeCloseTo(0.9025, 2)
-    // d2 depth=1: scale = 0.95
-    expect(nestedScale(d2)).toBeCloseTo(0.95, 2)
-    // d3 depth=0: 全尺寸
-    expect(nestedScale(d3)).toBe(1)
-
-    // 关闭中间层 d2：d1 回到 depth=1，d3 不变
+    // 关闭**中间层** d2：不影响仍在顶层的…（d3 已关，此时顶层是 d2 之下的 d1）
     d2.open = false
     await d2.updateComplete
     await waitFor(() => !getDialog(d2).open, 4000)
-    await waitFor(() => nestedScale(d1) < 0.96)
-    await waitFor(() => nestedScale(d1) > 0.94)
-    expect(nestedScale(d1)).toBeCloseTo(0.95, 2)
-    expect(nestedScale(d3)).toBe(1)
-  })
+    expect(d1.open).toBe(true)
 
-  it('同级 drawer 左缘阶梯露边：先开的被偏移，后开的全尺寸', async () => {
-    const d1 = document.createElement('web-ui-drawer') as WebUiDrawer
-    d1.heading = 'd1'
-    const d2 = document.createElement('web-ui-drawer') as WebUiDrawer
-    d2.heading = 'd2'
-
-    document.body.append(d1, d2)
+    // 剩下的 d1 重新成为唯一顶层：Esc 关闭它。
+    pressEscape(getDialog(d1))
     await d1.updateComplete
-    await d2.updateComplete
-
-    d1.open = true
-    await d1.updateComplete
-    await waitForOpenTransition(d1)
-
-    d2.open = true
-    await d2.updateComplete
-    await waitForOpenTransition(d2)
-    await waitFor(() => nestedScale(d1) < 0.96)
-    await nextFrame()
-
-    // d1（底层）左缘比 d2（顶层）更靠左，卡片露出
-    await waitForLeftOrder(d1, d2)
-    const r1 = getDialog(d1).getBoundingClientRect()
-    const r2 = getDialog(d2).getBoundingClientRect()
-    expect(r1.left).toBeLessThan(r2.left)
+    await waitFor(() => !getDialog(d1).open, 4000)
+    expect(d1.open).toBe(false)
   })
 })

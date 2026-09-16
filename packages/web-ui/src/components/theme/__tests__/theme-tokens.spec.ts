@@ -14,13 +14,19 @@ const tokenNames = [...style.matchAll(/(--wui-[a-z0-9-]+):/g)].map(match => matc
 const uniqueTokenNames = [...new Set(tokenNames)]
 
 describe('WebUiTheme token contract', () => {
-  it('使用语义化文本和 focus token', () => {
+  it('使用语义化文本、radius 和 focus token', () => {
     for (const name of [
       '--wui-color-text-secondary',
       '--wui-color-text-tertiary',
       '--wui-color-text-disabled',
       '--wui-color-focus-ring',
-      '--wui-focus-ring-width'
+      '--wui-focus-ring-width',
+      // 三个语义 radius token：theme-radius.browser.spec.ts 被 D2 删除后，
+      // 「theme 定义这三个 token 且它们被文档化」由本文件的两个用例承接
+      //（此处守主题层定义，下面「全局 token 完整同步到双语文档」守文档）。
+      '--wui-radius-control',
+      '--wui-radius-menu',
+      '--wui-radius-overlay'
     ]) {
       expect(uniqueTokenNames).toContain(name)
     }
