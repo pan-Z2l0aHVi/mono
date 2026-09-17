@@ -239,6 +239,8 @@ export class WebUiTheme extends LitElement {
           animation: none;
           mix-blend-mode: normal;
         }
+        ::view-transition-old(${transitionName}) { z-index: ${next === 'dark' ? 1 : 2}; }
+        ::view-transition-new(${transitionName}) { z-index: ${next === 'dark' ? 2 : 1}; }
       `)
     } else {
       styleSheet.replaceSync(`
@@ -247,6 +249,8 @@ export class WebUiTheme extends LitElement {
           mix-blend-mode: normal;
         }
         ::view-transition-image-pair(root) { mix-blend-mode: normal; }
+        ::view-transition-old(root) { z-index: ${next === 'dark' ? 1 : 2}; }
+        ::view-transition-new(root) { z-index: ${next === 'dark' ? 2 : 1}; }
       `)
     }
 
@@ -291,12 +295,14 @@ export class WebUiTheme extends LitElement {
             Math.hypot(Math.max(relative.x, box.width - relative.x), Math.max(relative.y, box.height - relative.y))
           )
           const frames = this._transitionKeyframes(relative.x, relative.y, radius, next)
+          const target =
+            next === 'dark' ? `::view-transition-new(${transitionName})` : `::view-transition-old(${transitionName})`
           animations.push(
-            this.animate(frames, {
+            document.documentElement.animate(frames, {
               duration,
               easing,
               fill: 'both',
-              pseudoElement: `::view-transition-new(${transitionName})`
+              pseudoElement: target
             } as KeyframeAnimationOptions)
           )
           return
@@ -304,7 +310,7 @@ export class WebUiTheme extends LitElement {
 
         const radius = Math.ceil(Math.hypot(Math.max(x, window.innerWidth - x), Math.max(y, window.innerHeight - y)))
         animations.push(
-          this.animate(this._transitionKeyframes(x, y, radius, next), {
+          document.documentElement.animate(this._transitionKeyframes(x, y, radius, next), {
             duration,
             easing,
             fill: 'both',
