@@ -6,7 +6,7 @@
 
 <!-- invariant:workflow-states -->
 
-档 1 与档 2 的任务（判据见「变更风险分级」）必须先完成以下 preflight：
+P0 与 P1 的任务（判据见「变更风险分级」）必须先完成以下 preflight：
 
 1. 查看 `git status --short --branch`，确认当前工作区和目标 worktree 的已有变更归属。
 2. 读取根 `AGENTS.md`、本文件和命中的 rule/guide；进入 workspace 后读取最近的包级 `AGENTS.md`。
@@ -25,19 +25,19 @@
 
 <!-- invariant:risk-tiering -->
 
-分级判据全部可从变更路径、manifest 和 `pnpm find:usages` 输出查证，不依赖主观的「大改/小改」判断。
+风险级别代号为 P0 / P1 / P2（P0 最高），判据全部可从变更路径、manifest 和 `pnpm find:usages` 输出查证，不依赖主观的「大改/小改」判断。
 
-| 档                     | 判据（命中任一即属该档）                                                                                                                                                                                                                          | task state          | 独立 review | approval |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------- | ----------- | -------- |
-| 档 0（免 task state）  | 改动全部落在一个 workspace 内，或只落在 `docs/` 等仓库根文档目录；且不改依赖字段与 lockfile、不改 CI 与 workspace 配置、不改被其它 workspace 消费的导出符号、不改 instruction system 与根 `scripts/*.mjs` 的行为；也不属于 release 或 hotfix 流程 | 不需要              | 不需要      | 不需要   |
-| 档 1（`direct`）       | 跨多个 `apps/*`；公共导出变更但消费者仍在同一 workspace；改动 instruction system、`.agents/` 或根 `scripts/*.mjs` 的行为                                                                                                                          | 需要，模式 `direct` | 按风险决定  | 必须     |
-| 档 2（`orchestrated`） | 跨 workspace 的公共 API/exports/事件/类型契约；依赖、catalog、lockfile、构建配置或 CI；release 或 hotfix；多 worktree 并行                                                                                                                        | 需要，用对应模式    | 必须独立    | 必须     |
+| 级                   | 判据（命中任一即属该级）                                                                                                                                                                                                                          | task state          | 独立 review | approval |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------- | ----------- | -------- |
+| P0（`orchestrated`） | 跨 workspace 的公共 API/exports/事件/类型契约；依赖、catalog、lockfile、构建配置或 CI；release 或 hotfix；多 worktree 并行                                                                                                                        | 需要，用对应模式    | 必须独立    | 必须     |
+| P1（`direct`）       | 跨多个 workspace（`apps/*` / `packages/*`）但不改 P0 所列契约；公共导出变更但消费者仍在同一 workspace；改动 instruction system、`.agents/` 或根 `scripts/*.mjs` 的行为                                                                            | 需要，模式 `direct` | 按风险决定  | 必须     |
+| P2（免 task state）  | 改动全部落在一个 workspace 内，或只落在 `docs/` 等仓库根文档目录；且不改依赖字段与 lockfile、不改 CI 与 workspace 配置、不改被其它 workspace 消费的导出符号、不改 instruction system 与根 `scripts/*.mjs` 的行为；也不属于 release 或 hotfix 流程 | 不需要              | 不需要      | 不需要   |
 
-多档同时命中时取最高档（档 2 > 档 1 > 档 0）。`commit` 本身不参与分档：档 0 的改动提交时同样走正常提交流程，只是不需要先建 task state。
+多级同时命中取最高级（P0 > P1 > P2）。`commit` 本身不参与分级：P2 的改动提交时同样走正常提交流程，只是不需要先建 task state。
 
-判据的机器可查部分：`pnpm find:usages -- <paths...>` 输出的受影响 workspace 只有一个时，档 0 的单 workspace 条件成立；输出含 2 个以上 workspace 且涉及公共导出时进入档 2。
+判据的机器可查：`pnpm find:usages -- <paths...>` 只输出一个受影响 workspace 时，P2 的单 workspace 条件成立；含 2 个以上 workspace 且涉及跨 workspace 消费的公共导出时进入 P0，否则属 P1。
 
-档 0 不建 task state，提交 hook 的 `guard-commit` 找不到 active task 时直接放行。需要独立 review 时脚本要求显式提供不同于 owner 的 reviewer id；纯文档或低风险测试基建可以用 `init --review skip`，但必须在 task packet 记录跳过理由，且仍须有 approval 与验证证据。高风险变更的 review 由 Claude Code 主审，独立小功能快速迭代可由 Codex CLI 审核。
+P2 不建 task state，提交 hook 的 `guard-commit` 找不到 active task 时直接放行。需要独立 review 时脚本要求显式提供不同于 owner 的 reviewer id；纯文档或低风险测试基建可以用 `init --review skip`，但必须在 task packet 记录跳过理由，且仍须有 approval 与验证证据。高风险变更的 review 由 Claude Code 主审，独立小功能快速迭代可由 Codex CLI 审核。
 
 ## 预授权操作
 
