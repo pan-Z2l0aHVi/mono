@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { local } from '@greypan/browser-kit/storage'
-import type { WebUiEvent, WebUiLayout, WebUiSelect } from '@greypan/web-ui'
+import type { WebUiEvent, WebUiLayout, WebUiSelect, WebUiTheme } from '@greypan/web-ui'
 import { useHead } from '@unhead/vue'
-import { computed, onMounted, onScopeDispose, ref } from 'vue'
+import { computed, nextTick, onMounted, onScopeDispose, ref } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 
 type ThemeAppearance = 'light' | 'dark' | 'system'
@@ -43,6 +43,12 @@ const themeMotion = ref(getInitialThemeMotion())
 const bannerVisible = ref(true)
 const sidebarCollapsed = ref(false)
 const sidebarOpen = ref(false)
+const themeRoot = ref<WebUiTheme>()
+const themeSelect = ref<WebUiSelect>()
+let themeSelectPointer: { x: number; y: number } | undefined
+let activeThemeTransition: ViewTransition | undefined
+
+const THEME_TRANSITION_VARS = ['--theme-transition-x', '--theme-transition-y', '--theme-transition-radius'] as const
 
 const mobileSidebarWidth = 'min(320px, 80vw)'
 const mobileSidebarQuery = window.matchMedia('(max-width: 640px)')
@@ -56,12 +62,82 @@ syncMobileSidebarViewport()
 mobileSidebarQuery.addEventListener('change', syncMobileSidebarViewport)
 onScopeDispose(() => mobileSidebarQuery.removeEventListener('change', syncMobileSidebarViewport))
 
-function updateThemeAppearance(event: WebUiEvent<WebUiSelect, 'change'>) {
+function recordThemeSelectPointer(event: PointerEvent) {
+  themeSelectPointer = { x: event.clientX, y: event.clientY }
+}
+
+function resolvedAppearance(appearance: ThemeAppearance): 'light' | 'dark' {
+  if (appearance !== 'system') return appearance
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+}
+
+// 「全局动效」下拉是显式覆盖项，动效语义以 web-ui-theme 的 isReducedMotion 为唯一来源
+function skipThemeTransition(): boolean {
+  return !themeRoot.value || themeRoot.value.isReducedMotion()
+}
+
+// 指针位置只记在主题控件上，键盘选择不会被页面其它地方的点击带偏；无坐标时退回控件中心
+function themeTransitionOrigin(): { x: number; y: number } {
+  if (themeSelectPointer) return themeSelectPointer
+  const box = themeSelect.value?.getBoundingClientRect()
+  if (box?.width) return { x: box.x + box.width / 2, y: box.y + box.height / 2 }
+  return { x: window.innerWidth / 2, y: window.innerHeight / 2 }
+}
+
+function commitThemeAppearance(appearance: ThemeAppearance) {
+  themeAppearance.value = appearance
+  local.set(STORAGE_KEY, appearance)
+}
+
+async function transitionThemeAppearance(appearance: ThemeAppearance, next: 'light' | 'dark') {
+  const root = document.documentElement
+  // 过渡未结束前的新请求直接落地：同方向 class 与圆心变量都是单 owner 资源，
+  // 与其让后续动画互相 skip 并清理掉对方的 state，不如保证状态一步到位。
+  if (activeThemeTransition) {
+    commitThemeAppearance(appearance)
+    return
+  }
+
+  const { x, y } = themeTransitionOrigin()
+  // 半径取到最远角，圆心落在视口任意位置都能覆盖整屏
+  const radius = Math.ceil(Math.hypot(Math.max(x, window.innerWidth - x), Math.max(y, window.innerHeight - y)))
+  root.style.setProperty('--theme-transition-x', `${x}px`)
+  root.style.setProperty('--theme-transition-y', `${y}px`)
+  root.style.setProperty('--theme-transition-radius', `${radius}px`)
+  const direction = next === 'dark' ? 'theme-transition-to-dark' : 'theme-transition-to-light'
+  root.classList.add(direction)
+
+  const transition = document.startViewTransition(async () => {
+    commitThemeAppearance(appearance)
+    await nextTick()
+    await themeRoot.value?.updateComplete
+  })
+  activeThemeTransition = transition
+  // finished 必须先接住：updateCallbackDone reject 时控制流离开 try，不能留 unhandled rejection
+  const finished = transition.finished.catch(() => undefined)
+  try {
+    // 旧快照在 startViewTransition 调用瞬间采集，所以主题变更必须留在回调里；
+    // Vue 的 DOM 更新和 web-ui-theme 的 Lit 渲染都是异步的，新快照要等这两步落地。
+    await transition.updateCallbackDone
+    await finished
+  } finally {
+    if (activeThemeTransition === transition) activeThemeTransition = undefined
+    root.classList.remove(direction)
+    for (const name of THEME_TRANSITION_VARS) root.style.removeProperty(name)
+  }
+}
+
+async function updateThemeAppearance(event: WebUiEvent<WebUiSelect, 'change'>) {
   const appearance = event.currentTarget.value
   if (!isThemeAppearance(appearance)) return
 
-  themeAppearance.value = appearance
-  local.set(STORAGE_KEY, appearance)
+  const previous = resolvedAppearance(themeAppearance.value)
+  const next = resolvedAppearance(appearance)
+  if (previous === next || !document.startViewTransition || skipThemeTransition()) {
+    commitThemeAppearance(appearance)
+    return
+  }
+  await transitionThemeAppearance(appearance, next)
 }
 
 function updateThemeMotion(event: WebUiEvent<WebUiSelect, 'change'>) {
@@ -139,7 +215,7 @@ const navItems: NavItem[] = [
 </script>
 
 <template>
-  <web-ui-theme :appearance="themeAppearance" :motion="themeMotion">
+  <web-ui-theme ref="themeRoot" :appearance="themeAppearance" :motion="themeMotion">
     <div class="min-h-screen bg-[var(--wui-color-page)] text-[var(--wui-color-text)]">
       <!--
         Boolean 动态绑定走 camelCase Property（Vue 对已存在的属性名直接写 DOM property）。
@@ -177,9 +253,11 @@ const navItems: NavItem[] = [
             <web-ui-option value="system" label="跟随系统">跟随系统</web-ui-option>
           </web-ui-select>
           <web-ui-select
+            ref="themeSelect"
             :value="themeAppearance"
             class="[--wui-input-width:120px]"
             aria-label="全局主题"
+            @pointerdown.capture="recordThemeSelectPointer"
             @change="updateThemeAppearance"
           >
             <web-ui-option value="light" label="浅色">浅色</web-ui-option>
