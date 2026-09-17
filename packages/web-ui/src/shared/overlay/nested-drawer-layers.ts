@@ -13,7 +13,7 @@
  * - shift = shrink + depth * 12px（向屏幕内侧偏移，露出阶梯卡片边缘）
  * - 过渡 transform 450ms cubic-bezier(0.22, 1, 0.36, 1)
  *
- * 拖拽与弹簧期间 JS 直接写 dialog.style.transform（优先级高于本机制的
+ * 拖拽与释放后的收尾期间 JS 直接写 dialog.style.transform（优先级高于本机制的
  * CSS 变量组合），顶层才有拖拽，故无冲突。
  */
 

@@ -78,6 +78,53 @@ describe('shared/gesture attachDragGesture', () => {
     el.remove()
   })
 
+  it('onEnd 上报整段手势时长：区别于只描述最后一小段的滑动窗口速度', async () => {
+    const el = document.createElement('div')
+    document.body.append(el)
+
+    const onEnd = vi.fn<(info: { deltaX: number; velocityX: number; duration: number }) => void>()
+    const handle = attachDragGesture(el, { axis: 'x', onEnd })
+
+    el.dispatchEvent(new PointerEvent('pointerdown', { pointerId: 1, clientX: 100, clientY: 0, isPrimary: true }))
+    await new Promise(resolve => setTimeout(resolve, 150))
+    // 先反向拖出，再一次性快速扫回：滑动窗口只反映这段回扫，时长覆盖整段手势。
+    window.dispatchEvent(new PointerEvent('pointermove', { pointerId: 1, clientX: 60, clientY: 0, isPrimary: true }))
+    await new Promise(resolve => setTimeout(resolve, 30))
+    window.dispatchEvent(new PointerEvent('pointermove', { pointerId: 1, clientX: 200, clientY: 0, isPrimary: true }))
+    window.dispatchEvent(new PointerEvent('pointerup', { pointerId: 1, clientX: 200, clientY: 0, isPrimary: true }))
+
+    expect(onEnd).toHaveBeenCalledTimes(1)
+    const info = onEnd.mock.calls[0][0]
+    // 时长覆盖 pointerdown → pointerup 全程，可用于「整段手势的平均速度」。
+    expect(info.duration).toBeGreaterThanOrEqual(150)
+    // 同一时刻的滑窗速度很高，但它只描述最后 30ms 的回扫这一小段。
+    expect(info.velocityX).toBeGreaterThan(1000)
+
+    handle.destroy()
+    el.remove()
+  })
+
+  it('有意图死区时 duration 从越阈那一刻起算，不含此前的悬停', async () => {
+    const el = document.createElement('div')
+    document.body.append(el)
+
+    const onEnd = vi.fn<(info: { duration: number }) => void>()
+    const handle = attachDragGesture(el, { axis: 'x', threshold: 10, onEnd })
+
+    el.dispatchEvent(new PointerEvent('pointerdown', { pointerId: 1, clientX: 100, clientY: 0, isPrimary: true }))
+    // 死区内的悬停：不属于拖拽轨迹，不应计入 duration。
+    await new Promise(resolve => setTimeout(resolve, 300))
+    window.dispatchEvent(new PointerEvent('pointermove', { pointerId: 1, clientX: 120, clientY: 0, isPrimary: true }))
+    await new Promise(resolve => setTimeout(resolve, 40))
+    window.dispatchEvent(new PointerEvent('pointerup', { pointerId: 1, clientX: 120, clientY: 0, isPrimary: true }))
+
+    expect(onEnd).toHaveBeenCalledTimes(1)
+    expect(onEnd.mock.calls[0][0].duration).toBeLessThan(250)
+
+    handle.destroy()
+    el.remove()
+  })
+
   it('threshold 意图死区：移动距离不足 threshold 时不触发 onMove', () => {
     const el = document.createElement('div')
     document.body.append(el)
