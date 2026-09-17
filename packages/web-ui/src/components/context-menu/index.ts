@@ -31,6 +31,7 @@ import {
 } from '@/shared/menu-portal/menu-tree'
 import { dispatchOpenChangeEvent } from '@/shared/open-state'
 import { overlayComposition } from '@/shared/overlay/composition'
+import { defineOverlayEscapeDismiss } from '@/shared/overlay/escape-dismiss'
 import { defineOverlayPositioningGeneration } from '@/shared/overlay/positioning-generation'
 import { hideOverlayPresence, showOverlayPresence } from '@/shared/overlay/presence'
 import { defineScrollLockLease } from '@/shared/scroll-lock/scroll-lock'
@@ -105,6 +106,16 @@ export class WebUiContextMenu extends LitElement {
     },
     closeDeepestOrAll: () => this._closeLastSubmenuOrMenu()
   }
+  /*
+   * Escape 由共享仲裁者统一归属（issue #120 Block 1）。登记根面板：子菜单在逻辑组合树
+   * 上是它的后代；关闭动作仍走 closeDeepestOrAll（最深子菜单优先）。
+   */
+  private readonly _escape = defineOverlayEscapeDismiss().make({
+    isConnected: () => this.isConnected,
+    isOpen: () => this._isOpen,
+    isEscapeCloseEnabled: () => true,
+    requestClose: () => this._keyboardDelegate.closeDeepestOrAll()
+  })
   private readonly _menuItemAnchors = new Map<HTMLElement, Comment>()
   private readonly _scrollLock = defineScrollLockLease().make()
   private readonly _userOpenChange = new UserChangeController()
@@ -151,6 +162,7 @@ export class WebUiContextMenu extends LitElement {
     this._menuPositionGeneration.invalidate()
     this._outsideClickGuard.dispose()
     this._hoverBinder.dispose()
+    this._escape.dispose()
     this._scrollLock.release()
     if (this._menu) overlayComposition.unregisterPanel(this._menu.panel)
     this._returnItemsToSlot()
@@ -180,6 +192,7 @@ export class WebUiContextMenu extends LitElement {
           this._menu.panel.setAttribute('aria-label', '上下文菜单')
           this._menu.panel.addEventListener('click', this._onMenuClick)
           overlayComposition.registerPanel(this._menu.panel)
+          this._escape.setPanel(this._menu.panel)
         }
         // 父项始终留在 menu.content 内，观察它即可覆盖各级子菜单在打开期间的内容重建。
         this._contentObserver.observe(this._menu.content, { childList: true, subtree: true })
@@ -192,6 +205,7 @@ export class WebUiContextMenu extends LitElement {
         })
       } else {
         this._syncScrollLock(false)
+        this._escape.setPanel(null)
         this._contentObserver.disconnect()
         this._menuPositionGeneration.invalidate()
         this._refreshScheduled = false

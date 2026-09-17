@@ -9,6 +9,7 @@ import { normalizeLiteral, normalizeNumber } from '@/shared/normalize'
 import { dispatchOpenChangeEvent } from '@/shared/open-state'
 import { defineAnchoredPanel } from '@/shared/overlay/anchored-panel'
 import { overlayComposition } from '@/shared/overlay/composition'
+import { defineOverlayEscapeDismiss } from '@/shared/overlay/escape-dismiss'
 import { defineOverlayLifecycle } from '@/shared/overlay/lifecycle'
 import { FLOATING_PLACEMENTS } from '@/shared/overlay/placement-props'
 import { defineOverlayPortal } from '@/shared/overlay/portal'
@@ -74,6 +75,19 @@ export class WebUiPopover extends LitElement {
     isConnected: () => this.isConnected,
     isOpen: () => this.open
   })
+  /**
+   * Escape 由共享仲裁者统一归属（issue #120 Block 1）：本组件不再自行监听 keydown，
+   * 只声明「我开着、面板是哪个、怎么关」，由仲裁者决定一次 Escape 关谁。
+   */
+  private readonly _escape = defineOverlayEscapeDismiss().make({
+    isConnected: () => this.isConnected,
+    isOpen: () => this.open,
+    isEscapeCloseEnabled: () => this.trigger !== 'manual',
+    requestClose: () => {
+      this._userOpenChange.mark()
+      this.open = false
+    }
+  })
   private readonly _panel = defineAnchoredPanel().make({
     getAnchor: () => this.shadowRoot?.querySelector<HTMLElement>('.popover-trigger') ?? null,
     getLocalPanel: () => this.shadowRoot?.querySelector<HTMLElement>('.popover-panel') ?? null,
@@ -94,7 +108,6 @@ export class WebUiPopover extends LitElement {
     super.connectedCallback()
     this._lifecycle.resume()
     document.addEventListener('click', this._onClickOutside)
-    document.addEventListener('keydown', this._onKeydown)
     this.addEventListener('focusout', this._onFocusOut)
     this._syncTriggerListeners()
   }
@@ -120,11 +133,11 @@ export class WebUiPopover extends LitElement {
   override disconnectedCallback() {
     super.disconnectedCallback()
     document.removeEventListener('click', this._onClickOutside)
-    document.removeEventListener('keydown', this._onKeydown)
     this.removeEventListener('focusout', this._onFocusOut)
     this.removeEventListener('pointerenter', this._onPointerEnter)
     this.removeEventListener('pointerleave', this._onPointerLeave)
     this._lifecycle.dispose()
+    this._escape.dispose()
     clearTimeout(this._showTimer)
     clearTimeout(this._hideTimer)
     this._panel.dispose()
@@ -204,6 +217,7 @@ export class WebUiPopover extends LitElement {
     const panel = this._panel.getPanel()
     // popover host 才是稳定组合 owner：trigger 可能被 slot 重定向，portal 面板与宿主分离。
     if (panel) overlayComposition.registerPanelFromAncestry(panel, this)
+    this._escape.setPanel(panel ?? null)
   }
 
   private _migratableContentNodes(nodes: Node[]): Node[] {
@@ -232,6 +246,7 @@ export class WebUiPopover extends LitElement {
   }
 
   private async _closeOverlay() {
+    this._escape.setPanel(null)
     await this._panel.close(() => this.open)
   }
 
@@ -314,16 +329,6 @@ export class WebUiPopover extends LitElement {
       },
       { expectedOpen: true }
     )
-  }
-
-  private _onKeydown = (e: KeyboardEvent) => {
-    if (!this.open) return
-    if (this.trigger === 'manual') return
-    if (e.key === 'Escape') {
-      this._userOpenChange.mark()
-      this.open = false
-      e.preventDefault()
-    }
   }
 
   private _onPointerEnter = (e: PointerEvent) => {

@@ -5,6 +5,8 @@ import '@/components/button'
 import glass from '@/assets/glass.css?inline'
 import { UserChangeController } from '@/shared/events/user-change'
 import { dispatchOpenChangeEvent } from '@/shared/open-state'
+import { overlayComposition } from '@/shared/overlay/composition'
+import { defineOverlayEscapeDismiss } from '@/shared/overlay/escape-dismiss'
 import { defineNativeDialogPresence } from '@/shared/overlay/native-dialog-presence'
 import { defineScrollLockLease } from '@/shared/scroll-lock/scroll-lock'
 
@@ -29,6 +31,24 @@ export class WebUiDialog extends LitElement {
   @state() private _hasBody = false
   private readonly _userOpenChange = new UserChangeController()
 
+  /*
+   * Escape 由共享仲裁者统一归属（issue #120 Block 1）。dialog 的 Escape 原本只走原生
+   * cancel 事件：仲裁者会在 keydown 上 preventDefault 压掉原生关闭请求并 stopPropagation，
+   * 因此这里必须自己表达关闭语义（controlled 只派发请求）。
+   */
+  private readonly _escape = defineOverlayEscapeDismiss().make({
+    isConnected: () => this.isConnected,
+    isOpen: () => this.open,
+    isEscapeCloseEnabled: () => !this.noEscapeClose,
+    requestClose: () => {
+      if (this.controlled) {
+        this.emitOpenChange(false)
+        return
+      }
+      this._userOpenChange.mark()
+      this.close()
+    }
+  })
   private readonly _scrollLock = defineScrollLockLease().make()
   private readonly _presence = defineNativeDialogPresence().make({
     getDialog: () => this.dialog,
@@ -47,6 +67,18 @@ export class WebUiDialog extends LitElement {
     if (props.has('open')) {
       if (this._userOpenChange.consume()) this.emitOpenChange()
       this._presence.sync(this.open)
+      // 原生 dialog 登记为 overlay panel：挂在它上面的 portal 面板成为本层后代，
+      // Escape 仲裁据此判出最内层（issue #120 Block 1）。
+      const dialog = this.dialog
+      if (dialog) {
+        if (this.open) {
+          overlayComposition.registerPanelFromAncestry(dialog, this)
+          this._escape.setPanel(dialog)
+        } else {
+          overlayComposition.unregisterPanel(dialog)
+          this._escape.setPanel(null)
+        }
+      }
     }
     if (props.has('open') || props.has('noScrollLock')) this._syncScrollLock()
   }
@@ -55,6 +87,7 @@ export class WebUiDialog extends LitElement {
     super.disconnectedCallback()
     this._presence.dispose()
     this._scrollLock.release()
+    this._escape.dispose()
   }
 
   // 以模态方式打开对话框（命令式）

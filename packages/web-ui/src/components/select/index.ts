@@ -19,6 +19,7 @@ import {
 import { defineOptionPortal } from '@/shared/option-portal'
 import { defineAnchoredPanel } from '@/shared/overlay/anchored-panel'
 import { overlayComposition } from '@/shared/overlay/composition'
+import { defineOverlayEscapeDismiss } from '@/shared/overlay/escape-dismiss'
 import { applyOverlayVariables, defineOverlayPortal } from '@/shared/overlay/portal'
 import type { OverlayContainer, OverlayPortal } from '@/shared/overlay/portal'
 import { defineScrollLockLease } from '@/shared/scroll-lock/scroll-lock'
@@ -113,6 +114,17 @@ export class WebUiSelect extends FormAssociated(LitElement) {
       this._syncActiveOption()
     }
   })
+  /*
+   * Escape 由共享仲裁者统一归属（issue #120 Block 1）：本组件不再在 keydown 里自行关闭，
+   * 只声明「我开着、面板是哪个、怎么关」。宿主级监听在 portal 模式下收不到面板内的
+   * Escape，正是原实现的缺陷来源。
+   */
+  private readonly _escape = defineOverlayEscapeDismiss().make({
+    isConnected: () => this.isConnected,
+    isOpen: () => this._isOpen,
+    isEscapeCloseEnabled: () => !this._isDisabled,
+    requestClose: () => this._close()
+  })
   private readonly _panel = defineAnchoredPanel().make({
     getAnchor: () => this.shadowRoot?.querySelector<HTMLElement>('.select-trigger') ?? null,
     getLocalPanel: () => this.shadowRoot?.querySelector<HTMLElement>('.select-overlay') ?? null,
@@ -172,6 +184,7 @@ export class WebUiSelect extends FormAssociated(LitElement) {
     this._portalContent = undefined
     this._close()
     this._panel.dispose()
+    this._escape.dispose()
     this._scrollLock.release()
   }
 
@@ -289,13 +302,8 @@ export class WebUiSelect extends FormAssociated(LitElement) {
   private _onKeydown = (e: KeyboardEvent) => {
     if (this._isDisabled) return
 
+    // Escape 不在本组件处理：由共享仲裁者在 document 捕获阶段归属（issue #120 Block 1）。
     switch (e.key) {
-      case 'Escape':
-        if (this._isOpen) {
-          this._close()
-          e.preventDefault()
-        }
-        break
       case 'ArrowDown':
         e.preventDefault()
         if (!this._isOpen) {
@@ -413,6 +421,7 @@ export class WebUiSelect extends FormAssociated(LitElement) {
 
   private _openOverlay(isKeyboardNavigation = false) {
     this._panel.open(isKeyboardNavigation)
+    this._escape.setPanel(this._panel.getPanel() ?? null)
   }
 
   private _createPortal(): OverlayPortal {
@@ -453,6 +462,7 @@ export class WebUiSelect extends FormAssociated(LitElement) {
   }
 
   private async _closeOverlay() {
+    this._escape.setPanel(null)
     const closed = await this._panel.close(() => this._isOpen)
     // portal 已随关闭 dispose，与 autocomplete 对齐同步失效引用
     if (closed) {
