@@ -52,11 +52,11 @@ const DRAG_FLICK_VELOCITY = 500
 const DRAG_MIN_VELOCITY_SPAN_MS = 50
 const DRAG_REVERSE_CANCEL_THRESHOLD = 10
 const DRAG_REQUEST_WINDOW_MS = 120
-// 热区外扩带内的轻点判定距离：自抓取瞬间起的净位移未越过该值视为轻点，
-// 沿用该区域改造前「点遮罩关闭」的语义（对齐 _dragCloseThreshold 的 10px 下限量级）。
-const DRAG_ZONE_TAP_DISTANCE = 10
-// --wui-drawer-drag-zone-outset 的解析失败回退值，与 style.css 的 fallback 保持一致。
-const DRAG_ZONE_OUTSET_FALLBACK_PX = 12
+// 遮罩点击（click 链路）的轻点判定距离：按下起点到 click 坐标的欧氏位移未越过该值
+// 视为轻点，沿用「点遮罩关闭」语义（对齐 _dragCloseThreshold 的 10px 下限量级）。
+// 必须用欧氏长度（而非仅主轴分量）：只看主轴会让「主轴不动、垂直大幅滑动」的
+// press–drag–release 链路仍落在窗口内被误读成轻点。
+const BACKDROP_TAP_DISTANCE = 10
 
 /*
  * 释放后的收尾（弹回打开位 / 滑出到闭合位）由 CSS transition 接管（issue #123）：
@@ -213,9 +213,6 @@ export class WebUiDrawer extends LitElement {
 
   // ===== 拖拽关闭手势状态 =====
   private _dragGesture: DragGestureHandle | null = null
-  // pointerdown 落在热区向 mask 侧外扩的 band 内时置位。band 覆盖面板边缘外的遮罩区域，
-  // 改造前按在这里松手走「遮罩点击关闭」；外扩后手势接管，轻点仍保留关闭语义（onEnd 消费）。
-  private _dragPressInBand = false
   // pointerdown 时刻已存在的闭合方向位移（从弹回动画中抓取时非 0）。
   private _dragInitialOffset = 0
   private _dragOffset = 0
@@ -277,27 +274,6 @@ export class WebUiDrawer extends LitElement {
     return Number.isFinite(parsed) ? parsed : 0
   }
 
-  // 热区向 mask 侧外扩的宽度（同名 CSS 变量由 consumer 覆盖；解析失败回退 CSS 默认值）。
-  private _readDragZoneOutset(dialog: HTMLDialogElement): number {
-    const raw = getComputedStyle(dialog).getPropertyValue('--wui-drawer-drag-zone-outset')
-    const parsed = Number.parseFloat(raw)
-    return Number.isFinite(parsed) ? parsed : DRAG_ZONE_OUTSET_FALLBACK_PX
-  }
-
-  // 按下点是否在热区外扩带内：位于热区所在的那条面板边之外、且越出距离不超过 outset。
-  // 闭合方向 sign 决定热区贴哪条边：right/bottom 抽屉热区贴左/上缘（mask 在 rect 外侧的
-  // left/top 方向），left/top 抽屉热区贴右/下缘。band 之外的远处坐标（如合成事件的任意
-  // clientX）不算 band，轻点关闭语义不适用。
-  private _isPressInDragBand(clientX: number, clientY: number, rect: DOMRect, outset: number): boolean {
-    if (outset <= 0) return false
-    if (this._dragAxis === 'x') {
-      const beyond = this._dragCloseSign > 0 ? rect.left - clientX : clientX - rect.right
-      return beyond > 0 && beyond <= outset
-    }
-    const beyond = this._dragCloseSign > 0 ? rect.top - clientY : clientY - rect.bottom
-    return beyond > 0 && beyond <= outset
-  }
-
   // 闭合方向上的完全出屏距离：抽屉尺寸 + 浮动留边（headless 下即尺寸本身）。
   // CSS 闭合态 transform、controlled 悬停终态与弹簧终点共用同一数学，避免衔接跳变。
   private _dragCloseDistance(dialog: HTMLDialogElement): number {
@@ -338,11 +314,6 @@ export class WebUiDrawer extends LitElement {
     // is-visible 由 presence 在 showModal 后一帧加上；就位前（打开极早期）忽略。
     // 就位后即使 enter 过渡仍在进行也允许抓取，起始位移从当前计算值续接。
     if (!dialog.classList.contains('is-visible')) return
-
-    // band 判定用含当前 transform 的 getBoundingClientRect：与按下点同帧基准，
-    // enter 过渡中被抓取时位置语义仍然一致。
-    const panelRect = dialog.getBoundingClientRect()
-    this._dragPressInBand = this._isPressInDragBand(e.clientX, e.clientY, panelRect, this._readDragZoneOutset(dialog))
 
     // 先读取动画中的当前位移再取消弹回动画，避免取消后回跳到内联样式值。
     const currentTransform = getComputedStyle(dialog).transform
@@ -407,16 +378,6 @@ export class WebUiDrawer extends LitElement {
         // 距离分支同样用净位移，不是绝对位置：抓取瞬间停在哪里都不算「已经拖过一半」。
         // `_dragOffset` 只留给收尾的起点使用。
         const shouldClose = displacement > this._dragCloseThreshold(size) || flicked
-
-        // 外扩带按压的轻点沿用「点遮罩关闭」语义（noBackdropClose 时该区域不接管关闭）。
-        // 位移越过 tap 距离即视为真实拖拽，交给下方正常判定——band 内朝 mask 快甩弹回，
-        // 正是本次外扩要修复的误关场景。
-        if (this._dragPressInBand && Math.abs(displacement) <= DRAG_ZONE_TAP_DISTANCE) {
-          if (!this.noBackdropClose) {
-            this._closeFromUser()
-            return
-          }
-        }
 
         if (shouldClose) this._settleToClose(dialog, velocity)
         else this._settleRebound(dialog, velocity, this._dragOffset)
@@ -847,11 +808,37 @@ export class WebUiDrawer extends LitElement {
     this.open = false
   }
 
+  /*
+   * 遮罩点击（backdrop click）的按-放链路回溯。
+   *
+   * 浏览器对「按下 → 拖动 → 松手」生成的 click 落在起点与松手点 DOM 的**共同祖先**
+   * 上：从面板内容、拖拽热区甚至遮罩本处开始拖拽、松手落在遮罩上时，click 的
+   * target 都是 dialog，与真正的轻点遮罩从 click 自身无法区分（真实鼠标/触摸下
+   * 必现的误关路径，合成事件不派发 click 故自动化易漏测）。因此在 dialog 的
+   * pointerdown 记录按下起点与是否落在遮罩上，click 时回溯校验：
+   * - 按下起点不在遮罩上（从面板内容/热区开始的链路）→ 不是点遮罩，忽略；
+   * - 按下到松手位移超过轻点量级 → 是拖拽松手而非点击，忽略；
+   * 两者都通过才沿用「点遮罩关闭」语义。
+   */
+  private _backdropPress: { onMask: boolean; x: number; y: number } | null = null
+
+  private handleDialogPointerDown(e: PointerEvent) {
+    this._backdropPress = { onMask: e.target === e.currentTarget, x: e.clientX, y: e.clientY }
+  }
+
   private handleBackdropClick(e: MouseEvent) {
     if (e.target !== (e.currentTarget as HTMLDialogElement)) return
     if (this.noBackdropClose) return
     // 拖拽进行中 pointer capture 使 click 落在 dialog 上，忽略以避免与手势竞争。
     if (this._isDragging()) return
+    // detail 为 0 表示这次 click 不来自指针（键盘激活、程序化 .click()）：
+    // pointerdown 记录可能是上一次指针交互的残留，不能据此判定遮罩点击
+    //（对齐 image-preview 的既有守卫）。
+    if (e.detail === 0) return
+    const press = this._backdropPress
+    this._backdropPress = null
+    if (!press || !press.onMask) return
+    if (Math.hypot(e.clientX - press.x, e.clientY - press.y) > BACKDROP_TAP_DISTANCE) return
     this._closeFromUser()
   }
 
@@ -885,6 +872,7 @@ export class WebUiDrawer extends LitElement {
         @cancel=${this.handleCancel}
         @close=${this.handleNativeClose}
         @click=${this.handleBackdropClick}
+        @pointerdown=${this.handleDialogPointerDown}
         @keydown=${this.handleKeydown}
         @transitionend=${this.handleTransitionEnd}
       >

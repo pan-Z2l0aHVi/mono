@@ -285,10 +285,15 @@ describe('WebUiDrawer 拖拽关闭（浏览器）', () => {
     expect(el.open).toBe(true)
     expect(events).toHaveLength(1)
 
-    // 悬停窗口内的重复关闭意图：不再派发第二次请求
+    // 悬停窗口内的重复关闭意图：不再派发第二次请求。
+    // 遮罩关闭是「pointerdown 落在遮罩 + 近静止 click」的指针链路；detail 为 0 的
+    // dialog.click() 不来自指针，会被 drawer 忽略（对齐 image-preview 的守卫）。
     const dialog = getDialog(el)
     dialog.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'Escape' }))
-    dialog.click()
+    dialog.dispatchEvent(
+      new PointerEvent('pointerdown', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 20, clientY: 20 })
+    )
+    dialog.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1, clientX: 20, clientY: 20 }))
     await el.updateComplete
     expect(events).toHaveLength(1)
 
@@ -758,113 +763,104 @@ describe('WebUiDrawer 拖拽关闭（浏览器）', () => {
   })
 
   /*
-   * 热区外扩带（--wui-drawer-drag-zone-outset，默认 12px）：
-   * 瞄准胶囊的按下点经常落在面板边缘之外 1–2px，旧几何下该点属于遮罩，整段
-   * 「按下 → 拖动 → 松手」退化为一次遮罩点击拖拽，松手被遮罩点击关闭（真实鼠标
-   * 下必现，合成事件不派发 click 故此前自动化全部漏测）。外扩后手势接管该带。
+   * 遮罩点击的按-放链路回溯：浏览器对「按下 → 拖动 → 松手」生成的 click 落在
+   * 起点与松手点的**共同祖先** dialog 上，与真正的轻点遮罩从 click 自身无法区分
+   * （真实指针下必现的误关路径，§C1/C2）。组件在 dialog 的 pointerdown 记录按下
+   * 起点与坐标，click 只有「起点在遮罩上且位移在轻点量级内」才关闭。
    */
-
-  // 在面板边缘外 offset 处按下并完成一次拖拽（真实坐标参与 band 判定）。
-  async function dragFromBand(el: WebUiDrawer, offsetX: number, delta: Delta, steps = 10) {
-    const zone = getDragZone(el)
-    const startX = getDialog(el).getBoundingClientRect().left + offsetX
-    const startY = 300
-    zone.dispatchEvent(
-      new PointerEvent('pointerdown', {
-        bubbles: true,
-        pointerId: 1,
-        isPrimary: true,
-        clientX: startX,
-        clientY: startY
-      })
-    )
-    await el.updateComplete
-    for (let step = 1; step <= steps; step += 1) {
-      zone.dispatchEvent(
-        new PointerEvent('pointermove', {
-          bubbles: true,
-          pointerId: 1,
-          isPrimary: true,
-          clientX: startX + (delta.x * step) / steps,
-          clientY: startY + (delta.y * step) / steps
-        })
-      )
-      await new Promise(resolve => setTimeout(resolve, 32))
+  describe('遮罩点击链路回溯', () => {
+    function backdropDialog(el: WebUiDrawer): HTMLDialogElement {
+      return getDialog(el)
     }
-    await el.updateComplete
-    zone.dispatchEvent(
-      new PointerEvent('pointerup', {
-        bubbles: true,
-        pointerId: 1,
-        isPrimary: true,
-        clientX: startX + delta.x,
-        clientY: startY + delta.y
-      })
-    )
-    await el.updateComplete
-  }
+    function pressOn(el: WebUiDrawer, target: HTMLElement, x: number, y: number) {
+      target.dispatchEvent(
+        new PointerEvent('pointerdown', { bubbles: true, pointerId: 1, isPrimary: true, clientX: x, clientY: y })
+      )
+      return el.updateComplete
+    }
 
-  it('外扩带内按下（边缘外 3px）向 mask 快甩松手：弹回打开位，不再被遮罩点击关闭', async () => {
-    const el = createDrawer()
-    el.draggable = true
-    el.open = true
-    await el.updateComplete
-    await waitForOpenTransition(el)
+    it('从面板内容开始的 press–release 链路补发到 dialog 的 click：不关闭', async () => {
+      const el = createDrawer()
+      el.open = true
+      await el.updateComplete
+      await waitForOpenTransition(el)
 
-    const events = openChangeEvents(el)
-    // 旧几何下该按下点属于遮罩，松手必被遮罩点击关闭（用户实测的误关路径）。
-    await dragFromBand(el, -3, { x: -400, y: 0 }, 2)
-    await settled(el)
+      const events = openChangeEvents(el)
+      const body = el.shadowRoot?.querySelector('.wui-drawer-body') as HTMLElement
+      const dialog = backdropDialog(el)
+      const rect = dialog.getBoundingClientRect()
+      // 按下起点在面板内容上，click 带遮罩区域的松手坐标到达 dialog（浏览器按
+      // 共同祖先派发的真实行为）：起点不在遮罩上，不得关闭。
+      await pressOn(el, body, rect.left + 40, rect.top + 60)
+      dialog.dispatchEvent(
+        new MouseEvent('click', { bubbles: true, detail: 1, clientX: rect.left - 80, clientY: rect.top + 60 })
+      )
+      await el.updateComplete
+      await settled(el)
 
-    expect(el.open).toBe(true)
-    expect(getDialog(el).open).toBe(true)
-    expect(events).toHaveLength(0)
-  })
+      expect(el.open).toBe(true)
+      expect(events).toHaveLength(0)
+    })
 
-  it('外扩带内轻点：位移未越过 tap 距离，沿用遮罩点击关闭语义', async () => {
-    const el = createDrawer()
-    el.draggable = true
-    el.open = true
-    await el.updateComplete
-    await waitForOpenTransition(el)
+    it('从遮罩开始的拖拽链路（位移超过轻点量级）的 click：不关闭', async () => {
+      const el = createDrawer()
+      el.open = true
+      await el.updateComplete
+      await waitForOpenTransition(el)
 
-    const events = openChangeEvents(el)
-    await dragFromBand(el, -3, { x: 0, y: 0 }, 1)
-    // 关闭管线带退出过渡：`open` 先落 false，原生 dialog 在过渡结束后才退出 top layer。
-    await waitFor(() => !el.open && !getDialog(el).open)
+      const events = openChangeEvents(el)
+      const dialog = backdropDialog(el)
+      const rect = dialog.getBoundingClientRect()
+      // 按下在遮罩上、拖出 100px 后松手：拖拽松手不是点遮罩。
+      await pressOn(el, dialog, rect.left - 60, rect.top + 60)
+      dialog.dispatchEvent(
+        new MouseEvent('click', { bubbles: true, detail: 1, clientX: rect.left - 160, clientY: rect.top + 60 })
+      )
+      await el.updateComplete
+      await settled(el)
 
-    expect(events.map(event => event.detail.open)).toEqual([false])
-  })
+      expect(el.open).toBe(true)
+      expect(events).toHaveLength(0)
+    })
 
-  it('外扩带内轻点在 noBackdropClose 下不关闭：band 不接管遮罩关闭语义', async () => {
-    const el = createDrawer()
-    el.draggable = true
-    el.noBackdropClose = true
-    el.open = true
-    await el.updateComplete
-    await waitForOpenTransition(el)
+    it('遮罩轻点（pointerdown 起点在遮罩 + 近静止 click）：仍关闭', async () => {
+      const el = createDrawer()
+      el.open = true
+      await el.updateComplete
+      await waitForOpenTransition(el)
 
-    const events = openChangeEvents(el)
-    await dragFromBand(el, -3, { x: 0, y: 0 }, 1)
-    await settled(el)
+      const events = openChangeEvents(el)
+      const dialog = backdropDialog(el)
+      const rect = dialog.getBoundingClientRect()
+      await pressOn(el, dialog, rect.left - 60, rect.top + 60)
+      dialog.dispatchEvent(
+        new MouseEvent('click', { bubbles: true, detail: 1, clientX: rect.left - 58, clientY: rect.top + 61 })
+      )
+      await el.updateComplete
+      // 关闭管线带退出过渡：等 open 落 false。
+      await waitFor(() => !el.open && !dialog.open)
 
-    expect(el.open).toBe(true)
-    expect(events).toHaveLength(0)
-  })
+      expect(events.map(event => event.detail.open)).toEqual([false])
+    })
 
-  it('面板边缘外远处按下不构成 band：轻点不触发关闭（合成坐标的负样本）', async () => {
-    const el = createDrawer()
-    el.draggable = true
-    el.open = true
-    await el.updateComplete
-    await waitForOpenTransition(el)
+    it('detail 为 0 的 click（程序化/键盘来源）不当作遮罩点击', async () => {
+      const el = createDrawer()
+      el.open = true
+      await el.updateComplete
+      await waitForOpenTransition(el)
 
-    const events = openChangeEvents(el)
-    // 远超 outset（12px）的按下点只是普通热区外坐标，不携带遮罩点击语义。
-    await dragFromBand(el, -60, { x: 0, y: 0 }, 1)
-    await settled(el)
+      const events = openChangeEvents(el)
+      const dialog = backdropDialog(el)
+      const rect = dialog.getBoundingClientRect()
+      // 有 pointerdown 记录在先，但 detail 0 的 click 不来自指针：
+      // 若无该守卫，残留记录会被这类 click 消费而误关。
+      await pressOn(el, dialog, rect.left - 60, rect.top + 60)
+      dialog.click()
+      await el.updateComplete
+      await settled(el)
 
-    expect(el.open).toBe(true)
-    expect(events).toHaveLength(0)
+      expect(el.open).toBe(true)
+      expect(events).toHaveLength(0)
+    })
   })
 })

@@ -40,6 +40,19 @@ function dispatchEscapeKey(target: EventTarget) {
   return event
 }
 
+/*
+ * 真实浏览器的「点遮罩关闭」是一条 pointerdown（起点在遮罩上）+ 近静止 click 的
+ * 指针链路。`dialog.click()` 的 detail 为 0、不来自指针，组件会忽略它（对齐
+ * image-preview 的守卫，防止程序化 click 消费上一次指针交互的残留记录），所以
+ * 测试遮罩关闭语义必须派发完整的指针链路。
+ */
+function clickBackdrop(dialog: HTMLDialogElement, clientX = 20, clientY = 20) {
+  dialog.dispatchEvent(
+    new PointerEvent('pointerdown', { bubbles: true, pointerId: 1, isPrimary: true, clientX, clientY })
+  )
+  dialog.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1, clientX, clientY }))
+}
+
 describe('WebUiDrawer 组件', () => {
   describe('属性：open', () => {
     it('open 属性反射到 host 元素', async () => {
@@ -182,7 +195,7 @@ describe('WebUiDrawer 组件', () => {
       expect(el.open).toBe(true)
       expect(events.map(event => event.detail.open)).toEqual([false])
 
-      dialog.click()
+      clickBackdrop(dialog)
       await waitForUpdate(el)
 
       expect(el.open).toBe(true)
@@ -463,7 +476,7 @@ describe('WebUiDrawer 组件', () => {
       await waitForUpdate(el)
       const dialog = el.shadowRoot?.querySelector('dialog')
 
-      dialog?.click()
+      clickBackdrop(dialog as HTMLDialogElement)
       await waitForUpdate(el)
       expect(el.open).toBe(false)
 
@@ -478,7 +491,7 @@ describe('WebUiDrawer 组件', () => {
       const dialog = el.shadowRoot?.querySelector('dialog')
 
       expect(el.noBackdropClose).toBe(true)
-      dialog?.click()
+      clickBackdrop(dialog as HTMLDialogElement)
       await waitForUpdate(el)
       expect(el.open).toBe(true)
 

@@ -714,7 +714,7 @@ Portal 面板创建时会镜像 host 上解析后的这些变量；更新 host �
 **拖拽关闭：** 启用 `draggable` 后，打开的抽屉在内缘显示灰色胶囊 drag bar（默认 4×56px，视觉中线距内缘 10px，位于 20px 厚的命中热区内；`right` 在左缘、`left` 在右缘、`top` 在下缘、`bottom` 在上缘）：
 
 - 拖拽实时跟手，遮罩透明度按比例淡出。
-- 命中热区向遮罩侧外扩 12px（`--wui-drawer-drag-zone-outset`）：瞄准胶囊的按下点落在面板边缘之外时仍进入拖拽手势，不会退化成遮罩上的点击拖拽。外扩带内的轻点（位移不超过 10px）沿用遮罩点击关闭语义，`no-backdrop-close` 时不接管；越过该距离即按下方规则判定——朝遮罩方向的快甩会弹回而不是关闭。
+- 遮罩点击关闭只认**轻点链路**：按下起点在遮罩上、且按-放位移在轻点量级内的 click 才关闭。浏览器对「按下 → 拖动 → 松手」生成的 click 落在起点与松手点的共同祖先（dialog）上——从面板内容或遮罩上开始拖拽、松手落在遮罩时，click 的 target 同样是 dialog；组件在 `pointerdown` 记录起点与坐标做回溯校验，这类拖拽松手一律弹回。`detail` 为 0 的 click（键盘/程序化来源）不消费指针记录。
 - 松手时自抓取瞬间起的**净位移**超过抽屉尺寸的一半（下限 10px）或快速甩动即关闭，否则弹回打开位；方向随 placement 适配。判定的每一环都与 Base UI `useSwipeDismiss` 对齐：
   - 位移零点与判定时钟都在**首个 `pointermove`** 处重置，用来吸收「按下 → 首个 move」之间的空隙；该次 move 的整程位移被整体丢弃，因此一次手势至少要两个 move 才可能累积出位移。
   - 甩动看的是**整段手势**的平均速度（净位移 ÷ 手势时长，分母下限 50ms）**达到** 500px/s，不是释放瞬间的瞬时速度。滑窗只描述最后一小段轨迹；在整段平均速度下，「先往边缘拖出、再快速扫回」不再能凑成甩动。时长为 0 时速度取 0 而不是按 50ms 兜底，因此测不到时长的手势永远不会被读成甩动。
@@ -738,7 +738,6 @@ Portal 面板创建时会镜像 host 上解析后的这些变量；更新 host �
 | `--wui-drawer-inset`              | `8px`                              | 浮动卡片视口留边（非 headless）；置 `0` 为贴边几何   |
 | `--wui-drawer-overlay-bg`         | `rgb(0 0 0 / 0.12)`                | 遮罩背景色                                           |
 | `--wui-drawer-drag-zone-size`     | `20px`                             | Drag-to-close 命中热区厚度（draggable）              |
-| `--wui-drawer-drag-zone-outset`   | `12px`                             | 热区向遮罩侧外扩的宽度（draggable）                  |
 | `--wui-drawer-drag-bar-thickness` | `4px`                              | Drag bar 胶囊厚度（短轴）                            |
 | `--wui-drawer-drag-bar-length`    | `56px`                             | Drag bar 胶囊长度（沿抽屉边缘）                      |
 | `--wui-drawer-header-padding`     | `16px 20px`                        | Header 区域 padding                                  |
