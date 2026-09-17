@@ -6,7 +6,7 @@ import '..'
 function createRootTheme(): WebUiTheme {
   const theme = document.createElement('web-ui-theme') as WebUiTheme
   theme.appearance = 'light'
-  theme.transition = 'on'
+  theme.transition = true
   theme.style.setProperty('--wui-theme-transition-duration', '900ms')
   document.body.append(theme)
   return theme
@@ -16,7 +16,7 @@ function createNestedTheme(): WebUiTheme {
   const outer = createRootTheme()
   const inner = document.createElement('web-ui-theme') as WebUiTheme
   inner.appearance = 'light'
-  inner.transition = 'on'
+  inner.transition = true
   inner.style.setProperty('--wui-theme-transition-duration', '900ms')
   outer.append(inner)
   return inner

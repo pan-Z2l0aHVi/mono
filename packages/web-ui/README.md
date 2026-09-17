@@ -1298,7 +1298,7 @@ Theme provider defining CSS custom property tokens.
 | ------------ | --------------------------------- | ---------- | --------------------------------------------- |
 | `appearance` | `'light' \| 'dark' \| 'system'`   | `'light'`  | Color scheme                                  |
 | `motion`     | `'full' \| 'reduced' \| 'system'` | `'system'` | Motion preference for this nested theme scope |
-| `transition` | `'off' \| 'on'`                   | `'off'`    | Circular reveal on appearance changes         |
+| `transition` | `boolean`                         | `false`    | Circular reveal on appearance changes         |
 
 **Methods:** `getOverlayRoot()` — returns this theme-owned overlay root
 
@@ -1306,7 +1306,7 @@ Theme provider defining CSS custom property tokens.
 
 Defines foundation, color, layer, shadow, and motion tokens for its subtree. `motion="system"` follows `prefers-reduced-motion`; use `motion="reduced"` to reduce animation in a scope or `motion="full"` in a nested theme to restore normal token values. System appearance follows `prefers-color-scheme`.
 
-`transition="on"` animates appearance changes with the View Transitions API. A root theme reveals the whole page; a nested theme reveals only its own capture box. The origin is the last pointer-down position when available, otherwise the theme box or viewport center. Dark-to-light and light-to-dark directions are reversed. Unsupported browsers, reduced-motion scopes, zero durations, and another request already in the same flight fall back to applying the new appearance immediately; `appearance="system"` does not animate OS light/dark changes in this version.
+Set the `transition` boolean attribute to animate appearance changes with the View Transitions API. Removing the attribute disables the reveal; framework bindings must write the boolean property when toggling it dynamically. A root theme reveals the whole page; a nested theme reveals only its own capture box. The origin is the last pointer-down position when available, otherwise the theme box or viewport center. Dark-to-light and light-to-dark directions are reversed. Unsupported browsers, reduced-motion scopes, zero durations, and another request already in the same flight fall back to applying the new appearance immediately; `appearance="system"` does not animate OS light/dark changes in this version.
 
 The host uses `display: contents` and does not paint any background: the library never draws on the host page, so the embedding application keeps full control of the surface behind the themed subtree. Custom properties still inherit to slotted content reliably.
 

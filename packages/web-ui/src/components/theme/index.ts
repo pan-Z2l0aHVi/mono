@@ -8,11 +8,9 @@ import style from './style.css?inline'
 
 export type ThemeAppearance = 'light' | 'dark' | 'system'
 export type ThemeMotion = 'full' | 'reduced' | 'system'
-export type ThemeTransition = 'off' | 'on'
 
 const APPEARANCES = ['light', 'dark', 'system'] as const
 const MOTIONS = ['full', 'reduced', 'system'] as const
-const TRANSITIONS = ['off', 'on'] as const
 
 interface ViewTransitionLike {
   readonly ready: Promise<void>
@@ -120,33 +118,32 @@ export class WebUiTheme extends LitElement {
   }
   private _motion: ThemeMotion = 'system'
 
-  @property({ type: String, reflect: true })
-  get transition(): ThemeTransition {
+  // HTML attribute 存在即 true；动态关闭由框架写 boolean property，不解析字符串。
+  @property({ type: Boolean, reflect: true })
+  get transition(): boolean {
     return this._transition
   }
-  set transition(v: string) {
+  set transition(v: boolean) {
     const old = this._transition
-    this._transition = normalizeLiteral(v, TRANSITIONS, 'off') as ThemeTransition
+    this._transition = v
     this.requestUpdate('transition', old)
 
-    // 属性可能在 upgrade/连接前写入；只在真实 document 生命周期里增减全局监听。
-    if (!this.isConnected || this._transition === old) return
-    if (this._transition === 'on') addTransitionOriginListeners()
-    else removeTransitionOriginListeners()
+    this._syncTransitionOriginListeners(this.isConnected && this._transition)
   }
-  private _transition: ThemeTransition = 'off'
+  private _transition = false
+  private _transitionOriginListening = false
   private _transitionRequested = false
 
   private _warned = false
 
   override connectedCallback() {
     super.connectedCallback()
-    if (this.transition === 'on') addTransitionOriginListeners()
+    this._syncTransitionOriginListeners(this.transition)
     this._warnWhenAppearanceIsMissing()
   }
 
   override disconnectedCallback() {
-    if (this.transition === 'on') removeTransitionOriginListeners()
+    this._syncTransitionOriginListeners(false)
     this._activeTransition?.skipTransition?.()
     this._cleanupThemeTransition()
     super.disconnectedCallback()
@@ -199,6 +196,13 @@ export class WebUiTheme extends LitElement {
     return transitionPoint(Number.NaN, Number.NaN)
   }
 
+  private _syncTransitionOriginListeners(listening: boolean) {
+    if (listening === this._transitionOriginListening) return
+    this._transitionOriginListening = listening
+    if (listening) addTransitionOriginListeners()
+    else removeTransitionOriginListeners()
+  }
+
   private _transitionMotion(): { duration: number; easing: string } {
     const style = getComputedStyle(this)
     const duration = parseDuration(style.getPropertyValue('--wui-theme-transition-duration'))
@@ -212,6 +216,7 @@ export class WebUiTheme extends LitElement {
     if (!previous || previous === next) return false
     if (resolveAppearance(previous) === resolveAppearance(next)) return false
     return (
+      this.transition &&
       typeof document.startViewTransition === 'function' &&
       Array.isArray(document.adoptedStyleSheets) &&
       !this.isReducedMotion() &&

@@ -161,7 +161,7 @@ export function Root() {
 
   return (
     <ErrorBoundary FallbackComponent={RootErrorFallback}>
-      <web-ui-theme appearance={themeAppearance} motion={themeMotion} transition="on">
+      <web-ui-theme appearance={themeAppearance} motion={themeMotion} transition>
         <div className="min-h-screen bg-[var(--wui-color-page)] text-[var(--wui-color-text)]">
           {routeTitle ? <title>{routeTitle}</title> : null}
           <web-ui-layout

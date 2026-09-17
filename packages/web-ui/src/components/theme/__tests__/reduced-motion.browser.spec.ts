@@ -94,7 +94,7 @@ describe('系统 prefers-reduced-motion 下无限加载循环的周期（浏览�
 })
 
 describe('系统 prefers-reduced-motion 下主题切换 fallback（浏览器）', () => {
-  it('transition=on 也不启动 View Transition，直接提交 appearance', async () => {
+  it('transition=true 也不启动 View Transition，直接提交 appearance', async () => {
     const original = document.startViewTransition
     let started = false
     try {
@@ -105,7 +105,7 @@ describe('系统 prefers-reduced-motion 下主题切换 fallback（浏览器）'
 
       const theme = document.createElement('web-ui-theme') as WebUiTheme
       theme.appearance = 'light'
-      theme.transition = 'on'
+      theme.transition = true
       document.body.append(theme)
       await theme.updateComplete
 

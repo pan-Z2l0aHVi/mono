@@ -141,7 +141,7 @@ const navItems: NavItem[] = [
 </script>
 
 <template>
-  <web-ui-theme :appearance="themeAppearance" :motion="themeMotion" transition="on">
+  <web-ui-theme :appearance="themeAppearance" :motion="themeMotion" transition>
     <div class="min-h-screen bg-[var(--wui-color-page)] text-[var(--wui-color-text)]">
       <!--
         Boolean 动态绑定走 camelCase Property（Vue 对已存在的属性名直接写 DOM property）。

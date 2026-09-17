@@ -26,33 +26,95 @@ afterEach(() => {
 
 describe('WebUiTheme 组件', () => {
   describe('属性：transition', () => {
-    it('默认关闭并反射到 host', async () => {
+    it('默认关闭且不反射到 host', async () => {
       const theme = createTheme('light')
       await theme.updateComplete
-      expect(theme.transition).toBe('off')
-      expect(theme.getAttribute('transition')).toBe('off')
+      expect(theme.transition).toBe(false)
+      expect(theme.hasAttribute('transition')).toBe(false)
       theme.remove()
     })
 
-    it('transition 反射到 host 且非法值回退到 off', async () => {
+    it('使用原生布尔属性存在语义', async () => {
       const theme = createTheme('light')
-      theme.transition = 'on'
+      theme.setAttribute('transition', 'off')
       await theme.updateComplete
-      expect(theme.transition).toBe('on')
-      expect(theme.getAttribute('transition')).toBe('on')
+      expect(theme.transition).toBe(true)
+      expect(theme.hasAttribute('transition')).toBe(true)
 
-      ;(theme as unknown as Record<string, unknown>).transition = 'invalid'
+      theme.removeAttribute('transition')
       await theme.updateComplete
-      expect(theme.transition).toBe('off')
-      expect(theme.getAttribute('transition')).toBe('off')
+      expect(theme.transition).toBe(false)
+      expect(theme.hasAttribute('transition')).toBe(false)
       theme.remove()
+    })
+
+    it('property 开启时反射为布尔 attribute，关闭时移除', async () => {
+      const theme = createTheme('light')
+      theme.transition = true
+      await theme.updateComplete
+      expect(theme.transition).toBe(true)
+      expect(theme.getAttribute('transition')).toBe('')
+
+      theme.transition = false
+      await theme.updateComplete
+      expect(theme.transition).toBe(false)
+      expect(theme.hasAttribute('transition')).toBe(false)
+      theme.remove()
+    })
+
+    it('upgrade 时已连接且带 transition 只注册一次全局监听并完整清理', async () => {
+      const addSpy = vi.spyOn(window, 'addEventListener')
+      const removeSpy = vi.spyOn(window, 'removeEventListener')
+      const theme = createTheme('light')
+
+      try {
+        // Upgrade 顺序可能是 attributeChangedCallback 先于 connectedCallback；手动再同步一次连接回调。
+        theme.setAttribute('transition', '')
+        theme.connectedCallback()
+        await theme.updateComplete
+
+        const countEvents = (spy: typeof addSpy, event: string) =>
+          spy.mock.calls.filter(([eventName]) => eventName === event).length
+        expect(countEvents(addSpy, 'pointerdown')).toBe(1)
+        expect(countEvents(addSpy, 'keydown')).toBe(1)
+
+        theme.remove()
+        expect(countEvents(removeSpy, 'pointerdown')).toBe(1)
+        expect(countEvents(removeSpy, 'keydown')).toBe(1)
+      } finally {
+        addSpy.mockRestore()
+        removeSpy.mockRestore()
+        theme.remove()
+      }
+    })
+
+    it('默认关闭时不启动 View Transition', async () => {
+      const original = document.startViewTransition
+      const originalAdoptedStyleSheets = document.adoptedStyleSheets
+      const startViewTransition = vi.fn<typeof document.startViewTransition>()
+      Object.defineProperty(document, 'startViewTransition', {
+        configurable: true,
+        writable: true,
+        value: startViewTransition
+      })
+      document.adoptedStyleSheets = []
+      const theme = createTheme('light')
+      await theme.updateComplete
+
+      theme.appearance = 'dark'
+      await theme.updateComplete
+      expect(startViewTransition).not.toHaveBeenCalled()
+
+      theme.remove()
+      document.startViewTransition = original
+      document.adoptedStyleSheets = originalAdoptedStyleSheets
     })
 
     it('浏览器不支持 View Transitions 时立即提交 appearance', async () => {
       const original = document.startViewTransition
       Reflect.deleteProperty(document, 'startViewTransition')
       const theme = createTheme('light')
-      theme.transition = 'on'
+      theme.transition = true
       await theme.updateComplete
 
       theme.appearance = 'dark'
@@ -88,7 +150,7 @@ describe('WebUiTheme 组件', () => {
       Object.defineProperty(document, 'startViewTransition', { configurable: true, value: startViewTransition })
       document.adoptedStyleSheets = []
       const theme = createTheme('light')
-      theme.transition = 'on'
+      theme.transition = true
       await theme.updateComplete
 
       theme.appearance = 'dark'

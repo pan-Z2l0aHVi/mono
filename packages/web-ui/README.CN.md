@@ -1262,7 +1262,7 @@ SVG 线条绘制动画，基于 `stroke-dashoffset`。直接在原元素上动�
 | ------------ | --------------------------------- | ---------- | -------------------------- |
 | `appearance` | `'light' \| 'dark' \| 'system'`   | `'light'`  | 配色方案                   |
 | `motion`     | `'full' \| 'reduced' \| 'system'` | `'system'` | 当前嵌套主题范围的动效偏好 |
-| `transition` | `'off' \| 'on'`                   | `'off'`    | 配色变化时的圆形揭示动画   |
+| `transition` | `boolean`                         | `false`    | 配色变化时的圆形揭示动画   |
 
 **方法：** `getOverlayRoot()` — 返回该主题拥有的 theme-owned overlay root
 
@@ -1270,7 +1270,7 @@ SVG 线条绘制动画，基于 `stroke-dashoffset`。直接在原元素上动�
 
 在其子树中定义基础、颜色、层级、阴影和动效 token。`motion="system"` 跟随 `prefers-reduced-motion`；使用 `motion="reduced"` 降低当前作用域动效，或在嵌套主题中使用 `motion="full"` 恢复默认 token。System 配色模式跟随 `prefers-color-scheme`。
 
-`transition="on"` 使用 View Transitions API 播放配色变化。根主题揭示整页；嵌套主题只揭示自己的 capture box。圆心优先取最近一次 pointerdown 坐标，否则回退主题盒或视口中心；深浅两个方向反向播放。不支持的浏览器、reduced-motion 作用域、时长为 0 以及同一 flight 内已有未完成请求都会立即落地新 appearance；当前版本对 `appearance="system"` 的 OS 深浅翻转不做动画。
+设置 `transition` 布尔属性后，使用 View Transitions API 播放配色变化；移除属性即关闭，框架动态切换时必须绑定 boolean property。根主题揭示整页；嵌套主题只揭示自己的 capture box。圆心优先取最近一次 pointerdown 坐标，否则回退主题盒或视口中心；深浅两个方向反向播放。不支持的浏览器、reduced-motion 作用域、时长为 0 以及同一 flight 内已有未完成请求都会立即落地新 appearance；当前版本对 `appearance="system"` 的 OS 深浅翻转不做动画。
 
 主题宿主使用 `display: contents` 且不绘制任何背景：组件库不在宿主页面画背景，嵌入方对主题子树背后的表面保留完全控制权。自定义属性仍可靠继承到 slotted 内容。
 

@@ -7,7 +7,7 @@
 
 主题过渡是 `web-ui-theme` 的公开作用域能力，不是 demo 层工具：
 
-1. `transition` 取值为 `off | on`，默认 `off`，reflect，非法值归一为 `off`。
+1. `transition` 是 boolean HTML 属性，默认 `false`，reflect；属性存在即开启，框架动态关闭时必须绑定 property。
 2. 根主题使用 document View Transition 做整页圆形揭示；嵌套主题为 host 临时分配唯一 `view-transition-name`，只揭示局部范围。
 3. 动效通过 WAAPI 写到 `::view-transition-old/new(...)` 伪元素；动画必须从 `document.documentElement` 创建，因为伪元素属于根元素生成的 View Transition 树，挂在组件 host 上会被默认过渡生命周期提前销毁。时长与缓动读取 `--wui-theme-transition-duration` / `--wui-theme-transition-easing`。
 4. View Transition 期间关闭默认 crossfade 与 `plus-lighter` 混合，只保留 clip 揭示；这些 `:root` 伪元素规则放入 `document.adoptedStyleSheets`，结束后立即移除。这是「组件样式不进入 `document.head`」约束的显式例外：`::view-transition-*` 伪元素只能从 document 侧触达。
