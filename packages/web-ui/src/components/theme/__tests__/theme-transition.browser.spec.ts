@@ -7,7 +7,7 @@ function createRootTheme(): WebUiTheme {
   const theme = document.createElement('web-ui-theme') as WebUiTheme
   theme.appearance = 'light'
   theme.transition = 'on'
-  theme.style.setProperty('--wui-theme-transition-duration', '600ms')
+  theme.style.setProperty('--wui-theme-transition-duration', '900ms')
   document.body.append(theme)
   return theme
 }
@@ -17,7 +17,7 @@ function createNestedTheme(): WebUiTheme {
   const inner = document.createElement('web-ui-theme') as WebUiTheme
   inner.appearance = 'light'
   inner.transition = 'on'
-  inner.style.setProperty('--wui-theme-transition-duration', '600ms')
+  inner.style.setProperty('--wui-theme-transition-duration', '900ms')
   outer.append(inner)
   return inner
 }
@@ -64,14 +64,39 @@ describe('theme transition（浏览器）', () => {
       )
     expect(reveal).toBeDefined()
     const effect = reveal!.effect as KeyframeEffect
+    expect(effect.target).toBe(document.documentElement)
     expect((effect.getKeyframes()[0].clipPath as string).startsWith('circle(0px at ')).toBe(true)
+    expect(getComputedStyle(document.documentElement, '::view-transition-old(root)').zIndex).toBe('1')
+    expect(getComputedStyle(document.documentElement, '::view-transition-new(root)').zIndex).toBe('2')
     expect(
       document.adoptedStyleSheets.some(sheet =>
         Array.from(sheet.cssRules).some(rule => rule.cssText.includes('::view-transition-image-pair'))
       )
     ).toBe(true)
 
+    await new Promise(resolve => setTimeout(resolve, 650))
+    expect(reveal!.playState).toBe('running')
+
     await transition!.finished
+
+    theme.appearance = 'light'
+    const reverse = wrapper.current!
+    expect(reverse).not.toBe(transition)
+    await reverse.ready
+    await Promise.resolve()
+
+    const conceal = document
+      .getAnimations()
+      .find(
+        animation =>
+          ((animation.effect as KeyframeEffect | null)?.pseudoElement ?? '') === '::view-transition-old(root)'
+      )
+    expect(conceal).toBeDefined()
+    expect((conceal!.effect as KeyframeEffect).target).toBe(document.documentElement)
+    expect(getComputedStyle(document.documentElement, '::view-transition-old(root)').zIndex).toBe('2')
+    expect(getComputedStyle(document.documentElement, '::view-transition-new(root)').zIndex).toBe('1')
+    await reverse.finished
+
     expect(document.adoptedStyleSheets.some(sheet => sheet.cssRules.length > 0)).toBe(false)
     expect(theme.style.getPropertyValue('view-transition-name')).toBe('')
     expect(theme.style.getPropertyValue('display')).toBe('')
@@ -99,8 +124,29 @@ describe('theme transition（浏览器）', () => {
           `::view-transition-new(${transitionName})`
       )
     expect(reveal).toBeDefined()
+    expect((reveal!.effect as KeyframeEffect).target).toBe(document.documentElement)
 
     await transition!.finished
+
+    theme.appearance = 'light'
+    const reverse = wrapper.current!
+    expect(reverse).not.toBe(transition)
+    await reverse.ready
+    await Promise.resolve()
+
+    const reverseName = theme.style.getPropertyValue('view-transition-name')
+    const conceal = document
+      .getAnimations()
+      .find(
+        animation =>
+          ((animation.effect as KeyframeEffect | null)?.pseudoElement ?? '') === `::view-transition-old(${reverseName})`
+      )
+    expect(conceal).toBeDefined()
+    expect((conceal!.effect as KeyframeEffect).target).toBe(document.documentElement)
+    expect(getComputedStyle(document.documentElement, `::view-transition-old(${reverseName})`).zIndex).toBe('2')
+    expect(getComputedStyle(document.documentElement, `::view-transition-new(${reverseName})`).zIndex).toBe('1')
+    await reverse.finished
+
     expect(theme.style.getPropertyValue('view-transition-name')).toBe('')
     expect(theme.style.getPropertyValue('display')).toBe('')
     wrapper.restore()
