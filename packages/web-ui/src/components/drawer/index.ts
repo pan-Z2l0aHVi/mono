@@ -54,7 +54,8 @@ const DRAG_REQUEST_WINDOW_MS = 120
 const SETTLE_MIN_MS = 180
 const SETTLE_MAX_MS = 420
 const SETTLE_EASE_CLOSE = 'cubic-bezier(0.32, 0.72, 0, 1)'
-const SETTLE_EASE_REBOUND = 'cubic-bezier(0.22, 1.12, 0.36, 1)'
+// 过冲量由 y1 决定：1.3 时峰值 ≈2.99%，与 ζ≈0.74 的理论过冲（3.15%）对齐；1.12 只剩 0.37%。
+const SETTLE_EASE_REBOUND = 'cubic-bezier(0.22, 1.3, 0.36, 1)'
 // 估算时长的速度下限（px/s）：静止释放时退化为最大时长，避免除零与无限时长。
 const SETTLE_MIN_VELOCITY = 1
 // transitionend 兜底定时器的宽限：覆盖一帧的调度抖动。

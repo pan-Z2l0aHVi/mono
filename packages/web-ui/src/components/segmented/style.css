@@ -48,7 +48,7 @@
   width: var(--indicator-width, 0);
   border-radius: var(--wui-radius-control, calc(infinity * 1px));
 
-  /* 静止态实体白指示器；按压/拖拽时切换为玻璃（半透明玻璃背景 + backdrop blur +
+  /* 静止态实体白指示器；按压/拖拽时切换为玻璃（无填充 + backdrop blur +
      描边）并放大 1.5x，回到最初修复不跟手问题时期的视觉结构。 */
   background-color: var(--wui-color-surface-selected, #fff);
   box-shadow:

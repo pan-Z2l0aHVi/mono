@@ -521,17 +521,20 @@ describe('WebUiDrawer 拖拽关闭（浏览器）', () => {
     await waitForOpenTransition(el)
 
     const dialog = getDialog(el)
-    const started: string[] = []
-    dialog.addEventListener('transitionstart', event => started.push((event as TransitionEvent).propertyName))
+    let snapshot: Animation[] = []
+    dialog.addEventListener('transitionstart', event => {
+      // 在回调内同步抓取：收尾是单次 CSS 过渡，等 waitFor 轮询到（帧边界）时它可能已经结束，
+      // 那时 getAnimations() 为空，断言就退化成永不失败的常绿。
+      if ((event as TransitionEvent).propertyName === 'transform') snapshot = dialog.getAnimations({ subtree: true })
+    })
 
     // 小位移慢速松手 → 弹回路径，收尾过渡在弹回期间可观察（不进入关闭管线）。
     await dragAndRelease(el, { x: 30, y: 0 }, 10)
-    await waitFor(() => started.includes('transform'), 1000)
+    await waitFor(() => snapshot.length > 0, 1000)
 
     // 收尾期间 dialog 上只有 CSS transition：没有 element.animate() 创建的动画对象。
-    const running = dialog.getAnimations({ subtree: true })
-    expect(running.length).toBeGreaterThan(0)
-    expect(running.filter(animation => !(animation instanceof CSSTransition))).toHaveLength(0)
+    expect(snapshot.length).toBeGreaterThan(0)
+    expect(snapshot.filter(animation => !(animation instanceof CSSTransition))).toHaveLength(0)
 
     await settled(el)
     expect(el.open).toBe(true)
@@ -575,6 +578,8 @@ describe('WebUiDrawer 拖拽关闭（浏览器）', () => {
 
     el.close()
     await waitFor(() => !el.open, 5000)
+    // 程序化关闭时 `open` 先落 false，transform 过渡在下一帧才启动，所以必须等
+    // transitionstart 真正派发后再断言（直接在 `!el.open` 后断言会读到空数组）。
     await waitFor(() => started.includes('transform'), 1000)
     expect(started).toContain('transform')
   })
