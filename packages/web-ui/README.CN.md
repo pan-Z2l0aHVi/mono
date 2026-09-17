@@ -665,6 +665,8 @@ Portal 面板创建时会镜像 host 上解析后的这些变量；更新 host �
 
 使用原生 `<dialog>`，`@cancel` 阻止默认关闭行为。除非存在 `no-escape-close`，否则 Escape 调用 `close()`；除非存在 `no-backdrop-close`，否则点击遮罩关闭。启用 `controlled` 后，两者都只派发关闭请求而不自关闭。
 
+> **Escape 归属**：Escape 由共享仲裁者统一判定，一次按键只关闭**最内层**的已打开浮层（popover、select、autocomplete、dropdown、context-menu、drawer、dialog 都参与）。例如在 drawer 内打开 select，第一次 Escape 只关 select，第二次才关 drawer。互不嵌套的并列浮层按打开顺序关闭最上层。`image-preview` 是例外：它仍走原生 `<dialog>` 的 `cancel`，不参与仲裁。
+
 **CSS 自定义属性：**
 
 | 属性                          | 默认值                                     | 说明                                                                  |

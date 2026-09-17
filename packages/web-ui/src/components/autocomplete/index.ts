@@ -18,6 +18,7 @@ import {
 import { defineOptionPortal } from '@/shared/option-portal'
 import { defineAnchoredPanel } from '@/shared/overlay/anchored-panel'
 import { overlayComposition } from '@/shared/overlay/composition'
+import { defineOverlayEscapeDismiss } from '@/shared/overlay/escape-dismiss'
 import { applyOverlayVariables, defineOverlayPortal } from '@/shared/overlay/portal'
 import type { OverlayContainer, OverlayPortal } from '@/shared/overlay/portal'
 import { defineScrollLockLease } from '@/shared/scroll-lock/scroll-lock'
@@ -151,6 +152,16 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
     bindOption: option => this._bindOption(option),
     unbindOption: option => this._unbindOption(option)
   })
+  /*
+   * Escape 由共享仲裁者统一归属（issue #120 Block 1）：宿主级 keydown 在 portal 模式下
+   * 收不到面板内的 Escape，改由 document 捕获阶段的仲裁者判定最内层。
+   */
+  private readonly _escape = defineOverlayEscapeDismiss().make({
+    isConnected: () => this.isConnected,
+    isOpen: () => this._isOpen,
+    isEscapeCloseEnabled: () => !this._isDisabled && !this.readonly,
+    requestClose: () => this._close()
+  })
   private readonly _panel = defineAnchoredPanel().make({
     getAnchor: () => this.shadowRoot?.querySelector<HTMLElement>('.input-wrapper') ?? null,
     getLocalPanel: () => this.shadowRoot?.querySelector<HTMLElement>('.autocomplete-overlay') ?? null,
@@ -223,6 +234,7 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
     this._portal = undefined
     this._portalContent = undefined
     this._panel.dispose()
+    this._escape.dispose()
     this._scrollLock.release()
   }
 
@@ -385,13 +397,8 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
   private _onKeydown = (e: KeyboardEvent) => {
     if (this._isDisabled || this.readonly) return
 
+    // Escape 不在本组件处理：由共享仲裁者在 document 捕获阶段归属（issue #120 Block 1）。
     switch (e.key) {
-      case 'Escape':
-        if (this._isOpen) {
-          this._close()
-          e.preventDefault()
-        }
-        break
       case 'ArrowDown':
         e.preventDefault()
         if (!this._isOpen) this._open(true)
@@ -547,10 +554,12 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
 
   private _openOverlay(isKeyboardNavigation = false) {
     this._panel.open(isKeyboardNavigation)
+    this._escape.setPanel(this._panel.getPanel() ?? null)
     this._syncEmptyState()
   }
 
   private async _closeOverlay() {
+    this._escape.setPanel(null)
     const closed = await this._panel.close(() => this._isOpen)
     if (closed) {
       this._portal = undefined

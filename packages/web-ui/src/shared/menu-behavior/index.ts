@@ -153,12 +153,11 @@ export interface MenuKeyboardDelegate {
  * 事件监听的挂载位置（宿主 / 面板 / document）由组件自己决定。
  */
 export function handleMenuKeyboard(delegate: MenuKeyboardDelegate, e: KeyboardEvent): void {
-  if (e.key === 'Escape') {
-    delegate.closeDeepestOrAll()
-    e.preventDefault()
-    return
-  }
-
+  /*
+   * Escape 不在本函数处理：它必须跨组件归属（issue #120 Block 1），由共享仲裁者在
+   * document 捕获阶段判定最内层后调用 `closeDeepestOrAll()`。留在各组件自己的
+   * keydown 里会让一次 Escape 同时命中内外两层。
+   */
   const focused = delegate.getFocusedItem(e)
   const level = focused ? delegate.getLevelOf(focused) : undefined
   if (level === undefined) return

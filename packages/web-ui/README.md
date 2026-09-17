@@ -701,6 +701,8 @@ Modal dialog using native `<dialog>` with `showModal()`.
 
 Uses native `<dialog>` with `@cancel` prevention. Escape calls `close()` unless `no-escape-close` is present. Click on backdrop closes dialog unless `no-backdrop-close` is present. With `controlled`, both only emit the close request instead.
 
+> **Escape ownership:** Escape is arbitrated by a single shared owner, so one keypress closes only the **innermost** open overlay (popover, select, autocomplete, dropdown, context-menu, drawer and dialog all take part). With a select open inside a drawer, the first Escape closes the select and only the second closes the drawer. Sibling overlays that do not nest fall back to open order, closing the most recently opened one. `image-preview` is the exception: it keeps its native `<dialog>` `cancel` path and takes no part in the arbitration.
+
 **CSS Custom Properties:**
 
 | Property                      | Default                                      | Description                                                                           |

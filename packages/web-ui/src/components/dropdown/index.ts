@@ -33,6 +33,7 @@ import {
 import { normalizeLiteral, normalizeNumber } from '@/shared/normalize'
 import { dispatchOpenChangeEvent } from '@/shared/open-state'
 import { overlayComposition } from '@/shared/overlay/composition'
+import { defineOverlayEscapeDismiss } from '@/shared/overlay/escape-dismiss'
 import { defineOverlayLifecycle } from '@/shared/overlay/lifecycle'
 import { defineOverlay } from '@/shared/overlay/overlay'
 import type { OverlayApi } from '@/shared/overlay/overlay'
@@ -93,6 +94,17 @@ export class WebUiDropdown extends LitElement {
     isOpen: () => this.open
   })
   private readonly _scrollLock = defineScrollLockLease().make()
+  /*
+   * Escape 由共享仲裁者统一归属（issue #120 Block 1）。登记的是 level 0 根面板：
+   * 子面板在逻辑组合树上是它的后代，仲裁者据此能判出「浮层里还有更深的浮层」；
+   * 关闭动作仍走 menu-behavior 的 closeDeepestOrAll（最深子菜单优先）。
+   */
+  private readonly _escape = defineOverlayEscapeDismiss().make({
+    isConnected: () => this.isConnected,
+    isOpen: () => this.open,
+    isEscapeCloseEnabled: () => true,
+    requestClose: () => this._keyboardDelegate.closeDeepestOrAll()
+  })
   // 行为层（hover / outside-click / 键盘 / submenu 收尾）由 shared/menu-behavior 驱动
   private readonly _outsideClickGuard = createMenuOutsideClickGuard(this, node =>
     [...this._overlays.values()].some(({ overlay }) => overlayComposition.contains(overlay, node))
@@ -186,6 +198,7 @@ export class WebUiDropdown extends LitElement {
     this._outsideClickGuard.dispose()
     this._hoverBinder.dispose()
     this._lifecycle.dispose()
+    this._escape.dispose()
     this._scrollLock.release()
     this._cleanupClosedMenu()
   }
@@ -239,6 +252,9 @@ export class WebUiDropdown extends LitElement {
     this._outsideClickGuard.arm()
     this._shouldOpenInstantly = isInstant
     if (fromUser) this._userOpenChange.mark()
+    // 面板要等一帧才建好，而 Escape 可能在这之前到达：先用宿主当锚点登记，
+    // 面板就绪后 _buildOverlay 再换成真实面板（宿主仍是稳定的逻辑祖先）。
+    this._escape.setPanel(this._overlays.get(0)?.overlay ?? this)
     this.open = true
   }
 
@@ -448,7 +464,10 @@ export class WebUiDropdown extends LitElement {
       })
       this._overlays.set(level, { api: ctrl, overlay, content })
       overlayComposition.registerPanel(overlay, this._overlays.get(level - 1)?.overlay)
-      if (level === 0) this._populateLevel0()
+      if (level === 0) {
+        this._populateLevel0()
+        this._escape.setPanel(overlay)
+      }
       // submenu 父项在面板 content 内，其新增子项只有观察 content 子树才能看到
       this._menuContentObserver.observe(content, { childList: true, subtree: true })
       ctrl.open()
@@ -458,6 +477,7 @@ export class WebUiDropdown extends LitElement {
 
   private _disposeOverlay(level: number) {
     const overlay = this._overlays.get(level)
+    if (level === 0) this._escape.setPanel(null)
     if (overlay) overlayComposition.unregisterPanel(overlay.overlay)
     overlay?.overlay.removeEventListener('click', this._onMenuClick)
     overlay?.overlay.removeEventListener('keydown', this._onKeydown)

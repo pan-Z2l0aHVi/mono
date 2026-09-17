@@ -9,6 +9,8 @@ import { UserChangeController } from '@/shared/events/user-change'
 import { attachDragGesture, type DragGestureHandle, rubberband } from '@/shared/gesture'
 import { normalizeLiteral } from '@/shared/normalize'
 import { dispatchOpenChangeEvent } from '@/shared/open-state'
+import { overlayComposition } from '@/shared/overlay/composition'
+import { defineOverlayEscapeDismiss } from '@/shared/overlay/escape-dismiss'
 import { defineNativeDialogPresence } from '@/shared/overlay/native-dialog-presence'
 import { defineNestedDrawerLayers } from '@/shared/overlay/nested-drawer-layers'
 import { findNearestTheme } from '@/shared/overlay/theme-overlay-scope'
@@ -179,6 +181,18 @@ export class WebUiDrawer extends LitElement {
   private readonly _nestedLayers = defineNestedDrawerLayers().make({
     getDialog: () => this.dialog,
     getPlacement: () => this._placement
+  })
+  /*
+   * Escape 由共享仲裁者统一归属（issue #120 Block 1）。drawer 把自己的原生 <dialog>
+   * 登记为 overlay panel，使挂在 dialog 上的 portal 面板（select / dropdown / tooltip）
+   * 在逻辑组合树上成为它的后代，仲裁者据此选出最内层。
+   * 拖拽进行中不参与仲裁：此时 Escape 应被本层 handleKeydown 一并 preventDefault 丢弃。
+   */
+  private readonly _escape = defineOverlayEscapeDismiss().make({
+    isConnected: () => this.isConnected,
+    isOpen: () => this.open,
+    isEscapeCloseEnabled: () => !this._isDragging(),
+    requestClose: () => this._closeFromUser()
   })
 
   // ===== 拖拽关闭手势状态 =====
@@ -516,6 +530,7 @@ export class WebUiDrawer extends LitElement {
     this._dragGesture = null
     this._presence.dispose()
     this._scrollLock.release()
+    this._escape.dispose()
     this._abortSettle()
     this._cancelDragAwait()
   }
@@ -582,8 +597,18 @@ export class WebUiDrawer extends LitElement {
         // 的层序 depth 并驱动下层缩放。直接同步 register，不等待 is-visible
         //（那要再等一帧，且打开过渡期间上层关系已应确立）。
         this._nestedLayers.register()
+        // 原生 dialog 登记为 overlay panel：挂在它上面的 portal 面板在逻辑组合树上
+        // 成为本层后代，Escape 仲裁据此判出最内层（issue #120 Block 1）。
+        const dialog = this.dialog
+        if (dialog) {
+          overlayComposition.registerPanelFromAncestry(dialog, this)
+          this._escape.setPanel(dialog)
+        }
       } else {
         this._nestedLayers.unregister()
+        const dialog = this.dialog
+        if (dialog) overlayComposition.unregisterPanel(dialog)
+        this._escape.setPanel(null)
       }
     }
     if (props.has('open') || props.has('noScrollLock')) this._syncScrollLock()
@@ -603,6 +628,13 @@ export class WebUiDrawer extends LitElement {
 
   private handleKeydown(e: KeyboardEvent) {
     if (e.key !== 'Escape') return
+    /*
+     * Escape 的归属由共享仲裁者在 document 捕获阶段判定（issue #120 Block 1）；命中后
+     * 它会 stopPropagation，本 handler 不再执行。此处保留两条兜底：
+     * ① defaultPrevented 说明仲裁者已介入，不再重复关闭；
+     * ② 兜底路径仍按原逻辑处理，避免「面板未登记」时 Escape 失灵。
+     */
+    if (e.defaultPrevented) return
     /*
      * nested 场景防连锁：子 drawer 的 dialog 经 slot 投影在本层 shadow 内，其
      * keydown composed 冒泡路径会再次经过本层 dialog（事件路径含 slot 宿主链）。
