@@ -10,6 +10,18 @@ export interface NativeDialogPresenceOptions {
 
 export interface NativeDialogPresenceApi {
   sync(open: boolean): void
+  /**
+   * 重挂载对账：宿主在打开态被移出文档再接回时调用。
+   *
+   * 平台行为（Chromium/WebKit 实测）：`<dialog>` 随宿主移出文档时脱离 top layer，
+   * 但 `open` 属性残留。此时 `sync(true)` 救不回来——`startOpening` 的
+   * `if (!dialog.open)` 守卫会跳过 `showModal`，而直接对残留 open 的 dialog 调
+   * `showModal` 会抛 `InvalidStateError`；且排队的 `close` 事件若被消费方当成
+   * 外部关闭，会把 `open` 误置为 false。本方法先标记 self-close 再真正 close，
+   * 随后走 `startOpening`（此刻 open 属性已清，`showModal` 正常执行，排队的
+   * `close` 事件由 `handleNativeClose` 消费），dialog 因此同步回到 top layer。
+   */
+  reconcile(): void
   handleTransitionEnd(event: TransitionEvent): void
   /**
    * 处理原生 dialog 的 `close` 事件。
@@ -106,10 +118,47 @@ export const defineNativeDialogPresence = () =>
       closeFallbackTimer = setTimeout(() => finishClosing(), getTransitionDuration(dialog) + 80)
     }
 
+    // jsdom 的选择器引擎不认识 :modal（可能抛错）；抛错按「不在 top layer」处理，
+    // reconcile 随之走 close+showModal 的收敛路径，行为仍正确。
+    const isInTopLayer = (dialog: HTMLDialogElement): boolean => {
+      try {
+        return dialog.matches(':modal')
+      } catch {
+        return false
+      }
+    }
+
     return {
       sync(open) {
         if (open) startOpening()
         else startClosing()
+      },
+
+      reconcile() {
+        const dialog = ctx.getDialog()
+        if (!dialog) return
+
+        if (!ctx.isOpen()) {
+          // 宿主在断连期间被置为关闭（或关闭动画被 disconnect 打断）：
+          // updated() 在断连时被跳过，inner dialog 可能仍残留 open 属性与
+          // is-visible/is-closing class，补一次强制收敛到关闭态。
+          cancelOpenFrame()
+          clearCloseFallback()
+          isClosing = false
+          if (dialog.open) {
+            selfClosePending = true
+            dialog.close()
+          }
+          dialog.classList.remove('is-closing', 'is-visible')
+          return
+        }
+
+        // 打开态重挂载：open 属性残留但已脱离 top layer 时，必须先真关闭再重开。
+        if (dialog.open && !isInTopLayer(dialog)) {
+          selfClosePending = true
+          dialog.close()
+        }
+        startOpening()
       },
 
       handleTransitionEnd(event) {
