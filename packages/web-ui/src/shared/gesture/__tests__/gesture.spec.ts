@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vite-plus/test'
 
 import { attachDragGesture } from '../drag-gesture'
-import { clamp, normalizeProgress, rubberband, snapToNearest, springOffsets, SPRING_PRESETS } from '../physics'
+import { clamp, dampOverscroll, normalizeProgress, snapToNearest, springOffsets, SPRING_PRESETS } from '../physics'
 import { attachPinchGesture } from '../pinch-gesture'
 
 describe('shared/gesture physics', () => {
@@ -28,13 +28,13 @@ describe('shared/gesture physics', () => {
     expect(normalizeProgress(50, 100, 100)).toBe(0) // min === max 兜底
   })
 
-  it('rubberband 正向位移保持原值，负向拉伸施加阻尼并受最大距离限制', () => {
-    expect(rubberband(50, 100)).toBe(50)
-    expect(rubberband(0, 100)).toBe(0)
-    // 负向拉伸：-100 * 0.15 = -15
-    expect(rubberband(-100, 100, 0.15)).toBe(-15)
-    // 超过最大拉伸距离：clamp 到 -maxDistance
-    expect(rubberband(-1000, 50, 0.15)).toBe(-50)
+  it('dampOverscroll 允许方向原样通过，反向按平方根压缩', () => {
+    expect(dampOverscroll(50)).toBe(50)
+    expect(dampOverscroll(0)).toBe(0)
+    // 反向：sign(d) * |d| ** 0.5 —— 压缩比随位移增大而下降，因此天然自限幅，
+    // 400px 的过冲只剩 20px，不需要额外的位移上限。
+    expect(dampOverscroll(-100)).toBe(-10)
+    expect(dampOverscroll(-400)).toBe(-20)
   })
 
   it('springOffsets 生成单调趋向目标的平滑轨迹采样', () => {
@@ -119,7 +119,60 @@ describe('shared/gesture attachDragGesture', () => {
     window.dispatchEvent(new PointerEvent('pointerup', { pointerId: 1, clientX: 120, clientY: 0, isPrimary: true }))
 
     expect(onEnd).toHaveBeenCalledTimes(1)
+    // 时长只覆盖「越阈 → 松手」的 40ms 段，不含死区内的 300ms 悬停。
     expect(onEnd.mock.calls[0][0].duration).toBeLessThan(250)
+
+    handle.destroy()
+    el.remove()
+  })
+
+  it('calibrateOnFirstMove：首个 move 重置零点与时钟，按下到首个 move 之间的位移被吸收', async () => {
+    const el = document.createElement('div')
+    document.body.append(el)
+
+    const deltas: number[] = []
+    const onEnd = vi.fn<(info: { deltaX: number; duration: number }) => void>()
+    const handle = attachDragGesture(el, {
+      axis: 'x',
+      calibrateOnFirstMove: true,
+      onMove: info => deltas.push(info.deltaX),
+      onEnd
+    })
+
+    el.dispatchEvent(new PointerEvent('pointerdown', { pointerId: 1, clientX: 100, clientY: 0, isPrimary: true }))
+    // 按下 → 首个 move 之间已偏移 60px：校准把它吸收，
+    // 首个 move 的 delta 因此为 0，元素不会在首个 move 一次性跳出这 60px。
+    window.dispatchEvent(new PointerEvent('pointermove', { pointerId: 1, clientX: 160, clientY: 0, isPrimary: true }))
+    window.dispatchEvent(new PointerEvent('pointermove', { pointerId: 1, clientX: 220, clientY: 0, isPrimary: true }))
+    expect(deltas).toEqual([0, 60])
+
+    // 判定时钟同样自校准点起算：不含「按下 → 首个 move」的耗时。
+    await new Promise(resolve => setTimeout(resolve, 30))
+    window.dispatchEvent(new PointerEvent('pointerup', { pointerId: 1, clientX: 220, clientY: 0, isPrimary: true }))
+
+    expect(onEnd).toHaveBeenCalledTimes(1)
+    const end = onEnd.mock.calls[0][0]
+    // 220 - 160（校准点）= 60；按下点的 100 不参与。
+    expect(end.deltaX).toBe(60)
+    expect(end.duration).toBeGreaterThanOrEqual(30)
+    expect(end.duration).toBeLessThan(300)
+
+    handle.destroy()
+    el.remove()
+  })
+
+  it('默认不校准：位移仍自 pointerdown 起算', () => {
+    const el = document.createElement('div')
+    document.body.append(el)
+
+    const deltas: number[] = []
+    const handle = attachDragGesture(el, { axis: 'x', onMove: info => deltas.push(info.deltaX) })
+
+    el.dispatchEvent(new PointerEvent('pointerdown', { pointerId: 1, clientX: 100, clientY: 0, isPrimary: true }))
+    window.dispatchEvent(new PointerEvent('pointermove', { pointerId: 1, clientX: 160, clientY: 0, isPrimary: true }))
+    window.dispatchEvent(new PointerEvent('pointermove', { pointerId: 1, clientX: 220, clientY: 0, isPrimary: true }))
+
+    expect(deltas).toEqual([60, 120])
 
     handle.destroy()
     el.remove()

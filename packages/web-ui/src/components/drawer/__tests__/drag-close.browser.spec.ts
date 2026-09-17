@@ -55,8 +55,11 @@ type Delta = { x: number; y: number }
 /**
  * 在拖拽区按下 → 移动 → 松手。合成事件直接派发到热区，命中与起点坐标无关，
  * 只有**相对位移**参与判定。
+ *
+ * `steps` 默认 10：判定零点在首个 pointermove（基准校准），单次 move 的
+ * 整程位移会被它整体吸收，所以必须至少分两段才可能累积出位移。
  */
-async function dragAndRelease(el: WebUiDrawer, delta: Delta, steps = 1) {
+async function dragAndRelease(el: WebUiDrawer, delta: Delta, steps = 10) {
   const zone = getDragZone(el)
   const startX = 500
   const startY = 300
@@ -295,6 +298,49 @@ describe('WebUiDrawer 拖拽关闭（浏览器）', () => {
     theme.removeChild(el)
   })
 
+  it('悬停等待期间原地重新抓取后松手：净位移为 0，不重复派发 open-change(false)', async () => {
+    // theme motion=reduced 走即时终态路径，稳定停住悬停态（面板此时停在闭合位附近）。
+    const theme = document.createElement('web-ui-theme')
+    theme.setAttribute('appearance', 'light')
+    theme.setAttribute('motion', 'reduced')
+    document.body.append(theme)
+
+    const el = document.createElement('web-ui-drawer')
+    theme.append(el)
+    el.controlled = true
+    el.draggable = true
+    el.open = true
+    await el.updateComplete
+    await waitForOpenTransition(el)
+
+    const events = openChangeEvents(el)
+    await dragAndRelease(el, { x: 400, y: 0 })
+    expect(events).toHaveLength(1)
+
+    /*
+     * 面板此刻停在「已越过距离阈值」的位置上。在原位重新抓取（不做任何拖动）再松手：
+     * 判定用的是**净位移**（自抓取瞬间起算），
+     * 所以这次松手既不满足距离判据也不满足甩动判据 → 弹回。
+     * 若按绝对位置判（`_dragOffset > 阈值`，本仓旧行为），抓取瞬间的位置本身就过阈值，
+     * 会立刻再派发一次 open-change(false)。
+     */
+    const zone = getDragZone(el)
+    zone.dispatchEvent(
+      new PointerEvent('pointerdown', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 500, clientY: 300 })
+    )
+    await el.updateComplete
+    zone.dispatchEvent(
+      new PointerEvent('pointerup', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 500, clientY: 300 })
+    )
+    await el.updateComplete
+    expect(events).toHaveLength(1)
+
+    await settled(el)
+    expect(el.open).toBe(true)
+    expect(events).toHaveLength(1)
+    theme.removeChild(el)
+  })
+
   it('拖拽进行中受控置 open=false：立即终结手势，迟到的 pointerup 不再触发事件', async () => {
     const el = createDrawer()
     el.draggable = true
@@ -331,11 +377,13 @@ describe('WebUiDrawer 拖拽关闭（浏览器）', () => {
   })
 
   /*
-   * 拖拽关闭判定对齐 Base UI `useSwipeDismiss`：甩动看的是**整段手势**的平均速度
-   * （净位移 / 时长，分母下限 50ms），不是释放瞬间的 100ms 滑窗速度。下面两条是
-   * 该判据的双向锁：反向回扫不得关闭，朝闭合方向的真甩动仍须关闭。
+   * 拖拽关闭判定的行为锁：判定零点与时钟都在首个 pointermove（基准校准），
+   * 甩动看**整段手势**的平均速度（净位移 ÷ 时长、分母下限 50ms，时长为 0 则
+   * 速度取 0），并在发生反向回撤后按「改主意」守卫拒绝甩动关闭。
+   * 下面六条是该模型的锁：反向回扫不得关闭（被守卫拦下、净位移反向、折返点跟随、
+   * 时长不可测四条路径），朝闭合方向的真甩动仍须关闭，且按下到首个 move 的位移不参与判定。
    */
-  it('拖出后反向回扫松手：净位移朝闭合方向但不足以构成甩动，弹回打开位', async () => {
+  it('拖出后反向回扫松手：净速度达到甩动阈值但被「改主意」守卫拒绝，弹回打开位', async () => {
     const el = createDrawer()
     el.draggable = true
     el.open = true
@@ -344,17 +392,82 @@ describe('WebUiDrawer 拖拽关闭（浏览器）', () => {
 
     const events = openChangeEvents(el)
     /*
-     * 复现「往边缘反向快速拖拽」（right 抽屉：向左拖出 = 打开方向，橡皮筋量程 10% 尺寸）。
-     * 净位移只有 +12px（默认 320px 宽的 1/26，远低于关闭阈值的一半尺寸），但最后一段回扫
-     * 在 16ms 内走了 42px：释放瞬间的 100ms 滑窗速度高达 2000px/s（旧实现据此判 flick 关闭），
-     * 整段手势的平均速度却只有 55px/s。等 150ms 再回扫，正是真实手势里「拖出去停顿一下再扫回」
-     * 的时序，也让 pointerdown 采样滑出滑窗，滑窗只剩回扫那一段。
+     * 复现「往边缘反向快速拖拽」（right 抽屉：向左拖出 = 打开方向，向右 = 闭合方向）。
+     * 第一个 move 先向左拖出 120px（同时建立校准点），随后向右回扫到 +132px 松手。
+     * 净位移 132px < 距离阈值（尺寸的一半 = 160px），整段平均速度 = 132px / 66ms =
+     * 2000px/s ≥ 500px/s，单看甩动判据会关闭；但回扫让「自折返点起的位移」（42px）比
+     * 方向确认时的位移（90px）少 48px ≥ 10px，本次手势被标记为「改主意」→ 弹回。
+     * 旧实现用的是释放瞬间的 100ms 滑窗速度（16ms 内回扫 42px ⇒ 2600px/s）同样会误关。
      */
     await dragPath(el, [
       { x: 500, at: 1000 },
       { x: 380, at: 1150 },
       { x: 470, at: 1200 },
       { x: 512, at: 1216 }
+    ])
+    await settled(el)
+
+    expect(el.open).toBe(true)
+    expect(getDialog(el).open).toBe(true)
+    expect(events).toHaveLength(0)
+  })
+
+  it('回扫到按下点附近：净位移仍朝闭合方向，但已反向回撤，弹回打开位', async () => {
+    const el = createDrawer()
+    el.draggable = true
+    el.open = true
+    await el.updateComplete
+    await waitForOpenTransition(el)
+
+    const events = openChangeEvents(el)
+    /*
+     * 首个 move（520）只建立判定零点，随后向右拖到 700（净 +180px，方向就此确认），
+     * 再向左回扫到 600 松手（净 +80px）。
+     * 回撤使「自折返点起的位移」归零，比方向确认时的 180px 少 180px ≥ 10px → 标记
+     * 「改主意」；净位移 80px 远未过 160px 的距离阈值，清理条件不会把它清掉。
+     * 净位移 +80px 朝闭合方向、平均速度 80px / 20ms（分母下限 50ms）= 1600px/s，
+     * 若没有「改主意」守卫拦下这次甩动，这条轨迹会关闭。
+     * 本条不锁定折返点的跟随行为——禁用跟随后它仍为绿（结局由「自折返点起的位移」的取值
+     * 决定），那条锁在下一用例。
+     */
+    await dragPath(el, [
+      { x: 500, at: 1000 },
+      { x: 520, at: 1010 },
+      { x: 700, at: 1020 },
+      { x: 600, at: 1030 }
+    ])
+    await settled(el)
+
+    expect(el.open).toBe(true)
+    expect(getDialog(el).open).toBe(true)
+    expect(events).toHaveLength(0)
+  })
+
+  it('回撤把折返点一并带走：折返点跟随是「改主意」判定的前提', async () => {
+    const el = createDrawer()
+    el.draggable = true
+    el.open = true
+    await el.updateComplete
+    await waitForOpenTransition(el)
+
+    const events = openChangeEvents(el)
+    /*
+     * 折返点的跟随行为只由这条钉住。
+     * 净位移 150px < 距离阈值（尺寸的一半 = 160px），整段 15ms（按下限 50ms 计）⇒ 3000px/s
+     * ≥ 500px/s，甩动判据本身成立，结局完全由「自折返点起的位移」决定：
+     *   跟随（现状）：回撤到 560 时折返点一起过去，此刻自折返点起的位移为 0，比方向确认
+     *     时的 60px 少 60px ≥ 10px ⇒ 标记「改主意」；松手时自折返点起 110px 仍未过 160px，
+     *     清理条件不触发 ⇒ 弹回。
+     *   不跟随：折返点恒为按下的 500，回撤时自折返点起 60px（差 0，不置位），松手时 170px
+     *     > 160px ⇒ 清除标记 ⇒ 甩动关闭。
+     * 所以折返点一旦停止跟随回撤，这条轨迹会从「弹回」翻成「关闭」。
+     */
+    await dragPath(el, [
+      { x: 500, at: 1000 },
+      { x: 520, at: 1005 },
+      { x: 580, at: 1010 },
+      { x: 560, at: 1015 },
+      { x: 670, at: 1020 }
     ])
     await settled(el)
 
@@ -371,16 +484,76 @@ describe('WebUiDrawer 拖拽关闭（浏览器）', () => {
     await waitForOpenTransition(el)
 
     const events = openChangeEvents(el)
-    // 120px < 距离阈值（尺寸的一半 = 160px），唯一可能关闭的路径就是甩动：
-    // 10ms 走 120px，分母按下限 50ms 计仍是 2400px/s > 500px/s。
+    /*
+     * 60px < 距离阈值（尺寸的一半 = 160px），唯一可能关闭的路径就是甩动：
+     * 第一个 move 建立校准点，第二个 move 在 5ms 内再走 60px，分母按下限 50ms 计
+     * 仍是 1200px/s ≥ 500px/s。单向无回撤，因此不触发「改主意」守卫。
+     * 注意首个 move 到按下点的位移整体不参与判定（基准校准），
+     * 所以一次手势至少要两个 move 才可能累积出位移。
+     */
     await dragPath(el, [
       { x: 500, at: 1000 },
+      { x: 560, at: 1005 },
       { x: 620, at: 1010 }
     ])
     await waitFor(() => !el.open)
 
     expect(events.map(event => event.detail.open)).toEqual([false])
     expect(getDialog(el).open).toBe(false)
+  })
+
+  it('位移零点在首个 move：按下到首个 move 的位移不计入距离判据', async () => {
+    const el = createDrawer()
+    el.draggable = true
+    el.open = true
+    await el.updateComplete
+    await waitForOpenTransition(el)
+
+    const events = openChangeEvents(el)
+    /*
+     * 按下点在 500、首个 move 已到 560：这 60px 被基准校准吸收，判定只认
+     * 560 → 700 的 140px < 160px。
+     * 若从按下点起算（本仓旧行为），位移 200px 会越过阈值而关闭。
+     * 整段耗时 400ms ⇒ 平均速度 350px/s < 500px/s，排除甩动分支的干扰。
+     */
+    await dragPath(el, [
+      { x: 500, at: 1000 },
+      { x: 560, at: 1100 },
+      { x: 700, at: 1500 }
+    ])
+    await settled(el)
+
+    expect(el.open).toBe(true)
+    expect(getDialog(el).open).toBe(true)
+    expect(events).toHaveLength(0)
+  })
+
+  it('时长不可测（首尾时间戳相同）：速度取 0，不得被读成甩动', async () => {
+    const el = createDrawer()
+    el.draggable = true
+    el.open = true
+    await el.updateComplete
+    await waitForOpenTransition(el)
+
+    const events = openChangeEvents(el)
+    /*
+     * 判定时长为 0：首个 move（校准点）与松手取同一个 timeStamp。位移 100px 落在
+     * 「能以甩动关闭、但不足以过距离阈值」的区间（尺寸的一半 = 160px）。
+     * durationMs === 0 时速度算作 0；本仓旧写法用
+     * 50ms 兜底做分母，会把 100px 放大成 2000px/s 而误关。本用例只构造了「首尾 timeStamp
+     * 相同」这一种不可测来源；倒退会先在共享层被钳到 0（`Math.max(0, …)`）再走同一条
+     * 守卫，属同一分支，故不再另立用例。
+     */
+    await dragPath(el, [
+      { x: 500, at: 1000 },
+      { x: 560, at: 1010 },
+      { x: 660, at: 1010 }
+    ])
+    await settled(el)
+
+    expect(el.open).toBe(true)
+    expect(getDialog(el).open).toBe(true)
+    expect(events).toHaveLength(0)
   })
 
   it('闭合方向随 placement：沿闭合方向拖过阈值关闭，反向拖弹回不关闭', async () => {
@@ -582,5 +755,116 @@ describe('WebUiDrawer 拖拽关闭（浏览器）', () => {
     // transitionstart 真正派发后再断言（直接在 `!el.open` 后断言会读到空数组）。
     await waitFor(() => started.includes('transform'), 1000)
     expect(started).toContain('transform')
+  })
+
+  /*
+   * 热区外扩带（--wui-drawer-drag-zone-outset，默认 12px）：
+   * 瞄准胶囊的按下点经常落在面板边缘之外 1–2px，旧几何下该点属于遮罩，整段
+   * 「按下 → 拖动 → 松手」退化为一次遮罩点击拖拽，松手被遮罩点击关闭（真实鼠标
+   * 下必现，合成事件不派发 click 故此前自动化全部漏测）。外扩后手势接管该带。
+   */
+
+  // 在面板边缘外 offset 处按下并完成一次拖拽（真实坐标参与 band 判定）。
+  async function dragFromBand(el: WebUiDrawer, offsetX: number, delta: Delta, steps = 10) {
+    const zone = getDragZone(el)
+    const startX = getDialog(el).getBoundingClientRect().left + offsetX
+    const startY = 300
+    zone.dispatchEvent(
+      new PointerEvent('pointerdown', {
+        bubbles: true,
+        pointerId: 1,
+        isPrimary: true,
+        clientX: startX,
+        clientY: startY
+      })
+    )
+    await el.updateComplete
+    for (let step = 1; step <= steps; step += 1) {
+      zone.dispatchEvent(
+        new PointerEvent('pointermove', {
+          bubbles: true,
+          pointerId: 1,
+          isPrimary: true,
+          clientX: startX + (delta.x * step) / steps,
+          clientY: startY + (delta.y * step) / steps
+        })
+      )
+      await new Promise(resolve => setTimeout(resolve, 32))
+    }
+    await el.updateComplete
+    zone.dispatchEvent(
+      new PointerEvent('pointerup', {
+        bubbles: true,
+        pointerId: 1,
+        isPrimary: true,
+        clientX: startX + delta.x,
+        clientY: startY + delta.y
+      })
+    )
+    await el.updateComplete
+  }
+
+  it('外扩带内按下（边缘外 3px）向 mask 快甩松手：弹回打开位，不再被遮罩点击关闭', async () => {
+    const el = createDrawer()
+    el.draggable = true
+    el.open = true
+    await el.updateComplete
+    await waitForOpenTransition(el)
+
+    const events = openChangeEvents(el)
+    // 旧几何下该按下点属于遮罩，松手必被遮罩点击关闭（用户实测的误关路径）。
+    await dragFromBand(el, -3, { x: -400, y: 0 }, 2)
+    await settled(el)
+
+    expect(el.open).toBe(true)
+    expect(getDialog(el).open).toBe(true)
+    expect(events).toHaveLength(0)
+  })
+
+  it('外扩带内轻点：位移未越过 tap 距离，沿用遮罩点击关闭语义', async () => {
+    const el = createDrawer()
+    el.draggable = true
+    el.open = true
+    await el.updateComplete
+    await waitForOpenTransition(el)
+
+    const events = openChangeEvents(el)
+    await dragFromBand(el, -3, { x: 0, y: 0 }, 1)
+    // 关闭管线带退出过渡：`open` 先落 false，原生 dialog 在过渡结束后才退出 top layer。
+    await waitFor(() => !el.open && !getDialog(el).open)
+
+    expect(events.map(event => event.detail.open)).toEqual([false])
+  })
+
+  it('外扩带内轻点在 noBackdropClose 下不关闭：band 不接管遮罩关闭语义', async () => {
+    const el = createDrawer()
+    el.draggable = true
+    el.noBackdropClose = true
+    el.open = true
+    await el.updateComplete
+    await waitForOpenTransition(el)
+
+    const events = openChangeEvents(el)
+    await dragFromBand(el, -3, { x: 0, y: 0 }, 1)
+    await settled(el)
+
+    expect(el.open).toBe(true)
+    expect(events).toHaveLength(0)
+  })
+
+  it('面板边缘外远处按下不构成 band：轻点不触发关闭（合成坐标的负样本）', async () => {
+    const el = createDrawer()
+    el.draggable = true
+    el.open = true
+    await el.updateComplete
+    await waitForOpenTransition(el)
+
+    const events = openChangeEvents(el)
+    // 远超 outset（12px）的按下点只是普通热区外坐标，不携带遮罩点击语义。
+    await dragFromBand(el, -60, { x: 0, y: 0 }, 1)
+    await settled(el)
+
+    expect(el.open).toBe(true)
+    expect(events).toHaveLength(0)
   })
 })

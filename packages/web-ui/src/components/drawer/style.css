@@ -121,6 +121,11 @@ dialog[open].is-visible::backdrop {
  * 胶囊绝对定位在 --wui-drawer-content-padding 的视觉中线（默认 20px → 中线 10px）；
  * 热区仍覆盖内缘起 --wui-drawer-drag-zone-size，保证触控命中面积不随胶囊收窄。
  * 位置随 placement 切换：right 贴在左缘、left 贴在右缘、top 贴在底边、bottom 贴在顶边。
+ *
+ * 热区同时向 mask 侧外扩 --wui-drawer-drag-zone-outset（默认 12px）：瞄准胶囊的按下
+ * 点经常落在面板边缘之外 1–2px，旧几何下整段手势退化为「遮罩上的点击拖拽」，松手被
+ * 遮罩点击关闭。外扩后手势接管该带，轻点仍保留遮罩关闭语义（见 index.ts 的 tap 分支）。
+ * dialog 为 overflow: visible，负向偏移可渲染且可命中。
  */
 .wui-drawer-drag-zone {
   /* 胶囊中线跟随内容区 padding，consumer 覆盖 --wui-drawer-content-padding 后拖拽条自动居中。 */
@@ -142,15 +147,15 @@ dialog.is-nested-lower .wui-drawer-drag-zone {
 
 :host([placement='right']) .wui-drawer-drag-zone {
   top: 0;
-  left: 0;
-  width: var(--wui-drawer-drag-zone-size, 20px);
+  left: calc(-1 * var(--wui-drawer-drag-zone-outset, 12px));
+  width: calc(var(--wui-drawer-drag-zone-size, 20px) + var(--wui-drawer-drag-zone-outset, 12px));
   height: 100%;
 }
 
 :host([placement='left']) .wui-drawer-drag-zone {
   top: 0;
-  right: 0;
-  width: var(--wui-drawer-drag-zone-size, 20px);
+  right: calc(-1 * var(--wui-drawer-drag-zone-outset, 12px));
+  width: calc(var(--wui-drawer-drag-zone-size, 20px) + var(--wui-drawer-drag-zone-outset, 12px));
   height: 100%;
 }
 
@@ -159,15 +164,15 @@ dialog.is-nested-lower .wui-drawer-drag-zone {
   right: 0;
   left: 0;
   width: 100%;
-  height: var(--wui-drawer-drag-zone-size, 20px);
+  height: calc(var(--wui-drawer-drag-zone-size, 20px) + var(--wui-drawer-drag-zone-outset, 12px));
 }
 
 :host([placement='top']) .wui-drawer-drag-zone {
-  bottom: 0;
+  bottom: calc(-1 * var(--wui-drawer-drag-zone-outset, 12px));
 }
 
 :host([placement='bottom']) .wui-drawer-drag-zone {
-  top: 0;
+  top: calc(-1 * var(--wui-drawer-drag-zone-outset, 12px));
 }
 
 .wui-drawer-drag-bar {
@@ -182,12 +187,20 @@ dialog.is-nested-lower .wui-drawer-drag-zone {
 
 :host([placement='right']) .wui-drawer-drag-bar {
   top: calc(50% - var(--wui-drawer-drag-bar-length, 56px) / 2);
-  left: calc(var(--wui-internal-drag-bar-center) - var(--wui-drawer-drag-bar-thickness, 4px) / 2);
+
+  /* 热区向 mask 侧外扩 outset 后参考系随之移动，胶囊加回 outset 保持视觉位置不变。 */
+  left: calc(
+    var(--wui-drawer-drag-zone-outset, 12px) + var(--wui-internal-drag-bar-center) -
+      var(--wui-drawer-drag-bar-thickness, 4px) / 2
+  );
 }
 
 :host([placement='left']) .wui-drawer-drag-bar {
   top: calc(50% - var(--wui-drawer-drag-bar-length, 56px) / 2);
-  right: calc(var(--wui-internal-drag-bar-center) - var(--wui-drawer-drag-bar-thickness, 4px) / 2);
+  right: calc(
+    var(--wui-drawer-drag-zone-outset, 12px) + var(--wui-internal-drag-bar-center) -
+      var(--wui-drawer-drag-bar-thickness, 4px) / 2
+  );
 }
 
 :host([placement='top']) .wui-drawer-drag-bar,
@@ -197,12 +210,18 @@ dialog.is-nested-lower .wui-drawer-drag-zone {
 }
 
 :host([placement='top']) .wui-drawer-drag-bar {
-  bottom: calc(var(--wui-internal-drag-bar-center) - var(--wui-drawer-drag-bar-thickness, 4px) / 2);
+  bottom: calc(
+    var(--wui-drawer-drag-zone-outset, 12px) + var(--wui-internal-drag-bar-center) -
+      var(--wui-drawer-drag-bar-thickness, 4px) / 2
+  );
   left: calc(50% - var(--wui-drawer-drag-bar-length, 56px) / 2);
 }
 
 :host([placement='bottom']) .wui-drawer-drag-bar {
-  top: calc(var(--wui-internal-drag-bar-center) - var(--wui-drawer-drag-bar-thickness, 4px) / 2);
+  top: calc(
+    var(--wui-drawer-drag-zone-outset, 12px) + var(--wui-internal-drag-bar-center) -
+      var(--wui-drawer-drag-bar-thickness, 4px) / 2
+  );
   left: calc(50% - var(--wui-drawer-drag-bar-length, 56px) / 2);
 }
 
@@ -425,7 +444,7 @@ dialog.is-dragging .wui-drawer-drag-zone {
  * 闭合/拖拽/弹簧位移互不覆写（独立属性先于 transform 应用后合并）。
  * JS 层序管理写入 depth/scale/shift 三个内部变量，单层使用时全为中性值。
  *
- * 层叠变化的平滑过渡（Base UI nested 实测规格：450ms easeOutQuint 类曲线）。
+ * 层叠变化的平滑过渡（450ms easeOutQuint 类曲线）。
  * transform 保持既有 enter/exit 时长；translate/scale 只在层叠数变化时更新，
  * 用更长的 nested 时长。
  */
