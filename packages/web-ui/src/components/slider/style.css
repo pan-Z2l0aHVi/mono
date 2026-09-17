@@ -139,7 +139,7 @@
     box-shadow var(--wui-duration-press, 80ms) ease;
 
   /* 静止态实体白 thumb（wui-glass 恒开仅提供描边/高光，背景被白色覆盖）；
-     按压时切到半透明玻璃背景并放大 1.5x，拖拽时背景转透明让 backdrop blur 透出。
+     按压/拖拽时背景转透明让 backdrop blur 透出并放大 1.5x。
      box-shadow 直接写死值（不经自定义属性中转）：iOS Safari 对 var 离散切换驱动的
      box-shadow 不触发过渡且可能整体不生效（r2 真机「回退之前」的根因），直接写值
      后是普通属性变化，transition 正常插值；同时复制 wui-glass 的三条 inset 高光，
