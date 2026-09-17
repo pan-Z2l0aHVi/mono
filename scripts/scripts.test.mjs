@@ -303,7 +303,7 @@ fs.rmSync(fixtureRoot, { recursive: true, force: true })
 // 否则「减法」会被自己的校验器拦回来（见 ADR-0012）。
 const instructionAuditScript = path.resolve('scripts/audit-instructions.mjs')
 const SHARED_TIERS =
-  '档 0 的变更直接实施不建 task state；档 1 与档 2 先读 workflow.md 的变更风险分级，再选择模式并记录验收标准与所需验证。'
+  'P2 的变更直接实施不建 task state；P0 与 P1 先读 workflow.md 的变更风险分级，再选择模式并记录验收标准与所需验证。'
 // 两个基线文件默认存在：删掉它们本身就是被测契约的一部分，缺失必须让 --strict 失败。
 const PERMISSIVE_BUDGET = {
   version: 1,
@@ -437,7 +437,7 @@ const auditRuleRegression = runInstructionAudit(
   instructionFixture({
     'scripts/tool-enforced-rules.json': JSON.stringify({
       rules: [
-        { id: 'fixture-lint-rule', pattern: '档 0 的变更直接实施', evidence: 'fixture config:1', files: ['AGENTS.md'] }
+        { id: 'fixture-lint-rule', pattern: 'P2 的变更直接实施', evidence: 'fixture config:1', files: ['AGENTS.md'] }
       ]
     })
   }),

@@ -3,7 +3,7 @@
   "tolerance": 0,
   "note": "约束层预算基线（根入口 + .agents/rules + .agents/agents + .agents/references + docs/agents）。放宽约束只能通过修改本文件，因此每次加约束都会出现在 diff 里被评审看见。.agents/skills 是第三方原文，不纳入预算。重述块基线记录规范化 40 字符滑窗下共享窗口数 ≥6 的文件对数量。",
   "totals": {
-    "characters": 114991,
+    "characters": 115015,
     "imperatives": 261
   },
   "repeatedBlockPairs": 8,
@@ -125,7 +125,7 @@
       "imperatives": 1
     },
     "docs/agents/task-packet.md": {
-      "characters": 2343,
+      "characters": 2345,
       "imperatives": 10
     },
     "docs/agents/testing.md": {
@@ -137,7 +137,7 @@
       "imperatives": 9
     },
     "docs/agents/workflow.md": {
-      "characters": 11326,
+      "characters": 11348,
       "imperatives": 37
     },
     "docs/agents/worktrees.md": {

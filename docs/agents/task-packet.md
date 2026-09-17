@@ -23,8 +23,8 @@ Owner: <role/agent>
 Worktree: <absolute path>
 Base: <sha>
 Scope: <goal and non-goals>
-Allowed paths: <档 2 才记录；档 0 与单 workspace 的档 1 写 N/A>
-Affected workspaces: <档 2 才记录，来自 find:usages；其他档写 N/A>
+Allowed paths: <跨多 workspace 的 P0 与 P1 记录；其他级写 N/A>
+Affected workspaces: <同上，来自 find:usages>
 Route: product-design | technical
 Designer: enabled | skipped (<reason>)
 Effort: <recommended tiers | adjustments + reason; recommended, not mandatory>
@@ -34,7 +34,7 @@ Review: required | skipped with reason
 Handoff: <what is returned and when>
 ```
 
-`Allowed paths` 与 `Affected workspaces` 的取值用 `pnpm find:usages -- <paths...>` 的输出填写。档 0 与单 workspace 的档 1 任务填 `N/A`；跨多个 `apps/*` 的档 1 任务与档 2 任务必须按工具输出如实填写，不要把空数组当作已记录的字段。
+`Allowed paths` 与 `Affected workspaces` 的取值用 `pnpm find:usages -- <paths...>` 的输出填写。P2 与单 workspace 的 P1 填 `N/A`；跨多 workspace（`apps/*` / `packages/*`）的 P0 与 P1 必须按工具输出如实填写，不要把空数组当作已记录字段。
 
 ## 结构化 Handoff
 

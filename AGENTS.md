@@ -12,9 +12,9 @@
 
 <!-- invariant:task-state-trigger -->
 
-档 1 与档 2 的变更**在第一次文件变更前必须读取 [`docs/agents/workflow.md`](docs/agents/workflow.md)，并运行 `pnpm agent:workflow init --task <task-id> --mode <direct|orchestrated|release|hotfix>`**；档 0 的变更直接实施，不建 task state。分级判据、每档的 review/approval 要求与预授权操作清单，以 workflow.md 的「变更风险分级」与「预授权操作」为权威，本节不复制。
+P0 与 P1 的变更**在第一次文件变更前必须读取 [`docs/agents/workflow.md`](docs/agents/workflow.md)，并运行 `pnpm agent:workflow init --task <task-id> --mode <direct|orchestrated|release|hotfix>`**；P2 的变更直接实施，不建 task state。分级判据、每级的 review/approval 要求与预授权操作清单，以 workflow.md 的「变更风险分级」与「预授权操作」为权威，本节不复制。
 
-档位判定不靠感觉：`pnpm find:usages -- <paths>` 输出的受影响 workspace 只有一个时，档 0 的「单 workspace」条件成立。只读调查不需要 task state，一旦转为实施就回到这个 gate。`AGENTS.md` 只承载这个必经入口和不可绕过边界；状态、冻结 diff、review、approval 和验证证据以 `.git/agent-workflow/<task-id>.json` 为执行真相。
+分级判定不靠感觉：`pnpm find:usages -- <paths>` 输出的受影响 workspace 只有一个时，P2 的「单 workspace」条件成立。只读调查不需要 task state，一旦转为实施就回到这个 gate。`AGENTS.md` 只承载这个必经入口和不可绕过边界；状态、冻结 diff、review、approval 和验证证据以 `.git/agent-workflow/<task-id>.json` 为执行真相。
 
 1. 先查看工作区状态、目标文件和最近的 `AGENTS.md`；只有进入某个 `apps/` 或 `packages/` 时才加载其包级指令。
 2. 只按任务加载命中的 rule、guide 和包级指令；不要为普通局部任务预读 `CONTEXT.md`、ADR 或无关领域指南。
