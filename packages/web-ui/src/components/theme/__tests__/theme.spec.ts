@@ -25,6 +25,89 @@ afterEach(() => {
 })
 
 describe('WebUiTheme 组件', () => {
+  describe('属性：transition', () => {
+    it('默认关闭并反射到 host', async () => {
+      const theme = createTheme('light')
+      await theme.updateComplete
+      expect(theme.transition).toBe('off')
+      expect(theme.getAttribute('transition')).toBe('off')
+      theme.remove()
+    })
+
+    it('transition 反射到 host 且非法值回退到 off', async () => {
+      const theme = createTheme('light')
+      theme.transition = 'on'
+      await theme.updateComplete
+      expect(theme.transition).toBe('on')
+      expect(theme.getAttribute('transition')).toBe('on')
+
+      ;(theme as unknown as Record<string, unknown>).transition = 'invalid'
+      await theme.updateComplete
+      expect(theme.transition).toBe('off')
+      expect(theme.getAttribute('transition')).toBe('off')
+      theme.remove()
+    })
+
+    it('浏览器不支持 View Transitions 时立即提交 appearance', async () => {
+      const original = document.startViewTransition
+      Reflect.deleteProperty(document, 'startViewTransition')
+      const theme = createTheme('light')
+      theme.transition = 'on'
+      await theme.updateComplete
+
+      theme.appearance = 'dark'
+      await theme.updateComplete
+      expect(theme.appearance).toBe('dark')
+      expect(theme.getAttribute('appearance')).toBe('dark')
+      theme.remove()
+      document.startViewTransition = original
+    })
+
+    it('同一次 View Transition 内的新请求直接落地为最终 appearance', async () => {
+      const original = document.startViewTransition
+      const originalAdoptedStyleSheets = document.adoptedStyleSheets
+      let updateCallback: (() => Promise<void>) | undefined
+      let resolveFinished: (() => void) | undefined
+      let resolveUpdate: (() => void) | undefined
+      const finish = new Promise<void>(resolve => {
+        resolveFinished = resolve
+      })
+      const updateCallbackDone = new Promise<void>(resolve => {
+        resolveUpdate = resolve
+      })
+      const startViewTransition = vi.fn<(update?: () => Promise<void>) => ViewTransition>(
+        (update?: () => Promise<void>) => {
+          updateCallback = update
+          return {
+            updateCallbackDone,
+            ready: Promise.resolve(),
+            finished: finish
+          } as unknown as ViewTransition
+        }
+      )
+      Object.defineProperty(document, 'startViewTransition', { configurable: true, value: startViewTransition })
+      document.adoptedStyleSheets = []
+      const theme = createTheme('light')
+      theme.transition = 'on'
+      await theme.updateComplete
+
+      theme.appearance = 'dark'
+      theme.appearance = 'light'
+      await theme.updateComplete
+      expect(theme.appearance).toBe('light')
+      expect(startViewTransition).toHaveBeenCalledTimes(1)
+      expect(updateCallback).toBeDefined()
+      resolveUpdate?.()
+      await Promise.resolve()
+      resolveFinished?.()
+      await Promise.resolve()
+      theme.remove()
+      vi.mocked(startViewTransition).mockRestore()
+      document.startViewTransition = original
+      document.adoptedStyleSheets = originalAdoptedStyleSheets
+    })
+  })
+
   describe('属性：motion', () => {
     it('默认使用 system 并反射到 host', async () => {
       const theme = createTheme('light')

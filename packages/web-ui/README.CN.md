@@ -1262,12 +1262,15 @@ SVG 线条绘制动画，基于 `stroke-dashoffset`。直接在原元素上动�
 | ------------ | --------------------------------- | ---------- | -------------------------- |
 | `appearance` | `'light' \| 'dark' \| 'system'`   | `'light'`  | 配色方案                   |
 | `motion`     | `'full' \| 'reduced' \| 'system'` | `'system'` | 当前嵌套主题范围的动效偏好 |
+| `transition` | `'off' \| 'on'`                   | `'off'`    | 配色变化时的圆形揭示动画   |
 
 **方法：** `getOverlayRoot()` — 返回该主题拥有的 theme-owned overlay root
 
 **Portal 挂载契约：** 每个 active `<web-ui-theme>` 同时是默认的 scoped theme-owned overlay root。Portal 类组件在未显式传入 `overlayContainer` 时，会解析到最近的 active theme 的 `getOverlayRoot()`；无 target 的调用优先使用 root theme 的 theme-owned overlay root。没有 active theme 提供 root 时，回退到全局 fallback overlay root。
 
 在其子树中定义基础、颜色、层级、阴影和动效 token。`motion="system"` 跟随 `prefers-reduced-motion`；使用 `motion="reduced"` 降低当前作用域动效，或在嵌套主题中使用 `motion="full"` 恢复默认 token。System 配色模式跟随 `prefers-color-scheme`。
+
+`transition="on"` 使用 View Transitions API 播放配色变化。根主题揭示整页；嵌套主题只揭示自己的 capture box。圆心优先取最近一次 pointerdown 坐标，否则回退主题盒或视口中心；深浅两个方向反向播放。不支持的浏览器、reduced-motion 作用域、时长为 0 以及同一 flight 内已有未完成请求都会立即落地新 appearance；当前版本对 `appearance="system"` 的 OS 深浅翻转不做动画。
 
 主题宿主使用 `display: contents` 且不绘制任何背景：组件库不在宿主页面画背景，嵌入方对主题子树背后的表面保留完全控制权。自定义属性仍可靠继承到 slotted 内容。
 
@@ -1305,7 +1308,7 @@ SVG 线条绘制动画，基于 `stroke-dashoffset`。直接在原元素上动�
 | `--wui-layer-toast`          | `200`  | Toast          |
 | `--wui-layer-loading`        | `300`  | 阻塞式 Loading |
 
-**动效 token：** duration 默认值为 `--wui-duration-press: 80ms`、`--wui-duration-feedback: 100ms`、`--wui-duration-trigger: 160ms`、`--wui-duration-focus: 200ms`、`--wui-duration-float-enter: 240ms`、`--wui-duration-float-exit: 160ms`、`--wui-duration-dialog-enter: 320ms`、`--wui-duration-dialog-exit: 260ms`、`--wui-duration-drawer-enter: 280ms`、`--wui-duration-drawer-exit: 240ms`、`--wui-duration-drawer-nested: 450ms`、`--wui-duration-toast-enter: 280ms`、`--wui-duration-toast-exit: 200ms`、`--wui-duration-collapse-enter: 200ms`、`--wui-duration-collapse-exit: 160ms`、`--wui-duration-layout: 200ms`、`--wui-duration-swipe-settle: 220ms`（image-preview 轮播回位）、`--wui-duration-spin: 600ms`（icon 旋转）与 `--wui-duration-spinner: 800ms`（spinner 叶片追光）。Easing token 是 `--wui-ease-enter`、`--wui-ease-dialog`（`cubic-bezier(0.2, 0, 0, 1)`）、`--wui-ease-slide`、`--wui-ease-float`（`cubic-bezier(0.4, 0.38, 0.2, 1)`，锚定浮动面板专用的无回弹弹簧拟合曲线）以及 `--wui-ease-swipe`（`cubic-bezier(0.32, 0.72, 0, 1)`，轮播回位的减速收尾）；进入缩放是 `--wui-scale-enter: 0.95`（浮动面板与 image-preview 的图片舞台层由小到大展开），dialog 使用 `--wui-dialog-scale-enter: 1.2`（由大到小收缩入场，退场反向）。`motion="reduced"` 下所有转场时长归零（轮播回位一并归零），两个无限加载循环只放慢、不停（`--wui-duration-spin` / `--wui-duration-spinner`：`600ms` / `800ms` → `1600ms`）。加载指示冻结会被读成界面卡死。hover/active 背景反馈即时切换、无过渡动画；选中态、按压与 focus 走带时长的过渡，reduce 下同样归零。
+**动效 token：** duration 默认值为 `--wui-duration-press: 80ms`、`--wui-duration-feedback: 100ms`、`--wui-duration-trigger: 160ms`、`--wui-duration-focus: 200ms`、`--wui-duration-float-enter: 240ms`、`--wui-duration-float-exit: 160ms`、`--wui-duration-dialog-enter: 320ms`、`--wui-duration-dialog-exit: 260ms`、`--wui-duration-drawer-enter: 280ms`、`--wui-duration-drawer-exit: 240ms`、`--wui-duration-drawer-nested: 450ms`、`--wui-duration-toast-enter: 280ms`、`--wui-duration-toast-exit: 200ms`、`--wui-duration-collapse-enter: 200ms`、`--wui-duration-collapse-exit: 160ms`、`--wui-duration-layout: 200ms`、`--wui-duration-swipe-settle: 220ms`（image-preview 轮播回位）、`--wui-duration-spin: 600ms`（icon 旋转）、`--wui-duration-spinner: 800ms`（spinner 叶片追光）与 `--wui-theme-transition-duration: 500ms`（主题配色揭示）。Easing token 是 `--wui-ease-enter`、`--wui-ease-dialog`（`cubic-bezier(0.2, 0, 0, 1)`）、`--wui-ease-slide`、`--wui-ease-float`（`cubic-bezier(0.4, 0.38, 0.2, 1)`，锚定浮动面板专用的无回弹弹簧拟合曲线）、`--wui-ease-swipe`（`cubic-bezier(0.32, 0.72, 0, 1)`，轮播回位的减速收尾）与 `--wui-theme-transition-easing: ease-in`；进入缩放是 `--wui-scale-enter: 0.95`（浮动面板与 image-preview 的图片舞台层由小到大展开），dialog 使用 `--wui-dialog-scale-enter: 1.2`（由大到小收缩入场，退场反向）。`motion="reduced"` 下所有转场时长归零（轮播回位一并归零），两个无限加载循环只放慢、不停（`--wui-duration-spin` / `--wui-duration-spinner`：`600ms` / `800ms` → `1600ms`）。加载指示冻结会被读成界面卡死。hover/active 背景反馈即时切换、无过渡动画；选中态、按压与 focus 走带时长的过渡，reduce 下同样归零。
 
 **颜色 token：**
 

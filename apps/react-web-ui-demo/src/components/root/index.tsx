@@ -1,7 +1,6 @@
-import type { WebUiSelect, WebUiTheme } from '@greypan/web-ui'
+import type { WebUiSelect } from '@greypan/web-ui'
 import { Link, Outlet, useRouter, useRouterState } from '@tanstack/react-router'
 import { useEffect, useRef, useState } from 'react'
-import { flushSync } from 'react-dom'
 import { ErrorBoundary } from 'react-error-boundary'
 
 import { RootErrorFallback } from './root-error-fallback'
@@ -16,19 +15,12 @@ const DEFAULT_SIDEBAR_WIDTH = '240px'
 const THEME_APPEARANCES = new Set<ThemeAppearance>(['light', 'dark', 'system'])
 const THEME_MOTIONS = new Set<ThemeMotion>(['full', 'reduced', 'system'])
 
-const THEME_TRANSITION_VARS = ['--theme-transition-x', '--theme-transition-y', '--theme-transition-radius'] as const
-
 function isThemeAppearance(appearance: unknown): appearance is ThemeAppearance {
   return typeof appearance === 'string' && THEME_APPEARANCES.has(appearance as ThemeAppearance)
 }
 
 function isThemeMotion(motion: unknown): motion is ThemeMotion {
   return typeof motion === 'string' && THEME_MOTIONS.has(motion as ThemeMotion)
-}
-
-function resolvedAppearance(appearance: ThemeAppearance): 'light' | 'dark' {
-  if (appearance !== 'system') return appearance
-  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
 }
 
 // localStorage 在存储被禁的上下文（沙箱 iframe、隐私模式）访问会抛 SecurityError，
@@ -111,16 +103,6 @@ export function Root() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [desktopSidebarWidth, setDesktopSidebarWidth] = useState<string>(getInitialSidebarWidth)
   const navSidebarRef = useRef<HTMLElement>(null)
-  const themeRootRef = useRef<WebUiTheme>(null)
-  const themeSelectRef = useRef<WebUiSelect>(null)
-  const themePointerRef = useRef<{ x: number; y: number } | undefined>(undefined)
-  const activeTransitionRef = useRef<ViewTransition | undefined>(undefined)
-
-  // 指针位置只记在主题控件上，键盘选择不会被页面其它地方的点击带偏
-  const recordThemeSelectPointer = (event: React.PointerEvent) => {
-    themePointerRef.current = { x: event.clientX, y: event.clientY }
-  }
-
   const [isMobileSidebar, setIsMobileSidebar] = useState(() => window.matchMedia('(max-width: 640px)').matches)
   useEffect(() => {
     const mq = window.matchMedia('(max-width: 640px)')
@@ -150,69 +132,10 @@ export function Root() {
     writeStoredTheme(STORAGE_KEY, JSON.stringify(appearance))
   }
 
-  // 无指针坐标时退回控件中心，再退回视口中心
-  const themeTransitionOrigin = () => {
-    const recorded = themePointerRef.current
-    if (recorded) return recorded
-    const box = themeSelectRef.current?.getBoundingClientRect()
-    if (box?.width) return { x: box.x + box.width / 2, y: box.y + box.height / 2 }
-    return { x: window.innerWidth / 2, y: window.innerHeight / 2 }
-  }
-
-  const transitionThemeAppearance = async (appearance: ThemeAppearance, next: 'light' | 'dark') => {
-    const root = document.documentElement
-    // 过渡未结束前的新请求直接落地：同方向 class 与圆心变量都是单 owner 资源，
-    // 与其让后续动画互相 skip 并清理掉对方的 state，不如保证状态一步到位。
-    if (activeTransitionRef.current) {
-      commitThemeAppearance(appearance)
-      return
-    }
-
-    const { x, y } = themeTransitionOrigin()
-    // 半径取到最远角，圆心落在视口任意位置都能覆盖整屏
-    const radius = Math.ceil(Math.hypot(Math.max(x, window.innerWidth - x), Math.max(y, window.innerHeight - y)))
-    root.style.setProperty('--theme-transition-x', `${x}px`)
-    root.style.setProperty('--theme-transition-y', `${y}px`)
-    root.style.setProperty('--theme-transition-radius', `${radius}px`)
-    const direction = next === 'dark' ? 'theme-transition-to-dark' : 'theme-transition-to-light'
-    root.classList.add(direction)
-
-    const transition = document.startViewTransition(async () => {
-      flushSync(() => commitThemeAppearance(appearance))
-      await themeRootRef.current?.updateComplete
-    })
-    activeTransitionRef.current = transition
-    // finished 必须先接住：updateCallbackDone reject 时控制流离开 try，不能留 unhandled rejection
-    const finished = transition.finished.catch(() => undefined)
-    try {
-      // 旧快照在 startViewTransition 调用瞬间采集，所以主题变更必须留在回调里；
-      // React 的提交默认是异步的，flushSync 保证新快照采集时新主题已在 DOM 上。
-      await transition.updateCallbackDone
-      await finished
-    } finally {
-      if (activeTransitionRef.current === transition) activeTransitionRef.current = undefined
-      root.classList.remove(direction)
-      for (const name of THEME_TRANSITION_VARS) root.style.removeProperty(name)
-    }
-  }
-
-  const updateThemeAppearance = async (event: React.ChangeEvent<WebUiSelect>) => {
+  const updateThemeAppearance = (event: React.ChangeEvent<WebUiSelect>) => {
     const appearance = event.currentTarget.value
     if (!isThemeAppearance(appearance)) return
-
-    const previous = resolvedAppearance(themeAppearance)
-    const next = resolvedAppearance(appearance)
-    // 「全局动效」是显式覆盖项，动效语义以 web-ui-theme 的 isReducedMotion 为唯一来源
-    if (
-      previous === next ||
-      !document.startViewTransition ||
-      !themeRootRef.current ||
-      themeRootRef.current.isReducedMotion()
-    ) {
-      commitThemeAppearance(appearance)
-      return
-    }
-    await transitionThemeAppearance(appearance, next)
+    commitThemeAppearance(appearance)
   }
 
   const updateThemeMotion = (event: React.ChangeEvent<WebUiSelect>) => {
@@ -238,7 +161,7 @@ export function Root() {
 
   return (
     <ErrorBoundary FallbackComponent={RootErrorFallback}>
-      <web-ui-theme ref={themeRootRef} appearance={themeAppearance} motion={themeMotion}>
+      <web-ui-theme appearance={themeAppearance} motion={themeMotion} transition="on">
         <div className="min-h-screen bg-[var(--wui-color-page)] text-[var(--wui-color-text)]">
           {routeTitle ? <title>{routeTitle}</title> : null}
           <web-ui-layout
@@ -288,11 +211,9 @@ export function Root() {
                 </web-ui-option>
               </web-ui-select>
               <web-ui-select
-                ref={themeSelectRef}
                 value={themeAppearance}
                 className="[--wui-input-width:120px]"
                 aria-label="全局主题"
-                onPointerDownCapture={recordThemeSelectPointer}
                 onChange={updateThemeAppearance}
               >
                 <web-ui-option value="light" label="浅色">

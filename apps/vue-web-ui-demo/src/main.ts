@@ -1,5 +1,4 @@
 import '@/assets/global.css'
-import '@/assets/theme-transition.css'
 import { createHead } from '@unhead/vue/client'
 import { createPinia } from 'pinia'
 import { createApp } from 'vue'
