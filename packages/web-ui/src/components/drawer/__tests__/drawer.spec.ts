@@ -528,6 +528,11 @@ describe('WebUiDrawer 组件', () => {
         new PointerEvent('pointerdown', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 300 })
       )
       await waitForUpdate(el)
+      // 首个 move 只用于建立判定零点（基准校准），位移自它起算。
+      dragZone.dispatchEvent(
+        new PointerEvent('pointermove', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 340 })
+      )
+      await waitForUpdate(el)
       dragZone.dispatchEvent(
         new PointerEvent('pointermove', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 520 })
       )
@@ -635,7 +640,12 @@ describe('WebUiDrawer 组件', () => {
         new PointerEvent('pointerdown', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 300 })
       )
       await waitForUpdate(el)
-      // 右侧抽屉闭合方向为向右拖；位移 220px 超过默认宽度 320px 的 1/3 阈值
+      // 右侧抽屉闭合方向为向右拖；jsdom 不做布局，尺寸量到 0，关闭阈值退化为 10px 下限。
+      // 首个 move 只建立判定零点（基准校准），位移自它起算：340 → 520 = 180px。
+      dragZone.dispatchEvent(
+        new PointerEvent('pointermove', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 340 })
+      )
+      await waitForUpdate(el)
       dragZone.dispatchEvent(
         new PointerEvent('pointermove', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 520 })
       )

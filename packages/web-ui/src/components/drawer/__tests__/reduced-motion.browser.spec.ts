@@ -66,11 +66,21 @@ async function openDrawer(el: WebUiDrawer) {
   await waitForOpenSettled(el)
 }
 
-/** 沿闭合方向（默认 right → 向右）拖到指定 clientX 后松手。 */
+/**
+ * 沿闭合方向（默认 right → 向右）拖到指定 clientX 后松手。
+ * 分两段：判定零点在首个 pointermove（基准校准），位移自它起算，
+ * 单次 move 的整程位移会被整体吸收。
+ */
 async function dragToClose(el: WebUiDrawer, toX: number) {
   const dragZone = getDragZone(el)
+  // 首个 move 停在 100 → 110，只用于建立判定零点，不产生位移。
+  const pivotX = 110
   dragZone.dispatchEvent(
     new PointerEvent('pointerdown', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 100, clientY: 300 })
+  )
+  await el.updateComplete
+  dragZone.dispatchEvent(
+    new PointerEvent('pointermove', { bubbles: true, pointerId: 1, isPrimary: true, clientX: pivotX, clientY: 300 })
   )
   await el.updateComplete
   dragZone.dispatchEvent(
@@ -151,7 +161,7 @@ describe('减少动效下的 Drawer 拖拽关闭（浏览器）', () => {
     await openDrawer(reduced)
     const reducedSeen = seenTransform(reduced)
 
-    // CI 慢环境下单次合成 move 的整程速度会被判为 flick 而误关，用多段慢拖。
+    // 多段慢拖且净位移（自首个 move 起算）远低于阈值 → 弹回；多段也避免整段速度被判为甩动。
     const dragZone = getDragZone(reduced)
     dragZone.dispatchEvent(
       new PointerEvent('pointerdown', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 100, clientY: 300 })

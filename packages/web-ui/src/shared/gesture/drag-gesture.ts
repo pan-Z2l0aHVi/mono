@@ -5,8 +5,9 @@
  * 1. setPointerCapture 安全捕获与 window 兜底监听（防 pointer 丢失/离开视口悬挂）
  * 2. 多点触控副指针与未聚焦指针过滤
  * 3. 意图死区（threshold）与滑动轴向判定
- * 4. 100ms 滑动窗口平滑速度估算（Velocity px/s）
- * 5. Window / Handle 跨层事件去重（防重复采样）
+ * 4. 可选的零点校准（calibrateOnFirstMove：首个有效 move 重置零点与判定时钟）
+ * 5. 100ms 滑动窗口平滑速度估算（Velocity px/s）
+ * 6. Window / Handle 跨层事件去重（防重复采样）
  */
 
 const VELOCITY_WINDOW_MS = 100
@@ -59,6 +60,14 @@ export interface DragGestureOptions {
   axis?: 'x' | 'y' | 'both'
   /** 拖拽启动的意图死区阈值（像素）。默认 0（即时跟手） */
   threshold?: number
+  /**
+   * 首个有效 pointermove 时把拖拽零点与判定时钟一起重置到该点，默认 false。
+   * 吸收「按下 → 首个 move」之间的空隙（触摸输入的首个 move 常已相对按下点偏移），
+   * 否则这段位移会在首个 move 一次性兑现而让元素跳。开启后 `DragMoveInfo/DragEndInfo`
+   * 的 `delta*` 与 `duration` 都以该点为零点与起点，代价是这段位移被丢弃。
+   * 有意图死区时校准落在**越过死区的那次 move**（此时 `startTimeStamp` 的既有重置与之同值）。
+   */
+  calibrateOnFirstMove?: boolean
   /** 手势启动回调。返回 false 可取消本次拖拽 */
   onStart?: (info: DragStartInfo, event: PointerEvent) => boolean | void
   /** 拖拽移动回调 */
@@ -92,13 +101,23 @@ export function attachDragGesture(
     ? (targetOrEvent.currentTarget as HTMLElement | null) || (targetOrEvent.target as HTMLElement | null)
     : (targetOrEvent as HTMLElement)
 
-  const { axis = 'both', threshold = 0, onStart, onMove, onEnd, onTap, onCancel } = options
+  const {
+    axis = 'both',
+    threshold = 0,
+    calibrateOnFirstMove = false,
+    onStart,
+    onMove,
+    onEnd,
+    onTap,
+    onCancel
+  } = options
 
   let activePointerId: number | null = null
   let startX = 0
   let startY = 0
   let startTimeStamp = 0
   let isThresholdPassed = threshold <= 0
+  let isCalibrated = false
   let samples: DragSample[] = []
   let handledMoveEvent: PointerEvent | null = null
   let touchGuardTargets: Set<EventTarget> | null = null
@@ -205,6 +224,7 @@ export function attachDragGesture(
     }
     activePointerId = null
     isThresholdPassed = threshold <= 0
+    isCalibrated = false
     samples = []
     handledMoveEvent = null
     detachWindowListeners()
@@ -231,6 +251,7 @@ export function attachDragGesture(
     startY = e.clientY
     startTimeStamp = e.timeStamp
     isThresholdPassed = threshold <= 0
+    isCalibrated = false
     samples = [{ t: e.timeStamp, x: e.clientX, y: e.clientY }]
     handledMoveEvent = null
 
@@ -253,20 +274,20 @@ export function attachDragGesture(
     if (handledMoveEvent === e) return
     handledMoveEvent = e
 
-    const deltaX = e.clientX - startX
-    const deltaY = e.clientY - startY
-
     if (!isThresholdPassed) {
-      const distance = axis === 'x' ? Math.abs(deltaX) : axis === 'y' ? Math.abs(deltaY) : Math.hypot(deltaX, deltaY)
+      const rawDeltaX = e.clientX - startX
+      const rawDeltaY = e.clientY - startY
+      const distance =
+        axis === 'x' ? Math.abs(rawDeltaX) : axis === 'y' ? Math.abs(rawDeltaY) : Math.hypot(rawDeltaX, rawDeltaY)
       if (distance < threshold) return
 
       // 若限定了 X 轴且 Y 轴位移明显更大，视为滚动意图而非拖拽
-      if (axis === 'x' && Math.abs(deltaY) > Math.abs(deltaX)) {
+      if (axis === 'x' && Math.abs(rawDeltaY) > Math.abs(rawDeltaX)) {
         cancel()
         return
       }
       // 若限定了 Y 轴且 X 轴位移明显更大，放弃拖拽
-      if (axis === 'y' && Math.abs(deltaX) > Math.abs(deltaY)) {
+      if (axis === 'y' && Math.abs(rawDeltaX) > Math.abs(rawDeltaY)) {
         cancel()
         return
       }
@@ -280,6 +301,18 @@ export function attachDragGesture(
         // 忽略合成指针
       }
     }
+
+    // 首个有效 move 的基准校准：零点与时钟一起重置到当前位置。位移与时长都必须在这之后
+    // 重新求（校准改写了零点），否则首个 move 会拿到校准前的旧位移。
+    if (calibrateOnFirstMove && !isCalibrated) {
+      isCalibrated = true
+      startX = e.clientX
+      startY = e.clientY
+      startTimeStamp = e.timeStamp
+    }
+
+    const deltaX = e.clientX - startX
+    const deltaY = e.clientY - startY
 
     // 确认拖拽后阻止默认滚动/文字选中
     if (e.cancelable) e.preventDefault()

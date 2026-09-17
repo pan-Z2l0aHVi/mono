@@ -1,5 +1,5 @@
 /*
- * Nested drawer 层序管理（对齐 Base UI/shadcn nested drawer 行为）：
+ * Nested drawer 层序管理：
  * 每打开一层 modal drawer，其下所有已打开的 drawer 按 0.95^n 缩放并向
  * 屏幕内侧平移，在顶层抽屉后方露出阶梯式卡片边缘（peeking edge）；顶层全尺寸。
  *
