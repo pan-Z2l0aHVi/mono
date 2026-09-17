@@ -517,6 +517,17 @@ export class WebUiDrawer extends LitElement {
     super.connectedCallback()
     this._hasHeaderSlot = Array.from(this.children).some(child => child.getAttribute?.('slot') === 'header')
     this._hasFooterSlot = Array.from(this.children).some(child => child.getAttribute?.('slot') === 'footer')
+    // 重挂载对账：断连时 presence、滚动锁与 nested 层序已被 dispose/release，而
+    // `open` 未变化时 `updated()` 不会补跑任何 sync 分支。首次连接时 shadow 尚未
+    // 渲染、`this.dialog` 为 null，reconcile 内部直接返回；打开态的首次进入仍由
+    // updated() 的 `props.has('open')` 分支处理。
+    this._presence.reconcile()
+    if (this.open) {
+      // presence.reconcile 已让打开态的 dialog 同步回到 top layer（此刻 dialog.open
+      // 为真），层序 depth 可正确计数，与 updated() 的 register 时机一致。
+      this._nestedLayers.register()
+    }
+    this._syncScrollLock()
   }
 
   override firstUpdated() {

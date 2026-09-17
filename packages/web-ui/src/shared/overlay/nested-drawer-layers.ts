@@ -110,6 +110,11 @@ export const defineNestedDrawerLayers = () =>
     register() {
       const dialog = ctx.getDialog()
       if (!dialog) return
+      // 幂等保护：重挂载对账与 updated() 的 open 分支可能对同一 dialog 先后各调
+      // 一次 register，重复条目会让 applyLayers 把同一层计两次。
+      for (const entry of entries) {
+        if (entry.dialog === dialog) entries.delete(entry)
+      }
       ensureDocumentListener()
       entries.add({ dialog, placement: () => ctx.getPlacement() })
       applyLayers()

@@ -249,7 +249,28 @@ class WebUiImagePreview extends LitElement {
     this._offsetY = 0
   }
 
+  override connectedCallback() {
+    super.connectedCallback()
+    // 重挂载对账：断连时 presence 与滚动锁已被 dispose/release，而 `_open` 未变化时
+    // `updated()` 不会补跑任何 sync 分支。首次连接时 shadow 尚未渲染、`this.dialog`
+    // 为 null，reconcile 内部直接返回；打开态的首次进入仍由 updated() 的
+    // `props.has('_open')` 分支处理。
+    this._presence.reconcile()
+    this._syncScrollLock()
+    this._attachPinch()
+  }
+
   protected override firstUpdated() {
+    this._attachPinch()
+  }
+
+  /**
+   * 双指缩放手势挂载。`firstUpdated` 整个生命周期只跑一次，而断连时会 destroy
+   * 并清空 `_pinch`，宿主被移出文档再接回后手势会永久失效——因此首连与重挂
+   * 共用本方法，重挂时补挂。
+   */
+  private _attachPinch() {
+    if (this._pinch) return
     const stage = this._stage
     if (!stage) return
 

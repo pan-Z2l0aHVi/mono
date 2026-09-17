@@ -83,6 +83,16 @@ export class WebUiDialog extends LitElement {
     if (props.has('open') || props.has('noScrollLock')) this._syncScrollLock()
   }
 
+  override connectedCallback() {
+    super.connectedCallback()
+    // 重挂载对账：断连时 presence 与滚动锁已被 dispose/release，而 `open` 未变化时
+    // `updated()` 不会补跑任何 sync 分支。首次连接时 shadow 尚未渲染、`this.dialog`
+    // 为 null，reconcile 内部直接返回；打开态的首次进入仍由 updated() 的
+    // `props.has('open')` 分支处理。
+    this._presence.reconcile()
+    this._syncScrollLock()
+  }
+
   override disconnectedCallback() {
     super.disconnectedCallback()
     this._presence.dispose()
