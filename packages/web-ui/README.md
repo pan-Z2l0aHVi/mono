@@ -1457,7 +1457,7 @@ Every call returns the final id of that toast, so callers never branch on create
 | Still queued in the same tick | The queued options are patched and applied on mount; no second toast is created |
 | Closed, or still exiting      | A new toast is created; the one leaving finishes its exit animation on its own  |
 
-`duration` restarts the countdown only when it is passed explicitly; `message`, `heading` and `type` are plain properties and leave the timer alone. The `error` shortcut's 5000 ms default is applied when the toast is created, so it does not count as an explicit `duration` — repeated `toast.error(msg, { id })` calls do not reset the countdown. Changing `position` moves the element to the new container and keeps the remaining time (via `moveBefore` where available, with a pause/resume fallback elsewhere); if the countdown already elapsed while the main thread was blocked, the fallback closes the toast on resume instead of leaving it open. `container` and `target` are read from the first call only — moving a toast to a different overlay root is not supported.
+`duration` restarts the countdown only when it is passed explicitly (the one exception is a hover pause: the new value is recorded without starting the timer, and the countdown runs with it once the pointer leaves); `message`, `heading` and `type` are plain properties and leave the timer alone. The `error` shortcut's 5000 ms default is applied when the toast is created, so it does not count as an explicit `duration` — repeated `toast.error(msg, { id })` calls do not reset the countdown. Changing `position` moves the element to the new container and keeps the remaining time (via `moveBefore` where available, with a pause/resume fallback elsewhere); if the countdown already elapsed while the main thread was blocked, the fallback closes the toast on resume instead of leaving it open. `container` and `target` are read from the first call only — moving a toast to a different overlay root is not supported.
 
 **Close semantics** — `toast.close(id)` covers every state a toast can be in, including the two before it becomes visible:
 
@@ -1472,7 +1472,7 @@ Every call returns the final id of that toast, so callers never branch on create
 
 **Events:** `toast-close` (`CustomEvent<{ id: string; reason: 'auto' | 'manual' | 'programmatic' | 'clear' }>`)
 
-Hover pauses auto-close timer (uses `pointerenter`/`pointerleave`). Batch-mounts toasts created in the same microtask.
+Hover pauses the auto-close timer (uses `pointerenter`/`pointerleave`); leaving resumes the **remaining** time instead of restarting the full duration. If the `pointerleave` is missed while paused — the pointer is dragged out of the window, or the element is moved or removed while hovered — a document-level `pointerover`/`pointerout`/`pointerleave` fallback resumes the countdown, so a hovered toast cannot stay on screen forever. Batch-mounts toasts created in the same microtask.
 
 **CSS Custom Properties:**
 

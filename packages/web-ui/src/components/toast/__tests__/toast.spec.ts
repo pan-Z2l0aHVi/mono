@@ -232,21 +232,137 @@ describe('WebUiToast 组件', () => {
       el.remove()
     })
 
-    it('pointerleave 恢复自动关闭', async () => {
+    it('pointerleave 续跑剩余时间，而不是重启满时长', async () => {
       const el = createToastElement()
-      el.duration = 200
+      el.duration = 1000
+      await el.updateComplete
+      el.show()
+      await el.updateComplete
+
+      vi.advanceTimersByTime(900)
+      el.dispatchEvent(new PointerEvent('pointerenter', { bubbles: true }))
+      el.dispatchEvent(new PointerEvent('pointerleave', { bubbles: true }))
+      // 续跑剩余 100ms：若是「离开重启满时长」，这里要 1000 + 240 才够
+      vi.advanceTimersByTime(100 + 240)
+
+      expect(el.visible).toBe(false)
+      el.remove()
+    })
+
+    it('漏掉 pointerleave 时由 document pointerover 兜底恢复', async () => {
+      const el = createToastElement()
+      el.duration = 1000
       await el.updateComplete
       el.show()
       await el.updateComplete
 
       el.dispatchEvent(new PointerEvent('pointerenter', { bubbles: true }))
-      vi.advanceTimersByTime(100)
-      el.dispatchEvent(new PointerEvent('pointerleave', { bubbles: true }))
-      // leave 重启 duration(200) + dismiss fallback(240)
-      vi.advanceTimersByTime(440)
+      // 悬停多久都不关，也没有任何兜底上限
+      vi.advanceTimersByTime(5000)
+      expect(el.visible).toBe(true)
+
+      // 指针落到别的元素上：pointerover 冒泡到 document，路径不含 toast
+      document.body.dispatchEvent(new PointerEvent('pointerover', { bubbles: true }))
+      vi.advanceTimersByTime(1000 + 240)
 
       expect(el.visible).toBe(false)
       el.remove()
+    })
+
+    it('指针移出窗口时由 relatedTarget 为空的 pointerout 兜底恢复', async () => {
+      const el = createToastElement()
+      el.duration = 1000
+      await el.updateComplete
+      el.show()
+      await el.updateComplete
+
+      el.dispatchEvent(new PointerEvent('pointerenter', { bubbles: true }))
+      vi.advanceTimersByTime(5000)
+      expect(el.visible).toBe(true)
+
+      // 元素间移动的 pointerout 带 relatedTarget，只有离开窗口/目标消失才是 null
+      document.body.dispatchEvent(new PointerEvent('pointerout', { bubbles: true }))
+      vi.advanceTimersByTime(1000 + 240)
+
+      expect(el.visible).toBe(false)
+      el.remove()
+    })
+
+    it('指针移出文档时由 document pointerleave 兜底恢复', async () => {
+      const el = createToastElement()
+      el.duration = 1000
+      await el.updateComplete
+      el.show()
+      await el.updateComplete
+
+      el.dispatchEvent(new PointerEvent('pointerenter', { bubbles: true }))
+      vi.advanceTimersByTime(5000)
+      expect(el.visible).toBe(true)
+
+      document.dispatchEvent(new PointerEvent('pointerleave'))
+      vi.advanceTimersByTime(1000 + 240)
+
+      expect(el.visible).toBe(false)
+      el.remove()
+    })
+
+    it('悬停暂停期间搬迁节点不吞掉剩余时间', async () => {
+      const el = createToastElement()
+      el.duration = 1000
+      await el.updateComplete
+      el.show()
+      await el.updateComplete
+
+      el.dispatchEvent(new PointerEvent('pointerenter', { bubbles: true }))
+      // 降级路径的 pause/resume 成对出现：悬停未结束时 resume 不点火
+      el.pauseAutoClose()
+      el.resumeAutoClose()
+      vi.advanceTimersByTime(1000 + 240)
+      expect(el.visible).toBe(true)
+
+      el.dispatchEvent(new PointerEvent('pointerleave', { bubbles: true }))
+      vi.advanceTimersByTime(1000 + 240)
+
+      expect(el.visible).toBe(false)
+      el.remove()
+    })
+
+    it('悬停期间把 duration 改成 0：恢复后不自动关闭', async () => {
+      const el = createToastElement()
+      el.duration = 1000
+      await el.updateComplete
+      el.show()
+      await el.updateComplete
+
+      el.dispatchEvent(new PointerEvent('pointerenter', { bubbles: true }))
+      el.setDuration(0)
+      el.dispatchEvent(new PointerEvent('pointerleave', { bubbles: true }))
+      vi.advanceTimersByTime(5000)
+
+      expect(el.visible).toBe(true)
+      expect(el.dismissing).toBe(false)
+      el.dismiss()
+      vi.advanceTimersByTime(240)
+      el.remove()
+    })
+
+    it('悬停期间 upsert 显式 duration 不点火', async () => {
+      const id = toast.info('第一条', { id: 'hover-duration', duration: 1000 })
+      await waitForToastMounted()
+      const el = mountedToasts()[0]
+      el.dispatchEvent(new PointerEvent('pointerenter', { bubbles: true }))
+      vi.advanceTimersByTime(3000)
+      expect(el.visible).toBe(true)
+
+      toast.info('第二条', { id, duration: 1000 })
+      await el.updateComplete
+      vi.advanceTimersByTime(3000)
+      expect(el.visible).toBe(true)
+
+      el.dispatchEvent(new PointerEvent('pointerleave', { bubbles: true }))
+      vi.advanceTimersByTime(1000 + 240)
+
+      expect(el.visible).toBe(false)
     })
 
     it('touch pointerenter 不暂停自动关闭', async () => {
