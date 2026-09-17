@@ -46,6 +46,12 @@ export interface DragEndInfo {
   velocityY: number
   velocity: number
   timeStamp: number
+  /**
+   * 手势从**被识别**（越过意图死区；无死区时为 pointerdown）到本次释放的总时长（ms）。
+   * `velocity*` 是滑动窗口内的瞬时速度，只描述最后一小段轨迹；需要「整段手势的平均速度」
+   * （如判定甩动意图）时用它做分母。
+   */
+  duration: number
 }
 
 export interface DragGestureOptions {
@@ -91,6 +97,7 @@ export function attachDragGesture(
   let activePointerId: number | null = null
   let startX = 0
   let startY = 0
+  let startTimeStamp = 0
   let isThresholdPassed = threshold <= 0
   let samples: DragSample[] = []
   let handledMoveEvent: PointerEvent | null = null
@@ -222,6 +229,7 @@ export function attachDragGesture(
     activePointerId = e.pointerId
     startX = e.clientX
     startY = e.clientY
+    startTimeStamp = e.timeStamp
     isThresholdPassed = threshold <= 0
     samples = [{ t: e.timeStamp, x: e.clientX, y: e.clientY }]
     handledMoveEvent = null
@@ -263,6 +271,9 @@ export function attachDragGesture(
         return
       }
       isThresholdPassed = true
+      // 手势从「被识别」这一刻起算：有意图死区时，pointerdown 之后到越过死区之前的
+      // 悬停不属于拖拽轨迹，计进 duration 会稀释整段手势的平均速度。
+      startTimeStamp = e.timeStamp
       try {
         target?.setPointerCapture?.(e.pointerId)
       } catch {
@@ -318,7 +329,9 @@ export function attachDragGesture(
       velocityX: vx,
       velocityY: vy,
       velocity: v,
-      timeStamp: e.timeStamp
+      timeStamp: e.timeStamp,
+      // 时间戳同源（都是事件 timeStamp），合成事件序列可能倒退或为 0，钳到非负。
+      duration: Math.max(0, e.timeStamp - startTimeStamp)
     }
 
     const hadPassedThreshold = isThresholdPassed

@@ -6,7 +6,7 @@ import '@/components/button'
 import glass from '@/assets/glass.css?inline'
 import { oouiClose } from '@/icons'
 import { UserChangeController } from '@/shared/events/user-change'
-import { attachDragGesture, type DragGestureHandle, rubberband, SPRING_PRESETS, springOffsets } from '@/shared/gesture'
+import { attachDragGesture, type DragGestureHandle, rubberband } from '@/shared/gesture'
 import { normalizeLiteral } from '@/shared/normalize'
 import { dispatchOpenChangeEvent } from '@/shared/open-state'
 import { defineNativeDialogPresence } from '@/shared/overlay/native-dialog-presence'
@@ -20,11 +20,46 @@ const ALLOWED_PLACEMENTS = ['right', 'left', 'top', 'bottom'] as const
 
 export type DrawerPlacement = (typeof ALLOWED_PLACEMENTS)[number]
 
-// 拖拽关闭判定：位移超过抽屉尺寸 1/3，或闭合方向甩动速度超过 500px/s 视为关闭意图。
-const DRAG_CLOSE_RATIO = 1 / 3
+/*
+ * 释放后的拖拽关闭判定，取值与判据对齐 Base UI 的 `useSwipeDismiss` + `DrawerViewport`：
+ *
+ * - 距离：位移超过抽屉尺寸的一半（下限 10px），对齐 `getBaseSwipeThreshold()`
+ *   的 `max(size * 0.5, MIN_SWIPE_THRESHOLD)`；尺寸量不到时（0）由下限兜底，
+ *   保证退化场景不会因为阈值 0 而「动一下就关」。
+ * - 甩动：整段手势的平均速度超过 500px/s，对齐 `FAST_SWIPE_VELOCITY`（0.5px/ms）。
+ *   这里用「整段手势」而不是释放瞬间的滑窗速度：滑窗只描述最后一小段轨迹，
+ *   反向回扫（先往打开方向拖进橡皮筋量程，再快速扫回）在释放瞬间同样能凑出很高的
+ *   滑窗速度，但它不是朝关闭方向的甩动。净速度 = 净位移 / 整段时长，净位移不到位
+ *   就凑不出阈值速度；分母再钳到 50ms（对齐 `MIN_VELOCITY_DURATION_MS`），甩动因此
+ *   隐含了「朝闭合方向的净位移至少 25px」这一不变量。
+ * - 净位移未朝闭合方向（`<= 0`）时一律弹回，对齐 `directionalDelta <= 0` 守卫。
+ */
+const DRAG_CLOSE_RATIO = 0.5
+const DRAG_MIN_CLOSE_DISTANCE = 10
 const DRAG_FLICK_VELOCITY = 500
+const DRAG_MIN_VELOCITY_SPAN_MS = 50
 const DRAG_REQUEST_WINDOW_MS = 120
-const SPRING_SAMPLE_MS = 16
+
+/*
+ * 释放后的收尾（弹回打开位 / 滑出到闭合位）由 CSS transition 接管（issue #123）：
+ * 拖拽期间内联 transform + `transition: none`，松手时把终值与过渡参数写入内联并在
+ * 同一次样式重算里解除抑制，回弹即唯一的一次 CSS 过渡。全程无 `element.animate()`、
+ * 无 fill、无 JS→CSS 动画交接边界，因此不存在 Safari 采不到 before-change style 的
+ * 窗口（r3 的 reflow 烘焙补丁随 WAAPI 一并退役）。
+ *
+ * 代价是失去弹簧的速度感知轨迹：释放速度只用于估算过渡时长，过冲手感由缓动曲线
+ * 近似。两条曲线对应原弹簧预设的阻尼比——close（ζ≈1.05）无过冲，
+ * rebound（ζ≈0.74）保留约 3% 过冲。
+ */
+const SETTLE_MIN_MS = 180
+const SETTLE_MAX_MS = 420
+const SETTLE_EASE_CLOSE = 'cubic-bezier(0.32, 0.72, 0, 1)'
+// 过冲量由 y1 决定：1.3 时峰值 ≈2.99%，与 ζ≈0.74 的理论过冲（3.15%）对齐；1.12 只剩 0.37%。
+const SETTLE_EASE_REBOUND = 'cubic-bezier(0.22, 1.3, 0.36, 1)'
+// 估算时长的速度下限（px/s）：静止释放时退化为最大时长，避免除零与无限时长。
+const SETTLE_MIN_VELOCITY = 1
+// transitionend 兜底定时器的宽限：覆盖一帧的调度抖动。
+const SETTLE_GRACE_MS = 80
 
 /*
  * 拖拽期间由 JS 写入的遮罩透明度变量参与 WAAPI 关键帧。未注册的自定义属性在
@@ -54,6 +89,23 @@ if (typeof CSS !== 'undefined' && 'registerProperty' in CSS) {
       syntax: '<length>',
       inherits: true,
       initialValue: '8px'
+    })
+  } catch {
+    // 已注册（如 HMR 重复执行）时忽略
+  }
+  /*
+   * 收尾过渡的时长：注册为 <time> 后 ::backdrop 也能继承到同一值。不注册时变量在
+   * transition 简写里只是 token 替换，值一旦无效整条声明在计算值阶段失效
+   * （退化为 transition: none），回弹会变成瞬移。
+   * 缓动不注册：CSS 属性语法没有 <easing-function>，且它不需要插值，靠 var() 的
+   * 兜底值即可。
+   */
+  try {
+    CSS.registerProperty({
+      name: '--wui-internal-settle-duration',
+      syntax: '<time>',
+      inherits: true,
+      initialValue: '280ms'
     })
   } catch {
     // 已注册（如 HMR 重复执行）时忽略
@@ -134,7 +186,10 @@ export class WebUiDrawer extends LitElement {
   // pointerdown 时刻已存在的闭合方向位移（从弹回动画中抓取时非 0）。
   private _dragInitialOffset = 0
   private _dragOffset = 0
-  private _dragAnimation: Animation | null = null
+  // 释放后的 CSS transition 收尾：完成回调，以及终值与当前值相同时
+  // 不会派发 transitionend 的兜底定时器。
+  private _settleFinish: (() => void) | null = null
+  private _settleTimer: ReturnType<typeof setTimeout> | undefined
   // controlled：弹簧到闭合位后等待 Consumer 回写 open；超时未回写则弹回。
   private _dragAwaitWriteback = false
   private _dragRequestTimer: ReturnType<typeof setTimeout> | undefined
@@ -162,6 +217,12 @@ export class WebUiDrawer extends LitElement {
     const dialog = this.dialog
     if (!dialog) return 0
     return this._dragAxis === 'x' ? dialog.offsetWidth : dialog.offsetHeight
+  }
+
+  // 关闭距离阈值：尺寸的一半，下限 10px（对齐 Base UI getBaseSwipeThreshold）。
+  // 胶囊的 accent 视觉确认与实际判定共用同一阈值，两者不会漂移。
+  private _dragCloseThreshold(size: number): number {
+    return Math.max(size * DRAG_CLOSE_RATIO, DRAG_MIN_CLOSE_DISTANCE)
   }
 
   // 浮动卡片（非 headless）的四周留边；闭合位移需越过它才能完全滑出视口。
@@ -219,13 +280,17 @@ export class WebUiDrawer extends LitElement {
       currentTransform && currentTransform !== 'none' && typeof DOMMatrixReadOnly === 'function'
         ? new DOMMatrixReadOnly(currentTransform)[this._dragAxis === 'x' ? 'm41' : 'm42']
         : 0
-    this._dragAnimation?.cancel()
-    this._dragAnimation = null
+    // 收尾过渡进行中被重新抓取：丢弃收尾状态（不执行其回调，避免它回头写内联），
+    // 位移已在下面按当前计算值续接。
+    this._abortSettle()
     this._cancelDragAwait()
 
     this._dragInitialOffset = axisValue * this._dragCloseSign
     this._dragOffset = this._dragInitialOffset
     dialog.classList.add('is-dragging')
+    // 收尾过渡进行中重新抓取时内联还停在收尾终值（打开位/闭合位），不写回当前位移
+    // 会在抑制生效的瞬间跳到终值。写回后计算值 == 抓取瞬间的视觉位置，无跳变。
+    this._applyDragOffset(dialog, this._dragOffset)
 
     this._dragGesture = attachDragGesture(e, {
       axis: this._dragAxis,
@@ -237,7 +302,7 @@ export class WebUiDrawer extends LitElement {
 
         // 达到关闭阈值时胶囊变 accent 色作视觉确认（ADR-0027）。
         const dragSize = this._measureDragSize()
-        dialog.classList.toggle('is-drag-close', dragSize > 0 && this._dragOffset > dragSize * DRAG_CLOSE_RATIO)
+        dialog.classList.toggle('is-drag-close', this._dragOffset > this._dragCloseThreshold(dragSize))
         this._applyDragOffset(dialog, this._dragOffset)
       },
       onEnd: info => {
@@ -245,16 +310,20 @@ export class WebUiDrawer extends LitElement {
         dialog.classList.remove('is-dragging', 'is-drag-close')
         const size = this._measureDragSize()
         const velocity = (this._dragAxis === 'x' ? info.velocityX : info.velocityY) * this._dragCloseSign
+        // 净位移从抓取瞬间的位移起算（弹回/收尾过渡中被重新抓取时起点非 0），与
+        // Base UI 以 initialTransform 为基准一致。
+        const displacement = this._dragOffset - this._dragInitialOffset
+        const netVelocity = (displacement / Math.max(info.duration, DRAG_MIN_VELOCITY_SPAN_MS)) * 1000
         const shouldClose =
-          this._dragOffset > size * DRAG_CLOSE_RATIO || (this._dragOffset > 8 && velocity > DRAG_FLICK_VELOCITY)
+          this._dragOffset > this._dragCloseThreshold(size) || (displacement > 0 && netVelocity > DRAG_FLICK_VELOCITY)
 
-        if (shouldClose) this._springToClose(dialog, velocity)
-        else this._springRebound(dialog, velocity, this._dragOffset)
+        if (shouldClose) this._settleToClose(dialog, velocity)
+        else this._settleRebound(dialog, velocity, this._dragOffset)
       },
       onCancel: () => {
         this._dragGesture = null
         dialog.classList.remove('is-dragging', 'is-drag-close')
-        this._springRebound(dialog, 0, this._dragOffset)
+        this._settleRebound(dialog, 0, this._dragOffset)
       }
     })
   }
@@ -286,23 +355,18 @@ export class WebUiDrawer extends LitElement {
     dialog.style.removeProperty('--wui-internal-drag-backdrop-opacity')
   }
 
-  // 弹簧到完全闭合；controlled 下保持闭合位等待回写，其余走常规关闭管线。
-  private _springToClose(dialog: HTMLDialogElement, velocity: number) {
+  // 由 CSS transition 收尾到完全闭合；controlled 下保持闭合位等待回写，其余走常规关闭管线。
+  private _settleToClose(dialog: HTMLDialogElement, velocity: number) {
     const from = this._dragOffset
     this._dragOffset = 0
-    const sign = this._dragCloseSign
-    // 弹簧终点 = 完全出屏距离（含浮动留边），与 CSS 闭合态/悬停终态一致，
-    // 否则 onfinish 后会有一个留边宽度的瞬移。
+    // 终点 = 完全出屏距离（含浮动留边），与 CSS 闭合态/悬停终态一致，
+    // 否则收尾结束后会有一个留边宽度的瞬移。
     const to = this._dragCloseDistance(dialog)
-    const size = this._measureDragSize()
 
     const finishClose = () => {
       if (this.controlled) {
         // 保持在闭合位（is-visible 未移除，状态仍 open），等待 Consumer 回写或超时弹回。
-        const distance = to
-        dialog.style.transform =
-          this._dragAxis === 'x' ? `translateX(${distance * sign}px)` : `translateY(${distance * sign}px)`
-        dialog.style.setProperty('--wui-internal-drag-backdrop-opacity', '0')
+        this._applyDragOffset(dialog, to)
       } else {
         // 移除 is-visible 后基础 transform 即闭合位，清内联样式不产生跳变；
         // presence.sync(false) 检测不到 is-visible 会立即完成关闭，不重播退出动画。
@@ -312,105 +376,101 @@ export class WebUiDrawer extends LitElement {
       this._closeFromDrag()
     }
 
-    if (this._isReducedMotion() || typeof dialog.animate !== 'function') {
+    if (this._isReducedMotion() || Math.abs(to - from) < 1) {
+      // 与 _settleRebound 的无动画路径对称：自己解除抑制，不依赖调用方清过类。
+      dialog.classList.remove('is-dragging')
       finishClose()
       return
     }
 
-    const samples = springOffsets(from, to, velocity, SPRING_PRESETS.close)
-    const keyframes = samples.map(o => ({
-      transform: this._dragAxis === 'x' ? `translateX(${o * sign}px)` : `translateY(${o * sign}px)`,
-      '--wui-internal-drag-backdrop-opacity': String(Math.max(0, 1 - o / size))
-    }))
-    // 采样帧含首值与附加终点，实际时长为帧间隔数 × 采样周期。
-    const duration = (samples.length - 1) * SPRING_SAMPLE_MS
-    // fill:'both' 与 _springRebound 对称：堵住 finish→onfinish 清理窗口，
-    // 防止该窗口内绘制的帧暴露内联位移、随清理触发跳变。
-    const animation = dialog.animate(keyframes, { duration, easing: 'linear', fill: 'both' })
-    // 审计（Safari 不采信 fill 覆盖的 before-change style）：受控分支 finishClose
-    // 把内联写入闭合位，cancel 时内联 == fill 终态 == 生效闭合位，三值一致；非受控
-    // 分支 finishClose 在 fill 覆盖期间完成 is-visible 切换并清内联，cancel 后
-    // computed 落到 CSS 闭合位且 == fill 终态 to，同样无中间旧值可被采样。因此
-    // 「先应用终态再 cancel」对关闭路径已满足，无需像弹回那样保留内联终值。
-    animation.onfinish = () => {
-      finishClose()
-      animation.cancel()
-    }
+    this._startSettle(
+      dialog,
+      to,
+      0,
+      this._settleDuration(Math.abs(to - from), velocity),
+      SETTLE_EASE_CLOSE,
+      finishClose
+    )
   }
 
-  // 弹回打开：从 from 位移弹回 0；结束后把内联样式交还打开态/CSS transition 管辖。
-  private _springRebound(dialog: HTMLDialogElement, velocity: number, from: number) {
+  // 弹回打开位：从 from 位移回到 0；结束后把内联样式交还 CSS 打开态。
+  private _settleRebound(dialog: HTMLDialogElement, velocity: number, from: number) {
     this._dragOffset = 0
 
-    // 弹回结束把内联样式覆写为打开态终值而非删除：Safari 计算 CSS transition 的
-    // before-change style 时不采信 WAAPI fill 动画的覆盖值，删除内联会让它采样到
-    // 拖拽残留位移（如 -64px）作为旧值，与打开态 0 之间触发一次额外的 transform
-    // 过渡 —— 即弹回结束后再次多弹一次（Chrome 采信 fill 故不复现）。
-    // translateX(0px)/translateY(0px) 与打开态 CSS transform translate(0,0) 数学等价，
-    // backdrop opacity 1 与 --wui-internal-drag-backdrop-opacity 的默认值一致；内联
-    // 保留到关闭管线：关闭时 _springToClose 的 animate 会覆盖它，其 finishClose 清理
-    // 内联时 dialog 已进入关闭流程（is-visible 移除/闭合位写入），无 before-change
-    // 采样窗口。
-    const applyOpenInlineState = () => {
-      dialog.style.transform = this._dragAxis === 'x' ? 'translateX(0px)' : 'translateY(0px)'
-      dialog.style.setProperty('--wui-internal-drag-backdrop-opacity', '1')
+    // 收尾结束必须清掉内联 transform，不能像 WAAPI 时代那样保留 0px：
+    // translateX(0px) 内联会盖住闭合态 CSS transform，之后用按钮/遮罩/Esc 关闭时
+    // 计算值恒为 0、开与关都不再触发过渡。
+    const finishRebound = () => {
+      this._clearDragStyles(dialog)
     }
 
-    // 同步收尾，顺序不可调换：
-    // 1. 把内联覆写为打开态终值（保留 is-dragging，transition:none 仍在抑制）；
-    // 2. void dialog.offsetWidth 强制一次同步样式重算：Safari 的 before-change
-    //    style 不采信 WAAPI fill 覆盖，此刻计算样式已真实归 0，重算把 0「烘焙」为
-    //    它内部 transition 参考值。rAF 不够：rAF 回调与 onfinish 常落在同一渲染帧，
-    //    Safari 在抑制解除时还没把 0 写进 transition 状态，会按旧值 -offset 补触发
-    //    （MutationObserver 实测：onfinish 与 is-dragging 移除同毫秒、transitionstart
-    //    延后 16ms 仍以 -9.6 为 from）。
-    // 3. 同步移除 is-dragging：重算后解除抑制是 0→0，无 before-change/after 差异，
-    //    无过渡可触发。顺序若反（先移除类再重算），解除抑制的瞬间 Safari 仍以旧值
-    //    为参考，过渡照旧触发。
-    // 防御：dialog 已关闭/断连时跳过样式收尾（is-dragging 随元素销毁自然消失）。
-    // clearInline：无动画路径（tap、from≈0、reduced-motion、无 WAAPI）没有需要「烘焙」
-    // 的拖拽残留，直接移除内联拖拽样式回到 CSS 打开态即可。不能像动画路径那样把内联
-    // 写成 translateX(0px) 长期保留：0px 内联会盖住闭合态 CSS transform，用户之后用
-    // 按钮/遮罩/Esc（不走 _springToClose 的 animate）关闭时计算值恒为 0、开与关都
-    // 不再触发过渡 —— 快速连点后「后续开关丢失过渡动画」的根因。
-    const finishRebound = (clearInline: boolean) => {
-      this._dragAnimation = null
-      if (!dialog.isConnected) return
-      if (clearInline) this._clearDragStyles(dialog)
-      else applyOpenInlineState()
-      void dialog.offsetWidth
+    if (this._isReducedMotion() || Math.abs(from) < 1) {
+      // 无动画路径：直接移除内联回到 CSS 打开位。CSS 化后计算值就是可信的打开位 0，
+      // 不存在 WAAPI fill 覆盖，无需强制 reflow「烘焙」。
       dialog.classList.remove('is-dragging')
-    }
-
-    if (this._isReducedMotion() || typeof dialog.animate !== 'function' || Math.abs(from) < 1) {
-      // 无动画路径同样先加 is-dragging 抑制过渡，再走同一收尾；
-      // 保证所有 _springRebound 出口（onfinish/onCancel/受控回写弹回）行为一致。
-      dialog.classList.add('is-dragging')
-      finishRebound(true)
+      finishRebound()
       return
     }
 
+    this._startSettle(dialog, 0, 1, this._settleDuration(Math.abs(from), velocity), SETTLE_EASE_REBOUND, finishRebound)
+  }
+
+  // 释放速度只影响收尾时长：以它走完剩余距离的时间作为估计，慢放长、甩动短。
+  private _settleDuration(distance: number, velocity: number): number {
+    const ms = (distance / Math.max(Math.abs(velocity), SETTLE_MIN_VELOCITY)) * 1000
+    return Math.min(SETTLE_MAX_MS, Math.max(SETTLE_MIN_MS, ms))
+  }
+
+  /*
+   * 把释放后的收尾交给 CSS transition：写入终值与「时长/缓动」两个内部变量，并在
+   * 同一次样式重算里解除抑制（is-dragging → is-settling）。过渡的 before-change
+   * style 就是拖拽期间写入的内联值——没有 WAAPI 覆盖层，各引擎采样一致，这正是
+   * 相对旧弹簧路径对 Safari「不采信 fill 覆盖」怪癖免疫的原因。
+   */
+  private _startSettle(
+    dialog: HTMLDialogElement,
+    offset: number,
+    backdropOpacity: number,
+    duration: number,
+    easing: string,
+    onDone: () => void
+  ) {
+    // 覆盖前先丢弃上一次收尾：否则它的兜底定时器会提前结束这一次的过渡。
+    this._abortSettle()
     const sign = this._dragCloseSign
-    const size = this._measureDragSize()
-    const samples = springOffsets(from, 0, velocity, SPRING_PRESETS.rebound)
-    const keyframes = samples.map(o => ({
-      transform: this._dragAxis === 'x' ? `translateX(${o * sign}px)` : `translateY(${o * sign}px)`,
-      '--wui-internal-drag-backdrop-opacity': String(Math.max(0, 1 - o / size))
-    }))
-    // 弹回期间抑制 transform/backdrop 的 CSS transition，避免与弹簧动画叠加。
-    dialog.classList.add('is-dragging')
-    const duration = (samples.length - 1) * SPRING_SAMPLE_MS
-    // fill:'both' 堵住 finish→onfinish 清理之间的竞态窗口：无 fill 时动画结束即
-    // 失效，窗口内被绘制的帧会暴露内联拖拽位移，随后的清理再触发 CSS 过渡滑回
-    // 打开位 —— 表现为回弹后又多弹一次。
-    const animation = dialog.animate(keyframes, { duration, easing: 'linear', fill: 'both' })
-    // onfinish 时保持 is-dragging（transition 仍被抑制）走 finishRebound：
-    // 覆写内联 → 强制重算烘焙 0 → 移除类，Safari 无旧值可采信、无过渡可触发。
-    animation.onfinish = () => {
-      finishRebound(false)
-      animation.cancel()
+    dialog.style.setProperty('--wui-internal-settle-duration', `${duration}ms`)
+    dialog.style.setProperty('--wui-internal-settle-easing', easing)
+    dialog.style.transform =
+      this._dragAxis === 'x' ? `translateX(${offset * sign}px)` : `translateY(${offset * sign}px)`
+    dialog.style.setProperty('--wui-internal-drag-backdrop-opacity', String(backdropOpacity))
+    dialog.classList.add('is-settling')
+    dialog.classList.remove('is-dragging')
+
+    this._settleFinish = onDone
+    // 终值与当前值相同时不会派发 transitionend（也没有可见变化），用定时器兜底。
+    this._settleTimer = setTimeout(() => this._finishSettle(), duration + SETTLE_GRACE_MS)
+  }
+
+  // 收尾过渡结束（transitionend 或兜底超时）：先撤 settle 状态再执行收尾。
+  private _finishSettle() {
+    const finish = this._settleFinish
+    if (!finish) return
+    this._abortSettle()
+    finish()
+  }
+
+  // 丢弃进行中的收尾（重新抓取、强制关闭、断连）：只撤状态，不执行收尾回调。
+  private _abortSettle() {
+    this._settleFinish = null
+    if (this._settleTimer !== undefined) {
+      clearTimeout(this._settleTimer)
+      this._settleTimer = undefined
     }
-    this._dragAnimation = animation
+    const dialog = this.dialog
+    if (!dialog) return
+    dialog.classList.remove('is-settling')
+    dialog.style.removeProperty('--wui-internal-settle-duration')
+    dialog.style.removeProperty('--wui-internal-settle-easing')
   }
 
   private _closeFromDrag() {
@@ -436,7 +496,7 @@ export class WebUiDrawer extends LitElement {
     if (!dialog) return
     dialog.classList.add('is-visible')
     // 悬停终态位于完全出屏位（含留边），弹回也从该真实位置起步，避免首帧内跳。
-    this._springRebound(dialog, 0, this._dragCloseDistance(dialog))
+    this._settleRebound(dialog, 0, this._dragCloseDistance(dialog))
   }
 
   override connectedCallback() {
@@ -456,8 +516,7 @@ export class WebUiDrawer extends LitElement {
     this._dragGesture = null
     this._presence.dispose()
     this._scrollLock.release()
-    this._dragAnimation?.cancel()
-    this._dragAnimation = null
+    this._abortSettle()
     this._cancelDragAwait()
   }
 
@@ -505,14 +564,15 @@ export class WebUiDrawer extends LitElement {
           dialog.classList.remove('is-visible')
           this._clearDragStyles(dialog)
         } else if (dialog && this.open) {
-          this._springRebound(dialog, 0, this._dragCloseDistance(dialog))
+          this._settleRebound(dialog, 0, this._dragCloseDistance(dialog))
         }
       }
-      // 关闭且无进行中的拖拽动画时，清理可能残留的内联拖拽样式（如弹回路径按
-      // Safari 双回弹修复保留的 translateX(0px)）。若不清理，0px 内联会盖住闭合态
-      // CSS transform，后续开/关都不再触发过渡。拖拽动画进行中（_dragAnimation 非空）
-      // 由各自的 onfinish 收尾，这里不干预。
-      if (!this.open && this._dragAnimation === null && !this._isDragging()) {
+      // 关闭且无进行中的拖拽/收尾时，清理可能残留的内联拖拽样式（如收尾路径写在
+      // 打开位的 translateX(0px)）。若不清理，0px 内联会盖住闭合态 CSS transform，
+      // 后续开/关都不再触发过渡。收尾进行中由 _finishSettle 自行收尾，这里丢弃它
+      // 以免回调回头写内联与关闭管线竞争。
+      if (!this.open && !this._isDragging()) {
+        this._abortSettle()
         const dialog = this.dialog
         if (dialog) this._clearDragStyles(dialog)
       }
@@ -530,7 +590,15 @@ export class WebUiDrawer extends LitElement {
   }
 
   private handleTransitionEnd(e: TransitionEvent) {
+    // transitionend 会从后代元素冒泡上来（slotted 消费者内容、嵌套子 drawer）。
+    // 只处理 dialog 自身的事件：presence 与收尾都只认本层 dialog 的过渡，
+    // 后代一条 transform 过渡结束不能提前终结本层收尾（与 presence 内部守卫同规则）。
+    if (e.target !== e.currentTarget) return
     this._presence.handleTransitionEnd(e)
+
+    // 收尾过渡结束：::backdrop 的 opacity 过渡 target 也是 dialog（带 pseudoElement），
+    // 因此再按 propertyName 只认 transform。
+    if (e.propertyName === 'transform') this._finishSettle()
   }
 
   private handleKeydown(e: KeyboardEvent) {

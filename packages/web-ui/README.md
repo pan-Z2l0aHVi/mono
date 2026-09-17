@@ -748,10 +748,11 @@ When `closable` is set, the built-in close button is positioned at the header's 
 **Drag to close:** With `draggable`, a gray capsule drag bar (4×56px by default, visually centered 10px from the inner edge inside a 20px-thick hit zone) appears on the drawer's inner edge (left edge for `right`, right edge for `left`, bottom edge for `top`, top edge for `bottom`) while open:
 
 - Dragging follows the pointer in real time; the backdrop fades proportionally.
-- Releasing past ~1/3 of the drawer size, or with a fast closing flick, springs the drawer shut; otherwise it springs back open. The close direction is placement-aware.
-- With `controlled`, release past the threshold only emits `open-change(false)`; the drawer holds at the closed position briefly (120ms write-back window) and springs back open if the consumer rejects or misses the write-back.
+- Releasing past half the drawer size (floor of 10px), or with a fast closing flick, closes the drawer; otherwise it animates back open. The close direction is placement-aware. Both thresholds match Base UI's `useSwipeDismiss`: the flick is judged by the **whole gesture's** average velocity (net displacement ÷ gesture duration, divisor floored at 50ms), not by the instantaneous velocity at release. Dragging out into the rubber band and sweeping back quickly therefore cannot be mistaken for a flick — and any release whose net displacement isn't in the close direction always animates back open.
+- The release velocity only shapes the settle transition's duration (180–420ms); the settle itself is a single CSS transition on `transform`, handed back by JS at release — no WAAPI animation is created.
+- With `controlled`, release past the threshold only emits `open-change(false)`; the drawer holds at the closed position briefly (120ms write-back window) and animates back open if the consumer rejects or misses the write-back.
 - Drag-to-open is not supported because the closed drawer renders nothing outside the native dialog.
-- Under `prefers-reduced-motion`, release snaps instantly without spring animation.
+- Under `prefers-reduced-motion`, release settles instantly, with no transition.
 
 **CSS Custom Properties:**
 

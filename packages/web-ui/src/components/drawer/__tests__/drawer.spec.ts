@@ -536,6 +536,10 @@ describe('WebUiDrawer 组件', () => {
         new PointerEvent('pointerup', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 520 })
       )
       await waitForUpdate(el)
+      // 释放后的收尾已交还 CSS transition（issue #123）：jsdom 不运行过渡、也不派发
+      // transitionend，收尾由兜底定时器完成，这里把时间推过它。
+      await vi.advanceTimersByTimeAsync(600)
+      await waitForUpdate(el)
 
       expect(el.open).toBe(false)
       expect(events.map(event => event.detail.open)).toEqual([false])
@@ -639,6 +643,9 @@ describe('WebUiDrawer 组件', () => {
       dragZone.dispatchEvent(
         new PointerEvent('pointerup', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 520 })
       )
+      await waitForUpdate(el)
+      // 同上：jsdom 无 CSS 过渡，收尾等兜底定时器（controlled 下到悬停态）。
+      await vi.advanceTimersByTimeAsync(600)
       await waitForUpdate(el)
 
       expect(el.open).toBe(true)

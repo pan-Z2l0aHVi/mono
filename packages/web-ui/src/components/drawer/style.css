@@ -61,7 +61,7 @@ dialog[open].is-visible {
 }
 
 /*
- * 拖拽跟手期间与弹簧弹回期间，transform/backdrop 由 JS 内联样式与 WAAPI 管辖。
+ * 拖拽跟手期间，transform/backdrop 由 JS 内联样式管辖，CSS transition 必须让位。
  * 特异性必须压过下方开放守卫块（:host(:not()) dialog[open].is-visible = (0,4,1)
  * 的 nested transition 声明），否则拖拽写入的 transform 会被平滑掉、跟手失效。
  * 复合选择器达 (0,6,1)，恒高于守卫。
@@ -72,6 +72,24 @@ dialog.is-dragging {
 
   &::backdrop {
     transition: none;
+  }
+}
+
+/*
+ * 释放后的收尾（弹回打开位 / 滑出到闭合位）：位移与遮罩交还 CSS transition，
+ * JS 只在松手瞬间写入终值与 --wui-internal-settle-duration / --wui-internal-settle-easing
+ *（issue #123）。全程无 WAAPI，before-change style 就是拖拽期间写入的内联值，
+ * 不存在 JS→CSS 动画交接边界，因此不需要 Safari 的 reflow 烘焙补丁。
+ * 特异性对齐 .is-dragging：同样要压过下方开放守卫块。
+ */
+:host(:not([headless])) dialog.is-settling[open].is-visible,
+dialog.is-settling {
+  transition: transform var(--wui-internal-settle-duration, 280ms)
+    var(--wui-internal-settle-easing, cubic-bezier(0.32, 0.72, 0, 1));
+
+  &::backdrop {
+    transition: opacity var(--wui-internal-settle-duration, 280ms)
+      var(--wui-internal-settle-easing, cubic-bezier(0.32, 0.72, 0, 1));
   }
 }
 

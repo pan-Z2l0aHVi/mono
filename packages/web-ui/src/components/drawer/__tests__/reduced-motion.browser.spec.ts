@@ -112,26 +112,44 @@ afterEach(() => document.body.replaceChildren())
  * 那是几何取值（§12 C1），已换成 `getAnimations()`：无弹簧 == 一条动画都没有。
  */
 describe('减少动效下的 Drawer 拖拽关闭（浏览器）', () => {
-  it('超过阈值松手：不走弹簧，open 立即落 false（对照组 full 会走弹簧）', async () => {
+  it('超过阈值松手：不走收尾过渡，open 立即落 false（对照组 full 会等收尾）', async () => {
     const reduced = mountDrawer(null)
     await openDrawer(reduced)
     await dragToClose(reduced, 300)
 
-    // 无弹簧：松手瞬间即到位，且窗口内采不到任何动画。
+    // 无收尾过渡：松手瞬间即到位，且窗口内采不到任何动画。
     expect(reduced.open).toBe(false)
     expect(await sampleTransitions(reduced, 4)).toHaveLength(0)
 
-    // 对照组：显式 motion='full' 覆盖系统 reduce → 松手瞬间仍未关闭（在等弹簧）。
+    // 对照组：显式 motion='full' 覆盖系统 reduce → 松手瞬间仍未关闭（在等收尾）。
     const full = mountDrawer('full')
     await openDrawer(full)
     await dragToClose(full, 300)
     expect(full.open).toBe(true)
-    await waitFor(() => !full.open, 'drawer did not close after the spring settled', 10_000)
+    await waitFor(() => !full.open, 'drawer did not close after the settle transition', 10_000)
   })
 
-  it('未达阈值松手：即时弹回打开位且无残留动画（对照组 full 会产生弹簧）', async () => {
+  it('未达阈值松手：即时弹回打开位且无残留动画', async () => {
+    /*
+     * 收尾已交还 CSS transition（issue #123）。逐帧采样的窗口在 CI 高负载下会整个错过
+     * 最短 180ms 的收尾，所以改用 transitionstart 监听——与帧率解耦，直接回答
+     *「有没有真的跑过渡」。
+     *
+     * 本例不再带 motion='full' 对照组：本文件跑在 `browser-reduced-motion` 工程，系统
+     * reduce 生效，而 reduce 媒体查询以 `transform: none !important` 对所有位移归零
+     *（enter/exit 同样如此）；theme 的 motion 只影响 JS 侧收尾时序，改不动这条 CSS
+     * 规则。旧实现之所以能在 full 下观察到动画，是因为 WAAPI 不受 CSS 管辖——实现副作用，
+     * 不是契约。「full 下确实在等收尾」的对照由上面的「超过阈值松手」用例承担。
+     */
+    const seenTransform = (el: WebUiDrawer) => {
+      const seen: string[] = []
+      getDialog(el).addEventListener('transitionstart', event => seen.push((event as TransitionEvent).propertyName))
+      return seen
+    }
+
     const reduced = mountDrawer(null)
     await openDrawer(reduced)
+    const reducedSeen = seenTransform(reduced)
 
     // CI 慢环境下单次合成 move 的整程速度会被判为 flick 而误关，用多段慢拖。
     const dragZone = getDragZone(reduced)
@@ -153,39 +171,20 @@ describe('减少动效下的 Drawer 拖拽关闭（浏览器）', () => {
 
     expect(reduced.open).toBe(true)
     expect(getDialog(reduced).open).toBe(true)
-    expect(await sampleTransitions(reduced, 4)).toHaveLength(0)
-
-    // 对照组：full 下同样的未达阈值松手会真的跑一条弹回弹簧。
-    const full = mountDrawer('full')
-    await openDrawer(full)
-    const fullZone = getDragZone(full)
-    fullZone.dispatchEvent(
-      new PointerEvent('pointerdown', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 100, clientY: 300 })
-    )
-    await full.updateComplete
-    for (const x of [106, 112, 118, 124, 130]) {
-      fullZone.dispatchEvent(
-        new PointerEvent('pointermove', { bubbles: true, pointerId: 1, isPrimary: true, clientX: x, clientY: 300 })
-      )
-      await new Promise(resolve => setTimeout(resolve, 16))
-    }
-    await full.updateComplete
-    fullZone.dispatchEvent(
-      new PointerEvent('pointerup', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 130, clientY: 300 })
-    )
-    await full.updateComplete
-    expect(full.open).toBe(true)
-    expect(await sampleTransitions(full, 6)).not.toHaveLength(0)
+    expect(reducedSeen).not.toContain('transform')
   })
 
-  it('theme 作用域优先于系统：motion=full 覆盖系统 reduce，松手后走弹簧', async () => {
+  it('theme 作用域优先于系统：motion=full 覆盖系统 reduce，松手后按收尾时序关闭（reduce 下由兜底定时器完成）', async () => {
     const full = mountDrawer('full')
     await openDrawer(full)
     await dragToClose(full, 300)
 
     // 系统虽为 reduce，但所在 theme 显式要求完整动效 → 松手瞬间仍未关闭。
+    // 注意：此时的收尾不是 transform 过渡（reduce 媒体查询以 `transform: none !important`
+    // 压过 `.is-settling` 的过渡声明），而是 JS 兜底定时器到期后直接落终态，
+    // 本用例锁定的是「按收尾时序关闭」这一时序，不是过渡本身。
     expect(full.open).toBe(true)
-    await waitFor(() => !full.open, 'drawer did not close after the spring settled', 10_000)
+    await waitFor(() => !full.open, 'drawer did not close after the settle sequence', 10_000)
     expect(getDialog(full).open).toBe(false)
   })
 })
