@@ -1,0 +1,56 @@
+/*
+ * 主题切换的圆形揭示（View Transitions）。
+ *
+ * 只保留新/旧快照本身：关掉默认 cross-fade 与 plus-lighter 混合，否则 clip 边缘会带半透明叠色。
+ * ::view-transition-group(root) 保持 UA 默认——root 快照取 snapshot containing block（视口尺寸），
+ * 新旧同尺寸，映射变换是恒等，接管它只会引入不必要的缩放风险。
+ *
+ * 这里不写 prefers-reduced-motion 守卫：demo 的「全局动效」下拉是显式覆盖项，
+ * 是否播放过渡由应用层按 完整动效 / 减少动效 / 跟随系统 判定，CSS 不得越权二次判断。
+ */
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  mix-blend-mode: normal;
+  animation: none;
+}
+
+/* 浅色→深色：深色是新快照，从点击点扩大圆形盖住浅色 */
+.theme-transition-to-dark::view-transition-new(root) {
+  z-index: 2;
+  animation: theme-transition-reveal 500ms ease-in both;
+}
+
+.theme-transition-to-dark::view-transition-old(root) {
+  z-index: 1;
+}
+
+/* 深色→浅色：深色是旧快照，从点击点收缩圆形露出浅色 */
+.theme-transition-to-light::view-transition-old(root) {
+  z-index: 2;
+  animation: theme-transition-hide 500ms ease-in both;
+}
+
+.theme-transition-to-light::view-transition-new(root) {
+  z-index: 1;
+}
+
+@keyframes theme-transition-reveal {
+  from {
+    clip-path: circle(0 at var(--theme-transition-x) var(--theme-transition-y));
+  }
+
+  to {
+    clip-path: circle(var(--theme-transition-radius) at var(--theme-transition-x) var(--theme-transition-y));
+  }
+}
+
+@keyframes theme-transition-hide {
+  from {
+    clip-path: circle(var(--theme-transition-radius) at var(--theme-transition-x) var(--theme-transition-y));
+  }
+
+  to {
+    clip-path: circle(0 at var(--theme-transition-x) var(--theme-transition-y));
+  }
+}
