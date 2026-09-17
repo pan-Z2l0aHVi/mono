@@ -64,6 +64,8 @@
 
 观察面从 `toast._visibleCount()` 换成实际挂载元素后，**暴露一个真实产品缺陷**：同批次重复 id 不去重。
 已单独提 issue `pan-Z2l0aHVi/mono#135`（改为 upsert 语义），不在本批修复范围。
+**后续：已由 #135（task `toast-upsert-260916`，release/260917）收口** —— upsert 语义 + `removeStray` 兜底 +
+退场窗口活性判据，`_visibleCount()` 随之删除；修法与验收记于 `batch-d-lists/batch-plan.md` 的「承诺 #8 的收口记录」。
 
 ### Batch 6c · drawer / image-preview（10 文件 / 139 例）
 

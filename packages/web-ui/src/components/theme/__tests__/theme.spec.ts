@@ -176,10 +176,10 @@ describe('WebUiTheme 组件', () => {
       toast.info('fallback', { duration: 0 })
       await new Promise(resolve => requestAnimationFrame(resolve))
 
-      // 外在表现：toast 渲染进 fallback overlay root，而不是注入 document head 样式
-      expect(toast._visibleCount()).toBe(1)
+      // 外在表现：toast 渲染进 fallback overlay root，而不是注入 document head 样式。
+      // 计数断言走公开面保留：本批主题恰是「消除同 id 重复挂载」，只留存在性断言会让同类缺陷漏网。
       const fallbackRoot = document.querySelector('[data-wui-overlay-root]')?.shadowRoot
-      expect(fallbackRoot?.querySelector('web-ui-toast')).toBeTruthy()
+      expect(fallbackRoot?.querySelectorAll('web-ui-toast')).toHaveLength(1)
       toast._reset()
     })
   })

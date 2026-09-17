@@ -1374,9 +1374,17 @@ const id = toast({ message: '自定义', type: 'info', position: 'bottom-right',
 toast.close(id)
 toast.clear()
 
-// 更新可见内容，不重置自动关闭计时
-toast.updateMessage(id, { message: '上传已完成 60%', heading: '正在上传' })
+// upsert：同一 id 再次调用是更新那一条，而不是再建一条
+toast.error('网络连接中断，正在重试…', { id: 'network' })
+toast.error('网络连接中断（第 2 次重试）', { id: 'network' })
+
+// 一条 toast 走完整个生命周期
+toast.info('上传中 0%', { id: 'upload', duration: 0 })
+toast.info('上传中 60%', { id: 'upload' }) // 省略 duration，计时不动
+toast.success('上传完成', { id: 'upload', duration: 3000 }) // 换 type，重新开始倒计时
 ```
+
+每次调用都返回这条 toast 的最终 id，调用方无需区分新建还是更新。
 
 **ToastOptions：**
 
@@ -1386,13 +1394,32 @@ toast.updateMessage(id, { message: '上传已完成 60%', heading: '正在上传
 | `type`      | `'success' \| 'info' \| 'warning' \| 'error'` | `'info'`                  | 类型                                  |
 | `duration`  | `number`                                      | `3000`（error 为 `5000`） | 自动关闭时间（0=不自动关闭）          |
 | `closable`  | `boolean`                                     | `true`                    | 显示关闭按钮                          |
-| `id`        | `string`                                      | auto                      | 去重标识符                            |
+| `id`        | `string`                                      | auto                      | 合并键：同一 id 的调用更新同一条      |
 | `heading`   | `string`                                      | `''`                      | 粗体标题                              |
 | `position`  | 6 种位置                                      | `'top-right'`             | 屏幕位置                              |
 | `target`    | `Element`                                     | —                         | 用于查找最近 theme-owned overlay root |
 | `container` | `HTMLElement`                                 | —                         | 显式挂载容器（最高优先级）            |
 
-**`toast.updateMessage(id, options)`** 更新可见 Toast 的 `message`，并在传入时更新 `heading`；不会重置自动关闭计时。`options` 类型为 `ToastMessageUpdateOptions`：`{ message: string; heading?: string }`。
+**upsert 语义** —— 同一 `id` 再次调用的结果：
+
+| 目标状态             | 结果                                             |
+| -------------------- | ------------------------------------------------ |
+| 已挂载               | 返回同一个 id；给出的字段覆盖，未给出的保持原值  |
+| 同 tick 内仍在待挂载 | patch 待挂载的 options，挂载后生效，不产生第二条 |
+| 已关闭或正在退场     | 新建一条；正在离场的那条自行走完退场动画         |
+
+`duration` 只有显式传入才重启倒计时；`message`、`heading`、`type` 是普通属性，不碰计时。`toast.error` 的 5000 默认值在**创建时**兜底，不算显式传入，因此重复调用 `toast.error(msg, { id })` 不会重置倒计时。`position` 变化会把元素搬到新容器并保住剩余计时（支持 `moveBefore` 的引擎直接搬，其余走暂停/续跑降级）；若倒计时在主线程被占用期间已经到期，降级路径会在续跑时直接退场，而不是让它一直挂着。`container` 与 `target` 以首次调用为准，不支持把已存在的 toast 换到另一个 overlay root。
+
+**关闭语义** —— `toast.close(id)` 覆盖 toast 出现的每个阶段，包括「还没开始显示」的两种：
+
+| 目标状态              | 结果                                     |
+| --------------------- | ---------------------------------------- |
+| 已显示                | 播放退场动画，结束后派发 `toast-close`   |
+| 已挂载、`show()` 未跑 | 没有退场动画可播，立即派发 `toast-close` |
+| 同 tick 仍在待挂载    | 挂载前出队：不会出现，也不派发事件       |
+| 已在退场              | 空操作，由那条 toast 自己走完退场        |
+
+`toast.clear()` 的口径相同：队列条目一并取消，已挂载的全部关闭。
 
 **事件：** `toast-close` (`CustomEvent<{ id: string; reason: 'auto' | 'manual' | 'programmatic' | 'clear' }>`)
 

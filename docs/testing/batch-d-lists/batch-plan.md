@@ -122,7 +122,7 @@
 | 5   | `checkbox-group` / `radio-group` 同输入多用例合并（D4 去重）                                                                                                                                                         | b3 §7.4                                                                | 未定                                                                                                                                                                                                     |
 | 6   | `overlay-in-dialog` context-menu 用例的**负载敏感时序抖动** → deflake（参考既有 `ci-web-ui-browser-spec-flaky` 类 task）                                                                                             | `batch-4.md` §7                                                        | **b6a 已 deflake ✅**：根因是「入场未结束时关闭 → 反向过渡把声明 2000ms 压到 ~151ms → 面板在 200ms 重开定时器前离开 closing 缓存」；修法是关闭前等入场 settle。全量套件红点 1 → 0。见 `batch-6a.md` §5.3 |
 | 7   | `contractEvent` 的**空 `counts` 护栏**（空对象会生成"无断言用例"而门禁不拦）                                                                                                                                         | b2 遗留                                                                | **b5 已落地 ✅**（`assertNonEmptyCounts` + 4 例 spec，见 `batch-5.md` §2）                                                                                                                               |
-| 8   | **产品缺陷（非测试）**：`toast` **同一次 microtask 批里重复的显式 id 不去重**                                                                                                                                        | `batch-6b.md` §4（换观察面时发现，**b6c 已写探针实测定论**，探针已删） | **需独立 task 修源码**                                                                                                                                                                                   |
+| 8   | **产品缺陷（非测试）**：`toast` **同一次 microtask 批里重复的显式 id 不去重**                                                                                                                                        | `batch-6b.md` §4（换观察面时发现，**b6c 已写探针实测定论**，探针已删） | **已收口 ✅**：issue #135 / task `toast-upsert-260916`（release/260917）改为 upsert 语义。见下方「承诺 #8 的收口记录」                                                                                   |
 
 ### 承诺 #8 的实测定论（b6c 补记，交接给修源码的 task）
 
@@ -154,7 +154,20 @@
 2. 更稳的是同时给 `removeToast` 兜底：按 `id` 找不着时，再按容器里 `web-ui-toast[toastId=id]` 全量清理，
    避免"孤儿自己删不掉"。**两者不互斥，建议同批做。**
 
-（修源码时还可一并清理 `manager.ts:161,164` 两个仅为测试存在的钩子 `_visibleCount()` / `_reset()` —— 已在 batch-6b 起闲置。）
+（修源码时还可一并清理两个仅为测试存在的钩子：`manager.ts` 的 `_visibleCount()` 已随 #135 删除，
+`_reset()` 保留 —— 它仍是各 spec `beforeEach`/`afterEach` 的重置入口。）
+
+### 承诺 #8 的收口记录（#135 / `toast-upsert-260916`）
+
+上面的两条修法**都已落地**，与建议一致：
+
+1. 去重从「只查 `visibleToasts`」改为查两侧（`visibleToasts` + `pendingBatch`），并把语义从「丢弃更新」升级为 **upsert**：同 id 的后续调用覆盖给出的字段、保留未给出的字段；
+2. `removeToast` 兜底按容器里的 `web-ui-toast[toastId=id]` 全量清理（现为 `removeStray()`），孤儿不再「连自己都删不掉」。
+
+此外修掉两处同源边界（独立复审提出，均已补用例）：
+
+- 退场窗口（`close()` 之后、`toast-close` 派发之前）内用同 id 调用**不再复用那条正在消失的元素**，改走新建路径；解绑按元素身份而非 `detail.id`，退场元素延迟派发的 `toast-close` 不会误删同 id 的新元素；
+- `toast.error` 的 5000 默认值从 shortcut 挪到挂载时兜底，`duration` 恢复「只有显式传入才重启」。
 
 > **R1–R4 是 b5/b6 的共同前置判据**，已写入 `DELETION-RUBRIC.md` §8。b5（组合框/分段）与 b6（容器/动效/主题）动手前请先读 §8，尤其是：
 > `select`/`autocomplete` 的 presence 断言走 R1、玻璃用例走 R2、`segmented-gesture.browser` 的视觉量走 R2 并归入动效判据。

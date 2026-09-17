@@ -1410,25 +1410,52 @@ const id = toast({ message: 'Custom', type: 'info', position: 'bottom-right', du
 toast.close(id)
 toast.clear()
 
-// Update visible content without resetting auto-close timing
-toast.updateMessage(id, { message: 'Upload 60% complete', heading: 'Uploading' })
+// Upsert: calling again with the same id updates that one toast instead of adding another
+toast.error('Network lost, retrying…', { id: 'network' })
+toast.error('Network lost (retry 2)', { id: 'network' })
+
+// One toast through its whole lifecycle
+toast.info('Uploading 0%', { id: 'upload', duration: 0 })
+toast.info('Uploading 60%', { id: 'upload' }) // duration omitted: timer keeps running
+toast.success('Upload complete', { id: 'upload', duration: 3000 }) // new type, timer restarts
 ```
+
+Every call returns the final id of that toast, so callers never branch on create vs. update.
 
 **ToastOptions:**
 
-| Option      | Type                                                                                              | Default                   | Description                                   |
-| ----------- | ------------------------------------------------------------------------------------------------- | ------------------------- | --------------------------------------------- |
-| `message`   | `string`                                                                                          | —                         | Notification text                             |
-| `type`      | `'success' \| 'info' \| 'warning' \| 'error'`                                                     | `'info'`                  | Toast type                                    |
-| `duration`  | `number`                                                                                          | `3000` (`5000` for error) | Auto-close duration (0 = no auto-close)       |
-| `closable`  | `boolean`                                                                                         | `true`                    | Show close button                             |
-| `id`        | `string`                                                                                          | auto                      | Deduplication identifier                      |
-| `heading`   | `string`                                                                                          | `''`                      | Bold heading text                             |
-| `position`  | `'top-left' \| 'top-center' \| 'top-right' \| 'bottom-left' \| 'bottom-center' \| 'bottom-right'` | `'top-right'`             | Screen position                               |
-| `target`    | `Element`                                                                                         | —                         | Used to find nearest theme-owned overlay root |
-| `container` | `HTMLElement`                                                                                     | —                         | Explicit mount container (highest priority)   |
+| Option      | Type                                                                                              | Default                   | Description                                     |
+| ----------- | ------------------------------------------------------------------------------------------------- | ------------------------- | ----------------------------------------------- |
+| `message`   | `string`                                                                                          | —                         | Notification text                               |
+| `type`      | `'success' \| 'info' \| 'warning' \| 'error'`                                                     | `'info'`                  | Toast type                                      |
+| `duration`  | `number`                                                                                          | `3000` (`5000` for error) | Auto-close duration (0 = no auto-close)         |
+| `closable`  | `boolean`                                                                                         | `true`                    | Show close button                               |
+| `id`        | `string`                                                                                          | auto                      | Merge key: calls sharing an id update one toast |
+| `heading`   | `string`                                                                                          | `''`                      | Bold heading text                               |
+| `position`  | `'top-left' \| 'top-center' \| 'top-right' \| 'bottom-left' \| 'bottom-center' \| 'bottom-right'` | `'top-right'`             | Screen position                                 |
+| `target`    | `Element`                                                                                         | —                         | Used to find nearest theme-owned overlay root   |
+| `container` | `HTMLElement`                                                                                     | —                         | Explicit mount container (highest priority)     |
 
-**`toast.updateMessage(id, options)`** updates the visible toast's `message` and, when supplied, `heading`. It does not restart the auto-close timer. `options` is `ToastMessageUpdateOptions`: `{ message: string; heading?: string }`.
+**Upsert semantics** — what a second call with the same `id` does:
+
+| Target state                  | Result                                                                          |
+| ----------------------------- | ------------------------------------------------------------------------------- |
+| Mounted                       | Same id returned; supplied fields overwrite, omitted ones keep their value      |
+| Still queued in the same tick | The queued options are patched and applied on mount; no second toast is created |
+| Closed, or still exiting      | A new toast is created; the one leaving finishes its exit animation on its own  |
+
+`duration` restarts the countdown only when it is passed explicitly; `message`, `heading` and `type` are plain properties and leave the timer alone. The `error` shortcut's 5000 ms default is applied when the toast is created, so it does not count as an explicit `duration` — repeated `toast.error(msg, { id })` calls do not reset the countdown. Changing `position` moves the element to the new container and keeps the remaining time (via `moveBefore` where available, with a pause/resume fallback elsewhere); if the countdown already elapsed while the main thread was blocked, the fallback closes the toast on resume instead of leaving it open. `container` and `target` are read from the first call only — moving a toast to a different overlay root is not supported.
+
+**Close semantics** — `toast.close(id)` covers every state a toast can be in, including the two before it becomes visible:
+
+| Target state                       | Result                                                          |
+| ---------------------------------- | --------------------------------------------------------------- |
+| Visible                            | Plays the exit animation, then emits `toast-close`              |
+| Mounted, `show()` has not run yet  | No exit animation to play: emits `toast-close` immediately      |
+| Still queued in the same microtask | Dropped before it mounts — nothing appears, no event is emitted |
+| Already exiting                    | No-op; that toast finishes its own exit                         |
+
+`toast.clear()` has the same scope: it drops queued entries and closes everything mounted.
 
 **Events:** `toast-close` (`CustomEvent<{ id: string; reason: 'auto' | 'manual' | 'programmatic' | 'clear' }>`)
 

@@ -295,6 +295,49 @@ describe('WebUiToast 组件', () => {
       el.remove()
     })
   })
+
+  describe('自动关闭：暂停与续跑', () => {
+    /*
+     * 「没有计时器」与「已到期」必须分开表达：搬迁节点走 pause/resume 降级时会先清掉
+     * duration 回调，若两者共用同一个 0，正好在「deadline 已过、回调还没执行」的窗口里
+     * 搬迁，这条 toast 就再也不会自动关闭。
+     */
+    it('暂停时已到期：续跑立即退场，而不是永不关闭', async () => {
+      const el = createToastElement()
+      el.duration = 1000
+      await el.updateComplete
+      el.show()
+      await el.updateComplete
+
+      // 只拨时钟、不推进定时器队列：造出「到期但回调还没跑」的窗口
+      // （advanceTimersByTime 会顺手把回调跑掉，复现不出这个窗口）。
+      vi.setSystemTime(Date.now() + 2000)
+
+      el.pauseAutoClose()
+      el.resumeAutoClose()
+
+      expect(el.dismissing).toBe(true)
+      vi.advanceTimersByTime(240)
+      expect(el.visible).toBe(false)
+      el.remove()
+    })
+
+    it('暂停时本就没有计时器（duration 为 0）：续跑不启动倒计时', async () => {
+      const el = createToastElement()
+      el.duration = 0
+      await el.updateComplete
+      el.show()
+      await el.updateComplete
+
+      el.pauseAutoClose()
+      el.resumeAutoClose()
+      vi.advanceTimersByTime(5000)
+
+      expect(el.visible).toBe(true)
+      expect(el.dismissing).toBe(false)
+      el.remove()
+    })
+  })
 })
 
 describe('toast 命令式 API', () => {
@@ -338,31 +381,215 @@ describe('toast 命令式 API', () => {
     })
   })
 
-  describe('命令式 API：toast(options)', () => {
-    /*
-     * 观察面从内部测试钩子 `toast._visibleCount()`（私有 Map 的 size）换成**实际挂载的
-     * `web-ui-toast` 元素**后，暴露出一个既有缺陷：**同一次批量里重复的 id 不会被去重**。
-     * 实测（探针取证，探针已删；背景见 `docs/testing/BATCH-LEDGER.md` §Batch 6b）：
-     *   toast({message:'first', id:'dup'}); toast({message:'second', id:'dup'})  →  DOM 里 2 条，
-     *   都 visible=true、都 toastId='dup'（用户会看到两条），而 `_visibleCount()` 报 1 —— 旧断言
-     *   只读内部 Map，恰好看不到这个重复挂载。根因在 `manager.ts` 的 `createToast()`：只查
-     *   `visibleToasts`，不查 `pendingBatch`（同文件的 `updateMessage()` 两边都查）。
-     *
-     * 注意时序：上面那组是**同批次**（两次调用之间没有 await）。本用例在两次调用之间插入了
-     * `await waitForToastMounted()`，走的是「已挂载后再用同 id 调用」这条**去重正常**的路径，
-     * 因此**本用例不复现该缺陷**；缺陷只留在 §4 的探针记录与转出项里。
-     *
-     * 修源码不在本批范围（§6），故本用例只断言**确实成立**的那一半契约（已挂载后同 id 去重），
-     * 并把缺陷记为转出项；不改成"期望 2 条"来把缺陷固化成契约。
-     */
-    it('已挂载的同 id toast 不重复创建', async () => {
-      toast({ message: '1', id: 'dup' })
+  describe('命令式 API：upsert 语义（同 id 复用同一条 toast）', () => {
+    it('同 tick 内重复 id 只挂载一条，内容以后一次为准', async () => {
+      const first = toast({ message: '1', id: 'dup' })
+      const second = toast({ message: '2', id: 'dup' })
       await waitForToastMounted()
+
+      expect(second).toBe(first)
+      expect(mountedToasts()).toHaveLength(1)
+      expect(mountedToasts()[0].message).toBe('2')
+    })
+
+    it('已挂载后重复 id 更新 message，不传 type 时保留原类型', async () => {
+      const id = toast.info('上传中 0%', { id: 'upload', duration: 0 })
+      await waitForToastMounted()
+
+      toast({ id, message: '上传中 60%' })
+      await waitForToastMounted()
+
+      expect(mountedToasts()).toHaveLength(1)
+      expect(mountedToasts()[0].message).toBe('上传中 60%')
+      expect(mountedToasts()[0].type).toBe('info')
+    })
+
+    it('已挂载后重复 id 可切换 type 与 heading', async () => {
+      const id = toast.info('上传中 0%', { id: 'upload', duration: 0 })
+      await waitForToastMounted()
+
+      toast.success('上传完成', { id, heading: '完成' })
+      await waitForToastMounted()
+
+      expect(mountedToasts()).toHaveLength(1)
+      expect(mountedToasts()[0].type).toBe('success')
+      expect(mountedToasts()[0].heading).toBe('完成')
+    })
+
+    it('省略 duration 时不重启倒计时，自关闭时点不变', async () => {
+      const id = toast.info('倒计时', { id: 'timer', duration: 1000 })
+      await waitForToastMounted()
+
+      vi.advanceTimersByTime(600)
+      toast({ id, message: '倒计时' })
+      // 剩余约 400ms 后自关闭 + 退场；若 patch 重启了计时，此时仍应可见。
+      vi.advanceTimersByTime(400 + 240)
+
+      expect(mountedToasts()).toHaveLength(0)
+    })
+
+    it('显式传 duration 时重新开始计时', async () => {
+      const id = toast.info('倒计时', { id: 'timer', duration: 1000 })
+      await waitForToastMounted()
+
+      vi.advanceTimersByTime(600)
+      toast({ id, message: '重新计时', duration: 1000 })
+      // 旧计时在 1000ms 处就该关掉它；重启后此时仍在。
+      vi.advanceTimersByTime(400 + 240)
       expect(mountedToasts()).toHaveLength(1)
 
-      toast({ message: '2', id: 'dup' })
+      vi.advanceTimersByTime(600 + 240)
+      expect(mountedToasts()).toHaveLength(0)
+    })
+
+    /*
+     * `toast.error` 的 5000 默认值只在挂载时兜底，不进 options：否则 upsert 每次都判定为
+     * 「显式传入 duration」而重启倒计时，与 README 写明的「只有显式传入才重启」直接矛盾。
+     */
+    it('toast.error 未显式传 duration 时不重启倒计时', async () => {
+      const id = toast.info('倒计时', { id: 'timer', duration: 1000 })
       await waitForToastMounted()
+
+      vi.advanceTimersByTime(600)
+      toast.error('重试失败', { id })
+      // 原计时点在 1000ms 处；若 shortcut 注入了隐式 duration，此刻这条应当仍在。
+      vi.advanceTimersByTime(400 + 240)
+
+      expect(mountedToasts()).toHaveLength(0)
+    })
+
+    it('error 的默认 duration 是 5000，通用形式同样兜底', async () => {
+      const shortcut = toast.error('连接中断')
+      const generic = toast({ message: '通用形式', type: 'error' })
+      await waitForToastMounted()
+
+      // 只看仍在计时的元素：默认值若仍是 3000，此刻两条都已进入退场（仍在 DOM，但 dismissing）
+      vi.advanceTimersByTime(3000)
+      expect(
+        mountedToasts()
+          .filter(el => !el.dismissing)
+          .map(el => el.toastId)
+      ).toEqual([shortcut, generic])
+
+      vi.advanceTimersByTime(2000 + 240)
+      expect(mountedToasts()).toHaveLength(0)
+    })
+
+    it('position 变化时搬进新容器、清理空容器并保住剩余计时', async () => {
+      const id = toast.info('搬家中', { id: 'move', position: 'top-right', duration: 1000 })
+      await waitForToastMounted()
+
+      vi.advanceTimersByTime(400)
+      toast({ id, message: '搬家中', position: 'bottom-left' })
+
+      const el = mountedToasts()[0]
+      expect(el.position).toBe('bottom-left')
+      expect(getToastContainer('bottom-left')?.contains(el)).toBe(true)
+      expect(getToastContainer('top-right')).toBeNull()
+
+      // 搬运不应清掉自动关闭计时：剩余约 600ms 后自关闭 + 退场。
+      vi.advanceTimersByTime(600 + 240)
+      expect(mountedToasts()).toHaveLength(0)
+    })
+
+    it('计时已到期但回调尚未执行时搬迁 position，仍会退场而不是永久滞留', async () => {
+      const id = toast.info('滞留', { id: 'stuck', position: 'top-right', duration: 1000 })
+      await waitForToastMounted()
+
+      // 只拨时钟、不推进定时器队列：造出「deadline 已过、duration 回调还排在队列里没跑」的窗口。
+      vi.setSystemTime(Date.now() + 2000)
+
+      toast({ id, message: '滞留', position: 'bottom-left' })
+
+      // 剩余时间按「已到期」处理：立刻退场；若被当成「本来就没有计时器」，它会一直挂在页面上。
       expect(mountedToasts()).toHaveLength(1)
+      expect(mountedToasts()[0].dismissing).toBe(true)
+
+      vi.advanceTimersByTime(240)
+      expect(mountedToasts()).toHaveLength(0)
+    })
+
+    it('关闭后重传同 id 新建一条', async () => {
+      const id = toast.info('第一轮', { id: 'cycle', duration: 0 })
+      await waitForToastMounted()
+
+      toast.close(id)
+      vi.advanceTimersByTime(240)
+      expect(mountedToasts()).toHaveLength(0)
+
+      const again = toast.info('第二轮', { id: 'cycle', duration: 0 })
+      await waitForToastMounted()
+
+      expect(again).toBe(id)
+      expect(mountedToasts()).toHaveLength(1)
+      expect(mountedToasts()[0].message).toBe('第二轮')
+    })
+
+    it('close() 能收走不在管理器内的同 id 残留元素', async () => {
+      toast.info('占位', { duration: 0 })
+      await waitForToastMounted()
+
+      const container = getToastContainer('top-right')!
+      const stray = document.createElement('web-ui-toast')
+      stray.toastId = 'stray'
+      container.appendChild(stray)
+
+      toast.close('stray')
+
+      const remaining = Array.from(getToasts()).map(el => el.toastId)
+      expect(remaining).not.toContain('stray')
+    })
+
+    /*
+     * 退场窗口：`close()` 只把 visible 置 false，元素要等退场结束、toast-close 派发后才解除映射。
+     * 这段窗口内元素仍连接、仍被映射持有，但**不再接受更新**——若复用同一条，补丁会写进一条
+     * 正在消失的元素，退场结束后通知彻底丢失，而返回值仍是同一个 id，调用方无从区分。
+     */
+    it('退场窗口内重传同 id 立刻新建一条可见 toast', async () => {
+      const id = toast.info('第一轮', { id: 'cycle', duration: 0 })
+      await waitForToastMounted()
+
+      toast.close(id)
+      // 不推进退场计时：此刻元素仍在 DOM、仍被映射持有
+      expect(mountedToasts()[0].dismissing).toBe(true)
+
+      const again = toast({ id, message: '第二轮' })
+      await waitForToastMounted()
+
+      expect(again).toBe(id)
+      const visible = mountedToasts().filter(el => !el.dismissing)
+      expect(visible).toHaveLength(1)
+      expect(visible[0].message).toBe('第二轮')
+    })
+
+    it('退场中的旧元素收尾时不会删掉同 id 的新元素', async () => {
+      const id = toast.info('第一轮', { id: 'cycle', duration: 0 })
+      await waitForToastMounted()
+
+      toast.close(id)
+      toast({ id, message: '第二轮' })
+      await waitForToastMounted()
+
+      // 推进到旧元素的退场兜底定时器之后：它的 toast-close 按元素身份解绑，不应波及新元素
+      vi.advanceTimersByTime(240)
+
+      expect(mountedToasts()).toHaveLength(1)
+      expect(mountedToasts()[0].message).toBe('第二轮')
+      expect(mountedToasts()[0].dismissing).toBe(false)
+    })
+
+    it('元素被宿主摘出 DOM 后重传同 id 新建一条', async () => {
+      const id = toast.info('第一轮', { id: 'cycle', duration: 0 })
+      await waitForToastMounted()
+
+      // 宿主（框架卸载、容器被替换等）直接移出节点：disconnectedCallback 只清计时器
+      mountedToasts()[0].remove()
+
+      toast({ id, message: '第二轮' })
+      await waitForToastMounted()
+
+      expect(mountedToasts()).toHaveLength(1)
+      expect(mountedToasts()[0].message).toBe('第二轮')
     })
   })
 
@@ -382,35 +609,38 @@ describe('toast 命令式 API', () => {
       toast.close('nonexistent')
       expect(mountedToasts()).toHaveLength(0)
     })
-  })
 
-  describe('命令式 API：toast.updateMessage()', () => {
-    it('立即更新已挂载 toast 的 message 和 heading', async () => {
-      const id = toast.info('旧消息', { heading: '旧标题', duration: 0 })
+    /*
+     * 「还没开始显示」有两种状态，都能被 close() 取消；否则调用方以为关掉了，元素照常出现。
+     */
+    it('close() 能取消同 tick 仍在待挂载队列里的条目', async () => {
+      const id = toast.info('还没出现', { id: 'queued' })
+      toast.close(id)
       await waitForToastMounted()
 
-      toast.updateMessage(id, { message: '新消息', heading: '新标题' })
-      const el = Array.from(getToasts()).find(toastEl => toastEl.toastId === id)
-      await el?.updateComplete
-
-      expect(el?.heading).toBe('新标题')
-      expect(el?.message).toBe('新消息')
+      expect(mountedToasts()).toHaveLength(0)
+      // 队列被取消后连容器都不该建出来
+      expect(getToastContainer('top-right')).toBeNull()
     })
 
-    it('未传入 heading 时保留现有标题', async () => {
-      const id = toast.info('旧消息', { heading: '保留标题', duration: 0 })
+    it('close() 能收走已挂载但 show() 还没跑的 toast，且只派发一次 toast-close', async () => {
+      const id = toast.info('还没显示', { id: 'pre-show' })
+      // 只冲微任务：flushBatch 已挂载，rAF 里的 show() 还没跑
+      await Promise.resolve()
+      expect(mountedToasts()).toHaveLength(1)
+      expect(mountedToasts()[0].visible).toBe(false)
+
+      const handler = vi.fn<(e: Event) => void>()
+      document.addEventListener('toast-close', handler)
+
+      toast.close(id)
       await waitForToastMounted()
 
-      toast.updateMessage(id, { message: '新消息' })
-      const el = Array.from(getToasts()).find(toastEl => toastEl.toastId === id)
-      await el?.updateComplete
+      expect(mountedToasts()).toHaveLength(0)
+      expect(handler).toHaveBeenCalledTimes(1)
+      expect((handler.mock.calls[0][0] as CustomEvent).detail).toEqual({ id, reason: 'programmatic' })
 
-      expect(el?.heading).toBe('保留标题')
-      expect(el?.message).toBe('新消息')
-    })
-
-    it('更新不存在的 id 不抛出异常', () => {
-      expect(() => toast.updateMessage('missing', { message: '忽略' })).not.toThrow()
+      document.removeEventListener('toast-close', handler)
     })
   })
 
@@ -424,6 +654,15 @@ describe('toast 命令式 API', () => {
 
       toast.clear()
       vi.advanceTimersByTime(240)
+
+      expect(mountedToasts()).toHaveLength(0)
+    })
+
+    it('clear() 能取消同 tick 仍在待挂载队列里的条目', async () => {
+      toast.info('队列一', { id: 'q1' })
+      toast.info('队列二', { id: 'q2' })
+      toast.clear()
+      await waitForToastMounted()
 
       expect(mountedToasts()).toHaveLength(0)
     })
