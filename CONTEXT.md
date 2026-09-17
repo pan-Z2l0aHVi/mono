@@ -100,6 +100,7 @@ interweave（含 interweave-frontend）──共享包的 Wails 桌面集成表�
 | [0010](docs/adr/0010-agent-role-orchestration.md)                               | Agent Role Orchestration                             | 修改角色分工、编排路由或 handoff 契约                                   |
 | [0011](docs/adr/0011-agent-model-binding-and-effort.md)                         | Agent Model Binding & Effort                         | 修改角色-执行体-模型绑定或思考强度分档                                  |
 | [0012](docs/adr/0012-instruction-risk-tiering-and-pre-authorized-operations.md) | Instruction Risk Tiering & Pre-authorized Operations | 修改风险分级、预授权操作、不变量锚点或约束预算基线                      |
+| [0013](docs/adr/0013-web-ui-theme-transition.md)                                | Web UI Theme Transition                              | 修改 `web-ui-theme` 过渡 API、View Transition 生命周期或降级语义        |
 
 ## Interweave 产品与领域词汇
 

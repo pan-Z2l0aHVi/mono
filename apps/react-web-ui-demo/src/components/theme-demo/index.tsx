@@ -195,6 +195,7 @@ function ThemeDemo() {
           <web-ui-theme
             appearance={innerAppearance}
             motion={innerMotion}
+            transition="on"
             className="mt-4 block rounded-xl border p-6"
             style={{ borderColor: 'var(--wui-color-border)' } as React.CSSProperties}
           >
@@ -209,6 +210,7 @@ function ThemeDemo() {
               <web-ui-theme
                 appearance={innermostAppearance}
                 motion={innermostMotion}
+                transition="on"
                 className="mt-4 block rounded-xl border p-6"
                 style={{ borderColor: 'var(--wui-color-border)' } as React.CSSProperties}
               >
