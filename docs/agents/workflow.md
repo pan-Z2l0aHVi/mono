@@ -83,6 +83,7 @@ open -> active -> frozen -> reviewed -> approved -> done
 以下 gate 是硬条件：
 
 - 未 `new` 不得实施；未 freeze 不得 review；review 和 approval 必须绑定同一个 `diffHash`。
+- 冻结 `diffHash` 的 canonical 口径是 `scripts/task.mjs` 的快照哈希（sha256 依序吸收 baseSha 与每个快照文件的路径、mode、内容，覆盖 tracked+untracked），不是 git diff 的摘要；reviewer 核验冻结一致性以 `pnpm task status --task <id>` 的 `live` 比对（hash 一致 + 非 stale）为准，不要用 `git diff | shasum` 自制配方复算。
 - freeze、review 或 approval 后任何文件变化都会使证据 stale；必须重新 freeze（重算 hash 并重置 review/approval），再重复 review、approve。
 - `pnpm task verify` 只接受非 stale 的结果，pass 验证还要求工作区干净（验证必须覆盖已提交内容）；`done`（T0/T1）要求最新一条验证为 pass 且快照与验证时一致。
 - T2 的快速通道：`new → start → 修改 → done`，guard 只要求提交发生在 active task 内。
