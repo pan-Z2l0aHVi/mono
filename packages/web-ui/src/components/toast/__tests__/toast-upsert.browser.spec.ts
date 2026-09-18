@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it } from 'vite-plus/test'
+import { page } from 'vite-plus/test/browser'
 
 import '..'
 import { toast } from '..'
@@ -41,11 +42,26 @@ async function waitFor(condition: () => boolean, message: string, timeoutMs = 30
   })
 }
 
+// 游标在文件间继承且位置不定：停在 toast 将出现的位置会触发挂载暂停（show() 的设计
+// 行为），搬迁后又可能永不 resume。停靠到 top-right / bottom-left 都覆盖不到的中性位置。
+function createNeutralPark(): HTMLElement {
+  const park = document.createElement('div')
+  park.id = 'neutral-park'
+  park.style.cssText = 'position:fixed;left:50%;top:50%;width:32px;height:32px;z-index:2147483647'
+  document.body.appendChild(park)
+  return park
+}
+
 afterEach(() => {
   toast._reset()
   document.body.replaceChildren()
 })
 
+/*
+ * CI 上游标位置继承自上一个测试文件：若停在 toast 挂载点，挂载即触发悬停暂停
+ *（show() 的设计行为），搬迁后静止游标不保证补发 pointerleave → 永不 resume → 永不关闭。
+ * 用例前先把指针停靠到中性位置（left:50%;top:50%），使暂停点确定化。
+ */
 describe('toast upsert（浏览器）', () => {
   /*
    * jsdom 没有 Element.moveBefore()，走的是 pause/resume 降级分支；真实 Chromium 走
@@ -53,6 +69,9 @@ describe('toast upsert（浏览器）', () => {
    * 永远不会自动关闭。
    */
   it('position 变化后仍按剩余时间自动关闭', async () => {
+    // 停靠游标到中性位置，避免继承的游标落在 top-right 挂载点触发挂载暂停。
+    const park = createNeutralPark()
+    await page.elementLocator(park).hover()
     const id = toast.info('搬运中', { id: 'move', position: 'top-right', duration: 1200 })
     await waitMounted()
 
@@ -62,6 +81,11 @@ describe('toast upsert（浏览器）', () => {
     const el = findToast(id)
     expect(el).toBeDefined()
     expect(el?.parentElement?.dataset.wuiToastPosition).toBe('bottom-left')
+
+    // 搬迁只换位置：剩余 ≈800ms 续跑；若重启满时长会是 ≈1200ms。deadline 读取与负载无关。
+    const timing = findToast(id) as unknown as { _deadline?: number } | undefined
+    expect(timing?._deadline).toBeDefined()
+    expect(timing!._deadline! - Date.now()).toBeLessThan(1000)
 
     // 越过原计时点（1200ms）之后它不该还是可见态；若搬运重启了计时，则它会一直 visible 到 1600ms。
     await wait(900)
