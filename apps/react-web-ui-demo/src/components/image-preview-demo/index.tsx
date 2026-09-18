@@ -151,14 +151,14 @@ function ImagePreviewDemo() {
   return (
     <div>
       <h1>ImagePreview 图片预览</h1>
-      <p className="mb-6 text-sm text-[var(--color-muted)]">
+      <p className="mb-6 text-sm text-muted">
         命令式浮层组件，没有声明式标签契约：只能通过 <code>imagePreview()</code>{' '}
         打开，并用返回的句柄控制。默认挂载到最近
         <code>web-ui-theme</code> 的 overlay 容器。
       </p>
 
       <h2>基础用法</h2>
-      <p className="mb-3 text-sm text-[var(--color-muted)]">
+      <p className="mb-3 text-sm text-muted">
         展示类选项默认全关，只渲染图片本身；下面第一个按钮显式开启导航、工具条、关闭按钮与指示器。方向键始终可切图，
         滚轮与 <code>+</code> / <code>-</code> 缩放，<code>0</code> 重置，双击图片在 1x 与 2x 之间切换，Escape
         或点击图片外空白处关闭。各选项各自的效果见下方「各部分显隐」。
@@ -174,7 +174,7 @@ function ImagePreviewDemo() {
       </div>
 
       <h2>各部分显隐</h2>
-      <p className="mb-3 text-sm text-[var(--color-muted)]">
+      <p className="mb-3 text-sm text-muted">
         四个展示类选项彼此独立、默认全关。勾选后打开预览即可看到对应控件出现；下方四项预设每次只开启一个选项，
         便于对照每个选项负责哪块 UI。除「仅 closable」外，其余预设都没有可见的关闭按钮，此时点击图片外空白处或按{' '}
         <code>Escape</code> 仍可关闭。
@@ -208,7 +208,7 @@ function ImagePreviewDemo() {
       </div>
 
       <h2>单图预览</h2>
-      <p className="mb-3 text-sm text-[var(--color-muted)]">
+      <p className="mb-3 text-sm text-muted">
         即使开启 <code>nav</code>，只有一张图时也不渲染上/下一张按钮，指示器为 <code>1 / 1</code>。
       </p>
       <div className="mb-6 flex flex-wrap gap-2">
@@ -216,7 +216,7 @@ function ImagePreviewDemo() {
       </div>
 
       <h2>关闭循环</h2>
-      <p className="mb-3 text-sm text-[var(--color-muted)]">
+      <p className="mb-3 text-sm text-muted">
         <code>loop: false</code> 时索引在首尾钳制，越界方向的按钮禁用。
       </p>
       <div className="mb-6 flex flex-wrap gap-2">
@@ -224,7 +224,7 @@ function ImagePreviewDemo() {
       </div>
 
       <h2>缩放与平移</h2>
-      <p className="mb-3 text-sm text-[var(--color-muted)]">
+      <p className="mb-3 text-sm text-muted">
         大尺寸图片可按住拖拽平移，方向不限且与倍率无关：放大后查看被裁切的边缘，1x 时在视口内移动图片；倍率限制在
         1x–4x，边界是图片与舞台尺寸差的一半，因此图片始终不会被拖出视口。
       </p>
@@ -233,7 +233,7 @@ function ImagePreviewDemo() {
       </div>
 
       <h2>左右滑动切换</h2>
-      <p className="mb-3 text-sm text-[var(--color-muted)]">
+      <p className="mb-3 text-sm text-muted">
         <code>swipe: true</code> 且图片多于一张时，1x 下横向拖拽越过阈值即切换图片，跟手位移松手后回弹；
         <code>loop: false</code> 时在边界回弹。该手势生效期间横向轴归它，因此 1x 下纵向拖拽仍用于平移；
         放大后拖拽一律平移。该手势复用 shared 的 <code>attachDragGesture</code>。
@@ -246,7 +246,7 @@ function ImagePreviewDemo() {
       </div>
 
       <h2>遮罩与滚动</h2>
-      <p className="mb-3 text-sm text-[var(--color-muted)]">
+      <p className="mb-3 text-sm text-muted">
         <code>noBackdropClose</code> 与 <code>noScrollLock</code> 的语义对齐 <code>web-ui-dialog</code>{' '}
         的同名属性：前者让空白点击不再关闭（下方示例仍保留关闭按钮），后者跳过打开期间的页面滚动锁定。
       </p>
@@ -258,7 +258,7 @@ function ImagePreviewDemo() {
       </div>
 
       <h2>句柄控制</h2>
-      <p className="mb-3 text-sm text-[var(--color-muted)]">
+      <p className="mb-3 text-sm text-muted">
         句柄暴露 <code>index</code> / <code>scale</code> / <code>images</code> / <code>closed</code>{' '}
         与全部控制方法，可以据此实现自己的触发器和状态面板。
       </p>
@@ -277,7 +277,7 @@ function ImagePreviewDemo() {
       <div className="mb-6 rounded-lg bg-[var(--wui-color-surface-raised)] px-3 py-2 text-sm">{statusText}</div>
 
       <h2>自定义容器与样式</h2>
-      <p className="mb-3 text-sm text-[var(--color-muted)]">
+      <p className="mb-3 text-sm text-muted">
         传 <code>container</code> 可把预览挂到自己的容器上（优先级高于主题作用域）。CSS 自定义属性沿 DOM
         继承，所以在容器上就能覆盖
         <code>--wui-image-preview-overlay-bg</code> 与 <code>--wui-image-preview-edge-gap</code>。

@@ -31,7 +31,7 @@ function RadioDemo() {
           Cherry
         </web-ui-radio>
       </div>
-      <p className="text-sm text-[var(--color-muted)]">选中值：{selected}</p>
+      <p className="text-sm text-muted">选中值：{selected}</p>
 
       <h2>Radio Group</h2>
       <div className="mb-3 flex flex-col gap-3">
@@ -45,7 +45,7 @@ function RadioDemo() {
           <web-ui-radio value="cherry">Cherry</web-ui-radio>
         </web-ui-radio-group>
       </div>
-      <p className="text-sm text-[var(--color-muted)]">选中值：{groupVal}</p>
+      <p className="text-sm text-muted">选中值：{groupVal}</p>
 
       <h2>Radio Group 禁用</h2>
       <div className="mb-3 flex flex-col gap-3">

@@ -84,7 +84,7 @@ function DialogDemo() {
         <div slot="body" className="text-center">
           <p className="m-0 text-[48px]">🎉</p>
           <p className="mx-0 mt-3 mb-1 text-lg font-semibold">操作成功</p>
-          <p className="mx-0 mb-5 text-[var(--color-body-text)]">自定义 body slot 内容，保留玻璃卡片外壳。</p>
+          <p className="mx-0 mb-5 text-body-text">自定义 body slot 内容，保留玻璃卡片外壳。</p>
           <web-ui-button variant="primary" full onClick={() => setVisible4(false)}>
             知道了
           </web-ui-button>

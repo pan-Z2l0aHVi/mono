@@ -22,7 +22,7 @@ function IconDemo() {
       </div>
       <h2>颜色</h2>
       <div className="mb-3 flex items-center gap-4">
-        <span className="text-[var(--color-danger)]">
+        <span className="text-danger">
           <web-ui-icon icon={lucideSearch}></web-ui-icon>
           继承 color
         </span>

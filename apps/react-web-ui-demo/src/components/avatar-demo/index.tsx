@@ -44,7 +44,7 @@ function AvatarDemo() {
       <h2>自定义 slot 回退</h2>
       <div className="mb-3 flex items-center gap-3">
         <web-ui-avatar size={56}>
-          <span className="text-sm font-bold text-[var(--color-accent)]">VIP</span>
+          <span className="text-sm font-bold text-accent">VIP</span>
         </web-ui-avatar>
         <web-ui-avatar size={56}>
           <span className="text-lg">⭐</span>

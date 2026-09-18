@@ -25,7 +25,7 @@ function CollapseDemo() {
 
       <h2>trigger 类型</h2>
       <div className="mb-3 flex flex-col gap-2">
-        <p className="text-sm text-[var(--color-muted)]">
+        <p className="text-sm text-muted">
           trigger 是 default slot，可放入任意可交互元素（原生 button、web-ui 组件等）。
         </p>
         <web-ui-collapse>

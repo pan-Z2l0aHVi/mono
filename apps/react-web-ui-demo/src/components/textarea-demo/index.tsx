@@ -12,7 +12,7 @@ function TextareaDemo() {
       <div className="mb-3 flex flex-col gap-3">
         <web-ui-textarea placeholder="请输入内容" full />
         <web-ui-textarea value={basic} placeholder="双向绑定" full onInput={e => setBasic(e.currentTarget.value)} />
-        <div className="text-sm text-[var(--color-muted)]">输入值：{basic || '(空)'}</div>
+        <div className="text-sm text-muted">输入值：{basic || '(空)'}</div>
       </div>
       <h2>前缀 / 后缀</h2>
       <div className="mb-3 flex flex-col gap-3">
@@ -60,7 +60,7 @@ function TextareaDemo() {
           full
           onInput={e => setLimitedVal(e.currentTarget.value)}
         />
-        <div className="text-sm text-[var(--color-muted)]">{limitedVal.length} / 20</div>
+        <div className="text-sm text-muted">{limitedVal.length} / 20</div>
       </div>
       <h2>必填</h2>
       <div className="mb-3 flex flex-col gap-3">

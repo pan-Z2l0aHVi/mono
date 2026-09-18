@@ -22,7 +22,7 @@ function ContextMenuDemo() {
       <h1>右键菜单</h1>
 
       <h2>基础用法</h2>
-      <p className="mb-4 text-sm text-[var(--color-muted)]">在下方区域右键点击打开菜单</p>
+      <p className="mb-4 text-sm text-muted">在下方区域右键点击打开菜单</p>
       <div className="mb-6">
         <web-ui-context-menu id="demo-context-menu">
           <div className="flex h-48 w-full items-center justify-center rounded-2xl border-2 border-dashed border-[var(--wui-color-border)] bg-[var(--wui-color-surface-control)] text-[var(--wui-color-text-secondary)]">
@@ -45,7 +45,7 @@ function ContextMenuDemo() {
       </div>
 
       <h2>带图标和快捷键</h2>
-      <p className="mb-4 text-sm text-[var(--color-muted)]">更丰富的菜单项展示</p>
+      <p className="mb-4 text-sm text-muted">更丰富的菜单项展示</p>
       <div className="mb-6">
         <web-ui-context-menu>
           <div className="flex h-48 w-full items-center justify-center rounded-2xl border-2 border-dashed border-[var(--wui-color-border)] bg-[var(--wui-color-surface-control)] text-[var(--wui-color-text-secondary)]">
@@ -93,7 +93,7 @@ function ContextMenuDemo() {
       </div>
 
       <h2>禁用状态</h2>
-      <p className="mb-4 text-sm text-[var(--color-muted)]">禁用时右键不会打开菜单</p>
+      <p className="mb-4 text-sm text-muted">禁用时右键不会打开菜单</p>
       <div className="mb-6">
         <web-ui-context-menu disabled={disabled}>
           <div className="flex h-48 w-full items-center justify-center rounded-2xl border-2 border-dashed border-[var(--wui-color-border)] bg-[var(--wui-color-surface-control)] text-[var(--wui-color-text-secondary)]">
@@ -110,7 +110,7 @@ function ContextMenuDemo() {
       </div>
 
       <h2>通过 API 调用</h2>
-      <p className="mb-4 text-sm text-[var(--color-muted)]">使用 JavaScript API 在指定位置打开菜单</p>
+      <p className="mb-4 text-sm text-muted">使用 JavaScript API 在指定位置打开菜单</p>
       <div className="mb-6">
         <web-ui-button onClick={openApiMenu}>在 (200, 200) 打开菜单</web-ui-button>
         <web-ui-context-menu id="demo-api-context-menu">
@@ -132,7 +132,7 @@ function ContextMenuDemo() {
       </div>
 
       <h2>嵌套菜单</h2>
-      <p className="mb-4 text-sm text-[var(--color-muted)]">支持子菜单的右键菜单</p>
+      <p className="mb-4 text-sm text-muted">支持子菜单的右键菜单</p>
       <div className="mb-6">
         <web-ui-context-menu>
           <div className="flex h-48 w-full items-center justify-center rounded-2xl border-2 border-dashed border-[var(--wui-color-border)] bg-[var(--wui-color-surface-control)] text-[var(--wui-color-text-secondary)]">
@@ -157,7 +157,7 @@ function ContextMenuDemo() {
       </div>
 
       <h2>macOS 风格</h2>
-      <p className="mb-4 text-sm text-[var(--color-muted)]">类似 macOS Finder 的右键菜单</p>
+      <p className="mb-4 text-sm text-muted">类似 macOS Finder 的右键菜单</p>
       <div className="mb-6">
         <web-ui-context-menu>
           <div className="flex h-48 w-full items-center justify-center rounded-2xl border-2 border-dashed border-[var(--wui-color-border)] bg-[var(--wui-color-surface-control)] text-[var(--wui-color-text-secondary)]">
