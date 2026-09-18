@@ -86,12 +86,20 @@ afterEach(() => {
  * 「续跑 vs 重启」判定不依赖墙钟：移开后读组件内部 _deadline，续跑时它同步等于
  * Date.now() + pausedRemaining（≈600ms / ≈900ms），重启满时长的回归会给出 ≈duration
  * （3000ms）。两者差距远超任何 CI 负载抖动。
+ *
+ * CI 上游标位置继承自上一个测试文件：若停在 toast 将出现的位置，挂载后 Chromium 命中测试
+ * 补发 pointerenter → 暂停，此刻剩余 ≈ 满时长，deadline 断言必然失败。每条用例在创建
+ * toast 前先把指针停靠到无关的 away 目标，使「暂停发生点」确定化。
  */
 describe('toast 悬停暂停（浏览器）', () => {
   it('悬停期间不关闭，移开后按剩余时间关闭', async () => {
+    const away = createAwayTarget()
+    // CI 上游标位置继承自上一个测试文件：若停在 toast 将出现的位置，挂载即触发悬停暂停
+    //（剩余=满时长，show() 的设计行为），用例前提被破坏。先停靠到无关位置再创建 toast，
+    // 让「暂停发生点」落在用例控制的 hover 时刻。
+    await page.elementLocator(away).hover()
     const id = toast.info('悬停我', { id: 'hover', position: 'top-right', duration: 3000 })
     await waitMounted()
-    const away = createAwayTarget()
 
     const el = findToast(id)
     expect(el).toBeDefined()
@@ -120,9 +128,10 @@ describe('toast 悬停暂停（浏览器）', () => {
    * 「续跑 vs 重启」通过 _deadline 读取判定：续跑 remaining ≈900ms 起，重启满时长 ≈3000ms。
    */
   it('悬停期间搬迁：剩余时间不丢，也不重启满时长', async () => {
+    const away = createAwayTarget()
+    await page.elementLocator(away).hover()
     const id = toast.info('悬停并搬迁', { id: 'hover-move', position: 'top-right', duration: 3000 })
     await waitMounted()
-    createAwayTarget()
 
     await wait(2000)
     await page.elementLocator(findToast(id) as Element).hover()
