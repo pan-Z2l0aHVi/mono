@@ -151,6 +151,7 @@ Manager 统一接收需求并编排，保持扁平，不引入 Integrator 或其
 - 角色目录边界即 worktree 内的写入边界：同一 worktree 中，任一角色不得修改对方目录下的文件；需要对方改动时通过 handoff 派发，而不是越界编辑。
 - Reviewer 不在持续变化的实施 worktree 上复用旧结论；review 前冻结，修复后重新冻结。
 - 并行编排可使用 Herdr，也可使用其他 harness；Herdr 的 pane、tab、workspace 生命周期规则见 [`herdr/SKILL.md`](../../.agents/skills/herdr/SKILL.md)，不在本文件重复。
+- 并行派发多个互不依赖的 task 时，派单命令本身不要阻塞等待某个 agent 的结果：先把全部 handoff 提交出去，再分别监听各 agent 的进度；等待放在派发全部完成之后。
 
 ## Playbook
 
