@@ -94,22 +94,36 @@ function activeStates(commonDir) {
   return fs
     .readdirSync(directory)
     .filter(file => file.endsWith('.json'))
-    .map(file => readStateFile(path.join(directory, file)))
-    .filter(state => state.phase !== 'done' && state.phase !== 'dropped')
+    .flatMap(file => {
+      const parsed = parseStateFile(path.join(directory, file))
+      if (parsed.error) {
+        // 目录扫描是所有 worktree guard 的共享路径：单个损坏 state（崩溃半写、schema 升级遗留）
+        // 不应阻塞无关 worktree 的提交；降级为可见警告并跳过，硬失败保留给 target task 的 loadState。
+        console.error(`warning: skipping unreadable task state; ${parsed.error}`)
+        return []
+      }
+      return parsed.state.phase !== 'done' && parsed.state.phase !== 'dropped' ? [parsed.state] : []
+    })
 }
 
 function readStateFile(file) {
+  const parsed = parseStateFile(file)
+  if (parsed.error) fail(parsed.error)
+  return parsed.state
+}
+
+function parseStateFile(file) {
   let state
   try {
     state = JSON.parse(fs.readFileSync(file, 'utf8'))
   } catch (error) {
-    fail(`cannot read task state ${file}: ${error instanceof Error ? error.message : String(error)}`)
+    return { error: `cannot read task state ${file}: ${error instanceof Error ? error.message : String(error)}` }
   }
   if (!state || typeof state !== 'object' || !phases.has(state.phase) || typeof state.taskId !== 'string')
-    fail(`task state is invalid: ${file}`)
+    return { error: `task state is invalid: ${file}` }
   if (state.version !== SCHEMA_VERSION)
-    fail(`task state ${file} has unsupported schema version: ${JSON.stringify(state.version)}`)
-  return state
+    return { error: `task state ${file} has unsupported schema version: ${JSON.stringify(state.version)}` }
+  return { state }
 }
 
 function assertWorktreeAvailable(commonDir, worktree, taskId) {

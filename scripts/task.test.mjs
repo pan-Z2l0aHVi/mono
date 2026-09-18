@@ -255,6 +255,25 @@ try {
   assert.match(branchDrift.stderr, /belongs to branch/)
   run('drop', '--task', 'second-fixture', '--reason', 'isolation covered')
   git('worktree', 'remove', '--force', secondWorktree)
+
+  // 损坏 state 容错：目录扫描（guard 共享路径）对单个坏文件降级为警告并跳过，
+  // 不阻塞其他 task；target task 的 loadState 保持硬失败。
+  run('start', '--task', 'issue-fixture')
+  fs.mkdirSync(path.join(fixture, '.git', 'tasks'), { recursive: true })
+  fs.writeFileSync(path.join(fixture, '.git', 'tasks', 'corrupt.json'), '{ not json')
+  fs.writeFileSync(
+    path.join(fixture, '.git', 'tasks', 'wrong-version.json'),
+    JSON.stringify({ version: 999, taskId: 'wrong-version', phase: 'open' })
+  )
+  const tolerantGuard = spawn('guard')
+  assert.equal(tolerantGuard.status, 0)
+  assert.equal(JSON.parse(tolerantGuard.stdout).enforced, true)
+  assert.match(tolerantGuard.stderr, /corrupt\.json/)
+  assert.match(tolerantGuard.stderr, /wrong-version\.json/)
+  runFailure('status', '--task', 'corrupt')
+  runFailure('status', '--task', 'wrong-version')
+  fs.rmSync(path.join(fixture, '.git', 'tasks', 'corrupt.json'))
+  fs.rmSync(path.join(fixture, '.git', 'tasks', 'wrong-version.json'))
 } finally {
   fs.rmSync(fixture, { recursive: true, force: true })
   fs.rmSync(secondWorktree, { recursive: true, force: true })
