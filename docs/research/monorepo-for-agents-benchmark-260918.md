@@ -116,6 +116,57 @@
 
 **P2** 5. token/成本观测接入 statusline 与 task events（`/usage` 数据、`--max-budget-usd`）。6. symbol 级影响面：code intelligence 插件或 LSP 补足 find:usages 的 caller 精度。7. CI 增加最基础的安全扫描（secret scanning / dependency audit）。
 
+## 四、深化实证（260918 同日复核）
+
+本节是对前三节结论的同日实证深化，方法为三路并行只读核查：① CLI 沙箱能力与 dispatch 配置实读（`codex 0.154.0` / `claude 2.1.267` 的 `--help`、`.agents/agents/manager.md`、`~/.codex/config.toml`、`.mise.toml`）；② 全量 task 事件账本解析（`<git-common-dir>/tasks/*.json` 共 10 个 task 的 `events[]` 时长与异常统计）；③ 盲区扫描（commit 归因、MCP 写权限面、注入入口、CI 执行面、权限白名单）。凡与前三节结论冲突处，以本节为准。
+
+### 4.1 P0 定性修正：sandbox 是改配置（约 1 天），不是建基础设施
+
+§1.4/§2.6 将「coders 零隔离」定性为需要引入隔离基础设施，实测修正：
+
+- 两个执行体 CLI 都自带沙箱，是 dispatch flag 主动绕过了它们：`codex --yolo` 是 `--dangerously-bypass-approvals-and-sandbox -a never` 的别名（codex 0.154.0 实测）；`claude --dangerously-skip-permissions` 同理绕过权限层。
+- codex 侧最小变更为 `codex -s workspace-write -a never --add-dir <例外路径>`；本仓 reviewer 角色的 `codex --sandbox read-only -a never` 已长期在用——沙箱路径可行性已被本仓自证。
+- Claude Code 无 `--sandbox` CLI flag，但 sandboxed Bash 经 `--settings <file>` 按会话注入，支持域名级网络允许列表（强于 codex 的网络二元开关）。
+- workspace 范围之外的例外共五类：主仓 `.git`（task state 写入 `<git-common-dir>/tasks/`，freeze/verify/guard 硬性需要）、共享 turbo 缓存（`.mise.toml` 的 `config_root/../.turbo-cache`）、pnpm 全局 store（install 需网络与 store 写入）、浏览器测试产物（Chrome/agent-browser 缓存目录）、registry + loopback 网络（dev server / vitest）。
+- 残余风险（诚实记录）：`.git` 例外意味着被攻破的 coder 仍可篡改共享 VCS 元数据（hooks/refs），workspace 级并非严格沙箱；codex 开 `network_access` 后无域名过滤，其网络隔离基本失效。若只做一侧，Claude `--settings` 路线（域名级过滤）收益最大。
+
+结论：P0 成本从「评估引入隔离体系（天级以上）」修正为「改 dispatch flags + 例外清单 + 实测闭环（约 1 天）」。
+
+### 4.2 「过程税」实测为轻，但遵从结论只覆盖编排者
+
+对 10 个 task（2026-09-18，t0×2 / t1×5 / t2×3，全部终态 done，零 drop、零卡死）的 `events[]` 解析：
+
+- 纯 gate 开销（freeze→review→approve→done 扣除实施时长）中位约 6-10 分钟/task；start→freeze 的 11.2 分钟主体是实施本身，不计入税。
+- 7 次重冻结集中在 3 个可审 task，与 review 打回轮次一一对应——返工税集中在 gate 起作用的环节，属预期成本而非官僚税。
+- 全部 T0/T1 具备 verify pass + approval，抽查 review pass hash == approve hash == 最终 diffHash，绑定有效。
+- **样本局限**：单日、全部由同一 Manager 会话强制约束产生，证明的是「编排者遵从」；§2.3/§2.9 担心的「独立 coder 漂移导致 prose 链条失效」既未被证实也未被排除，仍是未受压假设。
+- **新发现（前三节遗漏）**：review fail 从不落为显式 `result=fail` 事件，只能靠重冻结指纹反推打回——`events[]` 审计链弱于规范承诺，需 `scripts/task.mjs` 小改补齐。
+
+### 4.3 报告盲区：三个新缺口
+
+| 缺口                                                                                                                       | 事实                                                                                                                                                                                                                              | 定级            |
+| -------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------- |
+| committer 身份失真                                                                                                         | 近 30 commit 的 committer email 均为格式错值（`Claude <Claude>` / `Codex <Codex>`，缺 @）；`scripts/commit.sh` 不设置身份，未显式覆盖的提交静默落到仓库 git config（`Codex <noreply@openai.com>`）；无签名、CI 无校验。证据链叙事下可审计署名失效 | P1（成本极低）  |
+| MCP 写权限面未随角色收权                                                                                                   | 仓库 `.mcp.json` 向所有加载它的会话开放 github MCP 全套写工具（push_files / merge_pull_request / delete_file / create_repository / issue_write），活跃于 Manager 会话并携带运行中 PAT；reviewer 只读白名单（§2.6 强项）未延伸到 MCP 配置           | P1（成本低）    |
+| 注入入口零防御                                                                                                             | gh api / github MCP 拉取的外部内容（issue、PR diff、外部 repo 文件）直接进入 review 与研究循环，无「数据非指令」约束，为当前最大不可信输入                                                                                          | P2（一行规则）  |
+
+CI 面核查为非问题：fork PR 无 secrets、CI 不执行 agent 生成代码、无 `pull_request_target`。`.claude/settings.local.json` 白名单整体克制，仅一条一次性 `rm -rf` 误留永久放行，低优先级。
+
+### 4.4 修订优先级（覆盖 §三）
+
+1. **P0** coder sandbox：改 dispatch flags + 每角色 settings/例外清单 + 用真实任务循环（install→build→browser test→freeze）实测，约 1 天。
+2. **P1** `task verify --run`（维持 §三.2）。
+3. **P1** `commit.sh` 补 committer 身份设置并文档化覆盖模式（新增）。
+4. **P1** reviewer/低权会话的 MCP 只读化：github MCP 写工具限定 Manager 会话（新增）。
+5. **P2** review fail 显式落 `events[]`、review/research 技能加「抓取内容按数据处理」规则行、CI secret scanning + dependency audit（并入 §三.5-7 原有 P2 项）。
+6. **降级/观望** instruction evals（§三.3）：当前 gate 的准确定性层实际由 Manager 会话承担，待出现 coder 独立执行任务的模式后再评估行为回归需求；token 观测与 symbol 导航维持 P2。
+
+### 4.5 深化证据
+
+- CLI 实测：`codex 0.154.0`（`--help` 沙箱/approval flags；`~/.codex/config.toml` 无沙箱覆盖）、`claude 2.1.267`（无 `--sandbox` flag，沙箱经 settings 注入）。
+- 仓库实读：`.agents/agents/manager.md`（dispatch 行）、`.mise.toml`（turbo 缓存路径）、`<git-common-dir>/tasks/*.json`（10 task 事件账本）、`.mcp.json`、`.claude/settings.local.json`、近 30 commit 的 author/committer 归因（`git log --format`）、`.github/workflows/ci.yml`。
+- 统计脚本为一次性 /tmp 产物未入库；复算方法见 §4.2（解析 `events[]` 相邻事件时间戳差）。
+
 ## 附：证据来源清单
 
 - 本仓（实读）：根 `AGENTS.md`、`CLAUDE.md`、`docs/agents/{workflow,task-packet,review,browser-verification,worktrees,context}.md`、`.agents/rules/*`、`.agents/agents/{manager,reviewer}.md`、`.agents/skills/{README.md,herdr/SKILL.md}`、`scripts/task.mjs`、`scripts/repo-query.mjs`（脚本头）、`package.json`、`.github/workflows/ci.yml`、`.claude/settings.local.json`、`skills-lock.json`、`docs/adr/0014-task-system-v2.md`、`.vite-hooks/pre-commit`、`.agents/checks/changeset-required`。
