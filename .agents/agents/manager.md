@@ -58,12 +58,13 @@ Manager 启动后第一项工作是按根 [`AGENTS.md`](../../AGENTS.md) 的 Mut
 
 通过 herdr 启动各角色的 CLI agent 时按角色传权限参数（Agent tool 派发的子 agent 自动继承 Manager 权限，无需参数），目标是无人工弹窗的编排：
 
-| 角色                                       | Codex CLI                                        | Claude Code                                         |
-| ------------------------------------------ | ------------------------------------------------ | --------------------------------------------------- |
-| Manager / Designer / Lib Coder / Biz Coder | `codex --yolo`（完全访问）                       | `claude --dangerously-skip-permissions`（完全访问） |
-| Reviewer                                   | `codex --sandbox read-only -a never`（只读自动） | `claude --permission-mode plan`（只读）             |
+| 角色                                       | Codex CLI                                        | Claude Code                                                                     |
+| ------------------------------------------ | ------------------------------------------------ | ------------------------------------------------------------------------------- |
+| Manager / Designer / Lib Coder / Biz Coder | `codex --yolo`（完全访问）                       | `claude --dangerously-skip-permissions`（完全访问）                             |
+| Reviewer                                   | `codex --sandbox read-only -a never`（只读自动） | `claude --permission-mode plan --allowedTools <只读白名单>`（只读，白名单见下） |
 
 - Reviewer 只读是硬边界：即使任务紧急也不给 Reviewer 写权限；写入类修复回到实施角色。
+- Claude Code Reviewer 的 `--allowedTools` 只读白名单（管道逐段匹配，全部段命中才免审，任一段未命中仍走弹窗）：`Bash(git diff:*)`、`Bash(git log:*)`、`Bash(git show:*)`、`Bash(git status:*)`、`Bash(git rev-parse:*)`、`Bash(git ls-files:*)`、`Bash(shasum:*)`、`Bash(grep:*)`、`Bash(head:*)`、`Bash(wc:*)`。`sed`/`awk`/`find`/`sort`/`git hash-object` 整体排除：核心用法即参数级写入或执行（`sed w`、`awk system()`、`find -delete/-exec`、`sort -o`、`git hash-object -w`）。`git diff`/`log`/`show` 保留为例外并留痕：`--output=<file>` 与 `--ext-diff`/textconv 是参数级写入/执行面，且与 log/show 同族、无法靠移除单个命令闭合；缓解靠 plan mode 重定向拦截（headless 引擎实测，工作区内外皆然）+ Role Contract 禁用写参数 + task worktree 内任何写入都会使冻结快照 stale 并被 review/commit gate 捕获。白名单只做降摩擦，不替代 Reviewer 只读硬边界的纪律约束。
 - 子 agent 阻塞在审批弹窗时，Manager 通过 herdr 读取弹窗内容并按沙盒边界代为处理：只放行只读或沙盒内操作，写操作交回实施角色。
 
 ## Responsibilities
