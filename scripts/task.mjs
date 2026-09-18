@@ -210,13 +210,18 @@ function assertCurrentHash(state, live, label = 'task evidence') {
 // freeze 归一化与 commit 收敛到同一起点：全量 staging 后运行仓库的 fix:code
 //（CI=true 关闭交互），fix 产物重新 staging 后再取快照。pre-commit 只剩 guard、
 // 不再运行任何 fixer，因此不存在「commit 期改写文件导致冻结失效」的竞态。
-// 无 fix:code 脚本或缺 node_modules 的仓库（测试 fixture、纯 git 仓库）跳过归一化。
+// fix:code 归一化是强制的：声明了 fix:code 但依赖未安装时直接失败并指引安装，
+// 只有不含该脚本的仓库（测试 fixture、纯 git 仓库）才允许跳过。
 function normalizeWorktree(worktree) {
   gitAt(worktree, 'add', '-A')
   const manifestPath = path.join(worktree, 'package.json')
-  if (!fs.existsSync(manifestPath) || !fs.existsSync(path.join(worktree, 'node_modules'))) return false
+  if (!fs.existsSync(manifestPath)) return false
   const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'))
   if (!manifest.scripts?.['fix:code']) return false
+  if (!fs.existsSync(path.join(worktree, 'node_modules')))
+    fail(
+      `worktree dependencies are missing in ${worktree}; normalization via fix:code is mandatory — run "pnpm install && pnpm run build" in the worktree, then re-run freeze`
+    )
   try {
     execFileSync('pnpm', ['run', 'fix:code'], { cwd: worktree, stdio: 'pipe', env: { ...process.env, CI: 'true' } })
   } catch (error) {

@@ -4,7 +4,7 @@ worktree 是任务隔离边界，不是包名的别名。每个可变 task 只�
 
 ## 创建和复用
 
-- 新任务从已确认的 base SHA 创建独立 task worktree；不要让两个任务竞争一个持久 package worktree。
+- 新任务从已确认的 base SHA 创建独立 task worktree；不要让两个任务竞争一个持久 package worktree。新 worktree 在实施或 freeze 前必须先执行 `pnpm install && pnpm run build`：依赖未安装时 `fix:code` 归一化无法运行，freeze 会直接失败。
 - 长期使用的 dev/task worktree 在开新任务前若 `main` 已前进，先确认 worktree 无未提交变更、无未合并独有提交，再执行 `git switch -C <branch> origin/main` 并紧跟 `git branch --unset-upstream <branch>`，避免 upstream 指向 `origin/main` 导致裸 push 误推。
 - package worktree 可以保留依赖安装和缓存，但必须通过 task state 绑定到单一任务后才能写入。
 - 跨包变更使用一个 task worktree；不要按包拆成多个互相无法独立 review 的 worktree。

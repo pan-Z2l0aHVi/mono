@@ -417,9 +417,6 @@ const hasContextChange = normalizedPaths.some(
     file.startsWith('docs/agents/') ||
     file.startsWith('docs/adr/') ||
     file.startsWith('scripts/validate-context') ||
-    file.startsWith('scripts/audit-instructions') ||
-    file.startsWith('scripts/instruction-budget') ||
-    file.startsWith('scripts/tool-enforced-rules') ||
     file.startsWith('scripts/task') ||
     file.startsWith('scripts/repo-query') ||
     file.startsWith('scripts/workspace-manifests')
@@ -429,7 +426,6 @@ const hasAgentToolChange = normalizedPaths.some(
     file === 'pnpm-workspace.yaml' ||
     file.startsWith('scripts/repo-query') ||
     file.startsWith('scripts/validate-context') ||
-    file.startsWith('scripts/audit-instructions') ||
     file.startsWith('scripts/task') ||
     file.startsWith('scripts/workspace-manifests') ||
     (file.startsWith('scripts/') && file.endsWith('.test.mjs'))

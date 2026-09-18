@@ -99,6 +99,22 @@ try {
   // fixture 无 package.json：归一化跳过但必须留痕（normalized: false）。
   assert.ok(frozen.events.some(event => event.event === 'freeze' && event.normalized === false))
 
+  // 声明了 fix:code 但依赖未安装：freeze 必须失败并指引安装，不允许静默跳过归一化。
+  fs.writeFileSync(path.join(fixture, 'package.json'), JSON.stringify({ scripts: { 'fix:code': 'true' } }))
+  fs.appendFileSync(path.join(fixture, 'src', 'change.ts'), '// pending edit\n')
+  assert.throws(
+    () =>
+      execFileSync(process.execPath, [script, 'freeze', '--task', 't0-fixture'], {
+        cwd: repoRoot,
+        env: { ...process.env, AGENT_TASK_ROOT: fixture },
+        encoding: 'utf8',
+        stdio: 'pipe'
+      }),
+    /pnpm install && pnpm run build/
+  )
+  fs.rmSync(path.join(fixture, 'package.json'))
+  fs.writeFileSync(path.join(fixture, 'src', 'change.ts'), 'export const value = 1\n// refined after freeze\n')
+
   // 冻结后继续编辑：旧证据 stale，必须能对当前 diff 重新冻结。
   fs.appendFileSync(path.join(fixture, 'src', 'change.ts'), '// refined after freeze\n')
   const refrozen = JSON.parse(run('freeze', '--task', 't0-fixture'))

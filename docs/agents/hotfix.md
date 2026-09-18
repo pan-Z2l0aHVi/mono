@@ -1,6 +1,6 @@
 # Hotfix Playbook
 
-hotfix 是线上紧急修复场景下的操作程序，不是独立的 task 类型。它仍是一个普通 task（`pnpm task new --task hotfix-<slug> --level t0|t1`），只是可以跳过长期 dev lane 直接从生产分支切修复分支。紧急性不是删除证据链的理由：T0/T1 的全部 gate（独立 worktree、冻结 diff、review、approval、验证、done 记录）都保持有效。
+hotfix 是线上紧急修复场景下的操作程序，不是独立的 task 类型。它仍是一个普通 task（`pnpm task new --task hotfix-<slug> --level t0|t1`），只是可以跳过长期 dev lane 直接从生产分支切修复分支。紧急性不改变任何 gate。T0/T1 的全部要求（独立 worktree、冻结 diff、review、approval、验证、done 记录）都保持有效。
 
 ## 流程
 

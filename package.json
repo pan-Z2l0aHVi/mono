@@ -21,7 +21,6 @@
     "env:doctor": "node scripts/env-doctor.mjs",
     "validate:context": "node scripts/validate-context.mjs",
     "find:usages": "node scripts/repo-query.mjs verify",
-    "audit:instructions": "node scripts/audit-instructions.mjs",
     "check:pack": "node scripts/check-pack.mjs",
     "test:scripts": "for f in scripts/*.test.mjs; do node \"$f\" || exit 1; done",
     "inspect:contract": "node scripts/repo-query.mjs contract",

@@ -140,7 +140,7 @@ for (const file of [
 }
 
 // AGENTS.md 的章节标题与叙述措辞不再是契约。入口断言只保留「必经链接 + init 命令」两条；
-// 结构不变量改由 <!-- invariant:... --> 锚点在 audit-instructions --strict 中校验。
+// 结构不变量锚点（<!-- invariant:... -->）是惰性注释，保留供人工检索，不再有机器校验（audit:instructions 已删除，见 ADR-0014）。
 if (exists('AGENTS.md')) {
   const agents = read('AGENTS.md')
   for (const marker of ['docs/agents/workflow.md', 'pnpm task new']) {
@@ -228,7 +228,6 @@ if (exists('package.json')) {
       'validate:context',
       'check:pack',
       'find:usages',
-      'audit:instructions',
       'inspect:contract',
       'diff:contract',
       'test:scripts'
@@ -378,7 +377,7 @@ for (const file of roleFiles) {
   }
 
   // Role Contract 的章节清单不再是硬编码契约；每个文件必须携带 <!-- invariant:role-sections --> 锚点，
-  // 具体章节可以随角色职责演进重写（锚点断言在 audit-instructions --strict 中执行）。
+  // 具体章节可以随角色职责演进重写。
   const source = fs.readFileSync(file, 'utf8')
   const expectedName = roleProfiles.get(filename)
   if (!new RegExp(`^name:\\s*${expectedName}\\s*$`, 'm').test(source))

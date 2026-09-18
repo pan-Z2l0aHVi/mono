@@ -4,7 +4,7 @@
 
 ## 语言约定
 
-- 仓库自编写 skill（`audit-instructions`、`contract-change-review`）使用中文。
+- 仓库自编写 skill（`contract-change-review`）使用中文。
 - 第三方引入的 skill 保持上游英文原文，不翻译、不本地改写；其通用流程与本仓库规则、task guide 或实现事实冲突时，以后者为准。
 
 ## 主题重叠的分工
@@ -20,7 +20,7 @@
 
 ### Context 与 instruction system
 
-`audit-instructions` 是本仓 instruction system 的权威审计入口（绑定 `validate:context`）；仓库侧约束（`docs/agents/context.md`、`AGENTS.md`）永远优先，通用 context 方法论不单设第三方 skill。
+仓库侧约束（`docs/agents/context.md`、`AGENTS.md`）永远优先，通用 context 方法论不单设第三方 skill。
 
 ### UI 实现与设计品味
 

@@ -45,7 +45,7 @@ Role 是显式选择的按需 session context：读取 `.agents/agents/<role>.md
 - `AGENTS.md`、`CONTEXT.md`、`docs/agents/`、`.agents/rules/`、`.agents/skills/`、`.agents/agents/` 与 `.agents/references/` 是 Codex、Claude Code 等共用的规范。
 - Codex 通过层级 `AGENTS.md` 获得目录约束与「多 Agent 编排」分工；根 `CLAUDE.md` 只说明对应客户端的加载顺序和默认角色绑定，不复制共享规则正文。客户端适配不自动选择 Role；默认执行体绑定与编排路由以 [`workflow.md`](workflow.md) 为权威。
 - ACP plan 是当前会话的临时进度 UI；多阶段任务的创建、阶段同步和结束前收敛以 [`CONTRIBUTING.md`](../../CONTRIBUTING.md) 为权威。它不持久化为 `agent-state`，也不能替代源码、Git 或验证证据。
-- `.claude/rules`、`.claude/skills` 和 `.claude/agents` 必须通过 symlink 指向 `.agents/` 中的共享内容。仓库内没有证据表明 Claude Code 会无条件加载 `.claude/rules`：本文件把它归为 Task-specific（见上文「Context 层级」），只把根 `AGENTS.md` 列为 Always available。若后续确认客户端把 `.claude/rules` 当常驻层加载，以 `scripts/instruction-budget.json` 的预算为准控制总量，而不是靠拆分文件。
+- `.claude/rules`、`.claude/skills` 和 `.claude/agents` 必须通过 symlink 指向 `.agents/` 中的共享内容。仓库内没有证据表明 Claude Code 会无条件加载 `.claude/rules`：本文件把它归为 Task-specific（见上文「Context 层级」），只把根 `AGENTS.md` 列为 Always available。若后续确认客户端把 `.claude/rules` 当常驻层加载，靠控制单文件规模而不是拆分更多文件来控制总量。
 - `scripts/validate-context.mjs` 只检查这套共享 context 的可加载性，不能替代对规则语义、代码行为或 agent 输出质量的评审。
 - `scripts/repo-query.mjs` 是面向 Agent 的按需查询接口：`pnpm find:usages -- <paths...>` 一次输出受影响 workspace、最小读取 context、传递依赖、所需证据和最小充分验证建议；`pnpm inspect:contract -- <published-package>` 输出当前 exports、直接消费者和最小验证；`pnpm diff:contract -- --base <git-ref>` 输出 manifest-level semver 审阅候选。`find:usages` 支持 `--base <git-ref>`、`--staged` 与 `--worktree` 从 Git 变更集读取路径。它从 `pnpm-workspace.yaml` 的 `packages` patterns、当前 manifest 和路径规则派生结论，不把影响面复制成静态文档。
 - `scripts/check-pack.mjs` 在构建后校验发布 package 的 `files` 与 `exports` 目标可从 `pnpm pack --dry-run` 产物解析；它是发布产物边界的可执行证据，不替代 API 语义或 semver 评审。
@@ -53,7 +53,7 @@ Role 是显式选择的按需 session context：读取 `.agents/agents/<role>.md
 
 ## 评测与审计
 
-- **`pnpm audit:instructions` 已弃用**（ADR-0014）：工具与其基线文件将在后续变更中删除，不要再调用或依赖其结论。锚点存在性暂无活跃校验器，其归宿在工具删除时一并决定；约束密度与预算在 diff review 中人工把关。
+- `audit:instructions` 与其预算基线（`instruction-budget.json`、`tool-enforced-rules.json`）已删除（ADR-0014）：约束密度与重复在 diff review 中人工把关。`<!-- invariant:... -->` 锚点保留为惰性注释，供人工检索，没有机器校验。
 - Skills 路由与分工（含主题重叠的 skill 选择和不可用的上游指针）：[`.agents/skills/README.md`](../../.agents/skills/README.md)。
 
 ## 最小 context 组合
@@ -81,19 +81,19 @@ Role 是显式选择的按需 session context：读取 `.agents/agents/<role>.md
 
 普通源码任务不需要阅读本表。修改以下工程资产时，在同一变更中同步对应权威文档；范围不明确时先查本表和相邻包 `AGENTS.md`。
 
-| 变更类别                                            | 必须同步的文档                                                                                                 | 事实来源                                                              |
-| --------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
-| 构建脚本、Vite/Turbo、CI/CD                         | `docs/agents/build.md`；根命令还更新 `AGENTS.md`                                                               | `package.json`、`turbo.json`、`.github/workflows/`                    |
-| 包新增、移除或重命名                                | `CONTEXT.md`                                                                                                   | `packages/`、`apps/` 目录与 manifest                                  |
-| lint、formatter、stylelint、cspell                  | `docs/agents/linting.md`                                                                                       | 对应配置                                                              |
-| workspace catalog 或 Changesets 策略                | `docs/agents/dependencies.md`                                                                                  | `pnpm-workspace.yaml`、Changesets 配置                                |
-| 测试框架或 Vite 测试配置                            | `docs/agents/testing.md`                                                                                       | 测试配置                                                              |
-| `packages/web-ui` 组件、图标或公共契约              | `packages/web-ui/AGENTS.md`、`docs/agents/web-ui.md` 与受影响 ADR                                              | 组件源码、类型、测试                                                  |
-| commitlint 或提交流程                               | `docs/agents/commit.md`                                                                                        | commit 配置或工作流                                                   |
-| 影响未来工程取舍的架构决定                          | 对应 ADR，并更新 `CONTEXT.md` ADR 索引                                                                         | 可行替代方案之间的长期选择                                            |
-| client adapter、共享 rules、skills 或 agent profile | `context.md`、`CONTEXT.md`、ADR-0004 / ADR-0010 与 `scripts/validate-context.mjs`                              | `CLAUDE.md`、`.agents/`、root scripts                                 |
-| instruction 预算、锚点或工具已强制规则清单          | `context.md`、`docs/agents/workflow.md`、`scripts/instruction-budget.json`、`scripts/tool-enforced-rules.json` | `scripts/audit-instructions.mjs`、lint 与 CI 配置                     |
-| 角色、执行体绑定、编排路由或 handoff 模板           | `AGENTS.md`、`CONTRIBUTING.md`、`context.md`、`workflow.md`、`task-packet.md`、`worktrees.md` 与 ADR-0010      | `.agents/agents/`、`scripts/task.mjs`、`scripts/validate-context.mjs` |
+| 变更类别                                            | 必须同步的文档                                                                                            | 事实来源                                                              |
+| --------------------------------------------------- | --------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| 构建脚本、Vite/Turbo、CI/CD                         | `docs/agents/build.md`；根命令还更新 `AGENTS.md`                                                          | `package.json`、`turbo.json`、`.github/workflows/`                    |
+| 包新增、移除或重命名                                | `CONTEXT.md`                                                                                              | `packages/`、`apps/` 目录与 manifest                                  |
+| lint、formatter、stylelint、cspell                  | `docs/agents/linting.md`                                                                                  | 对应配置                                                              |
+| workspace catalog 或 Changesets 策略                | `docs/agents/dependencies.md`                                                                             | `pnpm-workspace.yaml`、Changesets 配置                                |
+| 测试框架或 Vite 测试配置                            | `docs/agents/testing.md`                                                                                  | 测试配置                                                              |
+| `packages/web-ui` 组件、图标或公共契约              | `packages/web-ui/AGENTS.md`、`docs/agents/web-ui.md` 与受影响 ADR                                         | 组件源码、类型、测试                                                  |
+| commitlint 或提交流程                               | `docs/agents/commit.md`                                                                                   | commit 配置或工作流                                                   |
+| 影响未来工程取舍的架构决定                          | 对应 ADR，并更新 `CONTEXT.md` ADR 索引                                                                    | 可行替代方案之间的长期选择                                            |
+| client adapter、共享 rules、skills 或 agent profile | `context.md`、`CONTEXT.md`、ADR-0004 / ADR-0010 与 `scripts/validate-context.mjs`                         | `CLAUDE.md`、`.agents/`、root scripts                                 |
+| instruction 体系增删（锚点、rules、skills 布局）    | `context.md`、`docs/agents/workflow.md`、`AGENTS.md`                                                      | diff review、lint 与 CI 配置                                          |
+| 角色、执行体绑定、编排路由或 handoff 模板           | `AGENTS.md`、`CONTRIBUTING.md`、`context.md`、`workflow.md`、`task-packet.md`、`worktrees.md` 与 ADR-0010 | `.agents/agents/`、`scripts/task.mjs`、`scripts/validate-context.mjs` |
 
 ## 维护 instruction system
 

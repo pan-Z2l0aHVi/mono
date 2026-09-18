@@ -100,7 +100,7 @@ pnpm task done --task <task-id>
 pnpm task drop --task <task-id> --reason <reason>
 ```
 
-freeze 自身执行归一化管线：`git add -A` 全量 staging（快照语义本就覆盖全部 tracked+untracked 文件），运行 `CI=true pnpm run fix:code`，把归一化后的内容计入 `diffHash`。pre-commit 只保留 guard、不运行任何 fixer，因此不存在 commit 期改写文件导致冻结失效的竞态。freeze 在取快照前还会执行 `.agents/checks/` 下的可执行政策检查（本仓为 changeset 必带检查），失败即中止并保留可观察原因。
+freeze 自身执行归一化管线：`git add -A` 全量 staging（快照语义本就覆盖全部 tracked+untracked 文件），运行 `CI=true pnpm run fix:code`，把归一化后的内容计入 `diffHash`。归一化是强制的。声明了 `fix:code` 的仓库若依赖未安装，freeze 直接失败；先在 worktree 里执行 `pnpm install && pnpm run build` 再重试。只有不含 `fix:code` 脚本的仓库（测试 fixture、纯 git 仓库）才跳过。pre-commit 只保留 guard、不运行任何 fixer，因此不存在 commit 期改写文件导致冻结失效的竞态。freeze 在取快照前还会执行 `.agents/checks/` 下的可执行政策检查（本仓为 changeset 必带检查），失败即中止并保留可观察原因。
 
 提交边界由受版本控制的 `.vite-hooks/pre-commit` 再次检查。它通过 `pnpm task guard` 自动发现当前 worktree 的 active task；T0/T1 只有 `approved` 且冻结 diff 未变化时才允许提交，T2 只要求 active。提交 hook 保护的是 commit 边界，不能替代实施前的 `new` 和 `start`。
 

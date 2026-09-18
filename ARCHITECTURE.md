@@ -66,7 +66,6 @@ Mono 是一个 `pnpm` workspace + `Turborepo` monorepo：发布 `@greypan/*` 工
 ### 按需查询工具
 
 - 变更影响与验证计划：`pnpm find:usages -- <paths...>` 输出最小 context、受影响 workspace、风险、required evidence 和最小充分验证建议；工具语义与参数以 [`docs/agents/context.md`](docs/agents/context.md) 为权威，公共 package 再用 `inspect:contract` 或 `diff:contract`。
-- Context 审计：`pnpm audit:instructions -- --json`；它只报告重复和规则密度候选，不替代人工判断。
 
 ### 加载顺序
 
