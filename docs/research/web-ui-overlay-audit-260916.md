@@ -6,6 +6,8 @@
 
 已完成的加固阶段（来自 #120 评论）：`overlay-lifecycle-transaction`、`overlay-composition-ownership`、`overlay-positioning-generation`。本次只审计该三项之后的遗留项，结论全部可追溯到具体代码行。
 
+2026-09-18 补充：本文 Block 1（嵌套浮层 Escape 无跨组件归属）已由 `overlay-open-owner-260918` 修复。归属判定收敛到 `shared/overlay/open-overlay.ts`，`overlayComposition` / `escape-dismiss` / `lifecycle` 三个模块被合并进它并删除；组件侧不再各自实现 Escape 判定。原文的 `overlayComposition` 描述与行号属**当时的快照**，不再对应现状，见 ADR-0006 §7。Block 2 仍待处理。
+
 ## Block
 
 ### 1. 嵌套浮层的 Escape 没有跨组件归属，一次 Escape 会连带关闭外层

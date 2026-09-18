@@ -126,6 +126,8 @@ base = `2e0fbcec`（Batch 2 结束）。治理标准：`docs/adr/0005-web-ui-com
 
 ## 4. KEEP 未改动（17 文件 / 71 例）及判定理由
 
+> 2026-09-18 补充：`shared/overlay/composition` 与 `shared/overlay/lifecycle` 这两行已被 `overlay-open-owner-260918` 推翻 —— 两者连同 `shared/overlay/escape-dismiss` 一起合并进新的 `shared/overlay/open-overlay.ts`，原文件与其 spec 均已删除（见 ADR-0006 §7）。本表其余行不受影响，保留为当时的批次记录。
+
 | 文件                                            | 例  | 判定理由                                                                                                                                                                       |
 | ----------------------------------------------- | --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `shared/overlay/composition`                    | 3   | 测 `overlayComposition` 的 `registerPanel`/`contains`/`unregisterPanel` 语义（含递归清理、重挂后无 stale ancestry），零禁用模式                                                |

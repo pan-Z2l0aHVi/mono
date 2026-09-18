@@ -30,8 +30,7 @@ import {
   returnManagedMenuItemsToSlot
 } from '@/shared/menu-portal/menu-tree'
 import { dispatchOpenChangeEvent } from '@/shared/open-state'
-import { overlayComposition } from '@/shared/overlay/composition'
-import { defineOverlayEscapeDismiss } from '@/shared/overlay/escape-dismiss'
+import { defineOpenOverlay, type OpenOverlayHandle } from '@/shared/overlay/open-overlay'
 import { defineOverlayPositioningGeneration } from '@/shared/overlay/positioning-generation'
 import { hideOverlayPresence, showOverlayPresence } from '@/shared/overlay/presence'
 import { defineScrollLockLease } from '@/shared/scroll-lock/scroll-lock'
@@ -57,18 +56,24 @@ export class WebUiContextMenu extends LitElement {
   // 时只允许最新一次定位写入；不同层级子菜单各有 panel，互不作废。
   private readonly _submenuPositionEpochs = new WeakMap<HTMLElement, number>()
   private _menu?: MenuPortalOverlay
+  /** 根面板的开启会话句柄；未开启时为 null。查询走它。 */
+  private _menuHandle: OpenOverlayHandle | null = null
+  /**
+   * 子菜单 panel → 会话句柄。子层经 `adopt` 进根句柄子树（默认不成为独立候选），
+   * 但仍各自持有句柄：整层关闭或收尾动画结束时按 panel 精确撤销。
+   */
+  private readonly _submenuHandles = new Map<HTMLElement, OpenOverlayHandle>()
   // 行为层（hover / outside-click / 键盘 / submenu 收尾）由 shared/menu-behavior 驱动
-  private readonly _outsideClickGuard = createMenuOutsideClickGuard(this, node => {
-    const panels = [this._menu?.panel, ...this._activeSubmenus.map(menu => menu.panel)].filter(
-      (panel): panel is HTMLElement => panel instanceof HTMLElement
-    )
-    return panels.some(panel => overlayComposition.contains(panel, node))
-  })
+  private readonly _outsideClickGuard = createMenuOutsideClickGuard(
+    this,
+    // 根句柄的 contains 递归覆盖全部已 adopt 的子层，一次查询替代逐 panel 判定。
+    node => this._menuHandle?.contains(node) ?? false
+  )
   private readonly _closingSubmenus = createClosingSubmenuStack<MenuPortalOverlay>({
     getPanel: container => container.panel,
     restoreItems: (container, parentItem) => this._restoreSubmenuItems(container, parentItem),
     dispose: container => {
-      overlayComposition.unregisterPanel(container.panel)
+      this._releaseSubmenu(container.panel)
       container.panel.remove()
     }
   })
@@ -107,13 +112,10 @@ export class WebUiContextMenu extends LitElement {
     closeDeepestOrAll: () => this._closeLastSubmenuOrMenu()
   }
   /*
-   * Escape 由共享仲裁者统一归属（issue #120 Block 1）。登记根面板：子菜单在逻辑组合树
-   * 上是它的后代；关闭动作仍走 closeDeepestOrAll（最深子菜单优先）。
+   * 开启态浮层（issue #120 Block 1）。根面板是登记对象：子菜单经 adopt 成为它的逻辑
+   * 后代；关闭动作仍走 closeDeepestOrAll（最深子菜单优先）。
    */
-  private readonly _escape = defineOverlayEscapeDismiss().make({
-    isConnected: () => this.isConnected,
-    isOpen: () => this._isOpen,
-    isEscapeCloseEnabled: () => true,
+  private readonly _overlay = defineOpenOverlay().make({
     requestClose: () => this._keyboardDelegate.closeDeepestOrAll()
   })
   private readonly _menuItemAnchors = new Map<HTMLElement, Comment>()
@@ -162,9 +164,9 @@ export class WebUiContextMenu extends LitElement {
     this._menuPositionGeneration.invalidate()
     this._outsideClickGuard.dispose()
     this._hoverBinder.dispose()
-    this._escape.dispose()
     this._scrollLock.release()
-    if (this._menu) overlayComposition.unregisterPanel(this._menu.panel)
+    this._menuHandle?.release()
+    this._menuHandle = null
     this._returnItemsToSlot()
     this._menu?.panel.remove()
     this._menu = undefined
@@ -191,8 +193,29 @@ export class WebUiContextMenu extends LitElement {
           this._menu.panel.setAttribute('role', 'menu')
           this._menu.panel.setAttribute('aria-label', '上下文菜单')
           this._menu.panel.addEventListener('click', this._onMenuClick)
-          overlayComposition.registerPanel(this._menu.panel)
-          this._escape.setPanel(this._menu.panel)
+        }
+        /*
+         * 登记与面板建立解耦。退场动画被打断时（`_closeMenuAfterPresence` 在
+         * `hideOverlayPresence` 返回 false 后提前退出）`_menu` 还在，而关闭分支已经把句柄
+         * 撤了；此时重开必须补 claim。否则菜单开着且可见却没有登记：Escape 关不掉它
+         * （仲裁看不到它），而 `_menuHandle === null` 会让每次 document click——包括面板
+         * 内部与子菜单父项——都被 `_outsideClickGuard` 判成外部点击而关闭菜单。
+         */
+        if (!this._menuHandle) {
+          this._menuHandle = this._overlay.claim(this._menu.panel)
+          // 重新 claim = 新会话：根层的子层随之作废，仍在场的子菜单面板要重新 adopt 回
+          // 新句柄的子树，否则根句柄的 contains 看不到它们。
+          for (const submenu of this._activeSubmenus) {
+            this._submenuHandles.delete(submenu.panel)
+            this._submenuHandles.set(submenu.panel, this._menuHandle.adopt(submenu.panel))
+          }
+          // 收尾栈里的子菜单面板同样「可见但已脱离快照」：`_closeSubmenusFrom` 只把它们
+          // 移出 `_activeSubmenus`，面板仍在 DOM 里退场。不补 adopt 的话它们会被判成
+          // 面板外，点它内部就关掉整张菜单（base 的登记树直到 dispose 才注销，故属回归）。
+          // 写进 `_submenuHandles` 是因为收尾结束时 `_releaseSubmenu` 按 panel 取句柄释放。
+          for (const container of this._closingSubmenus.closing()) {
+            this._submenuHandles.set(container.panel, this._menuHandle.adopt(container.panel))
+          }
         }
         // 父项始终留在 menu.content 内，观察它即可覆盖各级子菜单在打开期间的内容重建。
         this._contentObserver.observe(this._menu.content, { childList: true, subtree: true })
@@ -205,7 +228,9 @@ export class WebUiContextMenu extends LitElement {
         })
       } else {
         this._syncScrollLock(false)
-        this._escape.setPanel(null)
+        // release ⟺ 关闭：登记与仲裁归属同时撤销，退场动画只是视觉收尾。
+        this._menuHandle?.release()
+        this._menuHandle = null
         this._contentObserver.disconnect()
         this._menuPositionGeneration.invalidate()
         this._refreshScheduled = false
@@ -386,7 +411,7 @@ export class WebUiContextMenu extends LitElement {
     if (menu && !(await hideOverlayPresence(menu.panel))) return
     if (this._isOpen || !this.isConnected || this._menu !== menu) return
 
-    if (menu) overlayComposition.unregisterPanel(menu.panel)
+    // 登记已在关闭分支撤销（release ⟺ 关闭），这里只做内容归还与 DOM 收尾。
     this._returnItemsToSlot()
     menu?.panel.remove()
     this._menu = undefined
@@ -410,6 +435,13 @@ export class WebUiContextMenu extends LitElement {
     if (closingSubmenu) {
       this._activeSubmenus[level] = closingSubmenu
       this._activeSubmenuItems[level] = item
+      /*
+       * 取回的面板写回 `_submenuHandles`，让收尾结束时的 `_releaseSubmenu` 释放到正确的句柄。
+       * 注：「面板在根句柄子树里」这一条已由上面的 claim 分支保证 —— 该分支会把仍在
+       * closing 栈里的面板一并重挂（`_closingSubmenus.closing()`）。实测单独摘掉这一行
+       * 全部用例仍绿，所以它维护的是释放账本，不是树的成员关系。
+       */
+      if (this._menuHandle) this._submenuHandles.set(closingSubmenu.panel, this._menuHandle.adopt(closingSubmenu.panel))
       item.setAttribute('active', '')
       this._positionSubmenu(item, closingSubmenu)
       showOverlayPresence(closingSubmenu.panel, { isInstant })
@@ -428,10 +460,12 @@ export class WebUiContextMenu extends LitElement {
 
     this._activeSubmenus[level] = submenu
     this._activeSubmenuItems[level] = item
-    overlayComposition.registerPanel(
-      submenu.panel,
-      level === 0 ? this._menu?.panel : this._activeSubmenus[level - 1]?.panel
-    )
+    /*
+     * 子层进根句柄的子树，默认不是独立候选 —— 「它在树里、但不参与这一层裁决」由此
+     * 表达。原先按 level===0 选择根面板还是上一层子面板的父级判断随之消失：contains
+     * 沿子树递归，拍平与嵌套对任何现有查询结果等价。
+     */
+    if (this._menuHandle) this._submenuHandles.set(submenu.panel, this._menuHandle.adopt(submenu.panel))
     item.setAttribute('active', '')
     this._positionSubmenu(item, submenu)
     showOverlayPresence(submenu.panel, { isInstant })
@@ -444,7 +478,7 @@ export class WebUiContextMenu extends LitElement {
       const item = this._activeSubmenuItems[index]
       item?.removeAttribute('active')
       if (!item || isInstant) {
-        if (submenu) overlayComposition.unregisterPanel(submenu.panel)
+        if (submenu) this._releaseSubmenu(submenu.panel)
         this._restoreSubmenuItems(submenu, item)
         submenu.panel.remove()
       } else {
@@ -612,11 +646,15 @@ export class WebUiContextMenu extends LitElement {
     this._scrollLock.sync(isOpen && !this.noScrollLock)
   }
 
+  /** 按 panel 撤销一层子菜单的登记；句柄已随根层递归撤销时幂等无操作。 */
+  private _releaseSubmenu(panel: HTMLElement) {
+    this._submenuHandles.get(panel)?.release()
+    this._submenuHandles.delete(panel)
+  }
+
   private _isMenuPanelEvent(e: Event): boolean {
-    const panels = [this._menu?.panel, ...this._activeSubmenus.map(menu => menu.panel)].filter(
-      (panel): panel is HTMLElement => panel instanceof HTMLElement
-    )
-    return panels.some(panel => overlayComposition.containsEvent(panel, e))
+    // 在监听器内部判定：composedPath() 在派发结束后会被清空。
+    return this._menuHandle?.containsEvent(e) ?? false
   }
 
   override render() {

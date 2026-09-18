@@ -1,6 +1,9 @@
 import type { LitElement } from 'lit'
 import { afterEach, describe, expect, it } from 'vite-plus/test'
+import { userEvent } from 'vite-plus/test/browser'
 
+import '@/components/popover'
+import type { WebUiPopover } from '@/components/popover'
 import { pollUntil, waitForFrame } from '@/shared/test-utils'
 
 import { imagePreview, type ImagePreviewOptions } from '..'
@@ -164,5 +167,34 @@ describe('image-preview 重挂载对账（浏览器）', () => {
     expect(dialogElement().open).toBe(false)
     expect(dialogElement().matches(':modal')).toBe(false)
     expect(document.documentElement.style.overflow).toBe('')
+  })
+
+  /*
+   * 「断连撤销登记」的另一半：重连时组件必须重新声明，否则预览虽仍在屏幕上却已不在
+   * 仲裁候选里。这一半只有**与别的已登记层并存**时才可观测 —— 预览若是唯一开启的层，
+   * 未登记时代码仍会退回原生 cancel 把它关掉，缺陷被掩盖。所以对照物是一个先开启的
+   * popover：一次 Escape 只该关掉最上层的预览。
+   */
+  it('重挂载后预览仍在仲裁里：与已开启的 popover 并存时，一次 Escape 只关预览', async () => {
+    const popover = document.createElement('web-ui-popover') as WebUiPopover
+    popover.textContent = 'under'
+    document.body.append(popover)
+    await popover.updateComplete
+    popover.open = true
+    await popover.updateComplete
+    await waitForFrame()
+
+    const { host } = await openPreview()
+    await pollUntil(() => dialogElement().matches(':modal'), 'dialog should enter top layer')
+
+    host.remove()
+    overlayContainer().append(host)
+    await host.updateComplete
+    await pollUntil(() => dialogElement().matches(':modal'), 'dialog should re-enter top layer after remount')
+
+    await userEvent.keyboard('{Escape}')
+
+    await pollUntil(() => !isMounted(), 'Expected Escape to close the preview after remount')
+    expect(popover.open).toBe(true)
   })
 })

@@ -5,9 +5,8 @@ import '@/components/button'
 import glass from '@/assets/glass.css?inline'
 import { UserChangeController } from '@/shared/events/user-change'
 import { dispatchOpenChangeEvent } from '@/shared/open-state'
-import { overlayComposition } from '@/shared/overlay/composition'
-import { defineOverlayEscapeDismiss } from '@/shared/overlay/escape-dismiss'
 import { defineNativeDialogPresence } from '@/shared/overlay/native-dialog-presence'
+import { defineOpenOverlay, type OpenOverlayHandle } from '@/shared/overlay/open-overlay'
 import { defineScrollLockLease } from '@/shared/scroll-lock/scroll-lock'
 
 import style from './style.css?inline'
@@ -32,14 +31,11 @@ export class WebUiDialog extends LitElement {
   private readonly _userOpenChange = new UserChangeController()
 
   /*
-   * Escape 由共享仲裁者统一归属（issue #120 Block 1）。dialog 的 Escape 原本只走原生
-   * cancel 事件：仲裁者会在 keydown 上 preventDefault 压掉原生关闭请求并 stopPropagation，
-   * 因此这里必须自己表达关闭语义（controlled 只派发请求）。
+   * 开启态浮层（issue #120 Block 1）。dialog 的 Escape 原本只走原生 cancel 事件：仲裁者
+   * 会在 keydown 上 preventDefault 压掉原生关闭请求并 stopPropagation，因此这里必须
+   * 自己表达关闭语义（controlled 只派发请求）。
    */
-  private readonly _escape = defineOverlayEscapeDismiss().make({
-    isConnected: () => this.isConnected,
-    isOpen: () => this.open,
-    isEscapeCloseEnabled: () => !this.noEscapeClose,
+  private readonly _overlay = defineOpenOverlay().make({
     requestClose: () => {
       if (this.controlled) {
         this.emitOpenChange(false)
@@ -49,6 +45,8 @@ export class WebUiDialog extends LitElement {
       this.close()
     }
   })
+  /** 当前开启会话的句柄；未开启时为 null。查询与惰性同步走它。 */
+  private _handle: OpenOverlayHandle | null = null
   private readonly _scrollLock = defineScrollLockLease().make()
   private readonly _presence = defineNativeDialogPresence().make({
     getDialog: () => this.dialog,
@@ -67,37 +65,63 @@ export class WebUiDialog extends LitElement {
     if (props.has('open')) {
       if (this._userOpenChange.consume()) this.emitOpenChange()
       this._presence.sync(this.open)
-      // 原生 dialog 登记为 overlay panel：挂在它上面的 portal 面板成为本层后代，
+      // 原生 dialog 登记为开启态浮层：挂在它上面的 portal 面板成为本层后代，
       // Escape 仲裁据此判出最内层（issue #120 Block 1）。
       const dialog = this.dialog
       if (dialog) {
         if (this.open) {
-          overlayComposition.registerPanelFromAncestry(dialog, this)
-          this._escape.setPanel(dialog)
+          // 同一面板重新 claim = 新的一次开启：旧会话（含其子层）整体作废。
+          this._handle?.release()
+          this._handle = this._overlay.claim(dialog, { ancestryFrom: this })
         } else {
-          overlayComposition.unregisterPanel(dialog)
-          this._escape.setPanel(null)
+          this._handle?.release()
+          this._handle = null
         }
       }
     }
     if (props.has('open') || props.has('noScrollLock')) this._syncScrollLock()
+    this._syncOverlayInert()
   }
 
   override connectedCallback() {
     super.connectedCallback()
-    // 重挂载对账：断连时 presence 与滚动锁已被 dispose/release，而 `open` 未变化时
+    // 重挂载对账：断连时 presence、滚动锁与登记都已被撤销，而 `open` 未变化时
     // `updated()` 不会补跑任何 sync 分支。首次连接时 shadow 尚未渲染、`this.dialog`
-    // 为 null，reconcile 内部直接返回；打开态的首次进入仍由 updated() 的
+    // 为 null，三种情况都直接跳过；打开态的首次进入仍由 updated() 的
     // `props.has('open')` 分支处理。
     this._presence.reconcile()
     this._syncScrollLock()
+    this._reclaimIfOpen()
   }
 
   override disconnectedCallback() {
     super.disconnectedCallback()
     this._presence.dispose()
     this._scrollLock.release()
-    this._escape.dispose()
+    // 断连即撤销登记：层不留在全局注册表里，重连后由 _reclaimIfOpen 显式重新声明。
+    this._handle?.release()
+    this._handle = null
+  }
+
+  /*
+   * 「重挂载恢复」的调用方一半：模块刻意不观察 DOM 连接状态，所以断连撤销登记之后，
+   * 重连时仍有开启态就必须由组件重新声明。
+   */
+  private _reclaimIfOpen() {
+    if (!this.open || this._handle) return
+    const dialog = this.dialog
+    if (!dialog) return
+    this._handle = this._overlay.claim(dialog, { ancestryFrom: this })
+    this._syncOverlayInert()
+  }
+
+  /*
+   * `no-escape-close` 时 dialog 仍是候选（Escape 被吞掉、原生 cancel 被压掉），只是
+   * 不走关闭入口。与旧的「跳过候选」语义不同：旧语义放任事件落到下层浮层，把外层
+   * 一起关掉。该属性可在开启期间改写，所以每次渲染后读它，而不是在 claim 时固定。
+   */
+  private _syncOverlayInert() {
+    this._handle?.setInert(this.noEscapeClose)
   }
 
   // 以模态方式打开对话框（命令式）
@@ -110,6 +134,16 @@ export class WebUiDialog extends LitElement {
     this.open = false
   }
 
+  /*
+   * 仲裁者在 capture 阶段 preventDefault 了 Escape 的 keydown，UA 因此不再派发原生
+   * cancel，但本 handler 仍有两个仲裁者不负责的职责，**不可删**：
+   * ① 任何到达 dialog 的 cancel 都要 preventDefault，把 top layer 保留到视觉退场结束
+   *    （否则原生关闭会跳过退出动画）；
+   * ② 忽略子控件（例如 file input）冒泡上来的 cancel。
+   * 实测（overlay-open-owner-260918，2026-09-18）摘掉 `@cancel` 后 dialog.browser.spec.ts
+   * 的「no-escape-close 存在时 Escape/cancel 不关闭对话框」与 remount-reconcile 的
+   * 「打开态被移出文档再接回」两例立刻转红，断言正是 `dispatchEvent(cancel) === false`。
+   */
   private handleCancel(e: Event) {
     // 子控件（例如 file input）可能派发冒泡的 cancel；只让 native dialog 自身的 cancel 关闭。
     if (e.target !== e.currentTarget) return

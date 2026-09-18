@@ -13,10 +13,11 @@ import { afterEach, describe, expect, it } from 'vite-plus/test'
 import { userEvent } from 'vite-plus/test/browser'
 
 import '@/components/drawer'
+import type { WebUiDrawer } from '@/components/drawer'
 import '@/components/option'
 import '@/components/popover'
 import '@/components/select'
-import type { WebUiDrawer } from '@/components/drawer'
+import { imagePreview } from '@/components/image-preview'
 import type { WebUiPopover } from '@/components/popover'
 import type { WebUiSelect } from '@/components/select'
 import { pollUntil, waitForFrame } from '@/shared/test-utils'
@@ -51,6 +52,15 @@ function deepQuery(root: ParentNode | null, selector: string): HTMLElement | nul
     if (inner) return inner
   }
   return null
+}
+
+const PREVIEW_SRC = `data:image/svg+xml,${encodeURIComponent(
+  '<svg xmlns="http://www.w3.org/2000/svg" width="40" height="30"><rect width="40" height="30" fill="#08f"/></svg>'
+)}`
+
+/** 预览宿主：挂到主题 overlay root（无主题作用域时回退到 fallback root），同样深搜。 */
+function previewHost(): HTMLElement | null {
+  return deepQuery(document.body, 'web-ui-image-preview')
 }
 
 function createDrawerWithSelect(portal: boolean) {
@@ -143,7 +153,7 @@ describe('overlay Escape 归属仲裁（浏览器）', () => {
   })
 
   /*
-   * 兜底分支（并列浮层）的守卫用例：innermost() 的 seq 分支承载 README 已对外承诺的
+   * 兜底分支（并列浮层）的守卫用例：resolve() 的 seq 分支承载 README 已对外承诺的
    * 「互不嵌套的并列浮层按打开顺序关闭最上层」，此前没有任何用例压住它。
    */
   it('互不嵌套的两个 popover 先后打开时，一次 Escape 只关闭后开的那个', async () => {
@@ -198,5 +208,30 @@ describe('overlay Escape 归属仲裁（浏览器）', () => {
 
     await userEvent.keyboard('{Escape}')
     await pollUntil(() => !first.open, 'Expected the second Escape to close the remaining popover')
+  })
+
+  /*
+   * image-preview 是「最上层却不在仲裁里」的最后一个实例：它用原生 <dialog> 的 cancel
+   * 自管 Escape，从未参与登记。于是与任何已登记的层同时打开时，一次 Escape 会关掉下面
+   * 那层、把最上层的预览留在屏幕上 —— 正是本 spec 守的「内外层错配」。
+   */
+  it('image-preview 打开在 drawer 之上时，一次 Escape 只关闭预览', async () => {
+    const drawer = document.createElement('web-ui-drawer') as WebUiDrawer
+    drawer.heading = 'escape ownership'
+    document.body.append(drawer)
+    await drawer.updateComplete
+
+    drawer.open = true
+    await drawer.updateComplete
+    await waitForDrawerOpen(drawer)
+
+    imagePreview({ images: [{ src: PREVIEW_SRC, alt: '图 A' }] })
+    await pollUntil(() => previewHost() != null, 'Expected the image preview to mount')
+
+    await userEvent.keyboard('{Escape}')
+
+    // 最上层先关：预览走完退场并被卸载，drawer 保留。
+    await pollUntil(() => previewHost() == null, 'Expected Escape to close the image preview')
+    expect(drawer.open).toBe(true)
   })
 })
