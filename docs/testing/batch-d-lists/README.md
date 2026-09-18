@@ -35,8 +35,9 @@
      被删用例已不在树上，行号只对基线快照有意义。
 4. 7 份文件带「独立审查结论」章节，是每批 freeze → review → approve 闸门的原始记录：
    Batch 1 §8.6 / §8.7、Batch 2 §9.5、Batch 3 §8、Batch 4 §9、Batch 5 §7、Batch 6a §8、Batch 6b §8。
-   **`batch-6c.md` 没有这一章节**（止于 §9 转出项）——Batch 6c 的闸门记录只在工作流状态里：
-   `pnpm agent:workflow status --task web-ui-contract-b6c`（状态存本地 `.git/agent-workflow/`，不随仓库分发）。
+   **`batch-6c.md` 没有这一章节**（止于 §9 转出项）——Batch 6c 的闸门记录只在工作流状态里；旧
+   `agent:workflow` 状态已随 task system v2 退役，不再可查。现行查询是 `pnpm task status`，
+   state 存本地 `<git-common-dir>/tasks/`，不随仓库分发。
 
 ## 边界
 
