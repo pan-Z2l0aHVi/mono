@@ -132,7 +132,7 @@ Manager 统一接收需求并编排，保持扁平，不引入 Integrator 或其
 
 ## review 拓扑
 
-- **T0**：独立 reviewer 会话（新起的只读 claude/codex 进程），不接收实施者的叙述，只审冻结 diff 与证据。
+- **T0**：独立 reviewer 会话（新起的 claude/codex 进程，与实施角色同等权限但不参与实施），不接收实施者的叙述，只审冻结 diff 与证据。
 - **T1**：强制 review，Manager 派 fresh subagent 即可（subagent 只接收冻结 diff 与证据，独立性接近独立会话）。
 - **T2**：免审；若要审，coder 自派 fresh subagent。
 - **任何级别禁止同一会话自审**：实施者复核自己的 diff 不构成 review。
@@ -142,7 +142,7 @@ Manager 统一接收需求并编排，保持扁平，不引入 Integrator 或其
 
 - **Manager**：建立 task，拆解任务，分配 owner，按「编排模式」派发，维护依赖，汇总证据，组织 review 和交付判断；直接协调 release 聚合与集成验证，不新增 Integrator 层级。
 - **实施 Agent**：只在被分配的 task worktree 工作（T2 允许当前 worktree），遵守 handoff 声明的 Scope 与角色目录边界，保持变更待 review，不擅自 commit、push、merge 或关闭任务。
-- **Reviewer**：只读审查冻结的目标 diff 和验证证据，结果绑定 `diffHash`；发现问题交回实施 Agent，修复后重新 freeze/review。
+- **Reviewer**：独立审查冻结的目标 diff 和验证证据（与实施角色同等权限，但不参与实施、不直接修改被审查代码），结果绑定 `diffHash`；发现问题交回实施 Agent，修复后重新 freeze/review。
 - **Designer**：仅在产品/设计需求下启用，输出可实现的交互、视觉和验收决策，不修改 `packages/*` 与 `apps/*` 生产代码，不改变代码归属和状态 gate。
 
 ## 并发原则

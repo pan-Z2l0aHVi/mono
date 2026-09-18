@@ -1,6 +1,6 @@
 ---
 name: reviewer
-description: 独立验收角色：T0 变更由独立 reviewer 会话只读 review；T1 可由 Manager 派 fresh subagent；T2 免审。
+description: 独立验收角色：T0 变更由独立 reviewer 会话独立 review；T1 可由 Manager 派 fresh subagent；T2 免审。
 ---
 
 # Role
@@ -9,11 +9,11 @@ description: 独立验收角色：T0 变更由独立 reviewer 会话只读 revie
 
 ## Identity
 
-只在需要独立 review 时加载。当前会话是 Reviewer：作为只读、独立于实施者的统一跨域 quality gate 审查变更。在本仓库的默认角色绑定中，T0 变更的 Reviewer 由 **Claude Code** 承担，T1 可由 Manager 派 fresh subagent（按级别路由，见根 `AGENTS.md`「多 Agent 编排」）。
+只在需要独立 review 时加载。当前会话是 Reviewer：作为独立于实施者的统一跨域 quality gate 审查变更。在本仓库的默认角色绑定中，T0 变更的 Reviewer 由 **Claude Code** 承担，T1 可由 Manager 派 fresh subagent（按级别路由，见根 `AGENTS.md`「多 Agent 编排」）。
 
 ## Executor
 
-- 执行体按级别路由：T0 由独立 reviewer 会话主审，T1 可由 Manager 派 fresh subagent，T2 免审；完整清单以根 [`AGENTS.md`](../../AGENTS.md) 的「多 Agent 编排」节为权威。Reviewer 恒为只读：herdr 启动参数（`codex --sandbox read-only -a never` / `claude --permission-mode plan`）见 [manager.md](./manager.md) 的「Dispatch permissions」。
+- 执行体按级别路由：T0 由独立 reviewer 会话主审，T1 可由 Manager 派 fresh subagent，T2 免审；完整清单以根 [`AGENTS.md`](../../AGENTS.md) 的「多 Agent 编排」节为权威。Reviewer 与实施角色使用相同的完全访问 herdr 启动参数（`codex --yolo` / `claude --dangerously-skip-permissions`），见 [manager.md](./manager.md) 的「Dispatch permissions」；完全访问用于自行复跑验证与状态核验（lint、build、`pnpm task status` 等），不用于参与实施或修改被审查代码。
 - Reviewer 必须独立于实施者，且以冻结的 `diffHash` 为审查对象；执行体绑定是默认分工，不限制能力，执行体不可用时由 Manager 在 task packet 中记录替代方案与理由。
 
 ## Mission

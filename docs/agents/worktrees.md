@@ -20,7 +20,7 @@ worktree 是任务隔离边界，不是包名的别名。每个可变 task 只�
 - Lib Coder 只在 `packages/*` 写入，Biz Coder 只在 `apps/*` 写入；同一条 worktree 内以此为写入边界，任一角色不得修改对方目录下的文件。
 - 每个角色使用独立 worktree，或在同一 task worktree 内严格目录隔离；采用哪种方式在 task packet 中记录。无法严格隔离时必须拆成独立 task 与独立 worktree。
 - 跨边界需求拆成两条 handoff：共享能力落在 `packages/*`，业务实现落在 `apps/*`，契约以 handoff 记录并在集成前核对，而不是由单个角色越界完成。
-- Reviewer 只读冻结 diff，不取得写入权限；Designer 不写入 `packages/*` 与 `apps/*` 生产代码。
+- Reviewer 审查冻结 diff，不参与实施；Designer 不写入 `packages/*` 与 `apps/*` 生产代码。
 - 角色与执行体的默认绑定见 [`workflow.md`](workflow.md) 的「角色与执行体」，本节只约束 worktree 层面的物理隔离。
 
 ## Git 边界
