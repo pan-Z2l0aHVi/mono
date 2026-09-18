@@ -77,10 +77,9 @@ function ThemeDemo() {
       <web-ui-theme
         appearance={appearance}
         motion={motion}
-        className="block rounded-xl border p-6"
-        style={{ borderColor: 'var(--wui-color-border)' } as React.CSSProperties}
+        className="block rounded-xl border border-[var(--wui-color-border)] p-6"
       >
-        <section style={{ background: 'var(--wui-color-page)' }}>
+        <section className="bg-[var(--wui-color-page)]">
           <div className="flex flex-wrap gap-3">
             <web-ui-button variant="primary">Primary</web-ui-button>
             <web-ui-button variant="secondary">Secondary</web-ui-button>
@@ -182,10 +181,9 @@ function ThemeDemo() {
       <web-ui-theme
         appearance="light"
         motion="reduced"
-        className="block rounded-xl border p-6"
-        style={{ borderColor: 'var(--wui-color-border)' } as React.CSSProperties}
+        className="block rounded-xl border border-[var(--wui-color-border)] p-6"
       >
-        <section style={{ background: 'var(--wui-color-page)' }}>
+        <section className="bg-[var(--wui-color-page)]">
           <p className="mb-2 text-xs text-[var(--wui-color-text-secondary)]">外层（Light / Reduced）</p>
           <div className="flex flex-wrap gap-3">
             <web-ui-button variant="primary">外层按钮</web-ui-button>
@@ -196,10 +194,9 @@ function ThemeDemo() {
             appearance={innerAppearance}
             motion={innerMotion}
             transition
-            className="mt-4 block rounded-xl border p-6"
-            style={{ borderColor: 'var(--wui-color-border)' } as React.CSSProperties}
+            className="mt-4 block rounded-xl border border-[var(--wui-color-border)] p-6"
           >
-            <section style={{ background: 'var(--wui-color-page)' }}>
+            <section className="bg-[var(--wui-color-page)]">
               <p className="mb-2 text-xs text-[var(--wui-color-text-secondary)]">内层（可切换）</p>
               <div className="flex flex-wrap gap-3">
                 <web-ui-button variant="primary">内层按钮</web-ui-button>
@@ -211,10 +208,9 @@ function ThemeDemo() {
                 appearance={innermostAppearance}
                 motion={innermostMotion}
                 transition
-                className="mt-4 block rounded-xl border p-6"
-                style={{ borderColor: 'var(--wui-color-border)' } as React.CSSProperties}
+                className="mt-4 block rounded-xl border border-[var(--wui-color-border)] p-6"
               >
-                <section style={{ background: 'var(--wui-color-page)' }}>
+                <section className="bg-[var(--wui-color-page)]">
                   <p className="mb-2 text-xs text-[var(--wui-color-text-secondary)]">最内层（可切换）</p>
                   <div className="flex flex-wrap gap-3">
                     <web-ui-button variant="primary">最内层按钮</web-ui-button>

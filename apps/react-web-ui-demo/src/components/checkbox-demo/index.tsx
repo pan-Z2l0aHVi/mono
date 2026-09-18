@@ -24,7 +24,7 @@ function CheckboxDemo() {
           Cherry
         </web-ui-checkbox>
       </div>
-      <p className="text-sm text-gray-500">选中值：{[...fruits].join(', ') || '[]'}</p>
+      <p className="text-sm text-[var(--color-muted)]">选中值：{[...fruits].join(', ') || '[]'}</p>
 
       <h2>Checkbox Group</h2>
       <div className="mb-3 flex flex-col gap-3">
@@ -34,7 +34,7 @@ function CheckboxDemo() {
           <web-ui-checkbox value="cherry">Cherry</web-ui-checkbox>
         </web-ui-checkbox-group>
       </div>
-      <p className="text-sm text-gray-500">选中值：{[...groupVals].join(', ') || '[]'}</p>
+      <p className="text-sm text-[var(--color-muted)]">选中值：{[...groupVals].join(', ') || '[]'}</p>
 
       <h2>Checkbox Group 禁用</h2>
       <div className="mb-3 flex flex-col gap-3">

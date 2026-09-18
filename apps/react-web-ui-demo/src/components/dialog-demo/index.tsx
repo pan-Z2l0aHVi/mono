@@ -81,10 +81,10 @@ function DialogDemo() {
         <web-ui-button onClick={() => setVisible4(true)}>打开自定义对话框</web-ui-button>
       </div>
       <web-ui-dialog open={visible4} onopen-change={event => setVisible4(event.detail.open)}>
-        <div slot="body" style={{ textAlign: 'center' }}>
-          <p style={{ margin: 0, fontSize: 48 }}>🎉</p>
-          <p style={{ margin: '12px 0 4px', fontSize: 18, fontWeight: 600 }}>操作成功</p>
-          <p style={{ margin: '0 0 20px', color: '#6a6a6a' }}>自定义 body slot 内容，保留玻璃卡片外壳。</p>
+        <div slot="body" className="text-center">
+          <p className="m-0 text-[48px]">🎉</p>
+          <p className="mx-0 mt-3 mb-1 text-lg font-semibold">操作成功</p>
+          <p className="mx-0 mb-5 text-[var(--color-body-text)]">自定义 body slot 内容，保留玻璃卡片外壳。</p>
           <web-ui-button variant="primary" full onClick={() => setVisible4(false)}>
             知道了
           </web-ui-button>
@@ -113,7 +113,7 @@ function DialogDemo() {
       <web-ui-dialog
         open={bgVisible}
         onopen-change={event => setBgVisible(event.detail.open)}
-        style={{ '--wui-dialog-bg': 'rgb(240 248 255 / 0.92)' } as React.CSSProperties}
+        style={{ '--wui-dialog-bg': 'var(--color-dialog-bg)' } as React.CSSProperties}
       >
         <span slot="title">自定义背景色</span>
         <p>
