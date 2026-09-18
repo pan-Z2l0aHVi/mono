@@ -22,12 +22,15 @@ function IconDemo() {
       </div>
       <h2>颜色</h2>
       <div className="mb-3 flex items-center gap-4">
-        <span className="text-red-500">
+        <span className="text-[var(--color-danger)]">
           <web-ui-icon icon={lucideSearch}></web-ui-icon>
           继承 color
         </span>
-        <web-ui-icon icon={lucideSearch} color="#007aff"></web-ui-icon>
-        <web-ui-icon icon={lucideSearch} style={{ '--wui-icon-color': '#34c759' } as React.CSSProperties}></web-ui-icon>
+        <web-ui-icon icon={lucideSearch} color="var(--color-brand)"></web-ui-icon>
+        <web-ui-icon
+          icon={lucideSearch}
+          style={{ '--wui-icon-color': 'var(--color-icon-tint)' } as React.CSSProperties}
+        ></web-ui-icon>
       </div>
       <h2>搭配 Button</h2>
       <div className="mb-3 flex gap-2">
