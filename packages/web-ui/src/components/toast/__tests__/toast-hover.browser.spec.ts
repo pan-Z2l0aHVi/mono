@@ -49,6 +49,30 @@ function createAwayTarget(): HTMLElement {
   return away
 }
 
+// ── 可观察状态 helpers ──────────────────────────────────────────────
+// TS private 字段运行时可读；用 unknown 双重转型避免 any。
+type ToastTiming = {
+  _deadline?: number
+  _pausedRemaining?: number
+  _closeTimer?: ReturnType<typeof setTimeout>
+}
+
+function timingOf(id: string): ToastTiming | undefined {
+  return findToast(id) as unknown as ToastTiming | undefined
+}
+
+// 等待真正续跑：暂停态解除且 close timer 已重新点火。
+async function waitResumed(id: string, message: string): Promise<void> {
+  await waitFor(
+    () => {
+      const t = timingOf(id)
+      return !!t && t._pausedRemaining === undefined && t._closeTimer !== undefined
+    },
+    message,
+    2500
+  )
+}
+
 afterEach(() => {
   toast._reset()
   document.body.replaceChildren()
@@ -58,6 +82,10 @@ afterEach(() => {
  * jsdom 里只能合成 pointerenter/pointerleave，事件序列和真实指针不是一回事（真实指针离开时
  * 还有 document 级的 pointerout/pointerleave）。这里用真实鼠标复现用户报的场景：
  * hover 上去再移开，倒计时必须按剩余时间续跑，而不是重启满时长、也不是永久停留。
+ *
+ * 「续跑 vs 重启」判定不依赖墙钟：移开后读组件内部 _deadline，续跑时它同步等于
+ * Date.now() + pausedRemaining（≈600ms / ≈900ms），重启满时长的回归会给出 ≈duration
+ * （3000ms）。两者差距远超任何 CI 负载抖动。
  */
 describe('toast 悬停暂停（浏览器）', () => {
   it('悬停期间不关闭，移开后按剩余时间关闭', async () => {
@@ -75,17 +103,21 @@ describe('toast 悬停暂停（浏览器）', () => {
     await wait(800)
     expect(findToast(id)?.visible).toBe(true)
 
-    // 移开指针，剩余约 600ms。若重启满时长（3000ms），1800ms 时它还开着。
+    // 移开指针。续跑判定改为可观察状态：resumeAutoClose() 同步按剩余时间（约 600ms）重置
+    // deadline；重启满时长的回归会给出 ≈3000ms，二者差距远超任何负载抖动。
     await page.elementLocator(away).hover()
-    await waitFor(() => findToast(id)?.visible !== true, 'hover 重启了满时长而不是续跑剩余时间', 1800)
-    await waitFor(() => findToast(id) === undefined, 'toast did not leave the DOM after auto-close')
+    await waitResumed(id, 'pointerleave 后未恢复自动关闭')
+    const resumed = timingOf(id)?._deadline
+    expect(resumed).toBeDefined()
+    expect(resumed! - Date.now()).toBeLessThan(1500)
+    await waitFor(() => findToast(id) === undefined, 'toast did not leave the DOM after auto-close', 4000)
   })
 
   /*
    * 搬迁会把 toast 从指针底下移走，Chromium 重新命中测试后补发边界事件，悬停随即结束 ——
    * 这是期望行为：暂停的语义是「指针还在上面」，不是「这条 toast 被豁免」。真正要守住的是
-   * 这条路径的两个退化：搬迁吞掉剩余时间导致立刻关闭，或搬迁重启满时长。remaining 与
-   * duration 拉开足够距离（1000 vs 3000），断言才能稳稳区分两者。
+   * 这条路径的两个退化：搬迁吞掉剩余时间导致立刻关闭，或搬迁重启满时长。
+   * 「续跑 vs 重启」通过 _deadline 读取判定：续跑 remaining ≈900ms 起，重启满时长 ≈3000ms。
    */
   it('悬停期间搬迁：剩余时间不丢，也不重启满时长', async () => {
     const id = toast.info('悬停并搬迁', { id: 'hover-move', position: 'top-right', duration: 3000 })
@@ -105,8 +137,12 @@ describe('toast 悬停暂停（浏览器）', () => {
     await wait(300)
     expect(findToast(id)?.visible).toBe(true)
 
-    // 剩余约 1000ms 后关闭；若重启满时长（3000ms）则 1600ms 内不会收场。
-    await waitFor(() => findToast(id)?.visible !== true, '搬迁后倒计时没有按剩余时间续跑', 1600)
-    await waitFor(() => findToast(id) === undefined, 'toast did not leave the DOM after auto-close')
+    // 搬迁后 Chromium 重命中补发 pointerleave，悬停结束；等真正续跑再读 deadline。
+    await waitResumed(id, '搬迁后未恢复自动关闭')
+    const resumedAfterMove = timingOf(id)?._deadline
+    expect(resumedAfterMove).toBeDefined()
+    // 续跑剩余 ≈900ms 起（距今更少）；重启满时长会是 ≈3000ms。
+    expect(resumedAfterMove! - Date.now()).toBeLessThan(1500)
+    await waitFor(() => findToast(id) === undefined, 'toast did not leave the DOM after auto-close', 4000)
   })
 })
