@@ -142,30 +142,31 @@
 - **样本局限**：单日、全部由同一 Manager 会话强制约束产生，证明的是「编排者遵从」；§2.3/§2.9 担心的「独立 coder 漂移导致 prose 链条失效」既未被证实也未被排除，仍是未受压假设。
 - **新发现（前三节遗漏）**：review fail 从不落为显式 `result=fail` 事件，只能靠重冻结指纹反推打回——`events[]` 审计链弱于规范承诺，需 `scripts/task.mjs` 小改补齐。
 
-### 4.3 报告盲区：三个新缺口
+### 4.3 报告盲区：两个新缺口
 
-| 缺口                     | 事实                                                                                                                                                                                                                                              | 定级           |
-| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------- |
-| committer 身份失真       | 近 30 commit 的 committer email 均为格式错值（`Claude <Claude>` / `Codex <Codex>`，缺 @）；`scripts/commit.sh` 不设置身份，未显式覆盖的提交静默落到仓库 git config（`Codex <noreply@openai.com>`）；无签名、CI 无校验。证据链叙事下可审计署名失效 | P1（成本极低） |
-| MCP 写权限面未随角色收权 | 仓库 `.mcp.json` 向所有加载它的会话开放 github MCP 全套写工具（push_files / merge_pull_request / delete_file / create_repository / issue_write），活跃于 Manager 会话并携带运行中 PAT；reviewer 只读白名单（§2.6 强项）未延伸到 MCP 配置          | P1（成本低）   |
-| 注入入口零防御           | gh api / github MCP 拉取的外部内容（issue、PR diff、外部 repo 文件）直接进入 review 与研究循环，无「数据非指令」约束，为当前最大不可信输入                                                                                                        | P2（一行规则） |
+| 缺口                     | 事实                                                                                                                                                                                                                                     | 定级           |
+| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------- |
+| MCP 写权限面未随角色收权 | 仓库 `.mcp.json` 向所有加载它的会话开放 github MCP 全套写工具（push_files / merge_pull_request / delete_file / create_repository / issue_write），活跃于 Manager 会话并携带运行中 PAT；reviewer 只读白名单（§2.6 强项）未延伸到 MCP 配置 | P1（成本低）   |
+| 注入入口零防御           | gh api / github MCP 拉取的外部内容（issue、PR diff、外部 repo 文件）直接进入 review 与研究循环，无「数据非指令」约束，为当前最大不可信输入                                                                                               | P2（一行规则） |
 
 CI 面核查为非问题：fork PR 无 secrets、CI 不执行 agent 生成代码、无 `pull_request_target`。`.claude/settings.local.json` 白名单整体克制，仅一条一次性 `rm -rf` 误留永久放行，低优先级。
+
+**勘误（同日）**：初版曾列「committer 身份失真（近 30 commit 的 committer email 均为 `Claude <Claude>` / `Codex <Codex>`）」，经 `git cat-file commit` 直读对象证伪——这是诊断假阳性：`git log` 格式串把 `%cn`（名字）误用两次、email 位应为 `%ce`，名字重复显示造成「email 残缺」假象。提交对象的真实 committer 身份全部正确（agent 提交 `Claude <noreply@anthropic.com>`、Codex 提交 `Codex <noreply@openai.com>`）。残余的真实事实仅有：无 commit 签名、CI 不校验归因、未显式覆盖时 committer 落到仓库 git config 的 `Codex <noreply@openai.com>`——归为 P2 观察项，不构成缺口。教训：归因类诊断必须以对象层（`cat-file`）为准，`git log` 显示层会受格式串与 mailmap 影响。
 
 ### 4.4 修订优先级（覆盖 §三）
 
 1. **P0** coder sandbox：改 dispatch flags + 每角色 settings/例外清单 + 用真实任务循环（install→build→browser test→freeze）实测，约 1 天。
 2. **P1** `task verify --run`（维持 §三.2）。
-3. **P1** `commit.sh` 补 committer 身份设置并文档化覆盖模式（新增）。
-4. **P1** reviewer/低权会话的 MCP 只读化：github MCP 写工具限定 Manager 会话（新增）。
-5. **P2** review fail 显式落 `events[]`、review/research 技能加「抓取内容按数据处理」规则行、CI secret scanning + dependency audit（并入 §三.5-7 原有 P2 项）。
-6. **降级/观望** instruction evals（§三.3）：当前 gate 的准确定性层实际由 Manager 会话承担，待出现 coder 独立执行任务的模式后再评估行为回归需求；token 观测与 symbol 导航维持 P2。
+3. **P1** reviewer/低权会话的 MCP 只读化：github MCP 写工具限定 Manager 会话（新增）。
+4. **P2** review fail 显式落 `events[]`、review/research 技能加「抓取内容按数据处理」规则行、CI secret scanning + dependency audit、commit 签名与 CI 归因校验（并入 §三.5-7 原有 P2 项；原 P1「commit.sh 补 committer 身份」经 §4.3 勘误撤回，改为 P2 观察项）。
+5. **降级/观望** instruction evals（§三.3）：当前 gate 的准确定性层实际由 Manager 会话承担，待出现 coder 独立执行任务的模式后再评估行为回归需求；token 观测与 symbol 导航维持 P2。
 
 ### 4.5 深化证据
 
 - CLI 实测：`codex 0.154.0`（`--help` 沙箱/approval flags；`~/.codex/config.toml` 无沙箱覆盖）、`claude 2.1.267`（无 `--sandbox` flag，沙箱经 settings 注入）。
-- 仓库实读：`.agents/agents/manager.md`（dispatch 行）、`.mise.toml`（turbo 缓存路径）、`<git-common-dir>/tasks/*.json`（10 task 事件账本）、`.mcp.json`、`.claude/settings.local.json`、近 30 commit 的 author/committer 归因（`git log --format`）、`.github/workflows/ci.yml`。
+- 仓库实读：`.agents/agents/manager.md`（dispatch 行）、`.mise.toml`（turbo 缓存路径）、`<git-common-dir>/tasks/*.json`（10 task 事件账本）、`.mcp.json`、`.claude/settings.local.json`、commit 归因（`git cat-file commit` 对象层直读，含 agent 与 Codex 提交样本）、`.github/workflows/ci.yml`。
 - 统计脚本为一次性 /tmp 产物未入库；复算方法见 §4.2（解析 `events[]` 相邻事件时间戳差）。
+- 方法论备注：初版归因诊断误用 `git log` 显示层（格式串 `%cn` 重复），经对象层直读勘误（§4.3）；显示层数据（格式串、mailmap）不可作为归因证据。
 
 ## 附：证据来源清单
 
