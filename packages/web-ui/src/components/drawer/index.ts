@@ -9,10 +9,9 @@ import { UserChangeController } from '@/shared/events/user-change'
 import { attachDragGesture, dampOverscroll, type DragGestureHandle } from '@/shared/gesture'
 import { normalizeLiteral } from '@/shared/normalize'
 import { dispatchOpenChangeEvent } from '@/shared/open-state'
-import { overlayComposition } from '@/shared/overlay/composition'
-import { defineOverlayEscapeDismiss } from '@/shared/overlay/escape-dismiss'
 import { defineNativeDialogPresence } from '@/shared/overlay/native-dialog-presence'
 import { defineNestedDrawerLayers } from '@/shared/overlay/nested-drawer-layers'
+import { defineOpenOverlay, type OpenOverlayHandle } from '@/shared/overlay/open-overlay'
 import { findNearestTheme } from '@/shared/overlay/theme-overlay-scope'
 import { defineScrollLockLease } from '@/shared/scroll-lock/scroll-lock'
 
@@ -199,17 +198,18 @@ export class WebUiDrawer extends LitElement {
     getPlacement: () => this._placement
   })
   /*
-   * Escape 由共享仲裁者统一归属（issue #120 Block 1）。drawer 把自己的原生 <dialog>
-   * 登记为 overlay panel，使挂在 dialog 上的 portal 面板（select / dropdown / tooltip）
-   * 在逻辑组合树上成为它的后代，仲裁者据此选出最内层。
-   * 拖拽进行中不参与仲裁：此时 Escape 应被本层 handleKeydown 一并 preventDefault 丢弃。
+   * 开启态浮层（issue #120 Block 1）。drawer 把自己的原生 <dialog> 登记为 panel，使挂在
+   * dialog 上的 portal 面板（select / dropdown / tooltip）在逻辑组合树上成为它的后代，
+   * 仲裁者据此选出最内层。
+   *
+   * 拖拽进行中不响应 Escape，但**仍是候选**：仲裁者照旧吞掉按键并压掉原生 cancel，
+   * 只是不走关闭入口。这原本由本层 handleKeydown 兜底，现在只有一个执行者。
    */
-  private readonly _escape = defineOverlayEscapeDismiss().make({
-    isConnected: () => this.isConnected,
-    isOpen: () => this.open,
-    isEscapeCloseEnabled: () => !this._isDragging(),
+  private readonly _overlay = defineOpenOverlay().make({
     requestClose: () => this._closeFromUser()
   })
+  /** 当前开启会话的句柄；未开启时为 null。 */
+  private _handle: OpenOverlayHandle | null = null
 
   // ===== 拖拽关闭手势状态 =====
   private _dragGesture: DragGestureHandle | null = null
@@ -296,6 +296,15 @@ export class WebUiDrawer extends LitElement {
     return this._dragGesture?.isDragging() ?? false
   }
 
+  /*
+   * 拖拽期间本层仍是候选：仲裁者照旧 preventDefault（压掉原生 <dialog> 的 cancel）与
+   * stopPropagation，只是不调用 requestClose。`isDragging()` 的翻转由手势层内部决定，
+   * 所以随 move 与各终结路径同步（幂等）。除拖拽外本层没有别的惰性来源。
+   */
+  private _syncDragInert() {
+    this._handle?.setInert(this._isDragging())
+  }
+
   private _cancelDragAwait() {
     if (this._dragRequestTimer !== undefined) {
       clearTimeout(this._dragRequestTimer)
@@ -362,6 +371,7 @@ export class WebUiDrawer extends LitElement {
       },
       onEnd: info => {
         this._dragGesture = null
+        this._syncDragInert()
         dialog.classList.remove('is-dragging', 'is-drag-close')
         const size = this._measureDragSize()
         const velocity = (this._dragAxis === 'x' ? info.velocityX : info.velocityY) * this._dragCloseSign
@@ -384,10 +394,23 @@ export class WebUiDrawer extends LitElement {
       },
       onCancel: () => {
         this._dragGesture = null
+        this._syncDragInert()
         dialog.classList.remove('is-dragging', 'is-drag-close')
         this._settleRebound(dialog, 0, this._dragOffset)
       }
     })
+    /*
+     * 惰性必须与 attach 同拍。漏掉这里，按下到手势终结之间那一整段里 Escape 仍会关闭
+     * 抽屉——旧实现用惰性谓词 `isEscapeCloseEnabled: () => !isDragging()` 在仲裁时现算，
+     * 没有这个同步问题；改成 push 通道后每个翻转点都得自己推一次。
+     *
+     * `isDragging()` 的翻转点不止 attach 与 onEnd：手势层的 `handlePointerMove` 在越过死区后
+     * 若判定轴向冲突（限定了 x 轴却明显纵向移动，或反之）会直接 `cancel()`，
+     * `lostpointercapture` 也会终结手势。这些路径都走 `onCancel`，所以 `onCancel` 里那次
+     * `_syncDragInert()` **不是**冗余——删掉它，「移动中取消拖拽」会让抽屉重新变回可被
+     * Escape 关闭。
+     */
+    this._syncDragInert()
   }
 
   /*
@@ -428,6 +451,7 @@ export class WebUiDrawer extends LitElement {
     if (!this._isDragging()) return
     this._dragGesture?.destroy()
     this._dragGesture = null
+    this._syncDragInert()
     const dialog = this.dialog
     if (!dialog) return
     dialog.classList.remove('is-dragging', 'is-drag-close')
@@ -597,9 +621,9 @@ export class WebUiDrawer extends LitElement {
     super.connectedCallback()
     this._hasHeaderSlot = Array.from(this.children).some(child => child.getAttribute?.('slot') === 'header')
     this._hasFooterSlot = Array.from(this.children).some(child => child.getAttribute?.('slot') === 'footer')
-    // 重挂载对账：断连时 presence、滚动锁与 nested 层序已被 dispose/release，而
+    // 重挂载对账：断连时 presence、滚动锁、nested 层序与登记都已被撤销，而
     // `open` 未变化时 `updated()` 不会补跑任何 sync 分支。首次连接时 shadow 尚未
-    // 渲染、`this.dialog` 为 null，reconcile 内部直接返回；打开态的首次进入仍由
+    // 渲染、`this.dialog` 为 null，三种情况都直接跳过；打开态的首次进入仍由
     // updated() 的 `props.has('open')` 分支处理。
     this._presence.reconcile()
     if (this.open) {
@@ -608,6 +632,7 @@ export class WebUiDrawer extends LitElement {
       this._nestedLayers.register()
     }
     this._syncScrollLock()
+    this._reclaimIfOpen()
   }
 
   override firstUpdated() {
@@ -621,9 +646,20 @@ export class WebUiDrawer extends LitElement {
     this._dragGesture = null
     this._presence.dispose()
     this._scrollLock.release()
-    this._escape.dispose()
+    // 断连即撤销登记，重连后由 _reclaimIfOpen 显式重新声明。
+    this._handle?.release()
+    this._handle = null
     this._abortSettle()
     this._cancelDragAwait()
+  }
+
+  /** 「重挂载恢复」的调用方一半：模块刻意不观察 DOM 连接状态。 */
+  private _reclaimIfOpen() {
+    if (!this.open || this._handle) return
+    const dialog = this.dialog
+    if (!dialog) return
+    this._handle = this._overlay.claim(dialog, { ancestryFrom: this })
+    this._syncDragInert()
   }
 
   private _checkSlotContent(name: string) {
@@ -688,18 +724,19 @@ export class WebUiDrawer extends LitElement {
         // 的层序 depth 并驱动下层缩放。直接同步 register，不等待 is-visible
         //（那要再等一帧，且打开过渡期间上层关系已应确立）。
         this._nestedLayers.register()
-        // 原生 dialog 登记为 overlay panel：挂在它上面的 portal 面板在逻辑组合树上
+        // 原生 dialog 登记为开启态浮层：挂在它上面的 portal 面板在逻辑组合树上
         // 成为本层后代，Escape 仲裁据此判出最内层（issue #120 Block 1）。
         const dialog = this.dialog
         if (dialog) {
-          overlayComposition.registerPanelFromAncestry(dialog, this)
-          this._escape.setPanel(dialog)
+          // 同一面板重新 claim = 新的一次开启：旧会话（含其子层）整体作废。
+          this._handle?.release()
+          this._handle = this._overlay.claim(dialog, { ancestryFrom: this })
+          this._syncDragInert()
         }
       } else {
         this._nestedLayers.unregister()
-        const dialog = this.dialog
-        if (dialog) overlayComposition.unregisterPanel(dialog)
-        this._escape.setPanel(null)
+        this._handle?.release()
+        this._handle = null
       }
     }
     if (props.has('open') || props.has('noScrollLock')) this._syncScrollLock()
@@ -724,6 +761,11 @@ export class WebUiDrawer extends LitElement {
      * 它会 stopPropagation，本 handler 不再执行。此处保留两条兜底：
      * ① defaultPrevented 说明仲裁者已介入，不再重复关闭；
      * ② 兜底路径仍按原逻辑处理，避免「面板未登记」时 Escape 失灵。
+     *
+     * 本 handler **不是**可随手删掉的迁移残留：仲裁者挂在 document 上，只对能跨 shadow
+     * 边界的事件生效。实测（overlay-open-owner-260918，2026-09-18）摘掉 `@keydown` 后
+     * layout.browser.spec.ts 的两例 Escape 用例立刻转红——它们派发的 keydown 没有
+     * `composed: true`，事件止步于 shadow root，到不了 document。
      */
     if (e.defaultPrevented) return
     /*
@@ -770,6 +812,13 @@ export class WebUiDrawer extends LitElement {
     this.close()
   }
 
+  /*
+   * 仲裁者在 capture 阶段 preventDefault 了 Escape 的 keydown，UA 因此不再派发原生
+   * cancel，但本 handler 仍是「原生 cancel 到达时也要走完整关闭管线」的契约入口，
+   * **不可删**。实测（overlay-open-owner-260918，2026-09-18）摘掉 `@cancel` 后
+   * drawer.spec.ts 的「no-backdrop-close 存在时 cancel 仍通过关闭过渡退出」与
+   * remount-reconcile 的「打开态被移出文档再接回」两例立刻转红。
+   */
   private handleCancel(e: Event) {
     // 保留 top layer 直到 CSS 过渡结束，避免原生关闭跳过退出动画。
     e.preventDefault()

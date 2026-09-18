@@ -820,4 +820,41 @@ describe('WebUiAutocomplete 组件', () => {
       cleanupElement(el)
     })
   })
+
+  /*
+   * 只读/禁用态下 Escape 必须被吞掉（Q14 语义）：既不关掉本层，也不落到下层浮层。
+   * 本用例是全套 autocomplete 测试里**唯一**覆盖这条契约的 —— 把 `_syncOverlayInert()`
+   * 的方法体整条停掉后，只有它转红（其余 81 例全绿）。
+   *
+   * 附带实测结论：`_reconfigureOverlay()` 末尾那次重推目前是**冗余**的（摘掉那行本用例仍绿）
+   * —— 这条路径后面跟着一轮渲染，而 `updated()` 每次渲染都会调 `_syncOverlayInert()`。
+   * 保留它是为了不依赖「这条路径必然跟着一次渲染」这个隐含前提。
+   */
+  it('只读中 portal 变更后 Escape 仍不关闭：reconfigure 换会话不得丢掉只读态', async () => {
+    const nextFrame = () => new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
+
+    const el = createAutocomplete(OPTIONS_HTML)
+    await waitForUpdate(el)
+    comboboxInput(el).focus()
+    await waitForUpdate(el)
+    comboboxInput(el).click()
+    await waitForUpdate(el)
+    expect(el.open).toBe(true)
+
+    el.readonly = true
+    await waitForUpdate(el)
+
+    el.portal = true
+    await waitForUpdate(el)
+    await nextFrame()
+    await nextFrame()
+    await waitForUpdate(el)
+    expect(el.open).toBe(true)
+
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+    await waitForUpdate(el)
+    expect(el.open).toBe(true)
+
+    cleanupElement(el)
+  })
 })

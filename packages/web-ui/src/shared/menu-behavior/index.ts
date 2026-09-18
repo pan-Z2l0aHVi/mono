@@ -232,6 +232,13 @@ export interface ClosingSubmenuStack<C> {
   restoreAll(): void
   /** 全部强制销毁（断开连接时），不再归还子项。 */
   disposeAll(): void
+  /**
+   * 正在关闭、尚未销毁的容器快照（只读）。
+   * 这些面板仍在 DOM 里、可能仍然可见，但已经离开调用方的活跃集合（`_overlays` /
+   * `_activeSubmenus`）—— 根层重新 claim 时必须把它们一并重新挂回新会话的子树，
+   * 否则它们会被判成「面板外」。
+   */
+  closing(): C[]
 }
 
 export interface ClosingSubmenuStackAdapter<C> {
@@ -273,6 +280,9 @@ export function createClosingSubmenuStack<C>(adapter: ClosingSubmenuStackAdapter
     disposeAll() {
       closing.forEach(container => adapter.dispose(container))
       closing.clear()
+    },
+    closing() {
+      return [...closing.values()]
     }
   }
 }

@@ -17,8 +17,7 @@ import {
 } from '@/shared/option-portal'
 import { defineOptionPortal } from '@/shared/option-portal'
 import { defineAnchoredPanel } from '@/shared/overlay/anchored-panel'
-import { overlayComposition } from '@/shared/overlay/composition'
-import { defineOverlayEscapeDismiss } from '@/shared/overlay/escape-dismiss'
+import { defineOpenOverlay } from '@/shared/overlay/open-overlay'
 import { applyOverlayVariables, defineOverlayPortal } from '@/shared/overlay/portal'
 import type { OverlayContainer, OverlayPortal } from '@/shared/overlay/portal'
 import { defineScrollLockLease } from '@/shared/scroll-lock/scroll-lock'
@@ -153,13 +152,11 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
     unbindOption: option => this._unbindOption(option)
   })
   /*
-   * Escape 由共享仲裁者统一归属（issue #120 Block 1）：宿主级 keydown 在 portal 模式下
-   * 收不到面板内的 Escape，改由 document 捕获阶段的仲裁者判定最内层。
+   * 开启态浮层承载「我开着吗」（issue #120 Block 1）：宿主级 keydown 在 portal 模式下
+   * 收不到面板内的 Escape，改由唯一仲裁者在 document 捕获阶段判定最内层。
+   * 宿主接口只剩 requestClose：开启状态是声明而非询问。
    */
-  private readonly _escape = defineOverlayEscapeDismiss().make({
-    isConnected: () => this.isConnected,
-    isOpen: () => this._isOpen,
-    isEscapeCloseEnabled: () => !this._isDisabled && !this.readonly,
+  private readonly _overlay = defineOpenOverlay().make({
     requestClose: () => this._close()
   })
   private readonly _panel = defineAnchoredPanel().make({
@@ -172,7 +169,8 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
       strategy: this.portal ? 'fixed' : 'absolute'
     }),
     isPortal: () => this.portal,
-    createPortal: () => this._createPortal()
+    createPortal: () => this._createPortal(),
+    openOverlay: this._overlay
   })
 
   get isOpen(): boolean {
@@ -186,15 +184,15 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
   private _onClickOutside = (e: MouseEvent) => {
     if (!this._isOpen) return
 
-    const path = e.composedPath()
-    const panel = this._panel.getPanel()
-    if (!path.includes(this) && !(panel && overlayComposition.containsEvent(panel, e))) this._close()
+    // 在监听器内部判定：composedPath() 在派发结束后会被清空。
+    const isInside = e.composedPath().includes(this) || !!this._panel.getHandle()?.containsEvent(e)
+    if (!isInside) this._close()
   }
 
   private _onFocusOut = () => {
     handleComboboxFocusOut(
       this,
-      () => this._panel.getPanel(),
+      () => this._panel.getHandle(),
       () => this._isOpen,
       () => this._close()
     )
@@ -233,8 +231,8 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
     this._close()
     this._portal = undefined
     this._portalContent = undefined
+    // 撤销登记由 _panel.dispose() 完成（句柄归它持有），不再需要单独 dispose 仲裁者。
     this._panel.dispose()
-    this._escape.dispose()
     this._scrollLock.release()
   }
 
@@ -261,6 +259,7 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
     if (changed.has('noScrollLock')) this._syncScrollLock()
     this.toggleAttribute('focused', this._focused)
     this._syncOpenAttribute()
+    this._syncOverlayInert()
     this._syncValidity()
     this._syncEmptyState()
   }
@@ -280,6 +279,15 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
 
   private _syncOpenAttribute() {
     this.toggleAttribute('open', this._isOpen)
+  }
+
+  /*
+   * 禁用/只读态不响应 Escape。仲裁者仍在（吞掉按键并压掉原生 cancel），只是不走关闭
+   * 入口 —— 与旧的「跳过候选」语义不同：旧语义放任事件落到下层浮层，把外层一起关掉。
+   * 每次渲染后同步即可覆盖 disabled / readonly 属性与表单禁用三条来源。
+   */
+  private _syncOverlayInert() {
+    this._panel.getHandle()?.setInert(this._isDisabled || this.readonly)
   }
 
   private _syncSelectedValue() {
@@ -554,12 +562,12 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
 
   private _openOverlay(isKeyboardNavigation = false) {
     this._panel.open(isKeyboardNavigation)
-    this._escape.setPanel(this._panel.getPanel() ?? null)
+    // 新会话的句柄刚建立，惰性状态需按当前 disabled/readonly 重新同步。
+    this._syncOverlayInert()
     this._syncEmptyState()
   }
 
   private async _closeOverlay() {
-    this._escape.setPanel(null)
     const closed = await this._panel.close(() => this._isOpen)
     if (closed) {
       this._portal = undefined
@@ -571,6 +579,12 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
     this._portal = undefined
     this._portalContent = undefined
     this._panel.reconfigure(this._isOpen)
+    /*
+     * reconfigure 重新 claim = 新会话，inert 回到 false。实测这条重推是**冗余**的（摘掉本行
+     * 全部用例仍绿）：这条路径后面跟着一轮渲染，而 `updated()` 每次渲染都会调
+     * `_syncOverlayInert()`。留在这里是不想依赖「这条路径必然跟着一次渲染」这个隐含前提。
+     */
+    this._syncOverlayInert()
   }
 
   private _syncScrollLock(isOpen = this._isOpen) {

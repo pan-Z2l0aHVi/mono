@@ -320,6 +320,30 @@ describe('WebUiDropdown 组件', () => {
       expect(el.isOpen).toBe(false)
       cleanupElement(el)
     })
+
+    it('面板还没建好就卸载时不留下占位层：重挂载后 Escape 不被吞掉', async () => {
+      const el = createDropdown({}, SIMPLE)
+      await waitForUpdate(el)
+
+      // 占位会话：真实面板要等一帧才建好，_openMenu 先用宿主当 panel claim 一次。
+      el.openMenu()
+      expect(el.isOpen).toBe(true)
+
+      // 同一任务内卸载：open 帧没机会跑，_overlays 仍是空的。
+      document.body.removeChild(el)
+      await waitForUpdate(el)
+      await new Promise(resolve => requestAnimationFrame(resolve))
+
+      document.body.append(el)
+      await waitForUpdate(el)
+
+      // 占位层若没被释放，宿主重挂载后它会重新成为候选并吞掉按键。
+      const event = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })
+      document.dispatchEvent(event)
+      expect(event.defaultPrevented).toBe(false)
+
+      cleanupElement(el)
+    })
   })
 
   describe('子菜单悬停', () => {

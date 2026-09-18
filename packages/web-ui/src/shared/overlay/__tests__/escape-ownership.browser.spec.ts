@@ -143,7 +143,7 @@ describe('overlay Escape 归属仲裁（浏览器）', () => {
   })
 
   /*
-   * 兜底分支（并列浮层）的守卫用例：innermost() 的 seq 分支承载 README 已对外承诺的
+   * 兜底分支（并列浮层）的守卫用例：resolve() 的 seq 分支承载 README 已对外承诺的
    * 「互不嵌套的并列浮层按打开顺序关闭最上层」，此前没有任何用例压住它。
    */
   it('互不嵌套的两个 popover 先后打开时，一次 Escape 只关闭后开的那个', async () => {

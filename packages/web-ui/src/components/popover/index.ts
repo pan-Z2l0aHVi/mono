@@ -8,9 +8,7 @@ import { UserChangeController } from '@/shared/events/user-change'
 import { normalizeLiteral, normalizeNumber } from '@/shared/normalize'
 import { dispatchOpenChangeEvent } from '@/shared/open-state'
 import { defineAnchoredPanel } from '@/shared/overlay/anchored-panel'
-import { overlayComposition } from '@/shared/overlay/composition'
-import { defineOverlayEscapeDismiss } from '@/shared/overlay/escape-dismiss'
-import { defineOverlayLifecycle } from '@/shared/overlay/lifecycle'
+import { defineOpenOverlay } from '@/shared/overlay/open-overlay'
 import { FLOATING_PLACEMENTS } from '@/shared/overlay/placement-props'
 import { defineOverlayPortal } from '@/shared/overlay/portal'
 import type { OverlayContainer, OverlayPortal } from '@/shared/overlay/portal'
@@ -71,18 +69,13 @@ export class WebUiPopover extends LitElement {
 
   private _panelId = `wui-popover-panel-${++popoverIdCounter}`
   private _portal?: OverlayPortal
-  private readonly _lifecycle = defineOverlayLifecycle().make({
-    isConnected: () => this.isConnected,
-    isOpen: () => this.open
-  })
   /**
-   * Escape 由共享仲裁者统一归属（issue #120 Block 1）：本组件不再自行监听 keydown，
-   * 只声明「我开着、面板是哪个、怎么关」，由仲裁者决定一次 Escape 关谁。
+   * 开启态浮层（issue #120 Block 1）：本组件不再自行监听 keydown，只声明「我开着」，
+   * 由唯一仲裁者决定一次 Escape 关谁。实例作用域的帧事务入口也在这里（合并了原
+   * lifecycle）—— 它的 lifetime 长于一次开合（跨 `suspend()`/`resume()`），
+   * 但不长于实例本身。
    */
-  private readonly _escape = defineOverlayEscapeDismiss().make({
-    isConnected: () => this.isConnected,
-    isOpen: () => this.open,
-    isEscapeCloseEnabled: () => this.trigger !== 'manual',
+  private readonly _overlay = defineOpenOverlay().make({
     requestClose: () => {
       this._userOpenChange.mark()
       this.open = false
@@ -97,7 +90,8 @@ export class WebUiPopover extends LitElement {
       strategy: this.portal ? 'fixed' : 'absolute'
     }),
     isPortal: () => this.portal,
-    createPortal: () => this._createPortal()
+    createPortal: () => this._createPortal(),
+    openOverlay: this._overlay
   })
 
   get isOpen(): boolean {
@@ -106,7 +100,7 @@ export class WebUiPopover extends LitElement {
 
   override connectedCallback() {
     super.connectedCallback()
-    this._lifecycle.resume()
+    this._overlay.resume()
     document.addEventListener('click', this._onClickOutside)
     this.addEventListener('focusout', this._onFocusOut)
     this._syncTriggerListeners()
@@ -120,12 +114,11 @@ export class WebUiPopover extends LitElement {
       ?.addEventListener('slotchange', () => this.requestUpdate())
 
     if (this.open) {
-      this._lifecycle.scheduleFrame(
-        () => {
-          this._openOverlay(this._shouldOpenInstantly)
-        },
-        { expectedOpen: true }
-      )
+      // 建立会话的那一帧没有句柄可作 liveness 凭据：关闭路径会 invalidate()（见 updated），
+      // 微任务先于 rAF 排空，因此该帧不可能跨过一次关闭执行。
+      this._overlay.scheduleFrame(() => {
+        this._openOverlay(this._shouldOpenInstantly)
+      })
       this._shouldOpenInstantly = true
     }
   }
@@ -136,8 +129,8 @@ export class WebUiPopover extends LitElement {
     this.removeEventListener('focusout', this._onFocusOut)
     this.removeEventListener('pointerenter', this._onPointerEnter)
     this.removeEventListener('pointerleave', this._onPointerLeave)
-    this._lifecycle.dispose()
-    this._escape.dispose()
+    // 停止帧调度；撤销登记由 _panel.dispose() 完成（句柄归它持有）。
+    this._overlay.suspend()
     clearTimeout(this._showTimer)
     clearTimeout(this._hideTimer)
     this._panel.dispose()
@@ -149,8 +142,8 @@ export class WebUiPopover extends LitElement {
 
     if (changed.has('portal') || changed.has('overlayContainer')) {
       // 同帧 open + reconfigure 可能排两个回调；先结束旧事务，让 reconfigure 成为本帧唯一入口。
-      this._lifecycle.invalidate()
-      this._lifecycle.scheduleFrame(() => this._reconfigureOverlay())
+      this._overlay.invalidate()
+      this._overlay.scheduleFrame(() => this._reconfigureOverlay())
     } else if (changed.has('placement') || changed.has('offset'))
       requestAnimationFrame(() => this._panel.updatePosition())
 
@@ -158,16 +151,13 @@ export class WebUiPopover extends LitElement {
       if (this.open) {
         const isInstant = this._shouldOpenInstantly
         this._shouldOpenInstantly = true
-        this._lifecycle.scheduleFrame(
-          () => {
-            this._openOverlay(isInstant)
-          },
-          { expectedOpen: true }
-        )
+        this._overlay.scheduleFrame(() => {
+          this._openOverlay(isInstant)
+        })
         if (this._userOpenChange.consume()) this._dispatchChange(true)
         this._focusPanel()
       } else {
-        this._lifecycle.invalidate()
+        this._overlay.invalidate()
         this._returnFocus()
         void this._closeOverlay()
         if (this._userOpenChange.consume()) this._dispatchChange(false)
@@ -181,6 +171,7 @@ export class WebUiPopover extends LitElement {
       clearTimeout(this._hideTimer)
       this._syncTriggerListeners()
     }
+    this._syncOverlayInert()
   }
 
   show() {
@@ -212,12 +203,24 @@ export class WebUiPopover extends LitElement {
     }
   }
 
+  /*
+   * `manual` 触发器的 popover 不由用户关闭，但仍是候选：Escape 被它吞掉（同时压掉
+   * 原生 cancel），只是不走关闭入口。与旧的「跳过候选」语义不同 —— 旧语义放任 Escape
+   * 落到下层浮层，把外层一起关掉。trigger 可在开启期间改写，所以走动态通道同步。
+   */
+  private _syncOverlayInert() {
+    this._panel.getHandle()?.setInert(this.trigger === 'manual')
+  }
+
   private _openOverlay(isInstant = false) {
+    /*
+     * 登记与仲裁归属由 anchored panel 完成（claim 要求 panel 已就位，祖先链才判得对）。
+     * 原实现在这里额外以宿主为 owner 再登记一次：anchor 是宿主 shadow 内的
+     * `.popover-trigger` 包装 div（不是会被 slot 重定向的 trigger 内容），其祖先链上
+     * 首个已开启浮层与从宿主上溯结果一致，因此那一次是冗余的。
+     */
     this._panel.open(isInstant)
-    const panel = this._panel.getPanel()
-    // popover host 才是稳定组合 owner：trigger 可能被 slot 重定向，portal 面板与宿主分离。
-    if (panel) overlayComposition.registerPanelFromAncestry(panel, this)
-    this._escape.setPanel(panel ?? null)
+    this._syncOverlayInert()
   }
 
   private _migratableContentNodes(nodes: Node[]): Node[] {
@@ -246,7 +249,6 @@ export class WebUiPopover extends LitElement {
   }
 
   private async _closeOverlay() {
-    this._escape.setPanel(null)
     await this._panel.close(() => this.open)
   }
 
@@ -254,6 +256,13 @@ export class WebUiPopover extends LitElement {
     // portal 变更也会登记 rAF；宿主卸载后不得再通过 reconfigure 重建面板。
     if (!this.isConnected) return
     this._panel.reconfigure(this.open)
+    /*
+     * reconfigure 重新 claim = 新会话，inert 回到 false。这里的重推是**承重的**，不是
+     * 防御性备份：`reconfigure` 不触发 Lit 渲染，`updated()` 那次同步不会跟着来。
+     * 实测摘掉本行，「portal 变更后 Escape 仍不关闭」立刻转红（select / autocomplete 的
+     * 同类重推则被各自的渲染掩盖，摘掉仍绿）。
+     */
+    this._syncOverlayInert()
   }
 
   private _dispatchChange(open: boolean) {
@@ -273,14 +282,11 @@ export class WebUiPopover extends LitElement {
   }
 
   private _focusPanel() {
-    this._lifecycle.scheduleFrame(
-      () => {
-        const panel = this._panel.getPanel()
-        const autofocus = panel?.querySelector<HTMLElement>('[autofocus]')
-        if (autofocus && !autofocus.matches(':disabled, [disabled]')) autofocus.focus()
-      },
-      { expectedOpen: true }
-    )
+    this._overlay.scheduleFrame(() => {
+      const panel = this._panel.getPanel()
+      const autofocus = panel?.querySelector<HTMLElement>('[autofocus]')
+      if (autofocus && !autofocus.matches(':disabled, [disabled]')) autofocus.focus()
+    })
   }
 
   private _returnFocus() {
@@ -309,8 +315,8 @@ export class WebUiPopover extends LitElement {
   private _onClickOutside = (e: MouseEvent) => {
     if (!this.open) return
     if (this.trigger === 'manual' || this.trigger === 'hover') return
-    const panel = this._panel.getPanel()
-    if (panel && overlayComposition.containsEvent(panel, e)) return
+    // 在监听器内部判定：composedPath() 在派发结束后会被清空。
+    if (this._panel.getHandle()?.containsEvent(e)) return
     if (this._isInsideShadowRoot(e)) return
     this._userOpenChange.mark()
     this.open = false
@@ -319,16 +325,12 @@ export class WebUiPopover extends LitElement {
   private _onFocusOut = () => {
     if (this.trigger === 'manual' || this.trigger === 'hover') return
 
-    this._lifecycle.scheduleFrame(
-      () => {
-        const panel = this._panel.getPanel()
-        if (!this.matches(':focus-within') && !(panel && overlayComposition.hasFocusWithin(panel))) {
-          this._userOpenChange.mark()
-          this.open = false
-        }
-      },
-      { expectedOpen: true }
-    )
+    this._overlay.scheduleFrame(() => {
+      if (!this.matches(':focus-within') && !this._panel.getHandle()?.hasFocusWithin()) {
+        this._userOpenChange.mark()
+        this.open = false
+      }
+    })
   }
 
   private _onPointerEnter = (e: PointerEvent) => {
