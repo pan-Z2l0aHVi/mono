@@ -87,16 +87,16 @@
 
 ### 2.8 业界有而本仓没有
 
-| 实践 | 业界来源 | 判断 |
-| --- | --- | --- |
-| Sandbox 化执行（coders） | code.claude.com/docs/en/sandboxing；codex AGENTS.md sandbox 契约 | **P0**：唯一靠运行时保证的隔离维度，本仓全无 |
-| 本地确定性验证 gate（hook 实跑命令并捕获退出码） | best-practices「deterministic gate」 | **P1**：`task verify` 改为可选 `--run` 执行并记录真实 exit code |
-| Agent evals（skills/instruction 行为回归，gate CI） | code.claude.com/docs/en/plugin-evals | **P1**：ADR-0014 删掉 audit 后没有任何行为层校验 |
-| CI 自动 PR review | code.claude.com/docs/en/code-review | **P1**：T0/T1 强制 review 可先由 CI 自动 review 预检兜底 |
-| Token/成本观测 | code.claude.com/docs/en/costs | **P2**：本仓有缓存治理准则但无任何用量度量 |
-| symbol 级代码导航 | large-codebases「code intelligence」 | **P2**：find:usages 是 path 级 |
-| 依赖/密钥安全自动化（secret scanning、audit） | github.blog security 板块；claude-security 插件 | **P2**：CI 无安全扫描步骤 |
-| auto memory 类知识沉淀 | code.claude.com/docs/en/memory | 观望：本仓以 ADR/handoff 显式沉淀替代，不认为缺失 |
+| 实践                                                | 业界来源                                                         | 判断                                                            |
+| --------------------------------------------------- | ---------------------------------------------------------------- | --------------------------------------------------------------- |
+| Sandbox 化执行（coders）                            | code.claude.com/docs/en/sandboxing；codex AGENTS.md sandbox 契约 | **P0**：唯一靠运行时保证的隔离维度，本仓全无                    |
+| 本地确定性验证 gate（hook 实跑命令并捕获退出码）    | best-practices「deterministic gate」                             | **P1**：`task verify` 改为可选 `--run` 执行并记录真实 exit code |
+| Agent evals（skills/instruction 行为回归，gate CI） | code.claude.com/docs/en/plugin-evals                             | **P1**：ADR-0014 删掉 audit 后没有任何行为层校验                |
+| CI 自动 PR review                                   | code.claude.com/docs/en/code-review                              | **P1**：T0/T1 强制 review 可先由 CI 自动 review 预检兜底        |
+| Token/成本观测                                      | code.claude.com/docs/en/costs                                    | **P2**：本仓有缓存治理准则但无任何用量度量                      |
+| symbol 级代码导航                                   | large-codebases「code intelligence」                             | **P2**：find:usages 是 path 级                                  |
+| 依赖/密钥安全自动化（secret scanning、audit）       | github.blog security 板块；claude-security 插件                  | **P2**：CI 无安全扫描步骤                                       |
+| auto memory 类知识沉淀                              | code.claude.com/docs/en/memory                                   | 观望：本仓以 ADR/handoff 显式沉淀替代，不认为缺失               |
 
 ### 2.9 本仓有而业界少见 —— 多余还是超前
 
@@ -109,17 +109,12 @@
 ## 三、优先级建议
 
 **P0**
+
 1. 给实施角色加执行隔离：评估启用 Claude Code sandboxed Bash（fs/network 边界）或把 coder 任务放进容器/dev container（sandbox-environments 的 threat model 对照），替代 `--dangerously-skip-permissions` 的裸奔面。
 
-**P1**
-2. `task verify` 支持执行模式：`--run <cmd>` 由脚本实跑并记录 exit code/耗时到 events，使 T0/T1 的 done gate 从自报变为可证。
-3. 恢复 instruction 体系的行为校验：为本仓自建 skills 与核心 rules 写最小 eval set（官方 plugin eval 格式），在 CI 中跑 `validate:context` 之外加一层行为回归。
-4. CI 接入自动化 PR review（Claude Code Code Review 或 Copilot AGENTS.md review），作为 T0/T1 独立 reviewer 之前的机器预检。
+**P1** 2. `task verify` 支持执行模式：`--run <cmd>` 由脚本实跑并记录 exit code/耗时到 events，使 T0/T1 的 done gate 从自报变为可证。3. 恢复 instruction 体系的行为校验：为本仓自建 skills 与核心 rules 写最小 eval set（官方 plugin eval 格式），在 CI 中跑 `validate:context` 之外加一层行为回归。4. CI 接入自动化 PR review（Claude Code Code Review 或 Copilot AGENTS.md review），作为 T0/T1 独立 reviewer 之前的机器预检。
 
-**P2**
-5. token/成本观测接入 statusline 与 task events（`/usage` 数据、`--max-budget-usd`）。
-6. symbol 级影响面：code intelligence 插件或 LSP 补足 find:usages 的 caller 精度。
-7. CI 增加最基础的安全扫描（secret scanning / dependency audit）。
+**P2** 5. token/成本观测接入 statusline 与 task events（`/usage` 数据、`--max-budget-usd`）。6. symbol 级影响面：code intelligence 插件或 LSP 补足 find:usages 的 caller 精度。7. CI 增加最基础的安全扫描（secret scanning / dependency audit）。
 
 ## 附：证据来源清单
 
