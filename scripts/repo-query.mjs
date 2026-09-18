@@ -420,7 +420,7 @@ const hasContextChange = normalizedPaths.some(
     file.startsWith('scripts/audit-instructions') ||
     file.startsWith('scripts/instruction-budget') ||
     file.startsWith('scripts/tool-enforced-rules') ||
-    file.startsWith('scripts/agent-workflow') ||
+    file.startsWith('scripts/task') ||
     file.startsWith('scripts/repo-query') ||
     file.startsWith('scripts/workspace-manifests')
 )
@@ -430,9 +430,9 @@ const hasAgentToolChange = normalizedPaths.some(
     file.startsWith('scripts/repo-query') ||
     file.startsWith('scripts/validate-context') ||
     file.startsWith('scripts/audit-instructions') ||
-    file.startsWith('scripts/agent-workflow') ||
+    file.startsWith('scripts/task') ||
     file.startsWith('scripts/workspace-manifests') ||
-    file.startsWith('scripts/scripts.test')
+    (file.startsWith('scripts/') && file.endsWith('.test.mjs'))
 )
 const hasContractToolChange = normalizedPaths.some(file => file.startsWith('scripts/check-pack'))
 const hasPackageContractChange = normalizedPaths.some(file =>

@@ -12,9 +12,9 @@
 
 <!-- invariant:task-state-trigger -->
 
-P0 与 P1 的变更**在第一次文件变更前必须读取 [`docs/agents/workflow.md`](docs/agents/workflow.md)，并运行 `pnpm agent:workflow init --task <task-id> --mode <direct|orchestrated|release|hotfix>`**；P2 的变更直接实施，不建 task state。分级判据、每级的 review/approval 要求与预授权操作清单，以 workflow.md 的「变更风险分级」与「预授权操作」为权威，本节不复制。
+所有实施变更**在第一次文件变更前必须读取 [`docs/agents/workflow.md`](docs/agents/workflow.md)，并按级别建 task：`pnpm task new --task <task-id> --level t0|t1|t2`**。级别 T0/T1/T2（T0 最严格）只表达 workflow 严格程度；判定判据、每级的 review/approval 要求与预授权操作清单，以 workflow.md 为权威，本节不复制。
 
-分级判定不靠感觉：`pnpm find:usages -- <paths>` 输出的受影响 workspace 只有一个时，P2 的「单 workspace」条件成立。只读调查不需要 task state，一旦转为实施就回到这个 gate。`AGENTS.md` 只承载这个必经入口和不可绕过边界；状态、冻结 diff、review、approval 和验证证据以 `.git/agent-workflow/<task-id>.json` 为执行真相。
+级别判定不靠感觉：`pnpm find:usages -- <paths>` 输出的受影响 workspace 只有一个时，T2 的「单 workspace」条件成立。只读调查不需要 task，一旦转为实施就回到这个 gate。状态、冻结 diff、review、approval 和验证证据以 `<git-common-dir>/tasks/<task-id>.json` 为执行真相。
 
 1. 先查看工作区状态、目标文件和最近的 `AGENTS.md`；只有进入某个 `apps/` 或 `packages/` 时才加载其包级指令。
 2. 只按任务加载命中的 rule、guide 和包级指令；不要为普通局部任务预读 `CONTEXT.md`、ADR 或无关领域指南。
@@ -32,24 +32,22 @@ Manager 统一接收需求并编排，全程扁平，不设中间调度层级。
 
 <!-- invariant:executor-binding -->
 
-角色与执行体（执行体，即承担该角色的 CLI/agent；下表是全仓唯一权威绑定表，其他文档只链接到这里）使用默认绑定；默认模型与思考强度是推荐分档（非强制，可按任务与接入层实际情况调整）：
+角色与执行体（执行体，即承担该角色的 CLI/agent；下表是全仓唯一权威绑定表，其他文档只链接到这里）使用默认绑定。绑定表适用于主工作流（herdr + Claude Code / Codex CLI）；任何其他执行体（zcode、workbuddy、pi 等）可承担任一角色，目录边界、task gate、reviewer ≠ owner、handoff 字段等机器强制约束不变，T0/T1 在 task packet 记录替代执行体与理由。模型与思考强度由用户会话设置或 Manager 按任务指定，不设角色默认（见 [ADR-0014](docs/adr/0014-task-system-v2.md)）。
 
-| 角色      | 执行体      | 默认模型                            | 默认思考强度 | 责任范围                                                                       |
-| --------- | ----------- | ----------------------------------- | ------------ | ------------------------------------------------------------------------------ |
-| Manager   | Claude Code | GLM-5.3 Flash                       | high         | 需求接收、任务分解、依赖管理、并行派发、Review 闭环、最终总结                  |
-| Designer  | Claude Code | GLM-5.3 Flash                       | max          | 产品设计、UI/UX、交互与状态设计；仅在产品/设计需求启用                         |
-| Lib Coder | Codex CLI   | DeepSeek V4.1 Flash                 | max          | `packages/*`：共享库、基础包与公共契约                                         |
-| Biz Coder | Codex CLI   | DeepSeek V4.1 Flash                 | low          | `apps/*`：业务包实现                                                           |
-| Reviewer  | 按风险路由  | GLM-5.3 Flash / DeepSeek V4.1 Flash | high         | 独立验收：高风险变更由 Claude Code 主审；独立小功能快速迭代可由 Codex CLI 审核 |
+| 角色      | 执行体      | 责任范围                                                                          |
+| --------- | ----------- | --------------------------------------------------------------------------------- |
+| Manager   | Claude Code | 需求接收、任务分解、依赖管理、并行派发、Review 闭环、最终总结                     |
+| Designer  | Claude Code | 产品设计、UI/UX、交互与状态设计；仅在产品/设计需求启用                            |
+| Lib Coder | Codex CLI   | `packages/*`：共享库、基础包与公共契约                                            |
+| Biz Coder | Codex CLI   | `apps/*`：业务包实现                                                              |
+| Reviewer  | 按级别路由  | 独立验收：T0 由独立 reviewer 会话主审；T1 可由 Manager 派 fresh subagent；T2 免审 |
 
-独立 review 的执行体按风险路由：高风险变更由 Claude Code 主审，独立小功能快速迭代可由 Codex CLI 审核。哪些变更需要独立 review、以及纯文档或低风险测试基建的 skip 规则，见 [`docs/agents/workflow.md`](docs/agents/workflow.md) 的「变更风险分级」。
-
-模型与思考强度以推荐分档为起点，Manager 可按任务直接调整，推荐在 task packet 的 `Effort` 字段留痕；档位取值理由与常见调整场景见 [ADR-0011](docs/adr/0011-agent-model-binding-and-effort.md)。
+review 拓扑（三档 + 禁止同会话自审）以 [`docs/agents/workflow.md`](docs/agents/workflow.md) 的「review 拓扑」节为权威。
 
 编排路由：
 
-1. **产品/设计需求**：Manager → Designer → 并行 Lib Coder + Biz Coder → Reviewer 验收 → Manager 总结汇报。
-2. **纯技术需求**：Manager → 并行 Lib Coder + Biz Coder → Reviewer 验收 → Manager 总结汇报。
+1. **coder 数量按影响面派发**：受影响 workspace 一个 → 单 coder；跨 `packages/*` 与 `apps/*` → Manager 拆成独立 task、两个 worktree，契约通过 handoff 传递。
+2. **产品/设计需求**：Manager → Designer → 按影响面派发 coder → Reviewer 验收 → Manager 总结汇报。
 3. 是否启用 Designer 由 Manager 判断，判据是需求是否涉及产品设计/UI，而不是改动大小；判断结论写入 task packet。
 
 包边界与禁止事项：

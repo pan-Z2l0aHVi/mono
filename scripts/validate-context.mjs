@@ -75,9 +75,9 @@ function checkBindingMirrors() {
       const binding = bindings.get(normalizeRole(cells[columns.role] ?? ''))
       if (!binding) continue
       const declared = normalizeExecutor(cells[columns.executor] ?? '')
-      // Reviewer 按风险路由执行体（高风险 -> Claude Code，小功能快速迭代 -> Codex CLI），表中允许精确写「按风险路由」而非单一执行体；
-      // 全等比对避免「Codex CLI 按风险路由」这类丢掉高风险一路的写法静默通过。
-      if (binding.label === 'Reviewer' && declared.replace(/（[^）]*）$/, '').trim() === '按风险路由') continue
+      // Reviewer 按级别路由执行体（T0 独立 reviewer 会话，T1 fresh subagent，T2 免审），表中允许精确写「按级别路由」而非单一执行体；
+      // 全等比对避免「Codex CLI 按级别路由」这类丢掉独立会话一路的写法静默通过。
+      if (binding.label === 'Reviewer' && declared.replace(/（[^）]*）$/, '').trim() === '按级别路由') continue
       if (!declaresExecutor(declared, binding.executor))
         addError(`${file}: ${binding.label} is bound to "${declared}" but the default binding is "${binding.executor}"`)
     }
@@ -143,24 +143,21 @@ for (const file of [
 // 结构不变量改由 <!-- invariant:... --> 锚点在 audit-instructions --strict 中校验。
 if (exists('AGENTS.md')) {
   const agents = read('AGENTS.md')
-  for (const marker of ['docs/agents/workflow.md', 'agent:workflow init']) {
+  for (const marker of ['docs/agents/workflow.md', 'pnpm task new']) {
     if (!agents.includes(marker)) addError(`AGENTS.md is missing mandatory marker: ${marker}`)
   }
 }
 
-if (exists('.vite-hooks/pre-commit') && !read('.vite-hooks/pre-commit').includes('agent:workflow guard-commit'))
-  addError('.vite-hooks/pre-commit is missing the workflow commit guard')
+if (exists('.vite-hooks/pre-commit') && !read('.vite-hooks/pre-commit').includes('pnpm task guard'))
+  addError('.vite-hooks/pre-commit is missing the task commit guard')
 
-if (
-  exists('CONTRIBUTING.md') &&
-  !read('CONTRIBUTING.md').includes('agent:workflow check --task <task-id> --phase edit')
-)
+if (exists('CONTRIBUTING.md') && !read('CONTRIBUTING.md').includes('pnpm task start --task <task-id>'))
   addError('CONTRIBUTING.md is missing the workflow edit gate')
 
 // Manager 契约只需自包含 workflow gate 指针与 init 命令；gate 处方以根 AGENTS.md Mutation Gate 和 workflow.md 为权威，不复制。
 if (exists('.agents/agents/manager.md')) {
   const manager = read('.agents/agents/manager.md')
-  if (!manager.includes('agent:workflow init') || !manager.includes('docs/agents/workflow.md'))
+  if (!manager.includes('pnpm task new') || !manager.includes('docs/agents/workflow.md'))
     addError('.agents/agents/manager.md is missing the Manager workflow gate pointer')
 }
 
@@ -227,7 +224,7 @@ if (exists('package.json')) {
   try {
     const packageJson = JSON.parse(read('package.json'))
     for (const script of [
-      'agent:workflow',
+      'task',
       'validate:context',
       'check:pack',
       'find:usages',

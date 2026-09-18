@@ -27,18 +27,18 @@ Role 是显式选择的按需 session context：读取 `.agents/agents/<role>.md
 
 不同层级可以为路由而短暂提及同一主题，但只能有一个流程权威来源；其他位置只说明何时加载或链接到它，不能复制完整处方。
 
-| 主题               | 规则边界                                                          | 流程权威来源                                                        | 自动证据                                                           |
-| ------------------ | ----------------------------------------------------------------- | ------------------------------------------------------------------- | ------------------------------------------------------------------ |
-| 生成物             | 根/包级 `AGENTS.md` 说明“不可手改”与局部 source of truth          | `docs/agents/build.md`                                              | generator diff、build、消费者类型检查                              |
-| 真实浏览器         | 根/包级 `AGENTS.md` 仅声明需要浏览器层                            | `docs/agents/browser-verification.md`                               | `pnpm run test` 中的 `*.browser.spec.ts`、MCP 操作记录             |
-| `repo:*` 工具      | 根入口只提供命令路由                                              | 本文件的工具接口说明                                                | `scripts/scripts.test.mjs`                                         |
-| 多 Agent 编排      | 根 `AGENTS.md`「多 Agent 编排」只保留分工、边界与禁止事项         | `docs/agents/workflow.md`                                           | `agent-workflow` state、review/approval 记录                       |
-| 变更风险分级       | 根 `AGENTS.md`「Mutation Gate」只给判定入口，不复制分级表         | `docs/agents/workflow.md`                                           | `audit:instructions` 的 `task-state-trigger` / `risk-tiering` 锚点 |
-| 预授权操作         | 根 `AGENTS.md` 只列被允许与需授权的类别                           | `docs/agents/workflow.md`                                           | `audit:instructions` 的 `pre-authorized-ops` 锚点                  |
-| 角色与执行体绑定   | `.agents/agents/*` 只声明角色职责、边界与自身执行体，不复制绑定表 | 根 `AGENTS.md`（唯一权威绑定表）、`docs/agents/workflow.md`（流程） | `validate:context` 绑定表镜像校验、`scripts/agent-workflow.mjs`    |
-| 角色间 handoff     | `.agents/agents/*` 不复制交接字段                                 | `docs/agents/task-packet.md`                                        | task packet、handoff 记录                                          |
-| 角色目录边界       | 根/包级 `AGENTS.md` 声明 `packages/*` 与 `apps/*` 归属            | `docs/agents/workflow.md`、`worktrees.md`                           | `find:usages` 输出、变更路径                                       |
-| 公共 `web-ui` 契约 | `packages/web-ui/AGENTS.md` 指向受影响消费者                      | `docs/agents/web-ui.md`                                             | fixtures、contracts、browser/integration tests                     |
+| 主题               | 规则边界                                                          | 流程权威来源                                                        | 自动证据                                               |
+| ------------------ | ----------------------------------------------------------------- | ------------------------------------------------------------------- | ------------------------------------------------------ |
+| 生成物             | 根/包级 `AGENTS.md` 说明“不可手改”与局部 source of truth          | `docs/agents/build.md`                                              | generator diff、build、消费者类型检查                  |
+| 真实浏览器         | 根/包级 `AGENTS.md` 仅声明需要浏览器层                            | `docs/agents/browser-verification.md`                               | `pnpm run test` 中的 `*.browser.spec.ts`、MCP 操作记录 |
+| `repo:*` 工具      | 根入口只提供命令路由                                              | 本文件的工具接口说明                                                | `scripts/*.test.mjs`（glob 约定）                      |
+| 多 Agent 编排      | 根 `AGENTS.md`「多 Agent 编排」只保留分工、边界与禁止事项         | `docs/agents/workflow.md`                                           | `tasks` state、review/approval 记录                    |
+| 任务级别           | 根 `AGENTS.md`「Mutation Gate」只给判定入口，不复制级别表         | `docs/agents/workflow.md`                                           | `tasks/<task-id>.json` 的 level 与 events              |
+| 预授权操作         | 根 `AGENTS.md` 只列被允许与需授权的类别                           | `docs/agents/workflow.md`                                           | `docs/agents/workflow.md` 的「预授权操作」清单         |
+| 角色与执行体绑定   | `.agents/agents/*` 只声明角色职责、边界与自身执行体，不复制绑定表 | 根 `AGENTS.md`（唯一权威绑定表）、`docs/agents/workflow.md`（流程） | `validate:context` 绑定表镜像校验、`scripts/task.mjs`  |
+| 角色间 handoff     | `.agents/agents/*` 不复制交接字段                                 | `docs/agents/task-packet.md`                                        | task packet、handoff 记录                              |
+| 角色目录边界       | 根/包级 `AGENTS.md` 声明 `packages/*` 与 `apps/*` 归属            | `docs/agents/workflow.md`、`worktrees.md`                           | `find:usages` 输出、变更路径                           |
+| 公共 `web-ui` 契约 | `packages/web-ui/AGENTS.md` 指向受影响消费者                      | `docs/agents/web-ui.md`                                             | fixtures、contracts、browser/integration tests         |
 
 ## 客户端适配
 
@@ -53,7 +53,7 @@ Role 是显式选择的按需 session context：读取 `.agents/agents/<role>.md
 
 ## 评测与审计
 
-- 审计规则密度、重复主题与约束预算：`pnpm audit:instructions -- --json`。`--strict` 会阻塞三类回归——超出 `scripts/instruction-budget.json` 的约束预算、重述已被工具强制的规则、重述块文件对数量增长——并校验 `<!-- invariant:... -->` 锚点存在。放宽约束必须同时改基线文件，这个动作会出现在 diff 里被评审看见；密度与重复报告仍是候选，不自动判断语义冲突。机制与取舍见 [ADR-0012](../adr/0012-instruction-risk-tiering-and-pre-authorized-operations.md)。
+- **`pnpm audit:instructions` 已弃用**（ADR-0014）：工具与其基线文件将在后续变更中删除，不要再调用或依赖其结论。锚点存在性暂无活跃校验器，其归宿在工具删除时一并决定；约束密度与预算在 diff review 中人工把关。
 - Skills 路由与分工（含主题重叠的 skill 选择和不可用的上游指针）：[`.agents/skills/README.md`](../../.agents/skills/README.md)。
 
 ## 最小 context 组合
@@ -81,19 +81,19 @@ Role 是显式选择的按需 session context：读取 `.agents/agents/<role>.md
 
 普通源码任务不需要阅读本表。修改以下工程资产时，在同一变更中同步对应权威文档；范围不明确时先查本表和相邻包 `AGENTS.md`。
 
-| 变更类别                                            | 必须同步的文档                                                                                                 | 事实来源                                                                        |
-| --------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
-| 构建脚本、Vite/Turbo、CI/CD                         | `docs/agents/build.md`；根命令还更新 `AGENTS.md`                                                               | `package.json`、`turbo.json`、`.github/workflows/`                              |
-| 包新增、移除或重命名                                | `CONTEXT.md`                                                                                                   | `packages/`、`apps/` 目录与 manifest                                            |
-| lint、formatter、stylelint、cspell                  | `docs/agents/linting.md`                                                                                       | 对应配置                                                                        |
-| workspace catalog 或 Changesets 策略                | `docs/agents/dependencies.md`                                                                                  | `pnpm-workspace.yaml`、Changesets 配置                                          |
-| 测试框架或 Vite 测试配置                            | `docs/agents/testing.md`                                                                                       | 测试配置                                                                        |
-| `packages/web-ui` 组件、图标或公共契约              | `packages/web-ui/AGENTS.md`、`docs/agents/web-ui.md` 与受影响 ADR                                              | 组件源码、类型、测试                                                            |
-| commitlint 或提交流程                               | `docs/agents/commit.md`                                                                                        | commit 配置或工作流                                                             |
-| 影响未来工程取舍的架构决定                          | 对应 ADR，并更新 `CONTEXT.md` ADR 索引                                                                         | 可行替代方案之间的长期选择                                                      |
-| client adapter、共享 rules、skills 或 agent profile | `context.md`、`CONTEXT.md`、ADR-0004 / ADR-0010 与 `scripts/validate-context.mjs`                              | `CLAUDE.md`、`.agents/`、root scripts                                           |
-| instruction 预算、锚点或工具已强制规则清单          | `context.md`、`docs/agents/workflow.md`、`scripts/instruction-budget.json`、`scripts/tool-enforced-rules.json` | `scripts/audit-instructions.mjs`、lint 与 CI 配置                               |
-| 角色、执行体绑定、编排路由或 handoff 模板           | `AGENTS.md`、`CONTRIBUTING.md`、`context.md`、`workflow.md`、`task-packet.md`、`worktrees.md` 与 ADR-0010      | `.agents/agents/`、`scripts/agent-workflow.mjs`、`scripts/validate-context.mjs` |
+| 变更类别                                            | 必须同步的文档                                                                                                 | 事实来源                                                              |
+| --------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| 构建脚本、Vite/Turbo、CI/CD                         | `docs/agents/build.md`；根命令还更新 `AGENTS.md`                                                               | `package.json`、`turbo.json`、`.github/workflows/`                    |
+| 包新增、移除或重命名                                | `CONTEXT.md`                                                                                                   | `packages/`、`apps/` 目录与 manifest                                  |
+| lint、formatter、stylelint、cspell                  | `docs/agents/linting.md`                                                                                       | 对应配置                                                              |
+| workspace catalog 或 Changesets 策略                | `docs/agents/dependencies.md`                                                                                  | `pnpm-workspace.yaml`、Changesets 配置                                |
+| 测试框架或 Vite 测试配置                            | `docs/agents/testing.md`                                                                                       | 测试配置                                                              |
+| `packages/web-ui` 组件、图标或公共契约              | `packages/web-ui/AGENTS.md`、`docs/agents/web-ui.md` 与受影响 ADR                                              | 组件源码、类型、测试                                                  |
+| commitlint 或提交流程                               | `docs/agents/commit.md`                                                                                        | commit 配置或工作流                                                   |
+| 影响未来工程取舍的架构决定                          | 对应 ADR，并更新 `CONTEXT.md` ADR 索引                                                                         | 可行替代方案之间的长期选择                                            |
+| client adapter、共享 rules、skills 或 agent profile | `context.md`、`CONTEXT.md`、ADR-0004 / ADR-0010 与 `scripts/validate-context.mjs`                              | `CLAUDE.md`、`.agents/`、root scripts                                 |
+| instruction 预算、锚点或工具已强制规则清单          | `context.md`、`docs/agents/workflow.md`、`scripts/instruction-budget.json`、`scripts/tool-enforced-rules.json` | `scripts/audit-instructions.mjs`、lint 与 CI 配置                     |
+| 角色、执行体绑定、编排路由或 handoff 模板           | `AGENTS.md`、`CONTRIBUTING.md`、`context.md`、`workflow.md`、`task-packet.md`、`worktrees.md` 与 ADR-0010      | `.agents/agents/`、`scripts/task.mjs`、`scripts/validate-context.mjs` |
 
 ## 维护 instruction system
 
