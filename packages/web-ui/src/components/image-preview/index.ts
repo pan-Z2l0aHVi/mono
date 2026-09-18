@@ -16,6 +16,7 @@ import {
   type PinchStartInfo
 } from '@/shared/gesture/pinch-gesture'
 import { defineNativeDialogPresence } from '@/shared/overlay/native-dialog-presence'
+import { defineOpenOverlay, type OpenOverlayHandle } from '@/shared/overlay/open-overlay'
 import { getFallbackOverlayRoot } from '@/shared/overlay/overlay-root'
 import { findNearestTheme, findRootTheme } from '@/shared/overlay/theme-overlay-scope'
 import { defineScrollLockLease } from '@/shared/scroll-lock/scroll-lock'
@@ -146,6 +147,20 @@ class WebUiImagePreview extends LitElement {
   private _swipeSettleTimer: ReturnType<typeof setTimeout> | undefined
 
   private readonly _scrollLock = defineScrollLockLease().make()
+  /*
+   * 开启态浮层（issue #120 Block 1）。预览的 Escape 原本只走原生 <dialog> 的 cancel 事件，
+   * 自己从不参与登记 —— 于是它既不是仲裁候选、又指望原生 cancel 兜底，而仲裁者一旦命中
+   * 别的层就会 preventDefault 压掉那个 cancel：与任何已登记的层同时打开时，一次 Escape
+   * 关掉的是下面那层，最上层的预览留在屏幕上。登记之后它与其它层同处一棵逻辑树。
+   *
+   * 没有惰性通道：预览没有 `no-escape-close` 这类策略，Escape 恒可关闭（与 `closable`
+   * 只管关闭按钮一样，不表达「能否关闭」）。
+   */
+  private readonly _overlay = defineOpenOverlay().make({
+    requestClose: () => this.close()
+  })
+  /** 当前开启会话的句柄；未开启时为 null。 */
+  private _handle: OpenOverlayHandle | null = null
   private readonly _presence = defineNativeDialogPresence().make({
     getDialog: () => this.dialog,
     isConnected: () => this.isConnected,
@@ -258,6 +273,19 @@ class WebUiImagePreview extends LitElement {
     this._presence.reconcile()
     this._syncScrollLock()
     this._attachPinch()
+    this._reclaimIfOpen()
+  }
+
+  /*
+   * 「重挂载恢复」的调用方一半：模块刻意不观察 DOM 连接状态，所以断连撤销登记之后，
+   * 重连时仍有开启态就必须由组件重新声明。首次连接时 shadow 尚未渲染、`this.dialog`
+   * 为 null，直接跳过；打开态的首次进入仍由 updated() 的 `props.has('_open')` 分支处理。
+   */
+  private _reclaimIfOpen() {
+    if (!this._open || this._handle) return
+    const dialog = this.dialog
+    if (!dialog) return
+    this._handle = this._overlay.claim(dialog, { ancestryFrom: this })
   }
 
   protected override firstUpdated() {
@@ -288,6 +316,18 @@ class WebUiImagePreview extends LitElement {
 
     if (props.has('_open')) {
       this._presence.sync(this._open)
+      // 原生 dialog 登记为开启态浮层：Escape 仲裁据此判出最内层（issue #120 Block 1）。
+      const dialog = this.dialog
+      if (dialog) {
+        if (this._open) {
+          // 同一面板重新 claim = 新的一次开启：旧会话整体作废。
+          this._handle?.release()
+          this._handle = this._overlay.claim(dialog, { ancestryFrom: this })
+        } else {
+          this._handle?.release()
+          this._handle = null
+        }
+      }
       // 无原生 dialog 支持或 dialog 未能打开时不会收到 close 事件，这里补齐退场结算。
       if (!this._open && !this.dialog?.open) queueMicrotask(() => this._notifyDismissed())
     }
@@ -301,6 +341,9 @@ class WebUiImagePreview extends LitElement {
     this._pinch = undefined
     this._presence.dispose()
     this._scrollLock.release()
+    // 断连即撤销登记：层不留在全局注册表里，重连后由 _reclaimIfOpen 显式重新声明。
+    this._handle?.release()
+    this._handle = null
   }
 
   private _syncScrollLock() {
@@ -401,6 +444,12 @@ class WebUiImagePreview extends LitElement {
     this.requestUpdate()
   }
 
+  /*
+   * 登记之后 Escape 由仲裁者接管（它在 capture 阶段 preventDefault，UA 因此不再派发原生
+   * cancel），但本 handler **不可删**：任何到达 dialog 的 cancel 都要 preventDefault，
+   * 把 top layer 保留到视觉退场结束，否则原生关闭会跳过退出动画。jsdom 与重挂载用例
+   * 正是直接派发 cancel 来压这条断言。
+   */
   private _handleCancel = (event: Event) => {
     // 保留 top layer 直到退出过渡完成，避免原生关闭跳过退出动画。
     event.preventDefault()
