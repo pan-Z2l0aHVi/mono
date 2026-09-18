@@ -359,6 +359,9 @@ catalogs:
     stylelint-prettier:
       specifier: ^5.0.3
       version: 5.0.3
+    tailwindcss:
+      specifier: ^4.3.2
+      version: 4.3.3
     turbo:
       specifier: ^2.10.11
       version: 2.10.12
@@ -645,6 +648,9 @@ importers:
       babel-plugin-react-compiler:
         specifier: 'catalog:'
         version: 1.0.0
+      tailwindcss:
+        specifier: 'catalog:'
+        version: 4.3.3
       vite:
         specifier: npm:@voidzero-dev/vite-plus-core@0.3.2
         version: '@voidzero-dev/vite-plus-core@0.3.2(@types/node@26.4.1)(jiti@2.7.0)(terser@5.51.2)(typescript@6.0.3)(yaml@2.9.0)'
@@ -715,6 +721,9 @@ importers:
       '@vue/test-utils':
         specifier: 'catalog:'
         version: 2.5.0(@vue/compiler-dom@3.5.42)(@vue/server-renderer@3.5.42)(vue@3.5.42(typescript@6.0.3))
+      tailwindcss:
+        specifier: 'catalog:'
+        version: 4.3.3
       unplugin-auto-import:
         specifier: 'catalog:'
         version: 21.1.0(@voidzero-dev/vite-plus-core@0.3.2(@types/node@26.4.1)(jiti@2.7.0)(terser@5.51.2)(typescript@6.0.3)(yaml@2.9.0))(@vueuse/core@14.4.0(vue@3.5.42(typescript@6.0.3)))(oxc-parser@0.148.0)(rolldown@1.2.7)(rollup@4.63.1)(webpack@5.110.3(lightningcss@1.33.0)(postcss@8.5.28))
