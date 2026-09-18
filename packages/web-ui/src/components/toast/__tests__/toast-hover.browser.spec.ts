@@ -68,16 +68,16 @@ describe('toast 悬停暂停（浏览器）', () => {
     const el = findToast(id)
     expect(el).toBeDefined()
 
-    await wait(500)
+    await wait(1200)
     await page.elementLocator(el as Element).hover()
 
     // 越过原计时点（1500ms）后仍应停留 —— 悬停暂停生效。
-    await wait(1600)
+    await wait(400)
     expect(findToast(id)?.visible).toBe(true)
 
-    // 移开指针，剩余约 1000ms。若重启满时长（1500ms），1400ms 时它还开着。
+    // 移开指针，剩余约 300ms。若重启满时长（1500ms），1000ms 时它还开着。
     await page.elementLocator(away).hover()
-    await waitFor(() => findToast(id)?.visible !== true, 'hover 重启了满时长而不是续跑剩余时间', 1400)
+    await waitFor(() => findToast(id)?.visible !== true, 'hover 重启了满时长而不是续跑剩余时间', 1000)
     await waitFor(() => findToast(id) === undefined, 'toast did not leave the DOM after auto-close')
   })
 
