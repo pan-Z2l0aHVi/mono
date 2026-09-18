@@ -61,23 +61,23 @@ afterEach(() => {
  */
 describe('toast 悬停暂停（浏览器）', () => {
   it('悬停期间不关闭，移开后按剩余时间关闭', async () => {
-    const id = toast.info('悬停我', { id: 'hover', position: 'top-right', duration: 1500 })
+    const id = toast.info('悬停我', { id: 'hover', position: 'top-right', duration: 3000 })
     await waitMounted()
     const away = createAwayTarget()
 
     const el = findToast(id)
     expect(el).toBeDefined()
 
-    await wait(1200)
+    await wait(2400)
     await page.elementLocator(el as Element).hover()
 
-    // 越过原计时点（1500ms）后仍应停留 —— 悬停暂停生效。
-    await wait(400)
+    // 越过原计时点（3000ms）后仍应停留 —— 悬停暂停生效。
+    await wait(800)
     expect(findToast(id)?.visible).toBe(true)
 
-    // 移开指针，剩余约 300ms。若重启满时长（1500ms），1000ms 时它还开着。
+    // 移开指针，剩余约 600ms。若重启满时长（3000ms），1800ms 时它还开着。
     await page.elementLocator(away).hover()
-    await waitFor(() => findToast(id)?.visible !== true, 'hover 重启了满时长而不是续跑剩余时间', 1000)
+    await waitFor(() => findToast(id)?.visible !== true, 'hover 重启了满时长而不是续跑剩余时间', 1800)
     await waitFor(() => findToast(id) === undefined, 'toast did not leave the DOM after auto-close')
   })
 
