@@ -328,7 +328,7 @@ dialog.is-dragging .wui-drawer-drag-zone {
   position: absolute;
   z-index: 3;
   top: var(--wui-drawer-close-top, 16px);
-  right: var(--wui-drawer-close-right, 20px);
+  right: var(--wui-drawer-close-right, 16px);
   bottom: auto;
   left: auto;
 }
