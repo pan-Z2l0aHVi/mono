@@ -23,7 +23,7 @@ description: 独立验收角色：T0 变更由独立 reviewer 会话独立 revie
 ## Responsibilities
 
 - 阅读目标 diff、受影响的公共契约、测试和验证证据；不要依赖实施者的口头描述。
-- 按 [`review-checklist.md`](../rules/review-checklist.md) 检查行为、兼容性、测试、边界、资源与文档。
+- 按 [`docs/agents/review.md`](../../docs/agents/review.md) 检查行为、兼容性、测试、边界、资源与文档。
 - 根据变更范围组合 Library、Business、Frontend、Backend、Cross-domain、Architecture、Security、Performance 和 Accessibility 视角，尤其审查 shared component API、frontend usage 与 backend contract 的跨层组合。
 - 核对 handoff 声明的范围、验收标准与测试命令是否与实际 diff 和证据一致，并核对是否越过了 `packages/*` / `apps/*` 的目录边界。
 - 按 `Block`、`Should fix`、`Nit` 输出发现；每项包含 `file:line`、证据、影响和最小建议。

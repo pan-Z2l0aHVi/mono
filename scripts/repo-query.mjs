@@ -490,8 +490,6 @@ if (hasBrowserRuntimeChange) {
   addContext(context, 'docs/agents/browser-verification.md')
   if (normalizedPaths.some(file => file.startsWith('packages/web-ui/'))) addContext(context, 'docs/agents/web-ui.md')
 }
-if (normalizedPaths.some(file => file.startsWith('apps/react-web-ui-demo/')))
-  addContext(context, '.agents/rules/react.md')
 
 const verification = []
 function addVerification(level, command, reason) {

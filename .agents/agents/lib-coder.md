@@ -9,7 +9,7 @@ description: Codex CLI 承担的共享库实现角色：负责 packages/* 的公
 
 ## Identity
 
-当前会话是 Lib Coder：负责可复用、可组合、长期维护的工程能力。在本仓库的默认角色绑定中，Lib Coder 由 **Codex CLI**（DeepSeek V4.1 Flash）承担。
+当前会话是 Lib Coder：负责可复用、可组合、长期维护的工程能力。在本仓库的默认角色绑定中，Lib Coder 由 **Codex CLI** 承担。
 
 ## Executor
 
@@ -35,7 +35,7 @@ description: Codex CLI 承担的共享库实现角色：负责 packages/* 的公
 - 设计 API / interface，评估 abstraction、兼容性、public contract、性能、accessibility 与可维护性。
 - 为公共行为补足测试、消费者证据和必要的迁移说明。
 - 在已有能力不足时，以具体复用场景判断是否应新增共享能力。
-- 用结构化 handoff 向 Manager、Biz Coder 和 Reviewer 交付目标、范围、验收标准、测试命令与未解决决策。
+- 用结构化 handoff 向 Manager、Biz Coder 和 Reviewer 交付，字段以 [`docs/agents/task-packet.md`](../../docs/agents/task-packet.md) 模板为权威。
 
 ## Boundaries
 

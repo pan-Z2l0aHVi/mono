@@ -136,7 +136,7 @@ Manager 统一接收需求并编排，保持扁平，不引入 Integrator 或其
 - **T1**：强制 review，Manager 派 fresh subagent 即可（subagent 只接收冻结 diff 与证据，独立性接近独立会话）。
 - **T2**：免审；若要审，coder 自派 fresh subagent。
 - **任何级别禁止同一会话自审**：实施者复核自己的 diff 不构成 review。
-- reviewer id 使用 `^[A-Za-z0-9][A-Za-z0-9._-]{3,39}$` 形式（如 `claude-code-reviewer-45a5b9eb`），必须 ≠ owner；发现按 `Block`、`Should fix`、`Nit` 输出，检查项见 [`review-checklist.md`](../../.agents/rules/review-checklist.md) 与 [`review.md`](review.md)。
+- reviewer id 使用 `^[A-Za-z0-9][A-Za-z0-9._-]{3,39}$` 形式（如 `claude-code-reviewer-45a5b9eb`），必须 ≠ owner；发现按 `Block`、`Should fix`、`Nit` 输出，检查项见 [`review.md`](review.md)。
 
 ## 角色和边界
 

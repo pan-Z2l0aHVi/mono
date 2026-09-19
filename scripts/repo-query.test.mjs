@@ -167,7 +167,7 @@ assert.equal(
 )
 
 const reactDemoPlan = JSON.parse(run('verify', '--json', 'apps/react-web-ui-demo/src/main.tsx'))
-assert.ok(reactDemoPlan.context.includes('.agents/rules/react.md'))
+assert.ok(reactDemoPlan.context.includes('apps/react-web-ui-demo/AGENTS.md'))
 assert.ok(reactDemoPlan.verification.some(item => item.command === 'pnpm --filter @greypan/react-web-ui-demo build'))
 assert.ok(reactDemoPlan.verification.some(item => item.command === 'pnpm run test'))
 assert.ok(reactDemoPlan.verification.some(item => item.command === 'chrome-devtools MCP 真实浏览器验证'))

@@ -36,7 +36,7 @@ description: Codex CLI 承担的业务实现角色：负责 apps/* 的业务 ver
 - 对齐 Designer 的用户流程、状态和验收意图，并将技术约束及时反馈。
 - 保持请求、数据、错误和 UI 状态在同一 vertical slice 内一致。
 - 在确有共性缺口时，以具体使用场景与 Lib Coder 协作获得 reusable capability，而不是自行在业务侧另起实现。
-- 用结构化 handoff 向 Manager、Lib Coder 和 Reviewer 交付目标、范围、验收标准、测试命令与未解决决策。
+- 用结构化 handoff 向 Manager、Lib Coder 和 Reviewer 交付，字段以 [`docs/agents/task-packet.md`](../../docs/agents/task-packet.md) 模板为权威。
 
 ## Boundaries
 

@@ -21,7 +21,7 @@
 
 Role 是显式选择的按需 session context：读取 `.agents/agents/<role>.md` 后，它在整个会话中定义职责、边界和协作，不绑定某一个 task，也不覆盖 Rules、Skills、task requirement、`AGENTS.md` 或实现事实。初始化方式以 [`CONTRIBUTING.md`](../../CONTRIBUTING.md#角色会话) 为权威。
 
-角色的执行体默认绑定与推荐分档（manager / designer 为 Claude Code；lib-coder 与 biz-coder 为 Codex CLI；reviewer 按风险路由——高风险变更由 Claude Code 主审，独立小功能快速迭代可由 Codex CLI 审核；默认模型与思考强度为推荐值、非强制，决策依据见 ADR-0011）、编排路由和结构化 handoff 契约，流程权威是 [`workflow.md`](workflow.md) 的「角色与执行体」「编排模式」两节与 [`task-packet.md`](task-packet.md)；根 `AGENTS.md` 的「多 Agent 编排」节承载唯一权威绑定表与不可绕过的分工、边界与禁止事项。执行体绑定不改变状态机、gate 和证据要求。
+角色执行体绑定与 review 分档路由的唯一权威绑定表在根 `AGENTS.md`「多 Agent 编排」节；编排模式的流程权威是 [`workflow.md`](workflow.md) 的「角色与执行体」「编排模式」两节，handoff 契约权威是 [`task-packet.md`](task-packet.md)。执行体绑定不改变状态机、gate 和证据要求。
 
 ## 重复主题的权威来源
 
@@ -42,8 +42,8 @@ Role 是显式选择的按需 session context：读取 `.agents/agents/<role>.md
 
 ## 客户端适配
 
-- `AGENTS.md`、`CONTEXT.md`、`docs/agents/`、`.agents/rules/`、`.agents/skills/`、`.agents/agents/` 与 `.agents/references/` 是 Codex、Claude Code 等共用的规范。
-- Codex 通过层级 `AGENTS.md` 获得目录约束与「多 Agent 编排」分工；根 `CLAUDE.md` 只说明对应客户端的加载顺序和默认角色绑定，不复制共享规则正文。客户端适配不自动选择 Role；默认执行体绑定与编排路由以 [`workflow.md`](workflow.md) 为权威。
+- `AGENTS.md`、`CONTEXT.md`、`docs/agents/`、`.agents/rules/`、`.agents/skills/` 与 `.agents/agents/` 是 Codex、Claude Code 等共用的规范。
+- Codex 通过层级 `AGENTS.md` 获得目录约束与「多 Agent 编排」分工；根 `CLAUDE.md` 只说明对应客户端的加载顺序和默认角色绑定，不复制共享规则正文。客户端适配不自动选择 Role；默认执行体绑定以根 `AGENTS.md`（唯一权威绑定表）为准，编排路由以 [`workflow.md`](workflow.md) 为权威。
 - ACP plan 是当前会话的临时进度 UI；多阶段任务的创建、阶段同步和结束前收敛以 [`CONTRIBUTING.md`](../../CONTRIBUTING.md) 为权威。它不持久化为 `agent-state`，也不能替代源码、Git 或验证证据。
 - `.claude/rules`、`.claude/skills` 和 `.claude/agents` 必须通过 symlink 指向 `.agents/` 中的共享内容。仓库内没有证据表明 Claude Code 会无条件加载 `.claude/rules`：本文件把它归为 Task-specific（见上文「Context 层级」），只把根 `AGENTS.md` 列为 Always available。若后续确认客户端把 `.claude/rules` 当常驻层加载，靠控制单文件规模而不是拆分更多文件来控制总量。
 - `scripts/validate-context.mjs` 只检查这套共享 context 的可加载性，不能替代对规则语义、代码行为或 agent 输出质量的评审。
@@ -54,7 +54,6 @@ Role 是显式选择的按需 session context：读取 `.agents/agents/<role>.md
 ## 评测与审计
 
 - `audit:instructions` 与其预算基线（`instruction-budget.json`、`tool-enforced-rules.json`）已删除（ADR-0014）：约束密度与重复在 diff review 中人工把关。`<!-- invariant:... -->` 锚点保留为惰性注释，供人工检索，没有机器校验。
-- Skills 路由与分工（含主题重叠的 skill 选择和不可用的上游指针）：[`.agents/skills/README.md`](../../.agents/skills/README.md)。
 
 ## 最小 context 组合
 

@@ -12,16 +12,12 @@ worktree 是任务隔离边界，不是包名的别名。每个可变 task 只�
 
 ### turbo 缓存共享
 
-- `.mise.toml` 的 `[env._].source` 通过 `scripts/turbo-cache-env.sh` 把 `TURBO_CACHE_DIR` 锚定到 **git common dir**（`mono/.git/turbo-cache`）：主仓与全部 task worktree 共享同一份本地 turbo 缓存（构建产物含 dist d.ts），新 worktree 不必冷缓存全量重建，跨 checkout 复用安全（turbo 内容寻址）。
+- `.mise.toml` 的 `[env]` 用 `git rev-parse --path-format=absolute --git-common-dir` 把 `TURBO_CACHE_DIR` 锚定到 **git common dir**（`mono/.git/turbo-cache`）：主仓与全部 task worktree 共享同一份本地 turbo 缓存（构建产物含 dist d.ts），新 worktree 不必冷缓存全量重建，跨 checkout 复用安全（turbo 内容寻址）。
 - 手动回收直接删除 `mono/.git/turbo-cache`，turbo 下次运行自动重建。CI 在 `ci.yml` 显式覆盖回 workspace 内路径，mise 注入不影响 CI 缓存键；git common dir 不受 `git gc` / worktree 清理影响。
 
 ## 角色隔离边界
 
-- Lib Coder 只在 `packages/*` 写入，Biz Coder 只在 `apps/*` 写入；同一条 worktree 内以此为写入边界，任一角色不得修改对方目录下的文件。
-- 每个角色使用独立 worktree，或在同一 task worktree 内严格目录隔离；采用哪种方式在 task packet 中记录。无法严格隔离时必须拆成独立 task 与独立 worktree。
-- 跨边界需求拆成两条 handoff：共享能力落在 `packages/*`，业务实现落在 `apps/*`，契约以 handoff 记录并在集成前核对，而不是由单个角色越界完成。
-- Reviewer 审查冻结 diff，不参与实施；Designer 不写入 `packages/*` 与 `apps/*` 生产代码。
-- 角色与执行体的默认绑定见 [`workflow.md`](workflow.md) 的「角色与执行体」，本节只约束 worktree 层面的物理隔离。
+- 各角色的目录边界、独立 worktree/严格目录隔离与跨边界拆 task 的处方以 [`workflow.md`](workflow.md) 的「编排模式」「并发原则」为权威，本节不复制；角色与执行体的默认绑定以根 [`AGENTS.md`](../../AGENTS.md) 的唯一权威绑定表为准。
 
 ## Git 边界
 

@@ -1,6 +1,6 @@
 # Lint 与格式化
 
-- **格式化工具**：`vp check` 运行格式化、lint 与类型检查（通过 `fmt.ignorePatterns` 排除第三方 `.agents/skills/`）；提交 hook 的 `vp staged` 对暂存路径运行 `vp check --fix`，并额外对暂存的 `.go` 文件运行 `gofmt -w`、对 `.css/.vue` 运行 `stylelint --fix`。workflow 的 `freeze` 会在快照前运行同一管线（先 `git add -A` 全量 staging），因此 commit 时的 staged 修复是收敛确认（幂等 no-op）而不是新的变更来源；机制见 [`workflow.md`](workflow.md)。
+- **格式化工具**：`vp check` 运行格式化、lint 与类型检查（通过 `fmt.ignorePatterns` 排除第三方 `.agents/skills/`）；提交 hook 的 `vp staged` 对暂存路径运行 `vp check --fix`，并额外对暂存的 `.go` 文件运行 `gofmt -w`、对 `.css/.vue` 运行 `stylelint --fix`。workflow 的 `freeze` 在快照前运行同一管线，机制见 [`workflow.md`](workflow.md)。
 - **自动修复**：运行 `CI=true pnpm run fix:code` 一键执行全仓代码格式化、Go 格式化与样式修复（聚合 `vp check --fix` + `pnpm run fix:go` + `pnpm run fix:stylelint`）。在非交互环境/Agent 会话中指定 `CI=true` 可避免 `vp` 版本更新检查阻塞。
 - **代码风格**：由 `vite.config.ts` 的 Vite Plus / oxlint 配置与 `.editorconfig`（LF）强制；按配置输出，不手工对抗工具。
 - **第三方 skills 排除**：`.agents/skills/` 整体通过 `fmt.ignorePatterns` 排除格式化（覆盖第三方与仓库自编写 skill）；更新或新增第三方 skill 时，通过 `npx skills@latest` 同步 lock。

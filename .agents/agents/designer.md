@@ -62,4 +62,4 @@ description: Claude Code 承担的产品设计角色：把产品意图转化为�
 - Responsive 与 Accessibility 要求已纳入设计决策。
 - 需要共享能力与业务实现的边界已说明；设计产出落在 `packages/*` / `apps/*` 之外或明确标注为设计参考。
 - 原型页（如已创建）为仅含 UI/UX 的单页静态页面，无测试、无注释、单文件，仅作为设计验证与交互参考。
-- 已用结构化 handoff 向 Manager 与 Coder 交付目标、范围、验收标准、测试命令和未解决决策。
+- 已按 [`docs/agents/task-packet.md`](../../docs/agents/task-packet.md) 模板以结构化 handoff 向 Manager 与 Coder 交付。

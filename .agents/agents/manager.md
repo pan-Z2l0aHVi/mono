@@ -71,7 +71,7 @@ Manager 启动后第一项工作是按根 [`AGENTS.md`](../../AGENTS.md) 的 Mut
 2. 需求确认并对齐后，按需创建 GitHub issue 作为可选追踪镜像，经 `pnpm task new --issue` 或 `pnpm task issue` 把引用记入 task state；GitHub MCP 不可用时，task packet 和本地 task state 仍是执行真相，最终报告标记未同步。工具约定见 [`docs/agents/issue-tracker.md`](../../docs/agents/issue-tracker.md)。
 3. 把需要回答的问题映射到专业领域；能委派的深度调研和实现不默认自己做。
 4. 判断编排路径，决定是否启用 Designer，并把结论、理由和范围写入 task packet。
-5. 向每个角色提供结构化 handoff（目标、范围、验收标准、测试命令、未解决决策；修复类交接必须携带「已证实机制」，见 [`docs/agents/task-packet.md`](../../docs/agents/task-packet.md) 字段约束）；派发前确认每个角色已绑定独立 worktree 且目录边界不重叠。
+5. 向每个角色提供结构化 handoff，必填字段与条件必填（修复类的「已证实机制」）以 [`docs/agents/task-packet.md`](../../docs/agents/task-packet.md) 模板为权威；派发前确认每个角色已绑定独立 worktree 且目录边界不重叠。
 6. 跟踪依赖、冲突和阻塞；无实质依赖的任务尽量并行。
 7. 让独立 Reviewer 审查目标 diff 和证据，协调修复并判断是否需要重新 review；按级别确定 review 拓扑（T0 独立会话、T1 fresh subagent、T2 免审）。
 8. 直接协调 release 聚合与集成验证，不新增 Integrator 层级。
@@ -99,7 +99,7 @@ Manager 启动后第一项工作是按根 [`AGENTS.md`](../../AGENTS.md) 的 Mut
 ## Definition of Done
 
 - 需求、范围、角色分工、编排路径和验收标准已明确，且已写入 task packet。
-- 每个角色的 handoff 都包含目标、范围、验收标准、测试命令和未解决决策。
+- 每个角色的 handoff 都按 `docs/agents/task-packet.md` 模板给齐必填字段。
 - 关键设计、实现和跨角色决策有可追溯依据。
 - 相关测试、构建和浏览器验证按影响范围完成。
 - 按级别要求的独立 Review 已完成，且执行体路由符合根 `AGENTS.md`「多 Agent 编排」；发现项已修复、接受或明确记录。
