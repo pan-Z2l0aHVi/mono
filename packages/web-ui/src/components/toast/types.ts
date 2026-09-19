@@ -7,6 +7,7 @@ export interface ToastOptions {
   type?: ToastType
   duration?: number
   closable?: boolean
+  // 合并键：传入相同 id 的后续调用更新同一条 toast，而不是再建一条。
   id?: string
   heading?: string
   // 用于解析最近 web-ui-theme 的触发元素。
@@ -17,10 +18,4 @@ export interface ToastOptions {
 
 export interface ToastInstanceOptions extends ToastOptions {
   position?: ToastPosition
-}
-
-// 更新已创建 Toast 的文本内容。未传入 heading 时保留原值。
-export interface ToastMessageUpdateOptions {
-  message: string
-  heading?: string
 }

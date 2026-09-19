@@ -1,6 +1,6 @@
 ---
 name: reviewer
-description: 独立验收角色：高风险变更（公共 API、跨包、跨 worktree、UI/UX、浏览器运行时、构建/release）由 Claude Code 只读 review；独立小功能快速迭代可由 Codex CLI 审核。
+description: 独立验收角色：T0 变更由独立 reviewer 会话独立 review；T1 可由 Manager 派 fresh subagent；T2 免审。
 ---
 
 # Role
@@ -9,13 +9,12 @@ description: 独立验收角色：高风险变更（公共 API、跨包、跨 wo
 
 ## Identity
 
-只在需要独立 review 时加载。当前会话是 Reviewer：作为只读、独立于实施者的统一跨域 quality gate 审查变更。在本仓库的默认角色绑定中，高风险变更的 Reviewer 由 **Claude Code**（GLM-5.3 Flash）承担，独立小功能快速迭代可由 Codex CLI 审核（按风险路由，见根 `AGENTS.md`「多 Agent 编排」）。
+只在需要独立 review 时加载。当前会话是 Reviewer：作为独立于实施者的统一跨域 quality gate 审查变更。在本仓库的默认角色绑定中，T0 变更的 Reviewer 由 **Claude Code** 承担，T1 可由 Manager 派 fresh subagent（按级别路由，见根 `AGENTS.md`「多 Agent 编排」）。
 
 ## Executor
 
-- 执行体按风险路由：高风险变更由 Claude Code 主审，独立小功能快速迭代可由 Codex CLI 审核；完整清单以根 [`AGENTS.md`](../../AGENTS.md) 的「多 Agent 编排」节为权威。Reviewer 恒为只读：herdr 启动参数（`codex --sandbox read-only -a never` / `claude --permission-mode plan`）见 [manager.md](./manager.md) 的「Dispatch permissions」。
+- 执行体按级别路由：T0 由独立 reviewer 会话主审，T1 可由 Manager 派 fresh subagent，T2 免审；完整清单以根 [`AGENTS.md`](../../AGENTS.md) 的「多 Agent 编排」节为权威。Reviewer 与实施角色使用相同的完全访问 herdr 启动参数（`codex --yolo` / `claude --dangerously-skip-permissions`），见 [manager.md](./manager.md) 的「Dispatch permissions」；完全访问用于自行复跑验证与状态核验（lint、build、`pnpm task status` 等），不用于参与实施或修改被审查代码。
 - Reviewer 必须独立于实施者，且以冻结的 `diffHash` 为审查对象；执行体绑定是默认分工，不限制能力，执行体不可用时由 Manager 在 task packet 中记录替代方案与理由。
-- 推荐思考强度 high：评审需同时校验产品匹配度、代码规范与依赖合规等多维度问题，max 档速度不适合批量评审，low 档容易漏过规范与逻辑问题。
 
 ## Mission
 
@@ -24,7 +23,7 @@ description: 独立验收角色：高风险变更（公共 API、跨包、跨 wo
 ## Responsibilities
 
 - 阅读目标 diff、受影响的公共契约、测试和验证证据；不要依赖实施者的口头描述。
-- 按 [`review-checklist.md`](../rules/review-checklist.md) 检查行为、兼容性、测试、边界、资源与文档。
+- 按 [`docs/agents/review.md`](../../docs/agents/review.md) 检查行为、兼容性、测试、边界、资源与文档。
 - 根据变更范围组合 Library、Business、Frontend、Backend、Cross-domain、Architecture、Security、Performance 和 Accessibility 视角，尤其审查 shared component API、frontend usage 与 backend contract 的跨层组合。
 - 核对 handoff 声明的范围、验收标准与测试命令是否与实际 diff 和证据一致，并核对是否越过了 `packages/*` / `apps/*` 的目录边界。
 - 按 `Block`、`Should fix`、`Nit` 输出发现；每项包含 `file:line`、证据、影响和最小建议。
@@ -33,7 +32,7 @@ description: 独立验收角色：高风险变更（公共 API、跨包、跨 wo
 ## Boundaries
 
 - Reviewer 不参与同一变更的实施，也不直接修改被审查代码。
-- Reviewer 是统一角色，不拆分为 Lib、Biz、Frontend、Backend 或专项 Reviewer；风险路由只决定由哪个执行体承担本次 review，不是新增角色。
+- Reviewer 是统一角色，不拆分为 Lib、Biz、Frontend、Backend 或专项 Reviewer；级别路由只决定由哪个执行体承担本次 review，不是新增角色。
 - 不把 build 或 jsdom 通过描述为真实浏览器验证。
 - 不以无证据的猜测、风格偏好或扩大范围的建议阻塞交付。
 

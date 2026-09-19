@@ -103,7 +103,6 @@ export function Root() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [desktopSidebarWidth, setDesktopSidebarWidth] = useState<string>(getInitialSidebarWidth)
   const navSidebarRef = useRef<HTMLElement>(null)
-
   const [isMobileSidebar, setIsMobileSidebar] = useState(() => window.matchMedia('(max-width: 640px)').matches)
   useEffect(() => {
     const mq = window.matchMedia('(max-width: 640px)')
@@ -128,11 +127,15 @@ export function Root() {
     select: s => s.matches.at(-1)?.staticData.title
   })
 
+  const commitThemeAppearance = (appearance: ThemeAppearance) => {
+    setThemeAppearance(appearance)
+    writeStoredTheme(STORAGE_KEY, JSON.stringify(appearance))
+  }
+
   const updateThemeAppearance = (event: React.ChangeEvent<WebUiSelect>) => {
     const appearance = event.currentTarget.value
     if (!isThemeAppearance(appearance)) return
-    setThemeAppearance(appearance)
-    writeStoredTheme(STORAGE_KEY, JSON.stringify(appearance))
+    commitThemeAppearance(appearance)
   }
 
   const updateThemeMotion = (event: React.ChangeEvent<WebUiSelect>) => {
@@ -158,8 +161,8 @@ export function Root() {
 
   return (
     <ErrorBoundary FallbackComponent={RootErrorFallback}>
-      <web-ui-theme appearance={themeAppearance} motion={themeMotion}>
-        <div className="min-h-screen bg-[var(--wui-color-page)] text-[var(--wui-color-text)]">
+      <web-ui-theme appearance={themeAppearance} motion={themeMotion} transition>
+        <div className="min-h-screen bg-(--wui-color-page) text-(--wui-color-text)">
           {routeTitle ? <title>{routeTitle}</title> : null}
           <web-ui-layout
             header-glow
@@ -176,7 +179,7 @@ export function Root() {
             {bannerVisible ? (
               <div
                 slot="banner"
-                className="flex items-center justify-center gap-2 bg-[var(--wui-color-accent)] px-4 py-2 text-sm text-[var(--wui-color-on-accent)]"
+                className="flex items-center justify-center gap-2 bg-(--wui-color-accent) px-4 py-2 text-sm text-(--wui-color-on-accent)"
               >
                 <span>🎉 欢迎使用 web-ui 组件库！</span>
                 <button
@@ -225,7 +228,7 @@ export function Root() {
               </web-ui-select>
             </div>
             <div slot="sidebar" className="flex h-full min-h-0 flex-col">
-              <div className="shrink-0 px-5 pt-4 pb-2 text-xs font-semibold uppercase text-[var(--wui-color-text-secondary)] max-[640px]:px-0">
+              <div className="shrink-0 px-5 pt-4 pb-2 text-xs font-semibold uppercase text-(--wui-color-text-secondary) max-[640px]:px-0">
                 组件列表
               </div>
               <nav ref={navSidebarRef} className="min-h-0 flex-1 p-2 max-[640px]:px-0 overflow-y-auto">
@@ -234,10 +237,8 @@ export function Root() {
                     key={item.path}
                     to={item.path}
                     className={
-                      'flex items-center h-8 my-1 rounded-full px-3 py-2 text-sm leading-5 text-[var(--wui-color-text)] transition-[background-color] duration-150 hover:bg-[color-mix(in_srgb,var(--wui-color-surface-raised)_80%,var(--wui-color-text))]' +
-                      (pathname === item.path
-                        ? ' !bg-[var(--wui-color-accent)] !text-[var(--wui-color-on-accent)]'
-                        : '')
+                      'flex items-center h-8 my-1 rounded-full px-3 py-2 text-sm leading-5 text-(--wui-color-text) transition-[background-color] duration-150 hover:bg-[color-mix(in_srgb,var(--wui-color-surface-raised)_80%,var(--wui-color-text))]' +
+                      (pathname === item.path ? ' !bg-(--wui-color-accent) !text-(--wui-color-on-accent)' : '')
                     }
                   >
                     <span className="truncate">{item.label}</span>

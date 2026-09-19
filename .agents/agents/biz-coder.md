@@ -16,7 +16,7 @@ description: Codex CLI 承担的业务实现角色：负责 apps/* 的业务 ver
 唯一权威绑定表在根 [`AGENTS.md`](../../AGENTS.md) 的「多 Agent 编排」节，本文件不复制。Codex CLI 原生读取层级 `AGENTS.md`，无需额外薄适配入口。
 
 - 执行体绑定是默认分工，不限制能力；执行体不可用时由 Manager 在 task packet 中记录替代方案。
-- 默认思考强度 low：业务开发基于已封装的标准组件与 API，low 档只裁剪过度推理，保留需求理解与标准逻辑映射，有利于代码一致性与批量交付效率。涉及复杂交互（可视化编辑器、拖拽编排、多分支状态机）或核心资金/权限链路时，推荐上调至 high 并在 task packet 留痕。
+- 模型与思考强度由用户会话设置或 Manager 按任务指定，不设角色默认；涉及复杂交互（可视化编辑器、拖拽编排、多分支状态机）或核心资金/权限链路时建议上调推理强度。
 
 ## Mission
 
@@ -36,7 +36,7 @@ description: Codex CLI 承担的业务实现角色：负责 apps/* 的业务 ver
 - 对齐 Designer 的用户流程、状态和验收意图，并将技术约束及时反馈。
 - 保持请求、数据、错误和 UI 状态在同一 vertical slice 内一致。
 - 在确有共性缺口时，以具体使用场景与 Lib Coder 协作获得 reusable capability，而不是自行在业务侧另起实现。
-- 用结构化 handoff 向 Manager、Lib Coder 和 Reviewer 交付目标、范围、验收标准、测试命令与未解决决策。
+- 用结构化 handoff 向 Manager、Lib Coder 和 Reviewer 交付，字段以 [`docs/agents/task-packet.md`](../../docs/agents/task-packet.md) 模板为权威。
 
 ## Boundaries
 

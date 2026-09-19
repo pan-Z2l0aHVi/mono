@@ -19,10 +19,6 @@ export interface MenuLevelSurface {
   content: HTMLElement
 }
 
-/* ------------------------------------------------------------------ *
- * Outside-click 守卫
- * ------------------------------------------------------------------ */
-
 export interface MenuOutsideClickGuard {
   /** 打开动作后调用：吞掉同一帧内随后冒泡到 document 的本次 click。 */
   arm(): void
@@ -64,10 +60,6 @@ export function createMenuOutsideClickGuard(
     }
   }
 }
-
-/* ------------------------------------------------------------------ *
- * 层级 hover 绑定
- * ------------------------------------------------------------------ */
 
 export interface MenuHoverDelegate {
   /** 当前展开的 submenu 深度；行为层会绑定 0..depth+1 每一层。 */
@@ -130,10 +122,6 @@ export function createMenuHoverBinder(delegate: MenuHoverDelegate, itemSelector:
   }
 }
 
-/* ------------------------------------------------------------------ *
- * roving 键盘导航
- * ------------------------------------------------------------------ */
-
 export interface MenuKeyboardDelegate {
   getFocusedItem(event?: KeyboardEvent): HTMLElement | undefined
   /** 焦点项所在层级；不在任何面板内时返回 undefined。 */
@@ -153,12 +141,11 @@ export interface MenuKeyboardDelegate {
  * 事件监听的挂载位置（宿主 / 面板 / document）由组件自己决定。
  */
 export function handleMenuKeyboard(delegate: MenuKeyboardDelegate, e: KeyboardEvent): void {
-  if (e.key === 'Escape') {
-    delegate.closeDeepestOrAll()
-    e.preventDefault()
-    return
-  }
-
+  /*
+   * Escape 不在本函数处理：它必须跨组件归属（issue #120 Block 1），由共享仲裁者在
+   * document 捕获阶段判定最内层后调用 `closeDeepestOrAll()`。留在各组件自己的
+   * keydown 里会让一次 Escape 同时命中内外两层。
+   */
   const focused = delegate.getFocusedItem(e)
   const level = focused ? delegate.getLevelOf(focused) : undefined
   if (level === undefined) return
@@ -220,10 +207,6 @@ export function getEnabledMenuLevelItems(content: HTMLElement | undefined): HTML
   return content ? getEnabledMenuItems(content) : []
 }
 
-/* ------------------------------------------------------------------ *
- * 关闭中的 submenu presence 收尾栈
- * ------------------------------------------------------------------ */
-
 export interface ClosingSubmenuStack<C> {
   /** 取出正在关闭的容器以复用（同帧关闭→重开同一父项）。 */
   take(parentItem: HTMLElement): C | undefined
@@ -233,6 +216,13 @@ export interface ClosingSubmenuStack<C> {
   restoreAll(): void
   /** 全部强制销毁（断开连接时），不再归还子项。 */
   disposeAll(): void
+  /**
+   * 正在关闭、尚未销毁的容器快照（只读）。
+   * 这些面板仍在 DOM 里、可能仍然可见，但已经离开调用方的活跃集合（`_overlays` /
+   * `_activeSubmenus`）—— 根层重新 claim 时必须把它们一并重新挂回新会话的子树，
+   * 否则它们会被判成「面板外」。
+   */
+  closing(): C[]
 }
 
 export interface ClosingSubmenuStackAdapter<C> {
@@ -274,6 +264,9 @@ export function createClosingSubmenuStack<C>(adapter: ClosingSubmenuStackAdapter
     disposeAll() {
       closing.forEach(container => adapter.dispose(container))
       closing.clear()
+    },
+    closing() {
+      return [...closing.values()]
     }
   }
 }

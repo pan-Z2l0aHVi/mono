@@ -1,10 +1,11 @@
 # Lint 与格式化
 
-- **格式化工具**：`vp check` 运行格式化、lint 与类型检查（通过 `fmt.ignorePatterns` 排除第三方 `.agents/skills/`）；提交 hook 的 `vp staged` 对暂存路径运行 `vp check --fix`，并额外对暂存的 `.go` 文件运行 `gofmt -w`、对 `.css/.vue` 运行 `stylelint --fix`。workflow 的 `freeze` 会在快照前运行同一管线（先 `git add -A` 全量 staging），因此 commit 时的 staged 修复是收敛确认（幂等 no-op）而不是新的变更来源；机制见 [`workflow.md`](workflow.md)。
+- **格式化工具**：`vp check` 运行格式化、lint 与类型检查（通过 `fmt.ignorePatterns` 排除第三方 `.agents/skills/`）；提交 hook 的 `vp staged` 对暂存路径运行 `vp check --fix`，并额外对暂存的 `.go` 文件运行 `gofmt -w`、对 `.css/.vue` 运行 `stylelint --fix`。workflow 的 `freeze` 在快照前运行同一管线，机制见 [`workflow.md`](workflow.md)。
 - **自动修复**：运行 `CI=true pnpm run fix:code` 一键执行全仓代码格式化、Go 格式化与样式修复（聚合 `vp check --fix` + `pnpm run fix:go` + `pnpm run fix:stylelint`）。在非交互环境/Agent 会话中指定 `CI=true` 可避免 `vp` 版本更新检查阻塞。
 - **代码风格**：由 `vite.config.ts` 的 Vite Plus / oxlint 配置与 `.editorconfig`（LF）强制；按配置输出，不手工对抗工具。
 - **第三方 skills 排除**：`.agents/skills/` 整体通过 `fmt.ignorePatterns` 排除格式化（覆盖第三方与仓库自编写 skill）；更新或新增第三方 skill 时，通过 `npx skills@latest` 同步 lock。
 - **Linter**：`vp check` 运行 oxlint（支持类型感知）与 TypeScript 类型检查。`CI=true pnpm run check:code` 聚合 `check:cspell`、`vp check`、`check:go` 与 `check:stylelint`。
+- **Vue 模板盲区**：oxlint/shadcn 规则不解析 `.vue` 模板（oxc 上游架构限制，见 oxc#15761/#20465），只覆盖其 `<script>` 块——模板内的 class 与内联样式**没有 JS lint 覆盖**（stylelint 与格式化仍覆盖 `.vue`；不要用 `lint.ignorePatterns` 排除 `.vue`，那会连 script 块的 lint 一起丢掉）。需校验 Vue 模板类名时另行接入 ESLint + `eslint-plugin-better-tailwindcss`（未启用）。
 - **拼写检查**：执行 `pnpm run check:cspell`。自定义词典条目位于根目录 `cspell.json` 的 `words` 数组中；将工具/协议标识符添加到该处，而非使用行内 `cspell:disable` 注释。
 - **CSS lint**：对 `.css`、`.vue` 使用 stylelint（项目使用 Tailwind CSS，不使用 SCSS）；全量检查使用 `pnpm run check:stylelint`（已并入 `check:code`，随 CI 运行），自动修复使用 `pnpm run fix:stylelint`。提交时由 `vp staged` 增量触发。
 - **CSS 嵌套**：web-ui 组件样式使用原生 CSS 嵌套语法（`vp build` 配置了 LightningCSS 转译），禁止扁平化写法

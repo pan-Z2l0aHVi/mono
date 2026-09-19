@@ -8,7 +8,6 @@
   display: contents;
 }
 
-/* ===== Dialog 容器 ===== */
 dialog {
   /* 显式 position: fixed（防御性）：UA 的 dialog:modal 默认 fixed，但作者样式若覆盖
      position 会把它退回文档流——top layer 里的 modal dialog 变成按文档流定位，出现在
@@ -61,7 +60,7 @@ dialog[open].is-visible {
 }
 
 /*
- * 拖拽跟手期间与弹簧弹回期间，transform/backdrop 由 JS 内联样式与 WAAPI 管辖。
+ * 拖拽跟手期间，transform/backdrop 由 JS 内联样式管辖，CSS transition 必须让位。
  * 特异性必须压过下方开放守卫块（:host(:not()) dialog[open].is-visible = (0,4,1)
  * 的 nested transition 声明），否则拖拽写入的 transform 会被平滑掉、跟手失效。
  * 复合选择器达 (0,6,1)，恒高于守卫。
@@ -72,6 +71,24 @@ dialog.is-dragging {
 
   &::backdrop {
     transition: none;
+  }
+}
+
+/*
+ * 释放后的收尾（弹回打开位 / 滑出到闭合位）：位移与遮罩交还 CSS transition，
+ * JS 只在松手瞬间写入终值与 --wui-internal-settle-duration / --wui-internal-settle-easing
+ *（issue #123）。全程无 WAAPI，before-change style 就是拖拽期间写入的内联值，
+ * 不存在 JS→CSS 动画交接边界，因此不需要 Safari 的 reflow 烘焙补丁。
+ * 特异性对齐 .is-dragging：同样要压过下方开放守卫块。
+ */
+:host(:not([headless])) dialog.is-settling[open].is-visible,
+dialog.is-settling {
+  transition: transform var(--wui-internal-settle-duration, 280ms)
+    var(--wui-internal-settle-easing, cubic-bezier(0.32, 0.72, 0, 1));
+
+  &::backdrop {
+    transition: opacity var(--wui-internal-settle-duration, 280ms)
+      var(--wui-internal-settle-easing, cubic-bezier(0.32, 0.72, 0, 1));
   }
 }
 
@@ -95,14 +112,15 @@ dialog[open].is-visible::backdrop {
   opacity: var(--wui-internal-drag-backdrop-opacity, 1);
 }
 
-/* ===== Drag bar（拖拽关闭热区） ===== */
-
 /*
  * 热区贴在抽屉内缘，宽度由 --wui-drawer-drag-zone-size（默认 20px）控制便于触控命中；
  * 胶囊本身由 --wui-drawer-drag-bar-thickness × --wui-drawer-drag-bar-length（默认 4×56px）控制。
  * 胶囊绝对定位在 --wui-drawer-content-padding 的视觉中线（默认 20px → 中线 10px）；
  * 热区仍覆盖内缘起 --wui-drawer-drag-zone-size，保证触控命中面积不随胶囊收窄。
  * 位置随 placement 切换：right 贴在左缘、left 贴在右缘、top 贴在底边、bottom 贴在顶边。
+ *
+ * 按在面板边缘之外的坐标属于遮罩：轻点走「点遮罩关闭」（click 链路回溯校验，
+ * 见 index.ts 的 handleBackdropClick），拖拽松手不关闭。
  */
 .wui-drawer-drag-zone {
   /* 胶囊中线跟随内容区 padding，consumer 覆盖 --wui-drawer-content-padding 后拖拽条自动居中。 */
@@ -201,8 +219,6 @@ dialog.is-drag-close .wui-drawer-drag-zone .wui-drawer-drag-bar {
   background: var(--wui-color-accent, #08f);
 }
 
-/* ===== Placement 变体 ===== */
-
 :host([placement='left']) dialog {
   right: auto;
   left: 0;
@@ -243,8 +259,6 @@ dialog.is-dragging .wui-drawer-drag-zone {
   cursor: grabbing;
 }
 
-/* ===== 抽屉主体 ===== */
-
 .wui-drawer-body {
   --wui-internal-glass-shadow: var(--wui-shadow-overlay, 2px 16px 40px rgb(0 0 0 / 0.4));
   --wui-glass-corner-radius: var(--wui-drawer-radius, var(--wui-radius-overlay, 28px));
@@ -253,8 +267,6 @@ dialog.is-dragging .wui-drawer-drag-zone {
   height: 100%;
   background-color: var(--wui-drawer-bg, var(--wui-color-surface-overlay, rgb(246 246 246 / 0.82)));
 }
-
-/* ===== Header ===== */
 
 .wui-drawer-header {
   display: flex;
@@ -269,13 +281,9 @@ dialog.is-dragging .wui-drawer-drag-zone {
   line-height: 1.4;
 }
 
-/* ===== 隐藏态 ===== */
-
 .wui-drawer-header[hidden] {
   display: none;
 }
-
-/* ===== 内容区 ===== */
 
 .wui-drawer-content {
   overflow-y: auto;
@@ -288,8 +296,6 @@ dialog.is-dragging .wui-drawer-drag-zone {
   line-height: 1.5;
   color: var(--wui-color-text, #1b1b1b);
 }
-
-/* ===== Footer ===== */
 
 .wui-drawer-footer {
   flex-shrink: 0;
@@ -307,12 +313,10 @@ dialog.is-dragging .wui-drawer-drag-zone {
   position: absolute;
   z-index: 3;
   top: var(--wui-drawer-close-top, 16px);
-  right: var(--wui-drawer-close-right, 20px);
+  right: var(--wui-drawer-close-right, 16px);
   bottom: auto;
   left: auto;
 }
-
-/* ===== Headless 模式 ===== */
 
 /* Headless 模式下，dialog 只作为 overlay 容器，不渲染内置 UI */
 :host([headless]) dialog {
@@ -323,7 +327,6 @@ dialog.is-dragging .wui-drawer-drag-zone {
    */
   --wui-internal-drawer-inset: 0px;
 
-  /* 保持 overlay 基础设施，移除内置样式 */
   width: auto;
   max-width: none;
 }
@@ -407,7 +410,7 @@ dialog.is-dragging .wui-drawer-drag-zone {
  * 闭合/拖拽/弹簧位移互不覆写（独立属性先于 transform 应用后合并）。
  * JS 层序管理写入 depth/scale/shift 三个内部变量，单层使用时全为中性值。
  *
- * 层叠变化的平滑过渡（Base UI nested 实测规格：450ms easeOutQuint 类曲线）。
+ * 层叠变化的平滑过渡（450ms easeOutQuint 类曲线）。
  * transform 保持既有 enter/exit 时长；translate/scale 只在层叠数变化时更新，
  * 用更长的 nested 时长。
  */

@@ -50,13 +50,11 @@ export function defineBatchEmitter<S>(options?: Options<S>) {
         timerId = null
       }
 
-      // 先同步 resolve 所有等待中的 batchEmit 调用方
       let fn: Resolve<S> | undefined
       while ((fn = currentResolves.shift())) {
         fn(currentQueue)
       }
 
-      // onFlushed 放在后面，不阻塞 resolve
       safeCall(() => config.onFlushed(currentQueue))
     }
 

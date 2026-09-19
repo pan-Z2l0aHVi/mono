@@ -1,4 +1,3 @@
-// 检测版本 PR merge 中发生版本变更的公开包，把 merge-sha / should-publish / package-releases 写入 GITHUB_OUTPUT。
 // 用法: node .github/scripts/detect-versioned-packages.mjs   （需 env: MERGE_SHA）
 import { execFileSync } from 'node:child_process'
 import { appendFile, readFile } from 'node:fs/promises'

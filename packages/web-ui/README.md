@@ -532,6 +532,12 @@ Individual checkbox.
 
 Uses native `<label>` with `role="checkbox"` and `aria-checked`. Enter/Space keyboard toggle.
 
+**Layout:** the host is an inline-flex box whose height is set by its content, so the inherited page line-height can no longer inflate it or shift the indicator up and down; it aligns against surrounding text with `vertical-align: middle`. The indicator measures `--wui-selection-control-size` (`18px`), and `<web-ui-radio>` shares the same box contract.
+
+**Check animation:** the checkmark is the control's own stroked path rather than a `<web-ui-icon>` asset, wrapped in `<web-ui-svg-draw-lines>` so it draws itself in left to right when checked and fades out when unchecked. Both are skipped inside a `motion="reduced"` theme scope.
+
+**Idle states:** the unchecked indicator is filled with `--wui-color-surface-control`, the same control surface neutral buttons use, so it stays separable from `--wui-color-page` in dark mode. Hovering or pressing anywhere in the trigger row — indicator, gap or slotted label — tints that surface (6% and 15% state layer over `--wui-color-surface-control`). Hover applies only on `(hover: hover) and (pointer: fine)` devices; checked and disabled controls keep their own surface. `<web-ui-radio>` shares the same states.
+
 #### `<web-ui-radio>`
 
 Individual radio button.
@@ -547,6 +553,8 @@ Individual radio button.
 **Events:** `input`, `change`
 
 **Slots:** `default` (label text)
+
+**Layout:** shares the selection-control box contract with `<web-ui-checkbox>` — host height comes from its content, alignment against surrounding text is `vertical-align: middle`, and the indicator measures `--wui-selection-control-size`.
 
 #### `<web-ui-switch>`
 
@@ -701,6 +709,8 @@ Modal dialog using native `<dialog>` with `showModal()`.
 
 Uses native `<dialog>` with `@cancel` prevention. Escape calls `close()` unless `no-escape-close` is present. Click on backdrop closes dialog unless `no-backdrop-close` is present. With `controlled`, both only emit the close request instead.
 
+> **Escape ownership:** Escape is arbitrated by a single shared owner, so one keypress closes only the **innermost** open overlay (popover, select, autocomplete, dropdown, context-menu, drawer and dialog all take part). With a select open inside a drawer, the first Escape closes the select and only the second closes the drawer. Sibling overlays that do not nest fall back to open order, closing the most recently opened one. `image-preview` is the exception: it keeps its native `<dialog>` `cancel` path and takes no part in the arbitration.
+
 **CSS Custom Properties:**
 
 | Property                      | Default                                      | Description                                                                           |
@@ -714,7 +724,7 @@ Uses native `<dialog>` with `@cancel` prevention. Escape calls `close()` unless 
 | `--wui-dialog-desc-gap`       | `24px`                                       | Spacing below the body content                                                        |
 | `--wui-dialog-footer-gap`     | `10px` / `12px` (horizontal)                 | Spacing between footer buttons                                                        |
 | `--wui-dialog-footer-justify` | `flex-end` (default) / `center` (horizontal) | Footer `justify-content`; override to `flex-end` for right-aligned horizontal buttons |
-| `--wui-dialog-scale-enter`    | `1.2`                                        | Enter scale start: the panel shrinks in from `1.2` to `1`, and exit reverses it       |
+| `--wui-dialog-scale-enter`    | `1.1`                                        | Enter scale start: the panel shrinks in from `1.1` to `1`, and exit reverses it       |
 
 #### `<web-ui-drawer>`
 
@@ -748,10 +758,18 @@ When `closable` is set, the built-in close button is positioned at the header's 
 **Drag to close:** With `draggable`, a gray capsule drag bar (4×56px by default, visually centered 10px from the inner edge inside a 20px-thick hit zone) appears on the drawer's inner edge (left edge for `right`, right edge for `left`, bottom edge for `top`, top edge for `bottom`) while open:
 
 - Dragging follows the pointer in real time; the backdrop fades proportionally.
-- Releasing past ~1/3 of the drawer size, or with a fast closing flick, springs the drawer shut; otherwise it springs back open. The close direction is placement-aware.
-- With `controlled`, release past the threshold only emits `open-change(false)`; the drawer holds at the closed position briefly (120ms write-back window) and springs back open if the consumer rejects or misses the write-back.
+- Backdrop click now only honors a genuine tap chain: the press must start on the backdrop itself and the press-to-release travel must stay within the tap magnitude. The click the browser generates for a press–drag–release lands on the common ancestor (`dialog`) regardless of where the press started — pressing on the panel content or on the backdrop itself and releasing over the backdrop used to close the drawer through that click. The component records the pointerdown origin and validates it on click, so such drag releases always rebound. A `detail`-0 click (keyboard / programmatic) never consumes the pointer record.
+- Releasing with a net displacement past half the drawer size (floor of 10px), or with a fast closing flick, closes the drawer; otherwise it animates back open. The close direction is placement-aware, and each part of the decision matches Base UI's `useSwipeDismiss`:
+  - Both the displacement origin and the decision clock reset to the first `pointermove`, absorbing the gap between the press and that move; its whole travel is discarded, so a gesture needs at least two moves to accumulate displacement.
+  - The flick is judged by the **whole gesture's** average velocity — net displacement ÷ gesture duration, divisor floored at 50ms — reaching 500px/s, not by the instantaneous velocity at release. A sliding window only describes the last short stretch of the trace, so under a whole-gesture average sweeping back towards the edge can no longer read as a flick. A zero-length duration yields zero velocity instead of a floored divisor, so an unmeasurable gesture is never read as a flick.
+  - Any release whose net displacement isn't in the close direction animates back open.
+  - The distance test also uses the net displacement, so grabbing the drawer mid-rebound and releasing without dragging further never counts as "already past half way".
+  - A withdrawal of 10px or more from the point where the close direction was confirmed cancels the flick, so dragging out into the overscroll and sweeping back never closes. Displacement that has already crossed the distance threshold clears the mark again, so a gesture that is past half way is unaffected by a small retreat. Upstream has the same guard (`cancelledSwipe`), but never reaches it on the drawer path because `DrawerViewport.onRelease` always returns a decision.
+  - Dragging in the opening direction is damped by a square root (`sign(d) · |d| ** 0.5`), matching `applyDirectionalDamping`. The damping applies to the gesture's increment, added on top of the offset the drag started from, and self-limits rather than being capped at a fixed distance.
+- The release velocity only shapes the settle transition's duration (180–420ms); the settle itself is a single CSS transition on `transform`, handed back by JS at release — no WAAPI animation is created.
+- With `controlled`, release past the threshold only emits `open-change(false)`; the drawer holds at the closed position briefly (120ms write-back window) and animates back open if the consumer rejects or misses the write-back.
 - Drag-to-open is not supported because the closed drawer renders nothing outside the native dialog.
-- Under `prefers-reduced-motion`, release snaps instantly without spring animation.
+- Under `prefers-reduced-motion`, release settles instantly, with no transition.
 
 **CSS Custom Properties:**
 
@@ -1265,7 +1283,7 @@ Role: `button`, keyboard Enter scrolls to top.
 
 #### `<web-ui-svg-draw-lines>`
 
-SVG line drawing animation using `stroke-dashoffset`. Animates geometry in-place — no cloning, no DOM manipulation.
+SVG line drawing animation using `stroke-dashoffset`. Animates geometry in-place — no cloning, no DOM manipulation. Drawing has a single direction: geometry is revealed from nothing to fully drawn, there is no reverse (un-draw) playback.
 
 | Attribute  | Type     | Default    | Description                                       |
 | ---------- | -------- | ---------- | ------------------------------------------------- |
@@ -1288,12 +1306,15 @@ Theme provider defining CSS custom property tokens.
 | ------------ | --------------------------------- | ---------- | --------------------------------------------- |
 | `appearance` | `'light' \| 'dark' \| 'system'`   | `'light'`  | Color scheme                                  |
 | `motion`     | `'full' \| 'reduced' \| 'system'` | `'system'` | Motion preference for this nested theme scope |
+| `transition` | `boolean`                         | `false`    | Circular reveal on appearance changes         |
 
 **Methods:** `getOverlayRoot()` — returns this theme-owned overlay root
 
 **Portal mounting contract:** Every active `<web-ui-theme>` is also the default scoped theme-owned overlay root. Portal-based components without an explicit `overlayContainer` resolve to the nearest active theme's `getOverlayRoot()`; target-less portal calls prefer the root theme's theme-owned overlay root. When no active theme provides a root, they fall back to the global fallback overlay root.
 
 Defines foundation, color, layer, shadow, and motion tokens for its subtree. `motion="system"` follows `prefers-reduced-motion`; use `motion="reduced"` to reduce animation in a scope or `motion="full"` in a nested theme to restore normal token values. System appearance follows `prefers-color-scheme`.
+
+Set the `transition` boolean attribute to animate appearance changes with the View Transitions API. Removing the attribute disables the reveal; framework bindings must write the boolean property when toggling it dynamically. A root theme reveals the whole page; a nested theme reveals only its own capture box. The origin is the last pointer-down position when available, otherwise the theme box or viewport center. Dark-to-light and light-to-dark directions are reversed. Unsupported browsers, reduced-motion scopes, zero durations, and another request already in the same flight fall back to applying the new appearance immediately; `appearance="system"` does not animate OS light/dark changes in this version.
 
 The host uses `display: contents` and does not paint any background: the library never draws on the host page, so the embedding application keeps full control of the surface behind the themed subtree. Custom properties still inherit to slotted content reliably.
 
@@ -1306,6 +1327,13 @@ The host uses `display: contents` and does not paint any background: the library
 | `--wui-control-size`      | `36px`  | Default height and square min-width for controls |
 | `--wui-overlay-min-width` | `200px` | Minimum anchored overlay width                   |
 | `--wui-focus-ring-width`  | `3px`   | Focus indicator width                            |
+
+**Selection control tokens (radio, checkbox):**
+
+| Property                       | Default | Description                                                                |
+| ------------------------------ | ------- | -------------------------------------------------------------------------- |
+| `--wui-selection-control-size` | `18px`  | Indicator (circle / box) width and height                                  |
+| `--wui-selection-group-gap`    | `8px`   | Member spacing inside `<web-ui-radio-group>` and `<web-ui-checkbox-group>` |
 
 **Radius tokens:**
 
@@ -1331,7 +1359,7 @@ The host uses `display: contents` and does not paint any background: the library
 | `--wui-layer-toast`          | `200`   | Toasts                       |
 | `--wui-layer-loading`        | `300`   | Blocking loading surfaces    |
 
-**Motion tokens:** duration defaults are `--wui-duration-press: 80ms`, `--wui-duration-feedback: 100ms`, `--wui-duration-trigger: 160ms`, `--wui-duration-focus: 200ms`, `--wui-duration-float-enter: 240ms`, `--wui-duration-float-exit: 160ms`, `--wui-duration-dialog-enter: 320ms`, `--wui-duration-dialog-exit: 260ms`, `--wui-duration-drawer-enter: 280ms`, `--wui-duration-drawer-exit: 240ms`, `--wui-duration-drawer-nested: 450ms`, `--wui-duration-toast-enter: 280ms`, `--wui-duration-toast-exit: 200ms`, `--wui-duration-collapse-enter: 200ms`, `--wui-duration-collapse-exit: 160ms`, `--wui-duration-layout: 200ms`, `--wui-duration-swipe-settle: 220ms` (image preview carousel settle), `--wui-duration-spin: 600ms` (icon rotation) and `--wui-duration-spinner: 800ms` (spinner leaf cycle). Easing tokens are `--wui-ease-enter`, `--wui-ease-dialog` (`cubic-bezier(0.2, 0, 0, 1)`), `--wui-ease-slide`, `--wui-ease-float` (`cubic-bezier(0.4, 0.38, 0.2, 1)`, a no-bounce spring fit used by anchored floating panels), and `--wui-ease-swipe` (`cubic-bezier(0.32, 0.72, 0, 1)`, the decelerating tail of the carousel settle). Enter scale tokens are `--wui-scale-enter: 0.95` (floating panels and the image preview's image surface grow in) and `--wui-dialog-scale-enter: 1.2` (the dialog shrinks in from above, reversed on exit). Under `motion="reduced"` every transition duration collapses to `0ms`, the carousel settle with them, while the two infinite loading loops keep running at a slower period (`--wui-duration-spin` / `--wui-duration-spinner`: `600ms` / `800ms` → `1600ms`). A frozen loading indicator reads as a hung UI. Hover/active background feedback switches instantly with no transition; checked, pressed and focus states do transition, and those durations collapse to 0ms under reduced motion along with the rest.
+**Motion tokens:** duration defaults are `--wui-duration-press: 80ms`, `--wui-duration-feedback: 100ms`, `--wui-duration-trigger: 160ms`, `--wui-duration-focus: 200ms`, `--wui-duration-float-enter: 240ms`, `--wui-duration-float-exit: 160ms`, `--wui-duration-dialog-enter: 320ms`, `--wui-duration-dialog-exit: 260ms`, `--wui-duration-drawer-enter: 280ms`, `--wui-duration-drawer-exit: 240ms`, `--wui-duration-drawer-nested: 450ms`, `--wui-duration-toast-enter: 280ms`, `--wui-duration-toast-exit: 200ms`, `--wui-duration-collapse-enter: 200ms`, `--wui-duration-collapse-exit: 160ms`, `--wui-duration-layout: 200ms`, `--wui-duration-swipe-settle: 220ms` (image preview carousel settle), `--wui-duration-spin: 600ms` (icon rotation), `--wui-duration-spinner: 800ms` (spinner leaf cycle) and `--wui-theme-transition-duration: 500ms` (theme appearance reveal). Easing tokens are `--wui-ease-enter`, `--wui-ease-dialog` (`cubic-bezier(0.2, 0, 0, 1)`), `--wui-ease-slide`, `--wui-ease-float` (`cubic-bezier(0.4, 0.38, 0.2, 1)`, a no-bounce spring fit used by anchored floating panels), `--wui-ease-swipe` (`cubic-bezier(0.32, 0.72, 0, 1)`, the decelerating tail of the carousel settle) and `--wui-theme-transition-easing: ease-in`. Enter scale tokens are `--wui-scale-enter: 0.95` (floating panels and the image preview's image surface grow in) and `--wui-dialog-scale-enter: 1.1` (the dialog shrinks in from above, reversed on exit). Under `motion="reduced"` every transition duration collapses to `0ms`, the carousel settle with them, while the two infinite loading loops keep running at a slower period (`--wui-duration-spin` / `--wui-duration-spinner`: `600ms` / `800ms` → `1600ms`). A frozen loading indicator reads as a hung UI. Hover/active background feedback switches instantly with no transition; checked, pressed and focus states do transition, and those durations collapse to 0ms under reduced motion along with the rest.
 
 **Color tokens:**
 
@@ -1410,29 +1438,56 @@ const id = toast({ message: 'Custom', type: 'info', position: 'bottom-right', du
 toast.close(id)
 toast.clear()
 
-// Update visible content without resetting auto-close timing
-toast.updateMessage(id, { message: 'Upload 60% complete', heading: 'Uploading' })
+// Upsert: calling again with the same id updates that one toast instead of adding another
+toast.error('Network lost, retrying…', { id: 'network' })
+toast.error('Network lost (retry 2)', { id: 'network' })
+
+// One toast through its whole lifecycle
+toast.info('Uploading 0%', { id: 'upload', duration: 0 })
+toast.info('Uploading 60%', { id: 'upload' }) // duration omitted: timer keeps running
+toast.success('Upload complete', { id: 'upload', duration: 3000 }) // new type, timer restarts
 ```
+
+Every call returns the final id of that toast, so callers never branch on create vs. update.
 
 **ToastOptions:**
 
-| Option      | Type                                                                                              | Default                   | Description                                   |
-| ----------- | ------------------------------------------------------------------------------------------------- | ------------------------- | --------------------------------------------- |
-| `message`   | `string`                                                                                          | —                         | Notification text                             |
-| `type`      | `'success' \| 'info' \| 'warning' \| 'error'`                                                     | `'info'`                  | Toast type                                    |
-| `duration`  | `number`                                                                                          | `3000` (`5000` for error) | Auto-close duration (0 = no auto-close)       |
-| `closable`  | `boolean`                                                                                         | `true`                    | Show close button                             |
-| `id`        | `string`                                                                                          | auto                      | Deduplication identifier                      |
-| `heading`   | `string`                                                                                          | `''`                      | Bold heading text                             |
-| `position`  | `'top-left' \| 'top-center' \| 'top-right' \| 'bottom-left' \| 'bottom-center' \| 'bottom-right'` | `'top-right'`             | Screen position                               |
-| `target`    | `Element`                                                                                         | —                         | Used to find nearest theme-owned overlay root |
-| `container` | `HTMLElement`                                                                                     | —                         | Explicit mount container (highest priority)   |
+| Option      | Type                                                                                              | Default                   | Description                                     |
+| ----------- | ------------------------------------------------------------------------------------------------- | ------------------------- | ----------------------------------------------- |
+| `message`   | `string`                                                                                          | —                         | Notification text                               |
+| `type`      | `'success' \| 'info' \| 'warning' \| 'error'`                                                     | `'info'`                  | Toast type                                      |
+| `duration`  | `number`                                                                                          | `3000` (`5000` for error) | Auto-close duration (0 = no auto-close)         |
+| `closable`  | `boolean`                                                                                         | `true`                    | Show close button                               |
+| `id`        | `string`                                                                                          | auto                      | Merge key: calls sharing an id update one toast |
+| `heading`   | `string`                                                                                          | `''`                      | Bold heading text                               |
+| `position`  | `'top-left' \| 'top-center' \| 'top-right' \| 'bottom-left' \| 'bottom-center' \| 'bottom-right'` | `'top-right'`             | Screen position                                 |
+| `target`    | `Element`                                                                                         | —                         | Used to find nearest theme-owned overlay root   |
+| `container` | `HTMLElement`                                                                                     | —                         | Explicit mount container (highest priority)     |
 
-**`toast.updateMessage(id, options)`** updates the visible toast's `message` and, when supplied, `heading`. It does not restart the auto-close timer. `options` is `ToastMessageUpdateOptions`: `{ message: string; heading?: string }`.
+**Upsert semantics** — what a second call with the same `id` does:
+
+| Target state                  | Result                                                                          |
+| ----------------------------- | ------------------------------------------------------------------------------- |
+| Mounted                       | Same id returned; supplied fields overwrite, omitted ones keep their value      |
+| Still queued in the same tick | The queued options are patched and applied on mount; no second toast is created |
+| Closed, or still exiting      | A new toast is created; the one leaving finishes its exit animation on its own  |
+
+`duration` restarts the countdown only when it is passed explicitly (the one exception is a hover pause: the new value is recorded without starting the timer, and the countdown runs with it once the pointer leaves); `message`, `heading` and `type` are plain properties and leave the timer alone. The `error` shortcut's 5000 ms default is applied when the toast is created, so it does not count as an explicit `duration` — repeated `toast.error(msg, { id })` calls do not reset the countdown. Changing `position` moves the element to the new container and keeps the remaining time (via `moveBefore` where available, with a pause/resume fallback elsewhere); if the countdown already elapsed while the main thread was blocked, the fallback closes the toast on resume instead of leaving it open. `container` and `target` are read from the first call only — moving a toast to a different overlay root is not supported.
+
+**Close semantics** — `toast.close(id)` covers every state a toast can be in, including the two before it becomes visible:
+
+| Target state                       | Result                                                          |
+| ---------------------------------- | --------------------------------------------------------------- |
+| Visible                            | Plays the exit animation, then emits `toast-close`              |
+| Mounted, `show()` has not run yet  | No exit animation to play: emits `toast-close` immediately      |
+| Still queued in the same microtask | Dropped before it mounts — nothing appears, no event is emitted |
+| Already exiting                    | No-op; that toast finishes its own exit                         |
+
+`toast.clear()` has the same scope: it drops queued entries and closes everything mounted.
 
 **Events:** `toast-close` (`CustomEvent<{ id: string; reason: 'auto' | 'manual' | 'programmatic' | 'clear' }>`)
 
-Hover pauses auto-close timer (uses `pointerenter`/`pointerleave`). Batch-mounts toasts created in the same microtask.
+Hover pauses the auto-close timer (uses `pointerenter`/`pointerleave`); leaving resumes the **remaining** time instead of restarting the full duration. If the `pointerleave` is missed while paused — the pointer is dragged out of the window, or the element is moved or removed while hovered — a document-level `pointerover`/`pointerout`/`pointerleave` fallback resumes the countdown, so a hovered toast cannot stay on screen forever. Batch-mounts toasts created in the same microtask.
 
 **CSS Custom Properties:**
 

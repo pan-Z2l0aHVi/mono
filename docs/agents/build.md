@@ -30,15 +30,14 @@ Interweave 由 Wails 宿主管理嵌套前端，因此其 alias 只启动 Wails 
 - **Vue 应用**：`vue-tsc --build && vp build`。
 - **tsconfig**：无构建步骤；它提供通过 TypeScript `extends` 消费的 JSON 文件。
 
-代码质量检查与修复的命令矩阵（`CI=true pnpm run check:code` 聚合 `check:cspell`、`vp check`、`check:go`、`check:stylelint`；`CI=true pnpm run fix:code` 一键全量修复）以 [`linting.md`](linting.md) 为权威；提交 hook 的 `vp staged` 对暂存路径做增量修复与检查。包构建命令不能替代这些命令；Wails 的 macOS/Windows 原生构建仍负责验证 host package 与平台集成。
+代码质量检查与修复的命令矩阵（`check:code` 聚合与 `fix:code` 一键修复）以 [`linting.md`](linting.md) 为权威；提交 hook 的 `vp staged` 对暂存路径做增量修复与检查。包构建命令不能替代这些命令；Wails 的 macOS/Windows 原生构建仍负责验证 host package 与平台集成。
 
-| 命令                                             | 用途                                                   | 说明                                                                            |
-| ------------------------------------------------ | ------------------------------------------------------ | ------------------------------------------------------------------------------- |
-| `pnpm run clean`                                 | 清理构建产物与缓存                                     | 执行 `scripts/clean.sh`，安全重置各工作区的 `dist/`、`.turbo/` 和临时产物       |
-| `pnpm run test:scripts`                          | 验证仓库内部工具脚本                                   | -                                                                               |
-| `pnpm run validate:context`                      | 验证 Agent context 路由、必需文档、软链与结构约束      | 修改 `AGENTS.md`、角色、rules、skills 或 `docs/agents/**` 时必须通过            |
-| `pnpm run audit:instructions -- --strict --json` | 验证不变量锚点、约束预算、工具已强制规则与重述块未回退 | instruction system 或 workflow 变更时必须通过                                   |
-| `pnpm run check:pack`                            | 发布产物边界检查                                       | 构建可发布 package 或修改其 `exports`、`files`、Vite 输出时，在根构建成功后运行 |
+| 命令                        | 用途                                              | 说明                                                                            |
+| --------------------------- | ------------------------------------------------- | ------------------------------------------------------------------------------- |
+| `pnpm run clean`            | 清理构建产物与缓存                                | 执行 `scripts/clean.sh`，安全重置各工作区的 `dist/`、`.turbo/` 和临时产物       |
+| `pnpm run test:scripts`     | 验证仓库内部工具脚本                              | -                                                                               |
+| `pnpm run validate:context` | 验证 Agent context 路由、必需文档、软链与结构约束 | 修改 `AGENTS.md`、角色、rules、skills 或 `docs/agents/**` 时必须通过            |
+| `pnpm run check:pack`       | 发布产物边界检查                                  | 构建可发布 package 或修改其 `exports`、`files`、Vite 输出时，在根构建成功后运行 |
 
 `check:pack` 使用 `pnpm pack --dry-run` 验证实际发布文件与 manifest export targets；它不判断 API 语义或版本级别。
 
@@ -59,7 +58,7 @@ turbo 本地缓存由 `.mise.toml` 的 `TURBO_CACHE_DIR` 指向 worktree 族共�
 | Wails frontend bindings        | 公开 Go API、`apps/interweave/frontend/package.json`       | `pnpm --filter @greypan/interweave-frontend build`（先执行 `wails3 generate bindings`） | 核对 `frontend/bindings/**` 的 generator diff，并运行 frontend 类型检查/构建和受影响调用点验证。         |
 | web-ui icons                   | `packages/web-ui/icons.used.json`                          | `pnpm --filter @greypan/web-ui generate-icons` 或 `vp build`                            | 图标模块只由 generator 更新，并完成 package build 与公开契约验证。                                       |
 
-`**/__screenshots__/` 与 `**/.vitest-attachments/` 属于测试证据，而不是应用代码生成物。除非任务明确要求并已经完成对应的视觉/浏览器验证，不要创建、手改或提交这些文件。
+`**/__screenshots__/` 与 `**/.vitest-attachments/` 属于测试证据，而不是应用代码生成物。除非任务明确要求并已经完成对应的视觉/浏览器验证，不要创建、手改或提交这些文件。根 `AGENTS.md`「不可绕过的仓库边界」在入口层声明同一约束，本节承载处方。
 
 ## TypeScript 配置
 

@@ -86,20 +86,22 @@ interweave（含 interweave-frontend）──共享包的 Wails 桌面集成表�
 
 ## 关键 ADR
 
-| ADR                                                                             | 决策                                                 | 何时读取                                                                |
-| ------------------------------------------------------------------------------- | ---------------------------------------------------- | ----------------------------------------------------------------------- |
-| [0001](docs/adr/0001-ci-pipeline.md)                                            | CI Pipeline                                          | 修改验证、Changesets 或发布门控                                         |
-| [0002](docs/adr/0002-build-toolchain.md)                                        | Build Toolchain                                      | 修改 Vite Plus、构建或测试工具链                                        |
-| [0003](docs/adr/0003-release-planes.md)                                         | Release Planes                                       | 修改 npm/Wails 发布流程                                                 |
-| [0004](docs/adr/0004-progressive-agent-context-architecture.md)                 | Agent Context Architecture                           | 修改 agent context、rules、skills 或 instruction system                 |
-| [0005](docs/adr/0005-web-ui-component-architecture.md)                          | Web UI Component Architecture                        | 修改 web-ui 组件技术选型、公共契约、事件模型、框架类型适配或 icon 系统  |
-| [0006](docs/adr/0006-web-ui-composition-rendering-architecture.md)              | Web UI Composition & Rendering Architecture          | 修改 overlay 交互/定位、布局层级、design token 或 @lit/context 组合模式 |
-| [0007](docs/adr/0007-plugin-system.md)                                          | Plugin System                                        | 设计可组合状态或行为模块                                                |
-| [0008](docs/adr/0008-interweave-backend-architecture.md)                        | Interweave Backend Architecture                      | 修改 interweave Go 模块、Wails Service 或 frontend bindings             |
-| [0009](docs/adr/0009-interweave-sqlite-persistence-wal.md)                      | SQLite Persistence WAL                               | 修改 interweave 持久化层或 SQLite 并发模型                              |
-| [0010](docs/adr/0010-agent-role-orchestration.md)                               | Agent Role Orchestration                             | 修改角色分工、编排路由或 handoff 契约                                   |
-| [0011](docs/adr/0011-agent-model-binding-and-effort.md)                         | Agent Model Binding & Effort                         | 修改角色-执行体-模型绑定或思考强度分档                                  |
-| [0012](docs/adr/0012-instruction-risk-tiering-and-pre-authorized-operations.md) | Instruction Risk Tiering & Pre-authorized Operations | 修改风险分级、预授权操作、不变量锚点或约束预算基线                      |
+| ADR                                                                             | 决策                                                  | 何时读取                                                                  |
+| ------------------------------------------------------------------------------- | ----------------------------------------------------- | ------------------------------------------------------------------------- |
+| [0001](docs/adr/0001-ci-pipeline.md)                                            | CI Pipeline                                           | 修改验证、Changesets 或发布门控                                           |
+| [0002](docs/adr/0002-build-toolchain.md)                                        | Build Toolchain                                       | 修改 Vite Plus、构建或测试工具链                                          |
+| [0003](docs/adr/0003-release-planes.md)                                         | Release Planes                                        | 修改 npm/Wails 发布流程                                                   |
+| [0004](docs/adr/0004-progressive-agent-context-architecture.md)                 | Agent Context Architecture                            | 修改 agent context、rules、skills 或 instruction system                   |
+| [0005](docs/adr/0005-web-ui-component-architecture.md)                          | Web UI Component Architecture                         | 修改 web-ui 组件技术选型、公共契约、事件模型、框架类型适配或 icon 系统    |
+| [0006](docs/adr/0006-web-ui-composition-rendering-architecture.md)              | Web UI Composition & Rendering Architecture           | 修改 overlay 交互/定位、布局层级、design token 或 @lit/context 组合模式   |
+| [0007](docs/adr/0007-plugin-system.md)                                          | Plugin System                                         | 设计可组合状态或行为模块                                                  |
+| [0008](docs/adr/0008-interweave-backend-architecture.md)                        | Interweave Backend Architecture                       | 修改 interweave Go 模块、Wails Service 或 frontend bindings               |
+| [0009](docs/adr/0009-interweave-sqlite-persistence-wal.md)                      | SQLite Persistence WAL                                | 修改 interweave 持久化层或 SQLite 并发模型                                |
+| [0010](docs/adr/0010-agent-role-orchestration.md)                               | Agent Role Orchestration                              | 修改角色分工、编排路由或 handoff 契约                                     |
+| [0011](docs/adr/0011-agent-model-binding-and-effort.md)                         | Agent Model Binding & Effort                          | 修改角色-执行体绑定（分档已被 ADR-0014 取消，需连读）                     |
+| [0012](docs/adr/0012-instruction-risk-tiering-and-pre-authorized-operations.md) | Instruction Risk Tiering & Pre-authorized Operations  | 修改风险分级、预授权操作、不变量锚点或约束预算基线                        |
+| [0013](docs/adr/0013-web-ui-theme-transition.md)                                | Web UI Theme Transition                               | 修改 `web-ui-theme` 过渡 API、View Transition 生命周期或降级语义          |
+| [0014](docs/adr/0014-task-system-v2.md)                                         | Task 体系 v2（level 状态机、guard、checks、playbook） | 修改 `scripts/task.mjs`、任务级别 gate、pre-commit 门禁或 task state 布局 |
 
 ## Interweave 产品与领域词汇
 
@@ -158,6 +160,10 @@ _Avoid_: 直接改写语义色源 token、用主题文本作为按压加深锚�
 **覆盖层 slot 组合（overlay slot composition）**:
 trigger 经命名 slot 提供、内容/面板由组件托管的组合模式；面板常脱离文档流（portal）。组件把 trigger 状态 ARIA（aria-expanded 等）回写到 trigger slot 的首个 assigned element，交互语义由 slot 内的可交互元素原生提供。
 _Avoid_: trigger/content 拆分为独立公开元素（React 式三元素）、在 trigger 包装结构上承载 ARIA
+
+**开启态浮层（open overlay）**:
+「哪一层浮层正开着」的唯一拥有者，也是 Escape 归属的唯一仲裁者。组件用 `claim(panel)` 声明一次开启并取得会话句柄，`release()` 幂等撤销；开启状态是声明而非询问，仲裁不再回调组件查 `isOpen()`。会话作用域（一次开启）与实例作用域（跨开合与断连的帧事务）分离；「暂时不可关闭」经 `setInert(boolean)` 表达，与静态策略共用同一通道；撤销与 `open` 同拍，不等退场动画。
+_Avoid_: 各组件自持 Escape 监听、以 panel 元素而非句柄为身份、第三个仲裁枚举值、把帧事务压进会话句柄、撤销等退场动画结束
 
 **受管子元素组合（managed child composition）**:
 子项是公开 custom element（option、segmented-trigger、radio、checkbox 等）的组合模式。成员追踪与点击归因由 GroupController 直驱，禁用/展示态经 @lit/context 下行广播（只下行），选中态由根直写子项（上行）；子项被移出组后恢复独立控件语义。

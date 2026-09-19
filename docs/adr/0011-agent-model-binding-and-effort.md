@@ -3,6 +3,7 @@
 - **Date**: 2026-09-11
 - **Status**: 已接受
 - **Amends**: [ADR-0010](0010-agent-role-orchestration.md) 的「执行体默认绑定」一节
+- **Amended by**: [ADR-0014](0014-task-system-v2.md)（取消角色默认模型与思考强度分档；模型与思考强度由用户会话设置或 Manager 按任务指定）
 
 ## 背景
 

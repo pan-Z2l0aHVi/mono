@@ -1,4 +1,3 @@
-// 检测待发布 changesets，把 has-changesets / has-wails-release 写入 GITHUB_OUTPUT。
 // 用法: node .github/scripts/detect-pending-changesets.mjs <changeset-status.json 路径>
 import { appendFile, readFile } from 'node:fs/promises'
 

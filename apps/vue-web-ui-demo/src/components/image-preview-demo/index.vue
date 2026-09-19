@@ -219,7 +219,7 @@ onBeforeUnmount(() => {
     <div class="mb-3 flex flex-wrap gap-2">
       <web-ui-button @click="openParts">按当前勾选打开</web-ui-button>
     </div>
-    <div class="mb-3 rounded-lg bg-[var(--wui-color-surface-raised)] px-3 py-2 text-sm">
+    <div class="mb-3 rounded-lg bg-(--wui-color-surface-raised) px-3 py-2 text-sm">
       <code>{{ partsCode }}</code>
     </div>
     <div class="mb-6 flex flex-wrap gap-2">
@@ -295,7 +295,7 @@ onBeforeUnmount(() => {
         {{ command.label }}
       </web-ui-button>
     </div>
-    <div class="mb-6 rounded-lg bg-[var(--wui-color-surface-raised)] px-3 py-2 text-sm">{{ statusText }}</div>
+    <div class="mb-6 rounded-lg bg-(--wui-color-surface-raised) px-3 py-2 text-sm">{{ statusText }}</div>
 
     <h2>自定义容器与样式</h2>
     <p class="mb-3 text-sm text-gray-500">
@@ -305,9 +305,9 @@ onBeforeUnmount(() => {
     </p>
     <div
       ref="styledContainer"
-      class="mb-3 rounded-lg border border-dashed border-[var(--wui-color-border)] p-3 [--wui-image-preview-edge-gap:48px] [--wui-image-preview-overlay-bg:#0a2850e0]"
+      class="mb-3 rounded-lg border border-dashed border-(--wui-color-border) p-3 [--wui-image-preview-edge-gap:48px] [--wui-image-preview-overlay-bg:#0a2850e0]"
     >
-      <span class="text-sm text-[var(--wui-color-text-secondary)]">预览宿主挂载在这里</span>
+      <span class="text-sm text-(--wui-color-text-secondary)">预览宿主挂载在这里</span>
     </div>
     <div class="mb-6 flex flex-wrap gap-2">
       <web-ui-button @click="openWithContainer">用自定义容器打开</web-ui-button>

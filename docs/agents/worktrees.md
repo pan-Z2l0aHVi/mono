@@ -4,7 +4,7 @@ worktree 是任务隔离边界，不是包名的别名。每个可变 task 只�
 
 ## 创建和复用
 
-- 新任务从已确认的 base SHA 创建独立 task worktree；不要让两个任务竞争一个持久 package worktree。
+- 新任务从已确认的 base SHA 创建独立 task worktree；不要让两个任务竞争一个持久 package worktree。新 worktree 在实施或 freeze 前必须先执行 `pnpm install && pnpm run build`：依赖未安装时 `fix:code` 归一化无法运行，freeze 会直接失败。
 - 长期使用的 dev/task worktree 在开新任务前若 `main` 已前进，先确认 worktree 无未提交变更、无未合并独有提交，再执行 `git switch -C <branch> origin/main` 并紧跟 `git branch --unset-upstream <branch>`，避免 upstream 指向 `origin/main` 导致裸 push 误推。
 - package worktree 可以保留依赖安装和缓存，但必须通过 task state 绑定到单一任务后才能写入。
 - 跨包变更使用一个 task worktree；不要按包拆成多个互相无法独立 review 的 worktree。
@@ -12,16 +12,12 @@ worktree 是任务隔离边界，不是包名的别名。每个可变 task 只�
 
 ### turbo 缓存共享
 
-- `.mise.toml` 的 `[env]` 把 `TURBO_CACHE_DIR` 指向 `<仓库目录>/../.turbo-cache`：同族 task worktree 共享一份本地 turbo 缓存（构建产物含 dist d.ts），新 worktree 不必冷缓存全量重建。
-- 缓存按仓库位置分组（主仓与 worktree 族各一份）；手动回收直接删除 `.turbo-cache` 目录，turbo 下次运行自动重建。CI 在 `ci.yml` 显式覆盖回 workspace 内路径，mise 注入不影响 CI 缓存键。
+- `.mise.toml` 的 `[env]` 用 `git rev-parse --path-format=absolute --git-common-dir` 把 `TURBO_CACHE_DIR` 锚定到 **git common dir**（`mono/.git/turbo-cache`）：主仓与全部 task worktree 共享同一份本地 turbo 缓存（构建产物含 dist d.ts），新 worktree 不必冷缓存全量重建，跨 checkout 复用安全（turbo 内容寻址）。
+- 手动回收直接删除 `mono/.git/turbo-cache`，turbo 下次运行自动重建。CI 在 `ci.yml` 显式覆盖回 workspace 内路径，mise 注入不影响 CI 缓存键；git common dir 不受 `git gc` / worktree 清理影响。
 
 ## 角色隔离边界
 
-- Lib Coder 只在 `packages/*` 写入，Biz Coder 只在 `apps/*` 写入；同一条 worktree 内以此为写入边界，任一角色不得修改对方目录下的文件。
-- 每个角色使用独立 worktree，或在同一 task worktree 内严格目录隔离；采用哪种方式在 task packet 中记录。无法严格隔离时必须拆成独立 task 与独立 worktree。
-- 跨边界需求拆成两条 handoff：共享能力落在 `packages/*`，业务实现落在 `apps/*`，契约以 handoff 记录并在集成前核对，而不是由单个角色越界完成。
-- Reviewer 只读冻结 diff，不取得写入权限；Designer 不写入 `packages/*` 与 `apps/*` 生产代码。
-- 角色与执行体的默认绑定见 [`workflow.md`](workflow.md) 的「角色与执行体」，本节只约束 worktree 层面的物理隔离。
+- 各角色的目录边界、独立 worktree/严格目录隔离与跨边界拆 task 的处方以 [`workflow.md`](workflow.md) 的「编排模式」「并发原则」为权威，本节不复制；角色与执行体的默认绑定以根 [`AGENTS.md`](../../AGENTS.md) 的唯一权威绑定表为准。
 
 ## Git 边界
 

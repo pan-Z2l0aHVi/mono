@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vite-plus/test'
 
 import { attachDragGesture } from '../drag-gesture'
-import { clamp, normalizeProgress, rubberband, snapToNearest, springOffsets, SPRING_PRESETS } from '../physics'
+import { clamp, dampOverscroll, normalizeProgress, snapToNearest, springOffsets, SPRING_PRESETS } from '../physics'
 import { attachPinchGesture } from '../pinch-gesture'
 
 describe('shared/gesture physics', () => {
@@ -28,13 +28,13 @@ describe('shared/gesture physics', () => {
     expect(normalizeProgress(50, 100, 100)).toBe(0) // min === max 兜底
   })
 
-  it('rubberband 正向位移保持原值，负向拉伸施加阻尼并受最大距离限制', () => {
-    expect(rubberband(50, 100)).toBe(50)
-    expect(rubberband(0, 100)).toBe(0)
-    // 负向拉伸：-100 * 0.15 = -15
-    expect(rubberband(-100, 100, 0.15)).toBe(-15)
-    // 超过最大拉伸距离：clamp 到 -maxDistance
-    expect(rubberband(-1000, 50, 0.15)).toBe(-50)
+  it('dampOverscroll 允许方向原样通过，反向按平方根压缩', () => {
+    expect(dampOverscroll(50)).toBe(50)
+    expect(dampOverscroll(0)).toBe(0)
+    // 反向：sign(d) * |d| ** 0.5 —— 压缩比随位移增大而下降，因此天然自限幅，
+    // 400px 的过冲只剩 20px，不需要额外的位移上限。
+    expect(dampOverscroll(-100)).toBe(-10)
+    expect(dampOverscroll(-400)).toBe(-20)
   })
 
   it('springOffsets 生成单调趋向目标的平滑轨迹采样', () => {
@@ -78,6 +78,106 @@ describe('shared/gesture attachDragGesture', () => {
     el.remove()
   })
 
+  it('onEnd 上报整段手势时长：区别于只描述最后一小段的滑动窗口速度', async () => {
+    const el = document.createElement('div')
+    document.body.append(el)
+
+    const onEnd = vi.fn<(info: { deltaX: number; velocityX: number; duration: number }) => void>()
+    const handle = attachDragGesture(el, { axis: 'x', onEnd })
+
+    el.dispatchEvent(new PointerEvent('pointerdown', { pointerId: 1, clientX: 100, clientY: 0, isPrimary: true }))
+    await new Promise(resolve => setTimeout(resolve, 150))
+    // 先反向拖出，再一次性快速扫回：滑动窗口只反映这段回扫，时长覆盖整段手势。
+    window.dispatchEvent(new PointerEvent('pointermove', { pointerId: 1, clientX: 60, clientY: 0, isPrimary: true }))
+    await new Promise(resolve => setTimeout(resolve, 30))
+    window.dispatchEvent(new PointerEvent('pointermove', { pointerId: 1, clientX: 200, clientY: 0, isPrimary: true }))
+    window.dispatchEvent(new PointerEvent('pointerup', { pointerId: 1, clientX: 200, clientY: 0, isPrimary: true }))
+
+    expect(onEnd).toHaveBeenCalledTimes(1)
+    const info = onEnd.mock.calls[0][0]
+    // 时长覆盖 pointerdown → pointerup 全程，可用于「整段手势的平均速度」。
+    expect(info.duration).toBeGreaterThanOrEqual(150)
+    // 同一时刻的滑窗速度很高，但它只描述最后 30ms 的回扫这一小段。
+    expect(info.velocityX).toBeGreaterThan(1000)
+
+    handle.destroy()
+    el.remove()
+  })
+
+  it('有意图死区时 duration 从越阈那一刻起算，不含此前的悬停', async () => {
+    const el = document.createElement('div')
+    document.body.append(el)
+
+    const onEnd = vi.fn<(info: { duration: number }) => void>()
+    const handle = attachDragGesture(el, { axis: 'x', threshold: 10, onEnd })
+
+    el.dispatchEvent(new PointerEvent('pointerdown', { pointerId: 1, clientX: 100, clientY: 0, isPrimary: true }))
+    // 死区内的悬停：不属于拖拽轨迹，不应计入 duration。
+    await new Promise(resolve => setTimeout(resolve, 300))
+    window.dispatchEvent(new PointerEvent('pointermove', { pointerId: 1, clientX: 120, clientY: 0, isPrimary: true }))
+    await new Promise(resolve => setTimeout(resolve, 40))
+    window.dispatchEvent(new PointerEvent('pointerup', { pointerId: 1, clientX: 120, clientY: 0, isPrimary: true }))
+
+    expect(onEnd).toHaveBeenCalledTimes(1)
+    // 时长只覆盖「越阈 → 松手」的 40ms 段，不含死区内的 300ms 悬停。
+    expect(onEnd.mock.calls[0][0].duration).toBeLessThan(250)
+
+    handle.destroy()
+    el.remove()
+  })
+
+  it('calibrateOnFirstMove：首个 move 重置零点与时钟，按下到首个 move 之间的位移被吸收', async () => {
+    const el = document.createElement('div')
+    document.body.append(el)
+
+    const deltas: number[] = []
+    const onEnd = vi.fn<(info: { deltaX: number; duration: number }) => void>()
+    const handle = attachDragGesture(el, {
+      axis: 'x',
+      calibrateOnFirstMove: true,
+      onMove: info => deltas.push(info.deltaX),
+      onEnd
+    })
+
+    el.dispatchEvent(new PointerEvent('pointerdown', { pointerId: 1, clientX: 100, clientY: 0, isPrimary: true }))
+    // 按下 → 首个 move 之间已偏移 60px：校准把它吸收，
+    // 首个 move 的 delta 因此为 0，元素不会在首个 move 一次性跳出这 60px。
+    window.dispatchEvent(new PointerEvent('pointermove', { pointerId: 1, clientX: 160, clientY: 0, isPrimary: true }))
+    window.dispatchEvent(new PointerEvent('pointermove', { pointerId: 1, clientX: 220, clientY: 0, isPrimary: true }))
+    expect(deltas).toEqual([0, 60])
+
+    // 判定时钟同样自校准点起算：不含「按下 → 首个 move」的耗时。
+    await new Promise(resolve => setTimeout(resolve, 30))
+    window.dispatchEvent(new PointerEvent('pointerup', { pointerId: 1, clientX: 220, clientY: 0, isPrimary: true }))
+
+    expect(onEnd).toHaveBeenCalledTimes(1)
+    const end = onEnd.mock.calls[0][0]
+    // 220 - 160（校准点）= 60；按下点的 100 不参与。
+    expect(end.deltaX).toBe(60)
+    expect(end.duration).toBeGreaterThanOrEqual(30)
+    expect(end.duration).toBeLessThan(300)
+
+    handle.destroy()
+    el.remove()
+  })
+
+  it('默认不校准：位移仍自 pointerdown 起算', () => {
+    const el = document.createElement('div')
+    document.body.append(el)
+
+    const deltas: number[] = []
+    const handle = attachDragGesture(el, { axis: 'x', onMove: info => deltas.push(info.deltaX) })
+
+    el.dispatchEvent(new PointerEvent('pointerdown', { pointerId: 1, clientX: 100, clientY: 0, isPrimary: true }))
+    window.dispatchEvent(new PointerEvent('pointermove', { pointerId: 1, clientX: 160, clientY: 0, isPrimary: true }))
+    window.dispatchEvent(new PointerEvent('pointermove', { pointerId: 1, clientX: 220, clientY: 0, isPrimary: true }))
+
+    expect(deltas).toEqual([60, 120])
+
+    handle.destroy()
+    el.remove()
+  })
+
   it('threshold 意图死区：移动距离不足 threshold 时不触发 onMove', () => {
     const el = document.createElement('div')
     document.body.append(el)
@@ -97,7 +197,6 @@ describe('shared/gesture attachDragGesture', () => {
     })
 
     el.dispatchEvent(new PointerEvent('pointerdown', { pointerId: 1, clientX: 100, clientY: 100, isPrimary: true }))
-    // 小位移 (5px < 10px) 不触发 onMove
     window.dispatchEvent(new PointerEvent('pointermove', { pointerId: 1, clientX: 105, clientY: 100, isPrimary: true }))
     expect(onMove).not.toHaveBeenCalled()
 
@@ -289,7 +388,6 @@ describe('shared/gesture attachDragGesture', () => {
     expect(onMove).toHaveBeenCalledTimes(1)
     expect(onMove.mock.calls[0][0].deltaX).toBe(50)
 
-    // 正常松手收尾。
     window.dispatchEvent(new PointerEvent('pointerup', { pointerId: 1, clientX: 150, clientY: 100 }))
     expect(onEnd).toHaveBeenCalledTimes(1)
     expect(onCancel).not.toHaveBeenCalled()

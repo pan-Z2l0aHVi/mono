@@ -8,8 +8,16 @@ export default defineConfig({
     '*': 'vp check --fix'
   },
   lint: {
-    jsPlugins: [{ name: 'vite-plus', specifier: 'vite-plus/oxlint-plugin' }],
-    rules: { 'vite-plus/prefer-vite-plus-imports': 'error' },
+    jsPlugins: [
+      { name: 'vite-plus', specifier: 'vite-plus/oxlint-plugin' },
+      { name: 'shadcn', specifier: '@shadcn/lint' }
+    ],
+    rules: {
+      'vite-plus/prefer-vite-plus-imports': 'error',
+      'shadcn/no-unknown-classes': 'error',
+      'shadcn/no-inline-styles': 'error',
+      'shadcn/require-static-classes': 'error'
+    },
     ignorePatterns: [
       '**/node_modules/**',
       '**/dist/**',

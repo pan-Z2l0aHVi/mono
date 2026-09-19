@@ -43,7 +43,6 @@ export function defineControllableInterval(options: Options) {
       lastStartTime = Date.now()
       timerId = setTimeout(() => {
         callback()
-        // 只有在没被暂停的情况下，才继续下一次循环
         if (!isPaused) tick(interval)
       }, delay)
     }
@@ -61,7 +60,6 @@ export function defineControllableInterval(options: Options) {
       clearTimeout(timerId)
       timerId = null
 
-      // 计算当前这一轮还剩多少时间没跑完
       const diff = Date.now() - lastStartTime
       remainingTime = Math.max(0, interval - diff)
     }
@@ -70,7 +68,6 @@ export function defineControllableInterval(options: Options) {
       if (!isPaused) return
 
       isPaused = false
-      // 恢复执行：先跑完上一轮剩下的时间
       tick(remainingTime || interval)
     }
 

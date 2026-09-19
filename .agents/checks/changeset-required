@@ -1,0 +1,12 @@
+#!/bin/sh
+# 仓库级 task 政策：task 的冻结 diff 必须携带 changeset（commit.md「每个 PR 都需要
+# changeset」的机械化）。release 聚合 diff 对 base（origin/main）天然包含被聚合
+# task 的 changeset 文件，hotfix 也需要版本变更，因此对全部级别无豁免。
+set -e
+
+base="${AGENT_TASK_BASE_SHA:-HEAD}"
+if ! git diff --name-only --diff-filter=d "$base" -- .changeset | grep -q '\.changeset/.*\.md$'; then
+  echo "changeset missing: no .changeset/*.md in the frozen diff vs $base" >&2
+  echo "add a changeset describing the version impact (see docs/agents/commit.md) and re-run freeze" >&2
+  exit 1
+fi
