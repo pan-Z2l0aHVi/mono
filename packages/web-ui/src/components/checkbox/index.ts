@@ -126,7 +126,7 @@ export class WebUiCheckbox extends FormAssociated(LitElement) {
       >
         <span class="wui-checkbox-box">
           <span class="wui-checkbox-icon"
-            ><web-ui-svg-draw-lines duration="160" easing="ease-out"
+            ><web-ui-svg-draw-lines duration="300"
               ><svg class="wui-checkbox-check" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                 <path
                   d="M5 12.5l4.5 4.5L19 7"
