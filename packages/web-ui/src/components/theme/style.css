@@ -66,13 +66,14 @@
   --wui-ease-float: cubic-bezier(0.4, 0.38, 0.2, 1);
 
   /* 进场缩放起点。两族方向相反，各自成 token：浮动面板与 image-preview 由小到大展开
-     （0.95 → 1），dialog 由大到小收缩（1.2 → 1，退场反向）。
+     （0.95 → 1），dialog 由大到小收缩（1.1 → 1，退场反向）。
      方向由承载层决定。image-preview 是满视口表面，起点 >1 会把贴边的 counter/close/
-     toolbar 推出视口并裁掉图片四边，只能留在 <1 的档位。dialog 是有界卡片，起点 1.2 只
-     在视口窄于 432px 时越界，且缩放与卡片 opacity 共用 --wui-ease-dialog，越界期间卡片
-     不透明度始终 ≤44.4%；要零越界而不是取满 1.2，把本 token 降到 1.111 即可。 */
+     toolbar 推出视口并裁掉图片四边，只能留在 <1 的档位。dialog 是有界卡片，起点须低于
+     零越界上限 1/0.9 ≈ 1.111（min(90vw, --wui-dialog-width) 两分支在 400px 视口汇合）；
+     1.1 在任意视口都不越界。曾用 1.2，窄视口会短暂越界（约 57ms、卡片不透明度 ≤44.4%，
+     分析见 ADR-0006），260919 下调。 */
   --wui-scale-enter: 0.95;
-  --wui-dialog-scale-enter: 1.2;
+  --wui-dialog-scale-enter: 1.1;
   --wui-focus-ring-width: 3px;
 
   /* control=胶囊控件、menu=浮动菜单面板、overlay=大型覆盖层卡片 */
