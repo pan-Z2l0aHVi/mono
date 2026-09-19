@@ -500,6 +500,12 @@ Portal 面板创建时会镜像 host 上解析后的这些变量；更新 host �
 
 使用 `role="checkbox"` 和 `aria-checked`。Enter/Space 键盘切换。
 
+**布局：** 宿主是 inline-flex 盒，高度由内容撑开、不继承页面行高，因此不会在指示器上下留出多余缝隙；`--wui-selection-control-size`（`18px`）决定指示器宽高，宿主与相邻文字的对齐固定为 `vertical-align: middle`。`<web-ui-radio>` 共用同一套契约。
+
+**选中动画：** 对勾是控件自持的描边路径（不再走 `<web-ui-icon>` 图标资产），外层包 `<web-ui-svg-draw-lines>`，勾选时线条自左向右画出，取消时淡出；主题范围为 `motion="reduced"` 时两者都跳过。
+
+**未激活态：** 未选中指示器的底色取 `--wui-color-surface-control`（与中性按钮同一档控件底），深色模式下也能和 `--wui-color-page` 分辨开。触发区内任意位置（指示器、间距或右侧 slot 标签）被 hover / 按下时，该底色再叠 6% 与 15% 状态层。hover 只在 `(hover: hover) and (pointer: fine)` 设备上生效；已选中和禁用态保持各自底色。`<web-ui-radio>` 共用同一套状态。
+
 #### `<web-ui-radio>`
 
 单个单选按钮。
@@ -515,6 +521,8 @@ Portal 面板创建时会镜像 host 上解析后的这些变量；更新 host �
 **事件：** `input`, `change`
 
 **插槽：** `default`（标签文本）
+
+**布局：** 与 `<web-ui-checkbox>` 共用同一套选择控件盒契约——宿主高度由内容撑开、不继承页面行高，指示器宽高走 `--wui-selection-control-size`，与相邻文字按 `vertical-align: middle` 对齐。
 
 #### `<web-ui-switch>`
 
@@ -1239,7 +1247,7 @@ WebUiSpinner.hide() // 隐藏
 
 #### `<web-ui-svg-draw-lines>`
 
-SVG 线条绘制动画，基于 `stroke-dashoffset`。直接在原元素上动画 —— 不克隆、不操作 DOM。
+SVG 线条绘制动画，基于 `stroke-dashoffset`。直接在原元素上动画 —— 不克隆、不操作 DOM。画线只有一个方向：从无到有地描出几何形状，不支持反向（擦除）播放。
 
 | 属性       | 类型     | 默认值     | 说明                                         |
 | ---------- | -------- | ---------- | -------------------------------------------- |
@@ -1283,6 +1291,13 @@ SVG 线条绘制动画，基于 `stroke-dashoffset`。直接在原元素上动�
 | `--wui-control-size`      | `36px`  | 控件默认高度和方形最小宽 |
 | `--wui-overlay-min-width` | `200px` | 锚定浮层最小宽度         |
 | `--wui-focus-ring-width`  | `3px`   | Focus 指示器宽度         |
+
+**选择控件 token（radio、checkbox）：**
+
+| 属性                           | 默认值 | 说明                                                          |
+| ------------------------------ | ------ | ------------------------------------------------------------- |
+| `--wui-selection-control-size` | `18px` | 指示器（圆点 / 方框）宽高                                     |
+| `--wui-selection-group-gap`    | `8px`  | `<web-ui-radio-group>` / `<web-ui-checkbox-group>` 的成员间距 |
 
 **圆角 token：**
 

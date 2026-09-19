@@ -1,17 +1,20 @@
-import { html, LitElement, unsafeCSS } from 'lit'
-import { customElement, property, state } from 'lit/decorators.js'
+import { html, LitElement, type PropertyValues, unsafeCSS } from 'lit'
+import { customElement, property, query, state } from 'lit/decorators.js'
 import { classMap } from 'lit/directives/class-map.js'
 
-import '@/components/icon'
-import { heroiconsCheck16Solid } from '@/icons'
+import selectionControl from '@/assets/selection-control.css?inline'
+import { WebUiSvgDrawLines } from '@/components/svg-draw-lines'
+import { installPointerFocusSuppression } from '@/shared/focus/pointer-focus'
 import { FormAssociated, defineFormAssociation, FormAssociationController } from '@/shared/form-association'
 import { defineGroupManaged, selectionGroupContextKey, type SelectionGroupContext } from '@/shared/group-management'
 
 import style from './style.css?inline'
 
+installPointerFocusSuppression()
+
 @customElement('web-ui-checkbox')
 export class WebUiCheckbox extends FormAssociated(LitElement) {
-  static override styles = unsafeCSS(style)
+  static override styles = [unsafeCSS(selectionControl), unsafeCSS(style)]
   private readonly _groupManagement = defineGroupManaged<SelectionGroupContext>(this, {
     context: selectionGroupContextKey,
     requestUpdate: () => this.requestUpdate()
@@ -66,6 +69,8 @@ export class WebUiCheckbox extends FormAssociated(LitElement) {
 
   private readonly _formAssociationController = new FormAssociationController(this, this._formAssociation)
 
+  @query('web-ui-svg-draw-lines') private readonly _drawLines?: WebUiSvgDrawLines
+
   private _syncValidity() {
     const internals = this._formAssociation.getInternals()
     if (!internals || typeof internals.setValidity !== 'function') return
@@ -97,6 +102,12 @@ export class WebUiCheckbox extends FormAssociated(LitElement) {
     }
   }
 
+  override updated(changed: PropertyValues) {
+    super.updated(changed)
+    // svg-draw-lines 只有画入方向，取消勾选交给 CSS 淡出。
+    if (changed.get('_checked') === false && this._checked) void this._drawLines?.replay()
+  }
+
   override render() {
     const cls = {
       'wui-checkbox': true,
@@ -116,11 +127,16 @@ export class WebUiCheckbox extends FormAssociated(LitElement) {
       >
         <span class="wui-checkbox-box">
           <span class="wui-checkbox-icon"
-            ><web-ui-icon
-              .icon=${heroiconsCheck16Solid}
-              size="18"
-              color="var(--wui-color-on-control, #fff)"
-            ></web-ui-icon
+            ><web-ui-svg-draw-lines duration="160" easing="ease-out"
+              ><svg class="wui-checkbox-check" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path
+                  d="M5 12.5l4.5 4.5L19 7"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="3"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                /></svg></web-ui-svg-draw-lines
           ></span>
         </span>
         <span class="wui-checkbox-label"><slot></slot></span>

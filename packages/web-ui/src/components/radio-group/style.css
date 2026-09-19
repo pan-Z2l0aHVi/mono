@@ -8,7 +8,7 @@
   user-select: none;
   display: inline-flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--wui-selection-group-gap, 8px);
 }
 
 .wui-radio-group {
