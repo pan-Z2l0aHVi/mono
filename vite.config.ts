@@ -17,8 +17,6 @@ export default defineConfig({
       'shadcn/no-unknown-classes': 'error',
       'shadcn/no-inline-styles': 'error',
       'shadcn/require-static-classes': 'error'
-      // no-raw-colors 有意不启用：语义 token 是设计系统向的团队选择，业务页面
-      // 应可自由使用 Tailwind 固定色值（2026-09-19 决策，撤销 e26b41f5 的禁令）。
     },
     ignorePatterns: [
       '**/node_modules/**',
