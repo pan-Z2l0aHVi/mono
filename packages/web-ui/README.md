@@ -532,7 +532,11 @@ Individual checkbox.
 
 Uses native `<label>` with `role="checkbox"` and `aria-checked`. Enter/Space keyboard toggle.
 
-**Layout:** the host is an inline-flex box, so its height is declared rather than inherited from the page line-height: `--wui-selection-control-hit-size` (`24px`) sets the minimum host height, the `--wui-selection-control-size` (`18px`) indicator is centered inside it, and `--wui-selection-control-vertical-align` (`middle`) controls how the box sits against surrounding text. `<web-ui-radio>` shares the same tokens.
+**Layout:** the host is an inline-flex box whose height is set by its content, so the inherited page line-height can no longer inflate it or shift the indicator up and down; it aligns against surrounding text with `vertical-align: middle`. The indicator measures `--wui-selection-control-size` (`18px`), and `<web-ui-radio>` shares the same box contract.
+
+**Check animation:** the checkmark is the control's own stroked path rather than a `<web-ui-icon>` asset, wrapped in `<web-ui-svg-draw-lines>` so it draws itself in left to right when checked and fades out when unchecked. Both are skipped inside a `motion="reduced"` theme scope.
+
+**Idle states:** the unchecked indicator is filled with `--wui-color-surface-control`, the same control surface neutral buttons use, so it stays separable from `--wui-color-page` in dark mode. Hovering or pressing anywhere in the trigger row — indicator, gap or slotted label — tints that surface (6% and 15% state layer over `--wui-color-surface-control`). Hover applies only on `(hover: hover) and (pointer: fine)` devices; checked and disabled controls keep their own surface. `<web-ui-radio>` shares the same states.
 
 #### `<web-ui-radio>`
 
@@ -550,7 +554,7 @@ Individual radio button.
 
 **Slots:** `default` (label text)
 
-**Layout:** shares the selection-control box contract with `<web-ui-checkbox>` — `--wui-selection-control-hit-size` sets the minimum host height, the `--wui-selection-control-size` indicator is centered inside it, and `--wui-selection-control-vertical-align` controls alignment against surrounding text.
+**Layout:** shares the selection-control box contract with `<web-ui-checkbox>` — host height comes from its content, alignment against surrounding text is `vertical-align: middle`, and the indicator measures `--wui-selection-control-size`.
 
 #### `<web-ui-switch>`
 
@@ -1279,7 +1283,7 @@ Role: `button`, keyboard Enter scrolls to top.
 
 #### `<web-ui-svg-draw-lines>`
 
-SVG line drawing animation using `stroke-dashoffset`. Animates geometry in-place — no cloning, no DOM manipulation.
+SVG line drawing animation using `stroke-dashoffset`. Animates geometry in-place — no cloning, no DOM manipulation. Drawing has a single direction: geometry is revealed from nothing to fully drawn, there is no reverse (un-draw) playback.
 
 | Attribute  | Type     | Default    | Description                                       |
 | ---------- | -------- | ---------- | ------------------------------------------------- |
@@ -1326,12 +1330,10 @@ The host uses `display: contents` and does not paint any background: the library
 
 **Selection control tokens (radio, checkbox):**
 
-| Property                                 | Default  | Description                                               |
-| ---------------------------------------- | -------- | --------------------------------------------------------- |
-| `--wui-selection-control-size`           | `18px`   | Indicator (circle / box) width and height                 |
-| `--wui-selection-control-hit-size`       | `24px`   | Minimum host height, i.e. the declared pointer hit area   |
-| `--wui-selection-control-label-gap`      | `10px`   | Gap between the indicator and the slotted label           |
-| `--wui-selection-control-vertical-align` | `middle` | `vertical-align` of the host box against surrounding text |
+| Property                       | Default | Description                                                                |
+| ------------------------------ | ------- | -------------------------------------------------------------------------- |
+| `--wui-selection-control-size` | `18px`  | Indicator (circle / box) width and height                                  |
+| `--wui-selection-group-gap`    | `8px`   | Member spacing inside `<web-ui-radio-group>` and `<web-ui-checkbox-group>` |
 
 **Radius tokens:**
 

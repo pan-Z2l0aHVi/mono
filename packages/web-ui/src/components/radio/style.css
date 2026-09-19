@@ -7,7 +7,7 @@
 }
 
 .wui-radio-dot {
-  transform: scale(0.5);
+  transform: scale(0);
 
   width: 6px;
   height: 6px;

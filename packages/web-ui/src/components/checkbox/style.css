@@ -16,18 +16,21 @@
 
   opacity: 0;
 
-  transition:
-    opacity var(--wui-duration-trigger, 160ms) ease,
-    transform var(--wui-duration-trigger, 160ms) var(--wui-ease-enter, cubic-bezier(0.23, 1, 0.32, 1));
+  transition: opacity var(--wui-duration-trigger, 160ms) ease;
 }
 
 .is-checked .wui-checkbox-icon {
   opacity: 1;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .wui-checkbox-icon,
-  .is-checked .wui-checkbox-icon {
-    transform: none;
-  }
+/*
+ * 勾是控件自持的指示几何，和 radio 圆点同级，不走 @/icons 资产：画线从路径起点开始揭示，
+ * 起笔方向由 d 决定，图标资产把 d 和 stroke-width 都定死在上游，两者都无法在这里调。
+ * 尺寸跟随指示器 token，放大 --wui-selection-control-size 时勾按比例变大。
+ */
+.wui-checkbox-check {
+  display: block;
+  width: var(--wui-selection-control-size, 18px);
+  height: var(--wui-selection-control-size, 18px);
+  color: var(--wui-color-on-control, #fff);
 }
