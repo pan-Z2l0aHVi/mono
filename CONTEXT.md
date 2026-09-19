@@ -102,6 +102,7 @@ interweave（含 interweave-frontend）──共享包的 Wails 桌面集成表�
 | [0012](docs/adr/0012-instruction-risk-tiering-and-pre-authorized-operations.md) | Instruction Risk Tiering & Pre-authorized Operations  | 修改风险分级、预授权操作、不变量锚点或约束预算基线                        |
 | [0013](docs/adr/0013-web-ui-theme-transition.md)                                | Web UI Theme Transition                               | 修改 `web-ui-theme` 过渡 API、View Transition 生命周期或降级语义          |
 | [0014](docs/adr/0014-task-system-v2.md)                                         | Task 体系 v2（level 状态机、guard、checks、playbook） | 修改 `scripts/task.mjs`、任务级别 gate、pre-commit 门禁或 task state 布局 |
+| [0015](docs/adr/0015-role-contracts-in-herdr-agents-skill.md)                   | Role Contracts In Herdr Agents Skill                  | 修改 Role Contract、skill 出处标记或 herdr 编排时序                       |
 
 ## Interweave 产品与领域词汇
 

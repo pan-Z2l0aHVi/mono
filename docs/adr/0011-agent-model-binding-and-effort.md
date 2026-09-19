@@ -51,7 +51,7 @@ ADR-0010 建立了角色 → 执行体的默认绑定，但有两个缺口：
 
 ## 后果
 
-- 根 `AGENTS.md`「多 Agent 编排」承载唯一权威绑定表（角色 / 执行体 / 默认模型 / 默认思考强度四列）；`docs/agents/workflow.md`、`CONTRIBUTING.md`、`.agents/agents/manager.md` 只链接引用，不复制表格；`.agents/agents/*` 角色契约自述执行体、推荐模型与默认档位及调整场景。
+- 根 `AGENTS.md`「多 Agent 编排」承载唯一权威绑定表（角色 / 执行体 / 默认模型 / 默认思考强度四列）；`docs/agents/workflow.md`、`CONTRIBUTING.md`、`.agents/agents/manager.md` 只链接引用，不复制表格；`.agents/agents/*` 角色契约自述执行体、推荐模型与默认档位及调整场景。（2026-09-19 修订：角色契约路径已由 ADR-0015 迁到 `.agents/skills/herdr-agents/roles/`，本条「只链接引用、不复制表格」不变。）
 - `scripts/validate-context.mjs` 只机械校验执行体绑定：绑定镜像表执行体一致性（Reviewer 行允许「按风险路由」表述）、角色契约执行体自述、非 ADR 范围出现退役结构「二次审查」即报错。默认模型与思考强度是推荐分档，**不参与机械校验**，避免把建议当成 gate。守卫的 fixture 化负向回归用例延后至独立 instruction-system 任务：最小 fixture 需完整搭建 required context 文件与 workspace manifests，成本与本次变更风险不成比例。
 - `docs/agents/task-packet.md` 模板增加 `Effort` 字段，推荐记录档位调整决策（非强制）。
 - `CLAUDE.md` 薄适配入口不再复述角色绑定，只保留指向根入口绑定表的指针。
