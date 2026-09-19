@@ -75,14 +75,23 @@ describe('toast upsert（浏览器）', () => {
     const id = toast.info('搬运中', { id: 'move', position: 'top-right', duration: 1200 })
     await waitMounted()
 
-    await wait(400)
+    // 等 deadline 逼近（<900ms）再搬迁：固定 sleep(400) 的 margin 800ms 在 CI 停顿下可被
+    // 越过，upsert 会落在已关闭的 toast 上。触发后仍有 ~900ms 给搬迁派发。
+    await waitFor(
+      () => {
+        const d = (findToast(id) as unknown as { _deadline?: number } | undefined)?._deadline
+        return d !== undefined && d - Date.now() < 900
+      },
+      'deadline did not approach',
+      2500
+    )
     toast({ id, message: '搬运中', position: 'bottom-left' })
 
     const el = findToast(id)
     expect(el).toBeDefined()
     expect(el?.parentElement?.dataset.wuiToastPosition).toBe('bottom-left')
 
-    // 搬迁只换位置：剩余 ≈800ms 续跑；若重启满时长会是 ≈1200ms。deadline 读取与负载无关。
+    // 搬迁只换位置：续跑剩余 <900ms（触发窗口）；重启满时长 ≈1200ms，阈值 1000 居中判别。
     const timing = findToast(id) as unknown as { _deadline?: number } | undefined
     expect(timing?._deadline).toBeDefined()
     expect(timing!._deadline! - Date.now()).toBeLessThan(1000)

@@ -7,7 +7,8 @@ function createRootTheme(): WebUiTheme {
   const theme = document.createElement('web-ui-theme') as WebUiTheme
   theme.appearance = 'light'
   theme.transition = true
-  theme.style.setProperty('--wui-theme-transition-duration', '900ms')
+  // 3000ms 让 650ms 探测 sleep 的 margin 达到 ~2.3s：900ms 时 CI 单次停顿即可越过 deadline。
+  theme.style.setProperty('--wui-theme-transition-duration', '3000ms')
   document.body.append(theme)
   return theme
 }
@@ -17,7 +18,7 @@ function createNestedTheme(): WebUiTheme {
   const inner = document.createElement('web-ui-theme') as WebUiTheme
   inner.appearance = 'light'
   inner.transition = true
-  inner.style.setProperty('--wui-theme-transition-duration', '900ms')
+  inner.style.setProperty('--wui-theme-transition-duration', '3000ms')
   outer.append(inner)
   return inner
 }
