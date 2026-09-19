@@ -197,7 +197,6 @@ describe('shared/gesture attachDragGesture', () => {
     })
 
     el.dispatchEvent(new PointerEvent('pointerdown', { pointerId: 1, clientX: 100, clientY: 100, isPrimary: true }))
-    // 小位移 (5px < 10px) 不触发 onMove
     window.dispatchEvent(new PointerEvent('pointermove', { pointerId: 1, clientX: 105, clientY: 100, isPrimary: true }))
     expect(onMove).not.toHaveBeenCalled()
 
@@ -389,7 +388,6 @@ describe('shared/gesture attachDragGesture', () => {
     expect(onMove).toHaveBeenCalledTimes(1)
     expect(onMove.mock.calls[0][0].deltaX).toBe(50)
 
-    // 正常松手收尾。
     window.dispatchEvent(new PointerEvent('pointerup', { pointerId: 1, clientX: 150, clientY: 100 }))
     expect(onEnd).toHaveBeenCalledTimes(1)
     expect(onCancel).not.toHaveBeenCalled()

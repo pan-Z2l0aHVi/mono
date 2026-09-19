@@ -351,7 +351,6 @@ const siblingL3 = ref(false)
       </web-ui-drawer>
     </web-ui-drawer>
 
-    <!-- 多宽度 Nested Drawer -->
     <web-ui-drawer
       :open="diffWidthL1"
       heading="主信息面板 (500px)"
@@ -401,7 +400,6 @@ const siblingL3 = ref(false)
       </web-ui-drawer>
     </web-ui-drawer>
 
-    <!-- 乱序宽度 Nested Drawer (300px → 520px → 240px → 400px) -->
     <web-ui-drawer
       :open="randomWidthL1"
       heading="侧边基础面板 (300px)"
@@ -468,7 +466,6 @@ const siblingL3 = ref(false)
       </web-ui-drawer>
     </web-ui-drawer>
 
-    <!-- 同级 Drawer 自动层叠（非 DOM 嵌套） -->
     <h2>同级自动层叠</h2>
     <p class="mb-3 text-sm text-gray-500">
       多个 drawer 在同级 DOM 挂载，依次打开后由内部 <code>defineNestedDrawerLayers</code> 自动管理层序——先开的按

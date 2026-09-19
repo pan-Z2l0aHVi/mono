@@ -20,7 +20,6 @@ export class WebUiCheckbox extends FormAssociated(LitElement) {
     requestUpdate: () => this.requestUpdate()
   }).make()
 
-  // 内部 checked 状态，通过 getter/setter 暴露为公共 API
   @state() private _checked = false
 
   get checked(): boolean {

@@ -156,7 +156,6 @@ describe('WebUiPopover portal 条件渲染边界（React，浏览器）', () => 
       'Expected wrapped React content to restore'
     )
 
-    // 重开：wrapper 再次迁入，内容保持
     popover.open = true
     await popover.updateComplete
     await waitForFrame()

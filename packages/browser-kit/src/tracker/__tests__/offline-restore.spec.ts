@@ -127,27 +127,23 @@ describe('离线恢复上报插件测试用例', () => {
   it('多次离线/在线切换应正确处理', async () => {
     const tracker = defineTracker({ url: 'https://example.com', transport }).use(defineOfflineRestore()).make()
 
-    // 第一次离线。
     Object.defineProperty(navigator, 'onLine', { value: false })
     window.dispatchEvent(new Event('offline'))
     tracker.track({ action: 'first-offline' })
     await settleMicrotasks()
     expect(transport).not.toHaveBeenCalled()
 
-    // 恢复在线。
     Object.defineProperty(navigator, 'onLine', { value: true })
     window.dispatchEvent(new Event('online'))
     await waitUntil(() => transport.mock.calls.length === 1)
     expect(transport.mock.calls[0][0]).toEqual({ action: 'first-offline' })
 
-    // 第二次离线。
     Object.defineProperty(navigator, 'onLine', { value: false })
     window.dispatchEvent(new Event('offline'))
     tracker.track({ action: 'second-offline' })
     await settleMicrotasks()
     expect(transport).toHaveBeenCalledTimes(1)
 
-    // 再次恢复。
     Object.defineProperty(navigator, 'onLine', { value: true })
     window.dispatchEvent(new Event('online'))
     await waitUntil(() => transport.mock.calls.length === 2)

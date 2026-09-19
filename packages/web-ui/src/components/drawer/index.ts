@@ -211,12 +211,10 @@ export class WebUiDrawer extends LitElement {
   /** 当前开启会话的句柄；未开启时为 null。 */
   private _handle: OpenOverlayHandle | null = null
 
-  // ===== 拖拽关闭手势状态 =====
   private _dragGesture: DragGestureHandle | null = null
   // pointerdown 时刻已存在的闭合方向位移（从弹回动画中抓取时非 0）。
   private _dragInitialOffset = 0
   private _dragOffset = 0
-  // ===== 松手判定基准 =====
   // 位移零点与判定时钟由手势层的 `calibrateOnFirstMove` 校准到首个 pointermove，
   // 这里只保留「改主意」相关的追踪状态。
   // 折返点（轴坐标）：随反向移动拉到当前坐标。
@@ -235,7 +233,6 @@ export class WebUiDrawer extends LitElement {
   private _dragAwaitWriteback = false
   private _dragRequestTimer: ReturnType<typeof setTimeout> | undefined
 
-  // placement 的闭合轴向：right/left 沿 X 轴，top/bottom 沿 Y 轴。
   private get _dragAxis(): 'x' | 'y' {
     return this._placement === 'left' || this._placement === 'right' ? 'x' : 'y'
   }

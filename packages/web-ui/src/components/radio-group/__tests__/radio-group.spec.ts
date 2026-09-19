@@ -25,7 +25,6 @@ const createGroup = (radioHtml = RADIO_HTML, attrs?: Record<string, string>): We
   return el
 }
 
-// 点击子 radio 触发用户交互
 const clickChild = (group: WebUiRadioGroup, index: number) => {
   const radio = group.querySelectorAll<WebUiRadio>('web-ui-radio')[index]
   const label = queryA11y(radio, 'label') as HTMLElement
@@ -270,7 +269,6 @@ describe('WebUiRadioGroup 组件', () => {
       clickChild(el, 0)
       await waitForUpdate(el)
 
-      // 只收到 group 自身的一次 change，子项 change 未外泄
       expect(events).toHaveLength(1)
       expect(events[0].target).toBe(el)
       detach()
@@ -470,7 +468,6 @@ describe('WebUiRadioGroup 组件', () => {
       await waitForUpdate(newRadio)
       await waitForUpdate(el)
 
-      // 新添加的 radio 值匹配当前 value，应自动选中
       expect(newRadio.checked).toBe(true)
 
       cleanupElement(el)

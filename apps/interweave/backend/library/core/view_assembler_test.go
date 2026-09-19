@@ -14,7 +14,6 @@ import (
 	"github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/remote"
 )
 
-// 打开内部装配测试用的临时库。
 func openTestDB(t *testing.T) *storage.DB {
 	t.Helper()
 	db, err := storage.Open(filepath.Join(t.TempDir(), "test.db"))

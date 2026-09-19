@@ -382,7 +382,6 @@ describe('WebUiSelect 组件', () => {
       // 第一次打开定位到初始项（第一个）
       expect(el.querySelector(`#${activeId}`)?.getAttribute('value')).toBe('apple')
 
-      // 第二次 ArrowUp 向上导航，从首项循环到末尾
       el.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true }))
       await waitForUpdate(el)
       const loopedId = trigger.getAttribute('aria-activedescendant')

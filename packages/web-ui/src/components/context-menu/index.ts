@@ -570,7 +570,6 @@ export class WebUiContextMenu extends LitElement {
   private _onKeydown = (e: KeyboardEvent) => {
     if (this.disabled) return
 
-    // 键盘 ContextMenu 键或 Shift+F10
     if (e.key === 'ContextMenu' || (e.shiftKey && e.key === 'F10')) {
       e.preventDefault()
       const focused = document.activeElement

@@ -28,7 +28,6 @@ const quickLinks = [
 
 <template>
   <div class="max-w-4xl mx-auto px-6 py-12 flex flex-col items-center text-center">
-    <!-- Big Logo -->
     <div class="relative group mb-8">
       <div
         class="absolute -inset-1.5 rounded-[2.5rem] bg-gradient-to-tr from-(--wui-color-accent) to-(--wui-color-accent) opacity-40 blur-xl transition-all duration-500 group-hover:opacity-75"
@@ -40,13 +39,11 @@ const quickLinks = [
       />
     </div>
 
-    <!-- Title & Tagline -->
     <h1 class="text-3xl md:text-5xl font-bold tracking-tight text-(--wui-color-text) mb-4">Web UI</h1>
     <p class="text-base md:text-lg text-(--wui-color-text-secondary) max-w-2xl leading-relaxed mb-8">
       基于 Web Components 的跨框架现代 UI 组件库。一套轻量、精致的核心设计系统，原生支持 Vue、React 以及任意前端技术栈。
     </p>
 
-    <!-- Badges / Features -->
     <div class="flex flex-wrap justify-center gap-3 mb-12">
       <span
         class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-(--wui-color-accent) text-(--wui-color-on-accent) shadow-sm"
@@ -74,7 +71,6 @@ const quickLinks = [
       </span>
     </div>
 
-    <!-- Quick Links Header -->
     <div class="w-full text-left">
       <div
         class="flex items-center gap-2 mb-4 text-sm font-semibold uppercase tracking-wider text-(--wui-color-text-secondary)"
@@ -83,7 +79,6 @@ const quickLinks = [
         常用组件快速预览
       </div>
 
-      <!-- Component Grid -->
       <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
         <RouterLink
           v-for="link in quickLinks"

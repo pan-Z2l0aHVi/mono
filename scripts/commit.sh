@@ -26,7 +26,6 @@
 
 set -euo pipefail
 
-# ── 解析参数 ──
 BODY_LINES=()
 DRY_RUN=false
 
@@ -98,11 +97,9 @@ if [ -n "$LEAKED" ]; then
   exit 1
 fi
 
-# ── 构建 commit message ──
 EMOJI=$(get_emoji "$TYPE")
 HEADER="${TYPE}(${SCOPE}): ${SUBJECT}"
 
-# ── 显示预览 ──
 echo "" >&2
 echo "📝 Commit message:" >&2
 if [ -n "$EMOJI" ]; then
@@ -120,7 +117,6 @@ if [ ${#BODY_LINES[@]} -gt 0 ]; then
 fi
 echo "" >&2
 
-# ── dry-run 模式 ──
 if [ "$DRY_RUN" = true ]; then
   echo "(dry-run, 未实际提交)" >&2
   exit 0

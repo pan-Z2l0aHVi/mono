@@ -19,7 +19,6 @@ function handleChange(event: WebUiEvent<WebUiSelect, 'change'>) {
   selected.value = event.currentTarget.value
 }
 
-// 图标 trigger 演示：trigger 图标跟随选中项变化
 const iconOptions = [
   { value: 'notifications', icon: lucideBell, label: '通知' },
   { value: 'messages', icon: lucideMail, label: '消息' },

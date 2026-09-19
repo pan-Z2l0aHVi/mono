@@ -19,10 +19,6 @@ export interface MenuLevelSurface {
   content: HTMLElement
 }
 
-/* ------------------------------------------------------------------ *
- * Outside-click 守卫
- * ------------------------------------------------------------------ */
-
 export interface MenuOutsideClickGuard {
   /** 打开动作后调用：吞掉同一帧内随后冒泡到 document 的本次 click。 */
   arm(): void
@@ -64,10 +60,6 @@ export function createMenuOutsideClickGuard(
     }
   }
 }
-
-/* ------------------------------------------------------------------ *
- * 层级 hover 绑定
- * ------------------------------------------------------------------ */
 
 export interface MenuHoverDelegate {
   /** 当前展开的 submenu 深度；行为层会绑定 0..depth+1 每一层。 */
@@ -129,10 +121,6 @@ export function createMenuHoverBinder(delegate: MenuHoverDelegate, itemSelector:
     }
   }
 }
-
-/* ------------------------------------------------------------------ *
- * roving 键盘导航
- * ------------------------------------------------------------------ */
 
 export interface MenuKeyboardDelegate {
   getFocusedItem(event?: KeyboardEvent): HTMLElement | undefined
@@ -218,10 +206,6 @@ export function getFocusedMenuItemFromPanels(
 export function getEnabledMenuLevelItems(content: HTMLElement | undefined): HTMLElement[] {
   return content ? getEnabledMenuItems(content) : []
 }
-
-/* ------------------------------------------------------------------ *
- * 关闭中的 submenu presence 收尾栈
- * ------------------------------------------------------------------ */
 
 export interface ClosingSubmenuStack<C> {
   /** 取出正在关闭的容器以复用（同帧关闭→重开同一父项）。 */

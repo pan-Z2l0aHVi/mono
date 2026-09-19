@@ -18,7 +18,6 @@ describe('copy 测试', () => {
     })
 
     it('复制失败时不应 throw，静默 resolve', async () => {
-      // 使 Clipboard API 和 execCommand 都失败，验证 wrapper 不会抛异常
       vi.spyOn(navigator.clipboard, 'writeText').mockRejectedValue(new Error('Fake Error'))
       vi.spyOn(document, 'execCommand').mockImplementation(() => {
         throw new Error('Fake Error')
@@ -27,7 +26,6 @@ describe('copy 测试', () => {
     })
 
     it('debug 模式下失败时 v4 内部会输出诊断信息', async () => {
-      // 使 Clipboard API 和 execCommand 都失败，触发 debug 日志
       vi.spyOn(navigator.clipboard, 'writeText').mockRejectedValue(new Error('Fake Error'))
       vi.spyOn(document, 'execCommand').mockImplementation(() => {
         throw new Error('Fake Error')

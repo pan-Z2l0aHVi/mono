@@ -94,7 +94,6 @@ export class WebUiToast extends LitElement {
     }
   }
 
-  // 根据 position 设置入场/退场滑动方向
   private _applySlideDirection() {
     const SLIDE_OFFSET = 20
     let x = 0
