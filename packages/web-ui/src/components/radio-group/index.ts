@@ -3,10 +3,13 @@ import { customElement, property, state } from 'lit/decorators.js'
 
 import { FormAssociated, defineFormAssociation, FormAssociationController } from '@/shared/form-association'
 import { defineGroupCoordinator, GroupController } from '@/shared/group-management'
+import { normalizeLiteral } from '@/shared/normalize'
 
 import type { WebUiRadio } from '../radio'
 
 import style from './style.css?inline'
+
+const ALLOWED_DIRECTIONS = ['horizontal', 'vertical'] as const
 
 @customElement('web-ui-radio-group')
 export class WebUiRadioGroup extends FormAssociated(LitElement) {
@@ -14,6 +17,17 @@ export class WebUiRadioGroup extends FormAssociated(LitElement) {
   @property({ type: String, reflect: true }) name = ''
   @property({ type: Boolean, reflect: true }) disabled = false
   @property({ type: Boolean, reflect: true }) required = false
+
+  @property({ type: String, reflect: true })
+  get direction(): 'horizontal' | 'vertical' {
+    return this._direction
+  }
+  set direction(v: string) {
+    const old = this._direction
+    this._direction = normalizeLiteral(v, ALLOWED_DIRECTIONS, 'vertical')
+    this.requestUpdate('direction', old)
+  }
+  private _direction: 'horizontal' | 'vertical' = 'vertical'
 
   @state() private _value = ''
 

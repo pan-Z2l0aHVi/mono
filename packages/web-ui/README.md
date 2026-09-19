@@ -600,35 +600,69 @@ Press the selected segment and drag horizontally to slide the indicator; on rele
 
 Checkbox group managing multiple selection.
 
-| Attribute  | Type       | Default | Description                 |
-| ---------- | ---------- | ------- | --------------------------- |
-| `value`    | `string[]` | `[]`    | Selected values             |
-| `name`     | `string`   | `''`    | Form field name             |
-| `disabled` | `boolean`  | `false` | Disables all child controls |
-| `required` | `boolean`  | `false` | Required validation         |
+##### Attributes
+
+| Attribute   | Type                         | Default      | Description                 |
+| ----------- | ---------------------------- | ------------ | --------------------------- |
+| `value`     | `string[]`                   | `[]`         | Selected values             |
+| `name`      | `string`                     | `''`         | Form field name             |
+| `disabled`  | `boolean`                    | `false`      | Disables all child controls |
+| `required`  | `boolean`                    | `false`      | Required validation         |
+| `direction` | `'horizontal' \| 'vertical'` | `'vertical'` | Layout direction            |
 
 **Events:** `input`, `change`
 
 **Slots:** `default` (project `<web-ui-checkbox>` elements)
 
-Syncs child checkbox `checked` state. `disabled` supplies inherited effective disabled state without changing a child's own `disabled` property. Listens to child `change` events.
+Syncs child checkbox `checked` state. `disabled` supplies inherited effective disabled state without changing a child's own `disabled` property. Listens to child `change` events. An invalid `direction` value falls back to `vertical`.
+
+##### Tokens
+
+| Token                      | Default | Description                   |
+| -------------------------- | ------- | ----------------------------- |
+| `--wui-checkbox-group-gap` | `8px`   | Gap between member checkboxes |
+
+Set it on the group element itself, or on an ancestor inside the same `<web-ui-theme>` scope. The theme host declares `8px` for its own subtree, so an override placed above a `<web-ui-theme>` element does not reach the group.
+
+```css
+web-ui-checkbox-group {
+  --wui-checkbox-group-gap: 16px;
+}
+```
 
 #### `<web-ui-radio-group>`
 
 Radio group managing single selection.
 
-| Attribute  | Type      | Default | Description                              |
-| ---------- | --------- | ------- | ---------------------------------------- |
-| `value`    | `string`  | `''`    | Selected radio value                     |
-| `name`     | `string`  | `''`    | Form field name (propagates to children) |
-| `disabled` | `boolean` | `false` | Disables all child controls              |
-| `required` | `boolean` | `false` | Required validation                      |
+##### Attributes
+
+| Attribute   | Type                         | Default      | Description                              |
+| ----------- | ---------------------------- | ------------ | ---------------------------------------- |
+| `value`     | `string`                     | `''`         | Selected radio value                     |
+| `name`      | `string`                     | `''`         | Form field name (propagates to children) |
+| `disabled`  | `boolean`                    | `false`      | Disables all child controls              |
+| `required`  | `boolean`                    | `false`      | Required validation                      |
+| `direction` | `'horizontal' \| 'vertical'` | `'vertical'` | Layout direction                         |
 
 **Events:** `input`, `change`
 
 **Slots:** `default` (project `<web-ui-radio>` elements)
 
-`disabled` supplies inherited effective disabled state without changing a child's own `disabled` property.
+`disabled` supplies inherited effective disabled state without changing a child's own `disabled` property. An invalid `direction` value falls back to `vertical`.
+
+##### Tokens
+
+| Token                   | Default | Description               |
+| ----------------------- | ------- | ------------------------- |
+| `--wui-radio-group-gap` | `8px`   | Gap between member radios |
+
+Set it on the group element itself, or on an ancestor inside the same `<web-ui-theme>` scope. The theme host declares `8px` for its own subtree, so an override placed above a `<web-ui-theme>` element does not reach the group.
+
+```css
+web-ui-radio-group {
+  --wui-radio-group-gap: 16px;
+}
+```
 
 ---
 
@@ -1330,10 +1364,11 @@ The host uses `display: contents` and does not paint any background: the library
 
 **Selection control tokens (radio, checkbox):**
 
-| Property                       | Default | Description                                                                |
-| ------------------------------ | ------- | -------------------------------------------------------------------------- |
-| `--wui-selection-control-size` | `18px`  | Indicator (circle / box) width and height                                  |
-| `--wui-selection-group-gap`    | `8px`   | Member spacing inside `<web-ui-radio-group>` and `<web-ui-checkbox-group>` |
+| Property                       | Default | Description                                     |
+| ------------------------------ | ------- | ----------------------------------------------- |
+| `--wui-selection-control-size` | `18px`  | Indicator (circle / box) width and height       |
+| `--wui-radio-group-gap`        | `8px`   | Member spacing inside `<web-ui-radio-group>`    |
+| `--wui-checkbox-group-gap`     | `8px`   | Member spacing inside `<web-ui-checkbox-group>` |
 
 **Radius tokens:**
 
