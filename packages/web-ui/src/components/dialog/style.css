@@ -19,9 +19,9 @@ dialog {
      backdrop-filter 在该过渡期间被整体禁用。玻璃卡片（.wui-dialog-body）自身
      opacity + backdrop-filter 插值过渡（own opacity 不禁用自身 blur，见下）。 */
 
-  /* 进场由大到小收缩（1.2 → 1），退场反向。取消 .is-visible 后回落到本条起点值，
+  /* 进场由大到小收缩（1.1 → 1），退场反向。取消 .is-visible 后回落到本条起点值，
      enter/exit 共用同一 token。方向与浮动面板的 --wui-scale-enter 相反，故单独成 token。 */
-  transform: scale(var(--wui-dialog-scale-enter, 1.2));
+  transform: scale(var(--wui-dialog-scale-enter, 1.1));
 
   overflow: visible;
 
