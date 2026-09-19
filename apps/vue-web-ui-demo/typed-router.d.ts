@@ -87,6 +87,13 @@ declare module 'vue-router/auto-routes' {
       Record<never, never>,
       | never
     >,
+    '/components/context-menu': RouteRecordInfo<
+      '/components/context-menu',
+      '/components/context-menu',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
     '/components/dialog': RouteRecordInfo<
       '/components/dialog',
       '/components/dialog',
@@ -306,6 +313,14 @@ declare module 'vue-router/auto-routes' {
     'src/pages/components/collapse.vue': {
       routes:
         | '/components/collapse'
+      views:
+        | never
+      pathParamNames:
+        | never
+    }
+    'src/pages/components/context-menu.vue': {
+      routes:
+        | '/components/context-menu'
       views:
         | never
       pathParamNames:
