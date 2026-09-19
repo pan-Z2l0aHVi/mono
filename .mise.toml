@@ -9,5 +9,4 @@ go = "1.26.4"
 # 主仓共享 mono/.git，worktree 增删/改名不影响），TURBO_CACHE_DIR 覆盖所有 turbo 调用
 # （含 ad-hoc 命令），跨 checkout 复用构建产物（内容寻址，共享安全）。CI 在 ci.yml 显式
 # 覆盖回 workspace 内路径，防止 mise 环境泄漏导致 actions/cache 静默丢失。
-[env._]
-source = "scripts/turbo-cache-env.sh"
+TURBO_CACHE_DIR = "{{ exec(command='git -C ' ~ config_root ~ ' rev-parse --path-format=absolute --git-common-dir') | trim }}/turbo-cache"
