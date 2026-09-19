@@ -11,7 +11,5 @@ import AvatarDemo from '@/components/avatar-demo/index.vue'
 </script>
 
 <template>
-  <div class="p-3">
-    <AvatarDemo />
-  </div>
+  <AvatarDemo />
 </template>

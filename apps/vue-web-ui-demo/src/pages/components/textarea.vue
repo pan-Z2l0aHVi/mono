@@ -11,7 +11,5 @@ import TextareaDemo from '@/components/textarea-demo/index.vue'
 </script>
 
 <template>
-  <div class="p-3">
-    <TextareaDemo />
-  </div>
+  <TextareaDemo />
 </template>

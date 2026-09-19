@@ -10,6 +10,4 @@
 import SegmentedDemo from '@/components/segmented-demo/index.vue'
 </script>
 
-<template>
-  <div class="p-3"><SegmentedDemo /></div>
-</template>
+<template><SegmentedDemo /></template>

@@ -10,6 +10,4 @@
 import CollapseDemo from '@/components/collapse-demo/index.vue'
 </script>
 
-<template>
-  <div class="p-3"><CollapseDemo /></div>
-</template>
+<template><CollapseDemo /></template>
