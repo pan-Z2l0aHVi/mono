@@ -5,6 +5,13 @@ prove the result is still the same artwork.
     python3 clean.py <source.png> [out.png] [--prev <older.png>]
                      [--set PARAM=VALUE ...] [--outdir DIR] [--no-write] [--force]
 
+Run requirements (this repo has no Python manifest and nothing in CI runs these
+scripts, so the environment has to be prepared by hand):
+
+    python3 -m pip install numpy pillow scipy
+    cd docs/design/app-icons/tools   # clean.py does `import icostrip`
+    python3 clean.py <source.png> [out.png]
+
 `out.png` defaults to `<stem>-clean.png` beside the source.  `--no-write` reports
 without touching any file, and a failed invariant suppresses the write on its own
 so a broken render can never overwrite a good deliverable; `--force` overrides

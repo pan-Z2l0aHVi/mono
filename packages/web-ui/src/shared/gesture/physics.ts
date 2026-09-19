@@ -8,6 +8,13 @@ export interface SpringParams {
   maxSamples: number
 }
 
+/**
+ * 弹簧轨迹采样参数。
+ *
+ * 仅保留给 `gesture.spec.ts` 的物理曲线回归测试：drawer 的释放收尾已由 WAAPI 弹簧采样
+ * 改为 CSS transition（见 issue #123），生产代码不再有调用方。恢复使用或彻底删除前，
+ * 请连读 drawer 的 `_startSettle`——它已不消费这里的采样序列。
+ */
 export const SPRING_PRESETS = {
   close: { stiffness: 260, damping: 34, maxSamples: 19 },
   rebound: { stiffness: 220, damping: 22, maxSamples: 29 }
