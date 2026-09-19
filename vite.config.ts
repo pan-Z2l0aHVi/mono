@@ -21,6 +21,9 @@ export default defineConfig({
       // 应可自由使用 Tailwind 固定色值（2026-09-19 决策，撤销 e26b41f5 的禁令）。
     },
     ignorePatterns: [
+      // oxlint/shadcn 规则不解析 .vue 模板（oxc#15761/#20465 的架构限制），显式声明盲区；
+      // oxlint 对 .vue 的行为将来变化时此条锁定边界。oxfmt 格式化不受影响（已实测）。
+      '**/*.vue',
       '**/node_modules/**',
       '**/dist/**',
       '**/dist-ssr/**',
