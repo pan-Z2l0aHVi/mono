@@ -81,6 +81,12 @@ try {
   assert.deepEqual(assigned.roles, ['manager'])
   assert.ok(assigned.events.some(event => event.event === 'assign'))
 
+  // --roles 只接受存在 Role Contract 的角色；未知值整条失败且不落盘。
+  const reassigned = JSON.parse(run('assign', '--task', 't0-fixture', '--roles', 'manager,lib-coder'))
+  assert.deepEqual(reassigned.roles, ['manager', 'lib-coder'])
+  runFailure('assign', '--task', 't0-fixture', '--roles', 'bogus-role')
+  assert.deepEqual(JSON.parse(run('status', '--task', 't0-fixture')).roles, ['manager', 'lib-coder'])
+
   // 同一 worktree 不允许第二个 active task。
   runFailure('new', '--task', 'duplicate', '--level', 't1', '--worktree', fixture)
 

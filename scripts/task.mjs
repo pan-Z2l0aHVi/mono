@@ -314,6 +314,18 @@ function newTask(options) {
   print(state)
 }
 
+// 可派发的角色就是存在 Role Contract 的角色：取值来自契约目录本身，不另立一份名单。
+// 该目录同时被 scripts/validate-context.mjs 限定为五份共享契约。
+function roleContracts() {
+  const directory = path.join(import.meta.dirname, '..', '.agents', 'skills', 'herdr-agents', 'roles')
+  return new Set(
+    fs
+      .readdirSync(directory)
+      .filter(name => name.endsWith('.md'))
+      .map(name => name.slice(0, -3))
+  )
+}
+
 function assign(options) {
   const taskId = validateTaskId(requireOption(options, 'task'))
   const { file, state } = loadState(taskId)
@@ -321,11 +333,16 @@ function assign(options) {
   assertWorktreeAvailable(state.commonDir, worktree, taskId)
   state.worktree = worktree
   if (options.owner) state.owner = options.owner
-  if (options.roles)
-    state.roles = options.roles
+  if (options.roles) {
+    const available = roleContracts()
+    const parsed = options.roles
       .split(',')
       .map(role => role.trim())
       .filter(Boolean)
+    for (const role of parsed)
+      if (!available.has(role)) fail(`unknown role "${role}"; expected one of ${[...available].sort().join(', ')}`)
+    state.roles = parsed
+  }
   appendEvent(state, 'assign', { owner: state.owner, roles: state.roles, worktree })
   state.updatedAt = now()
   saveState(file, state)
