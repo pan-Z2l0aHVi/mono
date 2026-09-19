@@ -1,3 +1,4 @@
+import { spawnSync } from 'node:child_process'
 import crypto from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
@@ -6,6 +7,9 @@ import { listPnpmWorkspaceManifests, readPnpmWorkspacePatterns } from './workspa
 
 const root = path.resolve(import.meta.dirname, '..')
 const errors = []
+
+// Role Contract 的落点：随 herdr-agents skill 安置，角色不再是 Claude Code subagent（ADR-0015）。
+const roleDirectory = '.agents/skills/herdr-agents/roles'
 
 // 结构化 handoff 的必填字段；根 AGENTS.md 与 task-packet.md 必须保持一致，缺失即视为流程漂移。
 const handoffFields = [
@@ -53,7 +57,7 @@ function checkBindingMirrors() {
   const scope = [
     ...['AGENTS.md', 'CONTRIBUTING.md', 'CLAUDE.md'].filter(exists),
     ...walk('docs/agents', file => file.endsWith('.md')).map(relative),
-    ...walk('.agents/agents', file => file.endsWith('.md')).map(relative)
+    ...walk(roleDirectory, file => file.endsWith('.md')).map(relative)
   ]
   for (const file of scope) {
     const lines = read(file).split('\n')
@@ -88,7 +92,7 @@ function checkRetiredReviewStructure() {
   const scope = [
     ...['AGENTS.md', 'CONTRIBUTING.md', 'CLAUDE.md'].filter(exists),
     ...walk('docs/agents', file => file.endsWith('.md')).map(relative),
-    ...walk('.agents/agents', file => file.endsWith('.md')).map(relative)
+    ...walk(roleDirectory, file => file.endsWith('.md')).map(relative)
   ]
   for (const file of scope) {
     if (read(file).includes('二次审查'))
@@ -116,6 +120,16 @@ function walk(directory, predicate = () => true) {
 
 function addError(message) {
   errors.push(message)
+}
+
+// skill 出处以 skills-lock.json 为权威：登记在册的是第三方上游件，正文由上游维护（见 AGENTS.md 语言纪律），
+// 其中的示例路径不作为本仓链接；未登记的即本仓自撰，必须列在下面。两边都不在就是出处未定。
+const repoAuthoredSkills = new Set(['contract-change-review', 'herdr-agents'])
+const lockedSkills = new Set(Object.keys(JSON.parse(read('skills-lock.json')).skills))
+
+function fromLockedSkill(file) {
+  const [first, second, third] = relative(file).split(path.sep)
+  return first === '.agents' && second === 'skills' && lockedSkills.has(third)
 }
 
 for (const file of [
@@ -154,10 +168,11 @@ if (exists('CONTRIBUTING.md') && !read('CONTRIBUTING.md').includes('pnpm task st
   addError('CONTRIBUTING.md is missing the workflow edit gate')
 
 // Manager 契约只需自包含 workflow gate 指针与 init 命令；gate 处方以根 AGENTS.md Mutation Gate 和 workflow.md 为权威，不复制。
-if (exists('.agents/agents/manager.md')) {
-  const manager = read('.agents/agents/manager.md')
+// 文件本身缺失由下方 roleProfiles 报错，不在此重复。
+if (exists(`${roleDirectory}/manager.md`)) {
+  const manager = read(`${roleDirectory}/manager.md`)
   if (!manager.includes('pnpm task new') || !manager.includes('docs/agents/workflow.md'))
-    addError('.agents/agents/manager.md is missing the Manager workflow gate pointer')
+    addError(`${roleDirectory}/manager.md is missing the Manager workflow gate pointer`)
 }
 
 // workflow.md 的章节标题不再逐个钉字；结构不变量由 <!-- invariant:workflow-states --> 等锚点覆盖。
@@ -299,8 +314,7 @@ for (const manifestFile of workspaceManifests) {
 
 const symlinks = {
   '.claude/rules': '../.agents/rules',
-  '.claude/skills': '../.agents/skills',
-  '.claude/agents': '../.agents/agents'
+  '.claude/skills': '../.agents/skills'
 }
 for (const [file, expectedTarget] of Object.entries(symlinks)) {
   const absolute = path.join(root, file)
@@ -314,17 +328,37 @@ for (const [file, expectedTarget] of Object.entries(symlinks)) {
   }
 }
 
+// 禁止 Role Contract 被重新注册成 Claude Code subagent（ADR-0015）。两条独立断言：symlink 一律置错
+// （它是这 5 份契约历史上被注册的机制，指向缺失目标的悬空 symlink 同样会被客户端当成 subagent 目录，
+// 故用 lstatSync）；git index 里不得出现该路径下的任何条目，被跟踪才会随 clone 扩散。本地未跟踪的
+// 普通目录是开发者自己的项目级 subagent 落点，`.gitignore` 已整体排除，仓库无权置错。
+try {
+  if (fs.lstatSync(path.join(root, '.claude/agents')).isSymbolicLink())
+    addError('.claude/agents must not be a symlink; Role Contracts are opt-in session roles, not Claude Code subagents')
+} catch (error) {
+  if (error.code !== 'ENOENT') addError(`.claude/agents: cannot inspect path: ${error.message}`)
+}
+
+const trackedAgents = spawnSync('git', ['ls-files', '--', '.claude/agents'], { cwd: root, encoding: 'utf8' })
+if (trackedAgents.error || trackedAgents.status !== 0)
+  addError(
+    `.claude/agents: cannot check whether it is tracked: ${trackedAgents.error?.message ?? `git ls-files exited ${trackedAgents.status}`}`
+  )
+else if (trackedAgents.stdout.trim())
+  addError(`.claude/agents must not be tracked by git:\n${trackedAgents.stdout.trim()}`)
+
 const markdownFiles = [
   ...['AGENTS.md', 'CLAUDE.md', 'CONTEXT.md', 'ARCHITECTURE.md', 'CONTRIBUTING.md']
     .filter(exists)
     .map(file => path.join(root, file)),
   ...walk('docs/agents', file => file.endsWith('.md')),
   ...walk('docs/adr', file => file.endsWith('.md')),
-  ...walk('.agents', file => file.endsWith('.md')),
+  ...walk('.agents', file => file.endsWith('.md')).filter(file => !fromLockedSkill(file)),
   ...walk('packages', file => path.basename(file) === 'AGENTS.md'),
   ...walk('apps', file => path.basename(file) === 'AGENTS.md')
 ]
-const linkPattern = /(?<!!?)\[[^\]]*\]\(([^)]+)\)/g
+// (?<!!?) 的 `!?` 允许匹配空串，lookbehind 恒假，链接扫描因此从未跑过；这里要求前面确实不是 `!`（图片语法）。
+const linkPattern = /(?<!!)\[[^\]]*\]\(([^)]+)\)/g
 for (const file of markdownFiles) {
   const source = fs.readFileSync(file, 'utf8')
   for (const match of source.matchAll(linkPattern)) {
@@ -356,7 +390,17 @@ function parseFrontmatter(file) {
   }
 }
 
-for (const file of walk('.agents/skills', file => path.basename(file) === 'SKILL.md')) parseFrontmatter(file)
+for (const file of walk('.agents/skills', file => path.basename(file) === 'SKILL.md')) {
+  parseFrontmatter(file)
+  const name = path.basename(path.dirname(file))
+  if (repoAuthoredSkills.has(name) === lockedSkills.has(name))
+    addError(
+      `.agents/skills/${name}: provenance must be either skills-lock.json or repoAuthoredSkills, not both or neither`
+    )
+}
+for (const name of repoAuthoredSkills)
+  if (!exists(`.agents/skills/${name}/SKILL.md`))
+    addError(`repoAuthoredSkills lists a skill without SKILL.md: .agents/skills/${name}`)
 
 const roleProfiles = new Map([
   ['manager.md', 'manager'],
@@ -365,13 +409,13 @@ const roleProfiles = new Map([
   ['biz-coder.md', 'biz-coder'],
   ['reviewer.md', 'reviewer']
 ])
-const roleFiles = walk('.agents/agents', file => file.endsWith('.md'))
+const roleFiles = walk(roleDirectory, file => file.endsWith('.md'))
 
 for (const file of roleFiles) {
   parseFrontmatter(file)
   const filename = path.basename(file)
   if (!roleProfiles.has(filename)) {
-    addError(`${relative(file)}: unsupported Agent Role; .agents/agents only contains the five shared Role Contracts`)
+    addError(`${relative(file)}: unsupported Agent Role; ${roleDirectory} has only five Role Contracts`)
     continue
   }
 
@@ -385,7 +429,7 @@ for (const file of roleFiles) {
 
 for (const filename of roleProfiles.keys()) {
   if (!roleFiles.some(file => path.basename(file) === filename))
-    addError(`.agents/agents: missing required Agent Role ${filename}`)
+    addError(`${roleDirectory}: missing required Agent Role ${filename}`)
 }
 
 if (exists('CONTEXT.md')) {

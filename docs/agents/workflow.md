@@ -111,7 +111,7 @@ freeze 自身执行归一化管线：`git add -A` 全量 staging（快照语义�
 
 角色定义会话身份、职责边界和协作方式，与单个 task 解耦；执行体是承担该角色的 CLI/agent。角色 → 执行体的唯一权威绑定表在根 [`AGENTS.md`](../../AGENTS.md) 的「多 Agent 编排」节，本文件不复制表格；模型与思考强度由用户会话设置或 Manager 按任务指定，不设角色默认（见 ADR-0014）。
 
-- Role Contract 位于 [`.agents/agents/`](../../.agents/agents/)，只定义职责、边界和协作；仓库约束仍以 `AGENTS.md`、包级 `AGENTS.md`、rules、skills 和实现事实为准。
+- Role Contract 位于 [`.agents/skills/herdr-agents/roles/`](../../.agents/skills/herdr-agents/roles/)，只定义职责、边界和协作；仓库约束仍以 `AGENTS.md`、包级 `AGENTS.md`、rules、skills 和实现事实为准。
 - 绑定表适用于主工作流（herdr + Claude Code / Codex CLI）；任何其他执行体（zcode、workbuddy、pi 等）可承担任一角色，目录边界、task gate、reviewer ≠ owner、handoff 字段等机器强制约束不变。T0/T1 在 task packet 记录替代执行体与理由。
 - Reviewer 独立于实施者，以冻结的 `diffHash` 为审查对象；拓扑见「review 拓扑」。
 
@@ -151,7 +151,7 @@ Manager 统一接收需求并编排，保持扁平，不引入 Integrator 或其
 - package worktree 可以作为缓存或验证 lane，但不能作为任务身份；跨包 vertical slice 使用任务级 worktree，并按「编排模式」做严格隔离；无法严格隔离时必须拆成独立 task 与独立 worktree。
 - 角色目录边界即 worktree 内的写入边界：同一 worktree 中，任一角色不得修改对方目录下的文件；需要对方改动时通过 handoff 派发，而不是越界编辑。
 - Reviewer 不在持续变化的实施 worktree 上复用旧结论；review 前冻结，修复后重新冻结。
-- 并行编排可使用 Herdr，也可使用其他 harness；Herdr 的 pane、tab、workspace 生命周期规则见 [`herdr/SKILL.md`](../../.agents/skills/herdr/SKILL.md)，不在本文件重复。
+- 并行编排可使用 Herdr，也可使用其他 harness；用 Herdr 起多角色会话的开机时序见 [`herdr-agents/SKILL.md`](../../.agents/skills/herdr-agents/SKILL.md)，pane、tab、workspace 的命令与生命周期规则见上游 [`herdr/SKILL.md`](../../.agents/skills/herdr/SKILL.md)，均不在本文件重复。
 - 并行派发多个互不依赖的 task 时，派单命令本身不要阻塞等待某个 agent 的结果：先把全部 handoff 提交出去，再分别监听各 agent 的进度；等待放在派发全部完成之后。
 
 ## Playbook

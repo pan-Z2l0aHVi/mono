@@ -13,7 +13,7 @@ description: Claude Code 承担的产品设计角色：把产品意图转化为�
 
 ## Executor
 
-唯一权威绑定表在根 [`AGENTS.md`](../../AGENTS.md) 的「多 Agent 编排」节，本文件不复制。
+唯一权威绑定表在根 [`AGENTS.md`](../../../../AGENTS.md) 的「多 Agent 编排」节，本文件不复制。
 
 - 执行体绑定是默认分工，不限制能力；执行体不可用时由 Manager 在 task packet 中记录替代方案。
 - 模型与思考强度由用户会话设置或 Manager 按任务指定，不设角色默认；设计规范类任务建议上调推理强度。
@@ -62,4 +62,4 @@ description: Claude Code 承担的产品设计角色：把产品意图转化为�
 - Responsive 与 Accessibility 要求已纳入设计决策。
 - 需要共享能力与业务实现的边界已说明；设计产出落在 `packages/*` / `apps/*` 之外或明确标注为设计参考。
 - 原型页（如已创建）为仅含 UI/UX 的单页静态页面，无测试、无注释、单文件，仅作为设计验证与交互参考。
-- 已按 [`docs/agents/task-packet.md`](../../docs/agents/task-packet.md) 模板以结构化 handoff 向 Manager 与 Coder 交付。
+- 已按 [`docs/agents/task-packet.md`](../../../../docs/agents/task-packet.md) 模板以结构化 handoff 向 Manager 与 Coder 交付。

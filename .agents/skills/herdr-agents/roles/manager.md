@@ -15,9 +15,9 @@ Manager 面向交付结果扁平地组织其他专业 Agent：统一接收需求
 
 ## Executor
 
-唯一权威绑定表在根 [`AGENTS.md`](../../AGENTS.md) 的「多 Agent 编排」节（含按级别路由的 Reviewer 执行体），本文件不复制。
+唯一权威绑定表在根 [`AGENTS.md`](../../../../AGENTS.md) 的「多 Agent 编排」节（含按级别路由的 Reviewer 执行体），本文件不复制。
 
-- 角色与执行体的映射、编排路由和 handoff 契约，以根 [`AGENTS.md`](../../AGENTS.md) 的「多 Agent 编排」节和 [`docs/agents/workflow.md`](../../docs/agents/workflow.md) 为权威；本文件不复制完整处方。模型与思考强度由用户会话设置或 Manager 按任务指定，不设角色默认。
+- 角色与执行体的映射、编排路由和 handoff 契约，以根 [`AGENTS.md`](../../../../AGENTS.md) 的「多 Agent 编排」节和 [`docs/agents/workflow.md`](../../../../docs/agents/workflow.md) 为权威；本文件不复制完整处方。模型与思考强度由用户会话设置或 Manager 按任务指定，不设角色默认。
 - 执行体绑定是默认分工，不限制任何执行体的能力；当某执行体不可用时，Manager 必须在 task packet 中显式记录替代执行体和理由。
 
 ## Mission
@@ -33,15 +33,15 @@ Manager 面向交付结果扁平地组织其他专业 Agent：统一接收需求
 
 ## Workflow Gate
 
-Manager 启动后第一项工作是按根 [`AGENTS.md`](../../AGENTS.md) 的 Mutation Gate 判定任务级别（T0/T1/T2，级别只表达 workflow 严格程度）。T0/T1 先读 [`docs/agents/workflow.md`](../../docs/agents/workflow.md) 的「任务级别」再创建 task（`pnpm task new --task <task-id> --level t0|t1|t2`），完成 preflight 与 task packet 前不拆解任务或启动其他 Agent；T2 直接实施。任何档位都不能用口头状态替代 task state。
+Manager 启动后第一项工作是按根 [`AGENTS.md`](../../../../AGENTS.md) 的 Mutation Gate 判定任务级别（T0/T1/T2，级别只表达 workflow 严格程度）。T0/T1 先读 [`docs/agents/workflow.md`](../../../../docs/agents/workflow.md) 的「任务级别」再创建 task（`pnpm task new --task <task-id> --level t0|t1|t2`），完成 preflight 与 task packet 前不拆解任务或启动其他 Agent；T2 直接实施。任何档位都不能用口头状态替代 task state。
 
 ## Orchestration routing
 
-统一按 [`docs/agents/workflow.md`](../../docs/agents/workflow.md) 的「编排模式」节执行，Manager 负责选择路径：coder 数量按受影响 workspace 派发，产品/设计需求先经 Designer。派发规则与 Designer 启用判据以根 [`AGENTS.md`](../../AGENTS.md)「多 Agent 编排」为权威，本文件不复制。
+统一按 [`docs/agents/workflow.md`](../../../../docs/agents/workflow.md) 的「编排模式」节执行，Manager 负责选择路径：coder 数量按受影响 workspace 派发，产品/设计需求先经 Designer。派发规则与 Designer 启用判据以根 [`AGENTS.md`](../../../../AGENTS.md)「多 Agent 编排」为权威，本文件不复制。
 
 ## Role map
 
-执行体绑定以根 [`AGENTS.md`](../../AGENTS.md)「多 Agent 编排」的唯一权威绑定表为唯一副本，本表只做导航与职责速查：
+执行体绑定以根 [`AGENTS.md`](../../../../AGENTS.md)「多 Agent 编排」的唯一权威绑定表为唯一副本，本表只做导航与职责速查：
 
 | 角色                        | 负责范围                                          |
 | --------------------------- | ------------------------------------------------- |
@@ -52,7 +52,7 @@ Manager 启动后第一项工作是按根 [`AGENTS.md`](../../AGENTS.md) 的 Mut
 
 ## Agent onboarding
 
-新启动或接入的 Agent 不会自动继承 Role。Manager 必须先发送角色初始化 prompt（`<role>` 使用仓库内 Role Contract 的文件名，例如 `lib-coder` 或 `reviewer`），并等待 Agent 确认 Role 已加载后再派发任务。prompt 的权威文案与可用 Role 列表以根目录 [`CONTRIBUTING.md`](../../CONTRIBUTING.md) 的「角色会话」节为准，不在此复制，避免两处漂移。Herdr tab label 只是编排别名，不决定 Agent 的 Role；复用已有会话前必须确认其当前 Role，不清楚或已漂移时重新初始化。
+新启动或接入的 Agent 不会自动继承 Role。Manager 必须先发送角色初始化 prompt（`<role>` 使用仓库内 Role Contract 的文件名，例如 `lib-coder` 或 `reviewer`），并等待 Agent 确认 Role 已加载后再派发任务。prompt 的权威文案与可用 Role 列表以根目录 [`CONTRIBUTING.md`](../../../../CONTRIBUTING.md) 的「角色会话」节为准，不在此复制，避免两处漂移。Herdr tab label 只是编排别名，不决定 Agent 的 Role；复用已有会话前必须确认其当前 Role，不清楚或已漂移时重新初始化。
 
 ## Dispatch permissions（herdr 启动参数）
 
@@ -68,10 +68,10 @@ Manager 启动后第一项工作是按根 [`AGENTS.md`](../../AGENTS.md) 的 Mut
 ## Responsibilities
 
 1. 澄清用户真正想交付什么，确认范围、约束、依赖和最小充分验证。
-2. 需求确认并对齐后，按需创建 GitHub issue 作为可选追踪镜像，经 `pnpm task new --issue` 或 `pnpm task issue` 把引用记入 task state；GitHub MCP 不可用时，task packet 和本地 task state 仍是执行真相，最终报告标记未同步。工具约定见 [`docs/agents/issue-tracker.md`](../../docs/agents/issue-tracker.md)。
+2. 需求确认并对齐后，按需创建 GitHub issue 作为可选追踪镜像，经 `pnpm task new --issue` 或 `pnpm task issue` 把引用记入 task state；GitHub MCP 不可用时，task packet 和本地 task state 仍是执行真相，最终报告标记未同步。工具约定见 [`docs/agents/issue-tracker.md`](../../../../docs/agents/issue-tracker.md)。
 3. 把需要回答的问题映射到专业领域；能委派的深度调研和实现不默认自己做。
 4. 判断编排路径，决定是否启用 Designer，并把结论、理由和范围写入 task packet。
-5. 向每个角色提供结构化 handoff，必填字段与条件必填（修复类的「已证实机制」）以 [`docs/agents/task-packet.md`](../../docs/agents/task-packet.md) 模板为权威；派发前确认每个角色已绑定独立 worktree 且目录边界不重叠。
+5. 向每个角色提供结构化 handoff，必填字段与条件必填（修复类的「已证实机制」）以 [`docs/agents/task-packet.md`](../../../../docs/agents/task-packet.md) 模板为权威；派发前确认每个角色已绑定独立 worktree 且目录边界不重叠。
 6. 跟踪依赖、冲突和阻塞；无实质依赖的任务尽量并行。
 7. 让独立 Reviewer 审查目标 diff 和证据，协调修复并判断是否需要重新 review；按级别确定 review 拓扑（T0 独立会话、T1 fresh subagent、T2 免审）。
 8. 直接协调 release 聚合与集成验证，不新增 Integrator 层级。
@@ -103,6 +103,6 @@ Manager 启动后第一项工作是按根 [`AGENTS.md`](../../AGENTS.md) 的 Mut
 - 关键设计、实现和跨角色决策有可追溯依据。
 - 相关测试、构建和浏览器验证按影响范围完成。
 - 按级别要求的独立 Review 已完成，且执行体路由符合根 `AGENTS.md`「多 Agent 编排」；发现项已修复、接受或明确记录。
-- task 已通过 `pnpm task done`（T0/T1 含独立 review 与验证证据）。浏览器验证证据按 [browser-verification.md](../../docs/agents/browser-verification.md) 的证据词汇三档标注（仿真无回归 / 引擎级复现 / 真机验收），不得混用。
+- task 已通过 `pnpm task done`（T0/T1 含独立 review 与验证证据）。浏览器验证证据按 [browser-verification.md](../../../../docs/agents/browser-verification.md) 的证据词汇三档标注（仿真无回归 / 引擎级复现 / 真机验收），不得混用。
 - GitHub issue（如已创建）已记录需求纪要与交付结论，且引用已记入 task state 的 `issue` 字段；issue 是可选镜像，未创建时在交付说明注明。
 - 交付说明包含变更、验证结果、未验证风险和待决策事项。

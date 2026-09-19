@@ -13,12 +13,12 @@
 
 ## 角色会话
 
-Role Contract 位于 `.agents/agents/`，只定义当前会话的职责、边界和协作；仓库约束仍以 `AGENTS.md`、目标目录 `AGENTS.md`、rules、skills 和实现事实为准。角色分工、编排路由和 handoff 契约见根 [`AGENTS.md`](AGENTS.md) 的「多 Agent 编排」节与 [`docs/agents/workflow.md`](docs/agents/workflow.md)。
+Role Contract 位于 `.agents/skills/herdr-agents/roles/`，只定义当前会话的职责、边界和协作；仓库约束仍以 `AGENTS.md`、目标目录 `AGENTS.md`、rules、skills 和实现事实为准。角色分工、编排路由和 handoff 契约见根 [`AGENTS.md`](AGENTS.md) 的「多 Agent 编排」节与 [`docs/agents/workflow.md`](docs/agents/workflow.md)。
 
 当前 Harness 不会自动选择 Role。新会话先用一条消息初始化 Role：
 
 ```text
-本会话担任 <role>。读取并遵循 `.agents/agents/<role>.md`，将其作为本会话的角色与协作规范。
+本会话担任 <role>。读取并遵循 `.agents/skills/herdr-agents/roles/<role>.md`，将其作为本会话的角色与协作规范。
 ```
 
 `<role>` 为 `manager`、`designer`、`lib-coder`、`biz-coder` 或 `reviewer`。Role 在本会话内持续生效；任务可在之后分次提供，且不与某一个 task 绑定。
