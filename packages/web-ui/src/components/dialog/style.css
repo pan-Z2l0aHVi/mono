@@ -118,8 +118,6 @@ dialog[open].is-visible .wui-dialog-body {
   }
 }
 
-/* ===== 标题 ===== */
-
 .title {
   margin: 0 0 var(--wui-dialog-title-gap, 16px);
   padding: 0;
@@ -130,8 +128,6 @@ dialog[open].is-visible .wui-dialog-body {
   color: var(--wui-color-text, #1b1b1b);
 }
 
-/* ===== 描述 ===== */
-
 .desc {
   margin: 0 0 var(--wui-dialog-desc-gap, 24px);
   padding: 0;
@@ -141,15 +137,11 @@ dialog[open].is-visible .wui-dialog-body {
   color: var(--wui-color-text, #1b1b1b);
 }
 
-/* ===== 按钮区域 ===== */
-
 .wui-dialog-footer {
   display: flex;
   flex-direction: column;
   gap: var(--wui-dialog-footer-gap, 10px);
   justify-content: var(--wui-dialog-footer-justify, flex-end);
-
-  /* ===== 按钮全宽（默认垂直排列） ===== */
 
   & ::slotted(web-ui-button) {
     display: flex;
@@ -157,20 +149,14 @@ dialog[open].is-visible .wui-dialog-body {
   }
 }
 
-/* ===== horizontal 模式 ===== */
-
 :host([horizontal]) .wui-dialog-footer {
   flex-direction: row;
   gap: 12px;
   justify-content: var(--wui-dialog-footer-justify, center);
 
-  /* 非 full 按钮：居中，不拉伸 */
-
   & ::slotted(web-ui-button:not([full])) {
     width: auto;
   }
-
-  /* full 按钮：平分剩余空间 */
 
   & ::slotted(web-ui-button[full]) {
     flex: 1;

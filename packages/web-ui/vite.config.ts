@@ -6,7 +6,6 @@ import { playwright } from 'vite-plus/test/browser-playwright'
 
 import { generateIcons } from './scripts/generate-icons'
 
-/** 构建时自动生成图标模块 */
 function iconsPlugin(): Plugin {
   return {
     name: 'generate-icons',

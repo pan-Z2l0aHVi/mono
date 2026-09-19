@@ -8,7 +8,6 @@
   display: contents;
 }
 
-/* ===== Dialog 容器 ===== */
 dialog {
   /* 显式 position: fixed（防御性）：UA 的 dialog:modal 默认 fixed，但作者样式若覆盖
      position 会把它退回文档流——top layer 里的 modal dialog 变成按文档流定位，出现在
@@ -112,8 +111,6 @@ dialog[open].is-visible::backdrop {
   /* 拖拽期间由 JS 写入 --wui-internal-drag-backdrop-opacity 实现遮罩跟手淡出。 */
   opacity: var(--wui-internal-drag-backdrop-opacity, 1);
 }
-
-/* ===== Drag bar（拖拽关闭热区） ===== */
 
 /*
  * 热区贴在抽屉内缘，宽度由 --wui-drawer-drag-zone-size（默认 20px）控制便于触控命中；
@@ -222,8 +219,6 @@ dialog.is-drag-close .wui-drawer-drag-zone .wui-drawer-drag-bar {
   background: var(--wui-color-accent, #08f);
 }
 
-/* ===== Placement 变体 ===== */
-
 :host([placement='left']) dialog {
   right: auto;
   left: 0;
@@ -264,8 +259,6 @@ dialog.is-dragging .wui-drawer-drag-zone {
   cursor: grabbing;
 }
 
-/* ===== 抽屉主体 ===== */
-
 .wui-drawer-body {
   --wui-internal-glass-shadow: var(--wui-shadow-overlay, 2px 16px 40px rgb(0 0 0 / 0.4));
   --wui-glass-corner-radius: var(--wui-drawer-radius, var(--wui-radius-overlay, 28px));
@@ -274,8 +267,6 @@ dialog.is-dragging .wui-drawer-drag-zone {
   height: 100%;
   background-color: var(--wui-drawer-bg, var(--wui-color-surface-overlay, rgb(246 246 246 / 0.82)));
 }
-
-/* ===== Header ===== */
 
 .wui-drawer-header {
   display: flex;
@@ -290,13 +281,9 @@ dialog.is-dragging .wui-drawer-drag-zone {
   line-height: 1.4;
 }
 
-/* ===== 隐藏态 ===== */
-
 .wui-drawer-header[hidden] {
   display: none;
 }
-
-/* ===== 内容区 ===== */
 
 .wui-drawer-content {
   overflow-y: auto;
@@ -309,8 +296,6 @@ dialog.is-dragging .wui-drawer-drag-zone {
   line-height: 1.5;
   color: var(--wui-color-text, #1b1b1b);
 }
-
-/* ===== Footer ===== */
 
 .wui-drawer-footer {
   flex-shrink: 0;
@@ -333,8 +318,6 @@ dialog.is-dragging .wui-drawer-drag-zone {
   left: auto;
 }
 
-/* ===== Headless 模式 ===== */
-
 /* Headless 模式下，dialog 只作为 overlay 容器，不渲染内置 UI */
 :host([headless]) dialog {
   /*
@@ -344,7 +327,6 @@ dialog.is-dragging .wui-drawer-drag-zone {
    */
   --wui-internal-drawer-inset: 0px;
 
-  /* 保持 overlay 基础设施，移除内置样式 */
   width: auto;
   max-width: none;
 }

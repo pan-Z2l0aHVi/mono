@@ -570,7 +570,6 @@ describe('WebUiDrawer 拖拽关闭（浏览器）', () => {
     ] as const
 
     for (const { placement, close } of cases) {
-      // 沿闭合方向：越过阈值 → 关闭
       const closing = createDrawer()
       closing.placement = placement
       closing.draggable = true
@@ -811,7 +810,6 @@ describe('WebUiDrawer 拖拽关闭（浏览器）', () => {
       const events = openChangeEvents(el)
       const dialog = backdropDialog(el)
       const rect = dialog.getBoundingClientRect()
-      // 按下在遮罩上、拖出 100px 后松手：拖拽松手不是点遮罩。
       await pressOn(el, dialog, rect.left - 60, rect.top + 60)
       dialog.dispatchEvent(
         new MouseEvent('click', { bubbles: true, detail: 1, clientX: rect.left - 160, clientY: rect.top + 60 })

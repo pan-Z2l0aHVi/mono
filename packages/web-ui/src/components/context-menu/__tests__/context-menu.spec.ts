@@ -504,7 +504,6 @@ describe('WebUiContextMenu 组件', () => {
       freshChild.textContent = 'DOCX'
       parentItem.appendChild(freshChild)
 
-      // 在另一个位置重新定位打开
       el.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, clientX: 200, clientY: 200 }))
       await waitForMenuOpen(el)
 
@@ -1108,7 +1107,6 @@ describe('WebUiContextMenu 组件', () => {
           await waitForItemOrder(validItems)
         }
 
-        // close → reopen
         el.close()
         await waitForMenuClose(el)
         el.openAt(20, 20)

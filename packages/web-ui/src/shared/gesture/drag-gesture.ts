@@ -286,7 +286,6 @@ export function attachDragGesture(
         cancel()
         return
       }
-      // 若限定了 Y 轴且 X 轴位移明显更大，放弃拖拽
       if (axis === 'y' && Math.abs(rawDeltaX) > Math.abs(rawDeltaY)) {
         cancel()
         return

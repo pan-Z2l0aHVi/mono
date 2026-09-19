@@ -81,17 +81,14 @@ describe('WebUiSegmented 手势拖拽与吸附（浏览器）', () => {
 
     const inner = gestureSurface(segmented)
 
-    // 1. pointerdown 启动
     inner.dispatchEvent(pointer('pointerdown', { clientX: t1Rect.left + 10, clientY: t1Rect.top + 10 }))
     await segmented.updateComplete
 
-    // 2. 拖拽超过中点 (targetDistance * 0.7)
     window.dispatchEvent(
       pointer('pointermove', { clientX: t1Rect.left + 10 + targetDistance * 0.7, clientY: t1Rect.top + 10 })
     )
     await segmented.updateComplete
 
-    // 3. pointerup 松手
     window.dispatchEvent(
       pointer('pointerup', { clientX: t1Rect.left + 10 + targetDistance * 0.7, clientY: t1Rect.top + 10 })
     )
@@ -142,7 +139,6 @@ describe('WebUiSegmented 手势拖拽与吸附（浏览器）', () => {
   })
 
   it('跳过 disabled 选项：自动吸附至最近的可用选项', async () => {
-    // t2 (weekly) disabled
     const { segmented, t1, t2 } = createSegmented({ disabledSecond: true })
     await segmented.updateComplete
 
@@ -153,7 +149,6 @@ describe('WebUiSegmented 手势拖拽与吸附（浏览器）', () => {
     inner.dispatchEvent(pointer('pointerdown', { clientX: t1Rect.left + 10, clientY: t1Rect.top + 10 }))
     await segmented.updateComplete
 
-    // 拖到 t2 (weekly) 所在区域
     const t2Center = t2Rect.left + t2Rect.width / 2
     window.dispatchEvent(pointer('pointermove', { clientX: t2Center, clientY: t1Rect.top + 10 }))
     await segmented.updateComplete

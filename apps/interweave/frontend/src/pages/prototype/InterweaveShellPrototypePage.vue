@@ -446,7 +446,6 @@ const currentApps = computed(() => {
   return openWithApps[selectedResource.value.resourceType] ?? []
 })
 
-// All unique tags from resources
 const allTags = [...new Set(resources.flatMap(r => r.tags ?? []))].sort()
 
 // --- Filter state ---

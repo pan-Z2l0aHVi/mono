@@ -49,7 +49,6 @@ const isSeparatorRow = cells => cells.some(cell => cell.includes('-')) && cells.
 const escapeRegExp = value => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 const declaresExecutor = (declared, executor) => new RegExp(`^${escapeRegExp(executor)}(?![A-Za-z])`).test(declared)
 
-// 绑定表镜像一致性：绑定表内每一行的执行体都必须与默认绑定一致。
 function checkBindingMirrors() {
   const scope = [
     ...['AGENTS.md', 'CONTRIBUTING.md', 'CLAUDE.md'].filter(exists),

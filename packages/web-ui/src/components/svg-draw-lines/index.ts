@@ -99,7 +99,6 @@ export class WebUiSvgDrawLines extends LitElement {
     const seen = new Set<SVGGeometryElement>()
 
     const walk = (root: Node) => {
-      // Collect SVG geometry from this subtree
       if (root instanceof Element || root instanceof DocumentFragment) {
         root.querySelectorAll(GEOMETRY_SELECTOR).forEach(el => {
           // instanceof SVGGeometryElement 在 jsdom 中未定义，使用 duck-type 检查
@@ -113,7 +112,6 @@ export class WebUiSvgDrawLines extends LitElement {
         })
       }
 
-      // Recurse into children and open shadow roots
       if (root instanceof Element) {
         for (const child of root.children) walk(child)
         if (root.shadowRoot) walk(root.shadowRoot)
@@ -128,7 +126,6 @@ export class WebUiSvgDrawLines extends LitElement {
 
   private animateElement(el: SVGGeometryElement, run: AnimationRun): Promise<void> {
     return new Promise(resolve => {
-      // Save inline styles once per animation cycle
       if (!run.restoreQueue.has(el)) {
         run.restoreQueue.set(el, {
           dasharray: el.style.strokeDasharray,

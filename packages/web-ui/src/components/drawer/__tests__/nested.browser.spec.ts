@@ -140,7 +140,6 @@ describe('WebUiDrawer nested 层叠（浏览器）', () => {
     await waitFor(() => !getDialog(child).open, 4000)
     expect(document.documentElement.style.overflow).toBe('hidden')
 
-    // 关闭父层：解锁
     parent.open = false
     await parent.updateComplete
     await waitFor(() => !getDialog(parent).open, 4000)
@@ -212,7 +211,6 @@ describe('WebUiDrawer 同级（非 DOM 嵌套）层叠', () => {
     await d3.updateComplete
     await openInSequence(d1, d2, d3)
 
-    // Esc 关闭最上层 d3，其余不动。
     pressEscape(getDialog(d3))
     await d3.updateComplete
     await waitFor(() => !getDialog(d3).open, 4000)

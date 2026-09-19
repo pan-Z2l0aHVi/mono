@@ -73,14 +73,10 @@ button:active:not(:disabled) {
   background-color: var(--wui-button-bg-active);
 }
 
-/* ===== Full width ===== */
-
 :host([full]) button {
   display: flex;
   width: 100%;
 }
-
-/* ===== Icon mode ===== */
 
 :host([icon]) button {
   padding: 0;
@@ -100,16 +96,12 @@ button:active:not(:disabled) {
   --wui-button-bg-active: color-mix(in srgb, var(--wui-button-bg, #08f) 76%, black);
 }
 
-/* ===== Variant: secondary ===== */
-
 :host([variant='secondary']) {
   --wui-button-color: var(--wui-color-text, #1b1b1b);
   --wui-button-bg: var(--wui-color-surface-control, #dfdfdf);
   --wui-button-bg-hover: color-mix(in srgb, var(--wui-button-bg, #dfdfdf) 92%, black);
   --wui-button-bg-active: color-mix(in srgb, var(--wui-button-bg, #dfdfdf) 82%, black);
 }
-
-/* ===== Variant: ghost ===== */
 
 :host([variant='ghost']) {
   --wui-button-color: var(--wui-color-text, #1b1b1b);
@@ -124,16 +116,12 @@ button:active:not(:disabled) {
   );
 }
 
-/* ===== Variant: danger ===== */
-
 :host([variant='danger']) {
   --wui-button-color: var(--wui-color-danger, #dc2626);
   --wui-button-bg: color-mix(in srgb, var(--wui-color-danger, #dc2626) 18%, var(--wui-color-surface, #fff));
   --wui-button-bg-hover: color-mix(in srgb, var(--wui-color-danger, #dc2626) 26%, var(--wui-color-surface, #fff));
   --wui-button-bg-active: color-mix(in srgb, var(--wui-color-danger, #dc2626) 45%, var(--wui-color-surface, #fff));
 }
-
-/* ===== Variant: glass (玻璃) ===== */
 
 /* .wui-glass 样式由 @/assets/glass.css 提供 */
 :host([variant='glass']) {
@@ -150,8 +138,6 @@ button:active:not(:disabled) {
     color-mix(in srgb, var(--wui-color-text, #1b1b1b) 15%, var(--wui-color-surface-glass, rgb(250 250 250 / 0.34)))
   );
 }
-
-/* ===== Group context ===== */
 
 button.is-grouped {
   --wui-button-bg: transparent;

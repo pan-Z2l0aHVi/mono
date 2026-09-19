@@ -93,8 +93,6 @@ aside {
   }
 }
 
-/* ===== Sidebar 拖拽调宽 handle ===== */
-
 /*
  * 命中条贴 aside 右缘（约 12px 宽），hover 或拖拽中显示 3px accent 竖线。
  * aside 有 8px padding，handle 定位在 padding 区外缘，不遮挡 aside-panel 内容。

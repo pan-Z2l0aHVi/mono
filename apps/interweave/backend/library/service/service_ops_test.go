@@ -187,7 +187,6 @@ func TestPreferredSourceSwitching(t *testing.T) {
 		t.Fatalf("AddFileSource error: %v", err)
 	}
 
-	// 显式切换到第二个 Source。
 	if err := srcService.SetPreferredSource(ctx, res.ID, second.ID); err != nil {
 		t.Fatalf("SetPreferredSource error: %v", err)
 	}

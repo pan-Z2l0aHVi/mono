@@ -167,8 +167,6 @@ export class WebUiCollapse extends LitElement {
     else this.show()
   }
 
-  // ===== trigger slot =====
-
   private _dispatchChange(open: boolean) {
     dispatchOpenChangeEvent(this, open)
   }
