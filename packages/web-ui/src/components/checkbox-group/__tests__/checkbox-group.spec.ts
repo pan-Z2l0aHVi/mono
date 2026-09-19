@@ -153,6 +153,43 @@ describe('WebUiCheckboxGroup 组件', () => {
     })
   })
 
+  describe('属性: direction', () => {
+    it('默认值为 vertical，非法输入回退到默认值', async () => {
+      const el = createGroup()
+      await waitForUpdate(el)
+      expect(el.direction).toBe('vertical')
+      // 未声明 direction 也会被反射写回宿主，changeset 记录了这一可见变化
+      expect(el.getAttribute('direction')).toBe('vertical')
+
+      ;(el as any).direction = 'diagonal'
+      await waitForUpdate(el)
+      expect(el.direction).toBe('vertical')
+
+      cleanupElement(el)
+    })
+
+    it('设置后反射到 group host 属性', async () => {
+      const el = createGroup()
+      el.direction = 'horizontal'
+      await waitForUpdate(el)
+      expect(el.getAttribute('direction')).toBe('horizontal')
+
+      el.direction = 'vertical'
+      await waitForUpdate(el)
+      expect(el.getAttribute('direction')).toBe('vertical')
+
+      cleanupElement(el)
+    })
+
+    it('attribute 声明 direction 时初值取声明值', async () => {
+      const el = createGroup(GROUP_HTML, { direction: 'horizontal' })
+      await waitForUpdate(el)
+      expect(el.direction).toBe('horizontal')
+
+      cleanupElement(el)
+    })
+  })
+
   describe('用户交互', () => {
     it('点击子 checkbox 后 value 数组中包含该值', async () => {
       const el = createGroup()

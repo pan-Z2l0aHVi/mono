@@ -13,8 +13,9 @@
   /* radio / checkbox 指示器尺寸。宿主高度由内容撑开，不继承页面行高。 */
   --wui-selection-control-size: 18px;
 
-  /* radio-group / checkbox-group 成员间距。 */
-  --wui-selection-group-gap: 8px;
+  /* radio-group / checkbox-group 成员间距，两个 group 各自可覆盖。 */
+  --wui-radio-group-gap: 8px;
+  --wui-checkbox-group-gap: 8px;
 
   /* z-index layers - 基础结构 */
   --wui-layer-base: 0;

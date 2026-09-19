@@ -566,35 +566,69 @@ Portal 面板创建时会镜像 host 上解析后的这些变量；更新 host �
 
 多选复选框组。
 
-| 属性       | 类型       | 默认值  | 说明           |
-| ---------- | ---------- | ------- | -------------- |
-| `value`    | `string[]` | `[]`    | 已选项的值数组 |
-| `name`     | `string`   | `''`    | 表单字段名     |
-| `disabled` | `boolean`  | `false` | 禁用全部子项   |
-| `required` | `boolean`  | `false` | 必填校验       |
+##### 属性
+
+| 属性        | 类型                         | 默认值       | 说明           |
+| ----------- | ---------------------------- | ------------ | -------------- |
+| `value`     | `string[]`                   | `[]`         | 已选项的值数组 |
+| `name`      | `string`                     | `''`         | 表单字段名     |
+| `disabled`  | `boolean`                    | `false`      | 禁用全部子项   |
+| `required`  | `boolean`                    | `false`      | 必填校验       |
+| `direction` | `'horizontal' \| 'vertical'` | `'vertical'` | 布局方向       |
 
 **事件：** `input`, `change`
 
 **插槽：** `default`（投影 `<web-ui-checkbox>` 元素）
 
-同步子 checkbox 的 `checked` 状态。`disabled` 提供继承的有效禁用状态，不改写子项自身的 `disabled` 属性。监听子项 `change` 事件。
+同步子 checkbox 的 `checked` 状态。`disabled` 提供继承的有效禁用状态，不改写子项自身的 `disabled` 属性。监听子项 `change` 事件。`direction` 传入非法值时回退为 `vertical`。
+
+##### Token
+
+| Token                      | 默认值 | 说明                     |
+| -------------------------- | ------ | ------------------------ |
+| `--wui-checkbox-group-gap` | `8px`  | 成员 checkbox 之间的间距 |
+
+在 group 元素本身，或同一个 `<web-ui-theme>` 作用域内的祖先元素上设置。theme 宿主会为自己的子树声明 `8px`，写在 `<web-ui-theme>` 元素之外的覆盖到不了 group。
+
+```css
+web-ui-checkbox-group {
+  --wui-checkbox-group-gap: 16px;
+}
+```
 
 #### `<web-ui-radio-group>`
 
 单选组。
 
-| 属性       | 类型      | 默认值  | 说明                     |
-| ---------- | --------- | ------- | ------------------------ |
-| `value`    | `string`  | `''`    | 当前选中值               |
-| `name`     | `string`  | `''`    | 表单字段名（传递到子项） |
-| `disabled` | `boolean` | `false` | 禁用全部子项             |
-| `required` | `boolean` | `false` | 必填校验                 |
+##### 属性
+
+| 属性        | 类型                         | 默认值       | 说明                     |
+| ----------- | ---------------------------- | ------------ | ------------------------ |
+| `value`     | `string`                     | `''`         | 当前选中值               |
+| `name`      | `string`                     | `''`         | 表单字段名（传递到子项） |
+| `disabled`  | `boolean`                    | `false`      | 禁用全部子项             |
+| `required`  | `boolean`                    | `false`      | 必填校验                 |
+| `direction` | `'horizontal' \| 'vertical'` | `'vertical'` | 布局方向                 |
 
 **事件：** `input`, `change`
 
 **插槽：** `default`（投影 `<web-ui-radio>` 元素）
 
-`disabled` 提供继承的有效禁用状态，不改写子项自身的 `disabled` 属性。
+`disabled` 提供继承的有效禁用状态，不改写子项自身的 `disabled` 属性。`direction` 传入非法值时回退为 `vertical`。
+
+##### Token
+
+| Token                   | 默认值 | 说明                  |
+| ----------------------- | ------ | --------------------- |
+| `--wui-radio-group-gap` | `8px`  | 成员 radio 之间的间距 |
+
+在 group 元素本身，或同一个 `<web-ui-theme>` 作用域内的祖先元素上设置。theme 宿主会为自己的子树声明 `8px`，写在 `<web-ui-theme>` 元素之外的覆盖到不了 group。
+
+```css
+web-ui-radio-group {
+  --wui-radio-group-gap: 16px;
+}
+```
 
 ---
 
@@ -1294,10 +1328,11 @@ SVG 线条绘制动画，基于 `stroke-dashoffset`。直接在原元素上动�
 
 **选择控件 token（radio、checkbox）：**
 
-| 属性                           | 默认值 | 说明                                                          |
-| ------------------------------ | ------ | ------------------------------------------------------------- |
-| `--wui-selection-control-size` | `18px` | 指示器（圆点 / 方框）宽高                                     |
-| `--wui-selection-group-gap`    | `8px`  | `<web-ui-radio-group>` / `<web-ui-checkbox-group>` 的成员间距 |
+| 属性                           | 默认值 | 说明                                 |
+| ------------------------------ | ------ | ------------------------------------ |
+| `--wui-selection-control-size` | `18px` | 指示器（圆点 / 方框）宽高            |
+| `--wui-radio-group-gap`        | `8px`  | `<web-ui-radio-group>` 的成员间距    |
+| `--wui-checkbox-group-gap`     | `8px`  | `<web-ui-checkbox-group>` 的成员间距 |
 
 **圆角 token：**
 
