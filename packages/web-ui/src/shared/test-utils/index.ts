@@ -345,9 +345,10 @@ export async function waitForFrame(): Promise<void> {
 
 /**
  * 轮询到条件满足为止（默认 2s），用于消费 MutationObserver / presence 过渡的异步链路。
+ * 等待对象本身带较长延迟（如 spec 自定义的 SHOW_DELAY）时显式传入更大预算。
  */
-export async function pollUntil(check: () => boolean, message: string): Promise<void> {
-  const deadline = performance.now() + 2000
+export async function pollUntil(check: () => boolean, message: string, timeoutMs = 2000): Promise<void> {
+  const deadline = performance.now() + timeoutMs
   while (performance.now() < deadline) {
     if (check()) return
     await new Promise(resolve => requestAnimationFrame(resolve))

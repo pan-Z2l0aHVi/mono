@@ -104,20 +104,30 @@ describe('toast 悬停暂停（浏览器）', () => {
     const el = findToast(id)
     expect(el).toBeDefined()
 
-    await wait(2400)
+    // 等 deadline 逼近（<1200ms）再悬停：固定 sleep 的 margin 仅 600ms，CI 停顿可越过
+    // 3000ms deadline 使 toast 先行关闭。条件收敛触发后仍有 ~1200ms 给 hover 派发。
+    await waitFor(
+      () => {
+        const d = timingOf(id)?._deadline
+        return d !== undefined && d - Date.now() < 1200
+      },
+      'deadline did not approach',
+      2500
+    )
+    const remainingBeforePause = (timingOf(id)?._deadline ?? 0) - Date.now()
     await page.elementLocator(el as Element).hover()
 
     // 越过原计时点（3000ms）后仍应停留 —— 悬停暂停生效。
     await wait(800)
     expect(findToast(id)?.visible).toBe(true)
 
-    // 移开指针。续跑判定改为可观察状态：resumeAutoClose() 同步按剩余时间（约 600ms）重置
-    // deadline；重启满时长的回归会给出 ≈3000ms，二者差距远超任何负载抖动。
+    // 移开指针。续跑判定为可观察状态：resumeAutoClose() 同步按暂停时剩余重置 deadline，
+    // 必然小于暂停前捕获的 remainingBeforePause；重启满时长的回归给出 ≈3000ms，必然大于它。
     await page.elementLocator(away).hover()
     await waitResumed(id, 'pointerleave 后未恢复自动关闭')
     const resumed = timingOf(id)?._deadline
     expect(resumed).toBeDefined()
-    expect(resumed! - Date.now()).toBeLessThan(1500)
+    expect(resumed! - Date.now()).toBeLessThan(remainingBeforePause)
     await waitFor(() => findToast(id) === undefined, 'toast did not leave the DOM after auto-close', 4000)
   })
 
@@ -125,7 +135,7 @@ describe('toast 悬停暂停（浏览器）', () => {
    * 搬迁会把 toast 从指针底下移走，Chromium 重新命中测试后补发边界事件，悬停随即结束 ——
    * 这是期望行为：暂停的语义是「指针还在上面」，不是「这条 toast 被豁免」。真正要守住的是
    * 这条路径的两个退化：搬迁吞掉剩余时间导致立刻关闭，或搬迁重启满时长。
-   * 「续跑 vs 重启」通过 _deadline 读取判定：续跑 remaining ≈900ms 起，重启满时长 ≈3000ms。
+   * 「续跑 vs 重启」通过 _deadline 读取判定：续跑剩余必然小于暂停前剩余，重启满时长 ≈3000ms。
    */
   it('悬停期间搬迁：剩余时间不丢，也不重启满时长', async () => {
     const away = createAwayTarget()
@@ -133,7 +143,16 @@ describe('toast 悬停暂停（浏览器）', () => {
     const id = toast.info('悬停并搬迁', { id: 'hover-move', position: 'top-right', duration: 3000 })
     await waitMounted()
 
-    await wait(2000)
+    // 与第一条用例同法：deadline 条件收敛（<1200ms）代替固定 sleep(2000)。
+    await waitFor(
+      () => {
+        const d = timingOf(id)?._deadline
+        return d !== undefined && d - Date.now() < 1200
+      },
+      'deadline did not approach',
+      2500
+    )
+    const remainingBeforePause = (timingOf(id)?._deadline ?? 0) - Date.now()
     await page.elementLocator(findToast(id) as Element).hover()
     await wait(100)
 
@@ -150,8 +169,8 @@ describe('toast 悬停暂停（浏览器）', () => {
     await waitResumed(id, '搬迁后未恢复自动关闭')
     const resumedAfterMove = timingOf(id)?._deadline
     expect(resumedAfterMove).toBeDefined()
-    // 续跑剩余 ≈900ms 起（距今更少）；重启满时长会是 ≈3000ms。
-    expect(resumedAfterMove! - Date.now()).toBeLessThan(1500)
+    // 续跑剩余必然小于暂停前捕获的 remainingBeforePause；重启满时长会是 ≈3000ms。
+    expect(resumedAfterMove! - Date.now()).toBeLessThan(remainingBeforePause)
     await waitFor(() => findToast(id) === undefined, 'toast did not leave the DOM after auto-close', 4000)
   })
 })
