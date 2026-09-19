@@ -103,7 +103,7 @@
 ### 2.9 本仓有而业界少见 —— 多余还是超前
 
 - **T0/T1/T2 状态机 + freeze/hash（超前）**：公开业界材料中最接近的只是「CI 必须绿 + 人类 approve」，本仓把证据链做成可机检 schema。风险是过程税：T2 之外每次改动要 new/start/freeze/review/approve/done 六步，若 agent 不读文档则全链条失效（guard 只在 commit 边界生效）——**过程的强度建立在 prose 遵从上，这是它与传统工程流程（人类有入职训练）的本质差异**。
-- **Designer 角色与编排路由表（基本多余）**：业界（GitHub 2,500-repo 分析）结论是「不要做 general helper、按需建窄角色」；Designer 仅在产品需求启用且不写生产代码，实际可由 Manager 会话 + `emil-design-eng` 等 skill 覆盖（推断，依据 `.agents/skills/README.md` 的分工表）。作为可选机制保留成本不高，但排进了 AGENTS.md 常驻上下文。
+- **Designer 角色与编排路由表（基本多余）**：业界（GitHub 2,500-repo 分析）结论是「不要做 general helper、按需建窄角色」；Designer 仅在产品需求启用且不写生产代码，实际可由 Manager 会话 + `emil-design-eng` 等 skill 覆盖（推断，依据 `.agents/skills/` 下各 `SKILL.md` 的 `description` 触发词分工；原分工表所在的 `.agents/skills/README.md` 已于 2026-09-19 删除）。作为可选机制保留成本不高，但排进了 AGENTS.md 常驻上下文。
 - **重复主题权威来源表、invariant 锚点注释（半多余）**：ADR-0014 后锚点已无机器校验，保留为「人工检索」用——是惰性资产；权威来源表本身承担防重复的职责，保留合理。
 - **浏览器证据三档 + agent:verify（超前）**：业界只有「screenshot 对比」层级；本仓的环境前置检查（rAF/时钟/可见性）是真实踩坑产物，建议保留。
 - **中文 instruction 体系（中性）**：业界全部英文，但 agents.md 规范不限定语言，现代模型对中文指令遵从无显著差异（推断）；保持现状即可，无需改动。
@@ -174,6 +174,6 @@ CI 面核查为非问题：fork PR 无 secrets、CI 不执行 agent 生成代码
 
 ## 附：证据来源清单
 
-- 本仓（实读）：根 `AGENTS.md`、`CLAUDE.md`、`docs/agents/{workflow,task-packet,review,browser-verification,worktrees,context}.md`、`.agents/rules/*`、`.agents/agents/{manager,reviewer}.md`、`.agents/skills/{README.md,herdr/SKILL.md}`、`scripts/task.mjs`、`scripts/repo-query.mjs`（脚本头）、`package.json`、`.github/workflows/ci.yml`、`.claude/settings.local.json`、`skills-lock.json`、`docs/adr/0014-task-system-v2.md`、`.vite-hooks/pre-commit`、`.agents/checks/changeset-required`。
+- 本仓（实读）：根 `AGENTS.md`、`CLAUDE.md`、`docs/agents/{workflow,task-packet,review,browser-verification,worktrees,context}.md`、`.agents/rules/*`、`.agents/agents/{manager,reviewer}.md`、`.agents/skills/herdr/SKILL.md`、`scripts/task.mjs`、`scripts/repo-query.mjs`（脚本头）、`package.json`、`.github/workflows/ci.yml`、`.claude/settings.local.json`、`skills-lock.json`、`docs/adr/0014-task-system-v2.md`、`.vite-hooks/pre-commit`、`.agents/checks/changeset-required`。
 - 业界（实读 URL / gh api）：§1 各条所列；GitHub 实仓内容经 `gh api repos/<owner>/<repo>/contents/...` 取得（openai/agents.md、openai/codex、vercel/next.js、microsoft/vscode、google/eng-practices）。
 - 未能核实：developers.openai.com/codex/guides/agents-md 全文（网络策略拦截，仅能引用 openai/codex 仓库内 stub 指针与 AGENTS.md 实例）。

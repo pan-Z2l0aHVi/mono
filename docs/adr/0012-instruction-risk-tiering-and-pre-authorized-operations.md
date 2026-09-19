@@ -4,6 +4,7 @@
 - **Status**: 已接受
 - **Amends**: [ADR-0011](0011-agent-model-binding-and-effort.md) 的「后果」中关于角色契约执行体自述参与机械校验的说明
 - **Relates to**: [ADR-0004](0004-progressive-agent-context-architecture.md)、[ADR-0010](0010-agent-role-orchestration.md)
+- **Superseded by**: [ADR-0014](0014-task-system-v2.md) —— 本 ADR 的风险分级表被 `level`（t0/t1/t2）取代；第 3、4 节的 `scripts/audit-instructions.mjs` 与两个约束预算基线文件已随 ADR-0014 退役，不再维护（仍生效的部分只有预授权操作清单，已并入 `docs/agents/workflow.md`）
 
 ## 背景
 
@@ -37,7 +38,11 @@ ADR-0004 建立了渐进披露的 context 架构，ADR-0010 与 ADR-0011 建立�
 
 不变量用 HTML 注释锚点表达，`scripts/audit-instructions.mjs --strict` 只校验锚点存在。正文措辞可以随模型换代重写而不必改脚本；新增一条不变量才需要同时改文档与脚本。同时删除这些措辞钉：AGENTS.md 的章节标题、`workflow.md` 的 8 个章节标题、`.agents/agents/*` 的 7 个 Role section 标题、角色契约的「X 由 Y 承担」自述正则。`CLAUDE.md` 的「薄适配入口」措辞钉换成尺寸契约（不超过 800 字符）。
 
-### 4. 给「减法」配上可执行的基线
+### 4. 给「减法」配上可执行的基线（已退役，保留作决策记录）
+
+> **本节机制已随 ADR-0014 退役**：`scripts/audit-instructions.mjs`、`scripts/instruction-budget.json`、
+> `scripts/tool-enforced-rules.json` 与 CI 中的 `--strict` 步骤均已删除，「约束密度只增不减」这扇门
+> 回归纯人工 diff review。以下描述的是 2026-09-14 至 2026-09-17 期间的现行机制。
 
 - `scripts/instruction-budget.json` 逐文件记录字符数与祈使词数量。超基线即 `--strict` 失败，因此放宽约束必须同时改基线文件，这个动作会出现在 diff 里被评审看见。
 - `scripts/tool-enforced-rules.json` 记录已被 lint、CI 或配置强制的规则。命中即失败，所以删掉的规则不能换个写法长回来。
