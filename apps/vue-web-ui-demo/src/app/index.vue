@@ -142,7 +142,7 @@ const navItems: NavItem[] = [
 
 <template>
   <web-ui-theme :appearance="themeAppearance" :motion="themeMotion" transition>
-    <div class="min-h-screen bg-[var(--wui-color-page)] text-[var(--wui-color-text)]">
+    <div class="min-h-screen bg-(--wui-color-page) text-(--wui-color-text)">
       <!--
         Boolean 动态绑定走 camelCase Property（Vue 对已存在的属性名直接写 DOM property）。
         kebab-case（:sidebar-collapsed）会写字符串 attribute，布尔属性存在即 true，无法表达 false。
@@ -162,7 +162,7 @@ const navItems: NavItem[] = [
         <div
           v-if="bannerVisible"
           slot="banner"
-          class="flex items-center justify-center gap-2 py-2 px-4 bg-[var(--wui-color-accent)] text-[var(--wui-color-on-accent)] text-sm"
+          class="flex items-center justify-center gap-2 py-2 px-4 bg-(--wui-color-accent) text-(--wui-color-on-accent) text-sm"
         >
           <span>🎉 欢迎使用 web-ui 组件库！</span>
           <button class="ml-auto text-current opacity-70 hover:opacity-100" @click="bannerVisible = false">✕</button>
@@ -191,7 +191,7 @@ const navItems: NavItem[] = [
         </div>
         <div class="flex h-full min-h-0 flex-col" slot="sidebar">
           <div
-            class="shrink-0 px-5 pt-4 pb-2 text-xs font-semibold uppercase text-[var(--wui-color-text-secondary)] max-[640px]:px-0"
+            class="shrink-0 px-5 pt-4 pb-2 text-xs font-semibold uppercase text-(--wui-color-text-secondary) max-[640px]:px-0"
           >
             组件列表
           </div>
@@ -200,10 +200,8 @@ const navItems: NavItem[] = [
               v-for="item in navItems"
               :key="item.path"
               :to="item.path"
-              class="flex items-center h-8 my-1 rounded-full px-3 text-sm leading-5 text-[var(--wui-color-text)] transition-[background-color] duration-150 hover:bg-[color-mix(in_srgb,var(--wui-color-surface-raised)_80%,var(--wui-color-text))]"
-              :class="
-                route.path === item.path ? '!bg-[var(--wui-color-accent)] !text-[var(--wui-color-on-accent)]' : ''
-              "
+              class="flex items-center h-8 my-1 rounded-full px-3 text-sm leading-5 text-(--wui-color-text) transition-[background-color] duration-150 hover:bg-[color-mix(in_srgb,var(--wui-color-surface-raised)_80%,var(--wui-color-text))]"
+              :class="route.path === item.path ? '!bg-(--wui-color-accent) !text-(--wui-color-on-accent)' : ''"
             >
               <span class="truncate">{{ item.label }}</span>
             </RouterLink>

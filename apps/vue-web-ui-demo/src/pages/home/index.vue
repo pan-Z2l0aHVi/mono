@@ -31,43 +31,43 @@ const quickLinks = [
     <!-- Big Logo -->
     <div class="relative group mb-8">
       <div
-        class="absolute -inset-1.5 rounded-[2.5rem] bg-gradient-to-tr from-[var(--wui-color-accent)] to-[var(--wui-color-accent)] opacity-40 blur-xl transition-all duration-500 group-hover:opacity-75"
+        class="absolute -inset-1.5 rounded-[2.5rem] bg-gradient-to-tr from-(--wui-color-accent) to-(--wui-color-accent) opacity-40 blur-xl transition-all duration-500 group-hover:opacity-75"
       ></div>
       <img
         src="/bo-icon-transparent.png"
         alt="Bo Logo"
-        class="relative w-36 h-36 md:w-44 md:h-44 rounded-[2rem] shadow-2xl border border-[var(--wui-color-border)] object-cover bg-[var(--wui-color-surface)] transition-transform duration-300 group-hover:scale-105"
+        class="relative w-36 h-36 md:w-44 md:h-44 rounded-[2rem] shadow-2xl border border-(--wui-color-border) object-cover bg-(--wui-color-surface) transition-transform duration-300 group-hover:scale-105"
       />
     </div>
 
     <!-- Title & Tagline -->
-    <h1 class="text-3xl md:text-5xl font-bold tracking-tight text-[var(--wui-color-text)] mb-4">Web UI</h1>
-    <p class="text-base md:text-lg text-[var(--wui-color-text-secondary)] max-w-2xl leading-relaxed mb-8">
+    <h1 class="text-3xl md:text-5xl font-bold tracking-tight text-(--wui-color-text) mb-4">Web UI</h1>
+    <p class="text-base md:text-lg text-(--wui-color-text-secondary) max-w-2xl leading-relaxed mb-8">
       基于 Web Components 的跨框架现代 UI 组件库。一套轻量、精致的核心设计系统，原生支持 Vue、React 以及任意前端技术栈。
     </p>
 
     <!-- Badges / Features -->
     <div class="flex flex-wrap justify-center gap-3 mb-12">
       <span
-        class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-[var(--wui-color-accent)] text-[var(--wui-color-on-accent)] shadow-sm"
+        class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-(--wui-color-accent) text-(--wui-color-on-accent) shadow-sm"
       >
         <web-ui-icon :icon="lucidePackage" :size="14"></web-ui-icon>
         Web Components 原生
       </span>
       <span
-        class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-[var(--wui-color-surface-raised)] border border-[var(--wui-color-border)] text-[var(--wui-color-text)]"
+        class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-(--wui-color-surface-raised) border border-(--wui-color-border) text-(--wui-color-text)"
       >
         <web-ui-icon :icon="lucideCode" :size="14"></web-ui-icon>
         跨框架无缝适配
       </span>
       <span
-        class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-[var(--wui-color-surface-raised)] border border-[var(--wui-color-border)] text-[var(--wui-color-text)]"
+        class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-(--wui-color-surface-raised) border border-(--wui-color-border) text-(--wui-color-text)"
       >
         <web-ui-icon :icon="lucideSlidersHorizontal" :size="14"></web-ui-icon>
         语义化设计 Token
       </span>
       <span
-        class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-[var(--wui-color-surface-raised)] border border-[var(--wui-color-border)] text-[var(--wui-color-text)]"
+        class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-(--wui-color-surface-raised) border border-(--wui-color-border) text-(--wui-color-text)"
       >
         <web-ui-icon :icon="lucideSettings" :size="14"></web-ui-icon>
         深浅色 & 动效偏好
@@ -77,7 +77,7 @@ const quickLinks = [
     <!-- Quick Links Header -->
     <div class="w-full text-left">
       <div
-        class="flex items-center gap-2 mb-4 text-sm font-semibold uppercase tracking-wider text-[var(--wui-color-text-secondary)]"
+        class="flex items-center gap-2 mb-4 text-sm font-semibold uppercase tracking-wider text-(--wui-color-text-secondary)"
       >
         <web-ui-icon :icon="lucideLayoutGrid" :size="16"></web-ui-icon>
         常用组件快速预览
@@ -89,20 +89,18 @@ const quickLinks = [
           v-for="link in quickLinks"
           :key="link.path"
           :to="link.path"
-          class="group p-4 rounded-xl border border-[var(--wui-color-border)] bg-[var(--wui-color-surface)] hover:bg-[var(--wui-color-surface-raised)] hover:border-[var(--wui-color-accent)] transition-all duration-200 text-left flex flex-col justify-between"
+          class="group p-4 rounded-xl border border-(--wui-color-border) bg-(--wui-color-surface) hover:bg-(--wui-color-surface-raised) hover:border-(--wui-color-accent) transition-all duration-200 text-left flex flex-col justify-between"
         >
           <div>
-            <div
-              class="font-medium text-[var(--wui-color-text)] group-hover:text-[var(--wui-color-accent)] transition-colors"
-            >
+            <div class="font-medium text-(--wui-color-text) group-hover:text-(--wui-color-accent) transition-colors">
               {{ link.label }}
             </div>
-            <div class="text-xs text-[var(--wui-color-text-secondary)] mt-1.5 line-clamp-2">
+            <div class="text-xs text-(--wui-color-text-secondary) mt-1.5 line-clamp-2">
               {{ link.desc }}
             </div>
           </div>
           <div
-            class="mt-3 text-xs font-medium text-[var(--wui-color-accent)] flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
+            class="mt-3 text-xs font-medium text-(--wui-color-accent) flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
           >
             查看演示 →
           </div>

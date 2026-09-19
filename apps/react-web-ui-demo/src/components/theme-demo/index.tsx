@@ -52,7 +52,7 @@ function ThemeDemo() {
   return (
     <div>
       <h1>Theme</h1>
-      <p className="mb-4 text-[var(--wui-color-text-secondary)]">
+      <p className="mb-4 text-(--wui-color-text-secondary)">
         web-ui-theme 支持多层嵌套，每一层独立控制外观与动效。内层主题优先于外层。
       </p>
 
@@ -77,9 +77,9 @@ function ThemeDemo() {
       <web-ui-theme
         appearance={appearance}
         motion={motion}
-        className="block rounded-xl border border-[var(--wui-color-border)] p-6"
+        className="block rounded-xl border border-(--wui-color-border) p-6"
       >
-        <section className="bg-[var(--wui-color-page)]">
+        <section className="bg-(--wui-color-page)">
           <div className="flex flex-wrap gap-3">
             <web-ui-button variant="primary">Primary</web-ui-button>
             <web-ui-button variant="secondary">Secondary</web-ui-button>
@@ -89,7 +89,7 @@ function ThemeDemo() {
           </div>
 
           <h3>浮层继承</h3>
-          <p className="mb-3 text-sm text-[var(--wui-color-text-secondary)]">
+          <p className="mb-3 text-sm text-(--wui-color-text-secondary)">
             Portal Select、Toast 与 Dialog 均继承当前主题范围的外观和动效 token。
           </p>
           <div className="flex flex-wrap items-center gap-3">
@@ -138,20 +138,20 @@ function ThemeDemo() {
       </web-ui-theme>
 
       <h2>多层嵌套</h2>
-      <p className="mb-4 text-sm text-[var(--wui-color-text-secondary)]">
+      <p className="mb-4 text-sm text-(--wui-color-text-secondary)">
         外层 Light / Reduced → 内层 Dark / Full → 最内层 Light / System，每层独立控制，互不干扰。
       </p>
 
       <div className="mb-4 flex flex-wrap items-center gap-4">
         <div className="flex items-center gap-2">
-          <span className="text-sm text-[var(--wui-color-text-secondary)]">内层外观</span>
+          <span className="text-sm text-(--wui-color-text-secondary)">内层外观</span>
           <web-ui-segmented value={innerAppearance} onInput={updateInnerAppearance} aria-label="内层主题外观">
             <web-ui-segmented-trigger value="light">Light</web-ui-segmented-trigger>
             <web-ui-segmented-trigger value="dark">Dark</web-ui-segmented-trigger>
           </web-ui-segmented>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-sm text-[var(--wui-color-text-secondary)]">最内层外观</span>
+          <span className="text-sm text-(--wui-color-text-secondary)">最内层外观</span>
           <web-ui-segmented value={innermostAppearance} onInput={updateInnermostAppearance} aria-label="最内层主题外观">
             <web-ui-segmented-trigger value="light">Light</web-ui-segmented-trigger>
             <web-ui-segmented-trigger value="dark">Dark</web-ui-segmented-trigger>
@@ -161,7 +161,7 @@ function ThemeDemo() {
 
       <div className="mb-4 flex flex-wrap items-center gap-4">
         <div className="flex items-center gap-2">
-          <span className="text-sm text-[var(--wui-color-text-secondary)]">内层动效</span>
+          <span className="text-sm text-(--wui-color-text-secondary)">内层动效</span>
           <web-ui-segmented value={innerMotion} onInput={updateInnerMotion} aria-label="内层主题动效偏好">
             <web-ui-segmented-trigger value="system">System</web-ui-segmented-trigger>
             <web-ui-segmented-trigger value="full">Full</web-ui-segmented-trigger>
@@ -169,7 +169,7 @@ function ThemeDemo() {
           </web-ui-segmented>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-sm text-[var(--wui-color-text-secondary)]">最内层动效</span>
+          <span className="text-sm text-(--wui-color-text-secondary)">最内层动效</span>
           <web-ui-segmented value={innermostMotion} onInput={updateInnermostMotion} aria-label="最内层主题动效偏好">
             <web-ui-segmented-trigger value="system">System</web-ui-segmented-trigger>
             <web-ui-segmented-trigger value="full">Full</web-ui-segmented-trigger>
@@ -181,10 +181,10 @@ function ThemeDemo() {
       <web-ui-theme
         appearance="light"
         motion="reduced"
-        className="block rounded-xl border border-[var(--wui-color-border)] p-6"
+        className="block rounded-xl border border-(--wui-color-border) p-6"
       >
-        <section className="bg-[var(--wui-color-page)]">
-          <p className="mb-2 text-xs text-[var(--wui-color-text-secondary)]">外层（Light / Reduced）</p>
+        <section className="bg-(--wui-color-page)">
+          <p className="mb-2 text-xs text-(--wui-color-text-secondary)">外层（Light / Reduced）</p>
           <div className="flex flex-wrap gap-3">
             <web-ui-button variant="primary">外层按钮</web-ui-button>
             <web-ui-switch checked></web-ui-switch>
@@ -194,10 +194,10 @@ function ThemeDemo() {
             appearance={innerAppearance}
             motion={innerMotion}
             transition
-            className="mt-4 block rounded-xl border border-[var(--wui-color-border)] p-6"
+            className="mt-4 block rounded-xl border border-(--wui-color-border) p-6"
           >
-            <section className="bg-[var(--wui-color-page)]">
-              <p className="mb-2 text-xs text-[var(--wui-color-text-secondary)]">内层（可切换）</p>
+            <section className="bg-(--wui-color-page)">
+              <p className="mb-2 text-xs text-(--wui-color-text-secondary)">内层（可切换）</p>
               <div className="flex flex-wrap gap-3">
                 <web-ui-button variant="primary">内层按钮</web-ui-button>
                 <web-ui-input value="内层输入"></web-ui-input>
@@ -208,10 +208,10 @@ function ThemeDemo() {
                 appearance={innermostAppearance}
                 motion={innermostMotion}
                 transition
-                className="mt-4 block rounded-xl border border-[var(--wui-color-border)] p-6"
+                className="mt-4 block rounded-xl border border-(--wui-color-border) p-6"
               >
-                <section className="bg-[var(--wui-color-page)]">
-                  <p className="mb-2 text-xs text-[var(--wui-color-text-secondary)]">最内层（可切换）</p>
+                <section className="bg-(--wui-color-page)">
+                  <p className="mb-2 text-xs text-(--wui-color-text-secondary)">最内层（可切换）</p>
                   <div className="flex flex-wrap gap-3">
                     <web-ui-button variant="primary">最内层按钮</web-ui-button>
                     <web-ui-switch checked></web-ui-switch>
