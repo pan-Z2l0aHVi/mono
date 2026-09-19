@@ -113,7 +113,7 @@ function DialogDemo() {
       <web-ui-dialog
         open={bgVisible}
         onopen-change={event => setBgVisible(event.detail.open)}
-        className="[--wui-dialog-bg:rgb(240_248_255_/_0.92)]"
+        className="[--wui-dialog-bg:rgb(240_248_255/0.92)]"
       >
         <span slot="title">自定义背景色</span>
         <p>
