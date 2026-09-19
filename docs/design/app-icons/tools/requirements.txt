@@ -1,5 +1,0 @@
-# docs/design/app-icons/tools 的运行时依赖（clean.py / icostrip.py）。
-# 固定版本以保证两条不变量自检的结果可复现；装法见同目录 .mise.toml 的 deps 任务。
-numpy==2.5.3
-pillow==12.3.0
-scipy==1.18.1

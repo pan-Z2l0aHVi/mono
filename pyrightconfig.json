@@ -1,7 +1,0 @@
-{
-  "$comment": "仓库里只有 docs/design/app-icons/tools 下的两个图标处理脚本是 Python；限定 include 避免语言服务器扫描 node_modules 或 dist。venv 由同目录 .mise.toml 的 deps 任务创建，缺失时 import 解析会退回默认环境。",
-  "include": ["docs/design/app-icons/tools"],
-  "exclude": ["**/node_modules", "**/dist", "**/.venv"],
-  "venvPath": "docs/design/app-icons/tools",
-  "venv": ".venv"
-}
