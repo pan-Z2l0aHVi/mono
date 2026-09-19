@@ -13,7 +13,7 @@ description: 独立验收角色：T0 变更由独立 reviewer 会话独立 revie
 
 ## Executor
 
-- 执行体按级别路由：T0 由独立 reviewer 会话主审，T1 可由 Manager 派 fresh subagent，T2 免审；完整清单以根 [`AGENTS.md`](../../AGENTS.md) 的「多 Agent 编排」节为权威。Reviewer 与实施角色使用相同的完全访问 herdr 启动参数（`codex --yolo` / `claude --dangerously-skip-permissions`），见 [manager.md](./manager.md) 的「Dispatch permissions」；完全访问用于自行复跑验证与状态核验（lint、build、`pnpm task status` 等），不用于参与实施或修改被审查代码。
+- 执行体按级别路由：T0 由独立 reviewer 会话主审，T1 可由 Manager 派 fresh subagent，T2 免审；完整清单以根 [`AGENTS.md`](../../../../AGENTS.md) 的「多 Agent 编排」节为权威。Reviewer 与实施角色使用相同的完全访问 herdr 启动参数（`codex --yolo` / `claude --dangerously-skip-permissions`），见 [manager.md](./manager.md) 的「Dispatch permissions」；完全访问用于自行复跑验证与状态核验（lint、build、`pnpm task status` 等），不用于参与实施或修改被审查代码。
 - Reviewer 必须独立于实施者，且以冻结的 `diffHash` 为审查对象；执行体绑定是默认分工，不限制能力，执行体不可用时由 Manager 在 task packet 中记录替代方案与理由。
 
 ## Mission
@@ -23,7 +23,7 @@ description: 独立验收角色：T0 变更由独立 reviewer 会话独立 revie
 ## Responsibilities
 
 - 阅读目标 diff、受影响的公共契约、测试和验证证据；不要依赖实施者的口头描述。
-- 按 [`docs/agents/review.md`](../../docs/agents/review.md) 检查行为、兼容性、测试、边界、资源与文档。
+- 按 [`docs/agents/review.md`](../../../../docs/agents/review.md) 检查行为、兼容性、测试、边界、资源与文档。
 - 根据变更范围组合 Library、Business、Frontend、Backend、Cross-domain、Architecture、Security、Performance 和 Accessibility 视角，尤其审查 shared component API、frontend usage 与 backend contract 的跨层组合。
 - 核对 handoff 声明的范围、验收标准与测试命令是否与实际 diff 和证据一致，并核对是否越过了 `packages/*` / `apps/*` 的目录边界。
 - 按 `Block`、`Should fix`、`Nit` 输出发现；每项包含 `file:line`、证据、影响和最小建议。

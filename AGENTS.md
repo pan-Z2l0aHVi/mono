@@ -6,7 +6,7 @@
 
 - 全局拓扑和快速定位：[`ARCHITECTURE.md`](ARCHITECTURE.md)。
 - 协作流程短入口：[`CONTRIBUTING.md`](CONTRIBUTING.md)；它不取代按任务加载的规则。
-- 会话角色：用户或 Manager 指定角色时，读取 [`.agents/agents/<role>.md`](.agents/agents/)；初始化见 [`CONTRIBUTING.md`](CONTRIBUTING.md)。
+- 会话角色：用户或 Manager 指定角色时，读取 [`.agents/skills/herdr-agents/roles/<role>.md`](.agents/skills/herdr-agents/roles/)；初始化见 [`CONTRIBUTING.md`](CONTRIBUTING.md)。
 
 ## Mutation Gate
 
@@ -60,7 +60,7 @@ review 拓扑（三档 + 禁止同会话自审）以 [`docs/agents/workflow.md`]
 - 不得改写 `.npmrc` 或 `.mise.toml` 的 registry/mirror，或任何 Git 配置。
 - 不手动编辑生成文件：`**/routeTree.gen.ts`、`**/typed-router.d.ts`、`**/auto-imports.d.ts`、`apps/*/frontend/bindings/**`、`**/__screenshots__/`、`**/.vitest-attachments/`。当源码或配置变更要求更新受版本控制的代码生成物时，必须运行其所属 generator，并核对生成 diff 与消费者；不得复制、伪造或手改输出。精确入口见 [`docs/agents/build.md`](docs/agents/build.md)。
 - `**/__screenshots__/` 和 `**/.vitest-attachments/` 是测试证据，不是常规源码产物；除非任务明确要求更新已验证的视觉基线，否则不创建、编辑或提交它们。
-- `AGENTS.md`（含包级）、`docs/adr/`、`docs/agents/`、`.agents/rules/`、`.agents/agents/` 和仓库自编写的 `.agents/skills/` 下文档使用中文；第三方引入的 `.agents/skills/` 必须保持上游原文的语言与内容，更新时不得翻译或本地改写；其通用流程若与仓库规则、task guide 或实现事实冲突，以后者为准。技术术语、命令、路径和包名保留英文。
+- `AGENTS.md`（含包级）、`docs/adr/`、`docs/agents/`、`.agents/rules/`、`.agents/skills/herdr-agents/roles/` 和仓库自编写的 `.agents/skills/` 下文档使用中文；自撰与第三方的判定以 `skills-lock.json` 为准，未登记的即自撰。第三方引入的 `.agents/skills/` 必须保持上游原文的语言与内容，更新时不得翻译或本地改写；其通用流程若与仓库规则、task guide 或实现事实冲突，以后者为准。技术术语、命令、路径和包名保留英文。
 - 缺少 Node、pnpm 或 Go 时先运行 `mise install`；准确版本以 `.mise.toml`、`package.json` 与目标包 manifest 为准。
 - 并行 agent 必须使用不同的 branch/worktree；不得在共享工作区执行 `git switch`、`git checkout`、`git stash`、`git reset` 或 `git clean`。新建 worktree 统一放在仓库旁的 `<仓库目录名>-worktrees/<worktree 名>`（例：仓库在 `path/to/mono`，worktree 放 `path/to/mono-worktrees/<name>`）；工具自带的 worktree 默认路径（如 `.claude/worktrees/`）不采用。
 - 角色目录边界不可跨越；分工、边界与跨边界拆 task 的要求统一见「包边界与禁止事项」，worktree 布局见 [`docs/agents/worktrees.md`](docs/agents/worktrees.md)。
@@ -81,10 +81,10 @@ review 拓扑（三档 + 禁止同会话自审）以 [`docs/agents/workflow.md`]
 | 全局拓扑和快速导航                                        | [`ARCHITECTURE.md`](ARCHITECTURE.md)；实现事实仍以源码、manifest、配置和测试为准                                                                                                                             |
 | 架构探索、术语或 ADR                                      | [`docs/agents/domain.md`](docs/agents/domain.md)、[`CONTEXT.md`](CONTEXT.md) 和相关 ADR                                                                                                                      |
 | instruction system / context 维护                         | [`docs/agents/context.md`](docs/agents/context.md)、[`CONTEXT.md`](CONTEXT.md) 和 ADR-0004                                                                                                                   |
-| 代码 review                                               | [`docs/agents/review.md`](docs/agents/review.md)；需要独立 reviewer 时再读 [`.agents/agents/reviewer.md`](.agents/agents/reviewer.md)                                                                        |
+| 代码 review                                               | [`docs/agents/review.md`](docs/agents/review.md)；需要独立 reviewer 时再读 [`.agents/skills/herdr-agents/roles/reviewer.md`](.agents/skills/herdr-agents/roles/reviewer.md)                                  |
 | 全局替换 / 重命名 / API 迁移 / 文件迁移                   | [`docs/agents/global-rename.md`](docs/agents/global-rename.md)                                                                                                                                               |
 | Git commit                                                | [`.agents/rules/commit.md`](.agents/rules/commit.md)、[`docs/agents/commit.md`](docs/agents/commit.md) 和 [`CONTRIBUTING.md`](CONTRIBUTING.md)（AI 协作署名）                                                |
-| 开发流程、worktree 布局、release 分支或多 Agent 编排/交接 | [`docs/agents/workflow.md`](docs/agents/workflow.md)、[`docs/agents/task-packet.md`](docs/agents/task-packet.md) 和 [`.agents/agents/manager.md`](.agents/agents/manager.md)                                 |
+| 开发流程、worktree 布局、release 分支或多 Agent 编排/交接 | [`docs/agents/workflow.md`](docs/agents/workflow.md)、[`docs/agents/task-packet.md`](docs/agents/task-packet.md) 和手动触发的 [`herdr-agents`](.agents/skills/herdr-agents/SKILL.md)                         |
 | GitHub issue                                              | [`docs/agents/issue-tracker.md`](docs/agents/issue-tracker.md)                                                                                                                                               |
 
 涉及 UI、UX、交互、响应式或浏览器运行时的改动，必须按 [`browser-verification.md`](docs/agents/browser-verification.md) 在真实浏览器验证；构建成功或 jsdom 测试不能替代该验证。实现不熟悉或跨浏览器语义不明确的 Web Platform API 时，使用 MDN MCP 验证语义和兼容性。

@@ -13,7 +13,7 @@ description: Codex CLI 承担的共享库实现角色：负责 packages/* 的公
 
 ## Executor
 
-唯一权威绑定表在根 [`AGENTS.md`](../../AGENTS.md) 的「多 Agent 编排」节，本文件不复制。Codex CLI 原生读取层级 `AGENTS.md`，无需额外薄适配入口。
+唯一权威绑定表在根 [`AGENTS.md`](../../../../AGENTS.md) 的「多 Agent 编排」节，本文件不复制。Codex CLI 原生读取层级 `AGENTS.md`，无需额外薄适配入口。
 
 - 执行体绑定是默认分工，不限制能力；执行体不可用时由 Manager 在 task packet 中记录替代方案。
 - 模型与思考强度由用户会话设置或 Manager 按任务指定，不设角色默认；lib 层改动涉及公共契约时建议上调推理强度。
@@ -35,7 +35,7 @@ description: Codex CLI 承担的共享库实现角色：负责 packages/* 的公
 - 设计 API / interface，评估 abstraction、兼容性、public contract、性能、accessibility 与可维护性。
 - 为公共行为补足测试、消费者证据和必要的迁移说明。
 - 在已有能力不足时，以具体复用场景判断是否应新增共享能力。
-- 用结构化 handoff 向 Manager、Biz Coder 和 Reviewer 交付，字段以 [`docs/agents/task-packet.md`](../../docs/agents/task-packet.md) 模板为权威。
+- 用结构化 handoff 向 Manager、Biz Coder 和 Reviewer 交付，字段以 [`docs/agents/task-packet.md`](../../../../docs/agents/task-packet.md) 模板为权威。
 
 ## Boundaries
 

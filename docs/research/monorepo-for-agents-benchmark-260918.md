@@ -81,6 +81,8 @@
 - 唯一权威绑定表、扁平编排、handoff 五字段合同 + `Proven mechanism` 条件必填（根 `AGENTS.md`、`task-packet.md`）：业界（agent teams、GitHub custom agents）只到「角色定义」粒度，没有机器强制的交接字段，本仓把交接也做成了契约。
 - **最大缺口（P0/P1）**：实施角色 herdr 启动参数是 `codex --yolo` / `claude --dangerously-skip-permissions`（`.agents/agents/manager.md`「Dispatch permissions」），即 coders 全权、无 sandbox。隔离完全依赖 task gate + git 禁令 + 目录纪律这些 prose/软机制。业界 2025-2026 的默认答案是 sandbox 化执行（Claude sandboxed Bash 的 fs/network 隔离、Codex 默认 sandbox + Seatbelt/env var 契约，见 §1.4）。Reviewer 侧的只读白名单已做得很细（`manager.md`），但 coders 侧零隔离是明显的不对称。
 
+**勘误（260919）**：本条最后一句为假。`manager.md`「Dispatch permissions」表把 Reviewer 与 Manager/Designer/Lib Coder/Biz Coder 列为同一档完全访问（`codex --yolo` / `claude --dangerously-skip-permissions`），仓库里不存在 reviewer 只读白名单，只读边界由角色纪律与 task gate 承担（该表下方条目写明这一点）。因此「coders 零隔离 vs reviewer 细白名单」的不对称框架也不成立：五类角色在 dispatch 层全部零隔离，缺口比初版描述的更宽。
+
 ### 2.7 恢复与可观测 —— 做对了
 
 - `events[]` 时间线、`<git-common-dir>/tasks/` 跨 worktree 共享、「重启后从 task state 恢复，不从聊天记忆猜测」（`workflow.md`「失败和恢复」）正中业界共识（官方 resume/checkpoint 语义）。issue 只作镜像、本地 state 不依赖外部服务，比官方集成更深一层。
@@ -131,6 +133,8 @@
 - 残余风险（诚实记录）：`.git` 例外意味着被攻破的 coder 仍可篡改共享 VCS 元数据（hooks/refs），workspace 级并非严格沙箱；codex 开 `network_access` 后无域名过滤，其网络隔离基本失效。若只做一侧，Claude `--settings` 路线（域名级过滤）收益最大。
 
 结论：P0 成本从「评估引入隔离体系（天级以上）」修正为「改 dispatch flags + 例外清单 + 实测闭环（约 1 天）」。
+
+**勘误（260919）**：本节第 2 条「本仓 reviewer 角色的 `codex --sandbox read-only -a never` 已长期在用——沙箱路径可行性已被本仓自证」为假，据 §2.6 勘误同一条来源（`manager.md`「Dispatch permissions」把 Reviewer 列为完全访问）。本仓从未以 sandbox 参数启动过任何角色的 CLI，因此上面的「约 1 天」只有 CLI flag 存在性证据（`codex 0.154.0` 的 `--help`）支撑，缺少本仓实测闭环；成本估计降级为待验证，需要先跑一次 sandbox 化的 dispatch 再定档。另：文中 `.agents/agents/manager.md` 一类路径已于 260919 迁址到 `.agents/skills/herdr-agents/roles/`（见 [ADR-0015](../adr/0015-role-contracts-in-herdr-agents-skill.md)），本节作为当时的读取记录保留原路径。
 
 ### 4.2 「过程税」实测为轻，但遵从结论只覆盖编排者
 
