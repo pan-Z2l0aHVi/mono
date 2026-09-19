@@ -21,9 +21,7 @@ Role Contract 位于 `.agents/skills/herdr-agents/roles/`，只定义当前会�
 本会话担任 <role>。读取并遵循 `.agents/skills/herdr-agents/roles/<role>.md`，将其作为本会话的角色与协作规范。
 ```
 
-`<role>` 为 `manager`、`designer`、`lib-coder`、`biz-coder` 或 `reviewer`。Role 在本会话内持续生效；任务可在之后分次提供，且不与某一个 task 绑定。
-
-执行体绑定与 review 分档路由的唯一权威绑定表在根 [`AGENTS.md`](AGENTS.md) 的「多 Agent 编排」节，此处不复制。绑定是默认分工：任一执行体在技术上都能承担任一 Role，偏离默认绑定必须由 Manager 在 task packet 中记录替代执行体与理由；目录边界与结构化 handoff 要求不因执行体而变。
+`<role>` 取 `.agents/skills/herdr-agents/roles/` 下的文件名。Role 在本会话内持续生效；任务可在之后分次提供，且不与某一个 task 绑定。
 
 ## 定位和影响分析
 
