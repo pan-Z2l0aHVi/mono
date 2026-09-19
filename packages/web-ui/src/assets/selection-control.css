@@ -101,11 +101,13 @@
  * 的 hover / active 都会作用到指示器。hover 只在真正的指针设备上生效，避免触屏留态。
  */
 @media (hover: hover) and (pointer: fine) {
-  :where(.wui-radio, .wui-checkbox):hover:not(.is-disabled, .is-checked) :where(.wui-radio-circle, .wui-checkbox-box)::before {
+  :where(.wui-radio, .wui-checkbox):hover:not(.is-disabled, .is-checked)
+    :where(.wui-radio-circle, .wui-checkbox-box)::before {
     background-color: color-mix(in srgb, var(--wui-color-text, #1b1b1b) 6%, transparent);
   }
 }
 
-:where(.wui-radio, .wui-checkbox):active:not(.is-disabled, .is-checked) :where(.wui-radio-circle, .wui-checkbox-box)::before {
+:where(.wui-radio, .wui-checkbox):active:not(.is-disabled, .is-checked)
+  :where(.wui-radio-circle, .wui-checkbox-box)::before {
   background-color: color-mix(in srgb, var(--wui-color-text, #1b1b1b) 15%, transparent);
 }
