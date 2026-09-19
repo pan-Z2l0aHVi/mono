@@ -261,7 +261,7 @@ function DropdownDemo() {
           <web-ui-button variant="secondary" onClick={() => setControlledOpen(v => !v)}>
             {controlledOpen ? '由外部关闭菜单' : '由外部打开菜单'}
           </web-ui-button>
-          <span className="text-sm leading-10 text-muted">状态：{controlledOpen ? '打开' : '关闭'}</span>
+          <span className="text-sm leading-10 text-gray-500">状态：{controlledOpen ? '打开' : '关闭'}</span>
         </div>
         <web-ui-dropdown open={controlledOpen} onopen-change={event => setControlledOpen(event.detail.open)}>
           <web-ui-button variant="ghost" slot="trigger">

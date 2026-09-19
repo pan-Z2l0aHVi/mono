@@ -18,8 +18,8 @@ function SegmentedDemo() {
           <web-ui-segmented-trigger value="fri">周五</web-ui-segmented-trigger>
         </web-ui-segmented>
       </div>
-      <p className="text-sm text-muted">选中值：{basicVal}</p>
-      <p className="text-xs text-muted-soft">💡 支持按住当前选中项平滑拖拽跟踪、松手吸附至最近选项及抛掷手势</p>
+      <p className="text-sm text-gray-500">选中值：{basicVal}</p>
+      <p className="text-xs text-gray-400">💡 支持按住当前选中项平滑拖拽跟踪、松手吸附至最近选项及抛掷手势</p>
 
       <h2>禁用状态</h2>
       <div className="mb-3">
@@ -29,7 +29,7 @@ function SegmentedDemo() {
           <web-ui-segmented-trigger value="cherry">Cherry</web-ui-segmented-trigger>
         </web-ui-segmented>
       </div>
-      <p className="text-sm text-muted">选中值：{disabledVal}</p>
+      <p className="text-sm text-gray-500">选中值：{disabledVal}</p>
 
       <h2>Segmented Group</h2>
       <div className="mb-3">
@@ -39,7 +39,7 @@ function SegmentedDemo() {
           <web-ui-segmented-trigger value="cherry">Cherry</web-ui-segmented-trigger>
         </web-ui-segmented>
       </div>
-      <p className="text-sm text-muted">选中值：{groupVal}</p>
+      <p className="text-sm text-gray-500">选中值：{groupVal}</p>
     </div>
   )
 }

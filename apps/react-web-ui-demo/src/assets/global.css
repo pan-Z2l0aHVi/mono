@@ -35,22 +35,6 @@
   --breakpoint-lg: 1024px; /* 平板横屏、小笔记本 */
   --breakpoint-xl: 1280px; /* 标准桌面显示器 */
   --breakpoint-2xl: 1536px; /* 大桌面显示器 */
-
-  /* 语义色 (Semantic Colors) - 用于 shadcn/no-raw-colors 替换 */
-  --color-muted: #6b7280; /* gray-500 */
-  --color-muted-soft: #9ca3af; /* gray-400 */
-  --color-muted-strong: #4b5563; /* gray-600 */
-  --color-danger: #ef4444; /* red-500 */
-  --color-accent: #2563eb; /* blue-600 */
-  --color-brand: #007aff; /* iOS blue */
-  --color-body-text: #6a6a6a; /* dialog body text */
-  --color-faint: #999; /* drawer subtitle */
-  --color-strong: #666; /* drawer body text */
-
-  /* 演示用途自定义 token (Demo custom tokens) */
-  --color-dialog-bg: rgb(240 248 255 / 0.92);
-  --color-drawer-bg: #fff;
-  --color-icon-tint: #34c759;
 }
 
 /* 消除双击缩放与 300ms 点击延迟；保留双指缩放以符合 WCAG 2.1 SC 1.4.4 */

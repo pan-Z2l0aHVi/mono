@@ -88,7 +88,7 @@ function ToastDemo() {
       <h1>Toast 通知</h1>
 
       <h2>基础类型</h2>
-      <p className="mb-3 text-sm text-muted">支持带标题和不带标题两种模式</p>
+      <p className="mb-3 text-sm text-gray-500">支持带标题和不带标题两种模式</p>
       <div className="mb-6 flex flex-wrap gap-2">
         <web-ui-button onClick={handleShowSuccess}>Success</web-ui-button>
         <web-ui-button onClick={handleShowInfo}>Info</web-ui-button>
