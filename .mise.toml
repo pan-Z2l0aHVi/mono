@@ -5,8 +5,9 @@ go = "1.26.4"
 "go:github.com/wailsapp/wails/v3/cmd/wails3" = "3.0.0-beta.22"
 
 [env]
-# worktree 族共享同一份 turbo 本地缓存：TURBO_CACHE_DIR 覆盖所有 turbo 调用（含
-# ad-hoc 命令），兄弟 worktree 间复用构建产物（含 dist d.ts），避免每 worktree 冷缓存
-# 全量重建。{{ config_root }} 由 mise 解析为本文件所在目录。CI 在 ci.yml 显式覆盖回
-# workspace 内路径，防止 mise 环境泄漏导致 actions/cache 静默丢失。
-TURBO_CACHE_DIR = "{{ config_root }}/../.turbo-cache"
+# 主仓与全部 worktree 共享同一份 turbo 本地缓存：锚定 git common dir（所有 worktree 与
+# 主仓共享 mono/.git，worktree 增删/改名不影响），TURBO_CACHE_DIR 覆盖所有 turbo 调用
+# （含 ad-hoc 命令），跨 checkout 复用构建产物（内容寻址，共享安全）。CI 在 ci.yml 显式
+# 覆盖回 workspace 内路径，防止 mise 环境泄漏导致 actions/cache 静默丢失。
+[env._]
+source = "scripts/turbo-cache-env.sh"

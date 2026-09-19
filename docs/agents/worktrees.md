@@ -12,8 +12,8 @@ worktree 是任务隔离边界，不是包名的别名。每个可变 task 只�
 
 ### turbo 缓存共享
 
-- `.mise.toml` 的 `[env]` 把 `TURBO_CACHE_DIR` 指向 `<仓库目录>/../.turbo-cache`：同族 task worktree 共享一份本地 turbo 缓存（构建产物含 dist d.ts），新 worktree 不必冷缓存全量重建。
-- 缓存按仓库位置分组（主仓与 worktree 族各一份）；手动回收直接删除 `.turbo-cache` 目录，turbo 下次运行自动重建。CI 在 `ci.yml` 显式覆盖回 workspace 内路径，mise 注入不影响 CI 缓存键。
+- `.mise.toml` 的 `[env._].source` 通过 `scripts/turbo-cache-env.sh` 把 `TURBO_CACHE_DIR` 锚定到 **git common dir**（`mono/.git/turbo-cache`）：主仓与全部 task worktree 共享同一份本地 turbo 缓存（构建产物含 dist d.ts），新 worktree 不必冷缓存全量重建，跨 checkout 复用安全（turbo 内容寻址）。
+- 手动回收直接删除 `mono/.git/turbo-cache`，turbo 下次运行自动重建。CI 在 `ci.yml` 显式覆盖回 workspace 内路径，mise 注入不影响 CI 缓存键；git common dir 不受 `git gc` / worktree 清理影响。
 
 ## 角色隔离边界
 
