@@ -500,6 +500,8 @@ Portal 面板创建时会镜像 host 上解析后的这些变量；更新 host �
 
 使用 `role="checkbox"` 和 `aria-checked`。Enter/Space 键盘切换。
 
+**布局：** 宿主是 inline-flex 盒，高度由声明决定、不继承页面行高：`--wui-selection-control-hit-size`（`24px`）给出宿主最小高度，`--wui-selection-control-size`（`18px`）指示器在其中垂直居中，`--wui-selection-control-vertical-align`（`middle`）决定宿主盒与相邻文字的对齐方式。`<web-ui-radio>` 共用同一组 token。
+
 #### `<web-ui-radio>`
 
 单个单选按钮。
@@ -515,6 +517,8 @@ Portal 面板创建时会镜像 host 上解析后的这些变量；更新 host �
 **事件：** `input`, `change`
 
 **插槽：** `default`（标签文本）
+
+**布局：** 与 `<web-ui-checkbox>` 共用同一套选择控件盒契约——`--wui-selection-control-hit-size` 决定宿主最小高度，指示器在其中居中，`--wui-selection-control-vertical-align` 决定与相邻文字的对齐。
 
 #### `<web-ui-switch>`
 
@@ -1283,6 +1287,15 @@ SVG 线条绘制动画，基于 `stroke-dashoffset`。直接在原元素上动�
 | `--wui-control-size`      | `36px`  | 控件默认高度和方形最小宽 |
 | `--wui-overlay-min-width` | `200px` | 锚定浮层最小宽度         |
 | `--wui-focus-ring-width`  | `3px`   | Focus 指示器宽度         |
+
+**选择控件 token（radio、checkbox）：**
+
+| 属性                                     | 默认值   | 说明                                  |
+| ---------------------------------------- | -------- | ------------------------------------- |
+| `--wui-selection-control-size`           | `18px`   | 指示器（圆点 / 方框）宽高             |
+| `--wui-selection-control-hit-size`       | `24px`   | 宿主最小高度，即显式声明的指针命中区  |
+| `--wui-selection-control-label-gap`      | `10px`   | 指示器与 slot 标签之间的间距          |
+| `--wui-selection-control-vertical-align` | `middle` | 宿主盒相对相邻文字的 `vertical-align` |
 
 **圆角 token：**
 

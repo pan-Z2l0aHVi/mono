@@ -1,62 +1,5 @@
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-}
-
-:host {
-  cursor: default;
-  display: inline-block;
-}
-
-:host([disabled]) {
-  cursor: not-allowed;
-}
-
-.wui-radio {
-  cursor: default;
-  user-select: none;
-
-  display: inline-flex;
-  gap: 10px;
-  align-items: center;
-
-  font-size: var(--wui-font-size, 14px);
-  line-height: 1;
-  color: var(--wui-color-text, #1b1b1b);
-
-  &:focus-visible {
-    border-radius: var(--wui-radius-control, calc(infinity * 1px));
-    outline: var(--wui-focus-ring-width, 3px) solid var(--wui-color-focus-ring, rgb(0 136 255 / 0.4));
-    outline-offset: 2px;
-  }
-}
-
-:host([data-wui-pointer-focus]) .wui-radio:focus-visible {
-  outline-color: transparent;
-}
-
-.wui-radio.is-disabled {
-  cursor: not-allowed;
-  color: var(--wui-color-text-secondary, #6a6a6a);
-  opacity: 0.4;
-}
-
 .wui-radio-circle {
-  display: flex;
-  flex-shrink: 0;
-  align-items: center;
-  justify-content: center;
-
-  width: 18px;
-  height: 18px;
   border-radius: var(--wui-radius-control, calc(infinity * 1px));
-
-  background-color: var(--wui-color-surface-raised, #f2f2f7);
-
-  transition:
-    background-color var(--wui-duration-focus, 200ms) ease,
-    border-color var(--wui-duration-focus, 200ms) ease;
 }
 
 .is-checked .wui-radio-circle {
@@ -85,10 +28,6 @@
 .is-checked .wui-radio-dot {
   transform: scale(1);
   opacity: 1;
-}
-
-.wui-radio-label {
-  pointer-events: none;
 }
 
 @media (prefers-reduced-motion: reduce) {

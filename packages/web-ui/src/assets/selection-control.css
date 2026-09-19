@@ -1,0 +1,78 @@
+/*
+ * radio / checkbox 共享外壳。
+ *
+ * 指示器只有 18px。宿主一旦走 inline-block，页面行高会在宿主内生成匿名行盒，把盒子
+ * 撑到行高（Tailwind preflight 下是 24px），且多出的空隙落在哪一侧取决于内部基线落点，
+ * radio 与 checkbox 因此一个贴顶一个贴底。这里统一为 inline-flex + 声明式 min-height：
+ * 宿主高度由 token 决定，空隙对称分布在指示器两侧，两个组件不再各自漂移。
+ */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+:host {
+  cursor: default;
+
+  display: inline-flex;
+  align-items: center;
+
+  min-height: var(--wui-selection-control-hit-size, 24px);
+
+  vertical-align: var(--wui-selection-control-vertical-align, middle);
+}
+
+:host([disabled]) {
+  cursor: not-allowed;
+}
+
+/* :where() 保持零特异性，组件级配置（圆角、选中色、内部图形）始终覆盖共享层。 */
+:where(.wui-radio, .wui-checkbox) {
+  cursor: inherit;
+  user-select: none;
+
+  display: inline-flex;
+  gap: var(--wui-selection-control-label-gap, 10px);
+  align-items: center;
+
+  font-size: var(--wui-font-size, 14px);
+  line-height: 1;
+  color: var(--wui-color-text, #1b1b1b);
+
+  &:focus-visible {
+    border-radius: var(--wui-radius-control, calc(infinity * 1px));
+    outline: var(--wui-focus-ring-width, 3px) solid var(--wui-color-focus-ring, rgb(0 136 255 / 0.4));
+    outline-offset: 2px;
+  }
+}
+
+:host([data-wui-pointer-focus]) :where(.wui-radio, .wui-checkbox):focus-visible {
+  outline-color: transparent;
+}
+
+:where(.wui-radio.is-disabled, .wui-checkbox.is-disabled) {
+  cursor: not-allowed;
+  color: var(--wui-color-text-secondary, #6a6a6a);
+  opacity: 0.4;
+}
+
+:where(.wui-radio-circle, .wui-checkbox-box) {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+
+  width: var(--wui-selection-control-size, 18px);
+  height: var(--wui-selection-control-size, 18px);
+
+  background-color: var(--wui-color-surface-raised, #f2f2f7);
+
+  transition:
+    background-color var(--wui-duration-focus, 200ms) ease,
+    border-color var(--wui-duration-focus, 200ms) ease;
+}
+
+:where(.wui-radio-label, .wui-checkbox-label) {
+  pointer-events: none;
+}

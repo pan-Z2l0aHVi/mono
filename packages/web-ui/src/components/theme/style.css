@@ -10,6 +10,13 @@
   --wui-control-size: 36px;
   --wui-overlay-min-width: 200px;
 
+  /* radio / checkbox：指示器尺寸与宿主最小高度。宿主高度必须显式声明，否则会退化成
+     继承页面行高的匿名行盒，多出的空隙落在指示器上方还是下方取决于内部基线。 */
+  --wui-selection-control-size: 18px;
+  --wui-selection-control-hit-size: 24px;
+  --wui-selection-control-label-gap: 10px;
+  --wui-selection-control-vertical-align: middle;
+
   /* z-index layers - 基础结构 */
   --wui-layer-base: 0;
   --wui-layer-inline-overlay: 1;

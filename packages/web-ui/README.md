@@ -532,6 +532,8 @@ Individual checkbox.
 
 Uses native `<label>` with `role="checkbox"` and `aria-checked`. Enter/Space keyboard toggle.
 
+**Layout:** the host is an inline-flex box, so its height is declared rather than inherited from the page line-height: `--wui-selection-control-hit-size` (`24px`) sets the minimum host height, the `--wui-selection-control-size` (`18px`) indicator is centered inside it, and `--wui-selection-control-vertical-align` (`middle`) controls how the box sits against surrounding text. `<web-ui-radio>` shares the same tokens.
+
 #### `<web-ui-radio>`
 
 Individual radio button.
@@ -547,6 +549,8 @@ Individual radio button.
 **Events:** `input`, `change`
 
 **Slots:** `default` (label text)
+
+**Layout:** shares the selection-control box contract with `<web-ui-checkbox>` — `--wui-selection-control-hit-size` sets the minimum host height, the `--wui-selection-control-size` indicator is centered inside it, and `--wui-selection-control-vertical-align` controls alignment against surrounding text.
 
 #### `<web-ui-switch>`
 
@@ -1319,6 +1323,15 @@ The host uses `display: contents` and does not paint any background: the library
 | `--wui-control-size`      | `36px`  | Default height and square min-width for controls |
 | `--wui-overlay-min-width` | `200px` | Minimum anchored overlay width                   |
 | `--wui-focus-ring-width`  | `3px`   | Focus indicator width                            |
+
+**Selection control tokens (radio, checkbox):**
+
+| Property                                 | Default  | Description                                               |
+| ---------------------------------------- | -------- | --------------------------------------------------------- |
+| `--wui-selection-control-size`           | `18px`   | Indicator (circle / box) width and height                 |
+| `--wui-selection-control-hit-size`       | `24px`   | Minimum host height, i.e. the declared pointer hit area   |
+| `--wui-selection-control-label-gap`      | `10px`   | Gap between the indicator and the slotted label           |
+| `--wui-selection-control-vertical-align` | `middle` | `vertical-align` of the host box against surrounding text |
 
 **Radius tokens:**
 
