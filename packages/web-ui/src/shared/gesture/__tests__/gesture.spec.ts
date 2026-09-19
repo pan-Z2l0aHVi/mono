@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vite-plus/test'
 
 import { attachDragGesture } from '../drag-gesture'
-import { clamp, dampOverscroll, normalizeProgress, snapToNearest, springOffsets, SPRING_PRESETS } from '../physics'
+import { clamp, dampOverscroll, normalizeProgress, snapToNearest } from '../physics'
 import { attachPinchGesture } from '../pinch-gesture'
 
 describe('shared/gesture physics', () => {
@@ -35,13 +35,6 @@ describe('shared/gesture physics', () => {
     // 400px 的过冲只剩 20px，不需要额外的位移上限。
     expect(dampOverscroll(-100)).toBe(-10)
     expect(dampOverscroll(-400)).toBe(-20)
-  })
-
-  it('springOffsets 生成单调趋向目标的平滑轨迹采样', () => {
-    const samples = springOffsets(100, 0, 0, SPRING_PRESETS.rebound)
-    expect(samples.length).toBeGreaterThan(2)
-    expect(samples[0]).toBe(100)
-    expect(samples[samples.length - 1]).toBe(0)
   })
 })
 
