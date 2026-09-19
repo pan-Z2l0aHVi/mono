@@ -39,6 +39,8 @@
   },
   "files.eol": "\n",
 
+  "python.defaultInterpreterPath": "${workspaceFolder}/docs/design/app-icons/tools/.venv/bin/python",
+
   "files.exclude": {
     "**/.pnpm-lock.yaml": false,
     "**/build": true,

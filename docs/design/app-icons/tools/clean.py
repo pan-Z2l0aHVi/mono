@@ -5,12 +5,13 @@ prove the result is still the same artwork.
     python3 clean.py <source.png> [out.png] [--prev <older.png>]
                      [--set PARAM=VALUE ...] [--outdir DIR] [--no-write] [--force]
 
-Run requirements (this repo has no Python manifest and nothing in CI runs these
-scripts, so the environment has to be prepared by hand):
+Run requirements (the Python version is pinned by the .mise.toml beside this file
+and the dependencies by requirements.txt; nothing in CI runs these scripts, so the
+environment has to be prepared once per checkout):
 
-    python3 -m pip install numpy pillow scipy
     cd docs/design/app-icons/tools   # clean.py does `import icostrip`
-    python3 clean.py <source.png> [out.png]
+    mise run deps                    # python -m venv .venv && pip install -r
+    .venv/bin/python clean.py <source.png> [out.png]
 
 `out.png` defaults to `<stem>-clean.png` beside the source.  `--no-write` reports
 without touching any file, and a failed invariant suppresses the write on its own
