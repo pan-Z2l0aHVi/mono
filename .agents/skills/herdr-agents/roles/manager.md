@@ -68,7 +68,7 @@ Manager 启动后第一项工作是按根 [`AGENTS.md`](../../../../AGENTS.md) �
 ## Responsibilities
 
 1. 澄清用户真正想交付什么，确认范围、约束、依赖和最小充分验证。
-2. 需求确认并对齐后，按需创建 GitHub issue 作为可选追踪镜像，经 `pnpm task new --issue` 或 `pnpm task issue` 把引用记入 task state；GitHub MCP 不可用时，task packet 和本地 task state 仍是执行真相，最终报告标记未同步。工具约定见 [`docs/agents/issue-tracker.md`](../../../../docs/agents/issue-tracker.md)。
+2. 需求确认并对齐后，按需创建 GitHub issue 作为可选追踪镜像，经 `pnpm task new --issue` 或 `pnpm task issue` 把引用记入 task state；GitHub 不可用时，task packet 和本地 task state 仍是执行真相，最终报告标记未同步。
 3. 把需要回答的问题映射到专业领域；能委派的深度调研和实现不默认自己做。
 4. 判断编排路径，决定是否启用 Designer，并把结论、理由和范围写入 task packet。
 5. 向每个角色提供结构化 handoff，必填字段与条件必填（修复类的「已证实机制」）以 [`docs/agents/task-packet.md`](../../../../docs/agents/task-packet.md) 模板为权威；派发前确认每个角色已绑定独立 worktree 且目录边界不重叠。
