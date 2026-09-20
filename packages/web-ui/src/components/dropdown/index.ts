@@ -177,6 +177,14 @@ export class WebUiDropdown extends LitElement {
     this.addEventListener('keydown', this._onKeydown)
     document.addEventListener('click', this._onClickOutside)
     this._menuContentObserver.observe(this, { childList: true, subtree: true })
+    /*
+     * 重挂载对账：`disconnectedCallback` 会拆掉面板、把菜单项迁回宿主，但 `open` 是公开
+     * prop，不因卸载而改写。Lit 在 detach 期间不记 `changedProperties`，重连后 `updated()`
+     * 不再命中 `changed.has('open')`，面板于是永久缺席：宿主仍反射 `open` 与
+     * `aria-expanded`，Escape 和 outside click 却无层可关。首连时 `open` 在
+     * `changedProperties` 里、由 `updated()` 负责，`hasUpdated` 就是用来只认重连的。
+     */
+    if (this.open && this.hasUpdated) this._syncOpenOverlay(this._isFocusOrphaned())
   }
 
   override firstUpdated() {
@@ -206,19 +214,7 @@ export class WebUiDropdown extends LitElement {
 
     if (changed.has('open')) {
       if (this.open) {
-        this._restoreFocusTarget ??= document.activeElement instanceof HTMLElement ? document.activeElement : undefined
-        this._outsideClickGuard.arm()
-        this._syncScrollLock()
-        this._hideAllSubmenuChildren()
-        this._overlay.invalidate()
-        this._overlay.scheduleFrame(() => {
-          this._ensureOverlay(0, this._shouldOpenInstantly)
-          this._shouldOpenInstantly = true
-          focusMenuItem(getEnabledMenuLevelItems(this._overlays.get(0)?.content)[0])
-          // 面板 id 在 overlay 构建后才有：回写 aria-controls 指向。
-          this._syncTriggerAria()
-        })
-        this._bindHoversAfterUpdate()
+        this._syncOpenOverlay(true)
       } else {
         this._overlay.invalidate()
         this._syncScrollLock()
@@ -243,6 +239,35 @@ export class WebUiDropdown extends LitElement {
       })
     }
     this._hoverBinder.bind()
+  }
+
+  /**
+   * 焦点是否已无归属：被 detach 打掉的焦点会落回 `body`，用户主动点到别处时不会。
+   * 重挂载对账只在前者才把焦点夺回菜单，否则等于从消费者手里抢焦点。
+   */
+  private _isFocusOrphaned(): boolean {
+    const active = document.activeElement
+    return active === null || active === document.body || active === document.documentElement
+  }
+
+  /**
+   * 打开态的唯一对账入口：面板、滚动锁、outside click、hover 与菜单焦点都从这里收敛，
+   * `updated()` 的打开分支与重连对账共用它，两条路径必须落到同一个状态。
+   */
+  private _syncOpenOverlay(takeFocus: boolean) {
+    this._restoreFocusTarget ??= document.activeElement instanceof HTMLElement ? document.activeElement : undefined
+    this._outsideClickGuard.arm()
+    this._syncScrollLock()
+    this._hideAllSubmenuChildren()
+    this._overlay.invalidate()
+    this._overlay.scheduleFrame(() => {
+      this._ensureOverlay(0, this._shouldOpenInstantly)
+      this._shouldOpenInstantly = true
+      if (takeFocus) focusMenuItem(getEnabledMenuLevelItems(this._overlays.get(0)?.content)[0])
+      // 面板 id 在 overlay 构建后才有：回写 aria-controls 指向。
+      this._syncTriggerAria()
+    })
+    this._bindHoversAfterUpdate()
   }
 
   // 命令式打开，不派发 open-change。
