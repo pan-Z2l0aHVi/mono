@@ -57,6 +57,6 @@ open -> active -> frozen -> reviewed -> approved -> done
 
 - `scripts/agent-workflow.mjs` 与 `agent-workflow.test.mjs` 删除，`agent:workflow` script 由 `task` 取代；`.vite-hooks/pre-commit` 只剩 `pnpm task guard`。
 - 旧 task state 目录 `agent-workflow/` 清空后，`<git-common-dir>/tasks/` 是唯一执行真相。
-- release/hotfix 不再是 task 体系概念；release.md 改述为 release playbook，hotfix 独立成 playbook，各自声明如何满足级别 gate（workflow 文档重建阶段落地）。
+- release/hotfix 不再是 task 体系概念；release.md 改述为 release playbook，hotfix 独立成 playbook，各自声明如何满足级别 gate（workflow 文档重建阶段落地）。（2026-09-20 修订：hotfix 不再独立成文件，`docs/agents/hotfix.md` 已删除，正文内联在 `docs/agents/workflow.md`「Playbook」节；本条「hotfix 不是 task 体系概念、按级别 gate 满足要求」不变。同日 `validate:context` 去掉的只是 Agent 指令文档语料的存在性断言（入口面 `AGENTS.md`/`CLAUDE.md`/`package.json` 仍要求存在），ADR 的发现性从「`CONTEXT.md` 逐条索引」改为「每份编号 ADR 至少有一条来自其他指令文档的入站链接」，不再把 `CONTEXT.md` 的体积钉成契约；断链、与实现事实漂移、绑定表与 frontmatter 一致性、pre-commit allowlist、必经命令和软链等检查保持不变。）
 - 跨包集成损坏不再有 post-merge gate 兜底，依赖 CI；`fix:code` 依赖 node_modules，冷 worktree 需先安装依赖。
 - instruction 预算基线（`scripts/instruction-budget.json`）随 `audit:instructions` 一并退役，不再维护。

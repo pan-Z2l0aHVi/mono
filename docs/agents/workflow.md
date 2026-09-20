@@ -1,6 +1,6 @@
 # 开发与协作工作流
 
-本文件是 monorepo 所有实施任务的必经流程。它定义任务级别、状态机、变更证据和角色交接；内核实现见 [`scripts/task.mjs`](../../scripts/task.mjs)（`pnpm task`），worktree 细节见 [`worktrees.md`](worktrees.md)，release 与 hotfix playbook 见各自文件，任务交接包见 [`task-packet.md`](task-packet.md)。Herdr、Claude、Codex 等只是执行适配层，不改变本流程的状态和 gate。任务体系的完整决策见 [ADR-0014](../adr/0014-task-system-v2.md)。
+本文件是 monorepo 所有实施任务的必经流程。它定义任务级别、状态机、变更证据和角色交接；内核实现见 [`scripts/task.mjs`](../../scripts/task.mjs)（`pnpm task`），worktree 细节见 [`worktrees.md`](worktrees.md)，release playbook 见 [`release.md`](release.md)、hotfix playbook 见本文「Playbook」节，任务交接包见 [`task-packet.md`](task-packet.md)。Herdr、Claude、Codex 等只是执行适配层，不改变本流程的状态和 gate。任务体系的完整决策见 [ADR-0014](../adr/0014-task-system-v2.md)。
 
 ## 先建立任务
 
@@ -127,7 +127,9 @@ Manager 统一接收需求并编排，保持扁平，不引入 Integrator 或其
 - **T1**：强制 review，Manager 派 fresh subagent 即可（subagent 只接收冻结 diff 与证据，独立性接近独立会话）。
 - **T2**：免审；若要审，coder 自派 fresh subagent。
 - **任何级别禁止同一会话自审**：实施者复核自己的 diff 不构成 review。
-- reviewer id 使用 `^[A-Za-z0-9][A-Za-z0-9._-]{3,39}$` 形式（如 `claude-code-reviewer-45a5b9eb`），必须 ≠ owner；发现按 `Block`、`Should fix`、`Nit` 输出，检查项见 [`review.md`](review.md)。
+- reviewer id 使用 `^[A-Za-z0-9][A-Za-z0-9._-]{3,39}$` 形式（如 `claude-code-reviewer-45a5b9eb`），必须 ≠ owner。
+
+报告以按严重程度排列的具体发现开头（`Block` / `Should fix` / `Nit`），每条带文件与行号；未发现缺陷时说明测试缺口和残余风险。检查项：公共行为与向后兼容性、聚焦测试覆盖、边界与失败情况、类型与错误处理、竞态或资源泄漏、用户输入安全风险、文档变更；重构须把完成的变更与变更前的行为清单对照。浏览器相关的 review 必须按 [`browser-verification.md`](browser-verification.md) 的三档核实证据，修复类变更的 handoff 必须携带「已证实机制」（见 [`task-packet.md`](task-packet.md) 字段约束）；未给出已证实根因的方案性返工本身就是 review 发现项。
 
 ## 角色和边界
 
@@ -150,7 +152,7 @@ Manager 统一接收需求并编排，保持扁平，不引入 Integrator 或其
 release 和 hotfix 不是 task 体系的概念；它们是普通 task 在软件迭代场景下的操作程序，各自声明如何满足级别 gate：
 
 - **release playbook**（[`release.md`](release.md)）：聚合已批准 task、确认 changeset、集成验证、PR 与合并后验证。聚合 task 按 T0 建。
-- **hotfix playbook**（[`hotfix.md`](hotfix.md)）：线上紧急修复的快速通道，跳过长期 dev lane，但 T0/T1 的全部 gate 不免；紧急性不删除证据链。
+- **hotfix playbook**：线上紧急修复仍按 `pnpm task new --task hotfix-<slug> --level t0|t1 --playbook workflow.md#playbook` 建 task，T0/T1 的全部 gate 一项不免，紧急性不删除证据链。与普通 task 的差异只有三条：分支基线取生产状态而不是 dev lane 最新 head，合并节奏与 release playbook 一致；diff 保持最小，不顺手重构、不扩大范围；验证聚焦回归——修复点加受影响契约的聚焦测试，只有涉及浏览器运行时行为时才按 [`browser-verification.md`](browser-verification.md) 的证据档位执行。review 可以先于其他任务排期，但 reviewer 独立性要求不变。
 
 ## 失败和恢复
 

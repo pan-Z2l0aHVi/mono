@@ -132,24 +132,10 @@ function fromLockedSkill(file) {
   return first === '.agents' && second === 'skills' && lockedSkills.has(third)
 }
 
-for (const file of [
-  'AGENTS.md',
-  'CLAUDE.md',
-  'CONTEXT.md',
-  'ARCHITECTURE.md',
-  'CONTRIBUTING.md',
-  'docs/agents/context.md'
-]) {
+// 入口面必须存在；其余门禁钉一致性：断链、与实现事实漂移、绑定表与 frontmatter、必经命令、软链。
+// 被删掉的是「指令文档语料必须存在」——它会随内容演进膨胀，反而阻止删减；被引用的文档由断链检查负责。
+for (const file of ['AGENTS.md', 'CLAUDE.md']) {
   if (!exists(file)) addError(`missing required context file: ${file}`)
-}
-
-for (const file of [
-  'docs/agents/workflow.md',
-  'docs/agents/worktrees.md',
-  'docs/agents/release.md',
-  'docs/agents/task-packet.md'
-]) {
-  if (!exists(file)) addError(`missing required workflow context file: ${file}`)
 }
 
 // AGENTS.md 的章节标题与叙述措辞不再是契约。入口断言只保留「必经链接 + init 命令」两条；
@@ -359,8 +345,12 @@ const markdownFiles = [
 ]
 // (?<!!?) 的 `!?` 允许匹配空串，lookbehind 恒假，链接扫描因此从未跑过；这里要求前面确实不是 `!`（图片语法）。
 const linkPattern = /(?<!!)\[[^\]]*\]\(([^)]+)\)/g
+// 只有编号 ADR 需要被发现；docs/adr 下的其他 Markdown（如索引 README）算指令面，它的链接可以提供入站。
+const adrDocuments = new Set(walk('docs/adr', file => file.endsWith('.md') && /^\d{4}-/.test(path.basename(file))))
+const inboundTargets = new Set()
 for (const file of markdownFiles) {
   const source = fs.readFileSync(file, 'utf8')
+  const isAdr = adrDocuments.has(file)
   for (const match of source.matchAll(linkPattern)) {
     const target = match[1].trim()
     if (!target || /^(?:https?:|mailto:|#)/.test(target)) continue
@@ -368,7 +358,13 @@ for (const file of markdownFiles) {
     if (!location) continue
     const resolved = path.resolve(path.dirname(file), location)
     if (!fs.existsSync(resolved)) addError(`${relative(file)}: broken local link ${target}`)
+    if (!isAdr) inboundTargets.add(resolved)
   }
+}
+// ADR 的发现性钉在「必须有入站链接」上，而不是「CONTEXT.md 必须逐条索引」：
+// 后者把 CONTEXT.md 的体积变成契约，阻止精简这份文档。
+for (const file of [...adrDocuments].sort()) {
+  if (!inboundTargets.has(file)) addError(`${relative(file)}: no inbound link from the instruction surface`)
 }
 
 function parseFrontmatter(file) {
@@ -427,21 +423,11 @@ for (const file of roleFiles) {
     addError(`${relative(file)}: frontmatter name must be ${expectedName}`)
 }
 
+// 不是「文档语料必须存在」：可用角色由 `scripts/task.mjs` 的 `roleContracts()` 直接列契约目录推导，
+// 少一份契约会让该角色静默从 `pnpm task --roles` 的可选值里消失。本断言钉住这个镜像与目录一致。
 for (const filename of roleProfiles.keys()) {
   if (!roleFiles.some(file => path.basename(file) === filename))
     addError(`${roleDirectory}: missing required Agent Role ${filename}`)
-}
-
-if (exists('CONTEXT.md')) {
-  const context = read('CONTEXT.md')
-  const adrDirectory = path.join(root, 'docs/adr')
-  if (fs.existsSync(adrDirectory)) {
-    for (const file of fs.readdirSync(adrDirectory).filter(file => file.endsWith('.md'))) {
-      if (!context.includes(`docs/adr/${file}`)) addError(`CONTEXT.md does not index docs/adr/${file}`)
-    }
-  } else {
-    addError('missing required directory: docs/adr')
-  }
 }
 
 if (errors.length) {

@@ -1,6 +1,6 @@
 # Agent Context 架构
 
-本指南定义仓库如何为 agent 提供 context。它只用于 instruction system、仓库拓扑和架构 context 维护；普通 coding task 只按根入口加载命中的 task-specific 文档。
+本指南定义仓库如何为 agent 提供 context。它用于 instruction system、仓库拓扑、领域术语和架构 context 维护；普通 coding task 只按根入口加载命中的 task-specific 文档。
 
 **快速入口**：全局拓扑先看 [`ARCHITECTURE.md`](../../ARCHITECTURE.md)；协作流程先看 [`CONTRIBUTING.md`](../../CONTRIBUTING.md)。本指南是 context system 的维护规范，不是所有任务的必读手册。
 
@@ -73,7 +73,10 @@ Role 只服务于 herdr 多 agent 编排：Manager 初始化的每个 CLI 会话
 - **当前实现优先**：源码、测试、`package.json`、workspace 配置和构建配置是当前行为的证据；地图或 README 与它们冲突时，以实现为准，并记录是否需要同步文档。
 - **局部约束优先**：目标目录最近的 `AGENTS.md` 负责局部不可绕过约束；根 `AGENTS.md` 负责仓库级边界和路由。
 - **流程与背景分离**：`docs/agents/*` 和 `.agents/rules/*` 描述按任务加载的流程；`CONTEXT.md` 和 ADR 描述架构、术语和长期取舍；`ARCHITECTURE.md` 只做快速地图。
-- **适配入口不复制规则**：`CLAUDE.md` 只负责对应客户端的入口提示；`.claude/{rules,skills,agents}` 通过 symlink 复用 `.agents/`，不建立第二套规范。
+- **适配入口不复制规则**：`CLAUDE.md` 只负责对应客户端的入口提示；`.claude/{rules,skills}` 通过 symlink 复用 `.agents/`，不建立第二套规范。
+- **术语沿用权威 context**：命名领域概念时使用当前任务已加载 context 里已有的术语（跨包看根 `CONTEXT.md` 的 vocabulary 章节，其他看对应 `CONTEXT.md`、task guide 或 ADR），不改用文档明确避开的同义词。需要命名的概念不存在时，要么是在发明项目不用的措辞，要么是确有空白——后者留给 `/domain-modeling` 在决策真正确定时补。
+- **与 ADR 冲突要显式标记**：输出与既有 ADR 矛盾时明确指出并说明为什么值得重新讨论，不静默覆盖。
+- **缺失的 context 不预先创建**：`CONTEXT.md`、`CONTEXT-MAP.md` 或 context 范围的 `docs/adr/` 不存在时静默继续，不提议提前建；`/domain-modeling` 在术语或决策真正确定时懒创建。
 - **不确定时不要猜**：当文档、类型、配置和源码不能共同证明边界时，停在最小受影响范围，读取相关测试/ADR或报告未决风险。
 
 ## 变更与文档同步

@@ -9,7 +9,7 @@ Task packet 是 Manager 与 Agent 之间的最小交接合同；结构化 handof
 - `taskId`、级别（T0/T1/T2）、owner、worktree 和 base SHA 是什么？
 - 目标、非目标、验收标准和所需验证是什么？
 - 依赖、公共契约、changeset、浏览器验证和 reviewer 要求是什么？
-- 涉及 release 或 hotfix 场景时，引用的 playbook 是什么？
+- 涉及 release 或 hotfix 场景时，遵循的是哪条 playbook？
 - 编排路径、是否启用 Designer，以及理由是什么？
 - 交付物、失败恢复方式和交接时机是什么？
 
@@ -19,7 +19,7 @@ Task packet 是 Manager 与 Agent 之间的最小交接合同；结构化 handof
 Task: <task-id>
 Level: t0 | t1 | t2
 Issue: <issue-url | N/A>
-Playbook: <release.md | hotfix.md | N/A>
+Playbook: <release.md | workflow.md#playbook | N/A>
 Owner: <role/agent>
 Worktree: <absolute path>
 Base: <sha>
