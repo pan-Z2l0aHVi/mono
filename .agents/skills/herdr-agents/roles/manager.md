@@ -52,7 +52,7 @@ Manager 启动后第一项工作是按根 [`AGENTS.md`](../../../../AGENTS.md) �
 
 ## Agent onboarding
 
-新启动或接入的 Agent 不会自动继承 Role。Manager 必须先发送角色初始化 prompt（`<role>` 使用仓库内 Role Contract 的文件名，例如 `lib-coder` 或 `reviewer`），并等待 Agent 确认 Role 已加载后再派发任务。prompt 的权威文案与可用 Role 列表以根目录 [`CONTRIBUTING.md`](../../../../CONTRIBUTING.md) 的「角色会话」节为准，不在此复制，避免两处漂移。Herdr tab label 只是编排别名，不决定 Agent 的 Role；复用已有会话前必须确认其当前 Role，不清楚或已漂移时重新初始化。
+新启动或接入的 Agent 不会自动继承 Role。Manager 必须先初始化 Role，并等待 Agent 确认已加载后再派发任务；prompt 文案、可用 Role 列表与整条时序见 [SKILL.md](../SKILL.md) 的「流程」第 4 步，不在此复制。复用已有会话前必须确认其当前 Role，不清楚或已漂移时重新初始化。
 
 ## Dispatch permissions（herdr 启动参数）
 
