@@ -16,10 +16,23 @@ bash scripts/commit.sh <type> <scope> "<subject>" --dry
 
 ## AI 署名与身份
 
-署名规则以 [`CONTRIBUTING.md`](../../CONTRIBUTING.md) 的「AI 协作署名」节为准。commit 层面只有两条操作差异：
+署名规则的权威是本节（不再依赖 `CONTRIBUTING.md`，它是纯路由层）。仅当 AI agent 对某次变更有实质贡献时才记录署名；不要为展示署名创建空提交或伪造身份：
+
+- Agent 直接创建提交时，author 与 committer 使用该 agent 的官方身份，不再叠加同名 `Co-authored-by` 尾注。
+- AI agent 参与人类 author 的提交时，通过 Git trailers 机制追加共同作者尾注：
+
+  ```text
+  Co-authored-by: Codex <noreply@openai.com>
+  Co-authored-by: Claude <noreply@anthropic.com>
+  ```
+
+- 人类提交者仍对需求、设计、审查、测试和最终合并承担全部责任。
+- 共同作者尾注用于公开记录协作；GitHub 是否将其显示为独立 Contributors 条目取决于该邮箱能否被 GitHub 识别和归属。
+
+commit 层面只有两条操作差异：
 
 - `commit.sh` 不处理署名：agent 直接创建提交时，提交后用 `git commit --amend --author=…` 并配合 `GIT_COMMITTER_NAME` / `GIT_COMMITTER_EMAIL` 环境变量改为 agent 官方身份；为人类提交追加 AI 共同作者时，提交后 `git commit --amend --trailer 'Co-authored-by: …'` 追加。
-- 提交前确认实际 author/committer 与意图一致：以人类身份提交时对应 `git config user.name` / `user.email`；以 agent 身份提交时使用其官方身份（见 [`CONTRIBUTING.md`](../../CONTRIBUTING.md) 的「AI 协作署名」）。
+- 提交前确认实际 author/committer 与意图一致：以人类身份提交时对应 `git config user.name` / `user.email`；以 agent 身份提交时使用其官方身份（见本节「AI 署名与身份」）。
 
 ## Changesets 与 PR
 

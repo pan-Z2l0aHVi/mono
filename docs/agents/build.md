@@ -6,7 +6,7 @@
 
 ## 各包命令
 
-每个包暴露其所需的命令：所有可构建的包都有 `build`，大多数有 `dev`（监听模式），只有包含维护的自动化测试覆盖率的包才暴露 `test`。使用 `pnpm --filter @greypan/<name> <script>` 运行它们；例如，`pnpm --filter @greypan/js-kit test`。根目录提供全局编排的 `pnpm run build`、`pnpm run test` 以及增量受影响命令 `pnpm run build:affected` 与 `pnpm run test:affected`。迭代与调试优先使用受影响命令；全量 `pnpm run build` / `pnpm run test` 由 CI 在 pull request 上执行，本地只在需要复现全仓范围问题时运行。
+每个包暴露其所需的命令：所有可构建的包都有 `build`，大多数有 `dev`（监听模式），只有包含维护的自动化测试覆盖率的包才暴露 `test`。使用 `pnpm --filter @greypan/<name> <script>` 运行它们；例如，`pnpm --filter @greypan/js-kit test`。根目录提供全局编排的 `pnpm run build`、`pnpm run test`。受影响范围的迭代定位用 `pnpm find:usages -- <paths...>`（见 `context.md`）随后对目标包运行 filter 命令；已移除独立的 `build:affected` / `test:affected` 根命令，避免重复 `find:usages` 的影响面权威。全量根命令由 CI 在 pull request 上执行，本地只在需要复现全仓范围问题时运行。
 
 ## Demo 开发
 

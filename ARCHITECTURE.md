@@ -27,19 +27,19 @@
 
 ## 2. Workspace 目录索引
 
-| 路径                                                                    | 角色                                             | 先看什么                                                 |
-| ----------------------------------------------------------------------- | ------------------------------------------------ | -------------------------------------------------------- |
-| `packages/js-kit` (`@greypan/js-kit`)                                   | 运行时基础工具和 plugin system                   | `src/plugin-system/`、`README.md`、包级 `AGENTS.md`      |
-| `packages/browser-kit` (`@greypan/browser-kit`)                         | 浏览器能力：DOM、storage、file、tracker          | `src/` 对应模块 README、包级 `AGENTS.md`                 |
-| `packages/test-kit` (`@greypan/test-kit`)                               | Vitest browser mode + MSW 基础设施               | `docs/agents/testing.md`、`src/__tests__/`               |
-| `packages/unplugin-web-components` (`@greypan/unplugin-web-components`) | Vite/Webpack 模块转换和 Vite HTML 注入           | 包级 `AGENTS.md`、`src/transforms/`、两种 adapter        |
-| `packages/deps-reload` (`@greypan/deps-reload`)                         | 开发期 workspace `dist` watcher                  | 包级 `AGENTS.md`、`src/vite.ts`、`src/webpack.ts`        |
-| `packages/web-ui` (`@greypan/web-ui`)                                   | Lit components、tokens、icons、overlay、框架类型 | `docs/agents/web-ui.md`、组件 README、相关 ADR           |
-| `packages/tsconfig` (`@greypan/tsconfig`)                               | 可被 `extends` 的 TypeScript profiles            | `*.json`、包级 `AGENTS.md`                               |
-| `apps/react-web-ui-demo` (`@greypan/react-web-ui-demo`)                 | React 集成和预览                                 | `src/routes/`、`src/components/`、包级 README            |
-| `apps/vue-web-ui-demo` (`@greypan/vue-web-ui-demo`)                     | Vue 集成和预览                                   | `src/pages/`、`src/components/`、包级 README             |
-| `apps/interweave` (`@greypan/interweave`)                               | Go/Wails 桌面 host、后端能力边界                 | `README.md`、`AGENTS.md`、ADR-0008/0009                  |
-| `apps/interweave/frontend` (`@greypan/interweave-frontend`)             | Interweave Vue WebView                           | `src/pages/`、`src/stores/`、`apps/interweave/AGENTS.md` |
+| 路径                                                                    | 角色                                             | 先看什么                                                      |
+| ----------------------------------------------------------------------- | ------------------------------------------------ | ------------------------------------------------------------- |
+| `packages/js-kit` (`@greypan/js-kit`)                                   | 运行时基础工具和 plugin system                   | `src/plugin-system/`、`README.md`、包级 `AGENTS.md`           |
+| `packages/browser-kit` (`@greypan/browser-kit`)                         | 浏览器能力：DOM、storage、file、tracker          | “包级约束”表的 `browser-kit`、`src/` 对应模块 README          |
+| `packages/test-kit` (`@greypan/test-kit`)                               | Vitest browser mode + MSW 基础设施               | `docs/agents/testing.md`、“包级约束”表的 `test-kit`           |
+| `packages/unplugin-web-components` (`@greypan/unplugin-web-components`) | Vite/Webpack 模块转换和 Vite HTML 注入           | “包级约束”表的 `unplugin-web-components`、两种 adapter        |
+| `packages/deps-reload` (`@greypan/deps-reload`)                         | 开发期 workspace `dist` watcher                  | “包级约束”表的 `deps-reload`、`src/vite.ts`、`src/webpack.ts` |
+| `packages/web-ui` (`@greypan/web-ui`)                                   | Lit components、tokens、icons、overlay、框架类型 | `docs/agents/web-ui.md`、组件 README、相关 ADR                |
+| `packages/tsconfig` (`@greypan/tsconfig`)                               | 可被 `extends` 的 TypeScript profiles            | “包级约束”表的 `tsconfig`、`*.json`                           |
+| `apps/react-web-ui-demo` (`@greypan/react-web-ui-demo`)                 | React 集成和预览                                 | `src/routes/`、`src/components/`、包级 README                 |
+| `apps/vue-web-ui-demo` (`@greypan/vue-web-ui-demo`)                     | Vue 集成和预览                                   | `src/pages/`、`src/components/`、包级 README                  |
+| `apps/interweave` (`@greypan/interweave`)                               | Go/Wails 桌面 host、后端能力边界                 | `README.md`、`AGENTS.md`、ADR-0008/0009                       |
+| `apps/interweave/frontend` (`@greypan/interweave-frontend`)             | Interweave Vue WebView                           | `src/pages/`、`src/stores/`、`apps/interweave/AGENTS.md`      |
 
 ## 3. 依赖和构建事实
 
@@ -51,14 +51,24 @@
 
 ## 4. 高频改动热点和影响面
 
-| 改动区域                                   | 典型影响                              | 必须关注                                        |
-| ------------------------------------------ | ------------------------------------- | ----------------------------------------------- |
-| `js-kit/src/plugin-system`                 | 多个工具包的状态/组合方式             | `docs/adr/0007`、包级规则、公共测试             |
-| `web-ui/src/components`                    | React、Vue、Interweave 前端和组件契约 | `docs/agents/web-ui.md`、ADR-0005/0006          |
-| `web-ui/src/types`                         | React/Vue 类型推导和事件绑定          | ADR-0005、两个 demo 的 type fixtures            |
-| `web-ui/src/components/theme`、`src/icons` | token、视觉一致性、生成导出           | ADR-0005、生成器和 manifest                     |
-| `unplugin-web-components/src`              | Vite/Webpack 行为差异                 | 包级 `AGENTS.md`、两种 adapter 测试             |
-| `tsconfig/*.json`、workspace catalog       | 所有 TypeScript workspace 或依赖版本  | `docs/agents/dependencies.md`、继承者           |
-| `apps/interweave/*.go`、`frontend/src`     | Go/Wails API、领域状态和 MCP          | Wails 官方文档、产品基线、ADR-0008、Go/前端两侧 |
+| 改动区域                                   | 典型影响                              | 必须关注                                                    |
+| ------------------------------------------ | ------------------------------------- | ----------------------------------------------------------- |
+| `js-kit/src/plugin-system`                 | 多个工具包的状态/组合方式             | `docs/adr/0007`、包级规则、公共测试                         |
+| `web-ui/src/components`                    | React、Vue、Interweave 前端和组件契约 | `docs/agents/web-ui.md`、ADR-0005/0006                      |
+| `web-ui/src/types`                         | React/Vue 类型推导和事件绑定          | ADR-0005、两个 demo 的 type fixtures                        |
+| `web-ui/src/components/theme`、`src/icons` | token、视觉一致性、生成导出           | ADR-0005、生成器和 manifest                                 |
+| `unplugin-web-components/src`              | Vite/Webpack 行为差异                 | “包级约束”表的 `unplugin-web-components`、两种 adapter 测试 |
+| `tsconfig/*.json`、workspace catalog       | 所有 TypeScript workspace 或依赖版本  | `docs/agents/dependencies.md`、继承者                       |
+| `apps/interweave/*.go`、`frontend/src`     | Go/Wails API、领域状态和 MCP          | Wails 官方文档、产品基线、ADR-0008、Go/前端两侧             |
+
+## 5. 包级约束（薄，收编已删除的包级 AGENTS.md）
+
+| 包                                 | 约束                                                                                                                                                                                                                                                                                                                                         |
+| ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@greypan/browser-kit`             | 仅面向浏览器运行时；不得引入 Node-only API 或 UI/framework 运行时。                                                                                                                                                                                                                                                                          |
+| `@greypan/unplugin-web-components` | 模块转换支持 `.vue`/`.jsx`/`.tsx`，Vite 另经 `transformIndexHtml` 处理 Vite 构建入口 HTML；不扩展到 vanilla `.js`/`.ts` 或 `public/` 等非构建 HTML，除非先更新该边界的设计决策。HTML 注入只在 Vite；Webpack 只做源码转换。标签按 kebab-case 识别，大小写归一化，不支持驼峰/帕斯卡。公共行为经公共 API 加聚焦测试并核对两种 bundler adapter。 |
+| `@greypan/test-kit`                | 供其他包复用的 Vitest browser mode + MSW 基础设施；改 MSW 生命周期或 browser-mode 前先读 `docs/agents/testing.md`。tracker spec 共享浏览器全局变量和一个 service worker，保持文件串行；除非移除共享状态，不要重新启用文件并行。公共行为通过公共 API 添加聚焦测试，不把这些基础设施约束复制到消费包指令中。                                   |
+| `@greypan/deps-reload`             | 只用于开发期：监听本地 workspace 包 `dist/` 变化并整页刷新，不得当作生产构建行为。依赖 Node >=20.11 的 `import.meta.dirname`；修改目录定位或 watcher 生命周期时先核对源码与相关测试。                                                                                                                                                        |
+| `@greypan/tsconfig`                | 经 TypeScript `extends` 消费的 profile 配置包；改 profile 时检查所有继承者仍过根 `pnpm run check:code`。profile 层级与使用边界以 `packages/tsconfig/*.json` 为准。                                                                                                                                                                           |
 
 任务路由、按需查询工具与权威来源顺序以根 [`AGENTS.md`](AGENTS.md) 和 [`docs/agents/context.md`](docs/agents/context.md) 为权威，本文件不复制。

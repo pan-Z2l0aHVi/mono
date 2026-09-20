@@ -57,20 +57,9 @@ _Avoid_: 历史记录点、页面快照、浏览记录
 不离开当前页面、仅通过 URL 片段变化或 history API 产生的导航（含浏览器前进/后退）；history-nav 只跟踪这一类，整页加载或跨文档跳转不在其职责内。
 _Avoid_: 页面跳转、路由切换（避免与 router 概念混淆）
 
-## 模块关系
+## 模块关系与依赖方向
 
-```text
-@greypan/tsconfig ──配置 profile，供所有 TypeScript workspace 使用
-@greypan/js-kit ───无工作区运行时依赖的基础工具与 plugin system
-  ├─ @greypan/browser-kit ──浏览器工具
-  │    └─ @greypan/web-ui ──Lit 组件、icons、React/Vue 类型
-  ├─ @greypan/test-kit ────Vitest browser mode 与 MSW 基础设施
-  ├─ @greypan/unplugin-web-components ──Web Components auto-import
-  └─ @greypan/deps-reload ─开发期 workspace dist 重载
-
-react-web-ui-demo / vue-web-ui-demo ─共享包的 Web 集成与预览表面
-interweave（含 interweave-frontend）──共享包的 Wails 桌面集成表面
-```
+workspace 清单、依赖草图与模块关系图见 [`ARCHITECTURE.md`](ARCHITECTURE.md)，本文件不复制；此处只保留包的「负责/不负责」契约边界。
 
 | 边界                      | 负责内容                                            | 不负责内容                        |
 | ------------------------- | --------------------------------------------------- | --------------------------------- |
@@ -171,9 +160,6 @@ _Avoid_: 用 context 承载成员追踪或上行写回、在子项上用公开�
 
 ## 已知边界
 
-- 所有发布的 JavaScript 包均为 ES modules；`tsconfig` 仅发布 JSON profile。
-- `web-ui` 不打包框架代码；消费者安装并提供 `lit`，可选地提供 React/Vue 类型依赖。
-- 应用均为私有包，不发布到 npm；React/Vue demo 部署到 GitHub Pages，Wails starter 通过 GitHub Release 交付安装程序。
-- registry 使用 npmmirror，CI 覆盖为官方 npm registry；不得为局部任务改写 registry/mirror。
+发布/私有边界、registry/mirror 与工作区构建事实见 [`ARCHITECTURE.md`](ARCHITECTURE.md) 的「发布 / 私有边界」与「依赖和构建事实」节，以及根 `AGENTS.md` 的「不可绕过的仓库边界」；本文件不复制。
 
 组件、token、overlay 与事件语义按需读取 `docs/agents/web-ui.md` 及其指向的 ADR；公共 package 或跨 workspace 契约审查按需读取 `contract-change-review` skill，并以 manifest、消费者和测试为事实；构建、部署与 release workflow 按需读取 `docs/agents/build.md` 和 ADR-0003。

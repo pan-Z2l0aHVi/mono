@@ -43,9 +43,9 @@ release playbook 与 hotfix playbook 是普通 task 在特定场景下的操作�
 
 以下操作属于已知安全的工作流，直接执行并修复本次改动导致的问题即可，不必逐步请示：
 
-- 运行仓库既有测试与校验命令：`pnpm test`、`pnpm run test:scripts`、`pnpm run test:affected`、包级 `test`、`pnpm run check:code`、`pnpm run check:cspell`、`pnpm run validate:context`。
+- 运行仓库既有测试与校验命令：`pnpm test`、`pnpm run test:scripts`、包级 `test`、`pnpm run check:code`、`pnpm run check:cspell`、`pnpm run validate:context`。
 - 修复本次改动导致的失败并重跑受影响的测试。
-- 包级 build 与 `pnpm run build`、`pnpm run build:affected`。
+- 包级 build 与 `pnpm run build`。
 - 只读查询：`pnpm find:usages`、`pnpm inspect:contract`、`pnpm diff:contract`、`pnpm task status`、`git status`、`git diff`、`git log`。
 - 在目标 worktree 内读取任意文件。
 

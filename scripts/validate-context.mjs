@@ -276,15 +276,31 @@ for (const directory of ['packages', 'apps']) {
   const absolute = path.join(root, directory)
   if (!fs.existsSync(absolute)) continue
 
+  // 「包级约束」区域：路由到该 workspace 的权威要么是它自己的 AGENTS.md，要么是 ARCHITECTURE.md「包级约束」表中的一行。
+  // 薄约束包（无独立 AGENTS.md 的 workspace）必须出现在该表中才能被 agent 定位，否则视为路由缺口。
+  const constraintsArea = (() => {
+    const architecture = exists('ARCHITECTURE.md') ? read('ARCHITECTURE.md') : ''
+    const heading = /#{1,6}[ \t]+5\.[ \t]*包级约束/.exec(architecture)
+    return heading ? architecture.slice(heading.index) : ''
+  })()
+
   for (const entry of fs.readdirSync(absolute, { withFileTypes: true })) {
     if (!entry.isDirectory()) continue
     const workspaceRoot = path.join(absolute, entry.name)
-    if (
-      fs.existsSync(path.join(workspaceRoot, 'package.json')) &&
-      !fs.existsSync(path.join(workspaceRoot, 'AGENTS.md'))
-    ) {
-      addError(`${directory}/${entry.name}: missing nearest AGENTS.md for workspace context routing`)
+    if (!fs.existsSync(path.join(workspaceRoot, 'package.json'))) continue
+    const hasOwnAgents = fs.existsSync(path.join(workspaceRoot, 'AGENTS.md'))
+    if (hasOwnAgents) continue
+    let trackedInConstraintsTable = false
+    try {
+      const manifest = JSON.parse(fs.readFileSync(path.join(workspaceRoot, 'package.json'), 'utf8'))
+      if (manifest.name && constraintsArea.includes(`\`${manifest.name}\``)) trackedInConstraintsTable = true
+    } catch {
+      // 不可解析的 manifest 由下方 workspace manifest 校验统一报错，这里不重复。
     }
+    if (!trackedInConstraintsTable)
+      addError(
+        `${directory}/${entry.name}: workspace without its own AGENTS.md must be tracked in ARCHITECTURE.md「包级约束」表`
+      )
   }
 }
 
