@@ -22,14 +22,6 @@
 
 Interweave 由 Wails 宿主管理嵌套前端，因此其 alias 只启动 Wails host，并构建/监听 WebView frontend 的上游依赖；不要额外启动重复的前端进程。在修改 Vite 插件、TypeScript 配置或工作区依赖图后，需要重启宿主开发进程。
 
-不同包类型的构建脚本不同：
-
-- **单入口包**（`test-kit`、`unplugin-web-components`、`deps-reload`）：`vp pack`，基于 tsdown，输出 `.mjs` 和 `.d.mts`。
-- **子路径导出包**（`js-kit`、`browser-kit`、`web-ui`）：`vp build`，使用 Vite library 模式配合 `preserveModules`，输出 `.js` 和 `.d.ts`。
-- **React 应用**：`vp build`。
-- **Vue 应用**：`vue-tsc --build && vp build`。
-- **tsconfig**：无构建步骤；它提供通过 TypeScript `extends` 消费的 JSON 文件。
-
 代码质量检查与修复的命令矩阵（`check:code` 聚合与 `fix:code` 一键修复）以 [`linting.md`](linting.md) 为权威；提交 hook 的 `vp staged` 对暂存路径做增量修复与检查。包构建命令不能替代这些命令；Wails 的 macOS/Windows 原生构建仍负责验证 host package 与平台集成。
 
 | 命令                        | 用途                                              | 说明                                                                            |
@@ -76,9 +68,15 @@ turbo 本地缓存由 `.mise.toml` 的 `TURBO_CACHE_DIR` 指向 worktree 族共�
 
 ## 库构建模式
 
-`vp pack` 使用 tsdown 处理单入口包。它通过 `pack` 块配置，无需 `vite-plugin-dts` 即可生成声明文件，并自动外部化依赖。`test-kit`、`unplugin-web-components` 和 `deps-reload` 使用此模式。
+不同包类型的构建脚本不同：
 
-`vp build` 使用 Vite library 模式处理具有子路径导出的包。它通过 `build.lib` 和 `preserveModules: true` 配置，使用 `vite-plugin-dts` 生成声明文件。`js-kit`、`browser-kit` 和 `web-ui` 使用此模式。
+- **单入口包**（`test-kit`、`unplugin-web-components`、`deps-reload`）：`vp pack`，基于 tsdown，输出 `.mjs` 和 `.d.mts`。
+- **子路径导出包**（`js-kit`、`browser-kit`、`web-ui`）：`vp build`，使用 Vite library 模式配合 `preserveModules`，输出 `.js` 和 `.d.ts`。
+- **React 应用**：`vp build`。
+- **Vue 应用**：`vue-tsc --build && vp build`。
+- **tsconfig**：无构建步骤；它提供通过 TypeScript `extends` 消费的 JSON 文件。
+
+`vp pack` 通过 `pack` 块配置，无需 `vite-plugin-dts` 即可生成声明文件，并自动外部化依赖。`vp build` 通过 `build.lib` 和 `preserveModules: true` 配置，使用 `vite-plugin-dts` 生成声明文件。
 
 ## 外部化规则
 

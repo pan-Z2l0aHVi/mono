@@ -11,7 +11,7 @@
 1. 查看 `git status --short --branch`，确认当前工作区和目标 worktree 的已有变更归属。
 2. 读取根 `AGENTS.md`、本文件和命中的 rule/guide；进入 workspace 后读取最近的包级 `AGENTS.md`。
 3. 为任务选择唯一、不可变的 task id 和级别（T0/T1/T2，T0 最严格）。
-4. 在目标 worktree 执行（新 worktree 先跑一次 `pnpm install && pnpm run build`：只装依赖会让后续校验和 freeze 失效，判据见 [`worktrees.md`](worktrees.md)「创建和复用」）：
+4. 在目标 worktree 执行（新 worktree 先跑一次 `pnpm install && pnpm run build`，判据见 [`worktrees.md`](worktrees.md)「创建和复用」）：
 
    ```sh
    pnpm task new --task <task-id> --level t0|t1|t2 --issue <issue-url|N/A>
@@ -27,15 +27,15 @@
 
 级别代号 T0/T1/T2（T0 最严格），只表达 workflow 严格程度。判据全部可从变更路径、manifest 和 `pnpm find:usages` 输出查证，不依赖主观的「大改/小改」判断；判据本身描述的是变更的影响半径，不是任务的价值排序。
 
-| 级别 | 判据（命中任一即属该级）                                                                                                                                                                                         | worktree                 | review                                       | approval |
-| ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------ | -------------------------------------------- | -------- |
-| T0   | 跨 workspace 的公共 API/exports/事件/类型契约；依赖、catalog、lockfile、构建配置或 CI；聚合发布或多 worktree 并行                                                                                                | 专属 task worktree       | 强制，独立 reviewer 会话（reviewer ≠ owner） | 必须     |
-| T1   | 跨多个 workspace（`apps/*` / `packages/*`）但不改 T0 所列契约；公共导出变更但消费者仍在同一 workspace；改动 instruction system、`.agents/` 或根 `scripts/*.mjs` 的行为                                           | 专属 task worktree       | 强制，允许 Manager 派 fresh subagent         | 必须     |
-| T2   | 改动全部落在一个 workspace 内，或只落在 `docs/` 等仓库根文档目录；且不改依赖字段与 lockfile、不改 CI 与 workspace 配置、不改被其它 workspace 消费的导出符号、不改 instruction system 与根 `scripts/*.mjs` 的行为 | 允许当前 worktree 直接改 | 免审（可自派 fresh subagent）                | 不要求   |
+| 级别 | 判据（命中任一即属该级）                                                                                                                                                                                         | worktree                 | review                                       | approval | done 前 ≥1 条 pass 验证 | commit gate（guard） |
+| ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------ | -------------------------------------------- | -------- | ----------------------- | -------------------- |
+| T0   | 跨 workspace 的公共 API/exports/事件/类型契约；依赖、catalog、lockfile、构建配置或 CI；聚合发布或多 worktree 并行                                                                                                | 专属 task worktree       | 强制，独立 reviewer 会话（reviewer ≠ owner） | 必须     | 是                      | approved + hash 一致 |
+| T1   | 跨多个 workspace（`apps/*` / `packages/*`）但不改 T0 所列契约；公共导出变更但消费者仍在同一 workspace；改动 instruction system、`.agents/` 或根 `scripts/*.mjs` 的行为                                           | 专属 task worktree       | 强制，允许 Manager 派 fresh subagent         | 必须     | 是                      | approved + hash 一致 |
+| T2   | 改动全部落在一个 workspace 内，或只落在 `docs/` 等仓库根文档目录；且不改依赖字段与 lockfile、不改 CI 与 workspace 配置、不改被其它 workspace 消费的导出符号、不改 instruction system 与根 `scripts/*.mjs` 的行为 | 允许当前 worktree 直接改 | 免审（可自派 fresh subagent）                | 不要求   | 推荐不作强制            | active 即可提交      |
 
-多级同时命中取最高级（T0 > T1 > T2）。级别判定可机器查证：`pnpm find:usages -- <paths...>` 只输出一个受影响 workspace 时，T2 的单 workspace 条件成立。
+多级同时命中取最高级（T0 > T1 > T2）。级别判定可机器查证：`pnpm find:usages -- <paths...>` 只输出一个受影响 workspace 时，T2 的单 workspace 条件成立。本表是每级严格程度的唯一权威，「状态机」节不复制。
 
-done 前的验证要求：T0/T1 必须有至少一条 pass 验证证据；T2 推荐但不强制。release playbook 与 hotfix playbook 是普通 task 在特定场景下的操作程序（见「Playbook」节），它们不是 task 体系的概念。
+release playbook 与 hotfix playbook 是普通 task 在特定场景下的操作程序（见「Playbook」节），它们不是 task 体系的概念。
 
 ## 预授权操作
 
@@ -71,14 +71,6 @@ open -> active -> frozen -> reviewed -> approved -> done
 | `approved` | 对同一个 hash 批准并记录 approver                            | `pnpm task approve` |
 | `done`     | 交付结论已记录，验证 gate 通过                               | `pnpm task done`    |
 | `dropped`  | 任务终止或残留清理，强制 `--reason`                          | `pnpm task drop`    |
-
-级别决定 gate 的严格程度（唯一分档维度，T0 最严格）：
-
-| 级别 | worktree                 | review                                       | approval | done 前 ≥1 条 pass 验证 | commit gate（guard） |
-| ---- | ------------------------ | -------------------------------------------- | -------- | ----------------------- | -------------------- |
-| T0   | 专属 task worktree       | 强制，独立 reviewer 会话（reviewer ≠ owner） | 必须     | 是                      | approved + hash 一致 |
-| T1   | 专属 task worktree       | 强制，允许 Manager 派 fresh subagent         | 必须     | 是                      | approved + hash 一致 |
-| T2   | 允许当前 worktree 直接改 | 免审（可自派 fresh subagent）                | 不要求   | 推荐不作强制            | active 即可提交      |
 
 以下 gate 是硬条件：
 
