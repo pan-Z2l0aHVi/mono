@@ -502,9 +502,9 @@ Portal 面板创建时会镜像 host 上解析后的这些变量；更新 host �
 
 **布局：** 宿主是 inline-flex 盒，高度由内容撑开、不继承页面行高，因此不会在指示器上下留出多余缝隙；`--wui-selection-control-size`（`18px`）决定指示器宽高，宿主与相邻文字的对齐固定为 `vertical-align: middle`。`<web-ui-radio>` 共用同一套契约。
 
-**选中动画：** 对勾是控件自持的描边路径（不再走 `<web-ui-icon>` 图标资产），外层包 `<web-ui-svg-draw-lines>`，勾选时线条自左向右画出，取消时淡出；主题范围为 `motion="reduced"` 时两者都跳过。
+**选中动画：** 对勾是控件自持的描边路径（不再走 `<web-ui-icon>` 图标资产），外层包 `<web-ui-svg-draw-lines>` 并带 `no-autoplay`，所以挂载时就已勾选的控件显示静态勾。勾选时线条自左向右按恒定笔速画出，时长取 `--wui-duration-trigger`（默认 160ms），在切换当下从已生效的主题解析，和指示器底色那条 transition 落在同一拍；取消时沿同一条路径收回到空白，而不是只淡出；主题范围为 `motion="reduced"` 时两者都跳过，两个状态直接切换。
 
-**未激活态：** 未选中指示器的底色取 `--wui-color-surface-control`（与中性按钮同一档控件底），深色模式下也能和 `--wui-color-page` 分辨开。触发区内任意位置（指示器、间距或右侧 slot 标签）被 hover / 按下时，该底色再叠 6% 与 15% 状态层。hover 只在 `(hover: hover) and (pointer: fine)` 设备上生效；已选中和禁用态保持各自底色。`<web-ui-radio>` 共用同一套状态。
+**未激活态：** 未选中指示器的底色取 `--wui-color-surface-control`（与中性按钮同一档控件底），深色模式下也能和 `--wui-color-page` 分辨开。触发区内任意位置（指示器、间距或右侧 slot 标签）被 hover 时，该底色再叠 6% 状态层。hover 只在 `(hover: hover) and (pointer: fine)` 设备上生效；没有按下态，已选中和禁用态保持各自底色。`<web-ui-radio>` 共用同一套状态。
 
 #### `<web-ui-radio>`
 
@@ -1281,20 +1281,25 @@ WebUiSpinner.hide() // 隐藏
 
 #### `<web-ui-svg-draw-lines>`
 
-SVG 线条绘制动画，基于 `stroke-dashoffset`。直接在原元素上动画 —— 不克隆、不操作 DOM。画线只有一个方向：从无到有地描出几何形状，不支持反向（擦除）播放。
+SVG 线条绘制动画，基于 `stroke-dashoffset`。直接在原元素上动画 —— 不克隆、不操作 DOM。两个播放方向：默认按从无到有描出几何形状，`replay({ reverse: true })` 沿原路收回，从有到无。
 
-| 属性       | 类型     | 默认值     | 说明                                         |
-| ---------- | -------- | ---------- | -------------------------------------------- |
-| `duration` | `number` | `1000`     | 动画时长（毫秒），限制在 `[0, 30000]` 范围内 |
-| `easing`   | `string` | `'linear'` | CSS 缓动函数，传递给 `element.animate()`     |
+| 属性          | 类型      | 默认值     | 说明                                     |
+| ------------- | --------- | ---------- | ---------------------------------------- |
+| `duration`    | `number`  | `1000`     | 动画时长（毫秒），限制在 `[0, 30000]`    |
+| `easing`      | `string`  | `'linear'` | CSS 缓动函数，传递给 `element.animate()` |
+| `no-autoplay` | `boolean` | `false`    | 关闭内容首次出现时的自动播放             |
 
-两个属性均会反射（reflected）。
+三个属性均会反射（reflected）。
 
-**方法：** `replay(): Promise<void>` — 取消当前动画，重新从 DOM 收集几何元素并开始新动画。所有目标以相同的 duration/easing 并行播放。动画全部完成后 resolve。最近主题范围为 `motion="reduced"` 时立即返回，不播放动画；`motion="system"` 则在匹配 `prefers-reduced-motion: reduce` 时执行相同行为。
+**自动播放：** slot 内容第一次稳定时自动播放一次画入。设置 `no-autoplay` 后保持资产原样、由调用方决定何时播放 —— `<web-ui-checkbox>` 正是靠它避免挂载时就已勾选的勾在页面首帧画出来。
+
+**方法：** `replay(options?: { reverse?: boolean }): Promise<void>` — 取消当前动画，重新从 DOM 收集几何元素并开始新动画。所有目标以相同的 duration/easing 并行播放。动画全部完成后 resolve。收回段以「空白」收尾，并把这一末态留在 DOM 上：动画本身在收尾时撤销，但让描边隐去的 dash 值作为内联样式保留，直到下一次 `replay()` 把它替换或撤掉。画入段则恢复消费者自己写的内联样式。收回总是从完整描边起收，所以在画入途中打断也会把整条路径描回去，而不是只收掉看得见的那一段。最近主题范围为 `motion="reduced"` 时不启动任何动画 —— 但上一次收回留下的空白仍会被撤掉，几何回到资产原样，可见性完全交给消费者自己的样式；`motion="system"` 在匹配 `prefers-reduced-motion: reduce` 时行为相同。
+
+**收回末态：** 收回留下的空白是写在被动画的几何元素上的内联样式，包括嵌套开放 Shadow Root（如 `<web-ui-icon>`）里的节点。克隆这些节点（`cloneNode`、`innerHTML` 往返）会把空白一起带走；把节点摘下来再挂回去，描边也仍然是隐去的 —— 收回结束是一个 DOM 状态而不是一条还活着的动画，没有留下任何东西去复原它。要重新显示就调用 `replay()`。由于组件会递归进入嵌套的开放 Shadow Root，两层 `<web-ui-svg-draw-lines>` 不得覆盖同一批几何元素：每个实例只在第一次动画某个元素时记录它的内联 dash 值，内层留下的空白会被外层当成「消费者自己写的值」。
 
 **插槽：** `default` — 需要动画的 SVG 内容。接受内联 `<svg>` 元素（light DOM）以及将 SVG 渲染在开放 Shadow DOM 中的组件（如 `<web-ui-icon>`）。closed Shadow Root 被跳过。
 
-递归遍历 light DOM 和所有开放 Shadow Root，查找 `path`、`rect`、`circle`、`line`、`polyline`、`polygon`、`ellipse` 元素。以 `Z`/`z` 结尾的 `<path>` 会临时应用缺口修复逻辑确保闭合段正确渲染。动画完成或取消后恢复所有内联样式。
+递归遍历 light DOM 和所有开放 Shadow Root，查找 `path`、`rect`、`circle`、`line`、`polyline`、`polygon`、`ellipse` 元素。以 `Z`/`z` 结尾的 `<path>` 会临时应用缺口修复逻辑确保闭合段正确渲染。画入段完成或取消后恢复所有内联样式。
 
 #### `<web-ui-theme>`
 

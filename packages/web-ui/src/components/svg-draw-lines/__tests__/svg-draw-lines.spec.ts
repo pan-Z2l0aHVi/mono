@@ -78,6 +78,31 @@ describe('WebUiSvgDrawLines 组件', () => {
     })
   })
 
+  describe('属性：no-autoplay', () => {
+    it('默认值为 false 且不带 attribute', async () => {
+      const el = createSvgDrawLines()
+      await waitForUpdate(el)
+      expect(el.noAutoplay).toBe(false)
+      expect(el.hasAttribute('no-autoplay')).toBe(false)
+      el.remove()
+    })
+
+    it('写入 true 反射到宿主 attribute', async () => {
+      const el = createSvgDrawLines()
+      el.noAutoplay = true
+      await waitForUpdate(el)
+      expect(el.getAttribute('no-autoplay')).toBe('')
+      el.remove()
+    })
+
+    it('attribute 存在即为 true', async () => {
+      const el = mountElement<WebUiSvgDrawLines>('web-ui-svg-draw-lines', { attrs: { 'no-autoplay': '' } })
+      await waitForUpdate(el)
+      expect(el.noAutoplay).toBe(true)
+      el.remove()
+    })
+  })
+
   describe('方法：replay()', () => {
     it('replay 是可调用的公开方法', () => {
       const el = createSvgDrawLines()

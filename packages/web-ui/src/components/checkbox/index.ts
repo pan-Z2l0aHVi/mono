@@ -7,10 +7,25 @@ import { WebUiSvgDrawLines } from '@/components/svg-draw-lines'
 import { installPointerFocusSuppression } from '@/shared/focus/pointer-focus'
 import { FormAssociated, defineFormAssociation, FormAssociationController } from '@/shared/form-association'
 import { defineGroupManaged, selectionGroupContextKey, type SelectionGroupContext } from '@/shared/group-management'
+import { prefersReducedMotion } from '@/shared/theme/reduced-motion'
 
 import style from './style.css?inline'
 
 installPointerFocusSuppression()
+
+/*
+ * 描边时长取 `--wui-duration-trigger`，让勾和指示器底色那条 transition 落在同一拍。形状照
+ * `components/theme` 里那份同名函数：正则匹配、秒/毫秒换算、失败给兜底值。`overlay/presence` 的同名
+ * 函数按 endsWith 解析 `transitionDuration` 的逗号列表、失败回 0 且不 clamp，形状不同，不能直接合并；
+ * 三处收拢成共享 helper 记在后续项。
+ */
+function triggerDuration(el: HTMLElement): number {
+  const match = /^\s*([+-]?(?:\d+\.?\d*|\.\d+))(ms|s)\s*$/.exec(
+    getComputedStyle(el).getPropertyValue('--wui-duration-trigger')
+  )
+  if (!match) return 160
+  return Math.max(0, Number(match[1]) * (match[2] === 's' ? 1000 : 1))
+}
 
 @customElement('web-ui-checkbox')
 export class WebUiCheckbox extends FormAssociated(LitElement) {
@@ -21,6 +36,9 @@ export class WebUiCheckbox extends FormAssociated(LitElement) {
   }).make()
 
   @state() private _checked = false
+
+  /** 描边收回期间把勾按在可见档，见 willUpdate。 */
+  @state() private _retracting = false
 
   get checked(): boolean {
     return this._checked
@@ -70,6 +88,9 @@ export class WebUiCheckbox extends FormAssociated(LitElement) {
 
   @query('web-ui-svg-draw-lines') private readonly _drawLines?: WebUiSvgDrawLines
 
+  /** 每次更新重读一次，交给内层描边的 duration 属性；见 willUpdate。 */
+  private _drawDurationMs = 160
+
   private _syncValidity() {
     const internals = this._formAssociation.getInternals()
     if (!internals || typeof internals.setValidity !== 'function') return
@@ -101,16 +122,40 @@ export class WebUiCheckbox extends FormAssociated(LitElement) {
     }
   }
 
+  /*
+   * 收回期间勾要留在可见档，否则 160ms 淡出抢在描边收回之前把它藏掉。翻转放在 willUpdate：
+   * 与 checked 同一次 update 落地，渲染后不再改状态。收回的终点是留在内联样式上的空白，所以这一位
+   * 不需要在动画结束后复位，下一次勾选会清掉；reduced motion 下收回根本不跑，按住可见位就是把勾
+   * 永久留在未勾选的框里，所以那里必须让位给淡出。
+   */
+  override willUpdate(changed: PropertyValues) {
+    super.willUpdate(changed)
+    this._drawDurationMs = triggerDuration(this)
+    const wasChecked = changed.get('_checked')
+    if (typeof wasChecked === 'boolean') {
+      this._retracting = wasChecked && !prefersReducedMotion(this)
+    }
+  }
+
+  /*
+   * 挂载时就勾选是初始状态而非用户勾选，不画线：_checked 的字段初始化器在构造阶段写过一次，
+   * Lit 对同一轮里已记录过旧值的键不再覆盖，所以首帧拿到的是 undefined，之后的每次真实切换才带
+   * boolean 旧值——包括 group 在子项首帧前把选中态写回去那一种。
+   */
   override updated(changed: PropertyValues) {
     super.updated(changed)
-    // svg-draw-lines 只有画入方向，取消勾选交给 CSS 淡出。
-    if (changed.get('_checked') === false && this._checked) void this._drawLines?.replay()
+    const wasChecked = changed.get('_checked')
+    if (typeof wasChecked !== 'boolean') return
+
+    if (wasChecked) void this._drawLines?.replay({ reverse: true })
+    else void this._drawLines?.replay()
   }
 
   override render() {
     const cls = {
       'wui-checkbox': true,
       'is-checked': this._checked,
+      'is-retracting': this._retracting,
       'is-disabled': this._isDisabled
     }
 
@@ -126,7 +171,7 @@ export class WebUiCheckbox extends FormAssociated(LitElement) {
       >
         <span class="wui-checkbox-box">
           <span class="wui-checkbox-icon"
-            ><web-ui-svg-draw-lines duration="300"
+            ><web-ui-svg-draw-lines duration=${this._drawDurationMs} no-autoplay
               ><svg class="wui-checkbox-check" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                 <path
                   d="M5 12.5l4.5 4.5L19 7"
