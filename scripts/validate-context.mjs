@@ -278,30 +278,54 @@ for (const directory of ['packages', 'apps']) {
 
   // 「包级约束」区域：路由到该 workspace 的权威要么是它自己的 AGENTS.md，要么是 ARCHITECTURE.md「包级约束」表中的一行。
   // 薄约束包（无独立 AGENTS.md 的 workspace）必须出现在该表中才能被 agent 定位，否则视为路由缺口。
+  // 用递归而非直接子目录：嵌套 workspace（如 apps/interweave/frontend）同样必须可定位。
   const constraintsArea = (() => {
     const architecture = exists('ARCHITECTURE.md') ? read('ARCHITECTURE.md') : ''
     const heading = /#{1,6}[ \t]+5\.[ \t]*包级约束/.exec(architecture)
     return heading ? architecture.slice(heading.index) : ''
   })()
 
-  for (const entry of fs.readdirSync(absolute, { withFileTypes: true })) {
-    if (!entry.isDirectory()) continue
-    const workspaceRoot = path.join(absolute, entry.name)
-    if (!fs.existsSync(path.join(workspaceRoot, 'package.json'))) continue
-    const hasOwnAgents = fs.existsSync(path.join(workspaceRoot, 'AGENTS.md'))
-    if (hasOwnAgents) continue
-    let trackedInConstraintsTable = false
-    try {
-      const manifest = JSON.parse(fs.readFileSync(path.join(workspaceRoot, 'package.json'), 'utf8'))
-      if (manifest.name && constraintsArea.includes(`\`${manifest.name}\``)) trackedInConstraintsTable = true
-    } catch {
-      // 不可解析的 manifest 由下方 workspace manifest 校验统一报错，这里不重复。
+  // 嵌套 workspace 的约束可并回最近的有 AGENTS.md 的祖先（如 apps/interweave/frontend 并入 apps/interweave/AGENTS.md），
+  // 此时不强制它单列入约束表；只有最近含 AGENTS.md 的祖先存在才视为已可定位。
+  // 根目录 AGENTS.md 是全部 workspace 的公共入口，不能算「最近祖先」，否则所有包都会走此豁免、包级约束表校验被静默关闭。
+  function coveredByAncestorAgents(workspaceRoot) {
+    let parent = path.dirname(workspaceRoot)
+    while (parent !== root && parent.startsWith(root)) {
+      if (fs.existsSync(path.join(parent, 'AGENTS.md'))) return true
+      parent = path.dirname(parent)
     }
-    if (!trackedInConstraintsTable)
-      addError(
-        `${directory}/${entry.name}: workspace without its own AGENTS.md must be tracked in ARCHITECTURE.md「包级约束」表`
-      )
+    return false
   }
+
+  function findWorkspaceRoots(dir) {
+    const entries = fs.readdirSync(dir, { withFileTypes: true })
+    for (const entry of entries) {
+      if (!entry.isDirectory()) continue
+      // 跳过依赖/产物目录，避免误判 node_modules 里的 package.json 为成 workspace。
+      if (['node_modules', 'dist', 'coverage', '.turbo'].includes(entry.name)) continue
+      const candidate = path.join(dir, entry.name)
+      if (fs.existsSync(path.join(candidate, 'package.json'))) {
+        const workspaceRoot = candidate
+        const hasOwnAgents = fs.existsSync(path.join(workspaceRoot, 'AGENTS.md'))
+        let tracked = hasOwnAgents || coveredByAncestorAgents(workspaceRoot)
+        if (!tracked) {
+          try {
+            const manifest = JSON.parse(fs.readFileSync(path.join(workspaceRoot, 'package.json'), 'utf8'))
+            if (manifest.name && constraintsArea.includes(`\`${manifest.name}\``)) tracked = true
+          } catch {
+            // 不可解析的 manifest 由下方 workspace manifest 校验统一报错，这里不重复。
+          }
+        }
+        if (!tracked)
+          addError(
+            `${relative(workspaceRoot)}: workspace without its own AGENTS.md must be tracked in ARCHITECTURE.md「包级约束」表 or have an AGENTS.md ancestor`
+          )
+      }
+      // 无论自身是否有 AGENTS.md，都必须递归进入子目录，才能覆盖嵌套 workspace（如 apps/interweave/frontend）。
+      findWorkspaceRoots(candidate)
+    }
+  }
+  findWorkspaceRoots(absolute)
 }
 
 for (const manifestFile of workspaceManifests) {
@@ -370,6 +394,36 @@ const markdownFiles = [
 ]
 // (?<!!?) 的 `!?` 允许匹配空串，lookbehind 恒假，链接扫描因此从未跑过；这里要求前面确实不是 `!`（图片语法）。
 const linkPattern = /(?<!!)\[[^\]]*\]\(([^)]+)\)/g
+// 只校验节级锚点：文件存在性由下方文件存在校验负责；`#fragment` 可能是节锚点（`#title`）或显式锚点（`{#custom}`）。
+// Markdown 引擎把节标题转成 GitHub 风格 anchor：小写、去标点、空格转 `-`、连续/首尾 `-` 折叠；显式 `{#name}` 优先。
+const ghAnchor = text =>
+  text
+    .toLowerCase()
+    .replace(/[^\p{Alphabetic}\p{N}\s-]/gu, '')
+    .trim()
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+function collectAnchors(file) {
+  const anchors = new Set()
+  let source = ''
+  try {
+    source = fs.readFileSync(file, 'utf8')
+  } catch {
+    return anchors
+  }
+  for (const match of source.matchAll(/^#{1,6}\s+(.*)$/gm)) {
+    let heading = match[1].trim()
+    const explicit = /^(.+?)\s*\{#([^\}]+)\}$/.exec(heading)
+    anchors.add(explicit ? explicit[2].trim() : ghAnchor(heading))
+  }
+  return anchors
+}
+const anchorCache = new Map()
+function anchoredTargets(file) {
+  if (!anchorCache.has(file)) anchorCache.set(file, collectAnchors(file))
+  return anchorCache.get(file)
+}
 // 只有编号 ADR 需要被发现；docs/adr 下的其他 Markdown（如索引 README）算指令面，它的链接可以提供入站。
 const adrDocuments = new Set(walk('docs/adr', file => file.endsWith('.md') && /^\d{4}-/.test(path.basename(file))))
 const inboundTargets = new Set()
@@ -379,11 +433,14 @@ for (const file of markdownFiles) {
   for (const match of source.matchAll(linkPattern)) {
     const target = match[1].trim()
     if (!target || /^(?:https?:|mailto:|#)/.test(target)) continue
-    const location = target.split('#', 1)[0]
+    const [locationPart, fragment] = target.split('#')
+    const location = locationPart.trim()
     if (!location) continue
     const resolved = path.resolve(path.dirname(file), location)
     if (!fs.existsSync(resolved)) addError(`${relative(file)}: broken local link ${target}`)
     if (!isAdr) inboundTargets.add(resolved)
+    if (fragment && fs.existsSync(resolved) && !anchoredTargets(resolved).has(ghAnchor(fragment.trim())))
+      addError(`${relative(file)}: broken local anchor ${target}`)
   }
 }
 // ADR 的发现性钉在「必须有入站链接」上，而不是「CONTEXT.md 必须逐条索引」：
