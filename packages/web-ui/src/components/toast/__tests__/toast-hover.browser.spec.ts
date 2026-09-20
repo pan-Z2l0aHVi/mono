@@ -73,6 +73,30 @@ async function waitResumed(id: string, message: string): Promise<void> {
   )
 }
 
+/*
+ * 等待剩余时间进入可暂停窗口 (400, 1200)，并把收敛时刻的剩余值作为基准交回调用方。
+ *
+ * 上限 1200 保证「续跑 vs 重启满时长(3000)」仍可分辨；下限是必需的：并行负载压住主线程时
+ * 墙钟会直接越过 deadline，此时剩余为负仍满足「< 1200」，测试就带着一个已到期的基准继续
+ * 跑，之后「toast 提前关闭」的失败与真实缺陷再也分不开。越过下限即刻失败并给出剩余值。
+ */
+async function waitApproaching(id: string, message: string): Promise<number> {
+  const start = performance.now()
+  for (;;) {
+    const deadline = timingOf(id)?._deadline
+    if (deadline !== undefined) {
+      const remaining = deadline - Date.now()
+      if (remaining > 400 && remaining < 1200) return remaining
+      if (remaining <= 400)
+        throw new Error(
+          `${message}: deadline was overshot before the pause window (remaining ${Math.round(remaining)}ms)`
+        )
+    }
+    if (performance.now() - start > 2500) throw new Error(message)
+    await wait(25)
+  }
+}
+
 afterEach(() => {
   toast._reset()
   document.body.replaceChildren()
@@ -84,8 +108,8 @@ afterEach(() => {
  * hover 上去再移开，倒计时必须按剩余时间续跑，而不是重启满时长、也不是永久停留。
  *
  * 「续跑 vs 重启」判定不依赖墙钟：移开后读组件内部 _deadline，续跑时它同步等于
- * Date.now() + pausedRemaining（≈600ms / ≈900ms），重启满时长的回归会给出 ≈duration
- * （3000ms）。两者差距远超任何 CI 负载抖动。
+ * Date.now() + pausedRemaining（暂停基准由 waitApproaching 收敛到 400–1200ms），重启满时长
+ * 的回归会给出 ≈duration（3000ms）。两者差距远超任何 CI 负载抖动。
  *
  * CI 上游标位置继承自上一个测试文件：若停在 toast 将出现的位置，挂载后 Chromium 命中测试
  * 补发 pointerenter → 暂停，此刻剩余 ≈ 满时长，deadline 断言必然失败。每条用例在创建
@@ -104,17 +128,9 @@ describe('toast 悬停暂停（浏览器）', () => {
     const el = findToast(id)
     expect(el).toBeDefined()
 
-    // 等 deadline 逼近（<1200ms）再悬停：固定 sleep 的 margin 仅 600ms，CI 停顿可越过
-    // 3000ms deadline 使 toast 先行关闭。条件收敛触发后仍有 ~1200ms 给 hover 派发。
-    await waitFor(
-      () => {
-        const d = timingOf(id)?._deadline
-        return d !== undefined && d - Date.now() < 1200
-      },
-      'deadline did not approach',
-      2500
-    )
-    const remainingBeforePause = (timingOf(id)?._deadline ?? 0) - Date.now()
+    // 等 deadline 逼近（剩余落在 400–1200ms）再悬停：固定 sleep 的 margin 仅 600ms，CI 停顿可越过
+    // 3000ms deadline 使 toast 先行关闭。收敛后仍有 ~1200ms 给 hover 派发。
+    const remainingBeforePause = await waitApproaching(id, 'deadline did not approach')
     await page.elementLocator(el as Element).hover()
 
     // 越过原计时点（3000ms）后仍应停留 —— 悬停暂停生效。
@@ -143,16 +159,8 @@ describe('toast 悬停暂停（浏览器）', () => {
     const id = toast.info('悬停并搬迁', { id: 'hover-move', position: 'top-right', duration: 3000 })
     await waitMounted()
 
-    // 与第一条用例同法：deadline 条件收敛（<1200ms）代替固定 sleep(2000)。
-    await waitFor(
-      () => {
-        const d = timingOf(id)?._deadline
-        return d !== undefined && d - Date.now() < 1200
-      },
-      'deadline did not approach',
-      2500
-    )
-    const remainingBeforePause = (timingOf(id)?._deadline ?? 0) - Date.now()
+    // 与第一条用例同法：等剩余进入 400–1200ms 可暂停窗口，并以收敛时刻的剩余作为基准。
+    const remainingBeforePause = await waitApproaching(id, 'deadline did not approach')
     await page.elementLocator(findToast(id) as Element).hover()
     await wait(100)
 
@@ -161,15 +169,17 @@ describe('toast 悬停暂停（浏览器）', () => {
     await waitMounted()
     expect(findToast(id)?.parentElement?.dataset.wuiToastPosition).toBe('bottom-left')
 
-    // 搬迁不得吞掉剩余时间：还有约 1000ms，不该立刻或 300ms 内就收场。
-    await wait(300)
+    // 搬迁不得把 toast 从屏上抹掉。剩余时间是否被吞掉不由这里等待判定（固定 sleep 在并行
+    // 负载下会把自己睡过期），交给下面续跑后的 deadline 读数。
     expect(findToast(id)?.visible).toBe(true)
 
     // 搬迁后 Chromium 重命中补发 pointerleave，悬停结束；等真正续跑再读 deadline。
     await waitResumed(id, '搬迁后未恢复自动关闭')
     const resumedAfterMove = timingOf(id)?._deadline
     expect(resumedAfterMove).toBeDefined()
-    // 续跑剩余必然小于暂停前捕获的 remainingBeforePause；重启满时长会是 ≈3000ms。
+    // 「不吞时间」= 续跑剩余仍是未来时刻（吞成 0 会走 dismiss 且不装 timer，waitResumed 先失败）；
+    // 「不重启满时长」= 必然小于暂停前捕获的 remainingBeforePause（重启给出 ≈3000ms）。
+    expect(resumedAfterMove! - Date.now()).toBeGreaterThan(0)
     expect(resumedAfterMove! - Date.now()).toBeLessThan(remainingBeforePause)
     await waitFor(() => findToast(id) === undefined, 'toast did not leave the DOM after auto-close', 4000)
   })

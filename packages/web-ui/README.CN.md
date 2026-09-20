@@ -707,7 +707,7 @@ web-ui-radio-group {
 
 使用原生 `<dialog>`，`@cancel` 阻止默认关闭行为。除非存在 `no-escape-close`，否则 Escape 调用 `close()`；除非存在 `no-backdrop-close`，否则点击遮罩关闭。启用 `controlled` 后，两者都只派发关闭请求而不自关闭。
 
-> **Escape 归属**：Escape 由共享仲裁者统一判定，一次按键只关闭**最内层**的已打开浮层（popover、select、autocomplete、dropdown、context-menu、drawer、dialog 都参与）。例如在 drawer 内打开 select，第一次 Escape 只关 select，第二次才关 drawer。互不嵌套的并列浮层按打开顺序关闭最上层。`image-preview` 是例外：它仍走原生 `<dialog>` 的 `cancel`，不参与仲裁。
+> **Escape 归属**：Escape 由共享仲裁者统一判定，一次按键只关闭**最内层**的已打开浮层（popover、select、autocomplete、dropdown、context-menu、drawer、dialog 都参与）。例如在 drawer 内打开 select，第一次 Escape 只关 select，第二次才关 drawer。互不嵌套的并列浮层按打开顺序关闭最上层。`image-preview` 同样参与：它的原生 `<dialog>` 会登记进同一个仲裁者，Escape 按层级判定；组件的 `cancel` handler 只是拦掉原生的瞬时关闭，把 top layer 保留到退场过渡结束。
 
 **CSS 自定义属性：**
 
@@ -784,7 +784,7 @@ web-ui-radio-group {
 | `--wui-drawer-drag-bar-length`    | `56px`                             | Drag bar 胶囊长度（沿抽屉边缘）                      |
 | `--wui-drawer-header-padding`     | `16px 20px`                        | Header 区域 padding                                  |
 | `--wui-drawer-close-top`          | `16px`                             | 内置关闭按钮相对 header 顶部的偏移                   |
-| `--wui-drawer-close-right`        | `20px`                             | 内置关闭按钮相对抽屉右缘的偏移                       |
+| `--wui-drawer-close-right`        | `16px`                             | 内置关闭按钮相对抽屉右缘的偏移                       |
 | `--wui-drawer-content-padding`    | `20px`                             | 内容区 padding；同时驱动 drag bar 视觉中线（取半值） |
 | `--wui-drawer-footer-padding`     | `16px 20px`                        | Footer 区域 padding                                  |
 

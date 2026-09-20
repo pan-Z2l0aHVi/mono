@@ -155,6 +155,9 @@ export class WebUiToast extends LitElement {
     const remaining = this._pausedRemaining
     this._pausedRemaining = undefined
     if (remaining === undefined) return
+    // 装新计时器前先拆掉可能仍在跑的旧计时器：pause/resume 一旦不再严格成对（调用序被重排），
+    // 直接覆盖 `_closeTimer` 会留下两个 deadline 同时倒计时，先到的那个把 toast 提前关掉。
+    this._clearTimer()
     if (remaining <= 0) {
       this.dismiss('auto')
       return
