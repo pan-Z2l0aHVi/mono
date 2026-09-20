@@ -12,10 +12,37 @@ const root = path.resolve(process.env.AGENT_TASK_ROOT ?? path.join(import.meta.d
 const phases = new Set(['open', 'active', 'frozen', 'reviewed', 'approved', 'done', 'dropped'])
 const levels = new Set(['t0', 't1', 't2'])
 const SCHEMA_VERSION = 1
-const REVIEWER_ID = /^[A-Za-z0-9][A-Za-z0-9._-]{3,39}$/
+// 参与方标识形状：owner / reviewer / approver / drop 的署名人共用，保证事件里每个角色都是可
+// 比对的 id。四个字段之间的约束全是「彼此不相等」，比的又是字符串，所以只有都落在同一字符集里，
+// 「coder-1」与「coder-1␠」（␠ = 空格）这种看着是两个身份、实际是同一个人的写法才不会被放过。
+// 形状只写一份：同一条规则喂四个命令，把字面量抄进四条报错里迟早会漂。
+const AGENT_ID_PATTERN = '[A-Za-z0-9][A-Za-z0-9._-]{3,39}'
+const AGENT_ID = new RegExp(`^${AGENT_ID_PATTERN}$`)
 
 function fail(message) {
   throw new Error(message)
+}
+
+function assertAgentId(value, label) {
+  // 必须是字符串：`--reviewer` 后面漏值时 parseArgs 记的是布尔 true，而 RegExp.test 会先把
+  // true 转成 "true"（恰好 4 个字符、形状合法）。那样一个 id 会被存成布尔、另一个存成字符串
+  // 'true'，两个「互不相等」的比对同时被骗过——同一个身份就藏在两种字形里。
+  if (typeof value !== 'string') fail(`invalid ${label} id: ${JSON.stringify(value)}; expected a string`)
+  if (!AGENT_ID.test(value)) fail(`invalid ${label} id: ${value}; use ${AGENT_ID_PATTERN}`)
+  return value
+}
+
+// 未提交改动的清单。干净性检查必须把文件名字面写进报错：只说「worktree 脏」的话，使用者第一
+// 反应是去猜哪一个是自己刚写的，而 freeze 会把它们全部吸进快照。
+function uncommittedPaths(worktree) {
+  const lines = gitAt(worktree, '-c', 'core.quotePath=false', 'status', '--porcelain').split('\n').filter(Boolean)
+  const shown = lines.slice(0, 5).map(line => {
+    const entry = line.slice(3)
+    // 重命名/复制条目形如 `old -> new`：将被提交的是 new，报旧路径只会让人去翻一个没动过的文件。
+    return entry.includes(' -> ') ? entry.slice(entry.indexOf(' -> ') + 4) : entry
+  })
+  if (lines.length > shown.length) shown.push(`… (+${lines.length - shown.length})`)
+  return { count: lines.length, shown }
 }
 
 function gitAt(worktree, ...args) {
@@ -32,10 +59,8 @@ function parseArgs(argv) {
   const options = { command, positional: [] }
   for (let index = 0; index < rest.length; index += 1) {
     const value = rest[index]
-    if (value === '--') {
-      options.commandArgs = rest.slice(index + 1)
-      break
-    }
+    // `--` 只终止选项解析：task 内核不接受位置参数，也不接受尾随命令。
+    if (value === '--') break
     if (!value.startsWith('--')) {
       options.positional.push(value)
       continue
@@ -226,6 +251,8 @@ function assertCurrentHash(state, live, label = 'task evidence') {
 // 不再运行任何 fixer，因此不存在「commit 期改写文件导致冻结失效」的竞态。
 // fix:code 归一化是强制的：声明了 fix:code 但依赖未安装时直接失败并指引安装，
 // 只有不含该脚本的仓库（测试 fixture、纯 git 仓库）才允许跳过。
+// 全量 staging 的范围边界不在这里，而在 start：open → active 要求 worktree 干净，
+// 所以 `git add -A` 扫进来的只可能是本 task 起点之后的改动。
 function normalizeWorktree(worktree) {
   gitAt(worktree, 'add', '-A')
   const manifestPath = path.join(worktree, 'package.json')
@@ -248,10 +275,12 @@ function normalizeWorktree(worktree) {
   return true
 }
 
-// 仓库级政策检查：freeze 在取快照前执行 .agents/checks/ 下每个可执行文件，
-// 非零退出即中止并保留输出作为可观察原因。内核不内置任何业务检查；task 上下文
-// 通过环境变量注入，检查脚本据此核对冻结 diff 而不必重复探测。
-function runChecks(worktree, state) {
+// 仓库级政策检查：freeze 在取快照前、guard 在放行提交前，各执行一次 .agents/checks/
+// 下每个可执行文件，非零退出即中止并保留输出作为可观察原因。挂在 guard 上是必要的：
+// T2 通常不 freeze，只在 commit 边界出现，检查若只跟 freeze 走就对全部级别里的
+// 大多数 task 形同不存在。内核不内置任何业务检查；task 上下文通过环境变量注入，
+// 检查脚本据此核对 index 内容而不必重复探测。
+function runChecks(worktree, state, phase) {
   const directory = path.join(worktree, '.agents', 'checks')
   if (!fs.existsSync(directory)) return []
   const environment = {
@@ -269,11 +298,20 @@ function runChecks(worktree, state) {
       execFileSync(file, { cwd: worktree, stdio: 'pipe', env: environment })
     } catch (error) {
       const detail = error?.stderr?.toString().trim() || error?.stdout?.toString().trim()
-      fail(`check ${entry} failed; freeze aborted${detail ? `:\n${detail}` : ''}`)
+      fail(`check ${entry} failed; ${phase} aborted${detail ? `:\n${detail}` : ''}`)
     }
     ran.push(entry)
   }
   return ran
+}
+
+// owner 的两种来源区别对待：显式的 `--owner` / AGENT_TASK_OWNER 是一次身份申报，必须和
+// reviewer/approver/署名人同形状，否则四个字段之间的「不相等」比的是字符串而不是人。登录名是
+// 兜底而非申报，短用户名不该让人连 task 都建不了，所以不受这条约束。
+function declaredOwner(options) {
+  if (options.owner !== undefined) return assertAgentId(options.owner, 'owner')
+  if (process.env.AGENT_TASK_OWNER) return assertAgentId(process.env.AGENT_TASK_OWNER, 'owner')
+  return os.userInfo().username
 }
 
 function newTask(options) {
@@ -282,8 +320,9 @@ function newTask(options) {
   if (!levels.has(level)) fail(`invalid task level: ${level}`)
   const { worktree, commonDir } = resolveWorktree(options.worktree)
   assertWorktreeAvailable(commonDir, worktree, taskId)
-  if (gitAt(worktree, 'status', '--porcelain'))
-    fail(`worktree has existing changes; isolate them before creating a task: ${worktree}`)
+  const dirty = uncommittedPaths(worktree)
+  if (dirty.count > 0)
+    fail(`worktree has existing changes; isolate them before creating a task: ${dirty.shown.join(', ')}`)
   const branch = gitAt(worktree, 'branch', '--show-current')
   if (!branch) fail(`task worktree must be attached to a branch: ${worktree}`)
   const file = stateFile(commonDir, taskId)
@@ -299,7 +338,7 @@ function newTask(options) {
     baseSha: gitAt(worktree, 'rev-parse', 'HEAD'),
     branch,
     worktree,
-    owner: options.owner || process.env.AGENT_TASK_OWNER || os.userInfo().username,
+    owner: declaredOwner(options),
     issue: options.issue ? normalizeIssue(options.issue) : null,
     playbook: options.playbook || null,
     roles: [],
@@ -309,7 +348,7 @@ function newTask(options) {
     verification: [],
     events: []
   }
-  appendEvent(state, 'new', { level, baseSha: state.baseSha, branch, worktree })
+  appendEvent(state, 'new', { level, owner: state.owner, baseSha: state.baseSha, branch, worktree })
   saveState(file, state)
   print(state)
 }
@@ -332,7 +371,7 @@ function assign(options) {
   const worktree = options.worktree ? resolveWorktree(options.worktree).worktree : state.worktree
   assertWorktreeAvailable(state.commonDir, worktree, taskId)
   state.worktree = worktree
-  if (options.owner) state.owner = options.owner
+  if (options.owner !== undefined) state.owner = declaredOwner(options)
   if (options.roles) {
     const available = roleContracts()
     const parsed = options.roles
@@ -355,6 +394,17 @@ function start(options) {
   assertPhase(state, ['open', 'active'])
   const live = liveState(state)
   assertTaskBranch(state, live, 'task')
+  // 只有 open → active 这一次才要求干净：freeze 用 `git add -A` 归一化整个 worktree，
+  // 「实施起点没有别人的在制品」是冻结 diff 只含本 task 改动的唯一边界。new 已查过一次，
+  // 但 assign/换 worktree/长时间搁置都可能在这之后带进无关改动。
+  if (state.phase === 'open' && !live.clean) {
+    const dirty = uncommittedPaths(live.worktree)
+    fail(
+      `task ${taskId} cannot start with uncommitted changes in ${live.worktree}: ${dirty.shown.join(
+        ', '
+      )} — move them out of this worktree (or drop this task), freeze stages the whole worktree`
+    )
+  }
   state.phase = 'active'
   appendEvent(state, 'start')
   state.updatedAt = now()
@@ -372,7 +422,7 @@ function freeze(options) {
   assertTaskBranch(state, live, 'freeze')
   const previousPhase = state.phase
   const normalized = normalizeWorktree(live.worktree)
-  const checks = runChecks(live.worktree, state)
+  const checks = runChecks(live.worktree, state, 'freeze')
   // 归一化与 checks 可能改写文件，快照必须取自其后的工作区。
   const snapshot = currentSnapshot(live.worktree, state.baseSha)
   if (!options['allow-empty'] && snapshot.trackedFiles.length === 0 && snapshot.untrackedFiles.length === 0)
@@ -392,6 +442,15 @@ function freeze(options) {
   print({ ...state, live: { ...liveState(state), current: snapshot } })
 }
 
+// 该 task 的「实施方」身份集合：当前 owner 加上事件里出现过的每一个 owner。assign 可以在
+// 任意相位改写 owner，只比对现值就能被「先派给别人、再 approve 自己」绕开，所以独立性核对
+// 的是历史，不是某一时刻的字段。
+function implementers(state) {
+  const ids = new Set([state.owner])
+  for (const event of state.events) if (event.owner) ids.add(event.owner)
+  return ids
+}
+
 function review(options) {
   const taskId = validateTaskId(requireOption(options, 'task'))
   const result = requireOption(options, 'result')
@@ -401,8 +460,9 @@ function review(options) {
   assertPhase(state, ['frozen'])
   const reviewer = options.reviewer || process.env.AGENT_TASK_REVIEWER
   if (!reviewer) fail(`review requires --reviewer <id> so independence is auditable`)
-  if (!REVIEWER_ID.test(reviewer)) fail(`invalid reviewer id: ${reviewer}; use [A-Za-z0-9][A-Za-z0-9._-]{3,39}`)
-  if (reviewer === state.owner) fail(`reviewer must be different from task owner`)
+  assertAgentId(reviewer, 'reviewer')
+  if (implementers(state).has(reviewer))
+    fail(`reviewer ${reviewer} is or was an owner of this task; review must come from a different identity`)
   const live = liveState(state)
   assertCurrentHash(state, live, 'review')
   state.review = { required: state.review.required, result, diffHash: state.diffHash, reviewer, at: now() }
@@ -423,6 +483,10 @@ function approve(options) {
   assertCurrentHash(state, live, 'approval')
   const approver = options.approver || process.env.AGENT_TASK_APPROVER
   if (!approver) fail(`approval requires --approver <id> so authorization is auditable`)
+  assertAgentId(approver, 'approver')
+  if (implementers(state).has(approver))
+    fail(`approver ${approver} is or was an owner of this task; approval must come from a different identity`)
+  if (approver === state.review.reviewer) fail(`approver must be different from the reviewer of this diff`)
   state.approval = { granted: true, diffHash: state.diffHash, approver, at: now() }
   appendEvent(state, 'approve', { approver, diffHash: state.diffHash })
   state.phase = 'approved'
@@ -434,7 +498,9 @@ function approve(options) {
 function verify(options) {
   const taskId = validateTaskId(requireOption(options, 'task'))
   const name = requireOption(options, 'name')
-  const result = options.result || 'pass'
+  // 没有默认值：verify 只记录证据、不执行任何东西，省略 --result 就等于让内核替
+  // 使用者宣布通过，这正是它最容易被误用成留痕工具的地方。
+  const result = requireOption(options, 'result')
   if (!['pass', 'fail'].includes(result)) fail(`invalid verification result: ${result}`)
   const { file, state } = loadState(taskId)
   assertPhase(state, ['frozen', 'reviewed', 'approved'])
@@ -478,15 +544,23 @@ function done(options) {
   print(state)
 }
 
-// drop 取代手工清理：任何未完结状态都可带 reason 强制落终态，事件留痕。
-// 典型场景是 agent 结束后残留的 active task 卡住 worktree 提交。
+// drop 取代手工清理：任何未完结状态都可落终态，事件留痕。典型场景是 agent 结束后残留的
+// active task 卡住 worktree 提交。它不是唯一能推翻已有证据的动作——重新 freeze 同样会重置
+// review/approval——区别在于 freeze 之后还能走完整流程，而 dropped 不可逆：这条 task 的证据
+// 到此为止，再开工必须新建。所以署名人必须是可比对的 id，reason 必须是足以让后来者读懂的一句
+// 话，而不是一个字符。
 function drop(options) {
   const taskId = validateTaskId(requireOption(options, 'task'))
-  const reason = requireOption(options, 'reason')
+  // 先确认 task 存在、相位可终止，再挑剔参数：id 打错时报「reason 太短」只会把人引向错误的方向。
   const { file, state } = loadState(taskId)
   assertPhase(state, ['open', 'active', 'frozen', 'reviewed', 'approved'])
+  const reason = requireOption(options, 'reason')
+  if (reason.replace(/\s/g, '').length < 10)
+    fail(`drop requires a --reason of at least 10 non-space characters so the event is readable later; got: ${reason}`)
+  const by = requireOption(options, 'by')
+  assertAgentId(by, 'drop author')
   state.phase = 'dropped'
-  appendEvent(state, 'drop', { reason })
+  appendEvent(state, 'drop', { reason, by })
   state.updatedAt = now()
   saveState(file, state)
   print(state)
@@ -526,6 +600,10 @@ function guard(options) {
   }
 
   if (candidates.length === 0) {
+    // 不静默放行：stdout 的 JSON 在成功的 pre-commit 里看不见，stderr 才进得到用户眼前。
+    console.error(
+      `task gate: not enforced — no active task in ${resolved.worktree}; implementation changes start with "pnpm task new --task <id> --level <t0|t1|t2>" (contract in docs/agents/workflow.md)`
+    )
     print({ ok: true, enforced: false, worktree: resolved.worktree })
     return
   }
@@ -538,10 +616,20 @@ function guard(options) {
     fail(
       `task ${state.taskId} belongs to branch ${state.branch}; current worktree is on ${live.branch || 'detached HEAD'}`
     )
+  const allowCommit = () =>
+    print({
+      ok: true,
+      enforced: true,
+      taskId: state.taskId,
+      level: state.level,
+      checks: runChecks(live.worktree, state, 'commit'),
+      live
+    })
   if (state.level === 't2') {
-    // T2 追踪门槛：提交发生在已 start 的 task 内即可；不要求快照证据。
+    // T2 追踪门槛：提交发生在已 start 的 task 内即可，不要求快照证据；仓库政策检查照跑，
+    // 这一档大多数时候根本不 freeze，检查若只挂 freeze 就等于对 T2 不存在。
     assertPhase(state, ['active', 'frozen', 'reviewed', 'approved'])
-    print({ ok: true, enforced: true, taskId: state.taskId, level: state.level, live })
+    allowCommit()
     return
   }
   if (live.stale)
@@ -551,7 +639,7 @@ function guard(options) {
   assertPhase(state, ['approved'])
   if (!state.approval.granted || state.approval.diffHash !== state.diffHash)
     fail(`task ${state.taskId} is not approved for commit`)
-  print({ ok: true, enforced: true, taskId: state.taskId, level: state.level, live })
+  allowCommit()
 }
 
 function print(value) {

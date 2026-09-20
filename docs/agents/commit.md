@@ -36,7 +36,7 @@ commit 层面只有两条操作差异：
 
 ## Changesets 与 PR
 
-CI 在每个 `pull_request` 上运行 `changeset status --since=origin/<base>`（`changeset-release/main` 分支除外），PR 不携带 changeset 会导致该检查失败。因此每个 PR 至少包含一个 changeset：
+每个 PR 至少包含一个 changeset。这一条由 `.agents/checks/changeset-required` 在 freeze 与提交两个边界强制（见下节「Workflow commit gate」）；不要指望 CI 兜底：`changeset status --since=origin/<base>`（`changeset-release/main` 分支除外）只在「被改动的包需要新版本却没带 changeset」时失败，纯 docs/test/chore 的 PR 不触碰发布包，一条 changeset 都不带也能绿。所以：
 
 - 涉及公共包行为、导出或依赖变更：按正常 Changesets 流程写明 patch/minor/major 与变更描述。
 - 纯 test/docs/chore 等不影响包版本的变更：创建空 changeset——只含两行 `---` 的 `.changeset/<kebab-name>.md`，frontmatter 内不写包与版本号，changesets 版本 PR 会原样消费它而不产生版本变更。
@@ -45,4 +45,4 @@ CI 在每个 `pull_request` 上运行 `changeset status --since=origin/<base>`�
 
 ## Workflow commit gate
 
-提交前必须先通过 [`workflow.md`](./workflow.md) 的提交 gate（T0/T1 需 approved，T2 需 active）。仓库已在受版本控制的 `.vite-hooks/pre-commit` 中接入 `pnpm task guard`：当前 worktree 存在 active task 时，hook 会拒绝级别 gate 未满足、冻结快照已过期或状态不一致的提交。本文件是「禁止绕过 Git 检查」的唯一权威清单：不要使用 `--no-verify`、`--no-gpg-sign`、`HUSKY=0`、`VP_GIT_HOOKS=0` 或其他方式绕过提交 hook 与签名检查。
+提交前必须先通过 [`workflow.md`](./workflow.md) 的提交 gate（T0/T1 需 approved，T2 需 active）。仓库已在受版本控制的 `.vite-hooks/pre-commit` 中接入 `pnpm task guard`：当前 worktree 存在 active task 时，hook 会拒绝级别 gate 未满足、冻结快照已过期、状态不一致，或未通过 `.agents/checks/` 政策检查（本仓为 changeset 必带检查，文件名与内容都按 index 判定，所以 changeset 必须 `git add` 才算交代过）的提交。本文件是「禁止绕过 Git 检查」的唯一权威清单：不要使用 `--no-verify`、`--no-gpg-sign`、`HUSKY=0`、`VP_GIT_HOOKS=0`、`VITE_GIT_HOOKS=0` 或其他方式绕过提交 hook 与签名检查。
