@@ -6,7 +6,6 @@
 
 - 全局拓扑和快速定位：[`ARCHITECTURE.md`](ARCHITECTURE.md)。
 - 协作流程短入口：[`CONTRIBUTING.md`](CONTRIBUTING.md)；它不取代按任务加载的规则。
-- 会话角色：用户或 Manager 指定角色时，读取 [`.agents/skills/herdr-agents/roles/<role>.md`](.agents/skills/herdr-agents/roles/)；初始化见 [`CONTRIBUTING.md`](CONTRIBUTING.md)。
 
 ## Mutation Gate
 
@@ -81,7 +80,7 @@ review 拓扑（三档 + 禁止同会话自审）以 [`docs/agents/workflow.md`]
 | 全局拓扑和快速导航                                        | [`ARCHITECTURE.md`](ARCHITECTURE.md)；实现事实仍以源码、manifest、配置和测试为准                                                                                                                             |
 | 架构探索、术语或 ADR                                      | [`docs/agents/domain.md`](docs/agents/domain.md)、[`CONTEXT.md`](CONTEXT.md) 和相关 ADR                                                                                                                      |
 | instruction system / context 维护                         | [`docs/agents/context.md`](docs/agents/context.md)、[`CONTEXT.md`](CONTEXT.md) 和 ADR-0004                                                                                                                   |
-| 代码 review                                               | [`docs/agents/review.md`](docs/agents/review.md)；需要独立 reviewer 时再读 [`.agents/skills/herdr-agents/roles/reviewer.md`](.agents/skills/herdr-agents/roles/reviewer.md)                                  |
+| 代码 review                                               | [`docs/agents/review.md`](docs/agents/review.md)                                                                                                                                                             |
 | 全局替换 / 重命名 / API 迁移 / 文件迁移                   | [`docs/agents/global-rename.md`](docs/agents/global-rename.md)                                                                                                                                               |
 | Git commit                                                | [`.agents/rules/commit.md`](.agents/rules/commit.md)、[`docs/agents/commit.md`](docs/agents/commit.md) 和 [`CONTRIBUTING.md`](CONTRIBUTING.md)（AI 协作署名）                                                |
 | 开发流程、worktree 布局、release 分支或多 Agent 编排/交接 | [`docs/agents/workflow.md`](docs/agents/workflow.md)、[`docs/agents/task-packet.md`](docs/agents/task-packet.md) 和手动触发的 [`herdr-agents`](.agents/skills/herdr-agents/SKILL.md)                         |
