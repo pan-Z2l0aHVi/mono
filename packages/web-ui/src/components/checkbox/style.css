@@ -19,7 +19,13 @@
   transition: opacity var(--wui-duration-trigger, 160ms) ease;
 }
 
-.is-checked .wui-checkbox-icon {
+/*
+ * is-retracting 是描边收回的那一段：勾得留在可见档，否则这条 160ms 的淡出会抢在收回结束之前
+ * 把它藏掉，收回根本看不见。收回的终点是留在内联样式上的「整条路径落在 dash 间隙里」，动画自己
+ * 收尾就撤销了，所以停在这里就是看不见的勾，不必再等一次淡出；复位由下一次勾选负责（见 index.ts 的 willUpdate）。
+ */
+.is-checked .wui-checkbox-icon,
+.is-retracting .wui-checkbox-icon {
   opacity: 1;
 }
 

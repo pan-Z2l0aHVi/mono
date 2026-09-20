@@ -534,9 +534,9 @@ Uses native `<label>` with `role="checkbox"` and `aria-checked`. Enter/Space key
 
 **Layout:** the host is an inline-flex box whose height is set by its content, so the inherited page line-height can no longer inflate it or shift the indicator up and down; it aligns against surrounding text with `vertical-align: middle`. The indicator measures `--wui-selection-control-size` (`18px`), and `<web-ui-radio>` shares the same box contract.
 
-**Check animation:** the checkmark is the control's own stroked path rather than a `<web-ui-icon>` asset, wrapped in `<web-ui-svg-draw-lines>` so it draws itself in left to right when checked and fades out when unchecked. Both are skipped inside a `motion="reduced"` theme scope.
+**Check animation:** the checkmark is the control's own stroked path rather than a `<web-ui-icon>` asset, wrapped in `<web-ui-svg-draw-lines>` (with `no-autoplay`, so a control that mounts already checked shows a static check). Checking draws it in left to right at a constant speed over `--wui-duration-trigger` (160ms by default), read from the resolved theme at the time of the toggle so the stroke lands on the same beat as the indicator's background transition; unchecking retracts the same path back to blank instead of only fading out. Neither plays inside a `motion="reduced"` theme scope, where both states switch instantly.
 
-**Idle states:** the unchecked indicator is filled with `--wui-color-surface-control`, the same control surface neutral buttons use, so it stays separable from `--wui-color-page` in dark mode. Hovering or pressing anywhere in the trigger row — indicator, gap or slotted label — tints that surface (6% and 15% state layer over `--wui-color-surface-control`). Hover applies only on `(hover: hover) and (pointer: fine)` devices; checked and disabled controls keep their own surface. `<web-ui-radio>` shares the same states.
+**Idle states:** the unchecked indicator is filled with `--wui-color-surface-control`, the same control surface neutral buttons use, so it stays separable from `--wui-color-page` in dark mode. Hovering anywhere in the trigger row — indicator, gap or slotted label — tints that surface with a 6% state layer over `--wui-color-surface-control`. Hover applies only on `(hover: hover) and (pointer: fine)` devices; there is no pressed state, and checked and disabled controls keep their own surface. `<web-ui-radio>` shares the same states.
 
 #### `<web-ui-radio>`
 
@@ -1317,20 +1317,25 @@ Role: `button`, keyboard Enter scrolls to top.
 
 #### `<web-ui-svg-draw-lines>`
 
-SVG line drawing animation using `stroke-dashoffset`. Animates geometry in-place — no cloning, no DOM manipulation. Drawing has a single direction: geometry is revealed from nothing to fully drawn, there is no reverse (un-draw) playback.
+SVG line drawing animation using `stroke-dashoffset`. Animates geometry in-place — no cloning, no DOM manipulation. Two playback directions: the reveal draws geometry from nothing to fully drawn, `replay({ reverse: true })` retracts it along the same path back to nothing.
 
-| Attribute  | Type     | Default    | Description                                       |
-| ---------- | -------- | ---------- | ------------------------------------------------- |
-| `duration` | `number` | `1000`     | Animation duration in ms, clamped to `[0, 30000]` |
-| `easing`   | `string` | `'linear'` | CSS easing function passed to `element.animate()` |
+| Attribute     | Type      | Default    | Description                                            |
+| ------------- | --------- | ---------- | ------------------------------------------------------ |
+| `duration`    | `number`  | `1000`     | Animation duration in ms, clamped to `[0, 30000]`      |
+| `easing`      | `string`  | `'linear'` | CSS easing function passed to `element.animate()`      |
+| `no-autoplay` | `boolean` | `false`    | Skip the automatic playback when content first appears |
 
-Both attributes are reflected.
+All attributes are reflected.
 
-**Methods:** `replay(): Promise<void>` — cancels running animation, re-collects geometry elements from current DOM, and starts a new animation. All targets animate in parallel with the same duration/easing. Resolves when all complete. Returns immediately without animation when the nearest theme scope uses `motion="reduced"`, or when its `motion="system"` mode matches `prefers-reduced-motion: reduce`.
+**Auto-play:** the first time slotted content settles, one reveal plays by itself. Set `no-autoplay` to leave the geometry as authored and decide when to play — that is how `<web-ui-checkbox>` avoids drawing a checkmark that was already checked on mount.
+
+**Methods:** `replay(options?: { reverse?: boolean }): Promise<void>` — cancels running animation, re-collects geometry elements from current DOM, and starts a new animation. All targets animate in parallel with the same duration/easing. Resolves when all complete. A reverse run ends on blank and leaves that end state in the DOM: the animation itself is cancelled, while the dash values that hide the stroke stay as inline styles until the next `replay()` replaces or undoes them. A reveal run restores the authored inline styles instead. A retract always starts from the full stroke, so interrupting a reveal draws the whole path back rather than only the part that was visible. When the nearest theme scope uses `motion="reduced"`, or its `motion="system"` mode matches `prefers-reduced-motion: reduce`, no animation starts — but a previous retract's blank is still undone, so the geometry returns to as authored and visibility is left entirely to the consumer's own styles.
+
+**Reverse end state:** the blank a retract leaves behind is inline style on the geometry it animated, including nodes inside nested open shadow roots such as `<web-ui-icon>`. Copying those nodes (`cloneNode`, an `innerHTML` round-trip) carries the blank along, and detaching and re-appending one keeps the stroke hidden — a finished retract is a DOM state rather than a live animation, so nothing is left to restore it. Call `replay()` to draw them again. Because the component reaches into nested open shadow roots, two `<web-ui-svg-draw-lines>` must not cover the same geometry: each records the inline dash values the first time it animates an element, so a blank left by the inner one becomes the outer one's idea of the consumer's own value.
 
 **Slots:** `default` — SVG content to animate. Accepts inline `<svg>` elements (light DOM) as well as components that render an SVG in an open shadow root, such as `<web-ui-icon>`. Closed shadow roots are skipped.
 
-Finds `path`, `rect`, `circle`, `line`, `polyline`, `polygon`, `ellipse` elements by recursively traversing the light DOM and all open shadow roots. Paths ending with `Z`/`z` receive a temporary gap fix for proper closing-segment rendering. After animation completes or is cancelled, all in-line styles are restored.
+Finds `path`, `rect`, `circle`, `line`, `polyline`, `polygon`, `ellipse` elements by recursively traversing the light DOM and all open shadow roots. Paths ending with `Z`/`z` receive a temporary gap fix for proper closing-segment rendering. After a reveal completes or is cancelled, all in-line styles are restored.
 
 #### `<web-ui-theme>`
 

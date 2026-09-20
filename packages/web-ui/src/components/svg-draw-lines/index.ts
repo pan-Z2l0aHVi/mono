@@ -2,16 +2,23 @@ import { html, LitElement, nothing, unsafeCSS } from 'lit'
 import { customElement, property } from 'lit/decorators.js'
 
 import { normalizeNumber } from '@/shared/normalize'
-import { findNearestTheme } from '@/shared/overlay/theme-overlay-scope'
+import { prefersReducedMotion } from '@/shared/theme/reduced-motion'
 
 import style from './style.css?inline'
 
 const GEOMETRY_SELECTOR = 'path, rect, circle, line, polyline, polygon, ellipse'
 
 interface AnimationRun {
+  reverse: boolean
   animations: Animation[]
-  restoreQueue: Map<SVGGeometryElement, { dasharray: string | null; dashoffset: string | null }>
+  /** 本次运行写过的「空白」dash 值，按元素记；收回收尾要把它留在 DOM 上。 */
+  blankByElement: Map<SVGGeometryElement, string>
   patchedD: Map<SVGGeometryElement, string>
+}
+
+export interface ReplayOptions {
+  /** 沿原路径收回（从完整描边画回空白），默认 false 即揭示方向。 */
+  reverse?: boolean
 }
 
 @customElement('web-ui-svg-draw-lines')
@@ -31,63 +38,105 @@ export class WebUiSvgDrawLines extends LitElement {
 
   @property({ type: String, reflect: true }) easing = 'linear'
 
+  /** 关掉「首次内容稳定时自动播放一次」，交给调用方用 replay() 决定何时播。 */
+  @property({ type: Boolean, reflect: true, attribute: 'no-autoplay' }) noAutoplay = false
+
   private _activeRun: AnimationRun | undefined
   private _hasAutoPlayed = false
+  /*
+   * 消费者自己写在目标元素上的 dash 值，只在第一次碰到该元素时取一次。运行会把这两个属性改成
+   * 自己的空白值，所以不能从「上一次运行之后」的状态重新取，否则画入收尾会把空白当成原值。
+   */
+  private readonly _authoredDash = new WeakMap<SVGGeometryElement, { dasharray: string; dashoffset: string }>()
+  /** 收回留在元素上的「空白」，只有内联那两个值都还是我们自己写的那一份时才算数。 */
+  private readonly _stickyBlank = new WeakMap<SVGGeometryElement, { dasharray: string; dashoffset: string }>()
+
   /**
    * 停止当前播放并重新开始。每次调用重新收集子树中的几何元素。
    * 所有元素同时开始并行的 stroke-dashoffset 动画。
+   * options.reverse 为 true 时沿原路径收回。
    * 无目标或当前主题范围启用 reduced motion 时立即 resolve。
    */
-  async replay(): Promise<void> {
+  async replay(options: ReplayOptions = {}): Promise<void> {
+    const reverse = options.reverse === true
+
     this.cancelAll()
 
-    if (this._isReducedMotion()) return
-
     const targets = this.collectGeometryElements()
+
+    if (prefersReducedMotion(this)) {
+      // 不播，但上一次收回提交的空白要清掉：reduced motion 下可见性完全交给消费者的 opacity，
+      // 留着空白就会出现「aria-checked=true 却看不见勾」，而之后每次 replay 都会同样早退、无法自愈。
+      for (const el of targets) this.clearStickyBlank(el)
+      return
+    }
+
     if (targets.length === 0) return
 
     const run: AnimationRun = {
+      reverse,
       animations: [],
-      restoreQueue: new Map(),
+      blankByElement: new Map(),
       patchedD: new Map()
     }
     this._activeRun = run
 
-    await Promise.all(targets.map(el => this.animateElement(el, run)))
+    await Promise.all(targets.map(el => this.animateElement(el, run, reverse)))
 
     // A later replay owns the current DOM state and must not be cleaned up here.
-    if (this._activeRun === run) this.finishRun(run)
+    if (this._activeRun !== run) return
+
+    this.finishRun(run)
   }
 
   private cancelAll() {
     if (this._activeRun) this.finishRun(this._activeRun)
   }
 
-  private _isReducedMotion(): boolean {
-    const theme = findNearestTheme(this)
-    if (theme) return theme.isReducedMotion()
-
-    try {
-      return window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    } catch {
-      return false
-    }
-  }
-
+  /*
+   * 收尾分两个方向：画线还原消费者自己写的 dash（描边完整可见），收回把空白留在内联样式上
+   * （整条路径落进 dash 间隙，看不见）。收回末态必须是 DOM 状态，不能是「一条还活着的
+   * fill:forwards 动画」——元素被摘走再挂回（列表 key 重排、teleport）时，还原成完整描边的
+   * 那份内联值会让勾当场复现，而控件已经是未勾选。
+   */
   private finishRun(run: AnimationRun) {
     run.animations.forEach(anim => anim.cancel())
-
-    // The animation temporarily mutates consumer-owned SVG nodes, so always restore them.
-    for (const [el, cached] of run.restoreQueue) {
-      el.style.strokeDasharray = cached.dasharray ?? ''
-      el.style.strokeDashoffset = cached.dashoffset ?? ''
-    }
 
     for (const [el, d] of run.patchedD) {
       el.setAttribute('d', d)
     }
 
+    for (const [el, blank] of run.blankByElement) {
+      const authored = this._authoredDash.get(el)
+      if (run.reverse) {
+        el.style.strokeDasharray = blank
+        el.style.strokeDashoffset = blank
+        // 存回读值而不是写入值：CSSOM 会按自己的精度序列化，撤销时要按同一份文本比对。
+        this._stickyBlank.set(el, { dasharray: el.style.strokeDasharray, dashoffset: el.style.strokeDashoffset })
+      } else {
+        el.style.strokeDasharray = authored?.dasharray ?? ''
+        el.style.strokeDashoffset = authored?.dashoffset ?? ''
+        this._stickyBlank.delete(el)
+      }
+    }
+
     if (this._activeRun === run) this._activeRun = undefined
+  }
+
+  /** 只撤销我们自己写进去的那一份空白；消费者后来动过内联的任一个值就不碰。 */
+  private clearStickyBlank(el: SVGGeometryElement) {
+    const blank = this._stickyBlank.get(el)
+    if (
+      blank === undefined ||
+      el.style.strokeDasharray !== blank.dasharray ||
+      el.style.strokeDashoffset !== blank.dashoffset
+    )
+      return
+
+    const authored = this._authoredDash.get(el)
+    el.style.strokeDasharray = authored?.dasharray ?? ''
+    el.style.strokeDashoffset = authored?.dashoffset ?? ''
+    this._stickyBlank.delete(el)
   }
 
   /**
@@ -124,10 +173,10 @@ export class WebUiSvgDrawLines extends LitElement {
     return elements
   }
 
-  private animateElement(el: SVGGeometryElement, run: AnimationRun): Promise<void> {
+  private animateElement(el: SVGGeometryElement, run: AnimationRun, reverse: boolean): Promise<void> {
     return new Promise(resolve => {
-      if (!run.restoreQueue.has(el)) {
-        run.restoreQueue.set(el, {
+      if (!this._authoredDash.has(el)) {
+        this._authoredDash.set(el, {
           dasharray: el.style.strokeDasharray,
           dashoffset: el.style.strokeDashoffset
         })
@@ -144,11 +193,17 @@ export class WebUiSvgDrawLines extends LitElement {
 
       const strokeWidth = parseFloat(getComputedStyle(el).strokeWidth) || 0
       const len = el.getTotalLength() + strokeWidth
+      // 空白 = 整条路径落在 dash 间隙里；满 = 偏移归零。两个方向只是这两端换先后。
+      const blank = `${len}`
+      const full = '0'
+      const from = reverse ? full : blank
+      const to = reverse ? blank : full
 
-      el.style.strokeDasharray = `${len}`
-      el.style.strokeDashoffset = `${len}`
+      el.style.strokeDasharray = blank
+      el.style.strokeDashoffset = from
+      run.blankByElement.set(el, blank)
 
-      const anim = el.animate([{ strokeDashoffset: `${len}` }, { strokeDashoffset: '0' }], {
+      const anim = el.animate([{ strokeDashoffset: from }, { strokeDashoffset: to }], {
         duration: this.duration,
         easing: this.easing,
         fill: 'forwards'
@@ -174,9 +229,9 @@ export class WebUiSvgDrawLines extends LitElement {
     return d.replace(/[Zz]\s*$/, `L${p0.x.toFixed(3)} ${p0.y.toFixed(3)} L${p1.x.toFixed(3)} ${p1.y.toFixed(3)}`)
   }
 
-  // 首次 slot 内容稳定后自动播放一次
+  // 首次 slot 内容稳定后自动播放一次；no-autoplay 下这一步交给调用方的 replay()。
   private handleSlotChange() {
-    if (this._hasAutoPlayed) return
+    if (this.noAutoplay || this._hasAutoPlayed) return
     this._hasAutoPlayed = true
     void this.replay()
   }

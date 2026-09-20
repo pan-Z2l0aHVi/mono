@@ -77,7 +77,7 @@
 
 /*
  * 状态层走覆盖层，不占用指示器自己的 background-color：同一个属性没法一半过渡一半即时，
- * 而这里要的是 hover / active 当帧切换、选中态的 accent 按 --wui-duration-trigger 淡入淡出。
+ * 而这里要的是 hover 当帧切换、选中态的 accent 按 --wui-duration-trigger 淡入淡出。
  * z-index: -1 配父级 isolation 把覆盖层夹在控件底与圆点/勾之间，半径跟着指示器走。
  */
 :where(.wui-radio-circle, .wui-checkbox-box)::before {
@@ -95,19 +95,14 @@
 }
 
 /*
- * 未激活态的 hover / active 状态层。用半透明色而不是混进控件底：覆盖层本就压在不透明的控件底上，
+ * 未激活态的 hover 状态层。用半透明色而不是混进控件底：覆盖层本就压在不透明的控件底上，
  * 合成结果与 color-mix(text 6%, surface-control) 一致，深色档同样成立。
  * 标签文字带 pointer-events: none，命中落回 label 自身，所以整条触发区（含右侧文字）
- * 的 hover / active 都会作用到指示器。hover 只在真正的指针设备上生效，避免触屏留态。
+ * 的 hover 都会作用到指示器。hover 只在真正的指针设备上生效，避免触屏留态。
  */
 @media (hover: hover) and (pointer: fine) {
   :where(.wui-radio, .wui-checkbox):hover:not(.is-disabled, .is-checked)
     :where(.wui-radio-circle, .wui-checkbox-box)::before {
     background-color: color-mix(in srgb, var(--wui-color-text, #1b1b1b) 6%, transparent);
   }
-}
-
-:where(.wui-radio, .wui-checkbox):active:not(.is-disabled, .is-checked)
-  :where(.wui-radio-circle, .wui-checkbox-box)::before {
-  background-color: color-mix(in srgb, var(--wui-color-text, #1b1b1b) 15%, transparent);
 }

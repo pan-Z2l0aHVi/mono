@@ -278,8 +278,8 @@ export class WebUiDrawer extends LitElement {
   }
 
   private _isReducedMotion(): boolean {
-    // 优先尊重所在 web-ui-theme 的 motion 设置（与 svg-draw-lines 一致）；
-    // 无主题范围时回退到系统 prefers-reduced-motion。jsdom 等环境无 matchMedia，视为完整动效。
+    // 优先尊重所在 web-ui-theme 的 motion 设置；无主题范围时回退到系统 prefers-reduced-motion。
+    // jsdom 等环境无 matchMedia，视为完整动效。
     const theme = findNearestTheme(this)
     if (theme) return theme.isReducedMotion()
     try {
