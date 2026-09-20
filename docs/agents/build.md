@@ -22,7 +22,7 @@
 
 Interweave 由 Wails 宿主管理嵌套前端，因此其 alias 只启动 Wails host，并构建/监听 WebView frontend 的上游依赖；不要额外启动重复的前端进程。在修改 Vite 插件、TypeScript 配置或工作区依赖图后，需要重启宿主开发进程。
 
-代码质量检查与修复的命令矩阵（`check:code` 聚合与 `fix:code` 一键修复）以 [`linting.md`](linting.md) 为权威；提交 hook 的 `vp staged` 对暂存路径做增量修复与检查。包构建命令不能替代这些命令；Wails 的 macOS/Windows 原生构建仍负责验证 host package 与平台集成。
+代码质量检查与修复的命令矩阵（`check:code` 聚合与 `fix:code` 一键修复）以 [`linting.md`](linting.md) 为权威；`pre-commit` 只做 task gate，不改写文件。包构建命令不能替代这些命令；Wails 的 macOS/Windows 原生构建仍负责验证 host package 与平台集成。
 
 | 命令                        | 用途                                    | 说明                                                                            |
 | --------------------------- | --------------------------------------- | ------------------------------------------------------------------------------- |

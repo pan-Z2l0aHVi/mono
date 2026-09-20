@@ -86,7 +86,7 @@ get_emoji() {
 }
 
 # ── stash 泄漏守卫 ──
-# vp staged 的 git stash push/pop 可能将旧的未提交变更残留到工作区。
+# 任何 stash push/pop（手工或外部工具）都可能把旧的未提交变更残留在工作区。
 # 如果出现预期外的 delete/rename，很可能是 stash 泄漏，应拒绝提交。
 LEAKED=$(git diff --name-status --diff-filter=DR 2>/dev/null || true)
 if [ -n "$LEAKED" ]; then
