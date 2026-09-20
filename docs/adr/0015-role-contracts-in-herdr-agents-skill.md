@@ -24,8 +24,8 @@
 
 - 角色 markdown 从 `vp check` 的格式化范围移入 `fmt.ignorePatterns` 的 `**/.agents/skills/**`，不再自动对齐表格与换行；`validate:context` 仍校验其 frontmatter、`name` 与本地链接。理由与 `contract-change-review` 一致：不为 5 个 markdown 给 ignore 列表增加按名字维护的反向命中。
 - Claude Code 会话的 subagent 列表不再出现 5 个角色名；`herdr-agents` 只出现在手动斜杠命令中，不进入模型的自动调用面。
-- herdr 开机时序有了单一落点，`workflow.md` 与 `CONTRIBUTING.md` 继续只链接它。
-- 编排仍依赖 `HERDR_ENV=1` 的 pane 内执行前提；skill 的前置检查负责在会话外停下，不从会话外操控用户的 Herdr session。
+- herdr 开机时序有了单一落点，`workflow.md` 与 `CONTRIBUTING.md` 继续只链接它。（2026-09-20 修订：Role 机制整体收进本 skill——契约目录、可用 Role 列表与初始化 prompt 都在 `.agents/skills/herdr-agents/` 内，`CONTRIBUTING.md` 的「角色会话」节已删除，根 `AGENTS.md` 也不再向普通会话提供 Role 入口。本条对 `workflow.md` 仍成立。）
+- 编排仍依赖 `HERDR_ENV=1` 的 pane 内执行前提；skill 的前置检查负责在会话外停下，不从会话外操控用户的 Herdr session。（2026-09-20 修订：前置检查与安全条已归上游 `herdr` skill，本 skill 只在每一步前要求先读它，不再自带 `HERDR_ENV` 判定与 herdr 命令行。）
 
 ## 被否决的方案
 

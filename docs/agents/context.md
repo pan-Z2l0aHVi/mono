@@ -9,7 +9,7 @@
 | 层级               | 权威来源                                                         | 何时加载                               | 内容边界                             |
 | ------------------ | ---------------------------------------------------------------- | -------------------------------------- | ------------------------------------ |
 | Always available   | 根 `AGENTS.md`                                                   | 每次任务                               | 项目身份、不可绕过边界、任务路由     |
-| Session role       | `.agents/skills/herdr-agents/roles/<role>.md`                    | 用户或 Manager 明确指定当前会话 Role   | 身份、职责、边界、协作与完成定义     |
+| Session role       | `.agents/skills/herdr-agents/`（契约在 `roles/`）                | 仅 herdr 编排：Manager 初始化的会话    | 身份、职责、边界、协作与完成定义     |
 | Repository map     | 根 `ARCHITECTURE.md`                                             | 需要全局拓扑、workspace 定位或热点概览 | 稳定目录地图、依赖草图、影响热点     |
 | Project context    | `CONTEXT.md`                                                     | 架构、跨包、术语、长期设计             | 包边界、工程原则、领域词汇、ADR 索引 |
 | Task-specific      | `docs/agents/*.md`、`.agents/rules/*.md`、最近的包级 `AGENTS.md` | 任务命中对应领域                       | 可执行流程、质量门槛、局部约束       |
@@ -19,7 +19,7 @@
 
 ## Session Role
 
-Role 是显式选择的按需 session context：读取 `.agents/skills/herdr-agents/roles/<role>.md` 后，它在整个会话中定义职责、边界和协作，不绑定某一个 task，也不覆盖 Rules、Skills、task requirement、`AGENTS.md` 或实现事实。初始化方式以 [`CONTRIBUTING.md`](../../CONTRIBUTING.md#角色会话) 为权威。
+Role 只服务于 herdr 多 agent 编排：Manager 初始化的每个 CLI 会话承担一个 Role，读取 `.agents/skills/herdr-agents/roles/<role>.md` 后它在整个会话内定义职责、边界和协作，不绑定某一个 task，也不覆盖 Rules、Skills、task requirement、`AGENTS.md` 或实现事实。可用 Role 列表、初始化 prompt 和派发时序都在 [`.agents/skills/herdr-agents/SKILL.md`](../../.agents/skills/herdr-agents/SKILL.md)；普通单会话不承担 Role。
 
 角色执行体绑定与 review 分档路由的唯一权威绑定表在根 `AGENTS.md`「多 Agent 编排」节；编排模式的流程权威是 [`workflow.md`](workflow.md) 的「角色与执行体」「编排模式」两节，handoff 契约权威是 [`task-packet.md`](task-packet.md)。执行体绑定不改变状态机、gate 和证据要求。
 

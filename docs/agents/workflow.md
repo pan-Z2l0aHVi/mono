@@ -111,7 +111,6 @@ freeze 自身执行归一化管线：`git add -A` 全量 staging（快照语义�
 
 角色定义会话身份、职责边界和协作方式，与单个 task 解耦；执行体是承担该角色的 CLI/agent。角色 → 执行体的唯一权威绑定表在根 [`AGENTS.md`](../../AGENTS.md) 的「多 Agent 编排」节，本文件不复制表格；模型与思考强度由用户会话设置或 Manager 按任务指定，不设角色默认（见 ADR-0014）。
 
-- Role Contract 位于 [`.agents/skills/herdr-agents/roles/`](../../.agents/skills/herdr-agents/roles/)，只定义职责、边界和协作；仓库约束仍以 `AGENTS.md`、包级 `AGENTS.md`、rules、skills 和实现事实为准。
 - 绑定表适用于主工作流（herdr + Claude Code / Codex CLI）；任何其他执行体（zcode、workbuddy、pi 等）可承担任一角色，目录边界、task gate、reviewer ≠ owner、handoff 字段等机器强制约束不变。T0/T1 在 task packet 记录替代执行体与理由。
 - Reviewer 独立于实施者，以冻结的 `diffHash` 为审查对象；拓扑见「review 拓扑」。
 
