@@ -14,7 +14,7 @@ disable-model-invocation: true
 
 ## 流程
 
-1. 一个可变 task 一个 worktree，落在 `<仓库目录名>-worktrees/<task-id>`（路径约定见 [`docs/agents/worktrees.md`](../../../docs/agents/worktrees.md)）。`cd` 进这个新目录再跑 preflight（`pnpm task new`、`task assign`、`task start`，命令见 [`docs/agents/workflow.md`](../../../docs/agents/workflow.md)），并 `pnpm install && pnpm run build`：task state 记录的 worktree 必须是这个新目录而不是 Manager 自己所在的目录，依赖未安装时第 6 步的 freeze 归一化跑不起来。
+1. 一个可变 task 一个 worktree，落在 `<仓库目录名>-worktrees/<task-id>`（路径约定见 [`docs/agents/worktrees.md`](../../../docs/agents/worktrees.md)）。`cd` 进这个新目录再跑 preflight（`pnpm task new`、`task assign`、`task start`，命令见 [`docs/agents/workflow.md`](../../../docs/agents/workflow.md)）：task state 记录的 worktree 必须是这个新目录而不是 Manager 自己所在的目录。还要在这里执行一次 `pnpm install && pnpm run build`，两步都要——缺 workspace 构建产物会让第 6 步的 freeze 归一化和全部类型校验失效（判据见 [`docs/agents/worktrees.md`](../../../docs/agents/worktrees.md)「创建和复用」）。
 
 2. 每个角色一个会话，agent 名取 `<role>-<task 后缀>` 的小写形式。这里唯一不可让的是工作目录：角色会话必须工作在它所属 task 的 worktree 里，不沿用 Manager 的目录，否则两个角色会写同一个目录，违反 `AGENTS.md` 的独立 worktree 与唯一 owner。挂在哪个 tab 或 workspace 都可以，按上游 skill 判断。
 
