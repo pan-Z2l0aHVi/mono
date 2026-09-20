@@ -11,7 +11,7 @@
 1. 查看 `git status --short --branch`，确认当前工作区和目标 worktree 的已有变更归属。
 2. 读取根 `AGENTS.md`、本文件和命中的 rule/guide；进入 workspace 后读取最近的包级 `AGENTS.md`。
 3. 为任务选择唯一、不可变的 task id 和级别（T0/T1/T2，T0 最严格）。
-4. 在目标 worktree 执行：
+4. 在目标 worktree 执行（新 worktree 先跑一次 `pnpm install && pnpm run build`：只装依赖会让后续校验和 freeze 失效，判据见 [`worktrees.md`](worktrees.md)「创建和复用」）：
 
    ```sh
    pnpm task new --task <task-id> --level t0|t1|t2 --issue <issue-url|N/A>
