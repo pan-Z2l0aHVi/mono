@@ -10,7 +10,6 @@
 
 - 全局拓扑、workspace 清单、依赖草图和高频热点：[`ARCHITECTURE.md`](ARCHITECTURE.md)。
 - 协作与 Agent 交付流程：[`CONTRIBUTING.md`](CONTRIBUTING.md)。
-- 本文件只承载跨包架构、术语和 ADR 索引；不要把它当作普通局部任务的操作手册。
 
 ## 项目身份
 

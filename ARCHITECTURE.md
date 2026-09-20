@@ -4,7 +4,7 @@
 
 ## 1. 一分钟概览
 
-Mono 是一个 `pnpm` workspace + `Turborepo` monorepo：发布 `@greypan/*` 工具包和 Lit Web Components，使用 React、Vue 和 Wails 应用验证真实集成。公共运行时代码保持无环依赖；应用只消费公共包，不反向成为公共包的实现依赖。
+依赖方向是单向的：应用只消费公共包，公共运行时代码保持无环，不反向依赖应用实现。项目身份见根 [`AGENTS.md`](AGENTS.md)。
 
 ```text
 @greypan/tsconfig       TypeScript 配置 profiles（构建时配置）
@@ -61,25 +61,4 @@ Mono 是一个 `pnpm` workspace + `Turborepo` monorepo：发布 `@greypan/*` 工
 | `tsconfig/*.json`、workspace catalog       | 所有 TypeScript workspace 或依赖版本  | `docs/agents/dependencies.md`、继承者           |
 | `apps/interweave/*.go`、`frontend/src`     | Go/Wails API、领域状态和 MCP          | Wails 官方文档、产品基线、ADR-0008、Go/前端两侧 |
 
-## 5. Agent 快速路由
-
-### 按需查询工具
-
-- 变更影响与验证计划：`pnpm find:usages -- <paths...>` 输出最小 context、受影响 workspace、风险、required evidence 和最小充分验证建议；工具语义与参数以 [`docs/agents/context.md`](docs/agents/context.md) 为权威，公共 package 再用 `inspect:contract` 或 `diff:contract`。
-
-### 加载顺序
-
-加载顺序与任务路由以根 [`AGENTS.md`](AGENTS.md) 为权威；需要全局拓扑时先读本文件，架构、跨包、术语或 instruction system 任务再读 [`CONTEXT.md`](CONTEXT.md) 与相关 ADR。
-
-## 6. 生成物边界
-
-生成代码、缓存和测试附件不属于架构 source of truth。其禁止手改边界以根/包级 `AGENTS.md` 为准；generator、验证命令和消费者闭环以 [`docs/agents/build.md`](docs/agents/build.md) 为准。遇到此类问题，应定位源文件、配置或 generator，而不是修补输出。
-
-## 7. 权威来源顺序
-
-1. 当前源码、测试、`package.json`、workspace 配置和构建配置：当前行为事实。
-2. 最近的包级 `AGENTS.md`：目录特有的不可绕过约束。
-3. 根 `AGENTS.md`：仓库边界和任务路由。
-4. `docs/agents/*`、`.agents/rules/*`：按任务加载的流程和质量门槛。
-5. `CONTEXT.md` 与 ADR：跨包架构、术语和长期决策背景。
-6. README 和 changelog：消费者说明与历史记录；发现冲突时回到上面的权威来源。
+任务路由、按需查询工具与权威来源顺序以根 [`AGENTS.md`](AGENTS.md) 和 [`docs/agents/context.md`](docs/agents/context.md) 为权威，本文件不复制。
