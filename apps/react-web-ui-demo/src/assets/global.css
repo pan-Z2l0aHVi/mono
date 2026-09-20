@@ -47,7 +47,7 @@ body {
   display: none;
 }
 
-/* slider-demo 自定义样式 — 从 \3c style> 块迁入，使 Tailwind 可识别 */
+/* slider-demo 自定义样式 — 从组件的 style 块迁入，使 Tailwind 可识别 */
 @utility slider-demo {
   max-width: 920px;
 }

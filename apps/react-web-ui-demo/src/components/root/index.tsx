@@ -246,7 +246,10 @@ export function Root() {
                 ))}
               </nav>
             </div>
-            <Outlet />
+            {/* 正文 gutter 归 shell 所有：`web-ui-layout` 的 main 不带 padding，逐页加会漏页。 */}
+            <div className="p-3">
+              <Outlet />
+            </div>
 
             <div className="h-100 w-full"></div>
           </web-ui-layout>
