@@ -18,6 +18,7 @@ function SvgDrawLinesDemo() {
   const [easing, setEasing] = useState('ease-in-out')
 
   const replays = useRef<Record<string, () => void>>({})
+  const manualRef = useRef<WebUiSvgDrawLines | null>(null)
 
   const setReplay = (id: string, el: WebUiSvgDrawLines | null) => {
     if (el) replays.current[id] = () => el.replay()
@@ -136,6 +137,29 @@ function SvgDrawLinesDemo() {
             </web-ui-button>
           </div>
         </div>
+      </div>
+
+      <h2>手动播放与收回</h2>
+      <p className="mb-3 text-sm text-(--wui-color-text-secondary)">
+        no-autoplay 关闭挂载时的自动播放；replay() 逐笔画入，replay({'{ reverse: true }'}) 沿原路径收回。
+      </p>
+      <div className="mb-6 flex items-center gap-2">
+        <web-ui-svg-draw-lines
+          ref={el => {
+            manualRef.current = el
+          }}
+          noAutoplay
+          duration={duration}
+          easing={easing}
+        >
+          <web-ui-icon icon={lucideStar} size={48}></web-ui-icon>
+        </web-ui-svg-draw-lines>
+        <web-ui-button onClick={() => manualRef.current?.replay()} variant="ghost">
+          画入
+        </web-ui-button>
+        <web-ui-button onClick={() => manualRef.current?.replay({ reverse: true })} variant="ghost">
+          收回
+        </web-ui-button>
       </div>
 
       <h2>复杂场景</h2>

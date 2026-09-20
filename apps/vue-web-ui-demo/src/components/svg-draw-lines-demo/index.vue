@@ -22,6 +22,7 @@ const svg3 = ref<WebUiSvgDrawLines>()
 const multiRef = ref<WebUiSvgDrawLines>()
 const nestedRef = ref<WebUiSvgDrawLines>()
 const mixedRef = ref<WebUiSvgDrawLines>()
+const manualRef = ref<WebUiSvgDrawLines>()
 const iconRefs = reactive<Record<string, WebUiSvgDrawLines | undefined>>({})
 
 function getRef(itemId: string): (el: unknown) => void {
@@ -170,6 +171,18 @@ const iconItems = [
           <web-ui-button @click="replayBasic(3)" variant="ghost">重播</web-ui-button>
         </div>
       </div>
+    </div>
+
+    <h2>手动播放与收回</h2>
+    <p class="mb-3 text-sm text-(--wui-color-text-secondary)">
+      no-autoplay 关闭挂载时的自动播放；replay() 逐笔画入，replay({ reverse: true }) 沿原路径收回。
+    </p>
+    <div class="mb-6 flex items-center gap-2">
+      <web-ui-svg-draw-lines ref="manualRef" no-autoplay :duration="duration" :easing="easing">
+        <web-ui-icon :icon="lucideStar" :size="48"></web-ui-icon>
+      </web-ui-svg-draw-lines>
+      <web-ui-button @click="manualRef?.replay()" variant="ghost">画入</web-ui-button>
+      <web-ui-button @click="manualRef?.replay({ reverse: true })" variant="ghost">收回</web-ui-button>
     </div>
 
     <h2>复杂场景</h2>
