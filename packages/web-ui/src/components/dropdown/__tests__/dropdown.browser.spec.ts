@@ -104,6 +104,45 @@ describe('WebUiDropdown 组件（浏览器）', () => {
     expect(document.activeElement).toBe(document.body)
   })
 
+  it('打开状态下重挂载会重建面板并把焦点交还菜单', async () => {
+    /*
+     * issue #120：`open` 是公开 prop，卸载不会改写它，而 Lit 在 detach 期间不记
+     * changedProperties，所以重连后 `updated()` 不再命中 open 分支。真实引擎里验证的是
+     * 用户可观测后果：面板重新存在、焦点落回首项、方向键重新可用 —— 不读 `_overlays`，
+     * 也不测哪个生命周期回调被调用。
+     */
+    const menu = document.createElement('web-ui-dropdown')
+    menu.innerHTML =
+      '<button slot="trigger">Menu</button><web-ui-dropdown-item>One</web-ui-dropdown-item><web-ui-dropdown-item>Two</web-ui-dropdown-item>'
+    document.body.append(menu)
+    await menu.updateComplete
+
+    menu.open = true
+    await menu.updateComplete
+    await waitFor(() => getMenuPanels().length === 1, '根菜单面板应挂载')
+
+    menu.remove()
+    await nextFrame()
+    expect(getMenuPanels()).toHaveLength(0)
+
+    document.body.append(menu)
+    await waitFor(() => getMenuPanels().length === 1, '重挂载后应重建根菜单面板')
+    await nextFrame()
+
+    const items = [...(getMenuPanels()[0]?.querySelectorAll<HTMLElement>('web-ui-dropdown-item') ?? [])]
+    expect(items).toHaveLength(2)
+    // 面板挂在 overlay root 的 shadow 里，文档级 activeElement 只会重定位到那个 root；
+    // 焦点落点因此认项内控件（见 focusedControl）。
+    const firstControl = items[0] ? (focusedControl(items[0]) as HTMLElement | null) : null
+    expect(firstControl, '首项应有可聚焦的内部控件').toBeTruthy()
+    expect(items[0]?.shadowRoot?.activeElement, '重挂载后焦点应回到首个可用菜单项').toBe(firstControl)
+
+    firstControl?.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, composed: true }))
+    await nextFrame()
+    const secondControl = items[1] ? (focusedControl(items[1]) as HTMLElement | null) : null
+    expect(items[1]?.shadowRoot?.activeElement, 'ArrowDown 应把焦点移到下一项').toBe(secondControl)
+  })
+
   it('子菜单打开后同帧卸载不重建子面板', async () => {
     const menu = document.createElement('web-ui-dropdown')
     menu.innerHTML = SUBMENU

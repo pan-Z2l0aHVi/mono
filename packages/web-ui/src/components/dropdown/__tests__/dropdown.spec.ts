@@ -346,6 +346,89 @@ describe('WebUiDropdown 组件', () => {
     })
   })
 
+  describe('重挂载对账', () => {
+    /*
+     * issue #120：`disconnectedCallback` 拆面板、把菜单项迁回宿主，但 `open` 是公开 prop，
+     * 不因卸载而改写；Lit 又在 detach 期间不记 changedProperties，重连后 `updated()` 不再
+     * 命中 open 分支。下面几条锁的是重连后「open 与真实打开态重新一致」这个不变量，只认
+     * 公开面板（role="menu"）、`isOpen` 与焦点落点，不读 `_overlays` 等内部结构。
+     */
+    it('打开状态下重挂载会重建根面板', async () => {
+      const el = createDropdown({}, SIMPLE)
+      await waitForUpdate(el)
+      el.openMenu()
+      await new Promise(resolve => requestAnimationFrame(resolve))
+      await new Promise(resolve => requestAnimationFrame(resolve))
+      expect(getMenuPanels()).toHaveLength(1)
+
+      document.body.removeChild(el)
+      await waitForUpdate(el)
+      expect(getMenuPanels()).toHaveLength(0)
+
+      document.body.append(el)
+      await new Promise(resolve => requestAnimationFrame(resolve))
+      await new Promise(resolve => requestAnimationFrame(resolve))
+      expect(getMenuPanels()).toHaveLength(1)
+      expect(getMenuItems()).toHaveLength(2)
+      cleanupElement(el)
+    })
+
+    it('重挂载后 Escape 关得掉这一层', async () => {
+      const el = createDropdown({}, SIMPLE)
+      await waitForUpdate(el)
+      el.openMenu()
+      await new Promise(resolve => requestAnimationFrame(resolve))
+      await new Promise(resolve => requestAnimationFrame(resolve))
+
+      document.body.removeChild(el)
+      await waitForUpdate(el)
+      document.body.append(el)
+      await new Promise(resolve => requestAnimationFrame(resolve))
+      await new Promise(resolve => requestAnimationFrame(resolve))
+      expect(getMenuPanels()).toHaveLength(1)
+
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }))
+      await waitForUpdate(el)
+      expect(el.isOpen).toBe(false)
+      cleanupElement(el)
+    })
+
+    it('detach 期间焦点已被别处持有时，重挂载重建面板但不抢焦点', async () => {
+      const other = document.createElement('button')
+      document.body.append(other)
+      const el = createDropdown({}, SIMPLE)
+      await waitForUpdate(el)
+      el.openMenu()
+      await new Promise(resolve => requestAnimationFrame(resolve))
+      await new Promise(resolve => requestAnimationFrame(resolve))
+
+      document.body.removeChild(el)
+      await waitForUpdate(el)
+      other.focus()
+      expect(document.activeElement).toBe(other)
+
+      document.body.append(el)
+      await new Promise(resolve => requestAnimationFrame(resolve))
+      await new Promise(resolve => requestAnimationFrame(resolve))
+      expect(getMenuItems()).toHaveLength(2)
+      expect(document.activeElement).toBe(other)
+      cleanupElement(el)
+    })
+
+    it('关闭状态重挂载不会凭空打开面板', async () => {
+      const el = createDropdown({}, SIMPLE)
+      await waitForUpdate(el)
+
+      document.body.removeChild(el)
+      await waitForUpdate(el)
+      document.body.append(el)
+      await new Promise(resolve => requestAnimationFrame(resolve))
+      await new Promise(resolve => requestAnimationFrame(resolve))
+      expect(getMenuPanels()).toHaveLength(0)
+      cleanupElement(el)
+    })
+  })
+
   describe('子菜单悬停', () => {
     it('touch pointerenter 不打开子菜单', async () => {
       const el = createDropdown(
