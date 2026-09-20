@@ -7,6 +7,7 @@ import { WebUiSvgDrawLines } from '@/components/svg-draw-lines'
 import { installPointerFocusSuppression } from '@/shared/focus/pointer-focus'
 import { FormAssociated, defineFormAssociation, FormAssociationController } from '@/shared/form-association'
 import { defineGroupManaged, selectionGroupContextKey, type SelectionGroupContext } from '@/shared/group-management'
+import { parseDuration } from '@/shared/theme/duration'
 import { prefersReducedMotion } from '@/shared/theme/reduced-motion'
 
 import style from './style.css?inline'
@@ -14,17 +15,12 @@ import style from './style.css?inline'
 installPointerFocusSuppression()
 
 /*
- * 描边时长取 `--wui-duration-trigger`，让勾和指示器底色那条 transition 落在同一拍。形状照
- * `components/theme` 里那份同名函数：正则匹配、秒/毫秒换算、失败给兜底值。`overlay/presence` 的同名
- * 函数按 endsWith 解析 `transitionDuration` 的逗号列表、失败回 0 且不 clamp，形状不同，不能直接合并；
- * 三处收拢成共享 helper 记在后续项。
+ * 描边时长取 `--wui-duration-trigger`，让勾和指示器底色那条 transition 落在同一拍。
+ * 读不到 token 或格式不符时兜底 160，负值钳到 0。
  */
 function triggerDuration(el: HTMLElement): number {
-  const match = /^\s*([+-]?(?:\d+\.?\d*|\.\d+))(ms|s)\s*$/.exec(
-    getComputedStyle(el).getPropertyValue('--wui-duration-trigger')
-  )
-  if (!match) return 160
-  return Math.max(0, Number(match[1]) * (match[2] === 's' ? 1000 : 1))
+  const parsed = parseDuration(getComputedStyle(el).getPropertyValue('--wui-duration-trigger'))
+  return parsed === null ? 160 : Math.max(0, parsed)
 }
 
 @customElement('web-ui-checkbox')
