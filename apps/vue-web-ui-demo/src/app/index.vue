@@ -201,7 +201,7 @@ const navItems: NavItem[] = [
               :key="item.path"
               :to="item.path"
               class="flex items-center h-8 my-1 rounded-full px-3 text-sm leading-5 text-(--wui-color-text) transition-[background-color] duration-150 hover:bg-[color-mix(in_srgb,var(--wui-color-surface-raised)_80%,var(--wui-color-text))]"
-              :class="route.path === item.path ? '!bg-(--wui-color-accent) !text-(--wui-color-on-accent)' : ''"
+              :class="route.path === item.path ? 'bg-(--wui-color-accent)! text-(--wui-color-on-accent)!' : ''"
             >
               <span class="truncate">{{ item.label }}</span>
             </RouterLink>

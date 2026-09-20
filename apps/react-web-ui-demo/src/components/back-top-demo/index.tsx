@@ -43,7 +43,7 @@ function BackTopDemo() {
         向下滚动页面超过阈值后出现按钮，点击或按 Enter 回到顶部。通过 <code>--wui-back-top-position</code>、
         <code>--wui-back-top-left</code> 等自定义属性控制按钮在容器内的定位。
       </p>
-      <div className="mb-6 h-80 overflow-hidden rounded-xl border border-(--wui-color-border) p-4 [position:relative]">
+      <div className="mb-6 h-80 overflow-hidden rounded-xl border border-(--wui-color-border) p-4 relative">
         <p className="pb-10">这是一个占位区域：滚动页面观察左下角的回到顶部按钮。</p>
         <web-ui-back-top className="absolute bottom-5 left-6 right-auto [--wui-back-top-position:absolute]"></web-ui-back-top>
       </div>

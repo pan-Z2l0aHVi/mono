@@ -105,7 +105,7 @@ interweave（含 interweave-frontend）──共享包的 Wails 桌面集成表�
 
 ## Interweave 产品与领域词汇
 
-Interweave 当前已确认的产品基线见 [`apps/interweave/docs/product.md`](apps/interweave/docs/product.md)。产品、领域模型、Map、标签、Source 或 MCP 路线任务按需读取该文档和 ADR-0008；各改动主题对应的 ADR 以上方索引表的「何时读取」列为准，此处不再逐条复述。
+Interweave 的产品基线不再单独成文：领域词汇以本节为准，后端能力边界与持久化模型见 [ADR-0008](docs/adr/0008-interweave-backend-architecture.md)/[ADR-0009](docs/adr/0009-interweave-sqlite-persistence-wal.md)，产品边界与应用级约定见 [`apps/interweave/AGENTS.md`](apps/interweave/AGENTS.md)，已实现行为以 `apps/interweave/backend/**` 及其 Go 测试为真相。各改动主题对应的 ADR 以上方索引表的「何时读取」列为准，此处不再逐条复述。
 
 **资源（Resource）**:
 用户希望长期找回、理解或使用的原子概念对象；保存独立标题、短备注、语义标签与一个或多个 Source。

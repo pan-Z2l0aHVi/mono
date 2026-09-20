@@ -238,7 +238,7 @@ export function Root() {
                     to={item.path}
                     className={
                       'flex items-center h-8 my-1 rounded-full px-3 py-2 text-sm leading-5 text-(--wui-color-text) transition-[background-color] duration-150 hover:bg-[color-mix(in_srgb,var(--wui-color-surface-raised)_80%,var(--wui-color-text))]' +
-                      (pathname === item.path ? ' !bg-(--wui-color-accent) !text-(--wui-color-on-accent)' : '')
+                      (pathname === item.path ? ' bg-(--wui-color-accent)! text-(--wui-color-on-accent)!' : '')
                     }
                   >
                     <span className="truncate">{item.label}</span>

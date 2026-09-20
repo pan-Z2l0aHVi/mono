@@ -27,19 +27,19 @@
 
 ## 2. Workspace 目录索引
 
-| 路径                                                                    | 角色                                             | 先看什么                                                   |
-| ----------------------------------------------------------------------- | ------------------------------------------------ | ---------------------------------------------------------- |
-| `packages/js-kit` (`@greypan/js-kit`)                                   | 运行时基础工具和 plugin system                   | `src/plugin-system/`、`README.md`、包级 `AGENTS.md`        |
-| `packages/browser-kit` (`@greypan/browser-kit`)                         | 浏览器能力：DOM、storage、file、tracker          | `src/` 对应模块 README、包级 `AGENTS.md`                   |
-| `packages/test-kit` (`@greypan/test-kit`)                               | Vitest browser mode + MSW 基础设施               | `docs/agents/testing.md`、`src/__tests__/`                 |
-| `packages/unplugin-web-components` (`@greypan/unplugin-web-components`) | Vite/Webpack 模块转换和 Vite HTML 注入           | 包级 `AGENTS.md`、`src/transforms/`、两种 adapter          |
-| `packages/deps-reload` (`@greypan/deps-reload`)                         | 开发期 workspace `dist` watcher                  | 包级 `AGENTS.md`、`src/vite.ts`、`src/webpack.ts`          |
-| `packages/web-ui` (`@greypan/web-ui`)                                   | Lit components、tokens、icons、overlay、框架类型 | `docs/agents/web-ui.md`、组件 README、相关 ADR             |
-| `packages/tsconfig` (`@greypan/tsconfig`)                               | 可被 `extends` 的 TypeScript profiles            | `*.json`、包级 `AGENTS.md`                                 |
-| `apps/react-web-ui-demo` (`@greypan/react-web-ui-demo`)                 | React 集成和预览                                 | `src/routes/`、`src/components/`、包级 README              |
-| `apps/vue-web-ui-demo` (`@greypan/vue-web-ui-demo`)                     | Vue 集成和预览                                   | `src/pages/`、`src/components/`、包级 README               |
-| `apps/interweave` (`@greypan/interweave`)                               | Go/Wails 桌面 host、后端能力边界                 | `README.md`、`AGENTS.md`、`docs/product.md`、ADR-0008/0009 |
-| `apps/interweave/frontend` (`@greypan/interweave-frontend`)             | Interweave Vue WebView                           | `src/pages/`、`src/stores/`、`apps/interweave/AGENTS.md`   |
+| 路径                                                                    | 角色                                             | 先看什么                                                 |
+| ----------------------------------------------------------------------- | ------------------------------------------------ | -------------------------------------------------------- |
+| `packages/js-kit` (`@greypan/js-kit`)                                   | 运行时基础工具和 plugin system                   | `src/plugin-system/`、`README.md`、包级 `AGENTS.md`      |
+| `packages/browser-kit` (`@greypan/browser-kit`)                         | 浏览器能力：DOM、storage、file、tracker          | `src/` 对应模块 README、包级 `AGENTS.md`                 |
+| `packages/test-kit` (`@greypan/test-kit`)                               | Vitest browser mode + MSW 基础设施               | `docs/agents/testing.md`、`src/__tests__/`               |
+| `packages/unplugin-web-components` (`@greypan/unplugin-web-components`) | Vite/Webpack 模块转换和 Vite HTML 注入           | 包级 `AGENTS.md`、`src/transforms/`、两种 adapter        |
+| `packages/deps-reload` (`@greypan/deps-reload`)                         | 开发期 workspace `dist` watcher                  | 包级 `AGENTS.md`、`src/vite.ts`、`src/webpack.ts`        |
+| `packages/web-ui` (`@greypan/web-ui`)                                   | Lit components、tokens、icons、overlay、框架类型 | `docs/agents/web-ui.md`、组件 README、相关 ADR           |
+| `packages/tsconfig` (`@greypan/tsconfig`)                               | 可被 `extends` 的 TypeScript profiles            | `*.json`、包级 `AGENTS.md`                               |
+| `apps/react-web-ui-demo` (`@greypan/react-web-ui-demo`)                 | React 集成和预览                                 | `src/routes/`、`src/components/`、包级 README            |
+| `apps/vue-web-ui-demo` (`@greypan/vue-web-ui-demo`)                     | Vue 集成和预览                                   | `src/pages/`、`src/components/`、包级 README             |
+| `apps/interweave` (`@greypan/interweave`)                               | Go/Wails 桌面 host、后端能力边界                 | `README.md`、`AGENTS.md`、ADR-0008/0009                  |
+| `apps/interweave/frontend` (`@greypan/interweave-frontend`)             | Interweave Vue WebView                           | `src/pages/`、`src/stores/`、`apps/interweave/AGENTS.md` |
 
 ## 3. 依赖和构建事实
 

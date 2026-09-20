@@ -64,7 +64,7 @@ function setNavDrawRef(key: 'library' | 'map', element: unknown) {
   navDrawRefs.value[key] = (element as WebUiSvgDrawLines | null) ?? null
 }
 const navItemClass =
-  'flex items-center gap-2 w-full min-w-9 min-h-9 px-2.5 border-0 rounded-full font-medium cursor-pointer text-left transition-all duration-150 text-[#5b5b66] active:bg-[rgb(34_33_42/0.12)] dark:text-(--wui-color-text) dark:active:bg-white/15 data-[active=true]:text-[var(--wui-color-accent,#08f)] data-[active=true]:bg-[var(--wui-color-surface-control,#dfdfdf)] data-[active=true]:hover:bg-[color-mix(in_srgb,var(--wui-color-surface-control,#dfdfdf)_90%,var(--wui-color-text,#1b1b1b))] data-[active=true]:active:bg-[color-mix(in_srgb,var(--wui-color-surface-control,#dfdfdf)_70%,var(--wui-color-text,#1b1b1b))]'
+  'flex items-center gap-2 w-full min-w-9 min-h-9 px-2.5 border-0 rounded-full font-medium cursor-pointer text-left transition-all duration-150 text-[#5b5b66] active:bg-[rgb(34_33_42/0.12)] dark:text-(--wui-color-text) dark:active:bg-white/15 data-[active=true]:text-(--wui-color-accent,#08f) data-[active=true]:bg-(--wui-color-surface-control,#dfdfdf) data-[active=true]:hover:bg-[color-mix(in_srgb,var(--wui-color-surface-control,#dfdfdf)_90%,var(--wui-color-text,#1b1b1b))] data-[active=true]:active:bg-[color-mix(in_srgb,var(--wui-color-surface-control,#dfdfdf)_70%,var(--wui-color-text,#1b1b1b))]'
 function selectNav(next: 'library' | 'map') {
   activeNav.value = next
   void navDrawRefs.value[next]?.replay()
@@ -123,7 +123,7 @@ const tagColors: Record<string, string> = {
   备份: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-400/15 dark:text-yellow-200'
 }
 
-const defaultTagClass = 'bg-black/[0.05] text-gray-500 dark:bg-white/10 dark:text-neutral-300'
+const defaultTagClass = 'bg-black/5 text-gray-500 dark:bg-white/10 dark:text-neutral-300'
 function getTagClass(tag: string) {
   return tagColors[tag] ?? defaultTagClass
 }
@@ -381,7 +381,7 @@ function getOriginIcon(origin: ResourceOrigin) {
 }
 
 const metadataRowClass =
-  "relative flex min-w-0 items-center justify-between gap-4 px-4 py-3 after:absolute after:inset-x-4 after:bottom-0 after:h-px after:bg-black/[0.06] after:content-[''] last:after:hidden dark:after:bg-white/[0.08]"
+  "relative flex min-w-0 items-center justify-between gap-4 px-4 py-3 after:absolute after:inset-x-4 after:bottom-0 after:h-px after:bg-black/6 after:content-[''] last:after:hidden dark:after:bg-white/8"
 const metadataLabelClass = 'shrink-0 text-[13px] leading-5 text-[#8a8a94] dark:text-(--wui-color-text-secondary)'
 const metadataValueClass =
   'min-w-0 truncate text-right text-[13px] font-medium leading-5 text-[#22212a] dark:text-(--wui-color-text)'
@@ -875,7 +875,7 @@ watch(addDialogOpen, (open, _, onCleanup) => {
         <button
           :class="[
             navItemClass,
-            activeNav === 'library' ? '' : 'hover:bg-black/[0.04] dark:hover:bg-white/[0.06]',
+            activeNav === 'library' ? '' : 'hover:bg-black/4 dark:hover:bg-white/6',
             sidebarCollapsed ? 'justify-center' : ''
           ]"
           type="button"
@@ -901,7 +901,7 @@ watch(addDialogOpen, (open, _, onCleanup) => {
         <button
           :class="[
             navItemClass,
-            activeNav === 'map' ? '' : 'hover:bg-black/[0.04] dark:hover:bg-white/[0.06]',
+            activeNav === 'map' ? '' : 'hover:bg-black/4 dark:hover:bg-white/6',
             sidebarCollapsed ? 'justify-center' : ''
           ]"
           type="button"
@@ -979,7 +979,7 @@ watch(addDialogOpen, (open, _, onCleanup) => {
       >
         <!-- 移动端负 margin 补偿 toggle 按钮宽度，使筛选内容左边缘与 header slot 内容对齐。 -->
         <div
-          class="flex flex-wrap gap-3 items-center px-6 max-[640px]:px-3 max-[640px]:-ml-[56px] py-2.5 text-sm text-[#5b5b66] dark:text-(--wui-color-text-secondary)"
+          class="flex flex-wrap gap-3 items-center px-6 max-[640px]:px-3 max-[640px]:-ml-14 py-2.5 text-sm text-[#5b5b66] dark:text-(--wui-color-text-secondary)"
         >
           <label :class="filterLabelClass">
             <web-ui-select
@@ -1082,9 +1082,7 @@ watch(addDialogOpen, (open, _, onCleanup) => {
               :key="resource.id"
               class="group relative flex items-center gap-3 px-4 max-[640px]:px-2 py-3 cursor-pointer transition-colors duration-100 rounded-xl"
               :class="[
-                selectedId === resource.id
-                  ? 'bg-black/[0.05] dark:bg-white/[0.08]'
-                  : 'hover:bg-black/[0.035] dark:hover:bg-white/[0.05]',
+                selectedId === resource.id ? 'bg-black/5 dark:bg-white/8' : 'hover:bg-black/3.5 dark:hover:bg-white/5',
                 resource.broken ? 'opacity-60' : ''
               ]"
               @click="selectResource(resource.id)"
@@ -1115,7 +1113,7 @@ watch(addDialogOpen, (open, _, onCleanup) => {
                   />
                   <template v-else>
                     <span
-                      class="text-sm font-medium leading-snug break-words line-clamp-2 max-w-[60%] max-[640px]:max-w-full"
+                      class="text-sm font-medium leading-snug wrap-break-word line-clamp-2 max-w-[60%] max-[640px]:max-w-full"
                       :class="
                         resource.broken
                           ? 'text-[#b0b0b8] line-through dark:text-(--wui-color-text-disabled)'
@@ -1204,7 +1202,7 @@ watch(addDialogOpen, (open, _, onCleanup) => {
               slot="prefix"
               :size="14"
               :icon="lucideTags"
-              class="text-[var(--wui-color-accent,#08f)]"
+              class="text-(--wui-color-accent,#08f)"
             ></web-ui-icon>
             编辑标签
           </web-ui-dropdown-item>
@@ -1217,7 +1215,7 @@ watch(addDialogOpen, (open, _, onCleanup) => {
               slot="prefix"
               :size="14"
               :icon="lucideTrash2"
-              class="text-[var(--wui-color-danger,#ef4444)]"
+              class="text-(--wui-color-danger,#ef4444)"
             ></web-ui-icon>
             删除
           </web-ui-dropdown-item>
@@ -1268,7 +1266,7 @@ watch(addDialogOpen, (open, _, onCleanup) => {
             />
             <span
               v-else
-              class="font-semibold text-[17px] leading-snug text-[#22212a] break-words min-w-0 dark:text-(--wui-color-text)"
+              class="font-semibold text-[17px] leading-snug text-[#22212a] wrap-break-word min-w-0 dark:text-(--wui-color-text)"
             >
               {{ selectedResource.name }}
             </span>
@@ -1360,9 +1358,7 @@ watch(addDialogOpen, (open, _, onCleanup) => {
                     v-if="getOriginValue(origin)"
                     class="block min-w-0 truncate text-xs leading-5"
                     :class="
-                      origin.kind === 'link'
-                        ? 'text-[var(--wui-color-accent,#08f)]'
-                        : 'text-[#78716c] dark:text-[#a8a29e]'
+                      origin.kind === 'link' ? 'text-(--wui-color-accent,#08f)' : 'text-[#78716c] dark:text-[#a8a29e]'
                     "
                     :title="getOriginValue(origin)"
                     >{{ getOriginValue(origin) }}</span
@@ -1492,7 +1488,7 @@ watch(addDialogOpen, (open, _, onCleanup) => {
 
       <p
         v-if="addPasteCaptured"
-        class="mb-3 flex w-fit items-center gap-1.5 rounded-full bg-[color-mix(in_srgb,var(--wui-color-accent,#08f)_8%,transparent)] px-2.5 py-1.5 text-xs text-[var(--wui-color-accent,#08f)]"
+        class="mb-3 flex w-fit items-center gap-1.5 rounded-full bg-[color-mix(in_srgb,var(--wui-color-accent,#08f)_8%,transparent)] px-2.5 py-1.5 text-xs text-(--wui-color-accent,#08f)"
         role="status"
       >
         <web-ui-icon :icon="lucideClipboardPaste" :size="16"></web-ui-icon>
@@ -1519,7 +1515,7 @@ watch(addDialogOpen, (open, _, onCleanup) => {
           >
             <input type="file" multiple class="sr-only" aria-label="选择要添加的文件" />
             <span
-              class="grid size-[52px] place-items-center rounded-[18px] bg-[color-mix(in_srgb,var(--wui-color-accent,#08f)_10%,transparent)] text-[var(--wui-color-accent,#08f)] transition-[background-color] duration-[160ms] dark:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_8%,transparent)] dark:text-(--wui-color-text-secondary) max-[640px]:size-10 max-[640px]:rounded-xl"
+              class="grid size-13 place-items-center rounded-[18px] bg-[color-mix(in_srgb,var(--wui-color-accent,#08f)_10%,transparent)] text-(--wui-color-accent,#08f) transition-[background-color] duration-[160ms] dark:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_8%,transparent)] dark:text-(--wui-color-text-secondary) max-[640px]:size-10 max-[640px]:rounded-xl"
             >
               <web-ui-icon :icon="lucideUpload" :size="24"></web-ui-icon>
             </span>
@@ -1546,7 +1542,7 @@ watch(addDialogOpen, (open, _, onCleanup) => {
               将添加
             </h3>
             <span
-              class="rounded-full bg-black/[0.04] px-2 py-1 text-xs leading-none text-[#6a6a6a] dark:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_6%,transparent)] dark:text-(--wui-color-text-secondary)"
+              class="rounded-full bg-black/4 px-2 py-1 text-xs leading-none text-[#6a6a6a] dark:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_6%,transparent)] dark:text-(--wui-color-text-secondary)"
               >{{ addQueue.length }} 项</span
             >
           </div>
@@ -1557,7 +1553,7 @@ watch(addDialogOpen, (open, _, onCleanup) => {
               v-for="(item, itemIndex) in addQueue"
               :key="item.id"
               :class="metadataRowClass"
-              class="items-start transition-colors duration-100 hover:bg-black/[0.03] dark:hover:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_5%,transparent)]"
+              class="items-start transition-colors duration-100 hover:bg-black/3 dark:hover:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_5%,transparent)]"
             >
               <span class="grid size-8 shrink-0 place-items-center rounded-[10px]" :class="queueToneClass[item.tone]">
                 <web-ui-icon :icon="item.icon" :size="16"></web-ui-icon>
@@ -1692,7 +1688,7 @@ watch(addDialogOpen, (open, _, onCleanup) => {
           <span class="text-xs font-medium text-[#6a6a6a] dark:text-(--wui-color-text-secondary)">当前标签</span>
           <div
             v-if="editTagsDraftTags.length"
-            class="flex min-h-[66px] flex-wrap items-center gap-1.5 rounded-2xl bg-black/[0.03] p-2.5 dark:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_4%,transparent)]"
+            class="flex min-h-[66px] flex-wrap items-center gap-1.5 rounded-2xl bg-black/3 p-2.5 dark:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_4%,transparent)]"
           >
             <span
               v-for="(tag, tagIndex) in editTagsDraftTags"

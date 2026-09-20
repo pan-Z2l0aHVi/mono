@@ -20,11 +20,11 @@ function Home() {
   return (
     <div className="max-w-4xl mx-auto px-6 py-12 flex flex-col items-center text-center">
       <div className="relative group mb-8">
-        <div className="absolute -inset-1.5 rounded-[2.5rem] bg-gradient-to-tr from-(--wui-color-accent) to-(--wui-color-accent) opacity-40 blur-xl transition-all duration-500 group-hover:opacity-75"></div>
+        <div className="absolute -inset-1.5 rounded-[40px] bg-linear-to-tr from-(--wui-color-accent) to-(--wui-color-accent) opacity-40 blur-xl transition-all duration-500 group-hover:opacity-75"></div>
         <img
           src={`${import.meta.env.BASE_URL}bo-transparent.png`}
           alt="Bo Logo"
-          className="relative w-36 h-36 md:w-44 md:h-44 rounded-[2rem] shadow-2xl border border-(--wui-color-border) object-cover bg-(--wui-color-surface) transition-transform duration-300 group-hover:scale-105"
+          className="relative w-36 h-36 md:w-44 md:h-44 rounded-[32px] shadow-2xl border border-(--wui-color-border) object-cover bg-(--wui-color-surface) transition-transform duration-300 group-hover:scale-105"
         />
       </div>
 

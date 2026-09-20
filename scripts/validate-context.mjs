@@ -355,7 +355,16 @@ const markdownFiles = [
   ...walk('docs/adr', file => file.endsWith('.md')),
   ...walk('.agents', file => file.endsWith('.md')).filter(file => !fromLockedSkill(file)),
   ...walk('packages', file => path.basename(file) === 'AGENTS.md'),
-  ...walk('apps', file => path.basename(file) === 'AGENTS.md')
+  ...walk('apps', file => path.basename(file) === 'AGENTS.md'),
+  // workspace README 与包级 AGENTS.md 同属指令面，但只能列一层：walk 会连 apps/*/node_modules 与 dist 一起吞进来。
+  ...['packages', 'apps'].flatMap(directory =>
+    exists(directory)
+      ? fs
+          .readdirSync(path.join(root, directory), { withFileTypes: true })
+          .filter(entry => entry.isDirectory() && exists(`${directory}/${entry.name}/README.md`))
+          .map(entry => path.join(root, directory, entry.name, 'README.md'))
+      : []
+  )
 ]
 // (?<!!?) 的 `!?` 允许匹配空串，lookbehind 恒假，链接扫描因此从未跑过；这里要求前面确实不是 `!`（图片语法）。
 const linkPattern = /(?<!!)\[[^\]]*\]\(([^)]+)\)/g
