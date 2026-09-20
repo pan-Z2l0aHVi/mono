@@ -12,8 +12,8 @@ import { dispatchOpenChangeEvent } from '@/shared/open-state'
 import { defineNativeDialogPresence } from '@/shared/overlay/native-dialog-presence'
 import { defineNestedDrawerLayers } from '@/shared/overlay/nested-drawer-layers'
 import { defineOpenOverlay, type OpenOverlayHandle } from '@/shared/overlay/open-overlay'
-import { findNearestTheme } from '@/shared/overlay/theme-overlay-scope'
 import { defineScrollLockLease } from '@/shared/scroll-lock/scroll-lock'
+import { prefersReducedMotion } from '@/shared/theme/reduced-motion'
 
 import style from './style.css?inline'
 
@@ -277,18 +277,6 @@ export class WebUiDrawer extends LitElement {
     return this._measureDragSize() + this._readDrawerInset(dialog)
   }
 
-  private _isReducedMotion(): boolean {
-    // 优先尊重所在 web-ui-theme 的 motion 设置；无主题范围时回退到系统 prefers-reduced-motion。
-    // jsdom 等环境无 matchMedia，视为完整动效。
-    const theme = findNearestTheme(this)
-    if (theme) return theme.isReducedMotion()
-    try {
-      return typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    } catch {
-      return false
-    }
-  }
-
   private _isDragging(): boolean {
     return this._dragGesture?.isDragging() ?? false
   }
@@ -491,7 +479,7 @@ export class WebUiDrawer extends LitElement {
       this._closeFromDrag()
     }
 
-    if (this._isReducedMotion() || Math.abs(to - from) < 1) {
+    if (prefersReducedMotion(this) || Math.abs(to - from) < 1) {
       // 与 _settleRebound 的无动画路径对称：自己解除抑制，不依赖调用方清过类。
       dialog.classList.remove('is-dragging')
       finishClose()
@@ -519,7 +507,7 @@ export class WebUiDrawer extends LitElement {
       this._clearDragStyles(dialog)
     }
 
-    if (this._isReducedMotion() || Math.abs(from) < 1) {
+    if (prefersReducedMotion(this) || Math.abs(from) < 1) {
       // 无动画路径：直接移除内联回到 CSS 打开位。CSS 化后计算值就是可信的打开位 0，
       // 不存在 WAAPI fill 覆盖，无需强制 reflow「烘焙」。
       dialog.classList.remove('is-dragging')

@@ -3,6 +3,7 @@ import { customElement, property } from 'lit/decorators.js'
 
 import { normalizeLiteral } from '@/shared/normalize'
 import { applyOverlayRootStyles } from '@/shared/overlay/overlay-root'
+import { parseDuration } from '@/shared/theme/duration'
 
 import style from './style.css?inline'
 
@@ -43,12 +44,6 @@ function removeTransitionOriginListeners() {
   if (--transitionOriginCount > 0) return
   window.removeEventListener('pointerdown', recordTransitionOrigin, true)
   window.removeEventListener('keydown', forgetTransitionOrigin, true)
-}
-
-function parseDuration(value: string): number {
-  const match = /^\s*([+-]?(?:\d+\.?\d*|\.\d+))(ms|s)\s*$/.exec(value)
-  if (!match) return 500
-  return Number(match[1]) * (match[2] === 's' ? 1000 : 1)
 }
 
 function resolveAppearance(appearance: ThemeAppearance): 'light' | 'dark' {
@@ -205,7 +200,7 @@ export class WebUiTheme extends LitElement {
 
   private _transitionMotion(): { duration: number; easing: string } {
     const style = getComputedStyle(this)
-    const duration = parseDuration(style.getPropertyValue('--wui-theme-transition-duration'))
+    const duration = parseDuration(style.getPropertyValue('--wui-theme-transition-duration')) ?? 500
     const easing = style.getPropertyValue('--wui-theme-transition-easing').trim() || 'ease-in'
     const safeEasing = globalThis.CSS?.supports('animation-timing-function', easing) ? easing : 'ease-in'
     return { duration: Math.max(0, duration), easing: safeEasing }
