@@ -260,10 +260,13 @@ export class WebUiTheme extends LitElement {
       this.style.setProperty('display', 'block')
       this.style.setProperty('view-transition-name', transitionName)
     }
-    document.adoptedStyleSheets = [...document.adoptedStyleSheets, styleSheet]
 
     const restoreCapture = () => {
-      document.adoptedStyleSheets = document.adoptedStyleSheets.filter(sheet => sheet !== styleSheet)
+      try {
+        document.adoptedStyleSheets = document.adoptedStyleSheets.filter(sheet => sheet !== styleSheet)
+      } catch {
+        // 拒绝写入的 setter 也拒绝回收，样式表本就没进去；host 内联态的恢复不能因此中断。
+      }
       if (!transitionName) return
       if (hadTransitionName) this.style.setProperty('view-transition-name', hadTransitionName)
       else this.style.removeProperty('view-transition-name')
@@ -277,7 +280,10 @@ export class WebUiTheme extends LitElement {
       this.requestUpdate('appearance', previous)
       return this.updateComplete
     }
+    // cleanup 必须在 adoptedStyleSheets 写入之前登记：写入同步抛错时 setter 的 .catch 才拿得到它，
+    // 否则 host 上的 view-transition-name 会残留，污染之后每一次 view transition（issue #146）。
     this._transitionCleanup = restoreCapture
+    document.adoptedStyleSheets = [...document.adoptedStyleSheets, styleSheet]
     const transition = document.startViewTransition(commit) as unknown as ViewTransitionLike
     this._activeTransition = transition
     const animations: Animation[] = []
