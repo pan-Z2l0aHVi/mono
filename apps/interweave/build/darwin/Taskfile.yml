@@ -95,9 +95,24 @@ tasks:
     cmds:
       - task: create:dmg
 
+  generate:dmg-icon:
+    summary: |-
+      Generates the shaped DMG volume icon `build/darwin/dmg-icon.icns` from `docs/design/app-icons/interweave-dmg-icon.png` (pre-shaped with a 100px transparent margin), because the DMG volume icon is rendered as-is, without the system mask.
+      `-windowsfilename=` is required to skip the `.ico` that `wails3 generate icons` emits by default: omitting the flag does not skip it, and pointing it at a throwaway absolute path would break Windows hosts, which also run the shared `common:generate:icons` task.
+    run: once
+    platforms: [darwin]
+    sources:
+      - '../../docs/design/app-icons/interweave-dmg-icon.png'
+    generates:
+      - 'build/darwin/dmg-icon.icns'
+    cmds:
+      - wails3 generate icons -input ../../docs/design/app-icons/interweave-dmg-icon.png -macfilename build/darwin/dmg-icon.icns -windowsfilename=
+
   create:dmg:
     summary: Creates a configurable `.dmg` from the `.app` bundle
     platforms: [darwin]
+    deps:
+      - task: generate:dmg-icon
     cmds:
       - >-
         wails3 tool package --format dmg --name "{{.APP_NAME}}" --out "{{.BIN_DIR}}"
