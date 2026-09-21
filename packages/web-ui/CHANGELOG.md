@@ -1,5 +1,137 @@
 # @greypan/web-ui
 
+## 7.0.0
+
+### Major Changes
+
+- 5be1ee4: Replace the toast imperative API's dedup-and-drop behavior with upsert semantics, and retire `toast.updateMessage()`.
+  
+  Repeated calls that pass the same `id` now converge on one toast instead of silently discarding the update: supplied fields overwrite, omitted ones keep their value, and the call returns that toast's id in both cases. `duration` restarts the countdown only when passed explicitly; changing `position` moves the element to the new container and keeps the remaining time. `container` and `target` are read from the first call only.
+  
+  A toast that is already exiting, or that a host pulled out of the DOM, no longer counts as mounted: the call creates a new toast instead of patching one that is about to disappear, and the exiting element keeps its own `toast-close` bookkeeping — a late `toast-close` can never remove a toast that reused the same id.
+  
+  The `error` shortcut's 5000 ms default is applied at mount instead of being injected into every call, so it no longer counts as an explicit `duration`: repeated `toast.error(msg, { id })` calls keep the running countdown. As a side effect the generic `toast({ type: 'error' })` form now defaults to 5000 ms too, which is what the option table documented all along.
+  
+  `toast.close(id)` and `toast.clear()` now also cover the states before a toast becomes visible. An id still queued in the current microtask is dropped before it mounts (nothing appears, no event is emitted), and a toast that is mounted but whose `show()` has not run yet emits `toast-close` immediately instead of ignoring the call. Both windows used to swallow the request silently, so the toast appeared anyway. A toast whose auto-close countdown elapsed while the main thread was blocked also closes on resume instead of staying open forever after a `position` upsert.
+  
+  The old dedup checked only mounted toasts, so two calls inside one microtask both mounted (two elements sharing one `toastId`). The second element was unreachable from the manager: `removeToast()` returned early for ids it did not know, so neither `close()`, `clear()` nor the natural timeout could remove it, and it stayed in the `role="log"` container forever.
+  
+  Migration:
+  
+  ```ts
+  toast.updateMessage(id, { message: 'new message', heading: 'new heading' }) // before
+  toast({ id, message: 'new message', heading: 'new heading' }) // after
+  ```
+  
+  `ToastMessageUpdateOptions` is removed.
+
+### Minor Changes
+
+- 5be1ee4: Align the drawer's drag-to-close decision with Base UI `useSwipeDismiss` step by step: the flick is judged by the average velocity over the whole gesture, the decision origin and clock are calibrated to the first move, and a change of mind cancels the flick — so sweeping back towards the edge no longer closes the drawer.
+  
+  - The displacement origin and the decision clock both reset to the first `pointermove`, matching upstream's `dragStartPos` / `swipeStartTime` reset in the `trackDrag` branch. The gap between the press and the first move — on iOS touch the first `touchmove` already arrives offset from the `touchstart` — is absorbed instead of being cashed in on that first move as a jump. Its whole travel is discarded with it, so a gesture now needs at least two moves to accumulate any displacement.
+  - The flick test moves from "the 100ms sliding-window velocity at release" to "net displacement ÷ whole-gesture duration", with the denominator floored at 50ms to match `MIN_VELOCITY_DURATION_MS`, and the comparison becomes `>= 500px/s` to match `FAST_SWIPE_VELOCITY`'s `>=`. A zero-length duration yields zero velocity rather than a floored divisor, matching upstream's `durationMs > 0 ? … : 0` guard, so an unmeasurable gesture is never read as a flick. A sliding window only describes the last short stretch of the trace: after dragging out past the overscroll range and sweeping quickly back, the window velocity at release is just as high, so a net displacement of barely a dozen pixels used to read as a flick and close the drawer. Under whole-gesture average velocity that same gesture cannot reach 500px/s without at least 25px of net displacement towards closed.
+  - Any gesture whose net displacement does not point towards closed (`<= 0`) rebounds, matching the `directionalDelta <= 0` guard in `useSwipeDismiss`; the old `displacement > 8px` fallback is removed with it.
+  - The change-of-mind guard is now wired up, and it is what actually stops the reverse sweep. A withdrawal of `10px` or more from the point where the close direction was confirmed marks the gesture as a change of mind and the flick branch refuses to close; displacement that has already crossed the distance threshold clears the mark again, matching upstream's cleanup condition, so a gesture that is past half way is unaffected by a small retreat. Upstream has the same guard, but its only consumer is short-circuited by `!hasReleaseDecision` and `DrawerViewport.onRelease` always returns a decision once the direction is locked, so on the drawer path it was dead code.
+  - The distance threshold changes from one third of the drawer size to one half, via `max(size * 0.5, 10)` matching `getBaseSwipeThreshold()`'s `Math.max(size * 0.5, MIN_SWIPE_THRESHOLD)`. The 10px floor keeps the threshold non-zero when the size cannot be measured, so the drawer never closes on the slightest movement. The distance test now also measures net displacement rather than the absolute position, matching upstream's `directionalDelta = dragOffset − initialTransform`: grabbing the drawer mid-rebound and releasing without dragging further no longer counts as "already past half way". The trigger pill's accent confirmation follows the decision exactly — same quantity (net displacement) and same threshold — so the feedback can no longer light up on a gesture that will rebound.
+  - Dragging in the opening direction is damped by a square root (`sign(d) * |d| ** 0.5`) instead of a linear `0.15` factor capped at `10%` of the drawer size, matching `applyDirectionalDamping`. It self-limits as the displacement grows, so no cap is needed, and it applies to the gesture's increment added on top of the offset the drag started from (`base + damp(delta)`), the way upstream adds it to the frozen initial transform rather than damping the total.
+  - `DragEndInfo` gains a `duration` field and `attachDragGesture` a `calibrateOnFirstMove` option (both internal to the shared gesture layer, not part of the package's public export surface) so a consumer can judge intent over the whole gesture.
+  - The backdrop-click dismissal now honors only a genuine tap chain. The browser targets the click of a press-drag-release at the common ancestor of the press and release points, so pressing on the panel content — or on the backdrop itself — dragging towards the mask and releasing there produced a click with `dialog` as its target, closing the drawer through the backdrop branch even though nothing like a tap happened. The dialog now records the `pointerdown` origin and coordinates, and a click closes only when the press started on the backdrop and the press-to-release travel stays within the tap magnitude (10px). A `detail`-0 click (keyboard activation, programmatic `.click()`) never consumes the record, matching the guards image-preview already uses. The remaining close paths are unchanged: a near-stationary tap on the mask still closes. With the backdrop press record in place the drag hit zone no longer needs to extend past the panel edge — a press landing 1–2px outside the panel belongs to the backdrop, where the tap-distance validation (not the gesture) decides whether it closes.
+  
+  The public API and event contract are unchanged, as are the timing and count semantics of `open-change`.
+- 5be1ee4: Move the drawer's post-release settle animation (rebound to open, or slide out to closed) from a JS spring driven by WAAPI `element.animate()` sampling to a CSS transition (issue #123).
+  
+  - Dragging still writes an inline `transform` with `transition: none`; on release the final value is written and `transform` is handed back to CSS entirely, so the rebound is one single transition — no `element.animate()`, no `fill`, no `onfinish` anywhere in the path.
+  - Release velocity no longer samples a spring trajectory; it only estimates the transition duration (180–420ms). The overshoot feel is approximated by easing curves matching the old spring's damping ratio: no overshoot towards closed, roughly 3% overshoot on rebound.
+  - No JS→CSS handoff boundary is left, so the implementation is immune to Safari not honouring WAAPI fill overrides when it computes the before-change style; the reflow-baking patch introduced in r3 to work around that quirk is removed.
+  - The public API and event contract are unchanged. Two internal variables, `--wui-internal-settle-duration` and `--wui-internal-settle-easing`, are added for the settle transition and are not part of the public token contract.
+- 5be1ee4: Reconcile an open dropdown when its host is re-attached, so a remount while open no longer leaves the control stuck in an un-closable open state (issue #120).
+  
+  `disconnectedCallback` tears the panel down and migrates the menu items back to the host, but `open` is a public property and is not rewritten by an unmount. Lit does not record `changedProperties` while a host is disconnected, so after a remount `updated()` never hits the `open` branch again: the host kept reflecting `open` and `aria-expanded="true"` while there was no layer for Escape or an outside click to close. A framework that re-creates the host while it is open — a `key` change, a `v-if` around an already-open menu, a list re-render — landed there permanently.
+  
+  - Opening is now reconciled through a single entry point shared by the `open` branch of `updated()` and `connectedCallback()`, so panel, scroll lock, outside-click guard, hover bindings and menu focus converge on the same state on both paths.
+  - On re-attach the menu only takes focus back when focus has nowhere to go — i.e. it fell back to `document.body`/`documentElement`. If the user has since focused something else, the panel is rebuilt without stealing that focus.
+  - A closed host that is re-attached stays closed: reconciliation runs only while `open` is set, and only for a re-connect (`hasUpdated`), so the first connect remains `updated()`'s responsibility.
+  - Only the root layer is rebuilt; submenu panels opened from it are not resurrected, matching what a fresh open does.
+  
+  The public API, the `open` property and the `open-change` contract are unchanged.
+- 5be1ee4: Escape now closes only the innermost open overlay.
+  
+  Previously every overlay component listened for Escape on its own — popover on `document`, select and autocomplete on the host, dropdown and context-menu through `handleMenuKeyboard`, drawer on its native `<dialog>` — with no shared notion of which one was innermost. Pressing Escape with a select open inside a drawer therefore closed the _outer_ drawer and left the select open: the inner panel is portalled into the drawer's `<dialog>`, so the host-level listener never saw the key, while the drawer's own guard only looked for `HTMLDialogElement` on the composed path and missed the portalled panel.
+  
+  Escape is now arbitrated by a single shared owner:
+  
+  - One `document`-level capture listener resolves the innermost open overlay and closes only that one. Because it runs in the capture phase, `stopPropagation()` keeps component-level handlers from closing a second overlay.
+  - `preventDefault()` also suppresses the native `<dialog>` close request, so `web-ui-dialog` — which previously relied on the `cancel` event — is covered by the same path.
+  - Innermost is resolved against `overlayComposition`'s logical tree, not the event path. That matters: with focus parked in the drawer while a listbox is open, the event path only reaches the drawer, and a path-based rule would again close the outer layer.
+  - Unrelated sibling overlays (neither containing the other) fall back to open order, so the most recently opened one closes.
+  - `controlled` and `no-escape-close` are preserved: components keep expressing their own close semantics, and `open-change` still goes through the same user-change channel.
+  
+  The public API and event contract are unchanged.
+- 5be1ee4: `<web-ui-radio-group>` and `<web-ui-checkbox-group>` now take a `direction` property and attribute — `'horizontal' | 'vertical'`, defaulting to `'vertical'`, so a group that never sets it keeps laying its members out in a column. An invalid value falls back to the default instead of throwing. The property reflects, so every group now carries a `direction` attribute — `vertical` even when nothing sets it — which matters if you assert on rendered DOM or select on `[direction]`.
+  
+  Member spacing is now per component: `--wui-radio-group-gap` and `--wui-checkbox-group-gap` replace the shared `--wui-selection-group-gap` that the unreleased selection-control change introduced, so a page can widen one group's rhythm without touching the other. Both default to `8px`, matching the previous value.
+- 5be1ee4: `<web-ui-svg-draw-lines>` gained a second playback direction and an opt-out for playing on its own. `replay({ reverse: true })` retracts the stroke back along the same path, from fully drawn to blank — the single-direction rule was a limitation of the old implementation, not of the technique, because both directions are the same dash animation with the two endpoints swapped. A reverse run ends on "no line at all", so instead of restoring the consumer's inline dash styles the way a reveal run does, it leaves the stroke hidden by inline dash values that stay until the next `replay()`. That end state lives in the DOM rather than in a live animation, so moving or re-parenting the geometry cannot bring the stroke back — and a `replay()` that lands in a reduced-motion scope undoes the residue instead of animating, so a control can never be left checked but invisible. `no-autoplay` skips the automatic single playback that fires when slot content first settles, for callers that decide when to draw. The default is unchanged, so a standalone `<web-ui-svg-draw-lines>` still animates as soon as it renders.
+  
+  `<web-ui-checkbox>` uses both switches. A checkbox that mounts already `checked` now shows a static checkmark instead of drawing it during the page's first frame, and unchecking retracts the check along its path instead of only fading it out. The stroke is held at full opacity for the retract so the line, not the fade, is what makes the check disappear. Inside a `motion="reduced"` theme scope nothing is held: no retract runs there, and holding anyway would leave a fully drawn check on an unchecked control.
+  
+  The draw and retract duration also stops being a literal in the checkbox template and follows `--wui-duration-trigger` (160ms by default), resolved from the theme on each update, so the stroke and the indicator's background transition stay on the same beat when a theme overrides that token. That literal never reached a release — the check draw itself is new in this batch — so the `300ms` written into an earlier draft of this release was never published either.
+- 5be1ee4: Internalize theme transitions into `web-ui-theme`.
+  
+  - Adds the boolean `transition` attribute; it is `false` by default and uses native HTML attribute-presence semantics.
+  - Root themes reveal the whole page with a circular View Transition. Nested themes assign a temporary capture name and reveal only their own box.
+  - Reads `--wui-theme-transition-duration` and `--wui-theme-transition-easing`, keeps one flight at a time, and falls back to an immediate appearance update when View Transitions or reduced-motion behavior makes animation unavailable.
+  - Replaces the duplicated demo-side transition CSS/logic.
+
+### Patch Changes
+
+- 5be1ee4: Lower the dialog entrance scale token default from 1.2 to 1.1 so the default no longer overhangs narrow viewports.
+- 5be1ee4: Bring `imagePreview()` into Escape arbitration, so it stops closing the layer underneath it.
+  
+  The preview drives its own native `<dialog>` and relied on the `cancel` event for Escape without ever registering as an open overlay. Because Escape is arbitrated globally and the arbiter calls `preventDefault()` as soon as it resolves a registered layer, having the preview open on top of anything registered meant one Escape closed the layer _underneath_ and left the preview on screen. The preview now claims its `<dialog>` while it is open — including a fresh claim after being reattached to the DOM — and its `cancel` handler is kept only for the top-layer guarantee.
+  
+  - Unlike the other overlays it carries no inert channel: `imagePreview()` has no `no-escape-close` option, so Escape always closes it.
+- 5be1ee4: Consolidate open-overlay ownership into a single `open-overlay` module, so "this layer is open" has exactly one owner.
+  
+  The escape-ownership change introduced one shared arbiter, but its state was still split across three modules — `composition` (which panels are registered), `escape-dismiss` (which registered panel receives the keystroke) and `lifecycle` (when a frame transaction stops being valid). None of them owned the invariant they shared, so each overlay component re-assembled it by hand: a missed unregister, or a panel reattached to the DOM while open, could leave a visible layer the arbiter no longer knew about.
+  
+  - Claiming a panel now returns the handle that owns it; releasing is idempotent, and re-claiming starts a new session, which also resets the not-closable channel.
+  - Sub-layers (second-level menus) adopt into the claiming handle, so a root that re-claims takes its still-visible sub-layers with it instead of orphaning them. A sub-menu that is still animating out stays owned until its transition ends, so a click inside it is no longer read as a click outside the menu.
+  - A panel gives up its claim as it starts closing rather than after the exit animation, so it stops swallowing Escape while it fades out.
+  - The public API and event contract are unchanged; `composition`, `escape-dismiss` and `lifecycle` were internal and are now removed.
+- 5be1ee4: Fix modal dialog, drawer, and image preview not reconciling after being reattached to the DOM while open: the native `<dialog>` loses its top-layer membership when the host is detached (the `open` attribute remains, so `showModal` could never run again) and the scroll lock was not restored. Reconnecting now reconciles the native dialog presence (self-marked close + `showModal`), the scroll lock, and the nested drawer layer registration. The image preview also re-attaches its pinch-zoom gesture on remount, which was permanently lost after a detach because `firstUpdated` only runs once.
+- 5be1ee4: Turn the radio and checkbox host into a shared selection-control box. The host is now inline-flex with content-driven height, so the inherited page line-height can no longer inflate it or leave an uneven gap above and below the 18px indicator; radio and checkbox now sit identically next to text and to each other. Both components read one layout stylesheet (`src/assets/selection-control.css`) and share the `--wui-selection-control-size` token, while `<web-ui-radio-group>` and `<web-ui-checkbox-group>` accept `--wui-selection-group-gap` for member spacing. Checkbox also suppresses its focus ring after pointer interaction the way radio already did.
+  
+  The checked states now animate: the radio dot scales from 0 to 1 (and back to 0 when the selection moves away), and the checkbox checkmark draws itself in from left to right through `<web-ui-svg-draw-lines>`. The checkmark is now the control's own stroked path rather than the filled `heroiconsCheck16Solid` icon, because drawing requires a stroke and the reveal starts at the path's first point, which also fixes the direction and the weight. Unchecking fades the checkmark out — `svg-draw-lines` only supports drawing on, not in reverse.
+  
+  Unchecked controls gained idle hover and pressed backgrounds on the indicator. Because the label text is part of the same trigger row, hovering or pressing the text now tints the indicator exactly like hovering the indicator itself; hover is limited to fine-pointer devices, and checked or disabled controls keep their own surfaces.
+  
+  The idle indicator surface moves from `--wui-color-surface-raised` to `--wui-color-surface-control`, the tier neutral buttons already use. In dark mode `surface-raised` (`#2c2c2e`) sat only ~8 luminance points above the page (`#242628`), leaving radio circles and checkbox boxes barely visible.
+- 5be1ee4: Fix the toast hover pause so leaving resumes the remaining time instead of restarting the full duration, and make the pause impossible to leak.
+  
+  Hovering a toast used to clear the auto-close timer without recording anything, and `pointerleave` restarted the full `duration`. The two halves disagreed with each other (the element already had a real pause/resume pair for node relocation), and clearing without recording left `pointerleave` as the only way back: one missed leave — pointer dragged out of the window, element relocated or removed while hovered, layout moving the toast away from a stationary cursor — parked the toast on screen forever with no fallback.
+  
+  Hover now records the remaining time and resumes it, and a document-level `pointerover`/`pointerout`/`pointerleave` fallback releases the pause when the element's own `pointerleave` never arrives. A toast that is mounted while the pointer already sits over it stays paused instead of starting a countdown under the cursor.
+  
+  Passing `duration` explicitly during a hover pause no longer starts the timer: the value is recorded and the countdown runs with it once the pointer leaves, so an upsert can no longer close a toast that is still hovered. `duration: 0` keeps meaning "never auto-close" instead of being read as "already expired".
+- 5be1ee4: Align drawer close button fallback right offset from 20px to 16px.
+- 5be1ee4: Harden the toast auto-close timer and correct two README claims that no longer match the code.
+  
+  - `resumeAutoClose()` now clears any timer still in flight before arming the resumed one. `startAutoClose()` already did this, and pause/resume is expected to stay strictly paired, so nothing observable changes today. If the call order is ever re-arranged, assigning `_closeTimer` over a live handle left two deadlines counting down, and the earlier one closed the toast before its remaining time was up.
+  - The READMEs described Escape arbitration as if `image-preview` were outside it. It registers its native `<dialog>` with the same arbiter, so layer order decides which surface closes, and the component's `cancel` handler only vetoes the native instant close so the exit transition still plays; both files now say so.
+  - `--wui-drawer-close-right` is documented as `20px` while the fallback has been `16px` since `2add3405`. English and Chinese tables now match `style.css`.
+- 5be1ee4: Finish the shared pressed composition of `switch`, `segmented` and `slider`: the pressed/dragged indicator of `segmented` and the pressed thumb of `slider` no longer paint a glass fill, so all three now render only the inset highlight stack and read as one flat lift.
+  
+  - The release that flattened their pressed and dragging shadows to a single `0 2px 20px rgb(0 0 0 / 0.2)` layer described all three as sharing the same pressed composition, but `segmented` and `slider` still painted `background-color: var(--wui-color-surface-glass, …)`. Only `switch` had actually been moved to `transparent`.
+  - With the fill gone, the enlarged `scale(1.5)` indicator is a pure glass highlight over whatever sits behind it, matching the switch thumb's press state.
+  - CSS only; no API, token or event change.
+- 5be1ee4: Radio and checkbox no longer have a pressed state. The shared selection-control shell tinted the indicator's state layer 15% while the pointer was down, on top of the 6% hover tint; that rule is gone, so pressing either control no longer changes its surface. Hover keeps its layer, still with no transition and only on `(hover: hover) and (pointer: fine)` devices, and checked and disabled controls are unaffected. Touch devices are where this reads strongest: they never matched the hover layer either, so a tap now changes the check itself and nothing else on the control. `--wui-color-state-layer-active` is untouched and still backs the pressed states of `button`, `input-number` and `segmented-trigger`.
+- 5be1ee4: Radio and checkbox hover and pressed feedback now switches in one frame. The shared selection-control shell transitioned the indicator's own `background-color` (and a `border-color` neither indicator ever gave a width), so the idle 6% hover and 15% pressed tints ramped in over `--wui-duration-focus` (200ms) while every other component's state layer swaps instantly — `button` has no background transition at all — and the README motion section promises "hover/active background feedback switches instantly with no transition". The tints move to a dedicated overlay (`::before`, clipped to the indicator radius and stacked between the control surface and the dot/checkmark), which carries no transition, so pressing and releasing read as one frame.
+  
+  The indicator background keeps its own transition for the checked fill, now at `--wui-duration-trigger` (160ms) to match the radio dot and the checkbox checkmark, and it fades in **and** out: checking eases the circle or box up to `--wui-color-accent`, unchecking eases it back to `--wui-color-surface-control`. Previously that fade ran on the focus duration, and the two needs — instant state-layer feedback and a fading checked fill — could not both be met by one property on one element.
+  
+  The checkbox checkmark now draws with the default linear easing instead of `ease-out`. The curve was the problem, not the length: `ease-out` spent most of the window on the first stroke, so the long up-stroke arrived all at once, while a constant-speed reveal spreads evenly across the whole path. The icon's own opacity fade and the unchecked fade-out stay at 160ms. Reduced-motion themes are unaffected: `web-ui-svg-draw-lines` skips playback inside a `motion="reduced"` scope.
+
 ## 6.4.0
 
 ### Minor Changes
