@@ -2,6 +2,7 @@ import { html, LitElement, unsafeCSS } from 'lit'
 import { customElement, property, state } from 'lit/decorators.js'
 import { classMap } from 'lit/directives/class-map.js'
 
+import glass from '@/assets/glass.css?inline'
 import { installPointerFocusSuppression } from '@/shared/focus/pointer-focus'
 import { FormAssociated, defineFormAssociation, FormAssociationController } from '@/shared/form-association'
 import { attachDragGesture, type DragGestureHandle } from '@/shared/gesture/drag-gesture'
@@ -16,7 +17,9 @@ installPointerFocusSuppression()
 
 @customElement('web-ui-segmented')
 export class WebUiSegmented extends FormAssociated(LitElement) {
-  static override styles = unsafeCSS(style)
+  // 指示器静止态是玻璃材质，直接复用共享 .wui-glass 配方（底色 / backdrop blur /
+  // 描边环 / 投影），按压与拖拽态只在其上换 active 档底色并放大。
+  static override styles = [unsafeCSS(glass), unsafeCSS(style)]
   @property({ type: String, reflect: true }) name = ''
   @property({ type: Boolean, reflect: true }) disabled = false
   @property({ type: Boolean, reflect: true }) required = false
@@ -250,7 +253,7 @@ export class WebUiSegmented extends FormAssociated(LitElement) {
         @pointercancel=${this.handlePointerUp}
         @pointerleave=${this.handlePointerLeave}
       >
-        <span class="wui-segmented-indicator"></span>
+        <span class="wui-glass wui-segmented-indicator"></span>
         <slot></slot>
       </div>
     `
