@@ -19,6 +19,34 @@ function handleCustomChange(event: WebUiEvent<WebUiAutocomplete, 'change'>) {
   customSelectedValue.value = event.currentTarget.selectedValue
 }
 
+// 自定义 trigger slot：多行 textarea 触发器保留 Enter 换行，Escape/blur 关闭面板
+const multilineText = ref('')
+const multilineCommit = ref({ value: '', selectedValue: '' })
+const multilineTrigger = ref<WebUiAutocomplete>()
+
+function handleMultilineInput(event: WebUiEvent<WebUiAutocomplete, 'input'>) {
+  multilineText.value = event.currentTarget.value
+}
+
+function handleMultilineChange(event: WebUiEvent<WebUiAutocomplete, 'change'>) {
+  multilineCommit.value = {
+    value: event.currentTarget.value,
+    selectedValue: event.currentTarget.selectedValue
+  }
+}
+
+// 公共 focus() 委托给当前生效触发器：这里是 light DOM 的 web-ui-textarea
+function focusMultilineTrigger() {
+  multilineTrigger.value?.focus()
+}
+
+// 单行自定义触发器保持默认 Enter 语义：面板打开时 Enter 选择高亮项
+const singleLineText = ref('')
+
+function handleSingleLineInput(event: WebUiEvent<WebUiAutocomplete, 'input'>) {
+  singleLineText.value = event.currentTarget.value
+}
+
 // selected-value 由当前输入派生：文本不再精确匹配任何 option label 时自动清空
 const liveInput = ref('')
 const liveSelectedValue = ref('')
@@ -137,6 +165,51 @@ const cities = ['北京', '上海', '广州', '深圳', '杭州', '成都', '武
       </web-ui-autocomplete>
       <div>最近提交 value：{{ customValue || '无' }}</div>
       <div>最近提交 selected-value：{{ customSelectedValue || '无' }}</div>
+    </div>
+
+    <h2>自定义 Trigger</h2>
+    <p class="mb-2 text-sm text-(--wui-color-text-secondary)">
+      通过 <code>slot="trigger"</code> 用可编辑组件替换默认输入框。多行触发器（<code>web-ui-textarea</code>）保留 Enter
+      换行：Enter 不选择高亮项，面板用 Escape 或 blur 关闭；面板打开时 ArrowUp/ArrowDown 移动文本光标。选中候选仍会把
+      label 回填到触发器。
+    </p>
+
+    <h3>多行文本触发器</h3>
+    <div class="mb-3 flex flex-col gap-3">
+      <web-ui-autocomplete
+        ref="multilineTrigger"
+        placeholder="输入框架名"
+        @input="handleMultilineInput"
+        @change="handleMultilineChange"
+      >
+        <web-ui-textarea
+          slot="trigger"
+          :rows="3"
+          class="[--wui-textarea-width:20rem]"
+          placeholder="多行输入：键入过滤候选，Enter 换行"
+        />
+        <web-ui-option v-for="name in frameworks" :key="name" :value="name" :label="name">{{ name }}</web-ui-option>
+      </web-ui-autocomplete>
+      <div class="flex flex-wrap items-center gap-3">
+        <web-ui-button variant="secondary" size="28" @click="focusMultilineTrigger">聚焦触发器</web-ui-button>
+        <span class="text-sm text-(--wui-color-text-secondary)">公共 focus() 委托给当前触发器</span>
+      </div>
+      <div>当前文本（换行原样显示）：</div>
+      <div class="whitespace-pre-wrap text-sm">{{ multilineText || '无' }}</div>
+      <div>最近 change 文本：{{ multilineCommit.value || '无' }}</div>
+      <div>最近 change selected-value：{{ multilineCommit.selectedValue || '无' }}</div>
+    </div>
+
+    <h3>单行输入触发器</h3>
+    <p class="mb-2 text-sm text-(--wui-color-text-secondary)">
+      单行自定义触发器保持默认 Enter 行为：面板打开时 Enter 选择高亮项。
+    </p>
+    <div class="mb-3 flex flex-col gap-3">
+      <web-ui-autocomplete placeholder="输入框架名" @input="handleSingleLineInput">
+        <web-ui-input slot="trigger" placeholder="单行输入：Enter 选择高亮项" />
+        <web-ui-option v-for="name in frameworks" :key="name" :value="name" :label="name">{{ name }}</web-ui-option>
+      </web-ui-autocomplete>
+      <div>当前文本：{{ singleLineText || '无' }}</div>
     </div>
 
     <h2>Portal</h2>
