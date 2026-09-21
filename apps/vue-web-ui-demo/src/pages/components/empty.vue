@@ -10,6 +10,4 @@
 import EmptyDemo from '@/components/empty-demo/index.vue'
 </script>
 
-<template>
-  <div class="p-3"><EmptyDemo /></div>
-</template>
+<template><EmptyDemo /></template>

@@ -24,9 +24,9 @@
 
 ## 角色实施补充（2026-09-01）
 
-`.agents/agents/` 是共享、显式选择的 Session Role 层，固定提供 `manager`、`designer`、`lib-coder`、`biz-coder` 与 `reviewer`。Role 定义会话身份、职责边界、协作与完成定义，并独立于会话内先后出现的多个 Task；Rules 定义约束，Skills 定义专业方法，Task 定义某一时刻的具体需求。
+`.agents/agents/` 是共享、显式选择的 Session Role 层，固定提供 `manager`、`designer`、`lib-coder`、`biz-coder` 与 `reviewer`。Role 定义会话身份、职责边界、协作与完成定义，并独立于会话内先后出现的多个 Task；Rules 定义约束，Skills 定义专业方法，Task 定义某一时刻的具体需求。（2026-09-19 修订：该层的落点迁到 [`.agents/skills/herdr-agents/roles/`](../../.agents/skills/herdr-agents/roles/)，分层语义不变，见 [ADR-0015](0015-role-contracts-in-herdr-agents-skill.md)。）
 
-Role 不与模型、CLI 或固定会话绑定。当前 Harness 不自动选择 Role；用户或 Manager 按 [`CONTRIBUTING.md`](../../CONTRIBUTING.md#角色会话) 显式加载，`.claude/agents` 以 symlink 复用该唯一来源。
+Role 不与模型、CLI 或固定会话绑定。当前 Harness 不自动选择 Role；用户或 Manager 主动加载（加载入口见 `.agents/skills/herdr-agents/roles/`），`.claude/agents` 以 symlink 复用该唯一来源。（2026-09-19 修订：`.claude/agents` symlink 已删除，Role 不再注册为 Claude Code subagent，见 [ADR-0015](0015-role-contracts-in-herdr-agents-skill.md)。2026-09-20 修订：Role 收归 herdr 编排专用，契约、可用 Role 列表与初始化 prompt 全部落在 `.agents/skills/herdr-agents/`，旧 `CONTRIBUTING.md` 的「角色会话」节已删除；普通单会话不承担 Role。）
 
 ## 角色执行体绑定补充（2026-09-10）
 

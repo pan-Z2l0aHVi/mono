@@ -478,8 +478,7 @@ Portal 面板创建时会镜像 host 上解析后的这些变量；更新 host �
 | `--wui-slider-height`          | `var(--wui-slider-track-size, 6px)` | 轨道厚度     |
 | `--wui-slider-track-size`      | `6px`                               | 轨道尺寸     |
 | `--wui-slider-thumb-width`     | `24px`                              | 滑块宽度     |
-| `--wui-slider-thumb-height`    | `18px`                              | 滑块高度     |
-| `--wui-slider-thumb-radius`    | `8px`                               | 滑块圆角     |
+| `--wui-slider-thumb-height`    | `20px`                              | 滑块高度     |
 | `--wui-slider-marks-inset`     | `0`                                 | 刻度内缩     |
 
 #### `<web-ui-checkbox>`
@@ -500,6 +499,12 @@ Portal 面板创建时会镜像 host 上解析后的这些变量；更新 host �
 
 使用 `role="checkbox"` 和 `aria-checked`。Enter/Space 键盘切换。
 
+**布局：** 宿主是 inline-flex 盒，高度由内容撑开、不继承页面行高，因此不会在指示器上下留出多余缝隙；`--wui-selection-control-size`（`18px`）决定指示器宽高，宿主与相邻文字的对齐固定为 `vertical-align: middle`。`<web-ui-radio>` 共用同一套契约。
+
+**选中动画：** 对勾是控件自持的描边路径（不再走 `<web-ui-icon>` 图标资产），外层包 `<web-ui-svg-draw-lines>` 并带 `no-autoplay`，所以挂载时就已勾选的控件显示静态勾。勾选时线条自左向右按恒定笔速画出，时长取 `--wui-duration-trigger`（默认 160ms），在切换当下从已生效的主题解析，和指示器底色那条 transition 落在同一拍；取消时沿同一条路径收回到空白，而不是只淡出；主题范围为 `motion="reduced"` 时两者都跳过，两个状态直接切换。
+
+**未激活态：** 未选中指示器的底色取 `--wui-color-surface-control`（与中性按钮同一档控件底），深色模式下也能和 `--wui-color-page` 分辨开。触发区内任意位置（指示器、间距或右侧 slot 标签）被 hover 时，该底色再叠 6% 状态层。hover 只在 `(hover: hover) and (pointer: fine)` 设备上生效；没有按下态，已选中和禁用态保持各自底色。`<web-ui-radio>` 共用同一套状态。
+
 #### `<web-ui-radio>`
 
 单个单选按钮。
@@ -515,6 +520,8 @@ Portal 面板创建时会镜像 host 上解析后的这些变量；更新 host �
 **事件：** `input`, `change`
 
 **插槽：** `default`（标签文本）
+
+**布局：** 与 `<web-ui-checkbox>` 共用同一套选择控件盒契约——宿主高度由内容撑开、不继承页面行高，指示器宽高走 `--wui-selection-control-size`，与相邻文字按 `vertical-align: middle` 对齐。
 
 #### `<web-ui-switch>`
 
@@ -558,35 +565,69 @@ Portal 面板创建时会镜像 host 上解析后的这些变量；更新 host �
 
 多选复选框组。
 
-| 属性       | 类型       | 默认值  | 说明           |
-| ---------- | ---------- | ------- | -------------- |
-| `value`    | `string[]` | `[]`    | 已选项的值数组 |
-| `name`     | `string`   | `''`    | 表单字段名     |
-| `disabled` | `boolean`  | `false` | 禁用全部子项   |
-| `required` | `boolean`  | `false` | 必填校验       |
+##### 属性
+
+| 属性        | 类型                         | 默认值       | 说明           |
+| ----------- | ---------------------------- | ------------ | -------------- |
+| `value`     | `string[]`                   | `[]`         | 已选项的值数组 |
+| `name`      | `string`                     | `''`         | 表单字段名     |
+| `disabled`  | `boolean`                    | `false`      | 禁用全部子项   |
+| `required`  | `boolean`                    | `false`      | 必填校验       |
+| `direction` | `'horizontal' \| 'vertical'` | `'vertical'` | 布局方向       |
 
 **事件：** `input`, `change`
 
 **插槽：** `default`（投影 `<web-ui-checkbox>` 元素）
 
-同步子 checkbox 的 `checked` 状态。`disabled` 提供继承的有效禁用状态，不改写子项自身的 `disabled` 属性。监听子项 `change` 事件。
+同步子 checkbox 的 `checked` 状态。`disabled` 提供继承的有效禁用状态，不改写子项自身的 `disabled` 属性。监听子项 `change` 事件。`direction` 传入非法值时回退为 `vertical`。
+
+##### Token
+
+| Token                      | 默认值 | 说明                     |
+| -------------------------- | ------ | ------------------------ |
+| `--wui-checkbox-group-gap` | `8px`  | 成员 checkbox 之间的间距 |
+
+在 group 元素本身，或同一个 `<web-ui-theme>` 作用域内的祖先元素上设置。theme 宿主会为自己的子树声明 `8px`，写在 `<web-ui-theme>` 元素之外的覆盖到不了 group。
+
+```css
+web-ui-checkbox-group {
+  --wui-checkbox-group-gap: 16px;
+}
+```
 
 #### `<web-ui-radio-group>`
 
 单选组。
 
-| 属性       | 类型      | 默认值  | 说明                     |
-| ---------- | --------- | ------- | ------------------------ |
-| `value`    | `string`  | `''`    | 当前选中值               |
-| `name`     | `string`  | `''`    | 表单字段名（传递到子项） |
-| `disabled` | `boolean` | `false` | 禁用全部子项             |
-| `required` | `boolean` | `false` | 必填校验                 |
+##### 属性
+
+| 属性        | 类型                         | 默认值       | 说明                     |
+| ----------- | ---------------------------- | ------------ | ------------------------ |
+| `value`     | `string`                     | `''`         | 当前选中值               |
+| `name`      | `string`                     | `''`         | 表单字段名（传递到子项） |
+| `disabled`  | `boolean`                    | `false`      | 禁用全部子项             |
+| `required`  | `boolean`                    | `false`      | 必填校验                 |
+| `direction` | `'horizontal' \| 'vertical'` | `'vertical'` | 布局方向                 |
 
 **事件：** `input`, `change`
 
 **插槽：** `default`（投影 `<web-ui-radio>` 元素）
 
-`disabled` 提供继承的有效禁用状态，不改写子项自身的 `disabled` 属性。
+`disabled` 提供继承的有效禁用状态，不改写子项自身的 `disabled` 属性。`direction` 传入非法值时回退为 `vertical`。
+
+##### Token
+
+| Token                   | 默认值 | 说明                  |
+| ----------------------- | ------ | --------------------- |
+| `--wui-radio-group-gap` | `8px`  | 成员 radio 之间的间距 |
+
+在 group 元素本身，或同一个 `<web-ui-theme>` 作用域内的祖先元素上设置。theme 宿主会为自己的子树声明 `8px`，写在 `<web-ui-theme>` 元素之外的覆盖到不了 group。
+
+```css
+web-ui-radio-group {
+  --wui-radio-group-gap: 16px;
+}
+```
 
 ---
 
@@ -665,6 +706,8 @@ Portal 面板创建时会镜像 host 上解析后的这些变量；更新 host �
 
 使用原生 `<dialog>`，`@cancel` 阻止默认关闭行为。除非存在 `no-escape-close`，否则 Escape 调用 `close()`；除非存在 `no-backdrop-close`，否则点击遮罩关闭。启用 `controlled` 后，两者都只派发关闭请求而不自关闭。
 
+> **Escape 归属**：Escape 由共享仲裁者统一判定，一次按键只关闭**最内层**的已打开浮层（popover、select、autocomplete、dropdown、context-menu、drawer、dialog 都参与）。例如在 drawer 内打开 select，第一次 Escape 只关 select，第二次才关 drawer。互不嵌套的并列浮层按打开顺序关闭最上层。`image-preview` 同样参与：它的原生 `<dialog>` 会登记进同一个仲裁者，Escape 按层级判定；组件的 `cancel` handler 只是拦掉原生的瞬时关闭，把 top layer 保留到退场过渡结束。
+
 **CSS 自定义属性：**
 
 | 属性                          | 默认值                                     | 说明                                                                  |
@@ -678,7 +721,7 @@ Portal 面板创建时会镜像 host 上解析后的这些变量；更新 host �
 | `--wui-dialog-desc-gap`       | `24px`                                     | 正文内容下方间距                                                      |
 | `--wui-dialog-footer-gap`     | `10px` / horizontal `12px`                 | Footer 按钮间距                                                       |
 | `--wui-dialog-footer-justify` | `flex-end`（默认）/ `center`（horizontal） | Footer `justify-content`；horizontal 模式下覆盖为 `flex-end` 可右对齐 |
-| `--wui-dialog-scale-enter`    | `1.2`                                      | 进场缩放起点：由 `1.2` 收缩到 `1`，退场反向                           |
+| `--wui-dialog-scale-enter`    | `1.1`                                      | 进场缩放起点：由 `1.1` 收缩到 `1`，退场反向                           |
 
 #### `<web-ui-drawer>`
 
@@ -712,10 +755,18 @@ Portal 面板创建时会镜像 host 上解析后的这些变量；更新 host �
 **拖拽关闭：** 启用 `draggable` 后，打开的抽屉在内缘显示灰色胶囊 drag bar（默认 4×56px，视觉中线距内缘 10px，位于 20px 厚的命中热区内；`right` 在左缘、`left` 在右缘、`top` 在下缘、`bottom` 在上缘）：
 
 - 拖拽实时跟手，遮罩透明度按比例淡出。
-- 松手时位移超过抽屉尺寸约 1/3 或快速甩动即弹簧关闭，否则弹回打开位；方向随 placement 适配。
+- 遮罩点击关闭只认**轻点链路**：按下起点在遮罩上、且按-放位移在轻点量级内的 click 才关闭。浏览器对「按下 → 拖动 → 松手」生成的 click 落在起点与松手点的共同祖先（dialog）上——从面板内容或遮罩上开始拖拽、松手落在遮罩时，click 的 target 同样是 dialog；组件在 `pointerdown` 记录起点与坐标做回溯校验，这类拖拽松手一律弹回。`detail` 为 0 的 click（键盘/程序化来源）不消费指针记录。
+- 松手时自抓取瞬间起的**净位移**超过抽屉尺寸的一半（下限 10px）或快速甩动即关闭，否则弹回打开位；方向随 placement 适配。判定的每一环都与 Base UI `useSwipeDismiss` 对齐：
+  - 位移零点与判定时钟都在**首个 `pointermove`** 处重置，用来吸收「按下 → 首个 move」之间的空隙；该次 move 的整程位移被整体丢弃，因此一次手势至少要两个 move 才可能累积出位移。
+  - 甩动看的是**整段手势**的平均速度（净位移 ÷ 手势时长，分母下限 50ms）**达到** 500px/s，不是释放瞬间的瞬时速度。滑窗只描述最后一小段轨迹；在整段平均速度下，「先往边缘拖出、再快速扫回」不再能凑成甩动。时长为 0 时速度取 0 而不是按 50ms 兜底，因此测不到时长的手势永远不会被读成甩动。
+  - 净位移没有朝闭合方向的松手一律弹回打开位。
+  - 距离判据同样用净位移：从弹回途中抓取后不再拖动就松手，不会被当成「已经拖过一半」。
+  - 自「方向确认点」起反向回撤满 10px 即取消本次甩动，因此拖出后回扫不会关闭。位移重新越过距离阈值会清除该标记，所以「已经拖过一半」不受小幅回撤影响。上游有同一个守卫（`cancelledSwipe`），但在 drawer 这条路径上永远走不到——`DrawerViewport.onRelease` 必然返回一个决定。
+  - 朝打开方向的拖拽按平方根压缩（`sign(d) · |d| ** 0.5`），对齐 `applyDirectionalDamping`。阻尼作用于本次手势的**增量**、叠加在抓取瞬间的位移之上，因此自限幅而不需要固定的位移上限。
+- 释放速度只决定收尾过渡的时长（180–420ms）；收尾本身是一次交还 CSS 的 `transform` 过渡，不再创建 WAAPI 动画。
 - 启用 `controlled` 后，超过阈值松手仅派发 `open-change(false)`；抽屉在闭合位短暂等待（120ms 回写窗口），Consumer 拒绝或超时未回写时弹回打开位。
 - 不支持拖拽打开——关闭态的抽屉在原生 dialog 之外没有任何渲染物。
-- `prefers-reduced-motion` 下松手即时到位，不播放弹簧动画。
+- `prefers-reduced-motion` 下松手即时到位，不播放收尾过渡。
 
 **CSS 自定义属性：**
 
@@ -732,7 +783,7 @@ Portal 面板创建时会镜像 host 上解析后的这些变量；更新 host �
 | `--wui-drawer-drag-bar-length`    | `56px`                             | Drag bar 胶囊长度（沿抽屉边缘）                      |
 | `--wui-drawer-header-padding`     | `16px 20px`                        | Header 区域 padding                                  |
 | `--wui-drawer-close-top`          | `16px`                             | 内置关闭按钮相对 header 顶部的偏移                   |
-| `--wui-drawer-close-right`        | `20px`                             | 内置关闭按钮相对抽屉右缘的偏移                       |
+| `--wui-drawer-close-right`        | `16px`                             | 内置关闭按钮相对抽屉右缘的偏移                       |
 | `--wui-drawer-content-padding`    | `20px`                             | 内容区 padding；同时驱动 drag bar 视觉中线（取半值） |
 | `--wui-drawer-footer-padding`     | `16px 20px`                        | Footer 区域 padding                                  |
 
@@ -1192,10 +1243,10 @@ WebUiSpinner.hide() // 隐藏
 
 **CSS 自定义属性：**
 
-| 属性                               | 默认值                            | 说明                                 |
-| ---------------------------------- | --------------------------------- | ------------------------------------ |
-| `--wui-layout-sidebar-radius`      | `var(--wui-radius-overlay, 28px)` | 侧边栏卡片圆角（桌面端和移动端共用） |
-| `--wui-layout-mobile-toggle-inset` | `8px`                             | 移动端 header Toggle 的左缩进        |
+| 属性                               | 默认值 | 说明                                 |
+| ---------------------------------- | ------ | ------------------------------------ |
+| `--wui-layout-sidebar-radius`      | `24px` | 侧边栏卡片圆角（桌面端和移动端共用） |
+| `--wui-layout-mobile-toggle-inset` | `8px`  | 移动端 header Toggle 的左缩进        |
 
 #### `<web-ui-back-top>`
 
@@ -1229,20 +1280,25 @@ WebUiSpinner.hide() // 隐藏
 
 #### `<web-ui-svg-draw-lines>`
 
-SVG 线条绘制动画，基于 `stroke-dashoffset`。直接在原元素上动画 —— 不克隆、不操作 DOM。
+SVG 线条绘制动画，基于 `stroke-dashoffset`。直接在原元素上动画 —— 不克隆、不操作 DOM。两个播放方向：默认按从无到有描出几何形状，`replay({ reverse: true })` 沿原路收回，从有到无。
 
-| 属性       | 类型     | 默认值     | 说明                                         |
-| ---------- | -------- | ---------- | -------------------------------------------- |
-| `duration` | `number` | `1000`     | 动画时长（毫秒），限制在 `[0, 30000]` 范围内 |
-| `easing`   | `string` | `'linear'` | CSS 缓动函数，传递给 `element.animate()`     |
+| 属性          | 类型      | 默认值     | 说明                                     |
+| ------------- | --------- | ---------- | ---------------------------------------- |
+| `duration`    | `number`  | `1000`     | 动画时长（毫秒），限制在 `[0, 30000]`    |
+| `easing`      | `string`  | `'linear'` | CSS 缓动函数，传递给 `element.animate()` |
+| `no-autoplay` | `boolean` | `false`    | 关闭内容首次出现时的自动播放             |
 
-两个属性均会反射（reflected）。
+三个属性均会反射（reflected）。
 
-**方法：** `replay(): Promise<void>` — 取消当前动画，重新从 DOM 收集几何元素并开始新动画。所有目标以相同的 duration/easing 并行播放。动画全部完成后 resolve。最近主题范围为 `motion="reduced"` 时立即返回，不播放动画；`motion="system"` 则在匹配 `prefers-reduced-motion: reduce` 时执行相同行为。
+**自动播放：** slot 内容第一次稳定时自动播放一次画入。设置 `no-autoplay` 后保持资产原样、由调用方决定何时播放 —— `<web-ui-checkbox>` 正是靠它避免挂载时就已勾选的勾在页面首帧画出来。
+
+**方法：** `replay(options?: { reverse?: boolean }): Promise<void>` — 取消当前动画，重新从 DOM 收集几何元素并开始新动画。所有目标以相同的 duration/easing 并行播放。动画全部完成后 resolve。收回段以「空白」收尾，并把这一末态留在 DOM 上：动画本身在收尾时撤销，但让描边隐去的 dash 值作为内联样式保留，直到下一次 `replay()` 把它替换或撤掉。画入段则恢复消费者自己写的内联样式。收回总是从完整描边起收，所以在画入途中打断也会把整条路径描回去，而不是只收掉看得见的那一段。最近主题范围为 `motion="reduced"` 时不启动任何动画 —— 但上一次收回留下的空白仍会被撤掉，几何回到资产原样，可见性完全交给消费者自己的样式；`motion="system"` 在匹配 `prefers-reduced-motion: reduce` 时行为相同。
+
+**收回末态：** 收回留下的空白是写在被动画的几何元素上的内联样式，包括嵌套开放 Shadow Root（如 `<web-ui-icon>`）里的节点。克隆这些节点（`cloneNode`、`innerHTML` 往返）会把空白一起带走；把节点摘下来再挂回去，描边也仍然是隐去的 —— 收回结束是一个 DOM 状态而不是一条还活着的动画，没有留下任何东西去复原它。要重新显示就调用 `replay()`。由于组件会递归进入嵌套的开放 Shadow Root，两层 `<web-ui-svg-draw-lines>` 不得覆盖同一批几何元素：每个实例只在第一次动画某个元素时记录它的内联 dash 值，内层留下的空白会被外层当成「消费者自己写的值」。
 
 **插槽：** `default` — 需要动画的 SVG 内容。接受内联 `<svg>` 元素（light DOM）以及将 SVG 渲染在开放 Shadow DOM 中的组件（如 `<web-ui-icon>`）。closed Shadow Root 被跳过。
 
-递归遍历 light DOM 和所有开放 Shadow Root，查找 `path`、`rect`、`circle`、`line`、`polyline`、`polygon`、`ellipse` 元素。以 `Z`/`z` 结尾的 `<path>` 会临时应用缺口修复逻辑确保闭合段正确渲染。动画完成或取消后恢复所有内联样式。
+递归遍历 light DOM 和所有开放 Shadow Root，查找 `path`、`rect`、`circle`、`line`、`polyline`、`polygon`、`ellipse` 元素。以 `Z`/`z` 结尾的 `<path>` 会临时应用缺口修复逻辑确保闭合段正确渲染。画入段完成或取消后恢复所有内联样式。
 
 #### `<web-ui-theme>`
 
@@ -1252,12 +1308,15 @@ SVG 线条绘制动画，基于 `stroke-dashoffset`。直接在原元素上动�
 | ------------ | --------------------------------- | ---------- | -------------------------- |
 | `appearance` | `'light' \| 'dark' \| 'system'`   | `'light'`  | 配色方案                   |
 | `motion`     | `'full' \| 'reduced' \| 'system'` | `'system'` | 当前嵌套主题范围的动效偏好 |
+| `transition` | `boolean`                         | `false`    | 配色变化时的圆形揭示动画   |
 
 **方法：** `getOverlayRoot()` — 返回该主题拥有的 theme-owned overlay root
 
 **Portal 挂载契约：** 每个 active `<web-ui-theme>` 同时是默认的 scoped theme-owned overlay root。Portal 类组件在未显式传入 `overlayContainer` 时，会解析到最近的 active theme 的 `getOverlayRoot()`；无 target 的调用优先使用 root theme 的 theme-owned overlay root。没有 active theme 提供 root 时，回退到全局 fallback overlay root。
 
 在其子树中定义基础、颜色、层级、阴影和动效 token。`motion="system"` 跟随 `prefers-reduced-motion`；使用 `motion="reduced"` 降低当前作用域动效，或在嵌套主题中使用 `motion="full"` 恢复默认 token。System 配色模式跟随 `prefers-color-scheme`。
+
+设置 `transition` 布尔属性后，使用 View Transitions API 播放配色变化；移除属性即关闭，框架动态切换时必须绑定 boolean property。根主题揭示整页；嵌套主题只揭示自己的 capture box。圆心优先取最近一次 pointerdown 坐标，否则回退主题盒或视口中心；深浅两个方向反向播放。不支持的浏览器、reduced-motion 作用域、时长为 0 以及同一 flight 内已有未完成请求都会立即落地新 appearance；当前版本对 `appearance="system"` 的 OS 深浅翻转不做动画。
 
 主题宿主使用 `display: contents` 且不绘制任何背景：组件库不在宿主页面画背景，嵌入方对主题子树背后的表面保留完全控制权。自定义属性仍可靠继承到 slotted 内容。
 
@@ -1270,6 +1329,14 @@ SVG 线条绘制动画，基于 `stroke-dashoffset`。直接在原元素上动�
 | `--wui-control-size`      | `36px`  | 控件默认高度和方形最小宽 |
 | `--wui-overlay-min-width` | `200px` | 锚定浮层最小宽度         |
 | `--wui-focus-ring-width`  | `3px`   | Focus 指示器宽度         |
+
+**选择控件 token（radio、checkbox）：**
+
+| 属性                           | 默认值 | 说明                                 |
+| ------------------------------ | ------ | ------------------------------------ |
+| `--wui-selection-control-size` | `18px` | 指示器（圆点 / 方框）宽高            |
+| `--wui-radio-group-gap`        | `8px`  | `<web-ui-radio-group>` 的成员间距    |
+| `--wui-checkbox-group-gap`     | `8px`  | `<web-ui-checkbox-group>` 的成员间距 |
 
 **圆角 token：**
 
@@ -1295,7 +1362,7 @@ SVG 线条绘制动画，基于 `stroke-dashoffset`。直接在原元素上动�
 | `--wui-layer-toast`          | `200`  | Toast          |
 | `--wui-layer-loading`        | `300`  | 阻塞式 Loading |
 
-**动效 token：** duration 默认值为 `--wui-duration-press: 80ms`、`--wui-duration-feedback: 100ms`、`--wui-duration-trigger: 160ms`、`--wui-duration-focus: 200ms`、`--wui-duration-float-enter: 240ms`、`--wui-duration-float-exit: 160ms`、`--wui-duration-dialog-enter: 320ms`、`--wui-duration-dialog-exit: 260ms`、`--wui-duration-drawer-enter: 280ms`、`--wui-duration-drawer-exit: 240ms`、`--wui-duration-drawer-nested: 450ms`、`--wui-duration-toast-enter: 280ms`、`--wui-duration-toast-exit: 200ms`、`--wui-duration-collapse-enter: 200ms`、`--wui-duration-collapse-exit: 160ms`、`--wui-duration-layout: 200ms`、`--wui-duration-swipe-settle: 220ms`（image-preview 轮播回位）、`--wui-duration-spin: 600ms`（icon 旋转）与 `--wui-duration-spinner: 800ms`（spinner 叶片追光）。Easing token 是 `--wui-ease-enter`、`--wui-ease-dialog`（`cubic-bezier(0.2, 0, 0, 1)`）、`--wui-ease-slide`、`--wui-ease-float`（`cubic-bezier(0.4, 0.38, 0.2, 1)`，锚定浮动面板专用的无回弹弹簧拟合曲线）以及 `--wui-ease-swipe`（`cubic-bezier(0.32, 0.72, 0, 1)`，轮播回位的减速收尾）；进入缩放是 `--wui-scale-enter: 0.95`（浮动面板与 image-preview 的图片舞台层由小到大展开），dialog 使用 `--wui-dialog-scale-enter: 1.2`（由大到小收缩入场，退场反向）。`motion="reduced"` 下所有转场时长归零（轮播回位一并归零），两个无限加载循环只放慢、不停（`--wui-duration-spin` / `--wui-duration-spinner`：`600ms` / `800ms` → `1600ms`）。加载指示冻结会被读成界面卡死。hover/active 背景反馈即时切换、无过渡动画；选中态、按压与 focus 走带时长的过渡，reduce 下同样归零。
+**动效 token：** duration 默认值为 `--wui-duration-press: 80ms`、`--wui-duration-feedback: 100ms`、`--wui-duration-trigger: 160ms`、`--wui-duration-focus: 200ms`、`--wui-duration-float-enter: 240ms`、`--wui-duration-float-exit: 160ms`、`--wui-duration-dialog-enter: 320ms`、`--wui-duration-dialog-exit: 260ms`、`--wui-duration-drawer-enter: 280ms`、`--wui-duration-drawer-exit: 240ms`、`--wui-duration-drawer-nested: 450ms`、`--wui-duration-toast-enter: 280ms`、`--wui-duration-toast-exit: 200ms`、`--wui-duration-collapse-enter: 200ms`、`--wui-duration-collapse-exit: 160ms`、`--wui-duration-layout: 200ms`、`--wui-duration-swipe-settle: 220ms`（image-preview 轮播回位）、`--wui-duration-spin: 600ms`（icon 旋转）、`--wui-duration-spinner: 800ms`（spinner 叶片追光）与 `--wui-theme-transition-duration: 500ms`（主题配色揭示）。Easing token 是 `--wui-ease-enter`、`--wui-ease-dialog`（`cubic-bezier(0.2, 0, 0, 1)`）、`--wui-ease-slide`、`--wui-ease-float`（`cubic-bezier(0.4, 0.38, 0.2, 1)`，锚定浮动面板专用的无回弹弹簧拟合曲线）、`--wui-ease-swipe`（`cubic-bezier(0.32, 0.72, 0, 1)`，轮播回位的减速收尾）与 `--wui-theme-transition-easing: ease-in`；进入缩放是 `--wui-scale-enter: 0.95`（浮动面板与 image-preview 的图片舞台层由小到大展开），dialog 使用 `--wui-dialog-scale-enter: 1.1`（由大到小收缩入场，退场反向）。`motion="reduced"` 下所有转场时长归零（轮播回位一并归零），两个无限加载循环只放慢、不停（`--wui-duration-spin` / `--wui-duration-spinner`：`600ms` / `800ms` → `1600ms`）。加载指示冻结会被读成界面卡死。hover/active 背景反馈即时切换、无过渡动画；选中态、按压与 focus 走带时长的过渡，reduce 下同样归零。
 
 **颜色 token：**
 
@@ -1322,8 +1389,8 @@ SVG 线条绘制动画，基于 `stroke-dashoffset`。直接在原元素上动�
 | `--wui-color-border`               | `rgb(0 0 0 / 0.1)`                                           | `rgb(255 255 255 / 0.14)`                                    | 常规边框和分隔线       |
 | `--wui-color-glass-border`         | `transparent`                                                | `rgb(255 255 255 / 0.05)`                                    | Glass 边框色调         |
 | `--wui-color-glass-highlight`      | `rgb(255 255 255 / 0.9)`                                     | `rgb(255 255 255 / 0.1)`                                     | Glass 高光边缘         |
-| `--wui-color-glass-corner`         | `rgb(255 255 255 / 0.08)`                                    | `rgb(255 255 255 / 0.2)`                                     | Glass 边框角落光泽     |
-| `--wui-color-glass-shade`          | `rgb(0 0 0 / 0.06)`                                          | `rgb(0 0 0 / 0.5)`                                           | Glass 边框背光角压暗   |
+| `--wui-color-glass-corner`         | `rgb(255 255 255 / 0.5)`                                     | `rgb(255 255 255 / 0.2)`                                     | Glass 边框角落光泽     |
+| `--wui-color-glass-shade`          | `rgb(0 0 0 / 0.03)`                                          | `rgb(0 0 0 / 0.5)`                                           | Glass 边框背光角压暗   |
 | `--wui-color-accent`               | `#08f`                                                       | `#0a84ff`                                                    | Accent 和输入焦点边框  |
 | `--wui-color-on-accent`            | `#fff`                                                       | `#fff`                                                       | Accent 上的前景色      |
 | `--wui-color-on-control`           | `#fff`                                                       | `#f2f2f7`                                                    | 控件内芯前景色         |
@@ -1374,9 +1441,17 @@ const id = toast({ message: '自定义', type: 'info', position: 'bottom-right',
 toast.close(id)
 toast.clear()
 
-// 更新可见内容，不重置自动关闭计时
-toast.updateMessage(id, { message: '上传已完成 60%', heading: '正在上传' })
+// upsert：同一 id 再次调用是更新那一条，而不是再建一条
+toast.error('网络连接中断，正在重试…', { id: 'network' })
+toast.error('网络连接中断（第 2 次重试）', { id: 'network' })
+
+// 一条 toast 走完整个生命周期
+toast.info('上传中 0%', { id: 'upload', duration: 0 })
+toast.info('上传中 60%', { id: 'upload' }) // 省略 duration，计时不动
+toast.success('上传完成', { id: 'upload', duration: 3000 }) // 换 type，重新开始倒计时
 ```
+
+每次调用都返回这条 toast 的最终 id，调用方无需区分新建还是更新。
 
 **ToastOptions：**
 
@@ -1386,17 +1461,36 @@ toast.updateMessage(id, { message: '上传已完成 60%', heading: '正在上传
 | `type`      | `'success' \| 'info' \| 'warning' \| 'error'` | `'info'`                  | 类型                                  |
 | `duration`  | `number`                                      | `3000`（error 为 `5000`） | 自动关闭时间（0=不自动关闭）          |
 | `closable`  | `boolean`                                     | `true`                    | 显示关闭按钮                          |
-| `id`        | `string`                                      | auto                      | 去重标识符                            |
+| `id`        | `string`                                      | auto                      | 合并键：同一 id 的调用更新同一条      |
 | `heading`   | `string`                                      | `''`                      | 粗体标题                              |
 | `position`  | 6 种位置                                      | `'top-right'`             | 屏幕位置                              |
 | `target`    | `Element`                                     | —                         | 用于查找最近 theme-owned overlay root |
 | `container` | `HTMLElement`                                 | —                         | 显式挂载容器（最高优先级）            |
 
-**`toast.updateMessage(id, options)`** 更新可见 Toast 的 `message`，并在传入时更新 `heading`；不会重置自动关闭计时。`options` 类型为 `ToastMessageUpdateOptions`：`{ message: string; heading?: string }`。
+**upsert 语义** —— 同一 `id` 再次调用的结果：
+
+| 目标状态             | 结果                                             |
+| -------------------- | ------------------------------------------------ |
+| 已挂载               | 返回同一个 id；给出的字段覆盖，未给出的保持原值  |
+| 同 tick 内仍在待挂载 | patch 待挂载的 options，挂载后生效，不产生第二条 |
+| 已关闭或正在退场     | 新建一条；正在离场的那条自行走完退场动画         |
+
+`duration` 只有显式传入才重启倒计时（悬停暂停期间是例外：只记新值不点火，指针离开后按新时长计满）；`message`、`heading`、`type` 是普通属性，不碰计时。`toast.error` 的 5000 默认值在**创建时**兜底，不算显式传入，因此重复调用 `toast.error(msg, { id })` 不会重置倒计时。`position` 变化会把元素搬到新容器并保住剩余计时（支持 `moveBefore` 的引擎直接搬，其余走暂停/续跑降级）；若倒计时在主线程被占用期间已经到期，降级路径会在续跑时直接退场，而不是让它一直挂着。`container` 与 `target` 以首次调用为准，不支持把已存在的 toast 换到另一个 overlay root。
+
+**关闭语义** —— `toast.close(id)` 覆盖 toast 出现的每个阶段，包括「还没开始显示」的两种：
+
+| 目标状态              | 结果                                     |
+| --------------------- | ---------------------------------------- |
+| 已显示                | 播放退场动画，结束后派发 `toast-close`   |
+| 已挂载、`show()` 未跑 | 没有退场动画可播，立即派发 `toast-close` |
+| 同 tick 仍在待挂载    | 挂载前出队：不会出现，也不派发事件       |
+| 已在退场              | 空操作，由那条 toast 自己走完退场        |
+
+`toast.clear()` 的口径相同：队列条目一并取消，已挂载的全部关闭。
 
 **事件：** `toast-close` (`CustomEvent<{ id: string; reason: 'auto' | 'manual' | 'programmatic' | 'clear' }>`)
 
-悬停暂停自动关闭计时器（使用 `pointerenter`/`pointerleave`）。同一微任务中批量挂载 Toast。
+悬停暂停自动关闭计时器（使用 `pointerenter`/`pointerleave`），指针离开后**续跑剩余时间**，而不是重新计满。暂停期间漏掉 `pointerleave`（指针拖出窗口、元素在悬停中被搬迁或摘出）时，由 document 级 `pointerover`/`pointerout`/`pointerleave` 兜底恢复，不会永久停在屏幕上。同一微任务中批量挂载 Toast。
 
 **CSS 自定义属性：**
 

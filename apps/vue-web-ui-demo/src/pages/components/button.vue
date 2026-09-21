@@ -11,7 +11,5 @@ import ButtonDemo from '@/components/button-demo/index.vue'
 </script>
 
 <template>
-  <div class="p-3">
-    <ButtonDemo />
-  </div>
+  <ButtonDemo />
 </template>

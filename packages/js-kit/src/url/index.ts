@@ -42,7 +42,6 @@ export function stringifyUrl(opts: Partial<URLObject>, omitNil = true): string {
     params.append(key, String(val))
   })
 
-  // 修复 Hash 自动补全 # 的问题
   const normalizedHash = hash ? (hash.startsWith('#') ? hash : `#${hash}`) : ''
   const queryString = params.toString()
   if (!queryString) return base + normalizedHash

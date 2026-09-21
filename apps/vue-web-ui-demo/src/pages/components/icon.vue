@@ -11,7 +11,5 @@ import IconDemo from '@/components/icon-demo/index.vue'
 </script>
 
 <template>
-  <div class="p-3">
-    <IconDemo />
-  </div>
+  <IconDemo />
 </template>

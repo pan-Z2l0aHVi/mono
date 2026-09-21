@@ -10,6 +10,13 @@
   --wui-control-size: 36px;
   --wui-overlay-min-width: 200px;
 
+  /* radio / checkbox 指示器尺寸。宿主高度由内容撑开，不继承页面行高。 */
+  --wui-selection-control-size: 18px;
+
+  /* radio-group / checkbox-group 成员间距，两个 group 各自可覆盖。 */
+  --wui-radio-group-gap: 8px;
+  --wui-checkbox-group-gap: 8px;
+
   /* z-index layers - 基础结构 */
   --wui-layer-base: 0;
   --wui-layer-inline-overlay: 1;
@@ -51,6 +58,8 @@
      但同样受 motion 契约约束，reduce 下只放慢不停。 */
   --wui-duration-spin: 600ms;
   --wui-duration-spinner: 800ms;
+  --wui-theme-transition-duration: 500ms;
+  --wui-theme-transition-easing: ease-in;
 
   --wui-ease-enter: cubic-bezier(0.23, 1, 0.32, 1);
   --wui-ease-dialog: cubic-bezier(0.2, 0, 0, 1);
@@ -64,13 +73,14 @@
   --wui-ease-float: cubic-bezier(0.4, 0.38, 0.2, 1);
 
   /* 进场缩放起点。两族方向相反，各自成 token：浮动面板与 image-preview 由小到大展开
-     （0.95 → 1），dialog 由大到小收缩（1.2 → 1，退场反向）。
+     （0.95 → 1），dialog 由大到小收缩（1.1 → 1，退场反向）。
      方向由承载层决定。image-preview 是满视口表面，起点 >1 会把贴边的 counter/close/
-     toolbar 推出视口并裁掉图片四边，只能留在 <1 的档位。dialog 是有界卡片，起点 1.2 只
-     在视口窄于 432px 时越界，且缩放与卡片 opacity 共用 --wui-ease-dialog，越界期间卡片
-     不透明度始终 ≤44.4%；要零越界而不是取满 1.2，把本 token 降到 1.111 即可。 */
+     toolbar 推出视口并裁掉图片四边，只能留在 <1 的档位。dialog 是有界卡片，起点须低于
+     零越界上限 1/0.9 ≈ 1.111（min(90vw, --wui-dialog-width) 两分支在 400px 视口汇合）；
+     1.1 在任意视口都不越界。曾用 1.2，窄视口会短暂越界（约 57ms、卡片不透明度 ≤44.4%，
+     分析见 ADR-0006），260919 下调。 */
   --wui-scale-enter: 0.95;
-  --wui-dialog-scale-enter: 1.2;
+  --wui-dialog-scale-enter: 1.1;
   --wui-focus-ring-width: 3px;
 
   /* control=胶囊控件、menu=浮动菜单面板、overlay=大型覆盖层卡片 */
@@ -101,6 +111,7 @@
   --wui-duration-collapse-exit: 0ms;
   --wui-duration-layout: 0ms;
   --wui-duration-swipe-settle: 0ms;
+  --wui-theme-transition-duration: 0ms;
 
   /* 加载循环不在 reduce 下归零：它是「正在进行」的唯一信号，停掉会被读成界面卡死，只放慢。 */
   --wui-duration-spin: 1600ms;
@@ -129,6 +140,7 @@
     --wui-duration-collapse-exit: 0ms;
     --wui-duration-layout: 0ms;
     --wui-duration-swipe-settle: 0ms;
+    --wui-theme-transition-duration: 0ms;
 
     /* 加载循环不在 reduce 下归零：它是「正在进行」的唯一信号，停掉会被读成界面卡死，只放慢。 */
     --wui-duration-spin: 1600ms;
@@ -162,8 +174,8 @@
   --wui-color-border: rgb(0 0 0 / 0.1);
   --wui-color-glass-border: transparent;
   --wui-color-glass-highlight: rgb(255 255 255 / 0.9);
-  --wui-color-glass-corner: rgb(255 255 255 / 0.08);
-  --wui-color-glass-shade: rgb(0 0 0 / 0.06);
+  --wui-color-glass-corner: rgb(255 255 255 / 0.5);
+  --wui-color-glass-shade: rgb(0 0 0 / 0.03);
   --wui-glass-brightness: 1.06;
   --wui-color-accent: #08f;
   --wui-color-on-accent: #fff;
@@ -176,7 +188,7 @@
   --wui-shadow-overlay: 2px 16px 40px rgb(0 0 0 / 0.4);
   --wui-shadow-panel: 0 3px 9px rgb(0 0 0 / 0.27);
   --wui-shadow-glass:
-    0 0 1px rgb(0 0 0 / 0.05), 0 0 8px rgb(0 0 0 / 0.03), 0 2px 16px rgb(0 0 0 / 0.025), 0 8px 32px rgb(0 0 0 / 0.015);
+    0 0 1px rgb(0 0 0 / 0.02), 0 0 8px rgb(0 0 0 / 0.03), 0 2px 16px rgb(0 0 0 / 0.025), 0 8px 32px rgb(0 0 0 / 0.015);
   --wui-color-focus-ring: rgb(0 136 255 / 0.4);
   color-scheme: light;
 }

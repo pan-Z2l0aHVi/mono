@@ -237,12 +237,12 @@ export class WebUiTextarea extends FormAssociated(LitElement) {
             ? html`<web-ui-button
                 icon
                 variant="ghost"
-                size="24"
+                size="20"
                 aria-label="清除"
                 @pointerdown=${this.preventMouseDownBlur}
                 @click=${this.handleClear}
               >
-                <web-ui-icon .icon=${jamCloseCircleF}></web-ui-icon>
+                <web-ui-icon .icon=${jamCloseCircleF} size="14"></web-ui-icon>
               </web-ui-button>`
             : ''
         }

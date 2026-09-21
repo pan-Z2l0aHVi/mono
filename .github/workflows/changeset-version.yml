@@ -24,9 +24,11 @@ jobs:
         with:
           fetch-depth: 0
 
+      # This job only runs changeset status, a node script and `gh workflow run`;
+      # scoping the install keeps it off the go toolchain and the wails3 build.
       - uses: ./.github/actions/setup-deps
         with:
-          wails: 'true'
+          mise-install: 'node pnpm'
 
       - id: changesets
         name: Detect pending Changesets

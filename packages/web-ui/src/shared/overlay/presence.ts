@@ -1,3 +1,5 @@
+import { parseDuration } from '@/shared/theme/duration'
+
 const DEFAULT_EXIT_DURATION = 160
 const EXIT_FALLBACK_BUFFER = 80
 
@@ -7,18 +9,11 @@ interface OverlayPresenceOptions {
   isInstant?: boolean
 }
 
-function parseDuration(value: string): number {
-  const trimmed = value.trim()
-  if (trimmed.endsWith('ms')) return Number.parseFloat(trimmed)
-  if (trimmed.endsWith('s')) return Number.parseFloat(trimmed) * 1000
-  return 0
-}
-
 // 读取元素实际 CSS transition 的最长时长，供可覆盖主题 token 的 JS 生命周期使用。
 export function getTransitionDuration(panel: HTMLElement, fallback = DEFAULT_EXIT_DURATION): number {
   const style = getComputedStyle(panel)
-  const durations = style.transitionDuration.split(',').map(parseDuration)
-  const delays = style.transitionDelay.split(',').map(parseDuration)
+  const durations = style.transitionDuration.split(',').map(value => parseDuration(value) ?? 0)
+  const delays = style.transitionDelay.split(',').map(value => parseDuration(value) ?? 0)
   const longest = durations.reduce(
     (max, duration, index) => Math.max(max, duration + (delays[index] ?? delays[0] ?? 0)),
     0

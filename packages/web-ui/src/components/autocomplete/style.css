@@ -35,8 +35,6 @@
   border-radius: var(--wui-radius-control, calc(infinity * 1px));
 }
 
-/* ===== Borderless ===== */
-
 :host([borderless]) .input-wrapper {
   border: none;
   background: transparent;

@@ -25,7 +25,6 @@ const createGroup = (radioHtml = RADIO_HTML, attrs?: Record<string, string>): We
   return el
 }
 
-// 点击子 radio 触发用户交互
 const clickChild = (group: WebUiRadioGroup, index: number) => {
   const radio = group.querySelectorAll<WebUiRadio>('web-ui-radio')[index]
   const label = queryA11y(radio, 'label') as HTMLElement
@@ -169,6 +168,43 @@ describe('WebUiRadioGroup 组件', () => {
     })
   })
 
+  describe('属性: direction', () => {
+    it('默认值为 vertical，非法输入回退到默认值', async () => {
+      const el = createGroup()
+      await waitForUpdate(el)
+      expect(el.direction).toBe('vertical')
+      // 未声明 direction 也会被反射写回宿主，changeset 记录了这一可见变化
+      expect(el.getAttribute('direction')).toBe('vertical')
+
+      ;(el as any).direction = 'diagonal'
+      await waitForUpdate(el)
+      expect(el.direction).toBe('vertical')
+
+      cleanupElement(el)
+    })
+
+    it('设置后反射到 group host 属性', async () => {
+      const el = createGroup()
+      el.direction = 'horizontal'
+      await waitForUpdate(el)
+      expect(el.getAttribute('direction')).toBe('horizontal')
+
+      el.direction = 'vertical'
+      await waitForUpdate(el)
+      expect(el.getAttribute('direction')).toBe('vertical')
+
+      cleanupElement(el)
+    })
+
+    it('attribute 声明 direction 时初值取声明值', async () => {
+      const el = createGroup(RADIO_HTML, { direction: 'horizontal' })
+      await waitForUpdate(el)
+      expect(el.direction).toBe('horizontal')
+
+      cleanupElement(el)
+    })
+  })
+
   describe('用户交互', () => {
     it('点击子 radio 后 value 更新为所选值', async () => {
       const el = createGroup()
@@ -270,7 +306,6 @@ describe('WebUiRadioGroup 组件', () => {
       clickChild(el, 0)
       await waitForUpdate(el)
 
-      // 只收到 group 自身的一次 change，子项 change 未外泄
       expect(events).toHaveLength(1)
       expect(events[0].target).toBe(el)
       detach()
@@ -470,7 +505,6 @@ describe('WebUiRadioGroup 组件', () => {
       await waitForUpdate(newRadio)
       await waitForUpdate(el)
 
-      // 新添加的 radio 值匹配当前 value，应自动选中
       expect(newRadio.checked).toBe(true)
 
       cleanupElement(el)

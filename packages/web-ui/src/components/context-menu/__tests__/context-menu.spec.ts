@@ -504,7 +504,6 @@ describe('WebUiContextMenu 组件', () => {
       freshChild.textContent = 'DOCX'
       parentItem.appendChild(freshChild)
 
-      // 在另一个位置重新定位打开
       el.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, clientX: 200, clientY: 200 }))
       await waitForMenuOpen(el)
 
@@ -698,7 +697,6 @@ describe('WebUiContextMenu 组件', () => {
       await waitForMenuOpen(el)
 
       const content = getPortalContent()
-      // 第一轮：替换 + 直插
       const first = content.querySelector<HTMLElement>('web-ui-dropdown-item')
       if (!first) throw new Error('Expected first menu item')
       const fresh = document.createElement('web-ui-dropdown-item')
@@ -1108,7 +1106,6 @@ describe('WebUiContextMenu 组件', () => {
           await waitForItemOrder(validItems)
         }
 
-        // close → reopen
         el.close()
         await waitForMenuClose(el)
         el.openAt(20, 20)

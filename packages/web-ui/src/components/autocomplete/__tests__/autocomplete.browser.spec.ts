@@ -829,7 +829,6 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     expect(el.open).toBe(true)
     // bottom-start：面板左边缘应与锚点（input-wrapper）左边缘对齐（offset 4 只影响纵向）
     expect(Math.abs(panelRect.left - wrapperRect.left)).toBeLessThan(2)
-    // 面板纵向位于输入框下方
     expect(panelRect.top).toBeGreaterThanOrEqual(wrapperRect.bottom - 1)
   })
 

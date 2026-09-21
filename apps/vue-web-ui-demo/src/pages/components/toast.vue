@@ -11,7 +11,5 @@ import ToastDemo from '@/components/toast-demo/index.vue'
 </script>
 
 <template>
-  <div class="p-3">
-    <ToastDemo />
-  </div>
+  <ToastDemo />
 </template>

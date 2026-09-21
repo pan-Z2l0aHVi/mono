@@ -17,8 +17,6 @@
   opacity: 0.4;
 }
 
-/* ===== Textarea ===== */
-
 .wui-textarea-inner {
   --wui-glass-corner-radius: var(--wui-radius-menu, 18px);
   position: relative;
@@ -38,8 +36,6 @@
 :host([full]) .wui-textarea-inner {
   width: 100%;
 }
-
-/* ===== Borderless ===== */
 
 :host([borderless]) .wui-textarea-inner {
   border: none;
@@ -132,8 +128,6 @@ slot {
 slot.empty {
   display: none;
 }
-
-/* ===== Clear button ===== */
 
 /* 复用 web-ui-button icon ghost：仅覆盖颜色为 faint 并对齐首行，保持弱意图清除图标观感；
   负 margin-left 抵消容器 flex gap，让清除按钮紧贴文本域内容

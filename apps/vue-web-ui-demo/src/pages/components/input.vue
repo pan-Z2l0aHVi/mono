@@ -11,7 +11,5 @@ import InputDemo from '@/components/input-demo/index.vue'
 </script>
 
 <template>
-  <div class="p-3">
-    <InputDemo />
-  </div>
+  <InputDemo />
 </template>

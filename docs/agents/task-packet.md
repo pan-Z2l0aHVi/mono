@@ -6,35 +6,33 @@ Task packet 是 Manager 与 Agent 之间的最小交接合同；结构化 handof
 
 ## Task Packet
 
-- `taskId`、模式、owner、worktree 和 base SHA 是什么？
+- `taskId`、级别（T0/T1/T2）、owner、worktree 和 base SHA 是什么？
 - 目标、非目标、验收标准和所需验证是什么？
 - 依赖、公共契约、changeset、浏览器验证和 reviewer 要求是什么？
+- 涉及 release 或 hotfix 场景时，遵循的是哪条 playbook？
 - 编排路径、是否启用 Designer，以及理由是什么？
-- 各角色的模型与思考强度是否采用推荐分档？偏离时推荐说明理由。
 - 交付物、失败恢复方式和交接时机是什么？
 
 推荐格式：
 
 ```text
 Task: <task-id>
-Mode: direct | orchestrated | release | hotfix
+Level: t0 | t1 | t2
 Issue: <issue-url | N/A>
+Playbook: <release.md | workflow.md#playbook | N/A>
 Owner: <role/agent>
 Worktree: <absolute path>
 Base: <sha>
 Scope: <goal and non-goals>
-Allowed paths: <档 2 才记录；档 0 与单 workspace 的档 1 写 N/A>
-Affected workspaces: <档 2 才记录，来自 find:usages；其他档写 N/A>
 Route: product-design | technical
 Designer: enabled | skipped (<reason>)
-Effort: <recommended tiers | adjustments + reason; recommended, not mandatory>
 Acceptance: <observable criteria>
 Verification: <commands/evidence>
-Review: required | skipped with reason
+Review: required (independent | subagent) | not required (t2)
 Handoff: <what is returned and when>
 ```
 
-`Allowed paths` 与 `Affected workspaces` 的取值用 `pnpm find:usages -- <paths...>` 的输出填写。档 0 与单 workspace 的档 1 任务填 `N/A`；跨多个 `apps/*` 的档 1 任务与档 2 任务必须按工具输出如实填写，不要把空数组当作已记录的字段。
+级别由 workflow.md「任务级别」的判据决定；影响面用 `pnpm find:usages -- <paths...>` 的输出判定并在 packet 里记录结论。任务状态本身的字段（diffHash、review、approval、verification、events）由 `pnpm task` 维护在 `<git-common-dir>/tasks/<task-id>.json`，packet 不复述机器记录，只写人的决策与验收。
 
 ## 结构化 Handoff
 
@@ -62,6 +60,6 @@ Open decisions（未解决决策）: <需要对方或 Manager 决策的问题 + 
 
 ## 记录与恢复
 
-聊天消息、Herdr pane label 和模型输出都不是 task state 的替代品；重启后应能只靠 task packet、handoff 记录、Git 和 workflow state 恢复。
+聊天消息、Herdr pane label 和模型输出都不是 task state 的替代品；重启后应能只靠 task packet、handoff 记录、Git 和 task state 恢复。
 
 [`.agents/skills/handoff/`](../../.agents/skills/handoff/) 中的 handoff skill 只用于压缩会话上下文，不替代本文件定义的角色间交接合同。

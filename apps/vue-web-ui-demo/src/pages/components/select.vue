@@ -11,7 +11,5 @@ import SelectDemo from '@/components/select-demo/index.vue'
 </script>
 
 <template>
-  <div class="p-3">
-    <SelectDemo />
-  </div>
+  <SelectDemo />
 </template>

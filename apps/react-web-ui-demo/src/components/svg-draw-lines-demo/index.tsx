@@ -18,6 +18,7 @@ function SvgDrawLinesDemo() {
   const [easing, setEasing] = useState('ease-in-out')
 
   const replays = useRef<Record<string, () => void>>({})
+  const manualRef = useRef<WebUiSvgDrawLines | null>(null)
 
   const setReplay = (id: string, el: WebUiSvgDrawLines | null) => {
     if (el) replays.current[id] = () => el.replay()
@@ -31,7 +32,7 @@ function SvgDrawLinesDemo() {
   return (
     <div>
       <h1>SVG 描边动画</h1>
-      <p className="mb-4 text-[var(--wui-color-text-secondary)]">
+      <p className="mb-4 text-(--wui-color-text-secondary)">
         将 SVG 图形的轮廓线以描边动画逐笔绘制。支持 path、rect、circle、line、polyline、polygon、ellipse
         等多种基本图形。
       </p>
@@ -39,7 +40,7 @@ function SvgDrawLinesDemo() {
       <h2>参数控制</h2>
       <div className="mb-6 flex flex-col gap-4">
         <label className="flex items-center gap-2 text-sm">
-          <span className="whitespace-nowrap text-[var(--wui-color-text-secondary)]">动画时长:</span>
+          <span className="whitespace-nowrap text-(--wui-color-text-secondary)">动画时长:</span>
           <web-ui-slider
             value={duration}
             min={200}
@@ -48,10 +49,10 @@ function SvgDrawLinesDemo() {
             className="max-w-100"
             onInput={event => setDuration(event.currentTarget.value)}
           ></web-ui-slider>
-          <code className="rounded bg-[var(--wui-color-surface-raised)] px-2 py-0.5 text-xs">{duration}ms</code>
+          <code className="rounded bg-(--wui-color-surface-raised) px-2 py-0.5 text-xs">{duration}ms</code>
         </label>
         <label className="flex items-center gap-2 text-sm">
-          <span className="text-[var(--wui-color-text-secondary)]">缓动函数:</span>
+          <span className="text-(--wui-color-text-secondary)">缓动函数:</span>
           <web-ui-select value={easing} className="w-36" onChange={event => setEasing(event.currentTarget.value)}>
             <web-ui-option value="linear">linear</web-ui-option>
             <web-ui-option value="ease">ease</web-ui-option>
@@ -69,7 +70,7 @@ function SvgDrawLinesDemo() {
       <h2>基础形状（light DOM）</h2>
       <div className="mb-6 flex flex-wrap items-end gap-6">
         <div>
-          <p className="mb-1 text-sm text-[var(--wui-color-text-secondary)]">简单线条</p>
+          <p className="mb-1 text-sm text-(--wui-color-text-secondary)">简单线条</p>
           <div className="flex items-center gap-2">
             <web-ui-svg-draw-lines ref={el => setReplay('svg1', el)} duration={duration} easing={easing}>
               <svg
@@ -92,7 +93,7 @@ function SvgDrawLinesDemo() {
           </div>
         </div>
         <div>
-          <p className="mb-1 text-sm text-[var(--wui-color-text-secondary)]">几何图形</p>
+          <p className="mb-1 text-sm text-(--wui-color-text-secondary)">几何图形</p>
           <div className="flex items-center gap-2">
             <web-ui-svg-draw-lines ref={el => setReplay('svg2', el)} duration={duration} easing={easing}>
               <svg
@@ -115,7 +116,7 @@ function SvgDrawLinesDemo() {
           </div>
         </div>
         <div>
-          <p className="mb-1 text-sm text-[var(--wui-color-text-secondary)]">波浪曲线</p>
+          <p className="mb-1 text-sm text-(--wui-color-text-secondary)">波浪曲线</p>
           <div className="flex items-center gap-2">
             <web-ui-svg-draw-lines ref={el => setReplay('svg3', el)} duration={duration} easing={easing}>
               <svg
@@ -138,10 +139,33 @@ function SvgDrawLinesDemo() {
         </div>
       </div>
 
+      <h2>手动播放与收回</h2>
+      <p className="mb-3 text-sm text-(--wui-color-text-secondary)">
+        no-autoplay 关闭挂载时的自动播放；replay() 逐笔画入，replay({'{ reverse: true }'}) 沿原路径收回。
+      </p>
+      <div className="mb-6 flex items-center gap-2">
+        <web-ui-svg-draw-lines
+          ref={el => {
+            manualRef.current = el
+          }}
+          noAutoplay
+          duration={duration}
+          easing={easing}
+        >
+          <web-ui-icon icon={lucideStar} size={48}></web-ui-icon>
+        </web-ui-svg-draw-lines>
+        <web-ui-button onClick={() => manualRef.current?.replay()} variant="ghost">
+          画入
+        </web-ui-button>
+        <web-ui-button onClick={() => manualRef.current?.replay({ reverse: true })} variant="ghost">
+          收回
+        </web-ui-button>
+      </div>
+
       <h2>复杂场景</h2>
       <div className="mb-6 flex flex-wrap items-end gap-8">
         <div>
-          <p className="mb-1 text-sm text-[var(--wui-color-text-secondary)]">多个同级 SVG</p>
+          <p className="mb-1 text-sm text-(--wui-color-text-secondary)">多个同级 SVG</p>
           <div className="flex items-center gap-2">
             <web-ui-svg-draw-lines ref={el => setReplay('multiRef', el)} duration={duration} easing={easing}>
               <svg viewBox="0 0 50 50" width="50" height="50" fill="none" stroke="currentColor" strokeWidth="2">
@@ -157,7 +181,7 @@ function SvgDrawLinesDemo() {
           </div>
         </div>
         <div>
-          <p className="mb-1 text-sm text-[var(--wui-color-text-secondary)]">深层嵌套 &lt;g&gt;</p>
+          <p className="mb-1 text-sm text-(--wui-color-text-secondary)">深层嵌套 &lt;g&gt;</p>
           <div className="flex items-center gap-2">
             <web-ui-svg-draw-lines ref={el => setReplay('nestedRef', el)} duration={duration} easing={easing}>
               <svg viewBox="0 0 100 100" width="100" height="100" fill="none" stroke="currentColor" strokeWidth="2">
@@ -175,7 +199,7 @@ function SvgDrawLinesDemo() {
           </div>
         </div>
         <div>
-          <p className="mb-1 text-sm text-[var(--wui-color-text-secondary)]">light DOM + Shadow DOM 混合</p>
+          <p className="mb-1 text-sm text-(--wui-color-text-secondary)">light DOM + Shadow DOM 混合</p>
           <div className="flex items-center gap-2">
             <web-ui-svg-draw-lines ref={el => setReplay('mixedRef', el)} duration={duration} easing={easing}>
               <svg
@@ -216,9 +240,9 @@ function SvgDrawLinesDemo() {
         ].map(item => (
           <div
             key={item.id}
-            className="flex flex-col items-center gap-2 rounded-lg border border-[var(--wui-color-border)] bg-[var(--wui-color-surface)] p-4"
+            className="flex flex-col items-center gap-2 rounded-lg border border-(--wui-color-border) bg-(--wui-color-surface) p-4"
           >
-            <div className="flex items-center gap-1.5 text-sm text-[var(--wui-color-text-secondary)]">
+            <div className="flex items-center gap-1.5 text-sm text-(--wui-color-text-secondary)">
               <web-ui-icon icon={item.icon} size={16}></web-ui-icon>
               <span>{item.label}</span>
             </div>

@@ -66,7 +66,6 @@ describe('亡语插件测试用例', () => {
 
     expect(transport.mock.calls[0][0]).toEqual([{ event: 'before-close' }])
 
-    // 插件注册后仍可继续 track，不应报错
     tracker.track({ event: 'new-data' })
     vi.advanceTimersByTime(500)
     await waitUntil(() => transport.mock.calls.length === 2)

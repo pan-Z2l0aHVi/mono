@@ -11,7 +11,5 @@ import InputNumberDemo from '@/components/input-number-demo/index.vue'
 </script>
 
 <template>
-  <div class="p-3">
-    <InputNumberDemo />
-  </div>
+  <InputNumberDemo />
 </template>

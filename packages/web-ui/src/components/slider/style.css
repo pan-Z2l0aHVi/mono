@@ -118,7 +118,8 @@
 }
 
 .wui-slider-thumb {
-  --wui-glass-corner-radius: var(--wui-slider-thumb-radius, 8px);
+  /* thumb 是 pill，描边光影需要有限半径，取短边（height）的一半 */
+  --wui-glass-corner-radius: calc(var(--wui-slider-thumb-height, 20px) / 2);
 
   cursor: inherit;
 
@@ -130,8 +131,8 @@
   transform: translate(-50%, -50%) scale(1);
 
   width: var(--wui-slider-thumb-width, 24px);
-  height: var(--wui-slider-thumb-height, 18px);
-  border-radius: var(--wui-slider-thumb-radius, 8px);
+  height: var(--wui-slider-thumb-height, 20px);
+  border-radius: var(--wui-radius-control, calc(infinity * 1px));
 
   transition:
     transform var(--wui-duration-press, 80ms) cubic-bezier(0.4, 0, 0.2, 1),
@@ -139,7 +140,7 @@
     box-shadow var(--wui-duration-press, 80ms) ease;
 
   /* 静止态实体白 thumb（wui-glass 恒开仅提供描边/高光，背景被白色覆盖）；
-     按压时切到半透明玻璃背景并放大 1.5x，拖拽时背景转透明让 backdrop blur 透出。
+     按压/拖拽时背景转透明让 backdrop blur 透出并放大 1.5x。
      box-shadow 直接写死值（不经自定义属性中转）：iOS Safari 对 var 离散切换驱动的
      box-shadow 不触发过渡且可能整体不生效（r2 真机「回退之前」的根因），直接写值
      后是普通属性变化，transition 正常插值；同时复制 wui-glass 的三条 inset 高光，
@@ -150,7 +151,7 @@
 
   &.is-pressed:not(.is-dragging) {
     transform: translate(-50%, -50%) scale(1.5);
-    background-color: var(--wui-color-surface-glass, rgb(250 250 250 / 0.34));
+    background-color: transparent;
     box-shadow:
       inset 0 0 0 0.5px color-mix(in srgb, var(--wui-color-glass-highlight, rgb(255 255 255 / 0.9)) 38%, transparent),
       inset 0 1px 0.5px color-mix(in srgb, var(--wui-color-glass-highlight, rgb(255 255 255 / 0.9)) 52%, transparent),

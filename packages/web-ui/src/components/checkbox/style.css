@@ -1,58 +1,5 @@
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-}
-
-:host {
-  cursor: default;
-  display: inline-block;
-}
-
-:host([disabled]) {
-  cursor: not-allowed;
-}
-
-.wui-checkbox {
-  cursor: default;
-  user-select: none;
-
-  display: inline-flex;
-  gap: 10px;
-  align-items: center;
-
-  font-size: var(--wui-font-size, 14px);
-  line-height: 1;
-  color: var(--wui-color-text, #1b1b1b);
-
-  &:focus-visible {
-    border-radius: var(--wui-radius-control, calc(infinity * 1px));
-    outline: var(--wui-focus-ring-width, 3px) solid var(--wui-color-focus-ring, rgb(0 136 255 / 0.4));
-    outline-offset: 2px;
-  }
-}
-
-.wui-checkbox.is-disabled {
-  cursor: not-allowed;
-  color: var(--wui-color-text-secondary, #6a6a6a);
-  opacity: 0.4;
-}
-
 .wui-checkbox-box {
-  display: flex;
-  flex-shrink: 0;
-  align-items: center;
-  justify-content: center;
-
-  width: 18px;
-  height: 18px;
   border-radius: var(--wui-internal-checkbox-radius, 6px);
-
-  background-color: var(--wui-color-surface-raised, #f2f2f7);
-
-  transition:
-    background-color var(--wui-duration-focus, 200ms) ease,
-    border-color var(--wui-duration-focus, 200ms) ease;
 }
 
 .is-checked .wui-checkbox-box {
@@ -61,8 +8,6 @@
 }
 
 .wui-checkbox-icon {
-  transform: scale(0.85);
-
   overflow: hidden;
   display: block;
 
@@ -71,23 +16,27 @@
 
   opacity: 0;
 
-  transition:
-    opacity var(--wui-duration-trigger, 160ms) ease,
-    transform var(--wui-duration-trigger, 160ms) var(--wui-ease-enter, cubic-bezier(0.23, 1, 0.32, 1));
+  transition: opacity var(--wui-duration-trigger, 160ms) ease;
 }
 
-.is-checked .wui-checkbox-icon {
-  transform: scale(1);
+/*
+ * is-retracting 是描边收回的那一段：勾得留在可见档，否则这条 160ms 的淡出会抢在收回结束之前
+ * 把它藏掉，收回根本看不见。收回的终点是留在内联样式上的「整条路径落在 dash 间隙里」，动画自己
+ * 收尾就撤销了，所以停在这里就是看不见的勾，不必再等一次淡出；复位由下一次勾选负责（见 index.ts 的 willUpdate）。
+ */
+.is-checked .wui-checkbox-icon,
+.is-retracting .wui-checkbox-icon {
   opacity: 1;
 }
 
-.wui-checkbox-label {
-  pointer-events: none;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .wui-checkbox-icon,
-  .is-checked .wui-checkbox-icon {
-    transform: none;
-  }
+/*
+ * 勾是控件自持的指示几何，和 radio 圆点同级，不走 @/icons 资产：画线从路径起点开始揭示，
+ * 起笔方向由 d 决定，图标资产把 d 和 stroke-width 都定死在上游，两者都无法在这里调。
+ * 尺寸跟随指示器 token，放大 --wui-selection-control-size 时勾按比例变大。
+ */
+.wui-checkbox-check {
+  display: block;
+  width: var(--wui-selection-control-size, 18px);
+  height: var(--wui-selection-control-size, 18px);
+  color: var(--wui-color-on-control, #fff);
 }

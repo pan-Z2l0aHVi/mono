@@ -11,7 +11,5 @@ import DrawerDemo from '@/components/drawer-demo/index.vue'
 </script>
 
 <template>
-  <div class="p-3">
-    <DrawerDemo />
-  </div>
+  <DrawerDemo />
 </template>

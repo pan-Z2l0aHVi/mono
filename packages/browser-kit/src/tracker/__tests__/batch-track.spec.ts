@@ -133,7 +133,6 @@ describe('聚合上报测试用例', () => {
     vi.advanceTimersByTime(1)
     await waitUntil(() => transport.mock.calls.length === 2)
 
-    // 两条数据应该被分两次单独发送（不经过批处理合并）
     expect(transport).toHaveBeenCalledTimes(2)
   })
 

@@ -4,10 +4,13 @@ import DemoComponent from '@/components/badge-demo'
 
 function Component() {
   return (
-    <div className="p-3">
+    <>
       <DemoComponent />
-    </div>
+    </>
   )
 }
 
-export const Route = createFileRoute('/components/badge')({ staticData: { title: 'Badge 徽标' }, component: Component })
+export const Route = createFileRoute('/components/badge')({
+  staticData: { title: 'Badge 徽标' },
+  component: Component
+})

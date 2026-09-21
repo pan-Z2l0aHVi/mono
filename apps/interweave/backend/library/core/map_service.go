@@ -73,7 +73,6 @@ func (s *MapService) GetLocalMap(ctx context.Context, tagID string) (*LocalMap, 
 		return nil, mapNotFound(err)
 	}
 
-	// 先确立当前主题的直接资源范围。
 	resIDs, err := s.mapQueries.ResourceIDsByTag(ctx, s.db.SqlDB(), tagID)
 	if err != nil {
 		return nil, err

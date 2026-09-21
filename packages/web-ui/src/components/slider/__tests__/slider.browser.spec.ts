@@ -45,16 +45,13 @@ describe('WebUiSlider 指针拖拽（浏览器）', () => {
     el.addEventListener('input', e => inputEvents.push(e))
     el.addEventListener('change', e => changeEvents.push(e))
 
-    // 按下在轨道 25% 处
     track.dispatchEvent(pointer('pointerdown', rect.left + rect.width * 0.25, y))
     await el.updateComplete
     const afterDown = el.value
 
-    // 拖到 75%
     track.dispatchEvent(pointer('pointermove', rect.left + rect.width * 0.75, y))
     await pollUntil(() => el.value > 50, '拖拽到 75% 后 value 未越过中点')
 
-    // 松手结束拖拽
     track.dispatchEvent(pointer('pointerup', rect.left + rect.width * 0.75, y))
     await el.updateComplete
 

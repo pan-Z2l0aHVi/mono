@@ -4,12 +4,13 @@ import DemoComponent from '@/components/theme-demo'
 
 function Component() {
   return (
-    <div className="p-3">
+    <>
       <DemoComponent />
-    </div>
+    </>
   )
 }
 
 export const Route = createFileRoute('/components/theme')({
+  staticData: { title: 'Theme 主题' },
   component: Component
 })

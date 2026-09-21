@@ -25,8 +25,6 @@
   pointer-events: auto;
 }
 
-/* ===== 顶部位置 ===== */
-
 .wui-toast-top-left {
   top: calc(var(--wui-toast-viewport-gap) - var(--wui-toast-container-padding));
   left: calc(var(--wui-toast-viewport-gap) - var(--wui-toast-container-padding));
@@ -45,8 +43,6 @@
   right: calc(var(--wui-toast-viewport-gap) - var(--wui-toast-container-padding));
   align-items: flex-end;
 }
-
-/* ===== 底部位置 ===== */
 
 .wui-toast-bottom-left {
   bottom: calc(var(--wui-toast-viewport-gap) - var(--wui-toast-container-padding));
