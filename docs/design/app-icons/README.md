@@ -13,11 +13,13 @@ change here has to be mirrored there.
 | `bo-transparent.png`         | The bo mark alone, shadow stripped                             |
 | `interweave-dmg-icon.png`    | Pre-shaped source for the DMG volume icon (`build/darwin/dmg-icon.icns`) |
 
-`*-transparent.png` are artwork: mark only, no background. `apps/react-web-ui-demo`
-and `apps/vue-web-ui-demo` copy `bo-transparent.png` into their `public/` folders
-and reference it as the favicon, apple-touch-icon and home-page hero image; the
-interweave favicon lives in `apps/interweave/frontend/public/interweave.png`. A
-change here has to be mirrored there.
+`*-transparent.png` are artwork: mark only, no background, and every consumer
+copies the file under its canonical name so the file name states where it came
+from: `apps/react-web-ui-demo` and `apps/vue-web-ui-demo` serve
+`bo-transparent.png` as the favicon, apple-touch-icon and home-page hero image,
+and the interweave favicon is
+`apps/interweave/frontend/public/interweave-transparent.png`. A change here has
+to be mirrored in each `public/` folder.
 
 The two `*.png` icon sources are the marks over a light grey gradient
 (`#FAFAFC -> #EEEEF3`) with the mark at 824px wide, centred on a 1024px canvas.
