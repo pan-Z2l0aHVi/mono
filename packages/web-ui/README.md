@@ -388,13 +388,13 @@ Multi-line text input with auto-resize.
 
 Inline plain-text editor: click the text to edit in place, blur to commit. The text layer and the editing layer share one box, so entering edit mode does not move a single pixel.
 
-| Attribute     | Type      | Default | Description                                                                 |
-| ------------- | --------- | ------- | --------------------------------------------------------------------------- |
-| `value`       | `string`  | `''`    | Current value; the declarative attribute is also the `form.reset()` default |
-| `placeholder` | `string`  | `''`    | Text shown while the value is empty                                         |
-| `name`        | `string`  | `''`    | Form field name                                                             |
-| `disabled`    | `boolean` | `false` | Disabled state; behavior only, no visual dimming                            |
-| `aria-label`  | `string`  | —       | Accessible label                                                            |
+| Attribute     | Type      | Default | Description                                                                                                                                                |
+| ------------- | --------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `value`       | `string`  | `''`    | Current value; the declarative value captured on first connection becomes the `form.reset()` default; later attribute or property changes do not update it |
+| `placeholder` | `string`  | `''`    | Text shown while the value is empty                                                                                                                        |
+| `name`        | `string`  | `''`    | Form field name                                                                                                                                            |
+| `disabled`    | `boolean` | `false` | Disabled state; behavior only, no visual dimming                                                                                                           |
+| `aria-label`  | `string`  | —       | Accessible label                                                                                                                                           |
 
 **Events:** `input` (per keystroke), `change` (blur commit), `cancel` (Escape)
 
