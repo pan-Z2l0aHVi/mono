@@ -5,16 +5,50 @@ Canonical sources for the product mark. `apps/react-web-ui-demo` and
 folders and reference them as the favicon and the home-page hero image, so a
 change here has to be mirrored there.
 
-| File                         | What it is                                                |
-| ---------------------------- | --------------------------------------------------------- |
-| `bo.png`                     | Source artwork, 1024px, drop shadow baked into the pixels |
-| `bo-transparent.png`         | Same artwork with the baked shadow stripped               |
-| `interweave.png`             | Source artwork for the interweave app                     |
-| `interweave-transparent.png` | Same, shadow stripped                                     |
+| File                         | What it is                                                    |
+| ---------------------------- | ------------------------------------------------------------- |
+| `interweave.png`             | App icon source, 1024px, copied to `apps/interweave/build/appicon.png` |
+| `bo.png`                     | App icon source for bo, 1024px                                |
+| `interweave-transparent.png` | The interweave mark alone, shadow stripped                   |
+| `bo-transparent.png`         | The bo mark alone, shadow stripped                             |
+| `interweave-dmg-icon.png`    | Pre-shaped source for the DMG volume icon (`build/darwin/dmg-icon.icns`) |
+
+`*-transparent.png` are artwork: mark only, no background. `apps/react-web-ui-demo`
+and `apps/vue-web-ui-demo` copy `bo-transparent.png` into their `public/` folders
+and reference it as the favicon, apple-touch-icon and home-page hero image; the
+interweave favicon lives in `apps/interweave/frontend/public/interweave.png`. A
+change here has to be mirrored there.
+
+The two `*.png` icon sources are the marks over a light grey gradient
+(`#FAFAFC -> #EEEEF3`) with the mark at 824px wide, centred on a 1024px canvas.
+The older artwork had the drop shadow baked into the pixels and the mark sitting
+in a field of empty canvas; both made it unusable as an icon source, so the
+icon-grade files replaced them. The old versions are in git history
+(`684e9d17`).
+
+## Two icon sources, because macOS renders them differently
+
+The app icon and the DMG volume icon go through different rendering paths, so
+one source cannot serve both:
+
+- **App icon** (`interweave.png` -> `appicon.png` -> `icons.icns`):
+  macOS 26+ masks the icon into the squircle itself and composites its own
+  background under any transparent pixels. So the source must be a 1024x1024
+  square, opaque to all four edges — bake nothing. A pre-shaped source gets
+  double-composited: the system draws a white card behind it and the shaped
+  plate reads as a small inset tile (this was tried and reverted).
+- **DMG volume icon** (`interweave-dmg-icon.png` -> `dmg-icon.icns`): the volume
+  icon is rendered as-is, with no system mask. It needs the shape baked in:
+  1024x1024 canvas, transparent 100px margin, opaque 824x824 rounded plate
+  (corner radius 185) with the mark inside.
+
+The 100px inset on the DMG source is safe in both worlds: even where a platform
+mask applies, the baked plate sits strictly inside it, so no crescent gaps
+appear at the corners. Never bake a drop shadow.
 
 ## How the transparent variants were made
 
-The sources ship the drop shadow _baked into the RGBA pixels_ rather than as a
+The original artwork shipped the drop shadow _baked into the RGBA pixels_ rather
 separate layer, so it cannot be turned off. Stripping it needs a chroma-domain
 separation: the artwork is chromatic, the shadow is achromatic at chroma ~30,
 but the icon's own orchid/pink gradient passes through chroma 48..69 and

@@ -55,16 +55,22 @@ tasks:
       - wails3 generate bindings -f '{{.BUILD_FLAGS}}' -clean=true{{if eq .OBFUSCATED "true"}} -obfuscated{{end}} -ts
 
   generate:icons:
-    summary: Generates Windows `.ico` and Mac `.icns` from `appicon.png`, which is a copy of `docs/design/app-icons/interweave.png`.
+    summary: |-
+      Generates Windows `.ico` and Mac `.icns` from `appicon.png`, plus a separate shaped `dmg-icon.icns` for the DMG volume icon.
+      `appicon.png` is a copy of `docs/design/app-icons/interweave.png` (full-bleed square; macOS 26+ masks it into the squircle and composites any transparency itself, so it must reach all four edges).
+      `dmg-icon.icns` comes from `docs/design/app-icons/interweave-dmg-icon.png` (pre-shaped with a 100px transparent margin) because the DMG volume icon is rendered as-is, without the system mask.
     run: once
     dir: build
     sources:
       - 'appicon.png'
+      - '../../../docs/design/app-icons/interweave-dmg-icon.png'
     generates:
       - 'darwin/icons.icns'
+      - 'darwin/dmg-icon.icns'
       - 'windows/icon.ico'
     cmds:
       - wails3 generate icons -input appicon.png -macfilename darwin/icons.icns -windowsfilename windows/icon.ico
+      - wails3 generate icons -input ../../../docs/design/app-icons/interweave-dmg-icon.png -macfilename darwin/dmg-icon.icns -windowsfilename /tmp/interweave-dmg-icon.ico
 
   dev:frontend:
     summary: Runs the frontend development server through the pnpm workspace
