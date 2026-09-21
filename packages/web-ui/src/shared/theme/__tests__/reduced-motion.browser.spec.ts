@@ -10,7 +10,7 @@ import { findFocusRingTransition, fixtures, focusAndSettle, mountField } from '.
  * 断言对象与 `focus-ring-transition.browser.spec.ts` 完全相同，只是把"为什么归零"换成系统偏好：
  * theme `motion=system` 应跟随 `prefers-reduced-motion`，`motion=full` 则应覆盖它。
  *
- * **每个用例自带控制组**（`docs/testing/DELETION-RUBRIC.md` §10 S3）：只断言"没有过渡"是空转可过的 ——
+ * **每个用例自带控制组**（契约化重构判据）：只断言"没有过渡"是空转可过的 ——
  * 组件压根不启动过渡时也会绿。同一条用例里用**同一个观察函数**再验一次显式 `motion=full`
  * 确实启动了过渡，该空集才有区分力。
  */
