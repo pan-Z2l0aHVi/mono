@@ -85,7 +85,8 @@ export class WebUiTooltip extends LitElement {
    * 模块调用**。保留它是不想把「怎么关」藏起来，也让仲裁策略变化时依然成立。
    */
   private readonly _overlay = defineOpenOverlay().make({
-    requestClose: () => this._hide()
+    requestClose: () => this._hide(),
+    isConnected: () => this.isConnected
   })
   private readonly _panel = defineAnchoredPanel().make({
     getAnchor: () => this.shadowRoot?.querySelector<HTMLElement>('.tooltip-trigger') ?? null,

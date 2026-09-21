@@ -79,7 +79,8 @@ export class WebUiPopover extends LitElement {
     requestClose: () => {
       this._userOpenChange.mark()
       this.open = false
-    }
+    },
+    isConnected: () => this.isConnected
   })
   private readonly _panel = defineAnchoredPanel().make({
     getAnchor: () => this.shadowRoot?.querySelector<HTMLElement>('.popover-trigger') ?? null,

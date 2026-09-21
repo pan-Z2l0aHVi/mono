@@ -154,10 +154,12 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
   /*
    * 开启态浮层承载「我开着吗」（issue #120 Block 1）：宿主级 keydown 在 portal 模式下
    * 收不到面板内的 Escape，改由唯一仲裁者在 document 捕获阶段判定最内层。
-   * 宿主接口只剩 requestClose：开启状态是声明而非询问。
+   * 宿主接口除 requestClose 外只再提供一个 isConnected（仅供惰性回收读取）：开启状态是
+   * 声明而非询问。
    */
   private readonly _overlay = defineOpenOverlay().make({
-    requestClose: () => this._close()
+    requestClose: () => this._close(),
+    isConnected: () => this.isConnected
   })
   private readonly _panel = defineAnchoredPanel().make({
     getAnchor: () => this.shadowRoot?.querySelector<HTMLElement>('.input-wrapper') ?? null,
