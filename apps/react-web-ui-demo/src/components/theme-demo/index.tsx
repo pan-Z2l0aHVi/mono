@@ -57,22 +57,6 @@ function ThemeDemo() {
       </p>
 
       <h2>基本用法（单层）</h2>
-      <h3>外观</h3>
-      <div className="mb-4">
-        <web-ui-segmented value={appearance} onInput={updateAppearance} aria-label="单层主题外观">
-          <web-ui-segmented-trigger value="light">Light</web-ui-segmented-trigger>
-          <web-ui-segmented-trigger value="dark">Dark</web-ui-segmented-trigger>
-          <web-ui-segmented-trigger value="system">System</web-ui-segmented-trigger>
-        </web-ui-segmented>
-      </div>
-      <h3>动效偏好</h3>
-      <div className="mb-4">
-        <web-ui-segmented value={motion} onInput={updateMotion} aria-label="单层主题动效偏好">
-          <web-ui-segmented-trigger value="full">Full</web-ui-segmented-trigger>
-          <web-ui-segmented-trigger value="reduced">Reduced</web-ui-segmented-trigger>
-          <web-ui-segmented-trigger value="system">System</web-ui-segmented-trigger>
-        </web-ui-segmented>
-      </div>
 
       <web-ui-theme
         appearance={appearance}
@@ -80,6 +64,25 @@ function ThemeDemo() {
         className="block rounded-xl border border-(--wui-color-border) p-6"
       >
         <section className="bg-(--wui-color-page)">
+          <div className="mb-4 flex flex-wrap items-center gap-4">
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-(--wui-color-text-secondary)">外观</span>
+              <web-ui-segmented value={appearance} onInput={updateAppearance} aria-label="单层主题外观">
+                <web-ui-segmented-trigger value="light">Light</web-ui-segmented-trigger>
+                <web-ui-segmented-trigger value="dark">Dark</web-ui-segmented-trigger>
+                <web-ui-segmented-trigger value="system">System</web-ui-segmented-trigger>
+              </web-ui-segmented>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-(--wui-color-text-secondary)">动效偏好</span>
+              <web-ui-segmented value={motion} onInput={updateMotion} aria-label="单层主题动效偏好">
+                <web-ui-segmented-trigger value="full">Full</web-ui-segmented-trigger>
+                <web-ui-segmented-trigger value="reduced">Reduced</web-ui-segmented-trigger>
+                <web-ui-segmented-trigger value="system">System</web-ui-segmented-trigger>
+              </web-ui-segmented>
+            </div>
+          </div>
+
           <div className="flex flex-wrap gap-3">
             <web-ui-button variant="primary">Primary</web-ui-button>
             <web-ui-button variant="secondary">Secondary</web-ui-button>
@@ -142,42 +145,6 @@ function ThemeDemo() {
         外层 Light / Reduced → 内层 Dark / Full → 最内层 Light / System，每层独立控制，互不干扰。
       </p>
 
-      <div className="mb-4 flex flex-wrap items-center gap-4">
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-(--wui-color-text-secondary)">内层外观</span>
-          <web-ui-segmented value={innerAppearance} onInput={updateInnerAppearance} aria-label="内层主题外观">
-            <web-ui-segmented-trigger value="light">Light</web-ui-segmented-trigger>
-            <web-ui-segmented-trigger value="dark">Dark</web-ui-segmented-trigger>
-          </web-ui-segmented>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-(--wui-color-text-secondary)">最内层外观</span>
-          <web-ui-segmented value={innermostAppearance} onInput={updateInnermostAppearance} aria-label="最内层主题外观">
-            <web-ui-segmented-trigger value="light">Light</web-ui-segmented-trigger>
-            <web-ui-segmented-trigger value="dark">Dark</web-ui-segmented-trigger>
-          </web-ui-segmented>
-        </div>
-      </div>
-
-      <div className="mb-4 flex flex-wrap items-center gap-4">
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-(--wui-color-text-secondary)">内层动效</span>
-          <web-ui-segmented value={innerMotion} onInput={updateInnerMotion} aria-label="内层主题动效偏好">
-            <web-ui-segmented-trigger value="system">System</web-ui-segmented-trigger>
-            <web-ui-segmented-trigger value="full">Full</web-ui-segmented-trigger>
-            <web-ui-segmented-trigger value="reduced">Reduced</web-ui-segmented-trigger>
-          </web-ui-segmented>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-(--wui-color-text-secondary)">最内层动效</span>
-          <web-ui-segmented value={innermostMotion} onInput={updateInnermostMotion} aria-label="最内层主题动效偏好">
-            <web-ui-segmented-trigger value="system">System</web-ui-segmented-trigger>
-            <web-ui-segmented-trigger value="full">Full</web-ui-segmented-trigger>
-            <web-ui-segmented-trigger value="reduced">Reduced</web-ui-segmented-trigger>
-          </web-ui-segmented>
-        </div>
-      </div>
-
       <web-ui-theme
         appearance="light"
         motion="reduced"
@@ -198,6 +165,24 @@ function ThemeDemo() {
           >
             <section className="bg-(--wui-color-page)">
               <p className="mb-2 text-xs text-(--wui-color-text-secondary)">内层（可切换）</p>
+              <div className="mb-4 flex flex-wrap items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-(--wui-color-text-secondary)">内层外观</span>
+                  <web-ui-segmented value={innerAppearance} onInput={updateInnerAppearance} aria-label="内层主题外观">
+                    <web-ui-segmented-trigger value="light">Light</web-ui-segmented-trigger>
+                    <web-ui-segmented-trigger value="dark">Dark</web-ui-segmented-trigger>
+                  </web-ui-segmented>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-(--wui-color-text-secondary)">内层动效</span>
+                  <web-ui-segmented value={innerMotion} onInput={updateInnerMotion} aria-label="内层主题动效偏好">
+                    <web-ui-segmented-trigger value="system">System</web-ui-segmented-trigger>
+                    <web-ui-segmented-trigger value="full">Full</web-ui-segmented-trigger>
+                    <web-ui-segmented-trigger value="reduced">Reduced</web-ui-segmented-trigger>
+                  </web-ui-segmented>
+                </div>
+              </div>
+
               <div className="flex flex-wrap gap-3">
                 <web-ui-button variant="primary">内层按钮</web-ui-button>
                 <web-ui-input value="内层输入"></web-ui-input>
@@ -212,6 +197,32 @@ function ThemeDemo() {
               >
                 <section className="bg-(--wui-color-page)">
                   <p className="mb-2 text-xs text-(--wui-color-text-secondary)">最内层（可切换）</p>
+                  <div className="mb-4 flex flex-wrap items-center gap-4">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-(--wui-color-text-secondary)">最内层外观</span>
+                      <web-ui-segmented
+                        value={innermostAppearance}
+                        onInput={updateInnermostAppearance}
+                        aria-label="最内层主题外观"
+                      >
+                        <web-ui-segmented-trigger value="light">Light</web-ui-segmented-trigger>
+                        <web-ui-segmented-trigger value="dark">Dark</web-ui-segmented-trigger>
+                      </web-ui-segmented>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-(--wui-color-text-secondary)">最内层动效</span>
+                      <web-ui-segmented
+                        value={innermostMotion}
+                        onInput={updateInnermostMotion}
+                        aria-label="最内层主题动效偏好"
+                      >
+                        <web-ui-segmented-trigger value="system">System</web-ui-segmented-trigger>
+                        <web-ui-segmented-trigger value="full">Full</web-ui-segmented-trigger>
+                        <web-ui-segmented-trigger value="reduced">Reduced</web-ui-segmented-trigger>
+                      </web-ui-segmented>
+                    </div>
+                  </div>
+
                   <div className="flex flex-wrap gap-3">
                     <web-ui-button variant="primary">最内层按钮</web-ui-button>
                     <web-ui-switch checked></web-ui-switch>
