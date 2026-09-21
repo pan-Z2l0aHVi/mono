@@ -109,7 +109,6 @@ export class WebUiToast extends LitElement {
     this.style.setProperty('--toast-slide-y', `${y}px`)
   }
 
-  // 启动自动关闭计时器
   startAutoClose() {
     this._clearTimer()
     if (this.duration > 0) {

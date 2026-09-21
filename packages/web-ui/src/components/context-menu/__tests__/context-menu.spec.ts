@@ -697,7 +697,6 @@ describe('WebUiContextMenu 组件', () => {
       await waitForMenuOpen(el)
 
       const content = getPortalContent()
-      // 第一轮：替换 + 直插
       const first = content.querySelector<HTMLElement>('web-ui-dropdown-item')
       if (!first) throw new Error('Expected first menu item')
       const fresh = document.createElement('web-ui-dropdown-item')
