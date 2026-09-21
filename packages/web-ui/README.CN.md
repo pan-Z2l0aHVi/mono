@@ -478,8 +478,7 @@ Portal 面板创建时会镜像 host 上解析后的这些变量；更新 host �
 | `--wui-slider-height`          | `var(--wui-slider-track-size, 6px)` | 轨道厚度     |
 | `--wui-slider-track-size`      | `6px`                               | 轨道尺寸     |
 | `--wui-slider-thumb-width`     | `24px`                              | 滑块宽度     |
-| `--wui-slider-thumb-height`    | `18px`                              | 滑块高度     |
-| `--wui-slider-thumb-radius`    | `8px`                               | 滑块圆角     |
+| `--wui-slider-thumb-height`    | `20px`                              | 滑块高度     |
 | `--wui-slider-marks-inset`     | `0`                                 | 刻度内缩     |
 
 #### `<web-ui-checkbox>`
@@ -1244,10 +1243,10 @@ WebUiSpinner.hide() // 隐藏
 
 **CSS 自定义属性：**
 
-| 属性                               | 默认值                            | 说明                                 |
-| ---------------------------------- | --------------------------------- | ------------------------------------ |
-| `--wui-layout-sidebar-radius`      | `var(--wui-radius-overlay, 28px)` | 侧边栏卡片圆角（桌面端和移动端共用） |
-| `--wui-layout-mobile-toggle-inset` | `8px`                             | 移动端 header Toggle 的左缩进        |
+| 属性                               | 默认值 | 说明                                 |
+| ---------------------------------- | ------ | ------------------------------------ |
+| `--wui-layout-sidebar-radius`      | `24px` | 侧边栏卡片圆角（桌面端和移动端共用） |
+| `--wui-layout-mobile-toggle-inset` | `8px`  | 移动端 header Toggle 的左缩进        |
 
 #### `<web-ui-back-top>`
 
@@ -1390,8 +1389,8 @@ SVG 线条绘制动画，基于 `stroke-dashoffset`。直接在原元素上动�
 | `--wui-color-border`               | `rgb(0 0 0 / 0.1)`                                           | `rgb(255 255 255 / 0.14)`                                    | 常规边框和分隔线       |
 | `--wui-color-glass-border`         | `transparent`                                                | `rgb(255 255 255 / 0.05)`                                    | Glass 边框色调         |
 | `--wui-color-glass-highlight`      | `rgb(255 255 255 / 0.9)`                                     | `rgb(255 255 255 / 0.1)`                                     | Glass 高光边缘         |
-| `--wui-color-glass-corner`         | `rgb(255 255 255 / 0.08)`                                    | `rgb(255 255 255 / 0.2)`                                     | Glass 边框角落光泽     |
-| `--wui-color-glass-shade`          | `rgb(0 0 0 / 0.06)`                                          | `rgb(0 0 0 / 0.5)`                                           | Glass 边框背光角压暗   |
+| `--wui-color-glass-corner`         | `rgb(255 255 255 / 0.5)`                                     | `rgb(255 255 255 / 0.2)`                                     | Glass 边框角落光泽     |
+| `--wui-color-glass-shade`          | `rgb(0 0 0 / 0.03)`                                          | `rgb(0 0 0 / 0.5)`                                           | Glass 边框背光角压暗   |
 | `--wui-color-accent`               | `#08f`                                                       | `#0a84ff`                                                    | Accent 和输入焦点边框  |
 | `--wui-color-on-accent`            | `#fff`                                                       | `#fff`                                                       | Accent 上的前景色      |
 | `--wui-color-on-control`           | `#fff`                                                       | `#f2f2f7`                                                    | 控件内芯前景色         |

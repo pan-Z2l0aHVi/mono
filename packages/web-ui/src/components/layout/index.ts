@@ -320,7 +320,7 @@ export class WebUiLayout extends LitElement {
       <web-ui-button
         class="sidebar-toggle"
         icon
-        variant="secondary"
+        variant="ghost"
         @click="${this._toggleSidebar}"
         aria-label="${toggleLabel}"
       >
@@ -401,7 +401,7 @@ export class WebUiLayout extends LitElement {
         @open-change="${this._onDrawerChange}"
         style="${styleMap({
           '--wui-drawer-width': this.sidebarWidth,
-          '--wui-drawer-radius': 'var(--wui-layout-sidebar-radius, var(--wui-radius-overlay, 28px))'
+          '--wui-drawer-radius': 'var(--wui-layout-sidebar-radius, 24px)'
         })}"
       >
         ${sidebarViewport}

@@ -510,8 +510,7 @@ Supports ArrowLeft/Right/Up/Down, Home/End, PageUp/PageDown keyboard navigation.
 | `--wui-slider-height`          | `var(--wui-slider-track-size, 6px)` | Track thickness        |
 | `--wui-slider-track-size`      | `6px`                               | Track size             |
 | `--wui-slider-thumb-width`     | `24px`                              | Thumb width            |
-| `--wui-slider-thumb-height`    | `18px`                              | Thumb height           |
-| `--wui-slider-thumb-radius`    | `8px`                               | Thumb border radius    |
+| `--wui-slider-thumb-height`    | `20px`                              | Thumb height           |
 | `--wui-slider-marks-inset`     | `0`                                 | Marks inset from edges |
 
 #### `<web-ui-checkbox>`
@@ -1280,10 +1279,10 @@ At `640px` and below, the sidebar becomes a `web-ui-drawer` with its built-in gl
 
 **CSS Custom Properties:**
 
-| Property                           | Default                           | Description                                      |
-| ---------------------------------- | --------------------------------- | ------------------------------------------------ |
-| `--wui-layout-sidebar-radius`      | `var(--wui-radius-overlay, 28px)` | Border radius of sidebar card (desktop & mobile) |
-| `--wui-layout-mobile-toggle-inset` | `8px`                             | Left inset of the mobile header toggle           |
+| Property                           | Default | Description                                      |
+| ---------------------------------- | ------- | ------------------------------------------------ |
+| `--wui-layout-sidebar-radius`      | `24px`  | Border radius of sidebar card (desktop & mobile) |
+| `--wui-layout-mobile-toggle-inset` | `8px`   | Left inset of the mobile header toggle           |
 
 #### `<web-ui-back-top>`
 
@@ -1426,8 +1425,8 @@ The host uses `display: contents` and does not paint any background: the library
 | `--wui-color-border`               | `rgb(0 0 0 / 0.1)`                                           | `rgb(255 255 255 / 0.14)`                                    | Normal border and divider       |
 | `--wui-color-glass-border`         | `transparent`                                                | `rgb(255 255 255 / 0.05)`                                    | Glass border tint               |
 | `--wui-color-glass-highlight`      | `rgb(255 255 255 / 0.9)`                                     | `rgb(255 255 255 / 0.1)`                                     | Glass edge highlight            |
-| `--wui-color-glass-corner`         | `rgb(255 255 255 / 0.08)`                                    | `rgb(255 255 255 / 0.2)`                                     | Glass corner sheen on border    |
-| `--wui-color-glass-shade`          | `rgb(0 0 0 / 0.06)`                                          | `rgb(0 0 0 / 0.5)`                                           | Glass corner shade on border    |
+| `--wui-color-glass-corner`         | `rgb(255 255 255 / 0.5)`                                     | `rgb(255 255 255 / 0.2)`                                     | Glass corner sheen on border    |
+| `--wui-color-glass-shade`          | `rgb(0 0 0 / 0.03)`                                          | `rgb(0 0 0 / 0.5)`                                           | Glass corner shade on border    |
 | `--wui-color-accent`               | `#08f`                                                       | `#0a84ff`                                                    | Accent and focused input border |
 | `--wui-color-on-accent`            | `#fff`                                                       | `#fff`                                                       | Foreground on accent            |
 | `--wui-color-on-control`           | `#fff`                                                       | `#f2f2f7`                                                    | Foreground on control inner     |

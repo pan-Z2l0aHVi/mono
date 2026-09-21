@@ -221,6 +221,9 @@ dialog::backdrop {
 }
 
 .wui-image-preview-counter {
+  /* pill 高 ≈ 24px（13px 行盒 + 上下 4px padding），光影取短边一半 */
+  --wui-glass-corner-radius: 12px;
+
   position: absolute;
   top: var(--wui-image-preview-edge-gap, 20px);
   left: var(--wui-image-preview-edge-gap, 20px);
@@ -254,6 +257,9 @@ dialog::backdrop {
 }
 
 .wui-image-preview-toolbar {
+  /* 高 = 30px 图标按钮 + 上下 6px padding，光影取短边一半 */
+  --wui-glass-corner-radius: 21px;
+
   position: absolute;
   bottom: var(--wui-image-preview-edge-gap, 20px);
   left: 50%;

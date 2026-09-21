@@ -64,14 +64,14 @@ aside {
   transition: width var(--wui-duration-layout, 200ms) var(--wui-ease-enter, cubic-bezier(0.23, 1, 0.32, 1));
 
   .aside-panel {
-    --wui-glass-corner-radius: var(--wui-layout-sidebar-radius, var(--wui-radius-overlay, 28px));
+    --wui-glass-corner-radius: var(--wui-layout-sidebar-radius, 24px);
 
     display: flex;
     flex: 1;
     flex-direction: column;
 
     min-height: 0;
-    border-radius: var(--wui-layout-sidebar-radius, var(--wui-radius-overlay, 28px));
+    border-radius: var(--wui-layout-sidebar-radius, 24px);
 
     background-color: var(--wui-color-surface-overlay, rgb(246 246 246 / 0.82));
   }
@@ -83,6 +83,7 @@ aside {
   }
 
   .sidebar-toggle {
+    --wui-button-width: 44px;
     margin: 8px;
   }
 
@@ -176,9 +177,6 @@ header {
  *
  * 伪元素随 header 的实际盒子尺寸和 sticky 位置变化，自然适配 header slot 的
  * 高度与位置，无需单独维护一层 DOM。
- *
- * 通过 translate + scale 将晕染区域从 header 中心向外扩展，
- * 并使用 blur 模糊边缘，实现柔和的渐变过渡效果。
  */
 :host([header-glow]) header::before {
   pointer-events: none;

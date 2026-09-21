@@ -118,7 +118,8 @@
 }
 
 .wui-slider-thumb {
-  --wui-glass-corner-radius: var(--wui-slider-thumb-radius, 8px);
+  /* thumb 是 pill，描边光影需要有限半径，取短边（height）的一半 */
+  --wui-glass-corner-radius: calc(var(--wui-slider-thumb-height, 20px) / 2);
 
   cursor: inherit;
 
@@ -130,8 +131,8 @@
   transform: translate(-50%, -50%) scale(1);
 
   width: var(--wui-slider-thumb-width, 24px);
-  height: var(--wui-slider-thumb-height, 18px);
-  border-radius: var(--wui-slider-thumb-radius, 8px);
+  height: var(--wui-slider-thumb-height, 20px);
+  border-radius: var(--wui-radius-control, calc(infinity * 1px));
 
   transition:
     transform var(--wui-duration-press, 80ms) cubic-bezier(0.4, 0, 0.2, 1),
