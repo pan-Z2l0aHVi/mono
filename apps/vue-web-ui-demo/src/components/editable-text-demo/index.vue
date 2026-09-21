@@ -1,0 +1,105 @@
+<script setup lang="ts">
+import type { WebUiEditableText, WebUiEvent } from '@greypan/web-ui'
+import { ref } from 'vue'
+
+const title = ref('点击这行文字即可就地编辑')
+const lastEvent = ref('（尚未触发）')
+const submitted = ref<[string, string][]>([])
+const formRef = ref<HTMLFormElement>()
+
+// Enter 换行的初值：常量属性只在挂载时写入一次，用户编辑后的草稿不会被绑定回写。
+const multiline = 'Enter 换行且保持编辑态\n第二行随盒宽自动折行，两态同盒'
+
+function handleSubmit(event: Event) {
+  event.preventDefault()
+  const data = new FormData(event.currentTarget as HTMLFormElement)
+  const entries: [string, string][] = []
+  for (const [name, value] of data.entries()) {
+    if (typeof value === 'string') entries.push([name, value])
+  }
+  submitted.value = entries
+}
+
+function handleChange(event: WebUiEvent<WebUiEditableText, 'change'>) {
+  title.value = event.currentTarget.value
+  lastEvent.value = 'change（失焦提交）'
+}
+</script>
+
+<template>
+  <div>
+    <h1>可编辑文本</h1>
+
+    <h2>就地编辑</h2>
+    <div class="mb-3 flex flex-col gap-3">
+      <p class="text-sm leading-6 text-gray-600">
+        文档标题：
+        <web-ui-editable-text
+          :value="title"
+          placeholder="请输入标题"
+          aria-label="文档标题"
+          @change="handleChange"
+          @cancel="lastEvent = 'cancel（Escape 取消）'"
+        />
+      </p>
+      <div class="text-sm text-gray-500">已提交的值：{{ title || '(空)' }}</div>
+      <div class="text-sm text-gray-500">最近事件：{{ lastEvent }}</div>
+    </div>
+    <p class="mb-3 text-xs text-gray-400">💡 点击文字进入编辑并落点光标，失焦提交；Escape 取消并恢复进入编辑时的值</p>
+
+    <h2>占位文本</h2>
+    <div class="mb-3 flex flex-col gap-3">
+      <web-ui-editable-text value="有值时不显示占位文本" placeholder="占位文本" aria-label="有值示例" />
+      <web-ui-editable-text placeholder="空值时显示占位文本" aria-label="空值示例" />
+    </div>
+    <p class="mb-3 text-xs text-gray-400">💡 提交空值即清空，文本层回退显示 placeholder</p>
+
+    <h2>多行</h2>
+    <div class="mb-3 flex flex-col gap-3">
+      <web-ui-editable-text
+        class="w-80 rounded-sm bg-(--wui-color-surface-raised) p-2"
+        :value="multiline"
+        placeholder="支持多行的占位文本"
+        aria-label="多行示例"
+      />
+    </div>
+    <p class="mb-3 text-xs text-gray-400">💡 Enter 插入换行；文本层与编辑层同盒同排版，进入编辑不产生位移</p>
+
+    <h2>禁用</h2>
+    <div class="mb-3 flex flex-col gap-3">
+      <web-ui-editable-text value="禁用且有值：不聚焦、不进入编辑" disabled aria-label="禁用有值" />
+      <web-ui-editable-text placeholder="禁用且空：显示占位文本" disabled aria-label="禁用空值" />
+    </div>
+    <p class="mb-3 text-xs text-gray-400">💡 禁用时宿主移出 tab 序列，指针与键盘都不进入编辑</p>
+
+    <h2>表单</h2>
+    <form ref="formRef" class="mb-3 flex flex-col items-start gap-3" @submit="handleSubmit" @reset="submitted = []">
+      <div class="flex flex-col gap-1">
+        <span class="text-sm text-gray-600">标题</span>
+        <web-ui-editable-text name="title" value="初始标题" aria-label="表单标题" />
+      </div>
+      <div class="flex flex-col gap-1">
+        <span class="text-sm text-gray-600">简介（可留空）</span>
+        <web-ui-editable-text
+          class="w-80 rounded-sm bg-(--wui-color-surface-raised) p-2"
+          name="bio"
+          placeholder="请输入简介"
+          aria-label="表单简介"
+        />
+      </div>
+      <div class="flex gap-3">
+        <!-- web-ui-button 的内部 button 位于 shadow root 内，拿不到外层 form 的 form owner；
+             提交与重置由 demo 显式驱动，表单关联仍走原生 submit/reset 事件。 -->
+        <web-ui-button @click="formRef?.requestSubmit()">提交</web-ui-button>
+        <web-ui-button variant="secondary" @click="formRef?.reset()">重置</web-ui-button>
+      </div>
+    </form>
+    <div class="flex flex-col gap-1">
+      <span class="text-sm text-gray-500">提交结果（FormData）</span>
+      <span v-if="submitted.length === 0" class="text-sm text-gray-500">（尚未提交）</span>
+      <span v-for="[name, value] in submitted" :key="name" class="text-sm whitespace-pre-wrap text-gray-500">
+        {{ name }} = {{ value || '(空)' }}
+      </span>
+    </div>
+  </div>
+</template>
