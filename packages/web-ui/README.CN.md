@@ -308,6 +308,8 @@ dropdown、tooltip）不需要它。
 
 **事件：** `input`, `change`, `focus`, `blur`
 
+**方法：** `focus()`, `blur()` —— 委托到内部原生 input（宿主自身不可聚焦）
+
 **插槽：** `prefix`, `default`, `suffix`
 
 **CSS 自定义属性：**
@@ -456,9 +458,25 @@ Portal 面板创建时会镜像 host 上解析后的这些变量；更新 host �
 
 **事件：** `input`, `change`, `focus`, `blur`, `open-change` (`CustomEvent<{ open: boolean }>`)
 
-**插槽：** `default`（投影 `<web-ui-option>` 元素）、`empty`（替换无匹配空态；默认回退为“无匹配选项”）
+**方法：** `focus()`, `blur()`
+
+**插槽：** `default`（投影 `<web-ui-option>` 元素）、`trigger`（自定义触发器内容——替换默认输入框）、`empty`（替换无匹配空态；默认回退为“无匹配选项”）
 
 键入时按 label 过滤候选（`contains` 或 `prefix`，`none` 关闭过滤）。选择 option 时文本回填为该项 label，`selected-value` 暴露该项的 value；`change` 在选择提交时触发。支持 ArrowDown/ArrowUp/Enter/Escape 键盘导航。
+
+**触发器：** 默认触发器是 shadow 内的 `web-ui-input`。把任意可编辑组件放进 `trigger` slot 即可替换它——包装 div 继续承载 combobox ARIA，并以 `data-custom-trigger` 标记当前使用自定义触发器，浮层始终以触发器元素为锚点。组件的 `focus()` / `blur()` 委托到当前生效的触发器：`web-ui-input` 与 `web-ui-textarea` 会把焦点落到内部原生控件；自定义触发器没有自己的 focus 重定向时，按宿主自身聚焦。
+
+```html
+<web-ui-autocomplete placeholder="描述问题">
+  <web-ui-textarea slot="trigger" rows="3"></web-ui-textarea>
+  <web-ui-option value="bug" label="缺陷"></web-ui-option>
+  <web-ui-option value="feature" label="需求"></web-ui-option>
+</web-ui-autocomplete>
+```
+
+自定义触发器与默认触发器共用同一份契约：字符串 `value` 承载文本、可聚焦，并派发组件委托监听的事件（`input`、`click`、`focus`、`blur`）。`web-ui-input` 与 `web-ui-textarea` 开箱即用；自定义元素只要暴露字符串 `value` property 即可接入。包装 div 不占 tab 位（`tabindex="-1"`）：顺序焦点归触发器自身，自定义触发器必须可聚焦，键盘用户才能到达 combobox。
+
+多行触发器（可编辑元素为 `<textarea>`）保留 Enter 换行语义：Enter 不会选中高亮项，也不会提交 custom value，关闭面板用 Escape 或 blur。选择 option 仍会把该项 label 回写到触发器。单行自定义触发器保持默认的 Enter 语义。面板打开时 ArrowUp/ArrowDown 适用同一例外：方向键移动文本光标而不导航候选，该状态下键盘无法导航 option——用指针点击选择。面板关闭时 ArrowDown/ArrowUp 仍可打开面板。
 
 启用 `allow-custom-value` 后，无匹配且无活动 option 时，Enter 会把当前输入原文作为 custom value 提交并关闭面板；`change` 会触发，`selected-value` 保持为空。组件不会自动创建 option，也不会 trim 原文。命中禁用 option 的文本不会绕过禁用语义，也不会派生为已选 option。
 

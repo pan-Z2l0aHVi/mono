@@ -338,6 +338,8 @@ Text input with clearable, prefix/suffix slots.
 
 **Events:** `input`, `change`, `focus`, `blur`
 
+**Methods:** `focus()`, `blur()` — delegate to the internal native input (the host itself is not focusable)
+
 **Slots:** `prefix`, `default`, `suffix`
 
 **CSS Custom Properties:**
@@ -488,9 +490,25 @@ Editable combobox with input filtering and single option selection.
 
 **Events:** `input`, `change`, `focus`, `blur`, `open-change` (`CustomEvent<{ open: boolean }>`)
 
-**Slots:** `default` (project `<web-ui-option>` elements), `empty` (replace the “no matches” state; falls back to “No matches”)
+**Methods:** `focus()`, `blur()`
+
+**Slots:** `default` (project `<web-ui-option>` elements), `trigger` (custom trigger content — replaces the default input), `empty` (replace the “no matches” state; falls back to “No matches”)
 
 Typing filters the option list by label (`contains` or `prefix`, or `none` to disable filtering). Selecting an option fills the input with its label and exposes the option's value via `selected-value`; `change` fires on selection commit. Supports ArrowDown/ArrowUp/Enter/Escape keyboard navigation.
+
+**Trigger:** the default trigger is an internal `web-ui-input`. Put any editable component in the `trigger` slot to replace it — the wrapper keeps the combobox ARIA and marks itself with `data-custom-trigger`, and the dropdown stays anchored to the trigger element. Programmatic `focus()` / `blur()` delegate to the active trigger: `web-ui-input` and `web-ui-textarea` move focus to their native control, while a custom trigger without its own focus redirection is focused as the host itself.
+
+```html
+<web-ui-autocomplete placeholder="Describe the issue">
+  <web-ui-textarea slot="trigger" rows="3"></web-ui-textarea>
+  <web-ui-option value="bug" label="Bug"></web-ui-option>
+  <web-ui-option value="feature" label="Feature"></web-ui-option>
+</web-ui-autocomplete>
+```
+
+The custom trigger exposes the same contract as the default one: a string `value` for the text, focusable, and the events the component delegates from it (`input`, `click`, `focus`, `blur`). `web-ui-input` and `web-ui-textarea` satisfy it as-is; a custom element is usable when it exposes a string `value` property. The wrapper div is not a tab stop (`tabindex="-1"`): sequential focus belongs to the trigger itself, so a custom trigger has to be focusable for keyboard users to reach the combobox.
+
+Multiline triggers (a trigger whose editable element is a `<textarea>`) keep Enter for newlines: Enter never selects the highlighted option and never commits a custom value, so close the panel with Escape or blur. Selecting an option still writes its label back to the trigger. A single-line custom trigger keeps the default Enter behavior. ArrowUp/ArrowDown follow the same exception while the panel is open: they move the text caret instead of navigating options, so keyboard option navigation is unavailable in that state — select with a pointer click. With the panel closed, ArrowDown/ArrowUp still open it.
 
 When `allow-custom-value` is enabled, pressing Enter with no active option and no matching candidate commits the raw input as a custom value and closes the panel. `change` fires and `selected-value` remains empty. The component does not create an option automatically or trim the raw value. Text matching a disabled option cannot bypass the disabled state or derive as a selected option.
 
