@@ -38,6 +38,8 @@
 
   font-size: var(--wui-font-size, 14px);
   line-height: 1;
+
+  /* 选中与未选中同档灰：区分度只由玻璃指示器承担，未选中项无底色。 */
   color: var(--wui-color-text-secondary, #6a6a6a);
   white-space: nowrap;
 
@@ -48,10 +50,6 @@
   &:focus-visible {
     outline: var(--wui-focus-ring-width, 3px) solid var(--wui-color-focus-ring, rgb(0 136 255 / 0.4));
     outline-offset: 2px;
-  }
-
-  &.is-checked {
-    color: var(--wui-color-text, #1b1b1b);
   }
 }
 

@@ -230,6 +230,23 @@ describe('WebUiSegmented 组件', () => {
     })
   })
 
+  describe('玻璃指示器', () => {
+    it('指示器静止态挂载共享玻璃配方，按压与拖拽不摘除', async () => {
+      const el = createSegmented(TRIGGER_HTML)
+      await waitForUpdate(el)
+
+      const indicator = queryA11y(el, '.wui-segmented-indicator')
+      expect(indicator).not.toBeNull()
+      expect(indicator?.classList.contains('wui-glass')).toBe(true)
+
+      el.value = 'b'
+      await waitForUpdate(el)
+      expect(queryA11y(el, '.wui-segmented-indicator')?.classList.contains('wui-glass')).toBe(true)
+
+      cleanupElement(el)
+    })
+  })
+
   describe('事件', () => {
     it('点击子 trigger 只派发一次 input 事件，target/currentTarget 均为 group', async () => {
       const el = createSegmented(TRIGGER_HTML)
