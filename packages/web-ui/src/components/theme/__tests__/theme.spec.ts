@@ -170,6 +170,71 @@ describe('WebUiTheme 组件', () => {
     })
   })
 
+  describe('View Transition capture 清理', () => {
+    /*
+     * issue #146：_startThemeTransition 先给 host 写内联 display:block 与 view-transition-name，
+     * 再执行 document.adoptedStyleSheets = …。cleanup 必须在该写入之前登记，否则写入同步抛错时
+     * setter 的 .catch 拿到的是 undefined 的 cleanup，capture name 会残留在 host 上，污染之后每一次
+     * view transition。嵌套主题才有 capture name（root 主题 transitionName 为 undefined），故用 outer/inner。
+     */
+    it('adoptedStyleSheets setter 抛错时：host 不残留 view-transition-name', async () => {
+      const outer = createTheme('light')
+      const inner = document.createElement('web-ui-theme')
+      inner.appearance = 'light'
+      inner.motion = 'full'
+      inner.transition = true
+      outer.appendChild(inner)
+      await outer.updateComplete
+      await inner.updateComplete
+
+      const startDesc = Object.getOwnPropertyDescriptor(document, 'startViewTransition')
+      const adoptedDesc = Object.getOwnPropertyDescriptor(document, 'adoptedStyleSheets')
+      Object.defineProperty(document, 'startViewTransition', {
+        configurable: true,
+        writable: true,
+        value: () => ({
+          ready: Promise.resolve(),
+          finished: Promise.resolve(),
+          updateCallbackDone: Promise.resolve()
+        })
+      })
+      // jsdom 无 adoptedStyleSheets，先建出数组 own-property，再覆写为「getter 返回数组 +
+      // setter 同步抛错」：既让 _shouldAnimateAppearance 的 Array.isArray 检查通过，又让写入抛错。
+      document.adoptedStyleSheets = []
+      const adoptedArray = document.adoptedStyleSheets
+      let setterCalled = false
+      Object.defineProperty(document, 'adoptedStyleSheets', {
+        configurable: true,
+        get: () => adoptedArray,
+        set: () => {
+          setterCalled = true
+          throw new Error('adoptedStyleSheets setter blocked (test)')
+        }
+      })
+
+      try {
+        inner.appearance = 'dark'
+        // setter 同步抛错 → async fn reject → .catch 微任务；flush 之。
+        await new Promise(resolve => setTimeout(resolve, 0))
+        await inner.updateComplete
+
+        // 守卫：确认过渡确已发起并走到 adoptedStyleSheets 写入（否则内联写入从未发生，下面会假绿）。
+        expect(setterCalled).toBe(true)
+        // capture name 不得残留在 host 上。
+        expect(inner.style.getPropertyValue('view-transition-name')).toBe('')
+        // .catch 仍应提交最终 appearance。
+        expect(inner.appearance).toBe('dark')
+      } finally {
+        if (startDesc) Object.defineProperty(document, 'startViewTransition', startDesc)
+        else Reflect.deleteProperty(document, 'startViewTransition')
+        if (adoptedDesc) Object.defineProperty(document, 'adoptedStyleSheets', adoptedDesc)
+        else Reflect.deleteProperty(document, 'adoptedStyleSheets')
+        inner.remove()
+        outer.remove()
+      }
+    })
+  })
+
   describe('属性：motion', () => {
     it('默认使用 system 并反射到 host', async () => {
       const theme = createTheme('light')
