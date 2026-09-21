@@ -110,7 +110,7 @@ turbo 本地缓存由 `.mise.toml` 的 `TURBO_CACHE_DIR` 指向 worktree 族共�
 | Workflow                | 触发                                                               | 职责                                                                                                  |
 | ----------------------- | ------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------- |
 | `ci.yml`                | `pull_request`、push 到 `main`、`workflow_dispatch`                | 共享 agent context、changeset 状态、构建、格式化/lint/类型检查和测试                                  |
-| `changeset-version.yml` | push 到 `main`                                                     | 创建/更新 Changesets 版本 PR，经 `changesets/action` 的 `version` 输入调用 `pnpm run release:version` |
+| `changeset-version.yml` | push 到 `main`                                                     | 创建/更新 Changesets 版本 PR，`changesets/action` 的 `version-script` 调用 `pnpm run release:version` |
 | `npm-publish.yml`       | `pull_request.closed`，限定 `changeset-release/main` 合并到 `main` | 检测公共包版本变更，在合并 SHA 上重建 `packages/*` Turbo 图并通过 npm Trusted Publishing 发布         |
 | 应用验证 workflow       | 目标应用路径、其 WebView frontend 的直接 workspace 依赖或手动触发  | 校验同步元数据并在对应的原生目标上构建验证产物                                                        |
 | 应用发布 workflow       | 目标应用版本变更后的受控合并                                       | 创建带校验和的安装程序 Release；私有应用永不发布到 npm                                                |
