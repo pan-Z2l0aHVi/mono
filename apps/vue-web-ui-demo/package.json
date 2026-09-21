@@ -31,6 +31,7 @@
     "@vitejs/plugin-vue-jsx": "catalog:",
     "@vitejs/plugin-vue": "catalog:",
     "@tailwindcss/vite": "catalog:",
+    "tailwindcss": "catalog:",
     "vite-plugin-vue-devtools": "catalog:",
     "unplugin-auto-import": "catalog:",
     "vue-tsc": "catalog:",

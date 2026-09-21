@@ -26,7 +26,6 @@
 
 set -euo pipefail
 
-# ── 解析参数 ──
 BODY_LINES=()
 DRY_RUN=false
 
@@ -87,7 +86,7 @@ get_emoji() {
 }
 
 # ── stash 泄漏守卫 ──
-# vp staged 的 git stash push/pop 可能将旧的未提交变更残留到工作区。
+# 任何 stash push/pop（手工或外部工具）都可能把旧的未提交变更残留在工作区。
 # 如果出现预期外的 delete/rename，很可能是 stash 泄漏，应拒绝提交。
 LEAKED=$(git diff --name-status --diff-filter=DR 2>/dev/null || true)
 if [ -n "$LEAKED" ]; then
@@ -98,11 +97,9 @@ if [ -n "$LEAKED" ]; then
   exit 1
 fi
 
-# ── 构建 commit message ──
 EMOJI=$(get_emoji "$TYPE")
 HEADER="${TYPE}(${SCOPE}): ${SUBJECT}"
 
-# ── 显示预览 ──
 echo "" >&2
 echo "📝 Commit message:" >&2
 if [ -n "$EMOJI" ]; then
@@ -120,7 +117,6 @@ if [ ${#BODY_LINES[@]} -gt 0 ]; then
 fi
 echo "" >&2
 
-# ── dry-run 模式 ──
 if [ "$DRY_RUN" = true ]; then
   echo "(dry-run, 未实际提交)" >&2
   exit 0

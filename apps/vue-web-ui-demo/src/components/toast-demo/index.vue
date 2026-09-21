@@ -52,6 +52,9 @@ const handleCloseById = () => {
 const handleCloseAll = () => {
   toast.clear()
   idCounter = 0
+  for (const timer of countdownTimers.values()) clearInterval(timer)
+  countdownTimers.clear()
+  countdownIdCounter = 0
 }
 
 const handleNotClosable = () => {
@@ -94,7 +97,7 @@ const handleCountdownUpdate = () => {
       countdownTimers.delete(id)
       return
     }
-    toast.updateMessage(id, { message: `将在 ${remaining} 秒后自动关闭` })
+    toast.info(`将在 ${remaining} 秒后自动关闭`, { id })
   }, 1000)
   countdownTimers.set(id, timer)
 }

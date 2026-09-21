@@ -11,7 +11,5 @@ import ImagePreviewDemo from '@/components/image-preview-demo/index.vue'
 </script>
 
 <template>
-  <div class="p-3">
-    <ImagePreviewDemo />
-  </div>
+  <ImagePreviewDemo />
 </template>

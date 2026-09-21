@@ -10,6 +10,4 @@
 import SliderDemo from '@/components/slider-demo/index.vue'
 </script>
 
-<template>
-  <div class="p-3"><SliderDemo /></div>
-</template>
+<template><SliderDemo /></template>

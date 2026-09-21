@@ -3,7 +3,6 @@ const ua = typeof window !== 'undefined' ? window.navigator.userAgent : ''
 const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua)
 
 export const env = {
-  // --- 基础操作系统 ---
   get isAndroid() {
     return /Android/i.test(ua)
   },
@@ -40,7 +39,6 @@ export const env = {
     return isBrowser
   },
 
-  // --- 交互设备 ---
   get isMobile() {
     return isMobile
   },
@@ -51,7 +49,6 @@ export const env = {
     return isBrowser && ('ontouchstart' in window || navigator.maxTouchPoints > 0)
   },
 
-  // --- 浏览器内核/引擎 ---
   get isChrome() {
     return /Chrome/i.test(ua) && /Google Inc/.test(navigator.vendor)
   },

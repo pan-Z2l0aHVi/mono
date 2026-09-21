@@ -64,7 +64,7 @@ function setNavDrawRef(key: 'library' | 'map', element: unknown) {
   navDrawRefs.value[key] = (element as WebUiSvgDrawLines | null) ?? null
 }
 const navItemClass =
-  'flex items-center gap-2 w-full min-w-9 min-h-9 px-2.5 border-0 rounded-full font-medium cursor-pointer text-left transition-all duration-150 text-[#5b5b66] active:bg-[rgb(34_33_42/0.12)] dark:text-[var(--wui-color-text)] dark:active:bg-white/15 data-[active=true]:text-[var(--wui-color-accent,#08f)] data-[active=true]:bg-[var(--wui-color-surface-control,#dfdfdf)] data-[active=true]:hover:bg-[color-mix(in_srgb,var(--wui-color-surface-control,#dfdfdf)_90%,var(--wui-color-text,#1b1b1b))] data-[active=true]:active:bg-[color-mix(in_srgb,var(--wui-color-surface-control,#dfdfdf)_70%,var(--wui-color-text,#1b1b1b))]'
+  'flex items-center gap-2 w-full min-w-9 min-h-9 px-2.5 border-0 rounded-full font-medium cursor-pointer text-left transition-all duration-150 text-[#5b5b66] active:bg-[rgb(34_33_42/0.12)] dark:text-(--wui-color-text) dark:active:bg-white/15 data-[active=true]:text-(--wui-color-accent,#08f) data-[active=true]:bg-(--wui-color-surface-control,#dfdfdf) data-[active=true]:hover:bg-[color-mix(in_srgb,var(--wui-color-surface-control,#dfdfdf)_90%,var(--wui-color-text,#1b1b1b))] data-[active=true]:active:bg-[color-mix(in_srgb,var(--wui-color-surface-control,#dfdfdf)_70%,var(--wui-color-text,#1b1b1b))]'
 function selectNav(next: 'library' | 'map') {
   activeNav.value = next
   void navDrawRefs.value[next]?.replay()
@@ -123,7 +123,7 @@ const tagColors: Record<string, string> = {
   备份: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-400/15 dark:text-yellow-200'
 }
 
-const defaultTagClass = 'bg-black/[0.05] text-gray-500 dark:bg-white/10 dark:text-neutral-300'
+const defaultTagClass = 'bg-black/5 text-gray-500 dark:bg-white/10 dark:text-neutral-300'
 function getTagClass(tag: string) {
   return tagColors[tag] ?? defaultTagClass
 }
@@ -381,10 +381,10 @@ function getOriginIcon(origin: ResourceOrigin) {
 }
 
 const metadataRowClass =
-  "relative flex min-w-0 items-center justify-between gap-4 px-4 py-3 after:absolute after:inset-x-4 after:bottom-0 after:h-px after:bg-black/[0.06] after:content-[''] last:after:hidden dark:after:bg-white/[0.08]"
-const metadataLabelClass = 'shrink-0 text-[13px] leading-5 text-[#8a8a94] dark:text-[var(--wui-color-text-secondary)]'
+  "relative flex min-w-0 items-center justify-between gap-4 px-4 py-3 after:absolute after:inset-x-4 after:bottom-0 after:h-px after:bg-black/6 after:content-[''] last:after:hidden dark:after:bg-white/8"
+const metadataLabelClass = 'shrink-0 text-[13px] leading-5 text-[#8a8a94] dark:text-(--wui-color-text-secondary)'
 const metadataValueClass =
-  'min-w-0 truncate text-right text-[13px] font-medium leading-5 text-[#22212a] dark:text-[var(--wui-color-text)]'
+  'min-w-0 truncate text-right text-[13px] font-medium leading-5 text-[#22212a] dark:text-(--wui-color-text)'
 
 const selectedOrigins = computed<Array<ResourceOrigin>>(() => {
   const resource = selectedResource.value
@@ -446,7 +446,6 @@ const currentApps = computed(() => {
   return openWithApps[selectedResource.value.resourceType] ?? []
 })
 
-// All unique tags from resources
 const allTags = [...new Set(resources.flatMap(r => r.tags ?? []))].sort()
 
 // --- Filter state ---
@@ -457,7 +456,7 @@ const filterTag = ref<string>('')
 type SortOption = 'name' | 'tagName' | 'latest' | 'earliest'
 const sortOrder = ref<SortOption>('latest')
 const filterLabelClass =
-  'flex items-center gap-1.5 text-[#8a8a94] max-sm:basis-full dark:text-[var(--wui-color-text-secondary)]'
+  'flex items-center gap-1.5 text-[#8a8a94] max-sm:basis-full dark:text-(--wui-color-text-secondary)'
 
 const filterOpen = ref(false)
 const searchOpen = ref(false)
@@ -862,7 +861,7 @@ watch(addDialogOpen, (open, _, onCleanup) => {
   <web-ui-layout
     header-glow
     sidebarResizable
-    class="min-h-dvh overflow-x-clip text-[#22212a] bg-white dark:text-[var(--wui-color-text)] dark:bg-[var(--wui-color-page)]"
+    class="min-h-dvh overflow-x-clip text-[#22212a] bg-white dark:text-(--wui-color-text) dark:bg-(--wui-color-page)"
     :sidebarCollapsed="sidebarCollapsed"
     :sidebarOpen="sidebarOpen"
     :sidebarWidth="sidebarWidth"
@@ -876,7 +875,7 @@ watch(addDialogOpen, (open, _, onCleanup) => {
         <button
           :class="[
             navItemClass,
-            activeNav === 'library' ? '' : 'hover:bg-black/[0.04] dark:hover:bg-white/[0.06]',
+            activeNav === 'library' ? '' : 'hover:bg-black/4 dark:hover:bg-white/6',
             sidebarCollapsed ? 'justify-center' : ''
           ]"
           type="button"
@@ -902,7 +901,7 @@ watch(addDialogOpen, (open, _, onCleanup) => {
         <button
           :class="[
             navItemClass,
-            activeNav === 'map' ? '' : 'hover:bg-black/[0.04] dark:hover:bg-white/[0.06]',
+            activeNav === 'map' ? '' : 'hover:bg-black/4 dark:hover:bg-white/6',
             sidebarCollapsed ? 'justify-center' : ''
           ]"
           type="button"
@@ -980,7 +979,7 @@ watch(addDialogOpen, (open, _, onCleanup) => {
       >
         <!-- 移动端负 margin 补偿 toggle 按钮宽度，使筛选内容左边缘与 header slot 内容对齐。 -->
         <div
-          class="flex flex-wrap gap-3 items-center px-6 max-[640px]:px-3 max-[640px]:-ml-[56px] py-2.5 text-sm text-[#5b5b66] dark:text-[var(--wui-color-text-secondary)]"
+          class="flex flex-wrap gap-3 items-center px-6 max-[640px]:px-3 max-[640px]:-ml-14 py-2.5 text-sm text-[#5b5b66] dark:text-(--wui-color-text-secondary)"
         >
           <label :class="filterLabelClass">
             <web-ui-select
@@ -1083,9 +1082,7 @@ watch(addDialogOpen, (open, _, onCleanup) => {
               :key="resource.id"
               class="group relative flex items-center gap-3 px-4 max-[640px]:px-2 py-3 cursor-pointer transition-colors duration-100 rounded-xl"
               :class="[
-                selectedId === resource.id
-                  ? 'bg-black/[0.05] dark:bg-white/[0.08]'
-                  : 'hover:bg-black/[0.035] dark:hover:bg-white/[0.05]',
+                selectedId === resource.id ? 'bg-black/5 dark:bg-white/8' : 'hover:bg-black/3.5 dark:hover:bg-white/5',
                 resource.broken ? 'opacity-60' : ''
               ]"
               @click="selectResource(resource.id)"
@@ -1116,11 +1113,11 @@ watch(addDialogOpen, (open, _, onCleanup) => {
                   />
                   <template v-else>
                     <span
-                      class="text-sm font-medium leading-snug break-words line-clamp-2 max-w-[60%] max-[640px]:max-w-full"
+                      class="text-sm font-medium leading-snug wrap-break-word line-clamp-2 max-w-[60%] max-[640px]:max-w-full"
                       :class="
                         resource.broken
-                          ? 'text-[#b0b0b8] line-through dark:text-[var(--wui-color-text-disabled)]'
-                          : 'text-[#22212a] dark:text-[var(--wui-color-text)]'
+                          ? 'text-[#b0b0b8] line-through dark:text-(--wui-color-text-disabled)'
+                          : 'text-[#22212a] dark:text-(--wui-color-text)'
                       "
                       >{{ resource.name }}</span
                     >
@@ -1133,26 +1130,26 @@ watch(addDialogOpen, (open, _, onCleanup) => {
                   </template>
                 </div>
                 <div
-                  class="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-[#9a9aa4] dark:text-[var(--wui-color-text-secondary)]"
+                  class="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-[#9a9aa4] dark:text-(--wui-color-text-secondary)"
                 >
                   <span class="inline-flex items-center gap-1">
                     <web-ui-icon
                       :icon="getSourceIcon(resource)"
                       :size="12"
-                      class="text-[#bdbdc6] dark:text-[var(--wui-color-text-tertiary)]"
+                      class="text-[#bdbdc6] dark:text-(--wui-color-text-tertiary)"
                     ></web-ui-icon>
                     {{ resource.sourceType === 'link' ? '链接' : '本地文件' }}
                   </span>
                   <template v-if="resource.ext"
-                    ><span class="text-[#d8d8de] dark:text-[var(--wui-color-text-tertiary)]">·</span
+                    ><span class="text-[#d8d8de] dark:text-(--wui-color-text-tertiary)">·</span
                     >{{ resource.ext.toUpperCase() }}</template
                   >
                   <template v-if="resource.size"
-                    ><span class="text-[#d8d8de] dark:text-[var(--wui-color-text-tertiary)]">·</span
+                    ><span class="text-[#d8d8de] dark:text-(--wui-color-text-tertiary)">·</span
                     >{{ resource.size }}</template
                   >
                   <template v-if="resource.modifiedAt"
-                    ><span class="text-[#d8d8de] dark:text-[var(--wui-color-text-tertiary)]">·</span
+                    ><span class="text-[#d8d8de] dark:text-(--wui-color-text-tertiary)">·</span
                     >{{ resource.modifiedAt }}</template
                   >
                 </div>
@@ -1205,7 +1202,7 @@ watch(addDialogOpen, (open, _, onCleanup) => {
               slot="prefix"
               :size="14"
               :icon="lucideTags"
-              class="text-[var(--wui-color-accent,#08f)]"
+              class="text-(--wui-color-accent,#08f)"
             ></web-ui-icon>
             编辑标签
           </web-ui-dropdown-item>
@@ -1218,7 +1215,7 @@ watch(addDialogOpen, (open, _, onCleanup) => {
               slot="prefix"
               :size="14"
               :icon="lucideTrash2"
-              class="text-[var(--wui-color-danger,#ef4444)]"
+              class="text-(--wui-color-danger,#ef4444)"
             ></web-ui-icon>
             删除
           </web-ui-dropdown-item>
@@ -1239,12 +1236,12 @@ watch(addDialogOpen, (open, _, onCleanup) => {
           <!-- Preview placeholder -->
           <div
             v-if="selectedResource"
-            class="flex items-center justify-center h-36 rounded-xl bg-[#f5f5f7] dark:bg-[var(--wui-color-surface-raised)]"
+            class="flex items-center justify-center h-36 rounded-xl bg-[#f5f5f7] dark:bg-(--wui-color-surface-raised)"
           >
             <web-ui-icon
               :icon="getResourceIcon(selectedResource)"
               :size="48"
-              class="text-[#c0c0c8] dark:text-[var(--wui-color-text-tertiary)]"
+              class="text-[#c0c0c8] dark:text-(--wui-color-text-tertiary)"
             ></web-ui-icon>
           </div>
 
@@ -1253,7 +1250,7 @@ watch(addDialogOpen, (open, _, onCleanup) => {
             <web-ui-icon
               :icon="getResourceIcon(selectedResource)"
               :size="22"
-              class="shrink-0 text-[#5b5b66] dark:text-[var(--wui-color-text-secondary)]"
+              class="shrink-0 text-[#5b5b66] dark:text-(--wui-color-text-secondary)"
             ></web-ui-icon>
             <web-ui-input
               v-if="drawerRenamingId === selectedResource.id"
@@ -1269,7 +1266,7 @@ watch(addDialogOpen, (open, _, onCleanup) => {
             />
             <span
               v-else
-              class="font-semibold text-[17px] leading-snug text-[#22212a] break-words min-w-0 dark:text-[var(--wui-color-text)]"
+              class="font-semibold text-[17px] leading-snug text-[#22212a] wrap-break-word min-w-0 dark:text-(--wui-color-text)"
             >
               {{ selectedResource.name }}
             </span>
@@ -1344,26 +1341,24 @@ watch(addDialogOpen, (open, _, onCleanup) => {
           <!-- Metadata -->
           <div
             v-if="selectedResource"
-            class="mt-2 overflow-hidden rounded-3xl bg-white shadow-[0_0_0_0.5px_rgb(0_0_0/0.08),0_1px_3px_rgb(0_0_0/0.06)] dark:bg-[var(--wui-color-surface-raised)] dark:shadow-[0_0_0_0.5px_rgb(255_255_255/0.12)]"
+            class="mt-2 overflow-hidden rounded-3xl bg-white shadow-[0_0_0_0.5px_rgb(0_0_0/0.08),0_1px_3px_rgb(0_0_0/0.06)] dark:bg-(--wui-color-surface-raised) dark:shadow-[0_0_0_0.5px_rgb(255_255_255/0.12)]"
           >
             <div v-for="origin in selectedOrigins" :key="origin.id" :class="metadataRowClass" class="items-start">
               <span class="flex min-w-0 flex-[1_1_auto] items-start gap-2.5">
                 <web-ui-icon
-                  class="mt-0.5 shrink-0 text-[#8a8a94] dark:text-[var(--wui-color-text-secondary)]"
+                  class="mt-0.5 shrink-0 text-[#8a8a94] dark:text-(--wui-color-text-secondary)"
                   :icon="getOriginIcon(origin)"
                   :size="15"
                 ></web-ui-icon>
                 <span class="grid min-w-0 flex-[1_1_auto] gap-0.5">
-                  <span class="text-[13px] font-medium leading-5 text-[#22212a] dark:text-[var(--wui-color-text)]">{{
+                  <span class="text-[13px] font-medium leading-5 text-[#22212a] dark:text-(--wui-color-text)">{{
                     origin.label
                   }}</span>
                   <span
                     v-if="getOriginValue(origin)"
                     class="block min-w-0 truncate text-xs leading-5"
                     :class="
-                      origin.kind === 'link'
-                        ? 'text-[var(--wui-color-accent,#08f)]'
-                        : 'text-[#78716c] dark:text-[#a8a29e]'
+                      origin.kind === 'link' ? 'text-(--wui-color-accent,#08f)' : 'text-[#78716c] dark:text-[#a8a29e]'
                     "
                     :title="getOriginValue(origin)"
                     >{{ getOriginValue(origin) }}</span
@@ -1393,7 +1388,7 @@ watch(addDialogOpen, (open, _, onCleanup) => {
               <span
                 :class="
                   selectedResource.broken
-                    ? 'text-right text-[13px] font-medium leading-5 text-[#ef4444] dark:text-[var(--wui-color-danger)]'
+                    ? 'text-right text-[13px] font-medium leading-5 text-[#ef4444] dark:text-(--wui-color-danger)'
                     : metadataValueClass
                 "
                 >{{ selectedResource.broken ? '已失效' : '正常' }}</span
@@ -1424,18 +1419,18 @@ watch(addDialogOpen, (open, _, onCleanup) => {
         <h2
           v-if="selectedResource"
           slot="header"
-          class="m-0 w-full min-w-0 truncate px-12 text-center text-[17px] font-semibold leading-snug text-[#22212a] dark:text-[var(--wui-color-text)]"
+          class="m-0 w-full min-w-0 truncate px-12 text-center text-[17px] font-semibold leading-snug text-[#22212a] dark:text-(--wui-color-text)"
         >
           {{ selectedResource.name }}
         </h2>
         <div v-if="selectedResource" class="grid gap-4">
           <div
-            class="flex items-center justify-center h-52 rounded-xl bg-[#f5f5f7] dark:bg-[var(--wui-color-surface-raised)]"
+            class="flex items-center justify-center h-52 rounded-xl bg-[#f5f5f7] dark:bg-(--wui-color-surface-raised)"
           >
             <web-ui-icon
               :icon="getResourceIcon(selectedResource)"
               :size="40"
-              class="text-[#c0c0c8] dark:text-[var(--wui-color-text-tertiary)]"
+              class="text-[#c0c0c8] dark:text-(--wui-color-text-tertiary)"
             ></web-ui-icon>
           </div>
         </div>
@@ -1446,8 +1441,8 @@ watch(addDialogOpen, (open, _, onCleanup) => {
     <web-ui-dialog :open="deleteConfirmOpen" controlled no-backdrop-close @open-change="handleDeleteCancel">
       <div slot="title">删除资源</div>
       <template v-if="deleteTargetResource">
-        <p class="m-0 text-[14px] text-[#5b5b66] dark:text-[var(--wui-color-text-secondary)]">
-          删除「<span class="font-medium text-[#22212a] dark:text-[var(--wui-color-text)]">{{
+        <p class="m-0 text-[14px] text-[#5b5b66] dark:text-(--wui-color-text-secondary)">
+          删除「<span class="font-medium text-[#22212a] dark:text-(--wui-color-text)">{{
             deleteTargetResource.name
           }}</span
           >」后无法恢复。
@@ -1468,7 +1463,7 @@ watch(addDialogOpen, (open, _, onCleanup) => {
       @open-change="handleRemovalCancel"
     >
       <div slot="title">{{ pendingRemoval?.title }}</div>
-      <p class="m-0 text-[14px] text-[#5b5b66] dark:text-[var(--wui-color-text-secondary)]">
+      <p class="m-0 text-[14px] text-[#5b5b66] dark:text-(--wui-color-text-secondary)">
         {{ pendingRemoval?.message }}
       </p>
       <div slot="footer" class="flex gap-3">
@@ -1493,7 +1488,7 @@ watch(addDialogOpen, (open, _, onCleanup) => {
 
       <p
         v-if="addPasteCaptured"
-        class="mb-3 flex w-fit items-center gap-1.5 rounded-full bg-[color-mix(in_srgb,var(--wui-color-accent,#08f)_8%,transparent)] px-2.5 py-1.5 text-xs text-[var(--wui-color-accent,#08f)]"
+        class="mb-3 flex w-fit items-center gap-1.5 rounded-full bg-[color-mix(in_srgb,var(--wui-color-accent,#08f)_8%,transparent)] px-2.5 py-1.5 text-xs text-(--wui-color-accent,#08f)"
         role="status"
       >
         <web-ui-icon :icon="lucideClipboardPaste" :size="16"></web-ui-icon>
@@ -1505,9 +1500,7 @@ watch(addDialogOpen, (open, _, onCleanup) => {
         style="height: min(calc(90vh - 108px), calc(var(--wui-dialog-max-height, 640px) - 108px))"
       >
         <section class="grid min-h-0 min-w-0 grid-rows-[auto_minmax(0,1fr)] gap-2.5 overflow-hidden">
-          <p
-            class="m-0 min-w-0 truncate text-[13px] leading-6 text-[#6a6a6a] dark:text-[var(--wui-color-text-secondary)]"
-          >
+          <p class="m-0 min-w-0 truncate text-[13px] leading-6 text-[#6a6a6a] dark:text-(--wui-color-text-secondary)">
             选择本地文件，或将其拖入上传区；也可以直接粘贴内容。
           </p>
           <label
@@ -1522,16 +1515,16 @@ watch(addDialogOpen, (open, _, onCleanup) => {
           >
             <input type="file" multiple class="sr-only" aria-label="选择要添加的文件" />
             <span
-              class="grid size-[52px] place-items-center rounded-[18px] bg-[color-mix(in_srgb,var(--wui-color-accent,#08f)_10%,transparent)] text-[var(--wui-color-accent,#08f)] transition-[background-color] duration-[160ms] dark:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_8%,transparent)] dark:text-[var(--wui-color-text-secondary)] max-[640px]:size-10 max-[640px]:rounded-xl"
+              class="grid size-13 place-items-center rounded-[18px] bg-[color-mix(in_srgb,var(--wui-color-accent,#08f)_10%,transparent)] text-(--wui-color-accent,#08f) transition-[background-color] duration-[160ms] dark:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_8%,transparent)] dark:text-(--wui-color-text-secondary) max-[640px]:size-10 max-[640px]:rounded-xl"
             >
               <web-ui-icon :icon="lucideUpload" :size="24"></web-ui-icon>
             </span>
             <span
-              class="text-[15px] font-semibold leading-[1.4] text-[#22212a] dark:text-[var(--wui-color-text)] max-[640px]:text-[13px]"
+              class="text-[15px] font-semibold leading-[1.4] text-[#22212a] dark:text-(--wui-color-text) max-[640px]:text-[13px]"
               >拖入文件，或点按选择</span
             >
             <span
-              class="text-xs leading-[1.4] text-[#6a6a6a] dark:text-[var(--wui-color-text-secondary)] max-[640px]:text-[11px]"
+              class="text-xs leading-[1.4] text-[#6a6a6a] dark:text-(--wui-color-text-secondary) max-[640px]:text-[11px]"
               >支持图片、文档、音频和视频，可一次添加多项</span
             >
           </label>
@@ -1544,23 +1537,23 @@ watch(addDialogOpen, (open, _, onCleanup) => {
           <div class="flex min-h-6 items-center justify-between">
             <h3
               id="add-queue-title"
-              class="m-0 flex items-center gap-1.5 text-[13px] font-semibold text-[#22212a] dark:text-[var(--wui-color-text)]"
+              class="m-0 flex items-center gap-1.5 text-[13px] font-semibold text-[#22212a] dark:text-(--wui-color-text)"
             >
               将添加
             </h3>
             <span
-              class="rounded-full bg-black/[0.04] px-2 py-1 text-xs leading-none text-[#6a6a6a] dark:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_6%,transparent)] dark:text-[var(--wui-color-text-secondary)]"
+              class="rounded-full bg-black/4 px-2 py-1 text-xs leading-none text-[#6a6a6a] dark:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_6%,transparent)] dark:text-(--wui-color-text-secondary)"
               >{{ addQueue.length }} 项</span
             >
           </div>
           <ol
-            class="m-0 h-full min-h-0 list-none overflow-y-auto rounded-3xl bg-white p-0 [scrollbar-gutter:auto] [scrollbar-width:auto] dark:bg-[var(--wui-color-surface-raised)]"
+            class="m-0 h-full min-h-0 list-none overflow-y-auto rounded-3xl bg-white p-0 [scrollbar-gutter:auto] [scrollbar-width:auto] dark:bg-(--wui-color-surface-raised)"
           >
             <li
               v-for="(item, itemIndex) in addQueue"
               :key="item.id"
               :class="metadataRowClass"
-              class="items-start transition-colors duration-100 hover:bg-black/[0.03] dark:hover:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_5%,transparent)]"
+              class="items-start transition-colors duration-100 hover:bg-black/3 dark:hover:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_5%,transparent)]"
             >
               <span class="grid size-8 shrink-0 place-items-center rounded-[10px]" :class="queueToneClass[item.tone]">
                 <web-ui-icon :icon="item.icon" :size="16"></web-ui-icon>
@@ -1582,7 +1575,7 @@ watch(addDialogOpen, (open, _, onCleanup) => {
                     />
                     <span
                       v-else
-                      class="min-w-0 flex-[0_1_auto] overflow-hidden text-[14px] font-medium leading-[1.35] text-ellipsis whitespace-nowrap text-[#22212a] dark:text-[var(--wui-color-text)]"
+                      class="min-w-0 flex-[0_1_auto] overflow-hidden text-[14px] font-medium leading-[1.35] text-ellipsis whitespace-nowrap text-[#22212a] dark:text-(--wui-color-text)"
                       >{{ item.name }}</span
                     >
                     <web-ui-tooltip
@@ -1618,7 +1611,7 @@ watch(addDialogOpen, (open, _, onCleanup) => {
                 </div>
                 <div class="flex min-w-0 flex-wrap items-center gap-1.5">
                   <span
-                    class="shrink-0 text-xs leading-5 whitespace-nowrap text-[#6a6a6a] dark:text-[var(--wui-color-text-secondary)]"
+                    class="shrink-0 text-xs leading-5 whitespace-nowrap text-[#6a6a6a] dark:text-(--wui-color-text-secondary)"
                     >{{ item.ext ? `${item.meta} · ${item.ext.toUpperCase()}` : item.meta }}</span
                   >
                   <div class="flex min-w-0 flex-[0_0_100%] flex-wrap items-center gap-[5px]">
@@ -1669,7 +1662,7 @@ watch(addDialogOpen, (open, _, onCleanup) => {
       <span slot="title">编辑标签</span>
       <div class="grid gap-4">
         <div class="grid gap-1.5">
-          <span class="text-xs font-medium text-[#6a6a6a] dark:text-[var(--wui-color-text-secondary)]">添加标签</span>
+          <span class="text-xs font-medium text-[#6a6a6a] dark:text-(--wui-color-text-secondary)">添加标签</span>
           <web-ui-autocomplete
             :ref="setEditTagsAutocompleteRef"
             :value="editTagsDraft"
@@ -1692,10 +1685,10 @@ watch(addDialogOpen, (open, _, onCleanup) => {
           </web-ui-autocomplete>
         </div>
         <div class="grid gap-2">
-          <span class="text-xs font-medium text-[#6a6a6a] dark:text-[var(--wui-color-text-secondary)]">当前标签</span>
+          <span class="text-xs font-medium text-[#6a6a6a] dark:text-(--wui-color-text-secondary)">当前标签</span>
           <div
             v-if="editTagsDraftTags.length"
-            class="flex min-h-[66px] flex-wrap items-center gap-1.5 rounded-2xl bg-black/[0.03] p-2.5 dark:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_4%,transparent)]"
+            class="flex min-h-[66px] flex-wrap items-center gap-1.5 rounded-2xl bg-black/3 p-2.5 dark:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_4%,transparent)]"
           >
             <span
               v-for="(tag, tagIndex) in editTagsDraftTags"
@@ -1718,7 +1711,7 @@ watch(addDialogOpen, (open, _, onCleanup) => {
           </div>
           <div
             v-else
-            class="flex items-center gap-2 rounded-2xl border border-dashed border-black/10 px-3 py-3 text-xs text-[#9a9aa4] dark:border-white/10 dark:text-[var(--wui-color-text-tertiary)]"
+            class="flex items-center gap-2 rounded-2xl border border-dashed border-black/10 px-3 py-3 text-xs text-[#9a9aa4] dark:border-white/10 dark:text-(--wui-color-text-tertiary)"
           >
             <web-ui-icon :icon="lucideTags" :size="14"></web-ui-icon>
             暂无标签

@@ -39,6 +39,9 @@ jobs:
       - name: Validate Wails version metadata
         run: node apps/interweave/scripts/sync-version.mjs --check
 
+      - name: Validate shared build tasks are host-neutral
+        run: node apps/interweave/scripts/check-build-tasks.mjs
+
       - id: release
         name: Detect a new desktop version
         env:

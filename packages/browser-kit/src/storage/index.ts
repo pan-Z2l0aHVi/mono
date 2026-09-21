@@ -57,7 +57,6 @@ function defineStorage(type: StorageType, options: StorageOptions = {}) {
         store.removeItem(key)
         return true
       } catch {
-        // 静默跳过
         return false
       }
     }

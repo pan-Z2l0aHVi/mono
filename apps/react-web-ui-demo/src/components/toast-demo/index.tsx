@@ -33,6 +33,9 @@ function ToastDemo() {
   const handleCloseAll = () => {
     toast.clear()
     idCounter.current = 0
+    for (const timer of countdownTimers.current.values()) clearInterval(timer)
+    countdownTimers.current.clear()
+    countdownIdCounter.current = 0
   }
   const handleNotClosable = () =>
     toast.info('此通知将在 5 秒后自动消失', { heading: '自动关闭', closable: false, duration: 5000 })
@@ -62,7 +65,7 @@ function ToastDemo() {
         countdownTimers.current.delete(id)
         return
       }
-      toast.updateMessage(id, { message: `将在 ${remaining} 秒后自动关闭` })
+      toast.info(`将在 ${remaining} 秒后自动关闭`, { id })
     }, 1000)
     countdownTimers.current.set(id, timer)
   }

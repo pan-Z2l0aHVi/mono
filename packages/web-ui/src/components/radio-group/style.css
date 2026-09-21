@@ -8,11 +8,15 @@
   user-select: none;
   display: inline-flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--wui-radio-group-gap, 8px);
 }
 
 .wui-radio-group {
   display: flex;
-  flex-direction: column;
+  flex-direction: inherit;
   gap: inherit;
+}
+
+:host([direction='horizontal']) {
+  flex-direction: row;
 }

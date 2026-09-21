@@ -111,7 +111,6 @@ export class WebUiSlider extends FormAssociated(LitElement) {
     }
   }
 
-  // 将焦点移至滑块，供表单或外部控制使用
   override focus(options?: FocusOptions) {
     this._slider?.focus(options)
   }

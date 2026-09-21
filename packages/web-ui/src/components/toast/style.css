@@ -12,8 +12,6 @@
   display: none;
 }
 
-/* ===== 入场 / 退场动画 ===== */
-
 /* 单层玻璃：.toast 自身承担背景/阴影/backdrop-filter。blur(0px) ↔ blur(4px) 平滑
    插值（none↔blur 不可插值才是当年生硬跳变的根因），own opacity 过渡不禁用自身
    blur，因此 toast 直接 opacity + backdrop-filter + transform 同步过渡，无需双层。 */
@@ -92,8 +90,6 @@ web-ui-button.toast-close-btn {
   --wui-button-color: var(--wui-color-text-secondary, #6a6a6a);
 }
 
-/* ===== 图标 ===== */
-
 .toast-icon {
   display: flex;
   flex-shrink: 0;
@@ -126,8 +122,6 @@ web-ui-button.toast-close-btn {
   background-color: color-mix(in srgb, var(--wui-color-danger, #dc2626) 10%, transparent);
 }
 
-/* ===== 内容区 ===== */
-
 .toast-body {
   flex: 1;
   min-width: 0;
@@ -155,8 +149,6 @@ web-ui-button.toast-close-btn {
   color: color-mix(in srgb, var(--wui-color-text, #1b1b1b) 55%, transparent);
   word-break: break-all;
 }
-
-/* ===== 时间戳 ===== */
 
 .toast-time {
   font-size: 12px;

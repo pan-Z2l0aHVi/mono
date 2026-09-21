@@ -8,7 +8,7 @@ import { UserChangeController } from '@/shared/events/user-change'
 import { normalizeLiteral, normalizeNumber } from '@/shared/normalize'
 import { dispatchOpenChangeEvent } from '@/shared/open-state'
 import { defineAnchoredPanel } from '@/shared/overlay/anchored-panel'
-import { defineOverlayLifecycle } from '@/shared/overlay/lifecycle'
+import { defineOpenOverlay } from '@/shared/overlay/open-overlay'
 import { FLOATING_PLACEMENTS } from '@/shared/overlay/placement-props'
 import { defineOverlayPortal } from '@/shared/overlay/portal'
 import type { OverlayContainer, OverlayPortal } from '@/shared/overlay/portal'
@@ -79,9 +79,13 @@ export class WebUiTooltip extends LitElement {
   private readonly _userOpenChange = new UserChangeController()
   private _shouldOpenInstantly = true
   private _portal?: OverlayPortal
-  private readonly _lifecycle = defineOverlayLifecycle().make({
-    isConnected: () => this.isConnected,
-    isOpen: () => this.open
+  /**
+   * 实例作用域的帧事务入口。`requestClose` 是关闭入口的唯一接线：面板的
+   * `arbitration: 'none'` 让 tooltip 在组合树里但永不成候选，因此这条**现在不会被
+   * 模块调用**。保留它是不想把「怎么关」藏起来，也让仲裁策略变化时依然成立。
+   */
+  private readonly _overlay = defineOpenOverlay().make({
+    requestClose: () => this._hide()
   })
   private readonly _panel = defineAnchoredPanel().make({
     getAnchor: () => this.shadowRoot?.querySelector<HTMLElement>('.tooltip-trigger') ?? null,
@@ -92,7 +96,11 @@ export class WebUiTooltip extends LitElement {
       strategy: this.portal ? 'fixed' : 'absolute'
     }),
     isPortal: () => this.portal,
-    createPortal: () => this._createPortal()
+    createPortal: () => this._createPortal(),
+    openOverlay: this._overlay,
+    // tooltip 在逻辑组合树里（面板迁移后仍要判对「谁在谁里面」），但从不作为 Escape
+    // 候选：按键穿过它落到下层浮层，与重构前一致。
+    arbitration: 'none'
   })
 
   get isOpen(): boolean {
@@ -101,7 +109,7 @@ export class WebUiTooltip extends LitElement {
 
   override connectedCallback() {
     super.connectedCallback()
-    this._lifecycle.resume()
+    this._overlay.resume()
     this.addEventListener('pointerenter', this._onPointerEnter)
     this.addEventListener('pointerleave', this._onPointerLeave)
     this.addEventListener('focusin', this._onFocusIn)
@@ -116,7 +124,8 @@ export class WebUiTooltip extends LitElement {
     this.removeEventListener('focusout', this._onFocusOut)
     clearTimeout(this._showTimer)
     clearTimeout(this._hideTimer)
-    this._lifecycle.dispose()
+    // 停止帧调度；撤销登记由 _panel.dispose() 完成（句柄归它持有）。
+    this._overlay.suspend()
     this._syncVisibleTooltipCount(false)
     this._panel.dispose()
   }
@@ -131,8 +140,8 @@ export class WebUiTooltip extends LitElement {
   protected override updated(changed: Map<string, unknown>) {
     if (changed.has('portal') || changed.has('overlayContainer')) {
       // 同帧 open + reconfigure 可能重复建事务；invalidate 保证 reconfigure 是当前唯一帧回调。
-      this._lifecycle.invalidate()
-      this._lifecycle.scheduleFrame(() => this._reconfigureOverlay())
+      this._overlay.invalidate()
+      this._overlay.scheduleFrame(() => this._reconfigureOverlay())
     } else if (changed.has('placement') || changed.has('offset'))
       requestAnimationFrame(() => this._panel.updatePosition())
 
@@ -142,7 +151,7 @@ export class WebUiTooltip extends LitElement {
         this._openOverlay(this._shouldOpenInstantly)
         this._shouldOpenInstantly = true
       } else {
-        this._lifecycle.invalidate()
+        this._overlay.invalidate()
         void this._closeOverlay()
       }
       if (this._userOpenChange.consume()) this._dispatchChange(this.open)

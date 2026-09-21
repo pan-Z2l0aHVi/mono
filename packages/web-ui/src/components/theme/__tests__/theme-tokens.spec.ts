@@ -47,7 +47,9 @@ describe('WebUiTheme token contract', () => {
       '--wui-duration-menu-enter',
       '--wui-duration-menu-exit',
       '--wui-duration-overlay-enter',
-      '--wui-duration-overlay-exit'
+      '--wui-duration-overlay-exit',
+      // 只存在于未发布 changeset 里的过渡版本，已被两个 group 各自的 gap token 取代
+      '--wui-selection-group-gap'
     ]) {
       expect(style).not.toContain(name)
     }
@@ -82,7 +84,9 @@ describe('WebUiTheme token contract', () => {
       '--wui-duration-menu-enter',
       '--wui-duration-menu-exit',
       '--wui-duration-overlay-enter',
-      '--wui-duration-overlay-exit'
+      '--wui-duration-overlay-exit',
+      // 只存在于未发布 changeset 里的过渡版本，已被两个 group 各自的 gap token 取代
+      '--wui-selection-group-gap'
     ]) {
       expect(readme).not.toContain(name)
       expect(readmeCN).not.toContain(name)

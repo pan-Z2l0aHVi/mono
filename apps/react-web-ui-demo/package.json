@@ -30,6 +30,7 @@
     "@vitejs/plugin-legacy": "catalog:",
     "@vitejs/plugin-react": "catalog:",
     "@tailwindcss/vite": "catalog:",
+    "tailwindcss": "catalog:",
     "babel-plugin-react-compiler": "catalog:",
     "@tanstack/router-plugin": "catalog:",
     "@rolldown/plugin-babel": "catalog:",

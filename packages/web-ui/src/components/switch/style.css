@@ -73,6 +73,7 @@
 }
 
 .wui-switch-thumb {
+  /* 按压态 thumb 是 16px 高的 pill（is-pressed 只加宽到 20px），取短边一半 */
   --wui-glass-corner-radius: calc(16px / 2);
 
   position: absolute;

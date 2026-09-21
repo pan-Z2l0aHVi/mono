@@ -20,6 +20,13 @@ async function nextFrame() {
   await new Promise(resolve => requestAnimationFrame(resolve))
 }
 
+/** 合成 Escape：仲裁者挂在 document 捕获阶段，合成事件足以命中它。 */
+function dispatchEscape() {
+  document.dispatchEvent(
+    new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, composed: true, cancelable: true })
+  )
+}
+
 // R4：.wui-menu-content 是内部 class 定位器，按 R4 换为面板自身（web-ui-dropdown-item 的
 // 直接父级就是 role="menu" 面板），统一用公共浮层定位器 getMenuPanels 取面板。
 function getMenuContent() {
@@ -433,5 +440,102 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
     expect(getMenus()).toHaveLength(2)
     expect(getMenus()[1]?.hasAttribute('hidden')).toBe(false)
     expect(getMenus()[1]?.textContent).toContain('PDF')
+  })
+
+  /*
+   * 退场被打断时 `_closeMenuAfterPresence` 会在 `hideOverlayPresence` 返回 false 后提前
+   * 退出，`_menu` 因此仍在，而关闭分支已经撤了句柄。重开必须补 claim：否则菜单可见却无登记，
+   * Escape 关不掉它，且每次 document click（含面板内部）都会被判成外部点击而关闭菜单。
+   */
+  it('退场中重开后仍保持登记：面板内点击不关闭，Escape 仍可关闭', async () => {
+    const menu = document.createElement('web-ui-context-menu')
+    menu.innerHTML = '<web-ui-dropdown-item>Open</web-ui-dropdown-item>'
+    document.body.append(menu)
+    await menu.updateComplete
+
+    menu.openAt(20, 20)
+    await menu.updateComplete
+    await nextFrame()
+    const panel = getMenuContent()
+
+    dispatchEscape()
+    await menu.updateComplete
+    await nextFrame()
+    expect(menu.isOpen).toBe(false)
+
+    menu.openAt(40, 40)
+    await menu.updateComplete
+    await nextFrame()
+    await menu.updateComplete
+    // 面板被复用 ⇒ 确实是「退场中重开」，而不是退场结束后的全新构建。
+    expect(getMenuContent()).toBe(panel)
+    expect(menu.isOpen).toBe(true)
+
+    panel.dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true }))
+    await menu.updateComplete
+    expect(menu.isOpen).toBe(true)
+
+    dispatchEscape()
+    await menu.updateComplete
+    expect(menu.isOpen).toBe(false)
+  })
+
+  /*
+   * 根层在退场窗口内重新 claim 时，收尾栈里的子菜单面板仍在 DOM 里、仍然可见，但已经
+   * 离开 `_activeSubmenus`。它必须在**取回之前与之后**都被挂回新会话的子树，否则会被
+   * 判成面板外 —— 点它内部就关掉整张菜单（base 的登记树直到 dispose 才注销，故属回归）。
+   *
+   * 两个面板的 transition 都钉长：根面板撑开「重开窗口」，子菜单面板让 closing 栈条目
+   * 不被提前 dispose —— 否则 take 走的是新建分支（自带 adopt），覆盖不到这个窗口。
+   */
+  it('退场窗口内重开后，收尾中的子菜单面板在取回前后都不可被当成面板外', async () => {
+    const menu = document.createElement('web-ui-context-menu')
+    menu.innerHTML = SUBMENU
+    document.body.append(menu)
+    await menu.updateComplete
+
+    menu.openAt(20, 20)
+    await menu.updateComplete
+    await nextFrame()
+    const rootPanel = getMenus()[0]!
+    rootPanel.style.transition = 'opacity 5s'
+
+    const parentItem = rootPanel.querySelector<HTMLElement>('web-ui-dropdown-item')!
+    parentItem.click()
+    await nextFrame()
+    await nextFrame()
+    expect(getMenus()).toHaveLength(2)
+    const submenuPanel = getMenus()[1]!
+    submenuPanel.style.transition = 'opacity 5s'
+
+    // 第一次 Escape 让子菜单进 closing 栈，第二次关闭根菜单（句柄随之撤销）。
+    dispatchEscape()
+    await nextFrame()
+    dispatchEscape()
+    await menu.updateComplete
+    await nextFrame()
+
+    // 退场窗口内重开：根句柄换代。
+    menu.openAt(40, 40)
+    await menu.updateComplete
+    await nextFrame()
+    await menu.updateComplete
+    expect(getMenus()[0]).toBe(rootPanel)
+    expect(menu.isOpen).toBe(true)
+    expect(submenuPanel.hidden).toBe(false)
+
+    // 取回之前：面板仍在退场、仍然可见，点它内部不得关闭整张菜单。
+    submenuPanel.dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true }))
+    await menu.updateComplete
+    expect(menu.isOpen).toBe(true)
+
+    // 取回之后：同一断言再次成立（`_openSubmenu` 的 take 分支必须补 adopt）。
+    parentItem.click()
+    await nextFrame()
+    await nextFrame()
+    expect(menu.isOpen).toBe(true)
+    getMenus()[1]?.dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true }))
+    await menu.updateComplete
+    expect(menu.isOpen).toBe(true)
   })
 })

@@ -118,8 +118,6 @@ export class WebUiLayout extends LitElement {
     this._emitSidebarOpenChange(e.detail.open)
   }
 
-  // ===== 桌面端 Sidebar 拖拽调宽 =====
-
   private _resizeGesture: DragGestureHandle | null = null
   private _resizeStartWidth = 0
   // 拖拽中的临时宽度；由 render 的 styleMap 统一写入，避免与 Lit 样式管理竞争。
@@ -131,7 +129,6 @@ export class WebUiLayout extends LitElement {
   }
 
   private _resolveSidebarMinWidth(): number {
-    // 未设置时回退为折叠宽度，防止拖到不可用宽度。
     return this.sidebarMinWidth
       ? this._parsePx(this.sidebarMinWidth, this._parsePx(this.collapsedWidth, 68))
       : this._parsePx(this.collapsedWidth, 68)
@@ -323,7 +320,7 @@ export class WebUiLayout extends LitElement {
       <web-ui-button
         class="sidebar-toggle"
         icon
-        variant="secondary"
+        variant="ghost"
         @click="${this._toggleSidebar}"
         aria-label="${toggleLabel}"
       >
@@ -337,7 +334,6 @@ export class WebUiLayout extends LitElement {
       </div>
     `
 
-    // 桌面端布局
     const desktopLayout = html`
       <div class="layout-body">
         <div class="sidebar-wrapper">
@@ -378,7 +374,6 @@ export class WebUiLayout extends LitElement {
       </div>
     `
 
-    // 移动端布局
     const mobileLayout = html`
       <div class="layout-content">
         <header>
@@ -406,7 +401,7 @@ export class WebUiLayout extends LitElement {
         @open-change="${this._onDrawerChange}"
         style="${styleMap({
           '--wui-drawer-width': this.sidebarWidth,
-          '--wui-drawer-radius': 'var(--wui-layout-sidebar-radius, var(--wui-radius-overlay, 28px))'
+          '--wui-drawer-radius': 'var(--wui-layout-sidebar-radius, 24px)'
         })}"
       >
         ${sidebarViewport}

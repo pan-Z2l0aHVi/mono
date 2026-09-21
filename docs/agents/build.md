@@ -6,7 +6,7 @@
 
 ## 各包命令
 
-每个包暴露其所需的命令：所有可构建的包都有 `build`，大多数有 `dev`（监听模式），只有包含维护的自动化测试覆盖率的包才暴露 `test`。使用 `pnpm --filter @greypan/<name> <script>` 运行它们；例如，`pnpm --filter @greypan/js-kit test`。根目录提供全局编排的 `pnpm run build`、`pnpm run test` 以及增量受影响命令 `pnpm run build:affected` 与 `pnpm run test:affected`。迭代与调试优先使用受影响命令；全量 `pnpm run build` / `pnpm run test` 由 CI 在 pull request 上执行，本地只在需要复现全仓范围问题时运行。
+每个包暴露其所需的命令：所有可构建的包都有 `build`，大多数有 `dev`（监听模式），只有包含维护的自动化测试覆盖率的包才暴露 `test`。使用 `pnpm --filter @greypan/<name> <script>` 运行它们；例如，`pnpm --filter @greypan/js-kit test`。根目录提供全局编排的 `pnpm run build`、`pnpm run test`。受影响范围的迭代定位用 `pnpm find:usages -- <paths...>`（见 `context.md`）随后对目标包运行 filter 命令；已移除独立的 `build:affected` / `test:affected` 根命令，避免重复 `find:usages` 的影响面权威。全量根命令由 CI 在 pull request 上执行，本地只在需要复现全仓范围问题时运行。
 
 ## Demo 开发
 
@@ -22,23 +22,14 @@
 
 Interweave 由 Wails 宿主管理嵌套前端，因此其 alias 只启动 Wails host，并构建/监听 WebView frontend 的上游依赖；不要额外启动重复的前端进程。在修改 Vite 插件、TypeScript 配置或工作区依赖图后，需要重启宿主开发进程。
 
-不同包类型的构建脚本不同：
+代码质量检查与修复的命令矩阵（`check:code` 聚合与 `fix:code` 一键修复）以 [`linting.md`](linting.md) 为权威；`pre-commit` 只跑 task gate 与 `.agents/checks/` 政策检查，不改写文件；提交边界的清洁度保证（格式、lint 与类型）来自 `format-clean` 这条只检不改的检查，口径与已登记的旁路见 [`workflow.md`](workflow.md)。包构建命令不能替代这些命令；Wails 的 macOS/Windows 原生构建仍负责验证 host package 与平台集成。
 
-- **单入口包**（`test-kit`、`unplugin-web-components`、`deps-reload`）：`vp pack`，基于 tsdown，输出 `.mjs` 和 `.d.mts`。
-- **子路径导出包**（`js-kit`、`browser-kit`、`web-ui`）：`vp build`，使用 Vite library 模式配合 `preserveModules`，输出 `.js` 和 `.d.ts`。
-- **React 应用**：`vp build`。
-- **Vue 应用**：`vue-tsc --build && vp build`。
-- **tsconfig**：无构建步骤；它提供通过 TypeScript `extends` 消费的 JSON 文件。
-
-代码质量检查与修复的命令矩阵（`CI=true pnpm run check:code` 聚合 `check:cspell`、`vp check`、`check:go`、`check:stylelint`；`CI=true pnpm run fix:code` 一键全量修复）以 [`linting.md`](linting.md) 为权威；提交 hook 的 `vp staged` 对暂存路径做增量修复与检查。包构建命令不能替代这些命令；Wails 的 macOS/Windows 原生构建仍负责验证 host package 与平台集成。
-
-| 命令                                             | 用途                                                   | 说明                                                                            |
-| ------------------------------------------------ | ------------------------------------------------------ | ------------------------------------------------------------------------------- |
-| `pnpm run clean`                                 | 清理构建产物与缓存                                     | 执行 `scripts/clean.sh`，安全重置各工作区的 `dist/`、`.turbo/` 和临时产物       |
-| `pnpm run test:scripts`                          | 验证仓库内部工具脚本                                   | -                                                                               |
-| `pnpm run validate:context`                      | 验证 Agent context 路由、必需文档、软链与结构约束      | 修改 `AGENTS.md`、角色、rules、skills 或 `docs/agents/**` 时必须通过            |
-| `pnpm run audit:instructions -- --strict --json` | 验证不变量锚点、约束预算、工具已强制规则与重述块未回退 | instruction system 或 workflow 变更时必须通过                                   |
-| `pnpm run check:pack`                            | 发布产物边界检查                                       | 构建可发布 package 或修改其 `exports`、`files`、Vite 输出时，在根构建成功后运行 |
+| 命令                        | 用途                                    | 说明                                                                            |
+| --------------------------- | --------------------------------------- | ------------------------------------------------------------------------------- |
+| `pnpm run clean`            | 清理构建产物与缓存                      | 执行 `scripts/clean.sh`，安全重置各工作区的 `dist/`、`.turbo/` 和临时产物       |
+| `pnpm run test:scripts`     | 验证仓库内部工具脚本                    | -                                                                               |
+| `pnpm run validate:context` | 验证 Agent context 路由、软链与结构约束 | 修改 `AGENTS.md`、角色、rules、skills 或 `docs/agents/**` 时必须通过            |
+| `pnpm run check:pack`       | 发布产物边界检查                        | 构建可发布 package 或修改其 `exports`、`files`、Vite 输出时，在根构建成功后运行 |
 
 `check:pack` 使用 `pnpm pack --dry-run` 验证实际发布文件与 manifest export targets；它不判断 API 语义或版本级别。
 
@@ -59,7 +50,7 @@ turbo 本地缓存由 `.mise.toml` 的 `TURBO_CACHE_DIR` 指向 worktree 族共�
 | Wails frontend bindings        | 公开 Go API、`apps/interweave/frontend/package.json`       | `pnpm --filter @greypan/interweave-frontend build`（先执行 `wails3 generate bindings`） | 核对 `frontend/bindings/**` 的 generator diff，并运行 frontend 类型检查/构建和受影响调用点验证。         |
 | web-ui icons                   | `packages/web-ui/icons.used.json`                          | `pnpm --filter @greypan/web-ui generate-icons` 或 `vp build`                            | 图标模块只由 generator 更新，并完成 package build 与公开契约验证。                                       |
 
-`**/__screenshots__/` 与 `**/.vitest-attachments/` 属于测试证据，而不是应用代码生成物。除非任务明确要求并已经完成对应的视觉/浏览器验证，不要创建、手改或提交这些文件。
+`**/__screenshots__/` 与 `**/.vitest-attachments/` 属于测试证据，而不是应用代码生成物。除非任务明确要求并已经完成对应的视觉/浏览器验证，不要创建、手改或提交这些文件。根 `AGENTS.md`「不可绕过的仓库边界」在入口层声明同一约束，本节承载处方。
 
 ## TypeScript 配置
 
@@ -77,9 +68,15 @@ turbo 本地缓存由 `.mise.toml` 的 `TURBO_CACHE_DIR` 指向 worktree 族共�
 
 ## 库构建模式
 
-`vp pack` 使用 tsdown 处理单入口包。它通过 `pack` 块配置，无需 `vite-plugin-dts` 即可生成声明文件，并自动外部化依赖。`test-kit`、`unplugin-web-components` 和 `deps-reload` 使用此模式。
+不同包类型的构建脚本不同：
 
-`vp build` 使用 Vite library 模式处理具有子路径导出的包。它通过 `build.lib` 和 `preserveModules: true` 配置，使用 `vite-plugin-dts` 生成声明文件。`js-kit`、`browser-kit` 和 `web-ui` 使用此模式。
+- **单入口包**（`test-kit`、`unplugin-web-components`、`deps-reload`）：`vp pack`，基于 tsdown，输出 `.mjs` 和 `.d.mts`。
+- **子路径导出包**（`js-kit`、`browser-kit`、`web-ui`）：`vp build`，使用 Vite library 模式配合 `preserveModules`，输出 `.js` 和 `.d.ts`。
+- **React 应用**：`vp build`。
+- **Vue 应用**：`vue-tsc --build && vp build`。
+- **tsconfig**：无构建步骤；它提供通过 TypeScript `extends` 消费的 JSON 文件。
+
+`vp pack` 通过 `pack` 块配置，无需 `vite-plugin-dts` 即可生成声明文件，并自动外部化依赖。`vp build` 通过 `build.lib` 和 `preserveModules: true` 配置，使用 `vite-plugin-dts` 生成声明文件。
 
 ## 外部化规则
 
@@ -113,7 +110,7 @@ turbo 本地缓存由 `.mise.toml` 的 `TURBO_CACHE_DIR` 指向 worktree 族共�
 | Workflow                | 触发                                                               | 职责                                                                                                  |
 | ----------------------- | ------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------- |
 | `ci.yml`                | `pull_request`、push 到 `main`、`workflow_dispatch`                | 共享 agent context、changeset 状态、构建、格式化/lint/类型检查和测试                                  |
-| `changeset-version.yml` | push 到 `main`                                                     | 创建/更新 Changesets 版本 PR，经 `changesets/action` 的 `version` 输入调用 `pnpm run release:version` |
+| `changeset-version.yml` | push 到 `main`                                                     | 创建/更新 Changesets 版本 PR，`changesets/action` 的 `version-script` 调用 `pnpm run release:version` |
 | `npm-publish.yml`       | `pull_request.closed`，限定 `changeset-release/main` 合并到 `main` | 检测公共包版本变更，在合并 SHA 上重建 `packages/*` Turbo 图并通过 npm Trusted Publishing 发布         |
 | 应用验证 workflow       | 目标应用路径、其 WebView frontend 的直接 workspace 依赖或手动触发  | 校验同步元数据并在对应的原生目标上构建验证产物                                                        |
 | 应用发布 workflow       | 目标应用版本变更后的受控合并                                       | 创建带校验和的安装程序 Release；私有应用永不发布到 npm                                                |

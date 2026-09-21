@@ -32,7 +32,6 @@ const createSegmented = (triggerHtml = '', attrs?: Record<string, string>): WebU
   return el
 }
 
-// 通过 role 点击子 trigger 的内部元素
 const clickTrigger = (group: WebUiSegmented, index: number) => {
   const triggers = group.querySelectorAll<WebUiSegmentedTrigger>('web-ui-segmented-trigger')
   const inner = queryA11y(triggers[index], '[role="option"]')
@@ -277,7 +276,6 @@ describe('WebUiSegmented 组件', () => {
       clickTrigger(el, 0)
       await waitForUpdate(el)
 
-      // 只收到 group 自身的一次 change，子项 change 未外泄
       expect(events).toHaveLength(1)
       expect(events[0].target).toBe(el)
       detach()
@@ -391,7 +389,6 @@ describe('WebUiSegmented 组件', () => {
       await waitForUpdate(newTrigger)
       await waitForUpdate(el)
 
-      // 新添加的 trigger 与当前 value 匹配时自动选中
       await Promise.all([newTrigger].map(t => t.updateComplete))
       expect(newTrigger.checked).toBe(true)
 
@@ -416,7 +413,6 @@ describe('WebUiSegmented 组件', () => {
 
       expect(newTrigger.checked).toBe(true)
       const triggers = el.querySelectorAll<WebUiSegmentedTrigger>('web-ui-segmented-trigger')
-      // 唯一选中
       expect([...triggers].filter(t => t.checked)).toHaveLength(1)
       cleanupElement(el)
     })

@@ -80,7 +80,6 @@ describe('shared/group-management', () => {
     await slotChanged
     await Promise.all([checkboxA.updateComplete, waitForUpdate(el)])
 
-    // 移除后改变组值，被移除项不再同步
     el.value = []
     await waitForUpdate(el)
     await checkboxA.updateComplete

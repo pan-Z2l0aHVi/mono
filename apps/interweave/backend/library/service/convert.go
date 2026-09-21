@@ -28,7 +28,6 @@ func mapped[From any, To any](items []From, mapFn func(From) To) []To {
 	return result
 }
 
-// 将领域 Source 映射为前端可见视图。
 func sourceToDTO(src core.Source) SourceDTO {
 	return SourceDTO{
 		ID:          src.ID,
@@ -44,7 +43,6 @@ func sourceToDTO(src core.Source) SourceDTO {
 	}
 }
 
-// 将领域 Tag 映射为前端可见视图。
 func tagToDTO(tag core.Tag) TagDTO {
 	return TagDTO{
 		ID:        tag.ID,

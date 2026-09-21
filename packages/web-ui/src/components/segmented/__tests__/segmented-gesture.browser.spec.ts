@@ -29,6 +29,15 @@ function pointer(type: string, init: PointerEventInit): PointerEvent {
   return new PointerEvent(type, { bubbles: true, isPrimary: true, pointerId: 1, ...init })
 }
 
+// 带时间戳的指针事件：drag-gesture 以事件 timeStamp 做滑动窗口速度估算，无时间戳合成
+// 事件的速度随调度间隙漂移（间隙 ≥100ms 时 15px 窗口不足 300px/s 阈值），注入确定时间线。
+function timedPointer(type: string, init: PointerEventInit & { timeStamp?: number }): PointerEvent {
+  const { timeStamp, ...rest } = init
+  const event = new PointerEvent(type, { bubbles: true, isPrimary: true, pointerId: 1, ...rest })
+  if (timeStamp !== undefined) Object.defineProperty(event, 'timeStamp', { value: timeStamp })
+  return event
+}
+
 function createSegmented(options: { disabledSecond?: boolean } = {}): {
   segmented: WebUiSegmented
   t1: WebUiSegmentedTrigger
@@ -72,17 +81,14 @@ describe('WebUiSegmented 手势拖拽与吸附（浏览器）', () => {
 
     const inner = gestureSurface(segmented)
 
-    // 1. pointerdown 启动
     inner.dispatchEvent(pointer('pointerdown', { clientX: t1Rect.left + 10, clientY: t1Rect.top + 10 }))
     await segmented.updateComplete
 
-    // 2. 拖拽超过中点 (targetDistance * 0.7)
     window.dispatchEvent(
       pointer('pointermove', { clientX: t1Rect.left + 10 + targetDistance * 0.7, clientY: t1Rect.top + 10 })
     )
     await segmented.updateComplete
 
-    // 3. pointerup 松手
     window.dispatchEvent(
       pointer('pointerup', { clientX: t1Rect.left + 10 + targetDistance * 0.7, clientY: t1Rect.top + 10 })
     )
@@ -133,7 +139,6 @@ describe('WebUiSegmented 手势拖拽与吸附（浏览器）', () => {
   })
 
   it('跳过 disabled 选项：自动吸附至最近的可用选项', async () => {
-    // t2 (weekly) disabled
     const { segmented, t1, t2 } = createSegmented({ disabledSecond: true })
     await segmented.updateComplete
 
@@ -144,7 +149,6 @@ describe('WebUiSegmented 手势拖拽与吸附（浏览器）', () => {
     inner.dispatchEvent(pointer('pointerdown', { clientX: t1Rect.left + 10, clientY: t1Rect.top + 10 }))
     await segmented.updateComplete
 
-    // 拖到 t2 (weekly) 所在区域
     const t2Center = t2Rect.left + t2Rect.width / 2
     window.dispatchEvent(pointer('pointermove', { clientX: t2Center, clientY: t1Rect.top + 10 }))
     await segmented.updateComplete
@@ -214,12 +218,18 @@ describe('WebUiSegmented 手势拖拽与吸附（浏览器）', () => {
     const t1Rect = t1.getBoundingClientRect()
     const inner = gestureSurface(segmented)
 
-    inner.dispatchEvent(pointer('pointerdown', { clientX: t1Rect.left + 10, clientY: t1Rect.top + 10 }))
+    inner.dispatchEvent(
+      timedPointer('pointerdown', { clientX: t1Rect.left + 10, clientY: t1Rect.top + 10, timeStamp: 0 })
+    )
     await segmented.updateComplete
 
-    window.dispatchEvent(pointer('pointermove', { clientX: t1Rect.left + 20, clientY: t1Rect.top + 10 }))
-    await new Promise(r => setTimeout(r, 16))
-    window.dispatchEvent(pointer('pointerup', { clientX: t1Rect.left + 35, clientY: t1Rect.top + 10 }))
+    // move→up 注入 15px/30ms ≈ 500px/s，恒定高于 300px/s 提交阈值；真实墙钟间隙会漂移。
+    window.dispatchEvent(
+      timedPointer('pointermove', { clientX: t1Rect.left + 20, clientY: t1Rect.top + 10, timeStamp: 30 })
+    )
+    window.dispatchEvent(
+      timedPointer('pointerup', { clientX: t1Rect.left + 35, clientY: t1Rect.top + 10, timeStamp: 60 })
+    )
     await segmented.updateComplete
 
     expect(segmented.value).toBe('weekly')

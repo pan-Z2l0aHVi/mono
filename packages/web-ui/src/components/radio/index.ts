@@ -2,6 +2,7 @@ import { html, LitElement, unsafeCSS } from 'lit'
 import { customElement, property, state } from 'lit/decorators.js'
 import { classMap } from 'lit/directives/class-map.js'
 
+import selectionControl from '@/assets/selection-control.css?inline'
 import { installPointerFocusSuppression } from '@/shared/focus/pointer-focus'
 import { FormAssociated, defineFormAssociation, FormAssociationController } from '@/shared/form-association'
 import { defineGroupManaged, selectionGroupContextKey, type SelectionGroupContext } from '@/shared/group-management'
@@ -12,7 +13,7 @@ installPointerFocusSuppression()
 
 @customElement('web-ui-radio')
 export class WebUiRadio extends FormAssociated(LitElement) {
-  static override styles = unsafeCSS(style)
+  static override styles = [unsafeCSS(selectionControl), unsafeCSS(style)]
   private readonly _groupManagement = defineGroupManaged<SelectionGroupContext>(this, {
     context: selectionGroupContextKey,
     requestUpdate: () => this.requestUpdate()

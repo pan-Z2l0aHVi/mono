@@ -1,15 +1,17 @@
 import { defineConfig } from 'vite-plus'
 
 export default defineConfig({
-  staged: {
-    '*.{js,ts,jsx,tsx,mjs,cjs,html,vue,css,less,scss,go}': 'cspell --no-must-find-files',
-    '*.{css,scss,less,html,vue}': 'stylelint --fix --allow-empty-input',
-    '*.go': 'gofmt -w',
-    '*': 'vp check --fix'
-  },
   lint: {
-    jsPlugins: [{ name: 'vite-plus', specifier: 'vite-plus/oxlint-plugin' }],
-    rules: { 'vite-plus/prefer-vite-plus-imports': 'error' },
+    jsPlugins: [
+      { name: 'vite-plus', specifier: 'vite-plus/oxlint-plugin' },
+      { name: 'shadcn', specifier: '@shadcn/lint' }
+    ],
+    rules: {
+      'vite-plus/prefer-vite-plus-imports': 'error',
+      'shadcn/no-unknown-classes': 'error',
+      'shadcn/no-inline-styles': 'error',
+      'shadcn/require-static-classes': 'error'
+    },
     ignorePatterns: [
       '**/node_modules/**',
       '**/dist/**',

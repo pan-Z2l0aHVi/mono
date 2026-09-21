@@ -40,6 +40,19 @@ function dispatchEscapeKey(target: EventTarget) {
   return event
 }
 
+/*
+ * 真实浏览器的「点遮罩关闭」是一条 pointerdown（起点在遮罩上）+ 近静止 click 的
+ * 指针链路。`dialog.click()` 的 detail 为 0、不来自指针，组件会忽略它（对齐
+ * image-preview 的守卫，防止程序化 click 消费上一次指针交互的残留记录），所以
+ * 测试遮罩关闭语义必须派发完整的指针链路。
+ */
+function clickBackdrop(dialog: HTMLDialogElement, clientX = 20, clientY = 20) {
+  dialog.dispatchEvent(
+    new PointerEvent('pointerdown', { bubbles: true, pointerId: 1, isPrimary: true, clientX, clientY })
+  )
+  dialog.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1, clientX, clientY }))
+}
+
 describe('WebUiDrawer 组件', () => {
   describe('属性：open', () => {
     it('open 属性反射到 host 元素', async () => {
@@ -182,7 +195,7 @@ describe('WebUiDrawer 组件', () => {
       expect(el.open).toBe(true)
       expect(events.map(event => event.detail.open)).toEqual([false])
 
-      dialog.click()
+      clickBackdrop(dialog)
       await waitForUpdate(el)
 
       expect(el.open).toBe(true)
@@ -463,7 +476,7 @@ describe('WebUiDrawer 组件', () => {
       await waitForUpdate(el)
       const dialog = el.shadowRoot?.querySelector('dialog')
 
-      dialog?.click()
+      clickBackdrop(dialog as HTMLDialogElement)
       await waitForUpdate(el)
       expect(el.open).toBe(false)
 
@@ -478,7 +491,7 @@ describe('WebUiDrawer 组件', () => {
       const dialog = el.shadowRoot?.querySelector('dialog')
 
       expect(el.noBackdropClose).toBe(true)
-      dialog?.click()
+      clickBackdrop(dialog as HTMLDialogElement)
       await waitForUpdate(el)
       expect(el.open).toBe(true)
 
@@ -528,6 +541,11 @@ describe('WebUiDrawer 组件', () => {
         new PointerEvent('pointerdown', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 300 })
       )
       await waitForUpdate(el)
+      // 首个 move 只用于建立判定零点（基准校准），位移自它起算。
+      dragZone.dispatchEvent(
+        new PointerEvent('pointermove', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 340 })
+      )
+      await waitForUpdate(el)
       dragZone.dispatchEvent(
         new PointerEvent('pointermove', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 520 })
       )
@@ -535,6 +553,10 @@ describe('WebUiDrawer 组件', () => {
       dragZone.dispatchEvent(
         new PointerEvent('pointerup', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 520 })
       )
+      await waitForUpdate(el)
+      // 释放后的收尾已交还 CSS transition（issue #123）：jsdom 不运行过渡、也不派发
+      // transitionend，收尾由兜底定时器完成，这里把时间推过它。
+      await vi.advanceTimersByTimeAsync(600)
       await waitForUpdate(el)
 
       expect(el.open).toBe(false)
@@ -631,7 +653,12 @@ describe('WebUiDrawer 组件', () => {
         new PointerEvent('pointerdown', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 300 })
       )
       await waitForUpdate(el)
-      // 右侧抽屉闭合方向为向右拖；位移 220px 超过默认宽度 320px 的 1/3 阈值
+      // 右侧抽屉闭合方向为向右拖；jsdom 不做布局，尺寸量到 0，关闭阈值退化为 10px 下限。
+      // 首个 move 只建立判定零点（基准校准），位移自它起算：340 → 520 = 180px。
+      dragZone.dispatchEvent(
+        new PointerEvent('pointermove', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 340 })
+      )
+      await waitForUpdate(el)
       dragZone.dispatchEvent(
         new PointerEvent('pointermove', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 520 })
       )
@@ -639,6 +666,9 @@ describe('WebUiDrawer 组件', () => {
       dragZone.dispatchEvent(
         new PointerEvent('pointerup', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 520 })
       )
+      await waitForUpdate(el)
+      // 同上：jsdom 无 CSS 过渡，收尾等兜底定时器（controlled 下到悬停态）。
+      await vi.advanceTimersByTimeAsync(600)
       await waitForUpdate(el)
 
       expect(el.open).toBe(true)

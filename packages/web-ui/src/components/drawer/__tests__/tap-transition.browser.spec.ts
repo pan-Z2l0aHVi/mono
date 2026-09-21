@@ -103,7 +103,6 @@ describe('WebUiDrawer 连续 tap 后过渡动画（浏览器）', () => {
     expect(closing).toContain('transform')
     await waitFor(() => !dialog.open, 'drawer did not close', 10_000)
 
-    // 重新打开：同样必须有 transform 过渡。
     el.open = true
     await el.updateComplete
     const reopening = await sampleTransitions(el)

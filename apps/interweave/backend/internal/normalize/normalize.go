@@ -17,7 +17,6 @@ func TagName(input string) (string, error) {
 	// 先统一 Unicode 表示，避免视觉相同的标签分裂。
 	normalized := norm.NFC.String(input)
 
-	// 忽略输入边界的无意义空白。
 	trimmed := strings.TrimSpace(normalized)
 	if trimmed == "" {
 		return "", errors.New("tag name cannot be empty")

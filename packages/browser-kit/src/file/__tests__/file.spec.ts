@@ -41,7 +41,6 @@ describe('file 测试', () => {
   })
 
   describe('isSameFileType (基于 Magic Number)', () => {
-    // Mock File 对象的 stream 和 slice 行为
     const createMockFile = (content: number[], type: string) => {
       const blob = new Blob([new Uint8Array(content)], { type })
       return new File([blob], 'test.bin', { type })

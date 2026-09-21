@@ -1,3 +1,4 @@
+import { spawnSync } from 'node:child_process'
 import crypto from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
@@ -6,6 +7,9 @@ import { listPnpmWorkspaceManifests, readPnpmWorkspacePatterns } from './workspa
 
 const root = path.resolve(import.meta.dirname, '..')
 const errors = []
+
+// Role Contract 的落点：随 herdr-agents skill 安置，角色不再是 Claude Code subagent（ADR-0015）。
+const roleDirectory = '.agents/skills/herdr-agents/roles'
 
 // 结构化 handoff 的必填字段；根 AGENTS.md 与 task-packet.md 必须保持一致，缺失即视为流程漂移。
 const handoffFields = [
@@ -49,12 +53,11 @@ const isSeparatorRow = cells => cells.some(cell => cell.includes('-')) && cells.
 const escapeRegExp = value => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 const declaresExecutor = (declared, executor) => new RegExp(`^${escapeRegExp(executor)}(?![A-Za-z])`).test(declared)
 
-// 绑定表镜像一致性：绑定表内每一行的执行体都必须与默认绑定一致。
 function checkBindingMirrors() {
   const scope = [
     ...['AGENTS.md', 'CONTRIBUTING.md', 'CLAUDE.md'].filter(exists),
     ...walk('docs/agents', file => file.endsWith('.md')).map(relative),
-    ...walk('.agents/agents', file => file.endsWith('.md')).map(relative)
+    ...walk(roleDirectory, file => file.endsWith('.md')).map(relative)
   ]
   for (const file of scope) {
     const lines = read(file).split('\n')
@@ -75,9 +78,9 @@ function checkBindingMirrors() {
       const binding = bindings.get(normalizeRole(cells[columns.role] ?? ''))
       if (!binding) continue
       const declared = normalizeExecutor(cells[columns.executor] ?? '')
-      // Reviewer 按风险路由执行体（高风险 -> Claude Code，小功能快速迭代 -> Codex CLI），表中允许精确写「按风险路由」而非单一执行体；
-      // 全等比对避免「Codex CLI 按风险路由」这类丢掉高风险一路的写法静默通过。
-      if (binding.label === 'Reviewer' && declared.replace(/（[^）]*）$/, '').trim() === '按风险路由') continue
+      // Reviewer 按级别路由执行体（T0 独立 reviewer 会话，T1 fresh subagent，T2 免审），表中允许精确写「按级别路由」而非单一执行体；
+      // 全等比对避免「Codex CLI 按级别路由」这类丢掉独立会话一路的写法静默通过。
+      if (binding.label === 'Reviewer' && declared.replace(/（[^）]*）$/, '').trim() === '按级别路由') continue
       if (!declaresExecutor(declared, binding.executor))
         addError(`${file}: ${binding.label} is bound to "${declared}" but the default binding is "${binding.executor}"`)
     }
@@ -89,7 +92,7 @@ function checkRetiredReviewStructure() {
   const scope = [
     ...['AGENTS.md', 'CONTRIBUTING.md', 'CLAUDE.md'].filter(exists),
     ...walk('docs/agents', file => file.endsWith('.md')).map(relative),
-    ...walk('.agents/agents', file => file.endsWith('.md')).map(relative)
+    ...walk(roleDirectory, file => file.endsWith('.md')).map(relative)
   ]
   for (const file of scope) {
     if (read(file).includes('二次审查'))
@@ -119,49 +122,43 @@ function addError(message) {
   errors.push(message)
 }
 
-for (const file of [
-  'AGENTS.md',
-  'CLAUDE.md',
-  'CONTEXT.md',
-  'ARCHITECTURE.md',
-  'CONTRIBUTING.md',
-  'docs/agents/context.md'
-]) {
+// skill 出处以 skills-lock.json 为权威：登记在册的是第三方上游件，正文由上游维护（见 AGENTS.md 语言纪律），
+// 其中的示例路径不作为本仓链接；未登记的即本仓自撰，必须列在下面。两边都不在就是出处未定。
+const repoAuthoredSkills = new Set(['contract-change-review', 'herdr-agents'])
+const lockedSkills = new Set(Object.keys(JSON.parse(read('skills-lock.json')).skills))
+
+function fromLockedSkill(file) {
+  const [first, second, third] = relative(file).split(path.sep)
+  return first === '.agents' && second === 'skills' && lockedSkills.has(third)
+}
+
+// 入口面必须存在；其余门禁钉一致性：断链、与实现事实漂移、绑定表与 frontmatter、必经命令、软链。
+// 被删掉的是「指令文档语料必须存在」——它会随内容演进膨胀，反而阻止删减；被引用的文档由断链检查负责。
+for (const file of ['AGENTS.md', 'CLAUDE.md']) {
   if (!exists(file)) addError(`missing required context file: ${file}`)
 }
 
-for (const file of [
-  'docs/agents/workflow.md',
-  'docs/agents/worktrees.md',
-  'docs/agents/release.md',
-  'docs/agents/task-packet.md'
-]) {
-  if (!exists(file)) addError(`missing required workflow context file: ${file}`)
-}
-
 // AGENTS.md 的章节标题与叙述措辞不再是契约。入口断言只保留「必经链接 + init 命令」两条；
-// 结构不变量改由 <!-- invariant:... --> 锚点在 audit-instructions --strict 中校验。
+// 结构不变量锚点（<!-- invariant:... -->）是惰性注释，保留供人工检索，不再有机器校验（audit:instructions 已删除，见 ADR-0014）。
 if (exists('AGENTS.md')) {
   const agents = read('AGENTS.md')
-  for (const marker of ['docs/agents/workflow.md', 'agent:workflow init']) {
+  for (const marker of ['docs/agents/workflow.md', 'pnpm task new']) {
     if (!agents.includes(marker)) addError(`AGENTS.md is missing mandatory marker: ${marker}`)
   }
 }
 
-if (exists('.vite-hooks/pre-commit') && !read('.vite-hooks/pre-commit').includes('agent:workflow guard-commit'))
-  addError('.vite-hooks/pre-commit is missing the workflow commit guard')
+if (exists('.vite-hooks/pre-commit') && !read('.vite-hooks/pre-commit').includes('pnpm task guard'))
+  addError('.vite-hooks/pre-commit is missing the task commit guard')
 
-if (
-  exists('CONTRIBUTING.md') &&
-  !read('CONTRIBUTING.md').includes('agent:workflow check --task <task-id> --phase edit')
-)
+if (exists('CONTRIBUTING.md') && !read('CONTRIBUTING.md').includes('pnpm task start --task <task-id>'))
   addError('CONTRIBUTING.md is missing the workflow edit gate')
 
 // Manager 契约只需自包含 workflow gate 指针与 init 命令；gate 处方以根 AGENTS.md Mutation Gate 和 workflow.md 为权威，不复制。
-if (exists('.agents/agents/manager.md')) {
-  const manager = read('.agents/agents/manager.md')
-  if (!manager.includes('agent:workflow init') || !manager.includes('docs/agents/workflow.md'))
-    addError('.agents/agents/manager.md is missing the Manager workflow gate pointer')
+// 文件本身缺失由下方 roleProfiles 报错，不在此重复。
+if (exists(`${roleDirectory}/manager.md`)) {
+  const manager = read(`${roleDirectory}/manager.md`)
+  if (!manager.includes('pnpm task new') || !manager.includes('docs/agents/workflow.md'))
+    addError(`${roleDirectory}/manager.md is missing the Manager workflow gate pointer`)
 }
 
 // workflow.md 的章节标题不再逐个钉字；结构不变量由 <!-- invariant:workflow-states --> 等锚点覆盖。
@@ -227,11 +224,10 @@ if (exists('package.json')) {
   try {
     const packageJson = JSON.parse(read('package.json'))
     for (const script of [
-      'agent:workflow',
+      'task',
       'validate:context',
       'check:pack',
       'find:usages',
-      'audit:instructions',
       'inspect:contract',
       'diff:contract',
       'test:scripts'
@@ -280,16 +276,56 @@ for (const directory of ['packages', 'apps']) {
   const absolute = path.join(root, directory)
   if (!fs.existsSync(absolute)) continue
 
-  for (const entry of fs.readdirSync(absolute, { withFileTypes: true })) {
-    if (!entry.isDirectory()) continue
-    const workspaceRoot = path.join(absolute, entry.name)
-    if (
-      fs.existsSync(path.join(workspaceRoot, 'package.json')) &&
-      !fs.existsSync(path.join(workspaceRoot, 'AGENTS.md'))
-    ) {
-      addError(`${directory}/${entry.name}: missing nearest AGENTS.md for workspace context routing`)
+  // 「包级约束」区域：路由到该 workspace 的权威要么是它自己的 AGENTS.md，要么是 ARCHITECTURE.md「包级约束」表中的一行。
+  // 薄约束包（无独立 AGENTS.md 的 workspace）必须出现在该表中才能被 agent 定位，否则视为路由缺口。
+  // 用递归而非直接子目录：嵌套 workspace（如 apps/interweave/frontend）同样必须可定位。
+  const constraintsArea = (() => {
+    const architecture = exists('ARCHITECTURE.md') ? read('ARCHITECTURE.md') : ''
+    const heading = /#{1,6}[ \t]+5\.[ \t]*包级约束/.exec(architecture)
+    return heading ? architecture.slice(heading.index) : ''
+  })()
+
+  // 嵌套 workspace 的约束可并回最近的有 AGENTS.md 的祖先（如 apps/interweave/frontend 并入 apps/interweave/AGENTS.md），
+  // 此时不强制它单列入约束表；只有最近含 AGENTS.md 的祖先存在才视为已可定位。
+  // 根目录 AGENTS.md 是全部 workspace 的公共入口，不能算「最近祖先」，否则所有包都会走此豁免、包级约束表校验被静默关闭。
+  function coveredByAncestorAgents(workspaceRoot) {
+    let parent = path.dirname(workspaceRoot)
+    while (parent !== root && parent.startsWith(root)) {
+      if (fs.existsSync(path.join(parent, 'AGENTS.md'))) return true
+      parent = path.dirname(parent)
+    }
+    return false
+  }
+
+  function findWorkspaceRoots(dir) {
+    const entries = fs.readdirSync(dir, { withFileTypes: true })
+    for (const entry of entries) {
+      if (!entry.isDirectory()) continue
+      // 跳过依赖/产物目录，避免误判 node_modules 里的 package.json 为成 workspace。
+      if (['node_modules', 'dist', 'coverage', '.turbo'].includes(entry.name)) continue
+      const candidate = path.join(dir, entry.name)
+      if (fs.existsSync(path.join(candidate, 'package.json'))) {
+        const workspaceRoot = candidate
+        const hasOwnAgents = fs.existsSync(path.join(workspaceRoot, 'AGENTS.md'))
+        let tracked = hasOwnAgents || coveredByAncestorAgents(workspaceRoot)
+        if (!tracked) {
+          try {
+            const manifest = JSON.parse(fs.readFileSync(path.join(workspaceRoot, 'package.json'), 'utf8'))
+            if (manifest.name && constraintsArea.includes(`\`${manifest.name}\``)) tracked = true
+          } catch {
+            // 不可解析的 manifest 由下方 workspace manifest 校验统一报错，这里不重复。
+          }
+        }
+        if (!tracked)
+          addError(
+            `${relative(workspaceRoot)}: workspace without its own AGENTS.md must be tracked in ARCHITECTURE.md「包级约束」表 or have an AGENTS.md ancestor`
+          )
+      }
+      // 无论自身是否有 AGENTS.md，都必须递归进入子目录，才能覆盖嵌套 workspace（如 apps/interweave/frontend）。
+      findWorkspaceRoots(candidate)
     }
   }
+  findWorkspaceRoots(absolute)
 }
 
 for (const manifestFile of workspaceManifests) {
@@ -304,8 +340,7 @@ for (const manifestFile of workspaceManifests) {
 
 const symlinks = {
   '.claude/rules': '../.agents/rules',
-  '.claude/skills': '../.agents/skills',
-  '.claude/agents': '../.agents/agents'
+  '.claude/skills': '../.agents/skills'
 }
 for (const [file, expectedTarget] of Object.entries(symlinks)) {
   const absolute = path.join(root, file)
@@ -319,27 +354,99 @@ for (const [file, expectedTarget] of Object.entries(symlinks)) {
   }
 }
 
+// 禁止 Role Contract 被重新注册成 Claude Code subagent（ADR-0015）。两条独立断言：symlink 一律置错
+// （它是这 5 份契约历史上被注册的机制，指向缺失目标的悬空 symlink 同样会被客户端当成 subagent 目录，
+// 故用 lstatSync）；git index 里不得出现该路径下的任何条目，被跟踪才会随 clone 扩散。本地未跟踪的
+// 普通目录是开发者自己的项目级 subagent 落点，`.gitignore` 已整体排除，仓库无权置错。
+try {
+  if (fs.lstatSync(path.join(root, '.claude/agents')).isSymbolicLink())
+    addError('.claude/agents must not be a symlink; Role Contracts are opt-in session roles, not Claude Code subagents')
+} catch (error) {
+  if (error.code !== 'ENOENT') addError(`.claude/agents: cannot inspect path: ${error.message}`)
+}
+
+const trackedAgents = spawnSync('git', ['ls-files', '--', '.claude/agents'], { cwd: root, encoding: 'utf8' })
+if (trackedAgents.error || trackedAgents.status !== 0)
+  addError(
+    `.claude/agents: cannot check whether it is tracked: ${trackedAgents.error?.message ?? `git ls-files exited ${trackedAgents.status}`}`
+  )
+else if (trackedAgents.stdout.trim())
+  addError(`.claude/agents must not be tracked by git:\n${trackedAgents.stdout.trim()}`)
+
 const markdownFiles = [
   ...['AGENTS.md', 'CLAUDE.md', 'CONTEXT.md', 'ARCHITECTURE.md', 'CONTRIBUTING.md']
     .filter(exists)
     .map(file => path.join(root, file)),
   ...walk('docs/agents', file => file.endsWith('.md')),
   ...walk('docs/adr', file => file.endsWith('.md')),
-  ...walk('.agents', file => file.endsWith('.md')),
+  ...walk('.agents', file => file.endsWith('.md')).filter(file => !fromLockedSkill(file)),
   ...walk('packages', file => path.basename(file) === 'AGENTS.md'),
-  ...walk('apps', file => path.basename(file) === 'AGENTS.md')
+  ...walk('apps', file => path.basename(file) === 'AGENTS.md'),
+  // workspace README 与包级 AGENTS.md 同属指令面，但只能列一层：walk 会连 apps/*/node_modules 与 dist 一起吞进来。
+  ...['packages', 'apps'].flatMap(directory =>
+    exists(directory)
+      ? fs
+          .readdirSync(path.join(root, directory), { withFileTypes: true })
+          .filter(entry => entry.isDirectory() && exists(`${directory}/${entry.name}/README.md`))
+          .map(entry => path.join(root, directory, entry.name, 'README.md'))
+      : []
+  )
 ]
-const linkPattern = /(?<!!?)\[[^\]]*\]\(([^)]+)\)/g
+// (?<!!?) 的 `!?` 允许匹配空串，lookbehind 恒假，链接扫描因此从未跑过；这里要求前面确实不是 `!`（图片语法）。
+const linkPattern = /(?<!!)\[[^\]]*\]\(([^)]+)\)/g
+// 只校验节级锚点：文件存在性由下方文件存在校验负责；`#fragment` 可能是节锚点（`#title`）或显式锚点（`{#custom}`）。
+// Markdown 引擎把节标题转成 GitHub 风格 anchor：小写、去标点、空格转 `-`、连续/首尾 `-` 折叠；显式 `{#name}` 优先。
+const ghAnchor = text =>
+  text
+    .toLowerCase()
+    .replace(/[^\p{Alphabetic}\p{N}\s-]/gu, '')
+    .trim()
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+function collectAnchors(file) {
+  const anchors = new Set()
+  let source = ''
+  try {
+    source = fs.readFileSync(file, 'utf8')
+  } catch {
+    return anchors
+  }
+  for (const match of source.matchAll(/^#{1,6}\s+(.*)$/gm)) {
+    let heading = match[1].trim()
+    const explicit = /^(.+?)\s*\{#([^\}]+)\}$/.exec(heading)
+    anchors.add(explicit ? explicit[2].trim() : ghAnchor(heading))
+  }
+  return anchors
+}
+const anchorCache = new Map()
+function anchoredTargets(file) {
+  if (!anchorCache.has(file)) anchorCache.set(file, collectAnchors(file))
+  return anchorCache.get(file)
+}
+// 只有编号 ADR 需要被发现；docs/adr 下的其他 Markdown（如索引 README）算指令面，它的链接可以提供入站。
+const adrDocuments = new Set(walk('docs/adr', file => file.endsWith('.md') && /^\d{4}-/.test(path.basename(file))))
+const inboundTargets = new Set()
 for (const file of markdownFiles) {
   const source = fs.readFileSync(file, 'utf8')
+  const isAdr = adrDocuments.has(file)
   for (const match of source.matchAll(linkPattern)) {
     const target = match[1].trim()
     if (!target || /^(?:https?:|mailto:|#)/.test(target)) continue
-    const location = target.split('#', 1)[0]
+    const [locationPart, fragment] = target.split('#')
+    const location = locationPart.trim()
     if (!location) continue
     const resolved = path.resolve(path.dirname(file), location)
     if (!fs.existsSync(resolved)) addError(`${relative(file)}: broken local link ${target}`)
+    if (!isAdr) inboundTargets.add(resolved)
+    if (fragment && fs.existsSync(resolved) && !anchoredTargets(resolved).has(ghAnchor(fragment.trim())))
+      addError(`${relative(file)}: broken local anchor ${target}`)
   }
+}
+// ADR 的发现性钉在「必须有入站链接」上，而不是「CONTEXT.md 必须逐条索引」：
+// 后者把 CONTEXT.md 的体积变成契约，阻止精简这份文档。
+for (const file of [...adrDocuments].sort()) {
+  if (!inboundTargets.has(file)) addError(`${relative(file)}: no inbound link from the instruction surface`)
 }
 
 function parseFrontmatter(file) {
@@ -361,7 +468,17 @@ function parseFrontmatter(file) {
   }
 }
 
-for (const file of walk('.agents/skills', file => path.basename(file) === 'SKILL.md')) parseFrontmatter(file)
+for (const file of walk('.agents/skills', file => path.basename(file) === 'SKILL.md')) {
+  parseFrontmatter(file)
+  const name = path.basename(path.dirname(file))
+  if (repoAuthoredSkills.has(name) === lockedSkills.has(name))
+    addError(
+      `.agents/skills/${name}: provenance must be either skills-lock.json or repoAuthoredSkills, not both or neither`
+    )
+}
+for (const name of repoAuthoredSkills)
+  if (!exists(`.agents/skills/${name}/SKILL.md`))
+    addError(`repoAuthoredSkills lists a skill without SKILL.md: .agents/skills/${name}`)
 
 const roleProfiles = new Map([
   ['manager.md', 'manager'],
@@ -370,39 +487,29 @@ const roleProfiles = new Map([
   ['biz-coder.md', 'biz-coder'],
   ['reviewer.md', 'reviewer']
 ])
-const roleFiles = walk('.agents/agents', file => file.endsWith('.md'))
+const roleFiles = walk(roleDirectory, file => file.endsWith('.md'))
 
 for (const file of roleFiles) {
   parseFrontmatter(file)
   const filename = path.basename(file)
   if (!roleProfiles.has(filename)) {
-    addError(`${relative(file)}: unsupported Agent Role; .agents/agents only contains the five shared Role Contracts`)
+    addError(`${relative(file)}: unsupported Agent Role; ${roleDirectory} has only five Role Contracts`)
     continue
   }
 
   // Role Contract 的章节清单不再是硬编码契约；每个文件必须携带 <!-- invariant:role-sections --> 锚点，
-  // 具体章节可以随角色职责演进重写（锚点断言在 audit-instructions --strict 中执行）。
+  // 具体章节可以随角色职责演进重写。
   const source = fs.readFileSync(file, 'utf8')
   const expectedName = roleProfiles.get(filename)
   if (!new RegExp(`^name:\\s*${expectedName}\\s*$`, 'm').test(source))
     addError(`${relative(file)}: frontmatter name must be ${expectedName}`)
 }
 
+// 不是「文档语料必须存在」：可用角色由 `scripts/task.mjs` 的 `roleContracts()` 直接列契约目录推导，
+// 少一份契约会让该角色静默从 `pnpm task --roles` 的可选值里消失。本断言钉住这个镜像与目录一致。
 for (const filename of roleProfiles.keys()) {
   if (!roleFiles.some(file => path.basename(file) === filename))
-    addError(`.agents/agents: missing required Agent Role ${filename}`)
-}
-
-if (exists('CONTEXT.md')) {
-  const context = read('CONTEXT.md')
-  const adrDirectory = path.join(root, 'docs/adr')
-  if (fs.existsSync(adrDirectory)) {
-    for (const file of fs.readdirSync(adrDirectory).filter(file => file.endsWith('.md'))) {
-      if (!context.includes(`docs/adr/${file}`)) addError(`CONTEXT.md does not index docs/adr/${file}`)
-    }
-  } else {
-    addError('missing required directory: docs/adr')
-  }
+    addError(`${roleDirectory}: missing required Agent Role ${filename}`)
 }
 
 if (errors.length) {

@@ -10,7 +10,6 @@
 
 - 全局拓扑、workspace 清单、依赖草图和高频热点：[`ARCHITECTURE.md`](ARCHITECTURE.md)。
 - 协作与 Agent 交付流程：[`CONTRIBUTING.md`](CONTRIBUTING.md)。
-- 本文件只承载跨包架构、术语和 ADR 索引；不要把它当作普通局部任务的操作手册。
 
 ## 项目身份
 
@@ -58,20 +57,9 @@ _Avoid_: 历史记录点、页面快照、浏览记录
 不离开当前页面、仅通过 URL 片段变化或 history API 产生的导航（含浏览器前进/后退）；history-nav 只跟踪这一类，整页加载或跨文档跳转不在其职责内。
 _Avoid_: 页面跳转、路由切换（避免与 router 概念混淆）
 
-## 模块关系
+## 模块关系与依赖方向
 
-```text
-@greypan/tsconfig ──配置 profile，供所有 TypeScript workspace 使用
-@greypan/js-kit ───无工作区运行时依赖的基础工具与 plugin system
-  ├─ @greypan/browser-kit ──浏览器工具
-  │    └─ @greypan/web-ui ──Lit 组件、icons、React/Vue 类型
-  ├─ @greypan/test-kit ────Vitest browser mode 与 MSW 基础设施
-  ├─ @greypan/unplugin-web-components ──Web Components auto-import
-  └─ @greypan/deps-reload ─开发期 workspace dist 重载
-
-react-web-ui-demo / vue-web-ui-demo ─共享包的 Web 集成与预览表面
-interweave（含 interweave-frontend）──共享包的 Wails 桌面集成表面
-```
+workspace 清单、依赖草图与模块关系图见 [`ARCHITECTURE.md`](ARCHITECTURE.md)，本文件不复制；此处只保留包的「负责/不负责」契约边界。
 
 | 边界                      | 负责内容                                            | 不负责内容                        |
 | ------------------------- | --------------------------------------------------- | --------------------------------- |
@@ -86,24 +74,27 @@ interweave（含 interweave-frontend）──共享包的 Wails 桌面集成表�
 
 ## 关键 ADR
 
-| ADR                                                                             | 决策                                                 | 何时读取                                                                |
-| ------------------------------------------------------------------------------- | ---------------------------------------------------- | ----------------------------------------------------------------------- |
-| [0001](docs/adr/0001-ci-pipeline.md)                                            | CI Pipeline                                          | 修改验证、Changesets 或发布门控                                         |
-| [0002](docs/adr/0002-build-toolchain.md)                                        | Build Toolchain                                      | 修改 Vite Plus、构建或测试工具链                                        |
-| [0003](docs/adr/0003-release-planes.md)                                         | Release Planes                                       | 修改 npm/Wails 发布流程                                                 |
-| [0004](docs/adr/0004-progressive-agent-context-architecture.md)                 | Agent Context Architecture                           | 修改 agent context、rules、skills 或 instruction system                 |
-| [0005](docs/adr/0005-web-ui-component-architecture.md)                          | Web UI Component Architecture                        | 修改 web-ui 组件技术选型、公共契约、事件模型、框架类型适配或 icon 系统  |
-| [0006](docs/adr/0006-web-ui-composition-rendering-architecture.md)              | Web UI Composition & Rendering Architecture          | 修改 overlay 交互/定位、布局层级、design token 或 @lit/context 组合模式 |
-| [0007](docs/adr/0007-plugin-system.md)                                          | Plugin System                                        | 设计可组合状态或行为模块                                                |
-| [0008](docs/adr/0008-interweave-backend-architecture.md)                        | Interweave Backend Architecture                      | 修改 interweave Go 模块、Wails Service 或 frontend bindings             |
-| [0009](docs/adr/0009-interweave-sqlite-persistence-wal.md)                      | SQLite Persistence WAL                               | 修改 interweave 持久化层或 SQLite 并发模型                              |
-| [0010](docs/adr/0010-agent-role-orchestration.md)                               | Agent Role Orchestration                             | 修改角色分工、编排路由或 handoff 契约                                   |
-| [0011](docs/adr/0011-agent-model-binding-and-effort.md)                         | Agent Model Binding & Effort                         | 修改角色-执行体-模型绑定或思考强度分档                                  |
-| [0012](docs/adr/0012-instruction-risk-tiering-and-pre-authorized-operations.md) | Instruction Risk Tiering & Pre-authorized Operations | 修改风险分级、预授权操作、不变量锚点或约束预算基线                      |
+| ADR                                                                             | 决策                                                  | 何时读取                                                                  |
+| ------------------------------------------------------------------------------- | ----------------------------------------------------- | ------------------------------------------------------------------------- |
+| [0001](docs/adr/0001-ci-pipeline.md)                                            | CI Pipeline                                           | 修改验证、Changesets 或发布门控（`vp staged` 已被 ADR-0014 退役，需连读） |
+| [0002](docs/adr/0002-build-toolchain.md)                                        | Build Toolchain                                       | 修改 Vite Plus、构建或测试工具链（暂存修复已被 ADR-0014 退役，需连读）    |
+| [0003](docs/adr/0003-release-planes.md)                                         | Release Planes                                        | 修改 npm/Wails 发布流程                                                   |
+| [0004](docs/adr/0004-progressive-agent-context-architecture.md)                 | Agent Context Architecture                            | 修改 agent context、rules、skills 或 instruction system                   |
+| [0005](docs/adr/0005-web-ui-component-architecture.md)                          | Web UI Component Architecture                         | 修改 web-ui 组件技术选型、公共契约、事件模型、框架类型适配或 icon 系统    |
+| [0006](docs/adr/0006-web-ui-composition-rendering-architecture.md)              | Web UI Composition & Rendering Architecture           | 修改 overlay 交互/定位、布局层级、design token 或 @lit/context 组合模式   |
+| [0007](docs/adr/0007-plugin-system.md)                                          | Plugin System                                         | 设计可组合状态或行为模块                                                  |
+| [0008](docs/adr/0008-interweave-backend-architecture.md)                        | Interweave Backend Architecture                       | 修改 interweave Go 模块、Wails Service 或 frontend bindings               |
+| [0009](docs/adr/0009-interweave-sqlite-persistence-wal.md)                      | SQLite Persistence WAL                                | 修改 interweave 持久化层或 SQLite 并发模型                                |
+| [0010](docs/adr/0010-agent-role-orchestration.md)                               | Agent Role Orchestration                              | 修改角色分工、编排路由或 handoff 契约                                     |
+| [0011](docs/adr/0011-agent-model-binding-and-effort.md)                         | Agent Model Binding & Effort                          | 修改角色-执行体绑定（分档已被 ADR-0014 取消，需连读）                     |
+| [0012](docs/adr/0012-instruction-risk-tiering-and-pre-authorized-operations.md) | Instruction Risk Tiering & Pre-authorized Operations  | 修改预授权操作（风险分级表与约束预算基线已被 ADR-0014 取代/退役，需连读） |
+| [0013](docs/adr/0013-web-ui-theme-transition.md)                                | Web UI Theme Transition                               | 修改 `web-ui-theme` 过渡 API、View Transition 生命周期或降级语义          |
+| [0014](docs/adr/0014-task-system-v2.md)                                         | Task 体系 v2（level 状态机、guard、checks、playbook） | 修改 `scripts/task.mjs`、任务级别 gate、pre-commit 门禁或 task state 布局 |
+| [0015](docs/adr/0015-role-contracts-in-herdr-agents-skill.md)                   | Role Contracts In Herdr Agents Skill                  | 修改 Role Contract、skill 出处标记或 herdr 编排时序                       |
 
 ## Interweave 产品与领域词汇
 
-Interweave 当前已确认的产品基线见 [`apps/interweave/docs/product.md`](apps/interweave/docs/product.md)。产品、领域模型、Map、标签、Source 或 MCP 路线任务按需读取该文档和 ADR-0008；各改动主题对应的 ADR 以上方索引表的「何时读取」列为准，此处不再逐条复述。
+Interweave 的产品基线不再单独成文：领域词汇以本节为准，后端能力边界与持久化模型见 [ADR-0008](docs/adr/0008-interweave-backend-architecture.md)/[ADR-0009](docs/adr/0009-interweave-sqlite-persistence-wal.md)，产品边界与应用级约定见 [`apps/interweave/AGENTS.md`](apps/interweave/AGENTS.md)，已实现行为以 `apps/interweave/backend/**` 及其 Go 测试为真相。各改动主题对应的 ADR 以上方索引表的「何时读取」列为准，此处不再逐条复述。
 
 **资源（Resource）**:
 用户希望长期找回、理解或使用的原子概念对象；保存独立标题、短备注、语义标签与一个或多个 Source。
@@ -159,15 +150,16 @@ _Avoid_: 直接改写语义色源 token、用主题文本作为按压加深锚�
 trigger 经命名 slot 提供、内容/面板由组件托管的组合模式；面板常脱离文档流（portal）。组件把 trigger 状态 ARIA（aria-expanded 等）回写到 trigger slot 的首个 assigned element，交互语义由 slot 内的可交互元素原生提供。
 _Avoid_: trigger/content 拆分为独立公开元素（React 式三元素）、在 trigger 包装结构上承载 ARIA
 
+**开启态浮层（open overlay）**:
+「哪一层浮层正开着」的唯一拥有者，也是 Escape 归属的唯一仲裁者。组件用 `claim(panel)` 声明一次开启并取得会话句柄，`release()` 幂等撤销；开启状态是声明而非询问，仲裁不再回调组件查 `isOpen()`。会话作用域（一次开启）与实例作用域（跨开合与断连的帧事务）分离；「暂时不可关闭」经 `setInert(boolean)` 表达，与静态策略共用同一通道；撤销与 `open` 同拍，不等退场动画。
+_Avoid_: 各组件自持 Escape 监听、以 panel 元素而非句柄为身份、第三个仲裁枚举值、把帧事务压进会话句柄、撤销等退场动画结束
+
 **受管子元素组合（managed child composition）**:
 子项是公开 custom element（option、segmented-trigger、radio、checkbox 等）的组合模式。成员追踪与点击归因由 GroupController 直驱，禁用/展示态经 @lit/context 下行广播（只下行），选中态由根直写子项（上行）；子项被移出组后恢复独立控件语义。
 _Avoid_: 用 context 承载成员追踪或上行写回、在子项上用公开属性表达组状态
 
 ## 已知边界
 
-- 所有发布的 JavaScript 包均为 ES modules；`tsconfig` 仅发布 JSON profile。
-- `web-ui` 不打包框架代码；消费者安装并提供 `lit`，可选地提供 React/Vue 类型依赖。
-- 应用均为私有包，不发布到 npm；React/Vue demo 部署到 GitHub Pages，Wails starter 通过 GitHub Release 交付安装程序。
-- registry 使用 npmmirror，CI 覆盖为官方 npm registry；不得为局部任务改写 registry/mirror。
+发布/私有边界、registry/mirror 与工作区构建事实见 [`ARCHITECTURE.md`](ARCHITECTURE.md) 的「发布 / 私有边界」与「依赖和构建事实」节，以及根 `AGENTS.md` 的「不可绕过的仓库边界」；本文件不复制。
 
 组件、token、overlay 与事件语义按需读取 `docs/agents/web-ui.md` 及其指向的 ADR；公共 package 或跨 workspace 契约审查按需读取 `contract-change-review` skill，并以 manifest、消费者和测试为事实；构建、部署与 release workflow 按需读取 `docs/agents/build.md` 和 ADR-0003。

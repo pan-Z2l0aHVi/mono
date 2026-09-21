@@ -1,0 +1,93 @@
+#!/bin/sh
+# 仓库级 task 政策：task 的 diff 必须携带至少一个 changeset（`.agents/rules/commit.md`
+# 「每个 PR 都需要 changeset」的机械化）。freeze 在取快照前跑一次，guard 在放行提交前再跑
+# 一次，所以全部级别都无豁免——包括通常不 freeze、只在 commit 边界出现的 T2。
+# 只证明「有个 .md」不够，还要核到内容：分隔线不足两处的文件根本不会被 changesets 解析；
+# frontmatter 里声明了包就必须写正文，否则版本 PR 会把一条空描述写进公共包的 CHANGELOG。
+# 只含两行 `---` 的空壳仍然合法——docs/agents/commit.md 用它表达「纯 docs/chore，无版本影响」。
+# 比 changesets 自身严一点：分隔线之前不允许散落内容（它的正则是非锚定的，那种文件它照收）。
+# release 聚合 diff 对 base（origin/main）天然包含被聚合 task 的 changeset 文件。
+#
+# 内核以 POSIX sh 执行本文件（无扩展名、需要 +x），所以只写 sh 与 awk 的可移植子集。
+set -e
+
+base="${AGENT_TASK_BASE_SHA:-HEAD}"
+# base 必须是本仓可解析的 commit：`git diff` 自己失败（base 所在历史被 rewrite 或被 GC 掉）会被
+# 下面的 `|| true` 吞成空清单，最终以「没带 changeset」收尾——那句话方向全错，会把人支去写一份
+# 本来就存在的声明。POSIX sh 没有 pipefail，所以先把 base 验一遍。
+if ! git rev-parse --verify --quiet "${base}^{commit}" >/dev/null; then
+  echo "changeset check cannot run: base '$base' is not a commit in this repository" >&2
+  echo "that commit no longer exists in this history, so nothing can be diffed against it" >&2
+  exit 1
+fi
+# 只看 index，不看 untracked：两个边界上 index 就是将被留下的东西——freeze 前内核已
+# `git add -A`，guard 放行的那次提交内容就是 index。把 untracked 也算进来会让「写了
+# changeset 但没 add」的提交过关，而那正是本检查要拦的形态。
+# quotePath=false 让非 ASCII 文件名按原样输出，否则 git 会引号转义成 "\344\275\240.md"，
+# 下面的路径匹配就会把它丢掉：畸形文件漏检（fail-open），正常文件反而报缺 changeset。
+# 下面三条 grep 合起来是 @changesets/read（当前 1.0.1）读取规则的镜像：第一条只认 .changeset 顶层
+# 与 pre/ 下的普通 .md（`^` 锚定 + 首字符非 `.`，顺带排除了点前缀名字与更深的嵌套），后两条按
+# basename 剔掉它不消费的文件名。上游若改掉这张表，这里不会有用例变红，升级 changesets 时必须复核
+# 本节与 scripts/task.test.mjs 里硬编码的名字清单。
+# 后两条必须分开：changesets 的忽略表是 [/^README\.md$/i, "AGENTS.md", "CLAUDE.md", "GEMINI.md"]，
+# 只有 README 不区分大小写，另外三个是大小写敏感的字符串比较。`.changeset/claude.md` 会被真的读进
+# 发布流程，把它连同大写一起 `-i` 滤掉，等于让一份会进版本 PR 的声明躲开下面的内容核对。
+# 真正不参与发布的名字滤在这里而不是留到内容检查，否则改一行 .changeset/README.md 就能过关。
+files=$(
+  git -c core.quotePath=false diff --cached --name-only --diff-filter=d "$base" -- .changeset |
+    grep -E '^\.changeset/(pre/)?[^/.][^/]*\.md$' |
+    grep -vE '/(AGENTS|CLAUDE|GEMINI)\.md$' |
+    grep -viE '/readme\.md$' || true
+)
+if [ -z "$files" ]; then
+  echo "changeset missing: no staged .changeset/*.md vs $base" >&2
+  echo "add a changeset describing the version impact (see docs/agents/commit.md) and stage it, then retry" >&2
+  exit 1
+fi
+
+# 用 read 逐行取文件名：for file in $files 会按空白切词，`.changeset/has space.md` 这种
+# 合法路径会被切成两个不存在的文件，把该放行的提交以一句读不到文件的话拦死。
+# 换行仍是边界：git 会把含换行的路径引号化，那种名字匹配不上上面的模式，不被本检查支持。
+while IFS= read -r file; do
+  # 内容也取自 index，不回落到工作区的同名文件：两个边界核实的都是「将被留下的那份声明」。
+  # 工作区可能比 index 更合法（改了没 add），也可能根本没有（stage 之后被删）——读工作区会让
+  # index 里无正文的声明过关，或把一份已 staged 的合法 changeset 拦成读不到文件。
+  blob=$(git cat-file blob ":$file" 2>/dev/null) || {
+    echo "changeset unreadable: $file is listed by git diff but has no staged blob" >&2
+    echo "re-stage it (git add -- '$file') so the declaration checked here is the one committed" >&2
+    exit 1
+  }
+  # 一次 awk 得出四个计数：fence=frontmatter 分隔线数，pre=首条分隔线前的散落内容，
+  # pkg=frontmatter 内命中版本声明的**行数**（不是包数：一行写两个包仍算 1，报错措辞按行数说），
+  # body=分隔线之后的非空正文行数。
+  # pkg 容忍缩进、引号包住的值和行尾注释：changesets 的解析器接受缩进的 `key: patch` 并照样 bump。
+  # 只认非缩进行会让缩进写法的声明躲过正文要求。这仍是行形态判据、不是 YAML 解析器：把版本类型写成
+  # 行里没有 `: …major|minor|patch…` 的形态（例如折叠成多行的标量）识别不了，那种文件由 changesets
+  # 自己与 CI 的版本流程兜底。宁可多算一个 pkg：多算只会多要求一条正文。
+  stats=$(printf '%s\n' "$blob" | awk '
+    /^---[[:space:]]*$/ { fence += 1; next }
+    fence == 0 { if ($0 ~ /[^[:space:]]/) pre += 1; next }
+    fence == 1 { if ($0 ~ /^[[:space:]]*[^[:space:]].*:[^[:alnum:]]*(major|minor|patch)/) pkg += 1; next }
+    fence >= 2 { if ($0 ~ /[^[:space:]]/) body += 1 }
+    END { print fence + 0, pre + 0, pkg + 0, body + 0 }
+  ')
+  # 拆的是 awk 自己的四个计数，不是文件内容，所以这里的空白切分是可控的。
+  set -- $stats
+  if [ "$1" -lt 2 ]; then
+    echo "changeset malformed: $file has no paired --- frontmatter block" >&2
+    echo "changesets throws on such a file, and one throw fails the whole read: CI and the version PR error out instead of just skipping it" >&2
+    exit 1
+  fi
+  if [ "$2" -gt 0 ]; then
+    echo "changeset malformed: $file has content before its first --- line" >&2
+    echo "changesets parses such a file anyway (its frontmatter regex is unanchored); this repo requires the declaration to be the whole file" >&2
+    exit 1
+  fi
+  if [ "$3" -gt 0 ] && [ "$4" -eq 0 ]; then
+    echo "changeset has no summary: $file declares a package bump on $3 line(s) but writes no description" >&2
+    echo "the version PR would emit an empty CHANGELOG entry; state what changed for consumers" >&2
+    exit 1
+  fi
+done <<FILES
+$files
+FILES

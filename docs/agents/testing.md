@@ -2,7 +2,7 @@
 
 - **测试框架**：Vitest（通过 `vite-plus`）
 - **运行所有测试**：`pnpm run test`（根 `turbo test` 编排所有 workspace `test` 任务；已配置的 browser-mode package 会在此命令中运行 Chromium `*.browser.spec.ts`）
-- **运行受影响测试**：`pnpm run test:affected`（通过 `turbo test --filter="...[origin/main]"` 仅运行发生变更的包及其直接依赖的测试；过滤基于 `origin/main`，基线过期时先 fetch）。迭代与调试默认使用本命令或包级聚焦测试；全量 `pnpm run test` 留到最终提交确认前。
+- **运行受影响测试**：受影响包识别用 `pnpm find:usages -- <paths...>`（输出命中 workspace），再对目标包或包族运行 `pnpm --filter @greypan/<name> test` 或 `pnpm test -- --filter "@greypan/<name>..."`。已移除独立的 `test:affected` 根命令，避免与 `find:usages` 的影响面判断重复权威。迭代与调试默认使用本命令或包级聚焦测试；全量 `pnpm run test` 留到最终提交确认前。
 - **运行单个包的测试**：`pnpm --filter @greypan/<name> test`（执行 `vp test run`）
 - **测试文件**：`*.spec.ts`、`*.test.ts`、`*.spec.tsx`
 - **Demo 应用**：`react-web-ui-demo` 和 `vue-web-ui-demo` 目前没有维护的单元测试套件，因此不包含测试脚本、Vite 测试配置和 `tsconfig.vitest.json`。请在真实浏览器中验证 demo 行为。
@@ -25,15 +25,15 @@
 
 根据受影响的契约选择验证方式：
 
-| 变更类型                   | 所需验证                                                              |
-| -------------------------- | --------------------------------------------------------------------- |
-| 本地行为                   | 聚焦的包测试                                                          |
-| 跨包导出、引用或运行时契约 | 迭代期用 `pnpm run test:affected`；提交确认前运行根目录 `pnpm test`   |
-| 构建配置、发布产物或导出   | 迭代期用 `pnpm run build:affected`；提交确认前运行根目录 `pnpm build` |
-| 浏览器原生行为             | 相关的 `*.browser.spec.ts` 测试                                       |
-| UI、UX 或运行时浏览器行为  | 按 `browser-verification.md` 的真实浏览器验证                         |
+| 变更类型                   | 所需验证                                                                                                                |
+| -------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| 本地行为                   | 聚焦的包测试                                                                                                            |
+| 跨包导出、引用或运行时契约 | 迭代期用 `pnpm --filter @greypan/<name> test` 或 `pnpm test -- --filter` 定位受影响包；提交确认前运行根目录 `pnpm test` |
+| 构建配置、发布产物或导出   | 迭代期用 `pnpm --filter @greypan/<name> build` 定位受影响包；提交确认前运行根目录 `pnpm build`                          |
+| 浏览器原生行为             | 相关的 `*.browser.spec.ts` 测试                                                                                         |
+| UI、UX 或运行时浏览器行为  | 按 `browser-verification.md` 的真实浏览器验证                                                                           |
 
-先运行最快的聚焦验证，再按跨包或发布风险升级到 affected 命令；全量根命令只在最终提交确认前运行，不要无理由扩大验证范围。记录准确命令、结果、浏览器 URL/操作和未验证缺口。失败时保留失败输出，并区分环境问题、现有失败和本次回归；不要用删除测试或跳过检查代替修复。
+先运行最快的聚焦验证，再按跨包或发布风险升级到对应包或其上游依赖的构建/测试；全量根命令只在最终提交确认前运行，不要无理由扩大验证范围。记录准确命令、结果、浏览器 URL/操作和未验证缺口。失败时保留失败输出，并区分环境问题、现有失败和本次回归；不要用删除测试或跳过检查代替修复。
 
 测试应使用 Arrange、Act、Assert 结构；每个测试验证一个行为；避免依赖实现细节；保持独立性。使用中文描述。仅在需要调用断言时使用带类型的 `vi.fn<Type>()`，并等待确定性的生命周期信号而非任意超时。
 

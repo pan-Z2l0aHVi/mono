@@ -11,7 +11,5 @@ import DialogDemo from '@/components/dialog-demo/index.vue'
 </script>
 
 <template>
-  <div class="p-3">
-    <DialogDemo />
-  </div>
+  <DialogDemo />
 </template>

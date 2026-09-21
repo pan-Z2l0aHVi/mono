@@ -596,11 +596,13 @@ describe('imagePreview 命令式 API（浏览器）', () => {
     const stage = stageOf(image)
 
     // 只拖 30px（低于舞台宽度 15% 阈值），松手后弹回原点。
-    stage.dispatchEvent(pointer('pointerdown', { clientX: 400, clientY: 300 }))
+    // 拖拽速度必须确定性低于提交阈值：无时间戳事件的 timeStamp 取构造时刻，速度随
+    // 调度间隙漂移，间隙 <~94ms 时会被当作快速轻扫提交切图（CI 实证）。注入慢时间线。
+    stage.dispatchEvent(timedPointer('pointerdown', { clientX: 400, clientY: 300, timeStamp: 0 }))
     await host.updateComplete
-    stage.dispatchEvent(pointer('pointermove', { clientX: 370, clientY: 300 }))
+    stage.dispatchEvent(timedPointer('pointermove', { clientX: 370, clientY: 300, timeStamp: 300 }))
     await host.updateComplete
-    stage.dispatchEvent(pointer('pointerup', { clientX: 370, clientY: 300 }))
+    stage.dispatchEvent(timedPointer('pointerup', { clientX: 370, clientY: 300, timeStamp: 600 }))
 
     /*
      * 弹回过渡在松手后的**下一帧**才注册：位移由 Lit 渲染提交，松手同帧读
@@ -653,10 +655,10 @@ describe('imagePreview 命令式 API（浏览器）', () => {
       const below = Math.max(4, threshold - 8)
       const above = threshold + 8
 
-      // 慢拖（速度 0）未达阈值：弹回不切图。
-      stage.dispatchEvent(pointer('pointerdown', { clientX: 400, clientY: 300 }))
-      stage.dispatchEvent(pointer('pointermove', { clientX: 400 - below, clientY: 300 }))
-      stage.dispatchEvent(pointer('pointerup', { clientX: 400 - below, clientY: 300 }))
+      // 慢拖（注入时间线 ~50px/s，远低于提交速度）：未达阈值弹回不切图。
+      stage.dispatchEvent(timedPointer('pointerdown', { clientX: 400, clientY: 300, timeStamp: 0 }))
+      stage.dispatchEvent(timedPointer('pointermove', { clientX: 400 - below, clientY: 300, timeStamp: 300 }))
+      stage.dispatchEvent(timedPointer('pointerup', { clientX: 400 - below, clientY: 300, timeStamp: 600 }))
       await host.updateComplete
       expect(handle.index).toBe(0)
 

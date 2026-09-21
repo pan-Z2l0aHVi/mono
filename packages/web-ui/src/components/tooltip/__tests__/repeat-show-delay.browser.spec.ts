@@ -10,13 +10,13 @@ afterEach(() => document.body.replaceChildren())
 /**
  * 采集窗口的帧预算。
  *
- * 远小于 `SHOW_DELAY`：60fps 下 3 帧约 50ms，即便帧率放宽到 20fps 也只有 150ms，
- * 不足以跨过 600ms 的延迟窗口，因此「3 帧内可见」与「3 帧内不可见」是可判别的。
+ * 远小于 `SHOW_DELAY`：60fps 下 3 帧约 50ms，即便 CI 极端停顿到 200ms/帧也只有 600ms，
+ * 不足以跨过 2000ms 的延迟窗口，因此「3 帧内可见」与「3 帧内不可见」是可判别的。
  */
 const FRAME_BUDGET = 3
 
-/** 把延迟拉长到 600ms，让帧预算与延迟窗口之间留出数量级余量，避免与帧率抖动耦合。 */
-const SHOW_DELAY = 600
+/** 把延迟拉长到 2000ms，让帧预算与延迟窗口之间留出两个数量级余量，避免与帧率抖动耦合。 */
+const SHOW_DELAY = 2000
 
 /** 穿透 shadow 边界收集所有 `role="tooltip"` 面板（portal 面板挂在浮层挂载点内）。 */
 function tooltipPanels(node: Node = document.body, found: HTMLElement[] = []): HTMLElement[] {
@@ -87,7 +87,12 @@ describe('WebUiTooltip 相邻触发不等 showDelay（浏览器）', () => {
     )
 
     // 收尾对照：它最终确实会显示。缺了这一步，上一条断言在面板永远不显示时也会「通过」。
-    await pollUntil(() => visiblePanel('单独') !== undefined, '对照组：等待 showDelay 后 tooltip 仍未显示')
+    // pollUntil 默认预算 2000ms 与 SHOW_DELAY 相同，等满延迟再渲染必然超时，显式放宽。
+    await pollUntil(
+      () => visiblePanel('单独') !== undefined,
+      '对照组：等待 showDelay 后 tooltip 仍未显示',
+      SHOW_DELAY + 2000
+    )
   })
 
   it('已有 tooltip 在场时，相邻触发不等待 showDelay 立即显示', async () => {
@@ -99,7 +104,8 @@ describe('WebUiTooltip 相邻触发不等 showDelay（浏览器）', () => {
     hover(first)
     await pollUntil(
       () => visiblePanel('第一个') !== undefined,
-      '前置条件：第一个 tooltip 未显示，无法建立「已有 tooltip 在场」场景'
+      '前置条件：第一个 tooltip 未显示，无法建立「已有 tooltip 在场」场景',
+      SHOW_DELAY + 2000
     )
 
     hover(second)

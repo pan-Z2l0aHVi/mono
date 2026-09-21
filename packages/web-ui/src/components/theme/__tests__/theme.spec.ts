@@ -25,6 +25,151 @@ afterEach(() => {
 })
 
 describe('WebUiTheme 组件', () => {
+  describe('属性：transition', () => {
+    it('默认关闭且不反射到 host', async () => {
+      const theme = createTheme('light')
+      await theme.updateComplete
+      expect(theme.transition).toBe(false)
+      expect(theme.hasAttribute('transition')).toBe(false)
+      theme.remove()
+    })
+
+    it('使用原生布尔属性存在语义', async () => {
+      const theme = createTheme('light')
+      theme.setAttribute('transition', 'off')
+      await theme.updateComplete
+      expect(theme.transition).toBe(true)
+      expect(theme.hasAttribute('transition')).toBe(true)
+
+      theme.removeAttribute('transition')
+      await theme.updateComplete
+      expect(theme.transition).toBe(false)
+      expect(theme.hasAttribute('transition')).toBe(false)
+      theme.remove()
+    })
+
+    it('property 开启时反射为布尔 attribute，关闭时移除', async () => {
+      const theme = createTheme('light')
+      theme.transition = true
+      await theme.updateComplete
+      expect(theme.transition).toBe(true)
+      expect(theme.getAttribute('transition')).toBe('')
+
+      theme.transition = false
+      await theme.updateComplete
+      expect(theme.transition).toBe(false)
+      expect(theme.hasAttribute('transition')).toBe(false)
+      theme.remove()
+    })
+
+    it('upgrade 时已连接且带 transition 只注册一次全局监听并完整清理', async () => {
+      const addSpy = vi.spyOn(window, 'addEventListener')
+      const removeSpy = vi.spyOn(window, 'removeEventListener')
+      const theme = createTheme('light')
+
+      try {
+        // Upgrade 顺序可能是 attributeChangedCallback 先于 connectedCallback；手动再同步一次连接回调。
+        theme.setAttribute('transition', '')
+        theme.connectedCallback()
+        await theme.updateComplete
+
+        const countEvents = (spy: typeof addSpy, event: string) =>
+          spy.mock.calls.filter(([eventName]) => eventName === event).length
+        expect(countEvents(addSpy, 'pointerdown')).toBe(1)
+        expect(countEvents(addSpy, 'keydown')).toBe(1)
+
+        theme.remove()
+        expect(countEvents(removeSpy, 'pointerdown')).toBe(1)
+        expect(countEvents(removeSpy, 'keydown')).toBe(1)
+      } finally {
+        addSpy.mockRestore()
+        removeSpy.mockRestore()
+        theme.remove()
+      }
+    })
+
+    it('默认关闭时不启动 View Transition', async () => {
+      const original = document.startViewTransition
+      const originalAdoptedStyleSheets = document.adoptedStyleSheets
+      const startViewTransition = vi.fn<typeof document.startViewTransition>()
+      Object.defineProperty(document, 'startViewTransition', {
+        configurable: true,
+        writable: true,
+        value: startViewTransition
+      })
+      document.adoptedStyleSheets = []
+      const theme = createTheme('light')
+      await theme.updateComplete
+
+      theme.appearance = 'dark'
+      await theme.updateComplete
+      expect(startViewTransition).not.toHaveBeenCalled()
+
+      theme.remove()
+      document.startViewTransition = original
+      document.adoptedStyleSheets = originalAdoptedStyleSheets
+    })
+
+    it('浏览器不支持 View Transitions 时立即提交 appearance', async () => {
+      const original = document.startViewTransition
+      Reflect.deleteProperty(document, 'startViewTransition')
+      const theme = createTheme('light')
+      theme.transition = true
+      await theme.updateComplete
+
+      theme.appearance = 'dark'
+      await theme.updateComplete
+      expect(theme.appearance).toBe('dark')
+      expect(theme.getAttribute('appearance')).toBe('dark')
+      theme.remove()
+      document.startViewTransition = original
+    })
+
+    it('同一次 View Transition 内的新请求直接落地为最终 appearance', async () => {
+      const original = document.startViewTransition
+      const originalAdoptedStyleSheets = document.adoptedStyleSheets
+      let updateCallback: (() => Promise<void>) | undefined
+      let resolveFinished: (() => void) | undefined
+      let resolveUpdate: (() => void) | undefined
+      const finish = new Promise<void>(resolve => {
+        resolveFinished = resolve
+      })
+      const updateCallbackDone = new Promise<void>(resolve => {
+        resolveUpdate = resolve
+      })
+      const startViewTransition = vi.fn<(update?: () => Promise<void>) => ViewTransition>(
+        (update?: () => Promise<void>) => {
+          updateCallback = update
+          return {
+            updateCallbackDone,
+            ready: Promise.resolve(),
+            finished: finish
+          } as unknown as ViewTransition
+        }
+      )
+      Object.defineProperty(document, 'startViewTransition', { configurable: true, value: startViewTransition })
+      document.adoptedStyleSheets = []
+      const theme = createTheme('light')
+      theme.transition = true
+      await theme.updateComplete
+
+      theme.appearance = 'dark'
+      theme.appearance = 'light'
+      await theme.updateComplete
+      expect(theme.appearance).toBe('light')
+      expect(startViewTransition).toHaveBeenCalledTimes(1)
+      expect(updateCallback).toBeDefined()
+      resolveUpdate?.()
+      await Promise.resolve()
+      resolveFinished?.()
+      await Promise.resolve()
+      theme.remove()
+      vi.mocked(startViewTransition).mockRestore()
+      document.startViewTransition = original
+      document.adoptedStyleSheets = originalAdoptedStyleSheets
+    })
+  })
+
   describe('属性：motion', () => {
     it('默认使用 system 并反射到 host', async () => {
       const theme = createTheme('light')
@@ -176,10 +321,10 @@ describe('WebUiTheme 组件', () => {
       toast.info('fallback', { duration: 0 })
       await new Promise(resolve => requestAnimationFrame(resolve))
 
-      // 外在表现：toast 渲染进 fallback overlay root，而不是注入 document head 样式
-      expect(toast._visibleCount()).toBe(1)
+      // 外在表现：toast 渲染进 fallback overlay root，而不是注入 document head 样式。
+      // 计数断言走公开面保留：本批主题恰是「消除同 id 重复挂载」，只留存在性断言会让同类缺陷漏网。
       const fallbackRoot = document.querySelector('[data-wui-overlay-root]')?.shadowRoot
-      expect(fallbackRoot?.querySelector('web-ui-toast')).toBeTruthy()
+      expect(fallbackRoot?.querySelectorAll('web-ui-toast')).toHaveLength(1)
       toast._reset()
     })
   })

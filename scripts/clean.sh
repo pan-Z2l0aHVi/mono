@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# scripts/clean.sh
 
 set -euo pipefail
 
@@ -20,10 +19,8 @@ REPO_ROOT_RE=$(printf '%s' "$PWD" | sed 's/[][\\.*^$()+?{}|]/\\&/g')
 pkill -f "${REPO_ROOT_RE}[/[:space:]].*(vite|wails)" || true
 pkill -x wails3 || true
 
-# 2. 清理核心构建产物与缓存
 # 使用 find 替代 globstar，兼容性更好且更精确
 echo "🧹 清理构建产物与开发缓存..."
-# 清理所有 dist, build, .vite, .turbo 文件夹。
 # Wails 的 build 目录包含 Taskfile、平台模板和打包资源，必须保留。
 find . \
   -path "./apps/interweave/build" -prune -o \
@@ -31,14 +28,10 @@ find . \
   -not -path "*/node_modules/*" \
   -exec rm -rf {} + 2>/dev/null || true
 
-# 3. 更彻底的清理 (--full)
 if [[ "${1:-}" == "--full" || "${1:-}" == "-f" ]]; then
   echo "🧹 模式: 彻底清理 (node_modules & locks)..."
-
-  # 清理所有 node_modules
   find . -name "node_modules" -type d -prune -exec rm -rf {} +
 
-  # 清理锁文件
   rm -f pnpm-lock.yaml 2>/dev/null || true
 
   echo "🔔 彻底清理完成"

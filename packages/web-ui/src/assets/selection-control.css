@@ -1,0 +1,108 @@
+/*
+ * radio / checkbox 共享外壳。
+ *
+ * 指示器只有 18px。宿主一旦走 inline-block，页面行高会在宿主内生成匿名行盒，把盒子撑到
+ * 行高（Tailwind preflight 下是 24px），且多出的空隙落在哪一侧取决于内部基线落点，radio 与
+ * checkbox 因此一个贴顶一个贴底。改成 inline-flex 后宿主高度由内容决定，行高不再参与，
+ * 与相邻文字的对齐交给 vertical-align 显式声明。
+ */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+:host {
+  cursor: default;
+  display: inline-flex;
+  align-items: center;
+  vertical-align: middle;
+}
+
+:host([disabled]) {
+  cursor: not-allowed;
+}
+
+/* :where() 保持零特异性，组件级配置（圆角、选中色、内部图形）始终覆盖共享层。 */
+:where(.wui-radio, .wui-checkbox) {
+  cursor: inherit;
+  user-select: none;
+
+  display: inline-flex;
+  gap: 10px;
+  align-items: center;
+
+  font-size: var(--wui-font-size, 14px);
+  line-height: 1;
+  color: var(--wui-color-text, #1b1b1b);
+
+  &:focus-visible {
+    border-radius: var(--wui-radius-control, calc(infinity * 1px));
+    outline: var(--wui-focus-ring-width, 3px) solid var(--wui-color-focus-ring, rgb(0 136 255 / 0.4));
+    outline-offset: 2px;
+  }
+}
+
+:host([data-wui-pointer-focus]) :where(.wui-radio, .wui-checkbox):focus-visible {
+  outline-color: transparent;
+}
+
+:where(.wui-radio.is-disabled, .wui-checkbox.is-disabled) {
+  cursor: not-allowed;
+  color: var(--wui-color-text-secondary, #6a6a6a);
+  opacity: 0.4;
+}
+
+/*
+ * 指示器底色取控件档。surface-raised 在深色下（#2c2c2e）离页面底色（#242628）只有 8 个
+ * 亮度点，未选中时几乎看不出有一个圆/方框；surface-control 才是主题里「控件自己的底」
+ * 那一档（中性按钮同档），深色比页面高 22 个亮度点，浅色下也从近白的 #f2f2f7 变成可读的 #dfdfdf。
+ */
+:where(.wui-radio-circle, .wui-checkbox-box) {
+  isolation: isolate;
+  position: relative;
+
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+
+  width: var(--wui-selection-control-size, 18px);
+  height: var(--wui-selection-control-size, 18px);
+
+  background-color: var(--wui-color-surface-control, #dfdfdf);
+
+  transition: background-color var(--wui-duration-trigger, 160ms) ease;
+}
+
+/*
+ * 状态层走覆盖层，不占用指示器自己的 background-color：同一个属性没法一半过渡一半即时，
+ * 而这里要的是 hover 当帧切换、选中态的 accent 按 --wui-duration-trigger 淡入淡出。
+ * z-index: -1 配父级 isolation 把覆盖层夹在控件底与圆点/勾之间，半径跟着指示器走。
+ */
+:where(.wui-radio-circle, .wui-checkbox-box)::before {
+  content: '';
+
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+
+  border-radius: inherit;
+}
+
+:where(.wui-radio-label, .wui-checkbox-label) {
+  pointer-events: none;
+}
+
+/*
+ * 未激活态的 hover 状态层。用半透明色而不是混进控件底：覆盖层本就压在不透明的控件底上，
+ * 合成结果与 color-mix(text 6%, surface-control) 一致，深色档同样成立。
+ * 标签文字带 pointer-events: none，命中落回 label 自身，所以整条触发区（含右侧文字）
+ * 的 hover 都会作用到指示器。hover 只在真正的指针设备上生效，避免触屏留态。
+ */
+@media (hover: hover) and (pointer: fine) {
+  :where(.wui-radio, .wui-checkbox):hover:not(.is-disabled, .is-checked)
+    :where(.wui-radio-circle, .wui-checkbox-box)::before {
+    background-color: color-mix(in srgb, var(--wui-color-text, #1b1b1b) 6%, transparent);
+  }
+}

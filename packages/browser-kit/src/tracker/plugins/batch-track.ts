@@ -14,7 +14,7 @@ type Config = Required<Options>
 
 const DEFAULT_OPTIONS = {
   defaultBatchDelay: 500, // ms
-  maxBatchKB: 64 // kb
+  maxBatchKB: 64
 }
 
 export function defineBatchTrack(options?: Options) {
@@ -43,7 +43,6 @@ export function defineBatchTrack(options?: Options) {
 
     const batchEmitter = defineBatchEmitter<object>({ onFlushed: sliceTrack }).make()
 
-    // batchDelay <= 0 时立即上报，否则聚合后统一上报
     function track(data: object, batchDelay = config.defaultBatchDelay) {
       if (batchDelay <= 0) {
         return ctx.track(data)

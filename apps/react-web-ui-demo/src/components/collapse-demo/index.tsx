@@ -10,7 +10,7 @@ function CollapseDemo() {
         <web-ui-collapse>
           <button
             type="button"
-            className="block w-full cursor-pointer rounded-md bg-[var(--wui-color-surface-control)] px-3 py-2 text-left"
+            className="block w-full cursor-pointer rounded-md bg-(--wui-color-surface-control) px-3 py-2 text-left"
           >
             点击展开
           </button>
@@ -31,7 +31,7 @@ function CollapseDemo() {
         <web-ui-collapse>
           <button
             type="button"
-            className="block w-full cursor-pointer rounded-md bg-[var(--wui-color-surface-control)] px-3 py-2 text-left"
+            className="block w-full cursor-pointer rounded-md bg-(--wui-color-surface-control) px-3 py-2 text-left"
           >
             原生 button
           </button>
@@ -69,7 +69,7 @@ function CollapseDemo() {
         <web-ui-collapse keep-mounted>
           <button
             type="button"
-            className="block w-full cursor-pointer rounded-md bg-[var(--wui-color-surface-control)] px-3 py-2 text-left"
+            className="block w-full cursor-pointer rounded-md bg-(--wui-color-surface-control) px-3 py-2 text-left"
           >
             展开长列表
           </button>
@@ -88,7 +88,7 @@ function CollapseDemo() {
         <web-ui-collapse peek="80px">
           <button
             type="button"
-            className="block w-full cursor-pointer rounded-md bg-[var(--wui-color-surface-control)] px-3 py-2 text-left"
+            className="block w-full cursor-pointer rounded-md bg-(--wui-color-surface-control) px-3 py-2 text-left"
           >
             展开长文本
           </button>
@@ -107,7 +107,7 @@ function CollapseDemo() {
         <web-ui-collapse peek="200px">
           <button
             type="button"
-            className="block w-full cursor-pointer rounded-md bg-[var(--wui-color-surface-control)] px-3 py-2 text-left"
+            className="block w-full cursor-pointer rounded-md bg-(--wui-color-surface-control) px-3 py-2 text-left"
           >
             展开长文本（大 peek）
           </button>
@@ -126,7 +126,7 @@ function CollapseDemo() {
         <web-ui-collapse horizontal className="flex items-center gap-2">
           <button
             type="button"
-            className="flex-none cursor-pointer rounded-md bg-[var(--wui-color-surface-control)] px-3 py-2"
+            className="flex-none cursor-pointer rounded-md bg-(--wui-color-surface-control) px-3 py-2"
           >
             <web-ui-icon className="align-[-2px]" icon={radixIconsPanelLeftMinimized} size={14}></web-ui-icon>
             展开侧栏
@@ -142,7 +142,7 @@ function CollapseDemo() {
         <web-ui-collapse>
           <button
             type="button"
-            className="block w-full cursor-pointer rounded-md bg-[var(--wui-color-surface-control)] px-3 py-2 text-left"
+            className="block w-full cursor-pointer rounded-md bg-(--wui-color-surface-control) px-3 py-2 text-left"
           >
             外层折叠
           </button>
@@ -152,7 +152,7 @@ function CollapseDemo() {
               <web-ui-collapse>
                 <button
                   type="button"
-                  className="block w-full cursor-pointer rounded-md bg-[var(--wui-color-surface-raised)] px-3 py-2 text-left"
+                  className="block w-full cursor-pointer rounded-md bg-(--wui-color-surface-raised) px-3 py-2 text-left"
                 >
                   内层折叠
                 </button>
@@ -170,7 +170,7 @@ function CollapseDemo() {
         <web-ui-collapse disabled>
           <button
             type="button"
-            className="block w-full cursor-pointer rounded-md bg-[var(--wui-color-surface-control)] px-3 py-2 text-left"
+            className="block w-full cursor-pointer rounded-md bg-(--wui-color-surface-control) px-3 py-2 text-left"
           >
             禁用状态触发器
           </button>

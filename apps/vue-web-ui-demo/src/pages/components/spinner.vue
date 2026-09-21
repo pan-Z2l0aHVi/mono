@@ -10,6 +10,4 @@
 import SpinnerDemo from '@/components/spinner-demo/index.vue'
 </script>
 
-<template>
-  <div class="p-3"><SpinnerDemo /></div>
-</template>
+<template><SpinnerDemo /></template>

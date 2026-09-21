@@ -1,7 +1,3 @@
-/*
- * 玻璃公共样式
- */
-
 .wui-glass {
   /*
    * 内部阴影变量在 glass 元素上自声明默认值，切断从祖先 glass 容器（drawer/dialog
@@ -10,7 +6,7 @@
    */
   --wui-internal-glass-shadow: var(
     --wui-shadow-glass,
-    0 0 1px rgb(0 0 0 / 0.05),
+    0 0 1px rgb(0 0 0 / 0.02),
     0 0 8px rgb(0 0 0 / 0.03),
     0 2px 16px rgb(0 0 0 / 0.025),
     0 8px 32px rgb(0 0 0 / 0.015)
@@ -34,7 +30,7 @@
       --wui-internal-glass-shadow,
       var(
         --wui-shadow-glass,
-        0 0 1px rgb(0 0 0 / 0.05),
+        0 0 1px rgb(0 0 0 / 0.02),
         0 0 8px rgb(0 0 0 / 0.03),
         0 2px 16px rgb(0 0 0 / 0.025),
         0 8px 32px rgb(0 0 0 / 0.015)
@@ -67,22 +63,22 @@
   background-image:
     radial-gradient(
       var(--wui-glass-corner-radius, 32px) at 100% 0,
-      var(--wui-color-glass-shade, rgb(0 0 0 / 0.06)),
+      var(--wui-color-glass-shade, rgb(0 0 0 / 0.03)),
       transparent
     ),
     radial-gradient(
       var(--wui-glass-corner-radius, 32px) at 0 100%,
-      var(--wui-color-glass-shade, rgb(0 0 0 / 0.06)),
+      var(--wui-color-glass-shade, rgb(0 0 0 / 0.03)),
       transparent
     ),
     radial-gradient(
       calc(var(--wui-glass-corner-radius, 32px) * 2) at 0 0,
-      var(--wui-color-glass-corner, rgb(255 255 255 / 0.08)),
+      var(--wui-color-glass-corner, rgb(255 255 255 / 0.5)),
       transparent
     ),
     radial-gradient(
       calc(var(--wui-glass-corner-radius, 32px) * 2) at 100% 100%,
-      var(--wui-color-glass-corner, rgb(255 255 255 / 0.08)),
+      var(--wui-color-glass-corner, rgb(255 255 255 / 0.5)),
       transparent
     );
 

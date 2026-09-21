@@ -4,9 +4,9 @@ import DemoComponent from '@/components/dialog-demo'
 
 function Component() {
   return (
-    <div className="p-3">
+    <>
       <DemoComponent />
-    </div>
+    </>
   )
 }
 

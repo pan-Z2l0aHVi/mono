@@ -10,6 +10,4 @@
 import CheckboxDemo from '@/components/checkbox-demo/index.vue'
 </script>
 
-<template>
-  <div class="p-3"><CheckboxDemo /></div>
-</template>
+<template><CheckboxDemo /></template>

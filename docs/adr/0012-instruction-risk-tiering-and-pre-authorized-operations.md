@@ -4,6 +4,7 @@
 - **Status**: 已接受
 - **Amends**: [ADR-0011](0011-agent-model-binding-and-effort.md) 的「后果」中关于角色契约执行体自述参与机械校验的说明
 - **Relates to**: [ADR-0004](0004-progressive-agent-context-architecture.md)、[ADR-0010](0010-agent-role-orchestration.md)
+- **Superseded by**: [ADR-0014](0014-task-system-v2.md) —— 本 ADR 的风险分级表被 `level`（t0/t1/t2）取代；第 3、4 节的 `scripts/audit-instructions.mjs` 与两个约束预算基线文件已随 ADR-0014 退役，不再维护（仍生效的部分只有预授权操作清单，已并入 `docs/agents/workflow.md`）
 
 ## 背景
 
@@ -25,7 +26,7 @@ ADR-0004 建立了渐进披露的 context 架构，ADR-0010 与 ADR-0011 建立�
 
 ### 1. 变更按可查证的风险分级，而不是按变更类别触发
 
-`docs/agents/workflow.md` 的「变更风险分级」是唯一权威分级表：档 0 免 task state，档 1 走 `direct`，档 2 走 `orchestrated`。判据全部可从变更路径、manifest 与 `pnpm find:usages -- <paths...>` 输出查证：受影响 workspace 只有一个时，档 0 的「单 workspace」条件成立。根 `AGENTS.md` 的 Mutation Gate 只给判定入口和不可绕过的边界，不复制分级表。
+`docs/agents/workflow.md` 的「变更风险分级」是唯一权威分级表：P0 走 `orchestrated`，P1 走 `direct`，P2 免 task state。判据全部可从变更路径、manifest 与 `pnpm find:usages -- <paths...>` 输出查证：受影响 workspace 只有一个时，P2 的「单 workspace」条件成立。根 `AGENTS.md` 的 Mutation Gate 只给判定入口和不可绕过的边界，不复制分级表。
 
 放宽 gate 不需要改 `scripts/agent-workflow.mjs`：提交 hook 在找不到 active task 时返回 `{ok: true, enforced: false}` 并放行，这是脚本既有行为。
 
@@ -37,7 +38,11 @@ ADR-0004 建立了渐进披露的 context 架构，ADR-0010 与 ADR-0011 建立�
 
 不变量用 HTML 注释锚点表达，`scripts/audit-instructions.mjs --strict` 只校验锚点存在。正文措辞可以随模型换代重写而不必改脚本；新增一条不变量才需要同时改文档与脚本。同时删除这些措辞钉：AGENTS.md 的章节标题、`workflow.md` 的 8 个章节标题、`.agents/agents/*` 的 7 个 Role section 标题、角色契约的「X 由 Y 承担」自述正则。`CLAUDE.md` 的「薄适配入口」措辞钉换成尺寸契约（不超过 800 字符）。
 
-### 4. 给「减法」配上可执行的基线
+### 4. 给「减法」配上可执行的基线（已退役，保留作决策记录）
+
+> **本节机制已随 ADR-0014 退役**：`scripts/audit-instructions.mjs`、`scripts/instruction-budget.json`、
+> `scripts/tool-enforced-rules.json` 与 CI 中的 `--strict` 步骤均已删除，「约束密度只增不减」这扇门
+> 回归纯人工 diff review。以下描述的是 2026-09-14 至 2026-09-17 期间的现行机制。
 
 - `scripts/instruction-budget.json` 逐文件记录字符数与祈使词数量。超基线即 `--strict` 失败，因此放宽约束必须同时改基线文件，这个动作会出现在 diff 里被评审看见。
 - `scripts/tool-enforced-rules.json` 记录已被 lint、CI 或配置强制的规则。命中即失败，所以删掉的规则不能换个写法长回来。
@@ -50,11 +55,11 @@ ADR-0004 建立了渐进披露的 context 架构，ADR-0010 与 ADR-0011 建立�
 
 ## 后果
 
-- 单 workspace 的行为变更、同包测试新增、一页文档不再是「必须先建状态机」的变更；档 1 与档 2 仍保留 task state、review 与 approval。
+- 单 workspace 的行为变更、同包测试新增、一页文档不再是「必须先建状态机」的变更；P0 与 P1 仍保留 task state、review 与 approval。
 - `scripts/audit-instructions.mjs` 新增 `budget`、`toolEnforcedHits`、`repeatedBlocks` 三类 `--strict` 断言，`--json` 同步输出；`--warn` 把 strict 断言降级为报告，**只用于本地采集基线或排查，CI 不得使用**（`.github/workflows/ci.yml` 使用 `--strict --json`）。
 - `scripts/validate-context.mjs` 不再校验章节标题与角色自述措辞，改为尺寸契约（CLAUDE.md ≤ 800 字符）加绑定表镜像校验。
 - `docs/agents/workflow.md` 新增「变更风险分级」与「预授权操作」两节，并写明 changeset 与格式化必须在 `freeze` 之前完成——这条直接针对 6 条人工干预的共同根因。
-- `docs/agents/task-packet.md` 的 `Allowed paths` 与 `Affected workspaces` 只在档 2 填写（其他档写 `N/A`，保留字段以免消费者改变形状），`Review` 行的 `secondary review` 死字段删除。
+- `docs/agents/task-packet.md` 的 `Allowed paths` 与 `Affected workspaces` 只在 P0 填写（其他级写 `N/A`，保留字段以免消费者改变形状），`Review` 行的 `secondary review` 死字段删除。（2026-09-17 修订，两条，权威表始终是 `docs/agents/workflow.md` 的「变更风险分级」：一、P1 判据从「跨多个 `apps/*`」扩到「跨多个 workspace，`apps/*` 或 `packages/*`」，因此跨多 workspace 的 P1 也要按 `find:usages` 输出填写这两项；二、级别代号的方向翻转为 **P0 最高风险、P2 最低**，与通用的 P0 优先级体系对齐——原 P0（免 task state）改称 P2，原 P2（`orchestrated`）改称 P0，P1 不变；判据与流程要求未变，只是代号的排序方向变了。）
 - 已知限制：重述块检测只比较文件对数量，不比较单对内的重复规模；在既有文件对内增写重复段落不会增加对数。这类增长会被约束预算的字符上限拦下，所以两条门互为补充而不是互相替代。规范化后总长低于 40 字符的极短文件不会产生任何滑窗，不受这一门约束。
 - 高风险清单不再循环引用：`AGENTS.md` 单向指向 `workflow.md`。
 - 未解决：状态机缺少「frozen 且已编辑 → editing」路径（修它要改 `scripts/agent-workflow.mjs`，与本次「只改文档」的边界冲突）；`check` 的 `merge` phase 未写进 `workflow.md`。

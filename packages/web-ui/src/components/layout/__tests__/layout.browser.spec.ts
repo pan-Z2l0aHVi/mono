@@ -223,7 +223,12 @@ describe('WebUiLayout 组件（浏览器）', () => {
       expect(sidebarOpenRequests).toEqual([])
 
       dialog.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'Escape' }))
-      dialog.click()
+      // 遮罩关闭是「pointerdown 落在遮罩 + 近静止 click」的指针链路；detail 为 0 的
+      // dialog.click() 不来自指针，会被 drawer 忽略（对齐 image-preview 的守卫）。
+      dialog.dispatchEvent(
+        new PointerEvent('pointerdown', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 20, clientY: 20 })
+      )
+      dialog.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1, clientX: 20, clientY: 20 }))
       await layout.updateComplete
       await waitForLayoutTransition(layout)
 

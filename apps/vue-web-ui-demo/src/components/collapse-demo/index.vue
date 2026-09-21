@@ -11,7 +11,7 @@ import { lucideChevronDown, radixIconsPanelLeftMinimized } from '@greypan/web-ui
       <web-ui-collapse>
         <button
           type="button"
-          class="block w-full cursor-pointer rounded-md bg-[var(--wui-color-surface-control)] px-3 py-2 text-left"
+          class="block w-full cursor-pointer rounded-md bg-(--wui-color-surface-control) px-3 py-2 text-left"
         >
           点击展开
         </button>
@@ -30,7 +30,7 @@ import { lucideChevronDown, radixIconsPanelLeftMinimized } from '@greypan/web-ui
       <web-ui-collapse>
         <button
           type="button"
-          class="block w-full cursor-pointer rounded-md bg-[var(--wui-color-surface-control)] px-3 py-2 text-left"
+          class="block w-full cursor-pointer rounded-md bg-(--wui-color-surface-control) px-3 py-2 text-left"
         >
           原生 button
         </button>
@@ -66,7 +66,7 @@ import { lucideChevronDown, radixIconsPanelLeftMinimized } from '@greypan/web-ui
       <web-ui-collapse keep-mounted>
         <button
           type="button"
-          class="block w-full cursor-pointer rounded-md bg-[var(--wui-color-surface-control)] px-3 py-2 text-left"
+          class="block w-full cursor-pointer rounded-md bg-(--wui-color-surface-control) px-3 py-2 text-left"
         >
           展开长列表
         </button>
@@ -83,7 +83,7 @@ import { lucideChevronDown, radixIconsPanelLeftMinimized } from '@greypan/web-ui
       <web-ui-collapse peek="80px">
         <button
           type="button"
-          class="block w-full cursor-pointer rounded-md bg-[var(--wui-color-surface-control)] px-3 py-2 text-left"
+          class="block w-full cursor-pointer rounded-md bg-(--wui-color-surface-control) px-3 py-2 text-left"
         >
           展开长文本
         </button>
@@ -100,7 +100,7 @@ import { lucideChevronDown, radixIconsPanelLeftMinimized } from '@greypan/web-ui
       <web-ui-collapse peek="200px">
         <button
           type="button"
-          class="block w-full cursor-pointer rounded-md bg-[var(--wui-color-surface-control)] px-3 py-2 text-left"
+          class="block w-full cursor-pointer rounded-md bg-(--wui-color-surface-control) px-3 py-2 text-left"
         >
           展开长文本（大 peek）
         </button>
@@ -115,10 +115,7 @@ import { lucideChevronDown, radixIconsPanelLeftMinimized } from '@greypan/web-ui
     <h2>水平方向（trigger 与内容同行）</h2>
     <div class="mb-3">
       <web-ui-collapse horizontal class="flex items-center gap-2">
-        <button
-          type="button"
-          class="flex-none cursor-pointer rounded-md bg-[var(--wui-color-surface-control)] px-3 py-2"
-        >
+        <button type="button" class="flex-none cursor-pointer rounded-md bg-(--wui-color-surface-control) px-3 py-2">
           <web-ui-icon class="align-[-2px]" :icon="radixIconsPanelLeftMinimized" :size="14"></web-ui-icon>
           展开侧栏
         </button>
@@ -133,7 +130,7 @@ import { lucideChevronDown, radixIconsPanelLeftMinimized } from '@greypan/web-ui
       <web-ui-collapse>
         <button
           type="button"
-          class="block w-full cursor-pointer rounded-md bg-[var(--wui-color-surface-control)] px-3 py-2 text-left"
+          class="block w-full cursor-pointer rounded-md bg-(--wui-color-surface-control) px-3 py-2 text-left"
         >
           外层折叠
         </button>
@@ -143,7 +140,7 @@ import { lucideChevronDown, radixIconsPanelLeftMinimized } from '@greypan/web-ui
             <web-ui-collapse>
               <button
                 type="button"
-                class="block w-full cursor-pointer rounded-md bg-[var(--wui-color-surface-raised)] px-3 py-2 text-left"
+                class="block w-full cursor-pointer rounded-md bg-(--wui-color-surface-raised) px-3 py-2 text-left"
               >
                 内层折叠
               </button>
@@ -161,7 +158,7 @@ import { lucideChevronDown, radixIconsPanelLeftMinimized } from '@greypan/web-ui
       <web-ui-collapse disabled>
         <button
           type="button"
-          class="block w-full cursor-pointer rounded-md bg-[var(--wui-color-surface-control)] px-3 py-2 text-left"
+          class="block w-full cursor-pointer rounded-md bg-(--wui-color-surface-control) px-3 py-2 text-left"
         >
           禁用状态触发器
         </button>

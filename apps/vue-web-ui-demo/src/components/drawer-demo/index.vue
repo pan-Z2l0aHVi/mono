@@ -249,7 +249,7 @@ const siblingL3 = ref(false)
       <web-ui-button @click="draggableTopVisible = true">上方</web-ui-button>
       <web-ui-button @click="draggableHeadlessVisible = true">Headless 左侧</web-ui-button>
     </div>
-    <p class="mb-3 text-sm text-[var(--wui-color-text-secondary)]">
+    <p class="mb-3 text-sm text-(--wui-color-text-secondary)">
       <code>draggable</code> 时抽屉内缘显示灰色胶囊 drag bar：拖拽实时跟手，拖出约 1/3 或快速甩动松手即关闭，否则弹回。
     </p>
     <web-ui-drawer
@@ -290,7 +290,7 @@ const siblingL3 = ref(false)
       <web-ui-button @click="diffWidthL1 = true"> 级联收窄 (500px → 360px → 260px) </web-ui-button>
       <web-ui-button @click="randomWidthL1 = true"> 乱序宽度交错 (300px → 520px → 240px → 400px) </web-ui-button>
     </div>
-    <p class="mb-3 text-sm text-[var(--wui-color-text-secondary)]">
+    <p class="mb-3 text-sm text-(--wui-color-text-secondary)">
       同组件声明式嵌套即 nested：后打开的位于顶层全尺寸，下层按 0.95<sup>n</sup>
       缩放并向内侧平移露出阶梯式卡片边缘；多层宽度不同或乱序交错时，自动计算上方最大宽度进行补偿，确保所有底层的左缘均不会被上方更宽的抽屉遮挡；Escape
       与遮罩点击只作用于最顶层，逐层退出。
@@ -351,7 +351,6 @@ const siblingL3 = ref(false)
       </web-ui-drawer>
     </web-ui-drawer>
 
-    <!-- 多宽度 Nested Drawer -->
     <web-ui-drawer
       :open="diffWidthL1"
       heading="主信息面板 (500px)"
@@ -401,7 +400,6 @@ const siblingL3 = ref(false)
       </web-ui-drawer>
     </web-ui-drawer>
 
-    <!-- 乱序宽度 Nested Drawer (300px → 520px → 240px → 400px) -->
     <web-ui-drawer
       :open="randomWidthL1"
       heading="侧边基础面板 (300px)"
@@ -468,7 +466,6 @@ const siblingL3 = ref(false)
       </web-ui-drawer>
     </web-ui-drawer>
 
-    <!-- 同级 Drawer 自动层叠（非 DOM 嵌套） -->
     <h2>同级自动层叠</h2>
     <p class="mb-3 text-sm text-gray-500">
       多个 drawer 在同级 DOM 挂载，依次打开后由内部 <code>defineNestedDrawerLayers</code> 自动管理层序——先开的按

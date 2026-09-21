@@ -11,7 +11,5 @@ import DropdownDemo from '@/components/dropdown-demo/index.vue'
 </script>
 
 <template>
-  <div class="p-3">
-    <DropdownDemo />
-  </div>
+  <DropdownDemo />
 </template>

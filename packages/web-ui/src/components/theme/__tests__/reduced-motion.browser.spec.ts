@@ -16,7 +16,7 @@ import type { WebUiTheme } from '@/components/theme'
  * 契约是"**放慢而不停**"——一个冻结的加载指示器读起来就是界面卡死，所以 reduce 下转场归零、
  * 但这两个循环只把周期拉长（600ms → 1600ms、800ms → 1600ms）。
  *
- * 断言全部走 Web Animations API（`docs/testing/DELETION-RUBRIC.md` §10 S2）：原实现读
+ * 断言全部走 Web Animations API：原实现读
  * `getComputedStyle(svg).animationDuration / animationIterationCount` 与 theme 的
  * `--wui-duration-*` 取值，既是 §5 禁止的 CSS 取值，也只证明"声明存在"、证明不了"循环真的在转"。
  *
@@ -90,5 +90,32 @@ describe('系统 prefers-reduced-motion 下无限加载循环的周期（浏览�
     const leafPeriods = loopPeriods(spinner, 'wui-spinner-leaf-fade')
     expect(leafPeriods.length).toBeGreaterThan(0)
     expect(new Set(leafPeriods)).toEqual(new Set([800]))
+  })
+})
+
+describe('系统 prefers-reduced-motion 下主题切换 fallback（浏览器）', () => {
+  it('transition=true 也不启动 View Transition，直接提交 appearance', async () => {
+    const original = document.startViewTransition
+    let started = false
+    try {
+      document.startViewTransition = (...args) => {
+        started = true
+        return original.call(document, ...args)
+      }
+
+      const theme = document.createElement('web-ui-theme') as WebUiTheme
+      theme.appearance = 'light'
+      theme.transition = true
+      document.body.append(theme)
+      await theme.updateComplete
+
+      theme.appearance = 'dark'
+      await theme.updateComplete
+
+      expect(started).toBe(false)
+      expect(theme.appearance).toBe('dark')
+    } finally {
+      document.startViewTransition = original
+    }
   })
 })

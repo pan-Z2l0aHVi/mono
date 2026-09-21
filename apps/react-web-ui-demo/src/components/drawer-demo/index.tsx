@@ -190,9 +190,9 @@ function DrawerDemo() {
         <web-ui-button onClick={() => setHeaderSlotVisible(true)}>打开</web-ui-button>
       </div>
       <web-ui-drawer open={headerSlotVisible} onopen-change={event => setHeaderSlotVisible(event.detail.open)}>
-        <div slot="header" style={{ display: 'flex', gap: 8, alignItems: 'center', padding: '12px 20px' }}>
-          <span style={{ fontSize: 18, fontWeight: 600 }}>自定义</span>
-          <span style={{ fontSize: 12, color: '#999' }}>副标题</span>
+        <div slot="header" className="flex gap-2 items-center py-3 px-5">
+          <span className="text-lg font-semibold">自定义</span>
+          <span className="text-xs text-[#999]">副标题</span>
         </div>
         <p>
           通过 <code>header slot</code> 自定义头部内容。
@@ -244,13 +244,8 @@ function DrawerDemo() {
         open={cssVarsVisible}
         heading="直角白底抽屉"
         onopen-change={event => setCssVarsVisible(event.detail.open)}
-        style={
-          {
-            '--wui-drawer-bg': '#fff',
-            '--wui-drawer-radius': '0',
-            '--wui-drawer-inset': '0'
-          } as React.CSSProperties
-        }
+        className="[--wui-drawer-bg:#fff]"
+        style={{ '--wui-drawer-radius': '0', '--wui-drawer-inset': '0' } as React.CSSProperties}
       >
         <p>通过 CSS 变量自定义背景与几何：白色背景、直角贴边（四周无间隙）。</p>
       </web-ui-drawer>
@@ -281,9 +276,9 @@ function DrawerDemo() {
         dialogLabel="Headless 抽屉"
         onopen-change={event => setHeadlessVisible(event.detail.open)}
       >
-        <div style={{ height: '100%', padding: 16, background: 'white', borderRadius: '0 16px 16px 0' }}>
-          <h3 style={{ margin: '0 0 12px' }}>Headless 抽屉</h3>
-          <p style={{ margin: 0, color: '#666' }}>
+        <div className="h-full p-4 bg-white rounded-r-[16px]">
+          <h3 className="mb-3">Headless 抽屉</h3>
+          <p className="text-[#666]">
             使用 <code>headless</code> 属性后，抽屉只保留 overlay 基础设施（backdrop、动画、scroll lock）， 不渲染内置
             UI。Consumer 自定义内容样式。
           </p>
@@ -296,7 +291,7 @@ function DrawerDemo() {
         <web-ui-button onClick={() => setDraggableTopVisible(true)}>上方</web-ui-button>
         <web-ui-button onClick={() => setDraggableHeadlessVisible(true)}>Headless 左侧</web-ui-button>
       </div>
-      <p className="mb-3 text-sm text-[var(--wui-color-text-secondary)]">
+      <p className="mb-3 text-sm text-(--wui-color-text-secondary)">
         <code>draggable</code> 时抽屉内缘显示灰色胶囊 drag bar：拖拽实时跟手，拖出约 1/3
         或快速甩动松手即关闭，否则弹回。
       </p>
@@ -326,9 +321,9 @@ function DrawerDemo() {
         dialogLabel="Headless 拖拽抽屉"
         onopen-change={event => setDraggableHeadlessVisible(event.detail.open)}
       >
-        <div style={{ height: '100%', padding: 16, background: 'white', borderRadius: '0 16px 16px 0' }}>
-          <h3 style={{ margin: '0 0 12px' }}>Headless 拖拽抽屉</h3>
-          <p style={{ margin: 0, color: '#666' }}>headless 模式同样支持 drag bar，抓住右缘胶囊向左拖出关闭。</p>
+        <div className="h-full p-4 bg-white rounded-r-[16px]">
+          <h3 className="mb-3">Headless 拖拽抽屉</h3>
+          <p className="text-[#666]">headless 模式同样支持 drag bar，抓住右缘胶囊向左拖出关闭。</p>
         </div>
       </web-ui-drawer>
 
@@ -340,7 +335,7 @@ function DrawerDemo() {
           乱序宽度交错 (300px → 520px → 240px → 400px)
         </web-ui-button>
       </div>
-      <p className="mb-3 text-sm text-[var(--wui-color-text-secondary)]">
+      <p className="mb-3 text-sm text-(--wui-color-text-secondary)">
         同组件声明式嵌套即 nested：后打开的位于顶层全尺寸，下层按 0.95<sup>n</sup>
         缩放并向内侧平移露出阶梯式卡片边缘；多层宽度不同或乱序交错时，自动计算上方最大宽度进行补偿，确保所有底层的左缘均不会被上方更宽的抽屉遮挡；Escape
         与遮罩点击只作用于最顶层，逐层退出。
@@ -399,7 +394,6 @@ function DrawerDemo() {
         </web-ui-drawer>
       </web-ui-drawer>
 
-      {/* 多宽度 Nested Drawer */}
       <web-ui-drawer
         open={diffWidthL1}
         heading="主信息面板 (500px)"
@@ -443,7 +437,6 @@ function DrawerDemo() {
         </web-ui-drawer>
       </web-ui-drawer>
 
-      {/* 乱序宽度 Nested Drawer (300px → 520px → 240px → 400px) */}
       <web-ui-drawer
         open={randomWidthL1}
         heading="侧边基础面板 (300px)"
@@ -501,7 +494,6 @@ function DrawerDemo() {
           </web-ui-drawer>
         </web-ui-drawer>
       </web-ui-drawer>
-      {/* 同级 Drawer 自动层叠（非 DOM 嵌套） */}
       <h2>同级自动层叠</h2>
       <p className="mb-3 text-sm text-gray-500">
         多个 drawer 在同级 DOM 挂载，依次打开后由内部 <code>defineNestedDrawerLayers</code> 自动管理层序——先开的按

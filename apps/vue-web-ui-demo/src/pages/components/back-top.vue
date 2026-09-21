@@ -10,6 +10,4 @@
 import BackTopDemo from '@/components/back-top-demo/index.vue'
 </script>
 
-<template>
-  <div class="p-3"><BackTopDemo /></div>
-</template>
+<template><BackTopDemo /></template>

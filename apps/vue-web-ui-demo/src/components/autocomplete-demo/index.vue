@@ -48,7 +48,7 @@ const cities = ['北京', '上海', '广州', '深圳', '杭州', '成都', '武
     <h1>自动补全</h1>
 
     <h2>基础</h2>
-    <p class="mb-2 text-sm text-[var(--wui-color-text-secondary)]">
+    <p class="mb-2 text-sm text-(--wui-color-text-secondary)">
       键入时按 label 过滤候选（默认
       <code>contains</code>），选择后文本回填为选项 label。
     </p>
@@ -77,7 +77,7 @@ const cities = ['北京', '上海', '广州', '深圳', '杭州', '成都', '武
     </div>
 
     <h2>filter 模式</h2>
-    <p class="mb-2 text-sm text-[var(--wui-color-text-secondary)]">
+    <p class="mb-2 text-sm text-(--wui-color-text-secondary)">
       <code>contains</code> 包含匹配，<code>prefix</code> 前缀匹配，<code>none</code>
       关闭过滤。
     </p>
@@ -93,7 +93,7 @@ const cities = ['北京', '上海', '广州', '深圳', '杭州', '成都', '武
           <web-ui-option value="prefix" label="前缀"></web-ui-option>
           <web-ui-option value="none" label="不过滤"></web-ui-option>
         </web-ui-select>
-        <span class="text-sm text-[var(--wui-color-text-secondary)]">当前模式：{{ filterMode }}</span>
+        <span class="text-sm text-(--wui-color-text-secondary)">当前模式：{{ filterMode }}</span>
       </div>
       <web-ui-autocomplete :filter="filterMode" placeholder="输入框架名">
         <web-ui-option v-for="name in frameworks" :key="name" :value="name" :label="name">{{ name }}</web-ui-option>
@@ -101,7 +101,7 @@ const cities = ['北京', '上海', '广州', '深圳', '杭州', '成都', '武
     </div>
 
     <h2>change 事件</h2>
-    <p class="mb-2 text-sm text-[var(--wui-color-text-secondary)]">
+    <p class="mb-2 text-sm text-(--wui-color-text-secondary)">
       选择提交时触发 <code>change</code>；<code>selected-value</code> 由当前输入派生，输入不再 精确匹配任何 option label
       时自动清空。
     </p>
@@ -126,7 +126,7 @@ const cities = ['北京', '上海', '广州', '深圳', '杭州', '成都', '武
     </div>
 
     <h2>custom value</h2>
-    <p class="mb-2 text-sm text-[var(--wui-color-text-secondary)]">
+    <p class="mb-2 text-sm text-(--wui-color-text-secondary)">
       开启 <code>allow-custom-value</code> 后，输入不在候选中的文本并按 Enter 提交；此时
       <code>selected-value</code> 为空。无匹配提示可通过 <code>slot="empty"</code> 自定义。
     </p>

@@ -382,7 +382,6 @@ describe('WebUiSelect 组件', () => {
       // 第一次打开定位到初始项（第一个）
       expect(el.querySelector(`#${activeId}`)?.getAttribute('value')).toBe('apple')
 
-      // 第二次 ArrowUp 向上导航，从首项循环到末尾
       el.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true }))
       await waitForUpdate(el)
       const loopedId = trigger.getAttribute('aria-activedescendant')
@@ -689,5 +688,47 @@ describe('WebUiSelect 组件', () => {
 
       cleanupElement(el)
     })
+  })
+
+  /*
+   * 禁用态下 Escape 必须被吞掉（Q14 语义）：既不关掉本层，也不落到下层浮层。
+   * 本用例是全套 select 测试里**唯一**覆盖这条契约的 —— 把 `_syncOverlayInert()` 的方法体
+   * 整条停掉后，只有它转红（其余 61 例全绿）。
+   *
+   * 特意走 trigger slot 变更而非 portal 变更：portal 只登记一帧 rAF，链路更长；
+   * slotchange 是直接调用 `_reconfigureOverlay()` 的短路径。
+   *
+   * 附带实测结论：`_reconfigureOverlay()` 末尾那次重推目前是**冗余**的（摘掉那行本用例仍绿）
+   * —— 这条路径后面跟着一轮渲染，而 `updated()` 每次渲染都会调 `_syncOverlayInert()`。
+   * 保留它是为了不依赖「这条路径必然跟着一次渲染」这个隐含前提。
+   */
+  it('禁用中 trigger slot 变更后 Escape 仍不关闭：reconfigure 换会话不得丢掉禁用态', async () => {
+    const nextFrame = () => new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
+
+    const el = createSelect(OPTIONS_HTML)
+    await waitForUpdate(el)
+
+    // 先开后禁用：可开性只在打开那一刻判定，禁用后保持开启态但不再可被 Escape 关闭。
+    ;(queryA11y(el, '[role="combobox"]') as HTMLElement).click()
+    await waitForUpdate(el)
+    expect(el.open).toBe(true)
+
+    el.disabled = true
+    await waitForUpdate(el)
+
+    const custom = document.createElement('span')
+    custom.slot = 'trigger'
+    custom.textContent = 'Custom'
+    el.append(custom)
+    await waitForUpdate(el)
+    await nextFrame()
+    await waitForUpdate(el)
+    expect(el.open).toBe(true)
+
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+    await waitForUpdate(el)
+    expect(el.open).toBe(true)
+
+    cleanupElement(el)
   })
 })

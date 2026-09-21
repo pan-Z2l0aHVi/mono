@@ -462,6 +462,37 @@ describe('WebUiPopover 组件', () => {
       cleanupElement(el)
     })
 
+    it('portal 变更后 Escape 仍不关闭：reconfigure 换会话不得丢掉 manual 惰性', async () => {
+      // portal 变更只登记一帧 rAF；fake timers 下这条路径走不到 reconfigure，必须用真实帧。
+      vi.useRealTimers()
+      const nextFrame = () => new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
+
+      const el = createPopover('Btn', 'Content', { trigger: 'manual' })
+      await waitForUpdate(el)
+
+      el.open = true
+      await el.updateComplete
+      await nextFrame()
+      await el.updateComplete
+      expect(el.isOpen).toBe(true)
+
+      // reconfigure 会 dispose 并按需重建 portal，也就是重新 claim —— 新会话的 inert
+      // 恒为 false，组件必须按当前 trigger 重推，否则 manual 的契约被 Escape 破坏。
+      // 本行承重（非备份）：popover 的 reconfigure 不引发渲染，摘掉这行本用例立刻转红。
+      el.portal = true
+      await el.updateComplete
+      await nextFrame()
+      await nextFrame()
+      await el.updateComplete
+      expect(el.isOpen).toBe(true)
+
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+      await el.updateComplete
+      expect(el.isOpen).toBe(true)
+
+      cleanupElement(el)
+    })
+
     it('仅由公开 API 或 open prop 控制', async () => {
       const el = createPopover('Btn', 'Content', { trigger: 'manual' })
       await waitForUpdate(el)

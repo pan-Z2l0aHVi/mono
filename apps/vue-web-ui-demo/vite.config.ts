@@ -21,7 +21,6 @@ export default {
     vue({
       template: {
         compilerOptions: {
-          // web component
           isCustomElement: tag => tag.startsWith('web-ui-') || tag.startsWith('WebUi')
         }
       }

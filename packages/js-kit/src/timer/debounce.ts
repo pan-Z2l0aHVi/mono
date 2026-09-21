@@ -46,7 +46,6 @@ export function debounce<F extends StrictFunction>(
 
   const debouncingFunnel = funnel(
     (args: Parameters<F>) => {
-      // 每次调用函数时，缓存值都会更新
       // @ts-expect-error [ts2345, ts2322] -- TypeScript 对泛型子类型的推断过于急切，导致无法识别此处类型是匹配的
       cachedValue = func(...args)
     },

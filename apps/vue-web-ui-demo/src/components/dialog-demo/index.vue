@@ -1,10 +1,8 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 
-// 命令式
 const dialogRef = ref<HTMLDialogElement>()
 
-// 声明式
 const visible1 = ref(false)
 const visible2 = ref(false)
 const visible3 = ref(false)

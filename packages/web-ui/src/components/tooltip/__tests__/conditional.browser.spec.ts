@@ -44,7 +44,6 @@ describe('WebUiTooltip portal 条件渲染边界（浏览器）', () => {
     show.value = false
     await nextTick()
     await tooltip.updateComplete
-    await new Promise(resolve => setTimeout(resolve, 50))
     expect(getPortalPanel('tooltip')?.querySelector('.probe-flag')).toBeNull()
 
     tooltip.open = false
@@ -128,7 +127,6 @@ describe('WebUiTooltip portal 条件渲染边界（浏览器）', () => {
     show.value = false
     await nextTick()
     await tooltip.updateComplete
-    await new Promise(resolve => setTimeout(resolve, 50))
     expect(getPortalPanel('tooltip')?.querySelector('.probe-flag')).toBeNull()
     expect([...tooltip.childNodes].some(node => node instanceof Comment)).toBe(true)
 

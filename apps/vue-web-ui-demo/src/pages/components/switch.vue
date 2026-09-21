@@ -10,6 +10,4 @@
 import SwitchDemo from '@/components/switch-demo/index.vue'
 </script>
 
-<template>
-  <div class="p-3"><SwitchDemo /></div>
-</template>
+<template><SwitchDemo /></template>

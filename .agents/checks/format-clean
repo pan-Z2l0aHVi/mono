@@ -1,0 +1,165 @@
+#!/bin/sh
+# 提交边界的清洁度 gate：只检不改。范围是 `vp check`（格式 + lint + 类型）、stylelint 与
+# `gofmt -l`。它与 task 无关，所以在「没有 active task」的提交里也照跑（`scripts/task.mjs` 的
+# alwaysOnChecks 把它列进无 task 子集）。这道保证之所以不挂在 task 档位上：T0/T1 必经 freeze 的
+# `fix:code` 归一化，而 T2 的快速通道与无 task 提交不经过 freeze，那一层对它们不存在；把一条
+# check-only 的检查放在 commit 边界，三条路径拿到的就是同一条保证。
+#
+# 刻意不代为 fix：commit 期改写文件会与 freeze 的快照不变式打架（内容变了，diffHash 就 stale），
+# 而且 `vp staged` 那类工具为处理部分暂存要动用 stash，会把别人的在制品也卷进来。这里只说「哪些
+# 文件没过检查、该自己跑什么」，改写留给作者。脚本自身的三条调用都不带 fix 开关；工具入口的 env
+# 覆盖（下面三个变量）按可信输入处理、故意不加引号，那是测试 seam，不是用户接口。
+#
+# 读的是工作区副本，不是 staged blob：与内核快照同口径（`currentSnapshot` 也按工作区字节算
+# hash），代价是同一个文件在 index 与工作区分叉时，本检查判定的是工作区那一份。分叉要自己收敛：
+# 改完重新 `git add`。两条由此漏出去的形状是已接受的残余：只 add 了未归一化的那半个 hunk
+# （工作区已格式化），以及 `git add x && rm x`（清单还列着它，工作区没有，于是跳过）。挡住它们的
+# 是仓级 `pnpm run check:code`（CI 跑的就是它）与 review，不是这里。
+#
+# 下面三段 heredoc 循环形状相同而不抽成函数：`set --` 在函数里改的是函数自己的位置参数（POSIX sh
+# 动态作用域），抽出来就把参数留在了函数里。内核以 POSIX sh 执行本文件（无扩展名、需要 +x），
+# 所以只用 sh 的可移植子集；按行传递路径。
+set -e
+
+# 工具入口允许被 env 覆盖，供 scripts/task.test.mjs 的 fixture 使用——那个临时仓库没有
+# node_modules，`pnpm exec` 起不来。覆盖只改「调用哪条命令」，不改检查范围与判定。
+vp_cmd="${AGENT_VP_CMD:-pnpm exec vp}"
+stylelint_cmd="${AGENT_STYLELINT_CMD:-pnpm exec stylelint}"
+gofmt_cmd="${AGENT_GOFMT_CMD:-gofmt}"
+
+# quotePath=false 让非 ASCII 文件名按原样输出，否则 git 会转义成 "\344\275\240.md"，后面的
+# 路径匹配与工具调用都会拿到一个不存在的名字：畸形文件漏检，正常文件反而报错。git 失败时不能
+# 以它的退出码静默中止——一条拦下提交的检查必须始终说得出「为什么」和「怎么办」。
+staged=$(git -c core.quotePath=false diff --cached --name-only --diff-filter=ACMR) || {
+  echo "format check cannot run: git diff --cached failed in $(pwd)" >&2
+  exit 1
+}
+[ -n "$staged" ] || exit 0
+
+vp_files=''
+stylelint_files=''
+go_files=''
+while IFS= read -r file; do
+  # 两类名字先 fail-closed，再谈存在性：以 - 开头的路径会被下面任何一条调用当成开关（仓库根一个
+  # 真名叫 --fix 的文件就把「只检不改」变成了改写），而被 git C-引号化的路径（名字里含 `"`、`\`
+  # 或换行）在磁盘上根本不存在，放过 [ -f ] 就会变成畸形文件静默漏检。改名是这两类名字唯一的
+  # 出路，代价远小于破承诺或漏检。fail-closed 的覆盖面也就到这三类字符为止：git 不引号化的 glob
+  # 元字符（`*`、`?`、`[`）会原样到达两个会把入参当 pattern 的消费者——stylelint 配不到文件时靠
+  # `--allow-empty-input` 以 0 退出，`vp check` 同理（实测它把 `scripts/*.mjs` 展开成 13 个文件），
+  # 于是那一类命名是已知残余：既可能漏检，也可能反过来把未暂存的文件拉进来拦提交。不按元字符拦截，
+  # 因为本仓就跟踪着 apps/vue-web-ui-demo/src/pages/[...all]/index.vue，拦住它的代价比管住一个畸形
+  # 命名大；兜底仍是全仓 `check:code`。
+  case "$file" in
+    -*)
+      echo "format check cannot run: staged path '$file' starts with '-' and would be parsed" >&2
+      echo "as an option by a fixer; rename it, or commit from a worktree without that path" >&2
+      exit 1
+      ;;
+    '"'*)
+      echo "format check cannot run: git C-quoted a staged path ($file)" >&2
+      echo "such a name contains a quote, a backslash or a newline, so it cannot be handed to a formatter safely; rename it" >&2
+      exit 1
+      ;;
+  esac
+  # --diff-filter=ACMR 已排除删除，但 index 与工作区仍可分叉到「文件已不在」，所以按存在性
+  # 再过滤一次：给 gofmt 一个不存在的路径会直接报错，那不是本检查要说的话。
+  [ -f "$file" ] || continue
+  vp_files="$vp_files$file
+"
+  case "$file" in
+    *.css | *.scss | *.less | *.html | *.vue) stylelint_files="$stylelint_files$file
+" ;;
+  esac
+  case "$file" in
+    *.go) go_files="$go_files$file
+" ;;
+  esac
+done <<STAGED
+$staged
+STAGED
+
+report() {
+  echo "format check failed: staged files are not clean — formatting, lint or types ($1)" >&2
+  echo "fix it yourself and re-stage, then retry — this check only judges, it never rewrites on your behalf" >&2
+}
+
+# 调用前先探测可用性：依赖没装时 `pnpm exec vp` 同样非零退出，但那不是被检文件的问题，把「工具
+# 起不来」报成「你没格式化」会把人支去跑一条跑不动的命令。所以探测失败要说清是哪一个，并且失败
+# （fail-closed）。
+# 探测只取 `--help` 的退出码：它证明「启动器 + 这个子命令在」，而不真的跑一遍检查——真检查是下面
+# 带路径参数那一步的事，用全仓检查当探测既慢又会在有未格式化文件时误报成「工具不可用」。
+require_prefix() {
+  prefix=$1
+  shift
+  # shellcheck disable=SC2086 # 命令前缀按空格拆开正是想要的语义
+  if ! $prefix "$@" --help >/dev/null 2>&1; then
+    echo "format check cannot run: '$prefix' is unavailable" >&2
+    echo "its launcher is missing from PATH, or the toolchain behind it is not installed (mise install; pnpm install for Node deps)" >&2
+    exit 1
+  fi
+}
+
+status=0
+
+# vp 接所有暂存文件：格式 + lint + 类型。--no-error-on-unmatched-pattern 是必需的，因为
+# lint.ignorePatterns 覆盖的路径（scripts/**、各类生成物）和它不认识的文件类型（.md、.png）
+# 否则会让整条命令以「No files found to lint」失败——那会被误报成格式化问题。
+if [ -n "$vp_files" ]; then
+  require_prefix "$vp_cmd" check
+  set --
+  while IFS= read -r file; do
+    [ -n "$file" ] || continue
+    set -- "$@" "$file"
+  done <<VP
+$vp_files
+VP
+  # shellcheck disable=SC2086 # 同上
+  if [ "$#" -gt 0 ] && ! $vp_cmd check --no-error-on-unmatched-pattern "$@"; then
+    report "the vp check output above gives the reason; vp check --fix <files> repairs formatting and autofixable lint, never a type error"
+    status=1
+  fi
+fi
+
+if [ -n "$stylelint_files" ]; then
+  require_prefix "$stylelint_cmd"
+  set --
+  while IFS= read -r file; do
+    [ -n "$file" ] || continue
+    set -- "$@" "$file"
+  done <<STYLELINT
+$stylelint_files
+STYLELINT
+  # shellcheck disable=SC2086
+  if [ "$#" -gt 0 ] && ! $stylelint_cmd --allow-empty-input "$@"; then
+    report "stylelint <files>; pnpm run fix:stylelint fixes the whole repo"
+    status=1
+  fi
+fi
+
+if [ -n "$go_files" ]; then
+  require_prefix "$gofmt_cmd"
+  set --
+  while IFS= read -r file; do
+    [ -n "$file" ] || continue
+    set -- "$@" "$file"
+  done <<GO
+$go_files
+GO
+  # gofmt -l 列出未格式化文件却仍以 0 退出，所以判定看输出是否为空。非零退出是 gofmt 自己读不了
+  # （语法错误、竞态中路径消失），那段 stderr 不进命令替换，但会随本脚本的 stderr 一起被内核接走并
+  # 回显；`set -e` 会在此处静默中止，所以显式接手：这条检查的失败必须始终带一句「怎么办」。
+  # shellcheck disable=SC2086
+  if [ "$#" -gt 0 ]; then
+    unformatted=$($gofmt_cmd -l "$@") || {
+      echo "format check failed: gofmt exited with an error while checking the staged Go files" >&2
+      exit 1
+    }
+  fi
+  if [ -n "${unformatted:-}" ]; then
+    printf '%s\n' "$unformatted" >&2
+    report "gofmt -w <files>; pnpm run fix:go fixes the whole repo"
+    status=1
+  fi
+fi
+
+exit "$status"

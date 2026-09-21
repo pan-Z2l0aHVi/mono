@@ -95,9 +95,24 @@ tasks:
     cmds:
       - task: create:dmg
 
+  generate:dmg-icon:
+    summary: |-
+      Generates the shaped DMG volume icon `build/darwin/dmg-icon.icns` from `docs/design/app-icons/interweave-dmg-icon.png` (pre-shaped with a 100px transparent margin), because the DMG volume icon is rendered as-is, without the system mask.
+      `-windowsfilename=` is required to skip the `.ico` that `wails3 generate icons` emits by default: omitting the flag does not skip it, and pointing it at a throwaway absolute path would break Windows hosts, which also run the shared `common:generate:icons` task.
+    run: once
+    platforms: [darwin]
+    sources:
+      - '../../docs/design/app-icons/interweave-dmg-icon.png'
+    generates:
+      - 'build/darwin/dmg-icon.icns'
+    cmds:
+      - wails3 generate icons -input ../../docs/design/app-icons/interweave-dmg-icon.png -macfilename build/darwin/dmg-icon.icns -windowsfilename=
+
   create:dmg:
     summary: Creates a configurable `.dmg` from the `.app` bundle
     platforms: [darwin]
+    deps:
+      - task: generate:dmg-icon
     cmds:
       - >-
         wails3 tool package --format dmg --name "{{.APP_NAME}}" --out "{{.BIN_DIR}}"
@@ -109,8 +124,8 @@ tasks:
         {{if .DMG_FILES}}--files "{{.DMG_FILES}}"{{end}}
     vars:
       DMG_BACKGROUND: '{{.DMG_BACKGROUND | default "build/darwin/dmg-background.png"}}'
-      DMG_VOLUME_ICON: '{{.DMG_VOLUME_ICON | default "build/darwin/icons.icns"}}'
-      DMG_FILE_ICON: '{{.DMG_FILE_ICON | default "build/darwin/dmg-file-icon.icns"}}'
+      DMG_VOLUME_ICON: '{{.DMG_VOLUME_ICON | default "build/darwin/dmg-icon.icns"}}'
+      DMG_FILE_ICON: '{{.DMG_FILE_ICON | default "build/darwin/icons.icns"}}'
       DMG_WINDOW_WIDTH: '{{.DMG_WINDOW_WIDTH | default "540"}}'
       DMG_WINDOW_HEIGHT: '{{.DMG_WINDOW_HEIGHT | default "380"}}'
       DMG_FILES: '{{.DMG_FILES | default ""}}'
@@ -122,10 +137,6 @@ tasks:
       - mkdir -p "{{.BIN_DIR}}/{{.APP_NAME}}.app/Contents/MacOS"
       - mkdir -p "{{.BIN_DIR}}/{{.APP_NAME}}.app/Contents/Resources"
       - cp build/darwin/icons.icns "{{.BIN_DIR}}/{{.APP_NAME}}.app/Contents/Resources"
-      - |
-        if [ -f build/darwin/Assets.car ]; then
-          cp build/darwin/Assets.car "{{.BIN_DIR}}/{{.APP_NAME}}.app/Contents/Resources"
-        fi
       - cp "{{.BIN_DIR}}/{{.APP_NAME}}" "{{.BIN_DIR}}/{{.APP_NAME}}.app/Contents/MacOS"
       - cp build/darwin/Info.plist "{{.BIN_DIR}}/{{.APP_NAME}}.app/Contents"
       - task: codesign:adhoc
@@ -141,10 +152,6 @@ tasks:
       - mkdir -p "{{.BIN_DIR}}/{{.APP_NAME}}.dev.app/Contents/MacOS"
       - mkdir -p "{{.BIN_DIR}}/{{.APP_NAME}}.dev.app/Contents/Resources"
       - cp build/darwin/icons.icns "{{.BIN_DIR}}/{{.APP_NAME}}.dev.app/Contents/Resources"
-      - |
-        if [ -f build/darwin/Assets.car ]; then
-          cp build/darwin/Assets.car "{{.BIN_DIR}}/{{.APP_NAME}}.dev.app/Contents/Resources"
-        fi
       - cp "{{.BIN_DIR}}/{{.APP_NAME}}" "{{.BIN_DIR}}/{{.APP_NAME}}.dev.app/Contents/MacOS"
       - cp "build/darwin/Info.dev.plist" "{{.BIN_DIR}}/{{.APP_NAME}}.dev.app/Contents/Info.plist"
       - codesign --force --deep --sign - "{{.BIN_DIR}}/{{.APP_NAME}}.dev.app"

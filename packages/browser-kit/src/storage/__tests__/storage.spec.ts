@@ -122,14 +122,12 @@ describe('storage 测试', () => {
       // 通过原型链 spy 模拟原生存储溢出
       const setItemSpy = vi.spyOn(Object.getPrototypeOf(window.localStorage), 'setItem')
 
-      // 模拟第一次失败，抛出溢出错误
       setItemSpy.mockImplementationOnce(() => {
         const err = new DOMException('QuotaExceededError', 'QuotaExceededError')
         Object.defineProperty(err, 'code', { value: 22 })
         throw err
       })
 
-      // 模拟第二次成功
       setItemSpy.mockImplementationOnce(() => {})
 
       local.set('retry_test', 'some_value')
@@ -209,7 +207,6 @@ describe('storage 测试', () => {
       const callback = vi.fn<() => void>()
       const unwatch = local.watch('msg', callback)
 
-      // 为了模拟格式，需要手动拼装 pkg
       // 由于 pkg 方法是私有的，测试中我们手动模拟其结构
       const createPkg = (val: unknown) => ({ m: '_pkg', v: val })
 

@@ -38,8 +38,6 @@
   width: 100%;
 }
 
-/* ===== Borderless ===== */
-
 :host([borderless]) .wui-input-inner {
   border: none;
   background: transparent;
@@ -76,8 +74,6 @@
     0 0 0 var(--wui-focus-ring-width, 3px) var(--wui-color-focus-ring, rgb(0 136 255 / 0.4));
 }
 
-/* ===== Input ===== */
-
 input {
   flex: 1;
 
@@ -112,8 +108,6 @@ input {
   }
 }
 
-/* ===== Prefix / Suffix ===== */
-
 slot {
   display: flex;
   flex-shrink: 0;
@@ -128,8 +122,6 @@ slot.empty {
   display: none;
 }
 
-/* ===== Clear button ===== */
-
 /* 复用 web-ui-button icon ghost：仅覆盖颜色为 faint，保持弱意图清除图标观感；
    负 margin-left 抵消容器 flex gap，让清除按钮紧贴输入文本
    负 margin-right 抵消 button padding，让清除按钮右侧 spacing 视觉上协调 */
@@ -138,5 +130,3 @@ slot.empty {
   margin-right: -4px;
   margin-left: -8px;
 }
-
-/* ===== Disabled ===== */

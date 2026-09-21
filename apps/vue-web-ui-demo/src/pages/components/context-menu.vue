@@ -11,7 +11,5 @@ import ContextMenuDemo from '@/components/context-menu-demo/index.vue'
 </script>
 
 <template>
-  <div class="p-3">
-    <ContextMenuDemo />
-  </div>
+  <ContextMenuDemo />
 </template>

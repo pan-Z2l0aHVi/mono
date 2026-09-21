@@ -178,7 +178,6 @@ describe('WebUiSelect 条件组合边界', () => {
       await waitForUpdate(el)
       await pollUntil(() => !el.open && !getPortalPanel(el), 'Expected deleted-option select to close and dispose')
 
-      // 关闭后 light DOM 只应包含未删除的 banana/cherry
       const values = [...el.querySelectorAll<WebUiOption>('web-ui-option')].map(o => o.value).sort()
       expect(values).toEqual(['banana', 'cherry'])
       cleanupElement(el)
@@ -280,7 +279,6 @@ describe('WebUiSelect 条件组合边界', () => {
       el.appendChild(wrapper)
       await waitForUpdate(el)
 
-      // 关闭态 light DOM 保持原位
       expect(el.querySelectorAll('web-ui-option').length).toBe(4)
 
       const trigger = queryA11y(el, '[role="combobox"]') as HTMLElement

@@ -104,8 +104,6 @@ dialog::backdrop {
   background: transparent;
 }
 
-/* ===== 图像舞台 ===== */
-
 .wui-image-preview-stage {
   touch-action: none;
   cursor: zoom-in;
@@ -145,7 +143,6 @@ dialog::backdrop {
 .wui-image-preview-slide {
   pointer-events: none;
 
-  /* 每个 slide 与舞台等宽等高，图片居中：相邻图与当前图同尺寸同基线。 */
   position: absolute;
   top: 0;
   left: 0;
@@ -213,9 +210,6 @@ dialog::backdrop {
   }
 }
 
-/* ===== 控件层 ===== */
-
-/* 整层不接收指针事件，命中测试穿透到舞台，空白处点击仍视为遮罩。 */
 .wui-image-preview-controls {
   pointer-events: none;
   position: absolute;
@@ -227,6 +221,9 @@ dialog::backdrop {
 }
 
 .wui-image-preview-counter {
+  /* pill 高 ≈ 24px（13px 行盒 + 上下 4px padding），光影取短边一半 */
+  --wui-glass-corner-radius: 12px;
+
   position: absolute;
   top: var(--wui-image-preview-edge-gap, 20px);
   left: var(--wui-image-preview-edge-gap, 20px);
@@ -260,6 +257,9 @@ dialog::backdrop {
 }
 
 .wui-image-preview-toolbar {
+  /* 高 = 30px 图标按钮 + 上下 6px padding，光影取短边一半 */
+  --wui-glass-corner-radius: 21px;
+
   position: absolute;
   bottom: var(--wui-image-preview-edge-gap, 20px);
   left: 50%;

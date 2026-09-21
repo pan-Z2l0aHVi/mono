@@ -10,6 +10,4 @@
 import SvgDrawLinesDemo from '@/components/svg-draw-lines-demo/index.vue'
 </script>
 
-<template>
-  <div class="p-3"><SvgDrawLinesDemo /></div>
-</template>
+<template><SvgDrawLinesDemo /></template>

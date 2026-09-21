@@ -21,4 +21,4 @@ pnpm dev:react-web-ui-demo
 
 ## Agent 入口
 
-修改 React 集成或交互前先读同目录 `AGENTS.md`，再按任务读取根 `.agents/rules/react.md`、`docs/agents/browser-verification.md` 和 `packages/web-ui/AGENTS.md`。修改组件公共契约时还要回到 `packages/web-ui` 的文档、类型和测试。
+修改 React 集成或交互前先读同目录 `AGENTS.md`，再按任务读取 `docs/agents/browser-verification.md` 和 `packages/web-ui/AGENTS.md`。修改组件公共契约时还要回到 `packages/web-ui` 的文档、类型和测试。

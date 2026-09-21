@@ -196,7 +196,7 @@ function ImagePreviewDemo() {
       <div className="mb-3 flex flex-wrap gap-2">
         <web-ui-button onClick={openParts}>按当前勾选打开</web-ui-button>
       </div>
-      <div className="mb-3 rounded-lg bg-[var(--wui-color-surface-raised)] px-3 py-2 text-sm">
+      <div className="mb-3 rounded-lg bg-(--wui-color-surface-raised) px-3 py-2 text-sm">
         <code>{partsCode}</code>
       </div>
       <div className="mb-6 flex flex-wrap gap-2">
@@ -274,7 +274,7 @@ function ImagePreviewDemo() {
           ))}
         </div>
       ) : null}
-      <div className="mb-6 rounded-lg bg-[var(--wui-color-surface-raised)] px-3 py-2 text-sm">{statusText}</div>
+      <div className="mb-6 rounded-lg bg-(--wui-color-surface-raised) px-3 py-2 text-sm">{statusText}</div>
 
       <h2>自定义容器与样式</h2>
       <p className="mb-3 text-sm text-gray-500">
@@ -284,9 +284,9 @@ function ImagePreviewDemo() {
       </p>
       <div
         ref={styledContainer}
-        className="mb-3 rounded-lg border border-dashed border-[var(--wui-color-border)] p-3 [--wui-image-preview-edge-gap:48px] [--wui-image-preview-overlay-bg:#0a2850e0]"
+        className="mb-3 rounded-lg border border-dashed border-(--wui-color-border) p-3 [--wui-image-preview-edge-gap:48px] [--wui-image-preview-overlay-bg:#0a2850e0]"
       >
-        <span className="text-sm text-[var(--wui-color-text-secondary)]">预览宿主挂载在这里</span>
+        <span className="text-sm text-(--wui-color-text-secondary)">预览宿主挂载在这里</span>
       </div>
       <div className="mb-6 flex flex-wrap gap-2">
         <web-ui-button onClick={openWithContainer}>用自定义容器打开</web-ui-button>

@@ -4,8 +4,13 @@ Wails 3 desktop application using a Go backend and a Vue WebView frontend.
 
 ## Product baseline
 
-The approved product scope and domain vocabulary are documented in
-[`docs/product.md`](docs/product.md). Read it before changing Interweave's
+There is no standalone product specification. Domain vocabulary is authoritative
+in the "Interweave 产品与领域词汇" section of [`CONTEXT.md`](../../CONTEXT.md),
+application-level boundaries and non-goals in [`AGENTS.md`](AGENTS.md), backend
+and persistence decisions in
+[ADR-0008](../../docs/adr/0008-interweave-backend-architecture.md) /
+[ADR-0009](../../docs/adr/0009-interweave-sqlite-persistence-wal.md), and implemented
+behavior in `backend/**` with its Go tests. Read them before changing Interweave's
 product behavior, resource model, tag semantics, Map, or MCP roadmap.
 
 ## Commands

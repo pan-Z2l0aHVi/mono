@@ -1,5 +1,5 @@
 /*
- * Nested drawer 层序管理（对齐 Base UI/shadcn nested drawer 行为）：
+ * Nested drawer 层序管理：
  * 每打开一层 modal drawer，其下所有已打开的 drawer 按 0.95^n 缩放并向
  * 屏幕内侧平移，在顶层抽屉后方露出阶梯式卡片边缘（peeking edge）；顶层全尺寸。
  *
@@ -13,7 +13,7 @@
  * - shift = shrink + depth * 12px（向屏幕内侧偏移，露出阶梯卡片边缘）
  * - 过渡 transform 450ms cubic-bezier(0.22, 1, 0.36, 1)
  *
- * 拖拽与弹簧期间 JS 直接写 dialog.style.transform（优先级高于本机制的
+ * 拖拽与释放后的收尾期间 JS 直接写 dialog.style.transform（优先级高于本机制的
  * CSS 变量组合），顶层才有拖拽，故无冲突。
  */
 
@@ -110,6 +110,11 @@ export const defineNestedDrawerLayers = () =>
     register() {
       const dialog = ctx.getDialog()
       if (!dialog) return
+      // 幂等保护：重挂载对账与 updated() 的 open 分支可能对同一 dialog 先后各调
+      // 一次 register，重复条目会让 applyLayers 把同一层计两次。
+      for (const entry of entries) {
+        if (entry.dialog === dialog) entries.delete(entry)
+      }
       ensureDocumentListener()
       entries.add({ dialog, placement: () => ctx.getPlacement() })
       applyLayers()

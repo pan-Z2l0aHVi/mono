@@ -27,7 +27,7 @@ function IconDemo() {
           继承 color
         </span>
         <web-ui-icon icon={lucideSearch} color="#007aff"></web-ui-icon>
-        <web-ui-icon icon={lucideSearch} style={{ '--wui-icon-color': '#34c759' } as React.CSSProperties}></web-ui-icon>
+        <web-ui-icon icon={lucideSearch} className="[--wui-icon-color:#34c759]"></web-ui-icon>
       </div>
       <h2>搭配 Button</h2>
       <div className="mb-3 flex gap-2">

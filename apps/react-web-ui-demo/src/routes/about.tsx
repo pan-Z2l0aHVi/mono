@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 
 function About() {
-  return <div className="p-3">About</div>
+  return <>About</>
 }
 
 export const Route = createFileRoute('/about')({

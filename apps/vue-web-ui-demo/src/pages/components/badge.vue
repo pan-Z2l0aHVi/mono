@@ -11,7 +11,5 @@ import BadgeDemo from '@/components/badge-demo/index.vue'
 </script>
 
 <template>
-  <div class="p-3">
-    <BadgeDemo />
-  </div>
+  <BadgeDemo />
 </template>

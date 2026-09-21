@@ -11,7 +11,5 @@ import AutocompleteDemo from '@/components/autocomplete-demo/index.vue'
 </script>
 
 <template>
-  <div class="p-3">
-    <AutocompleteDemo />
-  </div>
+  <AutocompleteDemo />
 </template>

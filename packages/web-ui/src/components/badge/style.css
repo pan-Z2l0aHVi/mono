@@ -47,8 +47,6 @@
   );
 }
 
-/* ===== Placement ===== */
-
 :host([placement='top-right']) .badge {
   --badge-x: 50%;
   --badge-y: -50%;
@@ -76,8 +74,6 @@
   bottom: 0;
   left: 0;
 }
-
-/* ===== Dot ===== */
 
 .badge-dot {
   min-width: 8px;

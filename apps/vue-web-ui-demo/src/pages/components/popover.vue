@@ -10,6 +10,4 @@
 import PopoverDemo from '@/components/popover-demo/index.vue'
 </script>
 
-<template>
-  <div class="p-3"><PopoverDemo /></div>
-</template>
+<template><PopoverDemo /></template>

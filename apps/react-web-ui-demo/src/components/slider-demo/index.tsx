@@ -88,19 +88,6 @@ function SliderDemo() {
           </div>
         </div>
       </section>
-      <style>{`
-        .slider-demo { max-width: 920px; }
-        section { margin-top: 28px; }
-        .examples { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; padding: 20px 0; }
-        .example { display: flex; gap: 12px; align-items: center; min-width: 0; }
-        .vertical-examples { display: flex; gap: 32px; align-items: flex-start; padding: 20px 0; }
-        .label { font-size: 14px; color: #5d6675; white-space: nowrap; }
-        .event-example { display: flex; gap: 16px; align-items: center; padding: 20px 0; }
-        output { font-size: 14px; color: #5d6675; }
-        web-ui-slider:not([vertical]) { width: 100%; }
-        web-ui-slider[vertical] { height: 200px; }
-        @media (width <= 700px) { .examples { grid-template-columns: 1fr; } .event-example { flex-direction: column; align-items: flex-start; } }
-      `}</style>
     </div>
   )
 }
