@@ -19,6 +19,11 @@ assert.equal(preCommit.includes('agent-workflow'), false, 'pre-commit must not r
 for (const bypass of ['--no-verify', 'HUSKY=0', 'VP_GIT_HOOKS=0', 'VITE_GIT_HOOKS=0'])
   assert.equal(preCommit.includes(bypass), false, `pre-commit must not include ${bypass}`)
 assert.ok(fs.statSync(path.join(repoRoot, '.vite-hooks', 'pre-commit')).mode & 0o111, 'pre-commit must be executable')
+// 可执行位是挂载条件，不是装饰：丢掉 +x，runChecks 会静默跳过这道唯一的无 task 保证。
+assert.ok(
+  fs.statSync(path.join(repoRoot, '.agents', 'checks', 'format-clean')).mode & 0o111,
+  'the commit-boundary format gate must stay executable'
+)
 
 const git = (...args) => execFileSync('git', ['-C', fixture, ...args], { encoding: 'utf8' }).trim()
 const run = (...args) =>
@@ -71,15 +76,22 @@ try {
   assert.match(untrackedGuard.stderr, /not enforced/)
   assert.match(untrackedGuard.stderr, /pnpm task new/)
 
-  // 脏 worktree 不得建 task：快照基线必须干净。
+  // 脏 worktree 不得建 T0/T1 task：快照基线必须干净，freeze 的 `git add -A` 会扫进一切。
   fs.writeFileSync(path.join(fixture, 'preexisting.txt'), 'must not be absorbed\n')
   runFailure('new', '--task', 'dirty-init', '--level', 't1')
+
+  // T2 豁免这条：它不 freeze，提交内容就是当时的 index，本没有隔离可破坏。这一档的用途是给
+  // 快速改动留一条带署名的路径，前提不该是先把工作区收拾干净——所以 new 和 start 都要放行。
+  const dirtyT2 = JSON.parse(run('new', '--task', 't2-dirty-init', '--level', 't2'))
+  assert.equal(dirtyT2.phase, 'open')
+  assert.equal(JSON.parse(run('start', '--task', 't2-dirty-init')).phase, 'active')
+  run('drop', '--task', 't2-dirty-init', '--reason', 't2 dirty worktree exemption covered', '--by', 'fixture-sweeper-1')
   fs.rmSync(path.join(fixture, 'preexisting.txt'))
 
   // 清单里必须是「将被提交的那个名字」。staged 重命名在 porcelain 里渲染成 `old -> new`，只按
   // 固定偏移取整段就会把旧路径当成未提交改动报出去——使用者会去翻一个根本没动过的文件。
   git('mv', 'README.md', 'FIXTURE-NOTE.md')
-  const renameFailure = failMessage('new', '--task', 'rename-init', '--level', 't2')
+  const renameFailure = failMessage('new', '--task', 'rename-init', '--level', 't1')
   assert.match(renameFailure, /FIXTURE-NOTE\.md/)
   assert.doesNotMatch(renameFailure, /README\.md/)
   git('mv', 'FIXTURE-NOTE.md', 'README.md')
@@ -613,6 +625,198 @@ try {
   fs.rmSync(changesetCheck)
   git('add', '-A')
   git('commit', '-m', 'uninstall changeset policy check')
+
+  // format-clean：与 task 无关的 check-only 格式化 gate，所以三条提交路径都得跑到它——无 active
+  // task、T2 的 commit、T1 的 freeze。fixture 里没有 node_modules，真的 vp/stylelint 起不来，
+  // 于是把工具入口换成记账 stub：这里断言的是「哪些文件交给了哪个工具」和「失败拦不拦」，
+  // 不是 oxfmt 会不会格式化（那是 check:code 与真实仓库里的事）。
+  const formatCheck = path.join(fixture, '.agents', 'checks', 'format-clean')
+  const formatStub = path.join(fixture, 'format-tool-stub.sh')
+  fs.writeFileSync(
+    formatStub,
+    [
+      '#!/bin/sh',
+      'tool=$1',
+      'shift',
+      // 探测调用（带 --help）直接退出、不记账：它不带文件路径，记下来就会往「哪些路径交给了哪个
+      // 工具」的日志里掺进噪声，让下面那些整行断言比的不是路径清单。
+      'for arg in "$@"; do',
+      '  [ "$arg" = --help ] && exit 0',
+      'done',
+      'for arg in "$@"; do',
+      // 记账只收磁盘上真存在的路径：子命令名 `check` 同样不以 - 开头，收了就混进下面的整行断言。
+      '  [ -f "$arg" ] || continue',
+      // 不以 - 开头的参数才是文件路径（`${arg#-}` 剥掉前导连字符，剥不动就说明没有）。
+      '  [ "${arg#-}" = "$arg" ] && printf \'%s|%s\\n\' "$tool" "$arg" >> "$FORMAT_STUB_LOG"',
+      'done',
+      'if [ "$tool" = gofmt ]; then',
+      '  [ -f "$FORMAT_STUB_DIRTY_GO" ] || exit 0',
+      '  for arg in "$@"; do [ "${arg#-}" = "$arg" ] && printf \'%s\\n\' "$arg"; done',
+      '  exit 0',
+      'fi',
+      '[ -f "$FORMAT_STUB_FAIL" ] || exit 0',
+      // 失败说明故意写 stdout（不是 stderr）：真工具把「哪些文件不过」写在 stdout，内核只有把两段
+      // 都留下才不会把检查给出的理由丢掉。下面 /stub: vp found issues/ 那条断言钉的就是这件事。
+      'echo "stub: $tool found issues"',
+      'exit 1'
+    ].join('\n') + '\n'
+  )
+  fs.chmodSync(formatStub, 0o755)
+  fs.copyFileSync(path.join(repoRoot, '.agents', 'checks', 'format-clean'), formatCheck)
+  fs.chmodSync(formatCheck, 0o755)
+  const formatLog = path.join(fixture, 'format-tool-calls.log')
+  const failMarker = path.join(fixture, 'format-stub-fail')
+  const dirtyGoMarker = path.join(fixture, 'format-stub-dirty-go')
+  Object.assign(process.env, {
+    AGENT_VP_CMD: `sh ${formatStub} vp`,
+    AGENT_STYLELINT_CMD: `sh ${formatStub} stylelint`,
+    AGENT_GOFMT_CMD: `sh ${formatStub} gofmt`,
+    FORMAT_STUB_LOG: formatLog,
+    FORMAT_STUB_FAIL: failMarker,
+    FORMAT_STUB_DIRTY_GO: dirtyGoMarker
+  })
+  // 空格路径与非 ASCII 路径都必须作为**一个** arg 到达工具：按行传清单再用位置参数收，劈开就
+  // 会变成「一个不存在的文件」+「一个恰好 matching 的 glob」。
+  fs.mkdirSync(path.join(fixture, 'demo 目录'), { recursive: true })
+  fs.writeFileSync(path.join(fixture, 'demo 目录', 'a b.mjs'), 'export const a = 1\n')
+  fs.writeFileSync(path.join(fixture, 'probe.css'), 'a { color: red; }\n')
+  fs.writeFileSync(path.join(fixture, 'probe.go'), 'package main\n')
+  fs.writeFileSync(path.join(fixture, 'ghost.mjs'), 'untracked, so never checked\n')
+  git('add', 'demo 目录/a b.mjs', 'probe.css', 'probe.go')
+  const noTaskFormatGuard = spawn('guard')
+  assert.equal(noTaskFormatGuard.status, 0)
+  assert.deepEqual(JSON.parse(noTaskFormatGuard.stdout).checks, ['format-clean'])
+  const formatCalls = fs.readFileSync(formatLog, 'utf8')
+  // 空格 + 非 ASCII 路径必须作为**一个** arg 到达工具，承重的是「正例 + 条数」这一对：日志只收磁盘
+  // 上真存在的路径，所以一旦参数被空白劈开（`demo`、`目录/a`、`b.mjs` 都不是文件），那条路径就一条
+  // 都记不上，vp 的行数从 3 掉到 2，两条断言同时红。反过来「日志里不多出别的行」由条数守住，不必
+  // 写负例——负例比的 `vp|demo` 之类永远不可能出现，是不会红的断言。比整行内容而不写正则：$ 在没有
+  // m 标志时只匹配整段输入的末尾。
+  const formatCallLines = formatCalls.split(os.EOL)
+  assert.ok(formatCallLines.includes('vp|demo 目录/a b.mjs'))
+  assert.equal(formatCallLines.filter(line => line.startsWith('vp|')).length, 3)
+  assert.match(formatCalls, /stylelint\|probe\.css/)
+  assert.doesNotMatch(formatCalls, /stylelint\|probe\.go/)
+  assert.match(formatCalls, /gofmt\|probe\.go/)
+  assert.doesNotMatch(formatCalls, /gofmt\|probe\.css/)
+  assert.doesNotMatch(formatCalls, /ghost\.mjs/)
+  fs.rmSync(formatLog)
+
+  // 覆盖度校验：白名单是无 task 路径上唯一的保证，而内核按「普通文件 + 执行位」挂载检查，所以
+  // 丢掉 +x 必须硬失败并点名，不能静默放行（删文件、变成目录同形，这里只测最隐蔽的一种）。
+  fs.chmodSync(formatCheck, 0o644)
+  assert.match(failMessage('guard'), /always-on checks did not run: format-clean/)
+  fs.chmodSync(formatCheck, 0o755)
+
+  // 以 - 开头的暂存路径必须 fail-closed：调用形状是「flag 在前、路径在后」，仓库根一个真名叫
+  // --fix 的文件会变成一个真的 fixer 开关，那正是本检查承诺不做的事（commit 期改写文件）。
+  // 这里验证的是「不把它交给任何工具」，所以断言点在这条消息上，不看 stub 日志。
+  fs.writeFileSync(path.join(fixture, '--fix'), 'export const fix = 1\n')
+  git('add', '--', '--fix')
+  assert.match(failMessage('guard'), /staged path '--fix' starts with '-' and would be parsed/)
+  assert.equal(fs.existsSync(formatLog), false, 'a -prefixed path must never reach a formatter')
+  git('rm', '--cached', '--quiet', '--', '--fix')
+  fs.rmSync(path.join(fixture, '--fix'))
+
+  // 被 git 引号化的路径同形：`core.quotePath=false` 只免掉非 ASCII 的转义，含 `"`、`\`、换行的
+  // 名字照样包成 "probe\".mjs"。那一串不是路径，交给工具只会检一个不存在的文件——漏检比拦住
+  // 提交更糟，所以一起 fail-closed。
+  fs.writeFileSync(path.join(fixture, 'probe".mjs'), 'export const q = 1\n')
+  git('add', '--', 'probe".mjs')
+  assert.match(failMessage('guard'), /git C-quoted a staged path/)
+  assert.equal(fs.existsSync(formatLog), false, 'a quoted path must never reach a formatter')
+  git('rm', '--cached', '--quiet', '--', 'probe".mjs')
+  fs.rmSync(path.join(fixture, 'probe".mjs'))
+
+  // changeset 政策先装回来，再测「无 task 不跑它」：上面卸载过一次的 doesNotMatch 是恒真的，
+  // 只有它装着、fixture 里又没有 .changeset 时，「无 task 只跑白名单」才是被证明的结论。
+  fs.copyFileSync(path.join(repoRoot, '.agents', 'checks', 'changeset-required'), changesetCheck)
+  fs.chmodSync(changesetCheck, 0o755)
+  assert.deepEqual(JSON.parse(spawn('guard').stdout).checks, ['format-clean'])
+
+  // 无 task 时格式问题照样拦住提交，但不得顺带要求 changeset：政策检查核对的是 task 的交代物。
+  fs.writeFileSync(failMarker, 'stub fails\n')
+  const blockedNoTask = failMessage('guard')
+  assert.match(blockedNoTask, /check format-clean failed; commit aborted/)
+  assert.match(blockedNoTask, /stub: vp found issues/)
+  // 提示必须说清 vp check 判的是格式/lint/类型三件事：只喊「跑 fixer」会把人推进
+  // 「fix → 重新提交 → 同一条消息」的循环，因为 fixer 修不掉类型错误。
+  assert.match(blockedNoTask, /never a type error/)
+  assert.doesNotMatch(blockedNoTask, /changeset (missing|malformed|has no summary)/)
+  assert.doesNotMatch(blockedNoTask, /task gate: not enforced/)
+
+  // T2 边界：这道 gate 与 changeset 政策同时在。
+  fs.mkdirSync(path.join(fixture, '.changeset'))
+  fs.writeFileSync(
+    path.join(fixture, '.changeset', 'format-t2.md'),
+    "---\n'@greypan/js-kit': patch\n---\n\nFormat gate coverage.\n"
+  )
+  run('new', '--task', 'format-t2', '--level', 't2')
+  run('start', '--task', 'format-t2')
+  git('add', '-A')
+  assert.match(failMessage('guard', '--task', 'format-t2'), /check format-clean failed; commit aborted/)
+  fs.rmSync(failMarker)
+  // 有 task 时跑全部检查：policy-check.sh 是上面 T2 政策用例留下的 stub（一直装在 fixture 里），
+  // not-executable.sh 因为缺 +x 不参与——那正是上面两条的既有结论。
+  assert.deepEqual(JSON.parse(run('guard', '--task', 'format-t2')).checks, [
+    'changeset-required',
+    'format-clean',
+    'policy-check.sh'
+  ])
+  // T2 的干净豁免只到 start：工作区还有别人的在制品时 freeze 必须拒绝——`git add -A` 会把它们
+  // 一起吸进快照（见 freeze）。反过来，起点干净的 T2 允许 freeze，否则「为留痕而 freeze」这条路
+  // 就被顺手焊死了，而 verify 只认 frozen 之后的相位。
+  const foreignWork = path.join(fixture, 'someone-else.txt')
+  fs.writeFileSync(foreignWork, 'not mine\n')
+  assert.match(
+    failMessage('freeze', '--task', 'format-t2'),
+    /level t2 and its worktree has uncommitted changes; freeze would stage them all/
+  )
+  fs.rmSync(foreignWork)
+  git('add', '-A')
+  git('commit', '-m', 't2 freeze coverage')
+  assert.equal(JSON.parse(run('freeze', '--task', 'format-t2')).phase, 'frozen')
+  run('drop', '--task', 'format-t2', '--reason', 'format gate covered at commit boundary', '--by', 'fixture-sweeper-1')
+
+  // freeze 边界：归一化之后还有一层只读核对，所以 fix:code 没跑成的仓库也拦得住。freeze 先
+  // `git add -A`，所以这里只需要往工作区丢一个标记文件，它就进入暂存清单。
+  fs.rmSync(changesetCheck)
+  fs.rmSync(path.join(fixture, '.changeset'), { recursive: true, force: true })
+  git('add', '-A')
+  git('commit', '-m', 'install format policy check')
+  run('new', '--task', 'format-t1', '--level', 't1')
+  run('start', '--task', 'format-t1')
+  fs.writeFileSync(failMarker, 'stub fails\n')
+  assert.match(failMessage('freeze', '--task', 'format-t1'), /check format-clean failed; freeze aborted/)
+  fs.rmSync(failMarker)
+  // gofmt 分支单独钉一条：`gofmt -l` 退出码为 0、靠输出判定，是最容易被写错的一支。
+  fs.writeFileSync(dirtyGoMarker, 'stub reports gofmt output\n')
+  fs.writeFileSync(path.join(fixture, 'probe-two.go'), 'package main\n')
+  const goFailure = failMessage('freeze', '--task', 'format-t1')
+  assert.match(goFailure, /are not clean .* \(gofmt -w <files>/)
+  assert.match(goFailure, /probe-two\.go/)
+  fs.rmSync(dirtyGoMarker)
+  run('drop', '--task', 'format-t1', '--reason', 'format gate covered at freeze boundary', '--by', 'fixture-sweeper-1')
+  // 收尾：卸载这道检查并删掉 stub 与日志，否则后续用例的 guard 会因为找不到工具而硬失败，
+  // 未跟踪的 stub 也会让 T1 用例的干净 worktree 前提不再成立。env 要一次清干净：留着
+  // FORMAT_STUB_FAIL 会让后面任何真工具调用被 stub 拦成失败。
+  // 陷阱：`.agents/checks/` 目录本身留着（fixture 里还有别的检查），所以覆盖度 gate 从这一刻起
+  // 对**无 task 的 guard** 是硬失败的。后来新增这类用例时会撞上「always-on checks did not run」，
+  // 那是预期行为，不是 bug——要跑得先把 format-clean 装回来。
+  fs.rmSync(formatCheck)
+  fs.rmSync(formatStub)
+  fs.rmSync(formatLog, { force: true })
+  for (const key of [
+    'AGENT_VP_CMD',
+    'AGENT_STYLELINT_CMD',
+    'AGENT_GOFMT_CMD',
+    'FORMAT_STUB_LOG',
+    'FORMAT_STUB_FAIL',
+    'FORMAT_STUB_DIRTY_GO'
+  ])
+    delete process.env[key]
+  git('add', '-A')
+  git('commit', '-m', 'uninstall format policy check')
 
   // issue：事后补挂接受全链接与 N/A，拒绝不安全形态。
   run('new', '--task', 'issue-fixture', '--level', 't2')

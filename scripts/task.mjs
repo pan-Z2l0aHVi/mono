@@ -248,11 +248,16 @@ function assertCurrentHash(state, live, label = 'task evidence') {
 
 // freeze 归一化与 commit 收敛到同一起点：全量 staging 后运行仓库的 fix:code
 //（CI=true 关闭交互），fix 产物重新 staging 后再取快照。pre-commit 只剩 guard、
-// 不再运行任何 fixer，因此不存在「commit 期改写文件导致冻结失效」的竞态。
+// 不运行任何 fixer，因此不存在「commit 期改写文件导致冻结失效」的竞态；commit 边界的
+// 清洁度保证（格式、lint 与类型）由 check-only 的 .agents/checks/format-clean 提供，它对三条提交路径都生效。
 // fix:code 归一化是强制的：声明了 fix:code 但依赖未安装时直接失败并指引安装，
 // 只有不含该脚本的仓库（测试 fixture、纯 git 仓库）才允许跳过。
-// 全量 staging 的范围边界不在这里，而在 start：open → active 要求 worktree 干净，
-// 所以 `git add -A` 扫进来的只可能是本 task 起点之后的改动。
+// 全量 staging 的范围边界不在这里，而在「谁要求干净起点」：T0/T1 的 open → active 要求 worktree
+// 干净，所以 `git add -A` 扫进来的只可能是本 task 起点之后的改动；T2 的 start 豁免干净，于是
+// 边界改由 freeze 自己守住（脏 worktree 上的 T2 不允许 freeze，见 freeze）。三档的起点都被核对过
+// （T0/T1 在 new/start，T2 在 freeze），豁免移动的是检查的位置，不是检查本身。但这条核对始终只
+// 发生在起点一次，不是全程保证：start 之后才出现的他人文件照样会进下一次 freeze 的快照（review
+// fail 回到 active 后不复查干净度，口径见 workflow.md），那种形状由 review 挡，不由这里。
 function normalizeWorktree(worktree) {
   gitAt(worktree, 'add', '-A')
   const manifestPath = path.join(worktree, 'package.json')
@@ -278,29 +283,58 @@ function normalizeWorktree(worktree) {
 // 仓库级政策检查：freeze 在取快照前、guard 在放行提交前，各执行一次 .agents/checks/
 // 下每个可执行文件，非零退出即中止并保留输出作为可观察原因。挂在 guard 上是必要的：
 // T2 通常不 freeze，只在 commit 边界出现，检查若只跟 freeze 走就对全部级别里的
-// 大多数 task 形同不存在。内核不内置任何业务检查；task 上下文通过环境变量注入，
-// 检查脚本据此核对 index 内容而不必重复探测。
+// 大多数 task 形同不存在。内核不内置任何政策逻辑：它不知道这些检查核对什么，task 上下文
+// 通过环境变量注入，用不用由检查自己决定——`changeset-required` 据 baseSha 核对 index 里的
+// staged blob，`format-clean` 则与 task 上下文无关，判的是工作区副本。
+//
+// state 为 null 表示「这个 worktree 没有 active task」，此时只运行 alwaysOnChecks 里列出的
+// 检查。默认相反是有意为之：政策检查核对的是 task 的交代物（changeset），一份没有 task 的提交
+// 无从交代起于哪个 task，硬要它补 changeset 只会变成填一个空壳。所以新增检查默认只对有 task 的
+// 路径生效，要覆盖无 task 提交必须显式登记在这里——忘了登记的后果是少一层保证，而不是拦住一批
+// 本来合法的提交。登记过的则必须真的跑到：白名单是这条路径上唯一的保证，静默跳过等于没有。
+// 核对的边界是「这个 worktree 挂载了 .agents/checks/」——整个目录不存在时（测试 fixture、未挂
+// 任何政策的仓库）没有可核对的对象，此时仍然放行；本地删掉整个目录（不提交）因此是这条保证已知
+// 的旁路，看得见的是 `git status` 里那一串删除，兜底的是 review 与 CI。
+// 这个 Set 是内核里唯一出现检查名的地方，也是它唯一与本仓绑定的旋钮：换仓复用内核时，登记的
+// 要么改成随仓声明，要么就把集合清空——挂着 `.agents/checks/` 而不登记任何检查，等于承诺了
+// 「无 task 也有的保证」却什么都没有。
+const alwaysOnChecks = new Set(['format-clean'])
+
 function runChecks(worktree, state, phase) {
   const directory = path.join(worktree, '.agents', 'checks')
   if (!fs.existsSync(directory)) return []
-  const environment = {
-    ...process.env,
-    AGENT_TASK_ID: state.taskId,
-    AGENT_TASK_LEVEL: state.level,
-    AGENT_TASK_BASE_SHA: state.baseSha
+  const environment = { ...process.env }
+  if (state) {
+    environment.AGENT_TASK_ID = state.taskId
+    environment.AGENT_TASK_LEVEL = state.level
+    environment.AGENT_TASK_BASE_SHA = state.baseSha
   }
   const ran = []
   for (const entry of fs.readdirSync(directory).sort()) {
+    if (!state && !alwaysOnChecks.has(entry)) continue
     const file = path.join(directory, entry)
     const stat = fs.statSync(file, { throwIfNoEntry: false })
     if (!stat?.isFile() || !(stat.mode & 0o111)) continue
     try {
       execFileSync(file, { cwd: worktree, stdio: 'pipe', env: environment })
     } catch (error) {
-      const detail = error?.stderr?.toString().trim() || error?.stdout?.toString().trim()
+      // 检查子进程的 stdout 与 stderr 都被 pipe 接走，不会自己流到终端，所以「保留输出」必须把
+      // 两段都留下：`vp check` 这类工具把结论写在 stdout、把一句 error 写在 stderr，只取 stderr
+      // 就等于把检查给出的理由整段丢掉。stdout 在前，让工具自己的说明挨着后面的「该怎么办」。
+      const detail = [error?.stdout?.toString().trim(), error?.stderr?.toString().trim()].filter(Boolean).join('\n')
       fail(`check ${entry} failed; ${phase} aborted${detail ? `:\n${detail}` : ''}`)
     }
     ran.push(entry)
+  }
+  // 无 task 路径上白名单必须被完整执行。上面的循环按「普通文件 + 有执行位」挂载，所以 format-clean
+  // 被删、变成目录或丢掉 +x 时会被无声跳过——那正是这条唯一无 task 保证最坏的失效方式：提交照样通过，
+  // 没人知道 gate 不在了。有 task 的路径不需要这种核对（它跑目录下所有检查，少一条会体现在 checks 里）。
+  if (!state) {
+    const missing = [...alwaysOnChecks].filter(name => !ran.includes(name))
+    if (missing.length)
+      fail(
+        `always-on checks did not run: ${missing.join(', ')} — each must be an executable file in .agents/checks/ (git update-index --chmod=+x .agents/checks/<name>)`
+      )
   }
   return ran
 }
@@ -320,9 +354,18 @@ function newTask(options) {
   if (!levels.has(level)) fail(`invalid task level: ${level}`)
   const { worktree, commonDir } = resolveWorktree(options.worktree)
   assertWorktreeAvailable(commonDir, worktree, taskId)
-  const dirty = uncommittedPaths(worktree)
-  if (dirty.count > 0)
-    fail(`worktree has existing changes; isolate them before creating a task: ${dirty.shown.join(', ')}`)
+  // 干净要求只约束 T0/T1 的起点：那两档必经 freeze，而 freeze 用 `git add -A` 扫整个 worktree，
+  // 「起点没有别人的在制品」是冻结 diff 只含本 task 改动的唯一边界。T2 的 fast path 不 freeze，
+  // 它的提交内容就等于当时的 index，本就没有隔离可保护，所以为它建 task 不该先看工作区脸色——
+  // 这一档存在的目的是给快速改动留一条带署名的路径，不是复制 T1 的仪式。豁免只到 start 为止：
+  // T2 若主动 freeze，干净检查由 freeze 自己补上，见函数 freeze。
+  if (level !== 't2') {
+    const dirty = uncommittedPaths(worktree)
+    if (dirty.count > 0)
+      fail(
+        `worktree has existing changes; a ${level.toUpperCase()} task must start clean because freeze stages the whole worktree: ${dirty.shown.join(', ')}`
+      )
+  }
   const branch = gitAt(worktree, 'branch', '--show-current')
   if (!branch) fail(`task worktree must be attached to a branch: ${worktree}`)
   const file = stateFile(commonDir, taskId)
@@ -394,10 +437,10 @@ function start(options) {
   assertPhase(state, ['open', 'active'])
   const live = liveState(state)
   assertTaskBranch(state, live, 'task')
-  // 只有 open → active 这一次才要求干净：freeze 用 `git add -A` 归一化整个 worktree，
-  // 「实施起点没有别人的在制品」是冻结 diff 只含本 task 改动的唯一边界。new 已查过一次，
-  // 但 assign/换 worktree/长时间搁置都可能在这之后带进无关改动。
-  if (state.phase === 'open' && !live.clean) {
+  // 只有 open → active 这一次、且只有 T0/T1 才要求干净：freeze 用 `git add -A` 归一化整个
+  // worktree，「实施起点没有别人的在制品」是冻结 diff 只含本 task 改动的唯一边界。new 已查过
+  // 一次，但 assign/换 worktree/长时间搁置都可能在这之后带进无关改动。T2 与 new 同理豁免。
+  if (state.phase === 'open' && state.level !== 't2' && !live.clean) {
     const dirty = uncommittedPaths(live.worktree)
     fail(
       `task ${taskId} cannot start with uncommitted changes in ${live.worktree}: ${dirty.shown.join(
@@ -420,6 +463,15 @@ function freeze(options) {
   assertPhase(state, ['active', 'frozen', 'reviewed', 'approved'])
   const live = liveState(state)
   assertTaskBranch(state, live, 'freeze')
+  // T2 的 fast path 不经过 freeze（guard 与 done 都接受 active），但允许为留痕而 freeze——
+  // verify 只认 frozen 之后的相位。这条路径上 worktree 必须干净：normalizeWorktree 用
+  // `git add -A` 扫整个 worktree，而 T2 的 new/start 刻意豁免了干净要求，脏起点在这里第一次
+  // 变成危险的——别人的在制品会被吸进快照，然后跟着这笔 commit 出去。干净边界对三档因此都成立，
+  // 只是 T0/T1 把它放在 start（freeze 是必经环节），T2 只能放在 freeze 自己（start 故意不管）。
+  if (state.level === 't2' && !live.clean)
+    fail(
+      `task ${taskId} is level t2 and its worktree has uncommitted changes; freeze would stage them all — commit or move them out first, or skip freeze entirely (t2 commits from active)`
+    )
   const previousPhase = state.phase
   const normalized = normalizeWorktree(live.worktree)
   const checks = runChecks(live.worktree, state, 'freeze')
@@ -601,10 +653,13 @@ function guard(options) {
 
   if (candidates.length === 0) {
     // 不静默放行：stdout 的 JSON 在成功的 pre-commit 里看不见，stderr 才进得到用户眼前。
+    // 无 task 只意味着 task gate 无从判断，不意味着仓库不变量也不判断，所以先跑 always-on 检查：
+    // 它失败时上面的提示根本不会出现，拦住提交的理由以检查自己的输出为准。
+    const ran = runChecks(resolved.worktree, null, 'commit')
     console.error(
       `task gate: not enforced — no active task in ${resolved.worktree}; implementation changes start with "pnpm task new --task <id> --level <t0|t1|t2>" (contract in docs/agents/workflow.md)`
     )
-    print({ ok: true, enforced: false, worktree: resolved.worktree })
+    print({ ok: true, enforced: false, checks: ran, worktree: resolved.worktree })
     return
   }
   if (candidates.length > 1)
