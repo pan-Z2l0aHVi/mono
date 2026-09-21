@@ -275,6 +275,7 @@ All form controls participate in native `FormData`, constraint validation, `form
 | ---------------------- | --------------------------------------------------------- |
 | **Form Controls**      | [`<web-ui-input>`](#web-ui-input)                         |
 |                        | [`<web-ui-textarea>`](#web-ui-textarea)                   |
+|                        | [`<web-ui-editable-text>`](#web-ui-editable-text)         |
 |                        | [`<web-ui-input-number>`](#web-ui-input-number)           |
 |                        | [`<web-ui-select>`](#web-ui-select)                       |
 |                        | [`<web-ui-autocomplete>`](#web-ui-autocomplete)           |
@@ -380,6 +381,32 @@ Multi-line text input with auto-resize.
 | ---------------------------- | -------------------------------- | ------------------ |
 | `--wui-textarea-width`       | `200px`                          | Textarea width     |
 | `--wui-textarea-clear-color` | `var(--wui-color-text-tertiary)` | Clear button color |
+
+#### `<web-ui-editable-text>`
+
+Inline plain-text editor: click the text to edit in place, blur to commit. The text layer and the editing layer share one box, so entering edit mode does not move a single pixel.
+
+| Attribute     | Type      | Default | Description                                                                 |
+| ------------- | --------- | ------- | --------------------------------------------------------------------------- |
+| `value`       | `string`  | `''`    | Current value; the declarative attribute is also the `form.reset()` default |
+| `placeholder` | `string`  | `''`    | Text shown while the value is empty                                         |
+| `name`        | `string`  | `''`    | Form field name                                                             |
+| `disabled`    | `boolean` | `false` | Disabled state; behavior only, no visual dimming                            |
+| `aria-label`  | `string`  | —       | Accessible label                                                            |
+
+**Events:** `input` (per keystroke), `change` (blur commit), `cancel` (Escape)
+
+Clicking places the caret at the clicked offset; keyboard focus places it at the end of the text. `Enter` inserts a newline and keeps editing. `Escape` restores the value from the moment editing started and dispatches `cancel`. Blur commits the draft, and an empty draft commits `''` with the text layer falling back to the placeholder.
+
+The host is an inline-level box: it sizes to its content unless a width is set, and grows with wrapped lines. Font, color, text alignment and white space are inherited from the surrounding context, so the component reads as ordinary text until it is edited.
+
+**CSS Custom Properties:**
+
+| Property                          | Default    | Description                              |
+| --------------------------------- | ---------- | ---------------------------------------- |
+| `--wui-editable-text-white-space` | `pre-wrap` | White-space handling of both text layers |
+
+The shared box comes with two constraints: keep `line-height` at `1` or above, because below that the native editing layer grows taller than its own box and shifts the text by a pixel; and with `nowrap` plus a fixed width, text wider than the box overflows while idle and scrolls inside the box while editing.
 
 #### `<web-ui-input-number>`
 

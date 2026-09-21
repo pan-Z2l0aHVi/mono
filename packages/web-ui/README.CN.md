@@ -245,6 +245,7 @@ dropdown、tooltip）不需要它。
 | --------------------- | --------------------------------------------------------- |
 | **表单控件**          | [`<web-ui-input>`](#web-ui-input)                         |
 |                       | [`<web-ui-textarea>`](#web-ui-textarea)                   |
+|                       | [`<web-ui-editable-text>`](#web-ui-editable-text)         |
 |                       | [`<web-ui-input-number>`](#web-ui-input-number)           |
 |                       | [`<web-ui-select>`](#web-ui-select)                       |
 |                       | [`<web-ui-autocomplete>`](#web-ui-autocomplete)           |
@@ -350,6 +351,32 @@ dropdown、tooltip）不需要它。
 | ---------------------------- | -------------------------------- | ------------ |
 | `--wui-textarea-width`       | `200px`                          | 文本域宽度   |
 | `--wui-textarea-clear-color` | `var(--wui-color-text-tertiary)` | 清除按钮颜色 |
+
+#### `<web-ui-editable-text>`
+
+行内纯文本编辑器：点击文字就地编辑，失焦提交。文本层与编辑层共用一个盒，进入编辑态不会移动任何一个像素。
+
+| 属性          | 类型      | 默认值  | 说明                                                    |
+| ------------- | --------- | ------- | ------------------------------------------------------- |
+| `value`       | `string`  | `''`    | 当前值；声明式 attribute 同时作为 `form.reset()` 的初值 |
+| `placeholder` | `string`  | `''`    | 值为空时显示的占位文本                                  |
+| `name`        | `string`  | `''`    | 表单字段名                                              |
+| `disabled`    | `boolean` | `false` | 禁用状态；只影响行为，不做视觉置灰                      |
+| `aria-label`  | `string`  | —       | 无障碍标签                                              |
+
+**事件：** `input`（每次输入）、`change`（失焦提交）、`cancel`（Escape 取消）
+
+点击时光标落在点击处；键盘聚焦时落在文本末尾。`Enter` 插入换行并继续编辑。`Escape` 恢复到进入编辑时的值并派发 `cancel`。失焦提交草稿，空草稿提交 `''`，文本层回落 placeholder。
+
+宿主是行内级盒子：未设宽度时随内容伸缩，折行后高度按行数增长。字体、颜色、文本对齐与空白处理全部继承外部上下文，因此编辑前它就是一段普通文字。
+
+**CSS 自定义属性：**
+
+| 属性                              | 默认值     | 说明               |
+| --------------------------------- | ---------- | ------------------ |
+| `--wui-editable-text-white-space` | `pre-wrap` | 两层的空白处理方式 |
+
+共用盒子带来两个约束：`line-height` 需不小于 `1`，更紧凑时原生编辑层内容会高出自身盒子，文字被顶偏 1px；`nowrap` 加固定宽度时，超出盒宽的文案在文字态溢出显示、在编辑态于盒内滚动。
 
 #### `<web-ui-input-number>`
 
