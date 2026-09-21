@@ -43,7 +43,8 @@ export class WebUiDialog extends LitElement {
       }
       this._userOpenChange.mark()
       this.close()
-    }
+    },
+    isConnected: () => this.isConnected
   })
   /** 当前开启会话的句柄；未开启时为 null。查询与惰性同步走它。 */
   private _handle: OpenOverlayHandle | null = null

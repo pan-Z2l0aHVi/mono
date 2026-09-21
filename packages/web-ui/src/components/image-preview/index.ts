@@ -157,7 +157,8 @@ class WebUiImagePreview extends LitElement {
    * 只管关闭按钮一样，不表达「能否关闭」）。
    */
   private readonly _overlay = defineOpenOverlay().make({
-    requestClose: () => this.close()
+    requestClose: () => this.close(),
+    isConnected: () => this.isConnected
   })
   /** 当前开启会话的句柄；未开启时为 null。 */
   private _handle: OpenOverlayHandle | null = null

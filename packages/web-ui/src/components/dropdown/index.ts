@@ -91,7 +91,8 @@ export class WebUiDropdown extends LitElement {
   private readonly _overlays = new Map<number, MenuOverlay>()
   /** 实例作用域的帧事务入口（合并了原 lifecycle）。 */
   private readonly _overlay = defineOpenOverlay().make({
-    requestClose: () => this._keyboardDelegate.closeDeepestOrAll()
+    requestClose: () => this._keyboardDelegate.closeDeepestOrAll(),
+    isConnected: () => this.isConnected
   })
   private readonly _scrollLock = defineScrollLockLease().make()
   /**

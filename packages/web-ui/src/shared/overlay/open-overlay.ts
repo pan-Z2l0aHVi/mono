@@ -3,7 +3,7 @@
  *
  * 合并原先三个各自问一遍「你现在开着吗」的模块：composition（逻辑父子树）、
  * escape-dismiss（最内层仲裁）、lifecycle（帧事务失效）。合并的判据不是三者文件相邻，
- * 而是它们共享同一条不变量：**已登记 ⟺ 已开启 ⟺ 参与 Escape 仲裁**。
+ * 而是它们共享同一条不变量：**已登记 ⟺ 在场 ⟺ 有仲裁身份**。
  *
  * 拆成三个模块时这条不变量没有主人，8 个浮层组件各自把它拼成三步协议
  * （`registerPanelFromAncestry` + `setPanel` / `unregisterPanel` + `setPanel(null)`）。
@@ -14,8 +14,13 @@
  *
  * - 身份是**句柄**而非 panel 元素：`release()` 不需要调用方回忆当初传了哪个 panel。
  * - 开启状态是**声明**而非询问：仲裁时不再回调宿主问 `isOpen()`，宿主只提供
- *   `requestClose()`；模块持有的真相即真相。
+ *   `requestClose()` 与一个仅供惰性回收读取的 `isConnected()`；模块持有的真相即真相。
  * - `claim` 即「我开着」：一次 claim 对应一次开启，登记与仲裁是同一个动作。
+ * - 在场分两态：开启中（Escape 走关闭入口）与退场中（面板仍可见，暂缓仲裁、只作兜底
+ *   候选）。后者由 `deferArbitration()` 进入、随 `release()`、重新 claim 或显式
+ *   `deferArbitration(false)` 离开：于是「退场被打断」与「宿主仍认为开着」不再把看得见
+ *   的面板留在未登记状态，而退场已播完、宿主却仍认为开着的那一格，也不会让一个看不
+ *   见的面板无限吞掉 Escape。
  * - 查询走句柄（`contains` / `containsEvent` / `hasFocusWithin`），调用方不再需要
  *   持有 panel 引用，也不知道存在全局注册表。
  * - 实例作用域与会话作用域分开：帧事务的 lifetime 比一次开合长（tooltip 跨断连
@@ -77,6 +82,24 @@ export interface OpenOverlayHandle {
    */
   setInert(inert: boolean): void
   /**
+   * 进入退场暂缓态：面板仍在场（可见），本层继续留在登记表里并吞掉 Escape，但不走
+   * 关闭入口。`anchored-panel.close()` 在退场等待前调用它。
+   *
+   * 与 `setInert` 的分工：`inert` 是**调用方**对「暂时不可关闭」的声明，会随渲染被
+   * 重推；本态由**生命周期**进入，调用方没有任何途径清掉它，只有 `release()` 与
+   * 渲染重推它，只有 `release()`、「同一 panel 重新 claim」与下面那个 `false` 能让它
+   * 消失。因此重新 claim 出来的新会话恒不暂缓，退场被打断后由新会话接管仲裁。
+   *
+   * 传 `false` 退出暂态。唯一的使用者是 `anchored-panel.close()`：退场已播完（面板
+   * 已隐藏）而宿主仍认为开着时，把层交还仲裁——此刻面板并不在「可见但暂缓」的前提
+   * 里，继续暂缓会让一个看不见的面板无限吞掉 Escape，用户再也没有按键路径把这个
+   * 不一致的状态收敛掉。
+   *
+   * 暂缓层只是兜底候选：`resolve()` 里仍在开启的层永远优先。否则「内层关掉后立刻
+   * 再按一次 Escape」会被退场动画吞掉，外层永远等不到自己那一次（issue #120）。
+   */
+  deferArbitration(deferred?: boolean): void
+  /**
    * 把子层 panel 纳入本句柄的子树（多级子菜单），默认不成为独立候选。
    *
    * 与 `claim` 的区别只在父级如何确定：`claim` 走祖先链，`adopt` 由调用方指名。
@@ -113,6 +136,11 @@ export interface OpenOverlay {
 export interface OpenOverlayHost {
   /** 走宿主既有的用户关闭入口（内部负责 controlled 语义与 `open-change` 派发）。 */
   requestClose(): void
+  /**
+   * 宿主元素是否仍在文档中。只被惰性回收读取（见 `layers` 注册表处的注释），
+   * 仲裁路径不回调它——读 DOM 连接状态不是回调宿主问「我开着吗」。
+   */
+  isConnected(): boolean
 }
 
 interface Layer {
@@ -121,6 +149,8 @@ interface Layer {
   arbitration: OverlayArbitration
   /** 动态惰性开关，与会话同 lifetime。 */
   inert: boolean
+  /** 退场暂缓开关：面板仍在场，但只作兜底候选（见 `deferArbitration`）。 */
+  deferred: boolean
   /** 登记序号：互不包含的并列浮层里，后开的更靠上。 */
   seq: number
   released: boolean
@@ -128,9 +158,18 @@ interface Layer {
 
 /*
  * 模块级注册表：单例 document 监听器需要一个全局视野，这正是「谁是最内层」不能被
- * 拆到各组件里的原因。显式 release 是唯一的删除路径；`panel.isConnected` 作为兜底
- * 过滤，避免「宿主被移除但忘了 release」留下仍可仲裁的幽灵层（读 panel 的 DOM 属性
- * 不是回调宿主，不违反声明式的取舍）。
+ * 拆到各组件里的原因。
+ *
+ * `Layer` 强引用 panel 与 host，所以一条没被删掉的记录会让整个组件（含子树）无法回收。
+ * 删除路径有两条：显式 `release()`，以及 `reclaimDisconnectedLayers()` 的惰性兜底
+ * ——「宿主还在但组件被丢弃」这类漏 release 的路径，光靠 `isCandidate()` 筛掉不可达
+ * 候选只会留下永久泄漏，还会让 `shouldListen` 恒为 true 把 document 监听留住。
+ * 兜底判据取 panel 与 host **同时**失联：面板可能被 portal 在容器间搬运，也可能只是
+ * 短暂移除再放回（层对象比 DOM 连接活得久），只有两者都不在文档里才判定为死层。
+ * 回收**不扫刚 claim 的新层**：调用方完全可能先 claim 再把 panel 与宿主挂进文档，
+ * 那一刻两者都还没连上。所以 claim 路径的回收跑在建层之前（`createLayer` 开头），
+ * 新层入表之后只做监听对账。
+ * 读 DOM 连接状态不是回调宿主问「我开着吗」，不违反声明式的取舍。
  */
 const layers = new Set<Layer>()
 const layerByPanel = new WeakMap<HTMLElement, Layer>()
@@ -141,10 +180,27 @@ let listening = false
 let sequence = 0
 
 /*
+ * dev 期测试钩子：登记表尺寸。
+ *
+ * 「漏 release」是结构性风险，而 `layers` 的尺寸无法从公开 interface 观察——调用方
+ * 只持有句柄，看不到全局注册表，测试于是只能靠 GC 语义推断。有了它，泄漏在测试里
+ * 是一个可直接断言的数字。`import.meta.env.DEV` 是编译期常量，生产构建里整段消失。
+ */
+declare global {
+  // eslint-disable-next-line no-var
+  var __openOverlayLayerCount: () => number
+}
+
+if (import.meta.env.DEV) {
+  globalThis.__openOverlayLayerCount = () => layers.size
+}
+
+/*
  * 已失效句柄的空操作替身，用于 `adopt` 在 released 句柄上的返回值。其余句柄方法在
  * released 时都静默降级，返回值也必须一起降级，否则调用方会以为自己拿到了一棵可用子树。
  */
 const inactiveHandle: OpenOverlayHandle = {
+  deferArbitration() {},
   setInert() {},
   adopt: () => inactiveHandle,
   contains: () => false,
@@ -229,7 +285,8 @@ function releaseLayer(layer: Layer): void {
   layerByPanel.delete(layer.panel)
   childPanels.delete(layer.panel)
   detachFromParent(layer.panel)
-  syncListener()
+  // 不在这里 syncListener：本函数被子层递归与兜底回收复用，监听器对账由调用方在
+  // 整棵子树摘完后做一次即可。
 }
 
 function createLayer(input: {
@@ -238,6 +295,13 @@ function createLayer(input: {
   arbitration: OverlayArbitration
   parent?: HTMLElement
 }): OpenOverlayHandle {
+  /*
+   * 先摘死层，再建新层。claim/adopt 是完全合法的「先开启后挂载」时序——调用方那一刻
+   * 可能还没把 panel 与宿主挂进文档，两者都失联。回收跑在新层入表**之前**，新层就不
+   * 会被自己的 claim 判成死层；而漏 release 留下的死层依旧在这里被扫掉，与旧实现一致。
+   */
+  reclaimDisconnectedLayers()
+
   const previous = layerByPanel.get(input.panel)
   // 同一 panel 重新 claim = 新的一次开启：旧会话（含其子层）整体作废，seq 重新分配。
   if (previous) releaseLayer(previous)
@@ -247,6 +311,7 @@ function createLayer(input: {
     host: input.host,
     arbitration: input.arbitration,
     inert: false,
+    deferred: false,
     seq: ++sequence,
     released: false
   }
@@ -255,6 +320,11 @@ function createLayer(input: {
   attachToParent(input.panel, input.parent)
 
   const handle: OpenOverlayHandle = {
+    deferArbitration(deferred = true) {
+      if (layer.released) return
+      layer.deferred = deferred
+    },
+
     setInert(inert) {
       if (layer.released) return
       layer.inert = inert
@@ -286,11 +356,13 @@ function createLayer(input: {
 
     release() {
       releaseLayer(layer)
+      syncListener()
     }
   }
 
   layerByHandle.set(handle, layer)
-  syncListener()
+  // 不带回收：新层面板与宿主可能还没挂载，回收已在函数开头跑过（见 `reclaim` 参数）。
+  syncListener(false)
   return handle
 }
 
@@ -298,17 +370,10 @@ function isCandidate(layer: Layer): boolean {
   return !layer.released && layer.arbitration !== 'none' && layer.panel.isConnected
 }
 
-/**
- * 在候选里取最内层：子树包含关系下的极大元；互不包含时取后开的。
- *
- * 刻意**不按事件路径筛选**：抽屉打开、内部列表也打开、而焦点停在抽屉上时，事件路径
- * 只命中抽屉，按路径判定会关掉外层、留下内层 —— 正是本模块要修的缺陷。正确语义是
- * 「最内层优先」，与焦点无关。
- */
-function resolve(): Layer | null {
+/** 在候选里取最内层：子树包含关系下的极大元；互不包含时取后开的。 */
+function pickInnermost(candidates: Layer[]): Layer | null {
   let best: Layer | null = null
-  for (const layer of layers) {
-    if (!isCandidate(layer)) continue
+  for (const layer of candidates) {
     if (!best) {
       best = layer
       continue
@@ -323,6 +388,33 @@ function resolve(): Layer | null {
   return best
 }
 
+function resolve(): Layer | null {
+  // 兜底回收：每次仲裁先摘掉死层，漏 release 的组件不会把注册表和监听一起拖住。
+  syncListener()
+
+  const live: Layer[] = []
+  const deferred: Layer[] = []
+  for (const layer of layers) {
+    if (!isCandidate(layer)) continue
+    if (layer.deferred) deferred.push(layer)
+    else live.push(layer)
+  }
+
+  /*
+   * 暂缓层只是兜底候选：仍在开启的层永远优先。
+   *
+   * 反过来（暂缓层也按最内层取胜）会让「内层关掉后立刻再按一次 Escape」被退场动画吞掉
+   * ——它已不再开启却仍占着名额，外层永远等不到自己那一次，正是 issue #120 的契约
+   * （escape-ownership.browser.spec.ts 压住它）。第三态要补的缺口是另一件事：退场被
+   * 打断、新会话 claim 之前，面板还在场上却不再登记，此刻按 Escape 会关到外层。
+   *
+   * 与 `pickInnermost` 同样刻意**不按事件路径筛选**：抽屉打开、内部列表也打开、而焦点
+   * 停在抽屉上时，事件路径只命中抽屉，按路径判定会关掉外层、留下内层。正确语义是
+   * 「最内层优先」，与焦点无关。
+   */
+  return pickInnermost(live) ?? pickInnermost(deferred)
+}
+
 function handleKeydown(event: KeyboardEvent): void {
   if (event.key !== 'Escape') return
   // 已有更早的捕获监听处理过本次 Escape：不重复介入。
@@ -333,8 +425,8 @@ function handleKeydown(event: KeyboardEvent): void {
 
   /*
    * preventDefault 压掉原生 dialog 的关闭请求；stopPropagation 让组件自身的 handler
-   * 不再执行。惰性层同样被吞掉按键，只是不走关闭入口 —— 否则事件会落到下层浮层，
-   * 关闭顺序与用户预期相反。
+   * 不再执行。惰性层与暂缓层同样被吞掉按键，只是不走关闭入口 —— 否则事件会落到下层
+   * 浮层，关闭顺序与用户预期相反。
    *
    * 已知边界：stopPropagation 不阻止**同一节点**（document）上后注册的其他捕获监听。
    * 刻意不用 stopImmediatePropagation —— 那会连带掐掉应用自己在 document 上的捕获
@@ -342,13 +434,43 @@ function handleKeydown(event: KeyboardEvent): void {
    */
   event.preventDefault()
   event.stopPropagation()
-  if (layer.inert) return
+  // 惰性与暂缓都吞掉按键，只是不走关闭入口。
+  if (layer.inert || layer.deferred) return
   layer.host.requestClose()
 }
 
-function syncListener(): void {
+/**
+ * panel 与 host 同时失联的层是死层：显式 release 之外的兜底删除路径。
+ *
+ * 惰性体现在只在遍历登记表的入口跑（建层之前、仲裁、release），不挂 DOM 变动回调 ——
+ * 面板短暂移除再放回必须不丢登记。建层**之后**不跑：新层可能还没挂载，扫它就会误杀
+ * （见 `createLayer` 开头与 `layers` 注册表处的注释）。
+ */
+function reclaimDisconnectedLayers(): void {
+  for (const layer of Array.from(layers)) {
+    if (layer.released || layer.panel.isConnected || layer.host.isConnected()) continue
+    releaseLayer(layer)
+  }
+}
+
+/**
+ * 监听器对账：惰性回收死层，再按登记表重算 document 监听。
+ *
+ * `reclaim` 关掉回收，只给 `createLayer` 建层之后那一次调用用：新层刚入注册表，调用方
+ * 可能还没把 panel 与宿主挂进文档，那一刻扫它等于把新层判成死层。死层不会因此漏掉——
+ * 回收在建层之前已经单独跑过一轮（见 `createLayer` 开头）。
+ */
+function syncListener(reclaim = true): void {
+  if (reclaim) reclaimDisconnectedLayers()
+
   let shouldListen = false
   for (const layer of layers) {
+    /*
+     * 未 release 的非 `none` 层就是监听理由，**不附加连接判据**：刚 claim 而尚未挂载的
+     * 层要靠这条把监听开着——面板挂上之后没有任何入口（不挂 DOM 变动回调）把它加回来，
+     * 监听一撤这一层就再也听不见 Escape。死层的截杀交给上面的回收：它在每个带回收的
+     * 入口先跑一步，轮到这里时同时失联的层已经不在表里，这条判据因此不会把死层留下来。
+     */
     if (!layer.released && layer.arbitration !== 'none') {
       shouldListen = true
       break
