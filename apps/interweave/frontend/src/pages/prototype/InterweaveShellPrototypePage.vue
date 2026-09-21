@@ -764,9 +764,10 @@ function openEditTagsDialog(target: EditTagsTarget) {
   editTagsDraft.value = ''
   editTagsDialogOpen.value = true
   void nextTick(() => {
-    const input = editTagsAutocompleteRef.value?.shadowRoot?.querySelector<HTMLInputElement>('.autocomplete-input')
-    input?.focus()
-    input?.click()
+    // 走组件公共 focus()：它委托到当前生效触发器（默认 web-ui-input 已重定向到内部
+    // 原生控件）。不能改为查 shadowRoot 里的 .autocomplete-input——T0 重构后那是
+    // web-ui-input host 而非 input，host 自身不可聚焦，.focus() 是空操作（#144）。
+    editTagsAutocompleteRef.value?.focus()
   })
 }
 
