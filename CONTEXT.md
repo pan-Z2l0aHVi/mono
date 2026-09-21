@@ -76,8 +76,8 @@ workspace 清单、依赖草图与模块关系图见 [`ARCHITECTURE.md`](ARCHITE
 
 | ADR                                                                             | 决策                                                  | 何时读取                                                                  |
 | ------------------------------------------------------------------------------- | ----------------------------------------------------- | ------------------------------------------------------------------------- |
-| [0001](docs/adr/0001-ci-pipeline.md)                                            | CI Pipeline                                           | 修改验证、Changesets 或发布门控                                           |
-| [0002](docs/adr/0002-build-toolchain.md)                                        | Build Toolchain                                       | 修改 Vite Plus、构建或测试工具链                                          |
+| [0001](docs/adr/0001-ci-pipeline.md)                                            | CI Pipeline                                           | 修改验证、Changesets 或发布门控（`vp staged` 已被 ADR-0014 退役，需连读） |
+| [0002](docs/adr/0002-build-toolchain.md)                                        | Build Toolchain                                       | 修改 Vite Plus、构建或测试工具链（暂存修复已被 ADR-0014 退役，需连读）    |
 | [0003](docs/adr/0003-release-planes.md)                                         | Release Planes                                        | 修改 npm/Wails 发布流程                                                   |
 | [0004](docs/adr/0004-progressive-agent-context-architecture.md)                 | Agent Context Architecture                            | 修改 agent context、rules、skills 或 instruction system                   |
 | [0005](docs/adr/0005-web-ui-component-architecture.md)                          | Web UI Component Architecture                         | 修改 web-ui 组件技术选型、公共契约、事件模型、框架类型适配或 icon 系统    |

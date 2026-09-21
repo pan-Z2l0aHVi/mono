@@ -104,5 +104,3 @@ peerDependencyRules:
 allowBuilds:
   core-js: false
   msw: false
-minimumReleaseAgeExclude:
-  - '@shadcn/lint@0.1.1'

@@ -207,7 +207,10 @@ const navItems: NavItem[] = [
             </RouterLink>
           </nav>
         </div>
-        <RouterView />
+        <div class="p-3">
+          <!-- 正文 gutter 归 shell 所有：web-ui-layout 的 main 不带 padding，逐页加会漏页。 -->
+          <RouterView />
+        </div>
         <div class="h-100 w-full"></div>
       </web-ui-layout>
       <web-ui-back-top></web-ui-back-top>

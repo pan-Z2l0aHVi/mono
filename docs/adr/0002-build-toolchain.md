@@ -2,6 +2,7 @@
 
 - **Date**: 2026-07-21
 - **Status**: 已接受
+- **Amended by**: [ADR-0014](0014-task-system-v2.md)（pre-commit 不再自动修复暂存文件）
 
 ## 背景
 
@@ -15,7 +16,7 @@
 - **子路径导出软件包**（js-kit、browser-kit、web-ui）：`vp build`（Vite lib 模式 + preserveModules + vite-plugin-dts）→ `.js` + `.d.ts`
 - **React 应用**：`vp build`
 - **Vue 应用**：`vue-tsc --build && vp build`
-- **工作区验证**：`pnpm run check:code` 运行 `vp check`（格式化/lint/类型检查）与 `check:go`（自动发现 Go 模块并运行 `go vet`）；提交 hook 自动修复暂存文件
+- **工作区验证**：`pnpm run check:code` 运行 `vp check`（格式化/lint/类型检查）与 `check:go`（自动发现 Go 模块并运行 `go vet`）；提交 hook 自动修复暂存文件（2026-09-20 修订：pre-commit 已改为只跑 `pnpm task guard`，格式修复由 `fix:code` 与 task `freeze` 承担，见 [ADR-0014](0014-task-system-v2.md)。）
 
 ## 后果
 

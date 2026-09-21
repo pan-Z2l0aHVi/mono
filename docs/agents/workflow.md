@@ -27,13 +27,13 @@
 
 级别代号 T0/T1/T2（T0 最严格），只表达 workflow 严格程度。判据全部可从变更路径、manifest 和 `pnpm find:usages` 输出查证，不依赖主观的「大改/小改」判断；判据本身描述的是变更的影响半径，不是任务的价值排序。
 
-| 级别 | 判据（命中任一即属该级）                                                                                                                                                                                         | worktree                 | review                                       | approval | done 前 ≥1 条 pass 验证 | commit gate（guard） |
-| ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------ | -------------------------------------------- | -------- | ----------------------- | -------------------- |
-| T0   | 跨 workspace 的公共 API/exports/事件/类型契约；依赖、catalog、lockfile、构建配置或 CI；聚合发布或多 worktree 并行                                                                                                | 专属 task worktree       | 强制，独立 reviewer 会话（reviewer ≠ owner） | 必须     | 是                      | approved + hash 一致 |
-| T1   | 跨多个 workspace（`apps/*` / `packages/*`）但不改 T0 所列契约；公共导出变更但消费者仍在同一 workspace；改动 instruction system、`.agents/` 或根 `scripts/*.mjs` 的行为                                           | 专属 task worktree       | 强制，允许 Manager 派 fresh subagent         | 必须     | 是                      | approved + hash 一致 |
-| T2   | 改动全部落在一个 workspace 内，或只落在 `docs/` 等仓库根文档目录；且不改依赖字段与 lockfile、不改 CI 与 workspace 配置、不改被其它 workspace 消费的导出符号、不改 instruction system 与根 `scripts/*.mjs` 的行为 | 允许当前 worktree 直接改 | 免审（可自派 fresh subagent）                | 不要求   | 推荐不作强制            | active 即可提交      |
+| 级别 | 判据（命中任一即属该级）                                                                                                                                                                                         | worktree                             | review                                       | approval | done 前 ≥1 条 pass 验证 | commit gate（guard）               |
+| ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ | -------------------------------------------- | -------- | ----------------------- | ---------------------------------- |
+| T0   | 跨 workspace 的公共 API/exports/事件/类型契约；依赖、catalog、lockfile、构建配置或 CI；聚合发布或多 worktree 并行                                                                                                | 专属 task worktree                   | 强制，独立 reviewer 会话（reviewer ≠ owner） | 必须     | 是                      | approved + hash 一致 + checks 通过 |
+| T1   | 跨多个 workspace（`apps/*` / `packages/*`）但不改 T0 所列契约；公共导出变更但消费者仍在同一 workspace；改动 instruction system、`.agents/` 或根 `scripts/*.mjs` 的行为                                           | 专属 task worktree                   | 强制，允许 Manager 派 fresh subagent         | 必须     | 是                      | approved + hash 一致 + checks 通过 |
+| T2   | 改动全部落在一个 workspace 内，或只落在 `docs/` 等仓库根文档目录；且不改依赖字段与 lockfile、不改 CI 与 workspace 配置、不改被其它 workspace 消费的导出符号、不改 instruction system 与根 `scripts/*.mjs` 的行为 | 允许当前 worktree 直接改，不要求干净 | 免审（可自派 fresh subagent）                | 不要求   | 推荐不作强制            | active + checks 通过               |
 
-多级同时命中取最高级（T0 > T1 > T2）。级别判定可机器查证：`pnpm find:usages -- <paths...>` 只输出一个受影响 workspace 时，T2 的单 workspace 条件成立。本表是每级严格程度的唯一权威，「状态机」节不复制。
+多级同时命中取最高级（T0 > T1 > T2）。级别判定可机器查证：`pnpm find:usages -- <paths...>` 只输出一个受影响 workspace 时，T2 的单 workspace 条件成立。本表是每级严格程度的唯一权威，「状态机」节不复制。表里的 `checks` 指 `.agents/checks/` 下的仓库政策检查，三个级别在提交前一律要过，与是否 freeze 无关；本仓当前有两条——`changeset-required`（只对有 task 的提交）与 `format-clean`（对每一条提交，含没有 task 的），细则以这两个脚本自身的注释为准。
 
 release playbook 与 hotfix playbook 是普通 task 在特定场景下的操作程序（见「Playbook」节），它们不是 task 体系的概念。
 
@@ -57,28 +57,30 @@ release playbook 与 hotfix playbook 是普通 task 在特定场景下的操作�
 
 ```text
 open -> active -> frozen -> reviewed -> approved -> done
-                                                    （任何未完结状态可 -> dropped，需 --reason）
+                                                    （任何未完结状态可 -> dropped，需 --reason 与 --by）
 ```
 
 实际命令与状态的关系：
 
-| 阶段       | 必要条件                                                     | 命令或交接          |
-| ---------- | ------------------------------------------------------------ | ------------------- |
-| `open`     | 有 task id、level、base SHA、branch、worktree                | `pnpm task new`     |
-| `active`   | 已完成 preflight，允许实施                                   | `pnpm task start`   |
-| `frozen`   | 变更路径和内容已形成稳定快照                                 | `pnpm task freeze`  |
-| `reviewed` | reviewer 对冻结 hash 给出 `pass`；`fail` 使 task 回到 active | `pnpm task review`  |
-| `approved` | 对同一个 hash 批准并记录 approver                            | `pnpm task approve` |
-| `done`     | 交付结论已记录，验证 gate 通过                               | `pnpm task done`    |
-| `dropped`  | 任务终止或残留清理，强制 `--reason`                          | `pnpm task drop`    |
+| 阶段       | 必要条件                                                                    | 命令或交接          |
+| ---------- | --------------------------------------------------------------------------- | ------------------- |
+| `open`     | 有 task id、level、base SHA、branch、worktree                               | `pnpm task new`     |
+| `active`   | 由 `open` 进入时 preflight 已完成，且（T0/T1）worktree 干净（无未提交改动） | `pnpm task start`   |
+| `frozen`   | 变更路径和内容已形成稳定快照                                                | `pnpm task freeze`  |
+| `reviewed` | reviewer 对冻结 hash 给出 `pass`；`fail` 使 task 回到 active                | `pnpm task review`  |
+| `approved` | 对同一个 hash 批准并记录 approver                                           | `pnpm task approve` |
+| `done`     | 交付结论已记录，验证 gate 通过                                              | `pnpm task done`    |
+| `dropped`  | 任务终止或残留清理，强制 `--reason` 与 `--by`                               | `pnpm task drop`    |
 
 以下 gate 是硬条件：
 
 - 未 `new` 不得实施；未 freeze 不得 review；review 和 approval 必须绑定同一个 `diffHash`。
+- `new` 与 `start`（仅 `open → active` 这一次）对 T0/T1 要求 worktree 干净，T2 豁免：freeze 用 `git add -A` 归一化整个 worktree，实施起点没有别人的在制品，冻结 diff 才只含本 task 的改动。豁免只到 start 为止——T2 若为留痕而主动 freeze，freeze 自己要求干净起点（`git add -A` 的失效面对哪一档都一样真，豁免只是把检查从 start 移到 freeze）。review `fail` 回到 active 后不复查干净度。
 - 冻结 `diffHash` 的 canonical 口径是 `scripts/task.mjs` 的快照哈希（sha256 依序吸收 baseSha 与每个快照文件的路径、mode、内容，覆盖 tracked+untracked），不是 git diff 的摘要；reviewer 核验冻结一致性以 `pnpm task status --task <id>` 的 `live` 比对（hash 一致 + 非 stale）为准，不要用 `git diff | shasum` 自制配方复算。
 - freeze、review 或 approval 后任何文件变化都会使证据 stale；必须重新 freeze（重算 hash 并重置 review/approval），再重复 review、approve。
-- `pnpm task verify` 只接受非 stale 的结果，pass 验证还要求工作区干净（验证必须覆盖已提交内容）；`done`（T0/T1）要求最新一条验证为 pass 且快照与验证时一致。
-- T2 的快速通道：`new → start → 修改 → done`，guard 只要求提交发生在 active task 内。
+- owner、reviewer、approver、drop 署名人共用同一套 id 形状（显式 `--owner` 也要过这道校验，只有登录名兜底不受限），且一起构成可比对的留痕；「≠」到底比谁，以「review 拓扑」节为权威，本节不重复。
+- `pnpm task verify` 必须显式给出 `--result pass|fail`：它只记录证据、不执行任何命令，省略结果不等于通过。verify 只接受非 stale 的结果，pass 验证还要求工作区干净（验证必须覆盖已提交内容）；`done`（T0/T1）要求最新一条验证为 pass 且快照与验证时一致。
+- T2 的快速通道：`new → start → 修改 → done`，guard 不要求快照证据，也不要求 worktree 干净，但仍会跑 `.agents/checks/` 政策检查。它换来的是「一条带署名的快速改动路径」，代价是这一档的提交内容就等于当时的 index——别人的在制品一旦被 `git add` 进来就会一起提交，T2 不提供 diff 边界。要为验证留痕可以 freeze，但那一笔的前提是 worktree 干净（干净要求的由来见上面 `new`/`start` 那条；`live.clean` 把未跟踪文件也算在内，所以实际上必须先把改动 commit 掉再 freeze）。需要清晰边界（要被 review、要能整笔回滚）的改动升 T1 并用专属 worktree。
 
 常用命令：
 
@@ -86,18 +88,20 @@ open -> active -> frozen -> reviewed -> approved -> done
 pnpm task status --task <task-id>
 pnpm task freeze --task <task-id>
 pnpm task review --task <task-id> --result pass --reviewer <reviewer-id>
-pnpm task approve --task <task-id> --approver <manager-or-user-id>
-pnpm task verify --task <task-id> --name "pnpm test"
+pnpm task approve --task <task-id> --approver <independent-approver-id>
+pnpm task verify --task <task-id> --name "pnpm test" --result pass
 pnpm task issue --task <task-id> --ref <issue-url|N/A>
 pnpm task done --task <task-id>
-pnpm task drop --task <task-id> --reason <reason>
+pnpm task drop --task <task-id> --reason <why> --by <your-agent-id>
 ```
 
-freeze 自身执行归一化管线：`git add -A` 全量 staging（快照语义本就覆盖全部 tracked+untracked 文件），运行 `CI=true pnpm run fix:code`，把归一化后的内容计入 `diffHash`。归一化是强制的。声明了 `fix:code` 的仓库若依赖未安装，freeze 直接失败；先在 worktree 里执行 `pnpm install && pnpm run build` 再重试。只有不含 `fix:code` 脚本的仓库（测试 fixture、纯 git 仓库）才跳过。pre-commit 只保留 guard、不运行任何 fixer，因此不存在 commit 期改写文件导致冻结失效的竞态。freeze 在取快照前还会执行 `.agents/checks/` 下的可执行政策检查（本仓为 changeset 必带检查），失败即中止并保留可观察原因。
+freeze 自身执行归一化管线：`git add -A` 全量 staging（快照语义本就覆盖全部 tracked+untracked 文件），运行 `CI=true pnpm run fix:code`，把归一化后的内容计入 `diffHash`。归一化是强制的。声明了 `fix:code` 的仓库若依赖未安装，freeze 直接失败；先在 worktree 里执行 `pnpm install && pnpm run build` 再重试。只有不含 `fix:code` 脚本的仓库（测试 fixture、纯 git 仓库）才跳过。pre-commit 只保留 guard、不运行任何 fixer，因此不存在 commit 期改写文件导致冻结失效的竞态；commit 边界的清洁度（格式、lint 与类型）由 `.agents/checks/format-clean` 以「只检不改」的方式兜住。
 
-提交边界由受版本控制的 `.vite-hooks/pre-commit` 再次检查。它通过 `pnpm task guard` 自动发现当前 worktree 的 active task；T0/T1 只有 `approved` 且冻结 diff 未变化时才允许提交，T2 只要求 active。提交 hook 保护的是 commit 边界，不能替代实施前的 `new` 和 `start`。
+`.agents/checks/` 下的可执行政策检查（以 POSIX sh 运行、需要 +x）在两个边界各跑一次：freeze 取快照前、guard 放行提交前，失败即中止，并把该检查的 stdout 与 stderr 一起作为原因回显（工具常把「哪个文件、为什么」写在 stdout、只把一句 error 写在 stderr，留一段就等于把理由丢掉）。挂在 guard 上是必要的——T2 一般不 freeze，政策若只跟着 freeze 走，对最常见的 T2 就形同不存在。有 active task 时全部检查都跑；没有 task 时只跑 `scripts/task.mjs` 的 `alwaysOnChecks` 白名单（当前是 `format-clean`），因为像 `changeset-required` 那样核对 task 交代物的检查，对一条没有 task 的提交只能逼人补一个空壳。白名单是无 task 路径上唯一的保证，所以内核跑完后核对它被完整执行：登记的检查被删、变成目录或丢掉 +x 时 guard 硬失败并点名，而不是静默跳过（整个 `.agents/checks/` 目录不存在的仓库——测试 fixture、未挂政策的仓——不适用这条核对，本地删掉整个目录不提交因此是已知旁路；同族还有一条是把 `AGENT_VP_CMD` / `AGENT_STYLELINT_CMD` / `AGENT_GOFMT_CMD` 指向必定成功的程序，因为覆盖度核对的是「登记的检查有没有执行到」，看不见检查被掏空，`commit.md` 的禁止清单因此把那种 env 覆盖也算作绕过提交 hook，尽管它不改任何受版本控制的文件；那个白名单集合本身是内核里唯一与本仓绑定的登记项，换仓复用要么改成随仓声明、要么清空）。本仓两条检查的口径分别是：`changeset-required` 核对 index（文件清单取自 `git diff --cached`，内容也读 staged blob 而不是工作区的同名文件——freeze 前内核已 `git add -A`，guard 放行的提交内容就是 index），所以没 `git add` 的 changeset 不算交代过，「工作区里已经补好了但没 add」也不算；`format-clean` 按 `--diff-filter=ACMR` 取暂存文件，把工作区副本交给 `vp check` / `stylelint` / `gofmt -l` 判定且不带 `--fix`，所以「改了没 add」和「add 了没改」都会以工作区那一份为准；拦下的不只是没跑过 fixer 的文件——`vp check` 一次判格式、lint 与类型三件事，报错里的提示指向 `vp check` 自己的输出，因为 fixer 修不掉类型错误（未 `pnpm run build` 的 worktree 会在这里报出成片假 `TS2307`，见 [`worktrees.md`](worktrees.md)）。以 `-` 开头、或被 git C-引号化（名字里含引号、反斜杠或换行）的暂存路径直接 fail-closed——前者会变成一个真的 fixer 开关而不是一个参数，后者在磁盘上没有对应文件，放过去就是畸形文件静默漏检；git 不引号化的 glob 元字符不在覆盖面内，`vp check` 与 stylelint 都会把入参当 pattern（实测 `vp check 'scripts/*.mjs'` 展开成 13 个文件），所以那一类命名既可能漏检、也可能把未暂存的文件拉进来拦提交，而按元字符拦截会把本仓跟踪的 `apps/vue-web-ui-demo/src/pages/[...all]/index.vue` 一起拒掉，残余仍由全仓 `check:code` 兜住。检查清单会回显在 `guard` 与 `freeze` 的输出里（`checks`，以及 freeze 事件中的 `checks`）。
 
-每次状态转换、重 freeze 和 drop 都会追加到 state 的 `events[]` 时间线（含旧 hash 与原因），供事后审计，不需要任何手工补记。
+提交边界由受版本控制的 `.vite-hooks/pre-commit` 再次检查。它通过 `pnpm task guard` 自动发现当前 worktree 的 active task；T0/T1 只有 `approved` 且冻结 diff 未变化时才允许提交，T2 只要求 active；两个级别在放行前都要通过上述政策检查。没有 active task 时 task gate 本身放行，但仍会跑 `alwaysOnChecks`（即 `format-clean`，未通过检查的工作区副本照样拦住提交），并在 stderr 写下 `task gate: not enforced` 给出 `pnpm task new` 的入口——静默放行会让「这个仓没门禁」和「忘了建 task」看起来一模一样。这道门禁的强制力止于留痕与拦下一次提交：没有 active task 的 worktree 只有这条与 task 无关的清洁度检查，管不到它要不要 task、改动归谁，上游的 `h` 包装脚本也保留 `HUSKY=0` / `VP_GIT_HOOKS=0` / `VITE_GIT_HOOKS=0` 环境变量旁路。真要绕过，留下的是一个没有 task 证据的 commit，而 CI 只在被改动的包需要版本时才因缺 changeset 失败——纯 docs 与 root 变更不会——所以最终发现它的是 review。也因此「不得绕过提交 hook」是 [`commit.md`](commit.md) 的授权口径，不是机器保证。提交 hook 保护的是 commit 边界，不能替代实施前的 `new` 和 `start`。这条无 task 路径还覆盖 CI 里唯一的那次 `git commit`：`changeset-version.yml` 先经 `./.github/actions/setup-deps` 跑 `pnpm install --frozen-lockfile`（`prepare: vp config` 因此把 `core.hooksPath` 指到 `.vite-hooks/_`，该 job 没有设 `HUSKY` / `VP_GIT_HOOKS` / `VITE_GIT_HOOKS`），随后 `changesets/action` 为版本 PR 提交，所以只要那次提交走正常 hook，它就得过 `format-clean`（上游是否带 `--no-verify` 在这里核不了，留作未知）。这条路径还没在带 `alwaysOnChecks` 的配置下真跑过，所以下面是按文件形状的推演而不是实测：只动 npm 包时，暂存的是 `CHANGELOG.md`（在 `vp` 的格式 ignore 里）、`package.json`（changesets 写出的字节已是规范形状）与被消费的 `.changeset/*.md`（删除，不进 `--diff-filter=ACMR` 清单）；bump 到不在 `ignore` 里的 `@greypan/interweave`（`privatePackages.version: true`）时，`release:version` 还会跑 `sync:version` 写出 `build/config.yml` 与 wails3 产物，其中 `build/windows/info.json` 是 JSON、会被判。而走不到这条检查的分支更多：hook 是 `mise exec -- pnpm task guard`，该 job 只 `mise install node pnpm`，所以 mise 补齐工具、pnpm 起不起得来、`wails3` 在不在，都排在 `format-clean` 前面。结论只能是「没有证据说它会炸，也没有证据说它不会」：版本 job 失败时先分清是这条检查拦的、前面那条链路断的，还是那次提交压根没跑 hook。
+
+每次状态转换都会追加到 state 的 `events[]` 时间线，不需要任何手工补记：`freeze` 记 diffHash、`reFreeze`、`normalized` 与 `checks`，`review`/`approve` 记 diffHash 与身份，`new`/`assign` 记 owner 与 worktree，`drop` 记原因与署名人 `by`，`start`/`done`/`verify` 只记时间戳与各自字段（verify 的 diffHash 存在 `verification[]` 而不是事件里）。被取代的旧 hash 不单独留存：它由后一条带 hash 的事件与 `pnpm task status` 的 `live` 比对隐含。
 
 ## 角色与执行体
 
@@ -127,7 +131,7 @@ Manager 统一接收需求并编排，保持扁平，不引入 Integrator 或其
 - **T1**：强制 review，Manager 派 fresh subagent 即可（subagent 只接收冻结 diff 与证据，独立性接近独立会话）。
 - **T2**：免审；若要审，coder 自派 fresh subagent。
 - **任何级别禁止同一会话自审**：实施者复核自己的 diff 不构成 review。
-- reviewer id 使用 `^[A-Za-z0-9][A-Za-z0-9._-]{3,39}$` 形式（如 `claude-code-reviewer-45a5b9eb`），必须 ≠ owner。
+- owner、reviewer、approver、drop 署名人共用 id 形状 `^[A-Za-z0-9][A-Za-z0-9._-]{3,39}$`（如 `claude-code-reviewer-45a5b9eb`）：`--owner`/`AGENT_TASK_OWNER` 与另外三个声明身份的字段一起，才是可比对的留痕；owner 由登录名兜底时不受该形状约束。reviewer 与 approver 都不许是该 task 的 owner——比对的是 owner 历史（`new` 与历次 `assign` 写过的每一个 id），只比现值会被「先派给别人、再回来批自己」绕开；approver 还额外 ≠ 本轮 reviewer。三个身份互不相同，「独立验收」才是机器事实而不是措辞（id 本身仍是自报的，防的是误用而不是合谋）。
 
 报告以按严重程度排列的具体发现开头（`Block` / `Should fix` / `Nit`），每条带文件与行号；未发现缺陷时说明测试缺口和残余风险。检查项：公共行为与向后兼容性、聚焦测试覆盖、边界与失败情况、类型与错误处理、竞态或资源泄漏、用户输入安全风险、文档变更；重构须把完成的变更与变更前的行为清单对照。浏览器相关的 review 必须按 [`browser-verification.md`](browser-verification.md) 的三档核实证据，修复类变更的 handoff 必须携带「已证实机制」（见 [`task-packet.md`](task-packet.md) 字段约束）；未给出已证实根因的方案性返工本身就是 review 发现项。
 
@@ -157,7 +161,7 @@ release 和 hotfix 不是 task 体系的概念；它们是普通 task 在软件�
 ## 失败和恢复
 
 - 命令失败时保留 task state 和工作树，先用 `pnpm task status --task <task-id>` 判断当前 phase，不要重建或覆盖状态文件。
-- 需要终止或清理残留 task（agent 结束后遗留的 active task、快照无法物化的 task）时用 `pnpm task drop --task <task-id> --reason <reason>`；drop 是唯一合法的强制终态，不手工编辑 state JSON。
+- 需要终止或清理残留 task（agent 结束后遗留的 active task、快照无法物化的 task）时用 `pnpm task drop --task <task-id> --reason <why> --by <your-agent-id>`；`--reason` 至少 10 个非空白字符，`--by` 与 reviewer/approver 同一套 id 形状。drop 是唯一合法的强制终态，不手工编辑 state JSON。
 - session、Herdr 或 harness 重启后，从 task state 的 `phase`、`worktree`、`baseSha`、`events[]` 和 live stale 结果恢复，不从聊天记忆猜测进度。
 - GitHub issue 不可用时继续本地流程，最终报告注明“未同步”；issue 只作追踪镜像，不是执行真相。
 - release CI 失败时，机械性修复可由 Manager 直接处理；逻辑或测试修复回到原 task owner，并在聚合 diff 变化后重新 review。
