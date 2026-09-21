@@ -2,9 +2,14 @@ import { describe, expect, it } from 'vite-plus/test'
 
 import '..'
 import '@/components/option'
-import { cleanupElement, queryA11y, spyEvents, waitForUpdate } from '@/shared/test-utils'
+import { cleanupElement, spyEvents, waitForUpdate } from '@/shared/test-utils'
 
 import type { WebUiAutocomplete } from '..'
+
+// combobox ARIA 承载在 trigger 包装 div 上（跟随 select 的 wrapper div 模式）
+function comboboxTrigger(el: WebUiAutocomplete): HTMLElement {
+  return el.shadowRoot!.querySelector<HTMLElement>('[role="combobox"]')!
+}
 
 describe('WebUiAutocomplete 条件渲染边界', () => {
   it('注释锚点替换为包含 option 的 wrapper 后可选中候选', async () => {
@@ -19,15 +24,14 @@ describe('WebUiAutocomplete 条件渲染边界', () => {
     el.replaceChild(wrapper, comment)
     await waitForUpdate(el)
 
-    const input = queryA11y(el, '[role="combobox"]') as HTMLInputElement
-    input.focus()
+    comboboxTrigger(el).focus()
     await waitForUpdate(el)
 
     el.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }))
     await waitForUpdate(el)
 
     // 激活项经公开的 aria-activedescendant（同根 ARIA 镜像的 id）可解析
-    const activeId = input.getAttribute('aria-activedescendant')
+    const activeId = comboboxTrigger(el).getAttribute('aria-activedescendant')
     expect(el.shadowRoot?.querySelector(`#${activeId}`)?.textContent).toContain('Apple')
 
     el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
@@ -51,8 +55,8 @@ describe('WebUiAutocomplete 条件渲染边界', () => {
     await waitForUpdate(el)
 
     const wrapper = el.querySelector('div')!
-    const input = queryA11y(el, '[role="combobox"]') as HTMLInputElement
-    input.focus()
+    const combobox = comboboxTrigger(el)
+    combobox.focus()
     await waitForUpdate(el)
     await new Promise(resolve => requestAnimationFrame(resolve))
     await waitForUpdate(el)
@@ -62,8 +66,8 @@ describe('WebUiAutocomplete 条件渲染边界', () => {
     await waitForUpdate(el)
 
     const [events] = spyEvents(el, 'change')
-    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }))
-    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
+    combobox.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }))
+    combobox.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
     await waitForUpdate(el)
 
     expect(events).toHaveLength(0)

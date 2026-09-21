@@ -1,3 +1,5 @@
+import { definePlugin } from '@greypan/js-kit'
+
 import type { WebUiOption } from '@/components/option'
 import type { OpenOverlayHandle } from '@/shared/overlay/open-overlay'
 
@@ -74,6 +76,137 @@ export interface OptionListenerHandlers {
   onPointerDown: (event: PointerEvent) => void
   onUpdate: () => void
 }
+
+export interface ComboboxTriggerSource {
+  /** 持 ARIA 与委托监听的 trigger 包装 div（shadow 内）。 */
+  getWrapper(): HTMLElement | null
+  /** `slot[name="trigger"]` 的首个 assigned 元素；无自定义触发器时为 null。 */
+  getCustomTrigger(): HTMLElement | null
+  /** 默认触发器（shadow 内的 web-ui-input）；未渲染时为 null。 */
+  getFallbackTrigger(): HTMLElement | null
+}
+
+export interface ComboboxTriggerHandlers {
+  /** 触发器文本变化；value 取自触发器 host 的字符串 value 属性。 */
+  onInput(value: string): void
+  /** 点击触发器区域（含包装 div 自身留白）。 */
+  onClick(): void
+  onFocusIn(event: FocusEvent): void
+  onFocusOut(event: FocusEvent): void
+}
+
+export interface ComboboxTriggerApi {
+  /** 当前生效的触发器 host：自定义 trigger slot 首个 assigned 元素，否则默认触发器。 */
+  getTrigger(): HTMLElement | null
+  /** 触发器当前文本；触发器不暴露字符串 value 时返回 null。 */
+  getValue(): string | null
+  /** 回写文本；仅在文本触发器且值确实变化时写入，避免无谓重渲染。 */
+  setValue(value: string): void
+  /** 多行可编辑元素判定：Enter 保留换行语义，不接管为「选中高亮项」。 */
+  isMultilineEdit(event: KeyboardEvent): boolean
+  /**
+   * 程序化聚焦当前触发器。组件自带 focus 重定向（web-ui-input/textarea）时落到
+   * 内部原生控件；自定义触发器没有该能力时，原生 focus() 聚焦 host 自身。
+   */
+  focusTrigger(options?: FocusOptions): void
+  /** 失焦当前触发器，兜底语义同 focusTrigger。 */
+  blurTrigger(): void
+  /** 绑定包装 div 上的委托监听（幂等：包装 div 不变则跳过）。 */
+  bind(): void
+  dispose(): void
+}
+
+/**
+ * combobox 触发器委托层（autocomplete）。
+ *
+ * 默认触发器是 shadow 内的 `web-ui-input`，自定义触发器由 `slot[name="trigger"]`
+ * 提供（`web-ui-textarea` 等）。两者对组件暴露同一形状：字符串 value、可聚焦、
+ * 派发 composed 的 input / click / focusin / focusout。委托层把这些差异收敛成一份接口：
+ * 监听统一挂在包装 div 上（事件委托，覆盖 shadow 内与 light DOM 两条路径），
+ * 文本读写只认触发器 host 的 value 属性。
+ *
+ * 焦点用 focusin/focusout 而非 focus/blur：后两者不冒泡，到不了包装 div
+ * （实测：shadow 内默认触发器与 light DOM 自定义触发器都不触发包装 div 的 focus/blur）。
+ *
+ * 触发器自身派发的 change（web-ui-input/textarea 在原生 change 不 composed 时补发）
+ * 必须被拦下：组件的 change 只表示「选中提交」，否则失焦即误报一次 change。
+ */
+export const defineComboboxTrigger = () =>
+  definePlugin<ComboboxTriggerApi, ComboboxTriggerSource & ComboboxTriggerHandlers>(source => {
+    let boundWrapper: HTMLElement | null = null
+
+    const getTrigger = (): HTMLElement | null => source.getCustomTrigger() ?? source.getFallbackTrigger() ?? null
+
+    const readValue = (trigger: HTMLElement | null): string | null => {
+      const value = (trigger as (HTMLElement & { value?: unknown }) | null)?.value
+      return typeof value === 'string' ? value : null
+    }
+
+    // composed 事件在包装 div 上看到的是触发器 host（或其在 light DOM 内的后代）；
+    // 只有来自触发器内部的输入才计入，包装 div 上的其它内容不干扰。
+    const isWithinTrigger = (event: Event, trigger: HTMLElement | null): boolean => {
+      const target = event.target
+      return !!trigger && target instanceof Node && (target === trigger || trigger.contains(target))
+    }
+
+    const onInput = (event: Event) => {
+      const trigger = getTrigger()
+      if (!isWithinTrigger(event, trigger)) return
+      const value = readValue(trigger)
+      if (value !== null) source.onInput(value)
+    }
+
+    const onNativeChange = (event: Event) => {
+      if (isWithinTrigger(event, getTrigger())) event.stopPropagation()
+    }
+
+    const onClick = () => source.onClick()
+    const onFocusIn = (event: FocusEvent) => source.onFocusIn(event)
+    const onFocusOut = (event: FocusEvent) => source.onFocusOut(event)
+
+    return {
+      getTrigger,
+      getValue: () => readValue(getTrigger()),
+      setValue(value: string) {
+        const trigger = getTrigger()
+        const current = readValue(trigger)
+        if (!trigger || current === null || current === value) return
+        ;(trigger as HTMLElement & { value: string }).value = value
+      },
+      isMultilineEdit(event: KeyboardEvent) {
+        // composedPath()[0] 是未 retarget 的真实可编辑元素：textarea 保留 Enter 换行
+        return event.composedPath()[0] instanceof HTMLTextAreaElement
+      },
+      focusTrigger(options?: FocusOptions) {
+        // web-ui-input/textarea 的公共 focus() 已重定向到内部原生控件；普通元素或
+        // 未实现 focus 的自定义触发器走原生 HTMLElement.focus()，即聚焦 host 自身
+        getTrigger()?.focus(options)
+      },
+      blurTrigger() {
+        getTrigger()?.blur()
+      },
+      bind() {
+        const wrapper = source.getWrapper()
+        if (!wrapper || wrapper === boundWrapper) return
+        boundWrapper = wrapper
+        wrapper.addEventListener('input', onInput)
+        wrapper.addEventListener('change', onNativeChange)
+        wrapper.addEventListener('click', onClick)
+        wrapper.addEventListener('focusin', onFocusIn)
+        wrapper.addEventListener('focusout', onFocusOut)
+      },
+      dispose() {
+        const wrapper = boundWrapper
+        boundWrapper = null
+        if (!wrapper) return
+        wrapper.removeEventListener('input', onInput)
+        wrapper.removeEventListener('change', onNativeChange)
+        wrapper.removeEventListener('click', onClick)
+        wrapper.removeEventListener('focusin', onFocusIn)
+        wrapper.removeEventListener('focusout', onFocusOut)
+      }
+    }
+  })
 
 /** option 四事件监听对的绑定/解绑；两组件的 handler 签名一致，仅实现不同。 */
 export function createOptionListenerBinding(handlers: OptionListenerHandlers) {
