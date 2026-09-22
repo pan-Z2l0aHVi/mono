@@ -329,6 +329,8 @@ function openPreviewDrawer() {
 function handleDetailDrawerOpenChange(event: WebUiEvent<WebUiDrawer, 'open-change'>) {
   if (event.target !== event.currentTarget) return
   drawerOpen.value = event.detail.open
+  // 抽屉关闭后内容仍在 DOM 内（CSS 收起），不清键值会把编辑态留在看不见的抽屉里
+  if (!event.detail.open && editingNameKey.value === DRAWER_TITLE_EDITOR_KEY) stopResourceRename()
 }
 function handlePreviewDrawerOpenChange(event: WebUiEvent<WebUiDrawer, 'open-change'>) {
   if (event.target !== event.currentTarget) return
@@ -557,13 +559,20 @@ function onResourceContextmenu(resource: Resource, event: MouseEvent) {
 }
 
 // --- Resource rename (web-ui-editable-text) ---
-// 编辑态完全由组件持有：点击/聚焦进入编辑、blur 提交、Escape 取消、Enter 换行。
-// 页面只把提交值写回资源；空值提交时把组件值恢复成原名称，保持单一数据来源。
+// 空闲态渲染普通 span；只有两个入口触发编辑：列表右键菜单「重命名」与抽屉标题编辑按钮。
+// 入口先把 editingNameKey 指向目标，editable-text 随键渲染后再进入编辑；提交（change）或
+// 取消（cancel）后清空键值回到普通 span。编辑交互（blur 提交、Escape 取消、Enter 换行）
+// 仍由组件持有，页面只把提交值写回资源。
 const resourceNameEditors = ref<Record<string, WebUiEditableText | null>>({})
 const nameEditorRefCallbacks = new Map<string, (el: Element | ComponentPublicInstance | null) => void>()
+const editingNameKey = ref<string | null>(null)
 
 /** 详情抽屉标题不在 v-for 内，用固定 key 走同一套编辑器登记表。 */
 const DRAWER_TITLE_EDITOR_KEY = '__drawer-title__'
+
+/** 抽屉标题的排版类名，span 与 editable-text 两态共用，保证同盒。 */
+const DRAWER_TITLE_NAME_CLASS =
+  'min-w-0 font-semibold text-[17px] leading-snug text-[#22212a] wrap-break-word dark:text-(--wui-color-text)'
 
 function setNameEditorRef(id: string) {
   let callback = nameEditorRefCallbacks.get(id)
@@ -577,11 +586,25 @@ function setNameEditorRef(id: string) {
   return callback
 }
 
+/** 列表行名的排版类名：broken 态与正常态只差颜色与删除线。 */
+const resourceNameClass = (resource: Resource) => [
+  'text-sm font-medium leading-snug wrap-break-word line-clamp-2 max-w-[60%] max-[640px]:max-w-full',
+  resource.broken
+    ? 'text-[#b0b0b8] line-through dark:text-(--wui-color-text-disabled)'
+    : 'text-[#22212a] dark:text-(--wui-color-text)'
+]
+
 function startResourceRename(resource: Resource, surface: 'list' | 'drawer' = 'list') {
-  const editor =
-    surface === 'drawer' ? resourceNameEditors.value[DRAWER_TITLE_EDITOR_KEY] : resourceNameEditors.value[resource.id]
-  // 聚焦宿主即进入编辑，光标按组件语义落在文本末尾
-  editor?.focus()
+  const key = surface === 'drawer' ? DRAWER_TITLE_EDITOR_KEY : resource.id
+  editingNameKey.value = key
+  void nextTick(() => {
+    // 公共 select()：进入编辑态并全选内容，两个入口同一写法
+    resourceNameEditors.value[key]?.select()
+  })
+}
+
+function stopResourceRename() {
+  editingNameKey.value = null
 }
 
 function handleResourceNameChange(event: WebUiEvent<WebUiEditableText, 'change'>, resource: Resource) {
@@ -590,6 +613,7 @@ function handleResourceNameChange(event: WebUiEvent<WebUiEditableText, 'change'>
   resource.name = name || resource.name
   // 空草稿或去空白后与组件内值不一致时回写，避免组件继续显示未提交的草稿
   if (editor.value !== resource.name) editor.value = resource.name
+  stopResourceRename()
 }
 
 // --- Delete confirmation ---
@@ -1078,18 +1102,18 @@ watch(addDialogOpen, (open, _, onCleanup) => {
               <!-- Main -->
               <div class="flex flex-col min-w-0 gap-1 flex-1">
                 <div class="flex items-center gap-1.5">
+                  <span v-if="editingNameKey !== resource.id" :class="resourceNameClass(resource)">{{
+                    resource.name
+                  }}</span>
                   <web-ui-editable-text
+                    v-else
                     :ref="setNameEditorRef(resource.id)"
-                    class="text-sm font-medium leading-snug wrap-break-word line-clamp-2 max-w-[60%] max-[640px]:max-w-full"
-                    :class="
-                      resource.broken
-                        ? 'text-[#b0b0b8] line-through dark:text-(--wui-color-text-disabled)'
-                        : 'text-[#22212a] dark:text-(--wui-color-text)'
-                    "
+                    :class="resourceNameClass(resource)"
                     :value="resource.name"
                     :aria-label="`修改 ${resource.name} 的名称`"
                     @click.stop
                     @change="handleResourceNameChange($event, resource)"
+                    @cancel="stopResourceRename"
                   />
                   <web-ui-icon
                     v-if="resource.broken"
@@ -1221,13 +1245,18 @@ watch(addDialogOpen, (open, _, onCleanup) => {
               :size="22"
               class="shrink-0 text-[#5b5b66] dark:text-(--wui-color-text-secondary)"
             ></web-ui-icon>
+            <span v-if="editingNameKey !== DRAWER_TITLE_EDITOR_KEY" :class="DRAWER_TITLE_NAME_CLASS">{{
+              selectedResource.name
+            }}</span>
             <web-ui-editable-text
+              v-else
               :ref="setNameEditorRef(DRAWER_TITLE_EDITOR_KEY)"
-              class="min-w-0 font-semibold text-[17px] leading-snug text-[#22212a] wrap-break-word dark:text-(--wui-color-text)"
+              :class="DRAWER_TITLE_NAME_CLASS"
               :value="selectedResource.name"
               :aria-label="`修改 ${selectedResource.name} 的名称`"
               @click.stop
               @change="handleResourceNameChange($event, selectedResource)"
+              @cancel="stopResourceRename"
             />
             <web-ui-button
               class="shrink-0 opacity-0 transition-opacity duration-120 group-hover/title:opacity-100 group-focus-within/title:opacity-100"
