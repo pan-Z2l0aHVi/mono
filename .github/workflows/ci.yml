@@ -1,11 +1,16 @@
 name: CI
 
+# 不监听 push：仓库是 squash-only 且 ruleset 开了 strict required status，PR head 的树就等于合并后
+# main 的树，push 那次只是把同一份验证再跑一遍。trunk 按需复检走 workflow_dispatch。
+# 触发面、job 依赖与安装面的单一声明在 .github/scripts/ci-topology.mjs，由 scripts/ci-topology.test.mjs
+# 拿真实 YAML 逐字段比对。
 on:
-  push:
-    branches: [main]
   pull_request:
     branches: [main]
   workflow_dispatch:
+
+permissions:
+  contents: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
