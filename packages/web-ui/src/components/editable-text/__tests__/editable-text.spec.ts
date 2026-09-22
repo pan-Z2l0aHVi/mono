@@ -200,7 +200,7 @@ describe('WebUiEditableText 组件契约', () => {
     cleanupElement(el)
   })
 
-  it('blur 取消：恢复原值、派发 cancel、不派发 change', async () => {
+  it('blur 提交：草稿成为新值、派发一次 change、不派发 cancel', async () => {
     const el = create({ value: 'hello' })
     await waitForUpdate(el)
     el.focus()
@@ -213,10 +213,11 @@ describe('WebUiEditableText 组件契约', () => {
     try {
       editorOf(el).blur()
       await waitForUpdate(el)
-      expect(cancels).toHaveLength(1)
-      expect(changes).toHaveLength(0)
-      expect(el.value, '草稿丢弃，回到进入编辑时的值').toBe('hello')
+      expect(changes, '提交只派发一次 change').toHaveLength(1)
+      expect(cancels).toHaveLength(0)
+      expect(el.value, '草稿成为新值').toBe('hello world')
       expect(el.hasAttribute('editing')).toBe(false)
+      expect(document.activeElement, '焦点不被抢回宿主：blur 是被动失焦').not.toBe(el)
     } finally {
       detachCancels()
       detachChanges()
@@ -224,7 +225,7 @@ describe('WebUiEditableText 组件契约', () => {
     cleanupElement(el)
   })
 
-  it('空草稿 blur 取消：恢复进入编辑时的值', async () => {
+  it('空草稿 blur 提交：空值被提交，文本层回落 placeholder', async () => {
     const el = create({ value: 'hello', placeholder: '未命名' })
     await waitForUpdate(el)
     el.focus()
@@ -235,8 +236,67 @@ describe('WebUiEditableText 组件契约', () => {
     editorOf(el).blur()
     await waitForUpdate(el)
 
-    expect(el.value, '空草稿被丢弃').toBe('hello')
-    expect(textLayerOf(el).textContent).toBe('hello')
+    expect(el.value, '空草稿被提交').toBe('')
+    expect(textLayerOf(el).textContent, '文本层回落 placeholder').toBe('未命名')
+    cleanupElement(el)
+  })
+
+  it('blur 提交不锁死编辑入口：再次聚焦重新进入编辑', async () => {
+    const el = create({ value: 'hello' })
+    await waitForUpdate(el)
+    el.focus()
+    await waitForUpdate(el)
+    typeDraft(el, 'hello world')
+    await waitForUpdate(el)
+    editorOf(el).blur()
+    await waitForUpdate(el)
+    expect(el.value).toBe('hello world')
+
+    el.focus()
+    await waitForUpdate(el)
+
+    expect(el.hasAttribute('editing'), '提交不锁死编辑入口').toBe(true)
+    expect(editorOf(el).value).toBe('hello world')
+    cleanupElement(el)
+  })
+
+  it('Escape 取消后随后的 blur 不再提交：先摘除编辑态，blur 早退', async () => {
+    /*
+     * blur 改为提交后，取消路径的时序成为不变量：Escape 必须先摘除编辑态，再让
+     * 交还焦点触发的 blur 到达，否则那次 blur 会把取消误判成提交。spy 编辑层的
+     * blur 计数：证明这次 blur 真的到达过（而非隐藏元素上的空操作），断言才不恒真。
+     */
+    const el = create({ value: 'hello' })
+    await waitForUpdate(el)
+    el.focus()
+    await waitForUpdate(el)
+    typeDraft(el, 'draft')
+    await waitForUpdate(el)
+
+    const [editorBlurs, detachEditorBlurs] = spyEvents(editorOf(el), 'blur')
+    const [cancels, detachCancels] = spyEvents(el, 'cancel')
+    const [changes, detachChanges] = spyEvents(el, 'change')
+    try {
+      editorOf(el).dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, composed: true, cancelable: true })
+      )
+      await waitForUpdate(el)
+
+      expect(editorBlurs.length, '交还焦点确实把编辑层 blur 了：取消路径上有真实 blur 到达').toBeGreaterThanOrEqual(1)
+      expect(document.activeElement, '取消后焦点回宿主').toBe(el)
+      editorOf(el).focus()
+      editorOf(el).blur()
+      await waitForUpdate(el)
+
+      expect(cancels, '只有 Escape 派发的那一次 cancel').toHaveLength(1)
+      expect(changes, '取消与其后的 blur 都不产生 change').toHaveLength(0)
+      expect(el.value, '值恢复进入编辑时的状态').toBe('hello')
+      expect(el.hasAttribute('editing')).toBe(false)
+    } finally {
+      detachCancels()
+      detachChanges()
+      detachEditorBlurs()
+    }
     cleanupElement(el)
   })
 
@@ -323,8 +383,9 @@ describe('WebUiEditableText 组件契约', () => {
     const onAncestorCancel = (e: Event) => seenByAncestor.push(e)
     lightAncestor.addEventListener('cancel', onAncestorCancel)
     const [cancels, detachCancels] = spyEvents(el, 'cancel')
+    const [changes, detachChanges] = spyEvents(el, 'change')
     try {
-      // blur 路径：点到浮层内别处
+      // blur 路径：点到浮层内别处——提交而非取消，本就无关 dialog 的 cancel 管线
       el.focus()
       await waitForUpdate(el)
       typeDraft(el, 'draft')
@@ -332,14 +393,13 @@ describe('WebUiEditableText 组件契约', () => {
       editorOf(el).blur()
       await waitForUpdate(el)
 
-      expect(cancels).toHaveLength(1)
-      expect(cancels[0].bubbles, 'cancel 不冒泡').toBe(false)
-      expect(cancels[0].composed, 'cancel 不组合').toBe(false)
+      expect(changes, 'blur 提交派发一次 change').toHaveLength(1)
+      expect(cancels, '提交不派发 cancel').toHaveLength(0)
       expect(overlay.dialogCancels, 'shadow 内 dialog 的 cancel 监听不应被触发').toBe(0)
       expect(seenByAncestor, 'light DOM 祖先也收不到：监听须挂在组件本身').toHaveLength(0)
-      expect(el.value, '草稿丢弃').toBe('hello')
+      expect(el.value, '草稿成为新值').toBe('draft')
 
-      // Escape 路径：同样不得借道 dialog
+      // Escape 路径：取消不得借道 dialog
       el.focus()
       await waitForUpdate(el)
       typeDraft(el, 'draft2')
@@ -349,12 +409,16 @@ describe('WebUiEditableText 组件契约', () => {
       )
       await waitForUpdate(el)
 
-      expect(cancels).toHaveLength(2)
+      expect(cancels, '只有 Escape 派发的那一次 cancel').toHaveLength(1)
+      expect(cancels[0].bubbles, 'cancel 不冒泡').toBe(false)
+      expect(cancels[0].composed, 'cancel 不组合').toBe(false)
+      expect(changes, '取消不派发 change').toHaveLength(1)
       expect(overlay.dialogCancels, 'Escape 取消不得触发 dialog 的 cancel 监听').toBe(0)
       expect(seenByAncestor).toHaveLength(0)
-      expect(el.value, '恢复进入编辑时的值').toBe('hello')
+      expect(el.value, '恢复本次进入编辑时的值（blur 已提交的 draft）').toBe('draft')
     } finally {
       detachCancels()
+      detachChanges()
       lightAncestor.removeEventListener('cancel', onAncestorCancel)
       cleanupElement(el)
       lightAncestor.remove()
@@ -438,6 +502,83 @@ describe('WebUiEditableText 组件契约', () => {
     await waitForUpdate(el)
 
     expect(el.hasAttribute('editing'), '提交不锁死编辑入口').toBe(true)
+    cleanupElement(el)
+  })
+
+  it('Enter 提交后的 blur 不再次派发 change', async () => {
+    /*
+     * 提交路径先退出编辑再交还焦点：focus 触发的 blur 到达时 _editing 已为 false。
+     * blur 改为提交后，这条早退是「各恰好一次 change」的另一半——退出与焦点迁移的
+     * 次序一旦反了，同一次提交会拿到两次 change。spy 编辑层的 blur 计数：证明
+     * 这次 blur 真的到达过，断言不恒真。
+     */
+    const el = create({ value: 'hello' })
+    await waitForUpdate(el)
+    el.focus()
+    await waitForUpdate(el)
+
+    const [editorBlurs, detachEditorBlurs] = spyEvents(editorOf(el), 'blur')
+    const [changes, detachChanges] = spyEvents(el, 'change')
+    try {
+      editorOf(el).dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, composed: true }))
+      await waitForUpdate(el)
+      expect(editorBlurs.length, '交还焦点确实把编辑层 blur 了：提交路径上有真实 blur 到达').toBeGreaterThanOrEqual(1)
+      expect(changes, 'Enter 提交恰好一次').toHaveLength(1)
+
+      editorOf(el).focus()
+      editorOf(el).blur()
+      await waitForUpdate(el)
+      expect(changes, '提交后的 blur 早退，不再派发').toHaveLength(1)
+      expect(el.hasAttribute('editing')).toBe(false)
+    } finally {
+      detachChanges()
+      detachEditorBlurs()
+    }
+    cleanupElement(el)
+  })
+
+  it('cancel 监听器内 el.focus() 不重新进入编辑，随后的 blur 不误提交', async () => {
+    /*
+     * cancel 同步派发，消费者常在监听器里把焦点还给组件。重入守卫必须先于
+     * dispatch 置位：否则这次 focus 会重新进入编辑，随后一次 blur 就把恢复后的
+     * 原值当成新草稿提交——用户什么都没改，却收到一次 change。
+     *
+     * jsdom 复现不了这条路径：shadow 内聚焦时 document.activeElement 已是宿主，
+     * 监听器里的 el.focus() 不派发宿主 focus 事件（实测无 host-focus），重入无从
+     * 发生。该不变量由 browser spec 的真实焦点迁移锁定。
+     */
+    const el = create({ value: 'hello' })
+    await waitForUpdate(el)
+    el.focus()
+    await waitForUpdate(el)
+    typeDraft(el, 'draft')
+    await waitForUpdate(el)
+
+    const [cancels, detachCancels] = spyEvents(el, 'cancel')
+    const [changes, detachChanges] = spyEvents(el, 'change')
+    const onCancel = () => el.focus()
+    el.addEventListener('cancel', onCancel)
+    try {
+      editorOf(el).dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, composed: true, cancelable: true })
+      )
+      await waitForUpdate(el)
+
+      expect(cancels).toHaveLength(1)
+      expect(el.value, '值恢复进入编辑时的状态').toBe('hello')
+      expect(el.hasAttribute('editing'), '监听器里的 focus 被重入守卫消费，不重新进入编辑').toBe(false)
+      expect(changes, '取消不派发 change').toHaveLength(0)
+
+      // 用户随后点到别处：编辑态已退出，blur 不应把恢复后的原值提交出去
+      editorOf(el).focus()
+      editorOf(el).blur()
+      await waitForUpdate(el)
+      expect(changes, '随后的 blur 不误提交').toHaveLength(0)
+    } finally {
+      el.removeEventListener('cancel', onCancel)
+      detachCancels()
+      detachChanges()
+    }
     cleanupElement(el)
   })
 

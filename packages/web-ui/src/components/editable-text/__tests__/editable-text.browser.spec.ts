@@ -121,10 +121,11 @@ const pixelDiff = async (a: string, b: string): Promise<{ pixels: number; maxDel
 }
 
 /** 真实焦点移出：把焦点交给组件外的一个按钮，触发编辑层 blur 提交。 */
-const blurByFocusElsewhere = async (): Promise<void> => {
+const blurByFocusElsewhere = async (): Promise<HTMLButtonElement> => {
   const outside = document.createElement('button')
   document.body.append(outside)
   outside.focus()
+  return outside
 }
 
 describe('WebUiEditableText 布局契约（浏览器）', () => {
@@ -223,12 +224,16 @@ describe('WebUiEditableText 布局契约（浏览器）', () => {
     expect(el.getBoundingClientRect().height, '折行后高度按行数增长').toBeGreaterThan(editing.height)
     expect(contentBoxOf(editor).height, '编辑层文本盒等高跟随文本层行盒').toBeCloseTo(contentBoxOf(el).height, 0)
 
-    // 失焦取消：草稿丢弃，盒回到进入编辑前的文字态，说明两层换行点没有漂移
+    // 失焦提交：草稿成为新值，文本层按同一份文案折行，盒与编辑态一致，两层换行点没有漂移
     const beforeBlur = el.getBoundingClientRect()
     await blurByFocusElsewhere()
     await waitForUpdate(el)
-    expect(el.value, '失焦丢弃草稿').toBe('alpha beta')
-    expect(rectsClose(display, el.getBoundingClientRect()), '失焦后回到进入编辑前的盒').toBe(true)
+    const committed =
+      'alpha beta gamma delta epsilon zeta eta theta iota kappa lambda mu nu xi omicron pi rho sigma tau'
+    expect(el.value, '失焦提交草稿').toBe(committed)
+    expect(textLayerOf(el).textContent, '文本层渲染提交后的文案').toBe(committed)
+    expect(rectsClose(beforeBlur, el.getBoundingClientRect()), '提交后盒与编辑态一致').toBe(true)
+    expect(el.getBoundingClientRect().width, '提交后宽度不变').toBeCloseTo(display.width, 1)
     expect(beforeBlur.height, '编辑态盒高于文字态').toBeGreaterThan(display.height)
     cleanupElement(el)
   })
@@ -408,7 +413,7 @@ describe('WebUiEditableText 交互契约（浏览器）', () => {
     cleanupElement(el)
   })
 
-  it('blur 取消：恢复原值、派发一次不冒泡的 cancel、不派发 change', async () => {
+  it('blur 提交：草稿成为新值、派发一次 change、不派发 cancel、不抢回焦点', async () => {
     const el = mount({ value: 'hello' })
     await waitForUpdate(el)
     el.focus()
@@ -421,17 +426,14 @@ describe('WebUiEditableText 交互契约（浏览器）', () => {
       await waitForUpdate(el)
       expect(el.value).toBe('hello world')
 
-      await blurByFocusElsewhere()
+      const outside = await blurByFocusElsewhere()
       await waitForUpdate(el)
 
-      expect(cancels).toHaveLength(1)
-      expect(cancels[0].bubbles, 'cancel 不冒泡：原生 <dialog> 的 cancel 同名，冒泡会进外层浮层被当成关闭请求').toBe(
-        false
-      )
-      expect(cancels[0].composed, 'cancel 不组合').toBe(false)
-      expect(changes).toHaveLength(0)
-      expect(el.value, '草稿丢弃，回到进入编辑时的值').toBe('hello')
+      expect(changes, '提交派发一次 change').toHaveLength(1)
+      expect(cancels, '提交不派发 cancel').toHaveLength(0)
+      expect(el.value, '草稿成为新值').toBe('hello world')
       expect(el.hasAttribute('editing')).toBe(false)
+      expect(document.activeElement, '焦点留在用户移往的位置，不被抢回宿主').toBe(outside)
     } finally {
       detachCancel()
       detachChange()
@@ -439,7 +441,7 @@ describe('WebUiEditableText 交互契约（浏览器）', () => {
     cleanupElement(el)
   })
 
-  it('空草稿 blur 取消：恢复原值，文本层回落原值', async () => {
+  it('空草稿 blur 提交：空值被提交，文本层回落 placeholder', async () => {
     const el = mount({ value: 'hello', placeholder: 'Untitled' })
     await waitForUpdate(el)
     el.focus()
@@ -452,8 +454,9 @@ describe('WebUiEditableText 交互契约（浏览器）', () => {
     await blurByFocusElsewhere()
     await waitForUpdate(el)
 
-    expect(el.value, '空草稿被丢弃').toBe('hello')
-    expect(textLayerOf(el).textContent, '文本层回到原值').toBe('hello')
+    expect(el.value, '空草稿被提交').toBe('')
+    expect(textLayerOf(el).textContent, '文本层回落 placeholder').toBe('Untitled')
+    expect(el.hasAttribute('editing')).toBe(false)
     cleanupElement(el)
   })
 
@@ -465,6 +468,9 @@ describe('WebUiEditableText 交互契约（浏览器）', () => {
 
     const [cancels, detachCancel] = spyEvents(el, 'cancel')
     const [changes, detachChange] = spyEvents(el, 'change')
+    // spy 编辑层 blur：证明取消路径上真的发生了一次焦点迁移（真实浏览器里
+    // _returnFocusToHost 会把焦点从编辑层移回宿主），changes 为 0 才不是恒真
+    const [editorBlurs, detachEditorBlurs] = spyEvents(editorOf(el), 'blur')
     // 浮层仲裁者在 document 捕获阶段收 Escape：它收不到，才证明按键被编辑层消费
     const documentCapture: string[] = []
     const onDocumentCapture = (e: Event) => {
@@ -482,12 +488,56 @@ describe('WebUiEditableText 交互契约（浏览器）', () => {
       expect(el.value, '恢复进入编辑时的值').toBe('hello')
       expect(cancels).toHaveLength(1)
       expect(changes).toHaveLength(0)
+      expect(editorBlurs.length, '取消路径上编辑层真的被 blur 过：早退消费了这次 blur').toBeGreaterThanOrEqual(1)
       expect(documentCapture, 'Escape 不穿透到 document 捕获监听').toEqual([])
       expect(el.hasAttribute('editing')).toBe(false)
       expect(document.activeElement, '焦点回到宿主').toBe(el)
       expect(el.shadowRoot!.activeElement, '编辑层不再持有焦点').toBe(null)
     } finally {
       document.removeEventListener('keydown', onDocumentCapture, true)
+      detachCancel()
+      detachChange()
+      detachEditorBlurs()
+    }
+    cleanupElement(el)
+  })
+
+  it('cancel 监听器内 el.focus() 不重新进入编辑：随后的 blur 不误提交恢复后的原值', async () => {
+    /*
+     * cancel 同步派发：消费者常在监听器里把焦点还给组件。真实浏览器里那是一次真实
+     * 的宿主 focus——重入守卫必须先于 dispatch 置位，否则编辑态重新进入，用户随后
+     * 点到别处，blur 就把恢复后的原值当成新草稿提交：用户什么都没改，却收到一次
+     * change。jsdom 复现不了这条路径（shadow 聚焦时宿主已是 document.activeElement，
+     * el.focus() 不派发宿主 focus），因此锁定在浏览器层。
+     */
+    const el = mount({ value: 'hello' })
+    await waitForUpdate(el)
+    el.focus()
+    await waitForUpdate(el)
+
+    const [cancels, detachCancel] = spyEvents(el, 'cancel')
+    const [changes, detachChange] = spyEvents(el, 'change')
+    const onCancel = () => el.focus()
+    el.addEventListener('cancel', onCancel)
+    try {
+      await userEvent.keyboard('draft')
+      await waitForUpdate(el)
+      expect(el.value).toBe('hellodraft')
+
+      await userEvent.keyboard('{Escape}')
+      await waitForUpdate(el)
+
+      expect(cancels, '取消派发一次 cancel').toHaveLength(1)
+      expect(el.value, '值恢复进入编辑时的状态').toBe('hello')
+      expect(el.hasAttribute('editing'), '监听器里的 focus 被重入守卫消费，不重新进入编辑').toBe(false)
+      expect(changes, '取消不派发 change').toHaveLength(0)
+
+      // 用户随后点到别处：编辑态未重新进入，blur 不应把恢复后的原值提交出去
+      await blurByFocusElsewhere()
+      await waitForUpdate(el)
+      expect(changes, '随后的 blur 不误提交').toHaveLength(0)
+    } finally {
+      el.removeEventListener('cancel', onCancel)
       detachCancel()
       detachChange()
     }
@@ -502,6 +552,9 @@ describe('WebUiEditableText 交互契约（浏览器）', () => {
 
     const [changes, detach] = spyEvents(el, 'change')
     const [cancels, detachCancel] = spyEvents(el, 'cancel')
+    // spy 编辑层 blur：交还焦点触发的那次 blur 必须被早退消费，否则同一次提交
+    // 会拿到两次 change（真实浏览器里这次焦点迁移必然发生）
+    const [editorBlurs, detachEditorBlurs] = spyEvents(editorOf(el), 'blur')
     try {
       await userEvent.keyboard('{Enter}')
       await waitForUpdate(el)
@@ -510,12 +563,14 @@ describe('WebUiEditableText 交互契约（浏览器）', () => {
       expect(editor.value, 'Enter 不产生换行').toBe('first')
       expect(el.value).toBe('first')
       expect(el.hasAttribute('editing')).toBe(false)
+      expect(editorBlurs.length, '提交路径上编辑层真的被 blur 过：早退消费了这次 blur').toBeGreaterThanOrEqual(1)
       expect(changes, '提交派发一次 change').toHaveLength(1)
       expect(cancels, '提交不派发 cancel').toHaveLength(0)
       expect(document.activeElement, '焦点回宿主').toBe(el)
     } finally {
       detach()
       detachCancel()
+      detachEditorBlurs()
     }
     cleanupElement(el)
   })
