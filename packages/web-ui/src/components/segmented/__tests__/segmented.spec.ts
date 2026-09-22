@@ -230,10 +230,14 @@ describe('WebUiSegmented 组件', () => {
     })
   })
 
-  describe('玻璃指示器', () => {
-    it('指示器静止态挂载共享玻璃配方，按压与拖拽不摘除', async () => {
+  describe('玻璃轨道与指示器', () => {
+    it('轨道静止态挂载共享玻璃配方，指示器恒挂同一配方供按压/拖拽透出', async () => {
       const el = createSegmented(TRIGGER_HTML)
       await waitForUpdate(el)
+
+      const track = queryA11y(el, '.wui-segmented')
+      expect(track).not.toBeNull()
+      expect(track?.classList.contains('wui-glass')).toBe(true)
 
       const indicator = queryA11y(el, '.wui-segmented-indicator')
       expect(indicator).not.toBeNull()
