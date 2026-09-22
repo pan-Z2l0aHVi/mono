@@ -1434,12 +1434,12 @@ SVG 线条绘制动画，基于 `stroke-dashoffset`。直接在原元素上动�
 | `--wui-color-surface-raised`       | `#f2f2f7`                                                    | `#2c2c2e`                                                    | 抬升表面               |
 | `--wui-color-surface-control`      | `#dfdfdf`                                                    | `#3a3a3c`                                                    | 中性可交互控件表面     |
 | `--wui-color-surface-track`        | `#e5e5ea`                                                    | `#444446`                                                    | Slider/Switch 轨道表面 |
-| `--wui-color-surface-menu`         | `rgb(246 246 246 / 0.82)`                                    | `rgb(44 44 46 / 0.92)`                                       | Menu 和浮动面板表面    |
+| `--wui-color-surface-menu`         | `rgb(246 246 246 / 0.82)`                                    | `rgb(44 44 46 / 0.78)`                                       | Menu 和浮动面板表面    |
 | `--wui-color-surface-glass`        | `rgb(250 250 250 / 0.34)`                                    | `rgb(44 44 46 / 0.42)`                                       | 液态玻璃表面           |
 | `--wui-color-surface-glass-hover`  | `color-mix(... text 6%, surface-glass)`                      | `color-mix(... text 6%, surface-glass)`                      | Glass 完整悬停背景     |
 | `--wui-color-surface-glass-active` | `color-mix(... text 15%, surface-glass)`                     | `color-mix(... text 15%, surface-glass)`                     | Glass 完整按下背景     |
 | `--wui-color-surface-overlay`      | `rgb(246 246 246 / 0.82)`                                    | `rgb(32 34 34 / 0.9)`                                        | 半透明浮层表面         |
-| `--wui-color-surface-sidebar`      | `rgb(246 246 246 / 0.82)`                                    | `rgb(44 44 46 / 0.9)`                                        | 侧边栏面板表面         |
+| `--wui-color-surface-sidebar`      | `rgb(246 246 246 / 0.82)`                                    | `rgb(44 44 46 / 0.8)`                                        | 侧边栏面板表面         |
 | `--wui-color-surface-segmented`    | `#e5e5ea`                                                    | `#3a3a3c`                                                    | Segmented 指示器表面   |
 | `--wui-color-surface-selected`     | `#fff`                                                       | `#5c5c5e`                                                    | 选中表面               |
 | `--wui-color-text`                 | `#1b1b1b`                                                    | `#e9eaea`                                                    | 主要文本               |
