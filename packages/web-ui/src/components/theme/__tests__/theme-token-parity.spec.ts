@@ -20,6 +20,23 @@ function normalize(value: string): string {
   return value.replace(/\s+/g, ' ').trim().replace(/;\s*$/, '')
 }
 
+interface Rgba {
+  rgb: [number, number, number]
+  alpha: number
+}
+
+/** 解析 theme 里的 #rrggbb 与 rgb(r g b / a) 两种字面量。 */
+function parseColor(value: string | undefined): Rgba {
+  const raw = value ?? ''
+  const hex = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(raw)
+  if (hex) {
+    return { rgb: [Number.parseInt(hex[1], 16), Number.parseInt(hex[2], 16), Number.parseInt(hex[3], 16)], alpha: 1 }
+  }
+  const rgba = /^rgb\(\s*(\d+)\s+(\d+)\s+(\d+)\s*\/\s*([\d.]+)\s*\)$/.exec(raw)
+  if (!rgba) throw new Error(`无法解析颜色值：${raw}`)
+  return { rgb: [Number(rgba[1]), Number(rgba[2]), Number(rgba[3])], alpha: Number(rgba[4]) }
+}
+
 /** 从 selector 首次出现的位置开始，按括号配平截取块体。 */
 function blockBody(css: string, selectorPattern: string): string {
   const index = css.search(new RegExp(selectorPattern))
@@ -216,5 +233,43 @@ describe('theme 成对块 parity', () => {
       .filter(([key, value]) => mediaReduced.get(key) !== value)
       .map(([key, value]) => `${key}: reduced=${value} media=${mediaReduced.get(key)}`)
     expect(diffs, `\n${diffs.join('\n')}`).toEqual([])
+  })
+})
+
+describe('深色 elevation 关系', () => {
+  const page = parseColor(themeBlocks.dark.get('--wui-color-page'))
+  const surface = parseColor(themeBlocks.dark.get('--wui-color-surface'))
+
+  /** 面板多为半透明玻璃底，实际观感是它叠在 page 上的合成色。 */
+  function composite(token: string): [number, number, number] {
+    const { rgb, alpha } = parseColor(themeBlocks.dark.get(token))
+    return [0, 1, 2].map(channel => alpha * rgb[channel] + (1 - alpha) * page.rgb[channel]) as [number, number, number]
+  }
+
+  it('浅色 sidebar 表面与共享 overlay 同值，浅色零变化', () => {
+    const light = tokenPairs(
+      blockBody(themeCss, ":host\\(\\[appearance='light'\\]\\),\\n:host\\(\\[appearance='system'\\]\\) \\{")
+    )
+    expect(light.get('--wui-color-surface-sidebar')).toBe(light.get('--wui-color-surface-overlay'))
+  })
+
+  it('深色浮动面板与 sidebar 都比 page 浅一档，量级对齐 --wui-color-surface', () => {
+    for (const token of ['--wui-color-surface-menu', '--wui-color-surface-sidebar']) {
+      const channels = composite(token)
+      channels.forEach((value, channel) => {
+        // 下界：低于 3/255 读不出层级；上界：越过 12/255 就不只是「一档」
+        expect(value, `${token} 通道 ${channel} 比 page 亮的量`).toBeGreaterThan(page.rgb[channel] + 3)
+        expect(value, `${token} 通道 ${channel} 比 page 亮的量`).toBeLessThan(page.rgb[channel] + 12)
+        // 「page 之上一档」由 --wui-color-surface 定义，合成色应与它基本重合
+        expect(
+          Math.abs(value - surface.rgb[channel]),
+          `${token} 通道 ${channel} 与 surface 的偏差`
+        ).toBeLessThanOrEqual(2)
+      })
+    }
+  })
+
+  it('深色 overlay 保持原值，dialog/drawer/toast 不随本次抬升', () => {
+    expect(themeBlocks.dark.get('--wui-color-surface-overlay')).toBe('rgb(32 34 34 / 0.9)')
   })
 })
