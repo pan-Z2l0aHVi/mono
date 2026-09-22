@@ -33,10 +33,12 @@ export const workflows = {
     // 版本 PR 自己不带 pending changeset（它删掉的就是 changeset），所以那一步只在非版本分支上跑。
     steps: {
       'Check changesets': `github.event_name == 'pull_request' && github.head_ref != '${RELEASE_BRANCH}'`,
-      // flake 台账的留痕两步只在失败时跑：判据仍然只属于 Test 那一步，这里不能变成第二个 gate。
-      'Record test failures': 'failure()',
-      'Upload test output': 'failure()'
-    }
+      // flake 台账的留痕两步只认 Test 这一步自己的结果：判据仍然只属于 Test，这里不能变成第二个 gate，
+      // 也不能在前序步骤（例如 lint）失败、Test 被 skip 时留下一条没有测试日志的假记录。
+      'Record test failures': "steps.test.outcome == 'failure'",
+      'Upload test output': "steps.test.outcome == 'failure'"
+    },
+    stepIds: ['go-cache', 'test']
   },
   'changeset-version.yml': {
     name: 'Create Version PR',
@@ -54,7 +56,8 @@ export const workflows = {
     // changesets/action 这一步只在有 pending changeset 时才跑，main 上因此不会长出空版本 PR。
     steps: {
       'Create or update version pull request': "steps.changesets.outputs.has-changesets == 'true'"
-    }
+    },
+    stepIds: ['changesets']
   },
   'wails-verify.yml': {
     name: 'Verify Wails Desktop',
@@ -91,7 +94,8 @@ export const workflows = {
         toolchain: {}
       }
     },
-    steps: {}
+    steps: {},
+    stepIds: []
   },
   'wails-release.yml': {
     name: 'Release Wails Desktop',
@@ -119,7 +123,8 @@ export const workflows = {
         permissions: { contents: 'write' }
       }
     },
-    steps: {}
+    steps: {},
+    stepIds: ['release']
   },
   'npm-publish.yml': {
     name: 'Publish npm Packages',
@@ -147,7 +152,8 @@ export const workflows = {
         permissions: { contents: 'write' }
       }
     },
-    steps: {}
+    steps: {},
+    stepIds: ['release']
   },
   'deploy-pages.yml': {
     name: 'Deploy to GitHub Pages',
@@ -161,7 +167,8 @@ export const workflows = {
         toolchain: { 'mise-install': 'node pnpm' }
       }
     },
-    steps: {}
+    steps: {},
+    stepIds: ['deployment']
   }
 }
 
@@ -193,10 +200,10 @@ function unquote(value) {
 
 // 只认本仓用到的形状：顶格 section、缩进 2 的 trigger/job/permission 键、缩进 4 的 job 字段与
 // trigger 的 `branches`/`types`/`paths`、缩进 6 的 step 与 job 级权限、其 `with:` 下的安装面入参
-// （缩进 10）、缩进 8 的 step `if:`。run 块里的内容缩进更深或不以 `- `/`key:` 开头，不会误判。
+// （缩进 10）、缩进 8 的 step `if:` 与 `id:`。run 块里的内容缩进更深或不以 `- `/`key:` 开头，不会误判。
 export function parseWorkflow(text) {
   const lines = text.split(/\r?\n/)
-  const parsed = { name: '', triggers: [], permissions: {}, jobs: {}, steps: {} }
+  const parsed = { name: '', triggers: [], permissions: {}, jobs: {}, steps: {}, stepIds: [] }
   let section = null
   let trigger = null
   let triggerPaths = false
@@ -303,6 +310,13 @@ export function parseWorkflow(text) {
         parsed.jobs[job][field] = value
       }
       continue
+    }
+
+    // step id 单独收一份：守卫表达式引用的是 id 而不是 step 名，所以 `- id:` 与缩进 8 的 `id:` 两种
+    // 形状都要进表 —— 否则把 `id: test` 改掉只会让 `steps.test.outcome` 恒假，红不了。
+    const declaredId = line.match(/^ {6}- id:\s*(.*)$/) ?? line.match(/^ {8}id:\s*(.*)$/)
+    if (declaredId) {
+      parsed.stepIds.push(unquote(declaredId[1]))
     }
 
     const stepStart = line.match(/^ {6}- (?:name|uses):\s*(.*)$/)

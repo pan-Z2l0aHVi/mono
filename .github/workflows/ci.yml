@@ -97,17 +97,21 @@ jobs:
         run: pnpm exec playwright install chromium
 
       - name: Test
+        id: test
         run: set -o pipefail && pnpm run test 2>&1 | tee "$RUNNER_TEMP/test-output.log"
 
       # flake 台账的埋点：失败时把 vitest 的 FAIL 行抽进 step summary，并把原始日志与机器可读清单作为
-      # 保留 1 天的 artifact 上传。`set -o pipefail` 保证 tee 不会吞掉测试的退出码 —— 这一步只留痕，
-      # 判据不变；旧 attempt 的日志在 GitHub 侧事后拿不到，所以留痕必须现在开始积累。
+      # 保留 1 天的 artifact 上传。`set -o pipefail` 保证 tee 不会吞掉测试的退出码 —— 判据不变，这里只留痕。
+      #
+      # 守卫必须是 `steps.test.outcome`，不能是裸的 `failure()`：后者对「任意前序步骤红过」都成立，所以
+      # lint 失败会让 Test 被 skip、留痕两步却照样跑，台账里就多出一条没有测试日志的假记录 —— 而这份台账
+      # 的唯一用途是回答「哪些测试在 flake」。旧 attempt 的日志在 GitHub 侧事后拿不到，所以留痕从现在开始。
       - name: Record test failures
-        if: failure()
+        if: steps.test.outcome == 'failure'
         run: node .github/scripts/record-test-failures.mjs "$RUNNER_TEMP/test-output.log" "$RUNNER_TEMP/test-failures.json"
 
       - name: Upload test output
-        if: failure()
+        if: steps.test.outcome == 'failure'
         uses: actions/upload-artifact@v6
         with:
           name: ci-test-output-${{ github.run_id }}-${{ github.run_attempt }}

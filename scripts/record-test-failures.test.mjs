@@ -56,7 +56,10 @@ assert.deepEqual(empty.counts, { testfiles: null, tests: null })
 const summary = formatSummary(parsed)
 assert.match(summary, /editable-text\.browser\.spec\.ts` — WebUiEditableText/)
 assert.match(summary, /broken\.spec\.ts` — \(suite failed to load\)/)
-assert.ok(!summary.includes('something without a spec path'), 'unparseable FAIL lines must not leak into the summary')
+assert.ok(
+  !summary.includes('something without a spec path'),
+  'FAIL lines that do not parse must not leak into the summary'
+)
 assert.match(formatSummary(empty, 'log missing'), /log missing/)
 assert.match(formatSummary(empty), /No `FAIL` line was found/)
 

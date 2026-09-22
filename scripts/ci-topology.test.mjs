@@ -53,10 +53,31 @@ for (const [file, expected] of Object.entries(workflows)) {
     }
   }
 
+  assert.deepEqual(actual.stepIds, expected.stepIds, `${file}: step ids must match`)
+
   for (const [step, expression] of Object.entries(expected.steps)) {
     assert.equal(actual.steps[step], expression, `${file}: step ${step} if must match the table`)
   }
 }
+
+// 守卫里的 `steps.<id>.` 引用的是 step 的 id 而不是它的名字，而引用不存在的 id 不会报错：表达式恒假，
+// 那一步从此静默跳过、job 依旧全绿。所以每个引用都必须在同一文件里真的声明了这个 id。
+for (const [file, wf] of Object.entries(parsed)) {
+  const text = fs.readFileSync(path.join(workflowDir, file), 'utf8')
+  const declared = new Set(wf.stepIds)
+
+  for (const reference of text.matchAll(/\bsteps\.([a-zA-Z0-9_-]+)\./g)) {
+    assert.ok(declared.has(reference[1]), `${file}: steps.${reference[1]} is referenced but no step declares that id`)
+  }
+}
+
+// 引用解析查不出「id 挂到了错误的 step」，而 flake 台账的守卫恰恰依赖 `id: test` 落在真的跑
+// `pnpm run test` 的那一步上 —— 挂错只会让台账静默变空，所以这一对邻接行单独钉住。
+assert.match(
+  fs.readFileSync(path.join(workflowDir, 'ci.yml'), 'utf8'),
+  /^ {6}- name: Test\n {8}id: test$/m,
+  'ci.yml: the id `test` must belong to the step named Test'
+)
 
 // 不变量 2：只有 changeset-version.yml 监听 push。ci.yml 的 push 触发是纯重复 —— squash-only 加
 // strict required status 已经让 PR head 的树等于合并后 main 的树；trunk 复检走 workflow_dispatch。
