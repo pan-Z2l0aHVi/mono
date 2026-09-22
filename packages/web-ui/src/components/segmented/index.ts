@@ -17,8 +17,9 @@ installPointerFocusSuppression()
 
 @customElement('web-ui-segmented')
 export class WebUiSegmented extends FormAssociated(LitElement) {
-  // 指示器静止态是玻璃材质，直接复用共享 .wui-glass 配方（底色 / backdrop blur /
-  // 描边环 / 投影），按压与拖拽态只在其上换 active 档底色并放大。
+  // 轨道静止态是玻璃材质，直接复用共享 .wui-glass 配方（底色 / backdrop blur /
+  // 描边环 / 投影）；指示器恒挂同一配方，静止态由 surface-segmented 实色盖住 blur，
+  // 按压与拖拽态才透出玻璃。
   static override styles = [unsafeCSS(glass), unsafeCSS(style)]
   @property({ type: String, reflect: true }) name = ''
   @property({ type: Boolean, reflect: true }) disabled = false
@@ -240,6 +241,7 @@ export class WebUiSegmented extends FormAssociated(LitElement) {
     return html`
       <div
         class=${classMap({
+          'wui-glass': true,
           'wui-segmented': true,
           'is-disabled': this._isDisabled,
           'is-pressed': this._pressed,
