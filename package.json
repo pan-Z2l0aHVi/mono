@@ -24,6 +24,7 @@
     "inspect:contract": "node scripts/repo-query.mjs contract",
     "diff:contract": "node scripts/repo-query.mjs contract-diff",
     "measure:ci": "node scripts/ci-measure.mjs",
+    "flakes:ci": "node scripts/ci-flakes.mjs",
     "check:code": "pnpm run check:cspell && vp check && pnpm run check:go && pnpm run check:stylelint",
     "check:go": "! gofmt -l . | grep -q . && find . -name go.mod -not -path \"*/node_modules/*\" -exec dirname {} \\; | sort -u | xargs -I{} sh -c \"cd {} && go vet ./...\"",
     "check:stylelint": "pnpm exec stylelint --allow-empty-input \"**/*.{css,scss,less,html,vue}\"",
