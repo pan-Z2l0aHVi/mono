@@ -81,8 +81,8 @@ export function splitJsonDocuments(text) {
 }
 
 function fetchRuns(repo, sinceIso) {
-  // `>` 必须自己编码成 `%3E`：走 `gh api --field 'created=>…'` 时这个端点直接回 404，而 404 读起来
-  // 像「仓库不存在」，会把人引去查权限。
+  // 实测 `gh api … --field 'created=>…'` 回 404 —— 它读起来像「仓库不存在」，会把人引去查权限；把 `>`
+  // 写成编码后的 `%3E` 放进查询串，这个过滤器才可用。
   const query = `created=%3E${encodeURIComponent(sinceIso)}&per_page=${PAGE_SIZE}`
 
   const raw = execFileSync(
