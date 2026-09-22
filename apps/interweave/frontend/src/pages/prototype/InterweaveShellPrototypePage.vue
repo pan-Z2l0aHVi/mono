@@ -561,8 +561,8 @@ function onResourceContextmenu(resource: Resource, event: MouseEvent) {
 // --- Resource rename (web-ui-editable-text) ---
 // 空闲态渲染普通 span；只有两个入口触发编辑：列表右键菜单「重命名」与抽屉标题编辑按钮。
 // 入口先把 editingNameKey 指向目标，editable-text 随键渲染后再进入编辑；提交（change）或
-// 取消（cancel）后清空键值回到普通 span。编辑交互（blur 提交、Escape 取消、Enter 换行）
-// 仍由组件持有，页面只把提交值写回资源。
+// 取消（cancel）后清空键值回到普通 span。编辑交互（Enter 提交，blur/Esc 取消并恢复进入编辑
+// 时的值）由组件持有，页面只把提交值写回资源；cancel 不冒泡（#159），挂在组件自身即可。
 const resourceNameEditors = ref<Record<string, WebUiEditableText | null>>({})
 const nameEditorRefCallbacks = new Map<string, (el: Element | ComponentPublicInstance | null) => void>()
 const editingNameKey = ref<string | null>(null)
@@ -1109,6 +1109,7 @@ watch(addDialogOpen, (open, _, onCleanup) => {
                     v-else
                     :ref="setNameEditorRef(resource.id)"
                     :class="resourceNameClass(resource)"
+                    class="caret-(--wui-color-accent,#08f)"
                     :value="resource.name"
                     :aria-label="`修改 ${resource.name} 的名称`"
                     @click.stop
@@ -1252,6 +1253,7 @@ watch(addDialogOpen, (open, _, onCleanup) => {
               v-else
               :ref="setNameEditorRef(DRAWER_TITLE_EDITOR_KEY)"
               :class="DRAWER_TITLE_NAME_CLASS"
+              class="caret-(--wui-color-accent,#08f)"
               :value="selectedResource.name"
               :aria-label="`修改 ${selectedResource.name} 的名称`"
               @click.stop
