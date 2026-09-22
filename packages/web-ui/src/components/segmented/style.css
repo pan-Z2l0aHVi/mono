@@ -25,16 +25,21 @@
   padding: 4px;
   border-radius: var(--wui-radius-control, calc(infinity * 1px));
 
-  /* inset 变体（默认，「凹」）：轨道是不透明实体面——底色取 --wui-color-surface-raised、
+  /* inset 变体（默认，「凹」）：轨道是不透明实体面——底色取 --wui-color-surface、
      backdrop-filter 移除，描边环（::before）与投影由 .wui-glass 提供且静止/按压/拖拽
      全状态同值。
+     为什么不是 surface-raised：#169 追加验收要求浅色下轨道与页面同色——surface-raised
+     的 #f2f2f7 在纯白页面上像一颗浅灰药丸凸出来，凹感不足。浅色 surface 与 page 同为
+     #fff，轨道因此与页面同色，深度只由常驻的 1px 描边环与投影承担；深色 surface 与
+     surface-raised 同为 #2c2c2e，「比页面高一档」的 elevation 原样保留（theme 里这两个
+     token 在深色下同值，选 surface 不改变深色观感）。
      实体化的取证依据：thumb 的 backdrop 采样面整个落在轨道之内（slider thumb 探出
      track 外、能采到页面背景，segmented 没有这个条件），玻璃轨道会把背后的条纹/色斑
      连同自身边缘一起模糊进采样图——均匀深底上全透明 thumb 与相邻 track 仅差 +0.5 阶
      （42.8 vs 42.3）、本体不可感知，条纹底实测 thumb 内部灰度 std 1.89（背景渗透）。
      轨道改实色后同一采样 std 归零，弧线与两条横线随磨砂边界一同消失，look3/4/5 为
      压制这些采样痕迹引入的按压态特判（inset 高光淡出、环半隐、6% tint）全部移除。 */
-  background-color: var(--wui-color-surface-raised, #f2f2f7);
+  background-color: var(--wui-color-surface, #fff);
   backdrop-filter: none;
 
   &.is-disabled {
