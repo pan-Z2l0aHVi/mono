@@ -42,7 +42,7 @@ function EditableTextDemo() {
             aria-label="文档标题"
             onChange={event => {
               setTitle(event.currentTarget.value)
-              setLastEvent('change（失焦提交）')
+              setLastEvent('change（Enter/失焦提交）')
             }}
           />
         </p>
@@ -50,7 +50,7 @@ function EditableTextDemo() {
         <div className="text-sm text-gray-500">最近事件：{lastEvent}</div>
       </div>
       <p className="mb-3 text-xs text-gray-400">
-        💡 点击文字进入编辑并落点光标，失焦提交；Escape 取消并恢复进入编辑时的值
+        💡 点击文字进入编辑并落点光标，Enter 或失焦提交；仅 Escape 取消并恢复进入编辑时的值
       </p>
 
       <h2>占位文本</h2>
@@ -58,18 +58,20 @@ function EditableTextDemo() {
         <web-ui-editable-text value="有值时不显示占位文本" placeholder="占位文本" aria-label="有值示例" />
         <web-ui-editable-text placeholder="空值时显示占位文本" aria-label="空值示例" />
       </div>
-      <p className="mb-3 text-xs text-gray-400">💡 提交空值即清空，文本层回退显示 placeholder</p>
+      <p className="mb-3 text-xs text-gray-400">💡 提交空值即清空（Enter 或失焦均可），文本层回退显示 placeholder</p>
 
       <h2>多行</h2>
       <div className="mb-3 flex flex-col gap-3">
         <web-ui-editable-text
           className="w-80 rounded-sm bg-(--wui-color-surface-raised) p-2"
-          value={'Enter 换行且保持编辑态\n第二行随盒宽自动折行，两态同盒'}
+          value={'值内的换行会照常渲染\n第二行随盒宽自动折行，两态同盒'}
           placeholder="支持多行的占位文本"
           aria-label="多行示例"
         />
       </div>
-      <p className="mb-3 text-xs text-gray-400">💡 Enter 插入换行；文本层与编辑层同盒同排版，进入编辑不产生位移</p>
+      <p className="mb-3 text-xs text-gray-400">
+        💡 Enter 提交而非插入换行；文本层与编辑层同盒同排版，进入编辑不产生位移
+      </p>
 
       <h2>禁用</h2>
       <div className="mb-3 flex flex-col gap-3">
