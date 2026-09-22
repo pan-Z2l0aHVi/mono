@@ -56,7 +56,16 @@ export default {
             enabled: true,
             headless: true,
             screenshotFailures: true,
-            provider: playwright(),
+            provider: playwright({
+              launchOptions: {
+                // 逐像素比对要求文本光栅化跨平台可复现：文本进入合成层后会丢掉 LCD
+                // 子像素 AA（编辑层的 textarea 就会），与主层文本产生平台相关的边缘差，
+                // CI 上曾表现为两层 5365 像素、最大通道差 102 的错位。强制灰度 AA 让
+                // 两层一致；Chromium 自己的表单控件跨平台像素测试
+                // （content/browser/form_controls_browsertest.cc）采用同样处理。
+                args: ['--disable-lcd-text']
+              }
+            }),
             instances: [{ browser: 'chromium' }]
           }
         }
