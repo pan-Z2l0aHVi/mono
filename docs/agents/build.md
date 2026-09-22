@@ -116,19 +116,23 @@ turbo 本地缓存由 `.mise.toml` 的 `TURBO_CACHE_DIR` 指向 worktree 族共�
 | 应用发布 workflow       | 目标应用版本变更后的受控合并                                       | 创建带校验和的安装程序 Release；私有应用永不发布到 npm                                                |
 | `deploy-pages.yml`      | 手动触发                                                           | 通过 `actions/deploy-pages` 产物部署作业级 `DEMO_APPS` 列表中的每个可部署 Demo                        |
 
-- `ci.yml` 的 PR 运行与手动触发运行共享一个以分支为键的 `concurrency` 组（`github.head_ref || github.ref_name`），因此 `cancel-in-progress` 会将两者合并为单次运行而非重复构建。`workflow_dispatch` 触发用于覆盖自动化令牌创建的版本 PR 可能不触发初始 `pull_request` 事件的情形。原生应用所需的系统前置条件以当前 workflow 和工具配置为准。
+- `ci.yml` 的 PR 运行与手动触发运行共享一个 `concurrency` 组（`${{ github.workflow }}-${{ github.head_ref || github.ref_name }}`，即 workflow 名加分支），但 `cancel-in-progress` 只能取消仍在飞行的那一次：先启动的运行如果已经结束，后启动的那次仍会完整跑一遍，两次运行不会被合并成一次。`workflow_dispatch` 只用于人工重跑：版本 PR 的 `pull_request` 运行在本仓默认自动执行，不需要额外调度，历史挂起见下节。原生应用所需的系统前置条件以当前 workflow 和工具配置为准。
 - 包专属的版本同步由 `release:version` 对应脚本负责；默认更新与 `--check` 验证的语义以该脚本为准。版本 workflow 不直接发布包或安装程序。
 - `npm-publish.yml` 仅发布公共 npm 包。发布成功后，一个独立的最小权限作业为每个包版本创建幂等的 GitHub Release 和标签，附带 npm 和包 changelog 的链接。它不使用私有原生应用的工具链或长期 npm token。
-- 私有原生应用的验证保持路径触发而非全局必需检查，不相关的 PR 无需等待原生运行环境；`main` 分支保护只要求 `CI` 通过，产品变更必须经 pull request 合入。
+- 私有原生应用的验证保持路径触发而非全局必需检查，不相关的 PR 无需等待原生运行环境；`main` 分支保护只要求 `check` 上下文通过，产品变更必须经 pull request 合入。
 - `deploy-pages.yml` 每个条目是 `apps/<name>` 目录，服务路径为 `/mono/<name>/`；构建命令使用 pnpm 的 `{./apps/<name>}...` 目录选择器而非 npm 包名。它仅安装 Node 和 pnpm，因为 Pages 不需要私有原生应用的工具链。站点没有根落地页。
 - 每个 Demo 的 History 路由深层链接依赖 GitHub Pages 的 404 回退：未匹配请求路由到根 `404.html`，它按 `DEMO_APPS` 验证应用名、把请求路由保存在 `redirect` 并加载应用根目录；应用必须在创建路由器之前恢复 `redirect`，未知路径保持 404。
 - npm Trusted Publishing 通过 OIDC `job_workflow_ref` 声明绑定到工作流文件路径。重命名或移动 `npm-publish.yml` 会使现有的 trusted-publisher 注册失效：即使设置了 `id-token: write`，`pnpm changeset publish` 也会因 `ENEEDAUTH` 失败。在重命名工作流的同一变更中更新 npmjs.com 上对应的 trusted publisher。
 
 ### 版本 PR 的 CI 门控
 
-- **症状**：Changesets 版本 PR 的 CI 被标记为 `action_required`，在获批准前不会运行；由于 `main` 规则集要求 `check` 上下文，合并版本 PR 被阻塞。
-- **原因**：版本 PR 使用 `GITHUB_TOKEN` 创建，其自身的 `pull_request` 触发的 CI 会被 GitHub 的 pwn-request 保护挂起，需要人工批准。
-- **操作**：在 Actions 运行页面批准该次运行，或执行 `gh api repos/<owner>/<repo>/actions/runs/<id>/approve`。`changeset-version.yml` 触发的 `workflow_dispatch` 运行已经验证了相同的提交，因此批准只是为了满足合并门控；分支键控的 `concurrency` 组随后会在两者同时运行时将已批准的运行与调度运行合并。
+合并门控来自 `main` 的规则集 `main protection`：要求 `check` 上下文，且 `strict_required_status_checks_policy` 为真；正常情形下这个上下文由版本 PR 自己那次 `ci.yml` 运行产出。
+
+`changeset-version.yml` 曾额外 dispatch `ci.yml`（`has-changesets` 为真时）与 `wails-verify.yml`（`has-wails-release` 为真时），要防的是 GitHub 的 `action_required`：由 `GITHUB_TOKEN` 创建的版本 PR，其 `pull_request` 运行可能被判定为待批准而不执行。这条防护自身的记录很薄，但计数得说清规则：截至 2026-09-21 保留的 788 次运行历史（最早 2026-07-05）里，版本分支上 46 次 `pull_request` CI 运行有 5 次从未执行过任何 job（`runs/<id>/jobs` 的 `total_count` 为 0、`run_started_at` 等于 `created_at`），分属 4 个版本 PR——3 次至今仍标 `action_required`（08-25 一次、09-07 两次），2 次在创建后约 30 天才收敛为 `failure`（08-01 与 08-07 各一次，挂起过期的形态）。其中几个 head SHA（`92e8a2ab`、`13090291`）已被版本分支后续的 force-push 脱链，`git cat-file` 查不到，只能按 run number 在 Actions 里看。只有 08-25 与 09-07 那 3 次落在 dispatch 上线（`1253ff15`，2026-08-07T05:16Z；当时文件还叫 `version.yml`）之后。这 3 次里 2 次的 dispatch 自身就是 failure；唯一成功的那次（run 305）确实给当时还挂着的 PR head 变出了规则集要求的 `check` 绿 —— 严格说那一刻合并门控已经满足，只是这份绿只活了约 10 秒：`check` 在 `2026-09-07T23:08:39Z` 判成功（用 job 的 `completed_at`；本例 run 自己的 `updated_at` 晚了 1 秒），新 commit `7b0f9361` 就在 `23:08:49Z` 提交（挂起开始后 4 分钟），PR 最终是靠它自己的 PR 运行合入的。另两次挂起早于 dispatch 上线，谈不上覆盖面。2026-09-07 之后再创建的 6 个版本 PR 未出现挂起。
+
+重复则是确定的：并发组没有把两次运行合并成一次，胜负取决于 PR 运行真正开跑（`run_started_at`）时 dispatch 是否还在飞行。25 次 dispatch 运行里 2 次是人工重跑（`b3068ab6` 上的 run 180、181；判据是同一 commit 上已有过一次自动 dispatch，不能改用 `triggering_actor`——挂起配对的 run 297 那个字段也显示人工，但它与挂起的 PR run 298 只差 2 秒、且是该 commit 上唯一一次 dispatch），其余 23 次自动 dispatch 中：6 次因仍在飞行中被随后的 PR 运行取消（该分支上 CI 的 PR 运行从未被取消），3 次对应上面那 3 个挂起的 PR 运行，剩下 14 个版本 PR commit 上 dispatch 已经在 PR 运行启动前 17 到 1671 秒结束（其中 13 次在 17–660 秒），同一份 CI 完整执行了两遍（12 次双方都成功，1 次双方都失败，1 次 dispatch 失败、PR 运行成功）。这 14 个间隔是 PR 运行的 `run_started_at` 减去 dispatch 的 `updated_at`。重算配方：`gh api --paginate 'repos/<owner>/<repo>/actions/runs?branch=changeset-release/main&event=workflow_dispatch'` 与 `event=pull_request` 各拉一次，本地只留 `.name == "CI"` 的项，得到 25 与 46；`name=` 查询参数会被 GitHub 静默忽略（`name=CI` 和 `name=NoSuchWorkflowAtAll` 返回同一个 `total_count`），不能用来过滤；`total_count` 自身在同一条查询上也可能瞬时给出不同值，一切以 paginate 之后的本地计数为准，且要先按 `.id` 去重——新运行插到队首会把已有行推到更大的 offset，同一运行可能在两页各出现一次，因此未去重的计数只会偏大，去重即可消除。以上计数同为 2026-09-21 时点，版本分支还会继续长。
+
+现在只保留 PR 事件这一条路径，挂起回归为人工一步：在 Actions 运行页批准该次运行，或执行 `gh api repos/<owner>/<repo>/actions/runs/<id>/approve`。若挂起重新成为常态，正确的修法不是补回 dispatch（它只是把同一轮验证再跑一遍，被挂起的 PR 运行仍留着等人批准），而是让版本 PR 由具有写权限的身份创建：给 `changesets/action` 换用机器用户 PAT 或 GitHub App 令牌，使 PR 作者本身即是被批准的贡献者。那条已删除的条件 dispatch 同样不解决问题：`has-wails-release` 当时为真就意味着版本 PR 必然改到 `apps/interweave/package.json`，而这个路径至今仍在 `wails-verify.yml` 的 `pull_request` 过滤器里，补回它也不会多出一次有效验证。历史上它一共只在 4 个版本 PR commit 上触发过，其中 3 个 commit 的 `pull_request` 运行本来就在跑，dispatch 只是把同一次验证又做了一遍；唯一没有 PR 运行的那次（7be57d84）不是路径没覆盖——当时过滤器写作 `apps/wails-starter/**`（`b9faa2c2` 才改名），而该 commit 改的正是这个目录，且同一 commit 的 `ci.yml` PR 运行照常到达，只有 `wails-verify.yml` 没有 `pull_request` 运行：该 SHA 上它总共只有一次运行，就是这次删掉的 dispatch 本身（run 19，完整跑完并成功）。也不是挂起待批准——挂起的运行对象仍在，只是 job 数为 0，而这里根本没有产生过那条运行。除此之外原因未能确定。那一次 dispatch 因而是该 commit 上唯一的 `wails-verify` 验证，但那个 commit 本身就是一次探针（它消费的 changeset 写着 `trigger version-pr rerun to verify concurrency dedup`，包名还是改名前的 `@greypan/wails-starter`），不能拿来为现行条件下的取舍背书。
 
 ## Release context
 
