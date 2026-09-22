@@ -1,4 +1,4 @@
-import { html, LitElement, unsafeCSS } from 'lit'
+import { html, LitElement, type PropertyValues, unsafeCSS } from 'lit'
 import { customElement, property, state } from 'lit/decorators.js'
 import { classMap } from 'lit/directives/class-map.js'
 
@@ -52,6 +52,11 @@ export class WebUiSegmented extends FormAssociated(LitElement) {
 
   /** 按压/拖拽中指示器实时覆盖的 trigger：其文字随覆盖即时着 primary，松手即撤下。 */
   private _coveredTrigger: WebUiSegmentedTrigger | null = null
+
+  protected override updated(changed: PropertyValues) {
+    super.updated(changed)
+    this._applyLabelColors()
+  }
 
   override disconnectedCallback() {
     super.disconnectedCallback()
@@ -274,6 +279,24 @@ export class WebUiSegmented extends FormAssociated(LitElement) {
   private _clearCovered() {
     this._coveredTrigger?.classList.remove('is-covered')
     this._coveredTrigger = null
+  }
+
+  /**
+   * 文字色契约（#169 用户验收反馈）：accent 只属于 variant="inset"，且按压/拖拽期间只属于
+   * covered 项——checked 的 accent 在 pointerdown 即摘除，松手后回落。
+   * 两个 internal 变量写在 host 上，经继承穿透 trigger 的 shadow 边界，所以运行时切 variant、
+   * 动态插入 trigger 都不需要再同步 class；trigger 脱离 segmented 单独使用时变量缺省，
+   * 由 trigger 侧的 fallback 保持 accent。
+   */
+  private _applyLabelColors() {
+    const secondary = 'var(--wui-color-text-secondary, #6a6a6a)'
+    const accent = 'var(--wui-color-accent, #08f)'
+    // raised 回到 accent 之前的文字行为：checked 与未选中项同档灰，covered 同样不着 accent。
+    const flat = this._variant === 'raised'
+    const checked = flat || this._pressed || this._isDragging ? secondary : accent
+    const covered = flat ? secondary : accent
+    this.style.setProperty('--wui-internal-segmented-checked-label-color', checked)
+    this.style.setProperty('--wui-internal-segmented-covered-label-color', covered)
   }
 
   private readonly _formAssociation = defineFormAssociation<string>({
