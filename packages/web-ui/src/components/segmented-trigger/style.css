@@ -39,9 +39,7 @@
   font-size: var(--wui-font-size, 14px);
   line-height: 1;
 
-  /* 未选中项文字取 text-secondary 同档灰、无底色；选中（is-checked）与被指示器实时
-     覆盖（host 上的 is-covered，由 segmented 在按压/拖拽中按指示器位置挂载）着
-     --wui-color-accent，两条规则的声明见本规则块下方。 */
+  /* 选中与未选中同档灰：区分度只由玻璃指示器承担，未选中项无底色。 */
   color: var(--wui-color-text-secondary, #6a6a6a);
   white-space: nowrap;
 
@@ -53,20 +51,6 @@
     outline: var(--wui-focus-ring-width, 3px) solid var(--wui-color-focus-ring, rgb(0 136 255 / 0.4));
     outline-offset: 2px;
   }
-}
-
-/* 选中项着 accent：颜色经父级 segmented 写入 host 的 internal 变量中转（缺省时回落 accent，
-   即 trigger 脱离 segmented 单独使用的情形）。按压/拖拽中该变量被改写成 text-secondary，
-   checked 的 accent 由此在 pointerdown 即摘除；raised 变体下它全程是 text-secondary。 */
-.wui-segmented-trigger.is-checked {
-  color: var(--wui-internal-segmented-checked-label-color, var(--wui-color-accent, #08f));
-}
-
-/* 被指示器实时覆盖项着 accent：covered 由父级 segmented 挂到 host 上（拖拽中实时跟随
-   指示器位置），故用 :host() 选取。本规则必须排在上一条之后——按压起点 covered 与
-   checked 重合，那一刻只能剩下这一个 accent。 */
-:host(.is-covered) .wui-segmented-trigger {
-  color: var(--wui-internal-segmented-covered-label-color, var(--wui-color-accent, #08f));
 }
 
 @media (hover: hover) and (pointer: fine) {

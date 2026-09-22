@@ -113,18 +113,6 @@ function triggerTextColor(trigger: WebUiSegmentedTrigger): string {
   return getComputedStyle(activeSurface(trigger)).color
 }
 
-/** 当前被父级 segmented 标记 is-covered 的 trigger（按压/拖拽中实时跟随指示器）。 */
-function coveredTriggers(segmented: WebUiSegmented): WebUiSegmentedTrigger[] {
-  return [...segmented.querySelectorAll<WebUiSegmentedTrigger>('web-ui-segmented-trigger')].filter(trigger =>
-    trigger.classList.contains('is-covered')
-  )
-}
-
-/** 当前文字着 accent 的 trigger：#169 之后任一时刻只允许 covered 那一项（inset）。 */
-function accentTriggers(look: Look, accent: string): WebUiSegmentedTrigger[] {
-  return look.triggers.filter(trigger => triggerTextColor(trigger) === accent)
-}
-
 /**
  * 按住已选项并提交 is-pressed，返回松手收尾函数。
  * 采样起点在 Lit 提交 is-pressed 之后：要证的是「按下态持续期间的表现」，
@@ -377,21 +365,19 @@ describe('WebUiSegmented 视觉规范（浏览器）', () => {
         expect(getComputedStyle(indicator, '::before').opacity, '静止态不得绘制玻璃描边环').toBe('0')
       })
 
-      it('文字色：未选中 text-secondary、选中 accent，与轨道底对比度 ≥ 3:1', async () => {
+      it('文字色：选中与未选中同为 text-secondary，与轨道底对比度 ≥ 3:1', async () => {
         const { theme, track, activeTrigger, triggers } = await mount(appearance)
 
         const secondaryToken = resolveToken(theme, '--wui-color-text-secondary')
-        const accentToken = resolveToken(theme, '--wui-color-accent')
-        expect(accentToken, 'accent token 应解析为可见颜色').not.toBe(TRANSPARENT)
 
-        expect(triggerTextColor(activeTrigger), '选中项文字应着 accent').toBe(accentToken)
+        expect(triggerTextColor(activeTrigger), '选中项文字应保持 text-secondary').toBe(secondaryToken)
         for (const trigger of triggers.slice(1)) {
           expect(triggerTextColor(trigger), '未选中项文字应保持 text-secondary').toBe(secondaryToken)
         }
 
-        // accent 落在实体轨道上的可辨度底线（WCAG 非文本/大字 3:1）；实测值随报告给出。
+        // 文字色可辨度底线（WCAG 非文本/大字 3:1）；实测值随报告给出。
         const ratio = contrastRatio(triggerTextColor(activeTrigger), getComputedStyle(track).backgroundColor)
-        expect(ratio, `选中文字与轨道底对比度不足：${ratio.toFixed(2)}:1`).toBeGreaterThanOrEqual(3)
+        expect(ratio, `文字与轨道底对比度不足：${ratio.toFixed(2)}:1`).toBeGreaterThanOrEqual(3)
       })
 
       it('按住已选项：thumb 全程全透明，无灰色中间帧', async () => {
@@ -416,48 +402,57 @@ describe('WebUiSegmented 视觉规范（浏览器）', () => {
         ).toBe(true)
       })
 
-      it('按住已选项：被覆盖的 trigger 挂 is-covered 且文字着 accent', async () => {
+      it('按住已选项：选中项文字保持 text-secondary，不着 accent', async () => {
         const look = await mount(appearance)
-        const { theme, segmented, activeTrigger } = look
-        const accentToken = resolveToken(theme, '--wui-color-accent')
+        const { theme, activeTrigger } = look
+        const secondaryToken = resolveToken(theme, '--wui-color-text-secondary')
 
         const release = await holdPressed(look)
 
-        // 静止时指示器就压在已选项上：按压起点 covered 与 checked 重合
-        expect(coveredTriggers(segmented), '按压中应有且仅有一个被覆盖项').toStrictEqual([activeTrigger])
-        await pollUntil(() => triggerTextColor(activeTrigger) === accentToken, '覆盖项文字未着 accent')
-
+        const samples: string[] = []
+        for (let frame = 0; frame < 6; frame += 1) {
+          await waitForFrame()
+          samples.push(triggerTextColor(activeTrigger))
+        }
         await release()
+
+        expect(
+          samples.every(color => color === secondaryToken),
+          `按住态文字色偏离 text-secondary：${samples.join(' | ')}`
+        ).toBe(true)
       })
 
-      it('拖拽中：is-covered 跟随指示器，覆盖项文字着 accent', async () => {
+      it('拖拽中：所有标签文字保持 text-secondary，不随指示器覆盖着色', async () => {
         const look = await mount(appearance)
-        const { theme, segmented, activeTrigger, triggers } = look
-        const accentToken = resolveToken(theme, '--wui-color-accent')
+        const { theme, segmented, triggers } = look
         const secondaryToken = resolveToken(theme, '--wui-color-text-secondary')
         const nextTrigger = triggers[1]
 
         const release = await holdPressed(look)
 
-        // 指针移到下一项中心：指示器跟随后，最大重叠项切换为下一项
+        // 指针移到下一项中心：指示器跟过去，被它盖住的正是下一项
         const target = activeTriggerCenter(nextTrigger)
         window.dispatchEvent(pointer('pointermove', target.x, target.y))
         await waitForUpdate(segmented)
 
-        expect(coveredTriggers(segmented), '拖拽中 covered 应跟随到下一项').toStrictEqual([nextTrigger])
-        await pollUntil(() => triggerTextColor(nextTrigger) === accentToken, '新覆盖项文字未着 accent')
-        // 无关项不受影响；已选项的 accent 随 covered 离开立即摘除——拖拽中只剩 covered 一个 accent
-        expect(triggerTextColor(triggers[2]), '无关项文字应保持 text-secondary').toBe(secondaryToken)
-        await pollUntil(() => triggerTextColor(activeTrigger) === secondaryToken, '旧选中项 accent 未摘除')
-        expect(accentTriggers(look, accentToken), '拖拽中不得出现双 accent').toStrictEqual([nextTrigger])
+        // 逐帧采样全部标签：被指示器盖住的项同样不得着色，accent 逻辑已整体移除
+        const samples: string[][] = []
+        for (let frame = 0; frame < 6; frame += 1) {
+          await waitForFrame()
+          samples.push(look.triggers.map(triggerTextColor))
+        }
 
         await release()
+
+        expect(
+          samples.every(colors => colors.every(color => color === secondaryToken)),
+          `拖拽态出现非 text-secondary 文字色：${samples.map(colors => colors.join(' | ')).join(' / ')}`
+        ).toBe(true)
       })
 
-      it('松手后：is-covered 清除，新选中项着 accent、其余回落 secondary', async () => {
+      it('松手后：新选中项文字仍为 text-secondary', async () => {
         const look = await mount(appearance)
         const { theme, segmented, activeTrigger, triggers } = look
-        const accentToken = resolveToken(theme, '--wui-color-accent')
         const secondaryToken = resolveToken(theme, '--wui-color-text-secondary')
         const nextTrigger = triggers[1]
 
@@ -475,10 +470,10 @@ describe('WebUiSegmented 视觉规范（浏览器）', () => {
         // 落在下一项中心：吸附目标即下一项（速度再快也是向前甩一项，目标一致）
         expect(segmented.value, '松手后应选中拖动落点的选项').toBe(nextTrigger.value)
         expect(nextTrigger.checked, '新选中项应置 checked').toBe(true)
-        expect(coveredTriggers(segmented), '松手后 covered 应全部清除').toStrictEqual([])
-        await pollUntil(() => triggerTextColor(nextTrigger) === accentToken, '新选中项文字未着 accent')
-        await pollUntil(() => triggerTextColor(activeTrigger) === secondaryToken, '原选中项文字未回落')
-        expect(triggerTextColor(triggers[2])).toBe(secondaryToken)
+        await pollUntil(
+          () => look.triggers.every(trigger => triggerTextColor(trigger) === secondaryToken),
+          '松手后仍有标签不是 text-secondary'
+        )
       })
 
       it('真实按压/拖拽全程：thumb 与所有 trigger 均无灰色 bg', async () => {
@@ -599,78 +594,41 @@ describe('WebUiSegmented 视觉规范（浏览器）', () => {
     }
   })
 
-  describe('文字色契约（#169：accent 只属于 inset 的 covered）', () => {
+  describe('文字色契约（#169：两个 variant 一律 text-secondary，无 accent 着色）', () => {
     for (const appearance of ['light', 'dark'] as const) {
       describe(`${appearance} 主题`, () => {
-        it('raised 变体：checked 与 covered 均保持 text-secondary，不着 accent', async () => {
-          const look = await mount(appearance, undefined, 'raised')
-          const { theme, segmented, activeTrigger, triggers } = look
-          const secondaryToken = resolveToken(theme, '--wui-color-text-secondary')
-          const accentToken = resolveToken(theme, '--wui-color-accent')
-          expect(accentToken, 'accent token 应解析为可见颜色').not.toBe(TRANSPARENT)
+        for (const variant of ['inset', 'raised'] as const) {
+          it(`${variant} 变体：选中项文字为灰，按压/拖拽全程不着 accent`, async () => {
+            const look = await mount(appearance, undefined, variant)
+            const { theme, segmented, activeTrigger, triggers } = look
+            const secondaryToken = resolveToken(theme, '--wui-color-text-secondary')
 
-          // 静止态：checked 与未选中项同档灰，即 accent 之前的文字行为
-          expect(triggerTextColor(activeTrigger), 'raised 选中项不得着 accent').toBe(secondaryToken)
-          for (const trigger of triggers.slice(1)) {
-            expect(triggerTextColor(trigger), 'raised 未选中项应保持 text-secondary').toBe(secondaryToken)
-          }
+            // 静止态：checked 与未选中项同档灰
+            expect(triggerTextColor(activeTrigger), '选中项文字应为 text-secondary').toBe(secondaryToken)
+            for (const trigger of triggers.slice(1)) {
+              expect(triggerTextColor(trigger), '未选中项文字应为 text-secondary').toBe(secondaryToken)
+            }
 
-          // 按压并拖到下一项：被覆盖项同样不着 accent。逐帧采样而不是只看终值——covered 项
-          // 静止时本来就是 secondary，单点采样证明不了「覆盖不上 accent」。
-          const release = await holdPressed(look)
-          const target = activeTriggerCenter(triggers[1])
-          window.dispatchEvent(pointer('pointermove', target.x, target.y))
-          await waitForUpdate(segmented)
-          expect(coveredTriggers(segmented), '拖拽中 covered 应跟随到下一项').toStrictEqual([triggers[1]])
+            // 按压并拖到下一项：被指示器盖住的项同样保持灰色。逐帧采样而不是只看终值——
+            // 单点采样证明不了「覆盖不上色」。
+            const release = await holdPressed(look)
+            const target = activeTriggerCenter(triggers[1])
+            window.dispatchEvent(pointer('pointermove', target.x, target.y))
+            await waitForUpdate(segmented)
 
-          const samples: string[][] = []
-          for (let frame = 0; frame < 6; frame += 1) {
-            await waitForFrame()
-            samples.push(look.triggers.map(triggerTextColor))
-          }
-          await release()
+            const samples: string[][] = []
+            for (let frame = 0; frame < 6; frame += 1) {
+              await waitForFrame()
+              samples.push(look.triggers.map(triggerTextColor))
+            }
+            await release()
 
-          expect(
-            samples.every(colors => colors.every(color => color === secondaryToken)),
-            `raised 下文字色偏离 text-secondary：${samples.map(colors => colors.join(' | ')).join(' / ')}`
-          ).toBe(true)
-          expect(accentTriggers(look, accentToken), 'raised 下不得有着 accent 的文字').toStrictEqual([])
-        })
-
-        it('inset 变体：按压起点 covered 与 checked 重合，仍然只有一个 accent 项', async () => {
-          const look = await mount(appearance)
-          const { theme, segmented, activeTrigger } = look
-          const accentToken = resolveToken(theme, '--wui-color-accent')
-
-          const release = await holdPressed(look)
-          expect(coveredTriggers(segmented), '按压起点 covered 应为已选项').toStrictEqual([activeTrigger])
-          expect(accentTriggers(look, accentToken), '按压起点不得出现双 accent').toStrictEqual([activeTrigger])
-          await release()
-        })
-
-        it('inset 变体：拖拽中 checked 的 accent 立即摘除，全程只剩 covered 一个 accent 项', async () => {
-          const look = await mount(appearance)
-          const { theme, segmented, activeTrigger, triggers } = look
-          const accentToken = resolveToken(theme, '--wui-color-accent')
-          const secondaryToken = resolveToken(theme, '--wui-color-text-secondary')
-          const nextTrigger = triggers[1]
-
-          const release = await holdPressed(look)
-          const target = activeTriggerCenter(nextTrigger)
-          window.dispatchEvent(pointer('pointermove', target.x, target.y))
-          await waitForUpdate(segmented)
-
-          // covered 跟手切换：新覆盖项着 accent，旧选中项的 accent 随之摘除
-          await pollUntil(() => triggerTextColor(nextTrigger) === accentToken, '新覆盖项文字未着 accent')
-          await pollUntil(() => triggerTextColor(activeTrigger) === secondaryToken, '旧选中项 accent 未摘除')
-          expect(accentTriggers(look, accentToken), '拖拽中不得出现双 accent').toStrictEqual([nextTrigger])
-
-          // 收尾发在原按下点（deltaX=0）：回弹到原项，covered 撤下后 checked 恢复 accent
-          await release()
-          expect(coveredTriggers(segmented), '松手后 covered 应全部清除').toStrictEqual([])
-          await pollUntil(() => triggerTextColor(activeTrigger) === accentToken, '松手后选中项未恢复 accent')
-          expect(accentTriggers(look, accentToken), '松手后应只有一个 accent 项').toStrictEqual([activeTrigger])
-        })
+            expect(
+              samples.every(colors => colors.every(color => color === secondaryToken)),
+              `${variant} 下文字色偏离 text-secondary：${samples.map(colors => colors.join(' | ')).join(' / ')}`
+            ).toBe(true)
+          })
+        }
       })
     }
   })
