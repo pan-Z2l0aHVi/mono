@@ -316,6 +316,70 @@ describe('WebUiEditableText 布局契约（浏览器）', () => {
     expect(editor.scrollHeight, '内容不溢出自身').toBeLessThanOrEqual(editor.clientHeight + 1)
     cleanupElement(el)
   })
+
+  it('长无空格串不断行溢出：文本层与编辑层在同一宽度断行', async () => {
+    /*
+     * 长字母数字串是两层断行的一致性边界：文本层 overflow-wrap 若继承宿主默认的
+     * normal，长串不截断、直接溢出宿主盒（文字态），编辑层则在盒内裁剪（编辑态），
+     * 两层对同一份文案给出不同行数。默认 anywhere 让两层都在盒内断行。
+     */
+    const token = 'abcdefghijklmnopqrstuvwxyz0123456789'.repeat(2)
+    const el = mount({ value: token, style: 'width: 200px; font: 16px/1.5 monospace;' })
+    await waitForUpdate(el)
+    const text = textLayerOf(el)
+    const editor = editorOf(el)
+    const lineHeight = parseFloat(getComputedStyle(el).lineHeight)
+
+    const textLines = text.getClientRects().length
+    expect(textLines, '文本层折成多行').toBeGreaterThan(1)
+    expect(el.scrollWidth, '文字态宿主不因长串溢出').toBeLessThanOrEqual(el.clientWidth + 1)
+    expect(text.getBoundingClientRect().width, '文本层宽度不超出宿主').toBeLessThanOrEqual(el.clientWidth + 0.5)
+
+    el.focus()
+    await waitForUpdate(el)
+    // 编辑层 scrollHeight = 内容行高总和 + 上下各 1px 内边距
+    const editorLines = Math.round((editor.scrollHeight - 2) / lineHeight)
+    expect(editorLines, '编辑层折行数与文本层一致').toBe(textLines)
+    expect(editor.scrollWidth, '编辑层内容不横向溢出自身').toBeLessThanOrEqual(editor.clientWidth + 1)
+    expect(editor.scrollHeight, '编辑层内容不纵向溢出自身').toBeLessThanOrEqual(editor.clientHeight + 1)
+    cleanupElement(el)
+  })
+
+  it('--wui-editable-text-overflow-wrap 覆盖生效：两层跟随同一变量', async () => {
+    const token = 'abcdefghijklmnopqrstuvwxyz0123456789'.repeat(2)
+    const el = mount({
+      value: token,
+      style: 'width: 200px; --wui-editable-text-overflow-wrap: normal; font: 16px/1.5 monospace;'
+    })
+    await waitForUpdate(el)
+
+    expect(textLayerOf(el).getClientRects().length, '覆盖为 normal 后文本层不折行').toBe(1)
+
+    el.focus()
+    await waitForUpdate(el)
+    expect(getComputedStyle(editorOf(el)).overflowWrap, '编辑层跟随同一变量').toBe('normal')
+    cleanupElement(el)
+  })
+
+  it('光标颜色组件级默认跟随 --wui-color-accent，可被消费方覆盖', async () => {
+    /*
+     * caret 此前只有 interweave 页面级设置，其他消费方拿到浏览器默认黑。组件级
+     * 默认落在共享语义 token 上：自定义属性穿透 shadow 边界继承，消费方在宿主或
+     * 任意祖先上设 --wui-color-accent 即可整体改色。
+     */
+    const el = mount({ value: 'hello' })
+    await waitForUpdate(el)
+    el.focus()
+    await waitForUpdate(el)
+    const editor = editorOf(el)
+
+    expect(getComputedStyle(editor).caretColor, '默认取 token 兜底值 #08f').toBe('rgb(0, 136, 255)')
+
+    el.style.setProperty('--wui-color-accent', '#ff0000')
+    await waitForUpdate(el)
+    expect(getComputedStyle(editor).caretColor, '消费方覆盖 token 后光标跟随').toBe('rgb(255, 0, 0)')
+    cleanupElement(el)
+  })
 })
 
 describe('WebUiEditableText 交互契约（浏览器）', () => {
