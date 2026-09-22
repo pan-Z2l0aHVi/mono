@@ -7,8 +7,8 @@ const lastEvent = ref('（尚未触发）')
 const submitted = ref<[string, string][]>([])
 const formRef = ref<HTMLFormElement>()
 
-// Enter 换行的初值：常量属性只在挂载时写入一次，用户编辑后的草稿不会被绑定回写。
-const multiline = 'Enter 换行且保持编辑态\n第二行随盒宽自动折行，两态同盒'
+// 含换行的初值：常量属性只在挂载时写入一次，用户编辑后的草稿不会被绑定回写。
+const multiline = '值内的换行会照常渲染\n第二行随盒宽自动折行，两态同盒'
 
 function handleSubmit(event: Event) {
   event.preventDefault()
@@ -22,7 +22,7 @@ function handleSubmit(event: Event) {
 
 function handleChange(event: WebUiEvent<WebUiEditableText, 'change'>) {
   title.value = event.currentTarget.value
-  lastEvent.value = 'change（失焦提交）'
+  lastEvent.value = 'change（Enter/失焦提交）'
 }
 </script>
 
@@ -45,14 +45,16 @@ function handleChange(event: WebUiEvent<WebUiEditableText, 'change'>) {
       <div class="text-sm text-gray-500">已提交的值：{{ title || '(空)' }}</div>
       <div class="text-sm text-gray-500">最近事件：{{ lastEvent }}</div>
     </div>
-    <p class="mb-3 text-xs text-gray-400">💡 点击文字进入编辑并落点光标，失焦提交；Escape 取消并恢复进入编辑时的值</p>
+    <p class="mb-3 text-xs text-gray-400">
+      💡 点击文字进入编辑并落点光标，Enter 或失焦提交；仅 Escape 取消并恢复进入编辑时的值
+    </p>
 
     <h2>占位文本</h2>
     <div class="mb-3 flex flex-col gap-3">
       <web-ui-editable-text value="有值时不显示占位文本" placeholder="占位文本" aria-label="有值示例" />
       <web-ui-editable-text placeholder="空值时显示占位文本" aria-label="空值示例" />
     </div>
-    <p class="mb-3 text-xs text-gray-400">💡 提交空值即清空，文本层回退显示 placeholder</p>
+    <p class="mb-3 text-xs text-gray-400">💡 提交空值即清空（Enter 或失焦均可），文本层回退显示 placeholder</p>
 
     <h2>多行</h2>
     <div class="mb-3 flex flex-col gap-3">
@@ -63,7 +65,7 @@ function handleChange(event: WebUiEvent<WebUiEditableText, 'change'>) {
         aria-label="多行示例"
       />
     </div>
-    <p class="mb-3 text-xs text-gray-400">💡 Enter 插入换行；文本层与编辑层同盒同排版，进入编辑不产生位移</p>
+    <p class="mb-3 text-xs text-gray-400">💡 Enter 提交而非插入换行；文本层与编辑层同盒同排版，进入编辑不产生位移</p>
 
     <h2>禁用</h2>
     <div class="mb-3 flex flex-col gap-3">

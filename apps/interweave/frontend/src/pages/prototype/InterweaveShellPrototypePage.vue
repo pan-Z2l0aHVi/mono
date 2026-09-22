@@ -561,8 +561,8 @@ function onResourceContextmenu(resource: Resource, event: MouseEvent) {
 // --- Resource rename (web-ui-editable-text) ---
 // 空闲态渲染普通 span；只有两个入口触发编辑：列表右键菜单「重命名」与抽屉标题编辑按钮。
 // 入口先把 editingNameKey 指向目标，editable-text 随键渲染后再进入编辑；提交（change）或
-// 取消（cancel）后清空键值回到普通 span。编辑交互（Enter 提交，blur/Esc 取消并恢复进入编辑
-// 时的值）由组件持有，页面只把提交值写回资源；cancel 不冒泡（#159），挂在组件自身即可。
+// 取消（cancel）后清空键值回到普通 span。编辑交互（Enter 与 blur 都提交，仅 Esc 取消并恢复
+// 进入编辑时的值）由组件持有，页面只把提交值写回资源；cancel 不冒泡（#159），挂在组件自身即可。
 const resourceNameEditors = ref<Record<string, WebUiEditableText | null>>({})
 const nameEditorRefCallbacks = new Map<string, (el: Element | ComponentPublicInstance | null) => void>()
 const editingNameKey = ref<string | null>(null)
