@@ -12,6 +12,10 @@ on:
       - 'pnpm-workspace.yaml'
       - 'turbo.json'
       - 'apps/interweave/**'
+      # 这三条不是冗余过滤：下面的 `turbo build --filter=@greypan/interweave-frontend^...` 先构建 frontend
+      # 的全部上游 workspace 依赖（正是这三个包），再由 wails 把 frontend 产物嵌进 .dmg/.exe。原生 job
+      # 因此是「这三个包的改动装进发布产物后还能不能构建」的唯一验证点；`ci.yml` 只证明它们各自能构建，
+      # 不证明它们能被打包。删这三行等于给 web-ui 的破坏性改动开一条不进原生验证的通道。
       - 'packages/web-ui/**'
       - 'packages/browser-kit/**'
       - 'packages/js-kit/**'
