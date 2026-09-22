@@ -223,11 +223,92 @@ describe('WebUiEditableText 布局契约（浏览器）', () => {
     expect(el.getBoundingClientRect().height, '折行后高度按行数增长').toBeGreaterThan(editing.height)
     expect(contentBoxOf(editor).height, '编辑层文本盒等高跟随文本层行盒').toBeCloseTo(contentBoxOf(el).height, 0)
 
-    // 失焦回到文字态：盒与编辑态一致，说明两层换行点没有漂移
+    // 失焦取消：草稿丢弃，盒回到进入编辑前的文字态，说明两层换行点没有漂移
     const beforeBlur = el.getBoundingClientRect()
     await blurByFocusElsewhere()
     await waitForUpdate(el)
-    expect(rectsClose(beforeBlur, el.getBoundingClientRect()), '失焦前后盒一致').toBe(true)
+    expect(el.value, '失焦丢弃草稿').toBe('alpha beta')
+    expect(rectsClose(display, el.getBoundingClientRect()), '失焦后回到进入编辑前的盒').toBe(true)
+    expect(beforeBlur.height, '编辑态盒高于文字态').toBeGreaterThan(display.height)
+    cleanupElement(el)
+  })
+
+  it('编辑层高度跟随自身内容，不依赖文本层折出的行盒', async () => {
+    // normal 空白处理会把纯空格值在文本层折叠掉，宿主随之塌成 0 高；
+    // 编辑层按自身内容撑高，空草稿才有承接光标的位置
+    const el = mount({ value: '   ', style: '--wui-editable-text-white-space: normal; font:16px/1.5 monospace;' })
+    await waitForUpdate(el)
+    const editor = editorOf(el)
+    const lineHeight = parseFloat(getComputedStyle(el).lineHeight)
+
+    expect(editor.clientHeight, '空闲态编辑层已按自身内容撑高').toBeGreaterThanOrEqual(lineHeight)
+    expect(editor.scrollHeight, '空闲态内容不溢出自身').toBeLessThanOrEqual(editor.clientHeight + 1)
+
+    el.focus()
+    await waitForUpdate(el)
+    expect(el.hasAttribute('editing')).toBe(true)
+    expect(editor.clientHeight, '编辑态高度不随文本层塌陷').toBeGreaterThanOrEqual(lineHeight)
+    expect(editor.scrollHeight, '编辑态内容不溢出自身').toBeLessThanOrEqual(editor.clientHeight + 1)
+    cleanupElement(el)
+  })
+
+  it('清空全部内容后编辑层仍有可绘制光标的盒', async () => {
+    // 收缩上下文（flex 项 + min-width:0）里，空内容把宿主压到 0 宽，
+    // 编辑层随之量不到宽度，光标无处绘制（interweave 实测复现）
+    const row = document.createElement('div')
+    row.style.cssText = 'display:flex; align-items:center; gap:6px; width:400px; padding:8px;'
+    document.body.append(row)
+    const el = mountElement<WebUiEditableText>('web-ui-editable-text', {
+      attrs: { value: 'a rather long drawer title here', style: 'min-width:0; font:16px/1.5 monospace;' },
+      parent: row
+    })
+    await waitForUpdate(el)
+    el.focus()
+    await waitForUpdate(el)
+    for (let i = 0; i < 32; i++) await userEvent.keyboard('{Backspace}')
+    await waitForUpdate(el)
+
+    const editor = editorOf(el)
+    const style = getComputedStyle(editor)
+    const contentWidth = editor.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight)
+    const lineHeight = parseFloat(getComputedStyle(el).lineHeight)
+
+    expect(el.value, '内容已清空').toBe('')
+    expect(el.hasAttribute('editing')).toBe(true)
+    expect(contentWidth, '空草稿下编辑层内容盒仍有宽度可绘制光标').toBeGreaterThan(0)
+    expect(editor.clientHeight, '编辑层保持一个行盒高').toBeGreaterThanOrEqual(lineHeight)
+    cleanupElement(row)
+  })
+
+  it('断开重连后 ResizeObserver 重建：宿主变窄仍触发 autosize', async () => {
+    /*
+     * RO 在 disconnectedCallback 拆除、connectedCallback 重建。搭建若只挂在
+     * firstUpdated（一生一次），重连后 RO 永久丢失。只断开重连看不出来：teardown
+     * 会摘掉内联高度，编辑层回落 top/bottom 拉伸，恰好跟随宿主。要露出缺陷，重连后
+     * 必须先有一次重渲染把当前（宽）盒下的内联高度写进去，再收窄宿主——收窄不改变
+     * 任何响应式属性、不触发重渲染，只有 RO 回调能带动 autosize；RO 丢了高度就滞留。
+     */
+    const el = mount({ value: 'short' })
+    await waitForUpdate(el)
+    const editor = editorOf(el)
+
+    el.remove()
+    await waitForUpdate(el)
+    document.body.append(el)
+    await waitForUpdate(el)
+
+    // 重连后的第一次重渲染：写入宽盒下的内联高度
+    el.value = WRAPPED_TEXT
+    await waitForUpdate(el)
+    const wideHeight = editor.getBoundingClientRect().height
+    expect(wideHeight, '宽盒下编辑层按内容撑高').toBeGreaterThan(24)
+
+    el.style.width = '120px'
+    await nextFrame()
+    await nextFrame()
+
+    expect(editor.getBoundingClientRect().height, '重连后宿主变窄，编辑层高度重新跟随内容').toBeGreaterThan(wideHeight)
+    expect(editor.scrollHeight, '内容不溢出自身').toBeLessThanOrEqual(editor.clientHeight + 1)
     cleanupElement(el)
   })
 })
@@ -327,13 +408,14 @@ describe('WebUiEditableText 交互契约（浏览器）', () => {
     cleanupElement(el)
   })
 
-  it('blur 提交并派发一次 composed change', async () => {
+  it('blur 取消：恢复原值、派发一次不冒泡的 cancel、不派发 change', async () => {
     const el = mount({ value: 'hello' })
     await waitForUpdate(el)
     el.focus()
     await waitForUpdate(el)
 
-    const [changes, detach] = spyEvents(el, 'change')
+    const [cancels, detachCancel] = spyEvents(el, 'cancel')
+    const [changes, detachChange] = spyEvents(el, 'change')
     try {
       await userEvent.keyboard(' world')
       await waitForUpdate(el)
@@ -342,17 +424,22 @@ describe('WebUiEditableText 交互契约（浏览器）', () => {
       await blurByFocusElsewhere()
       await waitForUpdate(el)
 
-      expect(changes).toHaveLength(1)
-      expect(changes[0].composed, 'change 跨 shadow 边界').toBe(true)
+      expect(cancels).toHaveLength(1)
+      expect(cancels[0].bubbles, 'cancel 不冒泡：原生 <dialog> 的 cancel 同名，冒泡会进外层浮层被当成关闭请求').toBe(
+        false
+      )
+      expect(cancels[0].composed, 'cancel 不组合').toBe(false)
+      expect(changes).toHaveLength(0)
+      expect(el.value, '草稿丢弃，回到进入编辑时的值').toBe('hello')
       expect(el.hasAttribute('editing')).toBe(false)
-      expect(el.value).toBe('hello world')
     } finally {
-      detach()
+      detachCancel()
+      detachChange()
     }
     cleanupElement(el)
   })
 
-  it('空草稿 blur 提交空值，文本层回落 placeholder', async () => {
+  it('空草稿 blur 取消：恢复原值，文本层回落原值', async () => {
     const el = mount({ value: 'hello', placeholder: 'Untitled' })
     await waitForUpdate(el)
     el.focus()
@@ -365,8 +452,8 @@ describe('WebUiEditableText 交互契约（浏览器）', () => {
     await blurByFocusElsewhere()
     await waitForUpdate(el)
 
-    expect(el.value, '空草稿 blur 提交空值').toBe('')
-    expect(textLayerOf(el).textContent, '文本层回落 placeholder').toBe('Untitled')
+    expect(el.value, '空草稿被丢弃').toBe('hello')
+    expect(textLayerOf(el).textContent, '文本层回到原值').toBe('hello')
     cleanupElement(el)
   })
 
@@ -378,6 +465,12 @@ describe('WebUiEditableText 交互契约（浏览器）', () => {
 
     const [cancels, detachCancel] = spyEvents(el, 'cancel')
     const [changes, detachChange] = spyEvents(el, 'change')
+    // 浮层仲裁者在 document 捕获阶段收 Escape：它收不到，才证明按键被编辑层消费
+    const documentCapture: string[] = []
+    const onDocumentCapture = (e: Event) => {
+      if ((e as KeyboardEvent).key === 'Escape') documentCapture.push('escape')
+    }
+    document.addEventListener('keydown', onDocumentCapture, true)
     try {
       await userEvent.keyboard('draft')
       await waitForUpdate(el)
@@ -389,35 +482,40 @@ describe('WebUiEditableText 交互契约（浏览器）', () => {
       expect(el.value, '恢复进入编辑时的值').toBe('hello')
       expect(cancels).toHaveLength(1)
       expect(changes).toHaveLength(0)
+      expect(documentCapture, 'Escape 不穿透到 document 捕获监听').toEqual([])
       expect(el.hasAttribute('editing')).toBe(false)
       expect(document.activeElement, '焦点回到宿主').toBe(el)
       expect(el.shadowRoot!.activeElement, '编辑层不再持有焦点').toBe(null)
     } finally {
+      document.removeEventListener('keydown', onDocumentCapture, true)
       detachCancel()
       detachChange()
     }
     cleanupElement(el)
   })
 
-  it('Enter 换行且不退出编辑', async () => {
+  it('Enter 提交：派发 change、退出编辑、不插入换行', async () => {
     const el = mount({ value: 'first' })
     await waitForUpdate(el)
     el.focus()
     await waitForUpdate(el)
 
     const [changes, detach] = spyEvents(el, 'change')
+    const [cancels, detachCancel] = spyEvents(el, 'cancel')
     try {
       await userEvent.keyboard('{Enter}')
       await waitForUpdate(el)
 
       const editor = editorOf(el)
-      expect(editor.value, 'Enter 产生换行').toBe('first\n')
-      expect(el.value).toBe('first\n')
-      expect(el.hasAttribute('editing')).toBe(true)
-      expect(changes, 'Enter 不提交').toHaveLength(0)
-      expect(el.getBoundingClientRect().height, '盒高随行数增长').toBeGreaterThan(24)
+      expect(editor.value, 'Enter 不产生换行').toBe('first')
+      expect(el.value).toBe('first')
+      expect(el.hasAttribute('editing')).toBe(false)
+      expect(changes, '提交派发一次 change').toHaveLength(1)
+      expect(cancels, '提交不派发 cancel').toHaveLength(0)
+      expect(document.activeElement, '焦点回宿主').toBe(el)
     } finally {
       detach()
+      detachCancel()
     }
     cleanupElement(el)
   })
@@ -451,6 +549,63 @@ describe('WebUiEditableText 交互契约（浏览器）', () => {
     expect(document.activeElement, '焦点不进入组件').not.toBe(el)
     cleanupElement(el)
   })
+
+  it('Escape 不穿透外层浮层：shadow 内 dialog 收不到关闭请求', async () => {
+    /*
+     * issue #159 的实测形态：web-ui-drawer 把 <dialog> 放进自己 shadow 并监听原生
+     * cancel，消费者的 editable-text 经 slot 投映其中。Escape 被编辑层消费要求两件事
+     * 同时成立：keydown 被 preventDefault（UA 不派发原生 cancel），自定义 cancel 不
+     * 冒泡（进不了 dialog 的 cancel 监听）。任一条失守都会把外层浮层一起关掉。
+     */
+    if (!customElements.get('x-dialog-cancel-probe')) {
+      customElements.define(
+        'x-dialog-cancel-probe',
+        class extends HTMLElement {
+          readonly dialog = document.createElement('dialog')
+          cancelCount = 0
+          constructor() {
+            super()
+            this.attachShadow({ mode: 'open' }).append(this.dialog)
+            this.dialog.append(document.createElement('slot'))
+            this.dialog.addEventListener('cancel', e => {
+              this.cancelCount += 1
+              // 与 drawer.handleCancel 同构：收到 cancel 就走完整关闭管线
+              e.preventDefault()
+              this.dialog.close()
+            })
+          }
+        }
+      )
+    }
+    const overlay = mountElement<HTMLElement & { dialog: HTMLDialogElement; cancelCount: number }>(
+      'x-dialog-cancel-probe'
+    )
+    const { dialog } = overlay
+    dialog.showModal()
+    const el = mount({ value: 'hello' })
+    overlay.append(el)
+    await waitForUpdate(el)
+    try {
+      el.focus()
+      await waitForUpdate(el)
+      await userEvent.keyboard('draft')
+      await waitForUpdate(el)
+      expect(el.value).toBe('hellodraft')
+
+      await userEvent.keyboard('{Escape}')
+      await waitForUpdate(el)
+
+      expect(dialog.open, '外层 dialog 保持打开').toBe(true)
+      expect(overlay.cancelCount, 'dialog 的 cancel 监听一次都不该响').toBe(0)
+      expect(el.value, '恢复进入编辑时的值').toBe('hello')
+      expect(el.hasAttribute('editing')).toBe(false)
+      expect(document.activeElement, '焦点回宿主').toBe(el)
+    } finally {
+      dialog.close()
+      cleanupElement(el)
+      overlay.remove()
+    }
+  })
 })
 
 describe('WebUiEditableText 表单关联（浏览器）', () => {
@@ -469,7 +624,7 @@ describe('WebUiEditableText 表单关联（浏览器）', () => {
     await el.updateComplete
     expect(el.value).toBe('initial edited')
 
-    await blurByFocusElsewhere()
+    await userEvent.keyboard('{Enter}')
     await el.updateComplete
     expect(new FormData(form).get('title'), '提交后的值进入 FormData').toBe('initial edited')
 

@@ -386,7 +386,7 @@ Multi-line text input with auto-resize.
 
 #### `<web-ui-editable-text>`
 
-Inline plain-text editor: click the text to edit in place, blur to commit. The text layer and the editing layer share one box, so entering edit mode does not move a single pixel.
+Inline plain-text editor: click the text to edit in place, `Enter` commits, `blur` and `Escape` cancel. The text layer and the editing layer share one box, so entering edit mode does not move a single pixel.
 
 | Attribute     | Type      | Default | Description                                                                                                                                                |
 | ------------- | --------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -396,11 +396,11 @@ Inline plain-text editor: click the text to edit in place, blur to commit. The t
 | `disabled`    | `boolean` | `false` | Disabled state; behavior only, no visual dimming                                                                                                           |
 | `aria-label`  | `string`  | —       | Accessible label                                                                                                                                           |
 
-**Events:** `input` (per keystroke), `change` (blur commit), `cancel` (Escape)
+**Events:** `input` (per keystroke), `change` (commit), `cancel` (cancel; shares its name with the native `<dialog>` `cancel`, so it neither bubbles nor crosses shadow boundaries and is dispatched on the component itself only). React has no synthetic event covering `cancel`: listen with `addEventListener('cancel', ...)`
 
 **Methods:** `focus()`, `blur()`, `select()`
 
-Clicking places the caret at the clicked offset; keyboard focus places it at the end of the text. `Enter` inserts a newline and keeps editing. `Escape` restores the value from the moment editing started and dispatches `cancel`. Blur commits the draft, and an empty draft commits `''` with the text layer falling back to the placeholder.
+Clicking places the caret at the clicked offset; keyboard focus places it at the end of the text. `Enter` commits the draft and dispatches `change` exactly once; it does not insert a newline. `blur` cancels instead of committing: the value returns to what it was when editing started and `cancel` is dispatched, with no `change`. `Escape` cancels the same way and returns focus to the host, and the key is consumed by the editing layer, so an outer overlay (drawer, menu) is not closed by the same press. The `cancel` event neither bubbles nor crosses shadow boundaries and is dispatched on the component itself only: when the component is projected inside an overlay's shadow root, such as a drawer title, it never reaches the overlay's native `cancel` close pipeline, so listen on the component itself. A value that already contains newlines still renders as several lines; only typing `Enter` no longer adds one. An empty value keeps showing the placeholder, and the editing layer always sizes itself to its own content, so an empty or whitespace-only draft still has room for the caret even where the host itself collapses (a flex item with `min-width: 0`, a table cell).
 
 `select()` enters edit mode with the whole content selected, and re-selects it when already editing. While `disabled` it does nothing, matching `focus()`.
 
@@ -413,6 +413,8 @@ The host is an inline-level box: it sizes to its content unless a width is set, 
 | `--wui-editable-text-white-space` | `pre-wrap` | White-space handling of both text layers |
 
 The shared box comes with two constraints: keep `line-height` at `1` or above, because below that the native editing layer grows taller than its own box and shifts the text by a pixel; and with `nowrap` plus a fixed width, text wider than the box overflows while idle and scrolls inside the box while editing.
+
+**Interaction change:** `blur` no longer commits the draft and `Enter` no longer inserts a newline. Commit with `Enter`; `blur` and `Escape` cancel and restore the value from the moment editing started. The `cancel` event no longer bubbles: a bubbling custom `cancel` used to travel through the slot into the `<dialog>` inside an outer overlay's shadow root (`composed` made no difference) and was treated as a close request, closing the overlay along with the edit (issue #159). Listen on the component itself.
 
 #### `<web-ui-input-number>`
 
