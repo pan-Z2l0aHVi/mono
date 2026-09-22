@@ -406,11 +406,14 @@ Clicking places the caret at the clicked offset; keyboard focus places it at the
 
 The host is an inline-level box: it sizes to its content unless a width is set, and grows with wrapped lines. Font, color, text alignment and white space are inherited from the surrounding context, so the component reads as ordinary text until it is edited.
 
+The caret follows the shared `--wui-color-accent` semantic token by default; set that token on the host or any ancestor to recolor it. Both layers wrap a long unbroken string (letters and digits with no spaces) at the same points, so a token wider than the box breaks inside the box instead of overflowing it while idle.
+
 **CSS Custom Properties:**
 
-| Property                          | Default    | Description                              |
-| --------------------------------- | ---------- | ---------------------------------------- |
-| `--wui-editable-text-white-space` | `pre-wrap` | White-space handling of both text layers |
+| Property                            | Default    | Description                                                                                                                             |
+| ----------------------------------- | ---------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `--wui-editable-text-white-space`   | `pre-wrap` | White-space handling of both text layers                                                                                                |
+| `--wui-editable-text-overflow-wrap` | `anywhere` | Overflow-wrap handling of both text layers; the default breaks a long unbroken string inside the box, matching the native editing layer |
 
 The shared box comes with two constraints: keep `line-height` at `1` or above, because below that the native editing layer grows taller than its own box and shifts the text by a pixel; and with `nowrap` plus a fixed width, text wider than the box overflows while idle and scrolls inside the box while editing.
 

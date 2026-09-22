@@ -19,6 +19,13 @@
 
 .text,
 .editor {
+  /* 长无空格串两层都必须能断：文本层若只继承宿主默认的 normal，长字母数字串不
+     截断、直接溢出宿主盒（文字态），而编辑层在盒内裁剪（编辑态），两层断行
+     不一致。默认 anywhere：仅在单词放不下时断，且参与 min-content 计算，收缩
+     上下文（flex 项 min-width:0）里长串也不会撑爆宿主；两层取同一变量，外部
+     覆盖时仍保持一致。 */
+  overflow-wrap: var(--wui-editable-text-overflow-wrap, anywhere);
+
   /* 多行编辑要求换行符成行，但 pre-wrap 只能落在文本层上：模板里元素之间的空白
      文本节点若被 pre-wrap 保留，会各自生成幻影行盒，把文本层顶偏、盒高翻倍，
      文字态与编辑态随之不再同盒。这里保持 .layers 为默认 normal 让空白折叠，
@@ -61,12 +68,16 @@
   text-transform: inherit;
   letter-spacing: inherit;
   word-break: inherit;
-  overflow-wrap: inherit;
 
   appearance: none;
   visibility: hidden;
   background: transparent;
   outline: none;
+
+  /* 光标颜色组件级默认：跟随共享语义 token，消费方在宿主或任意祖先上设
+     --wui-color-accent 即可覆盖（自定义属性穿透 shadow 边界继承）；
+     此前只有 interweave 页面级设置，demo 等消费方拿到的是浏览器默认黑。 */
+  caret-color: var(--wui-color-accent, #08f);
 
   &::placeholder {
     color: var(--wui-color-text-secondary, #6a6a6a);
