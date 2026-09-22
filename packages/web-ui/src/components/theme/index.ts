@@ -113,19 +113,6 @@ export class WebUiTheme extends LitElement {
   }
   private _motion: ThemeMotion = 'system'
 
-  // HTML attribute 存在即 true；动态关闭由框架写 boolean property，不解析字符串。
-  @property({ type: Boolean, reflect: true })
-  get transition(): boolean {
-    return this._transition
-  }
-  set transition(v: boolean) {
-    const old = this._transition
-    this._transition = v
-    this.requestUpdate('transition', old)
-
-    this._syncTransitionOriginListeners(this.isConnected && this._transition)
-  }
-  private _transition = false
   private _transitionOriginListening = false
   private _transitionRequested = false
 
@@ -133,7 +120,9 @@ export class WebUiTheme extends LitElement {
 
   override connectedCallback() {
     super.connectedCallback()
-    this._syncTransitionOriginListeners(this.transition)
+    // 揭示开关曾由 transition prop 单独控制；现在统一由 motion 决定，
+    // 因此连接期间始终记录圆心来源，真正是否动画仍看 _shouldAnimateAppearance。
+    this._syncTransitionOriginListeners(true)
     this._warnWhenAppearanceIsMissing()
   }
 
@@ -211,7 +200,6 @@ export class WebUiTheme extends LitElement {
     if (!previous || previous === next) return false
     if (resolveAppearance(previous) === resolveAppearance(next)) return false
     return (
-      this.transition &&
       typeof document.startViewTransition === 'function' &&
       Array.isArray(document.adoptedStyleSheets) &&
       !this.isReducedMotion() &&

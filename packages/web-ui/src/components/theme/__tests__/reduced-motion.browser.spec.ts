@@ -94,7 +94,12 @@ describe('系统 prefers-reduced-motion 下无限加载循环的周期（浏览�
 })
 
 describe('系统 prefers-reduced-motion 下主题切换 fallback（浏览器）', () => {
-  it('transition=true 也不启动 View Transition，直接提交 appearance', async () => {
+  /*
+   * `transition` prop 移除后，这一档由 motion=system（默认）承担：系统偏好 reduce 时
+   * 不播放揭示，直接落地 appearance。motion=full 是它的对照组 —— 证明上一条的静默
+   * 来自系统偏好本身，而不是 View Transitions 在该环境不可用。
+   */
+  it('motion=system 跟随系统偏好：不启动 View Transition，直接提交 appearance', async () => {
     const original = document.startViewTransition
     let started = false
     try {
@@ -105,7 +110,6 @@ describe('系统 prefers-reduced-motion 下主题切换 fallback（浏览器）'
 
       const theme = document.createElement('web-ui-theme') as WebUiTheme
       theme.appearance = 'light'
-      theme.transition = true
       document.body.append(theme)
       await theme.updateComplete
 
@@ -114,6 +118,35 @@ describe('系统 prefers-reduced-motion 下主题切换 fallback（浏览器）'
 
       expect(started).toBe(false)
       expect(theme.appearance).toBe('dark')
+    } finally {
+      document.startViewTransition = original
+    }
+  })
+
+  it('motion=full 覆盖系统偏好：仍启动 View Transition（对照组）', async () => {
+    const original = document.startViewTransition
+    let started = false
+    let transition: ViewTransition | undefined
+    try {
+      document.startViewTransition = (...args) => {
+        started = true
+        transition = original.call(document, ...args)
+        return transition
+      }
+
+      const theme = document.createElement('web-ui-theme') as WebUiTheme
+      theme.appearance = 'light'
+      theme.motion = 'full'
+      theme.style.setProperty('--wui-theme-transition-duration', '10ms')
+      document.body.append(theme)
+      await theme.updateComplete
+
+      theme.appearance = 'dark'
+      expect(started).toBe(true)
+      // appearance 由 transition 的 update callback 提交，必须等 finished 才落地。
+      await transition!.finished
+      expect(theme.appearance).toBe('dark')
+      expect(theme.getAttribute('appearance')).toBe('dark')
     } finally {
       document.startViewTransition = original
     }
