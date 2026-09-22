@@ -32,7 +32,10 @@ export const workflows = {
     },
     // 版本 PR 自己不带 pending changeset（它删掉的就是 changeset），所以那一步只在非版本分支上跑。
     steps: {
-      'Check changesets': `github.event_name == 'pull_request' && github.head_ref != '${RELEASE_BRANCH}'`
+      'Check changesets': `github.event_name == 'pull_request' && github.head_ref != '${RELEASE_BRANCH}'`,
+      // flake 台账的留痕两步只在失败时跑：判据仍然只属于 Test 那一步，这里不能变成第二个 gate。
+      'Record test failures': 'failure()',
+      'Upload test output': 'failure()'
     }
   },
   'changeset-version.yml': {

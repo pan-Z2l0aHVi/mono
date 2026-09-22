@@ -97,4 +97,21 @@ jobs:
         run: pnpm exec playwright install chromium
 
       - name: Test
-        run: pnpm run test
+        run: set -o pipefail && pnpm run test 2>&1 | tee "$RUNNER_TEMP/test-output.log"
+
+      # flake 台账的埋点：失败时把 vitest 的 FAIL 行抽进 step summary，并把原始日志与机器可读清单作为
+      # 保留 1 天的 artifact 上传。`set -o pipefail` 保证 tee 不会吞掉测试的退出码 —— 这一步只留痕，
+      # 判据不变；旧 attempt 的日志在 GitHub 侧事后拿不到，所以留痕必须现在开始积累。
+      - name: Record test failures
+        if: failure()
+        run: node .github/scripts/record-test-failures.mjs "$RUNNER_TEMP/test-output.log" "$RUNNER_TEMP/test-failures.json"
+
+      - name: Upload test output
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: ci-test-output-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/test-output.log
+            ${{ runner.temp }}/test-failures.json
+          retention-days: 1
