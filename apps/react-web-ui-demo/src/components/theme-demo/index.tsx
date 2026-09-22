@@ -160,7 +160,6 @@ function ThemeDemo() {
           <web-ui-theme
             appearance={innerAppearance}
             motion={innerMotion}
-            transition
             className="mt-4 block rounded-xl border border-(--wui-color-border) p-6"
           >
             <section className="bg-(--wui-color-page)">
@@ -192,7 +191,6 @@ function ThemeDemo() {
               <web-ui-theme
                 appearance={innermostAppearance}
                 motion={innermostMotion}
-                transition
                 className="mt-4 block rounded-xl border border-(--wui-color-border) p-6"
               >
                 <section className="bg-(--wui-color-page)">
