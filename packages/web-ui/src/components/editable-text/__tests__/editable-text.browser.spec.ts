@@ -279,6 +279,54 @@ describe('WebUiEditableText 交互契约（浏览器）', () => {
     cleanupElement(el)
   })
 
+  it('select() 空闲态进入编辑并全选内容', async () => {
+    const el = mount({ value: 'hello world' })
+    await waitForUpdate(el)
+
+    el.select()
+    await waitForUpdate(el)
+
+    const editor = editorOf(el)
+    expect(el.hasAttribute('editing')).toBe(true)
+    expect(document.activeElement, '焦点进入组件').toBe(el)
+    expect(el.shadowRoot!.activeElement, '焦点落在编辑层').toBe(editor)
+    expect(editor.selectionStart, '全选起点').toBe(0)
+    expect(editor.selectionEnd, '全选末端').toBe('hello world'.length)
+    expect(el.value, '值不被全选改变').toBe('hello world')
+    cleanupElement(el)
+  })
+
+  it('编辑态 select() 重新全选，不退出编辑', async () => {
+    const el = mount({ value: 'abcdefgh' })
+    await waitForUpdate(el)
+
+    await clickCaretOffset(el, 3)
+    await waitForUpdate(el)
+    expect(editorOf(el).selectionStart, '点击先落下光标').toBe(3)
+
+    el.select()
+    await waitForUpdate(el)
+
+    const editor = editorOf(el)
+    expect(el.hasAttribute('editing')).toBe(true)
+    expect(editor.selectionStart, '全选起点').toBe(0)
+    expect(editor.selectionEnd, '全选末端').toBe(8)
+    expect(el.value, '值不被全选改变').toBe('abcdefgh')
+    cleanupElement(el)
+  })
+
+  it('disabled 时 select() 不进入编辑', async () => {
+    const el = mount({ value: 'hello', disabled: '' })
+    await waitForUpdate(el)
+
+    el.select()
+    await waitForUpdate(el)
+
+    expect(el.hasAttribute('editing')).toBe(false)
+    expect(document.activeElement, '焦点不进入组件').not.toBe(el)
+    cleanupElement(el)
+  })
+
   it('blur 提交并派发一次 composed change', async () => {
     const el = mount({ value: 'hello' })
     await waitForUpdate(el)
