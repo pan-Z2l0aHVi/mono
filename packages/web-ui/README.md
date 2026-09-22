@@ -398,7 +398,11 @@ Inline plain-text editor: click the text to edit in place, blur to commit. The t
 
 **Events:** `input` (per keystroke), `change` (blur commit), `cancel` (Escape)
 
+**Methods:** `focus()`, `blur()`, `select()`
+
 Clicking places the caret at the clicked offset; keyboard focus places it at the end of the text. `Enter` inserts a newline and keeps editing. `Escape` restores the value from the moment editing started and dispatches `cancel`. Blur commits the draft, and an empty draft commits `''` with the text layer falling back to the placeholder.
+
+`select()` enters edit mode with the whole content selected, and re-selects it when already editing. While `disabled` it does nothing, matching `focus()`.
 
 The host is an inline-level box: it sizes to its content unless a width is set, and grows with wrapped lines. Font, color, text alignment and white space are inherited from the surrounding context, so the component reads as ordinary text until it is edited.
 

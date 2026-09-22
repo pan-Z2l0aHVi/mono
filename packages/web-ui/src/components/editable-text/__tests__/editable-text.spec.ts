@@ -119,6 +119,68 @@ describe('WebUiEditableText 组件契约', () => {
     cleanupElement(el)
   })
 
+  it('select() 空闲态进入编辑并全选内容', async () => {
+    const el = create({ value: 'hello' })
+    await waitForUpdate(el)
+
+    el.select()
+    await waitForUpdate(el)
+
+    const editor = editorOf(el)
+    expect(el.hasAttribute('editing')).toBe(true)
+    expect(el.shadowRoot!.activeElement, '焦点落在编辑层').toBe(editor)
+    expect(editor.selectionStart).toBe(0)
+    expect(editor.selectionEnd).toBe(5)
+    expect(el.value).toBe('hello')
+    cleanupElement(el)
+  })
+
+  it('select() 编辑态只重新全选，不改值与编辑态', async () => {
+    const el = create({ value: 'hello' })
+    await waitForUpdate(el)
+    el.focus()
+    await waitForUpdate(el)
+    editorOf(el).setSelectionRange(2, 2)
+
+    el.select()
+    await waitForUpdate(el)
+
+    const editor = editorOf(el)
+    expect(el.hasAttribute('editing')).toBe(true)
+    expect(editor.selectionStart).toBe(0)
+    expect(editor.selectionEnd).toBe(5)
+    expect(el.value).toBe('hello')
+    cleanupElement(el)
+  })
+
+  it('空值 select() 进入编辑，全选区间为空', async () => {
+    const el = create({ placeholder: '未命名' })
+    await waitForUpdate(el)
+
+    el.select()
+    await waitForUpdate(el)
+
+    const editor = editorOf(el)
+    expect(el.hasAttribute('editing')).toBe(true)
+    expect(editor.selectionStart).toBe(0)
+    expect(editor.selectionEnd).toBe(0)
+    expect(el.value).toBe('')
+    cleanupElement(el)
+  })
+
+  it('disabled 时 select() 不进入编辑', async () => {
+    const el = create({ value: 'hello' })
+    el.disabled = true
+    await waitForUpdate(el)
+
+    el.select()
+    await waitForUpdate(el)
+
+    expect(el.hasAttribute('editing')).toBe(false)
+    expect(el.shadowRoot!.activeElement).toBe(null)
+    cleanupElement(el)
+  })
+
   it('输入草稿派发 input 且 value 跟随草稿', async () => {
     const el = create()
     await waitForUpdate(el)
