@@ -3,6 +3,7 @@ import type {
   WebUiAutocomplete,
   WebUiDialog,
   WebUiDrawer,
+  WebUiEditableText,
   WebUiDropdown,
   WebUiEvent,
   WebUiInput,
@@ -555,63 +556,40 @@ function onResourceContextmenu(resource: Resource, event: MouseEvent) {
   ctxMenuRef.value?.openAt(event.clientX, event.clientY)
 }
 
-const listRenamingId = ref<string | null>(null)
-const drawerRenamingId = ref<string | null>(null)
-const resourceNameDraft = ref('')
-const listResourceRenameInputRef = ref<WebUiInput | null>(null)
-const drawerResourceRenameInputRef = ref<WebUiInput | null>(null)
+// --- Resource rename (web-ui-editable-text) ---
+// 编辑态完全由组件持有：点击/聚焦进入编辑、blur 提交、Escape 取消、Enter 换行。
+// 页面只把提交值写回资源；空值提交时把组件值恢复成原名称，保持单一数据来源。
+const resourceNameEditors = ref<Record<string, WebUiEditableText | null>>({})
+const nameEditorRefCallbacks = new Map<string, (el: Element | ComponentPublicInstance | null) => void>()
+
+/** 详情抽屉标题不在 v-for 内，用固定 key 走同一套编辑器登记表。 */
+const DRAWER_TITLE_EDITOR_KEY = '__drawer-title__'
+
+function setNameEditorRef(id: string) {
+  let callback = nameEditorRefCallbacks.get(id)
+  if (!callback) {
+    // 按 id 复用同一个函数：内联箭头每次渲染都是新引用，会把 ref 反复解绑再绑定
+    callback = (el: Element | ComponentPublicInstance | null) => {
+      resourceNameEditors.value[id] = el instanceof Element ? (el as WebUiEditableText) : null
+    }
+    nameEditorRefCallbacks.set(id, callback)
+  }
+  return callback
+}
 
 function startResourceRename(resource: Resource, surface: 'list' | 'drawer' = 'list') {
-  if (surface === 'drawer') {
-    drawerRenamingId.value = resource.id
-    listRenamingId.value = null
-  } else {
-    listRenamingId.value = resource.id
-    drawerRenamingId.value = null
-  }
-  resourceNameDraft.value = resource.name
-  void nextTick(() => {
-    const host = surface === 'drawer' ? drawerResourceRenameInputRef.value : listResourceRenameInputRef.value
-    const input = host?.shadowRoot?.querySelector<HTMLInputElement>('input')
-    input?.focus()
-    input?.select()
-  })
+  const editor =
+    surface === 'drawer' ? resourceNameEditors.value[DRAWER_TITLE_EDITOR_KEY] : resourceNameEditors.value[resource.id]
+  // 聚焦宿主即进入编辑，光标按组件语义落在文本末尾
+  editor?.focus()
 }
 
-function commitResourceRename(resource: Resource, surface: 'list' | 'drawer' = 'list') {
-  const renamingId = surface === 'drawer' ? drawerRenamingId.value : listRenamingId.value
-  if (renamingId !== resource.id) return
-  const name = resourceNameDraft.value.trim()
-  if (name) resource.name = name
-  if (surface === 'drawer') drawerRenamingId.value = null
-  else listRenamingId.value = null
-  resourceNameDraft.value = ''
-}
-
-function handleResourceRenameKeydown(event: KeyboardEvent, resource: Resource, surface: 'list' | 'drawer' = 'list') {
-  if (event.key === 'Enter') {
-    event.preventDefault()
-    commitResourceRename(resource, surface)
-  }
-  if (event.key === 'Escape') {
-    event.preventDefault()
-    event.stopPropagation()
-    listRenamingId.value = null
-    drawerRenamingId.value = null
-    resourceNameDraft.value = ''
-  }
-}
-
-function handleResourceNameInput(event: WebUiEvent<WebUiInput, 'input'>) {
-  resourceNameDraft.value = event.target.value
-}
-
-function setListResourceRenameRef(el: Element | ComponentPublicInstance | null) {
-  listResourceRenameInputRef.value = el instanceof Element ? (el as WebUiInput) : null
-}
-
-function setDrawerResourceRenameRef(el: Element | ComponentPublicInstance | null) {
-  drawerResourceRenameInputRef.value = el instanceof Element ? (el as WebUiInput) : null
+function handleResourceNameChange(event: WebUiEvent<WebUiEditableText, 'change'>, resource: Resource) {
+  const editor = event.currentTarget
+  const name = editor.value.trim()
+  resource.name = name || resource.name
+  // 空草稿或去空白后与组件内值不一致时回写，避免组件继续显示未提交的草稿
+  if (editor.value !== resource.name) editor.value = resource.name
 }
 
 // --- Delete confirmation ---
@@ -1100,35 +1078,25 @@ watch(addDialogOpen, (open, _, onCleanup) => {
               <!-- Main -->
               <div class="flex flex-col min-w-0 gap-1 flex-1">
                 <div class="flex items-center gap-1.5">
-                  <web-ui-input
-                    v-if="listRenamingId === resource.id"
-                    :ref="setListResourceRenameRef"
-                    :value="resourceNameDraft"
-                    borderless
-                    class="block w-full min-w-0 max-w-[60%] [--wui-input-width:100%]"
+                  <web-ui-editable-text
+                    :ref="setNameEditorRef(resource.id)"
+                    class="text-sm font-medium leading-snug wrap-break-word line-clamp-2 max-w-[60%] max-[640px]:max-w-full"
+                    :class="
+                      resource.broken
+                        ? 'text-[#b0b0b8] line-through dark:text-(--wui-color-text-disabled)'
+                        : 'text-[#22212a] dark:text-(--wui-color-text)'
+                    "
+                    :value="resource.name"
                     :aria-label="`修改 ${resource.name} 的名称`"
                     @click.stop
-                    @input="handleResourceNameInput"
-                    @keydown="handleResourceRenameKeydown($event, resource, 'list')"
-                    @blur="commitResourceRename(resource, 'list')"
+                    @change="handleResourceNameChange($event, resource)"
                   />
-                  <template v-else>
-                    <span
-                      class="text-sm font-medium leading-snug wrap-break-word line-clamp-2 max-w-[60%] max-[640px]:max-w-full"
-                      :class="
-                        resource.broken
-                          ? 'text-[#b0b0b8] line-through dark:text-(--wui-color-text-disabled)'
-                          : 'text-[#22212a] dark:text-(--wui-color-text)'
-                      "
-                      >{{ resource.name }}</span
-                    >
-                    <web-ui-icon
-                      v-if="resource.broken"
-                      :icon="lucideTriangleAlert"
-                      :size="14"
-                      class="shrink-0 text-amber-500"
-                    ></web-ui-icon>
-                  </template>
+                  <web-ui-icon
+                    v-if="resource.broken"
+                    :icon="lucideTriangleAlert"
+                    :size="14"
+                    class="shrink-0 text-amber-500"
+                  ></web-ui-icon>
                 </div>
                 <div
                   class="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-[#9a9aa4] dark:text-(--wui-color-text-secondary)"
@@ -1253,26 +1221,15 @@ watch(addDialogOpen, (open, _, onCleanup) => {
               :size="22"
               class="shrink-0 text-[#5b5b66] dark:text-(--wui-color-text-secondary)"
             ></web-ui-icon>
-            <web-ui-input
-              v-if="drawerRenamingId === selectedResource.id"
-              :ref="setDrawerResourceRenameRef"
-              :value="resourceNameDraft"
-              borderless
-              class="block w-full min-w-0 max-w-full flex-[1_1_auto] [--wui-input-width:100%]"
+            <web-ui-editable-text
+              :ref="setNameEditorRef(DRAWER_TITLE_EDITOR_KEY)"
+              class="min-w-0 font-semibold text-[17px] leading-snug text-[#22212a] wrap-break-word dark:text-(--wui-color-text)"
+              :value="selectedResource.name"
               :aria-label="`修改 ${selectedResource.name} 的名称`"
               @click.stop
-              @input="handleResourceNameInput"
-              @keydown="handleResourceRenameKeydown($event, selectedResource, 'drawer')"
-              @blur="commitResourceRename(selectedResource, 'drawer')"
+              @change="handleResourceNameChange($event, selectedResource)"
             />
-            <span
-              v-else
-              class="font-semibold text-[17px] leading-snug text-[#22212a] wrap-break-word min-w-0 dark:text-(--wui-color-text)"
-            >
-              {{ selectedResource.name }}
-            </span>
             <web-ui-button
-              v-if="drawerRenamingId !== selectedResource.id"
               class="shrink-0 opacity-0 transition-opacity duration-120 group-hover/title:opacity-100 group-focus-within/title:opacity-100"
               icon
               variant="ghost"
