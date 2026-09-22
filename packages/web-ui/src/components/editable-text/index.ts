@@ -124,6 +124,7 @@ export class WebUiEditableText extends FormAssociated(LitElement) {
   private _editBase = ''
   private _pendingCaret: number | null = null
   private _refocusing = false
+  private _resizeObserver: ResizeObserver | null = null
 
   private get _isDisabled(): boolean {
     return this.disabled || this._formAssociation.isFormDisabled()
@@ -150,12 +151,33 @@ export class WebUiEditableText extends FormAssociated(LitElement) {
     this.addEventListener('focus', this._onHostFocus)
   }
 
+  override disconnectedCallback() {
+    super.disconnectedCallback()
+    this._releaseEditingKeys()
+    this._teardownAutosize()
+  }
+
+  override connectedCallback() {
+    super.connectedCallback()
+    /*
+     * autosize 的 ResizeObserver 在 disconnectedCallback 被拆掉，搭建若只放在
+     * firstUpdated（一生一次），元素断开再重连后 RO 永久丢失、autosize 静默失效。
+     * connectedCallback 每次连接都跑：_setupAutosize 自带 teardown，重复进入无副作用。
+     * 首连接时渲染尚未发生（_editor 为 null），_autosizeEditor 与 RO 回调都有判空守卫。
+     */
+    this._setupAutosize()
+    // 同类缺口：编辑态被断开时 _releaseEditingKeys 撤了 window 监听，重连后 _editing
+    // 仍为 true（blur 取消未必先于断开到达），此时补领，避免重连后按键失灵。
+    if (this._editing) this._claimEditingKeys()
+  }
+
   override updated() {
     // disabled 时移出 tab 序列；编辑态由 editing attribute 表达，二者互斥
     if (this._isDisabled) this.removeAttribute('tabindex')
     else this.setAttribute('tabindex', '0')
     // 禁用态生效时（属性或 fieldset）退出编辑：值保持当前草稿，不派发提交事件
     if (this._editing && this._isDisabled) this._exitEditing()
+    this._autosizeEditor()
   }
 
   private _onHostFocus() {
@@ -199,6 +221,7 @@ export class WebUiEditableText extends FormAssociated(LitElement) {
     this._editing = true
     this._editBase = this._value
     this.toggleAttribute('editing', true)
+    this._claimEditingKeys()
     const editor = this._editor
     if (!editor) return
     editor.focus()
@@ -212,6 +235,7 @@ export class WebUiEditableText extends FormAssociated(LitElement) {
   private _exitEditing() {
     if (!this._editing) return
     this._editing = false
+    this._releaseEditingKeys()
     this.toggleAttribute('editing', false)
   }
 
@@ -219,28 +243,128 @@ export class WebUiEditableText extends FormAssociated(LitElement) {
     // 原生 input 已 composed 冒泡出 shadow root 且 target 重定向到宿主，无需补发
     this._value = this._editor?.value ?? ''
     this._formAssociation.sync()
+    this._autosizeEditor()
   }
 
+  /** blur 取消：草稿丢弃，值回到进入编辑时的状态。提交只由 Enter 触发。 */
   private _onBlur() {
     if (!this._editing || this._isDisabled) return
+    this._cancelEditing()
+  }
+
+  /** Enter 提交：草稿成为新值并派发 change；焦点回宿主且不重新进入编辑。 */
+  private _commitEditing() {
+    if (!this._editing) return
+    // 先退出编辑再交还焦点：退出时 textarea 隐藏触发的 blur 看到 _editing 已为 false，
+    // 不会把这次提交误判成取消
     this._exitEditing()
+    this._returnFocusToHost()
     this.dispatchEvent(new Event('change', { bubbles: true, composed: true }))
   }
 
-  private _onKeydown(e: KeyboardEvent) {
-    if (e.key !== 'Escape') return
-    e.preventDefault()
+  /** 取消：恢复进入编辑时的值并派发 cancel。blur 与 Escape 共用这一条路径。 */
+  private _cancelEditing() {
+    if (!this._editing) return
     this._value = this._editBase
     this._formAssociation.sync()
-    // 焦点回到宿主即取消的落点：先标记再退出编辑，退出时隐藏 textarea 触发的 blur
-    // 不提交；宿主 focus 到来时标记已消费，不会再次进入编辑。
-    this._refocusing = true
     this._exitEditing()
+    /*
+     * cancel 与原生 <dialog> 的 cancel 同名，而 dialog 的关闭管线就监听这个事件名。
+     * 组件被消费方投映进浮层 shadow（drawer/dialog 标题）时，任何冒泡的 cancel——
+     * composed 与否都一样，slot 都会把事件带进 shadow 树——都会被那个 dialog 当成
+     * 一次关闭请求：issue #159 的实测症状是 drawer 标题聚焦编辑时按 Escape，或点到
+     * 抽屉别处触发 blur，抽屉跟着编辑一起关。因此只在宿主上派发，不冒泡不组合；
+     * 监听挂在组件本身即可（vue @cancel、React addEventListener 均不受影响）。
+     * 手法同 checkbox/radio 受管时的事件策略（见各自 handleClick 注释）。
+     */
+    this.dispatchEvent(new Event('cancel', { bubbles: false, composed: false }))
+  }
+
+  /**
+   * 焦点交还宿主：先标记再聚焦，宿主 focus 到达时标记已消费，不会再次进入编辑；
+   * 标记在微任务里清掉，此后的聚焦照常进入编辑。
+   */
+  private _returnFocusToHost() {
+    this._refocusing = true
     this.focus()
     queueMicrotask(() => {
       this._refocusing = false
     })
-    this.dispatchEvent(new Event('cancel', { bubbles: true, composed: true }))
+  }
+
+  /**
+   * 编辑态按键归属：Enter 提交、Escape 取消。
+   *
+   * 监听挂在 window 捕获阶段而不是 shadow 内的 textarea 上：消费方（浮层仲裁者）在
+   * document 捕获阶段收 Escape，组件若只在 textarea 上处理，按键先被仲裁者收走，
+   * 于是一次 Escape 会同时取消编辑和关闭外层浮层。window 在 document 上游，
+   * stopPropagation 只有挂在这里才拦得住仲裁者。
+   */
+  private _claimEditingKeys() {
+    window.addEventListener('keydown', this._onEditingKeydown, true)
+  }
+
+  private _releaseEditingKeys() {
+    window.removeEventListener('keydown', this._onEditingKeydown, true)
+  }
+
+  private readonly _onEditingKeydown = (e: KeyboardEvent) => {
+    // 输入法组合期间的 Enter/Escape 属于组合会话，交给 IME
+    if (e.isComposing) return
+    if (!e.composedPath().includes(this)) return
+    if (e.key === 'Escape') {
+      // 按键本身也被编辑层消费：外层浮层不应收到同一次 Escape
+      e.preventDefault()
+      e.stopPropagation()
+      this._cancelEditing()
+      this._returnFocusToHost()
+      return
+    }
+    if (e.key === 'Enter') {
+      /*
+       * 与 Escape 同套消费策略：preventDefault 压掉 textarea 的换行默认行为，
+       * stopPropagation 让按键不外泄。取舍是明说的：编辑态 Enter 属于提交，外层
+       * 表单的隐式提交与浮层监听不应收到同一次按键——正如 Escape 属于取消。
+       * 此前只 preventDefault 不对称，Enter 会漏进外层监听。
+       */
+      e.preventDefault()
+      e.stopPropagation()
+      this._commitEditing()
+    }
+  }
+
+  private _setupAutosize() {
+    this._teardownAutosize()
+    // jsdom 等无 ResizeObserver 的环境退化为按渲染 autosize，够用且不抛错
+    if (typeof ResizeObserver === 'undefined') {
+      this._autosizeEditor()
+      return
+    }
+    this._resizeObserver = new ResizeObserver(() => this._autosizeEditor())
+    this._resizeObserver.observe(this)
+    this._autosizeEditor()
+  }
+
+  private _teardownAutosize() {
+    this._resizeObserver?.disconnect()
+    this._resizeObserver = null
+    this._editor?.style.removeProperty('height')
+  }
+
+  /**
+   * 编辑层高度始终跟随自身内容，不依赖文本层折出的行盒。
+   *
+   * 编辑层绝对定位并用 top/bottom 撑高，`height: auto` 量到的是包含块高度而不是内容高；
+   * 先归零再读 scrollHeight，拿到的才是自身内容的高度（含 1px 内边距）。
+   * 观察宿主而非编辑层：编辑层在文档流外，改它的高度不会反过来改动宿主尺寸。
+   */
+  private _autosizeEditor() {
+    const editor = this._editor
+    if (!editor) return
+    const previous = editor.style.height
+    editor.style.height = '0px'
+    const height = editor.scrollHeight
+    editor.style.height = height > 0 ? `${height}px` : previous
   }
 
   private get _displayText(): string {
@@ -260,7 +384,6 @@ export class WebUiEditableText extends FormAssociated(LitElement) {
           ?disabled=${this._isDisabled}
           aria-label=${ifDefined(this.ariaLabel)}
           @input=${this._onInput}
-          @keydown=${this._onKeydown}
           @blur=${this._onBlur}
         ></textarea>
       </div>

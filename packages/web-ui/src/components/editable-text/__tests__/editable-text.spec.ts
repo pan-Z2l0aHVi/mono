@@ -52,7 +52,7 @@ describe('WebUiEditableText 组件契约', () => {
     cleanupElement(el)
   })
 
-  it('value attribute 提供初值，提交后 attribute 保持 reset 初值', async () => {
+  it('value attribute 提供初值，Enter 提交后 attribute 保持 reset 初值', async () => {
     const el = create({ value: 'initial' })
     await waitForUpdate(el)
     expect(el.value).toBe('initial')
@@ -63,7 +63,7 @@ describe('WebUiEditableText 组件契约', () => {
     await waitForUpdate(el)
     expect(el.value).toBe('edited')
 
-    editorOf(el).blur()
+    editorOf(el).dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, composed: true }))
     await waitForUpdate(el)
     expect(el.value).toBe('edited')
     expect(el.getAttribute('value')).toBe('initial')
@@ -200,7 +200,7 @@ describe('WebUiEditableText 组件契约', () => {
     cleanupElement(el)
   })
 
-  it('blur 提交并派发 change', async () => {
+  it('blur 取消：恢复原值、派发 cancel、不派发 change', async () => {
     const el = create({ value: 'hello' })
     await waitForUpdate(el)
     el.focus()
@@ -208,20 +208,23 @@ describe('WebUiEditableText 组件契约', () => {
     typeDraft(el, 'hello world')
     await waitForUpdate(el)
 
+    const [cancels, detachCancels] = spyEvents(el, 'cancel')
     const [changes, detachChanges] = spyEvents(el, 'change')
     try {
       editorOf(el).blur()
       await waitForUpdate(el)
-      expect(changes).toHaveLength(1)
+      expect(cancels).toHaveLength(1)
+      expect(changes).toHaveLength(0)
+      expect(el.value, '草稿丢弃，回到进入编辑时的值').toBe('hello')
       expect(el.hasAttribute('editing')).toBe(false)
-      expect(el.value).toBe('hello world')
     } finally {
+      detachCancels()
       detachChanges()
     }
     cleanupElement(el)
   })
 
-  it('空草稿 blur 提交空值，文本层回落 placeholder', async () => {
+  it('空草稿 blur 取消：恢复进入编辑时的值', async () => {
     const el = create({ value: 'hello', placeholder: '未命名' })
     await waitForUpdate(el)
     el.focus()
@@ -232,7 +235,18 @@ describe('WebUiEditableText 组件契约', () => {
     editorOf(el).blur()
     await waitForUpdate(el)
 
-    expect(el.value).toBe('')
+    expect(el.value, '空草稿被丢弃').toBe('hello')
+    expect(textLayerOf(el).textContent).toBe('hello')
+    cleanupElement(el)
+  })
+
+  it('值为空时文本层回落 placeholder', async () => {
+    const el = create({ value: 'hello', placeholder: '未命名' })
+    await waitForUpdate(el)
+
+    el.value = ''
+    await waitForUpdate(el)
+
     expect(textLayerOf(el).textContent).toBe('未命名')
     cleanupElement(el)
   })
@@ -247,38 +261,183 @@ describe('WebUiEditableText 组件契约', () => {
 
     const [cancels, detachCancels] = spyEvents(el, 'cancel')
     const [changes, detachChanges] = spyEvents(el, 'change')
+    // 浮层仲裁者在 document 捕获阶段收 Escape：它收不到，才证明按键被编辑层消费
+    const documentCapture: string[] = []
+    const onDocumentCapture = (e: Event) => {
+      if ((e as KeyboardEvent).key === 'Escape') documentCapture.push('escape')
+    }
+    document.addEventListener('keydown', onDocumentCapture, true)
     try {
-      editorOf(el).dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, composed: true }))
+      const event = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, composed: true, cancelable: true })
+      editorOf(el).dispatchEvent(event)
       await waitForUpdate(el)
 
       expect(cancels).toHaveLength(1)
       expect(changes).toHaveLength(0)
+      expect(documentCapture, 'Escape 不穿透到 document 捕获监听').toEqual([])
+      expect(event.defaultPrevented, 'Escape 被 preventDefault').toBe(true)
       expect(el.value).toBe('hello')
       expect(el.hasAttribute('editing')).toBe(false)
       expect(document.activeElement).toBe(el)
     } finally {
+      document.removeEventListener('keydown', onDocumentCapture, true)
       detachCancels()
       detachChanges()
     }
     cleanupElement(el)
   })
 
-  it('Enter 不被拦截，编辑继续（多行换行由 textarea 原生处理）', async () => {
+  it('cancel 只在宿主上派发：外层浮层 shadow 内的 dialog 与 light DOM 祖先都收不到', async () => {
+    /*
+     * issue #159 的实测形态：drawer 把 <dialog> 放在自己 shadow 里并监听原生 cancel，
+     * 消费者的 editable-text 经 slot 投映其中。自定义 cancel 一旦冒泡——composed 与否
+     * 都一样，slot 都会把事件带进 shadow 树——就会被那个 dialog 当成关闭请求。因此
+     * cancel 不冒泡不组合，只在宿主上派发；监听一律挂在组件本身。
+     */
+    if (!customElements.get('x-overlay-cancel-probe')) {
+      customElements.define(
+        'x-overlay-cancel-probe',
+        class extends HTMLElement {
+          dialogCancels = 0
+          constructor() {
+            super()
+            const root = this.attachShadow({ mode: 'open' })
+            const dialog = document.createElement('dialog')
+            dialog.addEventListener('cancel', () => {
+              this.dialogCancels += 1
+            })
+            dialog.append(document.createElement('slot'))
+            root.append(dialog)
+          }
+        }
+      )
+    }
+    const overlay = mountElement<HTMLElement & { dialogCancels: number }>('x-overlay-cancel-probe')
+    const lightAncestor = mountElement('div', { parent: document.body })
+    lightAncestor.append(overlay)
+    const el = create({ value: 'hello' })
+    overlay.append(el)
+    await waitForUpdate(el)
+
+    const seenByAncestor: Event[] = []
+    const onAncestorCancel = (e: Event) => seenByAncestor.push(e)
+    lightAncestor.addEventListener('cancel', onAncestorCancel)
+    const [cancels, detachCancels] = spyEvents(el, 'cancel')
+    try {
+      // blur 路径：点到浮层内别处
+      el.focus()
+      await waitForUpdate(el)
+      typeDraft(el, 'draft')
+      await waitForUpdate(el)
+      editorOf(el).blur()
+      await waitForUpdate(el)
+
+      expect(cancels).toHaveLength(1)
+      expect(cancels[0].bubbles, 'cancel 不冒泡').toBe(false)
+      expect(cancels[0].composed, 'cancel 不组合').toBe(false)
+      expect(overlay.dialogCancels, 'shadow 内 dialog 的 cancel 监听不应被触发').toBe(0)
+      expect(seenByAncestor, 'light DOM 祖先也收不到：监听须挂在组件本身').toHaveLength(0)
+      expect(el.value, '草稿丢弃').toBe('hello')
+
+      // Escape 路径：同样不得借道 dialog
+      el.focus()
+      await waitForUpdate(el)
+      typeDraft(el, 'draft2')
+      await waitForUpdate(el)
+      editorOf(el).dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, composed: true, cancelable: true })
+      )
+      await waitForUpdate(el)
+
+      expect(cancels).toHaveLength(2)
+      expect(overlay.dialogCancels, 'Escape 取消不得触发 dialog 的 cancel 监听').toBe(0)
+      expect(seenByAncestor).toHaveLength(0)
+      expect(el.value, '恢复进入编辑时的值').toBe('hello')
+    } finally {
+      detachCancels()
+      lightAncestor.removeEventListener('cancel', onAncestorCancel)
+      cleanupElement(el)
+      lightAncestor.remove()
+    }
+  })
+
+  it('断开重连后 Enter 提交仍正常：connectedCallback 重复进场不失效', async () => {
+    const el = create({ value: 'hello' })
+    await waitForUpdate(el)
+    const parent = el.parentElement!
+    el.remove()
+    await waitForUpdate(el)
+    parent.append(el)
+    await waitForUpdate(el)
+
+    el.focus()
+    await waitForUpdate(el)
+    expect(el.hasAttribute('editing'), '重连后可进入编辑').toBe(true)
+
+    const [changes, detachChanges] = spyEvents(el, 'change')
+    try {
+      const event = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, composed: true, cancelable: true })
+      editorOf(el).dispatchEvent(event)
+      await waitForUpdate(el)
+      expect(event.defaultPrevented, '重连后 Enter 换行默认行为仍被压掉').toBe(true)
+      expect(changes, '重连后提交仍派发一次 change').toHaveLength(1)
+      expect(el.hasAttribute('editing')).toBe(false)
+      expect(el.value).toBe('hello')
+    } finally {
+      detachChanges()
+    }
+    cleanupElement(el)
+  })
+
+  it('Enter 提交：派发 change、退出编辑、不插入换行', async () => {
     const el = create({ value: 'hello' })
     await waitForUpdate(el)
     el.focus()
     await waitForUpdate(el)
 
     const [cancels, detachCancels] = spyEvents(el, 'cancel')
-    try {
-      editorOf(el).dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, composed: true }))
-      await waitForUpdate(el)
-      expect(cancels).toHaveLength(0)
-      expect(el.hasAttribute('editing')).toBe(true)
-      expect(el.value).toBe('hello')
-    } finally {
-      detachCancels()
+    const [changes, detachChanges] = spyEvents(el, 'change')
+    // 与 Escape 同套消费策略：按键不外泄，外层表单/浮层监听不应收到
+    const documentCapture: string[] = []
+    const onDocumentCapture = (e: Event) => {
+      if ((e as KeyboardEvent).key === 'Enter') documentCapture.push('enter')
     }
+    document.addEventListener('keydown', onDocumentCapture, true)
+    try {
+      const event = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, composed: true, cancelable: true })
+      editorOf(el).dispatchEvent(event)
+      await waitForUpdate(el)
+      expect(event.defaultPrevented, 'Enter 的换行默认行为被压掉').toBe(true)
+      expect(documentCapture, 'Enter 不穿透到 document 捕获监听').toEqual([])
+      expect(changes, '提交只派发一次 change').toHaveLength(1)
+      expect(cancels).toHaveLength(0)
+      expect(el.value).toBe('hello')
+      expect(editorOf(el).value, '编辑层没有换行符').toBe('hello')
+      expect(el.hasAttribute('editing')).toBe(false)
+      expect(document.activeElement, '焦点回宿主').toBe(el)
+    } finally {
+      document.removeEventListener('keydown', onDocumentCapture, true)
+      detachCancels()
+      detachChanges()
+    }
+    cleanupElement(el)
+  })
+
+  it('Enter 提交后再次聚焦可重新进入编辑', async () => {
+    const el = create({ value: 'hello' })
+    await waitForUpdate(el)
+    el.focus()
+    await waitForUpdate(el)
+    editorOf(el).dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, composed: true }))
+    await waitForUpdate(el)
+    expect(el.hasAttribute('editing')).toBe(false)
+
+    el.blur()
+    await waitForUpdate(el)
+    el.focus()
+    await waitForUpdate(el)
+
+    expect(el.hasAttribute('editing'), '提交不锁死编辑入口').toBe(true)
     cleanupElement(el)
   })
 
