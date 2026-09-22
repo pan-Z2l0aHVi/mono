@@ -1,10 +1,12 @@
-import { afterEach, describe, expect, it } from 'vite-plus/test'
+import { afterEach, beforeAll, describe, expect, it } from 'vite-plus/test'
 import { page, userEvent } from 'vite-plus/test/browser'
 
 import '..'
 import { cleanupElement, mountElement, queryA11y, spyEvents, waitForUpdate } from '@/shared/test-utils'
 
 import type { WebUiEditableText } from '..'
+
+import parityFontUrl from './fixtures/inconsolata-parity-subset.ttf'
 
 afterEach(() => document.body.replaceChildren())
 
@@ -13,6 +15,31 @@ const FIXTURE_STYLE = 'width: 260px; padding: 8px; font: 16px/1.5 monospace;'
 
 /** 故意长到在内容盒里折成多行的文案，用于暴露换行点漂移。 */
 const WRAPPED_TEXT = 'overlay parity across wrapped lines in a fixed width box'
+
+/**
+ * 逐像素比对的确定性字体：打包的 Inconsolata 子集（OFL，见 fixtures 目录）经 FontFace
+ * 加载，16px 下 advance 恰为 8px，ascent/descent 用 descriptor 覆盖为 14px/4px。
+ * 系统字体栈随平台变化（CI 容器里的 monospace 与开发机不是同一个文件），分数 advance
+ * 会把逐字形 x 原点放到亚像素上，Linux 的取整/提示路径据此抖动，两层随之错位；
+ * 原点全部钉在整数网格后任何取整都是 no-op，0px 断言才跨平台成立。
+ */
+const PARITY_FONT_FAMILY = 'WuiEditableTextParity'
+const PARITY_FONT_METRICS = { advance: 8, ascent: 14, descent: 4, size: 16 }
+
+/** 8px advance 下 200px 内容盒折 3 行，保留多行折行点覆盖。 */
+const parityFixtureStyle = (lineHeight: number): string =>
+  `width: 200px; padding: 8px; font: ${PARITY_FONT_METRICS.size}px/${lineHeight} ${PARITY_FONT_FAMILY};`
+
+const loadParityFont = async (): Promise<void> => {
+  const face = new FontFace(PARITY_FONT_FAMILY, `url(${parityFontUrl})`, {
+    ascentOverride: `${(PARITY_FONT_METRICS.ascent / PARITY_FONT_METRICS.size) * 100}%`,
+    descentOverride: `${(PARITY_FONT_METRICS.descent / PARITY_FONT_METRICS.size) * 100}%`
+  })
+  await face.load()
+  document.fonts.add(face)
+  await document.fonts.load(`${PARITY_FONT_METRICS.size}px ${PARITY_FONT_FAMILY}`)
+  await document.fonts.ready
+}
 
 const mount = (attrs: Record<string, string> = {}): WebUiEditableText =>
   mountElement<WebUiEditableText>('web-ui-editable-text', { attrs: { style: FIXTURE_STYLE, ...attrs } })
@@ -79,6 +106,19 @@ const clickCaretOffset = async (el: WebUiEditableText, offset: number): Promise<
   await clickAt(el, caret.left - host.left + 1, caret.top - host.top + caret.height / 2)
 }
 
+/** 逐像素 fixture 的字体几何：advance、覆盖后的 ascent/descent，以及文本层首行基线。 */
+const parityGeometryOf = (el: WebUiEditableText): Record<string, number> => {
+  // 字体取元素自身的 computed style：字体没加载成功而回落到系统字体时，度量随之一起
+  // 变，锁才能发现；写死字体族只会量到 FontFace 自己。
+  const style = getComputedStyle(el)
+  const ctx = document.createElement('canvas').getContext('2d')!
+  ctx.font = `${style.fontSize} ${style.fontFamily}`
+  const advance = ctx.measureText('M'.repeat(10)).width / 10
+  const { fontBoundingBoxAscent: ascent, fontBoundingBoxDescent: descent } = ctx.measureText('Mg')
+  // 首字符的 Range 矩形是 em 盒（顶缘 = 基线 - ascent），加回 ascent 即基线坐标
+  return { advance, ascent, descent, baseline: caretRectAt(el, 0).top + ascent }
+}
+
 /**
  * 在页面内解码两张截图并逐像素比对，返回差异像素数与最大通道差。
  * 文字态/编辑态 overlay 一致性是本组件的布局验收项，用像素计数判定。
@@ -129,6 +169,8 @@ const blurByFocusElsewhere = async (): Promise<HTMLButtonElement> => {
 }
 
 describe('WebUiEditableText 布局契约（浏览器）', () => {
+  beforeAll(loadParityFont)
+
   it('编辑层与文本层同盒：内容盒重合、裁剪盒覆盖内容盒；切换可见性不改变宿主盒', async () => {
     const el = mount({ value: WRAPPED_TEXT })
     await waitForUpdate(el)
@@ -170,9 +212,9 @@ describe('WebUiEditableText 布局契约（浏览器）', () => {
    * 光标是编辑态独有绘制项，置透明后排除其对像素比对的影响。
    */
   const overlayParityDiff = async (
-    attrs: Record<string, string> = {}
-  ): Promise<{ pixels: number; maxDelta: number; size: string }> => {
-    const el = mount({ value: WRAPPED_TEXT, ...attrs })
+    style = parityFixtureStyle(1.5)
+  ): Promise<{ pixels: number; maxDelta: number; size: string; geometry: Record<string, number> }> => {
+    const el = mount({ value: WRAPPED_TEXT, style })
     await waitForUpdate(el)
     await nextFrame()
     const displayShot = await page.elementLocator(el).screenshot({ base64: true })
@@ -183,8 +225,10 @@ describe('WebUiEditableText 布局契约（浏览器）', () => {
     editorOf(el).style.caretColor = 'transparent'
     await nextFrame()
     const editShot = await page.elementLocator(el).screenshot({ base64: true })
+    const geometry = parityGeometryOf(el)
     cleanupElement(el)
-    return pixelDiff(displayShot.base64, editShot.base64)
+    const diff = await pixelDiff(displayShot.base64, editShot.base64)
+    return { ...diff, geometry }
   }
 
   it('同文案文字态/编辑态 overlay 逐像素一致', async () => {
@@ -194,11 +238,25 @@ describe('WebUiEditableText 布局契约（浏览器）', () => {
   })
 
   it('紧凑行高下 overlay 仍逐像素一致', async () => {
-    // 行高等于字号时文本层行盒没有富余，编辑层内部内容更容易高出自身 1px，
-    // 是文字态/编辑态错位的高发区。
-    const diff = await overlayParityDiff({ style: 'width: 260px; padding: 8px; font: 16px/1 monospace;' })
+    // 行高小于字盒高度（16 < 18）时文本层行盒没有富余，编辑层内部内容更容易高出自身
+    // 1px，是文字态/编辑态错位的高发区。
+    const diff = await overlayParityDiff(parityFixtureStyle(1))
     expect(diff.size, '两态截图尺寸一致').not.toContain('vs')
     expect(diff.pixels, `紧凑行高下 overlay 像素差异（${diff.size}，最大通道差 ${diff.maxDelta}）`).toBe(0)
+  })
+
+  it.each([1.5, 1])('行高 %s 下逐像素 fixture 的字体几何钉在整数像素网格上', async lineHeight => {
+    // 两层共用同一份字体几何；advance 与 ascent/descent 为整像素时，逐字形 x 原点
+    // 与首行基线都是整数，平台相关的取整/提示不会把两层抖开。换字体或改行高破坏了
+    // 整数性，这里先失败，避免 0px 断言在别的平台上悄悄失效。
+    const el = mount({ value: WRAPPED_TEXT, style: parityFixtureStyle(lineHeight) })
+    await waitForUpdate(el)
+    const geometry = parityGeometryOf(el)
+    cleanupElement(el)
+    expect(geometry.advance, '等宽 advance 为整像素').toBe(PARITY_FONT_METRICS.advance)
+    expect(geometry.ascent, 'ascent 覆盖为整像素').toBe(PARITY_FONT_METRICS.ascent)
+    expect(geometry.descent, 'descent 覆盖为整像素').toBe(PARITY_FONT_METRICS.descent)
+    expect(Number.isInteger(geometry.baseline), `基线为整像素（实际 ${geometry.baseline}）`).toBe(true)
   })
 
   it('输入过程中盒宽、滚动位置与换行点保持稳定', async () => {
