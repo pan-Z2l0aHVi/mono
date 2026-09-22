@@ -246,28 +246,49 @@ export class WebUiEditableText extends FormAssociated(LitElement) {
     this._autosizeEditor()
   }
 
-  /** blur 取消：草稿丢弃，值回到进入编辑时的状态。提交只由 Enter 触发。 */
+  /**
+   * blur 提交：与 Enter 同一条提交路径，草稿成为新值并派发 change。
+   *
+   * 不交还焦点：焦点已被用户移走，抢回宿主会吞掉消费者的目标焦点。
+   */
   private _onBlur() {
     if (!this._editing || this._isDisabled) return
-    this._cancelEditing()
+    this._commitEditing(false)
   }
 
-  /** Enter 提交：草稿成为新值并派发 change；焦点回宿主且不重新进入编辑。 */
-  private _commitEditing() {
+  /**
+   * 提交：草稿成为新值、退出编辑，并恰好派发一次 change。Enter 与 blur 同走这一条路。
+   *
+   * `returnFocus` 区分两种来路：Enter 主动结束时把焦点交还宿主（标记防重入编辑）；
+   * blur 是被动失焦，焦点已被用户移走，再抢回宿主会吞掉消费者的目标焦点。
+   * 先退出编辑再动焦点：退出时 textarea 隐藏触发的 blur 看到 _editing 已为 false，
+   * 不会把这次提交误判成又一次 blur 提交。
+   */
+  private _commitEditing(returnFocus: boolean) {
     if (!this._editing) return
-    // 先退出编辑再交还焦点：退出时 textarea 隐藏触发的 blur 看到 _editing 已为 false，
-    // 不会把这次提交误判成取消
     this._exitEditing()
-    this._returnFocusToHost()
+    if (returnFocus) this._returnFocusToHost()
     this.dispatchEvent(new Event('change', { bubbles: true, composed: true }))
   }
 
-  /** 取消：恢复进入编辑时的值并派发 cancel。blur 与 Escape 共用这一条路径。 */
+  /**
+   * 取消：恢复进入编辑时的值并派发 cancel。仅 Escape 走这一条路径。
+   *
+   * 调用方（Escape 分支）随后才交还焦点：本方法先摘除编辑态，焦点迁移触发的 blur
+   * 到达时 `_editing` 已为 false 而早退，不会把取消误判成 blur 提交。
+   */
   private _cancelEditing() {
     if (!this._editing) return
     this._value = this._editBase
     this._formAssociation.sync()
     this._exitEditing()
+    /*
+     * 重入守卫先于 dispatch 置位：cancel 同步派发，消费者可能在监听器里调
+     * el.focus()——那是一次真实的宿主 focus，没有守卫就会重新进入编辑，随后一次
+     * blur 便把恢复后的原值当成新草稿提交，用户什么都没改却收到 change。守卫在此
+     * 置位后即被该次 focus 消费，与取消后由组件自己交还焦点走同一条早退路径。
+     */
+    this._refocusing = true
     /*
      * cancel 与原生 <dialog> 的 cancel 同名，而 dialog 的关闭管线就监听这个事件名。
      * 组件被消费方投映进浮层 shadow（drawer/dialog 标题）时，任何冒泡的 cancel——
@@ -316,6 +337,8 @@ export class WebUiEditableText extends FormAssociated(LitElement) {
       // 按键本身也被编辑层消费：外层浮层不应收到同一次 Escape
       e.preventDefault()
       e.stopPropagation()
+      // 先取消（内部摘除编辑态）再交还焦点：focus 触发的 blur 看到 _editing 已为
+      // false 而早退，不会把这次取消误判成 blur 提交
       this._cancelEditing()
       this._returnFocusToHost()
       return
@@ -329,7 +352,7 @@ export class WebUiEditableText extends FormAssociated(LitElement) {
        */
       e.preventDefault()
       e.stopPropagation()
-      this._commitEditing()
+      this._commitEditing(true)
     }
   }
 
