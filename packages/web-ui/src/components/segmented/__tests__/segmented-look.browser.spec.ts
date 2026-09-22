@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it } from 'vite-plus/test'
+import { cdp } from 'vite-plus/test/browser'
 
 import '..'
 import '@/components/button'
@@ -13,7 +14,7 @@ import type { WebUiSegmented } from '..'
 
 afterEach(() => document.body.replaceChildren())
 
-/** Chrome 对 transparent 的计算值表示；thumb 按下/拖拽态必须全程是这个值。 */
+/** Chrome 对 transparent 的计算值表示；thumb 按压态底色与 trigger 层无灰底断言复用。 */
 const TRANSPARENT = 'rgba(0, 0, 0, 0)'
 
 type Look = {
@@ -32,13 +33,14 @@ type Look = {
  * 结构与 CSS class」的例外：轨道可按公开语义 role="listbox" 定位，指示器没有公开 role，
  * 只能按内部类名取（segmented-gesture.browser.spec.ts 对同一元素同法）。
  */
-async function mount(appearance: 'light' | 'dark', motion?: 'reduced'): Promise<Look> {
+async function mount(appearance: 'light' | 'dark', motion?: 'reduced', variant?: string): Promise<Look> {
   const theme = document.createElement('web-ui-theme') as WebUiTheme
   theme.setAttribute('appearance', appearance)
   if (motion) theme.setAttribute('motion', motion)
 
   const segmented = document.createElement('web-ui-segmented') as WebUiSegmented
   segmented.value = 'a'
+  if (variant !== undefined) segmented.variant = variant
   const triggers = (['a', 'b', 'c'] as const).map(value => {
     const trigger = document.createElement('web-ui-segmented-trigger') as WebUiSegmentedTrigger
     trigger.value = value
@@ -100,6 +102,18 @@ function activeTriggerCenter(trigger: WebUiSegmentedTrigger): { x: number; y: nu
   return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 }
 }
 
+/** trigger 可交互面的文字计算色。 */
+function triggerTextColor(trigger: WebUiSegmentedTrigger): string {
+  return getComputedStyle(activeSurface(trigger)).color
+}
+
+/** 当前被父级 segmented 标记 is-covered 的 trigger（按压/拖拽中实时跟随指示器）。 */
+function coveredTriggers(segmented: WebUiSegmented): WebUiSegmentedTrigger[] {
+  return [...segmented.querySelectorAll<WebUiSegmentedTrigger>('web-ui-segmented-trigger')].filter(trigger =>
+    trigger.classList.contains('is-covered')
+  )
+}
+
 /**
  * 按住已选项并提交 is-pressed，返回松手收尾函数。
  * 采样起点在 Lit 提交 is-pressed 之后：要证的是「按下态持续期间的表现」，
@@ -152,6 +166,107 @@ async function sampleWhileDragging(look: Look, frames: number): Promise<string[]
   return samples
 }
 
+type GestureSample = {
+  stage: string
+  thumb: string
+  thumbBackdrop: string
+  triggers: string[]
+}
+
+/** 拆出 box-shadow 计算值里的 inset 层（颜色 token 开头），用于观测高光层。 */
+function insetLayers(boxShadow: string): string[] {
+  return boxShadow
+    .split(/,(?![^(]*\))/)
+    .filter(layer => layer.includes('inset'))
+    .map(layer => layer.trim())
+}
+
+/**
+ * vitest 4.1.11 发布形态的 CDPSession 类型是空接口（send 等运行时成员未声明），
+ * 按 CDP 协议补上本测试用到的最大集。
+ */
+interface CdpSession {
+  send: (method: string, params?: Record<string, unknown>) => Promise<unknown>
+}
+
+/** 同一帧采样双侧底色：thumb（指示器）与每个 trigger 的可交互面。 */
+function sampleBothLayers(look: Look): Omit<GestureSample, 'stage'> {
+  return {
+    thumb: getComputedStyle(look.indicator).backgroundColor,
+    thumbBackdrop: getComputedStyle(look.indicator).backdropFilter,
+    triggers: look.triggers.map(trigger => {
+      const surface = queryA11y(trigger, '[role="option"]')
+      if (!(surface instanceof HTMLElement)) throw new Error('未找到 role="option" 的可交互面')
+      return getComputedStyle(surface).backgroundColor
+    })
+  }
+}
+
+/** 测试代码运行在 tester iframe 内；CDP 的 Input 事件用顶层页面坐标，需叠加 iframe 偏移。 */
+async function toPagePoint(x: number, y: number): Promise<{ x: number; y: number }> {
+  const frame = window.frameElement
+  const offset = frame ? frame.getBoundingClientRect() : { left: 0, top: 0 }
+  return { x: offset.left + x, y: offset.top + y }
+}
+
+/**
+ * 真实鼠标手势：hover 已选项 → 按下 → 分步拖拽越过 6px 阈值 → 松手，逐阶段采样双侧底色。
+ *
+ * 合成 PointerEvent 不触发 :active/:hover（Chrome 只对真实输入设置这两个原生状态），而
+ * trigger 层灰底正挂在 :hover/:active 上——#150「灰底在 thumb 层」要求它彻底消失，只能
+ * 用 CDP Input.dispatchMouseEvent 的真实输入锁定，合成事件的用例覆盖不到这条路径。
+ */
+async function sampleRealPressDrag(look: Look, pressedFrames: number): Promise<GestureSample[]> {
+  const session = cdp() as unknown as CdpSession
+  const { segmented } = look
+  const { x, y } = activeTriggerCenter(look.activeTrigger)
+  const samples: GestureSample[] = []
+
+  const settle = async (stage: string) => {
+    await waitForUpdate(segmented)
+    await waitForFrame()
+    samples.push({ stage, ...sampleBothLayers(look) })
+  }
+
+  const press = await toPagePoint(x, y)
+  await session.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: press.x, y: press.y })
+  await settle('hover')
+
+  await session.send('Input.dispatchMouseEvent', {
+    type: 'mousePressed',
+    x: press.x,
+    y: press.y,
+    button: 'left',
+    buttons: 1,
+    clickCount: 1
+  })
+  for (let frame = 0; frame < pressedFrames; frame += 1) await settle('pressed')
+
+  // 分步移动：模拟真实拖拽轨迹，并保证 pointer 逐段越过意图死区进入拖拽态
+  for (let step = 1; step <= 4; step += 1) {
+    const point = await toPagePoint(x + step * 10, y)
+    await session.send('Input.dispatchMouseEvent', {
+      type: 'mouseMoved',
+      x: point.x,
+      y: point.y,
+      button: 'left',
+      buttons: 1
+    })
+    if (step >= 2) await settle('dragging')
+  }
+
+  const release = await toPagePoint(x + 40, y)
+  await session.send('Input.dispatchMouseEvent', {
+    type: 'mouseReleased',
+    x: release.x,
+    y: release.y,
+    button: 'left',
+    buttons: 0,
+    clickCount: 1
+  })
+  return samples
+}
+
 /** 命中元素是否落在 trigger 这一层：host 本体，或其 shadow 内部的可交互面。 */
 function belongsToTrigger(hit: Element | null, trigger: WebUiSegmentedTrigger): boolean {
   if (!hit) return false
@@ -167,25 +282,75 @@ function describeHit(hit: Element | null): string {
   return `${hit.tagName.toLowerCase()}${scope}`
 }
 
+/** WCAG 对比度：两个 rgb() 计算值的相对亮度比。文字色断言复用（≥3:1 非文本/大字底线）。 */
+function contrastRatio(a: string, b: string): number {
+  const luminance = (color: string) => {
+    const parts = color.match(/[\d.]+/g)
+    if (!parts) throw new Error(`无法解析颜色：${color}`)
+    const [r, g, blue] = parts.slice(0, 3).map(Number)
+    const channel = (v: number) => {
+      const s = v / 255
+      return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4
+    }
+    return 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(blue)
+  }
+  const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x)
+  return (hi + 0.05) / (lo + 0.05)
+}
+
 describe('WebUiSegmented 视觉规范（浏览器）', () => {
   for (const appearance of ['light', 'dark'] as const) {
     describe(`${appearance} 主题`, () => {
-      it('轨道底色取 .wui-glass 默认玻璃底，与 glass button 同值', async () => {
+      it('轨道是不透明实体面：底色取 surface-raised、无 backdrop blur', async () => {
         const { theme, track } = await mount(appearance)
 
-        const glassButton = document.createElement('web-ui-button') as WebUiButton
-        glassButton.setAttribute('variant', 'glass')
-        theme.append(glassButton)
-        await waitForUpdate(glassButton)
-        const buttonSurface = glassButton.shadowRoot?.querySelector('button')
-        if (!(buttonSurface instanceof HTMLElement)) throw new Error('glass button 未渲染按钮面')
+        const raisedToken = resolveToken(theme, '--wui-color-surface-raised')
+        expect(raisedToken, 'surface-raised token 应解析为可见颜色').not.toBe(TRANSPARENT)
 
-        const glassToken = resolveToken(theme, '--wui-color-surface-glass')
-        expect(glassToken, 'glass token 应解析为可见颜色').not.toBe(TRANSPARENT)
+        const style = getComputedStyle(track)
+        expect(style.backgroundColor).toBe(raisedToken)
+        expect(style.backdropFilter, '实体轨道不得残留 backdrop blur').toBe('none')
+      })
 
-        const trackBg = getComputedStyle(track).backgroundColor
-        expect(trackBg).toBe(glassToken)
-        expect(trackBg).toBe(getComputedStyle(buttonSurface).backgroundColor)
+      it('轨道的玻璃描边全状态恒定：静止/按压/拖拽同值', async () => {
+        const look = await mount(appearance)
+
+        const sample = () => {
+          const style = getComputedStyle(look.track)
+          return {
+            bg: style.backgroundColor,
+            backdrop: style.backdropFilter,
+            insets: insetLayers(style.boxShadow),
+            ring: getComputedStyle(look.track, '::before').opacity
+          }
+        }
+
+        // 实体化之后采样面均匀，按压态不再需要压制轨道的边缘装饰：三种状态下
+        // 底色、blur、inset 高光与描边环必须逐项同值（环常驻 1、高光常驻不透明）。
+        const rest = sample()
+        const release = await holdPressed(look)
+        const pressed = sample()
+        const { x, y } = activeTriggerCenter(look.activeTrigger)
+        window.dispatchEvent(pointer('pointermove', x + 20, y))
+        await waitForUpdate(look.segmented)
+        const dragging = sample()
+        await release()
+
+        for (const [name, state] of [
+          ['按压态', pressed],
+          ['拖拽态', dragging]
+        ] as const) {
+          expect(state.bg, `${name}轨道底色漂移`).toBe(rest.bg)
+          expect(state.backdrop, `${name}轨道 backdrop 漂移`).toBe('none')
+          expect(state.insets, `${name}轨道 inset 高光被压制`).toStrictEqual(rest.insets)
+          expect(state.ring, `${name}轨道描边环透明度漂移`).toBe(rest.ring)
+        }
+        expect(rest.insets.length, '轨道应保留三条 inset 高光').toBe(3)
+        expect(
+          rest.insets.every(layer => !layer.startsWith(TRANSPARENT)),
+          '静止态轨道 inset 高光不得透明'
+        ).toBe(true)
+        expect(rest.ring, '轨道描边环应常驻完全显示').toBe('1')
       })
 
       it('静止态 thumb 是纯灰底：玻璃输出全部关闭', async () => {
@@ -201,39 +366,226 @@ describe('WebUiSegmented 视觉规范（浏览器）', () => {
         expect(getComputedStyle(indicator, '::before').opacity, '静止态不得绘制玻璃描边环').toBe('0')
       })
 
-      it('文字色取 --wui-color-text-secondary，未随 thumb 改动漂移', async () => {
-        const { theme, activeTrigger } = await mount(appearance)
-
-        const surface = queryA11y(activeTrigger, '[role="option"]')
-        if (!(surface instanceof HTMLElement)) throw new Error('未找到 role="option" 的可交互面')
+      it('文字色：未选中 text-secondary、选中 accent，与轨道底对比度 ≥ 3:1', async () => {
+        const { theme, track, activeTrigger, triggers } = await mount(appearance)
 
         const secondaryToken = resolveToken(theme, '--wui-color-text-secondary')
-        expect(getComputedStyle(surface).color).toBe(secondaryToken)
+        const accentToken = resolveToken(theme, '--wui-color-accent')
+        expect(accentToken, 'accent token 应解析为可见颜色').not.toBe(TRANSPARENT)
+
+        expect(triggerTextColor(activeTrigger), '选中项文字应着 accent').toBe(accentToken)
+        for (const trigger of triggers.slice(1)) {
+          expect(triggerTextColor(trigger), '未选中项文字应保持 text-secondary').toBe(secondaryToken)
+        }
+
+        // accent 落在实体轨道上的可辨度底线（WCAG 非文本/大字 3:1）；实测值随报告给出。
+        const ratio = contrastRatio(triggerTextColor(activeTrigger), getComputedStyle(track).backgroundColor)
+        expect(ratio, `选中文字与轨道底对比度不足：${ratio.toFixed(2)}:1`).toBeGreaterThanOrEqual(3)
       })
 
-      it('按住已选项：thumb 全程全透明，无灰色 tint 中间帧', async () => {
+      it('按住已选项：thumb 全程全透明，无灰色中间帧', async () => {
         const look = await mount(appearance)
 
         const samples = await sampleWhilePressed(look, 12)
         expect(samples).toHaveLength(12)
         expect(
           samples.every(sample => sample === TRANSPARENT),
-          `采样到非全透明帧：${samples.join(' | ')}`
+          `采样到非透明帧：${samples.join(' | ')}`
         ).toBe(true)
       })
 
-      it('拖拽已选项：thumb 全程全透明，无灰色 tint 中间帧', async () => {
+      it('拖拽已选项：thumb 全程全透明，无灰色中间帧', async () => {
         const look = await mount(appearance)
 
         const samples = await sampleWhileDragging(look, 12)
         expect(samples).toHaveLength(12)
         expect(
           samples.every(sample => sample === TRANSPARENT),
-          `采样到非全透明帧：${samples.join(' | ')}`
+          `采样到非透明帧：${samples.join(' | ')}`
         ).toBe(true)
+      })
+
+      it('按住已选项：被覆盖的 trigger 挂 is-covered 且文字着 accent', async () => {
+        const look = await mount(appearance)
+        const { theme, segmented, activeTrigger } = look
+        const accentToken = resolveToken(theme, '--wui-color-accent')
+
+        const release = await holdPressed(look)
+
+        // 静止时指示器就压在已选项上：按压起点 covered 与 checked 重合
+        expect(coveredTriggers(segmented), '按压中应有且仅有一个被覆盖项').toStrictEqual([activeTrigger])
+        await pollUntil(() => triggerTextColor(activeTrigger) === accentToken, '覆盖项文字未着 accent')
+
+        await release()
+      })
+
+      it('拖拽中：is-covered 跟随指示器，覆盖项文字着 accent', async () => {
+        const look = await mount(appearance)
+        const { theme, segmented, activeTrigger, triggers } = look
+        const accentToken = resolveToken(theme, '--wui-color-accent')
+        const secondaryToken = resolveToken(theme, '--wui-color-text-secondary')
+        const nextTrigger = triggers[1]
+
+        const release = await holdPressed(look)
+
+        // 指针移到下一项中心：指示器跟随后，最大重叠项切换为下一项
+        const target = activeTriggerCenter(nextTrigger)
+        window.dispatchEvent(pointer('pointermove', target.x, target.y))
+        await waitForUpdate(segmented)
+
+        expect(coveredTriggers(segmented), '拖拽中 covered 应跟随到下一项').toStrictEqual([nextTrigger])
+        await pollUntil(() => triggerTextColor(nextTrigger) === accentToken, '新覆盖项文字未着 accent')
+        // 未覆盖的第三项不受影响；已选项在松手前仍是 checked，文字保持 accent
+        expect(triggerTextColor(triggers[2]), '无关项文字应保持 text-secondary').toBe(secondaryToken)
+        expect(triggerTextColor(activeTrigger), '已选项文字应保持 accent').toBe(accentToken)
+
+        await release()
+      })
+
+      it('松手后：is-covered 清除，新选中项着 accent、其余回落 secondary', async () => {
+        const look = await mount(appearance)
+        const { theme, segmented, activeTrigger, triggers } = look
+        const accentToken = resolveToken(theme, '--wui-color-accent')
+        const secondaryToken = resolveToken(theme, '--wui-color-text-secondary')
+        const nextTrigger = triggers[1]
+
+        // 不用 holdPressed 的收尾：它的 pointerup 发在原始按下点（deltaX=0，回弹到原项），
+        // 这里要证的是「在拖动落点松手」的提交路径，pointerup 必须发在落点上。
+        const target = activeTriggerCenter(nextTrigger)
+        const from = activeTriggerCenter(activeTrigger)
+        activeSurface(activeTrigger).dispatchEvent(pointer('pointerdown', from.x, from.y))
+        await waitForUpdate(segmented)
+        window.dispatchEvent(pointer('pointermove', target.x, target.y))
+        await waitForUpdate(segmented)
+        window.dispatchEvent(pointer('pointerup', target.x, target.y))
+        await waitForUpdate(segmented)
+
+        // 落在下一项中心：吸附目标即下一项（速度再快也是向前甩一项，目标一致）
+        expect(segmented.value, '松手后应选中拖动落点的选项').toBe(nextTrigger.value)
+        expect(nextTrigger.checked, '新选中项应置 checked').toBe(true)
+        expect(coveredTriggers(segmented), '松手后 covered 应全部清除').toStrictEqual([])
+        await pollUntil(() => triggerTextColor(nextTrigger) === accentToken, '新选中项文字未着 accent')
+        await pollUntil(() => triggerTextColor(activeTrigger) === secondaryToken, '原选中项文字未回落')
+        expect(triggerTextColor(triggers[2])).toBe(secondaryToken)
+      })
+
+      it('真实按压/拖拽全程：thumb 与所有 trigger 均无灰色 bg', async () => {
+        const look = await mount(appearance)
+
+        const samples = await sampleRealPressDrag(look, 4)
+        const stages = new Set(samples.map(sample => sample.stage))
+        expect(
+          stages.has('hover') && stages.has('pressed') && stages.has('dragging'),
+          `手势未覆盖全部阶段：${[...stages].join(' | ')}`
+        ).toBe(true)
+
+        // 反虚跳：真实输入必须真的把组件带进按压/拖拽态（thumb 的玻璃 blur 已打开），
+        // 否则下面的无色断言只是对一条从未发生的手势空转。
+        expect(
+          samples.some(sample => sample.stage !== 'hover' && sample.thumbBackdrop.includes('blur(4px)')),
+          '按压/拖拽态 thumb 未见 backdrop blur，手势可能未真正生效'
+        ).toBe(true)
+
+        // hover 阶段（尚未按下）thumb 处于静止实色灰，是设计内的静止态；按下/拖拽必须落在
+        // 全透明——残留灰底或中途跳变到其他值都算违约。
+        const offenders = samples.filter(
+          sample =>
+            sample.triggers.some(bg => bg !== TRANSPARENT) || (sample.stage !== 'hover' && sample.thumb !== TRANSPARENT)
+        )
+        expect(
+          offenders,
+          `以下采样 thumb/trigger 底色偏离契约：\n${offenders
+            .map(o => `${o.stage}: thumb=${o.thumb} | triggers=${o.triggers.join(' , ')}`)
+            .join('\n')}`
+        ).toHaveLength(0)
       })
     })
   }
+
+  describe('variant prop', () => {
+    for (const appearance of ['light', 'dark'] as const) {
+      describe(`${appearance} 主题`, () => {
+        it('默认 inset；非法值回退 inset；attribute 可切 raised', async () => {
+          const { segmented } = await mount(appearance)
+
+          expect(segmented.variant, '默认应为 inset').toBe('inset')
+          expect(segmented.getAttribute('variant'), '默认值应反射到 attribute').toBe('inset')
+
+          segmented.variant = 'bogus'
+          await waitForUpdate(segmented)
+          expect(segmented.variant, '非法值应回退到 inset').toBe('inset')
+          expect(segmented.getAttribute('variant'), '回退值应反射到 attribute').toBe('inset')
+
+          segmented.setAttribute('variant', 'raised')
+          await waitForUpdate(segmented)
+          expect(segmented.variant, 'attribute 应驱动 property').toBe('raised')
+        })
+
+        it('inset 变体：实体轨道 + 常驻环投影 + 灰 thumb，按压透明', async () => {
+          const look = await mount(appearance)
+          const { theme, track, indicator } = look
+          const raisedToken = resolveToken(theme, '--wui-color-surface-raised')
+          const segmentedToken = resolveToken(theme, '--wui-color-surface-segmented')
+
+          const rest = getComputedStyle(track)
+          expect(rest.backgroundColor).toBe(raisedToken)
+          expect(rest.backdropFilter).toBe('none')
+          expect(rest.boxShadow, 'inset 轨道应保留投影').not.toBe('none')
+          expect(getComputedStyle(track, '::before').opacity, 'inset 轨道应保留描边环').toBe('1')
+          expect(getComputedStyle(indicator).backgroundColor).toBe(segmentedToken)
+
+          const release = await holdPressed(look)
+          await waitForFrame()
+          await waitForFrame()
+          const pressed = getComputedStyle(indicator)
+          expect(pressed.backgroundColor, 'inset 按压态 thumb 应全透明').toBe(TRANSPARENT)
+          expect(pressed.backdropFilter).toContain('blur(4px)')
+          // transform 走 80ms 过渡：轮询到放大落地，不断言中间帧
+          await pollUntil(
+            () => getComputedStyle(indicator).transform.startsWith('matrix(1.5'),
+            'inset 按压态 thumb 未放大到 1.5x'
+          )
+          // 按压不改变轨道装饰
+          expect(getComputedStyle(track, '::before').opacity, 'inset 按压态环应恒定').toBe('1')
+          expect(getComputedStyle(track).boxShadow, 'inset 按压态投影应恒定').not.toBe('none')
+          await release()
+        })
+
+        it('raised 变体：flat 灰轨道 + 白 thumb + 柔投影，按压透明', async () => {
+          const look = await mount(appearance, undefined, 'raised')
+          const { theme, track, indicator } = look
+          const segmentedToken = resolveToken(theme, '--wui-color-surface-segmented')
+          const selectedToken = resolveToken(theme, '--wui-color-surface-selected')
+
+          const rest = getComputedStyle(track)
+          expect(rest.backgroundColor, 'raised 轨道应为 surface-segmented 实色').toBe(segmentedToken)
+          expect(rest.backdropFilter, 'raised 轨道无 backdrop blur').toBe('none')
+          expect(rest.boxShadow, 'raised 轨道无投影').toBe('none')
+          expect(getComputedStyle(track, '::before').opacity, 'raised 轨道无描边环').toBe('0')
+
+          const thumb = getComputedStyle(indicator)
+          expect(thumb.backgroundColor, 'raised 静止 thumb 应为 surface-selected 实体').toBe(selectedToken)
+          expect(thumb.backdropFilter, 'raised 静止 thumb 无 blur').toBe('none')
+          expect(thumb.boxShadow, 'raised 静止 thumb 应带柔投影').not.toBe('none')
+
+          const release = await holdPressed(look)
+          await waitForFrame()
+          await waitForFrame()
+          const pressed = getComputedStyle(indicator)
+          expect(pressed.backgroundColor, 'raised 按压态 thumb 应全透明').toBe(TRANSPARENT)
+          expect(pressed.backdropFilter).toContain('blur(4px)')
+          await pollUntil(
+            () => getComputedStyle(indicator).transform.startsWith('matrix(1.5'),
+            'raised 按压态 thumb 未放大到 1.5x'
+          )
+          // 按压同样不改变轨道：flat 灰轨道三态同值
+          expect(getComputedStyle(track, '::before').opacity, 'raised 按压态环应恒定').toBe('0')
+          expect(getComputedStyle(track).boxShadow, 'raised 按压态投影应恒定').toBe('none')
+          await release()
+        })
+      })
+    }
+  })
 
   it('按下态保留 backdrop blur 与玻璃描边环/高光', async () => {
     const look = await mount('light')

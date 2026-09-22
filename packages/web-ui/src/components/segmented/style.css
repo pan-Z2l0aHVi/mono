@@ -11,10 +11,7 @@
 }
 
 .wui-segmented {
-  /* 玻璃描边的角点半径与控件圆角同源：胶囊取短边一半（button-group 同法）。
-     轨道即玻璃面：底色、backdrop blur、描边环与投影全部由 .wui-glass 提供——light 是
-     白色玻璃，dark 取 --wui-color-surface-glass 的暗玻璃值，text-secondary 灰字在两种
-     主题下都可读。选中与未选中文字同档灰，区分度由轨道内的实色指示器承担。 */
+  /* 玻璃描边的角点半径与控件圆角同源：胶囊取短边一半（button-group 同法）。 */
   --wui-glass-corner-radius: calc(var(--wui-control-size, 36px) / 2);
 
   touch-action: none;
@@ -28,6 +25,18 @@
   padding: 4px;
   border-radius: var(--wui-radius-control, calc(infinity * 1px));
 
+  /* inset 变体（默认，「凹」）：轨道是不透明实体面——底色取 --wui-color-surface-raised、
+     backdrop-filter 移除，描边环（::before）与投影由 .wui-glass 提供且静止/按压/拖拽
+     全状态同值。
+     实体化的取证依据：thumb 的 backdrop 采样面整个落在轨道之内（slider thumb 探出
+     track 外、能采到页面背景，segmented 没有这个条件），玻璃轨道会把背后的条纹/色斑
+     连同自身边缘一起模糊进采样图——均匀深底上全透明 thumb 与相邻 track 仅差 +0.5 阶
+     （42.8 vs 42.3）、本体不可感知，条纹底实测 thumb 内部灰度 std 1.89（背景渗透）。
+     轨道改实色后同一采样 std 归零，弧线与两条横线随磨砂边界一同消失，look3/4/5 为
+     压制这些采样痕迹引入的按压态特判（inset 高光淡出、环半隐、6% tint）全部移除。 */
+  background-color: var(--wui-color-surface-raised, #f2f2f7);
+  backdrop-filter: none;
+
   &.is-disabled {
     cursor: not-allowed;
     opacity: 0.4;
@@ -36,6 +45,17 @@
   &.is-disabled .wui-segmented-trigger.is-disabled {
     opacity: 1;
   }
+}
+
+/* raised 变体（「凸」）：经典形态的 flat 灰轨道——surface-segmented 实色，无描边环、无投影
+   （.wui-glass 的 box-shadow 与 ::before 环整体关掉），三种状态下保持同值。 */
+:host([variant='raised']) .wui-segmented {
+  background-color: var(--wui-color-surface-segmented, #e5e5ea);
+  box-shadow: none;
+}
+
+:host([variant='raised']) .wui-segmented::before {
+  opacity: 0;
 }
 
 .wui-segmented-indicator {
@@ -58,9 +78,9 @@
   width: var(--indicator-width, 0);
   border-radius: var(--wui-radius-control, calc(infinity * 1px));
 
-  /* 静止态是纯灰底：玻璃输出全部属于按压/拖拽态。.wui-glass 恒挂只为复用按压态配方，
-     这里把它的 glass-only 输出逐条关掉——backdrop blur、::before 描边环、inset 高光与
-     投影，只留 surface-segmented 实色。 */
+  /* inset 变体（默认）静止态是纯灰底：.wui-glass 恒挂只为复用按压态配方，这里把它的
+     glass-only 输出逐条关掉——backdrop blur、::before 描边环、inset 高光与投影，
+     只留 surface-segmented 实色。 */
   background-color: var(--wui-color-surface-segmented, #e5e5ea);
   backdrop-filter: none;
   box-shadow: none;
@@ -73,8 +93,8 @@
   /* transition 只在首帧定位后且非拖拽状态启用，避免组件进入视口时触发初始化动画或拖拽跟手产生延迟；
      其中的 background-color 只服务松开方向——按下态自己不含该属性，见下方按压/拖拽规则。
      backdrop-filter 不进任何过渡列表：静止态必须是 none（验收要求），而 none ↔ blur() 不可插值
-     （dialog 的生硬跳变根因），离散过渡只会在 50% 处翻转，按下后前 40ms 会留下「全透明但无 blur」
-     的空洞帧；改为瞬时切换后，按下第一帧就是完整的透明玻璃。 */
+     （dialog 的生硬跳变根因），离散过渡只会在 50% 处翻转，按下后前 40ms 会留下「已变色但无 blur」
+     的空洞帧；改为瞬时切换后，按下第一帧就是完整的按压态玻璃。 */
   .is-indicator-ready:not(.is-dragging) & {
     transition:
       left var(--wui-duration-trigger, 160ms) var(--wui-ease-slide, cubic-bezier(0.77, 0, 0.175, 1)),
@@ -85,6 +105,17 @@
   }
 }
 
+/* raised 变体静止态：实体白指示器 + 柔投影（经典形态；dark 主题 surface-selected 取
+   #5c5c5e 凸起灰，同为实体档）。仅换底与投影，几何与过渡和 inset 变体同源。
+   注意源顺序：本规则与下方按压/拖拽规则特异性相同（(0,3,0)），按压态必须排在更后面，
+   才能把实体底/柔投影覆盖成透明玻璃配方。 */
+:host([variant='raised']) .wui-segmented-indicator {
+  background-color: var(--wui-color-surface-selected, #fff);
+  box-shadow:
+    0 1px 3px rgb(0 0 0 / 0.12),
+    0 1px 2px rgb(0 0 0 / 0.08);
+}
+
 /* 静止态不绘制玻璃描边环：.wui-glass::before 是角点环 + 对角光泽层，纯灰底不需要它。
    用 opacity 而不是 display:none，按压态才能让环随过渡淡入，而不是整层跳出。 */
 .wui-segmented-indicator::before {
@@ -92,18 +123,20 @@
   transition: opacity var(--wui-duration-press, 80ms) ease;
 }
 
-/* 按压/拖拽时 thumb 转为全透明 glass：底色完全透明、不留半透明灰 tint；静止态关掉的
-   玻璃输出在这一态全部打开——backdrop blur、::before 描边环、inset 高光，投影叠加更实
-   一档并放大 1.5x。
-  transition 不含 background-color：按下即全透明，不产生灰→透明的插值中间帧；松开回到
-  静止态规则，由那里的 background-color 过渡把灰底平滑淡回。
+/* 按压/拖拽时 thumb 转为玻璃态：静止态关掉的玻璃输出在这一态全部打开——backdrop blur、
+   ::before 描边环、inset 高光，投影叠加更实一档并放大 1.5x。
+   底色全透明：轨道实体化后 thumb 的采样面拿到的是均匀实色（条纹底实测内部 std 归零），
+   本体可感知性由实色轨道与 1.5x 放大/环/投影共同承担，不再需要 tint 打底，也不需要
+   为采样痕迹去压制轨道的边缘装饰——那些按压态特判已全部移除，轨道装饰全状态恒定。
+   transition 不含 background-color：按下即落到全透明，不产生灰→透明的插值中间帧；
+   松开回到静止态规则，由那里的 background-color 过渡把透明平滑淡回实体底。
    backdrop-filter 直接写死值（与 drawer/dialog/toast 的玻璃态同法）：静止态是 none，
    glass 配方由这一态自己声明，不随 .wui-glass 类是否挂载而变；该属性同样不进 transition，
    理由见静止态规则上方的说明。
-  box-shadow 直接写死值（不经 --wui-internal-glass-shadow 中转）：iOS Safari 对 var
-  离散切换驱动的 box-shadow 不触发过渡且可能整体不生效（slider thumb 同法），直接写值
-  后是普通属性变化，transition 正常插值；三条 inset 高光复制自 .wui-glass，避免整段
-  覆盖后按压态丢失玻璃描边。 */
+   box-shadow 直接写死值（不经 --wui-internal-glass-shadow 中转）：iOS Safari 对 var
+   离散切换驱动的 box-shadow 不触发过渡且可能整体不生效（slider thumb 同法），直接写值
+   后是普通属性变化，transition 正常插值；三条 inset 高光复制自 .wui-glass，避免整段
+   覆盖后按压态丢失玻璃描边。 */
 .wui-segmented.is-pressed .wui-segmented-indicator,
 .wui-segmented.is-dragging .wui-segmented-indicator {
   transform: scale(1.5);

@@ -8,6 +8,7 @@ import { FormAssociated, defineFormAssociation, FormAssociationController } from
 import { attachDragGesture, type DragGestureHandle } from '@/shared/gesture/drag-gesture'
 import { clamp, snapToNearest } from '@/shared/gesture/physics'
 import { defineGroupCoordinator, GroupController } from '@/shared/group-management'
+import { normalizeLiteral } from '@/shared/normalize'
 
 import type { WebUiSegmentedTrigger } from '../segmented-trigger'
 
@@ -15,13 +16,30 @@ import style from './style.css?inline'
 
 installPointerFocusSuppression()
 
+const ALLOWED_VARIANTS = ['inset', 'raised'] as const
+
 @customElement('web-ui-segmented')
 export class WebUiSegmented extends FormAssociated(LitElement) {
-  // 轨道静止态是玻璃材质，直接复用共享 .wui-glass 配方（底色 / backdrop blur /
-  // 描边环 / 投影）；指示器恒挂同一配方，静止态由 surface-segmented 实色盖住 blur，
-  // 按压与拖拽态才透出玻璃。
+  // 轨道是不透明实体面：底色取 surface-raised、无 backdrop blur，描边环与投影仍由
+  // .wui-glass 提供且全状态同值；指示器恒挂同一配方，静止态由 surface-segmented 实色
+  // 盖住玻璃输出，按压与拖拽态才透出玻璃。
+  // variant="raised" 切回经典形态：flat 灰轨道（surface-segmented、无环无投影）+
+  // 实体白指示器（surface-selected + 柔投影），按压/拖拽态两变体同为透明玻璃；
+  // 视觉差异全部由 :host([variant=...]) 规则承载，见 style.css。
   static override styles = [unsafeCSS(glass), unsafeCSS(style)]
   @property({ type: String, reflect: true }) name = ''
+
+  @property({ type: String, reflect: true })
+  get variant(): 'inset' | 'raised' {
+    return this._variant
+  }
+  set variant(v: string) {
+    const old = this._variant
+    this._variant = normalizeLiteral(v, ALLOWED_VARIANTS, 'inset')
+    this.requestUpdate('variant', old)
+  }
+  private _variant: 'inset' | 'raised' = 'inset'
+
   @property({ type: Boolean, reflect: true }) disabled = false
   @property({ type: Boolean, reflect: true }) required = false
 
@@ -31,6 +49,9 @@ export class WebUiSegmented extends FormAssociated(LitElement) {
   @state() private _isDragging = false
 
   private _dragGestureHandle: DragGestureHandle | null = null
+
+  /** 按压/拖拽中指示器实时覆盖的 trigger：其文字随覆盖即时着 primary，松手即撤下。 */
+  private _coveredTrigger: WebUiSegmentedTrigger | null = null
 
   override disconnectedCallback() {
     super.disconnectedCallback()
@@ -126,6 +147,7 @@ export class WebUiSegmented extends FormAssociated(LitElement) {
     if (!isPressedOnActive) return
 
     this._pressed = true
+    this._syncCovered()
 
     const groupRect = this.getBoundingClientRect()
     const initialTriggerRect = activeTrigger.getBoundingClientRect()
@@ -151,11 +173,13 @@ export class WebUiSegmented extends FormAssociated(LitElement) {
         const currentLeft = clamp(initialLeft + info.deltaX, minLeft, maxLeft)
         this.style.setProperty('--indicator-left', `${currentLeft}px`)
         this.style.setProperty('--indicator-width', `${initialWidth}px`)
+        this._syncCovered()
       },
       onEnd: info => {
         const wasDragging = this._isDragging
         this._isDragging = false
         this._pressed = false
+        this._clearCovered()
 
         if (wasDragging) {
           const currentLeft = clamp(initialLeft + info.deltaX, minLeft, maxLeft)
@@ -197,6 +221,7 @@ export class WebUiSegmented extends FormAssociated(LitElement) {
       onCancel: () => {
         this._isDragging = false
         this._pressed = false
+        this._clearCovered()
         this._updateIndicator()
         this.requestUpdate()
       }
@@ -205,12 +230,50 @@ export class WebUiSegmented extends FormAssociated(LitElement) {
 
   private handlePointerUp() {
     this._pressed = false
+    this._clearCovered()
   }
 
   private handlePointerLeave() {
     if (!this._dragGestureHandle?.isDragging()) {
       this._pressed = false
+      this._clearCovered()
     }
+  }
+
+  /** 指示器实时覆盖的 trigger：按 --indicator-left/width 与各 trigger 的重叠度取最大者。
+      拖拽中 onMove 持续覆写定位变量，读到的就是当前视觉位置；禁用项不参与覆盖。 */
+  private _syncCovered() {
+    const triggers = [...this.querySelectorAll<WebUiSegmentedTrigger>('web-ui-segmented-trigger')]
+    const enabledTriggers = triggers.filter(trigger => !trigger.disabled)
+    if (enabledTriggers.length === 0) return
+
+    const left = Number.parseFloat(this.style.getPropertyValue('--indicator-left')) || 0
+    const width = Number.parseFloat(this.style.getPropertyValue('--indicator-width')) || 0
+    if (width <= 0) return
+
+    const groupRect = this.getBoundingClientRect()
+    let covered: WebUiSegmentedTrigger | null = null
+    let maxOverlap = 0
+    for (const trigger of enabledTriggers) {
+      const rect = trigger.getBoundingClientRect()
+      const triggerLeft = rect.left - groupRect.left
+      const overlap = Math.min(left + width, triggerLeft + rect.width) - Math.max(left, triggerLeft)
+      if (overlap > maxOverlap) {
+        maxOverlap = overlap
+        covered = trigger
+      }
+    }
+
+    if (covered === this._coveredTrigger) return
+    this._coveredTrigger?.classList.remove('is-covered')
+    covered?.classList.add('is-covered')
+    this._coveredTrigger = covered
+  }
+
+  /** 松手/取消：撤下覆盖标记，文字色回落为 checked=primary、其余 secondary。 */
+  private _clearCovered() {
+    this._coveredTrigger?.classList.remove('is-covered')
+    this._coveredTrigger = null
   }
 
   private readonly _formAssociation = defineFormAssociation<string>({

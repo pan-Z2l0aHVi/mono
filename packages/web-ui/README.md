@@ -627,22 +627,29 @@ Uses `role="switch"` and `aria-checked`. Pointer events for pressed visual state
 
 Segmented control — single-select button group.
 
-| Attribute  | Type      | Default | Description            |
-| ---------- | --------- | ------- | ---------------------- |
-| `value`    | `string`  | `''`    | Selected trigger value |
-| `name`     | `string`  | `''`    | Form field name        |
-| `disabled` | `boolean` | `false` | Disables all triggers  |
-| `required` | `boolean` | `false` | Required validation    |
+| Attribute  | Type                | Default | Description                          |
+| ---------- | ------------------- | ------- | ------------------------------------ |
+| `value`    | `string`            | `''`    | Selected trigger value               |
+| `name`     | `string`            | `''`    | Form field name                      |
+| `disabled` | `boolean`           | `false` | Disables all triggers                |
+| `required` | `boolean`           | `false` | Required validation                  |
+| `variant`  | `inset` \| `raised` | `inset` | Track and resting indicator material |
 
 **Events:** `input`, `change`
 
 **Slots:** `default` (project `<web-ui-segmented-trigger>` elements)
+
+**Variants:** `inset` (default, sunken) renders an opaque `--wui-color-surface-raised` track with a constant 1px ring and drop shadow, and a solid `--wui-color-surface-segmented` resting indicator that reads as embedded in the track. `raised` renders the classic flat `--wui-color-surface-segmented` track (no ring, no shadow) with a solid `--wui-color-surface-selected` resting indicator carrying a soft shadow that floats above the track. In both variants the pressed/dragged indicator is transparent glass — backdrop blur, ring fading in over 80ms, 1.5x scale — easing back to the resting surface on release. Illegal values fall back to `inset`.
 
 Form-associated: integrates with native `<form>` via `ElementInternals`.
 
 Manages child trigger `checked` state based on `value`. `disabled` supplies inherited effective disabled state without changing a trigger's own `disabled` property. Setting `value` directly does not dispatch `input`/`change`.
 
 Press the selected segment and drag horizontally to slide the indicator; on release it snaps to the nearest option (a fast flick switches by velocity). Touch surfaces declare `touch-action: none` and suppress `touchmove` defaulting during an active drag, so iOS Safari does not interrupt the gesture.
+
+**Pressed state:** the track is an opaque surface (`--wui-color-surface-raised`) with no backdrop filter in every state — its 1px ring and drop shadow never change. The indicator is the layer that turns to glass. At rest it is a solid `--wui-color-surface-segmented` surface with all glass output off. While pressed or dragging it gains backdrop blur, the glass ring fading in over 80ms, and a 1.5x scale over a fully transparent background: the indicator samples its blur entirely from inside the track, and against the previous glass track a fully transparent indicator measured only +0.5 gray levels on a uniform dark backdrop while striped backdrops showed through the sample (std 1.89 gray levels inside the indicator). The opaque track makes that sample uniform (std 0), which is what gives the pressed thumb a perceptible body — no tint and no edge-decoration suppression are needed. The background never fades in — it lands on the first pressed frame — and on release the indicator eases back to the solid gray rest surface over `--wui-duration-press`.
+
+**Label color:** an unchecked label stays `--wui-color-text-secondary`. The checked label — and, while a press or drag is active, whichever label the indicator currently covers — turns `--wui-color-accent`. The covered label follows the indicator in real time during a drag (the group toggles `is-covered` on the trigger host); on release the marking clears and the color settles on the newly checked label.
 
 #### `<web-ui-checkbox-group>`
 
