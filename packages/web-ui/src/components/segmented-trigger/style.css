@@ -39,7 +39,9 @@
   font-size: var(--wui-font-size, 14px);
   line-height: 1;
 
-  /* 选中与未选中同档灰：区分度只由玻璃指示器承担，未选中项无底色。 */
+  /* 未选中项文字取 text-secondary 同档灰、无底色；选中（is-checked）与被指示器实时
+     覆盖（host 上的 is-covered，由 segmented 在按压/拖拽中按指示器位置挂载）着
+     --wui-color-accent，两条规则的声明见本规则块下方。 */
   color: var(--wui-color-text-secondary, #6a6a6a);
   white-space: nowrap;
 
@@ -53,13 +55,24 @@
   }
 }
 
+/* 选中与被覆盖项着 primary：covered 由父级 segmented 挂到 host 上（拖拽中实时跟随
+   指示器位置），故用 :host() 选取；与 is-checked 同档特异性、同色，同时命中不冲突。 */
+.wui-segmented-trigger.is-checked,
+:host(.is-covered) .wui-segmented-trigger {
+  color: var(--wui-color-accent, #08f);
+}
+
 @media (hover: hover) and (pointer: fine) {
-  .wui-segmented-trigger:hover:not(.is-disabled) {
+  /* state layer 只服务未选中项：选中项的按压/悬停反馈由玻璃指示器（thumb）承载，
+     已选中项再叠一层 6%/15% 灰底会盖在透明玻璃 thumb 之上（trigger z-index: 1 >
+     thumb z-index: 0），按住已选项到拖拽结束前 :active 一直不撤，整段手势都是
+     「灰底蒙在玻璃上」——即 #150「灰底在 thumb 层」要消除的残留。 */
+  .wui-segmented-trigger:hover:not(.is-checked, .is-disabled) {
     background-color: var(--wui-segmented-trigger-bg-hover);
   }
 }
 
-.wui-segmented-trigger:active:not(.is-disabled) {
+.wui-segmented-trigger:active:not(.is-checked, .is-disabled) {
   background-color: var(--wui-segmented-trigger-bg-active);
 }
 

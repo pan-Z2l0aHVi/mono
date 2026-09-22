@@ -593,22 +593,29 @@ Portal 面板创建时会镜像 host 上解析后的这些变量；更新 host �
 
 分段控制——单选按钮组。
 
-| 属性       | 类型      | 默认值  | 说明             |
-| ---------- | --------- | ------- | ---------------- |
-| `value`    | `string`  | `''`    | 当前选中值       |
-| `name`     | `string`  | `''`    | 表单字段名       |
-| `disabled` | `boolean` | `false` | 禁用全部 trigger |
-| `required` | `boolean` | `false` | 必填校验         |
+| 属性       | 类型                | 默认值  | 说明                   |
+| ---------- | ------------------- | ------- | ---------------------- |
+| `value`    | `string`            | `''`    | 当前选中值             |
+| `name`     | `string`            | `''`    | 表单字段名             |
+| `disabled` | `boolean`           | `false` | 禁用全部 trigger       |
+| `required` | `boolean`           | `false` | 必填校验               |
+| `variant`  | `inset` \| `raised` | `inset` | 轨道与静止指示器的材质 |
 
 **事件：** `input`, `change`
 
 **插槽：** `default`（投影 `<web-ui-segmented-trigger>` 元素）
+
+**变体：** `inset`（默认，「凹」）是不透明实体轨道（`--wui-color-surface-raised`）——1px 描边环与投影全程常驻，静止指示器是 `--wui-color-surface-segmented` 纯灰底，视觉上嵌入轨道。`raised`（「凸」）是经典形态：flat 灰轨道（`--wui-color-surface-segmented`，无环无投影），静止指示器是 `--wui-color-surface-selected` 实体底加柔投影，浮起于轨道之上。两个变体的按压/拖拽态一致——指示器转透明玻璃（backdrop blur、80ms 淡入的描边环、1.5x 放大），松开淡回各自静止面。非法值回退 `inset`。
 
 与原生 `<form>` 集成（通过 `ElementInternals`）。
 
 根据 `value` 同步子 trigger 的 `checked` 状态。`disabled` 提供继承的有效禁用状态，不改写 trigger 自身的 `disabled` 属性。直接设 `value` 不派发事件。
 
 按住当前选中项横向拖拽可滑动指示器，松手吸附到最近选项（快速抛掷按速度切换）。触摸面声明 `touch-action: none`，拖拽激活期间阻止 `touchmove` 默认滚动，避免 iOS Safari 中断手势。
+
+**按压态：** 轨道在所有状态下都是不透明实体面（`--wui-color-surface-raised`、无 backdrop filter），1px 描边环与投影全程不变；转为玻璃的是指示器这一层。静止态指示器是 `--wui-color-surface-segmented` 实色底、玻璃输出全部关闭；按压/拖拽态获得 backdrop blur、随 80ms 过渡淡入的玻璃描边环与 1.5x 放大，底色全透明：指示器的 blur 采样面整个落在轨道之内，此前的玻璃轨道上全透明指示器在均匀深底与相邻轨道仅差 +0.5 阶，条纹底实测指示器内部灰度 std 1.89（背景渗透）；轨道实体化后同一采样 std 归零，按压态本体的可感知性由实色轨道与放大/环/投影共同承担，不再需要 tint 打底或压制轨道边缘装饰。底色不淡入——按下第一帧即落定；松开时指示器经 `--wui-duration-press` 淡回实色灰底。
+
+**文字色：** 未选中项文字保持 `--wui-color-text-secondary`；选中项文字——以及按压/拖拽中被指示器实时覆盖的项——着 `--wui-color-accent`。覆盖标记（trigger host 上的 `is-covered`）由 segmented 在按压/拖拽中按指示器实时位置维护，松手即清除，文字色随之回落为新选中项着 accent、其余恢复 text-secondary。
 
 #### `<web-ui-checkbox-group>`
 
