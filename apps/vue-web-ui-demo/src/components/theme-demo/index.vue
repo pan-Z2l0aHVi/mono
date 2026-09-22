@@ -148,7 +148,6 @@ function showScopedToast() {
         <web-ui-theme
           :appearance="innerAppearance"
           :motion="innerMotion"
-          transition
           class="mt-4 block rounded-xl border p-6"
           style="border-color: var(--wui-color-border)"
         >
@@ -181,7 +180,6 @@ function showScopedToast() {
             <web-ui-theme
               :appearance="innermostAppearance"
               :motion="innermostMotion"
-              transition
               class="mt-4 block rounded-xl border p-6"
               style="border-color: var(--wui-color-border)"
             >
