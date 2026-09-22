@@ -1384,6 +1384,8 @@ SVG 线条绘制动画，基于 `stroke-dashoffset`。直接在原元素上动�
 
 主题宿主使用 `display: contents` 且不绘制任何背景：组件库不在宿主页面画背景，嵌入方对主题子树背后的表面保留完全控制权。自定义属性仍可靠继承到 slotted 内容。
 
+**根节点 page 色同步：** 最外层 active theme 会把自己计算出的 `--wui-color-page` 以行内自定义属性的形式镜像到 `document.documentElement` 上。它补上的正是该 token 自己到不了的那一处——自定义属性的继承链到 documentElement 就断了，所以消费方写 `body { background: var(--wui-color-page) }` 只能给滚动区上色，橡皮筋回弹（macOS rubber-band）露出的画布区仍是 UA 背景色；有了这个镜像属性，回弹区也跟随主题。写入时机是主题连接时与 appearance 变化时（含 `appearance="system"` 跟随系统深浅翻转）；写入的是该主题的计算值，因此消费者在 host 上覆盖 `--wui-color-page` 会被按当前值原样镜像。**非实时：** 组件不观察 host 自身的样式变化，因此运行中改该属性（改行内样式、切 class、host 级媒体查询）不会实时镜像到 root，要等下一个写入触发点——连接、`appearance` 变成另一个值、或系统深浅翻转；把 `appearance` 重新赋成当前值不算触发点，因为值没变时更新会被跳过。页面色需要独立于主题 appearance 变化时，消费者自己在该变量上持有它：在 `:root` 或 `body` 上用 `!important` 定义 `--wui-color-page`，重要声明在层级上压过本模块写在 documentElement 上的行内值；或者让页面色跟随 `appearance` 走。只有最外层主题会写入：嵌套主题保留自己的作用域，不改写 root 值。同步权按 connect 顺序归属，最外层断开时顺延给下一个已连接主题；最后一个主题断开时刻意保留最后值而不是移除，避免主题切换间隙闪回 UA 背景。组件库在 documentElement 上只写这一个自定义属性，不写其它内容。
+
 **基础 token：**
 
 | 属性                      | 默认值  | 说明                     |

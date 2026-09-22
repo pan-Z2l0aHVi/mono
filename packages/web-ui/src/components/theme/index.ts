@@ -4,6 +4,7 @@ import { customElement, property } from 'lit/decorators.js'
 import { normalizeLiteral } from '@/shared/normalize'
 import { applyOverlayRootStyles } from '@/shared/overlay/overlay-root'
 import { parseDuration } from '@/shared/theme/duration'
+import { registerThemeRootSync, unregisterThemeRootSync } from '@/shared/theme/root-sync'
 
 import style from './style.css?inline'
 
@@ -123,11 +124,13 @@ export class WebUiTheme extends LitElement {
     // 揭示开关曾由 transition prop 单独控制；现在统一由 motion 决定，
     // 因此连接期间始终记录圆心来源，真正是否动画仍看 _shouldAnimateAppearance。
     this._syncTransitionOriginListeners(true)
+    this._syncRootPageColorSync()
     this._warnWhenAppearanceIsMissing()
   }
 
   override disconnectedCallback() {
     this._syncTransitionOriginListeners(false)
+    unregisterThemeRootSync(this)
     this._activeTransition?.skipTransition?.()
     this._cleanupThemeTransition()
     super.disconnectedCallback()
@@ -135,6 +138,17 @@ export class WebUiTheme extends LitElement {
 
   protected override updated() {
     this._warnWhenAppearanceIsMissing()
+    this._syncRootPageColorSync()
+  }
+
+  /*
+   * root page 色同步的登记态：只有 active（有 appearance）的主题参与，
+   * appearance 被清掉时撤销登记、把同步权顺延给下一个已连接实例。
+   * updated() 里重复登记是幂等的，因此这里同时承担「appearance 变化后刷新 root 值」。
+   */
+  private _syncRootPageColorSync() {
+    if (this._hasAppearance()) registerThemeRootSync(this)
+    else unregisterThemeRootSync(this)
   }
 
   // 返回该主题拥有的浮层挂载点；未设置 appearance 时不创建。
