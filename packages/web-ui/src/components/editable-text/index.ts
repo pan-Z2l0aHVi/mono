@@ -181,6 +181,19 @@ export class WebUiEditableText extends FormAssociated(LitElement) {
     this._enterEditing()
   }
 
+  /**
+   * 公共 API：进入编辑态并全选内容；已在编辑态时只重新全选。
+   *
+   * `disabled` 时不进入编辑，与 `focus()` 一致。
+   */
+  select() {
+    if (this._isDisabled) return
+    if (!this._editing) this._enterEditing()
+    const editor = this._editor
+    // 全选：末端显式取当前文本长度，覆盖 _enterEditing 落下的光标位置
+    editor?.setSelectionRange(0, editor.value.length)
+  }
+
   private _enterEditing() {
     if (this._isDisabled || this._editing) return
     this._editing = true
