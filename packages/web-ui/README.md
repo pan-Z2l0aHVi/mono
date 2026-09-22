@@ -1470,12 +1470,12 @@ The host uses `display: contents` and does not paint any background: the library
 | `--wui-color-surface-raised`       | `#f2f2f7`                                                    | `#2c2c2e`                                                    | Raised surface                  |
 | `--wui-color-surface-control`      | `#dfdfdf`                                                    | `#3a3a3c`                                                    | Neutral control surface         |
 | `--wui-color-surface-track`        | `#e5e5ea`                                                    | `#444446`                                                    | Slider and switch track surface |
-| `--wui-color-surface-menu`         | `rgb(246 246 246 / 0.82)`                                    | `rgb(44 44 46 / 0.92)`                                       | Menu and floating panel surface |
+| `--wui-color-surface-menu`         | `rgb(246 246 246 / 0.82)`                                    | `rgb(44 44 46 / 0.78)`                                       | Menu and floating panel surface |
 | `--wui-color-surface-glass`        | `rgb(250 250 250 / 0.34)`                                    | `rgb(44 44 46 / 0.42)`                                       | Liquid glass surface            |
 | `--wui-color-surface-glass-hover`  | `color-mix(... text 6%, surface-glass)`                      | `color-mix(... text 6%, surface-glass)`                      | Full glass hover background     |
 | `--wui-color-surface-glass-active` | `color-mix(... text 15%, surface-glass)`                     | `color-mix(... text 15%, surface-glass)`                     | Full glass pressed background   |
 | `--wui-color-surface-overlay`      | `rgb(246 246 246 / 0.82)`                                    | `rgb(32 34 34 / 0.9)`                                        | Translucent overlay surface     |
-| `--wui-color-surface-sidebar`      | `rgb(246 246 246 / 0.82)`                                    | `rgb(44 44 46 / 0.9)`                                        | Sidebar panel surface           |
+| `--wui-color-surface-sidebar`      | `rgb(246 246 246 / 0.82)`                                    | `rgb(44 44 46 / 0.8)`                                        | Sidebar panel surface           |
 | `--wui-color-surface-segmented`    | `#e5e5ea`                                                    | `#3a3a3c`                                                    | Segmented indicator surface     |
 | `--wui-color-surface-selected`     | `#fff`                                                       | `#5c5c5e`                                                    | Selected surface                |
 | `--wui-color-text`                 | `#1b1b1b`                                                    | `#e9eaea`                                                    | Primary text                    |

@@ -202,7 +202,7 @@
   --wui-color-surface-raised: #2c2c2e;
   --wui-color-surface-control: #3a3a3c;
   --wui-color-surface-track: #444446;
-  --wui-color-surface-menu: rgb(44 44 46 / 0.92);
+  --wui-color-surface-menu: rgb(44 44 46 / 0.78);
   --wui-color-surface-glass: rgb(44 44 46 / 0.42);
   --wui-color-surface-glass-hover: color-mix(in srgb, var(--wui-color-text) 6%, var(--wui-color-surface-glass));
   --wui-color-surface-glass-active: color-mix(in srgb, var(--wui-color-text) 15%, var(--wui-color-surface-glass));
@@ -210,9 +210,11 @@
 
   /* 深色 elevation：浮动面板与侧边栏都比 page 浅一档。取 --wui-color-surface
      （#2c2c2e）作为「page 之上一档」的基准色，面板按自身 alpha 叠在 page 上，
-     合成结果约 rgb(43 44 46)，与 #2c2c2e 相差不超过 1/255。
+     合成结果约 rgb(42 43 45)，与 #2c2c2e 相差不超过 2/255。
+     alpha 低于早期的 0.92/0.9：颜色抬升后高 alpha 会让面板读成实心纸片，
+     降到 0.78/0.8 恢复旧版的透感（模糊底内容可透出），层级方向不变。
      overlay 不随之抬升：dialog/drawer/toast 共用该 token，不在本次范围内。 */
-  --wui-color-surface-sidebar: rgb(44 44 46 / 0.9);
+  --wui-color-surface-sidebar: rgb(44 44 46 / 0.8);
   --wui-color-surface-segmented: #3a3a3c;
   --wui-color-surface-selected: #5c5c5e;
   --wui-color-text: #e9eaea;
@@ -249,12 +251,12 @@
     --wui-color-surface-raised: #2c2c2e;
     --wui-color-surface-control: #3a3a3c;
     --wui-color-surface-track: #444446;
-    --wui-color-surface-menu: rgb(44 44 46 / 0.92);
+    --wui-color-surface-menu: rgb(44 44 46 / 0.78);
     --wui-color-surface-glass: rgb(44 44 46 / 0.42);
     --wui-color-surface-glass-hover: color-mix(in srgb, var(--wui-color-text) 6%, var(--wui-color-surface-glass));
     --wui-color-surface-glass-active: color-mix(in srgb, var(--wui-color-text) 15%, var(--wui-color-surface-glass));
     --wui-color-surface-overlay: rgb(32 34 34 / 0.9);
-    --wui-color-surface-sidebar: rgb(44 44 46 / 0.9);
+    --wui-color-surface-sidebar: rgb(44 44 46 / 0.8);
     --wui-color-surface-segmented: #3a3a3c;
     --wui-color-surface-selected: #5c5c5e;
     --wui-color-text: #e9eaea;
