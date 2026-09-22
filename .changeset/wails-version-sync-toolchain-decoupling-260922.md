@@ -1,0 +1,4 @@
+---
+---
+
+Internal change: no published package is affected, and `@greypan/interweave` is deliberately not bumped — a bump there would make the next merged version PR produce a desktop release. `apps/interweave/scripts/sync-version.mjs` no longer shells out to `wails3 update build-assets`; it now rewrites only the version tokens in `build/config.yml`, both `Info.plist` files, `wails.exe.manifest` and `windows/info.json`, using the same table its `--check` mode reads, so validation and writing cannot drift apart. The old `spawn` was the root cause of the failed release chain on 2026-09-22: the version job installs only Node and pnpm, and re-rendering the whole assets from embedded templates was never what a version bump needed. `scripts/version-sync.test.mjs` pins the new boundary — it runs the write path with a `wails3` shim that fails on invocation, and asserts that restoring every version token reproduces the original bytes exactly.
