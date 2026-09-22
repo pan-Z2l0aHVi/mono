@@ -78,6 +78,12 @@ function resolveToken(theme: WebUiTheme, token: string): string {
   return value
 }
 
+/** inset 轨道底色的期望值：#169 追加验收要求浅色与 page 同色（凹感由常驻环与投影承担），
+    深色保持 surface-raised 的「比页面高一档」elevation。 */
+function expectedInsetTrack(theme: WebUiTheme, appearance: 'light' | 'dark'): string {
+  return resolveToken(theme, appearance === 'light' ? '--wui-color-page' : '--wui-color-surface-raised')
+}
+
 function pointer(type: string, x: number, y: number): PointerEvent {
   return new PointerEvent(type, {
     bubbles: true,
@@ -306,14 +312,14 @@ function contrastRatio(a: string, b: string): number {
 describe('WebUiSegmented 视觉规范（浏览器）', () => {
   for (const appearance of ['light', 'dark'] as const) {
     describe(`${appearance} 主题`, () => {
-      it('轨道是不透明实体面：底色取 surface-raised、无 backdrop blur', async () => {
+      it('轨道是不透明实体面：浅色与 page 同色、深色保持 surface-raised，无 backdrop blur', async () => {
         const { theme, track } = await mount(appearance)
 
-        const raisedToken = resolveToken(theme, '--wui-color-surface-raised')
-        expect(raisedToken, 'surface-raised token 应解析为可见颜色').not.toBe(TRANSPARENT)
+        const expected = expectedInsetTrack(theme, appearance)
+        expect(expected, 'inset 轨道底色 token 应解析为可见颜色').not.toBe(TRANSPARENT)
 
         const style = getComputedStyle(track)
-        expect(style.backgroundColor).toBe(raisedToken)
+        expect(style.backgroundColor, 'inset 轨道底色偏离契约').toBe(expected)
         expect(style.backdropFilter, '实体轨道不得残留 backdrop blur').toBe('none')
       })
 
@@ -530,11 +536,11 @@ describe('WebUiSegmented 视觉规范（浏览器）', () => {
         it('inset 变体：实体轨道 + 常驻环投影 + 灰 thumb，按压透明', async () => {
           const look = await mount(appearance)
           const { theme, track, indicator } = look
-          const raisedToken = resolveToken(theme, '--wui-color-surface-raised')
+          const raisedToken = expectedInsetTrack(theme, appearance)
           const segmentedToken = resolveToken(theme, '--wui-color-surface-segmented')
 
           const rest = getComputedStyle(track)
-          expect(rest.backgroundColor).toBe(raisedToken)
+          expect(rest.backgroundColor, 'inset 轨道底色偏离契约').toBe(raisedToken)
           expect(rest.backdropFilter).toBe('none')
           expect(rest.boxShadow, 'inset 轨道应保留投影').not.toBe('none')
           expect(getComputedStyle(track, '::before').opacity, 'inset 轨道应保留描边环').toBe('1')

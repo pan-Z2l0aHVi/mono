@@ -20,7 +20,8 @@ const ALLOWED_VARIANTS = ['inset', 'raised'] as const
 
 @customElement('web-ui-segmented')
 export class WebUiSegmented extends FormAssociated(LitElement) {
-  // 轨道是不透明实体面：底色取 surface-raised、无 backdrop blur，描边环与投影仍由
+  // 轨道是不透明实体面：底色取 surface（浅色即 page，深色即 surface-raised 档）、无
+  // backdrop blur，描边环与投影仍由
   // .wui-glass 提供且全状态同值；指示器恒挂同一配方，静止态由 surface-segmented 实色
   // 盖住玻璃输出，按压与拖拽态才透出玻璃。
   // variant="raised" 切回经典形态：flat 灰轨道（surface-segmented、无环无投影）+
