@@ -4,12 +4,14 @@ on:
   push:
     branches: [main]
 
+# This job pushes the version branch and opens or updates the pull request, so it
+# has side effects: a newer run waits in the queue rather than cancelling one
+# mid-write, the same way the publish and deploy workflows behave.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 permissions:
-  actions: write
   contents: write
   pull-requests: write
 
@@ -24,8 +26,8 @@ jobs:
         with:
           fetch-depth: 0
 
-      # This job only runs changeset status, a node script and `gh workflow run`;
-      # scoping the install keeps it off the go toolchain and the wails3 build.
+      # This job only runs changeset status and a node script; scoping the install
+      # keeps it off the go toolchain and the wails3 build.
       - uses: ./.github/actions/setup-deps
         with:
           mise-install: 'node pnpm'
@@ -46,14 +48,9 @@ jobs:
           pr-title: 'chore: version packages'
           commit-message: 'chore: version packages'
 
-      - name: Validate version pull request
-        if: steps.changesets.outputs.has-changesets == 'true'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        shell: bash
-        run: |
-          gh workflow run ci.yml --ref changeset-release/main
-
-          if [[ "${{ steps.changesets.outputs.has-wails-release }}" == 'true' ]]; then
-            gh workflow run wails-verify.yml --ref changeset-release/main
-          fi
+      # No `gh workflow run` here on purpose: a version pull request is validated by the run
+      # its own `pull_request` event triggers. Dispatching the same commit again raced that
+      # run inside one concurrency group, which cancelled the dispatch only while it was still
+      # in flight; otherwise the whole CI simply ran twice. If GitHub holds a version PR run
+      # at `action_required`, approve it instead; the measured history and its limits live in
+      # docs/agents/build.md「版本 PR 的 CI 门控」.
