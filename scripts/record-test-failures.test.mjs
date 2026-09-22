@@ -63,6 +63,17 @@ assert.ok(
 assert.match(formatSummary(empty, 'log missing'), /log missing/)
 assert.match(formatSummary(empty), /No `FAIL` line was found/)
 
+// summary 推荐的命令必须真的是一个根脚本：指向不存在脚本的散文和引用不存在的 step id 是同一类漂移。
+const advertised = summary.match(/pnpm run ([a-z:]+)/)
+assert.ok(advertised, 'the summary must advertise how to aggregate the ledger')
+
+const rootScripts = JSON.parse(fs.readFileSync(path.resolve(import.meta.dirname, '..', 'package.json'), 'utf8')).scripts
+
+assert.ok(
+  advertised[1] in rootScripts,
+  `step summary advertises \`pnpm run ${advertised[1]}\`, which is not a root script`
+)
+
 // CLI 形状就是 CI 用到的形状：位置参数决定日志与 JSON 落点，summary 走 $GITHUB_STEP_SUMMARY。
 const fixture = fs.mkdtempSync(path.join(os.tmpdir(), 'greypan-record-failures-'))
 

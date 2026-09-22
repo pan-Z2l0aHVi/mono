@@ -27,8 +27,9 @@ Interweave 由 Wails 宿主管理嵌套前端，因此其 alias 只启动 Wails 
 | 命令                        | 用途                                    | 说明                                                                            |
 | --------------------------- | --------------------------------------- | ------------------------------------------------------------------------------- |
 | `pnpm run clean`            | 清理构建产物与缓存                      | 执行 `scripts/clean.sh`，安全重置各工作区的 `dist/`、`.turbo/` 和临时产物       |
-| `pnpm run test:scripts`     | 验证仓库内部工具脚本                    | 含 `ci-topology` 与 `ci-measure` 的断言，是 CI 拓扑表的执行端                   |
+| `pnpm run test:scripts`     | 验证仓库内部工具脚本                    | 含 `ci-topology`、`ci-flakes` 与 `ci-measure` 的断言，是 CI 拓扑表的执行端      |
 | `pnpm run measure:ci`       | 只读统计 CI 成本                        | 需 `gh` 已登录；口径与「两栏不能混用」的原因见「CI 与发布」节                   |
+| `pnpm run flakes:ci`        | 汇总 flake 榜                           | 读 `ci-test-output-*` artifact 目录；口径见「CI 与发布」节                      |
 | `pnpm run validate:context` | 验证 Agent context 路由、软链与结构约束 | 修改 `AGENTS.md`、角色、rules、skills 或 `docs/agents/**` 时必须通过            |
 | `pnpm run check:pack`       | 发布产物边界检查                        | 构建可发布 package 或修改其 `exports`、`files`、Vite 输出时，在根构建成功后运行 |
 
@@ -120,6 +121,7 @@ turbo 本地缓存由 `.mise.toml` 的 `TURBO_CACHE_DIR` 指向 worktree 族共�
 - 这张表是投影，不是权威：真实的触发面、`permissions`、job `needs`/`if`、step `if`、step `id`、发布分支字面量、桌面构建矩阵和声明的安装面只写在 `.github/scripts/ci-topology.mjs` 里，`scripts/ci-topology.test.mjs` 把每个 workflow 的真实 YAML 读回来逐字段比对，由 `pnpm run test:scripts` 和 CI 的 `check` 强制。改任何一项而不改那张表，`check` 就红；守卫里引用了不存在的 step `id` 也会红，因为这种引用在 Actions 里不报错，只会让那一步永远静默跳过。
 - 表表达不了的两句保留散文，因为判据要人工读运行结果：一次运行是「等审批」还是「排队」，看 `gh api repos/<owner>/<repo>/actions/runs/<id> --jq '{status,jobs:.jobs.total_count,run_started_at,created_at}'`，`jobs.total_count == 0` 且 `run_started_at == created_at` 才是挂起等批准；某个 step 的定义是否真的换掉了，看它在运行里整条消失（`gh api repos/<owner>/<repo>/actions/runs/<id>/jobs --jq '.jobs[].steps[].name'`）——`if` 为假的 step 仍然显示 `skipped`，与「step 还在、只是没跑」无法区分。
 - 触发面值不值、哪个 workflow 最贵，用 `pnpm run measure:ci --days=14` 现算，不要把数字抄进文档：它按 workflow 报 runs、墙钟分钟、按事件分的来源和同 `head_sha` 的重复验证。两个口径不能混用——本仓是 squash-only 合并，main 上 `push` 那一次落在**新 sha** 上、树却与已经验过的 PR head 相同，所以删掉一条触发省下的量读 `events` 里的 `push` 栏，读不出 `redundant`。
+- flake 台账只有写端在 CI 里（`Test` 红时把 `test-output.log` 与 `test-failures.json` 存成保留 1 天的 `ci-test-output-<run-id>-<attempt>` artifact），读端是本地命令：先 `gh run download <run-id> --pattern 'ci-test-output-*'`，再 `pnpm run flakes:ci <目录>`。它按「红过几个不同的 run」排序、同一 run 的多个 attempt 只算 retry 痕迹，因为后者只证明红过两次；刻意不判断「重跑之后是否变绿」——留痕只在失败时写，缺席本身携带不了信息，所以这份榜单不回答「谁已经修好」，也别拿它的为空当作没有 flake。
 - `ci.yml` 的 PR 运行与手动触发运行共享一个 `concurrency` 组（`${{ github.workflow }}-${{ github.head_ref || github.ref_name }}`，即 workflow 名加分支），但 `cancel-in-progress` 只能取消仍在飞行的那一次：先启动的运行如果已经结束，后启动的那次仍会完整跑一遍，两次运行不会被合并成一次。`workflow_dispatch` 只用于人工重跑：版本 PR 的 `pull_request` 运行在本仓默认自动执行，不需要额外调度，历史挂起见下节。原生应用所需的系统前置条件以当前 workflow 和工具配置为准。
 - 包专属的版本同步由 `release:version` 对应脚本负责；默认更新与 `--check` 验证的语义以该脚本为准。版本 workflow 不直接发布包或安装程序。
 - `npm-publish.yml` 仅发布公共 npm 包。发布成功后，一个独立的最小权限作业为每个包版本创建幂等的 GitHub Release 和标签，附带 npm 和包 changelog 的链接。它不使用私有原生应用的工具链或长期 npm token。

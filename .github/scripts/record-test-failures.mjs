@@ -74,7 +74,11 @@ export function formatSummary({ counts, failures }, note) {
     lines.push('')
   }
 
-  lines.push('原始日志与机器可读清单在 `ci-test-output-*` artifact 里，保留 1 天；那里才是判据来源。')
+  lines.push(
+    '原始日志与机器可读清单在 `ci-test-output-*` artifact 里，保留 1 天；那里才是判据来源。',
+    '',
+    "跨 run 汇总这份榜单：`gh run download <run-id> --pattern 'ci-test-output-*'` 后 `pnpm run flakes:ci <目录>`。"
+  )
   return `${lines.join('\n')}\n`
 }
 
