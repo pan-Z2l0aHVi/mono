@@ -30,7 +30,11 @@ disable-model-invocation: true
 
 5. 非阻塞派发：先把全部五字段 handoff 提交出去，再逐个监听，不要串行等一个角色做完才派下一个。实施会话一轮可能跑很久，监听给长超时而不是无限等。
 
-6. 收敛：每个 task 各自走完 freeze → review → approve → done 再汇总。
+6. 同一组件/模块的多轮迭代优先复用旧环境：上一 task 进入 done（或 dropped）后，下一轮 task 优先复用该模块既有的会话与 worktree，而不是新开。会话侧 Role 持续生效，复用前核对 Role 未漂移；worktree 侧复用前先确认无未提交变更与半成品残留（dropped 的 worktree 尤其要查），新分支从已提交的上一轮拉出（或在原分支续写），必要时 merge 依赖的最新基线——基线前进涉及分支重置时遵循 [`docs/agents/worktrees.md`](../../../docs/agents/worktrees.md)「创建和复用」的 switch 与 upstream 处理，依赖或 lockfile 有变则按第 1 步重跑 install 与 build。只有会话上下文过长影响产出质量、或轮次间属需要干净基线的大改时才换新会话，worktree 仍可复用。复用以串行为前提，并发约束不放宽：同一 worktree 仍不得同时承载两个可变 task（判据见 [`docs/agents/workflow.md`](../../../docs/agents/workflow.md)「并发原则」）。
+
+7. 模块工作收口后及时释放环境：先核对分支已全部合入目标基线、worktree 无未提交变更，再关闭其 pane/tab（连同其中的角色会话）、`git worktree remove` 并删除已合并分支，避免中间产物随轮次累积。
+
+8. 收敛：每个 task 各自走完 freeze → review → approve → done 再汇总。
 
 ## 完成定义
 
