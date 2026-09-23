@@ -129,11 +129,11 @@ button:active:not(:disabled) {
   --wui-button-bg: transparent;
   --wui-button-bg-hover: var(
     --wui-color-surface-glass-hover,
-    color-mix(in srgb, var(--wui-color-text, #1b1b1b) 6%, var(--wui-color-surface-glass, rgb(229 229 234 / 0.34)))
+    color-mix(in srgb, var(--wui-color-text, #1b1b1b) 6%, var(--wui-color-surface-glass, rgb(250 250 250 / 0.34)))
   );
   --wui-button-bg-active: var(
     --wui-color-surface-glass-active,
-    color-mix(in srgb, var(--wui-color-text, #1b1b1b) 15%, var(--wui-color-surface-glass, rgb(229 229 234 / 0.34)))
+    color-mix(in srgb, var(--wui-color-text, #1b1b1b) 15%, var(--wui-color-surface-glass, rgb(250 250 250 / 0.34)))
   );
 }
 

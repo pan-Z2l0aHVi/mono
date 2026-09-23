@@ -16,7 +16,7 @@
 
   border: none;
 
-  background-color: var(--wui-color-surface-glass, rgb(229 229 234 / 0.34));
+  background-color: var(--wui-color-surface-glass, rgb(250 250 250 / 0.34));
   background-clip: padding-box;
 
   /* Safari 16.4 只支持带 -webkit- 前缀的 backdrop-filter（无前缀 18 才支持）；

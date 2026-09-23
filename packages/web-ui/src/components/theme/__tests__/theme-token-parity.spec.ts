@@ -246,11 +246,14 @@ describe('深色 elevation 关系', () => {
     return [0, 1, 2].map(channel => alpha * rgb[channel] + (1 - alpha) * page.rgb[channel]) as [number, number, number]
   }
 
-  it('浅色 sidebar 表面与共享 overlay 同值，浅色零变化', () => {
+  it('浅色 glass 与 overlay 回到白色半透明，sidebar 与 menu 保留灰蓝', () => {
     const light = tokenPairs(
       blockBody(themeCss, ":host\\(\\[appearance='light'\\]\\),\\n:host\\(\\[appearance='system'\\]\\) \\{")
     )
-    expect(light.get('--wui-color-surface-sidebar')).toBe(light.get('--wui-color-surface-overlay'))
+    expect(light.get('--wui-color-surface-glass')).toBe('rgb(250 250 250 / 0.34)')
+    expect(light.get('--wui-color-surface-overlay')).toBe('rgb(246 246 246 / 0.82)')
+    expect(light.get('--wui-color-surface-sidebar')).toBe('rgb(229 229 234 / 0.82)')
+    expect(light.get('--wui-color-surface-menu')).toBe('rgb(229 229 234 / 0.76)')
   })
 
   it('深色浮动面板与 sidebar 都比 page 浅一档，量级对齐 --wui-color-surface', () => {

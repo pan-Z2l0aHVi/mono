@@ -139,7 +139,7 @@ describe('深色表面 elevation（浏览器计算值）', () => {
     const select = await createOpenSelectIn(theme)
 
     expect(getComputedStyle(queryShadow(layout, '.aside-panel')).backgroundColor).toBe(
-      resolveToken(theme, '--wui-color-surface-overlay')
+      resolveToken(theme, '--wui-color-surface-sidebar')
     )
     expect(getComputedStyle(queryShadow(select, '.select-overlay')).backgroundColor).toBe(
       resolveToken(theme, '--wui-color-surface-menu')

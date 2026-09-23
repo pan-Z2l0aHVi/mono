@@ -34,7 +34,7 @@
   color: var(--wui-color-text, #1b1b1b);
 
   opacity: 0;
-  background-color: var(--wui-color-surface-overlay, rgb(229 229 234 / 0.82));
+  background-color: var(--wui-color-surface-overlay, rgb(246 246 246 / 0.82));
   backdrop-filter: blur(0) saturate(160%) brightness(var(--wui-glass-brightness, 1.06));
 
   /* transition 列表需手写 -webkit-backdrop-filter：lightningcss 不会在 transition
