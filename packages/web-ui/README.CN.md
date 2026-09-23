@@ -469,7 +469,7 @@ Portal 面板创建时会镜像 host 上解析后的这些变量；更新 host �
 
 **方法：** `focus()`, `blur()`
 
-**插槽：** `default`（投影 `<web-ui-option>` 元素）、`trigger`（自定义触发器内容——替换默认输入框）、`empty`（替换无匹配空态；默认回退为“无匹配选项”）
+**插槽：** `default`（投影 `<web-ui-option>` 元素）、`trigger`（自定义触发器内容——替换默认输入框）、`empty`（替换无匹配空态；默认回退为「无匹配选项」）
 
 键入时按 label 过滤候选（`contains` 或 `prefix`，`none` 关闭过滤）。选择 option 时文本回填为该项 label，`selected-value` 暴露该项的 value；`change` 在选择提交时触发。支持 ArrowDown/ArrowUp/Enter/Escape 键盘导航。
 

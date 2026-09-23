@@ -43,7 +43,7 @@ camelCase, Attributes use kebab-case, Events use kebab-case.
 | Event     | kebab-case | `open-change`, `sidebar-collapsed-change`     |
 
 - **Boolean attributes** follow native HTML presence semantics: absent → `false`, presence → `true`. A framework
-  binding that writes `disabled="false"` produces the string `"false"`, which is truthy — **bind dynamic booleans as
+  binding that writes `disabled="false"` produces the string `"false"`, which is truthy. **Bind dynamic booleans as
   properties** (camelCase), not attributes, so `false` is written as a real property.
 - **Vue**: dynamic binding must go to **Properties** with camelCase names (`:sidebarCollapsed="x"`, `:open="x"`).
   A kebab-case binding like `:sidebar-collapsed="x"` is written as a string attribute and cannot express `false`;
@@ -52,7 +52,7 @@ camelCase, Attributes use kebab-case, Events use kebab-case.
   `v-model` is supported on value-bearing controls (`web-ui-input`, `web-ui-select`, `web-ui-autocomplete`, …) and
   compiles to the element `value` property + `input` event.
 - **React**: React 19 writes DOM properties for custom-element props, so use camelCase props (`open={open}`,
-  `noScrollLock`, `value={value}`). Never pass complex data (objects, arrays) through attribute strings — bind
+  `noScrollLock`, `value={value}`). Never pass complex data (objects, arrays) through attribute strings. Bind
   them as properties. Kebab-case JSX props on a custom element are written as attributes.
 
 ### React
@@ -90,7 +90,7 @@ function App() {
 
 React 19 registers Custom Element events using the suffix of the JSX `on` key unchanged. Event names are
 case-sensitive: bind `open-change` as `onopen-change`, not `onOpenChange`. Standard `input`, `change`, `focus`,
-and `blur` events use React's conventional `onInput`, `onChange`, `onFocus`, and `onBlur` handlers — their
+and `blur` events use React's conventional `onInput`, `onChange`, `onFocus`, and `onBlur` handlers. Their
 `currentTarget` is typed as the component instance, so `value` and `checked` are read cast-free. The `target`
 follows React SyntheticEvent semantics (`EventTarget`) and is not narrowed. Kebab-case custom events carry their
 `CustomEvent` detail typed. Boolean properties follow native HTML semantics: absence is `false` and presence is
@@ -126,7 +126,7 @@ useEffect(() => {
 In `portal` mode the library physically moves panel content into the overlay Shadow DOM:
 
 - React removes nodes through its recorded insertion parent, so a bare conditional child (`{condition && <el/>}`) whose node was already migrated cannot be removed while the panel is open: the commit fails and the node can reappear when the panel closes.
-- Conditionally render inside a stable wrapper element instead — React records the wrapper as the insertion parent, so wrapper-local additions and removals keep working while the panel is open and across open/close cycles (example below).
+- Conditionally render inside a stable wrapper element instead. React records the wrapper as the insertion parent, so wrapper-local additions and removals keep working while the panel is open and across open/close cycles (example below).
 - Bare conditional additions while the panel is open (appending to the host) keep working and migrate into the panel automatically.
 - Keeping content mounted and toggling visibility remains a valid fallback.
 
@@ -143,12 +143,12 @@ Portal panels support live rendering for Lit child parts: `${condition ? html`<e
 automatically, removals and element-to-element swaps work while the panel is open, and on close content is
 restored to its original anchor position. lit-html child-part markers stay in the host light DOM, so
 subsequent patches keep anchoring correctly. Boundary: reordering a `repeat()` list while a panel is open is
-not supported — lit inserts relative to host part markers while sibling items already live in the panel, the
+not supported. Lit inserts relative to host part markers while sibling items already live in the panel, the
 same cross-container anchoring boundary as Vue's keyed `v-for`. Apply list reorders while the panel is closed.
 
 `web-ui-dropdown` manages menu items through the shared menu portal, which reconciles from both the host and
 the panel: child-part additions while the panel is open work, but lit cannot reach items that already live in
-the panel, so removals and element swaps there are not supported — apply them while the panel is closed.
+the panel, so removals and element swaps there are not supported. Apply them while the panel is closed.
 `web-ui-context-menu` does not observe host-side insertions and is not covered by these live-rendering
 guarantees.
 
@@ -160,7 +160,7 @@ Portal panels support live rendering: content conditionally added or removed whi
 `v-if` inside `web-ui-select`, `web-ui-autocomplete`, `web-ui-popover`, `web-ui-tooltip`, `web-ui-dropdown`,
 `web-ui-context-menu`) migrates into the open panel automatically in template order, and on close everything
 is restored to its original anchor position so subsequent patches keep working. Boundary: splicing or
-reordering a keyed `v-for` list while a panel is open is not supported — Vue's keyed children diff resolves
+reordering a keyed `v-for` list while a panel is open is not supported. Vue's keyed children diff resolves
 insertion anchors against sibling nodes already migrated into the panel, so its patch fails and items can be
 lost, regardless of compilation path (compiled templates included). Apply such list updates while the panel
 is closed, or keep to appends/removals at the list tail.
@@ -192,7 +192,7 @@ import '@greypan/web-ui/types/vue'
 ```
 
 Boolean properties must be bound with the **camelCase property name**, not the kebab-case attribute. Vue writes
-attribute bindings as strings, and boolean attributes follow presence semantics — so `:sidebar-collapsed="false"`
+attribute bindings as strings, and boolean attributes follow presence semantics, so `:sidebar-collapsed="false"`
 produces the string `"false"`, which is truthy. Binding the camelCase name (`:sidebarCollapsed="false"`, or the
 `.prop` modifier) makes Vue write the DOM property directly:
 
@@ -240,20 +240,20 @@ family by the nature of the interaction. Do not assume `controlled` means the sa
 **User-originated events only (all `open`-style components: collapse, popover, dropdown, tooltip, dialog, drawer, back-top).**
 `*-change` events (`open-change`, etc.) fire only for user-originated toggles; assigning the property programmatically
 (`el.open = true`) or calling an imperative method (`show()`, `close()`, `toggle()`) never emits. Components self-manage
-their `open` value unless you coordinate externally — you may observe the event and write it back for your own state, but
+their `open` value unless you coordinate externally. You may observe the event and write it back for your own state, but
 the component does not require or wait for that write-back.
 
 **Request-then-write-back (`controlled` on dialog and drawer only).**
 With `controlled`, user close actions (Escape, backdrop, built-in close, drag-release) only _request_ `open=false`; the
 component does not change its own state, and it stays open until the consumer writes `open=false`. This is the modal
-confirmation semantics — closing a dialog or drawer is typically an operation that needs consumer approval (unsaved form,
+confirmation semantics. Closing a dialog or drawer is typically an operation that needs consumer approval (unsaved form,
 confirmation), and unlike instantaneous open/close, it is not safe for the component to self-commit. Only these two modal
 components use this mode; the instant open/close family (collapse, popover, dropdown, tooltip) does not need it.
 
 **Native form-model (input, textarea, input-number, select, checkbox, radio, switch, autocomplete).**
 The control manages its own value/checked state internally; user interaction flips it immediately and then dispatches
 native `input`/`change` events. Assigning the property programmatically (`el.checked = true`) overrides the internal
-state. This mirrors native `<input type="checkbox">` — there is no `controlled` prop because the value is always readable
+state. This mirrors native `<input type="checkbox">`. There is no `controlled` prop because the value is always readable
 and writable, and React/Vue layers provide their own controlled wrappers on top.
 
 For interactions that need an external round-trip before the flip is durable (e.g. a switch that should only stay on
@@ -338,7 +338,7 @@ Text input with clearable, prefix/suffix slots.
 
 **Events:** `input`, `change`, `focus`, `blur`
 
-**Methods:** `focus()`, `blur()` — delegate to the internal native input (the host itself is not focusable)
+**Methods:** `focus()`, `blur()`, which delegate to the internal native input (the host itself is not focusable)
 
 **Slots:** `prefix`, `default`, `suffix`
 
@@ -457,7 +457,7 @@ Select dropdown with option items, keyboard navigation, and portal support.
 
 **Events:** `input`, `change`, `open-change` (`CustomEvent<{ open: boolean }>`)
 
-**Slots:** `default` (project `<web-ui-option>` elements), `trigger` (custom trigger content — replaces the default label and chevron area)
+**Slots:** `default` (project `<web-ui-option>` elements), `trigger` (custom trigger content, replacing the default label and chevron area)
 
 **Methods:** none
 
@@ -501,11 +501,11 @@ Editable combobox with input filtering and single option selection.
 
 **Methods:** `focus()`, `blur()`
 
-**Slots:** `default` (project `<web-ui-option>` elements), `trigger` (custom trigger content — replaces the default input), `empty` (replace the “no matches” state; falls back to “No matches”)
+**Slots:** `default` (project `<web-ui-option>` elements), `trigger` (custom trigger content, replacing the default input), `empty` (replace the "no matches" state; falls back to "No matches")
 
 Typing filters the option list by label (`contains` or `prefix`, or `none` to disable filtering). Selecting an option fills the input with its label and exposes the option's value via `selected-value`; `change` fires on selection commit. Supports ArrowDown/ArrowUp/Enter/Escape keyboard navigation.
 
-**Trigger:** the default trigger is an internal `web-ui-input`. Put any editable component in the `trigger` slot to replace it — the wrapper keeps the combobox ARIA and marks itself with `data-custom-trigger`, and the dropdown stays anchored to the trigger element. Programmatic `focus()` / `blur()` delegate to the active trigger: `web-ui-input` and `web-ui-textarea` move focus to their native control, while a custom trigger without its own focus redirection is focused as the host itself.
+**Trigger:** the default trigger is an internal `web-ui-input`. Put any editable component in the `trigger` slot to replace it. The wrapper keeps the combobox ARIA and marks itself with `data-custom-trigger`, and the dropdown stays anchored to the trigger element. Programmatic `focus()` / `blur()` delegate to the active trigger: `web-ui-input` and `web-ui-textarea` move focus to their native control, while a custom trigger without its own focus redirection is focused as the host itself.
 
 ```html
 <web-ui-autocomplete placeholder="Describe the issue">
@@ -517,7 +517,7 @@ Typing filters the option list by label (`contains` or `prefix`, or `none` to di
 
 The custom trigger exposes the same contract as the default one: a string `value` for the text, focusable, and the events the component delegates from it (`input`, `click`, `focus`, `blur`). `web-ui-input` and `web-ui-textarea` satisfy it as-is; a custom element is usable when it exposes a string `value` property. The wrapper div is not a tab stop (`tabindex="-1"`): sequential focus belongs to the trigger itself, so a custom trigger has to be focusable for keyboard users to reach the combobox.
 
-Multiline triggers (a trigger whose editable element is a `<textarea>`) keep Enter for newlines: Enter never selects the highlighted option and never commits a custom value, so close the panel with Escape or blur. Selecting an option still writes its label back to the trigger. A single-line custom trigger keeps the default Enter behavior. ArrowUp/ArrowDown follow the same exception while the panel is open: they move the text caret instead of navigating options, so keyboard option navigation is unavailable in that state — select with a pointer click. With the panel closed, ArrowDown/ArrowUp still open it.
+Multiline triggers (a trigger whose editable element is a `<textarea>`) keep Enter for newlines: Enter never selects the highlighted option and never commits a custom value; close the panel with Escape or blur. Selecting an option still writes its label back to the trigger. A single-line custom trigger keeps the default Enter behavior. ArrowUp/ArrowDown follow the same exception while the panel is open: they move the text caret instead of navigating options, so keyboard option navigation is unavailable in that state. Select with a pointer click. With the panel closed, ArrowDown/ArrowUp still open it.
 
 When `allow-custom-value` is enabled, pressing Enter with no active option and no matching candidate commits the raw input as a custom value and closes the panel. `change` fires and `selected-value` remains empty. The component does not create an option automatically or trim the raw value. Text matching a disabled option cannot bypass the disabled state or derive as a selected option.
 
@@ -589,7 +589,7 @@ Uses native `<label>` with `role="checkbox"` and `aria-checked`. Enter/Space key
 
 **Check animation:** the checkmark is the control's own stroked path rather than a `<web-ui-icon>` asset, wrapped in `<web-ui-svg-draw-lines>` (with `no-autoplay`, so a control that mounts already checked shows a static check). Checking draws it in left to right at a constant speed over `--wui-duration-trigger` (160ms by default), read from the resolved theme at the time of the toggle so the stroke lands on the same beat as the indicator's background transition; unchecking retracts the same path back to blank instead of only fading out. Neither plays inside a `motion="reduced"` theme scope, where both states switch instantly.
 
-**Idle states:** the unchecked indicator is filled with `--wui-color-surface-control`, the same control surface neutral buttons use, so it stays separable from `--wui-color-page` in dark mode. Hovering anywhere in the trigger row — indicator, gap or slotted label — tints that surface with a 6% state layer over `--wui-color-surface-control`. Hover applies only on `(hover: hover) and (pointer: fine)` devices; there is no pressed state, and checked and disabled controls keep their own surface. `<web-ui-radio>` shares the same states.
+**Idle states:** the unchecked indicator is filled with `--wui-color-surface-control`, the same control surface neutral buttons use, so it stays separable from `--wui-color-page` in dark mode. Hovering over the indicator, the gap or the slotted label inside the trigger row tints that surface with a 6% state layer over `--wui-color-surface-control`. Hover applies only on `(hover: hover) and (pointer: fine)` devices; there is no pressed state, and checked and disabled controls keep their own surface. `<web-ui-radio>` shares the same states.
 
 #### `<web-ui-radio>`
 
@@ -607,7 +607,7 @@ Individual radio button.
 
 **Slots:** `default` (label text)
 
-**Layout:** shares the selection-control box contract with `<web-ui-checkbox>` — host height comes from its content, alignment against surrounding text is `vertical-align: middle`, and the indicator measures `--wui-selection-control-size`.
+**Layout:** shares the selection-control box contract with `<web-ui-checkbox>`. Host height comes from its content, alignment against surrounding text is `vertical-align: middle`, and the indicator measures `--wui-selection-control-size`.
 
 #### `<web-ui-switch>`
 
@@ -630,7 +630,7 @@ Uses `role="switch"` and `aria-checked`. Pointer events for pressed visual state
 
 #### `<web-ui-segmented>`
 
-Segmented control — single-select button group.
+Segmented control: a single-select button group.
 
 | Attribute  | Type                | Default | Description                          |
 | ---------- | ------------------- | ------- | ------------------------------------ |
@@ -644,7 +644,7 @@ Segmented control — single-select button group.
 
 **Slots:** `default` (project `<web-ui-segmented-trigger>` elements)
 
-**Variants:** `inset` (default, sunken) renders an opaque `--wui-color-surface` track with a constant 1px ring and drop shadow, and a solid `--wui-color-surface-segmented` resting indicator that reads as embedded in the track. In light appearance that token equals `--wui-color-page`, so the track sits flush with the page and the recess reads from the ring and shadow alone; in dark appearance `--wui-color-surface` is the one-step-above-page elevation, so the track keeps lifting off the page. `raised` renders the classic flat `--wui-color-surface-segmented` track (no ring, no shadow) with a solid `--wui-color-surface-selected` resting indicator carrying a soft shadow that floats above the track. In both variants the pressed/dragged indicator is transparent glass — backdrop blur, ring fading in over 80ms, 1.5x scale — easing back to the resting surface on release. Illegal values fall back to `inset`.
+**Variants:** `inset` (default, sunken) renders an opaque `--wui-color-surface` track with a constant 1px ring and drop shadow, and a solid `--wui-color-surface-segmented` resting indicator that reads as embedded in the track. In light appearance that token equals `--wui-color-page`, so the track sits flush with the page and the recess reads from the ring and shadow alone; in dark appearance `--wui-color-surface` is the one-step-above-page elevation, so the track keeps lifting off the page. `raised` renders the classic flat `--wui-color-surface-segmented` track (no ring, no shadow) with a solid `--wui-color-surface-selected` resting indicator carrying a soft shadow that floats above the track. In both variants the pressed/dragged indicator is transparent glass, with backdrop blur, a ring fading in over 80ms and a 1.5x scale, easing back to the resting surface on release. Illegal values fall back to `inset`.
 
 Form-associated: integrates with native `<form>` via `ElementInternals`.
 
@@ -652,9 +652,9 @@ Manages child trigger `checked` state based on `value`. `disabled` supplies inhe
 
 Press the selected segment and drag horizontally to slide the indicator; on release it snaps to the nearest option (a fast flick switches by velocity). Touch surfaces declare `touch-action: none` and suppress `touchmove` defaulting during an active drag, so iOS Safari does not interrupt the gesture.
 
-**Pressed state:** the track is an opaque surface (`--wui-color-surface`, page-colored in light appearance) with no backdrop filter in every state — its 1px ring and drop shadow never change. The indicator is the layer that turns to glass. At rest it is a solid `--wui-color-surface-segmented` surface with all glass output off. While pressed or dragging it gains backdrop blur, the glass ring fading in over 80ms, and a 1.5x scale over a fully transparent background: the indicator samples its blur entirely from inside the track, and against the previous glass track a fully transparent indicator measured only +0.5 gray levels on a uniform dark backdrop while striped backdrops showed through the sample (std 1.89 gray levels inside the indicator). The opaque track makes that sample uniform (std 0), which is what gives the pressed thumb a perceptible body — no tint and no edge-decoration suppression are needed. The background never fades in — it lands on the first pressed frame — and on release the indicator eases back to the solid gray rest surface over `--wui-duration-press`.
+**Pressed state:** the track is an opaque surface (`--wui-color-surface`, page-colored in light appearance) with no backdrop filter in every state. Its 1px ring and drop shadow never change. The indicator is the layer that turns to glass. At rest it is a solid `--wui-color-surface-segmented` surface with all glass output off. While pressed or dragging it gains backdrop blur, the glass ring fading in over 80ms, and a 1.5x scale over a fully transparent background: the indicator samples its blur entirely from inside the track, and against the previous glass track a fully transparent indicator measured only +0.5 gray levels on a uniform dark backdrop while striped backdrops showed through the sample (std 1.89 gray levels inside the indicator). The opaque track makes that sample uniform (std 0), which is what gives the pressed thumb a perceptible body. No tint and no edge-decoration suppression are needed. The background never fades in. It lands on the first pressed frame. And on release the indicator eases back to the solid gray rest surface over `--wui-duration-press`.
 
-**Label color:** every label stays `--wui-color-text-secondary` — checked or not, `inset` or `raised`, at rest and while a press or drag is active. Selection is carried by the indicator alone; no label takes the accent color.
+**Label color:** every label stays `--wui-color-text-secondary`. Checked or not, `inset` or `raised`, at rest and while a press or drag is active. Selection is carried by the indicator alone; no label takes the accent color.
 
 #### `<web-ui-checkbox-group>`
 
@@ -839,7 +839,7 @@ Side drawer using native `<dialog>` with closing animation. In non-headless mode
 
 **Events:** `open-change` (`CustomEvent<{ open: boolean }>`). With `controlled`, Escape, backdrop, the built-in close button and drag-release only request `open=false`; the drawer remains open until the consumer writes `open=false`. Programmatic APIs (`show()`, `close()`, assigning `open`) stay direct and never emit. If native dialog closure occurs while a request is pending, the drawer restores its open top-layer state and emits the same request. With nested drawers, an inner `open-change` bubbles through the outer root (composed event); distinguish by `event.target`.
 
-**Slots:** `header`, `default`, `footer` — with `headless`, only the `default` slot is rendered.
+**Slots:** `header`, `default`, `footer`. With `headless`, only the `default` slot is rendered.
 
 **Methods:** `show()`, `close()`
 
@@ -852,15 +852,15 @@ When `closable` is set, the built-in close button is positioned at the header's 
 **Drag to close:** With `draggable`, a gray capsule drag bar (4×56px by default, visually centered 10px from the inner edge inside a 20px-thick hit zone) appears on the drawer's inner edge (left edge for `right`, right edge for `left`, bottom edge for `top`, top edge for `bottom`) while open:
 
 - Dragging follows the pointer in real time; the backdrop fades proportionally.
-- Backdrop click now only honors a genuine tap chain: the press must start on the backdrop itself and the press-to-release travel must stay within the tap magnitude. The click the browser generates for a press–drag–release lands on the common ancestor (`dialog`) regardless of where the press started — pressing on the panel content or on the backdrop itself and releasing over the backdrop used to close the drawer through that click. The component records the pointerdown origin and validates it on click, so such drag releases always rebound. A `detail`-0 click (keyboard / programmatic) never consumes the pointer record.
+- Backdrop click now only honors a genuine tap chain: the press must start on the backdrop itself and the press-to-release travel must stay within the tap magnitude. The click the browser generates for a press–drag–release lands on the common ancestor (`dialog`) regardless of where the press started. Pressing on the panel content or on the backdrop itself and releasing over the backdrop used to close the drawer through that click. The component records the pointerdown origin and validates it on click, so such drag releases always rebound. A `detail`-0 click (keyboard / programmatic) never consumes the pointer record.
 - Releasing with a net displacement past half the drawer size (floor of 10px), or with a fast closing flick, closes the drawer; otherwise it animates back open. The close direction is placement-aware, and each part of the decision matches Base UI's `useSwipeDismiss`:
   - Both the displacement origin and the decision clock reset to the first `pointermove`, absorbing the gap between the press and that move; its whole travel is discarded, so a gesture needs at least two moves to accumulate displacement.
-  - The flick is judged by the **whole gesture's** average velocity — net displacement ÷ gesture duration, divisor floored at 50ms — reaching 500px/s, not by the instantaneous velocity at release. A sliding window only describes the last short stretch of the trace, so under a whole-gesture average sweeping back towards the edge can no longer read as a flick. A zero-length duration yields zero velocity instead of a floored divisor, so an unmeasurable gesture is never read as a flick.
+  - The flick is judged by the **whole gesture's** average velocity. Net displacement ÷ gesture duration, divisor floored at 50ms. The flick commits when the average reaches 500px/s, not by the instantaneous velocity at release. A sliding window only describes the last short stretch of the trace, so under a whole-gesture average sweeping back towards the edge can no longer read as a flick. A zero-length duration yields zero velocity instead of a floored divisor, so an unmeasurable gesture is never read as a flick.
   - Any release whose net displacement isn't in the close direction animates back open.
   - The distance test also uses the net displacement, so grabbing the drawer mid-rebound and releasing without dragging further never counts as "already past half way".
   - A withdrawal of 10px or more from the point where the close direction was confirmed cancels the flick, so dragging out into the overscroll and sweeping back never closes. Displacement that has already crossed the distance threshold clears the mark again, so a gesture that is past half way is unaffected by a small retreat. Upstream has the same guard (`cancelledSwipe`), but never reaches it on the drawer path because `DrawerViewport.onRelease` always returns a decision.
   - Dragging in the opening direction is damped by a square root (`sign(d) · |d| ** 0.5`), matching `applyDirectionalDamping`. The damping applies to the gesture's increment, added on top of the offset the drag started from, and self-limits rather than being capped at a fixed distance.
-- The release velocity only shapes the settle transition's duration (180–420ms); the settle itself is a single CSS transition on `transform`, handed back by JS at release — no WAAPI animation is created.
+- The release velocity only shapes the settle transition's duration (180–420ms); the settle itself is a single CSS transition on `transform`, handed back by JS at release. No WAAPI animation is created.
 - With `controlled`, release past the threshold only emits `open-change(false)`; the drawer holds at the closed position briefly (120ms write-back window) and animates back open if the consumer rejects or misses the write-back.
 - Drag-to-open is not supported because the closed drawer renders nothing outside the native dialog.
 - Under `prefers-reduced-motion`, release settles instantly, with no transition.
@@ -946,7 +946,7 @@ Every presentation option defaults to off: with no options passed only the image
 
 Pinch-to-zoom is always on and has no option: the stage already owns pointer interaction, so there is nothing for a gesture to conflict with. The first finger still drives pan/swipe as usual and the second finger starts the pinch, which aborts any in-flight pan or swipe. A pinch does not close the preview, and the compatibility `click` that mixed input may synthesize afterwards is swallowed rather than treated as a backdrop click.
 
-Clicking anywhere outside the image, or pressing Escape, closes the preview. The native dialog always exposes the accessible name `图片预览`. With `swipe` on and more than one image, the images live on a single carousel track: the current image and its neighbors sit side by side in slides of equal size, the stage clips the overflow, and the whole track translates with the finger. Releasing past the distance threshold (15% of the stage width, rounded) slides the next image in, as does a fast flick whose sampled velocity is at least 320px/s even below that distance; a flick covering at least 16px whose velocity (windowed sample or whole-gesture average) reaches 160px/s also commits; otherwise it bounces back. With `loop` on the wrap-around neighbor is always present beside the current image, and at the non-looping bounds the strip bounces back instead of crossing the boundary. While it applies, the swipe gesture takes over the drag entirely: at 1x only horizontal movement changes images, and vertical movement is ignored (no pan, no vertical follow). Once zoomed in, dragging always pans on both axes and never changes images. Because panning also works at 1x, `resetZoom()` is offered whenever the image is zoomed _or_ displaced — the reset button in the toolbar is enabled for a panned 1x image too.
+Clicking anywhere outside the image, or pressing Escape, closes the preview. The native dialog always exposes the accessible name `图片预览`. With `swipe` on and more than one image, the images live on a single carousel track: the current image and its neighbors sit side by side in slides of equal size, the stage clips the overflow, and the whole track translates with the finger. Releasing past the distance threshold (15% of the stage width, rounded) slides the next image in, as does a fast flick whose sampled velocity is at least 320px/s even below that distance; a flick covering at least 16px whose velocity (windowed sample or whole-gesture average) reaches 160px/s also commits; otherwise it bounces back. With `loop` on the wrap-around neighbor is always present beside the current image, and at the non-looping bounds the strip bounces back instead of crossing the boundary. While it applies, the swipe gesture takes over the drag entirely: at 1x only horizontal movement changes images, and vertical movement is ignored (no pan, no vertical follow). Once zoomed in, dragging always pans on both axes and never changes images. Because panning also works at 1x, `resetZoom()` is offered whenever the image is zoomed _or_ displaced. The reset button in the toolbar is enabled for a panned 1x image too.
 
 A close request does not destroy the native dialog immediately: it stays in the top layer until the exit transition completes, then `dialog.close()` runs, the host is removed from the DOM, and `closed` resolves. Page scroll is locked while open unless `noScrollLock` is `true`.
 
@@ -990,33 +990,33 @@ In-flow expand/collapse container with animated height (or width) transition. Si
 
 The initial `open` attribute settles instantly without playing the animation. Nested collapses are supported.
 
-**Trigger semantics:** interaction comes from the element you put in the default slot — a native `<button>`, `<web-ui-button>`, or any other interactive element supplies Enter/Space activation and focus natively. The collapse writes `aria-expanded` / `aria-controls` (pointing at its content track) and `aria-disabled` onto the first assigned element in the trigger slot. Use an interactive element as the trigger: a plain `<span>` is clickable but has no keyboard/focus semantics.
+**Trigger semantics:** interaction comes from the element you put in the default slot. A native `<button>`, `<web-ui-button>`, or any other interactive element supplies Enter/Space activation and focus natively. The collapse writes `aria-expanded` / `aria-controls` (pointing at its content track) and `aria-disabled` onto the first assigned element in the trigger slot. Use an interactive element as the trigger: a plain `<span>` is clickable but has no keyboard/focus semantics.
 
 **Closed-state semantics:** the consumer's light DOM is never moved or unmounted. Default closed state applies `hidden` to the internal content container; with `keep-mounted` the inner container is marked `inert` while staying measurable inside the collapsed track.
 
-**`peek` (partial reveal):** setting `peek` makes the closed state reveal the first `peek` of the content along the animation axis (`horizontal` switches it to width) instead of collapsing to zero — the track stays at the content height and the inner container is clamped. It implies `keep-mounted` semantics: the content stays mounted but is `inert`, so the clipped portion is not focusable or clickable. Content shorter than `peek` collapses to its own size rather than leaving blank space. Because a fixed length and an auto height cannot be interpolated by CSS, the two `peek` ↔ expanded directions are driven by explicit pixel lengths (measured once per toggle); every other animation path stays a zero-measurement grid `fr` transition.
+**`peek` (partial reveal):** setting `peek` makes the closed state reveal the first `peek` of the content along the animation axis (`horizontal` switches it to width) instead of collapsing to zero. The track stays at the content height and the inner container is clamped. It implies `keep-mounted` semantics: the content stays mounted but is `inert`, so the clipped portion is not focusable or clickable. Content shorter than `peek` collapses to its own size rather than leaving blank space. Because a fixed length and an auto height cannot be interpolated by CSS, the two `peek` ↔ expanded directions are driven by explicit pixel lengths (measured once per toggle); every other animation path stays a zero-measurement grid `fr` transition.
 
 ```html
 <web-ui-collapse peek="120px">
   <button type="button">Toggle me</button>
-  <div slot="content">Long content — only the first 120px show while closed</div>
+  <div slot="content">Long content. Only the first 120px show while closed</div>
 </web-ui-collapse>
 ```
 
-**Edge fade:** the revealed area ends in an alpha-gradient fade (right edge when `horizontal`) so the clipped portion melts into the background instead of ending in a hard line. The length is derived from `peek` — there is no second attribute to set. Tune it with CSS custom properties instead:
+**Edge fade:** the revealed area ends in an alpha-gradient fade (right edge when `horizontal`) so the clipped portion melts into the background instead of ending in a hard line. The length is derived from `peek`. There is no second attribute to set. Tune it with CSS custom properties instead:
 
 | Custom property                  | Default       | Description                                                           |
 | -------------------------------- | ------------- | --------------------------------------------------------------------- |
 | `--wui-collapse-peek-edge-ratio` | `0.4`         | Fade length as a fraction of `peek`                                   |
 | `--wui-collapse-peek-edge-max`   | `112px`       | Upper bound, so a large `peek` cannot produce an oversized fade band  |
 | `--wui-collapse-peek-edge`       | —             | Explicit fade length; wins over the derived value                     |
-| `--wui-collapse-peek-edge-color` | `transparent` | Fade-stop color (must carry alpha — `mask-image` reads alpha channel) |
+| `--wui-collapse-peek-edge-color` | `transparent` | Fade-stop color (must carry alpha - `mask-image` reads alpha channel) |
 
-Set the ratio to `0` to turn the fade off. The derivation is pure CSS `calc(peek * ratio)`, so a `rem`-based `peek` scales the fade with the root font size and nothing has to be measured in JS. Known limitation: a percentage `peek` does not derive to a length, so the fade silently falls back to "none" — set `--wui-collapse-peek-edge` explicitly in that case.
+Set the ratio to `0` to turn the fade off. The derivation is pure CSS `calc(peek * ratio)`, so a `rem`-based `peek` scales the fade with the root font size and nothing has to be measured in JS. Known limitation: a percentage `peek` does not derive to a length, so the fade silently falls back to "none". Set `--wui-collapse-peek-edge` explicitly in that case.
 
-The fade is a four-stop ease-out gradient rather than a linear one: the body stays fully opaque to the start of the fade band, drops to 60% alpha within the first 30% of the band, then 26%, then reaches the edge color. A linear gradient hugs 1.0 alpha across the first 40% of the band, so the eye perceives a much shorter fade than declared — front-loading the drop makes the band visibly soft from its very start, nearly doubling the perceived length at the same size.
+The fade is a four-stop ease-out gradient rather than a linear one: the body stays fully opaque to the start of the fade band, drops to 60% alpha within the first 30% of the band, then 26%, then reaches the edge color. A linear gradient hugs 1.0 alpha across the first 40% of the band, so the eye perceives a much shorter fade than declared. Front-loading the drop makes the band visibly soft from its very start, nearly doubling the perceived length at the same size.
 
-The fade band is positioned in percentages, relative to the container's **current rendered height** — which is what `max-height` animates. So the band tracks the cut edge frame by frame during the collapse animation without the `mask-image` string ever needing to interpolate. Its length is driven by a registered `<length>` custom property so it can fade in and out with the toggle instead of popping in once the close animation settles.
+The fade band is positioned in percentages, relative to the container's **current rendered height**, which is what `max-height` animates. So the band tracks the cut edge frame by frame during the collapse animation without the `mask-image` string ever needing to interpolate. Its length is driven by a registered `<length>` custom property so it can fade in and out with the toggle instead of popping in once the close animation settles.
 
 ```html
 <!-- 调强渐隐：比例 0.5 → 120px peek 配 60px 渐隐 -->
@@ -1379,7 +1379,7 @@ Role: `button`, keyboard Enter scrolls to top.
 
 #### `<web-ui-svg-draw-lines>`
 
-SVG line drawing animation using `stroke-dashoffset`. Animates geometry in-place — no cloning, no DOM manipulation. Two playback directions: the reveal draws geometry from nothing to fully drawn, `replay({ reverse: true })` retracts it along the same path back to nothing.
+SVG line drawing animation using `stroke-dashoffset`. Animates geometry in-place. No cloning, no DOM manipulation. Two playback directions: the reveal draws geometry from nothing to fully drawn, `replay({ reverse: true })` retracts it along the same path back to nothing.
 
 | Attribute     | Type      | Default    | Description                                            |
 | ------------- | --------- | ---------- | ------------------------------------------------------ |
@@ -1389,13 +1389,13 @@ SVG line drawing animation using `stroke-dashoffset`. Animates geometry in-place
 
 All attributes are reflected.
 
-**Auto-play:** the first time slotted content settles, one reveal plays by itself. Set `no-autoplay` to leave the geometry as authored and decide when to play — that is how `<web-ui-checkbox>` avoids drawing a checkmark that was already checked on mount.
+**Auto-play:** the first time slotted content settles, one reveal plays by itself. Set `no-autoplay` to leave the geometry as authored and decide when to play. That is how `<web-ui-checkbox>` avoids drawing a checkmark that was already checked on mount.
 
-**Methods:** `replay(options?: { reverse?: boolean }): Promise<void>` — cancels running animation, re-collects geometry elements from current DOM, and starts a new animation. All targets animate in parallel with the same duration/easing. Resolves when all complete. A reverse run ends on blank and leaves that end state in the DOM: the animation itself is cancelled, while the dash values that hide the stroke stay as inline styles until the next `replay()` replaces or undoes them. A reveal run restores the authored inline styles instead. A retract always starts from the full stroke, so interrupting a reveal draws the whole path back rather than only the part that was visible. When the nearest theme scope uses `motion="reduced"`, or its `motion="system"` mode matches `prefers-reduced-motion: reduce`, no animation starts — but a previous retract's blank is still undone, so the geometry returns to as authored and visibility is left entirely to the consumer's own styles.
+**Methods:** `replay(options?: { reverse?: boolean }): Promise<void>`. Cancels running animation, re-collects geometry elements from current DOM, and starts a new animation. All targets animate in parallel with the same duration/easing. Resolves when all complete. A reverse run ends on blank and leaves that end state in the DOM: the animation itself is cancelled, while the dash values that hide the stroke stay as inline styles until the next `replay()` replaces or undoes them. A reveal run restores the authored inline styles instead. A retract always starts from the full stroke, so interrupting a reveal draws the whole path back rather than only the part that was visible. When the nearest theme scope uses `motion="reduced"`, or its `motion="system"` mode matches `prefers-reduced-motion: reduce`, no animation starts. But a previous retract's blank is still undone, so the geometry returns to as authored and visibility is left entirely to the consumer's own styles.
 
-**Reverse end state:** the blank a retract leaves behind is inline style on the geometry it animated, including nodes inside nested open shadow roots such as `<web-ui-icon>`. Copying those nodes (`cloneNode`, an `innerHTML` round-trip) carries the blank along, and detaching and re-appending one keeps the stroke hidden — a finished retract is a DOM state rather than a live animation, so nothing is left to restore it. Call `replay()` to draw them again. Because the component reaches into nested open shadow roots, two `<web-ui-svg-draw-lines>` must not cover the same geometry: each records the inline dash values the first time it animates an element, so a blank left by the inner one becomes the outer one's idea of the consumer's own value.
+**Reverse end state:** the blank a retract leaves behind is inline style on the geometry it animated, including nodes inside nested open shadow roots such as `<web-ui-icon>`. Copying those nodes (`cloneNode`, an `innerHTML` round-trip) carries the blank along, and detaching and re-appending one keeps the stroke hidden. A finished retract is a DOM state rather than a live animation, so nothing is left to restore it. Call `replay()` to draw them again. Because the component reaches into nested open shadow roots, two `<web-ui-svg-draw-lines>` must not cover the same geometry: each records the inline dash values the first time it animates an element, so a blank left by the inner one becomes the outer one's idea of the consumer's own value.
 
-**Slots:** `default` — SVG content to animate. Accepts inline `<svg>` elements (light DOM) as well as components that render an SVG in an open shadow root, such as `<web-ui-icon>`. Closed shadow roots are skipped.
+**Slots:** `default`. SVG content to animate. Accepts inline `<svg>` elements (light DOM) as well as components that render an SVG in an open shadow root, such as `<web-ui-icon>`. Closed shadow roots are skipped.
 
 Finds `path`, `rect`, `circle`, `line`, `polyline`, `polygon`, `ellipse` elements by recursively traversing the light DOM and all open shadow roots. Paths ending with `Z`/`z` receive a temporary gap fix for proper closing-segment rendering. After a reveal completes or is cancelled, all in-line styles are restored.
 
@@ -1408,7 +1408,7 @@ Theme provider defining CSS custom property tokens.
 | `appearance` | `'light' \| 'dark' \| 'system'`   | `'light'`  | Color scheme                                  |
 | `motion`     | `'full' \| 'reduced' \| 'system'` | `'system'` | Motion preference for this nested theme scope |
 
-**Methods:** `getOverlayRoot()` — returns this theme-owned overlay root
+**Methods:** `getOverlayRoot()`. Returns this theme-owned overlay root
 
 **Portal mounting contract:** Every active `<web-ui-theme>` is also the default scoped theme-owned overlay root. Portal-based components without an explicit `overlayContainer` resolve to the nearest active theme's `getOverlayRoot()`; target-less portal calls prefer the root theme's theme-owned overlay root. When no active theme provides a root, they fall back to the global fallback overlay root.
 
@@ -1420,7 +1420,7 @@ Appearance changes are animated with the View Transitions API according to this 
 
 The host uses `display: contents` and does not paint any background: the library never draws on the host page, so the embedding application keeps full control of the surface behind the themed subtree. Custom properties still inherit to slotted content reliably.
 
-**Root page color sync:** the outermost active theme also mirrors its computed `--wui-color-page` onto `document.documentElement` as an inline custom property. That closes the one place the token cannot reach on its own: custom properties stop inheriting at the document element, so a consumer rule such as `body { background: var(--wui-color-page) }` only colors the scrollable area, while the canvas behind an overscroll bounce (macOS rubber-banding) stays at the user-agent background. With the mirrored property the bounce area follows the theme too. The write happens when a theme connects and whenever its appearance changes, including `appearance="system"` following an OS light/dark flip; the value written is the theme's computed value, so an override of `--wui-color-page` on the host is mirrored as it stands. **Not live:** the component does not observe the host's own style changes, so a runtime change to that property on the host — an inline style edit, a class toggle, a host-level media query — reaches the root only at the next write trigger, which is a connect, an `appearance` change to a different value, or an OS light/dark flip; re-assigning `appearance` to the value it already has is not a trigger, because the update is skipped when nothing changed. For a page color that has to change independently of the theme's appearance, own the variable yourself on `:root` or `body` with `!important`, which outranks this inline write, or drive the color through `appearance`. Only the outermost theme writes: nested themes keep their own scope and never touch the root value. Ownership follows connect order and passes to the next connected theme when the outermost one disconnects; when the last theme disconnects the value is deliberately kept rather than removed, so a page that swaps themes does not flash back to the user-agent background in between. The library writes exactly this one custom property on the document element and nothing else there.
+**Root page color sync:** the outermost active theme also mirrors its computed `--wui-color-page` onto `document.documentElement` as an inline custom property. That closes the one place the token cannot reach on its own: custom properties stop inheriting at the document element, so a consumer rule such as `body { background: var(--wui-color-page) }` only colors the scrollable area, while the canvas behind an overscroll bounce (macOS rubber-banding) stays at the user-agent background. With the mirrored property the bounce area follows the theme too. The write happens when a theme connects and whenever its appearance changes, including `appearance="system"` following an OS light/dark flip; the value written is the theme's computed value, so an override of `--wui-color-page` on the host is mirrored as it stands. **Not live:** the component does not observe the host's own style changes, so a runtime change to that property on the host (an inline style edit, a class toggle, a host-level media query) reaches the root only at the next write trigger, which is a connect, an `appearance` change to a different value, or an OS light/dark flip; re-assigning `appearance` to the value it already has is not a trigger, because the update is skipped when nothing changed. For a page color that has to change independently of the theme's appearance, own the variable yourself on `:root` or `body` with `!important`, which outranks this inline write, or drive the color through `appearance`. Only the outermost theme writes: nested themes keep their own scope and never touch the root value. Ownership follows connect order and passes to the next connected theme when the outermost one disconnects; when the last theme disconnects the value is deliberately kept rather than removed, so a page that swaps themes does not flash back to the user-agent background in between. The library writes exactly this one custom property on the document element and nothing else there.
 
 **Foundation tokens:**
 
@@ -1570,7 +1570,7 @@ Every call returns the final id of that toast, so callers never branch on create
 | `target`    | `Element`                                                                                         | —                         | Used to find nearest theme-owned overlay root   |
 | `container` | `HTMLElement`                                                                                     | —                         | Explicit mount container (highest priority)     |
 
-**Upsert semantics** — what a second call with the same `id` does:
+**Upsert semantics**. What a second call with the same `id` does:
 
 | Target state                  | Result                                                                          |
 | ----------------------------- | ------------------------------------------------------------------------------- |
@@ -1578,22 +1578,22 @@ Every call returns the final id of that toast, so callers never branch on create
 | Still queued in the same tick | The queued options are patched and applied on mount; no second toast is created |
 | Closed, or still exiting      | A new toast is created; the one leaving finishes its exit animation on its own  |
 
-`duration` restarts the countdown only when it is passed explicitly (the one exception is a hover pause: the new value is recorded without starting the timer, and the countdown runs with it once the pointer leaves); `message`, `heading` and `type` are plain properties and leave the timer alone. The `error` shortcut's 5000 ms default is applied when the toast is created, so it does not count as an explicit `duration` — repeated `toast.error(msg, { id })` calls do not reset the countdown. Changing `position` moves the element to the new container and keeps the remaining time (via `moveBefore` where available, with a pause/resume fallback elsewhere); if the countdown already elapsed while the main thread was blocked, the fallback closes the toast on resume instead of leaving it open. `container` and `target` are read from the first call only — moving a toast to a different overlay root is not supported.
+`duration` restarts the countdown only when it is passed explicitly (the one exception is a hover pause: the new value is recorded without starting the timer, and the countdown runs with it once the pointer leaves); `message`, `heading` and `type` are plain properties and leave the timer alone. The `error` shortcut's 5000 ms default is applied when the toast is created, so it does not count as an explicit `duration`. Repeated `toast.error(msg, { id })` calls do not reset the countdown. Changing `position` moves the element to the new container and keeps the remaining time (via `moveBefore` where available, with a pause/resume fallback elsewhere); if the countdown already elapsed while the main thread was blocked, the fallback closes the toast on resume instead of leaving it open. `container` and `target` are read from the first call only. Moving a toast to a different overlay root is not supported.
 
-**Close semantics** — `toast.close(id)` covers every state a toast can be in, including the two before it becomes visible:
+**Close semantics.** `toast.close(id)` covers every state a toast can be in, including the two before it becomes visible:
 
 | Target state                       | Result                                                          |
 | ---------------------------------- | --------------------------------------------------------------- |
 | Visible                            | Plays the exit animation, then emits `toast-close`              |
 | Mounted, `show()` has not run yet  | No exit animation to play: emits `toast-close` immediately      |
-| Still queued in the same microtask | Dropped before it mounts — nothing appears, no event is emitted |
+| Still queued in the same microtask | Dropped before it mounts - nothing appears, no event is emitted |
 | Already exiting                    | No-op; that toast finishes its own exit                         |
 
 `toast.clear()` has the same scope: it drops queued entries and closes everything mounted.
 
 **Events:** `toast-close` (`CustomEvent<{ id: string; reason: 'auto' | 'manual' | 'programmatic' | 'clear' }>`)
 
-Hover pauses the auto-close timer (uses `pointerenter`/`pointerleave`); leaving resumes the **remaining** time instead of restarting the full duration. If the `pointerleave` is missed while paused — the pointer is dragged out of the window, or the element is moved or removed while hovered — a document-level `pointerover`/`pointerout`/`pointerleave` fallback resumes the countdown, so a hovered toast cannot stay on screen forever. Batch-mounts toasts created in the same microtask.
+Hover pauses the auto-close timer (uses `pointerenter`/`pointerleave`); leaving resumes the **remaining** time instead of restarting the full duration. If the `pointerleave` is missed while paused (the pointer is dragged out of the window, or the element is moved or removed while hovered), a document-level `pointerover`/`pointerout`/`pointerleave` fallback resumes the countdown, so a hovered toast cannot stay on screen forever. Batch-mounts toasts created in the same microtask.
 
 **CSS Custom Properties:**
 

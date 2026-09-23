@@ -15,7 +15,7 @@
 | Task-specific      | `docs/agents/*.md`、`.agents/rules/*.md`、最近的包级 `AGENTS.md` | 任务命中对应领域                       | 可执行流程、质量门槛、局部约束       |
 | On-demand evidence | ADR、README、manifest、配置、源码、测试                          | 已确认受影响区域后                     | 历史取舍、公共契约、当前实现         |
 
-不要为“可能有用”批量加载文档。规则只保留无法由代码、类型、测试或工具配置可靠推导的约束；可自动验证的约束优先交给相应工具。
+不要为「可能有用」批量加载文档。规则只保留无法由代码、类型、测试或工具配置可靠推导的约束；可自动验证的约束优先交给相应工具。
 
 ## Session Role
 
@@ -29,7 +29,7 @@ Role 只服务于 herdr 多 agent 编排：Manager 初始化的每个 CLI 会话
 
 | 主题               | 规则边界                                                                             | 流程权威来源                                                        | 自动证据                                               |
 | ------------------ | ------------------------------------------------------------------------------------ | ------------------------------------------------------------------- | ------------------------------------------------------ |
-| 生成物             | 根/包级 `AGENTS.md` 说明“不可手改”与局部 source of truth                             | `docs/agents/build.md`                                              | generator diff、build、消费者类型检查                  |
+| 生成物             | 根/包级 `AGENTS.md` 说明「不可手改」与局部 source of truth                           | `docs/agents/build.md`                                              | generator diff、build、消费者类型检查                  |
 | 真实浏览器         | 根/包级 `AGENTS.md` 仅声明需要浏览器层                                               | `docs/agents/browser-verification.md`                               | `pnpm run test` 中的 `*.browser.spec.ts`、MCP 操作记录 |
 | `repo:*` 工具      | 根入口只提供命令路由                                                                 | 本文件的工具接口说明                                                | `scripts/*.test.mjs`（glob 约定）                      |
 | 多 Agent 编排      | 根 `AGENTS.md`「多 Agent 编排」只保留分工、边界与禁止事项                            | `docs/agents/workflow.md`                                           | `tasks` state、review/approval 记录                    |
@@ -66,7 +66,7 @@ Role 只服务于 herdr 多 agent 编排：Manager 初始化的每个 CLI 会话
 | Interweave/Wails/领域 | `apps/interweave/AGENTS.md` + 产品基线 + 相关源码                                         | ADR-0008、Wails 3 官方文档、Go tests、frontend consumer   |
 | context system        | `ARCHITECTURE.md` + `CONTEXT.md` + 本文件 + ADR-0004                                      | `scripts/validate-context.mjs`、共享 symlinks 和当前 diff |
 
-不要把“最小入口”理解为足够完成实现；它只是开始定位的最小上下文。实现和交付前必须读取工具输出指出的证据，并按风险升级验证。
+不要把「最小入口」理解为足够完成实现；它只是开始定位的最小上下文。实现和交付前必须读取工具输出指出的证据，并按风险升级验证。
 
 ## 权威性与冲突处理
 

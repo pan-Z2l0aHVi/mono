@@ -30,14 +30,14 @@ Role 不与模型、CLI 或固定会话绑定。当前 Harness 不自动选择 R
 
 ## 角色执行体绑定补充（2026-09-10）
 
-「角色实施补充（2026-09-01）」中“Role 不与模型、CLI 或固定会话绑定”的结论已被 [ADR-0010](0010-agent-role-orchestration.md) 取代：五个角色采用默认执行体绑定，独立 review 按风险路由执行体；默认模型与思考强度为推荐分档（非强制，见 [ADR-0011](0011-agent-model-binding-and-effort.md)）。唯一权威绑定表在根 `AGENTS.md`「多 Agent 编排」。Role 仍然与会话内先后出现的多个 Task 解耦，Rules、Skills、Task 的分层不变。
+「角色实施补充（2026-09-01）」中「Role 不与模型、CLI 或固定会话绑定」的结论已被 [ADR-0010](0010-agent-role-orchestration.md) 取代：五个角色采用默认执行体绑定，独立 review 按风险路由执行体；默认模型与思考强度为推荐分档（非强制，见 [ADR-0011](0011-agent-model-binding-and-effort.md)）。唯一权威绑定表在根 `AGENTS.md`「多 Agent 编排」。Role 仍然与会话内先后出现的多个 Task 解耦，Rules、Skills、Task 的分层不变。
 
 ## 后果
 
 - 根入口从详细操作手册收敛为稳定导航层，局部任务的初始 context 更小。
 - `docs/agents/web-ui.md` 只负责把 `web-ui` 任务路由到对应 ADR；组件契约和框架事件边界仍以 ADR-0005 为准。`docs/agents/build.md` 只承载部署与 release workflow，release plane 术语以 ADR-0003 为准，避免污染通用 project context。
 - 文档同步要求集中在 `docs/agents/context.md`，减少根入口与 task guide 的重复；影响未来取舍的变更仍需 ADR，并更新 `CONTEXT.md` 索引。
-- Agent 需要遵循路由选择 context，而不是把“读完所有文档”视为完成探索。缺少所需证据时，应回到 manifest、配置、源码、测试或相关 ADR。
+- Agent 需要遵循路由选择 context，而不是把「读完所有文档」视为完成探索。缺少所需证据时，应回到 manifest、配置、源码、测试或相关 ADR。
 - Codex、Claude Code 通过共享入口、规则、skills 和 agent profile 复用同一套规范；客户端专属配置只承担工具适配。公共契约 review skill 以窄触发条件将任务路由到 `find:usages`、`inspect:contract*` 与发布产物验证，不把这类流程加入所有任务的常驻 context。
 - 确立 Token 与输出噪音治理：开发校验脚本在成功时使用摘要模式（如 `--no-progress`）减少无意义输出；根入口与常驻规则保持高稳定性以保证 Prefix Cache 命中率；第三方 skills 保持上游原文，自建 skills 保持 frontmatter 指针紧凑。
 
