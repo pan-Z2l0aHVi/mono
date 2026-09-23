@@ -1,4 +1,0 @@
----
----
-
-Internal change: no published package is affected. `changeset-version.yml` dispatched `ci.yml` — and, when a native release was pending, `wails-verify.yml` — onto the very commit its own `pull_request` event already triggers. Sharing one concurrency group did not merge those runs: a dispatch was cancelled only while it was still in flight, so a version commit whose dispatched CI had already finished simply ran the whole thing a second time. The `pull_request` event is now the only validation path; a run held at `action_required` is a one-command manual approval, and the root-cause fix — creating the version PR from a write-capable identity — is named together with the measured history in `docs/agents/build.md`「版本 PR 的 CI 门控」. Losing that step left `actions: write` and the `has-wails-release` output without a consumer, so both are gone, and the version job queues instead of cancelling because it pushes commits.

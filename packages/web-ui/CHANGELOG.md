@@ -1,5 +1,78 @@
 # @greypan/web-ui
 
+## 8.0.0
+
+### Major Changes
+
+- 62bdbec: Remove the `transition` prop from `<web-ui-theme>`; whether an appearance change plays the View Transitions reveal is now decided by the existing `motion` prop alone (issue #156).
+  
+  **Breaking:** the `transition` boolean attribute/property no longer exists. Writing it is a silent no-op instead of enabling the reveal, and the reveal is no longer opt-in: a theme scope animates by default now.
+  
+  The three `motion` tiers own the decision:
+  
+  - `motion="full"` always plays the circular reveal.
+  - `motion="reduced"` applies the new appearance immediately, with no reveal.
+  - `motion="system"` (the default) follows `prefers-reduced-motion`.
+  
+  Everything else about the reveal is unchanged: a root theme reveals the whole page, a nested theme reveals only its own capture box, the origin is the last pointer-down position (falling back to the theme box or viewport center), the two directions are reversed, and unsupported browsers, reduced-motion scopes, zero durations and an in-flight request still commit the new appearance immediately. The window listeners that record the reveal origin are registered for as long as a theme is connected, instead of only while `transition` was set.
+  
+  Migration:
+  
+  ```html
+  <!-- before: reveal opt-in through transition, motion left at its default -->
+  <web-ui-theme appearance="light" transition></web-ui-theme>
+  <!-- after: same reveal, motion="system" is now the switch -->
+  <web-ui-theme appearance="light"></web-ui-theme>
+  
+  <!-- before: no reveal, because transition was absent -->
+  <web-ui-theme appearance="light"></web-ui-theme>
+  <!-- after: still no reveal, but it has to be stated -->
+  <web-ui-theme appearance="light" motion="reduced"></web-ui-theme>
+  
+  <!-- before: transition forced the reveal on, motion kept it out of the way -->
+  <web-ui-theme appearance="light" transition motion="full"></web-ui-theme>
+  <!-- after: motion="full" is the whole switch -->
+  <web-ui-theme appearance="light" motion="full"></web-ui-theme>
+  ```
+  
+  The one combination that loses a distinct meaning is `transition` together with `motion="reduced"`: it never animated, and `motion="reduced"` on its own now describes it exactly, so dropping `transition` is the whole migration there.
+
+### Minor Changes
+
+- 62bdbec: feat(autocomplete): add a `trigger` slot so the default input can be replaced by any editable component
+  
+  The default trigger is now an internal `web-ui-input`, following the `web-ui-select` wrapper-div pattern: the wrapper div carries the combobox ARIA, marks itself with `data-custom-trigger` when a custom trigger is present, and hosts `slot[name="trigger"]`. The panel stays anchored to the trigger element, and the `trigger` slot stays on the host while options migrate into the portal panel.
+  
+  Delegation is shared between the two triggers: `value`, `input`, `click`, `focus` and `blur` are read and forwarded through the trigger, so a custom trigger only needs a string `value` property and has to be focusable. `web-ui-input` and `web-ui-textarea` work as-is.
+  
+  Multiline triggers (a trigger whose editable element is a `<textarea>`) keep Enter for newlines: Enter no longer selects the highlighted option nor commits a custom value, so close the panel with Escape or blur. Selecting an option still writes its label back to the trigger.
+  
+  While the panel is open in a multiline trigger, ArrowUp/ArrowDown move the text caret instead of navigating options (same exception as Enter); with the panel closed they still open it. The trigger wrapper div is never a tab stop (`tabindex="-1"`) — sequential focus belongs to the trigger itself, which has to be focusable per the documented contract.
+  
+  Adds public `focus()` / `blur()` methods to `web-ui-autocomplete`: they delegate to the active trigger (the default `web-ui-input` or the custom trigger), so consumers can focus the field without reaching into internals. `web-ui-input` gains the matching public `focus()` / `blur()` — the host itself is not focusable, so `focus()` on it used to be a no-op; `web-ui-textarea` already had them.
+- 62bdbec: Add a public `select()` method to `<web-ui-editable-text>`: it enters edit mode with the whole content selected, and only re-selects when already editing. While `disabled` it does nothing, matching `focus()`.
+- 62bdbec: Add `<web-ui-editable-text>`, an inline plain-text editor. Clicking the text edits it in place with the caret at the clicked offset, `Enter` and `blur` both commit the draft and dispatch `change` exactly once (`Enter` does not insert a newline and returns focus to the host; `blur` leaves the focus where the user moved it), and `Escape` alone cancels, restoring the value from the moment editing started and dispatching a non-bubbling `cancel`. The text layer and the editing layer share one box, so entering edit mode does not shift the rendered text by a single pixel, and the editing layer always sizes itself to its own content, so an empty or whitespace-only draft still has room for the caret even where the host itself collapses. The caret follows the shared `--wui-color-accent` semantic token by default, and both layers break a long unbroken string at the same points (`--wui-editable-text-overflow-wrap`, default `anywhere`), so a token wider than the box wraps inside the box instead of overflowing it while idle. The `cancel` event neither bubbles nor crosses shadow boundaries and is dispatched on the component itself only, so the component can sit inside an overlay such as a drawer title without its cancel reaching the overlay's native close pipeline; listen on the component itself. The component is form-associated: it submits through `FormData` and restores the declarative `value` on `form.reset()`.
+- 62bdbec: `<web-ui-theme>` now mirrors the computed `--wui-color-page` of its outermost active instance onto `document.documentElement` as an inline custom property. Custom properties stop inheriting at the document element, so a consumer rule such as `body { background: var(--wui-color-page) }` colored only the scrollable area and left the canvas behind an overscroll bounce at the user-agent background; with the mirrored property the bounce area follows the theme. The value is written when a theme connects and whenever its appearance changes, including `appearance="system"` following an OS light/dark flip, and it is the theme's computed value, so an override on the host is mirrored as it stands. Nested themes never write the root value; ownership follows connect order and passes to the next connected theme when the outermost one disconnects, and the value is deliberately kept rather than removed when the last theme disconnects so a page that swaps themes does not flash back to the user-agent background.
+
+### Patch Changes
+
+- 62bdbec: Segmented labels stay `--wui-color-text-secondary` in both variants: the accent label coloring and the drag-time `is-covered` marking are removed, and selection is carried by the indicator alone. In light mode the inset track now matches the page background instead of the raised surface, so the thumb reads as seated in a slot.
+- 62bdbec: `<web-ui-segmented>` gains a `variant` attribute/property (`inset` | `raised`, default `inset`; illegal values fall back to `inset`):
+  
+  - `inset` ("sunken") renders the track as an opaque surface (`--wui-color-surface-raised`, no backdrop filter); its 1px ring and drop shadow stay constant across rest, press and drag. The indicator rests as a solid `--wui-color-surface-segmented` pill with all glass output off.
+  - `raised` ("raised") restores the classic flat `--wui-color-surface-segmented` track (no ring, no shadow) with a solid `--wui-color-surface-selected` resting indicator carrying a soft shadow.
+  
+  In both variants the pressed/dragged indicator is fully transparent glass — backdrop blur, ring and highlight — with a 1.5x scale, easing back to the resting surface on release. Every label keeps `--wui-color-text-secondary`, checked or not, in both variants and through a press or drag; selection is carried by the indicator alone.
+- 62bdbec: fix(overlay): an anchored panel now stays registered for the whole exit transition instead of dropping out of the registry the moment `open` flips to false. While it is still on screen it keeps swallowing Escape rather than letting the key fall through, and re-opening mid-exit hands arbitration to the new session. When the transition has already finished but the host still reports open, the layer hands arbitration back so Escape reaches the host's close entry instead of being swallowed by an invisible panel forever. When another overlay is open that one still takes the Escape, so one Escape still closes exactly one layer (issue #138).
+  
+  fix(overlay): open-overlay layers whose panel and host are both detached from the document are now reclaimed lazily, so a component that never releases its handle no longer pins the layer registry or the document keydown listener forever. Reclamation runs before a new layer is built rather than after, so claiming a panel that is not mounted yet no longer deletes the layer on the spot — it keeps its place and joins arbitration once attached (issue #139).
+- 62bdbec: Dark-mode dropdown menus and the sidebar regain their translucent feel: the menu alpha drops to 0.78 and the sidebar to 0.8 while keeping the lighter surface color, so the panels read as glass one step above the page.
+- 62bdbec: Register the view-transition capture cleanup of `web-ui-theme` before writing `document.adoptedStyleSheets`, and let the restore step tolerate a setter that rejects the write (issue #146).
+  
+  - A synchronous throw from the `adoptedStyleSheets` setter used to reach the appearance setter's `.catch` with an undefined cleanup: the inline `view-transition-name` and `display` written for the nested-theme capture box stayed on the host and poisoned every later view transition. The cleanup is now registered before the write, so the failure path restores the capture state and still commits the final appearance.
+  - The restore step no longer lets a rejected `adoptedStyleSheets` write abort the host inline-style recovery.
+  - A jsdom regression test covers the throwing-setter path, including a guard that the transition really reached the write.
+
 ## 7.0.0
 
 ### Major Changes
