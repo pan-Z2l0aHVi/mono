@@ -13,6 +13,7 @@ import type {
 } from '@greypan/web-ui'
 import type { WebUiContextMenu } from '@greypan/web-ui/components/context-menu'
 import {
+  lucideCheck,
   lucideChevronLeft,
   lucideChevronRight,
   lucideChevronUp,
@@ -38,6 +39,7 @@ import {
   lucideTag,
   lucideTags,
   lucideTrash2,
+  lucideUndo2,
   lucideTriangleAlert,
   lucideCode,
   lucideEllipsisVertical,
@@ -65,7 +67,7 @@ function setNavDrawRef(key: 'library' | 'map', element: unknown) {
   navDrawRefs.value[key] = (element as WebUiSvgDrawLines | null) ?? null
 }
 const navItemClass =
-  'flex items-center gap-2 w-full min-w-9 min-h-9 px-2.5 border-0 rounded-full font-medium cursor-pointer text-left transition-all duration-150 text-[#5b5b66] active:bg-[rgb(34_33_42/0.12)] dark:text-(--wui-color-text) dark:active:bg-white/15 data-[active=true]:text-(--wui-color-accent,#08f) data-[active=true]:bg-(--wui-color-surface-control,#dfdfdf) data-[active=true]:hover:bg-[color-mix(in_srgb,var(--wui-color-surface-control,#dfdfdf)_90%,var(--wui-color-text,#1b1b1b))] data-[active=true]:active:bg-[color-mix(in_srgb,var(--wui-color-surface-control,#dfdfdf)_70%,var(--wui-color-text,#1b1b1b))]'
+  'flex items-center gap-2 w-full min-w-9 min-h-9 px-2.5 border-0 rounded-full font-medium cursor-pointer text-left transition-all duration-150 text-(--wui-color-text) [--wui-icon-color:var(--wui-color-accent,#08f)] active:bg-[rgb(34_33_42/0.12)] dark:active:bg-white/15 data-[active=true]:bg-(--wui-color-surface-control,#dfdfdf) data-[active=true]:hover:bg-[color-mix(in_srgb,var(--wui-color-surface-control,#dfdfdf)_90%,var(--wui-color-text,#1b1b1b))] data-[active=true]:active:bg-[color-mix(in_srgb,var(--wui-color-surface-control,#dfdfdf)_70%,var(--wui-color-text,#1b1b1b))]'
 function selectNav(next: 'library' | 'map') {
   activeNav.value = next
   void navDrawRefs.value[next]?.replay()
@@ -463,6 +465,7 @@ const filterLabelClass =
 
 const filterOpen = ref(false)
 const searchOpen = ref(false)
+const selectionMode = ref(false)
 const searchQuery = ref('')
 const searchInputRef = ref<WebUiInput>()
 const filteredResources = computed(() => {
@@ -939,40 +942,64 @@ watch(addDialogOpen, (open, _, onCleanup) => {
           </web-ui-button>
         </web-ui-button-group>
         <div class="flex gap-1.5 items-center ml-auto">
-          <web-ui-tooltip v-if="!(searchOpen && isMobile)" content="添加资源" portal>
-            <web-ui-button icon variant="primary" aria-label="添加资源" @click="openAddDialog">
-              <web-ui-icon :icon="lucidePlus"></web-ui-icon>
-            </web-ui-button>
-          </web-ui-tooltip>
-          <web-ui-tooltip v-if="!(searchOpen && isMobile)" content="筛选和排序" portal>
-            <web-ui-button
-              icon
-              :variant="hasActiveFilter ? 'secondary' : 'glass'"
-              aria-label="筛选和排序"
-              @click="filterOpen = !filterOpen"
+          <template v-if="!selectionMode">
+            <web-ui-tooltip v-if="!(searchOpen && isMobile)" content="添加资源" portal>
+              <web-ui-button icon variant="primary" aria-label="添加资源" @click="openAddDialog">
+                <web-ui-icon :icon="lucidePlus"></web-ui-icon>
+              </web-ui-button>
+            </web-ui-tooltip>
+            <web-ui-button v-if="!(searchOpen && isMobile)" @click="selectionMode = true">选择</web-ui-button>
+            <web-ui-tooltip v-if="!(searchOpen && isMobile)" content="筛选和排序" portal>
+              <web-ui-button
+                icon
+                :variant="hasActiveFilter ? 'secondary' : 'glass'"
+                aria-label="筛选和排序"
+                @click="filterOpen = !filterOpen"
+              >
+                <web-ui-icon :icon="filterOpen ? lucideChevronUp : lucideListFilter"></web-ui-icon>
+              </web-ui-button>
+            </web-ui-tooltip>
+            <web-ui-tooltip v-if="!searchOpen" content="搜索" portal>
+              <web-ui-button icon aria-label="搜索" @click="openSearch">
+                <web-ui-icon :icon="lucideSearch"></web-ui-icon>
+              </web-ui-button>
+            </web-ui-tooltip>
+            <web-ui-input
+              v-else
+              ref="searchInputRef"
+              :value="searchQuery"
+              clearable
+              placeholder="搜索资源"
+              aria-label="搜索资源"
+              class="[--wui-input-width:min(240px,calc(100vw-180px))]"
+              @input="handleSearchInput"
+              @keydown="handleSearchKeydown"
+              @blur="closeSearch"
             >
-              <web-ui-icon :icon="filterOpen ? lucideChevronUp : lucideListFilter"></web-ui-icon>
-            </web-ui-button>
-          </web-ui-tooltip>
-          <web-ui-tooltip v-if="!searchOpen" content="搜索" portal>
-            <web-ui-button icon aria-label="搜索" @click="openSearch">
-              <web-ui-icon :icon="lucideSearch"></web-ui-icon>
-            </web-ui-button>
-          </web-ui-tooltip>
-          <web-ui-input
-            v-else
-            ref="searchInputRef"
-            :value="searchQuery"
-            clearable
-            placeholder="搜索资源"
-            aria-label="搜索资源"
-            class="[--wui-input-width:min(240px,calc(100vw-180px))]"
-            @input="handleSearchInput"
-            @keydown="handleSearchKeydown"
-            @blur="closeSearch"
-          >
-            <web-ui-icon slot="prefix" :icon="lucideSearch"></web-ui-icon>
-          </web-ui-input>
+              <web-ui-icon slot="prefix" :icon="lucideSearch"></web-ui-icon>
+            </web-ui-input>
+          </template>
+          <template v-else>
+            <web-ui-button>全选</web-ui-button>
+            <web-ui-button-group aria-label="批量操作">
+              <web-ui-tooltip portal>
+                <span slot="content" style="color: var(--wui-color-danger)">删除</span>
+                <web-ui-button icon aria-label="删除">
+                  <web-ui-icon class="[--wui-icon-color:var(--wui-color-danger)]" :icon="lucideTrash2"></web-ui-icon>
+                </web-ui-button>
+              </web-ui-tooltip>
+              <web-ui-tooltip content="找回" portal>
+                <web-ui-button icon aria-label="找回">
+                  <web-ui-icon :icon="lucideUndo2"></web-ui-icon>
+                </web-ui-button>
+              </web-ui-tooltip>
+            </web-ui-button-group>
+            <web-ui-tooltip content="确认" portal>
+              <web-ui-button icon variant="primary" aria-label="确认" @click="selectionMode = false">
+                <web-ui-icon :icon="lucideCheck"></web-ui-icon>
+              </web-ui-button>
+            </web-ui-tooltip>
+          </template>
         </div>
       </div>
 
