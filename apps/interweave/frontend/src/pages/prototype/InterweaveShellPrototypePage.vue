@@ -619,11 +619,53 @@ function handleResourceNameChange(event: WebUiEvent<WebUiEditableText, 'change'>
   stopResourceRename()
 }
 
+// --- Batch selection ---
+const checkedIds = ref<string[]>([])
+const checkedResources = computed(() => resources.filter(resource => checkedIds.value.includes(resource.id)))
+const allVisibleChecked = computed(
+  () =>
+    filteredResources.value.length > 0 &&
+    filteredResources.value.every(resource => checkedIds.value.includes(resource.id))
+)
+const canBatchDelete = computed(() => checkedIds.value.length > 0)
+// 找回只对整批都是失效资源的选中项成立，混进一个正常资源就没有可找回的东西
+const canBatchRestore = computed(
+  () => checkedResources.value.length > 0 && checkedResources.value.every(resource => resource.broken)
+)
+function isChecked(id: string) {
+  return checkedIds.value.includes(id)
+}
+function toggleChecked(id: string) {
+  checkedIds.value = isChecked(id) ? checkedIds.value.filter(checked => checked !== id) : [...checkedIds.value, id]
+}
+function toggleCheckAll() {
+  checkedIds.value = allVisibleChecked.value ? [] : filteredResources.value.map(resource => resource.id)
+}
+function exitSelectionMode() {
+  selectionMode.value = false
+  checkedIds.value = []
+}
+function handleResourceRowClick(resource: Resource) {
+  if (selectionMode.value) {
+    toggleChecked(resource.id)
+    return
+  }
+  selectResource(resource.id)
+}
+
 // --- Delete confirmation ---
 const deleteConfirmOpen = ref(false)
 const deleteTargetResource = ref<Resource | null>(null)
+const deleteBatchCount = ref(0)
 function confirmDeleteResource(resource: Resource) {
+  deleteBatchCount.value = 0
   deleteTargetResource.value = resource
+  deleteConfirmOpen.value = true
+}
+function confirmDeleteChecked() {
+  deleteTargetResource.value = null
+  // 计数取快照：取消后抽屉淡出期间清掉选中，文案不会在收尾时跳成 0
+  deleteBatchCount.value = checkedIds.value.length
   deleteConfirmOpen.value = true
 }
 function handleDeleteConfirm() {
@@ -980,22 +1022,22 @@ watch(addDialogOpen, (open, _, onCleanup) => {
             </web-ui-input>
           </template>
           <template v-else>
-            <web-ui-button>全选</web-ui-button>
-            <web-ui-button-group aria-label="批量操作">
+            <web-ui-button @click="toggleCheckAll">全选</web-ui-button>
+            <web-ui-button-group aria-label="批量操作" class="[--wui-button-group-divider-length:16px]">
               <web-ui-tooltip portal>
                 <span slot="content" style="color: var(--wui-color-danger)">删除</span>
-                <web-ui-button icon aria-label="删除">
+                <web-ui-button icon aria-label="删除" :disabled="!canBatchDelete" @click="confirmDeleteChecked">
                   <web-ui-icon class="[--wui-icon-color:var(--wui-color-danger)]" :icon="lucideTrash2"></web-ui-icon>
                 </web-ui-button>
               </web-ui-tooltip>
               <web-ui-tooltip content="找回" portal>
-                <web-ui-button icon aria-label="找回">
+                <web-ui-button icon aria-label="找回" :disabled="!canBatchRestore">
                   <web-ui-icon :icon="lucideUndo2"></web-ui-icon>
                 </web-ui-button>
               </web-ui-tooltip>
             </web-ui-button-group>
             <web-ui-tooltip content="确认" portal>
-              <web-ui-button icon variant="primary" aria-label="确认" @click="selectionMode = false">
+              <web-ui-button icon variant="primary" aria-label="确认" @click="exitSelectionMode">
                 <web-ui-icon :icon="lucideCheck"></web-ui-icon>
               </web-ui-button>
             </web-ui-tooltip>
@@ -1115,9 +1157,20 @@ watch(addDialogOpen, (open, _, onCleanup) => {
                 selectedId === resource.id ? 'bg-black/5 dark:bg-white/8' : 'hover:bg-black/3.5 dark:hover:bg-white/5',
                 resource.broken ? 'opacity-60' : ''
               ]"
-              @click="selectResource(resource.id)"
+              @click="handleResourceRowClick(resource)"
               @contextmenu="onResourceContextmenu(resource, $event)"
             >
+              <!-- 选择态下最左侧出现勾选框；行本身也可点击切换，不必命中 18px 指示器 -->
+              <web-ui-checkbox
+                v-if="selectionMode"
+                class="shrink-0"
+                :checked="isChecked(resource.id)"
+                @click.stop
+                @change="toggleChecked(resource.id)"
+              >
+                <span class="sr-only">选择「{{ resource.name }}」</span>
+              </web-ui-checkbox>
+
               <!-- Type avatar -->
               <div
                 class="flex items-center justify-center size-10 shrink-0 rounded-lg"
@@ -1456,7 +1509,12 @@ watch(addDialogOpen, (open, _, onCleanup) => {
     <!-- Delete confirmation dialog -->
     <web-ui-dialog :open="deleteConfirmOpen" controlled no-backdrop-close @open-change="handleDeleteCancel">
       <div slot="title">删除资源</div>
-      <template v-if="deleteTargetResource">
+      <p v-if="deleteBatchCount > 0" class="m-0 text-[14px] text-[#5b5b66] dark:text-(--wui-color-text-secondary)">
+        删除选中的
+        <span class="font-medium text-[#22212a] dark:text-(--wui-color-text)">{{ deleteBatchCount }} 个资源</span
+        >后无法恢复。
+      </p>
+      <template v-else-if="deleteTargetResource">
         <p class="m-0 text-[14px] text-[#5b5b66] dark:text-(--wui-color-text-secondary)">
           删除「<span class="font-medium text-[#22212a] dark:text-(--wui-color-text)">{{
             deleteTargetResource.name
