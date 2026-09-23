@@ -79,6 +79,21 @@ assert.match(
   'ci.yml: the id `test` must belong to the step named Test'
 )
 
+// 恒假守卫的第二种成因：GitHub 对不含 status check 函数的 `if` 仍然套默认 `success()`，所以只写
+// `steps.<id>.outcome == 'failure'` 的那一步，会在它的条件唯一可能成立的时刻（前一步刚失败）被跳过。
+// 这类守卫不会报错、也不会让 job 变红，只能靠形状判出来：读 step 结果的条件必须同时调 status 函数。
+const statusFunction = /\b(?:always|failure|cancelled|success)\(\)/
+for (const [file, wf] of Object.entries(parsed)) {
+  for (const [step, expression] of Object.entries(wf.steps)) {
+    if (/steps\.[a-zA-Z0-9_-]+\.(?:outcome|conclusion)\b/.test(expression)) {
+      assert.ok(
+        statusFunction.test(expression),
+        `${file}: step ${step} reads a step outcome but calls no status function, so the implicit success() skips it whenever the condition could hold`
+      )
+    }
+  }
+}
+
 // 不变量 2：只有 changeset-version.yml 监听 push。ci.yml 的 push 触发是纯重复 —— squash-only 加
 // strict required status 已经让 PR head 的树等于合并后 main 的树；trunk 复检走 workflow_dispatch。
 assert.deepEqual(
