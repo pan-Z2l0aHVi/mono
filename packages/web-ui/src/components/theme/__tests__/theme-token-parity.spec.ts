@@ -261,7 +261,7 @@ describe('深色 elevation 关系', () => {
         expect(value, `${token} 通道 ${channel} 比 page 亮的量`).toBeGreaterThan(page.rgb[channel] + 3)
         expect(value, `${token} 通道 ${channel} 比 page 亮的量`).toBeLessThan(page.rgb[channel] + 12)
         // 「page 之上一档」由 --wui-color-surface 定义。面板 alpha 为恢复透感
-        // 调低过（0.78/0.8），合成色与 surface 允许最多 2/255 的偏差
+        // 调低过（0.74/0.8），合成色与 surface 允许最多 2/255 的偏差
         expect(
           Math.abs(value - surface.rgb[channel]),
           `${token} 通道 ${channel} 与 surface 的偏差`
