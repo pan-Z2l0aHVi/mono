@@ -85,7 +85,6 @@ describe('shared/group-management', () => {
     await checkboxA.updateComplete
     expect(checkboxA.checked).toBe(true)
 
-    // 独立状态恢复：移除后 checked 可自由切换（不再被组收敛覆写）
     checkboxA.checked = false
     await checkboxA.updateComplete
     expect(checkboxA.checked).toBe(false)

@@ -936,7 +936,6 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     expect(el.open).toBe(true)
 
     const options = [...el.querySelectorAll('web-ui-option')]
-    // contains 过滤：Apple 被隐藏，Banana 保留
     expect(options[0]?.hasAttribute('data-filtered')).toBe(true)
     expect(options[1]?.hasAttribute('data-filtered')).toBe(false)
     // 公开无障碍面（shadow 内 mirror）只暴露可见候选
@@ -977,7 +976,6 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     expect(el.open).toBe(true)
     expect(el.value).toBe('Ap')
 
-    // 真实 Enter：textarea 收到换行，autocomplete 不接管为「选中高亮项」
     await userEvent.keyboard('{Enter}')
     await el.updateComplete
 

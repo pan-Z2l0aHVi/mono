@@ -164,7 +164,6 @@ describe('WebUiInputNumber 组件特有契约', () => {
 
     it('precision 变化不恢复设值时已按旧精度舍入的值', async () => {
       const el = createNumber()
-      // value 在设入时已按当前精度舍入，精度变更不会恢复已丢失的精度
       el.value = 1.234
       await waitForUpdate(el)
       expect(el.value).toBe(1)

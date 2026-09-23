@@ -82,8 +82,6 @@
   font-size: 0;
 }
 
-/* ===== Fixed mode (has slotted content) ===== */
-
 .badge-fixed.badge-dot {
   --badge-x: 40%;
   --badge-y: -40%;

@@ -17,7 +17,6 @@
   --wui-radio-group-gap: 8px;
   --wui-checkbox-group-gap: 8px;
 
-  /* z-index layers - 基础结构 */
   --wui-layer-base: 0;
   --wui-layer-inline-overlay: 1;
   --wui-layer-header: 10;
@@ -26,7 +25,6 @@
   --wui-layer-tabbar: 40;
   --wui-layer-sidebar: 50;
 
-  /* z-index layers - 浮层 */
   --wui-layer-menu: 100;
   --wui-layer-menu-nested: 110;
   --wui-layer-toast: 200;

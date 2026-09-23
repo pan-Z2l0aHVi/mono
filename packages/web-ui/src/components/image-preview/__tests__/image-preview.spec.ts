@@ -166,12 +166,10 @@ describe('imagePreview 命令式 API', () => {
     stage.dispatchEvent(touchPointer('pointerdown', { pointerId: 11, clientX: 100, clientY: 100, isPrimary: true }))
     stage.dispatchEvent(touchPointer('pointerdown', { pointerId: 12, clientX: 200, clientY: 100, isPrimary: false }))
 
-    // 拉开到 200px：比例 2。
     window.dispatchEvent(touchPointer('pointermove', { pointerId: 12, clientX: 300, clientY: 100 }))
     await hostElement().updateComplete
     expect(handle.scale).toBe(2)
 
-    // 捏合到 25px：比例 0.25，被下限钳回 1x。
     window.dispatchEvent(touchPointer('pointermove', { pointerId: 12, clientX: 125, clientY: 100 }))
     await hostElement().updateComplete
     expect(handle.scale).toBe(1)
@@ -203,7 +201,6 @@ describe('imagePreview 命令式 API', () => {
     await hostElement().updateComplete
     expect(isMounted()).toBe(true)
 
-    // 余波 click 被吞掉后，遮罩关闭不能被永久破坏：真正起于空白的点击仍应关闭。
     stage.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0, pointerId: 23, isPrimary: true }))
     stage.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1 }))
     await handle.closed
@@ -264,7 +261,6 @@ describe('imagePreview 命令式 API', () => {
     stage.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1 }))
     expect(isMounted()).toBe(true)
 
-    // 起于空白区域（舞台）的按下 + click 才关闭。
     stage.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0, pointerId: 2, isPrimary: true }))
     stage.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1 }))
     await handle.closed
@@ -308,7 +304,6 @@ describe('imagePreview 命令式 API', () => {
     await hostElement().updateComplete
     expect(isMounted()).toBe(true)
 
-    // 余波 click 被吞掉后，遮罩关闭仍可用。
     stage.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0, pointerId: 2, isPrimary: true }))
     stage.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1 }))
     await handle.closed
@@ -356,7 +351,6 @@ describe('imagePreview 命令式 API', () => {
     stage.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0, pointerId: 1, isPrimary: true }))
     // 副指针按在图片上：它不会产生 click，也不得改写上面的判定。
     image.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0, pointerId: 2, isPrimary: false }))
-    // 主指针释放产生的 click 仍应关闭浮层。
     stage.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1 }))
     await handle.closed
     expect(isMounted()).toBe(false)

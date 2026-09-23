@@ -65,8 +65,6 @@
   opacity: 1;
 }
 
-/* ===== 浮层（glass 样式参考 select） ===== */
-
 .autocomplete-overlay {
   /* autocomplete 不表示选中状态；隐藏共享 option 的勾选图标及其布局占位 */
   --wui-option-check-display: none;

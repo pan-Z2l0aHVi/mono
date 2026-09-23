@@ -139,7 +139,6 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
     fresh.textContent = 'DOCX'
     parentItem.appendChild(fresh)
 
-    // 在另一个位置重新定位打开（等价于在另一列表项右键）
     menu.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, composed: true, clientX: 200, clientY: 200 }))
     await menu.updateComplete
     await nextFrame()
@@ -162,7 +161,6 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
     const parentItem = getMenus()[0]?.querySelector<HTMLElement>('web-ui-dropdown-item')
     if (!parentItem) throw new Error('Expected a submenu parent item')
 
-    // 不经重定位，宿主直接重建嵌套子项（等价于网络推送/定时器触发的重渲染）
     parentItem.replaceChildren()
     const fresh = document.createElement('web-ui-dropdown-item')
     fresh.textContent = 'DOCX'
@@ -268,7 +266,6 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
     openWith.remove()
     await waitForObserverRefresh()
 
-    // 面板内剩余项顺序保持
     expect(Array.from(content.querySelectorAll('web-ui-dropdown-item')).map(item => item.textContent?.trim())).toEqual([
       '预览',
       '删除'
@@ -304,7 +301,6 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
     await waitForItemsReturned(menu, 2)
 
     expect(menu.isOpen).toBe(false)
-    // 关闭后宿主项集合 == 期望
     expect(Array.from(menu.querySelectorAll('web-ui-dropdown-item')).map(item => item.textContent?.trim())).toEqual([
       '预览',
       '删除'
@@ -342,7 +338,6 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
     preview.replaceWith(document.createComment('v-if'), fresh)
     await waitForObserverRefresh()
 
-    // 面板内条目顺序（补强）
     expect(Array.from(content.querySelectorAll('web-ui-dropdown-item')).map(item => item.textContent?.trim())).toEqual([
       '找回资源',
       '打开方式',
@@ -360,7 +355,6 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
       '删除'
     ])
 
-    // 重开后顺序 == 期望
     menu.openAt(200, 200)
     await menu.updateComplete
     await nextFrame()
@@ -467,7 +461,6 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
     await menu.updateComplete
     await nextFrame()
     await menu.updateComplete
-    // 面板被复用 ⇒ 确实是「退场中重开」，而不是退场结束后的全新构建。
     expect(getMenuContent()).toBe(panel)
     expect(menu.isOpen).toBe(true)
 
@@ -524,7 +517,6 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
     expect(menu.isOpen).toBe(true)
     expect(submenuPanel.hidden).toBe(false)
 
-    // 取回之前：面板仍在退场、仍然可见，点它内部不得关闭整张菜单。
     submenuPanel.dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true }))
     await menu.updateComplete
     expect(menu.isOpen).toBe(true)

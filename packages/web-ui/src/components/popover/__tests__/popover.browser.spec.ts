@@ -43,7 +43,6 @@ describe('WebUiPopover 组件（浏览器）', () => {
     await popover.updateComplete
     await waitForFrame()
 
-    // 退场被重新打开中断的后果：面板仍在文档中且可见（不是 hidden）。
     const panel = getPortalPanel('dialog')
     expect(panel).not.toBeNull()
     expect(panel?.hasAttribute('hidden')).toBe(false)

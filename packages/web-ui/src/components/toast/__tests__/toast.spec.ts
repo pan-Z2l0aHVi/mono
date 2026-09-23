@@ -666,7 +666,6 @@ describe('toast 命令式 API', () => {
       await waitForToastMounted()
 
       toast.close(id)
-      // 不推进退场计时：此刻元素仍在 DOM、仍被映射持有
       expect(mountedToasts()[0].dismissing).toBe(true)
 
       const again = toast({ id, message: '第二轮' })
@@ -735,7 +734,6 @@ describe('toast 命令式 API', () => {
       await waitForToastMounted()
 
       expect(mountedToasts()).toHaveLength(0)
-      // 队列被取消后连容器都不该建出来
       expect(getToastContainer('top-right')).toBeNull()
     })
 
