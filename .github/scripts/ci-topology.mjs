@@ -33,10 +33,11 @@ export const workflows = {
     // 版本 PR 自己不带 pending changeset（它删掉的就是 changeset），所以那一步只在非版本分支上跑。
     steps: {
       'Check changesets': `github.event_name == 'pull_request' && github.head_ref != '${RELEASE_BRANCH}'`,
-      // flake 台账的留痕两步只认 Test 这一步自己的结果：判据仍然只属于 Test，这里不能变成第二个 gate，
-      // 也不能在前序步骤（例如 lint）失败、Test 被 skip 时留下一条没有测试日志的假记录。
-      'Record test failures': "steps.test.outcome == 'failure'",
-      'Upload test output': "steps.test.outcome == 'failure'"
+      // flake 台账的留痕两步：`failure()` 让它在前一步失败之后仍然被评估（GitHub 对不含 status check 函数的
+      // `if` 仍套默认 `success()`，只写后半截会得到一个恒假、恒 skip 的守卫），后半截让它只认 Test 自己的
+      // 结果 —— 既不能变成第二个 gate，也不能在 lint 失败、Test 被 skip 时留下一条没有测试日志的假记录。
+      'Record test failures': "failure() && steps.test.outcome == 'failure'",
+      'Upload test output': "failure() && steps.test.outcome == 'failure'"
     },
     stepIds: ['go-cache', 'test']
   },
