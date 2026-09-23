@@ -1391,7 +1391,7 @@ SVG 线条绘制动画，基于 `stroke-dashoffset`。直接在原元素上动�
 
 配色变化是否使用 View Transitions API 播放动画，由当前主题范围的 `motion` 档位决定：`full` 始终播放揭示，`reduced` 直接落地新 appearance、不播放揭示，`system` 跟随 `prefers-reduced-motion`。根主题揭示整页；嵌套主题只揭示自己的 capture box。圆心优先取最近一次 pointerdown 坐标，否则回退主题盒或视口中心；深浅两个方向反向播放。不支持的浏览器、reduced-motion 作用域、时长为 0 以及同一 flight 内已有未完成请求都会立即落地新 appearance；当前版本对 `appearance="system"` 的 OS 深浅翻转不做动画。
 
-揭示进行中，View Transitions 的 rendering-suppression 规则会强制所有 pointer hit-test 指向 document element，因此 CSS `pointer-events` 覆盖无法让底层页面继续交互。主题只忽略揭示启动后 100ms 内、由发起切换的同一 pointer id 产生且仍落在 pointerdown 目标盒内的 pointermove 或 pointerup；其他 pointermove、pointerdown、pointerup 或 wheel 都会调用 `skipTransition()`。键盘或程序化切换没有目标盒，因此首次 pointer 活动仍会提前结束揭示。触发规避的事件本身仍按规范以 document element 为目标，但失效窗口到此为止，不会持续满整个揭示时长。
+揭示进行中，View Transitions 的 rendering-suppression 规则会强制所有 pointer hit-test 指向 document element，因此 CSS `pointer-events` 覆盖无法让底层页面继续交互。主题只在 `pointerdown` 或 wheel 时调用 `skipTransition()`；`pointermove` 与 `pointerup` 永远不会结束揭示，因此发起控件的收尾移动或过渡期间的普通移动都不会打断动画。触发 skip 的事件本身仍按规范以 document element 为目标，但失效窗口到此为止，不会持续满整个揭示时长。
 
 **从已移除的 `transition` 属性迁移：** 删掉该属性，改用 `motion` 表达意图。原先带 `transition` 的主题在默认 `motion="system"` 下揭示行为不变；需要在系统偏好 reduce 时仍播放揭示，则加 `motion="full"`。原先不带 `transition` 的主题现在默认就会揭示，若要保持无动画直接切换，请显式设置 `motion="reduced"`。
 

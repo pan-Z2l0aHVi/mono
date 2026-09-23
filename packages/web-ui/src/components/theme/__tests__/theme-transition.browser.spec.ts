@@ -200,7 +200,7 @@ describe('theme transition（浏览器）', () => {
     wrapper.restore()
   })
 
-  it('忽略发起控件上的收尾指针事件，移出后仍提前结束并恢复 hit-test', async () => {
+  it('pointermove 与 pointerup 不触发 skip，pointerdown 立即恢复 hit-test', async () => {
     const wrapper = wrapStartViewTransition()
     const source = createHitTarget()
     const recovery = createHitTarget(240)
@@ -219,14 +219,23 @@ describe('theme transition（浏览器）', () => {
     expect(document.elementFromPoint(recoveryPoint.x, recoveryPoint.y)).toBe(document.documentElement)
 
     dispatchPointer(document.documentElement, 'pointermove', sourcePoint, 7)
+    dispatchPointer(document.documentElement, 'pointermove', recoveryPoint, 99)
     dispatchPointer(document.documentElement, 'pointerup', sourcePoint, 7)
     expect(wrapper.skipCount).toBe(0)
+    expect(document.elementFromPoint(recoveryPoint.x, recoveryPoint.y)).toBe(document.documentElement)
+    const reveal = document
+      .getAnimations()
+      .find(
+        animation =>
+          ((animation.effect as KeyframeEffect | null)?.pseudoElement ?? '') === '::view-transition-new(root)'
+      )
+    expect(reveal?.playState).toBe('running')
 
-    dispatchPointer(document.documentElement, 'pointermove', recoveryPoint, 7)
+    dispatchPointer(document.documentElement, 'pointerdown', recoveryPoint, 99)
     expect(wrapper.skipCount).toBe(1)
     await waitFor(
       () => document.elementFromPoint(recoveryPoint.x, recoveryPoint.y) === recovery,
-      'pointer activity did not end rendering suppression before the configured duration'
+      'pointerdown did not end rendering suppression before the configured duration'
     )
     await transition!.finished.catch(() => undefined)
 
@@ -237,7 +246,7 @@ describe('theme transition（浏览器）', () => {
     wrapper.restore()
   })
 
-  it('没有发起指针来源时，首次指针活动仍提前结束并恢复目标', async () => {
+  it('wheel 立即触发 skip 并恢复 hit-test', async () => {
     const wrapper = wrapStartViewTransition()
     const target = createHitTarget()
     const theme = createRootTheme()
@@ -253,11 +262,11 @@ describe('theme transition（浏览器）', () => {
     await Promise.resolve()
     expect(document.elementFromPoint(point.x, point.y)).toBe(document.documentElement)
 
-    dispatchPointer(document.documentElement, 'pointermove', point)
+    window.dispatchEvent(new WheelEvent('wheel', { bubbles: true, composed: true, cancelable: true }))
     expect(wrapper.skipCount).toBe(1)
     await waitFor(
       () => document.elementFromPoint(point.x, point.y) === target,
-      'pointer activity did not end rendering suppression before the configured duration'
+      'wheel did not end rendering suppression before the configured duration'
     )
     await transition!.finished.catch(() => undefined)
 
