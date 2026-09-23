@@ -265,7 +265,7 @@ dialog.is-dragging .wui-drawer-drag-zone {
   display: flex;
   flex-direction: column;
   height: 100%;
-  background-color: var(--wui-drawer-bg, var(--wui-color-surface-overlay, rgb(246 246 246 / 0.82)));
+  background-color: var(--wui-drawer-bg, var(--wui-color-surface-overlay, rgb(229 229 234 / 0.82)));
 }
 
 .wui-drawer-header {

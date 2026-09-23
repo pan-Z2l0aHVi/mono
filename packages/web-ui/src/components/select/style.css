@@ -7,11 +7,11 @@
 :host {
   --wui-select-bg-hover: var(
     --wui-color-surface-glass-hover,
-    color-mix(in srgb, var(--wui-color-text, #1b1b1b) 6%, var(--wui-color-surface-glass, rgb(250 250 250 / 0.34)))
+    color-mix(in srgb, var(--wui-color-text, #1b1b1b) 6%, var(--wui-color-surface-glass, rgb(229 229 234 / 0.34)))
   );
   --wui-select-bg-active: var(
     --wui-color-surface-glass-active,
-    color-mix(in srgb, var(--wui-color-text, #1b1b1b) 15%, var(--wui-color-surface-glass, rgb(250 250 250 / 0.34)))
+    color-mix(in srgb, var(--wui-color-text, #1b1b1b) 15%, var(--wui-color-surface-glass, rgb(229 229 234 / 0.34)))
   );
   user-select: none;
   display: inline-block;
@@ -120,7 +120,7 @@
   border-radius: var(--wui-radius-menu, 18px);
 
   /* 玻璃背景：wui-glass 在面板自身，这里覆盖其默认玻璃底为菜单表面色 */
-  background-color: var(--wui-color-surface-menu, rgb(246 246 246 / 0.76));
+  background-color: var(--wui-color-surface-menu, rgb(229 229 234 / 0.76));
 
   &.portal {
     position: fixed;
