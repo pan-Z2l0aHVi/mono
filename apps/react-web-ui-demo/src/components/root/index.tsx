@@ -26,7 +26,8 @@ import {
   lucideSlidersHorizontal,
   lucideTag,
   lucideUser,
-  radixIconsPanelLeftMinimized
+  radixIconsPanelLeftMinimized,
+  lucideX
 } from '@greypan/web-ui/icons'
 import { Link, Outlet, useRouter, useRouterState } from '@tanstack/react-router'
 import { useEffect, useRef, useState } from 'react'
@@ -222,12 +223,15 @@ export function Root() {
                 className="flex items-center justify-center gap-2 bg-(--wui-color-accent) px-4 py-2 text-sm text-(--wui-color-on-accent)"
               >
                 <span>🎉 欢迎使用 web-ui 组件库！</span>
-                <button
-                  className="ml-auto text-current opacity-70 hover:opacity-100"
+                <web-ui-button
+                  className="ml-auto"
+                  size="24"
+                  icon
+                  variant="ghost"
                   onClick={() => setBannerVisible(false)}
                 >
-                  ✕
-                </button>
+                  <web-ui-icon className="text-white" icon={lucideX} size={16}></web-ui-icon>
+                </web-ui-button>
               </div>
             ) : null}
             <div

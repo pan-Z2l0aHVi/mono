@@ -17,6 +17,7 @@ import {
   lucideInbox,
   lucideInfo,
   lucideLayoutGrid,
+  lucideX,
   lucideListFilter,
   lucideListRestart,
   lucideLoaderCircle,
@@ -205,7 +206,9 @@ function isNavActive(path: string) {
           class="flex items-center justify-center gap-2 py-2 px-4 bg-(--wui-color-accent) text-(--wui-color-on-accent) text-sm"
         >
           <span>🎉 欢迎使用 web-ui 组件库！</span>
-          <button class="ml-auto text-current opacity-70 hover:opacity-100" @click="bannerVisible = false">✕</button>
+          <web-ui-button class="ml-auto" size="24" icon variant="ghost" @click="bannerVisible = false">
+            <web-ui-icon class="text-white" :icon="lucideX" :size="16"></web-ui-icon>
+          </web-ui-button>
         </div>
         <div slot="header" class="flex h-full w-full items-center justify-end gap-4 px-4 py-2 max-[640px]:w-screen">
           <web-ui-select

@@ -13,6 +13,7 @@ import type {
 } from '@greypan/web-ui'
 import type { WebUiContextMenu } from '@greypan/web-ui/components/context-menu'
 import {
+  lucideCheck,
   lucideChevronLeft,
   lucideChevronRight,
   lucideChevronUp,
@@ -38,6 +39,7 @@ import {
   lucideTag,
   lucideTags,
   lucideTrash2,
+  lucideUndo2,
   lucideTriangleAlert,
   lucideCode,
   lucideEllipsisVertical,
@@ -64,7 +66,7 @@ function setNavDrawRef(key: 'library' | 'map', element: unknown) {
   navDrawRefs.value[key] = (element as WebUiSvgDrawLines | null) ?? null
 }
 const navItemClass =
-  'flex items-center gap-2 w-full min-w-9 min-h-9 px-2.5 border-0 rounded-full font-medium cursor-pointer text-left transition-all duration-150 text-[#5b5b66] active:bg-[rgb(34_33_42/0.12)] dark:text-(--wui-color-text) dark:active:bg-white/15 data-[active=true]:text-(--wui-color-accent,#08f) data-[active=true]:bg-(--wui-color-surface-control,#dfdfdf) data-[active=true]:hover:bg-[color-mix(in_srgb,var(--wui-color-surface-control,#dfdfdf)_90%,var(--wui-color-text,#1b1b1b))] data-[active=true]:active:bg-[color-mix(in_srgb,var(--wui-color-surface-control,#dfdfdf)_70%,var(--wui-color-text,#1b1b1b))]'
+  'flex items-center gap-2 w-full min-w-9 min-h-9 px-2.5 border-0 rounded-full font-medium cursor-pointer text-left transition-all duration-150 text-(--wui-color-text) [--wui-icon-color:var(--wui-color-accent,#08f)] active:bg-[rgb(34_33_42/0.12)] dark:active:bg-white/15 data-[active=true]:bg-(--wui-color-surface-control,#dfdfdf) data-[active=true]:hover:bg-[color-mix(in_srgb,var(--wui-color-surface-control,#dfdfdf)_90%,var(--wui-color-text,#1b1b1b))] data-[active=true]:active:bg-[color-mix(in_srgb,var(--wui-color-surface-control,#dfdfdf)_70%,var(--wui-color-text,#1b1b1b))]'
 function selectNav(next: 'library' | 'map') {
   activeNav.value = next
   void navDrawRefs.value[next]?.replay()
@@ -440,6 +442,7 @@ const filterLabelClass =
 
 const filterOpen = ref(false)
 const searchOpen = ref(false)
+const selectionMode = ref(false)
 const searchQuery = ref('')
 const searchInputRef = ref<WebUiInput>()
 const searchContainerRef = ref<HTMLElement | null>(null)
@@ -604,10 +607,51 @@ function handleResourceNameChange(event: WebUiEvent<WebUiEditableText, 'change'>
   stopResourceRename()
 }
 
+const checkedIds = ref<string[]>([])
+const checkedResources = computed(() => resources.filter(resource => checkedIds.value.includes(resource.id)))
+const allVisibleChecked = computed(
+  () =>
+    filteredResources.value.length > 0 &&
+    filteredResources.value.every(resource => checkedIds.value.includes(resource.id))
+)
+const canBatchDelete = computed(() => checkedIds.value.length > 0)
+// 找回只对整批都是失效资源的选中项成立，混进一个正常资源就没有可找回的东西
+const canBatchRestore = computed(
+  () => checkedResources.value.length > 0 && checkedResources.value.every(resource => resource.broken)
+)
+function isChecked(id: string) {
+  return checkedIds.value.includes(id)
+}
+function toggleChecked(id: string) {
+  checkedIds.value = isChecked(id) ? checkedIds.value.filter(checked => checked !== id) : [...checkedIds.value, id]
+}
+function toggleCheckAll() {
+  checkedIds.value = allVisibleChecked.value ? [] : filteredResources.value.map(resource => resource.id)
+}
+function exitSelectionMode() {
+  selectionMode.value = false
+  checkedIds.value = []
+}
+function handleResourceRowClick(resource: Resource) {
+  if (selectionMode.value) {
+    toggleChecked(resource.id)
+    return
+  }
+  selectResource(resource.id)
+}
+
 const deleteConfirmOpen = ref(false)
 const deleteTargetResource = ref<Resource | null>(null)
+const deleteBatchCount = ref(0)
 function confirmDeleteResource(resource: Resource) {
+  deleteBatchCount.value = 0
   deleteTargetResource.value = resource
+  deleteConfirmOpen.value = true
+}
+function confirmDeleteChecked() {
+  deleteTargetResource.value = null
+  // 计数取快照：取消后抽屉淡出期间清掉选中，文案不会在收尾时跳成 0
+  deleteBatchCount.value = checkedIds.value.length
   deleteConfirmOpen.value = true
 }
 function handleDeleteConfirm() {
@@ -921,39 +965,63 @@ watch(addDialogOpen, (open, _, onCleanup) => {
           </web-ui-button>
         </web-ui-button-group>
         <div ref="searchContainerRef" class="flex gap-1.5 items-center ml-auto" @focusout="handleSearchFocusout">
-          <web-ui-tooltip v-if="!(searchOpen && isMobile)" content="添加资源" portal>
-            <web-ui-button icon variant="primary" aria-label="添加资源" @click="openAddDialog">
-              <web-ui-icon :icon="lucidePlus"></web-ui-icon>
-            </web-ui-button>
-          </web-ui-tooltip>
-          <web-ui-tooltip v-if="!(searchOpen && isMobile)" content="筛选和排序" portal>
-            <web-ui-button
-              icon
-              :variant="hasActiveFilter ? 'secondary' : 'glass'"
-              aria-label="筛选和排序"
-              @click="filterOpen = !filterOpen"
+          <template v-if="!selectionMode">
+            <web-ui-tooltip v-if="!(searchOpen && isMobile)" content="添加资源" portal>
+              <web-ui-button icon variant="primary" aria-label="添加资源" @click="openAddDialog">
+                <web-ui-icon :icon="lucidePlus"></web-ui-icon>
+              </web-ui-button>
+            </web-ui-tooltip>
+            <web-ui-button v-if="!(searchOpen && isMobile)" @click="selectionMode = true">选择</web-ui-button>
+            <web-ui-tooltip v-if="!(searchOpen && isMobile)" content="筛选和排序" portal>
+              <web-ui-button
+                icon
+                :variant="hasActiveFilter ? 'secondary' : 'glass'"
+                aria-label="筛选和排序"
+                @click="filterOpen = !filterOpen"
+              >
+                <web-ui-icon :icon="filterOpen ? lucideChevronUp : lucideListFilter"></web-ui-icon>
+              </web-ui-button>
+            </web-ui-tooltip>
+            <web-ui-tooltip v-if="!searchOpen" content="搜索" portal>
+              <web-ui-button icon aria-label="搜索" @click="openSearch">
+                <web-ui-icon :icon="lucideSearch"></web-ui-icon>
+              </web-ui-button>
+            </web-ui-tooltip>
+            <web-ui-input
+              v-else
+              ref="searchInputRef"
+              :value="searchQuery"
+              clearable
+              placeholder="搜索资源"
+              aria-label="搜索资源"
+              class="[--wui-input-width:min(240px,calc(100vw-180px))]"
+              @input="handleSearchInput"
+              @keydown="handleSearchKeydown"
             >
-              <web-ui-icon :icon="filterOpen ? lucideChevronUp : lucideListFilter"></web-ui-icon>
-            </web-ui-button>
-          </web-ui-tooltip>
-          <web-ui-tooltip v-if="!searchOpen" content="搜索" portal>
-            <web-ui-button icon aria-label="搜索" @click="openSearch">
-              <web-ui-icon :icon="lucideSearch"></web-ui-icon>
-            </web-ui-button>
-          </web-ui-tooltip>
-          <web-ui-input
-            v-else
-            ref="searchInputRef"
-            :value="searchQuery"
-            clearable
-            placeholder="搜索资源"
-            aria-label="搜索资源"
-            class="[--wui-input-width:min(240px,calc(100vw-180px))]"
-            @input="handleSearchInput"
-            @keydown="handleSearchKeydown"
-          >
-            <web-ui-icon slot="prefix" :icon="lucideSearch"></web-ui-icon>
-          </web-ui-input>
+              <web-ui-icon slot="prefix" :icon="lucideSearch"></web-ui-icon>
+            </web-ui-input>
+          </template>
+          <template v-else>
+            <web-ui-button @click="toggleCheckAll">全选</web-ui-button>
+            <web-ui-button-group aria-label="批量操作" class="[--wui-button-group-divider-length:16px]">
+              <web-ui-tooltip portal>
+                <span slot="content" style="color: var(--wui-color-danger)">删除</span>
+                <web-ui-button icon aria-label="删除" :disabled="!canBatchDelete" @click="confirmDeleteChecked">
+                  <web-ui-icon class="[--wui-icon-color:var(--wui-color-danger)]" :icon="lucideTrash2"></web-ui-icon>
+                </web-ui-button>
+              </web-ui-tooltip>
+              <web-ui-tooltip content="找回" portal>
+                <web-ui-button icon aria-label="找回" :disabled="!canBatchRestore">
+                  <web-ui-icon :icon="lucideUndo2"></web-ui-icon>
+                </web-ui-button>
+              </web-ui-tooltip>
+            </web-ui-button-group>
+            <web-ui-tooltip content="确认" portal>
+              <web-ui-button icon variant="primary" aria-label="确认" @click="exitSelectionMode">
+                <web-ui-icon :icon="lucideCheck"></web-ui-icon>
+              </web-ui-button>
+            </web-ui-tooltip>
+          </template>
         </div>
       </div>
 
@@ -1066,9 +1134,20 @@ watch(addDialogOpen, (open, _, onCleanup) => {
                 selectedId === resource.id ? 'bg-black/5 dark:bg-white/8' : 'hover:bg-black/3.5 dark:hover:bg-white/5',
                 resource.broken ? 'opacity-60' : ''
               ]"
-              @click="selectResource(resource.id)"
+              @click="handleResourceRowClick(resource)"
               @contextmenu="onResourceContextmenu(resource, $event)"
             >
+              <!-- 行本身也可点击切换，不必命中 18px 指示器 -->
+              <web-ui-checkbox
+                v-if="selectionMode"
+                class="shrink-0"
+                :checked="isChecked(resource.id)"
+                @click.stop
+                @change="toggleChecked(resource.id)"
+              >
+                <span class="sr-only">选择「{{ resource.name }}」</span>
+              </web-ui-checkbox>
+
               <div
                 class="flex items-center justify-center size-10 shrink-0 rounded-lg"
                 :class="typeTint[resource.resourceType]"
@@ -1399,7 +1478,12 @@ watch(addDialogOpen, (open, _, onCleanup) => {
 
     <web-ui-dialog :open="deleteConfirmOpen" controlled no-backdrop-close @open-change="handleDeleteCancel">
       <div slot="title">删除资源</div>
-      <template v-if="deleteTargetResource">
+      <p v-if="deleteBatchCount > 0" class="m-0 text-[14px] text-[#5b5b66] dark:text-(--wui-color-text-secondary)">
+        删除选中的
+        <span class="font-medium text-[#22212a] dark:text-(--wui-color-text)">{{ deleteBatchCount }} 个资源</span
+        >后无法恢复。
+      </p>
+      <template v-else-if="deleteTargetResource">
         <p class="m-0 text-[14px] text-[#5b5b66] dark:text-(--wui-color-text-secondary)">
           删除「<span class="font-medium text-[#22212a] dark:text-(--wui-color-text)">{{
             deleteTargetResource.name
