@@ -69,7 +69,6 @@ describe('聚合上报测试用例', () => {
     vi.advanceTimersByTime(200)
     await waitUntil(() => transport.mock.calls.length >= 1)
 
-    // 分片生效：请求 payload 是部分数据（不是全部），证明递归分片切分了批次
     const body = transport.mock.calls[0][0] as unknown[]
     expect(Array.isArray(body)).toBe(true)
     expect(body.length).toBeLessThan(totalCount)
@@ -141,7 +140,6 @@ describe('聚合上报测试用例', () => {
       .use(defineBatchTrack({ defaultBatchDelay: 200, maxBatchKB: 64 }))
       .make()
 
-    // 3 条小数据总大小远小于 64KB，flush 时 sliceTrack 判断不超限，整批单次发送
     tracker.track({ event: 'a' })
     tracker.track({ event: 'b' })
     tracker.track({ event: 'c' })

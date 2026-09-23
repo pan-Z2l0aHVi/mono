@@ -138,7 +138,6 @@ describe('深色表面 elevation（浏览器计算值）', () => {
     await layout.updateComplete
     const select = await createOpenSelectIn(theme)
 
-    // 浅色 sidebar 与共享 overlay 同值，下拉面板仍取 menu token 的浅色默认
     expect(getComputedStyle(queryShadow(layout, '.aside-panel')).backgroundColor).toBe(
       resolveToken(theme, '--wui-color-surface-overlay')
     )

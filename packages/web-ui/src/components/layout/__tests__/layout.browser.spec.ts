@@ -81,7 +81,6 @@ describe('WebUiLayout 组件（浏览器）', () => {
 
       expect(requested).toEqual([true])
       expect(layout.sidebarCollapsed).toBe(true)
-      // 回写后 re-render 使 aria-label 翻转为「展开侧边栏」
       const expandedToggle = queryA11y(layout, '[aria-label="展开侧边栏"]') as HTMLElement
       expect(expandedToggle).toBeTruthy()
       expect(expandedToggle.getAttribute('aria-label')).toBe('展开侧边栏')
@@ -95,7 +94,6 @@ describe('WebUiLayout 组件（浏览器）', () => {
       let eventCount = 0
       layout.addEventListener('sidebar-collapsed-change', () => eventCount++)
 
-      // 渲染前：Toggle 标签为「折叠侧边栏」
       const toggleBefore = queryA11y(layout, '[aria-label="折叠侧边栏"]') as HTMLElement
       expect(toggleBefore).toBeTruthy()
 
@@ -103,9 +101,7 @@ describe('WebUiLayout 组件（浏览器）', () => {
       await layout.updateComplete
       await waitForLayoutTransition(layout)
 
-      // 渲染后：Toggle 标签翻转为「展开侧边栏」，证明外部属性更新已反映到 UI
       expect(queryA11y(layout, '[aria-label="展开侧边栏"]')).toBeTruthy()
-      // 直接写属性不派发用户变更事件
       expect(eventCount).toBe(0)
     })
 
@@ -134,11 +130,9 @@ describe('WebUiLayout 组件（浏览器）', () => {
       await layout.updateComplete
       await nextFrame()
 
-      // header-glow 为 true 时，attribute 反射为布尔 true（§5：宿主属性默认值与反射）
       expect(layout.hasAttribute('header-glow')).toBe(true)
       expect(layout.headerGlow).toBe(true)
 
-      // 移除 attribute 后反射回 false，覆盖默认态
       layout.removeAttribute('header-glow')
       await layout.updateComplete
       expect(layout.headerGlow).toBe(false)
@@ -193,10 +187,8 @@ describe('WebUiLayout 组件（浏览器）', () => {
       const drawer = queryA11y(layout, 'web-ui-drawer') as HTMLElement
       await pollUntil(() => drawer.hasAttribute('open'), 'Expected drawer to open')
 
-      // 移动端 Toggle 点击只请求打开，由 Consumer 回写生效
       expect(requested).toEqual([true])
       expect(layout.sidebarOpen).toBe(true)
-      // drawer 的 open attribute 与 layout.sidebarOpen 一致（受控契约）
       expect(drawer.getAttribute('open')).toBe('')
     })
 
@@ -219,7 +211,6 @@ describe('WebUiLayout 组件（浏览器）', () => {
       const drawer = queryA11y(layout, 'web-ui-drawer') as HTMLElement
       const dialog = drawer.shadowRoot?.querySelector('dialog') as HTMLDialogElement
       expect(drawer.hasAttribute('open')).toBe(true)
-      // 直接写属性不派发用户变更请求
       expect(sidebarOpenRequests).toEqual([])
 
       dialog.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'Escape' }))
@@ -232,7 +223,6 @@ describe('WebUiLayout 组件（浏览器）', () => {
       await layout.updateComplete
       await waitForLayoutTransition(layout)
 
-      // 拒绝关闭请求：保持打开，且不泄漏底层 drawer 的 open-change
       expect(layout.sidebarOpen).toBe(true)
       expect(drawer.hasAttribute('open')).toBe(true)
       expect(sidebarOpenRequests).toEqual([false, false])
@@ -323,7 +313,6 @@ describe('WebUiLayout 组件（浏览器）', () => {
       handle.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 60 }))
       await layout.updateComplete
 
-      // 松手恰好派发一次受控请求，值为起始宽度 + 位移（向右拖 60px）
       expect(widthRequests).toHaveLength(1)
       expect(parseFloat(widthRequests[0])).toBeCloseTo(startWidth + 60, 0)
     })
@@ -346,7 +335,6 @@ describe('WebUiLayout 组件（浏览器）', () => {
 
       const handle = queryA11y(layout, '[role="separator"]') as HTMLElement
 
-      // 大幅增宽超过 max（向右拖）
       handle.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerId: 1, isPrimary: true }))
       await layout.updateComplete
       handle.dispatchEvent(
@@ -360,7 +348,6 @@ describe('WebUiLayout 组件（浏览器）', () => {
       expect(widthRequests).toHaveLength(1)
       expect(parseFloat(widthRequests[0])).toBeCloseTo(maxWidth, 0)
 
-      // 大幅收窄低于 min（向左拖）
       handle.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerId: 1, isPrimary: true }))
       await layout.updateComplete
       handle.dispatchEvent(
@@ -390,7 +377,6 @@ describe('WebUiLayout 组件（浏览器）', () => {
       const handle = queryA11y(layout, '[role="separator"]') as HTMLElement
       const collapsedWidth = parseFloat(layout.collapsedWidth)
 
-      // 大幅收窄，应被钳制在 collapsed-width（向左拖）
       handle.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerId: 1, isPrimary: true }))
       await layout.updateComplete
       handle.dispatchEvent(
@@ -458,7 +444,6 @@ describe('WebUiLayout 组件（浏览器）', () => {
       await waitForLayoutTransition(layout)
       const expectedWidth = startWidth + 32
 
-      // 键盘调整不直接派发；Commit（Enter）后走受控请求
       expect(widthRequests).toHaveLength(0)
       handle.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'Enter' }))
       await layout.updateComplete
@@ -510,7 +495,6 @@ describe('WebUiLayout 组件（浏览器）', () => {
       await layout.updateComplete
       await waitForLayoutTransition(layout)
 
-      // 取消跟手：不派发受控请求，宽度回交 prop 管辖
       expect(widthRequests).toHaveLength(0)
       expect(layout.sidebarWidth).toBe(startWidth)
     })
@@ -549,7 +533,6 @@ describe('WebUiLayout 组件（浏览器）', () => {
       )
       await layout.updateComplete
 
-      // 松手恰好收尾一次，值为起始宽度 + 位移
       expect(widthRequests).toHaveLength(1)
       expect(parseFloat(widthRequests[0])).toBeCloseTo(startWidth + 80, 0)
     })
@@ -572,7 +555,6 @@ describe('WebUiLayout 组件（浏览器）', () => {
       )
       await layout.updateComplete
 
-      // 缩到移动端宽度：桌面 layout 卸载，resize 防抖后 _checkMobile 必须终结悬挂手势
       await page.viewport(390, 844)
       await waitForLayoutTransition(layout)
       await pollUntil(
@@ -580,7 +562,6 @@ describe('WebUiLayout 组件（浏览器）', () => {
         'Expected desktop resize handle to unmount after switching to mobile'
       )
 
-      // 切回桌面后新手势不被旧的悬挂状态拦截
       await page.viewport(1280, 720)
       await waitForLayoutTransition(layout)
       await pollUntil(

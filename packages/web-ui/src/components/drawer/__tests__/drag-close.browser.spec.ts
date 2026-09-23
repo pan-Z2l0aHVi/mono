@@ -215,7 +215,6 @@ describe('WebUiDrawer 拖拽关闭（浏览器）', () => {
       await new Promise(resolve => setTimeout(resolve, 32))
     }
     await el.updateComplete
-    // 系统接管导致 pointercancel：与松手同语义，未达阈值则弹回。
     zone.dispatchEvent(
       new PointerEvent('pointercancel', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 530, clientY: 300 })
     )
@@ -281,7 +280,6 @@ describe('WebUiDrawer 拖拽关闭（浏览器）', () => {
     const events = openChangeEvents(el)
     await dragAndRelease(el, { x: 400, y: 0 })
 
-    // 悬停态已建立且派发过一次请求
     expect(el.open).toBe(true)
     expect(events).toHaveLength(1)
 
@@ -364,12 +362,10 @@ describe('WebUiDrawer 拖拽关闭（浏览器）', () => {
     )
     await el.updateComplete
 
-    // 拖拽中途 Consumer 写入 open=false：手势立即终止，不再等待 pointerup
     el.open = false
     await el.updateComplete
     expect(el.open).toBe(false)
 
-    // 关闭管线照常收敛
     await waitFor(() => !getDialog(el).open)
     expect(el.open).toBe(false)
 
@@ -618,7 +614,6 @@ describe('WebUiDrawer 拖拽关闭（浏览器）', () => {
       await waitFor(() => !closing.open, 5000)
       expect(closing.open).toBe(false)
 
-      // 反向：橡皮筋钳制在打开方向，松手弹回 → 仍打开
       const opening = createDrawer()
       opening.placement = placement
       opening.draggable = true
@@ -747,7 +742,6 @@ describe('WebUiDrawer 拖拽关闭（浏览器）', () => {
     await dragAndRelease(el, { x: 30, y: 0 }, 10)
     await waitFor(() => snapshot.length > 0, 1000)
 
-    // 收尾期间 dialog 上只有 CSS transition：没有 element.animate() 创建的动画对象。
     expect(snapshot.length).toBeGreaterThan(0)
     expect(snapshot.filter(animation => !(animation instanceof CSSTransition))).toHaveLength(0)
 

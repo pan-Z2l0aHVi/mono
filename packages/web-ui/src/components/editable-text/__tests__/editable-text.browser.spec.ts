@@ -299,7 +299,6 @@ describe('WebUiEditableText 布局契约（浏览器）', () => {
     expect(Math.abs(editing.width - display.width), '进入编辑不改变宽度').toBeLessThan(0.5)
     expect(Math.abs(editing.height - display.height), '进入编辑不改变高度').toBeLessThan(0.5)
 
-    // 继续输入直到折成多行：文本层带高盒，编辑层跟随等高，仍不内部滚动
     await userEvent.keyboard(' gamma delta epsilon zeta eta theta iota kappa lambda mu nu xi omicron pi rho sigma tau')
     await waitForUpdate(el)
     await nextFrame()
@@ -388,7 +387,6 @@ describe('WebUiEditableText 布局契约（浏览器）', () => {
     document.body.append(el)
     await waitForUpdate(el)
 
-    // 重连后的第一次重渲染：写入宽盒下的内联高度
     el.value = WRAPPED_TEXT
     await waitForUpdate(el)
     const wideHeight = editor.getBoundingClientRect().height
@@ -682,7 +680,6 @@ describe('WebUiEditableText 交互契约（浏览器）', () => {
       expect(el.hasAttribute('editing'), '监听器里的 focus 被重入守卫消费，不重新进入编辑').toBe(false)
       expect(changes, '取消不派发 change').toHaveLength(0)
 
-      // 用户随后点到别处：编辑态未重新进入，blur 不应把恢复后的原值提交出去
       await blurByFocusElsewhere()
       await waitForUpdate(el)
       expect(changes, '随后的 blur 不误提交').toHaveLength(0)

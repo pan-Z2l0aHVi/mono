@@ -588,7 +588,6 @@ describe('WebUiEditableText 组件契约', () => {
       expect(el.hasAttribute('editing'), '监听器里的 focus 被重入守卫消费，不重新进入编辑').toBe(false)
       expect(changes, '取消不派发 change').toHaveLength(0)
 
-      // 用户随后点到别处：编辑态已退出，blur 不应把恢复后的原值提交出去
       editorOf(el).focus()
       editorOf(el).blur()
       await waitForUpdate(el)

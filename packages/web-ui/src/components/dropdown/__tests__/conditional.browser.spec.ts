@@ -48,7 +48,6 @@ describe('WebUiDropdown 打开期实时渲染（浏览器）', () => {
     await pollUntil(() => Boolean(panel()?.style.left), 'Expected dropdown panel to be positioned')
     expect(panelItemTexts()).toEqual(['cut', 'copy'])
 
-    // 打开期实时渲染：新增项下一帧内迁入面板
     items.value = ['cut', 'copy', 'paste']
     await nextTick()
     await dropdown.updateComplete
@@ -57,7 +56,6 @@ describe('WebUiDropdown 打开期实时渲染（浏览器）', () => {
       'Expected the added menu item to migrate live into the panel'
     )
 
-    // 关闭恢复：新项随其余项回到宿主 light DOM，宿主不留残留
     dropdown.open = false
     await dropdown.updateComplete
     await pollUntil(
@@ -66,7 +64,6 @@ describe('WebUiDropdown 打开期实时渲染（浏览器）', () => {
     )
     expect(hostItemTexts(mountPoint)).toEqual(['cut', 'copy', 'paste'])
 
-    // 重开仍完整
     dropdown.open = true
     await dropdown.updateComplete
     await pollUntil(() => panelItemTexts().length === 3, 'Expected reopened panel to contain all items')
@@ -116,20 +113,17 @@ describe('WebUiDropdown 打开期实时渲染（浏览器）', () => {
     await dropdown.updateComplete
     await pollUntil(() => Boolean(panel()?.style.left), 'Expected dropdown panel to be positioned')
 
-    // 打开期在列表中段插入：面板按模板序展示，不得追加到末尾
     showMiddle.value = true
     await nextTick()
     await dropdown.updateComplete
     await pollUntil(() => panelItemTexts().length === 3, 'Expected the mid-list item to migrate live into the panel')
     expect(panelItemTexts()).toEqual(['cut', 'mid', 'copy'])
 
-    // 关闭归还按模板位：宿主 DOM 序与模板一致（无漂移）
     dropdown.open = false
     await dropdown.updateComplete
     await pollUntil(() => !panel(), 'Expected dropdown portal to dispose after close')
     expect(hostItemTexts(mountPoint)).toEqual(['cut', 'mid', 'copy'])
 
-    // 重开仍按模板序
     dropdown.open = true
     await dropdown.updateComplete
     await pollUntil(() => panelItemTexts().length === 3, 'Expected reopened panel to contain all items')

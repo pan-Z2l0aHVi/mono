@@ -181,7 +181,6 @@ describe('WebUiSvgDrawLines 组件', () => {
       await waitForUpdate(el)
 
       await expect(el.replay()).resolves.toBeUndefined()
-      // 第二次 replay 先 cancelAll 再重新设置，不应抛错
       await expect(el.replay()).resolves.toBeUndefined()
 
       el.remove()

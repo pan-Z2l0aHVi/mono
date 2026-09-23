@@ -87,8 +87,6 @@ button:active:not(:disabled) {
   outline-color: transparent;
 }
 
-/* ===== Variant: primary (默认) ===== */
-
 :host([variant='primary']) {
   --wui-button-color: var(--wui-color-on-accent, #fff);
   --wui-button-bg: var(--wui-color-accent, #08f);

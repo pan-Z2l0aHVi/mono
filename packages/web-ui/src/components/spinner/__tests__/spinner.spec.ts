@@ -133,7 +133,6 @@ describe('WebUiSpinner 组件', () => {
       WebUiSpinner.hide()
 
       vi.advanceTimersByTime(10000)
-      // 定时器已清除，advanceTimersByTime 不会触发 hide 回调
       expect(document.body.contains(el)).toBe(false)
     })
   })

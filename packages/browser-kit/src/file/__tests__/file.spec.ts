@@ -28,7 +28,7 @@ describe('file 测试', () => {
       const result = await fileToBase64(file)
 
       expect(result).toMatch(/^data:text\/plain;base64,/)
-      expect(result).toContain('aGVsbG8=') // 'hello' 的 base64
+      expect(result).toContain('aGVsbG8=')
     })
 
     it('getImageInfo 应当返回图片的宽高', async () => {

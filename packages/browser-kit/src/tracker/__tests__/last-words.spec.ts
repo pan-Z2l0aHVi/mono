@@ -94,30 +94,25 @@ describe('亡语插件测试用例', () => {
       .use(defineLastWords())
       .make()
 
-    // 离线时 track，数据积压
     tracker.track({ event: 'first' })
     await settleMicrotasks()
     expect(transport).not.toHaveBeenCalled()
 
-    // 第一次 hidden → flush 积压数据
     Object.defineProperty(document, 'visibilityState', { value: 'hidden', configurable: true })
     document.dispatchEvent(new Event('visibilitychange'))
     await waitUntil(() => transport.mock.calls.length === 1)
 
     expect(transport.mock.calls[0][0]).toEqual([{ event: 'first' }])
 
-    // 页面重新可见 → 重置 hasSent
     Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true })
     document.dispatchEvent(new Event('visibilitychange'))
 
     // flush 保持暂停状态，无需再次触发离线事件。
 
-    // 再次离线 track
     tracker.track({ event: 'second' })
     await settleMicrotasks()
     expect(transport).toHaveBeenCalledTimes(1)
 
-    // 第二次 hidden → 应再次 flush
     Object.defineProperty(document, 'visibilityState', { value: 'hidden', configurable: true })
     document.dispatchEvent(new Event('visibilitychange'))
     await waitUntil(() => transport.mock.calls.length === 2)

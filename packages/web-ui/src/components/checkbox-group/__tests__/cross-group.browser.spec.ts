@@ -33,7 +33,6 @@ describe('CheckboxGroup 跨组移动成员（浏览器）', () => {
     await checkboxB.updateComplete
     expect(groupB.value).toEqual(['b'])
 
-    // 跨组移动：B 的成员移入 A 的深层包裹内
     const wrapper = groupA.querySelector('div')!
     wrapper.appendChild(checkboxB)
     await new Promise(resolve => setTimeout(resolve, 0))
@@ -99,13 +98,11 @@ describe('CheckboxGroup 跨组移动成员（浏览器）', () => {
     await Promise.all([checkboxA.updateComplete, groupA.updateComplete, groupB.updateComplete])
     await new Promise(resolve => setTimeout(resolve, 0))
 
-    // 新组接管值归属
     groupB.value = ['a']
     await groupB.updateComplete
     await checkboxA.updateComplete
     expect(checkboxA.checked).toBe(true)
 
-    // 点击收敛到 groupB
     let groupBChanges = 0
     const onGroupBChange = () => {
       groupBChanges += 1

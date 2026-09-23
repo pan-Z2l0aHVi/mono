@@ -23,7 +23,6 @@ afterEach(() => {
   document.body.replaceChildren()
 })
 
-/** 建一套 anchored panel；嵌套场景把 anchor 与面板都挂进父级面板。 */
 function makePanel(parent: HTMLElement = document.body): Harness {
   const requestClose = vi.fn<() => void>()
   const host = document.createElement('div')
@@ -69,7 +68,6 @@ describe('anchored panel 的退场第三态', () => {
     api.open()
     const closing = api.close(() => false)
 
-    // 退场在等过渡：面板仍在场，只是暂缓仲裁。
     expect(__openOverlayLayerCount()).toBe(1)
     const event = pressEscape()
 
@@ -90,7 +88,6 @@ describe('anchored panel 的退场第三态', () => {
 
     expect(await closing).toBe(false)
     expect(__openOverlayLayerCount()).toBe(1)
-    // 新会话恒不暂缓：退场被打断后面板重新可关闭。
     pressEscape()
     expect(requestClose).toHaveBeenCalledTimes(1)
   })

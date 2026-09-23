@@ -48,7 +48,6 @@ describe('normalizeNumber', () => {
   })
 
   it('min 大于 max 时以 clamp 顺序为准（先 max 后 min）', () => {
-    // Math.min(max, Math.max(min, value)) 的既定语义
     expect(normalizeNumber(5, 10, 0, -1)).toBe(0)
   })
 })

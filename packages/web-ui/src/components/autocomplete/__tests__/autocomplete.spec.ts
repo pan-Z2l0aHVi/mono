@@ -1252,7 +1252,6 @@ describe('WebUiAutocomplete 组件', () => {
       await waitForUpdate(el)
       expect(defaultTrigger(el).shadowRoot?.activeElement).toBe(triggerInput(el))
 
-      // 切换到 textarea 自定义触发器
       el.innerHTML = `${TEXTAREA_TRIGGER}${OPTIONS_HTML}`
       await flushSlotChange(el)
 
@@ -1261,7 +1260,6 @@ describe('WebUiAutocomplete 组件', () => {
       expect(document.activeElement).toBe(customTrigger(el))
       expect(customTriggerInner(el).tagName).toBe('TEXTAREA')
 
-      // 移除自定义触发器，回落默认 web-ui-input
       el.innerHTML = OPTIONS_HTML
       await flushSlotChange(el)
 

@@ -217,7 +217,6 @@ describe('WebUiButton 组件（浏览器）', () => {
     expect(btn.shadowRoot!.querySelectorAll('web-ui-icon')).toHaveLength(1)
     expect(btn.shadowRoot!.querySelector('slot:not([name])')).toBeNull()
 
-    // 不可点击 + 不可聚焦（原生 disabled 语义）
     expect(inner.disabled).toBe(true)
     inner.focus()
     expect(document.activeElement).not.toBe(inner)
@@ -240,7 +239,6 @@ describe('WebUiButton 组件（浏览器）', () => {
 
     expect(btn.dataset.wuiPointerFocus).toBe('true')
 
-    // Tab 键恢复键盘 focus ring：focusin 清除 pointer-focus 标记
     inner.blur()
     document.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'Tab' }))
     inner.focus()

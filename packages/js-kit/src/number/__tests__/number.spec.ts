@@ -51,7 +51,6 @@ describe('formatFileSize 测试', () => {
   })
 
   it('超过 TB 上限时回退到最大单位，而非 undefined', () => {
-    // 1 PB = 1024^5，sizes 只有 5 项（最大 TB）；越界前应回退
     expect(formatFileSize(1024 ** 5)).toBe('1024 TB')
     expect(formatFileSize(1024 ** 6)).toBe('1048576 TB')
   })
