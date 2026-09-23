@@ -1,7 +1,17 @@
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
+import { cdp } from 'vite-plus/test/browser'
 
 import type { ThemeMotion, WebUiTheme } from '..'
 import '..'
+
+interface CdpSession {
+  send: (method: string, params?: Record<string, unknown>) => Promise<unknown>
+}
+
+async function emulateColorScheme(value: 'light' | 'dark'): Promise<void> {
+  const session = cdp() as unknown as CdpSession
+  await session.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value }] })
+}
 
 function createRootTheme(motion: ThemeMotion = 'full'): WebUiTheme {
   const theme = document.createElement('web-ui-theme') as WebUiTheme
@@ -87,12 +97,59 @@ function wrapStartViewTransition() {
   }
 }
 
-afterEach(() => {
+afterEach(async () => {
   window.dispatchEvent(new KeyboardEvent('keydown'))
   document.body.replaceChildren()
+  await emulateColorScheme('light')
 })
 
 describe('theme transition（浏览器）', () => {
+  it('OS light 下 light→system 不启动 View Transition', async () => {
+    await emulateColorScheme('light')
+    const wrapper = wrapStartViewTransition()
+    const theme = createRootTheme()
+    await theme.updateComplete
+
+    theme.appearance = 'system'
+    await theme.updateComplete
+
+    expect(wrapper.current).toBeUndefined()
+    expect(theme.appearance).toBe('system')
+    expect(theme.resolvedAppearance).toBe('light')
+    wrapper.restore()
+  })
+
+  it('OS dark 下 light→system 使用 dark 扩大方向', async () => {
+    await emulateColorScheme('dark')
+    const wrapper = wrapStartViewTransition()
+    const theme = createRootTheme()
+    await theme.updateComplete
+
+    theme.appearance = 'system'
+    const transition = wrapper.current
+    expect(transition).toBeDefined()
+    await transition!.ready
+    await Promise.resolve()
+    expect(theme.appearance).toBe('system')
+    expect(theme.resolvedAppearance).toBe('dark')
+
+    const reveal = document
+      .getAnimations()
+      .find(
+        animation =>
+          ((animation.effect as KeyframeEffect | null)?.pseudoElement ?? '') === '::view-transition-new(root)'
+      )
+    expect(reveal).toBeDefined()
+    const frames = (reveal!.effect as KeyframeEffect).getKeyframes()
+    expect(frames[0].clipPath as string).toMatch(/^circle\(0px at /)
+    expect(frames[1].clipPath as string).toMatch(/^circle\(\d+px at /)
+    expect(getComputedStyle(document.documentElement, '::view-transition-old(root)').zIndex).toBe('1')
+    expect(getComputedStyle(document.documentElement, '::view-transition-new(root)').zIndex).toBe('2')
+
+    await transition!.finished
+    wrapper.restore()
+  })
+
   it('根主题在 ::view-transition-new(root) 上创建圆形揭示并在结束后清理', async () => {
     const wrapper = wrapStartViewTransition()
     const theme = createRootTheme()
@@ -115,7 +172,9 @@ describe('theme transition（浏览器）', () => {
     expect(reveal).toBeDefined()
     const effect = reveal!.effect as KeyframeEffect
     expect(effect.target).toBe(document.documentElement)
-    expect((effect.getKeyframes()[0].clipPath as string).startsWith('circle(0px at ')).toBe(true)
+    const revealFrames = effect.getKeyframes()
+    expect((revealFrames[0].clipPath as string).startsWith('circle(0px at ')).toBe(true)
+    expect(revealFrames[1].clipPath as string).toMatch(/^circle\(\d+px at /)
     expect(getComputedStyle(document.documentElement, '::view-transition-old(root)').zIndex).toBe('1')
     expect(getComputedStyle(document.documentElement, '::view-transition-new(root)').zIndex).toBe('2')
     expect(
@@ -144,7 +203,11 @@ describe('theme transition（浏览器）', () => {
           ((animation.effect as KeyframeEffect | null)?.pseudoElement ?? '') === '::view-transition-old(root)'
       )
     expect(conceal).toBeDefined()
-    expect((conceal!.effect as KeyframeEffect).target).toBe(document.documentElement)
+    const concealEffect = conceal!.effect as KeyframeEffect
+    expect(concealEffect.target).toBe(document.documentElement)
+    const concealFrames = concealEffect.getKeyframes()
+    expect(concealFrames[0].clipPath as string).toMatch(/^circle\(\d+px at /)
+    expect((concealFrames[1].clipPath as string).startsWith('circle(0px at ')).toBe(true)
     expect(getComputedStyle(document.documentElement, '::view-transition-old(root)').zIndex).toBe('2')
     expect(getComputedStyle(document.documentElement, '::view-transition-new(root)').zIndex).toBe('1')
     await reverse.finished
