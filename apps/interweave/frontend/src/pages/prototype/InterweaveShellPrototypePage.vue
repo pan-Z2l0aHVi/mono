@@ -521,7 +521,7 @@ function resetFilters() {
 function openSearch() {
   searchOpen.value = true
   void nextTick(() => {
-    searchInputRef.value?.shadowRoot?.querySelector('input')?.focus()
+    searchInputRef.value?.focus()
   })
 }
 function closeSearch() {
@@ -693,9 +693,11 @@ function startQueueRename(item: (typeof addQueue)[number]) {
   queueRenamingId.value = item.id
   queueNameDraft.value = item.name
   void nextTick(() => {
-    const input = queueRenameInputRef.value?.shadowRoot?.querySelector<HTMLInputElement>('input')
-    input?.focus()
-    input?.select()
+    const input = queueRenameInputRef.value
+    if (!input) return
+    input.focus()
+    // Keep rename's select-all semantics without reaching into web-ui-input's shadow root.
+    document.execCommand('selectAll')
   })
 }
 
