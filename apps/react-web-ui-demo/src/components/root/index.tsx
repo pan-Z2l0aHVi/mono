@@ -1,4 +1,33 @@
-import type { WebUiSelect } from '@greypan/web-ui'
+import type { WebUiIcon, WebUiSelect } from '@greypan/web-ui'
+import {
+  heroiconsBarsArrowDown16Solid,
+  heroiconsCheck16Solid,
+  lucideArrowUpToLine,
+  lucideBell,
+  lucideCheck,
+  lucideChevronDown,
+  lucideCode,
+  lucideCopy,
+  lucideEllipsisVertical,
+  lucideEye,
+  lucideFileText,
+  lucideImage,
+  lucideInbox,
+  lucideInfo,
+  lucideLayoutGrid,
+  lucideListFilter,
+  lucideListRestart,
+  lucideLoaderCircle,
+  lucidePencil,
+  lucidePenLine,
+  lucideRefreshCw,
+  lucideSearch,
+  lucideSettings,
+  lucideSlidersHorizontal,
+  lucideTag,
+  lucideUser,
+  radixIconsPanelLeftMinimized
+} from '@greypan/web-ui/icons'
 import { Link, Outlet, useRouter, useRouterState } from '@tanstack/react-router'
 import { useEffect, useRef, useState } from 'react'
 import { ErrorBoundary } from 'react-error-boundary'
@@ -58,43 +87,53 @@ function getInitialSidebarWidth(): string {
   return typeof width === 'string' && /^\d+(\.\d+)?px$/.test(width) ? width : DEFAULT_SIDEBAR_WIDTH
 }
 
+type NavIcon = NonNullable<WebUiIcon['icon']>
+
 interface NavItem {
   path: string
   label: string
+  icon: NavIcon
 }
 
 const navItems: NavItem[] = [
-  { path: '/home', label: '首页' },
-  { path: '/components/avatar', label: 'Avatar 头像' },
-  { path: '/components/badge', label: 'Badge 徽标' },
-  { path: '/components/button', label: 'Button 按钮' },
-  { path: '/components/icon', label: 'Icon 图标' },
-  { path: '/components/input', label: 'Input 输入框' },
-  { path: '/components/textarea', label: 'Textarea 文本域' },
-  { path: '/components/editable-text', label: 'EditableText 可编辑文本' },
-  { path: '/components/theme', label: 'Theme 主题' },
-  { path: '/components/input-number', label: 'InputNumber 数字输入框' },
-  { path: '/components/select', label: 'Select 下拉选择' },
-  { path: '/components/autocomplete', label: 'Autocomplete 自动补全' },
-  { path: '/components/dropdown', label: 'Dropdown 下拉菜单' },
-  { path: '/components/collapse', label: 'Collapse 折叠面板' },
-  { path: '/components/dialog', label: 'Dialog 对话框' },
-  { path: '/components/drawer', label: 'Drawer 抽屉' },
-  { path: '/components/image-preview', label: 'ImagePreview 图片预览' },
-  { path: '/components/empty', label: 'Empty 空状态' },
-  { path: '/components/tooltip', label: 'Tooltip 工具提示' },
-  { path: '/components/switch', label: 'Switch 开关' },
-  { path: '/components/slider', label: 'Slider 滑块' },
-  { path: '/components/radio', label: 'Radio 单选框' },
-  { path: '/components/checkbox', label: 'Checkbox 复选框' },
-  { path: '/components/segmented', label: 'Segmented 分段控制器' },
-  { path: '/components/spinner', label: 'Spinner 加载指示器' },
-  { path: '/components/popover', label: 'Popover 气泡卡片' },
-  { path: '/components/context-menu', label: 'ContextMenu 右键菜单' },
-  { path: '/components/toast', label: 'Toast 通知' },
-  { path: '/components/svg-draw-lines', label: 'SVGDrawLines 描边动画' },
-  { path: '/components/back-top', label: 'BackTop 回到顶部' }
+  { path: '/home', label: '首页', icon: lucideLayoutGrid },
+  { path: '/components/avatar', label: 'Avatar 头像', icon: lucideUser },
+  { path: '/components/badge', label: 'Badge 徽标', icon: lucideTag },
+  { path: '/components/button', label: 'Button 按钮', icon: lucideCode },
+  { path: '/components/icon', label: 'Icon 图标', icon: lucideEye },
+  { path: '/components/input', label: 'Input 输入框', icon: lucidePenLine },
+  { path: '/components/textarea', label: 'Textarea 文本域', icon: lucideFileText },
+  { path: '/components/editable-text', label: 'EditableText 可编辑文本', icon: lucidePencil },
+  { path: '/components/theme', label: 'Theme 主题', icon: lucideSettings },
+  { path: '/components/input-number', label: 'InputNumber 数字输入框', icon: lucideListRestart },
+  { path: '/components/select', label: 'Select 下拉选择', icon: lucideChevronDown },
+  { path: '/components/autocomplete', label: 'Autocomplete 自动补全', icon: lucideSearch },
+  { path: '/components/dropdown', label: 'Dropdown 下拉菜单', icon: lucideChevronDown },
+  { path: '/components/collapse', label: 'Collapse 折叠面板', icon: heroiconsBarsArrowDown16Solid },
+  { path: '/components/dialog', label: 'Dialog 对话框', icon: lucideInbox },
+  { path: '/components/drawer', label: 'Drawer 抽屉', icon: radixIconsPanelLeftMinimized },
+  { path: '/components/image-preview', label: 'ImagePreview 图片预览', icon: lucideImage },
+  { path: '/components/empty', label: 'Empty 空状态', icon: lucideInbox },
+  { path: '/components/tooltip', label: 'Tooltip 工具提示', icon: lucideInfo },
+  { path: '/components/switch', label: 'Switch 开关', icon: lucideRefreshCw },
+  { path: '/components/slider', label: 'Slider 滑块', icon: lucideSlidersHorizontal },
+  { path: '/components/radio', label: 'Radio 单选框', icon: lucideCheck },
+  { path: '/components/checkbox', label: 'Checkbox 复选框', icon: heroiconsCheck16Solid },
+  { path: '/components/segmented', label: 'Segmented 分段控制器', icon: lucideListFilter },
+  { path: '/components/spinner', label: 'Spinner 加载指示器', icon: lucideLoaderCircle },
+  { path: '/components/popover', label: 'Popover 气泡卡片', icon: lucideCopy },
+  { path: '/components/context-menu', label: 'ContextMenu 右键菜单', icon: lucideEllipsisVertical },
+  { path: '/components/toast', label: 'Toast 通知', icon: lucideBell },
+  { path: '/components/svg-draw-lines', label: 'SVGDrawLines 描边动画', icon: lucidePencil },
+  { path: '/components/back-top', label: 'BackTop 回到顶部', icon: lucideArrowUpToLine }
 ]
+
+const navItemClass =
+  'flex items-center gap-2 w-full min-w-9 min-h-9 px-2.5 border-0 rounded-full font-medium cursor-pointer text-left transition-all duration-150 text-[#5b5b66] active:bg-[rgb(34_33_42/0.12)] dark:text-(--wui-color-text) dark:active:bg-white/15 data-[active=true]:text-(--wui-color-accent,#08f) data-[active=true]:bg-(--wui-color-surface-control,#dfdfdf) data-[active=true]:hover:bg-[color-mix(in_srgb,var(--wui-color-surface-control,#dfdfdf)_90%,var(--wui-color-text,#1b1b1b))] data-[active=true]:active:bg-[color-mix(in_srgb,var(--wui-color-surface-control,#dfdfdf)_70%,var(--wui-color-text,#1b1b1b))]'
+
+function isNavActive(pathname: string, path: string) {
+  return pathname === path || pathname === `${path}/`
+}
 
 export function Root() {
   const [themeAppearance, setThemeAppearance] = useState<ThemeAppearance>(getInitialThemeAppearance)
@@ -103,7 +142,7 @@ export function Root() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [desktopSidebarWidth, setDesktopSidebarWidth] = useState<string>(getInitialSidebarWidth)
-  const navSidebarRef = useRef<HTMLElement>(null)
+  const navSidebarRef = useRef<HTMLDivElement>(null)
   const [isMobileSidebar, setIsMobileSidebar] = useState(() => window.matchMedia('(max-width: 640px)').matches)
   useEffect(() => {
     const mq = window.matchMedia('(max-width: 640px)')
@@ -228,23 +267,42 @@ export function Root() {
                 </web-ui-option>
               </web-ui-select>
             </div>
-            <div slot="sidebar" className="flex h-full min-h-0 flex-col">
-              <div className="shrink-0 px-5 pt-4 pb-2 text-xs font-semibold uppercase text-(--wui-color-text-secondary) max-[640px]:px-0">
-                组件列表
-              </div>
-              <nav ref={navSidebarRef} className="min-h-0 flex-1 p-2 max-[640px]:px-0 overflow-y-auto">
-                {navItems.map(item => (
-                  <Link
-                    key={item.path}
-                    to={item.path}
-                    className={
-                      'flex items-center h-8 my-1 rounded-full px-3 py-2 text-sm leading-5 text-(--wui-color-text) transition-[background-color] duration-150 hover:bg-[color-mix(in_srgb,var(--wui-color-surface-raised)_80%,var(--wui-color-text))]' +
-                      (pathname === item.path ? ' bg-(--wui-color-accent)! text-(--wui-color-on-accent)!' : '')
-                    }
-                  >
-                    <span className="truncate">{item.label}</span>
-                  </Link>
-                ))}
+            <div
+              slot="sidebar"
+              ref={navSidebarRef}
+              className="relative z-20 h-full min-h-0 overflow-y-auto pt-14 pb-4 px-2 max-[640px]:px-0"
+              aria-label="应用导航"
+            >
+              <nav className="grid gap-1" aria-label="主导航">
+                {navItems.map(item => {
+                  const active = isNavActive(pathname, item.path)
+                  return (
+                    <Link
+                      key={item.path}
+                      to={item.path}
+                      className={
+                        navItemClass +
+                        (active ? '' : ' hover:bg-black/4 dark:hover:bg-white/6') +
+                        (sidebarCollapsed ? ' justify-center' : '')
+                      }
+                      data-active={active}
+                      aria-current={active ? 'page' : undefined}
+                      aria-label={item.label}
+                    >
+                      <web-ui-tooltip
+                        portal
+                        placement="right"
+                        content={sidebarCollapsed ? item.label : ''}
+                        disabled={!sidebarCollapsed}
+                      >
+                        <web-ui-icon icon={item.icon}></web-ui-icon>
+                      </web-ui-tooltip>
+                      {!sidebarCollapsed ? (
+                        <span className="overflow-hidden whitespace-nowrap text-sm">{item.label}</span>
+                      ) : null}
+                    </Link>
+                  )
+                })}
               </nav>
             </div>
             {/* 正文 gutter 归 shell 所有：`web-ui-layout` 的 main 不带 padding，逐页加会漏页。 */}
