@@ -76,7 +76,7 @@ aside {
     /* 深色下比 page 浅一档的专用表面 token。不直接复用 --wui-color-surface-overlay：
        该 token 同时服务 dialog/drawer/toast，整体抬升会带偏不在本次范围内的表面。
        浅色值与 overlay 一致，无 theme 时回退到同一字面量，行为不变。 */
-    background-color: var(--wui-color-surface-sidebar, rgb(246 246 246 / 0.82));
+    background-color: var(--wui-color-surface-sidebar, rgb(229 229 234 / 0.82));
   }
 
   .sidebar-toggle-area {
