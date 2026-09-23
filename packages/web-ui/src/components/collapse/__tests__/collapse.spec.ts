@@ -342,7 +342,6 @@ describe('WebUiCollapse 组件', () => {
 
       const button = queryTriggerButton(el)
       expect(button.getAttribute('aria-expanded')).toBe('false')
-      // aria-controls 指向 shadow 内 track id
       const track = el.shadowRoot?.querySelector('.wui-collapse-track') as HTMLElement
       expect(track.id).not.toBe('')
       expect(button.getAttribute('aria-controls')).toBe(track.id)
@@ -522,7 +521,6 @@ describe('WebUiCollapse 组件', () => {
       const container = el.shadowRoot?.querySelector('.wui-collapse-content') as HTMLElement
       const inner = el.shadowRoot?.querySelector('.wui-collapse-inner') as HTMLElement
 
-      // 默认关闭稳态 hidden → 切 keep-mounted 应转为内部 inert
       el.open = false
       await waitForUpdate(el)
       expect(container.hasAttribute('hidden')).toBe(true)
@@ -532,7 +530,6 @@ describe('WebUiCollapse 组件', () => {
       expect(container.hasAttribute('hidden')).toBe(false)
       expect(inner.getAttribute('inert')).toBe('')
 
-      // 反向：keep-mounted 关闭稳态 → 切回默认应转为容器 hidden
       el.keepMounted = false
       await waitForUpdate(el)
       expect(container.hasAttribute('hidden')).toBe(true)

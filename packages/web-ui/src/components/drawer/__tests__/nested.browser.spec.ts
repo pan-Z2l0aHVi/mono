@@ -79,7 +79,6 @@ describe('WebUiDrawer nested 层叠（浏览器）', () => {
     await parent.updateComplete
     await openInSequence(parent)
 
-    // 打开子层（子层在父的 default slot 内，声明式嵌套）
     child.open = true
     await child.updateComplete
     await waitForOpenTransition(child)
@@ -131,7 +130,6 @@ describe('WebUiDrawer nested 层叠（浏览器）', () => {
     await parent.updateComplete
     await openInSequence(parent, child)
 
-    // 两层都开：documentElement overflow 被锁定
     expect(document.documentElement.style.overflow).toBe('hidden')
 
     // 关闭子层：仍锁定（父层 lease 在）
@@ -180,21 +178,18 @@ describe('WebUiDrawer 同级（非 DOM 嵌套）层叠', () => {
 
     const first = createDrawer('drawer-1')
     const second = createDrawer('drawer-2')
-    // 同级挂载，非嵌套
     theme.append(first)
     theme.append(second)
     await first.updateComplete
     await second.updateComplete
     await openInSequence(first, second)
 
-    // 后开的是顶层：Esc 只作用于它。
     pressEscape(getDialog(second))
     await second.updateComplete
     await waitFor(() => !getDialog(second).open, 4000)
     expect(second.open).toBe(false)
     expect(first.open).toBe(true)
 
-    // 顶层空出后由先开的接管：Esc 现在作用于它。
     pressEscape(getDialog(first))
     await first.updateComplete
     await waitFor(() => !getDialog(first).open, 4000)
@@ -218,13 +213,11 @@ describe('WebUiDrawer 同级（非 DOM 嵌套）层叠', () => {
     expect(d2.open).toBe(true)
     expect(d1.open).toBe(true)
 
-    // 关闭**中间层** d2：不影响仍在顶层的…（d3 已关，此时顶层是 d2 之下的 d1）
     d2.open = false
     await d2.updateComplete
     await waitFor(() => !getDialog(d2).open, 4000)
     expect(d1.open).toBe(true)
 
-    // 剩下的 d1 重新成为唯一顶层：Esc 关闭它。
     pressEscape(getDialog(d1))
     await d1.updateComplete
     await waitFor(() => !getDialog(d1).open, 4000)

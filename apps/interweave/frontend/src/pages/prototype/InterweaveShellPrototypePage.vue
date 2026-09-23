@@ -56,7 +56,6 @@ import { useRouter } from 'vue-router'
 
 import { canGoBack, canGoForward } from '@/composables/useHistoryNav'
 
-// --- Navigation ---
 const router = useRouter()
 const activeNav = ref<'library' | 'map'>('library')
 const navDrawRefs = ref<Record<'library' | 'map', WebUiSvgDrawLines | null>>({
@@ -81,7 +80,6 @@ function selectNav(next: 'library' | 'map') {
   })
 }
 
-// --- Sidebar toggle ---
 const sidebarCollapsed = ref(false)
 const sidebarOpen = ref(false)
 const desktopSidebarWidth = ref('240px')
@@ -106,7 +104,6 @@ function updateSidebarOpen(event: WebUiEvent<WebUiLayout, 'sidebar-open-change'>
   sidebarOpen.value = event.detail.open
 }
 
-// --- Tags ---
 const tagColors: Record<string, string> = {
   设计: 'bg-blue-100 text-blue-700 dark:bg-blue-400/15 dark:text-blue-200',
   开发: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-400/15 dark:text-emerald-200',
@@ -131,7 +128,6 @@ function getTagClass(tag: string) {
   return tagColors[tag] ?? defaultTagClass
 }
 
-// --- Resource data ---
 interface ResourceOrigin {
   id: string
   kind: 'local' | 'link'
@@ -314,7 +310,6 @@ const resources = reactive<Resource[]>([
   }
 ])
 
-// --- Selection & Drawer ---
 const selectedId = ref<string | null>(null)
 const drawerOpen = ref(false)
 const previewDrawerOpen = ref(false)
@@ -339,22 +334,6 @@ function handlePreviewDrawerOpenChange(event: WebUiEvent<WebUiDrawer, 'open-chan
   previewDrawerOpen.value = event.detail.open
 }
 
-async function syncDrawerSheetHeight(drawer: WebUiDrawer | undefined) {
-  if (!drawer) return
-  await drawer.updateComplete
-  const dialog = drawer.shadowRoot?.querySelector('dialog')
-  if (!dialog) return
-  dialog.style.height = isMobile.value && drawer.placement === 'bottom' ? '80vh' : ''
-}
-
-watch([isMobile, drawerOpen, previewDrawerOpen], () => {
-  void nextTick(() => {
-    void syncDrawerSheetHeight(detailDrawerRef.value)
-    void syncDrawerSheetHeight(previewDrawerRef.value)
-  })
-})
-
-// --- Icon mapping ---
 const resourceTypeIcons: Record<Resource['resourceType'], typeof lucideFile> = {
   image: lucideImage,
   video: lucideFilm,
@@ -421,7 +400,6 @@ function getSourceIcon(resource: Resource) {
   return resource.sourceType === 'link' ? lucideLink : lucideFile
 }
 
-// "打开方式" 候选应用，按资源类型分组
 const openWithApps: Partial<Record<Resource['resourceType'], Array<{ label: string; icon: typeof lucideEye }>>> = {
   image: [
     { label: '预览', icon: lucideEye },
@@ -453,7 +431,6 @@ const currentApps = computed(() => {
 
 const allTags = [...new Set(resources.flatMap(r => r.tags ?? []))].sort()
 
-// --- Filter state ---
 const filterSource = ref<string>('all')
 const filterType = ref<string>('all')
 const filterBroken = ref<string>('all')
@@ -468,6 +445,7 @@ const searchOpen = ref(false)
 const selectionMode = ref(false)
 const searchQuery = ref('')
 const searchInputRef = ref<WebUiInput>()
+const searchContainerRef = ref<HTMLElement | null>(null)
 const filteredResources = computed(() => {
   const query = searchQuery.value.trim().toLowerCase()
 
@@ -524,11 +502,25 @@ function resetFilters() {
 function openSearch() {
   searchOpen.value = true
   void nextTick(() => {
-    searchInputRef.value?.shadowRoot?.querySelector('input')?.focus()
+    searchInputRef.value?.focus()
   })
 }
 function closeSearch() {
   searchOpen.value = false
+}
+function handleSearchFocusout(event: FocusEvent) {
+  const container = searchContainerRef.value
+  if (event.relatedTarget instanceof Node) {
+    if (container?.contains(event.relatedTarget)) return
+    closeSearch()
+    return
+  }
+  // 触发器与输入框在同一容器内换位时 relatedTarget 可能为空，等 DOM 稳定后再判断焦点归属。
+  void nextTick(() => {
+    const active = document.activeElement
+    if (active instanceof Node && container?.contains(active)) return
+    closeSearch()
+  })
 }
 function handleSearchInput(event: WebUiEvent<WebUiInput, 'input'>) {
   searchQuery.value = event.target.value
@@ -552,7 +544,6 @@ function handleSortChange(e: WebUiEvent<WebUiSelect, 'change'>) {
   sortOrder.value = e.target.value as SortOption
 }
 
-// --- Context menu ---
 const contextResource = ref<Resource | null>(null)
 const ctxMenuRef = ref<WebUiContextMenu>()
 function onResourceContextmenu(resource: Resource, event: MouseEvent) {
@@ -561,7 +552,6 @@ function onResourceContextmenu(resource: Resource, event: MouseEvent) {
   ctxMenuRef.value?.openAt(event.clientX, event.clientY)
 }
 
-// --- Resource rename (web-ui-editable-text) ---
 // 空闲态渲染普通 span；只有两个入口触发编辑：列表右键菜单「重命名」与抽屉标题编辑按钮。
 // 入口先把 editingNameKey 指向目标，editable-text 随键渲染后再进入编辑；提交（change）或
 // 取消（cancel）后清空键值回到普通 span。编辑交互（Enter 与 blur 都提交，仅 Esc 取消并恢复
@@ -589,7 +579,6 @@ function setNameEditorRef(id: string) {
   return callback
 }
 
-/** 列表行名的排版类名：broken 态与正常态只差颜色与删除线。 */
 const resourceNameClass = (resource: Resource) => [
   'text-sm font-medium leading-snug wrap-break-word line-clamp-2 max-w-[60%] max-[640px]:max-w-full',
   resource.broken
@@ -601,7 +590,6 @@ function startResourceRename(resource: Resource, surface: 'list' | 'drawer' = 'l
   const key = surface === 'drawer' ? DRAWER_TITLE_EDITOR_KEY : resource.id
   editingNameKey.value = key
   void nextTick(() => {
-    // 公共 select()：进入编辑态并全选内容，两个入口同一写法
     resourceNameEditors.value[key]?.select()
   })
 }
@@ -619,7 +607,6 @@ function handleResourceNameChange(event: WebUiEvent<WebUiEditableText, 'change'>
   stopResourceRename()
 }
 
-// --- Batch selection ---
 const checkedIds = ref<string[]>([])
 const checkedResources = computed(() => resources.filter(resource => checkedIds.value.includes(resource.id)))
 const allVisibleChecked = computed(
@@ -653,7 +640,6 @@ function handleResourceRowClick(resource: Resource) {
   selectResource(resource.id)
 }
 
-// --- Delete confirmation ---
 const deleteConfirmOpen = ref(false)
 const deleteTargetResource = ref<Resource | null>(null)
 const deleteBatchCount = ref(0)
@@ -678,7 +664,6 @@ function handleDeleteCancel() {
   deleteConfirmOpen.value = false
 }
 
-// --- Preview from context menu ---
 function handleContextPreview() {
   if (!contextResource.value) return
   selectedId.value = contextResource.value.id
@@ -686,7 +671,6 @@ function handleContextPreview() {
   previewDrawerOpen.value = true
 }
 
-// --- Add dialog (prototype only) ---
 const addDialogOpen = ref(false)
 const addDragActive = ref(false)
 const addPasteCaptured = ref(false)
@@ -738,9 +722,10 @@ function startQueueRename(item: (typeof addQueue)[number]) {
   queueRenamingId.value = item.id
   queueNameDraft.value = item.name
   void nextTick(() => {
-    const input = queueRenameInputRef.value?.shadowRoot?.querySelector<HTMLInputElement>('input')
-    input?.focus()
-    input?.select()
+    const input = queueRenameInputRef.value
+    if (!input) return
+    input.focus()
+    input.select()
   })
 }
 
@@ -788,7 +773,6 @@ function removeAddQueue(item: (typeof addQueue)[number]) {
   })
 }
 
-// --- Edit tags dialog ---
 type EditTagsTarget = Resource | (typeof addQueue)[number]
 const editTagsDialogOpen = ref(false)
 const editTagsTarget = ref<EditTagsTarget | null>(null)
@@ -812,7 +796,7 @@ function openEditTagsDialog(target: EditTagsTarget) {
   editTagsDialogOpen.value = true
   void nextTick(() => {
     // 走组件公共 focus()：它委托到当前生效触发器（默认 web-ui-input 已重定向到内部
-    // 原生控件）。不能改为查 shadowRoot 里的 .autocomplete-input——T0 重构后那是
+    // 原生控件）。不能改为查组件内部的 .autocomplete-input——T0 重构后那是
     // web-ui-input host 而非 input，host 自身不可聚焦，.focus() 是空操作（#144）。
     editTagsAutocompleteRef.value?.focus()
   })
@@ -861,7 +845,6 @@ function removeEditTag(index: number) {
   })
 }
 
-// --- Removal confirmation ---
 interface PendingRemoval {
   title: string
   message: string
@@ -917,7 +900,6 @@ watch(addDialogOpen, (open, _, onCleanup) => {
     @sidebar-open-change="updateSidebarOpen"
     @sidebar-width-change="handleSidebarWidthChange"
   >
-    <!-- Sidebar -->
     <div slot="sidebar" class="relative z-20 h-full pt-14 pb-4 px-2 max-[640px]:px-0" aria-label="应用导航">
       <nav class="grid gap-1" aria-label="主导航">
         <button
@@ -971,7 +953,6 @@ watch(addDialogOpen, (open, _, onCleanup) => {
       </nav>
     </div>
 
-    <!-- Header -->
     <header slot="header" class="w-full">
       <div class="flex gap-4 items-center px-6 py-2 max-[640px]:px-3 max-[640px]:pl-0">
         <!-- 窄屏时布局组件的展开 Toggle 自带左缩进（--wui-layout-mobile-toggle-inset，8px），header 内容去掉左内边距避免双重缩进。 -->
@@ -983,7 +964,7 @@ watch(addDialogOpen, (open, _, onCleanup) => {
             <web-ui-icon :icon="lucideChevronRight"></web-ui-icon>
           </web-ui-button>
         </web-ui-button-group>
-        <div class="flex gap-1.5 items-center ml-auto">
+        <div ref="searchContainerRef" class="flex gap-1.5 items-center ml-auto" @focusout="handleSearchFocusout">
           <template v-if="!selectionMode">
             <web-ui-tooltip v-if="!(searchOpen && isMobile)" content="添加资源" portal>
               <web-ui-button icon variant="primary" aria-label="添加资源" @click="openAddDialog">
@@ -1016,7 +997,6 @@ watch(addDialogOpen, (open, _, onCleanup) => {
               class="[--wui-input-width:min(240px,calc(100vw-180px))]"
               @input="handleSearchInput"
               @keydown="handleSearchKeydown"
-              @blur="closeSearch"
             >
               <web-ui-icon slot="prefix" :icon="lucideSearch"></web-ui-icon>
             </web-ui-input>
@@ -1138,16 +1118,13 @@ watch(addDialogOpen, (open, _, onCleanup) => {
       </div>
     </header>
 
-    <!-- Resource list + Detail drawer -->
     <div class="flex min-h-0 flex-1">
       <div class="flex-1 min-w-0 px-6 max-[640px]:px-3 pb-16 pt-2">
         <web-ui-context-menu ref="ctxMenuRef" class="block w-full">
-          <!-- Empty state -->
           <div v-if="filteredResources.length === 0" class="flex flex-col items-center justify-center py-24">
             <web-ui-empty size="large" description="没有符合条件的资源"></web-ui-empty>
           </div>
 
-          <!-- Resource rows -->
           <div v-else class="w-full h-full">
             <div
               v-for="resource in filteredResources"
@@ -1160,7 +1137,7 @@ watch(addDialogOpen, (open, _, onCleanup) => {
               @click="handleResourceRowClick(resource)"
               @contextmenu="onResourceContextmenu(resource, $event)"
             >
-              <!-- 选择态下最左侧出现勾选框；行本身也可点击切换，不必命中 18px 指示器 -->
+              <!-- 行本身也可点击切换，不必命中 18px 指示器 -->
               <web-ui-checkbox
                 v-if="selectionMode"
                 class="shrink-0"
@@ -1171,7 +1148,6 @@ watch(addDialogOpen, (open, _, onCleanup) => {
                 <span class="sr-only">选择「{{ resource.name }}」</span>
               </web-ui-checkbox>
 
-              <!-- Type avatar -->
               <div
                 class="flex items-center justify-center size-10 shrink-0 rounded-lg"
                 :class="typeTint[resource.resourceType]"
@@ -1179,7 +1155,6 @@ watch(addDialogOpen, (open, _, onCleanup) => {
                 <web-ui-icon :icon="getResourceIcon(resource)" :size="20"></web-ui-icon>
               </div>
 
-              <!-- Main -->
               <div class="flex flex-col min-w-0 gap-1 flex-1">
                 <div class="flex items-center gap-1.5">
                   <span v-if="editingNameKey !== resource.id" :class="resourceNameClass(resource)">{{
@@ -1229,7 +1204,6 @@ watch(addDialogOpen, (open, _, onCleanup) => {
                 </div>
               </div>
 
-              <!-- Tags (secondary) -->
               <div v-if="resource.tags && resource.tags.length" class="flex gap-1.5 flex-wrap justify-end max-w-[25%]">
                 <span
                   v-for="tag in resource.tags"
@@ -1242,7 +1216,6 @@ watch(addDialogOpen, (open, _, onCleanup) => {
             </div>
           </div>
 
-          <!-- Context menu items -->
           <web-ui-dropdown-item v-if="contextResource && !contextResource.broken" @click="handleContextPreview">
             <web-ui-icon slot="prefix" :size="14" :icon="lucideEye"></web-ui-icon>
             预览
@@ -1296,18 +1269,16 @@ watch(addDialogOpen, (open, _, onCleanup) => {
         </web-ui-context-menu>
       </div>
 
-      <!-- Detail Drawer -->
       <web-ui-drawer
         ref="detailDrawerRef"
         :open="drawerOpen"
         :placement="isMobile ? 'bottom' : 'right'"
         draggable
         controlled
-        class="max-[640px]:[--wui-drawer-height:80vh] max-[640px]:[--wui-drawer-inset:0px] max-[640px]:[--wui-drawer-radius:28px_28px_0_0] [--wui-drawer-width:min(640px,max(60vw,320px))]"
+        class="max-[640px]:[--wui-drawer-height:80vh] max-[640px]:[--wui-drawer-inset:0px] max-[640px]:[--wui-drawer-radius:28px_28px_0_0] max-[640px]:[--wui-drawer-content-padding:0px] [--wui-drawer-width:min(640px,max(60vw,320px))]"
         @open-change="handleDetailDrawerOpenChange"
       >
-        <div class="grid gap-5">
-          <!-- Preview placeholder -->
+        <div class="grid gap-5 max-[640px]:h-(--wui-drawer-height) max-[640px]:overflow-y-auto max-[640px]:p-5">
           <div
             v-if="selectedResource"
             class="flex items-center justify-center h-36 rounded-xl bg-[#f5f5f7] dark:bg-(--wui-color-surface-raised)"
@@ -1319,7 +1290,6 @@ watch(addDialogOpen, (open, _, onCleanup) => {
             ></web-ui-icon>
           </div>
 
-          <!-- Title -->
           <h2 v-if="selectedResource" class="group/title flex items-center gap-3 min-h-9 m-0">
             <web-ui-icon
               :icon="getResourceIcon(selectedResource)"
@@ -1352,7 +1322,6 @@ watch(addDialogOpen, (open, _, onCleanup) => {
             </web-ui-button>
           </h2>
 
-          <!-- Quick actions -->
           <web-ui-button-group v-if="selectedResource" class="self-start">
             <web-ui-button
               v-if="!selectedResource.broken"
@@ -1384,7 +1353,6 @@ watch(addDialogOpen, (open, _, onCleanup) => {
             >
           </web-ui-button-group>
 
-          <!-- Tags -->
           <div v-if="selectedResource" class="flex flex-wrap items-center gap-1.5">
             <span
               v-for="tag in selectedResource.tags"
@@ -1407,7 +1375,6 @@ watch(addDialogOpen, (open, _, onCleanup) => {
             </web-ui-tooltip>
           </div>
 
-          <!-- Metadata -->
           <div
             v-if="selectedResource"
             class="mt-2 overflow-hidden rounded-3xl bg-white shadow-[0_0_0_0.5px_rgb(0_0_0/0.08),0_1px_3px_rgb(0_0_0/0.06)] dark:bg-(--wui-color-surface-raised) dark:shadow-[0_0_0_0.5px_rgb(255_255_255/0.12)]"
@@ -1482,17 +1449,20 @@ watch(addDialogOpen, (open, _, onCleanup) => {
         :placement="isMobile ? 'bottom' : 'right'"
         draggable
         controlled
-        class="max-[640px]:[--wui-drawer-height:80vh] max-[640px]:[--wui-drawer-inset:0px] max-[640px]:[--wui-drawer-radius:28px_28px_0_0] [--wui-drawer-width:max(60vw,320px)]"
+        class="max-[640px]:[--wui-drawer-height:80vh] max-[640px]:[--wui-drawer-inset:0px] max-[640px]:[--wui-drawer-radius:28px_28px_0_0] max-[640px]:[--wui-drawer-header-padding:0px] max-[640px]:[--wui-drawer-content-padding:0px] [--wui-drawer-width:max(60vw,320px)]"
         @open-change="handlePreviewDrawerOpenChange"
       >
         <h2
           v-if="selectedResource"
           slot="header"
-          class="m-0 w-full min-w-0 truncate px-12 text-center text-[17px] font-semibold leading-snug text-[#22212a] dark:text-(--wui-color-text)"
+          class="m-0 w-full min-w-0 truncate px-12 text-center text-[17px] font-semibold leading-snug text-[#22212a] dark:text-(--wui-color-text) max-[640px]:h-14"
         >
           {{ selectedResource.name }}
         </h2>
-        <div v-if="selectedResource" class="grid gap-4">
+        <div
+          v-if="selectedResource"
+          class="grid gap-4 max-[640px]:h-[calc(var(--wui-drawer-height)-57px)] max-[640px]:overflow-y-auto max-[640px]:p-5"
+        >
           <div
             class="flex items-center justify-center h-52 rounded-xl bg-[#f5f5f7] dark:bg-(--wui-color-surface-raised)"
           >
@@ -1506,7 +1476,6 @@ watch(addDialogOpen, (open, _, onCleanup) => {
       </web-ui-drawer>
     </div>
 
-    <!-- Delete confirmation dialog -->
     <web-ui-dialog :open="deleteConfirmOpen" controlled no-backdrop-close @open-change="handleDeleteCancel">
       <div slot="title">删除资源</div>
       <p v-if="deleteBatchCount > 0" class="m-0 text-[14px] text-[#5b5b66] dark:text-(--wui-color-text-secondary)">
@@ -1528,7 +1497,6 @@ watch(addDialogOpen, (open, _, onCleanup) => {
       </div>
     </web-ui-dialog>
 
-    <!-- Removal confirmation dialog -->
     <web-ui-dialog
       :open="removalConfirmOpen"
       controlled
@@ -1548,7 +1516,6 @@ watch(addDialogOpen, (open, _, onCleanup) => {
       </div>
     </web-ui-dialog>
 
-    <!-- Add dialog (prototype only) -->
     <web-ui-dialog
       :open="addDialogOpen"
       controlled
@@ -1725,7 +1692,6 @@ watch(addDialogOpen, (open, _, onCleanup) => {
       </web-ui-button>
     </web-ui-dialog>
 
-    <!-- Edit tags dialog -->
     <web-ui-dialog
       :open="editTagsDialogOpen"
       controlled

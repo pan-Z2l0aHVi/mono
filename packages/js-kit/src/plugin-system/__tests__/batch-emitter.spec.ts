@@ -18,7 +18,6 @@ describe('BatchEmitter 测试', () => {
     const p3 = batchEmit('c', 10)
 
     const results = await Promise.all([p1, p2, p3])
-    // 三个 promise 都应该 resolve 同一个批次
     results.forEach(r => expect(r).toEqual(['a', 'b', 'c']))
   })
 

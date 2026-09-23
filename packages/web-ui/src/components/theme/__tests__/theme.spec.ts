@@ -197,7 +197,6 @@ describe('WebUiTheme 组件', () => {
       // 计数停在 1：reduced 档下写 property 与 attribute 都没有再拉起一次过渡。
       expect(stub.startViewTransition).toHaveBeenCalledTimes(1)
       expect(disabled.appearance).toBe('dark')
-      // attribute 仍留在 DOM 上，但没有任何代码读取它。
       expect(disabled.hasAttribute('transition')).toBe(true)
 
       disabled.remove()
@@ -342,7 +341,6 @@ describe('WebUiTheme 组件', () => {
 
         // 守卫：确认过渡确已发起并走到 adoptedStyleSheets 写入（否则内联写入从未发生，下面会假绿）。
         expect(setterCalled).toBe(true)
-        // capture name 不得残留在 host 上。
         expect(inner.style.getPropertyValue('view-transition-name')).toBe('')
         // .catch 仍应提交最终 appearance。
         expect(inner.appearance).toBe('dark')

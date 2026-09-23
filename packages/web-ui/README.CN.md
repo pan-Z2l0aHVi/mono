@@ -239,6 +239,8 @@ dropdown、tooltip）不需要它。
 
 所有表单控件均参与原生 `FormData`、约束校验、`form.reset()` 和浏览器表单状态恢复。控件会在**首次连接且声明式属性完成初始化后**捕获一次重置默认值；之后的运行时 property 更新不会改写该默认值。祖先 `fieldset` 的禁用状态会禁用交互和校验，但不会改写控件公开的 `disabled` 属性。对于 checkbox/radio group，父 group 是提交、重置和状态恢复的唯一所有者；被管理的子项不会独立提交或恢复状态。
 
+`web-ui-button` 同样声明为 form-associated，使宿主可以持有外层 form 的 form owner 并转发 `submit`/`reset` 激活；它不向 `FormData` 贡献值。
+
 ## 所有组件
 
 | 分类                  | 组件                                                      |
@@ -308,7 +310,7 @@ dropdown、tooltip）不需要它。
 
 **事件：** `input`, `change`, `focus`, `blur`
 
-**方法：** `focus()`, `blur()` —— 委托到内部原生 input（宿主自身不可聚焦）
+**方法：** `focus()`, `blur()`, `select()`，委托到 shadow 内的原生 input；宿主自身不可聚焦。`disabled` 时 `focus()` 与 `select()` 不产生效果，`readonly` 仍允许聚焦和选中。
 
 **插槽：** `prefix`, `default`, `suffix`
 
@@ -343,7 +345,7 @@ dropdown、tooltip）不需要它。
 
 **事件：** `input`, `change`, `focus`, `blur`
 
-**方法：** `focus()`, `blur()`, `select()`
+**方法：** `focus()`, `blur()`, `select()`，委托到 shadow 内的原生 textarea。`disabled` 时 `focus()` 与 `select()` 不产生效果，`readonly` 仍允许聚焦和选中。
 
 **插槽：** `prefix`, `suffix`
 
@@ -364,6 +366,7 @@ dropdown、tooltip）不需要它。
 | `placeholder` | `string`  | `''`    | 值为空时显示的占位文本                                                                                    |
 | `name`        | `string`  | `''`    | 表单字段名                                                                                                |
 | `disabled`    | `boolean` | `false` | 禁用状态；只影响行为，不做视觉置灰                                                                        |
+| `readonly`    | `boolean` | `false` | 只读状态；仍可聚焦、全选和复制，但不能编辑或提交 `change`                                                 |
 | `aria-label`  | `string`  | —       | 无障碍标签                                                                                                |
 
 **事件：** `input`（每次输入）、`change`（提交）、`cancel`（取消；与原生 `<dialog>` 的 `cancel` 同名，不冒泡、不组合，只在组件本身派发）。React 没有覆盖 `cancel` 的合成事件，须用 `addEventListener('cancel', ...)` 监听
@@ -372,7 +375,7 @@ dropdown、tooltip）不需要它。
 
 点击时光标落在点击处；键盘聚焦时落在文本末尾。`Enter` 与 `blur` 均提交草稿并恰好派发一次 `change`：`Enter` 不插入换行，并把焦点交还宿主；`blur` 不干预焦点，焦点留在用户移往的位置。只有 `Escape` 取消：值回到进入编辑时的状态，派发 `cancel` 而不派发 `change`，焦点交还宿主，且按键由编辑层消费，外层浮层（抽屉、菜单）不会因同一次按键关闭。`cancel` 不冒泡也不组合，只在组件本身派发：组件被投映在浮层 shadow 内时（如 drawer 标题），它不会触达浮层的原生 `cancel` 关闭管线，监听一律挂在组件本身。值里已有的换行仍按多行渲染，只是不能再靠输入 `Enter` 增加换行。空值继续显示 placeholder；编辑层始终按自身内容撑高，因此空草稿或纯空格草稿在宿主自身塌缩的场合（flex 项 `min-width: 0`、表格单元格）也仍有承接光标的位置。
 
-`select()` 进入编辑态并全选内容；已在编辑态时只重新全选。`disabled` 时与 `focus()` 一样不产生效果。
+`select()` 进入编辑态并全选内容；已在编辑态时只重新全选。`disabled` 时与 `focus()` 一样不产生效果。`readonly` 时仍可聚焦和全选，但输入被拒绝，退出编辑态也不派发 `change`。
 
 宿主是行内级盒子：未设宽度时随内容伸缩，折行后高度按行数增长。字体、颜色、文本对齐与空白处理全部继承外部上下文，因此编辑前它就是一段普通文字。
 
@@ -469,7 +472,7 @@ Portal 面板创建时会镜像 host 上解析后的这些变量；更新 host �
 
 **方法：** `focus()`, `blur()`
 
-**插槽：** `default`（投影 `<web-ui-option>` 元素）、`trigger`（自定义触发器内容——替换默认输入框）、`empty`（替换无匹配空态；默认回退为“无匹配选项”）
+**插槽：** `default`（投影 `<web-ui-option>` 元素）、`trigger`（自定义触发器内容——替换默认输入框）、`empty`（替换无匹配空态；默认回退为「无匹配选项」）
 
 键入时按 label 过滤候选（`contains` 或 `prefix`，`none` 关闭过滤）。选择 option 时文本回填为该项 label，`selected-value` 暴露该项的 value；`change` 在选择提交时触发。支持 ArrowDown/ArrowUp/Enter/Escape 键盘导航。
 
@@ -713,9 +716,9 @@ web-ui-radio-group {
 
 **插槽：** `prefix`, `default`, `suffix`
 
-`submit` 和 `reset` 不会提交或重置组件 Shadow DOM 外祖先 `<form>`。如需外部表单行为，请使用 form-associated 控件。
+`submit` 和 `reset` 在 composed `click` 事件完成派发后，通过宿主的 form owner 转发到其原生 `<form>`；对这次 click 调用 `preventDefault()` 会取消该动作。内部按钮自身仍没有 form owner，因此 `SubmitEvent.submitter` 为 `null`。按钮不向 `FormData` 贡献值。
 
-禁用和加载状态阻止 `click` 事件。
+禁用、加载和 `formDisabled` 状态（包括祖先 `fieldset` 导致的禁用）都会阻止 `click` 事件。
 
 `icon` 与 `loading` 同时开启时，按钮只渲染 spinner，默认插槽图标不投影。默认 icon 几何保持正方形，`full` 或显式 width 除外。
 
@@ -1388,6 +1391,8 @@ SVG 线条绘制动画，基于 `stroke-dashoffset`。直接在原元素上动�
 
 配色变化是否使用 View Transitions API 播放动画，由当前主题范围的 `motion` 档位决定：`full` 始终播放揭示，`reduced` 直接落地新 appearance、不播放揭示，`system` 跟随 `prefers-reduced-motion`。根主题揭示整页；嵌套主题只揭示自己的 capture box。圆心优先取最近一次 pointerdown 坐标，否则回退主题盒或视口中心；深浅两个方向反向播放。不支持的浏览器、reduced-motion 作用域、时长为 0 以及同一 flight 内已有未完成请求都会立即落地新 appearance；当前版本对 `appearance="system"` 的 OS 深浅翻转不做动画。
 
+揭示进行中，View Transitions 的 rendering-suppression 规则会强制所有 pointer hit-test 指向 document element，因此 CSS `pointer-events` 覆盖无法让底层页面继续交互。主题会在首次 pointermove、pointerdown、pointerup 或 wheel 时调用 `skipTransition()`；触发事件本身仍按规范以 document element 为目标，但失效窗口到此为止，不会持续满整个揭示时长。
+
 **从已移除的 `transition` 属性迁移：** 删掉该属性，改用 `motion` 表达意图。原先带 `transition` 的主题在默认 `motion="system"` 下揭示行为不变；需要在系统偏好 reduce 时仍播放揭示，则加 `motion="full"`。原先不带 `transition` 的主题现在默认就会揭示，若要保持无动画直接切换，请显式设置 `motion="reduced"`。
 
 主题宿主使用 `display: contents` 且不绘制任何背景：组件库不在宿主页面画背景，嵌入方对主题子树背后的表面保留完全控制权。自定义属性仍可靠继承到 slotted 内容。
@@ -1447,7 +1452,7 @@ SVG 线条绘制动画，基于 `stroke-dashoffset`。直接在原元素上动�
 | `--wui-color-surface-raised`       | `#f2f2f7`                                                    | `#2c2c2e`                                                    | 抬升表面               |
 | `--wui-color-surface-control`      | `#dfdfdf`                                                    | `#3a3a3c`                                                    | 中性可交互控件表面     |
 | `--wui-color-surface-track`        | `#e5e5ea`                                                    | `#444446`                                                    | Slider/Switch 轨道表面 |
-| `--wui-color-surface-menu`         | `rgb(246 246 246 / 0.82)`                                    | `rgb(44 44 46 / 0.78)`                                       | Menu 和浮动面板表面    |
+| `--wui-color-surface-menu`         | `rgb(246 246 246 / 0.76)`                                    | `rgb(49 48 50 / 0.74)`                                       | Menu 和浮动面板表面    |
 | `--wui-color-surface-glass`        | `rgb(250 250 250 / 0.34)`                                    | `rgb(44 44 46 / 0.42)`                                       | 液态玻璃表面           |
 | `--wui-color-surface-glass-hover`  | `color-mix(... text 6%, surface-glass)`                      | `color-mix(... text 6%, surface-glass)`                      | Glass 完整悬停背景     |
 | `--wui-color-surface-glass-active` | `color-mix(... text 15%, surface-glass)`                     | `color-mix(... text 15%, surface-glass)`                     | Glass 完整按下背景     |

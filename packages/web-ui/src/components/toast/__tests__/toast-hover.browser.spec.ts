@@ -231,7 +231,6 @@ describe('toast 悬停暂停（浏览器）', () => {
     await el.updateComplete
 
     const timing = el as unknown as { _closeTimer?: unknown; _pausedRemaining?: number }
-    // 计时器从未创建。
     expect(timing._closeTimer).toBeUndefined()
     // 剩余记为整段时长，等指针离开后才续跑。
     expect(timing._pausedRemaining).toBe(3000)

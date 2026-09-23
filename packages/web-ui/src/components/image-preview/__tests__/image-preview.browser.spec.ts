@@ -239,7 +239,6 @@ describe('imagePreview 命令式 API（浏览器）', () => {
     await waitForStageSettled(stage)
 
     const reset = () => queryA11y(host, '[aria-label="重置缩放"]') as HTMLElement
-    // 1x 且未位移时没有可重置的东西。
     expect(reset().hasAttribute('disabled')).toBe(true)
 
     stage.dispatchEvent(pointer('pointerdown', { pointerType: 'mouse', clientX: 100, clientY: 100 }))
@@ -247,7 +246,6 @@ describe('imagePreview 命令式 API（浏览器）', () => {
     stage.dispatchEvent(pointer('pointermove', { pointerType: 'mouse', clientX: 100_000, clientY: 100_000 }))
     await host.updateComplete
 
-    // 位移来自平移而非缩放：倍率仍是 1x，但已经有东西可重置。
     expect(handle.scale).toBe(1)
     expect(reset().hasAttribute('disabled')).toBe(false)
 
@@ -258,7 +256,6 @@ describe('imagePreview 命令式 API（浏览器）', () => {
     await host.updateComplete
 
     expect(handle.scale).toBe(1)
-    // 回到原位后按钮重新不可用。
     expect(reset().hasAttribute('disabled')).toBe(true)
 
     handle.close()
@@ -350,7 +347,6 @@ describe('imagePreview 命令式 API（浏览器）', () => {
     await host.updateComplete
     expect(handle.scale).toBeGreaterThan(1)
 
-    // 与未放大时相同的横向拖拽方向：放大后必须走平移而不是切图。
     stage.dispatchEvent(pointer('pointerdown', { clientX: 400, clientY: 300 }))
     await host.updateComplete
     stage.dispatchEvent(pointer('pointermove', { clientX: 400 - 100_000, clientY: 300 }))
@@ -372,7 +368,6 @@ describe('imagePreview 命令式 API（浏览器）', () => {
     const stage = stageOf(image)
     await waitForStageSettled(stage)
 
-    // 单图没有可切换的邻居，swipe 不接管横向轴。
     stage.dispatchEvent(pointer('pointerdown', { clientX: 400, clientY: 300 }))
     await host.updateComplete
     stage.dispatchEvent(pointer('pointermove', { clientX: -100_000, clientY: 300 }))
@@ -394,7 +389,6 @@ describe('imagePreview 命令式 API（浏览器）', () => {
     const stage = stageOf(image)
     await waitForStageSettled(stage)
 
-    // 纵向拖拽：swipe 接管整个拖拽，纵向 delta 完全忽略 —— 不切图。
     stage.dispatchEvent(pointer('pointerdown', { clientX: 400, clientY: 300 }))
     stage.dispatchEvent(pointer('pointermove', { clientX: 400, clientY: 200 }))
     await host.updateComplete
@@ -431,14 +425,12 @@ describe('imagePreview 命令式 API（浏览器）', () => {
     await pollUntil(() => image.complete && image.offsetWidth > 0, 'image did not load')
     const stage = stageOf(image)
 
-    // 向左拖 300px：越过滑动阈值，滑入下一张。
     stage.dispatchEvent(pointer('pointerdown', { clientX: 400, clientY: 300 }))
     stage.dispatchEvent(pointer('pointermove', { clientX: 200, clientY: 300 }))
     stage.dispatchEvent(pointer('pointerup', { clientX: 100, clientY: 300 }))
     await pollUntil(() => handle.index === 1, 'swipe did not commit to next image')
     expect(handle.index).toBe(1)
 
-    // 向右拖回：滑回上一张。
     stage.dispatchEvent(pointer('pointerdown', { clientX: 200, clientY: 300, pointerId: 2 }))
     stage.dispatchEvent(pointer('pointermove', { clientX: 380, clientY: 300, pointerId: 2 }))
     stage.dispatchEvent(pointer('pointerup', { clientX: 500, clientY: 300, pointerId: 2 }))
@@ -457,7 +449,6 @@ describe('imagePreview 命令式 API（浏览器）', () => {
     const stage = stageOf(image)
     await waitForStageSettled(stage)
 
-    // swipe 关闭时横向轴由平移接管，不产生切图。
     stage.dispatchEvent(pointer('pointerdown', { clientX: 400, clientY: 300 }))
     await host.updateComplete
     stage.dispatchEvent(pointer('pointermove', { clientX: -100_000, clientY: 300 }))
@@ -478,7 +469,6 @@ describe('imagePreview 命令式 API（浏览器）', () => {
     await pollUntil(() => image.complete && image.offsetWidth > 0, 'image did not load')
     const stage = stageOf(image)
 
-    // 首张向右拖（请求上一张）在 loop 关闭时应被钳制。
     stage.dispatchEvent(pointer('pointerdown', { clientX: 200, clientY: 300 }))
     stage.dispatchEvent(pointer('pointermove', { clientX: 420, clientY: 300 }))
     stage.dispatchEvent(pointer('pointerup', { clientX: 560, clientY: 300 }))
@@ -499,7 +489,6 @@ describe('imagePreview 命令式 API（浏览器）', () => {
     const slides = Array.from(host.shadowRoot?.querySelectorAll('.wui-image-preview-slide') ?? []) as HTMLElement[]
     const exposed = slides.filter(slide => slide.getAttribute('aria-hidden') !== 'true')
 
-    // 相邻图渲染下轨道里有多格，但恰好只有当前图不被 aria-hidden 隐藏。
     expect(exposed).toHaveLength(1)
     expect(exposed[0]!.querySelector('img')?.alt).toBe('图 A')
     expect(handle.index).toBe(0)
@@ -515,7 +504,6 @@ describe('imagePreview 命令式 API（浏览器）', () => {
     const stage = stageOf(image)
     expect(handle.index).toBe(2)
 
-    // 向左拖（next 方向）：拖拽进行中不提交，松手越过阈值才环绕回首图。
     stage.dispatchEvent(pointer('pointerdown', { clientX: 400, clientY: 300 }))
     stage.dispatchEvent(pointer('pointermove', { clientX: 220, clientY: 300 }))
     await host.updateComplete
@@ -535,18 +523,15 @@ describe('imagePreview 命令式 API（浏览器）', () => {
     await pollUntil(() => image.complete && image.offsetWidth > 0, 'image did not load')
     const stage = stageOf(image)
 
-    // 向左拖 80px（未松手）：手势进行中不提交切图。
     stage.dispatchEvent(pointer('pointerdown', { clientX: 400, clientY: 300 }))
     stage.dispatchEvent(pointer('pointermove', { clientX: 320, clientY: 300 }))
     await host.updateComplete
     expect(handle.index).toBe(0)
 
-    // 继续拖到 250px（仍未松手）：依旧不提交。
     stage.dispatchEvent(pointer('pointermove', { clientX: 150, clientY: 300 }))
     await host.updateComplete
     expect(handle.index).toBe(0)
 
-    // 松手越过阈值：滑入下一张。
     stage.dispatchEvent(pointer('pointerup', { clientX: 100, clientY: 300 }))
     await pollUntil(() => handle.index === 1, 'swipe did not commit to next image')
 
@@ -560,7 +545,6 @@ describe('imagePreview 命令式 API（浏览器）', () => {
     await pollUntil(() => image.complete && image.offsetWidth > 0, 'image did not load')
     const stage = stageOf(image)
 
-    // 放大到 2x 以上：放大态下横向拖拽必须走 pan 而不是切图。
     handle.zoomIn()
     await host.updateComplete
     handle.zoomIn()
@@ -575,7 +559,6 @@ describe('imagePreview 命令式 API（浏览器）', () => {
     await host.updateComplete
     expect(handle.index).toBe(0)
 
-    // 回到 1x 后 swipe 恢复：横向拖拽仍切图。
     handle.resetZoom()
     await host.updateComplete
     expect(handle.scale).toBe(1)
@@ -655,14 +638,12 @@ describe('imagePreview 命令式 API（浏览器）', () => {
       const below = Math.max(4, threshold - 8)
       const above = threshold + 8
 
-      // 慢拖（注入时间线 ~50px/s，远低于提交速度）：未达阈值弹回不切图。
       stage.dispatchEvent(timedPointer('pointerdown', { clientX: 400, clientY: 300, timeStamp: 0 }))
       stage.dispatchEvent(timedPointer('pointermove', { clientX: 400 - below, clientY: 300, timeStamp: 300 }))
       stage.dispatchEvent(timedPointer('pointerup', { clientX: 400 - below, clientY: 300, timeStamp: 600 }))
       await host.updateComplete
       expect(handle.index).toBe(0)
 
-      // 慢拖越过阈值：滑入相邻图。
       stage.dispatchEvent(pointer('pointerdown', { clientX: 400, clientY: 300, pointerId: 2 }))
       stage.dispatchEvent(pointer('pointermove', { clientX: 400 - above, clientY: 300, pointerId: 2 }))
       stage.dispatchEvent(pointer('pointerup', { clientX: 400 - above, clientY: 300, pointerId: 2 }))

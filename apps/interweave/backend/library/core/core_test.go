@@ -112,11 +112,9 @@ func TestCoreErrorIdentityAndEmptySlices(t *testing.T) {
 		t.Fatalf("AddFileResource error: %v", err)
 	}
 
-	// 唯一入口不允许删除。
 	if err := srcService.RemoveSource(ctx, view.Sources[0].ID); !errors.Is(err, core.ErrCannotRemoveOnlySource) {
 		t.Errorf("expected core.ErrCannotRemoveOnlySource, got %v", err)
 	}
-	// 文件入口不允许刷新。
 	if _, err := srcService.RefreshURLSource(ctx, view.Sources[0].ID); !errors.Is(err, core.ErrOnlyURLSourceRefreshable) {
 		t.Errorf("expected core.ErrOnlyURLSourceRefreshable, got %v", err)
 	}
