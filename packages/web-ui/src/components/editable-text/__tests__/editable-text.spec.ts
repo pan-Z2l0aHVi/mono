@@ -41,6 +41,7 @@ describe('WebUiEditableText 组件契约', () => {
     expect(el.placeholder).toBe('')
     expect(el.name).toBe('')
     expect(el.disabled).toBe(false)
+    expect(el.readonly).toBe(false)
     expect(el.hasAttribute('editing')).toBe(false)
     cleanupElement(el)
   })
@@ -197,6 +198,69 @@ describe('WebUiEditableText 组件契约', () => {
 
     expect(el.hasAttribute('editing')).toBe(false)
     expect(el.shadowRoot!.activeElement).toBe(null)
+    cleanupElement(el)
+  })
+
+  it('readonly 仍可聚焦与全选，但阻止输入、提交 change', async () => {
+    const el = create({ value: 'hello', readonly: '' })
+    await waitForUpdate(el)
+    expect(editorOf(el).readOnly).toBe(true)
+
+    el.select()
+    await waitForUpdate(el)
+    expect(el.hasAttribute('editing')).toBe(true)
+    expect(el.shadowRoot!.activeElement).toBe(editorOf(el))
+    expect(editorOf(el).selectionStart).toBe(0)
+    expect(editorOf(el).selectionEnd).toBe(5)
+
+    const [changes, detachChanges] = spyEvents(el, 'change')
+    try {
+      typeDraft(el, 'blocked')
+      await waitForUpdate(el)
+      expect(el.value).toBe('hello')
+      expect(editorOf(el).value).toBe('hello')
+
+      editorOf(el).blur()
+      await waitForUpdate(el)
+      expect(el.hasAttribute('editing')).toBe(false)
+      expect(el.value).toBe('hello')
+      expect(changes).toHaveLength(0)
+    } finally {
+      detachChanges()
+    }
+    cleanupElement(el)
+  })
+
+  it('readonly 编辑态 Enter 被编辑层消费，不外泄也不提交', async () => {
+    const el = create({ value: 'hello', readonly: '' })
+    await waitForUpdate(el)
+    el.focus()
+    await waitForUpdate(el)
+    expect(el.hasAttribute('editing')).toBe(true)
+
+    const documentCapture: string[] = []
+    const onDocumentCapture = (e: Event) => {
+      if ((e as KeyboardEvent).key === 'Enter') documentCapture.push('enter')
+    }
+    const [cancels, detachCancels] = spyEvents(el, 'cancel')
+    const [changes, detachChanges] = spyEvents(el, 'change')
+    document.addEventListener('keydown', onDocumentCapture, true)
+    try {
+      const event = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, composed: true, cancelable: true })
+      editorOf(el).dispatchEvent(event)
+      await waitForUpdate(el)
+
+      expect(event.defaultPrevented, 'readonly Enter 的默认行为被压掉').toBe(true)
+      expect(documentCapture, 'readonly Enter 不穿透到 document 捕获监听').toEqual([])
+      expect(el.hasAttribute('editing'), '消费按键但不退出编辑').toBe(true)
+      expect(el.value, 'readonly Enter 不提交').toBe('hello')
+      expect(cancels, 'readonly Enter 不派发 cancel').toHaveLength(0)
+      expect(changes, 'readonly Enter 不派发 change').toHaveLength(0)
+    } finally {
+      document.removeEventListener('keydown', onDocumentCapture, true)
+      detachCancels()
+      detachChanges()
+    }
     cleanupElement(el)
   })
 
@@ -645,6 +709,7 @@ describe('WebUiEditableText 组件契约', () => {
   contractReflection('WebUiEditableText 属性反射', () => create(), [
     ['name', 'field', 'name', 'field'],
     ['placeholder', '请输入', 'placeholder', '请输入'],
-    ['disabled', true, 'disabled', '']
+    ['disabled', true, 'disabled', ''],
+    ['readonly', true, 'readonly', '']
   ])
 })

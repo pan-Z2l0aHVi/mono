@@ -148,6 +148,7 @@ export class WebUiTextarea extends FormAssociated(LitElement) {
   }
 
   private handleInput(e: Event) {
+    if (this._isDisabled || this.readonly) return
     if (!(e.target instanceof HTMLTextAreaElement)) return
     this._value = e.target.value
     this._formAssociation.sync()
@@ -166,6 +167,7 @@ export class WebUiTextarea extends FormAssociated(LitElement) {
   // 原生 change 不 composed，被 shadow root 挡住；这里补发 composed 事件，
   // 兑现 $events/README 声明的公共 change 契约。
   private handleNativeChange(e: Event) {
+    if (this._isDisabled || this.readonly) return
     if (!(e.target instanceof HTMLTextAreaElement)) return
     this._value = e.target.value
     this._formAssociation.sync()
@@ -173,15 +175,22 @@ export class WebUiTextarea extends FormAssociated(LitElement) {
     this.dispatchEvent(new Event('change', { bubbles: true, composed: true }))
   }
 
-  override focus() {
-    this.shadowRoot?.querySelector('textarea')?.focus()
+  override focus(options?: FocusOptions) {
+    if (this._isDisabled) return
+    this.shadowRoot?.querySelector('textarea')?.focus(options)
   }
 
   override blur() {
     this.shadowRoot?.querySelector('textarea')?.blur()
   }
 
+  /**
+   * 公共 API：全选当前值。
+   *
+   * `disabled` 时与 `focus()` 一致不产生效果；原生控件未渲染时安全 no-op。
+   */
   select() {
+    if (this._isDisabled) return
     this.shadowRoot?.querySelector('textarea')?.select()
   }
 

@@ -340,7 +340,7 @@ Text input with clearable, prefix/suffix slots.
 
 **Events:** `input`, `change`, `focus`, `blur`
 
-**Methods:** `focus()`, `blur()`, which delegate to the internal native input (the host itself is not focusable)
+**Methods:** `focus()`, `blur()`, `select()`, which delegate to the internal native input (the host itself is not focusable). `focus()` and `select()` are no-ops while `disabled`; `readonly` still allows focus and selection.
 
 **Slots:** `prefix`, `default`, `suffix`
 
@@ -375,7 +375,7 @@ Multi-line text input with auto-resize.
 
 **Events:** `input`, `change`, `focus`, `blur`
 
-**Methods:** `focus()`, `blur()`, `select()`
+**Methods:** `focus()`, `blur()`, `select()`, which delegate to the internal native textarea. `focus()` and `select()` are no-ops while `disabled`; `readonly` still allows focus and selection.
 
 **Slots:** `prefix`, `suffix`
 
@@ -396,6 +396,7 @@ Inline plain-text editor: click the text to edit in place, `Enter` and `blur` co
 | `placeholder` | `string`  | `''`    | Text shown while the value is empty                                                                                                                        |
 | `name`        | `string`  | `''`    | Form field name                                                                                                                                            |
 | `disabled`    | `boolean` | `false` | Disabled state; behavior only, no visual dimming                                                                                                           |
+| `readonly`    | `boolean` | `false` | Read-only state; focus, selection, and copying remain available, but edits cannot commit                                                                   |
 | `aria-label`  | `string`  | —       | Accessible label                                                                                                                                           |
 
 **Events:** `input` (per keystroke), `change` (commit), `cancel` (cancel; shares its name with the native `<dialog>` `cancel`, so it neither bubbles nor crosses shadow boundaries and is dispatched on the component itself only). React has no synthetic event covering `cancel`: listen with `addEventListener('cancel', ...)`
@@ -404,7 +405,7 @@ Inline plain-text editor: click the text to edit in place, `Enter` and `blur` co
 
 Clicking places the caret at the clicked offset; keyboard focus places it at the end of the text. `Enter` and `blur` both commit the draft and dispatch `change` exactly once; `Enter` does not insert a newline and returns focus to the host, while `blur` leaves the focus wherever the user moved it. `Escape` alone cancels: the value returns to what it was when editing started, `cancel` is dispatched with no `change`, focus returns to the host, and the key is consumed by the editing layer, so an outer overlay (drawer, menu) is not closed by the same press. The `cancel` event neither bubbles nor crosses shadow boundaries and is dispatched on the component itself only: when the component is projected inside an overlay's shadow root, such as a drawer title, it never reaches the overlay's native `cancel` close pipeline, so listen on the component itself. A value that already contains newlines still renders as several lines; only typing `Enter` no longer adds one. An empty value keeps showing the placeholder, and the editing layer always sizes itself to its own content, so an empty or whitespace-only draft still has room for the caret even where the host itself collapses (a flex item with `min-width: 0`, a table cell).
 
-`select()` enters edit mode with the whole content selected, and re-selects it when already editing. While `disabled` it does nothing, matching `focus()`.
+`select()` enters edit mode with the whole content selected, and re-selects it when already editing. While `disabled` it does nothing, matching `focus()`. While `readonly`, focus and selection remain available, but input is rejected and leaving edit mode does not dispatch `change`.
 
 The host is an inline-level box: it sizes to its content unless a width is set, and grows with wrapped lines. Font, color, text alignment and white space are inherited from the surrounding context, so the component reads as ordinary text until it is edited.
 

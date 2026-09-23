@@ -310,7 +310,7 @@ dropdown、tooltip）不需要它。
 
 **事件：** `input`, `change`, `focus`, `blur`
 
-**方法：** `focus()`, `blur()` —— 委托到内部原生 input（宿主自身不可聚焦）
+**方法：** `focus()`, `blur()`, `select()`，委托到 shadow 内的原生 input；宿主自身不可聚焦。`disabled` 时 `focus()` 与 `select()` 不产生效果，`readonly` 仍允许聚焦和选中。
 
 **插槽：** `prefix`, `default`, `suffix`
 
@@ -345,7 +345,7 @@ dropdown、tooltip）不需要它。
 
 **事件：** `input`, `change`, `focus`, `blur`
 
-**方法：** `focus()`, `blur()`, `select()`
+**方法：** `focus()`, `blur()`, `select()`，委托到 shadow 内的原生 textarea。`disabled` 时 `focus()` 与 `select()` 不产生效果，`readonly` 仍允许聚焦和选中。
 
 **插槽：** `prefix`, `suffix`
 
@@ -366,6 +366,7 @@ dropdown、tooltip）不需要它。
 | `placeholder` | `string`  | `''`    | 值为空时显示的占位文本                                                                                    |
 | `name`        | `string`  | `''`    | 表单字段名                                                                                                |
 | `disabled`    | `boolean` | `false` | 禁用状态；只影响行为，不做视觉置灰                                                                        |
+| `readonly`    | `boolean` | `false` | 只读状态；仍可聚焦、全选和复制，但不能编辑或提交 `change`                                                 |
 | `aria-label`  | `string`  | —       | 无障碍标签                                                                                                |
 
 **事件：** `input`（每次输入）、`change`（提交）、`cancel`（取消；与原生 `<dialog>` 的 `cancel` 同名，不冒泡、不组合，只在组件本身派发）。React 没有覆盖 `cancel` 的合成事件，须用 `addEventListener('cancel', ...)` 监听
@@ -374,7 +375,7 @@ dropdown、tooltip）不需要它。
 
 点击时光标落在点击处；键盘聚焦时落在文本末尾。`Enter` 与 `blur` 均提交草稿并恰好派发一次 `change`：`Enter` 不插入换行，并把焦点交还宿主；`blur` 不干预焦点，焦点留在用户移往的位置。只有 `Escape` 取消：值回到进入编辑时的状态，派发 `cancel` 而不派发 `change`，焦点交还宿主，且按键由编辑层消费，外层浮层（抽屉、菜单）不会因同一次按键关闭。`cancel` 不冒泡也不组合，只在组件本身派发：组件被投映在浮层 shadow 内时（如 drawer 标题），它不会触达浮层的原生 `cancel` 关闭管线，监听一律挂在组件本身。值里已有的换行仍按多行渲染，只是不能再靠输入 `Enter` 增加换行。空值继续显示 placeholder；编辑层始终按自身内容撑高，因此空草稿或纯空格草稿在宿主自身塌缩的场合（flex 项 `min-width: 0`、表格单元格）也仍有承接光标的位置。
 
-`select()` 进入编辑态并全选内容；已在编辑态时只重新全选。`disabled` 时与 `focus()` 一样不产生效果。
+`select()` 进入编辑态并全选内容；已在编辑态时只重新全选。`disabled` 时与 `focus()` 一样不产生效果。`readonly` 时仍可聚焦和全选，但输入被拒绝，退出编辑态也不派发 `change`。
 
 宿主是行内级盒子：未设宽度时随内容伸缩，折行后高度按行数增长。字体、颜色、文本对齐与空白处理全部继承外部上下文，因此编辑前它就是一段普通文字。
 
