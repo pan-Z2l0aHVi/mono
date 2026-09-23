@@ -47,6 +47,34 @@ function removeTransitionOriginListeners() {
   window.removeEventListener('keydown', forgetTransitionOrigin, true)
 }
 
+const TRANSITION_SKIP_INPUT_EVENTS = ['pointermove', 'pointerdown', 'pointerup', 'wheel'] as const
+
+/*
+ * rendering suppression 期间，规范强制 pointer hit-test 指向 documentElement；
+ * 伪元素的 pointer-events 或 host 覆写窗口都无法覆盖这条渲染规则。首次用户输入即
+ * 取消揭示，牺牲剩余动画换回交互。触发该事件本身仍按规范以 html 为目标，因此这里
+ * 缩短的是失效窗口，不是对首个事件的追溯改道。
+ */
+function addTransitionInputSkipListeners(transition: ViewTransitionLike): () => void {
+  let listening = true
+  const remove = () => {
+    if (!listening) return
+    listening = false
+    for (const event of TRANSITION_SKIP_INPUT_EVENTS) {
+      window.removeEventListener(event, skip, true)
+    }
+  }
+  const skip = () => {
+    if (!listening) return
+    remove()
+    transition.skipTransition?.()
+  }
+  for (const event of TRANSITION_SKIP_INPUT_EVENTS) {
+    window.addEventListener(event, skip, { capture: true, passive: true })
+  }
+  return remove
+}
+
 function resolveAppearance(appearance: ThemeAppearance): 'light' | 'dark' {
   if (appearance !== 'system') return appearance
   try {
@@ -288,6 +316,7 @@ export class WebUiTheme extends LitElement {
     document.adoptedStyleSheets = [...document.adoptedStyleSheets, styleSheet]
     const transition = document.startViewTransition(commit) as unknown as ViewTransitionLike
     this._activeTransition = transition
+    this._transitionInputSkipCleanup = addTransitionInputSkipListeners(transition)
     const animations: Animation[] = []
 
     transition.ready
@@ -333,6 +362,8 @@ export class WebUiTheme extends LitElement {
     } catch {
       // API 缺失、capture 冲突或用户 skip 都不是状态错误；appearance 已由 update callback 提交。
     } finally {
+      this._transitionInputSkipCleanup?.()
+      this._transitionInputSkipCleanup = undefined
       this._activeTransition = undefined
       this._transitionCleanup = undefined
       for (const animation of animations) animation.cancel()
@@ -350,6 +381,8 @@ export class WebUiTheme extends LitElement {
   }
 
   private _cleanupThemeTransition(restoreCapture = true) {
+    this._transitionInputSkipCleanup?.()
+    this._transitionInputSkipCleanup = undefined
     this._activeTransition = undefined
     const cleanup = this._transitionCleanup
     this._transitionCleanup = undefined
@@ -358,6 +391,7 @@ export class WebUiTheme extends LitElement {
 
   private _activeTransition?: ViewTransitionLike
   private _transitionCleanup?: () => void
+  private _transitionInputSkipCleanup?: () => void
 
   override render() {
     return html`<slot></slot>${this._hasAppearance() ? html`<div data-wui-overlay-container></div>` : nothing}`
