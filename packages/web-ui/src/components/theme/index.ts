@@ -110,18 +110,19 @@ export class WebUiTheme extends LitElement {
   set appearance(v: string | undefined) {
     const old = this._appearance
     const next = v !== undefined ? (normalizeLiteral(v, APPEARANCES, 'light') as ThemeAppearance) : undefined
+    const resolvedNext = resolveAppearance(next)
     const request = ++this._appearanceRequest
     if (
       next !== undefined &&
       !this._transitionRequested &&
       themeTransitionFlightToken === null &&
-      this._shouldAnimateAppearance(next)
+      this._shouldAnimateAppearance(next, resolvedNext)
     ) {
       // async helper 可能把函数体排到当前栈后；flight gate 必须在当前 setter 栈内生效。
       this._transitionRequested = true
       const flightToken = { requestId: request }
       themeTransitionFlightToken = flightToken
-      void this._startThemeTransition(next, old!, request, flightToken).catch(() => {
+      void this._startThemeTransition(next, resolvedNext, old!, request, flightToken).catch(() => {
         this._cleanupThemeTransition()
         this._transitionRequested = false
         if (themeTransitionFlightToken === flightToken) themeTransitionFlightToken = null
@@ -293,10 +294,10 @@ export class WebUiTheme extends LitElement {
     return { duration: Math.max(0, duration), easing: safeEasing }
   }
 
-  private _shouldAnimateAppearance(next: ThemeAppearance): boolean {
+  private _shouldAnimateAppearance(next: ThemeAppearance, resolvedNext: ResolvedThemeAppearance): boolean {
     const previous = this._appearance
     if (!previous || previous === next) return false
-    if (resolveAppearance(previous) === resolveAppearance(next)) return false
+    if (resolveAppearance(previous) === resolvedNext) return false
     return (
       typeof document.startViewTransition === 'function' &&
       Array.isArray(document.adoptedStyleSheets) &&
@@ -308,6 +309,7 @@ export class WebUiTheme extends LitElement {
   // 嵌套主题只做局部揭示；View Transitions 需要 capture box，因此飞行期间临时生成一个 host box。
   private async _startThemeTransition(
     next: ThemeAppearance,
+    resolvedNext: ResolvedThemeAppearance,
     previous: ThemeAppearance,
     request: number,
     flightToken: object
@@ -325,8 +327,8 @@ export class WebUiTheme extends LitElement {
           animation: none;
           mix-blend-mode: normal;
         }
-        ::view-transition-old(${transitionName}) { z-index: ${next === 'dark' ? 1 : 2}; }
-        ::view-transition-new(${transitionName}) { z-index: ${next === 'dark' ? 2 : 1}; }
+        ::view-transition-old(${transitionName}) { z-index: ${resolvedNext === 'dark' ? 1 : 2}; }
+        ::view-transition-new(${transitionName}) { z-index: ${resolvedNext === 'dark' ? 2 : 1}; }
       `)
     } else {
       styleSheet.replaceSync(`
@@ -335,8 +337,8 @@ export class WebUiTheme extends LitElement {
           mix-blend-mode: normal;
         }
         ::view-transition-image-pair(root) { mix-blend-mode: normal; }
-        ::view-transition-old(root) { z-index: ${next === 'dark' ? 1 : 2}; }
-        ::view-transition-new(root) { z-index: ${next === 'dark' ? 2 : 1}; }
+        ::view-transition-old(root) { z-index: ${resolvedNext === 'dark' ? 1 : 2}; }
+        ::view-transition-new(root) { z-index: ${resolvedNext === 'dark' ? 2 : 1}; }
       `)
     }
 
@@ -381,16 +383,18 @@ export class WebUiTheme extends LitElement {
         const { duration, easing } = this._transitionMotion()
         if (duration <= 0) return
         const { x, y } = this._transitionOrigin()
-        const target = next === 'dark' ? '::view-transition-new(root)' : '::view-transition-old(root)'
+        const target = resolvedNext === 'dark' ? '::view-transition-new(root)' : '::view-transition-old(root)'
         if (!root) {
           const box = this.getBoundingClientRect()
           const relative = { x: x - box.left, y: y - box.top }
           const radius = Math.ceil(
             Math.hypot(Math.max(relative.x, box.width - relative.x), Math.max(relative.y, box.height - relative.y))
           )
-          const frames = this._transitionKeyframes(relative.x, relative.y, radius, next)
+          const frames = this._transitionKeyframes(relative.x, relative.y, radius, resolvedNext)
           const target =
-            next === 'dark' ? `::view-transition-new(${transitionName})` : `::view-transition-old(${transitionName})`
+            resolvedNext === 'dark'
+              ? `::view-transition-new(${transitionName})`
+              : `::view-transition-old(${transitionName})`
           animations.push(
             document.documentElement.animate(frames, {
               duration,
@@ -404,7 +408,7 @@ export class WebUiTheme extends LitElement {
 
         const radius = Math.ceil(Math.hypot(Math.max(x, window.innerWidth - x), Math.max(y, window.innerHeight - y)))
         animations.push(
-          document.documentElement.animate(this._transitionKeyframes(x, y, radius, next), {
+          document.documentElement.animate(this._transitionKeyframes(x, y, radius, resolvedNext), {
             duration,
             easing,
             fill: 'both',
@@ -431,10 +435,15 @@ export class WebUiTheme extends LitElement {
     }
   }
 
-  private _transitionKeyframes(x: number, y: number, radius: number, next: ThemeAppearance): Keyframe[] {
+  private _transitionKeyframes(
+    x: number,
+    y: number,
+    radius: number,
+    resolvedNext: ResolvedThemeAppearance
+  ): Keyframe[] {
     const from = `circle(0px at ${x}px ${y}px)`
     const to = `circle(${radius}px at ${x}px ${y}px)`
-    return next === 'dark' ? [{ clipPath: from }, { clipPath: to }] : [{ clipPath: to }, { clipPath: from }]
+    return resolvedNext === 'dark' ? [{ clipPath: from }, { clipPath: to }] : [{ clipPath: to }, { clipPath: from }]
   }
 
   private _cleanupThemeTransition(restoreCapture = true) {

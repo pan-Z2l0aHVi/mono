@@ -1392,7 +1392,7 @@ SVG 线条绘制动画，基于 `stroke-dashoffset`。直接在原元素上动�
 
 `resolved-appearance` 是只读的派生宿主属性（同时以 `resolvedAppearance` property 暴露）：值恒为 `light` 或 `dark`；显式 `appearance` 直接透传，`appearance="system"` 从 `prefers-color-scheme` 解析，OS 深浅翻转时实时更新。未设置 `appearance` 的主题仍保持 inactive，但解析输出使用默认值 `light`。该 attribute 由组件独占写入并会恢复外部改动，因此消费端可以直接把选择器或 Tailwind custom variant 绑定到 `resolved-appearance`，无需再维护第二份主题状态。
 
-配色变化是否使用 View Transitions API 播放动画，由当前主题范围的 `motion` 档位决定：`full` 始终播放揭示，`reduced` 直接落地新 appearance、不播放揭示，`system` 跟随 `prefers-reduced-motion`。根主题揭示整页；嵌套主题只揭示自己的 capture box。圆心优先取最近一次 pointerdown 坐标，否则回退主题盒或视口中心；深浅两个方向反向播放。不支持的浏览器、reduced-motion 作用域、时长为 0 以及同一 flight 内已有未完成请求都会立即落地新 appearance；当前版本对 `appearance="system"` 的 OS 深浅翻转不做动画。
+配色变化是否使用 View Transitions API 播放动画，由当前主题范围的 `motion` 档位决定：`full` 始终播放揭示，`reduced` 直接落地新 appearance、不播放揭示，`system` 跟随 `prefers-reduced-motion`。根主题揭示整页；嵌套主题只揭示自己的 capture box。圆心优先取最近一次 pointerdown 坐标，否则回退主题盒或视口中心；揭示方向跟随解析后的外观，包括 `appearance="system"` 从 `prefers-color-scheme` 解析出的结果，深浅两个方向反向播放。不支持的浏览器、reduced-motion 作用域、时长为 0 以及同一 flight 内已有未完成请求都会立即落地新 appearance；当前版本对 `appearance="system"` 的 OS 深浅翻转不做动画。
 
 揭示进行中，View Transitions 的 rendering-suppression 规则会强制所有 pointer hit-test 指向 document element，因此 CSS `pointer-events` 覆盖无法让底层页面继续交互。主题只在 `pointerdown` 或 wheel 时调用 `skipTransition()`；`pointermove` 与 `pointerup` 永远不会结束揭示，因此发起控件的收尾移动或过渡期间的普通移动都不会打断动画。触发 skip 的事件本身仍按规范以 document element 为目标，但失效窗口到此为止，不会持续满整个揭示时长。
 
