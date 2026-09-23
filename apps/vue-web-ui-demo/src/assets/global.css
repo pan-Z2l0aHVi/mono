@@ -1,6 +1,9 @@
 /* stylelint-disable custom-property-pattern */
 @import 'tailwindcss';
 
+/* stylelint-disable-next-line at-rule-no-unknown -- Tailwind v4 指令 */
+@custom-variant dark (&:where(web-ui-theme[resolved-appearance='dark'] *));
+
 @theme {
   --spacing: 4px;
 
