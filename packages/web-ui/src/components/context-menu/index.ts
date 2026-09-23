@@ -116,7 +116,8 @@ export class WebUiContextMenu extends LitElement {
    * 后代；关闭动作仍走 closeDeepestOrAll（最深子菜单优先）。
    */
   private readonly _overlay = defineOpenOverlay().make({
-    requestClose: () => this._keyboardDelegate.closeDeepestOrAll()
+    requestClose: () => this._keyboardDelegate.closeDeepestOrAll(),
+    isConnected: () => this.isConnected
   })
   private readonly _menuItemAnchors = new Map<HTMLElement, Comment>()
   private readonly _scrollLock = defineScrollLockLease().make()

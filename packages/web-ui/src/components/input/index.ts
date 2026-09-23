@@ -140,6 +140,16 @@ export class WebUiInput extends FormAssociated(LitElement) {
     this.shadowRoot?.querySelector('input')?.focus()
   }
 
+  // 公共 focus/blur 与 textarea 对齐：宿主自身没有 tab 位（不可聚焦），
+  // 不重定向到内部原生控件的话，调用方拿到的是一次空操作
+  override focus(options?: FocusOptions) {
+    this.shadowRoot?.querySelector('input')?.focus(options)
+  }
+
+  override blur() {
+    this.shadowRoot?.querySelector('input')?.blur()
+  }
+
   override render() {
     // readonly 下不可清除：清空按钮会修改值，与只读语义冲突
     const showClear = this.clearable && this._value && !this.readonly

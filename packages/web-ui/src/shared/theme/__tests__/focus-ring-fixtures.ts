@@ -36,7 +36,8 @@ export const fixtures: Fixture[] = [
   },
   {
     tag: 'web-ui-autocomplete',
-    innerSelector: '.input-wrapper',
+    // 默认触发器是 shadow 内的 web-ui-input，focus ring 落在它自己的 .wui-input-inner 上
+    innerSelector: '.wui-input-inner',
     create: () => {
       const el = document.createElement('web-ui-autocomplete') as WebUiAutocomplete
       el.innerHTML = '<web-ui-option value="apple" label="Apple"></web-ui-option>'
@@ -44,6 +45,27 @@ export const fixtures: Fixture[] = [
     }
   }
 ]
+
+/**
+ * 跨 shadow root 解析 focus ring 宿主与原生输入框。
+ *
+ * autocomplete 的 `::after` focus ring 在默认触发器（shadow 内的 web-ui-input）里，
+ * 直接 `querySelector` 穿不进那层 shadow root；同层的原生输入框同理。
+ */
+function queryDeep<T extends HTMLElement>(root: ParentNode, selector: string): T | null {
+  const direct = root.querySelector<T>(selector)
+  if (direct) return direct
+
+  for (const element of Array.from(root.querySelectorAll('*'))) {
+    const nested = element.shadowRoot ? queryDeep<T>(element.shadowRoot, selector) : null
+    if (nested) return nested
+  }
+  return null
+}
+
+export function resolveInner(host: HTMLElement, innerSelector: string): HTMLElement {
+  return queryDeep<HTMLElement>(host.shadowRoot!, innerSelector)!
+}
 
 /** `--wui-duration-focus` 的默认值（`components/theme/style.css` 基础 `:host` 块）。 */
 export const FOCUS_RING_MS = 200
@@ -85,7 +107,7 @@ export async function mountField(
   theme.append(host)
   await host.updateComplete
 
-  const inner = host.shadowRoot!.querySelector<HTMLElement>(fixture.innerSelector)!
+  const inner = resolveInner(host, fixture.innerSelector)
   flushStyles(inner)
   return { host, inner }
 }
@@ -93,8 +115,7 @@ export async function mountField(
 /** 聚焦原生输入框，并推进一帧让过渡进入运行态。 */
 export async function focusAndSettle(host: FixtureElement, inner: HTMLElement): Promise<void> {
   const nativeField =
-    inner.shadowRoot?.querySelector<HTMLElement>('input, textarea') ??
-    host.shadowRoot?.querySelector<HTMLElement>('input, textarea')
+    queryDeep<HTMLElement>(inner, 'input, textarea') ?? queryDeep<HTMLElement>(host.shadowRoot!, 'input, textarea')
   nativeField?.dispatchEvent(new FocusEvent('focus'))
   await host.updateComplete
   await new Promise(resolve => requestAnimationFrame(resolve))

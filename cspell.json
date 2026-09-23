@@ -29,6 +29,8 @@
   "useGitignore": true,
   "version": "0.2",
   "words": [
+    "inconsolata",
+    "Inconsolata",
     "Avenir",
     "entrancy",
     "evals",

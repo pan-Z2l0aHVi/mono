@@ -2,6 +2,7 @@ import { html, LitElement, nothing, type PropertyValues, unsafeCSS } from 'lit'
 import { customElement, property, state } from 'lit/decorators.js'
 import { ifDefined } from 'lit/directives/if-defined.js'
 
+import '@/components/input'
 import '@/components/option'
 import glass from '@/assets/glass.css?inline'
 import overlayMotion from '@/assets/overlay-motion.css?inline'
@@ -12,6 +13,7 @@ import { dispatchOpenChangeEvent } from '@/shared/open-state'
 import {
   createComboboxOpenController,
   createOptionListenerBinding,
+  defineComboboxTrigger,
   handleComboboxFocusOut,
   nextWrappingIndex
 } from '@/shared/option-portal'
@@ -31,6 +33,11 @@ function isEmptySlotNode(node: Node): node is Element {
   return node instanceof Element && node.getAttribute('slot') === 'empty'
 }
 
+// 自定义 trigger 与 select 同判据：必须留在宿主，不随 options 迁入 portal 面板
+function isTriggerSlotNode(node: Node): node is Element {
+  return node instanceof Element && node.slot === 'trigger'
+}
+
 /**
  * `web-ui-autocomplete`：可输入并过滤候选的单值选择器。
  *
@@ -38,6 +45,12 @@ function isEmptySlotNode(node: Node): node is Element {
  * 可编辑输入框：`value` 即当前输入文本（表单值），键入时按 `filter` 模式过滤候选，
  * 选择 option 时文本回填为该项 label，`selected-value` 暴露该项的 value。
  * `allow-custom-value` 开启后，Enter 可把不匹配候选的原文作为 custom value 显式提交。
+ *
+ * 触发器跟随 select 的 wrapper div 模式：`slot[name="trigger"]` 可替换默认触发器
+ * （shadow 内的 `web-ui-input`）；多行触发器（如 `web-ui-textarea`）保留 Enter 换行语义，
+ * 关闭面板用 Escape 或 blur。
+ * tab 位只属于触发器自身：默认触发器是 shadow 内 input，自定义触发器由消费者提供
+ * 可聚焦元素（README 契约）；包装 div 恒为 tabindex="-1"，不占顺序焦点，避免双 tab 位。
  */
 @customElement('web-ui-autocomplete')
 export class WebUiAutocomplete extends FormAssociated(LitElement) {
@@ -127,6 +140,7 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
   @state() private _isOpen = false
   @state() private _activeIndex = -1
   @state() private _focused = false
+  @state() private _hasTriggerSlot = false
 
   private static _nextInstanceId = 0
   private readonly _idPrefix = `web-ui-autocomplete-${++WebUiAutocomplete._nextInstanceId}`
@@ -145,22 +159,44 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
     getPortalContent: () => this._portalContent,
     isOpen: () => this.portal && this._isOpen,
     // 默认 slot 内容随面板迁移；slot="empty" 由 autocomplete 单独迁移并恢复。
-    getMigratableNodes: () => Array.from(this.childNodes).filter(node => !isEmptySlotNode(node)),
+    // slot="trigger" 与 select 同判据留在宿主，不进面板。
+    getMigratableNodes: () =>
+      Array.from(this.childNodes).filter(node => !isEmptySlotNode(node) && !isTriggerSlotNode(node)),
     hasUpdated: () => this.hasUpdated,
     requestUpdate: () => this.requestUpdate(),
     bindOption: option => this._bindOption(option),
     unbindOption: option => this._unbindOption(option)
   })
   /*
+   * 触发器委托层：默认触发器（shadow 内 web-ui-input）与 slot[name="trigger"] 自定义
+   * 触发器对组件暴露同一形状，监听统一挂在 trigger 包装 div 上，两条路径不特判。
+   */
+  private readonly _trigger = defineComboboxTrigger().make({
+    getWrapper: () => this.shadowRoot?.querySelector<HTMLElement>('.autocomplete-trigger') ?? null,
+    getCustomTrigger: () => {
+      const assigned = this.shadowRoot?.querySelector<HTMLSlotElement>('slot[name="trigger"]')?.assignedElements()[0]
+      return assigned instanceof HTMLElement ? assigned : null
+    },
+    getFallbackTrigger: () => this.shadowRoot?.querySelector<HTMLElement>('.autocomplete-input') ?? null,
+    onInput: value => this._onTriggerInput(value),
+    onClick: () => this._onTriggerClick(),
+    onFocusIn: event => this._onTriggerFocusIn(event),
+    onFocusOut: event => this._onTriggerFocusOut(event)
+  })
+  /*
    * 开启态浮层承载「我开着吗」（issue #120 Block 1）：宿主级 keydown 在 portal 模式下
    * 收不到面板内的 Escape，改由唯一仲裁者在 document 捕获阶段判定最内层。
-   * 宿主接口只剩 requestClose：开启状态是声明而非询问。
+   * 宿主接口除 requestClose 外只再提供一个 isConnected（仅供惰性回收读取）：开启状态是
+   * 声明而非询问。
    */
   private readonly _overlay = defineOpenOverlay().make({
-    requestClose: () => this._close()
+    requestClose: () => this._close(),
+    isConnected: () => this.isConnected
   })
   private readonly _panel = defineAnchoredPanel().make({
-    getAnchor: () => this.shadowRoot?.querySelector<HTMLElement>('.input-wrapper') ?? null,
+    // 锚点取当前生效的触发器 host：默认触发器或自定义 trigger slot 内容
+    getAnchor: () =>
+      this._trigger.getTrigger() ?? this.shadowRoot?.querySelector<HTMLElement>('.autocomplete-trigger') ?? null,
     getLocalPanel: () => this.shadowRoot?.querySelector<HTMLElement>('.autocomplete-overlay') ?? null,
     getPositioning: () => ({
       placement: 'bottom-start',
@@ -179,6 +215,19 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
 
   get open(): boolean {
     return this._isOpen
+  }
+
+  /*
+   * 公共焦点委托：聚焦/失焦当前生效的触发器（默认 web-ui-input 或自定义触发器）。
+   * 组件自带 focus 重定向时落到内部原生控件；自定义触发器没有该能力时，
+   * 原生 focus() 聚焦 host 自身。无触发器（尚未首渲或已断开）时静默返回。
+   */
+  override focus(options?: FocusOptions): void {
+    this._trigger.focusTrigger(options)
+  }
+
+  override blur(): void {
+    this._trigger.blurTrigger()
   }
 
   private _onClickOutside = (e: MouseEvent) => {
@@ -207,9 +256,29 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
   override connectedCallback() {
     super.connectedCallback()
     this._optionPortal.bindHost()
+    // 宿主可能被上层浮层 portal 迁移（断开重连）：shadow 内的包装 div 仍在，重新绑定委托监听
+    this._trigger.bind()
     this.addEventListener('keydown', this._onKeydown)
     this.addEventListener('focusout', this._onFocusOut)
     document.addEventListener('click', this._onClickOutside)
+  }
+
+  private _onTriggerSlotChange = () => {
+    this._syncTriggerSlot()
+  }
+
+  /*
+   * 自定义触发器判定必须同步：slotchange 在首次渲染之后才派发，只依赖它会让默认
+   * web-ui-input 先渲染一帧再被替换，自定义触发器出现时会闪一下默认输入框。
+   * 判据与 portal 迁移排除（isTriggerSlotNode）同源：宿主直接子节点带 slot="trigger"。
+   */
+  private _syncTriggerSlot() {
+    const hasTriggerSlot = Array.from(this.children).some(isTriggerSlotNode)
+    if (this._hasTriggerSlot === hasTriggerSlot) return
+    this._hasTriggerSlot = hasTriggerSlot
+    // 触发器在默认与自定义之间切换：anchor 与 portal 会话按新触发器重建。
+    // 首次渲染前尚无 portal 会话，无需重建。
+    if (this.hasUpdated) this._reconfigureOverlay()
   }
 
   override attributeChangedCallback(name: string, oldValue: string | null, newValue: string | null) {
@@ -224,6 +293,7 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
   override disconnectedCallback() {
     super.disconnectedCallback()
     this._optionPortal.dispose()
+    this._trigger.dispose()
     this.removeEventListener('keydown', this._onKeydown)
     this.removeEventListener('focusout', this._onFocusOut)
     document.removeEventListener('click', this._onClickOutside)
@@ -237,12 +307,14 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
   }
 
   override firstUpdated() {
+    this._trigger.bind()
     requestAnimationFrame(() => {
       if (this.isConnected) this._optionPortal.scheduleRefresh()
     })
   }
 
   override willUpdate() {
+    this._syncTriggerSlot()
     this._refreshOptions()
     this._optionPortal.ensureOptionIds(this._options)
     this._syncSelectedValue()
@@ -252,8 +324,8 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
   }
 
   override updated(changed: PropertyValues) {
-    const input = this.shadowRoot?.querySelector<HTMLInputElement>('.autocomplete-input')
-    if (input && input.value !== this._value) input.value = this._value
+    // 文本回写经委托层落到当前触发器（默认 web-ui-input 或自定义触发器）
+    this._trigger.setValue(this._value)
     if (changed.has('portal') || changed.has('overlayContainer'))
       requestAnimationFrame(() => this._reconfigureOverlay())
     if (changed.has('noScrollLock')) this._syncScrollLock()
@@ -407,19 +479,25 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
 
     // Escape 不在本组件处理：由共享仲裁者在 document 捕获阶段归属（issue #120 Block 1）。
     switch (e.key) {
+      /*
+       * 多行触发器（textarea）的方向键归光标移动：面板打开时不接管、不
+       * preventDefault，与 Enter 的 multiline 例外同判据。面板关闭时方向键
+       * 仍是打开入口（键盘可达性不依赖指针）。
+       */
       case 'ArrowDown':
+      case 'ArrowUp': {
+        if (this._isOpen && this._trigger.isMultilineEdit(e)) break
         e.preventDefault()
         if (!this._isOpen) this._open(true)
-        else this._navigateActive(1)
+        else this._navigateActive(e.key === 'ArrowDown' ? 1 : -1)
         break
-      case 'ArrowUp':
-        e.preventDefault()
-        if (!this._isOpen) this._open(true)
-        else this._navigateActive(-1)
-        break
+      }
       case 'Enter':
-        // 面板打开时接管 Enter：选择候选或提交 custom value；关闭时不拦截表单提交。
-        if (this._isOpen) {
+        /*
+         * 面板打开时接管 Enter：选择候选或提交 custom value；关闭时不拦截表单提交。
+         * 多行触发器（textarea）保留换行语义，不接管为选中高亮项。
+         */
+        if (this._isOpen && !this._trigger.isMultilineEdit(e)) {
           e.preventDefault()
           const option = this._options[this._activeIndex]
           if (option && !option.disabled && !option.hasAttribute('data-filtered')) {
@@ -489,34 +567,45 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
     this.dispatchEvent(new Event('change', { bubbles: true, composed: true }))
   }
 
-  private _onInput = (e: Event) => {
+  private _onTriggerInput = (value: string) => {
     if (this._isDisabled || this.readonly) return
-    const input = e.target as HTMLInputElement
-    if (input.value === this._value) return
-    this.value = input.value
+    if (value === this._value) return
+    this.value = value
     this._activeIndex = -1
     this._syncActiveOption()
     if (!this._isOpen) this._open()
   }
 
-  // 内部原生 input 在失焦时也会派发 change；组件契约中 change 仅表示「选中提交」，
-  // 阻止原生 change 冒泡到宿主，避免消费端收到未选择时的 change。
-  private _onInnerChange = (e: Event) => {
-    e.stopPropagation()
-  }
-
-  private _onFocus = () => {
-    if (this._isDisabled) return
-    this._focused = true
-  }
-
-  private _onInputClick = () => {
+  private _onTriggerClick = () => {
     if (this._isDisabled || this.readonly) return
     if (this._options.length > 0) this._open()
   }
 
-  private _onBlur = () => {
+  /*
+   * focus/blur 不冒泡，委托层监听等价且冒泡的 focusin/focusout。
+   * 自定义触发器位于 light DOM，其焦点变化不会跨 shadow 边界到达宿主，这里补发
+   * 公共 focus/blur 兑现 README 事件契约；默认触发器在 shadow 内，原生事件已能
+   * 到达宿主，重复派发会让消费端收到两次。
+   */
+  private _onTriggerFocusIn = (event: FocusEvent) => {
+    if (this._isDisabled) return
+    this._focused = true
+    // composed 与原生 focus 一致（宿主内 retarget）：跨 shadow 边界的消费者能收到，
+    // 但不 bubbles —— focus/blur 的公共契约本来就不冒泡。
+    // relatedTarget 透传：消费端靠它判断焦点来回，补发事件不该丢这个信息
+    if (this._isSlottedFocus(event))
+      this.dispatchEvent(new FocusEvent('focus', { composed: true, relatedTarget: event.relatedTarget }))
+  }
+
+  private _onTriggerFocusOut = (event: FocusEvent) => {
     this._focused = false
+    if (this._isSlottedFocus(event))
+      this.dispatchEvent(new FocusEvent('blur', { composed: true, relatedTarget: event.relatedTarget }))
+  }
+
+  private _isSlottedFocus(event: FocusEvent): boolean {
+    const target = event.target
+    return target instanceof Node && !!this.shadowRoot && !this.shadowRoot.contains(target)
   }
 
   // 开合生命周期不变量收敛在 shared combobox-shell；autocomplete 注入
@@ -636,6 +725,8 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
       // 框架注释锚点（v-if/v-for 占位）必须留在宿主：锚点进面板后 Vue 下次翻转
       // 会以面板内节点为插入基准；portal 的 marker 注释同理不参与迁移。
       if (node instanceof Comment) continue
+      // 自定义 trigger 与 select（:461）同判据：留在宿主，不随 options 迁入浮层
+      if (isTriggerSlotNode(node)) continue
       if (isEmptySlotNode(node)) portal.appendContent([node], empty)
       else portal.appendContent([node], content)
     }
@@ -681,32 +772,37 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
     return html`
       <div class="wui-autocomplete-inner">
         ${labelledbyText ? html`<span class="autocomplete-a11y-only" id=${labelId}>${labelledbyText}</span>` : nothing}
-        <div class="wui-glass input-wrapper">
-          <input
-            class="autocomplete-input"
-            type="text"
-            placeholder=${this.placeholder}
-            name=${this.name}
-            .value=${this._value}
-            aria-label=${ifDefined(this.ariaLabel)}
-            aria-labelledby=${labelledbyText ? labelId : nothing}
-            ?disabled=${this._isDisabled}
-            ?readonly=${this.readonly}
-            ?required=${this.required}
-            role="combobox"
-            aria-expanded=${this._isOpen}
-            aria-haspopup="listbox"
-            aria-autocomplete="list"
-            aria-controls=${listboxId}
-            aria-disabled=${String(this._isDisabled)}
-            aria-readonly=${this.readonly ? 'true' : nothing}
-            aria-activedescendant=${activeDescendant}
-            @input=${this._onInput}
-            @change=${this._onInnerChange}
-            @click=${this._onInputClick}
-            @focus=${this._onFocus}
-            @blur=${this._onBlur}
-          />
+        <div
+          class="autocomplete-trigger"
+          ?data-custom-trigger=${this._hasTriggerSlot}
+          role="combobox"
+          aria-expanded=${this._isOpen}
+          aria-haspopup="listbox"
+          aria-autocomplete="list"
+          aria-controls=${listboxId}
+          aria-disabled=${String(this._isDisabled)}
+          aria-readonly=${this.readonly ? 'true' : nothing}
+          aria-label=${ifDefined(this.ariaLabel)}
+          aria-labelledby=${labelledbyText ? labelId : nothing}
+          aria-activedescendant=${activeDescendant}
+          tabindex="-1"
+        >
+          <slot name="trigger" @slotchange=${this._onTriggerSlotChange}></slot>
+          ${
+            !this._hasTriggerSlot
+              ? html`<web-ui-input
+                  class="autocomplete-input"
+                  .value=${this._value}
+                  placeholder=${this.placeholder}
+                  name=${this.name}
+                  ?borderless=${this.borderless}
+                  ?disabled=${this._isDisabled}
+                  ?readonly=${this.readonly}
+                  ?required=${this.required}
+                  aria-label=${ifDefined(this.ariaLabel || labelledbyText || undefined)}
+                ></web-ui-input>`
+              : nothing
+          }
         </div>
         <div
           class="autocomplete-a11y-listbox"

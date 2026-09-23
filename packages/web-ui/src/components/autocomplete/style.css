@@ -20,89 +20,49 @@
   position: relative;
 }
 
-.input-wrapper {
-  --wui-glass-corner-radius: calc(var(--wui-control-size, 36px) / 2);
-
+/*
+ * trigger 包装 div：持 combobox ARIA、slot[name="trigger"] 与事件委托监听。
+ * 玻璃胶囊由默认触发器 web-ui-input 自带（与重构前的 .input-wrapper 同一套 token
+ * 与度量：--wui-input-width / --wui-control-size / --wui-radius-control），这里只定义
+ * 容器宽度与自定义触发器时的自适应。
+ */
+.autocomplete-trigger {
   display: flex;
-  gap: 8px;
   align-items: center;
 
   box-sizing: border-box;
   width: var(--wui-input-width, 200px);
   min-width: var(--wui-control-size, 36px);
-  height: var(--wui-control-size, 36px);
-  padding: 0 12px;
-  border-radius: var(--wui-radius-control, calc(infinity * 1px));
-}
-
-:host([borderless]) .input-wrapper {
   border: none;
+
   background: transparent;
-  backdrop-filter: none;
-  box-shadow: none;
 }
 
-/* borderless 只移除输入容器的 glass 描边环（.wui-glass::before），
-   下拉浮层 .autocomplete-overlay 的 glass 描边不受影响 */
-:host([borderless]) .input-wrapper::before {
-  content: none;
+/* 自定义触发器自带度量，容器让位 */
+.autocomplete-trigger[data-custom-trigger] {
+  width: auto;
 }
 
-.autocomplete-input {
+/* 默认触发器填满容器：高度、内边距、玻璃底与 focus ring 由它自带 */
+.autocomplete-trigger web-ui-input {
   flex: 1;
-
   min-width: 0;
-  height: 100%;
-  margin: 0;
-  padding: 0;
-  border: none;
-
-  /* 表单控件不继承字体；显式继承以对齐宿主排版，避免 UA 默认字体差异 */
-  font: inherit;
-  font-size: var(--wui-font-size, 14px);
-  color: var(--wui-color-text, #1b1b1b);
-
-  background: transparent;
-  outline: none;
-
-  &::placeholder {
-    color: var(--wui-color-text-secondary, #6a6a6a);
-  }
-
-  &:disabled {
-    cursor: not-allowed;
-    opacity: 0.4;
-  }
 }
 
-/* Coarse pointers include iOS Safari, where a sub-16px font triggers focus zoom. */
-@media (pointer: coarse) {
-  .autocomplete-input {
-    font-size: max(16px, var(--wui-font-size, 14px));
-  }
+::slotted([slot='trigger']) {
+  min-width: 0;
 }
 
-/* Focus ring 独立成 ::after 层：base/focused 都是显式 box-shadow，保证所有变体都能过渡 */
-.input-wrapper::after {
-  pointer-events: none;
-  content: '';
-
-  position: absolute;
-  inset: 0;
-
-  border-radius: inherit;
-
-  box-shadow:
-    inset 0 0 0 1px transparent,
-    0 0 0 var(--wui-focus-ring-width, 3px) transparent;
-
-  transition: box-shadow var(--wui-duration-focus, 200ms);
+/* 自定义触发器场景下包装 div 可能成为 tab 位，补 focus ring（默认触发器自带） */
+.autocomplete-trigger:focus-visible {
+  outline: var(--wui-focus-ring-width, 3px) solid var(--wui-color-focus-ring, rgb(0 136 255 / 0.4));
+  outline-offset: 2px;
 }
 
-:host([focused]) .input-wrapper::after {
-  box-shadow:
-    inset 0 0 0 1px var(--wui-color-accent, #08f),
-    0 0 0 var(--wui-focus-ring-width, 3px) var(--wui-color-focus-ring, rgb(0 136 255 / 0.4));
+/* 禁用态：宿主已整体降透明度，默认触发器自身的 disabled 降透明度在此抵消，
+   保持与重构前（宿主 × 内部 input 两层）一致的观感 */
+:host([disabled]) .autocomplete-trigger web-ui-input {
+  opacity: 1;
 }
 
 /* ===== 浮层（glass 样式参考 select） ===== */

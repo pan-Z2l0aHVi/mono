@@ -2,11 +2,13 @@ import { html, LitElement, unsafeCSS } from 'lit'
 import { customElement, property, state } from 'lit/decorators.js'
 import { classMap } from 'lit/directives/class-map.js'
 
+import glass from '@/assets/glass.css?inline'
 import { installPointerFocusSuppression } from '@/shared/focus/pointer-focus'
 import { FormAssociated, defineFormAssociation, FormAssociationController } from '@/shared/form-association'
 import { attachDragGesture, type DragGestureHandle } from '@/shared/gesture/drag-gesture'
 import { clamp, snapToNearest } from '@/shared/gesture/physics'
 import { defineGroupCoordinator, GroupController } from '@/shared/group-management'
+import { normalizeLiteral } from '@/shared/normalize'
 
 import type { WebUiSegmentedTrigger } from '../segmented-trigger'
 
@@ -14,10 +16,31 @@ import style from './style.css?inline'
 
 installPointerFocusSuppression()
 
+const ALLOWED_VARIANTS = ['inset', 'raised'] as const
+
 @customElement('web-ui-segmented')
 export class WebUiSegmented extends FormAssociated(LitElement) {
-  static override styles = unsafeCSS(style)
+  // 轨道是不透明实体面：底色取 surface（浅色即 page，深色即 surface-raised 档）、无
+  // backdrop blur，描边环与投影仍由
+  // .wui-glass 提供且全状态同值；指示器恒挂同一配方，静止态由 surface-segmented 实色
+  // 盖住玻璃输出，按压与拖拽态才透出玻璃。
+  // variant="raised" 切回经典形态：flat 灰轨道（surface-segmented、无环无投影）+
+  // 实体白指示器（surface-selected + 柔投影），按压/拖拽态两变体同为透明玻璃；
+  // 视觉差异全部由 :host([variant=...]) 规则承载，见 style.css。
+  static override styles = [unsafeCSS(glass), unsafeCSS(style)]
   @property({ type: String, reflect: true }) name = ''
+
+  @property({ type: String, reflect: true })
+  get variant(): 'inset' | 'raised' {
+    return this._variant
+  }
+  set variant(v: string) {
+    const old = this._variant
+    this._variant = normalizeLiteral(v, ALLOWED_VARIANTS, 'inset')
+    this.requestUpdate('variant', old)
+  }
+  private _variant: 'inset' | 'raised' = 'inset'
+
   @property({ type: Boolean, reflect: true }) disabled = false
   @property({ type: Boolean, reflect: true }) required = false
 
@@ -237,6 +260,7 @@ export class WebUiSegmented extends FormAssociated(LitElement) {
     return html`
       <div
         class=${classMap({
+          'wui-glass': true,
           'wui-segmented': true,
           'is-disabled': this._isDisabled,
           'is-pressed': this._pressed,
@@ -250,7 +274,7 @@ export class WebUiSegmented extends FormAssociated(LitElement) {
         @pointercancel=${this.handlePointerUp}
         @pointerleave=${this.handlePointerLeave}
       >
-        <span class="wui-segmented-indicator"></span>
+        <span class="wui-glass wui-segmented-indicator"></span>
         <slot></slot>
       </div>
     `
