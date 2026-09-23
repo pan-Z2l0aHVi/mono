@@ -13,6 +13,22 @@ function createRootTheme(motion: ThemeMotion = 'full'): WebUiTheme {
   return theme
 }
 
+function createHitTarget(): HTMLElement {
+  const target = document.createElement('button')
+  target.style.cssText = 'position:fixed;left:40px;top:40px;width:160px;height:48px;z-index:1'
+  target.textContent = 'issue162 hit target'
+  document.body.append(target)
+  return target
+}
+
+async function waitFor(condition: () => boolean, message: string, timeoutMs = 1000): Promise<void> {
+  const deadline = performance.now() + timeoutMs
+  while (!condition()) {
+    if (performance.now() >= deadline) throw new Error(message)
+    await new Promise(resolve => requestAnimationFrame(resolve))
+  }
+}
+
 function createNestedTheme(): WebUiTheme {
   const outer = createRootTheme()
   const inner = document.createElement('web-ui-theme') as WebUiTheme
@@ -148,6 +164,38 @@ describe('theme transition（浏览器）', () => {
     expect(getComputedStyle(document.documentElement, `::view-transition-new(${reverseName})`).zIndex).toBe('1')
     await reverse.finished
 
+    expect(theme.style.getPropertyValue('view-transition-name')).toBe('')
+    expect(theme.style.getPropertyValue('display')).toBe('')
+    wrapper.restore()
+  })
+
+  it('active 期间 hit-test 落到 html，首次指针活动提前结束并恢复目标', async () => {
+    const wrapper = wrapStartViewTransition()
+    const target = createHitTarget()
+    const theme = createRootTheme()
+    await theme.updateComplete
+    const box = target.getBoundingClientRect()
+    const point = { x: box.left + box.width / 2, y: box.top + box.height / 2 }
+    expect(document.elementFromPoint(point.x, point.y)).toBe(target)
+
+    theme.appearance = 'dark'
+    const transition = wrapper.current
+    expect(transition).toBeDefined()
+    await transition!.ready
+    await Promise.resolve()
+    expect(document.elementFromPoint(point.x, point.y)).toBe(document.documentElement)
+
+    document.documentElement.dispatchEvent(
+      new PointerEvent('pointermove', { bubbles: true, clientX: point.x, clientY: point.y })
+    )
+    await waitFor(
+      () => document.elementFromPoint(point.x, point.y) === target,
+      'pointer activity did not end rendering suppression before the configured duration'
+    )
+    await transition!.finished.catch(() => undefined)
+
+    expect(theme.appearance).toBe('dark')
+    expect(document.adoptedStyleSheets.some(sheet => sheet.cssRules.length > 0)).toBe(false)
     expect(theme.style.getPropertyValue('view-transition-name')).toBe('')
     expect(theme.style.getPropertyValue('display')).toBe('')
     wrapper.restore()
