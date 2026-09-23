@@ -13,12 +13,28 @@ function createRootTheme(motion: ThemeMotion = 'full'): WebUiTheme {
   return theme
 }
 
-function createHitTarget(): HTMLElement {
+function createHitTarget(left = 40): HTMLElement {
   const target = document.createElement('button')
-  target.style.cssText = 'position:fixed;left:40px;top:40px;width:160px;height:48px;z-index:1'
+  target.style.cssText = `position:fixed;left:${left}px;top:40px;width:160px;height:48px;z-index:1`
   target.textContent = 'issue162 hit target'
   document.body.append(target)
   return target
+}
+
+function centerOf(target: HTMLElement): { x: number; y: number } {
+  const box = target.getBoundingClientRect()
+  return { x: box.left + box.width / 2, y: box.top + box.height / 2 }
+}
+
+function dispatchPointer(
+  target: EventTarget,
+  type: 'pointerdown' | 'pointermove' | 'pointerup',
+  point: { x: number; y: number },
+  pointerId = 1
+): void {
+  target.dispatchEvent(
+    new PointerEvent(type, { bubbles: true, composed: true, clientX: point.x, clientY: point.y, pointerId })
+  )
 }
 
 async function waitFor(condition: () => boolean, message: string, timeoutMs = 1000): Promise<void> {
@@ -42,9 +58,18 @@ function createNestedTheme(): WebUiTheme {
 function wrapStartViewTransition() {
   const original = document.startViewTransition
   let transition: ViewTransition | undefined
+  let skipCount = 0
   const start = vi.fn<(update?: () => void | Promise<void>) => ViewTransition>(
     (update?: () => void | Promise<void>) => {
       transition = original.call(document, update)
+      const skip = transition.skipTransition.bind(transition)
+      Object.defineProperty(transition, 'skipTransition', {
+        configurable: true,
+        value: () => {
+          skipCount += 1
+          skip()
+        }
+      })
       return transition
     }
   )
@@ -53,13 +78,19 @@ function wrapStartViewTransition() {
     get current() {
       return transition
     },
+    get skipCount() {
+      return skipCount
+    },
     restore() {
       document.startViewTransition = original
     }
   }
 }
 
-afterEach(() => document.body.replaceChildren())
+afterEach(() => {
+  window.dispatchEvent(new KeyboardEvent('keydown'))
+  document.body.replaceChildren()
+})
 
 describe('theme transition（浏览器）', () => {
   it('根主题在 ::view-transition-new(root) 上创建圆形揭示并在结束后清理', async () => {
@@ -169,15 +200,52 @@ describe('theme transition（浏览器）', () => {
     wrapper.restore()
   })
 
-  it('active 期间 hit-test 落到 html，首次指针活动提前结束并恢复目标', async () => {
+  it('忽略发起控件上的收尾指针事件，移出后仍提前结束并恢复 hit-test', async () => {
+    const wrapper = wrapStartViewTransition()
+    const source = createHitTarget()
+    const recovery = createHitTarget(240)
+    const theme = createRootTheme()
+    await theme.updateComplete
+    const sourcePoint = centerOf(source)
+    const recoveryPoint = centerOf(recovery)
+
+    dispatchPointer(source, 'pointerdown', sourcePoint, 7)
+    dispatchPointer(source, 'pointerup', sourcePoint, 7)
+    theme.appearance = 'dark'
+    const transition = wrapper.current
+    expect(transition).toBeDefined()
+    await transition!.ready
+    await Promise.resolve()
+    expect(document.elementFromPoint(recoveryPoint.x, recoveryPoint.y)).toBe(document.documentElement)
+
+    dispatchPointer(document.documentElement, 'pointermove', sourcePoint, 7)
+    dispatchPointer(document.documentElement, 'pointerup', sourcePoint, 7)
+    expect(wrapper.skipCount).toBe(0)
+
+    dispatchPointer(document.documentElement, 'pointermove', recoveryPoint, 7)
+    expect(wrapper.skipCount).toBe(1)
+    await waitFor(
+      () => document.elementFromPoint(recoveryPoint.x, recoveryPoint.y) === recovery,
+      'pointer activity did not end rendering suppression before the configured duration'
+    )
+    await transition!.finished.catch(() => undefined)
+
+    expect(theme.appearance).toBe('dark')
+    expect(document.adoptedStyleSheets.some(sheet => sheet.cssRules.length > 0)).toBe(false)
+    expect(theme.style.getPropertyValue('view-transition-name')).toBe('')
+    expect(theme.style.getPropertyValue('display')).toBe('')
+    wrapper.restore()
+  })
+
+  it('没有发起指针来源时，首次指针活动仍提前结束并恢复目标', async () => {
     const wrapper = wrapStartViewTransition()
     const target = createHitTarget()
     const theme = createRootTheme()
     await theme.updateComplete
-    const box = target.getBoundingClientRect()
-    const point = { x: box.left + box.width / 2, y: box.top + box.height / 2 }
+    const point = centerOf(target)
     expect(document.elementFromPoint(point.x, point.y)).toBe(target)
 
+    window.dispatchEvent(new KeyboardEvent('keydown'))
     theme.appearance = 'dark'
     const transition = wrapper.current
     expect(transition).toBeDefined()
@@ -185,9 +253,8 @@ describe('theme transition（浏览器）', () => {
     await Promise.resolve()
     expect(document.elementFromPoint(point.x, point.y)).toBe(document.documentElement)
 
-    document.documentElement.dispatchEvent(
-      new PointerEvent('pointermove', { bubbles: true, clientX: point.x, clientY: point.y })
-    )
+    dispatchPointer(document.documentElement, 'pointermove', point)
+    expect(wrapper.skipCount).toBe(1)
     await waitFor(
       () => document.elementFromPoint(point.x, point.y) === target,
       'pointer activity did not end rendering suppression before the configured duration'
