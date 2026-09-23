@@ -787,7 +787,7 @@ web-ui-radio-group {
 | `--wui-dialog-width`          | `360px`                                    | 对话框宽度                                                            |
 | `--wui-dialog-max-height`     | `90vh`                                     | 对话框最大高度                                                        |
 | `--wui-dialog-overlay-bg`     | `var(--wui-color-backdrop)`                | 遮罩背景色                                                            |
-| `--wui-dialog-bg`             | `var(--wui-color-surface-overlay)`         | 玻璃卡片背景色，回退到 `rgb(229 229 234 / 0.82)`                      |
+| `--wui-dialog-bg`             | `var(--wui-color-surface-overlay)`         | 玻璃卡片背景色，回退到 `rgb(246 246 246 / 0.82)`                      |
 | `--wui-dialog-padding`        | `20px 24px 24px`                           | 对话框表面内边距                                                      |
 | `--wui-dialog-title-gap`      | `16px`                                     | 标题下方间距                                                          |
 | `--wui-dialog-desc-gap`       | `24px`                                     | 正文内容下方间距                                                      |
@@ -1313,7 +1313,7 @@ WebUiSpinner.hide() // 隐藏
 
 `header-glow` 会在 header 插槽内容和移动端 Toggle 的背后添加 `pointer-events: none` 的装饰性晕染。它属于 Header 背景而非前景层，因此插槽内容始终位于其上方；可通过 `--wui-layout-header-glow-color` 覆盖颜色，默认值为 `--wui-color-page`。晕染浓度和范围由内部变量 `--wui-layout-header-glow-height`（默认 `150%`）控制；增大可加强覆盖，减小则更柔和。布局层级顺序为 Header（`10`）< Auxiliary（`20`）< Banner（`30`）< Tabbar（`40`）< Sidebar（`50`）。
 
-侧边栏卡片表面使用 `--wui-color-surface-sidebar`：浅色与共享的 `--wui-color-surface-overlay` 同值，深色比 `--wui-color-page` 浅一档、与 `--wui-color-surface` 同级。它独立成 token，是因为 dialog、drawer 和 toast 共用 `--wui-color-surface-overlay`，不随侧边栏一起抬升。
+侧边栏卡片表面使用 `--wui-color-surface-sidebar`：浅色保持半透明灰蓝分层，深色比 `--wui-color-page` 浅一档、与 `--wui-color-surface` 同级。它独立成 token，是因为 dialog、drawer 和 toast 共用 `--wui-color-surface-overlay`，可以采用不同表面。
 
 **CSS 自定义属性：**
 
@@ -1453,10 +1453,10 @@ SVG 线条绘制动画，基于 `stroke-dashoffset`。直接在原元素上动�
 | `--wui-color-surface-control`      | `#dfdfdf`                                                    | `#3a3a3c`                                                    | 中性可交互控件表面     |
 | `--wui-color-surface-track`        | `#e5e5ea`                                                    | `#444446`                                                    | Slider/Switch 轨道表面 |
 | `--wui-color-surface-menu`         | `rgb(229 229 234 / 0.76)`                                    | `rgb(49 48 50 / 0.74)`                                       | Menu 和浮动面板表面    |
-| `--wui-color-surface-glass`        | `rgb(229 229 234 / 0.34)`                                    | `rgb(44 44 46 / 0.42)`                                       | 液态玻璃表面           |
+| `--wui-color-surface-glass`        | `rgb(250 250 250 / 0.34)`                                    | `rgb(44 44 46 / 0.42)`                                       | 液态玻璃表面           |
 | `--wui-color-surface-glass-hover`  | `color-mix(... text 6%, surface-glass)`                      | `color-mix(... text 6%, surface-glass)`                      | Glass 完整悬停背景     |
 | `--wui-color-surface-glass-active` | `color-mix(... text 15%, surface-glass)`                     | `color-mix(... text 15%, surface-glass)`                     | Glass 完整按下背景     |
-| `--wui-color-surface-overlay`      | `rgb(229 229 234 / 0.82)`                                    | `rgb(32 34 34 / 0.9)`                                        | 半透明浮层表面         |
+| `--wui-color-surface-overlay`      | `rgb(246 246 246 / 0.82)`                                    | `rgb(32 34 34 / 0.9)`                                        | 半透明浮层表面         |
 | `--wui-color-surface-sidebar`      | `rgb(229 229 234 / 0.82)`                                    | `rgb(44 44 46 / 0.8)`                                        | 侧边栏面板表面         |
 | `--wui-color-surface-segmented`    | `#e5e5ea`                                                    | `#3a3a3c`                                                    | Segmented 指示器表面   |
 | `--wui-color-surface-selected`     | `#fff`                                                       | `#5c5c5e`                                                    | 选中表面               |
