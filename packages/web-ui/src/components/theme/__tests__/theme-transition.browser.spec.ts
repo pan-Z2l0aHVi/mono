@@ -1,12 +1,12 @@
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
 
-import type { WebUiTheme } from '..'
+import type { ThemeMotion, WebUiTheme } from '..'
 import '..'
 
-function createRootTheme(): WebUiTheme {
+function createRootTheme(motion: ThemeMotion = 'full'): WebUiTheme {
   const theme = document.createElement('web-ui-theme') as WebUiTheme
   theme.appearance = 'light'
-  theme.transition = true
+  theme.motion = motion
   // 3000ms 让 650ms 探测 sleep 的 margin 达到 ~2.3s：900ms 时 CI 单次停顿即可越过 deadline。
   theme.style.setProperty('--wui-theme-transition-duration', '3000ms')
   document.body.append(theme)
@@ -17,7 +17,7 @@ function createNestedTheme(): WebUiTheme {
   const outer = createRootTheme()
   const inner = document.createElement('web-ui-theme') as WebUiTheme
   inner.appearance = 'light'
-  inner.transition = true
+  inner.motion = 'full'
   inner.style.setProperty('--wui-theme-transition-duration', '3000ms')
   outer.append(inner)
   return inner
@@ -150,6 +150,40 @@ describe('theme transition（浏览器）', () => {
 
     expect(theme.style.getPropertyValue('view-transition-name')).toBe('')
     expect(theme.style.getPropertyValue('display')).toBe('')
+    wrapper.restore()
+  })
+
+  /*
+   * 三档语义在无系统 reduce 偏好的环境里的另一半：motion=system 跟随系统（此处即无偏好）播放过渡，
+   * motion=reduced 则完全不启动 —— 后者是「属性自身关掉过渡」的判据，与 reduced-motion project
+   * 里由 Playwright 注入的系统偏好互为对照。
+   */
+  it('motion=system 跟随无偏好系统：启动 View Transition', async () => {
+    const wrapper = wrapStartViewTransition()
+    const theme = createRootTheme('system')
+    await theme.updateComplete
+
+    theme.appearance = 'dark'
+    const transition = wrapper.current
+    expect(transition).toBeDefined()
+    await transition!.ready
+    await transition!.finished
+
+    expect(theme.appearance).toBe('dark')
+    wrapper.restore()
+  })
+
+  it('motion=reduced 时不启动 View Transition，直接落地 appearance', async () => {
+    const wrapper = wrapStartViewTransition()
+    const theme = createRootTheme('reduced')
+    await theme.updateComplete
+
+    theme.appearance = 'dark'
+    await theme.updateComplete
+    expect(wrapper.current).toBeUndefined()
+    expect(theme.appearance).toBe('dark')
+    expect(theme.getAttribute('appearance')).toBe('dark')
+
     wrapper.restore()
   })
 })

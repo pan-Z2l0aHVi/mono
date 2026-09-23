@@ -78,12 +78,13 @@ Focus token 只定义颜色与宽度：`--wui-color-focus-ring` / `--wui-focus-r
 「哪一层正开着」由 `src/shared/overlay/open-overlay.ts` 独占，组件不再各自监听 Escape。合并前由三个模块分担同一件事（逻辑父子树、Escape 仲裁、帧事务失效），不变量没有主人，8 个浮层组件各自把它拼成三步登记协议。
 
 - **唯一仲裁者**：document 捕获阶段监听 keydown，按「逻辑组合树下的最内层」归属一次 Escape，然后 `preventDefault()` + `stopPropagation()`。`preventDefault()` 同时压掉原生 `<dialog>` 的 cancel，因此 dialog / drawer / image-preview 的原生机制也由它统一接管——三者都必须自己登记，否则原生 cancel 被压掉后它们既不在候选里、也等不到兜底
-- **身份是句柄而非面板**：`claim(panel)` 返回会话句柄，`release()` 幂等——调用方不必回忆当初传了哪个 panel。**登记即开启**，开启状态是声明而非询问，仲裁时不再回调宿主问 `isConnected()` / `isOpen()` / `isEscapeCloseEnabled()`
+- **身份是句柄而非面板**：`claim(panel)` 返回会话句柄，`release()` 幂等——调用方不必回忆当初传了哪个 panel。**登记即开启**，开启状态是声明而非询问，仲裁时不再回调宿主问 `isOpen()` / `isEscapeCloseEnabled()`；宿主除 `requestClose()` 外只再提供一个 `isConnected()`，且只被惰性回收读取——读 DOM 连接状态不是询问「我开着吗」
 - **两种作用域分离**：实例作用域（`claim` / `scheduleFrame` / `invalidate` / `suspend` / `resume`）跨开合与断连存活；会话作用域（`setInert` / `adopt` / `contains` / `containsEvent` / `hasFocusWithin` / `release`）与一次开启同寿命。帧事务不能压进会话句柄，否则 `release()` 会误杀事务
 - **「暂时不可关闭」只有一个通道**：`handle.setInert(boolean)`。静态策略（`no-escape-close`）与瞬时状态（drawer 拖拽中）都走它，不设第三个仲裁枚举值——属性可在开启期间改写，claim 时冻结的枚举会随属性切换而失效
 - **惰性与会话同 lifetime**：新 claim 出来的层一律非惰性，因此「重新 claim」的路径（`anchored-panel.reconfigure`、同一 panel 重复 `open()`）之后必须按当前状态重推一次。这一步承重与否取决于该组件在 reconfigure 后是否会渲染：`updated()` 里每次渲染都同步的（select / autocomplete）会把紧随 claim 的那一行掩盖成防御性备份，而 `reconfigure` 不引发渲染的（popover）必须自己重推——两种形态都有判别锁。这是把静态策略做成动态通道的代价，也是该通道唯一需要调用方记住的义务
 - **只表达两件真事**：`arbitration: 'none'` 表示「在树里但不参与仲裁」（tooltip）；多级子菜单用 `handle.adopt(panel)` 显式指名父级，因为 portal 面板与宿主物理分离，祖先链推不出组合关系
-- **撤销时机与 `open` 同拍**，不等退场动画：关闭中的面板若仍是最内层，会把紧接着的 Escape 吞掉，外层永远等不到自己那一次
+- **撤销时机跟随退场，不提前也不拖过动画**：`close()` 先把会话切到「可见但暂缓仲裁」，动画播完（或被重新 `open()` 以新会话取代）才撤销。旧实现「与 `open` 同拍立即撤销」把还在场上的面板留在未登记状态——未登记即不参与「谁是最内层」的仲裁。暂缓层只是兜底候选：仍在开启的层永远优先，所以「内层关掉后立刻再按一次 Escape」仍归属外层，「一次 Escape 关一层」不退化。与 `setInert` 的分工是所有权：惰性由调用方声明、会随渲染重推，暂缓态由生命周期进入、调用方没有途径跟着渲染重推它。动画播完而宿主仍认为开着时切回开启态（面板已隐藏，不再符合「可见但暂缓」的前提）：交还仲裁让 Escape 走宿主的关闭入口，把面板状态与宿主状态的不一致收敛掉，而不是让一个看不见的面板无限吞掉按键
+- **登记表有兜底回收**：`Layer` 强引用 panel 与 host，漏 `release()` 会让整个组件无法回收，还会把 document 捕获监听永久留住。遍历登记表的入口（仲裁、release，以及建层**之前**的 claim）对 `!panel.isConnected && !host.isConnected()` 的层做惰性回收——判据取**同时**失联，因为面板可能被 portal 在容器间搬运、也可能只是短暂移除再放回。claim 路径的回收刻意跑在新层入表之前：「先 claim 再挂载」是合法时序，那一刻面板与宿主都还没连上，扫新层就会把它误判成死层删掉。dev 期另有 `__openOverlayLayerCount()` 测试钩子，让漏 release 在测试里是一个数字而不是 GC 推断
 - **边界**：presence、滚动锁与 drawer 的层序（nested layers）仍归各自模块——它们回答视觉问题，与「谁是最内层」正交
 
 ## 后果
@@ -91,6 +92,6 @@ Focus token 只定义颜色与宽度：`--wui-color-focus-ring` / `--wui-focus-r
 - 每个 Overlay 遵循明确的焦点模型；定位引擎唯一，私有路径需满足三条准入条件
 - 调用方拥有祖先层叠上下文；库不修改也不兜底
 - 组件对消费者节点的写入面严格受限
-- Escape 归属由唯一仲裁者裁决，组件只声明「我开着」；新增浮层必须 `claim` 才参与仲裁，关闭时与 `open` 同拍 `release`
+- Escape 归属由唯一仲裁者裁决，组件只声明「我开着」；新增浮层必须 `claim` 才参与仲裁，关闭时撤销时机跟随退场动画（见 §7）
 - 新增受管组合时以 GroupController 承担成员与上行逻辑，@lit/context 仅下行
 - 旧 token 命名不保留兼容别名；新组件属于哪一族就用哪个语义 radius token

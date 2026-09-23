@@ -1,0 +1,105 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+/* 组件对外表现为同级 span：行内级盒子，排版与颜色全部继承外部上下文。
+   :host 只设 display（ADR-0005），其余样式在 shadow root 内。 */
+:host {
+  display: inline-block;
+}
+
+/* 文本层与编辑层共用的排版盒：编辑层 absolute 定位覆盖它，切换只改可见性，
+  因此文字态与编辑态逐像素同盒。 */
+.layers {
+  position: relative;
+  display: block;
+}
+
+.text,
+.editor {
+  /* 长无空格串两层都必须能断：文本层若只继承宿主默认的 normal，长字母数字串不
+     截断、直接溢出宿主盒（文字态），而编辑层在盒内裁剪（编辑态），两层断行
+     不一致。默认 anywhere：仅在单词放不下时断，且参与 min-content 计算，收缩
+     上下文（flex 项 min-width:0）里长串也不会撑爆宿主；两层取同一变量，外部
+     覆盖时仍保持一致。 */
+  overflow-wrap: var(--wui-editable-text-overflow-wrap, anywhere);
+
+  /* 多行编辑要求换行符成行，但 pre-wrap 只能落在文本层上：模板里元素之间的空白
+     文本节点若被 pre-wrap 保留，会各自生成幻影行盒，把文本层顶偏、盒高翻倍，
+     文字态与编辑态随之不再同盒。这里保持 .layers 为默认 normal 让空白折叠，
+     两层取同一变量，外部覆盖（如 nowrap）时仍保持一致。 */
+  white-space: var(--wui-editable-text-white-space, pre-wrap);
+}
+
+.text {
+  display: inline;
+}
+
+.placeholder {
+  color: var(--wui-color-text-secondary, #6a6a6a);
+}
+
+/* 原生控件 reset：不贡献尺寸、无边框背景描边、不可手拖改变大小 */
+.editor {
+  resize: none;
+
+  position: absolute;
+
+  /* 四边各外扩 1px，再用 1px 内边距把文本起点与换行宽度拉回内容盒。
+     两层必须同盒，但盒的边界同时也是原生控件的裁剪边界：文本层的字形会按
+     边距溢出内容盒半个像素左右，紧凑行高下 textarea 内部内容也会比内容盒高
+     出 1px。裁剪盒若与内容盒重合，这些墨色只存在于文字态，编辑态被裁掉或顶偏，
+     两态逐像素比对就对不上；外扩 1px 后编辑层的裁剪盒覆盖文本层的墨色范围。 */
+  inset: -1px;
+
+  overflow: hidden;
+
+  margin: 0;
+  padding: 1px;
+  border: 0;
+
+  /* 原生控件不继承排版：显式继承让编辑层与文本层共用同一套字体度量 */
+  font: inherit;
+  line-height: inherit;
+  color: inherit;
+  text-align: inherit;
+  text-transform: inherit;
+  letter-spacing: inherit;
+  word-break: inherit;
+
+  appearance: none;
+  visibility: hidden;
+  background: transparent;
+  outline: none;
+
+  /* 光标颜色组件级默认：跟随共享语义 token，消费方在宿主或任意祖先上设
+     --wui-color-accent 即可覆盖（自定义属性穿透 shadow 边界继承）；
+     此前只有 interweave 页面级设置，demo 等消费方拿到的是浏览器默认黑。 */
+  caret-color: var(--wui-color-accent, #08f);
+
+  &::placeholder {
+    color: var(--wui-color-text-secondary, #6a6a6a);
+  }
+}
+
+/* 可见性切换：文字态隐藏编辑层、编辑态显露；盒模型、滚动与换行不随之变化 */
+:host([editing]) .editor {
+  /* 空内容时宿主可能被收缩到 0 宽：行内级盒子配上零宽占位符，收缩上下文（flex 项
+     min-width:0、表格单元格等）里就量不到宽度，编辑层随之没有可绘制光标的地盘，
+     清空全部内容后光标消失。留一个字符宽，保证空草稿下光标仍然可见。
+     规则落在 shadow 内：宿主上的 min-width 属于外层文档样式，会盖过 :host 声明。 */
+  min-width: 1ch;
+  visibility: visible;
+}
+
+/* 编辑态隐藏文本层：两层同盒同排版，若同时可见会把同一份文字画两遍，
+   抗锯齿边缘的墨色会加重，破坏文字态/编辑态的逐像素一致。 */
+:host([editing]) .text {
+  visibility: hidden;
+}
+
+:host([disabled]) {
+  cursor: not-allowed;
+}

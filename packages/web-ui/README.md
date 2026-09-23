@@ -275,6 +275,7 @@ All form controls participate in native `FormData`, constraint validation, `form
 | ---------------------- | --------------------------------------------------------- |
 | **Form Controls**      | [`<web-ui-input>`](#web-ui-input)                         |
 |                        | [`<web-ui-textarea>`](#web-ui-textarea)                   |
+|                        | [`<web-ui-editable-text>`](#web-ui-editable-text)         |
 |                        | [`<web-ui-input-number>`](#web-ui-input-number)           |
 |                        | [`<web-ui-select>`](#web-ui-select)                       |
 |                        | [`<web-ui-autocomplete>`](#web-ui-autocomplete)           |
@@ -337,6 +338,8 @@ Text input with clearable, prefix/suffix slots.
 
 **Events:** `input`, `change`, `focus`, `blur`
 
+**Methods:** `focus()`, `blur()` — delegate to the internal native input (the host itself is not focusable)
+
 **Slots:** `prefix`, `default`, `suffix`
 
 **CSS Custom Properties:**
@@ -380,6 +383,41 @@ Multi-line text input with auto-resize.
 | ---------------------------- | -------------------------------- | ------------------ |
 | `--wui-textarea-width`       | `200px`                          | Textarea width     |
 | `--wui-textarea-clear-color` | `var(--wui-color-text-tertiary)` | Clear button color |
+
+#### `<web-ui-editable-text>`
+
+Inline plain-text editor: click the text to edit in place, `Enter` and `blur` commit, `Escape` cancels. The text layer and the editing layer share one box, so entering edit mode does not move a single pixel.
+
+| Attribute     | Type      | Default | Description                                                                                                                                                |
+| ------------- | --------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `value`       | `string`  | `''`    | Current value; the declarative value captured on first connection becomes the `form.reset()` default; later attribute or property changes do not update it |
+| `placeholder` | `string`  | `''`    | Text shown while the value is empty                                                                                                                        |
+| `name`        | `string`  | `''`    | Form field name                                                                                                                                            |
+| `disabled`    | `boolean` | `false` | Disabled state; behavior only, no visual dimming                                                                                                           |
+| `aria-label`  | `string`  | —       | Accessible label                                                                                                                                           |
+
+**Events:** `input` (per keystroke), `change` (commit), `cancel` (cancel; shares its name with the native `<dialog>` `cancel`, so it neither bubbles nor crosses shadow boundaries and is dispatched on the component itself only). React has no synthetic event covering `cancel`: listen with `addEventListener('cancel', ...)`
+
+**Methods:** `focus()`, `blur()`, `select()`
+
+Clicking places the caret at the clicked offset; keyboard focus places it at the end of the text. `Enter` and `blur` both commit the draft and dispatch `change` exactly once; `Enter` does not insert a newline and returns focus to the host, while `blur` leaves the focus wherever the user moved it. `Escape` alone cancels: the value returns to what it was when editing started, `cancel` is dispatched with no `change`, focus returns to the host, and the key is consumed by the editing layer, so an outer overlay (drawer, menu) is not closed by the same press. The `cancel` event neither bubbles nor crosses shadow boundaries and is dispatched on the component itself only: when the component is projected inside an overlay's shadow root, such as a drawer title, it never reaches the overlay's native `cancel` close pipeline, so listen on the component itself. A value that already contains newlines still renders as several lines; only typing `Enter` no longer adds one. An empty value keeps showing the placeholder, and the editing layer always sizes itself to its own content, so an empty or whitespace-only draft still has room for the caret even where the host itself collapses (a flex item with `min-width: 0`, a table cell).
+
+`select()` enters edit mode with the whole content selected, and re-selects it when already editing. While `disabled` it does nothing, matching `focus()`.
+
+The host is an inline-level box: it sizes to its content unless a width is set, and grows with wrapped lines. Font, color, text alignment and white space are inherited from the surrounding context, so the component reads as ordinary text until it is edited.
+
+The caret follows the shared `--wui-color-accent` semantic token by default; set that token on the host or any ancestor to recolor it. Both layers wrap a long unbroken string (letters and digits with no spaces) at the same points, so a token wider than the box breaks inside the box instead of overflowing it while idle.
+
+**CSS Custom Properties:**
+
+| Property                            | Default    | Description                                                                                                                             |
+| ----------------------------------- | ---------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `--wui-editable-text-white-space`   | `pre-wrap` | White-space handling of both text layers                                                                                                |
+| `--wui-editable-text-overflow-wrap` | `anywhere` | Overflow-wrap handling of both text layers; the default breaks a long unbroken string inside the box, matching the native editing layer |
+
+The shared box comes with two constraints: keep `line-height` at `1` or above, because below that the native editing layer grows taller than its own box and shifts the text by a pixel; and with `nowrap` plus a fixed width, text wider than the box overflows while idle and scrolls inside the box while editing.
+
+**Interaction change:** `blur` commits again: both `Enter` and `blur` commit the draft, and only `Escape` cancels, restoring the value from the moment editing started. `Enter` still does not insert a newline. The `cancel` event no longer bubbles: a bubbling custom `cancel` used to travel through the slot into the `<dialog>` inside an outer overlay's shadow root (`composed` made no difference) and was treated as a close request, closing the overlay along with the edit (issue #159). Listen on the component itself.
 
 #### `<web-ui-input-number>`
 
@@ -461,9 +499,25 @@ Editable combobox with input filtering and single option selection.
 
 **Events:** `input`, `change`, `focus`, `blur`, `open-change` (`CustomEvent<{ open: boolean }>`)
 
-**Slots:** `default` (project `<web-ui-option>` elements), `empty` (replace the “no matches” state; falls back to “No matches”)
+**Methods:** `focus()`, `blur()`
+
+**Slots:** `default` (project `<web-ui-option>` elements), `trigger` (custom trigger content — replaces the default input), `empty` (replace the “no matches” state; falls back to “No matches”)
 
 Typing filters the option list by label (`contains` or `prefix`, or `none` to disable filtering). Selecting an option fills the input with its label and exposes the option's value via `selected-value`; `change` fires on selection commit. Supports ArrowDown/ArrowUp/Enter/Escape keyboard navigation.
+
+**Trigger:** the default trigger is an internal `web-ui-input`. Put any editable component in the `trigger` slot to replace it — the wrapper keeps the combobox ARIA and marks itself with `data-custom-trigger`, and the dropdown stays anchored to the trigger element. Programmatic `focus()` / `blur()` delegate to the active trigger: `web-ui-input` and `web-ui-textarea` move focus to their native control, while a custom trigger without its own focus redirection is focused as the host itself.
+
+```html
+<web-ui-autocomplete placeholder="Describe the issue">
+  <web-ui-textarea slot="trigger" rows="3"></web-ui-textarea>
+  <web-ui-option value="bug" label="Bug"></web-ui-option>
+  <web-ui-option value="feature" label="Feature"></web-ui-option>
+</web-ui-autocomplete>
+```
+
+The custom trigger exposes the same contract as the default one: a string `value` for the text, focusable, and the events the component delegates from it (`input`, `click`, `focus`, `blur`). `web-ui-input` and `web-ui-textarea` satisfy it as-is; a custom element is usable when it exposes a string `value` property. The wrapper div is not a tab stop (`tabindex="-1"`): sequential focus belongs to the trigger itself, so a custom trigger has to be focusable for keyboard users to reach the combobox.
+
+Multiline triggers (a trigger whose editable element is a `<textarea>`) keep Enter for newlines: Enter never selects the highlighted option and never commits a custom value, so close the panel with Escape or blur. Selecting an option still writes its label back to the trigger. A single-line custom trigger keeps the default Enter behavior. ArrowUp/ArrowDown follow the same exception while the panel is open: they move the text caret instead of navigating options, so keyboard option navigation is unavailable in that state — select with a pointer click. With the panel closed, ArrowDown/ArrowUp still open it.
 
 When `allow-custom-value` is enabled, pressing Enter with no active option and no matching candidate commits the raw input as a custom value and closes the panel. `change` fires and `selected-value` remains empty. The component does not create an option automatically or trim the raw value. Text matching a disabled option cannot bypass the disabled state or derive as a selected option.
 
@@ -578,22 +632,29 @@ Uses `role="switch"` and `aria-checked`. Pointer events for pressed visual state
 
 Segmented control — single-select button group.
 
-| Attribute  | Type      | Default | Description            |
-| ---------- | --------- | ------- | ---------------------- |
-| `value`    | `string`  | `''`    | Selected trigger value |
-| `name`     | `string`  | `''`    | Form field name        |
-| `disabled` | `boolean` | `false` | Disables all triggers  |
-| `required` | `boolean` | `false` | Required validation    |
+| Attribute  | Type                | Default | Description                          |
+| ---------- | ------------------- | ------- | ------------------------------------ |
+| `value`    | `string`            | `''`    | Selected trigger value               |
+| `name`     | `string`            | `''`    | Form field name                      |
+| `disabled` | `boolean`           | `false` | Disables all triggers                |
+| `required` | `boolean`           | `false` | Required validation                  |
+| `variant`  | `inset` \| `raised` | `inset` | Track and resting indicator material |
 
 **Events:** `input`, `change`
 
 **Slots:** `default` (project `<web-ui-segmented-trigger>` elements)
+
+**Variants:** `inset` (default, sunken) renders an opaque `--wui-color-surface` track with a constant 1px ring and drop shadow, and a solid `--wui-color-surface-segmented` resting indicator that reads as embedded in the track. In light appearance that token equals `--wui-color-page`, so the track sits flush with the page and the recess reads from the ring and shadow alone; in dark appearance `--wui-color-surface` is the one-step-above-page elevation, so the track keeps lifting off the page. `raised` renders the classic flat `--wui-color-surface-segmented` track (no ring, no shadow) with a solid `--wui-color-surface-selected` resting indicator carrying a soft shadow that floats above the track. In both variants the pressed/dragged indicator is transparent glass — backdrop blur, ring fading in over 80ms, 1.5x scale — easing back to the resting surface on release. Illegal values fall back to `inset`.
 
 Form-associated: integrates with native `<form>` via `ElementInternals`.
 
 Manages child trigger `checked` state based on `value`. `disabled` supplies inherited effective disabled state without changing a trigger's own `disabled` property. Setting `value` directly does not dispatch `input`/`change`.
 
 Press the selected segment and drag horizontally to slide the indicator; on release it snaps to the nearest option (a fast flick switches by velocity). Touch surfaces declare `touch-action: none` and suppress `touchmove` defaulting during an active drag, so iOS Safari does not interrupt the gesture.
+
+**Pressed state:** the track is an opaque surface (`--wui-color-surface`, page-colored in light appearance) with no backdrop filter in every state — its 1px ring and drop shadow never change. The indicator is the layer that turns to glass. At rest it is a solid `--wui-color-surface-segmented` surface with all glass output off. While pressed or dragging it gains backdrop blur, the glass ring fading in over 80ms, and a 1.5x scale over a fully transparent background: the indicator samples its blur entirely from inside the track, and against the previous glass track a fully transparent indicator measured only +0.5 gray levels on a uniform dark backdrop while striped backdrops showed through the sample (std 1.89 gray levels inside the indicator). The opaque track makes that sample uniform (std 0), which is what gives the pressed thumb a perceptible body — no tint and no edge-decoration suppression are needed. The background never fades in — it lands on the first pressed frame — and on release the indicator eases back to the solid gray rest surface over `--wui-duration-press`.
+
+**Label color:** every label stays `--wui-color-text-secondary` — checked or not, `inset` or `raised`, at rest and while a press or drag is active. Selection is carried by the indicator alone; no label takes the accent color.
 
 #### `<web-ui-checkbox-group>`
 
@@ -742,7 +803,7 @@ Modal dialog using native `<dialog>` with `showModal()`.
 
 Uses native `<dialog>` with `@cancel` prevention. Escape calls `close()` unless `no-escape-close` is present. Click on backdrop closes dialog unless `no-backdrop-close` is present. With `controlled`, both only emit the close request instead.
 
-> **Escape ownership:** Escape is arbitrated by a single shared owner, so one keypress closes only the **innermost** open overlay (popover, select, autocomplete, dropdown, context-menu, drawer and dialog all take part). With a select open inside a drawer, the first Escape closes the select and only the second closes the drawer. Sibling overlays that do not nest fall back to open order, closing the most recently opened one. `image-preview` takes part as well: its native `<dialog>` is registered with the same arbiter, so Escape is decided by layer order; the component's `cancel` handler only vetoes the native instant close, keeping the top layer until the exit transition finishes.
+> **Escape ownership:** Escape is arbitrated by a single shared owner, so one keypress closes only the **innermost** open overlay (popover, select, autocomplete, dropdown, context-menu, drawer and dialog all take part). With a select open inside a drawer, the first Escape closes the select and only the second closes the drawer. Sibling overlays that do not nest fall back to open order, closing the most recently opened one. A panel that is still playing its exit transition stays on screen and still catches the Escape, but any overlay that is still open outranks it, so one keypress still closes exactly one layer. `image-preview` takes part as well: its native `<dialog>` is registered with the same arbiter, so Escape is decided by layer order; the component's `cancel` handler only vetoes the native instant close, keeping the top layer until the exit transition finishes.
 
 **CSS Custom Properties:**
 
@@ -1277,6 +1338,8 @@ At `640px` and below, the sidebar becomes a `web-ui-drawer` with its built-in gl
 
 `header-glow` adds a pointer-transparent decorative glow behind header-slot content and the mobile toggle. It is a Header background rather than a foreground layer, so slotted content remains above it. Override its color with `--wui-layout-header-glow-color` (default: `--wui-color-page`). The glow concentration and spread are controlled by the internal variable `--wui-layout-header-glow-height` (default: `150%`); increase for stronger coverage, decrease for a subtler effect. Layout layers are ordered as Header (`10`) < Auxiliary (`20`) < Banner (`30`) < Tabbar (`40`) < Sidebar (`50`).
 
+The sidebar card surface is `--wui-color-surface-sidebar`. In light mode it carries the same value as the shared `--wui-color-surface-overlay`; in dark mode it sits one notch above `--wui-color-page`, level with `--wui-color-surface`. It is a separate token because dialog, drawer and toast share `--wui-color-surface-overlay` and are not elevated along with the sidebar.
+
 **CSS Custom Properties:**
 
 | Property                           | Default | Description                                      |
@@ -1344,7 +1407,6 @@ Theme provider defining CSS custom property tokens.
 | ------------ | --------------------------------- | ---------- | --------------------------------------------- |
 | `appearance` | `'light' \| 'dark' \| 'system'`   | `'light'`  | Color scheme                                  |
 | `motion`     | `'full' \| 'reduced' \| 'system'` | `'system'` | Motion preference for this nested theme scope |
-| `transition` | `boolean`                         | `false`    | Circular reveal on appearance changes         |
 
 **Methods:** `getOverlayRoot()` — returns this theme-owned overlay root
 
@@ -1352,9 +1414,13 @@ Theme provider defining CSS custom property tokens.
 
 Defines foundation, color, layer, shadow, and motion tokens for its subtree. `motion="system"` follows `prefers-reduced-motion`; use `motion="reduced"` to reduce animation in a scope or `motion="full"` in a nested theme to restore normal token values. System appearance follows `prefers-color-scheme`.
 
-Set the `transition` boolean attribute to animate appearance changes with the View Transitions API. Removing the attribute disables the reveal; framework bindings must write the boolean property when toggling it dynamically. A root theme reveals the whole page; a nested theme reveals only its own capture box. The origin is the last pointer-down position when available, otherwise the theme box or viewport center. Dark-to-light and light-to-dark directions are reversed. Unsupported browsers, reduced-motion scopes, zero durations, and another request already in the same flight fall back to applying the new appearance immediately; `appearance="system"` does not animate OS light/dark changes in this version.
+Appearance changes are animated with the View Transitions API according to this scope's `motion`: `full` always reveals, `reduced` applies the new appearance immediately with no reveal, and `system` follows `prefers-reduced-motion`. A root theme reveals the whole page; a nested theme reveals only its own capture box. The origin is the last pointer-down position when available, otherwise the theme box or viewport center. Dark-to-light and light-to-dark directions are reversed. Unsupported browsers, reduced-motion scopes, zero durations, and another request already in the same flight fall back to applying the new appearance immediately; `appearance="system"` does not animate OS light/dark changes in this version.
+
+**Migration from the removed `transition` attribute:** drop it and express the intent with `motion` instead. A theme that carried `transition` keeps the same reveal under the default `motion="system"`; add `motion="full"` to reveal even when the system prefers reduced motion. A theme that did not carry it now reveals by default, so pass `motion="reduced"` to keep appearance changes instant.
 
 The host uses `display: contents` and does not paint any background: the library never draws on the host page, so the embedding application keeps full control of the surface behind the themed subtree. Custom properties still inherit to slotted content reliably.
+
+**Root page color sync:** the outermost active theme also mirrors its computed `--wui-color-page` onto `document.documentElement` as an inline custom property. That closes the one place the token cannot reach on its own: custom properties stop inheriting at the document element, so a consumer rule such as `body { background: var(--wui-color-page) }` only colors the scrollable area, while the canvas behind an overscroll bounce (macOS rubber-banding) stays at the user-agent background. With the mirrored property the bounce area follows the theme too. The write happens when a theme connects and whenever its appearance changes, including `appearance="system"` following an OS light/dark flip; the value written is the theme's computed value, so an override of `--wui-color-page` on the host is mirrored as it stands. **Not live:** the component does not observe the host's own style changes, so a runtime change to that property on the host — an inline style edit, a class toggle, a host-level media query — reaches the root only at the next write trigger, which is a connect, an `appearance` change to a different value, or an OS light/dark flip; re-assigning `appearance` to the value it already has is not a trigger, because the update is skipped when nothing changed. For a page color that has to change independently of the theme's appearance, own the variable yourself on `:root` or `body` with `!important`, which outranks this inline write, or drive the color through `appearance`. Only the outermost theme writes: nested themes keep their own scope and never touch the root value. Ownership follows connect order and passes to the next connected theme when the outermost one disconnects; when the last theme disconnects the value is deliberately kept rather than removed, so a page that swaps themes does not flash back to the user-agent background in between. The library writes exactly this one custom property on the document element and nothing else there.
 
 **Foundation tokens:**
 
@@ -1409,13 +1475,14 @@ The host uses `display: contents` and does not paint any background: the library
 | `--wui-color-surface-raised`       | `#f2f2f7`                                                    | `#2c2c2e`                                                    | Raised surface                  |
 | `--wui-color-surface-control`      | `#dfdfdf`                                                    | `#3a3a3c`                                                    | Neutral control surface         |
 | `--wui-color-surface-track`        | `#e5e5ea`                                                    | `#444446`                                                    | Slider and switch track surface |
-| `--wui-color-surface-menu`         | `rgb(246 246 246 / 0.82)`                                    | `rgb(30 30 32 / 0.92)`                                       | Menu and floating panel surface |
+| `--wui-color-surface-menu`         | `rgb(246 246 246 / 0.82)`                                    | `rgb(44 44 46 / 0.78)`                                       | Menu and floating panel surface |
 | `--wui-color-surface-glass`        | `rgb(250 250 250 / 0.34)`                                    | `rgb(44 44 46 / 0.42)`                                       | Liquid glass surface            |
 | `--wui-color-surface-glass-hover`  | `color-mix(... text 6%, surface-glass)`                      | `color-mix(... text 6%, surface-glass)`                      | Full glass hover background     |
 | `--wui-color-surface-glass-active` | `color-mix(... text 15%, surface-glass)`                     | `color-mix(... text 15%, surface-glass)`                     | Full glass pressed background   |
 | `--wui-color-surface-overlay`      | `rgb(246 246 246 / 0.82)`                                    | `rgb(32 34 34 / 0.9)`                                        | Translucent overlay surface     |
-| `--wui-color-surface-segmented`    | `#e5e5ea`                                                    | `#3a3a3c`                                                    | Segmented track surface         |
-| `--wui-color-surface-selected`     | `#fff`                                                       | `#5c5c5e`                                                    | Segmented selected indicator    |
+| `--wui-color-surface-sidebar`      | `rgb(246 246 246 / 0.82)`                                    | `rgb(44 44 46 / 0.8)`                                        | Sidebar panel surface           |
+| `--wui-color-surface-segmented`    | `#e5e5ea`                                                    | `#3a3a3c`                                                    | Segmented indicator surface     |
+| `--wui-color-surface-selected`     | `#fff`                                                       | `#5c5c5e`                                                    | Selected surface                |
 | `--wui-color-text`                 | `#1b1b1b`                                                    | `#e9eaea`                                                    | Primary text                    |
 | `--wui-color-text-secondary`       | `#6a6a6a`                                                    | `#a1a1a6`                                                    | Secondary text                  |
 | `--wui-color-text-tertiary`        | `color-mix(in srgb, var(--wui-color-text) 35%, transparent)` | `color-mix(in srgb, var(--wui-color-text) 42%, transparent)` | Tertiary text and quiet icons   |

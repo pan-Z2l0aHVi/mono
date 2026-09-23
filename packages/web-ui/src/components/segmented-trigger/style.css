@@ -38,6 +38,8 @@
 
   font-size: var(--wui-font-size, 14px);
   line-height: 1;
+
+  /* 选中与未选中同档灰：区分度只由玻璃指示器承担，未选中项无底色。 */
   color: var(--wui-color-text-secondary, #6a6a6a);
   white-space: nowrap;
 
@@ -49,19 +51,19 @@
     outline: var(--wui-focus-ring-width, 3px) solid var(--wui-color-focus-ring, rgb(0 136 255 / 0.4));
     outline-offset: 2px;
   }
-
-  &.is-checked {
-    color: var(--wui-color-text, #1b1b1b);
-  }
 }
 
 @media (hover: hover) and (pointer: fine) {
-  .wui-segmented-trigger:hover:not(.is-disabled) {
+  /* state layer 只服务未选中项：选中项的按压/悬停反馈由玻璃指示器（thumb）承载，
+     已选中项再叠一层 6%/15% 灰底会盖在透明玻璃 thumb 之上（trigger z-index: 1 >
+     thumb z-index: 0），按住已选项到拖拽结束前 :active 一直不撤，整段手势都是
+     「灰底蒙在玻璃上」——即 #150「灰底在 thumb 层」要消除的残留。 */
+  .wui-segmented-trigger:hover:not(.is-checked, .is-disabled) {
     background-color: var(--wui-segmented-trigger-bg-hover);
   }
 }
 
-.wui-segmented-trigger:active:not(.is-disabled) {
+.wui-segmented-trigger:active:not(.is-checked, .is-disabled) {
   background-color: var(--wui-segmented-trigger-bg-active);
 }
 

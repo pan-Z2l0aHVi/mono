@@ -4,6 +4,8 @@ import { page, userEvent } from 'vite-plus/test/browser'
 import '..'
 import '../../theme'
 import '@/components/popover'
+import '@/components/textarea'
+import type { WebUiInput } from '@/components/input'
 import type { WebUiOption } from '@/components/option'
 import { pollUntil, waitForFrame } from '@/shared/test-utils'
 
@@ -28,6 +30,44 @@ function getAllPortalPanels(selector: string): HTMLElement[] {
     .filter((panel): panel is HTMLElement => panel instanceof HTMLElement)
 }
 
+// combobox ARIA 承载在 trigger 包装 div 上（跟随 select 的 wrapper div 模式）
+function comboboxTrigger(el: WebUiAutocomplete): HTMLElement {
+  return el.shadowRoot!.querySelector<HTMLElement>('[role="combobox"]')!
+}
+
+// 默认触发器是 web-ui-input（README 契约）：原生 input 事件从内部 input 冒泡到
+// 包装 div 时 target 会 retarget 成这个 host，键入模拟因此落在它上面
+function defaultTrigger(el: WebUiAutocomplete): WebUiInput {
+  return el.shadowRoot!.querySelector<WebUiInput>('web-ui-input')!
+}
+
+function triggerInput(el: WebUiAutocomplete): HTMLInputElement {
+  return defaultTrigger(el).shadowRoot!.querySelector<HTMLInputElement>('input')!
+}
+
+function typeText(el: WebUiAutocomplete, text: string) {
+  const trigger = defaultTrigger(el)
+  trigger.value = text
+  trigger.dispatchEvent(new Event('input', { bubbles: true, composed: true }))
+}
+
+function focusTrigger(el: WebUiAutocomplete) {
+  triggerInput(el).focus()
+}
+
+function clickTrigger(el: WebUiAutocomplete) {
+  defaultTrigger(el).click()
+}
+
+// 自定义触发器位于 light DOM：slot="trigger" 的 assigned 元素即当前生效的触发器
+function customTrigger(el: WebUiAutocomplete): HTMLElement {
+  return el.querySelector<HTMLElement>('[slot="trigger"]')!
+}
+
+function triggerTextarea(el: WebUiAutocomplete): HTMLTextAreaElement {
+  return customTrigger(el).shadowRoot!.querySelector<HTMLTextAreaElement>('textarea')!
+}
+
 describe('WebUiAutocomplete 组件（浏览器）', () => {
   it('Portal 打开后选项移入 theme-owned overlay root 并可点击选择', async () => {
     const theme = document.createElement('web-ui-theme')
@@ -42,9 +82,8 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     await theme.updateComplete
     await el.updateComplete
 
-    const input = el.shadowRoot?.querySelector<HTMLElement>('[role="combobox"]')
-    input?.focus()
-    input?.click()
+    focusTrigger(el)
+    clickTrigger(el)
     await new Promise(resolve => requestAnimationFrame(resolve))
     await el.updateComplete
 
@@ -75,14 +114,14 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     await theme.updateComplete
     await el.updateComplete
 
-    const input = el.shadowRoot!.querySelector<HTMLInputElement>('[role="combobox"]')!
+    const input = triggerInput(el)
     input.focus()
     input.click()
     await new Promise(resolve => requestAnimationFrame(resolve))
     input.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, composed: true }))
     await el.updateComplete
 
-    const activeId = input.getAttribute('aria-activedescendant')
+    const activeId = comboboxTrigger(el).getAttribute('aria-activedescendant')
     const activeLabel = el.shadowRoot?.querySelector(`#${activeId}`)?.textContent?.trim()
     expect(activeLabel).toBe('Apple')
 
@@ -99,7 +138,7 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     await el.updateComplete
 
     expect(el.selectedValue).toBe('')
-    expect(input.getAttribute('aria-activedescendant')).toBeFalsy()
+    expect(comboboxTrigger(el).getAttribute('aria-activedescendant')).toBeFalsy()
   })
 
   it('Portal 面板空白区域点击不会触发 outside close', async () => {
@@ -113,8 +152,8 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     await theme.updateComplete
     await el.updateComplete
 
-    el.shadowRoot?.querySelector<HTMLInputElement>('[role="combobox"]')?.focus()
-    el.shadowRoot?.querySelector<HTMLInputElement>('[role="combobox"]')?.click()
+    focusTrigger(el)
+    clickTrigger(el)
     await new Promise(resolve => requestAnimationFrame(resolve))
     const panel = getPortalPanel(theme)!
     panel.dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true }))
@@ -143,8 +182,8 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
       .map(panel => panel.querySelector('web-ui-autocomplete'))
       .find((element): element is WebUiAutocomplete => element?.localName === 'web-ui-autocomplete')!
     expect(autocomplete).not.toBeNull()
-    autocomplete.shadowRoot?.querySelector<HTMLElement>('[role="combobox"]')?.focus()
-    autocomplete.shadowRoot?.querySelector<HTMLElement>('[role="combobox"]')?.click()
+    focusTrigger(autocomplete)
+    clickTrigger(autocomplete)
     await autocomplete.updateComplete
     await waitForFrame()
 
@@ -174,19 +213,18 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     document.body.append(el)
     await el.updateComplete
 
-    const input = el.shadowRoot!.querySelector<HTMLInputElement>('[role="combobox"]')!
+    const input = triggerInput(el)
     input.focus()
     input.click()
     await el.updateComplete
 
-    input.value = 'app'
-    input.dispatchEvent(new Event('input', { bubbles: true, composed: true }))
+    typeText(el, 'app')
     await el.updateComplete
 
     input.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, composed: true }))
     await el.updateComplete
 
-    const activeId = input.getAttribute('aria-activedescendant')
+    const activeId = comboboxTrigger(el).getAttribute('aria-activedescendant')
     expect(el.shadowRoot?.querySelector(`#${activeId}`)?.textContent?.trim()).toBe('Apple')
 
     input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, composed: true }))
@@ -202,12 +240,11 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     document.body.append(el)
     await el.updateComplete
 
-    const input = el.shadowRoot!.querySelector<HTMLInputElement>('[role="combobox"]')!
+    const input = triggerInput(el)
     input.focus()
     await el.updateComplete
 
-    input.value = 'zzz'
-    input.dispatchEvent(new Event('input', { bubbles: true, composed: true }))
+    typeText(el, 'zzz')
     await new Promise(resolve => requestAnimationFrame(resolve))
     await el.updateComplete
 
@@ -224,10 +261,9 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
 
     const changes: Event[] = []
     el.addEventListener('change', event => changes.push(event))
-    const input = el.shadowRoot!.querySelector<HTMLInputElement>('[role="combobox"]')!
+    const input = triggerInput(el)
     input.focus()
-    input.value = '  Custom Tag  '
-    input.dispatchEvent(new Event('input', { bubbles: true, composed: true }))
+    typeText(el, '  Custom Tag  ')
     await new Promise(resolve => requestAnimationFrame(resolve))
     await el.updateComplete
     expect(el.open).toBe(true)
@@ -251,10 +287,9 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
 
     const changes: Event[] = []
     el.addEventListener('change', event => changes.push(event))
-    const input = el.shadowRoot!.querySelector<HTMLInputElement>('[role="combobox"]')!
+    const input = triggerInput(el)
     input.focus()
-    input.value = '  apple  '
-    input.dispatchEvent(new Event('input', { bubbles: true, composed: true }))
+    typeText(el, '  apple  ')
     await new Promise(resolve => requestAnimationFrame(resolve))
     await el.updateComplete
     expect(el.open).toBe(true)
@@ -279,10 +314,9 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
 
     const changes: Event[] = []
     el.addEventListener('change', event => changes.push(event))
-    const input = el.shadowRoot!.querySelector<HTMLInputElement>('[role="combobox"]')!
+    const input = triggerInput(el)
     input.focus()
-    input.value = 'apple'
-    input.dispatchEvent(new Event('input', { bubbles: true, composed: true }))
+    typeText(el, 'apple')
     await new Promise(resolve => requestAnimationFrame(resolve))
     await el.updateComplete
     expect(el.open).toBe(true)
@@ -305,6 +339,9 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     await el.updateComplete
 
     expect(new FormData(form).get('city')).toBe('Beijing')
+    // 默认触发器是 shadow 内的 web-ui-input（自身 form-associated）：它不得与外层
+    // 表单关联，否则同一字段会被提交两次
+    expect(new FormData(form).getAll('city')).toEqual(['Beijing'])
 
     el.value = 'Shanghai'
     await el.updateComplete
@@ -324,9 +361,7 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
 
     expect(form.checkValidity()).toBe(false)
 
-    const input = el.shadowRoot!.querySelector<HTMLInputElement>('[role="combobox"]')!
-    input.value = 'Shanghai'
-    input.dispatchEvent(new Event('input', { bubbles: true, composed: true }))
+    typeText(el, 'Shanghai')
     await el.updateComplete
 
     expect(form.checkValidity()).toBe(true)
@@ -349,8 +384,8 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     document.body.append(el)
     await el.updateComplete
 
-    el.shadowRoot?.querySelector<HTMLElement>('[role="combobox"]')?.focus()
-    el.shadowRoot?.querySelector<HTMLElement>('[role="combobox"]')?.click()
+    focusTrigger(el)
+    clickTrigger(el)
     await el.updateComplete
     expect(document.body.style.position).toBe('fixed')
 
@@ -530,14 +565,14 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     await theme.updateComplete
     await el.updateComplete
 
-    const input = page.getByRole('combobox')
-    input.element().focus()
-    ;(input.element() as HTMLElement).click()
+    const combobox = page.getByRole('combobox')
+    combobox.element().focus()
+    ;(combobox.element() as HTMLElement).click()
     await waitForFrame()
     await waitForFrame()
     await el.updateComplete
     expect(page.getByRole('listbox').length).toBe(1)
-    await input.fill('zzz')
+    await page.getByRole('textbox').fill('zzz')
     await el.updateComplete
 
     const panel = getPortalPanel(theme)!
@@ -553,12 +588,12 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     expect(page.getByRole('listbox').length).toBe(0)
     expect(el.open).toBe(false)
 
-    input.element().focus()
-    ;(input.element() as HTMLElement).click()
+    combobox.element().focus()
+    ;(combobox.element() as HTMLElement).click()
     await waitForFrame()
     await waitForFrame()
     expect(page.getByRole('listbox').length).toBe(1)
-    await input.fill('')
+    await page.getByRole('textbox').fill('')
     await el.updateComplete
     const option = getPortalPanel(theme)!.querySelector<HTMLElement>('web-ui-option')!
     await page.elementLocator(option).click()
@@ -584,7 +619,7 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     ;(input.element() as HTMLElement).click()
     await waitForFrame()
     await waitForFrame()
-    await input.fill('zzz')
+    await page.getByRole('textbox').fill('zzz')
     await el.updateComplete
 
     const panel = getPortalPanel(theme)!
@@ -620,7 +655,7 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     ;(input.element() as HTMLElement).click()
     await waitForFrame()
     await waitForFrame()
-    await input.fill('zzz')
+    await page.getByRole('textbox').fill('zzz')
     await el.updateComplete
 
     const panel = getPortalPanel(theme)!
@@ -647,12 +682,11 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     document.body.append(el)
     await el.updateComplete
 
-    const input = el.shadowRoot!.querySelector<HTMLInputElement>('[role="combobox"]')!
+    const input = triggerInput(el)
     input.focus()
     input.click()
     await el.updateComplete
-    input.value = 'zzz'
-    input.dispatchEvent(new Event('input', { bubbles: true, composed: true }))
+    typeText(el, 'zzz')
     await el.updateComplete
 
     const empty = el.shadowRoot!.querySelector<HTMLElement>('.autocomplete-empty')!
@@ -697,7 +731,7 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
       })
     )
 
-    const input = el.shadowRoot!.querySelector<HTMLInputElement>('[role="combobox"]')!
+    const input = triggerInput(el)
     input.focus()
     input.blur()
 
@@ -720,7 +754,7 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     await el.updateComplete
 
     expect(el.value).toBe('Apple')
-    expect(el.shadowRoot!.querySelector<HTMLInputElement>('[role="combobox"]')!.value).toBe('Apple')
+    expect(defaultTrigger(el).value).toBe('Apple')
     expect(el.selectedValue).toBe('apple')
     expect(el.getAttribute('selected-value')).toBe('apple')
     expect(new FormData(form).get('city')).toBe('Apple')
@@ -735,7 +769,7 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     document.body.append(fieldset)
     await el.updateComplete
 
-    const input = el.shadowRoot!.querySelector<HTMLInputElement>('[role="combobox"]')!
+    const input = triggerInput(el)
     input.focus()
     input.click()
     await el.updateComplete
@@ -743,8 +777,8 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     await el.updateComplete
 
     expect(el.open).toBe(false)
-    expect(input.getAttribute('aria-expanded')).toBe('false')
-    expect(input.getAttribute('aria-activedescendant')).toBeFalsy()
+    expect(comboboxTrigger(el).getAttribute('aria-expanded')).toBe('false')
+    expect(comboboxTrigger(el).getAttribute('aria-activedescendant')).toBeFalsy()
     expect(document.body.style.position).toBe('')
   })
 
@@ -763,9 +797,7 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     fieldset.disabled = true
     await el.updateComplete
     expect(el.open).toBe(false)
-    expect(el.shadowRoot!.querySelector<HTMLInputElement>('[role="combobox"]')!.getAttribute('aria-expanded')).toBe(
-      'false'
-    )
+    expect(comboboxTrigger(el).getAttribute('aria-expanded')).toBe('false')
   })
 
   it('Portal open 时 fieldset 禁用会关闭、restore 内容并释放 scroll lock', async () => {
@@ -788,9 +820,9 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     fieldset.disabled = true
     await el.updateComplete
     await pollUntil(() => !getPortalPanel(theme) && !el.open, 'Expected disabled autocomplete to close and dispose')
-    const input = el.shadowRoot!.querySelector<HTMLInputElement>('[role="combobox"]')!
-    expect(input.getAttribute('aria-expanded')).toBe('false')
-    expect(input.getAttribute('aria-activedescendant')).toBeFalsy()
+    const combobox = comboboxTrigger(el)
+    expect(combobox.getAttribute('aria-expanded')).toBe('false')
+    expect(combobox.getAttribute('aria-activedescendant')).toBeFalsy()
     expect(document.body.style.position).toBe('')
     expect(el.querySelector('web-ui-option')).not.toBeNull()
   })
@@ -814,7 +846,7 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     host.append(el)
     await el.updateComplete
 
-    const input = el.shadowRoot!.querySelector<HTMLInputElement>('[role="combobox"]')!
+    const input = triggerInput(el)
     input.focus()
     input.click()
     await el.updateComplete
@@ -822,12 +854,12 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     await el.updateComplete
 
     const panel = el.shadowRoot!.querySelector<HTMLElement>('.autocomplete-overlay')!
-    const wrapper = el.shadowRoot!.querySelector<HTMLElement>('.input-wrapper')!
+    const wrapper = defaultTrigger(el)
     const panelRect = panel.getBoundingClientRect()
     const wrapperRect = wrapper.getBoundingClientRect()
 
     expect(el.open).toBe(true)
-    // bottom-start：面板左边缘应与锚点（input-wrapper）左边缘对齐（offset 4 只影响纵向）
+    // bottom-start：面板左边缘应与锚点（默认触发器）左边缘对齐（offset 4 只影响纵向）
     expect(Math.abs(panelRect.left - wrapperRect.left)).toBeLessThan(2)
     expect(panelRect.top).toBeGreaterThanOrEqual(wrapperRect.bottom - 1)
   })
@@ -842,7 +874,7 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     document.body.append(el)
     await el.updateComplete
 
-    const input = el.shadowRoot!.querySelector<HTMLInputElement>('[role="combobox"]')!
+    const input = triggerInput(el)
     input.focus()
     await el.updateComplete
     expect(document.activeElement).toBe(el)
@@ -850,6 +882,197 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
 
     input.blur()
     await el.updateComplete
+    expect(el.hasAttribute('focused')).toBe(false)
+  })
+
+  // 默认触发器重构为 web-ui-input：玻璃胶囊的度量（--wui-control-size / --wui-input-width）
+  // 必须与独立使用 web-ui-input 完全一致，否则默认用法外观就等于变了。
+  it('默认触发器与独立 web-ui-input 的控件度量一致', async () => {
+    const el = document.createElement('web-ui-autocomplete')
+    el.innerHTML = '<web-ui-option value="apple" label="Apple"></web-ui-option>'
+    document.body.append(el)
+
+    const standalone = document.createElement('web-ui-input')
+    document.body.append(standalone)
+    await el.updateComplete
+    await standalone.updateComplete
+
+    const triggerRect = defaultTrigger(el).getBoundingClientRect()
+    const standaloneRect = standalone.getBoundingClientRect()
+
+    expect(triggerRect.width).toBe(standaloneRect.width)
+    expect(triggerRect.height).toBe(standaloneRect.height)
+  })
+
+  it('首次渲染即按自定义触发器渲染，不出现默认输入框闪现', async () => {
+    const el = document.createElement('web-ui-autocomplete')
+    el.innerHTML = `
+      <web-ui-textarea slot="trigger"></web-ui-textarea>
+      <web-ui-option value="apple" label="Apple"></web-ui-option>
+    `
+    document.body.append(el)
+    await el.updateComplete
+
+    // slotchange 是异步的：默认触发器若等它才让位，第一帧会渲染出 web-ui-input
+    expect(defaultTrigger(el)).toBeNull()
+  })
+
+  it('web-ui-textarea 自定义触发器可打开、过滤并用选项回填', async () => {
+    const el = document.createElement('web-ui-autocomplete')
+    el.innerHTML = `
+      <web-ui-textarea slot="trigger"></web-ui-textarea>
+      <web-ui-option value="apple" label="Apple"></web-ui-option>
+      <web-ui-option value="banana" label="Banana"></web-ui-option>
+    `
+    document.body.append(el)
+    await el.updateComplete
+    const host = page.elementLocator(el)
+    const textbox = host.getByRole('textbox')
+    textbox.element().focus()
+    await userEvent.keyboard('ban')
+    await el.updateComplete
+
+    expect(el.value).toBe('ban')
+    expect(el.open).toBe(true)
+
+    const options = [...el.querySelectorAll('web-ui-option')]
+    // contains 过滤：Apple 被隐藏，Banana 保留
+    expect(options[0]?.hasAttribute('data-filtered')).toBe(true)
+    expect(options[1]?.hasAttribute('data-filtered')).toBe(false)
+    // 公开无障碍面（shadow 内 mirror）只暴露可见候选
+    const mirrorOptions = [...el.shadowRoot!.querySelectorAll('.autocomplete-a11y-listbox [role="option"]')]
+    expect(mirrorOptions.map(option => option.textContent?.trim())).toEqual(['Banana'])
+
+    // 多行触发器保留 Enter 换行，选择改由真实指针点击完成
+    await page.elementLocator(options[1]!).click()
+    await el.updateComplete
+
+    expect(el.value).toBe('Banana')
+    expect(el.selectedValue).toBe('banana')
+    expect(el.open).toBe(false)
+    // 回写落到驱动器本身，而不是被丢弃
+    expect(triggerTextarea(el).value).toBe('Banana')
+  })
+
+  it('web-ui-textarea 自定义触发器 Enter 插入换行不选中高亮项，Escape/blur 关闭', async () => {
+    const el = document.createElement('web-ui-autocomplete')
+    el.innerHTML = `
+      <web-ui-textarea slot="trigger"></web-ui-textarea>
+      <web-ui-option value="apple" label="Apple"></web-ui-option>
+      <web-ui-option value="banana" label="Banana"></web-ui-option>
+    `
+    document.body.append(el)
+    await el.updateComplete
+    const host = page.elementLocator(el)
+    const textbox = host.getByRole('textbox')
+    textbox.element().focus()
+    await userEvent.keyboard('Ap')
+    await el.updateComplete
+    expect(el.open).toBe(true)
+
+    // 面板打开时方向键归 textarea 光标移动：不导航列表、不设 activedescendant
+    await userEvent.keyboard('{ArrowDown}')
+    await el.updateComplete
+    expect(comboboxTrigger(el).getAttribute('aria-activedescendant')).toBeFalsy()
+    expect(el.open).toBe(true)
+    expect(el.value).toBe('Ap')
+
+    // 真实 Enter：textarea 收到换行，autocomplete 不接管为「选中高亮项」
+    await userEvent.keyboard('{Enter}')
+    await el.updateComplete
+
+    // 换行被当作文本提交给组件：value 跟随文本变化，但高亮项没有被选中
+    expect(el.value).toBe('Ap\n')
+    expect(el.selectedValue).toBe('')
+    expect(el.open).toBe(true)
+    expect(triggerTextarea(el).value).toContain('\n')
+
+    // 方向键确实在移动光标：两行文本中从行首按 ArrowDown，光标落到第二行行首
+    const textarea = triggerTextarea(el)
+    textarea.value = 'line1\nline2'
+    textarea.setSelectionRange(0, 0)
+    await userEvent.keyboard('{ArrowDown}')
+    expect(textarea.selectionStart).toBe(6)
+
+    await userEvent.keyboard('{Escape}')
+    await el.updateComplete
+    expect(el.open).toBe(false)
+
+    // 失焦路径：焦点移出宿主（含 light DOM 触发器）后经 rAF 复核关闭
+    triggerTextarea(el).focus()
+    await userEvent.keyboard('{ArrowDown}')
+    await el.updateComplete
+    expect(el.open).toBe(true)
+
+    const outside = document.createElement('button')
+    document.body.append(outside)
+    outside.focus()
+    await waitForFrame()
+    await el.updateComplete
+    expect(el.open).toBe(false)
+  })
+
+  // 公共 focus()/blur()（README Methods）：焦点必须落到当前生效触发器内部的原生控件，
+  // 而不是停在宿主或包装 div。真实浏览器聚焦 shadow 内元素后 document.activeElement
+  // retarget 成宿主，因此同时校验内部控件真的拿到焦点。
+  it('公共 focus()/blur() 委托到默认触发器', async () => {
+    const el = document.createElement('web-ui-autocomplete')
+    el.innerHTML = '<web-ui-option value="apple" label="Apple"></web-ui-option>'
+    document.body.append(el)
+    await el.updateComplete
+
+    el.focus()
+    await el.updateComplete
+
+    expect(document.activeElement).toBe(el)
+    expect(defaultTrigger(el).shadowRoot?.activeElement).toBe(triggerInput(el))
+    expect(el.hasAttribute('focused')).toBe(true)
+
+    el.blur()
+    await el.updateComplete
+
+    expect(document.activeElement).not.toBe(el)
+    expect(defaultTrigger(el).shadowRoot?.activeElement).toBeNull()
+    expect(el.hasAttribute('focused')).toBe(false)
+  })
+
+  it('公共 focus()/blur() 委托到 textarea 自定义触发器', async () => {
+    const el = document.createElement('web-ui-autocomplete')
+    el.innerHTML = `
+      <web-ui-textarea slot="trigger"></web-ui-textarea>
+      <web-ui-option value="apple" label="Apple"></web-ui-option>
+    `
+    document.body.append(el)
+    await el.updateComplete
+
+    el.focus()
+    await el.updateComplete
+
+    // light DOM 触发器自身即 activeElement（其 shadow 内 textarea 承接焦点）
+    expect(document.activeElement).toBe(customTrigger(el))
+    expect(customTrigger(el).shadowRoot?.activeElement).toBe(triggerTextarea(el))
+    expect(el.hasAttribute('focused')).toBe(true)
+
+    el.blur()
+    await el.updateComplete
+
+    expect(document.activeElement).not.toBe(customTrigger(el))
+    expect(customTrigger(el).shadowRoot?.activeElement).toBeNull()
+    expect(el.hasAttribute('focused')).toBe(false)
+  })
+
+  it('disabled 时公共 focus() 不移动焦点', async () => {
+    const el = document.createElement('web-ui-autocomplete')
+    el.setAttribute('disabled', '')
+    el.innerHTML = '<web-ui-option value="apple" label="Apple"></web-ui-option>'
+    document.body.append(el)
+    await el.updateComplete
+
+    el.focus()
+    await el.updateComplete
+
+    expect(document.activeElement).not.toBe(el)
+    expect(defaultTrigger(el).shadowRoot?.activeElement).toBeNull()
     expect(el.hasAttribute('focused')).toBe(false)
   })
 })

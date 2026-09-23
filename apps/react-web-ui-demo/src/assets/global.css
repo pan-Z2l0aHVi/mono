@@ -42,6 +42,13 @@ body {
   touch-action: manipulation;
 }
 
+/* macOS 触控板回弹（rubber-band overscroll）露出的是 canvas 背景，canvas 取 body 的
+   背景；最外层 web-ui-theme 把 --wui-color-page 镜像到 documentElement，这里接住它，
+   回弹区域才跟随主题而不是 UA 白底。 */
+body {
+  background: var(--wui-color-page);
+}
+
 /* 防止页面闪烁。隐藏所有未注册的 web components 元素 */
 :not(:defined) {
   display: none;

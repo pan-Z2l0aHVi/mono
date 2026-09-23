@@ -43,7 +43,7 @@
 
 ### 2.5 原生表单关联
 
-10 个表单控件实现 `static formAssociated = true` + `ElementInternals`：input, textarea, input-number, select, slider, checkbox, radio, switch, segmented, checkbox-group, radio-group。
+13 个表单控件实现 `static formAssociated = true` + `ElementInternals`：input, textarea, input-number, select, slider, checkbox, radio, switch, segmented, checkbox-group, radio-group, autocomplete, editable-text。
 
 ### 2.6 slot-trigger ARIA 回写
 

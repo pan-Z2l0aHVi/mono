@@ -206,7 +206,8 @@ export class WebUiDrawer extends LitElement {
    * 只是不走关闭入口。这原本由本层 handleKeydown 兜底，现在只有一个执行者。
    */
   private readonly _overlay = defineOpenOverlay().make({
-    requestClose: () => this._closeFromUser()
+    requestClose: () => this._closeFromUser(),
+    isConnected: () => this.isConnected
   })
   /** 当前开启会话的句柄；未开启时为 null。 */
   private _handle: OpenOverlayHandle | null = null

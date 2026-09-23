@@ -1,0 +1,5 @@
+---
+'@greypan/web-ui': minor
+---
+
+`<web-ui-theme>` now mirrors the computed `--wui-color-page` of its outermost active instance onto `document.documentElement` as an inline custom property. Custom properties stop inheriting at the document element, so a consumer rule such as `body { background: var(--wui-color-page) }` colored only the scrollable area and left the canvas behind an overscroll bounce at the user-agent background; with the mirrored property the bounce area follows the theme. The value is written when a theme connects and whenever its appearance changes, including `appearance="system"` following an OS light/dark flip, and it is the theme's computed value, so an override on the host is mirrored as it stands. Nested themes never write the root value; ownership follows connect order and passes to the next connected theme when the outermost one disconnects, and the value is deliberately kept rather than removed when the last theme disconnects so a page that swaps themes does not flash back to the user-agent background.

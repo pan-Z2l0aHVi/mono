@@ -507,6 +507,44 @@ describe('WebUiDrawer 拖拽关闭（浏览器）', () => {
     expect(getDialog(el).open).toBe(false)
   })
 
+  /*
+   * slow-drag-then-flick（issue #140 路径①）：整段手势净位移很慢，但最后 100ms 滑窗内是一次
+   * 快 flick。PR137 把甩动判定从「释放瞬间的 100ms 滑窗速度」改为「整段手势的平均速度」
+   * （drag-gesture.ts:13 的 VELOCITY_WINDOW_MS 只用于 info.velocity 的滑窗估算），这一路正是
+   * 两种口径分歧之处：滑窗只看见末尾快扫，平均速度却被前面的慢拖稀释。现有 dragAndRelease
+   * 用例刻意分多段慢走来**回避**被判为 flick（:76/:183 注释），本条真正构造「慢拖 + 快 flick」
+   * 并命中该判定分支——末段滑窗速度远超阈值，但整段平均速度不足，必须弹回而非关闭。
+   */
+  it('慢拖后快 flick：末段 100ms 滑窗速度超阈值，但整段平均速度不足，弹回不关闭', async () => {
+    const el = createDrawer()
+    el.draggable = true
+    el.open = true
+    await el.updateComplete
+    await waitForOpenTransition(el)
+
+    const events = openChangeEvents(el)
+    /*
+     * 首个 move（500@1400）只建立校准零点与判定时钟；随后两段慢拖（各 500ms）把整段 duration
+     * 拉到 1060ms，末两段在 50ms 内快扫 80px 形成 flick。净位移 120px < 距离阈值（尺寸/2 ≈160px）；
+     * 整段平均速度 120px/1060ms ≈113px/s < 500px/s（甩动阈值）⇒ 不得关闭。而释放时 100ms 滑窗
+     * 只保留末尾采样（580@2400、620@2450、620@2460）⇒ ≈1333px/s，旧滑窗口径会据此误判为甩动而关闭
+     * —— 本条即锁住「平均速度口径压过滑窗口径」这一 PR137 行为。单向无回撤，不触发「改主意」守卫。
+     */
+    await dragPath(el, [
+      { x: 500, at: 1000 },
+      { x: 500, at: 1400 },
+      { x: 520, at: 1900 },
+      { x: 540, at: 2400 },
+      { x: 620, at: 2450 },
+      { x: 620, at: 2460 }
+    ])
+    await settled(el)
+
+    expect(el.open).toBe(true)
+    expect(getDialog(el).open).toBe(true)
+    expect(events).toHaveLength(0)
+  })
+
   it('位移零点在首个 move：按下到首个 move 的位移不计入距离判据', async () => {
     const el = createDrawer()
     el.draggable = true

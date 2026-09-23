@@ -115,6 +115,13 @@ declare module 'vue-router/auto-routes' {
       Record<never, never>,
       | never
     >,
+    '/components/editable-text': RouteRecordInfo<
+      '/components/editable-text',
+      '/components/editable-text',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
     '/components/empty': RouteRecordInfo<
       '/components/empty',
       '/components/empty',
@@ -345,6 +352,14 @@ declare module 'vue-router/auto-routes' {
     'src/pages/components/dropdown.vue': {
       routes:
         | '/components/dropdown'
+      views:
+        | never
+      pathParamNames:
+        | never
+    }
+    'src/pages/components/editable-text.vue': {
+      routes:
+        | '/components/editable-text'
       views:
         | never
       pathParamNames:

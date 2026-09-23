@@ -6,7 +6,8 @@ import {
   fixtures,
   focusAndSettle,
   flushStyles,
-  mountField
+  mountField,
+  resolveInner
 } from './focus-ring-fixtures'
 
 /**
@@ -50,7 +51,7 @@ describe('focus ring transition 统一契约（浏览器）', () => {
       const host = fixture.create()
       document.body.append(host)
       await host.updateComplete
-      const inner = host.shadowRoot!.querySelector<HTMLElement>(fixture.innerSelector)!
+      const inner = resolveInner(host, fixture.innerSelector)
       flushStyles(inner)
       await focusAndSettle(host, inner)
 

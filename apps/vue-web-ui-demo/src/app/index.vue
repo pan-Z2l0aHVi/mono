@@ -115,6 +115,7 @@ const navItems: NavItem[] = [
   { path: '/components/icon', label: 'Icon 图标' },
   { path: '/components/input', label: 'Input 输入框' },
   { path: '/components/textarea', label: 'Textarea 文本域' },
+  { path: '/components/editable-text', label: 'EditableText 可编辑文本' },
   { path: '/components/theme', label: 'Theme 主题' },
   { path: '/components/input-number', label: 'InputNumber 数字输入框' },
   { path: '/components/select', label: 'Select 下拉选择' },
@@ -141,7 +142,7 @@ const navItems: NavItem[] = [
 </script>
 
 <template>
-  <web-ui-theme :appearance="themeAppearance" :motion="themeMotion" transition>
+  <web-ui-theme :appearance="themeAppearance" :motion="themeMotion">
     <div class="min-h-screen bg-(--wui-color-page) text-(--wui-color-text)">
       <!--
         Boolean 动态绑定走 camelCase Property（Vue 对已存在的属性名直接写 DOM property）。

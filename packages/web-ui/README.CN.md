@@ -245,6 +245,7 @@ dropdown、tooltip）不需要它。
 | --------------------- | --------------------------------------------------------- |
 | **表单控件**          | [`<web-ui-input>`](#web-ui-input)                         |
 |                       | [`<web-ui-textarea>`](#web-ui-textarea)                   |
+|                       | [`<web-ui-editable-text>`](#web-ui-editable-text)         |
 |                       | [`<web-ui-input-number>`](#web-ui-input-number)           |
 |                       | [`<web-ui-select>`](#web-ui-select)                       |
 |                       | [`<web-ui-autocomplete>`](#web-ui-autocomplete)           |
@@ -307,6 +308,8 @@ dropdown、tooltip）不需要它。
 
 **事件：** `input`, `change`, `focus`, `blur`
 
+**方法：** `focus()`, `blur()` —— 委托到内部原生 input（宿主自身不可聚焦）
+
 **插槽：** `prefix`, `default`, `suffix`
 
 **CSS 自定义属性：**
@@ -350,6 +353,41 @@ dropdown、tooltip）不需要它。
 | ---------------------------- | -------------------------------- | ------------ |
 | `--wui-textarea-width`       | `200px`                          | 文本域宽度   |
 | `--wui-textarea-clear-color` | `var(--wui-color-text-tertiary)` | 清除按钮颜色 |
+
+#### `<web-ui-editable-text>`
+
+行内纯文本编辑器：点击文字就地编辑，`Enter` 与 `blur` 提交，`Escape` 取消。文本层与编辑层共用一个盒，进入编辑态不会移动任何一个像素。
+
+| 属性          | 类型      | 默认值  | 说明                                                                                                      |
+| ------------- | --------- | ------- | --------------------------------------------------------------------------------------------------------- |
+| `value`       | `string`  | `''`    | 当前值；首次连接时捕获声明式初值作为 `form.reset()` 默认，连接后修改 attribute 或 property 均不更新该初值 |
+| `placeholder` | `string`  | `''`    | 值为空时显示的占位文本                                                                                    |
+| `name`        | `string`  | `''`    | 表单字段名                                                                                                |
+| `disabled`    | `boolean` | `false` | 禁用状态；只影响行为，不做视觉置灰                                                                        |
+| `aria-label`  | `string`  | —       | 无障碍标签                                                                                                |
+
+**事件：** `input`（每次输入）、`change`（提交）、`cancel`（取消；与原生 `<dialog>` 的 `cancel` 同名，不冒泡、不组合，只在组件本身派发）。React 没有覆盖 `cancel` 的合成事件，须用 `addEventListener('cancel', ...)` 监听
+
+**方法：** `focus()`, `blur()`, `select()`
+
+点击时光标落在点击处；键盘聚焦时落在文本末尾。`Enter` 与 `blur` 均提交草稿并恰好派发一次 `change`：`Enter` 不插入换行，并把焦点交还宿主；`blur` 不干预焦点，焦点留在用户移往的位置。只有 `Escape` 取消：值回到进入编辑时的状态，派发 `cancel` 而不派发 `change`，焦点交还宿主，且按键由编辑层消费，外层浮层（抽屉、菜单）不会因同一次按键关闭。`cancel` 不冒泡也不组合，只在组件本身派发：组件被投映在浮层 shadow 内时（如 drawer 标题），它不会触达浮层的原生 `cancel` 关闭管线，监听一律挂在组件本身。值里已有的换行仍按多行渲染，只是不能再靠输入 `Enter` 增加换行。空值继续显示 placeholder；编辑层始终按自身内容撑高，因此空草稿或纯空格草稿在宿主自身塌缩的场合（flex 项 `min-width: 0`、表格单元格）也仍有承接光标的位置。
+
+`select()` 进入编辑态并全选内容；已在编辑态时只重新全选。`disabled` 时与 `focus()` 一样不产生效果。
+
+宿主是行内级盒子：未设宽度时随内容伸缩，折行后高度按行数增长。字体、颜色、文本对齐与空白处理全部继承外部上下文，因此编辑前它就是一段普通文字。
+
+光标颜色默认跟随共享语义 token `--wui-color-accent`；在宿主或任意祖先上设置该 token 即可整体改色。两层对长无空格串（连续字母数字）按同一组断行点折行：超出盒宽的长串在盒内断开，文字态不再溢出宿主盒。
+
+**CSS 自定义属性：**
+
+| 属性                                | 默认值     | 说明                                                             |
+| ----------------------------------- | ---------- | ---------------------------------------------------------------- |
+| `--wui-editable-text-white-space`   | `pre-wrap` | 两层的空白处理方式                                               |
+| `--wui-editable-text-overflow-wrap` | `anywhere` | 两层的断词处理方式；默认让长无空格串在盒内断开，与原生编辑层一致 |
+
+共用盒子带来两个约束：`line-height` 需不小于 `1`，更紧凑时原生编辑层内容会高出自身盒子，文字被顶偏 1px；`nowrap` 加固定宽度时，超出盒宽的文案在文字态溢出显示、在编辑态于盒内滚动。
+
+**交互变更：** `blur` 恢复提交：`Enter` 与 `blur` 均提交草稿，只有 `Escape` 取消，值回到进入编辑时的状态。`Enter` 仍不插入换行。`cancel` 事件不再冒泡：此前冒泡的自定义 `cancel` 会经 slot 进入外层浮层 shadow 内的 `<dialog>`（`composed` 与否都会），被当成关闭请求一并关掉（issue #159）；监听请挂在组件本身。
 
 #### `<web-ui-input-number>`
 
@@ -429,9 +467,25 @@ Portal 面板创建时会镜像 host 上解析后的这些变量；更新 host �
 
 **事件：** `input`, `change`, `focus`, `blur`, `open-change` (`CustomEvent<{ open: boolean }>`)
 
-**插槽：** `default`（投影 `<web-ui-option>` 元素）、`empty`（替换无匹配空态；默认回退为“无匹配选项”）
+**方法：** `focus()`, `blur()`
+
+**插槽：** `default`（投影 `<web-ui-option>` 元素）、`trigger`（自定义触发器内容——替换默认输入框）、`empty`（替换无匹配空态；默认回退为“无匹配选项”）
 
 键入时按 label 过滤候选（`contains` 或 `prefix`，`none` 关闭过滤）。选择 option 时文本回填为该项 label，`selected-value` 暴露该项的 value；`change` 在选择提交时触发。支持 ArrowDown/ArrowUp/Enter/Escape 键盘导航。
+
+**触发器：** 默认触发器是 shadow 内的 `web-ui-input`。把任意可编辑组件放进 `trigger` slot 即可替换它——包装 div 继续承载 combobox ARIA，并以 `data-custom-trigger` 标记当前使用自定义触发器，浮层始终以触发器元素为锚点。组件的 `focus()` / `blur()` 委托到当前生效的触发器：`web-ui-input` 与 `web-ui-textarea` 会把焦点落到内部原生控件；自定义触发器没有自己的 focus 重定向时，按宿主自身聚焦。
+
+```html
+<web-ui-autocomplete placeholder="描述问题">
+  <web-ui-textarea slot="trigger" rows="3"></web-ui-textarea>
+  <web-ui-option value="bug" label="缺陷"></web-ui-option>
+  <web-ui-option value="feature" label="需求"></web-ui-option>
+</web-ui-autocomplete>
+```
+
+自定义触发器与默认触发器共用同一份契约：字符串 `value` 承载文本、可聚焦，并派发组件委托监听的事件（`input`、`click`、`focus`、`blur`）。`web-ui-input` 与 `web-ui-textarea` 开箱即用；自定义元素只要暴露字符串 `value` property 即可接入。包装 div 不占 tab 位（`tabindex="-1"`）：顺序焦点归触发器自身，自定义触发器必须可聚焦，键盘用户才能到达 combobox。
+
+多行触发器（可编辑元素为 `<textarea>`）保留 Enter 换行语义：Enter 不会选中高亮项，也不会提交 custom value，关闭面板用 Escape 或 blur。选择 option 仍会把该项 label 回写到触发器。单行自定义触发器保持默认的 Enter 语义。面板打开时 ArrowUp/ArrowDown 适用同一例外：方向键移动文本光标而不导航候选，该状态下键盘无法导航 option——用指针点击选择。面板关闭时 ArrowDown/ArrowUp 仍可打开面板。
 
 启用 `allow-custom-value` 后，无匹配且无活动 option 时，Enter 会把当前输入原文作为 custom value 提交并关闭面板；`change` 会触发，`selected-value` 保持为空。组件不会自动创建 option，也不会 trim 原文。命中禁用 option 的文本不会绕过禁用语义，也不会派生为已选 option。
 
@@ -544,22 +598,29 @@ Portal 面板创建时会镜像 host 上解析后的这些变量；更新 host �
 
 分段控制——单选按钮组。
 
-| 属性       | 类型      | 默认值  | 说明             |
-| ---------- | --------- | ------- | ---------------- |
-| `value`    | `string`  | `''`    | 当前选中值       |
-| `name`     | `string`  | `''`    | 表单字段名       |
-| `disabled` | `boolean` | `false` | 禁用全部 trigger |
-| `required` | `boolean` | `false` | 必填校验         |
+| 属性       | 类型                | 默认值  | 说明                   |
+| ---------- | ------------------- | ------- | ---------------------- |
+| `value`    | `string`            | `''`    | 当前选中值             |
+| `name`     | `string`            | `''`    | 表单字段名             |
+| `disabled` | `boolean`           | `false` | 禁用全部 trigger       |
+| `required` | `boolean`           | `false` | 必填校验               |
+| `variant`  | `inset` \| `raised` | `inset` | 轨道与静止指示器的材质 |
 
 **事件：** `input`, `change`
 
 **插槽：** `default`（投影 `<web-ui-segmented-trigger>` 元素）
+
+**变体：** `inset`（默认，「凹」）是不透明实体轨道（`--wui-color-surface`）——1px 描边环与投影全程常驻，静止指示器是 `--wui-color-surface-segmented` 纯灰底，视觉上嵌入轨道。浅色下该 token 与 `--wui-color-page` 同值，轨道与页面齐平，凹感只由常驻环与投影承担；深色下它是「比页面高一档」的 elevation，轨道依旧浮离页面。`raised`（「凸」）是经典形态：flat 灰轨道（`--wui-color-surface-segmented`，无环无投影），静止指示器是 `--wui-color-surface-selected` 实体底加柔投影，浮起于轨道之上。两个变体的按压/拖拽态一致——指示器转透明玻璃（backdrop blur、80ms 淡入的描边环、1.5x 放大），松开淡回各自静止面。非法值回退 `inset`。
 
 与原生 `<form>` 集成（通过 `ElementInternals`）。
 
 根据 `value` 同步子 trigger 的 `checked` 状态。`disabled` 提供继承的有效禁用状态，不改写 trigger 自身的 `disabled` 属性。直接设 `value` 不派发事件。
 
 按住当前选中项横向拖拽可滑动指示器，松手吸附到最近选项（快速抛掷按速度切换）。触摸面声明 `touch-action: none`，拖拽激活期间阻止 `touchmove` 默认滚动，避免 iOS Safari 中断手势。
+
+**按压态：** 轨道在所有状态下都是不透明实体面（`--wui-color-surface`，浅色即 page 同色、无 backdrop filter），1px 描边环与投影全程不变；转为玻璃的是指示器这一层。静止态指示器是 `--wui-color-surface-segmented` 实色底、玻璃输出全部关闭；按压/拖拽态获得 backdrop blur、随 80ms 过渡淡入的玻璃描边环与 1.5x 放大，底色全透明：指示器的 blur 采样面整个落在轨道之内，此前的玻璃轨道上全透明指示器在均匀深底与相邻轨道仅差 +0.5 阶，条纹底实测指示器内部灰度 std 1.89（背景渗透）；轨道实体化后同一采样 std 归零，按压态本体的可感知性由实色轨道与放大/环/投影共同承担，不再需要 tint 打底或压制轨道边缘装饰。底色不淡入——按下第一帧即落定；松开时指示器经 `--wui-duration-press` 淡回实色灰底。
+
+**文字色：** 选中与未选中项文字一律保持 `--wui-color-text-secondary`——`inset`/`raised` 两个变体一致，静止态与按压/拖拽态一致。选中态只由指示器承担，任何标签都不着 `--wui-color-accent`。
 
 #### `<web-ui-checkbox-group>`
 
@@ -706,7 +767,7 @@ web-ui-radio-group {
 
 使用原生 `<dialog>`，`@cancel` 阻止默认关闭行为。除非存在 `no-escape-close`，否则 Escape 调用 `close()`；除非存在 `no-backdrop-close`，否则点击遮罩关闭。启用 `controlled` 后，两者都只派发关闭请求而不自关闭。
 
-> **Escape 归属**：Escape 由共享仲裁者统一判定，一次按键只关闭**最内层**的已打开浮层（popover、select、autocomplete、dropdown、context-menu、drawer、dialog 都参与）。例如在 drawer 内打开 select，第一次 Escape 只关 select，第二次才关 drawer。互不嵌套的并列浮层按打开顺序关闭最上层。`image-preview` 同样参与：它的原生 `<dialog>` 会登记进同一个仲裁者，Escape 按层级判定；组件的 `cancel` handler 只是拦掉原生的瞬时关闭，把 top layer 保留到退场过渡结束。
+> **Escape 归属**：Escape 由共享仲裁者统一判定，一次按键只关闭**最内层**的已打开浮层（popover、select、autocomplete、dropdown、context-menu、drawer、dialog 都参与）。例如在 drawer 内打开 select，第一次 Escape 只关 select，第二次才关 drawer。互不嵌套的并列浮层按打开顺序关闭最上层。正在播退场过渡的面板仍在场上，也仍由它接住 Escape——但只要还有别的浮层开着，那一次按键仍然归该层，「一次按键关一层」不因此改变。`image-preview` 同样参与：它的原生 `<dialog>` 会登记进同一个仲裁者，Escape 按层级判定；组件的 `cancel` handler 只是拦掉原生的瞬时关闭，把 top layer 保留到退场过渡结束。
 
 **CSS 自定义属性：**
 
@@ -1241,6 +1302,8 @@ WebUiSpinner.hide() // 隐藏
 
 `header-glow` 会在 header 插槽内容和移动端 Toggle 的背后添加 `pointer-events: none` 的装饰性晕染。它属于 Header 背景而非前景层，因此插槽内容始终位于其上方；可通过 `--wui-layout-header-glow-color` 覆盖颜色，默认值为 `--wui-color-page`。晕染浓度和范围由内部变量 `--wui-layout-header-glow-height`（默认 `150%`）控制；增大可加强覆盖，减小则更柔和。布局层级顺序为 Header（`10`）< Auxiliary（`20`）< Banner（`30`）< Tabbar（`40`）< Sidebar（`50`）。
 
+侧边栏卡片表面使用 `--wui-color-surface-sidebar`：浅色与共享的 `--wui-color-surface-overlay` 同值，深色比 `--wui-color-page` 浅一档、与 `--wui-color-surface` 同级。它独立成 token，是因为 dialog、drawer 和 toast 共用 `--wui-color-surface-overlay`，不随侧边栏一起抬升。
+
 **CSS 自定义属性：**
 
 | 属性                               | 默认值 | 说明                                 |
@@ -1308,7 +1371,6 @@ SVG 线条绘制动画，基于 `stroke-dashoffset`。直接在原元素上动�
 | ------------ | --------------------------------- | ---------- | -------------------------- |
 | `appearance` | `'light' \| 'dark' \| 'system'`   | `'light'`  | 配色方案                   |
 | `motion`     | `'full' \| 'reduced' \| 'system'` | `'system'` | 当前嵌套主题范围的动效偏好 |
-| `transition` | `boolean`                         | `false`    | 配色变化时的圆形揭示动画   |
 
 **方法：** `getOverlayRoot()` — 返回该主题拥有的 theme-owned overlay root
 
@@ -1316,9 +1378,13 @@ SVG 线条绘制动画，基于 `stroke-dashoffset`。直接在原元素上动�
 
 在其子树中定义基础、颜色、层级、阴影和动效 token。`motion="system"` 跟随 `prefers-reduced-motion`；使用 `motion="reduced"` 降低当前作用域动效，或在嵌套主题中使用 `motion="full"` 恢复默认 token。System 配色模式跟随 `prefers-color-scheme`。
 
-设置 `transition` 布尔属性后，使用 View Transitions API 播放配色变化；移除属性即关闭，框架动态切换时必须绑定 boolean property。根主题揭示整页；嵌套主题只揭示自己的 capture box。圆心优先取最近一次 pointerdown 坐标，否则回退主题盒或视口中心；深浅两个方向反向播放。不支持的浏览器、reduced-motion 作用域、时长为 0 以及同一 flight 内已有未完成请求都会立即落地新 appearance；当前版本对 `appearance="system"` 的 OS 深浅翻转不做动画。
+配色变化是否使用 View Transitions API 播放动画，由当前主题范围的 `motion` 档位决定：`full` 始终播放揭示，`reduced` 直接落地新 appearance、不播放揭示，`system` 跟随 `prefers-reduced-motion`。根主题揭示整页；嵌套主题只揭示自己的 capture box。圆心优先取最近一次 pointerdown 坐标，否则回退主题盒或视口中心；深浅两个方向反向播放。不支持的浏览器、reduced-motion 作用域、时长为 0 以及同一 flight 内已有未完成请求都会立即落地新 appearance；当前版本对 `appearance="system"` 的 OS 深浅翻转不做动画。
+
+**从已移除的 `transition` 属性迁移：** 删掉该属性，改用 `motion` 表达意图。原先带 `transition` 的主题在默认 `motion="system"` 下揭示行为不变；需要在系统偏好 reduce 时仍播放揭示，则加 `motion="full"`。原先不带 `transition` 的主题现在默认就会揭示，若要保持无动画直接切换，请显式设置 `motion="reduced"`。
 
 主题宿主使用 `display: contents` 且不绘制任何背景：组件库不在宿主页面画背景，嵌入方对主题子树背后的表面保留完全控制权。自定义属性仍可靠继承到 slotted 内容。
+
+**根节点 page 色同步：** 最外层 active theme 会把自己计算出的 `--wui-color-page` 以行内自定义属性的形式镜像到 `document.documentElement` 上。它补上的正是该 token 自己到不了的那一处——自定义属性的继承链到 documentElement 就断了，所以消费方写 `body { background: var(--wui-color-page) }` 只能给滚动区上色，橡皮筋回弹（macOS rubber-band）露出的画布区仍是 UA 背景色；有了这个镜像属性，回弹区也跟随主题。写入时机是主题连接时与 appearance 变化时（含 `appearance="system"` 跟随系统深浅翻转）；写入的是该主题的计算值，因此消费者在 host 上覆盖 `--wui-color-page` 会被按当前值原样镜像。**非实时：** 组件不观察 host 自身的样式变化，因此运行中改该属性（改行内样式、切 class、host 级媒体查询）不会实时镜像到 root，要等下一个写入触发点——连接、`appearance` 变成另一个值、或系统深浅翻转；把 `appearance` 重新赋成当前值不算触发点，因为值没变时更新会被跳过。页面色需要独立于主题 appearance 变化时，消费者自己在该变量上持有它：在 `:root` 或 `body` 上用 `!important` 定义 `--wui-color-page`，重要声明在层级上压过本模块写在 documentElement 上的行内值；或者让页面色跟随 `appearance` 走。只有最外层主题会写入：嵌套主题保留自己的作用域，不改写 root 值。同步权按 connect 顺序归属，最外层断开时顺延给下一个已连接主题；最后一个主题断开时刻意保留最后值而不是移除，避免主题切换间隙闪回 UA 背景。组件库在 documentElement 上只写这一个自定义属性，不写其它内容。
 
 **基础 token：**
 
@@ -1373,13 +1439,14 @@ SVG 线条绘制动画，基于 `stroke-dashoffset`。直接在原元素上动�
 | `--wui-color-surface-raised`       | `#f2f2f7`                                                    | `#2c2c2e`                                                    | 抬升表面               |
 | `--wui-color-surface-control`      | `#dfdfdf`                                                    | `#3a3a3c`                                                    | 中性可交互控件表面     |
 | `--wui-color-surface-track`        | `#e5e5ea`                                                    | `#444446`                                                    | Slider/Switch 轨道表面 |
-| `--wui-color-surface-menu`         | `rgb(246 246 246 / 0.82)`                                    | `rgb(30 30 32 / 0.92)`                                       | Menu 和浮动面板表面    |
+| `--wui-color-surface-menu`         | `rgb(246 246 246 / 0.82)`                                    | `rgb(44 44 46 / 0.78)`                                       | Menu 和浮动面板表面    |
 | `--wui-color-surface-glass`        | `rgb(250 250 250 / 0.34)`                                    | `rgb(44 44 46 / 0.42)`                                       | 液态玻璃表面           |
 | `--wui-color-surface-glass-hover`  | `color-mix(... text 6%, surface-glass)`                      | `color-mix(... text 6%, surface-glass)`                      | Glass 完整悬停背景     |
 | `--wui-color-surface-glass-active` | `color-mix(... text 15%, surface-glass)`                     | `color-mix(... text 15%, surface-glass)`                     | Glass 完整按下背景     |
 | `--wui-color-surface-overlay`      | `rgb(246 246 246 / 0.82)`                                    | `rgb(32 34 34 / 0.9)`                                        | 半透明浮层表面         |
-| `--wui-color-surface-segmented`    | `#e5e5ea`                                                    | `#3a3a3c`                                                    | Segmented 轨道表面     |
-| `--wui-color-surface-selected`     | `#fff`                                                       | `#5c5c5e`                                                    | Segmented 选中滑块表面 |
+| `--wui-color-surface-sidebar`      | `rgb(246 246 246 / 0.82)`                                    | `rgb(44 44 46 / 0.8)`                                        | 侧边栏面板表面         |
+| `--wui-color-surface-segmented`    | `#e5e5ea`                                                    | `#3a3a3c`                                                    | Segmented 指示器表面   |
+| `--wui-color-surface-selected`     | `#fff`                                                       | `#5c5c5e`                                                    | 选中表面               |
 | `--wui-color-text`                 | `#1b1b1b`                                                    | `#e9eaea`                                                    | 主要文本               |
 | `--wui-color-text-secondary`       | `#6a6a6a`                                                    | `#a1a1a6`                                                    | 次要文本               |
 | `--wui-color-text-tertiary`        | `color-mix(in srgb, var(--wui-color-text) 35%, transparent)` | `color-mix(in srgb, var(--wui-color-text) 42%, transparent)` | 三级文本和弱意图图标   |

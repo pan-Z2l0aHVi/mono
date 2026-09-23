@@ -46,6 +46,39 @@ describe('WebUiInput 组件特有契约', () => {
     cleanupElement(el)
   })
 
+  // 公共 focus()/blur() 与 textarea 对齐：宿主自身无 tab 位（不可聚焦），
+  // 不重定向到内部原生控件的话调用方拿到的是一次空操作
+  it('focus() 聚焦原生 input', async () => {
+    const el = createInput()
+    await waitForUpdate(el)
+
+    el.focus()
+    await waitForUpdate(el)
+
+    expect(document.activeElement).toBe(el)
+    expect(nativeInput(el)).toBe(el.shadowRoot?.activeElement)
+    expect(el.hasAttribute('focused')).toBe(true)
+
+    cleanupElement(el)
+  })
+
+  it('blur() 移焦原生 input', async () => {
+    const el = createInput()
+    await waitForUpdate(el)
+
+    el.focus()
+    await waitForUpdate(el)
+    expect(el.hasAttribute('focused')).toBe(true)
+
+    el.blur()
+    await waitForUpdate(el)
+
+    expect(el.shadowRoot?.activeElement).toBeNull()
+    expect(el.hasAttribute('focused')).toBe(false)
+
+    cleanupElement(el)
+  })
+
   it('clearable 有值时清除按钮派发一次 input 并把 value 置空', async () => {
     const el = createInput()
     el.clearable = true

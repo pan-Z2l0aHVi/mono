@@ -4,6 +4,7 @@ import { customElement, property } from 'lit/decorators.js'
 import { normalizeLiteral } from '@/shared/normalize'
 import { applyOverlayRootStyles } from '@/shared/overlay/overlay-root'
 import { parseDuration } from '@/shared/theme/duration'
+import { registerThemeRootSync, unregisterThemeRootSync } from '@/shared/theme/root-sync'
 
 import style from './style.css?inline'
 
@@ -113,19 +114,6 @@ export class WebUiTheme extends LitElement {
   }
   private _motion: ThemeMotion = 'system'
 
-  // HTML attribute 存在即 true；动态关闭由框架写 boolean property，不解析字符串。
-  @property({ type: Boolean, reflect: true })
-  get transition(): boolean {
-    return this._transition
-  }
-  set transition(v: boolean) {
-    const old = this._transition
-    this._transition = v
-    this.requestUpdate('transition', old)
-
-    this._syncTransitionOriginListeners(this.isConnected && this._transition)
-  }
-  private _transition = false
   private _transitionOriginListening = false
   private _transitionRequested = false
 
@@ -133,12 +121,16 @@ export class WebUiTheme extends LitElement {
 
   override connectedCallback() {
     super.connectedCallback()
-    this._syncTransitionOriginListeners(this.transition)
+    // 揭示开关曾由 transition prop 单独控制；现在统一由 motion 决定，
+    // 因此连接期间始终记录圆心来源，真正是否动画仍看 _shouldAnimateAppearance。
+    this._syncTransitionOriginListeners(true)
+    this._syncRootPageColorSync()
     this._warnWhenAppearanceIsMissing()
   }
 
   override disconnectedCallback() {
     this._syncTransitionOriginListeners(false)
+    unregisterThemeRootSync(this)
     this._activeTransition?.skipTransition?.()
     this._cleanupThemeTransition()
     super.disconnectedCallback()
@@ -146,6 +138,17 @@ export class WebUiTheme extends LitElement {
 
   protected override updated() {
     this._warnWhenAppearanceIsMissing()
+    this._syncRootPageColorSync()
+  }
+
+  /*
+   * root page 色同步的登记态：只有 active（有 appearance）的主题参与，
+   * appearance 被清掉时撤销登记、把同步权顺延给下一个已连接实例。
+   * updated() 里重复登记是幂等的，因此这里同时承担「appearance 变化后刷新 root 值」。
+   */
+  private _syncRootPageColorSync() {
+    if (this._hasAppearance()) registerThemeRootSync(this)
+    else unregisterThemeRootSync(this)
   }
 
   // 返回该主题拥有的浮层挂载点；未设置 appearance 时不创建。
@@ -211,7 +214,6 @@ export class WebUiTheme extends LitElement {
     if (!previous || previous === next) return false
     if (resolveAppearance(previous) === resolveAppearance(next)) return false
     return (
-      this.transition &&
       typeof document.startViewTransition === 'function' &&
       Array.isArray(document.adoptedStyleSheets) &&
       !this.isReducedMotion() &&
@@ -260,10 +262,13 @@ export class WebUiTheme extends LitElement {
       this.style.setProperty('display', 'block')
       this.style.setProperty('view-transition-name', transitionName)
     }
-    document.adoptedStyleSheets = [...document.adoptedStyleSheets, styleSheet]
 
     const restoreCapture = () => {
-      document.adoptedStyleSheets = document.adoptedStyleSheets.filter(sheet => sheet !== styleSheet)
+      try {
+        document.adoptedStyleSheets = document.adoptedStyleSheets.filter(sheet => sheet !== styleSheet)
+      } catch {
+        // 拒绝写入的 setter 也拒绝回收，样式表本就没进去；host 内联态的恢复不能因此中断。
+      }
       if (!transitionName) return
       if (hadTransitionName) this.style.setProperty('view-transition-name', hadTransitionName)
       else this.style.removeProperty('view-transition-name')
@@ -277,7 +282,10 @@ export class WebUiTheme extends LitElement {
       this.requestUpdate('appearance', previous)
       return this.updateComplete
     }
+    // cleanup 必须在 adoptedStyleSheets 写入之前登记：写入同步抛错时 setter 的 .catch 才拿得到它，
+    // 否则 host 上的 view-transition-name 会残留，污染之后每一次 view transition（issue #146）。
     this._transitionCleanup = restoreCapture
+    document.adoptedStyleSheets = [...document.adoptedStyleSheets, styleSheet]
     const transition = document.startViewTransition(commit) as unknown as ViewTransitionLike
     this._activeTransition = transition
     const animations: Animation[] = []

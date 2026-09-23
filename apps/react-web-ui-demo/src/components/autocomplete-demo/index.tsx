@@ -1,5 +1,5 @@
 import type { WebUiAutocomplete } from '@greypan/web-ui'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 
 function AutocompleteDemo() {
   // 受控 value：value 即输入文本，选中时回填为 option label
@@ -17,6 +17,34 @@ function AutocompleteDemo() {
   function handleCustomChange(event: React.ChangeEvent<WebUiAutocomplete>) {
     setCustomValue(event.currentTarget.value)
     setCustomSelectedValue(event.currentTarget.selectedValue)
+  }
+
+  // 自定义 trigger slot：多行 textarea 触发器保留 Enter 换行，Escape/blur 关闭面板
+  const [multilineText, setMultilineText] = useState('')
+  const [multilineCommit, setMultilineCommit] = useState({ value: '', selectedValue: '' })
+  const multilineTriggerRef = useRef<WebUiAutocomplete>(null)
+
+  function handleMultilineInput(event: React.FormEvent<WebUiAutocomplete>) {
+    setMultilineText(event.currentTarget.value)
+  }
+
+  function handleMultilineChange(event: React.ChangeEvent<WebUiAutocomplete>) {
+    setMultilineCommit({
+      value: event.currentTarget.value,
+      selectedValue: event.currentTarget.selectedValue
+    })
+  }
+
+  // 公共 focus() 委托给当前生效触发器：这里是 light DOM 的 web-ui-textarea
+  function focusMultilineTrigger() {
+    multilineTriggerRef.current?.focus()
+  }
+
+  // 单行自定义触发器保持默认 Enter 语义：面板打开时 Enter 选择高亮项
+  const [singleLineText, setSingleLineText] = useState('')
+
+  function handleSingleLineInput(event: React.FormEvent<WebUiAutocomplete>) {
+    setSingleLineText(event.currentTarget.value)
   }
 
   // selected-value 由当前输入派生：文本不再精确匹配任何 option label 时自动清空
@@ -173,6 +201,59 @@ function AutocompleteDemo() {
         </web-ui-autocomplete>
         <div>最近提交 value：{customValue || '无'}</div>
         <div>最近提交 selected-value：{customSelectedValue || '无'}</div>
+      </div>
+
+      <h2>自定义 Trigger</h2>
+      <p className="mb-2 text-sm text-(--wui-color-text-secondary)">
+        通过 <code>slot=&quot;trigger&quot;</code> 用可编辑组件替换默认输入框。多行触发器（<code>web-ui-textarea</code>
+        ）保留 Enter 换行：Enter 不选择高亮项，面板用 Escape 或 blur 关闭；面板打开时 ArrowUp/ArrowDown
+        移动文本光标。选中候选仍会把 label 回填到触发器。
+      </p>
+      <h3>多行文本触发器</h3>
+      <div className="mb-3 flex flex-col gap-3">
+        <web-ui-autocomplete
+          ref={multilineTriggerRef}
+          placeholder="输入框架名"
+          onInput={handleMultilineInput}
+          onChange={handleMultilineChange}
+        >
+          <web-ui-textarea
+            slot="trigger"
+            rows={3}
+            className="[--wui-textarea-width:20rem]"
+            placeholder="多行输入：键入过滤候选，Enter 换行"
+          />
+          {frameworks.map(name => (
+            <web-ui-option key={name} value={name} label={name}>
+              {name}
+            </web-ui-option>
+          ))}
+        </web-ui-autocomplete>
+        <div className="flex flex-wrap items-center gap-3">
+          <web-ui-button variant="secondary" size="28" onClick={focusMultilineTrigger}>
+            聚焦触发器
+          </web-ui-button>
+          <span className="text-sm text-(--wui-color-text-secondary)">公共 focus() 委托给当前触发器</span>
+        </div>
+        <div>当前文本（换行原样显示）：</div>
+        <div className="whitespace-pre-wrap text-sm">{multilineText || '无'}</div>
+        <div>最近 change 文本：{multilineCommit.value || '无'}</div>
+        <div>最近 change selected-value：{multilineCommit.selectedValue || '无'}</div>
+      </div>
+      <h3>单行输入触发器</h3>
+      <p className="mb-2 text-sm text-(--wui-color-text-secondary)">
+        单行自定义触发器保持默认 Enter 行为：面板打开时 Enter 选择高亮项。
+      </p>
+      <div className="mb-3 flex flex-col gap-3">
+        <web-ui-autocomplete placeholder="输入框架名" onInput={handleSingleLineInput}>
+          <web-ui-input slot="trigger" placeholder="单行输入：Enter 选择高亮项" />
+          {frameworks.map(name => (
+            <web-ui-option key={name} value={name} label={name}>
+              {name}
+            </web-ui-option>
+          ))}
+        </web-ui-autocomplete>
+        <div>当前文本：{singleLineText || '无'}</div>
       </div>
 
       <h2>无滚动锁定</h2>

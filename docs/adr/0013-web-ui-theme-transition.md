@@ -1,7 +1,7 @@
 # ADR-0013: Web UI 主题过渡
 
 - **Date**: 2026-09-17
-- **Status**: 已接受
+- **Status**: 已接受（2026-09-22 修订：决策 1 的 transition prop 已移除，见文末修订节）
 
 ## 1. 决策
 
@@ -19,6 +19,10 @@
 - `appearance="system"` 的 OS 深浅翻转当前版本不动画；显式 light/dark 变化才启动过渡。
 - 单 flight 采用 last-wins：飞行中新 appearance 直接落到目标状态，由当前 transition 收尾。
 - 组件不向 `document.head` 注入 `<style>`，也不要求消费者复制 demo 层 CSS。
+
+## 2026-09-22 修订：transition prop 移除
+
+决策 1 的 `transition` boolean 属性已移除（breaking，major）。主题切换是否有过渡改由既有 `motion` prop 统一控制：`full` 总是揭示、`reduced` 直接切换、`system` 跟随 `prefers-reduced-motion`（默认档，取代原先的永不动画默认）。被移除的 attribute 在运行时被忽略，TypeScript 消费者编译报错。本 ADR 其余机制（View Transition 揭示、嵌套 capture、adoptedStyleSheets 例外、降级路径）不变；追踪 issue #156。
 
 ## 后果
 

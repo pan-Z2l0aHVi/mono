@@ -99,4 +99,26 @@ describe('Web UI focus 契约（浏览器）', () => {
     expect(input.hasAttribute('focused')).toBe(true)
     cleanupElement(input)
   })
+
+  // 公共 focus()/blur()：宿主自身无 tab 位（不可聚焦），必须重定向到内部原生控件
+  it('公共 focus()/blur() 落到内部原生 input 并反射 focused', async () => {
+    const theme = mountTheme()
+    const input = document.createElement('web-ui-input') as WebUiInput
+    theme.append(input)
+    await waitForUpdate(input)
+
+    input.focus()
+    await waitForUpdate(input)
+
+    expect(document.activeElement).toBe(input)
+    expect(input.shadowRoot?.activeElement).toBe(nativeOf(input, 'input'))
+    expect(input.hasAttribute('focused')).toBe(true)
+
+    input.blur()
+    await waitForUpdate(input)
+
+    expect(input.shadowRoot?.activeElement).toBeNull()
+    expect(input.hasAttribute('focused')).toBe(false)
+    cleanupElement(input)
+  })
 })
