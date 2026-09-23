@@ -4,6 +4,7 @@ import { classMap } from 'lit/directives/class-map.js'
 import { ifDefined } from 'lit/directives/if-defined.js'
 
 import { FormAssociated, defineFormAssociation, FormAssociationController } from '@/shared/form-association'
+import { createFieldId } from '@/shared/form-association/field-id'
 
 import style from './style.css?inline'
 
@@ -125,6 +126,7 @@ export class WebUiEditableText extends FormAssociated(LitElement) {
   private _pendingCaret: number | null = null
   private _refocusing = false
   private _resizeObserver: ResizeObserver | null = null
+  private readonly _fieldId = createFieldId('web-ui-editable-text')
 
   private get _isDisabled(): boolean {
     return this.disabled || this._formAssociation.isFormDisabled()
@@ -401,6 +403,7 @@ export class WebUiEditableText extends FormAssociated(LitElement) {
       <div class="layers" @pointerdown=${this._onPointerDown} @click=${this._onClick}>
         <span class=${classMap({ text: true, placeholder: this._value === '' })}>${this._displayText}</span>
         <textarea
+          id=${this._fieldId}
           class="editor"
           .value=${this._value}
           .placeholder=${this.placeholder}

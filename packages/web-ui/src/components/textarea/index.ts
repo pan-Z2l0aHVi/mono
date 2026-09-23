@@ -14,6 +14,7 @@ import {
   forwardInputValidity,
   FormAssociationController
 } from '@/shared/form-association'
+import { createFieldId } from '@/shared/form-association/field-id'
 
 import style from './style.css?inline'
 
@@ -45,6 +46,7 @@ export class WebUiTextarea extends FormAssociated(LitElement) {
 
   private _textarea: HTMLTextAreaElement | null = null
   private _resizeObserver: ResizeObserver | null = null
+  private readonly _fieldId = createFieldId('web-ui-textarea')
 
   @property({ type: String, reflect: true })
   get value(): string {
@@ -215,6 +217,7 @@ export class WebUiTextarea extends FormAssociated(LitElement) {
       <div class="wui-glass wui-textarea-inner" @click=${this.focusTextarea}>
         <slot name="prefix" class=${classMap({ empty: !this._hasPrefix })} @slotchange=${this._onSlotChange}></slot>
         <textarea
+          id=${this._fieldId}
           placeholder=${this.placeholder}
           name=${this.name}
           aria-label=${ifDefined(this.ariaLabel)}
