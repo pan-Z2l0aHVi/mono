@@ -54,7 +54,6 @@ import { useRouter } from 'vue-router'
 
 import { canGoBack, canGoForward } from '@/composables/useHistoryNav'
 
-// --- Navigation ---
 const router = useRouter()
 const activeNav = ref<'library' | 'map'>('library')
 const navDrawRefs = ref<Record<'library' | 'map', WebUiSvgDrawLines | null>>({
@@ -79,7 +78,6 @@ function selectNav(next: 'library' | 'map') {
   })
 }
 
-// --- Sidebar toggle ---
 const sidebarCollapsed = ref(false)
 const sidebarOpen = ref(false)
 const desktopSidebarWidth = ref('240px')
@@ -104,7 +102,6 @@ function updateSidebarOpen(event: WebUiEvent<WebUiLayout, 'sidebar-open-change'>
   sidebarOpen.value = event.detail.open
 }
 
-// --- Tags ---
 const tagColors: Record<string, string> = {
   设计: 'bg-blue-100 text-blue-700 dark:bg-blue-400/15 dark:text-blue-200',
   开发: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-400/15 dark:text-emerald-200',
@@ -129,7 +126,6 @@ function getTagClass(tag: string) {
   return tagColors[tag] ?? defaultTagClass
 }
 
-// --- Resource data ---
 interface ResourceOrigin {
   id: string
   kind: 'local' | 'link'
@@ -312,7 +308,6 @@ const resources = reactive<Resource[]>([
   }
 ])
 
-// --- Selection & Drawer ---
 const selectedId = ref<string | null>(null)
 const drawerOpen = ref(false)
 const previewDrawerOpen = ref(false)
@@ -352,7 +347,6 @@ watch([isMobile, drawerOpen, previewDrawerOpen], () => {
   })
 })
 
-// --- Icon mapping ---
 const resourceTypeIcons: Record<Resource['resourceType'], typeof lucideFile> = {
   image: lucideImage,
   video: lucideFilm,
@@ -419,7 +413,6 @@ function getSourceIcon(resource: Resource) {
   return resource.sourceType === 'link' ? lucideLink : lucideFile
 }
 
-// "打开方式" 候选应用，按资源类型分组
 const openWithApps: Partial<Record<Resource['resourceType'], Array<{ label: string; icon: typeof lucideEye }>>> = {
   image: [
     { label: '预览', icon: lucideEye },
@@ -451,7 +444,6 @@ const currentApps = computed(() => {
 
 const allTags = [...new Set(resources.flatMap(r => r.tags ?? []))].sort()
 
-// --- Filter state ---
 const filterSource = ref<string>('all')
 const filterType = ref<string>('all')
 const filterBroken = ref<string>('all')
@@ -549,7 +541,6 @@ function handleSortChange(e: WebUiEvent<WebUiSelect, 'change'>) {
   sortOrder.value = e.target.value as SortOption
 }
 
-// --- Context menu ---
 const contextResource = ref<Resource | null>(null)
 const ctxMenuRef = ref<WebUiContextMenu>()
 function onResourceContextmenu(resource: Resource, event: MouseEvent) {
@@ -558,7 +549,6 @@ function onResourceContextmenu(resource: Resource, event: MouseEvent) {
   ctxMenuRef.value?.openAt(event.clientX, event.clientY)
 }
 
-// --- Resource rename (web-ui-editable-text) ---
 // 空闲态渲染普通 span；只有两个入口触发编辑：列表右键菜单「重命名」与抽屉标题编辑按钮。
 // 入口先把 editingNameKey 指向目标，editable-text 随键渲染后再进入编辑；提交（change）或
 // 取消（cancel）后清空键值回到普通 span。编辑交互（Enter 与 blur 都提交，仅 Esc 取消并恢复
@@ -586,7 +576,6 @@ function setNameEditorRef(id: string) {
   return callback
 }
 
-/** 列表行名的排版类名：broken 态与正常态只差颜色与删除线。 */
 const resourceNameClass = (resource: Resource) => [
   'text-sm font-medium leading-snug wrap-break-word line-clamp-2 max-w-[60%] max-[640px]:max-w-full',
   resource.broken
@@ -598,7 +587,6 @@ function startResourceRename(resource: Resource, surface: 'list' | 'drawer' = 'l
   const key = surface === 'drawer' ? DRAWER_TITLE_EDITOR_KEY : resource.id
   editingNameKey.value = key
   void nextTick(() => {
-    // 公共 select()：进入编辑态并全选内容，两个入口同一写法
     resourceNameEditors.value[key]?.select()
   })
 }
@@ -616,7 +604,6 @@ function handleResourceNameChange(event: WebUiEvent<WebUiEditableText, 'change'>
   stopResourceRename()
 }
 
-// --- Delete confirmation ---
 const deleteConfirmOpen = ref(false)
 const deleteTargetResource = ref<Resource | null>(null)
 function confirmDeleteResource(resource: Resource) {
@@ -633,7 +620,6 @@ function handleDeleteCancel() {
   deleteConfirmOpen.value = false
 }
 
-// --- Preview from context menu ---
 function handleContextPreview() {
   if (!contextResource.value) return
   selectedId.value = contextResource.value.id
@@ -641,7 +627,6 @@ function handleContextPreview() {
   previewDrawerOpen.value = true
 }
 
-// --- Add dialog (prototype only) ---
 const addDialogOpen = ref(false)
 const addDragActive = ref(false)
 const addPasteCaptured = ref(false)
@@ -745,7 +730,6 @@ function removeAddQueue(item: (typeof addQueue)[number]) {
   })
 }
 
-// --- Edit tags dialog ---
 type EditTagsTarget = Resource | (typeof addQueue)[number]
 const editTagsDialogOpen = ref(false)
 const editTagsTarget = ref<EditTagsTarget | null>(null)
@@ -818,7 +802,6 @@ function removeEditTag(index: number) {
   })
 }
 
-// --- Removal confirmation ---
 interface PendingRemoval {
   title: string
   message: string
@@ -874,7 +857,6 @@ watch(addDialogOpen, (open, _, onCleanup) => {
     @sidebar-open-change="updateSidebarOpen"
     @sidebar-width-change="handleSidebarWidthChange"
   >
-    <!-- Sidebar -->
     <div slot="sidebar" class="relative z-20 h-full pt-14 pb-4 px-2 max-[640px]:px-0" aria-label="应用导航">
       <nav class="grid gap-1" aria-label="主导航">
         <button
@@ -928,7 +910,6 @@ watch(addDialogOpen, (open, _, onCleanup) => {
       </nav>
     </div>
 
-    <!-- Header -->
     <header slot="header" class="w-full">
       <div class="flex gap-4 items-center px-6 py-2 max-[640px]:px-3 max-[640px]:pl-0">
         <!-- 窄屏时布局组件的展开 Toggle 自带左缩进（--wui-layout-mobile-toggle-inset，8px），header 内容去掉左内边距避免双重缩进。 -->
@@ -1071,16 +1052,13 @@ watch(addDialogOpen, (open, _, onCleanup) => {
       </div>
     </header>
 
-    <!-- Resource list + Detail drawer -->
     <div class="flex min-h-0 flex-1">
       <div class="flex-1 min-w-0 px-6 max-[640px]:px-3 pb-16 pt-2">
         <web-ui-context-menu ref="ctxMenuRef" class="block w-full">
-          <!-- Empty state -->
           <div v-if="filteredResources.length === 0" class="flex flex-col items-center justify-center py-24">
             <web-ui-empty size="large" description="没有符合条件的资源"></web-ui-empty>
           </div>
 
-          <!-- Resource rows -->
           <div v-else class="w-full h-full">
             <div
               v-for="resource in filteredResources"
@@ -1093,7 +1071,6 @@ watch(addDialogOpen, (open, _, onCleanup) => {
               @click="selectResource(resource.id)"
               @contextmenu="onResourceContextmenu(resource, $event)"
             >
-              <!-- Type avatar -->
               <div
                 class="flex items-center justify-center size-10 shrink-0 rounded-lg"
                 :class="typeTint[resource.resourceType]"
@@ -1101,7 +1078,6 @@ watch(addDialogOpen, (open, _, onCleanup) => {
                 <web-ui-icon :icon="getResourceIcon(resource)" :size="20"></web-ui-icon>
               </div>
 
-              <!-- Main -->
               <div class="flex flex-col min-w-0 gap-1 flex-1">
                 <div class="flex items-center gap-1.5">
                   <span v-if="editingNameKey !== resource.id" :class="resourceNameClass(resource)">{{
@@ -1151,7 +1127,6 @@ watch(addDialogOpen, (open, _, onCleanup) => {
                 </div>
               </div>
 
-              <!-- Tags (secondary) -->
               <div v-if="resource.tags && resource.tags.length" class="flex gap-1.5 flex-wrap justify-end max-w-[25%]">
                 <span
                   v-for="tag in resource.tags"
@@ -1164,7 +1139,6 @@ watch(addDialogOpen, (open, _, onCleanup) => {
             </div>
           </div>
 
-          <!-- Context menu items -->
           <web-ui-dropdown-item v-if="contextResource && !contextResource.broken" @click="handleContextPreview">
             <web-ui-icon slot="prefix" :size="14" :icon="lucideEye"></web-ui-icon>
             预览
@@ -1218,7 +1192,6 @@ watch(addDialogOpen, (open, _, onCleanup) => {
         </web-ui-context-menu>
       </div>
 
-      <!-- Detail Drawer -->
       <web-ui-drawer
         ref="detailDrawerRef"
         :open="drawerOpen"
@@ -1229,7 +1202,6 @@ watch(addDialogOpen, (open, _, onCleanup) => {
         @open-change="handleDetailDrawerOpenChange"
       >
         <div class="grid gap-5">
-          <!-- Preview placeholder -->
           <div
             v-if="selectedResource"
             class="flex items-center justify-center h-36 rounded-xl bg-[#f5f5f7] dark:bg-(--wui-color-surface-raised)"
@@ -1241,7 +1213,6 @@ watch(addDialogOpen, (open, _, onCleanup) => {
             ></web-ui-icon>
           </div>
 
-          <!-- Title -->
           <h2 v-if="selectedResource" class="group/title flex items-center gap-3 min-h-9 m-0">
             <web-ui-icon
               :icon="getResourceIcon(selectedResource)"
@@ -1274,7 +1245,6 @@ watch(addDialogOpen, (open, _, onCleanup) => {
             </web-ui-button>
           </h2>
 
-          <!-- Quick actions -->
           <web-ui-button-group v-if="selectedResource" class="self-start">
             <web-ui-button
               v-if="!selectedResource.broken"
@@ -1306,7 +1276,6 @@ watch(addDialogOpen, (open, _, onCleanup) => {
             >
           </web-ui-button-group>
 
-          <!-- Tags -->
           <div v-if="selectedResource" class="flex flex-wrap items-center gap-1.5">
             <span
               v-for="tag in selectedResource.tags"
@@ -1329,7 +1298,6 @@ watch(addDialogOpen, (open, _, onCleanup) => {
             </web-ui-tooltip>
           </div>
 
-          <!-- Metadata -->
           <div
             v-if="selectedResource"
             class="mt-2 overflow-hidden rounded-3xl bg-white shadow-[0_0_0_0.5px_rgb(0_0_0/0.08),0_1px_3px_rgb(0_0_0/0.06)] dark:bg-(--wui-color-surface-raised) dark:shadow-[0_0_0_0.5px_rgb(255_255_255/0.12)]"
@@ -1428,7 +1396,6 @@ watch(addDialogOpen, (open, _, onCleanup) => {
       </web-ui-drawer>
     </div>
 
-    <!-- Delete confirmation dialog -->
     <web-ui-dialog :open="deleteConfirmOpen" controlled no-backdrop-close @open-change="handleDeleteCancel">
       <div slot="title">删除资源</div>
       <template v-if="deleteTargetResource">
@@ -1445,7 +1412,6 @@ watch(addDialogOpen, (open, _, onCleanup) => {
       </div>
     </web-ui-dialog>
 
-    <!-- Removal confirmation dialog -->
     <web-ui-dialog
       :open="removalConfirmOpen"
       controlled
@@ -1465,7 +1431,6 @@ watch(addDialogOpen, (open, _, onCleanup) => {
       </div>
     </web-ui-dialog>
 
-    <!-- Add dialog (prototype only) -->
     <web-ui-dialog
       :open="addDialogOpen"
       controlled
@@ -1642,7 +1607,6 @@ watch(addDialogOpen, (open, _, onCleanup) => {
       </web-ui-button>
     </web-ui-dialog>
 
-    <!-- Edit tags dialog -->
     <web-ui-dialog
       :open="editTagsDialogOpen"
       controlled
