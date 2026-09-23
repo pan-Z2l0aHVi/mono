@@ -332,21 +332,6 @@ function handlePreviewDrawerOpenChange(event: WebUiEvent<WebUiDrawer, 'open-chan
   previewDrawerOpen.value = event.detail.open
 }
 
-async function syncDrawerSheetHeight(drawer: WebUiDrawer | undefined) {
-  if (!drawer) return
-  await drawer.updateComplete
-  const dialog = drawer.shadowRoot?.querySelector('dialog')
-  if (!dialog) return
-  dialog.style.height = isMobile.value && drawer.placement === 'bottom' ? '80vh' : ''
-}
-
-watch([isMobile, drawerOpen, previewDrawerOpen], () => {
-  void nextTick(() => {
-    void syncDrawerSheetHeight(detailDrawerRef.value)
-    void syncDrawerSheetHeight(previewDrawerRef.value)
-  })
-})
-
 const resourceTypeIcons: Record<Resource['resourceType'], typeof lucideFile> = {
   image: lucideImage,
   video: lucideFilm,
@@ -457,6 +442,7 @@ const filterOpen = ref(false)
 const searchOpen = ref(false)
 const searchQuery = ref('')
 const searchInputRef = ref<WebUiInput>()
+const searchContainerRef = ref<HTMLElement | null>(null)
 const filteredResources = computed(() => {
   const query = searchQuery.value.trim().toLowerCase()
 
@@ -518,6 +504,20 @@ function openSearch() {
 }
 function closeSearch() {
   searchOpen.value = false
+}
+function handleSearchFocusout(event: FocusEvent) {
+  const container = searchContainerRef.value
+  if (event.relatedTarget instanceof Node) {
+    if (container?.contains(event.relatedTarget)) return
+    closeSearch()
+    return
+  }
+  // 触发器与输入框在同一容器内换位时 relatedTarget 可能为空，等 DOM 稳定后再判断焦点归属。
+  void nextTick(() => {
+    const active = document.activeElement
+    if (active instanceof Node && container?.contains(active)) return
+    closeSearch()
+  })
 }
 function handleSearchInput(event: WebUiEvent<WebUiInput, 'input'>) {
   searchQuery.value = event.target.value
@@ -753,7 +753,7 @@ function openEditTagsDialog(target: EditTagsTarget) {
   editTagsDialogOpen.value = true
   void nextTick(() => {
     // 走组件公共 focus()：它委托到当前生效触发器（默认 web-ui-input 已重定向到内部
-    // 原生控件）。不能改为查 shadowRoot 里的 .autocomplete-input——T0 重构后那是
+    // 原生控件）。不能改为查组件内部的 .autocomplete-input——T0 重构后那是
     // web-ui-input host 而非 input，host 自身不可聚焦，.focus() 是空操作（#144）。
     editTagsAutocompleteRef.value?.focus()
   })
@@ -921,7 +921,7 @@ watch(addDialogOpen, (open, _, onCleanup) => {
             <web-ui-icon :icon="lucideChevronRight"></web-ui-icon>
           </web-ui-button>
         </web-ui-button-group>
-        <div class="flex gap-1.5 items-center ml-auto">
+        <div ref="searchContainerRef" class="flex gap-1.5 items-center ml-auto" @focusout="handleSearchFocusout">
           <web-ui-tooltip v-if="!(searchOpen && isMobile)" content="添加资源" portal>
             <web-ui-button icon variant="primary" aria-label="添加资源" @click="openAddDialog">
               <web-ui-icon :icon="lucidePlus"></web-ui-icon>
@@ -952,7 +952,6 @@ watch(addDialogOpen, (open, _, onCleanup) => {
             class="[--wui-input-width:min(240px,calc(100vw-180px))]"
             @input="handleSearchInput"
             @keydown="handleSearchKeydown"
-            @blur="closeSearch"
           >
             <web-ui-icon slot="prefix" :icon="lucideSearch"></web-ui-icon>
           </web-ui-input>
@@ -1198,10 +1197,10 @@ watch(addDialogOpen, (open, _, onCleanup) => {
         :placement="isMobile ? 'bottom' : 'right'"
         draggable
         controlled
-        class="max-[640px]:[--wui-drawer-height:80vh] max-[640px]:[--wui-drawer-inset:0px] max-[640px]:[--wui-drawer-radius:28px_28px_0_0] [--wui-drawer-width:min(640px,max(60vw,320px))]"
+        class="max-[640px]:[--wui-drawer-height:80vh] max-[640px]:[--wui-drawer-inset:0px] max-[640px]:[--wui-drawer-radius:28px_28px_0_0] max-[640px]:[--wui-drawer-content-padding:0px] [--wui-drawer-width:min(640px,max(60vw,320px))]"
         @open-change="handleDetailDrawerOpenChange"
       >
-        <div class="grid gap-5">
+        <div class="grid gap-5 max-[640px]:h-(--wui-drawer-height) max-[640px]:overflow-y-auto max-[640px]:p-5">
           <div
             v-if="selectedResource"
             class="flex items-center justify-center h-36 rounded-xl bg-[#f5f5f7] dark:bg-(--wui-color-surface-raised)"
@@ -1372,17 +1371,20 @@ watch(addDialogOpen, (open, _, onCleanup) => {
         :placement="isMobile ? 'bottom' : 'right'"
         draggable
         controlled
-        class="max-[640px]:[--wui-drawer-height:80vh] max-[640px]:[--wui-drawer-inset:0px] max-[640px]:[--wui-drawer-radius:28px_28px_0_0] [--wui-drawer-width:max(60vw,320px)]"
+        class="max-[640px]:[--wui-drawer-height:80vh] max-[640px]:[--wui-drawer-inset:0px] max-[640px]:[--wui-drawer-radius:28px_28px_0_0] max-[640px]:[--wui-drawer-header-padding:0px] max-[640px]:[--wui-drawer-content-padding:0px] [--wui-drawer-width:max(60vw,320px)]"
         @open-change="handlePreviewDrawerOpenChange"
       >
         <h2
           v-if="selectedResource"
           slot="header"
-          class="m-0 w-full min-w-0 truncate px-12 text-center text-[17px] font-semibold leading-snug text-[#22212a] dark:text-(--wui-color-text)"
+          class="m-0 w-full min-w-0 truncate px-12 text-center text-[17px] font-semibold leading-snug text-[#22212a] dark:text-(--wui-color-text) max-[640px]:h-14"
         >
           {{ selectedResource.name }}
         </h2>
-        <div v-if="selectedResource" class="grid gap-4">
+        <div
+          v-if="selectedResource"
+          class="grid gap-4 max-[640px]:h-[calc(var(--wui-drawer-height)-57px)] max-[640px]:overflow-y-auto max-[640px]:p-5"
+        >
           <div
             class="flex items-center justify-center h-52 rounded-xl bg-[#f5f5f7] dark:bg-(--wui-color-surface-raised)"
           >
