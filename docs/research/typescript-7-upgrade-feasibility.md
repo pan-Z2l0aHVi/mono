@@ -6,7 +6,7 @@
 
 ## 结论（TL;DR）
 
-**可以升级，且本仓库是极少数"已经半只脚在 TS 7 上"的仓库；但正确形态是「混合态」而非单编译器一刀切。**
+**可以升级，且本仓库是极少数「已经半只脚在 TS 7 上」的仓库；但正确形态是「混合态」而非单编译器一刀切。**
 
 1. **类型检查早已在 TS 7 引擎上运行**（源码事实）：`vp check` 的 typecheck / type-aware lint 由 vite-plus 捆绑的 `oxlint-tsgolint@7.0.2001` 承担，其 README 明确写着"using [typescript-go] for full compatibility with the TypeScript type system, and targets **TypeScript 7**"。TS 7 就是 typescript-go 的正式版。
 2. **`typescript` npm 包（当前 catalog `~6.0.3`）只剩三个消费者**（源码事实）：`vue-tsc --build`（Vue demo 构建门禁）、`vite-plugin-dts → unplugin-dts` 的 `.d.ts` 生成（js-kit / browser-kit / web-ui）、编辑器 LSP。TS 7.0 不提供 JS API，这三个消费者短期内必须留在 TS 6 JS API 上。

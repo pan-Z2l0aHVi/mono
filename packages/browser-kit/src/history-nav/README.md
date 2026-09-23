@@ -8,7 +8,7 @@ English | [简体中文](./README.CN.md)
 
 `vue-router` only maintains `history.state.back/forward` when `router.push()` is called; entries created by address-bar input or browser back/forward clone the previous state, so `back/forward` are always `null` and cannot tell whether navigation is possible. This module tracks the browser history position itself with an **entry stack + current index**:
 
-- Patches `history.pushState` / `history.replaceState` globally, but only records in a side table — **never injects metadata into `history.state`**
+- Patches `history.pushState` / `history.replaceState` globally, but only records in a side table. It never injects metadata into `history.state`
 - Handles browser back/forward and address-bar navigation via `popstate`, locating the target URL inside the stack
 - Persists through `sessionStorage` (reusing the `storage` module) so the stack survives reloads
 - Degrades silently to an in-memory stack when storage is blocked (private mode, restricted webview)

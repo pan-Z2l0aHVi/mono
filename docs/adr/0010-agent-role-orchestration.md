@@ -2,11 +2,11 @@
 
 - **Date**: 2026-09-10
 - **Status**: 已接受
-- **Supersedes**: ADR-0004「角色实施补充（2026-09-01）」中“Role 不与模型、CLI 或固定会话绑定”的结论
+- **Supersedes**: ADR-0004「角色实施补充（2026-09-01）」中「Role 不与模型、CLI 或固定会话绑定」的结论
 
 ## 背景
 
-仓库已通过 ADR-0004 建立共享的 Session Role 层（`manager`、`designer`、`lib-coder`、`biz-coder`、`reviewer`）与 task state 状态机。但角色只定义了身份与边界，没有规定由哪个执行体承担，也没有把“谁编排、何时并行、如何交接、目录边界在哪”写成可执行的流程。
+仓库已通过 ADR-0004 建立共享的 Session Role 层（`manager`、`designer`、`lib-coder`、`biz-coder`、`reviewer`）与 task state 状态机。但角色只定义了身份与边界，没有规定由哪个执行体承担，也没有把「谁编排、何时并行、如何交接、目录边界在哪」写成可执行的流程。
 
 实际协作中出现三个问题：
 
@@ -51,13 +51,13 @@ Lib Coder 只写 `packages/*`，Biz Coder 只写 `apps/*`；任何角色不得�
 
 ## 后果
 
-- `scripts/agent-workflow.mjs` 的角色集合移除 `integrator`，与“不新增层级”一致；集成与 release 由 Manager 承担。
+- `scripts/agent-workflow.mjs` 的角色集合移除 `integrator`，与「不新增层级」一致；集成与 release 由 Manager 承担。
 - `scripts/validate-context.mjs` 增加对「多 Agent 编排」「角色与执行体」「编排模式」章节及 handoff 字段名的校验，避免文档与流程漂移。
 - `.agents/agents/*` 增加执行体声明与目录边界；`CLAUDE.md` 只声明客户端默认绑定与加载顺序，不复制共享规则正文。（2026-09-19 修订：角色契约路径已由 ADR-0015 迁到 `.agents/skills/herdr-agents/roles/`，`CLAUDE.md` 同日缩为一行 `@AGENTS.md` import，加载顺序与绑定表都由根 `AGENTS.md` 自身承载；本条「不复制共享规则正文」不变。）
-- 跨包需求的最小执行单元从“一条 vertical slice worktree”收紧为“按 `packages/*` 与 `apps/*` 拆分的 task，或在同一 worktree 内严格目录隔离”，代价是交接次数增加。
+- 跨包需求的最小执行单元从「一条 vertical slice worktree」收紧为「按 `packages/*` 与 `apps/*` 拆分的 task，或在同一 worktree 内严格目录隔离」，代价是交接次数增加。
 
 ## 替代方案
 
-- **不做执行体绑定，保持“任一模型/CLI 承担任一角色”**：灵活，但无法为固定的角色-执行体协作链路建立稳定预期；不采用。
-- **保留 Integrator 独立层级**：能分担 release 工作，但增加一层编排与状态，违背“保持 Manager 扁平化”；不采用。
+- **不做执行体绑定，保持「任一模型/CLI 承担任一角色」**：灵活，但无法为固定的角色-执行体协作链路建立稳定预期；不采用。
+- **保留 Integrator 独立层级**：能分担 release 工作，但增加一层编排与状态，违背「保持 Manager 扁平化」；不采用。
 - **把 handoff 模板复制进根 `AGENTS.md` 与 `CLAUDE.md`**：看似更易发现，但会产生多处副本并漂移；改为单一权威加根入口字段清单。

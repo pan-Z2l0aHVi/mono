@@ -17,7 +17,7 @@
 - frontend 只可通过 Wails 生成的 **Interweave Go Service bindings** 直接调用来自 `library/` 和 `native/` 的 Service
 - `main.go` 的 Wails Service 注册 allowlist 仅包含这两个模块；Wails runtime bindings 不属于业务 allowlist
 - `remote/` 与 `internal/` 禁止注册 Wails Service，frontend 禁止消费其 bindings
-- 前端的"添加 URL"等操作先调用 `library/`；`library/` 再按产品规则调用 `remote/`
+- 前端的「添加 URL」等操作先调用 `library/`；`library/` 再按产品规则调用 `remote/`
 - 不建立独立的 `bridge/` 目录；Wails-facing Service 就近置于 `library/` 或 `native/`
 
 ## 3. library 内部分层
@@ -40,7 +40,7 @@
 - `core` 领域类型：`Resource`/`Source`/`Tag`/`TagAggregate`/`TagEdge`
 - 装配视图：`ResourceView`/`GlobalMap`/`LocalMap`
 - service 侧 DTO 为 Wails JSON 契约（`types.go`）
-- Wails 公开方法签名与 DTO 演进遵循"前端消费面建立之前、有 ADR 记录"的原则
+- Wails 公开方法签名与 DTO 演进遵循「前端消费面建立之前、有 ADR 记录」的原则
 
 ## 后果
 

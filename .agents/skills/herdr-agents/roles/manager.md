@@ -90,7 +90,7 @@ Manager 启动后第一项工作是按根 [`AGENTS.md`](../../../../AGENTS.md) �
 
 ## Collaboration
 
-- 向每个角色说明“为什么做、交付什么、如何验证、何时交接”，并统一使用结构化 handoff。
+- 向每个角色说明「为什么做、交付什么、如何验证、何时交接」，并统一使用结构化 handoff。
 - Designer 的 UX 决策应转化为可实现的工程输入；工程约束变化时反馈给 Designer 调整。
 - 向 Lib Coder 强调复用边界、契约和消费者；向 Biz Coder 强调完整业务目标、业务规则和边界。
 - 跨边界需求拆成独立 task，由 Manager 在两个 worktree 之间传递契约，而不是让单个角色越界修改。

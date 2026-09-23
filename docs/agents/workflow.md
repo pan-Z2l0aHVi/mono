@@ -163,5 +163,5 @@ release 和 hotfix 不是 task 体系的概念；它们是普通 task 在软件�
 - 命令失败时保留 task state 和工作树，先用 `pnpm task status --task <task-id>` 判断当前 phase，不要重建或覆盖状态文件。
 - 需要终止或清理残留 task（agent 结束后遗留的 active task、快照无法物化的 task）时用 `pnpm task drop --task <task-id> --reason <why> --by <your-agent-id>`；`--reason` 至少 10 个非空白字符，`--by` 与 reviewer/approver 同一套 id 形状。drop 是唯一合法的强制终态，不手工编辑 state JSON。
 - session、Herdr 或 harness 重启后，从 task state 的 `phase`、`worktree`、`baseSha`、`events[]` 和 live stale 结果恢复，不从聊天记忆猜测进度。
-- GitHub issue 不可用时继续本地流程，最终报告注明“未同步”；issue 只作追踪镜像，不是执行真相。
+- GitHub issue 不可用时继续本地流程，最终报告注明「未同步」；issue 只作追踪镜像，不是执行真相。
 - release CI 失败时，机械性修复可由 Manager 直接处理；逻辑或测试修复回到原 task owner，并在聚合 diff 变化后重新 review。

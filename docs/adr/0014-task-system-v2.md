@@ -13,7 +13,7 @@
 
 ### 1. 级别词汇 T0/T1/T2，取代 mode 与风险分级
 
-task 唯一的分档字段是 `level`（t0/t1/t2，T0 最严格），只表达 workflow 严格程度，不再以"风险等级"为主要维度。旧分级判据（跨 workspace、公共契约、多 worktree、instruction system 等）保留为分档规则。P2 的 skip review 场景由 T2 档位吸收（免审、允许当前 worktree 直接修改、guard 只要求 active）；`--review skip` 开关删除。（2026-09-20 加固：「只要求 active」只描述证据链门槛，政策检查照跑，见 §4。）（2026-09-21 修订：T2 明确定位为「所有简单快速改动的兜底档」，因此 `new`/`start` 对它不再要求 worktree 干净——干净要求的存在理由是 freeze 的全量 staging，而 T2 的快速通道不经过 freeze。豁免止于 start：T2 若为验证留痕而主动 freeze，freeze 自己要求干净起点，否则那条失效面对 T2 一样成立（「干净」含未跟踪文件，所以按 `new → start → 修改 → freeze` 的序列走必然撞墙，留痕用的那次 freeze 实际上在改动 commit 之后）。它换来的是低摩擦，交出去的是 diff 边界：T2 的提交内容就是当时的 index，要被人 review 或要能整笔回滚的改动不属这一档。）
+task 唯一的分档字段是 `level`（t0/t1/t2，T0 最严格），只表达 workflow 严格程度，不再以「风险等级」为主要维度。旧分级判据（跨 workspace、公共契约、多 worktree、instruction system 等）保留为分档规则。P2 的 skip review 场景由 T2 档位吸收（免审、允许当前 worktree 直接修改、guard 只要求 active）；`--review skip` 开关删除。（2026-09-20 加固：「只要求 active」只描述证据链门槛，政策检查照跑，见 §4。）（2026-09-21 修订：T2 明确定位为「所有简单快速改动的兜底档」，因此 `new`/`start` 对它不再要求 worktree 干净——干净要求的存在理由是 freeze 的全量 staging，而 T2 的快速通道不经过 freeze。豁免止于 start：T2 若为验证留痕而主动 freeze，freeze 自己要求干净起点，否则那条失效面对 T2 一样成立（「干净」含未跟踪文件，所以按 `new → start → 修改 → freeze` 的序列走必然撞墙，留痕用的那次 freeze 实际上在改动 commit 之后）。它换来的是低摩擦，交出去的是 diff 边界：T2 的提交内容就是当时的 index，要被人 review 或要能整笔回滚的改动不属这一档。）
 
 ### 2. 状态机与终态
 
