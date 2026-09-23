@@ -20,42 +20,95 @@ interface ViewTransitionLike {
   skipTransition?: () => void
 }
 
-// 根主题没有对应控件；记录最近一次触发主题变更的指针位置，键盘或程序化调用则回退中心。
-const transitionOrigin = { x: Number.NaN, y: Number.NaN }
+interface TransitionSourceRect {
+  left: number
+  top: number
+  right: number
+  bottom: number
+}
+
+// 主 theme 组件不知道触发它的控件；pointerdown 同时记录坐标和目标盒。键盘或程序化调用没有目标盒，圆心回退中心。
+const transitionOrigin = {
+  x: Number.NaN,
+  y: Number.NaN,
+  sourceRect: null as TransitionSourceRect | null,
+  interactionAt: Number.NEGATIVE_INFINITY,
+  pointerId: Number.NaN
+}
 let transitionSequence = 0
 let transitionOriginCount = 0
 let themeTransitionFlightToken: object | null = null
 const recordTransitionOrigin = (event: Event) => {
   const pointer = event as PointerEvent
+  const target = event.target
+  const rect =
+    target instanceof Element && target !== document.documentElement && target !== document.body
+      ? target.getBoundingClientRect()
+      : null
   transitionOrigin.x = pointer.clientX
   transitionOrigin.y = pointer.clientY
+  transitionOrigin.pointerId = pointer.pointerId
+  transitionOrigin.sourceRect = rect ? { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom } : null
+  transitionOrigin.interactionAt = performance.now()
+}
+const recordTransitionOriginEnd = (event: Event) => {
+  const pointer = event as PointerEvent
+  if (pointer.pointerId !== transitionOrigin.pointerId) return
+  transitionOrigin.interactionAt = performance.now()
 }
 const forgetTransitionOrigin = () => {
   transitionOrigin.x = Number.NaN
   transitionOrigin.y = Number.NaN
+  transitionOrigin.sourceRect = null
+  transitionOrigin.interactionAt = Number.NEGATIVE_INFINITY
+  transitionOrigin.pointerId = Number.NaN
 }
 
 function addTransitionOriginListeners() {
   if (transitionOriginCount++ > 0) return
   window.addEventListener('pointerdown', recordTransitionOrigin, true)
+  window.addEventListener('pointerup', recordTransitionOriginEnd, true)
+  window.addEventListener('pointercancel', recordTransitionOriginEnd, true)
   window.addEventListener('keydown', forgetTransitionOrigin, true)
 }
 
 function removeTransitionOriginListeners() {
   if (--transitionOriginCount > 0) return
   window.removeEventListener('pointerdown', recordTransitionOrigin, true)
+  window.removeEventListener('pointerup', recordTransitionOriginEnd, true)
+  window.removeEventListener('pointercancel', recordTransitionOriginEnd, true)
   window.removeEventListener('keydown', forgetTransitionOrigin, true)
 }
 
 const TRANSITION_SKIP_INPUT_EVENTS = ['pointermove', 'pointerdown', 'pointerup', 'wheel'] as const
+// 100ms 覆盖 pointerup/click 到 appearance 提交，以及 transition 启动后的收尾移动。
+const TRANSITION_POINTER_ORIGIN_GRACE_MS = 100
+
+interface ActiveTransitionSource extends TransitionSourceRect {
+  readonly pointerId: number
+  readonly until: number
+}
+
+function captureTransitionSource(): ActiveTransitionSource | null {
+  const { sourceRect, interactionAt, pointerId } = transitionOrigin
+  if (!sourceRect || performance.now() - interactionAt > TRANSITION_POINTER_ORIGIN_GRACE_MS) return null
+  return {
+    ...sourceRect,
+    pointerId,
+    until: performance.now() + TRANSITION_POINTER_ORIGIN_GRACE_MS
+  }
+}
 
 /*
  * rendering suppression 期间，规范强制 pointer hit-test 指向 documentElement；
- * 伪元素的 pointer-events 或 host 覆写窗口都无法覆盖这条渲染规则。首次用户输入即
+ * 伪元素的 pointer-events 或 host 覆写窗口都无法覆盖这条渲染规则。首次真正的新输入即
  * 取消揭示，牺牲剩余动画换回交互。触发该事件本身仍按规范以 html 为目标，因此这里
  * 缩短的是失效窗口，不是对首个事件的追溯改道。
  */
-function addTransitionInputSkipListeners(transition: ViewTransitionLike): () => void {
+function addTransitionInputSkipListeners(
+  transition: ViewTransitionLike,
+  source: ActiveTransitionSource | null
+): () => void {
   let listening = true
   const remove = () => {
     if (!listening) return
@@ -64,8 +117,19 @@ function addTransitionInputSkipListeners(transition: ViewTransitionLike): () => 
       window.removeEventListener(event, skip, true)
     }
   }
-  const skip = () => {
+  const skip = (event: Event) => {
     if (!listening) return
+    const pointer = event as PointerEvent
+    const staysOnSource =
+      source !== null &&
+      performance.now() <= source.until &&
+      pointer.pointerId === source.pointerId &&
+      (event.type === 'pointermove' || event.type === 'pointerup') &&
+      pointer.clientX >= source.left &&
+      pointer.clientX <= source.right &&
+      pointer.clientY >= source.top &&
+      pointer.clientY <= source.bottom
+    if (staysOnSource) return
     remove()
     transition.skipTransition?.()
   }
@@ -314,9 +378,10 @@ export class WebUiTheme extends LitElement {
     // 否则 host 上的 view-transition-name 会残留，污染之后每一次 view transition（issue #146）。
     this._transitionCleanup = restoreCapture
     document.adoptedStyleSheets = [...document.adoptedStyleSheets, styleSheet]
+    const transitionSource = captureTransitionSource()
     const transition = document.startViewTransition(commit) as unknown as ViewTransitionLike
     this._activeTransition = transition
-    this._transitionInputSkipCleanup = addTransitionInputSkipListeners(transition)
+    this._transitionInputSkipCleanup = addTransitionInputSkipListeners(transition, transitionSource)
     const animations: Animation[] = []
 
     transition.ready
