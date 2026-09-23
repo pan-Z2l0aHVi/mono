@@ -1415,16 +1415,19 @@ Finds `path`, `rect`, `circle`, `line`, `polyline`, `polygon`, `ellipse` element
 
 Theme provider defining CSS custom property tokens.
 
-| Attribute    | Type                              | Default    | Description                                   |
-| ------------ | --------------------------------- | ---------- | --------------------------------------------- |
-| `appearance` | `'light' \| 'dark' \| 'system'`   | `'light'`  | Color scheme                                  |
-| `motion`     | `'full' \| 'reduced' \| 'system'` | `'system'` | Motion preference for this nested theme scope |
+| Attribute             | Type                              | Default    | Description                                            |
+| --------------------- | --------------------------------- | ---------- | ------------------------------------------------------ |
+| `appearance`          | `'light' \| 'dark' \| 'system'`   | `'light'`  | Color scheme                                           |
+| `resolved-appearance` | `'light' \| 'dark'`               | `'light'`  | Resolved color scheme; read-only reflected host output |
+| `motion`              | `'full' \| 'reduced' \| 'system'` | `'system'` | Motion preference for this nested theme scope          |
 
 **Methods:** `getOverlayRoot()`. Returns this theme-owned overlay root
 
 **Portal mounting contract:** Every active `<web-ui-theme>` is also the default scoped theme-owned overlay root. Portal-based components without an explicit `overlayContainer` resolve to the nearest active theme's `getOverlayRoot()`; target-less portal calls prefer the root theme's theme-owned overlay root. When no active theme provides a root, they fall back to the global fallback overlay root.
 
 Defines foundation, color, layer, shadow, and motion tokens for its subtree. `motion="system"` follows `prefers-reduced-motion`; use `motion="reduced"` to reduce animation in a scope or `motion="full"` in a nested theme to restore normal token values. System appearance follows `prefers-color-scheme`.
+
+`resolved-appearance` is a read-only derived host attribute (also exposed as the `resolvedAppearance` property): it is always `light` or `dark`, mirrors an explicit `appearance` directly, resolves `appearance="system"` from `prefers-color-scheme`, and updates live when the OS flips. A theme without `appearance` remains inactive but reports the default `light`. Because the component owns the attribute and restores external edits, consumers can bind selectors or Tailwind custom variants to `resolved-appearance` without carrying a second theme state.
 
 Appearance changes are animated with the View Transitions API according to this scope's `motion`: `full` always reveals, `reduced` applies the new appearance immediately with no reveal, and `system` follows `prefers-reduced-motion`. A root theme reveals the whole page; a nested theme reveals only its own capture box. The origin is the last pointer-down position when available, otherwise the theme box or viewport center. Dark-to-light and light-to-dark directions are reversed. Unsupported browsers, reduced-motion scopes, zero durations, and another request already in the same flight fall back to applying the new appearance immediately; `appearance="system"` does not animate OS light/dark changes in this version.
 
