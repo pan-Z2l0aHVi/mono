@@ -4,11 +4,16 @@ import { customElement, property } from 'lit/decorators.js'
 import { normalizeLiteral } from '@/shared/normalize'
 import { applyOverlayRootStyles } from '@/shared/overlay/overlay-root'
 import { parseDuration } from '@/shared/theme/duration'
-import { registerThemeRootSync, unregisterThemeRootSync } from '@/shared/theme/root-sync'
+import {
+  registerThemeRootSync,
+  subscribeThemeSystemAppearanceChange,
+  unregisterThemeRootSync
+} from '@/shared/theme/root-sync'
 
 import style from './style.css?inline'
 
 export type ThemeAppearance = 'light' | 'dark' | 'system'
+export type ResolvedThemeAppearance = 'light' | 'dark'
 export type ThemeMotion = 'full' | 'reduced' | 'system'
 
 const APPEARANCES = ['light', 'dark', 'system'] as const
@@ -76,8 +81,9 @@ function addTransitionInputSkipListeners(transition: ViewTransitionLike): () => 
   return remove
 }
 
-function resolveAppearance(appearance: ThemeAppearance): 'light' | 'dark' {
-  if (appearance !== 'system') return appearance
+function resolveAppearance(appearance: ThemeAppearance | undefined): ResolvedThemeAppearance {
+  if (appearance === 'dark') return 'dark'
+  if (appearance !== 'system') return 'light'
   try {
     return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
   } catch {
@@ -121,16 +127,56 @@ export class WebUiTheme extends LitElement {
         if (themeTransitionFlightToken === flightToken) themeTransitionFlightToken = null
         if (this._appearanceRequest === request) {
           this._appearance = next
+          this._syncResolvedAppearance()
           this.requestUpdate('appearance', old)
         }
       })
       return
     }
     this._appearance = next
+    this._syncResolvedAppearance()
     this.requestUpdate('appearance', old)
   }
   private _appearance?: ThemeAppearance
   private _appearanceRequest = 0
+
+  /*
+   * resolved-appearance 是派生输出，不是第二个输入：像 selected-value 一样由组件独占写入，
+   * 外部改动在同一 attribute reaction 内恢复，避免消费者把 system 的解析结果当成可设状态。
+   */
+  @property({ type: String, reflect: true, attribute: 'resolved-appearance' })
+  private _resolvedAppearance: ResolvedThemeAppearance = 'light'
+
+  get resolvedAppearance(): ResolvedThemeAppearance {
+    return this._resolvedAppearance
+  }
+
+  private _setResolvedAppearance(value: ResolvedThemeAppearance) {
+    const old = this._resolvedAppearance
+    if (old === value && this.getAttribute('resolved-appearance') === value) return
+    this._resolvedAppearance = value
+    // 立即写 attribute：View Transition 的 update callback 要在同一次快照里换掉它。
+    this.setAttribute('resolved-appearance', value)
+  }
+
+  private _syncResolvedAppearance() {
+    this._setResolvedAppearance(resolveAppearance(this._appearance))
+    this._syncSystemAppearanceSubscription()
+  }
+
+  private _syncSystemAppearanceSubscription() {
+    const shouldSubscribe = this.isConnected && this._hasAppearance() && this._appearance === 'system'
+    if (shouldSubscribe) {
+      if (this._unsubscribeSystemAppearance) return
+      this._unsubscribeSystemAppearance = subscribeThemeSystemAppearanceChange(() => {
+        this._setResolvedAppearance(resolveAppearance(this._appearance))
+      })
+      return
+    }
+    this._unsubscribeSystemAppearance?.()
+    this._unsubscribeSystemAppearance = undefined
+  }
+  private _unsubscribeSystemAppearance?: () => void
 
   @property({ type: String, reflect: true })
   get motion(): ThemeMotion {
@@ -150,6 +196,7 @@ export class WebUiTheme extends LitElement {
 
   override connectedCallback() {
     super.connectedCallback()
+    this._syncResolvedAppearance()
     // 揭示开关曾由 transition prop 单独控制；现在统一由 motion 决定，
     // 因此连接期间始终记录圆心来源，真正是否动画仍看 _shouldAnimateAppearance。
     this._syncTransitionOriginListeners(true)
@@ -159,6 +206,8 @@ export class WebUiTheme extends LitElement {
 
   override disconnectedCallback() {
     this._syncTransitionOriginListeners(false)
+    this._unsubscribeSystemAppearance?.()
+    this._unsubscribeSystemAppearance = undefined
     unregisterThemeRootSync(this)
     this._activeTransition?.skipTransition?.()
     this._cleanupThemeTransition()
@@ -168,6 +217,12 @@ export class WebUiTheme extends LitElement {
   protected override updated() {
     this._warnWhenAppearanceIsMissing()
     this._syncRootPageColorSync()
+  }
+
+  override attributeChangedCallback(name: string, oldValue: string | null, newValue: string | null) {
+    super.attributeChangedCallback(name, oldValue, newValue)
+    // super 已把外部值写进 backing field，所以这里必须按 appearance 重算，不能与字段比较。
+    if (name === 'resolved-appearance') this._setResolvedAppearance(resolveAppearance(this._appearance))
   }
 
   /*
@@ -308,6 +363,7 @@ export class WebUiTheme extends LitElement {
     const commit = () => {
       if (this._appearanceRequest !== request) return this.updateComplete
       this._appearance = next
+      this._syncResolvedAppearance()
       this.requestUpdate('appearance', previous)
       return this.updateComplete
     }

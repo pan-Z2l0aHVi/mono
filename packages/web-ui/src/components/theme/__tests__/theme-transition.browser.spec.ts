@@ -103,6 +103,8 @@ describe('theme transition（浏览器）', () => {
     expect(transition).toBeDefined()
     await transition!.ready
     await Promise.resolve()
+    expect(theme.resolvedAppearance).toBe('dark')
+    expect(theme.getAttribute('resolved-appearance')).toBe('dark')
 
     const reveal = document
       .getAnimations()
@@ -132,6 +134,8 @@ describe('theme transition（浏览器）', () => {
     expect(reverse).not.toBe(transition)
     await reverse.ready
     await Promise.resolve()
+    expect(theme.resolvedAppearance).toBe('light')
+    expect(theme.getAttribute('resolved-appearance')).toBe('light')
 
     const conceal = document
       .getAnimations()

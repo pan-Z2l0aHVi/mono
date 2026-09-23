@@ -14,6 +14,52 @@ function createTheme(appearance?: 'light' | 'dark' | 'system'): WebUiTheme {
   return theme
 }
 
+/** 让 matchMedia 同时服务 root sync 与 resolved-appearance，并可真实驱动 change。 */
+function stubColorScheme(initial: 'light' | 'dark') {
+  const descriptor = Object.getOwnPropertyDescriptor(window, 'matchMedia')
+  let dark = initial === 'dark'
+  let queryCount = 0
+  const listeners = new Set<(event: MediaQueryListEvent) => void>()
+
+  Object.defineProperty(window, 'matchMedia', {
+    configurable: true,
+    writable: true,
+    value: (query: string) => {
+      queryCount += 1
+      return {
+        get matches() {
+          return query.includes('(prefers-color-scheme: dark)') ? dark : false
+        },
+        media: query,
+        onchange: null,
+        addEventListener: (type: string, handler: EventListenerOrEventListenerObject) => {
+          if (type === 'change') listeners.add(handler as (event: MediaQueryListEvent) => void)
+        },
+        removeEventListener: (type: string, handler: EventListenerOrEventListenerObject) => {
+          if (type === 'change') listeners.delete(handler as (event: MediaQueryListEvent) => void)
+        },
+        dispatchEvent: () => false
+      } as unknown as MediaQueryList
+    }
+  })
+
+  return {
+    get queryCount() {
+      return queryCount
+    },
+    listenerCount: () => listeners.size,
+    setScheme(value: 'light' | 'dark') {
+      dark = value === 'dark'
+      const event = { matches: dark, media: '(prefers-color-scheme: dark)' } as MediaQueryListEvent
+      for (const listener of Array.from(listeners)) listener(event)
+    },
+    restore() {
+      if (descriptor) Object.defineProperty(window, 'matchMedia', descriptor)
+      else Reflect.deleteProperty(window, 'matchMedia')
+    }
+  }
+}
+
 beforeEach(() => {
   document.body.innerHTML = ''
   toast._reset()
@@ -432,6 +478,78 @@ describe('WebUiTheme 组件', () => {
       expect(theme.getOverlayRoot()).toBeUndefined()
       expect(warn).toHaveBeenCalledTimes(1)
       warn.mockRestore()
+      theme.remove()
+    })
+  })
+
+  describe('属性：resolved-appearance', () => {
+    it.each(['light', 'dark'] as const)('显式 appearance=%s 直通解析结果', async appearance => {
+      const theme = createTheme(appearance)
+      await theme.updateComplete
+
+      expect(theme.resolvedAppearance).toBe(appearance)
+      expect(theme.getAttribute('resolved-appearance')).toBe(appearance)
+      theme.remove()
+    })
+
+    it('appearance=system 从当前 OS 配色解析', async () => {
+      const stub = stubColorScheme('dark')
+      try {
+        const theme = createTheme('system')
+        await theme.updateComplete
+
+        expect(theme.resolvedAppearance).toBe('dark')
+        expect(theme.getAttribute('resolved-appearance')).toBe('dark')
+        expect(stub.queryCount).toBeGreaterThan(0)
+        theme.remove()
+      } finally {
+        stub.restore()
+      }
+    })
+
+    it('appearance=system 的 OS 配色变化实时更新', async () => {
+      const stub = stubColorScheme('light')
+      try {
+        const theme = createTheme('system')
+        await theme.updateComplete
+        expect(theme.getAttribute('resolved-appearance')).toBe('light')
+
+        stub.setScheme('dark')
+        await theme.updateComplete
+        expect(theme.resolvedAppearance).toBe('dark')
+        expect(theme.getAttribute('resolved-appearance')).toBe('dark')
+
+        stub.setScheme('light')
+        await theme.updateComplete
+        expect(theme.resolvedAppearance).toBe('light')
+        expect(theme.getAttribute('resolved-appearance')).toBe('light')
+        theme.remove()
+      } finally {
+        stub.restore()
+      }
+    })
+
+    it('缺少 appearance 时解析结果默认 light', async () => {
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      try {
+        const theme = createTheme()
+        await theme.updateComplete
+
+        expect(theme.resolvedAppearance).toBe('light')
+        expect(theme.getAttribute('resolved-appearance')).toBe('light')
+        theme.remove()
+      } finally {
+        warn.mockRestore()
+      }
+    })
+
+    it('外部改动 resolved-appearance 会恢复为派生值', async () => {
+      const theme = createTheme('light')
+      await theme.updateComplete
+
+      theme.setAttribute('resolved-appearance', 'dark')
+      expect(theme.resolvedAppearance).toBe('light')
+      expect(theme.getAttribute('resolved-appearance')).toBe('light')
       theme.remove()
     })
   })
