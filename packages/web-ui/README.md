@@ -1350,7 +1350,7 @@ At `640px` and below, the sidebar becomes a `web-ui-drawer` with its built-in gl
 
 `header-glow` adds a pointer-transparent decorative glow behind header-slot content and the mobile toggle. It is a Header background rather than a foreground layer, so slotted content remains above it. Override its color with `--wui-layout-header-glow-color` (default: `--wui-color-page`). The glow concentration and spread are controlled by the internal variable `--wui-layout-header-glow-height` (default: `150%`); increase for stronger coverage, decrease for a subtler effect. Layout layers are ordered as Header (`10`) < Auxiliary (`20`) < Banner (`30`) < Tabbar (`40`) < Sidebar (`50`).
 
-The sidebar card surface is `--wui-color-surface-sidebar`. In light mode it keeps its translucent gray-blue layer; in dark mode it sits one notch above `--wui-color-page`, level with `--wui-color-surface`. It is a separate token because dialog, drawer and toast share `--wui-color-surface-overlay` and may use a different surface.
+The sidebar card surface is `--wui-color-surface-sidebar`. In light mode it keeps its translucent neutral layer; in dark mode it sits one notch above `--wui-color-page`, level with `--wui-color-surface`. It is a separate token because dialog, drawer and toast share `--wui-color-surface-overlay` and may use a different surface.
 
 **CSS Custom Properties:**
 
@@ -1492,12 +1492,12 @@ The host uses `display: contents` and does not paint any background: the library
 | `--wui-color-surface-raised`       | `#f2f2f7`                                                    | `#2c2c2e`                                                    | Raised surface                  |
 | `--wui-color-surface-control`      | `#dfdfdf`                                                    | `#3a3a3c`                                                    | Neutral control surface         |
 | `--wui-color-surface-track`        | `#e5e5ea`                                                    | `#444446`                                                    | Slider and switch track surface |
-| `--wui-color-surface-menu`         | `rgb(229 229 234 / 0.76)`                                    | `rgb(49 48 50 / 0.74)`                                       | Menu and floating panel surface |
+| `--wui-color-surface-menu`         | `rgb(231 231 231 / 0.76)`                                    | `rgb(49 48 50 / 0.74)`                                       | Menu and floating panel surface |
 | `--wui-color-surface-glass`        | `rgb(250 250 250 / 0.34)`                                    | `rgb(44 44 46 / 0.42)`                                       | Liquid glass surface            |
 | `--wui-color-surface-glass-hover`  | `color-mix(... text 6%, surface-glass)`                      | `color-mix(... text 6%, surface-glass)`                      | Full glass hover background     |
 | `--wui-color-surface-glass-active` | `color-mix(... text 15%, surface-glass)`                     | `color-mix(... text 15%, surface-glass)`                     | Full glass pressed background   |
 | `--wui-color-surface-overlay`      | `rgb(246 246 246 / 0.82)`                                    | `rgb(32 34 34 / 0.9)`                                        | Translucent overlay surface     |
-| `--wui-color-surface-sidebar`      | `rgb(229 229 234 / 0.82)`                                    | `rgb(44 44 46 / 0.8)`                                        | Sidebar panel surface           |
+| `--wui-color-surface-sidebar`      | `rgb(233 233 233 / 0.82)`                                    | `rgb(44 44 46 / 0.8)`                                        | Sidebar panel surface           |
 | `--wui-color-surface-segmented`    | `#e5e5ea`                                                    | `#3a3a3c`                                                    | Segmented indicator surface     |
 | `--wui-color-surface-selected`     | `#fff`                                                       | `#5c5c5e`                                                    | Selected surface                |
 | `--wui-color-text`                 | `#1b1b1b`                                                    | `#e9eaea`                                                    | Primary text                    |
