@@ -239,6 +239,8 @@ dropdown、tooltip）不需要它。
 
 所有表单控件均参与原生 `FormData`、约束校验、`form.reset()` 和浏览器表单状态恢复。控件会在**首次连接且声明式属性完成初始化后**捕获一次重置默认值；之后的运行时 property 更新不会改写该默认值。祖先 `fieldset` 的禁用状态会禁用交互和校验，但不会改写控件公开的 `disabled` 属性。对于 checkbox/radio group，父 group 是提交、重置和状态恢复的唯一所有者；被管理的子项不会独立提交或恢复状态。
 
+`web-ui-button` 同样声明为 form-associated，使宿主可以持有外层 form 的 form owner 并转发 `submit`/`reset` 激活；它不向 `FormData` 贡献值。
+
 ## 所有组件
 
 | 分类                  | 组件                                                      |
@@ -713,9 +715,9 @@ web-ui-radio-group {
 
 **插槽：** `prefix`, `default`, `suffix`
 
-`submit` 和 `reset` 不会提交或重置组件 Shadow DOM 外祖先 `<form>`。如需外部表单行为，请使用 form-associated 控件。
+`submit` 和 `reset` 在 composed `click` 事件完成派发后，通过宿主的 form owner 转发到其原生 `<form>`；对这次 click 调用 `preventDefault()` 会取消该动作。内部按钮自身仍没有 form owner，因此 `SubmitEvent.submitter` 为 `null`。按钮不向 `FormData` 贡献值。
 
-禁用和加载状态阻止 `click` 事件。
+禁用、加载和 `formDisabled` 状态（包括祖先 `fieldset` 导致的禁用）都会阻止 `click` 事件。
 
 `icon` 与 `loading` 同时开启时，按钮只渲染 spinner，默认插槽图标不投影。默认 icon 几何保持正方形，`full` 或显式 width 除外。
 
