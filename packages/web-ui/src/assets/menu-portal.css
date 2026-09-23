@@ -27,7 +27,7 @@
 
   /* 玻璃背景：面板自身 overflow:hidden 不裁自身的 box-shadow（box-shadow 不受
      元素自身 overflow 影响）。 */
-  background-color: var(--wui-color-surface-menu, rgb(246 246 246 / 0.82));
+  background-color: var(--wui-color-surface-menu, rgb(246 246 246 / 0.76));
 
   & .wui-menu-scroll {
     overflow-y: auto;

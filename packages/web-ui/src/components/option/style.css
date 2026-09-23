@@ -65,9 +65,8 @@
 }
 
 @media (hover: hover) and (pointer: fine) {
-  .option-label:hover {
-    color: var(--wui-color-on-accent, #fff);
-    background: var(--wui-color-accent, #08f);
+  :host(:not([active])) .option-label:hover {
+    background: var(--wui-color-border, rgb(0 0 0 / 0.1));
   }
 }
 
