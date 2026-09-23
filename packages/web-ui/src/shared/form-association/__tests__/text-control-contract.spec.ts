@@ -118,6 +118,26 @@ for (const spec of CONTROLS) {
       cleanupElement(el)
     })
 
+    it('shadow 原生控件有稳定且实例唯一的 id', async () => {
+      const first = mount()
+      const second = mount()
+      await Promise.all([waitForUpdate(first), waitForUpdate(second)])
+
+      const firstNative = nativeOf(first)
+      const secondNative = nativeOf(second)
+      const initialId = firstNative.id
+      expect(initialId).not.toBe('')
+      expect(secondNative.id).not.toBe('')
+      expect(secondNative.id).not.toBe(initialId)
+
+      setProperty(first, 'value', spec.probeValue)
+      await waitForUpdate(first)
+      expect(nativeOf(first).id).toBe(initialId)
+
+      cleanupElement(first)
+      cleanupElement(second)
+    })
+
     it('设置 value 后原生控件值同步', async () => {
       const el = mount()
       setProperty(el, 'value', spec.probeValue)

@@ -52,6 +52,25 @@ describe('WebUiEditableText 组件契约', () => {
     cleanupElement(el)
   })
 
+  it('编辑层有稳定且实例唯一的 id', async () => {
+    const first = create()
+    const second = create()
+    await Promise.all([waitForUpdate(first), waitForUpdate(second)])
+
+    const firstId = editorOf(first).id
+    const secondId = editorOf(second).id
+    expect(firstId).not.toBe('')
+    expect(secondId).not.toBe('')
+    expect(secondId).not.toBe(firstId)
+
+    first.value = 'updated'
+    await waitForUpdate(first)
+    expect(editorOf(first).id).toBe(firstId)
+
+    cleanupElement(first)
+    cleanupElement(second)
+  })
+
   it('value attribute 提供初值，Enter 提交后 attribute 保持 reset 初值', async () => {
     const el = create({ value: 'initial' })
     await waitForUpdate(el)

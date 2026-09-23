@@ -13,6 +13,7 @@ import {
   forwardInputValidity,
   FormAssociationController
 } from '@/shared/form-association'
+import { createFieldId } from '@/shared/form-association/field-id'
 
 import style from './style.css?inline'
 
@@ -35,6 +36,8 @@ export class WebUiInput extends FormAssociated(LitElement) {
   @state() private _focused = false
   @state() private _hasPrefix = false
   @state() private _hasSuffix = false
+
+  private readonly _fieldId = createFieldId('web-ui-input')
 
   @property({ type: String, reflect: true })
   get value(): string {
@@ -158,6 +161,7 @@ export class WebUiInput extends FormAssociated(LitElement) {
       <div class="wui-glass wui-input-inner" @click=${this.focusInput}>
         <slot name="prefix" class=${classMap({ empty: !this._hasPrefix })} @slotchange=${this._onSlotChange}></slot>
         <input
+          id=${this._fieldId}
           type=${this.type}
           placeholder=${this.placeholder}
           name=${this.name}
