@@ -21,6 +21,7 @@ installPointerFocusSuppression()
 @customElement('web-ui-button')
 export class WebUiButton extends LitElement {
   static override styles = [unsafeCSS(glass), unsafeCSS(style)]
+  static formAssociated = true
 
   @property({ type: String, reflect: true })
   get variant(): 'primary' | 'secondary' | 'ghost' | 'danger' | 'glass' {
@@ -63,6 +64,24 @@ export class WebUiButton extends LitElement {
     return this._groupManagement.getContext()
   }
 
+  private _internals?: ElementInternals
+  private _formDisabled = false
+
+  override connectedCallback() {
+    super.connectedCallback()
+    this._internals ??= this.attachInternals()
+  }
+
+  formDisabledCallback(disabled: boolean) {
+    if (this._formDisabled === disabled) return
+    this._formDisabled = disabled
+    this.requestUpdate()
+  }
+
+  private get _isDisabled(): boolean {
+    return this.disabled || this.loading || this._formDisabled
+  }
+
   private get _sizeStyle(): Record<string, string> {
     // size 仅控制按钮高度；icon 模式下 min-width 同步为相同值，天然保持正方形。
     const size = this._groupContext ? '30' : this.size
@@ -70,10 +89,26 @@ export class WebUiButton extends LitElement {
   }
 
   private handleClick(e: Event) {
-    if (this.disabled || this.loading) {
+    if (this._isDisabled) {
       e.preventDefault()
       e.stopPropagation()
+      return
     }
+
+    const action = this.type
+    if (action === 'button') return
+
+    /*
+     * Shadow 内按钮没有 form owner；等 composed click 的同步监听器全部完成后，
+     * 再读取宿主的 live form owner 并转发，调用方仍可用 preventDefault 取消这次原生 activation。
+     */
+    setTimeout(() => {
+      if (e.defaultPrevented) return
+      const form = this._internals?.form
+      if (!form) return
+      if (action === 'submit') form.requestSubmit()
+      else form.reset()
+    })
   }
 
   override render() {
@@ -94,7 +129,7 @@ export class WebUiButton extends LitElement {
         class=${classMap(btnClass)}
         part="button"
         style=${Object.keys(this._sizeStyle).length > 0 ? styleMap(this._sizeStyle) : nothing}
-        ?disabled=${this.disabled || this.loading}
+        ?disabled=${this._isDisabled}
         @click=${this.handleClick}
       >
         ${

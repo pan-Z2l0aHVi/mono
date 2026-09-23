@@ -269,6 +269,8 @@ The flip-before-approval window is accepted; there is no `controlled` prop for a
 
 All form controls participate in native `FormData`, constraint validation, `form.reset()` and browser form-state restoration. The control captures its reset default once, after declarative attributes have been applied on its first connection. Later runtime property updates do not redefine that default. A disabled ancestor `fieldset` disables validation and interaction without mutating the control's public `disabled` property. For checkbox/radio groups, the group is the single submission, reset and restoration owner; managed child controls do not submit or restore an independent state.
 
+`web-ui-button` is also form-associated so its host can own an outer form and forward `submit`/`reset` activation. It contributes no value to `FormData`.
+
 ## All Components
 
 | Category               | Component                                                 |
@@ -747,10 +749,11 @@ Styled button with variants and loading state.
 
 **Slots:** `prefix`, `default`, `suffix`
 
-`submit` and `reset` do not submit or reset an ancestor form outside the component's Shadow DOM. Use a
-form-associated control when external form submission behavior is required.
+`submit` and `reset` forward activation through the host's form owner to its native `<form>` after the composed
+`click` event finishes, so calling `preventDefault()` on that click cancels the action. The inner button still has no
+form owner of its own, and `SubmitEvent.submitter` is therefore `null`. The button contributes no value to `FormData`.
 
-Disabled and loading states prevent `click` events.
+Disabled, loading, and `formDisabled` states—including those caused by an ancestor `fieldset`—prevent `click` events.
 
 When `icon` and `loading` are both set, the button renders only the spinner, and the default-slot icon is not
 projected. The icon-mode geometry stays square by default, except for `full` or an explicit width.
