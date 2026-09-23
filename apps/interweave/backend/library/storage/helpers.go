@@ -33,7 +33,6 @@ func collectRows[T any](rows *sql.Rows, scan func(sc rowScanner) (T, error)) ([]
 	return result, nil
 }
 
-// 扫描单列字符串行（如 ID 列表查询）。
 func scanString(sc rowScanner) (string, error) {
 	var id string
 	err := sc.Scan(&id)

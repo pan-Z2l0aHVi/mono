@@ -195,7 +195,6 @@ func TestPreferredSourceSwitching(t *testing.T) {
 		t.Errorf("expected preferred %s, got %s", second.ID, after.PreferredID)
 	}
 
-	// 切换不存在的 Source 明确报错。
 	if err := srcService.SetPreferredSource(ctx, res.ID, "missing"); err == nil || err.Error() != "source not found on resource" {
 		t.Errorf("expected source not found on resource, got %v", err)
 	}
@@ -257,12 +256,10 @@ func TestEdgeErrorPathsAndRemoval(t *testing.T) {
 	defer cleanup()
 	ctx := context.Background()
 
-	// 刷新不存在的 Source 给出明确文案。
 	if _, err := srcService.RefreshURLSource(ctx, "missing"); err == nil || err.Error() != "source not found" {
 		t.Errorf("expected source not found for refresh, got %v", err)
 	}
 
-	// 局部探索不存在的 Tag 给出明确文案。
 	if _, err := mapService.GetLocalMap(ctx, "missing"); err == nil || err.Error() != "tag not found" {
 		t.Errorf("expected tag not found for local map, got %v", err)
 	}
