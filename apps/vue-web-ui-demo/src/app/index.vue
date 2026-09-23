@@ -1,36 +1,7 @@
 <script setup lang="ts">
 import { local } from '@greypan/browser-kit/storage'
-import type { WebUiEvent, WebUiLayout, WebUiSelect, WebUiIcon } from '@greypan/web-ui'
-import {
-  heroiconsBarsArrowDown16Solid,
-  heroiconsCheck16Solid,
-  lucideArrowUpToLine,
-  lucideBell,
-  lucideCheck,
-  lucideChevronDown,
-  lucideCode,
-  lucideCopy,
-  lucideEllipsisVertical,
-  lucideEye,
-  lucideFileText,
-  lucideImage,
-  lucideInbox,
-  lucideInfo,
-  lucideLayoutGrid,
-  lucideX,
-  lucideListFilter,
-  lucideListRestart,
-  lucideLoaderCircle,
-  lucidePencil,
-  lucidePenLine,
-  lucideRefreshCw,
-  lucideSearch,
-  lucideSettings,
-  lucideSlidersHorizontal,
-  lucideTag,
-  lucideUser,
-  radixIconsPanelLeftMinimized
-} from '@greypan/web-ui/icons'
+import type { WebUiEvent, WebUiLayout, WebUiSelect } from '@greypan/web-ui'
+import { lucideX } from '@greypan/web-ui/icons'
 import { useHead } from '@unhead/vue'
 import { computed, onMounted, onScopeDispose, ref } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
@@ -132,49 +103,46 @@ onMounted(async () => {
   })
 })
 
-type NavIcon = NonNullable<WebUiIcon['icon']>
-
 interface NavItem {
   path: string
   label: string
-  icon: NavIcon
 }
 
 const navItems: NavItem[] = [
-  { path: '/home', label: '首页', icon: lucideLayoutGrid },
-  { path: '/components/avatar', label: 'Avatar 头像', icon: lucideUser },
-  { path: '/components/badge', label: 'Badge 徽标', icon: lucideTag },
-  { path: '/components/button', label: 'Button 按钮', icon: lucideCode },
-  { path: '/components/icon', label: 'Icon 图标', icon: lucideEye },
-  { path: '/components/input', label: 'Input 输入框', icon: lucidePenLine },
-  { path: '/components/textarea', label: 'Textarea 文本域', icon: lucideFileText },
-  { path: '/components/editable-text', label: 'EditableText 可编辑文本', icon: lucidePencil },
-  { path: '/components/theme', label: 'Theme 主题', icon: lucideSettings },
-  { path: '/components/input-number', label: 'InputNumber 数字输入框', icon: lucideListRestart },
-  { path: '/components/select', label: 'Select 下拉选择', icon: lucideChevronDown },
-  { path: '/components/autocomplete', label: 'Autocomplete 自动补全', icon: lucideSearch },
-  { path: '/components/dropdown', label: 'Dropdown 下拉菜单', icon: lucideChevronDown },
-  { path: '/components/collapse', label: 'Collapse 折叠面板', icon: heroiconsBarsArrowDown16Solid },
-  { path: '/components/dialog', label: 'Dialog 对话框', icon: lucideInbox },
-  { path: '/components/drawer', label: 'Drawer 抽屉', icon: radixIconsPanelLeftMinimized },
-  { path: '/components/image-preview', label: 'ImagePreview 图片预览', icon: lucideImage },
-  { path: '/components/empty', label: 'Empty 空状态', icon: lucideInbox },
-  { path: '/components/tooltip', label: 'Tooltip 工具提示', icon: lucideInfo },
-  { path: '/components/switch', label: 'Switch 开关', icon: lucideRefreshCw },
-  { path: '/components/slider', label: 'Slider 滑块', icon: lucideSlidersHorizontal },
-  { path: '/components/radio', label: 'Radio 单选框', icon: lucideCheck },
-  { path: '/components/checkbox', label: 'Checkbox 复选框', icon: heroiconsCheck16Solid },
-  { path: '/components/segmented', label: 'Segmented 分段控制器', icon: lucideListFilter },
-  { path: '/components/spinner', label: 'Spinner 加载指示器', icon: lucideLoaderCircle },
-  { path: '/components/popover', label: 'Popover 气泡卡片', icon: lucideCopy },
-  { path: '/components/context-menu', label: 'ContextMenu 右键菜单', icon: lucideEllipsisVertical },
-  { path: '/components/toast', label: 'Toast 通知', icon: lucideBell },
-  { path: '/components/svg-draw-lines', label: 'SVGDrawLines 描边动画', icon: lucidePencil },
-  { path: '/components/back-top', label: 'BackTop 回到顶部', icon: lucideArrowUpToLine }
+  { path: '/home', label: '首页' },
+  { path: '/components/avatar', label: 'Avatar 头像' },
+  { path: '/components/badge', label: 'Badge 徽标' },
+  { path: '/components/button', label: 'Button 按钮' },
+  { path: '/components/icon', label: 'Icon 图标' },
+  { path: '/components/input', label: 'Input 输入框' },
+  { path: '/components/textarea', label: 'Textarea 文本域' },
+  { path: '/components/editable-text', label: 'EditableText 可编辑文本' },
+  { path: '/components/theme', label: 'Theme 主题' },
+  { path: '/components/input-number', label: 'InputNumber 数字输入框' },
+  { path: '/components/select', label: 'Select 下拉选择' },
+  { path: '/components/autocomplete', label: 'Autocomplete 自动补全' },
+  { path: '/components/dropdown', label: 'Dropdown 下拉菜单' },
+  { path: '/components/collapse', label: 'Collapse 折叠面板' },
+  { path: '/components/dialog', label: 'Dialog 对话框' },
+  { path: '/components/drawer', label: 'Drawer 抽屉' },
+  { path: '/components/image-preview', label: 'ImagePreview 图片预览' },
+  { path: '/components/empty', label: 'Empty 空状态' },
+  { path: '/components/tooltip', label: 'Tooltip 工具提示' },
+  { path: '/components/switch', label: 'Switch 开关' },
+  { path: '/components/slider', label: 'Slider 滑块' },
+  { path: '/components/radio', label: 'Radio 单选框' },
+  { path: '/components/checkbox', label: 'Checkbox 复选框' },
+  { path: '/components/segmented', label: 'Segmented 分段控制器' },
+  { path: '/components/spinner', label: 'Spinner 加载指示器' },
+  { path: '/components/popover', label: 'Popover 气泡卡片' },
+  { path: '/components/context-menu', label: 'ContextMenu 右键菜单' },
+  { path: '/components/toast', label: 'Toast 通知' },
+  { path: '/components/svg-draw-lines', label: 'SVGDrawLines 描边动画' },
+  { path: '/components/back-top', label: 'BackTop 回到顶部' }
 ]
 
 const navItemClass =
-  'flex items-center gap-2 w-full min-w-9 min-h-9 px-2.5 border-0 rounded-full font-medium cursor-pointer text-left transition-all duration-150 text-(--wui-color-text) [--wui-icon-color:var(--wui-color-accent,#08f)] active:bg-[rgb(34_33_42/0.12)] dark:active:bg-white/15 data-[active=true]:bg-(--wui-color-surface-control,#dfdfdf) data-[active=true]:hover:bg-[color-mix(in_srgb,var(--wui-color-surface-control,#dfdfdf)_90%,var(--wui-color-text,#1b1b1b))] data-[active=true]:active:bg-[color-mix(in_srgb,var(--wui-color-surface-control,#dfdfdf)_70%,var(--wui-color-text,#1b1b1b))]'
+  'flex items-center gap-2 w-full min-w-9 min-h-9 px-2.5 border-0 rounded-full font-medium cursor-pointer text-left transition-all duration-150 text-(--wui-color-text) active:bg-[rgb(34_33_42/0.12)] dark:active:bg-white/15 data-[active=true]:bg-(--wui-color-surface-control,#dfdfdf) data-[active=true]:hover:bg-[color-mix(in_srgb,var(--wui-color-surface-control,#dfdfdf)_90%,var(--wui-color-text,#1b1b1b))] data-[active=true]:active:bg-[color-mix(in_srgb,var(--wui-color-surface-control,#dfdfdf)_70%,var(--wui-color-text,#1b1b1b))]'
 
 function isNavActive(path: string) {
   return route.path === path || route.path === `${path}/`
@@ -235,7 +203,7 @@ function isNavActive(path: string) {
         <div
           slot="sidebar"
           ref="navSidebar"
-          class="relative z-20 h-full min-h-0 overflow-y-auto pt-14 pb-4 px-2 max-[640px]:px-0"
+          class="relative z-20 h-full min-h-0 overflow-y-auto py-4 px-2 max-[640px]:px-0"
           aria-label="应用导航"
         >
           <nav class="grid gap-1" aria-label="主导航">
@@ -252,15 +220,9 @@ function isNavActive(path: string) {
               :aria-current="isNavActive(item.path) ? 'page' : undefined"
               :aria-label="item.label"
             >
-              <web-ui-tooltip
-                portal
-                placement="right"
-                :content="sidebarCollapsed ? item.label : ''"
-                :disabled="!sidebarCollapsed"
+              <span
+                :class="sidebarCollapsed ? 'w-full truncate text-center text-sm' : 'min-w-0 flex-1 truncate text-sm'"
               >
-                <web-ui-icon :icon="item.icon"></web-ui-icon>
-              </web-ui-tooltip>
-              <span v-if="!sidebarCollapsed" class="text-sm whitespace-nowrap overflow-hidden">
                 {{ item.label }}
               </span>
             </RouterLink>
