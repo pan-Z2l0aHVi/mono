@@ -103,15 +103,19 @@ jobs:
       # flake 台账的埋点：失败时把 vitest 的 FAIL 行抽进 step summary，并把原始日志与机器可读清单作为
       # 保留 1 天的 artifact 上传。`set -o pipefail` 保证 tee 不会吞掉测试的退出码 —— 判据不变，这里只留痕。
       #
-      # 守卫必须是 `steps.test.outcome`，不能是裸的 `failure()`：后者对「任意前序步骤红过」都成立，所以
-      # lint 失败会让 Test 被 skip、留痕两步却照样跑，台账里就多出一条没有测试日志的假记录 —— 而这份台账
-      # 的唯一用途是回答「哪些测试在 flake」。旧 attempt 的日志在 GitHub 侧事后拿不到，所以留痕从现在开始。
+      # 守卫的两半都不可省。`failure()` 是入场券：GitHub 对不含 status check 函数的 `if` 仍然套默认
+      # `success()`，所以只写 `steps.test.outcome` 时，这一步在它唯一可能成立的时刻（前一步刚失败）就已经被
+      # 跳过 —— 实测 run 35800643887：Test 红、留痕两步 skipped、artifact 为空。`steps.test.outcome == 'failure'`
+      # 是判据：裸 `failure()` 对「任意前序步骤红过」都成立，lint 失败会让 Test 被 skip、留痕两步却照样跑，
+      # 台账里就多出一条没有测试日志的假记录 —— 而这份台账的唯一用途是回答「哪些测试在 flake」。
+      # 恒假的那一半不会报错、也不会红，所以由 scripts/ci-topology.test.mjs 的 status-function 规则钉住；
+      # 旧 attempt 的日志与 artifact 在 GitHub 侧事后拿不回，所以这份台账只能从现在开始有数据。
       - name: Record test failures
-        if: steps.test.outcome == 'failure'
+        if: failure() && steps.test.outcome == 'failure'
         run: node .github/scripts/record-test-failures.mjs "$RUNNER_TEMP/test-output.log" "$RUNNER_TEMP/test-failures.json"
 
       - name: Upload test output
-        if: steps.test.outcome == 'failure'
+        if: failure() && steps.test.outcome == 'failure'
         uses: actions/upload-artifact@v6
         with:
           name: ci-test-output-${{ github.run_id }}-${{ github.run_attempt }}
