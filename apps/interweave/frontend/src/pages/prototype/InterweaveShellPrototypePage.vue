@@ -681,8 +681,7 @@ function startQueueRename(item: (typeof addQueue)[number]) {
     const input = queueRenameInputRef.value
     if (!input) return
     input.focus()
-    // Keep rename's select-all semantics without reaching into web-ui-input's shadow root.
-    document.execCommand('selectAll')
+    input.select()
   })
 }
 
