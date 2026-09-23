@@ -112,7 +112,7 @@ export class WebUiInput extends FormAssociated(LitElement) {
   // 原生 change 不 composed，被 shadow root 挡住；这里补发 composed 事件，
   // 兑现 $events/README 声明的公共 change 契约。
   private handleNativeChange(e: Event) {
-    if (this.readonly) return
+    if (this._isDisabled || this.readonly) return
     if (!(e.target instanceof HTMLInputElement)) return
     this._value = e.target.value
     this._formAssociation.sync()
@@ -146,11 +146,22 @@ export class WebUiInput extends FormAssociated(LitElement) {
   // 公共 focus/blur 与 textarea 对齐：宿主自身没有 tab 位（不可聚焦），
   // 不重定向到内部原生控件的话，调用方拿到的是一次空操作
   override focus(options?: FocusOptions) {
+    if (this._isDisabled) return
     this.shadowRoot?.querySelector('input')?.focus(options)
   }
 
   override blur() {
     this.shadowRoot?.querySelector('input')?.blur()
+  }
+
+  /**
+   * 公共 API：全选当前值。
+   *
+   * `disabled` 时与 `focus()` 一致不产生效果；原生控件未渲染时安全 no-op。
+   */
+  select() {
+    if (this._isDisabled) return
+    this.shadowRoot?.querySelector('input')?.select()
   }
 
   override render() {

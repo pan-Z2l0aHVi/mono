@@ -33,8 +33,9 @@ interface TextControlSpec {
 
 /**
  * 三个文本控件的**共有**契约。只收录三者行为逐字一致的项；
- * `readonly` 的事件阻断语义三者不同（input / input-number 在处理器内设守卫，
- * textarea 依赖原生属性），故留在各组件 spec，不并入本矩阵。
+ * `input` / `textarea` / `editable-text` 的跨组件一致性另见
+ * `text-editing-api-consistency.spec.ts`；input-number 与 editable-text 的
+ * 提交/反射模型不同，不并入本矩阵。
  */
 const SHARED_REFLECTION: ReadonlyArray<readonly [string, unknown, string, string]> = [
   ['disabled', true, 'disabled', ''],
