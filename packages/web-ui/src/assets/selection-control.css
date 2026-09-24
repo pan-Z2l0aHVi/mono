@@ -43,6 +43,14 @@
   }
 }
 
+/*
+ * 标签没有可渲染内容时把间距一并收掉。gap 只认「这里有个 flex item」，不认它有没有宽度，所以空槽位
+ * 或只挂了一个视觉隐藏的无障碍名时，指示器右边照样多出这一段；判据见 LabelEmptinessController。
+ */
+:where(.wui-radio.is-label-empty, .wui-checkbox.is-label-empty) {
+  gap: 0;
+}
+
 :host([data-wui-pointer-focus]) :where(.wui-radio, .wui-checkbox):focus-visible {
   outline-color: transparent;
 }

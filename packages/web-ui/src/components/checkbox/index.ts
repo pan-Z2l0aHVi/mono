@@ -10,6 +10,7 @@ import { tablerCheck } from '@/icons'
 import { installPointerFocusSuppression } from '@/shared/focus/pointer-focus'
 import { FormAssociated, defineFormAssociation, FormAssociationController } from '@/shared/form-association'
 import { defineGroupManaged, selectionGroupContextKey, type SelectionGroupContext } from '@/shared/group-management'
+import { LabelEmptinessController } from '@/shared/label-emptiness'
 import { parseDuration } from '@/shared/theme/duration'
 import { prefersReducedMotion } from '@/shared/theme/reduced-motion'
 
@@ -38,6 +39,9 @@ export class WebUiCheckbox extends FormAssociated(LitElement) {
 
   /** 描边收回期间把勾按在可见档，见 willUpdate。 */
   @state() private _retracting = false
+
+  /** 标签没有可渲染内容（空槽位，或只挂着一个无障碍名）时收掉 gap，见 LabelEmptinessController。 */
+  @state() private _labelEmpty = false
 
   get checked(): boolean {
     return this._checked
@@ -84,6 +88,10 @@ export class WebUiCheckbox extends FormAssociated(LitElement) {
   }).make()
 
   private readonly _formAssociationController = new FormAssociationController(this, this._formAssociation)
+
+  private readonly _labelEmptiness = new LabelEmptinessController(this, '.wui-checkbox-label', empty => {
+    this._labelEmpty = empty
+  })
 
   @query('web-ui-svg-draw-lines') private readonly _drawLines?: WebUiSvgDrawLines
 
@@ -155,6 +163,7 @@ export class WebUiCheckbox extends FormAssociated(LitElement) {
       'wui-checkbox': true,
       'is-checked': this._checked,
       'is-retracting': this._retracting,
+      'is-label-empty': this._labelEmpty,
       'is-disabled': this._isDisabled
     }
 

@@ -588,7 +588,7 @@ Individual checkbox.
 
 Uses native `<label>` with `role="checkbox"` and `aria-checked`. Enter/Space keyboard toggle.
 
-**Layout:** the host is an inline-flex box whose height is set by its content, so the inherited page line-height can no longer inflate it or shift the indicator up and down; it aligns against surrounding text with `vertical-align: middle`. The indicator measures `--wui-selection-control-size` (`18px`), and `<web-ui-radio>` shares the same box contract.
+**Layout:** the host is an inline-flex box whose height is set by its content, so the inherited page line-height can no longer inflate it or shift the indicator up and down; it aligns against surrounding text with `vertical-align: middle`. The indicator measures `--wui-selection-control-size` (`18px`), and `<web-ui-radio>` shares the same box contract. The 10px between indicator and label belongs to the label: when the default slot renders nothing — it is empty, or it carries only a visually hidden accessible name such as an `.sr-only` span — the gap collapses and the host is exactly as wide as the indicator. Emptiness is decided from the label's rendered width rather than from the slot's assigned nodes, because a hidden name is assigned content that paints no box, and hiding the label with `display: none` would take that name out of the accessibility tree.
 
 **Check animation:** the checkmark is a stroked check from `@/icons`, rendered by a nested `<web-ui-icon>` inside `<web-ui-svg-draw-lines>` (with `no-autoplay`, so a control that mounts already checked shows a static check). Checking draws it in from the left tip at a constant speed over `--wui-duration-trigger` (160ms by default), read from the resolved theme at the time of the toggle so the stroke lands on the same beat as the indicator's background transition; unchecking retracts the same path back to blank instead of only fading out. Neither plays inside a `motion="reduced"` theme scope, where both states switch instantly. The stroke color is `--wui-color-on-control`, passed down through `<web-ui-icon>`'s `--wui-icon-color`, because the indicator behind it is `--wui-color-accent` once checked. Two constraints follow from that arrangement: the asset has to stay stroked (`fill: none` + `stroke: currentColor`) — a solid icon animates the dash but paints nothing, so the check would just appear — and it renders at `<web-ui-icon>`'s own default 18px, since the host cannot reach the `<svg>` inside the icon's shadow root to scale it with `--wui-selection-control-size`.
 
@@ -610,7 +610,7 @@ Individual radio button.
 
 **Slots:** `default` (label text)
 
-**Layout:** shares the selection-control box contract with `<web-ui-checkbox>`. Host height comes from its content, alignment against surrounding text is `vertical-align: middle`, and the indicator measures `--wui-selection-control-size`.
+**Layout:** shares the selection-control box contract with `<web-ui-checkbox>`, including the rule that the indicator-label gap only exists while the label renders something. Host height comes from its content, alignment against surrounding text is `vertical-align: middle`, and the indicator measures `--wui-selection-control-size`.
 
 #### `<web-ui-switch>`
 
