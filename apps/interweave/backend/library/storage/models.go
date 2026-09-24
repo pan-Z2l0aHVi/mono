@@ -8,6 +8,20 @@ const (
 	SourceTypeURL  SourceType = "url"
 )
 
+// ResourceKind 是 Resource 展示层的权威闭集词汇，不写入 Source 或 Resource 表。
+// 文件按扩展名映射，URL Source 固定为 web；未知文件扩展名归入 file。
+type ResourceKind string
+
+const (
+	ResourceKindImage    ResourceKind = "image"
+	ResourceKindVideo    ResourceKind = "video"
+	ResourceKindAudio    ResourceKind = "audio"
+	ResourceKindDocument ResourceKind = "document"
+	ResourceKindWeb      ResourceKind = "web"
+	ResourceKindJSON     ResourceKind = "json"
+	ResourceKindFile     ResourceKind = "file"
+)
+
 // 持久化 Resource 自身的库内上下文。
 type ResourceModel struct {
 	ID        string `json:"id"`

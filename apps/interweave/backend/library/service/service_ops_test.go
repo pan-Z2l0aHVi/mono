@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -124,6 +125,9 @@ func TestURLSourceOperations(t *testing.T) {
 	if len(res.Sources) != 1 || !res.Sources[0].Available || !res.Sources[0].IsPreferred {
 		t.Errorf("expected single available preferred source, got %+v", res.Sources)
 	}
+	if res.Kind != service.ResourceKindWeb || res.SizeBytes != nil {
+		t.Errorf("expected URL resource kind web without size, got kind=%q size=%v", res.Kind, res.SizeBytes)
+	}
 
 	// 显式刷新维持可用入口。
 	refreshed, err := srcService.RefreshURLSource(ctx, res.Sources[0].ID)
@@ -167,6 +171,84 @@ func TestURLSourceOperations(t *testing.T) {
 	}
 	if unavail.Sources[0].Available {
 		t.Errorf("expected unavailable source, got available")
+	}
+}
+
+// 验证文件 Resource 的权威 kind、原始字节数，以及显式同路径刷新可以恢复可用状态。
+func TestFileResourceDisplayMetadataAndRefresh(t *testing.T) {
+	resService, srcService, _, _, cleanup := newTestServices(t)
+	defer cleanup()
+	ctx := context.Background()
+
+	path := filepath.Join(t.TempDir(), "metadata.json")
+	if err := os.WriteFile(path, []byte("123456789"), 0o644); err != nil {
+		t.Fatalf("failed to write fixture: %v", err)
+	}
+	res, err := resService.AddFileResource(ctx, path)
+	if err != nil {
+		t.Fatalf("AddFileResource error: %v", err)
+	}
+	if res.Kind != service.ResourceKindJSON {
+		t.Errorf("expected JSON kind, got %q", res.Kind)
+	}
+	if res.SizeBytes == nil || *res.SizeBytes != 9 {
+		t.Errorf("expected 9-byte size, got %v", res.SizeBytes)
+	}
+
+	sourceID := res.Sources[0].ID
+	orderIndex := res.Sources[0].OrderIndex
+	if err := os.Remove(path); err != nil {
+		t.Fatalf("failed to remove fixture: %v", err)
+	}
+	refreshed, err := srcService.RefreshFileSource(ctx, sourceID)
+	if err != nil {
+		t.Fatalf("RefreshFileSource unavailable error: %v", err)
+	}
+	if refreshed.Available {
+		t.Errorf("expected missing file to be unavailable after refresh")
+	}
+
+	if err := os.WriteFile(path, []byte("123456789"), 0o644); err != nil {
+		t.Fatalf("failed to restore fixture: %v", err)
+	}
+	refreshed, err = srcService.RefreshFileSource(ctx, sourceID)
+	if err != nil {
+		t.Fatalf("RefreshFileSource restored error: %v", err)
+	}
+	if !refreshed.Available || refreshed.Location != path || refreshed.ID != sourceID || refreshed.OrderIndex != orderIndex || !refreshed.IsPreferred {
+		t.Errorf("expected same source identity/location/order to become available, got %+v", refreshed)
+	}
+
+	after, err := resService.GetResource(ctx, res.ID)
+	if err != nil {
+		t.Fatalf("GetResource after refresh error: %v", err)
+	}
+	if after.SizeBytes == nil || *after.SizeBytes != 9 || after.Kind != service.ResourceKindJSON {
+		t.Errorf("expected refreshed display metadata, got kind=%q size=%v", after.Kind, after.SizeBytes)
+	}
+}
+
+// URL 刷新与文件刷新是类型特定能力，调用错误类型不能悄悄修改入口。
+func TestFileSourceRefreshTypeAndErrorPaths(t *testing.T) {
+	resService, srcService, _, _, cleanup := newTestServices(t)
+	defer cleanup()
+	ctx := context.Background()
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		_, _ = w.Write([]byte(`<title>Remote</title>`))
+	}))
+	defer ts.Close()
+
+	res, err := resService.AddURLResource(ctx, ts.URL)
+	if err != nil {
+		t.Fatalf("AddURLResource error: %v", err)
+	}
+	if _, err := srcService.RefreshFileSource(ctx, res.Sources[0].ID); err == nil || err.Error() != "only file sources can be refreshed" {
+		t.Errorf("expected file refresh type error, got %v", err)
+	}
+	if _, err := srcService.RefreshFileSource(ctx, "missing"); err == nil || err.Error() != "source not found" {
+		t.Errorf("expected source not found for missing file refresh, got %v", err)
 	}
 }
 

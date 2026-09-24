@@ -103,6 +103,16 @@ export class LocalMapDTO {
 export class ResourceDTO {
     "id": string;
     "title": string;
+
+    /**
+     * Kind 由后端按首选 Source 派生；旧客户端可忽略此可选字段。
+     */
+    "kind"?: ResourceKind;
+
+    /**
+     * SizeBytes 是首选文件 Source 的当前字节数；URL、失效或不可读文件不提供该字段。
+     */
+    "size_bytes"?: number | null;
     "note": string;
     "created_at": number;
     "updated_at": number;
@@ -144,18 +154,23 @@ export class ResourceDTO {
      * Creates a new ResourceDTO instance from a string or object.
      */
     static createFrom($$source: any = {}): ResourceDTO {
-        const $$createField5_0 = $$createType8;
-        const $$createField6_0 = $$createType9;
+        const $$createField7_0 = $$createType8;
+        const $$createField8_0 = $$createType9;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("sources" in $$parsedSource) {
-            $$parsedSource["sources"] = $$createField5_0($$parsedSource["sources"]);
+            $$parsedSource["sources"] = $$createField7_0($$parsedSource["sources"]);
         }
         if ("tags" in $$parsedSource) {
-            $$parsedSource["tags"] = $$createField6_0($$parsedSource["tags"]);
+            $$parsedSource["tags"] = $$createField8_0($$parsedSource["tags"]);
         }
         return new ResourceDTO($$parsedSource as Partial<ResourceDTO>);
     }
 }
+
+/**
+ * ResourceKind 是 Resource 展示分类的闭集；文件分类由 Go 侧维护，URL 固定为 web。
+ */
+export type ResourceKind = storage$0.ResourceKind;
 
 /**
  * 为前端呈现 Resource 的外部入口。

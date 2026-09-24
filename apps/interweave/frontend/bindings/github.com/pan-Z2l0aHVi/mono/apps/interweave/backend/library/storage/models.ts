@@ -6,6 +6,25 @@
 import { Create as $Create } from "@wailsio/runtime";
 
 /**
+ * ResourceKind 是 Resource 展示层的权威闭集词汇，不写入 Source 或 Resource 表。
+ * 文件按扩展名映射，URL Source 固定为 web；未知文件扩展名归入 file。
+ */
+export enum ResourceKind {
+    /**
+     * The Go zero value for the underlying type of the enum.
+     */
+    $zero = "",
+
+    ResourceKindImage = "image",
+    ResourceKindVideo = "video",
+    ResourceKindAudio = "audio",
+    ResourceKindDocument = "document",
+    ResourceKindWeb = "web",
+    ResourceKindJSON = "json",
+    ResourceKindFile = "file",
+};
+
+/**
  * 区分本地与网络入口，避免用内容类型替代来源语义。
  */
 export enum SourceType {

@@ -56,9 +56,14 @@ func resourceViewToDTO(view *core.ResourceView) *ResourceDTO {
 	dto := &ResourceDTO{
 		ID:        view.Resource.ID,
 		Title:     view.Resource.Title,
+		Kind:      view.Kind,
 		Note:      view.Resource.Note,
 		CreatedAt: view.Resource.CreatedAt,
 		UpdatedAt: view.Resource.UpdatedAt,
+	}
+	if view.SizeBytes != nil {
+		size := *view.SizeBytes
+		dto.SizeBytes = &size
 	}
 	sources := mapped(view.Sources, sourceToDTO)
 	dto.Sources = sources

@@ -2,6 +2,19 @@ package service
 
 import "github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage"
 
+// ResourceKind 是 Resource 展示分类的闭集；文件分类由 Go 侧维护，URL 固定为 web。
+type ResourceKind = storage.ResourceKind
+
+const (
+	ResourceKindImage    = storage.ResourceKindImage
+	ResourceKindVideo    = storage.ResourceKindVideo
+	ResourceKindAudio    = storage.ResourceKindAudio
+	ResourceKindDocument = storage.ResourceKindDocument
+	ResourceKindWeb      = storage.ResourceKindWeb
+	ResourceKindJSON     = storage.ResourceKindJSON
+	ResourceKindFile     = storage.ResourceKindFile
+)
+
 // Source 抓取到的展示元数据。结构对应 remote.URLMetadata 的序列化形态，
 // 在 service 层解析为类型化对象，前端不再接触 JSON 字符串。
 type SourceMetadataDTO struct {
@@ -35,8 +48,12 @@ type TagDTO struct {
 
 // 为前端提供完整但不承载外部内容的资源视图。
 type ResourceDTO struct {
-	ID          string      `json:"id"`
-	Title       string      `json:"title"`
+	ID    string `json:"id"`
+	Title string `json:"title"`
+	// Kind 由后端按首选 Source 派生；旧客户端可忽略此可选字段。
+	Kind ResourceKind `json:"kind,omitempty"`
+	// SizeBytes 是首选文件 Source 的当前字节数；URL、失效或不可读文件不提供该字段。
+	SizeBytes   *int64      `json:"size_bytes,omitempty"`
 	Note        string      `json:"note"`
 	CreatedAt   int64       `json:"created_at"`
 	UpdatedAt   int64       `json:"updated_at"`
