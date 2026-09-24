@@ -1,7 +1,7 @@
 import { computed, ref } from 'vue'
 
 import { createLibraryRuntime, type LibraryQueueItem, type LibraryRuntime } from '@/services/library'
-import { useLibraryStore } from '@/stores/library'
+import { useLibraryStore, type ResourceSourceView } from '@/stores/library'
 
 function errorMessage(error: unknown) {
   if (error instanceof Error && error.message.trim()) return error.message
@@ -18,9 +18,14 @@ export function useLibraryRuntime(injectedRuntime?: LibraryRuntime) {
   const isLoading = ref(false)
   const pendingResourceIds = ref<string[]>([])
   const refreshingSourceIds = ref<string[]>([])
+  const replacingSourceIds = ref<string[]>([])
   const error = ref('')
   const isBusy = computed(
-    () => isLoading.value || pendingResourceIds.value.length > 0 || refreshingSourceIds.value.length > 0
+    () =>
+      isLoading.value ||
+      pendingResourceIds.value.length > 0 ||
+      refreshingSourceIds.value.length > 0 ||
+      replacingSourceIds.value.length > 0
   )
 
   function setPending(resourceId: string, pending: boolean) {
@@ -126,12 +131,14 @@ export function useLibraryRuntime(injectedRuntime?: LibraryRuntime) {
     }
   }
 
-  async function refreshSource(sourceId: string) {
+  async function refreshSource(source: Pick<ResourceSourceView, 'id' | 'type'>) {
+    const sourceId = source.id
     refreshingSourceIds.value = [...new Set([...refreshingSourceIds.value, sourceId])]
     error.value = ''
     try {
-      const source = await runtime.refreshURLSource(sourceId)
-      const updated = await runtime.getResource(source.resource_id)
+      const refreshed =
+        source.type === 'file' ? await runtime.refreshFileSource(sourceId) : await runtime.refreshURLSource(sourceId)
+      const updated = await runtime.getResource(refreshed.resource_id)
       store.upsertResource(updated)
       return updated
     } catch (cause) {
@@ -139,6 +146,24 @@ export function useLibraryRuntime(injectedRuntime?: LibraryRuntime) {
       throw cause
     } finally {
       refreshingSourceIds.value = refreshingSourceIds.value.filter(id => id !== sourceId)
+    }
+  }
+
+  async function replaceFileSource(sourceId: string) {
+    replacingSourceIds.value = [...new Set([...replacingSourceIds.value, sourceId])]
+    error.value = ''
+    try {
+      const inputPath = await runtime.chooseFilePath()
+      if (!inputPath) return null
+      const replaced = await runtime.replaceFileSource(sourceId, inputPath)
+      const updated = await runtime.getResource(replaced.resource_id)
+      store.upsertResource(updated)
+      return updated
+    } catch (cause) {
+      error.value = errorMessage(cause)
+      throw cause
+    } finally {
+      replacingSourceIds.value = replacingSourceIds.value.filter(id => id !== sourceId)
     }
   }
 
@@ -152,6 +177,7 @@ export function useLibraryRuntime(injectedRuntime?: LibraryRuntime) {
     isBusy,
     pendingResourceIds,
     refreshingSourceIds,
+    replacingSourceIds,
     error,
     loadResources,
     addResource,
@@ -159,6 +185,7 @@ export function useLibraryRuntime(injectedRuntime?: LibraryRuntime) {
     deleteResources,
     saveTags,
     refreshSource,
+    replaceFileSource,
     chooseFilePaths
   }
 }

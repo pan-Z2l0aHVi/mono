@@ -1,9 +1,16 @@
 <script setup lang="ts">
 import type { WebUiContextMenu, WebUiEvent } from '@greypan/web-ui'
-import { lucideEye, lucidePenLine, lucideRefreshCw, lucideTags, lucideTrash2 } from '@greypan/web-ui/icons'
+import {
+  lucideEye,
+  lucideFolderOpen,
+  lucidePenLine,
+  lucideRefreshCw,
+  lucideTags,
+  lucideTrash2
+} from '@greypan/web-ui/icons'
 import { nextTick, ref } from 'vue'
 
-import type { ResourceView } from '@/stores/library'
+import type { ResourceSourceView, ResourceView } from '@/stores/library'
 
 import LibraryResourceRow from './LibraryResourceRow.vue'
 
@@ -22,7 +29,8 @@ const emit = defineEmits<{
   rename: [resource: ResourceView]
   editTags: [resource: ResourceView]
   delete: [resource: ResourceView]
-  refresh: [sourceId: string]
+  refresh: [source: ResourceSourceView]
+  replace: [sourceId: string]
   toggle: [resourceId: string]
 }>()
 
@@ -45,6 +53,10 @@ function contextURLSource(resource: ResourceView | null) {
   return resource?.sources.find(source => source.type === 'url') ?? null
 }
 
+function contextUnavailableFileSource(resource: ResourceView | null) {
+  return resource?.sources.find(source => source.type === 'file' && !source.available) ?? null
+}
+
 function handleRename(resource: ResourceView | null) {
   if (resource) emit('rename', resource)
   closeContextMenu()
@@ -65,9 +77,13 @@ function handlePreview(resource: ResourceView | null) {
   closeContextMenu()
 }
 
-function handleRefresh(resource: ResourceView | null) {
-  const source = contextURLSource(resource)
-  if (resource && source) emit('refresh', source.id)
+function handleRefresh(source: ResourceSourceView | null) {
+  if (source) emit('refresh', source)
+  closeContextMenu()
+}
+
+function handleReplace(source: ResourceSourceView | null) {
+  if (source) emit('replace', source.id)
   closeContextMenu()
 }
 
@@ -108,9 +124,26 @@ function handleOpenChange(_event: WebUiEvent<WebUiContextMenu, 'open-change'>) {
         <web-ui-icon slot="prefix" :icon="lucideEye" :size="14" />
         预览
       </web-ui-dropdown-item>
-      <web-ui-dropdown-item v-if="contextURLSource(contextResource)" @click="handleRefresh(contextResource)">
+      <web-ui-dropdown-item
+        v-if="contextURLSource(contextResource)"
+        @click="handleRefresh(contextURLSource(contextResource))"
+      >
         <web-ui-icon slot="prefix" :icon="lucideRefreshCw" :size="14" />
         刷新 URL 来源
+      </web-ui-dropdown-item>
+      <web-ui-dropdown-item
+        v-if="contextUnavailableFileSource(contextResource)"
+        @click="handleRefresh(contextUnavailableFileSource(contextResource))"
+      >
+        <web-ui-icon slot="prefix" :icon="lucideRefreshCw" :size="14" />
+        重新检查原路径
+      </web-ui-dropdown-item>
+      <web-ui-dropdown-item
+        v-if="contextUnavailableFileSource(contextResource)"
+        @click="handleReplace(contextUnavailableFileSource(contextResource))"
+      >
+        <web-ui-icon slot="prefix" :icon="lucideFolderOpen" :size="14" />
+        更换文件路径
       </web-ui-dropdown-item>
       <web-ui-dropdown-item @click="handleRename(contextResource)">
         <web-ui-icon slot="prefix" :icon="lucidePenLine" :size="14" />

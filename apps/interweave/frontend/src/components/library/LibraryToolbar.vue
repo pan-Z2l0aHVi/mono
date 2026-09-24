@@ -185,11 +185,14 @@ function handleSortChange(event: WebUiEvent<WebUiSelect, 'change'>) {
             @change="handleKindChange"
           >
             <web-ui-option value="all" label="全部类型">全部类型</web-ui-option>
-            <web-ui-option value="pdf" label="PDF">PDF</web-ui-option>
+            <web-ui-option value="image" label="图片">图片</web-ui-option>
+            <web-ui-option value="video" label="视频">视频</web-ui-option>
+            <web-ui-option value="audio" label="音频">音频</web-ui-option>
             <web-ui-option value="document" label="文档">文档</web-ui-option>
-            <web-ui-option value="data" label="数据">数据</web-ui-option>
+            <web-ui-option value="json" label="JSON">JSON</web-ui-option>
             <web-ui-option value="web" label="网页">网页</web-ui-option>
             <web-ui-option value="file" label="文件">文件</web-ui-option>
+            <web-ui-option value="unknown" label="其他">其他</web-ui-option>
           </web-ui-select>
         </label>
 

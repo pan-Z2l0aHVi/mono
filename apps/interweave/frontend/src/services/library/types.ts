@@ -17,7 +17,10 @@ export interface LibraryRuntime {
   addTag(resourceId: string, tagName: string): Promise<TagDTO>
   removeTag(resourceId: string, tagId: string): Promise<void>
   refreshURLSource(sourceId: string): Promise<SourceDTO>
+  refreshFileSource(sourceId: string): Promise<SourceDTO>
+  replaceFileSource(sourceId: string, inputPath: string): Promise<SourceDTO>
   chooseFilePaths(): Promise<string[]>
+  chooseFilePath(): Promise<string | null>
 }
 
 export interface LibraryQueueItem {

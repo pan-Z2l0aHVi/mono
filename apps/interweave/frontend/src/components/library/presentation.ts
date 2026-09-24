@@ -1,22 +1,56 @@
-import { lucideFile, lucideFileText, lucideGlobe, lucidePencil } from '@greypan/web-ui/icons'
+import {
+  lucideCode,
+  lucideFile,
+  lucideFileText,
+  lucideFilm,
+  lucideGlobe,
+  lucideHeadphones,
+  lucideImage
+} from '@greypan/web-ui/icons'
 
 import type { ResourceKind, ResourceSourceView, ResourceView } from '@/stores/library'
 
-const KIND_ICONS = {
-  pdf: lucideFileText,
+const KIND_ICONS: Partial<Record<string, typeof lucideFile>> = {
+  image: lucideImage,
+  video: lucideFilm,
+  audio: lucideHeadphones,
   document: lucideFileText,
-  data: lucidePencil,
   web: lucideGlobe,
-  file: lucideFile
-} satisfies Record<ResourceKind, typeof lucideFile>
+  json: lucideCode,
+  file: lucideFile,
+  unknown: lucideFile
+}
 
-const KIND_LABELS = {
-  pdf: 'PDF',
+const KIND_LABELS: Partial<Record<string, string>> = {
+  image: '图片',
+  video: '视频',
+  audio: '音频',
   document: '文档',
-  data: '数据',
   web: '网页',
-  file: '文件'
-} satisfies Record<ResourceKind, string>
+  json: 'JSON',
+  file: '文件',
+  unknown: '其他'
+}
+
+const KIND_CONTAINERS: Partial<Record<string, string>> = {
+  image: 'bg-blue-100 text-blue-700 dark:bg-blue-400/15 dark:text-blue-200',
+  video: 'bg-purple-100 text-purple-700 dark:bg-purple-400/15 dark:text-purple-200',
+  audio: 'bg-red-100 text-red-700 dark:bg-red-400/15 dark:text-red-200',
+  document: 'bg-amber-100 text-amber-700 dark:bg-amber-400/15 dark:text-amber-200',
+  web: 'bg-cyan-100 text-cyan-700 dark:bg-cyan-400/15 dark:text-cyan-200',
+  json: 'bg-green-100 text-green-700 dark:bg-green-400/15 dark:text-green-200',
+  file: 'bg-orange-100 text-orange-700 dark:bg-orange-400/15 dark:text-orange-200'
+}
+
+const KIND_TEXT: Partial<Record<string, string>> = {
+  image: 'text-blue-600 dark:text-blue-300',
+  video: 'text-purple-600 dark:text-purple-300',
+  audio: 'text-red-600 dark:text-red-300',
+  document: 'text-amber-600 dark:text-amber-300',
+  web: 'text-cyan-600 dark:text-cyan-300',
+  json: 'text-green-600 dark:text-green-300',
+  file: 'text-orange-600 dark:text-orange-300'
+}
 
 const TAG_CLASSES = [
   'bg-blue-100 text-blue-700 dark:bg-blue-400/15 dark:text-blue-200',
@@ -38,7 +72,15 @@ export function resourceIcon(kind: ResourceKind) {
 }
 
 export function resourceKindLabel(kind: ResourceKind) {
-  return KIND_LABELS[kind] ?? KIND_LABELS.file
+  return KIND_LABELS[kind] ?? KIND_LABELS.unknown!
+}
+
+export function resourceKindClass(kind: ResourceKind) {
+  return KIND_CONTAINERS[kind] ?? 'bg-black/5 text-(--wui-color-text-secondary) dark:bg-white/8'
+}
+
+export function resourceKindTextClass(kind: ResourceKind) {
+  return KIND_TEXT[kind] ?? 'text-(--wui-color-text-tertiary)'
 }
 
 export function tagClass(tag: string) {
@@ -70,4 +112,13 @@ export function formatTimestamp(timestamp: number) {
     month: '2-digit',
     day: '2-digit'
   }).format(new Date(timestamp))
+}
+
+export function formatSize(sizeBytes: number | null) {
+  if (sizeBytes === null || !Number.isFinite(sizeBytes) || sizeBytes < 0) return null
+  const megabytes = sizeBytes / (1024 * 1024)
+  const value = megabytes >= 1 ? megabytes : sizeBytes / 1024
+  const unit = megabytes >= 1 ? 'MB' : 'KB'
+  const precision = value < 10 && !Number.isInteger(value) ? 1 : 0
+  return `${value.toFixed(precision)} ${unit}`
 }

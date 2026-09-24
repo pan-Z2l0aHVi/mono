@@ -7,9 +7,11 @@ import type { ResourceView } from '@/stores/library'
 
 import {
   fileExtension,
+  formatSize,
   formatTimestamp,
   primarySource,
   resourceIcon,
+  resourceKindClass,
   sourceTypeIcon,
   sourceTypeLabel,
   tagClass
@@ -29,6 +31,7 @@ const emit = defineEmits<{
 }>()
 
 const source = computed(() => primarySource(props.resource))
+const size = computed(() => formatSize(props.resource.sizeBytes))
 
 function handleChange(_event: WebUiEvent<WebUiCheckbox, 'change'>) {
   emit('toggle', props.resource.id)
@@ -60,9 +63,7 @@ function handleChange(_event: WebUiEvent<WebUiCheckbox, 'change'>) {
       @change="handleChange"
     />
 
-    <div
-      class="grid size-10 shrink-0 place-items-center rounded-lg bg-black/5 text-(--wui-color-text-secondary) dark:bg-white/8"
-    >
+    <div class="grid size-10 shrink-0 place-items-center rounded-lg" :class="resourceKindClass(resource.kind)">
       <web-ui-icon :icon="resourceIcon(resource.kind)" :size="20" />
     </div>
 
@@ -90,6 +91,10 @@ function handleChange(_event: WebUiEvent<WebUiCheckbox, 'change'>) {
         <template v-if="source && fileExtension(source.location)">
           <span aria-hidden="true">·</span>
           <span>{{ fileExtension(source.location) }}</span>
+        </template>
+        <template v-if="size">
+          <span aria-hidden="true">·</span>
+          <span>{{ size }}</span>
         </template>
         <span aria-hidden="true">·</span>
         <time :datetime="new Date(resource.updatedAt).toISOString()">{{ formatTimestamp(resource.updatedAt) }}</time>

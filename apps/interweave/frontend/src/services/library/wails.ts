@@ -47,6 +47,14 @@ class WailsLibraryRuntime implements LibraryRuntime {
     return requireSourceDTO(await SourceService.RefreshURLSource(sourceId), '刷新 URL Source')
   }
 
+  async refreshFileSource(sourceId: string) {
+    return requireSourceDTO(await SourceService.RefreshFileSource(sourceId), '刷新文件 Source')
+  }
+
+  async replaceFileSource(sourceId: string, inputPath: string) {
+    return requireSourceDTO(await SourceService.ReplaceFileSource(sourceId, inputPath), '替换文件 Source')
+  }
+
   async chooseFilePaths() {
     const selected = await Dialogs.OpenFile({
       Title: '选择要添加的文件',
@@ -56,6 +64,17 @@ class WailsLibraryRuntime implements LibraryRuntime {
     })
     if (Array.isArray(selected)) return selected
     return selected ? [selected] : []
+  }
+
+  async chooseFilePath() {
+    const selected = await Dialogs.OpenFile({
+      Title: '选择替换后的文件',
+      CanChooseFiles: true,
+      CanChooseDirectories: false,
+      AllowsMultipleSelection: false
+    })
+    if (Array.isArray(selected)) return selected[0] ?? null
+    return selected ?? null
   }
 }
 

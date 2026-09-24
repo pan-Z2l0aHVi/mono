@@ -14,7 +14,7 @@ import LibraryToolbar from '@/components/library/LibraryToolbar.vue'
 import { useLibraryRuntime } from '@/composables/useLibraryRuntime'
 import type { LibraryQueueItem } from '@/services/library'
 import { useLibraryStore } from '@/stores/library'
-import type { ResourceView } from '@/stores/library'
+import type { ResourceSourceView, ResourceView } from '@/stores/library'
 
 interface ConfirmRequest {
   title: string
@@ -32,6 +32,7 @@ const {
   isLoading,
   pendingResourceIds,
   refreshingSourceIds,
+  replacingSourceIds,
   error: runtimeError,
   loadResources,
   addResource,
@@ -39,6 +40,7 @@ const {
   deleteResources,
   saveTags,
   refreshSource,
+  replaceFileSource,
   chooseFilePaths
 } = useLibraryRuntime()
 
@@ -330,9 +332,17 @@ async function handleSaveTags(resourceId: string, tagNames: string[]) {
   }
 }
 
-async function handleRefreshSource(sourceId: string) {
+async function handleRefreshSource(source: ResourceSourceView) {
   try {
-    await refreshSource(sourceId)
+    await refreshSource(source)
+  } catch {
+    // 错误由 runtimeError 呈现。
+  }
+}
+
+async function handleReplaceSource(sourceId: string) {
+  try {
+    await replaceFileSource(sourceId)
   } catch {
     // 错误由 runtimeError 呈现。
   }
@@ -441,6 +451,7 @@ onMounted(() => {
         @edit-tags="editResourceTags"
         @delete="requestDeleteResource"
         @refresh="handleRefreshSource"
+        @replace="handleReplaceSource"
         @toggle="toggleChecked"
       />
     </main>
@@ -451,11 +462,13 @@ onMounted(() => {
       :mobile="mobile"
       :rename-request="renameRequest"
       :refreshing-source-ids="refreshingSourceIds"
+      :replacing-source-ids="replacingSourceIds"
       @rename="handleRename"
       @edit-tags="editResourceTags"
       @delete="requestDeleteResource"
       @preview="previewResource"
       @refresh="handleRefreshSource"
+      @replace="handleReplaceSource"
     />
     <LibraryPreviewDrawer v-model:open="previewOpen" :resource="selectedResource" :mobile="mobile" />
 

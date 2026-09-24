@@ -3,6 +3,7 @@ import type {
   SourceDTO,
   TagDTO
 } from '../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/service'
+import { ResourceKind } from '../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage'
 
 import type { LibraryRuntime } from './types'
 
@@ -44,18 +45,45 @@ function resource(
   note: string,
   updatedAt: number,
   sources: SourceDTO[],
-  tags: Array<[string, string]>
+  tags: Array<[string, string]>,
+  kind: ResourceDTO['kind'],
+  sizeBytes: number | null
 ): ResourceDTO {
   return {
     id,
     title,
     note,
+    kind,
+    size_bytes: sizeBytes,
     created_at: updatedAt - 5 * 86_400_000,
     updated_at: updatedAt,
     sources,
     tags: tags.map(([tagId, name]) => ({ id: tagId, name, created_at: BASE_TIME })),
     preferred_source_id: sources.find(item => item.is_preferred)?.id ?? ''
   }
+}
+
+// Fixture adapter mirrors backend metadata updates without filesystem access.
+function fixtureKindForPath(location: string): ResourceDTO['kind'] {
+  const extension = location.split('.').at(-1)?.toLowerCase()
+  if (extension === 'png' || extension === 'jpg' || extension === 'jpeg') return ResourceKind.ResourceKindImage
+  if (extension === 'mp4' || extension === 'mov' || extension === 'webm') return ResourceKind.ResourceKindVideo
+  if (extension === 'mp3' || extension === 'wav' || extension === 'm4a') return ResourceKind.ResourceKindAudio
+  if (extension === 'json') return ResourceKind.ResourceKindJSON
+  if (extension === 'pdf' || extension === 'md' || extension === 'csv' || extension === 'txt')
+    return ResourceKind.ResourceKindDocument
+  return ResourceKind.ResourceKindFile
+}
+
+function fixtureSizeForPath(location: string) {
+  const extension = location.split('.').at(-1)?.toLowerCase()
+  if (extension === 'mp4') return 156_000_000
+  if (extension === 'mp3') return 8_200_000
+  if (extension === 'png' || extension === 'jpg' || extension === 'jpeg') return 1_800_000
+  if (extension === 'json') return 18_000
+  if (extension === 'csv') return 64_000
+  if (extension === 'md') return 22_000
+  return 2_400_000
 }
 
 function createInitialResources(): ResourceDTO[] {
@@ -94,7 +122,69 @@ function createInitialResources(): ResourceDTO[] {
       [
         ['tag-design', '设计'],
         ['tag-reference', '参考']
-      ]
+      ],
+      ResourceKind.ResourceKindDocument,
+      2_400_000
+    ),
+    resource(
+      'fixture-visual-reference',
+      '视觉参考归档',
+      '',
+      BASE_TIME - 600_000,
+      [
+        source(
+          'fixture-visual-reference-file',
+          'fixture-visual-reference',
+          'file' as SourceDTO['type'],
+          '/Users/demo/Pictures/visual-reference.png',
+          true,
+          0,
+          BASE_TIME - 600_000
+        )
+      ],
+      [['tag-design', '设计']],
+      ResourceKind.ResourceKindImage,
+      2_500_000
+    ),
+    resource(
+      'fixture-launch-video',
+      '产品发布会演示视频',
+      '',
+      BASE_TIME - 1_200_000,
+      [
+        source(
+          'fixture-launch-video-file',
+          'fixture-launch-video',
+          'file' as SourceDTO['type'],
+          '/Users/demo/Movies/product-launch.mp4',
+          true,
+          0,
+          BASE_TIME - 1_200_000
+        )
+      ],
+      [['tag-archive', '归档']],
+      ResourceKind.ResourceKindVideo,
+      163_577_856
+    ),
+    resource(
+      'fixture-interview-audio',
+      '用户访谈录音',
+      '',
+      BASE_TIME - 1_800_000,
+      [
+        source(
+          'fixture-interview-audio-file',
+          'fixture-interview-audio',
+          'file' as SourceDTO['type'],
+          '/Users/demo/Audio/user-interview.mp3',
+          true,
+          0,
+          BASE_TIME - 1_800_000
+        )
+      ],
+      [['tag-research', '研究']],
+      ResourceKind.ResourceKindAudio,
+      8_600_000
     ),
     resource(
       'fixture-interview',
@@ -118,7 +208,9 @@ function createInitialResources(): ResourceDTO[] {
           }
         )
       ],
-      [['tag-research', '研究']]
+      [['tag-research', '研究']],
+      ResourceKind.ResourceKindWeb,
+      null
     ),
     resource(
       'fixture-metrics',
@@ -139,7 +231,9 @@ function createInitialResources(): ResourceDTO[] {
       [
         ['tag-data', '数据'],
         ['tag-reference', '参考']
-      ]
+      ],
+      ResourceKind.ResourceKindJSON,
+      18_000
     ),
     resource(
       'fixture-api-notes',
@@ -160,7 +254,9 @@ function createInitialResources(): ResourceDTO[] {
       [
         ['tag-development', '开发'],
         ['tag-reference', '参考']
-      ]
+      ],
+      ResourceKind.ResourceKindJSON,
+      64_000
     ),
     resource(
       'fixture-archive-deck',
@@ -178,7 +274,9 @@ function createInitialResources(): ResourceDTO[] {
           BASE_TIME - 8 * 86_400_000
         )
       ],
-      [['tag-archive', '归档']]
+      [['tag-archive', '归档']],
+      ResourceKind.ResourceKindDocument,
+      null
     ),
     resource(
       'fixture-unavailable-url',
@@ -199,7 +297,9 @@ function createInitialResources(): ResourceDTO[] {
       [
         ['tag-reference', '参考'],
         ['tag-archive', '归档']
-      ]
+      ],
+      ResourceKind.ResourceKindWeb,
+      null
     ),
     resource(
       'fixture-brand',
@@ -220,7 +320,9 @@ function createInitialResources(): ResourceDTO[] {
       [
         ['tag-design', '设计'],
         ['tag-archive', '归档']
-      ]
+      ],
+      ResourceKind.ResourceKindDocument,
+      1_100_000
     ),
     resource(
       'fixture-long-title',
@@ -243,7 +345,9 @@ function createInitialResources(): ResourceDTO[] {
         ['tag-development', '开发'],
         ['tag-reference', '参考'],
         ['tag-research', '研究']
-      ]
+      ],
+      ResourceKind.ResourceKindDocument,
+      22_000
     )
   ]
 }
@@ -303,7 +407,9 @@ class FixtureLibraryRuntime implements LibraryRuntime {
       '',
       now,
       [source(nextId('fixture-file-source'), resourceId, 'file' as SourceDTO['type'], path, true, 0, now)],
-      []
+      [],
+      fixtureKindForPath(path),
+      fixtureSizeForPath(path)
     )
     this.resources.unshift(created)
     return cloneResourceDTO(created)
@@ -330,7 +436,9 @@ class FixtureLibraryRuntime implements LibraryRuntime {
           favicon_url: ''
         })
       ],
-      []
+      [],
+      ResourceKind.ResourceKindWeb,
+      null
     )
     this.resources.unshift(created)
     return cloneResourceDTO(created)
@@ -386,11 +494,49 @@ class FixtureLibraryRuntime implements LibraryRuntime {
     return { ...found, metadata: found.metadata ? { ...found.metadata } : null }
   }
 
+  async refreshFileSource(sourceId: string) {
+    const found = this.resources.flatMap(item => item.sources).find(item => item.id === sourceId)
+    if (!found) throw new Error('Source 不存在')
+    if ((found.type as string) !== 'file') throw new Error('仅文件 Source 可以刷新')
+    found.available = true
+    found.updated_at = Date.now()
+    const parent = this.requireMutableResource(found.resource_id)
+    if (found.is_preferred) parent.size_bytes = fixtureSizeForPath(found.location)
+    parent.updated_at = Date.now()
+    return { ...found, metadata: found.metadata ? { ...found.metadata } : null }
+  }
+
+  async replaceFileSource(sourceId: string, inputPath: string) {
+    const path = inputPath.trim()
+    if (!path) throw new Error('文件路径不能为空')
+    const found = this.resources.flatMap(item => item.sources).find(item => item.id === sourceId)
+    if (!found) throw new Error('Source 不存在')
+    if ((found.type as string) !== 'file') throw new Error('仅文件 Source 可以替换路径')
+    found.location = path
+    found.available = true
+    found.updated_at = Date.now()
+    const parent = this.requireMutableResource(found.resource_id)
+    if (found.is_preferred) {
+      parent.kind = fixtureKindForPath(path)
+      parent.size_bytes = fixtureSizeForPath(path)
+    }
+    parent.updated_at = Date.now()
+    return { ...found, metadata: found.metadata ? { ...found.metadata } : null }
+  }
+
   async chooseFilePaths() {
+    return this.chooseFixtureFiles(true)
+  }
+
+  async chooseFilePath() {
+    return (await this.chooseFixtureFiles(false))[0] ?? null
+  }
+
+  private chooseFixtureFiles(multiple: boolean) {
     return new Promise<string[]>((resolve, reject) => {
       const input = document.createElement('input')
       input.type = 'file'
-      input.multiple = true
+      input.multiple = multiple
       input.accept = '*/*'
       input.addEventListener('change', () => {
         resolve([...(input.files ?? [])].map(file => file.name))

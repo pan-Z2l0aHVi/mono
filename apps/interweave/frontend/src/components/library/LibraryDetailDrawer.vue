@@ -1,14 +1,24 @@
 <script setup lang="ts">
 import type { WebUiDrawer, WebUiEvent, WebUiInput } from '@greypan/web-ui'
-import { lucideEye, lucidePenLine, lucideRefreshCw, lucideTags, lucideTrash2, lucideX } from '@greypan/web-ui/icons'
+import {
+  lucideEye,
+  lucideFolderOpen,
+  lucidePenLine,
+  lucideRefreshCw,
+  lucideTags,
+  lucideTrash2,
+  lucideX
+} from '@greypan/web-ui/icons'
 import { computed, nextTick, ref, watch } from 'vue'
 
-import type { ResourceView } from '@/stores/library'
+import type { ResourceSourceView, ResourceView } from '@/stores/library'
 
 import {
+  formatSize,
   formatTimestamp,
   resourceIcon,
   resourceKindLabel,
+  resourceKindTextClass,
   sourceTypeIcon,
   sourceTypeLabel,
   tagClass
@@ -20,6 +30,7 @@ const props = defineProps<{
   mobile: boolean
   renameRequest: number
   refreshingSourceIds: string[]
+  replacingSourceIds: string[]
 }>()
 
 const emit = defineEmits<{
@@ -28,7 +39,8 @@ const emit = defineEmits<{
   editTags: [resource: ResourceView]
   delete: [resource: ResourceView]
   preview: [resource: ResourceView]
-  refresh: [sourceId: string]
+  refresh: [source: ResourceSourceView]
+  replace: [sourceId: string]
 }>()
 
 const editingTitle = ref(false)
@@ -117,11 +129,16 @@ function handleTitleInput(event: WebUiEvent<WebUiInput, 'input'>) {
         class="grid h-36 place-items-center rounded-lg bg-black/4 dark:bg-white/6"
         :aria-label="`${resourceKindLabel(resource.kind)}预览占位`"
       >
-        <web-ui-icon :icon="resourceIcon(resource.kind)" :size="48" class="text-(--wui-color-text-tertiary)" />
+        <web-ui-icon :icon="resourceIcon(resource.kind)" :size="48" :class="resourceKindTextClass(resource.kind)" />
       </div>
 
       <div class="flex min-w-0 items-center gap-3">
-        <web-ui-icon :icon="resourceIcon(resource.kind)" :size="22" class="shrink-0" />
+        <web-ui-icon
+          :icon="resourceIcon(resource.kind)"
+          :size="22"
+          class="shrink-0"
+          :class="resourceKindTextClass(resource.kind)"
+        />
         <web-ui-input
           v-if="editingTitle"
           ref="titleInputRef"
@@ -208,15 +225,28 @@ function handleTitleInput(event: WebUiEvent<WebUiInput, 'input'>) {
               {{ itemSource.available ? '可用' : '不可用' }}
             </span>
             <web-ui-button
-              v-if="itemSource.type === 'url'"
+              v-if="itemSource.type === 'url' || !itemSource.available"
               icon
               variant="ghost"
               size="24"
               :loading="refreshingSourceIds.includes(itemSource.id)"
-              :aria-label="`刷新 ${itemSource.location}`"
-              @click="emit('refresh', itemSource.id)"
+              :aria-label="
+                itemSource.type === 'file' ? `重新检查原路径 ${itemSource.location}` : `刷新 ${itemSource.location}`
+              "
+              @click="emit('refresh', itemSource)"
             >
               <web-ui-icon :icon="lucideRefreshCw" :size="12" />
+            </web-ui-button>
+            <web-ui-button
+              v-if="itemSource.type === 'file' && !itemSource.available"
+              icon
+              variant="ghost"
+              size="24"
+              :loading="replacingSourceIds.includes(itemSource.id)"
+              :aria-label="`更换文件路径 ${itemSource.location}`"
+              @click="emit('replace', itemSource.id)"
+            >
+              <web-ui-icon :icon="lucideFolderOpen" :size="12" />
             </web-ui-button>
           </span>
         </div>
@@ -224,6 +254,10 @@ function handleTitleInput(event: WebUiEvent<WebUiInput, 'input'>) {
         <div class="flex items-center justify-between gap-4 px-4 py-3">
           <span class="text-[13px] leading-5 text-(--wui-color-text-secondary)">类型</span>
           <span class="text-[13px] leading-5 font-medium">{{ resourceKindLabel(resource.kind) }}</span>
+        </div>
+        <div v-if="resource.sizeBytes !== null" class="flex items-center justify-between gap-4 px-4 py-3">
+          <span class="text-[13px] leading-5 text-(--wui-color-text-secondary)">大小</span>
+          <span class="text-[13px] leading-5 font-medium tabular-nums">{{ formatSize(resource.sizeBytes) }}</span>
         </div>
         <div class="flex items-center justify-between gap-4 px-4 py-3">
           <span class="text-[13px] leading-5 text-(--wui-color-text-secondary)">状态</span>
