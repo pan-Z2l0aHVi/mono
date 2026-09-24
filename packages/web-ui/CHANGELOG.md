@@ -1,5 +1,72 @@
 # @greypan/web-ui
 
+## 8.1.0
+
+### Minor Changes
+
+- ed2652b: Add `--wui-button-group-divider-length` to `<web-ui-button-group>`. The divider between adjacent grouped buttons was a fixed 24px line with no way for a consumer to reach it — it lives in the child button's shadow root and that span is not exposed as a part — so the only alternative was dropping the group entirely and losing the shared glass pill.
+  
+  The token sets the divider's long edge and defaults to 20px, so every grouped button pair gets a shorter rule than the 24px line it drew before; its cross axis stays 1px. Because it drives the long edge rather than a fixed axis, one value works for both `direction="horizontal"` and `direction="vertical"`.
+- ed2652b: feat(web-ui): draw the checkbox checkmark from akar-icons:check
+  
+  `<web-ui-checkbox>` now strokes `akar-icons:check` where it drew `tabler:check`. Both are
+  round-capped 24-unit glyphs with `stroke-width="2"`, so the render path is untouched; what
+  changes is the geometry — `m4 12l6 6L20 6` starts its tail a unit further left and lifts the
+  tip a unit higher than `m5 12l5 5L20 7`, which reads as a longer, more open tick inside the
+  18px indicator.
+  
+  The swap keeps the precondition the draw animation depends on: the asset stays `fill: none` +
+  `stroke: currentColor`, so `<web-ui-svg-draw-lines>` animates a stroke instead of revealing a
+  solid mark. `checkbox.motion.browser.spec.ts`, which pins that, still passes.
+  
+  `@greypan/web-ui/icons` loses `tablerCheck` and gains `akarIconsCheck`. `tablerCheck` was added
+  on this unreleased line and never shipped, so no published consumer sees a removal, and
+  `@iconify-json/tabler` stays a devDependency for `tabler:sort-ascending-letters`. The new
+  devDependency `@iconify-json/akar-icons` (catalog `^1.2.7`) is only read by the generator at
+  build time — icon bodies are inlined into the emitted modules, so nothing extra lands in the
+  published bundle.
+- ed2652b: feat(web-ui): render the checkbox checkmark as an icon asset
+  
+  `<web-ui-checkbox>` drew its checkmark from a path the component carried itself. It now renders a stroked check from `@/icons` through a nested `<web-ui-icon>`, inside the same `<web-ui-svg-draw-lines>` wrapper, so the indicator is an asset like every other glyph in the library rather than a hand-held exception. The draw-in and retract, the `--wui-duration-trigger` timing and the `motion="reduced"` bypass all keep working: `<web-ui-svg-draw-lines>` reaches geometry inside nested open shadow roots, and the check's color arrives through `<web-ui-icon>`'s `--wui-icon-color`, set to `--wui-color-on-control` — the token radio's dot and switch's thumb use — so it stays legible on the accent-filled indicator.
+  
+  Two visible consequences. The stroke weight follows the asset (`stroke-width="2"` on a 24-unit canvas, previously 3), so the check is a step thinner. And it renders at `<web-ui-icon>`'s own default 18px: the host cannot reach the `<svg>` inside the icon's shadow root, so enlarging `--wui-selection-control-size` now grows the indicator box without scaling the check inside it.
+  
+  The asset has to stay stroked (`fill: none` + `stroke: currentColor`). A solid icon is a silent failure here — `<web-ui-svg-draw-lines>` animates `stroke-dashoffset`, which affects only stroke painting, so the animation runs to completion while the check simply appears. `checkbox.motion.browser.spec.ts` now pins `fill: none` and the on-control stroke to keep that precondition from regressing, and both checkbox motion specs observe the icon's nested shadow root, since `ShadowRoot.getAnimations()` does not cross into it.
+- ed2652b: fix(web-ui): size a size-less Iconify icon on the spec's 16×16 canvas
+  
+  `<web-ui-icon>` derived its `viewBox` from `icon.width`/`icon.height` and fell back to `24` when the data object declared neither. Iconify's own default canvas is 16×16 (`@iconify/types` README), so the fallback was the one value the spec does not allow: a size-less 16-unit icon was squashed into the top-left quarter of a 24-unit box instead of filling it. The fallback is now `16`, and generated assets no longer rely on it — `scripts/generate-icons.ts` resolves the merge chain (icon → icon set → spec default) before writing, so `@iconify-json/bi`, which publishes no root canvas for any of its 2084 icons, now emits `width: 16, height: 16` rather than leaving the size to the renderer.
+  
+  The published behavior difference is for consumers who hand a raw `IconifyIcon` object to `.icon` and declare no canvas on it: such an icon renders at a different scale than before. Every icon object that declares its `width`/`height` renders as it did, which covers all assets exported from `@greypan/web-ui/icons` in the previous release — `biCheck` is new on this branch and had never rendered at the right scale.
+- ed2652b: fix(web-ui): stop `<web-ui-radio>` and `<web-ui-checkbox>` from reserving space for a label they do not have
+  
+  The trigger row is an `inline-flex` with `gap: 10px`, and the host is sized by its content, so a control with nothing renderable in its default slot measured 28px for an 18px indicator: a gap only knows there is a flex item there, not that the item has no width. Every standalone control hit that, and so did the usual accessible-name workaround of slotting one visually hidden (`.sr-only`) span — that content is assigned to the slot but paints no box.
+  
+  The row now collapses the gap when the label's rendered width is 0, tracked through one `ResizeObserver` shared by all selection controls rather than one per instance. Emptiness is deliberately measured instead of asked of the slot: `slot:empty` reads the slot's own child nodes, and assigned nodes are not its children, so an assigned-but-invisible label would have looked non-empty. The other candidate — hiding the label — is the wrong one, since `display: none` takes the slotted accessible name out of the accessibility tree along with the space.
+  
+  A control whose label paints is unaffected: the 10px between indicator and text stays, as does hovering that gap to tint the indicator. A standalone or hidden-name-only control is now exactly `--wui-selection-control-size` wide, so it lines up with the content around it instead of trailing 10px of dead space. `shared/label-emptiness/__tests__/selection-label.browser.spec.ts` pins the host width for empty, `.sr-only`-only and labeled controls, the collapse when a label is removed at runtime, and the convergence for a control that mounts inside a `display: none` subtree.
+- ed2652b: Add a public `select()` to `<web-ui-input>` so callers can select the full current value through the component API instead of reaching into its shadow root or using deprecated `document.execCommand`. `<web-ui-textarea>` already exposed the same method; both now share an explicit `disabled` no-op and remain safe when the native control has not rendered.
+  
+  The consistency review also adds `readonly` to `<web-ui-editable-text>`: it keeps focus, selection, and copying available while rejecting input and leaving edit mode without a `change`, matching the read-only contract of `<web-ui-input>` and `<web-ui-textarea>`. Existing `value` read/write, `input`/`change` paths, form association, and the documented non-reflected `value` attribute on `<web-ui-editable-text>` remain backward compatible.
+- ed2652b: Expose `<web-ui-theme>`'s resolved color scheme as the read-only reflected `resolved-appearance` attribute and `resolvedAppearance` property. The value is always `light` or `dark`: explicit appearances pass through, `system` follows `prefers-color-scheme` and updates live on OS flips, and a missing `appearance` reports the default `light`. The component owns and restores the attribute, so consumers can bind CSS selectors or Tailwind custom variants to it without maintaining a second theme state; existing View Transition behavior is unchanged.
+
+### Patch Changes
+
+- ed2652b: fix(web-ui): let a form-associated control actually leave the disabled state
+  
+  Re-enabling a control left it looking and behaving disabled: `<web-ui-button disabled>` with `disabled` set back to `false` kept the shadow `<button>` disabled, dimmed at 40% opacity and unclickable, while the host property, the host attribute and the component's own disabled getter all read `false`. Only a forced re-render cleared it. Lit reflects `disabled` _after_ it renders, and the browser delivers `formDisabledCallback` synchronously inside that reflection, so the follow-up `requestUpdate()` landed while `isUpdatePending` was still true and Lit dropped it — no second render ever came. `defineFormAssociation.setDisabled` now recognises that window and re-requests the update once the cycle ends, which covers every control that composes it (`web-ui-input`, `web-ui-textarea`, `web-ui-select`, the group controls and the rest), not just the button.
+  
+  `web-ui-button` also stops mirroring the state on its own: it composes the same shared form-association lifecycle instead of holding a private `ElementInternals` and `_formDisabled` copy, so the timing rule lives in one place. Its form behaviour is unchanged — it still owns an outer form for `submit`/`reset` forwarding and contributes no value to `FormData`.
+- ed2652b: fix(web-ui): let `web-ui-button` drive its outer native form
+  
+  `type="submit"` and `type="reset"` now forward through the component host's form owner after the composed `click` event finishes (on the next task), so an unprevented activation submits or resets the owning `<form>` while a `preventDefault()` on the click still cancels it. The host declares `static formAssociated = true` and reads its live owner from `ElementInternals`; the rendered button remains in Shadow DOM without a form owner of its own, so `SubmitEvent.submitter` is `null` and the button contributes no value to `FormData`.
+- ed2652b: Make dropdown hover states use the neutral border background without changing text color, keep selected and active styling unchanged, and lower the shared menu panel background opacity in light and dark themes while preserving standalone fallback parity.
+- ed2652b: Darken light-mode surface tokens (sidebar and dropdown panels) one step for better layering.
+- ed2652b: Assign stable instance ids to native inputs inside form component shadows so Chrome form-field audits stop flagging them.
+- ed2652b: Keep theme view-transition direction based on the resolved appearance. `appearance="system"` now reveals with the dark direction when `prefers-color-scheme` resolves dark, while equal resolved appearances still skip the transition; explicit light/dark reveal directions are unchanged.
+- ed2652b: Keep theme view-transition reveals running through pointer movement: only `pointerdown` and wheel call `skipTransition()`, while `pointermove` and `pointerup` no longer end the reveal. This removes the source-box and pointer-id exemptions and preserves prompt hit-test recovery for deliberate press or scroll input.
+- ed2652b: Keep theme view-transition reveals stable when the initiating pointer emits follow-up events during the first 100ms: ignore only same-pointer movement or release inside the pointer-down target, while any genuinely new pointer or wheel input still skips the active transition and restores hit-testing promptly.
+- ed2652b: Skip the active view transition on first pointer interaction so hit-testing stops targeting the document element during theme switch.
+
 ## 8.0.0
 
 ### Major Changes
