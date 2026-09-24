@@ -32,7 +32,6 @@ describe('WebUiSvgDrawLines 组件（浏览器）', () => {
     await waitForUpdate(el)
     const path = el.querySelector('path')!
 
-    // 未显式调用 replay()，仅凭内容出现即产生动画
     await expect.poll(() => path.getAnimations().length).toBeGreaterThan(0)
     el.remove()
   })

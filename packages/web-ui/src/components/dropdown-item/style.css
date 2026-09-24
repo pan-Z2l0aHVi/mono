@@ -42,9 +42,9 @@
 }
 
 @media (hover: hover) and (pointer: fine) {
-  :host(:hover) .item-inner {
-    color: var(--wui-color-on-accent, #fff);
-    background: var(--wui-color-accent, #08f);
+  :host(:not([active])) .item-inner:hover:not(:focus-visible) {
+    color: inherit;
+    background: var(--wui-color-border, rgb(0 0 0 / 0.1));
   }
 }
 

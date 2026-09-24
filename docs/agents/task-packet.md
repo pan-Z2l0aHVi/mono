@@ -1,17 +1,16 @@
-# Task Packet 与结构化 Handoff
+# Task Packet
 
-Task packet 是 Manager 与 Agent 之间的最小交接合同；结构化 handoff 是角色之间传递工作的唯一方式。两者可以写在 issue、任务描述或本地记录中，但必须能回答以下问题，并在进入实施或验收前完整存在。
+Task Packet 是单个 task 的主合同，记录目标、范围、验收、验证和交付边界。新会话可以据此恢复工作。多 Agent 的 Role 派发、handoff 模板、Supervisor 协议和 Herdr 时序见 [`herdr-agents`](../../.agents/skills/herdr-agents/SKILL.md)。
 
-<!-- invariant:handoff-fields -->
+## 主合同
 
-## Task Packet
+每项实施任务在进入实施或验收前，都要写清这些内容：
 
-- `taskId`、级别（T0/T1/T2）、owner、worktree 和 base SHA 是什么？
-- 目标、非目标、验收标准和所需验证是什么？
-- 依赖、公共契约、changeset、浏览器验证和 reviewer 要求是什么？
-- 涉及 release 或 hotfix 场景时，遵循的是哪条 playbook？
-- 编排路径、是否启用 Designer，以及理由是什么？
-- 交付物、失败恢复方式和交接时机是什么？
+- `taskId`、级别（T0/T1/T2）、owner、worktree 和 base SHA。
+- 目标、非目标、验收标准和所需的最小充分验证。
+- 依赖、公共契约、changeset、浏览器验证和 review 要求。
+- release 或 hotfix 场景适用的 playbook。
+- 交付物、失败恢复方式和交接时机。
 
 推荐格式：
 
@@ -20,46 +19,39 @@ Task: <task-id>
 Level: t0 | t1 | t2
 Issue: <issue-url | N/A>
 Playbook: <release.md | workflow.md#playbook | N/A>
-Owner: <role/agent>
+Owner: <owner-id>
 Worktree: <absolute path>
 Base: <sha>
-Scope: <goal and non-goals>
-Route: product-design | technical
-Designer: enabled | skipped (<reason>)
-Acceptance: <observable criteria>
-Verification: <commands/evidence>
-Review: required (independent | subagent) | not required (t2)
+Goal: <observable outcome>
+Non-goals: <explicit exclusions>
+Acceptance: <observable pass conditions>
+Verification: <commands and evidence required>
+Review: <required topology or not required>
 Handoff: <what is returned and when>
 ```
 
-级别由 workflow.md「任务级别」的判据决定；影响面用 `pnpm find:usages -- <paths...>` 的输出判定并在 packet 里记录结论。任务状态本身的字段（diffHash、review、approval、verification、events）由 `pnpm task` 维护在 `<git-common-dir>/tasks/<task-id>.json`，packet 不复述机器记录，只写人的决策与验收。
+级别、影响面和状态机以 [`workflow.md`](workflow.md) 为准。task state 中的 `diffHash`、review、approval、verification 和 `events[]` 由 `pnpm task` 维护，packet 不重复这些机器记录。
 
-## 结构化 Handoff
+## 可选 Coordination 区域
 
-角色之间（Manager → Designer / Lib Coder / Biz Coder → Reviewer → Manager）统一使用本模板：五个必填字段缺一不可，`Proven mechanism（已证实机制）` 在修复类交接时为必填（见字段约束）：
+只有使用多 Agent 编排时才填写。Coordination 只记录恢复工作所需的信息，不进入 task state，也不替代冻结 diff 或 review 证据。
 
 ```text
-Handoff: <task-id>
-From: <role> → To: <role>
-Goal（目标）: <本次交接要达成的单一目标>
-Scope（范围）: <允许改动的目录/包 + 明确非目标>
-Acceptance（验收标准）: <可观察、可判定的通过条件>
-Test commands（测试命令）: <确切命令 + 期望结果 + 已执行/未执行>
-Proven mechanism（已证实机制）: <修复类必填：指向真实根因的机制描述 + 复现/排除证据>
-Open decisions（未解决决策）: <需要对方或 Manager 决策的问题 + 当前默认处理>
+Coordination id: herdr-agents/<task-id> | N/A
+Participants: <role/executor pairs>
+Supervisor: enabled | skipped (<score and reason>)
+Checkpoints:
+  - before-first-write: <clear | open | resolved | disputed | escalated; summary>
+  - first-verifiable-slice: <clear | open | resolved | disputed | escalated; summary>
+  - before-final-delivery: <clear | open | resolved | disputed | escalated; summary>
+Readiness: <Ready | Not ready | N/A>
+Open decisions: <Manager decisions still needed>
 ```
 
-字段约束：
+固定的 coordination id、报告状态、纠错规则和 Reviewer 隔离见 [`herdr-agents`](../../.agents/skills/herdr-agents/SKILL.md)。Manager 只记录恢复工作所需的信息，例如启用评分、覆盖理由、检查点结论、争议处理和 pane 生命周期，不复制完整聊天记录。
 
-- `Goal（目标）` 只描述要达成的目标，不夹带实现方案；一个 handoff 对应一个目标。
-- `Scope（范围）` 必须写明目录边界与角色归属：Lib Coder 的交接只允许 `packages/*`，Biz Coder 的交接只允许 `apps/*`；跨边界需求由 Manager 拆成两个 handoff，而不是让一个角色越界。
-- `Acceptance（验收标准）` 必须是可观察、可判定的结果，不能是“已完成”这类描述。
-- `Test commands（测试命令）` 给出确切命令与期望输出；未执行的验证必须显式标注，不能用推断代替。
-- `Proven mechanism（已证实机制）` 是条件性必填字段：修复类 handoff 必须写明已证实的根因机制（不是猜测）与支撑证据档位（引擎级复现或真机验收，见 browser-verification.md 的证据词汇三档），防止绕过根因调研直接返工方案。非修复类（新功能、重构、文档）可省略。
-- `Open decisions（未解决决策）` 列出未决问题与当前默认处理；没有未决问题也必须写“无”，不得省略该字段。
+## 恢复规则
 
-## 记录与恢复
+聊天消息、Herdr pane label、模型输出和 Supervisor 报告都不能替代 task state、冻结 diff 或验证记录。重启后，先读 Task Packet，再读 `<git-common-dir>/tasks/<task-id>.json`，最后按 [`workflow.md`](workflow.md) 判断当前 phase 和下一步。
 
-聊天消息、Herdr pane label 和模型输出都不是 task state 的替代品；重启后应能只靠 task packet、handoff 记录、Git 和 task state 恢复。
-
-[`.agents/skills/handoff/`](../../.agents/skills/handoff/) 中的 handoff skill 只用于压缩会话上下文，不替代本文件定义的角色间交接合同。
+第三方 [`handoff` skill](../../.agents/skills/handoff/SKILL.md) 只用于压缩会话上下文，不改变本文件的任务主合同，也不改变多 Agent handoff 协议。

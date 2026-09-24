@@ -51,7 +51,7 @@ issue #105 记录的三条挂起理由，在当前 Chrome 上**都不成立**：
 
 同一份最小页面（`file://`，仅主题变量切换）跑两种实现，用来定位「transform-origin 异常」这句话的来源：
 
-- **clip-path 手法**（分支采用的、也是规范示例采用的）：group `animation: none`，`transform` 全程 identity，`transform-origin` 无作用对象，圆心 = 指针位置。即使让深色主题少渲染一行内容制造 old/new 文档高度差、或把页面滚动 600px，group依旧是 identity——`root` 快照取的是 snapshot containing block（视口尺寸），old/new 同尺寸，规范里的映射变换退化为恒等。
+- **clip-path 手法**（分支采用的、也是规范示例采用的）：group `animation: none`，`transform` 全程 identity，`transform-origin` 无作用对象，圆心 = 指针位置。即使让深色主题少渲染一行内容制造 old/new 文档高度差、或把页面滚动 600px，group 依旧是 identity——`root` 快照取的是 snapshot containing block（视口尺寸），old/new 同尺寸，规范里的映射变换退化为恒等。
 - **group scale 手法**（`::view-transition-group(root){transform-origin:X Y; animation:scale}`）：`transform-origin` 会被正确写成指针坐标并按 `scale(0)→scale(1)` 播放，但因为 group 同时包裹 old 与 new 两张快照，缩放会把**整页两张快照一起放大**，观感是「整页从点击点 zoom 出来」；再叠加 Chrome UA 自己的 `-ua-view-transition-group-anim-root`（`animation-duration: 0.25s`，同样写 group 的 `transform`），作者想只改 `transform-origin` 而不接管 group 动画时就会看到「原点不生效 / 原点把画面推歪」。这是规范的既有行为，不是 Chrome 缺陷——也是「transform-origin 表现异常」最合理的出处。
 
 ## 实测三：antd 官网线上实现
@@ -81,7 +81,7 @@ issue #105 记录的三条挂起理由，在当前 Chrome 上**都不成立**：
 
 `keepAlive` 只负责把 `z-index` 从 999 收尾到 -1；真正的揭示由 WAAPI 挂在伪元素上：`clip-path: circle(0px at 1325px 143px) → circle(1526px at 1325px 143px)`，`duration: 500ms`，`easing: ease-in`，目标伪元素 `::view-transition-new(root)`（深→浅时换成 `::view-transition-old(root)`，方向反过来）。group 保留 UA 动画 `-ua-view-transition-group-anim-root`（250ms）但 `transform` 仍是 identity。生命周期 `updateCallbackDone` 124ms、`ready` 166ms、`finished` 790ms，两个方向都干净收尾（`html` class 变成 `dark` / `light`）。在第一段 transition 未结束时再触发一次 `startViewTransition`，前一条按规范被跳过（`finished` 315ms），后一条正常播完，无 reject。
 
-值得注意：仓库里那两个未被引用的 `theme-transition.css`（`@keyframes keep-alive` + `.dark` 层级交换 + 注释「对齐 ant.design 实现」）就是 antd 这套 CSS 的直译；线上真正的差异在 JS 侧的 500ms/ease-in 与「动画挂在哪个伪元素」，而分支最终改用 CSS `@keyframes` + 4.6s linear。
+仓库里那两个未被引用的 `theme-transition.css`（`@keyframes keep-alive` + `.dark` 层级交换 + 注释「对齐 ant.design 实现」）就是 antd 这套 CSS 的直译；线上真正的差异在 JS 侧的 500ms/ease-in 与「动画挂在哪个伪元素」，而分支最终改用 CSS `@keyframes` + 4.6s linear。
 
 ## 规范与状态事实（一手来源）
 

@@ -116,7 +116,6 @@ describe('image-preview 重挂载对账（浏览器）', () => {
     const { handle, host } = await openPreview()
     await pollUntil(() => dialogElement().matches(':modal'), 'dialog should enter top layer')
 
-    // 断连前手势正常：张开双指放大
     await pinchZoomOut()
     expect(handle.scale).toBeGreaterThan(1)
 

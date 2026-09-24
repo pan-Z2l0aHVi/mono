@@ -182,7 +182,6 @@ describe('overlay Escape 归属仲裁（浏览器）', () => {
     await pollUntil(() => !second.open, 'Expected Escape to close the most recently opened popover')
     await first.updateComplete
 
-    // 打开顺序兜底：后开的关闭，先开的保留且不派发关闭请求。
     expect(first.open).toBe(true)
     expect(firstRequests).toHaveLength(0)
   })
@@ -230,7 +229,6 @@ describe('overlay Escape 归属仲裁（浏览器）', () => {
 
     await userEvent.keyboard('{Escape}')
 
-    // 最上层先关：预览走完退场并被卸载，drawer 保留。
     await pollUntil(() => previewHost() == null, 'Expected Escape to close the image preview')
     expect(drawer.open).toBe(true)
   })

@@ -76,7 +76,6 @@ describe('减少动效下的 Toast 入场（浏览器）', () => {
     expect(reduced.visible).toBe(true)
     expect(reduced.hasAttribute('visible')).toBe(true)
 
-    // 对照组：显式 full 覆盖系统 reduce → 同一驱动必须采到入场过渡
     const full = mountToast('full')
     await full.updateComplete
 

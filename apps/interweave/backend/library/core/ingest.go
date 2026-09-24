@@ -34,7 +34,6 @@ func newIngestion(db *storage.DB, fetcher *remote.Fetcher) *ingestion {
 	return &ingestion{db: db, fetcher: fetcher}
 }
 
-// probeOutcome 汇总一次可用性探测的产出。
 type probeOutcome struct {
 	available    bool
 	metadataJSON string
@@ -107,7 +106,6 @@ func fileDefaultTitle(cleanPath string) string {
 	return base
 }
 
-// ingestMode 区分纳入事务内的写入组合。
 type ingestMode int
 
 const (

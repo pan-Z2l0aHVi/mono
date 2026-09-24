@@ -79,7 +79,7 @@ await ctx.batchEmit({ id: 2 })
 
 ### `defineQueue<T>(options)`
 
-A “delivery-is-consumption” queue. It removes an item immediately after calling `onConsume` and does not await a returned Promise, making it suitable for fire-and-forget work.
+A "delivery-is-consumption" queue. It removes an item immediately after calling `onConsume` and does not await a returned Promise, making it suitable for fire-and-forget work.
 
 ### `defineAckQueue<T>(options)`
 
@@ -166,7 +166,7 @@ Debounce a function with configurable timing mode.
 
 ### `safeCall(fn, options?)`
 
-Fire-and-forget wrapper. Catches sync exceptions and async rejections; silently by default, or forwards them to `options.onError` when provided. `onError` failures are swallowed too — the call stays fire-and-forget.
+Fire-and-forget wrapper. Catches sync exceptions and async rejections; silently by default, or forwards them to `options.onError` when provided. `onError` failures are swallowed too. The call stays fire-and-forget.
 
 | Parameter | Type                                 | Default | Description           |
 | --------- | ------------------------------------ | ------- | --------------------- |

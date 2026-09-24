@@ -35,7 +35,6 @@ describe('WebUiPopover portal 条件渲染边界（Lit，浏览器）', () => {
     expect(getPortalPanel()?.querySelector('.probe-flag')).not.toBeNull()
     expect(document.querySelectorAll('.probe-flag').length).toBe(0)
 
-    // 关闭恢复后 lit marker 完好，宿主内容复位，可继续翻转
     popover.open = false
     await popover.updateComplete
     await pollUntil(
@@ -63,7 +62,6 @@ describe('WebUiPopover portal 条件渲染边界（Lit，浏览器）', () => {
     await popover.updateComplete
     await pollUntil(() => !getPortalPanel()?.querySelector('.probe-flag'), 'Expected removed flag to leave the panel')
 
-    // 关闭恢复不得把已删除内容复活回宿主
     popover.open = false
     await popover.updateComplete
     await pollUntil(() => document.querySelectorAll('.probe-flag').length === 0, 'Expected removed flag not to revive')

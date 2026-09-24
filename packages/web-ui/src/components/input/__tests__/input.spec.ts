@@ -79,6 +79,40 @@ describe('WebUiInput 组件特有契约', () => {
     cleanupElement(el)
   })
 
+  it('select() 委托原生 input 全选当前值', async () => {
+    const el = createInput({ value: 'hello' })
+    await waitForUpdate(el)
+
+    const native = nativeInput(el)
+    const spy = vi.spyOn(native, 'select')
+    el.select()
+
+    expect(spy).toHaveBeenCalledTimes(1)
+    cleanupElement(el)
+  })
+
+  it('disabled 时 select() 与 focus() 一样安全 no-op', async () => {
+    const el = createInput({ value: 'hello' })
+    el.disabled = true
+    await waitForUpdate(el)
+
+    const native = nativeInput(el)
+    const selectSpy = vi.spyOn(native, 'select')
+    const focusSpy = vi.spyOn(native, 'focus')
+    el.select()
+    el.focus()
+
+    expect(selectSpy).not.toHaveBeenCalled()
+    expect(focusSpy).not.toHaveBeenCalled()
+    expect(el.shadowRoot?.activeElement).toBeNull()
+    cleanupElement(el)
+  })
+
+  it('原生 input 未渲染时 select() 不抛错', () => {
+    const el = document.createElement('web-ui-input') as WebUiInput
+    expect(() => el.select()).not.toThrow()
+  })
+
   it('clearable 有值时清除按钮派发一次 input 并把 value 置空', async () => {
     const el = createInput()
     el.clearable = true

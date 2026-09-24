@@ -95,11 +95,11 @@ ctx.emit({ id: 2 })
 
 ### `defineQueue<T>(options)`
 
-“交付即消费”的通用队列。调用 `onConsume` 后立即移除条目，不等待消费者返回的 Promise；适合 fire-and-forget 任务。消费者同步抛错或异步 rejection 会交给可选的 `onConsumeError` 观察，但不会把条目重新放回队列。
+「交付即消费」的通用队列。调用 `onConsume` 后立即移除条目，不等待消费者返回的 Promise；适合 fire-and-forget 任务。消费者同步抛错或异步 rejection 会交给可选的 `onConsumeError` 观察，但不会把条目重新放回队列。
 
 ### `defineAckQueue<T>(options)`
 
-“消费者确认后消费”的通用队列。只有 `onConsume` 返回的 Promise fulfilled 后才移除条目；rejection 只标记当前条目失败，后续条目仍会继续处理。`resume()` 或 `flush()` 可以再次尝试失败条目。
+「消费者确认后消费」的通用队列。只有 `onConsume` 返回的 Promise fulfilled 后才移除条目；rejection 只标记当前条目失败，后续条目仍会继续处理。`resume()` 或 `flush()` 可以再次尝试失败条目。
 
 两种队列都通过 `.make()` 实例化，并共享以下选项：
 
@@ -136,7 +136,7 @@ queue.enqueue('task-1')
 await queue.flush()
 ```
 
-如果不需要等待消费者 Promise fulfilled，使用 `defineQueue`；如果需要把消费者的成功结果作为移除边界，使用 `defineAckQueue`。这里的“确认”只表示消费者回调成功，不代表远端服务已经提供 exactly-once 或服务端确认。
+如果不需要等待消费者 Promise fulfilled，使用 `defineQueue`；如果需要把消费者的成功结果作为移除边界，使用 `defineAckQueue`。这里的「确认」只表示消费者回调成功，不代表远端服务已经提供 exactly-once 或服务端确认。
 
 ## 类型工具
 

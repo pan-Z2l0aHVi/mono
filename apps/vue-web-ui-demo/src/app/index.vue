@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { local } from '@greypan/browser-kit/storage'
+import { local } from '@greypan/browser-kit'
 import type { WebUiEvent, WebUiLayout, WebUiSelect } from '@greypan/web-ui'
+import { lucideX } from '@greypan/web-ui/icons'
 import { useHead } from '@unhead/vue'
 import { computed, onMounted, onScopeDispose, ref } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
@@ -97,7 +98,7 @@ const navSidebar = ref<HTMLElement>()
 onMounted(async () => {
   await router.isReady()
   requestAnimationFrame(() => {
-    const link = navSidebar.value?.querySelector('.router-link-exact-active')
+    const link = navSidebar.value?.querySelector('[data-active="true"]')
     link?.scrollIntoView({ block: 'center' })
   })
 })
@@ -139,6 +140,13 @@ const navItems: NavItem[] = [
   { path: '/components/svg-draw-lines', label: 'SVGDrawLines 描边动画' },
   { path: '/components/back-top', label: 'BackTop 回到顶部' }
 ]
+
+const navItemClass =
+  'flex items-center gap-2 w-full min-w-9 min-h-9 px-2.5 border-0 rounded-full cursor-pointer text-left transition-all duration-150 text-(--wui-color-text) active:bg-[rgb(34_33_42/0.12)] dark:active:bg-white/15 data-[active=true]:bg-(--wui-color-surface-control,#dfdfdf) data-[active=true]:hover:bg-[color-mix(in_srgb,var(--wui-color-surface-control,#dfdfdf)_90%,var(--wui-color-text,#1b1b1b))] data-[active=true]:active:bg-[color-mix(in_srgb,var(--wui-color-surface-control,#dfdfdf)_70%,var(--wui-color-text,#1b1b1b))]'
+
+function isNavActive(path: string) {
+  return route.path === path || route.path === `${path}/`
+}
 </script>
 
 <template>
@@ -166,7 +174,9 @@ const navItems: NavItem[] = [
           class="flex items-center justify-center gap-2 py-2 px-4 bg-(--wui-color-accent) text-(--wui-color-on-accent) text-sm"
         >
           <span>🎉 欢迎使用 web-ui 组件库！</span>
-          <button class="ml-auto text-current opacity-70 hover:opacity-100" @click="bannerVisible = false">✕</button>
+          <web-ui-button class="ml-auto" size="24" icon variant="ghost" @click="bannerVisible = false">
+            <web-ui-icon class="text-white" :icon="lucideX" :size="16"></web-ui-icon>
+          </web-ui-button>
         </div>
         <div slot="header" class="flex h-full w-full items-center justify-end gap-4 px-4 py-2 max-[640px]:w-screen">
           <web-ui-select
@@ -190,21 +200,31 @@ const navItems: NavItem[] = [
             <web-ui-option value="system" label="跟随系统">跟随系统</web-ui-option>
           </web-ui-select>
         </div>
-        <div class="flex h-full min-h-0 flex-col" slot="sidebar">
-          <div
-            class="shrink-0 px-5 pt-4 pb-2 text-xs font-semibold uppercase text-(--wui-color-text-secondary) max-[640px]:px-0"
-          >
-            组件列表
-          </div>
-          <nav ref="navSidebar" class="min-h-0 flex-1 p-2 max-[640px]:px-0 overflow-y-auto">
+        <div
+          slot="sidebar"
+          ref="navSidebar"
+          class="relative z-20 h-full min-h-0 overflow-y-auto p-2 max-[640px]:px-0"
+          aria-label="应用导航"
+        >
+          <nav class="grid gap-1" aria-label="主导航">
             <RouterLink
               v-for="item in navItems"
               :key="item.path"
               :to="item.path"
-              class="flex items-center h-8 my-1 rounded-full px-3 text-sm leading-5 text-(--wui-color-text) transition-[background-color] duration-150 hover:bg-[color-mix(in_srgb,var(--wui-color-surface-raised)_80%,var(--wui-color-text))]"
-              :class="route.path === item.path ? 'bg-(--wui-color-accent)! text-(--wui-color-on-accent)!' : ''"
+              :class="[
+                navItemClass,
+                isNavActive(item.path) ? '' : 'hover:bg-black/4 dark:hover:bg-white/6',
+                sidebarCollapsed ? 'justify-center' : ''
+              ]"
+              :data-active="isNavActive(item.path)"
+              :aria-current="isNavActive(item.path) ? 'page' : undefined"
+              :aria-label="item.label"
             >
-              <span class="truncate">{{ item.label }}</span>
+              <span
+                :class="sidebarCollapsed ? 'w-full truncate text-center text-sm' : 'min-w-0 flex-1 truncate text-sm'"
+              >
+                {{ item.label }}
+              </span>
             </RouterLink>
           </nav>
         </div>

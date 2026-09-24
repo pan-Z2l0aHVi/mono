@@ -74,7 +74,6 @@ describe('WebUiSelect 条件组合边界', () => {
       resolveActive()?.remove()
       await waitForUpdate(el)
 
-      // 激活项已移除：不得把索引静默偏移到 cherry 并保持高亮
       expect(resolveActive(), '激活索引不应偏移到相邻项').toBeNull()
 
       const [events] = spyEvents(el, 'input')
@@ -304,7 +303,6 @@ describe('WebUiSelect 条件组合边界', () => {
       await new Promise<void>(resolve => queueMicrotask(resolve))
       await waitForUpdate(el)
 
-      // 已选标签不因新增项丢失；键盘导航能看到新增项
       expect(trigger.textContent?.includes('Apple')).toBe(true)
       // 从已选 apple 出发 ArrowDown 确定性落到新增的 fig（portal 打开时 option 位于面板内），
       // 选中结果是「激活索引指向新增项」的公开可观察后果。

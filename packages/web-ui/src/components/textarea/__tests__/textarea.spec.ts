@@ -61,14 +61,38 @@ describe('WebUiTextarea 组件特有契约', () => {
     cleanupElement(el)
   })
 
-  it('select() 选中 textarea 内容', async () => {
+  it('select() 委托原生 textarea 全选当前值', async () => {
     const el = createTextarea({ value: 'hello' })
     await waitForUpdate(el)
 
-    const spy = vi.spyOn(nativeTextarea(el), 'select')
+    const native = nativeTextarea(el)
+    const spy = vi.spyOn(native, 'select')
     el.select()
-    expect(spy).toHaveBeenCalled()
+
+    expect(spy).toHaveBeenCalledTimes(1)
     cleanupElement(el)
+  })
+
+  it('disabled 时 select() 与 focus() 一样安全 no-op', async () => {
+    const el = createTextarea({ value: 'hello' })
+    el.disabled = true
+    await waitForUpdate(el)
+
+    const native = nativeTextarea(el)
+    const selectSpy = vi.spyOn(native, 'select')
+    const focusSpy = vi.spyOn(native, 'focus')
+    el.select()
+    el.focus()
+
+    expect(selectSpy).not.toHaveBeenCalled()
+    expect(focusSpy).not.toHaveBeenCalled()
+    expect(el.shadowRoot?.activeElement).toBeNull()
+    cleanupElement(el)
+  })
+
+  it('原生 textarea 未渲染时 select() 不抛错', () => {
+    const el = document.createElement('web-ui-textarea') as WebUiTextarea
+    expect(() => el.select()).not.toThrow()
   })
 
   it('将 aria-label 转发给原生 textarea', async () => {

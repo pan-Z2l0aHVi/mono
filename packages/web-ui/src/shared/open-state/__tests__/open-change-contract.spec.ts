@@ -25,15 +25,10 @@ type Openable = HTMLElement & { updateComplete: Promise<unknown>; isOpen: boolea
 
 interface OpenChangeSpec {
   name: string
-  /** 建宿主并挂到文档上 */
   create: () => Openable
-  /** 程序式打开：属性或公开方法 */
   programOpen: (el: Openable) => void
-  /** 程序式关闭：属性或公开方法 */
   programClose: (el: Openable) => void
-  /** 用户手势打开 */
   userOpen: (el: Openable) => void
-  /** 用户手势关闭 */
   userClose: (el: Openable) => void
   /**
    * 再次以程序式施加**同一目标状态**（幂等通道），且**复用 `programOpen` 的同一入口**。

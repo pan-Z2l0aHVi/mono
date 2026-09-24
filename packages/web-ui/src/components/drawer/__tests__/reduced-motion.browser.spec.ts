@@ -127,7 +127,6 @@ describe('减少动效下的 Drawer 拖拽关闭（浏览器）', () => {
     await openDrawer(reduced)
     await dragToClose(reduced, 300)
 
-    // 无收尾过渡：松手瞬间即到位，且窗口内采不到任何动画。
     expect(reduced.open).toBe(false)
     expect(await sampleTransitions(reduced, 4)).toHaveLength(0)
 

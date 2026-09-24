@@ -95,7 +95,6 @@ describe('减少动效下的 Collapse（浏览器）', () => {
     '<button class="trigger">Trigger</button><div slot="content"><div style="height: 80px">Content</div></div>'
 
   it('系统 reduce：展开收起全程不出现过渡；对照组 full 出现', async () => {
-    // 被测组：motion 省略 → 'system' → 命中系统 reduce
     const reducedEl = mountInsideTheme(null, createCollapse(CONTENT))
     const reduced = reducedEl.querySelector('web-ui-collapse') as WebUiCollapse
     await reduced.updateComplete
@@ -130,7 +129,6 @@ describe('减少动效下的 Collapse（浏览器）', () => {
     expect(await sampleTransitions(el, false)).toHaveLength(0)
     await waitFor(() => queryInner(el).hasAttribute('inert'))
 
-    // 无过渡 → 直接落稳态：内容仍挂载（不 hidden）但交互被阻断
     expect(queryContentContainer(el).hidden).toBe(false)
     expect(queryInner(el).hasAttribute('inert')).toBe(true)
   })

@@ -79,11 +79,11 @@ await ctx.batchEmit({ id: 2 })
 
 ### `defineQueue<T>(options)`
 
-“交付即消费”的通用队列。调用 `onConsume` 后立即移除条目，不等待消费者返回的 Promise；适合 fire-and-forget 任务。
+「交付即消费」的通用队列。调用 `onConsume` 后立即移除条目，不等待消费者返回的 Promise；适合 fire-and-forget 任务。
 
 ### `defineAckQueue<T>(options)`
 
-“消费者确认后消费”的通用队列。只有 `onConsume` 返回的 Promise fulfilled 后才移除条目；rejection 只影响当前项，失败项可由 `resume()` 或 `flush()` 再次尝试。
+「消费者确认后消费」的通用队列。只有 `onConsume` 返回的 Promise fulfilled 后才移除条目；rejection 只影响当前项，失败项可由 `resume()` 或 `flush()` 再次尝试。
 
 两种队列都提供 `enqueue()`、`pause()`、`resume()` 和异步 `flush()`，并支持 `initialItems`、同步 `onPersist` 快照持久化以及 `onConsumeError`。完整选项表、flush 与 persist-before-commit 语义、以及在消费者内调用 `flush()` 的循环等待约束见 [`src/plugin-system/README.md`](./src/plugin-system/README.md)。
 

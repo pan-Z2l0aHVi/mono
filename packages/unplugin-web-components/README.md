@@ -90,8 +90,8 @@ With `sideEffects: true` the injected script is roughly:
 
 Notes on HTML injection:
 
-- Only kebab-case custom elements (`<web-ui-*>` → `web-ui-button`) are detected. Matching is case-insensitive because HTML tag names are normalized to lowercase by the parser: `<WEB-UI-BUTTON>` and `<web-ui-Button>` are both treated as `web-ui-button`. CamelCase names like `<WebUiButton>` are not — the parser normalizes them to a different tag (`webuibutton`).
-- HTML comments and raw-text/RCDATA regions (`script`, `style`, `title`, `textarea`, `iframe`, `xmp`, `noembed`, `noframes`, `noscript`) are ignored, so pseudo-tags in them never produce imports. Unclosed regions are normally treated as running to the end of the file; because a regex scanner cannot model comment and RAWTEXT tokenizer states simultaneously, an unclosed `<script>`/`style` pseudo-tag inside a comment (for example, `<!-- <script> --><web-ui-button>`) may swallow a real tag that follows it. Quoted attribute values are also skipped, including values with whitespace around `=` — `<div data-template = "<web-ui-button>">` does not trigger an import.
+- Only kebab-case custom elements (`<web-ui-*>` → `web-ui-button`) are detected. Matching is case-insensitive because HTML tag names are normalized to lowercase by the parser: `<WEB-UI-BUTTON>` and `<web-ui-Button>` are both treated as `web-ui-button`. CamelCase names like `<WebUiButton>` are not. The parser normalizes them to a different tag (`webuibutton`).
+- HTML comments and raw-text/RCDATA regions (`script`, `style`, `title`, `textarea`, `iframe`, `xmp`, `noembed`, `noframes`, `noscript`) are ignored, so pseudo-tags in them never produce imports. Unclosed regions are normally treated as running to the end of the file; because a regex scanner cannot model comment and RAWTEXT tokenizer states simultaneously, an unclosed `<script>`/`style` pseudo-tag inside a comment (for example, `<!-- <script> --><web-ui-button>`) may swallow a real tag that follows it. Quoted attribute values are also skipped, including values with whitespace around `=`; `<div data-template = "<web-ui-button>">` does not trigger an import.
 - The HTML must pass through a Vite build (`vite build`). Files in `public/` are served as-is, and HTML opened directly from disk is not transformed.
 
 ## API
@@ -102,10 +102,10 @@ Create an unplugin instance for web component auto-import.
 
 | Parameter             | Type      | Default | Description                                 |
 | --------------------- | --------- | ------- | ------------------------------------------- |
-| `options.tagPrefix`   | `string`  | -       | Component tag prefix (e.g. `'web-ui'`)      |
-| `options.packageName` | `string`  | -       | NPM package name (e.g. `'@greypan/web-ui'`) |
+| `options.tagPrefix`   | `string`  | —       | Component tag prefix (e.g. `'web-ui'`)      |
+| `options.packageName` | `string`  | —       | NPM package name (e.g. `'@greypan/web-ui'`) |
 | `options.sideEffects` | `boolean` | `false` | Use side-effect imports (`import 'pkg'`)    |
-| `options.withStyle`   | `string`  | -       | CSS file to import with each component      |
+| `options.withStyle`   | `string`  | —       | CSS file to import with each component      |
 
 ### Supported bundlers
 
@@ -115,4 +115,4 @@ Create an unplugin instance for web component auto-import.
 | `/webpack` | Vue (`.vue`), React (`.tsx`/`.jsx`) | —                              |
 
 - Only `/vite` and `/webpack` sub-path exports are published; Rollup and esbuild entries are not provided.
-- HTML injection is a Vite-only capability. The Webpack adapter performs module-source transforms only and does not inject into HTML — Webpack HTML injection would require a separate `HtmlWebpackPlugin` integration.
+- HTML injection is a Vite-only capability. The Webpack adapter performs module-source transforms only and does not inject into HTML. Webpack HTML injection would require a separate `HtmlWebpackPlugin` integration.

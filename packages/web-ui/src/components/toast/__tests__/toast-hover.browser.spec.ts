@@ -187,10 +187,14 @@ describe('toast 悬停暂停（浏览器）', () => {
     await page.elementLocator(findToast(id) as Element).hover()
     await wait(100)
 
-    // 悬停期间搬迁（真实 Chromium 走 moveBefore + connectedMoveCallback）。
+    // 悬停期间搬迁（真实 Chromium 走 moveBefore + connectedMoveCallback）。补丁对已挂载
+    // 元素同步生效；但并行负载下若悬停暂停未赶上、元素已进入退场，补丁会走 pendingBatch
+    // 延迟路径——以条件收敛判定搬迁，不用固定帧数。
     toast({ id, message: '悬停并搬迁', position: 'bottom-left' })
-    await waitMounted()
-    expect(findToast(id)?.parentElement?.dataset.wuiToastPosition).toBe('bottom-left')
+    await waitFor(
+      () => findToast(id)?.parentElement?.dataset.wuiToastPosition === 'bottom-left',
+      'toast was not relocated to bottom-left'
+    )
 
     // 搬迁不得把 toast 从屏上抹掉。剩余时间是否被吞掉不由这里等待判定（固定 sleep 在并行
     // 负载下会把自己睡过期），交给下面续跑后的 deadline 读数。
@@ -231,7 +235,6 @@ describe('toast 悬停暂停（浏览器）', () => {
     await el.updateComplete
 
     const timing = el as unknown as { _closeTimer?: unknown; _pausedRemaining?: number }
-    // 计时器从未创建。
     expect(timing._closeTimer).toBeUndefined()
     // 剩余记为整段时长，等指针离开后才续跑。
     expect(timing._pausedRemaining).toBe(3000)

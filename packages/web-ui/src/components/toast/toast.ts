@@ -7,14 +7,20 @@ import '@/components/button'
 import { customElement, property } from 'lit/decorators.js'
 
 import glass from '@/assets/glass.css?inline'
-import { lucideCheck, lucideInfo, lucideTriangleAlert, lucideCircleAlert, heroiconsXMark16Solid } from '@/icons'
+import {
+  lucideInfo,
+  lucideTriangleAlert,
+  lucideCircleAlert,
+  heroiconsXMark16Solid,
+  heroiconsCheck16Solid
+} from '@/icons'
 import { getTransitionDuration } from '@/shared/overlay/presence'
 
 import style from './style.css?inline'
 import type { ToastCloseReason, ToastPosition, ToastType } from './types'
 
 const TYPE_ICONS: Record<ToastType, IconifyIcon> = {
-  success: lucideCheck,
+  success: heroiconsCheck16Solid,
   info: lucideInfo,
   warning: lucideTriangleAlert,
   error: lucideCircleAlert

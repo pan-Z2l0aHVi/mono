@@ -1,7 +1,17 @@
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
+import { cdp } from 'vite-plus/test/browser'
 
 import type { ThemeMotion, WebUiTheme } from '..'
 import '..'
+
+interface CdpSession {
+  send: (method: string, params?: Record<string, unknown>) => Promise<unknown>
+}
+
+async function emulateColorScheme(value: 'light' | 'dark'): Promise<void> {
+  const session = cdp() as unknown as CdpSession
+  await session.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value }] })
+}
 
 function createRootTheme(motion: ThemeMotion = 'full'): WebUiTheme {
   const theme = document.createElement('web-ui-theme') as WebUiTheme
@@ -11,6 +21,38 @@ function createRootTheme(motion: ThemeMotion = 'full'): WebUiTheme {
   theme.style.setProperty('--wui-theme-transition-duration', '3000ms')
   document.body.append(theme)
   return theme
+}
+
+function createHitTarget(left = 40): HTMLElement {
+  const target = document.createElement('button')
+  target.style.cssText = `position:fixed;left:${left}px;top:40px;width:160px;height:48px;z-index:1`
+  target.textContent = 'issue162 hit target'
+  document.body.append(target)
+  return target
+}
+
+function centerOf(target: HTMLElement): { x: number; y: number } {
+  const box = target.getBoundingClientRect()
+  return { x: box.left + box.width / 2, y: box.top + box.height / 2 }
+}
+
+function dispatchPointer(
+  target: EventTarget,
+  type: 'pointerdown' | 'pointermove' | 'pointerup',
+  point: { x: number; y: number },
+  pointerId = 1
+): void {
+  target.dispatchEvent(
+    new PointerEvent(type, { bubbles: true, composed: true, clientX: point.x, clientY: point.y, pointerId })
+  )
+}
+
+async function waitFor(condition: () => boolean, message: string, timeoutMs = 1000): Promise<void> {
+  const deadline = performance.now() + timeoutMs
+  while (!condition()) {
+    if (performance.now() >= deadline) throw new Error(message)
+    await new Promise(resolve => requestAnimationFrame(resolve))
+  }
 }
 
 function createNestedTheme(): WebUiTheme {
@@ -26,9 +68,18 @@ function createNestedTheme(): WebUiTheme {
 function wrapStartViewTransition() {
   const original = document.startViewTransition
   let transition: ViewTransition | undefined
+  let skipCount = 0
   const start = vi.fn<(update?: () => void | Promise<void>) => ViewTransition>(
     (update?: () => void | Promise<void>) => {
       transition = original.call(document, update)
+      const skip = transition.skipTransition.bind(transition)
+      Object.defineProperty(transition, 'skipTransition', {
+        configurable: true,
+        value: () => {
+          skipCount += 1
+          skip()
+        }
+      })
       return transition
     }
   )
@@ -37,15 +88,68 @@ function wrapStartViewTransition() {
     get current() {
       return transition
     },
+    get skipCount() {
+      return skipCount
+    },
     restore() {
       document.startViewTransition = original
     }
   }
 }
 
-afterEach(() => document.body.replaceChildren())
+afterEach(async () => {
+  window.dispatchEvent(new KeyboardEvent('keydown'))
+  document.body.replaceChildren()
+  await emulateColorScheme('light')
+})
 
 describe('theme transition（浏览器）', () => {
+  it('OS light 下 light→system 不启动 View Transition', async () => {
+    await emulateColorScheme('light')
+    const wrapper = wrapStartViewTransition()
+    const theme = createRootTheme()
+    await theme.updateComplete
+
+    theme.appearance = 'system'
+    await theme.updateComplete
+
+    expect(wrapper.current).toBeUndefined()
+    expect(theme.appearance).toBe('system')
+    expect(theme.resolvedAppearance).toBe('light')
+    wrapper.restore()
+  })
+
+  it('OS dark 下 light→system 使用 dark 扩大方向', async () => {
+    await emulateColorScheme('dark')
+    const wrapper = wrapStartViewTransition()
+    const theme = createRootTheme()
+    await theme.updateComplete
+
+    theme.appearance = 'system'
+    const transition = wrapper.current
+    expect(transition).toBeDefined()
+    await transition!.ready
+    await Promise.resolve()
+    expect(theme.appearance).toBe('system')
+    expect(theme.resolvedAppearance).toBe('dark')
+
+    const reveal = document
+      .getAnimations()
+      .find(
+        animation =>
+          ((animation.effect as KeyframeEffect | null)?.pseudoElement ?? '') === '::view-transition-new(root)'
+      )
+    expect(reveal).toBeDefined()
+    const frames = (reveal!.effect as KeyframeEffect).getKeyframes()
+    expect(frames[0].clipPath as string).toMatch(/^circle\(0px at /)
+    expect(frames[1].clipPath as string).toMatch(/^circle\(\d+px at /)
+    expect(getComputedStyle(document.documentElement, '::view-transition-old(root)').zIndex).toBe('1')
+    expect(getComputedStyle(document.documentElement, '::view-transition-new(root)').zIndex).toBe('2')
+
+    await transition!.finished
+    wrapper.restore()
+  })
+
   it('根主题在 ::view-transition-new(root) 上创建圆形揭示并在结束后清理', async () => {
     const wrapper = wrapStartViewTransition()
     const theme = createRootTheme()
@@ -56,6 +160,8 @@ describe('theme transition（浏览器）', () => {
     expect(transition).toBeDefined()
     await transition!.ready
     await Promise.resolve()
+    expect(theme.resolvedAppearance).toBe('dark')
+    expect(theme.getAttribute('resolved-appearance')).toBe('dark')
 
     const reveal = document
       .getAnimations()
@@ -66,7 +172,9 @@ describe('theme transition（浏览器）', () => {
     expect(reveal).toBeDefined()
     const effect = reveal!.effect as KeyframeEffect
     expect(effect.target).toBe(document.documentElement)
-    expect((effect.getKeyframes()[0].clipPath as string).startsWith('circle(0px at ')).toBe(true)
+    const revealFrames = effect.getKeyframes()
+    expect((revealFrames[0].clipPath as string).startsWith('circle(0px at ')).toBe(true)
+    expect(revealFrames[1].clipPath as string).toMatch(/^circle\(\d+px at /)
     expect(getComputedStyle(document.documentElement, '::view-transition-old(root)').zIndex).toBe('1')
     expect(getComputedStyle(document.documentElement, '::view-transition-new(root)').zIndex).toBe('2')
     expect(
@@ -85,6 +193,8 @@ describe('theme transition（浏览器）', () => {
     expect(reverse).not.toBe(transition)
     await reverse.ready
     await Promise.resolve()
+    expect(theme.resolvedAppearance).toBe('light')
+    expect(theme.getAttribute('resolved-appearance')).toBe('light')
 
     const conceal = document
       .getAnimations()
@@ -93,7 +203,11 @@ describe('theme transition（浏览器）', () => {
           ((animation.effect as KeyframeEffect | null)?.pseudoElement ?? '') === '::view-transition-old(root)'
       )
     expect(conceal).toBeDefined()
-    expect((conceal!.effect as KeyframeEffect).target).toBe(document.documentElement)
+    const concealEffect = conceal!.effect as KeyframeEffect
+    expect(concealEffect.target).toBe(document.documentElement)
+    const concealFrames = concealEffect.getKeyframes()
+    expect(concealFrames[0].clipPath as string).toMatch(/^circle\(\d+px at /)
+    expect((concealFrames[1].clipPath as string).startsWith('circle(0px at ')).toBe(true)
     expect(getComputedStyle(document.documentElement, '::view-transition-old(root)').zIndex).toBe('2')
     expect(getComputedStyle(document.documentElement, '::view-transition-new(root)').zIndex).toBe('1')
     await reverse.finished
@@ -148,6 +262,83 @@ describe('theme transition（浏览器）', () => {
     expect(getComputedStyle(document.documentElement, `::view-transition-new(${reverseName})`).zIndex).toBe('1')
     await reverse.finished
 
+    expect(theme.style.getPropertyValue('view-transition-name')).toBe('')
+    expect(theme.style.getPropertyValue('display')).toBe('')
+    wrapper.restore()
+  })
+
+  it('pointermove 与 pointerup 不触发 skip，pointerdown 立即恢复 hit-test', async () => {
+    const wrapper = wrapStartViewTransition()
+    const source = createHitTarget()
+    const recovery = createHitTarget(240)
+    const theme = createRootTheme()
+    await theme.updateComplete
+    const sourcePoint = centerOf(source)
+    const recoveryPoint = centerOf(recovery)
+
+    dispatchPointer(source, 'pointerdown', sourcePoint, 7)
+    dispatchPointer(source, 'pointerup', sourcePoint, 7)
+    theme.appearance = 'dark'
+    const transition = wrapper.current
+    expect(transition).toBeDefined()
+    await transition!.ready
+    await Promise.resolve()
+    expect(document.elementFromPoint(recoveryPoint.x, recoveryPoint.y)).toBe(document.documentElement)
+
+    dispatchPointer(document.documentElement, 'pointermove', sourcePoint, 7)
+    dispatchPointer(document.documentElement, 'pointermove', recoveryPoint, 99)
+    dispatchPointer(document.documentElement, 'pointerup', sourcePoint, 7)
+    expect(wrapper.skipCount).toBe(0)
+    expect(document.elementFromPoint(recoveryPoint.x, recoveryPoint.y)).toBe(document.documentElement)
+    const reveal = document
+      .getAnimations()
+      .find(
+        animation =>
+          ((animation.effect as KeyframeEffect | null)?.pseudoElement ?? '') === '::view-transition-new(root)'
+      )
+    expect(reveal?.playState).toBe('running')
+
+    dispatchPointer(document.documentElement, 'pointerdown', recoveryPoint, 99)
+    expect(wrapper.skipCount).toBe(1)
+    await waitFor(
+      () => document.elementFromPoint(recoveryPoint.x, recoveryPoint.y) === recovery,
+      'pointerdown did not end rendering suppression before the configured duration'
+    )
+    await transition!.finished.catch(() => undefined)
+
+    expect(theme.appearance).toBe('dark')
+    expect(document.adoptedStyleSheets.some(sheet => sheet.cssRules.length > 0)).toBe(false)
+    expect(theme.style.getPropertyValue('view-transition-name')).toBe('')
+    expect(theme.style.getPropertyValue('display')).toBe('')
+    wrapper.restore()
+  })
+
+  it('wheel 立即触发 skip 并恢复 hit-test', async () => {
+    const wrapper = wrapStartViewTransition()
+    const target = createHitTarget()
+    const theme = createRootTheme()
+    await theme.updateComplete
+    const point = centerOf(target)
+    expect(document.elementFromPoint(point.x, point.y)).toBe(target)
+
+    window.dispatchEvent(new KeyboardEvent('keydown'))
+    theme.appearance = 'dark'
+    const transition = wrapper.current
+    expect(transition).toBeDefined()
+    await transition!.ready
+    await Promise.resolve()
+    expect(document.elementFromPoint(point.x, point.y)).toBe(document.documentElement)
+
+    window.dispatchEvent(new WheelEvent('wheel', { bubbles: true, composed: true, cancelable: true }))
+    expect(wrapper.skipCount).toBe(1)
+    await waitFor(
+      () => document.elementFromPoint(point.x, point.y) === target,
+      'wheel did not end rendering suppression before the configured duration'
+    )
+    await transition!.finished.catch(() => undefined)
+
+    expect(theme.appearance).toBe('dark')
+    expect(document.adoptedStyleSheets.some(sheet => sheet.cssRules.length > 0)).toBe(false)
     expect(theme.style.getPropertyValue('view-transition-name')).toBe('')
     expect(theme.style.getPropertyValue('display')).toBe('')
     wrapper.restore()

@@ -42,6 +42,23 @@ describe('WebUiIcon 组件', () => {
       expect(queryA11y(el, '[aria-hidden="true"]')).toBeTruthy()
       cleanupElement(el)
     })
+
+    it('未声明尺寸时按 Iconify 默认的 16×16 画布取景', async () => {
+      const el = createIcon()
+      await waitForUpdate(el)
+
+      expect(el.shadowRoot?.querySelector('svg')?.getAttribute('viewBox')).toBe('0 0 16 16')
+      cleanupElement(el)
+    })
+
+    it('声明了尺寸时用图标自带画布，不套默认值', async () => {
+      const el = mountElement<WebUiIcon>('web-ui-icon')
+      el.icon = { body: '<path d="M4 6h16v2H4z"/>', width: 24, height: 24 }
+      await waitForUpdate(el)
+
+      expect(el.shadowRoot?.querySelector('svg')?.getAttribute('viewBox')).toBe('0 0 24 24')
+      cleanupElement(el)
+    })
   })
 
   describe('默认属性与反射', () => {

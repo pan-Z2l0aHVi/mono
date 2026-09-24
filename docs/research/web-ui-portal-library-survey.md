@@ -6,7 +6,7 @@
 
 ## 结论
 
-**维持手写。** 本仓库 portal 需求面中真正有难度的条目——theme overlay root 解析、open native dialog（top layer）内容器解析、Shadow DOM CSS 自定义属性镜像、消费者节点**选择性**迁移（含 slot 归属边界）、menu 族关闭态 slot 属性隐藏、presence 进出场协调——全部是本仓库领域语义，没有任何候选库覆盖；而"通用 portal 语义"部分（append 到容器 + 移除恢复）我们的 `defineOverlayPortal` 核心只有约 50 行，引入库收益趋近于零。生态侧证据：Floating UI 官方明确 portal 不是定位库职责（React 包装层才有 `FloatingPortal`）；Lit 官方（`@lit-labs` 全部 14 个包）无 portal/overlay 原语；npm 上无活跃维护的独立 Web Component / Lit portal 库（`lit-portal` 停滞于 2023-04，`@lion/overlays` 停滞于 2022-09）。成熟组件库的做法也佐证手写是常态：Radix / React Aria 的 portal 只是 React 内建 `createPortal` 的薄封装（Web Components 没有等价物，我们的手写 portal 恰是其等价物）；Vaadin 整条 overlay 栈自研；Shoelace / Web Awesome 干脆不 portal（popup 原地渲染）。
+**维持手写。** 本仓库 portal 需求面中真正有难度的条目——theme overlay root 解析、open native dialog（top layer）内容器解析、Shadow DOM CSS 自定义属性镜像、消费者节点**选择性**迁移（含 slot 归属边界）、menu 族关闭态 slot 属性隐藏、presence 进出场协调——全部是本仓库领域语义，没有任何候选库覆盖；而「通用 portal 语义」部分（append 到容器 + 移除恢复）我们的 `defineOverlayPortal` 核心只有约 50 行，引入库收益趋近于零。生态侧证据：Floating UI 官方明确 portal 不是定位库职责（React 包装层才有 `FloatingPortal`）；Lit 官方（`@lit-labs` 全部 14 个包）无 portal/overlay 原语；npm 上无活跃维护的独立 Web Component / Lit portal 库（`lit-portal` 停滞于 2023-04，`@lion/overlays` 停滞于 2022-09）。成熟组件库的做法也佐证手写是常态：Radix / React Aria 的 portal 只是 React 内建 `createPortal` 的薄封装（Web Components 没有等价物，我们的手写 portal 恰是其等价物）；Vaadin 整条 overlay 栈自研；Shoelace / Web Awesome 干脆不 portal（popup 原地渲染）。
 
 ---
 
@@ -29,7 +29,7 @@ portal.moveContent(
 )
 ```
 
-| 5 | 与消费者框架 vdom 的冲突补偿：`onContentChange` MutationObserver → `scheduleRefresh`；已删除节点 `removeContent` 防关闭时"复活" | `select/index.ts:437,589`、`select/__tests__/conditional-combo.spec.ts` | 领域（React/Vue 内建 portal 由 vdom 拥有节点，无此问题） |
+| 5 | 与消费者框架 vdom 的冲突补偿：`onContentChange` MutationObserver → `scheduleRefresh`；已删除节点 `removeContent` 防关闭时「复活」 | `select/index.ts:437,589`、`select/__tests__/conditional-combo.spec.ts` | 领域（React/Vue 内建 portal 由 vdom 拥有节点，无此问题） |
 | 6 | menu 族专用形态：无 shadow 共享面板（复用容器预注入样式）；dialog 容器例外自注入；submenu 独立 overlay；关闭态 slot 属性隐藏（`context-menu-hidden` / `web-ui-menu-level-*-hidden`） | `src/shared/menu-portal/menu-portal.ts`、ADR-0033 | **领域** |
 | 7 | presence 进出场协调：`data-wuiPresence` 状态机（entering/open/closing）、可中断、transitionend + duration+80ms 兜底、jsdom 短路；native dialog top layer 退出动画生命周期 | `src/shared/overlay/presence.ts`、`native-dialog-presence.ts` | 领域 |
 | 8 | 与定位引擎分层：portal 只管容器与内容归属，定位由 `defineOverlay`（`@floating-ui/dom`）负责，`defineAnchoredPanel` 组合三者 | `src/shared/overlay/anchored-panel.ts`、ADR-0038 | 通用（该分层正是业界共识） |
@@ -63,7 +63,7 @@ npm registry 搜索（`lit portal`、`web components portal`、`dom portal`、`l
 - **Radix UI**（[`packages/react/portal/src/portal.tsx`](https://github.com/radix-ui/primitives/blob/main/packages/react/portal/src/portal.tsx)）：全文件约 40–45 行，核心约 10 行——`ReactDOM.createPortal(<Primitive.div {...portalProps} ref={forwardedRef} />, container)`；`containerProp || (mounted && globalThis?.document?.body)`，SSR 前返回 null。语义 = 薄薄 append 到 body + container 透传，无 shadow/theme/top-layer 概念。
 - **React Aria**（[`packages/react-aria/src/overlays/Overlay.tsx`](https://github.com/adobe/react-spectrum/blob/main/packages/react-aria/src/overlays/Overlay.tsx)、[`useModal.tsx`](https://github.com/adobe/react-spectrum/blob/main/packages/react-aria/src/overlays/useModal.tsx)）：`Overlay` = `ReactDOM.createPortal` 到 `portalContainer ?? document.body` + `FocusScope` + PortalProvider context；`OverlayContainer` = createPortal 到 body 末尾 + `OverlayProvider`（useModal.tsx:157 `return ReactDOM.createPortal(contents, portalContainer);`），配套 `ariaHideOutside`（对 overlay 外内容 aria-hidden）与 `usePreventScroll`。**解决**：portal 到 body、a11y 屏蔽、scroll lock、焦点域。**不解决**：定位（`useOverlayPosition` 用自家 `calculatePosition`，非 floating-ui）；Shadow DOM 样式继承与选择性内容迁移（React vdom 拥有 children，物理迁移问题不存在——这正是 web component 场景的本质差异）。
 - **Vue Teleport**（[官方指南](https://vuejs.org/guide/built-ins/teleport)）：内置 `<Teleport to>`（CSS selector 或 DOM 节点）、`disabled`、`defer`（3.5+）；"only alters the rendered DOM structure — it does not affect the logical hierarchy"；不处理样式继承/定位/动画（需自行组合 `<Transition>`）。目标须已存在于 DOM。能力边界 = 移动"框架自己的模板"，节点由 vdom 拥有。
-- **Vaadin**（[`packages/overlay/src/vaadin-overlay.js`](https://github.com/vaadin/web-components/blob/main/packages/overlay/src/vaadin-overlay.js)）：**自研** `<vaadin-overlay>` 元素，overlay 元素本身是 portal 单元（mixin 文档："When true, the overlay is visible and **attached to body**"），内容由 `renderer(root)` **命令式填充**进 overlay 元素——消费者"把内容交给 overlay 渲染"而非物理迁移 light DOM。定位/层叠/焦点全自研（`vaadin-overlay-position-mixin.js`、`-stack-mixin.js`、`-focus-mixin.js`；其 DOM 观察工具注释声明 "Based on the idea from … Floating UI" 但未引其库，代码搜索全仓库无 `@floating-ui/dom` import）。
+- **Vaadin**（[`packages/overlay/src/vaadin-overlay.js`](https://github.com/vaadin/web-components/blob/main/packages/overlay/src/vaadin-overlay.js)）：**自研** `<vaadin-overlay>` 元素，overlay 元素本身是 portal 单元（mixin 文档："When true, the overlay is visible and **attached to body**"），内容由 `renderer(root)` **命令式填充**进 overlay 元素——消费者「把内容交给 overlay 渲染」而非物理迁移 light DOM。定位/层叠/焦点全自研（`vaadin-overlay-position-mixin.js`、`-stack-mixin.js`、`-focus-mixin.js`；其 DOM 观察工具注释声明 "Based on the idea from … Floating UI" 但未引其库，代码搜索全仓库无 `@floating-ui/dom` import）。
 - **Shoelace / Web Awesome**（[`popup.component.ts`](https://github.com/shoelace-style/shoelace/blob/current/src/components/popup/popup.component.ts)、[`popup.ts`](https://github.com/shoelace-style/webawesome/blob/next/packages/webawesome/src/components/popup/popup.ts)）：`sl-popup` / `wa-popup` 是基于 `@floating-ui/dom`（`computePosition` + `autoUpdate`，middleware：offset → size/flip/shift → arrow）的**定位组件**：panel 原地渲染在自己 shadow root 内，仅写坐标（`Object.assign(this.popup.style, {left, top})`），**不 portal、不迁移内容**；`composed-offset-position` 依赖用于 Shadow DOM offset-parent 修正。DOM 归属策略 = 靠定位坐标规避 stacking 问题，portal 留给上层组件/消费者。
 
 ## 6. 候选承载能力判定
@@ -79,11 +79,11 @@ npm registry 搜索（`lit portal`、`web components portal`、`dom portal`、`l
 
 ## 7. 维持手写的理由汇总
 
-1. **需求面错位**：通用库只覆盖 §1 中的"通用"行（约 1/8），且我们已有等价物；"领域"行全部要自写适配层，引入库反而多一层间接。
-2. **生态空位**：Lit 官方无原语（§3），npm 无活跃独立库（§4），没有"现成成熟"可选。
+1. **需求面错位**：通用库只覆盖 §1 中的「通用」行（约 1/8），且我们已有等价物；「领域」行全部要自写适配层，引入库反而多一层间接。
+2. **生态空位**：Lit 官方无原语（§3），npm 无活跃独立库（§4），没有「现成成熟」可选。
 3. **架构分层已正确**：ADR-0038 已把定位交给 `@floating-ui/dom`（Shoelace/Web Awesome 同款策略），portal 独立成层与 Floating UI 官方立场（§2）一致。
-4. **演进方向是更细的所有权边界**：release/260909 的 select trigger-slot 过滤表明需求在向"选择性迁移 + slot 归属"深化（ADR-0033 的写入边界约束），这类细粒度控制没有任何通用 portal 库预置。
-5. **可借鉴而非引入**：Radix/React Aria 的"薄 portal + a11y/scroll-lock 关注点分离"、Vaadin 的 renderer 式内容归属、Shoelace 的 `composed-offset-position` Shadow DOM 修正，均为后续 portal 层演进时的参考模式，不需要以依赖形式获得。
+4. **演进方向是更细的所有权边界**：release/260909 的 select trigger-slot 过滤表明需求在向「选择性迁移 + slot 归属」深化（ADR-0033 的写入边界约束），这类细粒度控制没有任何通用 portal 库预置。
+5. **可借鉴而非引入**：Radix/React Aria 的「薄 portal + a11y/scroll-lock 关注点分离」、Vaadin 的 renderer 式内容归属、Shoelace 的 `composed-offset-position` Shadow DOM 修正，均为后续 portal 层演进时的参考模式，不需要以依赖形式获得。
 
 ## 8. 来源与方法说明
 

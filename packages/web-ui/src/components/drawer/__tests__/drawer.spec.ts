@@ -576,8 +576,6 @@ describe('WebUiDrawer 组件', () => {
       const [events] = spyEvents<CustomEvent<{ open: boolean }>>(el, 'open-change')
       const dialog = el.shadowRoot?.querySelector('dialog') as HTMLDialogElement
 
-      // 未启用 draggable 时没有热区，指针序列落在 dialog 上：
-      // 拖拽不是遮罩点击，不得关闭。
       dialog.dispatchEvent(
         new PointerEvent('pointerdown', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 300 })
       )
@@ -623,7 +621,6 @@ describe('WebUiDrawer 组件', () => {
       expect(events).toHaveLength(0)
       expect(el.open).toBe(true)
 
-      // 松手（小位移弹回）后 ESC 恢复正常关闭
       dragZone.dispatchEvent(
         new PointerEvent('pointerup', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 300 })
       )

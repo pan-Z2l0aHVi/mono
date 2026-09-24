@@ -34,7 +34,6 @@ describe('copy 测试', () => {
 
       await copyToClipboard('test', { debug: true })
 
-      // v4 在 debug: true 且失败时会内部调用 console.error
       expect(consoleSpy).toHaveBeenCalled()
     })
   })

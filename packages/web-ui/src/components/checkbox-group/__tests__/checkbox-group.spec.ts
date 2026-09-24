@@ -25,7 +25,6 @@ const createGroup = (checkboxHtml = GROUP_HTML, attrs?: Record<string, string>):
   return el
 }
 
-// 点击子 checkbox 触发用户交互
 const clickChild = (group: WebUiCheckboxGroup, index: number) => {
   const checkbox = group.querySelectorAll<WebUiCheckbox>('web-ui-checkbox')[index]
   const label = queryA11y(checkbox, 'label') as HTMLElement
@@ -285,7 +284,6 @@ describe('WebUiCheckboxGroup 组件', () => {
       clickChild(el, 0)
       await waitForUpdate(el)
 
-      // 只收到 group 自身的一次 change，子项 change 未外泄
       expect(events).toHaveLength(1)
       expect(events[0].target).toBe(el)
       detach()
@@ -420,7 +418,6 @@ describe('WebUiCheckboxGroup 组件', () => {
       await checkboxA.updateComplete
       expect(checkboxA.checked).toBe(true)
 
-      // 模拟 v-if=false：从 group 移除并挂到外部容器
       const container = document.createElement('div')
       container.append(el)
       document.body.append(container)
@@ -433,13 +430,11 @@ describe('WebUiCheckboxGroup 组件', () => {
       await slotChanged
       await Promise.all([checkboxA.updateComplete, waitForUpdate(el)])
 
-      // 移除后改变 group value，被移除项不应再同步
       el.value = ['b']
       await waitForUpdate(el)
       await checkboxA.updateComplete
       expect(checkboxA.checked).toBe(true)
 
-      // 被移除项恢复独立事件：点击应冒泡到容器
       checkboxA.checked = false
       await checkboxA.updateComplete
       const [events, detach] = spyEvents(container, 'change')
@@ -493,7 +488,6 @@ describe('WebUiCheckboxGroup 组件', () => {
       await waitForUpdate(newCheckbox)
       await waitForUpdate(el)
 
-      // 新添加的 checkbox 值匹配当前 value，应自动选中
       expect(newCheckbox.checked).toBe(true)
 
       cleanupElement(el)

@@ -85,7 +85,6 @@ describe('WebUiTheme 根节点 page 色同步', () => {
     expect(readRootPage()).toBe(LIGHT_PAGE)
 
     const dark = await mountTheme('dark')
-    // 后连接的实例不夺权：队首仍是第一个已连接实例。
     expect(readRootPage()).toBe(LIGHT_PAGE)
     dark.remove()
   })

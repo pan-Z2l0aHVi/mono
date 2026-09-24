@@ -2,11 +2,15 @@ import { html, LitElement, type PropertyValues, unsafeCSS } from 'lit'
 import { customElement, property, query, state } from 'lit/decorators.js'
 import { classMap } from 'lit/directives/class-map.js'
 
+import '@/components/icon'
+import '@/components/svg-draw-lines'
 import selectionControl from '@/assets/selection-control.css?inline'
 import { WebUiSvgDrawLines } from '@/components/svg-draw-lines'
+import { akarIconsCheck } from '@/icons'
 import { installPointerFocusSuppression } from '@/shared/focus/pointer-focus'
 import { FormAssociated, defineFormAssociation, FormAssociationController } from '@/shared/form-association'
 import { defineGroupManaged, selectionGroupContextKey, type SelectionGroupContext } from '@/shared/group-management'
+import { LabelEmptinessController } from '@/shared/label-emptiness'
 import { parseDuration } from '@/shared/theme/duration'
 import { prefersReducedMotion } from '@/shared/theme/reduced-motion'
 
@@ -35,6 +39,9 @@ export class WebUiCheckbox extends FormAssociated(LitElement) {
 
   /** 描边收回期间把勾按在可见档，见 willUpdate。 */
   @state() private _retracting = false
+
+  /** 标签没有可渲染内容（空槽位，或只挂着一个无障碍名）时收掉 gap，见 LabelEmptinessController。 */
+  @state() private _labelEmpty = false
 
   get checked(): boolean {
     return this._checked
@@ -81,6 +88,10 @@ export class WebUiCheckbox extends FormAssociated(LitElement) {
   }).make()
 
   private readonly _formAssociationController = new FormAssociationController(this, this._formAssociation)
+
+  private readonly _labelEmptiness = new LabelEmptinessController(this, '.wui-checkbox-label', empty => {
+    this._labelEmpty = empty
+  })
 
   @query('web-ui-svg-draw-lines') private readonly _drawLines?: WebUiSvgDrawLines
 
@@ -152,6 +163,7 @@ export class WebUiCheckbox extends FormAssociated(LitElement) {
       'wui-checkbox': true,
       'is-checked': this._checked,
       'is-retracting': this._retracting,
+      'is-label-empty': this._labelEmpty,
       'is-disabled': this._isDisabled
     }
 
@@ -168,15 +180,7 @@ export class WebUiCheckbox extends FormAssociated(LitElement) {
         <span class="wui-checkbox-box">
           <span class="wui-checkbox-icon"
             ><web-ui-svg-draw-lines duration=${this._drawDurationMs} no-autoplay
-              ><svg class="wui-checkbox-check" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                <path
-                  d="M5 12.5l4.5 4.5L19 7"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="3"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                /></svg></web-ui-svg-draw-lines
+              ><web-ui-icon .icon=${akarIconsCheck}></web-ui-icon></web-ui-svg-draw-lines
           ></span>
         </span>
         <span class="wui-checkbox-label"><slot></slot></span>

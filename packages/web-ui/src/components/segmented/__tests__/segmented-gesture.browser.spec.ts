@@ -170,7 +170,6 @@ describe('WebUiSegmented 手势拖拽与吸附（浏览器）', () => {
     segmented.addEventListener('input', e => inputEvents.push(e))
     segmented.addEventListener('change', e => changeEvents.push(e))
 
-    // 真实轻点序列：pointerdown -> pointerup (未移动) -> click
     const inner = optionSurface(t2)
 
     const t2Rect = t2.getBoundingClientRect()
@@ -250,7 +249,6 @@ describe('WebUiSegmented 手势拖拽与吸附（浏览器）', () => {
     const indicator = queryA11y(segmented, '.wui-segmented-indicator') as HTMLElement | null
     expect(indicator, '指示器应已渲染').not.toBeNull()
 
-    // 首帧无交互，indicator 不应有任何过渡在播放（尤其不应有从 0 滑入的 left/width）
     expect(indicator!.getAnimations()).toHaveLength(0)
   })
 
@@ -280,12 +278,10 @@ describe('WebUiSegmented 手势拖拽与吸附（浏览器）', () => {
     t1Surface.dispatchEvent(onInnerAfterCommit)
     expect(onInnerAfterCommit.defaultPrevented).toBe(true)
 
-    // document/window 收不到 shadow 内 touchmove：不挂死代码。
     const onWindow = new TouchEvent('touchmove', { bubbles: true, cancelable: true })
     window.dispatchEvent(onWindow)
     expect(onWindow.defaultPrevented).toBe(false)
 
-    // 松手后守护全部卸载。
     window.dispatchEvent(pointer('pointerup', { clientX: x + 30, clientY: y }))
     await segmented.updateComplete
     const onInnerAfter = new TouchEvent('touchmove', { bubbles: true, cancelable: true })

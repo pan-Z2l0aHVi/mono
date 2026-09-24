@@ -379,7 +379,6 @@ describe('WebUiSelect 组件', () => {
 
       const trigger = queryA11y(el, '[role="combobox"]')!
       const activeId = trigger.getAttribute('aria-activedescendant')
-      // 第一次打开定位到初始项（第一个）
       expect(el.querySelector(`#${activeId}`)?.getAttribute('value')).toBe('apple')
 
       el.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true }))

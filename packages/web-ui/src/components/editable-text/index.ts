@@ -4,6 +4,7 @@ import { classMap } from 'lit/directives/class-map.js'
 import { ifDefined } from 'lit/directives/if-defined.js'
 
 import { FormAssociated, defineFormAssociation, FormAssociationController } from '@/shared/form-association'
+import { createFieldId } from '@/shared/form-association/field-id'
 
 import style from './style.css?inline'
 
@@ -97,6 +98,7 @@ export class WebUiEditableText extends FormAssociated(LitElement) {
   @property({ type: String, reflect: true }) name = ''
   @property({ type: String, reflect: true }) placeholder = ''
   @property({ type: Boolean, reflect: true }) disabled = false
+  @property({ type: Boolean, reflect: true }) readonly = false
   @property({ type: String, attribute: 'aria-label' }) override ariaLabel: string | null = null
 
   @state() private _value = ''
@@ -125,6 +127,7 @@ export class WebUiEditableText extends FormAssociated(LitElement) {
   private _pendingCaret: number | null = null
   private _refocusing = false
   private _resizeObserver: ResizeObserver | null = null
+  private readonly _fieldId = createFieldId('web-ui-editable-text')
 
   private get _isDisabled(): boolean {
     return this.disabled || this._formAssociation.isFormDisabled()
@@ -241,7 +244,12 @@ export class WebUiEditableText extends FormAssociated(LitElement) {
 
   private _onInput() {
     // 原生 input 已 composed 冒泡出 shadow root 且 target 重定向到宿主，无需补发
-    this._value = this._editor?.value ?? ''
+    const editor = this._editor
+    if (this._isDisabled || this.readonly) {
+      if (editor && editor.value !== this._value) editor.value = this._value
+      return
+    }
+    this._value = editor?.value ?? ''
     this._formAssociation.sync()
     this._autosizeEditor()
   }
@@ -253,6 +261,10 @@ export class WebUiEditableText extends FormAssociated(LitElement) {
    */
   private _onBlur() {
     if (!this._editing || this._isDisabled) return
+    if (this.readonly) {
+      this._exitEditing()
+      return
+    }
     this._commitEditing(false)
   }
 
@@ -345,13 +357,17 @@ export class WebUiEditableText extends FormAssociated(LitElement) {
     }
     if (e.key === 'Enter') {
       /*
-       * 与 Escape 同套消费策略：preventDefault 压掉 textarea 的换行默认行为，
-       * stopPropagation 让按键不外泄。取舍是明说的：编辑态 Enter 属于提交，外层
-       * 表单的隐式提交与浮层监听不应收到同一次按键——正如 Escape 属于取消。
-       * 此前只 preventDefault 不对称，Enter 会漏进外层监听。
+       * Enter 无论是否只读都属于编辑层，消费策略与 Escape 对称：preventDefault
+       * 压掉默认行为，stopPropagation 阻止外层表单隐式提交或浮层监听收到按键。
+       * 只读态只是没有草稿可提交，因此消费后直接返回，不退出编辑、不派发 change。
        */
       e.preventDefault()
       e.stopPropagation()
+      if (this.readonly) return
+      /*
+       * 可编辑态的 Enter 随后提交草稿；外层表单的隐式提交与浮层监听不应收到
+       * 同一次按键——正如 Escape 属于取消。
+       */
       this._commitEditing(true)
     }
   }
@@ -401,10 +417,12 @@ export class WebUiEditableText extends FormAssociated(LitElement) {
       <div class="layers" @pointerdown=${this._onPointerDown} @click=${this._onClick}>
         <span class=${classMap({ text: true, placeholder: this._value === '' })}>${this._displayText}</span>
         <textarea
+          id=${this._fieldId}
           class="editor"
           .value=${this._value}
           .placeholder=${this.placeholder}
           ?disabled=${this._isDisabled}
+          ?readonly=${this.readonly}
           aria-label=${ifDefined(this.ariaLabel)}
           @input=${this._onInput}
           @blur=${this._onBlur}

@@ -148,6 +148,8 @@ function parseStateFile(file) {
     return { error: `task state is invalid: ${file}` }
   if (state.version !== SCHEMA_VERSION)
     return { error: `task state ${file} has unsupported schema version: ${JSON.stringify(state.version)}` }
+  // v1 读取不解释可选的编排字段。旧 state 可能仍带顶层 roles 和历史 assign.roles；保留原值，
+  // 不在 load/status 时迁移或重写。task 内核只使用 owner/worktree 等自身字段。
   return { state }
 }
 
@@ -384,7 +386,6 @@ function newTask(options) {
     owner: declaredOwner(options),
     issue: options.issue ? normalizeIssue(options.issue) : null,
     playbook: options.playbook || null,
-    roles: [],
     diffHash: null,
     review: { required: level !== 't2', result: null, diffHash: null, reviewer: null, at: null },
     approval: { granted: false, diffHash: null, approver: null, at: null },
@@ -396,36 +397,16 @@ function newTask(options) {
   print(state)
 }
 
-// 可派发的角色就是存在 Role Contract 的角色：取值来自契约目录本身，不另立一份名单。
-// 该目录同时被 scripts/validate-context.mjs 限定为五份共享契约。
-function roleContracts() {
-  const directory = path.join(import.meta.dirname, '..', '.agents', 'skills', 'herdr-agents', 'roles')
-  return new Set(
-    fs
-      .readdirSync(directory)
-      .filter(name => name.endsWith('.md'))
-      .map(name => name.slice(0, -3))
-  )
-}
-
 function assign(options) {
   const taskId = validateTaskId(requireOption(options, 'task'))
+  const hasRolesOption = Object.hasOwn(options, 'roles') || Object.keys(options).some(key => key.startsWith('roles='))
+  if (hasRolesOption) fail('assign does not accept --roles; role coordination is not task state')
   const { file, state } = loadState(taskId)
   const worktree = options.worktree ? resolveWorktree(options.worktree).worktree : state.worktree
   assertWorktreeAvailable(state.commonDir, worktree, taskId)
   state.worktree = worktree
   if (options.owner !== undefined) state.owner = declaredOwner(options)
-  if (options.roles) {
-    const available = roleContracts()
-    const parsed = options.roles
-      .split(',')
-      .map(role => role.trim())
-      .filter(Boolean)
-    for (const role of parsed)
-      if (!available.has(role)) fail(`unknown role "${role}"; expected one of ${[...available].sort().join(', ')}`)
-    state.roles = parsed
-  }
-  appendEvent(state, 'assign', { owner: state.owner, roles: state.roles, worktree })
+  appendEvent(state, 'assign', { owner: state.owner, worktree })
   state.updatedAt = now()
   saveState(file, state)
   print(state)

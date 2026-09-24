@@ -24,6 +24,26 @@ const controlOf = (el: WebUiSwitch): HTMLElement => {
 }
 
 describe('WebUiSwitch 组件特有契约', () => {
+  it('内部 checkbox 有稳定且实例唯一的 id', async () => {
+    const first = createSwitch()
+    const second = createSwitch()
+    await Promise.all([waitForUpdate(first), waitForUpdate(second)])
+
+    const inputOf = (el: WebUiSwitch): HTMLInputElement => queryA11y(el, 'input[type="checkbox"]') as HTMLInputElement
+    const firstId = inputOf(first).id
+    const secondId = inputOf(second).id
+    expect(firstId).not.toBe('')
+    expect(secondId).not.toBe('')
+    expect(secondId).not.toBe(firstId)
+
+    first.checked = true
+    await waitForUpdate(first)
+    expect(inputOf(first).id).toBe(firstId)
+
+    cleanupElement(first)
+    cleanupElement(second)
+  })
+
   it('loading 时点击不切换状态', async () => {
     const el = createSwitch()
     el.loading = true

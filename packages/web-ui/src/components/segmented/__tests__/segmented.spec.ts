@@ -54,7 +54,6 @@ describe('WebUiSegmented 组件', () => {
       el.innerHTML = TRIGGER_HTML
       const triggers = el.querySelectorAll('web-ui-segmented-trigger')
 
-      // 模拟 Vue :value ——在 appendChild 之前设 property
       el.value = 'a'
       document.body.appendChild(el)
       await waitForUpdate(el)

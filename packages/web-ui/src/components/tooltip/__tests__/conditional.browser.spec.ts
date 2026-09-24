@@ -113,7 +113,6 @@ describe('WebUiTooltip portal 条件渲染边界（浏览器）', () => {
     const tooltip = mountPoint.querySelector('web-ui-tooltip') as WebUiTooltip
     await tooltip.updateComplete
 
-    // 打开与 v-if 同 flush，内容实时迁入面板
     open.value = true
     show.value = true
     await nextTick()
@@ -130,14 +129,12 @@ describe('WebUiTooltip portal 条件渲染边界（浏览器）', () => {
     expect(getPortalPanel('tooltip')?.querySelector('.probe-flag')).toBeNull()
     expect([...tooltip.childNodes].some(node => node instanceof Comment)).toBe(true)
 
-    // 关闭销毁面板，注释在宿主存活
     open.value = false
     await tooltip.updateComplete
     await pollUntil(() => getPortalPanel('tooltip') === null, 'Expected portal panel to be disposed after close')
     expect(getPortalPanel('tooltip')).toBeNull()
     expect([...tooltip.childNodes].some(node => node instanceof Comment)).toBe(true)
 
-    // 重开与 v-if 同 flush：内容实时迁入新面板，宿主无残留
     open.value = true
     show.value = true
     await nextTick()

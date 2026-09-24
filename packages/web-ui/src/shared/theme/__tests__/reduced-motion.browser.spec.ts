@@ -22,7 +22,6 @@ describe('系统 prefers-reduced-motion 下的 focus ring transition（浏览器
       const variant = borderless ? 'borderless' : 'normal'
 
       it(`${fixture.tag} ${variant}：system 跟随系统偏好归零，显式 full 仍启动`, async () => {
-        // 被测组：motion=system → 跟随系统 reduce → 不启动
         const system = await mountField(fixture, { borderless, motion: 'system' })
         await focusAndSettle(system.host, system.inner)
         expect(findFocusRingTransition(system.inner)).toBeUndefined()

@@ -25,7 +25,6 @@ describe('WebUiTooltip 组件（浏览器）', () => {
     await tooltip.updateComplete
     await waitForFrame()
 
-    // 面板已迁到 overlay root，内容随投影进入面板。
     const panel = getPortalPanel('tooltip')
     expect(panel?.textContent).toContain('Portal tooltip')
     expect(tooltip.open).toBe(true)
@@ -47,7 +46,6 @@ describe('WebUiTooltip 组件（浏览器）', () => {
     await tooltip.updateComplete
     await waitForFrame()
 
-    // 退场被重新打开中断的后果：面板仍在文档中且可见（不是 hidden）。
     const panel = getPortalPanel('tooltip')
     expect(panel).not.toBeNull()
     expect(panel?.hasAttribute('hidden')).toBe(false)

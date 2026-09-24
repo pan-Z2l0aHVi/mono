@@ -19,14 +19,14 @@ English | [简体中文](./README.CN.md)
 
 TypeScript's built-in `lib` options map to runtime environments, not to project types:
 
-- `ESNext` — pure ECMAScript (no `setTimeout`, `EventTarget`, `URL`)
-- `webworker` — zero DOM, pure runtime APIs (`setTimeout`, `EventTarget`, `URL`, but also `postMessage`, `Cache`)
-- `DOM` — full browser environment (includes `window`, `document`, `Storage`)
-- `@types/node` — Node.js runtime (includes `process`, `Buffer`, `fs`)
+- `ESNext`: pure ECMAScript (no `setTimeout`, `EventTarget`, `URL`)
+- `webworker`: zero DOM, pure runtime APIs (`setTimeout`, `EventTarget`, `URL`, but also `postMessage`, `Cache`)
+- `DOM`: full browser environment (includes `window`, `document`, `Storage`)
+- `@types/node`: Node.js runtime (includes `process`, `Buffer`, `fs`)
 
 ### Why `webworker` for `core.json`?
 
-Pure JavaScript libraries (like `js-kit`) need runtime APIs such as `setTimeout`, `EventTarget`, and `URL`. These are cross-platform—available in both browsers and Node.js—but TypeScript only ships them inside the `DOM` lib, alongside `window`, `document`, etc.
+Pure JavaScript libraries (like `js-kit`) need runtime APIs such as `setTimeout`, `EventTarget`, and `URL`. These are cross-platform, available in both browsers and Node.js, but TypeScript only ships them inside the `DOM` lib, alongside `window`, `document`, etc.
 
 `webworker` is the closest fit: it provides these runtime APIs without exposing `window`/`document`, while the Worker-specific extras (`postMessage`, `Cache`) are niche enough that accidental misuse is unlikely. Neither `DOM` nor `@types/node` nor `ESNext` alone provides the right set without bringing in unwanted APIs.
 

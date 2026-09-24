@@ -24,8 +24,8 @@
  * - 全部断开时**保留最后值**：清掉属性会让 body 背景在主题卸载/重挂的间隙闪回 UA 白底，
  *   而那正是本能力要消除的观感。代价是最后一个主题卸载后 documentElement 上仍留着一个自定义
  *   属性；消费者自己写 body 背景时它不产生任何影响。
- * - `appearance="system"` 的计算值由组件内部 CSS 的 `prefers-color-scheme` 媒体查询决定，JS 侧
- *   没有订阅，所以登记表非空期间挂一个系统 scheme 监听，翻转时重算。
+ * - `appearance="system"` 的 token 计算值仍由组件内部 CSS 的 `prefers-color-scheme` 决定；
+ *   root 同步与 `resolved-appearance` 输出共用同一个 MediaQueryList 监听，翻转时一次重算。
  * - 登记表强引用实例，但删除路径只有组件自己的 disconnectedCallback：自定义元素反应保证移除
  *   必然触发它，不存在 open-overlay 那种「面板被 portal 搬运」需要惰性兜底回收的形状。
  */
@@ -36,6 +36,7 @@ const ROOT_PAGE_TOKEN = '--wui-color-page'
 const registered = new Set<HTMLElement>()
 
 let schemeQuery: MediaQueryList | undefined
+const schemeSubscribers = new Set<() => void>()
 
 /*
  * dev 期测试钩子：登记表尺寸。
@@ -80,15 +81,16 @@ function syncRootPageColor(): void {
 
 function handleSchemeChange(): void {
   syncRootPageColor()
+  for (const subscriber of schemeSubscribers) subscriber()
 }
 
 function syncSchemeListener(): void {
-  if (registered.size > 0) {
+  if (registered.size > 0 || schemeSubscribers.size > 0) {
     if (schemeQuery) return
     try {
       schemeQuery = window.matchMedia('(prefers-color-scheme: dark)')
     } catch {
-      // jsdom 等没有 matchMedia 的环境：system 档跟随不到系统翻转，登记表行为不受影响。
+      // jsdom 等没有 matchMedia 的环境：system 档跟随不到系统翻转，登记与输出仍保持当前值。
       return
     }
     schemeQuery.addEventListener('change', handleSchemeChange)
@@ -97,6 +99,19 @@ function syncSchemeListener(): void {
   if (!schemeQuery) return
   schemeQuery.removeEventListener('change', handleSchemeChange)
   schemeQuery = undefined
+}
+
+/*
+ * 复用 root 同步已经持有的系统 scheme 监听：resolved-appearance 只登记回调，不另建 MediaQueryList。
+ * 登记先于订阅或订阅先于登记都可以；syncSchemeListener 以两者任一非空为准。
+ */
+export function subscribeThemeSystemAppearanceChange(listener: () => void): () => void {
+  schemeSubscribers.add(listener)
+  syncSchemeListener()
+  return () => {
+    if (!schemeSubscribers.delete(listener)) return
+    syncSchemeListener()
+  }
 }
 
 /**

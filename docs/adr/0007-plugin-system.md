@@ -34,7 +34,7 @@ definePlugin(() => setup)
 
 ### 背景
 
-Tracker 需要一个可持久化的待传输队列，但普通的循环消费队列与“等待消费者结果后再移除”的队列有不同的移除边界。两种能力如果各自维护调度状态，会重复实现入队、暂停、恢复、`flush()` 和持久化提交规则。
+Tracker 需要一个可持久化的待传输队列，但普通的循环消费队列与「等待消费者结果后再移除」的队列有不同的移除边界。两种能力如果各自维护调度状态，会重复实现入队、暂停、恢复、`flush()` 和持久化提交规则。
 
 ### 决策
 
@@ -47,7 +47,7 @@ Tracker 需要一个可持久化的待传输队列，但普通的循环消费队
 - `flush()` 返回 `Promise<void>`，按调用时快照并发启动 pending/failed 项，等待本次涉及的操作；消费失败不使整个 flush reject，持久化提交失败会 reject。
 - `defineLoopQueue` 直接删除，不保留兼容别名；Tracker core 使用 `defineAckQueue`，但单条传输函数继续命名为 `transport`。
 
-“ack”只表示消费者 Promise fulfilled，不代表服务端确认、exactly-once 或远端事务提交。
+「ack」只表示消费者 Promise fulfilled，不代表服务端确认、exactly-once 或远端事务提交。
 
 ### 后果
 

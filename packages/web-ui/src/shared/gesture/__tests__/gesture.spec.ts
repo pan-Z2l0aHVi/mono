@@ -376,7 +376,6 @@ describe('shared/gesture attachDragGesture', () => {
     expect(handle.isDragging()).toBe(true)
     expect(onCancel).not.toHaveBeenCalled()
 
-    // onMove 持续跟手。
     window.dispatchEvent(new PointerEvent('pointermove', { pointerId: 1, clientX: 150, clientY: 100 }))
     expect(onMove).toHaveBeenCalledTimes(1)
     expect(onMove.mock.calls[0][0].deltaX).toBe(50)

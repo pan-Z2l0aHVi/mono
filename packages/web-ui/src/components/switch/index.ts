@@ -8,6 +8,7 @@ import glass from '@/assets/glass.css?inline'
 import { lucideLoaderCircle } from '@/icons'
 import { installPointerFocusSuppression } from '@/shared/focus/pointer-focus'
 import { FormAssociated, defineFormAssociation, FormAssociationController } from '@/shared/form-association'
+import { createFieldId } from '@/shared/form-association/field-id'
 import { attachDragGesture, type DragGestureHandle } from '@/shared/gesture/drag-gesture'
 import { clamp, normalizeProgress } from '@/shared/gesture/physics'
 
@@ -45,6 +46,7 @@ export class WebUiSwitch extends FormAssociated(LitElement) {
   private _maxTravel = 20
   private _startOffset = 0
   private _dragGestureHandle: DragGestureHandle | null = null
+  private readonly _fieldId = createFieldId('web-ui-switch')
 
   override disconnectedCallback() {
     super.disconnectedCallback()
@@ -203,6 +205,7 @@ export class WebUiSwitch extends FormAssociated(LitElement) {
         @pointerleave=${this.handlePointerLeave}
       >
         <input
+          id=${this._fieldId}
           type="checkbox"
           .checked=${this._checked}
           ?disabled=${this._isDisabled || this.loading}

@@ -131,7 +131,6 @@ function ImagePreviewDemo() {
       indicator: partIndicator
     })
 
-  // 单项预设：每次只开启一个选项，用来确认每个选项负责哪块 UI。
   const openPartPreset = (options: Partial<ImagePreviewOptions>) => imagePreview({ images: IMAGES, ...options })
 
   // 关闭预览或离开页面时释放浮层；close() 对已关闭的预览是空操作。

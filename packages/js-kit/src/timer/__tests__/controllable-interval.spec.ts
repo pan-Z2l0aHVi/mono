@@ -36,14 +36,14 @@ describe('timer 测试', () => {
       const timer = defineControllableInterval({ callback: cb, interval: 1000 }).make()
       timer.start()
 
-      vi.advanceTimersByTime(800) // 此时还剩 200ms
+      vi.advanceTimersByTime(800)
       timer.pause()
 
       timer.resume()
       vi.advanceTimersByTime(150)
-      expect(cb).not.toHaveBeenCalled() // 还没到 200ms，不触发
+      expect(cb).not.toHaveBeenCalled()
 
-      vi.advanceTimersByTime(60) // 超过 200ms 了
+      vi.advanceTimersByTime(60)
       expect(cb).toHaveBeenCalledTimes(1)
       timer.stop()
     })
@@ -66,7 +66,7 @@ describe('timer 测试', () => {
 
       // 暂停状态机完好：仍按剩余时间恢复
       timer.resume()
-      vi.advanceTimersByTime(300) // 剩余 500ms 未到
+      vi.advanceTimersByTime(300)
       expect(cb).toHaveBeenCalledTimes(1)
       vi.advanceTimersByTime(200)
       expect(cb).toHaveBeenCalledTimes(2)
@@ -78,7 +78,7 @@ describe('timer 测试', () => {
       const timer = defineControllableInterval({ callback: cb, interval: 1000 }).make()
       timer.start()
 
-      vi.advanceTimersByTime(800) // 剩余 200ms
+      vi.advanceTimersByTime(800)
       timer.pause()
 
       timer.tick(5000) // 挂起的手动触发（t=800+5000）
@@ -105,7 +105,7 @@ describe('timer 测试', () => {
       vi.advanceTimersByTime(400) // t=1000：旧句柄若残留会在此多触发一次
       expect(cb).toHaveBeenCalledTimes(1)
 
-      vi.advanceTimersByTime(600) // t=1600：新周期
+      vi.advanceTimersByTime(600)
       expect(cb).toHaveBeenCalledTimes(2)
       timer.stop()
     })

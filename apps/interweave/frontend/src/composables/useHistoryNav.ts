@@ -1,4 +1,4 @@
-import { defineHistoryNav, type HistoryNav } from '@greypan/browser-kit/history-nav'
+import { defineHistoryNav, type HistoryNav } from '@greypan/browser-kit'
 import { ref } from 'vue'
 
 /**

@@ -112,7 +112,6 @@ describe('WebUiSelect 条件组合边界（浏览器）', () => {
     resolveActive()!.remove()
     await select.updateComplete
 
-    // 激活项已移除：不得静默偏移到 cherry
     expect(resolveActive(), '激活索引不应偏移到相邻项').toBeNull()
 
     select.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, composed: true }))
@@ -247,12 +246,10 @@ describe('WebUiSelect 条件组合边界（浏览器）', () => {
       'Expected removed option to leave the select panel'
     )
 
-    // 关闭销毁面板后再重开：banana 按模板序实时迁入面板（apple/banana/cherry）
     document.body.click()
     await select.updateComplete
     await pollUntil(() => !getPortalPanel('listbox'), 'Expected select portal to dispose after close')
 
-    // 重开与 v-if 同 flush：banana 按模板序实时迁入面板（apple/banana/cherry）
     show.value = true
     trigger.click()
     await nextTick()

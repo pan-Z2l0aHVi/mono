@@ -114,8 +114,6 @@ textarea {
     0 0 0 var(--wui-focus-ring-width, 3px) var(--wui-color-focus-ring, rgb(0 136 255 / 0.4));
 }
 
-/* ===== Prefix / Suffix ===== */
-
 slot {
   display: flex;
   flex-shrink: 0;

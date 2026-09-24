@@ -5,13 +5,14 @@
 - **Amends**: [ADR-0011](0011-agent-model-binding-and-effort.md) 的「后果」中关于角色契约执行体自述参与机械校验的说明
 - **Relates to**: [ADR-0004](0004-progressive-agent-context-architecture.md)、[ADR-0010](0010-agent-role-orchestration.md)
 - **Superseded by**: [ADR-0014](0014-task-system-v2.md) —— 本 ADR 的风险分级表被 `level`（t0/t1/t2）取代；第 3、4 节的 `scripts/audit-instructions.mjs` 与两个约束预算基线文件已随 ADR-0014 退役，不再维护（仍生效的部分只有预授权操作清单，已并入 `docs/agents/workflow.md`）
+- **Further amended by**: [ADR-0015](0015-role-contracts-in-herdr-agents-skill.md)、[ADR-0016](0016-implementation-supervision.md)（Role/Supervisor 的现行权威和 task state 边界）
 
 ## 背景
 
 ADR-0004 建立了渐进披露的 context 架构，ADR-0010 与 ADR-0011 建立了角色、编排与执行体绑定。这三者都把约束往上加，没有定义「什么时候该减」。实测结果是两个校验器成了单向棘轮：
 
 - `scripts/audit-instructions.mjs --strict` 与 `scripts/validate-context.mjs` 只在必需标记缺失时失败，从不检测约束是否已冗余。加约束零摩擦，删或软化最重的 gate 会让两个必过校验同时失败。
-- `docs/agents/build.md` 又规定 instruction system 变更必须通过这两条，CI 的 `check` job 也照跑，形成闭环。
+- `docs/agents/build.md` 还要求 instruction system 变更通过这两条，CI 的 `check` job 也会运行它们。
 
 同时，workflow gate 的触发条件按「变更类别」而非风险判定：凡会写文件或走 Git、merge、release 的任务都要先 `init` 并跑 preflight，Fast lane 只对错别字与纯格式开口。`.git/agent-workflow/` 的 63 个已关闭 task state 提供了量化证据：
 
@@ -34,9 +35,9 @@ ADR-0004 建立了渐进披露的 context 架构，ADR-0010 与 ADR-0011 建立�
 
 已知安全的工作流（本地测试与校验命令、包级构建、只读查询工具、在目标 worktree 内读文件、修复本次改动导致的失败并重跑）直接执行，不必逐步请示。commit、push、merge、publish、依赖与 lockfile、`.npmrc` / `.mise.toml` / Git 配置、凭证读写与破坏性 git 操作仍需逐次授权。清单写在 `docs/agents/workflow.md` 的「预授权操作」，根 `AGENTS.md` 只列被允许与需授权的类别。
 
-### 3. 校验器钉锚点，不钉措辞
+### 3. 历史校验器策略
 
-不变量用 HTML 注释锚点表达，`scripts/audit-instructions.mjs --strict` 只校验锚点存在。正文措辞可以随模型换代重写而不必改脚本；新增一条不变量才需要同时改文档与脚本。同时删除这些措辞钉：AGENTS.md 的章节标题、`workflow.md` 的 8 个章节标题、`.agents/agents/*` 的 7 个 Role section 标题、角色契约的「X 由 Y 承担」自述正则。`CLAUDE.md` 的「薄适配入口」措辞钉换成尺寸契约（不超过 800 字符）。
+历史方案曾用 HTML 注释锚点和 `scripts/audit-instructions.mjs --strict` 固定 instruction 形状；该机制已随 ADR-0014 退役。当前 `scripts/validate-context.mjs` 只检查通用 context 路由、链接、skill 与 Role Contract frontmatter、Role 文件身份、客户端注册形态、skill provenance 和软链；不再固定 Role 数量、执行体绑定或 handoff 字段。
 
 ### 4. 给「减法」配上可执行的基线（已退役，保留作决策记录）
 
@@ -57,7 +58,7 @@ ADR-0004 建立了渐进披露的 context 架构，ADR-0010 与 ADR-0011 建立�
 
 - 单 workspace 的行为变更、同包测试新增、一页文档不再是「必须先建状态机」的变更；P0 与 P1 仍保留 task state、review 与 approval。
 - `scripts/audit-instructions.mjs` 新增 `budget`、`toolEnforcedHits`、`repeatedBlocks` 三类 `--strict` 断言，`--json` 同步输出；`--warn` 把 strict 断言降级为报告，**只用于本地采集基线或排查，CI 不得使用**（`.github/workflows/ci.yml` 使用 `--strict --json`）。
-- `scripts/validate-context.mjs` 不再校验章节标题与角色自述措辞，改为尺寸契约（CLAUDE.md ≤ 800 字符）加绑定表镜像校验。
+- `scripts/validate-context.mjs` 保留 CLAUDE.md 薄适配尺寸契约、Role Contract 身份、`.claude/agents` 注册形态和通用 context 校验；绑定表镜像、固定 Role 集合和 handoff 字段镜像已删除。
 - `docs/agents/workflow.md` 新增「变更风险分级」与「预授权操作」两节，并写明 changeset 与格式化必须在 `freeze` 之前完成——这条直接针对 6 条人工干预的共同根因。
 - `docs/agents/task-packet.md` 的 `Allowed paths` 与 `Affected workspaces` 只在 P0 填写（其他级写 `N/A`，保留字段以免消费者改变形状），`Review` 行的 `secondary review` 死字段删除。（2026-09-17 修订，两条，权威表始终是 `docs/agents/workflow.md` 的「变更风险分级」：一、P1 判据从「跨多个 `apps/*`」扩到「跨多个 workspace，`apps/*` 或 `packages/*`」，因此跨多 workspace 的 P1 也要按 `find:usages` 输出填写这两项；二、级别代号的方向翻转为 **P0 最高风险、P2 最低**，与通用的 P0 优先级体系对齐——原 P0（免 task state）改称 P2，原 P2（`orchestrated`）改称 P0，P1 不变；判据与流程要求未变，只是代号的排序方向变了。）
 - 已知限制：重述块检测只比较文件对数量，不比较单对内的重复规模；在既有文件对内增写重复段落不会增加对数。这类增长会被约束预算的字符上限拦下，所以两条门互为补充而不是互相替代。规范化后总长低于 40 字符的极短文件不会产生任何滑窗，不受这一门约束。

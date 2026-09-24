@@ -49,6 +49,8 @@
   },
   "devDependencies": {
     "@greypan/tsconfig": "workspace:*",
+    "@iconify-json/akar-icons": "catalog:",
+    "@iconify-json/bi": "catalog:",
     "@iconify-json/jam": "catalog:",
     "@iconify-json/lucide": "catalog:",
     "@iconify-json/si": "catalog:",

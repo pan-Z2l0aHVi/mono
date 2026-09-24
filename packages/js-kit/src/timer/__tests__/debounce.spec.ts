@@ -38,11 +38,11 @@ describe('debounce 测试', () => {
 
     d.call(2)
     vi.advanceTimersByTime(50)
-    expect(fn).toHaveBeenCalledTimes(1) // 静默期内不重复
+    expect(fn).toHaveBeenCalledTimes(1)
 
     vi.advanceTimersByTime(50)
     d.call(3)
-    expect(fn).toHaveBeenCalledTimes(2) // 静默期结束后再次触发
+    expect(fn).toHaveBeenCalledTimes(2)
   })
 
   it('both 模式：leading 与 trailing 都触发', () => {
@@ -50,11 +50,11 @@ describe('debounce 测试', () => {
     const d = debounce(fn, { waitMs: 100, timing: 'both' })
 
     d.call(1)
-    expect(fn).toHaveBeenCalledTimes(1) // leading 立即触发
+    expect(fn).toHaveBeenCalledTimes(1)
 
     d.call(2)
     vi.advanceTimersByTime(100)
-    expect(fn).toHaveBeenCalledTimes(2) // trailing 触发最后一次
+    expect(fn).toHaveBeenCalledTimes(2)
     expect(fn).toHaveBeenLastCalledWith(2)
   })
 

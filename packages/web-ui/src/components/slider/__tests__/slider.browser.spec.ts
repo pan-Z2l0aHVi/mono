@@ -58,7 +58,6 @@ describe('WebUiSlider 指针拖拽（浏览器）', () => {
     expect(afterDown).toBeLessThan(50)
     expect(el.value).toBeGreaterThan(50)
     expect(inputEvents.length).toBeGreaterThan(0)
-    // 拖拽结束时 value 已变化，恰好派发一次 change
     expect(changeEvents).toHaveLength(1)
     cleanupElement(el)
   })
@@ -121,7 +120,6 @@ describe('WebUiSlider 指针拖拽（浏览器）', () => {
     track.dispatchEvent(onTrack)
     expect(onTrack.defaultPrevented).toBe(true)
 
-    // 确认拖拽后：守卫持续有效。
     window.dispatchEvent(pointer('pointermove', rect.left + rect.width * 0.75, y))
     await el.updateComplete
 
@@ -134,7 +132,6 @@ describe('WebUiSlider 指针拖拽（浏览器）', () => {
     window.dispatchEvent(onWindow)
     expect(onWindow.defaultPrevented).toBe(false)
 
-    // 松手后守卫卸载，页面滚动恢复。
     window.dispatchEvent(pointer('pointerup', rect.left + rect.width * 0.75, y))
     await el.updateComplete
 
@@ -167,16 +164,13 @@ describe('WebUiSlider 指针拖拽（浏览器）', () => {
     hitChild.dispatchEvent(new PointerEvent('lostpointercapture', { bubbles: true, composed: true, pointerId: 1 }))
     await el.updateComplete
 
-    // 拖拽继续跟手
     window.dispatchEvent(pointer('pointermove', rect.left + rect.width * 0.75, y))
     await el.updateComplete
     expect(el.value).toBeGreaterThan(50)
 
-    // track 自身意外丢失捕获：取消拖拽
     track.dispatchEvent(new PointerEvent('lostpointercapture', { bubbles: true, composed: true, pointerId: 1 }))
     await el.updateComplete
 
-    // 取消后 value 不再跟随指针
     const afterCancel = el.value
     window.dispatchEvent(pointer('pointermove', rect.left + rect.width * 0.2, y))
     await el.updateComplete

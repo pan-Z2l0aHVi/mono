@@ -510,7 +510,6 @@ describe('WebUiContextMenu 组件', () => {
       const nested = parentItem.querySelector('web-ui-dropdown-item')!
       expect(nested.getAttribute('slot')).toBe('context-menu-hidden')
 
-      // 隐藏不破坏子菜单打开：点击父项仍能以重建的子项打开子菜单
       parentItem.click()
       await waitForUpdate(el)
       expect(getSubmenu()?.textContent).toContain('DOCX')
@@ -527,7 +526,6 @@ describe('WebUiContextMenu 组件', () => {
       el.openAt(100, 100)
       await waitForMenuOpen(el)
 
-      // 不经重定位（无 contextmenu/openAt），宿主直接重建父项的嵌套子项
       const parentItem = getFirstMenuItem()
       parentItem.replaceChildren()
       const freshChild = document.createElement('web-ui-dropdown-item')
@@ -558,13 +556,11 @@ describe('WebUiContextMenu 组件', () => {
       await waitForUpdate(el)
       expect(getSubmenu()).toBeTruthy()
 
-      // 子菜单打开期间宿主重建父项内的嵌套子项
       const freshChild = document.createElement('web-ui-dropdown-item')
       freshChild.textContent = 'DOCX'
       parentItem.appendChild(freshChild)
       await new Promise(resolve => requestAnimationFrame(resolve))
 
-      // Escape 关闭子菜单，归还的子项必须回到隐藏态
       el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
       await waitForUpdate(el)
       await new Promise(resolve => requestAnimationFrame(resolve))
@@ -587,7 +583,6 @@ describe('WebUiContextMenu 组件', () => {
       el.openAt(100, 100)
       await waitForMenuOpen(el)
 
-      // 模拟宿主框架整体替换父项节点（旧父项连同隐藏子项一并丢弃）
       const oldParent = getFirstMenuItem()
       const newParent = document.createElement('web-ui-dropdown-item')
       newParent.setAttribute('submenu', '')
@@ -603,7 +598,6 @@ describe('WebUiContextMenu 组件', () => {
       expect(el.isOpen).toBe(true)
       expect(nested.getAttribute('slot')).toBe('context-menu-hidden')
 
-      // 新父项仍可打开子菜单
       newParent.click()
       await waitForUpdate(el)
       expect(getSubmenu()?.textContent).toContain('DOCX')
@@ -638,7 +632,6 @@ describe('WebUiContextMenu 组件', () => {
       el.openAt(100, 100)
       await waitForMenuOpen(el)
 
-      // 模拟 Vue 以 portal 为插入点直接 append 新项（绕过宿主）
       const fresh = document.createElement('web-ui-dropdown-item')
       fresh.textContent = '直插项'
       getPortalContent().appendChild(fresh)
@@ -665,7 +658,6 @@ describe('WebUiContextMenu 组件', () => {
       el.openAt(100, 100)
       await waitForMenuOpen(el)
 
-      // 模拟 Vue v-if 翻转：portal 内「编辑」被替换为注释锚点 + 新元素（插入点 = portal）
       const content = getPortalContent()
       const first = content.querySelector<HTMLElement>('web-ui-dropdown-item')
       if (!first) throw new Error('Expected first menu item')
@@ -708,7 +700,6 @@ describe('WebUiContextMenu 组件', () => {
       await new Promise(resolve => requestAnimationFrame(resolve))
       await new Promise(resolve => requestAnimationFrame(resolve))
 
-      // 关闭归还
       el.close()
       await waitForMenuClose(el)
       await new Promise(resolve => requestAnimationFrame(resolve))
@@ -722,7 +713,6 @@ describe('WebUiContextMenu 组件', () => {
         true
       )
 
-      // 重开后菜单完整
       el.openAt(200, 200)
       await waitForMenuOpen(el)
       expect(getMenuItems().map(item => item.textContent?.trim())).toEqual(['找回资源', '复制', '直插项'])
@@ -739,7 +729,6 @@ describe('WebUiContextMenu 组件', () => {
       await waitForMenuOpen(el)
       expect(el.isOpen).toBe(true)
 
-      // detach-while-open：菜单开着时移出文档再挂回
       el.remove()
       document.body.appendChild(el)
       await waitForUpdate(el)
@@ -980,13 +969,11 @@ describe('WebUiContextMenu 组件', () => {
         await waitForMenuOpen(fixture.menuEl())
         await waitForMenuItemTexts(['预览', '删除'], () => getMenuItems().map(item => item.textContent?.trim() ?? ''))
 
-        // 开着时翻转：valid → broken，注释锚点写进 portal
         fixture.broken.value = true
         await waitForMenuItemTexts(['找回资源', '删除'], () =>
           getMenuItems().map(item => item.textContent?.trim() ?? '')
         )
 
-        // 关闭：元素与框架锚点一并迁回宿主
         fixture.menuEl().close()
         await waitForMenuClose(fixture.menuEl())
 
@@ -1047,7 +1034,6 @@ describe('WebUiContextMenu 组件', () => {
         broken.value = false
         await waitForContentOrder(validOrder)
 
-        // close → reopen：顺序与无锚点残留
         el.close()
         await waitForMenuClose(el)
         el.openAt(20, 20)

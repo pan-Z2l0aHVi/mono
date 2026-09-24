@@ -64,7 +64,6 @@ function directivePrologueEnd(code: string): number {
     }
     if (!closed) break
 
-    // 可选的尾随分号
     if (code[j] === ';') j++
 
     // 字符串（及分号）之后的第一个有效 token：若它会延续表达式，则该字符串不是独立指令。

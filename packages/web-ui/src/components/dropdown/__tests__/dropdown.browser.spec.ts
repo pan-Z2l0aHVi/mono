@@ -280,7 +280,6 @@ describe('WebUiDropdown 组件（浏览器）', () => {
     submenuControl!.focus()
     submenuControl!.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true, composed: true }))
 
-    // 退场进行中被重新打开：面板不得被销毁，且最终仍可见。
     parentControl!.focus()
     parentControl!.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, composed: true }))
     submenu?.dispatchEvent(new TransitionEvent('transitionend', { propertyName: 'opacity', bubbles: true }))
@@ -332,7 +331,6 @@ describe('WebUiDropdown 组件（浏览器）', () => {
     await menu.updateComplete
     await nextFrame()
 
-    // 面板被复用 ⇒ 确实是「退场窗口内重开」，而不是退场结束后的全新构建。
     expect(getMenuPanels()[0]).toBe(rootPanel)
     expect(getMenuPanels()[1]).toBe(submenuPanel)
     expect(menu.open).toBe(true)
@@ -375,7 +373,6 @@ describe('WebUiDropdown 组件（浏览器）', () => {
     await menu.updateComplete
     await nextFrame()
 
-    // 面板被复用 ⇒ 确实是「退场窗口内重开」，而不是退场结束后的全新构建。
     expect(getMenuPanels()[0]).toBe(rootPanel)
     expect(menu.open).toBe(true)
 
@@ -437,7 +434,6 @@ describe('WebUiDropdown 组件（浏览器）', () => {
     await menu.updateComplete
     await nextFrame()
 
-    // 根面板被复用 ⇒ 确实在退场窗口内重开；收尾中的子菜单面板也仍在场。
     expect(getMenuPanels()[0]).toBe(rootPanel)
     expect(getMenuPanels()[1]).toBe(submenuPanel)
     expect(menu.open).toBe(true)
@@ -472,9 +468,7 @@ describe('WebUiDropdown 在已打开原生 dialog 内（top layer）', () => {
       'Expected the dropdown menu to mount inside the drawer dialog'
     )
 
-    // 面板应被挂到 drawer 的 dialog 上（top layer），而不是 fallback/theme-owned overlay 容器。
     expect(drawerDialog.querySelector('[role="menu"]')).toBeTruthy()
-    // 普通 overlay 容器内不应出现该面板。
     expect(getMenuPanels()).toHaveLength(0)
   })
 })

@@ -100,7 +100,6 @@ describe('WebUiCollapse 组件（浏览器）', () => {
     await el.updateComplete
     await settle(el)
 
-    // 展开完成后立即关闭再立即重开（中断收起动画）
     el.open = false
     await el.updateComplete
     el.open = true
@@ -124,7 +123,6 @@ describe('WebUiCollapse 组件（浏览器）', () => {
     await el.updateComplete
     await settle(el)
 
-    // 内容内部滚动后收起：keep-mounted 应保留 scrollTop
     const innerContent = el.querySelector('div[style]') as HTMLElement
     innerContent.scrollTop = 42
 
@@ -135,7 +133,6 @@ describe('WebUiCollapse 组件（浏览器）', () => {
     expect(queryContentContainer(el).hidden).toBe(false)
     expect(innerContent.scrollTop).toBe(42)
 
-    // 重新展开内容完整可见，滚动位置仍在
     el.open = true
     await el.updateComplete
     await settle(el)
@@ -183,11 +180,9 @@ describe('WebUiCollapse 组件（浏览器）', () => {
     inner.open = true
     await inner.updateComplete
     await settle(inner)
-    // 内层展开不改写外层 open，外层内容仍可见
     expect(el.open).toBe(true)
     expect(queryContentContainer(el).hidden).toBe(false)
 
-    // 外层收起：只裁剪（容器 hidden），内层自身 open 不被连动
     el.open = false
     await el.updateComplete
     await waitFor(() => queryContentContainer(el).hidden === true)
@@ -217,7 +212,6 @@ describe('WebUiCollapse 组件（浏览器）', () => {
     document.body.append(el)
     await el.updateComplete
 
-    // 展开到稳态，随后立即关闭并打断关闭动画（断开连接）
     el.open = true
     await el.updateComplete
     await settle(el)

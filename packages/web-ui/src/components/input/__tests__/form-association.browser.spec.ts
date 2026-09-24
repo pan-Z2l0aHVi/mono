@@ -1,6 +1,9 @@
 import { afterEach, describe, expect, it } from 'vite-plus/test'
+import { userEvent } from 'vite-plus/test/browser'
 
 import '..'
+import { flush, queryA11y } from '@/shared/test-utils'
+
 import type { WebUiInput } from '..'
 
 afterEach(() => document.body.replaceChildren())
@@ -75,5 +78,24 @@ describe('WebUiInput 表单关联（浏览器）', () => {
     } finally {
       ElementInternals.prototype.setValidity = original
     }
+  })
+
+  it('宿主 disabled 解除后原生输入立即恢复可输入', async () => {
+    const form = document.createElement('form')
+    form.innerHTML = '<web-ui-input name="title" disabled></web-ui-input>'
+    document.body.append(form)
+
+    const input = form.querySelector<WebUiInput>('web-ui-input')!
+    await input.updateComplete
+
+    input.disabled = false
+    await input.updateComplete
+    await flush()
+
+    const native = queryA11y(input, 'input') as HTMLInputElement
+    expect(native.disabled).toBe(false)
+    native.focus()
+    await userEvent.keyboard('typed')
+    expect(input.value).toBe('typed')
   })
 })

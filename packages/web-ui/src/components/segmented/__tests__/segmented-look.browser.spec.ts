@@ -95,20 +95,17 @@ function pointer(type: string, x: number, y: number): PointerEvent {
   })
 }
 
-/** 已选项的可交互面：合成指针事件的派发目标。 */
 function activeSurface(trigger: WebUiSegmentedTrigger): HTMLElement {
   const surface = queryA11y(trigger, '[role="option"]')
   if (!(surface instanceof HTMLElement)) throw new Error('未找到 role="option" 的可交互面')
   return surface
 }
 
-/** 已选项可交互面的中心点：合成指针事件的落点。 */
 function activeTriggerCenter(trigger: WebUiSegmentedTrigger): { x: number; y: number } {
   const rect = activeSurface(trigger).getBoundingClientRect()
   return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 }
 }
 
-/** trigger 可交互面的文字计算色。 */
 function triggerTextColor(trigger: WebUiSegmentedTrigger): string {
   return getComputedStyle(activeSurface(trigger)).color
 }
@@ -132,7 +129,6 @@ async function holdPressed(look: Look): Promise<() => Promise<void>> {
   }
 }
 
-/** 按住已选项，逐帧采样 thumb 底色，松手收尾。 */
 async function sampleWhilePressed(look: Look, frames: number): Promise<string[]> {
   const { indicator } = look
   const release = await holdPressed(look)
@@ -430,7 +426,6 @@ describe('WebUiSegmented 视觉规范（浏览器）', () => {
 
         const release = await holdPressed(look)
 
-        // 指针移到下一项中心：指示器跟过去，被它盖住的正是下一项
         const target = activeTriggerCenter(nextTrigger)
         window.dispatchEvent(pointer('pointermove', target.x, target.y))
         await waitForUpdate(segmented)
@@ -552,7 +547,6 @@ describe('WebUiSegmented 视觉规范（浏览器）', () => {
             () => getComputedStyle(indicator).transform.startsWith('matrix(1.5'),
             'inset 按压态 thumb 未放大到 1.5x'
           )
-          // 按压不改变轨道装饰
           expect(getComputedStyle(track, '::before').opacity, 'inset 按压态环应恒定').toBe('1')
           expect(getComputedStyle(track).boxShadow, 'inset 按压态投影应恒定').not.toBe('none')
           await release()
@@ -585,7 +579,6 @@ describe('WebUiSegmented 视觉规范（浏览器）', () => {
             () => getComputedStyle(indicator).transform.startsWith('matrix(1.5'),
             'raised 按压态 thumb 未放大到 1.5x'
           )
-          // 按压同样不改变轨道：flat 灰轨道三态同值
           expect(getComputedStyle(track, '::before').opacity, 'raised 按压态环应恒定').toBe('0')
           expect(getComputedStyle(track).boxShadow, 'raised 按压态投影应恒定').toBe('none')
           await release()
@@ -603,7 +596,6 @@ describe('WebUiSegmented 视觉规范（浏览器）', () => {
             const { theme, segmented, activeTrigger, triggers } = look
             const secondaryToken = resolveToken(theme, '--wui-color-text-secondary')
 
-            // 静止态：checked 与未选中项同档灰
             expect(triggerTextColor(activeTrigger), '选中项文字应为 text-secondary').toBe(secondaryToken)
             for (const trigger of triggers.slice(1)) {
               expect(triggerTextColor(trigger), '未选中项文字应为 text-secondary').toBe(secondaryToken)

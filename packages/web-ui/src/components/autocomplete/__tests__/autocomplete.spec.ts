@@ -91,6 +91,25 @@ function pressKeyOnCustomTrigger(el: WebUiAutocomplete, key: string) {
 
 describe('WebUiAutocomplete 组件', () => {
   describe('宿主属性', () => {
+    it('默认触发器原生 input 有稳定且实例唯一的 id', async () => {
+      const first = createAutocomplete(OPTIONS_HTML)
+      const second = createAutocomplete(OPTIONS_HTML)
+      await Promise.all([waitForUpdate(first), waitForUpdate(second)])
+
+      const firstId = triggerInput(first).id
+      const secondId = triggerInput(second).id
+      expect(firstId).not.toBe('')
+      expect(secondId).not.toBe('')
+      expect(secondId).not.toBe(firstId)
+
+      first.value = 'Apple'
+      await waitForUpdate(first)
+      expect(triggerInput(first).id).toBe(firstId)
+
+      cleanupElement(first)
+      cleanupElement(second)
+    })
+
     it('value 默认为空字符串', async () => {
       const el = createAutocomplete(OPTIONS_HTML)
       await waitForUpdate(el)
@@ -1233,7 +1252,6 @@ describe('WebUiAutocomplete 组件', () => {
       await waitForUpdate(el)
       expect(defaultTrigger(el).shadowRoot?.activeElement).toBe(triggerInput(el))
 
-      // 切换到 textarea 自定义触发器
       el.innerHTML = `${TEXTAREA_TRIGGER}${OPTIONS_HTML}`
       await flushSlotChange(el)
 
@@ -1242,7 +1260,6 @@ describe('WebUiAutocomplete 组件', () => {
       expect(document.activeElement).toBe(customTrigger(el))
       expect(customTriggerInner(el).tagName).toBe('TEXTAREA')
 
-      // 移除自定义触发器，回落默认 web-ui-input
       el.innerHTML = OPTIONS_HTML
       await flushSlotChange(el)
 

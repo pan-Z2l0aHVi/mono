@@ -7,7 +7,8 @@
  * 生成 src/icons/generated/<name>.ts 和 barrel index.ts。
  *
  * 图标集的根级 left/top/width/height 作为默认值，
- * 单个图标的同名字段会覆盖根级默认值。
+ * 单个图标的同名字段会覆盖根级默认值；两者都没有声明尺寸时按 Iconify 规范补 16×16，
+ * 保证产物自带画布，渲染端不需要为缺失的尺寸兜底。
  *
  * CLI:     node --experimental-strip-types scripts/generate-icons.ts
  * Vite:    import { generateIcons } from './scripts/generate-icons'
@@ -15,6 +16,9 @@
 
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs'
 import { resolve } from 'node:path'
+
+/** Iconify 规范：图标与图标集都未声明 width/height 时，画布按 16×16 计（见 @iconify/types README）。 */
+const ICONIFY_DEFAULT_CANVAS = 16
 
 function toCamelCase(kebab: string): string {
   return kebab.replace(/-([a-z0-9])/g, (_, c) => c.toUpperCase())
@@ -146,8 +150,10 @@ export async function generateIcons(pkgRoot: string) {
       body: data.body,
       left: data.left ?? setData.root.left,
       top: data.top ?? setData.root.top,
-      width: data.width ?? setData.root.width,
-      height: data.height ?? setData.root.height
+      // 有些集合（如 bi）不把画布尺寸写进 JSON，只依赖 Iconify 规范的缺省值，合并链只能在这里补上，
+      // 否则产物没有尺寸可读，渲染端只能猜。
+      width: data.width ?? setData.root.width ?? ICONIFY_DEFAULT_CANVAS,
+      height: data.height ?? setData.root.height ?? ICONIFY_DEFAULT_CANVAS
     }
 
     const fileName = `${set}-${name}`
