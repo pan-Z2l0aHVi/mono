@@ -8,6 +8,7 @@ import '@/components/icon'
 import glass from '@/assets/glass.css?inline'
 import { lucideLoaderCircle } from '@/icons'
 import { installPointerFocusSuppression } from '@/shared/focus/pointer-focus'
+import { FormAssociated, defineFormAssociation, FormAssociationController } from '@/shared/form-association'
 import { buttonGroupContextKey, defineGroupManaged, type ButtonGroupContext } from '@/shared/group-management'
 import { normalizeLiteral } from '@/shared/normalize'
 
@@ -19,9 +20,8 @@ const ALLOWED_TYPES = ['button', 'submit', 'reset'] as const
 installPointerFocusSuppression()
 
 @customElement('web-ui-button')
-export class WebUiButton extends LitElement {
+export class WebUiButton extends FormAssociated(LitElement) {
   static override styles = [unsafeCSS(glass), unsafeCSS(style)]
-  static formAssociated = true
 
   @property({ type: String, reflect: true })
   get variant(): 'primary' | 'secondary' | 'ghost' | 'danger' | 'glass' {
@@ -64,22 +64,23 @@ export class WebUiButton extends LitElement {
     return this._groupManagement.getContext()
   }
 
-  private _internals?: ElementInternals
-  private _formDisabled = false
+  /*
+   * 按钮不贡献表单值，接 shared form-association 只为拿 ElementInternals 与原生禁用回调：
+   * 禁用态由浏览器在宿主 disabled 反射时同步回报，自己镜像一份会漏掉更新时机。
+   */
+  private readonly _formAssociation = defineFormAssociation<null>({
+    host: this,
+    getState: () => null,
+    setState: () => {},
+    getFormValue: () => null,
+    getFormState: () => null,
+    restoreState: () => {}
+  }).make()
 
-  override connectedCallback() {
-    super.connectedCallback()
-    this._internals ??= this.attachInternals()
-  }
-
-  formDisabledCallback(disabled: boolean) {
-    if (this._formDisabled === disabled) return
-    this._formDisabled = disabled
-    this.requestUpdate()
-  }
+  private readonly _formAssociationController = new FormAssociationController(this, this._formAssociation)
 
   private get _isDisabled(): boolean {
-    return this.disabled || this.loading || this._formDisabled
+    return this.disabled || this.loading || this._formAssociation.isFormDisabled()
   }
 
   private get _sizeStyle(): Record<string, string> {
@@ -104,7 +105,7 @@ export class WebUiButton extends LitElement {
      */
     setTimeout(() => {
       if (e.defaultPrevented) return
-      const form = this._internals?.form
+      const form = this._formAssociation.getInternals()?.form
       if (!form) return
       if (action === 'submit') form.requestSubmit()
       else form.reset()

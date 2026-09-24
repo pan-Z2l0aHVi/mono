@@ -205,6 +205,43 @@ describe('WebUiButton 组件（浏览器）', () => {
     expect(submitEvents).toBe(1)
   })
 
+  it('宿主 disabled 解除后真实按钮立即恢复可点', async () => {
+    const button = mountElement<WebUiButton>('web-ui-button', { attrs: { disabled: '' } })
+    let clicks = 0
+    button.addEventListener('click', () => {
+      clicks += 1
+    })
+    await waitForUpdate(button)
+
+    const inner = button.shadowRoot?.querySelector<HTMLButtonElement>('button')
+    expect(inner?.disabled).toBe(true)
+
+    button.disabled = false
+    await waitForUpdate(button)
+    await flush()
+
+    expect(inner?.disabled).toBe(false)
+    await userEvent.click(button)
+    expect(clicks).toBe(1)
+  })
+
+  it('宿主 disabled 置为 true 后真实按钮立即不可点', async () => {
+    const button = mountElement<WebUiButton>('web-ui-button')
+    let clicks = 0
+    button.addEventListener('click', () => {
+      clicks += 1
+    })
+    await waitForUpdate(button)
+
+    button.disabled = true
+    await waitForUpdate(button)
+    await flush()
+
+    expect(button.shadowRoot?.querySelector<HTMLButtonElement>('button')?.disabled).toBe(true)
+    await userEvent.click(button)
+    expect(clicks).toBe(0)
+  })
+
   it('icon + loading 只渲染 spinner，且不可点击、不可聚焦', async () => {
     const btn = mountElement<WebUiButton>('web-ui-button', {
       attrs: { icon: '', size: '32', loading: '', 'aria-label': 'test' },
