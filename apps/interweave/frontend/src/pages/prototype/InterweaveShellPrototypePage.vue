@@ -1134,7 +1134,7 @@ watch(addDialogOpen, (open, _, onCleanup) => {
             <web-ui-empty size="large" description="没有符合条件的资源"></web-ui-empty>
           </div>
 
-          <div v-else class="w-full h-full">
+          <div v-else class="w-full h-full select-none">
             <!-- 失效行只淡化内容 div；勾选框保持正常对比度，否则会读成 disabled -->
             <div
               v-for="resource in filteredResources"
@@ -1179,7 +1179,7 @@ watch(addDialogOpen, (open, _, onCleanup) => {
                     v-else
                     :ref="setNameEditorRef(resource.id)"
                     :class="resourceNameClass(resource)"
-                    class="caret-(--wui-color-accent,#08f)"
+                    class="caret-(--wui-color-accent,#08f) select-text"
                     :value="resource.name"
                     :aria-label="`修改 ${resource.name} 的名称`"
                     @click.stop
