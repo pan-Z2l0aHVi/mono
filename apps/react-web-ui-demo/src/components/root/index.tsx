@@ -242,7 +242,7 @@ export function Root() {
             <div
               slot="sidebar"
               ref={navSidebarRef}
-              className="relative z-20 h-full min-h-0 overflow-y-auto py-4 px-2 max-[640px]:px-0"
+              className="relative z-20 h-full min-h-0 overflow-y-auto p-2 max-[640px]:px-0"
               aria-label="应用导航"
             >
               <nav className="grid gap-1" aria-label="主导航">

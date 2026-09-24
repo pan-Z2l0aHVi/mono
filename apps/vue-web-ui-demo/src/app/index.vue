@@ -203,7 +203,7 @@ function isNavActive(path: string) {
         <div
           slot="sidebar"
           ref="navSidebar"
-          class="relative z-20 h-full min-h-0 overflow-y-auto py-4 px-2 max-[640px]:px-0"
+          class="relative z-20 h-full min-h-0 overflow-y-auto p-2 max-[640px]:px-0"
           aria-label="应用导航"
         >
           <nav class="grid gap-1" aria-label="主导航">
