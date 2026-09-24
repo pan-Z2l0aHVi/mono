@@ -33,7 +33,16 @@ export function AddURLSource(resourceID: string, inputURL: string): $Cancellable
 }
 
 /**
- * 仅在用户明确请求时更新远程展示信息。
+ * RefreshFileSource 重新检查同一文件 path 的可用性，不改变 location；文件在原路径恢复后使用。
+ */
+export function RefreshFileSource(sourceID: string): $CancellablePromise<$models.SourceDTO | null> {
+    return $Call.ByID(3763081659, sourceID).then(($result: any) => {
+        return $$createType1($result);
+    });
+}
+
+/**
+ * RefreshURLSource 重新抓取同一 URL 的展示信息与可用性，不改变 location。
  */
 export function RefreshURLSource(sourceID: string): $CancellablePromise<$models.SourceDTO | null> {
     return $Call.ByID(477969004, sourceID).then(($result: any) => {
@@ -49,7 +58,7 @@ export function RemoveSource(sourceID: string): $CancellablePromise<void> {
 }
 
 /**
- * 替换入口时保留其在 Resource 中的角色与顺位。
+ * ReplaceFileSource 用新路径找回失效文件，保留 Source 身份、顺位与首选角色；它不是同路径刷新。
  */
 export function ReplaceFileSource(sourceID: string, inputPath: string): $CancellablePromise<$models.SourceDTO | null> {
     return $Call.ByID(3092543900, sourceID, inputPath).then(($result: any) => {
@@ -58,7 +67,7 @@ export function ReplaceFileSource(sourceID: string, inputPath: string): $Cancell
 }
 
 /**
- * 替换入口时保留其在 Resource 中的角色与顺位。
+ * ReplaceURLSource 用新 URL 找回失效网页入口，保留 Source 身份、顺位与首选角色；它不是同 URL 刷新。
  */
 export function ReplaceURLSource(sourceID: string, inputURL: string): $CancellablePromise<$models.SourceDTO | null> {
     return $Call.ByID(2259197533, sourceID, inputURL).then(($result: any) => {

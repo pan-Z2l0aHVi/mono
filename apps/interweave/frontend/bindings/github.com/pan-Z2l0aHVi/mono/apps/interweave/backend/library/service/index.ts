@@ -22,3 +22,7 @@ export {
     TagEdgeDTO,
     TagNodeDTO
 } from "./models.js";
+
+export type {
+    ResourceKind
+} from "./models.js";

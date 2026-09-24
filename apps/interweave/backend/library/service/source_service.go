@@ -36,7 +36,7 @@ func (s *SourceService) AddURLSource(ctx context.Context, resourceID string, inp
 	return &dto, nil
 }
 
-// 替换入口时保留其在 Resource 中的角色与顺位。
+// ReplaceFileSource 用新路径找回失效文件，保留 Source 身份、顺位与首选角色；它不是同路径刷新。
 func (s *SourceService) ReplaceFileSource(ctx context.Context, sourceID string, inputPath string) (*SourceDTO, error) {
 	src, err := s.core.ReplaceFileSource(ctx, sourceID, inputPath)
 	if err != nil {
@@ -46,7 +46,7 @@ func (s *SourceService) ReplaceFileSource(ctx context.Context, sourceID string, 
 	return &dto, nil
 }
 
-// 替换入口时保留其在 Resource 中的角色与顺位。
+// ReplaceURLSource 用新 URL 找回失效网页入口，保留 Source 身份、顺位与首选角色；它不是同 URL 刷新。
 func (s *SourceService) ReplaceURLSource(ctx context.Context, sourceID string, inputURL string) (*SourceDTO, error) {
 	src, err := s.core.ReplaceURLSource(ctx, sourceID, inputURL)
 	if err != nil {
@@ -66,9 +66,19 @@ func (s *SourceService) RemoveSource(ctx context.Context, sourceID string) error
 	return s.core.RemoveSource(ctx, sourceID)
 }
 
-// 仅在用户明确请求时更新远程展示信息。
+// RefreshURLSource 重新抓取同一 URL 的展示信息与可用性，不改变 location。
 func (s *SourceService) RefreshURLSource(ctx context.Context, sourceID string) (*SourceDTO, error) {
 	src, err := s.core.RefreshURLSource(ctx, sourceID)
+	if err != nil {
+		return nil, err
+	}
+	dto := sourceToDTO(src)
+	return &dto, nil
+}
+
+// RefreshFileSource 重新检查同一文件 path 的可用性，不改变 location；文件在原路径恢复后使用。
+func (s *SourceService) RefreshFileSource(ctx context.Context, sourceID string) (*SourceDTO, error) {
+	src, err := s.core.RefreshFileSource(ctx, sourceID)
 	if err != nil {
 		return nil, err
 	}

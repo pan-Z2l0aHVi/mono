@@ -115,7 +115,7 @@ const (
 	ingestAppendSource
 	// 原位替换 Source 数据：保留添加顺位与首选角色（ADR-0016）。
 	ingestReplaceSource
-	// 仅更新 URL Source 的可用状态与展示元数据。
+	// 仅更新 Source 的可用状态与展示元数据，不改变 location。
 	ingestRefreshSource
 )
 

@@ -210,6 +210,30 @@ func (s *SourceService) RefreshURLSource(ctx context.Context, sourceID string) (
 	return s.getSource(ctx, sourceID)
 }
 
+// RefreshFileSource 重新检查同一文件路径的可用性，不改变 location；文件在原路径恢复后由用户显式调用。
+func (s *SourceService) RefreshFileSource(ctx context.Context, sourceID string) (Source, error) {
+	src, err := s.sources.Get(ctx, s.db.SqlDB(), sourceID)
+	if err != nil {
+		return Source{}, mapNotFound(err)
+	}
+
+	if src.Type != storage.SourceTypeFile {
+		return Source{}, ErrOnlyFileSourceRefreshable
+	}
+
+	outcome := s.ingest.probe(ctx, src.Location, storage.SourceTypeFile)
+	_, err = s.ingest.write(ctx, ingestWrite{
+		mode:     ingestRefreshSource,
+		sourceID: sourceID,
+		probe:    outcome,
+	})
+	if err != nil {
+		return Source{}, err
+	}
+
+	return s.getSource(ctx, sourceID)
+}
+
 func (s *SourceService) getSource(ctx context.Context, sourceID string) (Source, error) {
 	src, err := s.sources.Get(ctx, s.db.SqlDB(), sourceID)
 	if err != nil {
