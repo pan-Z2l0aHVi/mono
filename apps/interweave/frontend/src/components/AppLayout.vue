@@ -6,7 +6,7 @@ const route = useRoute()
 
 <template>
   <RouterView v-slot="{ Component }">
-    <component :is="Component" v-if="route.meta.prototype" />
+    <component :is="Component" v-if="route.meta.prototype || route.meta.immersive" />
     <web-ui-layout v-else>
       <component :is="Component" />
     </web-ui-layout>

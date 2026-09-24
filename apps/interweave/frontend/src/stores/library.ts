@@ -200,6 +200,20 @@ export const useLibraryStore = defineStore('library', {
     setResources(resources: ResourceDTO[]) {
       this.resources = resources.map(toResourceView)
     },
+    /** 合并 service 返回的最新快照，避免 CRUD 后等待整表重载。 */
+    upsertResource(resource: ResourceDTO) {
+      const nextResource = toResourceView(resource)
+      const index = this.resources.findIndex(item => item.id === nextResource.id)
+      if (index === -1) {
+        this.resources.push(nextResource)
+        return
+      }
+      this.resources.splice(index, 1, nextResource)
+    },
+    removeResources(ids: string[]) {
+      const removedIds = new Set(ids)
+      this.resources = this.resources.filter(resource => !removedIds.has(resource.id))
+    },
     resetFilters() {
       this.searchQuery = ''
       this.filterSource = 'all'

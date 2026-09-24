@@ -5,7 +5,8 @@ export const router = createRouter({
   routes: [
     {
       path: '/',
-      component: () => import('@/pages/LibraryPage.vue')
+      component: () => import('@/pages/LibraryPage.vue'),
+      meta: { immersive: true }
     },
     {
       path: '/tags',

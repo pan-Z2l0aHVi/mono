@@ -236,4 +236,21 @@ describe('useLibraryStore（Pinia 集成）', () => {
     expect(store.hasActiveFilter).toBe(false)
     expect(store.filteredResources).toHaveLength(2)
   })
+
+  it('upsertResource 合并单条最新快照，removeResources 只移除指定 id', () => {
+    const store = useLibraryStore()
+    store.setResources([dto({ id: 'r1' }), dto({ id: 'r2', title: 'Other' })])
+
+    store.upsertResource(dto({ id: 'r1', title: 'Updated title', updated_at: 400 }))
+    expect(store.resources.map(resource => [resource.id, resource.title])).toEqual([
+      ['r1', 'Updated title'],
+      ['r2', 'Other']
+    ])
+
+    store.upsertResource(dto({ id: 'r3', title: 'New resource' }))
+    expect(store.resources.map(resource => resource.id)).toEqual(['r1', 'r2', 'r3'])
+
+    store.removeResources(['r1', 'missing'])
+    expect(store.resources.map(resource => resource.id)).toEqual(['r2', 'r3'])
+  })
 })
