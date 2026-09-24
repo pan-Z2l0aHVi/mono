@@ -13,25 +13,15 @@
  */
 import { defineStore } from 'pinia'
 
-import type { ResourceDTO } from '../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/service'
+import type {
+  ResourceDTO,
+  ResourceKind as ResourceDTOKind
+} from '../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/service'
 
 export type SourceType = 'file' | 'url'
 
-/** 资源展示分类：url 一律为 web；文件按扩展名粗分类，未知扩展归入 file。 */
-export type ResourceKind = 'pdf' | 'document' | 'data' | 'web' | 'file'
-
-const KIND_BY_EXTENSION: Record<string, ResourceKind> = {
-  pdf: 'pdf',
-  doc: 'document',
-  docx: 'document',
-  md: 'document',
-  txt: 'document',
-  rtf: 'document',
-  json: 'data',
-  csv: 'data',
-  yaml: 'data',
-  yml: 'data'
-}
+/** 生成闭集之外的旧客户端或异常值统一降级为 unknown。 */
+export type ResourceKind = ResourceDTOKind | 'unknown'
 
 export interface ResourceSourceView {
   id: string
@@ -62,6 +52,7 @@ export interface ResourceView {
   /** 至少一个入口可用即为可用；对应 prototype 的 broken 取反。 */
   available: boolean
   kind: ResourceKind
+  sizeBytes: number | null
 }
 
 export type AvailabilityFilter = 'all' | 'available' | 'unavailable'
@@ -96,13 +87,6 @@ function toSourceView(source: ResourceDTO['sources'][number]): ResourceSourceVie
   }
 }
 
-function kindOf(source: ResourceSourceView | null): ResourceKind {
-  if (!source || source.type === 'url') return 'web'
-  const dot = source.location.lastIndexOf('.')
-  if (dot < 0 || dot === source.location.length - 1) return 'file'
-  return KIND_BY_EXTENSION[source.location.slice(dot + 1).toLowerCase()] ?? 'file'
-}
-
 /** DTO → view-model；preferred 派生自 is_preferred，available 由各入口聚合。 */
 export function toResourceView(dto: ResourceDTO): ResourceView {
   const sources = dto.sources.map(toSourceView)
@@ -117,7 +101,8 @@ export function toResourceView(dto: ResourceDTO): ResourceView {
     preferred,
     tagNames: dto.tags.map(tag => tag.name),
     available: sources.some(source => source.available),
-    kind: kindOf(preferred ?? sources[0] ?? null)
+    kind: dto.kind || 'unknown',
+    sizeBytes: dto.size_bytes ?? null
   }
 }
 
@@ -199,6 +184,20 @@ export const useLibraryStore = defineStore('library', {
     /** 整表替换视图；由 service 调用方（页面/composable）喂数据，store 不直接触达 Wails。 */
     setResources(resources: ResourceDTO[]) {
       this.resources = resources.map(toResourceView)
+    },
+    /** 合并 service 返回的最新快照，避免 CRUD 后等待整表重载。 */
+    upsertResource(resource: ResourceDTO) {
+      const nextResource = toResourceView(resource)
+      const index = this.resources.findIndex(item => item.id === nextResource.id)
+      if (index === -1) {
+        this.resources.push(nextResource)
+        return
+      }
+      this.resources.splice(index, 1, nextResource)
+    },
+    removeResources(ids: string[]) {
+      const removedIds = new Set(ids)
+      this.resources = this.resources.filter(resource => !removedIds.has(resource.id))
     },
     resetFilters() {
       this.searchQuery = ''

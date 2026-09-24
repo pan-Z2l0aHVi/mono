@@ -1,3 +1,512 @@
+<script setup lang="ts">
+import type { WebUiEvent, WebUiLayout } from '@greypan/web-ui'
+import { lucideFolderOpen, lucideLayoutGrid, lucideSettings, lucideTags } from '@greypan/web-ui/icons'
+import { computed, onMounted, onScopeDispose, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+
+import LibraryAddDialog from '@/components/library/LibraryAddDialog.vue'
+import LibraryConfirmDialog from '@/components/library/LibraryConfirmDialog.vue'
+import LibraryDetailDrawer from '@/components/library/LibraryDetailDrawer.vue'
+import LibraryEditTagsDialog from '@/components/library/LibraryEditTagsDialog.vue'
+import LibraryPreviewDrawer from '@/components/library/LibraryPreviewDrawer.vue'
+import LibraryResourceList from '@/components/library/LibraryResourceList.vue'
+import LibraryToolbar from '@/components/library/LibraryToolbar.vue'
+import { useLibraryRuntime } from '@/composables/useLibraryRuntime'
+import type { LibraryQueueItem } from '@/services/library'
+import { useLibraryStore } from '@/stores/library'
+import type { ResourceSourceView, ResourceView } from '@/stores/library'
+
+interface ConfirmRequest {
+  title: string
+  message: string
+  confirmLabel: string
+  danger: boolean
+  action: () => Promise<void> | void
+}
+
+const route = useRoute()
+const router = useRouter()
+const store = useLibraryStore()
+const {
+  runtime,
+  isLoading,
+  pendingResourceIds,
+  refreshingSourceIds,
+  replacingSourceIds,
+  error: runtimeError,
+  loadResources,
+  addResource,
+  renameResource,
+  deleteResources,
+  saveTags,
+  refreshSource,
+  replaceFileSource,
+  chooseFilePaths
+} = useLibraryRuntime()
+
+const sidebarCollapsed = ref(false)
+const sidebarOpen = ref(false)
+const sidebarWidth = ref('240px')
+const mobileQuery = window.matchMedia('(max-width: 640px)')
+const mobile = ref(mobileQuery.matches)
+const filterOpen = ref(false)
+const searchOpen = ref(false)
+const selectionMode = ref(false)
+const checkedIds = ref<string[]>([])
+const activeResourceId = ref<string | null>(null)
+const detailOpen = ref(false)
+const previewOpen = ref(false)
+const tagsOpen = ref(false)
+const addOpen = ref(false)
+const renameRequest = ref(0)
+const queue = ref<LibraryQueueItem[]>([])
+const addingResources = ref(false)
+const confirmBusy = ref(false)
+const confirmRequest = ref<ConfirmRequest | null>(null)
+const confirmError = ref('')
+const addError = ref('')
+
+const visibleResources = computed(() => store.filteredResources)
+const selectedResource = computed(
+  () => store.resources.find(resource => resource.id === activeResourceId.value) ?? null
+)
+const allVisibleSelected = computed(
+  () =>
+    visibleResources.value.length > 0 &&
+    visibleResources.value.every(resource => checkedIds.value.includes(resource.id))
+)
+const emptyDescription = computed(() => (store.hasActiveFilter ? '没有符合条件的资源' : '资源库还是空的'))
+
+const navItems = [
+  { label: '资源库', path: '/', icon: lucideFolderOpen },
+  { label: '标签', path: '/tags', icon: lucideTags },
+  { label: '关系图谱', path: '/map', icon: lucideLayoutGrid },
+  { label: '设置', path: '/settings', icon: lucideSettings }
+]
+
+const navItemClass =
+  'flex min-h-9 w-full min-w-9 items-center gap-2 rounded-full border-0 px-2.5 text-left font-medium text-(--wui-color-text) transition-colors hover:bg-black/4 dark:hover:bg-white/7'
+
+function syncMobile() {
+  mobile.value = mobileQuery.matches
+}
+
+mobileQuery.addEventListener('change', syncMobile)
+onScopeDispose(() => mobileQuery.removeEventListener('change', syncMobile))
+
+function updateSidebarCollapsed(event: WebUiEvent<WebUiLayout, 'sidebar-collapsed-change'>) {
+  sidebarCollapsed.value = event.detail.collapsed
+}
+
+function updateSidebarOpen(event: WebUiEvent<WebUiLayout, 'sidebar-open-change'>) {
+  sidebarOpen.value = event.detail.open
+}
+
+function updateSidebarWidth(event: WebUiEvent<WebUiLayout, 'sidebar-width-change'>) {
+  sidebarWidth.value = event.detail.width
+}
+
+function navigate(path: string) {
+  sidebarOpen.value = false
+  if (route.path !== path) void router.push(path)
+}
+
+function selectResource(resource: ResourceView) {
+  activeResourceId.value = resource.id
+  detailOpen.value = true
+}
+
+function previewResource(resource: ResourceView) {
+  activeResourceId.value = resource.id
+  previewOpen.value = true
+}
+
+function renameResourceFromMenu(resource: ResourceView) {
+  activeResourceId.value = resource.id
+  detailOpen.value = true
+  renameRequest.value += 1
+}
+
+function editResourceTags(resource: ResourceView) {
+  activeResourceId.value = resource.id
+  tagsOpen.value = true
+}
+
+function toggleSelectionMode() {
+  selectionMode.value = !selectionMode.value
+  if (!selectionMode.value) checkedIds.value = []
+}
+
+function toggleChecked(resourceId: string) {
+  checkedIds.value = checkedIds.value.includes(resourceId)
+    ? checkedIds.value.filter(id => id !== resourceId)
+    : [...checkedIds.value, resourceId]
+}
+
+function toggleCheckAll() {
+  const visibleIds = visibleResources.value.map(resource => resource.id)
+  if (allVisibleSelected.value) {
+    checkedIds.value = checkedIds.value.filter(id => !visibleIds.includes(id))
+    return
+  }
+  checkedIds.value = [...new Set([...checkedIds.value, ...visibleIds])]
+}
+
+function requestDeleteResource(resource: ResourceView) {
+  confirmError.value = ''
+  confirmRequest.value = {
+    title: '删除资源',
+    message: `删除「${resource.title}」后无法恢复。`,
+    confirmLabel: '删除',
+    danger: true,
+    action: async () => {
+      const deletedIds = await deleteResources([resource.id])
+      finishDelete(deletedIds)
+    }
+  }
+}
+
+function requestDeleteSelected() {
+  const ids = [...checkedIds.value]
+  if (!ids.length) return
+  confirmError.value = ''
+  confirmRequest.value = {
+    title: '删除资源',
+    message: `删除选中的 ${ids.length} 个资源后无法恢复。`,
+    confirmLabel: '删除',
+    danger: true,
+    action: async () => {
+      const deletedIds = await deleteResources(ids)
+      finishDelete(deletedIds)
+    }
+  }
+}
+
+function finishDelete(deletedIds: string[]) {
+  const deleted = new Set(deletedIds)
+  checkedIds.value = checkedIds.value.filter(id => !deleted.has(id))
+  if (activeResourceId.value && deleted.has(activeResourceId.value)) {
+    detailOpen.value = false
+    previewOpen.value = false
+    activeResourceId.value = null
+  }
+}
+
+function requestQueueRemoval(itemId: string) {
+  const item = queue.value.find(candidate => candidate.id === itemId)
+  if (!item) return
+  confirmError.value = ''
+  confirmRequest.value = {
+    title: '移除待添加项',
+    message: `移除「${item.title}」后不会加入资源库。`,
+    confirmLabel: '移除',
+    danger: true,
+    action: () => {
+      queue.value = queue.value.filter(candidate => candidate.id !== itemId)
+    }
+  }
+}
+
+async function runConfirmedAction() {
+  const request = confirmRequest.value
+  if (!request || confirmBusy.value) return
+  confirmError.value = ''
+  confirmBusy.value = true
+  try {
+    await request.action()
+    closeConfirmDialog()
+  } catch (cause) {
+    confirmError.value = takeOperationError(cause, '操作失败，请稍后重试')
+  } finally {
+    confirmBusy.value = false
+  }
+}
+
+function closeConfirmDialog() {
+  confirmRequest.value = null
+  confirmError.value = ''
+}
+
+function takeOperationError(cause: unknown, fallback: string) {
+  const message = cause instanceof Error && cause.message.trim() ? cause.message : runtimeError.value || fallback
+  runtimeError.value = ''
+  return message
+}
+
+function openAddDialog() {
+  queue.value = []
+  addError.value = ''
+  addOpen.value = true
+}
+
+function setAddOpen(open: boolean) {
+  addOpen.value = open
+  if (!open) addError.value = ''
+}
+
+function queueId(kind: LibraryQueueItem['kind']) {
+  return `queue-${kind}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+}
+
+function titleFromLocation(location: string) {
+  if (location.startsWith('http://') || location.startsWith('https://')) {
+    const parsed = new URL(location)
+    const pathTitle = decodeURIComponent(parsed.pathname).split('/').filter(Boolean).at(-1)
+    return pathTitle ?? parsed.hostname
+  }
+  return (
+    location
+      .split(/[\\/]/)
+      .at(-1)
+      ?.replace(/\.[^.]+$/, '') || location
+  )
+}
+
+function enqueueFileTitles(fileTitles: string[]) {
+  for (const location of fileTitles) {
+    queue.value.push({
+      id: queueId('file'),
+      kind: 'file',
+      title: titleFromLocation(location),
+      location
+    })
+  }
+}
+
+async function pickFiles() {
+  try {
+    addError.value = ''
+    enqueueFileTitles(await chooseFilePaths())
+  } catch (cause) {
+    addError.value = takeOperationError(cause, '选择文件失败')
+  }
+}
+
+function enqueueUrl(url: string) {
+  queue.value.push({
+    id: queueId('url'),
+    kind: 'url',
+    title: titleFromLocation(url),
+    location: url
+  })
+}
+
+function renameQueueItem(itemId: string, title: string) {
+  queue.value = queue.value.map(item => (item.id === itemId ? { ...item, title } : item))
+}
+
+async function submitQueue() {
+  if (!queue.value.length || addingResources.value) return
+  addError.value = ''
+  addingResources.value = true
+  const remaining = new Set(queue.value.map(item => item.id))
+  try {
+    for (const item of queue.value) {
+      await addResource(item)
+      remaining.delete(item.id)
+    }
+    queue.value = []
+    addOpen.value = false
+  } catch (cause) {
+    queue.value = queue.value.filter(item => remaining.has(item.id))
+    addError.value = takeOperationError(cause, '添加资源失败，请稍后重试')
+  } finally {
+    addingResources.value = false
+  }
+}
+
+async function handleRename(resourceId: string, title: string) {
+  try {
+    await renameResource(resourceId, title)
+  } catch {
+    // 错误由 runtimeError 呈现，详情抽屉保持当前 Resource。
+  }
+}
+
+async function handleSaveTags(resourceId: string, tagNames: string[]) {
+  try {
+    await saveTags(resourceId, tagNames)
+    tagsOpen.value = false
+  } catch {
+    // 错误由 runtimeError 呈现，保留草稿以便修正后重试。
+  }
+}
+
+async function handleRefreshSource(source: ResourceSourceView) {
+  try {
+    await refreshSource(source)
+  } catch {
+    // 错误由 runtimeError 呈现。
+  }
+}
+
+async function handleReplaceSource(sourceId: string) {
+  try {
+    await replaceFileSource(sourceId)
+  } catch {
+    // 错误由 runtimeError 呈现。
+  }
+}
+
+onMounted(() => {
+  void loadResources().catch(() => {
+    // 初次加载错误由 runtimeError 呈现，并保留重试入口。
+  })
+})
+</script>
+
 <template>
-  <main aria-label="Interweave" />
+  <web-ui-layout
+    header-glow
+    sidebarResizable
+    class="min-h-dvh overflow-x-clip text-(--wui-color-text) bg-(--wui-color-page)"
+    :sidebarCollapsed="sidebarCollapsed"
+    :sidebarOpen="sidebarOpen"
+    :sidebarWidth="sidebarWidth"
+    @sidebar-collapsed-change="updateSidebarCollapsed"
+    @sidebar-open-change="updateSidebarOpen"
+    @sidebar-width-change="updateSidebarWidth"
+  >
+    <div slot="sidebar" class="relative z-20 h-full pt-14 pb-4 px-2 max-[640px]:px-0" aria-label="应用导航">
+      <div class="mb-3 flex h-9 min-w-0 items-center gap-2 px-2.5 max-[640px]:hidden">
+        <span
+          class="grid size-6 shrink-0 place-items-center rounded-md bg-(--wui-color-accent) text-xs font-bold text-white"
+        >
+          I
+        </span>
+        <span v-if="!sidebarCollapsed" class="truncate text-sm font-semibold">Interweave</span>
+      </div>
+      <nav class="grid gap-1" aria-label="主导航">
+        <button
+          v-for="item in navItems"
+          :key="item.path"
+          type="button"
+          :class="[
+            navItemClass,
+            route.path === item.path ? 'bg-(--wui-color-surface-control)' : '',
+            sidebarCollapsed ? 'justify-center' : ''
+          ]"
+          :data-active="route.path === item.path"
+          :aria-current="route.path === item.path ? 'page' : undefined"
+          :aria-label="item.label"
+          @click="navigate(item.path)"
+        >
+          <web-ui-icon :icon="item.icon" :size="18" class="shrink-0" />
+          <span v-if="!sidebarCollapsed" class="truncate whitespace-nowrap">{{ item.label }}</span>
+        </button>
+      </nav>
+    </div>
+
+    <header slot="header" class="w-full border-b border-black/5 dark:border-white/8">
+      <LibraryToolbar
+        :search-query="store.searchQuery"
+        :filter-source="store.filterSource"
+        :filter-kind="store.filterKind"
+        :filter-availability="store.filterAvailability"
+        :filter-tag="store.filterTag"
+        :sort="store.sort"
+        :all-tag-names="store.allTagNames"
+        :has-active-filter="store.hasActiveFilter"
+        :filter-open="filterOpen"
+        :search-open="searchOpen"
+        :selection-mode="selectionMode"
+        :selected-count="checkedIds.length"
+        :all-visible-selected="allVisibleSelected"
+        @update:search-query="store.searchQuery = $event"
+        @update:filter-source="store.filterSource = $event"
+        @update:filter-kind="store.filterKind = $event"
+        @update:filter-availability="store.filterAvailability = $event"
+        @update:filter-tag="store.filterTag = $event"
+        @update:sort="store.sort = $event"
+        @update:filter-open="filterOpen = $event"
+        @update:search-open="searchOpen = $event"
+        @add="openAddDialog"
+        @select="toggleSelectionMode"
+        @select-all="toggleCheckAll"
+        @delete-selected="requestDeleteSelected"
+        @reset="store.resetFilters()"
+      />
+    </header>
+
+    <main class="min-w-0 flex-1 px-6 pt-2 pb-16 max-[640px]:px-3" aria-label="资源库">
+      <div
+        v-if="runtimeError"
+        class="mb-3 flex min-h-10 items-center justify-between gap-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-400/12 dark:text-red-200"
+        role="alert"
+      >
+        <span class="min-w-0 wrap-break-word">{{ runtimeError }}</span>
+        <web-ui-button size="28" variant="ghost" @click="runtimeError = ''">关闭</web-ui-button>
+      </div>
+
+      <LibraryResourceList
+        :resources="visibleResources"
+        :active-resource-id="activeResourceId"
+        :checked-ids="checkedIds"
+        :selection-mode="selectionMode"
+        :loading="isLoading"
+        :empty-description="emptyDescription"
+        @select="selectResource"
+        @preview="previewResource"
+        @rename="renameResourceFromMenu"
+        @edit-tags="editResourceTags"
+        @delete="requestDeleteResource"
+        @refresh="handleRefreshSource"
+        @replace="handleReplaceSource"
+        @toggle="toggleChecked"
+      />
+    </main>
+
+    <LibraryDetailDrawer
+      v-model:open="detailOpen"
+      :resource="selectedResource"
+      :mobile="mobile"
+      :rename-request="renameRequest"
+      :refreshing-source-ids="refreshingSourceIds"
+      :replacing-source-ids="replacingSourceIds"
+      @rename="handleRename"
+      @edit-tags="editResourceTags"
+      @delete="requestDeleteResource"
+      @preview="previewResource"
+      @refresh="handleRefreshSource"
+      @replace="handleReplaceSource"
+    />
+    <LibraryPreviewDrawer v-model:open="previewOpen" :resource="selectedResource" :mobile="mobile" />
+
+    <LibraryAddDialog
+      :open="addOpen"
+      :queue="queue"
+      :runtime-kind="runtime.kind"
+      :busy="addingResources"
+      :error="addError"
+      @pick-files="pickFiles"
+      @drop-files="enqueueFileTitles"
+      @add-url="enqueueUrl"
+      @remove="requestQueueRemoval"
+      @rename="renameQueueItem"
+      @submit="submitQueue"
+      @update:open="setAddOpen"
+    />
+
+    <LibraryEditTagsDialog
+      v-model:open="tagsOpen"
+      :resource="selectedResource"
+      :all-tag-names="store.allTagNames"
+      :busy="pendingResourceIds.includes(activeResourceId ?? '')"
+      @save="handleSaveTags"
+    />
+
+    <LibraryConfirmDialog
+      :open="confirmRequest !== null"
+      :title="confirmRequest?.title ?? ''"
+      :message="confirmRequest?.message ?? ''"
+      :confirm-label="confirmRequest?.confirmLabel ?? '确认'"
+      :danger="confirmRequest?.danger ?? false"
+      :busy="confirmBusy"
+      :error="confirmError"
+      @confirm="runConfirmedAction"
+      @cancel="closeConfirmDialog"
+    />
+
+    <web-ui-back-top />
+  </web-ui-layout>
 </template>

@@ -20,8 +20,10 @@ var (
 	ErrTaggingNotFound = errors.New("tagging not found on resource")
 	// Resource 必须保留至少一个入口。
 	ErrCannotRemoveOnlySource = errors.New("cannot remove the only source of a resource; delete the resource instead")
-	// 仅 URL 入口支持刷新展示信息。
+	// 仅 URL 入口支持 URL 展示信息刷新。
 	ErrOnlyURLSourceRefreshable = errors.New("only URL sources can be refreshed")
+	// 仅文件入口支持按原路径刷新可用性。
+	ErrOnlyFileSourceRefreshable = errors.New("only file sources can be refreshed")
 	// Resource 标题不能为空。
 	ErrResourceTitleEmpty = errors.New("resource title cannot be empty")
 )

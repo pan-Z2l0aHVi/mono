@@ -5,7 +5,10 @@ import type {
   ResourceDTO,
   SourceDTO
 } from '../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/service'
-import { SourceType } from '../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage'
+import {
+  ResourceKind,
+  SourceType
+} from '../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage'
 import { filterAndSort, toResourceView, useLibraryStore } from '../library'
 
 type ResourceDTOOverride = Omit<Partial<ResourceDTO>, 'sources'> & { sources?: Array<Partial<SourceDTO>> }
@@ -15,6 +18,8 @@ function dto(overrides: ResourceDTOOverride = {}): ResourceDTO {
     id: 'r1',
     title: 'Design Spec',
     note: '',
+    kind: ResourceKind.ResourceKindWeb,
+    size_bytes: null,
     created_at: 100,
     updated_at: 200,
     sources: [
@@ -88,16 +93,17 @@ describe('toResourceView（DTO → view-model 翻译）', () => {
     expect(none.available).toBe(false)
   })
 
-  it('kind 派生：url 为 web，文件按扩展名分类，未知扩展为 file', () => {
-    expect(toResourceView(dto()).kind).toBe('web')
+  it('kind 直接消费 DTO 权威值，缺失或 zero value 兜底为 unknown', () => {
+    expect(toResourceView(dto()).kind).toBe(ResourceKind.ResourceKindWeb)
     expect(
       toResourceView(
         dto({
+          kind: ResourceKind.ResourceKindDocument,
           sources: [
             {
               id: 's1',
               type: SourceType.SourceTypeFile,
-              location: '/a/b.pdf',
+              location: '/a/b.json',
               available: true,
               is_preferred: true,
               order_index: 0
@@ -105,10 +111,11 @@ describe('toResourceView（DTO → view-model 翻译）', () => {
           ]
         })
       ).kind
-    ).toBe('pdf')
+    ).toBe(ResourceKind.ResourceKindDocument)
     expect(
       toResourceView(
         dto({
+          kind: ResourceKind.$zero,
           sources: [
             {
               id: 's1',
@@ -121,7 +128,13 @@ describe('toResourceView（DTO → view-model 翻译）', () => {
           ]
         })
       ).kind
-    ).toBe('file')
+    ).toBe('unknown')
+  })
+
+  it('size_bytes 保留字节数，缺失或 null 统一为 null', () => {
+    expect(toResourceView(dto({ size_bytes: 2_400_000 })).sizeBytes).toBe(2_400_000)
+    expect(toResourceView(dto({ size_bytes: null })).sizeBytes).toBeNull()
+    expect(toResourceView(dto({ size_bytes: undefined })).sizeBytes).toBeNull()
   })
 
   it('无 metadata（本地文件）时 metadata 为 null', () => {
@@ -153,6 +166,7 @@ describe('filterAndSort（列表语义）', () => {
         id: 'r2',
         title: 'Beta Notes',
         updated_at: 100,
+        kind: ResourceKind.ResourceKindJSON,
         sources: [
           {
             id: 's2',
@@ -171,6 +185,7 @@ describe('filterAndSort（列表语义）', () => {
         id: 'r3',
         title: 'Gamma PDF',
         updated_at: 200,
+        kind: ResourceKind.ResourceKindDocument,
         sources: [
           {
             id: 's3',
@@ -201,7 +216,9 @@ describe('filterAndSort（列表语义）', () => {
   it('来源/可用性/分类/标签过滤', () => {
     expect(filterAndSort(resources, { ...base, filterSource: 'url' }).map(r => r.id)).toEqual(['r1'])
     expect(filterAndSort(resources, { ...base, filterAvailability: 'unavailable' }).map(r => r.id)).toEqual(['r2'])
-    expect(filterAndSort(resources, { ...base, filterKind: 'pdf' }).map(r => r.id)).toEqual(['r3'])
+    expect(filterAndSort(resources, { ...base, filterKind: ResourceKind.ResourceKindDocument }).map(r => r.id)).toEqual(
+      ['r3']
+    )
     expect(filterAndSort(resources, { ...base, filterTag: 'design' }).map(r => r.id)).toEqual(['r1'])
   })
 
@@ -235,5 +252,22 @@ describe('useLibraryStore（Pinia 集成）', () => {
     store.resetFilters()
     expect(store.hasActiveFilter).toBe(false)
     expect(store.filteredResources).toHaveLength(2)
+  })
+
+  it('upsertResource 合并单条最新快照，removeResources 只移除指定 id', () => {
+    const store = useLibraryStore()
+    store.setResources([dto({ id: 'r1' }), dto({ id: 'r2', title: 'Other' })])
+
+    store.upsertResource(dto({ id: 'r1', title: 'Updated title', updated_at: 400 }))
+    expect(store.resources.map(resource => [resource.id, resource.title])).toEqual([
+      ['r1', 'Updated title'],
+      ['r2', 'Other']
+    ])
+
+    store.upsertResource(dto({ id: 'r3', title: 'New resource' }))
+    expect(store.resources.map(resource => resource.id)).toEqual(['r1', 'r2', 'r3'])
+
+    store.removeResources(['r1', 'missing'])
+    expect(store.resources.map(resource => resource.id)).toEqual(['r2', 'r3'])
   })
 })

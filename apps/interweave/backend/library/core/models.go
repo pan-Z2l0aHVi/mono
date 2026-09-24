@@ -20,6 +20,9 @@ type ResourceView struct {
 	Resource Resource
 	Sources  []Source
 	Tags     []Tag
+	// Kind 与 SizeBytes 是从首选 Source 派生的展示元数据，不改变持久化模型。
+	Kind      storage.ResourceKind
+	SizeBytes *int64
 }
 
 // GlobalMap 是全局主题地形的聚合视图。
