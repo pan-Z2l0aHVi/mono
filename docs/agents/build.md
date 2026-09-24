@@ -24,14 +24,14 @@ Interweave 由 Wails 宿主管理嵌套前端，因此其 alias 只启动 Wails 
 
 代码质量检查与修复的命令矩阵（`check:code` 聚合与 `fix:code` 一键修复）以 [`linting.md`](linting.md) 为权威；`pre-commit` 只跑 task gate 与 `.agents/checks/` 政策检查，不改写文件；提交边界的清洁度保证（格式、lint 与类型）来自 `format-clean` 这条只检不改的检查，口径与已登记的旁路见 [`workflow.md`](workflow.md)。包构建命令不能替代这些命令；Wails 的 macOS/Windows 原生构建仍负责验证 host package 与平台集成。
 
-| 命令                        | 用途                                    | 说明                                                                            |
-| --------------------------- | --------------------------------------- | ------------------------------------------------------------------------------- |
-| `pnpm run clean`            | 清理构建产物与缓存                      | 执行 `scripts/clean.sh`，安全重置各工作区的 `dist/`、`.turbo/` 和临时产物       |
-| `pnpm run test:scripts`     | 验证仓库内部工具脚本                    | 含 `ci-topology`、`ci-flakes` 与 `ci-measure` 的断言，是 CI 拓扑表的执行端      |
-| `pnpm run measure:ci`       | 只读统计 CI 成本                        | 需 `gh` 已登录；口径与「两栏不能混用」的原因见「CI 与发布」节                   |
-| `pnpm run flakes:ci`        | 汇总 flake 榜                           | 读 `ci-test-output-*` artifact 目录；口径见「CI 与发布」节                      |
-| `pnpm run validate:context` | 验证 Agent context 路由、软链与结构约束 | 修改 `AGENTS.md`、角色、rules、skills 或 `docs/agents/**` 时必须通过            |
-| `pnpm run check:pack`       | 发布产物边界检查                        | 构建可发布 package 或修改其 `exports`、`files`、Vite 输出时，在根构建成功后运行 |
+| 命令                        | 用途                                          | 说明                                                                            |
+| --------------------------- | --------------------------------------------- | ------------------------------------------------------------------------------- |
+| `pnpm run clean`            | 清理构建产物与缓存                            | 执行 `scripts/clean.sh`，安全重置各工作区的 `dist/`、`.turbo/` 和临时产物       |
+| `pnpm run test:scripts`     | 验证仓库内部工具脚本                          | 含 `ci-topology`、`ci-flakes` 与 `ci-measure` 的断言，是 CI 拓扑表的执行端      |
+| `pnpm run measure:ci`       | 只读统计 CI 成本                              | 需 `gh` 已登录；口径与「两栏不能混用」的原因见「CI 与发布」节                   |
+| `pnpm run flakes:ci`        | 汇总 flake 榜                                 | 读 `ci-test-output-*` artifact 目录；口径见「CI 与发布」节                      |
+| `pnpm run validate:context` | 验证 Agent context 路由、软链、链接与出处约束 | 修改 `AGENTS.md`、rules、skills、roles 或 `docs/agents/**` 时必须通过           |
+| `pnpm run check:pack`       | 发布产物边界检查                              | 构建可发布 package 或修改其 `exports`、`files`、Vite 输出时，在根构建成功后运行 |
 
 `check:pack` 使用 `pnpm pack --dry-run` 验证实际发布文件与 manifest export targets；它不判断 API 语义或版本级别。
 

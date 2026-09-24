@@ -8,98 +8,6 @@ import { listPnpmWorkspaceManifests, readPnpmWorkspacePatterns } from './workspa
 const root = path.resolve(import.meta.dirname, '..')
 const errors = []
 
-// Role Contract 的落点：随 herdr-agents skill 安置，角色不再是 Claude Code subagent（ADR-0015）。
-const roleDirectory = '.agents/skills/herdr-agents/roles'
-
-// 结构化 handoff 的必填字段；根 AGENTS.md 与 task-packet.md 必须保持一致，缺失即视为流程漂移。
-const handoffFields = [
-  'Goal（目标）',
-  'Scope（范围）',
-  'Acceptance（验收标准）',
-  'Test commands（测试命令）',
-  'Open decisions（未解决决策）'
-]
-
-// 角色 → 执行体的默认绑定表镜像。唯一权威绑定表在根 AGENTS.md「多 Agent 编排」。
-// 本文件只校验各处绑定表副本不静默漂移；角色契约的自述措辞改由 <!-- invariant:role-sections --> 锚点覆盖，
-// 不再用正则钉「X 由 Y 承担」这类句式。默认模型与思考强度是推荐分档（非强制，见 ADR-0011），不参与机械校验。
-const roleBindings = [
-  { label: 'Manager', executor: 'Claude Code' },
-  { label: 'Designer', executor: 'Claude Code' },
-  { label: 'Lib Coder', executor: 'Codex CLI' },
-  { label: 'Biz Coder', executor: 'Codex CLI' },
-  { label: 'Reviewer', executor: 'Claude Code' }
-]
-// 单元格可能写成 Markdown 链接、加粗或行内代码；归一化后再比对，避免格式变化绕过校验。
-const stripMarkup = value => value.replace(/\[([^\]]*)\]\([^)]*\)/g, '$1').replace(/[*`]/g, '')
-const normalizeRole = value => stripMarkup(value).trim().toLowerCase().replace(/[-_]+/g, ' ').replace(/\s+/g, ' ')
-const normalizeExecutor = value => stripMarkup(value).trim()
-const bindings = new Map(roleBindings.map(binding => [normalizeRole(binding.label), binding]))
-
-// 表头必须精确是「角色/Role」与「执行体/Executor」两列。用精确匹配而不是子串匹配，
-// 避免 Reviewer、Controller 这类含 "role" 的列名被误判成绑定表。
-const isRoleHeader = cell => /^(?:角色|role)$/i.test(normalizeExecutor(cell))
-const isExecutorHeader = cell => /^(?:执行体|executor)$/i.test(normalizeExecutor(cell))
-function bindingColumns(cells) {
-  const role = cells.findIndex(isRoleHeader)
-  const executor = cells.findIndex(isExecutorHeader)
-  return role >= 0 && executor >= 0 ? { role, executor } : null
-}
-
-const splitRow = line => line.trim().replace(/^\|/, '').replace(/\|$/, '').split('|')
-const isSeparatorRow = cells => cells.some(cell => cell.includes('-')) && cells.every(cell => /^[\s:|-]*$/.test(cell))
-
-// 执行体必须以词边界结束，避免 "Claude Coder" 这类前缀变体被当成 "Claude Code" 放过。
-const escapeRegExp = value => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-const declaresExecutor = (declared, executor) => new RegExp(`^${escapeRegExp(executor)}(?![A-Za-z])`).test(declared)
-
-function checkBindingMirrors() {
-  const scope = [
-    ...['AGENTS.md', 'CONTRIBUTING.md', 'CLAUDE.md'].filter(exists),
-    ...walk('docs/agents', file => file.endsWith('.md')).map(relative),
-    ...walk(roleDirectory, file => file.endsWith('.md')).map(relative)
-  ]
-  for (const file of scope) {
-    const lines = read(file).split('\n')
-    let columns = null
-    for (let index = 0; index < lines.length; index += 1) {
-      if (!lines[index].trim().startsWith('|')) {
-        columns = null
-        continue
-      }
-      const cells = splitRow(lines[index])
-      if (isSeparatorRow(cells)) continue
-      // 每个表格的表头都重新判定一次，紧邻的两个表格之间不会串用列索引。
-      if (isSeparatorRow(splitRow(lines[index + 1] ?? ''))) {
-        columns = bindingColumns(cells)
-        continue
-      }
-      if (!columns) continue
-      const binding = bindings.get(normalizeRole(cells[columns.role] ?? ''))
-      if (!binding) continue
-      const declared = normalizeExecutor(cells[columns.executor] ?? '')
-      // Reviewer 按级别路由执行体（T0 独立 reviewer 会话，T1 fresh subagent，T2 免审），表中允许精确写「按级别路由」而非单一执行体；
-      // 全等比对避免「Codex CLI 按级别路由」这类丢掉独立会话一路的写法静默通过。
-      if (binding.label === 'Reviewer' && declared.replace(/（[^）]*）$/, '').trim() === '按级别路由') continue
-      if (!declaresExecutor(declared, binding.executor))
-        addError(`${file}: ${binding.label} is bound to "${declared}" but the default binding is "${binding.executor}"`)
-    }
-  }
-}
-
-// 「二次审查」是单层风险路由之前的旧结构表述；除 ADR 历史快照外不得再出现。
-function checkRetiredReviewStructure() {
-  const scope = [
-    ...['AGENTS.md', 'CONTRIBUTING.md', 'CLAUDE.md'].filter(exists),
-    ...walk('docs/agents', file => file.endsWith('.md')).map(relative),
-    ...walk(roleDirectory, file => file.endsWith('.md')).map(relative)
-  ]
-  for (const file of scope) {
-    if (read(file).includes('二次审查'))
-      addError(`${file}: contains retired review structure "二次审查"; review is single-layer risk-routed per ADR-0010`)
-  }
-}
-
 const relative = file => path.relative(root, file) || '.'
 // context index 要与 worktree 的绝对路径无关：先归一为正斜杠，跨平台才能得到稳定指纹。
 const relativePosix = file => relative(file).split(path.sep).join('/')
@@ -132,7 +40,7 @@ function fromLockedSkill(file) {
   return first === '.agents' && second === 'skills' && lockedSkills.has(third)
 }
 
-// 入口面必须存在；其余门禁钉一致性：断链、与实现事实漂移、绑定表与 frontmatter、必经命令、软链。
+// 入口面必须存在；其余门禁钉通用 context 能力：断链、锚点、frontmatter、skill/role 出处、入口指针与软链。
 // 被删掉的是「指令文档语料必须存在」——它会随内容演进膨胀，反而阻止删减；被引用的文档由断链检查负责。
 for (const file of ['AGENTS.md', 'CLAUDE.md']) {
   if (!exists(file)) addError(`missing required context file: ${file}`)
@@ -152,43 +60,6 @@ if (exists('.vite-hooks/pre-commit') && !read('.vite-hooks/pre-commit').includes
 
 if (exists('CONTRIBUTING.md') && !read('CONTRIBUTING.md').includes('pnpm task start --task <task-id>'))
   addError('CONTRIBUTING.md is missing the workflow edit gate')
-
-// Manager 契约只需自包含 workflow gate 指针与 init 命令；gate 处方以根 AGENTS.md Mutation Gate 和 workflow.md 为权威，不复制。
-// 文件本身缺失由下方 roleProfiles 报错，不在此重复。
-if (exists(`${roleDirectory}/manager.md`)) {
-  const manager = read(`${roleDirectory}/manager.md`)
-  if (!manager.includes('pnpm task new') || !manager.includes('docs/agents/workflow.md'))
-    addError(`${roleDirectory}/manager.md is missing the Manager workflow gate pointer`)
-}
-
-// workflow.md 的章节标题不再逐个钉字；结构不变量由 <!-- invariant:workflow-states --> 等锚点覆盖。
-// 这里只保留必须否决的 retired 模型，防止旧结构换个写法长回来。
-if (exists('docs/agents/workflow.md')) {
-  const workflow = read('docs/agents/workflow.md')
-  for (const forbidden of ['持久开发 worktree：每个活跃子包', 'Reviewer worktree', 'Harness 选择', 'Agent 启动权限']) {
-    if (workflow.includes(forbidden)) addError(`docs/agents/workflow.md contains retired workflow model: ${forbidden}`)
-  }
-  for (const pattern of [
-    /^[ \t]*[-*][ \t]+\*\*Integrator\*\*/m,
-    /^[ \t]*#{1,6}[ \t]*Integrator/m,
-    /^\|\s*Integrator\s*\|/m
-  ]) {
-    if (pattern.test(workflow)) addError('docs/agents/workflow.md must not keep a separate Integrator role layer')
-  }
-  // handoff 字段枚举只保留在根 AGENTS.md 与 task-packet.md 两处权威；workflow.md 改为指针后不再复制字段名。
-  if (workflow.includes('Goal（目标）') && !workflow.includes('task-packet.md'))
-    addError('docs/agents/workflow.md must point to task-packet.md for the handoff template')
-}
-
-checkBindingMirrors()
-checkRetiredReviewStructure()
-
-if (exists('docs/agents/task-packet.md')) {
-  const taskPacket = read('docs/agents/task-packet.md')
-  for (const field of handoffFields) {
-    if (!taskPacket.includes(field)) addError(`docs/agents/task-packet.md is missing handoff field ${field}`)
-  }
-}
 
 // 薄适配入口用尺寸契约替代措辞契约：措辞可以随模型换代重写，只要它仍是不复制规则的短入口。
 const CLAUDE_ADAPTER_MAX_CHARACTERS = 800
@@ -354,10 +225,8 @@ for (const [file, expectedTarget] of Object.entries(symlinks)) {
   }
 }
 
-// 禁止 Role Contract 被重新注册成 Claude Code subagent（ADR-0015）。两条独立断言：symlink 一律置错
-// （它是这 5 份契约历史上被注册的机制，指向缺失目标的悬空 symlink 同样会被客户端当成 subagent 目录，
-// 故用 lstatSync）；git index 里不得出现该路径下的任何条目，被跟踪才会随 clone 扩散。本地未跟踪的
-// 普通目录是开发者自己的项目级 subagent 落点，`.gitignore` 已整体排除，仓库无权置错。
+// Role Contract 是显式 herdr skill 的输入，不是 Claude Code subagent。保留这条独立的
+// 注册形态检查，但不把它与固定 Role 集合、绑定表或 handoff 字段镜像绑在一起。
 try {
   if (fs.lstatSync(path.join(root, '.claude/agents')).isSymbolicLink())
     addError('.claude/agents must not be a symlink; Role Contracts are opt-in session roles, not Claude Code subagents')
@@ -480,36 +349,14 @@ for (const name of repoAuthoredSkills)
   if (!exists(`.agents/skills/${name}/SKILL.md`))
     addError(`repoAuthoredSkills lists a skill without SKILL.md: .agents/skills/${name}`)
 
-const roleProfiles = new Map([
-  ['manager.md', 'manager'],
-  ['designer.md', 'designer'],
-  ['lib-coder.md', 'lib-coder'],
-  ['biz-coder.md', 'biz-coder'],
-  ['reviewer.md', 'reviewer']
-])
-const roleFiles = walk(roleDirectory, file => file.endsWith('.md'))
-
-for (const file of roleFiles) {
+// Role Contract 数量和职责可以演进；每个文件自身的 frontmatter 身份仍必须可加载且与文件名一致。
+// 这条检查不维护角色名单，因此新增 supervisor 或未来 Role 不需要同步修改 validator。
+for (const file of walk('.agents/skills/herdr-agents/roles', file => file.endsWith('.md'))) {
   parseFrontmatter(file)
-  const filename = path.basename(file)
-  if (!roleProfiles.has(filename)) {
-    addError(`${relative(file)}: unsupported Agent Role; ${roleDirectory} has only five Role Contracts`)
-    continue
-  }
-
-  // Role Contract 的章节清单不再是硬编码契约；每个文件必须携带 <!-- invariant:role-sections --> 锚点，
-  // 具体章节可以随角色职责演进重写。
+  const expectedName = path.basename(file, '.md')
   const source = fs.readFileSync(file, 'utf8')
-  const expectedName = roleProfiles.get(filename)
-  if (!new RegExp(`^name:\\s*${expectedName}\\s*$`, 'm').test(source))
-    addError(`${relative(file)}: frontmatter name must be ${expectedName}`)
-}
-
-// 不是「文档语料必须存在」：可用角色由 `scripts/task.mjs` 的 `roleContracts()` 直接列契约目录推导，
-// 少一份契约会让该角色静默从 `pnpm task --roles` 的可选值里消失。本断言钉住这个镜像与目录一致。
-for (const filename of roleProfiles.keys()) {
-  if (!roleFiles.some(file => path.basename(file) === filename))
-    addError(`${roleDirectory}: missing required Agent Role ${filename}`)
+  const name = /^name:\s*(\S+)\s*$/m.exec(source)?.[1]
+  if (name !== expectedName) addError(`${relative(file)}: frontmatter name must be ${expectedName}`)
 }
 
 if (errors.length) {

@@ -1,17 +1,18 @@
 # 贡献与 Agent 工作流
 
-本文件是仓库协作流程的短路由入口；它定位「按需求该读什么」，不承载各主题的实现细节。代码事实以源码、manifest、配置和测试为准。
+本文件只负责把读者带到对应文档，不在这里重复实现细节。代码事实以源码、manifest、配置和测试为准。
 
 ## 先看什么
 
 - **任务路由与不可绕过的边界**、Multi-Agent 分工：[`AGENTS.md`](AGENTS.md)
 - **全局拓扑、workspace 清单、依赖草图、热点与包级约束**：[`ARCHITECTURE.md`](ARCHITECTURE.md)
 - **跨包原则、领域术语与 ADR 索引**：[`CONTEXT.md`](CONTEXT.md)
-- **开发与协作工作流（任务级别、状态机、预授权操作、角色、review）**：[`docs/agents/workflow.md`](docs/agents/workflow.md)
+- **开发与协作工作流（任务级别、状态机、预授权操作、review）**：[`docs/agents/workflow.md`](docs/agents/workflow.md)
+- **多 Agent Role、handoff、Supervisor 与 Herdr 编排**：[`herdr-agents`](.agents/skills/herdr-agents/SKILL.md)（用户显式调用 `/herdr-agents` 时）
 - **按需加载 context 的原则与最小 context 组合**：[`docs/agents/context.md`](docs/agents/context.md)
 - **提交与 AI 协作署名**：[`docs/agents/commit.md`](docs/agents/commit.md)
 
-进入 `apps/` 或 `packages/` 后，读取最近的包级 `AGENTS.md`（若存在）或 `ARCHITECTURE.md`「包级约束」表中的对应行。
+进入 `apps/` 或 `packages/` 后，读取最近的包级 `AGENTS.md`（若存在）；如果没有，就看 `ARCHITECTURE.md`「包级约束」表中的对应行。
 
 ## 关键约定
 
@@ -22,4 +23,4 @@
 
 ## 交付前
 
-报告：改动文件、影响 workspace、验证命令及结果、workflow task id、当前 phase、未验证的风险和需要用户决定的事项。未经授权不要提交、暂存或重写 Git 历史；关闭任务前必须有通过的验证记录。
+交付说明要写清改动文件、影响的 workspace、验证命令及结果、workflow task id、当前 phase、未验证的风险，以及需要用户决定的事项。未经授权不要提交、暂存或重写 Git 历史。关闭任务前必须留下通过的验证记录。

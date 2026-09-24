@@ -2,12 +2,13 @@
 
 - **Date**: 2026-08-09
 - **Status**: 已接受
+- **Amended by**: [ADR-0015](0015-role-contracts-in-herdr-agents-skill.md)、[ADR-0016](0016-implementation-supervision.md)
 
 ## 背景
 
-仓库同时包含根 `AGENTS.md`、包级 `AGENTS.md`、rules、操作指南、ADR、skills 和工具配置。若把它们的细节都放入根入口，agent 会在简单局部任务中预加载无关信息；同一约束在多个文件复述后，也会增加冲突和过期风险。
+仓库同时包含根 `AGENTS.md`、包级 `AGENTS.md`、rules、操作指南、ADR、skills 和工具配置。把细节全部放进根入口，会让简单任务也加载无关信息；同一约束重复出现在多个文件里，也更容易产生冲突和过期内容。
 
-项目仍需要让新 agent 快速获取项目身份、不可绕过的安全边界、包关系和长期设计决策，同时让 UI、测试、发布等任务可获得足够深度的专门 context。
+新 agent 仍需快速了解项目身份、不可绕过的安全边界、包关系和长期设计决策；UI、测试、发布等任务则按需读取更深入的资料。
 
 ## 决策
 
@@ -18,19 +19,19 @@
 3. **Task-specific context**：`docs/agents/*.md`、`.agents/rules/*.md` 和最近的包级 `AGENTS.md` 承载按领域执行的流程与局部约束。包级文件不复制根规则。
 4. **On-demand evidence**：相关 ADR、README、manifest、配置、源码和测试在影响范围确定后加载；当前实现和可执行验证优先于文字说明。
 
-`docs/agents/context.md` 是本架构的路由、文档同步映射和维护准则的权威来源。它还定义 planning、implementation、review、verification 和 release/workflow 阶段分别需要的最小 context。
+`docs/agents/context.md` 负责 context 路由、文档同步映射和维护准则，也列出各阶段所需的最小入口。
 
 新增 instruction、rule、skill 提示或 hook 之前，必须先判断代码边界、类型、测试、lint 或脚本能否更可靠地表达该约束。只有无法自动验证、且确实影响工程选择的约束才写入 instruction system。
 
-## 角色实施补充（2026-09-01）
+## 角色实施补充（2026-09-01；2026-09-24 修订）
 
-`.agents/agents/` 是共享、显式选择的 Session Role 层，固定提供 `manager`、`designer`、`lib-coder`、`biz-coder` 与 `reviewer`。Role 定义会话身份、职责边界、协作与完成定义，并独立于会话内先后出现的多个 Task；Rules 定义约束，Skills 定义专业方法，Task 定义某一时刻的具体需求。（2026-09-19 修订：该层的落点迁到 [`.agents/skills/herdr-agents/roles/`](../../.agents/skills/herdr-agents/roles/)，分层语义不变，见 [ADR-0015](0015-role-contracts-in-herdr-agents-skill.md)。）
+Session Role 层服务于显式调用的 herdr 编排，契约位于 [`.agents/skills/herdr-agents/roles/`](../../.agents/skills/herdr-agents/roles/)。可用 Role、初始化 prompt 和派发时序见 [`.agents/skills/herdr-agents/SKILL.md`](../../.agents/skills/herdr-agents/SKILL.md)。当前有 Manager、Designer、Lib Coder、Biz Coder、Supervisor 和 Reviewer。Role 描述会话身份、职责和完成条件，可以在同一会话中服务多个 task。Rules 定义约束，Skills 定义专业方法，Task 记录当前需求。
 
-Role 不与模型、CLI 或固定会话绑定。当前 Harness 不自动选择 Role；用户或 Manager 主动加载（加载入口见 `.agents/skills/herdr-agents/roles/`），`.claude/agents` 以 symlink 复用该唯一来源。（2026-09-19 修订：`.claude/agents` symlink 已删除，Role 不再注册为 Claude Code subagent，见 [ADR-0015](0015-role-contracts-in-herdr-agents-skill.md)。2026-09-20 修订：Role 收归 herdr 编排专用，契约、可用 Role 列表与初始化 prompt 全部落在 `.agents/skills/herdr-agents/`，旧 `CONTRIBUTING.md` 的「角色会话」节已删除；普通单会话不承担 Role。）
+Role 不注册为 Claude Code subagent，也不通过 `.claude/agents` symlink 暴露；普通单会话不承担 Role。Role 文档只描述自己的职责，不复制绑定表、handoff 处方或编排时序。Supervisor 的实施期职责见 [ADR-0016](0016-implementation-supervision.md)。
 
-## 角色执行体绑定补充（2026-09-10）
+## 角色执行体绑定补充（2026-09-10；2026-09-24 修订）
 
-「角色实施补充（2026-09-01）」中「Role 不与模型、CLI 或固定会话绑定」的结论已被 [ADR-0010](0010-agent-role-orchestration.md) 取代：五个角色采用默认执行体绑定，独立 review 按风险路由执行体；默认模型与思考强度为推荐分档（非强制，见 [ADR-0011](0011-agent-model-binding-and-effort.md)）。唯一权威绑定表在根 `AGENTS.md`「多 Agent 编排」。Role 仍然与会话内先后出现的多个 Task 解耦，Rules、Skills、Task 的分层不变。
+角色到执行体的默认绑定和启动参数见 [`.agents/skills/herdr-agents/SKILL.md`](../../.agents/skills/herdr-agents/SKILL.md)；模型与思考强度由用户会话或 Manager 按任务指定，不设 Role 默认（见 [ADR-0011](0011-agent-model-binding-and-effort.md) 的修订结论）。Role 可以在同一会话中服务多个 task，Rules、Skills、Task 的分层不变。
 
 ## 后果
 
@@ -38,7 +39,7 @@ Role 不与模型、CLI 或固定会话绑定。当前 Harness 不自动选择 R
 - `docs/agents/web-ui.md` 只负责把 `web-ui` 任务路由到对应 ADR；组件契约和框架事件边界仍以 ADR-0005 为准。`docs/agents/build.md` 只承载部署与 release workflow，release plane 术语以 ADR-0003 为准，避免污染通用 project context。
 - 文档同步要求集中在 `docs/agents/context.md`，减少根入口与 task guide 的重复；影响未来取舍的变更仍需 ADR，并更新 `CONTEXT.md` 索引。
 - Agent 需要遵循路由选择 context，而不是把「读完所有文档」视为完成探索。缺少所需证据时，应回到 manifest、配置、源码、测试或相关 ADR。
-- Codex、Claude Code 通过共享入口、规则、skills 和 agent profile 复用同一套规范；客户端专属配置只承担工具适配。公共契约 review skill 以窄触发条件将任务路由到 `find:usages`、`inspect:contract*` 与发布产物验证，不把这类流程加入所有任务的常驻 context。
+- Codex、Claude Code 通过共享入口、规则、skills 和 Role 契约复用同一套规范；客户端专属配置只承担工具适配。公共契约 review skill 以窄触发条件将任务路由到 `find:usages`、`inspect:contract*` 与发布产物验证，不把这类流程加入所有任务的常驻 context。
 - 确立 Token 与输出噪音治理：开发校验脚本在成功时使用摘要模式（如 `--no-progress`）减少无意义输出；根入口与常驻规则保持高稳定性以保证 Prefix Cache 命中率；第三方 skills 保持上游原文，自建 skills 保持 frontmatter 指针紧凑。
 
 ## 替代方案
