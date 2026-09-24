@@ -10,15 +10,21 @@ import type { WebUiCheckbox } from '..'
 afterEach(() => document.body.replaceChildren())
 
 /*
- * 勾的画线是 checkbox shadow 树内 path 上的一条 WAAPI 动画（§10 S2）。观察面沿用
- * `components/theme/__tests__/reduced-motion.browser.spec.ts` 在 Chromium 里的实测口径：
- * `el.getAnimations({subtree:true})` 采不到 checkbox shadow 内的动画，只有 `shadowRoot.getAnimations()` 采得到。
- * 收动画时按 effect target 是否为 SVG 几何元素过滤，不读 class 也不比 dash 数值（§12 C1/C3）。
+ * 勾的画线是 path 上的一条 WAAPI 动画（§10 S2）。path 现在住在 web-ui-icon 自己的 shadow root 里，
+ * 而 `ShadowRoot.getAnimations()` 不跨嵌套 shadow tree（实测 checkbox 那层只采得到自身的 opacity
+ * 过渡），所以观察面把两层都收进来：描边动画来自 icon 层，checkbox 层留着兜住勾回到自持 path 的情况。
+ * 过滤条件不变：effect target 是不是 SVG 几何元素，不读 class 也不比 dash 数值（§12 C1/C3）。
  */
 function drawAnimations(el: WebUiCheckbox): Animation[] {
-  return Array.from(el.shadowRoot?.getAnimations() ?? []).filter(
-    a => (a.effect as KeyframeEffect | null)?.target instanceof SVGGeometryElement
-  )
+  const roots = [el.shadowRoot, el.shadowRoot?.querySelector('web-ui-icon')?.shadowRoot]
+  return roots
+    .flatMap(root => Array.from(root?.getAnimations() ?? []))
+    .filter(a => (a.effect as KeyframeEffect | null)?.target instanceof SVGGeometryElement)
+}
+
+/** 描边真正作用的那条 path：资产渲染在嵌套 shadow root 里，选择器穿不过去，只能逐层拿。 */
+function checkPath(el: WebUiCheckbox): SVGGeometryElement | null {
+  return el.shadowRoot?.querySelector('web-ui-icon')?.shadowRoot?.querySelector<SVGGeometryElement>('path') ?? null
 }
 
 /** 没有动画时得空串，轮询因此不会把「还没起动画」误判成起来或落稳。 */
@@ -37,7 +43,7 @@ describe('WebUiCheckbox 勾画线（浏览器）', () => {
     expect(drawAnimations(el)).toHaveLength(0)
 
     // 只钉「没有动画」不够：收回留下的空白同样不带动画。这里钉住勾仍是资产原样，即静态可见的勾。
-    const check = el.shadowRoot?.querySelector('path')
+    const check = checkPath(el)
     expect(check?.style.strokeDasharray).toBe('')
     expect(check?.style.strokeDashoffset).toBe('')
 
@@ -148,5 +154,22 @@ describe('WebUiCheckbox 勾画线（浏览器）', () => {
     await expect.poll(() => drawAnimations(child).length).toBeGreaterThan(0)
 
     cleanupElement(group)
+  })
+
+  /*
+   * 画线只作用于 stroke，所以这条钉的是上面全部用例的前提：勾必须是描边资产，且描边取 on-control 档。
+   * 换成实心（fill="currentColor"）资产时 dash 动画照跑、勾却全程满显，收回也看不见；勾选后指示器底是
+   * accent，勾留在继承的文字色就是深灰压深蓝。两者都是实测发生过的回归，这里一次钉死。
+   * 没有 web-ui-theme 时 on-control 走 style.css 的 #fff 兜底，断言因此不依赖主题档。
+   */
+  it('勾是描边资产，描边色走 on-control 档', async () => {
+    const el = mountElement<WebUiCheckbox>('web-ui-checkbox', { attrs: { checked: '' } })
+    await waitForUpdate(el)
+
+    const painted = getComputedStyle(checkPath(el)!)
+    expect(painted.fill).toBe('none')
+    expect(painted.stroke).toBe('rgb(255, 255, 255)')
+
+    cleanupElement(el)
   })
 })

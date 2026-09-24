@@ -157,7 +157,7 @@ button.is-grouped {
   transform: translateY(-50%);
 
   width: 1px;
-  height: var(--wui-button-group-divider-length, 24px);
+  height: var(--wui-button-group-divider-length, 20px);
 
   background-color: var(--wui-color-border, rgb(0 0 0 / 0.1));
 }
@@ -169,6 +169,6 @@ button.is-grouped {
   left: 50%;
   transform: translateX(-50%);
 
-  width: var(--wui-button-group-divider-length, 24px);
+  width: var(--wui-button-group-divider-length, 20px);
   height: 1px;
 }
