@@ -156,7 +156,7 @@
   --wui-color-surface-raised: #f2f2f7;
   --wui-color-surface-control: #dfdfdf;
   --wui-color-surface-track: #e5e5ea;
-  --wui-color-surface-menu: rgb(231 231 231 / 0.76);
+  --wui-color-surface-menu: rgb(254 254 254 / 0.76);
   --wui-color-surface-glass: rgb(250 250 250 / 0.34);
   --wui-color-surface-glass-hover: color-mix(in srgb, var(--wui-color-text) 6%, var(--wui-color-surface-glass));
   --wui-color-surface-glass-active: color-mix(in srgb, var(--wui-color-text) 15%, var(--wui-color-surface-glass));
