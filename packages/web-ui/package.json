@@ -49,6 +49,7 @@
   },
   "devDependencies": {
     "@greypan/tsconfig": "workspace:*",
+    "@iconify-json/bi": "catalog:",
     "@iconify-json/jam": "catalog:",
     "@iconify-json/lucide": "catalog:",
     "@iconify-json/si": "catalog:",

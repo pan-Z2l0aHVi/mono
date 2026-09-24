@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type {
   WebUiAutocomplete,
+  WebUiContextMenu,
   WebUiDialog,
   WebUiDrawer,
   WebUiEditableText,
@@ -11,9 +12,8 @@ import type {
   WebUiSelect,
   WebUiSvgDrawLines
 } from '@greypan/web-ui'
-import type { WebUiContextMenu } from '@greypan/web-ui/components/context-menu'
 import {
-  lucideCheck,
+  biCheck,
   lucideChevronLeft,
   lucideChevronRight,
   lucideChevronUp,
@@ -626,7 +626,16 @@ function toggleChecked(id: string) {
   checkedIds.value = isChecked(id) ? checkedIds.value.filter(checked => checked !== id) : [...checkedIds.value, id]
 }
 function toggleCheckAll() {
-  checkedIds.value = allVisibleChecked.value ? [] : filteredResources.value.map(resource => resource.id)
+  const visibleIds = filteredResources.value.map(resource => resource.id)
+  // 已全选时按钮是「取消全选」，动作改为反选：只翻转可见项，筛选条件外已勾选的资源保持原状
+  if (allVisibleChecked.value) {
+    checkedIds.value = [
+      ...checkedIds.value.filter(id => !visibleIds.includes(id)),
+      ...visibleIds.filter(id => !isChecked(id))
+    ]
+    return
+  }
+  checkedIds.value = [...new Set([...checkedIds.value, ...visibleIds])]
 }
 function exitSelectionMode() {
   selectionMode.value = false
@@ -956,7 +965,7 @@ watch(addDialogOpen, (open, _, onCleanup) => {
     <header slot="header" class="w-full">
       <div class="flex gap-4 items-center px-6 py-2 max-[640px]:px-3 max-[640px]:pl-0">
         <!-- 窄屏时布局组件的展开 Toggle 自带左缩进（--wui-layout-mobile-toggle-inset，8px），header 内容去掉左内边距避免双重缩进。 -->
-        <web-ui-button-group aria-label="页面导航" class="max-[640px]:hidden">
+        <web-ui-button-group aria-label="页面导航" class="max-[640px]:hidden [--wui-button-group-divider-length:20px]">
           <web-ui-button icon variant="glass" aria-label="后退" :disabled="!canGoBack" @click="router.back()">
             <web-ui-icon :icon="lucideChevronLeft"></web-ui-icon>
           </web-ui-button>
@@ -1002,8 +1011,8 @@ watch(addDialogOpen, (open, _, onCleanup) => {
             </web-ui-input>
           </template>
           <template v-else>
-            <web-ui-button @click="toggleCheckAll">全选</web-ui-button>
-            <web-ui-button-group aria-label="批量操作" class="[--wui-button-group-divider-length:16px]">
+            <web-ui-button @click="toggleCheckAll">{{ allVisibleChecked ? '取消全选' : '全选' }}</web-ui-button>
+            <web-ui-button-group aria-label="批量操作" class="[--wui-button-group-divider-length:20px]">
               <web-ui-tooltip portal>
                 <span slot="content" style="color: var(--wui-color-danger)">删除</span>
                 <web-ui-button icon aria-label="删除" :disabled="!canBatchDelete" @click="confirmDeleteChecked">
@@ -1018,7 +1027,7 @@ watch(addDialogOpen, (open, _, onCleanup) => {
             </web-ui-button-group>
             <web-ui-tooltip content="确认" portal>
               <web-ui-button icon variant="primary" aria-label="确认" @click="exitSelectionMode">
-                <web-ui-icon :icon="lucideCheck"></web-ui-icon>
+                <web-ui-icon :icon="biCheck"></web-ui-icon>
               </web-ui-button>
             </web-ui-tooltip>
           </template>
@@ -1126,13 +1135,19 @@ watch(addDialogOpen, (open, _, onCleanup) => {
           </div>
 
           <div v-else class="w-full h-full">
+            <!-- 失效行只淡化内容 div；勾选框保持正常对比度，否则会读成 disabled -->
             <div
               v-for="resource in filteredResources"
               :key="resource.id"
-              class="group relative flex items-center gap-3 px-4 max-[640px]:px-2 py-3 cursor-pointer transition-colors duration-100 rounded-xl"
+              class="group relative flex items-center gap-3 px-4 max-[640px]:px-2 py-3 transition-colors duration-100 rounded-xl"
               :class="[
-                selectedId === resource.id ? 'bg-black/5 dark:bg-white/8' : 'hover:bg-black/3.5 dark:hover:bg-white/5',
-                resource.broken ? 'opacity-60' : ''
+                /* 勾选态刻意复用 hover 底色，勾上之后表面不再随指针离开而回落 */
+                isChecked(resource.id)
+                  ? 'bg-black/3.5 dark:bg-white/5'
+                  : selectedId === resource.id
+                    ? 'bg-black/5 dark:bg-white/8'
+                    : 'hover:bg-black/3.5 dark:hover:bg-white/5',
+                resource.broken ? '[&>div]:opacity-60' : ''
               ]"
               @click="handleResourceRowClick(resource)"
               @contextmenu="onResourceContextmenu(resource, $event)"
@@ -1545,7 +1560,7 @@ watch(addDialogOpen, (open, _, onCleanup) => {
             选择本地文件，或将其拖入上传区；也可以直接粘贴内容。
           </p>
           <label
-            class="grid h-full cursor-pointer place-content-center justify-items-center gap-3 rounded-3xl bg-[#f0f0f4] px-6 py-7 transition-[background-color] duration-[160ms] hover:bg-[#e9e9ee] dark:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_4%,transparent)] dark:hover:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_7%,transparent)] max-[640px]:gap-2 max-[640px]:px-4 max-[640px]:py-2 max-[900px]:p-5"
+            class="grid h-full place-content-center justify-items-center gap-3 rounded-3xl bg-[#f0f0f4] px-6 py-7 transition-[background-color] duration-[160ms] hover:bg-[#e9e9ee] dark:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_4%,transparent)] dark:hover:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_7%,transparent)] max-[640px]:gap-2 max-[640px]:px-4 max-[640px]:py-2 max-[900px]:p-5"
             :class="
               addDragActive ? 'scale-[1.005] bg-[color-mix(in_srgb,var(--wui-color-accent,#08f)_9%,transparent)]' : ''
             "

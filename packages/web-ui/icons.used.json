@@ -65,5 +65,6 @@
   "heroicons:bars-arrow-down-16-solid",
   "heroicons:bars-arrow-up-16-solid",
   "lucide:list-restart",
-  "radix-icons:reset"
+  "radix-icons:reset",
+  "bi:check"
 ]

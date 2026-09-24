@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { local } from '@greypan/browser-kit/storage'
+import { local } from '@greypan/browser-kit'
 import type { WebUiEvent, WebUiLayout, WebUiSelect, WebUiIcon } from '@greypan/web-ui'
 import {
   heroiconsBarsArrowDown16Solid,

@@ -2,8 +2,11 @@ import { html, LitElement, type PropertyValues, unsafeCSS } from 'lit'
 import { customElement, property, query, state } from 'lit/decorators.js'
 import { classMap } from 'lit/directives/class-map.js'
 
+import '@/components/icon'
+import '@/components/svg-draw-lines'
 import selectionControl from '@/assets/selection-control.css?inline'
 import { WebUiSvgDrawLines } from '@/components/svg-draw-lines'
+import { heroiconsCheck16Solid } from '@/icons'
 import { installPointerFocusSuppression } from '@/shared/focus/pointer-focus'
 import { FormAssociated, defineFormAssociation, FormAssociationController } from '@/shared/form-association'
 import { defineGroupManaged, selectionGroupContextKey, type SelectionGroupContext } from '@/shared/group-management'
@@ -168,15 +171,7 @@ export class WebUiCheckbox extends FormAssociated(LitElement) {
         <span class="wui-checkbox-box">
           <span class="wui-checkbox-icon"
             ><web-ui-svg-draw-lines duration=${this._drawDurationMs} no-autoplay
-              ><svg class="wui-checkbox-check" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                <path
-                  d="M5 12.5l4.5 4.5L19 7"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="3"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                /></svg></web-ui-svg-draw-lines
+              ><web-ui-icon .icon=${heroiconsCheck16Solid}></web-ui-icon></web-ui-svg-draw-lines
           ></span>
         </span>
         <span class="wui-checkbox-label"><slot></slot></span>
