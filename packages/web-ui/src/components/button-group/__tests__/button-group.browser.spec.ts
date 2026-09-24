@@ -29,19 +29,19 @@ afterEach(() => {
 })
 
 describe('WebUiButtonGroup 分割线（浏览器）', () => {
-  it('未设置 token 时横排分割线保持 1px × 24px', async () => {
+  it('未设置 token 时横排分割线保持 1px × 20px', async () => {
     const divider = await mountDividerGroup({})
     const style = getComputedStyle(divider)
 
     expect(style.width).toBe('1px')
-    expect(style.height).toBe('24px')
+    expect(style.height).toBe('20px')
   })
 
-  it('未设置 token 时竖排分割线保持 24px × 1px', async () => {
+  it('未设置 token 时竖排分割线保持 20px × 1px', async () => {
     const divider = await mountDividerGroup({ direction: 'vertical' })
     const style = getComputedStyle(divider)
 
-    expect(style.width).toBe('24px')
+    expect(style.width).toBe('20px')
     expect(style.height).toBe('1px')
   })
 

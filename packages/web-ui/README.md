@@ -787,7 +787,7 @@ Applies the direction to the grouped button layout without changing child button
 
 | Property                            | Default | Description                                                                     |
 | ----------------------------------- | ------- | ------------------------------------------------------------------------------- |
-| `--wui-button-group-divider-length` | `24px`  | Length of the divider between adjacent buttons; its cross axis always stays 1px |
+| `--wui-button-group-divider-length` | `20px`  | Length of the divider between adjacent buttons; its cross axis always stays 1px |
 
 Set it on the group host. The token controls the long edge in both directions, so a horizontal group shortens the divider's height and a vertical group shortens its width.
 
