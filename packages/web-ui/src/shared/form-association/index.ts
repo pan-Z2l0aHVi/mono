@@ -9,7 +9,10 @@ type Constructor<T = object> = new (...args: any[]) => T
 type FormSubmissionValue = File | FormData | string | null
 type FormStateValue = File | FormData | string | null
 
-interface FormAssociationHost extends HTMLElement, ReactiveControllerHost {}
+interface FormAssociationHost extends HTMLElement, ReactiveControllerHost {
+  /** Lit 的更新窗口判据：反射属性触发的回调落在本轮 performUpdate 之内时为 true。 */
+  isUpdatePending: boolean
+}
 
 export interface FormAssociationOptions<State> {
   readonly host: FormAssociationHost
@@ -101,8 +104,20 @@ export function defineFormAssociation<State>(options: FormAssociationOptions<Sta
       setDisabled(disabled) {
         if (formDisabled === disabled) return
         formDisabled = disabled
-        options.host.requestUpdate()
         sync()
+        if (options.host.isUpdatePending) {
+          /*
+           * 宿主 disabled 的反射会同步触发 formDisabledCallback，那一轮 render 已经读过旧值；
+           * 而 Lit 在 isUpdatePending 为 true 时会丢掉 requestUpdate()（reactive-element 2.1.2
+           * 的 requestUpdate 尾部判据），控件就会停在旧禁用态且再无渲染。等本轮更新结束再排一次。
+           */
+          queueMicrotask(() => {
+            options.host.requestUpdate()
+            sync()
+          })
+          return
+        }
+        options.host.requestUpdate()
       },
       isFormDisabled: () => formDisabled,
       getInternals: () => internals
