@@ -253,13 +253,15 @@ describe('深色 elevation 关系', () => {
     expect(light.get('--wui-color-surface-glass')).toBe('rgb(250 250 250 / 0.34)')
     expect(light.get('--wui-color-surface-overlay')).toBe('rgb(246 246 246 / 0.82)')
     expect(light.get('--wui-color-surface-sidebar')).toBe('rgb(233 233 233 / 0.82)')
-    expect(light.get('--wui-color-surface-menu')).toBe('rgb(231 231 231 / 0.76)')
+    expect(light.get('--wui-color-surface-menu')).toBe('rgb(254 254 254 / 0.76)')
 
-    for (const token of ['--wui-color-surface-sidebar', '--wui-color-surface-menu']) {
+    const compositeOnWhite = (token: string) => {
       const { rgb, alpha } = parseColor(light.get(token))
-      const composited = rgb.map(channel => Math.round(alpha * channel + (1 - alpha) * 255))
-      expect(composited, `${token} 在白页上的合成色`).toEqual([237, 237, 237])
+      return rgb.map(channel => Math.round(alpha * channel + (1 - alpha) * 255))
     }
+
+    expect(compositeOnWhite('--wui-color-surface-sidebar'), 'sidebar 在白页上的合成色').toEqual([237, 237, 237])
+    expect(compositeOnWhite('--wui-color-surface-menu'), 'menu 在白页上的合成色').toEqual([254, 254, 254])
   })
 
   it('深色浮动面板与 sidebar 都比 page 浅一档，量级对齐 --wui-color-surface', () => {
