@@ -558,7 +558,7 @@ Portal 面板创建时会镜像 host 上解析后的这些变量；更新 host �
 
 **布局：** 宿主是 inline-flex 盒，高度由内容撑开、不继承页面行高，因此不会在指示器上下留出多余缝隙；`--wui-selection-control-size`（`18px`）决定指示器宽高，宿主与相邻文字的对齐固定为 `vertical-align: middle`。`<web-ui-radio>` 共用同一套契约。
 
-**选中动画：** 对勾是控件自持的描边路径（不再走 `<web-ui-icon>` 图标资产），外层包 `<web-ui-svg-draw-lines>` 并带 `no-autoplay`，所以挂载时就已勾选的控件显示静态勾。勾选时线条自左向右按恒定笔速画出，时长取 `--wui-duration-trigger`（默认 160ms），在切换当下从已生效的主题解析，和指示器底色那条 transition 落在同一拍；取消时沿同一条路径收回到空白，而不是只淡出；主题范围为 `motion="reduced"` 时两者都跳过，两个状态直接切换。
+**选中动画：** 对勾是 `@/icons` 里的描边资产，由嵌套的 `<web-ui-icon>` 渲染在 `<web-ui-svg-draw-lines>` 内，并带 `no-autoplay`，所以挂载时就已勾选的控件显示静态勾。勾选时线条从左侧尖端起按恒定笔速画出，时长取 `--wui-duration-trigger`（默认 160ms），在切换当下从已生效的主题解析，和指示器底色那条 transition 落在同一拍；取消时沿同一条路径收回到空白，而不是只淡出；主题范围为 `motion="reduced"` 时两者都跳过，两个状态直接切换。描边颜色是 `--wui-color-on-control`，经 `<web-ui-icon>` 的 `--wui-icon-color` 传下去，因为勾选后它背后就是 `--wui-color-accent`。这个结构带来两条约束：资产必须保持描边（`fill: none` + `stroke: currentColor`），换成实心图标 dash 动画照跑却什么都不画，勾会直接出现；并且它按 `<web-ui-icon>` 自己的默认 18px 渲染，宿主够不到图标 shadow root 里的 `<svg>`，因此不随 `--wui-selection-control-size` 放大。
 
 **未激活态：** 未选中指示器的底色取 `--wui-color-surface-control`（与中性按钮同一档控件底），深色模式下也能和 `--wui-color-page` 分辨开。触发区内任意位置（指示器、间距或右侧 slot 标签）被 hover 时，该底色再叠 6% 状态层。hover 只在 `(hover: hover) and (pointer: fine)` 设备上生效；没有按下态，已选中和禁用态保持各自底色。`<web-ui-radio>` 共用同一套状态。
 
@@ -1199,6 +1199,8 @@ Hover 模式使用 `pointerenter`/`pointerleave` 加延迟控制。Click 模式�
 | `spin`  | `boolean`     | `false` | 旋转动画                 |
 
 内置 `aria-hidden="true"`。
+
+**画布：** SVG 的 `viewBox` 取自 `icon.left`/`icon.top`/`icon.width`/`icon.height`，偏移缺省为 `0`，尺寸缺省为 Iconify 规范默认的 `16`。生成的资产都自带画布，因此尺寸兜底只在直接传入原始 `IconifyIcon` 对象时才会生效。
 
 ```js
 import { lucideLoaderCircle } from '@greypan/web-ui/icons'

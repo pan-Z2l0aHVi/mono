@@ -6,7 +6,7 @@ import '@/components/icon'
 import '@/components/svg-draw-lines'
 import selectionControl from '@/assets/selection-control.css?inline'
 import { WebUiSvgDrawLines } from '@/components/svg-draw-lines'
-import { heroiconsCheck16Solid } from '@/icons'
+import { tablerCheck } from '@/icons'
 import { installPointerFocusSuppression } from '@/shared/focus/pointer-focus'
 import { FormAssociated, defineFormAssociation, FormAssociationController } from '@/shared/form-association'
 import { defineGroupManaged, selectionGroupContextKey, type SelectionGroupContext } from '@/shared/group-management'
@@ -171,7 +171,7 @@ export class WebUiCheckbox extends FormAssociated(LitElement) {
         <span class="wui-checkbox-box">
           <span class="wui-checkbox-icon"
             ><web-ui-svg-draw-lines duration=${this._drawDurationMs} no-autoplay
-              ><web-ui-icon .icon=${heroiconsCheck16Solid}></web-ui-icon></web-ui-svg-draw-lines
+              ><web-ui-icon .icon=${tablerCheck}></web-ui-icon></web-ui-svg-draw-lines
           ></span>
         </span>
         <span class="wui-checkbox-label"><slot></slot></span>

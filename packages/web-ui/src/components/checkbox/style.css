@@ -7,7 +7,16 @@
   background-color: var(--wui-color-accent, #08f);
 }
 
+/*
+ * 勾是 @/icons 的描边资产，颜色经 web-ui-icon 的 --wui-icon-color 传入并取 on-control 档：勾选后
+ * 指示器底是 accent，勾留在继承的文字色就是深灰压深蓝。资产必须是 fill:none + stroke:currentColor，
+ * 换成实心图标那条 dash 动画照跑但什么都看不见（判据见 checkbox.motion.browser.spec.ts）。
+ * 尺寸是 web-ui-icon 自己的默认 18，宿主够不到嵌套 shadow root 里的 svg，因此不随
+ * --wui-selection-control-size 按比例放大。
+ */
 .wui-checkbox-icon {
+  --wui-icon-color: var(--wui-color-on-control, #fff);
+
   overflow: hidden;
   display: block;
 
@@ -27,16 +36,4 @@
 .is-checked .wui-checkbox-icon,
 .is-retracting .wui-checkbox-icon {
   opacity: 1;
-}
-
-/*
- * 勾是控件自持的指示几何，和 radio 圆点同级，不走 @/icons 资产：画线从路径起点开始揭示，
- * 起笔方向由 d 决定，图标资产把 d 和 stroke-width 都定死在上游，两者都无法在这里调。
- * 尺寸跟随指示器 token，放大 --wui-selection-control-size 时勾按比例变大。
- */
-.wui-checkbox-check {
-  display: block;
-  width: var(--wui-selection-control-size, 18px);
-  height: var(--wui-selection-control-size, 18px);
-  color: var(--wui-color-on-control, #fff);
 }
