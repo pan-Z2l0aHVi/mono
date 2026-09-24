@@ -1,4 +1,5 @@
 import type { WebUiSelect } from '@greypan/web-ui'
+import { lucideX } from '@greypan/web-ui/icons'
 import { Link, Outlet, useRouter, useRouterState } from '@tanstack/react-router'
 import { useEffect, useRef, useState } from 'react'
 import { ErrorBoundary } from 'react-error-boundary'
@@ -96,6 +97,13 @@ const navItems: NavItem[] = [
   { path: '/components/back-top', label: 'BackTop 回到顶部' }
 ]
 
+const navItemClass =
+  'flex items-center gap-2 w-full min-w-9 min-h-9 px-2.5 border-0 rounded-full cursor-pointer text-left transition-all duration-150 text-(--wui-color-text) active:bg-[rgb(34_33_42/0.12)] dark:active:bg-white/15 data-[active=true]:bg-(--wui-color-surface-control,#dfdfdf) data-[active=true]:hover:bg-[color-mix(in_srgb,var(--wui-color-surface-control,#dfdfdf)_90%,var(--wui-color-text,#1b1b1b))] data-[active=true]:active:bg-[color-mix(in_srgb,var(--wui-color-surface-control,#dfdfdf)_70%,var(--wui-color-text,#1b1b1b))]'
+
+function isNavActive(pathname: string, path: string) {
+  return pathname === path || pathname === `${path}/`
+}
+
 export function Root() {
   const [themeAppearance, setThemeAppearance] = useState<ThemeAppearance>(getInitialThemeAppearance)
   const [themeMotion, setThemeMotion] = useState<ThemeMotion>(getInitialThemeMotion)
@@ -103,7 +111,7 @@ export function Root() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [desktopSidebarWidth, setDesktopSidebarWidth] = useState<string>(getInitialSidebarWidth)
-  const navSidebarRef = useRef<HTMLElement>(null)
+  const navSidebarRef = useRef<HTMLDivElement>(null)
   const [isMobileSidebar, setIsMobileSidebar] = useState(() => window.matchMedia('(max-width: 640px)').matches)
   useEffect(() => {
     const mq = window.matchMedia('(max-width: 640px)')
@@ -183,12 +191,15 @@ export function Root() {
                 className="flex items-center justify-center gap-2 bg-(--wui-color-accent) px-4 py-2 text-sm text-(--wui-color-on-accent)"
               >
                 <span>🎉 欢迎使用 web-ui 组件库！</span>
-                <button
-                  className="ml-auto text-current opacity-70 hover:opacity-100"
+                <web-ui-button
+                  className="ml-auto"
+                  size="24"
+                  icon
+                  variant="ghost"
                   onClick={() => setBannerVisible(false)}
                 >
-                  ✕
-                </button>
+                  <web-ui-icon className="text-white" icon={lucideX} size={16}></web-ui-icon>
+                </web-ui-button>
               </div>
             ) : null}
             <div
@@ -228,23 +239,38 @@ export function Root() {
                 </web-ui-option>
               </web-ui-select>
             </div>
-            <div slot="sidebar" className="flex h-full min-h-0 flex-col">
-              <div className="shrink-0 px-5 pt-4 pb-2 text-xs font-semibold uppercase text-(--wui-color-text-secondary) max-[640px]:px-0">
-                组件列表
-              </div>
-              <nav ref={navSidebarRef} className="min-h-0 flex-1 p-2 max-[640px]:px-0 overflow-y-auto">
-                {navItems.map(item => (
-                  <Link
-                    key={item.path}
-                    to={item.path}
-                    className={
-                      'flex items-center h-8 my-1 rounded-full px-3 py-2 text-sm leading-5 text-(--wui-color-text) transition-[background-color] duration-150 hover:bg-[color-mix(in_srgb,var(--wui-color-surface-raised)_80%,var(--wui-color-text))]' +
-                      (pathname === item.path ? ' bg-(--wui-color-accent)! text-(--wui-color-on-accent)!' : '')
-                    }
-                  >
-                    <span className="truncate">{item.label}</span>
-                  </Link>
-                ))}
+            <div
+              slot="sidebar"
+              ref={navSidebarRef}
+              className="relative z-20 h-full min-h-0 overflow-y-auto p-2 max-[640px]:px-0"
+              aria-label="应用导航"
+            >
+              <nav className="grid gap-1" aria-label="主导航">
+                {navItems.map(item => {
+                  const active = isNavActive(pathname, item.path)
+                  return (
+                    <Link
+                      key={item.path}
+                      to={item.path}
+                      className={
+                        navItemClass +
+                        (active ? '' : ' hover:bg-black/4 dark:hover:bg-white/6') +
+                        (sidebarCollapsed ? ' justify-center' : '')
+                      }
+                      data-active={active}
+                      aria-current={active ? 'page' : undefined}
+                      aria-label={item.label}
+                    >
+                      <span
+                        className={
+                          sidebarCollapsed ? 'w-full truncate text-center text-sm' : 'min-w-0 flex-1 truncate text-sm'
+                        }
+                      >
+                        {item.label}
+                      </span>
+                    </Link>
+                  )
+                })}
               </nav>
             </div>
             {/* 正文 gutter 归 shell 所有：`web-ui-layout` 的 main 不带 padding，逐页加会漏页。 */}

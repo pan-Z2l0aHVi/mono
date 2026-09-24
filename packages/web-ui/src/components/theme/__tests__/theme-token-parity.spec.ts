@@ -246,11 +246,22 @@ describe('深色 elevation 关系', () => {
     return [0, 1, 2].map(channel => alpha * rgb[channel] + (1 - alpha) * page.rgb[channel]) as [number, number, number]
   }
 
-  it('浅色 sidebar 表面与共享 overlay 同值，浅色零变化', () => {
+  it('浅色 glass 与 overlay 回到白色半透明，sidebar 与 menu 合成为中性灰', () => {
     const light = tokenPairs(
       blockBody(themeCss, ":host\\(\\[appearance='light'\\]\\),\\n:host\\(\\[appearance='system'\\]\\) \\{")
     )
-    expect(light.get('--wui-color-surface-sidebar')).toBe(light.get('--wui-color-surface-overlay'))
+    expect(light.get('--wui-color-surface-glass')).toBe('rgb(250 250 250 / 0.34)')
+    expect(light.get('--wui-color-surface-overlay')).toBe('rgb(246 246 246 / 0.82)')
+    expect(light.get('--wui-color-surface-sidebar')).toBe('rgb(233 233 233 / 0.82)')
+    expect(light.get('--wui-color-surface-menu')).toBe('rgb(254 254 254 / 0.76)')
+
+    const compositeOnWhite = (token: string) => {
+      const { rgb, alpha } = parseColor(light.get(token))
+      return rgb.map(channel => Math.round(alpha * channel + (1 - alpha) * 255))
+    }
+
+    expect(compositeOnWhite('--wui-color-surface-sidebar'), 'sidebar 在白页上的合成色').toEqual([237, 237, 237])
+    expect(compositeOnWhite('--wui-color-surface-menu'), 'menu 在白页上的合成色').toEqual([254, 254, 254])
   })
 
   it('深色浮动面板与 sidebar 都比 page 浅一档，量级对齐 --wui-color-surface', () => {
@@ -261,7 +272,7 @@ describe('深色 elevation 关系', () => {
         expect(value, `${token} 通道 ${channel} 比 page 亮的量`).toBeGreaterThan(page.rgb[channel] + 3)
         expect(value, `${token} 通道 ${channel} 比 page 亮的量`).toBeLessThan(page.rgb[channel] + 12)
         // 「page 之上一档」由 --wui-color-surface 定义。面板 alpha 为恢复透感
-        // 调低过（0.78/0.8），合成色与 surface 允许最多 2/255 的偏差
+        // 调低过（0.74/0.8），合成色与 surface 允许最多 2/255 的偏差
         expect(
           Math.abs(value - surface.rgb[channel]),
           `${token} 通道 ${channel} 与 surface 的偏差`

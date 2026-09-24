@@ -57,7 +57,6 @@ describe('WebUiDrawer 重挂载对账（浏览器）', () => {
     expect(getDialog(el).open).toBe(true)
     expect(document.documentElement.style.overflow).toBe('hidden')
 
-    // 重挂载后关闭管线完整：cancel（Escape 路径）仍可关闭
     const dialog = getDialog(el)
     dialog.dispatchEvent(new Event('cancel', { cancelable: true }))
     await el.updateComplete

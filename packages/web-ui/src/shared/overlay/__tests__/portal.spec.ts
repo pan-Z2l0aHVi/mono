@@ -81,13 +81,11 @@ describe('浮层 Portal', () => {
     // 迁移批次的 observer 回调先独立结算，与真实组件"打开帧迁移、后续帧删除"一致
     await new Promise(resolve => setTimeout(resolve, 0))
 
-    // 模拟 Vue 打开期物理删除面板内的已迁移节点
     removed.remove()
     // MutationObserver 回调在微任务中派发
     await new Promise(resolve => setTimeout(resolve, 0))
     expect(sawMutations).toBe(true)
 
-    // 关闭恢复：被框架删除的节点不复活，仍在宿主的节点按原位归还
     portal.restoreContent()
     portal.remove()
     expect(target.contains(kept)).toBe(true)

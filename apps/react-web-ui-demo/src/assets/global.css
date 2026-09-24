@@ -1,6 +1,9 @@
 /* stylelint-disable custom-property-pattern */
 @import 'tailwindcss';
 
+/* stylelint-disable-next-line at-rule-no-unknown -- Tailwind v4 指令 */
+@custom-variant dark (&:where(web-ui-theme[resolved-appearance='dark'] *));
+
 @theme {
   --spacing: 4px;
 
@@ -10,9 +13,8 @@
   --font-serif: 'Merriweather', ui-serif, georgia, cambria, 'Times New Roman', times, serif;
   --font-mono: 'SF Mono', menlo, consolas, 'Roboto Mono', 'Courier New', courier, monospace;
 
-  /* 字体大小 (Font Sizes) - 使用 px */
   --text-xs: 12px;
-  --text-xs--line-height: 16px; /* 或 1rem */
+  --text-xs--line-height: 16px;
   --text-sm: 14px;
   --text-sm--line-height: 20px;
   --text-base: 16px;
@@ -28,7 +30,6 @@
   --text-4xl: 36px;
   --text-4xl--line-height: 40px;
 
-  /* 断点 (Breakpoints) - 使用 px */
   --breakpoint-sm: 640px; /* 手机横屏、小平板竖屏 */
   --breakpoint-md: 768px; /* 平板竖屏 */
   --breakpoint-lg: 1024px; /* 平板横屏、小笔记本 */

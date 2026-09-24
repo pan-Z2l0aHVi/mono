@@ -125,6 +125,7 @@ try {
   assert.equal(created.level, 't0')
   assert.equal(created.review.required, true)
   assert.equal(created.baseSha, git('rev-parse', 'HEAD'))
+  assert.equal(Object.hasOwn(created, 'roles'), false)
   assert.ok(created.events.some(event => event.event === 'new'))
 
   // `--` 只终止选项解析：其后的内容既不是选项也不是位置参数，不改变任何行为。
@@ -132,17 +133,30 @@ try {
   // 尤其是尾随的 --task 不能被回读成选项——漏掉前面的 --task 仍然要报错。
   assert.match(failMessage('status', '--', '--task', 't0-fixture'), /missing required option --task/)
 
-  // assign：owner/roles 改派并留痕（preflight 第二步）。
-  const assigned = JSON.parse(run('assign', '--task', 't0-fixture', '--owner', 'fixture-owner', '--roles', 'manager'))
+  // assign 只改 owner/worktree；角色与执行体编排不进入 task state。
+  const assigned = JSON.parse(run('assign', '--task', 't0-fixture', '--owner', 'fixture-owner'))
   assert.equal(assigned.owner, 'fixture-owner')
-  assert.deepEqual(assigned.roles, ['manager'])
   assert.ok(assigned.events.some(event => event.event === 'assign'))
+  assert.equal(Object.hasOwn(assigned.events.at(-1), 'roles'), false)
 
-  // --roles 只接受存在 Role Contract 的角色；未知值整条失败且不落盘。
-  const reassigned = JSON.parse(run('assign', '--task', 't0-fixture', '--roles', 'manager,lib-coder'))
-  assert.deepEqual(reassigned.roles, ['manager', 'lib-coder'])
-  runFailure('assign', '--task', 't0-fixture', '--roles', 'bogus-role')
-  assert.deepEqual(JSON.parse(run('status', '--task', 't0-fixture')).roles, ['manager', 'lib-coder'])
+  // 已删除的 --roles 必须明确失败，不能假装编排成功。
+  for (const roles of [['--roles', 'manager'], ['--roles=manager']])
+    assert.match(failMessage('assign', '--task', 't0-fixture', ...roles), /assign does not accept --roles/)
+
+  // 旧 v1 state 的顶层 roles 和历史事件仍可读取，但内核不解释、校验或重写它们。
+  const statePath = path.join(fixture, '.git', 'tasks', 't0-fixture.json')
+  const legacyState = JSON.parse(fs.readFileSync(statePath, 'utf8'))
+  legacyState.roles = ['retired-legacy-role']
+  legacyState.events.push({ at: '2026-09-19T00:00:00.000Z', event: 'assign', roles: ['retired-legacy-role'] })
+  fs.writeFileSync(statePath, `${JSON.stringify(legacyState, null, 2)}\n`)
+  const legacyRead = JSON.parse(run('status', '--task', 't0-fixture'))
+  assert.deepEqual(legacyRead.roles, ['retired-legacy-role'])
+  assert.deepEqual(legacyRead.events.find(event => event.event === 'assign' && event.roles)?.roles, [
+    'retired-legacy-role'
+  ])
+  const legacyReassigned = JSON.parse(run('assign', '--task', 't0-fixture', '--owner', 'fixture-owner'))
+  assert.deepEqual(legacyReassigned.roles, ['retired-legacy-role'])
+  assert.equal(Object.hasOwn(legacyReassigned.events.at(-1), 'roles'), false)
 
   // 同一 worktree 不允许第二个 active task。
   runFailure('new', '--task', 'duplicate', '--level', 't1', '--worktree', fixture)

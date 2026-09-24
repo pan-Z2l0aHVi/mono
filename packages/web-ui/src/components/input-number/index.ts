@@ -10,6 +10,7 @@ import {
   forwardInputValidity,
   FormAssociationController
 } from '@/shared/form-association'
+import { createFieldId } from '@/shared/form-association/field-id'
 import { normalizeNumber } from '@/shared/normalize'
 
 import style from './style.css?inline'
@@ -45,6 +46,7 @@ export class WebUiInputNumber extends FormAssociated(LitElement) {
   @state() private _step = 1
   @state() private _focused = false
   private _precision = 0
+  private readonly _fieldId = createFieldId('web-ui-input-number')
 
   @property({ type: Number, reflect: true })
   get value(): number {
@@ -213,6 +215,7 @@ export class WebUiInputNumber extends FormAssociated(LitElement) {
           <web-ui-icon .icon=${lucideMinus}></web-ui-icon>
         </button>
         <input
+          id=${this._fieldId}
           type="number"
           placeholder=${this.placeholder}
           name=${this.name}

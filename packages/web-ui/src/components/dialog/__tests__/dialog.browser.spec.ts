@@ -126,7 +126,6 @@ describe('WebUiDialog 组件（浏览器）', () => {
     const events: CustomEvent<{ open: boolean }>[] = []
     component.addEventListener('open-change', e => events.push(e as CustomEvent<{ open: boolean }>))
 
-    // Escape 请求：open 不变，dialog 保持 top layer
     dialog?.focus()
     await userEvent.keyboard('{Escape}')
     await component.updateComplete
@@ -135,7 +134,6 @@ describe('WebUiDialog 组件（浏览器）', () => {
     expect(events).toHaveLength(1)
     expect(events[0]?.detail).toEqual({ open: false })
 
-    // 遮罩点击请求：同样只请求
     dialog?.dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true }))
     await component.updateComplete
     expect(component.open).toBe(true)
@@ -165,7 +163,6 @@ describe('WebUiDialog 组件（浏览器）', () => {
     dialog?.dispatchEvent(new Event('close'))
     await component.updateComplete
 
-    // 原生关闭被恢复为受控打开，请求而非自关闭
     expect(component.open).toBe(true)
     expect(dialog?.open).toBe(true)
     expect(events).toHaveLength(1)

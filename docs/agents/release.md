@@ -13,4 +13,4 @@ release 是聚合发布场景下的操作程序，不是独立的 task 类型。
 
 CI 的机械性格式和拼写修复可以由 Manager 处理；逻辑、测试和契约问题回到原 task owner 修复。任何 release diff 变化都必须重新 freeze/review/approve。
 
-release 聚合与集成验证由 Manager 直接协调（见 [`workflow.md`](workflow.md)「编排模式」），不设独立 Integrator 层级。
+release 聚合与集成验证由 Manager 直接协调，详见 [`herdr-agents`](../../.agents/skills/herdr-agents/SKILL.md)，不设独立 Integrator 层级。

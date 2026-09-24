@@ -13,7 +13,6 @@ export const env = {
     return /iPad/i.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
   },
 
-  // --- 平台/宿主环境 ---
   get isWeChat() {
     return /MicroMessenger/i.test(ua)
   },

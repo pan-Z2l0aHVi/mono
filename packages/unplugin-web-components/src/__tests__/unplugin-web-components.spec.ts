@@ -102,7 +102,6 @@ describe('unplugin-web-components', () => {
       id: '/src/App.jsx'
     })
 
-    // 导入必须位于文件顶部，而非函数体内部
     expect(result.code.startsWith(`import { WebUiButton } from '@greypan/web-ui/components/button'`)).toBe(true)
   })
 

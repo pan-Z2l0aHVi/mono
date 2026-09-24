@@ -4,11 +4,16 @@ import { customElement, property } from 'lit/decorators.js'
 import { normalizeLiteral } from '@/shared/normalize'
 import { applyOverlayRootStyles } from '@/shared/overlay/overlay-root'
 import { parseDuration } from '@/shared/theme/duration'
-import { registerThemeRootSync, unregisterThemeRootSync } from '@/shared/theme/root-sync'
+import {
+  registerThemeRootSync,
+  subscribeThemeSystemAppearanceChange,
+  unregisterThemeRootSync
+} from '@/shared/theme/root-sync'
 
 import style from './style.css?inline'
 
 export type ThemeAppearance = 'light' | 'dark' | 'system'
+export type ResolvedThemeAppearance = 'light' | 'dark'
 export type ThemeMotion = 'full' | 'reduced' | 'system'
 
 const APPEARANCES = ['light', 'dark', 'system'] as const
@@ -20,7 +25,7 @@ interface ViewTransitionLike {
   skipTransition?: () => void
 }
 
-// 根主题没有对应控件；记录最近一次触发主题变更的指针位置，键盘或程序化调用则回退中心。
+// 主 theme 组件不知道触发它的控件；pointerdown 记录坐标。键盘或程序化调用回退中心。
 const transitionOrigin = { x: Number.NaN, y: Number.NaN }
 let transitionSequence = 0
 let transitionOriginCount = 0
@@ -47,8 +52,38 @@ function removeTransitionOriginListeners() {
   window.removeEventListener('keydown', forgetTransitionOrigin, true)
 }
 
-function resolveAppearance(appearance: ThemeAppearance): 'light' | 'dark' {
-  if (appearance !== 'system') return appearance
+const TRANSITION_SKIP_INPUT_EVENTS = ['pointerdown', 'wheel'] as const
+
+/*
+ * rendering suppression 期间，规范强制 pointer hit-test 指向 documentElement；
+ * 伪元素的 pointer-events 或 host 覆写窗口都无法覆盖这条渲染规则。只有按下或滚轮
+ * 才取消揭示，牺牲剩余动画换回交互；移动和抬起不取消，避免切换控件的收尾事件或
+ * 过渡期间的普通移动打断动画。触发事件本身仍按规范以 html 为目标，因此这里缩短的
+ * 是失效窗口，不是对首个事件的追溯改道。
+ */
+function addTransitionInputSkipListeners(transition: ViewTransitionLike): () => void {
+  let listening = true
+  const remove = () => {
+    if (!listening) return
+    listening = false
+    for (const event of TRANSITION_SKIP_INPUT_EVENTS) {
+      window.removeEventListener(event, skip, true)
+    }
+  }
+  const skip = () => {
+    if (!listening) return
+    remove()
+    transition.skipTransition?.()
+  }
+  for (const event of TRANSITION_SKIP_INPUT_EVENTS) {
+    window.addEventListener(event, skip, { capture: true, passive: true })
+  }
+  return remove
+}
+
+function resolveAppearance(appearance: ThemeAppearance | undefined): ResolvedThemeAppearance {
+  if (appearance === 'dark') return 'dark'
+  if (appearance !== 'system') return 'light'
   try {
     return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
   } catch {
@@ -75,33 +110,74 @@ export class WebUiTheme extends LitElement {
   set appearance(v: string | undefined) {
     const old = this._appearance
     const next = v !== undefined ? (normalizeLiteral(v, APPEARANCES, 'light') as ThemeAppearance) : undefined
+    const resolvedNext = resolveAppearance(next)
     const request = ++this._appearanceRequest
     if (
       next !== undefined &&
       !this._transitionRequested &&
       themeTransitionFlightToken === null &&
-      this._shouldAnimateAppearance(next)
+      this._shouldAnimateAppearance(next, resolvedNext)
     ) {
       // async helper 可能把函数体排到当前栈后；flight gate 必须在当前 setter 栈内生效。
       this._transitionRequested = true
       const flightToken = { requestId: request }
       themeTransitionFlightToken = flightToken
-      void this._startThemeTransition(next, old!, request, flightToken).catch(() => {
+      void this._startThemeTransition(next, resolvedNext, old!, request, flightToken).catch(() => {
         this._cleanupThemeTransition()
         this._transitionRequested = false
         if (themeTransitionFlightToken === flightToken) themeTransitionFlightToken = null
         if (this._appearanceRequest === request) {
           this._appearance = next
+          this._syncResolvedAppearance()
           this.requestUpdate('appearance', old)
         }
       })
       return
     }
     this._appearance = next
+    this._syncResolvedAppearance()
     this.requestUpdate('appearance', old)
   }
   private _appearance?: ThemeAppearance
   private _appearanceRequest = 0
+
+  /*
+   * resolved-appearance 是派生输出，不是第二个输入：像 selected-value 一样由组件独占写入，
+   * 外部改动在同一 attribute reaction 内恢复，避免消费者把 system 的解析结果当成可设状态。
+   */
+  @property({ type: String, reflect: true, attribute: 'resolved-appearance' })
+  private _resolvedAppearance: ResolvedThemeAppearance = 'light'
+
+  get resolvedAppearance(): ResolvedThemeAppearance {
+    return this._resolvedAppearance
+  }
+
+  private _setResolvedAppearance(value: ResolvedThemeAppearance) {
+    const old = this._resolvedAppearance
+    if (old === value && this.getAttribute('resolved-appearance') === value) return
+    this._resolvedAppearance = value
+    // 立即写 attribute：View Transition 的 update callback 要在同一次快照里换掉它。
+    this.setAttribute('resolved-appearance', value)
+  }
+
+  private _syncResolvedAppearance() {
+    this._setResolvedAppearance(resolveAppearance(this._appearance))
+    this._syncSystemAppearanceSubscription()
+  }
+
+  private _syncSystemAppearanceSubscription() {
+    const shouldSubscribe = this.isConnected && this._hasAppearance() && this._appearance === 'system'
+    if (shouldSubscribe) {
+      if (this._unsubscribeSystemAppearance) return
+      this._unsubscribeSystemAppearance = subscribeThemeSystemAppearanceChange(() => {
+        this._setResolvedAppearance(resolveAppearance(this._appearance))
+      })
+      return
+    }
+    this._unsubscribeSystemAppearance?.()
+    this._unsubscribeSystemAppearance = undefined
+  }
+  private _unsubscribeSystemAppearance?: () => void
 
   @property({ type: String, reflect: true })
   get motion(): ThemeMotion {
@@ -121,6 +197,7 @@ export class WebUiTheme extends LitElement {
 
   override connectedCallback() {
     super.connectedCallback()
+    this._syncResolvedAppearance()
     // 揭示开关曾由 transition prop 单独控制；现在统一由 motion 决定，
     // 因此连接期间始终记录圆心来源，真正是否动画仍看 _shouldAnimateAppearance。
     this._syncTransitionOriginListeners(true)
@@ -130,6 +207,8 @@ export class WebUiTheme extends LitElement {
 
   override disconnectedCallback() {
     this._syncTransitionOriginListeners(false)
+    this._unsubscribeSystemAppearance?.()
+    this._unsubscribeSystemAppearance = undefined
     unregisterThemeRootSync(this)
     this._activeTransition?.skipTransition?.()
     this._cleanupThemeTransition()
@@ -139,6 +218,12 @@ export class WebUiTheme extends LitElement {
   protected override updated() {
     this._warnWhenAppearanceIsMissing()
     this._syncRootPageColorSync()
+  }
+
+  override attributeChangedCallback(name: string, oldValue: string | null, newValue: string | null) {
+    super.attributeChangedCallback(name, oldValue, newValue)
+    // super 已把外部值写进 backing field，所以这里必须按 appearance 重算，不能与字段比较。
+    if (name === 'resolved-appearance') this._setResolvedAppearance(resolveAppearance(this._appearance))
   }
 
   /*
@@ -209,10 +294,10 @@ export class WebUiTheme extends LitElement {
     return { duration: Math.max(0, duration), easing: safeEasing }
   }
 
-  private _shouldAnimateAppearance(next: ThemeAppearance): boolean {
+  private _shouldAnimateAppearance(next: ThemeAppearance, resolvedNext: ResolvedThemeAppearance): boolean {
     const previous = this._appearance
     if (!previous || previous === next) return false
-    if (resolveAppearance(previous) === resolveAppearance(next)) return false
+    if (resolveAppearance(previous) === resolvedNext) return false
     return (
       typeof document.startViewTransition === 'function' &&
       Array.isArray(document.adoptedStyleSheets) &&
@@ -224,6 +309,7 @@ export class WebUiTheme extends LitElement {
   // 嵌套主题只做局部揭示；View Transitions 需要 capture box，因此飞行期间临时生成一个 host box。
   private async _startThemeTransition(
     next: ThemeAppearance,
+    resolvedNext: ResolvedThemeAppearance,
     previous: ThemeAppearance,
     request: number,
     flightToken: object
@@ -241,8 +327,8 @@ export class WebUiTheme extends LitElement {
           animation: none;
           mix-blend-mode: normal;
         }
-        ::view-transition-old(${transitionName}) { z-index: ${next === 'dark' ? 1 : 2}; }
-        ::view-transition-new(${transitionName}) { z-index: ${next === 'dark' ? 2 : 1}; }
+        ::view-transition-old(${transitionName}) { z-index: ${resolvedNext === 'dark' ? 1 : 2}; }
+        ::view-transition-new(${transitionName}) { z-index: ${resolvedNext === 'dark' ? 2 : 1}; }
       `)
     } else {
       styleSheet.replaceSync(`
@@ -251,8 +337,8 @@ export class WebUiTheme extends LitElement {
           mix-blend-mode: normal;
         }
         ::view-transition-image-pair(root) { mix-blend-mode: normal; }
-        ::view-transition-old(root) { z-index: ${next === 'dark' ? 1 : 2}; }
-        ::view-transition-new(root) { z-index: ${next === 'dark' ? 2 : 1}; }
+        ::view-transition-old(root) { z-index: ${resolvedNext === 'dark' ? 1 : 2}; }
+        ::view-transition-new(root) { z-index: ${resolvedNext === 'dark' ? 2 : 1}; }
       `)
     }
 
@@ -279,6 +365,7 @@ export class WebUiTheme extends LitElement {
     const commit = () => {
       if (this._appearanceRequest !== request) return this.updateComplete
       this._appearance = next
+      this._syncResolvedAppearance()
       this.requestUpdate('appearance', previous)
       return this.updateComplete
     }
@@ -288,6 +375,7 @@ export class WebUiTheme extends LitElement {
     document.adoptedStyleSheets = [...document.adoptedStyleSheets, styleSheet]
     const transition = document.startViewTransition(commit) as unknown as ViewTransitionLike
     this._activeTransition = transition
+    this._transitionInputSkipCleanup = addTransitionInputSkipListeners(transition)
     const animations: Animation[] = []
 
     transition.ready
@@ -295,16 +383,18 @@ export class WebUiTheme extends LitElement {
         const { duration, easing } = this._transitionMotion()
         if (duration <= 0) return
         const { x, y } = this._transitionOrigin()
-        const target = next === 'dark' ? '::view-transition-new(root)' : '::view-transition-old(root)'
+        const target = resolvedNext === 'dark' ? '::view-transition-new(root)' : '::view-transition-old(root)'
         if (!root) {
           const box = this.getBoundingClientRect()
           const relative = { x: x - box.left, y: y - box.top }
           const radius = Math.ceil(
             Math.hypot(Math.max(relative.x, box.width - relative.x), Math.max(relative.y, box.height - relative.y))
           )
-          const frames = this._transitionKeyframes(relative.x, relative.y, radius, next)
+          const frames = this._transitionKeyframes(relative.x, relative.y, radius, resolvedNext)
           const target =
-            next === 'dark' ? `::view-transition-new(${transitionName})` : `::view-transition-old(${transitionName})`
+            resolvedNext === 'dark'
+              ? `::view-transition-new(${transitionName})`
+              : `::view-transition-old(${transitionName})`
           animations.push(
             document.documentElement.animate(frames, {
               duration,
@@ -318,7 +408,7 @@ export class WebUiTheme extends LitElement {
 
         const radius = Math.ceil(Math.hypot(Math.max(x, window.innerWidth - x), Math.max(y, window.innerHeight - y)))
         animations.push(
-          document.documentElement.animate(this._transitionKeyframes(x, y, radius, next), {
+          document.documentElement.animate(this._transitionKeyframes(x, y, radius, resolvedNext), {
             duration,
             easing,
             fill: 'both',
@@ -333,6 +423,8 @@ export class WebUiTheme extends LitElement {
     } catch {
       // API 缺失、capture 冲突或用户 skip 都不是状态错误；appearance 已由 update callback 提交。
     } finally {
+      this._transitionInputSkipCleanup?.()
+      this._transitionInputSkipCleanup = undefined
       this._activeTransition = undefined
       this._transitionCleanup = undefined
       for (const animation of animations) animation.cancel()
@@ -343,13 +435,20 @@ export class WebUiTheme extends LitElement {
     }
   }
 
-  private _transitionKeyframes(x: number, y: number, radius: number, next: ThemeAppearance): Keyframe[] {
+  private _transitionKeyframes(
+    x: number,
+    y: number,
+    radius: number,
+    resolvedNext: ResolvedThemeAppearance
+  ): Keyframe[] {
     const from = `circle(0px at ${x}px ${y}px)`
     const to = `circle(${radius}px at ${x}px ${y}px)`
-    return next === 'dark' ? [{ clipPath: from }, { clipPath: to }] : [{ clipPath: to }, { clipPath: from }]
+    return resolvedNext === 'dark' ? [{ clipPath: from }, { clipPath: to }] : [{ clipPath: to }, { clipPath: from }]
   }
 
   private _cleanupThemeTransition(restoreCapture = true) {
+    this._transitionInputSkipCleanup?.()
+    this._transitionInputSkipCleanup = undefined
     this._activeTransition = undefined
     const cleanup = this._transitionCleanup
     this._transitionCleanup = undefined
@@ -358,6 +457,7 @@ export class WebUiTheme extends LitElement {
 
   private _activeTransition?: ViewTransitionLike
   private _transitionCleanup?: () => void
+  private _transitionInputSkipCleanup?: () => void
 
   override render() {
     return html`<slot></slot>${this._hasAppearance() ? html`<div data-wui-overlay-container></div>` : nothing}`

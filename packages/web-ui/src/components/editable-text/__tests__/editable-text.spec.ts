@@ -41,6 +41,7 @@ describe('WebUiEditableText 组件契约', () => {
     expect(el.placeholder).toBe('')
     expect(el.name).toBe('')
     expect(el.disabled).toBe(false)
+    expect(el.readonly).toBe(false)
     expect(el.hasAttribute('editing')).toBe(false)
     cleanupElement(el)
   })
@@ -50,6 +51,25 @@ describe('WebUiEditableText 组件契约', () => {
     await waitForUpdate(el)
     expect(el.getAttribute('tabindex')).toBe('0')
     cleanupElement(el)
+  })
+
+  it('编辑层有稳定且实例唯一的 id', async () => {
+    const first = create()
+    const second = create()
+    await Promise.all([waitForUpdate(first), waitForUpdate(second)])
+
+    const firstId = editorOf(first).id
+    const secondId = editorOf(second).id
+    expect(firstId).not.toBe('')
+    expect(secondId).not.toBe('')
+    expect(secondId).not.toBe(firstId)
+
+    first.value = 'updated'
+    await waitForUpdate(first)
+    expect(editorOf(first).id).toBe(firstId)
+
+    cleanupElement(first)
+    cleanupElement(second)
   })
 
   it('value attribute 提供初值，Enter 提交后 attribute 保持 reset 初值', async () => {
@@ -178,6 +198,69 @@ describe('WebUiEditableText 组件契约', () => {
 
     expect(el.hasAttribute('editing')).toBe(false)
     expect(el.shadowRoot!.activeElement).toBe(null)
+    cleanupElement(el)
+  })
+
+  it('readonly 仍可聚焦与全选，但阻止输入、提交 change', async () => {
+    const el = create({ value: 'hello', readonly: '' })
+    await waitForUpdate(el)
+    expect(editorOf(el).readOnly).toBe(true)
+
+    el.select()
+    await waitForUpdate(el)
+    expect(el.hasAttribute('editing')).toBe(true)
+    expect(el.shadowRoot!.activeElement).toBe(editorOf(el))
+    expect(editorOf(el).selectionStart).toBe(0)
+    expect(editorOf(el).selectionEnd).toBe(5)
+
+    const [changes, detachChanges] = spyEvents(el, 'change')
+    try {
+      typeDraft(el, 'blocked')
+      await waitForUpdate(el)
+      expect(el.value).toBe('hello')
+      expect(editorOf(el).value).toBe('hello')
+
+      editorOf(el).blur()
+      await waitForUpdate(el)
+      expect(el.hasAttribute('editing')).toBe(false)
+      expect(el.value).toBe('hello')
+      expect(changes).toHaveLength(0)
+    } finally {
+      detachChanges()
+    }
+    cleanupElement(el)
+  })
+
+  it('readonly 编辑态 Enter 被编辑层消费，不外泄也不提交', async () => {
+    const el = create({ value: 'hello', readonly: '' })
+    await waitForUpdate(el)
+    el.focus()
+    await waitForUpdate(el)
+    expect(el.hasAttribute('editing')).toBe(true)
+
+    const documentCapture: string[] = []
+    const onDocumentCapture = (e: Event) => {
+      if ((e as KeyboardEvent).key === 'Enter') documentCapture.push('enter')
+    }
+    const [cancels, detachCancels] = spyEvents(el, 'cancel')
+    const [changes, detachChanges] = spyEvents(el, 'change')
+    document.addEventListener('keydown', onDocumentCapture, true)
+    try {
+      const event = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, composed: true, cancelable: true })
+      editorOf(el).dispatchEvent(event)
+      await waitForUpdate(el)
+
+      expect(event.defaultPrevented, 'readonly Enter 的默认行为被压掉').toBe(true)
+      expect(documentCapture, 'readonly Enter 不穿透到 document 捕获监听').toEqual([])
+      expect(el.hasAttribute('editing'), '消费按键但不退出编辑').toBe(true)
+      expect(el.value, 'readonly Enter 不提交').toBe('hello')
+      expect(cancels, 'readonly Enter 不派发 cancel').toHaveLength(0)
+      expect(changes, 'readonly Enter 不派发 change').toHaveLength(0)
+    } finally {
+      document.removeEventListener('keydown', onDocumentCapture, true)
+      detachCancels()
+      detachChanges()
+    }
     cleanupElement(el)
   })
 
@@ -569,7 +652,6 @@ describe('WebUiEditableText 组件契约', () => {
       expect(el.hasAttribute('editing'), '监听器里的 focus 被重入守卫消费，不重新进入编辑').toBe(false)
       expect(changes, '取消不派发 change').toHaveLength(0)
 
-      // 用户随后点到别处：编辑态已退出，blur 不应把恢复后的原值提交出去
       editorOf(el).focus()
       editorOf(el).blur()
       await waitForUpdate(el)
@@ -627,6 +709,7 @@ describe('WebUiEditableText 组件契约', () => {
   contractReflection('WebUiEditableText 属性反射', () => create(), [
     ['name', 'field', 'name', 'field'],
     ['placeholder', '请输入', 'placeholder', '请输入'],
-    ['disabled', true, 'disabled', '']
+    ['disabled', true, 'disabled', ''],
+    ['readonly', true, 'readonly', '']
   ])
 })

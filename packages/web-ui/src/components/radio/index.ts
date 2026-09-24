@@ -6,6 +6,7 @@ import selectionControl from '@/assets/selection-control.css?inline'
 import { installPointerFocusSuppression } from '@/shared/focus/pointer-focus'
 import { FormAssociated, defineFormAssociation, FormAssociationController } from '@/shared/form-association'
 import { defineGroupManaged, selectionGroupContextKey, type SelectionGroupContext } from '@/shared/group-management'
+import { LabelEmptinessController } from '@/shared/label-emptiness'
 
 import style from './style.css?inline'
 
@@ -20,6 +21,9 @@ export class WebUiRadio extends FormAssociated(LitElement) {
   }).make()
 
   @state() private _checked = false
+
+  /** 标签没有可渲染内容（空槽位，或只挂着一个无障碍名）时收掉 gap，见 LabelEmptinessController。 */
+  @state() private _labelEmpty = false
 
   get checked(): boolean {
     return this._checked
@@ -67,6 +71,10 @@ export class WebUiRadio extends FormAssociated(LitElement) {
 
   private readonly _formAssociationController = new FormAssociationController(this, this._formAssociation)
 
+  private readonly _labelEmptiness = new LabelEmptinessController(this, '.wui-radio-label', empty => {
+    this._labelEmpty = empty
+  })
+
   private _syncValidity() {
     const internals = this._formAssociation.getInternals()
     if (!internals || typeof internals.setValidity !== 'function') return
@@ -101,6 +109,7 @@ export class WebUiRadio extends FormAssociated(LitElement) {
     const cls = {
       'wui-radio': true,
       'is-checked': this._checked,
+      'is-label-empty': this._labelEmpty,
       'is-disabled': this._isDisabled
     }
 

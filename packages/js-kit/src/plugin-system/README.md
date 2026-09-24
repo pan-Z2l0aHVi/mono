@@ -43,7 +43,7 @@ app.log('hello')
 console.log(app.token)
 ```
 
-**Multi-level nesting:** `.use()` accepts any plugin — including one that is itself a `.use()` chain. All APIs merge into the final instance.
+**Multi-level nesting:** `.use()` accepts any plugin, including one that is itself a `.use()` chain. All APIs merge into the final instance.
 
 ```ts
 const defineA = () => definePlugin(() => ({ a: 1 }))
@@ -95,7 +95,7 @@ ctx.emit({ id: 2 })
 
 ### `defineQueue<T>(options)`
 
-A “delivery-is-consumption” queue. An item is removed immediately after `onConsume` is called; the queue does not await a returned Promise. It is suitable for fire-and-forget work. Synchronous throws and asynchronous rejections are reported to the optional `onConsumeError`, but the item is not re-enqueued.
+A "delivery-is-consumption" queue. An item is removed immediately after `onConsume` is called; the queue does not await a returned Promise. It is suitable for fire-and-forget work. Synchronous throws and asynchronous rejections are reported to the optional `onConsumeError`, but the item is not re-enqueued.
 
 ### `defineAckQueue<T>(options)`
 
@@ -136,7 +136,7 @@ queue.enqueue('task-1')
 await queue.flush()
 ```
 
-Use `defineQueue` when consumer Promise fulfillment is not part of the removal boundary. Use `defineAckQueue` when it is. “Acknowledgement” here means consumer-level success; it does not promise exactly-once processing or a server acknowledgement.
+Use `defineQueue` when consumer Promise fulfillment is not part of the removal boundary. Use `defineAckQueue` when it is. "Acknowledgement" here means consumer-level success; it does not promise exactly-once processing or a server acknowledgement.
 
 ## Type Utilities
 
