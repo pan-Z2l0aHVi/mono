@@ -965,7 +965,7 @@ watch(addDialogOpen, (open, _, onCleanup) => {
     <header slot="header" class="w-full">
       <div class="flex gap-4 items-center px-6 py-2 max-[640px]:px-3 max-[640px]:pl-0">
         <!-- 窄屏时布局组件的展开 Toggle 自带左缩进（--wui-layout-mobile-toggle-inset，8px），header 内容去掉左内边距避免双重缩进。 -->
-        <web-ui-button-group aria-label="页面导航" class="max-[640px]:hidden [--wui-button-group-divider-length:20px]">
+        <web-ui-button-group aria-label="页面导航" class="max-[640px]:hidden">
           <web-ui-button icon variant="glass" aria-label="后退" :disabled="!canGoBack" @click="router.back()">
             <web-ui-icon :icon="lucideChevronLeft"></web-ui-icon>
           </web-ui-button>
@@ -1012,7 +1012,7 @@ watch(addDialogOpen, (open, _, onCleanup) => {
           </template>
           <template v-else>
             <web-ui-button @click="toggleCheckAll">{{ allVisibleChecked ? '取消全选' : '全选' }}</web-ui-button>
-            <web-ui-button-group aria-label="批量操作" class="[--wui-button-group-divider-length:20px]">
+            <web-ui-button-group aria-label="批量操作">
               <web-ui-tooltip portal>
                 <span slot="content" style="color: var(--wui-color-danger)">删除</span>
                 <web-ui-button icon aria-label="删除" :disabled="!canBatchDelete" @click="confirmDeleteChecked">
