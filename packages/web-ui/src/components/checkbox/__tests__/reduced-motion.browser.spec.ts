@@ -14,7 +14,8 @@ afterEach(() => document.body.replaceChildren())
  * 因此这里的契约用「未勾选后勾必须淡出」来表达，观察面是 opacity 的 CSSTransition（§10 S2）。
  *
  * §10 S3：两个方向走同一组观察函数，「reduce 下有淡出」与「full 下没有淡出、只有画线」互为对照。
- * shadowRoot.getAnimations() 是唯一采得到 checkbox 内部动画的面（el.getAnimations({subtree:true}) 不跨 shadow）。
+ * 淡出在 checkbox 自己的 shadow root 上；画线的作用对象是 web-ui-icon 渲染的 path，它在 icon 的
+ * 嵌套 shadow root 里，而 `ShadowRoot.getAnimations()` 不跨嵌套 tree，所以两层各走各的面。
  */
 function opacityTransitions(el: WebUiCheckbox): Animation[] {
   return Array.from(el.shadowRoot?.getAnimations() ?? []).filter(
@@ -23,7 +24,8 @@ function opacityTransitions(el: WebUiCheckbox): Animation[] {
 }
 
 function drawAnimations(el: WebUiCheckbox): Animation[] {
-  return Array.from(el.shadowRoot?.getAnimations() ?? []).filter(
+  const iconRoot = el.shadowRoot?.querySelector('web-ui-icon')?.shadowRoot
+  return Array.from(iconRoot?.getAnimations() ?? []).filter(
     a => (a.effect as KeyframeEffect | null)?.target instanceof SVGGeometryElement
   )
 }
