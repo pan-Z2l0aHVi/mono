@@ -66,5 +66,5 @@ export { default as heroiconsBarsArrowDown16Solid } from './generated/heroicons-
 export { default as heroiconsBarsArrowUp16Solid } from './generated/heroicons-bars-arrow-up-16-solid'
 export { default as lucideListRestart } from './generated/lucide-list-restart'
 export { default as radixIconsReset } from './generated/radix-icons-reset'
-export { default as tablerCheck } from './generated/tabler-check'
+export { default as akarIconsCheck } from './generated/akar-icons-check'
 export { default as biCheck } from './generated/bi-check'
