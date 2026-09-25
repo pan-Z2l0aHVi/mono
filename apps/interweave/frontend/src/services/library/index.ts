@@ -5,4 +5,9 @@ export function createLibraryRuntime(): LibraryRuntime {
   return createWailsLibraryRuntime()
 }
 
-export type { LibraryQueueItem, LibraryRuntime } from './types'
+export {
+  isSourceAvailabilityEvent,
+  type LibraryQueueItem,
+  type LibraryRuntime,
+  type SourceAvailabilityEventDTO
+} from './types'

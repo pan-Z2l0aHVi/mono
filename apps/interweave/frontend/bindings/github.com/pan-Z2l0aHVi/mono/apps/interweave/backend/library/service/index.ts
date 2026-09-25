@@ -19,6 +19,8 @@ export {
     ResourceDTO,
     SourceDTO,
     SourceMetadataDTO,
+    SourceProbeOutcome,
+    SourceProbeResultDTO,
     TagDTO,
     TagEdgeDTO,
     TagNodeDTO

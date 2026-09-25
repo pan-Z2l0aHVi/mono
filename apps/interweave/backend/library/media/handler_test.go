@@ -2,10 +2,13 @@ package media
 
 import (
 	"context"
+	"errors"
+	"io/fs"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 	"time"
 
@@ -40,6 +43,14 @@ func insertSource(t *testing.T, db *storage.DB, source storage.SourceModel) {
 	}
 }
 
+// newTestHandler 建 handler 并在用例结束前排空回写 worker，避免测试遗留 goroutine。
+func newTestHandler(t *testing.T, sources sourceStore, query storage.Queryer, previews *PendingPreviewRegistry, reporter AvailabilityReporter) *Handler {
+	t.Helper()
+	handler := NewHandler(sources, query, previews, reporter)
+	t.Cleanup(handler.Close)
+	return handler
+}
+
 func TestHandlerServesAvailableFileSourceWithRange(t *testing.T) {
 	db := openTestDB(t)
 	mediaPath := filepath.Join(t.TempDir(), "sample.mp4")
@@ -58,7 +69,7 @@ func TestHandlerServesAvailableFileSourceWithRange(t *testing.T) {
 		UpdatedAt:    time.Now().UnixMilli(),
 	})
 
-	handler := NewHandler(storage.SourceStore{}, db.SqlDB(), NewPendingPreviewRegistry())
+	handler := newTestHandler(t, storage.SourceStore{}, db.SqlDB(), NewPendingPreviewRegistry(), nil)
 	request := httptest.NewRequest(http.MethodGet, PathPrefix+"source-video", nil)
 	request.Header.Set("Range", "bytes=2-5")
 	response := httptest.NewRecorder()
@@ -94,7 +105,7 @@ func TestHandlerRejectsUnavailableNonFileAndInvalidRequests(t *testing.T) {
 		Location: "https://example.com/video.mp4", Available: true, IsPreferred: true, CreatedAt: now, UpdatedAt: now,
 	})
 
-	handler := NewHandler(storage.SourceStore{}, db.SqlDB(), NewPendingPreviewRegistry())
+	handler := newTestHandler(t, storage.SourceStore{}, db.SqlDB(), NewPendingPreviewRegistry(), nil)
 	for _, test := range []struct {
 		name   string
 		method string
@@ -118,9 +129,177 @@ func TestHandlerRejectsUnavailableNonFileAndInvalidRequests(t *testing.T) {
 	}
 }
 
+// recordingReporter 记录媒体兜底回写的 Source 身份与错误，便于断言「报了什么」而不只是「响应码」。
+type recordingReporter struct {
+	mu        sync.Mutex
+	sourceIDs []string
+	err       error
+}
+
+func (r *recordingReporter) ReportFileUnavailable(_ context.Context, sourceID string) (bool, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.sourceIDs = append(r.sourceIDs, sourceID)
+	return true, r.err
+}
+
+func (r *recordingReporter) recorded() []string {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return append([]string(nil), r.sourceIDs...)
+}
+
+// waitForReports 轮询等待回写抵达：回写在独立 worker 上异步发生，固定 sleep 是竞态假阴性。
+func waitForReports(t *testing.T, reporter *recordingReporter, want int) {
+	t.Helper()
+	deadline := time.Now().Add(2 * time.Second)
+	for len(reporter.recorded()) < want {
+		if time.Now().After(deadline) {
+			t.Fatalf("expected %d unavailable reports, got %d", want, len(reporter.recorded()))
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+}
+
+// assertNoReport 先等 worker 处理完在途消息再断言「没有上报」，避免假通过。
+func assertNoReport(t *testing.T, reporter *recordingReporter) {
+	t.Helper()
+	deadline := time.Now().Add(200 * time.Millisecond)
+	for {
+		if got := reporter.recorded(); len(got) != 0 {
+			t.Fatalf("expected no unavailable report, got %v", got)
+		}
+		if time.Now().After(deadline) {
+			return
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+}
+
+// 库内记为可用、实际取不到时必须回写：这是目录监听之外的第二条信号。
+func TestHandlerReportsFileAbsentThoughRecordedAvailable(t *testing.T) {
+	db := openTestDB(t)
+	missing := filepath.Join(t.TempDir(), "deleted.mp4")
+	insertSource(t, db, storage.SourceModel{
+		ID: "source-missing", ResourceID: "resource-missing", Type: storage.SourceTypeFile,
+		Location: missing, Available: true, IsPreferred: true,
+		CreatedAt: time.Now().UnixMilli(), UpdatedAt: time.Now().UnixMilli(),
+	})
+	reporter := &recordingReporter{}
+	handler := newTestHandler(t, storage.SourceStore{}, db.SqlDB(), NewPendingPreviewRegistry(), reporter)
+
+	response := httptest.NewRecorder()
+	handler.ServeHTTP(response, httptest.NewRequest(http.MethodGet, PathPrefix+"source-missing", nil))
+	if response.Code != http.StatusNotFound {
+		t.Fatalf("expected 404, got %d", response.Code)
+	}
+
+	waitForReports(t, reporter, 1)
+	if got := reporter.recorded()[0]; got != "source-missing" {
+		t.Fatalf("expected report for source-missing, got %q", got)
+	}
+}
+
+// 目录或管道占位同样不可服务，也应回写：媒体请求必然 404。
+func TestHandlerReportsNonRegularFile(t *testing.T) {
+	db := openTestDB(t)
+	insertSource(t, db, storage.SourceModel{
+		ID: "source-dir", ResourceID: "resource-dir", Type: storage.SourceTypeFile,
+		Location: t.TempDir(), Available: true, IsPreferred: true,
+		CreatedAt: time.Now().UnixMilli(), UpdatedAt: time.Now().UnixMilli(),
+	})
+	reporter := &recordingReporter{}
+	handler := newTestHandler(t, storage.SourceStore{}, db.SqlDB(), NewPendingPreviewRegistry(), reporter)
+
+	response := httptest.NewRecorder()
+	handler.ServeHTTP(response, httptest.NewRequest(http.MethodGet, PathPrefix+"source-dir", nil))
+	if response.Code != http.StatusNotFound {
+		t.Fatalf("expected 404, got %d", response.Code)
+	}
+
+	waitForReports(t, reporter, 1)
+}
+
+// 权限类错误不能推断文件已消失：以 root 或属主身份运行时 chmod 拦不住，
+// 因此注入 stat 函数构造 EACCES。
+func TestHandlerDoesNotReportPermissionError(t *testing.T) {
+	db := openTestDB(t)
+	present := filepath.Join(t.TempDir(), "locked.mp4")
+	if err := os.WriteFile(present, []byte("0123456789"), 0o600); err != nil {
+		t.Fatalf("write media fixture: %v", err)
+	}
+	insertSource(t, db, storage.SourceModel{
+		ID: "source-locked", ResourceID: "resource-locked", Type: storage.SourceTypeFile,
+		Location: present, Available: true, IsPreferred: true,
+		CreatedAt: time.Now().UnixMilli(), UpdatedAt: time.Now().UnixMilli(),
+	})
+	restore := statFile
+	statFile = func(string) (os.FileInfo, error) {
+		return nil, &fs.PathError{Op: "stat", Path: present, Err: fs.ErrPermission}
+	}
+	t.Cleanup(func() { statFile = restore })
+
+	reporter := &recordingReporter{}
+	handler := newTestHandler(t, storage.SourceStore{}, db.SqlDB(), NewPendingPreviewRegistry(), reporter)
+
+	response := httptest.NewRecorder()
+	handler.ServeHTTP(response, httptest.NewRequest(http.MethodGet, PathPrefix+"source-locked", nil))
+	if response.Code != http.StatusNotFound {
+		t.Fatalf("expected 404, got %d", response.Code)
+	}
+
+	assertNoReport(t, reporter)
+}
+
+// pending 预览还没有 Source 身份，文件不可达时无处回写。
+func TestHandlerDoesNotReportPendingPreview(t *testing.T) {
+	previews := NewPendingPreviewRegistry()
+	pendingPath := filepath.Join(t.TempDir(), "pending.mp4")
+	if err := os.WriteFile(pendingPath, []byte("0123456789"), 0o600); err != nil {
+		t.Fatalf("write pending fixture: %v", err)
+	}
+	token, err := previews.Register(pendingPath)
+	if err != nil {
+		t.Fatalf("register pending preview: %v", err)
+	}
+	if err := os.Remove(pendingPath); err != nil {
+		t.Fatalf("remove pending fixture: %v", err)
+	}
+	reporter := &recordingReporter{}
+	handler := newTestHandler(t, storage.SourceStore{}, nil, previews, reporter)
+
+	response := httptest.NewRecorder()
+	handler.ServeHTTP(response, httptest.NewRequest(http.MethodGet, PendingPathPrefix+token, nil))
+	if response.Code != http.StatusNotFound {
+		t.Fatalf("expected 404, got %d", response.Code)
+	}
+
+	assertNoReport(t, reporter)
+}
+
+// 回写失败不能改变 404 响应：媒体请求的结果只取决于文件本身。
+func TestHandlerKeeps404WhenReporterFails(t *testing.T) {
+	db := openTestDB(t)
+	insertSource(t, db, storage.SourceModel{
+		ID: "source-failing", ResourceID: "resource-failing", Type: storage.SourceTypeFile,
+		Location: filepath.Join(t.TempDir(), "deleted.mp4"), Available: true, IsPreferred: true,
+		CreatedAt: time.Now().UnixMilli(), UpdatedAt: time.Now().UnixMilli(),
+	})
+	reporter := &recordingReporter{err: errors.New("db unavailable")}
+	handler := newTestHandler(t, storage.SourceStore{}, db.SqlDB(), NewPendingPreviewRegistry(), reporter)
+
+	response := httptest.NewRecorder()
+	handler.ServeHTTP(response, httptest.NewRequest(http.MethodGet, PathPrefix+"source-failing", nil))
+	if response.Code != http.StatusNotFound {
+		t.Fatalf("expected 404, got %d", response.Code)
+	}
+
+	waitForReports(t, reporter, 1)
+}
+
 func TestHandlerMiddlewareFallsBackToDefaultAssetHandler(t *testing.T) {
 	db := openTestDB(t)
-	handler := NewHandler(storage.SourceStore{}, db.SqlDB(), NewPendingPreviewRegistry())
+	handler := newTestHandler(t, storage.SourceStore{}, db.SqlDB(), NewPendingPreviewRegistry(), nil)
 	middleware := handler.Middleware(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
 	}))
@@ -142,7 +321,7 @@ func TestHandlerServesPendingPreviewWithRangeAndRevokesReleasedToken(t *testing.
 	if err != nil {
 		t.Fatalf("register pending preview: %v", err)
 	}
-	handler := NewHandler(storage.SourceStore{}, nil, previews)
+	handler := newTestHandler(t, storage.SourceStore{}, nil, previews, nil)
 
 	request := httptest.NewRequest(http.MethodGet, PendingPathPrefix+token, nil)
 	request.Header.Set("Range", "bytes=2-5")

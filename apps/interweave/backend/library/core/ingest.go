@@ -20,6 +20,10 @@ import (
 // var 仅为测试注入（缩短预算验证 probe 真正受它约束）；生产代码不得在运行期改写。
 var ingestBudget = 10 * time.Second
 
+// probeBudgetOnOpen 是「打开时探测」的独立预算：与纳入/手动刷新分开，前台交互不能等 10 秒。
+// var 仅为测试注入；生产代码不得在运行期改写。
+var probeBudgetOnOpen = 3 * time.Second
+
 // ingestion 汇聚全部纳入路径共享的输入归一化、可用性探测与事务写入，
 // 使“归一化 → 探测 → 事务写入”在 core 内只有一份实现。
 type ingestion struct {
@@ -81,7 +85,7 @@ func (ing *ingestion) probe(ctx context.Context, location string, srcType storag
 		fetchCtx, cancel := context.WithTimeout(ctx, ingestBudget)
 		defer cancel()
 
-		meta, available, _ := ing.fetcher.FetchURL(fetchCtx, location)
+		meta, reachability, _ := ing.fetcher.FetchURL(fetchCtx, location)
 		if meta != nil {
 			if meta.Title != "" {
 				outcome.defaultTitle = meta.Title
@@ -90,7 +94,9 @@ func (ing *ingestion) probe(ctx context.Context, location string, srcType storag
 				outcome.metadataJSON = string(bytes)
 			}
 		}
-		outcome.available = available
+		// 纳入与手动刷新保持既有语义：无法判定与明确拒绝都记为不可用。
+		// 三态区分只用于打开时探测（ProbeURLSourceOnOpen）。
+		outcome.available = reachability == remote.ReachabilityAvailable
 		return outcome
 	default:
 		return probeOutcome{}

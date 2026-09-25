@@ -12,12 +12,13 @@ import type {
   SourceDTO,
   TagDTO
 } from '../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/service'
+import { SourceProbeOutcome } from '../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/service'
 import {
   ResourceKind,
   SourceType
 } from '../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage'
-import type { LibraryRuntime } from '../services/library'
-import { useLibraryStore } from '../stores/library'
+import type { LibraryRuntime, SourceAvailabilityEventDTO } from '../services/library'
+import { useLibraryStore, type ResourceSourceView } from '../stores/library'
 
 import { useLibraryRuntime } from './useLibraryRuntime'
 
@@ -69,11 +70,16 @@ function createRuntime(overrides: Partial<LibraryRuntime> = {}): LibraryRuntime 
     getClipboardFilePaths: async () => [],
     prepareFilePreview: async () => ({ kind: ResourceKind.ResourceKindFile }),
     releaseFilePreview: async () => {},
+    probeURLSourceOnOpen: async () => ({
+      source: createResource().sources[0]!,
+      outcome: SourceProbeOutcome.SourceProbeOutcomeAvailable
+    }),
     openExternal: async () => {},
     resourceMediaURL: () => null,
     pendingFilePreviewURL: () => null,
     subscribeToDroppedFiles: () => () => {},
     subscribeToPasteFileRequest: () => () => {},
+    subscribeToSourceAvailability: () => () => {},
     ...overrides
   }
 }
@@ -199,5 +205,130 @@ describe('useLibraryRuntime', () => {
     expect(addTag).toHaveBeenNthCalledWith(2, 'tagged', 'Travel')
     expect(getResource).toHaveBeenCalledWith('tagged')
     expect(useLibraryStore().resources[0]?.tagNames).toEqual(['Design', 'Travel'])
+  })
+
+  it('subscribeToSourceAvailability：Wails 不可用时不订阅且 disposer 可调用', () => {
+    const subscribeToSourceAvailability = vi.fn<LibraryRuntime['subscribeToSourceAvailability']>(() => () => {})
+    const controller = useLibraryRuntime(createRuntime({ isAvailable: false, subscribeToSourceAvailability }))
+
+    const dispose = controller.subscribeToSourceAvailability(() => {})
+
+    expect(subscribeToSourceAvailability).not.toHaveBeenCalled()
+    expect(() => dispose()).not.toThrow()
+  })
+
+  it('subscribeToSourceAvailability：Wails 可用时透传事件与 disposer', () => {
+    const stop = vi.fn<() => void>()
+    const subscribeToSourceAvailability = vi.fn<LibraryRuntime['subscribeToSourceAvailability']>(() => stop)
+    const listener = vi.fn<(event: SourceAvailabilityEventDTO) => void>()
+    const controller = useLibraryRuntime(createRuntime({ subscribeToSourceAvailability }))
+
+    const dispose = controller.subscribeToSourceAvailability(listener)
+    const event = {
+      source_id: 'source-inline',
+      resource_id: 'resource-inline',
+      type: 'file',
+      available: false,
+      changed_at: 400
+    }
+    subscribeToSourceAvailability.mock.calls[0]![0](event)
+    dispose()
+
+    expect(listener).toHaveBeenCalledWith(event)
+    expect(stop).toHaveBeenCalledOnce()
+  })
+
+  it('probeURLSourceOnOpen：只对判为不可用的 URL 首选 source 探测，回读最新 DTO 回流', async () => {
+    const revived = createResource({ id: 'resource-inline', size_bytes: 256 })
+    const getResource = vi.fn<LibraryRuntime['getResource']>(async () => revived)
+    const probeURLSourceOnOpen = vi.fn<LibraryRuntime['probeURLSourceOnOpen']>(async () => ({
+      source: createResource().sources[0]!,
+      outcome: SourceProbeOutcome.SourceProbeOutcomeAvailable
+    }))
+    const controller = useLibraryRuntime(createRuntime({ getResource, probeURLSourceOnOpen }))
+    useLibraryStore().setResources([createResource()])
+    const unavailable: ResourceSourceView = {
+      id: 'source-inline',
+      type: 'url',
+      location: 'https://example.com/dead',
+      available: false,
+      isPreferred: true,
+      orderIndex: 0,
+      metadata: null
+    }
+
+    await controller.probeURLSourceOnOpen(unavailable)
+
+    expect(probeURLSourceOnOpen).toHaveBeenCalledExactlyOnceWith('source-inline')
+    expect(getResource).toHaveBeenCalledWith('resource-inline')
+    expect(useLibraryStore().resources[0]?.sizeBytes).toBe(256)
+    expect(controller.error.value).toBe('')
+  })
+
+  it('probeURLSourceOnOpen：已可用、file source 与空首选都不触发探测', async () => {
+    const probeURLSourceOnOpen = vi.fn<LibraryRuntime['probeURLSourceOnOpen']>()
+    const controller = useLibraryRuntime(createRuntime({ probeURLSourceOnOpen }))
+    const base: ResourceSourceView = {
+      id: 'source-inline',
+      type: 'url',
+      location: 'https://example.com/live',
+      available: true,
+      isPreferred: true,
+      orderIndex: 0,
+      metadata: null
+    }
+
+    await controller.probeURLSourceOnOpen(base)
+    await controller.probeURLSourceOnOpen({ ...base, type: 'file', available: false })
+    await controller.probeURLSourceOnOpen(null)
+
+    expect(probeURLSourceOnOpen).not.toHaveBeenCalled()
+  })
+
+  it('probeURLSourceOnOpen：inconclusive 不改 store，只把后端文案呈上 error', async () => {
+    const probeURLSourceOnOpen = vi.fn<LibraryRuntime['probeURLSourceOnOpen']>(async () => ({
+      outcome: SourceProbeOutcome.SourceProbeOutcomeInconclusive,
+      message: '暂时无法检测该链接，请检查网络后重试'
+    }))
+    const controller = useLibraryRuntime(createRuntime({ probeURLSourceOnOpen }))
+    const store = useLibraryStore()
+    store.setResources([createResource()])
+    const before = JSON.stringify(store.resources)
+
+    await controller.probeURLSourceOnOpen({
+      id: 'source-inline',
+      type: 'url',
+      location: 'https://example.com/dead',
+      available: false,
+      isPreferred: true,
+      orderIndex: 0,
+      metadata: null
+    })
+
+    expect(JSON.stringify(store.resources)).toBe(before)
+    expect(controller.error.value).toBe('暂时无法检测该链接，请检查网络后重试')
+  })
+
+  it('probeURLSourceOnOpen：探测抛错只呈 error，不打断调用方', async () => {
+    const controller = useLibraryRuntime(
+      createRuntime({
+        probeURLSourceOnOpen: async () => {
+          throw new Error('探测失败')
+        }
+      })
+    )
+
+    await expect(
+      controller.probeURLSourceOnOpen({
+        id: 'source-inline',
+        type: 'url',
+        location: 'https://example.com/dead',
+        available: false,
+        isPreferred: true,
+        orderIndex: 0,
+        metadata: null
+      })
+    ).resolves.toBeUndefined()
+    expect(controller.error.value).toBe('探测失败')
   })
 })

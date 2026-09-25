@@ -300,6 +300,60 @@ export class SourceMetadataDTO {
 }
 
 /**
+ * SourceProbeOutcome 是打开时探测的结论集合。
+ * 取值与 core.ProbeOutcome 一致，由 sourceProbeOutcomeDTO 显式映射，
+ * 使前端契约成为独立类型而不是对 Go 常量的再导出。
+ */
+export enum SourceProbeOutcome {
+    /**
+     * The Go zero value for the underlying type of the enum.
+     */
+    $zero = "",
+
+    SourceProbeOutcomeAvailable = "available",
+    SourceProbeOutcomeUnavailable = "unavailable",
+
+    /**
+     * SourceProbeOutcomeInconclusive 表示本次无法判定，未落库。
+     */
+    SourceProbeOutcomeInconclusive = "inconclusive",
+};
+
+/**
+ * SourceProbeResultDTO 承载打开时探测的结论；Inconclusive 时 Source 字段省略。
+ */
+export class SourceProbeResultDTO {
+    "source"?: SourceDTO | null;
+    "outcome": SourceProbeOutcome;
+
+    /**
+     * Message 是用户可见文案，由后端出（沿用 core 哨兵文案口径），前端不自己拼领域文案。
+     */
+    "message"?: string;
+
+    /** Creates a new SourceProbeResultDTO instance. */
+    constructor($$source: Partial<SourceProbeResultDTO> = {}) {
+        if (!("outcome" in $$source)) {
+            this["outcome"] = SourceProbeOutcome.$zero;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new SourceProbeResultDTO instance from a string or object.
+     */
+    static createFrom($$source: any = {}): SourceProbeResultDTO {
+        const $$createField0_0 = $$createType12;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("source" in $$parsedSource) {
+            $$parsedSource["source"] = $$createField0_0($$parsedSource["source"]);
+        }
+        return new SourceProbeResultDTO($$parsedSource as Partial<SourceProbeResultDTO>);
+    }
+}
+
+/**
  * 为前端呈现可复用的语义标签。
  */
 export class TagDTO {
@@ -412,3 +466,4 @@ const $$createType8 = $Create.Array($$createType7);
 const $$createType9 = $Create.Array($$createType4);
 const $$createType10 = SourceMetadataDTO.createFrom;
 const $$createType11 = $Create.Nullable($$createType10);
+const $$createType12 = $Create.Nullable($$createType7);

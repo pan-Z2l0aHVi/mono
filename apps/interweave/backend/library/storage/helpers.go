@@ -6,6 +6,11 @@ import (
 	"strings"
 )
 
+// locationQueryBatch 是位置反查单条 IN 语句的安全参数上限：SQLite 变量上限有限，
+// 超量的位置集合按批分片成多次查询并合并，而不是整体报错。
+// var 仅为测试注入（缩小批次验证分片与合并）；生产代码不得在运行期改写。
+var locationQueryBatch = 500
+
 // 同时适配 *sql.Row 与 *sql.Rows 的行扫描入口，避免读写路径各自复制扫描逻辑。
 type rowScanner interface {
 	Scan(dest ...any) error
@@ -14,6 +19,19 @@ type rowScanner interface {
 // 为 IN 子句生成与参数数量一致的占位符；调用方需保证 n > 0。
 func placeholders(n int) string {
 	return strings.TrimSuffix(strings.Repeat("?,", n), ",")
+}
+
+// 按批切分 IN 子句的参数，供调用方在变量上限下分片查询。
+func chunkValues(values []string, size int) [][]string {
+	chunks := make([][]string, 0, (len(values)+size-1)/size)
+	for start := 0; start < len(values); start += size {
+		end := start + size
+		if end > len(values) {
+			end = len(values)
+		}
+		chunks = append(chunks, values[start:end])
+	}
+	return chunks
 }
 
 // 遍历 rows 逐行扫描，统一收口 rows.Err() 检查与 nil→空切片归一；

@@ -56,7 +56,9 @@ const {
   openExternal,
   resourceMediaURL,
   subscribeToDroppedFiles,
-  subscribeToPasteFileRequest
+  subscribeToPasteFileRequest,
+  subscribeToSourceAvailability,
+  probeURLSourceOnOpen
 } = useLibraryRuntime()
 
 const sidebarCollapsed = ref(false)
@@ -94,9 +96,13 @@ const stopPasteFileRequest = subscribeToPasteFileRequest(() => {
   addOpen.value = true
   void pasteFilePaths()
 })
+const stopSourceAvailability = subscribeToSourceAvailability(event => {
+  store.applySourceAvailability(event.source_id, event.available, event.size_bytes)
+})
 onScopeDispose(() => {
   stopDroppedFiles()
   stopPasteFileRequest()
+  stopSourceAvailability()
   void addQueue.close()
 })
 
@@ -205,6 +211,9 @@ function selectResource(resource: ResourceView) {
   }
   activeResourceId.value = resource.id
   detailOpen.value = true
+  // 打开详情顺手验一下失效 URL：只在当前判为不可用时探测（策略见 probeURLSourceOnOpen）。
+  // 编辑标签与预览不经过这里——它们不是「打开详情」，不该发出网络请求。
+  void probeURLSourceOnOpen(resource.preferred)
 }
 
 function previewResource(resource: ResourceView) {

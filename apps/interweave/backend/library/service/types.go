@@ -2,6 +2,9 @@ package service
 
 import "github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage"
 
+// SourceAvailabilityEventName 是可用性翻转的推送事件名，与既有 library: 事件同前缀同风格。
+const SourceAvailabilityEventName = "library:source-availability-changed"
+
 // ResourceKind 是 Resource 展示分类的闭集；文件分类由 Go 侧维护，URL 固定为 web。
 type ResourceKind = storage.ResourceKind
 
@@ -66,6 +69,38 @@ type ResourceDTO struct {
 	Sources     []SourceDTO `json:"sources"`
 	Tags        []TagDTO    `json:"tags"`
 	PreferredID string      `json:"preferred_source_id"`
+}
+
+// SourceAvailabilityEventDTO 是可用性翻转的推送载荷。只推文件 Source：
+// URL 没有监听，其可用性由打开时探测走返回值回流，不需要事件。
+type SourceAvailabilityEventDTO struct {
+	SourceID   string             `json:"source_id"`
+	ResourceID string             `json:"resource_id"`
+	Type       storage.SourceType `json:"type"`
+	Available  bool               `json:"available"`
+	// SizeBytes 只在翻转的是该 Resource 的首选文件 Source 时有值。
+	SizeBytes *int64 `json:"size_bytes,omitempty"`
+	ChangedAt int64  `json:"changed_at"`
+}
+
+// SourceProbeOutcome 是打开时探测的结论集合。
+// 取值与 core.ProbeOutcome 一致，由 sourceProbeOutcomeDTO 显式映射，
+// 使前端契约成为独立类型而不是对 Go 常量的再导出。
+type SourceProbeOutcome string
+
+const (
+	SourceProbeOutcomeAvailable   SourceProbeOutcome = "available"
+	SourceProbeOutcomeUnavailable SourceProbeOutcome = "unavailable"
+	// SourceProbeOutcomeInconclusive 表示本次无法判定，未落库。
+	SourceProbeOutcomeInconclusive SourceProbeOutcome = "inconclusive"
+)
+
+// SourceProbeResultDTO 承载打开时探测的结论；Inconclusive 时 Source 字段省略。
+type SourceProbeResultDTO struct {
+	Source  *SourceDTO         `json:"source,omitempty"`
+	Outcome SourceProbeOutcome `json:"outcome"`
+	// Message 是用户可见文案，由后端出（沿用 core 哨兵文案口径），前端不自己拼领域文案。
+	Message string `json:"message,omitempty"`
 }
 
 // 为 Map 提供主题聚合视图。
