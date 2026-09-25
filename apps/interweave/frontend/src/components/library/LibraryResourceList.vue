@@ -18,7 +18,7 @@ import {
   lucideTags,
   lucideTrash2
 } from '@greypan/web-ui/icons'
-import { nextTick, ref } from 'vue'
+import { computed, nextTick, ref } from 'vue'
 
 import type { ResourceKind, ResourceSourceView, ResourceView } from '@/stores/library'
 
@@ -33,6 +33,7 @@ const props = defineProps<{
   editingNameKey: string | null
   editorRef: (id: string) => NameEditorRef
   loading: boolean
+  runtimeAvailable: boolean
   emptyDescription: string
   mediaUrlFor: (sourceId: string) => string | null
 }>()
@@ -51,6 +52,7 @@ const emit = defineEmits<{
 
 const contextMenuRef = ref<WebUiContextMenu>()
 const contextResource = ref<ResourceView | null>(null)
+const emptyTitle = computed(() => (props.runtimeAvailable ? '资源库为空' : '桌面服务未连接'))
 
 const openWithApps: Partial<Record<ResourceKind, Array<{ label: string; icon: typeof lucideEye }>>> = {
   image: [
@@ -137,7 +139,7 @@ function handleRenameChange(resource: ResourceView, event: WebUiEvent<WebUiEdita
     </div>
 
     <div v-else-if="resources.length === 0" class="flex flex-col items-center justify-center py-24">
-      <web-ui-empty size="large" :description="emptyDescription" />
+      <web-ui-empty size="large" :title="emptyTitle" :description="emptyDescription" />
     </div>
 
     <div v-else class="w-full h-full select-none">

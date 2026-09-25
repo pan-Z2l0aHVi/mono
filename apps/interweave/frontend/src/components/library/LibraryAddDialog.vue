@@ -11,14 +11,13 @@ import {
 } from '@greypan/web-ui/icons'
 import { onMounted, onScopeDispose, ref, watch } from 'vue'
 
-import type { LibraryQueueItem, LibraryRuntimeKind } from '@/services/library'
+import type { LibraryQueueItem } from '@/services/library'
 
 import { metadataRowClass } from './presentation'
 
 const props = defineProps<{
   open: boolean
   queue: LibraryQueueItem[]
-  runtimeKind: LibraryRuntimeKind
   busy: boolean
   error: string
   mobile: boolean
@@ -27,7 +26,6 @@ const props = defineProps<{
 const emit = defineEmits<{
   'update:open': [value: boolean]
   pickFiles: []
-  dropFiles: [fileTitles: string[]]
   requestFilePaths: []
   remove: [itemId: string]
   rename: [itemId: string, title: string]
@@ -52,21 +50,13 @@ function handleOpenChange(event: WebUiEvent<WebUiDialog, 'open-change'>) {
   emit('update:open', event.detail.open)
 }
 
-function handleDrop(event: DragEvent) {
+function handleDrop() {
   dragActive.value = false
-  if (props.runtimeKind !== 'fixture') return
-  const fileTitles = [...(event.dataTransfer?.files ?? [])].map(file => file.name)
-  if (fileTitles.length) emit('dropFiles', fileTitles)
 }
 
 function handlePaste(event: ClipboardEvent) {
   if (!props.open) return
   if (isEditableTarget(event.target)) return
-  if (props.runtimeKind === 'fixture') {
-    const fileTitles = [...(event.clipboardData?.files ?? [])].map(file => file.name)
-    if (fileTitles.length) emit('dropFiles', fileTitles)
-    return
-  }
   emit('requestFilePaths')
 }
 
@@ -142,7 +132,6 @@ function handleRenameKeydown(event: KeyboardEvent, itemId: string) {
             选择本地文件，或将其拖入上传区；也可以粘贴复制的文件。
           </p>
           <web-ui-button
-            v-if="runtimeKind === 'wails'"
             icon
             variant="ghost"
             size="28"

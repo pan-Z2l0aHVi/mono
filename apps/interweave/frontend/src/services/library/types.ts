@@ -4,10 +4,8 @@ import type {
   TagDTO
 } from '../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/service'
 
-export type LibraryRuntimeKind = 'fixture' | 'wails'
-
 export interface LibraryRuntime {
-  readonly kind: LibraryRuntimeKind
+  readonly isAvailable: boolean
   listResources(): Promise<ResourceDTO[]>
   getResource(resourceId: string): Promise<ResourceDTO>
   addFileResource(inputPath: string): Promise<ResourceDTO>
