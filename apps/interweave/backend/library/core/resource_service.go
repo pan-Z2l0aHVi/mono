@@ -19,6 +19,12 @@ type ResourceService struct {
 	resources storage.ResourceStore
 }
 
+// PreparedFilePreview 是待添加文件的稳定位置与权威展示分类。
+type PreparedFilePreview struct {
+	Location string
+	Kind     storage.ResourceKind
+}
+
 // 保持资源规则与持久化实现解耦。
 func NewResourceService(db *storage.DB, fetcher *remote.Fetcher) *ResourceService {
 	return &ResourceService{
@@ -27,6 +33,15 @@ func NewResourceService(db *storage.DB, fetcher *remote.Fetcher) *ResourceServic
 		views:     viewAssembler{},
 		resources: storage.ResourceStore{},
 	}
+}
+
+// 规范化待添加文件并复用 Resource 展示分类，不读取文件内容。
+func (s *ResourceService) PrepareFilePreview(inputPath string) (PreparedFilePreview, error) {
+	location, err := s.ingest.normalizeInput(inputPath, storage.SourceTypeFile)
+	if err != nil {
+		return PreparedFilePreview{}, err
+	}
+	return PreparedFilePreview{Location: location, Kind: resourceKindForFile(location)}, nil
 }
 
 // 纳入文件时只确认入口可达性，不读取或接管内容。

@@ -68,12 +68,13 @@ func main() {
 	coreTagService := coreLibrary.NewTagService(db)
 	coreMapService := coreLibrary.NewMapService(db)
 
-	resourceService := libraryService.NewResourceService(coreResourceService)
+	pendingPreviews := libraryMedia.NewPendingPreviewRegistry()
+	resourceService := libraryService.NewResourceService(coreResourceService, pendingPreviews)
 	sourceService := libraryService.NewSourceService(coreSourceService)
 	tagService := libraryService.NewTagService(coreTagService)
 	mapService := libraryService.NewMapService(coreMapService)
 	osService := nativeService.NewOSService()
-	mediaHandler := libraryMedia.NewHandler(storage.SourceStore{}, db.SqlDB())
+	mediaHandler := libraryMedia.NewHandler(storage.SourceStore{}, db.SqlDB(), pendingPreviews)
 
 	// 仅暴露产品与受控原生能力，避免基础设施绕过后端边界。
 	app := application.New(application.Options{

@@ -4,6 +4,7 @@ import { lucideFolderOpen, lucideLayoutGrid } from '@greypan/web-ui/icons'
 import { computed, nextTick, onMounted, onScopeDispose, ref, type ComponentPublicInstance } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
+import { createLibraryAddQueue } from '@/components/library/addQueue'
 import LibraryAddDialog from '@/components/library/LibraryAddDialog.vue'
 import LibraryConfirmDialog from '@/components/library/LibraryConfirmDialog.vue'
 import LibraryDetailDrawer from '@/components/library/LibraryDetailDrawer.vue'
@@ -68,6 +69,7 @@ const searchOpen = ref(false)
 const selectionMode = ref(false)
 const checkedIds = ref<string[]>([])
 const activeResourceId = ref<string | null>(null)
+const activeTagTarget = ref<ResourceView | LibraryQueueItem | null>(null)
 const detailOpen = ref(false)
 const previewOpen = ref(false)
 const tagsOpen = ref(false)
@@ -77,14 +79,15 @@ const restoreQueue = ref<LibraryRestoreQueueItem[]>([])
 const restoreBusy = ref(false)
 const restoreError = ref('')
 const activeRestoreItemId = ref<string | null>(null)
-const queue = ref<LibraryQueueItem[]>([])
+const addQueue = createLibraryAddQueue(runtime)
+const queue = addQueue.queue
 const addingResources = ref(false)
 const confirmBusy = ref(false)
 const confirmRequest = ref<ConfirmRequest | null>(null)
 const confirmError = ref('')
 const addError = ref('')
 const stopDroppedFiles = subscribeToDroppedFiles(paths => {
-  if (addOpen.value) enqueueFileLocations(paths)
+  if (addOpen.value) addQueue.enqueueFileLocations(paths)
 })
 const stopPasteFileRequest = subscribeToPasteFileRequest(() => {
   addOpen.value = true
@@ -93,6 +96,7 @@ const stopPasteFileRequest = subscribeToPasteFileRequest(() => {
 onScopeDispose(() => {
   stopDroppedFiles()
   stopPasteFileRequest()
+  void addQueue.close()
 })
 
 const visibleResources = computed(() => store.filteredResources)
@@ -111,6 +115,9 @@ const canRestore = computed(
     selectedResources.value.every(resource => resource.sources.some(source => !source.available))
 )
 const emptyDescription = computed(() => (store.hasActiveFilter ? '没有符合条件的资源' : '资源库还是空的'))
+const allTagNames = computed(() =>
+  [...new Set([...store.allTagNames, ...queue.value.flatMap(item => item.tags)])].sort()
+)
 
 const navItems = [
   { key: 'library' as const, label: '资料库', path: '/library', icon: lucideFolderOpen },
@@ -210,6 +217,12 @@ function renameResourceFromMenu(resource: ResourceView) {
 
 function editResourceTags(resource: ResourceView) {
   activeResourceId.value = resource.id
+  activeTagTarget.value = resource
+  tagsOpen.value = true
+}
+
+function editQueueTags(item: LibraryQueueItem) {
+  activeTagTarget.value = item
   tagsOpen.value = true
 }
 
@@ -294,9 +307,7 @@ function requestQueueRemoval(itemId: string) {
     message: `移除「${item.title}」后不会加入资源库。`,
     confirmLabel: '移除',
     danger: true,
-    action: () => {
-      queue.value = queue.value.filter(candidate => candidate.id !== itemId)
-    }
+    action: () => addQueue.removeItem(itemId)
   }
 }
 
@@ -327,46 +338,15 @@ function takeOperationError(cause: unknown, fallback: string) {
 }
 
 function openAddDialog() {
-  queue.value = []
   addError.value = ''
   addOpen.value = true
 }
 
 function setAddOpen(open: boolean) {
   addOpen.value = open
-  if (!open) addError.value = ''
-}
-
-function queueId(kind: LibraryQueueItem['kind']) {
-  return `queue-${kind}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
-}
-
-function titleFromLocation(location: string) {
-  if (location.startsWith('http://') || location.startsWith('https://')) {
-    const parsed = new URL(location)
-    const pathTitle = decodeURIComponent(parsed.pathname).split('/').filter(Boolean).at(-1)
-    return pathTitle ?? parsed.hostname
-  }
-  return (
-    location
-      .split(/[\\/]/)
-      .at(-1)
-      ?.replace(/\.[^.]+$/, '') || location
-  )
-}
-
-function enqueueFileLocations(locations: string[]) {
-  const existingLocations = new Set(queue.value.map(item => item.location))
-  for (const value of locations) {
-    const location = value.trim()
-    if (!location || existingLocations.has(location)) continue
-    queue.value.push({
-      id: queueId('file'),
-      kind: 'file',
-      title: titleFromLocation(location),
-      location
-    })
-    existingLocations.add(location)
+  if (!open) {
+    addError.value = ''
+    void addQueue.close()
   }
 }
 
@@ -374,7 +354,7 @@ async function pasteFilePaths() {
   try {
     addError.value = ''
     const paths = await getClipboardFilePaths()
-    if (addOpen.value) enqueueFileLocations(paths)
+    if (addOpen.value) addQueue.enqueueFileLocations(paths)
   } catch (cause) {
     addError.value = takeOperationError(cause, '读取剪贴板文件失败')
   }
@@ -383,14 +363,15 @@ async function pasteFilePaths() {
 async function pickFiles() {
   try {
     addError.value = ''
-    enqueueFileLocations(await chooseFilePaths())
+    const paths = await chooseFilePaths()
+    if (addOpen.value) addQueue.enqueueFileLocations(paths)
   } catch (cause) {
     addError.value = takeOperationError(cause, '选择文件失败')
   }
 }
 
 function renameQueueItem(itemId: string, title: string) {
-  queue.value = queue.value.map(item => (item.id === itemId ? { ...item, title } : item))
+  addQueue.renameItem(itemId, title)
 }
 
 async function submitQueue() {
@@ -398,12 +379,18 @@ async function submitQueue() {
   addError.value = ''
   addingResources.value = true
   const remaining = new Set(queue.value.map(item => item.id))
+  const items = [...queue.value]
   try {
-    for (const item of queue.value) {
-      await addResource(item)
-      remaining.delete(item.id)
+    for (const item of items) {
+      await addQueue.waitForPreview(item.id)
+      try {
+        await addResource(item)
+        remaining.delete(item.id)
+      } finally {
+        await addQueue.releasePreview(item.id)
+      }
     }
-    queue.value = []
+    await addQueue.close()
     addOpen.value = false
   } catch (cause) {
     queue.value = queue.value.filter(item => remaining.has(item.id))
@@ -431,6 +418,13 @@ function handleResourceNameChange(resource: ResourceView, event: WebUiEvent<WebU
 }
 
 async function handleSaveTags(resourceId: string, tagNames: string[]) {
+  const target = activeTagTarget.value
+  if (!target || target.id !== resourceId) return
+  if (!('tagNames' in target)) {
+    addQueue.setItemTags(resourceId, tagNames)
+    tagsOpen.value = false
+    return
+  }
   try {
     await saveTags(resourceId, tagNames)
     tagsOpen.value = false
@@ -645,15 +639,16 @@ onMounted(() => {
       @request-file-paths="pasteFilePaths"
       @remove="requestQueueRemoval"
       @rename="renameQueueItem"
+      @edit-tags="editQueueTags"
       @submit="submitQueue"
       @update:open="setAddOpen"
     />
 
     <LibraryEditTagsDialog
       v-model:open="tagsOpen"
-      :resource="selectedResource"
-      :all-tag-names="store.allTagNames"
-      :busy="pendingResourceIds.includes(activeResourceId ?? '')"
+      :target="activeTagTarget"
+      :all-tag-names="allTagNames"
+      :busy="pendingResourceIds.includes(activeTagTarget?.id ?? '')"
       :error="runtimeError"
       @save="handleSaveTags"
     />

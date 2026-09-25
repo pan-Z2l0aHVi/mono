@@ -67,7 +67,10 @@ function createRuntime(overrides: Partial<LibraryRuntime> = {}): LibraryRuntime 
     chooseFilePaths: async () => [],
     chooseFilePath: async () => null,
     getClipboardFilePaths: async () => [],
+    prepareFilePreview: async () => ({ kind: ResourceKind.ResourceKindFile }),
+    releaseFilePreview: async () => {},
     resourceMediaURL: () => null,
+    pendingFilePreviewURL: () => null,
     subscribeToDroppedFiles: () => () => {},
     subscribeToPasteFileRequest: () => () => {},
     ...overrides
@@ -141,8 +144,12 @@ describe('useLibraryRuntime', () => {
     await controller.addResource({
       id: 'queue-item',
       kind: 'file',
+      resourceKind: ResourceKind.ResourceKindDocument,
       title: 'Created from inline data',
-      location: '/tmp/inline.md'
+      location: '/tmp/inline.md',
+      tags: [],
+      previewToken: null,
+      mediaUrl: null
     })
     expect(useLibraryStore().resources.map(resource => resource.id)).toEqual(['created'])
     expect(addFileResource).toHaveBeenCalledWith('/tmp/inline.md')
@@ -150,5 +157,46 @@ describe('useLibraryRuntime', () => {
     await controller.deleteResources(['created'])
     expect(useLibraryStore().resources).toEqual([])
     expect(deleteResource).toHaveBeenCalledWith('created')
+  })
+
+  it('添加资源后按队列标签逐项持久化并回读最新 DTO', async () => {
+    const created = createResource({ id: 'tagged', title: 'Tagged' })
+    const tagged = createResource({
+      id: 'tagged',
+      title: 'Tagged',
+      tags: [
+        { id: 'tag-design', name: 'Design', created_at: 300 },
+        { id: 'tag-travel', name: 'Travel', created_at: 300 }
+      ]
+    })
+    const addTag = vi.fn<LibraryRuntime['addTag']>(async (resourceId, tagName) => ({
+      id: `tag-${tagName}`,
+      name: tagName,
+      created_at: 300
+    }))
+    const getResource = vi.fn<LibraryRuntime['getResource']>(async () => tagged)
+    const controller = useLibraryRuntime(
+      createRuntime({
+        addFileResource: async () => created,
+        addTag,
+        getResource
+      })
+    )
+
+    await controller.addResource({
+      id: 'queue-tagged',
+      kind: 'file',
+      resourceKind: ResourceKind.ResourceKindDocument,
+      title: 'Tagged',
+      location: '/tmp/tagged.md',
+      tags: ['Design', 'Travel'],
+      previewToken: null,
+      mediaUrl: null
+    })
+
+    expect(addTag).toHaveBeenNthCalledWith(1, 'tagged', 'Design')
+    expect(addTag).toHaveBeenNthCalledWith(2, 'tagged', 'Travel')
+    expect(getResource).toHaveBeenCalledWith('tagged')
+    expect(useLibraryStore().resources[0]?.tagNames).toEqual(['Design', 'Travel'])
   })
 })

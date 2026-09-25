@@ -24,6 +24,12 @@ type SourceMetadataDTO struct {
 	FaviconURL  string `json:"favicon_url"`
 }
 
+// FilePreviewDTO 为待添加文件提供权威 kind 与可选的本地媒体读取授权。
+type FilePreviewDTO struct {
+	Kind  ResourceKind `json:"kind"`
+	Token string       `json:"token,omitempty"`
+}
+
 // 为前端呈现 Resource 的外部入口。
 type SourceDTO struct {
 	ID          string             `json:"id"`

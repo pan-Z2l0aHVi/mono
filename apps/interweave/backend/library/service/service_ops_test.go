@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	coreLibrary "github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/core"
+	libraryMedia "github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/media"
 	"github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/service"
 	"github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/remote"
 )
@@ -22,7 +23,7 @@ func newTestServices(t *testing.T) (*service.ResourceService, *service.SourceSer
 	coreSource := coreLibrary.NewSourceService(db, fetcher)
 	coreTag := coreLibrary.NewTagService(db)
 	coreMap := coreLibrary.NewMapService(db)
-	resService := service.NewResourceService(coreResource)
+	resService := service.NewResourceService(coreResource, libraryMedia.NewPendingPreviewRegistry())
 	srcService := service.NewSourceService(coreSource)
 	tagService := service.NewTagService(coreTag)
 	mapService := service.NewMapService(coreMap)

@@ -58,6 +58,22 @@ export function ListResources(): $CancellablePromise<$models.ResourceDTO[]> {
 }
 
 /**
+ * 准备待添加文件的展示分类；只有图片与视频获得短期媒体读取授权。
+ */
+export function PrepareFilePreview(inputPath: string): $CancellablePromise<$models.FilePreviewDTO | null> {
+    return $Call.ByID(965214835, inputPath).then(($result: any) => {
+        return $$createType4($result);
+    });
+}
+
+/**
+ * ReleaseFilePreview 撤销不再需要的 pending media 授权。
+ */
+export function ReleaseFilePreview(token: string): $CancellablePromise<void> {
+    return $Call.ByID(3916279537, token);
+}
+
+/**
  * 仅搜索用户维护的上下文与来源基础信息，不扩展为内容索引。
  */
 export function SearchResources(query: string): $CancellablePromise<$models.ResourceDTO[]> {
@@ -88,3 +104,5 @@ export function UpdateResourceTitle(resourceID: string, newTitle: string): $Canc
 const $$createType0 = $models.ResourceDTO.createFrom;
 const $$createType1 = $Create.Nullable($$createType0);
 const $$createType2 = $Create.Array($$createType0);
+const $$createType3 = $models.FilePreviewDTO.createFrom;
+const $$createType4 = $Create.Nullable($$createType3);

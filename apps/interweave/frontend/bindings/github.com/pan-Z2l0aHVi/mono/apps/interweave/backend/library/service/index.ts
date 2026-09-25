@@ -13,6 +13,7 @@ export {
 };
 
 export {
+    FilePreviewDTO,
     GlobalMapDTO,
     LocalMapDTO,
     ResourceDTO,
