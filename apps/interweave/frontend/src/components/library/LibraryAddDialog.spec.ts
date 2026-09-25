@@ -1,13 +1,28 @@
 // @vitest-environment jsdom
 
-import type { WebUiButton, WebUiEditableText, WebUiIcon, WebUiTooltip } from '@greypan/web-ui'
-import { describe, expect, it, vi } from 'vite-plus/test'
-import { createApp, h, nextTick } from 'vue'
+import type {
+  ImagePreviewHandle,
+  ImagePreviewOptions,
+  WebUiButton,
+  WebUiEditableText,
+  WebUiIcon,
+  WebUiTooltip
+} from '@greypan/web-ui'
+import { imagePreview } from '@greypan/web-ui'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { createApp, h, nextTick, ref } from 'vue'
 
 import { ResourceKind } from '../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage'
 import type { LibraryQueueItem } from '../../services/library'
 
 import LibraryAddDialog from './LibraryAddDialog.vue'
+
+vi.mock('@greypan/web-ui', async importOriginal => {
+  const actual = await importOriginal<typeof import('@greypan/web-ui')>()
+  return { ...actual, imagePreview: vi.fn<(options: ImagePreviewOptions) => ImagePreviewHandle>() }
+})
+
+const openPreview = vi.mocked(imagePreview)
 
 function queueItem(overrides: Partial<LibraryQueueItem> = {}): LibraryQueueItem {
   return {
@@ -28,24 +43,30 @@ function mountDialog(
   listeners: {
     onRename?: (itemId: string, title: string) => void
     onEditTags?: (item: LibraryQueueItem) => void
-  } = {}
+  } = {},
+  options: { mobile?: boolean; open?: boolean } = {}
 ) {
   const host = document.createElement('div')
   document.body.append(host)
+  const open = ref(options.open ?? true)
   const app = createApp({
     render: () =>
       h(LibraryAddDialog, {
-        open: true,
+        open: open.value,
         queue,
         busy: false,
         error: '',
-        mobile: false,
+        mobile: options.mobile ?? false,
         ...listeners
       })
   })
   app.mount(host)
   return {
     host,
+    setOpen: async (value: boolean) => {
+      open.value = value
+      await nextTick()
+    },
     close: () => {
       app.unmount()
       host.remove()
@@ -61,7 +82,31 @@ function button(host: HTMLElement, label: string) {
   return element
 }
 
+function previewHandle(): ImagePreviewHandle {
+  let settle: () => void = () => undefined
+  const closed = new Promise<void>(resolve => {
+    settle = resolve
+  })
+  return {
+    index: 0,
+    scale: 1,
+    images: [],
+    closed,
+    next: vi.fn<() => void>(),
+    prev: vi.fn<() => void>(),
+    goTo: vi.fn<(index: number) => void>(),
+    zoomIn: vi.fn<() => void>(),
+    zoomOut: vi.fn<() => void>(),
+    resetZoom: vi.fn<() => void>(),
+    close: vi.fn<() => void>(() => settle())
+  }
+}
+
 describe('LibraryAddDialog', () => {
+  beforeEach(() => {
+    openPreview.mockReset()
+  })
+
   it('图片加载后只显示真实缩略图，非媒体项显示 fallback', async () => {
     const imageItem = queueItem()
     const documentItem = queueItem({
@@ -167,6 +212,86 @@ describe('LibraryAddDialog', () => {
       editButton.click()
       expect(editTags).toHaveBeenCalledOnce()
       expect(editTags).toHaveBeenCalledWith(item)
+    } finally {
+      mounted.close()
+    }
+  })
+
+  it('图片项按队列顺序打开预览，桌面启用 toolbar 且非图片项不响应', async () => {
+    const first = queueItem({ id: 'first', title: '第一张', location: '/tmp/first.png' })
+    const video = queueItem({
+      id: 'video',
+      resourceKind: ResourceKind.ResourceKindVideo,
+      title: '待添加视频',
+      location: '/tmp/movie.mp4',
+      previewToken: 'video-token',
+      mediaUrl: '/pending-resource-media/video-token'
+    })
+    const second = queueItem({
+      id: 'second',
+      title: '第二张',
+      location: '/tmp/second.png',
+      previewToken: 'second-token',
+      mediaUrl: '/pending-resource-media/second-token'
+    })
+    const handle = previewHandle()
+    openPreview.mockReturnValue(handle)
+    const mounted = mountDialog([first, video, second])
+
+    try {
+      await nextTick()
+      const thumbnails = [...mounted.host.querySelectorAll<HTMLElement>('[data-queue-thumbnail]')]
+      const [firstThumbnail, videoThumbnail, secondThumbnail] = thumbnails
+      if (!firstThumbnail || !videoThumbnail || !secondThumbnail) throw new Error('queue thumbnails were not rendered')
+
+      expect(firstThumbnail.tagName).toBe('BUTTON')
+      expect(firstThumbnail.getAttribute('type')).toBe('button')
+      expect(firstThumbnail.getAttribute('aria-label')).toBe('预览 第一张')
+      expect(videoThumbnail.tagName).toBe('DIV')
+
+      videoThumbnail.click()
+      expect(openPreview).not.toHaveBeenCalled()
+
+      secondThumbnail.click()
+      expect(openPreview).toHaveBeenCalledOnce()
+      expect(openPreview).toHaveBeenCalledWith({
+        images: [
+          { src: '/pending-resource-media/opaque-token', alt: '第一张' },
+          { src: '/pending-resource-media/second-token', alt: '第二张' }
+        ],
+        index: 1,
+        target: secondThumbnail,
+        toolbar: true,
+        swipe: false
+      })
+    } finally {
+      mounted.close()
+    }
+  })
+
+  it('移动端图片预览启用 swipe、关闭 toolbar，并在添加资源 dialog 关闭时释放句柄', async () => {
+    const item = queueItem()
+    const handle = previewHandle()
+    openPreview.mockReturnValue(handle)
+    const mounted = mountDialog([item], {}, { mobile: true })
+
+    try {
+      await nextTick()
+      const thumbnail = mounted.host.querySelector<HTMLElement>('[data-queue-thumbnail]')
+      if (!thumbnail) throw new Error('queue thumbnail was not rendered')
+
+      thumbnail.click()
+      expect(openPreview).toHaveBeenCalledWith(
+        expect.objectContaining({
+          images: [{ src: '/pending-resource-media/opaque-token', alt: '待添加图片' }],
+          index: 0,
+          toolbar: false,
+          swipe: true
+        })
+      )
+
+      await mounted.setOpen(false)
+      expect(handle.close).toHaveBeenCalledOnce()
     } finally {
       mounted.close()
     }

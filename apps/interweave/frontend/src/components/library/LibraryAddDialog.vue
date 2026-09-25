@@ -1,5 +1,11 @@
 <script setup lang="ts">
-import type { WebUiDialog, WebUiEditableText, WebUiEvent } from '@greypan/web-ui'
+import {
+  imagePreview,
+  type ImagePreviewHandle,
+  type WebUiDialog,
+  type WebUiEditableText,
+  type WebUiEvent
+} from '@greypan/web-ui'
 import {
   lucideClipboardPaste,
   lucidePenLine,
@@ -12,6 +18,8 @@ import { nextTick, onMounted, onScopeDispose, ref, watch, type ComponentPublicIn
 
 import type { LibraryQueueItem } from '@/services/library'
 import type { ResourceSourceView } from '@/stores/library'
+
+import { ResourceKind } from '../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage'
 
 import LibraryResourceThumbnail from './LibraryResourceThumbnail.vue'
 import { metadataRowClass, tagClass } from './presentation'
@@ -38,11 +46,15 @@ const emit = defineEmits<{
 const dragActive = ref(false)
 const editingItemId = ref<string | null>(null)
 const nameEditors = new Map<string, WebUiEditableText>()
+let pendingImagePreview: ImagePreviewHandle | null = null
 
 watch(
   () => props.open,
   open => {
-    if (!open) return
+    if (!open) {
+      closePendingImagePreview()
+      return
+    }
     dragActive.value = false
     editingItemId.value = null
   }
@@ -75,7 +87,42 @@ onMounted(() => {
 })
 onScopeDispose(() => {
   window.removeEventListener('paste', handlePaste)
+  closePendingImagePreview()
 })
+
+function isImagePreviewItem(item: LibraryQueueItem): item is LibraryQueueItem & { mediaUrl: string } {
+  return item.resourceKind === ResourceKind.ResourceKindImage && Boolean(item.mediaUrl)
+}
+
+function closePendingImagePreview() {
+  const handle = pendingImagePreview
+  pendingImagePreview = null
+  handle?.close()
+}
+
+function openImagePreview(item: LibraryQueueItem, event: Event) {
+  if (!isImagePreviewItem(item)) return
+  // imagePreview 在打开时复制 images 且句柄不支持替换；预览作为顶层模态阻止底层队列操作，
+  // 因此本次使用快照，关闭后的下一次打开再从最新队列重建集合。
+  const entries = props.queue.flatMap(candidate =>
+    isImagePreviewItem(candidate) ? [{ item: candidate, image: { src: candidate.mediaUrl, alt: candidate.title } }] : []
+  )
+  const index = entries.findIndex(candidate => candidate.item.id === item.id)
+  if (index < 0) return
+
+  closePendingImagePreview()
+  const handle = imagePreview({
+    images: entries.map(candidate => candidate.image),
+    index,
+    target: event.currentTarget instanceof Element ? event.currentTarget : undefined,
+    toolbar: !props.mobile,
+    swipe: props.mobile
+  })
+  pendingImagePreview = handle
+  void handle.closed.then(() => {
+    if (pendingImagePreview === handle) pendingImagePreview = null
+  })
+}
 
 function setNameEditorRef(itemId: string): NameEditorRef {
   return element => {
@@ -214,7 +261,23 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
               'items-start transition-colors duration-100 hover:bg-black/3 dark:hover:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_5%,transparent)]'
             ]"
           >
+            <button
+              v-if="isImagePreviewItem(item)"
+              data-queue-thumbnail
+              type="button"
+              class="grid size-10 shrink-0 cursor-zoom-in place-items-center overflow-hidden rounded-lg p-0 focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-(--wui-color-focus-ring,rgb(0_136_255/0.4))"
+              :aria-label="`预览 ${item.title}`"
+              aria-haspopup="dialog"
+              @click="openImagePreview(item, $event)"
+            >
+              <LibraryResourceThumbnail
+                :kind="item.resourceKind"
+                :source="queueSource(item)"
+                :media-url="item.mediaUrl"
+              />
+            </button>
             <LibraryResourceThumbnail
+              v-else
               data-queue-thumbnail
               :kind="item.resourceKind"
               :source="queueSource(item)"
