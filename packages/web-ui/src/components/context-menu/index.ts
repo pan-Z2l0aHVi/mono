@@ -144,7 +144,7 @@ export class WebUiContextMenu extends LitElement {
     this.addEventListener('contextmenu', this._onContextMenu)
     this.addEventListener('keydown', this._onKeydown)
     this.addEventListener('click', this._onMenuClick)
-    document.addEventListener('click', this._onClickOutside)
+    document.addEventListener('click', this._onClickOutside, true)
     document.addEventListener('contextmenu', this._onContextMenuOutside)
     document.addEventListener('wheel', this._onWheel, { capture: true, passive: false })
     document.addEventListener('touchmove', this._onTouchMove, { capture: true, passive: false })
@@ -156,7 +156,7 @@ export class WebUiContextMenu extends LitElement {
     this.removeEventListener('contextmenu', this._onContextMenu)
     this.removeEventListener('keydown', this._onKeydown)
     this.removeEventListener('click', this._onMenuClick)
-    document.removeEventListener('click', this._onClickOutside)
+    document.removeEventListener('click', this._onClickOutside, true)
     document.removeEventListener('contextmenu', this._onContextMenuOutside)
     document.removeEventListener('wheel', this._onWheel, true)
     document.removeEventListener('touchmove', this._onTouchMove, true)
@@ -586,7 +586,8 @@ export class WebUiContextMenu extends LitElement {
 
   private _onClickOutside = (e: MouseEvent) => {
     if (!this._isOpen || this._outsideClickGuard.isArmed()) return
-    if (this._outsideClickGuard.isInside(e)) return
+    // 宿主 light DOM 是右键区域，不是菜单面板；其中的 checkbox、行等普通点击仍须 light-dismiss。
+    if (this._isMenuPanelEvent(e)) return
     this._closeFromUser()
   }
 

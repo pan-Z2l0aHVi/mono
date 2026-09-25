@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it } from 'vite-plus/test'
+import { userEvent } from 'vite-plus/test/browser'
 
 import '..'
+import '@/components/checkbox'
 import '@/components/popover'
 import type { WebUiPopover } from '@/components/popover'
 import { getMenuChildren } from '@/shared/menu-portal/menu-tree'
@@ -87,6 +89,56 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
     expect(panel).toBeTruthy()
     expect(panel?.getAttribute('role')).toBe('menu')
     expect(panel?.getAttribute('aria-label')).toBe('上下文菜单')
+  })
+
+  it('点击菜单面板外的 checkbox 时完成勾选并关闭菜单', async () => {
+    const menu = document.createElement('web-ui-context-menu')
+    const row = document.createElement('div')
+    const checkbox = document.createElement('web-ui-checkbox')
+    checkbox.textContent = '选择资源'
+    checkbox.addEventListener('click', event => event.stopPropagation())
+    row.append(checkbox)
+    menu.append(row, document.createElement('web-ui-dropdown-item'))
+    menu.querySelector('web-ui-dropdown-item')!.textContent = 'Select'
+    document.body.append(menu)
+    await menu.updateComplete
+
+    row.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, composed: true, clientX: 100, clientY: 100 }))
+    await menu.updateComplete
+    await nextFrame()
+    expect(menu.isOpen).toBe(true)
+
+    await userEvent.click(checkbox)
+    await menu.updateComplete
+    await nextFrame()
+
+    expect(checkbox.checked).toBe(true)
+    expect(menu.isOpen).toBe(false)
+  })
+
+  it('点击菜单面板外的列表行时保留行点击并关闭菜单', async () => {
+    const menu = document.createElement('web-ui-context-menu')
+    const row = document.createElement('button')
+    row.textContent = '打开资源'
+    const item = document.createElement('web-ui-dropdown-item')
+    item.textContent = 'Open'
+    menu.append(row, item)
+    document.body.append(menu)
+    await menu.updateComplete
+    let clicks = 0
+    row.addEventListener('click', () => clicks++)
+
+    row.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, composed: true, clientX: 100, clientY: 100 }))
+    await menu.updateComplete
+    await nextFrame()
+    expect(menu.isOpen).toBe(true)
+
+    await userEvent.click(row)
+    await menu.updateComplete
+    await nextFrame()
+
+    expect(clicks).toBe(1)
+    expect(menu.isOpen).toBe(false)
   })
 
   it('menu panel 内嵌套子 overlay 的 wheel 不被父菜单抑制', async () => {
