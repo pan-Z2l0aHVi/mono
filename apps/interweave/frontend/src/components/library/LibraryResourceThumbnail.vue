@@ -14,6 +14,7 @@ const props = defineProps<{
 
 const videoRef = ref<HTMLVideoElement | null>(null)
 const canvasRef = ref<HTMLCanvasElement | null>(null)
+const imageRef = ref<HTMLImageElement | null>(null)
 const thumbnailURL = ref('')
 const imageReady = ref(false)
 const mediaFailed = ref(false)
@@ -28,6 +29,14 @@ const canRenderMedia = computed(
     props.source.available &&
     (props.kind === 'image' || props.kind === 'video')
 )
+const showFallback = computed(() => {
+  const imageMatchesSource = imageRef.value?.getAttribute('src') === props.mediaUrl
+  // reset 清空 imageReady 后，src 未变且已 complete 的 img 不会再触发 load，需保留此逃生通道避免 fallback 叠加。
+  return (
+    !thumbnailURL.value &&
+    (mediaFailed.value || (!imageReady.value && !(imageMatchesSource && imageRef.value?.complete)))
+  )
+})
 
 watch(
   () => [props.kind, props.source?.id, props.mediaUrl] as const,
@@ -149,6 +158,7 @@ function captureCurrentFrame(video: HTMLVideoElement, version: number) {
     <canvas ref="canvasRef" class="pointer-events-none absolute size-px opacity-0" aria-hidden="true"></canvas>
     <img
       v-if="kind === 'image' && canRenderMedia && !mediaFailed"
+      ref="imageRef"
       :src="mediaUrl ?? undefined"
       class="size-full object-cover"
       alt=""
@@ -156,11 +166,6 @@ function captureCurrentFrame(video: HTMLVideoElement, version: number) {
       @error="handleMediaError"
     />
     <img v-if="thumbnailURL" :src="thumbnailURL" class="size-full object-cover" alt="" />
-    <web-ui-icon
-      v-if="!thumbnailURL && (mediaFailed || !imageReady)"
-      :icon="resourceIcon(kind)"
-      :size="20"
-      :class="mediaFailed ? 'opacity-60' : ''"
-    />
+    <web-ui-icon v-if="showFallback" :icon="resourceIcon(kind)" :size="20" :class="mediaFailed ? 'opacity-60' : ''" />
   </div>
 </template>
