@@ -102,20 +102,50 @@ export const defineNativeDialogPresence = () =>
       })
     }
 
-    const startClosing = () => {
-      const dialog = ctx.getDialog()
-      if (!dialog?.open) return
-      cancelOpenFrame()
-      isClosing = true
-      if (!dialog.classList.contains('is-visible')) {
-        finishClosing()
-        return
-      }
-
+    const startClosingTransition = (dialog: HTMLDialogElement) => {
       dialog.classList.add('is-closing')
       dialog.classList.remove('is-visible')
       clearCloseFallback()
       closeFallbackTimer = setTimeout(() => finishClosing(), getTransitionDuration(dialog) + 80)
+    }
+
+    const startClosing = () => {
+      const dialog = ctx.getDialog()
+      if (!dialog?.open) return
+      const hasPendingOpenFrame = openFrame !== undefined
+      cancelOpenFrame()
+      isClosing = true
+      if (dialog.classList.contains('is-visible')) {
+        startClosingTransition(dialog)
+        return
+      }
+      if (!hasPendingOpenFrame) {
+        finishClosing()
+        return
+      }
+
+      // 关闭可能先于打开路径的首个 rAF 到达。先用一帧补齐可见态并强制提交布局，
+      // 再用下一帧切换 closing，让退出 transition 有稳定的起点。进场 transition
+      // 不能参与这次布局提交，否则当前 transform 仍停在闭合起点。
+      openFrame = requestAnimationFrame(() => {
+        openFrame = undefined
+        if (!isClosing || ctx.isOpen() || !dialog.open) return
+        const transition = dialog.style.getPropertyValue('transition')
+        const transitionPriority = dialog.style.getPropertyPriority('transition')
+        dialog.style.setProperty('transition', 'none', 'important')
+        dialog.classList.add('is-visible')
+        void dialog.offsetWidth
+        if (transition) {
+          dialog.style.setProperty('transition', transition, transitionPriority)
+        } else {
+          dialog.style.removeProperty('transition')
+        }
+        openFrame = requestAnimationFrame(() => {
+          openFrame = undefined
+          if (!isClosing || ctx.isOpen() || !dialog.open) return
+          startClosingTransition(dialog)
+        })
+      })
     }
 
     // jsdom 的选择器引擎不认识 :modal（可能抛错）；抛错按「不在 top layer」处理，

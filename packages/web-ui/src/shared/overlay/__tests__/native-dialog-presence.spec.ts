@@ -40,8 +40,8 @@ function setup() {
 }
 
 // 复刻消费方接线：transitionend 交给 handleTransitionEnd 判定本轮关闭是否收尾。
-// 断言只落在 dialog.open 与 handleNativeClose() 的返回值上（模块接口契约），
-// 不断言 is-visible / is-closing 这类由模块自己增删的内部状态标记。
+// 常规用例只断言 dialog.open 与 handleNativeClose() 的返回值（模块接口契约）。
+// 竞态回归需要额外观察 is-closing，确保打开首帧前关闭不会直接跳过退出过渡。
 function settleCloseTransition(dialog: HTMLDialogElement, presence: NativeDialogPresenceApi): void {
   dialog.addEventListener('transitionend', event => presence.handleTransitionEnd(event), { once: true })
   const event = new Event('transitionend')
@@ -69,6 +69,27 @@ describe('native dialog presence', () => {
 
     expect(dialog.open).toBe(false)
     expect(presence.handleNativeClose()).toBe(true)
+  })
+
+  it('打开首帧前关闭仍应用退出过渡类', async () => {
+    const { dialog, presence, setOpen } = setup()
+
+    presence.sync(true)
+    setOpen(false)
+    presence.sync(false)
+
+    expect(dialog.open).toBe(true)
+    expect(dialog.classList.contains('is-closing')).toBe(false)
+
+    await nextFrame()
+    await nextFrame()
+
+    expect(dialog.open).toBe(true)
+    expect(dialog.classList.contains('is-visible')).toBe(false)
+    expect(dialog.classList.contains('is-closing')).toBe(true)
+
+    settleCloseTransition(dialog, presence)
+    expect(dialog.open).toBe(false)
   })
 
   it('外部 dialog.close() 不被判定为自身排队的关闭', async () => {
