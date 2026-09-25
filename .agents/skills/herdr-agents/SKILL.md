@@ -150,7 +150,7 @@ Reviewer 不接收 Supervisor 报告，只读取冻结 diff、Task Packet 的任
 1. 读取根 [`AGENTS.md`](../../../AGENTS.md) 和 [`docs/agents/workflow.md`](../../../docs/agents/workflow.md)，按 task gate 建立实施 task。新 worktree 先执行 `pnpm install && pnpm run build`，路径和复用规则见 [`docs/agents/worktrees.md`](../../../docs/agents/worktrees.md)。
 2. 用 `pnpm find:usages -- <paths...>` 确认影响面，再选择 task 级别、Coder 数量和目录边界。task state 只记录 task-level 事实，不记录 Role 列表。
 3. 完成启用 Supervisor 评分。产品/UI task 直接记录跳过；其他 task 按分数决定是否启动一个 Supervisor。
-4. 为每个实施 Role 建立独立 pane，cwd 指向所属 task worktree。按绑定表启动执行体，初始化 Role，并确认回执。Supervisor 与 Coder 共享实施 worktree，但 Supervisor 只读。
+4. 为每个实施 Role 建立独立 pane，cwd 指向所属 task worktree。按绑定表启动执行体，初始化 Role，并确认回执。Supervisor 与 Coder 共享实施 worktree，但 Supervisor 只读。基础设施变更（agent 通道或代理切换、MCP 配置变更、会话重启）后，先用 `herdr agent list` 核对各实施会话存活，再恢复派发；中断的会话按工作区 `git status` 与 Task Packet 接手现场。
 5. 先发完所有结构化 handoff，再非阻塞监听各会话。不要用一个长等待阻塞其他派发；实施会话需要较长的超时。
 6. 在三个检查点接收 Coder 的 prompt 和 Supervisor 报告。Manager 处理 `disputed`、`escalated` 以及测试产物和依赖问题；Coder 处理 `open` 的代码修正。任何 Role 发现越界写入或 task gate 风险，都暂停实施并交回 Manager。
 7. 实施完成后由 Reviewer 按 workflow 的 review 拓扑审查冻结 diff。Supervisor 报告不进入 Reviewer 输入。Reviewer 通过后，按 workflow 完成 approval、验证和 `task done`。
