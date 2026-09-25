@@ -124,6 +124,7 @@ export class WebUiContextMenu extends LitElement {
   private readonly _userOpenChange = new UserChangeController()
   private _restoreFocusTarget?: HTMLElement
   private _shouldOpenInstantly = true
+  private _suppressInitialFocusVisible = true
   private _refreshScheduled = false
   // 主菜单 dialog 路径与子菜单一样使用代数令牌；快速 openAt/refresh 或 close 后，
   // 迟到的 positioning promise 只能被丢弃，不能覆盖最新坐标。
@@ -249,14 +250,15 @@ export class WebUiContextMenu extends LitElement {
    * @returns 无返回值；命令式打开不派发 `open-change` 事件。
    */
   openAt(x: number, y: number) {
-    this._openAt(x, y, true)
+    this._openAt(x, y, true, true)
   }
 
-  private _openAt(x: number, y: number, isInstant: boolean): boolean {
+  private _openAt(x: number, y: number, isInstant: boolean, suppressFocusVisible: boolean): boolean {
     if (this.disabled) return false
     this._x = x
     this._y = y
     this._shouldOpenInstantly = isInstant
+    this._suppressInitialFocusVisible = suppressFocusVisible
     this._outsideClickGuard.arm()
     if (this._isOpen) {
       this._closeSubmenusFrom(0, true)
@@ -373,7 +375,7 @@ export class WebUiContextMenu extends LitElement {
     const items = this._menu?.content.querySelectorAll<HTMLElement>('web-ui-dropdown-item:not([disabled])')
     const firstItem = items?.[0]
     if (firstItem) {
-      focusMenuItem(firstItem)
+      focusMenuItem(firstItem, { suppressFocusVisible: this._suppressInitialFocusVisible })
     }
   }
 
@@ -559,7 +561,7 @@ export class WebUiContextMenu extends LitElement {
     if (this.disabled) return
     e.preventDefault()
     this._restoreFocusTarget = e.target instanceof HTMLElement ? e.target : undefined
-    if (this._openAt(e.clientX, e.clientY, false)) this._userOpenChange.mark()
+    if (this._openAt(e.clientX, e.clientY, false, true)) this._userOpenChange.mark()
   }
 
   private _onContextMenuOutside = (e: MouseEvent) => {
@@ -576,9 +578,9 @@ export class WebUiContextMenu extends LitElement {
       const focused = document.activeElement
       if (focused && focused !== document.body) {
         const rect = focused.getBoundingClientRect()
-        if (this._openAt(rect.left, rect.bottom, true)) this._userOpenChange.mark()
+        if (this._openAt(rect.left, rect.bottom, true, false)) this._userOpenChange.mark()
       } else {
-        if (this._openAt(window.innerWidth / 2, window.innerHeight / 2, true)) this._userOpenChange.mark()
+        if (this._openAt(window.innerWidth / 2, window.innerHeight / 2, true, false)) this._userOpenChange.mark()
       }
       return
     }

@@ -41,7 +41,13 @@
   background: var(--wui-color-border, rgb(0 0 0 / 0.1));
 }
 
+:host([data-wui-menu-focus-suppressed]) .item-inner:focus-visible {
+  color: inherit;
+  background: transparent;
+}
+
 @media (hover: hover) and (pointer: fine) {
+  :host([data-wui-menu-focus-suppressed]) .item-inner:hover,
   :host(:not([active])) .item-inner:hover:not(:focus-visible) {
     color: inherit;
     background: var(--wui-color-border, rgb(0 0 0 / 0.1));

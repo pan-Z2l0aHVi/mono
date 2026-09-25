@@ -53,8 +53,14 @@ export function getMenuItemFromEvent(event: Event): HTMLElement | null {
   )
 }
 
-export function focusMenuItem(item: HTMLElement | undefined) {
+export interface MenuItemFocusOptions {
+  /** 初始打开时的程序化聚焦不应绘制键盘焦点视觉。 */
+  suppressFocusVisible?: boolean
+}
+
+export function focusMenuItem(item: HTMLElement | undefined, options: MenuItemFocusOptions = {}) {
   if (!item || item.hasAttribute('disabled')) return
+  item.toggleAttribute('data-wui-menu-focus-suppressed', options.suppressFocusVisible === true)
   ;(item as HTMLElement & { focusItem?: () => void }).focusItem?.()
 }
 

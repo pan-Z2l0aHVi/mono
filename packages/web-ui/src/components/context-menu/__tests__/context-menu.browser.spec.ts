@@ -91,6 +91,62 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
     expect(panel?.getAttribute('aria-label')).toBe('上下文菜单')
   })
 
+  it('初始聚焦不绘制 accent，方向键导航后恢复键盘焦点视觉', async () => {
+    const menu = document.createElement('web-ui-context-menu')
+    menu.innerHTML =
+      '<web-ui-dropdown-item>Open</web-ui-dropdown-item><web-ui-dropdown-item>Copy</web-ui-dropdown-item>'
+    document.body.append(menu)
+    await menu.updateComplete
+
+    menu.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, composed: true, clientX: 100, clientY: 100 }))
+    await menu.updateComplete
+    await nextFrame()
+
+    const panel = getMenuPanels('上下文菜单')[0]
+    const items = [...(panel?.querySelectorAll<HTMLElement>('web-ui-dropdown-item') ?? [])]
+    const firstControl = items[0]?.shadowRoot?.querySelector<HTMLElement>('.item-inner')
+    const secondControl = items[1]?.shadowRoot?.querySelector<HTMLElement>('.item-inner')
+    expect(items[0]?.shadowRoot?.activeElement).toBe(firstControl)
+    expect(firstControl?.matches(':focus-visible')).toBe(true)
+    expect(getComputedStyle(firstControl!).backgroundColor).not.toBe('rgb(0, 136, 255)')
+
+    await userEvent.hover(firstControl!)
+    expect(getComputedStyle(firstControl!).backgroundColor).not.toBe('rgb(0, 136, 255)')
+
+    await userEvent.keyboard('{ArrowDown}')
+    await nextFrame()
+
+    expect(items[1]?.shadowRoot?.activeElement).toBe(secondControl)
+    expect(items[1]?.hasAttribute('data-wui-menu-focus-suppressed')).toBe(false)
+    expect(secondControl?.matches(':focus-visible')).toBe(true)
+    expect(getComputedStyle(secondControl!).backgroundColor).toBe('rgb(0, 136, 255)')
+
+    await userEvent.keyboard('{ArrowUp}')
+    await nextFrame()
+
+    expect(items[0]?.shadowRoot?.activeElement).toBe(firstControl)
+    expect(items[0]?.hasAttribute('data-wui-menu-focus-suppressed')).toBe(false)
+    expect(getComputedStyle(firstControl!).backgroundColor).toBe('rgb(0, 136, 255)')
+  })
+
+  it('键盘打开菜单时首项保留焦点视觉', async () => {
+    const menu = document.createElement('web-ui-context-menu')
+    menu.innerHTML = '<web-ui-dropdown-item>Open</web-ui-dropdown-item>'
+    document.body.append(menu)
+    await menu.updateComplete
+
+    menu.dispatchEvent(new KeyboardEvent('keydown', { key: 'ContextMenu', bubbles: true, composed: true }))
+    await menu.updateComplete
+    await nextFrame()
+
+    const firstItem = getMenuPanels('上下文菜单')[0]?.querySelector<HTMLElement>('web-ui-dropdown-item')
+    const firstControl = firstItem?.shadowRoot?.querySelector<HTMLElement>('.item-inner')
+    expect(firstItem?.shadowRoot?.activeElement).toBe(firstControl)
+    expect(firstItem?.hasAttribute('data-wui-menu-focus-suppressed')).toBe(false)
+    expect(firstControl?.matches(':focus-visible')).toBe(true)
+    expect(getComputedStyle(firstControl!).backgroundColor).toBe('rgb(0, 136, 255)')
+  })
+
   it('点击菜单面板外的 checkbox 时完成勾选并关闭菜单', async () => {
     const menu = document.createElement('web-ui-context-menu')
     const row = document.createElement('div')
