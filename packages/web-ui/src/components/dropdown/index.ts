@@ -158,6 +158,18 @@ export class WebUiDropdown extends LitElement {
   private readonly _userOpenChange = new UserChangeController()
   private _restoreFocusTarget?: HTMLElement
   private _shouldOpenInstantly = true
+  /**
+   * 本次打开是否抑制首项的 `:focus-visible` accent 视觉（口径与 context-menu 一致）。
+   *
+   * 默认 `true`（抑制），只有键盘激活触发的打开才置 `false`：首项的焦点是组件程序化
+   * 落的，而各引擎对「程序化 focus 是否算 focus-visible」判定不同 —— Chromium 走启发式
+   * 通常不匹配，WKWebView 则会匹配（用户在 Interweave 桌面 app 实测到蓝底白字），
+   * 于是同一段代码只在 WebKit 侧暴露出缺陷。取默认抑制而非默认保留，是因为冷启动的
+   * `open` 属性路径拿不到任何手势模态信息，抑制是唯一确定安全的一侧；误伤键盘用户的
+   * 代价有界：`handleMenuKeyboard` 首次方向键即以无参 `focusMenuItem` 重新落焦，
+   * `menu-tree` 的 `toggleAttribute` 无条件清掉本属性，accent 当场回来。
+   */
+  private _suppressInitialFocusVisible = true
   private _menuSyncScheduled = false
   private readonly _level0ItemAnchors: MenuItemAnchors = new Map()
   // 打开期实时渲染：框架（Vue/React 条件渲染）可能在菜单打开期间持续插入菜单项。
@@ -220,6 +232,14 @@ export class WebUiDropdown extends LitElement {
         this._overlay.invalidate()
         this._syncScrollLock()
         /*
+         * 复位打开模态：`open` 真正翻回 false 才是「上一次打开会话结束」的唯一信号，
+         * 下一会话若不经 `_openMenu()`（宿主直接翻 `open` 属性）就从默认口径重新起算，
+         * 不会把上一次键盘打开留下的 `false` 带进这次鼠标驱动的声明式打开。
+         * 刻意不复位在 `disconnectedCallback`／`_cleanupClosedMenu`：重挂载对账（:188）
+         * 期间 `open` 始终为 true，那次重取焦点属于同一会话，应保留原模态。
+         */
+        this._suppressInitialFocusVisible = true
+        /*
          * release ⟺ 关闭：新模块里「已登记」就等于「参与仲裁」，不再由 host.isOpen()
          * 兜底过滤，所以必须在这里撤销，不能等到退场动画结束。
          */
@@ -264,22 +284,30 @@ export class WebUiDropdown extends LitElement {
     this._overlay.scheduleFrame(() => {
       this._ensureOverlay(0, this._shouldOpenInstantly)
       this._shouldOpenInstantly = true
-      if (takeFocus) focusMenuItem(getEnabledMenuLevelItems(this._overlays.get(0)?.content)[0])
+      if (takeFocus) {
+        focusMenuItem(getEnabledMenuLevelItems(this._overlays.get(0)?.content)[0], {
+          suppressFocusVisible: this._suppressInitialFocusVisible
+        })
+      }
       // 面板 id 在 overlay 构建后才有：回写 aria-controls 指向。
       this._syncTriggerAria()
     })
     this._bindHoversAfterUpdate()
   }
 
-  // 命令式打开，不派发 open-change。
+  /*
+   * 命令式打开，不派发 open-change。命令式入口没有手势模态信息，按与 context-menu 的
+   * `openAt()` 同一口径抑制首项 accent。
+   */
   openMenu() {
-    this._openMenu(true, false)
+    this._openMenu(true, false, true)
   }
 
-  private _openMenu(isInstant: boolean, fromUser: boolean) {
+  private _openMenu(isInstant: boolean, fromUser: boolean, suppressFocusVisible: boolean) {
     if (this.disabled || this.open) return
     this._outsideClickGuard.arm()
     this._shouldOpenInstantly = isInstant
+    this._suppressInitialFocusVisible = suppressFocusVisible
     if (fromUser) this._userOpenChange.mark()
     // 面板要等一帧才建好，而 Escape 可能在这之前到达：先用宿主当 panel claim 一次；
     // 面板就绪后 _buildOverlay 会 release 这个占位会话，再以真实面板重新 claim。
@@ -636,7 +664,13 @@ export class WebUiDropdown extends LitElement {
     if (this.open) {
       this._closeAll(true)
     } else {
-      this._openMenu(event.detail === 0, true)
+      /*
+       * `detail === 0` ⇔ 键盘激活（Enter/Space 触发的 click），`detail > 0` ⇔ 指针点击。
+       * 同一个信号既决定是否免入场过渡，也决定首项要不要留 `:focus-visible`：
+       * 键盘打开首项即应有 accent 焦点视觉，指针打开则抑制（见 `_suppressInitialFocusVisible`）。
+       */
+      const fromKeyboard = event.detail === 0
+      this._openMenu(fromKeyboard, true, !fromKeyboard)
     }
   }
 

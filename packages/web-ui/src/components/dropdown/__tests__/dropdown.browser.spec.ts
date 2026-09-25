@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
+import { userEvent } from 'vite-plus/test/browser'
 
 import '@/components/drawer'
 import '@/components/popover'
@@ -13,6 +14,20 @@ const SUBMENU =
   '<button slot="trigger">Menu</button><web-ui-dropdown-item submenu>Export<web-ui-dropdown-item>PDF</web-ui-dropdown-item></web-ui-dropdown-item>'
 
 const SIMPLE = '<button slot="trigger">Menu</button><web-ui-dropdown-item>Open</web-ui-dropdown-item>'
+const TWO_ITEMS =
+  '<button slot="trigger">Menu</button><web-ui-dropdown-item>One</web-ui-dropdown-item><web-ui-dropdown-item>Two</web-ui-dropdown-item>'
+
+// --wui-color-accent 默认值（#08f），即 :focus-visible 未被抑制时的项背景。
+const ACCENT = 'rgb(0, 136, 255)'
+
+/** 打开后的根面板菜单项（面板在 overlay 容器上，不在宿主 shadow 内）。 */
+function openRootItems(): HTMLElement[] {
+  return [...(getMenuPanels()[0]?.querySelectorAll<HTMLElement>('web-ui-dropdown-item') ?? [])]
+}
+
+function itemControl(item: HTMLElement | undefined): HTMLElement | null | undefined {
+  return item?.shadowRoot?.querySelector<HTMLElement>('.item-inner')
+}
 
 async function nextFrame() {
   await new Promise(resolve => requestAnimationFrame(resolve))
@@ -54,6 +69,102 @@ describe('WebUiDropdown 组件（浏览器）', () => {
     expect(panels).toHaveLength(1)
     expect(panels[0]?.getAttribute('role')).toBe('menu')
     expect(panels[0]?.textContent).toContain('Open')
+  })
+
+  it('指针点击打开时首项抑制 focus-visible accent，方向键后恢复', async () => {
+    const menu = document.createElement('web-ui-dropdown')
+    menu.innerHTML = TWO_ITEMS
+    document.body.append(menu)
+    await menu.updateComplete
+
+    menu
+      .querySelector<HTMLButtonElement>('button')
+      ?.dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true, detail: 1 }))
+    await menu.updateComplete
+    await nextFrame()
+    await nextFrame()
+
+    const items = openRootItems()
+    const firstControl = itemControl(items[0])
+    const secondControl = itemControl(items[1])
+    expect(items[0]?.shadowRoot?.activeElement).toBe(firstControl)
+    /*
+     * 合成的 click 不更新 Chromium 的模态启发式，程序化 focus 仍匹配 :focus-visible ——
+     * 与 WKWebView 实际出问题的渲染条件同构，所以 accent 的有无只可能由抑制属性决定。
+     */
+    expect(firstControl?.matches(':focus-visible')).toBe(true)
+    expect(items[0]?.hasAttribute('data-wui-menu-focus-suppressed')).toBe(true)
+    expect(getComputedStyle(firstControl!).backgroundColor).not.toBe(ACCENT)
+
+    // 首次方向键即以无参 focusMenuItem 重新落焦，menu-tree 的 toggleAttribute 清掉抑制。
+    await userEvent.keyboard('{ArrowDown}')
+    await nextFrame()
+
+    expect(items[1]?.shadowRoot?.activeElement).toBe(secondControl)
+    expect(items[1]?.hasAttribute('data-wui-menu-focus-suppressed')).toBe(false)
+    expect(getComputedStyle(secondControl!).backgroundColor).toBe(ACCENT)
+
+    await userEvent.keyboard('{ArrowUp}')
+    await nextFrame()
+
+    expect(items[0]?.shadowRoot?.activeElement).toBe(firstControl)
+    expect(items[0]?.hasAttribute('data-wui-menu-focus-suppressed')).toBe(false)
+    expect(getComputedStyle(firstControl!).backgroundColor).toBe(ACCENT)
+  })
+
+  it('键盘激活打开时首项保留 focus-visible accent', async () => {
+    const menu = document.createElement('web-ui-dropdown')
+    menu.innerHTML = TWO_ITEMS
+    document.body.append(menu)
+    await menu.updateComplete
+
+    // detail === 0 ⇔ Enter/Space 激活按钮合成的 click，与指针点击走同一条 _onTriggerClick。
+    menu
+      .querySelector<HTMLButtonElement>('button')
+      ?.dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true, detail: 0 }))
+    await menu.updateComplete
+    await nextFrame()
+    await nextFrame()
+
+    const items = openRootItems()
+    const firstControl = itemControl(items[0])
+    expect(items[0]?.shadowRoot?.activeElement).toBe(firstControl)
+    expect(items[0]?.hasAttribute('data-wui-menu-focus-suppressed')).toBe(false)
+    expect(firstControl?.matches(':focus-visible')).toBe(true)
+    expect(getComputedStyle(firstControl!).backgroundColor).toBe(ACCENT)
+  })
+
+  it('声明式 open 打开按默认口径抑制，且不复用上一次键盘会话的模态', async () => {
+    const menu = document.createElement('web-ui-dropdown')
+    menu.innerHTML = TWO_ITEMS
+    document.body.append(menu)
+    await menu.updateComplete
+
+    // 上一会话是键盘打开：模态为「不抑制」。
+    menu
+      .querySelector<HTMLButtonElement>('button')
+      ?.dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true, detail: 0 }))
+    await menu.updateComplete
+    await nextFrame()
+    await nextFrame()
+    expect(openRootItems()[0]?.hasAttribute('data-wui-menu-focus-suppressed')).toBe(false)
+
+    menu.closeAll()
+    await menu.updateComplete
+    await waitFor(() => getMenuPanels().length === 0, 'Expected the dropdown to finish closing')
+
+    // 下一会话由宿主直接翻 open 属性：不经 _openMenu 就没有手势模态信息，
+    // 必须回到默认口径，不能沿用上一次键盘会话留下的「不抑制」。
+    menu.open = true
+    await menu.updateComplete
+    await nextFrame()
+    await nextFrame()
+
+    const items = openRootItems()
+    const firstControl = itemControl(items[0])
+    expect(items[0]?.shadowRoot?.activeElement).toBe(firstControl)
+    expect(items[0]?.hasAttribute('data-wui-menu-focus-suppressed')).toBe(true)
+    expect(getComputedStyle(firstControl!).backgroundColor).not.toBe(ACCENT)
   })
 
   it('指针点击可以打开子菜单', async () => {
