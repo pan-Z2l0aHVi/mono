@@ -104,13 +104,6 @@
   padding: 4px;
 }
 
-.autocomplete-empty {
-  padding: 8px 12px;
-  font-size: var(--wui-font-size, 14px);
-  color: var(--wui-color-text-secondary, #6a6a6a);
-  text-align: center;
-}
-
 /* 非匹配候选隐藏：本地模式经 slot 投影，portal 模式为面板直接子元素 */
 ::slotted(web-ui-option[data-filtered]) {
   display: none;

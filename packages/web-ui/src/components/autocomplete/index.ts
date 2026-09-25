@@ -29,13 +29,14 @@ import style from './style.css?inline'
 const FILTER_MODES = ['none', 'prefix', 'contains'] as const
 type FilterMode = (typeof FILTER_MODES)[number]
 
-function isEmptySlotNode(node: Node): node is Element {
-  return node instanceof Element && node.getAttribute('slot') === 'empty'
-}
-
 // 自定义 trigger 与 select 同判据：必须留在宿主，不随 options 迁入 portal 面板
 function isTriggerSlotNode(node: Node): node is Element {
   return node instanceof Element && node.slot === 'trigger'
+}
+
+// 已移除的 empty slot 仍可能留在既有消费者 light DOM；不得把它作为普通内容迁入 portal。
+function isEmptySlotNode(node: Node): node is Element {
+  return node instanceof Element && node.slot === 'empty'
 }
 
 /**
@@ -158,10 +159,9 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
     getPortal: () => this._portal,
     getPortalContent: () => this._portalContent,
     isOpen: () => this.portal && this._isOpen,
-    // 默认 slot 内容随面板迁移；slot="empty" 由 autocomplete 单独迁移并恢复。
-    // slot="trigger" 与 select 同判据留在宿主，不进面板。
+    // 默认 slot 内容随面板迁移；trigger 与已移除的 empty slot 留在宿主，不进面板。
     getMigratableNodes: () =>
-      Array.from(this.childNodes).filter(node => !isEmptySlotNode(node) && !isTriggerSlotNode(node)),
+      Array.from(this.childNodes).filter(node => !isTriggerSlotNode(node) && !isEmptySlotNode(node)),
     hasUpdated: () => this.hasUpdated,
     requestUpdate: () => this.requestUpdate(),
     bindOption: option => this._bindOption(option),
@@ -333,7 +333,7 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
     this._syncOpenAttribute()
     this._syncOverlayInert()
     this._syncValidity()
-    this._syncEmptyState()
+    this._syncOpenWithMatches()
   }
 
   override formDisabledCallback(disabled: boolean) {
@@ -404,26 +404,12 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
     }
   }
 
-  private _syncEmptyState() {
-    const panel = this._panel.getPanel()
-    const empty = panel?.querySelector<HTMLElement>('.autocomplete-empty')
-    const matching = this._options.filter(o => !o.hasAttribute('data-filtered'))
-    const hasEmpty = this._isOpen && this._options.length > 0 && matching.length === 0
-    if (empty) empty.hidden = !hasEmpty
+  private _hasMatchingOptions() {
+    return this._options.some(option => !option.hasAttribute('data-filtered'))
+  }
 
-    const slot = this.shadowRoot?.querySelector<HTMLSlotElement>('slot[name="empty"]')
-    const customText = slot
-      ?.assignedElements()
-      .map(element => element.textContent?.trim())
-      .filter(Boolean)
-      .join(' ')
-      .trim()
-    const message = customText || empty?.dataset.wuiA11yEmpty || '无匹配选项'
-    const a11yEmpty = this.shadowRoot?.querySelector<HTMLElement>('.autocomplete-empty-a11y')
-    if (a11yEmpty) {
-      a11yEmpty.textContent = message
-      a11yEmpty.hidden = !hasEmpty
-    }
+  private _syncOpenWithMatches() {
+    if (this._isOpen && !this._hasMatchingOptions()) this._close()
   }
 
   private readonly _optionListeners = createOptionListenerBinding({
@@ -476,6 +462,8 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
 
   private _onKeydown = (e: KeyboardEvent) => {
     if (this._isDisabled || this.readonly) return
+    this._applyFilter()
+    this._syncOpenWithMatches()
 
     // Escape 不在本组件处理：由共享仲裁者在 document 捕获阶段归属（issue #120 Block 1）。
     switch (e.key) {
@@ -492,30 +480,36 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
         else this._navigateActive(e.key === 'ArrowDown' ? 1 : -1)
         break
       }
-      case 'Enter':
+      case 'Enter': {
         /*
-         * 面板打开时接管 Enter：选择候选或提交 custom value；关闭时不拦截表单提交。
+         * 面板打开时接管 Enter：选择候选或提交 custom value。
+         * 零匹配时面板会被过滤状态收敛关闭，但 allow-custom-value 仍需在关闭态提交。
          * 多行触发器（textarea）保留换行语义，不接管为选中高亮项。
          */
-        if (this._isOpen && !this._trigger.isMultilineEdit(e)) {
+        const canSubmitCustomValue = this._canSubmitCustomValue()
+        if (
+          !this._trigger.isMultilineEdit(e) &&
+          (this._isOpen || (!this._hasMatchingOptions() && canSubmitCustomValue))
+        ) {
           e.preventDefault()
-          const option = this._options[this._activeIndex]
-          if (option && !option.disabled && !option.hasAttribute('data-filtered')) {
-            this._selectOption(option)
-            return
+          if (this._isOpen) {
+            const option = this._options[this._activeIndex]
+            if (option && !option.disabled && !option.hasAttribute('data-filtered')) {
+              this._selectOption(option)
+              return
+            }
+
+            const exactOption = this._findExactOption(this._value)
+            if (exactOption) {
+              this._selectOption(exactOption)
+              return
+            }
           }
 
-          const exactOption = this._findExactOption(this._value)
-          if (exactOption) {
-            this._selectOption(exactOption)
-            return
-          }
-
-          if (this.allowCustomValue && this._value && !this._hasExactOption(this._value)) {
-            this._selectCustomValue()
-          }
+          if (canSubmitCustomValue) this._selectCustomValue()
         }
         break
+      }
     }
   }
 
@@ -560,6 +554,10 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
     return this._options.some(option => option.label.trim().toLowerCase() === query)
   }
 
+  private _canSubmitCustomValue() {
+    return this.allowCustomValue && !!this._value && !this._hasExactOption(this._value)
+  }
+
   private _selectCustomValue() {
     // Custom value 的 identity 由消费端管理；组件不隐式创建 option，selected-value 保持派生空值。
     this._close()
@@ -573,12 +571,12 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
     this.value = value
     this._activeIndex = -1
     this._syncActiveOption()
-    if (!this._isOpen) this._open()
+    this._open()
   }
 
   private _onTriggerClick = () => {
     if (this._isDisabled || this.readonly) return
-    if (this._options.length > 0) this._open()
+    this._open()
   }
 
   /*
@@ -638,6 +636,11 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
   })
 
   private _open(isKeyboardNavigation = false) {
+    this._applyFilter()
+    if (!this._hasMatchingOptions()) {
+      if (this._isOpen) this._close()
+      return
+    }
     this._openController.open(isKeyboardNavigation)
   }
 
@@ -653,7 +656,6 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
     this._panel.open(isKeyboardNavigation)
     // 新会话的句柄刚建立，惰性状态需按当前 disabled/readonly 重新同步。
     this._syncOverlayInert()
-    this._syncEmptyState()
   }
 
   private async _closeOverlay() {
@@ -686,19 +688,8 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
       target: this,
       style: `${glass}\n${overlayMotion}\n${style}`,
       className: 'wui-glass autocomplete-overlay portal wui-floating-panel',
-      onContentChange: mutations => {
+      onContentChange: () => {
         this._optionPortal.scheduleRefresh()
-        const removedEmptyNodes = mutations.flatMap(mutation => [...mutation.removedNodes]).filter(isEmptySlotNode)
-        if (removedEmptyNodes.length) {
-          this._portal?.removeContent(removedEmptyNodes)
-          const empty = this._portal?.panel.querySelector<HTMLElement>('.autocomplete-empty')
-          if (empty) {
-            empty.textContent = '无匹配选项'
-            empty.dataset.wuiA11yEmpty = '无匹配选项'
-          }
-          // 只改 panel 内 dataset 不会触发 Lit update；同步刷新 shadow 内 role=status 空态。
-          this._syncEmptyState()
-        }
       }
     })
     this._portal = portal
@@ -714,12 +705,7 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
     const content = document.createElement('div')
     content.className = 'autocomplete-content'
     this._portalContent = content
-    const empty = document.createElement('div')
-    empty.className = 'autocomplete-empty'
-    empty.hidden = true
-    empty.dataset.wuiA11yEmpty = this._getEmptySlotText()
     scroll.append(content)
-    content.append(empty)
     portal.panel.append(scroll)
     for (const node of Array.from(this.childNodes)) {
       // 框架注释锚点（v-if/v-for 占位）必须留在宿主：锚点进面板后 Vue 下次翻转
@@ -727,8 +713,9 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
       if (node instanceof Comment) continue
       // 自定义 trigger 与 select（:461）同判据：留在宿主，不随 options 迁入浮层
       if (isTriggerSlotNode(node)) continue
-      if (isEmptySlotNode(node)) portal.appendContent([node], empty)
-      else portal.appendContent([node], content)
+      // 已移除的 empty slot 不能作为普通内容出现在新 portal 面板中
+      if (isEmptySlotNode(node)) continue
+      portal.appendContent([node], content)
     }
     return portal
   }
@@ -748,17 +735,6 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
       })
       .filter(Boolean)
       .join(' ')
-  }
-
-  private _getEmptySlotText(): string {
-    const slot = this.shadowRoot?.querySelector<HTMLSlotElement>('slot[name="empty"]')
-    const text = slot
-      ?.assignedElements()
-      .map(element => element.textContent?.trim())
-      .filter(Boolean)
-      .join(' ')
-      .trim()
-    return text || '无匹配选项'
   }
 
   override render() {
@@ -824,7 +800,6 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
               </div>`
           )}
         </div>
-        <div class="autocomplete-a11y-only autocomplete-empty-a11y" role="status" hidden></div>
         <div
           class="autocomplete-overlay wui-floating-panel wui-glass"
           hidden
@@ -834,9 +809,6 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
           <div class="autocomplete-scroll">
             <div class="autocomplete-content">
               <slot @slotchange=${this._onSlotChange}></slot>
-              <div class="autocomplete-empty" hidden>
-                <slot name="empty">无匹配选项</slot>
-              </div>
             </div>
           </div>
         </div>

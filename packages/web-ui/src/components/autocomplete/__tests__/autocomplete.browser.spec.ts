@@ -234,7 +234,7 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     expect(el.open).toBe(false)
   })
 
-  it('无匹配候选时面板显示空状态文案', async () => {
+  it('无匹配候选时不创建面板，删除字符恢复匹配后重新打开', async () => {
     const el = document.createElement('web-ui-autocomplete')
     el.innerHTML = '<web-ui-option value="apple" label="Apple"></web-ui-option>'
     document.body.append(el)
@@ -248,8 +248,15 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     await new Promise(resolve => requestAnimationFrame(resolve))
     await el.updateComplete
 
-    const panel = el.shadowRoot?.querySelector<HTMLElement>('.autocomplete-overlay')
-    expect(panel?.textContent).toContain('无匹配选项')
+    expect(el.open).toBe(false)
+    expect(page.getByRole('listbox').length).toBe(0)
+
+    typeText(el, 'app')
+    await el.updateComplete
+    await waitForFrame()
+
+    expect(el.open).toBe(true)
+    expect(page.getByRole('listbox').length).toBe(1)
   })
 
   it('allow-custom-value 时 Enter 提交未匹配 custom value', async () => {
@@ -266,7 +273,7 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     typeText(el, '  Custom Tag  ')
     await new Promise(resolve => requestAnimationFrame(resolve))
     await el.updateComplete
-    expect(el.open).toBe(true)
+    expect(el.open).toBe(false)
 
     input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, composed: true }))
     await new Promise(resolve => requestAnimationFrame(resolve))
@@ -554,7 +561,7 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     ])
   })
 
-  it('Portal empty state 的真实 pointer 点击保持打开，外部 pointer 点击关闭，option 仍可选择', async () => {
+  it('Portal 零匹配时不创建面板，匹配恢复后重新打开', async () => {
     const theme = document.createElement('web-ui-theme')
     theme.setAttribute('appearance', 'light')
     const el = document.createElement('web-ui-autocomplete')
@@ -574,129 +581,44 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     expect(page.getByRole('listbox').length).toBe(1)
     await page.getByRole('textbox').fill('zzz')
     await el.updateComplete
-
-    const panel = getPortalPanel(theme)!
-    const empty = panel.querySelector<HTMLElement>('.autocomplete-empty')!
-    await page.elementLocator(empty).click()
-    expect(el.open).toBe(true)
-
-    const outside = document.createElement('button')
-    outside.textContent = 'outside'
-    outside.style.cssText = 'position:fixed; inset:0 auto auto 0; width:120px; height:40px; z-index:9999;'
-    document.body.append(outside)
-    await page.elementLocator(outside).click()
+    await pollUntil(() => !el.open && !getPortalPanel(theme), 'Expected zero-match autocomplete to close and dispose')
     expect(page.getByRole('listbox').length).toBe(0)
     expect(el.open).toBe(false)
+    expect(getPortalPanel(theme)).toBeNull()
 
+    combobox.element().focus()
+    await page.getByRole('textbox').fill('app')
+    await el.updateComplete
+    await waitForFrame()
+    await waitForFrame()
+    await el.updateComplete
+    expect(el.open).toBe(true)
+    expect(getPortalPanel(theme)).not.toBeNull()
+  })
+
+  it('Portal 不迁移既有 empty slot 节点', async () => {
+    const theme = document.createElement('web-ui-theme')
+    theme.setAttribute('appearance', 'light')
+    const el = document.createElement('web-ui-autocomplete')
+    el.portal = true
+    el.innerHTML =
+      '<web-ui-option value="apple" label="Apple"></web-ui-option><div slot="empty">legacy empty content</div>'
+    theme.append(el)
+    document.body.append(theme)
+    await theme.updateComplete
+    await el.updateComplete
+
+    const combobox = page.getByRole('combobox')
     combobox.element().focus()
     ;(combobox.element() as HTMLElement).click()
     await waitForFrame()
     await waitForFrame()
-    expect(page.getByRole('listbox').length).toBe(1)
-    await page.getByRole('textbox').fill('')
-    await el.updateComplete
-    const option = getPortalPanel(theme)!.querySelector<HTMLElement>('web-ui-option')!
-    await page.elementLocator(option).click()
-    expect(el.value).toBe('Apple')
-    expect(el.selectedValue).toBe('apple')
-    expect(el.open).toBe(false)
-  })
-
-  it('empty slot 替换默认空态，portal 打开时迁移并在关闭后恢复', async () => {
-    const theme = document.createElement('web-ui-theme')
-    theme.setAttribute('appearance', 'light')
-    const el = document.createElement('web-ui-autocomplete')
-    el.portal = true
-    el.innerHTML =
-      '<web-ui-option value="apple" label="Apple"></web-ui-option><div slot="empty">按 Enter 创建标签</div>'
-    theme.append(el)
-    document.body.append(theme)
-    await theme.updateComplete
-    await el.updateComplete
-
-    const input = page.getByRole('combobox')
-    input.element().focus()
-    ;(input.element() as HTMLElement).click()
-    await waitForFrame()
-    await waitForFrame()
-    await page.getByRole('textbox').fill('zzz')
     await el.updateComplete
 
     const panel = getPortalPanel(theme)!
-    const empty = panel.querySelector<HTMLElement>('.autocomplete-empty')!
-    expect(empty.hidden).toBe(false)
-    expect(el.querySelector('[slot="empty"]')).toBeNull()
-    expect(empty.textContent?.trim()).toBe('按 Enter 创建标签')
-    expect(el.shadowRoot?.querySelector<HTMLElement>('.autocomplete-empty-a11y')?.textContent?.trim()).toBe(
-      '按 Enter 创建标签'
-    )
-
-    input.element().focus()
-    await userEvent.keyboard('{Escape}')
-    await el.updateComplete
-    await pollUntil(() => !el.open && !getPortalPanel(theme), 'Expected empty-state autocomplete to close and dispose')
-    expect(el.querySelector('[slot="empty"]')?.textContent?.trim()).toBe('按 Enter 创建标签')
-  })
-
-  it('portal 打开期间删除 empty slot 后不复活该节点并回退默认空态', async () => {
-    const theme = document.createElement('web-ui-theme')
-    theme.setAttribute('appearance', 'light')
-    const el = document.createElement('web-ui-autocomplete')
-    el.portal = true
-    el.innerHTML =
-      '<web-ui-option value="apple" label="Apple"></web-ui-option><div slot="empty">按 Enter 创建标签</div>'
-    theme.append(el)
-    document.body.append(theme)
-    await theme.updateComplete
-    await el.updateComplete
-
-    const input = page.getByRole('combobox')
-    input.element().focus()
-    ;(input.element() as HTMLElement).click()
-    await waitForFrame()
-    await waitForFrame()
-    await page.getByRole('textbox').fill('zzz')
-    await el.updateComplete
-
-    const panel = getPortalPanel(theme)!
-    panel.querySelector<HTMLElement>('.autocomplete-empty')!.firstElementChild?.remove()
-    await el.updateComplete
-    await pollUntil(
-      () => panel.querySelector('.autocomplete-empty')?.textContent?.trim() === '无匹配选项',
-      'Expected removed empty slot to fall back to the default empty state'
-    )
-    expect(el.shadowRoot?.querySelector<HTMLElement>('.autocomplete-empty-a11y')?.textContent?.trim()).toBe(
-      '无匹配选项'
-    )
-
-    input.element().focus()
-    await userEvent.keyboard('{Escape}')
-    await el.updateComplete
-    await pollUntil(() => !el.open && !getPortalPanel(theme), 'Expected autocomplete to close and dispose')
-    expect(el.querySelector('[slot="empty"]')).toBeNull()
-  })
-
-  it('empty slot 在普通浮层中投影并替换默认空态', async () => {
-    const el = document.createElement('web-ui-autocomplete')
-    el.innerHTML = '<web-ui-option value="apple" label="Apple"></web-ui-option><div slot="empty">自定义空态</div>'
-    document.body.append(el)
-    await el.updateComplete
-
-    const input = triggerInput(el)
-    input.focus()
-    input.click()
-    await el.updateComplete
-    typeText(el, 'zzz')
-    await el.updateComplete
-
-    const empty = el.shadowRoot!.querySelector<HTMLElement>('.autocomplete-empty')!
-    expect(empty.hidden).toBe(false)
-    const emptySlot = empty.querySelector<HTMLSlotElement>('slot[name="empty"]')
-    expect(emptySlot?.assignedElements().map(node => node.textContent?.trim())).toEqual(['自定义空态'])
-    const a11yEmpty = el.shadowRoot!.querySelector<HTMLElement>('.autocomplete-empty-a11y')!
-    expect(a11yEmpty.hidden).toBe(false)
-    expect(a11yEmpty.getAttribute('role')).toBe('status')
-    expect(a11yEmpty.textContent?.trim()).toBe('自定义空态')
+    expect(panel.textContent).not.toContain('legacy empty content')
+    expect(panel.querySelector('[slot="empty"]')).toBeNull()
+    expect(el.querySelector('[slot="empty"]')?.textContent).toBe('legacy empty content')
   })
 
   it('浏览器中的 focus/blur 事件在宿主 retarget 且保持 composed contract', async () => {

@@ -504,9 +504,9 @@ Editable combobox with input filtering and single option selection.
 
 **Methods:** `focus()`, `blur()`
 
-**Slots:** `default` (project `<web-ui-option>` elements), `trigger` (custom trigger content, replacing the default input), `empty` (replace the "no matches" state; falls back to "No matches")
+**Slots:** `default` (project `<web-ui-option>` elements), `trigger` (custom trigger content, replacing the default input)
 
-Typing filters the option list by label (`contains` or `prefix`, or `none` to disable filtering). Selecting an option fills the input with its label and exposes the option's value via `selected-value`; `change` fires on selection commit. Supports ArrowDown/ArrowUp/Enter/Escape keyboard navigation.
+Typing filters the option list by label (`contains` or `prefix`, or `none` to disable filtering). When no option matches, the dropdown stays closed; deleting characters so at least one option matches reopens it. Selecting an option fills the input with its label and exposes the option's value via `selected-value`; `change` fires on selection commit. Supports ArrowDown/ArrowUp/Enter/Escape keyboard navigation.
 
 **Trigger:** the default trigger is an internal `web-ui-input`. Put any editable component in the `trigger` slot to replace it. The wrapper keeps the combobox ARIA and marks itself with `data-custom-trigger`, and the dropdown stays anchored to the trigger element. Programmatic `focus()` / `blur()` delegate to the active trigger: `web-ui-input` and `web-ui-textarea` move focus to their native control, while a custom trigger without its own focus redirection is focused as the host itself.
 
@@ -522,9 +522,7 @@ The custom trigger exposes the same contract as the default one: a string `value
 
 Multiline triggers (a trigger whose editable element is a `<textarea>`) keep Enter for newlines: Enter never selects the highlighted option and never commits a custom value; close the panel with Escape or blur. Selecting an option still writes its label back to the trigger. A single-line custom trigger keeps the default Enter behavior. ArrowUp/ArrowDown follow the same exception while the panel is open: they move the text caret instead of navigating options, so keyboard option navigation is unavailable in that state. Select with a pointer click. With the panel closed, ArrowDown/ArrowUp still open it.
 
-When `allow-custom-value` is enabled, pressing Enter with no active option and no matching candidate commits the raw input as a custom value and closes the panel. `change` fires and `selected-value` remains empty. The component does not create an option automatically or trim the raw value. Text matching a disabled option cannot bypass the disabled state or derive as a selected option.
-
-Use `<div slot="empty">…</div>` for static, non-interactive empty-state content. Portal rendering moves this node into the floating panel and restores it to the host after close.
+When `allow-custom-value` is enabled, pressing Enter with no active option and no matching candidate commits the raw input as a custom value and keeps the dropdown closed. `change` fires and `selected-value` remains empty. The component does not create an option automatically or trim the raw value. Text matching a disabled option cannot bypass the disabled state or derive as a selected option.
 
 **CSS Custom Properties:**
 
