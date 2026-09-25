@@ -270,4 +270,69 @@ describe('useLibraryStore（Pinia 集成）', () => {
     store.removeResources(['r1', 'missing'])
     expect(store.resources.map(resource => resource.id)).toEqual(['r2', 'r3'])
   })
+
+  it('applySourceAvailability 翻转 preferred source 的 available 并同步聚合与 size', () => {
+    const store = useLibraryStore()
+    store.setResources([dto({ id: 'r1', size_bytes: 128 })])
+
+    store.applySourceAvailability('s1', false, 96)
+
+    const resource = store.resources[0]!
+    expect(resource.sources[0]!.available).toBe(false)
+    expect(resource.preferred!.available).toBe(false)
+    expect(resource.available).toBe(false)
+    expect(resource.sizeBytes).toBe(96)
+  })
+
+  it('applySourceAvailability：另有可用 source 时 resource 仍可用，非首选翻转不改 size', () => {
+    const store = useLibraryStore()
+    store.setResources([
+      dto({
+        id: 'r1',
+        size_bytes: 128,
+        sources: [
+          {
+            id: 's1',
+            resource_id: 'r1',
+            type: SourceType.SourceTypeFile,
+            location: '/tmp/primary.pdf',
+            available: true,
+            is_preferred: true,
+            order_index: 0
+          },
+          {
+            id: 's2',
+            resource_id: 'r1',
+            type: SourceType.SourceTypeFile,
+            location: '/tmp/backup.pdf',
+            available: true,
+            is_preferred: false,
+            order_index: 1
+          }
+        ],
+        preferred_source_id: 's1'
+      })
+    ])
+
+    store.applySourceAvailability('s2', false, undefined)
+
+    const resource = store.resources[0]!
+    expect(resource.available).toBe(true)
+    expect(resource.sizeBytes).toBe(128)
+
+    // 最后一个可用 source 失效 → 聚合翻转为不可用；此时首选失效，size 随事件清空。
+    store.applySourceAvailability('s1', false, undefined)
+    expect(store.resources[0]!.available).toBe(false)
+    expect(store.resources[0]!.sizeBytes).toBeNull()
+  })
+
+  it('applySourceAvailability：未知 sourceId 静默 no-op', () => {
+    const store = useLibraryStore()
+    store.setResources([dto({ id: 'r1' })])
+
+    store.applySourceAvailability('missing-source', false, 0)
+
+    expect(store.resources[0]!.available).toBe(true)
+    expect(store.resources[0]!.sources[0]!.available).toBe(true)
+  })
 })

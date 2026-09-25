@@ -43,6 +43,35 @@ func sourceToDTO(src core.Source) SourceDTO {
 	}
 }
 
+// NewSourceAvailabilityEventDTO 把领域层的翻转事实映射为推送载荷；
+// SizeBytes 只在首选文件 Source 翻转时透传。
+func NewSourceAvailabilityEventDTO(change core.AvailabilityChange) SourceAvailabilityEventDTO {
+	dto := SourceAvailabilityEventDTO{
+		SourceID:   change.SourceID,
+		ResourceID: change.ResourceID,
+		Type:       change.Type,
+		Available:  change.Available,
+		ChangedAt:  change.ChangedAt,
+	}
+	if change.SizeBytes != nil {
+		size := *change.SizeBytes
+		dto.SizeBytes = &size
+	}
+	return dto
+}
+
+// 把领域层的探测结论映射为前端可见结论；两套取值必须逐项对应。
+func sourceProbeOutcomeDTO(outcome core.ProbeOutcome) SourceProbeOutcome {
+	switch outcome {
+	case core.ProbeOutcomeAvailable:
+		return SourceProbeOutcomeAvailable
+	case core.ProbeOutcomeUnavailable:
+		return SourceProbeOutcomeUnavailable
+	default:
+		return SourceProbeOutcomeInconclusive
+	}
+}
+
 func tagToDTO(tag core.Tag) TagDTO {
 	return TagDTO{
 		ID:        tag.ID,

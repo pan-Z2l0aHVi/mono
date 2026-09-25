@@ -24,6 +24,10 @@
 
 `backend/library/` 内部分为三层，依赖方向单向：`service → core → storage/remote`。
 
+### watch 包
+
+库内已登记 file source 所在目录的文件系统监听：把 fsnotify 事件翻译成「重判定该 Source 可用性」的请求，抖动合并后交回 `core` 写入口。它不注册 Wails Service、不直接写库也不判定可用性——规则仍在 `core`，依赖方向与 `service` 相同（`watch → core`）。
+
 ### core 包
 
 承载产品规则与编排：Resource/Source/Tag/Map 的写入时序与事务边界、URL 元数据抓取与超时、`available` 判定、Source 基数与首选回退等不变量、标签同名复用与幂等、输入规范化。`core` 不感知 Wails 或前端。

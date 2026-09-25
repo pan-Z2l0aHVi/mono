@@ -199,6 +199,25 @@ export const useLibraryStore = defineStore('library', {
       const removedIds = new Set(ids)
       this.resources = this.resources.filter(resource => !removedIds.has(resource.id))
     },
+    /**
+     * 按 source 就地翻转 available 并重算派生字段；sourceId 不存在时静默 no-op。
+     *
+     * 不能走 toResourceView：那条路需要完整 ResourceDTO，而事件只带局部字段。
+     * preferred 与 sources[] 共享同一对象引用，所以改 source.available 会连带更新
+     * preferred——但仅当它就是首选时；sizeBytes 的判断已把这条约束写明。
+     */
+    applySourceAvailability(sourceId: string, available: boolean, sizeBytes: number | null | undefined) {
+      for (const resource of this.resources) {
+        const source = resource.sources.find(item => item.id === sourceId)
+        if (!source) continue
+        source.available = available
+        // size 只在翻转的是首选 source 时才有意义（size 由首选 source 派生）。
+        if (resource.preferred?.id === sourceId) resource.sizeBytes = sizeBytes ?? null
+        // available 是 sources 的聚合，必须重算，否则过滤与行内样式不会立即生效。
+        resource.available = resource.sources.some(item => item.available)
+        return
+      }
+    },
     resetFilters() {
       this.searchQuery = ''
       this.filterSource = 'all'

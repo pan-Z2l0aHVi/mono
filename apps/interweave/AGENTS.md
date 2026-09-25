@@ -12,7 +12,7 @@
 ## 领域与产品边界
 
 - 产品与领域词汇（Resource、Source、首选 Source、重复策略、Source 可用状态、URL 规范化与抓取时限、语义标签与 Tagging、Map、v1 起点）的权威是 [`CONTEXT.md`](../../CONTEXT.md) 的「Interweave 产品与领域词汇」节；后端能力边界与持久化模型读 [ADR-0008](../../docs/adr/0008-interweave-backend-architecture.md)/[ADR-0009](../../docs/adr/0009-interweave-sqlite-persistence-wal.md)；已实现行为以 `backend/library/**` 及其 Go 测试为真相。纯局部实现不预读这些文档。
-- 产品边界（不得顺手扩大的部分）：Interweave 引用外部内容而不接管它——不复制、移动、重命名或删除原始文件与网页，移除 Resource 只删库内记录；不做全盘扫描、文件夹监听、自动归类、自动修复、后台可用性轮询、账户、云同步或跨设备同步；不做内容托管（无 Markdown/富文本工作台）、全文索引、OCR、音视频转写或 Resource 版本历史；标签只在单个 Resource 上增删，无父子、别名、全局管理面板或自动语义合并；MCP 与 Agent 写入不进入 v1。
+- 产品边界（不得顺手扩大的部分）：Interweave 引用外部内容而不接管它——不复制、移动、重命名或删除原始文件与网页，移除 Resource 只删库内记录；不做全盘扫描、自动归类、自动修复、后台可用性轮询、账户、云同步或跨设备同步；文件夹监听只限库内已登记 file source 所在目录，用于同步可用状态，不扩展为全盘或递归扫描；不做内容托管（无 Markdown/富文本工作台）、全文索引、OCR、音视频转写或 Resource 版本历史；标签只在单个 Resource 上增删，无父子、别名、全局管理面板或自动语义合并；MCP 与 Agent 写入不进入 v1。
 - 公共 UI 契约仍以 `packages/web-ui` 为准。
 - 不在前端复制领域规则；后续 Go 侧实现统一落在 `apps/interweave/backend/`。
 

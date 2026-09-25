@@ -17,6 +17,8 @@ type ResourceService struct {
 	ingest    *ingestion
 	views     viewAssembler
 	resources storage.ResourceStore
+	// indexSync 只在装配期注入一次（main.go），运行期只读，无需加锁。
+	indexSync SourceIndexSync
 }
 
 // PreparedFilePreview 是待添加文件的稳定位置与权威展示分类。
@@ -33,6 +35,19 @@ func NewResourceService(db *storage.DB, fetcher *remote.Fetcher) *ResourceServic
 		views:     viewAssembler{},
 		resources: storage.ResourceStore{},
 	}
+}
+
+// SetIndexSync 注入入口集合的对账回调，使增删 Resource 后监听集合能立即重建。
+func (s *ResourceService) SetIndexSync(h SourceIndexSync) {
+	s.indexSync = h
+}
+
+// 入口集合变化后请求监听重建；对账失败不回滚已提交的事务，下一次对账会补上。
+func (s *ResourceService) resyncIndex(ctx context.Context) {
+	if s.indexSync == nil {
+		return
+	}
+	_ = s.indexSync.SyncSources(ctx)
 }
 
 // 规范化待添加文件并复用 Resource 展示分类，不读取文件内容。
@@ -63,6 +78,7 @@ func (s *ResourceService) AddFileResource(ctx context.Context, inputPath string)
 		return nil, fmt.Errorf("failed to create file resource: %w", err)
 	}
 
+	s.resyncIndex(ctx)
 	return s.GetResource(ctx, result.resourceID)
 }
 
@@ -85,6 +101,7 @@ func (s *ResourceService) AddURLResource(ctx context.Context, inputURL string) (
 		return nil, fmt.Errorf("failed to create URL resource: %w", err)
 	}
 
+	s.resyncIndex(ctx)
 	return s.GetResource(ctx, result.resourceID)
 }
 
@@ -124,7 +141,13 @@ func (s *ResourceService) DeleteResource(ctx context.Context, resourceID string)
 	err := s.db.WithTx(ctx, func(tx *sql.Tx) error {
 		return mapNotFound(s.resources.Delete(ctx, tx, resourceID))
 	})
-	return err
+	if err != nil {
+		return err
+	}
+
+	// 外键 ON DELETE CASCADE 已连带删除该 Resource 的 Source，监听集合需要跟着收敛。
+	s.resyncIndex(ctx)
+	return nil
 }
 
 // 以稳定身份读取资源详情。

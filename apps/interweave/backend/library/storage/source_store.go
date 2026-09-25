@@ -66,6 +66,47 @@ func (SourceStore) ListByResources(ctx context.Context, q Queryer, resourceIDs [
 	return result, nil
 }
 
+// 返回库内全部文件 Source 的位置；文件可用性监听以此为权威目标集合全量重建，
+// 因此不按批次分片。
+func (SourceStore) ListFileSourceLocations(ctx context.Context, q Queryer) ([]string, error) {
+	rows, err := q.QueryContext(ctx, `SELECT location FROM sources WHERE type = 'file'`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return collectRows(rows, scanString)
+}
+
+// 按位置反查文件 Source 供文件可用性监听把内核事件路径解析为受影响入口。
+// 重复 Source 不做去重（CONTEXT.md「重复 Source」）：同一位置天然返回全部对应记录。
+func (SourceStore) ListFileSourcesByLocations(ctx context.Context, q Queryer, locations []string) ([]SourceModel, error) {
+	if len(locations) == 0 {
+		return []SourceModel{}, nil
+	}
+
+	result := make([]SourceModel, 0, len(locations))
+	for _, chunk := range chunkValues(locations, locationQueryBatch) {
+		args := make([]any, len(chunk))
+		for i, location := range chunk {
+			args[i] = location
+		}
+		rows, err := q.QueryContext(ctx, `
+			SELECT id, resource_id, type, location, available, is_preferred, order_index, metadata_json, created_at, updated_at
+			FROM sources WHERE type = 'file' AND location IN (`+placeholders(len(chunk))+`)
+		`, args...)
+		if err != nil {
+			return nil, err
+		}
+		scanned, err := collectRows(rows, scanSource)
+		_ = rows.Close()
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, scanned...)
+	}
+	return result, nil
+}
+
 // 原子替换 Source 自身的入口数据，保留其顺位与首选角色；目标不存在时返回 ErrSourceNotFound。
 func (SourceStore) Replace(ctx context.Context, q Queryer, id string, srcType SourceType, location string, available bool, metadataJSON string, now int64) error {
 	return execAffected(ctx, q, ErrSourceNotFound, `

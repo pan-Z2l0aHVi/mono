@@ -42,10 +42,17 @@ function createRuntime(overrides: Partial<LibraryRuntime> = {}): LibraryRuntime 
     getClipboardFilePaths: async () => [],
     prepareFilePreview: async () => ({ kind: ResourceKind.ResourceKindFile }),
     releaseFilePreview: async () => {},
+    probeURLSourceOnOpen: async () => {
+      throw new Error('未使用')
+    },
+    openExternal: async () => {
+      throw new Error('未使用')
+    },
     resourceMediaURL: () => null,
     pendingFilePreviewURL: token => `/pending-resource-media/${token}`,
     subscribeToDroppedFiles: () => () => {},
     subscribeToPasteFileRequest: () => () => {},
+    subscribeToSourceAvailability: () => () => {},
     ...overrides
   }
 }

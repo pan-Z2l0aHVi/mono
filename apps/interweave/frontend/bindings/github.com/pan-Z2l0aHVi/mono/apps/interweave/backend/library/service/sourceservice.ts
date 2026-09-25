@@ -33,6 +33,18 @@ export function AddURLSource(resourceID: string, inputURL: string): $Cancellable
 }
 
 /**
+ * ProbeURLSourceOnOpen 在用户打开详情时以短预算重新判定 URL 可用性。
+ * 
+ * 与手动刷新的差别只在三态：Inconclusive 不落库、不改变失效角标，只回一句用户可见文案。
+ * 前端默认只在当前判为不可用时调用它（死链恢复才需要重新判定）。
+ */
+export function ProbeURLSourceOnOpen(sourceID: string): $CancellablePromise<$models.SourceProbeResultDTO | null> {
+    return $Call.ByID(515282350, sourceID).then(($result: any) => {
+        return $$createType3($result);
+    });
+}
+
+/**
  * RefreshFileSource 重新检查同一文件 path 的可用性，不改变 location；文件在原路径恢复后使用。
  */
 export function RefreshFileSource(sourceID: string): $CancellablePromise<$models.SourceDTO | null> {
@@ -85,3 +97,5 @@ export function SetPreferredSource(resourceID: string, sourceID: string): $Cance
 // Private type creation functions
 const $$createType0 = $models.SourceDTO.createFrom;
 const $$createType1 = $Create.Nullable($$createType0);
+const $$createType2 = $models.SourceProbeResultDTO.createFrom;
+const $$createType3 = $Create.Nullable($$createType2);

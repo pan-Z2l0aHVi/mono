@@ -85,3 +85,25 @@ func (s *SourceService) RefreshFileSource(ctx context.Context, sourceID string) 
 	dto := sourceToDTO(src)
 	return &dto, nil
 }
+
+// ProbeURLSourceOnOpen 在用户打开详情时以短预算重新判定 URL 可用性。
+//
+// 与手动刷新的差别只在三态：Inconclusive 不落库、不改变失效角标，只回一句用户可见文案。
+// 前端默认只在当前判为不可用时调用它（死链恢复才需要重新判定）。
+func (s *SourceService) ProbeURLSourceOnOpen(ctx context.Context, sourceID string) (*SourceProbeResultDTO, error) {
+	src, outcome, err := s.core.ProbeURLSourceOnOpen(ctx, sourceID)
+	if err != nil {
+		return nil, err
+	}
+	if outcome == core.ProbeOutcomeInconclusive {
+		return &SourceProbeResultDTO{
+			Outcome: SourceProbeOutcomeInconclusive,
+			Message: core.ErrURLProbeInconclusive.Error(),
+		}, nil
+	}
+	dto := sourceToDTO(src)
+	return &SourceProbeResultDTO{
+		Source:  &dto,
+		Outcome: sourceProbeOutcomeDTO(outcome),
+	}, nil
+}

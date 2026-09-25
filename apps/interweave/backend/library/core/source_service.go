@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -17,6 +18,8 @@ type SourceService struct {
 	ingest    *ingestion
 	resources storage.ResourceStore
 	sources   storage.SourceStore
+	// indexSync 只在装配期注入一次（main.go），运行期只读，无需加锁。
+	indexSync SourceIndexSync
 }
 
 // 保持 Source 规则与持久化实现解耦。
@@ -27,6 +30,11 @@ func NewSourceService(db *storage.DB, fetcher *remote.Fetcher) *SourceService {
 		resources: storage.ResourceStore{},
 		sources:   storage.SourceStore{},
 	}
+}
+
+// SetIndexSync 注入入口集合的对账回调，使增删改 Source 后监听集合能立即重建。
+func (s *SourceService) SetIndexSync(h SourceIndexSync) {
+	s.indexSync = h
 }
 
 // 补充备用入口不应意外改变用户当前的首选入口。
@@ -53,6 +61,7 @@ func (s *SourceService) AddFileSource(ctx context.Context, resourceID string, in
 		return Source{}, fmt.Errorf("failed to add file source: %w", err)
 	}
 
+	s.resyncIndex(ctx)
 	return s.getSource(ctx, result.sourceID)
 }
 
@@ -80,6 +89,7 @@ func (s *SourceService) AddURLSource(ctx context.Context, resourceID string, inp
 		return Source{}, fmt.Errorf("failed to add URL source: %w", err)
 	}
 
+	s.resyncIndex(ctx)
 	return s.getSource(ctx, result.sourceID)
 }
 
@@ -106,6 +116,7 @@ func (s *SourceService) ReplaceFileSource(ctx context.Context, sourceID string, 
 		return Source{}, fmt.Errorf("failed to replace source: %w", err)
 	}
 
+	s.resyncIndex(ctx)
 	return s.getSource(ctx, sourceID)
 }
 
@@ -133,6 +144,7 @@ func (s *SourceService) ReplaceURLSource(ctx context.Context, sourceID string, i
 		return Source{}, fmt.Errorf("failed to replace source: %w", err)
 	}
 
+	s.resyncIndex(ctx)
 	return s.getSource(ctx, sourceID)
 }
 
@@ -155,7 +167,7 @@ func (s *SourceService) SetPreferredSource(ctx context.Context, resourceID strin
 // Resource 必须保留至少一个入口；失去首选入口时按既有顺位延续访问路径。
 func (s *SourceService) RemoveSource(ctx context.Context, sourceID string) error {
 	now := time.Now().UnixMilli()
-	return s.db.WithTx(ctx, func(tx *sql.Tx) error {
+	err := s.db.WithTx(ctx, func(tx *sql.Tx) error {
 		src, err := s.sources.Get(ctx, tx, sourceID)
 		if err != nil {
 			return mapNotFound(err)
@@ -183,6 +195,12 @@ func (s *SourceService) RemoveSource(ctx context.Context, sourceID string) error
 		}
 		return nil
 	})
+	if err != nil {
+		return err
+	}
+
+	s.resyncIndex(ctx)
+	return nil
 }
 
 // 仅在用户明确请求时更新远程展示信息。
@@ -232,6 +250,47 @@ func (s *SourceService) RefreshFileSource(ctx context.Context, sourceID string) 
 	}
 
 	return s.getSource(ctx, sourceID)
+}
+
+// ProbeURLSourceOnOpen 是打开详情时的短预算重新判定：与纳入/手动刷新的 10 秒预算分开，
+// 前台交互不能等 10 秒。
+//
+// 与手动刷新的差别只在三态：Inconclusive（断网、超时、DNS 失败）不落库，保留原值。
+// 一次断网不该把整片 URL 资源标成失效。
+func (s *SourceService) ProbeURLSourceOnOpen(ctx context.Context, sourceID string) (Source, ProbeOutcome, error) {
+	src, err := s.sources.Get(ctx, s.db.SqlDB(), sourceID)
+	if err != nil {
+		return Source{}, ProbeOutcomeInconclusive, mapNotFound(err)
+	}
+	if src.Type != storage.SourceTypeURL {
+		return Source{}, ProbeOutcomeInconclusive, ErrOnlyURLSourceRefreshable
+	}
+
+	fetchCtx, cancel := context.WithTimeout(ctx, probeBudgetOnOpen)
+	defer cancel()
+	meta, reachability, _ := s.ingest.fetcher.FetchURL(fetchCtx, src.Location)
+	outcome := probeOutcomeFrom(reachability)
+
+	if outcome != ProbeOutcomeInconclusive {
+		// 探测未取回元数据时保留既有展示信息：打开抽屉不该顺手抹掉已知标题。
+		metadataJSON := src.MetadataJSON
+		if meta != nil {
+			if bytes, err := json.Marshal(meta); err == nil {
+				metadataJSON = string(bytes)
+			}
+		}
+		_, err = s.ingest.write(ctx, ingestWrite{
+			mode:     ingestRefreshSource,
+			sourceID: sourceID,
+			probe:    probeOutcome{available: reachability == remote.ReachabilityAvailable, metadataJSON: metadataJSON},
+		})
+		if err != nil {
+			return Source{}, outcome, err
+		}
+	}
+
+	updated, err := s.getSource(ctx, sourceID)
+	return updated, outcome, err
 }
 
 func (s *SourceService) getSource(ctx context.Context, sourceID string) (Source, error) {

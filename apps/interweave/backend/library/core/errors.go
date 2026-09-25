@@ -24,6 +24,8 @@ var (
 	ErrOnlyURLSourceRefreshable = errors.New("only URL sources can be refreshed")
 	// 仅文件入口支持按原路径刷新可用性。
 	ErrOnlyFileSourceRefreshable = errors.New("only file sources can be refreshed")
+	// 打开时探测无法判定：网络不可达、超时或 DNS 失败，库内可用性保持原值。
+	ErrURLProbeInconclusive = errors.New("暂时无法检测（网络不可达），已保留原状态")
 	// Resource 标题不能为空。
 	ErrResourceTitleEmpty = errors.New("resource title cannot be empty")
 )

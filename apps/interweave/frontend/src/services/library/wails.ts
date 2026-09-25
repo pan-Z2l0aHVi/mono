@@ -8,11 +8,14 @@ import {
 import { OSService } from '../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/native/service'
 
 import {
+  isSourceAvailabilityEvent,
   requireFilePreviewDTO,
   requireResourceDTO,
   requireSourceDTO,
+  requireSourceProbeResultDTO,
   requireTagDTO,
-  type LibraryRuntime
+  type LibraryRuntime,
+  type SourceAvailabilityEventDTO
 } from './types'
 
 class WailsLibraryRuntime implements LibraryRuntime {
@@ -100,6 +103,10 @@ class WailsLibraryRuntime implements LibraryRuntime {
     await ResourceService.ReleaseFilePreview(token)
   }
 
+  async probeURLSourceOnOpen(sourceId: string) {
+    return requireSourceProbeResultDTO(await SourceService.ProbeURLSourceOnOpen(sourceId), '探测 URL Source')
+  }
+
   async openExternal(target: string) {
     await OSService.OpenExternal(target)
   }
@@ -122,6 +129,12 @@ class WailsLibraryRuntime implements LibraryRuntime {
 
   subscribeToPasteFileRequest(listener: () => void) {
     return Events.On('library:paste-files-requested', listener)
+  }
+
+  subscribeToSourceAvailability(listener: (event: SourceAvailabilityEventDTO) => void) {
+    return Events.On('library:source-availability-changed', event => {
+      if (isSourceAvailabilityEvent(event.data)) listener(event.data)
+    })
   }
 }
 
