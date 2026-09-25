@@ -103,6 +103,9 @@ export const defineNativeDialogPresence = () =>
     }
 
     const startClosingTransition = (dialog: HTMLDialogElement) => {
+      // WebKit may coalesce class changes in the same style scope and skip the transition
+      // when the previous computed state has not been submitted yet.
+      void dialog.offsetWidth
       dialog.classList.add('is-closing')
       dialog.classList.remove('is-visible')
       clearCloseFallback()
