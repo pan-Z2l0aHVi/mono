@@ -149,13 +149,27 @@ export function useLibraryRuntime(injectedRuntime?: LibraryRuntime) {
     }
   }
 
-  async function replaceFileSource(sourceId: string) {
+  async function replaceFileSource(sourceId: string, inputPath: string) {
     replacingSourceIds.value = [...new Set([...replacingSourceIds.value, sourceId])]
     error.value = ''
     try {
-      const inputPath = await runtime.chooseFilePath()
-      if (!inputPath) return null
       const replaced = await runtime.replaceFileSource(sourceId, inputPath)
+      const updated = await runtime.getResource(replaced.resource_id)
+      store.upsertResource(updated)
+      return updated
+    } catch (cause) {
+      error.value = errorMessage(cause)
+      throw cause
+    } finally {
+      replacingSourceIds.value = replacingSourceIds.value.filter(id => id !== sourceId)
+    }
+  }
+
+  async function replaceURLSource(sourceId: string, inputURL: string) {
+    replacingSourceIds.value = [...new Set([...replacingSourceIds.value, sourceId])]
+    error.value = ''
+    try {
+      const replaced = await runtime.replaceURLSource(sourceId, inputURL)
       const updated = await runtime.getResource(replaced.resource_id)
       store.upsertResource(updated)
       return updated
@@ -169,6 +183,10 @@ export function useLibraryRuntime(injectedRuntime?: LibraryRuntime) {
 
   function chooseFilePaths() {
     return runtime.chooseFilePaths()
+  }
+
+  function chooseFilePath() {
+    return runtime.chooseFilePath()
   }
 
   return {
@@ -186,6 +204,8 @@ export function useLibraryRuntime(injectedRuntime?: LibraryRuntime) {
     saveTags,
     refreshSource,
     replaceFileSource,
-    chooseFilePaths
+    replaceURLSource,
+    chooseFilePaths,
+    chooseFilePath
   }
 }

@@ -4,8 +4,9 @@ import {
   lucideFileText,
   lucideFilm,
   lucideGlobe,
-  lucideHeadphones,
-  lucideImage
+  lucideImage,
+  lucideLink,
+  lucideMusic
 } from '@greypan/web-ui/icons'
 
 import type { ResourceKind, ResourceSourceView, ResourceView } from '@/stores/library'
@@ -13,7 +14,7 @@ import type { ResourceKind, ResourceSourceView, ResourceView } from '@/stores/li
 const KIND_ICONS: Partial<Record<string, typeof lucideFile>> = {
   image: lucideImage,
   video: lucideFilm,
-  audio: lucideHeadphones,
+  audio: lucideMusic,
   document: lucideFileText,
   web: lucideGlobe,
   json: lucideCode,
@@ -27,7 +28,7 @@ const KIND_LABELS: Partial<Record<string, string>> = {
   audio: '音频',
   document: '文档',
   web: '网页',
-  json: 'JSON',
+  json: '源代码',
   file: '文件',
   unknown: '其他'
 }
@@ -52,20 +53,32 @@ const KIND_TEXT: Partial<Record<string, string>> = {
   file: 'text-orange-600 dark:text-orange-300'
 }
 
-const TAG_CLASSES = [
-  'bg-blue-100 text-blue-700 dark:bg-blue-400/15 dark:text-blue-200',
-  'bg-emerald-100 text-emerald-700 dark:bg-emerald-400/15 dark:text-emerald-200',
-  'bg-amber-100 text-amber-700 dark:bg-amber-400/15 dark:text-amber-200',
-  'bg-cyan-100 text-cyan-700 dark:bg-cyan-400/15 dark:text-cyan-200',
-  'bg-rose-100 text-rose-700 dark:bg-rose-400/15 dark:text-rose-200',
-  'bg-indigo-100 text-indigo-700 dark:bg-indigo-400/15 dark:text-indigo-200'
-]
-
-function hashTag(tag: string) {
-  let hash = 0
-  for (const char of tag) hash = (hash * 31 + char.codePointAt(0)!) >>> 0
-  return hash
+const TAG_CLASSES: Record<string, string> = {
+  设计: 'bg-blue-100 text-blue-700 dark:bg-blue-400/15 dark:text-blue-200',
+  开发: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-400/15 dark:text-emerald-200',
+  素材: 'bg-purple-100 text-purple-700 dark:bg-purple-400/15 dark:text-purple-200',
+  灵感: 'bg-amber-100 text-amber-700 dark:bg-amber-400/15 dark:text-amber-200',
+  参考: 'bg-pink-100 text-pink-700 dark:bg-pink-400/15 dark:text-pink-200',
+  工具: 'bg-cyan-100 text-cyan-700 dark:bg-cyan-400/15 dark:text-cyan-200',
+  归档: 'bg-gray-100 text-gray-500 dark:bg-white/10 dark:text-neutral-300',
+  文档: 'bg-teal-100 text-teal-700 dark:bg-teal-400/15 dark:text-teal-200',
+  重要: 'bg-red-100 text-red-700 dark:bg-red-400/15 dark:text-red-200',
+  紧急: 'bg-orange-100 text-orange-700 dark:bg-orange-400/15 dark:text-orange-200',
+  草稿: 'bg-gray-100 text-gray-500 dark:bg-white/10 dark:text-neutral-300',
+  审核: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-400/15 dark:text-indigo-200',
+  发布: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-400/15 dark:text-emerald-200',
+  原型: 'bg-violet-100 text-violet-700 dark:bg-violet-400/15 dark:text-violet-200',
+  测试: 'bg-sky-100 text-sky-700 dark:bg-sky-400/15 dark:text-sky-200',
+  备份: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-400/15 dark:text-yellow-200'
 }
+
+const DEFAULT_TAG_CLASS = 'bg-black/5 text-gray-500 dark:bg-white/10 dark:text-neutral-300'
+
+export const metadataRowClass =
+  "relative flex min-w-0 items-center justify-between gap-4 px-4 py-3 after:absolute after:inset-x-4 after:bottom-0 after:h-px after:bg-black/6 after:content-[''] last:after:hidden dark:after:bg-white/8"
+export const metadataLabelClass = 'shrink-0 text-[13px] leading-5 text-[#8a8a94] dark:text-(--wui-color-text-secondary)'
+export const metadataValueClass =
+  'min-w-0 truncate text-right text-[13px] font-medium leading-5 text-[#22212a] dark:text-(--wui-color-text)'
 
 export function resourceIcon(kind: ResourceKind) {
   return KIND_ICONS[kind] ?? KIND_ICONS.file
@@ -80,11 +93,11 @@ export function resourceKindClass(kind: ResourceKind) {
 }
 
 export function resourceKindTextClass(kind: ResourceKind) {
-  return KIND_TEXT[kind] ?? 'text-(--wui-color-text-tertiary)'
+  return KIND_TEXT[kind] ?? 'text-[#c0c0c8] dark:text-(--wui-color-text-tertiary)'
 }
 
 export function tagClass(tag: string) {
-  return TAG_CLASSES[hashTag(tag) % TAG_CLASSES.length]
+  return TAG_CLASSES[tag] ?? DEFAULT_TAG_CLASS
 }
 
 export function sourceTypeLabel(source: ResourceSourceView) {
@@ -92,7 +105,11 @@ export function sourceTypeLabel(source: ResourceSourceView) {
 }
 
 export function sourceTypeIcon(source: ResourceSourceView) {
-  return source.type === 'file' ? lucideFile : lucideGlobe
+  return source.type === 'file' ? lucideFile : lucideLink
+}
+
+export function sourceTypeDisplayLabel(source: ResourceSourceView) {
+  return source.type === 'file' ? '文件系统' : '远程链接'
 }
 
 export function fileExtension(location: string) {
@@ -105,13 +122,15 @@ export function primarySource(resource: ResourceView) {
   return resource.preferred ?? resource.sources[0] ?? null
 }
 
+const timestampFormatter = new Intl.DateTimeFormat('en-CA', {
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit'
+})
+
 export function formatTimestamp(timestamp: number) {
   if (!timestamp) return '未知时间'
-  return new Intl.DateTimeFormat('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit'
-  }).format(new Date(timestamp))
+  return timestampFormatter.format(new Date(timestamp)).replaceAll('/', '-')
 }
 
 export function formatSize(sizeBytes: number | null) {

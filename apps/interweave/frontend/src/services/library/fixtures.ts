@@ -524,6 +524,34 @@ class FixtureLibraryRuntime implements LibraryRuntime {
     return { ...found, metadata: found.metadata ? { ...found.metadata } : null }
   }
 
+  async replaceURLSource(sourceId: string, inputURL: string) {
+    const value = inputURL.trim()
+    let parsed: URL
+    try {
+      parsed = new URL(value)
+    } catch {
+      throw new Error('仅支持 http 或 https 链接')
+    }
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+      throw new Error('仅支持 http 或 https 链接')
+    }
+    const found = this.resources.flatMap(item => item.sources).find(item => item.id === sourceId)
+    if (!found) throw new Error('Source 不存在')
+    if ((found.type as string) !== 'url') throw new Error('仅 URL Source 可以替换链接')
+    found.location = parsed.toString()
+    found.available = true
+    found.updated_at = Date.now()
+    found.metadata = {
+      title: titleFromURL(found.location),
+      site_name: parsed.hostname,
+      description: found.metadata?.description || '最近一次找回可用',
+      favicon_url: found.metadata?.favicon_url || ''
+    }
+    const parent = this.requireMutableResource(found.resource_id)
+    parent.updated_at = Date.now()
+    return { ...found, metadata: found.metadata ? { ...found.metadata } : null }
+  }
+
   async chooseFilePaths() {
     return this.chooseFixtureFiles(true)
   }

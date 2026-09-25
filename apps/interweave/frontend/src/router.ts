@@ -5,6 +5,10 @@ export const router = createRouter({
   routes: [
     {
       path: '/',
+      redirect: '/library'
+    },
+    {
+      path: '/library',
       component: () => import('@/pages/LibraryPage.vue'),
       meta: { immersive: true }
     },

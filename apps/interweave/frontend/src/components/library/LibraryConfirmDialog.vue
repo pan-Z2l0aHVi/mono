@@ -9,6 +9,7 @@ defineProps<{
   busy: boolean
   danger: boolean
   error: string
+  compact: boolean
 }>()
 
 const emit = defineEmits<{
@@ -27,7 +28,7 @@ function handleOpenChange(event: WebUiEvent<WebUiDialog, 'open-change'>) {
     :open="open"
     controlled
     no-backdrop-close
-    class="max-[640px]:[--wui-dialog-width:90vw] [--wui-dialog-width:340px]"
+    :class="compact ? 'max-[640px]:[--wui-dialog-width:90vw] [--wui-dialog-width:320px]' : undefined"
     @open-change="handleOpenChange"
   >
     <div slot="title">{{ title }}</div>
@@ -38,8 +39,8 @@ function handleOpenChange(event: WebUiEvent<WebUiDialog, 'open-change'>) {
     >
       {{ error }}
     </p>
-    <p class="m-0 text-sm leading-6 text-(--wui-color-text-secondary)">{{ message }}</p>
-    <div slot="footer" class="grid grid-cols-2 gap-3">
+    <p class="m-0 text-[14px] leading-6 text-[#5b5b66] dark:text-(--wui-color-text-secondary)">{{ message }}</p>
+    <div slot="footer" class="flex gap-3">
       <web-ui-button full variant="secondary" :disabled="busy" @click="emit('cancel')">取消</web-ui-button>
       <web-ui-button full :variant="danger ? 'danger' : 'primary'" :loading="busy" @click="emit('confirm')">
         {{ confirmLabel }}

@@ -55,6 +55,10 @@ class WailsLibraryRuntime implements LibraryRuntime {
     return requireSourceDTO(await SourceService.ReplaceFileSource(sourceId, inputPath), '替换文件 Source')
   }
 
+  async replaceURLSource(sourceId: string, inputURL: string) {
+    return requireSourceDTO(await SourceService.ReplaceURLSource(sourceId, inputURL), '替换 URL Source')
+  }
+
   async chooseFilePaths() {
     const selected = await Dialogs.OpenFile({
       Title: '选择要添加的文件',

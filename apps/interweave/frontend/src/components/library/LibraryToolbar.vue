@@ -2,12 +2,19 @@
 import type { WebUiAutocomplete, WebUiEvent, WebUiInput, WebUiSelect } from '@greypan/web-ui'
 import {
   biCheck,
+  heroiconsBarsArrowDown16Solid,
+  heroiconsBarsArrowUp16Solid,
+  lucideChevronLeft,
+  lucideChevronRight,
   lucideChevronUp,
   lucideListFilter,
   lucideListRestart,
   lucidePlus,
   lucideSearch,
-  lucideTrash2
+  lucideTag,
+  lucideTrash2,
+  lucideUndo2,
+  tablerSortAscendingLetters
 } from '@greypan/web-ui/icons'
 import { nextTick, ref, watch } from 'vue'
 
@@ -27,6 +34,10 @@ const props = defineProps<{
   selectionMode: boolean
   selectedCount: number
   allVisibleSelected: boolean
+  mobile: boolean
+  canGoBack: boolean
+  canGoForward: boolean
+  canRestore: boolean
 }>()
 
 const emit = defineEmits<{
@@ -42,7 +53,10 @@ const emit = defineEmits<{
   select: []
   selectAll: []
   deleteSelected: []
+  restore: []
   reset: []
+  back: []
+  forward: []
 }>()
 
 const searchInputRef = ref<WebUiInput>()
@@ -84,43 +98,32 @@ function handleTagInput(event: WebUiEvent<WebUiAutocomplete, 'input'>) {
 function handleSortChange(event: WebUiEvent<WebUiSelect, 'change'>) {
   emit('update:sort', event.target.value as SortOption)
 }
+
+const filterLabelClass =
+  'flex items-center gap-1.5 text-[#8a8a94] max-sm:basis-full dark:text-(--wui-color-text-secondary)'
 </script>
 
 <template>
   <div class="w-full">
-    <div class="flex min-h-14 items-center gap-2 px-6 max-[640px]:px-3 max-[640px]:pl-0">
-      <div class="min-w-0 flex-1">
-        <h1 class="m-0 truncate text-[17px] leading-6 font-semibold">资源库</h1>
-      </div>
+    <div class="flex gap-4 items-center px-6 py-2 max-[640px]:px-3 max-[640px]:pl-0">
+      <web-ui-button-group aria-label="页面导航" class="max-[640px]:hidden">
+        <web-ui-button icon variant="glass" aria-label="后退" :disabled="!canGoBack" @click="emit('back')">
+          <web-ui-icon :icon="lucideChevronLeft" />
+        </web-ui-button>
+        <web-ui-button icon variant="glass" aria-label="前进" :disabled="!canGoForward" @click="emit('forward')">
+          <web-ui-icon :icon="lucideChevronRight" />
+        </web-ui-button>
+      </web-ui-button-group>
 
-      <div class="ml-auto flex shrink-0 items-center gap-1.5">
+      <div class="flex gap-1.5 items-center ml-auto">
         <template v-if="!selectionMode">
-          <web-ui-tooltip v-if="!searchOpen" content="搜索" portal>
-            <web-ui-button icon aria-label="搜索资源" @click="emit('update:searchOpen', true)">
-              <web-ui-icon :icon="lucideSearch" />
-            </web-ui-button>
-          </web-ui-tooltip>
-          <web-ui-input
-            v-else
-            ref="searchInputRef"
-            :value="searchQuery"
-            clearable
-            placeholder="搜索资源"
-            aria-label="搜索资源"
-            class="[--wui-input-width:min(260px,calc(100vw-150px))]"
-            @input="handleSearchInput"
-            @keydown="handleSearchKeydown"
-          >
-            <web-ui-icon slot="prefix" :icon="lucideSearch" />
-          </web-ui-input>
-
-          <web-ui-tooltip v-if="!searchOpen" content="添加资源" portal>
+          <web-ui-tooltip v-if="!(searchOpen && mobile)" content="添加资源" portal>
             <web-ui-button icon variant="primary" aria-label="添加资源" @click="emit('add')">
               <web-ui-icon :icon="lucidePlus" />
             </web-ui-button>
           </web-ui-tooltip>
-          <web-ui-button v-if="!searchOpen" @click="emit('select')">选择</web-ui-button>
-          <web-ui-tooltip v-if="!searchOpen" content="筛选和排序" portal>
+          <web-ui-button v-if="!(searchOpen && mobile)" @click="emit('select')">选择</web-ui-button>
+          <web-ui-tooltip v-if="!(searchOpen && mobile)" content="筛选和排序" portal>
             <web-ui-button
               icon
               :variant="hasActiveFilter ? 'secondary' : 'glass'"
@@ -132,17 +135,45 @@ function handleSortChange(event: WebUiEvent<WebUiSelect, 'change'>) {
               <web-ui-icon :icon="filterOpen ? lucideChevronUp : lucideListFilter" />
             </web-ui-button>
           </web-ui-tooltip>
+          <web-ui-tooltip v-if="!searchOpen" content="搜索" portal>
+            <web-ui-button icon aria-label="搜索" @click="emit('update:searchOpen', true)">
+              <web-ui-icon :icon="lucideSearch" />
+            </web-ui-button>
+          </web-ui-tooltip>
+          <web-ui-input
+            v-else
+            ref="searchInputRef"
+            :value="searchQuery"
+            clearable
+            placeholder="搜索资源"
+            aria-label="搜索资源"
+            class="[--wui-input-width:min(240px,calc(100vw-180px))]"
+            @input="handleSearchInput"
+            @keydown="handleSearchKeydown"
+          >
+            <web-ui-icon slot="prefix" :icon="lucideSearch" />
+          </web-ui-input>
         </template>
 
         <template v-else>
           <web-ui-button @click="emit('selectAll')">
             {{ allVisibleSelected ? '取消全选' : '全选' }}
           </web-ui-button>
-          <web-ui-button icon aria-label="删除选中资源" :disabled="selectedCount === 0" @click="emit('deleteSelected')">
-            <web-ui-icon :icon="lucideTrash2" class="text-(--wui-color-danger)" />
-          </web-ui-button>
-          <web-ui-tooltip content="完成选择" portal>
-            <web-ui-button icon variant="primary" aria-label="完成选择" @click="emit('select')">
+          <web-ui-button-group aria-label="批量操作">
+            <web-ui-tooltip portal>
+              <span slot="content" style="color: var(--wui-color-danger)">删除</span>
+              <web-ui-button icon aria-label="删除" :disabled="selectedCount === 0" @click="emit('deleteSelected')">
+                <web-ui-icon class="[--wui-icon-color:var(--wui-color-danger)]" :icon="lucideTrash2" />
+              </web-ui-button>
+            </web-ui-tooltip>
+            <web-ui-tooltip content="找回" portal>
+              <web-ui-button icon aria-label="找回" :disabled="!canRestore" @click="emit('restore')">
+                <web-ui-icon :icon="lucideUndo2" />
+              </web-ui-button>
+            </web-ui-tooltip>
+          </web-ui-button-group>
+          <web-ui-tooltip content="确认" portal>
+            <web-ui-button icon variant="primary" aria-label="确认" @click="emit('select')">
               <web-ui-icon :icon="biCheck" />
             </web-ui-button>
           </web-ui-tooltip>
@@ -151,74 +182,56 @@ function handleSortChange(event: WebUiEvent<WebUiSelect, 'change'>) {
     </div>
 
     <div
-      class="overflow-hidden transition-[height] duration-200 ease-in-out"
-      :style="{ height: filterOpen ? 'auto' : '0px' }"
+      class="transition-all duration-200 ease-in-out"
+      :style="{ height: filterOpen ? 'auto' : '0px', overflow: filterOpen ? 'visible' : 'hidden' }"
     >
       <div
         id="library-filter-panel"
-        class="flex flex-wrap items-center gap-3 px-6 py-2.5 text-sm text-(--wui-color-text-secondary) max-[640px]:-ml-14 max-[640px]:px-3"
+        class="flex flex-wrap gap-3 items-center px-6 max-[640px]:px-3 max-[640px]:-ml-14 py-2.5 text-sm text-[#5b5b66] dark:text-(--wui-color-text-secondary)"
         :aria-hidden="filterOpen ? undefined : 'true'"
         :inert="filterOpen ? undefined : true"
       >
-        <label class="flex items-center gap-1.5 max-sm:basis-full">
-          <span>来源</span>
-          <web-ui-select
-            portal
-            :value="filterSource"
-            aria-label="按来源筛选"
-            class="[--wui-input-width:122px]"
-            @change="handleSourceChange"
-          >
+        <label :class="filterLabelClass">
+          <web-ui-select portal :value="filterSource" class="[--wui-input-width:128px]" @change="handleSourceChange">
             <web-ui-option value="all" label="全部来源">全部来源</web-ui-option>
             <web-ui-option value="file" label="本地文件">本地文件</web-ui-option>
-            <web-ui-option value="url" label="URL">URL</web-ui-option>
+            <web-ui-option value="url" label="链接">链接</web-ui-option>
           </web-ui-select>
         </label>
 
-        <label class="flex items-center gap-1.5 max-sm:basis-full">
-          <span>类型</span>
-          <web-ui-select
-            portal
-            :value="filterKind"
-            aria-label="按类型筛选"
-            class="[--wui-input-width:122px]"
-            @change="handleKindChange"
-          >
+        <label :class="filterLabelClass">
+          <web-ui-select portal :value="filterKind" class="[--wui-input-width:128px]" @change="handleKindChange">
             <web-ui-option value="all" label="全部类型">全部类型</web-ui-option>
             <web-ui-option value="image" label="图片">图片</web-ui-option>
             <web-ui-option value="video" label="视频">视频</web-ui-option>
             <web-ui-option value="audio" label="音频">音频</web-ui-option>
             <web-ui-option value="document" label="文档">文档</web-ui-option>
-            <web-ui-option value="json" label="JSON">JSON</web-ui-option>
+            <web-ui-option value="json" label="源代码">源代码</web-ui-option>
             <web-ui-option value="web" label="网页">网页</web-ui-option>
             <web-ui-option value="file" label="文件">文件</web-ui-option>
             <web-ui-option value="unknown" label="其他">其他</web-ui-option>
           </web-ui-select>
         </label>
 
-        <label class="flex items-center gap-1.5 max-sm:basis-full">
-          <span>可用性</span>
+        <label :class="filterLabelClass">
           <web-ui-select
             portal
             :value="filterAvailability"
-            aria-label="按可用性筛选"
-            class="[--wui-input-width:122px]"
+            class="[--wui-input-width:128px]"
             @change="handleAvailabilityChange"
           >
             <web-ui-option value="all" label="全部状态">全部状态</web-ui-option>
-            <web-ui-option value="available" label="可用">可用</web-ui-option>
-            <web-ui-option value="unavailable" label="不可用">不可用</web-ui-option>
+            <web-ui-option value="available" label="正常">正常</web-ui-option>
+            <web-ui-option value="unavailable" label="已失效">已失效</web-ui-option>
           </web-ui-select>
         </label>
 
-        <label class="flex items-center gap-1.5 max-sm:basis-full">
-          <span>标签</span>
+        <label :class="filterLabelClass">
           <web-ui-autocomplete
             portal
             :value="filterTag"
-            placeholder="全部标签"
-            aria-label="按标签筛选"
-            class="[--wui-input-width:190px]"
+            placeholder="标签"
+            class="[--wui-input-width:200px]"
             @input="handleTagInput"
           >
             <web-ui-option v-for="tagName in allTagNames" :key="tagName" :value="tagName" :label="tagName">
@@ -227,19 +240,31 @@ function handleSortChange(event: WebUiEvent<WebUiSelect, 'change'>) {
           </web-ui-autocomplete>
         </label>
 
-        <label class="flex items-center gap-1.5 max-sm:basis-full">
-          <span>排序</span>
+        <label :class="filterLabelClass">
           <web-ui-select
             portal
             :value="sort"
-            aria-label="资源排序"
-            class="[--wui-input-width:136px]"
+            aria-label="排序"
+            class="[--wui-input-width:48px]"
             @change="handleSortChange"
           >
-            <web-ui-option value="latest" label="最近修改">最近修改</web-ui-option>
-            <web-ui-option value="earliest" label="较早修改">较早修改</web-ui-option>
-            <web-ui-option value="name" label="标题">标题</web-ui-option>
+            <web-ui-icon
+              slot="trigger"
+              :icon="
+                sort === 'name'
+                  ? tablerSortAscendingLetters
+                  : sort === 'tagName'
+                    ? lucideTag
+                    : sort === 'latest'
+                      ? heroiconsBarsArrowDown16Solid
+                      : heroiconsBarsArrowUp16Solid
+              "
+              :size="16"
+            />
+            <web-ui-option value="name" label="名称">名称</web-ui-option>
             <web-ui-option value="tagName" label="标签名称">标签名称</web-ui-option>
+            <web-ui-option value="latest" label="最新">最近修改</web-ui-option>
+            <web-ui-option value="earliest" label="最早">较早修改</web-ui-option>
           </web-ui-select>
         </label>
 

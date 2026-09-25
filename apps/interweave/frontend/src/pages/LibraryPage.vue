@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import type { WebUiEvent, WebUiLayout } from '@greypan/web-ui'
-import { lucideFolderOpen, lucideLayoutGrid, lucideSettings, lucideTags } from '@greypan/web-ui/icons'
-import { computed, onMounted, onScopeDispose, ref } from 'vue'
+import type { WebUiEditableText, WebUiEvent, WebUiLayout, WebUiSvgDrawLines } from '@greypan/web-ui'
+import { lucideFolderOpen, lucideLayoutGrid } from '@greypan/web-ui/icons'
+import { computed, nextTick, onMounted, onScopeDispose, ref, type ComponentPublicInstance } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import LibraryAddDialog from '@/components/library/LibraryAddDialog.vue'
@@ -10,7 +10,16 @@ import LibraryDetailDrawer from '@/components/library/LibraryDetailDrawer.vue'
 import LibraryEditTagsDialog from '@/components/library/LibraryEditTagsDialog.vue'
 import LibraryPreviewDrawer from '@/components/library/LibraryPreviewDrawer.vue'
 import LibraryResourceList from '@/components/library/LibraryResourceList.vue'
+import LibraryRestoreDialog from '@/components/library/LibraryRestoreDialog.vue'
 import LibraryToolbar from '@/components/library/LibraryToolbar.vue'
+import { DRAWER_TITLE_EDITOR_KEY, type NameEditorRef } from '@/components/library/rename'
+import {
+  createLibraryRestoreQueue,
+  createLibraryRestoreQueueItem,
+  restoreLibraryQueue,
+  type LibraryRestoreQueueItem
+} from '@/components/library/restore'
+import { canGoBack, canGoForward } from '@/composables/useHistoryNav'
 import { useLibraryRuntime } from '@/composables/useLibraryRuntime'
 import type { LibraryQueueItem } from '@/services/library'
 import { useLibraryStore } from '@/stores/library'
@@ -31,7 +40,6 @@ const {
   runtime,
   isLoading,
   pendingResourceIds,
-  refreshingSourceIds,
   replacingSourceIds,
   error: runtimeError,
   loadResources,
@@ -39,16 +47,18 @@ const {
   renameResource,
   deleteResources,
   saveTags,
-  refreshSource,
   replaceFileSource,
-  chooseFilePaths
+  replaceURLSource,
+  chooseFilePaths,
+  chooseFilePath
 } = useLibraryRuntime()
 
 const sidebarCollapsed = ref(false)
 const sidebarOpen = ref(false)
-const sidebarWidth = ref('240px')
+const desktopSidebarWidth = ref('240px')
 const mobileQuery = window.matchMedia('(max-width: 640px)')
 const mobile = ref(mobileQuery.matches)
+const sidebarWidth = computed(() => (mobile.value ? 'min(320px, 80vw)' : desktopSidebarWidth.value))
 const filterOpen = ref(false)
 const searchOpen = ref(false)
 const selectionMode = ref(false)
@@ -58,7 +68,11 @@ const detailOpen = ref(false)
 const previewOpen = ref(false)
 const tagsOpen = ref(false)
 const addOpen = ref(false)
-const renameRequest = ref(0)
+const restoreOpen = ref(false)
+const restoreQueue = ref<LibraryRestoreQueueItem[]>([])
+const restoreBusy = ref(false)
+const restoreError = ref('')
+const activeRestoreItemId = ref<string | null>(null)
 const queue = ref<LibraryQueueItem[]>([])
 const addingResources = ref(false)
 const confirmBusy = ref(false)
@@ -75,17 +89,57 @@ const allVisibleSelected = computed(
     visibleResources.value.length > 0 &&
     visibleResources.value.every(resource => checkedIds.value.includes(resource.id))
 )
+const selectedResources = computed(() => store.resources.filter(resource => checkedIds.value.includes(resource.id)))
+const canRestore = computed(
+  () =>
+    selectedResources.value.length > 0 &&
+    selectedResources.value.every(resource => resource.sources.some(source => !source.available))
+)
 const emptyDescription = computed(() => (store.hasActiveFilter ? '没有符合条件的资源' : '资源库还是空的'))
 
 const navItems = [
-  { label: '资源库', path: '/', icon: lucideFolderOpen },
-  { label: '标签', path: '/tags', icon: lucideTags },
-  { label: '关系图谱', path: '/map', icon: lucideLayoutGrid },
-  { label: '设置', path: '/settings', icon: lucideSettings }
+  { key: 'library' as const, label: '资料库', path: '/library', icon: lucideFolderOpen },
+  { key: 'map' as const, label: '关系图谱', path: '/map', icon: lucideLayoutGrid }
 ]
 
+const editingNameKey = ref<string | null>(null)
+const resourceNameEditors = ref<Record<string, WebUiEditableText | null>>({})
+const nameEditorRefCallbacks = new Map<string, NameEditorRef>()
+
+function setNameEditorRef(id: string): NameEditorRef {
+  let callback = nameEditorRefCallbacks.get(id)
+  if (!callback) {
+    callback = (element: Element | ComponentPublicInstance | null) => {
+      resourceNameEditors.value[id] = element instanceof Element ? (element as WebUiEditableText) : null
+    }
+    nameEditorRefCallbacks.set(id, callback)
+  }
+  return callback
+}
+
+function startResourceRename(resource: ResourceView, surface: 'list' | 'drawer' = 'list') {
+  const key = surface === 'drawer' ? DRAWER_TITLE_EDITOR_KEY : resource.id
+  editingNameKey.value = key
+  void nextTick(() => {
+    resourceNameEditors.value[key]?.select()
+  })
+}
+
+function stopResourceRename() {
+  editingNameKey.value = null
+}
+
+const navDrawRefs = ref<Record<'library' | 'map', WebUiSvgDrawLines | null>>({
+  library: null,
+  map: null
+})
+
+function setNavDrawRef(key: 'library' | 'map', element: unknown) {
+  navDrawRefs.value[key] = (element as WebUiSvgDrawLines | null) ?? null
+}
+
 const navItemClass =
-  'flex min-h-9 w-full min-w-9 items-center gap-2 rounded-full border-0 px-2.5 text-left font-medium text-(--wui-color-text) transition-colors hover:bg-black/4 dark:hover:bg-white/7'
+  'flex items-center gap-2 w-full min-w-9 min-h-9 px-2.5 border-0 rounded-full font-medium cursor-pointer text-left transition-all duration-150 text-(--wui-color-text) [--wui-icon-color:var(--wui-color-accent,#08f)] active:bg-[rgb(34_33_42/0.12)] dark:active:bg-white/15 data-[active=true]:bg-(--wui-color-surface-control,#dfdfdf) data-[active=true]:hover:bg-[color-mix(in_srgb,var(--wui-color-surface-control,#dfdfdf)_90%,var(--wui-color-text,#1b1b1b))] data-[active=true]:active:bg-[color-mix(in_srgb,var(--wui-color-surface-control,#dfdfdf)_70%,var(--wui-color-text,#1b1b1b))]'
 
 function syncMobile() {
   mobile.value = mobileQuery.matches
@@ -103,15 +157,29 @@ function updateSidebarOpen(event: WebUiEvent<WebUiLayout, 'sidebar-open-change'>
 }
 
 function updateSidebarWidth(event: WebUiEvent<WebUiLayout, 'sidebar-width-change'>) {
-  sidebarWidth.value = event.detail.width
+  desktopSidebarWidth.value = event.detail.width
 }
 
-function navigate(path: string) {
+function selectNav(next: 'library' | 'map') {
+  void navDrawRefs.value[next]?.replay()
+
+  if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    navDrawRefs.value[next]?.animate(
+      [{ transform: 'scale(1)' }, { transform: 'scale(1.3)', offset: 0.4 }, { transform: 'scale(1)' }],
+      { duration: 720, easing: 'ease-out' }
+    )
+  }
+
+  const path = next === 'library' ? '/library' : '/map'
   sidebarOpen.value = false
   if (route.path !== path) void router.push(path)
 }
 
 function selectResource(resource: ResourceView) {
+  if (selectionMode.value) {
+    toggleChecked(resource.id)
+    return
+  }
   activeResourceId.value = resource.id
   detailOpen.value = true
 }
@@ -122,9 +190,7 @@ function previewResource(resource: ResourceView) {
 }
 
 function renameResourceFromMenu(resource: ResourceView) {
-  activeResourceId.value = resource.id
-  detailOpen.value = true
-  renameRequest.value += 1
+  startResourceRename(resource)
 }
 
 function editResourceTags(resource: ResourceView) {
@@ -134,7 +200,20 @@ function editResourceTags(resource: ResourceView) {
 
 function toggleSelectionMode() {
   selectionMode.value = !selectionMode.value
-  if (!selectionMode.value) checkedIds.value = []
+  if (selectionMode.value) {
+    stopResourceRename()
+    setDetailOpen(false)
+  } else {
+    checkedIds.value = []
+  }
+}
+
+function setDetailOpen(open: boolean) {
+  detailOpen.value = open
+  if (!open) {
+    if (editingNameKey.value === DRAWER_TITLE_EDITOR_KEY) stopResourceRename()
+    activeResourceId.value = null
+  }
 }
 
 function toggleChecked(resourceId: string) {
@@ -186,9 +265,8 @@ function finishDelete(deletedIds: string[]) {
   const deleted = new Set(deletedIds)
   checkedIds.value = checkedIds.value.filter(id => !deleted.has(id))
   if (activeResourceId.value && deleted.has(activeResourceId.value)) {
-    detailOpen.value = false
+    setDetailOpen(false)
     previewOpen.value = false
-    activeResourceId.value = null
   }
 }
 
@@ -282,15 +360,6 @@ async function pickFiles() {
   }
 }
 
-function enqueueUrl(url: string) {
-  queue.value.push({
-    id: queueId('url'),
-    kind: 'url',
-    title: titleFromLocation(url),
-    location: url
-  })
-}
-
 function renameQueueItem(itemId: string, title: string) {
   queue.value = queue.value.map(item => (item.id === itemId ? { ...item, title } : item))
 }
@@ -323,6 +392,15 @@ async function handleRename(resourceId: string, title: string) {
   }
 }
 
+function handleResourceNameChange(resource: ResourceView, event: WebUiEvent<WebUiEditableText, 'change'>) {
+  const editor = event.currentTarget
+  const title = editor.value.trim()
+  const nextTitle = title || resource.title
+  if (editor.value !== nextTitle) editor.value = nextTitle
+  if (nextTitle !== resource.title) void handleRename(resource.id, nextTitle)
+  stopResourceRename()
+}
+
 async function handleSaveTags(resourceId: string, tagNames: string[]) {
   try {
     await saveTags(resourceId, tagNames)
@@ -332,19 +410,58 @@ async function handleSaveTags(resourceId: string, tagNames: string[]) {
   }
 }
 
-async function handleRefreshSource(source: ResourceSourceView) {
-  try {
-    await refreshSource(source)
-  } catch {
-    // 错误由 runtimeError 呈现。
+function openRestoreDialog(items: LibraryRestoreQueueItem[]) {
+  if (!items.length || restoreBusy.value) return
+  restoreQueue.value = items
+  restoreError.value = ''
+  activeRestoreItemId.value = null
+  restoreOpen.value = true
+}
+
+function setRestoreOpen(open: boolean) {
+  restoreOpen.value = open
+  if (!open && !restoreBusy.value) {
+    restoreQueue.value = []
+    restoreError.value = ''
+    activeRestoreItemId.value = null
   }
 }
 
-async function handleReplaceSource(sourceId: string) {
+function handleRecoverSource(source: ResourceSourceView) {
+  const resource = store.resources.find(item => item.sources.some(itemSource => itemSource.id === source.id))
+  if (!resource) return
+  openRestoreDialog([createLibraryRestoreQueueItem(resource, source)])
+}
+
+function handleBatchRestore() {
+  if (!canRestore.value) return
+  openRestoreDialog(createLibraryRestoreQueue(selectedResources.value))
+}
+
+async function submitRestoreQueue(items: LibraryRestoreQueueItem[]) {
+  if (!items.length || restoreBusy.value) return
+  restoreBusy.value = true
+  restoreError.value = ''
+  activeRestoreItemId.value = null
   try {
-    await replaceFileSource(sourceId)
-  } catch {
-    // 错误由 runtimeError 呈现。
+    const result = await restoreLibraryQueue(items, {
+      chooseFilePath,
+      replaceFileSource,
+      replaceURLSource,
+      onItemStart: itemId => {
+        activeRestoreItemId.value = itemId
+      }
+    })
+    const completedIds = new Set(result.completedIds)
+    restoreQueue.value = items.filter(item => !completedIds.has(item.id))
+    if (result.failed) {
+      restoreError.value = takeOperationError(result.failed.cause, '找回资源失败，请稍后重试')
+      return
+    }
+    if (!restoreQueue.value.length) setRestoreOpen(false)
+  } finally {
+    activeRestoreItemId.value = null
+    restoreBusy.value = false
   }
 }
 
@@ -359,7 +476,7 @@ onMounted(() => {
   <web-ui-layout
     header-glow
     sidebarResizable
-    class="min-h-dvh overflow-x-clip text-(--wui-color-text) bg-(--wui-color-page)"
+    class="min-h-dvh overflow-x-clip text-[#22212a] bg-white dark:text-(--wui-color-text) dark:bg-(--wui-color-page)"
     :sidebarCollapsed="sidebarCollapsed"
     :sidebarOpen="sidebarOpen"
     :sidebarWidth="sidebarWidth"
@@ -368,36 +485,37 @@ onMounted(() => {
     @sidebar-width-change="updateSidebarWidth"
   >
     <div slot="sidebar" class="relative z-20 h-full pt-14 pb-4 px-2 max-[640px]:px-0" aria-label="应用导航">
-      <div class="mb-3 flex h-9 min-w-0 items-center gap-2 px-2.5 max-[640px]:hidden">
-        <span
-          class="grid size-6 shrink-0 place-items-center rounded-md bg-(--wui-color-accent) text-xs font-bold text-white"
-        >
-          I
-        </span>
-        <span v-if="!sidebarCollapsed" class="truncate text-sm font-semibold">Interweave</span>
-      </div>
       <nav class="grid gap-1" aria-label="主导航">
         <button
           v-for="item in navItems"
-          :key="item.path"
+          :key="item.key"
           type="button"
           :class="[
             navItemClass,
-            route.path === item.path ? 'bg-(--wui-color-surface-control)' : '',
+            route.path === item.path ? '' : 'hover:bg-black/4 dark:hover:bg-white/6',
             sidebarCollapsed ? 'justify-center' : ''
           ]"
           :data-active="route.path === item.path"
           :aria-current="route.path === item.path ? 'page' : undefined"
           :aria-label="item.label"
-          @click="navigate(item.path)"
+          @click="selectNav(item.key)"
         >
-          <web-ui-icon :icon="item.icon" :size="18" class="shrink-0" />
-          <span v-if="!sidebarCollapsed" class="truncate whitespace-nowrap">{{ item.label }}</span>
+          <web-ui-tooltip
+            portal
+            placement="right"
+            :content="sidebarCollapsed ? item.label : ''"
+            :disabled="!sidebarCollapsed"
+          >
+            <web-ui-svg-draw-lines :ref="element => setNavDrawRef(item.key, element)" :duration="720" easing="ease-out">
+              <web-ui-icon :icon="item.icon" :size="18" />
+            </web-ui-svg-draw-lines>
+          </web-ui-tooltip>
+          <span v-if="!sidebarCollapsed" class="text-sm whitespace-nowrap overflow-hidden">{{ item.label }}</span>
         </button>
       </nav>
     </div>
 
-    <header slot="header" class="w-full border-b border-black/5 dark:border-white/8">
+    <header slot="header" class="w-full">
       <LibraryToolbar
         :search-query="store.searchQuery"
         :filter-source="store.filterSource"
@@ -412,6 +530,10 @@ onMounted(() => {
         :selection-mode="selectionMode"
         :selected-count="checkedIds.length"
         :all-visible-selected="allVisibleSelected"
+        :mobile="mobile"
+        :can-go-back="canGoBack"
+        :can-go-forward="canGoForward"
+        :can-restore="canRestore"
         @update:search-query="store.searchQuery = $event"
         @update:filter-source="store.filterSource = $event"
         @update:filter-kind="store.filterKind = $event"
@@ -424,53 +546,63 @@ onMounted(() => {
         @select="toggleSelectionMode"
         @select-all="toggleCheckAll"
         @delete-selected="requestDeleteSelected"
+        @restore="handleBatchRestore"
         @reset="store.resetFilters()"
+        @back="router.back()"
+        @forward="router.forward()"
       />
     </header>
 
-    <main class="min-w-0 flex-1 px-6 pt-2 pb-16 max-[640px]:px-3" aria-label="资源库">
-      <div
-        v-if="runtimeError"
-        class="mb-3 flex min-h-10 items-center justify-between gap-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-400/12 dark:text-red-200"
-        role="alert"
-      >
-        <span class="min-w-0 wrap-break-word">{{ runtimeError }}</span>
-        <web-ui-button size="28" variant="ghost" @click="runtimeError = ''">关闭</web-ui-button>
-      </div>
+    <div class="flex min-h-0 flex-1">
+      <main class="flex-1 min-w-0 px-6 max-[640px]:px-3 pb-16 pt-2">
+        <div
+          v-if="runtimeError"
+          class="mb-3 flex min-h-10 items-center justify-between gap-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-400/12 dark:text-red-200"
+          role="alert"
+        >
+          <span class="min-w-0 wrap-break-word">{{ runtimeError }}</span>
+          <web-ui-button size="28" variant="ghost" @click="runtimeError = ''">关闭</web-ui-button>
+        </div>
 
-      <LibraryResourceList
-        :resources="visibleResources"
-        :active-resource-id="activeResourceId"
-        :checked-ids="checkedIds"
-        :selection-mode="selectionMode"
-        :loading="isLoading"
-        :empty-description="emptyDescription"
-        @select="selectResource"
-        @preview="previewResource"
-        @rename="renameResourceFromMenu"
+        <LibraryResourceList
+          :resources="visibleResources"
+          :active-resource-id="activeResourceId"
+          :checked-ids="checkedIds"
+          :selection-mode="selectionMode"
+          :editing-name-key="editingNameKey"
+          :editor-ref="setNameEditorRef"
+          :loading="isLoading"
+          :empty-description="emptyDescription"
+          @select="selectResource"
+          @preview="previewResource"
+          @start-rename="renameResourceFromMenu"
+          @edit-tags="editResourceTags"
+          @delete="requestDeleteResource"
+          @recover="handleRecoverSource"
+          @toggle="toggleChecked"
+          @rename-change="handleResourceNameChange"
+          @cancel-rename="stopResourceRename"
+        />
+      </main>
+
+      <LibraryDetailDrawer
+        :open="detailOpen"
+        :resource="selectedResource"
+        :mobile="mobile"
+        :editing-name-key="editingNameKey"
+        :editor-ref="setNameEditorRef(DRAWER_TITLE_EDITOR_KEY)"
+        :replacing-source-ids="replacingSourceIds"
+        @update:open="setDetailOpen"
+        @start-rename="startResourceRename($event, 'drawer')"
+        @rename-change="handleResourceNameChange"
+        @cancel-rename="stopResourceRename"
         @edit-tags="editResourceTags"
         @delete="requestDeleteResource"
-        @refresh="handleRefreshSource"
-        @replace="handleReplaceSource"
-        @toggle="toggleChecked"
+        @preview="previewResource"
+        @recover="handleRecoverSource"
       />
-    </main>
-
-    <LibraryDetailDrawer
-      v-model:open="detailOpen"
-      :resource="selectedResource"
-      :mobile="mobile"
-      :rename-request="renameRequest"
-      :refreshing-source-ids="refreshingSourceIds"
-      :replacing-source-ids="replacingSourceIds"
-      @rename="handleRename"
-      @edit-tags="editResourceTags"
-      @delete="requestDeleteResource"
-      @preview="previewResource"
-      @refresh="handleRefreshSource"
-      @replace="handleReplaceSource"
-    />
-    <LibraryPreviewDrawer v-model:open="previewOpen" :resource="selectedResource" :mobile="mobile" />
+      <LibraryPreviewDrawer v-model:open="previewOpen" :resource="selectedResource" :mobile="mobile" />
+    </div>
 
     <LibraryAddDialog
       :open="addOpen"
@@ -478,9 +610,9 @@ onMounted(() => {
       :runtime-kind="runtime.kind"
       :busy="addingResources"
       :error="addError"
+      :mobile="mobile"
       @pick-files="pickFiles"
       @drop-files="enqueueFileTitles"
-      @add-url="enqueueUrl"
       @remove="requestQueueRemoval"
       @rename="renameQueueItem"
       @submit="submitQueue"
@@ -492,7 +624,19 @@ onMounted(() => {
       :resource="selectedResource"
       :all-tag-names="store.allTagNames"
       :busy="pendingResourceIds.includes(activeResourceId ?? '')"
+      :error="runtimeError"
       @save="handleSaveTags"
+    />
+
+    <LibraryRestoreDialog
+      :open="restoreOpen"
+      :queue="restoreQueue"
+      :busy="restoreBusy"
+      :error="restoreError"
+      :mobile="mobile"
+      :active-item-id="activeRestoreItemId"
+      @update:open="setRestoreOpen"
+      @submit="submitRestoreQueue"
     />
 
     <LibraryConfirmDialog
@@ -503,6 +647,7 @@ onMounted(() => {
       :danger="confirmRequest?.danger ?? false"
       :busy="confirmBusy"
       :error="confirmError"
+      :compact="confirmRequest?.title === '移除待添加项'"
       @confirm="runConfirmedAction"
       @cancel="closeConfirmDialog"
     />
