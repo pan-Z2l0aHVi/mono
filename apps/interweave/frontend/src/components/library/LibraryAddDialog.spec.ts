@@ -184,6 +184,23 @@ describe('LibraryAddDialog', () => {
     }
   })
 
+  it('名称编辑按钮常显，不带 hover 显隐 class', async () => {
+    const mounted = mountDialog([queueItem()])
+
+    try {
+      await nextTick()
+      const editButton = button(mounted.host, '编辑名称')
+      const classList = editButton.getAttribute('class') ?? ''
+
+      expect(classList).not.toContain('opacity-0')
+      expect(classList).not.toContain('group-hover')
+      expect(classList).not.toContain('group-focus-within')
+      expect(editButton.hidden).toBe(false)
+    } finally {
+      mounted.close()
+    }
+  })
+
   it('逐字保留原型 tags 行 class 并把目标队列项传给编辑事件', async () => {
     const item = queueItem({ tags: ['设计'] })
     const editTags = vi.fn<(target: LibraryQueueItem) => void>()
