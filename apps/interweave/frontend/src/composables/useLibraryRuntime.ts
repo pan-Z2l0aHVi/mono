@@ -199,6 +199,16 @@ export function useLibraryRuntime(injectedRuntime?: LibraryRuntime) {
     return runtime.getClipboardFilePaths()
   }
 
+  async function openExternal(target: string) {
+    error.value = ''
+    try {
+      await runtime.openExternal(target)
+    } catch (cause) {
+      error.value = errorMessage(cause)
+      throw cause
+    }
+  }
+
   function resourceMediaURL(sourceId: string) {
     if (!runtime.isAvailable) return null
     return runtime.resourceMediaURL(sourceId)
@@ -233,6 +243,7 @@ export function useLibraryRuntime(injectedRuntime?: LibraryRuntime) {
     chooseFilePaths,
     chooseFilePath,
     getClipboardFilePaths,
+    openExternal,
     resourceMediaURL,
     subscribeToDroppedFiles,
     subscribeToPasteFileRequest

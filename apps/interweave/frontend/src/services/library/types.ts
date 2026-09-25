@@ -21,6 +21,7 @@ export interface LibraryRuntime {
   chooseFilePaths(): Promise<string[]>
   chooseFilePath(): Promise<string | null>
   getClipboardFilePaths(): Promise<string[]>
+  openExternal(target: string): Promise<void>
   resourceMediaURL(sourceId: string): string | null
   subscribeToDroppedFiles(listener: (paths: string[]) => void): () => void
   subscribeToPasteFileRequest(listener: () => void): () => void

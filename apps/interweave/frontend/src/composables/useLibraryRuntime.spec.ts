@@ -67,6 +67,7 @@ function createRuntime(overrides: Partial<LibraryRuntime> = {}): LibraryRuntime 
     chooseFilePaths: async () => [],
     chooseFilePath: async () => null,
     getClipboardFilePaths: async () => [],
+    openExternal: async () => {},
     resourceMediaURL: () => null,
     subscribeToDroppedFiles: () => () => {},
     subscribeToPasteFileRequest: () => () => {},

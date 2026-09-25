@@ -52,6 +52,7 @@ const {
   chooseFilePaths,
   chooseFilePath,
   getClipboardFilePaths,
+  openExternal,
   resourceMediaURL,
   subscribeToDroppedFiles,
   subscribeToPasteFileRequest
@@ -632,7 +633,14 @@ onMounted(() => {
         @preview="previewResource"
         @recover="handleRecoverSource"
       />
-      <LibraryPreviewDrawer v-model:open="previewOpen" :resource="selectedResource" :mobile="mobile" />
+      <LibraryPreviewDrawer
+        v-model:open="previewOpen"
+        :resource="selectedResource"
+        :mobile="mobile"
+        :media-url-for="resourceMediaURL"
+        :open-external="openExternal"
+        @open-failed="runtimeError = takeOperationError($event, '无法在系统浏览器中打开')"
+      />
     </div>
 
     <LibraryAddDialog

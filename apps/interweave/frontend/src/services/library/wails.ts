@@ -86,6 +86,10 @@ class WailsLibraryRuntime implements LibraryRuntime {
     return OSService.GetClipboardFilePaths()
   }
 
+  async openExternal(target: string) {
+    await OSService.OpenExternal(target)
+  }
+
   resourceMediaURL(sourceId: string) {
     return `/resource-media/${encodeURIComponent(sourceId)}`
   }
