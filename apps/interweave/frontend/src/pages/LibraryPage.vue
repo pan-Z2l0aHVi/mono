@@ -370,10 +370,6 @@ function enqueueFileLocations(locations: string[]) {
   }
 }
 
-function enqueueFileTitles(fileTitles: string[]) {
-  enqueueFileLocations(fileTitles)
-}
-
 async function pasteFilePaths() {
   try {
     addError.value = ''
@@ -387,7 +383,7 @@ async function pasteFilePaths() {
 async function pickFiles() {
   try {
     addError.value = ''
-    enqueueFileTitles(await chooseFilePaths())
+    enqueueFileLocations(await chooseFilePaths())
   } catch (cause) {
     addError.value = takeOperationError(cause, '选择文件失败')
   }
@@ -605,6 +601,7 @@ onMounted(() => {
           :editing-name-key="editingNameKey"
           :editor-ref="setNameEditorRef"
           :loading="isLoading"
+          :runtime-available="runtime.isAvailable"
           :empty-description="emptyDescription"
           :media-url-for="resourceMediaURL"
           @select="selectResource"
@@ -641,12 +638,10 @@ onMounted(() => {
     <LibraryAddDialog
       :open="addOpen"
       :queue="queue"
-      :runtime-kind="runtime.kind"
       :busy="addingResources"
       :error="addError"
       :mobile="mobile"
       @pick-files="pickFiles"
-      @drop-files="enqueueFileTitles"
       @request-file-paths="pasteFilePaths"
       @remove="requestQueueRemoval"
       @rename="renameQueueItem"

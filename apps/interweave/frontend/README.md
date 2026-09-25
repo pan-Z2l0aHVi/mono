@@ -4,13 +4,18 @@
 
 ## 结构
 
-- `src/components/`：通用应用壳；当前仅保留无业务内容的 `AppLayout`。
-- `src/pages/`：资源库、标签、Map 和设置的页面挂载点；当前均为 3 行骨架。`src/pages/prototype/InterweaveShellPrototypePage.vue` 是唯一已实现内容的 prototype 页（路由 `/prototype/interweave-shell`）。
-- `src/composables/`：前端组合式函数（当前仅 `useHistoryNav`）。
-- `src/stores/`：Pinia 注入和未来领域状态的统一入口；当前不保存业务状态。
-- `src/router.ts`：前端路由骨架。
+- `src/components/`：应用壳与资源库组件。
+- `src/pages/`：资源库、标签、Map、设置页面，以及路由 `/prototype/interweave-shell` 的独立 prototype 页。
+- `src/composables/`：历史导航与资源库运行时组合式函数。
+- `src/services/library/`：资源库 Wails API adapter；普通浏览器没有 Wails bridge，因此不加载业务数据。
+- `src/stores/`：Pinia 注入与资源库展示状态。
+- `src/router.ts`：前端路由。
 - `src/assets/`：前端全局基础样式。
 - `bindings/`：Wails 生成的 TypeScript bindings，不手工修改；应用只消费 `backend/library` 与 `backend/native` 暴露的 Interweave Go Service bindings，Wails runtime bindings 不受此业务边界限制。
+
+## 运行时边界
+
+Interweave 前端只使用桌面 Wails API 作为业务数据源。普通浏览器仅用于样式调试，`/#/library` 在没有 Wails bridge 时显示空态，不提供 fixture、demo 或 mock 数据。prototype 页使用自身声明的本地数据，与生产运行时无关。
 
 ## Agent 入口
 

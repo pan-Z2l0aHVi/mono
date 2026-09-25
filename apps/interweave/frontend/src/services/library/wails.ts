@@ -10,7 +10,7 @@ import { OSService } from '../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/i
 import { requireResourceDTO, requireSourceDTO, requireTagDTO, type LibraryRuntime } from './types'
 
 class WailsLibraryRuntime implements LibraryRuntime {
-  readonly kind = 'wails' as const
+  readonly isAvailable = hasWailsRuntime()
 
   async listResources() {
     return ResourceService.ListResources()

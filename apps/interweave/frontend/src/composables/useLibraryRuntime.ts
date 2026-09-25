@@ -36,6 +36,12 @@ export function useLibraryRuntime(injectedRuntime?: LibraryRuntime) {
   }
 
   async function loadResources() {
+    if (!runtime.isAvailable) {
+      error.value = ''
+      store.setResources([])
+      return
+    }
+
     isLoading.value = true
     error.value = ''
     try {
@@ -194,14 +200,17 @@ export function useLibraryRuntime(injectedRuntime?: LibraryRuntime) {
   }
 
   function resourceMediaURL(sourceId: string) {
+    if (!runtime.isAvailable) return null
     return runtime.resourceMediaURL(sourceId)
   }
 
   function subscribeToDroppedFiles(listener: (paths: string[]) => void) {
+    if (!runtime.isAvailable) return () => {}
     return runtime.subscribeToDroppedFiles(listener)
   }
 
   function subscribeToPasteFileRequest(listener: () => void) {
+    if (!runtime.isAvailable) return () => {}
     return runtime.subscribeToPasteFileRequest(listener)
   }
 
