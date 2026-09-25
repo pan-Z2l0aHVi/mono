@@ -70,6 +70,13 @@
     "cooccurring",
     "vnode",
     "Herdr",
-    "akar"
+    "akar",
+    "alac",
+    "HDROP",
+    "NSJSON",
+    "NSPasteboard",
+    "NSURL",
+    "NSUTF",
+    "xclip"
   ]
 }

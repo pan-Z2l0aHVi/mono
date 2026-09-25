@@ -1,7 +1,15 @@
 <script setup lang="ts">
 import type { WebUiDialog, WebUiEvent, WebUiInput } from '@greypan/web-ui'
-import { lucideFile, lucideGlobe, lucidePenLine, lucidePlus, lucideTrash2, lucideUpload } from '@greypan/web-ui/icons'
-import { ref, watch } from 'vue'
+import {
+  lucideClipboardPaste,
+  lucideFile,
+  lucideGlobe,
+  lucidePenLine,
+  lucidePlus,
+  lucideTrash2,
+  lucideUpload
+} from '@greypan/web-ui/icons'
+import { onMounted, onScopeDispose, ref, watch } from 'vue'
 
 import type { LibraryQueueItem, LibraryRuntimeKind } from '@/services/library'
 
@@ -20,6 +28,7 @@ const emit = defineEmits<{
   'update:open': [value: boolean]
   pickFiles: []
   dropFiles: [fileTitles: string[]]
+  requestFilePaths: []
   remove: [itemId: string]
   rename: [itemId: string, title: string]
   submit: []
@@ -49,6 +58,31 @@ function handleDrop(event: DragEvent) {
   const fileTitles = [...(event.dataTransfer?.files ?? [])].map(file => file.name)
   if (fileTitles.length) emit('dropFiles', fileTitles)
 }
+
+function handlePaste(event: ClipboardEvent) {
+  if (!props.open) return
+  if (isEditableTarget(event.target)) return
+  if (props.runtimeKind === 'fixture') {
+    const fileTitles = [...(event.clipboardData?.files ?? [])].map(file => file.name)
+    if (fileTitles.length) emit('dropFiles', fileTitles)
+    return
+  }
+  emit('requestFilePaths')
+}
+
+function isEditableTarget(target: EventTarget | null) {
+  return (
+    target instanceof HTMLElement &&
+    (target.isContentEditable || Boolean(target.closest('input, textarea, select, [contenteditable="true"]')))
+  )
+}
+
+onMounted(() => {
+  window.addEventListener('paste', handlePaste)
+})
+onScopeDispose(() => {
+  window.removeEventListener('paste', handlePaste)
+})
 
 function startRename(item: LibraryQueueItem) {
   editingItemId.value = item.id
@@ -103,12 +137,26 @@ function handleRenameKeydown(event: KeyboardEvent, itemId: string) {
       style="height: min(calc(90vh - 108px), calc(var(--wui-dialog-max-height, 640px) - 108px))"
     >
       <section class="grid min-h-0 min-w-0 grid-rows-[auto_minmax(0,1fr)] gap-2.5 overflow-hidden">
-        <p class="m-0 min-w-0 truncate text-[13px] leading-6 text-[#6a6a6a] dark:text-(--wui-color-text-secondary)">
-          选择本地文件，或将其拖入上传区；也可以直接粘贴内容。
-        </p>
+        <div class="flex min-w-0 items-center justify-between gap-2">
+          <p class="m-0 min-w-0 truncate text-[13px] leading-6 text-[#6a6a6a] dark:text-(--wui-color-text-secondary)">
+            选择本地文件，或将其拖入上传区；也可以粘贴复制的文件。
+          </p>
+          <web-ui-button
+            v-if="runtimeKind === 'wails'"
+            icon
+            variant="ghost"
+            size="28"
+            aria-label="粘贴复制的文件"
+            title="粘贴复制的文件"
+            @click="emit('requestFilePaths')"
+          >
+            <web-ui-icon :icon="lucideClipboardPaste" :size="15" />
+          </web-ui-button>
+        </div>
         <button
           type="button"
-          class="grid h-full place-content-center justify-items-center gap-3 rounded-3xl bg-[#f0f0f4] px-6 py-7 text-center transition-[background-color] duration-[160ms] hover:bg-[#e9e9ee] dark:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_4%,transparent)] dark:hover:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_7%,transparent)] max-[640px]:gap-2 max-[640px]:px-4 max-[640px]:py-2 max-[900px]:p-5"
+          class="grid h-full place-content-center justify-items-center gap-3 rounded-3xl bg-[#f0f0f4] px-6 py-7 text-center transition-[background-color] duration-[160ms] hover:bg-[#e9e9ee] file-drop-target-active:scale-[1.005] file-drop-target-active:bg-[color-mix(in_srgb,var(--wui-color-accent,#08f)_9%,transparent)] dark:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_4%,transparent)] dark:file-drop-target-active:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_7%,transparent)] max-[640px]:gap-2 max-[640px]:px-4 max-[640px]:py-2 max-[900px]:p-5"
+          data-file-drop-target="library-add-files"
           :class="dragActive ? 'scale-[1.005] bg-[color-mix(in_srgb,var(--wui-color-accent,#08f)_9%,transparent)]' : ''"
           @click="emit('pickFiles')"
           @dragenter.prevent="dragActive = true"

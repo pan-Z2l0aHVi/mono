@@ -55,4 +55,13 @@ describe('fixture LibraryRuntime', () => {
     await runtime.deleteResource(created.id)
     await expect(runtime.getResource(created.id)).rejects.toThrow('Resource 不存在')
   })
+
+  it('为媒体 fixture 提供受控 URL，且不伪造系统剪贴板路径', async () => {
+    const runtime = createFixtureLibraryRuntime()
+
+    expect(runtime.resourceMediaURL('fixture-visual-reference-file')).toBe('/interweave-transparent.png')
+    expect(runtime.resourceMediaURL('fixture-launch-video-file')).toBe('/fixtures/resource-preview.webm')
+    expect(runtime.resourceMediaURL('missing')).toBeNull()
+    await expect(runtime.getClipboardFilePaths()).resolves.toEqual([])
+  })
 })

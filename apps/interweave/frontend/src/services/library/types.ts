@@ -22,6 +22,10 @@ export interface LibraryRuntime {
   replaceURLSource(sourceId: string, inputURL: string): Promise<SourceDTO>
   chooseFilePaths(): Promise<string[]>
   chooseFilePath(): Promise<string | null>
+  getClipboardFilePaths(): Promise<string[]>
+  resourceMediaURL(sourceId: string): string | null
+  subscribeToDroppedFiles(listener: (paths: string[]) => void): () => void
+  subscribeToPasteFileRequest(listener: () => void): () => void
 }
 
 export interface LibraryQueueItem {

@@ -50,7 +50,11 @@ const {
   replaceFileSource,
   replaceURLSource,
   chooseFilePaths,
-  chooseFilePath
+  chooseFilePath,
+  getClipboardFilePaths,
+  resourceMediaURL,
+  subscribeToDroppedFiles,
+  subscribeToPasteFileRequest
 } = useLibraryRuntime()
 
 const sidebarCollapsed = ref(false)
@@ -79,6 +83,17 @@ const confirmBusy = ref(false)
 const confirmRequest = ref<ConfirmRequest | null>(null)
 const confirmError = ref('')
 const addError = ref('')
+const stopDroppedFiles = subscribeToDroppedFiles(paths => {
+  if (addOpen.value) enqueueFileLocations(paths)
+})
+const stopPasteFileRequest = subscribeToPasteFileRequest(() => {
+  addOpen.value = true
+  void pasteFilePaths()
+})
+onScopeDispose(() => {
+  stopDroppedFiles()
+  stopPasteFileRequest()
+})
 
 const visibleResources = computed(() => store.filteredResources)
 const selectedResource = computed(
@@ -340,14 +355,32 @@ function titleFromLocation(location: string) {
   )
 }
 
-function enqueueFileTitles(fileTitles: string[]) {
-  for (const location of fileTitles) {
+function enqueueFileLocations(locations: string[]) {
+  const existingLocations = new Set(queue.value.map(item => item.location))
+  for (const value of locations) {
+    const location = value.trim()
+    if (!location || existingLocations.has(location)) continue
     queue.value.push({
       id: queueId('file'),
       kind: 'file',
       title: titleFromLocation(location),
       location
     })
+    existingLocations.add(location)
+  }
+}
+
+function enqueueFileTitles(fileTitles: string[]) {
+  enqueueFileLocations(fileTitles)
+}
+
+async function pasteFilePaths() {
+  try {
+    addError.value = ''
+    const paths = await getClipboardFilePaths()
+    if (addOpen.value) enqueueFileLocations(paths)
+  } catch (cause) {
+    addError.value = takeOperationError(cause, '读取剪贴板文件失败')
   }
 }
 
@@ -573,6 +606,7 @@ onMounted(() => {
           :editor-ref="setNameEditorRef"
           :loading="isLoading"
           :empty-description="emptyDescription"
+          :media-url-for="resourceMediaURL"
           @select="selectResource"
           @preview="previewResource"
           @start-rename="renameResourceFromMenu"
@@ -613,6 +647,7 @@ onMounted(() => {
       :mobile="mobile"
       @pick-files="pickFiles"
       @drop-files="enqueueFileTitles"
+      @request-file-paths="pasteFilePaths"
       @remove="requestQueueRemoval"
       @rename="renameQueueItem"
       @submit="submitQueue"

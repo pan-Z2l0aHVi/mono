@@ -375,6 +375,11 @@ function titleFromURL(inputURL: string) {
   return pathTitle ? `${parsed.hostname} · ${pathTitle}` : parsed.hostname
 }
 
+const fixtureMediaURLs: Record<string, string> = {
+  'fixture-visual-reference-file': '/interweave-transparent.png',
+  'fixture-launch-video-file': '/fixtures/resource-preview.webm'
+}
+
 function normalizeTag(tagName: string) {
   const normalized = tagName.trim().replace(/\s+/g, ' ')
   if (!normalized) throw new Error('标签名称不能为空')
@@ -558,6 +563,22 @@ class FixtureLibraryRuntime implements LibraryRuntime {
 
   async chooseFilePath() {
     return (await this.chooseFixtureFiles(false))[0] ?? null
+  }
+
+  async getClipboardFilePaths() {
+    return []
+  }
+
+  resourceMediaURL(sourceId: string) {
+    return fixtureMediaURLs[sourceId] ?? null
+  }
+
+  subscribeToDroppedFiles(_listener: (paths: string[]) => void) {
+    return () => {}
+  }
+
+  subscribeToPasteFileRequest(_listener: () => void) {
+    return () => {}
   }
 
   private chooseFixtureFiles(multiple: boolean) {

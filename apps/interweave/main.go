@@ -8,8 +8,10 @@ import (
 	"path/filepath"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
+	"github.com/wailsapp/wails/v3/pkg/events"
 
 	coreLibrary "github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/core"
+	libraryMedia "github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/media"
 	libraryService "github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/service"
 	"github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage"
 	nativeService "github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/native/service"
@@ -31,6 +33,21 @@ func getDatabasePath() (string, error) {
 		return "", fmt.Errorf("failed to create data directory %s: %w", appDir, err)
 	}
 	return filepath.Join(appDir, "library.db"), nil
+}
+
+func addPasteFilesMenuItem(menu *application.Menu, onPaste func()) bool {
+	editMenu := menu.FindByRole(application.EditMenu)
+	if editMenu == nil {
+		return false
+	}
+	editMenu.GetSubmenu().AddSeparator()
+	editMenu.GetSubmenu().
+		Add("Paste Files").
+		SetAccelerator("CmdOrCtrl+Shift+v").
+		OnClick(func(*application.Context) {
+			onPaste()
+		})
+	return true
 }
 
 func main() {
@@ -56,6 +73,7 @@ func main() {
 	tagService := libraryService.NewTagService(coreTagService)
 	mapService := libraryService.NewMapService(coreMapService)
 	osService := nativeService.NewOSService()
+	mediaHandler := libraryMedia.NewHandler(storage.SourceStore{}, db.SqlDB())
 
 	// 仅暴露产品与受控原生能力，避免基础设施绕过后端边界。
 	app := application.New(application.Options{
@@ -69,17 +87,20 @@ func main() {
 			application.NewService(osService),
 		},
 		Assets: application.AssetOptions{
-			Handler: application.AssetFileServerFS(assets),
+			Handler:    application.AssetFileServerFS(assets),
+			Middleware: mediaHandler.Middleware,
 		},
 		Mac: application.MacOptions{
 			ApplicationShouldTerminateAfterLastWindowClosed: true,
 		},
 	})
 
-	app.Window.NewWithOptions(application.WebviewWindowOptions{
-		Title:  "Interweave",
-		Width:  1280,
-		Height: 800,
+	window := app.Window.NewWithOptions(application.WebviewWindowOptions{
+		Title:              "Interweave",
+		Width:              1280,
+		Height:             800,
+		EnableFileDrop:     true,
+		UseApplicationMenu: true,
 		Mac: application.MacWindow{
 			InvisibleTitleBarHeight: 50,
 			Backdrop:                application.MacBackdropTranslucent,
@@ -88,6 +109,15 @@ func main() {
 		BackgroundColour: application.NewRGB(6, 7, 15),
 		URL:              "/",
 	})
+	window.OnWindowEvent(events.Common.WindowFilesDropped, func(event *application.WindowEvent) {
+		window.EmitEvent("library:files-dropped", event.Context().DroppedFiles())
+	})
+	menu := application.DefaultApplicationMenu()
+	if addPasteFilesMenuItem(menu, func() {
+		window.EmitEvent("library:paste-files-requested")
+	}) {
+		app.Menu.Set(menu)
+	}
 
 	if err := app.Run(); err != nil {
 		log.Fatal(err)

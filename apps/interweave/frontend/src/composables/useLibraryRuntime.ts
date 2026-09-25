@@ -189,6 +189,22 @@ export function useLibraryRuntime(injectedRuntime?: LibraryRuntime) {
     return runtime.chooseFilePath()
   }
 
+  function getClipboardFilePaths() {
+    return runtime.getClipboardFilePaths()
+  }
+
+  function resourceMediaURL(sourceId: string) {
+    return runtime.resourceMediaURL(sourceId)
+  }
+
+  function subscribeToDroppedFiles(listener: (paths: string[]) => void) {
+    return runtime.subscribeToDroppedFiles(listener)
+  }
+
+  function subscribeToPasteFileRequest(listener: () => void) {
+    return runtime.subscribeToPasteFileRequest(listener)
+  }
+
   return {
     runtime,
     isLoading,
@@ -206,6 +222,10 @@ export function useLibraryRuntime(injectedRuntime?: LibraryRuntime) {
     replaceFileSource,
     replaceURLSource,
     chooseFilePaths,
-    chooseFilePath
+    chooseFilePath,
+    getClipboardFilePaths,
+    resourceMediaURL,
+    subscribeToDroppedFiles,
+    subscribeToPasteFileRequest
   }
 }

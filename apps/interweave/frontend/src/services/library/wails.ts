@@ -1,10 +1,11 @@
-import { Dialogs } from '@wailsio/runtime'
+import { Dialogs, Events } from '@wailsio/runtime'
 
 import {
   ResourceService,
   SourceService,
   TagService
 } from '../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/service'
+import { OSService } from '../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/native/service'
 
 import { requireResourceDTO, requireSourceDTO, requireTagDTO, type LibraryRuntime } from './types'
 
@@ -79,6 +80,26 @@ class WailsLibraryRuntime implements LibraryRuntime {
     })
     if (Array.isArray(selected)) return selected[0] ?? null
     return selected ?? null
+  }
+
+  async getClipboardFilePaths() {
+    return OSService.GetClipboardFilePaths()
+  }
+
+  resourceMediaURL(sourceId: string) {
+    return `/resource-media/${encodeURIComponent(sourceId)}`
+  }
+
+  subscribeToDroppedFiles(listener: (paths: string[]) => void) {
+    return Events.On('library:files-dropped', event => {
+      if (Array.isArray(event.data) && event.data.every(path => typeof path === 'string')) {
+        listener(event.data)
+      }
+    })
+  }
+
+  subscribeToPasteFileRequest(listener: () => void) {
+    return Events.On('library:paste-files-requested', listener)
   }
 }
 

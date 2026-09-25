@@ -34,6 +34,7 @@ const props = defineProps<{
   editorRef: (id: string) => NameEditorRef
   loading: boolean
   emptyDescription: string
+  mediaUrlFor: (sourceId: string) => string | null
 }>()
 
 const emit = defineEmits<{
@@ -144,6 +145,7 @@ function handleRenameChange(resource: ResourceView, event: WebUiEvent<WebUiEdita
         v-for="resource in resources"
         :key="resource.id"
         :resource="resource"
+        :media-url="resource.preferred ? mediaUrlFor(resource.preferred.id) : null"
         :active="!selectionMode && activeResourceId === resource.id"
         :checked="checkedIds.includes(resource.id)"
         :selection-mode="selectionMode"
