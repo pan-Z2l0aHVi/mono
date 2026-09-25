@@ -106,7 +106,7 @@ function restoreResource() {
         </span>
         <web-ui-button
           v-if="!editingTitle"
-          class="shrink-0 opacity-0 transition-opacity duration-120 group-hover/title:opacity-100 group-focus-within/title:opacity-100"
+          class="shrink-0"
           icon
           variant="ghost"
           size="28"
