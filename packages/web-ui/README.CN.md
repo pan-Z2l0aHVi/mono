@@ -1432,7 +1432,6 @@ SVG 线条绘制动画，基于 `stroke-dashoffset`。直接在原元素上动�
 
 | 属性                         | 默认值 | 说明           |
 | ---------------------------- | ------ | -------------- |
-| `--wui-layer-base`           | `0`    | 基础内容       |
 | `--wui-layer-inline-overlay` | `1`    | 组件内部浮层   |
 | `--wui-layer-header`         | `10`   | 页面 Header    |
 | `--wui-layer-auxiliary`      | `20`   | 悬浮工具控件   |

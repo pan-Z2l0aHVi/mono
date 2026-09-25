@@ -1469,7 +1469,6 @@ The host uses `display: contents` and does not paint any background: the library
 
 | Property                     | Default | Description                  |
 | ---------------------------- | ------- | ---------------------------- |
-| `--wui-layer-base`           | `0`     | Base content                 |
 | `--wui-layer-inline-overlay` | `1`     | Overlay local to a component |
 | `--wui-layer-header`         | `10`    | Page header                  |
 | `--wui-layer-auxiliary`      | `20`    | Floating utility controls    |
