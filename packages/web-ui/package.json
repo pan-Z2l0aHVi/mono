@@ -38,7 +38,7 @@
   "scripts": {
     "build": "vp build",
     "test": "vp test run",
-    "dev": "vp build --watch",
+    "dev": "vp build --watch --emptyOutDir=false",
     "generate-icons": "node --experimental-strip-types scripts/generate-icons.ts"
   },
   "dependencies": {
