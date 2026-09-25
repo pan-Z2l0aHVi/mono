@@ -7,7 +7,13 @@ import {
 } from '../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/service'
 import { OSService } from '../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/native/service'
 
-import { requireResourceDTO, requireSourceDTO, requireTagDTO, type LibraryRuntime } from './types'
+import {
+  requireFilePreviewDTO,
+  requireResourceDTO,
+  requireSourceDTO,
+  requireTagDTO,
+  type LibraryRuntime
+} from './types'
 
 class WailsLibraryRuntime implements LibraryRuntime {
   readonly isAvailable = hasWailsRuntime()
@@ -86,8 +92,20 @@ class WailsLibraryRuntime implements LibraryRuntime {
     return OSService.GetClipboardFilePaths()
   }
 
+  async prepareFilePreview(inputPath: string) {
+    return requireFilePreviewDTO(await ResourceService.PrepareFilePreview(inputPath), '准备文件预览')
+  }
+
+  async releaseFilePreview(token: string) {
+    await ResourceService.ReleaseFilePreview(token)
+  }
+
   resourceMediaURL(sourceId: string) {
     return `/resource-media/${encodeURIComponent(sourceId)}`
+  }
+
+  pendingFilePreviewURL(token: string) {
+    return `/pending-resource-media/${encodeURIComponent(token)}`
   }
 
   subscribeToDroppedFiles(listener: (paths: string[]) => void) {

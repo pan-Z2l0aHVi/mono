@@ -10,6 +10,31 @@ import { Create as $Create } from "@wailsio/runtime";
 import * as storage$0 from "../storage/models.js";
 
 /**
+ * FilePreviewDTO 为待添加文件提供权威 kind 与可选的本地媒体读取授权。
+ */
+export class FilePreviewDTO {
+    "kind": ResourceKind;
+    "token"?: string;
+
+    /** Creates a new FilePreviewDTO instance. */
+    constructor($$source: Partial<FilePreviewDTO> = {}) {
+        if (!("kind" in $$source)) {
+            this["kind"] = storage$0.ResourceKind.$zero;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new FilePreviewDTO instance from a string or object.
+     */
+    static createFrom($$source: any = {}): FilePreviewDTO {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new FilePreviewDTO($$parsedSource as Partial<FilePreviewDTO>);
+    }
+}
+
+/**
  * 为 Map 的全局概览提供聚合结果。
  */
 export class GlobalMapDTO {

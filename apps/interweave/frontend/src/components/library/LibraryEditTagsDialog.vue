@@ -3,13 +3,14 @@ import type { WebUiAutocomplete, WebUiDialog, WebUiEvent } from '@greypan/web-ui
 import { lucideTags, lucideX } from '@greypan/web-ui/icons'
 import { computed, ref, watch } from 'vue'
 
+import type { LibraryQueueItem } from '@/services/library'
 import type { ResourceView } from '@/stores/library'
 
 import { tagClass } from './presentation'
 
 const props = defineProps<{
   open: boolean
-  resource: ResourceView | null
+  target: ResourceView | LibraryQueueItem | null
   allTagNames: string[]
   busy: boolean
   error: string
@@ -29,10 +30,10 @@ const options = computed(() => {
 })
 
 watch(
-  () => [props.open, props.resource?.id] as const,
-  ([open, resourceId]) => {
-    if (!open || !resourceId) return
-    draft.value = [...(props.resource?.tagNames ?? [])]
+  () => [props.open, props.target?.id] as const,
+  ([open, targetId]) => {
+    if (!open || !targetId || !props.target) return
+    draft.value = [...('tagNames' in props.target ? props.target.tagNames : props.target.tags)]
     inputValue.value = ''
   },
   { immediate: true }
@@ -65,8 +66,8 @@ function removeTag(tag: string) {
 }
 
 function save() {
-  if (!props.resource) return
-  emit('save', props.resource.id, [...draft.value])
+  if (!props.target) return
+  emit('save', props.target.id, [...draft.value])
 }
 </script>
 

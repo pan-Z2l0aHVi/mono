@@ -65,7 +65,12 @@ export function useLibraryRuntime(injectedRuntime?: LibraryRuntime) {
       const title = item.title.trim()
       const updated = title && title !== created.title ? await runtime.updateResourceTitle(created.id, title) : created
       store.upsertResource(updated)
-      return updated
+      for (const tagName of item.tags) {
+        await runtime.addTag(created.id, tagName)
+      }
+      const saved = item.tags.length ? await runtime.getResource(created.id) : updated
+      store.upsertResource(saved)
+      return saved
     } catch (cause) {
       error.value = errorMessage(cause)
       throw cause

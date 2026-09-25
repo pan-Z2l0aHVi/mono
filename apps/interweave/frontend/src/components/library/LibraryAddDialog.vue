@@ -1,19 +1,21 @@
 <script setup lang="ts">
-import type { WebUiDialog, WebUiEvent, WebUiInput } from '@greypan/web-ui'
+import type { WebUiDialog, WebUiEditableText, WebUiEvent } from '@greypan/web-ui'
 import {
   lucideClipboardPaste,
-  lucideFile,
-  lucideGlobe,
   lucidePenLine,
   lucidePlus,
+  lucideTags,
   lucideTrash2,
   lucideUpload
 } from '@greypan/web-ui/icons'
-import { onMounted, onScopeDispose, ref, watch } from 'vue'
+import { nextTick, onMounted, onScopeDispose, ref, watch, type ComponentPublicInstance } from 'vue'
 
 import type { LibraryQueueItem } from '@/services/library'
+import type { ResourceSourceView } from '@/stores/library'
 
-import { metadataRowClass } from './presentation'
+import LibraryResourceThumbnail from './LibraryResourceThumbnail.vue'
+import { metadataRowClass, tagClass } from './presentation'
+import type { NameEditorRef } from './rename'
 
 const props = defineProps<{
   open: boolean
@@ -29,12 +31,13 @@ const emit = defineEmits<{
   requestFilePaths: []
   remove: [itemId: string]
   rename: [itemId: string, title: string]
+  editTags: [item: LibraryQueueItem]
   submit: []
 }>()
 
 const dragActive = ref(false)
 const editingItemId = ref<string | null>(null)
-const titleDraft = ref('')
+const nameEditors = new Map<string, WebUiEditableText>()
 
 watch(
   () => props.open,
@@ -74,31 +77,41 @@ onScopeDispose(() => {
   window.removeEventListener('paste', handlePaste)
 })
 
+function setNameEditorRef(itemId: string): NameEditorRef {
+  return element => {
+    if (element instanceof Element) nameEditors.set(itemId, element as WebUiEditableText)
+    else nameEditors.delete(itemId)
+  }
+}
+
+function queueSource(item: LibraryQueueItem): ResourceSourceView {
+  return {
+    id: `pending-source-${item.id}`,
+    type: item.kind,
+    location: item.location,
+    available: true,
+    isPreferred: true,
+    orderIndex: 0,
+    metadata: null
+  }
+}
+
 function startRename(item: LibraryQueueItem) {
   editingItemId.value = item.id
-  titleDraft.value = item.title
+  void nextTick(() => nameEditors.get(item.id)?.select())
 }
 
-function handleRenameInput(event: WebUiEvent<WebUiInput, 'input'>) {
-  titleDraft.value = event.target.value
-}
-
-function commitRename(itemId: string) {
-  const title = titleDraft.value.trim()
-  if (title) emit('rename', itemId, title)
+function stopRename() {
   editingItemId.value = null
-  titleDraft.value = ''
 }
 
-function handleRenameKeydown(event: KeyboardEvent, itemId: string) {
-  if (event.key === 'Enter') {
-    event.preventDefault()
-    commitRename(itemId)
-  } else if (event.key === 'Escape') {
-    event.preventDefault()
-    editingItemId.value = null
-    titleDraft.value = ''
-  }
+function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEditableText, 'change'>) {
+  const editor = event.currentTarget
+  const title = editor.value.trim()
+  const nextTitle = title || item.title
+  if (editor.value !== nextTitle) editor.value = nextTitle
+  if (nextTitle !== item.title) emit('rename', item.id, nextTitle)
+  stopRename()
 }
 </script>
 
@@ -194,36 +207,31 @@ function handleRenameKeydown(event: KeyboardEvent, itemId: string) {
           class="m-0 h-full min-h-0 list-none overflow-y-auto rounded-3xl bg-white p-0 [scrollbar-gutter:auto] [scrollbar-width:auto] dark:bg-(--wui-color-surface-raised)"
         >
           <li
-            v-for="item in queue"
+            v-for="(item, itemIndex) in queue"
             :key="item.id"
             :class="[
               metadataRowClass,
               'items-start transition-colors duration-100 hover:bg-black/3 dark:hover:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_5%,transparent)]'
             ]"
           >
-            <span
-              class="grid size-8 shrink-0 place-items-center rounded-[10px]"
-              :class="
-                item.kind === 'file'
-                  ? 'bg-[rgb(124_58_237/0.1)] text-[#7c3aed]'
-                  : 'bg-[rgb(5_150_105/0.1)] text-[#059669]'
-              "
-            >
-              <web-ui-icon :icon="item.kind === 'file' ? lucideFile : lucideGlobe" :size="16" />
-            </span>
+            <LibraryResourceThumbnail
+              data-queue-thumbnail
+              :kind="item.resourceKind"
+              :source="queueSource(item)"
+              :media-url="item.mediaUrl"
+            />
             <span class="grid min-w-0 flex-[1_1_auto] gap-[5px]">
               <div class="flex h-8 items-center gap-2">
                 <span class="flex h-8 min-w-0 flex-[1_1_auto] items-center gap-1.5">
-                  <web-ui-input
+                  <web-ui-editable-text
                     v-if="editingItemId === item.id"
-                    v-model="titleDraft"
-                    full
-                    borderless
-                    class="min-w-0 flex-[1_1_auto]"
-                    aria-label="待添加资源标题"
-                    @input="handleRenameInput"
-                    @keydown="handleRenameKeydown($event, item.id)"
-                    @blur="commitRename(item.id)"
+                    :ref="setNameEditorRef(item.id)"
+                    :value="item.title"
+                    class="min-w-0 flex-[1_1_auto] caret-(--wui-color-accent,#08f) select-text"
+                    :aria-label="`修改 ${item.title} 的名称`"
+                    @click.stop
+                    @change="handleRenameChange(item, $event)"
+                    @cancel="stopRename"
                   />
                   <span
                     v-else
@@ -231,16 +239,15 @@ function handleRenameKeydown(event: KeyboardEvent, itemId: string) {
                   >
                     {{ item.title }}
                   </span>
-                  <web-ui-button
+                  <web-ui-tooltip
                     v-if="editingItemId !== item.id"
-                    icon
-                    variant="ghost"
-                    size="28"
-                    aria-label="编辑待添加资源标题"
-                    @click="startRename(item)"
+                    content="编辑名称"
+                    :placement="itemIndex < 5 ? 'bottom' : 'top'"
                   >
-                    <web-ui-icon :icon="lucidePenLine" :size="14" />
-                  </web-ui-button>
+                    <web-ui-button icon variant="ghost" size="28" aria-label="编辑名称" @click="startRename(item)">
+                      <web-ui-icon :icon="lucidePenLine" :size="14" />
+                    </web-ui-button>
+                  </web-ui-tooltip>
                 </span>
                 <span class="ml-auto flex shrink-0 items-center gap-1">
                   <web-ui-button
@@ -255,12 +262,35 @@ function handleRenameKeydown(event: KeyboardEvent, itemId: string) {
                   </web-ui-button>
                 </span>
               </div>
-              <span
-                class="block min-w-0 truncate text-xs leading-5 whitespace-nowrap text-[#6a6a6a] dark:text-(--wui-color-text-secondary)"
-                :title="item.location"
-              >
-                {{ item.location }}
-              </span>
+              <div class="flex min-w-0 flex-wrap items-center gap-1.5">
+                <span
+                  class="shrink-0 text-xs leading-5 whitespace-nowrap text-[#6a6a6a] dark:text-(--wui-color-text-secondary)"
+                  :title="item.location"
+                >
+                  {{ item.location }}
+                </span>
+                <div class="flex min-w-0 flex-[0_0_100%] flex-wrap items-center gap-[5px]">
+                  <span
+                    v-for="tag in item.tags"
+                    :key="tag"
+                    class="inline-block px-2 py-0.5 rounded-full text-xs leading-tight whitespace-nowrap"
+                    :class="tagClass(tag)"
+                    >{{ tag }}</span
+                  >
+                  <web-ui-tooltip content="编辑标签" :placement="itemIndex < 5 ? 'bottom' : 'top'">
+                    <web-ui-button
+                      class="shrink-0 [--wui-button-color:var(--wui-color-accent,#08f)]"
+                      icon
+                      variant="ghost"
+                      size="20"
+                      aria-label="编辑标签"
+                      @click="emit('editTags', item)"
+                    >
+                      <web-ui-icon :icon="lucideTags" :size="12" />
+                    </web-ui-button>
+                  </web-ui-tooltip>
+                </div>
+              </div>
             </span>
           </li>
         </ol>

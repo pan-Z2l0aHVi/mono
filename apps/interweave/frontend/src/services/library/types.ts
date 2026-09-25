@@ -1,8 +1,10 @@
 import type {
+  FilePreviewDTO,
   ResourceDTO,
   SourceDTO,
   TagDTO
 } from '../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/service'
+import type { ResourceKind } from '../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage'
 
 export interface LibraryRuntime {
   readonly isAvailable: boolean
@@ -21,7 +23,10 @@ export interface LibraryRuntime {
   chooseFilePaths(): Promise<string[]>
   chooseFilePath(): Promise<string | null>
   getClipboardFilePaths(): Promise<string[]>
+  prepareFilePreview(inputPath: string): Promise<FilePreviewDTO>
+  releaseFilePreview(token: string): Promise<void>
   resourceMediaURL(sourceId: string): string | null
+  pendingFilePreviewURL(token: string): string | null
   subscribeToDroppedFiles(listener: (paths: string[]) => void): () => void
   subscribeToPasteFileRequest(listener: () => void): () => void
 }
@@ -29,8 +34,17 @@ export interface LibraryRuntime {
 export interface LibraryQueueItem {
   id: string
   kind: 'file' | 'url'
+  resourceKind: ResourceKind
   title: string
   location: string
+  tags: string[]
+  previewToken: string | null
+  mediaUrl: string | null
+}
+
+export function requireFilePreviewDTO(value: FilePreviewDTO | null, action: string): FilePreviewDTO {
+  if (value) return value
+  throw new Error(`${action}未返回文件预览`)
 }
 
 export function requireResourceDTO(value: ResourceDTO | null, action: string): ResourceDTO {

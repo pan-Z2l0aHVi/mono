@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	coreLibrary "github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/core"
+	libraryMedia "github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/media"
 	"github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/service"
 	"github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage"
 	"github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/remote"
@@ -44,7 +45,7 @@ func TestResourceAndSourceLifecycle(t *testing.T) {
 	coreResource := coreLibrary.NewResourceService(db, fetcher)
 	coreSource := coreLibrary.NewSourceService(db, fetcher)
 	coreTag := coreLibrary.NewTagService(db)
-	resService := service.NewResourceService(coreResource)
+	resService := service.NewResourceService(coreResource, libraryMedia.NewPendingPreviewRegistry())
 	srcService := service.NewSourceService(coreSource)
 	tagService := service.NewTagService(coreTag)
 
@@ -156,6 +157,72 @@ func TestResourceAndSourceLifecycle(t *testing.T) {
 	}
 }
 
+func TestPrepareFilePreviewRegistersMediaAndShutdownClearsTokens(t *testing.T) {
+	db, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	previews := libraryMedia.NewPendingPreviewRegistry()
+	resService := service.NewResourceService(
+		coreLibrary.NewResourceService(db, remote.NewFetcher()),
+		previews,
+	)
+	handler := libraryMedia.NewHandler(storage.SourceStore{}, db.SqlDB(), previews)
+	directory := t.TempDir()
+	imagePath := filepath.Join(directory, "preview.PNG")
+	videoPath := filepath.Join(directory, "preview.MP4")
+	documentPath := filepath.Join(directory, "preview.md")
+	for _, path := range []string{imagePath, videoPath, documentPath} {
+		if err := os.WriteFile(path, []byte("preview"), 0o600); err != nil {
+			t.Fatalf("write preview fixture: %v", err)
+		}
+	}
+
+	image, err := resService.PrepareFilePreview(context.Background(), imagePath)
+	if err != nil {
+		t.Fatalf("PrepareFilePreview image error: %v", err)
+	}
+	video, err := resService.PrepareFilePreview(context.Background(), videoPath)
+	if err != nil {
+		t.Fatalf("PrepareFilePreview video error: %v", err)
+	}
+	document, err := resService.PrepareFilePreview(context.Background(), documentPath)
+	if err != nil {
+		t.Fatalf("PrepareFilePreview document error: %v", err)
+	}
+	if image.Kind != service.ResourceKindImage || image.Token == "" {
+		t.Fatalf("expected image kind with token, got %+v", image)
+	}
+	if video.Kind != service.ResourceKindVideo || video.Token == "" {
+		t.Fatalf("expected video kind with token, got %+v", video)
+	}
+	if document.Kind != service.ResourceKindDocument || document.Token != "" {
+		t.Fatalf("expected document kind without token, got %+v", document)
+	}
+
+	pendingRequest := func(token string) int {
+		response := httptest.NewRecorder()
+		handler.ServeHTTP(
+			response,
+			httptest.NewRequest(http.MethodGet, libraryMedia.PendingPathPrefix+token, nil),
+		)
+		return response.Code
+	}
+	if status := pendingRequest(image.Token); status != http.StatusOK {
+		t.Fatalf("expected registered pending preview 200, got %d", status)
+	}
+	resService.ReleaseFilePreview(context.Background(), image.Token)
+	if status := pendingRequest(image.Token); status != http.StatusNotFound {
+		t.Fatalf("expected released pending preview 404, got %d", status)
+	}
+
+	if err := resService.ServiceShutdown(); err != nil {
+		t.Fatalf("ServiceShutdown error: %v", err)
+	}
+	if status := pendingRequest(video.Token); status != http.StatusNotFound {
+		t.Fatalf("expected shutdown to clear pending preview, got %d", status)
+	}
+}
+
 func TestMapServiceDerivedExploration(t *testing.T) {
 	db, cleanup := setupTestDB(t)
 	defer cleanup()
@@ -164,7 +231,7 @@ func TestMapServiceDerivedExploration(t *testing.T) {
 	coreResource := coreLibrary.NewResourceService(db, fetcher)
 	coreTag := coreLibrary.NewTagService(db)
 	coreMap := coreLibrary.NewMapService(db)
-	resService := service.NewResourceService(coreResource)
+	resService := service.NewResourceService(coreResource, libraryMedia.NewPendingPreviewRegistry())
 	tagService := service.NewTagService(coreTag)
 	mapService := service.NewMapService(coreMap)
 
