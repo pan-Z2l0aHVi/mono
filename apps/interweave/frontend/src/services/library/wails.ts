@@ -100,6 +100,10 @@ class WailsLibraryRuntime implements LibraryRuntime {
     await ResourceService.ReleaseFilePreview(token)
   }
 
+  async openExternal(target: string) {
+    await OSService.OpenExternal(target)
+  }
+
   resourceMediaURL(sourceId: string) {
     return `/resource-media/${encodeURIComponent(sourceId)}`
   }

@@ -25,6 +25,7 @@ export interface LibraryRuntime {
   getClipboardFilePaths(): Promise<string[]>
   prepareFilePreview(inputPath: string): Promise<FilePreviewDTO>
   releaseFilePreview(token: string): Promise<void>
+  openExternal(target: string): Promise<void>
   resourceMediaURL(sourceId: string): string | null
   pendingFilePreviewURL(token: string): string | null
   subscribeToDroppedFiles(listener: (paths: string[]) => void): () => void
