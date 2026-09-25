@@ -8,6 +8,7 @@ import {
 } from '@greypan/web-ui'
 import {
   lucideClipboardPaste,
+  lucideInbox,
   lucidePenLine,
   lucidePlus,
   lucideTags,
@@ -362,7 +363,36 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
           v-else
           class="grid h-full min-h-0 place-items-center rounded-3xl bg-white dark:bg-(--wui-color-surface-raised)"
         >
-          <web-ui-empty size="small" description="暂无待添加资源" />
+          <!--
+            空态以左侧 drop 区为基准做视觉对称，只调本侧：
+            icon 盒 52px/圆角 18px/字形 23px、icon 到文案 12px、文案 15px/600/行高 1.4，
+            桌面与 max-[640px] 各断点与左侧逐一对应。
+            关键一项是 --wui-empty-min-height: 0：web-ui-empty 的 `.empty` 默认把内容顶端对齐在
+            160px min-block-size 盒内，置 0 后内容才随外层 place-items-center 真正垂直居中。
+            图标到文案的 6px 基础间距来自组件内部写死的 `.empty-description` margin-top（未开放
+            token），mt-1.5 把它补到左侧 gap-3 的 12px；两行文案与行间距由 slot 内容整体接管，
+            与左侧同样是「主文案 + 辅助说明」两行，合成块高度因此与左侧逐像素相等，icon 行对齐。
+            图标底色与色板仍沿用 web-ui-empty 的中性 token：右侧是不可点的空态占位，染成左侧
+            drop 区的强调色会读成可点击目标。
+          -->
+          <web-ui-empty
+            size="small"
+            class="[--wui-empty-min-height:0] [--wui-empty-padding:0] [--wui-empty-icon-size:52px] [--wui-internal-empty-icon-radius:18px] max-[640px]:[--wui-empty-icon-size:40px] max-[640px]:[--wui-internal-empty-icon-radius:12px]"
+          >
+            <web-ui-icon slot="icon" :icon="lucideInbox" :size="23" />
+            <span slot="description" class="mt-1.5 grid gap-3 max-[640px]:mt-0.5 max-[640px]:gap-2">
+              <span
+                class="block text-[15px] font-semibold leading-[1.4] text-[#22212a] dark:text-(--wui-color-text) max-[640px]:text-[13px]"
+              >
+                暂无待添加资源
+              </span>
+              <span
+                class="block text-xs leading-[1.4] text-[#6a6a6a] dark:text-(--wui-color-text-secondary) max-[640px]:text-[11px]"
+              >
+                添加的资源会显示在这里，可先修改名称和标签
+              </span>
+            </span>
+          </web-ui-empty>
         </div>
       </aside>
     </div>

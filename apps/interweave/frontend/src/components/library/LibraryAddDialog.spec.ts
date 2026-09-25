@@ -201,6 +201,62 @@ describe('LibraryAddDialog', () => {
     }
   })
 
+  it('空态与左侧 drop 区对称：icon 盒尺寸、字形、间距和文案排版逐项对齐', async () => {
+    const mounted = mountDialog([])
+
+    try {
+      await nextTick()
+      const aside = mounted.host.querySelector('aside[aria-labelledby="library-add-queue-title"]')
+      const empty = aside?.querySelector('web-ui-empty')
+      if (!empty) throw new Error('empty state was not rendered')
+
+      // 左侧 drop 区的基准值：icon 盒 52px/圆角 18px、字形 23、icon 到文案 12px、
+      // 文案 15px/600/1.4；max-[640px] 断点为 40px/12px、字形 23、间距 8px、文案 13px。
+      const emptyClass = empty.getAttribute('class') ?? ''
+      expect(emptyClass).toContain('[--wui-empty-min-height:0]')
+      expect(emptyClass).toContain('[--wui-empty-padding:0]')
+      expect(emptyClass).toContain('[--wui-empty-icon-size:52px]')
+      expect(emptyClass).toContain('[--wui-internal-empty-icon-radius:18px]')
+      expect(emptyClass).toContain('max-[640px]:[--wui-empty-icon-size:40px]')
+      expect(emptyClass).toContain('max-[640px]:[--wui-internal-empty-icon-radius:12px]')
+
+      const icon = empty.querySelector<WebUiIcon>('web-ui-icon[slot="icon"]')
+      expect(icon?.getAttribute('size')).toBe('23')
+
+      // 两行文案与左侧同样是「主文案 + 辅助说明」：行数相同，合成块高度才与左侧相等，
+      // 居中后 icon 行才对得齐。mt-1.5 补足组件内部写死的 6px，凑齐左侧 gap-3 的 12px。
+      const copy = empty.querySelector('span[slot="description"]')
+      expect(copy?.getAttribute('class')).toBe('mt-1.5 grid gap-3 max-[640px]:mt-0.5 max-[640px]:gap-2')
+
+      const lines = [...(copy?.querySelectorAll('span') ?? [])]
+      expect(lines.map(line => line.textContent?.trim())).toEqual([
+        '暂无待添加资源',
+        '添加的资源会显示在这里，可先修改名称和标签'
+      ])
+      expect(lines[0]?.getAttribute('class')).toBe(
+        'block text-[15px] font-semibold leading-[1.4] text-[#22212a] dark:text-(--wui-color-text) max-[640px]:text-[13px]'
+      )
+      expect(lines[1]?.getAttribute('class')).toBe(
+        'block text-xs leading-[1.4] text-[#6a6a6a] dark:text-(--wui-color-text-secondary) max-[640px]:text-[11px]'
+      )
+    } finally {
+      mounted.close()
+    }
+  })
+
+  it('有队列项时右侧渲染列表且不残留空态', async () => {
+    const mounted = mountDialog([queueItem()])
+
+    try {
+      await nextTick()
+      const aside = mounted.host.querySelector('aside[aria-labelledby="library-add-queue-title"]')
+      expect(aside?.querySelector('web-ui-empty')).toBeNull()
+      expect(aside?.querySelectorAll('ol > li')).toHaveLength(1)
+    } finally {
+      mounted.close()
+    }
+  })
+
   it('逐字保留原型 tags 行 class 并把目标队列项传给编辑事件', async () => {
     const item = queueItem({ tags: ['设计'] })
     const editTags = vi.fn<(target: LibraryQueueItem) => void>()
