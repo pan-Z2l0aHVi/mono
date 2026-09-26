@@ -308,7 +308,7 @@ if (command === 'contract') {
     ].filter(file => fs.existsSync(path.join(root, file))),
     verification: [
       'pnpm run build',
-      'pnpm run check:pack',
+      'pnpm run check-pack',
       ...(typeof workspace.scripts.test === 'string' ? [`pnpm --filter ${workspace.name} test`] : [])
     ]
   }
@@ -497,11 +497,11 @@ function addVerification(level, command, reason) {
 }
 
 if (hasContextChange)
-  addVerification('required', 'pnpm run validate:context', '共享 Agent context、路由或其校验脚本发生变化。')
-if (hasAgentToolChange) addVerification('required', 'pnpm run test:scripts', '影响分析或 context 校验工具发生变化。')
-if (hasContractToolChange) addVerification('required', 'pnpm run test:scripts', '发布产物契约检查器发生变化。')
+  addVerification('required', 'pnpm run ci:validate-context', '共享 Agent context、路由或其校验脚本发生变化。')
+if (hasAgentToolChange) addVerification('required', 'pnpm run ci:test-scripts', '影响分析或 context 校验工具发生变化。')
+if (hasContractToolChange) addVerification('required', 'pnpm run ci:test-scripts', '发布产物契约检查器发生变化。')
 if (hasCodeChange)
-  addVerification('required', 'pnpm run check:code', '代码或配置发生变化，需要执行 lint、类型检查和语言专属静态检查。')
+  addVerification('required', 'pnpm run check-code', '代码或配置发生变化，需要执行 lint、类型检查和语言专属静态检查。')
 if (hasReactRouteSourceChange)
   addVerification(
     'required',
@@ -543,7 +543,7 @@ if (hasPackageContractChange)
   addVerification('required', 'pnpm run test', '可发布 package 的源码、入口或 manifest 发生变化。')
 if (hasBuildArtifactChange || hasPackageContractChange || hasContractToolChange) {
   addVerification('required', 'pnpm run build', '构建配置、发布产物或可发布 package 契约发生变化。')
-  addVerification('required', 'pnpm run check:pack', '构建后需要验证 package exports、类型入口与发布文件。')
+  addVerification('required', 'pnpm run check-pack', '构建后需要验证 package exports、类型入口与发布文件。')
 }
 if (hasBrowserRuntimeChange) {
   addVerification('required', 'pnpm run test', 'browser-mode 测试与相关 package 测试由根 Turbo test 编排。')
@@ -554,7 +554,7 @@ if (hasBrowserRuntimeChange) {
   )
 }
 if (verification.length === 0 && normalizedPaths.length > 0)
-  addVerification('recommended', 'pnpm run check:code', '未识别到特定高风险契约；按局部改动执行最小充分验证。')
+  addVerification('recommended', 'pnpm run check-code', '未识别到特定高风险契约；按局部改动执行最小充分验证。')
 
 const requiredEvidence = []
 function addEvidence(kind, location, reason) {

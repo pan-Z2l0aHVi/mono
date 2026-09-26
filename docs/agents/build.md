@@ -6,7 +6,7 @@
 
 ## 各包命令
 
-每个包暴露其所需的命令：所有可构建的包都有 `build`，大多数有 `dev`（监听模式），只有包含维护的自动化测试覆盖率的包才暴露 `test`。使用 `pnpm --filter @greypan/<name> <script>` 运行它们；例如，`pnpm --filter @greypan/js-kit test`。根目录提供全局编排的 `pnpm run build`、`pnpm run test`。受影响范围的迭代定位用 `pnpm find:usages -- <paths...>`（见 `context.md`）随后对目标包运行 filter 命令；已移除独立的 `build:affected` / `test:affected` 根命令，避免重复 `find:usages` 的影响面权威。全量根命令由 CI 在 pull request 上执行，本地只在需要复现全仓范围问题时运行。
+每个包暴露其所需的命令：所有可构建的包都有 `build`，大多数有 `dev`（监听模式），只有包含维护的自动化测试覆盖率的包才暴露 `test`。使用 `pnpm --filter @greypan/<name> <script>` 运行它们；例如，`pnpm --filter @greypan/js-kit test`。根目录提供全局编排的 `pnpm run build`、`pnpm run test`。受影响范围的迭代定位用 `pnpm agent:find-usages -- <paths...>`（见 `context.md`）随后对目标包运行 filter 命令；已移除独立的 `build:affected` / `test:affected` 根命令，避免重复 `agent:find-usages` 的影响面权威。全量根命令由 CI 在 pull request 上执行，本地只在需要复现全仓范围问题时运行。
 
 ## Demo 开发
 
@@ -22,22 +22,22 @@
 
 Interweave 由 Wails 宿主管理嵌套前端，因此其 alias 只启动 Wails host，并构建/监听 WebView frontend 的上游依赖；不要额外启动重复的前端进程。在修改 Vite 插件、TypeScript 配置或工作区依赖图后，需要重启宿主开发进程。
 
-代码质量检查与修复的命令矩阵（`check:code` 聚合与 `fix:code` 一键修复）以 [`linting.md`](linting.md) 为权威；`pre-commit` 只跑 task gate 与 `.agents/checks/` 政策检查，不改写文件；提交边界的清洁度保证（格式、lint 与类型）来自 `format-clean` 这条只检不改的检查，口径与已登记的旁路见 [`workflow.md`](workflow.md)。包构建命令不能替代这些命令；Wails 的 macOS/Windows 原生构建仍负责验证 host package 与平台集成。
+代码质量检查与修复的命令矩阵（`check-code` 聚合与 `fix-code` 一键修复）以 [`linting.md`](linting.md) 为权威；`pre-commit` 只跑 task gate 与 `.agents/checks/` 政策检查，不改写文件；提交边界的清洁度保证（格式、lint 与类型）来自 `format-clean` 这条只检不改的检查，口径与已登记的旁路见 [`workflow.md`](workflow.md)。包构建命令不能替代这些命令；Wails 的 macOS/Windows 原生构建仍负责验证 host package 与平台集成。
 
-| 命令                        | 用途                                          | 说明                                                                            |
-| --------------------------- | --------------------------------------------- | ------------------------------------------------------------------------------- |
-| `pnpm run clean`            | 清理构建产物与缓存                            | 执行 `scripts/clean.sh`，安全重置各工作区的 `dist/`、`.turbo/` 和临时产物       |
-| `pnpm run test:scripts`     | 验证仓库内部工具脚本                          | 含 `ci-topology`、`ci-flakes` 与 `ci-measure` 的断言，是 CI 拓扑表的执行端      |
-| `pnpm run measure:ci`       | 只读统计 CI 成本                              | 需 `gh` 已登录；口径与「两栏不能混用」的原因见「CI 与发布」节                   |
-| `pnpm run flakes:ci`        | 汇总 flake 榜                                 | 读 `ci-test-output-*` artifact 目录；口径见「CI 与发布」节                      |
-| `pnpm run validate:context` | 验证 Agent context 路由、软链、链接与出处约束 | 修改 `AGENTS.md`、rules、skills、roles 或 `docs/agents/**` 时必须通过           |
-| `pnpm run check:pack`       | 发布产物边界检查                              | 构建可发布 package 或修改其 `exports`、`files`、Vite 输出时，在根构建成功后运行 |
+| 命令                           | 用途                                          | 说明                                                                            |
+| ------------------------------ | --------------------------------------------- | ------------------------------------------------------------------------------- |
+| `pnpm run clean`               | 清理构建产物与缓存                            | 执行 `scripts/clean.sh`，安全重置各工作区的 `dist/`、`.turbo/` 和临时产物       |
+| `pnpm run ci:test-scripts`     | 验证仓库内部工具脚本                          | 含 `ci-topology`、`ci-flakes` 与 `ci-measure` 的断言，是 CI 拓扑表的执行端      |
+| `pnpm run ci:measure`          | 只读统计 CI 成本                              | 需 `gh` 已登录；口径与「两栏不能混用」的原因见「CI 与发布」节                   |
+| `pnpm run ci:flakes`           | 汇总 flake 榜                                 | 读 `ci-test-output-*` artifact 目录；口径见「CI 与发布」节                      |
+| `pnpm run ci:validate-context` | 验证 Agent context 路由、软链、链接与出处约束 | 修改 `AGENTS.md`、rules、skills、roles 或 `docs/agents/**` 时必须通过           |
+| `pnpm run check-pack`          | 发布产物边界检查                              | 构建可发布 package 或修改其 `exports`、`files`、Vite 输出时，在根构建成功后运行 |
 
-`check:pack` 使用 `pnpm pack --dry-run` 验证实际发布文件与 manifest export targets；它不判断 API 语义或版本级别。
+`check-pack` 使用 `pnpm pack --dry-run` 验证实际发布文件与 manifest export targets；它不判断 API 语义或版本级别。
 
-turbo 本地缓存由 `.mise.toml` 的 `TURBO_CACHE_DIR` 指向 worktree 族共享目录（机制与手动回收见 [`worktrees.md`](worktrees.md)）；`pnpm run clean` 只清理各工作区自己的 `.turbo/`，不影响共享缓存目录。构建或验证前怀疑 dist 产物异常（如被 watch 进程清空 d.ts）时，先跑 `pnpm run env:doctor` 体检，再用 `pnpm run env:doctor --fix`（自动 `turbo build --force` 重建 dist）或手动 `turbo build --force` 重建。
+turbo 本地缓存由 `.mise.toml` 的 `TURBO_CACHE_DIR` 指向 worktree 族共享目录（机制与手动回收见 [`worktrees.md`](worktrees.md)）；`pnpm run clean` 只清理各工作区自己的 `.turbo/`，不影响共享缓存目录。构建或验证前怀疑 dist 产物异常（如被 watch 进程清空 d.ts）时，先跑 `pnpm run agent:env-doctor` 体检，再用 `pnpm run agent:env-doctor --fix`（自动 `turbo build --force` 重建 dist）或手动 `turbo build --force` 重建。
 
-变更影响与验证命令选择使用仓库内查询工具 `find:usages` / `inspect:contract` / `diff:contract`；工具语义、参数与输出说明见 [`context.md`](context.md)，此处不复述。
+变更影响与验证命令选择使用仓库内查询工具 `agent:find-usages` / `agent:inspect-contract` / `agent:diff-contract`；工具语义、参数与输出说明见 [`context.md`](context.md)，此处不复述。
 
 对于 `web-ui`，`pnpm --filter @greypan/web-ui generate-icons` 从 `icons.used.json` 重新生成图标模块。Vite 插件也会在 `vp build` 期间自动运行它。
 
@@ -47,7 +47,7 @@ turbo 本地缓存由 `.mise.toml` 的 `TURBO_CACHE_DIR` 指向 worktree 族共�
 
 | 场景                           | source of truth                                            | 受控生成入口                                                                            | 完成证据                                                                                                 |
 | ------------------------------ | ---------------------------------------------------------- | --------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| React 文件路由                 | `apps/react-web-ui-demo/src/routes/**` 与 `vite.config.ts` | `pnpm --filter @greypan/react-web-ui-demo build`（TanStack Router Vite plugin）         | `src/routeTree.gen.ts` 仅由 generator 更新；`check:code` 通过，并在真实浏览器访问新增/修改的路由。       |
+| React 文件路由                 | `apps/react-web-ui-demo/src/routes/**` 与 `vite.config.ts` | `pnpm --filter @greypan/react-web-ui-demo build`（TanStack Router Vite plugin）         | `src/routeTree.gen.ts` 仅由 generator 更新；`check-code` 通过，并在真实浏览器访问新增/修改的路由。       |
 | Vue auto import / typed router | Vue 源码与 `apps/vue-web-ui-demo/vite.config.ts`           | `pnpm --filter @greypan/vue-web-ui-demo build`（Vite plugins）                          | `auto-imports.d.ts`、`typed-router.d.ts` 仅由 plugin 更新；`vue-tsc --build` 与受影响路由/页面验证通过。 |
 | Wails frontend bindings        | 公开 Go API、`apps/interweave/frontend/package.json`       | `pnpm --filter @greypan/interweave-frontend build`（先执行 `wails3 generate bindings`） | 核对 `frontend/bindings/**` 的 generator diff，并运行 frontend 类型检查/构建和受影响调用点验证。         |
 | web-ui icons                   | `packages/web-ui/icons.used.json`                          | `pnpm --filter @greypan/web-ui generate-icons` 或 `vp build`                            | 图标模块只由 generator 更新，并完成 package build 与公开契约验证。                                       |
@@ -112,19 +112,19 @@ turbo 本地缓存由 `.mise.toml` 的 `TURBO_CACHE_DIR` 指向 worktree 族共�
 | Workflow                | 触发                                                               | 职责                                                                                                  |
 | ----------------------- | ------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------- |
 | `ci.yml`                | `pull_request`、`workflow_dispatch`（无 push 触发）                | 共享 agent context、changeset 状态、构建、格式化/lint/类型检查和测试                                  |
-| `changeset-version.yml` | push 到 `main`                                                     | 创建/更新 Changesets 版本 PR，`changesets/action` 的 `version-script` 调用 `pnpm run release:version` |
+| `changeset-version.yml` | push 到 `main`                                                     | 创建/更新 Changesets 版本 PR，`changesets/action` 的 `version-script` 调用 `pnpm run release-version` |
 | `npm-publish.yml`       | `pull_request.closed`，限定 `changeset-release/main` 合并到 `main` | 检测公共包版本变更，在合并 SHA 上重建 `packages/*` Turbo 图并通过 npm Trusted Publishing 发布         |
 | 应用验证 workflow       | 目标应用路径、其 WebView frontend 的直接 workspace 依赖或手动触发  | 校验同步元数据并在对应的原生目标上构建验证产物                                                        |
 | 应用发布 workflow       | 目标应用版本变更后的受控合并                                       | 创建带校验和的安装程序 Release；私有应用永不发布到 npm                                                |
 | `deploy-pages.yml`      | 手动触发                                                           | 通过 `actions/deploy-pages` 产物部署作业级 `DEMO_APPS` 列表中的每个可部署 Demo                        |
 
-- 这张表是投影，不是权威：真实的触发面、`permissions`、job `needs`/`if`、step `if`、step `id`、发布分支字面量、桌面构建矩阵和声明的安装面只写在 `.github/scripts/ci-topology.mjs` 里，`scripts/ci-topology.test.mjs` 把每个 workflow 的真实 YAML 读回来逐字段比对，由 `pnpm run test:scripts` 和 CI 的 `check` 强制。改任何一项而不改那张表，`check` 就红；守卫里引用了不存在的 step `id` 也会红，因为这种引用在 Actions 里不报错，只会让那一步永远静默跳过。
+- 这张表是投影，不是权威：真实的触发面、`permissions`、job `needs`/`if`、step `if`、step `id`、发布分支字面量、桌面构建矩阵和声明的安装面只写在 `.github/scripts/ci-topology.mjs` 里，`scripts/ci-topology.test.mjs` 把每个 workflow 的真实 YAML 读回来逐字段比对，由 `pnpm run ci:test-scripts` 和 CI 的 `check` 强制。改任何一项而不改那张表，`check` 就红；守卫里引用了不存在的 step `id` 也会红，因为这种引用在 Actions 里不报错，只会让那一步永远静默跳过。
 - 表表达不了的两句保留散文，因为判据要人工读运行结果：一次运行是「等审批」还是「排队」，看 `gh api repos/<owner>/<repo>/actions/runs/<id> --jq '{status,jobs:.jobs.total_count,run_started_at,created_at}'`，`jobs.total_count == 0` 且 `run_started_at == created_at` 才是挂起等批准；某个 step 的定义是否真的换掉了，看它在运行里整条消失（`gh api repos/<owner>/<repo>/actions/runs/<id>/jobs --jq '.jobs[].steps[].name'`）——`if` 为假的 step 仍然显示 `skipped`，与「step 还在、只是没跑」无法区分。
-- 触发面值不值、哪个 workflow 最贵，用 `pnpm run measure:ci --days=14` 现算，不要把数字抄进文档：它按 workflow 报 runs、墙钟分钟、按事件分的来源和同 `head_sha` 的重复验证。两个口径不能混用——本仓是 squash-only 合并，main 上 `push` 那一次落在**新 sha** 上、树却与已经验过的 PR head 相同，所以删掉一条触发省下的量读 `events` 里的 `push` 栏，读不出 `redundant`。
-- flake 台账只有写端在 CI 里（`Test` 红时把 `test-output.log` 与 `test-failures.json` 存成保留 1 天的 `ci-test-output-<run-id>-<attempt>` artifact），读端是本地命令：先 `gh run download <run-id> --pattern 'ci-test-output-*'`，再 `pnpm run flakes:ci <目录>`。它按「红过几个不同的 run」排序、同一 run 的多个 attempt 只算 retry 痕迹，因为后者只证明红过两次；刻意不判断「重跑之后是否变绿」——留痕只在失败时写，缺席本身携带不了信息，所以这份榜单不回答「谁已经修好」，也别拿它的为空当作没有 flake。
-- 这条链路的写端在 2026-09-23 之前从来没有真的写过：`aa8be940` 把守卫换成 `steps.test.outcome == 'failure'` 之后，GitHub 对不含 status check 函数的 `if` 仍套默认 `success()`，于是留痕两步恰好在 `Test` 变红那一刻被跳过。两次真实红（run 35715564947、35800643887）都是同一签名 —— step 16 `Test` failure、step 17/18 skipped、artifact 为空 —— 而后者当时被读成了「守卫生效的证据」。现在的守卫是 `failure() && steps.test.outcome == 'failure'`：前半截是入场券，后半截才是判据，所以 lint 失败、`Test` 被 skip 时仍然不会产出假记录。四处仍是 fixture-only：守卫真会触发、artifact 的上传与下载、真实 `FAIL` 行进榜单、跨 run 计数。闭环判据是现成的 —— 下一次 `Test` 自然红之后按上条命令跑一遍，`pnpm run flakes:ci` 能列出那个测试即算验通。恒假的守卫不会让 job 变红，所以它由 `scripts/ci-topology.test.mjs` 的 status-function 规则钉住，不再等下一次红。
+- 触发面值不值、哪个 workflow 最贵，用 `pnpm run ci:measure --days=14` 现算，不要把数字抄进文档：它按 workflow 报 runs、墙钟分钟、按事件分的来源和同 `head_sha` 的重复验证。两个口径不能混用——本仓是 squash-only 合并，main 上 `push` 那一次落在**新 sha** 上、树却与已经验过的 PR head 相同，所以删掉一条触发省下的量读 `events` 里的 `push` 栏，读不出 `redundant`。
+- flake 台账只有写端在 CI 里（`Test` 红时把 `test-output.log` 与 `test-failures.json` 存成保留 1 天的 `ci-test-output-<run-id>-<attempt>` artifact），读端是本地命令：先 `gh run download <run-id> --pattern 'ci-test-output-*'`，再 `pnpm run ci:flakes <目录>`。它按「红过几个不同的 run」排序、同一 run 的多个 attempt 只算 retry 痕迹，因为后者只证明红过两次；刻意不判断「重跑之后是否变绿」——留痕只在失败时写，缺席本身携带不了信息，所以这份榜单不回答「谁已经修好」，也别拿它的为空当作没有 flake。
+- 这条链路的写端在 2026-09-23 之前从来没有真的写过：`aa8be940` 把守卫换成 `steps.test.outcome == 'failure'` 之后，GitHub 对不含 status check 函数的 `if` 仍套默认 `success()`，于是留痕两步恰好在 `Test` 变红那一刻被跳过。两次真实红（run 35715564947、35800643887）都是同一签名 —— step 16 `Test` failure、step 17/18 skipped、artifact 为空 —— 而后者当时被读成了「守卫生效的证据」。现在的守卫是 `failure() && steps.test.outcome == 'failure'`：前半截是入场券，后半截才是判据，所以 lint 失败、`Test` 被 skip 时仍然不会产出假记录。四处仍是 fixture-only：守卫真会触发、artifact 的上传与下载、真实 `FAIL` 行进榜单、跨 run 计数。闭环判据是现成的 —— 下一次 `Test` 自然红之后按上条命令跑一遍，`pnpm run ci:flakes` 能列出那个测试即算验通。恒假的守卫不会让 job 变红，所以它由 `scripts/ci-topology.test.mjs` 的 status-function 规则钉住，不再等下一次红。
 - `ci.yml` 的 PR 运行与手动触发运行共享一个 `concurrency` 组（`${{ github.workflow }}-${{ github.head_ref || github.ref_name }}`，即 workflow 名加分支），但 `cancel-in-progress` 只能取消仍在飞行的那一次：先启动的运行如果已经结束，后启动的那次仍会完整跑一遍，两次运行不会被合并成一次。`workflow_dispatch` 只用于人工重跑：版本 PR 由 `GITHUB_TOKEN` 创建，它的 `pull_request` 运行要等有人点「批准并运行」（2026-09-23 那次等了 5 分 22 秒），批准后同一 run id 以 `run_attempt=2` 起跑——所以版本 PR 上的 attempt 大于 1 是批准痕迹，不是 flake 重试；从未批准的运行停在 `attempt=1` 且 `jobs.total_count == 0`，历史挂起见下节。原生应用所需的系统前置条件以当前 workflow 和工具配置为准。
-- 包专属的版本同步由 `release:version` 对应脚本负责；默认更新与 `--check` 验证的语义以该脚本为准。版本 workflow 不直接发布包或安装程序。
+- 包专属的版本同步由 `release-version` 对应脚本负责；默认更新与 `--check` 验证的语义以该脚本为准。版本 workflow 不直接发布包或安装程序。
 - `npm-publish.yml` 仅发布公共 npm 包。发布成功后，一个独立的最小权限作业为每个包版本创建幂等的 GitHub Release 和标签，附带 npm 和包 changelog 的链接。它不使用私有原生应用的工具链或长期 npm token。
 - 私有原生应用的验证保持路径触发而非全局必需检查，不相关的 PR 无需等待原生运行环境；`main` 分支保护只要求 `check` 上下文通过，产品变更必须经 pull request 合入。
 - `deploy-pages.yml` 每个条目是 `apps/<name>` 目录，服务路径为 `/mono/<name>/`；构建命令使用 pnpm 的 `{./apps/<name>}...` 目录选择器而非 npm 包名。它仅安装 Node 和 pnpm，因为 Pages 不需要私有原生应用的工具链。站点没有根落地页。
@@ -143,4 +143,4 @@ turbo 本地缓存由 `.mise.toml` 的 `TURBO_CACHE_DIR` 指向 worktree 族共�
 
 ## Release context
 
-发布流程和 release plane 的术语、边界与授权模型见 [ADR-0003](../adr/0003-release-planes.md)。本指南只保留执行流程和 release safety boundary：未经用户授权不执行发布；不得直接运行 `npm publish`，首次发布使用 `pnpm publish:new <package-dir>`；Git 检查的绕过禁令见 [`commit.md`](./commit.md)。后续公共包和私有原生应用安装程序按对应 workflow 与 Changesets 配置执行。修改 `.github/workflows/`、Changesets 或发布脚本时，先阅读本指南和相关 ADR，并以当前 workflow、manifest 与脚本为事实来源。
+发布流程和 release plane 的术语、边界与授权模型见 [ADR-0003](../adr/0003-release-planes.md)。本指南只保留执行流程和 release safety boundary：未经用户授权不执行发布；不得直接运行 `npm publish`，首次发布使用 `pnpm publish-new-pack <package-dir>`；Git 检查的绕过禁令见 [`commit.md`](./commit.md)。后续公共包和私有原生应用安装程序按对应 workflow 与 Changesets 配置执行。修改 `.github/workflows/`、Changesets 或发布脚本时，先阅读本指南和相关 ADR，并以当前 workflow、manifest 与脚本为事实来源。

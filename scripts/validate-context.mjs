@@ -7,6 +7,7 @@ import { listPnpmWorkspaceManifests, readPnpmWorkspacePatterns } from './workspa
 
 const root = path.resolve(import.meta.dirname, '..')
 const errors = []
+let rootScripts = new Set()
 
 const relative = file => path.relative(root, file) || '.'
 // context index 要与 worktree 的绝对路径无关：先归一为正斜杠，跨平台才能得到稳定指纹。
@@ -50,15 +51,15 @@ for (const file of ['AGENTS.md', 'CLAUDE.md']) {
 // 结构不变量锚点（<!-- invariant:... -->）是惰性注释，保留供人工检索，不再有机器校验（audit:instructions 已删除，见 ADR-0014）。
 if (exists('AGENTS.md')) {
   const agents = read('AGENTS.md')
-  for (const marker of ['docs/agents/workflow.md', 'pnpm task new']) {
+  for (const marker of ['docs/agents/workflow.md', 'pnpm agent:task new']) {
     if (!agents.includes(marker)) addError(`AGENTS.md is missing mandatory marker: ${marker}`)
   }
 }
 
-if (exists('.vite-hooks/pre-commit') && !read('.vite-hooks/pre-commit').includes('pnpm task guard'))
+if (exists('.vite-hooks/pre-commit') && !read('.vite-hooks/pre-commit').includes('pnpm agent:task guard'))
   addError('.vite-hooks/pre-commit is missing the task commit guard')
 
-if (exists('CONTRIBUTING.md') && !read('CONTRIBUTING.md').includes('pnpm task start --task <task-id>'))
+if (exists('CONTRIBUTING.md') && !read('CONTRIBUTING.md').includes('pnpm agent:task start --task <task-id>'))
   addError('CONTRIBUTING.md is missing the workflow edit gate')
 
 // 薄适配入口用尺寸契约替代措辞契约：措辞可以随模型换代重写，只要它仍是不复制规则的短入口。
@@ -94,14 +95,15 @@ if (exists('.claude/settings.local.json')) {
 if (exists('package.json')) {
   try {
     const packageJson = JSON.parse(read('package.json'))
+    rootScripts = new Set(Object.keys(packageJson.scripts ?? {}))
     for (const script of [
-      'task',
-      'validate:context',
-      'check:pack',
-      'find:usages',
-      'inspect:contract',
-      'diff:contract',
-      'test:scripts'
+      'agent:task',
+      'ci:validate-context',
+      'check-pack',
+      'agent:find-usages',
+      'agent:inspect-contract',
+      'agent:diff-contract',
+      'ci:test-scripts'
     ]) {
       if (typeof packageJson.scripts?.[script] !== 'string') addError(`package.json is missing scripts.${script}`)
     }
@@ -316,6 +318,46 @@ for (const file of markdownFiles) {
 // 后者把 CONTEXT.md 的体积变成契约，阻止精简这份文档。
 for (const file of [...adrDocuments].sort()) {
   if (!inboundTargets.has(file)) addError(`${relative(file)}: no inbound link from the instruction surface`)
+}
+
+// 根命令存在性：文档里写的根命令必须在 package.json scripts 里真的存在，否则读者照抄必然失败。
+// 断链检查管不到这种「链接本身没坏、但它指向的东西被改名或删了」的引用面，所以单列一条。
+//
+// 只断言两种无歧义的形态：
+//   1. `pnpm run <name>` —— pnpm 的显式形式，永远指根 script。
+//   2. `pnpm <name>` 且 `<name>` 含 `:` 或 `-` —— 本仓 script 名的形状，正是重命名会留下的陈旧形态。
+// 不断言裸单词形态（`pnpm test` / `pnpm dev` / `pnpm install` / `pnpm changeset publish` / `pnpm workspace`）：
+// 它与 pnpm 自身的子命令、本地可解析的二进制和散文用词无法区分，误报会淹没真信号。
+// 已知代价：
+//   - 「加了 namespace 之前的旧形态」那种裸单词写法抓不到，陈旧性由 review 兜。
+//   - flag 插入形态不覆盖：`pnpm run --silent <cmd>` 这类中间插 flag 的写法匹配不到，本仓当前扫描面内无此形态。
+//   - `pnpm run <name>` 形态未来若文档引用包级 script（如 `pnpm run dev`）会误报；当前扫描面内无此形态，
+//     所以没有为它加白名单——真出现时按「包级引用应写成 `pnpm --filter <pkg> <script>`」修正文档，而不是放宽检查。
+// 约定见 docs/agents/commands.md。
+//
+// 范围与上面的 markdownFiles 一致，也就是「指令面」。两个说明避免把覆盖范围读错：
+//   - docs/adr/** 在覆盖范围内：ADR 是承载现行基础设施指引的活文档，命令名陈旧就是陈旧，照判。
+//   - docs/research/** 按构造不在范围内（markdownFiles 不收它）：那是点时性研究记录，保持历史原貌。
+// 唯一的收窄是 .agents/skills/herdr-agents/** —— 治理红线文本，命令名如何跟进由用户裁决。
+// 该处偏差记在对应 task 的 packet 附录，不靠这条检查静默放过。
+const commandScope = markdownFiles.filter(file => {
+  const [first, second, third] = relative(file).split(path.sep)
+  return !(first === '.agents' && second === 'skills' && third === 'herdr-agents')
+})
+// 只收 `[a-zA-Z]` 开头的 token：pnpm 的全局开关（`--filter`/`-F`/`--dir`）和 flag 后的值都不是 script 引用。
+const pnpmRunForm = /\bpnpm run ([a-zA-Z][a-zA-Z0-9:._-]*)/g
+const pnpmBareForm = /\bpnpm ([a-zA-Z][a-zA-Z0-9:._-]*)/g
+for (const file of commandScope) {
+  const source = fs.readFileSync(file, 'utf8')
+  const reported = new Set()
+  const check = name => {
+    // 同一个名字在同一个文件里重复出现只报一次，否则一次整段重写会刷出几十行同因错误。
+    if (rootScripts.has(name) || reported.has(name)) return
+    reported.add(name)
+    addError(`${relative(file)}: references root command \`${name}\`, which is not in package.json scripts`)
+  }
+  for (const match of source.matchAll(pnpmRunForm)) check(match[1])
+  for (const match of source.matchAll(pnpmBareForm)) if (/[:-]/.test(match[1])) check(match[1])
 }
 
 function parseFrontmatter(file) {

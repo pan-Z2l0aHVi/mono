@@ -16,9 +16,9 @@
 
 ## 关键约定
 
-- 只读调查可以按需加载 rule/guide；所有实施变更必须先按 [`docs/agents/workflow.md`](docs/agents/workflow.md) 的「任务级别」判定并建立 task，再实施。任务 gate 命令统一为 `pnpm task new --task <task-id> --level t0|t1|t2` 与 `pnpm task start --task <task-id>`；状态机与 review 要求以 workflow.md 为准，此处不复制。
+- 只读调查可以按需加载 rule/guide；所有实施变更必须先按 [`docs/agents/workflow.md`](docs/agents/workflow.md) 的「任务级别」判定并建立 task，再实施。任务 gate 命令统一为 `pnpm agent:task new --task <task-id> --level t0|t1|t2` 与 `pnpm agent:task start --task <task-id>`；状态机与 review 要求以 workflow.md 为准，此处不复制。
 - 对源码任务只加载命中的 rule/guide，避免把整个 instruction system 预加载进上下文。
-- 变更影响分析使用仓库内查询工具（`find:usages` / `inspect:contract` / `diff:contract`）；语义与参数见 [`docs/agents/context.md`](docs/agents/context.md)，不要把这些工具的用法复制进本文件。
+- 变更影响分析使用仓库内查询工具（`agent:find-usages` / `agent:inspect-contract` / `agent:diff-contract`）；语义与参数见 [`docs/agents/context.md`](docs/agents/context.md)，不要把这些工具的用法复制进本文件。
 - UI、UX 或浏览器运行时改动须在真实浏览器验证，见 [`docs/agents/browser-verification.md`](docs/agents/browser-verification.md)。
 
 ## 交付前

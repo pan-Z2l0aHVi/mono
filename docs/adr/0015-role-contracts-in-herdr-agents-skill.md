@@ -19,11 +19,11 @@
 2. Role Contract 迁到 `.agents/skills/herdr-agents/roles/{manager,designer,lib-coder,biz-coder,supervisor,reviewer}.md`。Role 文档只描述各自职责。
 3. 新增本仓自撰 skill `.agents/skills/herdr-agents/SKILL.md`，承载 Role 列表、默认绑定、启动参数、handoff、目录边界、Supervisor 协议和 Herdr 启动流程。task 状态机与 review gate 见 `docs/agents/workflow.md`，任务主合同见 `docs/agents/task-packet.md`，worktree 布局见 `docs/agents/worktrees.md`，pane 原语见第三方 `herdr` skill。该 skill 标记 `disable-model-invocation: true`，只由用户手动触发（`/herdr-agents`）。
 4. `.agents/skills/` 保持扁平：自撰 skill 与第三方 skill 同级，不引入分组目录、不引入 symlink。出处以 `skills-lock.json` 为权威——登记在册的是第三方上游件，未登记的是本仓自撰；`scripts/validate-context.mjs` 要求每个 `SKILL.md` 的目录名恰好落在其中一侧（自撰侧是脚本内的 `repoAuthoredSkills`），两边都不在或都在即报错。第三方 skill 的正文字符与语言由上游维护，其 markdown 链接不作为本仓链接校验对象。
-5. task 内核不保存 Role 列表，`pnpm task assign --roles` 明确失败；旧 v1 state 中的历史 Role 字段只保留兼容读取，不由 task 内核解释或重写。
+5. task 内核不保存 Role 列表，`pnpm agent:task assign --roles` 明确失败；旧 v1 state 中的历史 Role 字段只保留兼容读取，不由 task 内核解释或重写。
 
 ## 后果
 
-- Role 文档从 `vp check` 的格式化范围移入 `fmt.ignorePatterns` 的 `**/.agents/skills/**`，不再自动对齐表格与换行；`validate:context` 检查 skill 与 Role Contract frontmatter、Role 文件身份、客户端注册形态、出处和本地链接，不维护固定 Role 集合或执行体镜像。
+- Role 文档从 `vp check` 的格式化范围移入 `fmt.ignorePatterns` 的 `**/.agents/skills/**`，不再自动对齐表格与换行；`ci:validate-context` 检查 skill 与 Role Contract frontmatter、Role 文件身份、客户端注册形态、出处和本地链接，不维护固定 Role 集合或执行体镜像。
 - Claude Code 会话的 subagent 列表不再出现 Role 名；`herdr-agents` 只出现在手动斜杠命令中，不进入模型的自动调用面。
 - herdr 启动流程有了单一落点，`workflow.md` 与 `CONTRIBUTING.md` 继续只链接它。（2026-09-20 修订：Role 机制整体收进本 skill，契约目录、可用 Role 列表与初始化 prompt 都在 `.agents/skills/herdr-agents/` 内，`CONTRIBUTING.md` 的「角色会话」节已删除，根 `AGENTS.md` 也不再向普通会话提供 Role 入口。本条对 `workflow.md` 仍成立。）
 - 编排仍依赖 `HERDR_ENV=1` 的 pane 内执行前提；skill 的前置检查负责在会话外停下，不从会话外操控用户的 Herdr session。（2026-09-20 修订：前置检查与安全条已归上游 `herdr` skill，本 skill 只在每一步前要求先读它，不再自带 `HERDR_ENV` 判定与 herdr 命令行。）

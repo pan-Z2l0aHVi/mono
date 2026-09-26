@@ -1,6 +1,6 @@
 # Release Playbook
 
-release 是聚合发布场景下的操作程序，不是独立的 task 类型。聚合本身是一个 T0 task（`pnpm task new --task release-<date> --level t0 --playbook release.md`）。release worktree 只负责聚合和发布，不承担长期实施；必须从最新 `origin/main` 创建，同一时间只允许一个未完成的 release cycle。
+release 是聚合发布场景下的操作程序，不是独立的 task 类型。聚合本身是一个 T0 task（`pnpm agent:task new --task release-<date> --level t0 --playbook release.md`）。release worktree 只负责聚合和发布，不承担长期实施；必须从最新 `origin/main` 创建，同一时间只允许一个未完成的 release cycle。
 
 1. Manager 确认所有待聚合 task 已 `approved`，记录各自 task id、base SHA、diff hash 和 changeset。
 2. 在仓库旁创建唯一 release worktree，安装依赖并初始化 release task state；实施 task 不直接写入 release worktree。

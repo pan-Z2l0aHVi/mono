@@ -48,7 +48,7 @@ Supervisor 不可用或运行失败，不会改变 task state 的 phase，也不
 
 ### 5. 不写入 task state
 
-Supervisor、Role 和 coordination 属于 herdr 编排事实，不属于 task 内核事实。`scripts/task.mjs` 不写入顶层 `roles`，`pnpm task assign --roles` 明确失败。旧 v1 state 中的 `roles` 和历史 `assign.roles` 仍可读取，但 task 内核不解释、不迁移，也不重写它们。
+Supervisor、Role 和 coordination 属于 herdr 编排事实，不属于 task 内核事实。`scripts/task.mjs` 不写入顶层 `roles`，`pnpm agent:task assign --roles` 明确失败。旧 v1 state 中的 `roles` 和历史 `assign.roles` 仍可读取，但 task 内核不解释、不迁移，也不重写它们。
 
 Task Packet 继续保存任务主合同，并提供可选的 Coordination 摘要，供会话重启后恢复参与者、检查点结论和未决事项。摘要不替代 task state、冻结 diff 或验证记录。task state schema 版本保持不变。
 
