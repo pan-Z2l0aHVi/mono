@@ -9,8 +9,7 @@ export const router = createRouter({
     },
     {
       path: '/library',
-      component: () => import('@/pages/LibraryPage.vue'),
-      meta: { immersive: true }
+      component: () => import('@/pages/LibraryPage.vue')
     },
     {
       path: '/tags',
@@ -23,11 +22,6 @@ export const router = createRouter({
     {
       path: '/settings',
       component: () => import('@/pages/SettingsPage.vue')
-    },
-    {
-      path: '/prototype/interweave-shell',
-      component: () => import('@/pages/prototype/InterweaveShellPrototypePage.vue'),
-      meta: { prototype: true }
     }
   ]
 })

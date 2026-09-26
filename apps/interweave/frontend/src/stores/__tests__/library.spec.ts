@@ -51,7 +51,7 @@ describe('toResourceView（DTO → view-model 翻译）', () => {
     expect(view.tagNames).toEqual(['design'])
   })
 
-  it('available 由各入口聚合：全部不可用才不可用（prototype 的 broken 取反）', () => {
+  it('available 由各入口聚合：全部不可用才不可用', () => {
     const unavailable = { available: false }
     const two = toResourceView(
       dto({

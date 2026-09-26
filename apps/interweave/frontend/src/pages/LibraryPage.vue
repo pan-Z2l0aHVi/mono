@@ -1,9 +1,8 @@
 <script setup lang="ts">
-import type { WebUiEditableText, WebUiEvent, WebUiLayout } from '@greypan/web-ui'
+import type { WebUiEditableText, WebUiEvent } from '@greypan/web-ui'
 import { computed, nextTick, onMounted, onScopeDispose, ref, type ComponentPublicInstance } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRouter } from 'vue-router'
 
-import AppNav from '@/components/AppNav.vue'
 import { createLibraryAddQueue } from '@/components/library/addQueue'
 import LibraryAddDialog from '@/components/library/LibraryAddDialog.vue'
 import LibraryConfirmDialog from '@/components/library/LibraryConfirmDialog.vue'
@@ -22,6 +21,7 @@ import {
 } from '@/components/library/restore'
 import { canGoBack, canGoForward } from '@/composables/useHistoryNav'
 import { useLibraryRuntime } from '@/composables/useLibraryRuntime'
+import { useMediaQuery } from '@/composables/useMediaQuery'
 import type { LibraryQueueItem } from '@/services/library'
 import { useLibraryStore } from '@/stores/library'
 import type { ResourceSourceView, ResourceView } from '@/stores/library'
@@ -34,7 +34,6 @@ interface ConfirmRequest {
   action: () => Promise<void> | void
 }
 
-const route = useRoute()
 const router = useRouter()
 const store = useLibraryStore()
 const {
@@ -61,12 +60,7 @@ const {
   probeURLSourceOnOpen
 } = useLibraryRuntime()
 
-const sidebarCollapsed = ref(false)
-const sidebarOpen = ref(false)
-const desktopSidebarWidth = ref('240px')
-const mobileQuery = window.matchMedia('(max-width: 640px)')
-const mobile = ref(mobileQuery.matches)
-const sidebarWidth = computed(() => (mobile.value ? 'min(320px, 80vw)' : desktopSidebarWidth.value))
+const mobile = useMediaQuery('(max-width: 640px)')
 const filterOpen = ref(false)
 const searchOpen = ref(false)
 const selectionMode = ref(false)
@@ -151,29 +145,6 @@ function startResourceRename(resource: ResourceView, surface: 'list' | 'drawer' 
 
 function stopResourceRename() {
   editingNameKey.value = null
-}
-
-function syncMobile() {
-  mobile.value = mobileQuery.matches
-}
-
-mobileQuery.addEventListener('change', syncMobile)
-onScopeDispose(() => mobileQuery.removeEventListener('change', syncMobile))
-
-function updateSidebarCollapsed(event: WebUiEvent<WebUiLayout, 'sidebar-collapsed-change'>) {
-  sidebarCollapsed.value = event.detail.collapsed
-}
-
-function updateSidebarOpen(event: WebUiEvent<WebUiLayout, 'sidebar-open-change'>) {
-  sidebarOpen.value = event.detail.open
-}
-
-function updateSidebarWidth(event: WebUiEvent<WebUiLayout, 'sidebar-width-change'>) {
-  desktopSidebarWidth.value = event.detail.width
-}
-
-function closeSidebar() {
-  sidebarOpen.value = false
 }
 
 function selectResource(resource: ResourceView) {
@@ -478,165 +449,156 @@ onMounted(() => {
 </script>
 
 <template>
-  <web-ui-layout
-    header-glow
-    sidebarResizable
-    class="min-h-dvh overflow-x-clip text-[#22212a] bg-white dark:text-(--wui-color-text) dark:bg-(--wui-color-page)"
-    :sidebarCollapsed="sidebarCollapsed"
-    :sidebarOpen="sidebarOpen"
-    :sidebarWidth="sidebarWidth"
-    @sidebar-collapsed-change="updateSidebarCollapsed"
-    @sidebar-open-change="updateSidebarOpen"
-    @sidebar-width-change="updateSidebarWidth"
-  >
-    <AppNav slot="sidebar" :collapsed="sidebarCollapsed" @navigate="closeSidebar" />
+  <!--
+    本页是 AppLayout 的 shell 子节点：根节点带 slot="header" 落进 layout 的 header slot，
+    其余根节点走默认 slot 落进 main。多根 fragment 正是为了这两个 slot 各占一个直属子节点，
+    Vue 的 slot 不跨组件边界，页面没法从 AppLayout 那边反向声明。
+  -->
+  <header slot="header" class="w-full">
+    <LibraryToolbar
+      :search-query="store.searchQuery"
+      :filter-source="store.filterSource"
+      :filter-kind="store.filterKind"
+      :filter-availability="store.filterAvailability"
+      :filter-tag="store.filterTag"
+      :sort="store.sort"
+      :all-tag-names="store.allTagNames"
+      :has-active-filter="store.hasActiveFilter"
+      :filter-open="filterOpen"
+      :search-open="searchOpen"
+      :selection-mode="selectionMode"
+      :selected-count="checkedIds.length"
+      :all-visible-selected="allVisibleSelected"
+      :mobile="mobile"
+      :can-go-back="canGoBack"
+      :can-go-forward="canGoForward"
+      :can-restore="canRestore"
+      @update:search-query="store.searchQuery = $event"
+      @update:filter-source="store.filterSource = $event"
+      @update:filter-kind="store.filterKind = $event"
+      @update:filter-availability="store.filterAvailability = $event"
+      @update:filter-tag="store.filterTag = $event"
+      @update:sort="store.sort = $event"
+      @update:filter-open="filterOpen = $event"
+      @update:search-open="searchOpen = $event"
+      @add="openAddDialog"
+      @select="toggleSelectionMode"
+      @select-all="toggleCheckAll"
+      @delete-selected="requestDeleteSelected"
+      @restore="handleBatchRestore"
+      @reset="store.resetFilters()"
+      @back="router.back()"
+      @forward="router.forward()"
+    />
+  </header>
 
-    <header slot="header" class="w-full">
-      <LibraryToolbar
-        :search-query="store.searchQuery"
-        :filter-source="store.filterSource"
-        :filter-kind="store.filterKind"
-        :filter-availability="store.filterAvailability"
-        :filter-tag="store.filterTag"
-        :sort="store.sort"
-        :all-tag-names="store.allTagNames"
-        :has-active-filter="store.hasActiveFilter"
-        :filter-open="filterOpen"
-        :search-open="searchOpen"
+  <div class="flex min-h-0 flex-1">
+    <main class="flex-1 min-w-0 px-6 max-[640px]:px-3 pb-16 pt-2">
+      <div
+        v-if="runtimeError"
+        class="mb-3 flex min-h-10 items-center justify-between gap-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-400/12 dark:text-red-200"
+        role="alert"
+      >
+        <span class="min-w-0 wrap-break-word">{{ runtimeError }}</span>
+        <web-ui-button size="28" variant="ghost" @click="runtimeError = ''">关闭</web-ui-button>
+      </div>
+
+      <LibraryResourceList
+        :resources="visibleResources"
+        :active-resource-id="activeResourceId"
+        :checked-ids="checkedIds"
         :selection-mode="selectionMode"
-        :selected-count="checkedIds.length"
-        :all-visible-selected="allVisibleSelected"
-        :mobile="mobile"
-        :can-go-back="canGoBack"
-        :can-go-forward="canGoForward"
-        :can-restore="canRestore"
-        @update:search-query="store.searchQuery = $event"
-        @update:filter-source="store.filterSource = $event"
-        @update:filter-kind="store.filterKind = $event"
-        @update:filter-availability="store.filterAvailability = $event"
-        @update:filter-tag="store.filterTag = $event"
-        @update:sort="store.sort = $event"
-        @update:filter-open="filterOpen = $event"
-        @update:search-open="searchOpen = $event"
-        @add="openAddDialog"
-        @select="toggleSelectionMode"
-        @select-all="toggleCheckAll"
-        @delete-selected="requestDeleteSelected"
-        @restore="handleBatchRestore"
-        @reset="store.resetFilters()"
-        @back="router.back()"
-        @forward="router.forward()"
-      />
-    </header>
-
-    <div class="flex min-h-0 flex-1">
-      <main class="flex-1 min-w-0 px-6 max-[640px]:px-3 pb-16 pt-2">
-        <div
-          v-if="runtimeError"
-          class="mb-3 flex min-h-10 items-center justify-between gap-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-400/12 dark:text-red-200"
-          role="alert"
-        >
-          <span class="min-w-0 wrap-break-word">{{ runtimeError }}</span>
-          <web-ui-button size="28" variant="ghost" @click="runtimeError = ''">关闭</web-ui-button>
-        </div>
-
-        <LibraryResourceList
-          :resources="visibleResources"
-          :active-resource-id="activeResourceId"
-          :checked-ids="checkedIds"
-          :selection-mode="selectionMode"
-          :editing-name-key="editingNameKey"
-          :editor-ref="setNameEditorRef"
-          :loading="isLoading"
-          :runtime-available="runtime.isAvailable"
-          :empty-description="emptyDescription"
-          :media-url-for="resourceMediaURL"
-          @select="selectResource"
-          @preview="previewResource"
-          @start-rename="renameResourceFromMenu"
-          @edit-tags="editResourceTags"
-          @delete="requestDeleteResource"
-          @recover="handleRecoverSource"
-          @toggle="toggleChecked"
-          @rename-change="handleResourceNameChange"
-          @cancel-rename="stopResourceRename"
-        />
-      </main>
-
-      <LibraryDetailDrawer
-        :open="detailOpen"
-        :resource="selectedResource"
-        :mobile="mobile"
         :editing-name-key="editingNameKey"
-        :editor-ref="setNameEditorRef(DRAWER_TITLE_EDITOR_KEY)"
-        :replacing-source-ids="replacingSourceIds"
-        @update:open="setDetailOpen"
-        @start-rename="startResourceRename($event, 'drawer')"
-        @rename-change="handleResourceNameChange"
-        @cancel-rename="stopResourceRename"
+        :editor-ref="setNameEditorRef"
+        :loading="isLoading"
+        :runtime-available="runtime.isAvailable"
+        :empty-description="emptyDescription"
+        :media-url-for="resourceMediaURL"
+        @select="selectResource"
+        @preview="previewResource"
+        @start-rename="renameResourceFromMenu"
         @edit-tags="editResourceTags"
         @delete="requestDeleteResource"
-        @preview="previewResource"
         @recover="handleRecoverSource"
+        @toggle="toggleChecked"
+        @rename-change="handleResourceNameChange"
+        @cancel-rename="stopResourceRename"
       />
-      <LibraryPreviewDrawer
-        v-model:open="previewOpen"
-        :resource="selectedResource"
-        :mobile="mobile"
-        :media-url-for="resourceMediaURL"
-        :open-external="openExternal"
-        @open-failed="runtimeError = takeOperationError($event, '无法在系统浏览器中打开')"
-      />
-    </div>
+    </main>
 
-    <LibraryAddDialog
-      :open="addOpen"
-      :queue="queue"
-      :busy="addingResources"
-      :error="addError"
+    <LibraryDetailDrawer
+      :open="detailOpen"
+      :resource="selectedResource"
       :mobile="mobile"
-      @pick-files="pickFiles"
-      @request-file-paths="pasteFilePaths"
-      @remove="requestQueueRemoval"
-      @rename="renameQueueItem"
-      @edit-tags="editQueueTags"
-      @submit="submitQueue"
-      @update:open="setAddOpen"
+      :editing-name-key="editingNameKey"
+      :editor-ref="setNameEditorRef(DRAWER_TITLE_EDITOR_KEY)"
+      :replacing-source-ids="replacingSourceIds"
+      @update:open="setDetailOpen"
+      @start-rename="startResourceRename($event, 'drawer')"
+      @rename-change="handleResourceNameChange"
+      @cancel-rename="stopResourceRename"
+      @edit-tags="editResourceTags"
+      @delete="requestDeleteResource"
+      @preview="previewResource"
+      @recover="handleRecoverSource"
     />
-
-    <LibraryEditTagsDialog
-      v-model:open="tagsOpen"
-      :target="activeTagTarget"
-      :all-tag-names="allTagNames"
-      :busy="pendingResourceIds.includes(activeTagTarget?.id ?? '')"
-      :error="runtimeError"
-      @save="handleSaveTags"
-    />
-
-    <LibraryRestoreDialog
-      :open="restoreOpen"
-      :queue="restoreQueue"
-      :busy="restoreBusy"
-      :error="restoreError"
+    <LibraryPreviewDrawer
+      v-model:open="previewOpen"
+      :resource="selectedResource"
       :mobile="mobile"
-      :active-item-id="activeRestoreItemId"
-      @update:open="setRestoreOpen"
-      @submit="submitRestoreQueue"
+      :media-url-for="resourceMediaURL"
+      :open-external="openExternal"
+      @open-failed="runtimeError = takeOperationError($event, '无法在系统浏览器中打开')"
     />
+  </div>
 
-    <LibraryConfirmDialog
-      :open="confirmRequest !== null"
-      :title="confirmRequest?.title ?? ''"
-      :message="confirmRequest?.message ?? ''"
-      :confirm-label="confirmRequest?.confirmLabel ?? '确认'"
-      :danger="confirmRequest?.danger ?? false"
-      :busy="confirmBusy"
-      :error="confirmError"
-      :compact="confirmRequest?.title === '移除待添加项'"
-      @confirm="runConfirmedAction"
-      @cancel="closeConfirmDialog"
-    />
+  <LibraryAddDialog
+    :open="addOpen"
+    :queue="queue"
+    :busy="addingResources"
+    :error="addError"
+    :mobile="mobile"
+    @pick-files="pickFiles"
+    @request-file-paths="pasteFilePaths"
+    @remove="requestQueueRemoval"
+    @rename="renameQueueItem"
+    @edit-tags="editQueueTags"
+    @submit="submitQueue"
+    @update:open="setAddOpen"
+  />
 
-    <web-ui-back-top />
-  </web-ui-layout>
+  <LibraryEditTagsDialog
+    v-model:open="tagsOpen"
+    :target="activeTagTarget"
+    :all-tag-names="allTagNames"
+    :busy="pendingResourceIds.includes(activeTagTarget?.id ?? '')"
+    :error="runtimeError"
+    @save="handleSaveTags"
+  />
+
+  <LibraryRestoreDialog
+    :open="restoreOpen"
+    :queue="restoreQueue"
+    :busy="restoreBusy"
+    :error="restoreError"
+    :mobile="mobile"
+    :active-item-id="activeRestoreItemId"
+    @update:open="setRestoreOpen"
+    @submit="submitRestoreQueue"
+  />
+
+  <LibraryConfirmDialog
+    :open="confirmRequest !== null"
+    :title="confirmRequest?.title ?? ''"
+    :message="confirmRequest?.message ?? ''"
+    :confirm-label="confirmRequest?.confirmLabel ?? '确认'"
+    :danger="confirmRequest?.danger ?? false"
+    :busy="confirmBusy"
+    :error="confirmError"
+    :compact="confirmRequest?.title === '移除待添加项'"
+    @confirm="runConfirmedAction"
+    @cancel="closeConfirmDialog"
+  />
+
+  <web-ui-back-top />
 </template>

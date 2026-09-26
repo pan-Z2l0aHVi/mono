@@ -268,4 +268,15 @@ describe('LibraryPage：可用性感知接线', () => {
     expect(runtimeStub.availabilityDisposer).toBeTypeOf('function')
     expect(runtimeStub.availabilityListener).toBeNull()
   })
+
+  it('根节点带 slot="header" 交给 AppLayout 的 layout，其余根节点走默认 slot', async () => {
+    const mounted = await mountPage()
+
+    // 页面是 shell 的子节点：这两个 slot 各要一个直属子节点，少一个 header 就会掉进 main。
+    const header = mounted.host.querySelector<HTMLElement>(':scope > [slot="header"]')
+    expect(header?.tagName).toBe('HEADER')
+    expect(mounted.host.querySelector(':scope > web-ui-back-top')).toBeTruthy()
+
+    await mounted.close()
+  })
 })

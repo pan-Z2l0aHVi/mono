@@ -4,8 +4,6 @@ import { WebUiSvgDrawLines } from '@greypan/web-ui'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { createApp, nextTick, ref } from 'vue'
 
-import { consumeNavDraw } from '@/composables/useNavDrawHandoff'
-
 import AppNav from './AppNav.vue'
 
 /** vue-router 的 useRoute/useRouter 需要注入；导航只读 path 与 push。 */
@@ -81,8 +79,6 @@ describe('AppNav：主导航', () => {
     route.value = { path: '/library' }
     router.push.mockClear()
     vi.stubGlobal('matchMedia', matchMediaStub)
-    // 交接意图是模块级状态，跨用例清干净：key 不匹配时 consume 也会清空
-    consumeNavDraw(undefined)
   })
 
   afterEach(() => {
@@ -147,38 +143,16 @@ describe('AppNav：主导航', () => {
     await mounted.close()
   })
 
-  it('跨路由点击把画线交接给接管路由的新实例，出发实例不播', async () => {
+  it('跨路由点击同样重放目标图标的画线动画', async () => {
+    const mounted = await mountNav()
+    const map = drawHosts(mounted.host)[1]!
     const replay = vi.spyOn(WebUiSvgDrawLines.prototype, 'replay')
-    const outgoing = await mountNav()
-    const outgoingMap = drawHosts(outgoing.host)[1]!
 
-    // /library 是 immersive、自带一套 layout：这次点击后整个 AppNav 会被销毁重建
-    navItem(outgoing.host, '关系图谱').click()
-    await nextTick()
+    navItem(mounted.host, '关系图谱').click()
+    await flush()
 
     expect(router.push).toHaveBeenCalledWith('/map')
-    expect(replay.mock.instances).not.toContain(outgoingMap)
-    await outgoing.close()
-
-    route.value = { path: '/map' }
-    const incoming = await mountNav()
-    const incomingMap = drawHosts(incoming.host)[1]!
-
-    // 交接在挂载时消费，补上被掐断的那次画线
-    await flush()
-    expect(replay.mock.instances).toContain(incomingMap)
-
-    await incoming.close()
-  })
-
-  it('没有点击意图时接管路由的新实例不播（直接访问 / 刷新不算点击）', async () => {
-    const replay = vi.spyOn(WebUiSvgDrawLines.prototype, 'replay')
-    route.value = { path: '/map' }
-    const mounted = await mountNav()
-
-    await flush()
-
-    expect(replay).not.toHaveBeenCalled()
+    expect(replay.mock.instances).toEqual([map])
 
     await mounted.close()
   })
