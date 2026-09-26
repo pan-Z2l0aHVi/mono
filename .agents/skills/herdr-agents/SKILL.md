@@ -106,7 +106,7 @@ Supervisor 默认只读。它可以做这些事：
 - 读取 tracked diff、untracked 文件清单和 diff 内容。
 - 通过 Herdr 读取 Coder pane 的 `agent read`、状态和 `agent wait` 结果。
 - 通过 Herdr `agent prompt` 发送观察报告和纠错消息。该工具只传递消息，不写文件或改代码。
-- 运行只读 repo 查询，例如 `pnpm find:usages`、`pnpm inspect:contract`、`pnpm diff:contract`。
+- 运行只读 repo 查询，命令名以 [`docs/agents/commands.md`](../../../docs/agents/commands.md) 索引为准。
 
 Supervisor 不写文件或编辑源码，不修改 task state 或 Git 历史，也不执行提交、合并、清理或依赖安装。测试和构建由 Manager 在自己的 pane 中运行。Supervisor 只读取结果，不直接触发可能写文件的命令。
 
@@ -148,7 +148,7 @@ Reviewer 不接收 Supervisor 报告，只读取冻结 diff、Task Packet 的任
 ## 编排流程
 
 1. 读取根 [`AGENTS.md`](../../../AGENTS.md) 和 [`docs/agents/workflow.md`](../../../docs/agents/workflow.md)，按 task gate 建立实施 task。新 worktree 先执行 `pnpm install && pnpm run build`，路径和复用规则见 [`docs/agents/worktrees.md`](../../../docs/agents/worktrees.md)。
-2. 用 `pnpm find:usages -- <paths...>` 确认影响面，再选择 task 级别、Coder 数量和目录边界。task state 只记录 task-level 事实，不记录 Role 列表。
+2. 用只读 repo 查询确认影响面（命令名以 [`docs/agents/commands.md`](../../../docs/agents/commands.md) 索引为准），再选择 task 级别、Coder 数量和目录边界。task state 只记录 task-level 事实，不记录 Role 列表。
 3. 完成启用 Supervisor 评分。产品/UI task 直接记录跳过；其他 task 按分数决定是否启动一个 Supervisor。
 4. 为每个实施 Role 建立独立 pane，cwd 指向所属 task worktree。按绑定表启动执行体，初始化 Role，并确认回执。Supervisor 与 Coder 共享实施 worktree，但 Supervisor 只读。基础设施变更（agent 通道或代理切换、MCP 配置变更、会话重启）后，先用 `herdr agent list` 核对各实施会话存活，再恢复派发；中断的会话按工作区 `git status` 与 Task Packet 接手现场。
 5. 先发完所有结构化 handoff，再非阻塞监听各会话。不要用一个长等待阻塞其他派发；实施会话需要较长的超时。
