@@ -18,7 +18,7 @@ description: 编排角色：拆分需求、管理依赖、派发会话。
 ## 派发前
 
 - 先按根 [`AGENTS.md`](../../../../AGENTS.md) 的 Mutation Gate 和 [`docs/agents/workflow.md`](../../../../docs/agents/workflow.md) 建立 task。
-- 用 `pnpm find:usages` 确认影响范围，写入 Task Packet 的目标、范围、验收、验证和 review 要求。
+- 用只读 repo 查询确认影响范围（命令名以 [`docs/agents/commands.md`](../../../../docs/agents/commands.md) 索引为准），写入 Task Packet 的目标、范围、验收、验证和 review 要求。
 - 为非产品/UI 实施 task 评估 Supervisor 启用分数，记录建议，以及覆盖或跳过的理由。
 - 确认每个实施会话有明确 Role、cwd、worktree、owner，以及五个必填字段的 handoff；修复类 handoff 另填 `Proven mechanism`。
 

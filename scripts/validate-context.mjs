@@ -335,19 +335,14 @@ for (const file of [...adrDocuments].sort()) {
 //     所以没有为它加白名单——真出现时按「包级引用应写成 `pnpm --filter <pkg> <script>`」修正文档，而不是放宽检查。
 // 约定见 docs/agents/commands.md。
 //
-// 范围与上面的 markdownFiles 一致，也就是「指令面」。两个说明避免把覆盖范围读错：
+// 范围就是上面的 markdownFiles，也就是「指令面」。两个说明避免把覆盖范围读错：
 //   - docs/adr/** 在覆盖范围内：ADR 是承载现行基础设施指引的活文档，命令名陈旧就是陈旧，照判。
 //   - docs/research/** 按构造不在范围内（markdownFiles 不收它）：那是点时性研究记录，保持历史原貌。
-// 唯一的收窄是 .agents/skills/herdr-agents/** —— 治理红线文本，命令名如何跟进由用户裁决。
-// 该处偏差记在对应 task 的 packet 附录，不靠这条检查静默放过。
-const commandScope = markdownFiles.filter(file => {
-  const [first, second, third] = relative(file).split(path.sep)
-  return !(first === '.agents' && second === 'skills' && third === 'herdr-agents')
-})
+// 指令面没有其他收窄：herdr-agents skill 的命令引用已指引化到 docs/agents/commands.md，随本检查一同覆盖。
 // 只收 `[a-zA-Z]` 开头的 token：pnpm 的全局开关（`--filter`/`-F`/`--dir`）和 flag 后的值都不是 script 引用。
 const pnpmRunForm = /\bpnpm run ([a-zA-Z][a-zA-Z0-9:._-]*)/g
 const pnpmBareForm = /\bpnpm ([a-zA-Z][a-zA-Z0-9:._-]*)/g
-for (const file of commandScope) {
+for (const file of markdownFiles) {
   const source = fs.readFileSync(file, 'utf8')
   const reported = new Set()
   const check = name => {
