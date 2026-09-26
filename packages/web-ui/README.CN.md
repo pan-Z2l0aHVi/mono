@@ -824,7 +824,7 @@ web-ui-radio-group {
 
 **拖拽关闭：** 启用 `draggable` 后，打开的抽屉在内缘显示灰色胶囊 drag bar（默认 4×56px，视觉中线距内缘 10px，位于 20px 厚的命中热区内；`right` 在左缘、`left` 在右缘、`top` 在下缘、`bottom` 在上缘）：
 
-中线跟随 `--wui-drawer-content-padding` 的半值，并以半个胶囊厚度兜底：把该 padding 归零、让内容贴边铺满时，胶囊仍留半个厚度的内缩，不会越出面板内缘。
+中线跟随 `--wui-drawer-content-padding` 的半值，并以「半个胶囊厚度 + 4px 呼吸间距」兜底：把该 padding 归零、让内容贴边铺满时，胶囊仍留可见内缩，既不会越出面板内缘，也不会贴死面板边缘。
 
 - 拖拽实时跟手，遮罩透明度按比例淡出。
 - 遮罩点击关闭只认**轻点链路**：按下起点在遮罩上、且按-放位移在轻点量级内的 click 才关闭。浏览器对「按下 → 拖动 → 松手」生成的 click 落在起点与松手点的共同祖先（dialog）上——从面板内容或遮罩上开始拖拽、松手落在遮罩时，click 的 target 同样是 dialog；组件在 `pointerdown` 记录起点与坐标做回溯校验，这类拖拽松手一律弹回。`detail` 为 0 的 click（键盘/程序化来源）不消费指针记录。
@@ -842,22 +842,22 @@ web-ui-radio-group {
 
 **CSS 自定义属性：**
 
-| 属性                              | 默认值                             | 说明                                                                     |
-| --------------------------------- | ---------------------------------- | ------------------------------------------------------------------------ |
-| `--wui-drawer-width`              | `320px`                            | 抽屉宽度                                                                 |
-| `--wui-drawer-height`             | `300px`                            | 抽屉高度（上/下）                                                        |
-| `--wui-drawer-bg`                 | `var(--wui-color-surface-overlay)` | 抽屉背景色                                                               |
-| `--wui-drawer-radius`             | `var(--wui-radius-overlay, 28px)`  | 浮动卡片圆角（非 headless）                                              |
-| `--wui-drawer-inset`              | `8px`                              | 浮动卡片视口留边（非 headless）；置 `0` 为贴边几何                       |
-| `--wui-drawer-overlay-bg`         | `rgb(0 0 0 / 0.12)`                | 遮罩背景色                                                               |
-| `--wui-drawer-drag-zone-size`     | `20px`                             | Drag-to-close 命中热区厚度（draggable）                                  |
-| `--wui-drawer-drag-bar-thickness` | `4px`                              | Drag bar 胶囊厚度（短轴）                                                |
-| `--wui-drawer-drag-bar-length`    | `56px`                             | Drag bar 胶囊长度（沿抽屉边缘）                                          |
-| `--wui-drawer-header-padding`     | `16px 20px`                        | Header 区域 padding                                                      |
-| `--wui-drawer-close-top`          | `16px`                             | 内置关闭按钮相对 header 顶部的偏移                                       |
-| `--wui-drawer-close-right`        | `16px`                             | 内置关闭按钮相对抽屉右缘的偏移                                           |
-| `--wui-drawer-content-padding`    | `20px`                             | 内容区 padding；同时驱动 drag bar 视觉中线（取半值，不低于半个胶囊厚度） |
-| `--wui-drawer-footer-padding`     | `16px 20px`                        | Footer 区域 padding                                                      |
+| 属性                              | 默认值                             | 说明                                                                           |
+| --------------------------------- | ---------------------------------- | ------------------------------------------------------------------------------ |
+| `--wui-drawer-width`              | `320px`                            | 抽屉宽度                                                                       |
+| `--wui-drawer-height`             | `300px`                            | 抽屉高度（上/下）                                                              |
+| `--wui-drawer-bg`                 | `var(--wui-color-surface-overlay)` | 抽屉背景色                                                                     |
+| `--wui-drawer-radius`             | `var(--wui-radius-overlay, 28px)`  | 浮动卡片圆角（非 headless）                                                    |
+| `--wui-drawer-inset`              | `8px`                              | 浮动卡片视口留边（非 headless）；置 `0` 为贴边几何                             |
+| `--wui-drawer-overlay-bg`         | `rgb(0 0 0 / 0.12)`                | 遮罩背景色                                                                     |
+| `--wui-drawer-drag-zone-size`     | `20px`                             | Drag-to-close 命中热区厚度（draggable）                                        |
+| `--wui-drawer-drag-bar-thickness` | `4px`                              | Drag bar 胶囊厚度（短轴）                                                      |
+| `--wui-drawer-drag-bar-length`    | `56px`                             | Drag bar 胶囊长度（沿抽屉边缘）                                                |
+| `--wui-drawer-header-padding`     | `16px 20px`                        | Header 区域 padding                                                            |
+| `--wui-drawer-close-top`          | `16px`                             | 内置关闭按钮相对 header 顶部的偏移                                             |
+| `--wui-drawer-close-right`        | `16px`                             | 内置关闭按钮相对抽屉右缘的偏移                                                 |
+| `--wui-drawer-content-padding`    | `20px`                             | 内容区 padding；同时驱动 drag bar 视觉中线（取半值，不低于半个胶囊厚度 + 4px） |
+| `--wui-drawer-footer-padding`     | `16px 20px`                        | Footer 区域 padding                                                            |
 
 #### `imagePreview()`
 
