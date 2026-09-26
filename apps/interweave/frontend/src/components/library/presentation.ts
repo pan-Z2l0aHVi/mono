@@ -80,6 +80,14 @@ export const metadataLabelClass = 'shrink-0 text-[13px] leading-5 text-[#8a8a94]
 export const metadataValueClass =
   'min-w-0 truncate text-right text-[13px] font-medium leading-5 text-[#22212a] dark:text-(--wui-color-text)'
 
+/*
+ * 标签 chip 的统一外形：全 app 固定 22px 高。
+ *
+ * 用 inline-flex + items-center 而不是 inline-block + py-0.5：高度由 h-[22px] 唯一决定，
+ * 标签文字再长也不会靠行内 padding 把行高撑开，列表行因此保持等高。
+ */
+export const tagChipClass = 'inline-flex h-[22px] items-center px-2 rounded-full text-xs whitespace-nowrap'
+
 export function resourceIcon(kind: ResourceKind) {
   return KIND_ICONS[kind] ?? KIND_ICONS.file
 }

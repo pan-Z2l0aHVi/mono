@@ -8,13 +8,13 @@ import type { ResourceSourceView, ResourceView } from '@/stores/library'
 import {
   formatSize,
   formatTimestamp,
-  resourceIcon,
   resourceKindLabel,
   metadataLabelClass,
   metadataRowClass,
   metadataValueClass,
   sourceTypeDisplayLabel,
   sourceTypeIcon,
+  tagChipClass,
   tagClass
 } from './presentation'
 import { DRAWER_TITLE_EDITOR_KEY, type NameEditorRef } from './rename'
@@ -73,23 +73,7 @@ function restoreResource() {
       v-if="resource"
       class="grid gap-5 max-[640px]:h-(--wui-drawer-height) max-[640px]:overflow-y-auto max-[640px]:p-5"
     >
-      <div
-        class="flex items-center justify-center h-36 rounded-xl bg-[#f5f5f7] dark:bg-(--wui-color-surface-raised)"
-        :aria-label="`${resourceKindLabel(resource.kind)}预览占位`"
-      >
-        <web-ui-icon
-          :icon="resourceIcon(resource.kind)"
-          :size="48"
-          class="text-[#c0c0c8] dark:text-(--wui-color-text-tertiary)"
-        />
-      </div>
-
       <h2 class="group/title flex items-center gap-3 min-h-9 m-0">
-        <web-ui-icon
-          :icon="resourceIcon(resource.kind)"
-          :size="22"
-          class="shrink-0 text-[#5b5b66] dark:text-(--wui-color-text-secondary)"
-        />
         <web-ui-editable-text
           v-if="editingTitle"
           :ref="editorRef"
@@ -109,11 +93,11 @@ function restoreResource() {
           class="shrink-0"
           icon
           variant="ghost"
-          size="28"
+          size="22"
           aria-label="重命名"
           @click="emit('startRename', resource)"
         >
-          <web-ui-icon :icon="lucidePenLine" :size="14" />
+          <web-ui-icon :icon="lucidePenLine" :size="13" />
         </web-ui-button>
       </h2>
 
@@ -154,12 +138,7 @@ function restoreResource() {
       </web-ui-button-group>
 
       <div class="flex flex-wrap items-center gap-1.5">
-        <span
-          v-for="tagName in resource.tagNames"
-          :key="tagName"
-          class="inline-block px-2 py-0.5 rounded-full text-xs leading-tight whitespace-nowrap"
-          :class="tagClass(tagName)"
-        >
+        <span v-for="tagName in resource.tagNames" :key="tagName" :class="[tagChipClass, tagClass(tagName)]">
           {{ tagName }}
         </span>
         <web-ui-tooltip content="编辑标签" placement="top">
@@ -167,11 +146,11 @@ function restoreResource() {
             class="[--wui-button-color:var(--wui-color-accent,#08f)]"
             icon
             variant="ghost"
-            size="20"
+            size="22"
             aria-label="编辑标签"
             @click="emit('editTags', resource)"
           >
-            <web-ui-icon :icon="lucideTags" :size="12" />
+            <web-ui-icon :icon="lucideTags" :size="13" />
           </web-ui-button>
         </web-ui-tooltip>
       </div>
@@ -223,18 +202,6 @@ function restoreResource() {
         <div v-if="resource.sizeBytes !== null" :class="metadataRowClass">
           <span :class="metadataLabelClass">大小</span>
           <span :class="[metadataValueClass, 'tabular-nums']">{{ formatSize(resource.sizeBytes) }}</span>
-        </div>
-        <div :class="metadataRowClass">
-          <span :class="metadataLabelClass">状态</span>
-          <span
-            :class="
-              resource.available
-                ? metadataValueClass
-                : 'text-right text-[13px] font-medium leading-5 text-[#ef4444] dark:text-(--wui-color-danger)'
-            "
-          >
-            {{ resource.available ? '正常' : '已失效' }}
-          </span>
         </div>
         <div :class="metadataRowClass">
           <span :class="metadataLabelClass">创建于</span>

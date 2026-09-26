@@ -17,7 +17,7 @@ import {
   lucideUndo2,
   tablerSortAscendingLetters
 } from '@greypan/web-ui/icons'
-import { nextTick, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 
 import type { AvailabilityFilter, ResourceKind, SortOption, SourceType } from '@/stores/library'
 
@@ -34,6 +34,8 @@ const props = defineProps<{
   searchOpen: boolean
   selectionMode: boolean
   selectedCount: number
+  /** 当前筛选后的可见条目数：没有可选项时全选/取消全选都无从谈起，按钮必须禁用。 */
+  visibleCount: number
   allVisibleSelected: boolean
   mobile: boolean
   canGoBack: boolean
@@ -62,6 +64,8 @@ const emit = defineEmits<{
 
 const searchInputRef = ref<WebUiInput>()
 
+const hasActiveSearch = computed(() => props.searchQuery !== '')
+
 watch(
   () => props.searchOpen,
   open => {
@@ -77,6 +81,14 @@ function handleSearchInput(event: WebUiEvent<WebUiInput, 'input'>) {
 function handleSearchKeydown(event: KeyboardEvent) {
   if (event.key !== 'Escape') return
   event.preventDefault()
+  emit('update:searchOpen', false)
+}
+
+/*
+ * blur 收起搜索框，但把已生效的查询留在按钮上：searchOpen 归零后查询仍在 store 里，
+ * 若按钮不反映这一点，用户会看不到也清不掉这个筛选。
+ */
+function handleSearchBlur() {
   emit('update:searchOpen', false)
 }
 
@@ -137,7 +149,12 @@ const filterLabelClass =
             </web-ui-button>
           </web-ui-tooltip>
           <web-ui-tooltip v-if="!searchOpen" content="搜索" portal>
-            <web-ui-button icon aria-label="搜索" @click="emit('update:searchOpen', true)">
+            <web-ui-button
+              icon
+              :variant="hasActiveSearch ? 'secondary' : 'glass'"
+              aria-label="搜索"
+              @click="emit('update:searchOpen', true)"
+            >
               <web-ui-icon :icon="lucideSearch" />
             </web-ui-button>
           </web-ui-tooltip>
@@ -151,13 +168,14 @@ const filterLabelClass =
             class="[--wui-input-width:min(240px,calc(100vw-180px))]"
             @input="handleSearchInput"
             @keydown="handleSearchKeydown"
+            @focusout="handleSearchBlur"
           >
             <web-ui-icon slot="prefix" :icon="lucideSearch" />
           </web-ui-input>
         </template>
 
         <template v-else>
-          <web-ui-button @click="emit('selectAll')">
+          <web-ui-button :disabled="visibleCount === 0" @click="emit('selectAll')">
             {{ allVisibleSelected ? '取消全选' : '全选' }}
           </web-ui-button>
           <web-ui-button-group aria-label="批量操作">
@@ -182,15 +200,19 @@ const filterLabelClass =
       </div>
     </div>
 
-    <div
-      class="transition-all duration-200 ease-in-out"
-      :style="{ height: filterOpen ? 'auto' : '0px', overflow: filterOpen ? 'visible' : 'hidden' }"
-    >
+    <!--
+      面板的展开/收起走 web-ui-collapse：grid 0fr↔1fr 过渡、关闭稳态 hidden、动画期间
+      inert 都由组件管理，这里不再自己算 height / aria-hidden。
+
+      trigger 仍是工具条上的筛选按钮（它自己绑 aria-expanded / aria-controls），不挂进
+      collapse 的 trigger 槽：按钮要在工具条行内、面板要整行铺开，而内容容器在 shadow
+      内，light DOM 无法只把内容推到下一行。
+    -->
+    <web-ui-collapse :open="filterOpen">
       <div
         id="library-filter-panel"
+        slot="content"
         class="flex flex-wrap gap-3 items-center px-6 max-[640px]:px-3 max-[640px]:-ml-14 py-2.5 text-sm text-[#5b5b66] dark:text-(--wui-color-text-secondary)"
-        :aria-hidden="filterOpen ? undefined : 'true'"
-        :inert="filterOpen ? undefined : true"
       >
         <label :class="filterLabelClass">
           <web-ui-select portal :value="filterSource" class="[--wui-input-width:128px]" @change="handleSourceChange">
@@ -233,7 +255,7 @@ const filterLabelClass =
             <web-ui-input
               slot="trigger"
               :value="filterTag"
-              placeholder="搜索标签"
+              placeholder="按标签筛选"
               aria-label="按标签筛选"
               class="[--wui-input-width:200px]"
             >
@@ -278,6 +300,6 @@ const filterLabelClass =
           重置筛选
         </web-ui-button>
       </div>
-    </div>
+    </web-ui-collapse>
   </div>
 </template>

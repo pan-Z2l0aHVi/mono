@@ -13,6 +13,7 @@ import {
   primarySource,
   sourceTypeIcon,
   sourceTypeLabel,
+  tagChipClass,
   tagClass
 } from './presentation'
 import type { NameEditorRef } from './rename'
@@ -124,7 +125,7 @@ function handleNameChange(event: WebUiEvent<WebUiEditableText, 'change'>) {
           <span>{{ size }}</span>
         </template>
         <span aria-hidden="true" class="text-[#d8d8de] dark:text-(--wui-color-text-tertiary)">·</span>
-        <time :datetime="new Date(resource.updatedAt).toISOString()">{{ formatTimestamp(resource.updatedAt) }}</time>
+        <time :datetime="new Date(resource.createdAt).toISOString()">{{ formatTimestamp(resource.createdAt) }}</time>
         <span
           v-if="resource.sources.length > 1"
           aria-hidden="true"
@@ -137,12 +138,7 @@ function handleNameChange(event: WebUiEvent<WebUiEditableText, 'change'>) {
     </div>
 
     <div v-if="resource.tagNames.length" class="flex max-w-[25%] flex-wrap justify-end gap-1.5">
-      <span
-        v-for="tagName in resource.tagNames"
-        :key="tagName"
-        class="inline-block px-2 py-0.5 rounded-full text-xs leading-tight whitespace-nowrap"
-        :class="tagClass(tagName)"
-      >
+      <span v-for="tagName in resource.tagNames" :key="tagName" :class="[tagChipClass, tagClass(tagName)]">
         {{ tagName }}
       </span>
     </div>
