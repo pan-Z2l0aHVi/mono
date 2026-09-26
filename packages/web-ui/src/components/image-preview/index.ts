@@ -441,8 +441,23 @@ class WebUiImagePreview extends LitElement {
   private _handleImageSettled = (event: Event) => {
     const image = event.currentTarget as HTMLImageElement | null
     if (!image) return
-    this._loadedSources.add(image.src)
+    this._markLoaded(image)
     this.requestUpdate()
+  }
+
+  /**
+   * 登记加载完成的图片，键与 render 侧 `is-loaded` 的查询同源。
+   *
+   * 不能用 `image.src`：那是 IDL 属性，返回**相对 src 解析后的绝对 URL**，而查询用的是
+   * `this.images[i].src`（调用方原始串）。相对 src 下两者永不相等 → `is-loaded` 永不
+   * 施加 → 图片停在 `opacity: 0`，尽管 img 早已 `complete`。
+   *
+   * 所属下标由模板写在 `data-index` 上（与该 img 的 `src` 出自同一处），因此多图 /
+   * lazy 渲染下不会错位。
+   */
+  private _markLoaded(image: HTMLImageElement): void {
+    const src = this.images[Number(image.dataset.index)]?.src
+    if (src !== undefined) this._loadedSources.add(src)
   }
 
   /*
@@ -801,6 +816,7 @@ class WebUiImagePreview extends LitElement {
                               'wui-image-preview-image': true,
                               'is-loaded': this._loadedSources.has(this.images[prevIndex].src)
                             })}
+                            data-index=${prevIndex}
                             src=${this.images[prevIndex].src}
                             alt=${this.images[prevIndex].alt ?? ''}
                             draggable="false"
@@ -821,6 +837,7 @@ class WebUiImagePreview extends LitElement {
                               'wui-image-preview-image': true,
                               'is-loaded': this._loadedSources.has(this.images[this._index].src)
                             })}
+                            data-index=${this._index}
                             src=${this.images[this._index].src}
                             alt=${this.images[this._index].alt ?? ''}
                             draggable="false"
@@ -841,6 +858,7 @@ class WebUiImagePreview extends LitElement {
                               'wui-image-preview-image': true,
                               'is-loaded': this._loadedSources.has(this.images[nextIndex].src)
                             })}
+                            data-index=${nextIndex}
                             src=${this.images[nextIndex].src}
                             alt=${this.images[nextIndex].alt ?? ''}
                             draggable="false"

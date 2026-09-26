@@ -655,3 +655,59 @@ describe('imagePreview 命令式 API（浏览器）', () => {
     await page.viewport(1280, 720)
   })
 })
+
+/**
+ * 相对 src 的加载淡入。
+ *
+ * 缺陷本体：settle 时曾登记 `image.src` —— 那是 IDL 属性，相对 src 会被解析成绝对 URL；
+ * 而 render 侧 `is-loaded` 查的是 `this.images[i].src`（调用方原始串）。相对 src 下两者
+ * 永不相等 → `is-loaded` 永不施加 → 图片停在 `opacity: 0`，尽管 img 早已 complete。
+ *
+ * 本文件其余 fixture 全是 data: URI（原始串 == 解析后串），覆盖不到该形态，这里用真实
+ * 请求的相对 URL 复现。断言取**计算样式**而非仅 class：既有浏览器用例只轮询
+ * `image.complete`，纯视觉回归对它们不可见。
+ */
+describe('imagePreview 相对 src（浏览器）', () => {
+  it('加载完成后淡入可见', async () => {
+    /*
+     * 取 fixture 的**根相对** URL：由本 spec 自身的 URL 解析出路径，dev server 按此
+     * 路径直接伺服该 svg。
+     *
+     * 刻意避开两种会被 vite 内联成 data: URI 的写法（fixture 小于 assetsInlineLimit，
+     * 一旦内联就退化成绝对形态、复现不了缺陷）：`import url from './fixtures/…svg'`
+     * 与字面量 `new URL('./fixtures/…svg', import.meta.url)`。这里先剥掉 spec URL 上的
+     * `?import&browserv=…` 查询串再拼路径，绕开 vite 对该模式的静态重写。
+     */
+    const specPath = import.meta.url.replace(/\?.*$/, '')
+    const relativeSrc = new URL('fixtures/relative-src.svg', specPath).pathname
+    // 前提：确为根相对形态，否则本用例会退化成对绝对 URL 的断言。
+    expect(relativeSrc.startsWith('/')).toBe(true)
+
+    const handle = imagePreview({ images: [{ src: relativeSrc, alt: '相对 src' }] })
+    const host = hostElement()
+    await host.updateComplete
+    const image = currentImage(host)
+
+    // 轮询到**计算样式**而非仅 class：opacity 有 160ms 过渡，中途取值仍是 0。
+    await pollUntil(() => getComputedStyle(image).opacity === '1', 'relative src image never faded in')
+    expect(getComputedStyle(image).opacity).toBe('1')
+
+    handle.close()
+    await handle.closed
+  })
+
+  it('加载失败时同样淡入以回退展示 alt 文案', async () => {
+    const handle = imagePreview({ images: [{ src: '/no-such-image-404.png', alt: '缺失图片' }] })
+    const host = hostElement()
+    await host.updateComplete
+    const image = currentImage(host)
+
+    // @error 与 @load 共用 settle 回调，同样要按原始串登记，否则失败态也停在 opacity: 0。
+    await pollUntil(() => getComputedStyle(image).opacity === '1', 'failed relative src never faded in to show alt')
+    expect(getComputedStyle(image).opacity).toBe('1')
+    expect(image.alt).toBe('缺失图片')
+
+    handle.close()
+    await handle.closed
+  })
+})
