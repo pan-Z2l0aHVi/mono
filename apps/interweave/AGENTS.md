@@ -4,9 +4,9 @@
 
 ## 导航
 
-- Go Wails host：`main.go`；后端能力边界：`backend/`；前端集成：`frontend/src/`。当前只保留骨架，不保留业务实现。
+- Go Wails host：`main.go`；后端能力边界：`backend/`；前端集成：`frontend/src/`。
 - `backend/library/` 拥有 Resource、Source、语义标签、Map 与其本地持久化；`backend/native/` 拥有受控的 OS 能力；`backend/remote/` 仅供 Go 发起出站 HTTP；`backend/internal/` 仅放跨后端模块复用的工具。
-- 前端骨架（`frontend/src/` 的 `components/`、`pages/`、`stores/`、`composables/` 与 `router.ts`）保留其模块边界。四个业务页面（Library/Tags/Map/Settings）仍是 3 行挂载点骨架；唯一例外是 `src/pages/prototype/InterweaveShellPrototypePage.vue`（路由 `/prototype/interweave-shell`，`meta: { prototype: true }`），它是已实现内容的 prototype 页。
+- 前端（`frontend/src/` 的 `components/`、`pages/`、`stores/`、`composables/` 与 `router.ts`）保留其模块边界。应用壳只有一套：`components/AppLayout.vue` 独占 `web-ui-layout` 与 `components/AppNav.vue`，`RouterView` 只往默认 slot 换页面内容。页面需要顶部工具条时，在多根 fragment 的根节点上写 `slot="header"`，不要自带 `web-ui-layout`，也不要在模板里按 route meta 分叉壳——分叉会让切路由重建 sidebar，掐断正在播放的图标画线动画。`pages/LibraryPage.vue` 是已实现的资源库页；`pages/TagsPage.vue`、`pages/MapPage.vue`、`pages/SettingsPage.vue` 仍是 `web-ui-empty` 占位（尚未实现）。
 - 不保留泛化的 `@api/*` 或 `@bindings/*` alias；第一个公开 Service 生成后，再按实际生成路径只为 `library` 或 `native` 建立显式 alias。
 
 ## 领域与产品边界
