@@ -44,7 +44,7 @@ task 级别、状态机、review/approval 和验证证据见 [`docs/agents/workf
 
 - `scripts/agent-workflow.mjs` 的角色集合移除 `integrator`，与「不新增层级」一致；集成与 release 由 Manager 承担。
 - `scripts/validate-context.mjs` 只检查通用 context 能力，不再维护 Role 绑定表、固定 Role 集合或 handoff 字段的镜像。
-- Role Contract 位于 `.agents/skills/herdr-agents/roles/`；绑定、启动参数、Supervisor 和 pane 时序位于同一 skill 的 `SKILL.md`。`CLAUDE.md` 保持一行 `@AGENTS.md` import，不复制共享规则正文。
+- Role Contract 位于 `.agents/skills/herdr-agents/roles/`；绑定、启动参数、Supervisor 和 pane 时序位于同一 skill 的 `SKILL.md`。根 `AGENTS.md` 是唯一项目入口，不为客户端复制共享规则正文。（2026-09-26 修订：此前此处要求根 `CLAUDE.md` 保持一行 `@AGENTS.md` import 的薄适配；该文件已随 ADR-0004 的修订删除，本仓不再有客户端专属入口文件。）
 - `scripts/task.mjs` 不再把 Role 写入 task state；`pnpm agent:task assign --roles` 明确拒绝，旧 v1 state 仅作兼容读取。
 - 跨包需求可以按 `packages/*` 与 `apps/*` 拆成多个 task，也可以在同一 worktree 内严格隔离目录；代价是交接次数增加。
 
@@ -52,4 +52,4 @@ task 级别、状态机、review/approval 和验证证据见 [`docs/agents/workf
 
 - **不做执行体绑定，保持「任一模型/CLI 承担任一角色」**：灵活，但无法为固定的角色-执行体协作链路建立稳定预期；不采用。
 - **保留 Integrator 独立层级**：能分担 release 工作，但增加一层编排与状态，违背「保持 Manager 扁平化」；不采用。
-- **把 handoff 模板复制进根 `AGENTS.md` 与 `CLAUDE.md`**：看似更易发现，但会产生多处副本并漂移；改为单一权威加根入口字段清单。
+- **把 handoff 模板复制进多个入口文件**（2026-09-26 前的两个入口即根 `AGENTS.md` 与根 `CLAUDE.md`；后者已删除，见 ADR-0004 修订）：看似更易发现，但会产生多处副本并漂移；改为单一权威加根入口字段清单。
