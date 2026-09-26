@@ -77,6 +77,11 @@
     "NSPasteboard",
     "NSURL",
     "NSUTF",
-    "xclip"
+    "xclip",
+    "fsnotify",
+    "servability",
+    "dedups",
+    "klmnopqrst",
+    "browserv"
   ]
 }
