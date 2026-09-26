@@ -115,7 +115,13 @@ const canRestore = computed(
     selectedResources.value.length > 0 &&
     selectedResources.value.every(resource => resource.sources.some(source => !source.available))
 )
-const emptyDescription = computed(() => (store.hasActiveFilter ? '没有符合条件的资源' : '资源库还是空的'))
+// 标题由 runtimeAvailable 决定（资源库为空 / 桌面服务未连接），描述必须跟着同一判据走：
+// 未连接时给出「为什么是空的」的说明，正常使用为空时才讲资源库本身，否则会出现
+// 「桌面服务未连接」配「资源库还是空的」这种自相矛盾的组合。
+const emptyDescription = computed(() => {
+  if (!runtime.isAvailable) return '浏览器预览无法连接桌面服务，请在桌面应用中使用。'
+  return store.hasActiveFilter ? '没有符合条件的资源' : '资源库还是空的'
+})
 const allTagNames = computed(() =>
   [...new Set([...store.allTagNames, ...queue.value.flatMap(item => item.tags)])].sort()
 )

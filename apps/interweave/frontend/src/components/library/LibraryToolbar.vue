@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import type { WebUiAutocomplete, WebUiEvent, WebUiInput, WebUiSelect } from '@greypan/web-ui'
 import {
-  biCheck,
+  biCheckLg,
+  fluentTagSearch24Regular,
   heroiconsBarsArrowDown16Solid,
   heroiconsBarsArrowUp16Solid,
   lucideChevronLeft,
@@ -115,7 +116,7 @@ const filterLabelClass =
         </web-ui-button>
       </web-ui-button-group>
 
-      <div class="flex gap-1.5 items-center ml-auto">
+      <div class="flex gap-3 items-center ml-auto">
         <template v-if="!selectionMode">
           <web-ui-tooltip v-if="!(searchOpen && mobile)" content="添加资源" portal>
             <web-ui-button icon variant="primary" aria-label="添加资源" @click="emit('add')">
@@ -174,7 +175,7 @@ const filterLabelClass =
           </web-ui-button-group>
           <web-ui-tooltip content="确认" portal>
             <web-ui-button icon variant="primary" aria-label="确认" @click="emit('select')">
-              <web-ui-icon :icon="biCheck" />
+              <web-ui-icon :icon="biCheckLg" />
             </web-ui-button>
           </web-ui-tooltip>
         </template>
@@ -227,13 +228,17 @@ const filterLabelClass =
         </label>
 
         <label :class="filterLabelClass">
-          <web-ui-autocomplete
-            portal
-            :value="filterTag"
-            placeholder="标签"
-            class="[--wui-input-width:200px]"
-            @input="handleTagInput"
-          >
+          <!-- 默认 trigger 在组件 shadow 内，light DOM 无法注入 prefix slot；改用 trigger slot 自带 input。 -->
+          <web-ui-autocomplete portal :value="filterTag" @input="handleTagInput">
+            <web-ui-input
+              slot="trigger"
+              :value="filterTag"
+              placeholder="标签/无标签"
+              aria-label="按标签筛选"
+              class="[--wui-input-width:200px]"
+            >
+              <web-ui-icon slot="prefix" :icon="fluentTagSearch24Regular" />
+            </web-ui-input>
             <web-ui-option v-for="tagName in allTagNames" :key="tagName" :value="tagName" :label="tagName">
               {{ tagName }}
             </web-ui-option>

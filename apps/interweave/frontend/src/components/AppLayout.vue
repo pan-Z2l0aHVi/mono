@@ -40,6 +40,9 @@ function closeSidebar() {
   <web-ui-layout
     header-glow
     sidebarResizable
+    sidebarMinWidth="160px"
+    sidebarMaxWidth="320px"
+    collapsedWidth="120px"
     class="min-h-dvh overflow-x-clip text-[#22212a] bg-white dark:text-(--wui-color-text) dark:bg-(--wui-color-page)"
     :sidebarCollapsed="sidebarCollapsed"
     :sidebarOpen="sidebarOpen"

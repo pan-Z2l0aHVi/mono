@@ -875,6 +875,29 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     expect(triggerTextarea(el).value).toBe('Banana')
   })
 
+  it('web-ui-input 自定义触发器可打开并过滤（可编辑控件在触发器自己的 shadow 内）', async () => {
+    const el = document.createElement('web-ui-autocomplete')
+    el.innerHTML = `
+      <web-ui-input slot="trigger" placeholder="标签/无标签"></web-ui-input>
+      <web-ui-option value="apple" label="Apple"></web-ui-option>
+      <web-ui-option value="banana" label="Banana"></web-ui-option>
+    `
+    document.body.append(el)
+    await el.updateComplete
+    const host = page.elementLocator(el)
+    const textbox = host.getByRole('textbox')
+    textbox.element().focus()
+    await userEvent.keyboard('ban')
+    await el.updateComplete
+
+    expect(el.value).toBe('ban')
+    expect(el.open).toBe(true)
+
+    const options = [...el.querySelectorAll('web-ui-option')]
+    expect(options[0]?.hasAttribute('data-filtered')).toBe(true)
+    expect(options[1]?.hasAttribute('data-filtered')).toBe(false)
+  })
+
   it('web-ui-textarea 自定义触发器 Enter 插入换行不选中高亮项，Escape/blur 关闭', async () => {
     const el = document.createElement('web-ui-autocomplete')
     el.innerHTML = `
