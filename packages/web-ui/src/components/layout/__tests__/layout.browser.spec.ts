@@ -392,6 +392,77 @@ describe('WebUiLayout 组件（浏览器）', () => {
       expect(parseFloat(widthRequests[0])).toBeCloseTo(collapsedWidth, 0)
     })
 
+    /*
+     * `.sidebar-toggle` 自声明 `--wui-button-width`，自身声明优先于继承值，所以 app 侧
+     * 直接写 `--wui-button-width` 改不动它。这组用例钉住新变量确实驱动了 Toggle 宽度，
+     * 且不设置时仍是历史上的 44px。
+     *
+     * 两种状态都断言：把 collapsedWidth 调小正是这个变量的存在理由，只测展开态
+     * （240px）会让 66px 变成一个与折叠布局无关的任意值。折叠态的 label 是「展开侧边栏」。
+     * 折叠态还多断一条配对关系：Toggle 宽度 + 左右 8px margin 应正好等于 panel 宽度
+     * （collapsedWidth 减去 aside 的 8px 左边距），这才是 app 挑这个数值的依据。
+     */
+    it('折叠 Toggle 宽度默认 44px，可由 --wui-layout-sidebar-toggle-width 覆盖（展开与折叠态）', async () => {
+      await page.viewport(1280, 720)
+      const layout = createLayout()
+      layout.collapsedWidth = '90px'
+      await layout.updateComplete
+      await nextFrame()
+
+      // 经 aria-label 定位，不碰 `.sidebar-toggle` 这类实现细节；量 host 自身宽度即可，
+      // host 是 inline-flex 且无 width 声明，会收缩包裹内部 button。
+      const toggleWidth = (label: string) => {
+        const toggle = queryA11y(layout, `[aria-label="${label}"]`) as HTMLElement | null
+        return toggle?.getBoundingClientRect().width ?? null
+      }
+      const panelWidth = () => {
+        const aside = queryA11y(layout, 'aside') as HTMLElement
+        const panel = aside?.querySelector('.aside-panel') as HTMLElement | null
+        return panel?.getBoundingClientRect().width ?? null
+      }
+
+      expect(toggleWidth('折叠侧边栏')).toBeCloseTo(44, 0)
+
+      layout.style.setProperty('--wui-layout-sidebar-toggle-width', '66px')
+      await nextFrame()
+      expect(toggleWidth('折叠侧边栏')).toBeCloseTo(66, 0)
+
+      layout.style.removeProperty('--wui-layout-sidebar-toggle-width')
+      await nextFrame()
+      expect(toggleWidth('折叠侧边栏')).toBeCloseTo(44, 0)
+
+      layout.style.setProperty('--wui-layout-sidebar-toggle-width', '66px')
+      layout.sidebarCollapsed = true
+      await layout.updateComplete
+      await waitForLayoutTransition(layout)
+      // 折叠态配对：panel = collapsedWidth(90) − aside 8px 左边距 = 82；Toggle 占满
+      // panel 减自身 8px×2 margin，即 82 − 16 = 66。前两条是实测值，第三条把它们
+      // 写成配对关系，让「改 collapsedWidth 却忘了改 Toggle 宽度」这类改动在这里看得见。
+      const collapsedToggle = toggleWidth('展开侧边栏')
+      expect(collapsedToggle).toBeCloseTo(66, 0)
+      expect(panelWidth()).toBeCloseTo(82, 0)
+      expect(collapsedToggle! + 16).toBeCloseTo(panelWidth()!, 0)
+
+      layout.style.removeProperty('--wui-layout-sidebar-toggle-width')
+      await nextFrame()
+      expect(toggleWidth('展开侧边栏')).toBeCloseTo(44, 0)
+
+      // 36px 下限由 button 自身的 `--wui-control-size` 兜（min-width），不在本组件。
+      // README 与 changeset 都写了这个下限，所以钉住它：低于下限的取值被夹住而不是照搬。
+      layout.style.setProperty('--wui-layout-sidebar-toggle-width', '20px')
+      await nextFrame()
+      expect(toggleWidth('展开侧边栏')).toBeCloseTo(36, 0)
+
+      // 钉住本 task 的根因前提：`.sidebar-toggle` 自声明 `--wui-button-width`，元素自身的
+      // 声明胜过从祖先继承的同名值，所以从外面设 `--wui-button-width` 仍然改不动它。
+      // 这条不是防御性废话——若日后有人「顺手简化」删掉那行自声明而只留 var()，外部覆盖
+      // 会静默开始生效，changeset 与 AppLayout 注释里写明的理由就都不成立了。
+      layout.style.removeProperty('--wui-layout-sidebar-toggle-width')
+      layout.style.setProperty('--wui-button-width', '80px')
+      await nextFrame()
+      expect(toggleWidth('展开侧边栏')).toBeCloseTo(44, 0)
+    })
+
     it('零位移松手不派发 sidebar-width-change', async () => {
       await page.viewport(1280, 720)
       const layout = createLayout()

@@ -1356,10 +1356,11 @@ The sidebar card surface is `--wui-color-surface-sidebar`. In light mode it keep
 
 **CSS Custom Properties:**
 
-| Property                           | Default | Description                                      |
-| ---------------------------------- | ------- | ------------------------------------------------ |
-| `--wui-layout-sidebar-radius`      | `24px`  | Border radius of sidebar card (desktop & mobile) |
-| `--wui-layout-mobile-toggle-inset` | `8px`   | Left inset of the mobile header toggle           |
+| Property                            | Default | Description                                                                          |
+| ----------------------------------- | ------- | ------------------------------------------------------------------------------------ |
+| `--wui-layout-sidebar-radius`       | `24px`  | Border radius of sidebar card (desktop & mobile)                                     |
+| `--wui-layout-mobile-toggle-inset`  | `8px`   | Left inset of the mobile header toggle                                               |
+| `--wui-layout-sidebar-toggle-width` | `44px`  | Width of the desktop sidebar collapse toggle; floored at `--wui-control-size` (36px) |
 
 #### `<web-ui-back-top>`
 
