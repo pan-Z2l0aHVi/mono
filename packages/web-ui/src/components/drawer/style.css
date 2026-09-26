@@ -115,7 +115,8 @@ dialog[open].is-visible::backdrop {
 /*
  * 热区贴在抽屉内缘，宽度由 --wui-drawer-drag-zone-size（默认 20px）控制便于触控命中；
  * 胶囊本身由 --wui-drawer-drag-bar-thickness × --wui-drawer-drag-bar-length（默认 4×56px）控制。
- * 胶囊绝对定位在 --wui-drawer-content-padding 的视觉中线（默认 20px → 中线 10px）；
+ * 胶囊绝对定位在 --wui-drawer-content-padding 的视觉中线（默认 20px → 中线 10px），
+ * 并以半个胶囊厚度兜底，使 padding 归零的 consumer 也留有可见内缩（见下方 max()）；
  * 热区仍覆盖内缘起 --wui-drawer-drag-zone-size，保证触控命中面积不随胶囊收窄。
  * 位置随 placement 切换：right 贴在左缘、left 贴在右缘、top 贴在底边、bottom 贴在顶边。
  *
@@ -123,8 +124,15 @@ dialog[open].is-visible::backdrop {
  * 见 index.ts 的 handleBackdropClick），拖拽松手不关闭。
  */
 .wui-drawer-drag-zone {
-  /* 胶囊中线跟随内容区 padding，consumer 覆盖 --wui-drawer-content-padding 后拖拽条自动居中。 */
-  --wui-internal-drag-bar-center: calc(var(--wui-drawer-content-padding, 20px) / 2);
+  /*
+   * 胶囊中线跟随内容区 padding，consumer 覆盖 --wui-drawer-content-padding 后拖拽条自动居中；
+   * max() 的第二项是下限：padding 归零时中线仍留半个胶囊厚度，否则胶囊中线会压在面板内缘上、
+   * 一半落在面板之外（dialog 是 overflow: visible，这半截不被裁掉而是骑在遮罩上）。
+   */
+  --wui-internal-drag-bar-center: max(
+    calc(var(--wui-drawer-content-padding, 20px) / 2),
+    calc(var(--wui-drawer-drag-bar-thickness, 4px) / 2)
+  );
 
   touch-action: none;
   cursor: grab;

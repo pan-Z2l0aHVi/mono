@@ -861,6 +861,8 @@ When `closable` is set, the built-in close button is positioned at the header's 
 
 **Drag to close:** With `draggable`, a gray capsule drag bar (4×56px by default, visually centered 10px from the inner edge inside a 20px-thick hit zone) appears on the drawer's inner edge (left edge for `right`, right edge for `left`, bottom edge for `top`, top edge for `bottom`) while open:
 
+The visual center follows half of `--wui-drawer-content-padding`, floored at half the bar thickness: zeroing that padding to let content fill the panel edge-to-edge still leaves the capsule half a thickness inside, so it never crosses the panel's inner edge.
+
 - Dragging follows the pointer in real time; the backdrop fades proportionally.
 - Backdrop click now only honors a genuine tap chain: the press must start on the backdrop itself and the press-to-release travel must stay within the tap magnitude. The click the browser generates for a press–drag–release lands on the common ancestor (`dialog`) regardless of where the press started. Pressing on the panel content or on the backdrop itself and releasing over the backdrop used to close the drawer through that click. The component records the pointerdown origin and validates it on click, so such drag releases always rebound. A `detail`-0 click (keyboard / programmatic) never consumes the pointer record.
 - Releasing with a net displacement past half the drawer size (floor of 10px), or with a fast closing flick, closes the drawer; otherwise it animates back open. The close direction is placement-aware, and each part of the decision matches Base UI's `useSwipeDismiss`:
@@ -877,22 +879,22 @@ When `closable` is set, the built-in close button is positioned at the header's 
 
 **CSS Custom Properties:**
 
-| Property                          | Default                            | Description                                                                  |
-| --------------------------------- | ---------------------------------- | ---------------------------------------------------------------------------- |
-| `--wui-drawer-width`              | `320px`                            | Drawer width                                                                 |
-| `--wui-drawer-height`             | `300px`                            | Drawer height (top/bottom)                                                   |
-| `--wui-drawer-bg`                 | `var(--wui-color-surface-overlay)` | Drawer body background                                                       |
-| `--wui-drawer-radius`             | `var(--wui-radius-overlay, 28px)`  | Floating card corner radius (non-headless)                                   |
-| `--wui-drawer-inset`              | `8px`                              | Floating card viewport inset (non-headless); `0` gives edge-to-edge geometry |
-| `--wui-drawer-overlay-bg`         | `rgb(0 0 0 / 0.12)`                | Backdrop background                                                          |
-| `--wui-drawer-drag-zone-size`     | `20px`                             | Drag-to-close hit zone thickness on the inner edge (draggable)               |
-| `--wui-drawer-drag-bar-thickness` | `4px`                              | Drag bar capsule thickness (short axis)                                      |
-| `--wui-drawer-drag-bar-length`    | `56px`                             | Drag bar capsule length (along the drawer edge)                              |
-| `--wui-drawer-header-padding`     | `16px 20px`                        | Header section padding                                                       |
-| `--wui-drawer-close-top`          | `16px`                             | Built-in close button offset from the top of the header                      |
-| `--wui-drawer-close-right`        | `16px`                             | Built-in close button offset from the right edge of the drawer               |
-| `--wui-drawer-content-padding`    | `20px`                             | Content area padding; also drives drag bar visual center (half value)        |
-| `--wui-drawer-footer-padding`     | `16px 20px`                        | Footer section padding                                                       |
+| Property                          | Default                            | Description                                                                                              |
+| --------------------------------- | ---------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| `--wui-drawer-width`              | `320px`                            | Drawer width                                                                                             |
+| `--wui-drawer-height`             | `300px`                            | Drawer height (top/bottom)                                                                               |
+| `--wui-drawer-bg`                 | `var(--wui-color-surface-overlay)` | Drawer body background                                                                                   |
+| `--wui-drawer-radius`             | `var(--wui-radius-overlay, 28px)`  | Floating card corner radius (non-headless)                                                               |
+| `--wui-drawer-inset`              | `8px`                              | Floating card viewport inset (non-headless); `0` gives edge-to-edge geometry                             |
+| `--wui-drawer-overlay-bg`         | `rgb(0 0 0 / 0.12)`                | Backdrop background                                                                                      |
+| `--wui-drawer-drag-zone-size`     | `20px`                             | Drag-to-close hit zone thickness on the inner edge (draggable)                                           |
+| `--wui-drawer-drag-bar-thickness` | `4px`                              | Drag bar capsule thickness (short axis)                                                                  |
+| `--wui-drawer-drag-bar-length`    | `56px`                             | Drag bar capsule length (along the drawer edge)                                                          |
+| `--wui-drawer-header-padding`     | `16px 20px`                        | Header section padding                                                                                   |
+| `--wui-drawer-close-top`          | `16px`                             | Built-in close button offset from the top of the header                                                  |
+| `--wui-drawer-close-right`        | `16px`                             | Built-in close button offset from the right edge of the drawer                                           |
+| `--wui-drawer-content-padding`    | `20px`                             | Content area padding; also drives drag bar visual center (half value, floored at half the bar thickness) |
+| `--wui-drawer-footer-padding`     | `16px 20px`                        | Footer section padding                                                                                   |
 
 #### `imagePreview()`
 
