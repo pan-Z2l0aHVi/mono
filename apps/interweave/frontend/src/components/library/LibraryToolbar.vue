@@ -233,7 +233,7 @@ const filterLabelClass =
             <web-ui-input
               slot="trigger"
               :value="filterTag"
-              placeholder="标签/无标签"
+              placeholder="搜索标签"
               aria-label="按标签筛选"
               class="[--wui-input-width:200px]"
             >
