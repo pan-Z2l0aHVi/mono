@@ -115,17 +115,22 @@ function explain(placement: DrawerPlacement, m: Measurement) {
 afterEach(() => document.body.replaceChildren())
 
 /*
- * drag bar 的视觉中线跟随 `--wui-drawer-content-padding`（取半值），并以半个胶囊厚度兜底。
+ * drag bar 的视觉中线跟随 `--wui-drawer-content-padding`（取半值），
+ * 并以「半个胶囊厚度 + 4px 呼吸间距」兜底。
  *
  * 回归的是共享组件缺陷：consumer 把 content padding 归零让媒体贴边铺满时，中线一度归零，
  * 4px 胶囊被算成 `left: -2px`，一半落在面板外。断言只取**行为后果**（胶囊相对面板内缘的位置），
  * 不读 `--wui-internal-drag-bar-center` 这类内部变量——jsdom 无布局，这类断言本来就只能在浏览器跑。
+ *
+ * 4px 那一截是视觉调参结论：只兜住「不越界」时胶囊仍贴死面板边缘，读作挤在边框阴影线外侧。
+ * 真机调参会再动这个值，所以 padding-0 用例断言的是「留有呼吸间距」这个性质（下限 4px − EPS），
+ * 而不是把 4px 钉成快照。
  */
 describe('WebUiDrawer drag bar 内缘内缩（浏览器）', () => {
-  it('content padding 归零时，胶囊仍完整落在面板内缘之内', async () => {
+  it('content padding 归零时，胶囊仍留 4px 呼吸间距，不贴死面板内缘', async () => {
     for (const placement of PLACEMENTS) {
       const m = await measureInset(placement, '0px')
-      expect(m.inset, `${explain(placement, m)}`).toBeGreaterThanOrEqual(-EPS)
+      expect(m.inset, `${explain(placement, m)}`).toBeGreaterThanOrEqual(4 - EPS)
     }
   })
 
@@ -137,10 +142,11 @@ describe('WebUiDrawer drag bar 内缘内缩（浏览器）', () => {
   })
 
   it('下限跟随 --wui-drawer-drag-bar-thickness，不是写死的半个默认厚度', async () => {
-    // 12px 胶囊 + 8px padding：半值 4px 小于下限 6px，下限应当兜住（内缩 0px）。
+    // 12px 胶囊 + 8px padding：半值 4px 小于下限 10px（6 + 4），下限兜住 → 中线 10px、内缩 4px。
+    // 若下限被写死成「半个默认厚度 2px + 4px = 6px」，这里会量到内缩 0px 而失败。
     const clamped = await measureInset('right', '8px', '12px')
-    expect(Math.abs(clamped.inset), `${explain('right', clamped)}`).toBeLessThanOrEqual(EPS)
-    // 同一胶囊 + 20px padding：半值 10px 大于下限 6px，仍走半值（内缩 10 - 6 = 4px）。
+    expect(Math.abs(clamped.inset - 4), `${explain('right', clamped)}`).toBeLessThanOrEqual(EPS)
+    // 同一胶囊 + 20px padding：半值 10px 与下限 10px 打平，max() 取哪一侧都是 10px → 内缩仍 4px。
     const half = await measureInset('right', '20px', '12px')
     expect(Math.abs(half.inset - 4), `${explain('right', half)}`).toBeLessThanOrEqual(EPS)
   })
