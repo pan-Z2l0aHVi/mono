@@ -58,7 +58,7 @@ ADR-0004 建立了渐进披露的 context 架构，ADR-0010 与 ADR-0011 建立�
 
 - 单 workspace 的行为变更、同包测试新增、一页文档不再是「必须先建状态机」的变更；P0 与 P1 仍保留 task state、review 与 approval。
 - `scripts/audit-instructions.mjs` 新增 `budget`、`toolEnforcedHits`、`repeatedBlocks` 三类 `--strict` 断言，`--json` 同步输出；`--warn` 把 strict 断言降级为报告，**只用于本地采集基线或排查，CI 不得使用**（`.github/workflows/ci.yml` 使用 `--strict --json`）。
-- `scripts/validate-context.mjs` 保留 CLAUDE.md 薄适配尺寸契约、Role Contract 身份、`.claude/agents` 注册形态和通用 context 校验；绑定表镜像、固定 Role 集合和 handoff 字段镜像已删除。
+- `scripts/validate-context.mjs` 保留 CLAUDE.md 薄适配尺寸契约、Role Contract 身份、`.claude/agents` 注册形态和通用 context 校验；绑定表镜像、固定 Role 集合和 handoff 字段镜像已删除。（2026-09-26 修订：CLAUDE.md 薄适配尺寸契约已随根 `CLAUDE.md` 一并删除，改为断言根 `CLAUDE.md` 不存在——它的存在会静默关掉 Claude Code 的包级 `AGENTS.md` 注入，见 ADR-0004 修订。）
 - `docs/agents/workflow.md` 新增「变更风险分级」与「预授权操作」两节，并写明 changeset 与格式化必须在 `freeze` 之前完成——这条直接针对 6 条人工干预的共同根因。
 - `docs/agents/task-packet.md` 的 `Allowed paths` 与 `Affected workspaces` 只在 P0 填写（其他级写 `N/A`，保留字段以免消费者改变形状），`Review` 行的 `secondary review` 死字段删除。（2026-09-17 修订，两条，权威表始终是 `docs/agents/workflow.md` 的「变更风险分级」：一、P1 判据从「跨多个 `apps/*`」扩到「跨多个 workspace，`apps/*` 或 `packages/*`」，因此跨多 workspace 的 P1 也要按 `agent:find-usages` 输出填写这两项；二、级别代号的方向翻转为 **P0 最高风险、P2 最低**，与通用的 P0 优先级体系对齐——原 P0（免 task state）改称 P2，原 P2（`orchestrated`）改称 P0，P1 不变；判据与流程要求未变，只是代号的排序方向变了。）
 - 已知限制：重述块检测只比较文件对数量，不比较单对内的重复规模；在既有文件对内增写重复段落不会增加对数。这类增长会被约束预算的字符上限拦下，所以两条门互为补充而不是互相替代。规范化后总长低于 40 字符的极短文件不会产生任何滑窗，不受这一门约束。

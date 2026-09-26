@@ -43,9 +43,7 @@ function fromLockedSkill(file) {
 
 // 入口面必须存在；其余门禁钉通用 context 能力：断链、锚点、frontmatter、skill/role 出处、入口指针与软链。
 // 被删掉的是「指令文档语料必须存在」——它会随内容演进膨胀，反而阻止删减；被引用的文档由断链检查负责。
-for (const file of ['AGENTS.md', 'CLAUDE.md']) {
-  if (!exists(file)) addError(`missing required context file: ${file}`)
-}
+if (!exists('AGENTS.md')) addError('missing required context file: AGENTS.md')
 
 // AGENTS.md 的章节标题与叙述措辞不再是契约。入口断言只保留「必经链接 + init 命令」两条；
 // 结构不变量锚点（<!-- invariant:... -->）是惰性注释，保留供人工检索，不再有机器校验（audit:instructions 已删除，见 ADR-0014）。
@@ -62,18 +60,15 @@ if (exists('.vite-hooks/pre-commit') && !read('.vite-hooks/pre-commit').includes
 if (exists('CONTRIBUTING.md') && !read('CONTRIBUTING.md').includes('pnpm agent:task start --task <task-id>'))
   addError('CONTRIBUTING.md is missing the workflow edit gate')
 
-// 薄适配入口用尺寸契约替代措辞契约：措辞可以随模型换代重写，只要它仍是不复制规则的短入口。
-const CLAUDE_ADAPTER_MAX_CHARACTERS = 800
-if (exists('CLAUDE.md')) {
-  const claudeStat = fs.lstatSync(path.join(root, 'CLAUDE.md'))
-  const claudeSource = read('CLAUDE.md')
-  if (claudeStat.isSymbolicLink()) addError('CLAUDE.md must remain a thin regular-file adapter, not a symlink')
-  if (!claudeSource.includes('AGENTS.md')) addError('CLAUDE.md must point at the shared AGENTS.md entry')
-  if (claudeSource.length > CLAUDE_ADAPTER_MAX_CHARACTERS)
-    addError(
-      `CLAUDE.md is ${claudeSource.length} characters; the thin adapter ceiling is ${CLAUDE_ADAPTER_MAX_CHARACTERS}`
-    )
-}
+// 根目录不再有客户端适配文件。实测 Claude Code 2.1.283 已原生发现 AGENTS.md，但只要根目录存在 CLAUDE.md，
+// 它的原生发现就整条不生效：默认的 claude-md-or-agents-md 只在项目没有 CLAUDE.md 时才读 AGENTS.md，显式声明
+// claude-md-and-agents-md 也救不回来（两种模式下包级 AGENTS.md 都不再按需注入）。根入口因此只保留 AGENTS.md，
+// Claude Code 与 Codex 读同一份层级文件。这道断言拦住的是「放回一行 @AGENTS.md shim」——它看起来是零副作用的
+// 兼容保险，实际会让全部包级指令静默退回到靠模型自觉 Read。
+if (exists('CLAUDE.md'))
+  addError(
+    'root CLAUDE.md must not exist: it silently disables Claude Code AGENTS.md discovery and package-level injection'
+  )
 
 if (exists('.claude/settings.local.json')) {
   try {
