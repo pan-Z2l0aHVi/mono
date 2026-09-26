@@ -12,6 +12,10 @@ import { Call as $Call, CancellablePromise as $CancellablePromise, Create as $Cr
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
+import * as storage$0 from "../storage/models.js";
+
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
 import * as $models from "./models.js";
 
 /**
@@ -40,6 +44,15 @@ export function DeleteResource(resourceID: string): $CancellablePromise<void> {
 }
 
 /**
+ * FindResourceLocationMatches 提示库内已登记该入口的 Resource；只读，不改动任何内容。
+ */
+export function FindResourceLocationMatches(input: string, srcType: storage$0.SourceType): $CancellablePromise<$models.ResourceLocationMatchDTO[]> {
+    return $Call.ByID(3399008553, input, srcType).then(($result: any) => {
+        return $$createType3($result);
+    });
+}
+
+/**
  * 以稳定身份读取资源详情。
  */
 export function GetResource(resourceID: string): $CancellablePromise<$models.ResourceDTO | null> {
@@ -53,7 +66,7 @@ export function GetResource(resourceID: string): $CancellablePromise<$models.Res
  */
 export function ListResources(): $CancellablePromise<$models.ResourceDTO[]> {
     return $Call.ByID(196096737).then(($result: any) => {
-        return $$createType2($result);
+        return $$createType4($result);
     });
 }
 
@@ -62,7 +75,7 @@ export function ListResources(): $CancellablePromise<$models.ResourceDTO[]> {
  */
 export function PrepareFilePreview(inputPath: string): $CancellablePromise<$models.FilePreviewDTO | null> {
     return $Call.ByID(965214835, inputPath).then(($result: any) => {
-        return $$createType4($result);
+        return $$createType6($result);
     });
 }
 
@@ -78,7 +91,7 @@ export function ReleaseFilePreview(token: string): $CancellablePromise<void> {
  */
 export function SearchResources(query: string): $CancellablePromise<$models.ResourceDTO[]> {
     return $Call.ByID(2889581653, query).then(($result: any) => {
-        return $$createType2($result);
+        return $$createType4($result);
     });
 }
 
@@ -103,6 +116,8 @@ export function UpdateResourceTitle(resourceID: string, newTitle: string): $Canc
 // Private type creation functions
 const $$createType0 = $models.ResourceDTO.createFrom;
 const $$createType1 = $Create.Nullable($$createType0);
-const $$createType2 = $Create.Array($$createType0);
-const $$createType3 = $models.FilePreviewDTO.createFrom;
-const $$createType4 = $Create.Nullable($$createType3);
+const $$createType2 = $models.ResourceLocationMatchDTO.createFrom;
+const $$createType3 = $Create.Array($$createType2);
+const $$createType4 = $Create.Array($$createType0);
+const $$createType5 = $models.FilePreviewDTO.createFrom;
+const $$createType6 = $Create.Nullable($$createType5);

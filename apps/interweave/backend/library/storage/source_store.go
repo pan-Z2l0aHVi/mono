@@ -77,22 +77,23 @@ func (SourceStore) ListFileSourceLocations(ctx context.Context, q Queryer) ([]st
 	return collectRows(rows, scanString)
 }
 
-// 按位置反查文件 Source 供文件可用性监听把内核事件路径解析为受影响入口。
-// 重复 Source 不做去重（CONTEXT.md「重复 Source」）：同一位置天然返回全部对应记录。
-func (SourceStore) ListFileSourcesByLocations(ctx context.Context, q Queryer, locations []string) ([]SourceModel, error) {
+// 按位置与类型反查 Source。重复 Source 不做去重（CONTEXT.md「重复 Source」）：
+// 同一位置天然返回全部对应记录，调用方按各自需要决定是否折叠。
+func (SourceStore) ListSourcesByLocations(ctx context.Context, q Queryer, srcType SourceType, locations []string) ([]SourceModel, error) {
 	if len(locations) == 0 {
 		return []SourceModel{}, nil
 	}
 
 	result := make([]SourceModel, 0, len(locations))
 	for _, chunk := range chunkValues(locations, locationQueryBatch) {
-		args := make([]any, len(chunk))
-		for i, location := range chunk {
-			args[i] = location
+		args := make([]any, 0, len(chunk)+1)
+		args = append(args, srcType)
+		for _, location := range chunk {
+			args = append(args, location)
 		}
 		rows, err := q.QueryContext(ctx, `
 			SELECT id, resource_id, type, location, available, is_preferred, order_index, metadata_json, created_at, updated_at
-			FROM sources WHERE type = 'file' AND location IN (`+placeholders(len(chunk))+`)
+			FROM sources WHERE type = ? AND location IN (`+placeholders(len(chunk))+`)
 		`, args...)
 		if err != nil {
 			return nil, err
@@ -105,6 +106,12 @@ func (SourceStore) ListFileSourcesByLocations(ctx context.Context, q Queryer, lo
 		result = append(result, scanned...)
 	}
 	return result, nil
+}
+
+// 按位置反查文件 Source 供文件可用性监听把内核事件路径解析为受影响入口。
+// 类型过滤不可省：同一路径既能是文件入口也能是 URL 入口，URL 不得混进监听集合。
+func (s SourceStore) ListFileSourcesByLocations(ctx context.Context, q Queryer, locations []string) ([]SourceModel, error) {
+	return s.ListSourcesByLocations(ctx, q, SourceTypeFile, locations)
 }
 
 // 原子替换 Source 自身的入口数据，保留其顺位与首选角色；目标不存在时返回 ErrSourceNotFound。
