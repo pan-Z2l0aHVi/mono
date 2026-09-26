@@ -2,7 +2,6 @@
 import type { WebUiAutocomplete, WebUiEvent, WebUiInput, WebUiSelect } from '@greypan/web-ui'
 import {
   biCheckLg,
-  fluentTagSearch24Regular,
   heroiconsBarsArrowDown16Solid,
   heroiconsBarsArrowUp16Solid,
   lucideChevronLeft,
@@ -15,6 +14,7 @@ import {
   lucideTag,
   lucideTrash2,
   lucideUndo2,
+  mdiTagSearchOutline,
   tablerSortAscendingLetters
 } from '@greypan/web-ui/icons'
 import { computed, nextTick, ref, watch } from 'vue'
@@ -259,7 +259,7 @@ const filterLabelClass =
               aria-label="按标签筛选"
               class="[--wui-input-width:200px]"
             >
-              <web-ui-icon slot="prefix" :icon="fluentTagSearch24Regular" />
+              <web-ui-icon slot="prefix" :icon="mdiTagSearchOutline" />
             </web-ui-input>
             <web-ui-option v-for="tagName in allTagNames" :key="tagName" :value="tagName" :label="tagName">
               {{ tagName }}
