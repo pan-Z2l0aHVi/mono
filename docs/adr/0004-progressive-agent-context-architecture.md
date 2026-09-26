@@ -14,7 +14,7 @@
 
 采用四层、按任务展开的 agent context 架构：
 
-1. **Always available**：根 `AGENTS.md` 只保留项目身份、不可绕过的仓库约束和 task routing；根 `CLAUDE.md` 只作为客户端的薄适配入口，指向共享规范而不复制其正文。原生读 `AGENTS.md` 的客户端（Codex）不设独立入口。
+1. **Always available**：根 `AGENTS.md` 只保留项目身份、不可绕过的仓库约束和 task routing，是唯一的项目入口文件；根目录不为单个客户端另建适配入口，Codex 与 Claude Code 都直接读层级 `AGENTS.md`，不复制共享规则正文。（2026-09-26 修订：此前根 `CLAUDE.md` 是一行 `@AGENTS.md` import 的薄适配，给不支持 `AGENTS.md` 的 Claude Code 客户端留退路。它已删除——实测 2.1.283 已原生发现 `AGENTS.md`，而该文件的存在会让原生发现整条不生效，把 `instructionFiles` 显式声明成 `claude-md-and-agents-md` 也救不回来，代价是全部包级 `AGENTS.md` 静默失去按需注入、退回到靠模型自觉 Read。取舍与实测矩阵见 `docs/agents/context.md`「客户端适配」。）
 2. **Project context**：`CONTEXT.md` 记录跨包边界、依赖方向、核心工程原则和 ADR 索引。只在架构、跨包、术语或长期设计取舍相关任务中加载。
 3. **Task-specific context**：`docs/agents/*.md`、`.agents/rules/*.md` 和最近的包级 `AGENTS.md` 承载按领域执行的流程与局部约束。包级文件不复制根规则。
 4. **On-demand evidence**：相关 ADR、README、manifest、配置、源码和测试在影响范围确定后加载；当前实现和可执行验证优先于文字说明。
