@@ -16,6 +16,7 @@ catalog:
   '@iconify-json/heroicons': ^1.2.3
   '@iconify-json/jam': ^1.2.3
   '@iconify-json/lucide': ^1.2.126
+  '@iconify-json/mdi': ^1.2.3
   '@iconify-json/ooui': ^1.2.20
   '@iconify-json/radix-icons': ^1.2.6
   '@iconify-json/si': ^1.2.17
