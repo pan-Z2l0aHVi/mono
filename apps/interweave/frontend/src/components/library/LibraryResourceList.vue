@@ -130,7 +130,13 @@ function handleRenameChange(resource: ResourceView, event: WebUiEvent<WebUiEdita
 </script>
 
 <template>
-  <web-ui-context-menu ref="contextMenuRef" class="block w-full">
+  <!--
+    disabled 绑在「没有条目」上，而不是绑在右键来源上：context-menu 自己监听宿主的
+    contextmenu，列表为空时那块空态区域仍在这个宿主里，右键照样命中。不禁用的话会弹出
+    一张 contextResource 为 null 的菜单——只剩一条分隔线加一个空「删除」项。禁用后
+    事件在组件内被 return 掉，浏览器原生菜单正常出现。
+  -->
+  <web-ui-context-menu ref="contextMenuRef" :disabled="resources.length === 0" class="block w-full">
     <div v-if="loading" class="grid min-h-64 place-items-center" aria-live="polite">
       <div class="grid justify-items-center gap-3 text-sm text-(--wui-color-text-secondary)">
         <web-ui-spinner :size="28" />

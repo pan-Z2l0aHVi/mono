@@ -23,7 +23,7 @@ import type { ResourceSourceView } from '@/stores/library'
 import { ResourceKind } from '../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage'
 
 import LibraryResourceThumbnail from './LibraryResourceThumbnail.vue'
-import { metadataRowClass, tagClass } from './presentation'
+import { metadataRowClass, tagChipClass, tagClass } from './presentation'
 import type { NameEditorRef } from './rename'
 
 const props = defineProps<{
@@ -190,7 +190,7 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
       <section class="grid min-h-0 min-w-0 grid-rows-[auto_minmax(0,1fr)] gap-2.5 overflow-hidden">
         <div class="flex h-7 min-w-0 items-center justify-between gap-2">
           <p class="m-0 min-w-0 truncate text-[14px] leading-6 text-[#6a6a6a] dark:text-(--wui-color-text-secondary)">
-            选择本地文件，或将其拖入上传区；也可以粘贴复制的文件。
+            支持本地文件，可拖拽或粘贴
           </p>
           <web-ui-button
             icon
@@ -220,7 +220,7 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
             <web-ui-icon :icon="lucideUpload" :size="23" />
           </span>
           <span
-            class="text-[15px] font-semibold leading-[1.4] text-[#22212a] dark:text-(--wui-color-text) max-[640px]:text-[13px]"
+            class="text-[16px] font-semibold leading-[1.4] text-[#22212a] dark:text-(--wui-color-text) max-[640px]:text-[13px]"
           >
             拖入文件，或点按选择
           </span>
@@ -334,13 +334,7 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
                   {{ item.location }}
                 </span>
                 <div class="flex min-w-0 flex-[0_0_100%] flex-wrap items-center gap-[5px]">
-                  <span
-                    v-for="tag in item.tags"
-                    :key="tag"
-                    class="inline-block px-2 py-0.5 rounded-full text-xs leading-tight whitespace-nowrap"
-                    :class="tagClass(tag)"
-                    >{{ tag }}</span
-                  >
+                  <span v-for="tag in item.tags" :key="tag" :class="[tagChipClass, tagClass(tag)]">{{ tag }}</span>
                   <web-ui-tooltip content="编辑标签" :placement="itemIndex < 5 ? 'bottom' : 'top'">
                     <web-ui-button
                       class="shrink-0 [--wui-button-color:var(--wui-color-accent,#08f)]"
@@ -382,7 +376,7 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
             <web-ui-icon slot="icon" :icon="lucideInbox" :size="23" />
             <span slot="description" class="mt-1.5 grid gap-3 max-[640px]:mt-0.5 max-[640px]:gap-2">
               <span
-                class="block text-[15px] font-semibold leading-[1.4] text-[#22212a] dark:text-(--wui-color-text) max-[640px]:text-[13px]"
+                class="block text-[16px] font-semibold leading-[1.4] text-[#22212a] dark:text-(--wui-color-text) max-[640px]:text-[13px]"
               >
                 暂无待添加资源
               </span>

@@ -16,6 +16,7 @@ import { ResourceKind } from '../../../bindings/github.com/pan-Z2l0aHVi/mono/app
 import type { LibraryQueueItem } from '../../services/library'
 
 import LibraryAddDialog from './LibraryAddDialog.vue'
+import { tagChipClass } from './presentation'
 
 vi.mock('@greypan/web-ui', async importOriginal => {
   const actual = await importOriginal<typeof import('@greypan/web-ui')>()
@@ -211,7 +212,7 @@ describe('LibraryAddDialog', () => {
       if (!empty) throw new Error('empty state was not rendered')
 
       // 左侧 drop 区的基准值：icon 盒 52px/圆角 18px、字形 23、icon 到文案 12px、
-      // 文案 15px/600/1.4；max-[640px] 断点为 40px/12px、字形 23、间距 8px、文案 13px。
+      // 文案 16px/600/1.4；max-[640px] 断点为 40px/12px、字形 23、间距 8px、文案 13px。
       const emptyClass = empty.getAttribute('class') ?? ''
       expect(emptyClass).toContain('[--wui-empty-min-height:0]')
       expect(emptyClass).toContain('[--wui-empty-padding:0]')
@@ -234,7 +235,7 @@ describe('LibraryAddDialog', () => {
         '添加的资源会显示在这里，可先修改名称和标签'
       ])
       expect(lines[0]?.getAttribute('class')).toBe(
-        'block text-[15px] font-semibold leading-[1.4] text-[#22212a] dark:text-(--wui-color-text) max-[640px]:text-[13px]'
+        'block text-[16px] font-semibold leading-[1.4] text-[#22212a] dark:text-(--wui-color-text) max-[640px]:text-[13px]'
       )
       expect(lines[1]?.getAttribute('class')).toBe(
         'block text-xs leading-[1.4] text-[#6a6a6a] dark:text-(--wui-color-text-secondary) max-[640px]:text-[11px]'
@@ -257,7 +258,7 @@ describe('LibraryAddDialog', () => {
     }
   })
 
-  it('逐字保留原型 tags 行 class 并把目标队列项传给编辑事件', async () => {
+  it('tags 行套用共享 chip 外形并把目标队列项传给编辑事件', async () => {
     const item = queueItem({ tags: ['设计'] })
     const editTags = vi.fn<(target: LibraryQueueItem) => void>()
     const mounted = mountDialog([item], { onEditTags: editTags })
@@ -273,8 +274,9 @@ describe('LibraryAddDialog', () => {
       const editButton = button(mounted.host, '编辑标签')
       const icon = editButton.querySelector<WebUiIcon>('web-ui-icon')
 
+      // 引用共享常量而不是逐字复制：chip 外形由 tagChipClass 统一，字面量会随样式调整漂移。
       expect(chip?.getAttribute('class')).toBe(
-        'inline-block px-2 py-0.5 rounded-full text-xs leading-tight whitespace-nowrap bg-blue-100 text-blue-700 dark:bg-blue-400/15 dark:text-blue-200'
+        `${tagChipClass} bg-blue-100 text-blue-700 dark:bg-blue-400/15 dark:text-blue-200`
       )
       expect(tooltip).toBeDefined()
       expect(tooltip?.placement).toBe('bottom')

@@ -476,6 +476,7 @@ onMounted(() => {
       :search-open="searchOpen"
       :selection-mode="selectionMode"
       :selected-count="checkedIds.length"
+      :visible-count="visibleResources.length"
       :all-visible-selected="allVisibleSelected"
       :mobile="mobile"
       :can-go-back="canGoBack"
