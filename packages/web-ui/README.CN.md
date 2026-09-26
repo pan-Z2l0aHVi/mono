@@ -1319,10 +1319,11 @@ WebUiSpinner.hide() // 隐藏
 
 **CSS 自定义属性：**
 
-| 属性                               | 默认值 | 说明                                 |
-| ---------------------------------- | ------ | ------------------------------------ |
-| `--wui-layout-sidebar-radius`      | `24px` | 侧边栏卡片圆角（桌面端和移动端共用） |
-| `--wui-layout-mobile-toggle-inset` | `8px`  | 移动端 header Toggle 的左缩进        |
+| 属性                                | 默认值 | 说明                                                                |
+| ----------------------------------- | ------ | ------------------------------------------------------------------- |
+| `--wui-layout-sidebar-radius`       | `24px` | 侧边栏卡片圆角（桌面端和移动端共用）                                |
+| `--wui-layout-mobile-toggle-inset`  | `8px`  | 移动端 header Toggle 的左缩进                                       |
+| `--wui-layout-sidebar-toggle-width` | `44px` | 桌面端侧边栏折叠 Toggle 的宽度，下限为 `--wui-control-size`（36px） |
 
 #### `<web-ui-back-top>`
 

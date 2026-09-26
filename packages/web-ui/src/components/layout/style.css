@@ -86,7 +86,14 @@ aside {
   }
 
   .sidebar-toggle {
-    --wui-button-width: 44px;
+    /*
+     * 走可覆盖的 var：`.sidebar-toggle` 自身声明的 `--wui-button-width` 优先于从
+     * 祖先继承的同名变量，app 侧无法直接改写它。要让折叠态的 toggle 跟着折叠宽度
+     * 一起变，只能由这里显式接一个出口。取值由 app 决定，本组件不假设折叠宽度。
+     * 默认值与历史硬编码一致，不设置时行为不变。
+     */
+    --wui-button-width: var(--wui-layout-sidebar-toggle-width, 44px);
+
     margin: 8px;
   }
 

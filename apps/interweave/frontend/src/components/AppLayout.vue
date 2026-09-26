@@ -36,6 +36,15 @@ function closeSidebar() {
     shell 在这里，页面在 RouterView 里：web-ui-layout 与 AppNav 挂在 RouterView 之外，
     切路由只换默认 slot 的内容，不重建 sidebar。页面若要占 header slot，让自己的根节点带
     `slot="header"`（LibraryPage 就是这么做的），不需要自己再渲染一套 layout。
+
+    折叠 Toggle 的宽度与 collapsedWidth 成对使用：Toggle 自带 8px 左右 margin，所以
+    Toggle 宽度 + 16 应等于 collapsedWidth 减去 aside 自身的 8px 左边距，即 panel 的宽度。
+    改 collapsedWidth 时要一并改这里——收窄到 90px 时 Toggle 取 66px（66 + 16 = 90 − 8）。
+    本分支的 collapsedWidth 仍是 120px，90px 由 interweave-library-ux-batch2 一并落地；
+    在那之前 66px 也比原来的 44px 更贴近 panel，不会让错位变得更严重。
+
+    这个值只能经 web-ui 暴露的 `--wui-layout-sidebar-toggle-width` 传进去：Toggle 在
+    layout 的 shadow DOM 内自声明 `--wui-button-width`，从外面写同名变量会被自身声明盖掉。
   -->
   <web-ui-layout
     header-glow
@@ -43,7 +52,7 @@ function closeSidebar() {
     sidebarMinWidth="160px"
     sidebarMaxWidth="320px"
     collapsedWidth="120px"
-    class="min-h-dvh overflow-x-clip text-[#22212a] bg-white dark:text-(--wui-color-text) dark:bg-(--wui-color-page)"
+    class="min-h-dvh overflow-x-clip text-[#22212a] bg-white dark:text-(--wui-color-text) dark:bg-(--wui-color-page) [--wui-layout-sidebar-toggle-width:66px]"
     :sidebarCollapsed="sidebarCollapsed"
     :sidebarOpen="sidebarOpen"
     :sidebarWidth="sidebarWidth"
