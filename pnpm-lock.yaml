@@ -185,6 +185,9 @@ catalogs:
     '@iconify-json/bi':
       specifier: ^1.2.7
       version: 1.2.7
+    '@iconify-json/fluent':
+      specifier: ^1.2.58
+      version: 1.2.58
     '@iconify-json/heroicons':
       specifier: ^1.2.3
       version: 1.2.3
@@ -901,6 +904,9 @@ importers:
       '@iconify-json/bi':
         specifier: 'catalog:'
         version: 1.2.7
+      '@iconify-json/fluent':
+        specifier: 'catalog:'
+        version: 1.2.58
       '@iconify-json/heroicons':
         specifier: 'catalog:'
         version: 1.2.3
@@ -2038,6 +2044,9 @@ packages:
 
   '@iconify-json/bi@1.2.7':
     resolution: {integrity: sha512-IPz8WNxmLkH1I9msl+0Q4OnmjjvP4uU0Z61a4i4sqonB6vKSbMGUWuGn8/YuuszlReVj8rf+3gNv5JU8Xoljyg==}
+
+  '@iconify-json/fluent@1.2.58':
+    resolution: {integrity: sha512-KiWNF3LXZ4rvicH2MR8FKVN49MB++400rSiDpjVSP4V0GjsGViSPw5PJQ3pKDNPohL5wBW/ZDpo+rCYYFbmFkA==}
 
   '@iconify-json/heroicons@1.2.3':
     resolution: {integrity: sha512-n+vmCEgTesRsOpp5AB5ILB6srsgsYK+bieoQBNlafvoEhjVXLq8nIGN4B0v/s4DUfa0dOrjwE/cKJgIKdJXOEg==}
@@ -8357,6 +8366,10 @@ snapshots:
       '@iconify/types': 2.0.0
 
   '@iconify-json/bi@1.2.7':
+    dependencies:
+      '@iconify/types': 2.0.0
+
+  '@iconify-json/fluent@1.2.58':
     dependencies:
       '@iconify/types': 2.0.0
 

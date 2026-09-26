@@ -7,10 +7,10 @@ import {
   type WebUiEvent
 } from '@greypan/web-ui'
 import {
+  akarIconsCircleCheck,
   lucideClipboardPaste,
   lucideInbox,
   lucidePenLine,
-  lucidePlus,
   lucideTags,
   lucideTrash2,
   lucideUpload
@@ -188,13 +188,13 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
       style="height: min(calc(90vh - 108px), calc(var(--wui-dialog-max-height, 640px) - 108px))"
     >
       <section class="grid min-h-0 min-w-0 grid-rows-[auto_minmax(0,1fr)] gap-2.5 overflow-hidden">
-        <div class="flex min-w-0 items-center justify-between gap-2">
-          <p class="m-0 min-w-0 truncate text-[13px] leading-6 text-[#6a6a6a] dark:text-(--wui-color-text-secondary)">
+        <div class="flex h-7 min-w-0 items-center justify-between gap-2">
+          <p class="m-0 min-w-0 truncate text-[14px] leading-6 text-[#6a6a6a] dark:text-(--wui-color-text-secondary)">
             选择本地文件，或将其拖入上传区；也可以粘贴复制的文件。
           </p>
           <web-ui-button
             icon
-            variant="ghost"
+            variant="secondary"
             size="28"
             aria-label="粘贴复制的文件"
             title="粘贴复制的文件"
@@ -236,15 +236,15 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
         class="relative grid min-h-0 min-w-0 grid-rows-[auto_minmax(0,1fr)] gap-2.5 overflow-hidden border-0 bg-transparent p-0"
         aria-labelledby="library-add-queue-title"
       >
-        <div class="flex min-h-6 items-center justify-between">
+        <div class="flex h-7 min-w-0 items-center justify-between gap-2">
           <h3
             id="library-add-queue-title"
-            class="m-0 flex items-center gap-1.5 text-[13px] font-semibold text-[#22212a] dark:text-(--wui-color-text)"
+            class="m-0 flex items-center gap-1.5 text-[14px] font-semibold text-[#22212a] dark:text-(--wui-color-text)"
           >
             将添加
           </h3>
           <span
-            class="rounded-full bg-black/4 px-2 py-1 text-xs leading-none text-[#6a6a6a] dark:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_6%,transparent)] dark:text-(--wui-color-text-secondary)"
+            class="inline-flex h-7 items-center rounded-full bg-black/4 px-2 text-xs leading-none text-[#6a6a6a] dark:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_6%,transparent)] dark:text-(--wui-color-text-secondary)"
           >
             {{ queue.length }} 项
           </span>
@@ -414,7 +414,7 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
       :disabled="queue.length === 0"
       @click="emit('submit')"
     >
-      <web-ui-icon slot="prefix" :icon="lucidePlus" :size="16" />
+      <web-ui-icon slot="prefix" :icon="akarIconsCircleCheck" :size="16" />
       {{ queue.length > 1 ? '批量添加' : '添加' }}
     </web-ui-button>
   </web-ui-dialog>
