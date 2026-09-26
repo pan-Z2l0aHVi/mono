@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 
@@ -17,6 +18,7 @@ type ResourceService struct {
 	ingest    *ingestion
 	views     viewAssembler
 	resources storage.ResourceStore
+	sources   storage.SourceStore
 	// indexSync 只在装配期注入一次（main.go），运行期只读，无需加锁。
 	indexSync SourceIndexSync
 }
@@ -27,6 +29,13 @@ type PreparedFilePreview struct {
 	Kind     storage.ResourceKind
 }
 
+// ResourceLocationMatch 是「库内已有同一入口」的命中项，只带确认框需要的字段。
+type ResourceLocationMatch struct {
+	ResourceID string
+	Title      string
+	Location   string
+}
+
 // 保持资源规则与持久化实现解耦。
 func NewResourceService(db *storage.DB, fetcher *remote.Fetcher) *ResourceService {
 	return &ResourceService{
@@ -34,6 +43,7 @@ func NewResourceService(db *storage.DB, fetcher *remote.Fetcher) *ResourceServic
 		ingest:    newIngestion(db, fetcher),
 		views:     viewAssembler{},
 		resources: storage.ResourceStore{},
+		sources:   storage.SourceStore{},
 	}
 }
 
@@ -57,6 +67,61 @@ func (s *ResourceService) PrepareFilePreview(inputPath string) (PreparedFilePrev
 		return PreparedFilePreview{}, err
 	}
 	return PreparedFilePreview{Location: location, Kind: resourceKindForFile(location)}, nil
+}
+
+// 按归一化位置反查库内已有该入口的 Resource，供添加前的重复提示使用。
+// 比对以 normalizeInput 的结果为准，因此 `~/a.png` 与其绝对路径命中同一条记录。
+func (s *ResourceService) FindResourceLocationMatches(
+	ctx context.Context,
+	input string,
+	srcType storage.SourceType,
+) ([]ResourceLocationMatch, error) {
+	location, err := s.ingest.normalizeInput(input, srcType)
+	if err != nil {
+		return nil, err
+	}
+
+	sources, err := s.sources.ListSourcesByLocations(ctx, s.db.SqlDB(), srcType, []string{location})
+	if err != nil {
+		return nil, err
+	}
+	if len(sources) == 0 {
+		return []ResourceLocationMatch{}, nil
+	}
+
+	// 同一 Resource 可能在同一位置登记多条 Source（CONTEXT.md「重复 Source」），
+	// 提示按 Resource 去重：用户看到的是「已有哪几个资源」，不是「有几条记录」。
+	resourceIDs := make([]string, 0, len(sources))
+	seen := make(map[string]bool, len(sources))
+	for _, src := range sources {
+		if seen[src.ResourceID] {
+			continue
+		}
+		seen[src.ResourceID] = true
+		resourceIDs = append(resourceIDs, src.ResourceID)
+	}
+
+	views, err := s.views.assembleByIDs(ctx, s.db.SqlDB(), resourceIDs)
+	if err != nil {
+		return nil, err
+	}
+	// 按纳入时间倒序，与 ListResources 的浏览顺序一致；ID 兜底使同毫秒创建也有确定顺序。
+	sort.SliceStable(views, func(i, j int) bool {
+		if views[i].Resource.CreatedAt != views[j].Resource.CreatedAt {
+			return views[i].Resource.CreatedAt > views[j].Resource.CreatedAt
+		}
+		return views[i].Resource.ID < views[j].Resource.ID
+	})
+
+	matches := make([]ResourceLocationMatch, 0, len(views))
+	for _, view := range views {
+		matches = append(matches, ResourceLocationMatch{
+			ResourceID: view.Resource.ID,
+			Title:      view.Resource.Title,
+			Location:   location,
+		})
+	}
+	return matches, nil
 }
 
 // 纳入文件时只确认入口可达性，不读取或接管内容。

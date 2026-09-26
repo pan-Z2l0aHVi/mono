@@ -5,6 +5,7 @@ import {
   SourceService,
   TagService
 } from '../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/service'
+import type { SourceType } from '../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage'
 import { OSService } from '../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/native/service'
 
 import {
@@ -101,6 +102,10 @@ class WailsLibraryRuntime implements LibraryRuntime {
 
   async releaseFilePreview(token: string) {
     await ResourceService.ReleaseFilePreview(token)
+  }
+
+  async findResourceLocationMatches(input: string, sourceType: SourceType) {
+    return ResourceService.FindResourceLocationMatches(input, sourceType)
   }
 
   async probeURLSourceOnOpen(sourceId: string) {

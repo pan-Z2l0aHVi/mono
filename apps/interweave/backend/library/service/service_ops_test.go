@@ -12,6 +12,7 @@ import (
 	coreLibrary "github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/core"
 	libraryMedia "github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/media"
 	"github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/service"
+	"github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage"
 	"github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/remote"
 )
 
@@ -39,6 +40,48 @@ func tempFile(t *testing.T, name string) string {
 	f.Close()
 	t.Cleanup(func() { _ = os.Remove(f.Name()) })
 	return f.Name()
+}
+
+// 重复提示的 service 契约：只回带展示字段的命中项，未命中回非 nil 空切片（前端据此判定零打扰）。
+func TestFindResourceLocationMatchesReturnsPromptFields(t *testing.T) {
+	resService, _, _, _, cleanup := newTestServices(t)
+	defer cleanup()
+	ctx := context.Background()
+
+	path := tempFile(t, "prompt-*.txt")
+	added, err := resService.AddFileResource(ctx, path)
+	if err != nil {
+		t.Fatalf("AddFileResource error: %v", err)
+	}
+
+	matches, err := resService.FindResourceLocationMatches(ctx, path, storage.SourceTypeFile)
+	if err != nil {
+		t.Fatalf("FindResourceLocationMatches error: %v", err)
+	}
+	if len(matches) != 1 {
+		t.Fatalf("expected one match, got %+v", matches)
+	}
+	if matches[0].ResourceID != added.ID {
+		t.Errorf("expected resource_id %s, got %s", added.ID, matches[0].ResourceID)
+	}
+	if matches[0].Title != added.Title {
+		t.Errorf("expected title %q, got %q", added.Title, matches[0].Title)
+	}
+	if matches[0].Location != added.Sources[0].Location {
+		t.Errorf("expected location %q, got %q", added.Sources[0].Location, matches[0].Location)
+	}
+
+	empty, err := resService.FindResourceLocationMatches(ctx, tempFile(t, "absent-*.txt"), storage.SourceTypeFile)
+	if err != nil {
+		t.Fatalf("FindResourceLocationMatches (miss) error: %v", err)
+	}
+	if empty == nil || len(empty) != 0 {
+		t.Errorf("expected a non-nil empty match list, got %+v", empty)
+	}
+
+	if _, err := resService.FindResourceLocationMatches(ctx, path, storage.SourceTypeURL); err == nil {
+		t.Error("expected a normalize error when a local path is looked up as a URL, got nil")
+	}
 }
 
 // 验证标题、备注、列表、搜索与删除的维护路径。

@@ -1,11 +1,15 @@
 import type {
   FilePreviewDTO,
   ResourceDTO,
+  ResourceLocationMatchDTO,
   SourceDTO,
   SourceProbeResultDTO,
   TagDTO
 } from '../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/service'
-import type { ResourceKind } from '../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage'
+import type {
+  ResourceKind,
+  SourceType
+} from '../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage'
 
 export interface LibraryRuntime {
   readonly isAvailable: boolean
@@ -26,6 +30,7 @@ export interface LibraryRuntime {
   getClipboardFilePaths(): Promise<string[]>
   prepareFilePreview(inputPath: string): Promise<FilePreviewDTO>
   releaseFilePreview(token: string): Promise<void>
+  findResourceLocationMatches(input: string, sourceType: SourceType): Promise<ResourceLocationMatchDTO[]>
   probeURLSourceOnOpen(sourceId: string): Promise<SourceProbeResultDTO>
   openExternal(target: string): Promise<void>
   resourceMediaURL(sourceId: string): string | null

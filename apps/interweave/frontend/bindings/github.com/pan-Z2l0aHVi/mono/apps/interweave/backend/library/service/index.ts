@@ -17,6 +17,7 @@ export {
     GlobalMapDTO,
     LocalMapDTO,
     ResourceDTO,
+    ResourceLocationMatchDTO,
     SourceDTO,
     SourceMetadataDTO,
     SourceProbeOutcome,

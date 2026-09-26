@@ -198,6 +198,43 @@ export class ResourceDTO {
 export type ResourceKind = storage$0.ResourceKind;
 
 /**
+ * ResourceLocationMatchDTO 是「库内已有同一入口」的命中项，供添加前的重复确认框列出。
+ * 只带展示所需字段：完整资源视图（全部 Source、标签、元数据）对这条提示是过量数据。
+ */
+export class ResourceLocationMatchDTO {
+    "resource_id": string;
+    "title": string;
+
+    /**
+     * Location 是后端归一化后的位置，因此与库里记录逐字一致（前端无从自行归一化）。
+     */
+    "location": string;
+
+    /** Creates a new ResourceLocationMatchDTO instance. */
+    constructor($$source: Partial<ResourceLocationMatchDTO> = {}) {
+        if (!("resource_id" in $$source)) {
+            this["resource_id"] = "";
+        }
+        if (!("title" in $$source)) {
+            this["title"] = "";
+        }
+        if (!("location" in $$source)) {
+            this["location"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new ResourceLocationMatchDTO instance from a string or object.
+     */
+    static createFrom($$source: any = {}): ResourceLocationMatchDTO {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new ResourceLocationMatchDTO($$parsedSource as Partial<ResourceLocationMatchDTO>);
+    }
+}
+
+/**
  * 为前端呈现 Resource 的外部入口。
  */
 export class SourceDTO {
