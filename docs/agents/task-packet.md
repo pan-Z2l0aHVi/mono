@@ -30,7 +30,7 @@ Review: <required topology or not required>
 Handoff: <what is returned and when>
 ```
 
-级别、影响面和状态机以 [`workflow.md`](workflow.md) 为准。task state 中的 `diffHash`、review、approval、verification 和 `events[]` 由 `pnpm task` 维护，packet 不重复这些机器记录。
+级别、影响面和状态机以 [`workflow.md`](workflow.md) 为准。task state 中的 `diffHash`、review、approval、verification 和 `events[]` 由 `pnpm agent:task` 维护，packet 不重复这些机器记录。
 
 ## 可选 Coordination 区域
 

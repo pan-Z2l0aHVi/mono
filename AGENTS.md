@@ -11,9 +11,9 @@
 
 <!-- invariant:task-state-trigger -->
 
-所有实施变更**在第一次文件变更前必须读取 [`docs/agents/workflow.md`](docs/agents/workflow.md)，并按级别建 task：`pnpm task new --task <task-id> --level t0|t1|t2`**。级别 T0/T1/T2（T0 最严格）只表达 workflow 严格程度；判定判据、每级的 review/approval 要求与预授权操作清单，以 workflow.md 为权威，本节不复制。
+所有实施变更**在第一次文件变更前必须读取 [`docs/agents/workflow.md`](docs/agents/workflow.md)，并按级别建 task：`pnpm agent:task new --task <task-id> --level t0|t1|t2`**。级别 T0/T1/T2（T0 最严格）只表达 workflow 严格程度；判定判据、每级的 review/approval 要求与预授权操作清单，以 workflow.md 为权威，本节不复制。
 
-级别判定不靠感觉：`pnpm find:usages -- <paths>` 输出的受影响 workspace 只有一个时，T2 的「单 workspace」条件成立。只读调查不需要 task，一旦转为实施就回到这个 gate。状态、冻结 diff、review、approval 和验证证据以 `<git-common-dir>/tasks/<task-id>.json` 为执行真相。
+级别判定不靠感觉：`pnpm agent:find-usages -- <paths>` 输出的受影响 workspace 只有一个时，T2 的「单 workspace」条件成立。只读调查不需要 task，一旦转为实施就回到这个 gate。状态、冻结 diff、review、approval 和验证证据以 `<git-common-dir>/tasks/<task-id>.json` 为执行真相。
 
 1. 先查看工作区状态、目标文件和最近的 `AGENTS.md`；只有进入某个 `apps/` 或 `packages/` 时才加载其包级指令。
 2. 只按任务加载命中的 rule、guide 和包级指令；不要为普通局部任务预读 `CONTEXT.md`、ADR 或无关领域指南。
@@ -40,7 +40,7 @@ Task 级别、状态机、冻结 diff、review、approval 和验证证据见 [`d
 - 缺少 Node、pnpm 或 Go 时先运行 `mise install`；准确版本以 `.mise.toml`、`package.json` 与目标包 manifest 为准。
 - 并行实施 Agent 必须使用不同的 branch/worktree。Supervisor 是例外：它可以与 Coder 共享该实施 worktree，但只能读取，不能写入。不得在共享工作区执行 `git switch`、`git checkout`、`git stash`、`git reset` 或 `git clean`。新建 worktree 统一放在仓库旁的 `<仓库目录名>-worktrees/<worktree 名>`（例：仓库在 `path/to/mono`，worktree 放 `path/to/mono-worktrees/<name>`）；工具自带的 worktree 默认路径（如 `.claude/worktrees/`）不采用。
 - 多 Agent 的目录边界和跨边界拆分见 [`herdr-agents`](.agents/skills/herdr-agents/SKILL.md)，worktree 布局见 [`docs/agents/worktrees.md`](docs/agents/worktrees.md)。
-- 预授权操作（本地测试与校验命令、包级构建、`find:usages` / `inspect:contract` / `diff:contract` 等只读查询、在目标 worktree 内读文件）直接执行，不必逐步请示；需要逐次授权的是 commit/push/merge/publish、依赖与 lockfile、`.npmrc` / `.mise.toml` / Git 配置、凭证读写和破坏性 git 操作。清单见 [`docs/agents/workflow.md`](docs/agents/workflow.md) 的「预授权操作」。
+- 预授权操作（本地测试与校验命令、包级构建、`agent:find-usages` / `agent:inspect-contract` / `agent:diff-contract` 等只读查询、在目标 worktree 内读文件）直接执行，不必逐步请示；需要逐次授权的是 commit/push/merge/publish、依赖与 lockfile、`.npmrc` / `.mise.toml` / Git 配置、凭证读写和破坏性 git 操作。清单见 [`docs/agents/workflow.md`](docs/agents/workflow.md) 的「预授权操作」。
 
 ## 按任务加载
 
@@ -53,7 +53,8 @@ Task 级别、状态机、冻结 diff、review、approval 和验证证据见 [`d
 | UI、UX、交互或浏览器运行时                        | [`docs/agents/browser-verification.md`](docs/agents/browser-verification.md)；`web-ui` 任务再读 [`docs/agents/web-ui.md`](docs/agents/web-ui.md)                                                             |
 | 构建脚本、Vite/Turbo、包图、外部化、CI 或发布     | [`docs/agents/build.md`](docs/agents/build.md)                                                                                                                                                               |
 | 格式化、lint、拼写或类型检查配置                  | [`docs/agents/linting.md`](docs/agents/linting.md)                                                                                                                                                           |
-| 变更影响或验证命令选择                            | [`docs/agents/context.md`](docs/agents/context.md)（仓库内查询工具 `find:usages` / `inspect:contract` / `diff:contract` 的语义与参数）                                                                       |
+| 新增或重命名根 `package.json` 命令                | [`.agents/rules/commands.md`](.agents/rules/commands.md)（命名形状与 namespace 归属）和 [`docs/agents/commands.md`](docs/agents/commands.md)（完整索引）                                                     |
+| 变更影响或验证命令选择                            | [`docs/agents/context.md`](docs/agents/context.md)（仓库内查询工具 `agent:find-usages` / `agent:inspect-contract` / `agent:diff-contract` 的语义与参数）                                                     |
 | 全局拓扑和快速导航                                | [`ARCHITECTURE.md`](ARCHITECTURE.md)；实现事实仍以源码、manifest、配置和测试为准                                                                                                                             |
 | 架构探索、术语或 ADR                              | [`CONTEXT.md`](CONTEXT.md) 和相关 ADR；context 分层与冲突处理见 [`docs/agents/context.md`](docs/agents/context.md)                                                                                           |
 | instruction system / context 维护                 | [`docs/agents/context.md`](docs/agents/context.md)、[`CONTEXT.md`](CONTEXT.md) 和 ADR-0004                                                                                                                   |

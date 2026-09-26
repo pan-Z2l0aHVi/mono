@@ -11,7 +11,7 @@ const fixture = fs.mkdtempSync(path.join(os.tmpdir(), 'greypan-task-'))
 const secondWorktree = fs.mkdtempSync(path.join(os.tmpdir(), 'greypan-task-second-'))
 
 // pre-commit 边界：guard 是唯一门禁，归一化只发生在 freeze；不允许任何绕过形态。
-assert.ok(preCommit.includes('pnpm task guard'), 'pre-commit must run the task guard')
+assert.ok(preCommit.includes('pnpm agent:task guard'), 'pre-commit must run the task guard')
 assert.equal(preCommit.includes('vp staged'), false, 'pre-commit must not run vp staged')
 assert.equal(preCommit.includes('agent-workflow'), false, 'pre-commit must not reference the retired workflow script')
 // 三个旁路变量都要点名：上游 `h` 包装脚本认 HUSKY / VP_GIT_HOOKS / VITE_GIT_HOOKS 三个，
@@ -74,7 +74,7 @@ try {
   assert.equal(untrackedGuard.status, 0)
   assert.equal(JSON.parse(untrackedGuard.stdout).enforced, false)
   assert.match(untrackedGuard.stderr, /not enforced/)
-  assert.match(untrackedGuard.stderr, /pnpm task new/)
+  assert.match(untrackedGuard.stderr, /pnpm agent:task new/)
 
   // 脏 worktree 不得建 T0/T1 task：快照基线必须干净，freeze 的 `git add -A` 会扫进一切。
   fs.writeFileSync(path.join(fixture, 'preexisting.txt'), 'must not be absorbed\n')
@@ -186,8 +186,8 @@ try {
   // fixture 无 package.json：归一化跳过但必须留痕（normalized: false）。
   assert.ok(frozen.events.some(event => event.event === 'freeze' && event.normalized === false))
 
-  // 声明了 fix:code 但依赖未安装：freeze 必须失败并指引安装，不允许静默跳过归一化。
-  fs.writeFileSync(path.join(fixture, 'package.json'), JSON.stringify({ scripts: { 'fix:code': 'true' } }))
+  // 声明了 fix-code 但依赖未安装：freeze 必须失败并指引安装，不允许静默跳过归一化。
+  fs.writeFileSync(path.join(fixture, 'package.json'), JSON.stringify({ scripts: { 'fix-code': 'true' } }))
   fs.appendFileSync(path.join(fixture, 'src', 'change.ts'), '// pending edit\n')
   assert.throws(
     () =>
@@ -643,7 +643,7 @@ try {
   // format-clean：与 task 无关的 check-only 格式化 gate，所以三条提交路径都得跑到它——无 active
   // task、T2 的 commit、T1 的 freeze。fixture 里没有 node_modules，真的 vp/stylelint 起不来，
   // 于是把工具入口换成记账 stub：这里断言的是「哪些文件交给了哪个工具」和「失败拦不拦」，
-  // 不是 oxfmt 会不会格式化（那是 check:code 与真实仓库里的事）。
+  // 不是 oxfmt 会不会格式化（那是 check-code 与真实仓库里的事）。
   const formatCheck = path.join(fixture, '.agents', 'checks', 'format-clean')
   const formatStub = path.join(fixture, 'format-tool-stub.sh')
   fs.writeFileSync(
@@ -792,7 +792,7 @@ try {
   assert.equal(JSON.parse(run('freeze', '--task', 'format-t2')).phase, 'frozen')
   run('drop', '--task', 'format-t2', '--reason', 'format gate covered at commit boundary', '--by', 'fixture-sweeper-1')
 
-  // freeze 边界：归一化之后还有一层只读核对，所以 fix:code 没跑成的仓库也拦得住。freeze 先
+  // freeze 边界：归一化之后还有一层只读核对，所以 fix-code 没跑成的仓库也拦得住。freeze 先
   // `git add -A`，所以这里只需要往工作区丢一个标记文件，它就进入暂存清单。
   fs.rmSync(changesetCheck)
   fs.rmSync(path.join(fixture, '.changeset'), { recursive: true, force: true })

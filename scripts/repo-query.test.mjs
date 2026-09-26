@@ -13,7 +13,7 @@ assert.ok(webUiContract.directConsumers.includes('@greypan/react-web-ui-demo'))
 assert.ok(webUiContract.directConsumers.includes('@greypan/vue-web-ui-demo'))
 assert.ok(Object.hasOwn(webUiContract.package.exports, './components/*'))
 assert.ok(webUiContract.readFirst.includes('packages/web-ui/README.md'))
-assert.ok(webUiContract.verification.includes('pnpm run check:pack'))
+assert.ok(webUiContract.verification.includes('pnpm run check-pack'))
 assert.throws(() => runFailure('contract', '--json', '@greypan/react-web-ui-demo'))
 
 const noContractDiff = JSON.parse(run('contract-diff', '--json', '--base', 'HEAD'))
@@ -129,14 +129,14 @@ assert.ok(
     item => item.command === 'pnpm --filter @greypan/web-ui test src/components/select/__tests__'
   )
 )
-assert.ok(webUiPlan.verification.some(item => item.command === 'pnpm run check:pack'))
+assert.ok(webUiPlan.verification.some(item => item.command === 'pnpm run check-pack'))
 assert.ok(webUiPlan.verification.some(item => item.command === 'chrome-devtools MCP 真实浏览器验证'))
 assert.match(run('verify', 'packages/web-ui/src/components/select/index.ts'), /evidence:/)
 
 const contextPlan = JSON.parse(run('verify', '--json', 'docs/agents/context.md'))
 assert.equal(contextPlan.risk.context, true)
 assert.ok(contextPlan.context.includes('docs/adr/0004-progressive-agent-context-architecture.md'))
-assert.ok(contextPlan.verification.some(item => item.command === 'pnpm run validate:context'))
+assert.ok(contextPlan.verification.some(item => item.command === 'pnpm run ci:validate-context'))
 
 const typePlan = JSON.parse(run('verify', '--json', 'packages/web-ui/src/types/react.ts'))
 assert.equal(typePlan.command, 'verify')
@@ -147,17 +147,17 @@ assert.equal(
 )
 
 const toolPlan = JSON.parse(run('verify', '--json', 'scripts/repo-query.mjs'))
-assert.ok(toolPlan.verification.some(item => item.command === 'pnpm run test:scripts'))
+assert.ok(toolPlan.verification.some(item => item.command === 'pnpm run ci:test-scripts'))
 
 const workflowToolPlan = JSON.parse(run('verify', '--json', 'scripts/task.mjs'))
 assert.ok(workflowToolPlan.context.includes('docs/agents/context.md'))
-assert.ok(workflowToolPlan.verification.some(item => item.command === 'pnpm run test:scripts'))
+assert.ok(workflowToolPlan.verification.some(item => item.command === 'pnpm run ci:test-scripts'))
 
 const workspaceConfigPlan = JSON.parse(run('verify', '--json', 'pnpm-workspace.yaml'))
-assert.ok(workspaceConfigPlan.verification.some(item => item.command === 'pnpm run test:scripts'))
+assert.ok(workspaceConfigPlan.verification.some(item => item.command === 'pnpm run ci:test-scripts'))
 
 const workspaceManifestToolPlan = JSON.parse(run('verify', '--json', 'scripts/workspace-manifests.mjs'))
-assert.ok(workspaceManifestToolPlan.verification.some(item => item.command === 'pnpm run test:scripts'))
+assert.ok(workspaceManifestToolPlan.verification.some(item => item.command === 'pnpm run ci:test-scripts'))
 
 const tsconfigPlan = JSON.parse(run('verify', '--json', 'packages/tsconfig/base.json'))
 assert.equal(tsconfigPlan.directWorkspaces[0], '@greypan/tsconfig')

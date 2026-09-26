@@ -45,7 +45,7 @@ task 级别、状态机、review/approval 和验证证据见 [`docs/agents/workf
 - `scripts/agent-workflow.mjs` 的角色集合移除 `integrator`，与「不新增层级」一致；集成与 release 由 Manager 承担。
 - `scripts/validate-context.mjs` 只检查通用 context 能力，不再维护 Role 绑定表、固定 Role 集合或 handoff 字段的镜像。
 - Role Contract 位于 `.agents/skills/herdr-agents/roles/`；绑定、启动参数、Supervisor 和 pane 时序位于同一 skill 的 `SKILL.md`。`CLAUDE.md` 保持一行 `@AGENTS.md` import，不复制共享规则正文。
-- `scripts/task.mjs` 不再把 Role 写入 task state；`pnpm task assign --roles` 明确拒绝，旧 v1 state 仅作兼容读取。
+- `scripts/task.mjs` 不再把 Role 写入 task state；`pnpm agent:task assign --roles` 明确拒绝，旧 v1 state 仅作兼容读取。
 - 跨包需求可以按 `packages/*` 与 `apps/*` 拆成多个 task，也可以在同一 worktree 内严格隔离目录；代价是交接次数增加。
 
 ## 替代方案

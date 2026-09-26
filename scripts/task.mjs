@@ -248,11 +248,11 @@ function assertCurrentHash(state, live, label = 'task evidence') {
     )
 }
 
-// freeze 归一化与 commit 收敛到同一起点：全量 staging 后运行仓库的 fix:code
+// freeze 归一化与 commit 收敛到同一起点：全量 staging 后运行仓库的 fix-code
 //（CI=true 关闭交互），fix 产物重新 staging 后再取快照。pre-commit 只剩 guard、
 // 不运行任何 fixer，因此不存在「commit 期改写文件导致冻结失效」的竞态；commit 边界的
 // 清洁度保证（格式、lint 与类型）由 check-only 的 .agents/checks/format-clean 提供，它对三条提交路径都生效。
-// fix:code 归一化是强制的：声明了 fix:code 但依赖未安装时直接失败并指引安装，
+// fix-code 归一化是强制的：声明了 fix-code 但依赖未安装时直接失败并指引安装，
 // 只有不含该脚本的仓库（测试 fixture、纯 git 仓库）才允许跳过。
 // 全量 staging 的范围边界不在这里，而在「谁要求干净起点」：T0/T1 的 open → active 要求 worktree
 // 干净，所以 `git add -A` 扫进来的只可能是本 task 起点之后的改动；T2 的 start 豁免干净，于是
@@ -265,13 +265,13 @@ function normalizeWorktree(worktree) {
   const manifestPath = path.join(worktree, 'package.json')
   if (!fs.existsSync(manifestPath)) return false
   const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'))
-  if (!manifest.scripts?.['fix:code']) return false
+  if (!manifest.scripts?.['fix-code']) return false
   if (!fs.existsSync(path.join(worktree, 'node_modules')))
     fail(
-      `worktree dependencies are missing in ${worktree}; normalization via fix:code is mandatory — run "pnpm install && pnpm run build" in the worktree, then re-run freeze`
+      `worktree dependencies are missing in ${worktree}; normalization via fix-code is mandatory — run "pnpm install && pnpm run build" in the worktree, then re-run freeze`
     )
   try {
-    execFileSync('pnpm', ['run', 'fix:code'], { cwd: worktree, stdio: 'pipe', env: { ...process.env, CI: 'true' } })
+    execFileSync('pnpm', ['run', 'fix-code'], { cwd: worktree, stdio: 'pipe', env: { ...process.env, CI: 'true' } })
   } catch (error) {
     const detail = error?.stderr?.toString().trim() || error?.stdout?.toString().trim()
     fail(
@@ -605,7 +605,7 @@ function status(options) {
   const live = liveState(state)
   if (!state.issue)
     console.error(
-      `hint: task ${state.taskId} has no linked issue; attach one with "pnpm task issue --task ${state.taskId} --ref <issue-url|N/A>"`
+      `hint: task ${state.taskId} has no linked issue; attach one with "pnpm agent:task issue --task ${state.taskId} --ref <issue-url|N/A>"`
     )
   print({ ...state, live, stale: live.stale })
 }
@@ -638,7 +638,7 @@ function guard(options) {
     // 它失败时上面的提示根本不会出现，拦住提交的理由以检查自己的输出为准。
     const ran = runChecks(resolved.worktree, null, 'commit')
     console.error(
-      `task gate: not enforced — no active task in ${resolved.worktree}; implementation changes start with "pnpm task new --task <id> --level <t0|t1|t2>" (contract in docs/agents/workflow.md)`
+      `task gate: not enforced — no active task in ${resolved.worktree}; implementation changes start with "pnpm agent:task new --task <id> --level <t0|t1|t2>" (contract in docs/agents/workflow.md)`
     )
     print({ ok: true, enforced: false, checks: ran, worktree: resolved.worktree })
     return
@@ -685,7 +685,9 @@ function print(value) {
 function main() {
   const options = parseArgs(process.argv.slice(2))
   if (!options.command || options.command === 'help') {
-    console.log('usage: pnpm task <new|assign|start|freeze|review|approve|verify|done|drop|status|issue|guard> ...')
+    console.log(
+      'usage: pnpm agent:task <new|assign|start|freeze|review|approve|verify|done|drop|status|issue|guard> ...'
+    )
     return
   }
   const handlers = {
