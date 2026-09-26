@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import type { WebUiEditableText, WebUiEvent, WebUiLayout, WebUiSvgDrawLines } from '@greypan/web-ui'
-import { lucideFolderOpen, lucideLayoutGrid } from '@greypan/web-ui/icons'
+import type { WebUiEditableText, WebUiEvent, WebUiLayout } from '@greypan/web-ui'
 import { computed, nextTick, onMounted, onScopeDispose, ref, type ComponentPublicInstance } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
+import AppNav from '@/components/AppNav.vue'
 import { createLibraryAddQueue } from '@/components/library/addQueue'
 import LibraryAddDialog from '@/components/library/LibraryAddDialog.vue'
 import LibraryConfirmDialog from '@/components/library/LibraryConfirmDialog.vue'
@@ -126,11 +126,6 @@ const allTagNames = computed(() =>
   [...new Set([...store.allTagNames, ...queue.value.flatMap(item => item.tags)])].sort()
 )
 
-const navItems = [
-  { key: 'library' as const, label: '资料库', path: '/library', icon: lucideFolderOpen },
-  { key: 'map' as const, label: '关系图谱', path: '/map', icon: lucideLayoutGrid }
-]
-
 const editingNameKey = ref<string | null>(null)
 const resourceNameEditors = ref<Record<string, WebUiEditableText | null>>({})
 const nameEditorRefCallbacks = new Map<string, NameEditorRef>()
@@ -158,18 +153,6 @@ function stopResourceRename() {
   editingNameKey.value = null
 }
 
-const navDrawRefs = ref<Record<'library' | 'map', WebUiSvgDrawLines | null>>({
-  library: null,
-  map: null
-})
-
-function setNavDrawRef(key: 'library' | 'map', element: unknown) {
-  navDrawRefs.value[key] = (element as WebUiSvgDrawLines | null) ?? null
-}
-
-const navItemClass =
-  'flex items-center gap-2 w-full min-w-9 min-h-9 px-2.5 border-0 rounded-full font-medium cursor-pointer text-left transition-all duration-150 text-(--wui-color-text) [--wui-icon-color:var(--wui-color-accent,#08f)] active:bg-[rgb(34_33_42/0.12)] dark:active:bg-white/15 data-[active=true]:bg-(--wui-color-surface-control,#dfdfdf) data-[active=true]:hover:bg-[color-mix(in_srgb,var(--wui-color-surface-control,#dfdfdf)_90%,var(--wui-color-text,#1b1b1b))] data-[active=true]:active:bg-[color-mix(in_srgb,var(--wui-color-surface-control,#dfdfdf)_70%,var(--wui-color-text,#1b1b1b))]'
-
 function syncMobile() {
   mobile.value = mobileQuery.matches
 }
@@ -189,19 +172,8 @@ function updateSidebarWidth(event: WebUiEvent<WebUiLayout, 'sidebar-width-change
   desktopSidebarWidth.value = event.detail.width
 }
 
-function selectNav(next: 'library' | 'map') {
-  void navDrawRefs.value[next]?.replay()
-
-  if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-    navDrawRefs.value[next]?.animate(
-      [{ transform: 'scale(1)' }, { transform: 'scale(1.3)', offset: 0.4 }, { transform: 'scale(1)' }],
-      { duration: 720, easing: 'ease-out' }
-    )
-  }
-
-  const path = next === 'library' ? '/library' : '/map'
+function closeSidebar() {
   sidebarOpen.value = false
-  if (route.path !== path) void router.push(path)
 }
 
 function selectResource(resource: ResourceView) {
@@ -517,36 +489,7 @@ onMounted(() => {
     @sidebar-open-change="updateSidebarOpen"
     @sidebar-width-change="updateSidebarWidth"
   >
-    <div slot="sidebar" class="relative z-20 h-full pt-14 pb-4 px-2 max-[640px]:px-0" aria-label="应用导航">
-      <nav class="grid gap-1" aria-label="主导航">
-        <button
-          v-for="item in navItems"
-          :key="item.key"
-          type="button"
-          :class="[
-            navItemClass,
-            route.path === item.path ? '' : 'hover:bg-black/4 dark:hover:bg-white/6',
-            sidebarCollapsed ? 'justify-center' : ''
-          ]"
-          :data-active="route.path === item.path"
-          :aria-current="route.path === item.path ? 'page' : undefined"
-          :aria-label="item.label"
-          @click="selectNav(item.key)"
-        >
-          <web-ui-tooltip
-            portal
-            placement="right"
-            :content="sidebarCollapsed ? item.label : ''"
-            :disabled="!sidebarCollapsed"
-          >
-            <web-ui-svg-draw-lines :ref="element => setNavDrawRef(item.key, element)" :duration="720" easing="ease-out">
-              <web-ui-icon :icon="item.icon" :size="18" />
-            </web-ui-svg-draw-lines>
-          </web-ui-tooltip>
-          <span v-if="!sidebarCollapsed" class="text-sm whitespace-nowrap overflow-hidden">{{ item.label }}</span>
-        </button>
-      </nav>
-    </div>
+    <AppNav slot="sidebar" :collapsed="sidebarCollapsed" @navigate="closeSidebar" />
 
     <header slot="header" class="w-full">
       <LibraryToolbar
