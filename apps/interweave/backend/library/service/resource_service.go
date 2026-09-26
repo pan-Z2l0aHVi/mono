@@ -44,6 +44,25 @@ func (s *ResourceService) ReleaseFilePreview(_ context.Context, token string) {
 	}
 }
 
+// FindResourceLocationMatches 提示库内已登记该入口的 Resource；只读，不改动任何内容。
+func (s *ResourceService) FindResourceLocationMatches(
+	ctx context.Context,
+	input string,
+	srcType storage.SourceType,
+) ([]ResourceLocationMatchDTO, error) {
+	matches, err := s.core.FindResourceLocationMatches(ctx, input, srcType)
+	if err != nil {
+		return nil, err
+	}
+	return mapped(matches, func(match core.ResourceLocationMatch) ResourceLocationMatchDTO {
+		return ResourceLocationMatchDTO{
+			ResourceID: match.ResourceID,
+			Title:      match.Title,
+			Location:   match.Location,
+		}
+	}), nil
+}
+
 // ServiceShutdown 在应用退出时撤销全部 pending media 授权。
 func (s *ResourceService) ServiceShutdown() error {
 	s.previews.Clear()

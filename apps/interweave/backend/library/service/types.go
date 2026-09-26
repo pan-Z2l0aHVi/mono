@@ -33,6 +33,15 @@ type FilePreviewDTO struct {
 	Token string       `json:"token,omitempty"`
 }
 
+// ResourceLocationMatchDTO 是「库内已有同一入口」的命中项，供添加前的重复确认框列出。
+// 只带展示所需字段：完整资源视图（全部 Source、标签、元数据）对这条提示是过量数据。
+type ResourceLocationMatchDTO struct {
+	ResourceID string `json:"resource_id"`
+	Title      string `json:"title"`
+	// Location 是后端归一化后的位置，因此与库里记录逐字一致（前端无从自行归一化）。
+	Location string `json:"location"`
+}
+
 // 为前端呈现 Resource 的外部入口。
 type SourceDTO struct {
 	ID          string             `json:"id"`

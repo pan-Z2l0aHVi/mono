@@ -7,6 +7,7 @@ import { createLibraryAddQueue } from '@/components/library/addQueue'
 import LibraryAddDialog from '@/components/library/LibraryAddDialog.vue'
 import LibraryConfirmDialog from '@/components/library/LibraryConfirmDialog.vue'
 import LibraryDetailDrawer from '@/components/library/LibraryDetailDrawer.vue'
+import LibraryDuplicateConfirmDialog from '@/components/library/LibraryDuplicateConfirmDialog.vue'
 import LibraryEditTagsDialog from '@/components/library/LibraryEditTagsDialog.vue'
 import LibraryPreviewDrawer from '@/components/library/LibraryPreviewDrawer.vue'
 import LibraryResourceList from '@/components/library/LibraryResourceList.vue'
@@ -78,13 +79,14 @@ const restoreError = ref('')
 const activeRestoreItemId = ref<string | null>(null)
 const addQueue = createLibraryAddQueue(runtime)
 const queue = addQueue.queue
+const duplicatePrompt = addQueue.duplicatePrompt
 const addingResources = ref(false)
 const confirmBusy = ref(false)
 const confirmRequest = ref<ConfirmRequest | null>(null)
 const confirmError = ref('')
 const addError = ref('')
 const stopDroppedFiles = subscribeToDroppedFiles(paths => {
-  if (addOpen.value) addQueue.enqueueFileLocations(paths)
+  if (addOpen.value) void addQueue.enqueueFileLocations(paths)
 })
 const stopPasteFileRequest = subscribeToPasteFileRequest(() => {
   addOpen.value = true
@@ -313,7 +315,7 @@ async function pasteFilePaths() {
   try {
     addError.value = ''
     const paths = await getClipboardFilePaths()
-    if (addOpen.value) addQueue.enqueueFileLocations(paths)
+    if (addOpen.value) await addQueue.enqueueFileLocations(paths)
   } catch (cause) {
     addError.value = takeOperationError(cause, '读取剪贴板文件失败')
   }
@@ -323,7 +325,7 @@ async function pickFiles() {
   try {
     addError.value = ''
     const paths = await chooseFilePaths()
-    if (addOpen.value) addQueue.enqueueFileLocations(paths)
+    if (addOpen.value) await addQueue.enqueueFileLocations(paths)
   } catch (cause) {
     addError.value = takeOperationError(cause, '选择文件失败')
   }
@@ -571,6 +573,17 @@ onMounted(() => {
     @edit-tags="editQueueTags"
     @submit="submitQueue"
     @update:open="setAddOpen"
+  />
+
+  <!--
+    逐项重复确认：入队链每命中一个库内已有位置就挂起一项，由这里裁决。
+    添加对话框关闭时 addQueue.close() 会把挂起的提示按「取消」结算，因此不会留下悬空弹窗。
+  -->
+  <LibraryDuplicateConfirmDialog
+    :open="duplicatePrompt !== null"
+    :prompt="duplicatePrompt"
+    @accept="addQueue.resolveDuplicate(true)"
+    @cancel="addQueue.resolveDuplicate(false)"
   />
 
   <LibraryEditTagsDialog

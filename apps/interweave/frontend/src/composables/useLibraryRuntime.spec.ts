@@ -70,6 +70,7 @@ function createRuntime(overrides: Partial<LibraryRuntime> = {}): LibraryRuntime 
     getClipboardFilePaths: async () => [],
     prepareFilePreview: async () => ({ kind: ResourceKind.ResourceKindFile }),
     releaseFilePreview: async () => {},
+    findResourceLocationMatches: async () => [],
     probeURLSourceOnOpen: async () => ({
       source: createResource().sources[0]!,
       outcome: SourceProbeOutcome.SourceProbeOutcomeAvailable
