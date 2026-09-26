@@ -43,7 +43,8 @@ Role 列表、执行体绑定、启动参数、目录边界、handoff、Supervis
 ## 客户端适配
 
 - `AGENTS.md`、`CONTEXT.md`、`docs/agents/`、`.agents/rules/` 与 `.agents/skills/` 是 Codex、Claude Code 等共用的规范。
-- Codex 通过层级 `AGENTS.md` 获得目录约束与 skill 路由；根 `CLAUDE.md` 只有一行 `@AGENTS.md` import，Claude Code 因此读到与 Codex 同一份根入口，不复制共享规则正文。客户端适配不自动选择 Role。Role、执行体绑定和编排路由见 [`.agents/skills/herdr-agents/SKILL.md`](../../.agents/skills/herdr-agents/SKILL.md)，task 状态机见 [`workflow.md`](workflow.md)。
+- Codex 与 Claude Code 都通过层级 `AGENTS.md` 获得目录约束与 skill 路由，根目录不设客户端专属入口文件，也不复制共享规则正文。客户端适配不自动选择 Role。Role、执行体绑定和编排路由见 [`.agents/skills/herdr-agents/SKILL.md`](../../.agents/skills/herdr-agents/SKILL.md)，task 状态机见 [`workflow.md`](workflow.md)。
+- 实测 Claude Code 2.1.283 已原生发现 `AGENTS.md`：根入口直接加载，包级 `AGENTS.md` 在 Read 命中该子目录时按需注入（注入内容与项目指令块可区分，它不带 project instructions 标记）。前提是根目录没有 `CLAUDE.md`——该客户端的默认模式 `claude-md-or-agents-md` 只在项目没有 `CLAUDE.md` 时才读 `AGENTS.md`，而把 `instructionFiles` 显式声明成 `claude-md-and-agents-md` 也救不回来（两种模式下包级注入都不发生）。所以根目录一旦出现 `CLAUDE.md`，全部包级指令会静默退回到靠模型自觉 Read，源码检查无任何反应；`scripts/validate-context.mjs` 因此断言根 `CLAUDE.md` 不存在。这条结论只在实测过的客户端版本上成立，注入某天失效时先核对客户端版本与该行为是否仍然存在，不要从本文件推断更早或更晚版本的形态。
 - ACP plan 是当前会话的临时进度 UI；多阶段任务的创建、阶段同步和结束前收敛以 [`CONTRIBUTING.md`](../../CONTRIBUTING.md) 为权威。它不持久化为 `agent-state`，也不能替代源码、Git 或验证证据。
 - `.claude/rules` 和 `.claude/skills` 必须通过 symlink 指向 `.agents/` 中的共享内容。仓库内没有证据表明 Claude Code 会无条件加载 `.claude/rules`：本文件把它归为 Task-specific（见上文「Context 层级」），只把根 `AGENTS.md` 列为 Always available。若后续确认客户端把 `.claude/rules` 当常驻层加载，靠控制单文件规模而不是拆分更多文件来控制总量。
 - `scripts/validate-context.mjs` 只检查这套共享 context 的可加载性，不能替代对规则语义、代码行为或 agent 输出质量的评审。
@@ -73,7 +74,7 @@ Role 列表、执行体绑定、启动参数、目录边界、handoff、Supervis
 - **当前实现优先**：源码、测试、`package.json`、workspace 配置和构建配置是当前行为的证据；地图或 README 与它们冲突时，以实现为准，并记录是否需要同步文档。
 - **局部约束优先**：目标目录最近的 `AGENTS.md` 负责局部不可绕过约束；根 `AGENTS.md` 负责仓库级边界和路由。
 - **流程与背景分离**：`docs/agents/*` 和 `.agents/rules/*` 描述按任务加载的流程；`CONTEXT.md` 和 ADR 描述架构、术语和长期取舍；`ARCHITECTURE.md` 只做快速地图。
-- **适配入口不复制规则**：`CLAUDE.md` 只负责对应客户端的入口提示；`.claude/{rules,skills}` 通过 symlink 复用 `.agents/`，不建立第二套规范。
+- **入口文件不复制规则**：根目录只有 `AGENTS.md` 一份项目入口，不为单个客户端另建适配文件；`.claude/{rules,skills}` 通过 symlink 复用 `.agents/`，不建立第二套规范。
 - **术语沿用权威 context**：命名领域概念时使用当前任务已加载 context 里已有的术语（跨包看根 `CONTEXT.md` 的 vocabulary 章节，其他看对应 `CONTEXT.md`、task guide 或 ADR），不改用文档明确避开的同义词。需要命名的概念不存在时，要么是在发明项目不用的措辞，要么是确有空白——后者留给 `/domain-modeling` 在决策真正确定时补。
 - **与 ADR 冲突要显式标记**：输出与既有 ADR 矛盾时明确指出并说明为什么值得重新讨论，不静默覆盖。
 - **缺失的 context 不预先创建**：`CONTEXT.md`、`CONTEXT-MAP.md` 或 context 范围的 `docs/adr/` 不存在时静默继续，不提议提前建；`/domain-modeling` 在术语或决策真正确定时懒创建。
@@ -93,7 +94,7 @@ Role 列表、执行体绑定、启动参数、目录边界、handoff、Supervis
 | `packages/web-ui` 组件、图标或公共契约              | `packages/web-ui/AGENTS.md`、`docs/agents/web-ui.md` 与受影响 ADR                                                | 组件源码、类型、测试                                                               |
 | commitlint 或提交流程                               | `docs/agents/commit.md`                                                                                          | commit 配置或工作流                                                                |
 | 影响未来工程取舍的架构决定                          | 对应 ADR，并更新 `CONTEXT.md` ADR 索引                                                                           | 可行替代方案之间的长期选择                                                         |
-| client adapter、共享 rules、skills 或 agent profile | `context.md`、`CONTEXT.md`、ADR-0004 / ADR-0010 与 `scripts/validate-context.mjs`                                | `CLAUDE.md`、`.agents/`、root scripts                                              |
+| client adapter、共享 rules、skills 或 agent profile | `context.md`、`CONTEXT.md`、ADR-0004 / ADR-0010 与 `scripts/validate-context.mjs`                                | 根 `AGENTS.md`、`.agents/`、root scripts                                           |
 | instruction 体系增删（锚点、rules、skills 布局）    | `context.md`、`docs/agents/workflow.md`、`AGENTS.md`                                                             | diff review、lint 与 CI 配置                                                       |
 | 角色、执行体绑定、编排路由、handoff 或 Supervisor   | `AGENTS.md`、`CONTRIBUTING.md`、`context.md`、`task-packet.md`、`worktrees.md` 与 ADR-0010 / ADR-0015 / ADR-0016 | `.agents/skills/herdr-agents/`、`scripts/task.mjs`、`scripts/validate-context.mjs` |
 
@@ -109,4 +110,4 @@ Role 列表、执行体绑定、启动参数、目录边界、handoff、Supervis
    - 仓库自建的 `.agents/skills/`，其 frontmatter `description` 属于常驻提示词指针，必须精炼为高意图密度的触发词（首词前置、合并近义词分支），将详细工作流置于正文中按需激活。
    - 第三方引入的 `.agents/skills/` 严格保持上游原文，不本地改写，以保障未来版本升级与维护的一致性。
 3. **Prompt Cache（前缀缓存）稳定性**：
-   - 根入口（`AGENTS.md`、`CLAUDE.md`）与 `.agents/rules/` 保持高度静态化与格式稳定，严禁混入动态时间戳、易变临时状态或频繁变动的操作日志，以最大化大模型服务商（Anthropic、Google、OpenAI 等）的 Prefix Cache 命中率。
+   - 根入口 `AGENTS.md` 与 `.agents/rules/` 保持高度静态化与格式稳定，严禁混入动态时间戳、易变临时状态或频繁变动的操作日志，以最大化大模型服务商（Anthropic、Google、OpenAI 等）的 Prefix Cache 命中率。
