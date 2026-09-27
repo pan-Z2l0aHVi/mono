@@ -22,9 +22,9 @@ import type { ResourceSourceView } from '@/stores/library'
 
 import { ResourceKind } from '../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage'
 
-import LibraryResourceThumbnail from './LibraryResourceThumbnail.vue'
 import { metadataRowClass, tagChipClass, tagClass } from './presentation'
 import type { NameEditorRef } from './rename'
+import ResourceThumbnail from './ResourceThumbnail.vue'
 
 const props = defineProps<{
   open: boolean
@@ -278,13 +278,9 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
               aria-haspopup="dialog"
               @click="openImagePreview(item, $event)"
             >
-              <LibraryResourceThumbnail
-                :kind="item.resourceKind"
-                :source="queueSource(item)"
-                :media-url="item.mediaUrl"
-              />
+              <ResourceThumbnail :kind="item.resourceKind" :source="queueSource(item)" :media-url="item.mediaUrl" />
             </button>
-            <LibraryResourceThumbnail
+            <ResourceThumbnail
               v-else
               data-queue-thumbnail
               :kind="item.resourceKind"

@@ -6,7 +6,7 @@ import { createApp, h, nextTick, ref } from 'vue'
 import { ResourceKind } from '../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage'
 import type { ResourceSourceView } from '../../stores/library'
 
-import LibraryResourceThumbnail from './LibraryResourceThumbnail.vue'
+import ResourceThumbnail from './ResourceThumbnail.vue'
 
 function fileSource(): ResourceSourceView {
   return {
@@ -20,7 +20,7 @@ function fileSource(): ResourceSourceView {
   }
 }
 
-describe('LibraryResourceThumbnail', () => {
+describe('ResourceThumbnail', () => {
   it('source props 对象更换但 src 不变且没有新 load 事件时保持 image 与 fallback 互斥', async () => {
     const host = document.createElement('div')
     document.body.append(host)
@@ -29,7 +29,7 @@ describe('LibraryResourceThumbnail', () => {
     const app = createApp({
       setup() {
         return () =>
-          h(LibraryResourceThumbnail, {
+          h(ResourceThumbnail, {
             kind: ResourceKind.ResourceKindImage,
             source: source.value,
             mediaUrl

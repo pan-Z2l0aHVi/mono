@@ -7,7 +7,7 @@ import type { ResourceSourceView, ResourceView } from '@/stores/library'
 
 import { ResourceKind } from '../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage'
 
-import LibraryPreviewDrawer from './LibraryPreviewDrawer.vue'
+import PreviewDrawer from './PreviewDrawer.vue'
 
 interface MountOptions {
   open?: boolean
@@ -62,7 +62,7 @@ async function mountDrawer(initial: ResourceView | null, options: MountOptions =
   const app = createApp({
     setup() {
       return () =>
-        h(LibraryPreviewDrawer, {
+        h(PreviewDrawer, {
           open: open.value,
           resource: current.value,
           mobile: false,
@@ -116,7 +116,7 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 
-describe('LibraryPreviewDrawer', () => {
+describe('PreviewDrawer', () => {
   it('图片铺满内容区渲染 img，加载失败回落到空态', async () => {
     const { host } = await mountDrawer(resourceOf(fileSource(), ResourceKind.ResourceKindImage))
     const image = host.querySelector('img')

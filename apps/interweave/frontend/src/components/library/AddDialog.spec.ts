@@ -15,7 +15,7 @@ import { createApp, h, nextTick, ref } from 'vue'
 import { ResourceKind } from '../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage'
 import type { LibraryQueueItem } from '../../services/library'
 
-import LibraryAddDialog from './LibraryAddDialog.vue'
+import AddDialog from './AddDialog.vue'
 import { tagChipClass } from './presentation'
 
 vi.mock('@greypan/web-ui', async importOriginal => {
@@ -52,7 +52,7 @@ function mountDialog(
   const open = ref(options.open ?? true)
   const app = createApp({
     render: () =>
-      h(LibraryAddDialog, {
+      h(AddDialog, {
         open: open.value,
         queue,
         busy: false,
@@ -103,7 +103,7 @@ function previewHandle(): ImagePreviewHandle {
   }
 }
 
-describe('LibraryAddDialog', () => {
+describe('AddDialog', () => {
   beforeEach(() => {
     openPreview.mockReset()
   })

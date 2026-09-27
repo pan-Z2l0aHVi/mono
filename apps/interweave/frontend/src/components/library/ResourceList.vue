@@ -22,8 +22,8 @@ import { computed, nextTick, ref } from 'vue'
 
 import type { ResourceKind, ResourceSourceView, ResourceView } from '@/stores/library'
 
-import LibraryResourceRow from './LibraryResourceRow.vue'
 import type { NameEditorRef } from './rename'
+import ResourceRow from './ResourceRow.vue'
 
 const props = defineProps<{
   resources: ResourceView[]
@@ -149,7 +149,7 @@ function handleRenameChange(resource: ResourceView, event: WebUiEvent<WebUiEdita
     </div>
 
     <div v-else class="w-full h-full select-none">
-      <LibraryResourceRow
+      <ResourceRow
         v-for="resource in resources"
         :key="resource.id"
         :resource="resource"

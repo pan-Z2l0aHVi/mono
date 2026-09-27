@@ -158,7 +158,7 @@ async function handleOpenExternal() {
 
     <!--
       bottom placement 的 dialog 是 height: auto，--wui-drawer-height 只声明在 host 上不会生效，
-      需要像 LibraryDetailDrawer 那样把高度落在内容层；减去移动端 header 的 h-14。
+      需要像 DetailDrawer 那样把高度落在内容层；减去移动端 header 的 h-14。
 
       open && resource 双重守卫：selectedResource 由行点击即赋值，而 previewOpen 仍是 false，
       此时 dialog 是 display:none。只按 resource 守卫会让 img/video/iframe 挂在隐藏 dialog 里

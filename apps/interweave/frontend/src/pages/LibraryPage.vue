@@ -3,23 +3,23 @@ import type { WebUiEditableText, WebUiEvent, WebUiTextarea } from '@greypan/web-
 import { computed, nextTick, onMounted, onScopeDispose, ref, type ComponentPublicInstance } from 'vue'
 import { useRouter } from 'vue-router'
 
+import AddDialog from '@/components/library/AddDialog.vue'
 import { createLibraryAddQueue } from '@/components/library/addQueue'
-import LibraryAddDialog from '@/components/library/LibraryAddDialog.vue'
-import LibraryConfirmDialog from '@/components/library/LibraryConfirmDialog.vue'
-import LibraryDetailDrawer from '@/components/library/LibraryDetailDrawer.vue'
-import LibraryDuplicateConfirmDialog from '@/components/library/LibraryDuplicateConfirmDialog.vue'
-import LibraryEditTagsDialog from '@/components/library/LibraryEditTagsDialog.vue'
-import LibraryPreviewDrawer from '@/components/library/LibraryPreviewDrawer.vue'
-import LibraryResourceList from '@/components/library/LibraryResourceList.vue'
-import LibraryRestoreDialog from '@/components/library/LibraryRestoreDialog.vue'
-import LibraryToolbar from '@/components/library/LibraryToolbar.vue'
+import ConfirmDialog from '@/components/library/ConfirmDialog.vue'
+import DetailDrawer from '@/components/library/DetailDrawer.vue'
+import DuplicateConfirmDialog from '@/components/library/DuplicateConfirmDialog.vue'
+import EditTagsDialog from '@/components/library/EditTagsDialog.vue'
+import PreviewDrawer from '@/components/library/PreviewDrawer.vue'
 import { DRAWER_TITLE_EDITOR_KEY, type NameEditorRef } from '@/components/library/rename'
+import ResourceList from '@/components/library/ResourceList.vue'
 import {
   createLibraryRestoreQueue,
   createLibraryRestoreQueueItem,
   restoreLibraryQueue,
   type LibraryRestoreQueueItem
 } from '@/components/library/restore'
+import RestoreDialog from '@/components/library/RestoreDialog.vue'
+import Toolbar from '@/components/library/Toolbar.vue'
 import { canGoBack, canGoForward } from '@/composables/useHistoryNav'
 import { useLibraryRuntime } from '@/composables/useLibraryRuntime'
 import { useMediaQuery } from '@/composables/useMediaQuery'
@@ -482,7 +482,7 @@ onMounted(() => {
     Vue 的 slot 不跨组件边界，页面没法从 AppLayout 那边反向声明。
   -->
   <header slot="header" class="w-full">
-    <LibraryToolbar
+    <Toolbar
       :search-query="store.searchQuery"
       :filter-source="store.filterSource"
       :filter-kind="store.filterKind"
@@ -531,7 +531,7 @@ onMounted(() => {
         <web-ui-button size="28" variant="ghost" @click="runtimeError = ''">关闭</web-ui-button>
       </div>
 
-      <LibraryResourceList
+      <ResourceList
         :resources="visibleResources"
         :active-resource-id="activeResourceId"
         :checked-ids="checkedIds"
@@ -554,7 +554,7 @@ onMounted(() => {
       />
     </main>
 
-    <LibraryDetailDrawer
+    <DetailDrawer
       :open="detailOpen"
       :resource="selectedResource"
       :mobile="mobile"
@@ -571,7 +571,7 @@ onMounted(() => {
       @preview="previewResource"
       @recover="handleRecoverSource"
     />
-    <LibraryPreviewDrawer
+    <PreviewDrawer
       v-model:open="previewOpen"
       :resource="selectedResource"
       :mobile="mobile"
@@ -581,7 +581,7 @@ onMounted(() => {
     />
   </div>
 
-  <LibraryAddDialog
+  <AddDialog
     :open="addOpen"
     :queue="queue"
     :busy="addingResources"
@@ -600,14 +600,14 @@ onMounted(() => {
     逐项重复确认：入队链每命中一个库内已有位置就挂起一项，由这里裁决。
     添加对话框关闭时 addQueue.close() 会把挂起的提示按「取消」结算，因此不会留下悬空弹窗。
   -->
-  <LibraryDuplicateConfirmDialog
+  <DuplicateConfirmDialog
     :open="duplicatePrompt !== null"
     :prompt="duplicatePrompt"
     @accept="addQueue.resolveDuplicate(true)"
     @cancel="addQueue.resolveDuplicate(false)"
   />
 
-  <LibraryEditTagsDialog
+  <EditTagsDialog
     v-model:open="tagsOpen"
     :target="activeTagTarget"
     :all-tag-names="allTagNames"
@@ -616,7 +616,7 @@ onMounted(() => {
     @save="handleSaveTags"
   />
 
-  <LibraryRestoreDialog
+  <RestoreDialog
     :open="restoreOpen"
     :queue="restoreQueue"
     :busy="restoreBusy"
@@ -627,7 +627,7 @@ onMounted(() => {
     @submit="submitRestoreQueue"
   />
 
-  <LibraryConfirmDialog
+  <ConfirmDialog
     :open="confirmRequest !== null"
     :title="confirmRequest?.title ?? ''"
     :message="confirmRequest?.message ?? ''"

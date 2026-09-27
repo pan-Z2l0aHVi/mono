@@ -9,7 +9,7 @@ import type { ResourceView } from '@/stores/library'
 
 import { ResourceKind } from '../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage'
 
-import LibraryDetailDrawer from './LibraryDetailDrawer.vue'
+import DetailDrawer from './DetailDrawer.vue'
 
 type NoteChangeHandler = (resource: ResourceView, note: string, editor: WebUiTextarea | null) => void
 
@@ -36,7 +36,7 @@ function mountDrawer(resource: ResourceView, listeners: Record<string, unknown> 
   const current = shallowRef<ResourceView | null>(resource)
   const app = createApp({
     render: () =>
-      h(LibraryDetailDrawer, {
+      h(DetailDrawer, {
         open: true,
         resource: current.value,
         mobile: false,
@@ -80,7 +80,7 @@ function button(host: HTMLElement, label: string) {
   return element
 }
 
-describe('LibraryDetailDrawer', () => {
+describe('DetailDrawer', () => {
   it('重命名按钮常显且不残留 hover 显隐 class，点击仍进入重命名流程', async () => {
     const resource = resourceView()
     const startRename = vi.fn<(target: ResourceView) => void>()

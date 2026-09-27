@@ -7,7 +7,7 @@ import type { ResourceView } from '@/stores/library'
 
 import { ResourceKind } from '../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage'
 
-import LibraryResourceList from './LibraryResourceList.vue'
+import ResourceList from './ResourceList.vue'
 
 function resource(overrides: Partial<ResourceView> = {}): ResourceView {
   return {
@@ -41,7 +41,7 @@ async function mountList(resources: ResourceView[]) {
   document.body.append(host)
   const app = createApp({
     render: () =>
-      h(LibraryResourceList, {
+      h(ResourceList, {
         resources,
         activeResourceId: null,
         checkedIds: [],
@@ -66,13 +66,13 @@ async function mountList(resources: ResourceView[]) {
   }
 }
 
-describe('LibraryResourceList', () => {
+describe('ResourceList', () => {
   it('无 bridge 的空资源列表渲染空态', async () => {
     const host = document.createElement('div')
     document.body.append(host)
     const app = createApp({
       render: () =>
-        h(LibraryResourceList, {
+        h(ResourceList, {
           resources: [],
           activeResourceId: null,
           checkedIds: [],

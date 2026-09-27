@@ -7,14 +7,14 @@ import { createApp, h, nextTick } from 'vue'
 import { ResourceKind } from '../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage'
 import type { LibraryQueueItem } from '../../services/library'
 
-import LibraryEditTagsDialog from './LibraryEditTagsDialog.vue'
+import EditTagsDialog from './EditTagsDialog.vue'
 
 function mountDialog(target: LibraryQueueItem, onSave: (resourceId: string, tagNames: string[]) => void) {
   const host = document.createElement('div')
   document.body.append(host)
   const app = createApp({
     render: () =>
-      h(LibraryEditTagsDialog, {
+      h(EditTagsDialog, {
         open: true,
         target,
         allTagNames: ['设计', '旅行'],
@@ -37,7 +37,7 @@ function textContent(host: HTMLElement, text: string) {
   return [...host.querySelectorAll('span')].find(element => element.textContent?.trim() === text)
 }
 
-describe('LibraryEditTagsDialog', () => {
+describe('EditTagsDialog', () => {
   it('queue target 的现有标签可编辑并以队列 id 保存', async () => {
     const target: LibraryQueueItem = {
       id: 'queue-item',

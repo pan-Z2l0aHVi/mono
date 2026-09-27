@@ -5,7 +5,6 @@ import { computed } from 'vue'
 
 import type { ResourceView } from '@/stores/library'
 
-import LibraryResourceThumbnail from './LibraryResourceThumbnail.vue'
 import {
   fileExtension,
   formatSize,
@@ -17,6 +16,7 @@ import {
   tagClass
 } from './presentation'
 import type { NameEditorRef } from './rename'
+import ResourceThumbnail from './ResourceThumbnail.vue'
 
 const props = defineProps<{
   resource: ResourceView
@@ -79,7 +79,7 @@ function handleNameChange(event: WebUiEvent<WebUiEditableText, 'change'>) {
       @change="handleChange"
     />
 
-    <LibraryResourceThumbnail :kind="resource.kind" :source="source" :media-url="mediaUrl" />
+    <ResourceThumbnail :kind="resource.kind" :source="source" :media-url="mediaUrl" />
 
     <div class="flex min-w-0 flex-1 flex-col gap-1">
       <div class="flex min-w-0 items-center gap-1.5">
