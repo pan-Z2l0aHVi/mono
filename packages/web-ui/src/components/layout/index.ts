@@ -320,7 +320,7 @@ export class WebUiLayout extends LitElement {
       <web-ui-button
         class="sidebar-toggle"
         icon
-        variant="glass"
+        variant="secondary"
         @click="${this._toggleSidebar}"
         aria-label="${toggleLabel}"
       >

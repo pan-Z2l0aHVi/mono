@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { WebUiEditableText, WebUiEvent } from '@greypan/web-ui'
+import type { WebUiEditableText, WebUiEvent, WebUiTextarea } from '@greypan/web-ui'
 import { computed, nextTick, onMounted, onScopeDispose, ref, type ComponentPublicInstance } from 'vue'
 import { useRouter } from 'vue-router'
 
@@ -46,6 +46,7 @@ const {
   loadResources,
   addResource,
   renameResource,
+  updateResourceNote,
   deleteResources,
   saveTags,
   replaceFileSource,
@@ -378,6 +379,24 @@ function handleResourceNameChange(resource: ResourceView, event: WebUiEvent<WebU
   stopResourceRename()
 }
 
+async function handleResourceNoteChange(resource: ResourceView, note: string, editor: WebUiTextarea | null) {
+  if (note === resource.note) return
+  try {
+    await updateResourceNote(resource.id, note)
+  } catch {
+    // 错误由 runtimeError 呈现。store 未更新，重新渲染不会把输入框拉回旧值，
+    // 这里显式写回，否则失焦后文本停在未落库的状态上。
+    // 抽屉可能已经切到或关掉了：editor 为空说明字段已卸载，或它已经属于别的资源，
+    // 这两种情况写回都会落到不该落的输入框上。
+    const current = selectedResource.value
+    if (!editor || current?.id !== resource.id) return
+    // 回滚目标必须是 store 的活值，不是 `resource` 那个 emit 时的快照。备注可以连续
+    // 提交：先失焦发出 A，再失焦发出 B，若 B 先成功落库而 A 后失败，写回快照会把
+    // B 已保存的值抹成编辑前的值——界面上看着像没存上，store 里却是新值。
+    if (editor.value !== current.note) editor.value = current.note
+  }
+}
+
 async function handleSaveTags(resourceId: string, tagNames: string[]) {
   const target = activeTagTarget.value
   if (!target || target.id !== resourceId) return
@@ -546,6 +565,7 @@ onMounted(() => {
       @start-rename="startResourceRename($event, 'drawer')"
       @rename-change="handleResourceNameChange"
       @cancel-rename="stopResourceRename"
+      @note-change="handleResourceNoteChange"
       @edit-tags="editResourceTags"
       @delete="requestDeleteResource"
       @preview="previewResource"

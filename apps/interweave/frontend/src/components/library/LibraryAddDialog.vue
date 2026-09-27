@@ -187,7 +187,14 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
       class="grid min-h-0 grid-cols-2 gap-5 max-[640px]:gap-4 max-[900px]:grid-cols-1 max-[900px]:grid-rows-2"
       style="height: min(calc(90vh - 108px), calc(var(--wui-dialog-max-height, 640px) - 108px))"
     >
-      <section class="grid min-h-0 min-w-0 grid-rows-[auto_minmax(0,1fr)] gap-2.5 overflow-hidden">
+      <!--
+        clip + clip-margin 而非 hidden：drop zone 与标题行按钮都紧贴栏边，而 focus ring
+        画在 border box 之外共 5px（offset 2 + width 3），hidden 会把 ring 裁成缺角的形状。
+        6px 留出 ring 再余 1px。clip 不创建滚动容器，本栏也不需要滚动。
+      -->
+      <section
+        class="grid min-h-0 min-w-0 grid-rows-[auto_minmax(0,1fr)] gap-2.5 overflow-clip [overflow-clip-margin:6px]"
+      >
         <div class="flex h-7 min-w-0 items-center justify-between gap-2">
           <p class="m-0 min-w-0 truncate text-[14px] leading-6 text-[#6a6a6a] dark:text-(--wui-color-text-secondary)">
             支持本地文件，可拖拽或粘贴
@@ -233,7 +240,7 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
       </section>
 
       <aside
-        class="relative grid min-h-0 min-w-0 grid-rows-[auto_minmax(0,1fr)] gap-2.5 overflow-hidden border-0 bg-transparent p-0"
+        class="relative grid min-h-0 min-w-0 grid-rows-[auto_minmax(0,1fr)] gap-2.5 overflow-clip [overflow-clip-margin:6px] border-0 bg-transparent p-0"
         aria-labelledby="library-add-queue-title"
       >
         <div class="flex h-7 min-w-0 items-center justify-between gap-2">

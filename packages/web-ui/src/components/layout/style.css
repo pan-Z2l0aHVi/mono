@@ -145,6 +145,21 @@ aside.is-resizing .sidebar-resize-handle::before {
   opacity: 1;
 }
 
+/*
+ * 键盘 focus 同时给出两样东西：竖条与 hover / 拖拽同形，ring 与其余组件同一套浅蓝
+ * 样式。竖条说明「命中条在哪」，ring 说明「键盘落点在哪」——handle 宽 12px 且通高，
+ * 命中区远大于 3px 竖条本身，只靠竖条不足以说明焦点位置。
+ *
+ * ring 沿用 --wui-focus-ring-width / --wui-color-focus-ring 两个 token。圆角取
+ * control token 后 outline 呈细长胶囊，与 button 的胶囊 ring 同一形状语言；offset
+ * 2px 让 ring 骑在 aside 右缘内外两侧，不被 aside 裁掉。
+ */
+.sidebar-resize-handle:focus-visible {
+  border-radius: var(--wui-radius-control, calc(infinity * 1px));
+  outline: var(--wui-focus-ring-width, 3px) solid var(--wui-color-focus-ring, rgb(0 136 255 / 0.4));
+  outline-offset: 2px;
+}
+
 /* 拖拽中禁用宽度过渡，保证实时跟手。 */
 aside.is-resizing {
   transition: none;

@@ -354,24 +354,24 @@ Text input with clearable, prefix/suffix slots.
 
 Multi-line text input with auto-resize.
 
-| Attribute         | Type      | Default | Description                                                                                       |
-| ----------------- | --------- | ------- | ------------------------------------------------------------------------------------------------- |
-| `value`           | `string`  | `''`    | Textarea value                                                                                    |
-| `placeholder`     | `string`  | `''`    | Placeholder text                                                                                  |
-| `rows`            | `number`  | `3`     | Visible rows                                                                                      |
-| `name`            | `string`  | `''`    | Form field name                                                                                   |
-| `disabled`        | `boolean` | `false` | Disabled state                                                                                    |
-| `readonly`        | `boolean` | `false` | Read-only state                                                                                   |
-| `required`        | `boolean` | `false` | Required validation                                                                               |
-| `clearable`       | `boolean` | `false` | Show clear button                                                                                 |
-| `full`            | `boolean` | `false` | Full width                                                                                        |
-| `borderless`      | `boolean` | `false` | Ghost form: removes border, background, and shadow; keeps padding, height metrics, and focus ring |
-| `autosize`        | `boolean` | `false` | Auto-resize height                                                                                |
-| `max-height`      | `number`  | `0`     | Autosize max height (px); `0` = unlimited                                                         |
-| `minlength`       | `number`  | —       | Minimum length validation                                                                         |
-| `maxlength`       | `number`  | —       | Maximum length validation                                                                         |
-| `aria-label`      | `string`  | —       | Accessible label                                                                                  |
-| `aria-labelledby` | `string`  | —       | Accessible label reference                                                                        |
+| Attribute         | Type      | Default | Description                                                                                          |
+| ----------------- | --------- | ------- | ---------------------------------------------------------------------------------------------------- |
+| `value`           | `string`  | `''`    | Textarea value                                                                                       |
+| `placeholder`     | `string`  | `''`    | Placeholder text                                                                                     |
+| `rows`            | `number`  | `3`     | Visible rows                                                                                         |
+| `name`            | `string`  | `''`    | Form field name                                                                                      |
+| `disabled`        | `boolean` | `false` | Disabled state                                                                                       |
+| `readonly`        | `boolean` | `false` | Read-only state                                                                                      |
+| `required`        | `boolean` | `false` | Required validation                                                                                  |
+| `clearable`       | `boolean` | `false` | Show clear button                                                                                    |
+| `full`            | `boolean` | `false` | Full width                                                                                           |
+| `borderless`      | `boolean` | `false` | Ghost form: removes border, background, and shadow; keeps padding, height metrics, and focus ring    |
+| `autosize`        | `boolean` | `false` | Auto-resize height; also forces `resize: none`, because the native grip fights a script-owned height |
+| `max-height`      | `number`  | `0`     | Autosize max height (px); `0` = unlimited                                                            |
+| `minlength`       | `number`  | —       | Minimum length validation                                                                            |
+| `maxlength`       | `number`  | —       | Maximum length validation                                                                            |
+| `aria-label`      | `string`  | —       | Accessible label                                                                                     |
+| `aria-labelledby` | `string`  | —       | Accessible label reference                                                                           |
 
 **Events:** `input`, `change`, `focus`, `blur`
 

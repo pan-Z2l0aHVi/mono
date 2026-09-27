@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import type { WebUiDrawer, WebUiEditableText, WebUiEvent } from '@greypan/web-ui'
+import type { WebUiDrawer, WebUiEditableText, WebUiEvent, WebUiTextarea } from '@greypan/web-ui'
 import { lucideEllipsisVertical, lucideEye, lucideExternalLink, lucidePenLine, lucideTags } from '@greypan/web-ui/icons'
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 
 import type { ResourceSourceView, ResourceView } from '@/stores/library'
 
@@ -33,6 +33,7 @@ const emit = defineEmits<{
   startRename: [resource: ResourceView]
   renameChange: [resource: ResourceView, event: WebUiEvent<WebUiEditableText, 'change'>]
   cancelRename: []
+  noteChange: [resource: ResourceView, note: string, editor: WebUiTextarea | null]
   editTags: [resource: ResourceView]
   delete: [resource: ResourceView]
   preview: [resource: ResourceView]
@@ -53,6 +54,42 @@ function handleOpenChange(event: WebUiEvent<WebUiDrawer, 'open-change'>) {
 function handleTitleChange(event: WebUiEvent<WebUiEditableText, 'change'>) {
   if (props.resource) emit('renameChange', props.resource, event)
 }
+
+/*
+ * 待存备注：null 表示没有未提交的输入。
+ *
+ * 关闭抽屉时页面同步把 activeResourceId 清空，下一个 patch 就会移除仍在聚焦的
+ * textarea；从文档里摘掉一个聚焦元素不会派发 blur，`@change` 永远不会来。所以这里
+ * 在 input 时就把值留下来，卸载前用 watcher 补一次提交——不能用模板 ref，Vue 会在
+ * pre-flush watcher 之前就把它清空（实测 hasEditor 已是 false）。鼠标路径（点遮罩、
+ * 点关闭、点工具栏）都先 blur，所以只有键盘会丢。
+ */
+const pendingNote = ref<string | null>(null)
+
+function handleNoteInput(event: WebUiEvent<WebUiTextarea, 'input'>) {
+  pendingNote.value = event.currentTarget.value
+}
+
+function handleNoteChange(event: WebUiEvent<WebUiTextarea, 'change'>) {
+  if (!props.resource) return
+  pendingNote.value = null
+  emit('noteChange', props.resource, event.currentTarget.value, event.currentTarget)
+}
+
+watch(
+  () => props.resource,
+  (next, previous) => {
+    if (!previous || pendingNote.value === null) return
+    // 同一条资源被 store 回写（保存成功、打标签等）也会走到这里，那不是切换也不是关闭。
+    if (next && next.id === previous.id) return
+    const note = pendingNote.value
+    pendingNote.value = null
+    if (note === previous.note) return
+    // 字段已随 patch 卸载，没有可写回的编辑器；失败由 runtimeError 呈现。
+    emit('noteChange', previous, note, null)
+  },
+  { flush: 'pre' }
+)
 
 function restoreResource() {
   if (unavailableSource.value) emit('recover', unavailableSource.value)
@@ -208,14 +245,28 @@ function restoreResource() {
           <time :class="[metadataValueClass, 'tabular-nums']">{{ formatTimestamp(resource.createdAt) }}</time>
         </div>
         <div :class="metadataRowClass">
-          <span :class="metadataLabelClass">修改于</span>
+          <span :class="metadataLabelClass">最后修改于</span>
           <time :class="[metadataValueClass, 'tabular-nums']">{{ formatTimestamp(resource.updatedAt) }}</time>
         </div>
       </div>
 
-      <div v-if="resource.note" class="grid gap-1.5">
+      <!--
+        空备注同样渲染输入框：原先的 v-if="resource.note" 只在已有备注时挂载，字段一旦
+        可编辑就必须常驻，否则没有备注的资源永远没有入口去写。换行、滚动与 autosize
+        高度仍由组件统一管，Drawer 不自己算 line-height。
+      -->
+      <div class="grid gap-1.5">
         <span class="text-xs font-medium text-(--wui-color-text-secondary)">备注</span>
-        <p class="m-0 text-sm leading-6 wrap-break-word">{{ resource.note }}</p>
+        <web-ui-textarea
+          :value="resource.note"
+          :rows="2"
+          autosize
+          full
+          placeholder="添加备注"
+          aria-label="备注"
+          @input="handleNoteInput($event)"
+          @change="handleNoteChange($event)"
+        />
       </div>
     </div>
   </web-ui-drawer>

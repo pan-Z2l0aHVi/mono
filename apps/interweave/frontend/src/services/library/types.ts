@@ -18,6 +18,7 @@ export interface LibraryRuntime {
   addFileResource(inputPath: string): Promise<ResourceDTO>
   addURLResource(inputURL: string): Promise<ResourceDTO>
   updateResourceTitle(resourceId: string, newTitle: string): Promise<ResourceDTO>
+  updateResourceNote(resourceId: string, note: string): Promise<ResourceDTO>
   deleteResource(resourceId: string): Promise<void>
   addTag(resourceId: string, tagName: string): Promise<TagDTO>
   removeTag(resourceId: string, tagId: string): Promise<void>

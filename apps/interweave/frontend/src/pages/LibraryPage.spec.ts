@@ -72,6 +72,7 @@ function createRuntime(overrides: Partial<LibraryRuntime> = {}): LibraryRuntime 
     addFileResource: async () => resource(),
     addURLResource: async () => resource(),
     updateResourceTitle: async (resourceId, title) => resource({ id: resourceId, title }),
+    updateResourceNote: async (resourceId, note) => resource({ id: resourceId, note }),
     deleteResource: async () => {},
     addTag: async () => ({ id: 'tag-1', name: 'tag', created_at: 1 }),
     removeTag: async () => {},
@@ -279,5 +280,73 @@ describe('LibraryPage：可用性感知接线', () => {
     expect(mounted.host.querySelector(':scope > web-ui-back-top')).toBeTruthy()
 
     await mounted.close()
+  })
+})
+
+function deferred<T>() {
+  let resolve!: (value: T) => void
+  let reject!: (reason: unknown) => void
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res
+    reject = rej
+  })
+  return { promise, resolve, reject }
+}
+
+describe('LibraryPage：备注失败回写', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    route.value = { path: '/library' }
+    runtimeStub.availabilityListener = null
+    runtimeStub.availabilityDisposer = null
+    window.matchMedia = vi.fn<() => MediaQueryList>(matchMediaStub)
+  })
+
+  afterEach(() => {
+    runtimeStub.current = null
+  })
+
+  it('先发的请求后失败时，回滚用 store 活值，不抹掉后发请求已保存的内容', async () => {
+    const first = deferred<ResourceDTO>()
+    const second = deferred<ResourceDTO>()
+    const calls: string[] = []
+    runtimeStub.current = createRuntime({
+      updateResourceNote: (resourceId, note) => {
+        calls.push(note)
+        return calls.length === 1 ? first.promise : second.promise
+      }
+    })
+    const mounted = await mountPage()
+
+    try {
+      row(mounted.host, 'resource-1').click()
+      await nextTick()
+      await nextTick()
+
+      const editor = mounted.host.querySelector('web-ui-textarea') as HTMLElement & { value: string }
+      if (!editor) throw new Error('备注输入框未渲染')
+
+      // 连续两次失焦提交：A 与 B 捕获的是同一个「编辑前」快照。
+      editor.value = 'abc'
+      editor.dispatchEvent(new Event('change', { bubbles: true, composed: true }))
+      editor.value = 'abcd'
+      editor.dispatchEvent(new Event('change', { bubbles: true, composed: true }))
+      expect(calls).toEqual(['abc', 'abcd'])
+
+      // B 先成功落库，store 变成 'abcd'。
+      second.resolve(resource({ note: 'abcd' }))
+      await nextTick()
+      await nextTick()
+
+      // A 随后失败。若回滚目标是 emit 时的快照，这里会把界面写成编辑前的 ''，
+      // 而 store 里已经是 'abcd'——已保存的值看不见了。
+      first.reject(new Error('保存失败'))
+      await nextTick()
+      await nextTick()
+
+      expect(editor.value).toBe('abcd')
+    } finally {
+      await mounted.close()
+    }
   })
 })

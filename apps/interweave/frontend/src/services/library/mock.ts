@@ -322,6 +322,17 @@ export function createMockLibraryRuntime(): LibraryRuntime {
       }
     },
 
+    updateResourceNote: (resourceId, note) => {
+      try {
+        const found = require(resourceId)
+        found.note = note
+        found.updated_at = Date.now()
+        return Promise.resolve(found)
+      } catch (error) {
+        return Promise.reject(error)
+      }
+    },
+
     deleteResource: resourceId => {
       resources = resources.filter(resource => resource.id !== resourceId)
       return Promise.resolve()
