@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 
 	"github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/core"
+	"github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage"
 )
 
 // 解析 Source 的抓取元数据；空串或非法 JSON 一律返回 nil，解析失败不阻塞视图装配。
@@ -73,10 +74,18 @@ func sourceProbeOutcomeDTO(outcome core.ProbeOutcome) SourceProbeOutcome {
 }
 
 func tagToDTO(tag core.Tag) TagDTO {
+	color := tag.Color
+	if color == "" {
+		// 库内标签缺颜色行时读出空串，而空串不在闭集词汇内：直接透传会让前端拿到
+		// 一个既无底色也无文字色的 chip。归一到中性色是确定性的——随机兜底会让
+		// 无色标签每读一次就跳一次色，反而破坏「同名标签恒定同色」。
+		color = storage.TagColorGray
+	}
 	return TagDTO{
 		ID:        tag.ID,
 		Name:      tag.Name,
 		CreatedAt: tag.CreatedAt,
+		Color:     color,
 	}
 }
 

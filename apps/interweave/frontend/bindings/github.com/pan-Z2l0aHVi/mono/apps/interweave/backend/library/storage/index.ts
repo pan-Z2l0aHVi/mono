@@ -3,5 +3,6 @@
 
 export {
     ResourceKind,
-    SourceType
+    SourceType,
+    TagColor
 } from "./models.js";

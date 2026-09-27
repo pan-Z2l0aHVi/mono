@@ -138,8 +138,8 @@ function restoreResource() {
       </web-ui-button-group>
 
       <div class="flex flex-wrap items-center gap-1.5">
-        <span v-for="tagName in resource.tagNames" :key="tagName" :class="[tagChipClass, tagClass(tagName)]">
-          {{ tagName }}
+        <span v-for="tag in resource.tags" :key="tag.id" :class="[tagChipClass, tagClass(tag.color)]">
+          {{ tag.name }}
         </span>
         <web-ui-tooltip content="编辑标签" placement="top">
           <web-ui-button

@@ -7,7 +7,8 @@ import type {
 } from '../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/service/models'
 import {
   ResourceKind,
-  SourceType
+  SourceType,
+  TagColor
 } from '../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage/models'
 
 import type { LibraryRuntime } from './types'
@@ -27,6 +28,19 @@ const HOUR = 3600_000
 const DAY = 24 * HOUR
 // 固定基准时刻：fixture 之间的先后关系要稳定，否则「最近修改/较早修改」排序无法复现。
 const BASE = Date.UTC(2026, 8, 24, 9, 0, 0)
+
+// 预览数据没有库，颜色按名称散列而不是随机：这样同名标签在四处渲染中颜色一致，
+// 复现后端「创建时定色、之后只读」这条不变量，浏览器里才看得出真实效果。
+// $zero 是 Go 零值（无色），不进候选池。
+const MOCK_TAG_COLORS = Object.values(TagColor).filter(color => color !== TagColor.$zero)
+
+function mockTagColor(name: string): TagColor {
+  let hash = 0
+  for (let index = 0; index < name.length; index += 1) {
+    hash = (hash * 31 + name.charCodeAt(index)) | 0
+  }
+  return MOCK_TAG_COLORS[Math.abs(hash) % MOCK_TAG_COLORS.length]
+}
 
 function svgPlaceholder(label: string, from: string, to: string): string {
   const svg =
@@ -236,7 +250,7 @@ let tagCounter = 0
 
 function toTagDTO(name: string, resourceId: string): TagDTO {
   tagCounter += 1
-  return { id: `mock-tag-${resourceId}-${name}`, name, created_at: BASE - 365 * DAY }
+  return { id: `mock-tag-${resourceId}-${name}`, name, created_at: BASE - 365 * DAY, color: mockTagColor(name) }
 }
 
 function toSourceDTO(spec: MockSourceSpec, resource: MockResourceSpec, createdAt: number): SourceDTO {

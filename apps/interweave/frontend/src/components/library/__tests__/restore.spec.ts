@@ -29,6 +29,7 @@ function resource(id: string, itemSource: ResourceSourceView): ResourceView {
     updatedAt: 0,
     sources: [itemSource],
     preferred: itemSource,
+    tags: [],
     tagNames: [],
     available: false,
     kind: 'unknown',

@@ -47,6 +47,7 @@ function resourceOf(preferred: ResourceSourceView, kind: ResourceKind): Resource
     updatedAt: 0,
     sources: [preferred],
     preferred,
+    tags: [],
     tagNames: [],
     available: preferred.available,
     kind,

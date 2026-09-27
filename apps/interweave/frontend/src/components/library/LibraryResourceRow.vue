@@ -137,9 +137,9 @@ function handleNameChange(event: WebUiEvent<WebUiEditableText, 'change'>) {
       </div>
     </div>
 
-    <div v-if="resource.tagNames.length" class="flex max-w-[25%] flex-wrap justify-end gap-1.5">
-      <span v-for="tagName in resource.tagNames" :key="tagName" :class="[tagChipClass, tagClass(tagName)]">
-        {{ tagName }}
+    <div v-if="resource.tags.length" class="flex max-w-[25%] flex-wrap justify-end gap-1.5">
+      <span v-for="tag in resource.tags" :key="tag.id" :class="[tagChipClass, tagClass(tag.color)]">
+        {{ tag.name }}
       </span>
     </div>
   </div>

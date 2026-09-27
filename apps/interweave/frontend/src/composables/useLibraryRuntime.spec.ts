@@ -15,7 +15,8 @@ import type {
 import { SourceProbeOutcome } from '../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/service'
 import {
   ResourceKind,
-  SourceType
+  SourceType,
+  TagColor
 } from '../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage'
 import type { LibraryRuntime, SourceAvailabilityEventDTO } from '../services/library'
 import { useLibraryStore, type ResourceSourceView } from '../stores/library'
@@ -59,7 +60,8 @@ function createRuntime(overrides: Partial<LibraryRuntime> = {}): LibraryRuntime 
     addURLResource: async () => createResource(),
     updateResourceTitle: async (resourceId, title) => createResource({ id: resourceId, title }),
     deleteResource: async () => {},
-    addTag: async () => ({ id: 'tag-inline', name: 'inline', created_at: 300 }) satisfies TagDTO,
+    addTag: async () =>
+      ({ id: 'tag-inline', name: 'inline', created_at: 300, color: TagColor.TagColorTeal }) satisfies TagDTO,
     removeTag: async () => {},
     refreshURLSource: async () => createResource().sources[0]!,
     refreshFileSource: async () => createResource().sources[0]!,
@@ -173,14 +175,15 @@ describe('useLibraryRuntime', () => {
       id: 'tagged',
       title: 'Tagged',
       tags: [
-        { id: 'tag-design', name: 'Design', created_at: 300 },
-        { id: 'tag-travel', name: 'Travel', created_at: 300 }
+        { id: 'tag-design', name: 'Design', created_at: 300, color: TagColor.TagColorBlue },
+        { id: 'tag-travel', name: 'Travel', created_at: 300, color: TagColor.TagColorAmber }
       ]
     })
     const addTag = vi.fn<LibraryRuntime['addTag']>(async (resourceId, tagName) => ({
       id: `tag-${tagName}`,
       name: tagName,
-      created_at: 300
+      created_at: 300,
+      color: TagColor.TagColorTeal
     }))
     const getResource = vi.fn<LibraryRuntime['getResource']>(async () => tagged)
     const controller = useLibraryRuntime(

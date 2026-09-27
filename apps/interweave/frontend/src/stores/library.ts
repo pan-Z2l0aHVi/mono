@@ -17,11 +17,26 @@ import type {
   ResourceDTO,
   ResourceKind as ResourceDTOKind
 } from '../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/service'
+import type { TagColor as TagColorDTO } from '../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage'
 
 export type SourceType = 'file' | 'url'
 
 /** 生成闭集之外的旧客户端或异常值统一降级为 unknown。 */
 export type ResourceKind = ResourceDTOKind | 'unknown'
+
+/**
+ * 标签展示色，由后端按标签名持久化。
+ *
+ * 颜色不是前端的装饰决策：同一名称在全库各处必须是同一个颜色，所以这里只搬运
+ * 后端给的 key，映射成 chip 样式是 presentation 层的事。
+ */
+export type TagColor = TagColorDTO
+
+export interface TagView {
+  id: string
+  name: string
+  color: TagColor
+}
 
 export interface ResourceSourceView {
   id: string
@@ -48,6 +63,11 @@ export interface ResourceView {
   sources: ResourceSourceView[]
   /** 首选入口；DTO 契约保证恰有一个，view 只做派生快照。 */
   preferred: ResourceSourceView | null
+  tags: TagView[]
+  /**
+   * tags 的按名投影，供按名称工作的界面使用：编辑标签对话框的草稿与入队队列都只有
+   * 名称（队列里的标签尚未落库，没有颜色可言），过滤与排序也只认名称。
+   */
   tagNames: string[]
   /** 至少一个入口可用即为可用。 */
   available: boolean
@@ -99,11 +119,16 @@ export function toResourceView(dto: ResourceDTO): ResourceView {
     updatedAt: dto.updated_at,
     sources,
     preferred,
+    tags: dto.tags.map(toTagView),
     tagNames: dto.tags.map(tag => tag.name),
     available: sources.some(source => source.available),
     kind: dto.kind || 'unknown',
     sizeBytes: dto.size_bytes ?? null
   }
+}
+
+function toTagView(tag: ResourceDTO['tags'][number]): TagView {
+  return { id: tag.id, name: tag.name, color: tag.color }
 }
 
 /** 过滤 + 排序。 */
@@ -159,6 +184,20 @@ export const useLibraryStore = defineStore('library', {
   getters: {
     allTagNames(state): string[] {
       return [...new Set(state.resources.flatMap(resource => resource.tagNames))].sort()
+    },
+    /**
+     * 标签名 → 持久化颜色。
+     *
+     * 入队队列与编辑标签对话框手里只有标签名（队列里的标签还没落库，不存在颜色），
+     * 它们要显示已存在标签的颜色只能按名回查。不在这张表里的名称就是尚未创建，
+     * 展示中性档。
+     */
+    tagColors(state): Record<string, TagColor> {
+      const colors: Record<string, TagColor> = {}
+      for (const resource of state.resources) {
+        for (const tag of resource.tags) colors[tag.name] = tag.color
+      }
+      return colors
     },
     hasActiveFilter(state): boolean {
       return (
