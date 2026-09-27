@@ -72,7 +72,7 @@ Open decisions（未解决决策）: <待 Manager 或对方决定的问题，以
 
 ## 巡检
 
-派发多于一个实施会话时，用 `/loop 6m` 跑 `node .agents/skills/herdr-agents/watch.mjs` 起巡检（文件见 [`watch.mjs`](./watch.mjs)）；只派一个会话时不装。全部 task `done` 或 `drop` 后停掉 loop。它自己读 task state 与 worktree churn，首行是状态，按下面分派：
+派发多于一个实施会话时，用 `/loop 6m` 跑 [`node .agents/skills/herdr-agents/patrol.mjs`](./patrol.mjs) 起巡检；只派一个会话时不装。全部 task `done` 或 `drop` 后停掉 loop。它自己读 task state 与 worktree churn，首行是状态，按下面分派：
 
 | 首行 | 分派 |
 | --- | --- |
