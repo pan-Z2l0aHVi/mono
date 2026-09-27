@@ -44,6 +44,7 @@ function mountDialog(
   listeners: {
     onRename?: (itemId: string, title: string) => void
     onEditTags?: (item: LibraryQueueItem) => void
+    onRequestFilePaths?: (clipboardText?: string) => void
   } = {},
   options: { mobile?: boolean; open?: boolean } = {}
 ) {
@@ -197,6 +198,160 @@ describe('LibraryAddDialog', () => {
       expect(classList).not.toContain('group-hover')
       expect(classList).not.toContain('group-focus-within')
       expect(editButton.hidden).toBe(false)
+    } finally {
+      mounted.close()
+    }
+  })
+
+  /*
+   * 回归（#190）：静态 span 原本带全套排版 class，编辑态 editable-text 一个都没有，
+   * 两态各自取不同来源的计算值（字重、颜色尤其明显）。这里钉住两态共用同一份 class，
+   * 且排版里带 nowrap 语义：editable-text 的换行由 --wui-editable-text-white-space 决定，
+   * 不显式收成 nowrap 的话编辑态会沿用组件默认的 pre-wrap，长名称折行顶出固定 h-8 的行槽。
+   */
+  it('名称的静态态与编辑态共用同一份排版 class', async () => {
+    const mounted = mountDialog([queueItem()])
+
+    try {
+      await nextTick()
+      const staticName = [...mounted.host.querySelectorAll('li span')].find(
+        // 外层槽 span 也含同一段文本，靠「无元素子节点」把纯文本的名称 span 择出来
+        candidate => candidate.childElementCount === 0 && candidate.textContent?.trim() === '待添加图片'
+      )
+      if (!staticName) throw new Error('静态名称未渲染')
+      const staticClass = staticName.getAttribute('class') ?? ''
+
+      button(mounted.host, '编辑名称').click()
+      await nextTick()
+      await nextTick()
+      const editor = mounted.host.querySelector<WebUiEditableText>('web-ui-editable-text')
+      if (!editor) throw new Error('编辑态未渲染')
+
+      // 逐字比对而不是各查几个 class：排版只要有一项漏掉，两态就会在切换瞬间错开。
+      expect(editor.getAttribute('class')).toBe(`${staticClass} caret-(--wui-color-accent,#08f) select-text`)
+      expect(staticClass).toContain('font-medium')
+      expect(staticClass).toContain('text-[14px]')
+      expect(staticClass).toContain('leading-[1.35]')
+      expect(staticClass).toContain('whitespace-nowrap')
+      expect(staticClass).toContain('[--wui-editable-text-white-space:nowrap]')
+    } finally {
+      mounted.close()
+    }
+  })
+
+  /*
+   * 回归（#188 带出）：链接项的 title 留空由后端按 hostname/<title> 落库，
+   * 静态名走 queueItemTitle 回退到主机名。编辑框若绑 item.title，点铅笔就是空框——
+   * 用户看着 example.com，进去却要凭空重打一遍。编辑框必须从同一个显示值起步。
+   */
+  it('链接项的编辑框从显示的主机名起步，没改就不算改名', async () => {
+    const linkItem = queueItem({
+      id: 'link-item',
+      kind: 'url',
+      resourceKind: ResourceKind.ResourceKindWeb,
+      title: '',
+      location: 'https://example.com/article',
+      previewToken: null,
+      mediaUrl: null
+    })
+    const rename = vi.fn<(itemId: string, title: string) => void>()
+    const mounted = mountDialog([linkItem], { onRename: rename })
+
+    try {
+      await nextTick()
+      expect(mounted.host.textContent).toContain('example.com')
+
+      button(mounted.host, '编辑名称').click()
+      await nextTick()
+      await nextTick()
+      const editor = mounted.host.querySelector<WebUiEditableText>('web-ui-editable-text')
+      if (!editor) throw new Error('编辑态未渲染')
+      expect(editor.value).toBe('example.com')
+
+      editor.dispatchEvent(new Event('change', { bubbles: true, composed: true }))
+      await nextTick()
+      expect(rename).not.toHaveBeenCalled()
+
+      button(mounted.host, '编辑名称').click()
+      await nextTick()
+      await nextTick()
+      const renamed = mounted.host.querySelector<WebUiEditableText>('web-ui-editable-text')
+      if (!renamed) throw new Error('编辑态未渲染')
+      renamed.value = '我起的名字'
+      renamed.dispatchEvent(new Event('change', { bubbles: true, composed: true }))
+      await nextTick()
+      expect(rename).toHaveBeenCalledExactlyOnceWith('link-item', '我起的名字')
+    } finally {
+      mounted.close()
+    }
+  })
+
+  /*
+   * 回归（#188）：paste 事件原先只派发 requestFilePaths、不带剪贴板文本，页面拿不到
+   * 链接。工具栏按钮那条路径本来就没有文本（走 OS 剪贴板文件接口），因此只有事件路径
+   * 需要把文本带上去。
+   */
+  it('paste 事件把剪贴板文本交给页面，弹窗关闭时不响应', async () => {
+    const requestFilePaths = vi.fn<(clipboardText?: string) => void>()
+    const mounted = mountDialog([], { onRequestFilePaths: requestFilePaths })
+
+    function paste(text: string) {
+      const event = new Event('paste', { bubbles: true, cancelable: true })
+      Object.defineProperty(event, 'clipboardData', { value: { getData: () => text } })
+      window.dispatchEvent(event)
+    }
+
+    try {
+      await nextTick()
+      paste('https://example.com/article')
+      expect(requestFilePaths).toHaveBeenCalledExactlyOnceWith('https://example.com/article')
+
+      await mounted.setOpen(false)
+      paste('https://example.com/other')
+      expect(requestFilePaths).toHaveBeenCalledOnce()
+    } finally {
+      mounted.close()
+    }
+  })
+
+  /*
+   * 回归：监听器在 window 上，而编辑控件封在 web-ui 的 shadow 里（editable-text 的编辑层
+   * 是 shadow 内的 <textarea>）。paste 是 composed 的，冒到 window 时 event.target 已被
+   * retarget 成 shadow host，host 上的 closest() 不跨 shadow 边界——守卫漏掉真正的编辑
+   * 控件，「在名称里按 Cmd+V」会当成往队列里粘贴，把剪贴板里的链接也顺带入队。
+   */
+  it('shadow 内的编辑控件里粘贴不触发入队', async () => {
+    const requestFilePaths = vi.fn<(clipboardText?: string) => void>()
+    const mounted = mountDialog([], { onRequestFilePaths: requestFilePaths })
+
+    try {
+      await nextTick()
+      const host = document.createElement('div')
+      const textarea = document.createElement('textarea')
+      host.attachShadow({ mode: 'open' }).append(textarea)
+      mounted.host.append(host)
+
+      // composed 必须开：真实 paste 是 composed 的，事件要真的穿过 shadow 边界冒到
+      // window 上，否则事件停在 shadow root 里，守卫压根没被调用，这条用例会空转。
+      const event = new Event('paste', { bubbles: true, composed: true, cancelable: true })
+      Object.defineProperty(event, 'clipboardData', { value: { getData: () => 'https://example.com/pasted' } })
+      textarea.dispatchEvent(event)
+
+      expect(requestFilePaths).not.toHaveBeenCalled()
+    } finally {
+      mounted.close()
+    }
+  })
+
+  it('左侧说明同时覆盖文件与链接两种入口', async () => {
+    const mounted = mountDialog([])
+
+    try {
+      await nextTick()
+      const hint = [...mounted.host.querySelectorAll('p')].find(candidate =>
+        candidate.textContent?.includes('可拖拽或粘贴')
+      )
+      expect(hint?.textContent).toContain('网页链接')
     } finally {
       mounted.close()
     }

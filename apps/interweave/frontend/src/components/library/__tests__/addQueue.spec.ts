@@ -6,7 +6,7 @@ import {
   SourceType
 } from '../../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage'
 import type { LibraryRuntime } from '../../../services/library'
-import { createLibraryAddQueue } from '../addQueue'
+import { createLibraryAddQueue, queueItemTitle } from '../addQueue'
 
 function createRuntime(overrides: Partial<LibraryRuntime> = {}): LibraryRuntime {
   return {
@@ -348,5 +348,62 @@ describe('library add queue duplicate confirmation', () => {
     expect(queried).toEqual(['/tmp/race.png'])
     expect(queue.duplicatePrompt.value).toBeNull()
     expect(queue.queue.value).toEqual([])
+  })
+})
+
+/*
+ * #188：链接入口。
+ *
+ * 链接项与文件项共用一条入队链，差异集中在三处：重复检查的来源类型、默认资源 kind，
+ * 以及不跑本地预览准备。标题留空是有意的——后端会按 hostname 或页面 <title> 定名，
+ * 队列里预填的猜测值会在提交时把那个名字覆盖掉。
+ */
+describe('library add queue url entries', () => {
+  it('链接入队为 url 类型，重复检查走 URL 来源且不准备文件预览', async () => {
+    const prepareFilePreview = vi.fn<LibraryRuntime['prepareFilePreview']>()
+    const findResourceLocationMatches = vi.fn<LibraryRuntime['findResourceLocationMatches']>(async () => [])
+    const queue = createLibraryAddQueue(createRuntime({ prepareFilePreview, findResourceLocationMatches }))
+
+    await queue.enqueueURL('https://example.com/article')
+
+    expect(findResourceLocationMatches).toHaveBeenCalledWith('https://example.com/article', SourceType.SourceTypeURL)
+    expect(prepareFilePreview).not.toHaveBeenCalled()
+    expect(queue.queue.value).toHaveLength(1)
+    expect(queue.queue.value[0]).toMatchObject({
+      kind: 'url',
+      resourceKind: ResourceKind.ResourceKindWeb,
+      title: '',
+      location: 'https://example.com/article',
+      previewToken: null,
+      mediaUrl: null
+    })
+  })
+
+  it('链接与文件混排时各自按类型处理，重复位置仍然去重', async () => {
+    const findResourceLocationMatches = vi.fn<LibraryRuntime['findResourceLocationMatches']>(async () => [])
+    const queue = createLibraryAddQueue(createRuntime({ findResourceLocationMatches }))
+
+    await queue.enqueueFileLocations(['/tmp/photo.png'])
+    await queue.enqueueURL('https://example.com/')
+    await queue.enqueueURL('https://example.com/')
+
+    expect(queue.queue.value.map(item => item.kind)).toEqual(['file', 'url'])
+    expect(queue.queue.value[0]?.title).toBe('photo')
+  })
+
+  it('queueItemTitle 用主机名兜底展示链接项，没有标题的文件项退回位置', () => {
+    const base = {
+      id: 'q',
+      resourceKind: ResourceKind.ResourceKindWeb,
+      tags: [],
+      previewToken: null,
+      mediaUrl: null
+    }
+
+    expect(queueItemTitle({ ...base, kind: 'url', title: '', location: 'https://example.com/a/b' })).toBe('example.com')
+    expect(queueItemTitle({ ...base, kind: 'url', title: '我改的名字', location: 'https://example.com' })).toBe(
+      '我改的名字'
+    )
+    expect(queueItemTitle({ ...base, kind: 'file', title: '', location: '/tmp/photo.png' })).toBe('/tmp/photo.png')
   })
 })

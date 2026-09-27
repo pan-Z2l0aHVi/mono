@@ -3,7 +3,7 @@ import type { WebUiEditableText, WebUiEvent } from '@greypan/web-ui'
 import { computed, nextTick, onMounted, onScopeDispose, ref, type ComponentPublicInstance } from 'vue'
 import { useRouter } from 'vue-router'
 
-import { createLibraryAddQueue } from '@/components/library/addQueue'
+import { createLibraryAddQueue, queueItemTitle } from '@/components/library/addQueue'
 import LibraryAddDialog from '@/components/library/LibraryAddDialog.vue'
 import LibraryConfirmDialog from '@/components/library/LibraryConfirmDialog.vue'
 import LibraryDetailDrawer from '@/components/library/LibraryDetailDrawer.vue'
@@ -17,6 +17,7 @@ import { DRAWER_TITLE_EDITOR_KEY, type NameEditorRef } from '@/components/librar
 import {
   createLibraryRestoreQueue,
   createLibraryRestoreQueueItem,
+  normalizeLibraryURL,
   restoreLibraryQueue,
   type LibraryRestoreQueueItem
 } from '@/components/library/restore'
@@ -32,6 +33,8 @@ interface ConfirmRequest {
   message: string
   confirmLabel: string
   danger: boolean
+  /** 紧凑变体走窄一档的弹窗宽度（320px）。由调用点声明，不再从标题文案反推。 */
+  compact?: boolean
   action: () => Promise<void> | void
 }
 
@@ -82,6 +85,7 @@ const queue = addQueue.queue
 const duplicatePrompt = addQueue.duplicatePrompt
 const addingResources = ref(false)
 const confirmBusy = ref(false)
+const confirmOpen = ref(false)
 const confirmRequest = ref<ConfirmRequest | null>(null)
 const confirmError = ref('')
 const addError = ref('')
@@ -221,8 +225,7 @@ function toggleCheckAll() {
 }
 
 function requestDeleteResource(resource: ResourceView) {
-  confirmError.value = ''
-  confirmRequest.value = {
+  openConfirmDialog({
     title: '删除资源',
     message: `删除「${resource.title}」后无法恢复。`,
     confirmLabel: '删除',
@@ -231,14 +234,13 @@ function requestDeleteResource(resource: ResourceView) {
       const deletedIds = await deleteResources([resource.id])
       finishDelete(deletedIds)
     }
-  }
+  })
 }
 
 function requestDeleteSelected() {
   const ids = [...checkedIds.value]
   if (!ids.length) return
-  confirmError.value = ''
-  confirmRequest.value = {
+  openConfirmDialog({
     title: '删除资源',
     message: `删除选中的 ${ids.length} 个资源后无法恢复。`,
     confirmLabel: '删除',
@@ -247,7 +249,7 @@ function requestDeleteSelected() {
       const deletedIds = await deleteResources(ids)
       finishDelete(deletedIds)
     }
-  }
+  })
 }
 
 function finishDelete(deletedIds: string[]) {
@@ -262,14 +264,20 @@ function finishDelete(deletedIds: string[]) {
 function requestQueueRemoval(itemId: string) {
   const item = queue.value.find(candidate => candidate.id === itemId)
   if (!item) return
-  confirmError.value = ''
-  confirmRequest.value = {
+  openConfirmDialog({
     title: '移除待添加项',
-    message: `移除「${item.title}」后不会加入资源库。`,
+    message: `移除「${queueItemTitle(item)}」后不会加入资源库。`,
     confirmLabel: '移除',
     danger: true,
+    compact: true,
     action: () => addQueue.removeItem(itemId)
-  }
+  })
+}
+
+function openConfirmDialog(request: ConfirmRequest) {
+  confirmError.value = ''
+  confirmRequest.value = request
+  confirmOpen.value = true
 }
 
 async function runConfirmedAction() {
@@ -288,8 +296,15 @@ async function runConfirmedAction() {
 }
 
 function closeConfirmDialog() {
-  confirmRequest.value = null
-  confirmError.value = ''
+  /*
+   * 只翻 open，不清内容（#189）。
+   *
+   * dialog 关闭后仍有 260ms 退场动画，期间弹窗保持可见。原先这里在同一个 tick 把
+   * confirmRequest 置空，标题、说明、按钮文案一起塌成空串，弹窗高度单帧掉 61.6px；
+   * 紧凑变体还因为宽度从标题字符串派生，从 320px 跳回默认的 360px。内容改到下一次打开时
+   * 整体替换，退场期间没有任何一帧的盒子尺寸变化，也不需要在页面侧复述退场时长。
+   */
+  confirmOpen.value = false
 }
 
 function takeOperationError(cause: unknown, fallback: string) {
@@ -311,11 +326,28 @@ function setAddOpen(open: boolean) {
   }
 }
 
-async function pasteFilePaths() {
+/*
+ * 粘贴（#188）。
+ *
+ * OS 的剪贴板文件接口只认文件，剪贴板里是网页链接时它返回空数组；原先这条路径零次
+ * 迭代就结束，既不添加也不报错。剪贴板文本由 paste 事件带上来，拿不到文件时按链接再试
+ * 一次，文本存在又不是合法链接时给一句可读的错误，而不是静默吞掉。
+ */
+async function pasteFilePaths(clipboardText = '') {
   try {
     addError.value = ''
     const paths = await getClipboardFilePaths()
-    if (addOpen.value) await addQueue.enqueueFileLocations(paths)
+    if (!addOpen.value) return
+    if (paths.length) {
+      await addQueue.enqueueFileLocations(paths)
+      return
+    }
+    const url = normalizeLibraryURL(clipboardText)
+    if (url) {
+      await addQueue.enqueueURL(url)
+      return
+    }
+    if (clipboardText.trim()) addError.value = '剪贴板里没有文件，也不是有效的 http 或 https 链接'
   } catch (cause) {
     addError.value = takeOperationError(cause, '读取剪贴板文件失败')
   }
@@ -608,14 +640,14 @@ onMounted(() => {
   />
 
   <LibraryConfirmDialog
-    :open="confirmRequest !== null"
+    :open="confirmOpen"
     :title="confirmRequest?.title ?? ''"
     :message="confirmRequest?.message ?? ''"
     :confirm-label="confirmRequest?.confirmLabel ?? '确认'"
     :danger="confirmRequest?.danger ?? false"
     :busy="confirmBusy"
     :error="confirmError"
-    :compact="confirmRequest?.title === '移除待添加项'"
+    :compact="confirmRequest?.compact ?? false"
     @confirm="runConfirmedAction"
     @cancel="closeConfirmDialog"
   />

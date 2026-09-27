@@ -5,7 +5,7 @@ import { ref, watch } from 'vue'
 
 import { metadataRowClass } from './presentation'
 import type { LibraryRestoreQueueItem } from './restore'
-import { normalizeRestoreURL } from './restore'
+import { normalizeLibraryURL } from './restore'
 
 const props = defineProps<{
   open: boolean
@@ -60,7 +60,7 @@ function submit() {
   const items: LibraryRestoreQueueItem[] = []
   for (const item of props.queue) {
     if (item.kind === 'url') {
-      const replacementLocation = normalizeRestoreURL(replacementLocations.value[item.id] ?? item.replacementLocation)
+      const replacementLocation = normalizeLibraryURL(replacementLocations.value[item.id] ?? item.replacementLocation)
       if (!replacementLocation) {
         validationError.value = '请输入有效的 http 或 https URL'
         return

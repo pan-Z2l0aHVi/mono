@@ -18,7 +18,7 @@ import {
   lucideTags,
   lucideTrash2
 } from '@greypan/web-ui/icons'
-import { computed, nextTick, ref } from 'vue'
+import { computed, nextTick, onMounted, onScopeDispose, ref } from 'vue'
 
 import type { ResourceKind, ResourceSourceView, ResourceView } from '@/stores/library'
 
@@ -52,7 +52,64 @@ const emit = defineEmits<{
 
 const contextMenuRef = ref<WebUiContextMenu>()
 const contextResource = ref<ResourceView | null>(null)
+const hoveredResourceId = ref<string | null>(null)
 const emptyTitle = computed(() => (props.runtimeAvailable ? '资源库为空' : '桌面服务未连接'))
+
+/*
+ * hover 态按当前可见项解析：行重渲染时指针没动，mouseleave 不会补发，直接读 id 可能
+ * 命中已经被过滤掉的行。
+ */
+const hoveredResource = computed(
+  () => props.resources.find(resource => resource.id === hoveredResourceId.value) ?? null
+)
+// 滚动停下来到用户按下空格之间的静默窗口：惯性尾段里的 keydown 不该被当成预览意图。
+const SCROLL_IDLE_MS = 150
+let scrolling = false
+let scrollIdleTimer: ReturnType<typeof setTimeout> | null = null
+
+function handleHover(resource: ResourceView, hovered: boolean) {
+  hoveredResourceId.value = hovered ? resource.id : null
+}
+
+const EDITABLE_SELECTOR = 'input, textarea, select, [contenteditable="true"]'
+
+/*
+ * 走 composedPath 而不是 event.target：监听器在 window 上，而输入控件都封在 web-ui 的
+ * shadow 里（input 的 <input>、editable-text 的编辑层 <textarea>）。这些 keydown 是
+ * composed 的，冒到 window 时 event.target 已被 retarget 成 shadow host，host 上的
+ * closest() 又不跨 shadow 边界——判据会漏掉真正的编辑控件，于是搜索框、行内改名里打的
+ * 空格被本功能吃掉，冒泡到 window 前没人拦截。composedPath() 给出完整传播链。
+ */
+function isEditableEventTarget(event: Event) {
+  return event
+    .composedPath()
+    .some(node => node instanceof HTMLElement && (node.isContentEditable || node.matches(EDITABLE_SELECTOR)))
+}
+
+function markScrolling() {
+  scrolling = true
+  if (scrollIdleTimer) clearTimeout(scrollIdleTimer)
+  scrollIdleTimer = setTimeout(() => {
+    scrolling = false
+  }, SCROLL_IDLE_MS)
+}
+
+/*
+ * hover 行 + 空格预览（#187）。
+ *
+ * 行的键盘可达性不在本 issue 范围内，这里按已确认的决定做成纯鼠标的隐藏入口，所以拦截
+ * 范围收在「本列表当前有 hover 行」这一个条件上：鼠标不在行上时空格照常滚页面，修饰键
+ * （含 Shift+Space 这个「向上滚一屏」的常规手势）、编辑控件和列表滚动中都不接管。
+ */
+function handleWindowKeydown(event: KeyboardEvent) {
+  if (event.key !== ' ' || event.repeat) return
+  if (event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) return
+  if (scrolling || isEditableEventTarget(event)) return
+  const hovered = hoveredResource.value
+  if (!hovered) return
+  event.preventDefault()
+  handlePreview(hovered)
+}
 
 const openWithApps: Partial<Record<ResourceKind, Array<{ label: string; icon: typeof lucideEye }>>> = {
   image: [
@@ -82,6 +139,8 @@ const openWithApps: Partial<Record<ResourceKind, Array<{ label: string; icon: ty
 async function openContextMenu(resource: ResourceView, event: MouseEvent) {
   event.preventDefault()
   event.stopPropagation()
+  // 菜单浮起后指针已经不在行上：hover 态一起作废，否则空格会从菜单背后再开一次预览。
+  hoveredResourceId.value = null
   contextResource.value = resource
   await nextTick()
   contextMenuRef.value?.openAt(event.clientX, event.clientY)
@@ -127,6 +186,18 @@ function editorRefFor(id: string) {
 function handleRenameChange(resource: ResourceView, event: WebUiEvent<WebUiEditableText, 'change'>) {
   emit('renameChange', resource, event)
 }
+
+onMounted(() => {
+  window.addEventListener('keydown', handleWindowKeydown)
+  // scroll 不冒泡，只能在 window 上按捕获阶段收：滚的是列表容器还是页面都算数。
+  window.addEventListener('scroll', markScrolling, { capture: true, passive: true })
+})
+
+onScopeDispose(() => {
+  window.removeEventListener('keydown', handleWindowKeydown)
+  window.removeEventListener('scroll', markScrolling, { capture: true })
+  if (scrollIdleTimer) clearTimeout(scrollIdleTimer)
+})
 </script>
 
 <template>
@@ -161,6 +232,7 @@ function handleRenameChange(resource: ResourceView, event: WebUiEvent<WebUiEdita
         :editor-ref="editorRefFor(resource.id)"
         @select="emit('select', $event)"
         @contextmenu="openContextMenu"
+        @hover="handleHover"
         @toggle="emit('toggle', $event)"
         @rename-change="handleRenameChange"
         @cancel-rename="emit('cancelRename')"

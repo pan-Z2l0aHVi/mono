@@ -48,7 +48,11 @@ export function createLibraryRestoreQueue(resources: ResourceView[]): LibraryRes
   })
 }
 
-export function normalizeRestoreURL(value: string) {
+/**
+ * 资源库两类链接入口共用的校验：只收 http/https，其余（file、data、javascript 等）
+ * 一律判为无效。返回规范化后的字符串，调用点拿它去落库或入队。
+ */
+export function normalizeLibraryURL(value: string) {
   const normalized = value.trim()
   if (!normalized) return null
   try {

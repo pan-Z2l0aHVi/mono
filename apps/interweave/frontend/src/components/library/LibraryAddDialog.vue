@@ -22,6 +22,7 @@ import type { ResourceSourceView } from '@/stores/library'
 
 import { ResourceKind } from '../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage'
 
+import { queueItemTitle } from './addQueue'
 import LibraryResourceThumbnail from './LibraryResourceThumbnail.vue'
 import { metadataRowClass, tagChipClass, tagClass } from './presentation'
 import type { NameEditorRef } from './rename'
@@ -37,7 +38,8 @@ const props = defineProps<{
 const emit = defineEmits<{
   'update:open': [value: boolean]
   pickFiles: []
-  requestFilePaths: []
+  /** 剪贴板文本一并带上：文件接口对链接返回空数组，页面要靠它兜底（#188）。粘贴按钮没有文本。 */
+  requestFilePaths: [clipboardText?: string]
   remove: [itemId: string]
   rename: [itemId: string, title: string]
   editTags: [item: LibraryQueueItem]
@@ -48,6 +50,19 @@ const dragActive = ref(false)
 const editingItemId = ref<string | null>(null)
 const nameEditors = new Map<string, WebUiEditableText>()
 let pendingImagePreview: ImagePreviewHandle | null = null
+
+/*
+ * 队列项名称的排版，静态态与编辑态共用同一份（#190）。
+ *
+ * editable-text 的排版全部继承宿主，两态切换只换 visibility，组件自身不会移动任何一个
+ * 像素；排版写在调用点才是唯一能保证两态一致的地方。flex 基准同样要收敛：静态态原本是
+ * flex-[0_1_auto]、编辑态是 flex-[1_1_auto]，长名称下两态量到的宽度不同。
+ *
+ * 换行语义靠组件变量对齐：组件默认 pre-wrap + anywhere（为多行编辑准备），而这里是固定
+ * h-8 的单行槽，编辑态沿用默认会把长名称折成两行顶出槽外，因此显式收成 nowrap。
+ */
+const queueNameClass =
+  'min-w-0 flex-[0_1_auto] overflow-hidden text-[14px] font-medium leading-[1.35] text-ellipsis whitespace-nowrap text-[#22212a] dark:text-(--wui-color-text) [--wui-editable-text-white-space:nowrap]'
 
 watch(
   () => props.open,
@@ -72,15 +87,23 @@ function handleDrop() {
 
 function handlePaste(event: ClipboardEvent) {
   if (!props.open) return
-  if (isEditableTarget(event.target)) return
-  emit('requestFilePaths')
+  if (isEditableEventTarget(event)) return
+  emit('requestFilePaths', event.clipboardData?.getData('text') ?? '')
 }
 
-function isEditableTarget(target: EventTarget | null) {
-  return (
-    target instanceof HTMLElement &&
-    (target.isContentEditable || Boolean(target.closest('input, textarea, select, [contenteditable="true"]')))
-  )
+const EDITABLE_SELECTOR = 'input, textarea, select, [contenteditable="true"]'
+
+/*
+ * 走 composedPath 而不是 event.target：监听器在 window 上，而编辑控件封在 web-ui 的
+ * shadow 里（editable-text 的编辑层是 shadow 内的 <textarea>）。paste 是 composed 的，
+ * 冒到 window 时 event.target 已被 retarget 成 shadow host，host 上的 closest() 又不跨
+ * shadow 边界——判据漏掉真正的编辑控件，于是「在名称里按 Cmd+V」会当成往队列里粘贴，
+ * 顺带把剪贴板里的链接也入队。
+ */
+function isEditableEventTarget(event: Event) {
+  return event
+    .composedPath()
+    .some(node => node instanceof HTMLElement && (node.isContentEditable || node.matches(EDITABLE_SELECTOR)))
 }
 
 onMounted(() => {
@@ -156,9 +179,10 @@ function stopRename() {
 function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEditableText, 'change'>) {
   const editor = event.currentTarget
   const title = editor.value.trim()
-  const nextTitle = title || item.title
+  const shown = queueItemTitle(item)
+  const nextTitle = title || shown
   if (editor.value !== nextTitle) editor.value = nextTitle
-  if (nextTitle !== item.title) emit('rename', item.id, nextTitle)
+  if (nextTitle !== shown) emit('rename', item.id, nextTitle)
   stopRename()
 }
 </script>
@@ -190,7 +214,7 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
       <section class="grid min-h-0 min-w-0 grid-rows-[auto_minmax(0,1fr)] gap-2.5 overflow-hidden">
         <div class="flex h-7 min-w-0 items-center justify-between gap-2">
           <p class="m-0 min-w-0 truncate text-[14px] leading-6 text-[#6a6a6a] dark:text-(--wui-color-text-secondary)">
-            支持本地文件，可拖拽或粘贴
+            支持本地文件与网页链接，可拖拽或粘贴
           </p>
           <web-ui-button
             icon
@@ -290,18 +314,16 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
                   <web-ui-editable-text
                     v-if="editingItemId === item.id"
                     :ref="setNameEditorRef(item.id)"
-                    :value="item.title"
-                    class="min-w-0 flex-[1_1_auto] caret-(--wui-color-accent,#08f) select-text"
-                    :aria-label="`修改 ${item.title} 的名称`"
+                    :value="queueItemTitle(item)"
+                    :class="queueNameClass"
+                    class="caret-(--wui-color-accent,#08f) select-text"
+                    :aria-label="`修改 ${queueItemTitle(item)} 的名称`"
                     @click.stop
                     @change="handleRenameChange(item, $event)"
                     @cancel="stopRename"
                   />
-                  <span
-                    v-else
-                    class="min-w-0 flex-[0_1_auto] overflow-hidden text-[14px] font-medium leading-[1.35] text-ellipsis whitespace-nowrap text-[#22212a] dark:text-(--wui-color-text)"
-                  >
-                    {{ item.title }}
+                  <span v-else :class="queueNameClass">
+                    {{ queueItemTitle(item) }}
                   </span>
                   <web-ui-tooltip
                     v-if="editingItemId !== item.id"
