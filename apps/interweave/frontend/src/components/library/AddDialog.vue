@@ -199,20 +199,21 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
           <p class="m-0 min-w-0 truncate text-[14px] leading-6 text-[#6a6a6a] dark:text-(--wui-color-text-secondary)">
             支持本地文件，可拖拽或粘贴
           </p>
-          <web-ui-button
-            icon
-            variant="secondary"
-            size="28"
-            aria-label="粘贴复制的文件"
-            title="粘贴复制的文件"
-            @click="emit('requestFilePaths')"
-          >
-            <web-ui-icon :icon="lucideClipboardPaste" :size="15" />
-          </web-ui-button>
+          <web-ui-tooltip content="粘贴" placement="bottom">
+            <web-ui-button
+              icon
+              variant="secondary"
+              size="28"
+              aria-label="粘贴复制的文件"
+              @click="emit('requestFilePaths')"
+            >
+              <web-ui-icon :icon="lucideClipboardPaste" :size="15" />
+            </web-ui-button>
+          </web-ui-tooltip>
         </div>
         <button
           type="button"
-          class="grid h-full place-content-center justify-items-center gap-3 rounded-3xl bg-[#f0f0f4] px-6 py-7 text-center transition-[background-color] duration-[160ms] hover:bg-[#e9e9ee] file-drop-target-active:scale-[1.005] file-drop-target-active:bg-[color-mix(in_srgb,var(--wui-color-accent,#08f)_9%,transparent)] dark:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_4%,transparent)] dark:file-drop-target-active:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_7%,transparent)] max-[640px]:gap-2 max-[640px]:px-4 max-[640px]:py-2 max-[900px]:p-5"
+          class="grid h-full place-content-center justify-items-center gap-3 rounded-[18px] bg-[#f0f0f4] px-6 py-7 text-center transition-[background-color] duration-[160ms] hover:bg-[#e9e9ee] file-drop-target-active:scale-[1.005] file-drop-target-active:bg-[color-mix(in_srgb,var(--wui-color-accent,#08f)_9%,transparent)] dark:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_4%,transparent)] dark:hover:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_7%,transparent)] dark:file-drop-target-active:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_7%,transparent)] max-[640px]:gap-2 max-[640px]:px-4 max-[640px]:py-2 max-[900px]:p-5"
           data-file-drop-target="library-add-files"
           :class="dragActive ? 'scale-[1.005] bg-[color-mix(in_srgb,var(--wui-color-accent,#08f)_9%,transparent)]' : ''"
           @click="emit('pickFiles')"
@@ -259,7 +260,7 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
 
         <ol
           v-if="queue.length"
-          class="m-0 h-full min-h-0 list-none overflow-y-auto rounded-3xl bg-white p-0 [scrollbar-gutter:auto] [scrollbar-width:auto] dark:bg-(--wui-color-surface-raised)"
+          class="m-0 h-full min-h-0 list-none overflow-y-auto rounded-[18px] bg-white p-0 [scrollbar-gutter:auto] [scrollbar-width:auto] dark:bg-(--wui-color-surface-raised)"
         >
           <li
             v-for="(item, itemIndex) in queue"
@@ -358,7 +359,7 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
 
         <div
           v-else
-          class="grid h-full min-h-0 place-items-center rounded-3xl bg-white dark:bg-(--wui-color-surface-raised)"
+          class="grid h-full min-h-0 place-items-center rounded-[18px] bg-white dark:bg-(--wui-color-surface-raised)"
         >
           <!--
             空态以左侧 drop 区为基准做视觉对称，只调本侧：
