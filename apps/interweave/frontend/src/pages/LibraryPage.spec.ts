@@ -11,7 +11,8 @@ import type {
 import { SourceProbeOutcome } from '../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/service'
 import {
   ResourceKind,
-  SourceType
+  SourceType,
+  TagColor
 } from '../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage'
 import type { LibraryRuntime, SourceAvailabilityEventDTO } from '../services/library'
 import { useLibraryStore } from '../stores/library'
@@ -73,7 +74,7 @@ function createRuntime(overrides: Partial<LibraryRuntime> = {}): LibraryRuntime 
     addURLResource: async () => resource(),
     updateResourceTitle: async (resourceId, title) => resource({ id: resourceId, title }),
     deleteResource: async () => {},
-    addTag: async () => ({ id: 'tag-1', name: 'tag', created_at: 1 }),
+    addTag: async () => ({ id: 'tag-1', name: 'tag', created_at: 1, color: TagColor.TagColorTeal }),
     removeTag: async () => {},
     refreshURLSource: async () => source(),
     refreshFileSource: async () => source({ type: SourceType.SourceTypeFile, location: '/tmp/a.png' }),

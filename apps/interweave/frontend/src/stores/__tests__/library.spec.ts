@@ -7,7 +7,8 @@ import type {
 } from '../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/service'
 import {
   ResourceKind,
-  SourceType
+  SourceType,
+  TagColor
 } from '../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage'
 import { filterAndSort, toResourceView, useLibraryStore } from '../library'
 
@@ -36,7 +37,7 @@ function dto(overrides: ResourceDTOOverride = {}): ResourceDTO {
         updated_at: 200
       }
     ],
-    tags: [{ id: 't1', name: 'design', created_at: 1 }],
+    tags: [{ id: 't1', name: 'design', created_at: 1, color: TagColor.TagColorTeal }],
     preferred_source_id: 's1',
     ...overrides
   } as ResourceDTO
@@ -49,6 +50,11 @@ describe('toResourceView（DTO → view-model 翻译）', () => {
     expect(view.preferred?.id).toBe('s1')
     expect(view.preferred?.metadata?.siteName).toBe('Example')
     expect(view.tagNames).toEqual(['design'])
+  })
+
+  it('标签颜色随 DTO 落到 view：id、名称、持久化色都保留，不在客户端按名称猜色', () => {
+    const view = toResourceView(dto())
+    expect(view.tags).toEqual([{ id: 't1', name: 'design', color: TagColor.TagColorTeal }])
   })
 
   it('available 由各入口聚合：全部不可用才不可用', () => {
@@ -159,7 +165,12 @@ describe('toResourceView（DTO → view-model 翻译）', () => {
 describe('filterAndSort（列表语义）', () => {
   const resources = [
     toResourceView(
-      dto({ id: 'r1', title: 'Alpha Spec', updated_at: 300, tags: [{ id: 't1', name: 'design', created_at: 1 }] })
+      dto({
+        id: 'r1',
+        title: 'Alpha Spec',
+        updated_at: 300,
+        tags: [{ id: 't1', name: 'design', created_at: 1, color: TagColor.TagColorTeal }]
+      })
     ),
     toResourceView(
       dto({
@@ -177,7 +188,7 @@ describe('filterAndSort（列表语义）', () => {
             order_index: 0
           }
         ],
-        tags: [{ id: 't2', name: 'code', created_at: 2 }]
+        tags: [{ id: 't2', name: 'code', created_at: 2, color: TagColor.TagColorBlue }]
       })
     ),
     toResourceView(
@@ -196,7 +207,7 @@ describe('filterAndSort（列表语义）', () => {
             order_index: 0
           }
         ],
-        tags: [{ id: 't3', name: 'docs', created_at: 3 }]
+        tags: [{ id: 't3', name: 'docs', created_at: 3, color: TagColor.TagColorAmber }]
       })
     )
   ]
@@ -241,6 +252,17 @@ describe('useLibraryStore（Pinia 集成）', () => {
     expect(store.resources).toHaveLength(1)
     expect(store.allTagNames).toEqual(['design'])
     expect(store.hasActiveFilter).toBe(false)
+  })
+
+  it('tagColors 按名汇总各资源的持久化颜色，供只有名称的界面回查', () => {
+    const store = useLibraryStore()
+    store.setResources([
+      dto({ id: 'r1', tags: [{ id: 't1', name: 'design', created_at: 1, color: TagColor.TagColorTeal }] }),
+      dto({ id: 'r2', tags: [{ id: 't2', name: 'design', created_at: 1, color: TagColor.TagColorTeal }] }),
+      dto({ id: 'r3', tags: [{ id: 't3', name: 'ops', created_at: 1, color: TagColor.TagColorPink }] })
+    ])
+    // 同名标签在多个资源上必须收敛到同一个颜色，否则列表里两行同名标签长得不一样。
+    expect(store.tagColors).toEqual({ design: TagColor.TagColorTeal, ops: TagColor.TagColorPink })
   })
 
   it('过滤状态驱动 filteredResources，resetFilters 归零', () => {

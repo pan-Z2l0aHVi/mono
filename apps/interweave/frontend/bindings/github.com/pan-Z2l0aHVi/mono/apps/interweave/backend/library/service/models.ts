@@ -398,6 +398,11 @@ export class TagDTO {
     "name": string;
     "created_at": number;
 
+    /**
+     * Color 是展示色 key，同一名称恒定；前端据此渲染 chip，不在客户端按名称猜颜色。
+     */
+    "color": storage$0.TagColor;
+
     /** Creates a new TagDTO instance. */
     constructor($$source: Partial<TagDTO> = {}) {
         if (!("id" in $$source)) {
@@ -408,6 +413,9 @@ export class TagDTO {
         }
         if (!("created_at" in $$source)) {
             this["created_at"] = 0;
+        }
+        if (!("color" in $$source)) {
+            this["color"] = storage$0.TagColor.$zero;
         }
 
         Object.assign(this, $$source);

@@ -18,7 +18,7 @@ import {
 import { nextTick, onMounted, onScopeDispose, ref, watch, type ComponentPublicInstance } from 'vue'
 
 import type { LibraryQueueItem } from '@/services/library'
-import type { ResourceSourceView } from '@/stores/library'
+import type { ResourceSourceView, TagColor } from '@/stores/library'
 
 import { ResourceKind } from '../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage'
 
@@ -32,6 +32,11 @@ const props = defineProps<{
   busy: boolean
   error: string
   mobile: boolean
+  /**
+   * 标签名 → 持久化颜色。队列里的标签还没落库，本身没有颜色可言，
+   * 因此按名回查已确定的那个；查不到就是尚未创建，展示中性档。
+   */
+  tagColors: Record<string, TagColor>
 }>()
 
 const emit = defineEmits<{
@@ -334,7 +339,9 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
                   {{ item.location }}
                 </span>
                 <div class="flex min-w-0 flex-[0_0_100%] flex-wrap items-center gap-[5px]">
-                  <span v-for="tag in item.tags" :key="tag" :class="[tagChipClass, tagClass(tag)]">{{ tag }}</span>
+                  <span v-for="tag in item.tags" :key="tag" :class="[tagChipClass, tagClass(props.tagColors[tag])]">
+                    {{ tag }}
+                  </span>
                   <web-ui-tooltip content="编辑标签" :placement="itemIndex < 5 ? 'bottom' : 'top'">
                     <web-ui-button
                       class="shrink-0 [--wui-button-color:var(--wui-color-accent,#08f)]"

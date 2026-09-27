@@ -62,6 +62,8 @@ type TagDTO struct {
 	ID        string `json:"id"`
 	Name      string `json:"name"`
 	CreatedAt int64  `json:"created_at"`
+	// Color 是展示色 key，同一名称恒定；前端据此渲染 chip，不在客户端按名称猜颜色。
+	Color storage.TagColor `json:"color"`
 }
 
 // 为前端提供完整但不承载外部内容的资源视图。

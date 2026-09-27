@@ -4,7 +4,7 @@ import { lucideTags, lucideX } from '@greypan/web-ui/icons'
 import { computed, ref, watch } from 'vue'
 
 import type { LibraryQueueItem } from '@/services/library'
-import type { ResourceView } from '@/stores/library'
+import type { ResourceView, TagColor } from '@/stores/library'
 
 import { tagClass } from './presentation'
 
@@ -12,6 +12,11 @@ const props = defineProps<{
   open: boolean
   target: ResourceView | LibraryQueueItem | null
   allTagNames: string[]
+  /**
+   * 标签名 → 持久化颜色。草稿里可能有刚输入、尚未创建的名字（没有颜色，显示中性档），
+   * 也可能是队列里尚未落库的标签，因此一律按名回查，而不是从 target 上取。
+   */
+  tagColors: Record<string, TagColor>
   busy: boolean
   error: string
 }>()
@@ -116,7 +121,7 @@ function save() {
             v-for="tag in draft"
             :key="tag"
             class="inline-flex h-[22px] items-center gap-0.5 rounded-full px-[7px] text-xs leading-none has-[web-ui-button]:pr-0.5"
-            :class="tagClass(tag)"
+            :class="tagClass(props.tagColors[tag])"
           >
             {{ tag }}
             <web-ui-button

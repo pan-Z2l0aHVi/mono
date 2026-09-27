@@ -12,7 +12,10 @@ import { imagePreview } from '@greypan/web-ui'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { createApp, h, nextTick, ref } from 'vue'
 
-import { ResourceKind } from '../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage'
+import {
+  ResourceKind,
+  TagColor
+} from '../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage'
 import type { LibraryQueueItem } from '../../services/library'
 
 import LibraryAddDialog from './LibraryAddDialog.vue'
@@ -45,7 +48,7 @@ function mountDialog(
     onRename?: (itemId: string, title: string) => void
     onEditTags?: (item: LibraryQueueItem) => void
   } = {},
-  options: { mobile?: boolean; open?: boolean } = {}
+  options: { mobile?: boolean; open?: boolean; tagColors?: Record<string, TagColor> } = {}
 ) {
   const host = document.createElement('div')
   document.body.append(host)
@@ -58,6 +61,7 @@ function mountDialog(
         busy: false,
         error: '',
         mobile: options.mobile ?? false,
+        tagColors: options.tagColors ?? {},
         ...listeners
       })
   })
@@ -261,7 +265,7 @@ describe('LibraryAddDialog', () => {
   it('tags 行套用共享 chip 外形并把目标队列项传给编辑事件', async () => {
     const item = queueItem({ tags: ['设计'] })
     const editTags = vi.fn<(target: LibraryQueueItem) => void>()
-    const mounted = mountDialog([item], { onEditTags: editTags })
+    const mounted = mountDialog([item], { onEditTags: editTags }, { tagColors: { 设计: TagColor.TagColorBlue } })
 
     try {
       await nextTick()
@@ -287,6 +291,29 @@ describe('LibraryAddDialog', () => {
       editButton.click()
       expect(editTags).toHaveBeenCalledOnce()
       expect(editTags).toHaveBeenCalledWith(item)
+    } finally {
+      mounted.close()
+    }
+  })
+
+  it('队列里尚未落库的标签退到中性 chip，而不是按名称猜一个颜色', async () => {
+    // 队列里的标签还没进库，本来就没有颜色；给它按名称套色会让预览与落库后的
+    // 真实颜色对不上。
+    const mounted = mountDialog(
+      [queueItem({ tags: ['设计', '待创建'] })],
+      {},
+      { tagColors: { 设计: TagColor.TagColorPink } }
+    )
+
+    try {
+      await nextTick()
+      const classOf = (name: string) =>
+        [...mounted.host.querySelectorAll('li span')]
+          .find(candidate => candidate.textContent?.trim() === name)
+          ?.getAttribute('class')
+
+      expect(classOf('设计')).toBe(`${tagChipClass} bg-pink-100 text-pink-700 dark:bg-pink-400/15 dark:text-pink-200`)
+      expect(classOf('待创建')).toBe(`${tagChipClass} bg-black/5 text-gray-500 dark:bg-white/10 dark:text-neutral-300`)
     } finally {
       mounted.close()
     }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log"
 	"runtime"
 	"strings"
 	"sync"
@@ -106,12 +107,32 @@ func (d *DB) initSchema() error {
 		FOREIGN KEY(tag_id) REFERENCES tags(id) ON DELETE CASCADE
 	);
 
+	-- 标签展示色按名称唯一，与 tags 的 name UNIQUE 身份同构。
+	-- 独立成表而不是给 tags 加列：schema 只在启动时以 CREATE TABLE IF NOT EXISTS 落地，
+	-- 仓库没有迁移机制，给已有表加列对存量库不生效；新表则对存量库首启即补齐。
+	CREATE TABLE IF NOT EXISTS tag_colors (
+		name TEXT PRIMARY KEY,
+		color TEXT NOT NULL
+	);
+
 	CREATE INDEX IF NOT EXISTS idx_sources_resource_id ON sources(resource_id);
 	CREATE INDEX IF NOT EXISTS idx_taggings_resource_id ON taggings(resource_id);
 	CREATE INDEX IF NOT EXISTS idx_taggings_tag_id ON taggings(tag_id);
 	`
 	_, err := d.db.Exec(schema)
-	return err
+	if err != nil {
+		return err
+	}
+	// 建表语句对新库和存量库同样生效，因此补色放在这里而不是某个启动钩子：
+	// 升级后第一次启动就会给全部存量标签一次性补齐颜色。
+	// 不必持 writeMu：initSchema 的唯一调用点在 Open 内，此时 DB 还没交给任何调用方。
+	//
+	// 补色失败不阻断启动。库结构已经就绪，颜色只是展示属性，没有能力让应用打不开；
+	// 缺色标签下次启动重试，OR IGNORE 让重放安全。schema 本身的失败仍然是 fail-fast。
+	if err := (TagStore{}).BackfillTagColors(context.Background(), d.db); err != nil {
+		log.Printf("interweave: tag color backfill failed, retrying on next start: %v", err)
+	}
+	return nil
 }
 
 // 将写入串行化，使跨表不变量在事务中成立。

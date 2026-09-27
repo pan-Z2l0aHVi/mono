@@ -27,6 +27,7 @@ function resource(overrides: Partial<ResourceView> = {}): ResourceView {
     updatedAt: 0,
     sources: preferred ? [preferred] : [],
     preferred,
+    tags: [],
     tagNames: [],
     available: true,
     kind: ResourceKind.ResourceKindImage,

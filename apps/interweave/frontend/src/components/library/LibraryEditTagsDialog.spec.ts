@@ -18,6 +18,7 @@ function mountDialog(target: LibraryQueueItem, onSave: (resourceId: string, tagN
         open: true,
         target,
         allTagNames: ['设计', '旅行'],
+        tagColors: {},
         busy: false,
         error: '',
         onSave
