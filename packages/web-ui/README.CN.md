@@ -1064,10 +1064,10 @@ Hover 模式使用 `pointerenter`/`pointerleave` 加延迟控制。Click 模式�
 
 右键上下文菜单。
 
-| 属性             | 类型      | 默认值  | 说明         |
-| ---------------- | --------- | ------- | ------------ |
-| `disabled`       | `boolean` | `false` | 禁用状态     |
-| `no-scroll-lock` | `boolean` | `false` | 允许背景滚动 |
+| 属性             | 类型      | 默认值  | 说明                         |
+| ---------------- | --------- | ------- | ---------------------------- |
+| `disabled`       | `boolean` | `false` | 右键不打开菜单，不做视觉置灰 |
+| `no-scroll-lock` | `boolean` | `false` | 允许背景滚动                 |
 
 **事件：** `open-change` (`CustomEvent<{ open: boolean }>`)
 
@@ -1076,6 +1076,8 @@ Hover 模式使用 `pointerenter`/`pointerleave` 加延迟控制。Click 模式�
 **方法：** `openAt(x: number, y: number)`, `close()`
 
 通过 `contextmenu` 事件打开。菜单项：`web-ui-dropdown-item`、`web-ui-dropdown-divider`、`web-ui-dropdown-header`。支持键盘导航和子菜单 hover。
+
+`disabled` 只抑制菜单行为：右键与 `openAt()` 都不打开菜单。它不会给 default slot 里的内容置灰或改色——组件自身根本不渲染菜单面，没有可置灰的对象；禁用右键菜单也不等于禁用触发区。需要让禁用态在视觉上可读时，请在自己的内容上表达。
 
 菜单打开期间，Consumer可以安全地使用条件渲染（如 Vue `v-if`）切换、移动或删除菜单项，无需重新插入到宿主元素；portal 内的变更会自动 reconcile，关闭时框架锚点随元素迁回宿主，保证后续框架更新正常。
 
