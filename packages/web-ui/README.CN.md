@@ -842,22 +842,27 @@ web-ui-radio-group {
 
 **CSS 自定义属性：**
 
-| 属性                              | 默认值                             | 说明                                                                           |
-| --------------------------------- | ---------------------------------- | ------------------------------------------------------------------------------ |
-| `--wui-drawer-width`              | `320px`                            | 抽屉宽度                                                                       |
-| `--wui-drawer-height`             | `300px`                            | 抽屉高度（上/下）                                                              |
-| `--wui-drawer-bg`                 | `var(--wui-color-surface-overlay)` | 抽屉背景色                                                                     |
-| `--wui-drawer-radius`             | `var(--wui-radius-overlay, 28px)`  | 浮动卡片圆角（非 headless）                                                    |
-| `--wui-drawer-inset`              | `8px`                              | 浮动卡片视口留边（非 headless）；置 `0` 为贴边几何                             |
-| `--wui-drawer-overlay-bg`         | `rgb(0 0 0 / 0.12)`                | 遮罩背景色                                                                     |
-| `--wui-drawer-drag-zone-size`     | `20px`                             | Drag-to-close 命中热区厚度（draggable）                                        |
-| `--wui-drawer-drag-bar-thickness` | `4px`                              | Drag bar 胶囊厚度（短轴）                                                      |
-| `--wui-drawer-drag-bar-length`    | `56px`                             | Drag bar 胶囊长度（沿抽屉边缘）                                                |
-| `--wui-drawer-header-padding`     | `16px 20px`                        | Header 区域 padding                                                            |
-| `--wui-drawer-close-top`          | `16px`                             | 内置关闭按钮相对 header 顶部的偏移                                             |
-| `--wui-drawer-close-right`        | `16px`                             | 内置关闭按钮相对抽屉右缘的偏移                                                 |
-| `--wui-drawer-content-padding`    | `20px`                             | 内容区 padding；同时驱动 drag bar 视觉中线（取半值，不低于半个胶囊厚度 + 4px） |
-| `--wui-drawer-footer-padding`     | `16px 20px`                        | Footer 区域 padding                                                            |
+| 属性                              | 默认值                             | 说明                                                                                                                                                       |
+| --------------------------------- | ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--wui-drawer-width`              | `320px`                            | 抽屉宽度                                                                                                                                                   |
+| `--wui-drawer-height`             | `300px`                            | 抽屉高度（上/下）                                                                                                                                          |
+| `--wui-drawer-bg`                 | `var(--wui-color-surface-overlay)` | 抽屉背景色                                                                                                                                                 |
+| `--wui-drawer-radius`             | `var(--wui-radius-overlay, 28px)`  | 浮动卡片圆角（非 headless）                                                                                                                                |
+| `--wui-drawer-inset`              | `8px`                              | 浮动卡片视口留边（非 headless）；置 `0` 为贴边几何                                                                                                         |
+| `--wui-drawer-nested-peek-base`   | `36px`                             | 嵌套堆叠露边基准 `A`（`width <= 640px` 时为 `24px`）；堆叠总宽按 `A · ln(n)` 增长，单层因此完全不动，每多一层新增的露边递减。置 `0` 关闭露边。详见下方说明 |
+| `--wui-drawer-overlay-bg`         | `rgb(0 0 0 / 0.12)`                | 遮罩背景色                                                                                                                                                 |
+| `--wui-drawer-drag-zone-size`     | `20px`                             | Drag-to-close 命中热区厚度（draggable）                                                                                                                    |
+| `--wui-drawer-drag-bar-thickness` | `4px`                              | Drag bar 胶囊厚度（短轴）                                                                                                                                  |
+| `--wui-drawer-drag-bar-length`    | `56px`                             | Drag bar 胶囊长度（沿抽屉边缘）                                                                                                                            |
+| `--wui-drawer-header-padding`     | `16px 20px`                        | Header 区域 padding                                                                                                                                        |
+| `--wui-drawer-close-top`          | `16px`                             | 内置关闭按钮相对 header 顶部的偏移                                                                                                                         |
+| `--wui-drawer-close-right`        | `16px`                             | 内置关闭按钮相对抽屉右缘的偏移                                                                                                                             |
+| `--wui-drawer-content-padding`    | `20px`                             | 内容区 padding；同时驱动 drag bar 视觉中线（取半值，不低于半个胶囊厚度 + 4px）                                                                             |
+| `--wui-drawer-footer-padding`     | `16px 20px`                        | Footer 区域 padding                                                                                                                                        |
+
+`--wui-drawer-nested-peek-base` 不需要消费方声明：默认值 `36px` 是组件用 `CSS.registerProperty` 注册该属性时的 `initialValue`（`components/drawer/index.ts`），窄视口的 `24px` 基准来自 `components/drawer/style.css` 的 `@media (width <= 640px)` 规则——这两处就是内置基准的所在地。在宿主或任意祖先上设置该 token 可同时覆盖两者，在任何视口宽度下都生效。
+
+按内置基准，四层 `320px` 等宽堆叠逐层露边在桌面端为 `24.95px` / `14.60px` / `10.36px`、窄视口为 `16.64px` / `9.73px` / `6.90px`，对应总堆叠宽度 `49.91px` 与 `33.27px`。单层始终不动，因为 `ln(1)` 为 `0`。
 
 #### `imagePreview()`
 

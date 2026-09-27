@@ -111,6 +111,27 @@ if (typeof CSS !== 'undefined' && 'registerProperty' in CSS) {
     // 已注册（如 HMR 重复执行）时忽略
   }
   /*
+   * 嵌套层叠对数曲线的基准 A（shift = A · ln(depth + 1)）：注册为 <length> 后
+   * 桌面基准只有这一个真相源，JS 从 computed style 读到的永远是确定值；
+   * 窄视口基准由 style.css 的媒体查询覆盖同一 token。消费方写 unitless 的
+   * `0` 会在计算值阶段归一成 `0px`（层叠露边归零，而不是让 ln 项算出 NaN）。
+   *
+   * A = 36px 来自视觉 pass：四层等宽 320px 时逐层露边 24.95 / 14.60 / 10.36px，
+   * 总堆叠宽 49.91px（旧的恒定 12px 线性步进是 12 / 12 / 12，总宽 36px）。
+   * 36 是让**最里层**仍可辨认的下限——第四层的露边是 A·ln(4/3) = 0.288A，
+   * A=28 时只有 8.06px，四层叠起来最里面那层几乎看不出是独立一层。
+   */
+  try {
+    CSS.registerProperty({
+      name: '--wui-drawer-nested-peek-base',
+      syntax: '<length>',
+      inherits: true,
+      initialValue: '36px'
+    })
+  } catch {
+    // 已注册（如 HMR 重复执行）时忽略
+  }
+  /*
    * 收尾过渡的时长：注册为 <time> 后 ::backdrop 也能继承到同一值。不注册时变量在
    * transition 简写里只是 token 替换，值一旦无效整条声明在计算值阶段失效
    * （退化为 transition: none），回弹会变成瞬移。

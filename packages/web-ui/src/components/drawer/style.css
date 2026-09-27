@@ -450,6 +450,27 @@ dialog.is-dragging .wui-drawer-drag-zone {
   translate: 0 calc(var(--wui-internal-drawer-nested-shift) * -1);
 }
 
+/*
+ * 窄视口的层叠基准：同一个 `--wui-drawer-nested-peek-base` 换成更小的 A。
+ * 桌面基准（36px）来自 index.ts 的 `CSS.registerProperty` initialValue，这里只覆盖窄视口，
+ * 因此 A 的桌面真相源仍只有注册项一处。
+ *
+ * 24px 来自视觉 pass：窄屏上 320px 抽屉已占去大部分宽度，基准须比桌面小，
+ * 但仍要守住「底层间距明显大于旧线性 12px」——第一跳 24·ln2 = 16.64px（+39%）。
+ * 早先试过 18px，第一跳只有 12.48px，与旧的 12px 几乎无差别，且四层总宽
+ * 24.95px 比旧线性的 36px 还小——那不满足本 task「间隔整体调大」的意图。
+ *
+ * 断点字面量与 shared/overlay/nested-drawer-layers.ts 的 matchMedia 查询各有一份：
+ * 跨断点时 JS 侧靠它重算已打开的堆叠，两处必须同步（见该文件的同名常量）。
+ *
+ * 消费方在页面里给宿主写的值仍然优先——外层树的声明压过 shadow 内的 :host 规则。
+ */
+@media (width <= 640px) {
+  :host(:not([headless])) {
+    --wui-drawer-nested-peek-base: 24px;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   /*
    * reduce 下：位移一律归零、transform 不参与过渡（仅 opacity 反馈）。
