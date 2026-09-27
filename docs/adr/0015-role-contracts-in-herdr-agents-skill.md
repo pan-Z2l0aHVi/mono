@@ -17,7 +17,7 @@
 
 1. 删除 `.claude/agents` symlink，Role Contract 只由显式 herdr skill 加载；开发者自己的未跟踪 `.claude/agents/` 目录不属于本仓契约。
 2. Role Contract 迁到 `.agents/skills/herdr-agents/roles/{manager,designer,lib-coder,biz-coder,supervisor,reviewer}.md`。Role 文档只描述各自职责。
-3. 新增本仓自撰 skill `.agents/skills/herdr-agents/SKILL.md`，承载 Role 列表、默认绑定、启动参数、handoff、目录边界、Supervisor 协议和 Herdr 启动流程。task 状态机与 review gate 见 `docs/agents/workflow.md`，任务主合同见 `docs/agents/task-packet.md`，worktree 布局见 `docs/agents/worktrees.md`，pane 原语见第三方 `herdr` skill。该 skill 标记 `disable-model-invocation: true`，只由用户手动触发（`/herdr-agents`）。
+3. 新增本仓自撰 skill `.agents/skills/herdr-agents/SKILL.md`，承载 Role 列表、默认绑定、启动参数、handoff、目录边界、Supervisor 协议和 Herdr 启动流程。task 状态机与 review gate 见 `docs/agents/workflow.md`，任务主合同见 `docs/agents/task-packet.md`，worktree 布局见 `docs/agents/worktrees.md`，pane 原语见第三方 `herdr` skill。该 skill 标记 `disable-model-invocation: true`，只由用户手动触发（`/herdr-agents`）。（2026-09-27 修订：Supervisor 协议与启用评分拆到同目录 `supervision.md`，因为它们只在启用 Supervisor 的 task 上用得到；`SKILL.md` 收敛为入口，保留 Role 绑定、handoff、编排流程和完成定义，并在评分与检查点两处点名读它。skill 发现只扫一层 `SKILL.md`，所以拆分只能在 skill 目录内进行，不新开 skill 目录。）
 4. `.agents/skills/` 保持扁平：自撰 skill 与第三方 skill 同级，不引入分组目录、不引入 symlink。出处以 `skills-lock.json` 为权威——登记在册的是第三方上游件，未登记的是本仓自撰；`scripts/validate-context.mjs` 要求每个 `SKILL.md` 的目录名恰好落在其中一侧（自撰侧是脚本内的 `repoAuthoredSkills`），两边都不在或都在即报错。第三方 skill 的正文字符与语言由上游维护，其 markdown 链接不作为本仓链接校验对象。
 5. task 内核不保存 Role 列表，`pnpm agent:task assign --roles` 明确失败；旧 v1 state 中的历史 Role 字段只保留兼容读取，不由 task 内核解释或重写。
 

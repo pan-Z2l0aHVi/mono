@@ -45,7 +45,7 @@ open -> active -> frozen -> reviewed -> approved -> done
 ### 5. review 拓扑与 task 边界
 
 - T0 使用独立的 Claude Code reviewer 会话；T1 强制 review，Manager 可派 fresh Claude Code 会话或 fresh Claude Code subagent；T2 免审，或派 fresh Claude Code subagent 做额外 review。全程禁止同一会话自审。reviewer id 校验 `^[A-Za-z0-9][A-Za-z0-9._-]{3,39}$` 且必须 ≠ owner。（2026-09-20 加固：同一条形状校验按 `AGENT_ID` 复用到 approver、drop 署名人与显式申报的 `--owner`（登录名兜底不受限），四个声明身份的字段落在同一字符集里「互不相等」才比的是人而不是字形；reviewer 与 approver 比对的是 owner **历史**而非现值。`assign` 没有相位限制，只比现值会被「先派给别人、再回来批自己」绕开；approver 还须 ≠ 本轮 reviewer。三个身份互不相同才让「独立验收」成为机器事实，但 id 本身仍是自报的，内核防的是误用而不是合谋。）
-- Role → executor 绑定、handoff、目录边界、Supervisor 协议和 pane 时序由 [`.agents/skills/herdr-agents/SKILL.md`](../../.agents/skills/herdr-agents/SKILL.md) 维护；任何其他执行体都可承担任一 Role，替代执行体和理由记录在 Task Packet。默认模型与思考强度分档取消（amends ADR-0011）。
+- Role → executor 绑定、handoff、目录边界和 pane 时序由 [`.agents/skills/herdr-agents/SKILL.md`](../../.agents/skills/herdr-agents/SKILL.md) 维护，Supervisor 协议由同目录的 [`supervision.md`](../../.agents/skills/herdr-agents/supervision.md) 维护；任何其他执行体都可承担任一 Role，替代执行体和理由记录在 Task Packet。默认模型与思考强度分档取消（amends ADR-0011）。
 - task state 只记录 task-level 事实，不记录 Role、Supervisor 或 coordination；旧 v1 state 的历史 `roles` 字段可读取但不解释、不迁移、不重写。`pnpm agent:task assign --roles` 明确拒绝。
 - 编排派发根据受影响的 workspace 决定：单 workspace 单 coder，跨 workspace 拆 handoff，Designer 按需；Supervisor 是否启用由 herdr-agents skill 的评分决定，且不影响本 ADR 的 task gate。
 

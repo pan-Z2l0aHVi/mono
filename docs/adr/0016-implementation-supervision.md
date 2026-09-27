@@ -54,7 +54,7 @@ Task Packet 继续保存任务主合同，并提供可选的 Coordination 摘要
 
 ### 6. 文档归属
 
-Role 列表、默认执行体绑定、启动参数、目录边界、handoff 格式、Supervisor 协议、coordination id 和 pane 时序见 [`.agents/skills/herdr-agents/SKILL.md`](../../.agents/skills/herdr-agents/SKILL.md)。Role 文档只描述各自职责。task 级别、状态机、快照、review、approval 和验证见 [`docs/agents/workflow.md`](../agents/workflow.md) 与 [`scripts/task.mjs`](../../scripts/task.mjs)。`scripts/validate-context.mjs` 只检查通用 context、Role Contract 身份和客户端注册形态，不维护绑定表、固定 Role 集合或 handoff 字段的镜像。
+Role 列表、默认执行体绑定、启动参数、目录边界、handoff 格式和 pane 时序见 [`.agents/skills/herdr-agents/SKILL.md`](../../.agents/skills/herdr-agents/SKILL.md)，Supervisor 协议、启用评分与 coordination id 见 [`.agents/skills/herdr-agents/supervision.md`](../../.agents/skills/herdr-agents/supervision.md)。Role 文档只描述各自职责。task 级别、状态机、快照、review、approval 和验证见 [`docs/agents/workflow.md`](../agents/workflow.md) 与 [`scripts/task.mjs`](../../scripts/task.mjs)。`scripts/validate-context.mjs` 只检查通用 context、Role Contract 身份和客户端注册形态，不维护绑定表、固定 Role 集合或 handoff 字段的镜像。
 
 ## 后果
 

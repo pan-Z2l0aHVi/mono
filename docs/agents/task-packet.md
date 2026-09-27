@@ -1,6 +1,6 @@
 # Task Packet
 
-Task Packet 是单个 task 的主合同，记录目标、范围、验收、验证和交付边界。新会话可以据此恢复工作。多 Agent 的 Role 派发、handoff 模板、Supervisor 协议和 Herdr 时序见 [`herdr-agents`](../../.agents/skills/herdr-agents/SKILL.md)。
+Task Packet 是单个 task 的主合同，记录目标、范围、验收、验证和交付边界。新会话可以据此恢复工作。多 Agent 的 Role 派发、handoff 模板和 Herdr 时序见 [`herdr-agents`](../../.agents/skills/herdr-agents/SKILL.md)，Supervisor 协议见同目录的 [`supervision.md`](../../.agents/skills/herdr-agents/supervision.md)。
 
 ## 主合同
 
@@ -48,7 +48,7 @@ Readiness: <Ready | Not ready | N/A>
 Open decisions: <Manager decisions still needed>
 ```
 
-固定的 coordination id、报告状态、纠错规则和 Reviewer 隔离见 [`herdr-agents`](../../.agents/skills/herdr-agents/SKILL.md)。Manager 只记录恢复工作所需的信息，例如启用评分、覆盖理由、检查点结论、争议处理和 pane 生命周期，不复制完整聊天记录。
+固定的 coordination id、报告状态、纠错规则和 Reviewer 隔离见同目录 skill 的 [`supervision.md`](../../.agents/skills/herdr-agents/supervision.md)，Role 派发与 pane 时序见 [`herdr-agents`](../../.agents/skills/herdr-agents/SKILL.md)。Manager 只记录恢复工作所需的信息，例如启用评分、覆盖理由、检查点结论、争议处理和 pane 生命周期，不复制完整聊天记录。
 
 ## 恢复规则
 

@@ -115,7 +115,7 @@ freeze 自身执行归一化管线：`git add -A` 全量 staging（快照语义�
 
 审查报告先列具体发现，再按 `Block`、`Should fix`、`Nit` 排序。每条发现都要带文件和行号。没有缺陷时，也要说明测试缺口和残余风险。检查项包括公共行为与向后兼容性、聚焦测试覆盖、边界与失败情况、类型与错误处理、竞态或资源泄漏、用户输入安全风险和文档变更。重构要对照变更前后的行为清单。浏览器相关 review 按 [`browser-verification.md`](browser-verification.md) 核实证据。Supervisor 报告、实施者叙述和聊天记录都不能替代冻结 diff 或验证证据。
 
-多 Agent 的角色选择、目录边界、handoff、Supervisor 检查点和 pane 时序见 [`herdr-agents`](../../.agents/skills/herdr-agents/SKILL.md)。本文件只说明它们如何影响 task 状态、冻结证据和 review 独立性。
+多 Agent 的角色选择、目录边界、handoff 和 pane 时序见 [`herdr-agents`](../../.agents/skills/herdr-agents/SKILL.md)，Supervisor 检查点见同目录的 [`supervision.md`](../../.agents/skills/herdr-agents/supervision.md)。本文件只说明它们如何影响 task 状态、冻结证据和 review 独立性。
 
 ## Playbook
 

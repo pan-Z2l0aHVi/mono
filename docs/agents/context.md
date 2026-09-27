@@ -21,7 +21,7 @@
 
 Role 只服务于 herdr 多 agent 编排。Manager 初始化的每个 CLI 会话担任一个 Role，读取 `.agents/skills/herdr-agents/roles/<role>.md` 后，Role 在该会话内定义职责、边界和协作方式。Role 可以服务多个 task，但不覆盖 Rules、Skills、task requirement、`AGENTS.md` 或实现事实。普通单会话不承担 Role。
 
-Role 列表、执行体绑定、启动参数、目录边界、handoff、Supervisor 协议、pane 时序和 review 派发统一写在 [`.agents/skills/herdr-agents/SKILL.md`](../../.agents/skills/herdr-agents/SKILL.md)。Role 文档只声明本角色契约，不复制这些流程；根 `AGENTS.md`、workflow 和 Task Packet 只负责路由、task-level gate 或任务合同。review 的级别、独立性和 approval gate 仍由 workflow 负责。
+Role 列表、执行体绑定、启动参数、目录边界、handoff、pane 时序和 review 派发写在 [`.agents/skills/herdr-agents/SKILL.md`](../../.agents/skills/herdr-agents/SKILL.md)，启用 Supervisor 时的评分与协议写在 [`.agents/skills/herdr-agents/supervision.md`](../../.agents/skills/herdr-agents/supervision.md)。Role 文档只声明本角色契约，不复制这些流程；根 `AGENTS.md`、workflow 和 Task Packet 只负责路由、task-level gate 或任务合同。review 的级别、独立性和 approval gate 仍由 workflow 负责。
 
 ## 重复主题的权威来源
 
@@ -38,6 +38,7 @@ Role 列表、执行体绑定、启动参数、目录边界、handoff、Supervis
 | 角色与执行体绑定   | `.agents/skills/herdr-agents/roles/*` 只声明角色职责与各自边界，不复制绑定表    | `.agents/skills/herdr-agents/SKILL.md`                             | Herdr 启动回执、Task Packet 参与者摘要                 |
 | 角色间 handoff     | `.agents/skills/herdr-agents/roles/*` 只链接 handoff 合同                       | `.agents/skills/herdr-agents/SKILL.md`                             | handoff 消息、Task Packet、pane 记录                   |
 | 角色目录边界       | 根/包级 `AGENTS.md` 声明仓库不可绕过的 `packages/*` 与 `apps/*` 归属            | `.agents/skills/herdr-agents/SKILL.md`、`docs/agents/worktrees.md` | `agent:find-usages` 输出、变更路径、worktree 归属      |
+| 实施期 Supervisor  | 根 `AGENTS.md` 只给 skill 路由，不复制 Supervisor 正文                          | `.agents/skills/herdr-agents/supervision.md`                       | Observation Report、Task Packet 摘要、检查点结论       |
 | 公共 `web-ui` 契约 | `packages/web-ui/AGENTS.md` 指向受影响消费者                                    | `docs/agents/web-ui.md`                                            | fixtures、contracts、browser/integration tests         |
 
 ## 客户端适配

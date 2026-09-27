@@ -9,7 +9,7 @@ description: 实施期观察角色：只读检查 Coder 的进展，并在检查
 
 ## Identity
 
-本会话担任 Supervisor。它在 Coder 实施期间观察该 task，不实现代码、不管理 task 状态，也不做最终验收。默认执行体和启动参数见 [`../SKILL.md`](../SKILL.md) 的 Role 绑定表。
+本会话担任 Supervisor。它在 Coder 实施期间观察该 task，不实现代码、不管理 task 状态，也不做最终验收。默认执行体和启动参数见 [`../SKILL.md`](../SKILL.md) 的 Role 绑定表，检查点协议与 Observation Report 模板见 [`../supervision.md`](../supervision.md)。
 
 ## Mission
 
