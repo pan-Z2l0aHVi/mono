@@ -2,6 +2,6 @@
 '@greypan/interweave': patch
 ---
 
-标签有了持久化颜色。创建标签时会随机分配一种颜色并落库，之后所有同名标签在资源列表、详情抽屉、编辑标签弹窗和添加队列四处都显示同一种颜色，重启应用后不变。颜色取自 13 种预设色板，浅色与深色外观下都已验过对比度；灰色保留为「归档/草稿」这类静态概念的语义色和缺色时的兜底，不参与随机分配。
+Tags now have persistent colors. Creating a tag draws a color at random and stores it, so every tag with that name renders the same color in the resource list, the detail drawer, the edit-tags dialog and the add queue, and the color survives a restart. Colors come from a 13-entry preset palette whose contrast has been verified in both light and dark appearances. Gray stays reserved as the semantic color for static concepts such as archived or draft, and as the fallback when no color is known; it is never drawn.
 
-颜色存在新增的 `tag_colors` 表而不是 `tags` 的新列：schema 只在启动时以 `CREATE TABLE IF NOT EXISTS` 落地，给已有表加列对存量库不生效。已有数据库首次启动会自动建表并给全部存量标签一次性补齐颜色，第二次启动颜色保持不变；补色失败只记录日志，不阻断应用启动。
+Colors live in a new `tag_colors` table rather than a new column on `tags`: the schema is only applied at startup via `CREATE TABLE IF NOT EXISTS`, so adding a column to an existing table would not reach databases that already exist. On first launch an existing database gets the table created and every existing tag backfilled once; the second launch keeps those colors. A failed backfill is logged only and never blocks startup.

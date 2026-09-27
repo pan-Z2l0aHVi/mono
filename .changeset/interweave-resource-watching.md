@@ -2,6 +2,6 @@
 '@greypan/interweave': minor
 ---
 
-资源可用状态现在会自己跟上文件系统。已登记的 file source 只监听它所在目录，文件被删掉或移走后对应行立即转为失效样式，放回原路径后自动恢复，不必手动刷新；媒体读取时确认文件取不到（404）也会立刻回写并推送。抖动合并、监听预算降级与 60 秒巡检保证大目录或频繁写入不会打爆 fd 或把编辑器保存误判成失效。
+Resource availability now follows the filesystem on its own. A registered file source watches only the directory it lives in: delete or move a file and the row goes stale immediately, put it back and it recovers on its own, with no manual refresh. A media read that confirms the file cannot be fetched (404) writes the state back and pushes it right away. Debounced coalescing, a watch budget and a 60-second sweep keep large directories or frequent writes from exhausting file descriptors or from misreading an editor save as a deletion.
 
-URL source 不做监听，改为在用户打开详情时按需重新判定，并把结论分成三种：可用、明确失效、以及「暂时无法检测」（断网、DNS 或超时）。第三种不落库、不改角标，只提示一句文案——断网时不会把一批链接误标成死链。手动刷新链接的既有语义不变。
+URL sources are not watched; availability is re-checked on demand when the user opens the detail view instead, and the outcome is one of three: available, definitely stale, or "cannot check right now" (offline, DNS failure, timeout). The third outcome is never persisted and never changes the badge; it only shows a short message, so a dropped connection cannot mark a batch of links as dead. Manual link refresh keeps its existing semantics.

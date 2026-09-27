@@ -2,8 +2,8 @@
 '@greypan/interweave': patch
 ---
 
-添加资源时，如果某个文件已经在资源库里，会先弹一次轻提示：列出库里已有的同名资源标题和所在位置，让你决定要不要继续。
+Adding a resource that is already in the library now shows a light notice first: it lists the titles and locations of the matching entries already in the library, so you can decide whether to continue.
 
-选「取消」这一项就不入队，选「仍要添加」照常添加。一次拖入多个文件时逐项提示，判定按入队顺序来，不会叠加弹窗；库里没有的位置直接入队，不打扰。
+Choosing Cancel skips that queue entry; choosing Add Anyway proceeds as usual. When several files are dropped at once the notice appears once per item, checked in queue order rather than stacked, and entries whose location is not yet in the library are queued without a prompt.
 
-这只是提示，不会拦住重复资源。dialog 内同一批待添加项的既有静默去重行为不变。
+This is a notice only; it does not block duplicates. The existing silent dedupe of a single batch inside the dialog is unchanged.
