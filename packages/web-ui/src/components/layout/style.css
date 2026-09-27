@@ -151,9 +151,20 @@ aside.is-resizing {
 }
 
 .layout-content {
+  /*
+   * glow 伪元素用 scale + translate 向外扩展，会溢出内容列并撑出页面横向滚动条
+   * （移动端约 30px），横向裁剪因此归属本层。它有 min-width: 0，是容纳横向溢出的位置。
+   * 羽化之所以保住，靠的是裁剪盒的范围变大，不是纵向恰好为 visible：本层的下沿在
+   * main / footer 之后，离 header 底缘隔着整个 main，即便某引擎把 clip 连带到另一轴，
+   * 也切不到底缘。裁剪盒恰好等于 header 时，那一刀才正切在羽化上。
+   * clip 不创建滚动容器，因此不影响 header / footer 自身的 sticky；也不用 hidden——
+   * 那会把本层变成滚动容器，sticky 随即失效。
+   */
+  overflow-x: clip;
   display: flex;
   flex: 1;
   flex-direction: column;
+
   min-width: 0;
 }
 
@@ -165,11 +176,11 @@ header {
   top: 0;
 
   /*
-   * glow 伪元素用 scale + translate 向外扩展，会溢出 header 盒子并撑出页面横向滚动条
-   * （移动端约 30px）。这里只裁横向：纵向保持 visible，下拉浮层等槽位内容仍可溢出。
-   * clip 不创建滚动容器，因此不影响 header 自身的 sticky。
+   * 本层不做任何裁剪，横向裁剪上移到 .layout-content。glow 向下多伸出 0.5 个 header
+   * 高度靠的就是纵向溢出：一旦裁剪，底缘羽化被切断，滚到 header 下的内容与 header
+   * 之间出现硬边断层。WebKit 对 overflow-x: clip 会连带裁掉纵向溢出（Chrome 不会），
+   * 所以这层必须保持 visible，纵向也才有下拉浮层等槽位内容的溢出空间。
    */
-  overflow-x: clip;
   display: flex;
   gap: 8px;
   align-items: center;

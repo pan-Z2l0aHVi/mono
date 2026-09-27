@@ -1101,10 +1101,10 @@ Tooltip overlay using pointer/focus triggers.
 
 Right-click context menu.
 
-| Attribute        | Type      | Default | Description                |
-| ---------------- | --------- | ------- | -------------------------- |
-| `disabled`       | `boolean` | `false` | Disabled state             |
-| `no-scroll-lock` | `boolean` | `false` | Allow background scrolling |
+| Attribute        | Type      | Default | Description                                           |
+| ---------------- | --------- | ------- | ----------------------------------------------------- |
+| `disabled`       | `boolean` | `false` | Right-click does not open the menu; no visual dimming |
+| `no-scroll-lock` | `boolean` | `false` | Allow background scrolling                            |
 
 **Events:** `open-change` (`CustomEvent<{ open: boolean }>`)
 
@@ -1113,6 +1113,8 @@ Right-click context menu.
 **Methods:** `openAt(x: number, y: number)`, `close()`
 
 Opens on `contextmenu` event. Menu items: `<web-ui-dropdown-item>`, `<web-ui-dropdown-divider>`, `<web-ui-dropdown-header>`. Supports keyboard navigation (Arrow keys, Enter, Escape) and submenu hover with `pointerenter`.
+
+`disabled` suppresses menu behaviour only: right-click and `openAt()` do not open a menu. It does not dim or otherwise restyle what you put in the default slot — the component renders no menu surface of its own to dim, and disabling the right-click menu is not the same as disabling your trigger. If a disabled state should read as disabled, render it on your own content.
 
 While the menu is open, consumer code may conditionally render, move, or remove menu items (e.g. Vue `v-if`) without re-inserting them at the host element; changes inside the portal are reconciled automatically, and framework anchors are returned to the host on close so subsequent framework patches keep working.
 

@@ -56,6 +56,28 @@ async function waitForItemsReturned(menu: WebUiContextMenu, count: number) {
 afterEach(() => document.body.replaceChildren())
 
 describe('WebUiContextMenu 组件（浏览器）', () => {
+  it('disabled 不把消费者 slotted 内容整体降不透明度', async () => {
+    const menu = document.createElement('web-ui-context-menu')
+    menu.setAttribute('disabled', '')
+    menu.innerHTML = '<div class="consumer-trigger">触发区</div>'
+    document.body.append(menu)
+    await menu.updateComplete
+
+    // disabled 只抑制菜单行为，菜单不渲染；宿主级降 opacity 唯一能作用到的就是
+    // 消费者自己画在 default slot 里的触发区，那属于消费者，不归本组件置灰。
+    // opacity 不继承，触发区自身任何计算值都读不出宿主这道合成闸门，所以只有宿主
+    // 的 opacity 值得断言。cursor 会继承到触发区，因此触发区的 cursor 也能反映宿主
+    // 的 cursor——钉成 auto 而非 not.toBe('not-allowed')：not 形式放过除该值外的任何
+    // 错值，钉不住「恢复成继承的初始值」这个真实契约。
+    // 不要给触发区加 inline color 再断言它的 color：inline 声明压过一切作者样式表，
+    // 而祖先 opacity 从不影响后代 color 的计算值，那样的断言在任何实现下都不会红，
+    // #191 完整回归时也不会——是条恒真断言。
+    const trigger = menu.querySelector<HTMLElement>('.consumer-trigger')!
+    expect(trigger).toBeTruthy()
+    expect(getComputedStyle(menu).opacity).toBe('1')
+    expect(getComputedStyle(trigger).cursor).toBe('auto')
+  })
+
   it('openAt() 以即时状态显示根菜单', async () => {
     const menu = document.createElement('web-ui-context-menu')
     menu.innerHTML = '<web-ui-dropdown-item>Open</web-ui-dropdown-item>'

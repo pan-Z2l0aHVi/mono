@@ -138,6 +138,63 @@ describe('WebUiLayout 组件（浏览器）', () => {
       expect(layout.headerGlow).toBe(false)
       expect(layout.hasAttribute('header-glow')).toBe(false)
     })
+
+    /*
+     * 两条背景，决定了这条测试能证明什么、不能证明什么。改它之前先读。
+     *
+     * 发现 B（本 bug 最要命的一条）：Safari 在**损坏状态下**，header 的计算值
+     * `overflowY` 依然是 `visible`。WebKit 把 `overflow-x: clip` 连带裁掉纵向溢出，
+     * 只发生在**绘制层**，计算样式里完全看不见。因此任何断言计算样式的测试都
+     * 抓不到这个 bug——这正是它此前一直没被测出来的原因。若把下面这些断言当成
+     * 「羽化已修复」的证据，那是误读：它们只能证明声明被放在了预期的位置。
+     *
+     * 发现 A：本套件 browser 项目只跑 Chromium（见 vite.config.ts 的
+     * `instances: [{ browser: 'chromium' }]`）。按 CSS Overflow 3，另一轴是 clip 时
+     * visible 不会被改写成 auto，所以这套 fixture 下症状不出现——这是规范推导，
+     * 不是实测；#184 的判据仍然只有下面的真 Safari 绘制结果。
+     *
+     * **不要拿 Playwright WebKit 当 #184 的判据**，它不是 Safari。
+     * 注意也不能反过来用「它的计算值是 visible」来证明它没裁——理由同发现 B：
+     * 绘制层的现象在计算样式里本来就读不出来，拿计算样式去证明一个现象不存在，
+     * 等于下一个无法证伪的排除结论。
+     *
+     * 关于 Playwright WebKit 只记观测、不下结论：本次用同一套 fixture 做过一次
+     * 像素 A/B（修复后 vs 重新注入 `header { overflow-x: clip }`），该构建下
+     * **回退变体的羽化深度与修复后相同，未复现断层**。这只说明「这个构建在这次
+     * fixture 下没复现」，不等于它结构上无法复现——构建版本、fixture 形状或别的
+     * 变量都可能改变结果。要用它当判据，得先有人在 Safari 上把同一 fixture 跑通
+     * 并确认两引擎结论一致；在此之前它只是无回归信号。
+     *
+     * 所以真正能判 #184 的只有真 Safari 的绘制结果：1200×480、滚动 200、
+     * 纯红 glow 叠纯白 main，采样 header 底缘以下的像素——修复后是约 27px 的
+     * 粉白过渡，回退 `header { overflow-x: clip }` 后紧贴底缘即为纯白（羽化为 0）。
+     * 下面这条测试守的是「裁剪归属」这个结构前提，羽化本身靠 Safari 取证。
+     */
+    it('glow 的横向裁剪归属内容列，header 纵向保持可见且 sticky 不受影响', async () => {
+      await page.viewport(1200, 480)
+      const layout = createLayout({ headerGlow: true })
+      await layout.updateComplete
+      await nextFrame()
+
+      const header = queryA11y(layout, 'header') as HTMLElement
+      const content = queryA11y(layout, '.layout-content') as HTMLElement
+      expect(header).toBeTruthy()
+      expect(content).toBeTruthy()
+
+      // 以下都是结构断言，不是症状断言（原因见上方发现 B）。
+      // header 自身不裁剪：glow 向下多伸出 0.5 个 header 高度，纵向一旦被裁，
+      // 底缘羽化变成硬边断层（WebKit 对 overflow-x: clip 会连带裁掉纵向）。
+      expect(getComputedStyle(header).overflowX).toBe('visible')
+      expect(getComputedStyle(header).overflowY).toBe('visible')
+      // 横向溢出改由内容列裁剪：glow 的 scale 不再撑出页面横向滚动条。
+      expect(getComputedStyle(content).overflowX).toBe('clip')
+      expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(document.documentElement.clientWidth)
+
+      window.scrollTo(0, 200)
+      await nextFrame()
+      expect(header.getBoundingClientRect().top).toBe(0)
+      expect(queryA11y(layout, 'main')!.getBoundingClientRect().top).toBeLessThan(0)
+    })
   })
 
   describe('移动端行为', () => {
