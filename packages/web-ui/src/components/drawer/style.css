@@ -452,13 +452,19 @@ dialog.is-dragging .wui-drawer-drag-zone {
 
 /*
  * 窄视口的层叠基准：同一个 `--wui-drawer-nested-peek-base` 换成更小的 A。
- * 桌面基准（36px）来自 index.ts 的 `CSS.registerProperty` initialValue，这里只覆盖窄视口，
+ * 桌面基准（54px）来自 index.ts 的 `CSS.registerProperty` initialValue，这里只覆盖窄视口，
  * 因此 A 的桌面真相源仍只有注册项一处。
  *
- * 24px 来自视觉 pass：窄屏上 320px 抽屉已占去大部分宽度，基准须比桌面小，
- * 但仍要守住「底层间距明显大于旧线性 12px」——第一跳 24·ln2 = 16.64px（+39%）。
- * 早先试过 18px，第一跳只有 12.48px，与旧的 12px 几乎无差别，且四层总宽
- * 24.95px 比旧线性的 36px 还小——那不满足本 task「间隔整体调大」的意图。
+ * 36px 来自视觉 pass：窄屏上 320px 抽屉已占去大部分宽度，基准须比桌面小
+ * （保持桌面:窄屏 3:2），但仍要守住「底层间距明显大于旧线性 12px」——第一跳
+ * 36·ln2 = 24.95px（+108%）。窄屏随桌面同比放大：桌面 36→54，窄屏 24→36，3:2 不变。
+ * 早先试 18px 时第一跳只有 12.48px，与旧的 12px 几乎无差别，四层总宽 24.95px 也比
+ * 旧线性的 36px 还小，不满足「间隔整体调大」的意图；当时取 24px 得到 16.64px（+39%），
+ * 是守住「明显大于 12px」的下限，随桌面放大后落到 36px 才有 +108%。
+ *
+ * 窄屏不能照抄桌面的 54px：390px 视口上单层左缘只有 390 − 8 − 320 = 62px，而
+ * 54·ln4 = 74.86px 的四层总宽会把最里层推到屏幕外（62 − 74.86 < 0）。36px 让它
+ * 落在 62 − 49.91 ≈ 12px，仍在屏内——所以窄屏按同比例 ×1.5 而不是同值。
  *
  * 断点字面量与 shared/overlay/nested-drawer-layers.ts 的 matchMedia 查询各有一份：
  * 跨断点时 JS 侧靠它重算已打开的堆叠，两处必须同步（见该文件的同名常量）。
@@ -467,7 +473,7 @@ dialog.is-dragging .wui-drawer-drag-zone {
  */
 @media (width <= 640px) {
   :host(:not([headless])) {
-    --wui-drawer-nested-peek-base: 24px;
+    --wui-drawer-nested-peek-base: 36px;
   }
 }
 
