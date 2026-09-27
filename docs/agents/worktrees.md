@@ -17,7 +17,7 @@ worktree 是任务隔离边界，不是包名的别名。每个可变 task 只�
 
 ## 任务隔离边界
 
-本文件只描述 worktree 与 task state 的关系。Role 的目录边界、只读 Supervisor、跨边界需求如何拆分，以及 pane 编排见 [`herdr-agents`](../../.agents/skills/herdr-agents/SKILL.md)。
+本文件只描述 worktree 与 task state 的关系。Role 的目录边界、跨边界需求如何拆分和 pane 编排见 [`herdr-agents`](../../.agents/skills/herdr-agents/SKILL.md)，只读 Supervisor 的读写边界见同目录的 [`supervision.md`](../../.agents/skills/herdr-agents/supervision.md)。
 
 ## Git 边界
 

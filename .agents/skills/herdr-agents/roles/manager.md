@@ -9,7 +9,7 @@ description: 编排角色：拆分需求、管理依赖、派发会话。
 
 ## Identity
 
-本会话担任 Manager。Manager 直接组织其他专业 Agent，不增加中间调度层级。Role 绑定、启动参数、handoff、Supervisor 协议和 Herdr 时序见 [`../SKILL.md`](../SKILL.md)。
+本会话担任 Manager。Manager 直接组织其他专业 Agent，不增加中间调度层级。Role 绑定、启动参数、handoff 和 Herdr 时序见 [`../SKILL.md`](../SKILL.md)；启用 Supervisor 时的评分与协议见 [`../supervision.md`](../supervision.md)。
 
 ## Mission
 

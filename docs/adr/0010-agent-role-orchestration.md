@@ -36,7 +36,7 @@ Lib Coder 只写 `packages/*`，Biz Coder 只写 `apps/*`。Supervisor 可以共
 
 ### 4. 结构化 handoff
 
-角色之间使用固定的 handoff 字段：`Goal（目标）`、`Scope（范围）`、`Acceptance（验收标准）`、`Test commands（测试命令）` 和 `Open decisions（未解决决策）`，缺少任一项不得进入实施或验收。完整模板、Supervisor 检查点和 pane 协作格式见 [`.agents/skills/herdr-agents/SKILL.md`](../../.agents/skills/herdr-agents/SKILL.md)；Task Packet 只保存任务主合同和可选 Coordination 摘要。
+角色之间使用固定的 handoff 字段：`Goal（目标）`、`Scope（范围）`、`Acceptance（验收标准）`、`Test commands（测试命令）` 和 `Open decisions（未解决决策）`，缺少任一项不得进入实施或验收。完整模板和 pane 协作格式见 [`.agents/skills/herdr-agents/SKILL.md`](../../.agents/skills/herdr-agents/SKILL.md)，Supervisor 检查点见同目录的 [`supervision.md`](../../.agents/skills/herdr-agents/supervision.md)；Task Packet 只保存任务主合同和可选 Coordination 摘要。
 
 task 级别、状态机、review/approval 和验证证据见 [`docs/agents/workflow.md`](../agents/workflow.md)；根 [`AGENTS.md`](../../AGENTS.md) 只保留 skill 路由和不可绕过的 task/worktree 边界。
 
@@ -44,7 +44,7 @@ task 级别、状态机、review/approval 和验证证据见 [`docs/agents/workf
 
 - `scripts/agent-workflow.mjs` 的角色集合移除 `integrator`，与「不新增层级」一致；集成与 release 由 Manager 承担。
 - `scripts/validate-context.mjs` 只检查通用 context 能力，不再维护 Role 绑定表、固定 Role 集合或 handoff 字段的镜像。
-- Role Contract 位于 `.agents/skills/herdr-agents/roles/`；绑定、启动参数、Supervisor 和 pane 时序位于同一 skill 的 `SKILL.md`。根 `AGENTS.md` 是唯一项目入口，不为客户端复制共享规则正文。（2026-09-26 修订：此前此处要求根 `CLAUDE.md` 保持一行 `@AGENTS.md` import 的薄适配；该文件已随 ADR-0004 的修订删除，本仓不再有客户端专属入口文件。）
+- Role Contract 位于 `.agents/skills/herdr-agents/roles/`；绑定、启动参数和 pane 时序位于同一 skill 的 `SKILL.md`，Supervisor 协议位于同目录的 `supervision.md`（2026-09-27 修订，见 [ADR-0015](0015-role-contracts-in-herdr-agents-skill.md) 决策 3）。根 `AGENTS.md` 是唯一项目入口，不为客户端复制共享规则正文。（2026-09-26 修订：此前此处要求根 `CLAUDE.md` 保持一行 `@AGENTS.md` import 的薄适配；该文件已随 ADR-0004 的修订删除，本仓不再有客户端专属入口文件。）
 - `scripts/task.mjs` 不再把 Role 写入 task state；`pnpm agent:task assign --roles` 明确拒绝，旧 v1 state 仅作兼容读取。
 - 跨包需求可以按 `packages/*` 与 `apps/*` 拆成多个 task，也可以在同一 worktree 内严格隔离目录；代价是交接次数增加。
 
