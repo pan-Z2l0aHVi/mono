@@ -70,16 +70,29 @@ Open decisions（未解决决策）: <待 Manager 或对方决定的问题，以
 
 修复类 handoff 缺已证实根因和证据时，先补调查，不要按猜测返工。Task Packet 保存任务主合同；Manager 只在可选的 Coordination 区域写实施监督摘要，聊天记录替代不了 task state。
 
+## 巡检
+
+派发多于一个实施会话时，用 `/loop 6m` 跑 `node .agents/skills/herdr-agents/watch.mjs` 起巡检（文件见 [`watch.mjs`](./watch.mjs)）；只派一个会话时不装。全部 task `done` 或 `drop` 后停掉 loop。它自己读 task state 与 worktree churn，首行是状态，按下面分派：
+
+| 首行 | 分派 |
+| --- | --- |
+| `NO_ACTIVE` | 没有 agent 在 `working` 且本轮无变化 → 不回话、不读 pane、不发通知 |
+| `NO_CHANGE` | 有 agent 在跑但无信号 → 回一行「巡检：无变化」 |
+| `ALL_DONE` | 全部 task 已完结且无 agent 在跑 → 停掉本 loop 并说明 |
+| `AGENTS_CHANGED` / `AGENTS_SAME` | 块内随后给出 `CHURN_CHANGED=`，有停滞时再给 `STALL?` 行。按列出的行处理：读完成 turn 的输出并回报要点，重点看它是不是停在不该由 Manager 给的放行上；`blocked` 立刻回报；名字消失的用 `pane read` 兜底；`STALL` 用 `agent read` 判断长 turn 还是卡死 |
+
+巡检只报信号，不重复已回报的内容，不重跑已完成的裁决，也不修改任何文件。
+
 ## 编排流程
 
 1. 读取根 [`AGENTS.md`](../../../AGENTS.md) 和 [`docs/agents/workflow.md`](../../../docs/agents/workflow.md)，按 task gate 建立实施 task。新 worktree 先执行 `pnpm install && pnpm run build`，路径和复用规则见 [`docs/agents/worktrees.md`](../../../docs/agents/worktrees.md)。
 2. 用只读 repo 查询确认影响面（命令名以 [`docs/agents/commands.md`](../../../docs/agents/commands.md) 索引为准），再选 task 级别、Coder 数量和目录边界。task state 只记 task-level 事实，不记 Role 列表。
 3. 按 [`supervision.md`](./supervision.md) 打 Supervisor 启用分。产品/UI task 直接在 Task Packet 记 `Supervisor skipped` 和原因，其他 task 按分数决定要不要启动一个。
 4. 为每个实施 Role 建独立 pane，cwd 指向所属 task worktree。按绑定表启动执行体，初始化 Role，确认回执。Supervisor 与 Coder 共享实施 worktree，但 Supervisor 只读。agent 通道、代理切换、MCP 配置或会话重启之后，先用 `herdr agent list` 核对各实施会话存活再恢复派发；中断的会话按工作区 `git status` 和 Task Packet 接手现场。
-5. 先发完所有结构化 handoff，再非阻塞监听各会话。不要用一个长等待阻塞其他派发，实施会话需要较长的超时。
+5. 先发完所有结构化 handoff，再非阻塞监听各会话。不要用一个长等待阻塞其他派发，实施会话需要较长的超时；派发多于一个实施会话时按「巡检」一节起 loop。
 6. 在三个检查点接收 Coder 的 prompt 和 Supervisor 报告，报告格式与状态含义见 [`supervision.md`](./supervision.md)。Manager 处理 `disputed`、`escalated` 以及测试产物和依赖问题，Coder 处理 `open` 的代码修正。任何 Role 发现越界写入或 task gate 风险，都暂停实施并交回 Manager。
 7. 实施完成后由 Reviewer 按 workflow 的 review 拓扑审查冻结 diff，Supervisor 报告不进入 Reviewer 输入。Reviewer 通过后，按 workflow 完成 approval、验证和 `task done`。
-8. `task done` 后释放 Supervisor pane。task 被 drop 时，先保留已有报告和 Task Packet 摘要，再按 Herdr 规则关闭本次编排创建的 pane。
+8. `task done` 后释放 Supervisor pane，并按「巡检」一节停掉 loop。task 被 drop 时，先保留已有报告和 Task Packet 摘要，再按 Herdr 规则关闭本次编排创建的 pane。
 
 ## 完成定义
 
