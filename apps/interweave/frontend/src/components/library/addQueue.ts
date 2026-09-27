@@ -13,6 +13,14 @@ type PreviewRuntime = Pick<
   'isAvailable' | 'prepareFilePreview' | 'releaseFilePreview' | 'pendingFilePreviewURL' | 'findResourceLocationMatches'
 >
 
+type QueueKind = LibraryQueueItem['kind']
+
+/** 两类入口在「重复检查的来源类型」和「入队时的默认 kind」上成对出现，改一处就要改两处。 */
+const KIND_BY_SOURCE: Record<QueueKind, { sourceType: SourceType; resourceKind: ResourceKind }> = {
+  file: { sourceType: SourceType.SourceTypeFile, resourceKind: ResourceKind.ResourceKindFile },
+  url: { sourceType: SourceType.SourceTypeURL, resourceKind: ResourceKind.ResourceKindWeb }
+}
+
 /** 单个待入队位置的重复提示：库里已登记该入口的资源。 */
 export interface LibraryDuplicatePrompt {
   location: string
@@ -24,6 +32,7 @@ export interface LibraryAddQueueController {
   /** 当前等待用户裁决的重复提示；null 表示没有待裁决项。页面据此渲染 dialog。 */
   duplicatePrompt: Ref<LibraryDuplicatePrompt | null>
   enqueueFileLocations(locations: string[]): Promise<void>
+  enqueueURL(url: string): Promise<void>
   /** 裁决当前重复提示；accept=false（取消）时该项不入队。 */
   resolveDuplicate(accept: boolean): void
   renameItem(itemId: string, title: string): void
@@ -34,8 +43,8 @@ export interface LibraryAddQueueController {
   close(): Promise<void>
 }
 
-function queueId() {
-  return `queue-file-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+function queueId(kind: QueueKind) {
+  return `queue-${kind}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
 }
 
 function titleFromLocation(location: string) {
@@ -45,6 +54,22 @@ function titleFromLocation(location: string) {
       .at(-1)
       ?.replace(/\.[^.]+$/, '') || location
   )
+}
+
+/**
+ * 队列项的显示标题。
+ *
+ * URL 项入队时标题留空（后端会按 hostname 或页面 <title> 定名，预填会把它覆盖掉），
+ * 入队列表与确认文案改用主机名兜底展示，完整链接由位置栏承担。
+ */
+export function queueItemTitle(item: LibraryQueueItem) {
+  if (item.title) return item.title
+  if (item.kind !== 'url') return item.location
+  try {
+    return new URL(item.location).host
+  } catch {
+    return item.location
+  }
 }
 
 export function createLibraryAddQueue(runtime: PreviewRuntime): LibraryAddQueueController {
@@ -111,12 +136,12 @@ export function createLibraryAddQueue(runtime: PreviewRuntime): LibraryAddQueueC
     })
   }
 
-  async function confirmBeforeEnqueue(location: string, queried: Set<string>, startedAt: number) {
+  async function confirmBeforeEnqueue(location: string, kind: QueueKind, queried: Set<string>, startedAt: number) {
     // 无 Wails bridge 时没有库可查，直接入队；同一批次内的同一位置只查一次。
     if (!runtime.isAvailable || queried.has(location)) return true
     queried.add(location)
     try {
-      const matches = await runtime.findResourceLocationMatches(location, SourceType.SourceTypeFile)
+      const matches = await runtime.findResourceLocationMatches(location, KIND_BY_SOURCE[kind].sourceType)
       if (!matches.length) return true
       // 查询在途时用户可能已经关掉添加对话框：此时弹窗会成为没有归属的悬空确认，
       // 按取消放行。调用方的代次检查在 await 之后才发生，那时弹窗已经弹出，来不及。
@@ -129,20 +154,22 @@ export function createLibraryAddQueue(runtime: PreviewRuntime): LibraryAddQueueC
     }
   }
 
-  async function enqueueLocations(locations: string[], startedAt: number) {
+  async function enqueueLocations(kind: QueueKind, locations: string[], startedAt: number) {
     const queued = new Set(queue.value.map(item => item.location))
     const queried = new Set<string>()
     for (const value of locations) {
       if (startedAt !== generation) return
       const location = value.trim()
       if (!location || queued.has(location)) continue
-      if (!(await confirmBeforeEnqueue(location, queried, startedAt))) continue
+      if (!(await confirmBeforeEnqueue(location, kind, queried, startedAt))) continue
       if (startedAt !== generation) return
       const item: LibraryQueueItem = {
-        id: queueId(),
-        kind: 'file',
-        resourceKind: ResourceKind.ResourceKindFile,
-        title: titleFromLocation(location),
+        id: queueId(kind),
+        kind,
+        resourceKind: KIND_BY_SOURCE[kind].resourceKind,
+        // URL 的名字交给后端定（hostname 或页面 <title>）：这里预填一个猜测值，提交时
+        // 会把后端已经取好的名字覆盖掉。addResource 只在标题非空时才改名。
+        title: kind === 'url' ? '' : titleFromLocation(location),
         location,
         tags: [],
         previewToken: null,
@@ -150,15 +177,24 @@ export function createLibraryAddQueue(runtime: PreviewRuntime): LibraryAddQueueC
       }
       queue.value.push(item)
       queued.add(location)
-      prepareItem(item)
+      // 只有文件能本地准备预览，URL 的入口要等后端抓过才知道它是什么。
+      if (kind === 'file') prepareItem(item)
     }
   }
 
-  function enqueueFileLocations(locations: string[]) {
+  function enqueue(kind: QueueKind, locations: string[]) {
     const startedAt = generation
     // 链上不外泄异常：入队是提示性流程，失败只影响单项，不该打断调用方的粘贴/选择路径。
-    chain = chain.then(() => enqueueLocations(locations, startedAt)).catch(() => {})
+    chain = chain.then(() => enqueueLocations(kind, locations, startedAt)).catch(() => {})
     return chain
+  }
+
+  function enqueueFileLocations(locations: string[]) {
+    return enqueue('file', locations)
+  }
+
+  function enqueueURL(url: string) {
+    return enqueue('url', [url])
   }
 
   function renameItem(itemId: string, title: string) {
@@ -208,6 +244,7 @@ export function createLibraryAddQueue(runtime: PreviewRuntime): LibraryAddQueueC
     queue,
     duplicatePrompt,
     enqueueFileLocations,
+    enqueueURL,
     resolveDuplicate,
     renameItem,
     setItemTags,

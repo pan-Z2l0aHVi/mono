@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vite-plus/test'
 import type { ResourceSourceView, ResourceView } from '../../../stores/library'
 import {
   createLibraryRestoreQueue,
-  normalizeRestoreURL,
+  normalizeLibraryURL,
   restoreLibraryQueue,
   type LibraryRestoreQueueItem
 } from '../restore'
@@ -66,9 +66,9 @@ describe('library restore queue', () => {
   })
 
   it('校验找回 URL', () => {
-    expect(normalizeRestoreURL(' https://example.com/new ')).toBe('https://example.com/new')
-    expect(normalizeRestoreURL('file:///tmp/new')).toBeNull()
-    expect(normalizeRestoreURL('not a URL')).toBeNull()
+    expect(normalizeLibraryURL(' https://example.com/new ')).toBe('https://example.com/new')
+    expect(normalizeLibraryURL('file:///tmp/new')).toBeNull()
+    expect(normalizeLibraryURL('not a URL')).toBeNull()
   })
 
   it('顺序处理队列，取消不报错，失败后停止并保留失败项', async () => {

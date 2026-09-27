@@ -31,6 +31,8 @@ const props = defineProps<{
 const emit = defineEmits<{
   select: [resource: ResourceView]
   contextmenu: [resource: ResourceView, event: MouseEvent]
+  /** hover 行是「空格预览」的唯一判据（#187），行本身不监听按键。 */
+  hover: [resource: ResourceView, hovered: boolean]
   toggle: [resourceId: string]
   renameChange: [resource: ResourceView, event: WebUiEvent<WebUiEditableText, 'change'>]
   cancelRename: []
@@ -69,6 +71,8 @@ function handleNameChange(event: WebUiEvent<WebUiEditableText, 'change'>) {
     :data-resource-id="resource.id"
     @click="emit('select', resource)"
     @contextmenu="emit('contextmenu', resource, $event)"
+    @mouseenter="emit('hover', resource, true)"
+    @mouseleave="emit('hover', resource, false)"
   >
     <web-ui-checkbox
       v-if="selectionMode"
