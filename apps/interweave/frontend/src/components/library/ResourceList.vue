@@ -19,7 +19,7 @@ import {
   lucideTags,
   lucideTrash2
 } from '@greypan/web-ui/icons'
-import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, ref } from 'vue'
 
 import type { ResourceKind, ResourceSourceView, ResourceView } from '@/stores/library'
 
@@ -55,77 +55,142 @@ const emit = defineEmits<{
 
 const contextMenuRef = ref<WebUiContextMenu>()
 const contextResource = ref<ResourceView | null>(null)
-const hoveredResourceId = ref<string | null>(null)
+const rowsRef = ref<HTMLElement | null>(null)
 const emptyTitle = computed(() => (props.runtimeAvailable ? '资源库为空' : '桌面服务未连接'))
 const checkedSet = computed(() => new Set(props.checkedIds))
 
+const ROW_NAVIGATION_KEYS = new Set(['ArrowDown', 'ArrowUp', 'Home', 'End'])
+
 /*
- * hover 态按当前可见项解析：行重渲染时指针没动，mouseleave 不会补发，直接读 id 可能
- * 命中已经被过滤掉的行。
+ * 容器自己也是 tab stop，所以键盘用户能停在「整个列表」这一层。进列表的键位里带
+ * Shift+F10：web-ui-context-menu 认的 context-menu 键（见 packages/web-ui/src/components/
+ * context-menu/index.ts 的 _onKeydown），焦点在容器上时它照样会开菜单，并把面板锚到容器
+ * 自己身上。容器不对应任何一条资源，那种情况下弹出来的只会是一张位置在列表、内容与列表
+ * 无关的菜单——和这次要修的键盘缺陷是同一个毛病，只是从「行」换成了「列表」。所以这里
+ * 先把焦点交给行：事件继续冒泡到宿主，宿主再读 document.activeElement 时读到的已经是
+ * 那一行，菜单于是既锚在行上、也讲这一行的事。
  */
-const hoveredResource = computed(
-  () => props.resources.find(resource => resource.id === hoveredResourceId.value) ?? null
-)
-// 滚动停下来到用户按下空格之间的静默窗口：惯性尾段里的 keydown 不该被当成预览意图。
-const SCROLL_IDLE_MS = 150
-let scrolling = false
-let scrollIdleTimer: ReturnType<typeof setTimeout> | null = null
-
-function handleHover(resource: ResourceView, hovered: boolean) {
-  hoveredResourceId.value = hovered ? resource.id : null
-}
-
-const EDITABLE_SELECTOR = 'input, textarea, select, [contenteditable="true"]'
+const ENTER_LIST_KEYS = new Set(['Enter', ' ', 'ArrowDown', 'F10'])
 
 /*
- * 走 composedPath 而不是 event.target：监听器在 window 上，而输入控件都封在 web-ui 的
- * shadow 里（input 的 <input>、editable-text 的编辑层 <textarea>）。这些 keydown 是
- * composed 的，冒到 window 时 event.target 已被 retarget 成 shadow host，host 上的
- * closest() 又不跨 shadow 边界——判据会漏掉真正的编辑控件，于是搜索框、行内改名里打的
- * 空格被本功能吃掉，冒泡到 window 前没人拦截。composedPath() 给出完整传播链。
- */
-function isEditableEventTarget(event: Event) {
-  return event
-    .composedPath()
-    .some(node => node instanceof HTMLElement && (node.isContentEditable || node.matches(EDITABLE_SELECTOR)))
-}
-
-function markScrolling() {
-  scrolling = true
-  if (scrollIdleTimer) clearTimeout(scrollIdleTimer)
-  scrollIdleTimer = setTimeout(() => {
-    scrolling = false
-  }, SCROLL_IDLE_MS)
-}
-
-/*
- * hover 行 + 空格预览（#187）。
+ * 行是 div，键盘不像 button 那样补出 click，Enter / Space 在这里翻译成行语义。
  *
- * 行的键盘可达性不在本 issue 范围内，这里按已确认的决定做成纯鼠标的隐藏入口，所以拦截
- * 范围收在「本列表当前有 hover 行」这一个条件上：鼠标不在行上时空格照常滚页面，修饰键
- * （含 Shift+Space 这个「向上滚一屏」的常规手势）、编辑控件和列表滚动中都不接管。
+ * 接管范围收在「行自身拿到焦点」这一个条件上：勾选框和行内改名编辑器各有交互，它们的
+ * keydown 冒到容器时 target 是行内的 shadow host（行内没有监听器，retarget 后的 host
+ * 仍能 closest 到行），不该顺带激活整行。修饰键组合留给浏览器与系统，Shift+Space 仍是
+ * 「向上滚一屏」——焦点不在列表里时，空格也照常滚页面，监听器只在列表容器上。
+ *
+ * 焦点本身不自动开预览，这是被实现逼出来的：预览抽屉的 web-ui-drawer 内部是原生
+ * <dialog> 的 showModal()，打开时浏览器把焦点拉进 dialog、让其后的文档 inert。焦点一落到
+ * 行上、抽屉一开，下一行就永远拿不到焦点，Tab 在行间切换这条主路径当场断掉（浏览器实测：
+ * 抽屉打开后 row.focus() 无响应）。把抽屉改成非模态要动 web-ui 组件，不在本 task 范围内。
+ * 所以焦点在这里的作用是「界定按键的作用域」：空格只作用于焦点所在的那一行，不再需要
+ * 「鼠标恰好悬在某一行」这个隐藏判据——#187 的 hover 触发判据就此下线，预览能力留着。
  */
-function handleWindowKeydown(event: KeyboardEvent) {
-  if (event.key !== ' ' || event.repeat) return
-  if (event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) return
-  if (scrolling || isEditableEventTarget(event)) return
-  const hovered = hoveredResource.value
-  if (!hovered) return
-  event.preventDefault()
-  handlePreview(hovered)
+function handleRowsKeydown(event: KeyboardEvent) {
+  if (event.ctrlKey || event.metaKey || event.altKey) return
+  const target = event.target
+  if (!(target instanceof HTMLElement)) return
+  if (target === rowsRef.value) {
+    enterList(event)
+    return
+  }
+  if (target.closest('[data-resource-row]') !== target) return
+  handleRowKeydown(event, target)
 }
 
-onMounted(() => {
-  window.addEventListener('keydown', handleWindowKeydown)
-  // scroll 不冒泡，只能在 window 上按捕获阶段收：滚的是列表容器还是页面都算数。
-  window.addEventListener('scroll', markScrolling, { capture: true, passive: true })
-})
+/*
+ * 容器这一跳是「进列表」：Tab 落到它时整列表有一圈 focus ring（页面级 focus ring 覆盖
+ * [tabindex] 元素，见 assets/global.css），Enter / Space / ArrowDown 才把焦点交给行——
+ * 落在当前活动行，没有就从首行开始。完全不给反应的话它只是个停住不动的地方。
+ */
+function enterList(event: KeyboardEvent) {
+  if (!ENTER_LIST_KEYS.has(event.key)) return
+  if (event.key === ' ' && event.shiftKey) return
+  // F10 只有带 Shift 才是 context-menu 键，裸 F10 留给浏览器的查找快捷键
+  if (event.key === 'F10' && !event.shiftKey) return
+  const rows = rowElements()
+  if (!rows.length) return
+  const active = rows.find(row => row.dataset.resourceId === props.activeResourceId)
+  event.preventDefault()
+  ;(active ?? rows[0]).focus()
+}
 
-onBeforeUnmount(() => {
-  window.removeEventListener('keydown', handleWindowKeydown)
-  window.removeEventListener('scroll', markScrolling, { capture: true })
-  if (scrollIdleTimer) clearTimeout(scrollIdleTimer)
-})
+/*
+ * 焦点成为 contextResource 的第二个来源。键盘呼出右键菜单（ContextMenu 键 / Shift+F10）
+ * 由 web-ui-context-menu 自己监听宿主元素，它不看 contextResource、只按 document.activeElement
+ * 的 rect 摆面板；而菜单项全部 gate 在 contextResource 上，它原本只有行上的 contextmenu
+ * 事件这一个赋值点。纯键盘呼出时 contextResource 仍是 null，弹出来的是一张紧贴该行、
+ * 内容却只有「删除」和两条分隔线的菜单：位置在说「这一行」，内容在说别的资源。行成了
+ * tab stop 之后这条路径才可达（此前焦点到不了行上），是这次改动引进的，所以在这里补齐。
+ *
+ * 用 focusin 而不是给 ResourceRow 加一个 focus emit：focusin 会冒泡，容器上一个监听就够，
+ * 行内的勾选框与改名编辑器获焦时也会顺带把所属行同步上，不必为一个纯内部的状态同步再扩
+ * 一条对外 emit 契约。落焦到容器自己身上时置空，免得拿上一条资源的菜单项去填一张锚在
+ * 列表上的菜单。
+ */
+function handleRowsFocusin(event: FocusEvent) {
+  const target = event.target
+  if (!(target instanceof HTMLElement)) return
+  const row = target.closest<HTMLElement>('[data-resource-row]')
+  contextResource.value = row ? resourceForRow(row) : null
+}
+
+function handleRowKeydown(event: KeyboardEvent, row: HTMLElement) {
+  if (event.key === 'Enter') {
+    if (event.repeat) return
+    const resource = resourceForRow(row)
+    if (!resource) return
+    event.preventDefault()
+    emit('detail', resource)
+    return
+  }
+  if (event.key === ' ') {
+    if (event.shiftKey || event.repeat) return
+    const resource = resourceForRow(row)
+    if (!resource) return
+    event.preventDefault()
+    emit('select', resource)
+    return
+  }
+  if (!ROW_NAVIGATION_KEYS.has(event.key)) return
+  moveRowFocus(event, row)
+}
+
+/*
+ * 方向键在行间移动焦点，Home / End 到首尾。焦点移动自带滚动（浏览器把新焦点滚进可视区），
+ * 这里不手动 scrollIntoView——那会和浏览器自己的滚动打架。上下键在首尾停住：列表不是环。
+ */
+function moveRowFocus(event: KeyboardEvent, row: HTMLElement) {
+  const rows = rowElements()
+  const index = rows.indexOf(row)
+  if (index < 0) return
+  const next =
+    event.key === 'Home'
+      ? 0
+      : event.key === 'End'
+        ? rows.length - 1
+        : event.key === 'ArrowDown'
+          ? Math.min(index + 1, rows.length - 1)
+          : Math.max(index - 1, 0)
+  if (next === index) return
+  event.preventDefault()
+  rows[next].focus()
+}
+
+function rowElements() {
+  const container = rowsRef.value
+  return container ? [...container.querySelectorAll<HTMLElement>('[data-resource-row]')] : []
+}
+
+/*
+ * 行的 id 从当前可见项里解析。行元素此刻就在 DOM 里，命中的一定是当前渲染的那一条；
+ * 旧的 hover 态要防「行重渲染时指针没动、mouseleave 不补发」的悬空 id，focus 没有这个问题。
+ */
+function resourceForRow(row: HTMLElement) {
+  const id = row.dataset.resourceId
+  return id ? (props.resources.find(resource => resource.id === id) ?? null) : null
+}
 
 // 列表行紧挨着排布，没有行间距。选中态要连成一片，就得由相邻两行各自交出一个直角：
 // 这里只报告「上下邻居是否也选中」，是否真的改成直角由 ResourceRow 结合自身 checked 决定。
@@ -152,7 +217,6 @@ function checkedBelow(index: number) {
 const SWEEP_TOUCH_HOLD_MS = 320
 const SWEEP_TOUCH_SLOP = 10
 
-const rowsRef = ref<HTMLElement | null>(null)
 let sweepAnchor: string | null = null
 let sweepActive = false
 let sweepChecked = false
@@ -299,8 +363,6 @@ async function openContextMenu(resource: ResourceView, event: MouseEvent) {
   }
   event.preventDefault()
   event.stopPropagation()
-  // 菜单浮起后指针已经不在行上：hover 态一起作废，否则空格会从菜单背后再开一次预览。
-  hoveredResourceId.value = null
   contextResource.value = resource
   await nextTick()
   contextMenuRef.value?.openAt(event.clientX, event.clientY)
@@ -376,11 +438,18 @@ function handleRenameChange(resource: ResourceView, event: WebUiEvent<WebUiEdita
       扫选手势挂在列表容器上而不是逐行挂：pointerdown 只用来记方向和落点，划过哪一行
       由 elementFromPoint 现查。行自己只管 click，拖动结束补上来的那个 click 会被
       onRowSelect 吃掉。
+
+      焦点与按键同样收在容器上：行是 div，键盘不会补出 click，Enter / Space / 方向键要
+      翻译成行语义。容器自己是 tab stop，Tab 进列表先落在它上面，Enter / ArrowDown 再进
+      当前活动行（没有就从首行开始）。
     -->
     <div
       v-else
       ref="rowsRef"
       class="w-full h-full select-none [-webkit-touch-callout:none]"
+      tabindex="0"
+      @keydown="handleRowsKeydown"
+      @focusin="handleRowsFocusin"
       @pointerdown="handleSweepStart"
     >
       <ResourceRow
@@ -397,7 +466,6 @@ function handleRenameChange(resource: ResourceView, event: WebUiEvent<WebUiEdita
         :editor-ref="editorRefFor(resource.id)"
         @select="onRowSelect"
         @contextmenu="openContextMenu"
-        @hover="handleHover"
         @toggle="emit('toggle', $event)"
         @rename-change="handleRenameChange"
         @cancel-rename="emit('cancelRename')"

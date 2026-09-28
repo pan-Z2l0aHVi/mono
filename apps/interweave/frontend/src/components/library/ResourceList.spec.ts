@@ -107,9 +107,9 @@ function stubHitTest() {
 }
 
 /** jsdom 没有 PointerEvent，用 MouseEvent 补上扫选要读的那几个字段。 */
-function pointer(type: string, init: Record<string, unknown> = {}) {
+function pointer(type: string, init: Record<string, unknown> = {}, pointerType = 'mouse') {
   const event = new MouseEvent(type, { bubbles: true, cancelable: true, ...init })
-  Object.defineProperty(event, 'pointerType', { value: 'mouse' })
+  Object.defineProperty(event, 'pointerType', { value: pointerType })
   Object.defineProperty(event, 'isPrimary', { value: true })
   return event
 }
@@ -455,6 +455,57 @@ describe('ResourceList：按住拖动批量勾选', () => {
       mounted.unmount()
     }
   })
+
+  /*
+   * 触摸长按是**扫选**的武装延迟，不是「长按预览」：触摸没有 hover，落指就武装会把「本来
+   * 想滚动」误判成扫选，所以先按住不动等长按确认。预览早已不由 hover 或长按触发，但这条
+   * 路径是选择态下唯一的批量勾选手势，钉住它免得被当成死代码清掉。
+   */
+  it('触摸按住不动到长按阈值，扫选武装并勾上首行', async () => {
+    vi.useFakeTimers()
+    const setChecked = vi.fn<SetChecked>()
+    const mounted = await mountList(
+      ['a', 'b'].map(id => resource({ id })),
+      [],
+      { selectionMode: true },
+      { onSetChecked: setChecked }
+    )
+    try {
+      mounted.rows[0].dispatchEvent(pointer('pointerdown', { button: 0, clientX: 100, clientY: 100 }, 'touch'))
+      // 还没到阈值：这一次按下只代表可能想滚动，不该武装
+      expect(setChecked).not.toHaveBeenCalled()
+
+      vi.advanceTimersByTime(400)
+      expect(setChecked).toHaveBeenCalledExactlyOnceWith('a', true)
+    } finally {
+      vi.useRealTimers()
+      mounted.unmount()
+    }
+  })
+
+  it('触摸在长按确认前移动超阈值，判定为滚动而不是扫选', async () => {
+    vi.useFakeTimers()
+    const setChecked = vi.fn<SetChecked>()
+    const mounted = await mountList(
+      ['a', 'b'].map(id => resource({ id })),
+      [],
+      { selectionMode: true },
+      { onSetChecked: setChecked }
+    )
+    const hit = stubHitTest()
+    try {
+      mounted.rows[0].dispatchEvent(pointer('pointerdown', { button: 0, clientX: 100, clientY: 100 }, 'touch'))
+      hit.pointAt(mounted.rows[1])
+      window.dispatchEvent(pointer('pointermove', { clientX: 140, clientY: 100 }, 'touch'))
+      vi.advanceTimersByTime(400)
+
+      expect(setChecked).not.toHaveBeenCalled()
+    } finally {
+      hit.restore()
+      vi.useRealTimers()
+      mounted.unmount()
+    }
+  })
 })
 
 describe('ResourceList：右键菜单的详情入口', () => {
@@ -515,6 +566,179 @@ describe('ResourceList：右键菜单的详情入口', () => {
   })
 })
 
+/*
+ * 键盘呼出右键菜单这条路的回归。web-ui-context-menu 自己在宿主元素上听 ContextMenu 键与
+ * Shift+F10，并且只按 document.activeElement 的 rect 摆面板——它不看菜单项 gate 的
+ * contextResource。contextResource 原本只有行上的 contextmenu 事件这一个赋值点，纯键盘
+ * 呼出时它是 null，于是弹出一张紧贴该行、内容却只有「删除」和两条分隔线的菜单。行成了
+ * tab stop 之后这条路径才可达，所以焦点必须成为 contextResource 的第二个来源。
+ *
+ * jsdom 里的 web-ui-context-menu 是个只有 openAt/close 的桩，不实现键盘呼出，所以这里
+ * 钉的是本组件该保证的那一半：行获焦时菜单项讲的是那一行。真机上「菜单确实弹出来了、
+ * 而且锚在该行上」由浏览器验证取证。
+ */
+describe('ResourceList：键盘呼出右键菜单', () => {
+  afterEach(() => {
+    document.body.innerHTML = ''
+  })
+
+  function missingSource(): ResourceSourceView {
+    return {
+      id: 's1',
+      type: 'file',
+      location: '/tmp/gone.png',
+      available: false,
+      isPreferred: true,
+      orderIndex: 0,
+      metadata: null
+    }
+  }
+
+  /*
+   * 只读顶层项、且只读项自己的文字。「打开方式」是子菜单，textContent 会把它下面的
+   * 「系统默认应用」「看图」等一起吞进来——那样就既认不出「打开方式」这一项，也会把子菜单
+   * 里的「预览 看图」误当成顶层的「预览」。子节点里的文本不算这一项的。
+   */
+  function labelsOf(host: HTMLElement) {
+    return [...host.querySelectorAll('web-ui-context-menu > .contents > web-ui-dropdown-item')].map(item =>
+      [...item.childNodes]
+        .filter(node => node.nodeType === Node.TEXT_NODE)
+        .map(node => node.textContent ?? '')
+        .join('')
+        .trim()
+    )
+  }
+
+  it('行获焦时菜单项讲的是那一行', async () => {
+    const mounted = await mountList([resource({ id: 'r1' })])
+    try {
+      ;(mounted.rows[0] as HTMLElement).focus()
+      await nextTick()
+
+      // 六项齐全。缺哪一项，那一项的键盘入口就是断的
+      expect(labelsOf(mounted.host)).toEqual(
+        expect.arrayContaining(['预览', '打开方式', '详情', '重命名', '编辑标签', '删除'])
+      )
+    } finally {
+      mounted.unmount()
+    }
+  })
+
+  /*
+   * 要证明的是「跟着焦点走」，不是「有行获焦菜单就不空」：焦点挪到不可用的行上，菜单必须
+   * 跟着换掉。否则 sync 落在容器上、拿第一条糊弄过去，第二条资源的菜单项仍然是错的。
+   */
+  it('焦点挪到另一行时菜单项跟着换', async () => {
+    const mounted = await mountList([
+      resource({ id: 'r1' }),
+      resource({ id: 'r2', available: false, sources: [missingSource()] })
+    ])
+    try {
+      const [first, second] = mounted.rows as HTMLElement[]
+      first.focus()
+      await nextTick()
+      expect(labelsOf(mounted.host)).toContain('预览')
+
+      second.focus()
+      await nextTick()
+
+      const labels = labelsOf(mounted.host)
+      expect(labels).not.toContain('预览')
+      expect(labels).not.toContain('编辑标签')
+      expect(labels).toContain('找回资源')
+      expect(labels).toContain('详情')
+    } finally {
+      mounted.unmount()
+    }
+  })
+
+  /*
+   * 焦点退回容器（Shift+Tab 一步就能到）时，「当前行」这个东西不存在了。此时必须置空，
+   * 不能留着上一行的资源——否则那张菜单的位置在列表上、内容却是某一条具体资源。
+   */
+  it('焦点在容器上时不残留上一行的菜单项', async () => {
+    const mounted = await mountList([resource({ id: 'r1' })])
+    try {
+      const row = mounted.rows[0] as HTMLElement
+      const container = row.parentElement as HTMLElement
+      row.focus()
+      await nextTick()
+      expect(labelsOf(mounted.host)).toContain('预览')
+
+      container.focus()
+      await nextTick()
+
+      const labels = labelsOf(mounted.host)
+      expect(labels).not.toContain('预览')
+      expect(labels).not.toContain('详情')
+      expect(labels).not.toContain('重命名')
+    } finally {
+      mounted.unmount()
+    }
+  })
+
+  /*
+   * 焦点在容器上按 Shift+F10，宿主照样会开菜单并把面板锚到容器上。容器不对应任何一条资源，
+   * 所以这里先把焦点交给行：事件继续冒泡，宿主再读 document.activeElement 时读到的已经是
+   * 那一行，菜单于是既锚在行上、也讲这一行的事。
+   */
+  it('容器上按 Shift+F10 先把焦点交给行', async () => {
+    const mounted = await mountList([resource({ id: 'r1' }), resource({ id: 'r2' })])
+    try {
+      const container = mounted.host.querySelector('[data-resource-row]')?.parentElement as HTMLElement
+      container.focus()
+      expect(document.activeElement).toBe(container)
+
+      keydown(container, { key: 'F10', shiftKey: true })
+
+      expect(document.activeElement).toBe(mounted.rows[0])
+    } finally {
+      mounted.unmount()
+    }
+  })
+
+  it('裸 F10 不当作 context-menu 键，交给浏览器', async () => {
+    const mounted = await mountList([resource({ id: 'r1' })])
+    try {
+      const container = mounted.host.querySelector('[data-resource-row]')?.parentElement as HTMLElement
+      container.focus()
+
+      const event = keydown(container, { key: 'F10' })
+
+      expect(document.activeElement).toBe(container)
+      expect(event.defaultPrevented).toBe(false)
+    } finally {
+      mounted.unmount()
+    }
+  })
+
+  /*
+   * 鼠标右键是 contextResource 的原有来源，focusin 不能抢它的戏：焦点还停在上一行时右键
+   * 另一行，菜单必须讲右键那一行。
+   */
+  it('焦点在别行时右键，菜单仍然讲右键那一行', async () => {
+    const mounted = await mountList([
+      resource({ id: 'r1' }),
+      resource({ id: 'r2', available: false, sources: [missingSource()] })
+    ])
+    try {
+      ;(mounted.rows[0] as HTMLElement).focus()
+      await nextTick()
+
+      mounted.rows[1]!.dispatchEvent(
+        new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: 4, clientY: 4 })
+      )
+      await nextTick()
+
+      const labels = labelsOf(mounted.host)
+      expect(labels).not.toContain('预览')
+      expect(labels).toContain('找回资源')
+    } finally {
+      mounted.unmount()
+    }
+  })
+})
+
 describe('ResourceList：右键菜单项的搬运包装', () => {
   afterEach(() => {
     document.body.innerHTML = ''
@@ -553,29 +777,50 @@ describe('ResourceList：右键菜单项的搬运包装', () => {
   })
 })
 
-function hover(element: Element, entered: boolean) {
-  element.dispatchEvent(new MouseEvent(entered ? 'mouseenter' : 'mouseleave'))
-}
-
-function pressSpace(init: KeyboardEventInit = {}) {
-  const event = new KeyboardEvent('keydown', { key: ' ', bubbles: true, cancelable: true, ...init })
-  window.dispatchEvent(event)
+function keydown(target: Element, init: KeyboardEventInit) {
+  const event = new KeyboardEvent('keydown', { bubbles: true, cancelable: true, ...init })
+  target.dispatchEvent(event)
   return event
 }
 
 /*
- * #187：hover 行 + 空格预览。
+ * 预览的判据从「hover 行 + 空格」换成「焦点进入行」（#187 的 hover 入口已下线）。键盘
+ * 用户没有 hover，列表的键盘可达性靠 focus 承担，所以 tab stop 与 focus 环一起钉在这里。
  *
- * 按已确认的决定做成纯鼠标的隐藏入口（不引入焦点管理），因此拦截范围必须收在「本列表
- * 当前有 hover 行」这一个条件上：鼠标不在行上、带修饰键、列表滚动中都不接管。
+ * jsdom 不实现 Tab 键的真实焦点推进（那是浏览器行为），所以「行间可切换」在这里断言
+ * 可聚焦前提（容器与行都是 tab stop），真实 Tab 推进由浏览器验证取证。
  */
-describe('ResourceList：hover 行按空格预览', () => {
+describe('ResourceList：键盘导航与预览入口', () => {
   afterEach(() => {
-    vi.useRealTimers()
     document.body.innerHTML = ''
   })
 
-  it('hover 任一行后按空格弹出该行预览，并吃掉空格默认的滚动', async () => {
+  /*
+   * 键盘用户没有 hover，focus 环是他唯一的到位指示。环由 assets/global.css 的页面级规则画，
+   * 那条规则命中 [tabindex]:not([tabindex='-1'])，所以这里钉住容器与行都落在它的命中范围内：
+   * 行一旦被移出 Tab 序列，键盘用户就彻底看不见自己在哪一行。环的颜色与粗细由浏览器取证，
+   * jsdom 里 Tailwind 不生效，读不到。
+   */
+  it('容器与每一行都是 tab stop，落在页面级 focus 环的命中范围内', async () => {
+    const mounted = await mountList(['a', 'b'].map(id => resource({ id })))
+    try {
+      const container = mounted.host.querySelector('[data-resource-row]')?.parentElement
+      expect(container?.getAttribute('tabindex')).toBe('0')
+      expect(mounted.rows.map(row => row.getAttribute('tabindex'))).toEqual(['0', '0'])
+      for (const element of [...mounted.rows, container!]) {
+        expect(element.matches("[tabindex]:not([tabindex='-1'])")).toBe(true)
+      }
+    } finally {
+      mounted.unmount()
+    }
+  })
+
+  /*
+   * 回归：焦点进入行**不**自动开预览。预览抽屉内部是原生 <dialog> 的 showModal()，打开
+   * 时浏览器把焦点拉进 dialog 并让其后的文档 inert——真机上实测过抽屉一开，row.focus()
+   * 就没有响应，Tab 在行间切换这条主路径会当场断掉。预览改由焦点行上的空格触发。
+   */
+  it('焦点进入行不自动开预览', async () => {
     const preview = vi.fn<(resource: ResourceView) => void>()
     const mounted = await mountList(
       [resource({ id: 'r1' }), resource({ id: 'r2', title: '第二条' })],
@@ -585,150 +830,253 @@ describe('ResourceList：hover 行按空格预览', () => {
     )
 
     try {
-      hover(mounted.rows[1]!, true)
-      const event = pressSpace()
-
-      expect(preview).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ id: 'r2' }))
-      expect(event.defaultPrevented).toBe(true)
-    } finally {
-      mounted.unmount()
-    }
-  })
-
-  it('鼠标不在列表上时空格不拦截，交给页面滚动', async () => {
-    const preview = vi.fn<(resource: ResourceView) => void>()
-    const mounted = await mountList([resource()], [], {}, { onPreview: preview })
-
-    try {
-      const event = pressSpace()
-
+      ;(mounted.rows[1] as HTMLElement).focus()
+      expect(document.activeElement).toBe(mounted.rows[1])
       expect(preview).not.toHaveBeenCalled()
-      expect(event.defaultPrevented).toBe(false)
-    } finally {
-      mounted.unmount()
-    }
-  })
-
-  it('指针移出该行后空格恢复默认滚动', async () => {
-    const preview = vi.fn<(resource: ResourceView) => void>()
-    const mounted = await mountList([resource()], [], {}, { onPreview: preview })
-
-    try {
-      const element = mounted.rows[0]!
-      hover(element, true)
-      hover(element, false)
-      const event = pressSpace()
-
-      expect(preview).not.toHaveBeenCalled()
-      expect(event.defaultPrevented).toBe(false)
-    } finally {
-      mounted.unmount()
-    }
-  })
-
-  it('带修饰键的空格不接管', async () => {
-    const preview = vi.fn<(resource: ResourceView) => void>()
-    const mounted = await mountList([resource()], [], {}, { onPreview: preview })
-
-    try {
-      hover(mounted.rows[0]!, true)
-      pressSpace({ metaKey: true })
-
-      expect(preview).not.toHaveBeenCalled()
-    } finally {
-      mounted.unmount()
-    }
-  })
-
-  it('Shift+空格不接管，向上滚一屏的手势留给页面', async () => {
-    const preview = vi.fn<(resource: ResourceView) => void>()
-    const mounted = await mountList([resource()], [], {}, { onPreview: preview })
-
-    try {
-      hover(mounted.rows[0]!, true)
-      const event = pressSpace({ shiftKey: true })
-
-      expect(preview).not.toHaveBeenCalled()
-      expect(event.defaultPrevented).toBe(false)
     } finally {
       mounted.unmount()
     }
   })
 
   /*
-   * 回归：编辑控件封在 web-ui 的 shadow 里（input 的 <input>、editable-text 的编辑层
-   * <textarea>），它们的 keydown 是 composed 的，冒到 window 时 event.target 已被
-   * retarget 成 shadow host。守卫若只看 target，搜索框和行内改名里打的空格会被本功能
-   * 吃掉：查询词少一个词、改名打不出空格，还顺带弹一个预览抽屉。
+   * 行间切换靠浏览器原生的 Tab 焦点推进，组件不自己接管 Tab：接管了就出不去列表。
    */
-  it('shadow 内的编辑控件里按空格不接管，空格照常进控件', async () => {
+  it('Tab 不由列表接管，行间切换交给浏览器原生焦点推进', async () => {
+    const select = vi.fn<RowHandler>()
+    const detail = vi.fn<RowHandler>()
+    const mounted = await mountList([resource({ id: 'r1' })], [], {}, { onSelect: select, onDetail: detail })
+    try {
+      const event = keydown(mounted.rows[0]!, { key: 'Tab' })
+      expect(event.defaultPrevented).toBe(false)
+      expect(select).not.toHaveBeenCalled()
+      expect(detail).not.toHaveBeenCalled()
+    } finally {
+      mounted.unmount()
+    }
+  })
+
+  it('鼠标 hover 仍留底色，但不再触发预览', async () => {
     const preview = vi.fn<(resource: ResourceView) => void>()
-    const mounted = await mountList([resource()], [], {}, { onPreview: preview })
+    const mounted = await mountList([resource({ id: 'r1' })], [], {}, { onPreview: preview })
 
     try {
-      hover(mounted.rows[0]!, true)
-      const host = document.createElement('div')
-      const textarea = document.createElement('textarea')
-      host.attachShadow({ mode: 'open' }).append(textarea)
-      mounted.host.append(host)
-
-      const event = new KeyboardEvent('keydown', { key: ' ', bubbles: true, composed: true, cancelable: true })
-      textarea.dispatchEvent(event)
+      const row = mounted.rows[0]!
+      row.dispatchEvent(new MouseEvent('mouseenter'))
+      row.dispatchEvent(new MouseEvent('mouseleave'))
 
       expect(preview).not.toHaveBeenCalled()
+      // 要去掉的是「hover 作为预览触发判据」，底色本身是 hover 视觉反馈，必须留着
+      expect(row.className.split(/\s+/)).toContain('hover:bg-black/3.5')
+    } finally {
+      mounted.unmount()
+    }
+  })
+
+  it('Enter 打开详情', async () => {
+    const detail = vi.fn<RowHandler>()
+    const preview = vi.fn<RowHandler>()
+    const mounted = await mountList([resource({ id: 'r1' })], [], {}, { onDetail: detail, onPreview: preview })
+
+    try {
+      const event = keydown(mounted.rows[0]!, { key: 'Enter' })
+
+      expect(detail).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ id: 'r1' }))
+      expect(preview).not.toHaveBeenCalled()
+      expect(event.defaultPrevented).toBe(true)
+    } finally {
+      mounted.unmount()
+    }
+  })
+
+  /*
+   * 空格接在点击的语义上（父级收到 select 后开预览），这就是 hover 下线后预览的入口：
+   * 判据从「鼠标悬停」换成了「焦点在行上」，功能本身没删。
+   */
+  it('Space 与点击一致，走 select', async () => {
+    const select = vi.fn<RowHandler>()
+    const detail = vi.fn<RowHandler>()
+    const mounted = await mountList([resource({ id: 'r1' })], [], {}, { onSelect: select, onDetail: detail })
+
+    try {
+      const event = keydown(mounted.rows[0]!, { key: ' ' })
+
+      expect(select).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ id: 'r1' }))
+      expect(detail).not.toHaveBeenCalled()
+      expect(event.defaultPrevented).toBe(true)
+    } finally {
+      mounted.unmount()
+    }
+  })
+
+  /*
+   * 回归：Shift+Space 是「向上滚一屏」的常规手势，焦点落在行上也不能吃掉它。
+   */
+  it('Shift+Space 不接管，向上滚一屏留给页面', async () => {
+    const select = vi.fn<RowHandler>()
+    const mounted = await mountList([resource({ id: 'r1' })], [], {}, { onSelect: select })
+
+    try {
+      const event = keydown(mounted.rows[0]!, { key: ' ', shiftKey: true })
+
+      expect(select).not.toHaveBeenCalled()
       expect(event.defaultPrevented).toBe(false)
     } finally {
       mounted.unmount()
     }
   })
 
-  it('列表滚动期间不触发，滚动停下后恢复', async () => {
-    vi.useFakeTimers()
-    const preview = vi.fn<(resource: ResourceView) => void>()
-    const mounted = await mountList([resource()], [], {}, { onPreview: preview })
+  it('带修饰键的 Enter 与 Space 不接管，浏览器与系统的组合键优先', async () => {
+    const select = vi.fn<RowHandler>()
+    const detail = vi.fn<RowHandler>()
+    const mounted = await mountList([resource({ id: 'r1' })], [], {}, { onSelect: select, onDetail: detail })
 
     try {
-      const element = mounted.rows[0]!
-      hover(element, true)
-      // scroll 不冒泡，组件在 window 上按捕获阶段收；从行上派发最接近真实来源。
-      element.dispatchEvent(new Event('scroll'))
-      pressSpace()
-      expect(preview).not.toHaveBeenCalled()
+      keydown(mounted.rows[0]!, { key: ' ', metaKey: true })
+      keydown(mounted.rows[0]!, { key: 'Enter', ctrlKey: true })
 
-      vi.advanceTimersByTime(200)
-      pressSpace()
-
-      expect(preview).toHaveBeenCalledOnce()
+      expect(select).not.toHaveBeenCalled()
+      expect(detail).not.toHaveBeenCalled()
     } finally {
       mounted.unmount()
     }
   })
 
-  it('右键打开菜单后 hover 态作废，空格不会从菜单背后再开预览', async () => {
-    const preview = vi.fn<(resource: ResourceView) => void>()
-    const mounted = await mountList([resource()], [], {}, { onPreview: preview })
-
+  it('方向键在行间移动焦点，Home / End 到首尾', async () => {
+    const mounted = await mountList(['a', 'b', 'c'].map(id => resource({ id })))
     try {
-      const element = mounted.rows[0]!
-      hover(element, true)
-      element.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true }))
-      await nextTick()
-      pressSpace()
+      const [a, b, c] = mounted.rows as HTMLElement[]
+      a.focus()
 
-      expect(preview).not.toHaveBeenCalled()
+      keydown(a, { key: 'ArrowDown' })
+      expect(document.activeElement).toBe(b)
+
+      keydown(b, { key: 'ArrowDown' })
+      expect(document.activeElement).toBe(c)
+
+      keydown(c, { key: 'Home' })
+      expect(document.activeElement).toBe(a)
+
+      keydown(a, { key: 'End' })
+      expect(document.activeElement).toBe(c)
     } finally {
       mounted.unmount()
     }
   })
 
-  it('卸载后不再监听全局按键', async () => {
-    const preview = vi.fn<(resource: ResourceView) => void>()
-    const mounted = await mountList([resource()], [], {}, { onPreview: preview })
-    hover(mounted.rows[0]!, true)
+  it('首尾再按方向键不越界，也不吞掉按键：列表不是环', async () => {
+    const mounted = await mountList(['a', 'b'].map(id => resource({ id })))
+    try {
+      const [a, b] = mounted.rows as HTMLElement[]
+      a.focus()
+      const atFirst = keydown(a, { key: 'ArrowUp' })
+      expect(document.activeElement).toBe(a)
+      expect(atFirst.defaultPrevented).toBe(false)
 
-    mounted.unmount()
-    pressSpace()
+      b.focus()
+      const atLast = keydown(b, { key: 'ArrowDown' })
+      expect(document.activeElement).toBe(b)
+      expect(atLast.defaultPrevented).toBe(false)
+    } finally {
+      mounted.unmount()
+    }
+  })
 
-    expect(preview).not.toHaveBeenCalled()
+  it('行内勾选框的按键不被行接管', async () => {
+    const select = vi.fn<RowHandler>()
+    const detail = vi.fn<RowHandler>()
+    const mounted = await mountList(
+      [resource({ id: 'r1' })],
+      [],
+      { selectionMode: true },
+      { onSelect: select, onDetail: detail }
+    )
+    try {
+      const checkbox = mounted.rows[0]!.querySelector('web-ui-checkbox')
+      if (!checkbox) throw new Error('选择态下没有勾选框')
+
+      keydown(checkbox, { key: ' ' })
+      keydown(checkbox, { key: 'Enter' })
+
+      expect(select).not.toHaveBeenCalled()
+      expect(detail).not.toHaveBeenCalled()
+    } finally {
+      mounted.unmount()
+    }
+  })
+
+  /*
+   * 回归：改名编辑器封在 web-ui 的 shadow 里，它的 keydown 是 composed 的，冒到列表容器
+   * 时 target 已被 retarget 成 shadow host。宿主仍能 closest 到那一行，若只判「有没有落在
+   * 行内」，编辑途中打的 Enter / Space 就会被行再解释一遍。
+   */
+  it('shadow 内的行内改名编辑器按键不被行接管', async () => {
+    const select = vi.fn<RowHandler>()
+    const detail = vi.fn<RowHandler>()
+    const mounted = await mountList(
+      [resource({ id: 'r1' })],
+      [],
+      { editingNameKey: 'r1' },
+      { onSelect: select, onDetail: detail }
+    )
+    try {
+      const editor = mounted.rows[0]!.querySelector('web-ui-editable-text')
+      if (!editor) throw new Error('改名态下没有行内编辑器')
+
+      keydown(editor, { key: ' ', composed: true })
+      keydown(editor, { key: 'Enter', composed: true })
+
+      expect(select).not.toHaveBeenCalled()
+      expect(detail).not.toHaveBeenCalled()
+    } finally {
+      mounted.unmount()
+    }
+  })
+
+  it('容器上 Enter 把焦点交给当前活动行', async () => {
+    const mounted = await mountList(
+      ['a', 'b', 'c'].map(id => resource({ id })),
+      [],
+      { activeResourceId: 'b' }
+    )
+    try {
+      const container = mounted.host.querySelector('[data-resource-row]')!.parentElement as HTMLElement
+      container.focus()
+      keydown(container, { key: 'Enter' })
+
+      expect(document.activeElement).toBe(mounted.rows[1])
+    } finally {
+      mounted.unmount()
+    }
+  })
+
+  it('没有活动行时，容器上 ArrowDown 把焦点交给首行', async () => {
+    const mounted = await mountList(['a', 'b'].map(id => resource({ id })))
+    try {
+      const container = mounted.host.querySelector('[data-resource-row]')!.parentElement as HTMLElement
+      container.focus()
+      keydown(container, { key: 'ArrowDown' })
+
+      expect(document.activeElement).toBe(mounted.rows[0])
+    } finally {
+      mounted.unmount()
+    }
+  })
+
+  it('容器自己只承接「进列表」这一跳，方向键之外不解释按键', async () => {
+    const select = vi.fn<RowHandler>()
+    const detail = vi.fn<RowHandler>()
+    const mounted = await mountList([resource({ id: 'r1' })], [], {}, { onSelect: select, onDetail: detail })
+    try {
+      const container = mounted.host.querySelector('[data-resource-row]')!.parentElement as HTMLElement
+      container.focus()
+      const event = keydown(container, { key: 'a' })
+
+      expect(event.defaultPrevented).toBe(false)
+      expect(select).not.toHaveBeenCalled()
+      expect(detail).not.toHaveBeenCalled()
+      expect(document.activeElement).toBe(container)
+    } finally {
+      mounted.unmount()
+    }
   })
 })
