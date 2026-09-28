@@ -156,14 +156,22 @@ function stopResourceRename() {
 }
 
 function selectResource(resource: ResourceView) {
+  // 选择态里这个分支只剩「手指点一下勾选框」会走到：鼠标和长按扫选都在 pointerdown
+  // 就落定状态，随后的 click 被 ResourceList 吃掉了，不会翻回去。
   if (selectionMode.value) {
     toggleChecked(resource.id)
     return
   }
+  previewResource(resource)
+}
+
+/*
+ * 打开详情顺手验一下失效 URL：只在当前判为不可用时探测（策略见 probeURLSourceOnOpen）。
+ * 左键进的是预览，不经过这里——预览不是「打开详情」，不该发出网络请求。
+ */
+function openResourceDetail(resource: ResourceView) {
   activeResourceId.value = resource.id
   detailOpen.value = true
-  // 打开详情顺手验一下失效 URL：只在当前判为不可用时探测（策略见 probeURLSourceOnOpen）。
-  // 编辑标签与预览不经过这里——它们不是「打开详情」，不该发出网络请求。
   void probeURLSourceOnOpen(resource.preferred)
 }
 
@@ -209,6 +217,13 @@ function toggleChecked(resourceId: string) {
   checkedIds.value = checkedIds.value.includes(resourceId)
     ? checkedIds.value.filter(id => id !== resourceId)
     : [...checkedIds.value, resourceId]
+}
+
+// 扫选要的是「置成某个状态」而不是「翻一下」：一行被指针划过两次不能自己弹回去。
+function setResourceChecked(resourceId: string, checked: boolean) {
+  const isChecked = checkedIds.value.includes(resourceId)
+  if (isChecked === checked) return
+  checkedIds.value = checked ? [...checkedIds.value, resourceId] : checkedIds.value.filter(id => id !== resourceId)
 }
 
 function toggleCheckAll() {
@@ -541,11 +556,13 @@ onMounted(() => {
         :media-url-for="resourceMediaURL"
         @select="selectResource"
         @preview="previewResource"
+        @detail="openResourceDetail"
         @start-rename="renameResourceFromMenu"
         @edit-tags="editResourceTags"
         @delete="requestDeleteResource"
         @recover="handleRecoverSource"
         @toggle="toggleChecked"
+        @set-checked="setResourceChecked"
         @rename-change="handleResourceNameChange"
         @cancel-rename="stopResourceRename"
       />

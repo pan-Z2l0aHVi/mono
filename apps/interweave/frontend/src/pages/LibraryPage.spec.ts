@@ -18,6 +18,17 @@ import { useLibraryStore } from '../stores/library'
 
 import LibraryPage from './LibraryPage.vue'
 
+// 右键菜单由 web-ui 自己接管渲染，单测只需要它有这两个接口
+if (!customElements.get('web-ui-context-menu')) {
+  customElements.define(
+    'web-ui-context-menu',
+    class extends HTMLElement {
+      openAt() {}
+      close() {}
+    }
+  )
+}
+
 const runtimeStub = {
   current: null as LibraryRuntime | null,
   availabilityListener: null as ((event: SourceAvailabilityEventDTO) => void) | null,
@@ -142,6 +153,30 @@ function row(host: HTMLElement, resourceId: string) {
   return element
 }
 
+/** 抽屉的 open 是 reflect 属性，jsdom 里按属性读；没升级成自定义元素时退回读 attribute。 */
+function drawerOpen(host: HTMLElement, label: string) {
+  const drawer = host.querySelector(`web-ui-drawer[dialog-label="${label}"]`) as
+    | (HTMLElement & { open?: boolean })
+    | null
+  if (!drawer) throw new Error(`没有找到「${label}」抽屉`)
+  return drawer.open ?? drawer.hasAttribute('open')
+}
+
+/*
+ * 详情只从右键菜单进（列表左键是预览）。先右键唤起菜单，再点「详情」那一项。
+ */
+async function openDetailFromMenu(host: HTMLElement) {
+  row(host, 'resource-1').dispatchEvent(
+    new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: 4, clientY: 4 })
+  )
+  await nextTick()
+  const item = [...host.querySelectorAll('web-ui-dropdown-item')].find(node => node.textContent?.trim() === '详情')
+  if (!item) throw new Error('右键菜单里没有「详情」项')
+  item.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+  await nextTick()
+  await nextTick()
+}
+
 /** jsdom 不实现 matchMedia；页面只在启动时读一次 matches 并订阅 change。 */
 function matchMediaStub() {
   return {
@@ -179,11 +214,31 @@ describe('LibraryPage：可用性感知接线', () => {
     const mounted = await mountPage()
 
     try {
+      await openDetailFromMenu(mounted.host)
+
+      expect(probeURLSourceOnOpen).toHaveBeenCalledExactlyOnceWith('source-1')
+    } finally {
+      await mounted.close()
+    }
+  })
+
+  /*
+   * 列表左键现在是预览：开的是预览抽屉，不该顺手去探测详情那条路上的 URL source。
+   * 探测只属于「打开详情」，由右键菜单的详情项触发。
+   */
+  it('左键行进的是预览抽屉，不开详情也不探测', async () => {
+    const probeURLSourceOnOpen = vi.fn<LibraryRuntime['probeURLSourceOnOpen']>()
+    runtimeStub.current = createRuntime({ probeURLSourceOnOpen })
+    const mounted = await mountPage()
+
+    try {
       row(mounted.host, 'resource-1').click()
       await nextTick()
       await nextTick()
 
-      expect(probeURLSourceOnOpen).toHaveBeenCalledExactlyOnceWith('source-1')
+      expect(drawerOpen(mounted.host, '资源预览')).toBe(true)
+      expect(drawerOpen(mounted.host, '资源详情')).toBe(false)
+      expect(probeURLSourceOnOpen).not.toHaveBeenCalled()
     } finally {
       await mounted.close()
     }
@@ -198,9 +253,7 @@ describe('LibraryPage：可用性感知接线', () => {
     const mounted = await mountPage()
 
     try {
-      row(mounted.host, 'resource-1').click()
-      await nextTick()
-      await nextTick()
+      await openDetailFromMenu(mounted.host)
 
       expect(probeURLSourceOnOpen).not.toHaveBeenCalled()
     } finally {
@@ -222,9 +275,7 @@ describe('LibraryPage：可用性感知接线', () => {
     const mounted = await mountPage()
 
     try {
-      row(mounted.host, 'resource-1').click()
-      await nextTick()
-      await nextTick()
+      await openDetailFromMenu(mounted.host)
 
       expect(probeURLSourceOnOpen).not.toHaveBeenCalled()
     } finally {
@@ -319,9 +370,7 @@ describe('LibraryPage：备注失败回写', () => {
     const mounted = await mountPage()
 
     try {
-      row(mounted.host, 'resource-1').click()
-      await nextTick()
-      await nextTick()
+      await openDetailFromMenu(mounted.host)
 
       const editor = mounted.host.querySelector('web-ui-textarea') as HTMLElement & { value: string }
       if (!editor) throw new Error('备注输入框未渲染')
