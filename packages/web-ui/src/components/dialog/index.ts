@@ -66,6 +66,20 @@ export class WebUiDialog extends LitElement {
     if (props.has('open')) {
       if (this._userOpenChange.consume()) this.emitOpenChange()
       this._presence.sync(this.open)
+      if (this.open) {
+        // presence.sync 内的 showModal() 把 dialog 提升进 top layer。双击手势本身
+        // 留下的活选区会被浏览器拿去和提升后的新布局重新解析，结果选区落到刚挂载的
+        // dialog 正文上。脆弱的是「手势来源的活选区」，不是 dblclick 的判定窗口：把
+        // 打开推迟 250ms（早过双击判定）仍然复现。选区由浏览器在 showModal() 调用
+        // 内部生成：脚本没有任何 Selection API 调用，在 dblclick 上 preventDefault
+        // 也拦不住。
+        //
+        // 实测（Chromium）showModal() 不会动打开前已经存在的选区，所以这一次清理
+        // 同时也覆盖「先选中页面文本、再打开」的情况——modal 打开后被选中的内容挡在
+        // 遮罩后面本来也已不可用。这里只清文档选区，不动 user-select，浮层内正文
+        // 仍可正常拖选。
+        window.getSelection()?.removeAllRanges()
+      }
       // 原生 dialog 登记为开启态浮层：挂在它上面的 portal 面板成为本层后代，
       // Escape 仲裁据此判出最内层（issue #120 Block 1）。
       const dialog = this.dialog
