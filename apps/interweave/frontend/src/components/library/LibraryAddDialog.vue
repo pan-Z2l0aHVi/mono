@@ -391,7 +391,7 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
             icon 盒 52px/圆角 18px/字形 23px、icon 到文案 12px、文案 15px/600/行高 1.4，
             桌面与 max-[640px] 各断点与左侧逐一对应。
             关键一项是 --wui-empty-min-height: 0：web-ui-empty 的 `.empty` 默认把内容顶端对齐在
-            160px min-block-size 盒内，置 0 后内容才随外层 place-items-center 真正垂直居中。
+            240px min-block-size 盒内，置 0 后内容才随外层 place-items-center 真正垂直居中。
             图标到文案的 6px 基础间距来自组件内部写死的 `.empty-description` margin-top（未开放
             token），mt-1.5 把它补到左侧 gap-3 的 12px；两行文案与行间距由 slot 内容整体接管，
             与左侧同样是「主文案 + 辅助说明」两行，合成块高度因此与左侧逐像素相等，icon 行对齐。
@@ -399,7 +399,7 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
             drop 区的强调色会读成可点击目标。
           -->
           <web-ui-empty
-            size="small"
+            :size="40"
             class="[--wui-empty-min-height:0] [--wui-empty-padding:0] [--wui-empty-icon-size:52px] [--wui-internal-empty-icon-radius:18px] max-[640px]:[--wui-empty-icon-size:40px] max-[640px]:[--wui-internal-empty-icon-radius:12px]"
           >
             <web-ui-icon slot="icon" :icon="lucideInbox" :size="23" />

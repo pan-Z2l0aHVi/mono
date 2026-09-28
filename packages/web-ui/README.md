@@ -1212,24 +1212,36 @@ Badge / notification count.
 
 Empty state placeholder.
 
-| Attribute     | Type                             | Default    | Description      |
-| ------------- | -------------------------------- | ---------- | ---------------- |
-| `title`       | `string`                         | `''`       | Title text       |
-| `description` | `string`                         | `''`       | Description text |
-| `size`        | `'small' \| 'medium' \| 'large'` | `'medium'` | Empty state size |
+| Attribute     | Type     | Default | Description                                                                 |
+| ------------- | -------- | ------- | --------------------------------------------------------------------------- |
+| `title`       | `string` | `''`    | Title text                                                                  |
+| `description` | `string` | `''`    | Description text                                                            |
+| `size`        | `number` | `56`    | Icon container edge length (px); invalid or non-positive values become `56` |
+
+`size` only drives the icon: the container edge is `size`, and the default glyph is `round(size * 3 / 7)`. It no longer scales `min-height`, `padding`, title/description font size, or block spacing — override the CSS custom properties below for those. `--wui-empty-icon-size` takes precedence over `size`.
+
+**Migrating from the `'small' \| 'medium' \| 'large'` enum:** `size` is now a number, and the removed tiers no longer change any layout metric.
+
+| Old value | New value | Default glyph |
+| --------- | --------- | ------------- |
+| `small`   | `40`      | `17`          |
+| `medium`  | `56`      | `24`          |
+| `large`   | `72`      | `31`          |
 
 **Slots:** `default` (title, overrides `title` prop), `icon`, `description`, `action`
 
 **CSS Custom Properties:**
 
-| Property                            | Default     | Description                    |
-| ----------------------------------- | ----------- | ------------------------------ |
-| `--wui-empty-min-height`            | `240px`     | Min height (medium)            |
-| `--wui-empty-padding`               | `32px 24px` | Padding (medium)               |
-| `--wui-empty-icon-size`             | `56px`      | Icon container size (medium)   |
-| `--wui-empty-content-width`         | `480px`     | Max width of title/description |
-| `--wui-empty-title-font-size`       | `16px`      | Title font size (medium)       |
-| `--wui-empty-description-font-size` | `14px`      | Description font size (medium) |
+None of these vary with `size` any more; the values below always apply unless you override them.
+
+| Property                            | Default     | Description                           |
+| ----------------------------------- | ----------- | ------------------------------------- |
+| `--wui-empty-min-height`            | `240px`     | Min height                            |
+| `--wui-empty-padding`               | `32px 24px` | Padding                               |
+| `--wui-empty-icon-size`             | `56px`      | Icon container size; overrides `size` |
+| `--wui-empty-content-width`         | `480px`     | Max width of title/description        |
+| `--wui-empty-title-font-size`       | `16px`      | Title font size                       |
+| `--wui-empty-description-font-size` | `14px`      | Description font size                 |
 
 #### `<web-ui-icon>`
 

@@ -274,7 +274,7 @@ describe('LibraryResourceList', () => {
       await nextTick()
 
       const empty = host.querySelector('web-ui-empty')
-      expect(empty?.getAttribute('size')).toBe('large')
+      expect(empty?.getAttribute('size')).toBe('72')
       expect(empty?.getAttribute('title')).toBe('桌面服务未连接')
       expect(empty?.getAttribute('description')).toBe('资源库还是空的')
     } finally {

@@ -1175,24 +1175,36 @@ Hover 模式使用 `pointerenter`/`pointerleave` 加延迟控制。Click 模式�
 
 空状态占位。
 
-| 属性          | 类型                             | 默认值     | 说明     |
-| ------------- | -------------------------------- | ---------- | -------- |
-| `title`       | `string`                         | `''`       | 标题     |
-| `description` | `string`                         | `''`       | 描述文本 |
-| `size`        | `'small' \| 'medium' \| 'large'` | `'medium'` | 尺寸     |
+| 属性          | 类型     | 默认值 | 说明                                          |
+| ------------- | -------- | ------ | --------------------------------------------- |
+| `title`       | `string` | `''`   | 标题                                          |
+| `description` | `string` | `''`   | 描述文本                                      |
+| `size`        | `number` | `56`   | 图标容器边长（px）；非法值或非正数回退为 `56` |
+
+`size` 只驱动图标区：容器边长即 `size`，默认字形边长按 `round(size * 3 / 7)` 派生。它不再影响 `min-height`、`padding`、标题与描述字号和段间距——这些度量请覆盖下面的 CSS 自定义属性。`--wui-empty-icon-size` 优先于 `size`。
+
+**从 `'small' \| 'medium' \| 'large'` 枚举迁移：** `size` 现在是数字，被删除的档位也不再改变任何版面度量。
+
+| 旧值     | 新值 | 默认字形 |
+| -------- | ---- | -------- |
+| `small`  | `40` | `17`     |
+| `medium` | `56` | `24`     |
+| `large`  | `72` | `31`     |
 
 **插槽：** `default`（标题，覆盖 `title` 属性）、`icon`、`description`、`action`
 
 **CSS 自定义属性：**
 
-| 属性                                | 默认值      | 说明               |
-| ----------------------------------- | ----------- | ------------------ |
-| `--wui-empty-min-height`            | `240px`     | 最小高度（medium） |
-| `--wui-empty-padding`               | `32px 24px` | 内边距（medium）   |
-| `--wui-empty-icon-size`             | `56px`      | 图标容器尺寸       |
-| `--wui-empty-content-width`         | `480px`     | 标题/描述最大宽度  |
-| `--wui-empty-title-font-size`       | `16px`      | 标题字号（medium） |
-| `--wui-empty-description-font-size` | `14px`      | 描述字号（medium） |
+这些值都不再随 `size` 变化；下表中的默认值始终生效，除非你主动覆盖。
+
+| 属性                                | 默认值      | 说明                        |
+| ----------------------------------- | ----------- | --------------------------- |
+| `--wui-empty-min-height`            | `240px`     | 最小高度                    |
+| `--wui-empty-padding`               | `32px 24px` | 内边距                      |
+| `--wui-empty-icon-size`             | `56px`      | 图标容器尺寸，优先于 `size` |
+| `--wui-empty-content-width`         | `480px`     | 标题/描述最大宽度           |
+| `--wui-empty-title-font-size`       | `16px`      | 标题字号                    |
+| `--wui-empty-description-font-size` | `14px`      | 描述字号                    |
 
 #### `<web-ui-icon>`
 
