@@ -3,7 +3,6 @@ import { customElement, property, state } from 'lit/decorators.js'
 import { ifDefined } from 'lit/directives/if-defined.js'
 
 import '@/components/input'
-import '@/components/option'
 import glass from '@/assets/glass.css?inline'
 import overlayMotion from '@/assets/overlay-motion.css?inline'
 import type { WebUiOption } from '@/components/option'
@@ -14,14 +13,18 @@ import {
   createComboboxOpenController,
   createOptionListenerBinding,
   defineComboboxTrigger,
+  defineOptionPortal,
   handleComboboxFocusOut,
   nextWrappingIndex
 } from '@/shared/option-portal'
-import { defineOptionPortal } from '@/shared/option-portal'
 import { defineAnchoredPanel } from '@/shared/overlay/anchored-panel'
 import { defineOpenOverlay } from '@/shared/overlay/open-overlay'
-import { applyOverlayVariables, defineOverlayPortal } from '@/shared/overlay/portal'
-import type { OverlayContainer, OverlayPortal } from '@/shared/overlay/portal'
+import {
+  applyOverlayVariables,
+  defineOverlayPortal,
+  type OverlayContainer,
+  type OverlayPortal
+} from '@/shared/overlay/portal'
 import { defineScrollLockLease } from '@/shared/scroll-lock/scroll-lock'
 
 import style from './style.css?inline'

@@ -2,9 +2,6 @@ import { computePosition, shift } from '@floating-ui/dom'
 import { html, LitElement, unsafeCSS } from 'lit'
 import { customElement, property, state } from 'lit/decorators.js'
 
-import '@/components/dropdown-divider'
-import '@/components/dropdown-header'
-import '@/components/dropdown-item'
 import { UserChangeController } from '@/shared/events/user-change'
 import {
   createClosingSubmenuStack,

@@ -3,7 +3,6 @@ import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
 import { cleanupElement, mountElement, waitForUpdate } from '@/shared/test-utils'
 
 import { WebUiSpinner } from '..'
-import '..'
 
 describe('WebUiSpinner 组件', () => {
   afterEach(() => {

@@ -1,5 +1,6 @@
 import '@/components/autocomplete'
 import '@/components/input'
+import '@/components/option'
 import '@/components/textarea'
 import '@/components/theme'
 import type { WebUiAutocomplete } from '@/components/autocomplete'

@@ -1,6 +1,7 @@
 import { describe, expect, it, vi, afterEach, beforeEach } from 'vite-plus/test'
 
 import '..'
+import '@/components/dropdown-item'
 import { cleanupElement, getMenuPanels, waitForUpdate } from '@/shared/test-utils'
 
 import type { WebUiDropdown } from '..'

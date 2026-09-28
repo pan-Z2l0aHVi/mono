@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from 'vite-plus/test'
 import { page } from 'vite-plus/test/browser'
 
 import '@/components/layout'
+import '@/components/option'
 import '@/components/select'
 import '@/components/theme'
 import type { WebUiLayout } from '@/components/layout'

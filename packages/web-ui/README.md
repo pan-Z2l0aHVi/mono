@@ -25,6 +25,8 @@ import '@greypan/web-ui'
 // import '@greypan/web-ui/components/button'
 ```
 
+A subpath import registers only the component it names, so import every tag the page uses.
+
 ```html
 <web-ui-button variant="primary">Click me</web-ui-button> <web-ui-icon .icon="${lucidePlus}"></web-ui-icon>
 ```

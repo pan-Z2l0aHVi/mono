@@ -2,8 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
 import { queryA11y } from '@/shared/test-utils'
 
-import '..'
-import type { WebUiToast, ToastCloseReason, ToastPosition, ToastType } from '..'
+import type { WebUiToast, ToastPosition, ToastType } from '..'
 import { toast } from '..'
 
 function createToastElement(attrs?: Record<string, string>, message = 'test message'): WebUiToast {

@@ -3,6 +3,7 @@ import { userEvent } from 'vite-plus/test/browser'
 
 import '..'
 import '@/components/checkbox'
+import '@/components/dropdown-item'
 import '@/components/popover'
 import type { WebUiPopover } from '@/components/popover'
 import { getMenuChildren } from '@/shared/menu-portal/menu-tree'

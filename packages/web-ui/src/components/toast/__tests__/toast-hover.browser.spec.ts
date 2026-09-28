@@ -1,7 +1,6 @@
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 import { page } from 'vite-plus/test/browser'
 
-import '..'
 import { toast } from '..'
 
 function fallbackRoot(): ShadowRoot | null {

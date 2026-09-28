@@ -1,8 +1,10 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { describe, expect, it, vi } from 'vite-plus/test'
 // 全量构建的 vue：含运行时模板编译器，用于真实 v-if 翻转（false 分支产生注释锚点）
 import { createApp, ref } from 'vue/dist/vue.esm-bundler.js'
 
 import '..'
+import '@/components/dropdown-divider'
+import '@/components/dropdown-item'
 import { cleanupElement, getMenuPanels, pollUntil, waitForUpdate } from '@/shared/test-utils'
 
 import type { WebUiContextMenu } from '..'

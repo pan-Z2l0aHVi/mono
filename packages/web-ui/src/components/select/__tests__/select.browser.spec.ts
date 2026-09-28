@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from 'vite-plus/test'
 
 import '..'
 import '../../theme'
+import '@/components/option'
 import { getPortalPanel } from '@/shared/test-utils'
 
 import type { WebUiSelect } from '..'

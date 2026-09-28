@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
 import { userEvent } from 'vite-plus/test/browser'
 
 import '@/components/drawer'
+import '@/components/dropdown-item'
 import '@/components/popover'
 import type { WebUiPopover } from '@/components/popover'
 
