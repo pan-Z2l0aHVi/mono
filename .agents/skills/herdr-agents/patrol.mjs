@@ -7,6 +7,8 @@
 // herdr 取数失败不会被吞成「无变化」：首败轮靠 agent 列表与上一轮不同走信号分支；
 // 持续失败两轮列表其实相同，靠 herdrDown 守卫跳过 NO_ACTIVE/NO_CHANGE，并单独列一行待处理。
 // state 落在 $TMPDIR，不写仓库、不写 worktree。
+// 数据源是编排单元（$TMPDIR/herdr-agents/reports/ 下每轮一份的 manifest），不是 task state：
+// 编排可以完全没有 task，单元才是「谁在跑」的权威来源，task 只作参考附在行尾。
 
 import { execFileSync } from 'node:child_process'
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs'
@@ -27,6 +29,19 @@ const stateDir = join(process.env.TMPDIR || tmpdir(), 'herdr-agents-monitor')
 mkdirSync(stateDir, { recursive: true })
 const statePath = join(stateDir, 'state')
 const stallPath = join(stateDir, 'stall')
+
+// 编排产物的固定根与子目录是 skill 的一部分（见 roles/manager.md），与有没有 task 无关。
+// patrol 只读 reports/，这里补 mkdir 让全新环境也能直接跑；写在 stateDir 之外，
+// 免得 $TMPDIR/herdr-agents-monitor/ 同时承担编排产物与巡检基线两种语义。
+const reportDir = join(process.env.TMPDIR || tmpdir(), 'herdr-agents', 'reports')
+mkdirSync(reportDir, { recursive: true })
+
+// state 是「与上一轮相比」的基线，不是记录：agents 与 units 每一轮都能从 herdr 和 reports/ 重新算出。
+// 旧格式（TASKS 段，键是 task）没有可对应的字段——单元 id、参与者来源和 churn 定义（多 root 求和
+// vs 单 worktree）都变了，逐字段迁移等于凭空造出一个从未观测过的基线：要么在首轮误报一次
+// CHURN/STALL，要么在字段恰好撞上时对一个没测过的轮次武装 STALL。所以版本不匹配就当没有基线。
+// 代价是升级后的第一轮多一次信号轮，那正是「我没有可比的基线」的真实信号。
+const STATE_VERSION = 'v2'
 
 const read = file => {
   try {
@@ -53,31 +68,69 @@ function agentLines() {
   }
 }
 
-// task → 归属从 task state 派生（owner 与 worktree 字段），提交进仓库的文件不写按会话手写的名单。
-// churn 指纹含未跟踪文件数：git diff 不算 untracked，漏掉会把「正在新建文件」误判成停滞。
-function taskLines() {
-  const rows = []
-  for (const file of readdirSync(taskDir).filter(f => f.endsWith('.json')).sort()) {
-    let state
-    try {
-      state = JSON.parse(readFileSync(join(taskDir, file), 'utf8'))
-    } catch {
-      continue
-    }
-    if (!state?.taskId) continue
-    if (state.phase === 'done' || state.phase === 'dropped') continue
+function readJson(file) {
+  try {
+    return JSON.parse(readFileSync(file, 'utf8'))
+  } catch {
+    return null
+  }
+}
 
-    let churn = 'gone'
-    if (state.worktree && existsSync(state.worktree)) {
-      try {
-        churn = fingerprint(state.worktree)
-      } catch {
-        churn = 'error'
-      }
-    }
-    rows.push([state.taskId, state.owner || '', churn, state.phase].join('\t'))
+// task 只是参考：附上它当前的 phase，好让操作者看清编排单元与 task 的对应关系。
+// 它不参与任何判定——单元的存续由 manifest 的 status 决定，两者是不同的生命周期。
+function taskRef(taskId) {
+  if (typeof taskId !== 'string' || !taskId) return '-'
+  const state = readJson(join(taskDir, `${taskId}.json`))
+  return `${taskId}:${state?.phase || 'unreadable'}`
+}
+
+// 编排单元 → 参与者与 churn 全部来自 manifest，字段形状见 SKILL.md「巡检」一节。
+// churn 指纹含未跟踪文件数：git diff 不算 untracked，漏掉会把「正在新建文件」误判成停滞。
+function unitLines() {
+  let files = []
+  try {
+    files = readdirSync(reportDir)
+      .filter(f => f.endsWith('.json'))
+      .sort()
+  } catch {
+    return []
+  }
+  const rows = []
+  for (const file of files) {
+    const manifest = readJson(join(reportDir, file))
+    const id = typeof manifest?.coordination === 'string' ? manifest.coordination : ''
+    if (!id) continue
+    if (manifest.status === 'finished') continue
+
+    const roots = (Array.isArray(manifest.roots) ? manifest.roots : []).filter(r => typeof r === 'string' && r)
+    const participants = (Array.isArray(manifest.participants) ? manifest.participants : []).filter(
+      a => typeof a === 'string' && a
+    )
+    rows.push([id, participants.join(','), rootsChurn(roots), taskRef(manifest.taskId)].join('\t'))
   }
   return rows
+}
+
+// 单 root 的形状与旧版单 worktree 完全一致；多 root 求和。全灭时整体退化成单个哨兵值，
+// 这样「目录整个没了」和「目录全部读不出」依旧不武装 STALL，而不是被当成一个冻住的数字。
+// 三个哨兵值都表示「这一轮拿不到可比的工作量」，因此全部由 STALL_INELIGIBLE 一处排除；
+// 曾经只排除了 'gone' 与 'error'，漏掉的 'none' 让缺 roots 的 manifest 每轮 churn 恒定，
+// 于是第 5 轮武装出一条指向根本没被观测过的工作量的假 STALL。
+const STALL_INELIGIBLE = new Set(['gone', 'error', 'none'])
+
+function rootsChurn(roots) {
+  if (roots.length === 0) return 'none'
+  const parts = roots.map(root => {
+    if (!existsSync(root)) return 'gone'
+    try {
+      return fingerprint(root)
+    } catch {
+      return 'error'
+    }
+  })
+  if (parts.every(part => part === 'gone')) return 'gone'
+  if (parts.every(part => part === 'error')) return 'error'
+  return parts.join('+')
 }
 
 function fingerprint(worktree) {
@@ -107,15 +160,15 @@ function fingerprint(worktree) {
 
 function parse(text) {
   const agents = {}
-  const tasks = {}
+  const units = {}
   let section = null
   for (const line of text.split('\n')) {
     if (line === 'AGENTS') {
       section = 'agents'
       continue
     }
-    if (line === 'TASKS') {
-      section = 'tasks'
+    if (line === 'UNITS') {
+      section = 'units'
       continue
     }
     if (!line) continue
@@ -123,54 +176,66 @@ function parse(text) {
       const at = line.indexOf('=')
       if (at > 0) agents[line.slice(0, at)] = line.slice(at + 1)
     }
-    if (section === 'tasks') {
+    if (section === 'units') {
       const parts = line.split('\t')
-      if (parts.length >= 4) tasks[parts[0]] = { owner: parts[1], churn: parts[2], phase: parts[3] }
+      if (parts.length >= 4) {
+        units[parts[0]] = {
+          participants: parts[1].split(',').filter(Boolean),
+          churn: parts[2],
+          task: parts[3]
+        }
+      }
     }
   }
-  return { agents, tasks }
+  return { agents, units }
 }
 
-const current = ['AGENTS', ...agentLines(), 'TASKS', ...taskLines()].join('\n')
+const current = [STATE_VERSION, 'AGENTS', ...agentLines(), 'UNITS', ...unitLines()].join('\n')
 const cur = parse(current)
-const prev = parse(read(statePath))
+const prevRaw = read(statePath)
+const hasBaseline = prevRaw.startsWith(`${STATE_VERSION}\n`)
+const prev = hasBaseline ? parse(prevRaw) : { agents: {}, units: {} }
+// stall 计数器按单元 id 键，跨格式同样解不开，所以基线作废时一起丢弃。
 let stall = {}
-try {
-  stall = JSON.parse(read(stallPath) || '{}')
-} catch {
-  stall = {}
+if (hasBaseline) {
+  try {
+    stall = JSON.parse(read(stallPath) || '{}')
+  } catch {
+    stall = {}
+  }
 }
 
 const running = Object.values(cur.agents).filter(status => status === 'working').length
 const agentsChanged = JSON.stringify(prev.agents) !== JSON.stringify(cur.agents)
 const herdrDown = Object.hasOwn(cur.agents, 'herdr_unavailable')
 
-// 遍历两侧并集：task 从 live 消失（被 done/drop）本身也是一次变化，只遍历 cur 会把它吞掉。
+// 遍历两侧并集：单元从 live 消失（被标记 finished）本身也是一次变化，只遍历 cur 会把它吞掉。
 let churnChanged = false
-for (const id of new Set([...Object.keys(prev.tasks), ...Object.keys(cur.tasks)])) {
-  const before = prev.tasks[id]?.churn
-  const after = cur.tasks[id]?.churn
+for (const id of new Set([...Object.keys(prev.units), ...Object.keys(cur.units)])) {
+  const before = prev.units[id]?.churn
+  const after = cur.units[id]?.churn
   if (before !== after) churnChanged = true
 }
 
-// STALL：该 task 自己的 owner 在 working，且它的 churn 连续没动；只在跨过阈值那一次报。
-// owner 匹配的是 herdr agent 名：走登录名兜底的 task 匹配不到，不武装 STALL，
-// 所以派发时要用 `--owner <agent-name>` 而不是让登录名兜底。
+// STALL：该单元的某个参与者在 working，且它的 churn 连续没动；只在跨过阈值那一次报。
+// 参与者匹配的是 herdr agent 名：Manager 派发时把 live agent 名写进 manifest，不写 pane label
+// 也不让登录名兜底，否则不武装 STALL。哨兵值（STALL_INELIGIBLE）即使逐轮不变也不武装：
+// 恒定不是「没动」，是「没得可比」。
 const next = {}
 const fired = []
-for (const [id, task] of Object.entries(cur.tasks)) {
-  const ownerWorking = cur.agents[task.owner] === 'working'
-  const before = prev.tasks[id]
+for (const [id, unit] of Object.entries(cur.units)) {
+  const someoneWorking = unit.participants.some(name => cur.agents[name] === 'working')
+  const before = prev.units[id]
   const unchanged =
-    before !== undefined && before.churn === task.churn && task.churn !== 'gone' && task.churn !== 'error'
-  next[id] = ownerWorking && unchanged ? (stall[id] || 0) + 1 : 0
+    before !== undefined && before.churn === unit.churn && !STALL_INELIGIBLE.has(unit.churn)
+  next[id] = someoneWorking && unchanged ? (stall[id] || 0) + 1 : 0
   if (next[id] === STALL_AFTER) fired.push(id)
 }
 writeFileSync(stallPath, JSON.stringify(next))
 
 // 四态判定。命中静默/终态就只输出首行，否则组装信号块。无论走哪一支，state 都在最后统一落盘
 // —— 与 bash 版语义一致：先打印、后写 state，中途抛错不会推进基线。
-const live = Object.keys(cur.tasks)
+const live = Object.keys(cur.units)
 const out = []
 if (!herdrDown && live.length === 0 && running === 0) {
   out.push('ALL_DONE')
@@ -191,9 +256,11 @@ if (!herdrDown && live.length === 0 && running === 0) {
     out.push('AGENTS_SAME')
   }
   if (herdrDown) out.push('  herdr_unavailable: agent list unreadable, working/idle unknown')
+  if (!hasBaseline) out.push('  baseline: no matching state version, this poll has nothing to compare against')
   out.push(`CHURN_CHANGED=${churnChanged}`)
   for (const id of fired) {
-    out.push(`STALL? ${id}: churn=${cur.tasks[id].churn}, owner ${cur.tasks[id].owner} working, unchanged ${STALL_AFTER} polls`)
+    const unit = cur.units[id]
+    out.push(`STALL? ${id}: churn=${unit.churn}, ${unit.participants.join('/')} working, unchanged ${STALL_AFTER} polls`)
   }
   out.push('--- current ---')
   out.push(current)

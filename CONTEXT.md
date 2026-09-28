@@ -92,6 +92,7 @@ workspace 清单、依赖草图与模块关系图见 [`ARCHITECTURE.md`](ARCHITE
 | [0014](docs/adr/0014-task-system-v2.md)                                         | Task 体系 v2（level 状态机、guard、checks、playbook） | 修改 `scripts/task.mjs`、任务级别 gate、pre-commit 门禁或 task state 布局 |
 | [0015](docs/adr/0015-role-contracts-in-herdr-agents-skill.md)                   | Role Contracts In Herdr Agents Skill                  | 修改 Role Contract、skill 出处标记或 herdr 编排时序                       |
 | [0016](docs/adr/0016-implementation-supervision.md)                             | Implementation Supervision                            | 修改实施期 Supervisor、协作报告或 task state 边界                         |
+| [0017](docs/adr/0017-orchestration-decoupled-from-task.md)                      | 编排与 task 体系解耦                                  | 修改 coordination id、编排元数据落点、巡检数据源或编排范围门              |
 
 ## Interweave 产品与领域词汇
 

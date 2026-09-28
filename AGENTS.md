@@ -27,7 +27,7 @@
 
 多 Agent 编排只在用户显式调用 `/herdr-agents` 时启用。Role、执行体绑定、目录边界、handoff、pane 时序和 Role 初始化都见 [`herdr-agents`](.agents/skills/herdr-agents/SKILL.md)，启用评分与实施期 Supervisor 协议见同目录的 [`supervision.md`](.agents/skills/herdr-agents/supervision.md)。
 
-Task 级别、状态机、冻结 diff、review、approval 和验证证据见 [`docs/agents/workflow.md`](docs/agents/workflow.md)。task state 不保存 Role 或 coordination 记录。任务主合同和可选的 Coordination 摘要见 [`docs/agents/task-packet.md`](docs/agents/task-packet.md)。
+Task 级别、状态机、冻结 diff、review、approval 和验证证据见 [`docs/agents/workflow.md`](docs/agents/workflow.md)。task state 不保存 Role 或 coordination 记录。任务主合同见 [`docs/agents/task-packet.md`](docs/agents/task-packet.md)；编排元数据（参与者、启用理由、检查点结论、未决事项）的落点是 `$TMPDIR/herdr-agents/reports/` 下的编排记录，Task Packet 的可选 Coordination 区只留 coordination id 与记录路径。
 
 并行实施仍要遵守 worktree 和 owner 边界。一个可变 task 只能有一个实施 worktree 和 owner。Supervisor 与 Coder 共享该 worktree，但它只读，不会成为第二个 owner。跨 `packages/*` 与 `apps/*` 的需求按 skill 路由拆分。Manager 不代替 Coder 修改生产代码。
 

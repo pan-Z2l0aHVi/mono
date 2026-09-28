@@ -4,6 +4,7 @@
 - **Status**: 已接受
 - **Supersedes**: ADR-0004「角色实施补充（2026-09-01）」中「Role 不与模型、CLI 或固定会话绑定」的结论
 - **Amended by**: [ADR-0015](0015-role-contracts-in-herdr-agents-skill.md)、[ADR-0016](0016-implementation-supervision.md)
+- **Superseded by**: [ADR-0017](0017-orchestration-decoupled-from-task.md) —— 本 ADR 的编排事实不再绑定 task：coordination id 改为自由标签，编排元数据落 `$TMPDIR/herdr-agents/reports/`，巡检按编排单元而非 task 枚举。执行体绑定、目录边界与结构化 handoff 三条决策不变
 
 ## 背景
 

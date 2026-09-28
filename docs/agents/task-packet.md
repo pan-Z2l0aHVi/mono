@@ -34,21 +34,14 @@ Handoff: <what is returned and when>
 
 ## 可选 Coordination 区域
 
-只有使用多 Agent 编排时才填写。Coordination 只记录恢复工作所需的信息，不进入 task state，也不替代冻结 diff 或 review 证据。
+只有使用多 Agent 编排、且存在 task 时才填写。它只是指针：参与者、启用理由、检查点结论和未决事项的权威落点是编排记录（`$TMPDIR/herdr-agents/reports/<主题slug>.json`，字段见 [herdr-agents](../../.agents/skills/herdr-agents/SKILL.md) 的「巡检」一节），这里不复制它们，也不替代冻结 diff 或 review 证据。
 
 ```text
-Coordination id: herdr-agents/<task-id> | N/A
-Participants: <role/executor pairs>
-Supervisor: enabled | skipped (<score and reason>)
-Checkpoints:
-  - before-first-write: <clear | open | resolved | disputed | escalated; summary>
-  - first-verifiable-slice: <clear | open | resolved | disputed | escalated; summary>
-  - before-final-delivery: <clear | open | resolved | disputed | escalated; summary>
-Readiness: <Ready | Not ready | N/A>
-Open decisions: <Manager decisions still needed>
+Coordination id: herdr-agents/<主题slug> | N/A
+Record: $TMPDIR/herdr-agents/reports/<主题slug>.json | N/A
 ```
 
-固定的 coordination id、报告状态、纠错规则和 Reviewer 隔离见同目录 skill 的 [`supervision.md`](../../.agents/skills/herdr-agents/supervision.md)，Role 派发与 pane 时序见 [`herdr-agents`](../../.agents/skills/herdr-agents/SKILL.md)。Manager 只记录恢复工作所需的信息，例如启用评分、覆盖理由、检查点结论、争议处理和 pane 生命周期，不复制完整聊天记录。
+coordination id 由 Manager 在编排开始时自由生成，不从 task id 派生。固定的 coordination id、报告状态、纠错规则和 Reviewer 隔离见同目录 skill 的 [`supervision.md`](../../.agents/skills/herdr-agents/supervision.md)，Role 派发与 pane 时序见 [`herdr-agents`](../../.agents/skills/herdr-agents/SKILL.md)。没有 task 的编排不写本区域，直接读编排记录。
 
 ## 恢复规则
 
