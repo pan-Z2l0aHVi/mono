@@ -20,7 +20,8 @@ function mountDialog(target: LibraryQueueItem, onSave: (resourceId: string, tagN
         allTagNames: ['设计', '旅行'],
         busy: false,
         error: '',
-        onSave
+        onSave,
+        'onUpdate:open': () => {}
       })
   })
   app.mount(host)
@@ -38,7 +39,7 @@ function textContent(host: HTMLElement, text: string) {
 }
 
 describe('EditTagsDialog', () => {
-  it('queue target 的现有标签可编辑并以队列 id 保存', async () => {
+  it('选中候选只回写输入框，确认后才增删并即时保存，完成按钮只关闭', async () => {
     const target: LibraryQueueItem = {
       id: 'queue-item',
       kind: 'file',
@@ -58,20 +59,31 @@ describe('EditTagsDialog', () => {
 
       const input = mounted.host.querySelector<WebUiAutocomplete>('web-ui-autocomplete')
       if (!input) throw new Error('tag autocomplete was not rendered')
+
+      // 选中候选（change）只回写输入框，不直接落入当前标签、不触发保存。
       input.value = '旅行'
       input.dispatchEvent(new Event('input', { bubbles: true, composed: true }))
       input.dispatchEvent(new Event('change', { bubbles: true, composed: true }))
       await nextTick()
+      expect(textContent(mounted.host, '旅行')).toBeUndefined()
+      expect(save).not.toHaveBeenCalled()
+
+      // 点确认按钮才把输入框内容加入当前标签，并即时以队列 id 保存。
+      const confirmAdd = mounted.host.querySelector<HTMLElement>('web-ui-button[aria-label="确认添加标签"]')
+      if (!confirmAdd) throw new Error('confirm add button was not rendered')
+      confirmAdd.click()
+      await nextTick()
       expect(textContent(mounted.host, '旅行')).not.toBeUndefined()
-
-      const confirm = [...mounted.host.querySelectorAll('web-ui-button')].find(
-        button => button.textContent?.trim() === '确认'
-      )
-      if (!confirm) throw new Error('confirm button was not rendered')
-      confirm.click()
-
       expect(save).toHaveBeenCalledOnce()
       expect(save).toHaveBeenCalledWith('queue-item', ['设计', '旅行'])
+
+      // 「完成」只是关闭，不再触发保存。
+      const done = [...mounted.host.querySelectorAll('web-ui-button')].find(
+        button => button.textContent?.trim() === '完成'
+      )
+      if (!done) throw new Error('done button was not rendered')
+      done.click()
+      expect(save).toHaveBeenCalledOnce()
     } finally {
       mounted.close()
     }
