@@ -80,4 +80,4 @@ Manager 是唯一长驻的编排会话，上下文膨胀最后都落在这里。
 - 编排记录足以在没有任何 task 的情况下恢复现场：coordination id、参与者、roots 和当前状态齐备。
 - 所有 Role 都收到了完整 handoff。Supervisor（若启用）完成协议并明确 `Ready`，或记录例外。
 - Reviewer 结论、验证证据和 task phase 一致，交付前没有未处理的阻断项。
-- Supervisor pane 在 `task done` 后释放，测试或构建生成物已由 Manager 清理。
+- 每个会话的 tab/pane 在它结束后回收，Supervisor pane 在 `task done` 后释放；测试或构建生成物已由 Manager 清理。
