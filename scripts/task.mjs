@@ -13,9 +13,11 @@ const phases = new Set(['open', 'active', 'frozen', 'reviewed', 'approved', 'don
 const levels = new Set(['t0', 't1', 't2'])
 const SCHEMA_VERSION = 1
 // 参与方标识形状：owner / reviewer / approver / drop 的署名人共用，保证事件里每个角色都是可
-// 比对的 id。四个字段之间的约束全是「彼此不相等」，比的又是字符串，所以只有都落在同一字符集里，
-// 「coder-1」与「coder-1␠」（␠ = 空格）这种看着是两个身份、实际是同一个人的写法才不会被放过。
-// 形状只写一份：同一条规则喂四个命令，把字面量抄进四条报错里迟早会漂。
+// 比对的 id。字段之间仍有「彼此不相等」的约束（如今只剩 approver ≠ reviewer），比的是字符串，
+// 所以四个字段都落在同一字符集里，「coder-1」与「coder-1␠」（␠ = 空格）这种看着是两个身份、
+// 实际是同一个人的写法才不会被放过。owner 不再参与任何比对（单 agent 工作流要求 owner 自己
+// approve，见 approvalRequired），但显式申报的 `--owner` 仍走这条形状校验，四条记录因此仍可
+// 直接比对。形状只写一份：同一条规则喂四个命令，把字面量抄进四条报错里迟早会漂。
 const AGENT_ID_PATTERN = '[A-Za-z0-9][A-Za-z0-9._-]{3,39}'
 const AGENT_ID = new RegExp(`^${AGENT_ID_PATTERN}$`)
 
@@ -341,9 +343,9 @@ function runChecks(worktree, state, phase) {
   return ran
 }
 
-// owner 的两种来源区别对待：显式的 `--owner` / AGENT_TASK_OWNER 是一次身份申报，必须和
-// reviewer/approver/署名人同形状，否则四个字段之间的「不相等」比的是字符串而不是人。登录名是
-// 兜底而非申报，短用户名不该让人连 task 都建不了，所以不受这条约束。
+// owner 的两种来源区别对待：显式的 `--owner` / AGENT_TASK_OWNER 是一次身份申报，与
+// reviewer/approver/署名人落在同一形状里，四条事件记录才可比对。登录名是兜底而非申报，短用户名
+// 不该让人连 task 都建不了，所以不受这条约束。
 function declaredOwner(options) {
   if (options.owner !== undefined) return assertAgentId(options.owner, 'owner')
   if (process.env.AGENT_TASK_OWNER) return assertAgentId(process.env.AGENT_TASK_OWNER, 'owner')
@@ -387,7 +389,7 @@ function newTask(options) {
     issue: options.issue ? normalizeIssue(options.issue) : null,
     playbook: options.playbook || null,
     diffHash: null,
-    review: { required: level !== 't2', result: null, diffHash: null, reviewer: null, at: null },
+    review: { required: level === 't0', result: null, diffHash: null, reviewer: null, at: null },
     approval: { granted: false, diffHash: null, approver: null, at: null },
     verification: [],
     events: []
@@ -461,7 +463,9 @@ function freeze(options) {
   if (!options['allow-empty'] && snapshot.trackedFiles.length === 0 && snapshot.untrackedFiles.length === 0)
     fail(`task ${taskId} has no changes to freeze; use --allow-empty only for an intentional empty task`)
   state.diffHash = snapshot.hash
-  state.review = { required: state.review.required, result: null, diffHash: null, reviewer: null, at: null }
+  // required 跟着 level 重算，而不是原样带回旧值：它记的是当前档位的 review 政策，建 task
+  // 时写下的快照会与后来的规则修订错位。
+  state.review = { required: state.level === 't0', result: null, diffHash: null, reviewer: null, at: null }
   state.approval = { granted: false, diffHash: null, approver: null, at: null }
   state.phase = 'frozen'
   appendEvent(state, 'freeze', {
@@ -475,13 +479,15 @@ function freeze(options) {
   print({ ...state, live: { ...liveState(state), current: snapshot } })
 }
 
-// 该 task 的「实施方」身份集合：当前 owner 加上事件里出现过的每一个 owner。assign 可以在
-// 任意相位改写 owner，只比对现值就能被「先派给别人、再 approve 自己」绕开，所以独立性核对
-// 的是历史，不是某一时刻的字段。
-function implementers(state) {
-  const ids = new Set([state.owner])
-  for (const event of state.events) if (event.owner) ids.add(event.owner)
-  return ids
+// 这一档的 approval 是否必需。T0 恒需要。T1 的 review 可选，于是 approval 与之成对：记了
+// review 就必须对同一 diffHash 批，否则「审过」和「批了」两个槽位各说各话，review 会退化成一条
+// 无人负责的记录；没记 review 就不产生、也不要求 approval，那条路径在 guard 与 done 上只留
+// 「冻结快照一致 + 验证」。取 level 而不是 state 里的 review.required——后者是建 task 时写下的
+// 历史快照，既有 T1 state 里还是 true，读它会让旧 task 继续按已废止的口径被拦。
+function approvalRequired(state) {
+  if (state.level === 't0') return true
+  if (state.level === 't1') return state.review.result !== null
+  return false
 }
 
 function review(options) {
@@ -494,8 +500,6 @@ function review(options) {
   const reviewer = options.reviewer || process.env.AGENT_TASK_REVIEWER
   if (!reviewer) fail(`review requires --reviewer <id> so independence is auditable`)
   assertAgentId(reviewer, 'reviewer')
-  if (implementers(state).has(reviewer))
-    fail(`reviewer ${reviewer} is or was an owner of this task; review must come from a different identity`)
   const live = liveState(state)
   assertCurrentHash(state, live, 'review')
   state.review = { required: state.review.required, result, diffHash: state.diffHash, reviewer, at: now() }
@@ -517,8 +521,6 @@ function approve(options) {
   const approver = options.approver || process.env.AGENT_TASK_APPROVER
   if (!approver) fail(`approval requires --approver <id> so authorization is auditable`)
   assertAgentId(approver, 'approver')
-  if (implementers(state).has(approver))
-    fail(`approver ${approver} is or was an owner of this task; approval must come from a different identity`)
   if (approver === state.review.reviewer) fail(`approver must be different from the reviewer of this diff`)
   state.approval = { granted: true, diffHash: state.diffHash, approver, at: now() }
   appendEvent(state, 'approve', { approver, diffHash: state.diffHash })
@@ -548,9 +550,10 @@ function verify(options) {
   print(state)
 }
 
-// done 的级别差异：t0/t1 要求 review pass、approval 与至少一条最新 pass 验证，
-// 且快照一致、工作区干净；t2 是快速通道，只要求分支一致——验证与 review 是
-// 推荐实践，不作为硬 gate。
+// done 的级别差异：t0 要求 review pass、approval 与至少一条最新 pass 验证；t1 的 review
+// 可选，于是收尾相位由 approvalRequired 决定——记了 review 就与 approval 成对，停在
+// approved，没记 review 就在 frozen 直接收尾。两档都要求快照一致、工作区干净与最新一条
+// pass 验证；t2 是快速通道，只要求分支一致——验证与 review 是推荐实践，不作为硬 gate。
 function done(options) {
   const taskId = validateTaskId(requireOption(options, 'task'))
   const { file, state } = loadState(taskId)
@@ -559,8 +562,9 @@ function done(options) {
     const live = liveState(state)
     assertTaskBranch(state, live, 'done')
   } else {
-    assertPhase(state, ['approved'])
-    if (state.review.result !== 'pass') fail(`task ${taskId} requires a passing review before done`)
+    const needsApproval = approvalRequired(state)
+    assertPhase(state, needsApproval ? ['approved'] : ['frozen'])
+    if (needsApproval && state.review.result !== 'pass') fail(`task ${taskId} requires a passing review before done`)
     const lastVerification = state.verification.at(-1)
     if (!lastVerification || lastVerification.result !== 'pass')
       fail(`task ${taskId} does not have a passing latest verification result`)
@@ -672,9 +676,13 @@ function guard(options) {
     fail(
       `task ${state.taskId} has changes after its last freeze/review/approval; commit is blocked — re-run freeze (it stages the diff and normalizes formatting) and repeat review/approval`
     )
-  assertPhase(state, ['approved'])
-  if (!state.approval.granted || state.approval.diffHash !== state.diffHash)
-    fail(`task ${state.taskId} is not approved for commit`)
+  // 快照一致是 T0/T1 两条路径共同的底座，差别只在 approval：T0 与记了 review 的 T1 要
+  // approved，没记 review 的 T1 停在 frozen 就够（见 approvalRequired）。
+  if (approvalRequired(state)) {
+    assertPhase(state, ['approved'])
+    if (!state.approval.granted || state.approval.diffHash !== state.diffHash)
+      fail(`task ${state.taskId} is not approved for commit`)
+  } else assertPhase(state, ['frozen'])
   allowCommit()
 }
 

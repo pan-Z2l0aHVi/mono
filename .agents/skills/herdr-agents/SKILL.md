@@ -32,7 +32,7 @@ disable-model-invocation: true
 | Supervisor | Claude Code | 观察 Coder 的实施进展，报告问题和证据，不直接改代码 |
 | Reviewer | Claude Code | 独立审查冻结 diff 和验证证据，不读取 Supervisor 报告 |
 
-Supervisor 和 Reviewer 都默认用 Claude Code。Reviewer 按 workflow 的级别路由：T0 启动独立的 Claude Code reviewer 会话，T1 启动 fresh Claude Code 会话或 subagent，T2 需要额外 review 时也用 fresh subagent。
+Supervisor 和 Reviewer 都默认用 Claude Code。Reviewer 按 workflow 的级别路由：T0 必须 review，用 pure subagent 或独立会话都算数；T1 的 review 由实施 agent 视情况决定要不要派，要派就派 fresh 会话或 fresh subagent；T2 不用 review，需要额外 review 时也用 fresh subagent。
 
 Supervisor 与其他 Role 用相同的权限参数启动。任何执行体都能承担任一 Role，改用替代执行体时 Manager 在 Task Packet 记录理由。每个实施 task 最多一个 Supervisor。
 
@@ -91,7 +91,7 @@ Open decisions（未解决决策）: <待 Manager 或对方决定的问题，以
 4. 为每个实施 Role 建独立 pane，cwd 指向所属 task worktree。按绑定表启动执行体，初始化 Role，确认回执。Supervisor 与 Coder 共享实施 worktree，但 Supervisor 只读。agent 通道、代理切换、MCP 配置或会话重启之后，先用 `herdr agent list` 核对各实施会话存活再恢复派发；中断的会话按工作区 `git status` 和 Task Packet 接手现场。
 5. 先发完所有结构化 handoff，再非阻塞监听各会话。不要用一个长等待阻塞其他派发，实施会话需要较长的超时；派发多于一个实施会话时按「巡检」一节起 loop。
 6. 在三个检查点接收 Coder 的 prompt 和 Supervisor 报告，报告格式与状态含义见 [`supervision.md`](./supervision.md)。Manager 处理 `disputed`、`escalated` 以及测试产物和依赖问题，Coder 处理 `open` 的代码修正。任何 Role 发现越界写入或 task gate 风险，都暂停实施并交回 Manager。
-7. 实施完成后由 Reviewer 按 workflow 的 review 拓扑审查冻结 diff，Supervisor 报告不进入 Reviewer 输入。Reviewer 通过后，按 workflow 完成 approval、验证和 `task done`。
+7. 实施完成后按 workflow 的级别决定是否派 Reviewer：T0 必派，T1 由实施 agent 决定。派了就由 Reviewer 按 review 拓扑审查冻结 diff，Supervisor 报告不进入 Reviewer 输入；Reviewer 通过后按 workflow 完成 approval（与 review 成对）、验证和 `task done`。T1 没记 review 时跳过 review 与 approval，`freeze → verify → done` 即可。
 8. `task done` 后释放 Supervisor pane，并按「巡检」一节停掉 loop。task 被 drop 时，先保留已有报告和 Task Packet 摘要，再按 Herdr 规则关闭本次编排创建的 pane。
 
 ## 完成定义
@@ -100,4 +100,4 @@ Open decisions（未解决决策）: <待 Manager 或对方决定的问题，以
 - 启用 Supervisor 时，coordination id 固定，三个检查点各有报告，Coder 配合检查点并提供证据，最终有明确 `Ready`。
 - Supervisor 没有直接改代码、task state 或 Git；Manager 清理测试和构建生成物。
 - Reviewer 只收到冻结 diff、任务主合同和验证证据。review 退回后，Supervisor 重新核对更新后的 handoff 和完整 diff，再重跑仍需执行的检查点。
-- task 按 workflow 走完 `freeze`、`review`、`approve`、验证和 `done`，没有绕过任何 task gate。
+- task 按 workflow 走完该级别要求的 `freeze`、`review`、`approve`、验证和 `done`（T1 未记 review 时没有 `review` / `approve` 两步），没有绕过任何 task gate。
