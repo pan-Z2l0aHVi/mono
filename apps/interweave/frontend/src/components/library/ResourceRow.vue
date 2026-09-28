@@ -33,8 +33,6 @@ const props = defineProps<{
 const emit = defineEmits<{
   select: [resource: ResourceView]
   contextmenu: [resource: ResourceView, event: MouseEvent]
-  /** hover 行是「空格预览」的唯一判据（#187），行本身不监听按键。 */
-  hover: [resource: ResourceView, hovered: boolean]
   toggle: [resourceId: string]
   renameChange: [resource: ResourceView, event: WebUiEvent<WebUiEditableText, 'change'>]
   cancelRename: []
@@ -69,6 +67,14 @@ function handleNameChange(event: WebUiEvent<WebUiEditableText, 'change'>) {
 </script>
 
 <template>
+  <!--
+    tabindex="0" 把行放进 Tab 序列，focus 环由 assets/global.css 的页面级规则画：那条规则
+    命中 [tabindex]:not([tabindex='-1'])，颜色与 web-ui 组件的 focus 语言一致。
+
+    别在这里加本地的 focus-visible:outline-* 覆盖：那条页面规则写在 `@import 'tailwindcss'`
+    之后、不属于任何 @layer，而 Tailwind 工具类在 @layer utilities 里——层外样式优先级更高，
+    本地覆盖会被静默压掉（实测过：outline-offset 写了 -2px，读出来仍是页面的 2px）。
+  -->
   <div
     class="group relative flex items-center gap-3 px-4 max-[640px]:px-2 py-3 transition-colors duration-100"
     :class="[
@@ -82,10 +88,9 @@ function handleNameChange(event: WebUiEvent<WebUiEditableText, 'change'>) {
     ]"
     data-resource-row
     :data-resource-id="resource.id"
+    tabindex="0"
     @click="emit('select', resource)"
     @contextmenu="emit('contextmenu', resource, $event)"
-    @mouseenter="emit('hover', resource, true)"
-    @mouseleave="emit('hover', resource, false)"
   >
     <web-ui-checkbox
       v-if="selectionMode"
