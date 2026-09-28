@@ -73,7 +73,7 @@
 
 ### 2.5 review 自动化与独立性 —— 做对了核心，缺 CI 层
 
-- reviewer ≠ owner、fresh context、只审冻结 diff 不听实施者叙述（`workflow.md`「review 拓扑」）与 Google 标准、Claude adversarial review 完全同向且更硬（hash 绑定、review fail 回 active）。
+- review 来自 pure subagent 或独立会话（`workflow.md`「review 拓扑」；260928 起内核不再强制 reviewer 换掉 owner 身份，「实施会话不得自审」改由文档规则承担）、fresh context、只审冻结 diff 不听实施者叙述，与 Google 标准、Claude adversarial review 完全同向且更硬（hash 绑定、review fail 回 active）。
 - 缺失（P1）：本仓 CI（`.github/workflows/ci.yml`）无任何自动化 PR review（Claude Code Code Review / Copilot AGENTS.md review 均已产品化）；独立 reviewer 会话仍是纯人力编排，T0 review 的可得性受限于人/会话排队（推断：单仓单人 + agent 编排场景下，独立 reviewer 常由 Manager 新起会话承担，「独立性」强度介于 fresh subagent 与人类 review 之间）。
 
 ### 2.6 多 agent 编排与权限边界 —— 结构领先，执行面裸奔
@@ -94,7 +94,7 @@
 | Sandbox 化执行（coders）                            | code.claude.com/docs/en/sandboxing；codex AGENTS.md sandbox 契约 | **P0**：唯一靠运行时保证的隔离维度，本仓全无                    |
 | 本地确定性验证 gate（hook 实跑命令并捕获退出码）    | best-practices「deterministic gate」                             | **P1**：`task verify` 改为可选 `--run` 执行并记录真实 exit code |
 | Agent evals（skills/instruction 行为回归，gate CI） | code.claude.com/docs/en/plugin-evals                             | **P1**：ADR-0014 删掉 audit 后没有任何行为层校验                |
-| CI 自动 PR review                                   | code.claude.com/docs/en/code-review                              | **P1**：T0/T1 强制 review 可先由 CI 自动 review 预检兜底        |
+| CI 自动 PR review                                   | code.claude.com/docs/en/code-review                              | **P1**：T0 强制 review 可先由 CI 自动 review 预检兜底           |
 | Token/成本观测                                      | code.claude.com/docs/en/costs                                    | **P2**：本仓有缓存治理准则但无任何用量度量                      |
 | symbol 级代码导航                                   | large-codebases「code intelligence」                             | **P2**：find:usages 是 path 级                                  |
 | 依赖/密钥安全自动化（secret scanning、audit）       | github.blog security 板块；claude-security 插件                  | **P2**：CI 无安全扫描步骤                                       |

@@ -100,8 +100,8 @@ try {
   runFailure('new', '--task', 'bad-level', '--level', 't3')
   runFailure('new', '--task', 'bad id', '--level', 't1')
 
-  // owner 也是一次身份申报，不是自由文本：owner/reviewer/approver/署名人之间的约束全部是
-  // 「字符串互不相等」，放任 `ab` 或 `bad id!` 当 owner，「≠ owner」比的就是字形而不是人。
+  // owner 也是一次身份申报，不是自由文本：它与 reviewer/approver/署名人落在同一形状里，四条
+  // 事件记录才可比对，放任 `ab` 或 `bad id!` 当 owner 会让记录失去意义。
   // 只校验显式给出的 --owner；登录名兜底不该让短用户名的人建不了 task。
   for (const bad of ['ab', 'bad id!'])
     assert.match(failMessage('new', '--task', 'owner-shape', '--level', 't2', '--owner', bad), /invalid owner id/)
@@ -209,11 +209,9 @@ try {
   assert.notEqual(refrozen.diffHash, frozen.diffHash)
   assert.ok(refrozen.events.some(event => event.event === 'freeze' && event.reFreeze))
 
-  // review 身份是机器约束，不是约定：owner 自审、形状不合法的 id 都要给出具体条款。
-  assert.match(
-    failMessage('review', '--task', 't0-fixture', '--result', 'pass', '--reviewer', 'fixture-owner'),
-    /is or was an owner of this task/
-  )
+  // review 身份是机器约束，不是约定：形状不合法的 id 都要给出具体条款。「reviewer 不得是
+  // owner」不再是内核约束——单 agent 工作流要求 owner 自己 approve，那条校验会让三个槽位凑不齐；
+  // 实施会话不得自审因此改由 workflow.md「review 拓扑」的文档规则承担。
   assert.match(
     failMessage('review', '--task', 't0-fixture', '--result', 'pass', '--reviewer', 'bad id!'),
     /invalid reviewer id/
@@ -224,19 +222,19 @@ try {
   )
   assert.match(failMessage('review', '--task', 't0-fixture', '--result', 'pass'), /review requires --reviewer/)
   // 漏值的 flag 在 parseArgs 里是布尔 true，而 RegExp.test(true) 会先转成字符串 "true"——四个
-  // 字符、形状合法。不挡类型，同一个身份就能以 true 与 'true' 两种字形同时骗过「≠ owner」和
-  // 「≠ reviewer」这两条比对。
+  // 字符、形状合法。不挡类型，同一个身份就能以 true 与 'true' 两种字形骗过「≠ reviewer」。
   assert.match(
     failMessage('review', '--task', 't0-fixture', '--result', 'pass', '--reviewer'),
     /invalid reviewer id: true; expected a string/
   )
-  // 独立性核对的是 owner 历史而不是某一时刻的字段：assign 没有相位限制，只比现值就会被
-  // 「先把 owner 派给别人、再以那个 id 自审」绕开。
+  // 形状合法就照记：owner 的 id、乃至历史 owner 的 id 都不再被拒。这条断言钉的是删除而不是
+  // 放行——把它改回 owner 自审时，红的是这里而不是某个 review 结果。
   run('assign', '--task', 't0-fixture', '--owner', 'handoff-owner-2')
-  assert.match(
-    failMessage('review', '--task', 't0-fixture', '--result', 'pass', '--reviewer', 'handoff-owner-2'),
-    /is or was an owner of this task/
+  const ownerIdReviewed = JSON.parse(
+    run('review', '--task', 't0-fixture', '--result', 'pass', '--reviewer', 'handoff-owner-2')
   )
+  assert.equal(ownerIdReviewed.review.reviewer, 'handoff-owner-2')
+  run('freeze', '--task', 't0-fixture')
   // review fail：回到 active 修复，修复后重新 freeze。
   const failedReview = JSON.parse(
     run('review', '--task', 't0-fixture', '--result', 'fail', '--reviewer', 'independent-reviewer-1')
@@ -253,13 +251,11 @@ try {
   )
   assert.equal(approved.phase, 'reviewed')
 
-  // approval 与 review 用同一套 id 形状，且三方互不相同：owner 批自己的活、reviewer 批自己
-  // 刚审过的 diff，都不构成独立授权。这里的 fixture-owner 已不是当前 owner，拒它的正是历史。
+  // approval 与 review 用同一套 id 形状，且 approver ≠ 本轮 reviewer：reviewer 批自己刚审过的
+  // diff 不构成独立授权，这条比对必须留着。owner 批自己的活则不再被拒——单 agent 工作流的最小
+  // 身份组合就是 owner 实施 + subagent review + owner approve，去掉 owner 身份限制后三个槽位
+  // 才凑得齐；当前 owner 正是 handoff-owner-2，所以这条断言直接钉住那处删除。
   assert.match(failMessage('approve', '--task', 't0-fixture'), /approval requires --approver/)
-  assert.match(
-    failMessage('approve', '--task', 't0-fixture', '--approver', 'fixture-owner'),
-    /is or was an owner of this task/
-  )
   assert.match(
     failMessage('approve', '--task', 't0-fixture', '--approver', 'independent-reviewer-1'),
     /approver must be different from the reviewer/
@@ -271,8 +267,9 @@ try {
     failMessage('approve', '--task', 't0-fixture', '--approver'),
     /invalid approver id: true; expected a string/
   )
-  const approvedState = JSON.parse(run('approve', '--task', 't0-fixture', '--approver', 'user-approver'))
+  const approvedState = JSON.parse(run('approve', '--task', 't0-fixture', '--approver', 'handoff-owner-2'))
   assert.equal(approvedState.phase, 'approved')
+  assert.equal(approvedState.approval.approver, 'handoff-owner-2')
   assert.ok(approvedState.events.some(event => event.event === 'approve'))
 
   // verify 只记录证据、不执行任何东西，所以结果必须由使用者显式给出：省略 --result
@@ -319,8 +316,28 @@ try {
   // task 完结后 worktree 释放，guard 回到 enforced:false。
   assert.equal(JSON.parse(spawn('guard').stdout).enforced, false)
 
-  // T1：review 强制，允许 subagent 风格 id；approval 与验证同样必经。
-  run('new', '--task', 't1-fixture', '--level', 't1', '--owner', 'coder-1')
+  // T0 的 review 与 approval 仍双双强制，所以「缺 review」不是一条能走通的捷径：没有 review 就
+  // 走不到 reviewed，approve 随之被挡；guard 与 done 则各自要求 approved。三个断言缺任何一处，
+  // T0 都会退化成 T1 那条免审路径。
+  run('new', '--task', 't0-no-review', '--level', 't0', '--owner', 't0-owner')
+  run('start', '--task', 't0-no-review')
+  fs.writeFileSync(path.join(fixture, 't0-no-review.txt'), 't0 needs review\n')
+  run('freeze', '--task', 't0-no-review')
+  assert.match(
+    failMessage('approve', '--task', 't0-no-review', '--approver', 't0-owner'),
+    /in phase frozen; expected reviewed/
+  )
+  assert.match(failMessage('guard', '--task', 't0-no-review'), /in phase frozen; expected approved/)
+  assert.match(failMessage('done', '--task', 't0-no-review'), /in phase frozen; expected approved/)
+  run('drop', '--task', 't0-no-review', '--reason', 't0 review gate covered', '--by', 'fixture-sweeper-1')
+  git('add', '-A')
+  git('commit', '-m', 't0 review gate covered')
+
+  // T1 的 review 可选，两条路径各走一遍。记了 review 的这条：subagent 风格的 reviewer id 照记，
+  // approval 与 review 成对（由 owner coder-1 自己批，这正是单 agent 工作流的最小身份组合），
+  // 所以缺 approve 时 guard 与 done 都要拦。
+  const t1Created = JSON.parse(run('new', '--task', 't1-fixture', '--level', 't1', '--owner', 'coder-1'))
+  assert.equal(t1Created.review.required, false)
   run('start', '--task', 't1-fixture')
   fs.writeFileSync(path.join(fixture, 't1.txt'), 't1\n')
   run('freeze', '--task', 't1-fixture')
@@ -328,7 +345,9 @@ try {
     run('review', '--task', 't1-fixture', '--result', 'pass', '--reviewer', 'subagent-review-1')
   )
   assert.equal(t1Reviewed.review.reviewer, 'subagent-review-1')
-  run('approve', '--task', 't1-fixture', '--approver', 'user-approver')
+  assert.match(failMessage('guard', '--task', 't1-fixture'), /in phase reviewed; expected approved/)
+  assert.match(failMessage('done', '--task', 't1-fixture'), /in phase reviewed; expected approved/)
+  run('approve', '--task', 't1-fixture', '--approver', 'coder-1')
   git('commit', '-m', 't1 change')
   run('verify', '--task', 't1-fixture', '--name', 't1 test', '--result', 'pass')
   // 未验证不得 done：done 只认 state 里的证据，不接受口头保证。
@@ -345,8 +364,44 @@ try {
   const t1Done = JSON.parse(run('done', '--task', 't1-fixture'))
   assert.equal(t1Done.phase, 'done')
 
+  // T1 没记 review 的那条：approval 与 review 成对，所以 approval 也不产生，路径收窄成
+  // freeze → verify → done，guard 只要求冻结快照一致。专属 worktree 与 ≥1 条 pass 验证一项不减。
+  run('new', '--task', 't1-no-review', '--level', 't1', '--owner', 'single-agent-owner')
+  run('start', '--task', 't1-no-review')
+  fs.writeFileSync(path.join(fixture, 't1-no-review.txt'), 'no review needed\n')
+  // 未 freeze 就到不了提交与收尾：这一档的 commit gate 与 done 都要求 frozen 相位，那是规则表
+  // 「T1 freeze 必须」在机器上唯一剩下的落点（专属 worktree 由 new/start 的干净检查守着，验证由
+  // done 的 pass 记录把着，都不由这两行负责）。记了 review 的 T1 走不到这条分支——review 一旦记录，
+  // pass 或 fail 都让 approvalRequired 为真、改走要求 approved 的那条，所以只覆盖无 review 路径
+  // 就是这个分支的完整覆盖，而不是少测了另一种 T1。
+  assert.match(failMessage('guard', '--task', 't1-no-review'), /in phase active; expected frozen/)
+  assert.match(failMessage('done', '--task', 't1-no-review'), /in phase active; expected frozen/)
+  run('freeze', '--task', 't1-no-review')
+  // 验证仍是硬 gate：快照齐了、也没有 review 挡着，没有 pass 记录照样不许收尾。
+  assert.match(failMessage('done', '--task', 't1-no-review'), /does not have a passing latest verification/)
+  // 快照一致是这条路径唯一的 diff 边界：冻结后动一个字节，guard 当场拦下。
+  fs.appendFileSync(path.join(fixture, 't1-no-review.txt'), 'edited after freeze\n')
+  assert.match(failMessage('guard', '--task', 't1-no-review'), /has changes after its last freeze/)
+  run('freeze', '--task', 't1-no-review')
+  const noReviewGuard = JSON.parse(run('guard', '--task', 't1-no-review'))
+  assert.equal(noReviewGuard.enforced, true)
+  assert.equal(noReviewGuard.live.stale, false)
+  git('commit', '-m', 't1 change without review')
+  run('verify', '--task', 't1-no-review', '--name', 't1 no-review test', '--result', 'pass')
+  // hash 一致这条校验横跨 commit 边界继续生效：提交之后再动一个字节，done 照样被拦。
+  fs.appendFileSync(path.join(fixture, 't1-no-review.txt'), 'edited after commit\n')
+  assert.match(failMessage('done', '--task', 't1-no-review'), /is stale for task t1-no-review/)
+  run('freeze', '--task', 't1-no-review')
+  git('commit', '-am', 't1 change without review v2')
+  run('verify', '--task', 't1-no-review', '--name', 't1 no-review test v2', '--result', 'pass')
+  const noReviewDone = JSON.parse(run('done', '--task', 't1-no-review'))
+  assert.equal(noReviewDone.phase, 'done')
+  assert.equal(noReviewDone.review.result, null)
+  assert.equal(noReviewDone.approval.granted, false)
+
   // T2 快速通道：start 后即可提交，无需 freeze/review/approve/verify。
-  run('new', '--task', 't2-fixture', '--level', 't2')
+  const t2Created = JSON.parse(run('new', '--task', 't2-fixture', '--level', 't2'))
+  assert.equal(t2Created.review.required, false)
   run('start', '--task', 't2-fixture')
   fs.writeFileSync(path.join(fixture, 't2.txt'), 't2\n')
   const t2Guard = JSON.parse(run('guard', '--task', 't2-fixture'))
