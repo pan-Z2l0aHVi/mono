@@ -54,7 +54,6 @@ const {
   chooseFilePaths,
   chooseFilePath,
   getClipboardFilePaths,
-  openExternal,
   resourceMediaURL,
   subscribeToDroppedFiles,
   subscribeToPasteFileRequest,
@@ -576,8 +575,6 @@ onMounted(() => {
       :resource="selectedResource"
       :mobile="mobile"
       :media-url-for="resourceMediaURL"
-      :open-external="openExternal"
-      @open-failed="runtimeError = takeOperationError($event, '无法在系统浏览器中打开')"
     />
   </div>
 
