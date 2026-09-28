@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { describe, expect, it } from 'vite-plus/test'
+import { afterEach, describe, expect, it } from 'vite-plus/test'
 import { createApp, h, nextTick } from 'vue'
 
 import type { ResourceView } from '@/stores/library'
@@ -36,7 +36,7 @@ function resource(overrides: Partial<ResourceView> = {}): ResourceView {
   }
 }
 
-async function mountList(resources: ResourceView[]) {
+async function mountList(resources: ResourceView[], checkedIds: string[] = []) {
   const host = document.createElement('div')
   document.body.append(host)
   const app = createApp({
@@ -44,8 +44,8 @@ async function mountList(resources: ResourceView[]) {
       h(ResourceList, {
         resources,
         activeResourceId: null,
-        checkedIds: [],
-        selectionMode: false,
+        checkedIds,
+        selectionMode: checkedIds.length > 0,
         editingNameKey: null,
         editorRef: () => () => {},
         loading: false,
@@ -58,6 +58,7 @@ async function mountList(resources: ResourceView[]) {
   await nextTick()
   return {
     host,
+    rows: [...host.querySelectorAll('[data-resource-row]')],
     contextMenu: host.querySelector('web-ui-context-menu'),
     unmount: () => {
       app.unmount()
@@ -66,7 +67,24 @@ async function mountList(resources: ResourceView[]) {
   }
 }
 
+/*
+ * Tailwind 在 jsdom 里不生效，computed style 读不到圆角，所以断言行上的圆角类名。
+ * 读成「上/下是否直角」而不是整串类名：类名拼写是实现，这两侧直不直才是行为。
+ */
+function cornersOf(row: Element) {
+  const tokens = row.className.split(/\s+/)
+  const flat = tokens.includes('rounded-none')
+  return {
+    top: flat || tokens.includes('rounded-t-none'),
+    bottom: flat || tokens.includes('rounded-b-none')
+  }
+}
+
 describe('ResourceList', () => {
+  afterEach(() => {
+    document.body.innerHTML = ''
+  })
+
   it('无 bridge 的空资源列表渲染空态', async () => {
     const host = document.createElement('div')
     document.body.append(host)
@@ -121,6 +139,73 @@ describe('ResourceList', () => {
       expect(filled.contextMenu?.hasAttribute('disabled')).toBe(false)
     } finally {
       filled.unmount()
+    }
+  })
+
+  it('相邻选中行交出相接的直角，让选区连成一片', async () => {
+    const ids = ['a', 'b', 'c', 'd', 'e']
+    const mounted = await mountList(
+      ids.map(id => resource({ id })),
+      ['b', 'c', 'd']
+    )
+    try {
+      expect(mounted.rows.map(cornersOf)).toEqual([
+        { top: false, bottom: false }, // a 未选中
+        { top: false, bottom: true }, // b 上圆下直
+        { top: true, bottom: true }, // c 两侧都挨着
+        { top: true, bottom: false }, // d 上直下圆
+        { top: false, bottom: false } // e 未选中
+      ])
+    } finally {
+      mounted.unmount()
+    }
+  })
+
+  it('被选中的行不连续时各自保持完整圆角', async () => {
+    const mounted = await mountList(
+      ['a', 'b', 'c'].map(id => resource({ id })),
+      ['a', 'c']
+    )
+    try {
+      expect(mounted.rows.map(cornersOf)).toEqual([
+        { top: false, bottom: false },
+        { top: false, bottom: false },
+        { top: false, bottom: false }
+      ])
+    } finally {
+      mounted.unmount()
+    }
+  })
+
+  it('邻居选中不会波及未选中的行', async () => {
+    const mounted = await mountList(
+      ['a', 'b', 'c'].map(id => resource({ id })),
+      ['b']
+    )
+    try {
+      expect(mounted.rows.map(cornersOf)).toEqual([
+        { top: false, bottom: false },
+        { top: false, bottom: false },
+        { top: false, bottom: false }
+      ])
+    } finally {
+      mounted.unmount()
+    }
+  })
+
+  it('全选时只有首尾两行的外侧保留圆角', async () => {
+    const mounted = await mountList(
+      ['a', 'b', 'c'].map(id => resource({ id })),
+      ['a', 'b', 'c']
+    )
+    try {
+      expect(mounted.rows.map(cornersOf)).toEqual([
+        { top: false, bottom: true },
+        { top: true, bottom: true },
+        { top: true, bottom: false }
+      ])
+    } finally {
+      mounted.unmount()
     }
   })
 })

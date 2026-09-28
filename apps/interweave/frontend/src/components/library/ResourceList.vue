@@ -53,6 +53,19 @@ const emit = defineEmits<{
 const contextMenuRef = ref<WebUiContextMenu>()
 const contextResource = ref<ResourceView | null>(null)
 const emptyTitle = computed(() => (props.runtimeAvailable ? '资源库为空' : '桌面服务未连接'))
+const checkedSet = computed(() => new Set(props.checkedIds))
+
+// 列表行紧挨着排布，没有行间距。选中态要连成一片，就得由相邻两行各自交出一个直角：
+// 这里只报告「上下邻居是否也选中」，是否真的改成直角由 ResourceRow 结合自身 checked 决定。
+function checkedAbove(index: number) {
+  const previous = props.resources[index - 1]
+  return !!previous && checkedSet.value.has(previous.id)
+}
+
+function checkedBelow(index: number) {
+  const next = props.resources[index + 1]
+  return !!next && checkedSet.value.has(next.id)
+}
 
 const openWithApps: Partial<Record<ResourceKind, Array<{ label: string; icon: typeof lucideEye }>>> = {
   image: [
@@ -150,12 +163,14 @@ function handleRenameChange(resource: ResourceView, event: WebUiEvent<WebUiEdita
 
     <div v-else class="w-full h-full select-none">
       <ResourceRow
-        v-for="resource in resources"
+        v-for="(resource, index) in resources"
         :key="resource.id"
         :resource="resource"
         :media-url="resource.preferred ? mediaUrlFor(resource.preferred.id) : null"
         :active="!selectionMode && activeResourceId === resource.id"
         :checked="checkedIds.includes(resource.id)"
+        :checked-above="checkedAbove(index)"
+        :checked-below="checkedBelow(index)"
         :selection-mode="selectionMode"
         :editing-name-key="editingNameKey"
         :editor-ref="editorRefFor(resource.id)"
