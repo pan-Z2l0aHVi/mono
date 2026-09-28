@@ -212,7 +212,7 @@ function submit() {
           v-else
           class="grid h-full min-h-0 place-items-center rounded-3xl bg-white dark:bg-(--wui-color-surface-raised)"
         >
-          <web-ui-empty size="small" description="暂无待找回资源" />
+          <web-ui-empty :size="40" description="暂无待找回资源" />
         </div>
       </aside>
     </div>

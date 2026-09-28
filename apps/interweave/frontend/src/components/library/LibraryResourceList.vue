@@ -216,7 +216,7 @@ onScopeDispose(() => {
     </div>
 
     <div v-else-if="resources.length === 0" class="flex flex-col items-center justify-center py-24">
-      <web-ui-empty size="large" :title="emptyTitle" :description="emptyDescription" />
+      <web-ui-empty :size="72" :title="emptyTitle" :description="emptyDescription" />
     </div>
 
     <div v-else class="w-full h-full select-none">

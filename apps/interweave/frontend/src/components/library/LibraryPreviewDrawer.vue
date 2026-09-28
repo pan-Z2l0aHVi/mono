@@ -170,7 +170,7 @@ async function handleOpenExternal() {
       class="grid h-full min-h-0 grid-rows-[minmax(0,1fr)] overflow-hidden max-[640px]:h-[calc(var(--wui-drawer-height)-56px)]"
     >
       <div v-if="emptyState" class="grid min-h-0 place-items-center overflow-y-auto p-5">
-        <web-ui-empty size="large" :title="emptyState.title" :description="emptyState.description">
+        <web-ui-empty :size="72" :title="emptyState.title" :description="emptyState.description">
           <web-ui-icon slot="icon" :icon="resourceIcon(resource.kind)" :size="40" />
         </web-ui-empty>
       </div>
@@ -179,7 +179,7 @@ async function handleOpenExternal() {
         v-else-if="target.mode === 'image'"
         class="grid min-h-0 grid-rows-[minmax(0,1fr)] place-items-center overflow-auto p-3"
       >
-        <web-ui-empty v-if="imageFailed" size="large" title="无法显示这张图片" description="文件可能已被移动或删除。">
+        <web-ui-empty v-if="imageFailed" :size="72" title="无法显示这张图片" description="文件可能已被移动或删除。">
           <web-ui-icon slot="icon" :icon="resourceIcon(resource.kind)" :size="40" />
         </web-ui-empty>
         <img
@@ -198,7 +198,7 @@ async function handleOpenExternal() {
       >
         <web-ui-empty
           v-if="videoFailed"
-          size="large"
+          :size="72"
           title="无法播放这个视频"
           description="文件可能已被移动，或编码不受支持。"
         >
@@ -220,7 +220,7 @@ async function handleOpenExternal() {
         <div v-if="textState === 'loading'" class="grid min-h-0 place-items-center" role="status">
           <web-ui-spinner :size="28" />
         </div>
-        <web-ui-empty v-else-if="textState === 'failed'" size="large" title="无法读取这个文件" :description="textError">
+        <web-ui-empty v-else-if="textState === 'failed'" :size="72" title="无法读取这个文件" :description="textError">
           <web-ui-icon slot="icon" :icon="resourceIcon(resource.kind)" :size="40" />
         </web-ui-empty>
         <div v-else-if="textPreview" class="grid min-h-0 grid-rows-[auto_minmax(0,1fr)] overflow-hidden">
