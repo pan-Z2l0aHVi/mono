@@ -3,6 +3,7 @@
 - **Date**: 2026-09-24
 - **Status**: 已接受
 - **Amends**: [ADR-0010](0010-agent-role-orchestration.md)、[ADR-0014](0014-task-system-v2.md)、[ADR-0015](0015-role-contracts-in-herdr-agents-skill.md)
+- **Superseded by**: [ADR-0017](0017-orchestration-decoupled-from-task.md) —— 本 ADR 中 `herdr-agents/<task-id>` 的 coordination id 构造与「Task Packet 提供 Coordination 摘要」不再现行：id 改为编排开始时自由生成的主题标签，元数据落 `$TMPDIR/herdr-agents/reports/`。启用评分、检查点协议、只读边界与「不写入 task state」全部决策不变
 
 ## 背景
 

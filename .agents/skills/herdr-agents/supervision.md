@@ -4,11 +4,11 @@
 
 ## 启用判断
 
-Manager 给每个维度打 0 到 2 分，把分数、建议和理由写进 Task Packet。5/8 是参考线，不是自动 gate：按任务实际上调下调都行，但要写明为什么。
+Manager 给每个维度打 0 到 2 分，把分数、建议和理由写进编排记录。5/8 是参考线，不是自动 gate：按任务实际上调下调都行，但要写明为什么。
 
 | 维度 | 0 分 | 1 分 | 2 分 |
 | --- | --- | --- | --- |
-| 影响半径 | 单点局部 | 多个文件或一个 workspace | 跨 workspace、公共消费面或并行 task |
+| 影响半径 | 单点局部 | 多个文件或一个 workspace | 跨 workspace、公共消费面或多个并行工作单元 |
 | 契约与不可逆性 | 纯内部、可轻易回退 | 需兼容已有行为 | 公共契约、迁移、权限、数据或发布不可逆边界 |
 | 方案不确定性 | 方案和实现路径稳定 | 有局部未知 | 目标、边界或方案需要持续核对 |
 | 验证成本 | 单条快速命令 | 需要多个测试或构建 | 浏览器、跨层、集成或长回归验证 |
@@ -17,13 +17,13 @@ Manager 给每个维度打 0 到 2 分，把分数、建议和理由写进 Task 
 
 ## 启动与只读边界
 
-Manager 在实施 task 的同一个 worktree 开一个 Supervisor pane，整个 task 生命周期共用一个 coordination id：
+Manager 在同一组实施 worktree 开一个 Supervisor pane，整个编排周期共用一个 coordination id。id 由 Manager 在编排开始时自由生成，形如主题 slug，不从 task id 派生：
 
 ```text
-herdr-agents/<task-id>
+herdr-agents/<主题slug>
 ```
 
-id 不随阶段变化。pane 名称和 pane id 只用于寻址，顶替不了 coordination id；coordination id 写在消息正文里。Manager 把 Coder 和 Supervisor 的 live agent 名称或 pane id 一并写进 handoff，双方用 `agent prompt` 互发消息。Task Packet 的可选 Coordination 区域记参与者、启用理由、检查点摘要和未决事项。
+id 不随阶段变化。pane 名称和 pane id 只用于寻址，顶替不了 coordination id；coordination id 写在消息正文里。Manager 把 Coder 和 Supervisor 的 live agent 名称或 pane id 一并写进 handoff，双方用 `agent prompt` 互发消息。参与者、启用理由、检查点结论和未决事项记进 `$TMPDIR/herdr-agents/reports/` 下的编排记录，格式见 [`SKILL.md`](./SKILL.md) 的「巡检」一节。
 
 Supervisor 默认只读，可以做这些事：
 
@@ -47,11 +47,11 @@ Manager 派发时把三个检查点写进 Coder handoff。每个检查点都要�
 
 ```text
 Observation Report
-Coordination: herdr-agents/<task-id>
+Coordination: herdr-agents/<主题slug>
 Checkpoint: before-first-write | first-verifiable-slice | before-final-delivery
 Status: clear | open | resolved | disputed | escalated
 Findings: <按严重程度列出问题；无问题写 none>
-Evidence: <文件、行号、diff、命令输出或 task status>
+Evidence: <文件、行号、diff 或命令输出；编排有 task 时可附 task status>
 Required action: <Coder 或 Manager 的下一动作；clear 写 none>
 Readiness: Ready | Not ready
 ```
@@ -64,6 +64,6 @@ Readiness: Ready | Not ready
 - `disputed`：Coder 认为报告不成立，交 Manager 裁决。
 - `escalated`：需要 Manager 决策、拆 task 或换方案。
 
-Coder 到检查点时用 Herdr `agent prompt` 分别通知 Supervisor 和 Manager，消息带同一个 coordination id。Supervisor 把纠错消息发给 Coder，把检查点报告和裁决结果发给 Manager。双方分工是：Supervisor 指出问题，Coder 修复并给出证据，Supervisor 重新核对后把 `open` 改成 `resolved`，有争议转 `disputed`。结束前必须填 `Readiness`，启用时最终报告应为 `Ready`。
+Coder 到检查点时用 Herdr `agent prompt` 分别通知 Supervisor 和 Manager，消息带 Manager 在编排开始时生成的那个 coordination id。Supervisor 把纠错消息发给 Coder，把检查点报告和裁决结果发给 Manager。双方分工是：Supervisor 指出问题，Coder 修复并给出证据，Supervisor 重新核对后把 `open` 改成 `resolved`，有争议转 `disputed`。结束前必须填 `Readiness`，启用时最终报告应为 `Ready`。
 
-Reviewer 不接收 Supervisor 报告，只读冻结 diff、Task Packet 的任务主合同和验证证据。Reviewer 退回后，Manager 复用原来的 Supervisor 会话和 coordination id，先让 Supervisor 按更新后的 handoff 重新核对整个 diff，再重跑修复后仍需执行的检查点。旧报告不代表新 diff 的结论。
+Reviewer 不接收 Supervisor 报告，只读冻结 diff、Task Packet 的任务主合同和验证证据。Reviewer 退回后，Manager 复用原来的 Supervisor 会话和编排记录里那个 coordination id，先让 Supervisor 按更新后的 handoff 重新核对整个 diff，再重跑修复后仍需执行的检查点。旧报告不代表新 diff 的结论。

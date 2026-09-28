@@ -61,6 +61,7 @@
     "pple",
     "gofmt",
     "GOARCH",
+    "gpgsign",
     "ACMR",
     "nodir",
     "modernc",

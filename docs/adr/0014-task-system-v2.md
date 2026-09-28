@@ -5,6 +5,7 @@
 - **Supersedes**: [ADR-0010](0010-agent-role-orchestration.md) 的任务状态机与 mode 词汇、[ADR-0012](0012-instruction-risk-tiering-and-pre-authorized-operations.md) 的风险分级表
 - **Amends**: [ADR-0011](0011-agent-model-binding-and-effort.md)（角色默认模型与思考强度分档取消，模型与思考强度由用户会话设置或 Manager 按任务指定）
 - **Amended by**: [ADR-0016](0016-implementation-supervision.md)（Role、Supervisor 和 coordination 不进入 task state）
+- **Superseded by**: [ADR-0017](0017-orchestration-decoupled-from-task.md) —— 本 ADR 中「Role 编排信息留在 skill 与 Task Packet 摘要中」一句不再现行：编排元数据的落点是 `$TMPDIR/herdr-agents/reports/` 下的编排记录。级别、状态机、证据、政策检查与 playbook 全部决策不变
 
 ## 背景
 

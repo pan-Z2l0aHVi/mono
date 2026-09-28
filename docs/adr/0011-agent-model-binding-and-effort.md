@@ -5,6 +5,7 @@
 - **Amends**: [ADR-0010](0010-agent-role-orchestration.md) 的「执行体默认绑定」一节
 - **Amended by**: [ADR-0014](0014-task-system-v2.md)（取消角色默认模型与思考强度分档；模型与思考强度由用户会话设置或 Manager 按任务指定）
 - **Further amended by**: [ADR-0016](0016-implementation-supervision.md)（Role 与 Supervisor 的执行体绑定统一由 herdr-agents skill 维护）
+- **Superseded by**: [ADR-0017](0017-orchestration-decoupled-from-task.md) —— 本 ADR 已无现行内容：默认分档早被 ADR-0014 取消，绑定表归 herdr-agents skill（ADR-0015/0016），`Effort` 字段随 Task Packet 的 Coordination 区退化为指针而不再记录（ADR-0017）
 
 ## 背景
 
