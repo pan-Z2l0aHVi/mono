@@ -7,13 +7,11 @@ import type { ResourceSourceView, ResourceView } from '@/stores/library'
 
 import { ResourceKind } from '../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage'
 
-import LibraryPreviewDrawer from './LibraryPreviewDrawer.vue'
+import PreviewDrawer from './PreviewDrawer.vue'
 
 interface MountOptions {
   open?: boolean
-  openExternal?: (target: string) => Promise<void>
   mediaUrlFor?: (sourceId: string) => string | null
-  onOpenFailed?: (error: unknown) => void
 }
 
 interface Mounted {
@@ -63,13 +61,11 @@ async function mountDrawer(initial: ResourceView | null, options: MountOptions =
   const app = createApp({
     setup() {
       return () =>
-        h(LibraryPreviewDrawer, {
+        h(PreviewDrawer, {
           open: open.value,
           resource: current.value,
           mobile: false,
-          mediaUrlFor: options.mediaUrlFor ?? ((sourceId: string) => `/resource-media/${sourceId}`),
-          openExternal: options.openExternal ?? (async () => {}),
-          onOpenFailed: options.onOpenFailed
+          mediaUrlFor: options.mediaUrlFor ?? ((sourceId: string) => `/resource-media/${sourceId}`)
         })
     }
   })
@@ -98,10 +94,6 @@ async function flush(times = 8): Promise<void> {
   await nextTick()
 }
 
-function openExternalButton(host: HTMLElement) {
-  return host.querySelector<HTMLElement>('web-ui-button[aria-label="在系统浏览器打开"]')
-}
-
 beforeEach(() => {
   vi.stubGlobal(
     'fetch',
@@ -117,7 +109,7 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 
-describe('LibraryPreviewDrawer', () => {
+describe('PreviewDrawer', () => {
   it('图片铺满内容区渲染 img，加载失败回落到空态', async () => {
     const { host } = await mountDrawer(resourceOf(fileSource(), ResourceKind.ResourceKindImage))
     const image = host.querySelector('img')
@@ -200,14 +192,12 @@ describe('LibraryPreviewDrawer', () => {
     expect(host.querySelector('img')).not.toBeNull()
   })
 
-  it('URL 来源渲染 sandbox 化的 iframe 并常驻系统浏览器外跳按钮', async () => {
-    const openExternal = vi.fn<(target: string) => Promise<void>>(async () => {})
+  it('URL 来源渲染 sandbox 化的 iframe', async () => {
     const { host } = await mountDrawer(
       resourceOf(
         fileSource({ id: 'source-url', type: 'url', location: 'https://example.com/x' }),
         ResourceKind.ResourceKindWeb
-      ),
-      { openExternal }
+      )
     )
     const frame = host.querySelector('iframe')
     expect(frame?.getAttribute('src')).toBe('https://example.com/x')
@@ -216,31 +206,12 @@ describe('LibraryPreviewDrawer', () => {
     )
     expect(frame?.getAttribute('title')).toBe('预览目标 网页预览')
     expect(host.querySelector('img')).toBeNull()
-    openExternalButton(host)?.click()
-    await flush()
-    expect(openExternal).toHaveBeenCalledWith('https://example.com/x')
-  })
-
-  it('外跳失败时把原因交给调用方而不是静默', async () => {
-    const onOpenFailed = vi.fn<(error: unknown) => void>()
-    const { host } = await mountDrawer(resourceOf(fileSource(), ResourceKind.ResourceKindImage), {
-      onOpenFailed,
-      openExternal: async () => {
-        throw new Error('没有可用的默认应用')
-      }
-    })
-    openExternalButton(host)?.click()
-    await flush()
-    expect(onOpenFailed).toHaveBeenCalledOnce()
-    const [failure] = onOpenFailed.mock.calls[0] as [Error]
-    expect(failure.message).toBe('没有可用的默认应用')
   })
 
   it('失效来源不渲染媒体并说明原因', async () => {
     const { host } = await mountDrawer(resourceOf(fileSource({ available: false }), ResourceKind.ResourceKindImage))
     expect(host.querySelector('img')).toBeNull()
     expect(host.querySelector('web-ui-empty')?.getAttribute('title')).toBe('文件已失效')
-    expect(openExternalButton(host)).toBeNull()
   })
 
   it('缺 runtime 时说明预览依赖桌面服务', async () => {

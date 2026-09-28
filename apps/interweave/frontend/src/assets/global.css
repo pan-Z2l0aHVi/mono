@@ -17,3 +17,31 @@ body {
 :not(:defined) {
   display: none;
 }
+
+/*
+ * 页面级 focus ring 对齐 web-ui 组件的浅蓝样式。
+ *
+ * web-ui 组件把 ring 写在自己 shadow 内，够不到 light DOM；app 自绘的原生元素
+ * （AppNav 导航按钮、添加对话框里的按钮）此前落回 UA 默认蓝环，于是同一页面上
+ * 键盘 Tab 时出现两套 focus 语言——组件是半透明浅蓝描边，原生元素是实心系统蓝。
+ *
+ * 放在 document 样式表而不是 layout 的 shadow 里：::slotted() 只能命中 slot 的
+ * 直接子元素，而 AppNav 的 <button> 嵌在自己的根 div 内，从组件侧根本够不着。
+ * 元素选择器本身包在 :where() 里（0 特异性），只剩 :focus-visible 的伪类权重
+ * (0,1,0)：既压得住 UA 默认蓝环，又让页面自己的 focus 工具类
+ * （如 focus:outline-none 的 (0,2,0)）照旧能单点覆盖。
+ */
+:where(#app)
+  :where(
+    a[href],
+    button,
+    input,
+    select,
+    textarea,
+    summary,
+    [tabindex]:not([tabindex='-1']),
+    [contenteditable]:not([contenteditable='false'])
+  ):focus-visible {
+  outline: var(--wui-focus-ring-width, 3px) solid var(--wui-color-focus-ring, rgb(0 136 255 / 0.4));
+  outline-offset: 2px;
+}

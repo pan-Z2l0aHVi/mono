@@ -227,7 +227,8 @@ const SPECS: MockResourceSpec[] = [
   },
   {
     id: 'mock-doc-2-missing',
-    title: '一份很长很长的资源名称用来检查列表里的截断行为是否正确',
+    title:
+      '一份很长很长的资源名称用来检查列表里的截断行为是否正确所以这里刻意堆了很多字看看省略号能不能正常出现并且不会换行撑高行高',
     note: '名称超长时标题应该省略而不是换行撑高行高。',
     kind: ResourceKind.ResourceKindDocument,
     sizeBytes: 12_884,
@@ -329,6 +330,17 @@ export function createMockLibraryRuntime(): LibraryRuntime {
       try {
         const found = require(resourceId)
         found.title = newTitle
+        found.updated_at = Date.now()
+        return Promise.resolve(found)
+      } catch (error) {
+        return Promise.reject(error)
+      }
+    },
+
+    updateResourceNote: (resourceId, note) => {
+      try {
+        const found = require(resourceId)
+        found.note = note
         found.updated_at = Date.now()
         return Promise.resolve(found)
       } catch (error) {

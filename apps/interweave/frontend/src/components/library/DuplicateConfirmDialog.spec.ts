@@ -7,7 +7,7 @@ import { createApp, h, nextTick } from 'vue'
 import { ResourceLocationMatchDTO } from '../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/service'
 
 import type { LibraryDuplicatePrompt } from './addQueue'
-import LibraryDuplicateConfirmDialog from './LibraryDuplicateConfirmDialog.vue'
+import DuplicateConfirmDialog from './DuplicateConfirmDialog.vue'
 
 function prompt(overrides: Partial<LibraryDuplicatePrompt> = {}): LibraryDuplicatePrompt {
   return {
@@ -30,7 +30,7 @@ function mountDialog(
   const host = document.createElement('div')
   document.body.append(host)
   const app = createApp({
-    render: () => h(LibraryDuplicateConfirmDialog, { open: true, prompt: value, ...listeners })
+    render: () => h(DuplicateConfirmDialog, { open: true, prompt: value, ...listeners })
   })
   app.mount(host)
   return {
@@ -50,7 +50,7 @@ function footerButton(host: HTMLElement, label: string) {
   return element
 }
 
-describe('LibraryDuplicateConfirmDialog', () => {
+describe('DuplicateConfirmDialog', () => {
   it('Escape 关闭时按取消裁决', async () => {
     const onCancel = vi.fn<() => void>()
     const onAccept = vi.fn<() => void>()

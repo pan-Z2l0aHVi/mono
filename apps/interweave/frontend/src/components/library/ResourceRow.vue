@@ -5,7 +5,6 @@ import { computed } from 'vue'
 
 import type { ResourceView } from '@/stores/library'
 
-import LibraryResourceThumbnail from './LibraryResourceThumbnail.vue'
 import {
   fileExtension,
   formatSize,
@@ -17,12 +16,15 @@ import {
   tagClass
 } from './presentation'
 import type { NameEditorRef } from './rename'
+import ResourceThumbnail from './ResourceThumbnail.vue'
 
 const props = defineProps<{
   resource: ResourceView
   mediaUrl: string | null
   active: boolean
   checked: boolean
+  checkedAbove: boolean
+  checkedBelow: boolean
   selectionMode: boolean
   editingNameKey: string | null
   editorRef: NameEditorRef
@@ -47,6 +49,16 @@ const resourceNameClass = computed(() => [
     : 'text-[#b0b0b8] line-through dark:text-(--wui-color-text-disabled)'
 ])
 
+// 相邻选中行连成一片：谁挨着同样选中的邻居，就交出那一侧的两个直角。四条分支都写成
+// 完整字面量，Tailwind 的扫描器才认得出来（模板拼接出来的类名扫不到）。
+const rowRadiusClass = computed(() => {
+  if (!props.checked) return 'rounded-[14px]'
+  if (props.checkedAbove && props.checkedBelow) return 'rounded-none'
+  if (props.checkedAbove) return 'rounded-b-[14px] rounded-t-none'
+  if (props.checkedBelow) return 'rounded-t-[14px] rounded-b-none'
+  return 'rounded-[14px]'
+})
+
 function handleChange(_event: WebUiEvent<WebUiCheckbox, 'change'>) {
   emit('toggle', props.resource.id)
 }
@@ -58,8 +70,9 @@ function handleNameChange(event: WebUiEvent<WebUiEditableText, 'change'>) {
 
 <template>
   <div
-    class="group relative flex items-center gap-3 px-4 max-[640px]:px-2 py-3 transition-colors duration-100 rounded-xl"
+    class="group relative flex items-center gap-3 px-4 max-[640px]:px-2 py-3 transition-colors duration-100"
     :class="[
+      rowRadiusClass,
       checked
         ? 'bg-black/3.5 dark:bg-white/5'
         : active
@@ -83,7 +96,7 @@ function handleNameChange(event: WebUiEvent<WebUiEditableText, 'change'>) {
       @change="handleChange"
     />
 
-    <LibraryResourceThumbnail :kind="resource.kind" :source="source" :media-url="mediaUrl" />
+    <ResourceThumbnail :kind="resource.kind" :source="source" :media-url="mediaUrl" />
 
     <div class="flex min-w-0 flex-1 flex-col gap-1">
       <div class="flex min-w-0 items-center gap-1.5">

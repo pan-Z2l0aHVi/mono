@@ -24,6 +24,9 @@ function createRuntime(overrides: Partial<LibraryRuntime> = {}): LibraryRuntime 
     updateResourceTitle: async () => {
       throw new Error('未使用')
     },
+    updateResourceNote: async () => {
+      throw new Error('未使用')
+    },
     deleteResource: async () => {},
     addTag: async () => {
       throw new Error('未使用')

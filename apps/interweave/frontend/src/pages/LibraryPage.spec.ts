@@ -20,6 +20,17 @@ import { useLibraryStore } from '../stores/library'
 
 import LibraryPage from './LibraryPage.vue'
 
+// 右键菜单由 web-ui 自己接管渲染，单测只需要它有这两个接口
+if (!customElements.get('web-ui-context-menu')) {
+  customElements.define(
+    'web-ui-context-menu',
+    class extends HTMLElement {
+      openAt() {}
+      close() {}
+    }
+  )
+}
+
 const runtimeStub = {
   current: null as LibraryRuntime | null,
   droppedFilesListener: null as ((paths: string[]) => void) | null,
@@ -75,6 +86,7 @@ function createRuntime(overrides: Partial<LibraryRuntime> = {}): LibraryRuntime 
     addFileResource: async () => resource(),
     addURLResource: async () => resource(),
     updateResourceTitle: async (resourceId, title) => resource({ id: resourceId, title }),
+    updateResourceNote: async (resourceId, note) => resource({ id: resourceId, note }),
     deleteResource: async () => {},
     addTag: async () => ({ id: 'tag-1', name: 'tag', created_at: 1, color: TagColor.TagColorTeal }),
     removeTag: async () => {},
@@ -195,6 +207,30 @@ function queueItems(host: HTMLElement) {
   return [...host.querySelectorAll('web-ui-dialog ol > li')]
 }
 
+/** 抽屉的 open 是 reflect 属性，jsdom 里按属性读；没升级成自定义元素时退回读 attribute。 */
+function drawerOpen(host: HTMLElement, label: string) {
+  const drawer = host.querySelector(`web-ui-drawer[dialog-label="${label}"]`) as
+    | (HTMLElement & { open?: boolean })
+    | null
+  if (!drawer) throw new Error(`没有找到「${label}」抽屉`)
+  return drawer.open ?? drawer.hasAttribute('open')
+}
+
+/*
+ * 详情只从右键菜单进（列表左键是预览）。先右键唤起菜单，再点「详情」那一项。
+ */
+async function openDetailFromMenu(host: HTMLElement) {
+  row(host, 'resource-1').dispatchEvent(
+    new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: 4, clientY: 4 })
+  )
+  await nextTick()
+  const item = [...host.querySelectorAll('web-ui-dropdown-item')].find(node => node.textContent?.trim() === '详情')
+  if (!item) throw new Error('右键菜单里没有「详情」项')
+  item.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+  await nextTick()
+  await nextTick()
+}
+
 /** jsdom 不实现 matchMedia；页面只在启动时读一次 matches 并订阅 change。 */
 function matchMediaStub() {
   return {
@@ -239,11 +275,31 @@ describe('LibraryPage：可用性感知接线', () => {
     const mounted = await mountPage()
 
     try {
+      await openDetailFromMenu(mounted.host)
+
+      expect(probeURLSourceOnOpen).toHaveBeenCalledExactlyOnceWith('source-1')
+    } finally {
+      await mounted.close()
+    }
+  })
+
+  /*
+   * 列表左键现在是预览：开的是预览抽屉，不该顺手去探测详情那条路上的 URL source。
+   * 探测只属于「打开详情」，由右键菜单的详情项触发。
+   */
+  it('左键行进的是预览抽屉，不开详情也不探测', async () => {
+    const probeURLSourceOnOpen = vi.fn<LibraryRuntime['probeURLSourceOnOpen']>()
+    runtimeStub.current = createRuntime({ probeURLSourceOnOpen })
+    const mounted = await mountPage()
+
+    try {
       row(mounted.host, 'resource-1').click()
       await nextTick()
       await nextTick()
 
-      expect(probeURLSourceOnOpen).toHaveBeenCalledExactlyOnceWith('source-1')
+      expect(drawerOpen(mounted.host, '资源预览')).toBe(true)
+      expect(drawerOpen(mounted.host, '资源详情')).toBe(false)
+      expect(probeURLSourceOnOpen).not.toHaveBeenCalled()
     } finally {
       await mounted.close()
     }
@@ -258,9 +314,7 @@ describe('LibraryPage：可用性感知接线', () => {
     const mounted = await mountPage()
 
     try {
-      row(mounted.host, 'resource-1').click()
-      await nextTick()
-      await nextTick()
+      await openDetailFromMenu(mounted.host)
 
       expect(probeURLSourceOnOpen).not.toHaveBeenCalled()
     } finally {
@@ -282,9 +336,7 @@ describe('LibraryPage：可用性感知接线', () => {
     const mounted = await mountPage()
 
     try {
-      row(mounted.host, 'resource-1').click()
-      await nextTick()
-      await nextTick()
+      await openDetailFromMenu(mounted.host)
 
       expect(probeURLSourceOnOpen).not.toHaveBeenCalled()
     } finally {
@@ -561,12 +613,78 @@ describe('LibraryPage：粘贴链接', () => {
       await openAddDialog(mounted.host)
       paste('https://example.com/article')
       await flush()
-      button(mounted.host, '添加').click()
+      button(mounted.host, '确认添加').click()
       await flush()
 
       expect(addURLResource).toHaveBeenCalledExactlyOnceWith('https://example.com/article')
       expect(addFileResource).not.toHaveBeenCalled()
       expect(useLibraryStore().resources[0]?.title).toBe('示例文章')
+    } finally {
+      await mounted.close()
+    }
+  })
+})
+
+function deferred<T>() {
+  let resolve!: (value: T) => void
+  let reject!: (reason: unknown) => void
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res
+    reject = rej
+  })
+  return { promise, resolve, reject }
+}
+
+describe('LibraryPage：备注失败回写', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    route.value = { path: '/library' }
+    runtimeStub.availabilityListener = null
+    runtimeStub.availabilityDisposer = null
+    window.matchMedia = vi.fn<() => MediaQueryList>(matchMediaStub)
+  })
+
+  afterEach(() => {
+    runtimeStub.current = null
+  })
+
+  it('先发的请求后失败时，回滚用 store 活值，不抹掉后发请求已保存的内容', async () => {
+    const first = deferred<ResourceDTO>()
+    const second = deferred<ResourceDTO>()
+    const calls: string[] = []
+    runtimeStub.current = createRuntime({
+      updateResourceNote: (resourceId, note) => {
+        calls.push(note)
+        return calls.length === 1 ? first.promise : second.promise
+      }
+    })
+    const mounted = await mountPage()
+
+    try {
+      await openDetailFromMenu(mounted.host)
+
+      const editor = mounted.host.querySelector('web-ui-textarea') as HTMLElement & { value: string }
+      if (!editor) throw new Error('备注输入框未渲染')
+
+      // 连续两次失焦提交：A 与 B 捕获的是同一个「编辑前」快照。
+      editor.value = 'abc'
+      editor.dispatchEvent(new Event('change', { bubbles: true, composed: true }))
+      editor.value = 'abcd'
+      editor.dispatchEvent(new Event('change', { bubbles: true, composed: true }))
+      expect(calls).toEqual(['abc', 'abcd'])
+
+      // B 先成功落库，store 变成 'abcd'。
+      second.resolve(resource({ note: 'abcd' }))
+      await nextTick()
+      await nextTick()
+
+      // A 随后失败。若回滚目标是 emit 时的快照，这里会把界面写成编辑前的 ''，
+      // 而 store 里已经是 'abcd'——已保存的值看不见了。
+      first.reject(new Error('保存失败'))
+      await nextTick()
+      await nextTick()
+
+      expect(editor.value).toBe('abcd')
     } finally {
       await mounted.close()
     }

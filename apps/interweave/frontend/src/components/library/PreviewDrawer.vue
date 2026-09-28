@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import type { WebUiDrawer, WebUiEvent } from '@greypan/web-ui'
-import { lucideExternalLink } from '@greypan/web-ui/icons'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 
 import type { ResourceView } from '@/stores/library'
@@ -13,13 +12,9 @@ const props = defineProps<{
   resource: ResourceView | null
   mobile: boolean
   mediaUrlFor: (sourceId: string) => string | null
-  openExternal: (target: string) => Promise<void>
 }>()
 
-const emit = defineEmits<{
-  'update:open': [value: boolean]
-  'open-failed': [error: unknown]
-}>()
+const emit = defineEmits<{ 'update:open': [value: boolean] }>()
 
 type TextState = 'idle' | 'loading' | 'ready' | 'failed'
 
@@ -30,7 +25,6 @@ const videoFailed = ref(false)
 const textState = ref<TextState>('idle')
 const textPreview = ref<{ text: string; truncated: boolean } | null>(null)
 const textError = ref('')
-const externalBusy = ref(false)
 let textRequest = 0
 let textAbort: AbortController | null = null
 
@@ -109,29 +103,25 @@ async function loadText() {
 function handleOpenChange(event: WebUiEvent<WebUiDrawer, 'open-change'>) {
   emit('update:open', event.detail.open)
 }
-
-async function handleOpenExternal() {
-  const externalTarget = target.value.externalTarget
-  if (!externalTarget || externalBusy.value) return
-  externalBusy.value = true
-  try {
-    await props.openExternal(externalTarget)
-  } catch (cause) {
-    emit('open-failed', cause)
-  } finally {
-    externalBusy.value = false
-  }
-}
 </script>
 
 <template>
+  <!--
+    热区取 32px（drawer 自己的默认值是 20px，见 CHANGELOG：曾从 32px 收窄并留了
+    「consumer 可覆回 32px+」的口子）。20px 在 720px 宽的面板边缘上太窄，拖拽命中率低。
+
+    content-padding 跟着回到 drawer 默认的 20px，不归零：它同时是拖拽条中线的来源
+    （--wui-internal-drag-bar-center = max(padding/2, 厚度/2+4px)），归零时中线被 6px 下限
+    兜住，4px 的胶囊会压在面板内缘上，读起来像边框而不是把手。20px 让胶囊落在 8px 处，
+    稳稳待在 32px 热区之内。代价是网页预览从满铺变成带一圈白框的视口——这个取舍得认。
+  -->
   <web-ui-drawer
     :open="open"
     :placement="placement"
     dialog-label="资源预览"
     draggable
     controlled
-    class="max-[640px]:[--wui-drawer-height:80vh] max-[640px]:[--wui-drawer-inset:0px] max-[640px]:[--wui-drawer-radius:28px_28px_0_0] max-[640px]:[--wui-drawer-header-padding:0px] [--wui-drawer-content-padding:0px] [--wui-drawer-width:max(60vw,320px)]"
+    class="max-[640px]:[--wui-drawer-height:80vh] max-[640px]:[--wui-drawer-inset:0px] max-[640px]:[--wui-drawer-radius:28px_28px_0_0] max-[640px]:[--wui-drawer-header-padding:0px] [--wui-drawer-width:max(60vw,320px)] [--wui-drawer-content-padding:20px] [--wui-drawer-drag-zone-size:32px]"
     @open-change="handleOpenChange"
   >
     <div v-if="resource" slot="header" class="flex w-full min-w-0 items-center gap-2 px-4 max-[640px]:h-14">
@@ -140,25 +130,11 @@ async function handleOpenExternal() {
       >
         {{ resource.title }}
       </h2>
-      <web-ui-tooltip content="在系统浏览器打开" placement="bottom">
-        <web-ui-button
-          v-if="target.externalTarget"
-          class="shrink-0"
-          icon
-          variant="ghost"
-          size="28"
-          aria-label="在系统浏览器打开"
-          :loading="externalBusy"
-          @click="handleOpenExternal"
-        >
-          <web-ui-icon :icon="lucideExternalLink" :size="14" />
-        </web-ui-button>
-      </web-ui-tooltip>
     </div>
 
     <!--
       bottom placement 的 dialog 是 height: auto，--wui-drawer-height 只声明在 host 上不会生效，
-      需要像 LibraryDetailDrawer 那样把高度落在内容层；减去移动端 header 的 h-14。
+      需要像 DetailDrawer 那样把高度落在内容层；减去移动端 header 的 h-14。
 
       open && resource 双重守卫：selectedResource 由行点击即赋值，而 previewOpen 仍是 false，
       此时 dialog 是 display:none。只按 resource 守卫会让 img/video/iframe 挂在隐藏 dialog 里
@@ -239,7 +215,7 @@ async function handleOpenExternal() {
         allow-same-origin 是刻意保留的：去掉后 iframe 落在 opaque origin 上，大量真实站点
         （读自身 cookie/localStorage、按同源规则发请求）会直接失效，与「预览网页」的目的相悖。
         已知残余风险：与 app 同源的已存 URL 会在同源权限下运行，行为与跨源页面不同；
-        本仓无 CSP/frame 限制，被 X-Frame-Options 拦截的站点由常驻外跳按钮兜底。
+        本仓无 CSP/frame 限制，被 X-Frame-Options 拦截的站点只能由用户在浏览器里另开地址。
         该取舍经 Manager checkpoint 批准后留档于此。
       -->
       <iframe

@@ -84,6 +84,15 @@ textarea {
   }
 }
 
+/*
+ * autosize 由组件用 JS 独占高度（_autosize 写内联 height），原生 resize 拖拽与它是
+ * 两套高度来源：用户拖高后，下一次内容变化又会被 autosize 拉回去，拖拽变成假动作。
+ * 所以 autosize 下关掉 resize grip，需要上限高度请用 max-height（CSS 钳制）。
+ */
+:host([autosize]) textarea {
+  resize: none;
+}
+
 /* Coarse pointers include iOS Safari, where a sub-16px font triggers focus zoom. */
 @media (pointer: coarse) {
   textarea {

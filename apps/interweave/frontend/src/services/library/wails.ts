@@ -42,6 +42,10 @@ class WailsLibraryRuntime implements LibraryRuntime {
     return requireResourceDTO(await ResourceService.UpdateResourceTitle(resourceId, newTitle), '更新 Resource 标题')
   }
 
+  async updateResourceNote(resourceId: string, note: string) {
+    return requireResourceDTO(await ResourceService.UpdateResourceNote(resourceId, note), '更新 Resource 备注')
+  }
+
   async deleteResource(resourceId: string) {
     await ResourceService.DeleteResource(resourceId)
   }
