@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vite-plus/test'
+import { describe, expect, it } from 'vite-plus/test'
 
 import '..'
 import { cleanupElement, spyEvents, waitForUpdate } from '@/shared/test-utils'

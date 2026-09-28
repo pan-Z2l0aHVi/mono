@@ -3,6 +3,7 @@ import { page, userEvent } from 'vite-plus/test/browser'
 
 import '..'
 import '../../theme'
+import '@/components/option'
 import '@/components/popover'
 import '@/components/textarea'
 import type { WebUiInput } from '@/components/input'

@@ -4,6 +4,8 @@ import { createApp, nextTick, ref } from 'vue/dist/vue.esm-bundler.js'
 import { getMenuPanels, pollUntil } from '@/shared/test-utils'
 
 import '..'
+import '@/components/dropdown-item'
+
 import type { WebUiDropdown } from '..'
 
 afterEach(() => document.body.replaceChildren())

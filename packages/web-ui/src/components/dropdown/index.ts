@@ -2,9 +2,6 @@ import type { Placement } from '@floating-ui/dom'
 import { html, LitElement, unsafeCSS } from 'lit'
 import { customElement, property, state } from 'lit/decorators.js'
 
-import '@/components/dropdown-divider'
-import '@/components/dropdown-header'
-import '@/components/dropdown-item'
 import { UserChangeController } from '@/shared/events/user-change'
 import {
   createClosingSubmenuStack,
@@ -33,8 +30,7 @@ import {
 import { normalizeLiteral, normalizeNumber } from '@/shared/normalize'
 import { dispatchOpenChangeEvent } from '@/shared/open-state'
 import { defineOpenOverlay, type OpenOverlayHandle } from '@/shared/overlay/open-overlay'
-import { defineOverlay } from '@/shared/overlay/overlay'
-import type { OverlayApi } from '@/shared/overlay/overlay'
+import { defineOverlay, type OverlayApi } from '@/shared/overlay/overlay'
 import { FLOATING_PLACEMENTS } from '@/shared/overlay/placement-props'
 import { hideOverlayPresence, showOverlayPresence } from '@/shared/overlay/presence'
 import { defineScrollLockLease } from '@/shared/scroll-lock/scroll-lock'

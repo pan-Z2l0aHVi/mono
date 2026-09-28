@@ -1,4 +1,4 @@
-import { html, LitElement, nothing, unsafeCSS } from 'lit'
+import { html, LitElement, unsafeCSS } from 'lit'
 import { customElement, property } from 'lit/decorators.js'
 
 import { normalizeNumber } from '@/shared/normalize'

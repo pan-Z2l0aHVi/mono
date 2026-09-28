@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
 import '@/components/context-menu'
 import '@/components/dropdown'
+import '@/components/dropdown-item'
 import '@/components/popover'
 import '@/components/tooltip'
 import { getMenuPanels, queryA11y, spyEvents, waitForUpdate } from '@/shared/test-utils'

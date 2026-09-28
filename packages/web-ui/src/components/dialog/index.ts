@@ -1,7 +1,6 @@
 import { html, LitElement, type PropertyValues, unsafeCSS } from 'lit'
 import { customElement, property, state } from 'lit/decorators.js'
 
-import '@/components/button'
 import glass from '@/assets/glass.css?inline'
 import { UserChangeController } from '@/shared/events/user-change'
 import { dispatchOpenChangeEvent } from '@/shared/open-state'

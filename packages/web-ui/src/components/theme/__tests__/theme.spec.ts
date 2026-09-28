@@ -1,11 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
-import type { WebUiContextMenu } from '@/components/context-menu'
 import { toast } from '@/components/toast'
 
 import { WebUiTheme } from '..'
 import '@/components/context-menu'
-import '@/components/toast'
+import '@/components/dropdown-item'
 
 function createTheme(appearance?: 'light' | 'dark' | 'system'): WebUiTheme {
   const theme = document.createElement('web-ui-theme')
