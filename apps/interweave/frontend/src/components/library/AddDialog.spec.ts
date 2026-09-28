@@ -18,7 +18,7 @@ import {
 } from '../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage'
 import type { LibraryQueueItem } from '../../services/library'
 
-import LibraryAddDialog from './LibraryAddDialog.vue'
+import AddDialog from './AddDialog.vue'
 import { tagChipClass } from './presentation'
 
 vi.mock('@greypan/web-ui', async importOriginal => {
@@ -56,7 +56,7 @@ function mountDialog(
   const open = ref(options.open ?? true)
   const app = createApp({
     render: () =>
-      h(LibraryAddDialog, {
+      h(AddDialog, {
         open: open.value,
         queue,
         busy: false,
@@ -108,7 +108,7 @@ function previewHandle(): ImagePreviewHandle {
   }
 }
 
-describe('LibraryAddDialog', () => {
+describe('AddDialog', () => {
   beforeEach(() => {
     openPreview.mockReset()
   })
@@ -353,9 +353,9 @@ describe('LibraryAddDialog', () => {
     try {
       await nextTick()
       const hint = [...mounted.host.querySelectorAll('p')].find(candidate =>
-        candidate.textContent?.includes('可拖拽或粘贴')
+        candidate.textContent?.includes('支持拖入或粘贴')
       )
-      expect(hint?.textContent).toContain('网页链接')
+      expect(hint?.textContent).toContain('远程链接')
     } finally {
       mounted.close()
     }
@@ -388,17 +388,27 @@ describe('LibraryAddDialog', () => {
       const copy = empty.querySelector('span[slot="description"]')
       expect(copy?.getAttribute('class')).toBe('mt-1.5 grid gap-3 max-[640px]:mt-0.5 max-[640px]:gap-2')
 
-      const lines = [...(copy?.querySelectorAll('span') ?? [])]
-      expect(lines.map(line => line.textContent?.trim())).toEqual([
-        '暂无待添加资源',
-        '添加的资源会显示在这里，可先修改名称和标签'
+      const title = copy?.querySelector(':scope > span')
+      expect(title?.textContent?.trim()).toBe('暂无待添加资源')
+      expect(title?.getAttribute('class')).toBe(
+        'text-[16px] font-semibold leading-[1.4] text-[#22212a] dark:text-(--wui-color-text) max-[640px]:text-[13px]'
+      )
+
+      // 辅助说明与左侧 drop 区的支持类型说明同为 grid gap-0.5 的两行，两侧合成块因此
+      // 都是 52 + 12 + 22.4 + 12 + 35.6 = 134px。说明只写一行时右侧会短 18.8px、整块被
+      // 顶高，此前靠 pb-[16.8px] 补平；两侧都两行后不再需要任何单侧补偿。
+      const note = copy?.querySelector(':scope > span + span')
+      expect(note?.getAttribute('class')).toBe(
+        'grid gap-0.5 text-xs leading-[1.4] text-[#6a6a6a] dark:text-(--wui-color-text-secondary) max-[640px]:text-[11px]'
+      )
+      expect([...(note?.querySelectorAll('span') ?? [])].map(line => line.textContent?.trim())).toEqual([
+        '添加的资源将显示在此处',
+        '名称和标签可修改'
       ])
-      expect(lines[0]?.getAttribute('class')).toBe(
-        'block text-[16px] font-semibold leading-[1.4] text-[#22212a] dark:text-(--wui-color-text) max-[640px]:text-[13px]'
-      )
-      expect(lines[1]?.getAttribute('class')).toBe(
-        'block text-xs leading-[1.4] text-[#6a6a6a] dark:text-(--wui-color-text-secondary) max-[640px]:text-[11px]'
-      )
+
+      // 对齐靠两块同高等高、各自居中，不靠单侧 padding 补偿。
+      const emptyWrap = aside?.querySelector('div.grid.h-full')
+      expect(emptyWrap?.getAttribute('class') ?? '').not.toContain('pb-')
     } finally {
       mounted.close()
     }
@@ -412,6 +422,19 @@ describe('LibraryAddDialog', () => {
       const aside = mounted.host.querySelector('aside[aria-labelledby="library-add-queue-title"]')
       expect(aside?.querySelector('web-ui-empty')).toBeNull()
       expect(aside?.querySelectorAll('ol > li')).toHaveLength(1)
+    } finally {
+      mounted.close()
+    }
+  })
+
+  it('footer 的取消按钮固定 76px 宽，与添加按钮同宽', async () => {
+    const mounted = mountDialog([])
+
+    try {
+      await nextTick()
+      const cancel = mounted.host.querySelector('web-ui-button[slot="footer"][class*="wui-button-width"]')
+      expect(cancel?.getAttribute('class')).toBe('[--wui-button-width:76px]')
+      expect(cancel?.textContent?.trim()).toBe('取消')
     } finally {
       mounted.close()
     }

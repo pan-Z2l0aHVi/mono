@@ -101,6 +101,21 @@ export function useLibraryRuntime(injectedRuntime?: LibraryRuntime) {
     }
   }
 
+  async function updateResourceNote(resourceId: string, note: string) {
+    setPending(resourceId, true)
+    error.value = ''
+    try {
+      const updated = await runtime.updateResourceNote(resourceId, note)
+      store.upsertResource(updated)
+      return updated
+    } catch (cause) {
+      error.value = errorMessage(cause)
+      throw cause
+    } finally {
+      setPending(resourceId, false)
+    }
+  }
+
   async function deleteResources(resourceIds: string[]) {
     error.value = ''
     const deletedIds: string[] = []
@@ -277,6 +292,7 @@ export function useLibraryRuntime(injectedRuntime?: LibraryRuntime) {
     loadResources,
     addResource,
     renameResource,
+    updateResourceNote,
     deleteResources,
     saveTags,
     refreshSource,

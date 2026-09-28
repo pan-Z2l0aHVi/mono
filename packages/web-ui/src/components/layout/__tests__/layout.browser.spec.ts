@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vite-plus/test'
-import { page } from 'vite-plus/test/browser'
+import { page, userEvent } from 'vite-plus/test/browser'
 
 import '..'
 import { pollUntil, queryA11y } from '@/shared/test-utils'
@@ -58,6 +58,19 @@ afterEach(async () => {
 
 describe('WebUiLayout 组件（浏览器）', () => {
   describe('桌面端行为', () => {
+    it('桌面 Toggle 为 secondary 变体，与移动端的 glass 区分', async () => {
+      await page.viewport(1280, 720)
+      const layout = createLayout()
+      await layout.updateComplete
+      await nextFrame()
+
+      // 桌面收起用 secondary：glass 与侧栏面板同材质，叠在面板上时按钮自身边界
+      // 读不出来。移动端 Toggle 落在 drawer 上，保留 glass。
+      const toggle = queryA11y(layout, '[aria-label="折叠侧边栏"]') as HTMLElement
+      expect(toggle).toBeTruthy()
+      expect(toggle.getAttribute('variant')).toBe('secondary')
+    })
+
     it('Toggle 请求受控折叠；Consumer 回写后 aria-label 切换为「展开侧边栏」', async () => {
       await page.viewport(1280, 720)
       const layout = createLayout()
@@ -576,6 +589,53 @@ describe('WebUiLayout 组件（浏览器）', () => {
       handle.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'Enter' }))
       await layout.updateComplete
       expect(widthRequests).toEqual([`${expectedWidth}px`])
+    })
+
+    it('键盘聚焦 handle 时给出与其他组件一致的浅蓝 focus ring', async () => {
+      await page.viewport(1280, 720)
+      const layout = createLayout()
+      layout.setAttribute('sidebar-resizable', '')
+      // 本 spec 不挂 web-ui-theme，token 未定义时会落到 style.css 的字面 fallback。
+      // 写死浅蓝值断言的正是那个 fallback：把 var() 换成硬编码色也能照样通过。
+      // 这里反过来自己注入 token 再断言 ring 跟着走，主题无关。
+      layout.style.setProperty('--wui-color-focus-ring', 'rgb(1 2 3 / 0.5)')
+      await layout.updateComplete
+      await nextFrame()
+
+      const handle = queryA11y(layout, '[role="separator"]') as HTMLElement
+      // 合成 focus() 不带键盘模态，:focus-visible 不匹配；先用真键盘 Tab 建立模态。
+      await userEvent.tab()
+      handle.focus()
+      expect(handle.matches(':focus-visible')).toBe(true)
+
+      const style = getComputedStyle(handle)
+      // 与 back-top 等组件同一组 token：3px、offset 2px，颜色走 --wui-color-focus-ring。
+      expect(style.outlineWidth).toBe('3px')
+      expect(style.outlineStyle).toBe('solid')
+      expect(style.outlineOffset).toBe('2px')
+      expect(style.outlineColor).toBe('rgba(1, 2, 3, 0.5)')
+    })
+
+    it('键盘聚焦 handle 时同时给出与 hover 同形的 accent 竖条', async () => {
+      await page.viewport(1280, 720)
+      const layout = createLayout()
+      layout.setAttribute('sidebar-resizable', '')
+      await layout.updateComplete
+      await nextFrame()
+
+      const handle = queryA11y(layout, '[role="separator"]') as HTMLElement
+      const barOpacity = () => Number(getComputedStyle(handle, '::before').opacity)
+
+      // 两端都断言：只测聚焦态的话，「竖条一直显示」这种回归照样能过。
+      expect(barOpacity()).toBe(0)
+
+      await userEvent.tab()
+      handle.focus()
+      expect(handle.matches(':focus-visible')).toBe(true)
+
+      // ::before 的 opacity 带 --wui-duration-feedback 过渡，轮询到稳定值而不是赌固定延时。
+      await pollUntil(() => barOpacity() === 1, 'Expected the accent bar to show on keyboard focus')
+      expect(barOpacity()).toBe(1)
     })
 
     it('折叠态隐藏 handle；展开后重现', async () => {

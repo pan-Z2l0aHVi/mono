@@ -128,7 +128,18 @@ const filterLabelClass =
         </web-ui-button>
       </web-ui-button-group>
 
-      <div class="flex gap-3 items-center ml-auto">
+      <!--
+       * 搜索框展开时这一组会超出 header 宽度，而 header 是 overflow-x: clip：
+       * 溢出的部分不会滚动、也不会提示，直接被裁掉——搜索框右半截连同清除按钮一起消失。
+       *
+       * 两处 min-w-0 解除 flex item 的自动最小尺寸（默认 min-width:auto 会被内容顶住），
+       * 让放不下的部分由搜索框自己让位：它按 w-60（240px）参与布局，空间不够时以
+       * flex-shrink 收窄，--wui-input-width:100% 再把宽度交给宿主，两层都不会裁字。
+       * 写成 basis-60 不行——那只是 flex 布局期的基准，宿主作为 flex item 的
+       * max-content 贡献仍按内容算（约 206px），宽屏下拿不到 240。
+       * 两者缺一，窄屏下都会退回"整组溢出被裁"。
+       -->
+      <div class="flex min-w-0 gap-3 items-center ml-auto">
         <template v-if="!selectionMode">
           <web-ui-tooltip v-if="!(searchOpen && mobile)" content="添加资源" portal>
             <web-ui-button icon variant="primary" aria-label="添加资源" @click="emit('add')">
@@ -165,7 +176,7 @@ const filterLabelClass =
             clearable
             placeholder="搜索资源"
             aria-label="搜索资源"
-            class="[--wui-input-width:min(240px,calc(100vw-180px))]"
+            class="min-w-0 w-60 [--wui-input-width:100%]"
             @input="handleSearchInput"
             @keydown="handleSearchKeydown"
             @focusout="handleSearchBlur"

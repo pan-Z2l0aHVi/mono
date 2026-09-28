@@ -91,9 +91,9 @@ const TAG_COLOR_CLASSES = {
 
 export const metadataRowClass =
   "relative flex min-w-0 items-center justify-between gap-4 px-4 py-3 after:absolute after:inset-x-4 after:bottom-0 after:h-px after:bg-black/6 after:content-[''] last:after:hidden dark:after:bg-white/8"
-export const metadataLabelClass = 'shrink-0 text-[13px] leading-5 text-[#8a8a94] dark:text-(--wui-color-text-secondary)'
+export const metadataLabelClass = 'shrink-0 text-xs leading-5 text-[#8a8a94] dark:text-(--wui-color-text-secondary)'
 export const metadataValueClass =
-  'min-w-0 truncate text-right text-[13px] font-medium leading-5 text-[#22212a] dark:text-(--wui-color-text)'
+  'min-w-0 truncate text-right text-xs leading-5 text-[#22212a] dark:text-(--wui-color-text)'
 
 /*
  * 标签 chip 的统一外形：全 app 固定 22px 高。

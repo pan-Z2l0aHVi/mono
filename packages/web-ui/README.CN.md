@@ -324,24 +324,24 @@ dropdown、tooltip）不需要它。
 
 多行文本输入框，支持自动调整高度。
 
-| 属性              | 类型      | 默认值  | 说明                                                                  |
-| ----------------- | --------- | ------- | --------------------------------------------------------------------- |
-| `value`           | `string`  | `''`    | 输入值                                                                |
-| `placeholder`     | `string`  | `''`    | 占位文本                                                              |
-| `rows`            | `number`  | `3`     | 显示行数                                                              |
-| `name`            | `string`  | `''`    | 表单字段名                                                            |
-| `disabled`        | `boolean` | `false` | 禁用状态                                                              |
-| `readonly`        | `boolean` | `false` | 只读状态                                                              |
-| `required`        | `boolean` | `false` | 必填校验                                                              |
-| `clearable`       | `boolean` | `false` | 显示清除按钮                                                          |
-| `full`            | `boolean` | `false` | 全宽                                                                  |
-| `borderless`      | `boolean` | `false` | ghost 形态：移除边框、背景与阴影；保留 padding、高度度量与 focus ring |
-| `autosize`        | `boolean` | `false` | 自动调整高度                                                          |
-| `max-height`      | `number`  | `0`     | 自动高度上限（px），`0` 表示不限制                                    |
-| `minlength`       | `number`  | —       | 最小长度校验                                                          |
-| `maxlength`       | `number`  | —       | 最大长度校验                                                          |
-| `aria-label`      | `string`  | —       | 无障碍标签                                                            |
-| `aria-labelledby` | `string`  | —       | 无障碍标签引用                                                        |
+| 属性              | 类型      | 默认值  | 说明                                                                    |
+| ----------------- | --------- | ------- | ----------------------------------------------------------------------- |
+| `value`           | `string`  | `''`    | 输入值                                                                  |
+| `placeholder`     | `string`  | `''`    | 占位文本                                                                |
+| `rows`            | `number`  | `3`     | 显示行数                                                                |
+| `name`            | `string`  | `''`    | 表单字段名                                                              |
+| `disabled`        | `boolean` | `false` | 禁用状态                                                                |
+| `readonly`        | `boolean` | `false` | 只读状态                                                                |
+| `required`        | `boolean` | `false` | 必填校验                                                                |
+| `clearable`       | `boolean` | `false` | 显示清除按钮                                                            |
+| `full`            | `boolean` | `false` | 全宽                                                                    |
+| `borderless`      | `boolean` | `false` | ghost 形态：移除边框、背景与阴影；保留 padding、高度度量与 focus ring   |
+| `autosize`        | `boolean` | `false` | 自动调整高度；同时强制 `resize: none`，原生拖拽柄会与脚本接管的高度冲突 |
+| `max-height`      | `number`  | `0`     | 自动高度上限（px），`0` 表示不限制                                      |
+| `minlength`       | `number`  | —       | 最小长度校验                                                            |
+| `maxlength`       | `number`  | —       | 最大长度校验                                                            |
+| `aria-label`      | `string`  | —       | 无障碍标签                                                              |
+| `aria-labelledby` | `string`  | —       | 无障碍标签引用                                                          |
 
 **事件：** `input`, `change`, `focus`, `blur`
 

@@ -59,6 +59,7 @@ function createRuntime(overrides: Partial<LibraryRuntime> = {}): LibraryRuntime 
     addFileResource: async () => createResource(),
     addURLResource: async () => createResource(),
     updateResourceTitle: async (resourceId, title) => createResource({ id: resourceId, title }),
+    updateResourceNote: async (resourceId, note) => createResource({ id: resourceId, note }),
     deleteResource: async () => {},
     addTag: async () =>
       ({ id: 'tag-inline', name: 'inline', created_at: 300, color: TagColor.TagColorTeal }) satisfies TagDTO,

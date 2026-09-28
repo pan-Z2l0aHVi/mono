@@ -1,19 +1,17 @@
 <script setup lang="ts">
-import type { WebUiEditableText, WebUiEvent } from '@greypan/web-ui'
+import type { WebUiEditableText, WebUiEvent, WebUiTextarea } from '@greypan/web-ui'
 import { computed, nextTick, onMounted, onScopeDispose, ref, type ComponentPublicInstance } from 'vue'
 import { useRouter } from 'vue-router'
 
+import AddDialog from '@/components/library/AddDialog.vue'
 import { createLibraryAddQueue, queueItemTitle } from '@/components/library/addQueue'
-import LibraryAddDialog from '@/components/library/LibraryAddDialog.vue'
-import LibraryConfirmDialog from '@/components/library/LibraryConfirmDialog.vue'
-import LibraryDetailDrawer from '@/components/library/LibraryDetailDrawer.vue'
-import LibraryDuplicateConfirmDialog from '@/components/library/LibraryDuplicateConfirmDialog.vue'
-import LibraryEditTagsDialog from '@/components/library/LibraryEditTagsDialog.vue'
-import LibraryPreviewDrawer from '@/components/library/LibraryPreviewDrawer.vue'
-import LibraryResourceList from '@/components/library/LibraryResourceList.vue'
-import LibraryRestoreDialog from '@/components/library/LibraryRestoreDialog.vue'
-import LibraryToolbar from '@/components/library/LibraryToolbar.vue'
+import ConfirmDialog from '@/components/library/ConfirmDialog.vue'
+import DetailDrawer from '@/components/library/DetailDrawer.vue'
+import DuplicateConfirmDialog from '@/components/library/DuplicateConfirmDialog.vue'
+import EditTagsDialog from '@/components/library/EditTagsDialog.vue'
+import PreviewDrawer from '@/components/library/PreviewDrawer.vue'
 import { DRAWER_TITLE_EDITOR_KEY, type NameEditorRef } from '@/components/library/rename'
+import ResourceList from '@/components/library/ResourceList.vue'
 import {
   createLibraryRestoreQueue,
   createLibraryRestoreQueueItem,
@@ -21,6 +19,8 @@ import {
   restoreLibraryQueue,
   type LibraryRestoreQueueItem
 } from '@/components/library/restore'
+import RestoreDialog from '@/components/library/RestoreDialog.vue'
+import Toolbar from '@/components/library/Toolbar.vue'
 import { canGoBack, canGoForward } from '@/composables/useHistoryNav'
 import { useLibraryRuntime } from '@/composables/useLibraryRuntime'
 import { useMediaQuery } from '@/composables/useMediaQuery'
@@ -49,6 +49,7 @@ const {
   loadResources,
   addResource,
   renameResource,
+  updateResourceNote,
   deleteResources,
   saveTags,
   replaceFileSource,
@@ -56,7 +57,6 @@ const {
   chooseFilePaths,
   chooseFilePath,
   getClipboardFilePaths,
-  openExternal,
   resourceMediaURL,
   subscribeToDroppedFiles,
   subscribeToPasteFileRequest,
@@ -160,14 +160,22 @@ function stopResourceRename() {
 }
 
 function selectResource(resource: ResourceView) {
+  // 选择态里这个分支只剩「手指点一下勾选框」会走到：鼠标和长按扫选都在 pointerdown
+  // 就落定状态，随后的 click 被 ResourceList 吃掉了，不会翻回去。
   if (selectionMode.value) {
     toggleChecked(resource.id)
     return
   }
+  previewResource(resource)
+}
+
+/*
+ * 打开详情顺手验一下失效 URL：只在当前判为不可用时探测（策略见 probeURLSourceOnOpen）。
+ * 左键进的是预览，不经过这里——预览不是「打开详情」，不该发出网络请求。
+ */
+function openResourceDetail(resource: ResourceView) {
   activeResourceId.value = resource.id
   detailOpen.value = true
-  // 打开详情顺手验一下失效 URL：只在当前判为不可用时探测（策略见 probeURLSourceOnOpen）。
-  // 编辑标签与预览不经过这里——它们不是「打开详情」，不该发出网络请求。
   void probeURLSourceOnOpen(resource.preferred)
 }
 
@@ -213,6 +221,13 @@ function toggleChecked(resourceId: string) {
   checkedIds.value = checkedIds.value.includes(resourceId)
     ? checkedIds.value.filter(id => id !== resourceId)
     : [...checkedIds.value, resourceId]
+}
+
+// 扫选要的是「置成某个状态」而不是「翻一下」：一行被指针划过两次不能自己弹回去。
+function setResourceChecked(resourceId: string, checked: boolean) {
+  const isChecked = checkedIds.value.includes(resourceId)
+  if (isChecked === checked) return
+  checkedIds.value = checked ? [...checkedIds.value, resourceId] : checkedIds.value.filter(id => id !== resourceId)
 }
 
 function toggleCheckAll() {
@@ -410,19 +425,35 @@ function handleResourceNameChange(resource: ResourceView, event: WebUiEvent<WebU
   stopResourceRename()
 }
 
+async function handleResourceNoteChange(resource: ResourceView, note: string, editor: WebUiTextarea | null) {
+  if (note === resource.note) return
+  try {
+    await updateResourceNote(resource.id, note)
+  } catch {
+    // 错误由 runtimeError 呈现。store 未更新，重新渲染不会把输入框拉回旧值，
+    // 这里显式写回，否则失焦后文本停在未落库的状态上。
+    // 抽屉可能已经切到或关掉了：editor 为空说明字段已卸载，或它已经属于别的资源，
+    // 这两种情况写回都会落到不该落的输入框上。
+    const current = selectedResource.value
+    if (!editor || current?.id !== resource.id) return
+    // 回滚目标必须是 store 的活值，不是 `resource` 那个 emit 时的快照。备注可以连续
+    // 提交：先失焦发出 A，再失焦发出 B，若 B 先成功落库而 A 后失败，写回快照会把
+    // B 已保存的值抹成编辑前的值——界面上看着像没存上，store 里却是新值。
+    if (editor.value !== current.note) editor.value = current.note
+  }
+}
+
 async function handleSaveTags(resourceId: string, tagNames: string[]) {
   const target = activeTagTarget.value
   if (!target || target.id !== resourceId) return
   if (!('tagNames' in target)) {
     addQueue.setItemTags(resourceId, tagNames)
-    tagsOpen.value = false
     return
   }
   try {
     await saveTags(resourceId, tagNames)
-    tagsOpen.value = false
   } catch {
-    // 错误由 runtimeError 呈现，保留草稿以便修正后重试。
+    // 错误由 runtimeError 呈现；弹窗保持打开，草稿已在本地更新，用户可继续修改后再次保存。
   }
 }
 
@@ -495,7 +526,7 @@ onMounted(() => {
     Vue 的 slot 不跨组件边界，页面没法从 AppLayout 那边反向声明。
   -->
   <header slot="header" class="w-full">
-    <LibraryToolbar
+    <Toolbar
       :search-query="store.searchQuery"
       :filter-source="store.filterSource"
       :filter-kind="store.filterKind"
@@ -544,7 +575,7 @@ onMounted(() => {
         <web-ui-button size="28" variant="ghost" @click="runtimeError = ''">关闭</web-ui-button>
       </div>
 
-      <LibraryResourceList
+      <ResourceList
         :resources="visibleResources"
         :active-resource-id="activeResourceId"
         :checked-ids="checkedIds"
@@ -557,17 +588,19 @@ onMounted(() => {
         :media-url-for="resourceMediaURL"
         @select="selectResource"
         @preview="previewResource"
+        @detail="openResourceDetail"
         @start-rename="renameResourceFromMenu"
         @edit-tags="editResourceTags"
         @delete="requestDeleteResource"
         @recover="handleRecoverSource"
         @toggle="toggleChecked"
+        @set-checked="setResourceChecked"
         @rename-change="handleResourceNameChange"
         @cancel-rename="stopResourceRename"
       />
     </main>
 
-    <LibraryDetailDrawer
+    <DetailDrawer
       :open="detailOpen"
       :resource="selectedResource"
       :mobile="mobile"
@@ -578,22 +611,21 @@ onMounted(() => {
       @start-rename="startResourceRename($event, 'drawer')"
       @rename-change="handleResourceNameChange"
       @cancel-rename="stopResourceRename"
+      @note-change="handleResourceNoteChange"
       @edit-tags="editResourceTags"
       @delete="requestDeleteResource"
       @preview="previewResource"
       @recover="handleRecoverSource"
     />
-    <LibraryPreviewDrawer
+    <PreviewDrawer
       v-model:open="previewOpen"
       :resource="selectedResource"
       :mobile="mobile"
       :media-url-for="resourceMediaURL"
-      :open-external="openExternal"
-      @open-failed="runtimeError = takeOperationError($event, '无法在系统浏览器中打开')"
     />
   </div>
 
-  <LibraryAddDialog
+  <AddDialog
     :open="addOpen"
     :queue="queue"
     :busy="addingResources"
@@ -613,14 +645,14 @@ onMounted(() => {
     逐项重复确认：入队链每命中一个库内已有位置就挂起一项，由这里裁决。
     添加对话框关闭时 addQueue.close() 会把挂起的提示按「取消」结算，因此不会留下悬空弹窗。
   -->
-  <LibraryDuplicateConfirmDialog
+  <DuplicateConfirmDialog
     :open="duplicatePrompt !== null"
     :prompt="duplicatePrompt"
     @accept="addQueue.resolveDuplicate(true)"
     @cancel="addQueue.resolveDuplicate(false)"
   />
 
-  <LibraryEditTagsDialog
+  <EditTagsDialog
     v-model:open="tagsOpen"
     :target="activeTagTarget"
     :all-tag-names="allTagNames"
@@ -630,7 +662,7 @@ onMounted(() => {
     @save="handleSaveTags"
   />
 
-  <LibraryRestoreDialog
+  <RestoreDialog
     :open="restoreOpen"
     :queue="restoreQueue"
     :busy="restoreBusy"
@@ -641,7 +673,7 @@ onMounted(() => {
     @submit="submitRestoreQueue"
   />
 
-  <LibraryConfirmDialog
+  <ConfirmDialog
     :open="confirmOpen"
     :title="confirmRequest?.title ?? ''"
     :message="confirmRequest?.message ?? ''"
