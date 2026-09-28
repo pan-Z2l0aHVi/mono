@@ -121,11 +121,11 @@ Open decisions（未解决决策）: <待 Manager 或对方决定的问题，以
 1. 编排开始时生成 coordination id（`herdr-agents/<主题slug>`），后文所有 handoff、报告和编排记录都用它。需求要改仓库时再读根 [`AGENTS.md`](../../../AGENTS.md) 和 [`docs/agents/workflow.md`](../../../docs/agents/workflow.md)，按 task gate 建立实施 task；纯只读的编排没有 task 也能走完。新 worktree 先执行 `pnpm install && pnpm run build`，路径和复用规则见 [`docs/agents/worktrees.md`](../../../docs/agents/worktrees.md)。
 2. 用只读 repo 查询确认影响面（命令名以 [`docs/agents/commands.md`](../../../docs/agents/commands.md) 索引为准），再选 task 级别、Coder 数量和目录边界。task state 只记 task-level 事实，不记 Role 列表。
 3. 按 [`supervision.md`](./supervision.md) 打 Supervisor 启用分。产品/UI task 直接记 `Supervisor skipped` 和原因，其他 task 按分数决定要不要启动一个。
-4. 为每个实施 Role 建独立 pane，cwd 指向所属 task worktree。按绑定表启动执行体，初始化 Role，确认回执，然后按「巡检」一节的字段把本轮编排记录写进 `$TMPDIR/herdr-agents/reports/`。Supervisor 与 Coder 共享实施 worktree，但 Supervisor 只读。agent 通道、代理切换、MCP 配置或会话重启之后，先用 `herdr agent list` 核对各实施会话存活再恢复派发；中断的会话按工作区 `git status`、编排记录和 Task Packet（有的话）接手现场。
+4. 每个独立 agent 会话一个 tab，不在同一个 tab 下继续 split。`herdr pane split --pane <anchor> --direction down --cwd <worktree> --no-focus` 拿到 pane id，再 `herdr pane move <pane-id> --new-tab --workspace <workspace-id> --label <label> --no-focus` 把它移进独立 tab，之后用 `.result.move_result.pane.pane_id` 寻址。`pane split` 没有 `--new-tab`，直接 split 只会让同一个 tab 里的 pane 越堆越窄：窄到个位数列宽后 agent 输出按渲染宽度折行，`agent read` 也读不回，被 zoom 的 tab 还会以 `zoomed_tab` 拒绝 `pane move`（收拾布局要先解 zoom）。label 用 `coder-<task>` / `reviewer-<task>` 这类有意义的名字，不要默认编号。之后按绑定表启动执行体，初始化 Role，确认回执，然后按「巡检」一节的字段把本轮编排记录写进 `$TMPDIR/herdr-agents/reports/`。Supervisor 是唯一例外：它与 Coder 共享实施 worktree 且只读，可以不开独立 tab。agent 通道、代理切换、MCP 配置或会话重启之后，先用 `herdr agent list` 核对各实施会话存活再恢复派发；中断的会话按工作区 `git status`、编排记录和 Task Packet（有的话）接手现场。
 5. 先发完所有结构化 handoff，再非阻塞监听各会话。不要用一个长等待阻塞其他派发，实施会话需要较长的超时；派发多于一个实施会话时按「巡检」一节起 loop。
 6. 在三个检查点接收 Coder 的 prompt 和 Supervisor 报告，报告格式与状态含义见 [`supervision.md`](./supervision.md)。Manager 处理 `disputed`、`escalated` 以及测试产物和依赖问题，Coder 处理 `open` 的代码修正。任何 Role 发现越界写入或 task gate 风险，都暂停实施并交回 Manager。
 7. 实施完成后按 workflow 的级别决定是否派 Reviewer：T0 必派，T1 由实施 agent 决定。派了就由 Reviewer 按 review 拓扑审查冻结 diff，Supervisor 报告不进入 Reviewer 输入；Reviewer 通过后按 workflow 完成 approval（与 review 成对）、验证和 `task done`。T1 没记 review 时跳过 review 与 approval，`freeze → verify → done` 即可。
-8. 收尾时把编排记录的 `status` 改成 `finished`，释放 Supervisor pane，并按「巡检」一节停掉 loop。task 被 drop 时，先把已有报告和编排元数据留在编排记录里，再按 Herdr 规则关闭本次编排创建的 pane。
+8. 收尾时把编排记录的 `status` 改成 `finished`，按「巡检」一节停掉 loop。会话结束（task 到终态或 agent 退出）就回收它那个 tab/pane，别留着占宽度；Supervisor pane 在 `task done` 后释放。task 被 drop 时，先把已有报告和编排元数据留在编排记录里，再按 Herdr 规则关闭本次编排创建的 pane。
 
 ## 完成定义
 
