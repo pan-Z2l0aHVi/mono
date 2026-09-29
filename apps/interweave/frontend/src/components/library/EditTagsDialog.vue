@@ -151,7 +151,7 @@ function removeTag(tag: string) {
           <span
             v-for="tag in draft"
             :key="tag"
-            class="inline-flex h-[22px] items-center gap-0.5 rounded-full px-[7px] text-xs leading-none has-[web-ui-button]:pr-0.5"
+            class="inline-flex h-[22px] min-w-[22px] items-center gap-0.5 rounded-full px-[7px] text-xs leading-none has-[web-ui-button]:pr-0.5"
             :class="tagClass(props.tagColors[tag])"
           >
             {{ tag }}

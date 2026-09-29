@@ -64,9 +64,9 @@ function selectNav(item: (typeof navItems)[number]) {
 <template>
   <!--
     pt-2 而不是 pt-14：面板自身圆角 24px，导航项若顶到 y=8 会压进圆角弧里被削掉两角。
-    8px 与下面的 px-2 对齐，视觉上留一条和左右等宽的边。
+    左右 px-3（12px）比它宽，两侧留白比顶部宽一点。
   -->
-  <div class="relative z-20 h-full pt-2 pb-4 px-2 max-[640px]:px-0" aria-label="应用导航">
+  <div class="relative z-20 h-full pt-2 pb-4 px-3 max-[640px]:px-0" aria-label="应用导航">
     <nav class="grid gap-1" aria-label="主导航">
       <button
         v-for="item in navItems"

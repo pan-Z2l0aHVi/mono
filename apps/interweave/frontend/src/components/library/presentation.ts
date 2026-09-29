@@ -100,8 +100,11 @@ export const metadataValueClass =
  *
  * 用 inline-flex + items-center 而不是 inline-block + py-0.5：高度由 h-[22px] 唯一决定，
  * 标签文字再长也不会靠行内 padding 把行高撑开，列表行因此保持等高。
+ *
+ * min-w-[22px] 与高度同值：一两个字的短标签不会被 px-2 之后的文字宽度压成窄条，
+ * 底色始终是直径不小于高的圆角，扫一眼列表时短标签不会退化成一个点。
  */
-export const tagChipClass = 'inline-flex h-[22px] items-center px-2 rounded-full text-xs whitespace-nowrap'
+export const tagChipClass = 'inline-flex h-[22px] min-w-[22px] items-center px-2 rounded-full text-xs whitespace-nowrap'
 
 export function resourceIcon(kind: ResourceKind) {
   return KIND_ICONS[kind] ?? KIND_ICONS.file

@@ -1,14 +1,16 @@
 <script setup lang="ts">
+import { copyToClipboard } from '@greypan/browser-kit'
 import type { WebUiDrawer, WebUiEditableText, WebUiEvent, WebUiTextarea } from '@greypan/web-ui'
 import {
   lucideChevronRight,
+  lucideCheck,
   lucideEye,
   lucideExternalLink,
   lucidePenLine,
   lucideRefreshCw,
   lucideTags
 } from '@greypan/web-ui/icons'
-import { computed, ref, watch } from 'vue'
+import { computed, onScopeDispose, ref, watch } from 'vue'
 
 import type { ResourceSourceView, ResourceView } from '@/stores/library'
 
@@ -102,6 +104,31 @@ const DESTRUCTIVE_BUTTON_CLASS =
 const DRAWER_LABEL_CLASS = 'shrink-0 text-[14px] leading-5 text-(--wui-color-text-secondary)'
 const DRAWER_VALUE_CLASS = 'min-w-0 truncate text-right text-[14px] leading-5 text-(--wui-color-text)'
 
+/*
+ * 来源位置：ghost 按钮，点按复制。
+ *
+ * web-ui-button 内层 button 写死了 white-space: nowrap 与 height: var(--wui-control-size)，
+ * 与「换行全量展示」直接冲突；这两个属性没开 CSS 变量，宿主侧唯一的入口是
+ * render 里显式 part="button" 暴露的 part，所以用 [&::part(button)] 逐个放开。
+ * overflow-wrap: anywhere 再兜住无空格长串（Windows 盘符、深目录），否则
+ * flex item 的 min-content 仍会把行撑破。
+ *
+ * text-align: left 同样要显式压回：抽屉 dialog 把 text-align: center 继承给了
+ * 所有后代文本，撑杆只能把 label 推到左边缘，换行后的每一行仍会在 label 盒内居中。
+ *
+ * --wui-button-px 归零让文字与上方的来源类型文字同一条左基线，suffix 撑杆把
+ * justify-content: center 改成靠左——与 ROW_BUTTON_CLASS 同一套手法。
+ */
+const LOCATION_BUTTON_CLASS =
+  '[--wui-button-px:0px] [--wui-control-size:20px] [--wui-radius-control:6px] [--wui-button-gap:0px] [&::part(button)]:h-auto [&::part(button)]:whitespace-normal [&::part(button)]:text-left [&::part(button)]:[overflow-wrap:anywhere]'
+
+/* URL 用 accent 表示「这是个可点开的链接」，本地路径保持 secondary，只靠深浅区分。 */
+function locationButtonColor(source: ResourceSourceView) {
+  return source.type === 'url'
+    ? '[--wui-button-color:var(--wui-color-accent,#08f)]'
+    : '[--wui-button-color:var(--wui-color-text-secondary)]'
+}
+
 const placement = computed(() => (props.mobile ? 'bottom' : 'right'))
 const unavailableSource = computed(() => props.resource?.sources.find(source => !source.available) ?? null)
 const editingTitle = computed(() => props.editingNameKey === DRAWER_TITLE_EDITOR_KEY)
@@ -154,6 +181,33 @@ watch(
 function restoreResource() {
   if (unavailableSource.value) emit('recover', unavailableSource.value)
 }
+
+/*
+ * 复制来源位置走 browser-kit 的 copyToClipboard，不新增 wails3 原生绑定。
+ *
+ * wails3 这边现成的原生剪贴板能力只有「读出剪贴板里的文件路径」一项，没有写文本
+ * 的绑定；为一次「复制路径」去动 Go 后端并重新生成 bindings，代价与收益不成比例。
+ * 而 copy-to-clipboard 自带完整降级链：安全上下文走 navigator.clipboard.writeText，
+ * 非 HTTPS / 旧 WebView 回退 document.execCommand('copy')——后者正是 Wails 自定义
+ * scheme 下的兜底。
+ *
+ * 反馈只靠图标形状变化，不引入第三种颜色：这个抽屉的层级只由颜色深浅表达，
+ * 凭空加一个绿色等于破例，勾本身已经足够说明「复制过了」。
+ */
+const copiedLocation = ref<string | null>(null)
+let copiedRevertTimer: ReturnType<typeof setTimeout> | undefined
+
+function copyLocation(location: string) {
+  void copyToClipboard(location)
+  copiedLocation.value = location
+  // 同一个来源连点时不能让旧的 timer 提前把勾收回，连点不同来源时以最后一次为准。
+  clearTimeout(copiedRevertTimer)
+  copiedRevertTimer = setTimeout(() => {
+    copiedLocation.value = null
+  }, 1200)
+}
+
+onScopeDispose(() => clearTimeout(copiedRevertTimer))
 </script>
 
 <template>
@@ -203,13 +257,20 @@ function restoreResource() {
           </web-ui-button>
         </h2>
 
-        <div class="flex flex-wrap items-center gap-1.5 border-t border-black/6 px-4 py-3 dark:border-white/8">
-          <span v-for="tag in resource.tags" :key="tag.id" :class="[tagChipClass, tagClass(tag.color)]">
-            {{ tag.name }}
-          </span>
+        <!--
+          标签自己换行，编辑按钮常驻行尾：外层不换行，内层 tags 容器 flex-1 min-w-0
+          承担换行，按钮作为其后唯一的 flex item 被推到最右。直接让整行 flex-wrap
+          的话，标签铺满一行时按钮会被挤到下一行左侧。
+        -->
+        <div class="flex items-center gap-1.5 border-t border-black/6 px-4 py-3 dark:border-white/8">
+          <div class="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
+            <span v-for="tag in resource.tags" :key="tag.id" :class="[tagChipClass, tagClass(tag.color)]">
+              {{ tag.name }}
+            </span>
+          </div>
           <web-ui-tooltip content="编辑标签" placement="top">
             <web-ui-button
-              class="[--wui-button-color:var(--wui-color-accent,#08f)]"
+              class="shrink-0"
               icon
               variant="ghost"
               size="22"
@@ -280,16 +341,23 @@ function restoreResource() {
               <span class="text-[14px] leading-5 text-(--wui-color-text)">
                 {{ sourceTypeDisplayLabel(itemSource) }}
               </span>
-              <span
+              <web-ui-button
                 v-if="itemSource.location"
-                class="block min-w-0 truncate text-[14px] leading-5"
-                :class="
-                  itemSource.type === 'url' ? 'text-(--wui-color-accent,#08f)' : 'text-(--wui-color-text-secondary)'
+                full
+                variant="ghost"
+                :class="[LOCATION_BUTTON_CLASS, locationButtonColor(itemSource)]"
+                :aria-label="
+                  copiedLocation === itemSource.location
+                    ? `已复制 ${itemSource.location}`
+                    : `复制 ${itemSource.location}`
                 "
-                :title="itemSource.location"
+                :title="copiedLocation === itemSource.location ? '已复制' : '点击复制'"
+                @click="copyLocation(itemSource.location)"
               >
-                {{ itemSource.location }}
-              </span>
+                <web-ui-icon v-if="copiedLocation === itemSource.location" :icon="lucideCheck" :size="14" />
+                <template v-else>{{ itemSource.location }}</template>
+                <span slot="suffix" class="flex-1" aria-hidden="true" />
+              </web-ui-button>
             </span>
           </span>
           <span class="flex shrink-0 items-center gap-1.5">
@@ -329,11 +397,11 @@ function restoreResource() {
         可编辑就必须常驻，否则没有备注的资源永远没有入口去写。换行、滚动与 autosize
         高度仍由组件统一管，Drawer 不自己算 line-height。borderless 让输入区直接坐在
         分组底色上，不在组内再叠一层自己的边框与圆角。rows=1 是 iOS 备注的常态：空备注
-        只占一行，autosize 在用户真正输入后才把行数顶上去。
+        只占一行，autosize 在用户真正输入后才把行数顶上去。可见标题已移除，字段身份
+        交给 placeholder（有值时靠上方内容自明），aria-label 仍留着给读屏。
       -->
       <div :class="GROUP_CLASS">
-        <span class="block px-4 pt-3 pb-1 text-[14px] leading-5 text-(--wui-color-text-secondary)">备注</span>
-        <div class="px-1 pb-2">
+        <div class="px-1 pt-2 pb-2">
           <web-ui-textarea
             :value="resource.note"
             :rows="1"
