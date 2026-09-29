@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import '@greypan/web-ui'
+import type { WebUiDialog } from '@greypan/web-ui'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { createApp, defineComponent, nextTick } from 'vue'
 import { createMemoryHistory, createRouter, type Router } from 'vue-router'
@@ -130,5 +131,61 @@ describe('AppLayout：应用外壳', () => {
 
     expect(assignedTo('header')).toEqual([])
     expect(assignedTo('default').map(element => element.textContent)).toEqual(['关系图谱'])
+  })
+})
+
+describe('AppLayout：设置对话框接线', () => {
+  beforeEach(() => {
+    vi.stubGlobal('matchMedia', matchMediaStub)
+    router = createRouter({
+      history: createMemoryHistory(),
+      routes: [
+        { path: '/', redirect: '/library' },
+        { path: '/library', component: LibraryPageStub },
+        { path: '/map', component: MapPageStub }
+      ]
+    })
+  })
+
+  afterEach(() => {
+    app?.unmount()
+    host?.remove()
+    vi.restoreAllMocks()
+  })
+
+  /** 对话框受控于宿主的 ref，Lit 侧属性写入后再等一轮微任务让 shadow 跟上。 */
+  async function flush() {
+    await nextTick()
+    await new Promise(resolve => setTimeout(resolve, 0))
+    await nextTick()
+  }
+
+  function settingsDialog() {
+    const element = host.querySelector('web-ui-dialog')
+    if (!element) throw new Error('web-ui-dialog not found')
+    return element as WebUiDialog
+  }
+
+  it('对话框是 web-ui-layout 的同级节点，不落在 sidebar slot 里', async () => {
+    await mountLayout()
+
+    expect(settingsDialog().parentElement).toBe(host)
+    expect(assignedTo('sidebar')).not.toContain(settingsDialog())
+  })
+
+  it('点击侧边栏设置入口打开对话框，关闭请求回落到宿主状态', async () => {
+    await mountLayout()
+    expect(settingsDialog().open).toBe(false)
+
+    const trigger = host.querySelector<HTMLElement>('button[aria-label="设置"]')
+    if (!trigger) throw new Error('settings trigger not found')
+    trigger.click()
+    await flush()
+    expect(settingsDialog().open).toBe(true)
+
+    // Escape 与遮罩点击都走这条 open-change；controlled 下组件不会自行改 open。
+    settingsDialog().dispatchEvent(new CustomEvent('open-change', { detail: { open: false } }))
+    await flush()
+    expect(settingsDialog().open).toBe(false)
   })
 })

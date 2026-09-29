@@ -38,12 +38,19 @@ if (typeof Element.prototype.animate !== 'function') {
   })) as unknown as Element['animate']
 }
 
-async function mountNav(options: { collapsed?: boolean; onNavigate?: (key: string) => void } = {}) {
+async function mountNav(
+  options: {
+    collapsed?: boolean
+    onNavigate?: (key: string) => void
+    onOpenSettings?: () => void
+  } = {}
+) {
   const host = document.createElement('div')
   document.body.append(host)
   const app = createApp(AppNav, {
     collapsed: options.collapsed ?? false,
-    onNavigate: options.onNavigate
+    onNavigate: options.onNavigate,
+    onOpenSettings: options.onOpenSettings
   })
   app.mount(host)
   await nextTick()
@@ -162,6 +169,61 @@ describe('AppNav：主导航', () => {
 
     expect(mounted.host.textContent).not.toContain('资料库')
     expect(navItem(mounted.host, '资料库')).toBeTruthy()
+
+    await mounted.close()
+  })
+})
+
+describe('AppNav：设置入口', () => {
+  beforeEach(() => {
+    route.value = { path: '/library' }
+    router.push.mockClear()
+    vi.stubGlobal('matchMedia', matchMediaStub)
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('入口排在主导航之后，是根容器的最后一个子节点', async () => {
+    const mounted = await mountNav()
+    const root = mounted.host.querySelector('[aria-label="应用导航"]')
+    if (!root) throw new Error('nav root not found')
+
+    expect(root.lastElementChild).toBe(navItem(mounted.host, '设置'))
+    expect(root.querySelector('[aria-label="主导航"]')?.contains(navItem(mounted.host, '设置'))).toBe(false)
+
+    await mounted.close()
+  })
+
+  it('点击入口派发 openSettings，不当作导航', async () => {
+    const onNavigate = vi.fn<(key: string) => void>()
+    const onOpenSettings = vi.fn<() => void>()
+    const mounted = await mountNav({ onNavigate, onOpenSettings })
+
+    navItem(mounted.host, '设置').click()
+    await nextTick()
+
+    expect(onOpenSettings).toHaveBeenCalledOnce()
+    expect(onNavigate).not.toHaveBeenCalled()
+    expect(router.push).not.toHaveBeenCalled()
+
+    await mounted.close()
+  })
+
+  it('折叠时入口同样只剩图标，文字标签不渲染', async () => {
+    const mounted = await mountNav({ collapsed: true })
+
+    expect(mounted.host.textContent).not.toContain('设置')
+    expect(navItem(mounted.host, '设置')).toBeTruthy()
+
+    await mounted.close()
+  })
+
+  it('入口不套画线动画，与导航项的图标渲染路径不同', async () => {
+    const mounted = await mountNav()
+
+    expect(drawHosts(mounted.host)).toHaveLength(2)
 
     await mounted.close()
   })

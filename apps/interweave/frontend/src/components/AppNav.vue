@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { WebUiIcon, WebUiSvgDrawLines } from '@greypan/web-ui'
-import { lucideFolderOpen, lucideLayoutGrid } from '@greypan/web-ui/icons'
+import { lucideFolderOpen, lucideLayoutGrid, lucideSettings } from '@greypan/web-ui/icons'
 import { ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
@@ -10,6 +10,7 @@ defineProps<{ collapsed?: boolean }>()
 
 const emit = defineEmits<{
   navigate: [key: NavKey]
+  openSettings: []
 }>()
 
 const route = useRoute()
@@ -65,9 +66,15 @@ function selectNav(item: (typeof navItems)[number]) {
   <!--
     pt-2 而不是 pt-14：面板自身圆角 24px，导航项若顶到 y=8 会压进圆角弧里被削掉两角。
     左右 px-3（12px）比它宽，两侧留白比顶部宽一点。
+
+    flex + pb-0 是为了让设置入口贴住面板底部：nav 是流内内容排在上面，设置按钮用 mt-auto
+    被推到盒子底边，而 AppNav 正是 .sidebar-viewport（layout 里 flex: 1 的那一格）里 h-full
+    的那个盒子，于是这一行的底边恰好落在 .sidebar-toggle-area 的上沿、与折叠 toggle 同一列。
+    底部留白改由折叠 toggle 自带的 8px margin 承担，pb 再留一份会把两者推散。nav 的 mb-1 是
+    兜底：h-full 万一没解析出来，mt-auto 不生效，没有这 4px 两块就会贴成一片。
   -->
-  <div class="relative z-20 h-full pt-2 pb-4 px-3 max-[640px]:px-0" aria-label="应用导航">
-    <nav class="grid gap-1" aria-label="主导航">
+  <div class="relative z-20 flex h-full flex-col pt-2 pb-0 px-3 max-[640px]:px-0" aria-label="应用导航">
+    <nav class="grid gap-1 mb-1" aria-label="主导航">
       <button
         v-for="item in navItems"
         :key="item.key"
@@ -95,5 +102,22 @@ function selectNav(item: (typeof navItems)[number]) {
         <span v-if="!collapsed" class="text-sm whitespace-nowrap overflow-hidden">{{ item.label }}</span>
       </button>
     </nav>
+
+    <!--
+      复用 navItemClass 而不是另写一份：同宽、同内缩、同折叠行为都随它一起成立，折叠态因此
+      自动只剩图标，tooltip 也用与导航项相同的 portal/placement/disabled 组合。图标不套
+      web-ui-svg-draw-lines——画线动画跟着路由选中语义走，设置不参与导航，就没有可重放的那一次点击。
+    -->
+    <button
+      type="button"
+      :class="[navItemClass, collapsed ? 'justify-center' : '', 'mt-auto hover:bg-black/4 dark:hover:bg-white/6']"
+      aria-label="设置"
+      @click="emit('openSettings')"
+    >
+      <web-ui-tooltip portal placement="right" content="设置" :disabled="!collapsed">
+        <web-ui-icon :icon="lucideSettings" :size="18" />
+      </web-ui-tooltip>
+      <span v-if="!collapsed" class="text-sm whitespace-nowrap overflow-hidden">设置</span>
+    </button>
   </div>
 </template>

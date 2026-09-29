@@ -4,10 +4,12 @@ import { computed, ref } from 'vue'
 import { RouterView } from 'vue-router'
 
 import AppNav from '@/components/AppNav.vue'
+import SettingsDialog from '@/components/SettingsDialog.vue'
 import { useMediaQuery } from '@/composables/useMediaQuery'
 
 const sidebarCollapsed = ref(false)
 const sidebarOpen = ref(false)
+const settingsOpen = ref(false)
 const desktopSidebarWidth = ref('240px')
 
 // 断点与 web-ui-layout 内部判定一致：drawer 宽度要跟着 viewport 一起换。
@@ -59,8 +61,20 @@ function closeSidebar() {
     @sidebar-open-change="updateSidebarOpen"
     @sidebar-width-change="updateSidebarWidth"
   >
-    <AppNav slot="sidebar" :collapsed="sidebarCollapsed" @navigate="closeSidebar" />
+    <AppNav
+      slot="sidebar"
+      :collapsed="sidebarCollapsed"
+      @navigate="closeSidebar"
+      @open-settings="settingsOpen = true"
+    />
 
     <RouterView />
   </web-ui-layout>
+
+  <!--
+    dialog 是应用壳级浮层，不是侧边栏的子节点：挂在 AppNav 内部会在 ≤640px 时随 aside 一起
+    被 display:none 带走。放在 web-ui-layout 的同级位置，既躲开了那条规则，也让原生 dialog
+    提升进 top layer 后不被侧边栏的 overflow 与任何祖先 transform 困住。
+  -->
+  <SettingsDialog :open="settingsOpen" @update:open="settingsOpen = $event" />
 </template>
