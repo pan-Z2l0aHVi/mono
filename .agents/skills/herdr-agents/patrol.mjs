@@ -11,7 +11,7 @@
 // 编排可以完全没有 task，单元才是「谁在跑」的权威来源，task 只作参考附在行尾。
 
 import { execFileSync } from 'node:child_process'
-import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, readdirSync, realpathSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -20,10 +20,14 @@ const STALL_AFTER = 4 // 连续多少轮 churn 未变且 owner 在跑才算可�
 
 const here = dirname(fileURLToPath(import.meta.url))
 const repo = resolve(here, '../../..')
-const gitCommonDir = execFileSync('git', ['-C', repo, 'rev-parse', '--path-format=absolute', '--git-common-dir'], {
-  encoding: 'utf8'
-}).trim()
-const taskDir = join(gitCommonDir, 'tasks')
+// realpath 与 task.mjs 的 resolveWorktree 同口径：state 里的 commonDir 是解析过软链的绝对路径，
+// 直接比 git 的原始输出会在 /Users 之类是软链的机器上把本仓库的 phase 误判成 unreadable。
+const gitCommonDir = realpathSync(
+  execFileSync('git', ['-C', repo, 'rev-parse', '--path-format=absolute', '--git-common-dir'], {
+    encoding: 'utf8'
+  }).trim()
+)
+const taskDir = join(process.env.TMPDIR || tmpdir(), 'greypan', 'tasks')
 const stateDir = join(process.env.TMPDIR || tmpdir(), 'herdr-agents-monitor')
 // 首次运行时 state 目录不存在，漏掉这行会在全新环境 ENOENT 崩掉（真实环境常因旧目录已存在而掩盖）。
 mkdirSync(stateDir, { recursive: true })
@@ -78,10 +82,13 @@ function readJson(file) {
 
 // task 只是参考：附上它当前的 phase，好让操作者看清编排单元与 task 的对应关系。
 // 它不参与任何判定——单元的存续由 manifest 的 status 决定，两者是不同的生命周期。
+// task state 搬进 $TMPDIR 之后，这个目录由同一台机器上的所有仓库共用（ADR-0018），所以按
+// state 自带的 commonDir 认仓库：别的仓库里同名的 task id 不该被当成本仓库的 phase 显示。
+// 认不出归属与读不到文件一样，都落回既有的 'unreadable' 哨兵，不新增输出形状。
 function taskRef(taskId) {
   if (typeof taskId !== 'string' || !taskId) return '-'
   const state = readJson(join(taskDir, `${taskId}.json`))
-  return `${taskId}:${state?.phase || 'unreadable'}`
+  return `${taskId}:${state?.commonDir === gitCommonDir && state.phase ? state.phase : 'unreadable'}`
 }
 
 // 编排单元 → 参与者与 churn 全部来自 manifest，字段形状见 SKILL.md「巡检」一节。

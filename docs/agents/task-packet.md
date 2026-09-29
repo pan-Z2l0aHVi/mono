@@ -45,6 +45,8 @@ coordination id 由 Manager 在编排开始时自由生成，不从 task id 派�
 
 ## 恢复规则
 
-聊天消息、Herdr pane label、模型输出和 Supervisor 报告都不能替代 task state、冻结 diff 或验证记录。重启后，先读 Task Packet，再读 `<git-common-dir>/tasks/<task-id>.json`，最后按 [`workflow.md`](workflow.md) 判断当前 phase 和下一步。
+聊天消息、Herdr pane label、模型输出和 Supervisor 报告都不能替代冻结 diff 或验证记录。Task Packet 与它的 `evidence/` 同处 `$TMPDIR/greypan/tasks/<task-id>.md`——一条 task 的完整记录放在一个地方，而不是拆成「主合同在别处、证据在这里」。它和 task state 同属**本地工作记忆，可丢失**（[ADR-0018](../adr/0018-task-state-in-tmpdir.md)）：换机换用户从 commit 历史重建，不承诺恢复。
+
+在本机同用户的会话续作里，读取顺序是：先读 Task Packet，再读 `$TMPDIR/greypan/tasks/<task-id>.json`，最后按 [`workflow.md`](workflow.md) 判断当前 phase 和下一步；重启用 `pnpm agent:task status --task <task-id>` 的 `live` 核对，不靠记忆推断。state 已被清空时按 `workflow.md`「失败和恢复」重建，不靠重建 packet 蒙混过关。
 
 第三方 [`handoff` skill](../../.agents/skills/handoff/SKILL.md) 只用于压缩会话上下文，不改变本文件的任务主合同，也不改变多 Agent handoff 协议。

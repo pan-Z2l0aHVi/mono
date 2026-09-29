@@ -13,7 +13,7 @@
 
 所有实施变更**在第一次文件变更前必须读取 [`docs/agents/workflow.md`](docs/agents/workflow.md)，并按级别建 task：`pnpm agent:task new --task <task-id> --level t0|t1|t2`**。级别 T0/T1/T2（T0 最严格）只表达 workflow 严格程度；判定判据、每级的 review/approval 要求与预授权操作清单，以 workflow.md 为权威，本节不复制。
 
-级别判定不靠感觉：`pnpm agent:find-usages -- <paths>` 输出的受影响 workspace 只有一个时，T2 的「单 workspace」条件成立。只读调查不需要 task，一旦转为实施就回到这个 gate。状态、冻结 diff、review、approval 和验证证据以 `<git-common-dir>/tasks/<task-id>.json` 为执行真相。
+级别判定不靠感觉：`pnpm agent:find-usages -- <paths>` 输出的受影响 workspace 只有一个时，T2 的「单 workspace」条件成立。只读调查不需要 task，一旦转为实施就回到这个 gate。task state 落 `$TMPDIR/greypan/tasks/<task-id>.json`，是**本地工作记忆，可丢失**：不跨重启存续，恢复规则限定在本机本用户的会话续作；换机换用户从 commit 历史重建，state 在 task 进行中被清则用同一个 task-id 重新 `agent:task new`（三个后果见 [`ADR-0018`](docs/adr/0018-task-state-in-tmpdir.md) 与 `workflow.md`「失败和恢复」）。持久审计由 commit message、changeset 与 git 历史承担。冻结 diff、review 与 approval 的判据以 `pnpm agent:task status` 的 `live` 为准。
 
 1. 先查看工作区状态、目标文件和最近的 `AGENTS.md`；只有进入某个 `apps/` 或 `packages/` 时才加载其包级指令。
 2. 只按任务加载命中的 rule、guide 和包级指令；不要为普通局部任务预读 `CONTEXT.md`、ADR 或无关领域指南。

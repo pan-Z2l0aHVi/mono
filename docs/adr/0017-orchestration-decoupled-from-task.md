@@ -5,6 +5,7 @@
 - **Supersedes**: [ADR-0010](0010-agent-role-orchestration.md)、[ADR-0011](0011-agent-model-binding-and-effort.md)、[ADR-0014](0014-task-system-v2.md)、[ADR-0016](0016-implementation-supervision.md) 中把编排事实绑定到 task 的部分
 - **Amends**: [ADR-0015](0015-role-contracts-in-herdr-agents-skill.md)（skill 仍只由 `/herdr-agents` 触发，拆分与解耦都不新增 skill）
 - **Relates to**: [ADR-0004](0004-progressive-agent-context-architecture.md)
+- **Amended by**: [ADR-0018](0018-task-state-in-tmpdir.md)（下文的 `<git-common-dir>/tasks/` 是本 ADR 决策当时的位置；task state 现在的落点是 `$TMPDIR/greypan/tasks/`。决策本身不变）
 
 ## 背景
 
@@ -66,7 +67,7 @@ Manager 在**编排开始时**生成一个自由标签 `herdr-agents/<主题slug
 
 - 编排可以在没有任何 task 的场景使用：只读调查、多会话调研、跨会话的方案收敛。
 - 编排元数据有了单一落点，Manager 的上下文回流从「散在多个 task 文档」变成「按路径定点读一份 JSON」。
-- `patrol.mjs` 的数据源与 task 体系解耦，`<git-common-dir>/tasks/` 只剩 workflow 需要它的那部分用途。
+- `patrol.mjs` 的数据源与 task 体系解耦，task state 目录（决策当时是 `<git-common-dir>/tasks/`，[ADR-0018](0018-task-state-in-tmpdir.md) 起为 `$TMPDIR/greypan/tasks/`）只剩 workflow 需要它的那部分用途。
 - ADR-0010 / 0011 / 0014 / 0016 的原文保留不动，它们记录的是各自当时为何那么定；本 ADR 只声明其中「把编排事实绑定到 task」的部分不再现行。
 
 ## 替代方案
