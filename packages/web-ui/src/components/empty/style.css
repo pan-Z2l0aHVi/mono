@@ -14,8 +14,11 @@
   align-items: center;
 
   width: 100%;
-  min-block-size: var(--wui-empty-min-height, 240px);
-  padding: var(--wui-empty-padding, 32px 24px);
+  min-block-size: var(--wui-empty-min-height, var(--wui-internal-empty-min-height, 240px));
+  padding: var(
+    --wui-empty-padding,
+    var(--wui-internal-empty-padding-block, 32px) var(--wui-internal-empty-padding-inline, 24px)
+  );
 
   text-align: center;
 }
@@ -45,7 +48,7 @@
 .empty-title {
   margin-top: var(--wui-empty-title-margin-top, 16px);
 
-  font-size: var(--wui-empty-title-font-size, 16px);
+  font-size: var(--wui-empty-title-font-size, var(--wui-internal-empty-title-font-size, 16px));
   font-weight: 600;
   line-height: 1.5;
   color: var(--wui-color-text, #1b1b1b);
@@ -55,7 +58,7 @@
 .empty-description {
   margin-top: 6px;
 
-  font-size: var(--wui-empty-description-font-size, 14px);
+  font-size: var(--wui-empty-description-font-size, var(--wui-internal-empty-description-font-size, 14px));
   line-height: 1.6;
   color: var(--wui-color-text-secondary, #6a6a6a);
   overflow-wrap: anywhere;
