@@ -116,20 +116,21 @@ if (typeof CSS !== 'undefined' && 'registerProperty' in CSS) {
    * 窄视口基准由 style.css 的媒体查询覆盖同一 token。消费方写 unitless 的
    * `0` 会在计算值阶段归一成 `0px`（层叠露边归零，而不是让 ln 项算出 NaN）。
    *
-   * A = 54px 来自视觉 pass：四层等宽 320px 时逐层露边 37.43 / 21.90 / 15.53px，
-   * 总堆叠宽 74.86px（旧的恒定 12px 线性步进是 12 / 12 / 12，总宽 36px）。
+   * A = 43.2px 来自视觉 pass：桌面基准由 54px 调小两成，四层等宽 320px 时逐层露边
+   * 29.94 / 17.52 / 12.43px，总堆叠宽 59.89px（54px 一档是 37.43 / 21.90 / 15.53，
+   * 总宽 74.86px）。
    *
    * 取值由**最里层**那一跳决定：对数曲线压得最狠的正是第四层，它只有
-   * A·ln(4/3) = 0.288A，不足首跳 0.693A 的一半。A=28 时这一跳是 8.06px、A=36 时
-   * 10.36px，都与旧的 12px 线性步进同一量级，四层叠起来最里面那层几乎看不出是
-   * 独立一层；A=54 把它提到 15.53px，每层的边界与阴影才各自可辨。
+   * A·ln(4/3) = 0.288A。12.43px 仍略高于旧的 12px 线性步进，但余量已经收窄到
+   * 3.5%——继续下调会让最里层那一条边与上一条边难以分辨，A=54 时这一跳有 15.53px，
+   * 余量 29%。若还要更小的基准，应先改 ln 的压缩比而不是只降 A。
    */
   try {
     CSS.registerProperty({
       name: '--wui-drawer-nested-peek-base',
       syntax: '<length>',
       inherits: true,
-      initialValue: '54px'
+      initialValue: '43.2px'
     })
   } catch {
     // 已注册（如 HMR 重复执行）时忽略
@@ -372,7 +373,7 @@ export class WebUiDrawer extends LitElement {
         this._dragOffset = this._dragInitialOffset + dampOverscroll(dragDelta)
         this._trackSwipeCancel(this._dragAxis === 'x' ? info.clientX : info.clientY, dragDelta)
 
-        // 达到关闭阈值时胶囊变 accent 色作视觉确认（ADR-0027）。与距离分支共用同一量
+        // 达到关闭阈值时胶囊换成更实的中性灰作视觉确认（ADR-0027）。与距离分支共用同一量
         //（自抓取瞬间起的净位移）与同一阈值，视觉确认与实际判定不会漂移。
         const dragSize = this._measureDragSize()
         const dragDisplacement = this._dragOffset - this._dragInitialOffset

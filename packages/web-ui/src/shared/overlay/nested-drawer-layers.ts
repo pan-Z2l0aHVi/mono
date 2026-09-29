@@ -32,7 +32,7 @@ export const PEEK_BASE_VARIABLE = '--wui-drawer-nested-peek-base'
  * 保留它只为 jsdom——那里没有 registerProperty，getComputedStyle 返回空串，
  * 层序数学仍需要有定义的基准。浏览器 spec 有一条断言把两者钉在一起，防止漂移。
  */
-export const NESTED_PEEK_BASE_FALLBACK = 54
+export const NESTED_PEEK_BASE_FALLBACK = 43.2
 /*
  * 与 drawer/style.css 里 `@media (width <= 640px)` 同一条断点：跨越断点时媒体查询会
  * 换掉基准，已打开的堆叠要重算，否则会停留在旧断点的露边宽度上。
