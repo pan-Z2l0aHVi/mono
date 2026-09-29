@@ -57,6 +57,8 @@ Focus token 只定义颜色与宽度：`--wui-color-focus-ring` / `--wui-focus-r
 
 对外 CSS custom property 使用 `--wui-*`；内部接线变量使用 `--wui-internal-*` 前缀。
 
+玻璃色按「画在哪一层」命名，不按「看起来像什么」命名。`.wui-glass::before` 的 `background-color` 承载一枚描边环（`--wui-color-glass-ring` 底色，加 `--wui-color-glass-ring-sheen` 与 `--wui-color-glass-ring-shade` 四枚角点 radial），元素自身 `box-shadow` 的 inset 高光是另一枚 token（`--wui-color-glass-highlight`）。环底色不是可选项：四枚 radial 全部锚定角点、半径固定（sheen 取 2R，shade 取 R），一条边长过约 3R 就有一段落在所有 radial 之外，只靠渐变时那一段会缺失。
+
 ### 6.2 Duration / Easing / Scale
 
 - `--wui-duration-focus: 200ms`；`--wui-duration-trigger`（原 `--wui-duration-fast`）；`--wui-duration-drawer-enter: 280ms` / `--wui-duration-drawer-exit: 240ms`；`--wui-duration-float-enter: 240ms` / `--wui-duration-float-exit: 160ms`
@@ -71,7 +73,7 @@ Focus token 只定义颜色与宽度：`--wui-color-focus-ring` / `--wui-focus-r
 - `--wui-radius-menu: 18px` — menu/popover 类浮动面板
 - `--wui-radius-overlay: 28px` — 大型覆盖层与独立浮动卡片
 
-非 pill radius 与 glass corner 联动：覆盖 token 时 border-radius 与对角光影一起变化。
+非 pill radius 与 `--wui-glass-corner-radius` 联动：覆盖 token 时 border-radius 与对角光影一起变化。
 
 ## 7. 开启态浮层归属
 

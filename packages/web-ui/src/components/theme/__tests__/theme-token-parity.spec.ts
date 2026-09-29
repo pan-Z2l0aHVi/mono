@@ -285,3 +285,42 @@ describe('深色 elevation 关系', () => {
     expect(themeBlocks.dark.get('--wui-color-surface-overlay')).toBe('rgb(32 34 34 / 0.9)')
   })
 })
+
+describe('玻璃描边环 token', () => {
+  const RING_TOKENS = ['--wui-color-glass-ring', '--wui-color-glass-ring-sheen', '--wui-color-glass-ring-shade']
+
+  it('明暗两档都定义完整的三枚环 token', () => {
+    for (const token of RING_TOKENS) {
+      expect(themeBlocks.light.get(token), `light ${token}`).toBeDefined()
+      expect(themeBlocks.dark.get(token), `dark ${token}`).toBeDefined()
+    }
+  })
+
+  /*
+   * 环底色一旦退回 transparent，明色下 ::before 的四枚 radial 都不覆盖边中段，
+   * 描边会断成四段角弧——而这正是本组 token 存在的理由。深色档早已有真值，
+   * 两侧一起钉住，明色不会再无声退回空值。
+   */
+  it('环底色在明暗两档都不是 transparent', () => {
+    for (const [name, block] of [
+      ['light', themeBlocks.light],
+      ['dark', themeBlocks.dark]
+    ] as const) {
+      const value = block.get('--wui-color-glass-ring') ?? ''
+      expect(value, `${name} 环底色`).not.toBe('transparent')
+      expect(parseColor(value).alpha, `${name} 环底色不透明度`).toBeGreaterThan(0)
+    }
+  })
+
+  it('环底色是三枚里唯一负责中段的层，量级不压过受光与背光', () => {
+    const alpha = (name: string) => {
+      const raw = themeBlocks.light.get(name)
+      expect(raw, `light ${name} 缺失`).toBeDefined()
+      return parseColor(raw).alpha
+    }
+    // 底色是整圈基底，角部两枚在其上叠加；底色过强会让整环发闷、过弱则中段断续。
+    const ring = alpha('--wui-color-glass-ring')
+    expect(ring).toBeGreaterThan(alpha('--wui-color-glass-ring-shade'))
+    expect(ring).toBeLessThan(alpha('--wui-color-glass-ring-sheen'))
+  })
+})

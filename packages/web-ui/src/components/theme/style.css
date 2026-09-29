@@ -172,10 +172,22 @@
   --wui-color-state-layer-hover: color-mix(in srgb, var(--wui-color-text) 6%, transparent);
   --wui-color-state-layer-active: color-mix(in srgb, var(--wui-color-text) 15%, transparent);
   --wui-color-border: rgb(0 0 0 / 0.1);
-  --wui-color-glass-border: transparent;
+
+  /*
+   * 玻璃色按「绘制在哪一层」分组，两个前缀对应两个互不相干的层：
+   *
+   * glass-highlight  → 元素自身的 box-shadow inset 高光（不是描边环的一部分）
+   * glass-ring-*     → ::before 用 mask 挖出来的 1px 描边环，共三枚：
+   *                    ring 是铺满整圈的底色，ring-sheen / ring-shade 是其上
+   *                    两枚对角 radial，只覆盖四个角
+   *
+   * 底色必须存在：四枚 radial 都锚在角点且半径固定（sheen 2R、shade R），一条边
+   * 长过约 3R 就有一段落在所有 radial 之外，只靠 radial 时那段会整段消失。
+   */
   --wui-color-glass-highlight: rgb(255 255 255 / 0.9);
-  --wui-color-glass-corner: rgb(255 255 255 / 0.5);
-  --wui-color-glass-shade: rgb(0 0 0 / 0.03);
+  --wui-color-glass-ring: rgb(0 0 0 / 0.05);
+  --wui-color-glass-ring-sheen: rgb(255 255 255 / 0.5);
+  --wui-color-glass-ring-shade: rgb(0 0 0 / 0.03);
   --wui-glass-brightness: 1.06;
   --wui-color-accent: #08f;
   --wui-color-on-accent: #fff;
@@ -221,10 +233,10 @@
   --wui-color-state-layer-hover: color-mix(in srgb, var(--wui-color-text) 6%, transparent);
   --wui-color-state-layer-active: color-mix(in srgb, var(--wui-color-text) 15%, transparent);
   --wui-color-border: rgb(255 255 255 / 0.14);
-  --wui-color-glass-border: rgb(255 255 255 / 0.05);
   --wui-color-glass-highlight: rgb(255 255 255 / 0.1);
-  --wui-color-glass-corner: rgb(255 255 255 / 0.2);
-  --wui-color-glass-shade: rgb(0 0 0 / 0.5);
+  --wui-color-glass-ring: rgb(255 255 255 / 0.05);
+  --wui-color-glass-ring-sheen: rgb(255 255 255 / 0.2);
+  --wui-color-glass-ring-shade: rgb(0 0 0 / 0.5);
   --wui-glass-brightness: 1.02;
   --wui-color-accent: #0a84ff;
   --wui-color-on-accent: #fff;
@@ -263,10 +275,10 @@
     --wui-color-state-layer-hover: color-mix(in srgb, var(--wui-color-text) 6%, transparent);
     --wui-color-state-layer-active: color-mix(in srgb, var(--wui-color-text) 15%, transparent);
     --wui-color-border: rgb(255 255 255 / 0.14);
-    --wui-color-glass-border: rgb(255 255 255 / 0.05);
     --wui-color-glass-highlight: rgb(255 255 255 / 0.1);
-    --wui-color-glass-corner: rgb(255 255 255 / 0.2);
-    --wui-color-glass-shade: rgb(0 0 0 / 0.5);
+    --wui-color-glass-ring: rgb(255 255 255 / 0.05);
+    --wui-color-glass-ring-sheen: rgb(255 255 255 / 0.2);
+    --wui-color-glass-ring-shade: rgb(0 0 0 / 0.5);
     --wui-glass-brightness: 1.02;
     --wui-color-accent: #0a84ff;
     --wui-color-on-accent: #fff;
