@@ -22,15 +22,15 @@
   transform: translate(var(--toast-slide-x, 0), var(--toast-slide-y, -8px)) scale(var(--wui-scale-enter, 0.95));
 
   display: flex;
-  gap: 8px;
+  gap: var(--wui-space-2, 8px);
 
   width: min(320px, calc(100dvw - 2 * var(--wui-toast-viewport-gap, 16px)));
   min-height: 36px;
-  padding: 8px;
+  padding: var(--wui-space-2, 8px);
   border-radius: var(--wui-radius-menu, 18px);
 
   font-size: var(--wui-font-size, 14px);
-  line-height: 1.5;
+  line-height: var(--wui-line-height-normal, 1.5);
   color: var(--wui-color-text, #1b1b1b);
 
   opacity: 0;
@@ -131,8 +131,8 @@ web-ui-button.toast-close-btn {
   overflow: hidden;
 
   font-size: var(--wui-font-size, 14px);
-  font-weight: 600;
-  line-height: 1.4;
+  font-weight: var(--wui-font-weight-semibold, 600);
+  line-height: var(--wui-line-height-snug, 1.4);
   color: var(--wui-color-text, #1b1b1b);
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -145,13 +145,13 @@ web-ui-button.toast-close-btn {
   -webkit-line-clamp: 3;
 
   font-size: calc(var(--wui-font-size, 14px) - 1px);
-  line-height: 1.4;
+  line-height: var(--wui-line-height-snug, 1.4);
   color: color-mix(in srgb, var(--wui-color-text, #1b1b1b) 55%, transparent);
   word-break: break-all;
 }
 
 .toast-time {
-  font-size: 12px;
+  font-size: var(--wui-font-size-caption, 12px);
   color: color-mix(in srgb, var(--wui-color-text, #1b1b1b) 30%, transparent);
   white-space: nowrap;
 }

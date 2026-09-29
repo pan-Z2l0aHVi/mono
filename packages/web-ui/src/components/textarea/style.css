@@ -22,14 +22,14 @@
   position: relative;
 
   display: flex;
-  gap: 8px;
+  gap: var(--wui-space-2, 8px);
   align-items: flex-start;
 
   box-sizing: border-box;
   width: var(--wui-textarea-width, 200px);
   min-width: var(--wui-control-size, 36px);
   min-height: var(--wui-control-size, 36px);
-  padding: 7.5px 12px;
+  padding: 7.5px var(--wui-space-3, 12px);
   border-radius: var(--wui-radius-menu, 18px);
 }
 
@@ -65,7 +65,7 @@ textarea {
   /* 表单控件不继承字体；显式继承以对齐宿主排版，避免 UA 默认字体差异 */
   font: inherit;
   font-size: var(--wui-font-size, 14px);
-  line-height: 1.5;
+  line-height: var(--wui-line-height-normal, 1.5);
   color: var(--wui-color-text, #1b1b1b);
 
   background: transparent;

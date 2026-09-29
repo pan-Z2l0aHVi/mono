@@ -73,6 +73,108 @@ Focus token 只定义颜色与宽度：`--wui-color-focus-ring` / `--wui-focus-r
 
 非 pill radius 与 glass corner 联动：覆盖 token 时 border-radius 与对角光影一起变化。
 
+### 6.4 排版族与间距族
+
+在 §6.3 的 radius 决策之上补两族尺度。族内所有 token 定义在 theme 的 `:host` 基础块，不进
+light/dark——它们与外观无关，主题切换不应改变字号或间距。
+
+**排版族按角色命名，不引入数字阶。** 这与 §6.3 同构：名字回答「这块文字是什么」，
+不回答「它是第几号」。
+
+- 字号四档：`--wui-font-size-caption: 12px`（密集 chrome 标签）、
+  `--wui-font-size-readout: 13px`（数字读数）、`--wui-font-size: 14px`（正文基准）、
+  `--wui-font-size-title: 18px`（有界卡片标题）。
+- 字重两档：`--wui-font-weight-medium: 500`、`--wui-font-weight-semibold: 600`。
+- 行高四档：`tight: 1.2`、`snug: 1.4`、`normal: 1.5`、`relaxed: 1.6`。
+
+`line-height: 1` 与 `0` 刻意不 token 化：前者是控件内单行标签的垂直居中手段，后者是
+让 inline-flex 包裹盒高收缩到内容的技巧，两者都不是排版行高。`font-size: 0` 同理，是
+消除 inline 基线缝隙的技巧。
+
+**间距族是 4px 基准的六级数字阶** `--wui-space-1..6` = 4/8/12/16/20/24px。这是本 ADR
+对 §6.3「不引入数字 scale」的一处**有意偏离**，理由是 radius 与 spacing 的角色结构不同：
+
+- radius 是「组件形状选择」，只有少数几档、每档语义强，角色命名完全可行；
+- spacing 是 50 余处调用点的节奏值，角色命名不可行——同一个 8px 同时是控件间距、
+  group 间距和行内间距，命名它 `control-gap` 或 `group-gap` 只会把一个数字复制成
+  多枚互相漂移的 token。
+
+外部生态里「语义色 + 数字间距阶」是常见组合（Radix / shadcn 一系即如此），这是**外部
+先例**；本仓此前只在 radius 上做过角色命名的刻意选择（§6.3），spacing 是第一处偏离。
+
+级数止于 6 是由实测决定的：组件层**生效的静态 CSS** 里 padding/gap/margin 的最大节奏值就是
+24px，4px 阶上恰好落在这六级。（唯一超出的是 empty 的 padding，默认 `32px 24px`，
+但它由 `--wui-empty-size` 尺寸档在 JS 侧派生、属另一根轴，见下。）预留 32/40 会引入
+两枚没有任何消费者的死 token，而 `theme-tokens.spec.ts` 要求每枚 token 都进双语文档
+——死 token 要付出双份文档成本却换不到任何组件受益。需要更宽留白的嵌入方直接写 px 即可。
+
+本族刻意不含 1px / 2px / 6px / 7.5px / 10px 与负值：1px 是发丝线与描边环的结构宽度，
+2px、6px、7.5px 是光学修正，10px 是 4px 阶之外的半档耦合值，负 margin 用来抵消 flex
+gap 或按钮 padding。它们的「为什么是这个数」各自独立，不共享间距语义。
+
+另有一类按**语义**而非取值排除：对齐视口边缘或宿主内容边缘的偏移量。它们即使正好落在
+4px 阶上也不挂阶——`--wui-image-preview-edge-gap`、`--wui-toast-viewport-gap`、
+`--wui-layout-mobile-toggle-inset`、`--wui-back-top-right/left/bottom`、
+`--wui-drawer-inset`、`--wui-drawer-close-right`。这些值的参照系是屏幕、宿主的内容边缘
+或容器边缘，不是相邻元素之间的节奏；把它们并进间距阶会让「覆盖 `--wui-space-2` 调整
+密度」意外推移组件与边缘的距离。
+
+`--wui-drawer-close-right`（默认 `16px`）归入这一族值得单独说明，因为它容易被误挂：
+drawer header padding 是 `16px 20px`，而 close 按钮的 `right` 是 `16px`，**20 ≠ 16，二者
+并不对齐**——组件原有注释声称二者对齐，实测不成立（该注释已在本轮改正）。挂到
+`--wui-space-4` 本身并不会造成视觉变化——该级默认仍是 `16px`——所以不挂阶的理由是
+**语义归属**（参照系是容器边缘），不是视觉风险。相比之下同组的
+`--wui-drawer-close-top` 已挂 `--wui-space-4`，因为它确实等于 header padding 的垂直
+分量（都是 `16px`），两者必须同源，否则覆盖该级会把这条对齐关系打断。
+
+组件层落在 4px 阶上的**节奏**字面量已全部挂阶（含 dialog 的 `--wui-dialog-title-gap` /
+`--wui-dialog-desc-gap`、dropdown-divider 的行内 margin、layout 侧栏按钮的 margin、
+drawer header padding 与 close 按钮的 `top`），因此「组件层**生效的静态** padding/gap/margin
+的最大节奏值就是 24px」成立。这句只就节奏值立论，不声称穷举所有 4px 阶取值：
+
+- empty 的 padding 由 `--wui-empty-size` 尺寸档在 JS 侧派生（40 / 56 / 72 三档实测
+  `23px 17px` / `32px 24px` / `41px 31px`）。六个值里四个是奇数，4px 阶根本表示不了；
+  `56` 档的 `32px 24px` 落在基准上纯属尺寸选值的巧合：`56` 是三档里唯一被 7 整除的，
+  商恰为 8，而 8 本身是 4 的倍数，取整在这档根本没有发生。一根在三个尺寸中两个静默
+  失效、只在第三个上碰巧生效的密度杠杆比没有杠杆更糟，何况它挂进间距阶还会让一次密度
+  覆盖顺手改掉占位块尺寸；
+- 组件内部几何同样落在阶上却不挂阶，例如 segmented 指示 thumb 在 track 内的
+  `top`/`bottom: 4px`、switch 滑块的 `translateX()` 行程、slider 的 thumb 尺寸，以及各类
+  `blur(4px)`。它们不是公开覆盖 token，参照系是组件自身的盒子而非相邻元素的节奏。
+
+> 这两类归属目前只由本节 prose 记录，**没有机器守卫**：守卫覆盖的是族是否连续、当前
+> 最大级、以及 fallback 与族值是否一致，不检查「未挂阶的阶上节奏字面量」。所以上面这份
+> 清单会随代码漂移，后来者若新增此类取值需手工回填本节。
+
+**间距族不替代组件局部覆盖 token**（`--wui-button-px`、`--wui-dialog-padding` 等），
+而是充当那些 token 的 fallback 默认值。组件继续决定「我的 padding 是多少」，本族提供
+「这个值在整套尺度里的位置」，嵌入方因此拿到一根密度杠杆：覆盖某一级会同时移动所有
+**已挂阶**的调用点。
+
+杠杆的作用域是节奏，不是结构：上一节排除的那些值不跟随。覆盖还必须落在
+`<web-ui-theme>` 作用域内——`:host` 只向自己的子树声明，设在 theme 之上不生效。
+另有一条已知边界：`assets/*.css` 的浮层样式有两条注入路径，经 theme 自带的 overlay root
+注入时能看到族内 token，退到 document 级 fallback overlay root（一个普通 `div`）时看不到，
+那条路径下浮层间距恒取字面量 fallback。
+
+`--wui-radio-group-gap` 与 `--wui-checkbox-group-gap` 的默认值由 `8px` 改为引用
+`--wui-space-2`，因此这两枚既有 token 现在与该级耦合：覆盖 `--wui-space-2` 会连带改变
+group 成员间距。显式覆盖 group token 本身仍然优先（嵌入方未破坏），但这个耦合是行为变化，
+故在此记录。
+
+三处刻意留在族外：
+
+- `max(16px, var(--wui-font-size, 14px))`（input/textarea/input-number 的粗指针钳制）
+  是 iOS Safari focus zoom 的平台下限，不是排版选择。
+- `calc(var(--wui-avatar-size, 40px) * 0.4)`（avatar 字母）按组件尺寸派生。
+- empty 的标题/描述字号由 `--wui-empty-size` 尺寸档在 JS 侧驱动
+  （`--wui-internal-empty-*`），是另一根轴；tooltip 自有公开 token
+  `--wui-tooltip-font-size`，其默认值本身即角色定义。
+
+**防漂移**由 `theme/__tests__/typography-spacing-scale.spec.ts` 承担，方向与
+`theme-token-parity.spec.ts` 互补：parity 锁「fallback 与定义一致」，本文件锁
+「组件不写裸字面量」与「族内 token 全部被消费」。后者同时挡住新增即死 token。
+
 ## 7. 开启态浮层归属
 
 「哪一层正开着」由 `src/shared/overlay/open-overlay.ts` 独占，组件不再各自监听 Escape。合并前由三个模块分担同一件事（逻辑父子树、Escape 仲裁、帧事务失效），不变量没有主人，8 个浮层组件各自把它拼成三步登记协议。

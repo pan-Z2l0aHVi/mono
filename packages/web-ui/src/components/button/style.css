@@ -31,7 +31,7 @@ button {
 
   overflow: clip;
   display: inline-flex;
-  gap: var(--wui-button-gap, 8px);
+  gap: var(--wui-button-gap, var(--wui-space-2, 8px));
   align-items: center;
   justify-content: center;
 
@@ -39,7 +39,7 @@ button {
   width: var(--wui-button-width, max-content);
   min-width: var(--wui-control-size, 36px);
   height: var(--wui-control-size, 36px);
-  padding: 0 var(--wui-button-px, 12px);
+  padding: 0 var(--wui-button-px, var(--wui-space-3, 12px));
   border: none;
   border-radius: var(--wui-radius-control, calc(infinity * 1px));
 
