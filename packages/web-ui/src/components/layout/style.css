@@ -169,11 +169,12 @@ aside.is-resizing {
   /*
    * glow 伪元素用 scale + translate 向外扩展，会溢出内容列并撑出页面横向滚动条
    * （移动端约 30px），横向裁剪因此归属本层。它有 min-width: 0，是容纳横向溢出的位置。
-   * 羽化之所以保住，靠的是裁剪盒的范围变大，不是纵向恰好为 visible：本层的下沿在
-   * main / footer 之后，离 header 底缘隔着整个 main，即便某引擎把 clip 连带到另一轴，
-   * 也切不到底缘。裁剪盒恰好等于 header 时，那一刀才正切在羽化上。
    * clip 不创建滚动容器，因此不影响 header / footer 自身的 sticky；也不用 hidden——
    * 那会把本层变成滚动容器，sticky 随即失效。
+   *
+   * 这一层不负责纵向羽化，也切不到它：glow 的下缘断层来自 header 自身的裁剪上下文
+   * （见 header::before 的注释），真 Safari 上把本层改成 overflow-x: visible / unset
+   * 与保持 clip 的截图逐像素相同。
    */
   overflow-x: clip;
   display: flex;
@@ -184,18 +185,19 @@ aside.is-resizing {
 }
 
 header {
-  /* 将负层级 glow 限定在 Header 的局部 stacking context，slot 内容自然位于其上。 */
+  /*
+   * isolation: isolate 既把负层级 glow 限定在本 Header 的局部 stacking context
+   * （slot 内容自然位于其上），也顺带使本层成为该上下文的裁剪边界：z-index: -1 的
+   * glow 伪元素溢出 header 盒的部分会被切掉。横向裁剪上移到 .layout-content。
+   *
+   * 「纵向必须 visible 才留得住下拉浮层的溢出空间」仍然成立——overflow-* 一旦生效
+   * 就会裁剪该轴，visible 是这些槽位内容唯一的溢出出口。
+   */
   isolation: isolate;
   position: sticky;
   z-index: var(--wui-layer-header, 10);
   top: 0;
 
-  /*
-   * 本层不做任何裁剪，横向裁剪上移到 .layout-content。glow 向下多伸出 0.5 个 header
-   * 高度靠的就是纵向溢出：一旦裁剪，底缘羽化被切断，滚到 header 下的内容与 header
-   * 之间出现硬边断层。WebKit 对 overflow-x: clip 会连带裁掉纵向溢出（Chrome 不会），
-   * 所以这层必须保持 visible，纵向也才有下拉浮层等槽位内容的溢出空间。
-   */
   display: flex;
   gap: var(--wui-space-2, 8px);
   align-items: center;
@@ -213,6 +215,22 @@ header {
  *
  * 伪元素随 header 的实际盒子尺寸和 sticky 位置变化，自然适配 header slot 的
  * 高度与位置，无需单独维护一层 DOM。
+ *
+ * 羽化由渐变画在盒子**内部**，而不是靠 `filter: blur()` 的盒外支撑域。原因是
+ * `isolation: isolate` 让 header 成为局部裁剪上下文，`z-index: -1` 的本伪元素
+ * 溢出 header 盒的部分会被切掉，而 transform 必然让它溢出（底缘伸到 header 盒
+ * 之下）。`filter: blur()` 按规范把羽化延伸到盒外，那一段在 Safari/WebKit 上
+ * 正好落在切口内，于是底缘带着可见不透明度被一刀切平（#184）。`overflow-clip-margin`
+ * 在 WebKit 上对本元素不生效，`.layout-content` 的 clip 与宿主外壳的 clip 都切不到
+ * 这里——真 Safari 逐像素对照见 $TMPDIR/herdr-agents/reports/ui-polish-260929-glow-clip-ownership.md。
+ *
+ * 端点用裸 `transparent`（即 rgb(0 0 0 / 0)）而不是
+ * `color-mix(in srgb, var(--wui-layout-header-glow-color) 100%, transparent)`：
+ * 混色按预乘 alpha 进行，后者算出来是完全不透明的原色（alpha = 1×1 + 0×0 = 1），
+ * 终点没有羽化，实测台阶反而从 11 级恶化到 152 级。裸 transparent 在渐变插值中
+ * 同样按预乘处理，各引擎一致淡到 0，且不引入新色相。
+ *
+ * 50% 折点：上半实心保住 header 区域，下半羽化。
  */
 :host([header-glow]) header::before {
   pointer-events: none;
@@ -224,8 +242,12 @@ header {
   transform: translateY(-50%) scale(1.05, 2);
 
   opacity: 0.95;
-  background-color: var(--wui-layout-header-glow-color);
-  filter: blur(10px);
+  background-image: linear-gradient(
+    to bottom,
+    var(--wui-layout-header-glow-color) 0%,
+    var(--wui-layout-header-glow-color) 50%,
+    transparent 100%
+  );
 }
 
 main {
