@@ -1214,15 +1214,25 @@ Badge / notification count.
 
 Empty state placeholder.
 
-| Attribute     | Type     | Default | Description                                                                 |
-| ------------- | -------- | ------- | --------------------------------------------------------------------------- |
-| `title`       | `string` | `''`    | Title text                                                                  |
-| `description` | `string` | `''`    | Description text                                                            |
-| `size`        | `number` | `56`    | Icon container edge length (px); invalid or non-positive values become `56` |
+| Attribute     | Type     | Default | Description                                                    |
+| ------------- | -------- | ------- | -------------------------------------------------------------- |
+| `title`       | `string` | `''`    | Title text                                                     |
+| `description` | `string` | `''`    | Description text                                               |
+| `size`        | `number` | `56`    | Layout scale in px; invalid or non-positive values become `56` |
 
-`size` only drives the icon: the container edge is `size`, and the default glyph is `round(size * 3 / 7)`. It no longer scales `min-height`, `padding`, title/description font size, or block spacing — override the CSS custom properties below for those. `--wui-empty-icon-size` takes precedence over `size`.
+`size` is the one knob for the whole placeholder. It drives the icon container, `min-height`, padding, and the title/description font size, so a large icon no longer sits in medium-sized whitespace:
 
-**Migrating from the `'small' \| 'medium' \| 'large'` enum:** `size` is now a number, and the removed tiers no longer change any layout metric.
+| `size` | Icon box | Glyph  | `min-height` | Padding block/inline | Title  | Description |
+| ------ | -------- | ------ | ------------ | -------------------- | ------ | ----------- |
+| `40`   | `40px`   | `17px` | `171px`      | `23px/17px`          | `14px` | `13px`      |
+| `56`   | `56px`   | `24px` | `240px`      | `32px/24px`          | `16px` | `14px`      |
+| `72`   | `72px`   | `31px` | `309px`      | `41px/31px`          | `16px` | `14px`      |
+
+The derived values are `min-height: round(size * 30 / 7)`, `padding-block: round(size * 4 / 7)`, and `padding-inline: round(size * 3 / 7)`; the default glyph is `round(size * 3 / 7)`.
+
+Font size is one step rather than a scale: below `56` the title is `14px` and the description `13px`, and from `56` up they are `16px` and `14px`. A bigger placeholder gets its presence from whitespace, not from bigger text.
+
+**Migrating from the `'small' \| 'medium' \| 'large'` enum:** `size` is now a number, and the removed tiers had hand-tuned metrics that these ratios only approach — `small` was `160px` tall with `20px 16px` padding, `large` was `320px` with `48px 32px`. Section margins and content width never followed the tiers.
 
 | Old value | New value | Default glyph |
 | --------- | --------- | ------------- |
@@ -1234,16 +1244,18 @@ Empty state placeholder.
 
 **CSS Custom Properties:**
 
-None of these vary with `size` any more; the values below always apply unless you override them.
+Each one overrides the value `size` derives, so all eight stay authoritative — including the two font sizes. Defaults are the values at the default `size` of `56`.
 
-| Property                            | Default     | Description                           |
-| ----------------------------------- | ----------- | ------------------------------------- |
-| `--wui-empty-min-height`            | `240px`     | Min height                            |
-| `--wui-empty-padding`               | `32px 24px` | Padding                               |
-| `--wui-empty-icon-size`             | `56px`      | Icon container size; overrides `size` |
-| `--wui-empty-content-width`         | `480px`     | Max width of title/description        |
-| `--wui-empty-title-font-size`       | `16px`      | Title font size                       |
-| `--wui-empty-description-font-size` | `14px`      | Description font size                 |
+| Property                            | Default     | Description                                 |
+| ----------------------------------- | ----------- | ------------------------------------------- |
+| `--wui-empty-min-height`            | `240px`     | Min height                                  |
+| `--wui-empty-padding`               | `32px 24px` | Padding                                     |
+| `--wui-empty-icon-size`             | `56px`      | Icon container size; overrides `size`       |
+| `--wui-empty-content-width`         | `480px`     | Max width of title, description, and action |
+| `--wui-empty-title-margin-top`      | `16px`      | Space between the icon and the title        |
+| `--wui-empty-title-font-size`       | `16px`      | Title font size                             |
+| `--wui-empty-description-font-size` | `14px`      | Description font size                       |
+| `--wui-empty-action-margin-top`     | `20px`      | Space above the action slot                 |
 
 #### `<web-ui-icon>`
 
