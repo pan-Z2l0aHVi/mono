@@ -9,6 +9,11 @@ const script = path.join(repoRoot, 'scripts', 'task.mjs')
 const preCommit = fs.readFileSync(path.join(repoRoot, '.vite-hooks', 'pre-commit'), 'utf8')
 const fixture = fs.mkdtempSync(path.join(os.tmpdir(), 'greypan-task-'))
 const secondWorktree = fs.mkdtempSync(path.join(os.tmpdir(), 'greypan-task-second-'))
+// task state 落在 $TMPDIR/greypan/tasks/ 之后，那份 fixture 会直接读写真机上真实 task 的目录，
+// 所以整个文件统一注入一个私有落点（AGENT_TASK_STATE_DIR）。注入点与 AGENT_TASK_ROOT 是两件事：
+// 后者换默认 worktree，前者换 state 目录，少任何一个用例都会打到真实的 $TMPDIR 或真实仓库上。
+const stateDir = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'greypan-task-state-')), 'tasks')
+const taskEnv = { AGENT_TASK_ROOT: fixture, AGENT_TASK_STATE_DIR: stateDir }
 
 // pre-commit 边界：guard 是唯一门禁，归一化只发生在 freeze；不允许任何绕过形态。
 assert.ok(preCommit.includes('pnpm agent:task guard'), 'pre-commit must run the task guard')
@@ -29,7 +34,7 @@ const git = (...args) => execFileSync('git', ['-C', fixture, ...args], { encodin
 const run = (...args) =>
   execFileSync(process.execPath, [script, ...args], {
     cwd: repoRoot,
-    env: { ...process.env, AGENT_TASK_ROOT: fixture },
+    env: { ...process.env, ...taskEnv },
     encoding: 'utf8'
   })
 const runFailure = (...args) =>
@@ -37,7 +42,7 @@ const runFailure = (...args) =>
     () =>
       execFileSync(process.execPath, [script, ...args], {
         cwd: repoRoot,
-        env: { ...process.env, AGENT_TASK_ROOT: fixture },
+        env: { ...process.env, ...taskEnv },
         encoding: 'utf8',
         stdio: 'pipe'
       }),
@@ -47,7 +52,7 @@ const runFailure = (...args) =>
 const spawn = (...args) =>
   spawnSync(process.execPath, [script, ...args], {
     cwd: repoRoot,
-    env: { ...process.env, AGENT_TASK_ROOT: fixture },
+    env: { ...process.env, ...taskEnv },
     encoding: 'utf8'
   })
 // 只断言「失败」不足以证明拦对了原因；这里取回合并输出，逐条核对具体条款。
@@ -144,7 +149,7 @@ try {
     assert.match(failMessage('assign', '--task', 't0-fixture', ...roles), /assign does not accept --roles/)
 
   // 旧 v1 state 的顶层 roles 和历史事件仍可读取，但内核不解释、校验或重写它们。
-  const statePath = path.join(fixture, '.git', 'tasks', 't0-fixture.json')
+  const statePath = path.join(stateDir, 't0-fixture.json')
   const legacyState = JSON.parse(fs.readFileSync(statePath, 'utf8'))
   legacyState.roles = ['retired-legacy-role']
   legacyState.events.push({ at: '2026-09-19T00:00:00.000Z', event: 'assign', roles: ['retired-legacy-role'] })
@@ -193,7 +198,7 @@ try {
     () =>
       execFileSync(process.execPath, [script, 'freeze', '--task', 't0-fixture'], {
         cwd: repoRoot,
-        env: { ...process.env, AGENT_TASK_ROOT: fixture },
+        env: { ...process.env, ...taskEnv },
         encoding: 'utf8',
         stdio: 'pipe'
       }),
@@ -910,27 +915,83 @@ try {
   run('drop', '--task', 'second-fixture', '--reason', 'isolation covered', '--by', 'fixture-sweeper-1')
   git('worktree', 'remove', '--force', secondWorktree)
 
-  // 损坏 state 容错：目录扫描（guard 共享路径）对单个坏文件降级为警告并跳过，
-  // 不阻塞其他 task；target task 的 loadState 保持硬失败。
+  // 孤儿 state：state 目录搬进 $TMPDIR 之后由本机所有仓库共用，仓库删了它的 state 还留着。
+  // 列举侧（guard 的候选筛选、worktree 占用检查）必须只看到当前仓库的，别处既不列也不删。
+  // 这条 state 故意记着 fixture 自己的 worktree 且 phase=active：没有这道过滤，guard 会把它
+  // 和本仓库的 issue-fixture 一起收进候选，然后以「多个 active task」硬失败。
+  // worktree 写成 realpath 是必须的：resolveWorktree 会把候选与 worktree 都解析过软链，而 macOS
+  // 的 os.tmpdir() 落在 /var（/private/var 的软链）后面，只按 mkdtemp 的原样字符串写，worktree
+  // 过滤自己就会把它挡掉，这条用例将不再证明任何东西。
+  const foreignState = {
+    version: 1,
+    taskId: 'foreign-repo-fixture',
+    level: 't1',
+    phase: 'active',
+    createdAt: '2026-09-28T00:00:00.000Z',
+    updatedAt: '2026-09-28T00:00:00.000Z',
+    commonDir: path.join(os.tmpdir(), 'some-other-repo', '.git'),
+    baseSha: '0'.repeat(40),
+    branch: 'main',
+    worktree: fs.realpathSync(fixture),
+    owner: 'foreign-owner',
+    issue: null,
+    playbook: null,
+    diffHash: null,
+    review: { required: false, result: null, diffHash: null, reviewer: null, at: null },
+    approval: { granted: false, diffHash: null, approver: null, at: null },
+    verification: [],
+    events: []
+  }
+  fs.writeFileSync(path.join(stateDir, 'foreign-repo-fixture.json'), `${JSON.stringify(foreignState, null, 2)}\n`)
   run('start', '--task', 'issue-fixture')
-  fs.mkdirSync(path.join(fixture, '.git', 'tasks'), { recursive: true })
-  fs.writeFileSync(path.join(fixture, '.git', 'tasks', 'corrupt.json'), '{ not json')
+  const foreignGuard = spawn('guard')
+  assert.equal(foreignGuard.status, 0)
+  assert.equal(JSON.parse(foreignGuard.stdout).taskId, 'issue-fixture')
+  // 定向命令仍按 id 读得到它，归属不符由 liveState 判定，而不是被列举过滤悄悄藏起来。
+  assert.match(failMessage('status', '--task', 'foreign-repo-fixture'), /another Git repository/)
+  fs.rmSync(path.join(stateDir, 'foreign-repo-fixture.json'))
+
+  // 损坏 state 容错：目录扫描（guard 共享路径）对单个坏文件降级为警告并跳过，
+  // 不阻塞其他 task；target task 的 loadState 保持硬失败。警告本身有归属边界——能证明属于
+  // 别的仓库的坏 state 不刷屏（SCHEMA_VERSION 升版时全机旧 state 会同时变 unsupported，
+  // 无边界就会把噪音推到每个仓库的 pre-commit 上）；归属不明的仍照常警告——空串 commonDir
+  // 算缺归属而不是「属于别处」，saveState 写的 commonDir 是 realpath 结果，空串只来自损坏。
+  fs.mkdirSync(stateDir, { recursive: true })
+  fs.writeFileSync(path.join(stateDir, 'corrupt.json'), '{ not json')
   fs.writeFileSync(
-    path.join(fixture, '.git', 'tasks', 'wrong-version.json'),
+    path.join(stateDir, 'wrong-version.json'),
     JSON.stringify({ version: 999, taskId: 'wrong-version', phase: 'open' })
+  )
+  fs.writeFileSync(
+    path.join(stateDir, 'empty-owner.json'),
+    JSON.stringify({ version: 999, taskId: 'empty-owner', phase: 'open', commonDir: '' })
+  )
+  fs.writeFileSync(
+    path.join(stateDir, 'foreign-wrong-version.json'),
+    JSON.stringify({
+      version: 999,
+      taskId: 'foreign-wrong-version',
+      phase: 'active',
+      commonDir: path.join(os.tmpdir(), 'some-other-repo', '.git')
+    })
   )
   const tolerantGuard = spawn('guard')
   assert.equal(tolerantGuard.status, 0)
   assert.equal(JSON.parse(tolerantGuard.stdout).enforced, true)
   assert.match(tolerantGuard.stderr, /corrupt\.json/)
   assert.match(tolerantGuard.stderr, /wrong-version\.json/)
+  assert.match(tolerantGuard.stderr, /empty-owner\.json/)
+  assert.doesNotMatch(tolerantGuard.stderr, /foreign-wrong-version\.json/)
   runFailure('status', '--task', 'corrupt')
   runFailure('status', '--task', 'wrong-version')
-  fs.rmSync(path.join(fixture, '.git', 'tasks', 'corrupt.json'))
-  fs.rmSync(path.join(fixture, '.git', 'tasks', 'wrong-version.json'))
+  fs.rmSync(path.join(stateDir, 'corrupt.json'))
+  fs.rmSync(path.join(stateDir, 'wrong-version.json'))
+  fs.rmSync(path.join(stateDir, 'empty-owner.json'))
+  fs.rmSync(path.join(stateDir, 'foreign-wrong-version.json'))
 } finally {
   fs.rmSync(fixture, { recursive: true, force: true })
   fs.rmSync(secondWorktree, { recursive: true, force: true })
+  fs.rmSync(path.dirname(stateDir), { recursive: true, force: true })
 }
 
 console.log('scripts/task.test.mjs: all assertions passed')

@@ -6,6 +6,7 @@
 - **Amends**: [ADR-0011](0011-agent-model-binding-and-effort.md)（角色默认模型与思考强度分档取消，模型与思考强度由用户会话设置或 Manager 按任务指定）
 - **Amended by**: [ADR-0016](0016-implementation-supervision.md)（Role、Supervisor 和 coordination 不进入 task state）
 - **Superseded by**: [ADR-0017](0017-orchestration-decoupled-from-task.md) —— 本 ADR 中「Role 编排信息留在 skill 与 Task Packet 摘要中」一句不再现行：编排元数据的落点是 `$TMPDIR/herdr-agents/reports/` 下的编排记录。级别、状态机、证据、政策检查与 playbook 全部决策不变
+- **Amended by**: [ADR-0018](0018-task-state-in-tmpdir.md) —— §3 的状态落点被取代：`<git-common-dir>/tasks/` 改为 `$TMPDIR/greypan/tasks/`，task state 的定位从「唯一执行真相」改为可丢失的本地工作记忆。状态机、级别、快照口径、guard 与政策检查全部决策不变
 
 ## 背景
 

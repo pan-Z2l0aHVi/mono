@@ -93,6 +93,7 @@ workspace 清单、依赖草图与模块关系图见 [`ARCHITECTURE.md`](ARCHITE
 | [0015](docs/adr/0015-role-contracts-in-herdr-agents-skill.md)                   | Role Contracts In Herdr Agents Skill                  | 修改 Role Contract、skill 出处标记或 herdr 编排时序                       |
 | [0016](docs/adr/0016-implementation-supervision.md)                             | Implementation Supervision                            | 修改实施期 Supervisor、协作报告或 task state 边界                         |
 | [0017](docs/adr/0017-orchestration-decoupled-from-task.md)                      | 编排与 task 体系解耦                                  | 修改 coordination id、编排元数据落点、巡检数据源或编排范围门              |
+| [0018](docs/adr/0018-task-state-in-tmpdir.md)                                   | Task state 落在系统临时目录                           | 修改 task state 落点、跨仓库列举范围或重启后的恢复规则                    |
 
 ## Interweave 产品与领域词汇
 

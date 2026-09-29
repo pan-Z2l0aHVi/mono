@@ -21,7 +21,7 @@ worktree 和任务主合同分别见 [`worktrees.md`](worktrees.md) 与 [`task-p
    pnpm agent:task start --task <task-id>
    ```
 
-5. 把范围、验收标准和验证命令写进 Task Packet。Role 列表和协调信息不写入 task state。GitHub issue 只是可选的追踪镜像，创建时用 `--issue` 记入 task state，事后可用 `issue` 子命令补挂。即使 issue 不可用，本地 task state 仍是执行真相。
+5. 把范围、验收标准和验证命令写进 Task Packet。Role 列表和协调信息不写入 task state。GitHub issue 只是可选的追踪镜像，创建时用 `--issue` 记入 task state，事后可用 `issue` 子命令补挂。即使 issue 不可用，本地流程照常推进——持久审计本来就由 commit message、changeset 与 git 历史承担，不依赖任何一处在线状态。
 
 ## 任务级别
 
@@ -55,7 +55,7 @@ release playbook 与 hotfix playbook 是普通 task 在特定场景下的操作�
 
 ## 状态机
 
-任务状态保存在 Git common dir 的 `tasks/<task-id>.json`，不进入工作树版本控制。状态只能按以下顺序推进：
+任务状态保存在 `$TMPDIR/greypan/tasks/<task-id>.json`（Task Packet 的 `.md` 与 `evidence/` 与它同目录），不进入工作树版本控制。这是**本地工作记忆，可丢失**：它跨 worktree 共享，但不跨仓库列举，也不跨重启存续（后果见「失败和恢复」与 [ADR-0018](../adr/0018-task-state-in-tmpdir.md)）。状态只能按以下顺序推进：
 
 ```text
 open -> active -> frozen -> reviewed -> approved -> done
@@ -132,6 +132,7 @@ release 和 hotfix 不是 task 体系的概念；它们是普通 task 在软件�
 
 - 命令失败时保留 task state 和工作树，先用 `pnpm agent:task status --task <task-id>` 判断当前 phase，不要重建或覆盖状态文件。
 - 需要终止或清理残留 task（agent 结束后遗留的 active task、快照无法物化的 task）时用 `pnpm agent:task drop --task <task-id> --reason <why> --by <your-agent-id>`；`--reason` 至少 10 个非空白字符，`--by` 与 reviewer/approver 同一套 id 形状。drop 是唯一合法的强制终态，不手工编辑 state JSON。
-- session、Herdr 或 harness 重启后，从 task state 的 `phase`、`worktree`、`baseSha`、`events[]` 和 live stale 结果恢复，不从聊天记忆猜测进度。
-- GitHub issue 不可用时继续本地流程，最终报告注明「未同步」；issue 只作追踪镜像，不是执行真相。
+- session、Herdr 或 harness 在**同一台机器、同一个用户**内重启后，从 task state 的 `phase`、`worktree`、`baseSha`、`events[]` 和 live stale 结果恢复，不从聊天记忆猜测进度。恢复规则到此为止：换机或换用户不承诺恢复，那种情况从 commit 历史重建。
+- task state 在 task 进行中被清空（重启即清，见 [ADR-0018](../adr/0018-task-state-in-tmpdir.md)）时，用**同一个 task-id 重新 `agent:task new`**，重走 freeze / review / approve。此时 commit 还没发生，仓库里没有错误代码，重建的证据链与新建 task 等价。`new` 对 T0/T1 的干净起点要求不变：先恢复干净工作区再重建，不在脏工作区上绕过它。
+- GitHub issue 不可用时继续本地流程，最终报告注明「未同步」；issue 只作追踪镜像，不是执行真相——task state 同样不是。
 - release CI 失败时，机械性修复可由 Manager 直接处理；逻辑或测试修复回到原 task owner，并在聚合 diff 变化后重新 review。

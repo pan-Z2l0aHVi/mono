@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // Task 内核：脱离具体业务的抽象任务状态机。级别（level）只表达 workflow 严格程度；
 // 内核不含 release、changeset、deploy 等任何业务词汇，仓库级政策通过 .agents/checks/
-// 的可执行检查挂载。状态存 git common dir 下的 tasks/，跨 worktree 共享。
+// 的可执行检查挂载。状态存 $TMPDIR/greypan/tasks/：本地工作记忆，可以丢失（ADR-0018），
+// 持久审计交给 commit message、changeset 与 git 历史。跨 worktree 共享，但跨仓库不共享。
 import { execFileSync } from 'node:child_process'
 import crypto from 'node:crypto'
 import fs from 'node:fs'
@@ -9,6 +10,10 @@ import os from 'node:os'
 import path from 'node:path'
 
 const root = path.resolve(process.env.AGENT_TASK_ROOT ?? path.join(import.meta.dirname, '..'))
+// AGENT_TASK_STATE_DIR 与 AGENT_TASK_ROOT 同类：前者换 state 落点（fixture 隔离用），后者换
+// 默认 worktree。state 目录是 per-user 共享的，多个仓库的 state 会在同一个目录里，所以所有
+// 列举路径都必须再按 commonDir 过滤，见 activeStates。
+const stateDir = path.resolve(process.env.AGENT_TASK_STATE_DIR ?? path.join(os.tmpdir(), 'greypan', 'tasks'))
 const phases = new Set(['open', 'active', 'frozen', 'reviewed', 'approved', 'done', 'dropped'])
 const levels = new Set(['t0', 't1', 't2'])
 const SCHEMA_VERSION = 1
@@ -107,28 +112,35 @@ function resolveWorktree(value = root) {
   return { worktree: topLevel, commonDir: fs.realpathSync(commonPath) }
 }
 
-function stateDirectory(commonDir) {
-  return path.join(commonDir, 'tasks')
-}
-
-function stateFile(commonDir, taskId) {
-  return path.join(stateDirectory(commonDir), `${validateTaskId(taskId)}.json`)
+function stateFile(taskId) {
+  return path.join(stateDir, `${validateTaskId(taskId)}.json`)
 }
 
 function activeStates(commonDir) {
-  const directory = stateDirectory(commonDir)
-  if (!fs.existsSync(directory)) return []
+  if (!fs.existsSync(stateDir)) return []
   return fs
-    .readdirSync(directory)
+    .readdirSync(stateDir)
     .filter(file => file.endsWith('.json'))
     .flatMap(file => {
-      const parsed = parseStateFile(path.join(directory, file))
+      const parsed = parseStateFile(path.join(stateDir, file))
       if (parsed.error) {
-        // 目录扫描是所有 worktree guard 的共享路径：单个损坏 state（崩溃半写、schema 升级遗留）
-        // 不应阻塞无关 worktree 的提交；降级为可见警告并跳过，硬失败保留给 target task 的 loadState。
-        console.error(`warning: skipping unreadable task state; ${parsed.error}`)
+        // 单个坏 state 不该阻塞无关 worktree 的提交，降级为可见警告并跳过；硬失败保留给
+        // target task 的 loadState。警告有归属边界：state 目录是 per-user 共享的（ADR-0018），
+        // 能证明属于别的仓库的坏 state 不在本仓库的 guard 上刷屏。SCHEMA_VERSION 升版时全机所有
+        // 仓库的旧 state 同时变成 unsupported，这条过滤是唯一不让噪音跨仓库传播的办法。
+        // 反过来，认不出归属的（JSON 解不开、或没写 commonDir）照常警告：静默吞掉会让 guard
+        // 在本仓库自己的 state 损坏时无声降级成「无 active task」，那正是「不静默放行」要防的形态。
+        if (parsed.commonDir === undefined || parsed.commonDir === commonDir)
+          console.error(`warning: skipping unreadable task state; ${parsed.error}`)
         return []
       }
+      // 落点从 <git-common-dir>/tasks/ 搬到 $TMPDIR/greypan/tasks/ 之后，这个目录由同一台
+      // 机器上的所有仓库共用，仓库删掉之后它的 state 也不会跟着消失（孤儿 state）。commonDir
+      // 是 state 自带的仓库身份，列举侧按它过滤就得到「只列当前 repo」的语义：别的仓库的 state
+      // 既不列也不删，更不该在别人的 guard 上刷警告（坏 state 的警告按同一条归属边界过滤）。
+      // 定向命令不受这条影响——loadState 拿到的 file 就是按 task id 算的，跨仓库的同名 id 由
+      // liveState 的 commonDir 比对硬失败。
+      if (parsed.commonDir !== commonDir) return []
       return parsed.state.phase !== 'done' && parsed.state.phase !== 'dropped' ? [parsed.state] : []
     })
 }
@@ -139,6 +151,20 @@ function readStateFile(file) {
   return parsed.state
 }
 
+// 从半解析的 state 里取仓库归属。列举侧要能在 parseStateFile 失败（schema 版本不匹配、
+// 必填字段缺失）时仍然判断这个 state 属于哪个仓库：共享目录一旦遇到 SCHEMA_VERSION 升版，
+// 全机所有仓库的旧 state 同时变成 unsupported，没有归属判断它们就会一起刷到本仓库的
+// guard 上。入参刻意宽松——取不到（非对象、没有非空 commonDir）就返回 undefined 且不抛，
+// 调用方按「归属不明」照常警告：静默吞掉会让 guard 在本仓库自己的 state 损坏时无声降级成
+// 「无 active task」，那正是「不静默放行」要防的形态。空串算「缺归属」而不是「属于别处」：
+// saveState 写的 commonDir 是 realpath 结果，空串只可能来自损坏或手写，声称归属一个空路径
+// 不是「证明属于别仓库」。
+function stateOwner(state) {
+  return state && typeof state === 'object' && typeof state.commonDir === 'string' && state.commonDir !== ''
+    ? state.commonDir
+    : undefined
+}
+
 function parseStateFile(file) {
   let state
   try {
@@ -147,12 +173,15 @@ function parseStateFile(file) {
     return { error: `cannot read task state ${file}: ${error instanceof Error ? error.message : String(error)}` }
   }
   if (!state || typeof state !== 'object' || !phases.has(state.phase) || typeof state.taskId !== 'string')
-    return { error: `task state is invalid: ${file}` }
+    return { error: `task state is invalid: ${file}`, commonDir: stateOwner(state) }
   if (state.version !== SCHEMA_VERSION)
-    return { error: `task state ${file} has unsupported schema version: ${JSON.stringify(state.version)}` }
+    return {
+      error: `task state ${file} has unsupported schema version: ${JSON.stringify(state.version)}`,
+      commonDir: stateOwner(state)
+    }
   // v1 读取不解释可选的编排字段。旧 state 可能仍带顶层 roles 和历史 assign.roles；保留原值，
   // 不在 load/status 时迁移或重写。task 内核只使用 owner/worktree 等自身字段。
-  return { state }
+  return { state, commonDir: stateOwner(state) }
 }
 
 function assertWorktreeAvailable(commonDir, worktree, taskId) {
@@ -161,14 +190,15 @@ function assertWorktreeAvailable(commonDir, worktree, taskId) {
 }
 
 function loadState(taskId) {
-  const { commonDir } = resolveWorktree()
-  const file = stateFile(commonDir, taskId)
+  const file = stateFile(taskId)
   if (!fs.existsSync(file)) fail(`task is not initialized: ${taskId}`)
   return { file, state: readStateFile(file) }
 }
 
 // saveState 原子但不加跨进程锁：同一 task 的读-改-写由「单 owner」使用模型串行化，
 // 并发执行同一 task 的两条命令仍可能丢事件，这是接受的边界（guard/status 只读不受影响）。
+// mkdir 是必需的：$TMPDIR 本身一定存在（系统保证），$TMPDIR/greypan/ 与 tasks/ 不一定，
+// 而 state 目录在读路径上不存在时是「本机还没有任何 task」的合法状态，所以只在这里建。
 function saveState(file, state) {
   fs.mkdirSync(path.dirname(file), { recursive: true, mode: 0o700 })
   const temporary = `${file}.${process.pid}.${crypto.randomBytes(4).toString('hex')}.tmp`
@@ -217,6 +247,9 @@ function currentSnapshot(worktree, baseSha) {
 
 function liveState(state) {
   const { worktree, commonDir } = resolveWorktree(state.worktree)
+  // state 不再住在仓库自己的目录下，所以「这份 state 属不属于当前仓库」要靠 commonDir 认，
+  // 不再由文件所在位置保证。孤儿 state（仓库已删、state 还在 $TMPDIR 里）因此会在这里硬失败，
+  // 而不是被静默当成当前仓库的 task。
   if (commonDir !== state.commonDir) fail(`task ${state.taskId} belongs to another Git repository`)
   const branch = gitAt(worktree, 'branch', '--show-current')
   const current = currentSnapshot(worktree, state.baseSha)
@@ -372,7 +405,7 @@ function newTask(options) {
   }
   const branch = gitAt(worktree, 'branch', '--show-current')
   if (!branch) fail(`task worktree must be attached to a branch: ${worktree}`)
-  const file = stateFile(commonDir, taskId)
+  const file = stateFile(taskId)
   if (fs.existsSync(file)) fail(`task already exists: ${taskId}`)
   const state = {
     version: SCHEMA_VERSION,
