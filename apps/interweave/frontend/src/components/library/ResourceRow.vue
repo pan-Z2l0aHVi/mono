@@ -41,7 +41,7 @@ const emit = defineEmits<{
 const source = computed(() => primarySource(props.resource))
 const size = computed(() => formatSize(props.resource.sizeBytes))
 const resourceNameClass = computed(() => [
-  'text-sm font-medium leading-snug wrap-break-word line-clamp-2 max-w-[60%] max-[640px]:max-w-full',
+  'text-sm font-medium leading-snug wrap-break-word line-clamp-2 max-w-[75%] max-[640px]:max-w-full',
   props.resource.available
     ? 'text-[#22212a] dark:text-(--wui-color-text)'
     : 'text-[#b0b0b8] line-through dark:text-(--wui-color-text-disabled)'
