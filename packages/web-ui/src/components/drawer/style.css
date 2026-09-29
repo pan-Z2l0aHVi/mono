@@ -284,12 +284,12 @@ dialog.is-dragging .wui-drawer-drag-zone {
   align-items: center;
   justify-content: space-between;
 
-  padding: var(--wui-drawer-header-padding, 16px 20px);
+  padding: var(--wui-drawer-header-padding, var(--wui-space-4, 16px) var(--wui-space-5, 20px));
   border-bottom: 1px solid rgb(0 0 0 / 0.06);
 
-  font-size: 18px;
-  font-weight: 600;
-  line-height: 1.4;
+  font-size: var(--wui-font-size-title, 18px);
+  font-weight: var(--wui-font-weight-semibold, 600);
+  line-height: var(--wui-line-height-snug, 1.4);
 }
 
 .wui-drawer-header[hidden] {
@@ -301,16 +301,16 @@ dialog.is-dragging .wui-drawer-drag-zone {
   overscroll-behavior: contain;
   flex: 1;
 
-  padding: var(--wui-drawer-content-padding, 20px);
+  padding: var(--wui-drawer-content-padding, var(--wui-space-5, 20px));
 
   font-size: var(--wui-font-size, 14px);
-  line-height: 1.5;
+  line-height: var(--wui-line-height-normal, 1.5);
   color: var(--wui-color-text, #1b1b1b);
 }
 
 .wui-drawer-footer {
   flex-shrink: 0;
-  padding: var(--wui-drawer-footer-padding, 16px 20px);
+  padding: var(--wui-drawer-footer-padding, var(--wui-space-4, 16px) var(--wui-space-5, 20px));
   border-top: 1px solid rgb(0 0 0 / 0.06);
 }
 
@@ -318,12 +318,18 @@ dialog.is-dragging .wui-drawer-drag-zone {
   display: none;
 }
 
-/* ===== 关闭按钮（绝对定位，top/right 与 header-padding 垂直/水平分量对齐） ===== */
+/* ===== 关闭按钮（绝对定位）=====
+   top 恰好等于 header padding 的垂直分量（16px），因此挂 --wui-space-4 与 header padding
+   同源：覆盖该级时二者一起动，注释里写死的对齐关系不会断。
+   right 是按钮到 drawer 右边沿的独立偏移（16px），不对齐相邻元素的节奏值（header
+   的水平分量是 20px，与它并不相等），参照系是容器边缘而非相邻元素之间的节奏，故与
+   --wui-image-preview-edge-gap 等边缘对齐值同属一族，保持字面量。挂到 --wui-space-4
+   本身并不会造成视觉变化（该级默认仍是 16px）——不挂阶的理由是语义归属，不是视觉风险。 */
 
 .wui-drawer-close {
   position: absolute;
   z-index: 3;
-  top: var(--wui-drawer-close-top, 16px);
+  top: var(--wui-drawer-close-top, var(--wui-space-4, 16px));
   right: var(--wui-drawer-close-right, 16px);
   bottom: auto;
   left: auto;

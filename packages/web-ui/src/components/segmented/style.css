@@ -22,7 +22,7 @@
   display: inline-flex;
   align-items: stretch;
 
-  padding: 4px;
+  padding: var(--wui-space-1, 4px);
   border-radius: var(--wui-radius-control, calc(infinity * 1px));
 
   /* inset 变体（默认，「凹」）：轨道是不透明实体面——底色取 --wui-color-surface、

@@ -46,11 +46,11 @@
 }
 
 .empty-title {
-  margin-top: var(--wui-empty-title-margin-top, 16px);
+  margin-top: var(--wui-empty-title-margin-top, var(--wui-space-4, 16px));
 
   font-size: var(--wui-empty-title-font-size, var(--wui-internal-empty-title-font-size, 16px));
-  font-weight: 600;
-  line-height: 1.5;
+  font-weight: var(--wui-font-weight-semibold, 600);
+  line-height: var(--wui-line-height-normal, 1.5);
   color: var(--wui-color-text, #1b1b1b);
   overflow-wrap: anywhere;
 }
@@ -59,13 +59,13 @@
   margin-top: 6px;
 
   font-size: var(--wui-empty-description-font-size, var(--wui-internal-empty-description-font-size, 14px));
-  line-height: 1.6;
+  line-height: var(--wui-line-height-relaxed, 1.6);
   color: var(--wui-color-text-secondary, #6a6a6a);
   overflow-wrap: anywhere;
 }
 
 .empty-action {
-  margin-top: var(--wui-empty-action-margin-top, 20px);
+  margin-top: var(--wui-empty-action-margin-top, var(--wui-space-5, 20px));
 }
 
 .is-hidden {

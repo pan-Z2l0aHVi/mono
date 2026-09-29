@@ -59,7 +59,7 @@ aside {
   height: calc(100dvh - var(--wui-layout-visible-banner-height));
   max-height: calc(100vh - var(--wui-layout-visible-banner-height));
   max-height: calc(100dvh - var(--wui-layout-visible-banner-height));
-  padding: 8px 0 8px 8px;
+  padding: var(--wui-space-2, 8px) 0 var(--wui-space-2, 8px) var(--wui-space-2, 8px);
 
   transition: width var(--wui-duration-layout, 200ms) var(--wui-ease-enter, cubic-bezier(0.23, 1, 0.32, 1));
 
@@ -94,7 +94,7 @@ aside {
      */
     --wui-button-width: var(--wui-layout-sidebar-toggle-width, 44px);
 
-    margin: 8px;
+    margin: var(--wui-space-2, 8px);
   }
 
   &.collapsed {
@@ -197,7 +197,7 @@ header {
    * 所以这层必须保持 visible，纵向也才有下拉浮层等槽位内容的溢出空间。
    */
   display: flex;
-  gap: 8px;
+  gap: var(--wui-space-2, 8px);
   align-items: center;
 }
 
@@ -251,7 +251,7 @@ footer {
 
   .mobile-toggle {
     align-self: flex-start;
-    margin-top: 8px;
+    margin-top: var(--wui-space-2, 8px);
   }
 }
 

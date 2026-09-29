@@ -87,7 +87,7 @@ dialog[open].is-visible::backdrop {
 .wui-dialog-body {
   --wui-internal-glass-shadow: var(--wui-shadow-overlay, 2px 16px 40px rgb(0 0 0 / 0.4));
   --wui-glass-corner-radius: var(--wui-radius-overlay, 28px);
-  padding: var(--wui-dialog-padding, 20px 24px 24px);
+  padding: var(--wui-dialog-padding, var(--wui-space-5, 20px) var(--wui-space-6, 24px) var(--wui-space-6, 24px));
   border-radius: var(--wui-radius-overlay, 28px);
 
   opacity: 0;
@@ -119,21 +119,21 @@ dialog[open].is-visible .wui-dialog-body {
 }
 
 .title {
-  margin: 0 0 var(--wui-dialog-title-gap, 16px);
+  margin: 0 0 var(--wui-dialog-title-gap, var(--wui-space-4, 16px));
   padding: 0;
 
-  font-size: 18px;
-  font-weight: 600;
-  line-height: 1.2;
+  font-size: var(--wui-font-size-title, 18px);
+  font-weight: var(--wui-font-weight-semibold, 600);
+  line-height: var(--wui-line-height-tight, 1.2);
   color: var(--wui-color-text, #1b1b1b);
 }
 
 .desc {
-  margin: 0 0 var(--wui-dialog-desc-gap, 24px);
+  margin: 0 0 var(--wui-dialog-desc-gap, var(--wui-space-6, 24px));
   padding: 0;
 
-  font-size: 14px;
-  line-height: 1.5;
+  font-size: var(--wui-font-size, 14px);
+  line-height: var(--wui-line-height-normal, 1.5);
   color: var(--wui-color-text, #1b1b1b);
 }
 
@@ -151,7 +151,7 @@ dialog[open].is-visible .wui-dialog-body {
 
 :host([horizontal]) .wui-dialog-footer {
   flex-direction: row;
-  gap: 12px;
+  gap: var(--wui-space-3, 12px);
   justify-content: var(--wui-dialog-footer-justify, center);
 
   & ::slotted(web-ui-button:not([full])) {

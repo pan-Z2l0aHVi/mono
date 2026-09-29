@@ -681,11 +681,11 @@ Syncs child checkbox `checked` state. `disabled` supplies inherited effective di
 
 ##### Tokens
 
-| Token                      | Default | Description                   |
-| -------------------------- | ------- | ----------------------------- |
-| `--wui-checkbox-group-gap` | `8px`   | Gap between member checkboxes |
+| Token                      | Default              | Description                   |
+| -------------------------- | -------------------- | ----------------------------- |
+| `--wui-checkbox-group-gap` | `var(--wui-space-2)` | Gap between member checkboxes |
 
-Set it on the group element itself, or on an ancestor inside the same `<web-ui-theme>` scope. The theme host declares `8px` for its own subtree, so an override placed above a `<web-ui-theme>` element does not reach the group.
+Set it on the group element itself, or on an ancestor inside the same `<web-ui-theme>` scope. The theme host declares the spacing step for its own subtree, so an override placed above a `<web-ui-theme>` element does not reach the group. Its default now resolves through `--wui-space-2`, so overriding that step on the theme host also moves the gap between members; setting this token still wins over both.
 
 ```css
 web-ui-checkbox-group {
@@ -715,11 +715,11 @@ Radio group managing single selection.
 
 ##### Tokens
 
-| Token                   | Default | Description               |
-| ----------------------- | ------- | ------------------------- |
-| `--wui-radio-group-gap` | `8px`   | Gap between member radios |
+| Token                   | Default              | Description               |
+| ----------------------- | -------------------- | ------------------------- |
+| `--wui-radio-group-gap` | `var(--wui-space-2)` | Gap between member radios |
 
-Set it on the group element itself, or on an ancestor inside the same `<web-ui-theme>` scope. The theme host declares `8px` for its own subtree, so an override placed above a `<web-ui-theme>` element does not reach the group.
+Set it on the group element itself, or on an ancestor inside the same `<web-ui-theme>` scope. The theme host declares the spacing step for its own subtree, so an override placed above a `<web-ui-theme>` element does not reach the group. Its default now resolves through `--wui-space-2`, so overriding that step on the theme host also moves the gap between members; setting this token still wins over both.
 
 ```css
 web-ui-radio-group {
@@ -859,7 +859,7 @@ Side drawer using native `<dialog>` with closing animation. In non-headless mode
 
 Closing keeps the native dialog in the top layer until the `--wui-duration-drawer-exit` transition completes (240ms by default), then calls `dialog.close()`. Escape always follows this close path; `no-backdrop-close` controls backdrop clicks only.
 
-When `closable` is set, the built-in close button is positioned at the header's top-right corner (defaults `16px` down and `20px` in from the edge) instead of stretching across the drawer body.
+When `closable` is set, the built-in close button is positioned at the header's top-right corner (defaults `16px` down and `16px` in from the edge) instead of stretching across the drawer body. The `16px` down resolves through `--wui-space-4` so it tracks the drawer's header padding; the `16px` in is the button's own offset to the panel's right edge, which is not the header's horizontal padding (`20px`), so it stays a literal.
 
 **Drag to close:** With `draggable`, a gray capsule drag bar (4×56px by default, visually centered 10px from the inner edge inside a 20px-thick hit zone) appears on the drawer's inner edge (left edge for `right`, right edge for `left`, bottom edge for `top`, top edge for `bottom`) while open:
 
@@ -1479,19 +1479,54 @@ The host uses `display: contents` and does not paint any background: the library
 
 | Property                  | Default | Description                                      |
 | ------------------------- | ------- | ------------------------------------------------ |
-| `--wui-font-size`         | `14px`  | Base font size for controls                      |
 | `--wui-input-width`       | `200px` | Default width for compact form controls          |
 | `--wui-control-size`      | `36px`  | Default height and square min-width for controls |
 | `--wui-overlay-min-width` | `200px` | Minimum anchored overlay width                   |
 | `--wui-focus-ring-width`  | `3px`   | Focus indicator width                            |
 
+**Typography tokens:** font sizes are named by the role the text plays, not by scale position — `caption` for dense chrome labels, `readout` for numeric readouts, the unsuffixed base for body copy, and `title` for bounded card headings. Weights are named by weight, and line heights by how much vertical air the text needs. These are appearance-independent: they stay the same under both light and dark.
+
+| Property                     | Default | Description                                                     |
+| ---------------------------- | ------- | --------------------------------------------------------------- |
+| `--wui-font-size-caption`    | `12px`  | Dense chrome labels (badge, toast timestamp, menu section head) |
+| `--wui-font-size-readout`    | `13px`  | Numeric readouts (image preview count and zoom ratio)           |
+| `--wui-font-size`            | `14px`  | Base font size for body copy and controls                       |
+| `--wui-font-size-title`      | `18px`  | Bounded card headings (dialog, drawer)                          |
+| `--wui-font-weight-medium`   | `500`   | Medium weight for emphasized inline text                        |
+| `--wui-font-weight-semibold` | `600`   | Semibold weight for headings                                    |
+| `--wui-line-height-tight`    | `1.2`   | Tight leading for large headings                                |
+| `--wui-line-height-snug`     | `1.4`   | Snug leading for mid-size headings                              |
+| `--wui-line-height-normal`   | `1.5`   | Normal leading for body copy                                    |
+| `--wui-line-height-relaxed`  | `1.6`   | Relaxed leading for long-form reading                           |
+
+`line-height: 1` and `line-height: 0` inside components are intentionally not tokenized: the former vertically centers a single-line control label, the latter collapses a wrapper box onto its content. Neither is typographic leading, and tokenizing them would invite callers to retune them as if they were.
+
+**Spacing tokens:** a six-step scale on a 4px base, stopping at 24px — the largest spacing value the component layer writes as an _effective_ static rhythm literal. (The one wider padding, `<web-ui-empty>`'s `32px 24px`, is derived in JS from `--wui-empty-size`, so it belongs to that size axis rather than to the rhythm; see the exclusions below.) These do not replace the per-component override tokens (`--wui-button-px`, `--wui-dialog-padding`, and friends) — they act as the fallback default _for_ those tokens, so each component still decides its own padding while the scale says where that value sits in the overall rhythm. Overriding a step therefore gives the embedding application a density lever across every migrated call site — a lever over rhythm, not over structure; see the exclusions below.
+
+| Property        | Default | Description                        |
+| --------------- | ------- | ---------------------------------- |
+| `--wui-space-1` | `4px`   | Tight inset (badge, menu)          |
+| `--wui-space-2` | `8px`   | Control gap, group gap, inline pad |
+| `--wui-space-3` | `12px`  | Horizontal control padding         |
+| `--wui-space-4` | `16px`  | Standard section separation        |
+| `--wui-space-5` | `20px`  | Overlay content padding            |
+| `--wui-space-6` | `24px`  | Wide overlay inset                 |
+
+The scale deliberately omits `1px`, `2px`, `6px`, `7.5px`, `10px`, and negative values. `1px` is the structural width of hairlines and stroke rings; `2px`, `6px`, and `7.5px` are optical corrections; `10px` is a half-step coupling value off the 4px grid; negative margins cancel a flex gap or a button's padding. Each answers a different "why this number", none of them share spacing semantics, and folding them into one ruler would make overriding any one of them disturb the rest.
+
+A second exclusion is by meaning rather than by value: offsets that align to the viewport edge or to the host's own content edge stay off the scale even when they land on the 4px grid — `--wui-image-preview-edge-gap`, `--wui-toast-viewport-gap`, `--wui-layout-mobile-toggle-inset`, `--wui-back-top-right` / `--wui-back-top-left` / `--wui-back-top-bottom`, `--wui-drawer-inset`, and `--wui-drawer-close-right`. Their reference frame is the screen or the host's content edge, not the rhythm between neighbours, so folding them in would make "tighten `--wui-space-2`" unexpectedly move a component away from the screen edge. `--wui-drawer-close-top` is the counter-example: it does resolve through `--wui-space-4`, because it tracks the drawer's header padding and the two must move together.
+
+A third exclusion is spacing that a component derives from a **size** prop instead of writing as rhythm: `<web-ui-empty>` scales its `padding`, `min-block-size`, and glyph with `--wui-empty-size`, so its padding is `23px 17px` / `32px 24px` / `41px 31px` at the `40` / `56` / `72` steps. Four of those six values are odd, so a 4px scale cannot represent them at all. The `56` step's `32px 24px` landing on the base is a coincidence of the size choice, not a sign that the value belongs to the rhythm: `56` is the only one of the three that divides by 7, its quotient is exactly 8, and 8 is itself a multiple of 4 — no rounding happens on that step at all. A density lever that is silently inert on two of three sizes and coincidentally live on the third is worse than no lever, and the whole set moves whenever `size` does — so these stay off the scale. Reach for a literal `px` there instead.
+
+Overrides must sit inside the `<web-ui-theme>` scope, since the theme host declares the steps for its own subtree. One known boundary: the overlay styles in `assets/*.css` are injected either into a theme-owned overlay root, where the scale applies, or into the document-level fallback overlay root — a plain `div` that sees no theme tokens — where overlay spacing always resolves to its literal fallback.
+
 **Selection control tokens (radio, checkbox):**
 
-| Property                       | Default | Description                                     |
-| ------------------------------ | ------- | ----------------------------------------------- |
-| `--wui-selection-control-size` | `18px`  | Indicator (circle / box) width and height       |
-| `--wui-radio-group-gap`        | `8px`   | Member spacing inside `<web-ui-radio-group>`    |
-| `--wui-checkbox-group-gap`     | `8px`   | Member spacing inside `<web-ui-checkbox-group>` |
+| Property                       | Default              | Description                                     |
+| ------------------------------ | -------------------- | ----------------------------------------------- |
+| `--wui-selection-control-size` | `18px`               | Indicator (circle / box) width and height       |
+| `--wui-checkbox-group-gap`     | `var(--wui-space-2)` | Member spacing inside `<web-ui-checkbox-group>` |
+| `--wui-radio-group-gap`        | `var(--wui-space-2)` | Member spacing inside `<web-ui-radio-group>`    |
 
 **Radius tokens:**
 

@@ -647,11 +647,11 @@ Portal 面板创建时会镜像 host 上解析后的这些变量；更新 host �
 
 ##### Token
 
-| Token                      | 默认值 | 说明                     |
-| -------------------------- | ------ | ------------------------ |
-| `--wui-checkbox-group-gap` | `8px`  | 成员 checkbox 之间的间距 |
+| Token                      | 默认值               | 说明                     |
+| -------------------------- | -------------------- | ------------------------ |
+| `--wui-checkbox-group-gap` | `var(--wui-space-2)` | 成员 checkbox 之间的间距 |
 
-在 group 元素本身，或同一个 `<web-ui-theme>` 作用域内的祖先元素上设置。theme 宿主会为自己的子树声明 `8px`，写在 `<web-ui-theme>` 元素之外的覆盖到不了 group。
+在 group 元素本身，或同一个 `<web-ui-theme>` 作用域内的祖先元素上设置。theme 宿主会为自己的子树声明该间距阶，写在 `<web-ui-theme>` 元素之外的覆盖到不了 group。它的默认值现在经 `--wui-space-2` 解析，所以在 theme 宿主上覆盖该级会连带改变成员间距；显式设置这个 token 仍然优先于两者。
 
 ```css
 web-ui-checkbox-group {
@@ -681,11 +681,11 @@ web-ui-checkbox-group {
 
 ##### Token
 
-| Token                   | 默认值 | 说明                  |
-| ----------------------- | ------ | --------------------- |
-| `--wui-radio-group-gap` | `8px`  | 成员 radio 之间的间距 |
+| Token                   | 默认值               | 说明                  |
+| ----------------------- | -------------------- | --------------------- |
+| `--wui-radio-group-gap` | `var(--wui-space-2)` | 成员 radio 之间的间距 |
 
-在 group 元素本身，或同一个 `<web-ui-theme>` 作用域内的祖先元素上设置。theme 宿主会为自己的子树声明 `8px`，写在 `<web-ui-theme>` 元素之外的覆盖到不了 group。
+在 group 元素本身，或同一个 `<web-ui-theme>` 作用域内的祖先元素上设置。theme 宿主会为自己的子树声明该间距阶，写在 `<web-ui-theme>` 元素之外的覆盖到不了 group。它的默认值现在经 `--wui-space-2` 解析，所以在 theme 宿主上覆盖该级会连带改变成员间距；显式设置这个 token 仍然优先于两者。
 
 ```css
 web-ui-radio-group {
@@ -822,7 +822,7 @@ web-ui-radio-group {
 
 关闭时保留原生 dialog 的 top layer，待退出过渡完成后调用 `dialog.close()`。Escape 始终走此关闭路径；`no-backdrop-close` 仅控制遮罩点击。
 
-启用 `closable` 时，内置关闭按钮固定在 header 右上角（默认顶部 `16px`、右侧 `20px`），不会再拉伸到抽屉中间。
+启用 `closable` 时，内置关闭按钮固定在 header 右上角（默认顶部 `16px`、右侧 `16px`），不会再拉伸到抽屉中间。顶部 `16px` 经 `--wui-space-4` 解析，因此与 drawer 的 header padding 同源；右侧 `16px` 是按钮自身到面板右边沿的偏移，它并不等于 header 的水平内边距（`20px`），因此保持字面量。
 
 **拖拽关闭：** 启用 `draggable` 后，打开的抽屉在内缘显示灰色胶囊 drag bar（默认 4×56px，视觉中线距内缘 10px，位于 20px 厚的命中热区内；`right` 在左缘、`left` 在右缘、`top` 在下缘、`bottom` 在上缘）：
 
@@ -1442,19 +1442,54 @@ SVG 线条绘制动画，基于 `stroke-dashoffset`。直接在原元素上动�
 
 | 属性                      | 默认值  | 说明                     |
 | ------------------------- | ------- | ------------------------ |
-| `--wui-font-size`         | `14px`  | 控件基础字号             |
 | `--wui-input-width`       | `200px` | 紧凑表单控件默认宽度     |
 | `--wui-control-size`      | `36px`  | 控件默认高度和方形最小宽 |
 | `--wui-overlay-min-width` | `200px` | 锚定浮层最小宽度         |
 | `--wui-focus-ring-width`  | `3px`   | Focus 指示器宽度         |
 
+**排版 token：** 字号按文字扮演的角色命名，而不是按它在尺度里的位置——`caption` 是密集 chrome 上的小标签，`readout` 是数字读数，无后缀的基准字号是正文，`title` 是有界卡片标题。字重按重量命名，行高按这段文字需要的垂直空气命名。这一族与外观无关：light 和 dark 下取值相同。
+
+| 属性                         | 默认值 | 说明                                               |
+| ---------------------------- | ------ | -------------------------------------------------- |
+| `--wui-font-size-caption`    | `12px` | 密集 chrome 标签（徽标、toast 时间戳、菜单分组头） |
+| `--wui-font-size-readout`    | `13px` | 数字读数（图片预览的计数与缩放比）                 |
+| `--wui-font-size`            | `14px` | 正文与控件的基础字号                               |
+| `--wui-font-size-title`      | `18px` | 有界卡片标题（dialog、drawer）                     |
+| `--wui-font-weight-medium`   | `500`  | 强调行内文字的中等字重                             |
+| `--wui-font-weight-semibold` | `600`  | 标题的半粗字重                                     |
+| `--wui-line-height-tight`    | `1.2`  | 大号标题的紧行高                                   |
+| `--wui-line-height-snug`     | `1.4`  | 中号标题的适中行高                                 |
+| `--wui-line-height-normal`   | `1.5`  | 正文的常规行高                                     |
+| `--wui-line-height-relaxed`  | `1.6`  | 长文阅读的宽松行高                                 |
+
+组件里的 `line-height: 1` 与 `line-height: 0` 刻意不做 token：前者是控件内单行标签的垂直居中手段，后者是把包裹盒高收缩到内容——两者都不是排版行高，token 化会诱使调用方把它们当成行高去整体调节。
+
+**间距 token：** 4px 基准的六级阶，止于 24px——组件层以生效的静态节奏字面量写入的最大间距值。（唯一更宽的是 `<web-ui-empty>` 的 `32px 24px`，它由 `--wui-empty-size` 在 JS 侧派生，属尺寸那根轴而非节奏，理由见下面的排除项。）它不替代组件各自的覆盖 token（`--wui-button-px`、`--wui-dialog-padding` 等），而是充当那些 token 的 fallback 默认值——组件仍然决定自己的 padding，间距阶只说明这个值在整体节奏里的位置。因此覆盖某一级，就等于给嵌入应用一根作用于所有已挂阶调用点的密度杠杆——它调的是节奏，不是结构，理由见下面的排除项。
+
+| 属性            | 默认值 | 说明                       |
+| --------------- | ------ | -------------------------- |
+| `--wui-space-1` | `4px`  | 紧凑内边距（徽标、菜单）   |
+| `--wui-space-2` | `8px`  | 控件间距、组间距、行内间距 |
+| `--wui-space-3` | `12px` | 控件水平内边距             |
+| `--wui-space-4` | `16px` | 标准区块间距               |
+| `--wui-space-5` | `20px` | 浮层内容内边距             |
+| `--wui-space-6` | `24px` | 宽浮层内边距               |
+
+这一阶刻意不含 `1px`、`2px`、`6px`、`7.5px`、`10px` 和负值。`1px` 是发丝线和描边环的结构宽度；`2px`、`6px`、`7.5px` 是光学修正；`10px` 是 4px 阶之外的半档耦合值；负 margin 用来抵消 flex gap 或按钮的 padding。它们的「为什么是这个数」各自独立，没有共享间距语义，收进同一把尺子只会让覆盖其中之一时误伤其余。
+
+第二类排除按语义而非按取值：对齐视口边缘或宿主自身内容边缘的偏移量，即使正好落在 4px 阶上也不挂阶——`--wui-image-preview-edge-gap`、`--wui-toast-viewport-gap`、`--wui-layout-mobile-toggle-inset`、`--wui-back-top-right` / `--wui-back-top-left` / `--wui-back-top-bottom`、`--wui-drawer-inset` 与 `--wui-drawer-close-right`。它们的参照系是屏幕或宿主的内容边缘，不是相邻元素之间的节奏；并进间距阶会让「收紧 `--wui-space-2`」意外把组件推离屏幕边缘。`--wui-drawer-close-top` 是反例：它经 `--wui-space-4` 解析，因为它要跟随 drawer 的 header padding，两者必须一起动。
+
+第三类排除是由组件**尺寸** prop 派生、而非写成节奏值的间距：`<web-ui-empty>` 让 `padding`、`min-block-size` 与图形尺寸跟随 `--wui-empty-size` 缩放，`40` / `56` / `72` 三档实测 padding 分别是 `23px 17px` / `32px 24px` / `41px 31px`。这六个值里有四个是奇数，4px 阶根本无法表示；`56` 档的 `32px 24px` 落在基准上纯属尺寸选值的巧合——`56` 是三档里唯一被 7 整除的，商恰为 8，而 8 本身是 4 的倍数，取整在这一档根本没有发生。一根在三个尺寸里有两个静默失效、只在第三个上碰巧生效的密度杠杆，比没有杠杆更糟；何况整组值本来就随 `size` 走，因此不挂阶。这里直接写 px 即可。
+
+覆盖必须落在 `<web-ui-theme>` 作用域内，因为 theme 宿主只为自己的子树声明这些级。已知边界：`assets/*.css` 的浮层样式有两条注入路径——经 theme 自带的 overlay root 注入时间距阶生效，退到 document 级 fallback overlay root（一个看不到 theme token 的普通 `div`）时，浮层间距恒取字面量 fallback。
+
 **选择控件 token（radio、checkbox）：**
 
-| 属性                           | 默认值 | 说明                                 |
-| ------------------------------ | ------ | ------------------------------------ |
-| `--wui-selection-control-size` | `18px` | 指示器（圆点 / 方框）宽高            |
-| `--wui-radio-group-gap`        | `8px`  | `<web-ui-radio-group>` 的成员间距    |
-| `--wui-checkbox-group-gap`     | `8px`  | `<web-ui-checkbox-group>` 的成员间距 |
+| 属性                           | 默认值               | 说明                                 |
+| ------------------------------ | -------------------- | ------------------------------------ |
+| `--wui-selection-control-size` | `18px`               | 指示器（圆点 / 方框）宽高            |
+| `--wui-radio-group-gap`        | `var(--wui-space-2)` | `<web-ui-radio-group>` 的成员间距    |
+| `--wui-checkbox-group-gap`     | `var(--wui-space-2)` | `<web-ui-checkbox-group>` 的成员间距 |
 
 **圆角 token：**
 

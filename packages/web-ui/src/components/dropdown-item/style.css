@@ -17,11 +17,11 @@
   user-select: none;
 
   display: flex;
-  gap: 8px;
+  gap: var(--wui-space-2, 8px);
   align-items: center;
 
   height: 32px;
-  padding: 0 8px;
+  padding: 0 var(--wui-space-2, 8px);
   border-radius: var(--wui-radius-control, calc(infinity * 1px));
 
   font-size: var(--wui-font-size, 14px);

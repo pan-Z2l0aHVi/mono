@@ -5,7 +5,51 @@
 }
 
 :host {
+  /*
+   * 排版族：按角色命名，不引入数字阶（与 §6.3 的 radius 决策同构——名字回答
+   * 「这块文字是什么」，不回答「它是第几号」）。
+   *
+   * 字号四档，各自对应一个真实角色而非尺寸偏好：
+   *   caption 12px  密集 chrome 标签（badge、toast 时间戳、menu 分组头）
+   *   readout 13px  数字读数（image-preview 计数与缩放比，带 tabular-nums；
+   *                 13px 是承重的——它要装进 min-width:48px 的胶囊）
+   *   14px          正文基准，即下面的 --wui-font-size
+   *   title 18px    有界卡片标题（dialog、drawer）
+   *
+   * 行高同理分四档。组件里的 line-height:1 与 0 刻意不 token 化：前者是控件内
+   * 单行标签的垂直居中手段，后者是让包裹盒高收缩到内容的技巧，两者都不是
+   * 排版行高，token 化会误导后来者以为可以整体调它们。
+   */
+  --wui-font-size-caption: 12px;
+  --wui-font-size-readout: 13px;
   --wui-font-size: 14px;
+  --wui-font-size-title: 18px;
+  --wui-font-weight-medium: 500;
+  --wui-font-weight-semibold: 600;
+  --wui-line-height-tight: 1.2;
+  --wui-line-height-snug: 1.4;
+  --wui-line-height-normal: 1.5;
+  --wui-line-height-relaxed: 1.6;
+
+  /*
+   * 间距阶：4px 基准的 6 级，止于组件层以生效的静态节奏字面量写入的最大值 24px（唯一更宽的
+   * empty padding 由 --wui-empty-size 在 JS 侧派生，属尺寸那根轴）。它不替代组件的
+   * 局部覆盖 token（--wui-button-px、--wui-dialog-padding 等），而是充当那些
+   * token 的 fallback 默认值——组件继续决定「我的 padding 是多少」，本族提供
+   * 「这个值在整套尺度里的位置」，嵌入方因此拿到一个全局密度杠杆。
+   *
+   * 本族刻意不含 1px / 2px / 6px / 7.5px / 10px 与负值。1px 是发丝线与描边环的
+   * 结构宽度；2px、6px、7.5px 是光学修正；10px 是 4px 阶之外的半档耦合值；负
+   * margin 用来抵消 flex gap 或按钮 padding。它们都是「为什么是这个数」各自独立
+   * 的答案，不共享「间距」语义，收进同一把尺子只会让覆盖其中之一时误伤其余。
+   */
+  --wui-space-1: 4px;
+  --wui-space-2: 8px;
+  --wui-space-3: 12px;
+  --wui-space-4: 16px;
+  --wui-space-5: 20px;
+  --wui-space-6: 24px;
+
   --wui-input-width: 200px;
   --wui-control-size: 36px;
   --wui-overlay-min-width: 200px;
@@ -14,8 +58,8 @@
   --wui-selection-control-size: 18px;
 
   /* radio-group / checkbox-group 成员间距，两个 group 各自可覆盖。 */
-  --wui-radio-group-gap: 8px;
-  --wui-checkbox-group-gap: 8px;
+  --wui-radio-group-gap: var(--wui-space-2);
+  --wui-checkbox-group-gap: var(--wui-space-2);
 
   --wui-layer-inline-overlay: 1;
   --wui-layer-header: 10;
