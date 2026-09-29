@@ -24,6 +24,12 @@ description: 共享包角色：维护 `packages/*` 的公共契约和可复用�
 - 为公共行为补测试、消费者侧证据和必要的迁移说明。
 - 按 handoff 的范围工作。Supervisor 启用时，在三个检查点回复，并附上 diff、测试和验证结果。
 
+## 汇报
+
+完成一个 turn 或需要 Manager 决策时主动汇报，不等 Manager 轮询。消息形如 `[herdr-report] lib-coder <task-id>: <结论>`，带 coordination id 和 `$TMPDIR/herdr-agents/reports/` 下的报告路径；格式与硬要求见 [`../SKILL.md`](../SKILL.md) 的「汇报」一节。发之前先 `herdr agent list` 确认名叫 `manager` 的还在。
+
+消息只给结论和路径：公共 API 与兼容性影响、消费者侧证据写进报告文件，Manager 按路径定点读。前缀 `[herdr-report]` 不可省——Herdr 的 `agent prompt` 没有来源字段，消息落进 Manager 时和用户本人输入同形，前缀是它与用户输入唯一的区别。检查点汇报不受这条影响，按 [`../supervision.md`](../supervision.md) 的检查点协议发。
+
 ## 边界
 
 - 不把业务逻辑写进共享包，也不要为单一需求扩大 public API。

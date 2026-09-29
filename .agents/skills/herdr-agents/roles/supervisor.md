@@ -23,6 +23,12 @@ description: 实施期观察角色：只读检查 Coder 的进展，并在检查
 - Coder 修复并提供证据后才能报告 `resolved`；争议交由 Manager 裁决。
 - 结束前在报告的 `Readiness` 字段填写 `Ready` 或 `Not ready`。
 
+## 汇报
+
+检查点报告与给 Coder 的纠错消息都按 [`../supervision.md`](../supervision.md) 的既有协议发，检查点时机、状态机和 `Readiness` 字段不变。本节只对齐消息的落笔口径：发往 Manager 的消息加 `[herdr-report]` 前缀，带 coordination id 和 `$TMPDIR/herdr-agents/reports/` 下的报告路径，格式与硬要求见 [`../SKILL.md`](../SKILL.md) 的「汇报」一节。发之前先 `herdr agent list` 确认名叫 `manager` 的还在。
+
+观察报告的完整内容留在报告文件里，消息只给状态与路径。前缀不可省——Herdr 的 `agent prompt` 没有来源字段，消息落进 Manager 时和用户本人输入同形，前缀是它与用户输入唯一的区别。
+
 ## 边界
 
 - 不编辑源码、测试、配置、task state 或 Git 历史。
