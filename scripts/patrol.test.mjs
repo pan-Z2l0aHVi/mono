@@ -61,16 +61,26 @@ function sandbox({ agents, manifests = {} }) {
   }
 
   const env = { ...process.env, TMPDIR: tmpDir, PATH: `${binDir}:${process.env.PATH}` }
+  // state 是三段（AGENTS / UNITS / REPORTS），按段名切而不是按固定下标：新增一段时
+  // 「切到下一个段名为止」自动跟上，而按 slice 到数组末尾会把后面所有段都算进当前段。
+  const SECTIONS = ['AGENTS', 'UNITS', 'REPORTS']
+  const sectionRows = (lines, name) => {
+    const at = lines.indexOf(name)
+    if (at === -1) return []
+    const rest = lines.slice(at + 1)
+    const end = rest.findIndex(line => SECTIONS.includes(line))
+    return (end === -1 ? rest : rest.slice(0, end)).filter(Boolean)
+  }
   const run = () => {
     const output = execFileSync('node', [patrol], { encoding: 'utf8', env })
     const lines = output.split('\n')
-    const unitsAt = lines.indexOf('UNITS')
     return {
       output,
       first: lines[0],
       stalls: lines.filter(line => line.startsWith('STALL?')),
       // 静默态只打印首行，没有 UNITS 段；这里返回空数组而不是把整段输出误当单元行。
-      units: unitsAt === -1 ? [] : lines.slice(unitsAt + 1).filter(Boolean),
+      units: sectionRows(lines, 'UNITS'),
+      reports: sectionRows(lines, 'REPORTS'),
       has: needle => output.includes(needle)
     }
   }
@@ -78,6 +88,8 @@ function sandbox({ agents, manifests = {} }) {
     run,
     poll: count => Array.from({ length: count }, () => run()),
     setAgents,
+    reportDir,
+    writeReport: (name, body = 'report\n') => fs.writeFileSync(path.join(reportDir, name), body),
     readMonitor: name => fs.readFileSync(path.join(monitorDir, name), 'utf8'),
     writeMonitor: (name, body) => {
       fs.mkdirSync(monitorDir, { recursive: true })
@@ -88,6 +100,8 @@ function sandbox({ agents, manifests = {} }) {
 
 const working = [{ name: 'coder-a', agent_status: 'working' }]
 const idle = [{ name: 'coder-a', agent_status: 'idle' }]
+// Manager 不是被观察对象：巡检由它在自己的 turn 里执行，算进 running 会让 NO_ACTIVE 永不触发。
+const managerWorking = [{ name: 'manager', agent_status: 'working' }]
 const unit = extra => ({ coordination: 'herdr-agents/fixture', status: 'active', participants: ['coder-a'], ...extra })
 const stallCounts = polls => polls.map(poll => poll.stalls.length)
 
@@ -132,7 +146,7 @@ const stallCounts = polls => polls.map(poll => poll.stalls.length)
   assert.deepEqual(result.units, ['herdr-agents/fixture\t\t0+0-u0\t-'], '缺 participants 的 manifest 参与者列为空')
 }
 
-// --- 四态判定 ---
+// --- 五态判定 ---
 
 {
   // ALL_DONE 不看基线：没有活跃单元且没人 working 就成立，冷启动第一轮就已经是终态。
@@ -151,6 +165,17 @@ const stallCounts = polls => polls.map(poll => poll.stalls.length)
   const result = sandbox({ agents: working, manifests: { alpha: unit({ roots: [gitWorktree()] }) } })
   result.run()
   assert.equal(result.run().first, 'NO_CHANGE', '有 agent 在跑但无信号时是 NO_CHANGE')
+}
+
+{
+  // 汇报通道要求 Manager 绑固定名 manager，于是它在 agent 列表里有名字了。它仍不是被观察对象：
+  // 只有 Manager 在跑、且没人 working 时，NO_ACTIVE 必须照常触发，否则「静默是硬要求」失效。
+  const result = sandbox({
+    agents: [...managerWorking, ...idle],
+    manifests: { alpha: unit({ roots: [gitWorktree()] }) }
+  })
+  result.run()
+  assert.equal(result.run().first, 'NO_ACTIVE', 'Manager 自己处于 working 不得被算成 running，否则 NO_ACTIVE 永不触发')
 }
 
 {
@@ -174,6 +199,182 @@ const stallCounts = polls => polls.map(poll => poll.stalls.length)
   })
   result.run()
   assert.equal(result.run().first, 'ALL_DONE', '标记 finished 的单元不计入活跃单元')
+}
+
+// --- 报告信号 ---
+
+{
+  // 报告写在 $TMPDIR，worktree 一个字节没变：churn 恒定，单元段看不见它，只有 REPORTS 能报。
+  const result = sandbox({ agents: idle, manifests: { alpha: unit({ roots: [gitWorktree()] }) } })
+  result.run()
+  result.writeReport('report-fixture-review.md')
+  const added = result.run()
+  assert.equal(added.first, 'REPORTS_CHANGED', '报告新增而 agent 与 churn 都没变时独占首行')
+  assert.ok(
+    added.has('report-fixture-review.md herdr-agents/fixture new'),
+    '文件名含 coordination slug 时归属反查到该单元'
+  )
+}
+
+{
+  const result = sandbox({ agents: idle, manifests: { alpha: unit({ roots: [gitWorktree()] }) } })
+  result.run()
+  result.writeReport('scratch-notes.md')
+  const added = result.run()
+  assert.equal(added.first, 'REPORTS_CHANGED', '认不出归属的报告也要报出来')
+  assert.ok(added.has('scratch-notes.md unmatched new'), '反查不出的报告如实标 unmatched，不猜也不丢')
+}
+
+{
+  // 只比文件名集合会漏掉就地改写，而返工报告就地更新是最该被看到的那种变化。
+  const result = sandbox({ agents: idle, manifests: { alpha: unit({ roots: [gitWorktree()] }) } })
+  result.writeReport('report-fixture-review.md')
+  result.run()
+  result.writeReport('report-fixture-review.md', 'rewritten\n')
+  // 显式推到未来，让「改过」与写入耗时无关地可判定。取整到毫秒理论上存在同毫秒漏报，
+  // 但两次 writeFileSync 的间隔远大于 1ms，构造不出来——这里是让断言不依赖真实耗时。
+  const future = new Date(Date.now() + 60_000)
+  fs.utimesSync(path.join(result.reportDir, 'report-fixture-review.md'), future, future)
+  const updated = result.run()
+  assert.equal(updated.first, 'REPORTS_CHANGED', '已存在的报告被改写同样是变化')
+  assert.ok(updated.has('report-fixture-review.md herdr-agents/fixture updated'), '改写要标 updated 而不是 new')
+}
+
+{
+  const result = sandbox({ agents: idle, manifests: { alpha: unit({ roots: [gitWorktree()] }) } })
+  result.writeReport('report-fixture-review.md')
+  result.run()
+  fs.rmSync(path.join(result.reportDir, 'report-fixture-review.md'))
+  const removed = result.run()
+  assert.ok(removed.has('report-fixture-review.md herdr-agents/fixture removed'), '报告被删掉也要报，只遍历 cur 会静默')
+}
+
+{
+  // 与别的事件同轮发生时走信号组，但报告信号不能因此丢失。
+  const result = sandbox({ agents: working, manifests: { alpha: unit({ roots: [gitWorktree()] }) } })
+  result.run()
+  result.setAgents(idle)
+  result.writeReport('report-fixture-review.md')
+  const both = result.run()
+  assert.equal(both.first, 'AGENTS_CHANGED', 'agent 状态与报告同轮变化时由信号组承载')
+  assert.ok(both.has('REPORTS_CHANGED=true'), '信号组里要显式带出报告变化')
+  assert.ok(both.has('report-fixture-review.md herdr-agents/fixture new'), '信号组里要逐条给出变化项，不能只给一个布尔')
+}
+
+{
+  // manifest 是 .json、浏览器留档是 .png，两者各有各的通道，不重复计入报告信号。
+  const result = sandbox({ agents: idle, manifests: { alpha: unit({ roots: [gitWorktree()] }) } })
+  result.run()
+  result.writeReport('shot-fixture.png', 'not really a png')
+  fs.writeFileSync(path.join(result.reportDir, 'loose.json'), '{"note":"not a manifest"}')
+  const quiet = result.run()
+  assert.equal(quiet.first, 'NO_ACTIVE', '.png 与非 manifest 的 .json 不算报告变化')
+}
+
+{
+  // 收尾轮的报告不能被 ALL_DONE 吞掉：ALL_DONE 一打印，调用方就停 loop，而 state 仍会推进，
+  // 漏在这里不是「晚一轮」而是永久丢失。首行保持 ALL_DONE（终态语义不变），明细跟在后面。
+  const result = sandbox({ agents: idle, manifests: { alpha: unit({ roots: [gitWorktree()] }) } })
+  result.run()
+  fs.writeFileSync(
+    path.join(result.reportDir, 'alpha.json'),
+    JSON.stringify({ ...unit({ roots: [] }), status: 'finished' })
+  )
+  result.writeReport('report-fixture-final.md')
+  const final = result.run()
+  assert.equal(final.first, 'ALL_DONE', '收尾轮的首行仍是终态，不因有报告而改成别的')
+  assert.ok(final.has('REPORTS_CHANGED=true'), '终态也要带出报告变化')
+  assert.ok(final.has('report-fixture-final.md herdr-agents/fixture new'), '收尾轮落地的最终报告必须出现在明细里')
+}
+
+{
+  // 不带斜杠的 coordination id（手写 manifest 漏了 herdr-agents/ 前缀）是可达路径：
+  // 修「取最长命中」时若用 slug 回头 find 一次，这一步会落空，归属字段变成空串——
+  // 既不是归属也不是 unmatched，比什么都难读。
+  const result = sandbox({
+    agents: idle,
+    manifests: { bare: { coordination: 'focus-ring', status: 'active', roots: [], participants: [] } }
+  })
+  result.writeReport('review-focus-ring.md')
+  const attributed = result.run()
+  assert.ok(
+    attributed.has('review-focus-ring.md focus-ring new'),
+    '不带斜杠的 coordination id 也要能反查到归属本身，而不是空串'
+  )
+}
+
+{
+  // 归属用 slug 最长命中：slug 互为前缀时（focus-ring / focus-ring-tabs），只按目录顺序取
+  // 第一个命中等于让归属随 readdir 漂移，而且错的值会写进基线一直错下去。
+  const result = sandbox({
+    agents: idle,
+    manifests: {
+      'aaa-short': { coordination: 'herdr-agents/focus-ring', status: 'active', roots: [], participants: [] },
+      'zzz-long': {
+        coordination: 'herdr-agents/focus-ring-tabs',
+        status: 'active',
+        roots: [],
+        participants: []
+      }
+    }
+  })
+  result.writeReport('report-focus-ring-tabs-r1.md')
+  const attributed = result.run()
+  assert.ok(
+    attributed.has('report-focus-ring-tabs-r1.md herdr-agents/focus-ring-tabs new'),
+    '前缀包含时归属给 slug 更长的那个单元'
+  )
+}
+
+{
+  // manifest 判定只有一条，两侧共用：带 coordination 的 .json 既是 manifest 也是归属依据，
+  // 两边必须一起认或一起不认。要断言的是一致性本身，不是「该不该收」——收的宽窄是既有口径。
+  const result = sandbox({ agents: idle, manifests: { alpha: unit({ roots: [gitWorktree()] }) } })
+  result.run()
+  fs.writeFileSync(path.join(result.reportDir, 'loose.json'), '{"coordination":"herdr-agents/ghost"}')
+  result.writeReport('report-ghost.md')
+  const seen = result.run()
+  assert.ok(
+    seen.units.some(line => line.startsWith('herdr-agents/ghost')),
+    '带 coordination 的 .json 被当作 manifest 枚举'
+  )
+  assert.ok(seen.has('report-ghost.md herdr-agents/ghost new'), '同一份文件在归属侧也被采信，两侧判定一致')
+}
+
+{
+  // 归属与 mtime 同时变时两个事实都报：只报一个，被压下去的那个会随基线推进一起消失。
+  const result = sandbox({ agents: idle, manifests: { alpha: unit({ roots: [gitWorktree()] }) } })
+  result.writeReport('report-focus-ring-review.md')
+  result.run()
+  fs.writeFileSync(
+    path.join(result.reportDir, 'alpha.json'),
+    JSON.stringify({ ...unit({ roots: [gitWorktree()] }), coordination: 'herdr-agents/focus-ring' })
+  )
+  result.writeReport('report-focus-ring-review.md', 'rewritten\n')
+  const future = new Date(Date.now() + 60_000)
+  fs.utimesSync(path.join(result.reportDir, 'report-focus-ring-review.md'), future, future)
+  const both = result.run()
+  assert.ok(both.has('report-focus-ring-review.md herdr-agents/focus-ring updated'), '改写仍要报')
+  assert.ok(both.has('unmatched -> herdr-agents/focus-ring reattributed'), '归属变化不能被 updated 吞掉')
+}
+
+{
+  // 收尾单元的报告也要能归属：只用活跃单元反查会把它们一律判成 unmatched。
+  // 断言落在 state 上而不是首行上——单元标 finished 且无人跑时首行是 ALL_DONE，
+  // 但归属仍然被记进基线，下一轮有别的事件时才会显形。
+  const result = sandbox({ agents: idle, manifests: { alpha: unit({ roots: [gitWorktree()] }) } })
+  result.run()
+  fs.writeFileSync(
+    path.join(result.reportDir, 'alpha.json'),
+    JSON.stringify({ ...unit({ roots: [] }), status: 'finished' })
+  )
+  result.writeReport('report-fixture-late.md')
+  result.run()
+  const state = result.readMonitor('state')
+  assert.ok(
+    state.includes('report-fixture-late.md\therdr-agents/fixture\t'),
+    '单元标记 finished 之后落下的报告仍归属该单元，而不是 unmatched'
+  )
 }
 
 // --- 三个哨兵值各自的 STALL 资格 ---

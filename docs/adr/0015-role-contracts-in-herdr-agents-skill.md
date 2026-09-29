@@ -3,7 +3,7 @@
 - **Date**: 2026-09-19
 - **Status**: 已接受
 - **Amends**: [ADR-0004](0004-progressive-agent-context-architecture.md)（Session Role 层的落点）、[ADR-0010](0010-agent-role-orchestration.md) 与 [ADR-0011](0011-agent-model-binding-and-effort.md) 中 `.agents/agents/*` 的路径表述
-- **Amended by**: [ADR-0016](0016-implementation-supervision.md)（新增 Supervisor，并移除 Role 到 task state 的写入）
+- **Amended by**: [ADR-0016](0016-implementation-supervision.md)（新增 Supervisor，并移除 Role 到 task state 的写入）、[ADR-0019](0019-agent-to-manager-report-channel.md)（每个 Role 契约新增「汇报」一节）
 
 ## 背景
 

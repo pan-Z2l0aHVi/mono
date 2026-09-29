@@ -23,7 +23,7 @@ Manager 在同一组实施 worktree 开一个 Supervisor pane，整个编排周�
 herdr-agents/<主题slug>
 ```
 
-id 不随阶段变化。pane 名称和 pane id 只用于寻址，顶替不了 coordination id；coordination id 写在消息正文里。Manager 把 Coder 和 Supervisor 的 live agent 名称或 pane id 一并写进 handoff，双方用 `agent prompt` 互发消息。参与者、启用理由、检查点结论和未决事项记进 `$TMPDIR/herdr-agents/reports/` 下的编排记录，格式见 [`SKILL.md`](./SKILL.md) 的「巡检」一节。
+id 不随阶段变化。pane 名称和 pane id 只用于寻址，顶替不了 coordination id；coordination id 写在消息正文里。Manager 把 Coder 和 Supervisor 的 live agent 名称或 pane id 一并写进 handoff，双方用 `agent prompt` 互发消息。发往 Manager 的消息同时也是通用汇报通道的一部分，落笔口径见 [`SKILL.md`](./SKILL.md) 的「汇报」一节——那一节适用于所有 Role，本文件不重复，只在检查点协议之外没有额外要求。参与者、启用理由、检查点结论和未决事项记进 `$TMPDIR/herdr-agents/reports/` 下的编排记录，格式见 [`SKILL.md`](./SKILL.md) 的「巡检」一节。
 
 Supervisor 默认只读，可以做这些事：
 
@@ -64,6 +64,6 @@ Readiness: Ready | Not ready
 - `disputed`：Coder 认为报告不成立，交 Manager 裁决。
 - `escalated`：需要 Manager 决策、拆 task 或换方案。
 
-Coder 到检查点时用 Herdr `agent prompt` 分别通知 Supervisor 和 Manager，消息带 Manager 在编排开始时生成的那个 coordination id。Supervisor 把纠错消息发给 Coder，把检查点报告和裁决结果发给 Manager。双方分工是：Supervisor 指出问题，Coder 修复并给出证据，Supervisor 重新核对后把 `open` 改成 `resolved`，有争议转 `disputed`。结束前必须填 `Readiness`，启用时最终报告应为 `Ready`。
+Coder 到检查点时用 Herdr `agent prompt` 分别通知 Supervisor 和 Manager，消息带 Manager 在编排开始时生成的那个 coordination id；发往 Manager 的那条按 [`SKILL.md`](./SKILL.md) 的「汇报」一节加 `[herdr-report]` 前缀并带 `reports/` 下的报告路径，检查点本身的内容、状态和时机不因这条要求改变。Supervisor 把纠错消息发给 Coder，把检查点报告和裁决结果发给 Manager。双方分工是：Supervisor 指出问题，Coder 修复并给出证据，Supervisor 重新核对后把 `open` 改成 `resolved`，有争议转 `disputed`。结束前必须填 `Readiness`，启用时最终报告应为 `Ready`。
 
 Reviewer 不接收 Supervisor 报告，只读冻结 diff、Task Packet 的任务主合同和验证证据。Reviewer 退回后，Manager 复用原来的 Supervisor 会话和编排记录里那个 coordination id，先让 Supervisor 按更新后的 handoff 重新核对整个 diff，再重跑修复后仍需执行的检查点。旧报告不代表新 diff 的结论。

@@ -22,6 +22,14 @@ description: 独立 review 角色：审查冻结 diff 和验证证据，并给�
 - 对浏览器相关变更按仓库 browser verification 规则核对证据。
 - 将发现交给 Manager，由 Manager 协调修复。修复后，workflow 会重新冻结并 review。
 
+## 汇报
+
+审查结束或需要 Manager 决策时主动汇报，不等 Manager 轮询。消息形如 `[herdr-report] reviewer <task-id>: <结论>`，带 coordination id 和 `$TMPDIR/herdr-agents/reports/` 下的报告路径；格式与硬要求见 [`../SKILL.md`](../SKILL.md) 的「汇报」一节。发之前先 `herdr agent list` 确认名叫 `manager` 的还在。
+
+消息只给结论和路径：发现清单、未执行的验证和残余风险写进报告文件，Manager 按路径定点读。前缀 `[herdr-report]` 不可省——Herdr 的 `agent prompt` 没有来源字段，消息落进 Manager 时和用户本人输入同形，前缀是它与用户输入唯一的区别。
+
+结论本身是待验 claim：Manager 不会因为收到 `pass` 就直接批准，approve、commit 和 merge 之前它自己独立重跑验证。所以汇报里不必替 Manager 预判该批准还是该返工，给出发现和证据即可。
+
 ## 边界
 
 - 不参与同一变更的实施，也不直接修改被审查代码。

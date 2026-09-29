@@ -3,15 +3,17 @@
 //
 // 起停时机与首行分派见 SKILL.md 的「巡检」一节。本文件是一次性快照对比：跑一趟、打印首行、
 // 退出，不注册任何监听、不留后台 —— 所以名字用 patrol（巡检走一趟）而不是 watch（常驻监听）。
-// 首行是状态，恰好四种语义（NO_ACTIVE / NO_CHANGE / ALL_DONE / 信号组）。
+// 首行是状态，恰好五种语义（NO_ACTIVE / NO_CHANGE / ALL_DONE / REPORTS_CHANGED / 信号组）。
 // herdr 取数失败不会被吞成「无变化」：首败轮靠 agent 列表与上一轮不同走信号分支；
 // 持续失败两轮列表其实相同，靠 herdrDown 守卫跳过 NO_ACTIVE/NO_CHANGE，并单独列一行待处理。
 // state 落在 $TMPDIR，不写仓库、不写 worktree。
 // 数据源是编排单元（$TMPDIR/herdr-agents/reports/ 下每轮一份的 manifest），不是 task state：
 // 编排可以完全没有 task，单元才是「谁在跑」的权威来源，task 只作参考附在行尾。
+// 报告文件（reports/ 下的 .md）是第二条独立信号源：agent 写完报告落在 $TMPDIR，worktree
+// 一个字节没变，churn 恒定，Manifest 里的 units 段看不见它。churn 盯实施，报告盯产出。
 
 import { execFileSync } from 'node:child_process'
-import { existsSync, mkdirSync, readFileSync, readdirSync, realpathSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, readdirSync, realpathSync, statSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -45,7 +47,8 @@ mkdirSync(reportDir, { recursive: true })
 // vs 单 worktree）都变了，逐字段迁移等于凭空造出一个从未观测过的基线：要么在首轮误报一次
 // CHURN/STALL，要么在字段恰好撞上时对一个没测过的轮次武装 STALL。所以版本不匹配就当没有基线。
 // 代价是升级后的第一轮多一次信号轮，那正是「我没有可比的基线」的真实信号。
-const STATE_VERSION = 'v2'
+// v3 起 state 多一段 REPORTS（报告文件名 + 归属 + mtime），v2 的基线解不出这段，同样按无基线处理。
+const STATE_VERSION = 'v3'
 
 const read = file => {
   try {
@@ -55,8 +58,15 @@ const read = file => {
   }
 }
 
-// 只收有名字的 agent。无名的那条通常是发起巡检的 Manager 自己的 TUI；而本文件正是在
-// Manager 的 turn 里执行的，把它算进 running 会让 running>=1 恒成立、NO_ACTIVE 永不触发。
+// MANAGER_NAME 是协议常量，与 SKILL.md「汇报」一节要求绑定的名字同一个。巡检由 Manager 在自己
+// 的 turn 里执行，所以 Manager 不是被观察对象：把它算进 running 会让 running>=1 恒成立，
+// NO_ACTIVE 永不触发，而 NO_ACTIVE 的静默是硬要求。
+// 过去靠「Manager 的 pane 没有名字」自然排除（filter(a => a.name) 顺手把它滤掉）。汇报通道
+// 要求 Manager 绑固定名 `manager` 之后这条路断了——名字有了，agent 列表里就有它了，于是改成
+// 按名字显式排除。
+const MANAGER_NAME = 'manager'
+
+// 只收有名字、且不是 Manager 自己的 agent。
 function agentLines() {
   try {
     const out = execFileSync('herdr', ['agent', 'list'], {
@@ -64,7 +74,7 @@ function agentLines() {
       stdio: ['ignore', 'pipe', 'pipe']
     })
     return JSON.parse(out)
-      .result.agents.filter(a => a.name)
+      .result.agents.filter(a => a.name && a.name !== MANAGER_NAME)
       .sort((a, b) => a.name.localeCompare(b.name))
       .map(a => `${a.name}=${a.agent_status}`)
   } catch {
@@ -93,7 +103,10 @@ function taskRef(taskId) {
 
 // 编排单元 → 参与者与 churn 全部来自 manifest，字段形状见 SKILL.md「巡检」一节。
 // churn 指纹含未跟踪文件数：git diff 不算 untracked，漏掉会把「正在新建文件」误判成停滞。
-function unitLines() {
+// manifest 的判定只有一条：reports/ 下的 .json 且带非空 coordination 字段。枚举活跃单元和
+// 收集归属用的 id 全集共用它，两侧各判各的会漂成一个比另一个宽（临时 JSON 恰好带
+// coordination 就成了一个两边认不认得不一致的幽灵单元）。
+function readManifests() {
   let files = []
   try {
     files = readdirSync(reportDir)
@@ -102,11 +115,15 @@ function unitLines() {
   } catch {
     return []
   }
+  return files
+    .map(file => readJson(join(reportDir, file)))
+    .filter(manifest => typeof manifest?.coordination === 'string' && manifest.coordination)
+}
+
+function unitLines() {
   const rows = []
-  for (const file of files) {
-    const manifest = readJson(join(reportDir, file))
-    const id = typeof manifest?.coordination === 'string' ? manifest.coordination : ''
-    if (!id) continue
+  for (const manifest of readManifests()) {
+    const id = manifest.coordination
     if (manifest.status === 'finished') continue
 
     const roots = (Array.isArray(manifest.roots) ? manifest.roots : []).filter(r => typeof r === 'string' && r)
@@ -116,6 +133,61 @@ function unitLines() {
     rows.push([id, participants.join(','), rootsChurn(roots), taskRef(manifest.taskId)].join('\t'))
   }
   return rows
+}
+
+// 归属用的 id 全集，含 status=finished 的单元。报告可能在单元收尾后才落盘（最终报告、
+// 返工报告），只用活跃单元反查会把它们一律判成 unmatched，而那不是操作者需要知道的结论。
+function allUnitIds() {
+  return readManifests().map(manifest => manifest.coordination)
+}
+
+// 报告归属靠文件名反查（见 SKILL.md「巡检」一节）。完整 coordination id 形如
+// herdr-agents/<主题slug>，带斜杠进不了文件名，所以匹配的是最后一段 slug。匹配不上就是
+// unmatched——如实报出「这份报告认不出属于哪个单元」，比猜一个单元或静默丢弃都有用。
+//
+// slug 互为前缀时（focus-ring / focus-ring-tabs）子串匹配会同时命中，所以取最长的那个：
+// reports/ 是 per-user 跨仓共享的，skill 自己的命名法又很容易造出前缀包含，只按 readdir
+// 顺序取第一个命中等于让归属随文件系统漂移，而且错的值会写进基线一直错下去。
+// 命中时直接留下 id 本身，不回头用 slug 再 find 一次：id 不一定带斜杠（手写 manifest 漏了
+// herdr-agents/ 前缀就是整串），`endsWith('/' + slug)` 那一步会落空并返回 undefined，
+// 而 undefined 既不是归属也不是 unmatched，比什么都难读。
+function reportUnit(file, ids) {
+  let hit = null
+  let hitLen = -1
+  for (const id of ids) {
+    const slug = id.slice(id.lastIndexOf('/') + 1)
+    if (slug === '' || !file.includes(slug)) continue
+    if (slug.length > hitLen) {
+      hit = id
+      hitLen = slug.length
+    }
+  }
+  return hit ?? 'unmatched'
+}
+
+// 报告指纹 = 文件名 + mtime。只比文件名集合会漏掉「已存在但被改写」——返工报告就地更新
+// 是最常见的一种，而那恰恰是最该被看到的变化。mtime 取整到毫秒只是为了给基线一个短而稳定
+// 的字符串（原始 mtimeMs 带亚毫秒小数），不是为了让同一份未动的文件算出不同指纹：没被改过
+// 的文件每次 stat 返回同一个 double。取整带来的同毫秒漏报是理论 miss，两次 writeFileSync
+// 的间隔远大于 1ms。
+function reportLines(ids) {
+  let files = []
+  try {
+    files = readdirSync(reportDir)
+      .filter(f => f.endsWith('.md'))
+      .sort()
+  } catch {
+    return []
+  }
+  return files.map(file => {
+    let mtime = 'unknown'
+    try {
+      mtime = String(Math.round(statSync(join(reportDir, file)).mtimeMs))
+    } catch {
+      // 目录项刚被删掉：留 'unknown'，它与上一轮的 mtime 不同，照样是一次变化。
+    }
+    return [file, reportUnit(file, ids), mtime].join('\t')
+  })
 }
 
 // 单 root 的形状与旧版单 worktree 完全一致；多 root 求和。全灭时整体退化成单个哨兵值，
@@ -168,6 +240,7 @@ function fingerprint(worktree) {
 function parse(text) {
   const agents = {}
   const units = {}
+  const reports = {}
   let section = null
   for (const line of text.split('\n')) {
     if (line === 'AGENTS') {
@@ -176,6 +249,10 @@ function parse(text) {
     }
     if (line === 'UNITS') {
       section = 'units'
+      continue
+    }
+    if (line === 'REPORTS') {
+      section = 'reports'
       continue
     }
     if (!line) continue
@@ -193,15 +270,29 @@ function parse(text) {
         }
       }
     }
+    if (section === 'reports') {
+      const parts = line.split('\t')
+      // 以文件名为键：改名等于一份新报告加一份旧报告消失，两侧并集都能看出来。
+      if (parts.length >= 3) reports[parts[0]] = { unit: parts[1], mtime: parts[2] }
+    }
   }
-  return { agents, units }
+  return { agents, units, reports }
 }
 
-const current = [STATE_VERSION, 'AGENTS', ...agentLines(), 'UNITS', ...unitLines()].join('\n')
+const unitIds = allUnitIds()
+const current = [
+  STATE_VERSION,
+  'AGENTS',
+  ...agentLines(),
+  'UNITS',
+  ...unitLines(),
+  'REPORTS',
+  ...reportLines(unitIds)
+].join('\n')
 const cur = parse(current)
 const prevRaw = read(statePath)
 const hasBaseline = prevRaw.startsWith(`${STATE_VERSION}\n`)
-const prev = hasBaseline ? parse(prevRaw) : { agents: {}, units: {} }
+const prev = hasBaseline ? parse(prevRaw) : { agents: {}, units: {}, reports: {} }
 // stall 计数器按单元 id 键，跨格式同样解不开，所以基线作废时一起丢弃。
 let stall = {}
 if (hasBaseline) {
@@ -224,6 +315,17 @@ for (const id of new Set([...Object.keys(prev.units), ...Object.keys(cur.units)]
   if (before !== after) churnChanged = true
 }
 
+// 报告变化同样遍历两侧并集：新增、删除、改名、就地改写都是变化。只比 cur 会让「一份报告
+// 被删掉」静默——而那通常意味着某个会话出了问题。
+let reportsChanged = false
+for (const file of new Set([...Object.keys(prev.reports), ...Object.keys(cur.reports)])) {
+  const before = prev.reports[file]
+  const after = cur.reports[file]
+  if (!before || !after || before.unit !== after.unit || before.mtime !== after.mtime) {
+    reportsChanged = true
+  }
+}
+
 // STALL：该单元的某个参与者在 working，且它的 churn 连续没动；只在跨过阈值那一次报。
 // 参与者匹配的是 herdr agent 名：Manager 派发时把 live agent 名写进 manifest，不写 pane label
 // 也不让登录名兜底，否则不武装 STALL。哨兵值（STALL_INELIGIBLE）即使逐轮不变也不武装：
@@ -240,16 +342,33 @@ for (const [id, unit] of Object.entries(cur.units)) {
 }
 writeFileSync(stallPath, JSON.stringify(next))
 
-// 四态判定。命中静默/终态就只输出首行，否则组装信号块。无论走哪一支，state 都在最后统一落盘
+// 五态判定。静默态只打印首行；终态与信号组带明细。无论走哪一支，state 都在最后统一落盘
 // —— 与 bash 版语义一致：先打印、后写 state，中途抛错不会推进基线。
+// REPORTS_CHANGED 排在静默态之后、信号组之前：它只在「没有别的东西变了」时独占首行，一旦
+// agent 状态或 churn 同时在变，仍走信号组并带上 REPORTS_CHANGED= 与同一份明细——报告信号因此
+// 不会因为「恰好和别的事件同轮发生」而丢失。
 const live = Object.keys(cur.units)
+const quiet = !agentsChanged && !churnChanged && !reportsChanged && fired.length === 0
 const out = []
+const pushReports = () => {
+  out.push(`REPORTS_CHANGED=${reportsChanged}`)
+  if (reportsChanged) for (const line of changedReportLines(prev, cur)) out.push(`  ${line}`)
+}
 if (!herdrDown && live.length === 0 && running === 0) {
   out.push('ALL_DONE')
-} else if (!herdrDown && running === 0 && !agentsChanged && !churnChanged && fired.length === 0) {
+  // 终态也照样报报告：收尾轮（最后一个单元标 finished、所有人转 idle）正是最终报告落地的那一轮，
+  // 而 ALL_DONE 一旦打印，调用方就停掉 loop，这个报告再没有观测点。state 又无论如何都会推进，
+  // 所以漏在这里不是「晚一轮」，是永久丢失。首行语义不变，只在它之后附上明细。
+  pushReports()
+} else if (!herdrDown && running === 0 && quiet) {
   out.push('NO_ACTIVE')
-} else if (!herdrDown && !agentsChanged && !churnChanged && fired.length === 0) {
+} else if (!herdrDown && quiet) {
   out.push('NO_CHANGE')
+} else if (!herdrDown && !agentsChanged && !churnChanged && fired.length === 0) {
+  out.push('REPORTS_CHANGED')
+  pushReports()
+  out.push('--- current ---')
+  out.push(current)
 } else {
   if (agentsChanged) {
     out.push('AGENTS_CHANGED')
@@ -265,12 +384,30 @@ if (!herdrDown && live.length === 0 && running === 0) {
   if (herdrDown) out.push('  herdr_unavailable: agent list unreadable, working/idle unknown')
   if (!hasBaseline) out.push('  baseline: no matching state version, this poll has nothing to compare against')
   out.push(`CHURN_CHANGED=${churnChanged}`)
+  pushReports()
   for (const id of fired) {
     const unit = cur.units[id]
     out.push(`STALL? ${id}: churn=${unit.churn}, ${unit.participants.join('/')} working, unchanged ${STALL_AFTER} polls`)
   }
   out.push('--- current ---')
   out.push(current)
+}
+
+// 变化项的展示形状，三处分支共用：两空格缩进的 <file> <unit> <verb>。
+// 归属与 mtime 可能同时变，两个事实都报——只报一个的话，被压下去的那个会随基线推进一起消失。
+function changedReportLines(before, after) {
+  const rows = []
+  for (const file of new Set([...Object.keys(before.reports), ...Object.keys(after.reports)])) {
+    const prevRow = before.reports[file]
+    const curRow = after.reports[file]
+    if (!prevRow && curRow) rows.push(`${file} ${curRow.unit} new`)
+    else if (prevRow && !curRow) rows.push(`${file} ${prevRow.unit} removed`)
+    else if (prevRow && curRow) {
+      if (prevRow.mtime !== curRow.mtime) rows.push(`${file} ${curRow.unit} updated`)
+      if (prevRow.unit !== curRow.unit) rows.push(`${file} ${prevRow.unit} -> ${curRow.unit} reattributed`)
+    }
+  }
+  return rows.sort()
 }
 
 console.log(out.join('\n'))

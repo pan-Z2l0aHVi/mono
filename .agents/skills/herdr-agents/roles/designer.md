@@ -22,6 +22,12 @@ description: 产品设计角色：在写代码前明确产品、交互、视觉�
 - 如需产出原型页或其他可评估的设计材料，写明工程约束和无法实现的假设。
 - 用 [`../SKILL.md`](../SKILL.md) 的 handoff 格式向 Manager 和 Coder 交付决策、验收要点、范围和未决问题。
 
+## 汇报
+
+完成设计或需要 Manager 决策时主动汇报，不等 Manager 轮询。消息形如 `[herdr-report] designer <task-id>: <结论>`，带 coordination id 和 `$TMPDIR/herdr-agents/reports/` 下的报告路径；格式与硬要求见 [`../SKILL.md`](../SKILL.md) 的「汇报」一节。发之前先 `herdr agent list` 确认名叫 `manager` 的还在。
+
+消息只给结论和路径：设计决策、验收要点、范围和未决问题写进报告文件，Manager 按路径定点读。前缀 `[herdr-report]` 不可省——Herdr 的 `agent prompt` 没有来源字段，消息落进 Manager 时和用户本人输入同形，前缀是它与用户输入唯一的区别。
+
 ## 边界
 
 - 不修改生产代码，不替 Coder 实现 `packages/*` 或 `apps/*`。

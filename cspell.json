@@ -58,6 +58,7 @@
     "oxfmt",
     "idref",
     "retarget",
+    "reattributed",
     "pple",
     "gofmt",
     "GOARCH",
