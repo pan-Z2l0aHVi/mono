@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from 'vite-plus/test'
 import { page, userEvent } from 'vite-plus/test/browser'
 
 import '..'
+import '../../theme'
 import { pollUntil, queryA11y } from '@/shared/test-utils'
 
 import type { WebUiLayout } from '..'
@@ -195,11 +196,11 @@ describe('WebUiLayout 组件（浏览器）', () => {
       expect(content).toBeTruthy()
 
       // 以下都是结构断言，不是症状断言（原因见上方发现 B）。
-      // header 自身不裁剪：glow 向下多伸出 0.5 个 header 高度，纵向一旦被裁，
+      // header 自身不裁剪：glow 两层伪元素各用负 margin 向下撑出，纵向一旦被裁，
       // 底缘羽化变成硬边断层（WebKit 对 overflow-x: clip 会连带裁掉纵向）。
       expect(getComputedStyle(header).overflowX).toBe('visible')
       expect(getComputedStyle(header).overflowY).toBe('visible')
-      // 横向溢出改由内容列裁剪：glow 的 scale 不再撑出页面横向滚动条。
+      // 横向溢出改由内容列裁剪：glow 的负 margin 不再撑出页面横向滚动条。
       expect(getComputedStyle(content).overflowX).toBe('clip')
       expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(document.documentElement.clientWidth)
 
@@ -207,6 +208,40 @@ describe('WebUiLayout 组件（浏览器）', () => {
       await nextFrame()
       expect(header.getBoundingClientRect().top).toBe(0)
       expect(queryA11y(layout, 'main')!.getBoundingClientRect().top).toBeLessThan(0)
+    })
+
+    /*
+     * glow 颜色直接读 --wui-color-page，中间没有组件本地变量。
+     * 这两条守的是「读的确实是这个 token」：早先那层 --wui-layout-header-glow-color
+     * 声明在 layout 自己的 :host 上，会压过任何祖先（含 web-ui-theme）设的值，
+     * 主题因此根本改不动它——把它删掉之后，主题与消费者的覆盖才真正生效。
+     */
+    it('glow 颜色直接跟随 --wui-color-page，不经组件本地 token', async () => {
+      const layout = createLayout({ headerGlow: true })
+      layout.style.setProperty('--wui-color-page', 'rgb(1 2 3)')
+      await layout.updateComplete
+      await nextFrame()
+
+      const header = queryA11y(layout, 'header') as HTMLElement
+      expect(getComputedStyle(header, '::before').backgroundImage).toContain('rgb(1, 2, 3)')
+    })
+
+    it('glow 颜色随 web-ui-theme 的浅色/暗色切换', async () => {
+      const theme = document.createElement('web-ui-theme')
+      theme.setAttribute('appearance', 'light')
+      const layout = createLayout({ headerGlow: true })
+      theme.append(layout)
+      document.body.append(theme)
+      await layout.updateComplete
+      await nextFrame()
+
+      const header = queryA11y(layout, 'header') as HTMLElement
+      expect(getComputedStyle(header, '::before').backgroundImage).toContain('rgb(255, 255, 255)')
+
+      theme.setAttribute('appearance', 'dark')
+      await theme.updateComplete
+      await nextFrame()
+      expect(getComputedStyle(header, '::before').backgroundImage).toContain('rgb(36, 38, 40)')
     })
   })
 
