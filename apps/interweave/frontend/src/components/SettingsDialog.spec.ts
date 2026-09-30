@@ -1,9 +1,13 @@
 // @vitest-environment jsdom
 
+import { local } from '@greypan/browser-kit'
 import '@greypan/web-ui'
-import type { WebUiDialog } from '@greypan/web-ui'
-import { describe, expect, it, vi } from 'vite-plus/test'
+import type { WebUiDialog, WebUiRadio, WebUiRadioGroup, WebUiSegmented } from '@greypan/web-ui'
+import { createPinia, setActivePinia } from 'pinia'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { createApp, h, nextTick } from 'vue'
+
+import { useSettingsStore } from '@/stores/settings'
 
 import SettingsDialog from './SettingsDialog.vue'
 
@@ -43,47 +47,238 @@ function buttonByText(host: HTMLElement, text: string) {
   return button
 }
 
+function segmentedByLabel(host: HTMLElement, label: string) {
+  const element = host.querySelector<WebUiSegmented>(`web-ui-segmented[aria-label="${label}"]`)
+  if (!element) throw new Error(`segmented ${label} was not rendered`)
+  return element
+}
+
+/*
+ * value 走 property 而非 attribute：web-ui-segmented-trigger 的 value 没有 reflect，
+ * 属性不会回写进 DOM，getAttribute 只会读到 null。测试和宿主读的是同一个 property。
+ */
+function triggerValues(segmented: WebUiSegmented) {
+  return [...segmented.querySelectorAll<WebUiRadio>('web-ui-segmented-trigger')].map(trigger => trigger.value)
+}
+
+/**
+ * 模拟用户点中某个 trigger。
+ *
+ * 真实路径是 trigger 的 click 冒泡到 segmented，由 group controller 先写 value、再派一次
+ * change（segmented/index.ts 的 setItemSelected → dispatchValueChange）。宿主依赖的正是这个
+ * 顺序：change 到达时 currentTarget.value 已经是新值。jsdom 里 click 不会走 controller，
+ * 所以这里照组件契约把两段都做出来——组件自身的 jsdom 行为由 web-ui 自己的测试负责，
+ * 这里要守的是宿主那一半：「change 到达后把新值回写」。
+ */
+function selectTrigger(segmented: WebUiSegmented, value: string) {
+  const trigger = [...segmented.querySelectorAll<WebUiRadio>('web-ui-segmented-trigger')].find(
+    item => item.value === value
+  )
+  if (!trigger) throw new Error(`trigger ${value} was not rendered`)
+  trigger.click()
+  segmented.value = value
+  segmented.dispatchEvent(new Event('change', { bubbles: true, composed: true }))
+}
+
 describe('SettingsDialog', () => {
-  it('内容只保留空状态占位与一个关闭按钮', async () => {
-    const mounted = mountDialog(() => {})
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    localStorage.clear()
+  })
+
+  it('标题、底部关闭按钮与空壳时期的关闭路径都还在', async () => {
+    const onUpdateOpen = vi.fn<(value: boolean) => void>()
+    const mounted = mountDialog(onUpdateOpen)
 
     try {
       await nextTick()
 
       expect(mounted.host.querySelector('[slot="title"]')?.textContent).toContain('设置')
-      expect(mounted.host.querySelector('web-ui-empty')?.getAttribute('description')).toBe('尚未实现')
-      expect(buttonByText(mounted.host, '关闭')).toBeTruthy()
-    } finally {
-      mounted.close()
-    }
-  })
-
-  it('标题栏的关闭按钮回抛关闭请求', async () => {
-    const onUpdateOpen = vi.fn<(value: boolean) => void>()
-    const mounted = mountDialog(onUpdateOpen)
-
-    try {
-      await nextTick()
 
       buttonByLabel(mounted.host, '关闭设置').click()
+      expect(onUpdateOpen).toHaveBeenCalledWith(false)
 
+      buttonByText(mounted.host, '关闭').click()
       expect(onUpdateOpen).toHaveBeenCalledWith(false)
     } finally {
       mounted.close()
     }
   })
 
-  it('底部关闭按钮回抛关闭请求', async () => {
-    const onUpdateOpen = vi.fn<(value: boolean) => void>()
-    const mounted = mountDialog(onUpdateOpen)
+  it('默认落在通用分区，MCP 开关是 disabled 的占位', async () => {
+    const mounted = mountDialog(() => {})
 
     try {
       await nextTick()
 
-      buttonByText(mounted.host, '关闭').click()
+      const general = segmentedByLabel(mounted.host, '设置分区')
+      expect(general.value).toBe('general')
+      expect(triggerValues(general)).toEqual(['general', 'appearance', 'library'])
 
-      expect(onUpdateOpen).toHaveBeenCalledWith(false)
+      const toggle = mounted.host.querySelector('web-ui-switch')
+      expect(toggle).toBeTruthy()
+      expect(toggle?.disabled).toBe(true)
+      expect(mounted.host.textContent).toContain('即将推出')
+      // disabled 的开关不该带着 checked 一起出现，那会读成「已开启但不可用」。
+      expect(toggle?.checked).toBe(false)
     } finally {
+      mounted.close()
+    }
+  })
+
+  it('外观页渲染主题三态 segmented 与 6 个 accent 色板', async () => {
+    const mounted = mountDialog(() => {})
+
+    try {
+      await nextTick()
+      selectTrigger(segmentedByLabel(mounted.host, '设置分区'), 'appearance')
+      await nextTick()
+
+      expect(mounted.host.querySelector('web-ui-segmented[aria-label="主题模式"]')).toBeTruthy()
+      expect(mounted.host.querySelectorAll('web-ui-radio')).toHaveLength(6)
+      expect([...mounted.host.querySelectorAll<WebUiRadio>('web-ui-radio')].map(radio => radio.value)).toEqual([
+        '#0a84ff',
+        '#1d8348',
+        '#c64600',
+        '#ff453a',
+        '#bf5af2',
+        '#ff375f'
+      ])
+    } finally {
+      mounted.close()
+    }
+  })
+
+  /*
+   * 回归：accent 的可点区域必须是原生按钮，不能是 web-ui-radio 的 host。
+   *
+   * web-ui-radio 的可点区域在 shadow 里那个 <label> 上，而 :host 自身没有尺寸规则——它是个
+   * 0×0 的盒子。色板这格又是 flex-wrap 的 <span> 布局，host 中心那一片点下去落在组件之外，
+   * group 的 change 根本不派发：浏览器实测点 host 中心时 group.value 纹丝不动，而直接点
+   * shadow 里的 label 才会切。jsdom 里点 host 无效、点 label 有效，组件自身的测试覆盖不到
+   * 「从 light DOM 投影 slot 后 host 中心是否可点」这一层，所以这条断言必须在。
+   */
+  it('accent 色板的可点区域是原生按钮，不是 web-ui-radio 的 host', async () => {
+    const mounted = mountDialog(() => {})
+
+    try {
+      await nextTick()
+      selectTrigger(segmentedByLabel(mounted.host, '设置分区'), 'appearance')
+      await nextTick()
+
+      const radios = [...mounted.host.querySelectorAll<WebUiRadio>('web-ui-radio')]
+      for (const radio of radios) {
+        expect(radio.className).toContain('pointer-events-none')
+      }
+
+      const buttons = [...mounted.host.querySelectorAll<HTMLButtonElement>('button[role="radio"]')]
+      expect(buttons).toHaveLength(6)
+      expect(buttons.map(button => button.getAttribute('aria-label'))).toEqual([
+        '强调色 蓝',
+        '强调色 绿',
+        '强调色 橙',
+        '强调色 红',
+        '强调色 紫',
+        '强调色 粉'
+      ])
+    } finally {
+      mounted.close()
+    }
+  })
+
+  it('主题三态经 change 回写到 store 与组件 value', async () => {
+    const mounted = mountDialog(() => {})
+    const settings = useSettingsStore()
+
+    try {
+      await nextTick()
+      selectTrigger(segmentedByLabel(mounted.host, '设置分区'), 'appearance')
+      await nextTick()
+
+      const theme = segmentedByLabel(mounted.host, '主题模式')
+      expect(theme.value).toBe('system')
+      expect(triggerValues(theme)).toEqual(['light', 'dark', 'system'])
+
+      selectTrigger(theme, 'dark')
+      await nextTick()
+
+      expect(settings.appearance).toBe('dark')
+      expect(segmentedByLabel(mounted.host, '主题模式').value).toBe('dark')
+      // dialog 不持有主题：主题真相在 store，宿主 App.vue 才是把它接到 web-ui-theme 上的那一环。
+      // 读回走 local.get 而不是比对 localStorage 原始串：落盘带一层 browser-kit 自己的信封，
+      // 那层编码是它的实现细节，测试钉它等于把实现当契约。
+      expect(local.get('theme-appearance')).toBe('dark')
+    } finally {
+      mounted.close()
+    }
+  })
+
+  it('点 accent 色板按钮经合成 click 写入 store，认不出的值不落库', async () => {
+    const mounted = mountDialog(() => {})
+    const settings = useSettingsStore()
+
+    try {
+      await nextTick()
+      selectTrigger(segmentedByLabel(mounted.host, '设置分区'), 'appearance')
+      await nextTick()
+      expect(settings.accent).toBe('#0a84ff')
+
+      const green = mounted.host.querySelector<HTMLButtonElement>('button[aria-label="强调色 绿"]')
+      if (!green) throw new Error('accent 绿按钮未渲染')
+      green.click()
+      await nextTick()
+
+      expect(settings.accent).toBe('#1d8348')
+      expect(local.get('theme-accent')).toBe('#1d8348')
+      // 选中态只有一个真相：accent 同时驱动按钮的 aria-checked 与 web-ui-radio 的 checked。
+      const radios = [...mounted.host.querySelectorAll<WebUiRadio>('web-ui-radio')]
+      expect(radios.map(radio => radio.checked)).toEqual([false, true, false, false, false, false])
+      const buttons = [...mounted.host.querySelectorAll<HTMLButtonElement>('button[role="radio"]')]
+      expect(buttons.map(button => button.getAttribute('aria-checked'))).toEqual([
+        'false',
+        'true',
+        'false',
+        'false',
+        'false',
+        'false'
+      ])
+
+      settings.setAccent('red')
+      expect(settings.accent).toBe('#1d8348')
+      expect(local.get('theme-accent')).toBe('#1d8348')
+    } finally {
+      mounted.close()
+    }
+  })
+
+  /*
+   * 回归：点色板必须经 pickAccent 直接写 store，不能改成「合成一次点击转发进 web-ui-radio、
+   * 再听它的 change 回写」。那条路走不通——radio 是 pointer-events-none 的纯显示层，
+   * 合成点击进不了 group controller；而一旦把它升回写入层，store 就有了两个写入者。
+   *
+   * 钉住「点击 → store 写入」这条因果链，而不是组件内部怎么派事件：把转发实现换掉时，
+   * 下面这个 spy 仍会绿，但它测不到 store 到底有没有被写，所以另有一条
+   * 「点 accent 色板按钮经合成 click 写入 store」同时断言 store 的实际值。
+   */
+  it('点色板按钮直接写 store，不转发进 web-ui-radio', async () => {
+    const setAccent = vi.spyOn(useSettingsStore(), 'setAccent')
+    const mounted = mountDialog(() => {})
+
+    try {
+      await nextTick()
+      selectTrigger(segmentedByLabel(mounted.host, '设置分区'), 'appearance')
+      await nextTick()
+
+      const green = mounted.host.querySelector<HTMLButtonElement>('button[aria-label="强调色 绿"]')
+      if (!green) throw new Error('accent 绿按钮未渲染')
+      green.click()
+      await nextTick()
+
+      // 一次点击一次写入，值就是被点的那个色
+      expect(setAccent).toHaveBeenCalledTimes(1)
+      expect(setAccent).toHaveBeenCalledWith('#1d8348')
+    } finally {
+      setAccent.mockRestore()
       mounted.close()
     }
   })
