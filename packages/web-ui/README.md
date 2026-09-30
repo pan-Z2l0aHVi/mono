@@ -1125,6 +1125,8 @@ Opens on `contextmenu` event. Menu items: `<web-ui-dropdown-item>`, `<web-ui-dro
 
 While the menu is open, consumer code may conditionally render, move, or remove menu items (e.g. Vue `v-if`) without re-inserting them at the host element; changes inside the portal are reconciled automatically, and framework anchors are returned to the host on close so subsequent framework patches keep working.
 
+On close, focus returns to whatever was focused when the menu opened, but only while the menu still holds focus. If a menu item's action has already moved focus elsewhere — opening an inline editor, for example — the menu leaves that focus alone instead of pulling it back, so the new focus target is not blurred by the closing menu.
+
 ---
 
 ### Menu

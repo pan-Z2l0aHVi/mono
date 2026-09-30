@@ -411,12 +411,40 @@ export class WebUiContextMenu extends LitElement {
     if (menu && !(await hideOverlayPresence(menu.panel))) return
     if (this._isOpen || !this.isConnected || this._menu !== menu) return
 
+    /*
+     * 归还判定必须在移除面板之前做完：面板一脱离文档，「焦点仍在菜单内」就再也读不到了。
+     * 子菜单层此刻仍可能持有焦点，一并计入。
+     */
+    const focusPanels = [menu?.panel, ...this._activeSubmenus.map(submenu => submenu.panel)]
+    const shouldRestoreFocus = this._shouldRestoreFocus(focusPanels)
+
     // 登记已在关闭分支撤销（release ⟺ 关闭），这里只做内容归还与 DOM 收尾。
     this._returnItemsToSlot()
     menu?.panel.remove()
     this._menu = undefined
-    this._restoreFocusTarget?.focus()
+    if (shouldRestoreFocus) this._restoreFocusTarget?.focus()
     this._restoreFocusTarget = undefined
+  }
+
+  /**
+   * 关闭时是否把焦点归还给打开前的元素。
+   *
+   * 无条件归还会抢走调用方在关闭期间刚安排好的焦点：菜单项回调同步建立编辑态、
+   * 微任务里 `focus()` 进输入框，退场动画结束后的旧焦点目标一 `focus()` 就把它 blur 掉。
+   * 因此只在焦点仍归菜单（或根本没人接管，即 `body`）时才归还；焦点已被移到
+   * 菜单外的活节点上说明调用方另有安排，尊重现状。
+   */
+  private _shouldRestoreFocus(panels: (HTMLElement | undefined)[]): boolean {
+    const active = document.activeElement
+    if (!active || active === document.body) return true
+    if (active === this._restoreFocusTarget) return true
+    /*
+     * 判据是 `:focus-within` 而不是 `contains(activeElement)`：面板挂在 overlay 容器的
+     * shadow root 下，菜单项又把焦点放进自己 shadow 内的控件，浏览器一路上报到 shadow
+     * host（面板的祖先），`contains` 判不到。`:focus-within` 沿真实祖先链传播，
+     * 才是这里能同时覆盖「面板内」和「菜单项 shadow 内」的谓词。
+     */
+    return panels.some(panel => panel?.matches(':focus-within'))
   }
 
   private _hideMenuItems() {

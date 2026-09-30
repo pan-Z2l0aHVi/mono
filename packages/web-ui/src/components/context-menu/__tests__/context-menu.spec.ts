@@ -748,6 +748,36 @@ describe('WebUiContextMenu 组件', () => {
     })
   })
 
+  describe('焦点归还', () => {
+    /*
+     * 只覆盖「外部接管焦点」这一侧。另一侧（焦点仍在菜单内 → 归还）在本引擎测不了：
+     * 菜单项把焦点放在自己 shadow root 内的控件上，而面板又挂在 overlay 容器的
+     * shadow root 内，jsdom 对这种双层嵌套报出的 document.activeElement 挂在 body 上，
+     * 与真实浏览器的 shadow host 语义不一致。该侧由 context-menu.browser.spec.ts 承担。
+     */
+    it('关闭期间焦点被外部接管时不再抢回', async () => {
+      const el = createContextMenu({}, SIMPLE)
+      const row = document.createElement('button')
+      const editor = document.createElement('input')
+      document.body.append(row, editor)
+      await waitForUpdate(el)
+      row.focus()
+
+      el.openAt(100, 100)
+      await waitForMenuOpen(el)
+
+      // 菜单项回调同步建立编辑态、微任务里 focus() 进输入框；退场动画结束后才轮到归还。
+      editor.focus()
+      el.close()
+      await waitForMenuClose(el)
+
+      expect(document.activeElement).toBe(editor)
+      cleanupElement(el)
+      row.remove()
+      editor.remove()
+    })
+  })
+
   describe('键盘 ContextMenu 键', () => {
     it('ContextMenu 键打开菜单', async () => {
       const el = createContextMenu({}, SIMPLE)
