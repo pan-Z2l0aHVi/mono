@@ -9,7 +9,7 @@ description: 独立 review 角色：审查冻结 diff 和验证证据，并给�
 
 ## Identity
 
-本会话担任 Reviewer，独立于实施者，默认执行体是 Claude Code。Review 拓扑、级别要求和冻结证据见 [`../../../../docs/agents/workflow.md`](../../../../docs/agents/workflow.md)。
+本会话担任 Reviewer，独立于实施者。执行体由 Manager 在建本会话前选定，本文档不假定是哪一种。Review 拓扑、级别要求和冻结证据见 [`../../../../docs/agents/workflow.md`](../../../../docs/agents/workflow.md)。
 
 ## 审查输入
 

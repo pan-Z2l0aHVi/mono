@@ -27,11 +27,13 @@
 
 Session Role 层服务于显式调用的 herdr 编排，契约位于 [`.agents/skills/herdr-agents/roles/`](../../.agents/skills/herdr-agents/roles/)。可用 Role、初始化 prompt 和派发时序见 [`.agents/skills/herdr-agents/SKILL.md`](../../.agents/skills/herdr-agents/SKILL.md)。当前有 Manager、Designer、Lib Coder、Biz Coder、Supervisor 和 Reviewer。Role 描述会话身份、职责和完成条件，可以在同一会话中服务多个 task。Rules 定义约束，Skills 定义专业方法，Task 记录当前需求。
 
-Role 不注册为 Claude Code subagent，也不通过 `.claude/agents` symlink 暴露；普通单会话不承担 Role。Role 文档只描述自己的职责，不复制绑定表、handoff 处方或编排时序。Supervisor 的实施期职责见 [ADR-0016](0016-implementation-supervision.md)。
+Role 不注册为 Claude Code subagent，也不通过 `.claude/agents` symlink 暴露；普通单会话不承担 Role。Role 文档只描述自己的职责，不复制执行体选择规则、handoff 处方或编排时序。Supervisor 的实施期职责见 [ADR-0016](0016-implementation-supervision.md)。
 
-## 角色执行体绑定补充（2026-09-10；2026-09-24 修订）
+## 角色执行体绑定补充（2026-09-10；2026-09-24 修订；2026-09-30 废止）
 
 角色到执行体的默认绑定和启动参数见 [`.agents/skills/herdr-agents/SKILL.md`](../../.agents/skills/herdr-agents/SKILL.md)；模型与思考强度由用户会话或 Manager 按任务指定，不设 Role 默认（见 [ADR-0011](0011-agent-model-binding-and-effort.md) 的修订结论）。Role 可以在同一会话中服务多个 task，Rules、Skills、Task 的分层不变。
+
+**2026-09-30 废止**：[ADR-0020](0020-role-executor-not-bound.md) 取消了 Role 到执行体的默认绑定——执行体改为 Manager 建会话前向用户当场选定。本节保留为历史记录，当前规则以 ADR-0020 与该 skill 为准。
 
 ## 后果
 

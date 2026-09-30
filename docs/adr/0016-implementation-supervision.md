@@ -22,7 +22,7 @@ Manager 在拆分实施 task 后、首次派发 Coder 前评分。四个维度�
 
 ### 2. 工作方式与权限
 
-Supervisor 与 Coder 共享该实施 task 的 worktree，但不是该 worktree 的 owner。Supervisor 默认使用 Claude Code，启动权限与其他 Role 相同。启动参数只决定怎么启动，不改变它的只读边界。
+Supervisor 与 Coder 共享该实施 task 的 worktree，但不是该 worktree 的 owner。Supervisor 的执行体由 Manager 在建会话前向用户选定，启动权限与其他 Role 相同。启动参数只决定怎么启动，不改变它的只读边界。
 
 Supervisor 可以读取源码、测试、文档、Task Packet、task status、tracked diff、未跟踪文件清单、Coder pane 状态和只读 repo 查询结果。它通过 Herdr `agent prompt` 发送报告与纠错消息。这个工具只传递文字，不会写文件或改代码。Manager 把 Coder 和 Supervisor 的 live agent 名称或 pane id 写进 handoff，方便双方发送消息。固定的 coordination id 只放在消息正文中，不充当 pane id。
 
@@ -56,7 +56,7 @@ Task Packet 继续保存任务主合同，并提供可选的 Coordination 摘要
 
 ### 6. 文档归属
 
-Role 列表、默认执行体绑定、启动参数、目录边界、handoff 格式和 pane 时序见 [`.agents/skills/herdr-agents/SKILL.md`](../../.agents/skills/herdr-agents/SKILL.md)，Supervisor 协议、启用评分与 coordination id 见 [`.agents/skills/herdr-agents/supervision.md`](../../.agents/skills/herdr-agents/supervision.md)。Role 文档只描述各自职责。task 级别、状态机、快照、review、approval 和验证见 [`docs/agents/workflow.md`](../agents/workflow.md) 与 [`scripts/task.mjs`](../../scripts/task.mjs)。`scripts/validate-context.mjs` 只检查通用 context、Role Contract 身份和客户端注册形态，不维护绑定表、固定 Role 集合或 handoff 字段的镜像。
+Role 列表、执行体选择、启动参数、目录边界、handoff 格式和 pane 时序见 [`.agents/skills/herdr-agents/SKILL.md`](../../.agents/skills/herdr-agents/SKILL.md)，Supervisor 协议、启用评分与 coordination id 见 [`.agents/skills/herdr-agents/supervision.md`](../../.agents/skills/herdr-agents/supervision.md)。Role 文档只描述各自职责。task 级别、状态机、快照、review、approval 和验证见 [`docs/agents/workflow.md`](../agents/workflow.md) 与 [`scripts/task.mjs`](../../scripts/task.mjs)。`scripts/validate-context.mjs` 只检查通用 context、Role Contract 身份和客户端注册形态，不维护 Role 集合或 handoff 字段的镜像。
 
 ## 后果
 

@@ -86,7 +86,7 @@ workspace 清单、依赖草图与模块关系图见 [`ARCHITECTURE.md`](ARCHITE
 | [0008](docs/adr/0008-interweave-backend-architecture.md)                        | Interweave Backend Architecture                       | 修改 interweave Go 模块、Wails Service 或 frontend bindings               |
 | [0009](docs/adr/0009-interweave-sqlite-persistence-wal.md)                      | SQLite Persistence WAL                                | 修改 interweave 持久化层或 SQLite 并发模型                                |
 | [0010](docs/adr/0010-agent-role-orchestration.md)                               | Agent Role Orchestration                              | 修改角色分工、编排路由或 handoff 契约                                     |
-| [0011](docs/adr/0011-agent-model-binding-and-effort.md)                         | Agent Model Binding & Effort                          | 修改角色-执行体绑定（分档已被 ADR-0014 取消，需连读）                     |
+| [0011](docs/adr/0011-agent-model-binding-and-effort.md)                         | Agent Model Binding & Effort                          | 修改模型与思考强度的选择（执行体绑定已被 ADR-0020 取消，需连读）          |
 | [0012](docs/adr/0012-instruction-risk-tiering-and-pre-authorized-operations.md) | Instruction Risk Tiering & Pre-authorized Operations  | 修改预授权操作（风险分级表与约束预算基线已被 ADR-0014 取代/退役，需连读） |
 | [0013](docs/adr/0013-web-ui-theme-transition.md)                                | Web UI Theme Transition                               | 修改 `web-ui-theme` 过渡 API、View Transition 生命周期或降级语义          |
 | [0014](docs/adr/0014-task-system-v2.md)                                         | Task 体系 v2（level 状态机、guard、checks、playbook） | 修改 `scripts/task.mjs`、任务级别 gate、pre-commit 门禁或 task state 布局 |
@@ -95,6 +95,7 @@ workspace 清单、依赖草图与模块关系图见 [`ARCHITECTURE.md`](ARCHITE
 | [0017](docs/adr/0017-orchestration-decoupled-from-task.md)                      | 编排与 task 体系解耦                                  | 修改 coordination id、编排元数据落点、巡检数据源或编排范围门              |
 | [0018](docs/adr/0018-task-state-in-tmpdir.md)                                   | Task state 落在系统临时目录                           | 修改 task state 落点、跨仓库列举范围或重启后的恢复规则                    |
 | [0019](docs/adr/0019-agent-to-manager-report-channel.md)                        | 执行体主动向 Manager 汇报                             | 修改汇报通道、消息契约、Manager 寻址方式或巡检的报告信号                  |
+| [0020](docs/adr/0020-role-executor-not-bound.md)                                | Role 不绑定执行体                                     | 修改 Role 与执行体的关系、执行体选择时机或选项来源                        |
 
 ## Interweave 产品与领域词汇
 

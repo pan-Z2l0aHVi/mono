@@ -4,7 +4,7 @@
 - **Status**: 已接受
 - **Amends**: [ADR-0010](0010-agent-role-orchestration.md) 的「执行体默认绑定」一节
 - **Amended by**: [ADR-0014](0014-task-system-v2.md)（取消角色默认模型与思考强度分档；模型与思考强度由用户会话设置或 Manager 按任务指定）
-- **Further amended by**: [ADR-0016](0016-implementation-supervision.md)（Role 与 Supervisor 的执行体绑定统一由 herdr-agents skill 维护）
+- **Further amended by**: [ADR-0016](0016-implementation-supervision.md)（Role 与 Supervisor 的执行体绑定统一由 herdr-agents skill 维护）、[ADR-0020](0020-role-executor-not-bound.md)（2026-09-30：不再有执行体绑定，改为 Manager 建会话前当场选定）
 - **Superseded by**: [ADR-0017](0017-orchestration-decoupled-from-task.md) —— 本 ADR 已无现行内容：默认分档早被 ADR-0014 取消，绑定表归 herdr-agents skill（ADR-0015/0016），`Effort` 字段随 Task Packet 的 Coordination 区退化为指针而不再记录（ADR-0017）
 
 ## 背景
@@ -20,7 +20,7 @@ ADR-0010 建立了角色到执行体的默认绑定，但留下了两个问题�
 
 ### 1. 历史方案：角色 → 执行体 → 模型 → 思考强度默认绑定
 
-下表记录 2026-09-11 的决策背景，不是当前配置。ADR-0014 已取消这套默认分档；现在由用户会话或 Manager 按任务选择模型和思考强度。当前默认执行体和 Reviewer 路由由 [`herdr-agents`](../../.agents/skills/herdr-agents/SKILL.md) 维护，Reviewer 默认使用 Claude Code。
+下表记录 2026-09-11 的决策背景，不是当前配置。ADR-0014 已取消这套默认分档；现在由用户会话或 Manager 按任务选择模型和思考强度。Role 也不再绑定执行体：Manager 在为某个 Role 建会话前向用户询问，用哪一种当场定；Reviewer 路由见 [`herdr-agents`](../../.agents/skills/herdr-agents/SKILL.md)。
 
 | 角色             | 执行体                                             | 默认模型                            | 默认思考强度 |
 | ---------------- | -------------------------------------------------- | ----------------------------------- | ------------ |
@@ -49,7 +49,7 @@ low、high、max 表达推理深度的建议起点，不是强制配置。Manage
 
 ### 3. 历史调整规则
 
-- 模型与思考强度的调整不视为偏离执行体绑定，Manager 可按任务直接选择。
+- 模型与思考强度由 Manager 按任务直接选择；执行体同样不与 Role 绑定，选择方式见 [ADR-0020](0020-role-executor-not-bound.md)。
 - 过去建议在 Task Packet 记录 `Effort`；现在它不是必填字段。
 - 执行体不可用时的替代记录规则沿用 ADR-0010；替代执行体的模型与思考强度按任务需要选择。
 
