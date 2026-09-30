@@ -2,6 +2,7 @@
 
 import '@greypan/web-ui'
 import type { WebUiDialog } from '@greypan/web-ui'
+import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { createApp, defineComponent, nextTick } from 'vue'
 import { createMemoryHistory, createRouter, type Router } from 'vue-router'
@@ -45,6 +46,8 @@ async function mountLayout() {
   document.body.append(host)
   app = createApp(AppLayout)
   app.use(router)
+  // AppLayout 挂着设置对话框，对话框读 settings store；跟 main.ts 一样装 pinia。
+  app.use(createPinia())
   await router.isReady()
   app.mount(host)
   await nextTick()
@@ -82,6 +85,9 @@ async function navigate(path: string) {
 describe('AppLayout：应用外壳', () => {
   beforeEach(() => {
     vi.stubGlobal('matchMedia', matchMediaStub)
+    // store 在 setup() 里被取（useSettingsStore），没有活动 pinia 会直接抛；每个用例一份干净的。
+    setActivePinia(createPinia())
+    localStorage.clear()
     router = createRouter({
       history: createMemoryHistory(),
       routes: [
