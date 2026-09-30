@@ -21,6 +21,9 @@
   --wui-internal-glass-shadow: var(--wui-shadow-panel, 0 3px 9px rgb(0 0 0 / 0.27));
   --wui-glass-corner-radius: var(--wui-radius-menu, 18px);
 
+  /* 环底色转 transparent，宽面板的长边中段不留铺底，见 menu-portal.css 同处注释。 */
+  --wui-color-glass-ring: transparent;
+
   pointer-events: none;
 
   position: absolute;

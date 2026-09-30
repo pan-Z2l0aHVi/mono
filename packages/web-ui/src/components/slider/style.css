@@ -150,6 +150,8 @@
   }
 
   &.is-pressed:not(.is-dragging) {
+    /* 环底色随按压/拖拽态转 transparent（理由见 menu-portal.css）。 */
+    --wui-color-glass-ring: transparent;
     transform: translate(-50%, -50%) scale(1.5);
     background-color: transparent;
     box-shadow:
@@ -160,6 +162,7 @@
   }
 
   &.is-dragging {
+    --wui-color-glass-ring: transparent;
     cursor: grabbing;
     transform: translate(-50%, -50%) scale(1.5);
     background-color: transparent;

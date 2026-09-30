@@ -10,6 +10,15 @@
   --wui-internal-duration-float-enter: var(--wui-duration-float-enter, 240ms);
   --wui-internal-duration-float-exit: var(--wui-duration-float-exit, 160ms);
   --wui-glass-corner-radius: var(--wui-radius-menu, 18px);
+
+  /* 菜单族面板把环底色转 transparent。底色是环里唯一覆盖长边中段的一层（见 glass.css
+     的说明），而菜单面板宽远大于角半径 18px——按几何它只负责很短的一段，读出来却像
+     一条比四角更重的直边描边，边界感比四角强。转 transparent 后环只剩四段角弧，
+     斜向受光/背光光影（sheen + shade 的两枚对角 radial）完整保留，边界改由这两层
+     承担。handle 类玻璃面（switch/slider/segmented thumb）只在按压/拖拽态做同样处理：
+     它们的短边半径就是 thumb 尺寸的一半，长边长不过 3R，底色几乎不覆盖任何中段，
+     去掉它只去掉一层均匀灰 tint，不改变环的可见形状。 */
+  --wui-color-glass-ring: transparent;
   user-select: none;
 
   position: fixed;

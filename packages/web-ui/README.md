@@ -824,7 +824,7 @@ Uses native `<dialog>` with `@cancel` prevention. Escape calls `close()` unless 
 | `--wui-dialog-width`          | `360px`                                      | Dialog width                                                                          |
 | `--wui-dialog-max-height`     | `90vh`                                       | Dialog max height                                                                     |
 | `--wui-dialog-overlay-bg`     | `var(--wui-color-backdrop)`                  | Backdrop background                                                                   |
-| `--wui-dialog-bg`             | `var(--wui-color-surface-overlay)`           | Glass card background, falls back to `rgb(246 246 246 / 0.82)`                        |
+| `--wui-dialog-bg`             | `var(--wui-color-surface-overlay)`           | Glass card background, falls back to `rgb(248 248 248 / 0.92)`                        |
 | `--wui-dialog-padding`        | `20px 24px 24px`                             | Dialog surface padding                                                                |
 | `--wui-dialog-title-gap`      | `16px`                                       | Spacing below the title                                                               |
 | `--wui-dialog-desc-gap`       | `24px`                                       | Spacing below the body content                                                        |
@@ -1566,7 +1566,7 @@ Overrides must sit inside the `<web-ui-theme>` scope, since the theme host decla
 | `--wui-color-surface-glass`        | `rgb(250 250 250 / 0.34)`                                    | `rgb(44 44 46 / 0.42)`                                       | Liquid glass surface            |
 | `--wui-color-surface-glass-hover`  | `color-mix(... text 6%, surface-glass)`                      | `color-mix(... text 6%, surface-glass)`                      | Full glass hover background     |
 | `--wui-color-surface-glass-active` | `color-mix(... text 15%, surface-glass)`                     | `color-mix(... text 15%, surface-glass)`                     | Full glass pressed background   |
-| `--wui-color-surface-overlay`      | `rgb(246 246 246 / 0.82)`                                    | `rgb(32 34 34 / 0.9)`                                        | Translucent overlay surface     |
+| `--wui-color-surface-overlay`      | `rgb(248 248 248 / 0.92)`                                    | `rgb(32 34 34 / 0.92)`                                       | Translucent overlay surface     |
 | `--wui-color-surface-sidebar`      | `rgb(233 233 233 / 0.82)`                                    | `rgb(44 44 46 / 0.8)`                                        | Sidebar panel surface           |
 | `--wui-color-surface-segmented`    | `#e5e5ea`                                                    | `#3a3a3c`                                                    | Segmented indicator surface     |
 | `--wui-color-surface-selected`     | `#fff`                                                       | `#5c5c5e`                                                    | Selected surface                |
