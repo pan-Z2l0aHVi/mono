@@ -85,6 +85,7 @@
     "dedups",
     "klmnopqrst",
     "browserv",
-    "WCAG"
+    "WCAG",
+    "vdom"
   ]
 }
