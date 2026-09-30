@@ -4,6 +4,7 @@ import { userEvent } from 'vite-plus/test/browser'
 import '..'
 import '@/components/checkbox'
 import '@/components/dropdown-item'
+import '@/components/editable-text'
 import '@/components/popover'
 import type { WebUiPopover } from '@/components/popover'
 import { getMenuChildren } from '@/shared/menu-portal/menu-tree'
@@ -168,6 +169,110 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
     expect(firstItem?.hasAttribute('data-wui-menu-focus-suppressed')).toBe(false)
     expect(firstControl?.matches(':focus-visible')).toBe(true)
     expect(getComputedStyle(firstControl!).backgroundColor).toBe('rgb(0, 136, 255)')
+  })
+
+  it('Escape 关闭后焦点回到打开前持焦的行', async () => {
+    const menu = document.createElement('web-ui-context-menu')
+    // 行可聚焦且在 light DOM 里：键盘打开路径从 document.activeElement 取归还目标，
+    // 与 interweave 资源行（tabindex="0"）同构。
+    const row = document.createElement('div')
+    row.tabIndex = 0
+    row.textContent = '资源行'
+    menu.append(row, document.createElement('web-ui-dropdown-item'))
+    document.body.append(menu)
+    await menu.updateComplete
+
+    row.focus()
+    expect(document.activeElement).toBe(row)
+
+    menu.dispatchEvent(new KeyboardEvent('keydown', { key: 'F10', shiftKey: true, bubbles: true, composed: true }))
+    await menu.updateComplete
+    await nextFrame()
+    expect(document.activeElement).not.toBe(row)
+
+    dispatchEscape()
+    await waitForItemsReturned(menu, 1)
+
+    expect(document.activeElement).toBe(row)
+  })
+
+  it('关闭期间焦点被外部接管时不再抢回', async () => {
+    const menu = document.createElement('web-ui-context-menu')
+    const row = document.createElement('div')
+    row.tabIndex = 0
+    const editor = document.createElement('input')
+    menu.append(row, document.createElement('web-ui-dropdown-item'))
+    document.body.append(menu, editor)
+    await menu.updateComplete
+
+    row.focus()
+    menu.openAt(40, 40)
+    await menu.updateComplete
+    await nextFrame()
+
+    // 复刻 interweave 的重命名时序：菜单项回调同步建编辑态，微任务里 focus() 进输入框；
+    // 退场动画此刻还没结束，旧实现正是在这里把焦点拽回行上，blur 掉刚建立的编辑态。
+    editor.focus()
+    expect(document.activeElement).toBe(editor)
+
+    menu.close()
+    await waitForItemsReturned(menu, 1)
+
+    expect(document.activeElement).toBe(editor)
+  })
+
+  /*
+   * 复刻 interweave 资源列表的右键重命名时序（两个组件都是本包的，无跨包依赖）：
+   * 行持焦 → 右键开菜单 → 点「重命名」→ 回调同步把行换成编辑态并 select()，
+   * 焦点在下一帧落进 textarea。菜单的退场动画在宏任务里才结束，无条件归还会在那时
+   * 把焦点拽回行，blur 掉编辑器，而 editable-text 的 blur 契约会提交未改动的标题。
+   */
+  it('菜单项回调进入编辑态后，关闭菜单不会 blur 掉编辑器或提交未改动的值', async () => {
+    const menu = document.createElement('web-ui-context-menu')
+    const editable = document.createElement('web-ui-editable-text')
+    editable.value = '原始标题'
+
+    const row = document.createElement('div')
+    row.tabIndex = 0
+    const changes: string[] = []
+    editable.addEventListener('change', () => changes.push(editable.value))
+
+    // 行内按 editing 态在标题与编辑器之间切换，等价于消费者的 v-if。
+    const render = (editing: boolean) => {
+      row.replaceChildren(...(editing ? [editable] : [document.createTextNode('原始标题')]))
+    }
+    render(false)
+    const item = document.createElement('web-ui-dropdown-item')
+    item.textContent = '重命名'
+    menu.append(row, item)
+    document.body.append(menu, editable)
+    await menu.updateComplete
+
+    row.focus()
+    // 键盘打开路径：menu-behavior 从 document.activeElement 取归还目标，此时焦点必在行上。
+    menu.dispatchEvent(new KeyboardEvent('keydown', { key: 'F10', shiftKey: true, bubbles: true, composed: true }))
+    await menu.updateComplete
+    await nextFrame()
+
+    // 菜单项回调：同步建编辑态并在微任务里 focus()——与 interweave 的 emit + nextTick 同构。
+    item.addEventListener('click', () => {
+      render(true)
+      void Promise.resolve().then(() => editable.select())
+    })
+    item.click()
+    await nextFrame()
+    await nextFrame()
+
+    expect(editable.hasAttribute('editing')).toBe(true)
+    expect(editable.shadowRoot?.activeElement?.tagName).toBe('TEXTAREA')
+
+    await waitForItemsReturned(menu, 1)
+    await nextFrame()
+
+    expect(editable.hasAttribute('editing')).toBe(true)
+    expect(editable.shadowRoot?.activeElement?.tagName).toBe('TEXTAREA')
+    expect(changes).toEqual([])
+    expect(editable.value).toBe('原始标题')
   })
 
   it('点击菜单面板外的 checkbox 时完成勾选并关闭菜单', async () => {
