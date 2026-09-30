@@ -1,5 +1,20 @@
 @import 'tailwindcss';
 
+/*
+ * `dark:` 跟随 web-ui 的 resolved-appearance，不跟随 prefers-color-scheme。
+ *
+ * Tailwind v4 的 dark 变体默认只认操作系统偏好，但 interweave 的外观是用户可设的
+ * （设置里能显式选 light/dark）。两者不是一回事：用户在亮色系统上显式选「深色」时，
+ * OS 偏好仍是 light，stock 变体不会命中，app 侧就会停在亮色底 + 已翻成浅色的文字，
+ * 对比度塌掉。所以在这里把判据换成 `web-ui-theme` 写在自己 host 属性上的
+ * resolved-appearance —— 它是 appearance 属性经 system 解析后的派生输出，light DOM 里
+ * 选择器够得到，system 态下也随 OS 翻转实时更新。
+ *
+ * 写成 :where() 是为了不抬高特异性：变体带来的权重仍只有工具类本身，与被替换前同级。
+ */
+/* stylelint-disable-next-line at-rule-no-unknown -- Tailwind v4 指令 */
+@custom-variant dark (&:where(web-ui-theme[resolved-appearance='dark'], web-ui-theme[resolved-appearance='dark'] *));
+
 html,
 body,
 #app,
