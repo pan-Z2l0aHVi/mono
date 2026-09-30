@@ -92,6 +92,29 @@ describe('AppNav：主导航', () => {
     vi.restoreAllMocks()
   })
 
+  /*
+   * 回归：导航按钮是原生 <button>，页面级 focus 环（assets/global.css）画的是 outline。
+   * Tailwind 的 transition-colors 把 outline-color 一起过渡了，而它的初始计算值是
+   * currentcolor——继承来的近黑文字色。留着它，Tab 过去时环会从近黑补间 150ms 到目标浅蓝，
+   * 表现为边缘先黑一下再变蓝。navItemClass 早已改成 transition-[background-color]，这里补上
+   * 之前漏掉的回归测试，并把设置入口一起纳入——它复用同一个 class 字符串。
+   *
+   * 钉住 transition 相关的整个 token 列表而不是只钉「不含 transition-colors」：往后有人扩大
+   * 过渡属性时，无论加的是 transition-all 还是 transition-[color,outline-color]，都会先红一次。
+   */
+  it('导航按钮与设置入口的过渡都只列 background-color', async () => {
+    const mounted = await mountNav()
+    const elements = [navItem(mounted.host, '资料库'), navItem(mounted.host, '关系图谱'), navItem(mounted.host, '设置')]
+
+    for (const element of elements) {
+      expect([...element.classList].filter(token => token.startsWith('transition'))).toEqual([
+        'transition-[background-color]'
+      ])
+    }
+
+    await mounted.close()
+  })
+
   it('挂载时不自动播放画线动画，交给点击决定', async () => {
     const mounted = await mountNav()
     const hosts = drawHosts(mounted.host)
