@@ -24,6 +24,10 @@
 .popover-panel {
   --wui-internal-glass-shadow: var(--wui-shadow-panel, 0 3px 9px rgb(0 0 0 / 0.27));
   --wui-glass-corner-radius: var(--wui-radius-menu, 18px);
+
+  /* 面板宽远大于角半径，环底色铺出的整圈铺底会在长边中段读成一条比四角更重的
+     直边描边；转 transparent 后只剩四段角弧，见 menu-portal.css 同处注释。 */
+  --wui-color-glass-ring: transparent;
   position: absolute;
   z-index: var(--wui-layer-inline-overlay, 1);
   top: -9999px;

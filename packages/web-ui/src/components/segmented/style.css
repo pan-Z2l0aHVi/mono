@@ -144,6 +144,8 @@
    覆盖后按压态丢失玻璃描边。 */
 .wui-segmented.is-pressed .wui-segmented-indicator,
 .wui-segmented.is-dragging .wui-segmented-indicator {
+  /* 环底色随按压/拖拽态转 transparent（理由见 menu-portal.css）。 */
+  --wui-color-glass-ring: transparent;
   transform: scale(1.5);
 
   background-color: transparent;

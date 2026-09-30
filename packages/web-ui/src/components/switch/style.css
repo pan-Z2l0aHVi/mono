@@ -96,6 +96,9 @@
     box-shadow var(--wui-duration-press, 80ms) ease;
 
   &.is-pressed {
+    /* 环底色随按压态转 transparent：pill 的长边长不过 3R，底色不覆盖中段，
+       去掉它只是少一层均匀灰 tint（理由见 menu-portal.css）。 */
+    --wui-color-glass-ring: transparent;
     transform: translateX(0) scale(1.5);
 
     width: 20px;

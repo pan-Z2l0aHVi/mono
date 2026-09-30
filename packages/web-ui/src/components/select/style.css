@@ -109,6 +109,9 @@
   --wui-internal-duration-float-enter: var(--wui-duration-float-enter, 240ms);
   --wui-internal-duration-float-exit: var(--wui-duration-float-exit, 160ms);
   --wui-glass-corner-radius: var(--wui-radius-menu, 18px);
+
+  /* 环底色转 transparent，宽面板的长边中段不留铺底，见 menu-portal.css 同处注释。 */
+  --wui-color-glass-ring: transparent;
   position: absolute;
   z-index: var(--wui-layer-inline-overlay, 1);
 

@@ -251,7 +251,7 @@ describe('深色 elevation 关系', () => {
       blockBody(themeCss, ":host\\(\\[appearance='light'\\]\\),\\n:host\\(\\[appearance='system'\\]\\) \\{")
     )
     expect(light.get('--wui-color-surface-glass')).toBe('rgb(250 250 250 / 0.34)')
-    expect(light.get('--wui-color-surface-overlay')).toBe('rgb(246 246 246 / 0.82)')
+    expect(light.get('--wui-color-surface-overlay')).toBe('rgb(248 248 248 / 0.92)')
     expect(light.get('--wui-color-surface-sidebar')).toBe('rgb(233 233 233 / 0.82)')
     expect(light.get('--wui-color-surface-menu')).toBe('rgb(254 254 254 / 0.76)')
 
@@ -281,8 +281,8 @@ describe('深色 elevation 关系', () => {
     }
   })
 
-  it('深色 overlay 保持原值，dialog/drawer/toast 不随本次抬升', () => {
-    expect(themeBlocks.dark.get('--wui-color-surface-overlay')).toBe('rgb(32 34 34 / 0.9)')
+  it('深色 overlay 抬到 0.92，为 dialog/drawer/toast 换取可读性', () => {
+    expect(themeBlocks.dark.get('--wui-color-surface-overlay')).toBe('rgb(32 34 34 / 0.92)')
   })
 })
 
