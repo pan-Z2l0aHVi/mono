@@ -54,7 +54,7 @@ Manager 在**编排开始时**生成一个自由标签 `herdr-agents/<主题slug
 - 建 task、worktree 边界、task 级别路由、freeze / review / approve / done / drop 完整链路、task 级 guard 与只读边界的成立性判据。
 - Task Packet 作为**任务主合同**：Manager 派发前把目标、范围、验收、验证和 review 要求写进 Task Packet，实施期这是必需的。
 - 「聊天记录替代不了 task state」这条证据纪律，以及 Reviewer 只读冻结 diff、任务主合同与验证证据。
-- Supervisor 启用的判定对象（仍是实施工作单元）、三个检查点与 `disputed` / `escalated` 裁决、pane 与 Herdr 机制本体、Role 与执行体绑定表。
+- Supervisor 启用的判定对象（仍是实施工作单元）、三个检查点与 `disputed` / `escalated` 裁决、pane 与 Herdr 机制本体。Role 与执行体的关系已由 [ADR-0020](0020-role-executor-not-bound.md) 重新定义（执行体是每轮编排的输入，落本轮编排记录）。
 
 ## 行为变化
 

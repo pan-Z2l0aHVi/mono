@@ -64,7 +64,7 @@ Manager 在编排开始时 `herdr agent rename <自己的 pane> manager`，hando
 ### 刻意保留的部分
 
 - Supervisor 的三个检查点、`Observation Report` 模板、`clear` / `open` / `resolved` / `disputed` / `escalated` 状态机与 `Readiness` 字段一字未改，只对齐发往 Manager 那条消息的落笔口径。
-- 上游 `herdr` skill 的前置检查、pane / tab / workspace 机制与执行体绑定表。
+- 上游 `herdr` skill 的前置检查、pane / tab / workspace 机制。执行体选择见 [ADR-0020](0020-role-executor-not-bound.md)。
 - [ADR-0017](0017-orchestration-decoupled-from-task.md) 的编排元数据落点与编排单元枚举。
 
 ## 行为变化

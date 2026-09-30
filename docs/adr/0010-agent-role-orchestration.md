@@ -3,8 +3,8 @@
 - **Date**: 2026-09-10
 - **Status**: 已接受
 - **Supersedes**: ADR-0004「角色实施补充（2026-09-01）」中「Role 不与模型、CLI 或固定会话绑定」的结论
-- **Amended by**: [ADR-0015](0015-role-contracts-in-herdr-agents-skill.md)、[ADR-0016](0016-implementation-supervision.md)
-- **Superseded by**: [ADR-0017](0017-orchestration-decoupled-from-task.md) —— 本 ADR 的编排事实不再绑定 task：coordination id 改为自由标签，编排元数据落 `$TMPDIR/herdr-agents/reports/`，巡检按编排单元而非 task 枚举。执行体绑定、目录边界与结构化 handoff 三条决策不变
+- **Amended by**: [ADR-0015](0015-role-contracts-in-herdr-agents-skill.md)、[ADR-0016](0016-implementation-supervision.md)、[ADR-0020](0020-role-executor-not-bound.md)（2026-09-30：执行体绑定决策被反转，Role 不再绑定执行体）
+- **Superseded by**: [ADR-0017](0017-orchestration-decoupled-from-task.md) —— 本 ADR 的编排事实不再绑定 task：coordination id 改为自由标签，编排元数据落 `$TMPDIR/herdr-agents/reports/`，巡检按编排单元而非 task 枚举。目录边界与结构化 handoff 两条决策不变（第三条「执行体绑定」已由 ADR-0020 反转）
 
 ## 背景
 
@@ -51,6 +51,6 @@ task 级别、状态机、review/approval 和验证证据见 [`docs/agents/workf
 
 ## 替代方案
 
-- **不做执行体绑定，保持「任一模型/CLI 承担任一角色」**：灵活，但无法为固定的角色-执行体协作链路建立稳定预期；不采用。
+- **不做执行体绑定，保持「任一模型/CLI 承担任一角色」**：灵活，但无法为固定的角色-执行体协作链路建立稳定预期；不采用。**（2026-09-30 由 [ADR-0020](0020-role-executor-not-bound.md) 反转：预期改为按轮次建立——执行体在 Manager 建会话前当场选定并记入本轮编排记录。本段保留为当时的否决理由。）**
 - **保留 Integrator 独立层级**：能分担 release 工作，但增加一层编排与状态，违背「保持 Manager 扁平化」；不采用。
 - **把 handoff 模板复制进多个入口文件**（2026-09-26 前的两个入口即根 `AGENTS.md` 与根 `CLAUDE.md`；后者已删除，见 ADR-0004 修订）：看似更易发现，但会产生多处副本并漂移；改为单一权威加根入口字段清单。

@@ -25,7 +25,7 @@
 
 ## 多 Agent 编排
 
-多 Agent 编排只在用户显式调用 `/herdr-agents` 时启用。Role、执行体绑定、目录边界、handoff、pane 时序和 Role 初始化都见 [`herdr-agents`](.agents/skills/herdr-agents/SKILL.md)，启用评分与实施期 Supervisor 协议见同目录的 [`supervision.md`](.agents/skills/herdr-agents/supervision.md)。
+多 Agent 编排只在用户显式调用 `/herdr-agents` 时启用。Role 契约、执行体选择、目录边界、handoff、pane 时序和 Role 初始化都见 [`herdr-agents`](.agents/skills/herdr-agents/SKILL.md)，启用评分与实施期 Supervisor 协议见同目录的 [`supervision.md`](.agents/skills/herdr-agents/supervision.md)。
 
 Task 级别、状态机、冻结 diff、review、approval 和验证证据见 [`docs/agents/workflow.md`](docs/agents/workflow.md)。task state 不保存 Role 或 coordination 记录。任务主合同见 [`docs/agents/task-packet.md`](docs/agents/task-packet.md)；编排元数据（参与者、启用理由、检查点结论、未决事项）的落点是 `$TMPDIR/herdr-agents/reports/` 下的编排记录，Task Packet 的可选 Coordination 区只留 coordination id 与记录路径。
 
