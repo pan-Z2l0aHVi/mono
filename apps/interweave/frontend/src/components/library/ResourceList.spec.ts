@@ -617,7 +617,7 @@ describe('ResourceList：键盘呼出右键菜单', () => {
 
       // 六项齐全。缺哪一项，那一项的键盘入口就是断的
       expect(labelsOf(mounted.host)).toEqual(
-        expect.arrayContaining(['预览', '打开方式', '详情', '重命名', '编辑标签', '删除'])
+        expect.arrayContaining(['预览', '打开方式', '详情', '重命名', '标签', '删除'])
       )
     } finally {
       mounted.unmount()
@@ -644,7 +644,7 @@ describe('ResourceList：键盘呼出右键菜单', () => {
 
       const labels = labelsOf(mounted.host)
       expect(labels).not.toContain('预览')
-      expect(labels).not.toContain('编辑标签')
+      expect(labels).not.toContain('标签')
       expect(labels).toContain('找回资源')
       expect(labels).toContain('详情')
     } finally {
