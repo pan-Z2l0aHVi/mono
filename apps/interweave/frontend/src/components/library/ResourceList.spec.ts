@@ -816,6 +816,28 @@ describe('ResourceList：键盘导航与预览入口', () => {
   })
 
   /*
+   * 回归：行是 tab stop，而页面级 focus 环（assets/global.css）画的是 outline。Tailwind 的
+   * transition-colors 把 outline-color 一起过渡了，它的初始计算值是 currentcolor——从祖先继承
+   * 来的近黑文字色。留着它，Tab 过去时环会从近黑补间 100ms 到目标浅蓝，表现为边缘先黑一下
+   * 再变蓝（与 AppNav 的 navItemClass 同一个坑，那次修复没留下测试）。
+   *
+   * 钉住 transition 相关的整个 token 列表而不是只钉「不含 transition-colors」：往后有人给行
+   * 加过渡属性时，无论加的是 transition-all 还是 transition-[color,outline-color]，这个断言都
+   * 会先红一次，逼着改动显式说明新增的属性。jsdom 里 Tailwind 不生效，但类名字符串读得到，
+   * 所以这层守得住「过渡属性列表」，颜色与粗细仍由浏览器取证。
+   */
+  it('行的过渡只列 background-color，不带上 outline-color', async () => {
+    const mounted = await mountList(['a'].map(id => resource({ id })))
+    try {
+      const row = mounted.rows[0]
+      const transitionTokens = [...row.classList].filter(token => token.startsWith('transition'))
+      expect(transitionTokens).toEqual(['transition-[background-color]'])
+    } finally {
+      mounted.unmount()
+    }
+  })
+
+  /*
    * 回归：焦点进入行**不**自动开预览。预览抽屉内部是原生 <dialog> 的 showModal()，打开
    * 时浏览器把焦点拉进 dialog 并让其后的文档 inert——真机上实测过抽屉一开，row.focus()
    * 就没有响应，Tab 在行间切换这条主路径会当场断掉。预览改由焦点行上的空格触发。

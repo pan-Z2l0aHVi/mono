@@ -71,12 +71,17 @@ function handleNameChange(event: WebUiEvent<WebUiEditableText, 'change'>) {
     tabindex="0" 把行放进 Tab 序列，focus 环由 assets/global.css 的页面级规则画：那条规则
     命中 [tabindex]:not([tabindex='-1'])，颜色与 web-ui 组件的 focus 语言一致。
 
+    过渡只列 background-color（与 AppNav 的 navItemClass 同一个理由）：Tailwind 的
+    transition-colors 包含 outline-color，而它的初始计算值是 currentcolor——从祖先继承来的
+    近黑文字色。留着它，Tab 过去时浏览器会把 focus 环从近黑补间 100ms 到目标浅蓝，
+    表现为边缘先黑一下再变蓝。行上真正会变的只有背景色。
+
     别在这里加本地的 focus-visible:outline-* 覆盖：那条页面规则写在 `@import 'tailwindcss'`
     之后、不属于任何 @layer，而 Tailwind 工具类在 @layer utilities 里——层外样式优先级更高，
     本地覆盖会被静默压掉（实测过：outline-offset 写了 -2px，读出来仍是页面的 2px）。
   -->
   <div
-    class="group relative flex items-center gap-3 px-4 max-[640px]:px-2 py-3 transition-colors duration-100"
+    class="group relative flex items-center gap-3 px-4 max-[640px]:px-2 py-3 transition-[background-color] duration-100"
     :class="[
       rowRadiusClass,
       checked
