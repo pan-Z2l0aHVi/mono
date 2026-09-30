@@ -223,11 +223,16 @@ dialog.is-nested-lower .wui-drawer-drag-zone {
 }
 
 /*
- * 达到关闭阈值的 accent 确认需压过上方 :hover/:active 中性色（拖拽全程 capture
- * 使 hover 恒成立），这里的选择器特异性 (0,3,1) 高于 hover/active 的 (0,3,0)。
+ * 达到关闭阈值的确认态：比拖拽静息态更实的中性灰，取代原来的 accent 蓝。
+ * 55% 这一档是看着真浏览器定的：拖拽全程 capture 使 hover/active 恒成立，40% 那档
+ * 在拖拽中始终可见，确认态必须明显压过它——试过的 25%（比静息态还淡）越过阈值
+ * 读成「变弱」，24% 的静息灰与它几乎无法区分。55% 相对静息 40% 有可辨的一档
+ * 落差，又不至于重到读成实心深色条；再往上（60%）与 55% 的观感差别小于它与 40%
+ * 的差别，收益不抵「更重」。
+ * 这里的选择器特异性 (0,3,1) 高于 hover/active 的 (0,3,0)，靠特异性而非顺序压盖。
  */
 dialog.is-drag-close .wui-drawer-drag-zone .wui-drawer-drag-bar {
-  background: var(--wui-color-accent, #08f);
+  background: color-mix(in srgb, var(--wui-color-text, #1b1b1b) 55%, transparent);
 }
 
 :host([placement='left']) dialog {
@@ -458,19 +463,15 @@ dialog.is-dragging .wui-drawer-drag-zone {
 
 /*
  * 窄视口的层叠基准：同一个 `--wui-drawer-nested-peek-base` 换成更小的 A。
- * 桌面基准（54px）来自 index.ts 的 `CSS.registerProperty` initialValue，这里只覆盖窄视口，
+ * 桌面基准（43.2px）来自 index.ts 的 `CSS.registerProperty` initialValue，这里只覆盖窄视口，
  * 因此 A 的桌面真相源仍只有注册项一处。
  *
- * 36px 来自视觉 pass：窄屏上 320px 抽屉已占去大部分宽度，基准须比桌面小
- * （保持桌面:窄屏 3:2），但仍要守住「底层间距明显大于旧线性 12px」——第一跳
- * 36·ln2 = 24.95px（+108%）。窄屏随桌面同比放大：桌面 36→54，窄屏 24→36，3:2 不变。
- * 早先试 18px 时第一跳只有 12.48px，与旧的 12px 几乎无差别，四层总宽 24.95px 也比
- * 旧线性的 36px 还小，不满足「间隔整体调大」的意图；当时取 24px 得到 16.64px（+39%），
- * 是守住「明显大于 12px」的下限，随桌面放大后落到 36px 才有 +108%。
+ * 28.8px 沿用桌面:窄屏 3:2，窄屏随桌面同比缩小：桌面 54→43.2，窄屏 36→28.8，3:2 不变。
+ * 第一跳仍是 28.8·ln2 = 19.96px，高于旧的 12px 线性步进；四层总宽 39.93px。
  *
- * 窄屏不能照抄桌面的 54px：390px 视口上单层左缘只有 390 − 8 − 320 = 62px，而
- * 54·ln4 = 74.86px 的四层总宽会把最里层推到屏幕外（62 − 74.86 < 0）。36px 让它
- * 落在 62 − 49.91 ≈ 12px，仍在屏内——所以窄屏按同比例 ×1.5 而不是同值。
+ * 屏内余量不再是定 3:2 的理由：390px 视口上单层左缘有 390 − 8 − 320 = 62px，
+ * 桌面基准的四层总宽 43.2·ln4 = 59.89px 也放得下（54px 一档的 74.86px 才会溢出）。
+ * 保留窄屏档是为了不改变既定比例关系，同时给窄屏留出更宽的抽屉可视区。
  *
  * 断点字面量与 shared/overlay/nested-drawer-layers.ts 的 matchMedia 查询各有一份：
  * 跨断点时 JS 侧靠它重算已打开的堆叠，两处必须同步（见该文件的同名常量）。
@@ -479,7 +480,7 @@ dialog.is-dragging .wui-drawer-drag-zone {
  */
 @media (width <= 640px) {
   :host(:not([headless])) {
-    --wui-drawer-nested-peek-base: 36px;
+    --wui-drawer-nested-peek-base: 28.8px;
   }
 }
 

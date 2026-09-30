@@ -24,7 +24,7 @@ import type { WebUiDrawer } from '..'
  * matchMedia 监听后，栈仍停在旧基准，此时 mobileStep 与 desktopStep 只差
  * 3e-5 px 的浮点尾数，`expect(mobileStep).toBeLessThan(desktopStep)` 照样通过——
  * 断言被噪声满足，是一条假绿。改成比值后，未重算时 step/base 停在
- * 54·ln2/36 ≈ 1.040，而两端都重算时应同为 ln2 ≈ 0.693，高 50%，稳定变红。
+ * 43.2·ln2/28.8 ≈ 1.040，而两端都重算时应同为 ln2 ≈ 0.693，高 50%，稳定变红。
  * （这个比值只是「旧基准 / 新基准」的倍数关系，与 A 的具体取值无关：桌面:窄屏
  * 恒为 3:2，所以未重算时永远比 ln2 高出固定比例，判据不随 A 调参失效。）
  *
@@ -139,7 +139,7 @@ function readLefts(drawers: WebUiDrawer[]): number[] {
 /*
  * 有界轮询：跨断点的重算由 matchMedia 的 change 事件异步驱动，不是同步发生。
  * 轮询「几何是否已按新基准收敛」，超时即失败——这正是区分力的来源：
- * 实测去掉 matchMedia 监听后 step/base 停在 54·ln2/36 ≈ 1.040，比应有的 ln2 ≈ 0.693
+ * 实测去掉 matchMedia 监听后 step/base 停在 43.2·ln2/28.8 ≈ 1.040，比应有的 ln2 ≈ 0.693
  * 高 50%，永远不会收敛。（早先写成 `mobileStep < desktopStep` 无效：未重算时两者
  * 只差 3e-5 px 的浮点尾数，断言照样通过。）
  */
@@ -233,11 +233,11 @@ describe('WebUiDrawer 嵌套层叠对数基准（浏览器）', () => {
      *
      * 判据取 step / base 而非 step 本身：两层等宽时该比值恒为 ln(2)，跨断点不变，
      * 因此这是纯关系式断言（不锁任何像素）。区分力来自比值的量级差——真重算时
-     * 两端都 ≈ 0.693；停在旧基准时是 54·ln2 / 36 ≈ 1.040，比 ln(2) 高 50%，
+     * 两端都 ≈ 0.693；停在旧基准时是 43.2·ln2 / 28.8 ≈ 1.040，比 ln(2) 高 50%，
      * 远超浮点噪声。
      *
      * （早先写成 `mobileStep < desktopStep` 是无效判据：未重算时两者只差 3e-5 px
-     * 的浮点尾数，断言照样通过。重算后 step 从 37.43 掉到 24.95，差 33%。）
+     * 的浮点尾数，断言照样通过。重算后 step 从 29.94 掉到 19.96，差 33%。）
      */
     const measureMobileStep = () => steps(leftEdges([lower, top]))[0]
     await waitForConvergence(
