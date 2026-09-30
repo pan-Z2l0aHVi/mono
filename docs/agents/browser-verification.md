@@ -21,7 +21,7 @@
 - 接管既有会话的做法一律不满足隔离要求：`--autoConnect`、attach 到已开调试端口的浏览器、`agent-browser --auto-connect` 都属此列。原因是它们连的不是本次验证自己拉起的浏览器，会连带接管该 profile 里已打开的全部窗口。`pnpm agent:verify` 不在此列——它连的是自己拉起的专用 Chrome 上的随机调试端口。
 - 仅对本地自签名 HTTPS demo 忽略证书错误；不得为外部站点放松证书验证。
 - 验证完成后停止为验证启动的所有 dev server，除非用户要求保留。保留或报告本地 URL 供后续使用。
-- 验证结束后关闭本任务通过 chrome-devtools MCP 打开的浏览器页面；浏览器实例可能被多个 agent 共享，遗留页面会持续占用内存。
+- 验证结束后关闭本任务通过 chrome-devtools MCP 打开的浏览器页面；浏览器实例可能被多个 agent 共享，遗留页面会持续占用内存。优先用 `navigate_page` 复用已有页面，只在需要并行对照时 `new_page`——后者是标签堆积的直接来源。收尾以 `list_pages` 自查实际剩余页数，终态是「只剩一个页面」而不是「零页面」：chrome-devtools-mcp 不允许关闭最后一个页面，硬要清空会卡住，把剩下的那个导航到 `about:blank` 即可。
 
 ## 验证分层
 
