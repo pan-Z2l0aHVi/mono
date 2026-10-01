@@ -1,12 +1,13 @@
 // @vitest-environment jsdom
 
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
-import { createApp, h, nextTick } from 'vue'
+import { createApp, h, nextTick, ref } from 'vue'
 
 import type { ResourceSourceView, ResourceView } from '@/stores/library'
 
 import { ResourceKind } from '../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage'
 
+import { currentScrollY, stubLayout, ROW_ESTIMATE, ROW_HEIGHT, VIEWPORT_HEIGHT } from './__tests__/virtualLayout'
 import ResourceList from './ResourceList.vue'
 
 // 右键菜单的渲染由 web-ui 自己接管，单测只需要它有这两个接口。detail 那一项的用例
@@ -55,6 +56,8 @@ async function mountList(
   overrides: Record<string, unknown> = {},
   handlers: Record<string, unknown> = {}
 ) {
+  // 虚拟列表在 jsdom 里没有高度就算不出窗口，组件会一行都不渲染。见 __tests__/virtualLayout。
+  const restoreLayout = stubLayout()
   const host = document.createElement('div')
   document.body.append(host)
   const app = createApp({
@@ -79,10 +82,14 @@ async function mountList(
   return {
     host,
     rows: [...host.querySelectorAll('[data-resource-row]')],
+    // 虚拟化之后行不再直接挂在容器下，中间多了一层撑总高的定位包裹，所以按 role 认容器，
+    // 不用 parentElement 顺推。
+    container: host.querySelector<HTMLElement>('[role="list"]'),
     contextMenu: host.querySelector('web-ui-context-menu'),
     unmount: () => {
       app.unmount()
       host.remove()
+      restoreLayout()
     }
   }
 }
@@ -269,6 +276,259 @@ describe('ResourceList', () => {
 describe('ResourceList：按住拖动批量勾选', () => {
   afterEach(() => {
     document.body.innerHTML = ''
+  })
+
+  /*
+   * S3：虚拟化之前整个列表都是 DOM，按住拖到底能一路勾到最后一条；虚拟化之后
+   * elementFromPoint 只认窗口内那十几行，不主动把窗口滚下去就永远勾不过边界。
+   * 这条用例钉的是「指针停在视口底边时页面自己会滚」，跨窗口的勾选由浏览器取证补。
+   * window 模式下边缘带按 window.innerHeight 算，不再读列表容器的 rect。
+   */
+  it('指针停在视口底边时页面自动滚动，扫选得以越过窗口边界', async () => {
+    const setChecked = vi.fn<SetChecked>()
+    const resources = Array.from({ length: 200 }, (_, i) => resource({ id: `r${i}` }))
+    const mounted = await mountList(resources, [], { selectionMode: true }, { onSetChecked: setChecked })
+    const hit = stubHitTest()
+    try {
+      const firstRow = mounted.rows[0]
+      firstRow.dispatchEvent(pointer('pointerdown', { button: 0, clientX: 1, clientY: 1 }))
+      // 指针移到视口下边界内侧 8px，落在 32px 的边缘带内。这条守的是「新几何在视口内靠边
+      // 就能触发」——触摸为什么必须这样判、clientY 为什么恒在视口内，由下面那条 touch 用例守。
+      hit.pointAt(firstRow)
+      window.dispatchEvent(pointer('pointermove', { clientX: 2, clientY: VIEWPORT_HEIGHT - 8 }))
+      // 让 rAF 回调跑起来：边缘滚动是按帧推进的
+      await new Promise(resolve => requestAnimationFrame(() => resolve(null)))
+      await new Promise(resolve => requestAnimationFrame(() => resolve(null)))
+      await flushRenders()
+
+      expect(currentScrollY()).toBeGreaterThan(0)
+      window.dispatchEvent(pointer('pointerup'))
+    } finally {
+      hit.restore()
+      mounted.unmount()
+    }
+  })
+
+  /*
+   * 速度上限：指针被拖到视口外很远时，单帧位移不得超过设计上限。
+   *
+   * 旧几何每一支都有 `distance >= ZONE ? 0` 的早退，天然把速度钳在 [0, MAX]；改成「视口内
+   * 靠边」的几何时那层钳制丢了，(1 - d/ZONE) 随 d 线性无界增长——clientY=-1000 时算出
+   * 774px/帧、是 SWEEP_MAX_SPEED 的 32 倍，列表直接「飞」过去、大量行被跳过，用户想停在
+   * 某一行上勾它根本停不住。stepSweepScroll 只钳了滚动上限、没钳速度，所以那道钳制必须
+   * 落在 sweepEdgeSpeed 里。
+   *
+   * 断言用「相对上限的单帧位移」而不是绝对值：上限是实现常量，写死 24 会让调参变成改测试。
+   */
+  it('指针拖到视口外很远时，单帧位移不超过速度上限', async () => {
+    const setChecked = vi.fn<SetChecked>()
+    const resources = Array.from({ length: 400 }, (_, i) => resource({ id: `r${i}` }))
+    const mounted = await mountList(resources, [], { selectionMode: true }, { onSetChecked: setChecked })
+    const hit = stubHitTest()
+    const frame = () => new Promise(resolve => requestAnimationFrame(() => resolve(null)))
+    try {
+      const firstRow = mounted.rows[0]
+      firstRow.dispatchEvent(pointer('pointerdown', { button: 0, clientX: 1, clientY: 1 }))
+      hit.pointAt(firstRow)
+
+      // 拖到视口下沿之外 1000px。若不钳，这里一帧就是数百 px。
+      window.dispatchEvent(pointer('pointermove', { clientX: 2, clientY: VIEWPORT_HEIGHT + 1000 }))
+      await frame()
+      await frame()
+      const jumped = currentScrollY()
+
+      // 速度上限 24px/帧，放行两帧（加上首帧）最多 ~72px。取一个宽松但能区分的界：
+      // 不钳时首帧就是 774px 量级。
+      expect(jumped).toBeLessThanOrEqual(96)
+      expect(jumped).toBeGreaterThan(0)
+      window.dispatchEvent(pointer('pointerup'))
+    } finally {
+      hit.restore()
+      mounted.unmount()
+    }
+  })
+
+  /*
+   * 边缘带内速度贴边最快、离边越远越慢——底部与顶部两侧都要验。
+   *
+   * 这条守的是梯度方向。某一支的 distance 写错（底部写成 clientY 本身、顶部写成
+   * ZONE-clientY）梯度就倒过来：贴着屏幕边速度 0、离边 32px 处反而满速，触摸会「越靠边
+   * 越慢」——一个不会报错、只会让手感变怪的方向性缺陷，两侧对称所以要各测一次。
+   *
+   * 顶部带不能直接比：scrollY=0 时向上滚不动（已经在顶）。所以先滚到中段再测。
+   */
+  it('边缘带内速度贴边最快、离边越远越慢', async () => {
+    const resources = Array.from({ length: 400 }, (_, i) => resource({ id: `r${i}` }))
+    // 同样的两帧，贴边应该比带内靠里滚得更多
+    const measure = async (clientY: number, fromTop = false) => {
+      const setChecked = vi.fn<SetChecked>()
+      const mounted = await mountList(resources, [], { selectionMode: true }, { onSetChecked: setChecked })
+      const hit = stubHitTest()
+      const frame = () => new Promise(resolve => requestAnimationFrame(() => resolve(null)))
+      try {
+        mounted.rows[0].dispatchEvent(pointer('pointerdown', { button: 0, clientX: 1, clientY: 1 }))
+        hit.pointAt(mounted.rows[0])
+        if (fromTop) {
+          // 滚离顶部必须在 pointerdown 之后做：mountList 里的 stubLayout 每次都把 scrollY
+          // 归零，放在它之前滚会被抹掉；而 scrollY 为 0 时向上滚被 maxScrollY 夹住、
+          // 根本退不动，梯度差异就测不出来。
+          window.scrollTo({ top: 5000 })
+          await flushRenders()
+        }
+        // 基线在 pointerdown 之后取：按下这一刻页面可能被夹一下（实测 5000 → 4856），
+        // 拿按下前的值当基线会把那一下算进梯度里。
+        const before = currentScrollY()
+        window.dispatchEvent(pointer('pointermove', { clientX: 2, clientY }))
+        await frame()
+        await frame()
+        return { before, after: currentScrollY() }
+      } finally {
+        hit.restore()
+        mounted.unmount()
+      }
+    }
+
+    // 底部带：贴底边 clientY=底-1 比带内靠里 clientY=底-16 滚得更多
+    const bottomEdge = await measure(VIEWPORT_HEIGHT - 1)
+    const bottomInner = await measure(VIEWPORT_HEIGHT - 16)
+    expect(bottomEdge.after).toBeGreaterThan(bottomEdge.before)
+    expect(bottomEdge.after).toBeGreaterThan(bottomInner.after)
+    expect(bottomInner.after).toBeGreaterThan(bottomInner.before)
+
+    // 顶部带：贴顶边 clientY=1 比带内靠里 clientY=16 退得更多（向上滚，after < before）
+    const topEdge = await measure(1, true)
+    const topInner = await measure(16, true)
+    expect(topEdge.before - topEdge.after).toBeGreaterThan(topInner.before - topInner.after)
+    expect(topInner.before - topInner.after).toBeGreaterThan(0)
+  })
+
+  /*
+   * 触摸端扫选（Block 级回归的护栏）。
+   *
+   * 缺陷本体：sweepEdgeSpeed 原来按「指针越出视口」给速度，而触摸的 clientY 按 Pointer
+   * Events 恒落在 [0, innerHeight]（这一条由本组用例守，与上面 mouse 那条分工不同）——
+   * 手指接触点不可能在视口之外，于是两个分支都是死代码、
+   * speed 恒 0；同时 blockSweepScroll 一律 preventDefault，手指滑动也被拦。净效果是触摸端
+   * 既无边缘自动滚、也滑不动，只能勾到窗口边缘就停住——正是本 task 要消除的能力退化。
+   *
+   * 四条用例分别钉住：边缘带能触发自动滚、长按确认仍能 arm、边缘带内放行带外仍拦、
+   * 以及带外手势不被滑动打断（放行过头会让长按判定失效）。
+   */
+  it('触摸：指针停在视口底边内侧时同样触发边缘自动滚', async () => {
+    // 触摸必须先过 320ms 长按才进入扫选，所以先用假定时器推进长按计时；
+    // 边缘自动滚由 rAF 驱动，假定时器会把 rAF 一起停掉，所以放行之前换回真定时器。
+    vi.useFakeTimers()
+    const setChecked = vi.fn<SetChecked>()
+    const resources = Array.from({ length: 200 }, (_, i) => resource({ id: `r${i}` }))
+    const mounted = await mountList(resources, [], { selectionMode: true }, { onSetChecked: setChecked })
+    const hit = stubHitTest()
+    try {
+      const firstRow = mounted.rows[0]
+      firstRow.dispatchEvent(pointer('pointerdown', { button: 0, clientX: 1, clientY: 1 }, 'touch'))
+      vi.advanceTimersByTime(400)
+      vi.useRealTimers()
+
+      hit.pointAt(firstRow)
+      // 触摸的 clientY 落在视口内靠边处，边缘带必须仍然给速度
+      window.dispatchEvent(pointer('pointermove', { clientX: 2, clientY: VIEWPORT_HEIGHT - 8 }, 'touch'))
+      // 边缘滚动按帧推进，放行两帧
+      await new Promise(resolve => requestAnimationFrame(() => resolve(null)))
+      await new Promise(resolve => requestAnimationFrame(() => resolve(null)))
+      await flushRenders()
+
+      expect(currentScrollY()).toBeGreaterThan(0)
+      window.dispatchEvent(pointer('pointerup', {}, 'touch'))
+    } finally {
+      vi.useRealTimers()
+      hit.restore()
+      mounted.unmount()
+    }
+  })
+
+  it('触摸：边缘带内的 touchmove 放行滚动，带外仍拦住', async () => {
+    vi.useFakeTimers()
+    const resources = Array.from({ length: 200 }, (_, i) => resource({ id: `r${i}` }))
+    const mounted = await mountList(resources, [], { selectionMode: true })
+    const hit = stubHitTest()
+    const touchMove = (clientY: number) => {
+      const event = new Event('touchmove', { bubbles: true, cancelable: true })
+      Object.defineProperty(event, 'touches', { value: [{ clientX: 1, clientY }] })
+      document.dispatchEvent(event)
+      return event
+    }
+    try {
+      mounted.rows[0].dispatchEvent(pointer('pointerdown', { button: 0, clientX: 1, clientY: 1 }, 'touch'))
+      vi.advanceTimersByTime(400)
+
+      // 边缘带内（离下沿 8px）：放行，否则手指滑不动、自动滚又被拦，扫选卡死在窗口边界
+      expect(touchMove(VIEWPORT_HEIGHT - 8).defaultPrevented).toBe(false)
+      // 视口中段：拦住。长按确认与「滑动 = 放弃扫选」都依赖这一条
+      expect(touchMove(VIEWPORT_HEIGHT / 2).defaultPrevented).toBe(true)
+
+      window.dispatchEvent(pointer('pointerup', {}, 'touch'))
+    } finally {
+      vi.useRealTimers()
+      hit.restore()
+      mounted.unmount()
+    }
+  })
+
+  it('触摸：长按确认仍能 arm，且不因边缘带放行而失效', async () => {
+    vi.useFakeTimers()
+    const setChecked = vi.fn<SetChecked>()
+    const mounted = await mountList(
+      ['a', 'b'].map(id => resource({ id })),
+      [],
+      { selectionMode: true },
+      { onSetChecked: setChecked }
+    )
+    try {
+      // 从边缘带内起手：放行滚动不能妨碍长按计时
+      mounted.rows[0].dispatchEvent(
+        pointer('pointerdown', { button: 0, clientX: 1, clientY: VIEWPORT_HEIGHT - 8 }, 'touch')
+      )
+      vi.advanceTimersByTime(400)
+
+      expect(setChecked).toHaveBeenCalledExactlyOnceWith('a', true)
+      window.dispatchEvent(pointer('pointerup', {}, 'touch'))
+    } finally {
+      vi.useRealTimers()
+      mounted.unmount()
+    }
+  })
+
+  it('触摸：手势不在边缘带内时，手指滑动仍被拦、扫选不被滚动打断', async () => {
+    vi.useFakeTimers()
+    const setChecked = vi.fn<SetChecked>()
+    const mounted = await mountList(
+      ['a', 'b', 'c'].map(id => resource({ id })),
+      [],
+      { selectionMode: true },
+      { onSetChecked: setChecked }
+    )
+    const hit = stubHitTest()
+    try {
+      mounted.rows[0].dispatchEvent(pointer('pointerdown', { button: 0, clientX: 1, clientY: 100 }, 'touch'))
+      vi.advanceTimersByTime(400)
+      expect(setChecked).toHaveBeenCalledExactlyOnceWith('a', true)
+
+      // 视口中段滑动：被拦，页面不滚，扫选也不该因此中断到下一行
+      const event = new Event('touchmove', { bubbles: true, cancelable: true })
+      Object.defineProperty(event, 'touches', { value: [{ clientX: 1, clientY: 120 }] })
+      document.dispatchEvent(event)
+      expect(event.defaultPrevented).toBe(true)
+
+      // 扫选仍激活：继续划过下一行照常勾上
+      hit.pointAt(mounted.rows[1])
+      window.dispatchEvent(pointer('pointermove', { clientX: 1, clientY: 130 }, 'touch'))
+      expect(setChecked).toHaveBeenCalledWith('b', true)
+
+      window.dispatchEvent(pointer('pointerup', {}, 'touch'))
+    } finally {
+      vi.useRealTimers()
+      hit.restore()
+      mounted.unmount()
+    }
   })
 
   it('从未选中的行按住划过，划过的行全部勾上', async () => {
@@ -660,7 +920,7 @@ describe('ResourceList：键盘呼出右键菜单', () => {
     const mounted = await mountList([resource({ id: 'r1' })])
     try {
       const row = mounted.rows[0] as HTMLElement
-      const container = row.parentElement as HTMLElement
+      const container = mounted.container!
       row.focus()
       await nextTick()
       expect(labelsOf(mounted.host)).toContain('预览')
@@ -685,11 +945,13 @@ describe('ResourceList：键盘呼出右键菜单', () => {
   it('容器上按 Shift+F10 先把焦点交给行', async () => {
     const mounted = await mountList([resource({ id: 'r1' }), resource({ id: 'r2' })])
     try {
-      const container = mounted.host.querySelector('[data-resource-row]')?.parentElement as HTMLElement
+      const container = mounted.container!
       container.focus()
       expect(document.activeElement).toBe(container)
 
       keydown(container, { key: 'F10', shiftKey: true })
+      // 焦点交接跨一个 tick：scrollToIndex 触发的渲染完成后才落焦，见 focusIndex
+      await flushRenders()
 
       expect(document.activeElement).toBe(mounted.rows[0])
     } finally {
@@ -700,7 +962,7 @@ describe('ResourceList：键盘呼出右键菜单', () => {
   it('裸 F10 不当作 context-menu 键，交给浏览器', async () => {
     const mounted = await mountList([resource({ id: 'r1' })])
     try {
-      const container = mounted.host.querySelector('[data-resource-row]')?.parentElement as HTMLElement
+      const container = mounted.container!
       container.focus()
 
       const event = keydown(container, { key: 'F10' })
@@ -784,6 +1046,17 @@ function keydown(target: Element, init: KeyboardEventInit) {
 }
 
 /*
+ * 一次键盘导航要跨两轮渲染：focusIndex 先改 activeIndex 并 scrollToIndex，滚动的回调再触发
+ * 虚拟窗口重算、新行挂载，所以单次 nextTick 之后 DOM 仍可能停在上一帧。断言涉及行元素时
+ * 多冲一帧，避免把「还没渲染完」误读成「行为不对」。
+ */
+async function flushRenders() {
+  await nextTick()
+  await nextTick()
+  await nextTick()
+}
+
+/*
  * 预览的判据从「hover 行 + 空格」换成「焦点进入行」（#187 的 hover 入口已下线）。键盘
  * 用户没有 hover，列表的键盘可达性靠 focus 承担，所以 tab stop 与 focus 环一起钉在这里。
  *
@@ -796,20 +1069,179 @@ describe('ResourceList：键盘导航与预览入口', () => {
   })
 
   /*
-   * 键盘用户没有 hover，focus 环是他唯一的到位指示。环由 assets/global.css 的页面级规则画，
-   * 那条规则命中 [tabindex]:not([tabindex='-1'])，所以这里钉住容器与行都落在它的命中范围内：
-   * 行一旦被移出 Tab 序列，键盘用户就彻底看不见自己在哪一行。环的颜色与粗细由浏览器取证，
-   * jsdom 里 Tailwind 不生效，读不到。
+   * 虚拟化本体：1000 条资源在 DOM 里只留下窗口内的十几行。
+   *
+   * 撑总高的内层 div 按 getTotalSize 给高度，整页据此产生滚动条，所以「列表有多长」与
+   * 「DOM 里有多少行」从此解耦。
+   *
+   * window 模式（滚动元素是 window）下两件事与 element 模式不同，都在这里钉住：
+   * 容器不再是滚动容器（没有 overflow-y-auto / min-h-0，那是内部滚动时代的产物）；
+   * 行的落点是 row.start - scrollMargin 而不是 row.start。
+   *
+   * jsdom 里行高由 __tests__/virtualLayout 的桩给（真实高 40、估值 64），所以总高是
+   * 「已量行 × 40 + 未量行 × 64」的混合值，不是纯估值。真实浏览器里同样是这个混合形态。
    */
-  it('容器与每一行都是 tab stop，落在页面级 focus 环的命中范围内', async () => {
+  it('长列表只渲染虚拟窗口内的行，页面按总高滚动', async () => {
+    const ids = Array.from({ length: 1000 }, (_, index) => `r${index}`)
+    const mounted = await mountList(ids.map(id => resource({ id })))
+    try {
+      expect(mounted.rows.length).toBeGreaterThan(0)
+      expect(mounted.rows.length).toBeLessThan(100)
+
+      // 滚动元素是 window，容器不再承担滚动职责
+      const container = mounted.container!
+      expect(container.className).not.toContain('overflow-y-auto')
+      expect(container.className).not.toContain('min-h-0')
+
+      // 撑总高的内层 = 已量到的行按真实高度 + 还没量到的行按估值。
+      // 不去数「量到了几行」：overscan 让窗口外几行也已挂载并被量到，DOM 行数与已量行数
+      // 不是一回事，数错会得到一个看起来合理但对不上的期望值。改为直接读包裹层高度，
+      // 断言它落在「全估值」与「全真实」之间——真实行高确实进来了，且没有把未量到的行
+      // 误算成真实高度。
+      const sizer = container.firstElementChild as HTMLElement
+      const total = Number(sizer.style.height.replace('px', ''))
+      const allEstimate = 1000 * ROW_ESTIMATE
+      const allMeasured = 1000 * ROW_HEIGHT
+      expect(total).toBeLessThan(allEstimate)
+      expect(total).toBeGreaterThan(allMeasured)
+
+      // 行按 row.start - scrollMargin 定位。jsdom 的 rect 恒为 0，listOffset 也就是 0，
+      // 于是这一项等于 row.start——但减法必须在模板里，写错了这里也看不出来，所以另外
+      // 用「行位确实按测量出的高度递进」这一点做实质检查。
+      const tops = mounted.rows.map(row => (row.parentElement as HTMLElement).style.transform)
+      expect(tops[0]).toBe('translateY(0px)')
+      expect(tops[1]).toBe(`translateY(${ROW_HEIGHT}px)`)
+    } finally {
+      mounted.unmount()
+    }
+  })
+
+  /*
+   * 无障碍：aria-setsize / aria-posinset 报的是**完整列表**，不是窗口内的行数。
+   *
+   * 虚拟化之后 DOM 里只有十几行，不补这两个属性的话读屏会把列表长度念成十几，屏幕阅读器
+   * 用户会以为整个资源库就这么大（W3C APG 要求动态加载的集合补齐）。
+   */
+  it('行报出完整列表的条数与位置，而不是窗口内的行数', async () => {
+    const ids = Array.from({ length: 1000 }, (_, index) => `r${index}`)
+    const mounted = await mountList(ids.map(id => resource({ id })))
+    try {
+      expect(mounted.container!.getAttribute('role')).toBe('list')
+      for (const row of mounted.rows) {
+        expect(row.getAttribute('role')).toBe('listitem')
+        expect(row.getAttribute('aria-setsize')).toBe('1000')
+        // posinset 从 1 起，与 index 对齐
+        expect(row.getAttribute('aria-posinset')).toBe(String(Number(row.getAttribute('data-resource-index')) + 1))
+      }
+    } finally {
+      mounted.unmount()
+    }
+  })
+
+  /*
+   * 撑总高的内层 div 承载全部列表语义，不能标 aria-hidden：那会把行一起对读屏隐去，
+   * 上面刚补的 role / aria-setsize / aria-posinset 全部传达不出去，外层的 role="list"
+   * 变成一个「0 项的列表」。
+   *
+   * 只查自己的子树：宿主 web-ui-context-menu 内部有 web-ui-spinner，它自带
+   * aria-hidden="true"，与本组件无关。
+   */
+  it('列表语义没有被 aria-hidden 遮住', async () => {
     const mounted = await mountList(['a', 'b'].map(id => resource({ id })))
     try {
-      const container = mounted.host.querySelector('[data-resource-row]')?.parentElement
-      expect(container?.getAttribute('tabindex')).toBe('0')
-      expect(mounted.rows.map(row => row.getAttribute('tabindex'))).toEqual(['0', '0'])
-      for (const element of [...mounted.rows, container!]) {
-        expect(element.matches("[tabindex]:not([tabindex='-1'])")).toBe(true)
+      const list = mounted.container!
+      const sizer = list.firstElementChild as HTMLElement
+      expect(list.hasAttribute('aria-hidden')).toBe(false)
+      expect(sizer.hasAttribute('aria-hidden')).toBe(false)
+      // 逐个祖先查，不整片扫：宿主 web-ui-context-menu 里有 web-ui-spinner，它自带
+      // aria-hidden="true"，与本组件无关。
+      for (let node: HTMLElement | null = sizer; node && node !== mounted.host; node = node.parentElement) {
+        expect(node.hasAttribute('aria-hidden')).toBe(false)
       }
+      // 行本身可达：role 与 aria-setsize 没有被任何一层遮掉
+      for (const row of mounted.rows) {
+        expect(row.closest('[aria-hidden="true"]')).toBeNull()
+      }
+    } finally {
+      mounted.unmount()
+    }
+  })
+
+  /*
+   * 回归：useCachedMeasurements 必须保持关闭。
+   *
+   * virtual-core 的这个选项看起来正好能防「列表被抽屉开合隐藏时 ResizeObserver 把所有项
+   * 报 0」，但它同时让默认 measureElement 只返回
+   * `itemSizeCache.get(key) ?? estimateSize(index)`，永远读不到真实高度。首次测量返回
+   * 估值 → 与估值无 delta → itemSizeCache 始终为空 → 每次都回落估值，真实行高一次也进不去，
+   * 总高永远是「条数 × 估值」。
+   *
+   * 这条用断言直接钉住那个坏结果本身：开着它时可见行也按估值计入，总高恰等于
+   * 条数 × 估值，真实行高一点都进不来。桩里的 ResizeObserver 是有实现的（见
+   * __tests__/virtualLayout），行高确实量得到，所以开着与关着的差别是可观测的：
+   * 关着时总高落在（条数 × 真实行高, 条数 × 估值）区间内，开着时恰好等于上界。
+   */
+  it('useCachedMeasurements 保持关闭：真实行高必须进得了虚拟窗口', async () => {
+    const ids = Array.from({ length: 50 }, (_, index) => `r${index}`)
+    const mounted = await mountList(ids.map(id => resource({ id })))
+    try {
+      const sizer = mounted.container!.firstElementChild as HTMLElement
+      const measured = mounted.rows.length
+      expect(measured).toBeGreaterThan(0)
+      expect(measured).toBeLessThan(50)
+
+      // 选项开着时 bug 的形态：可见行也按估值计入，总高 = 条数 × 估值，一行都不少。
+      // 关着时已量到的行按真实高度计入，总高严格小于纯估值——这个差值就是真实行高进来了
+      // 的证据，也正是那个选项会抹掉的东西。
+      const total = Number(sizer.style.height.replace('px', ''))
+      expect(total).toBeLessThan(ids.length * ROW_ESTIMATE)
+      expect(total).toBeGreaterThan(ids.length * ROW_HEIGHT)
+    } finally {
+      mounted.unmount()
+    }
+  })
+
+  /*
+   * roving tabindex：列表在 Tab 序列里只占一个 tab stop，活动行是唯一可 Tab 到的行。
+   *
+   * 虚拟化之前每行 tabindex="0"，Tab 能逐行走完整个资源库。虚拟化之后只有窗口内的行在
+   * DOM 里，每行各自是 tab stop 就成了陷阱：Tab 会在窗口边界直接跳出列表，而视觉上还
+   * 剩几百行没滚过，键盘用户会以为列表就这么长。W3C APG 的做法是容器单一 tab stop +
+   * 行内 roving，方向键在行间移动活动行。
+   *
+   * 活动行仍然要落在页面级 focus 环的命中范围内（那条规则命中
+   * [tabindex]:not([tabindex='-1'])），否则键盘用户看不见自己在哪一行。环的颜色与粗细
+   * 由浏览器取证，jsdom 里 Tailwind 不生效。
+   */
+  it('列表只占一个 tab stop，活动行是唯一可 Tab 到的行', async () => {
+    const mounted = await mountList(['a', 'b', 'c'].map(id => resource({ id })))
+    try {
+      const container = mounted.container!
+      expect(container.getAttribute('tabindex')).toBe('0')
+      // 默认活动行是首行
+      expect(mounted.rows.map(row => row.getAttribute('tabindex'))).toEqual(['0', '-1', '-1'])
+      // 页面级 focus 环只画在活动行与容器上
+      expect(container.matches("[tabindex]:not([tabindex='-1'])")).toBe(true)
+      expect(mounted.rows[0]!.matches("[tabindex]:not([tabindex='-1'])")).toBe(true)
+      expect(mounted.rows[1]!.matches("[tabindex]:not([tabindex='-1'])")).toBe(false)
+    } finally {
+      mounted.unmount()
+    }
+  })
+
+  /*
+   * roving 随焦点走：方向键把活动行挪到第 2 行之后，tabindex 也要跟着换，否则 Tab 序列
+   * 会回到第 1 行——用户已经移到第 2 行，按 Tab 却回到起点。
+   */
+  it('方向键移动焦点时 roving tabindex 跟着换行', async () => {
+    const mounted = await mountList(['a', 'b', 'c'].map(id => resource({ id })))
+    try {
+      ;(mounted.rows[0] as HTMLElement).focus()
+      keydown(mounted.rows[0]!, { key: 'ArrowDown' })
+      await nextTick()
+      await nextTick()
+
+      expect(mounted.rows.map(row => row.getAttribute('tabindex'))).toEqual(['-1', '0', '-1'])
     } finally {
       mounted.unmount()
     }
@@ -963,6 +1395,13 @@ describe('ResourceList：键盘导航与预览入口', () => {
     }
   })
 
+  /*
+   * 方向键在行间移动焦点，Home / End 到首尾。
+   *
+   * 全部按数据下标算，边界是 resources.length 而不是「已渲染了几行」。虚拟化之后这两者
+   * 差着一整屏——旧实现按 querySelectorAll 拿到的行数组取末位，End 只会跳到最后一个已
+   * 渲染行，而不是最后一条资源。
+   */
   it('方向键在行间移动焦点，Home / End 到首尾', async () => {
     const mounted = await mountList(['a', 'b', 'c'].map(id => resource({ id })))
     try {
@@ -970,16 +1409,98 @@ describe('ResourceList：键盘导航与预览入口', () => {
       a.focus()
 
       keydown(a, { key: 'ArrowDown' })
+      await nextTick()
       expect(document.activeElement).toBe(b)
 
       keydown(b, { key: 'ArrowDown' })
+      await nextTick()
       expect(document.activeElement).toBe(c)
 
       keydown(c, { key: 'Home' })
+      await nextTick()
       expect(document.activeElement).toBe(a)
 
       keydown(a, { key: 'End' })
+      await nextTick()
       expect(document.activeElement).toBe(c)
+    } finally {
+      mounted.unmount()
+    }
+  })
+
+  /*
+   * 回归：End 必须到**最后一条资源**，不是最后一个已渲染行。
+   *
+   * 虚拟窗口一次只渲染十几行，但列表可能有上千条。旧实现对 querySelectorAll 的结果取
+   * length - 1，虚拟化之后那个下标落在窗口末尾，End 按十几次就到头了——列表剩下几百行
+   * 根本到不了。这里用 1000 条把窗口撑开，再断言活动下标真的到了 999。
+   *
+   * 断言读的是容器上的 data-active-index 而不是 DOM：目标行此时还在虚拟窗口之外，
+   * 根本没有对应的行元素，roving tabindex 也无从体现。真实滚动到位与焦点落点由浏览器
+   * 验证取证。
+   */
+  it('End 到最后一条资源而不是最后一个已渲染行', async () => {
+    const ids = Array.from({ length: 1000 }, (_, index) => `r${index}`)
+    const mounted = await mountList(ids.map(id => resource({ id })))
+    try {
+      // 先确认窗口确实被撑开：渲染行数远小于总数，否则这条用例什么也没证明
+      expect(mounted.rows.length).toBeGreaterThan(0)
+      expect(mounted.rows.length).toBeLessThan(100)
+
+      const first = mounted.rows[0] as HTMLElement
+      first.focus()
+      keydown(first, { key: 'End' })
+      await nextTick()
+
+      expect(mounted.container!.dataset.activeIndex).toBe('999')
+    } finally {
+      mounted.unmount()
+    }
+  })
+
+  /*
+   * 回归：方向键要能穿过虚拟窗口边界，不能在窗口底卡住。
+   *
+   * 旧实现把 indexOf 打在「已渲染行数组」上，ArrowDown 走到数组末尾 next === index 就
+   * return，焦点锁死在窗口底——长按方向键走不出那一屏。现在按数据下标算，只要还有下一条
+   * 资源就继续往下。
+   *
+   * 判据是「下标持续递增直到列表末尾」，因为 jsdom 里的 window.scrollTo 是真实现
+   * （见 __tests__/virtualLayout），窗口会跟着 scrollToIndex 滚动并渲染出后续行。
+   * 旧实现在这个场景下会停在首个越界的窗口底，第二个循环体就取不到元素而抛错。
+   *
+   * 按 End 而不是逐格按到底：End 内部同样走 focusIndex + scrollToIndex，是同一条路径，
+   * 但把 998 次按键与渲染压成一次。并用 ArrowDown 单独验「越界那一次仍推进、仍吃掉按键」，
+   * 那是旧实现会 return 的地方。
+   */
+  it('方向键穿过虚拟窗口边界继续移动，不在窗口底卡住', async () => {
+    const ids = Array.from({ length: 1000 }, (_, index) => `r${index}`)
+    const mounted = await mountList(ids.map(id => resource({ id })))
+    try {
+      const first = mounted.rows[0] as HTMLElement
+      first.focus()
+
+      // 从第 0 行按 End 跨过整个虚拟窗口到第 999 行：中间几百行从未进入过 DOM。
+      // 旧实现在窗口底 next === index 直接 return，活动下标会停在窗口末行。
+      const endEvent = keydown(first, { key: 'End' })
+      await flushRenders()
+      expect(mounted.container!.dataset.activeIndex).toBe('999')
+      expect(endEvent.defaultPrevented).toBe(true)
+
+      // 越界那一次仍要推进：ArrowDown 落在窗口末行上时，目标行此刻还在窗口外。
+      // 现在它已在视口内（End 刚把它滚进来），所以从它身上再按一次走到边界。
+      const last =
+        mounted.host.querySelector<HTMLElement>('[data-resource-index="999"]') ??
+        [...mounted.host.querySelectorAll<HTMLElement>('[data-resource-row]')].at(-1)!
+      const homeEvent = keydown(last, { key: 'Home' })
+      await flushRenders()
+      expect(mounted.container!.dataset.activeIndex).toBe('0')
+      expect(homeEvent.defaultPrevented).toBe(true)
+
+      // 回到窗口底附近再连按两次 ArrowDown，确认下标是「+1」而不是被钉住。
+      keydown(mounted.host.querySelector<HTMLElement>('[data-resource-index="0"]')!, { key: 'ArrowDown' })
+      await flushRenders()
+      expect(mounted.container!.dataset.activeIndex).toBe('1')
     } finally {
       mounted.unmount()
     }
@@ -1061,9 +1582,10 @@ describe('ResourceList：键盘导航与预览入口', () => {
       { activeResourceId: 'b' }
     )
     try {
-      const container = mounted.host.querySelector('[data-resource-row]')!.parentElement as HTMLElement
+      const container = mounted.container!
       container.focus()
       keydown(container, { key: 'Enter' })
+      await flushRenders()
 
       expect(document.activeElement).toBe(mounted.rows[1])
     } finally {
@@ -1074,9 +1596,10 @@ describe('ResourceList：键盘导航与预览入口', () => {
   it('没有活动行时，容器上 ArrowDown 把焦点交给首行', async () => {
     const mounted = await mountList(['a', 'b'].map(id => resource({ id })))
     try {
-      const container = mounted.host.querySelector('[data-resource-row]')!.parentElement as HTMLElement
+      const container = mounted.container!
       container.focus()
       keydown(container, { key: 'ArrowDown' })
+      await flushRenders()
 
       expect(document.activeElement).toBe(mounted.rows[0])
     } finally {
@@ -1089,7 +1612,7 @@ describe('ResourceList：键盘导航与预览入口', () => {
     const detail = vi.fn<RowHandler>()
     const mounted = await mountList([resource({ id: 'r1' })], [], {}, { onSelect: select, onDetail: detail })
     try {
-      const container = mounted.host.querySelector('[data-resource-row]')!.parentElement as HTMLElement
+      const container = mounted.container!
       container.focus()
       const event = keydown(container, { key: 'a' })
 
@@ -1099,6 +1622,287 @@ describe('ResourceList：键盘导航与预览入口', () => {
       expect(document.activeElement).toBe(container)
     } finally {
       mounted.unmount()
+    }
+  })
+})
+
+/*
+ * 虚拟化特有的失效路径：虚拟化之前全部行常驻，行的卸载不可能发生，所以下面几条
+ * 都是虚拟化之后才出现的行为。
+ */
+describe('ResourceList：编辑态与虚拟窗口的关系', () => {
+  afterEach(() => {
+    document.body.innerHTML = ''
+  })
+
+  /*
+   * B1 的核心。编辑中的行被滚出窗口 → 行卸载 → editable-text 走 disconnectedCallback，
+   * 而它只释放按键与 autosize，不提交也不取消；提交只有 _onBlur 与 Enter/Escape 两条，
+   * 都要求焦点还在那个 textarea 上。DOM 被摘掉时两条都不走，草稿就此静默丢失，
+   * editingNameKey 还留在一个没有行的下标上，滚回来只会渲染出一个空编辑器。
+   */
+  /*
+   * 第一道防线单独的可观测场景：视口为 0 时夹取放弃，并入是唯一防线。
+   *
+   * 正常情况下两道防线互相掩盖——夹取把编辑行拉进视口，虚拟窗口就自然会渲染它，所以
+   * 「行还在 DOM 里」单靠夹取也成立，删掉并入照样绿。要单独验并入，得让夹取确实动不了：
+   * 页面被隐藏（innerHeight 0，抽屉/标签页切走、或浏览器最小化）时 clampEditingRowIntoView
+   * 在 !viewport 处直接 return，这时编辑行若不在渲染窗口内就会被卸载，草稿丢失。
+   *
+   * 这不是构造出来的边角：editable-text 的 disconnectedCallback 不提交也不取消，
+   * 行一被摘掉，用户输入的草稿就没了。
+   */
+  it('视口为 0、夹取动不了时，编辑行仍靠并入留在 DOM 里', async () => {
+    const resources = Array.from({ length: 1000 }, (_, i) => resource({ id: `r${i}`, title: `资源 ${i}` }))
+    const mounted = await mountList(resources, [], { editingNameKey: 'r900' })
+    const setViewport = (height: number) =>
+      Object.defineProperty(window, 'innerHeight', { configurable: true, get: () => height })
+    try {
+      await flushRenders()
+      // 视口归零：夹取在 !viewport 处 return，不会把编辑行拉回来
+      setViewport(0)
+      window.scrollTo({ top: 20_000 })
+      await flushRenders()
+
+      // 视口为 0 时「在不在视口内」已无意义，判据落回 DOM：行与编辑器都还在
+      const editingRow = mounted.host.querySelector('[data-resource-id="r900"]')
+      expect(editingRow).not.toBeNull()
+      expect(editingRow!.querySelector('web-ui-editable-text')).not.toBeNull()
+
+      // 对照组：同样远离窗口、没进编辑态的行不在 DOM。并排才能说明「编辑行在」是因为
+      // 并入，而不是因为它恰好被渲染出来。
+      expect(mounted.host.querySelector('[data-resource-id="r950"]')).toBeNull()
+    } finally {
+      mounted.unmount()
+    }
+  })
+
+  /*
+   * pin 走的是夹取而不是 scrollToIndex：越界时只把边界收到刚好装得下这一行，窗口内的
+   * 滚动一个字节都不动。用 scrollToIndex 会把人从当前看的位置拽到行首。
+   * 目标行取 r900——它在 1000 行的尾部，mount 时远在视口之外，只有夹取会把它拉进来。
+   * window 模式下滚动位置读 window.scrollY。
+   */
+  it('编辑行远在视口之外时夹回视口，而不是重置滚动位置', async () => {
+    const resources = Array.from({ length: 1000 }, (_, i) => resource({ id: `r${i}`, title: `资源 ${i}` }))
+    const mounted = await mountList(resources, [], { editingNameKey: 'r900' })
+    try {
+      await flushRenders()
+      // 尾部行要滚到接近底部才装得下：视口 600px、行高 40px
+      expect(currentScrollY()).toBeGreaterThan(0)
+      expect(mounted.host.querySelector('[data-resource-id="r900"]')).not.toBeNull()
+    } finally {
+      mounted.unmount()
+    }
+  })
+
+  /*
+   * 夹取而不是 scrollToIndex——两者在「越界时」的表现不同，要分两处验。
+   *
+   * 这里验「视口内时一个字节都不动」：编辑行取 r500，进入编辑态时夹取已把它拉到能看见
+   * 的高度。此刻再往下滚一点点（不越出视口），滚动位置必须原样保留。
+   * scrollToIndex 在这里会把位置重置到行首——那是它与夹取的分界。
+   *
+   * 注意不能滚太远：滚出行高之外视口，pin 的第二道防线会把它夹回来（那是「越界时」的
+   * 行为，由下面两条用例负责），这里只管视口内。
+   */
+  it('编辑行本来就在视口内时滚动位置不动', async () => {
+    const resources = Array.from({ length: 1000 }, (_, i) => resource({ id: `r${i}`, title: `资源 ${i}` }))
+    const mounted = await mountList(resources, [], { editingNameKey: 'r500' })
+    try {
+      await flushRenders()
+      // 夹取先把它拉到能看见的位置：它在中段，落点必然远离列表开头
+      const clamped = currentScrollY()
+      expect(clamped).toBeGreaterThan(1000)
+
+      // 行已在视口内，滚一个远小于视口高度的量（200 < 600），仍在同一屏内
+      window.scrollTo({ top: clamped + 200 })
+      await flushRenders()
+
+      expect(currentScrollY()).toBe(clamped + 200)
+      // 不该被重置到行首附近（scrollToIndex 的行为）
+      expect(currentScrollY()).not.toBeLessThan(1000)
+    } finally {
+      mounted.unmount()
+    }
+  })
+
+  /*
+   * 编辑期间用户随手把列表滚走时，编辑行要被夹回视野——否则行还在 DOM 里（草稿没丢），
+   * 但用户正对着一个看不见的编辑器继续打字。滚到底把编辑行彻底推出视口。
+   */
+  it('编辑期间滚走列表会把编辑行夹回视野', async () => {
+    const resources = Array.from({ length: 1000 }, (_, i) => resource({ id: `r${i}`, title: `资源 ${i}` }))
+    const editingNameKey = ref<string | null>('r2')
+    const host = document.createElement('div')
+    document.body.append(host)
+    const restoreLayout = stubLayout()
+    const app = createApp({
+      render: () =>
+        h(ResourceList, {
+          resources,
+          activeResourceId: null,
+          checkedIds: [],
+          selectionMode: false,
+          editingNameKey: editingNameKey.value,
+          editorRef: () => () => {},
+          loading: false,
+          runtimeAvailable: true,
+          emptyDescription: '',
+          mediaUrlFor: () => null
+        })
+    })
+    app.mount(host)
+    await flushRenders()
+    try {
+      const container = host.querySelector<HTMLElement>('[role="list"]')!
+      expect(currentScrollY()).toBe(0)
+
+      // 滚到 20000，把第 2 行彻底甩出视口。window 模式下滚动的是页面，位置读 scrollY。
+      window.scrollTo({ top: 20_000 })
+      await flushRenders()
+
+      const editingRow = host.querySelector('[data-resource-id="r2"]')
+      expect(editingRow).not.toBeNull()
+      // 夹回之后编辑行仍在视口内：它的起点不小于 scrollY，底也不超出视口下沿。
+      // 行的 transform 是 row.start - listOffset，jsdom 里 rect 恒为 0 故 listOffset 为 0。
+      const offsetTop = Number(editingRow!.parentElement!.style.transform.match(/translateY\((-?\d+)px\)/)?.[1] ?? 0)
+      expect(currentScrollY()).toBeLessThanOrEqual(offsetTop)
+      expect(offsetTop + ROW_HEIGHT).toBeLessThanOrEqual(currentScrollY() + VIEWPORT_HEIGHT)
+    } finally {
+      app.unmount()
+      host.remove()
+      restoreLayout()
+    }
+  })
+})
+
+/*
+ * S1：getItemKey 用资源 id，itemSizeCache 按 key 持久，setOptions 只在 anchorTo === 'end'
+ * 时做 key 变化检测。顺序变了之后每条资源的缓存高度跟着 id 走，行位必须跟着资源走。
+ */
+describe('ResourceList：顺序变化后的行位', () => {
+  afterEach(() => {
+    document.body.innerHTML = ''
+  })
+
+  it('反转顺序后行仍按新下标定位，不按旧缓存错位', async () => {
+    const resources = Array.from({ length: 40 }, (_, i) => resource({ id: `r${i}` }))
+    const host = document.createElement('div')
+    document.body.append(host)
+    const restoreLayout = stubLayout()
+    const order = ref(resources)
+    const app = createApp({
+      render: () =>
+        h(ResourceList, {
+          resources: order.value,
+          activeResourceId: null,
+          checkedIds: [],
+          selectionMode: false,
+          editingNameKey: null,
+          editorRef: () => () => {},
+          loading: false,
+          runtimeAvailable: true,
+          emptyDescription: '',
+          mediaUrlFor: () => null
+        })
+    })
+    app.mount(host)
+    await flushRenders()
+    try {
+      const before = [...host.querySelectorAll('[data-resource-row]')].map(node =>
+        node.getAttribute('data-resource-index')
+      )
+      expect(before.length).toBeGreaterThan(0)
+
+      order.value = [...resources].reverse()
+      await flushRenders()
+
+      // 反转之后第 0 行是原来的最后一条。行位跟着资源走，断言的是下标与 id 对得上，
+      // 不是 DOM 顺序本身——DOM 顺序由虚拟窗口的排序保证。
+      const rows = [...host.querySelectorAll('[data-resource-row]')]
+      for (const node of rows) {
+        const index = Number(node.getAttribute('data-resource-index'))
+        const id = node.getAttribute('data-resource-id')
+        expect(id).toBe(`r${39 - index}`)
+      }
+      const indices = rows.map(node => Number(node.getAttribute('data-resource-index')))
+      expect(indices).toEqual([...indices].sort((a, b) => a - b))
+    } finally {
+      app.unmount()
+      host.remove()
+      restoreLayout()
+    }
+  })
+})
+
+/*
+ * S2：落焦轮询原本没有取消机制，方向键连按时先发的那一轮可能在后一轮落焦之后才等到
+ * 目标行，把焦点从用户已经移开的行拽回去；组件卸载后还会一路空转到超时上限。
+ */
+describe('ResourceList：连按方向键与卸载后的落焦', () => {
+  afterEach(() => {
+    document.body.innerHTML = ''
+  })
+
+  /*
+   * 竞态的形状：先按 End 落焦到第 999 行，那一行此刻还没挂载，轮询在等；不等它落定又按
+   * 一下方向键，第二次请求把焦点交给第 1 行。第一轮醒来时如果没有请求号可核对，就会把
+   * 焦点从第 1 行拽回第 999 行——方向键连按（最常见的键盘用法）最忌讳这个。
+   */
+  it('连按方向键时，先发的那一轮不会把焦点拽回它自己的目标', async () => {
+    const resources = Array.from({ length: 1000 }, (_, i) => resource({ id: `r${i}` }))
+    const mounted = await mountList(resources)
+    try {
+      const container = mounted.container!
+      container.focus()
+      keydown(container, { key: 'Enter' })
+      await flushRenders()
+      const firstRow = mounted.rows[0]!
+      expect(document.activeElement).toBe(firstRow)
+
+      keydown(firstRow, { key: 'End' })
+      // 不等第一轮落定就再按一下：此时焦点仍在第 0 行，第二次请求的目标是第 1 行
+      keydown(firstRow, { key: 'ArrowDown' })
+      // 放行足够长的时间让第一轮轮询醒来（16ms 一跳）
+      await new Promise(resolve => setTimeout(resolve, 120))
+      await flushRenders()
+
+      expect(document.activeElement?.getAttribute('data-resource-index')).toBe('1')
+    } finally {
+      mounted.unmount()
+    }
+  })
+
+  it('卸载之后落焦轮询不再空转', async () => {
+    const resources = ['a', 'b', 'c'].map(id => resource({ id }))
+    const mounted = await mountList(resources)
+    const container = mounted.container!
+    container.focus()
+    // End 要滚过整段列表才落焦，轮询在目标行出现之前会先排上好几跳
+    keydown(container, { key: 'End' })
+    await flushRenders()
+
+    // 假定时器：把已排出去的跳握在手里，逐个唤醒，看它还排不排新的
+    const scheduled: (() => void)[] = []
+    const originalSetTimeout = globalThis.setTimeout
+    globalThis.setTimeout = ((fn: () => void) => {
+      scheduled.push(fn)
+      return 0
+    }) as unknown as typeof setTimeout
+    let drained = 0
+    try {
+      mounted.unmount()
+      // 唤醒全部已排的跳，直到不再有新跳。没有取消机制时这会一直排到 1000ms 上限。
+      while (scheduled.length) {
+        const fn = scheduled.shift()!
+        drained++
+        if (drained > 200) break
+        fn()
+      }
+      expect(drained).toBeLessThanOrEqual(1)
+    } finally {
+      globalThis.setTimeout = originalSetTimeout
     }
   })
 })

@@ -565,7 +565,20 @@ onMounted(() => {
   </header>
 
   <div class="flex min-h-0 flex-1">
-    <main class="flex-1 min-w-0 px-6 max-[640px]:px-3 pb-16 pt-2">
+    <!--
+      整页滚动（body/document 滚动），不做内部滚动容器——用户裁决保留原样。因此这里没有
+      overflow-y-auto、没有 min-height 补丁、没有 max-h-dvh。
+
+      底部留白用 max(4rem, env(safe-area-inset-bottom))：无安全区的设备上就是 4rem(64px)，
+      与改动前的 pb-16 同值；设备有 home indicator 时自动变宽，把最后一行托到安全区上方。
+      不能只写固定 px——env() 非零时浏览器不会把固定 px 撑开，base 的 pb-16 因此一直
+      没有真正避开安全区（用户已确认接受由此产生的视觉差异）。
+      桌面 Chromium 下 env() 解析为 0，两种写法都是 64px，视觉无差异；差异只在真机出现。
+
+      虚拟滚动在整页滚动下用 useWindowVirtualizer，行的文档坐标由 ResourceList 侧的
+      scrollMargin 负责换算，本页不参与。
+    -->
+    <main class="flex-1 min-w-0 px-6 max-[640px]:px-3 pb-[max(4rem,env(safe-area-inset-bottom))] pt-2">
       <div
         v-if="runtimeError"
         class="mb-3 flex min-h-10 items-center justify-between gap-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-400/12 dark:text-red-200"

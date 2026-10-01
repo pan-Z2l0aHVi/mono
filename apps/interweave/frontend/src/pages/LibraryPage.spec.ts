@@ -15,6 +15,7 @@ import {
   SourceType,
   TagColor
 } from '../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage'
+import { stubLayout } from '../components/library/__tests__/virtualLayout'
 import type { LibraryRuntime, SourceAvailabilityEventDTO } from '../services/library'
 import { useLibraryStore } from '../stores/library'
 
@@ -139,6 +140,9 @@ vi.mock('vue-router', () => ({
 }))
 
 async function mountPage() {
+  // 页面里的资源列表是虚拟滚动的，jsdom 没有布局时它算不出窗口、一行都不渲染。见
+  // components/library/__tests__/virtualLayout。
+  const restoreLayout = stubLayout()
   const host = document.createElement('div')
   document.body.append(host)
   const app = createApp(LibraryPage)
@@ -151,6 +155,7 @@ async function mountPage() {
     async close() {
       app.unmount()
       host.remove()
+      restoreLayout()
     }
   }
 }

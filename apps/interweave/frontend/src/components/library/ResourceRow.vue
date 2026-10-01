@@ -20,6 +20,13 @@ import ResourceThumbnail from './ResourceThumbnail.vue'
 
 const props = defineProps<{
   resource: ResourceView
+  /**
+   * 数据下标。虚拟化之后 DOM 顺序不等于列表顺序，方向键、aria-posinset 都按它算。
+   * 它同时被渲染成 data-resource-index：父级要从 focusin 事件反查是哪一行拿到了焦点。
+   */
+  index: number
+  /** 列表总条数。aria-setsize 要报它，否则读屏会把长度念成窗口内的行数。 */
+  total: number
   mediaUrl: string | null
   active: boolean
   checked: boolean
@@ -28,6 +35,16 @@ const props = defineProps<{
   selectionMode: boolean
   editingNameKey: string | null
   editorRef: NameEditorRef
+  /**
+   * roving tabindex：只有当前活动行是 tab stop，其余是 -1。虚拟化之前每行 tabindex="0"，
+   * Tab 能逐行走完全部资源；虚拟化之后只有窗口内的行在 DOM 里，Tab 会在窗口边界直接跳出
+   * 列表，而视觉上还剩几百行——那是个陷阱。列表改为单一 tab stop，方向键在行间移动焦点。
+   *
+   * 它只管行本身。行内的勾选框与改名编辑器是各自独立的可聚焦元素，不受这个值影响，
+   * 两层要分开：把行移出 Tab 序列是为了让「跳过整个列表」和「进列表」这两跳说得清，
+   * 不是要把行内控件也一并藏起来。
+   */
+  tabbable: boolean
 }>()
 
 const emit = defineEmits<{
@@ -68,17 +85,17 @@ function handleNameChange(event: WebUiEvent<WebUiEditableText, 'change'>) {
 
 <template>
   <!--
-    tabindex="0" 把行放进 Tab 序列，focus 环由 assets/global.css 的页面级规则画：那条规则
-    命中 [tabindex]:not([tabindex='-1'])，颜色与 web-ui 组件的 focus 语言一致。
+    行根元素不挂 measureElement：被量的是 ResourceList 里那层带 data-index 的定位包裹，
+    TanStack 靠 indexAttribute 从元素上反查下标。包裹层与本元素盒高一致，量哪一个都一样，
+    两处都挂只是让 ResizeObserver 多收一份重复回调，还会打出 indexAttribute 缺失的告警。
 
-    过渡只列 background-color（与 AppNav 的 navItemClass 同一个理由）：Tailwind 的
-    transition-colors 包含 outline-color，而它的初始计算值是 currentcolor——从祖先继承来的
-    近黑文字色。留着它，Tab 过去时浏览器会把 focus 环从近黑补间 100ms 到目标浅蓝，
-    表现为边缘先黑一下再变蓝。行上真正会变的只有背景色。
+    tabindex 由 roving 决定（见 props.tabbable），非活动行是 -1：它们仍然可以被 .focus()
+    程序化聚焦，只是不再出现在 Tab 序列里。data-resource-index 让父级能从 focusin 反查
+    是哪一行拿到了焦点。
 
-    别在这里加本地的 focus-visible:outline-* 覆盖：那条页面规则写在 `@import 'tailwindcss'`
-    之后、不属于任何 @layer，而 Tailwind 工具类在 @layer utilities 里——层外样式优先级更高，
-    本地覆盖会被静默压掉（实测过：outline-offset 写了 -2px，读出来仍是页面的 2px）。
+    role="listitem" 配 aria-setsize / aria-posinset：虚拟化之后 DOM 里只有窗口内的行，
+    不报总条数的话读屏会把列表长度念成十几行，屏幕阅读器用户会以为列表就这么长
+    （W3C APG 要求动态加载的集合补这两个属性）。
   -->
   <div
     class="group relative flex items-center gap-3 px-4 max-[640px]:px-2 py-3 transition-[background-color] duration-100"
@@ -93,10 +110,28 @@ function handleNameChange(event: WebUiEvent<WebUiEditableText, 'change'>) {
     ]"
     data-resource-row
     :data-resource-id="resource.id"
-    tabindex="0"
+    :data-resource-index="index"
+    role="listitem"
+    :aria-setsize="total"
+    :aria-posinset="index + 1"
+    :tabindex="tabbable ? 0 : -1"
     @click="emit('select', resource)"
     @contextmenu="emit('contextmenu', resource, $event)"
   >
+    <!--
+      focus 环由 assets/global.css 的页面级规则画：那条规则命中
+      [tabindex]:not([tabindex='-1'])。roving 之后只有活动行满足后者，环因此只出现在当前
+      活动行上，键盘用户看得出自己在哪一行。
+
+      过渡只列 background-color（与 AppNav 的 navItemClass 同一个理由）：Tailwind 的
+      transition-colors 包含 outline-color，而它的初始计算值是 currentcolor——从祖先继承来的
+      近黑文字色。留着它，Tab 过去时浏览器会把 focus 环从近黑补间 100ms 到目标浅蓝，
+      表现为边缘先黑一下再变蓝。行上真正会变的只有背景色。
+
+      别在这里加本地的 focus-visible:outline-* 覆盖：那条页面规则写在 `@import 'tailwindcss'`
+      之后、不属于任何 @layer，而 Tailwind 工具类在 @layer utilities 里——层外样式优先级更高，
+      本地覆盖会被静默压掉（实测过：outline-offset 写了 -2px，读出来仍是页面的 2px）。
+    -->
     <web-ui-checkbox
       v-if="selectionMode"
       class="shrink-0"
