@@ -27,8 +27,10 @@ dialog {
 
   box-sizing: border-box;
   width: min(90vw, var(--wui-dialog-width, 360px));
-  max-height: 90vh;
-  max-height: min(90vh, 90dvh);
+
+  /* `--wui-dialog-max-height` 是公开 token（README 有记录）。此前这里是硬编码，
+     宿主的覆写会静默失效。dvh 增强放在 @supports 内，见文件末尾。 */
+  max-height: var(--wui-dialog-max-height, 90vh);
   padding: 0;
   border: none;
 
@@ -45,6 +47,16 @@ dialog {
 
     /* 与卡片共用同一条 dialog 缓动：用内置 ease 会让遮罩在卡片落位后才走完大半透明度。 */
     transition: opacity var(--wui-duration-dialog-enter, 320ms) var(--wui-ease-dialog, cubic-bezier(0.2, 0, 0, 1));
+  }
+}
+
+/* 动态视口高度兜底：移动端工具栏收放时不让 dialog 超出可见区域。
+   放在 @supports 内而非与上一条并列，是因为 var() 的回退值要到计算值阶段才替换；
+   不支持 dvh 的引擎会在该阶段拿到非法值，使整条声明变成 invalid-at-computed-value-time
+   而丢失 max-height。并列两条普通声明则由解析期丢弃，行为不同。 */
+@supports (height: 100dvh) {
+  dialog {
+    max-height: var(--wui-dialog-max-height, min(90vh, 90dvh));
   }
 }
 
@@ -106,9 +118,47 @@ dialog.is-closing .wui-dialog-body {
   transition-duration: var(--wui-duration-dialog-exit, 260ms);
 }
 
+:host([closable]) .wui-dialog-body {
+  /*
+   * body 模式的关闭按钮浮在卡片右上角，需要一个定位参照，所以显式重述一次
+   * position: relative。
+   *
+   * 实际提供这个上下文的是卡片自带的 .wui-glass（glass.css 的 .wui-glass 已有
+   * position: relative），所以这条声明目前是冗余的，写在这里是为了不依赖
+   * glass.css 的内部实现——若哪天 glass 改成非定位元素，这条仍然兜得住。
+   * 它不是本轮为 closable 建立的包含块边界：body 上的 wui-glass class 与
+   * static styles 里的 glass 都早于本轮存在。
+   */
+  position: relative;
+}
+
 dialog[open].is-visible .wui-dialog-body {
   opacity: 1;
   backdrop-filter: blur(4px) saturate(160%) brightness(var(--wui-glass-brightness, 1.06));
+}
+
+/* inline：.title-row 的 flex 子项，与标题同行。 */
+.wui-dialog-close-inline {
+  flex: none;
+}
+
+/* floating：body 模式下浮在卡片右上角。 */
+.wui-dialog-close-floating {
+  position: absolute;
+  z-index: 3;
+  top: var(--wui-dialog-close-top, var(--wui-space-4, 16px));
+  right: var(--wui-dialog-close-right, 16px);
+}
+
+/*
+ * 标题行只在 closable 时出现，因此 .title 自身的 margin-bottom 语义不变：
+ * 它仍由 .title-row 的行高承担，行高 = 标题外高（含 16px 下边距）。
+ */
+.title-row {
+  display: flex;
+  gap: var(--wui-space-3, 12px);
+  align-items: flex-start;
+  justify-content: space-between;
 }
 
 @media (prefers-reduced-motion: reduce) {

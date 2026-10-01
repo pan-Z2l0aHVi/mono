@@ -26,6 +26,7 @@ import {
   restoreFrameworkAnchors,
   returnManagedMenuItemsToSlot
 } from '@/shared/menu-portal/menu-tree'
+import { normalizeNumber } from '@/shared/normalize'
 import { dispatchOpenChangeEvent } from '@/shared/open-state'
 import { defineOpenOverlay, type OpenOverlayHandle } from '@/shared/overlay/open-overlay'
 import { defineOverlayPositioningGeneration } from '@/shared/overlay/positioning-generation'
@@ -36,12 +37,48 @@ import style from './style.css?inline'
 
 const MARKER_TEXT = 'wui-context-menu-item'
 
+/** 与 iOS / Android 原生长按一致的默认时长。 */
+const DEFAULT_LONG_PRESS_DELAY = 500
+/** long-press-delay 的上界：超过 5s 的长按不再是「长按」，等同没有该属性。 */
+const MAX_LONG_PRESS_DELAY = 5000
+/** 按住期间的容差位移；超出即视为滚动/拖拽意图，取消长按。 */
+const LONG_PRESS_MOVE_TOLERANCE = 10
+/**
+ * 长按开菜单后吸收浏览器补发事件的窗口上限。
+ *
+ * 这不是时序保证：实测补发几乎紧跟抬手（touchend(1019ms) → click(1022ms)，间隔 3ms），
+ * 1000ms 远大于实际需要，只是一个陈旧兜底上限。真正的边界是下一次 `pointerdown`
+ * （`_onPointerDown` 无条件清零，含鼠标）与菜单关闭，两条硬边界都在窗口判定之外，
+ * 所以窗口只负责兜住「补发事件既没等到下一次按下、菜单也没关闭」这种不该发生的路径。
+ */
+const LONG_PRESS_FOLLOW_UP_WINDOW_MS = 1000
+
 @customElement('web-ui-context-menu')
 export class WebUiContextMenu extends LitElement {
   static override styles = unsafeCSS(style)
 
   @property({ type: Boolean, reflect: true }) disabled = false
   @property({ type: Boolean, reflect: true, attribute: 'no-scroll-lock' }) noScrollLock = false
+  /** opt-in：触屏长按打开菜单。默认关闭，鼠标路径靠原生 contextmenu，无需此属性。 */
+  @property({ type: Boolean, reflect: true, attribute: 'long-press' }) longPress = false
+
+  private _longPressDelay = DEFAULT_LONG_PRESS_DELAY
+
+  /**
+   * 走包内既有的 `normalizeNumber` 通道（与 `dropdown.offset`、`popover.offset` 同形）。
+   * 不能只靠 `Math.max(0, …)` 挡负数：`Math.max(0, NaN) === NaN`，而属性写错
+   * （`long-press-delay="abc"`）时 Lit 的 Number converter 给的正是 NaN，
+   * `setTimeout(fn, NaN)` 会立刻触发，长按就在 pointerdown 同一帧开菜单、绕过全部时长语义。
+   */
+  @property({ type: Number, attribute: 'long-press-delay' })
+  get longPressDelay(): number {
+    return this._longPressDelay
+  }
+  set longPressDelay(v: number) {
+    const old = this._longPressDelay
+    this._longPressDelay = normalizeNumber(v, 0, MAX_LONG_PRESS_DELAY, DEFAULT_LONG_PRESS_DELAY)
+    this.requestUpdate('longPressDelay', old)
+  }
 
   @state() private _isOpen = false
   @state() private _x = 0
@@ -49,6 +86,21 @@ export class WebUiContextMenu extends LitElement {
 
   private _activeSubmenus: MenuPortalOverlay[] = []
   private _activeSubmenuItems: HTMLElement[] = []
+  private _longPressTimer: ReturnType<typeof setTimeout> | undefined
+  private _longPressOrigin: { x: number; y: number } | undefined
+  private _longPressTarget: HTMLElement | undefined
+  /**
+   * 长按自行开菜单的时刻。浏览器会为**同一次触摸**补发两个事件，二者都属于
+   * 那一次意图，不是两次独立操作：
+   *
+   * - 原生 `contextmenu`：长按被识别时立刻派发，会重复打开（`_openAt` 走已开分支）。
+   * - 合成 `click`：`touchend` 之后由引擎补发，会把刚打开的菜单立刻 light-dismiss。
+   *   实测真实触控管线下的顺序为 pointerdown(9ms) → 长按开菜单(≈509ms) →
+   *   touchend(1019ms) → click(1022ms)，缺这一步菜单开了就被自己的补发事件关掉。
+   *
+   * 因此在窗口内吸收这两个补发事件；窗口由下一次 `pointerdown` 关闭。
+   */
+  private _longPressOpenedAt: number | null = null
   // 子菜单 dialog 定位的唯一写者代数（按 panel 键控）：同帧关闭→重开复用同一 panel
   // 时只允许最新一次定位写入；不同层级子菜单各有 panel，互不作废。
   private readonly _submenuPositionEpochs = new WeakMap<HTMLElement, number>()
@@ -142,6 +194,10 @@ export class WebUiContextMenu extends LitElement {
     this.addEventListener('contextmenu', this._onContextMenu)
     this.addEventListener('keydown', this._onKeydown)
     this.addEventListener('click', this._onMenuClick)
+    this.addEventListener('pointerdown', this._onPointerDown)
+    this.addEventListener('pointermove', this._onPointerMove)
+    this.addEventListener('pointerup', this._onPointerUp)
+    this.addEventListener('pointercancel', this._onPointerCancel)
     document.addEventListener('click', this._onClickOutside, true)
     document.addEventListener('contextmenu', this._onContextMenuOutside)
     document.addEventListener('wheel', this._onWheel, { capture: true, passive: false })
@@ -154,6 +210,10 @@ export class WebUiContextMenu extends LitElement {
     this.removeEventListener('contextmenu', this._onContextMenu)
     this.removeEventListener('keydown', this._onKeydown)
     this.removeEventListener('click', this._onMenuClick)
+    this.removeEventListener('pointerdown', this._onPointerDown)
+    this.removeEventListener('pointermove', this._onPointerMove)
+    this.removeEventListener('pointerup', this._onPointerUp)
+    this.removeEventListener('pointercancel', this._onPointerCancel)
     document.removeEventListener('click', this._onClickOutside, true)
     document.removeEventListener('contextmenu', this._onContextMenuOutside)
     document.removeEventListener('wheel', this._onWheel, true)
@@ -175,6 +235,8 @@ export class WebUiContextMenu extends LitElement {
     // 下次 openAt 会走已打开分支静默失败，菜单无法再打开。
     this._isOpen = false
     this._restoreFocusTarget = undefined
+    this._cancelLongPress()
+    this._longPressOpenedAt = null
   }
 
   protected override updated(changed: Map<string, unknown>) {
@@ -227,6 +289,9 @@ export class WebUiContextMenu extends LitElement {
         })
       } else {
         this._syncScrollLock(false)
+        // 吸收窗口只覆盖「长按之后浏览器补发的那几个事件」。菜单已关，
+        // 之后任何一次真实右键或点击都必须走正常路径，不能被这个窗口吞掉。
+        this._longPressOpenedAt = null
         // release ⟺ 关闭：登记与仲裁归属同时撤销，退场动画只是视觉收尾。
         this._menuHandle?.release()
         this._menuHandle = null
@@ -337,7 +402,19 @@ export class WebUiContextMenu extends LitElement {
   }
 
   private _positionMenuInViewport(panel: HTMLElement) {
-    const { width, height } = panel.getBoundingClientRect()
+    /*
+     * 用 offsetWidth / offsetHeight 而不是 getBoundingClientRect()。
+     *
+     * 此刻面板正带着进场动画 `transform: scale(var(--wui-scale-enter, 0.95))`
+     * （assets/overlay-motion.css），而 rect 含 transform：夹取会按缩小 5% 的尺寸算，
+     * 动画落定后面板长回去，越出视口下缘一段（实测 456px 高的菜单越出 14.8px，
+     * 面板 overflow-y: hidden，最下面一项直接点不到）。offset* 不受 transform 影响。
+     *
+     * dialog 路径不受这条影响：那条走 Floating UI，而它的 getDimensions 在
+     * rect 尺寸与 offset* 不一致（即存在 transform）时会回退到 offset*。
+     * 同为夹取算术，两条路径的取尺寸口径必须一致，所以这里显式取 offset*。
+     */
+    const { offsetWidth: width, offsetHeight: height } = panel
     const vw = window.innerWidth
     const vh = window.innerHeight
 
@@ -582,8 +659,76 @@ export class WebUiContextMenu extends LitElement {
     dispatchOpenChangeEvent(this, open)
   }
 
+  private _onPointerDown = (e: PointerEvent) => {
+    // 任何一次新的按下都结束「上一次长按的补发事件」窗口：抬手后浏览器合成的
+    // click 一定早于下一次 pointerdown，所以这个边界既能吸收补发，又不会误吞
+    // 用户之后真正的点击。
+    this._longPressOpenedAt = null
+    // 鼠标走原生 contextmenu，无需长按；只认触屏指针。
+    if (!this.longPress || this.disabled || e.pointerType !== 'touch') return
+    this._cancelLongPress()
+    this._longPressOrigin = { x: e.clientX, y: e.clientY }
+    this._longPressTarget = e.target instanceof HTMLElement ? e.target : undefined
+    this._longPressTimer = setTimeout(
+      () => {
+        this._longPressTimer = undefined
+        const origin = this._longPressOrigin
+        if (!origin) return
+        this._longPressOrigin = undefined
+        if (this._isOpen) return
+        this._longPressOpenedAt = performance.now()
+        this._restoreFocusTarget = this._longPressTarget
+        if (this._openAt(origin.x, origin.y, false, true)) this._userOpenChange.mark()
+      },
+      // 属性已被 normalizeNumber 钳到 [0, 5000]，这里直接用；不再二次 Math.max。
+      this.longPressDelay
+    )
+  }
+
+  private _onPointerMove = (e: PointerEvent) => {
+    if (e.pointerType !== 'touch') return
+    const origin = this._longPressOrigin
+    if (!origin) return
+    // 触屏有隐式指针捕获，pointermove 会持续派发到 pointerdown 的落点，
+    // 因此位移超阈值即判定为滚动意图，取消长按。
+    const distance = Math.hypot(e.clientX - origin.x, e.clientY - origin.y)
+    if (distance > LONG_PRESS_MOVE_TOLERANCE) this._cancelLongPress()
+  }
+
+  private _onPointerUp = (e: PointerEvent) => {
+    if (e.pointerType === 'touch') this._cancelLongPress()
+  }
+
+  private _onPointerCancel = () => {
+    this._cancelLongPress()
+  }
+
+  private _cancelLongPress() {
+    if (this._longPressTimer !== undefined) {
+      clearTimeout(this._longPressTimer)
+      this._longPressTimer = undefined
+    }
+    this._longPressOrigin = undefined
+  }
+
+  /** 该事件是否是长按开菜单之后、浏览器为同一次触摸补发的事件。 */
+  private _isLongPressFollowUp(): boolean {
+    const openedAt = this._longPressOpenedAt
+    if (openedAt === null) return false
+    // 超期只说明「这次长按的补发没来」，不代表窗口承担时序保证；见常量注释。
+    if (performance.now() - openedAt > LONG_PRESS_FOLLOW_UP_WINDOW_MS) {
+      this._longPressOpenedAt = null
+      return false
+    }
+    return true
+  }
+
   private _onContextMenu = (e: MouseEvent) => {
     if (this.disabled) return
+    if (this._isLongPressFollowUp()) {
+      e.preventDefault()
+      return
+    }
     e.preventDefault()
     this._restoreFocusTarget = e.target instanceof HTMLElement ? e.target : undefined
     if (this._openAt(e.clientX, e.clientY, false, true)) this._userOpenChange.mark()
@@ -613,6 +758,8 @@ export class WebUiContextMenu extends LitElement {
 
   private _onClickOutside = (e: MouseEvent) => {
     if (!this._isOpen || this._outsideClickGuard.isArmed()) return
+    // 抬手后浏览器合成的 click 属于长按那一次意图，不能把刚打开的菜单关掉。
+    if (this._isLongPressFollowUp()) return
     // 宿主 light DOM 是右键区域，不是菜单面板；其中的 checkbox、行等普通点击仍须 light-dismiss。
     if (this._isMenuPanelEvent(e)) return
     this._closeFromUser()

@@ -110,6 +110,25 @@
   }
 }
 
+/*
+ * 落定门：上一段指示器移动还在飞行时到达的新值直接落到终值，不排队也不重启插值。
+ * 做法是把 left / width 从过渡列表里摘掉——位置一变即刻生效，其余过渡（按压玻璃那几条）
+ * 原样保留，所以这个门只关位置动画，不会把按压反馈一起关掉。
+ *
+ * 单独成规则而**不是**给上面那条加 `:not(.is-settling)`：那样特异性从 (0,3,0) 升到 (0,4,0)，
+ * 于是下方同为 (0,3,0) 的按压态规则（`:163`）与 raised 变体（`:135`）都改不动它了——按压态
+ * 正是靠同特异性的后置顺序才赢过 ready 规则，被反超后 background-color 会从「瞬时切到透明」
+ * 变回有插值（ready 规则把该属性列进了过渡），玻璃按压反馈整个变形。stylelint 的
+ * no-descending-specificity 同样直接把这三条判成「应排在它之前」，是这条推理的机器旁证。
+ * 放在 ready 之后、press 之前：同特异性下后置者赢，于是 ready 被压掉、press 仍压得住本条。
+ */
+.is-indicator-ready.is-settling .wui-segmented-indicator {
+  transition:
+    transform var(--wui-duration-press, 80ms) cubic-bezier(0.4, 0, 0.2, 1),
+    background-color var(--wui-duration-press, 80ms) ease,
+    box-shadow var(--wui-duration-press, 80ms) ease;
+}
+
 /* raised 变体静止态：实体白指示器 + 柔投影（经典形态；dark 主题 surface-selected 取
    #5c5c5e 凸起灰，同为实体档）。仅换底与投影，几何与过渡和 inset 变体同源。
    注意源顺序：本规则与下方按压/拖拽规则特异性相同（(0,3,0)），按压态必须排在更后面，

@@ -34,11 +34,11 @@ describe('WebUiDialog 组件', () => {
       el.open = true
       await waitForUpdate(el)
 
-      expect(document.body.style.position).toBe('fixed')
+      expect(document.documentElement.style.overflow).toBe('hidden')
 
       el.close()
       await waitForUpdate(el)
-      expect(document.body.style.position).toBe('')
+      expect(document.documentElement.style.overflow).toBe('')
       cleanupElement(el)
     })
 
@@ -48,7 +48,7 @@ describe('WebUiDialog 组件', () => {
       el.open = true
       await waitForUpdate(el)
 
-      expect(document.body.style.position).toBe('')
+      expect(document.documentElement.style.overflow).toBe('')
       cleanupElement(el)
     })
 
@@ -59,7 +59,7 @@ describe('WebUiDialog 组件', () => {
       el.setAttribute('no-scroll-lock', '')
       await waitForUpdate(el)
 
-      expect(document.body.style.position).toBe('')
+      expect(document.documentElement.style.overflow).toBe('')
       cleanupElement(el)
     })
   })

@@ -120,6 +120,11 @@ dialog[open].is-visible::backdrop {
  * 热区仍覆盖内缘起 --wui-drawer-drag-zone-size，保证触控命中面积不随胶囊收窄。
  * 位置随 placement 切换：right 贴在左缘、left 贴在右缘、top 贴在底边、bottom 贴在顶边。
  *
+ * 上下两条还要**让开开头尾两节**：热区是 dialog 的绝对定位兄弟节点，压在 panel 的端头上，
+ * 而那一端上正有 header（bottom）或 footer（top）——按钮与点击都落在热区底下。让开量由
+ * index.ts 用 ResizeObserver 量出该节的 border-box 高度写成 --wui-internal-drawer-*-inset，
+ * 两者都不存在时为 0，热区回到修复前的边缘位置。
+ *
  * 按在面板边缘之外的坐标属于遮罩：轻点走「点遮罩关闭」（click 链路回溯校验，
  * 见 index.ts 的 handleBackdropClick），拖拽松手不关闭。
  */
@@ -174,11 +179,16 @@ dialog.is-nested-lower .wui-drawer-drag-zone {
 }
 
 :host([placement='top']) .wui-drawer-drag-zone {
-  bottom: 0;
+  /*
+   * 让开 footer（不是 header）：`top` 贴的是面板**底边**，那一侧压住的是 footer。
+   * 头部在内缘的另一端，与本 placement 的热区不重叠。
+   */
+  bottom: var(--wui-internal-drawer-footer-inset, 0);
 }
 
 :host([placement='bottom']) .wui-drawer-drag-zone {
-  top: 0;
+  /* 对称：让开 header。左右两条不受影响（贴的是竖边，header / footer 都不在那里）。 */
+  top: var(--wui-internal-drawer-header-inset, 0);
 }
 
 .wui-drawer-drag-bar {
@@ -285,12 +295,16 @@ dialog.is-dragging .wui-drawer-drag-zone {
 }
 
 .wui-drawer-header {
+  /*
+   * 刻意没有分割线（footer 同）。面板主体 `.wui-drawer-body` 自带 `.wui-glass` 的描边环与
+   * 投影，分区靠 padding 与排版层级读出来；再叠一条写死的 6% 黑线，在半透明玻璃面上会读成
+   * 一道硬接缝，且它不跟随任何 token——换外观时是块跟不上的残留。
+   */
   display: flex;
   align-items: center;
   justify-content: space-between;
 
   padding: var(--wui-drawer-header-padding, var(--wui-space-4, 16px) var(--wui-space-5, 20px));
-  border-bottom: 1px solid rgb(0 0 0 / 0.06);
 
   font-size: var(--wui-font-size-title, 18px);
   font-weight: var(--wui-font-weight-semibold, 600);
@@ -316,7 +330,6 @@ dialog.is-dragging .wui-drawer-drag-zone {
 .wui-drawer-footer {
   flex-shrink: 0;
   padding: var(--wui-drawer-footer-padding, var(--wui-space-4, 16px) var(--wui-space-5, 20px));
-  border-top: 1px solid rgb(0 0 0 / 0.06);
 }
 
 .wui-drawer-footer[hidden] {

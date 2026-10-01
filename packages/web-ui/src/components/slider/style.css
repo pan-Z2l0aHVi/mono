@@ -33,7 +33,7 @@
   background-color: var(--wui-color-surface-track, #e5e5ea);
 
   &:focus-visible {
-    outline-color: var(--wui-color-focus-ring, rgb(0 136 255 / 0.4));
+    outline-color: var(--wui-color-focus-ring, color-mix(in srgb, var(--wui-color-accent, #08f) 40%, transparent));
   }
 
   &.is-disabled {

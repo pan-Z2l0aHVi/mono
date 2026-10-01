@@ -815,6 +815,7 @@ Modal dialog using native `<dialog>` with `showModal()`.
 | Attribute           | Type      | Default | Description                                                                    |
 | ------------------- | --------- | ------- | ------------------------------------------------------------------------------ |
 | `open`              | `boolean` | `false` | Dialog visibility                                                              |
+| `closable`          | `boolean` | `false` | Show the built-in close button                                                 |
 | `no-scroll-lock`    | `boolean` | `false` | Do not lock body scroll when open                                              |
 | `no-backdrop-close` | `boolean` | `false` | Do not close on backdrop click                                                 |
 | `no-escape-close`   | `boolean` | `false` | Do not close when Escape is pressed                                            |
@@ -828,6 +829,8 @@ Modal dialog using native `<dialog>` with `showModal()`.
 
 Uses native `<dialog>` with `@cancel` prevention. Escape calls `close()` unless `no-escape-close` is present. Click on backdrop closes dialog unless `no-backdrop-close` is present. With `controlled`, both only emit the close request instead.
 
+With `closable`, a built-in close button is rendered in both content modes, and it follows the same close path as Escape and backdrop clicks (so `controlled` applies to it identically). The two modes place it differently: without a `body` slot the button sits in a `.title-row` flex line next to the title; with a `body` slot the title row does not exist, so the button is a direct child of the glass card and is absolutely positioned at its top-right corner (offset by `--wui-dialog-close-top` / `--wui-dialog-close-right`). It uses the same `ooui:close` icon as the drawer close button. Omitting `closable` renders nothing at all — no button and no extra wrapper.
+
 > **Escape ownership:** Escape is arbitrated by a single shared owner, so one keypress closes only the **innermost** open overlay (popover, select, autocomplete, dropdown, context-menu, drawer and dialog all take part). With a select open inside a drawer, the first Escape closes the select and only the second closes the drawer. Sibling overlays that do not nest fall back to open order, closing the most recently opened one. A panel that is still playing its exit transition stays on screen and still catches the Escape, but any overlay that is still open outranks it, so one keypress still closes exactly one layer. `image-preview` takes part as well: its native `<dialog>` is registered with the same arbiter, so Escape is decided by layer order; the component's `cancel` handler only vetoes the native instant close, keeping the top layer until the exit transition finishes.
 
 **CSS Custom Properties:**
@@ -835,7 +838,9 @@ Uses native `<dialog>` with `@cancel` prevention. Escape calls `close()` unless 
 | Property                      | Default                                      | Description                                                                           |
 | ----------------------------- | -------------------------------------------- | ------------------------------------------------------------------------------------- |
 | `--wui-dialog-width`          | `360px`                                      | Dialog width                                                                          |
-| `--wui-dialog-max-height`     | `90vh`                                       | Dialog max height                                                                     |
+| `--wui-dialog-max-height`     | `min(90vh, 90dvh)`                           | Dialog max height                                                                     |
+| `--wui-dialog-close-top`      | `16px`                                       | `closable` button offset from the card top (body mode)                                |
+| `--wui-dialog-close-right`    | `16px`                                       | `closable` button offset from the card right edge (body mode)                         |
 | `--wui-dialog-overlay-bg`     | `var(--wui-color-backdrop)`                  | Backdrop background                                                                   |
 | `--wui-dialog-bg`             | `var(--wui-color-surface-overlay)`           | Glass card background, falls back to `rgb(248 248 248 / 0.92)`                        |
 | `--wui-dialog-padding`        | `20px 24px 24px`                             | Dialog surface padding                                                                |
@@ -904,6 +909,7 @@ The visual center follows half of `--wui-drawer-content-padding`, floored at hal
 | `--wui-drawer-nested-peek-base`   | `43.2px`                           | Nested-stack reveal step base `A` (`28.8px` at `width <= 640px`); total stack width grows as `A · ln(n)`, so a single layer never moves and each extra layer reveals less. `0` disables the reveal. See the note below. |
 | `--wui-drawer-overlay-bg`         | `rgb(0 0 0 / 0.12)`                | Backdrop background                                                                                                                                                                                                     |
 | `--wui-drawer-drag-zone-size`     | `20px`                             | Drag-to-close hit zone thickness on the inner edge (draggable)                                                                                                                                                          |
+| `--wui-drawer-drag-zone-inset`    | `var(--wui-space-1, 4px)`          | Breathing gap between the drag hit zone and the header (`placement=bottom`) or footer (`placement=top`) it yields to. `0` when that section is absent                                                                   |
 | `--wui-drawer-drag-bar-thickness` | `4px`                              | Drag bar capsule thickness (short axis)                                                                                                                                                                                 |
 | `--wui-drawer-drag-bar-length`    | `56px`                             | Drag bar capsule length (along the drawer edge)                                                                                                                                                                         |
 | `--wui-drawer-header-padding`     | `16px 20px`                        | Header section padding                                                                                                                                                                                                  |
@@ -1121,10 +1127,12 @@ Tooltip overlay using pointer/focus triggers.
 
 Right-click context menu.
 
-| Attribute        | Type      | Default | Description                                           |
-| ---------------- | --------- | ------- | ----------------------------------------------------- |
-| `disabled`       | `boolean` | `false` | Right-click does not open the menu; no visual dimming |
-| `no-scroll-lock` | `boolean` | `false` | Allow background scrolling                            |
+| Attribute          | Type      | Default | Description                                                   |
+| ------------------ | --------- | ------- | ------------------------------------------------------------- |
+| `disabled`         | `boolean` | `false` | Right-click does not open the menu; no visual dimming         |
+| `no-scroll-lock`   | `boolean` | `false` | Allow background scrolling                                    |
+| `long-press`       | `boolean` | `false` | Open on a touch long press (opt-in; mouse uses `contextmenu`) |
+| `long-press-delay` | `number`  | `500`   | Hold duration in ms before `long-press` opens the menu        |
 
 **Events:** `open-change` (`CustomEvent<{ open: boolean }>`)
 
@@ -1133,6 +1141,8 @@ Right-click context menu.
 **Methods:** `openAt(x: number, y: number)`, `close()`
 
 Opens on `contextmenu` event. Menu items: `<web-ui-dropdown-item>`, `<web-ui-dropdown-divider>`, `<web-ui-dropdown-header>`. Supports keyboard navigation (Arrow keys, Enter, Escape) and submenu hover with `pointerenter`.
+
+`long-press` is opt-in and touch-only: a pointer held for `long-press-delay` (default `500` ms, matching the platform long press) opens the menu at the press point, through the same path as a right-click. It only reacts to `pointerType === 'touch'`, and holding while moving more than 10px cancels it, so scrolling never opens a menu. Because the browser also reports that same hold as a native gesture, the `contextmenu` and `click` it emits afterwards are absorbed rather than allowed to reopen — or immediately light-dismiss — the menu the long press just opened.
 
 `disabled` suppresses menu behaviour only: right-click and `openAt()` do not open a menu. It does not dim or otherwise restyle what you put in the default slot — the component renders no menu surface of its own to dim, and disabling the right-click menu is not the same as disabling your trigger. If a disabled state should read as disabled, render it on your own content.
 
@@ -1570,41 +1580,41 @@ Overrides must sit inside the `<web-ui-theme>` scope, since the theme host decla
 
 **Color tokens:**
 
-| Property                           | Light default                                                | Dark default                                                 | Description                     |
-| ---------------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------- |
-| `--wui-color-page`                 | `#fff`                                                       | `#242628`                                                    | Page background                 |
-| `--wui-color-surface`              | `#fff`                                                       | `#2c2c2e`                                                    | Plain surface                   |
-| `--wui-color-surface-raised`       | `#f2f2f7`                                                    | `#2c2c2e`                                                    | Raised surface                  |
-| `--wui-color-surface-control`      | `#dfdfdf`                                                    | `#3a3a3c`                                                    | Neutral control surface         |
-| `--wui-color-surface-track`        | `#e5e5ea`                                                    | `#444446`                                                    | Slider and switch track surface |
-| `--wui-color-surface-menu`         | `rgb(250 250 250 / 0.76)`                                    | `rgb(49 48 50 / 0.74)`                                       | Menu and floating panel surface |
-| `--wui-color-surface-glass`        | `rgb(250 250 250 / 0.34)`                                    | `rgb(44 44 46 / 0.42)`                                       | Liquid glass surface            |
-| `--wui-color-surface-glass-hover`  | `color-mix(... text 6%, surface-glass)`                      | `color-mix(... text 6%, surface-glass)`                      | Full glass hover background     |
-| `--wui-color-surface-glass-active` | `color-mix(... text 15%, surface-glass)`                     | `color-mix(... text 15%, surface-glass)`                     | Full glass pressed background   |
-| `--wui-color-surface-overlay`      | `rgb(248 248 248 / 0.92)`                                    | `rgb(32 34 34 / 0.92)`                                       | Translucent overlay surface     |
-| `--wui-color-surface-sidebar`      | `rgb(233 233 233 / 0.82)`                                    | `rgb(44 44 46 / 0.8)`                                        | Sidebar panel surface           |
-| `--wui-color-surface-segmented`    | `#e5e5ea`                                                    | `#3a3a3c`                                                    | Segmented indicator surface     |
-| `--wui-color-surface-selected`     | `#fff`                                                       | `#5c5c5e`                                                    | Selected surface                |
-| `--wui-color-text`                 | `#1b1b1b`                                                    | `#e9eaea`                                                    | Primary text                    |
-| `--wui-color-text-secondary`       | `#6a6a6a`                                                    | `#a1a1a6`                                                    | Secondary text                  |
-| `--wui-color-text-tertiary`        | `color-mix(in srgb, var(--wui-color-text) 35%, transparent)` | `color-mix(in srgb, var(--wui-color-text) 42%, transparent)` | Tertiary text and quiet icons   |
-| `--wui-color-text-disabled`        | `color-mix(in srgb, var(--wui-color-text) 32%, transparent)` | `color-mix(in srgb, var(--wui-color-text) 38%, transparent)` | Disabled foreground text        |
-| `--wui-color-state-layer-hover`    | `color-mix(in srgb, var(--wui-color-text) 6%, transparent)`  | `color-mix(in srgb, var(--wui-color-text) 6%, transparent)`  | Transparent hover overlay       |
-| `--wui-color-state-layer-active`   | `color-mix(in srgb, var(--wui-color-text) 15%, transparent)` | `color-mix(in srgb, var(--wui-color-text) 15%, transparent)` | Transparent pressed overlay     |
-| `--wui-color-border`               | `rgb(0 0 0 / 0.1)`                                           | `rgb(255 255 255 / 0.14)`                                    | Normal border and divider       |
-| `--wui-color-glass-highlight`      | `rgb(255 255 255 / 0.9)`                                     | `rgb(255 255 255 / 0.1)`                                     | Inset highlight on the surface  |
-| `--wui-color-glass-ring`           | `rgb(0 0 0 / 0.05)`                                          | `rgb(255 255 255 / 0.05)`                                    | Base tint of the 1px ring       |
-| `--wui-color-glass-ring-sheen`     | `rgb(255 255 255 / 0.5)`                                     | `rgb(255 255 255 / 0.2)`                                     | Corner sheen on the ring        |
-| `--wui-color-glass-ring-shade`     | `rgb(0 0 0 / 0.03)`                                          | `rgb(0 0 0 / 0.5)`                                           | Corner shade on the ring        |
-| `--wui-color-accent`               | `#08f`                                                       | `#0a84ff`                                                    | Accent and focused input border |
-| `--wui-color-on-accent`            | `#fff`                                                       | `#fff`                                                       | Foreground on accent            |
-| `--wui-color-on-control`           | `#fff`                                                       | `#f2f2f7`                                                    | Foreground on control inner     |
-| `--wui-color-success`              | `#16a34a`                                                    | `#30d158`                                                    | Success                         |
-| `--wui-color-warning`              | `#d97706`                                                    | `#ff9f0a`                                                    | Warning                         |
-| `--wui-color-danger`               | `#dc2626`                                                    | `#ff453a`                                                    | Danger                          |
-| `--wui-color-info`                 | `#2563eb`                                                    | `#64d2ff`                                                    | Info                            |
-| `--wui-color-backdrop`             | `rgb(0 0 0 / 0.12)`                                          | `rgb(0 0 0 / 0.48)`                                          | Modal backdrop                  |
-| `--wui-color-focus-ring`           | `rgb(0 136 255 / 0.4)`                                       | `rgb(10 132 255 / 0.62)`                                     | Focus indicator color           |
+| Property                           | Light default                                                        | Dark default                                                            | Description                                    |
+| ---------------------------------- | -------------------------------------------------------------------- | ----------------------------------------------------------------------- | ---------------------------------------------- |
+| `--wui-color-page`                 | `#fff`                                                               | `#242628`                                                               | Page background                                |
+| `--wui-color-surface`              | `#fff`                                                               | `#2c2c2e`                                                               | Plain surface                                  |
+| `--wui-color-surface-raised`       | `#f2f2f7`                                                            | `#2c2c2e`                                                               | Raised surface                                 |
+| `--wui-color-surface-control`      | `#dfdfdf`                                                            | `#3a3a3c`                                                               | Neutral control surface                        |
+| `--wui-color-surface-track`        | `#e5e5ea`                                                            | `#444446`                                                               | Slider and switch track surface                |
+| `--wui-color-surface-menu`         | `rgb(250 250 250 / 0.76)`                                            | `rgb(49 48 50 / 0.74)`                                                  | Menu and floating panel surface                |
+| `--wui-color-surface-glass`        | `rgb(250 250 250 / 0.34)`                                            | `rgb(44 44 46 / 0.42)`                                                  | Liquid glass surface                           |
+| `--wui-color-surface-glass-hover`  | `color-mix(... text 6%, surface-glass)`                              | `color-mix(... text 6%, surface-glass)`                                 | Full glass hover background                    |
+| `--wui-color-surface-glass-active` | `color-mix(... text 15%, surface-glass)`                             | `color-mix(... text 15%, surface-glass)`                                | Full glass pressed background                  |
+| `--wui-color-surface-overlay`      | `rgb(248 248 248 / 0.92)`                                            | `rgb(32 34 34 / 0.92)`                                                  | Translucent overlay surface                    |
+| `--wui-color-surface-sidebar`      | `rgb(233 233 233 / 0.82)`                                            | `rgb(44 44 46 / 0.8)`                                                   | Sidebar panel surface                          |
+| `--wui-color-surface-segmented`    | `#e5e5ea`                                                            | `#3a3a3c`                                                               | Segmented indicator surface                    |
+| `--wui-color-surface-selected`     | `#fff`                                                               | `#5c5c5e`                                                               | Selected surface                               |
+| `--wui-color-text`                 | `#1b1b1b`                                                            | `#e9eaea`                                                               | Primary text                                   |
+| `--wui-color-text-secondary`       | `#6a6a6a`                                                            | `#a1a1a6`                                                               | Secondary text                                 |
+| `--wui-color-text-tertiary`        | `color-mix(in srgb, var(--wui-color-text) 35%, transparent)`         | `color-mix(in srgb, var(--wui-color-text) 42%, transparent)`            | Tertiary text and quiet icons                  |
+| `--wui-color-text-disabled`        | `color-mix(in srgb, var(--wui-color-text) 32%, transparent)`         | `color-mix(in srgb, var(--wui-color-text) 38%, transparent)`            | Disabled foreground text                       |
+| `--wui-color-state-layer-hover`    | `color-mix(in srgb, var(--wui-color-text) 6%, transparent)`          | `color-mix(in srgb, var(--wui-color-text) 6%, transparent)`             | Transparent hover overlay                      |
+| `--wui-color-state-layer-active`   | `color-mix(in srgb, var(--wui-color-text) 15%, transparent)`         | `color-mix(in srgb, var(--wui-color-text) 15%, transparent)`            | Transparent pressed overlay                    |
+| `--wui-color-border`               | `rgb(0 0 0 / 0.1)`                                                   | `rgb(255 255 255 / 0.14)`                                               | Normal border and divider                      |
+| `--wui-color-glass-highlight`      | `rgb(255 255 255 / 0.9)`                                             | `rgb(255 255 255 / 0.1)`                                                | Inset highlight on the surface                 |
+| `--wui-color-glass-ring`           | `rgb(0 0 0 / 0.05)`                                                  | `rgb(255 255 255 / 0.05)`                                               | Base tint of the 1px ring                      |
+| `--wui-color-glass-ring-sheen`     | `rgb(255 255 255 / 0.5)`                                             | `rgb(255 255 255 / 0.2)`                                                | Corner sheen on the ring                       |
+| `--wui-color-glass-ring-shade`     | `rgb(0 0 0 / 0.03)`                                                  | `rgb(0 0 0 / 0.5)`                                                      | Corner shade on the ring                       |
+| `--wui-color-accent`               | `#08f`                                                               | `#0a84ff`                                                               | Accent and focused input border                |
+| `--wui-color-on-accent`            | `#fff`                                                               | `#fff`                                                                  | Foreground on accent                           |
+| `--wui-color-on-control`           | `#fff`                                                               | `#f2f2f7`                                                               | Foreground on control inner                    |
+| `--wui-color-success`              | `#16a34a`                                                            | `#30d158`                                                               | Success                                        |
+| `--wui-color-warning`              | `#d97706`                                                            | `#ff9f0a`                                                               | Warning                                        |
+| `--wui-color-danger`               | `#dc2626`                                                            | `#ff453a`                                                               | Danger                                         |
+| `--wui-color-info`                 | `#2563eb`                                                            | `#64d2ff`                                                               | Info                                           |
+| `--wui-color-backdrop`             | `rgb(0 0 0 / 0.12)`                                                  | `rgb(0 0 0 / 0.48)`                                                     | Modal backdrop                                 |
+| `--wui-color-focus-ring`           | `color-mix(in srgb, var(--wui-color-accent, #08f) 40%, transparent)` | `color-mix(in srgb, var(--wui-color-accent, #0a84ff) 62%, transparent)` | Focus indicator color, derived from the accent |
 
 **Shadow tokens:**
 

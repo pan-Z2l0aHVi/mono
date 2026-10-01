@@ -155,3 +155,81 @@ export async function waitForOpenTransition(el: Element): Promise<void> {
   const dialog = el.shadowRoot?.querySelector('dialog')
   await Promise.all((dialog?.getAnimations({ subtree: true }) ?? []).map(animation => animation.finished))
 }
+
+export interface RealTouchPressOptions {
+  /** 按住时长（ms）。默认 600ms。 */
+  holdMs?: number
+  /** 按住期间先位移的像素数，用于验证位移取消长按。 */
+  moveBy?: number
+  /** 位移发生在按下后的多少毫秒，默认取按住时长的一半。 */
+  moveAfterMs?: number
+}
+
+/**
+ * 用 CDP `Input.dispatchTouchEvent` 派发一次真实触屏按压手势。
+ *
+ * 合成 `PointerEvent` 触发不了浏览器的**手势识别**：长按判定、原生 contextmenu 的
+ * 补发时机、触屏的隐式指针捕获，都是引擎在输入管线上做的，脚本事件走不到那一步。
+ * Playwright 的 `touchscreen.tap()` 也不行——它按下即抬起，产生不了一段按住时长，
+ * 于是长按永远不会触发。真实长按只能自己按时间轴分步派发。
+ *
+ * browser project 没有配 `contextOptions.hasTouch`，默认上下文是 mouse-only：
+ * 此时 `Input.dispatchTouchEvent` 派下去的事件不会转成 touch/pointer 事件，页面
+ * 一个事件都收不到（实测长按与原生 contextmenu 都不会触发）。所以这里先按会话
+ * 打开触控仿真，派完再关掉。
+ *
+ * 派发前装一个 capture 监听器做前置校验：真的收到 `touchstart` 才继续，
+ * 收不到就直接抛错。这与 `pnpm agent:verify touch-flow` 的「零事件 → fail」是同一条
+ * 纪律——mouse-only 环境下的「长按没反应」不能当成产品结论。
+ */
+export async function realTouchPress(target: Element, options: RealTouchPressOptions = {}): Promise<void> {
+  const client = cdp() as unknown as CdpSession
+  const { holdMs = 600, moveBy = 0, moveAfterMs } = options
+  const rect = target.getBoundingClientRect()
+  const origin = toViewportPoint(rect.left + rect.width / 2, rect.top + rect.height / 2)
+  const point = (x: number, y: number) => ({
+    x,
+    y,
+    id: 1,
+    radiusX: 12,
+    radiusY: 12,
+    force: 1
+  })
+
+  await client.send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 1 })
+  let sawTouchStart = false
+  const record = () => {
+    sawTouchStart = true
+  }
+  window.addEventListener('touchstart', record, { capture: true, passive: true })
+  try {
+    await client.send('Input.dispatchTouchEvent', {
+      type: 'touchStart',
+      touchPoints: [point(origin.x, origin.y)]
+    })
+    if (!sawTouchStart) {
+      throw new Error(
+        'Real touch press received no touchstart: this is a mouse-only input environment, ' +
+          'so any conclusion drawn from it would be void (see docs/agents/browser-verification.md).'
+      )
+    }
+
+    const pressedAt = performance.now()
+    if (moveBy > 0) {
+      await new Promise(resolve => setTimeout(resolve, moveAfterMs ?? Math.floor(holdMs / 2)))
+      await client.send('Input.dispatchTouchEvent', {
+        type: 'touchMove',
+        touchPoints: [point(origin.x + moveBy, origin.y + moveBy)]
+      })
+    }
+
+    // holdMs 是「总按住时长」，位移之后仍要保持到该时长，否则证不了「位移后计时器
+    // 真的被取消」——提前抬手只会同时满足两种实现。
+    const remaining = holdMs - (performance.now() - pressedAt)
+    if (remaining > 0) await new Promise(resolve => setTimeout(resolve, remaining))
+    await client.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] })
+  } finally {
+    window.removeEventListener('touchstart', record, { capture: true })
+    await client.send('Emulation.setTouchEmulationEnabled', { enabled: false })
+  }
+}

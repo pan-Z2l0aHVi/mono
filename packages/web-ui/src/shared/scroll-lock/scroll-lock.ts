@@ -2,7 +2,7 @@ import { definePlugin } from '@greypan/js-kit'
 
 let lockCount = 0
 let savedOverflow = ''
-let savedScrollY = 0
+let savedOverscroll = ''
 
 export interface ScrollLockLease {
   readonly isLocked: boolean
@@ -12,16 +12,22 @@ export interface ScrollLockLease {
 
 /**
  * 锁定页面滚动。支持嵌套调用（引用计数），仅在最后一个锁释放时恢复。
+ *
+ * 只改 `documentElement` 的 `overflow` 和 `overscroll-behavior`，body 始终留在文档流内。
+ * 改用 `body { position: fixed }` + `top: -scrollY` 会让 body 脱离文档流：
+ * `documentElement.scrollHeight` 随之塌缩、`window.scrollY` 被归零，
+ * 按窗口偏移定位的虚拟列表因此渲染出第 0 行却仍带旧的 `top` 偏移，表现为整屏空白。
+ *
+ * 阻止滚动本身（`overflow`）与抑制橡皮筋/下拉刷新（`overscroll-behavior`）是两件事：
+ * 旧实现用 fixed body 同时覆盖两者，现在拆成两个根元素属性。macOS 已实测
+ * `overscroll-behavior: none` 有效；iOS 侧尚无真机证据，属待验收项。
  */
 export function lockScroll() {
   if (lockCount === 0) {
-    savedScrollY = window.scrollY
     savedOverflow = document.documentElement.style.overflow
+    savedOverscroll = document.documentElement.style.overscrollBehavior
     document.documentElement.style.overflow = 'hidden'
-    // 固定 body 防止 iOS 弹性滚动
-    document.body.style.position = 'fixed'
-    document.body.style.top = `-${savedScrollY}px`
-    document.body.style.width = '100%'
+    document.documentElement.style.overscrollBehavior = 'none'
   }
   lockCount++
 }
@@ -33,10 +39,7 @@ export function unlockScroll() {
   lockCount = Math.max(0, lockCount - 1)
   if (lockCount === 0) {
     document.documentElement.style.overflow = savedOverflow
-    document.body.style.position = ''
-    document.body.style.top = ''
-    document.body.style.width = ''
-    window.scrollTo(0, savedScrollY)
+    document.documentElement.style.overscrollBehavior = savedOverscroll
   }
 }
 
