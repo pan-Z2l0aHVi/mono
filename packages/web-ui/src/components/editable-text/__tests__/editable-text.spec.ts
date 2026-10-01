@@ -42,6 +42,7 @@ describe('WebUiEditableText 组件契约', () => {
     expect(el.name).toBe('')
     expect(el.disabled).toBe(false)
     expect(el.readonly).toBe(false)
+    expect(el.commitOnUnmount).toBe(false)
     expect(el.hasAttribute('editing')).toBe(false)
     cleanupElement(el)
   })
@@ -664,6 +665,197 @@ describe('WebUiEditableText 组件契约', () => {
     cleanupElement(el)
   })
 
+  /*
+   * 卸载提交（commit-on-unmount）
+   *
+   * jsdom 不派发真实焦点管线：`el.remove()` 不触发 blur 提交，Chromium 上那次 blur 也不会到达。
+   * 因此本文件里「移除后仍然派发 change」一律只可能来自卸载回调本身，判据直读、不受引擎
+   * 差异影响。真实浏览器的行为按引擎分叉（Chromium 派发 blur、WebKit 不派发、Gecko 未取证），
+   * 见 editable-text.browser.spec.ts 的块首。
+   */
+  it('默认 commit-on-unmount=false：卸载不提交，草稿与编辑态原样保留', async () => {
+    const el = create({ value: 'hello' })
+    await waitForUpdate(el)
+    el.focus()
+    await waitForUpdate(el)
+    typeDraft(el, 'draft')
+    await waitForUpdate(el)
+
+    const [changes, detachChanges] = spyEvents(el, 'change')
+    try {
+      el.remove()
+      await waitForUpdate(el)
+
+      expect(changes, '默认卸载不派发 change').toHaveLength(0)
+      expect(el.value, '草稿仍在').toBe('draft')
+      expect(el.hasAttribute('editing'), '编辑态不被卸载路径摘除').toBe(true)
+    } finally {
+      detachChanges()
+    }
+    cleanupElement(el)
+  })
+
+  it('commit-on-unmount 且编辑中：卸载提交草稿并派发一次 change', async () => {
+    const el = create({ value: 'hello', 'commit-on-unmount': '' })
+    await waitForUpdate(el)
+    el.focus()
+    await waitForUpdate(el)
+    typeDraft(el, 'draft')
+    await waitForUpdate(el)
+
+    const [cancels, detachCancels] = spyEvents(el, 'cancel')
+    const [changes, detachChanges] = spyEvents(el, 'change')
+    try {
+      el.remove()
+      await waitForUpdate(el)
+
+      expect(changes, '卸载提交恰好派发一次 change').toHaveLength(1)
+      expect(changes[0].bubbles, 'change 沿组合路径冒泡').toBe(true)
+      expect(changes[0].composed).toBe(true)
+      expect(cancels, '卸载提交不派发 cancel').toHaveLength(0)
+      expect(el.value, '草稿成为新值').toBe('draft')
+      expect(el.hasAttribute('editing')).toBe(false)
+      expect(document.activeElement, '与 blur 提交一致，不干预焦点').not.toBe(el)
+    } finally {
+      detachCancels()
+      detachChanges()
+    }
+    cleanupElement(el)
+  })
+
+  it('commit-on-unmount：草稿与基线相同时卸载是空提交，不派发 change', async () => {
+    /*
+     * 卸载没有用户动作作为提交意图，`Enter` / `blur` 那种「一律提交」的判据在这里不成立：
+     * 只聚焦没打字的会话不该在消失时凭空产生一次 change。这条只在 jsdom 里可证——真实
+     * 浏览器里 DOM 移除自带的 blur 提交本来就会派发一次 change，遮住卸载路径自己的判断。
+     */
+    const el = create({ value: 'hello', 'commit-on-unmount': '' })
+    await waitForUpdate(el)
+    el.focus()
+    await waitForUpdate(el)
+    expect(el.hasAttribute('editing')).toBe(true)
+
+    const [changes, detachChanges] = spyEvents(el, 'change')
+    try {
+      el.remove()
+      await waitForUpdate(el)
+
+      expect(changes, '草稿与基线相同，不派发空提交').toHaveLength(0)
+      expect(el.value).toBe('hello')
+    } finally {
+      detachChanges()
+    }
+    cleanupElement(el)
+  })
+
+  it('commit-on-unmount 且不在编辑态：卸载不派发 change', async () => {
+    const el = create({ value: 'hello', 'commit-on-unmount': '' })
+    await waitForUpdate(el)
+
+    const [changes, detachChanges] = spyEvents(el, 'change')
+    try {
+      el.remove()
+      await waitForUpdate(el)
+
+      expect(changes, '空闲态卸载是空提交，不派发 change').toHaveLength(0)
+      expect(el.value).toBe('hello')
+    } finally {
+      detachChanges()
+    }
+    cleanupElement(el)
+  })
+
+  /*
+   * readonly 叠加：`_onInput` 把 readonly 的输入挡在 `_value` 之外，因此草稿恒等于基线，
+   * 卸载的「有无实际变更」判据必然不成立，两条理由各自独立地导致不提交。
+   */
+  it('commit-on-unmount 在 readonly 编辑态卸载：不提交也不摘编辑态', async () => {
+    const el = create({ value: 'hello', readonly: '', 'commit-on-unmount': '' })
+    await waitForUpdate(el)
+    el.focus()
+    await waitForUpdate(el)
+    typeDraft(el, 'draft')
+    await waitForUpdate(el)
+    expect(el.value, 'readonly 拒绝输入，没有草稿').toBe('hello')
+
+    const [changes, detachChanges] = spyEvents(el, 'change')
+    try {
+      el.remove()
+      await waitForUpdate(el)
+
+      expect(changes, 'readonly 卸载不派发 change').toHaveLength(0)
+      expect(el.value).toBe('hello')
+      expect(el.hasAttribute('editing'), '编辑态原样保留：没有提交就没有收尾').toBe(true)
+    } finally {
+      detachChanges()
+    }
+    cleanupElement(el)
+  })
+
+  it('commit-on-unmount：disabled 与卸载同任务时是竞态，判 _isDisabled 后不派发 change', async () => {
+    /*
+     * 与 `_onBlur` 的禁用守卫对称：禁用态退出编辑只保留草稿、不派发提交事件。必须显式判
+     * `_isDisabled`——`disabled = true` 与 `remove()` 在同一任务里执行时 Lit 更新是微任务，
+     * `updated()` 里「禁用态退出编辑」那条分支尚未执行，组件此刻仍在编辑态。不判就会派发
+     * 一条 blur 路径明确拒绝的 change。
+     */
+    const el = create({ value: 'hello', 'commit-on-unmount': '' })
+    await waitForUpdate(el)
+    el.focus()
+    await waitForUpdate(el)
+    typeDraft(el, 'draft')
+    await waitForUpdate(el)
+    expect(el.hasAttribute('editing')).toBe(true)
+
+    const [changes, detachChanges] = spyEvents(el, 'change')
+    try {
+      // 同步任务内先禁用再卸载：updated() 来不及跑
+      el.disabled = true
+      el.remove()
+      await waitForUpdate(el)
+
+      expect(changes, '禁用态卸载不派发 change').toHaveLength(0)
+      expect(el.value, '草稿保留，与 blur 禁用路径一致').toBe('draft')
+    } finally {
+      detachChanges()
+    }
+    cleanupElement(el)
+  })
+
+  it('commit-on-unmount：可编辑态进入并起草稿，期间变 readonly，卸载不提交', async () => {
+    /*
+     * 覆盖 readonly 用例原先缺的一段：不是「一进入编辑就是 readonly」，而是可编辑态进入、
+     * 起草稿之后属性才翻成 readonly。此时 `_editBase` 是进入编辑时的旧值、`_value` 是草稿，
+     * 两者不同——若 `_isDisabled` 缺席，仅靠「草稿≠基线」这条判据就会提交，而 blur 路径在
+     * 同样的状态下是拒绝提交的。禁用与草稿判定两条守卫因此必须都在。
+     */
+    const el = create({ value: 'hello', 'commit-on-unmount': '' })
+    await waitForUpdate(el)
+    el.focus()
+    await waitForUpdate(el)
+    typeDraft(el, 'draft')
+    await waitForUpdate(el)
+    expect(el.value, '草稿已就位').toBe('draft')
+
+    // 草稿还在时切到 readonly；jsdom 不跑 updated()，禁用态退出编辑那条分支尚未执行
+    el.readonly = true
+    await waitForUpdate(el)
+
+    const [changes, detachChanges] = spyEvents(el, 'change')
+    try {
+      el.remove()
+      await waitForUpdate(el)
+
+      expect(changes, 'readonly 下卸载不派发 change，尽管草稿与基线不同').toHaveLength(0)
+      // 组件对象上仍留着草稿，但没有任何事件告诉调用方它存在过，元素随卸载一起消失——
+      // 用户侧的观感就是「我打的字没了」，既没有 change 也没有 cancel。
+      expect(el.value, '草稿仍在组件上，但从未被提交或告知调用方').toBe('draft')
+    } finally {
+      detachChanges()
+    }
+    cleanupElement(el)
+  })
+
   it('编程式设值不派发事件', async () => {
     const el = create()
     await waitForUpdate(el)
@@ -710,6 +902,7 @@ describe('WebUiEditableText 组件契约', () => {
     ['name', 'field', 'name', 'field'],
     ['placeholder', '请输入', 'placeholder', '请输入'],
     ['disabled', true, 'disabled', ''],
-    ['readonly', true, 'readonly', '']
+    ['readonly', true, 'readonly', ''],
+    ['commitOnUnmount', true, 'commit-on-unmount', '']
   ])
 })
