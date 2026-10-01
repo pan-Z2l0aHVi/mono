@@ -87,13 +87,13 @@ describe('imagePreview 命令式 API', () => {
     const handle = await openPreview()
 
     expect(isMounted()).toBe(true)
-    expect(document.body.style.position).toBe('fixed')
+    expect(document.documentElement.style.overflow).toBe('hidden')
 
     handle.close()
     await handle.closed
 
     expect(isMounted()).toBe(false)
-    expect(document.body.style.position).toBe('')
+    expect(document.documentElement.style.overflow).toBe('')
   })
 
   it('next/prev 默认首尾循环', async () => {
@@ -360,7 +360,7 @@ describe('imagePreview 命令式 API', () => {
     const handle = await openPreview({ noScrollLock: true })
 
     expect(isMounted()).toBe(true)
-    expect(document.body.style.position).toBe('')
+    expect(document.documentElement.style.overflow).toBe('')
 
     handle.close()
     await handle.closed

@@ -200,11 +200,11 @@ describe('WebUiDropdown 组件', () => {
 
       el.openMenu()
       await waitForUpdate(el)
-      expect(document.body.style.position).toBe('fixed')
+      expect(document.documentElement.style.overflow).toBe('hidden')
 
       cleanupElement(el)
 
-      expect(document.body.style.position).toBe('')
+      expect(document.documentElement.style.overflow).toBe('')
     })
 
     it('no-scroll-lock 为 true 时打开不锁定页面滚动', async () => {
@@ -213,7 +213,7 @@ describe('WebUiDropdown 组件', () => {
       el.openMenu()
       await waitForUpdate(el)
 
-      expect(document.body.style.position).toBe('')
+      expect(document.documentElement.style.overflow).toBe('')
       cleanupElement(el)
     })
 

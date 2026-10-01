@@ -5,6 +5,7 @@ import '@/components/icon'
 import '@/components/button'
 import glass from '@/assets/glass.css?inline'
 import { oouiClose } from '@/icons'
+import { ElementHeightController } from '@/shared/element-height'
 import { UserChangeController } from '@/shared/events/user-change'
 import { attachDragGesture, dampOverscroll, type DragGestureHandle } from '@/shared/gesture'
 import { normalizeLiteral } from '@/shared/normalize'
@@ -211,6 +212,37 @@ export class WebUiDrawer extends LitElement {
   private _hasHeaderSlot = false
   private _hasFooterSlot = false
   private readonly _userOpenChange = new UserChangeController()
+  /*
+   * 上下 placement 的拖拽热区要让开头尾两节（见 style.css 的 --wui-internal-drawer-* 说明）：
+   * `bottom` 贴顶边、热区让开 header，`top` 贴底边、热区让开 footer。让开的量就是那一节的
+   * border-box 高度，写成 host 上的自定义属性交给 CSS 去算偏移——样式侧因此不必知道
+   * header / footer 的存在与高度，两条 placement 规则各只读自己的那个属性。
+   *
+   * 用 offsetHeight 而非 CSS 侧推导：`[hidden]` 的节天然是 0（让位量归零，热区回到面板边缘），
+   * 而「header 存在但高度为 0」与「没有 header」在布局上是同一件事，不需要额外的存在性开关。
+   * 高度是动态的（consumer 的 padding、窄屏断点改写、slotted 内容换行），所以观察而非读取一次。
+   */
+  private readonly _headerHeight = new ElementHeightController(this, '.wui-drawer-header', height =>
+    this._setAvoidance('--wui-internal-drawer-header-inset', height)
+  )
+  private readonly _footerHeight = new ElementHeightController(this, '.wui-drawer-footer', height =>
+    this._setAvoidance('--wui-internal-drawer-footer-inset', height)
+  )
+
+  /*
+   * 让位量 = 该节高度 + 一点呼吸间距，且**只在真有那一节时**才加间距。
+   *
+   * 间距写成属性值里的 calc 而不是让 CSS 无条件相加，是因为「没有 header」这一态必须精确等于
+   * 修复前的几何（让位量 0，热区顶边贴面板顶边）。若让间距无条件生效，无 header 的抽屉会
+   * 平移 4px，胶囊相对内缘的既有内缩（drag-bar-inset.browser.spec.ts 钉住的关系）跟着变，
+   * 这条护栏就不该为了新方案让步。间距本身仍以 token 暴露，真机调参不必回滚代码。
+   */
+  private _setAvoidance(property: string, height: number) {
+    this.style.setProperty(
+      property,
+      height > 0 ? `calc(${height}px + var(--wui-drawer-drag-zone-inset, var(--wui-space-1, 4px)))` : '0px'
+    )
+  }
   private readonly _scrollLock = defineScrollLockLease().make()
   private readonly _presence = defineNativeDialogPresence().make({
     getDialog: () => this.dialog,

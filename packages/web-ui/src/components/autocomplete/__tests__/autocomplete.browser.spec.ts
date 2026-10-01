@@ -395,11 +395,11 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     focusTrigger(el)
     clickTrigger(el)
     await el.updateComplete
-    expect(document.body.style.position).toBe('fixed')
+    expect(document.documentElement.style.overflow).toBe('hidden')
 
     document.body.click()
     await el.updateComplete
-    expect(document.body.style.position).toBe('')
+    expect(document.documentElement.style.overflow).toBe('')
   })
 
   it('关闭和打开状态同步 accessibility tree 中的 listbox/options', async () => {
@@ -702,7 +702,7 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     expect(el.open).toBe(false)
     expect(comboboxTrigger(el).getAttribute('aria-expanded')).toBe('false')
     expect(comboboxTrigger(el).getAttribute('aria-activedescendant')).toBeFalsy()
-    expect(document.body.style.position).toBe('')
+    expect(document.documentElement.style.overflow).toBe('')
   })
 
   it('非 focused 但 open 的 autocomplete 在 fieldset 禁用时也关闭', async () => {
@@ -746,7 +746,7 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     const combobox = comboboxTrigger(el)
     expect(combobox.getAttribute('aria-expanded')).toBe('false')
     expect(combobox.getAttribute('aria-activedescendant')).toBeFalsy()
-    expect(document.body.style.position).toBe('')
+    expect(document.documentElement.style.overflow).toBe('')
     expect(el.querySelector('web-ui-option')).not.toBeNull()
   })
 

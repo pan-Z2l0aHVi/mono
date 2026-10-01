@@ -249,7 +249,6 @@ describe('WebUiContextMenu 组件', () => {
 
       // R3 例外：滚动锁的文档级副作用是唯一观察面（组件之外的副作用）
       expect(document.documentElement.style.overflow).toBe('')
-      expect(document.body.style.position).toBe('')
     })
 
     it('右键打开菜单', async () => {
@@ -358,7 +357,7 @@ describe('WebUiContextMenu 组件', () => {
       await waitForMenuOpen(el)
 
       // R3 例外：滚动锁的文档级副作用是唯一观察面
-      expect(document.body.style.position).toBe('')
+      expect(document.documentElement.style.overflow).toBe('')
       cleanupElement(el)
     })
 

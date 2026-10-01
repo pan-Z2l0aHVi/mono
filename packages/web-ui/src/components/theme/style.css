@@ -245,7 +245,7 @@
   --wui-shadow-panel: 0 3px 9px rgb(0 0 0 / 0.27);
   --wui-shadow-glass:
     0 0 1px rgb(0 0 0 / 0.02), 0 0 8px rgb(0 0 0 / 0.03), 0 2px 16px rgb(0 0 0 / 0.025), 0 8px 32px rgb(0 0 0 / 0.015);
-  --wui-color-focus-ring: rgb(0 136 255 / 0.4);
+  --wui-color-focus-ring: color-mix(in srgb, var(--wui-color-accent, #08f) 40%, transparent);
   color-scheme: light;
 }
 
@@ -295,7 +295,7 @@
   --wui-shadow-overlay: 0 18px 48px rgb(0 0 0 / 0.48);
   --wui-shadow-panel: 0 4px 16px rgb(0 0 0 / 0.32);
   --wui-shadow-glass: 0 8px 24px rgb(0 0 0 / 0.08);
-  --wui-color-focus-ring: rgb(10 132 255 / 0.62);
+  --wui-color-focus-ring: color-mix(in srgb, var(--wui-color-accent, #0a84ff) 62%, transparent);
   color-scheme: dark;
 }
 
@@ -337,7 +337,7 @@
     --wui-shadow-overlay: 0 18px 48px rgb(0 0 0 / 0.48);
     --wui-shadow-panel: 0 4px 16px rgb(0 0 0 / 0.32);
     --wui-shadow-glass: 0 8px 24px rgb(0 0 0 / 0.08);
-    --wui-color-focus-ring: rgb(10 132 255 / 0.62);
+    --wui-color-focus-ring: color-mix(in srgb, var(--wui-color-accent, #0a84ff) 62%, transparent);
     color-scheme: dark;
   }
 }

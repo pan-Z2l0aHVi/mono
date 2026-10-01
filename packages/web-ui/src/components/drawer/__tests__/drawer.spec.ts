@@ -112,7 +112,7 @@ describe('WebUiDrawer 组件', () => {
       el.open = true
       await waitForUpdate(el)
 
-      expect(document.body.style.position).toBe('fixed')
+      expect(document.documentElement.style.overflow).toBe('hidden')
       cleanupElement(el)
     })
 
@@ -122,7 +122,7 @@ describe('WebUiDrawer 组件', () => {
       el.open = true
       await waitForUpdate(el)
 
-      expect(document.body.style.position).toBe('')
+      expect(document.documentElement.style.overflow).toBe('')
       cleanupElement(el)
     })
 
@@ -133,7 +133,7 @@ describe('WebUiDrawer 组件', () => {
       el.setAttribute('no-scroll-lock', '')
       await waitForUpdate(el)
 
-      expect(document.body.style.position).toBe('')
+      expect(document.documentElement.style.overflow).toBe('')
       cleanupElement(el)
     })
   })
