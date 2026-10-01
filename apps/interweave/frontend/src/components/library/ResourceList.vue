@@ -311,6 +311,28 @@ function handleRowsFocusin(event: FocusEvent) {
   contextResource.value = row ? resourceForRow(row) : null
 }
 
+/*
+ * 触屏长按是 contextResource 的第三个来源。
+ *
+ * 开了 long-press 之后菜单有两个开法：鼠标走原生 contextmenu（行上的事件），触屏走组件
+ * 自己在宿主上计时打开。后者不发事件、也不认行——它只知道「在哪儿按的」，菜单项却全部
+ * gate 在 contextResource 上。若只补属性不补这个赋值，长按弹出来的是一张位置在某一行的
+ * 空菜单：只剩两条分隔线和一个删除「null」的空项。
+ *
+ * 为什么在 pointerdown 就落定、而不是等菜单要开了再补：长按的判定归组件的计时器，我们
+ * 没有「即将开菜单」这个时刻可挂。此时菜单还没开，v-if 渲染的是最终形态，组件搬运项的
+ * 那一整套（capture → 移入 portal → 关闭时搬回）拿到的也是完整项集。等开之后再改
+ * contextResource 就是在面板里增删节点，正是本组件上方那段 wrapper 注释里记的那个
+ * 会把锚点搞丢、且无法自愈的坑。
+ */
+function syncTouchContext(event: PointerEvent) {
+  if (event.pointerType !== 'touch') return
+  const target = event.target
+  if (!(target instanceof HTMLElement)) return
+  const row = target.closest<HTMLElement>('[data-resource-row]')
+  contextResource.value = row ? resourceForRow(row) : null
+}
+
 const ROW_NAVIGATION_KEYS = new Set(['ArrowDown', 'ArrowUp', 'Home', 'End'])
 
 /*
@@ -708,6 +730,10 @@ function armTouchSweep() {
 }
 
 function handleSweepStart(event: PointerEvent) {
+  // 长按菜单要用的 contextResource 在这里落定：这是 pointerdown 冒泡到容器上的第一个监听器，
+  // 早于 web-ui-context-menu 自己那个（它在宿主上，我们在容器的后代里）。放在早的那一侧，
+  // 长按计时器到期时 contextResource 已经是对的，菜单开出来就有完整项。
+  syncTouchContext(event)
   // 右键（button 2）也走 pointerdown，让给右键菜单；只认主键
   if (!props.selectionMode || event.button !== 0 || !event.isPrimary) return
   const target = event.target
@@ -764,6 +790,16 @@ function endSweep() {
   }
   document.removeEventListener('touchmove', blockSweepScroll)
   if (sweepActive) suppressRowClick = true
+  // suppressContextMenu 必须在这里清，不能只等下一次 pointerdown 的 handleSweepStart。
+  //
+  // 它由 armTouchSweep 置位，而 armTouchSweep 只在选择模式下发生——非选择模式根本不注册
+  // endSweep。于是「进过一次选择模式并长按扫选」之后，这个标志会一直留着，把之后每一次
+  // 右键都吞掉（openContextMenu 见到它就 preventDefault 直接 return），直到用户碰巧再按
+  // 一次左键进选择模式才恢复。表现为：扫选过一次之后，右键菜单整个失灵。
+  //
+  // 时序上是安全的：同一次手势的 pointerup 一定早于后续右键的 pointerdown，而右键的
+  // contextmenu 又在 pointerdown 之后，所以这里清完标志，右键那一次读到的已经是 false。
+  suppressContextMenu = false
   sweepAnchor = null
   sweepActive = false
   sweepLastId = null
@@ -822,9 +858,13 @@ async function openContextMenu(resource: ResourceView, event: MouseEvent) {
   }
   event.preventDefault()
   event.stopPropagation()
+  // 坐标先取出来再跨 tick。openAt 是异步的（nextTick 之后才调用），而事件的
+  // clientX/clientY 属于「这一次右键」——菜单该出现在手指/鼠标当时的位置，不是等到下一帧
+  // 那一刻的位置。中间还夹着 contextResource 的写入与随之而来的重渲染。
+  const { clientX, clientY } = event
   contextResource.value = resource
   await nextTick()
-  contextMenuRef.value?.openAt(event.clientX, event.clientY)
+  contextMenuRef.value?.openAt(clientX, clientY)
 }
 
 function closeContextMenu() {
@@ -881,7 +921,30 @@ function handleRenameChange(resource: ResourceView, event: WebUiEvent<WebUiEdita
     一张 contextResource 为 null 的菜单——只剩一条分隔线加一个空「删除」项。禁用后
     事件在组件内被 return 掉，浏览器原生菜单正常出现。
   -->
-  <web-ui-context-menu ref="contextMenuRef" :disabled="resources.length === 0" class="block w-full h-full min-h-0">
+  <!--
+    long-press 让触屏能长按出行菜单（web-ui-context-menu 的 opt-in 属性，只对 pointerType
+    为 touch 的指针生效，鼠标仍走原生 contextmenu）。
+
+    选择模式里同一个「按住不动」已经被扫选占了
+    （armTouchSweep，320ms），而组件的长按阈值是 500ms——两个计时器都会跑，菜单会在扫选
+    已经开始勾选之后弹出来抢画面。语义上也该如此：选择模式的长按是「扫选」，不是「看菜单」。
+    关掉之后组件在 _onPointerDown 里直接 return，连计时器都不起。
+
+    **这里必须让 false 表现为「没有这个属性」，不能写成 `:long-press="!selectionMode"`。**
+    Vue 对自定义元素走属性路径（`'long-press' in el` 为 false，属性名是 longPress），false
+    会被写成字符串 `"false"`；而 Lit 的 Boolean converter 只看属性在不在（`value !== null`），
+    于是 `"false"` 读出来是 true——布尔整个反了。选择模式里长按照样弹菜单。
+    实测过：`agent-browser` 里进选择模式后 `getAttribute('long-press') === "false"` 而
+    `longPress === true`。所以 false 分支传 undefined，让 Vue 走 removeAttribute。
+    （同一元素上的 `:disabled` 没这个问题：disabled 是 Vue 认识的 spec boolean attribute，
+    false 时它会 removeAttribute。）
+  -->
+  <web-ui-context-menu
+    ref="contextMenuRef"
+    :disabled="resources.length === 0"
+    :long-press="selectionMode ? undefined : true"
+    class="block w-full h-full min-h-0"
+  >
     <!--
       容器不参与 v-if，始终挂载，状态只在它内部切换。这是虚拟化的硬前提：TanStack 的
       measureElement 靠 Vue 的函数式 ref 调用，若行挂在 v-if 分支里，重建出的新节点在

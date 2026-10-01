@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import type { WebUiDialog, WebUiEvent, WebUiRadio, WebUiSegmented } from '@greypan/web-ui'
-import { lucideX } from '@greypan/web-ui/icons'
 import { storeToRefs } from 'pinia'
 import { ref } from 'vue'
 
@@ -86,50 +85,87 @@ function pickAccent(value: string) {
     的 light 子节点在 shadow DOM 宿主下没有盒子，放进去反而不会渲染。侧边栏（含 ≤640px
     的抽屉）是 web-ui-layout 内部的子树，原生 dialog 提升进 top layer 后不受其 overflow、
     transform 与 aside 的 display:none 影响。
+
+    closable：标题栏的关闭按钮由组件渲染（`.title-row` 里 26px 的 icon 按钮）。此前这里是
+    宿主自绘的一枚 ghost 按钮加一条 footer「关闭」按钮，两条关闭入口各画一遍——自绘那枚还
+    得自己跟窄屏挤不挤、图标尺寸对齐，现在整套几何归组件，宿主只留标题文字。
   -->
-  <web-ui-dialog :open="open" controlled class="[--wui-dialog-width:min(90vw,480px)]" @open-change="handleOpenChange">
-    <div slot="title" class="flex items-center justify-between gap-4">
-      <span>设置</span>
-      <web-ui-button icon variant="ghost" size="28" aria-label="关闭设置" @click="emit('update:open', false)">
-        <web-ui-icon :icon="lucideX" :size="14" />
-      </web-ui-button>
-    </div>
+  <web-ui-dialog
+    :open="open"
+    controlled
+    closable
+    class="[--wui-dialog-width:min(90vw,480px)] [--wui-dialog-max-height:min(90vh,328px)]"
+    @open-change="handleOpenChange"
+  >
+    <span slot="title">设置</span>
 
-    <!-- 三段 tab 放在内容区顶部而不是标题栏：标题栏留给标题与关闭按钮，窄屏下两者不挤。 -->
-    <web-ui-segmented class="mb-4 w-full" :value="activeTab" aria-label="设置分区" @change="handleTabChange">
-      <web-ui-segmented-trigger v-for="tab in TABS" :key="tab.value" :value="tab.value">
-        {{ tab.label }}
-      </web-ui-segmented-trigger>
-    </web-ui-segmented>
+    <!--
+      固定高度：切 tab 不再让 dialog 长高矮。三个 tab 的内容高度本来差很多（实测
+      通用 118 / 外观 208 / 资源库 144，见下），此前由内容撑高，切一次跳一次。
 
-    <div class="flex flex-col">
-      <!--
+      两个常数都是实测的，不是照抄 AddDialog 的 108（那个是「title + gap + footer」
+      三段，而这里删掉 footer 按钮后 footer 段高度为 0，基数已经变了）。
+      在 http://localhost:9245/ 打开本 dialog、量 web-ui-dialog shadow 内各段实测：
+
+        卡片上 padding        20（上）+ 24（下）
+        .title-row 外高      37.59（title 21.59 + margin-bottom 16）
+        .desc margin-bottom  24
+        .wui-dialog-footer   0（closable 的关闭按钮在标题行，footer slot 已空）
+        ------------------------------------------
+        chrome               105.59 → 106（向上取整，留亚像素余量）
+
+      内容侧实测最高的一档是「外观」208（segmented + mb-4 + 主题行 + accent 色板）。
+      328 = 106 (chrome) + 208 (最高内容) + 12 (focus ring 余量，见 py-1.5) + 2 (亚像素余量)。
+      余下 2px 落在外观 tab 色板下方的空处，看不出来，却能挡住「别的平台行高差半像素
+      就让最高的一档凭空长出滚动条」。
+
+      内层 height 用 var(--wui-dialog-max-height) 而不是把 min(90vh, 328px) 再抄一遍：
+      宿主那条声明在同一个元素上，内层作为后代继承得到，两个数不会走散。max-height 写
+      min(90vh, ...) 是为了让矮视口下整张卡片跟着缩，而不是内容被裁在 328px 里。
+
+      overflow-y-auto 只是安全阀：328px 已经容得下最高的一档，常规尺寸下三个 tab 都不滚。
+    -->
+    <div class="overflow-y-auto py-1.5" style="height: calc(var(--wui-dialog-max-height, 328px) - 106px)">
+      <!-- 三段 tab 放在内容区顶部而不是标题栏：标题栏留给标题与关闭按钮，窄屏下两者不挤。 -->
+      <web-ui-segmented class="mb-4 w-full" :value="activeTab" aria-label="设置分区" @change="handleTabChange">
+        <web-ui-segmented-trigger v-for="tab in TABS" :key="tab.value" :value="tab.value">
+          {{ tab.label }}
+        </web-ui-segmented-trigger>
+      </web-ui-segmented>
+
+      <div class="flex flex-col">
+        <!--
         通用：MCP 开关是纯静态占位。disabled 而非隐藏，是为了让「这一栏存在但还没做」在
         界面上可见；文案承担解释，控件本身不假装可用。
       -->
-      <div v-if="activeTab === 'general'" :class="metadataRowClass">
-        <div class="flex min-w-0 flex-col gap-0.5">
-          <span class="text-sm text-(--wui-color-text)">MCP server</span>
-          <span :class="metadataLabelClass">即将推出</span>
+        <div v-if="activeTab === 'general'" :class="metadataRowClass">
+          <div class="flex min-w-0 flex-col gap-0.5">
+            <span class="text-sm text-(--wui-color-text)">MCP server</span>
+            <span :class="metadataLabelClass">即将推出</span>
+          </div>
+          <web-ui-switch disabled aria-label="MCP server（即将推出）" />
         </div>
-        <web-ui-switch disabled aria-label="MCP server（即将推出）" />
-      </div>
 
-      <div v-else-if="activeTab === 'appearance'" class="flex flex-col">
-        <!--
+        <div v-else-if="activeTab === 'appearance'" class="flex flex-col">
+          <!--
           主题三态切到 system 时 web-ui-theme 走自己的圆形揭示过渡：那个动画跟着
           resolved appearance 的变化跑，宿主只改 appearance attribute，不绕过它。
         -->
-        <div :class="metadataRowClass">
-          <span class="text-sm text-(--wui-color-text)">主题</span>
-          <web-ui-segmented :value="appearance" aria-label="主题模式" variant="raised" @change="handleAppearanceChange">
-            <web-ui-segmented-trigger v-for="item in THEME_APPEARANCES" :key="item.value" :value="item.value">
-              {{ item.label }}
-            </web-ui-segmented-trigger>
-          </web-ui-segmented>
-        </div>
+          <div :class="metadataRowClass">
+            <span class="text-sm text-(--wui-color-text)">主题</span>
+            <web-ui-segmented
+              :value="appearance"
+              aria-label="主题模式"
+              variant="raised"
+              @change="handleAppearanceChange"
+            >
+              <web-ui-segmented-trigger v-for="item in THEME_APPEARANCES" :key="item.value" :value="item.value">
+                {{ item.label }}
+              </web-ui-segmented-trigger>
+            </web-ui-segmented>
+          </div>
 
-        <!--
+          <!--
           accent 预设平铺。选中态由 accent 派生，圆点之外再给一枚实心色块，让「当前 accent」
           在选项列表里直接看得见——切完之后整窗的强调色都会跟着变。
 
@@ -143,47 +179,46 @@ function pickAccent(value: string) {
           本格的做法：button 承担点击，web-ui-radio 只负责显示选中态（pointer-events-none），
           aria-checked 与 checked 同源于 accent，两个入口共用 pickAccent 这一条写入路径。
         -->
-        <div class="flex flex-col gap-2 px-4 py-3">
-          <span class="text-xs leading-5 text-[#8a8a94] dark:text-(--wui-color-text-secondary)">强调色</span>
-          <div role="radiogroup" aria-label="强调色" class="flex flex-wrap gap-x-4 gap-y-2">
-            <div v-for="preset in ACCENT_PRESETS" :key="preset.value" class="flex items-center gap-1.5">
-              <button
-                type="button"
-                role="radio"
-                :aria-checked="accent === preset.value"
-                :aria-label="`强调色 ${preset.label}`"
-                class="grid size-4 cursor-pointer place-items-center rounded-full border border-black/25 bg-transparent p-0 dark:border-white/35"
-                @click="pickAccent(preset.value)"
-              >
-                <span
-                  class="rounded-full transition-transform"
-                  :class="accent === preset.value ? 'scale-100' : 'scale-0'"
-                  :style="{ width: '10px', height: '10px', background: preset.value }"
-                  aria-hidden="true"
-                />
-              </button>
-              <web-ui-radio
-                :value="preset.value"
-                :checked="accent === preset.value"
-                :aria-label="preset.label"
-                class="pointer-events-none"
-              >
-                {{ preset.label }}
-              </web-ui-radio>
+          <div class="flex flex-col gap-2 px-4 py-3">
+            <span class="text-xs leading-5 text-[#8a8a94] dark:text-(--wui-color-text-secondary)">强调色</span>
+            <div role="radiogroup" aria-label="强调色" class="flex flex-wrap gap-x-4 gap-y-2">
+              <div v-for="preset in ACCENT_PRESETS" :key="preset.value" class="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  role="radio"
+                  :aria-checked="accent === preset.value"
+                  :aria-label="`强调色 ${preset.label}`"
+                  class="grid size-4 cursor-pointer place-items-center rounded-full border border-black/25 bg-transparent p-0 dark:border-white/35"
+                  @click="pickAccent(preset.value)"
+                >
+                  <span
+                    class="rounded-full transition-transform"
+                    :class="accent === preset.value ? 'scale-100' : 'scale-0'"
+                    :style="{ width: '10px', height: '10px', background: preset.value }"
+                    aria-hidden="true"
+                  />
+                </button>
+                <web-ui-radio
+                  :value="preset.value"
+                  :checked="accent === preset.value"
+                  :aria-label="preset.label"
+                  class="pointer-events-none"
+                >
+                  {{ preset.label }}
+                </web-ui-radio>
+              </div>
             </div>
           </div>
         </div>
+
+        <!-- 资源库设置尚未实现，与 pages/SettingsPage.vue 一样先占位。 -->
+        <web-ui-empty
+          v-else
+          description="资源库设置尚未实现"
+          :size="64"
+          class="[--wui-empty-min-height:0] [--wui-empty-padding:0]"
+        />
       </div>
-
-      <!-- 资源库设置尚未实现，与 pages/SettingsPage.vue 一样先占位。 -->
-      <web-ui-empty
-        v-else
-        description="资源库设置尚未实现"
-        :size="64"
-        class="[--wui-empty-min-height:0] [--wui-empty-padding:0]"
-      />
     </div>
-
-    <web-ui-button slot="footer" variant="secondary" @click="emit('update:open', false)">关闭</web-ui-button>
   </web-ui-dialog>
 </template>

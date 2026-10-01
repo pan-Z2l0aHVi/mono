@@ -60,3 +60,23 @@ body {
   outline: var(--wui-focus-ring-width, 3px) solid var(--wui-color-focus-ring, rgb(0 136 255 / 0.4));
   outline-offset: 2px;
 }
+
+/*
+ * 触摸设备的最小可点尺寸：控件从 36px 抬到 40px。
+ *
+ * 写在 `web-ui-theme` 而不是 `:root`：36px 这个默认值由 theme 的 shadow 内 `:host` 提供，
+ * 而 `:root` 上的声明与 `:host` 特异性相同、且离组件更远，谁生效取决于样式表顺序，不可靠。
+ * 直接写在 theme 宿主元素上则是「外部作者样式压过 shadow 内 :host」，与 drawer 窄屏覆写
+ * 同一个机制（drawer/style.css 里 --wui-drawer-nested-peek-base 那条）。
+ *
+ * 判据用 `pointer: coarse` 而不是屏幕宽度：触屏笔记本、带笔触的平板都命中，而窄视口的桌面
+ * 窗口不命中——后者有精确指针，36px 配鼠标指针是合适的。菜单行高写死 32px
+ * （dropdown-item/style.css），不吃这个 token，所以项高不会被这一条带着变。
+ *
+ * 验收限制：桌面 DevTools 的设备模拟不覆写 pointer 特性，本条只能在真机上确认命中。
+ */
+@media (pointer: coarse) {
+  web-ui-theme {
+    --wui-control-size: 40px;
+  }
+}

@@ -223,7 +223,7 @@ const filterLabelClass =
       <div
         id="library-filter-panel"
         slot="content"
-        class="flex flex-wrap gap-3 items-center px-6 max-[640px]:px-3 max-[640px]:-ml-14 py-2.5 text-sm text-[#5b5b66] dark:text-(--wui-color-text-secondary)"
+        class="flex flex-wrap gap-3 items-center px-6 max-[640px]:px-3 py-2.5 text-sm text-[#5b5b66] dark:text-(--wui-color-text-secondary)"
       >
         <label :class="filterLabelClass">
           <web-ui-select portal :value="filterSource" class="[--wui-input-width:128px]" @change="handleSourceChange">

@@ -39,12 +39,17 @@ function buttonByLabel(host: HTMLElement, label: string) {
   return button
 }
 
-function buttonByText(host: HTMLElement, text: string) {
-  const button = [...host.querySelectorAll<HTMLElement>('web-ui-button')].find(
-    element => element.textContent?.trim() === text
-  )
-  if (!button) throw new Error(`button ${text} was not rendered`)
-  return button
+/*
+ * 标题栏的关闭按钮由 web-ui-dialog 自己渲染，在它的 shadow 里（`.title-row` 里那枚
+ * `aria-label="关闭"` 的 26px icon 按钮）。宿主拿不到那个节点，只能验它确实存在过：
+ * `closable` 挂上了、宿主自己没有再画一枚标题栏按钮，也没有 footer「关闭」。
+ *
+ * 关闭**行为**由另两条覆盖——受控的 Escape/遮罩路径，以及 shadow 内按钮点击派发的
+ * `open-change`（组件把两条用户关闭入口收在 `_closeFromUser` 一处，controlled 下都只派发
+ * 关闭请求，宿主因此仍拿到同一条 `update:open(false)`）。按钮本身点不点得动归 web-ui 自己测。
+ */
+function titleCloseButton(host: HTMLElement) {
+  return dialogElement(host).shadowRoot?.querySelector<HTMLElement>('.title-row web-ui-button[aria-label="关闭"]')
 }
 
 function segmentedByLabel(host: HTMLElement, label: string) {
@@ -86,20 +91,19 @@ describe('SettingsDialog', () => {
     localStorage.clear()
   })
 
-  it('标题、底部关闭按钮与空壳时期的关闭路径都还在', async () => {
-    const onUpdateOpen = vi.fn<(value: boolean) => void>()
-    const mounted = mountDialog(onUpdateOpen)
+  it('标题栏关闭按钮交给组件的 closable，宿主不再自绘也不再有 footer 关闭', async () => {
+    const mounted = mountDialog(() => {})
 
     try {
       await nextTick()
 
       expect(mounted.host.querySelector('[slot="title"]')?.textContent).toContain('设置')
-
-      buttonByLabel(mounted.host, '关闭设置').click()
-      expect(onUpdateOpen).toHaveBeenCalledWith(false)
-
-      buttonByText(mounted.host, '关闭').click()
-      expect(onUpdateOpen).toHaveBeenCalledWith(false)
+      expect(dialogElement(mounted.host).closable).toBe(true)
+      expect(titleCloseButton(mounted.host)).toBeTruthy()
+      // 两条自绘入口都已消失：标题栏不再有宿主画的 aria-label="关闭设置"，也没有 footer 按钮。
+      expect(() => buttonByLabel(mounted.host, '关闭设置')).toThrow('button 关闭设置 was not rendered')
+      expect(mounted.host.querySelector('[slot="footer"]')).toBeNull()
+      expect(mounted.host.querySelectorAll('web-ui-button')).toHaveLength(0)
     } finally {
       mounted.close()
     }

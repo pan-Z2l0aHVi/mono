@@ -768,6 +768,145 @@ describe('ResourceList：按住拖动批量勾选', () => {
   })
 })
 
+/*
+ * 触屏长按出行菜单（#3）。组件侧契约是 web-ui-context-menu 的 long-press opt-in 属性，
+ * 这一组钉的是 app 侧的三件事：属性挂对了、菜单项讲的是长按那一行、扫选之后右键没被吞掉。
+ */
+describe('ResourceList：触屏长按菜单', () => {
+  afterEach(() => {
+    document.body.innerHTML = ''
+  })
+
+  function missingSource(): ResourceSourceView {
+    return {
+      id: 's1',
+      type: 'file',
+      location: '/tmp/gone.png',
+      available: false,
+      isPreferred: true,
+      orderIndex: 0,
+      metadata: null
+    }
+  }
+
+  function labelsOf(host: HTMLElement) {
+    return [...host.querySelectorAll('web-ui-context-menu > .contents > web-ui-dropdown-item')].map(item =>
+      [...item.childNodes]
+        .filter(node => node.nodeType === Node.TEXT_NODE)
+        .map(node => node.textContent ?? '')
+        .join('')
+        .trim()
+    )
+  }
+
+  /*
+   * 属性必须「在」或「不在」，不能是字符串 "false"。
+   *
+   * Vue 对自定义元素走属性路径（`'long-press' in el` 为 false，因为 Lit 的属性名是 longPress），
+   * 布尔 false 会被写成字符串 "false"；Lit 的 Boolean converter 只看属性在不在
+   * （fromAttribute 是 `value !== null`），于是 "false" 读出来是 true，布尔整个反过来。
+   *
+   * 这条在真机上验过：进选择模式后 getAttribute('long-press') === "false" 而 longPress === true。
+   * 少这条断言的话，写成 `:long-press="!selectionMode"` 会一路绿到用户手上——
+   * 选择模式里长按先勾选、然后菜单照弹。
+   */
+  it('非选择模式挂 long-press，选择模式让属性整个消失而不是变成 "false"', async () => {
+    const normal = await mountList([resource()])
+    try {
+      expect(normal.contextMenu?.hasAttribute('long-press')).toBe(true)
+    } finally {
+      normal.unmount()
+    }
+
+    const selecting = await mountList([resource()], [], { selectionMode: true })
+    try {
+      expect(selecting.contextMenu?.hasAttribute('long-press')).toBe(false)
+      expect(selecting.contextMenu?.getAttribute('long-press')).toBeNull()
+    } finally {
+      selecting.unmount()
+    }
+  })
+
+  /*
+   * 长按菜单的内容必须讲长按的那一行。
+   *
+   * 长按是组件自己在宿主上计时打开的，它不发事件、也不认行——菜单项却全部 gate 在
+   * contextResource 上。所以 contextResource 必须在 pointerdown 那一刻就落定（syncTouchContext），
+   * 否则长按弹出来的是一张位置在某一行的空菜单：只剩两条分隔线和一个删除「null」的空项。
+   *
+   * 这里断言的是「长按 b 之后菜单项已经是 b 的」，而不是「菜单能打开」——后者在
+   * contextResource 为空壳时同样成立。
+   */
+  it('触屏按下就把 contextResource 落到那一行，长按菜单项讲的是这一行', async () => {
+    const mounted = await mountList([
+      resource({ id: 'r1' }),
+      resource({ id: 'r2', available: false, sources: [missingSource()] })
+    ])
+    try {
+      // 右键路径本来就会写 contextResource，所以先用它把状态推到 r1
+      mounted.rows[0].dispatchEvent(
+        new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: 4, clientY: 4 })
+      )
+      await nextTick()
+      expect(labelsOf(mounted.host)).toContain('预览')
+
+      // 触屏按在 r2 上：只按下、不抬手。这一步就该把 contextResource 换成 r2。
+      mounted.rows[1].dispatchEvent(pointer('pointerdown', { button: 0, clientX: 100, clientY: 100 }, 'touch'))
+      await nextTick()
+
+      const labels = labelsOf(mounted.host)
+      expect(labels).not.toContain('预览')
+      expect(labels).toContain('找回资源')
+      expect(labels).toContain('详情')
+    } finally {
+      mounted.unmount()
+    }
+  })
+
+  /*
+   * 回归：suppressContextMenu 曾经只在下一次 pointerdown 才清，于是扫过一次之后右键整个失灵。
+   *
+   * 它由 armTouchSweep 置位，而 armTouchSweep 只在选择模式下发生；endSweep 当时只清
+   * suppressRowClick。所以「进过一次选择模式并长按扫选」之后，这个标志一直留着，
+   * openContextMenu 见到它就 preventDefault 直接 return，右键菜单再也弹不出来。
+   *
+   * 观察点是菜单项内容而不是「菜单有没有开」：被吞掉时 openContextMenu 提前 return，
+   * contextResource 停在上一手那行，于是菜单讲的是错的行。这正是用户看到的现象。
+   */
+  it('触摸扫选收尾后右键菜单照常弹出，且讲的是右键那一行', async () => {
+    vi.useFakeTimers()
+    const setChecked = vi.fn<SetChecked>()
+    const mounted = await mountList(
+      [resource({ id: 'r1' }), resource({ id: 'r2', available: false, sources: [missingSource()] })],
+      [],
+      { selectionMode: true },
+      { onSetChecked: setChecked }
+    )
+    try {
+      // 在 r1 上长按到扫选武装：这一步把 suppressContextMenu 置上
+      mounted.rows[0].dispatchEvent(pointer('pointerdown', { button: 0, clientX: 100, clientY: 100 }, 'touch'))
+      vi.advanceTimersByTime(400)
+      expect(setChecked).toHaveBeenCalledExactlyOnceWith('r1', true)
+
+      // 抬手收尾。endSweep 必须在这里把 suppressContextMenu 清掉。
+      window.dispatchEvent(pointer('pointerup', { clientX: 100, clientY: 100 }, 'touch'))
+
+      // 之后右键另一行：菜单项必须换成 r2 的
+      mounted.rows[1].dispatchEvent(
+        new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: 4, clientY: 4 })
+      )
+      await nextTick()
+
+      const labels = labelsOf(mounted.host)
+      expect(labels).toContain('找回资源')
+      expect(labels).not.toContain('预览')
+    } finally {
+      vi.useRealTimers()
+      mounted.unmount()
+    }
+  })
+})
+
 describe('ResourceList：右键菜单的详情入口', () => {
   afterEach(() => {
     document.body.innerHTML = ''
