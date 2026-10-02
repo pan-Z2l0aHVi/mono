@@ -199,7 +199,7 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
     no-backdrop-close
     horizontal
     :style="{ '--wui-dialog-footer-justify': mobile ? undefined : 'flex-end' }"
-    class="[--wui-dialog-width:min(90vw,880px)] [--wui-dialog-max-height:min(82vh,560px)]"
+    class="[--wui-dialog-width:min(90vw,880px)] [--wui-dialog-max-height:calc(min(82vh,560px)_-_142px)]"
     @open-change="handleOpenChange"
   >
     <span slot="title">添加资源</span>
@@ -212,9 +212,39 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
       {{ error }}
     </p>
 
+    <!--
+      内层不再自己算高度：`--wui-dialog-max-height` 的语义已从「整卡高度」改成
+      「内容区高度」（见 @greypan/web-ui 的 dialog），去掉的不只是那个 108，还有
+      整条 height 计算——上限改由组件的 `.desc` 承担。
+
+      这里用 var(--wui-dialog-max-height) 而不是 height: 100%：后者在内容不足时会让
+      `.desc` 收缩到内容高，整张卡片跟着变矮，切 tab / 队列有无时又跳一次。token 直接
+      当内层高度，固定高度这个性质才与改动前一致（两个 drop zone 恒等高）。
+      token 声明在外层 web-ui-dialog 上，内层作为后代继承得到，两个数不会走散。
+
+      token 里减掉的 142 是本 dialog 的 chrome 实测值（Chrome/Chromium，1017×503）：
+        卡片上 padding        20（上）+ 24（下）
+        .title 外高           37.59（title 21.59 + margin-bottom 16）
+        .desc margin-top       −6（focus-ring 上余量的成对负 margin，扣回 title 下方间距）
+        .desc padding-block   12（focus-ring 余量）
+        .desc margin-bottom   18
+        .wui-dialog-footer    36（--wui-control-size，两枚按钮）
+        ------------------------------------------
+        chrome                 141.59 → 142（向上取整，留亚像素余量）
+
+      触摸端 `@media (pointer: coarse)` 把 --wui-control-size 抬到 40，footer 随之长到
+      40、chrome 变 145.59。这 4px 由**卡片**吸收：内容区仍等于 token 本身，一像素不缩
+      （实测 36 → 40 时内容区恒为 270），长高的是卡片本身（412 → 416）。它没有把卡片顶出
+      dialog 盒子——那正是本轮修掉的 bug。
+
+      所以 token 减掉的那 142 是**内容区预算**，不是整卡定值：整卡高度仍随
+      --wui-control-size 一起长。视口矮到 82vh 生效时（本例 503px 视口下 82vh = 412），
+      卡片会越出自己声明的那个数 4px。这是有意的——内容区不动、卡片跟着 chrome 走，
+      正是「chrome 由内容撑开」要的结果。
+    -->
     <div
       class="grid min-h-0 grid-cols-2 gap-5 max-[640px]:gap-4 max-[900px]:grid-cols-1 max-[900px]:grid-rows-2"
-      style="height: min(calc(82vh - 108px), calc(var(--wui-dialog-max-height, 560px) - 108px))"
+      style="height: var(--wui-dialog-max-height)"
     >
       <!--
         clip + clip-margin 而非 hidden：drop zone 与标题行按钮都紧贴栏边，而 focus ring
