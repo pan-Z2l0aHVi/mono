@@ -845,9 +845,15 @@ web-ui-radio-group {
 
 启用 `closable` 时，内置关闭按钮固定在 header 右上角（默认顶部 `16px`、右侧 `16px`），不会再拉伸到抽屉中间。顶部 `16px` 经 `--wui-space-4` 解析，因此与 drawer 的 header padding 同源；右侧 `16px` 是按钮自身到面板右边沿的偏移，它并不等于 header 的水平内边距（`20px`），因此保持字面量。
 
-**拖拽关闭：** 启用 `draggable` 后，打开的抽屉在内缘显示灰色胶囊 drag bar（默认 4×56px，视觉中线距内缘 10px，位于 20px 厚的命中热区内；`right` 在左缘、`left` 在右缘、`top` 在下缘、`bottom` 在上缘）：
+**拖拽关闭：** 启用 `draggable` 后，打开的抽屉在内缘显示灰色胶囊 drag bar（默认 4×56px，视觉中线距内缘 10px；`right` 在左缘、`left` 在右缘、`top` 在下缘、`bottom` 在上缘）：
 
 中线跟随 `--wui-drawer-content-padding` 的半值，并以「半个胶囊厚度 + 4px 呼吸间距」兜底：把该 padding 归零、让内容贴边铺满时，胶囊仍留可见内缩，既不会越出面板内缘，也不会贴死面板边缘。
+
+胶囊是纯视觉件：`pointer-events: none`，本身不吃任何一次按下。真正被按下的是命中层。上下 placement 有两层——沿可抓取边缘的一条端头热边（默认 12px 厚，由胶囊自己的中线 token 推导，宽度与胶囊等宽）与拖拽热区；左右 placement 只有热区。热边按构造覆盖胶囊所在的带，所以在四个 placement 上，按住胶囊能开始拖拽、悬停胶囊会点亮它。
+
+让开 header（`placement=bottom`）或 footer（`placement=top`）的是热区本身。因此 header / footer 不会把胶囊推离面板边缘，热区也仍然避让那一节的控件。代价是明说的：header / footer 顶部那一条从「按不动」变成「可拖」。让开控件靠的是「热边的覆盖范围不可能超过胶囊」这条不变量——它与胶囊等宽且同中心，绝不是面板满宽——而不是某个在默认 token 下恰好成立的边距；drawer 的测试按 `--wui-drawer-drag-bar-thickness` × `--wui-space-4` 的全组合逐一量过相交面积。内置关闭按钮贴着面板右缘，消费侧放在 header 两端的控件都在那条跨度之外，两者都仍可点击。
+
+「把手占位」自带一条推论：落在这条跨度内、顶边又落在热边高度之内的控件，上部会被拖拽面盖住——把手就画在那里，起手必须从把手所在的位置开始。抬 `z-index` 没用（Chromium 里热边始终压在 slotted 内容之上），量得着的杠杆是 `--wui-drawer-drag-bar-length`，它同时决定胶囊长度与热边宽度。
 
 - 拖拽实时跟手，遮罩透明度按比例淡出。
 - 遮罩点击关闭只认**轻点链路**：按下起点在遮罩上、且按-放位移在轻点量级内的 click 才关闭。浏览器对「按下 → 拖动 → 松手」生成的 click 落在起点与松手点的共同祖先（dialog）上——从面板内容或遮罩上开始拖拽、松手落在遮罩时，click 的 target 同样是 dialog；组件在 `pointerdown` 记录起点与坐标做回溯校验，这类拖拽松手一律弹回。`detail` 为 0 的 click（键盘/程序化来源）不消费指针记录。
