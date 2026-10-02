@@ -22,11 +22,14 @@ const noContractDiff = JSON.parse(run('contract-diff', '--json', '--base', 'HEAD
 // 变更提交后 diff 归零，本段自然跳过，因此不做「diff 必为空」的临时断言。
 const readChangesetDecisions = () => {
   const decisions = new Map()
+  const raws = []
   const bumpRank = { patch: 1, minor: 2, major: 3 }
   const dir = path.join(process.cwd(), '.changeset')
-  if (!fs.existsSync(dir)) return decisions
+  if (!fs.existsSync(dir)) return { decisions, raws }
   for (const file of fs.readdirSync(dir).filter(name => name.endsWith('.md'))) {
-    const match = /^---\n([\s\S]*?)\n---\n?([\s\S]*)$/.exec(fs.readFileSync(path.join(dir, file), 'utf8'))
+    const raw = fs.readFileSync(path.join(dir, file), 'utf8')
+    raws.push(raw)
+    const match = /^---\n([\s\S]*?)\n---\n?([\s\S]*)$/.exec(raw)
     if (!match) continue
     for (const line of match[1].split('\n')) {
       const entry = /^'([^']+)':\s*(major|minor|patch)\s*$/.exec(line.trim())
@@ -44,10 +47,21 @@ const readChangesetDecisions = () => {
       })
     }
   }
-  return decisions
+  return { decisions, raws }
 }
-const changesetDecisions = readChangesetDecisions()
+const { decisions: changesetDecisions, raws: changesetRaws } = readChangesetDecisions()
 for (const change of noContractDiff.changes) {
+  if (change.removed) {
+    // 包整体移除无法用 changeset 命名单元格表达：包离开 workspace 后
+    // changesets CLI 解析该单元格会直接崩溃，所以发布记录的替代物是
+    // 任一 changeset 正文明确提及该包名。
+    const referenced = changesetRaws.some(raw => raw.includes(change.name))
+    assert.ok(
+      referenced,
+      `pending package removal for ${change.name} requires a changeset summary mentioning it (retirement record)`
+    )
+    continue
+  }
   const decision = changesetDecisions.get(change.name)
   assert.ok(decision, `pending contract change for ${change.name} requires a changeset recording its semver decision`)
   if (change.semverReview.breakingCandidates.length > 0) {

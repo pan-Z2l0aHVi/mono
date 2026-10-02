@@ -1,8 +1,7 @@
 /**
- * Validate the agent-skill layout across the repo's three surfaces and sync
- * the npm package artifact.
+ * Validate the agent-skill layout across the repo's three surfaces.
  *
- * Surfaces (see packages/ai-skill/AGENTS.md):
+ * Surfaces (see skills/README.md):
  * - `<repo>/skills/` — real directories, the GitHub discovery surface for
  *   `npx skills add pan-Z2l0aHVi/mono`. Holds the repo-authored skills plus
  *   "dependency mirrors": third-party skills that a repo-authored skill links
@@ -15,18 +14,17 @@
  *   skill pointing at its real home. Agent clients follow symlinks; the skills
  *   CLI skips them, which keeps vendored skills out of discovery. A real
  *   directory appearing here means an in-repo `skills update` clobbered a
- *   symlink and must be reconciled (see AGENTS.md).
+ *   symlink and must be reconciled (see skills/README.md).
  *
- * The npm package (`packages/ai-skill/skills/`) is a build artifact synced from
- * `<repo>/skills/` containing ONLY the repo-authored skills; dependency
- * mirrors and vendored skills are never published.
+ * GitHub is the only distribution channel: consumers install from
+ * `pan-Z2l0aHVi/mono` with `npx skills add`. The repo-authored subset is
+ * exposed directly from `<repo>/skills/` as-is.
  */
-import { cpSync, existsSync, lstatSync, readFileSync, readdirSync, realpathSync, rmSync } from 'node:fs'
-import { dirname, join, resolve } from 'node:path'
+import { existsSync, lstatSync, readFileSync, readdirSync, realpathSync } from 'node:fs'
+import { join } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
-const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
-const repoRoot = resolve(packageRoot, '..', '..')
+const repoRoot = join(fileURLToPath(new URL('.', import.meta.url)), '..')
 
 /**
  * Extract `name` and `description` from a SKILL.md YAML frontmatter block.
@@ -82,9 +80,7 @@ export function checkRepoLayout({ rootSkillsDir, agentsSkillsDir, vendoredDir, l
     ['.agents/skills-vendored/', vendoredDir]
   ]) {
     if (!existsSync(dir)) {
-      throw new Error(
-        `skill surface directory ${label} does not exist (${dir}); recreate it per packages/ai-skill/AGENTS.md`
-      )
+      throw new Error(`skill surface directory ${label} does not exist (${dir}); recreate it per skills/README.md`)
     }
   }
 
@@ -105,8 +101,15 @@ export function checkRepoLayout({ rootSkillsDir, agentsSkillsDir, vendoredDir, l
     }
   }
 
-  // Surface 1: root skills/ — real dirs only; repo-authored or dependency mirrors.
-  const rootNames = readdirSync(rootSkillsDir)
+  // Surface 1: root skills/ — real dirs plus the README.md install doc;
+  // directories are repo-authored or dependency mirrors.
+  const rootNames = readdirSync(rootSkillsDir).filter(name => {
+    if (name !== 'README.md') return true
+    if (lstatSync(join(rootSkillsDir, name)).isDirectory()) {
+      throw new Error(`"${name}" under ${rootSkillsDir} must be the install doc file, not a directory`)
+    }
+    return false
+  })
   for (const name of rootNames) {
     if (!lstatSync(join(rootSkillsDir, name)).isDirectory()) {
       throw new Error(`unexpected file "${name}" under ${rootSkillsDir}; only real skill directories belong there`)
@@ -202,31 +205,16 @@ export function checkRepoLayout({ rootSkillsDir, agentsSkillsDir, vendoredDir, l
   return { repoAuthored, mirrored, vendored }
 }
 
-/**
- * Sync the package artifact: copy ONLY the repo-authored skills from the root
- * skills/ surface into the package's `skills/` output directory.
- *
- * @param {{ rootSkillsDir: string, destDir: string, repoAuthored: string[] }} options
- * @returns {string[]} synced skill names
- */
-export function syncPackageSkills({ rootSkillsDir, destDir, repoAuthored }) {
-  rmSync(destDir, { recursive: true, force: true })
-  for (const name of repoAuthored) {
-    cpSync(join(rootSkillsDir, name), join(destDir, name), { recursive: true })
-  }
-  return [...repoAuthored]
-}
-
 export function main() {
-  const { repoAuthored } = checkRepoLayout({
+  const { repoAuthored, mirrored } = checkRepoLayout({
     rootSkillsDir: join(repoRoot, 'skills'),
     agentsSkillsDir: join(repoRoot, '.agents', 'skills'),
     vendoredDir: join(repoRoot, '.agents', 'skills-vendored'),
     lockFile: join(repoRoot, 'skills-lock.json')
   })
-  syncPackageSkills({ rootSkillsDir: join(repoRoot, 'skills'), destDir: join(packageRoot, 'skills'), repoAuthored })
-  // stderr: prepack runs during `pnpm/npm pack --json`; stdout must stay clean for the pack JSON.
-  console.error(`skills layout ok; synced ${repoAuthored.length} repo-authored skills into packages/ai-skill/skills`)
+  console.error(
+    `skills layout ok; ${repoAuthored.length} repo-authored, ${mirrored.length} dependency mirror(s) exposed via GitHub`
+  )
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

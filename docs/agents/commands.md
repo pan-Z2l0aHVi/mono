@@ -59,7 +59,7 @@
 | `agent:diff-contract`    | 输出 manifest-level semver 审阅候选（`--base <git-ref>`）                                  | 根 `AGENTS.md`、`CONTRIBUTING.md`、`context.md`、`build.md`、`workflow.md`、`contract-change-review` skill                                                      |
 | `agent:verify`           | 引擎级浏览器取证：check-env / touch-flow / interpolate                                     | `browser-verification.md`、`testing.md`                                                                                                                         |
 | `agent:env-doctor`       | 体检 worktree 环境（dist 截断、watch 污染、缓存、残留）                                    | `build.md`                                                                                                                                                      |
-| `agent:update-skills`    | 经官方 `skills update` 引擎更新第三方 skill 并收割回真实家（临时目录隔离，不破坏软链布局） | `linting.md`、`packages/ai-skill/AGENTS.md`                                                                                                                     |
+| `agent:update-skills`    | 经官方 `skills update` 引擎更新第三方 skill 并收割回真实家（临时目录隔离，不破坏软链布局） | `linting.md`、`skills/README.md`                                                                                                                                |
 
 `agent:verify` 目标页连不上时报错会带可行动提示：它的默认 URL 指向本地 devserver，所以「连不上」最可能的解释是服务没起，而不是地址写错。
 

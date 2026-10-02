@@ -256,7 +256,11 @@ const markdownFiles = [
   // 第三方依赖镜像（如 herdr）也是锁定的上游件，同样按 fromLockedSkill 排除出链接面。
   ...walk('skills', file => file.endsWith('.md'))
     .filter(file => !fromLockedSkill(file))
+    // skills/ 根的 README.md 是 GitHub 通道门面文档，不在任何 skill 目录内，
+    // 没有对应的 .agents/skills 软链消费路径——按真实路径入面即可。
+    .filter(file => path.dirname(relativePosix(file)) !== 'skills')
     .map(file => path.join(root, '.agents', 'skills', path.relative(path.join(root, 'skills'), file))),
+  ...(exists('skills/README.md') ? [path.join(root, 'skills', 'README.md')] : []),
   ...walk('packages', file => path.basename(file) === 'AGENTS.md'),
   ...walk('apps', file => path.basename(file) === 'AGENTS.md'),
   // workspace README 与包级 AGENTS.md 同属指令面，但只能列一层：walk 会连 apps/*/node_modules 与 dist 一起吞进来。

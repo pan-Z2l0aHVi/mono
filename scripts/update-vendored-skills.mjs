@@ -3,7 +3,7 @@ import { spawnSync } from 'node:child_process'
 //
 // 为什么不直接在仓库根跑 `npx skills update`：update 会把变更的第三方 skill
 // 重装成实体目录写进 `.agents/skills/<name>`，覆盖指向真实家的软链（本仓的
-// .agents/skills 全部是软链，见 packages/ai-skill/AGENTS.md）。这里把 update
+// .agents/skills 全部是软链，见 skills/README.md）。这里把 update
 // 隔离在临时目录里跑——lock 复制过去，CLI 照常重解析源、比对 computedHash、
 // 只装变更项、更新 lock——然后由 reconcile 把变更内容搬回真实家：
 //   - 被自撰 skill 依赖而镜像在根 skills/ 的（如 herdr）→ 根 skills/<name>
@@ -27,7 +27,7 @@ import { join, resolve, dirname } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
-const checkScript = join(root, 'packages', 'ai-skill', 'scripts', 'check-skills.mjs')
+const checkScript = join(root, 'scripts', 'check-skills.mjs')
 
 const symlinkTargetFor = (name, repoRoot) =>
   existsSync(join(repoRoot, 'skills', name)) ? join('..', '..', 'skills', name) : join('..', 'skills-vendored', name)
