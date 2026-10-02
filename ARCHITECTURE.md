@@ -21,7 +21,7 @@
 
 ### 发布 / 私有边界
 
-- `packages/*`：当前 manifests 中均为非 `private` workspace；除 `@greypan/tsconfig` 外通常发布运行时代码，`tsconfig` 发布 JSON profiles。最终发布范围以各 package 的 `files`、`exports` 和 `publishConfig` 为准。
+- `packages/*`：当前 manifests 中均为非 `private` workspace；除 `@greypan/tsconfig` 外通常发布运行时代码，`tsconfig` 发布 JSON profiles，`skills` 发布仓库自编写 agent skills 内容包（其 `skills/` 是 `.agents/skills/` 内自编写 skill 的实体来源，经软链回连）。最终发布范围以各 package 的 `files`、`exports` 和 `publishConfig` 为准。
 - `apps/*`：当前 manifests 中均为 `private` 集成或交付应用，不是公共 API 的权威来源。
 - `apps/interweave/frontend`：独立 private workspace，属于 Wails 前端集成面；Go host 位于 `apps/interweave`。
 
@@ -36,6 +36,7 @@
 | `packages/deps-reload` (`@greypan/deps-reload`)                         | 开发期 workspace `dist` watcher                  | 「包级约束」表的 `deps-reload`、`src/vite.ts`、`src/webpack.ts` |
 | `packages/web-ui` (`@greypan/web-ui`)                                   | Lit components、tokens、icons、overlay、框架类型 | `docs/agents/web-ui.md`、组件 README、相关 ADR                  |
 | `packages/tsconfig` (`@greypan/tsconfig`)                               | 可被 `extends` 的 TypeScript profiles            | 「包级约束」表的 `tsconfig`、`*.json`                           |
+| `packages/ai-skill` (`@greypan/ai-skill`)                               | 仓库自编写 agent skills 的实体来源与 npm 发布    | `skills/`、`scripts/check-skills.mjs`、包级 `AGENTS.md`         |
 | `apps/react-web-ui-demo` (`@greypan/react-web-ui-demo`)                 | React 集成和预览                                 | `src/routes/`、`src/components/`、包级 README                   |
 | `apps/vue-web-ui-demo` (`@greypan/vue-web-ui-demo`)                     | Vue 集成和预览                                   | `src/pages/`、`src/components/`、包级 README                    |
 | `apps/interweave` (`@greypan/interweave`)                               | Go/Wails 桌面 host、后端能力边界                 | `README.md`、`AGENTS.md`、ADR-0008/0009                         |

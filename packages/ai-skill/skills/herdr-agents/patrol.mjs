@@ -15,15 +15,17 @@
 import { execFileSync } from 'node:child_process'
 import { existsSync, mkdirSync, readFileSync, readdirSync, realpathSync, statSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { dirname, join, resolve } from 'node:path'
+import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const STALL_AFTER = 4 // 连续多少轮 churn 未变且 owner 在跑才算可能停滞（6 分钟一轮 ≈ 24 分钟）
 
 const here = dirname(fileURLToPath(import.meta.url))
-const repo = resolve(here, '../../..')
+// 本 skill 的实体在 packages/ai-skill/skills/ 下（.agents/skills 里是软链），Node 会把
+// import.meta.url 解析到实体路径，所以不能用目录层数上推仓库根；改从脚本所在位置问 git。
 // realpath 与 task.mjs 的 resolveWorktree 同口径：state 里的 commonDir 是解析过软链的绝对路径，
 // 直接比 git 的原始输出会在 /Users 之类是软链的机器上把本仓库的 phase 误判成 unreadable。
+const repo = realpathSync(execFileSync('git', ['-C', here, 'rev-parse', '--show-toplevel'], { encoding: 'utf8' }).trim())
 const gitCommonDir = realpathSync(
   execFileSync('git', ['-C', repo, 'rev-parse', '--path-format=absolute', '--git-common-dir'], {
     encoding: 'utf8'

@@ -246,6 +246,12 @@ const markdownFiles = [
   ...walk('docs/agents', file => file.endsWith('.md')),
   ...walk('docs/adr', file => file.endsWith('.md')),
   ...walk('.agents', file => file.endsWith('.md')).filter(file => !fromLockedSkill(file)),
+  // 仓库自编写 skill 的实体在 packages/ai-skill/skills/ 下（.agents/skills 里只是软链，walk 不跟随）。
+  // skill 文档里的相对链接是按 agent 经 .agents/skills 软链读取的消费面写的，深度与实体路径不同，
+  // 所以检查时把这些文件映射回 .agents/skills 路径——内容相同（软链），链接按消费面解析。
+  ...walk('packages/ai-skill/skills', file => file.endsWith('.md')).map(file =>
+    path.join(root, '.agents', 'skills', path.relative(path.join(root, 'packages', 'ai-skill', 'skills'), file))
+  ),
   ...walk('packages', file => path.basename(file) === 'AGENTS.md'),
   ...walk('apps', file => path.basename(file) === 'AGENTS.md'),
   // workspace README 与包级 AGENTS.md 同属指令面，但只能列一层：walk 会连 apps/*/node_modules 与 dist 一起吞进来。

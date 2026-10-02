@@ -329,6 +329,7 @@ export default defineConfig({
       '**/typed-router.d.ts',
       'apps/interweave/frontend/bindings/**',
       '**/.agents/skills/**', // skill 源码（第三方与仓库自编写）不参与格式检查
+      'packages/ai-skill/skills/**', // 仓库自编写 skill 的实体目录（经软链暴露回 .agents/skills），同上
       '**/CHANGELOG.md' // changesets 生成的 changelog，不参与格式检查
     ],
     experimentalSortImports: {

@@ -1,0 +1,7 @@
+{
+  "extends": "@greypan/tsconfig/node.json",
+  "include": ["scripts/**/*", "test/**/*"],
+  "compilerOptions": {
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.tsbuildinfo"
+  }
+}
