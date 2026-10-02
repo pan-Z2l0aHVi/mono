@@ -324,9 +324,21 @@ function handleRowsFocusin(event: FocusEvent) {
  * 那一整套（capture → 移入 portal → 关闭时搬回）拿到的也是完整项集。等开之后再改
  * contextResource 就是在面板里增删节点，正是本组件上方那段 wrapper 注释里记的那个
  * 会把锚点搞丢、且无法自愈的坑。
+ *
+ * 同一时刻要记住「这一手是触屏」。长按抬手后浏览器补发的 click 会照常落到 onRowSelect，
+ * 于是菜单和预览 drawer 同时弹出来——组件侧那个 _isLongPressFollowUp() 只吸收它自己
+ * 菜单上的补发事件，管不到宿主的行激活，所以这个抑制必须在宿主这边做。
+ *
+ * 不在 pointerdown 就置位：那时还分不出「这一手会长按」和「这一手是轻点」。每一种触屏
+ * 按下都置位会把轻点也一起吞掉——onRowSelect 见到标志就 return，而轻点的 click 正是靠
+ * 到达那里才激活行。真正的判据是「组件的菜单此刻开着没有」，那是长按唯一的对外可见
+ * 结果，由 onRowSelect 在 click 到达时读。
  */
+let lastPointerWasTouch = false
+
 function syncTouchContext(event: PointerEvent) {
   if (event.pointerType !== 'touch') return
+  lastPointerWasTouch = true
   const target = event.target
   if (!(target instanceof HTMLElement)) return
   const row = target.closest<HTMLElement>('[data-resource-row]')
@@ -814,6 +826,19 @@ function onRowSelect(resource: ResourceView) {
     suppressRowClick = false
     return
   }
+  /*
+   * 长按抬手后浏览器补发的 click 会走到这里。若此刻菜单正开着，那这次 click 就是长按的
+   * 回声而不是一次有意的选择——吃掉，否则菜单与预览 drawer 会同时弹出来。
+   *
+   * 判据用「菜单开着没有」而不是「刚才那手是触屏没有」：只有长按才会让菜单开着，轻点
+   * 时它始终关闭。标志 lastPointerWasTouch 则用来把这条判断限定在触屏路径上——鼠标的
+   * click 同样会到达这里，而菜单开着（右键打开）时鼠标点行是合法的，不能吞。
+   */
+  if (lastPointerWasTouch && contextMenuRef.value?.isOpen) {
+    lastPointerWasTouch = false
+    return
+  }
+  lastPointerWasTouch = false
   emit('select', resource)
 }
 

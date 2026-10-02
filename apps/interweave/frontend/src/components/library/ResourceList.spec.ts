@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import type { WebUiContextMenu } from '@greypan/web-ui'
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
 import { createApp, h, nextTick, ref } from 'vue'
 
@@ -858,6 +859,80 @@ describe('ResourceList：触屏长按菜单', () => {
       expect(labels).not.toContain('预览')
       expect(labels).toContain('找回资源')
       expect(labels).toContain('详情')
+    } finally {
+      mounted.unmount()
+    }
+  })
+
+  /*
+   * 回归：长按出行菜单时，抬手后浏览器补发的 click 也会落到 onRowSelect，于是菜单和
+   * 预览 drawer 同时弹出来。
+   *
+   * 组件侧的 _isLongPressFollowUp() 只吸收它自己菜单上的补发事件，管不到宿主的行激活，
+   * 所以这个抑制必须在宿主这边做。观察点是 onSelect 有没有被调用——补发的 click 被吃掉时
+   * 它一次都不该响。
+   *
+   * 判据是「菜单此刻开着没有」而不是「刚才那手是触屏没有」，所以用例分两步：先用组件的
+   * 命令式 openAt 把菜单打开（长按的唯一对外可见结果），确认触屏的补发 click 被吞；再
+   * 确认菜单关着时触屏点击照常激活行。第一条若写成「按下即抑制」，轻点会被一起吞掉。
+   *
+   * jsdom 里长按计时器到期不会真的开面板，所以这里用 openAt 制造同样的可观察状态。
+   */
+  it('菜单开着时吞掉触屏的补发 click，菜单关着时触屏点击照常激活', async () => {
+    const select = vi.fn<(id: string) => void>()
+    const mounted = await mountList([resource({ id: 'r1' }), resource({ id: 'r2' })], [], {}, { onSelect: select })
+    const menu = mounted.contextMenu as WebUiContextMenu
+    try {
+      // 长按的痕迹：触屏 pointerdown 先落定，随后组件把菜单打开
+      mounted.rows[0].dispatchEvent(pointer('pointerdown', { button: 0, clientX: 100, clientY: 100 }, 'touch'))
+      menu.openAt(100, 100)
+      expect(menu.isOpen, '菜单应处于打开态').toBe(true)
+
+      // 抬手后浏览器补发的 click：菜单开着，必须被吃掉。
+      // 先用第二段（菜单关着时能激活）证明这条 click 通路本身是通的，这里红才说明是被吞。
+      mounted.rows[0].dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
+      await nextTick()
+      expect(select, '菜单开着时的补发 click 不该激活行').not.toHaveBeenCalled()
+
+      // 菜单关着时的触屏点击：那是用户真正想选中的一行，必须放行
+      menu.close()
+      await nextTick()
+      expect(menu.isOpen, '菜单应已关闭').toBe(false)
+      mounted.rows[1].dispatchEvent(pointer('pointerdown', { button: 0, clientX: 100, clientY: 100 }, 'touch'))
+      await nextTick()
+      mounted.rows[1].dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
+      await nextTick()
+      expect(select, '菜单关着时触屏点击照常激活').toHaveBeenCalledWith(expect.objectContaining({ id: 'r2' }))
+    } finally {
+      mounted.unmount()
+    }
+  })
+
+  /*
+   * 选择模式里的长按是扫选，不是看菜单，所以那条路径不能被这条抑制吃掉——扫选要能正常
+   * 勾选。这里锁的是「syncTouchContext 里的抑制只在非选择模式生效」。
+   */
+  it('选择模式下长按仍走扫选，不被行激活抑制吃掉', async () => {
+    vi.useFakeTimers()
+    const setChecked = vi.fn<SetChecked>()
+    const select = vi.fn<(id: string) => void>()
+    const mounted = await mountList(
+      [resource({ id: 'r1' })],
+      [],
+      { selectionMode: true },
+      { onSetChecked: setChecked, onSelect: select }
+    )
+    try {
+      mounted.rows[0].dispatchEvent(pointer('pointerdown', { button: 0, clientX: 100, clientY: 100 }, 'touch'))
+      vi.advanceTimersByTime(400)
+      expect(setChecked).toHaveBeenCalledExactlyOnceWith('r1', true)
+
+      mounted.rows[0].dispatchEvent(pointer('pointerup', { clientX: 100, clientY: 100 }, 'touch'))
+      mounted.rows[0].dispatchEvent(
+        new MouseEvent('click', { bubbles: true, cancelable: true, clientX: 100, clientY: 100 })
+      )
+      await nextTick()
+      expect(select, '扫选收尾后的补发 click 不该再翻一次选中').not.toHaveBeenCalled()
     } finally {
       mounted.unmount()
     }
