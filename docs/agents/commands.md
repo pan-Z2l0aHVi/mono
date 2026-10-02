@@ -51,14 +51,15 @@
 
 ### `agent:` — agent 自己的工作流
 
-| 命令                     | 用途                                                                                      | 引用位置                                                                                                                                                        |
-| ------------------------ | ----------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `agent:task`             | task 生命周期：new/assign/start/freeze/review/approve/verify/done/drop/status/issue/guard | 根 `AGENTS.md`、`CONTRIBUTING.md`、`workflow.md`、`commit.md`、`release.md`、`task-packet.md`、`worktrees.md`、`linting.md`、`.vite-hooks/pre-commit`           |
-| `agent:find-usages`      | 按路径推导受影响 workspace、最小 context 与最小充分验证                                   | 根 `AGENTS.md`、`CONTRIBUTING.md`、`context.md`、`build.md`、`testing.md`、`workflow.md`、`code-style.md`、两个包级 `AGENTS.md`、`contract-change-review` skill |
-| `agent:inspect-contract` | 输出可发布 package 的 exports、直接消费者与最小验证                                       | 根 `AGENTS.md`、`CONTRIBUTING.md`、`context.md`、`build.md`、`workflow.md`、`packages/web-ui/AGENTS.md`、`contract-change-review` skill                         |
-| `agent:diff-contract`    | 输出 manifest-level semver 审阅候选（`--base <git-ref>`）                                 | 根 `AGENTS.md`、`CONTRIBUTING.md`、`context.md`、`build.md`、`workflow.md`、`contract-change-review` skill                                                      |
-| `agent:verify`           | 引擎级浏览器取证：check-env / touch-flow / interpolate                                    | `browser-verification.md`、`testing.md`                                                                                                                         |
-| `agent:env-doctor`       | 体检 worktree 环境（dist 截断、watch 污染、缓存、残留）                                   | `build.md`                                                                                                                                                      |
+| 命令                     | 用途                                                                                       | 引用位置                                                                                                                                                        |
+| ------------------------ | ------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `agent:task`             | task 生命周期：new/assign/start/freeze/review/approve/verify/done/drop/status/issue/guard  | 根 `AGENTS.md`、`CONTRIBUTING.md`、`workflow.md`、`commit.md`、`release.md`、`task-packet.md`、`worktrees.md`、`linting.md`、`.vite-hooks/pre-commit`           |
+| `agent:find-usages`      | 按路径推导受影响 workspace、最小 context 与最小充分验证                                    | 根 `AGENTS.md`、`CONTRIBUTING.md`、`context.md`、`build.md`、`testing.md`、`workflow.md`、`code-style.md`、两个包级 `AGENTS.md`、`contract-change-review` skill |
+| `agent:inspect-contract` | 输出可发布 package 的 exports、直接消费者与最小验证                                        | 根 `AGENTS.md`、`CONTRIBUTING.md`、`context.md`、`build.md`、`workflow.md`、`packages/web-ui/AGENTS.md`、`contract-change-review` skill                         |
+| `agent:diff-contract`    | 输出 manifest-level semver 审阅候选（`--base <git-ref>`）                                  | 根 `AGENTS.md`、`CONTRIBUTING.md`、`context.md`、`build.md`、`workflow.md`、`contract-change-review` skill                                                      |
+| `agent:verify`           | 引擎级浏览器取证：check-env / touch-flow / interpolate                                     | `browser-verification.md`、`testing.md`                                                                                                                         |
+| `agent:env-doctor`       | 体检 worktree 环境（dist 截断、watch 污染、缓存、残留）                                    | `build.md`                                                                                                                                                      |
+| `agent:update-skills`    | 经官方 `skills update` 引擎更新第三方 skill 并收割回真实家（临时目录隔离，不破坏软链布局） | `linting.md`、`packages/ai-skill/AGENTS.md`                                                                                                                     |
 
 `agent:verify` 目标页连不上时报错会带可行动提示：它的默认 URL 指向本地 devserver，所以「连不上」最可能的解释是服务没起，而不是地址写错。
 

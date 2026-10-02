@@ -1,6 +1,6 @@
 {
   "name": "@greypan/ai-skill",
-  "version": "1.0.0",
+  "version": "0.0.0",
   "description": "Repo-authored agent skills distributed as an npm package (skills/<name>/SKILL.md)",
   "license": "MIT",
   "repository": {

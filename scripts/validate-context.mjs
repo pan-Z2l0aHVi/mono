@@ -38,6 +38,10 @@ const lockedSkills = new Set(Object.keys(JSON.parse(read('skills-lock.json')).sk
 
 function fromLockedSkill(file) {
   const [first, second, third] = relative(file).split(path.sep)
+  // 第三方 skill 的实体家：根 skills/ 只放依赖镜像，其余在 .agents/skills-vendored/；
+  // .agents/skills/<name> 现在是逐 skill 软链（walk 不会深入，但存在性检查会经过）。
+  if (first === 'skills') return lockedSkills.has(second)
+  if (first === '.agents' && second === 'skills-vendored') return lockedSkills.has(third)
   return first === '.agents' && second === 'skills' && lockedSkills.has(third)
 }
 
@@ -246,12 +250,13 @@ const markdownFiles = [
   ...walk('docs/agents', file => file.endsWith('.md')),
   ...walk('docs/adr', file => file.endsWith('.md')),
   ...walk('.agents', file => file.endsWith('.md')).filter(file => !fromLockedSkill(file)),
-  // 仓库自编写 skill 的实体在 packages/ai-skill/skills/ 下（.agents/skills 里只是软链，walk 不跟随）。
+  // 自撰写 skill 的实体在根 skills/（.agents/skills 里只是逐 skill 软链，walk 不跟随）。
   // skill 文档里的相对链接是按 agent 经 .agents/skills 软链读取的消费面写的，深度与实体路径不同，
   // 所以检查时把这些文件映射回 .agents/skills 路径——内容相同（软链），链接按消费面解析。
-  ...walk('packages/ai-skill/skills', file => file.endsWith('.md')).map(file =>
-    path.join(root, '.agents', 'skills', path.relative(path.join(root, 'packages', 'ai-skill', 'skills'), file))
-  ),
+  // 第三方依赖镜像（如 herdr）也是锁定的上游件，同样按 fromLockedSkill 排除出链接面。
+  ...walk('skills', file => file.endsWith('.md'))
+    .filter(file => !fromLockedSkill(file))
+    .map(file => path.join(root, '.agents', 'skills', path.relative(path.join(root, 'skills'), file))),
   ...walk('packages', file => path.basename(file) === 'AGENTS.md'),
   ...walk('apps', file => path.basename(file) === 'AGENTS.md'),
   // workspace README 与包级 AGENTS.md 同属指令面，但只能列一层：walk 会连 apps/*/node_modules 与 dist 一起吞进来。
@@ -375,21 +380,23 @@ function parseFrontmatter(file) {
   }
 }
 
-for (const file of walk('.agents/skills', file => path.basename(file) === 'SKILL.md')) {
+// skill 的实体家是根 skills/（自撰写 + 依赖镜像）与 .agents/skills-vendored/（其余第三方）；
+// .agents/skills/ 里只有逐 skill 软链，walk 不跟随，所以出处检查直接走两个实体目录。
+for (const file of [
+  ...walk('skills', file => path.basename(file) === 'SKILL.md'),
+  ...walk('.agents/skills-vendored', file => path.basename(file) === 'SKILL.md')
+]) {
   parseFrontmatter(file)
   const name = path.basename(path.dirname(file))
   if (repoAuthoredSkills.has(name) === lockedSkills.has(name))
-    addError(
-      `.agents/skills/${name}: provenance must be either skills-lock.json or repoAuthoredSkills, not both or neither`
-    )
+    addError(`skills/${name}: provenance must be either skills-lock.json or repoAuthoredSkills, not both or neither`)
 }
 for (const name of repoAuthoredSkills)
-  if (!exists(`.agents/skills/${name}/SKILL.md`))
-    addError(`repoAuthoredSkills lists a skill without SKILL.md: .agents/skills/${name}`)
+  if (!exists(`skills/${name}/SKILL.md`)) addError(`repoAuthoredSkills lists a skill without SKILL.md: skills/${name}`)
 
 // Role Contract 数量和职责可以演进；每个文件自身的 frontmatter 身份仍必须可加载且与文件名一致。
 // 这条检查不维护角色名单，因此新增 supervisor 或未来 Role 不需要同步修改 validator。
-for (const file of walk('.agents/skills/herdr-agents/roles', file => file.endsWith('.md'))) {
+for (const file of walk('skills/herdr-agents/roles', file => file.endsWith('.md'))) {
   parseFrontmatter(file)
   const expectedName = path.basename(file, '.md')
   const source = fs.readFileSync(file, 'utf8')

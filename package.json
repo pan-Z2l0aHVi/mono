@@ -17,6 +17,7 @@
     "agent:task": "node scripts/task.mjs",
     "agent:verify": "node scripts/agent-verify.mjs",
     "agent:env-doctor": "node scripts/env-doctor.mjs",
+    "agent:update-skills": "node scripts/update-vendored-skills.mjs",
     "ci:validate-context": "node scripts/validate-context.mjs",
     "agent:find-usages": "node scripts/repo-query.mjs verify",
     "check-pack": "node scripts/check-pack.mjs",

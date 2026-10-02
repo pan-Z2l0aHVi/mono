@@ -3,11 +3,23 @@
   "extends": ["//"],
   "tasks": {
     "build": {
-      "inputs": ["$TURBO_DEFAULT$", "../../.agents/skills/**", "../../skills-lock.json"],
-      "outputs": []
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "../../skills/**",
+        "../../.agents/skills/**",
+        "../../.agents/skills-vendored/**",
+        "../../skills-lock.json"
+      ],
+      "outputs": ["skills/**"]
     },
     "test": {
-      "inputs": ["$TURBO_DEFAULT$", "../../.agents/skills/**", "../../skills-lock.json"]
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "../../skills/**",
+        "../../.agents/skills/**",
+        "../../.agents/skills-vendored/**",
+        "../../skills-lock.json"
+      ]
     }
   }
 }

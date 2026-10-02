@@ -328,8 +328,10 @@ export default defineConfig({
       '**/auto-imports.d.ts',
       '**/typed-router.d.ts',
       'apps/interweave/frontend/bindings/**',
-      '**/.agents/skills/**', // skill 源码（第三方与仓库自编写）不参与格式检查
-      'packages/ai-skill/skills/**', // 仓库自编写 skill 的实体目录（经软链暴露回 .agents/skills），同上
+      '**/.agents/skills/**', // skill 软链面（第三方与仓库自编写）不参与格式检查
+      'skills/**', // 自撰写 skill 与依赖镜像的实体目录（GitHub 发现面），同上
+      '.agents/skills-vendored/**', // 非依赖第三方 skill 的实体目录，同上
+      'packages/ai-skill/skills/**', // @greypan/ai-skill 的构建产物（自撰 skill 同步副本），同上
       '**/CHANGELOG.md' // changesets 生成的 changelog，不参与格式检查
     ],
     experimentalSortImports: {

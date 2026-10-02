@@ -29,6 +29,8 @@ temp/
 
 # 构建输出目录
 dist/
+# packages/ai-skill 的构建产物（skills/ 由 scripts/check-skills.mjs 从根 skills/ 同步自撰 skill）
+packages/ai-skill/skills/
 dist-ssr/
 lib/
 esm/

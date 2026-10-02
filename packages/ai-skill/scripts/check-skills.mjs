@@ -1,24 +1,32 @@
 /**
- * Validate the `@greypan/ai-skill` package layout. This package owns the
- * repo-authored agent skills as their single source of truth and publishes
- * them as an npm package following the `skills/<name>/SKILL.md` convention.
+ * Validate the agent-skill layout across the repo's three surfaces and sync
+ * the npm package artifact.
  *
- * Invariants enforced here (and by the tests):
- * - every directory under `skills/` is a skill: it contains a SKILL.md whose
- *   frontmatter declares a `name` matching the directory and a non-empty
- *   `description`
- * - no skill in `skills/` is registered in the repo-root `skills-lock.json`:
- *   that lock tracks third-party vendored skills, which stay in
- *   `.agents/skills/` and are never published from here
- * - `.agents/skills/` holds exactly two kinds of entries: third-party skills
- *   (real directories registered in `skills-lock.json`) and repo-authored
- *   skills (symlinks resolving into this package's `skills/`)
+ * Surfaces (see packages/ai-skill/AGENTS.md):
+ * - `<repo>/skills/` — real directories, the GitHub discovery surface for
+ *   `npx skills add pan-Z2l0aHVi/mono`. Holds the repo-authored skills plus
+ *   "dependency mirrors": third-party skills that a repo-authored skill links
+ *   to as a sibling dependency (e.g. herdr for herdr-agents).
+ * - `<repo>/.agents/skills-vendored/` — real directories for every other
+ *   third-party skill tracked in the repo-root `skills-lock.json`. This dir is
+ *   not scanned by the skills CLI, so those skills are never offered to
+ *   GitHub-source consumers.
+ * - `<repo>/.agents/skills/` — the agent instruction surface: one symlink per
+ *   skill pointing at its real home. Agent clients follow symlinks; the skills
+ *   CLI skips them, which keeps vendored skills out of discovery. A real
+ *   directory appearing here means an in-repo `skills update` clobbered a
+ *   symlink and must be reconciled (see AGENTS.md).
+ *
+ * The npm package (`packages/ai-skill/skills/`) is a build artifact synced from
+ * `<repo>/skills/` containing ONLY the repo-authored skills; dependency
+ * mirrors and vendored skills are never published.
  */
-import { existsSync, lstatSync, readFileSync, readdirSync, realpathSync, statSync } from 'node:fs'
+import { cpSync, existsSync, lstatSync, readFileSync, readdirSync, realpathSync, rmSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
 const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
+const repoRoot = resolve(packageRoot, '..', '..')
 
 /**
  * Extract `name` and `description` from a SKILL.md YAML frontmatter block.
@@ -39,14 +47,24 @@ export function parseFrontmatter(content) {
 }
 
 /**
- * Check the package layout and return the sorted names of the repo-authored
- * skills published from `skills/`. Throws with an actionable message on the
- * first violation.
+ * Sibling skill references in a SKILL.md body: markdown links of the form
+ * `../<name>/SKILL.md`, the convention for cross-skill dependencies.
  *
- * @param {{ skillsDir: string, agentsSkillsDir: string, lockFile: string }} options
- * @returns {string[]} sorted skill names
+ * @param {string} content
+ * @returns {string[]}
  */
-export function checkSkills({ skillsDir, agentsSkillsDir, lockFile }) {
+export function parseSiblingSkillLinks(content) {
+  return [...content.matchAll(/\]\(\.\.\/([A-Za-z0-9][A-Za-z0-9-]*)\/SKILL\.md(#[^)\s]*)?\)/g)].map(match => match[1])
+}
+
+/**
+ * Validate the repo layout and return the skill classification.
+ * Throws with an actionable message on the first violation.
+ *
+ * @param {{ rootSkillsDir: string, agentsSkillsDir: string, vendoredDir: string, lockFile: string }} options
+ * @returns {{ repoAuthored: string[], mirrored: string[], vendored: string[] }} sorted name lists
+ */
+export function checkRepoLayout({ rootSkillsDir, agentsSkillsDir, vendoredDir, lockFile }) {
   let lock
   try {
     lock = JSON.parse(readFileSync(lockFile, 'utf8'))
@@ -56,77 +74,159 @@ export function checkSkills({ skillsDir, agentsSkillsDir, lockFile }) {
   if (!lock.skills || typeof lock.skills !== 'object') {
     throw new Error(`skills-lock.json at ${lockFile} must have a "skills" object`)
   }
-
-  for (const entry of readdirSync(skillsDir)) {
-    if (!statSync(join(skillsDir, entry)).isDirectory()) {
-      throw new Error(`unexpected file "${entry}" under ${skillsDir}; only skill directories belong there`)
-    }
-  }
-  const names = readdirSync(skillsDir)
-  if (names.length === 0) throw new Error(`no skills found under ${skillsDir}`)
-
-  for (const name of names) {
-    if (lock.skills[name]) {
+  const locked = name => Boolean(lock.skills[name])
+  const byName = (a, b) => (a < b ? -1 : a > b ? 1 : 0)
+  for (const [label, dir] of [
+    ['skills/', rootSkillsDir],
+    ['.agents/skills/', agentsSkillsDir],
+    ['.agents/skills-vendored/', vendoredDir]
+  ]) {
+    if (!existsSync(dir)) {
       throw new Error(
-        `skill "${name}" is registered in skills-lock.json; third-party skills must not be published from this package`
+        `skill surface directory ${label} does not exist (${dir}); recreate it per packages/ai-skill/AGENTS.md`
       )
     }
-    const skillMdPath = join(skillsDir, name, 'SKILL.md')
+  }
+
+  const assertRealSkillDir = (dir, name, location) => {
+    const skillMdPath = join(dir, name, 'SKILL.md')
     if (!existsSync(skillMdPath)) {
-      throw new Error(`skill "${name}" is missing its SKILL.md (${skillMdPath})`)
+      throw new Error(`skill "${name}" at ${location} is missing its SKILL.md (${skillMdPath})`)
     }
     const frontmatter = parseFrontmatter(readFileSync(skillMdPath, 'utf8'))
-    if (!frontmatter) throw new Error(`skill "${name}" has a SKILL.md without frontmatter`)
+    if (!frontmatter) throw new Error(`skill "${name}" at ${location} has a SKILL.md without frontmatter`)
     if (frontmatter.name !== name) {
       throw new Error(
-        `skill "${name}" frontmatter name is "${frontmatter.name ?? ''}"; it must match the directory name`
+        `skill "${name}" at ${location} frontmatter name is "${frontmatter.name ?? ''}"; it must match the directory name`
       )
     }
-    if (!frontmatter.description) throw new Error(`skill "${name}" frontmatter is missing a description`)
-  }
-
-  for (const entry of readdirSync(agentsSkillsDir)) {
-    const entryPath = join(agentsSkillsDir, entry)
-    if (lstatSync(entryPath).isSymbolicLink()) {
-      let target
-      try {
-        target = realpathSync(entryPath)
-      } catch {
-        throw new Error(
-          `.agents/skills/${entry} is a dangling symlink; it must point at this package's skills/${entry}`
-        )
-      }
-      const expected = join(skillsDir, entry)
-      if (!existsSync(expected)) {
-        throw new Error(
-          `.agents/skills/${entry} symlinks to a skill this package does not publish; add skills/${entry} or remove the symlink`
-        )
-      }
-      if (target !== realpathSync(expected)) {
-        throw new Error(`.agents/skills/${entry} must symlink into this package's skills/ directory, got ${target}`)
-      }
-    } else if (statSync(entryPath).isDirectory()) {
-      if (!lock.skills[entry]) {
-        throw new Error(
-          `.agents/skills/${entry} is an unregistered real directory; it is either a third-party skill missing from skills-lock.json or a repo-authored skill that should live in this package`
-        )
-      }
-    } else if (!lock.skills[entry]) {
-      throw new Error(`.agents/skills/${entry} is an unexpected file; skill entries must be directories or symlinks`)
+    if (!frontmatter.description) {
+      throw new Error(`skill "${name}" at ${location} frontmatter is missing a description`)
     }
   }
 
-  return names.sort((a, b) => (a < b ? -1 : a > b ? 1 : 0))
+  // Surface 1: root skills/ — real dirs only; repo-authored or dependency mirrors.
+  const rootNames = readdirSync(rootSkillsDir)
+  for (const name of rootNames) {
+    if (!lstatSync(join(rootSkillsDir, name)).isDirectory()) {
+      throw new Error(`unexpected file "${name}" under ${rootSkillsDir}; only real skill directories belong there`)
+    }
+    assertRealSkillDir(rootSkillsDir, name, 'skills/')
+  }
+  const repoAuthored = rootNames.filter(name => !locked(name)).sort(byName)
+  const mirrored = rootNames.filter(locked).sort(byName)
+  if (repoAuthored.length === 0) throw new Error(`no repo-authored skills found under ${rootSkillsDir}`)
+
+  // Dependency rule: every third-party sibling link from a repo-authored skill
+  // must be mirrored here, and every mirror must actually be referenced.
+  const referenced = new Set()
+  for (const name of repoAuthored) {
+    const content = readFileSync(join(rootSkillsDir, name, 'SKILL.md'), 'utf8')
+    for (const target of parseSiblingSkillLinks(content)) {
+      if (!rootNames.includes(target)) {
+        throw new Error(
+          `skill "${name}" links to sibling skill "${target}"; it must be a real directory under ${rootSkillsDir} (dependency mirror), not found`
+        )
+      }
+      referenced.add(target)
+    }
+  }
+  for (const name of mirrored) {
+    if (!referenced.has(name)) {
+      throw new Error(
+        `dependency mirror "${name}" under ${rootSkillsDir} is not referenced by any repo-authored skill; move it to ${vendoredDir} or fix the dependency links`
+      )
+    }
+  }
+
+  // Surface 2: skills-vendored/ — real dirs, exactly the lock entries not mirrored above.
+  const vendoredNames = existsSync(vendoredDir) ? readdirSync(vendoredDir) : []
+  for (const name of vendoredNames) {
+    if (!lstatSync(join(vendoredDir, name)).isDirectory()) {
+      throw new Error(`unexpected file "${name}" under ${vendoredDir}; only skill directories belong there`)
+    }
+    if (!locked(name)) {
+      throw new Error(
+        `vendored skill "${name}" is not registered in skills-lock.json; repo-authored skills belong under ${rootSkillsDir}`
+      )
+    }
+    assertRealSkillDir(vendoredDir, name, '.agents/skills-vendored/')
+  }
+  const vendored = vendoredNames.sort(byName)
+  const overlap = mirrored.filter(name => vendored.includes(name))
+  if (overlap.length > 0) {
+    throw new Error(`skills both mirrored and vendored: ${overlap.join(', ')}; each skill has exactly one real home`)
+  }
+  const unaccounted = Object.keys(lock.skills).filter(name => !mirrored.includes(name) && !vendored.includes(name))
+  if (unaccounted.length > 0) {
+    throw new Error(
+      `lock-registered skills with no real home: ${unaccounted.join(', ')}; add them to ${rootSkillsDir} (dependency mirror) or ${vendoredDir}`
+    )
+  }
+
+  // Surface 3: .agents/skills/ — symlinks only, one per skill, pointing home.
+  const linkedNames = readdirSync(agentsSkillsDir)
+  for (const name of linkedNames) {
+    const entryPath = join(agentsSkillsDir, name)
+    if (!lstatSync(entryPath).isSymbolicLink()) {
+      throw new Error(
+        `.agents/skills/${name} must be a symlink; a real directory here means an in-repo skills update clobbered the layout — reconcile via pnpm agent:update-skills or AGENTS.md`
+      )
+    }
+    let target
+    try {
+      target = realpathSync(entryPath)
+    } catch {
+      throw new Error(`.agents/skills/${name} is a dangling symlink; recreate it pointing at the skill's real home`)
+    }
+    if (!rootNames.includes(name) && !vendored.includes(name)) {
+      throw new Error(
+        `.agents/skills/${name} points at "${name}" which has no real home under ${rootSkillsDir} or ${vendoredDir}`
+      )
+    }
+    const expected = rootNames.includes(name)
+      ? realpathSync(join(rootSkillsDir, name))
+      : realpathSync(join(vendoredDir, name))
+    if (target !== expected) {
+      throw new Error(`.agents/skills/${name} must symlink to the skill's real home, got ${target}`)
+    }
+  }
+  const allNames = [...rootNames, ...vendoredNames].sort(byName)
+  const unlinked = allNames.filter(name => !linkedNames.includes(name))
+  if (unlinked.length > 0) {
+    throw new Error(
+      `skills missing from .agents/skills/: ${unlinked.join(', ')}; the agent instruction surface must link every skill`
+    )
+  }
+
+  return { repoAuthored, mirrored, vendored }
+}
+
+/**
+ * Sync the package artifact: copy ONLY the repo-authored skills from the root
+ * skills/ surface into the package's `skills/` output directory.
+ *
+ * @param {{ rootSkillsDir: string, destDir: string, repoAuthored: string[] }} options
+ * @returns {string[]} synced skill names
+ */
+export function syncPackageSkills({ rootSkillsDir, destDir, repoAuthored }) {
+  rmSync(destDir, { recursive: true, force: true })
+  for (const name of repoAuthored) {
+    cpSync(join(rootSkillsDir, name), join(destDir, name), { recursive: true })
+  }
+  return [...repoAuthored]
 }
 
 export function main() {
-  const names = checkSkills({
-    skillsDir: join(packageRoot, 'skills'),
-    agentsSkillsDir: join(packageRoot, '..', '..', '.agents', 'skills'),
-    lockFile: join(packageRoot, '..', '..', 'skills-lock.json')
+  const { repoAuthored } = checkRepoLayout({
+    rootSkillsDir: join(repoRoot, 'skills'),
+    agentsSkillsDir: join(repoRoot, '.agents', 'skills'),
+    vendoredDir: join(repoRoot, '.agents', 'skills-vendored'),
+    lockFile: join(repoRoot, 'skills-lock.json')
   })
-  // stderr：prepack 会在 pnpm/npm pack --json 期间运行本脚本，stdout 必须留给 pack 的 JSON。
-  console.error(`skills package ok: ${names.join(', ')}`)
+  syncPackageSkills({ rootSkillsDir: join(repoRoot, 'skills'), destDir: join(packageRoot, 'skills'), repoAuthored })
+  // stderr: prepack runs during `pnpm/npm pack --json`; stdout must stay clean for the pack JSON.
+  console.error(`skills layout ok; synced ${repoAuthored.length} repo-authored skills into packages/ai-skill/skills`)
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
