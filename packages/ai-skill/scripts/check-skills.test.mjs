@@ -4,7 +4,7 @@ import { join, resolve } from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test'
 
-import { checkSkills, parseFrontmatter } from '../scripts/check-skills.mjs'
+import { checkSkills, parseFrontmatter } from './check-skills.mjs'
 
 const packageRoot = resolve(import.meta.dirname, '..')
 const repoRoot = resolve(packageRoot, '..', '..')

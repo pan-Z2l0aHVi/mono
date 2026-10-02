@@ -21,7 +21,6 @@
     "test": "vp test run"
   },
   "devDependencies": {
-    "@greypan/tsconfig": "workspace:*",
     "vite": "catalog:",
     "vite-plus": "catalog:"
   },

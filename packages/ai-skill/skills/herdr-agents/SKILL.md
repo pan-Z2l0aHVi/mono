@@ -19,7 +19,7 @@ disable-model-invocation: true
 - Supervisor 这套机制的决策背景和被否决方案见 [ADR-0016](../../../docs/adr/0016-implementation-supervision.md)；编排与 task 的解耦形态见 [ADR-0017](../../../docs/adr/0017-orchestration-decoupled-from-task.md)。
 - Task 级别、状态机、快照、review、approval 和验证证据见 [`docs/agents/workflow.md`](../../../docs/agents/workflow.md) 与 [`scripts/task.mjs`](../../../scripts/task.mjs)。task state 不保存 Role、Supervisor 或 coordination 记录。
 - 任务主合同写在 Task Packet；参与者、启用理由、检查点结论和未决事项写在编排记录里，Task Packet 的可选 Coordination 区域只留 id 和落点，格式见 [`docs/agents/task-packet.md`](../../../docs/agents/task-packet.md)。
-- Herdr 自身的前置检查、pane、tab、workspace、worktree、agent 命令、参数、JSON 字段和生命周期，以已安装的 CLI 与上游 [`herdr` skill](../herdr/SKILL.md) 为准。每一步操作前先读它，按当前输出解析 ID 和状态。
+- Herdr 自身的前置检查、pane、tab、workspace、worktree、agent 命令、参数、JSON 字段和生命周期，以已安装的 CLI 与上游 [`herdr` skill](../herdr/SKILL.md) 为准。每一步操作前先读它，按当前输出解析 ID 和状态。这个 `herdr` skill 是第三方件、不随 `@greypan/ai-skill` 分发：仓库内经 `.agents/skills/` 消费时天然在位；独立安装本 skill 时需要先 `npx skills add herdrdev/herdr`，否则该引用不可用——此时退化为只以已安装的 CLI 输出为准，本 skill 的编排协议与产物约定不受影响。
 
 ## Role 与执行体
 
