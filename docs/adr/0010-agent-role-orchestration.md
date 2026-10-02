@@ -3,7 +3,7 @@
 - **Date**: 2026-09-10
 - **Status**: 已接受
 - **Supersedes**: ADR-0004「角色实施补充（2026-09-01）」中「Role 不与模型、CLI 或固定会话绑定」的结论
-- **Amended by**: [ADR-0015](0015-role-contracts-in-herdr-agents-skill.md)、[ADR-0016](0016-implementation-supervision.md)、[ADR-0020](0020-role-executor-not-bound.md)（2026-09-30：执行体绑定决策被反转，Role 不再绑定执行体）
+- **Amended by**: [ADR-0015](0015-role-contracts-in-herdr-agents-skill.md)、[ADR-0016](0016-implementation-supervision.md)、[ADR-0020](0020-role-executor-not-bound.md)（2026-09-30：执行体绑定决策被反转，Role 不再绑定执行体） （2026-10-02 注：herdr-agents skill 已被 herdr-cos 取代并退役，本行的旧路径作为历史记录保留，不再是活链接。）
 - **Superseded by**: [ADR-0017](0017-orchestration-decoupled-from-task.md) —— 本 ADR 的编排事实不再绑定 task：coordination id 改为自由标签，编排元数据落 `$TMPDIR/herdr-agents/reports/`，巡检按编排单元而非 task 枚举。目录边界与结构化 handoff 两条决策不变（第三条「执行体绑定」已由 ADR-0020 反转）
 
 ## 背景
@@ -20,7 +20,7 @@ ADR-0004 建立了共享的 Session Role 层和 task state 状态机，但没有
 
 ### 1. 执行体默认绑定
 
-Role 到执行体的默认绑定、启动参数和 Reviewer 路由见 [`.agents/skills/herdr-agents/SKILL.md`](../../.agents/skills/herdr-agents/SKILL.md)。这是默认分工，不限制执行体的技术能力；Manager 改用其他执行体时，在 Task Packet 记录理由。绑定本身不改变状态机、gate 和证据要求。
+Role 到执行体的默认绑定、启动参数和 Reviewer 路由见 `.agents/skills/herdr-agents/SKILL.md`（退役路径）。这是默认分工，不限制执行体的技术能力；Manager 改用其他执行体时，在 Task Packet 记录理由。绑定本身不改变状态机、gate 和证据要求。
 
 ### 2. 扁平编排与两条路由
 
@@ -29,7 +29,7 @@ Manager 统一接收需求并编排，不引入 Integrator 或其他中间层级
 - **产品/设计需求**：Manager → Designer → 并行 Lib Coder + Biz Coder → Reviewer → Manager 总结；不启用实施期 Supervisor。
 - **技术需求**：Manager → 并行 Lib Coder + Biz Coder → Reviewer → Manager 总结；按 ADR-0016 的评分决定是否加入 Supervisor。
 
-是否启用 Designer 由 Manager 根据需求是否涉及产品设计或 UI 来判断，不按改动大小决定。Role 派发、handoff、Supervisor 和 pane 时序见 herdr-agents skill。
+是否启用 Designer 由 Manager 根据需求是否涉及产品设计或 UI 来判断，不按改动大小决定。Role 派发、handoff、Supervisor 和 pane 时序见 herdr-agents skill（退役路径）。
 
 ### 3. 目录边界即角色边界
 
@@ -37,7 +37,7 @@ Lib Coder 只写 `packages/*`，Biz Coder 只写 `apps/*`。Supervisor 可以共
 
 ### 4. 结构化 handoff
 
-角色之间使用固定的 handoff 字段：`Goal（目标）`、`Scope（范围）`、`Acceptance（验收标准）`、`Test commands（测试命令）` 和 `Open decisions（未解决决策）`，缺少任一项不得进入实施或验收。完整模板和 pane 协作格式见 [`.agents/skills/herdr-agents/SKILL.md`](../../.agents/skills/herdr-agents/SKILL.md)，Supervisor 检查点见同目录的 [`supervision.md`](../../.agents/skills/herdr-agents/supervision.md)；Task Packet 只保存任务主合同和可选 Coordination 摘要。
+角色之间使用固定的 handoff 字段：`Goal（目标）`、`Scope（范围）`、`Acceptance（验收标准）`、`Test commands（测试命令）` 和 `Open decisions（未解决决策）`，缺少任一项不得进入实施或验收。完整模板和 pane 协作格式见 `.agents/skills/herdr-agents/SKILL.md`（退役路径），Supervisor 检查点见同目录的 `supervision.md`（退役路径）；Task Packet 只保存任务主合同和可选 Coordination 摘要。
 
 task 级别、状态机、review/approval 和验证证据见 [`docs/agents/workflow.md`](../agents/workflow.md)；根 [`AGENTS.md`](../../AGENTS.md) 只保留 skill 路由和不可绕过的 task/worktree 边界。
 

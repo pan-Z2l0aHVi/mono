@@ -25,9 +25,9 @@
 
 ## 多 Agent 编排
 
-多 Agent 编排只在用户显式调用 `/herdr-agents` 时启用。Role 契约、执行体选择、目录边界、handoff、pane 时序和 Role 初始化都见 [`herdr-agents`](.agents/skills/herdr-agents/SKILL.md)，启用评分与实施期 Supervisor 协议见同目录的 [`supervision.md`](.agents/skills/herdr-agents/supervision.md)。
+多 Agent 编排只在用户显式调用 `/herdr-cos` 时启用。Role 契约（manager/planner/coder/supervisor/tester）、账本协议、成员 worktree 隔离与角色初始化都见 [`herdr-cos`](.agents/skills/herdr-cos/SKILL.md)；supervisor 是见证角色（witness, not a gate），启用时机与观察边界见其角色契约与 `PROTOCOL.md`。
 
-Task 级别、状态机、冻结 diff、review、approval 和验证证据见 [`docs/agents/workflow.md`](docs/agents/workflow.md)。task state 不保存 Role 或 coordination 记录。任务主合同见 [`docs/agents/task-packet.md`](docs/agents/task-packet.md)；编排元数据（参与者、启用理由、检查点结论、未决事项）的落点是 `$TMPDIR/herdr-agents/reports/` 下的编排记录，Task Packet 的可选 Coordination 区只留 coordination id 与记录路径。
+Task 级别、状态机、冻结 diff、review、approval 和验证证据见 [`docs/agents/workflow.md`](docs/agents/workflow.md)。task state 不保存 Role 或 coordination 记录。任务主合同见 [`docs/agents/task-packet.md`](docs/agents/task-packet.md)；编排元数据的落点是 herdr-cos 账本（`$TMPDIR/herdr-cos`，消息、ack 与 `peer-contract.md` 即记录），Task Packet 的可选 Coordination 区只留 coordination id（仓库惯例格式 `herdr-cos/<slug>`）与账本路径。
 
 并行实施仍要遵守 worktree 和 owner 边界。一个可变 task 只能有一个实施 worktree 和 owner。Supervisor 与 Coder 共享该 worktree，但它只读，不会成为第二个 owner。跨 `packages/*` 与 `apps/*` 的需求按 skill 路由拆分。Manager 不代替 Coder 修改生产代码。
 
@@ -36,10 +36,10 @@ Task 级别、状态机、冻结 diff、review、approval 和验证证据见 [`d
 - 不得改写 `.npmrc` 或 `.mise.toml` 的 registry/mirror，或任何 Git 配置。
 - 不手动编辑生成文件：`**/routeTree.gen.ts`、`**/typed-router.d.ts`、`**/auto-imports.d.ts`、`apps/*/frontend/bindings/**`、`**/__screenshots__/`、`**/.vitest-attachments/`。当源码或配置变更要求更新受版本控制的代码生成物时，必须运行其所属 generator，并核对生成 diff 与消费者；不得复制、伪造或手改输出。精确入口见 [`docs/agents/build.md`](docs/agents/build.md)。
 - `**/__screenshots__/` 和 `**/.vitest-attachments/` 是测试证据，不是常规源码产物；除非任务明确要求更新已验证的视觉基线，否则不创建、编辑或提交它们。
-- `AGENTS.md`（含包级）、`docs/adr/`、`docs/agents/`、`.agents/rules/`、`.agents/skills/herdr-agents/roles/` 和仓库自编写的 `.agents/skills/` 下文档使用中文；自撰与第三方的判定以 `skills-lock.json` 为准，未登记的即自撰。第三方引入的 `.agents/skills/` 必须保持上游原文的语言与内容，更新时不得翻译或本地改写；其通用流程若与仓库规则、task guide 或实现事实冲突，以后者为准。技术术语、命令、路径和包名保留英文。
+- `AGENTS.md`（含包级）、`docs/adr/`、`docs/agents/`、`.agents/rules/`、根 `skills/` 下仓库自撰写 skill 的文档（含 `.agents/skills/herdr-cos/roles/` 软链面）使用中文；自撰与第三方的判定以 `skills-lock.json` 为准，未登记的即自撰。第三方引入的 skill（根 `skills/` 下的依赖镜像与 `.agents/skills-vendored/` 下的 vendor）必须保持上游原文的语言与内容，更新时不得翻译或本地改写；其通用流程若与仓库规则、task guide 或实现事实冲突，以后者为准。技术术语、命令、路径和包名保留英文。
 - 缺少 Node、pnpm 或 Go 时先运行 `mise install`；准确版本以 `.mise.toml`、`package.json` 与目标包 manifest 为准。
 - 并行实施 Agent 必须使用不同的 branch/worktree。Supervisor 是例外：它可以与 Coder 共享该实施 worktree，但只能读取，不能写入。不得在共享工作区执行 `git switch`、`git checkout`、`git stash`、`git reset` 或 `git clean`。新建 worktree 统一放在仓库旁的 `<仓库目录名>-worktrees/<worktree 名>`（例：仓库在 `path/to/mono`，worktree 放 `path/to/mono-worktrees/<name>`）；工具自带的 worktree 默认路径（如 `.claude/worktrees/`）不采用。
-- 多 Agent 的目录边界和跨边界拆分见 [`herdr-agents`](.agents/skills/herdr-agents/SKILL.md)，worktree 布局见 [`docs/agents/worktrees.md`](docs/agents/worktrees.md)。
+- 多 Agent 的目录边界和跨边界拆分见 [`herdr-cos`](.agents/skills/herdr-cos/SKILL.md)（成员 worktree 由 `cos join` 内建隔离），worktree 布局见 [`docs/agents/worktrees.md`](docs/agents/worktrees.md)。
 - 预授权操作（本地测试与校验命令、包级构建、`agent:find-usages` / `agent:inspect-contract` / `agent:diff-contract` 等只读查询、在目标 worktree 内读文件）直接执行，不必逐步请示；需要逐次授权的是 commit/push/merge/publish、依赖与 lockfile、`.npmrc` / `.mise.toml` / Git 配置、凭证读写和破坏性 git 操作。清单见 [`docs/agents/workflow.md`](docs/agents/workflow.md) 的「预授权操作」。
 
 ## 按任务加载
@@ -62,6 +62,6 @@ Task 级别、状态机、冻结 diff、review、approval 和验证证据见 [`d
 | 全局替换 / 重命名 / API 迁移 / 文件迁移           | [`docs/agents/global-rename.md`](docs/agents/global-rename.md)                                                                                                                                               |
 | Git commit                                        | [`.agents/rules/commit.md`](.agents/rules/commit.md)、[`docs/agents/commit.md`](docs/agents/commit.md)（AI 协作署名）和 [`CONTRIBUTING.md`](CONTRIBUTING.md)                                                 |
 | 开发流程、worktree 布局或 release 分支            | [`docs/agents/workflow.md`](docs/agents/workflow.md) 和 [`docs/agents/task-packet.md`](docs/agents/task-packet.md)                                                                                           |
-| 多 Agent 编排、Role、handoff 或 Supervisor        | 用户显式调用的 [`herdr-agents`](.agents/skills/herdr-agents/SKILL.md)                                                                                                                                        |
+| 多 Agent 编排、Role、handoff 或 Supervisor        | 用户显式调用的 [`herdr-cos`](.agents/skills/herdr-cos/SKILL.md)                                                                                                                                              |
 
 涉及 UI、UX、交互、响应式或浏览器运行时的改动，必须按 [`browser-verification.md`](docs/agents/browser-verification.md) 在真实浏览器验证；构建成功或 jsdom 测试不能替代该验证。实现不熟悉或跨浏览器语义不明确的 Web Platform API 时，使用 MDN MCP 验证语义和兼容性。

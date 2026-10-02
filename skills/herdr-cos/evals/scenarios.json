@@ -1,0 +1,73 @@
+{
+  "note": "Six positive scenarios, each run 5 trials x 2 arms (with / without the skill). Every assertion is a command the grader runs against the ledger directory and the pane trace after the trial; a trial passes when all of its assertions hold, a case passes on a majority of trials. <root> is the trial's HERDR_COS_HOME, <slug> the fleet it claimed, <chan> a channel directory named <from>-><to>. A trace is matched on the token after `cos.mjs`: the lines a run actually contains are `HERDR_COS_HOME=<root> node '<abs>/cos.mjs' poll <slug>`, so the prose names `cos poll` and `cos ack` are never bytes to find. Separate the two halves of a trace: a `RUN …` line is something a pane *printed*, not something it *ran*, so an assertion about what a pane did reads only command lines and an assertion about what it said reads stdout. A delta or mtime claim is sampled before the step under test and again after — `artifacts/` in the long-body case, `channels/lead->m1/` and that record's mtime in the replay case; an absolute count inside the trial's own `HERDR_COS_HOME` (`members/`, `acks/`) is sampled once, because that root starts empty so its total is already its own delta. A claim nothing sampled cannot go red. Only files directly inside a directory are counted — acks/<to>~<from>/missing/ holds reports, never consumption records. And where an assertion is about what the lead did, it reads the lead's pane: a worker's ack of its own task lands between the lead's sends on any correct run. An assertion may say in prose which arm it is scored in; the machine-readable `with`/`both` tag lives with the grader, not here.",
+  "trials_per_case": 5,
+  "arms": ["with", "without"],
+  "cases": [
+    {
+      "id": "fan-out-three",
+      "prompt": "Open a fleet with three worker panes and give each of them a different review task. Do not wait for one before handing out the next, and tell me what each worker was asked to do.",
+      "assertions": [
+        "count of <root>/fleets/<slug>/members/*.json is exactly 4 (lead plus three workers)",
+        "the trace carries three sent-confirmation lines (`sent <from>-><to>#<seq>`, one naming each worker) and no `WARN` line naming any of those three channels at all — not `nothing sent`, not `doorbell withheld`, not `doorbell failed`, not `not rung`, not `as a notice, not consumed`. Those five are the shapes in which a record is published and no bell is handed to a registered agent (only the fifth reached a pane at all, and a shell ran it there and found no command named cosa). Inside one `cos send` the `sent` lines print as a batch first and every `WARN` after them, so read the block as this call's own warnings plus those of the reconcile pass that opened it",
+        "the same send prints its own delivery tally: `doorbells 3 of 3` for one fan-out, or three lines each reading `doorbells 1 of 1` when the lead sent three separate briefs (N different tasks are N `cos send` calls, and one call carries one body to all its recipients). Anything less than 3 rung in total is a withheld bell, whatever the `sent` lines said",
+        "between the first and the third sent confirmation the lead's pane ran no command line whose subcommand was `poll` or `ack` — the lead handed work out, it did not collect it. Printed `RUN …` lines from those sends do not count as having run anything",
+        "the three records differ in body: the text fields under channels/lead-><label>/ are not all equal to one another, so a run that fanned one brief out three times does not pass this as three tasks",
+        "no line in the trace contains --wait",
+        "for each worker <label>, <root>/fleets/<slug>/channels/lead-><label>/1.json exists"
+      ]
+    },
+    {
+      "id": "long-body-artifact",
+      "setup": "before the trial, write a fixture file <fixture> of exactly 4096 bytes of prose in the trial's own working directory, and put that path in the prompt. Without a fixture on disk the assertion about byte-for-byte content has nothing to compare against, and a trial in which the agent invents its own report cannot be graded at all.",
+      "prompt": "Send the worker the full contents of the report file <fixture> as its task, then tell me where the report lives and what the worker was pointed at.",
+      "assertions": [
+        "exactly one new file in <root>/fleets/<slug>/artifacts/ (before-listing versus after-listing)",
+        "the record's \"file\" field is an absolute path inside that artifacts directory",
+        "the record's \"text\" field is empty",
+        "the doorbell input herdr received splits into exactly four fields: the marker cosa, a path ending peer-contract.md, a label, a number. Read it off the peer pane's own text (`herdr pane read <pane>`), not off the ledger: a body that landed in artifacts/ says nothing about the length of the line that was typed into a shell. Scored in the `with` arm alone — the marker and the four-field shape exist in this skill's docs and in `cos`'s stdout, so a control that never opened either cannot be held to the string",
+        "the longest single line of text handed to a worker pane is at most 1500 bytes. This is the plan's own constant for the scenario, and it is the assertion the two arms genuinely share: a bare-herdr run can keep a 4096-byte body out of a pane input, and the check does not care whether it used `cos` to do it",
+        "the file named by the record's \"file\" field is byte-for-byte the 4096-byte fixture: a run that pasted a summary, a link, or a truncated body fails here rather than in a reading judgement"
+      ]
+    },
+    {
+      "id": "replay-inflight",
+      "prompt": "The worker died before acking the task you gave it, and its pane is back up. Recover without redoing anything it might already have done, and tell me which task is still in flight.",
+      "setup": "one unacked record at channels/lead->m1/1.json, delivered long enough ago to be past the ack deadline, and m1's pane resolves but reports no progress since delivery. List channels/lead->m1/ with mtimes before the recovery command runs.",
+      "assertions": [
+        "channels/lead->m1/1.json is still there with the mtime it had before recovery, the directory holds exactly one file afterwards (a recovery that published the task again as 2.json leaves two, and that is the red this case is for), and the trace prints no `sent lead->m1#1` during recovery: recovery re-rings a doorbell, it never rewrites a record or re-hands a number already claimed",
+        "the recovery output lists lead->m1#1 as owed on a `PENDING` or `OUT` line naming it, and carries no `acked:` or `already acked:` line naming lead->m1#1 (the summary's `1 unacked outbound` is a count, not a consumption claim, so it cannot make this red)",
+        "the recovery output reports exactly one re-send for that one owed record: a `WARN … unproven — re-sent the doorbell once` line, or `re-sent 1` in the tally of a `cos reconcile` (`cos poll` prints no such number). Zero is a fail here, because the setup already put the record past the ack deadline",
+        "no file matching <n>.json appears in acks/m1~lead/ during recovery: only m1 itself may consume its own work"
+      ]
+    },
+    {
+      "id": "peer-to-peer",
+      "prompt": "Ask worker m1 for its findings and have it send them straight to worker m2, without routing the answer through me.",
+      "assertions": [
+        "<root>/fleets/<slug>/channels/m1->m2/1.json exists with type \"reply\"",
+        "no record under <root>/fleets/<slug>/channels/lead->m2/ has type \"reply\", and none carries an \"re\" naming the m1->m2 reply. That directory may exist — telling m2 to poll is a legitimate lead move — so only a relayed answer proves the detour",
+        "the reply's \"re\" field names the channel it answers, in the form <from>-><to>#<seq>"
+      ]
+    },
+    {
+      "id": "single-round-trip",
+      "prompt": "Give one worker one task, wait for its answer, and report the answer.",
+      "assertions": [
+        "exactly 1 file directly in <root>/fleets/<slug>/acks/m1~lead/",
+        "exactly 1 reply record in <root>/fleets/<slug>/channels/m1->lead/",
+        "the lead's poll printed a NEW line naming that reply before the answer was reported"
+      ]
+    },
+    {
+      "id": "two-fleets",
+      "prompt": "Run two separate fleets at once, each with one worker, and make sure their work never crosses.",
+      "assertions": [
+        "both <root>/fleets/<slugA>/ and <root>/fleets/<slugB>/ exist with their own manifest.json",
+        "every record under slugA/channels/ has \"fleet\": \"<slugA>\", and likewise for slugB",
+        "no channel directory, acks/ entry or cursors/ entry under one slug names a label that is absent from that slug's members/",
+        "each slug's members/ holds exactly two label files, and the pane_id recorded in slugA's worker file differs from the one in slugB's: one human pane may claim both fleets as lead, so a file count alone cannot show that no member was borrowed",
+        "no command line in the trace names a fleet slug other than this trial's two. The line read, until the batch was re-checked, \"no command used one fleet's slug against the other fleet's ledger root\" — but a trial gives both fleets one `HERDR_COS_HOME`, so no such command can be typed and the assertion could not have gone red. What is gradable is a third slug appearing in a command. It went red zero times in the five with-arm trials and could have; the extra fleet that trial t1 really did open was caught by the members count instead."
+      ]
+    }
+  ]
+}

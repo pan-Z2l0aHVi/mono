@@ -21,7 +21,7 @@
 
 ### 发布 / 私有边界
 
-- `packages/*`：当前 manifests 中均为非 `private` workspace；除 `@greypan/tsconfig` 外通常发布运行时代码，`tsconfig` 发布 JSON profiles。最终发布范围以各 package 的 `files`、`exports` 和 `publishConfig` 为准。
+- `packages/*`：当前 manifests 中均为非 `private` workspace；除 `@greypan/tsconfig` 外通常发布运行时代码，`tsconfig` 发布 JSON profiles。自撰 agent skills 不走 npm，以 GitHub 为唯一分发通道（实体在仓库根 `skills/`，`npx skills add pan-Z2l0aHVi/mono` 的发现面，见 `skills/README.md`）。最终发布范围以各 package 的 `files`、`exports` 和 `publishConfig` 为准。
 - `apps/*`：当前 manifests 中均为 `private` 集成或交付应用，不是公共 API 的权威来源。
 - `apps/interweave/frontend`：独立 private workspace，属于 Wails 前端集成面；Go host 位于 `apps/interweave`。
 

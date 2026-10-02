@@ -3,7 +3,7 @@
 - **Date**: 2026-09-24
 - **Status**: 已接受
 - **Amends**: [ADR-0010](0010-agent-role-orchestration.md)、[ADR-0014](0014-task-system-v2.md)、[ADR-0015](0015-role-contracts-in-herdr-agents-skill.md)
-- **Superseded by**: [ADR-0017](0017-orchestration-decoupled-from-task.md) —— 本 ADR 中 `herdr-agents/<task-id>` 的 coordination id 构造与「Task Packet 提供 Coordination 摘要」不再现行：id 改为编排开始时自由生成的主题标签，元数据落 `$TMPDIR/herdr-agents/reports/`。启用评分、检查点协议、只读边界与「不写入 task state」全部决策不变
+- **Superseded by**: [ADR-0017](0017-orchestration-decoupled-from-task.md) —— 本 ADR 中 `herdr-agents/<task-id>` 的 coordination id 构造与「Task Packet 提供 Coordination 摘要」不再现行：id 改为编排开始时自由生成的主题标签，元数据落 `$TMPDIR/herdr-agents/reports/`。启用评分、检查点协议、只读边界与「不写入 task state」全部决策不变。（2026-10-02 二次修订：herdr-agents skill 被独立的 `herdr-cos` 取代并退役，本 ADR 的检查点协议（Readiness 结论与编排记录格式）随之退役——supervisor 在 herdr-cos 中是 witness 角色（witness, not a gate），其观察边界见 `herdr-cos/roles/supervisor.md`，真正的 gate 是 task 体系自身的 freeze/review/approve。启用时机以通用启发式并入 herdr-cos 的 SKILL.md，不引用本仓任何指令文档。coordination id 的仓库惯例格式相应为 `herdr-cos/<slug>`。）
 - **Amended by**: [ADR-0019](0019-agent-to-manager-report-channel.md) —— 「双方用 `agent prompt` 互发消息」不再是 Supervisor 专属，扩为所有执行体的通用汇报通道；三个检查点、状态机与 `Readiness` 字段不变
 
 ## 背景
@@ -56,7 +56,7 @@ Task Packet 继续保存任务主合同，并提供可选的 Coordination 摘要
 
 ### 6. 文档归属
 
-Role 列表、执行体选择、启动参数、目录边界、handoff 格式和 pane 时序见 [`.agents/skills/herdr-agents/SKILL.md`](../../.agents/skills/herdr-agents/SKILL.md)，Supervisor 协议、启用评分与 coordination id 见 [`.agents/skills/herdr-agents/supervision.md`](../../.agents/skills/herdr-agents/supervision.md)。Role 文档只描述各自职责。task 级别、状态机、快照、review、approval 和验证见 [`docs/agents/workflow.md`](../agents/workflow.md) 与 [`scripts/task.mjs`](../../scripts/task.mjs)。`scripts/validate-context.mjs` 只检查通用 context、Role Contract 身份和客户端注册形态，不维护 Role 集合或 handoff 字段的镜像。
+（2026-10-02 修订后的现行指针：）Role 列表、账本命令、worktree 隔离与成员状态观察见 [`.agents/skills/herdr-cos/SKILL.md`](../../.agents/skills/herdr-cos/SKILL.md)，supervisor 的见证边界见 [`roles/supervisor.md`](../../.agents/skills/herdr-cos/roles/supervisor.md)；本 ADR 的检查点协议已退役（见头注）。原指针——Role 列表与 pane 时序见 herdr-agents SKILL.md、Supervisor 协议与启用评分见同目录 supervision.md——随 skill 退役，仅作历史记录保留于本段文字。Role 文档只描述各自职责。task 级别、状态机、快照、review、approval 和验证见 [`docs/agents/workflow.md`](../agents/workflow.md) 与 [`scripts/task.mjs`](../../scripts/task.mjs)。`scripts/validate-context.mjs` 只检查通用 context、Role Contract 身份和客户端注册形态，不维护 Role 集合或 handoff 字段的镜像。
 
 ## 后果
 

@@ -2,7 +2,7 @@
 
 本文件规定 monorepo 实施任务的级别、状态机、变更证据、验证和 review/approval。实现见 [`scripts/task.mjs`](../../scripts/task.mjs)（`pnpm agent:task`）。
 
-worktree 和任务主合同分别见 [`worktrees.md`](worktrees.md) 与 [`task-packet.md`](task-packet.md)，release/hotfix playbook 见本文「Playbook」。多 Agent 的 Role、handoff、Supervisor 与 Herdr 编排见 [`herdr-agents`](../../.agents/skills/herdr-agents/SKILL.md)。Herdr、Claude 和 Codex 只是执行适配层，不改变本流程的状态和 gate。完整决策见 [ADR-0014](../adr/0014-task-system-v2.md)。
+worktree 和任务主合同分别见 [`worktrees.md`](worktrees.md) 与 [`task-packet.md`](task-packet.md)，release/hotfix playbook 见本文「Playbook」。多 Agent 的 Role、handoff、Supervisor 与 Herdr 编排见 [`herdr-cos`](../../.agents/skills/herdr-cos/SKILL.md)（账本协议：消息文件、ack、门铃；成员 worktree 由 `cos join` 内建隔离）。Herdr、Claude 和 Codex 只是执行适配层，不改变本流程的状态和 gate。完整决策见 [ADR-0014](../adr/0014-task-system-v2.md)。
 
 ## 先建立任务
 
@@ -119,7 +119,7 @@ freeze 自身执行归一化管线：`git add -A` 全量 staging（快照语义�
 
 审查报告先列具体发现，再按 `Block`、`Should fix`、`Nit` 排序。每条发现都要带文件和行号。没有缺陷时，也要说明测试缺口和残余风险。检查项包括公共行为与向后兼容性、聚焦测试覆盖、边界与失败情况、类型与错误处理、竞态或资源泄漏、用户输入安全风险和文档变更。重构要对照变更前后的行为清单。浏览器相关 review 按 [`browser-verification.md`](browser-verification.md) 核实证据。Supervisor 报告、实施者叙述和聊天记录都不能替代冻结 diff 或验证证据。
 
-多 Agent 的角色选择、目录边界、handoff 和 pane 时序见 [`herdr-agents`](../../.agents/skills/herdr-agents/SKILL.md)，Supervisor 检查点见同目录的 [`supervision.md`](../../.agents/skills/herdr-agents/supervision.md)。本文件只说明它们如何影响 task 状态、冻结证据和 review 独立性。
+多 Agent 的角色选择、目录边界、handoff 和成员状态观察见 [`herdr-cos`](../../.agents/skills/herdr-cos/SKILL.md)，supervisor 是见证角色（witness, not a gate），其观察边界见 [`roles/supervisor.md`](../../.agents/skills/herdr-cos/roles/supervisor.md)。本文件只说明它们如何影响 task 状态、冻结证据和 review 独立性：review 独立性与 gate 仍由本文件的 review 拓扑承担，supervisor 的报告是证据输入，不替代冻结 diff 或验证证据。
 
 ## Playbook
 
