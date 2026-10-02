@@ -960,11 +960,28 @@ export class WebUiDrawer extends LitElement {
     const dialogLabelledBy = !dialogLabel && !this.headless && showHeader ? 'wui-drawer-heading' : nothing
 
     // 拖拽热区：仅在打开且 draggable 时渲染；胶囊 + 加宽命中条贴在抽屉内缘。
+    // 胶囊是热区的**兄弟节点**而非后代：热区要让开 header / footer（见 style.css），
+    // 胶囊作为后代会连带继承那份让位量，被一起推离面板边缘。两者都是 dialog 的直接子节点，
+    // 胶囊因此相对 dialog 定位、恒贴可抓取边缘，热区则继续为端头上的按钮让位。
+    //
+    // 端头热边补上解耦留下的空档：胶囊贴回边缘后就不再落在热区的让开区里
+    // （bottom + header 实测胶囊带 [8,12]、热区带 [60,80]），那一段若没有命中层，
+    // 胶囊就成了一条按不下去、悬停不亮的死装饰——R1 与 R3 在几何上本就不可同满足，
+    // 结构解耦只让两者不再互相位移，命中层必须另给。热边只在上下 placement 渲染：
+    // 左右两条的胶囊本就落在热区内，多一个元素只会让 R5「左右几何不变」需要额外论证。
+    //
+    // 顺序要紧：胶囊排最后，两条热区（边、区）都在它前面，hover / active / 确认态三条规则
+    // 因此靠通用兄弟选择器 `~` 挂上去。写成相邻兄弟 `+` 的话热边那条会静默失效。
+    const needsEdgeBand = this.placement === 'top' || this.placement === 'bottom'
     const dragBar = this.draggable
       ? html`
-          <div class="wui-drawer-drag-zone" @pointerdown=${this._handleDragPointerDown}>
-            <div class="wui-drawer-drag-bar"></div>
-          </div>
+          ${
+            needsEdgeBand
+              ? html`<div class="wui-drawer-drag-edge" @pointerdown=${this._handleDragPointerDown}></div>`
+              : nothing
+          }
+          <div class="wui-drawer-drag-zone" @pointerdown=${this._handleDragPointerDown}></div>
+          <div class="wui-drawer-drag-bar"></div>
         `
       : nothing
 
