@@ -146,27 +146,52 @@ describe('WebUiDrawer 拖拽热区避让 header / footer（浏览器）', () => 
     ).toBeLessThanOrEqual(EPS)
   })
 
-  it('header 上的 pointerdown 不触发拖拽', async () => {
+  it('A6 几何让开 + R1 状态机入口', async () => {
     const el = await mountDrawer({ placement: 'bottom', header: true })
     const header = query(el, '.wui-drawer-header')
     const zone = query(el, '.wui-drawer-drag-zone')
     const headerRect = header.getBoundingClientRect()
     const zoneRect = zone.getBoundingClientRect()
 
-    // 命中测试层面的判据：header 中线处的顶层元素不是热区。
-    const hit = document.elementFromPoint(
-      headerRect.left + headerRect.width / 2,
-      headerRect.top + headerRect.height / 2
-    )
-    expect(zone.contains(hit), 'header 中线处仍命中拖拽热区').toBe(false)
+    // 命中测试层面的判据：header **起始带**（面板端头那 20px 内的条）的顶层元素不是热区。
+    //
+    // 探针取 `headerRect.top + 4` 而非中线：header ≥56px、zone 只有 20px，`top: 0` 回归
+    // 只盖住 0–20px 那一条，中线（≥28px）根本不在其内——探针放中线会对这条回归天然瞎，
+    // 恒绿。移到起始带后：修复态 zone 已在 header 之下（≥ header bottom），探针落在 header
+    // 内、不在 zone 内；`top: 0` 变异态 zone 盖回起始带，探针才落进 zone、断言随之变红。
+    //
+    // 这条只守「起始带没被 zone 盖住」这一局部命中关系；「zone 让开 header 整体」由紧挨着的
+    // 矩形判据（zoneRect.top ≥ headerRect.bottom）承重，两者不可互相替代。
+    //
+    // 必须在 shadowRoot 上问：`document.elementFromPoint` 穿透 shadow root 时只返回
+    // 宿主 `web-ui-drawer`，而 `zone.contains(host)` 恒为 false——这条断言曾经恒真、
+    // 永不失败，正是本文件头部与新 spec 都点名禁用的写法。
+    const hit = el.shadowRoot?.elementFromPoint(headerRect.left + headerRect.width / 2, headerRect.top + 4) ?? null
+    expect(zone.contains(hit), 'header 起始带仍命中拖拽热区').toBe(false)
     expect(zoneRect.top, `zone top=${zoneRect.top} header bottom=${headerRect.bottom}`).toBeGreaterThanOrEqual(
       headerRect.bottom - EPS
     )
 
-    header.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, clientX: 10, clientY: 10 }))
+    /*
+     * 这一段随「header 整块可拖」翻转了方向：早前它断言 header 上的 pointerdown
+     * **不**起拖拽，现在断言**会**起拖拽——热区让开之后，header 改由自己接手势。
+     *
+     * 必须显式给 isPrimary: true：PointerEvent 构造函数的默认值是 false，而手势层
+     * 第一道闸门就是 `e.isPrimary === false` 直接退出。漏掉它这条断言会在任何实现下
+     * 都恒绿（旧写法就是这么悄悄失去证伪能力的）。
+     */
+    header.dispatchEvent(
+      new PointerEvent('pointerdown', {
+        bubbles: true,
+        composed: true,
+        isPrimary: true,
+        pointerId: 1,
+        clientX: headerRect.left + headerRect.width / 2,
+        clientY: headerRect.top + headerRect.height / 2
+      })
+    )
     await el.updateComplete
-    // 没有 is-dragging 即没有进入拖拽；几何断言已在上面覆盖命中关系，这里只钉住状态机入口。
-    expect(getDialog(el).classList.contains('is-dragging')).toBe(false)
+    expect(getDialog(el).classList.contains('is-dragging'), 'header 上的 pointerdown 没有进入拖拽').toBe(true)
   })
 
   it('左右 placement 的几何完全不受影响', async () => {

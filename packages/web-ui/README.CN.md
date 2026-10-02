@@ -849,11 +849,11 @@ web-ui-radio-group {
 
 中线跟随 `--wui-drawer-content-padding` 的半值，并以「半个胶囊厚度 + 4px 呼吸间距」兜底：把该 padding 归零、让内容贴边铺满时，胶囊仍留可见内缩，既不会越出面板内缘，也不会贴死面板边缘。
 
-胶囊是纯视觉件：`pointer-events: none`，本身不吃任何一次按下。真正被按下的是命中层。上下 placement 有两层——沿可抓取边缘的一条端头热边（默认 12px 厚，由胶囊自己的中线 token 推导，宽度与胶囊等宽）与拖拽热区；左右 placement 只有热区。热边按构造覆盖胶囊所在的带，所以在四个 placement 上，按住胶囊能开始拖拽、悬停胶囊会点亮它。
+胶囊是纯视觉件：`pointer-events: none`，本身不吃任何一次按下。真正被按下的是命中层。左右 placement 只有热区；上下 placement 有三层——拖拽热区、沿可抓取边缘的一条端头热边（宽度与胶囊等宽，厚度不小于 `--wui-drawer-drag-edge-size`），以及整块的 header（`placement=bottom`）或 footer（`placement=top`）。热边的高度取「胶囊外沿」与该 token 的较大者，按构造覆盖胶囊所在的带，所以在四个 placement 上，按住胶囊能开始拖拽、悬停胶囊会点亮它。
 
-让开 header（`placement=bottom`）或 footer（`placement=top`）的是热区本身。因此 header / footer 不会把胶囊推离面板边缘，热区也仍然避让那一节的控件。代价是明说的：header / footer 顶部那一条从「按不动」变成「可拖」。让开控件靠的是「热边的覆盖范围不可能超过胶囊」这条不变量——它与胶囊等宽且同中心，绝不是面板满宽——而不是某个在默认 token 下恰好成立的边距；drawer 的测试按 `--wui-drawer-drag-bar-thickness` × `--wui-space-4` 的全组合逐一量过相交面积。内置关闭按钮贴着面板右缘，消费侧放在 header 两端的控件都在那条跨度之外，两者都仍可点击。
+让开 header（`placement=bottom`）或 footer（`placement=top`）的是热区本身，因此那一节不会把胶囊推离面板边缘；而那一节改由**自己**接拖拽，不再整块按不动：在它里面任意一点起手都能开始拖拽，标题文字同样在内。控件的让开是**逐个控件、在事件层**做的，不是把命中面几何切开——按下路径上只要出现可点元素（原生 `button` / `input` / `select` / `textarea` / `label` / `a[href]` / `summary`，任何 `contenteditable`，交互语义 `role`（`button`、`checkbox`、`switch`、`tab`、`menuitem`、`option`、`slider` 等），以及任何显式 `tabindex` 且不为 `-1`），这一次按下就交给控件、不起拖拽。自绘控件若本身不是原生可交互元素，需要带上其中之一才会被认出来；补 `role` 或 `tabindex` 就是入口，而它本身也是无障碍上该做的事。几何切割是被有意否掉的：它必须测量每个控件的位置，控件一动就失效，而且只是把 A6 那条缺陷换了个位置。代价是明说的：内置关闭按钮贴着面板右缘、在胶囊跨度之外，仍可点击；落在胶囊水平跨度内的控件，其顶部到热边高度之间仍被拖拽面盖住。
 
-「把手占位」自带一条推论：落在这条跨度内、顶边又落在热边高度之内的控件，上部会被拖拽面盖住——把手就画在那里，起手必须从把手所在的位置开始。抬 `z-index` 没用（Chromium 里热边始终压在 slotted 内容之上），量得着的杠杆是 `--wui-drawer-drag-bar-length`，它同时决定胶囊长度与热边宽度。
+「把手占位」自带一条推论：落在这条跨度内、顶边又落在热边高度（`--wui-drawer-drag-edge-size`，默认 20px；胶囊外沿更厚时以胶囊为准）之内的控件，上部会被拖拽面盖住——把手就画在那里，起手必须从把手所在的位置开始。抬 `z-index` 没用（Chromium 里热边始终压在 slotted 内容之上），量得着的杠杆是 `--wui-drawer-drag-bar-length`（同时决定胶囊长度与热边宽度）与 `--wui-drawer-drag-edge-size`（热边厚度）。
 
 - 拖拽实时跟手，遮罩透明度按比例淡出。
 - 遮罩点击关闭只认**轻点链路**：按下起点在遮罩上、且按-放位移在轻点量级内的 click 才关闭。浏览器对「按下 → 拖动 → 松手」生成的 click 落在起点与松手点的共同祖先（dialog）上——从面板内容或遮罩上开始拖拽、松手落在遮罩时，click 的 target 同样是 dialog；组件在 `pointerdown` 记录起点与坐标做回溯校验，这类拖拽松手一律弹回。`detail` 为 0 的 click（键盘/程序化来源）不消费指针记录。
@@ -871,24 +871,25 @@ web-ui-radio-group {
 
 **CSS 自定义属性：**
 
-| 属性                              | 默认值                             | 说明                                                                                                                                                         |
-| --------------------------------- | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `--wui-drawer-width`              | `320px`                            | 抽屉宽度                                                                                                                                                     |
-| `--wui-drawer-height`             | `300px`                            | 抽屉高度（上/下）                                                                                                                                            |
-| `--wui-drawer-bg`                 | `var(--wui-color-surface-overlay)` | 抽屉背景色                                                                                                                                                   |
-| `--wui-drawer-radius`             | `var(--wui-radius-overlay, 28px)`  | 浮动卡片圆角（非 headless）                                                                                                                                  |
-| `--wui-drawer-inset`              | `8px`                              | 浮动卡片视口留边（非 headless）；置 `0` 为贴边几何                                                                                                           |
-| `--wui-drawer-nested-peek-base`   | `43.2px`                           | 嵌套堆叠露边基准 `A`（`width <= 640px` 时为 `28.8px`）；堆叠总宽按 `A · ln(n)` 增长，单层因此完全不动，每多一层新增的露边递减。置 `0` 关闭露边。详见下方说明 |
-| `--wui-drawer-overlay-bg`         | `rgb(0 0 0 / 0.12)`                | 遮罩背景色                                                                                                                                                   |
-| `--wui-drawer-drag-zone-size`     | `20px`                             | Drag-to-close 命中热区厚度（draggable）                                                                                                                      |
-| `--wui-drawer-drag-zone-inset`    | `var(--wui-space-1, 4px)`          | 拖拽热区与它避让的那一节（`placement=bottom` 的 header / `placement=top` 的 footer）之间的呼吸间距；该节不存在时为 0                                         |
-| `--wui-drawer-drag-bar-thickness` | `4px`                              | Drag bar 胶囊厚度（短轴）                                                                                                                                    |
-| `--wui-drawer-drag-bar-length`    | `56px`                             | Drag bar 胶囊长度（沿抽屉边缘）                                                                                                                              |
-| `--wui-drawer-header-padding`     | `16px 20px`                        | Header 区域 padding                                                                                                                                          |
-| `--wui-drawer-close-top`          | `16px`                             | 内置关闭按钮相对 header 顶部的偏移                                                                                                                           |
-| `--wui-drawer-close-right`        | `16px`                             | 内置关闭按钮相对抽屉右缘的偏移                                                                                                                               |
-| `--wui-drawer-content-padding`    | `20px`                             | 内容区 padding；同时驱动 drag bar 视觉中线（取半值，不低于半个胶囊厚度 + 4px）                                                                               |
-| `--wui-drawer-footer-padding`     | `16px 20px`                        | Footer 区域 padding                                                                                                                                          |
+| 属性                              | 默认值                             | 说明                                                                                                                                                                |
+| --------------------------------- | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--wui-drawer-width`              | `320px`                            | 抽屉宽度                                                                                                                                                            |
+| `--wui-drawer-height`             | `300px`                            | 抽屉高度（上/下）                                                                                                                                                   |
+| `--wui-drawer-bg`                 | `var(--wui-color-surface-overlay)` | 抽屉背景色                                                                                                                                                          |
+| `--wui-drawer-radius`             | `var(--wui-radius-overlay, 28px)`  | 浮动卡片圆角（非 headless）                                                                                                                                         |
+| `--wui-drawer-inset`              | `8px`                              | 浮动卡片视口留边（非 headless）；置 `0` 为贴边几何                                                                                                                  |
+| `--wui-drawer-nested-peek-base`   | `43.2px`                           | 嵌套堆叠露边基准 `A`（`width <= 640px` 时为 `28.8px`）；堆叠总宽按 `A · ln(n)` 增长，单层因此完全不动，每多一层新增的露边递减。置 `0` 关闭露边。详见下方说明        |
+| `--wui-drawer-overlay-bg`         | `rgb(0 0 0 / 0.12)`                | 遮罩背景色                                                                                                                                                          |
+| `--wui-drawer-drag-zone-size`     | `20px`                             | Drag-to-close 命中热区厚度（draggable）                                                                                                                             |
+| `--wui-drawer-drag-zone-inset`    | `var(--wui-space-1, 4px)`          | 拖拽热区与它避让的那一节（`placement=bottom` 的 header / `placement=top` 的 footer）之间的呼吸间距；该节不存在时为 0                                                |
+| `--wui-drawer-drag-bar-thickness` | `4px`                              | Drag bar 胶囊厚度（短轴）                                                                                                                                           |
+| `--wui-drawer-drag-bar-length`    | `56px`                             | Drag bar 胶囊长度（沿抽屉边缘）                                                                                                                                     |
+| `--wui-drawer-drag-edge-size`     | `20px`                             | 胶囊命中带沿可抓取边缘的厚度（仅上下 placement）。以胶囊外沿兜底，胶囊所在的带恒被覆盖；默认值与 `--wui-drawer-drag-zone-size` 同值，于是把手不会比旁边的带子更难按 |
+| `--wui-drawer-header-padding`     | `16px 20px`                        | Header 区域 padding                                                                                                                                                 |
+| `--wui-drawer-close-top`          | `16px`                             | 内置关闭按钮相对 header 顶部的偏移                                                                                                                                  |
+| `--wui-drawer-close-right`        | `16px`                             | 内置关闭按钮相对抽屉右缘的偏移                                                                                                                                      |
+| `--wui-drawer-content-padding`    | `20px`                             | 内容区 padding；同时驱动 drag bar 视觉中线（取半值，不低于半个胶囊厚度 + 4px）                                                                                      |
+| `--wui-drawer-footer-padding`     | `16px 20px`                        | Footer 区域 padding                                                                                                                                                 |
 
 `--wui-drawer-nested-peek-base` 不需要消费方声明：默认值 `43.2px` 是组件用 `CSS.registerProperty` 注册该属性时的 `initialValue`（`components/drawer/index.ts`），窄视口的 `28.8px` 基准来自 `components/drawer/style.css` 的 `@media (width <= 640px)` 规则——这两处就是内置基准的所在地。在宿主或任意祖先上设置该 token 可同时覆盖两者，在任何视口宽度下都生效。
 

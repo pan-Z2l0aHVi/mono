@@ -59,6 +59,49 @@ const DRAG_REQUEST_WINDOW_MS = 120
 const BACKDROP_TAP_DISTANCE = 10
 
 /*
+ * header / footer 让开给「可点控件」的选择器（上下 placement 专用）。
+ *
+ * 上下 placement 的端头整块可拖后，让开靠**逐个控件**在事件层判断，不靠几何切割：
+ * 切割要测量每个控件的位置，控件一改位置就失效；逐个控件让开是结构性的。
+ *
+ * 判据是「这个元素自己就代表一次用户操作」，分三类：
+ *   - 原生可交互元素与原生可点容器（button / input / label / a[href] / summary …）
+ *   - 显式可编辑（contenteditable）
+ *   - 交互语义 role（组件库自绘的 checkbox、tab、menuitem 等没有原生标签）
+ * 另加「作者显式给了可聚焦 tabindex」：自定义控件常只靠 tabindex 暴露可操作性。
+ *
+ * 方向是**保守让开**：判不出来就让开。让开的代价是那一小块起不了拖（用户多点一下），
+ * 判错的代价是控件失效（A6 那条回归），两者不对等。
+ */
+const HEADER_FOOTER_INTERACTIVE_SELECTOR = [
+  'button',
+  'input',
+  'select',
+  'textarea',
+  'label',
+  'summary',
+  'a[href]',
+  'audio[controls]',
+  'video[controls]',
+  '[contenteditable]:not([contenteditable="false"])',
+  '[tabindex]:not([tabindex="-1"])',
+  '[role="button"]',
+  '[role="link"]',
+  '[role="checkbox"]',
+  '[role="switch"]',
+  '[role="radio"]',
+  '[role="tab"]',
+  '[role="menuitem"]',
+  '[role="menuitemcheckbox"]',
+  '[role="menuitemradio"]',
+  '[role="option"]',
+  '[role="textbox"]',
+  '[role="combobox"]',
+  '[role="slider"]',
+  '[role="spinbutton"]'
+].join(',')
+
+/*
  * 释放后的收尾（弹回打开位 / 滑出到闭合位）由 CSS transition 接管（issue #123）：
  * 拖拽期间内联 transform + `transition: none`，松手时把终值与过渡参数写入内联并在
  * 同一次样式重算里解除抑制，回弹即唯一的一次 CSS 过渡。全程无 `element.animate()`、
@@ -354,6 +397,51 @@ export class WebUiDrawer extends LitElement {
       this._dragRequestTimer = undefined
     }
     this._dragAwaitWriteback = false
+  }
+
+  /**
+   * 上下 placement 的 header / footer 自己接拖拽手势。
+   *
+   * 为什么不是「把热区铺到 header 上」：那样 header 里的控件会被透明命中层吞掉，
+   * 正是 A6 修掉的那条缺陷。这里改成事件层让开——控件照常收自己的事件，拖拽只在
+   * 「落点不是可点控件」时起手。
+   *
+   * 三道闸门任一不成立就不接管：
+   * 1. placement 必须是上下。左右 placement 的拖拽轴是 x，端头在竖边上，header
+   *    既不在可抓边缘上也不该起手（R4 的行为侧）。
+   * 2. 下层嵌套抽屉整套拖拽提示一起退场。热区与热边靠 CSS 的 pointer-events 退场，
+   *    事件层必须自己判同一条，否则 header 会成为唯一一条漏网的入口。
+   * 3. 落点路径里有可点控件就让开——控件优先于「这一块可拖」。
+   */
+  private _handleSectionDragPointerDown(e: PointerEvent) {
+    if (this._placement !== 'top' && this._placement !== 'bottom') return
+    const section = (e.currentTarget as HTMLElement | null)?.closest('.wui-drawer-header, .wui-drawer-footer')
+    const isHeader = section?.classList.contains('wui-drawer-header') ?? false
+    // 只有**贴着可抓边缘**的那一节接手势：bottom 的 header、top 的 footer。
+    // 另一节在面板远端，在那里起手却朝闭合方向拖是反直觉的，也不属于「端头」——
+    // 与热区只让开同一侧那节是同一条边界。
+    if (this._placement === 'bottom' && !isHeader) return
+    if (this._placement === 'top' && isHeader) return
+    // 下层嵌套抽屉整套拖拽提示一起退场：热区与热边靠 CSS 的 pointer-events 退场，
+    // 事件层必须判同一条，否则这里是唯一一条漏网的入口。
+    if (this.dialog?.classList.contains('is-nested-lower')) return
+    if (this._isInteractivePath(e)) return
+    this._handleDragPointerDown(e)
+  }
+
+  /**
+   * 按下路径上是否出现可点控件。
+   *
+   * 走 composedPath 而不是 event.target：消费侧 slotted 控件与组件库自绘控件都各有
+   * shadow root，target 只给出最内层那个节点，沿 parentElement 上行会在 shadow 边界
+   * 断掉，控件自己那层反而看不见。
+   */
+  private _isInteractivePath(e: PointerEvent): boolean {
+    const path = typeof e.composedPath === 'function' ? e.composedPath() : [e.target]
+    for (const node of path) {
+      if (node instanceof Element && node.matches(HEADER_FOOTER_INTERACTIVE_SELECTOR)) return true
+    }
+    return false
   }
 
   private _handleDragPointerDown(e: PointerEvent) {
@@ -1002,7 +1090,12 @@ export class WebUiDrawer extends LitElement {
             ? html`<slot></slot>${dragBar}`
             : html`
                 <div class="wui-drawer-body wui-glass">
-                  <div class="wui-drawer-header" id="wui-drawer-heading" ?hidden=${!showHeader}>
+                  <div
+                    class="wui-drawer-header"
+                    id="wui-drawer-heading"
+                    ?hidden=${!showHeader}
+                    @pointerdown=${this._handleSectionDragPointerDown}
+                  >
                     <slot name="header" @slotchange=${this.handleHeaderSlotChange}>
                       ${this.heading ? html`<span class="wui-drawer-heading">${this.heading}</span>` : nothing}
                     </slot>
@@ -1010,7 +1103,11 @@ export class WebUiDrawer extends LitElement {
                   <div class="wui-drawer-content">
                     <slot></slot>
                   </div>
-                  <div class="wui-drawer-footer" ?hidden=${!this._hasFooterSlot}>
+                  <div
+                    class="wui-drawer-footer"
+                    ?hidden=${!this._hasFooterSlot}
+                    @pointerdown=${this._handleSectionDragPointerDown}
+                  >
                     <slot name="footer" @slotchange=${this.handleFooterSlotChange}></slot>
                   </div>
                 </div>
