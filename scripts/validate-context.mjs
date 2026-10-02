@@ -33,7 +33,7 @@ function addError(message) {
 
 // skill 出处以 skills-lock.json 为权威：登记在册的是第三方上游件，正文由上游维护（见 AGENTS.md 语言纪律），
 // 其中的示例路径不作为本仓链接；未登记的即本仓自撰，必须列在下面。两边都不在就是出处未定。
-const repoAuthoredSkills = new Set(['contract-change-review', 'herdr-agents', 'herdr-cos'])
+const repoAuthoredSkills = new Set(['contract-change-review', 'herdr-cos'])
 const lockedSkills = new Set(Object.keys(JSON.parse(read('skills-lock.json')).skills))
 
 function fromLockedSkill(file) {
@@ -344,7 +344,7 @@ for (const file of [...adrDocuments].sort()) {
 // 范围就是上面的 markdownFiles，也就是「指令面」。两个说明避免把覆盖范围读错：
 //   - docs/adr/** 在覆盖范围内：ADR 是承载现行基础设施指引的活文档，命令名陈旧就是陈旧，照判。
 //   - docs/research/** 按构造不在范围内（markdownFiles 不收它）：那是点时性研究记录，保持历史原貌。
-// 指令面没有其他收窄：herdr-agents skill 的命令引用已指引化到 docs/agents/commands.md，随本检查一同覆盖。
+// 指令面没有其他收窄：herdr-cos skill 的命令引用已指引化到 docs/agents/commands.md，随本检查一同覆盖。
 // 只收 `[a-zA-Z]` 开头的 token：pnpm 的全局开关（`--filter`/`-F`/`--dir`）和 flag 后的值都不是 script 引用。
 const pnpmRunForm = /\bpnpm run ([a-zA-Z][a-zA-Z0-9:._-]*)/g
 const pnpmBareForm = /\bpnpm ([a-zA-Z][a-zA-Z0-9:._-]*)/g
@@ -396,7 +396,7 @@ for (const name of repoAuthoredSkills)
 
 // Role Contract 数量和职责可以演进；每个文件自身的 frontmatter 身份仍必须可加载且与文件名一致。
 // 这条检查不维护角色名单，因此新增 supervisor 或未来 Role 不需要同步修改 validator。
-for (const file of walk('skills/herdr-agents/roles', file => file.endsWith('.md'))) {
+for (const file of walk('skills/herdr-cos/roles', file => file.endsWith('.md'))) {
   parseFrontmatter(file)
   const expectedName = path.basename(file, '.md')
   const source = fs.readFileSync(file, 'utf8')

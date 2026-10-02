@@ -1,6 +1,6 @@
 # Task Packet
 
-Task Packet 是单个 task 的主合同，记录目标、范围、验收、验证和交付边界。新会话可以据此恢复工作。多 Agent 的 Role 派发、handoff 模板和 Herdr 时序见 [`herdr-agents`](../../.agents/skills/herdr-agents/SKILL.md)，Supervisor 协议见同目录的 [`supervision.md`](../../.agents/skills/herdr-agents/supervision.md)。
+Task Packet 是单个 task 的主合同，记录目标、范围、验收、验证和交付边界。新会话可以据此恢复工作。多 Agent 的 Role 派发、账本命令和成员状态观察见 [`herdr-cos`](../../.agents/skills/herdr-cos/SKILL.md)，supervisor 的见证边界见 [`roles/supervisor.md`](../../.agents/skills/herdr-cos/roles/supervisor.md)。
 
 ## 主合同
 
@@ -34,14 +34,14 @@ Handoff: <what is returned and when>
 
 ## 可选 Coordination 区域
 
-只有使用多 Agent 编排、且存在 task 时才填写。它只是指针：参与者、启用理由、检查点结论和未决事项的权威落点是编排记录（`$TMPDIR/herdr-agents/reports/<主题slug>.json`，字段见 [herdr-agents](../../.agents/skills/herdr-agents/SKILL.md) 的「巡检」一节），这里不复制它们，也不替代冻结 diff 或 review 证据。
+只有使用多 Agent 编排、且存在 task 时才填写。它只是指针：参与者、观察结论和未决事项的权威落点是 herdr-cos 账本（`$TMPDIR/herdr-cos` 下该 slug 的目录，消息、ack 与 `peer-contract.md` 即记录，语义见 [herdr-cos](../../.agents/skills/herdr-cos/PROTOCOL.md)），这里不复制它们，也不替代冻结 diff 或 review 证据。
 
 ```text
-Coordination id: herdr-agents/<主题slug> | N/A
-Record: $TMPDIR/herdr-agents/reports/<主题slug>.json | N/A
+Coordination id: herdr-cos/<主题slug> | N/A
+Record: $TMPDIR/herdr-cos（账本根，slug 目录即记录）| N/A
 ```
 
-coordination id 由 Manager 在编排开始时自由生成，不从 task id 派生。固定的 coordination id、报告状态、纠错规则和 Reviewer 隔离见同目录 skill 的 [`supervision.md`](../../.agents/skills/herdr-agents/supervision.md)，Role 派发与 pane 时序见 [`herdr-agents`](../../.agents/skills/herdr-agents/SKILL.md)。没有 task 的编排不写本区域，直接读编排记录。
+coordination id 由 Manager 在编排开始时自由生成，不从 task id 派生；仓库惯例格式 `herdr-cos/<slug>`。账本语义（消息、ack、重试）见 [herdr-cos 的 PROTOCOL.md](../../.agents/skills/herdr-cos/PROTOCOL.md)，Role 派发与成员状态观察见 [`herdr-cos`](../../.agents/skills/herdr-cos/SKILL.md)。没有 task 的编排不写本区域，直接读账本。
 
 ## 恢复规则
 

@@ -1,145 +1,67 @@
 # Recovery
 
-Every interruption has the same shape: read the ledger, ask herdr what is alive, re-ring the
-doorbell for anything with no ack, and hand an ambiguous case to a human instead of
-replaying work. `cos poll <slug>` is the entry point — there is no resume command, because
-recovery is what a poll does when the fleet has been away.
+每一次中断的形状都相同：读账本，问 herdr 什么还活着，对没有 ack 的东西重敲门铃，把歧义的情形交给人，而不是重放工作。`cos poll <slug>` 是入口——没有 resume 命令，因为「恢复」就是 poll 在编队离开一段时间后做的事。
 
-## Which branch you are in
+## 你处在哪个分支
 
-| what you see | meaning | what to do |
+| 你看到什么 | 含义 | 该做什么 |
 |---|---|---|
-| `no ledger at …` | this root has no such fleet: temp cleanup, or a different `$TMPDIR` | stop. If the fleet exists elsewhere, point `HERDR_COS_HOME` at that root and poll again. Never `cos new` the same slug to "get it back" — that would make a second, empty ledger |
-| `lives in … but this process resolves …` | two roots, one slug | pick the root that has `members/`; the other is not the fleet |
-| `send refused` | `manifest.v` is newer than this program | keep reading and acking; allocate nothing new |
-| `is closed` | the `closed` marker is set | start a new slug; the old ledger stays readable, which is the point |
-| `already claimed` | `manifest.json` is written, **and** `members/` holds any `*.json` or a `peer-contract.md` already sits there | take a new slug. The one case you may re-run: `manifest.json` exists while `members/` holds no `*.json` at all *and* `peer-contract.md` is absent — your own earlier `cos new` died mid-claim, so this call finishes it instead of burning the name. The test is by suffix, not by label shape: any file named `*.json` under `members/` counts as a member, even one a human made by hand, so a stray `notes.json` there claims the fleet. Either half present is a claim: an empty `peer-contract.md` counts as rendered, and `cos` refuses rather than overwriting it. None of this applies with no `manifest.json` at all — that is the fresh-root case, and `cos new` proceeds |
-| `acked … as MISSING` | a doorbell named a number this channel never held | redo nothing. That line is the report, and it prints whether or not the fleet is open. While the fleet is open it also files `{"missing":true}` under `acks/<to>~<from>/missing/`, beside the acks rather than among them, so it consumes no record and cannot block a number a later record claims; a closed fleet files nothing, because nothing there retries |
-| `MEMBER <label> creating` | the pane lives, herdr has not listed its agent yet | wait one poll cycle — the second pass that makes no progress reports it as `failed`, which is the same fact with a verdict on it (`PROTOCOL.md` defines a no-progress pass); if it persists, look in that pane yourself — herdr `pane read` shows an approval dialog. `cos` never reads pane output: screen text is not evidence here, and clearing an approval is a human act |
-| `MEMBER <label> gone` | no such pane, terminal replaced, or `unknown` | its unacked records turn `dead` and are listed; the pane needs re-adding (`cos join`), not a rewrite. The line still carries the `role=` and `kind=` it was joined with — a member whose `agent start` failed has the role but no `kind=`, which is the half-built case below — so the replacement starts the same way, and a `gone` member is a report rather than a retirement (see Retiring a member) |
-| `MEMBER <label> failed … no-progress=2` | two passes in a row with no progress from that member: for a `creating` one, an agent herdr has never listed; for a `ready` one, a record still owed to it past the ack deadline | it is a line printed by `cos poll` and `cos reconcile`, not a file you have to go look for, and not by the other five commands. A `ready` member with nothing owed to it is never `failed`; a `gone` one is never counted. The count stops *filing* at 2 — it is a threshold, not a tally — but that ceiling is on writing, not on reading: a marker made by hand prints its own number. Go at it by hand: `herdr pane read` that pane for an approval dialog. `cos` never starts or restarts an agent for you, and one ack from that member clears the markers |
-| `UNANSWERED …` | acked, no reply, and the debtor is gone | report it to a human. Redoing it would replay work another agent already did |
-| `NEW … <body MISSING at …>` | the record survived; the artifact it points at did not | report that line and do **not** redo the work on the strength of a missing file. The record's own ack is still what settles it |
-| `this pane is not in the roster` | `HERDR_PANE_ID` matches no `ready` member — or matches two, which is refused rather than guessed | run `cos reconcile <slug>` and read the `MEMBER` lines. If two members name one pane id, one `members/<label>.json` is wrong: a human fixes the roster, no pane acks as a label it does not hold |
-| `two members resolve to pane …` | the same pane id is claimed by two labels (a recycled id, or a stale member file) | stop and correct `members/` before either pane sends or acks: an ack from the wrong label consumes the other one's messages |
-| `WARN … no ack line, because …` | a file was named by hand where `cos` would have issued its own name: either a `channels/` directory whose label no `cos` command can produce, or a record file whose number is outside what `cos ack` reads — below 1, or past the largest integer a Number holds exactly | the record still stands, but no `RUN` line is printed for it, because handing a peer a command `cos ack` would refuse is a dead end. Fix the name — the directory in the first case, the `<seq>.json` in the second; `cos` never renames a published channel or record for you. Three things about how such a record behaves, all measured. `poll` shows only numbers above the reader's cursor, and the cursor is a cache `cos` itself pushes around: the reconcile step — run by `poll` and by `reconcile` alike — clamps it to one below the oldest record still owed an ack, which for a channel whose oldest owed record is 0 is -1, so a reader that holds a cursor there does get shown the zero record, and the two commands keep trading the cursor back and forth while the record stays unconsumable. On a channel **you** sent on, the bell is blind at both bounds: an over-cap record and a zero record are each re-rung once at their deadline. What the recipient then sees is not symmetric *until it holds a cursor on that channel*: with no cursor file yet — the state a bell into a fresh pane arrives in — the over-cap record is printed by its `poll` as `NEW` with this same `WARN`, while the zero record is not printed at all (0 is not above the default 0), so that bell is rung into silence and the record's only sighting is `reconcile`'s `PENDING` line; once the reader holds any cursor there, the clamp pulls it under zero and its `poll` does print `NEW … 0` with this `WARN` |
-| `WARN … not rung — "…" is not a label this program issues` | the same hand-made name, caught at the bell instead of at the printed line | nothing was delivered on that channel and nothing was typed into any pane. The record stands; rename the member file or channel directory to a label `cos` issued (`lead`, `m1`, …) and reconcile re-rings |
-| `holds characters a doorbell line cannot carry` (or `must be an absolute path`) | `HERDR_COS_HOME` has a space, a quote or a shell metacharacter in it, or is relative | pick a plain absolute path. The root goes inside a line a shell reads, so this is refused at the door rather than escaped |
-| `dead (…)` | past the deadline, re-rung once, still no ack | report; the record still exists, so nothing is lost by stopping |
+| `no ledger at …` | 这个根没有这样的编队：temp 被清理了，或 `$TMPDIR` 不同 | 停。如果编队存在于别处，把 `HERDR_COS_HOME` 指向那个根再 poll。绝不用 `cos new` 找回同一个 slug——那会造出第二份空账本 |
+| `lives in … but this process resolves …` | 两个根，一个 slug | 选有 `members/` 的那个；另一个不是这个编队 |
+| `send refused` | `manifest.v` 比本程序新 | 继续读与 ack；不要分配任何新东西 |
+| `is closed` | `closed` 标记已置 | 换一个新 slug；旧账本保持可读，这正是设计意图 |
+| `already claimed` | `manifest.json` 已写出，**且** `members/` 下已有任何 `*.json` 或 `peer-contract.md` 已在其中 | 换新 slug。唯一可以重跑的情形：`manifest.json` 存在而 `members/` 下一个 `*.json` 都没有*且* `peer-contract.md` 不在——那是你自己早先的 `cos new` 认领中途死了，这次调用会完成它而不是烧掉名字。判定按后缀而非 label 形状：`members/` 下任何名为 `*.json` 的文件都算成员，哪怕是手工放的，所以一个多余的 `notes.json` 也会占住编队。任一半边存在即是认领：空的 `peer-contract.md` 算已渲染，`cos` 拒绝而不覆盖。完全没有 `manifest.json` 时以上都不适用——那是全新根的情形，`cos new` 直接进行 |
+| `acked … as MISSING` | 一记门铃点名了这个信道从未有过的序号 | 什么都不重做。那行就是报告，编队开不开启都打印。编队开启时它还会把 `{"missing":true}` 归档到 `acks/<to>~<from>/missing/`——在 acks 旁边而不是其中，所以它不消费任何记录，也不会挡住后来记录认领的序号；关闭的编队不落盘，因为那里没有东西重试 |
+| `MEMBER <label> creating` | pane 活着，herdr 尚未列出它的 agent | 等一个 poll 周期——第二趟仍无进展就会报 `failed`，那是同一个事实加了裁决（`PROTOCOL.md` 定义了什么叫无进展趟）；若持续，自己去那个 pane 看——herdr `pane read` 会显示审批对话框。`cos` 从不读 pane 输出：屏幕文本在这里不是证据，清除审批是人的动作 |
+| `MEMBER <label> gone` | 没有这个 pane、终端被替换，或 `unknown` | 它未 ack 的记录转为 `dead` 并被列出；需要的是重新加人（`cos join`），不是改写。那行仍带着它加入时的 `role=` 与 `kind=`——`agent start` 失败的成员有角色没有 `kind=`，即下文的半建成情形——所以替换者照同样的方式启动，而 `gone` 成员是报告而非退役（见 Retiring a member） |
+| `MEMBER <label> failed … no-progress=2` | 该成员连续两趟无进展：对 `creating` 是 herdr 从未列出过 agent；对 `ready` 是一条仍欠它的记录过了 ack 期限 | 它是 `cos poll` 与 `cos reconcile` 打印的一行，不是要你自己去找的文件，其余五条命令不打印。不欠任何东西的 `ready` 成员绝不会 `failed`；`gone` 的绝不计数。计数在 2 处停止*落盘*——是阈值不是累加——但上限在写入侧，读取不受限：手工造的标记打印自己的数字。手工处理：对那个 pane 跑 `herdr pane read` 看审批对话框。`cos` 绝不替你启动或重启 agent，而该成员的一个 ack 就会清掉标记 |
+| `UNANSWERED …` | 已 ack、无回复、欠债人已消失 | 报告给人。重做会重放另一个 agent 已经完成的工作 |
+| `NEW … <body MISSING at …>` | 记录幸存，它指向的 artifact 没有 | 报告那一行，**不要**凭缺失的文件重做工作。对它作最终裁决的仍是记录自己的 ack |
+| `this pane is not in the roster` | `HERDR_PANE_ID` 匹配不到任何 `ready` 成员——或匹配到两个，此时拒绝而非猜测 | 跑 `cos reconcile <slug>` 读 `MEMBER` 行。若两个成员点名同一个 pane id，必有一份 `members/<label>.json` 是错的：人来修名册，没有 pane 会以自己不持有的 label ack |
+| `two members resolve to pane …` | 同一 pane id 被两个 label 认领（被回收的 id，或过期的成员文件） | 停下，在任何一方 send 或 ack 之前修正 `members/`：错误 label 的 ack 消费的是对方的消息 |
+| `WARN … no ack line, because …` | 有人手工命名了 `cos` 本会自己命名的文件：要么是 `channels/` 下一个任何 `cos` 命令都产不出的 label 目录，要么是序号在 `cos ack` 读取范围之外的记录文件——小于 1，或超出 Number 精确表示的最大整数 | 记录仍然成立，但不会为它打印 `RUN` 行，因为把一条 `cos ack` 会拒绝的命令交给 peer 是死路。改名字——第一种改目录，第二种改 `<seq>.json`；`cos` 绝不替你重命名已发布的信道或记录。关于这类记录的行为有三点，全部实测。`poll` 只显示高于读者游标的序号，而游标是 `cos` 自己会搬动的缓存：reconcile 步骤——`poll` 与 `reconcile` 都跑——把它钳到最旧一条仍欠 ack 的记录之下，对最旧欠账为 0 的信道就是 -1，所以在那里持有游标的读者确实会被展示零记录，且只要记录不可消费，两条命令就一直来回搬游标。在**你**发送过的信道上，门铃对两个边界都失明：超上限记录与零记录各自在期限到达时重敲一次。接收方随后看到什么并不对称——*直到它持有该信道的游标*：尚无游标文件时（敲进全新 pane 的门铃到达时的状态），超上限记录被它的 `poll` 打成 `NEW` 并带同一条 `WARN`，而零记录完全不打（0 不高于默认值 0），所以那记门铃敲进沉默，记录唯一的现形是 `reconcile` 的 `PENDING` 行；读者一旦持有任何游标，钳位把它拉到零下，它的 `poll` 就会打印 `NEW … 0` 并带这条 `WARN` |
+| `WARN … not rung — "…" is not a label this program issues` | 同样的手工名字，这次在门铃处而非打印行被拦 | 该信道什么也没投递，任何 pane 里什么也没敲。记录保持；把成员文件或信道目录改回 `cos` 发放的 label（`lead`、`m1`……），reconcile 会重敲 |
+| `holds characters a doorbell line cannot carry`（或 `must be an absolute path`） | `HERDR_COS_HOME` 里有空格、引号或 shell 元字符，或是相对路径 | 换一个朴素的绝对路径。根会被嵌进一行 shell 要读的文本，所以在门口拒绝而不是转义 |
+| `dead (…)` | 过了期限、重敲过一次、仍无 ack | 报告；记录还在，停下来什么也不会丢 |
 
-## After an agent crash, in your own pane
+## 自己 pane 里的 agent 崩溃之后
 
-`cos poll <slug>` lists what is addressed to you regardless of how you got here: the doorbell
-may have been consumed by a process that died mid-turn, and only your ack decides whether it
-counts. Re-ring is idempotent for you because a duplicate doorbell names the same `seq`, and
-`cos ack` on an already-acked record says `already acked` and changes nothing — as a repeated
-phantom bell reprints its `as MISSING` report and files nothing new. No ack attempt is silent.
-Expect to see the
-same `NEW` line again on the next poll: your read cursor is clamped back to just below the
-oldest record you have not acked, so an unacked record stays offered until you ack it. That is
-the safe direction — being shown owed work twice costs a duplicate ack attempt, hiding it would
-cost the message.
+`cos poll <slug>` 会列出所有指向你的内容，不管你是怎么走到这一步的：门铃可能被一个回合中途死掉的患者消费掉了，而只有你的 ack 决定它是否作数。重敲对你幂等，因为重复的门铃点名同一个 `seq`，而对已 ack 记录跑 `cos ack` 会说 `already acked` 且什么也不改——就像重复的幻影门铃重印它的 `as MISSING` 报告且不落盘任何新东西。没有一次 ack 尝试是无声的。预期下一次 poll 还会看到同一条 `NEW` 行：你的读取游标被钳回到最旧一条未 ack 记录之下，所以未 ack 的记录会一直被摆上来直到你 ack。那是安全的方向——被两次展示欠着的工作代价是一次重复的 ack 尝试，藏起它的代价是消息本身。
 
-## After a herdr server restart
+## herdr server 重启之后
 
-The ledger is not herdr's, so nothing here needs rebuilding. `cos reconcile <slug>` recomputes
-every member from the live agent list, asking `pane get` about anyone that list does not name, and
-what it finds depends on what came back:
+账本不是 herdr 的，所以这里没有东西需要重建。`cos reconcile <slug>` 从活的 agent 列表重算每个成员，对 list 未点名的逐个询问 `pane get`，结果取决于回话的是什么：
 
-- The same agent answering under a **new pane id** (a pane move, a re-parented pane) is
-  re-bound by its recorded name `cos-<label>-<slug>`: the state says `ready` and names the
-  successor pane, with no file edited. A pane id is herdr's to hand out; the name is the
-  ledger's handle on the same agent.
-- A **bare pane** member has no name to match on, so it is `gone` and needs `cos join` again.
-- A restart that dropped every pane and relaunched nothing has no successor to find. `cos`
-  never starts agents on its own — a second `agent start` would open a duplicate — so the
-  members stay `gone` until a human brings them back. Unacked records are meanwhile listed,
-  not lost.
+- 同一个 agent 在**新 pane id** 下应答（pane 被移动、被重新挂载）会按记录的名字 `cos-<label>-<slug>` 重新绑定：状态说 `ready` 并点名继任 pane，没有任何文件被编辑。pane id 是 herdr 发的；名字是账本握住同一个 agent 的把手。
+- **裸 pane** 成员没有名字可匹配，所以是 `gone`，需要重新 `cos join`。
+- 把所有 pane 都丢弃且什么都没重启的重启没有继任者可找。`cos` 绝不自己启动 agent——第二次 `agent start` 会开出重复的 agent——所以成员保持 `gone` 直到人把它们带回来。其间未 ack 的记录被列出，不丢失。
 
-Whatever resolves next gets its bell re-rung, and records keep their sequence numbers: a
-number a peer already acked is never handed out again, because the ack directory is part of the
-allocation floor — reports of numbers that never existed live under `missing/` and are not — so a
-recycled record cannot make the next message look consumed.
+接下来解析成功的成员会得到重敲的门铃，记录保留自己的序号：peer 已 ack 过的序号绝不二次发放，因为 ack 目录是分配下限的一部分——从未存在过的序号的报告住在 `missing/` 下、不算——所以回收的记录没法让下一条消息看起来像已被消费。
 
-## After the ledger root is wiped
+## 账本根被清空之后
 
-Nothing recovers a wiped `channels/`: `cos poll` fails with `no ledger at` rather than
-pretending the fleet is empty, which is the difference between "lost" and "silently lost". If
-the fleet must outlive temp cleanup, copy `<root>/fleets/<slug>` somewhere durable — `cos close`
-prints the path for exactly that, and there is no export command because a second copy of the
-ledger would be a second source of truth.
+没有任何东西能恢复被清空的 `channels/`：`cos poll` 以 `no ledger at` 失败，而不是假装编队是空的——这就是「丢了」与「悄悄丢了」的差别。如果编队必须活过 temp 清理，把 `<root>/fleets/<slug>` 拷去持久的地方——`cos close` 打印路径正是为此，且没有导出命令，因为账本的第二份拷贝就是第二份事实来源。
 
-## Half-built topology
+## 半建成的拓扑
 
-`cos join` publishes `members/<label>.json` and, on a failed `agent start`, exits 1 saying
-`not retrying agent start` and naming the branch below — the line asks whether herdr stopped at an
-approval prompt, tells you to `cos join` a fresh member, and a test pins both that advice and the absence
-of a "then run cos reconcile". The member is registered with **no agent binding**, which means
-reconcile treats its pane as a bare pane: `ready`, reachable, and every doorbell to it is
-written with `pane run` — which a shell *does* execute, and answers with "command not found"
-because `cosa` is a marker, not a program. `cos` says so out loud (`… as a notice, not consumed`)
-and does not count it as a delivery. Its
-records stay unacked and retryable, so nothing is lost while a human sorts it out. Clear the
-approval, then `cos join` a fresh member and hand that work to it again. The records already filed
-under the old label stay addressed to it — reconcile keeps ringing that pane, and a new member does
-not inherit its channels. Do **not** plan on
-starting the agent in that pane and having reconcile re-bind it: the member file was written with
-`agent: null`, nothing prints a `cos-<label>-<slug>` name for a start that failed, and a null binding
-is what reconcile reads forever — the member stays a bare-pane recipient even after a human puts an
-agent there, so its bells keep arriving by `pane run` and keep printing `not consumed`. A ledger file
-is never rewritten to fix that, which is the cost of the write-once rule and the reason the branch is
-a new member rather than a repair.
-Never re-run `agent start` blindly: the retry opens a second agent in a second pane.
-A join that dies one step earlier — `pane split` or `pane move` refused, before any member was
-registered — is tidier: `cos` itself rolls the just-carved worktree and branch back (the checkout is
-seconds old and bare, nothing to lose) and prints the stray pane id sitting in your tab, to close by
-hand. Fix herdr and re-run the same `cos join`: the label was never claimed, so nothing else moved.
+`cos join` 发布 `members/<label>.json`，在 `agent start` 失败时以退出码 1 打印 `not retrying agent start` 并点名下面的分支——那行会问 herdr 是否停在了审批提示，让你 `cos join` 一个新成员，且有测试同时钉住这条建议与「then run cos reconcile」的缺席。成员以**无 agent 绑定**注册，意味着 reconcile 把它的 pane 当裸 pane：`ready`、可达、每记门铃都用 `pane run` 写入——而 shell *确实*会执行它，并以「command not found」作答，因为 `cosa` 是标记不是程序。`cos` 大声说明这一点（`… as a notice, not consumed`）且不计为投递。它的记录保持未 ack、可重试，所以在人来处理期间什么也不丢。清除审批，然后 `cos join` 一个新成员，把那份工作交给它。已归档在旧 label 下的记录仍然指向它——reconcile 会继续敲那个 pane，新成员不继承它的信道。**不要**指望在那个 pane 里启动 agent 然后 reconcile 重新绑定：成员文件写的是 `agent: null`，没有任何东西会为一次失败的启动打印 `cos-<label>-<slug>` 名字，而 reconcile 永远读到的是 null 绑定——即使人在那里放了 agent，成员也保持为裸 pane 接收者，它的门铃继续经 `pane run` 到达并继续打印 `not consumed`。账本文件永远不会为修这个而重写，这是写一次规则的代价，也是那个分支是「新成员」而非「修复」的原因。
+绝不要盲目重跑 `agent start`：重试会在第二个 pane 里开出第二个 agent。更早一步死掉的 join——`pane split` 或 `pane move` 被拒、任何成员注册之前——更干净：`cos` 自己回滚刚 carve 的 worktree 与分支（checkout 只存在了几秒且是裸的，没有可丢的东西），并打印坐在你 tab 里的多余 pane id，由人关闭。修好 herdr 再重跑同一个 `cos join`：label 从未被认领，所以没有其他东西被动过。
 
-## A member's worktree
+## 成员的 worktree
 
-`cos` carves each member a worktree at `join` and never looks at it again: no pass reconciles a
-tree, so every failure here is silent to the ledger and repaired by hand with plain git.
+`cos` 在 `join` 时为每个成员 carve 一棵 worktree，之后再也不看它：没有 pass 会 reconcile 树，所以这里的每一种失败对账本都是静默的，由人用普通 git 修复。
 
-- **The pane lives but its tree is gone** (a temp sweep took `<root>/worktrees/`, or someone removed
-  it): the pane's `--cwd` now dangles. `cos` does not notice, and the member still polls and acks.
-  The branch survives in the repo, so re-attach it where the member file says —
-  `git worktree add <worktree-from-the-member-file> <branch>` — and the member is whole again. Read
-  both paths out of `members/<label>.json`; do not guess.
-- **The ledger root is wiped**: the worktrees under `<root>/worktrees/` go with it, but the branches
-  stay in the repo. The fleet itself is `no ledger at` (above) and is not recovered; if a branch held
-  work worth keeping, `git worktree add` it somewhere of your choosing before the repo is cleaned.
-- **A member is re-added** (`cos join` after a `gone`): the new join takes a *new* label, so it
-  carves a *new* worktree and branch. The old member's tree and branch are left exactly as they were —
-  `cos` removes nothing. Decide by hand whether that branch still matters.
-- **A `--no-worktree` member has none**: its file records `worktree: null`, and it worked in the
-  lead's tree all along. There is nothing to recover; the risk is the one isolation was meant to
-  avoid.
+- **pane 活着但树没了**（temp 清理扫走了 `<root>/worktrees/`，或有人删了它）：pane 的 `--cwd` 现在悬空。`cos` 注意不到，成员照常 poll 和 ack。分支还在仓库里，按成员文件所说重新挂上——`git worktree add <worktree-from-the-member-file> <branch>`——成员就完整了。两个路径都从 `members/<label>.json` 读，不要猜。
+- **账本根被清空**：`<root>/worktrees/` 下的 worktree 随之消失，但分支留在仓库。编队本身是 `no ledger at`（上文）且不予恢复；如果某分支上有值得保留的工作，在仓库被清理前 `git worktree add` 到你选的地方。
+- **成员被重新添加**（`gone` 之后 `cos join`）：新 join 拿*新* label，carve 的是*新* worktree 与分支。旧成员的树与分支原样留在原地——`cos` 什么都不删。那个分支是否还有价值由人判断。
+- **`--no-worktree` 成员没有树**：它的文件记录 `worktree: null`，它一直在 lead 的树里工作。没有可恢复的；风险正是隔离本要避免的那个。
 
-To retire a tree, close or re-home the pane first, then `git worktree remove <path>` (add `--force`
-only if it holds uncommitted work you have decided to discard) and `git branch -d <branch>` if the
-work is merged. `cos` never runs either.
+退役一棵树：先关闭或改派 pane，然后 `git worktree remove <path>`（仅当里面有你决定丢弃的未提交工作时加 `--force`），工作已合并则 `git branch -d <branch>`。`cos` 两者都不代跑。
 
 ## Retiring a member
 
-`gone` is a report, not a cleanup. The member file stays, so that member is printed `gone` on every
-pass and keeps counting toward the recommended six — the count runs over `members/*.json`, and a file
-for a dead pane is still a file. To actually retire one, **close its pane first, then delete
-`members/<label>.json`**.
+`gone` 是报告，不是清理。成员文件还在，所以每个 pass 都把它打印成 `gone`，并且继续计入推荐的六个——计数遍历 `members/*.json`，死 pane 的文件也是文件。真正退役一个：**先关它的 pane，再删 `members/<label>.json`**。
 
-The order is load-bearing. `nextLabel` (`cos.mjs:125`) numbers a new member as one past the highest
-number still on disk, so deleting the highest-numbered file frees its number for reuse: delete that one —
-say `m3.json`, with `m1` and `m2` still on disk and `m3`'s agent still alive — and the next `cos join`
-claims `m3` again and tries to start the same name `cos-<label>-<slug>`, which herdr refuses because names
-must be unique among live agents — the join then exits 1 with `agent start returned herdr …`, the branch
-above. Close the pane first and the name is already free when the number comes around. Deleting a
-lower-numbered file frees nothing, since `nextLabel` takes the maximum, but then that label is simply
-missing from the roster and the numbering has a hole — `cos` does not care, and `m4` never becomes `m3`.
+顺序是承重的。`nextLabel`（`cos.mjs:125`）给新成员的编号是磁盘上最大编号加一，所以删编号最大的文件会让它的编号可复用：删那个——比如 `m3.json`，而 `m1`、`m2` 还在盘上、`m3` 的 agent 还活着——下一次 `cos join` 会再次认领 `m3` 并尝试启动同名 `cos-<label>-<slug>`，herdr 拒绝，因为活 agent 之间名字必须唯一——join 于是以 `agent start returned herdr …` 退出 1，即上文那个分支。先关 pane，名字在轮到那个号时已经空闲。删编号更小的文件不释放任何东西，因为 `nextLabel` 取最大值，但那个 label 就从名册上消失了，编号有了洞——`cos` 不在乎，`m4` 也不会变成 `m3`。
 
-Retiring the member does not retire its mail. Records already filed in `channels/<from>-><label>/` stay
-in the ledger, addressed to a label rather than to a pane. If that number is reused, the new member claims
-the label and inherits them — the ladder resolves a label to whatever pane holds it now, so it re-rings
-and consumes mail the retired member never read. If the number is never reused, nothing re-rings them and
-nothing consumes them: they sit owed to a label no pane speaks for, and their numbers are never re-issued.
-Either way, ack what was really done before you retire; `cos` collects nothing, and a retired label is not a
-reason to edit the ledger. Deleting the member file retires nothing about its tree either — the worktree and
-branch it was joined into outlive the file; clean those up by hand as in `## A member's worktree`.
+退役成员不退役它的邮件。已归档在 `channels/<from>-><label>/` 的记录留在账本里，指向的是 label 而不是 pane。如果那个序号被复用，新成员认领 label 并继承它们——阶梯把 label 解析到此刻持有它的任何 pane，于是重敲并消费退役成员从未读过的邮件。如果序号永不复用，就没有东西重敲它们、没有东西消费它们：它们悬挂在一个没有 pane 替它发言的 label 名下，序号也永不二次发放。无论哪种，退役前先 ack 真正完成的部分；`cos` 什么都不收集，退役的 label 也不构成改账本的理由。删成员文件同样不退役它的树——它被接入的 worktree 与分支活得比文件久；按 `## 成员的 worktree` 手工清理。

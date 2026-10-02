@@ -3,7 +3,7 @@
 - **Date**: 2026-09-28
 - **Status**: 已接受
 - **Supersedes**: [ADR-0010](0010-agent-role-orchestration.md)、[ADR-0011](0011-agent-model-binding-and-effort.md)、[ADR-0014](0014-task-system-v2.md)、[ADR-0016](0016-implementation-supervision.md) 中把编排事实绑定到 task 的部分
-- **Amends**: [ADR-0015](0015-role-contracts-in-herdr-agents-skill.md)（skill 仍只由 `/herdr-agents` 触发，拆分与解耦都不新增 skill）
+- **Amends**: [ADR-0015](0015-role-contracts-in-herdr-agents-skill.md)（skill 仍只由 `/herdr-agents` 触发，拆分与解耦都不新增 skill）。（2026-10-02 修订：herdr-agents 被 `herdr-cos` 取代并退役——本 ADR 确立的原则（coordination id 独立于 task、编排元数据落 `$TMPDIR`、目录结构固定）全部延续，但载体变了：编排记录由 herdr-cos 的账本承载（`$TMPDIR/herdr-cos` 下 slug 目录的消息、ack 与 `peer-contract.md`），coordination id 惯例格式 `herdr-cos/<slug>`；独立巡检程序 patrol.mjs 与 `$TMPDIR/herdr-agents-monitor/` 随旧 skill 退役，成员状态观察由 `cos poll/reconcile` 内建。）
 - **Relates to**: [ADR-0004](0004-progressive-agent-context-architecture.md)
 - **Amended by**: [ADR-0018](0018-task-state-in-tmpdir.md)（下文的 `<git-common-dir>/tasks/` 是本 ADR 决策当时的位置；task state 现在的落点是 `$TMPDIR/greypan/tasks/`。决策本身不变）、[ADR-0019](0019-agent-to-manager-report-channel.md)（B 组的「工作单元只写在文件名里」升为报告文件名的硬规则；C 组的巡检数据源增加一条独立的报告信号）
 

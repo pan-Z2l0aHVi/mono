@@ -1,114 +1,32 @@
 ---
 name: herdr-cos
-description: One shared ledger so several herdr panes can hand work to each other without losing a message.
+description: 一份共享账本，让多个 herdr pane 互派工作而不丢一条消息。
 disable-model-invocation: true
 ---
 
 # herdr-cos
 
-A lead pane and N worker panes — each a herdr pane holding one agent — sharing one ledger directory
-on disk. A message is a file. Delivery is a one-line doorbell herdr types into the recipient's pane.
-Consumption is an ack file, and for a message the ack file is the only proof. Whether a pane is
-alive is herdr's to say, not the ledger's. No pane ever waits on another. Each member is joined into
-its own git worktree, and each may hold a named **role** from the contracts in `roles/`.
+一个 lead pane 加 N 个 worker pane——每个 pane 是一个持有 agent 的 herdr pane——共享磁盘上的同一份账本目录。一条消息是一个文件。投递是 herdr 敲进接收方 pane 的一行门铃（doorbell）。消费是一个 ack 文件，对一条消息而言，ack 文件是唯一的凭证。一个 pane 是否存活由 herdr 说了算，账本不下结论。任何 pane 都不等待另一个 pane。每个成员被接入自己的 git worktree，并可以持有一个来自 `roles/` 契约的具名**角色**。
 
-`PROTOCOL.md` holds field semantics, the message and member state tables and the invariants to keep
-when editing `scripts/cos.mjs`; `RECOVERY.md` holds the interruption branches; `roles/*.md` are the
-role contracts a member reads once it is told which role it holds. The program is
-`scripts/cos.mjs`, run as `node <this skill dir>/scripts/cos.mjs`, with nothing behind it but node
-stdlib, `herdr`, and `git`.
+`PROTOCOL.md` 载有字段语义、消息与成员状态表，以及修改 `scripts/cos.mjs` 时要守住的不变量；`RECOVERY.md` 载有中断分支；`roles/*.md` 是成员被告知自己持有什么角色时读的契约。程序是 `scripts/cos.mjs`，以 `node <本 skill 目录>/scripts/cos.mjs` 运行，背后只有 node stdlib、`herdr` 和 `git`。
 
 ## Gate
 
-- `herdr status` first: the server must be running. Most commands and flags named here came off
-  the upstream [`herdr` skill](../herdr/SKILL.md); two did not, and they are named here because a reader cannot tell a
-  documented surface from a borrowed one otherwise. `pane move --new-tab` has no upstream line carrying
-  the flag, and **`pane get` is not in the 214-line upstream doc at all**. `cos` reaches for it in two
-  shapes: once in `cos new`, where it *is* the lookup for this pane, and per member during reconcile,
-  where it runs only after `agent list` has left that pane unnamed — which is the ordinary case for a
-  bare pane, and the pass that separates "still launching" from "gone". Both were read off `strings` of
-  the installed herdr 0.9.1 binary on 2026-09-29 and both shapes were answered by a live 0.9.1 server on
-  2026-09-30, in a full loop run in a named session of its own — `new`, two `join`s, `send`, a peer
-  acking from the rendered contract, `reconcile`, `close`, `poll`. Every member in that fleet was a bare
-  pane (its `join` line reads `agent (bare pane)`), which is why its reconcile reported `ready` off
-  `pane get` rather than off the agent list. Undocumented means
-  unfrozen: on any other version read `herdr pane get --help` before trusting a member state that
-  reconcile printed. The measured baseline is **herdr 0.9.1, private protocol 22**, read from
-  `herdr --session <name> status server` on 2026-09-30 — of those two numbers only 0.9.1 is still
-  reopenable here (the Homebrew install path says it); the protocol reading was printed once and not
-  saved, so treat it as reported rather than as an artifact. On any other version, read
-  each command's own help before trusting a flag.
-- `command -v node` must succeed in every pane you mean to make a member: a peer runs the same
-  program to ack. `cos join` does not check this, so check it yourself.
-- `git` must be on `PATH` and `cos new` run from inside a git repo if you want the worktree
-  isolation described below; outside one, `cos join` shares your tree and says so.
-- `cos new` registers the calling pane as lead; with `HERDR_PANE_ID` unset it falls back to the focused
-  pane, which may be a human's, so read the `lead pane` line it prints.
-- Ledger root: each command resolves a candidate from `HERDR_COS_HOME` (absolute, and only
-  `[A-Za-z0-9._:/-]`, because the doorbell line goes straight into a shell) or
-  `$TMPDIR/herdr-cos`. Only `cos new` *records* it; every other call compares against that
-  record and stops on a mismatch, so a peer whose `$TMPDIR` differs cannot quietly open a second empty
-  fleet. Hence every line printed or rendered here carries `HERDR_COS_HOME=<recorded root>` — copy
-  it, do not retype it.
+- 先跑 `herdr status`：server 必须在运行。这里点名的大多数命令与 flag 来自上游 [`herdr` skill](../herdr/SKILL.md)；有两个不是，之所以单独点名，是因为读者无法自行区分「文档化的表面」与「借来的表面」。`pane move --new-tab` 在上游文档里没有携带该 flag 的行，而 **`pane get` 根本不在那份 214 行的上游文档里**。`cos` 以两种形态用到它：一次在 `cos new` 里，那正是对本 pane 的查找；另一次是 reconcile 期间对每个成员执行，且只在 `agent list` 没有点名该 pane 时才跑——对一个裸 pane 而言这是常态，这一趟把「还在启动」与「已经没了」区分开。两者都是在 2026-09-29 从已安装的 herdr 0.9.1 二进制的 `strings` 里读出、并在 2026-09-30 由一个活着的 0.9.1 server 应答过的——当时在一个独立命名的 session 里完整跑通了一轮：`new`、两次 `join`、`send`、一个 peer 从渲染出的契约应答、`reconcile`、`close`、`poll`。那次编队里每个成员都是裸 pane（它的 `join` 行写的是 `agent (bare pane)`），所以它的 reconcile 报告 `ready` 依据的是 `pane get` 而非 agent list。未文档化即未冻结：在任何其他版本上，先读 `herdr pane get --help` 再相信 reconcile 打印的成员状态。实测基线是 **herdr 0.9.1, private protocol 22**，读自 2026-09-30 的 `herdr --session <name> status server`——这两个数里只有 0.9.1 在这里还可复核（Homebrew 安装路径说明了它）；protocol 读数只打印过一次且未存档，当作「有人报告过」而非工件对待。在任何其他版本上，先读每条命令自己的 help 再相信某个 flag。
+- `command -v node` 必须在你打算变成成员的每个 pane 里成功：peer 要跑同一个程序来 ack。`cos join` 不检查这件事，所以你自己检查。
+- `git` 必须在 `PATH` 上，且如果你想要下文描述的 worktree 隔离，`cos new` 必须在一个 git 仓库内运行；在仓库外运行时，`cos join` 会共享你的工作树并明确说明。
+- `cos new` 把调用方 pane 注册为 lead；`HERDR_PANE_ID` 未设置时会退回到聚焦的 pane，那可能是人类的 pane，所以要读它打印的 `lead pane` 行。
+- 账本根：每条命令从 `HERDR_COS_HOME`（绝对路径，且只允许 `[A-Za-z0-9._:/-]`，因为门铃行会直接进 shell）或 `$TMPDIR/herdr-cos` 解析出一个候选值。只有 `cos new` **记录**它；其余每条命令都与记录比对，不一致即停，这样 `$TMPDIR` 不同的 peer 就不会悄悄开出一个第二份空编队。因此这里打印或渲染的每一行都带 `HERDR_COS_HOME=<recorded root>`——复制它，不要手打。
 
 ## Steps
 
-1. **Claim the fleet.** `cos new <slug>` prints `claimed fleet … at <abs>`; that path is the ledger and
-   the rendered `peer-contract.md` beside it is what a worker needs. You are member `lead`: your
-   records say `from: lead`, replies arrive on `channels/<worker>->lead/`. A second `cos new` exits 1 —
-   unless nothing was claimed yet (manifest present, no `*.json` under `members/`, no contract), when it finishes
-   that interrupted claim instead of burning the name.
-2. **Add members.** When you need one, run `herdr agent` (no subcommand) to see the installed kinds,
-   ask your user which to use, then `cos join <slug> <right|down> <kind> [role]` per worker, up to about
-   six counting the lead; past that `cos` warns and keeps going. Ask only when a new member is needed —
-   reuse an idle member of the same kind rather than spawning one, because the question parks your
-   dispatch on a human round trip (the rest of the fleet keeps working). The optional fourth word is
-   that member's role: one of `manager`, `planner`, `coder`, `supervisor`, `tester` — the contracts in
-   `roles/`, loaded by the member when it reads its file. The role is recorded with the kind and shown
-   on `MEMBER` lines, and nothing else — it is a name for humans, not a permission (`PROTOCOL.md` has
-   the semantics). Each split a pane, moves it to
-   its own tab, starts an agent named `cos-<label>-<slug>`, publishes `members/<label>.json`, and assigns
-   the label itself — `m1`, `m2`, … in join order, printed on the `joined` line, not chosen by you. **It
-   also carves the member its own git worktree** at `<root>/worktrees/<slug>/<label>` on branch
-   `cos/<slug>/<label>` and opens the pane there, so two members never share a working tree; the join
-   prints `worktree <path> (branch <branch>)`. Pass `--no-worktree` to share your tree instead (outside
-   a git repo it does this anyway, with a note). The
-   kind goes verbatim to `herdr agent start --kind`, so an unspellable kind fails at herdr: the member
-   stays registered with no binding, `join` exits 1, the pane reads as a bare one, and a bell to it is
-   typed into a shell that runs it and finds no command named `cosa`. That binding is write-once, so
-   reconciling repairs nothing: `cos join` a fresh member and hand the work to it again. A failure one
-   step earlier — the split, or the move that takes the pane to its own tab — rolls the freshly carved
-   worktree and branch back and names the stray pane to close, with nothing registered, so the same
-   `cos join` can simply be re-run.
-3. **Send work.** `cos send <slug> m1,m2 "<text>" [re]` publishes one record per recipient and rings
-   each bell — *one body to N recipients*, so N different briefs are N `cos send` calls; a single
-   fan-out costs one `agent list` plus N prompts, plus one `pane get` for every member that list did
-   not name — which is how a launching member is told from a vanished one. To hand over a file rather
-   than type it: `cos send
-   <slug> m1 - < report`. That copy is verbatim, not a summary or a link; a body over 1500 bytes
-   lands in `artifacts/` and the record carries the path, so the doorbell stays one short line.
-4. **Observe.** `cos poll <slug>` reconciles and prints `NEW <from> <seq> <type> <preview>` for what
-   awaits this pane and `RUN …` — the ack line, runnable verbatim. Pull about every 30s: the bell is
-   the accelerator, the pull is the correctness source. A pane that only dispatches is where this
-   stalls, so keep pulling until your own `OUT …` lines are gone, which is also how a `MEMBER …
-   failed` or `UNANSWERED …` report reaches you. A round trip costs minutes and several tool calls, not
-   instants (estimates off the protocol's own steps: the one live round trip's peer was scripted, and its
-   own work — read the contract, poll, ack — took about a second, so the minutes belong to the model turn
-   and not to the ledger; shape in
-   `PROTOCOL.md`). `sent …` proves publication only: `cos send` closes with `doorbells N of M` — M
-   records that call published, N bells it handed to a registered agent (a bare-pane notice is in M,
-   not N), so a retry of some older owed record counts in neither — `cos reconcile` with
-   `doorbells N, re-sent N` for its whole pass, and `cos poll` prints neither.
-5. **Ack.** Run the `RUN` line after the work actually happened, with `<seq>` as plain digits. The ack
-   is the only positive proof of consumption: it stops retries, lets your writer recycle the record,
-   and until you run it the same `NEW` line keeps coming back.
-6. **Reply where it arrived.** `cos send <slug> <from> "<answer>" "<from>-><me>#<seq>"`. Peers talk to
-   peers directly; the lead owns no relay.
-7. **Close.** `cos close <slug>` stops doorbells, retries and recycling, and every command but `ack`
-   and `close` then refuses the slug — a late peer can still prove it consumed something, because an
-   ack is evidence rather than work. The ledger stays readable and `close` prints where it sits, so
-   copy it somewhere durable if you want it past temp cleanup. There is no export command: a second
-   copy would be a second source of truth.
+1. **认领编队。** `cos new <slug>` 打印 `claimed fleet … at <abs>`；那个路径就是账本，旁边的 `peer-contract.md` 是 worker 需要的东西。你是成员 `lead`：你的记录写 `from: lead`，回复抵达 `channels/<worker>->lead/`。第二次 `cos new` 以退出码 1 拒绝——除非什么都还没认领（manifest 存在、`members/` 下没有 `*.json`、没有契约），此时它会完成那次被打断的认领，而不是烧掉这个名字。
+2. **添加成员。** 需要人手时，跑 `herdr agent`（无子命令）看已安装的 kind，问用户用哪个，然后对每个 worker 跑 `cos join <slug> <right|down> <kind> [role]`，连 lead 计六个上下；超过后 `cos` 警告但继续。只在新成员确有必要时才问——同 kind 的空闲成员优先复用，而不是再起一个，因为提问会把你的派发停在等人的一次往返上（编队其他成员继续干活）。第四个可选词是成员的角色：`manager`、`planner`、`coder`、`supervisor`、`tester` 之一——即本目录里的契约，由成员在读到自己的文件时加载。角色与 kind 一起被记录并显示在 `MEMBER` 行上，仅此而已——它是给人看的名字，不是权限（语义见 `PROTOCOL.md`）。join 会切分一个 pane、把它移到自己的 tab、启动一个名为 `cos-<label>-<slug>` 的 agent、发布 `members/<label>.json`，并自己分配 label——`m1`、`m2`……按加入顺序，打印在 `joined` 行上，不由你选。**它还会为成员 carving 出自己的 git worktree**，位于 `<root>/worktrees/<slug>/<label>`，分支 `cos/<slug>/<label>`，并把 pane 在那里打开，所以两个成员永远不会共享一棵工作树；join 打印 `worktree <path> (branch <branch>)`。传 `--no-worktree` 则共享你的树（在仓库外它本来就如此，并附说明）。kind 会原样传给 `herdr agent start --kind`，拼错的 kind 在 herdr 处失败：成员保持已注册但无绑定，`join` 退出码 1，pane 读作裸 pane，发给它的门铃被敲进一个 shell，而 shell 找不到名叫 `cosa` 的命令。该绑定是写一次的，reconcile 修不了它：重新 `cos join` 一个新成员，把活再交给它。更早一步的失败——split，或把 pane 移到自己 tab 的 move——会被回滚：刚 carving 出的 worktree 和分支被删掉，并点名那个多余的 pane 让人来关，什么都没注册，同一个 `cos join` 可以直接重跑。
+3. **派活。** `cos send <slug> m1,m2 "<text>" [re]` 为每个接收者发布一条记录并敲响各自门铃——*一份正文给 N 个接收者*，所以 N 份不同的简报就是 N 次 `cos send`；一次扇出的成本是一次 `agent list` 加 N 次 prompt，外加对 list 没点名的每个成员各一次 `pane get`——这就是把「正在启动的成员」与「已消失的成员」区分开的办法。要移交文件而不是打字：`cos send <slug> m1 - < report`。那份拷贝是逐字的，不是摘要或链接；超过 1500 字节的正文落进 `artifacts/`，记录携带路径，门铃保持一行短句。
+4. **观察。** `cos poll <slug>` 做 reconcile 并为等待你的内容打印 `NEW <from> <seq> <type> <preview>`，以及 `RUN …`——ack 行，可逐字运行。约每 30s 拉一次：门铃是加速器，拉取才是正确性的来源。一个只派发不拉取的 pane 正是停滞所在，所以一直拉，直到你自己的 `OUT …` 行清空——这也是 `MEMBER … failed` 或 `UNANSWERED …` 报告抵达的方式。一次往返耗时以分钟和若干次工具调用计，不是瞬间（估算来自协议自己的步骤数：唯一一次实跑的往返里，peer 是脚本化的；脚本那一半——读渲染的契约、`poll`、跑契约打印的 ack 行——端到端约一秒，所以那几分钟属于模型回合，账本不在其中；形态见 `PROTOCOL.md`）。`sent …` 只证明发布：`cos send` 以 `doorbells N of M` 收尾——M 是本次调用发布的记录数，N 是本次调用真正敲给已注册 agent 的门铃数（裸 pane 通知计入 M，不计入 N），所以重试某条更早的欠账记录两边都不计入——`cos reconcile` 给出它整趟的 `doorbells N, re-sent N`，而 `cos poll` 两者都不打印。
+5. **Ack。** 在工作真实发生后运行 `RUN` 行，`<seq>` 用纯数字。ack 是消费的唯一正面凭证：它让重试停止、让写方回收记录；在你跑它之前，同一条 `NEW` 行会一直回来。
+6. **回复到它抵达的信道。** `cos send <slug> <from> "<answer>" "<from>-><me>#<seq>"`。peer 之间直接对话；lead 不当中继。
+7. **关闭。** `cos close <slug>` 停止门铃、重试与回收，此后除 `ack` 和 `close` 外的每条命令都拒绝这个 slug——迟到的 peer 仍能证明自己消费过什么，因为 ack 是证据而非工作。账本保持可读，`close` 会打印它在哪里，想留过 temp 清理就把它拷去持久的地方。没有导出命令：账本的第二份拷贝就是第二份事实来源。
 
 ## The seven commands
 
@@ -122,52 +40,23 @@ cos reconcile <slug>                                     recompute states, retry
 cos close     <slug>                                     stop ringing, retrying, recycling; poll refuses
 ```
 
-Positional only, except `join`'s trailing `--no-worktree`. `re` is `<from>-><to>#<seq>`. `-` as the
-text reads the body from stdin.
+仅位置参数，`join` 末尾的 `--no-worktree` 除外。`re` 是 `<from>-><to>#<seq>`。`-` 作为 text 表示从 stdin 读正文。
 
-## Member state, recomputed every call
+## Member state，每次调用都重算
 
-`creating` — `members/<label>.json` exists, the pane lives, herdr does not list its agent yet. `ready`
-— the triple resolves, as an agent herdr classifies or as a live bare pane; a *named* agent answering
-under a different pane id is the same member and is re-bound, which works only while that name is
-unique. `gone` — no such pane, the terminal id changed, the recorded name matches nothing and no
-successor holds it, herdr reports `unknown`, or the member file will not parse. `failed` — two
-passes in a row with no progress from a member that still resolves: for a `creating` one that is the
-agent never appearing, for a `ready` one a record still owed to it past its ack deadline, never a
-`ready` member with nothing owed and never a `gone` one (whose absence is already the report), and
-only while the fleet is open; its `(<reason>)` tail is whatever the triple said on that pass, so
-`the agent is not visible to herdr yet` is the never-appeared case and no tail (or a re-binding note)
-is one that resolved and went quiet. The count stops *filing* at `no-progress=2` — a ceiling on
-writing, not on reading, so a marker someone made by hand prints higher.
-Reported by `cos poll` and `cos reconcile`; nowhere else prints a `MEMBER` line. A pane acts as the one
-`ready` label holding its pane id: two claimants resolve to no label at all, so `send` and `ack`
-refuse and `reconcile` says so, rather than a pass guessing which file owns the pane. Nothing is
-stored for any of it, so a reboot needs no bookkeeping.
+`creating`——`members/<label>.json` 存在，pane 活着，herdr 尚未列出它的 agent。`ready`——三元组解析成功，无论是 herdr 归类的 agent 还是一个活着的裸 pane；一个以不同 pane id 应答的*具名* agent 是同一名成员并会被重新绑定，这只在该名字唯一时有效。`gone`——没有这个 pane、终端 id 换了、记录的名字匹配不到任何东西也没有继任者持有它、herdr 报告 `unknown`，或成员文件无法解析。`failed`——仍可解析的成员连续两趟无进展：对 `creating` 而言是 agent 始终没出现，对 `ready` 而言是一条仍欠它的记录过了 ack 期限，绝不会是一个不欠任何东西的 `ready` 成员，也绝不会是 `gone`（它的缺席本身就是报告），且只在编队仍开启时；行尾的 `(<reason>)` 是那一趟三元组所说的话，所以 `the agent is not visible to herdr yet` 是从未出现的情形，而没有尾巴（或一条 re-binding 备注）是解析成功后归于沉默的情形。计数在 `no-progress=2` 处停止*落盘*——这是写入的上限，不是读取的，所以有人手工做的标记会打印出更大的数。
+由 `cos poll` 和 `cos reconcile` 报告；此外没有任何地方打印 `MEMBER` 行。一个 pane 恰好扮演它持有的 pane id 对应的那个 `ready` label：两个认领者解析不出任何 label，此时 `send` 和 `ack` 拒绝、reconcile 提出警告，而不是某一趟猜一个。什么都不存储，所以重启不需要任何记账。
 
 ## Non-blocking
 
-Never `--wait`, never a blocking read: one waiting dispatch stalls the fleet. Dispatch is one
-`agent list` plus N prompts, plus one `pane get` per member that list left unnamed. A bell to a `working` member is submitted anyway — upstream documents a
-text-plus-Enter submission, not a queue, so what is guaranteed is the record and the ack, not when the
-agent looks up — and `cos` rings it no second time while it works. One to a `blocked` member is
-withheld because the approval dialog would swallow it; one to a `creating` or `gone` member is
-withheld with the record standing until a human brings that pane back. `failed` is a name on that
-count, not a lock: a member that still resolves keeps receiving bells, and one that never did stays
-`nothing sent` until its pane is fixed. While your own pane is busy nothing pulls, so poll after long
-foreground work.
+绝不 `--wait`，绝不阻塞式读取：一次等待中的派发会拖住整个编队。派发是一次 `agent list` 加 N 次 prompt，外加对 list 未点名的每个成员各一次 `pane get`。敲给 `working` 成员的门铃照常提交——上游文档说的是「文本加回车」的提交而非队列，所以被保证的是记录与 ack，而不是 agent 何时看它——且它工作期间 `cos` 不再敲第二次。敲给 `blocked` 成员的会被扣下，因为审批对话框会吞掉它；敲给 `creating` 或 `gone` 成员的会被扣下、记录保持悬挂，直到有人把那个 pane 带回来。你自己的 pane 忙时什么都不拉，所以长时间前台工作后记得 poll。
 
 ## herdr surface this skill uses
 
-`agent` (bare, for the installed kind list — the lead runs it, `cos` never does), `agent list`, `agent
-prompt`, `agent start`, `pane get`, `pane run`, `pane split`, `pane move` — plus `status` and `pane
-read`, which only a human runs (the gate check, clearing an approval). Two things are started here,
-each behind its own fixed-argv port and nothing else: `herdr`, and `git` for the worktree a member is
-joined into. This program is started by `node`.
+`agent`（裸命令，取已安装 kind 列表——lead 跑它，`cos` 从不跑）、`agent list`、`agent prompt`、`agent start`、`pane get`、`pane run`、`pane split`、`pane move`——外加 `status` 和 `pane read`，这两条只有人类运行（gate 检查、清除审批）。这里只启动两种东西，各自固定在一条 argv 端口后面，别无其他：`herdr`，以及为成员 carving worktree 的 `git`。本程序由 `node` 启动。
 
 ## Roles
 
-`roles/` holds five contracts — `manager`, `planner`, `coder`, `supervisor`, `tester` — in one format:
-`Identity`, `Mission`, `Responsibilities`, `Boundaries`, `Collaboration`, `Done when`. A member reads
-the one whose name is on its `members/<label>.json`; `cos` itself never reads them and enforces
-nothing by role (the file spells that out), so the contract binds only as far as the member holds to
-it. `manager` is normally the `lead` pane.
+`roles/` 有五份契约——`manager`、`planner`、`coder`、`supervisor`、`tester`——格式统一：`Identity`、`Mission`、`Responsibilities`、`Boundaries`、`Collaboration`、`Done when`。成员读 `members/<label>.json` 里写的那一份；`cos` 本身从不读它们，也不按角色强制任何事（文件里写明了这一点），所以契约的约束力只到成员自愿遵守为止。`manager` 通常是 `lead` pane。
+
+何时再 join 一个 `supervisor`（通用启发式，逐维 0–2 分，总分 5–8 时才值得，涉及产品/UI 的任务不启用）：任务的**影响半径**（会动几个消费方、多少不可再生的产物）；**契约与不可逆性**（公共接口、数据迁移、对外承诺越多分越高）；**方案不确定性**（计划里留了多少未决问题）；**验证成本**（tester 复现需要的环境与时间）。低分任务让 `tester` 兜底即可，不必为一个见证者多占一个 pane。

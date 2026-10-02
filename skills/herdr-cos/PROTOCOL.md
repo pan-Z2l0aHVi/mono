@@ -1,523 +1,125 @@
 # Protocol
 
-The rules `scripts/cos.mjs` implements and the semantics its output lines carry. Edit the
-program to these; when a rule here changes, `tests/cos.test.mjs` changes in the same commit.
-`herdr-cos` keeps `herdr-centralization`'s shape but not its line cap: the worktree isolation and the
-role contracts broaden `cos.mjs`, so the hard cap is its own — **800 lines**, up from the ancestor's 600.
-Cutting a rule to hit a prose budget would leave an implementer free to break it, so the cap is a
-budget for the program, and `cos.mjs` sits well under it. Only `cos.mjs` has a hard cap; the three
-prose files are sized by what they must say.
+`scripts/cos.mjs` 实现的规则与其输出行携带的语义。程序照这里改；这里的规则变了，`tests/cos.test.mjs` 必须在同一个 commit 里变。`herdr-cos` 保留了 `herdr-centralization` 的形态但没有沿用它的行数上限：worktree 隔离与角色契约拓宽了 `cos.mjs`，所以硬上限是自己的——**800 行**，比祖先的 600 多。为了凑文字预算而砍规则，会让实现者有空子破坏它，所以这个上限是给程序的预算，而 `cos.mjs` 远未触顶。只有 `cos.mjs` 有硬上限；三份散文文件以它们必须说清的内容为准。
 
 ## Layout
 
 ```
 <root>/fleets/<slug>/
-  manifest.json                {slug, v, root, repo} — written once, never modified; `repo` is the
-                               git toplevel `cos new` resolved, or null outside a repo
+  manifest.json                {slug, v, root, repo} — 写一次，永不修改；`repo` 是 `cos new` 解析出的
+                               git toplevel，仓库外为 null
   members/<label>.json         {label, pane_id, terminal_id, agent, role, kind, worktree, branch} —
-                               written once, per member; the last four are what its `join` recorded
-                               (see Member state and Worktrees)
-  channels/<from>-><to>/<seq>.json   one record; the channel has exactly one writer
-  artifacts/<from>-><to>#<seq>.md    bodies over 1500 bytes
-  acks/<to>~<from>/<seq>.json        empty = consumed; {"re":…} = a reply was acked and is
-                                     durably remembered
-  acks/<to>~<from>/missing/<seq>.json  a report: a doorbell named a number this channel never
-                                     held. Outside the ack namespace, on purpose (see Publishing)
-  cursors/<to>~<from>.r        {c} — how far this pane has read, per inbound channel
-  cursors/<from>~<to>.s        {q,b,t,r} — sender slot: head record, baseline, delivery time, retries
-  failures/<label>/<n>         {label, n, acks} — no-progress marker, watermark in `acks`
-  closed                       cos close's marker
-  peer-contract.md             rendered by cos new; absolute paths in it, never rewritten
-<root>/worktrees/<slug>/<label>/    each member's git worktree, on branch cos/<slug>/<label> — the
-                                isolation unit; outside fleets/ on purpose, so the branch a member
-                                checks out never sits inside the ledger (see Worktrees)
+                               每成员一份，写一次；后四项是其 `join` 记录的
+                               （见 Member state 与 Worktrees）
+  channels/<from>-><to>/<seq>.json   一条记录；每条信道恰有一个写者
+  artifacts/<from>-><to>#<seq>.md    超过 1500 字节的正文
+  acks/<to>~<from>/<seq>.json        空 = 已消费；{"re":…} = 一条回复被 ack 且被持久记住
+  acks/<to>~<from>/missing/<seq>.json  一份报告：某次门铃点名了这个信道从未有过的序号。故意放在
+                                     ack 命名空间之外（见 Publishing）
+  cursors/<to>~<from>.r        {c} — 本 pane 读到了哪里，按入站信道计
+  cursors/<from>~<to>.s        {q,b,t,r} — 发送方槽位：头部记录、基线、投递时间、重试次数
+  failures/<label>/<n>         {label, n, acks} — 无进展标记，水位在 `acks`
+  closed                       cos close 的标记
+  peer-contract.md             由 cos new 渲染；其中是绝对路径，永不重写
+<root>/worktrees/<slug>/<label>/    每个成员的 git worktree，分支 cos/<slug>/<label>——隔离单元；
+                                故意放在 fleets/ 之外，这样成员 checkout 的分支永远不会落在账本
+                                里面（见 Worktrees）
 ```
 
-`root` is resolved once by `cos new` and then read back from `manifest.json`: `$TMPDIR` is a
-per-process variable, so a peer that re-resolves it can land on a different root and be
-greeted by an empty fleet. `openFleet` compares `manifest.root` against what this process
-resolves and stops on a mismatch rather than starting a second ledger. `members/` *is* the
-roster — no file lists members, because a list would be a second copy to keep in sync.
-Write-once means write-once-by-content: a name is never edited after it exists, and deleting
-a superseded entry is a different act (see Publishing). `cos new` may finish a claim that a
-previous call interrupted — that is publishing names that do not exist yet, not rewriting.
-Every command line this program prints or renders carries `HERDR_COS_HOME=<root>` so the
-copied line re-resolves to the recorded root instead of guessing.
+`root` 由 `cos new` 解析一次，之后从 `manifest.json` 读回：`$TMPDIR` 是每进程变量，peer 重新解析它可能落到另一个根上，迎接它的是一份空编队。`openFleet` 把 `manifest.root` 与本进程解析结果比对，不一致即停，而不是另起一份账本。`members/` *就是*名册——没有别的文件列成员，因为一份列表就是一份要同步的副本。写一次意味着按内容写一次：一个名字存在之后就不再被编辑，删除被取代的条目是另一种动作（见 Publishing）。`cos new` 可能会完成上一次调用中断的认领——那是发布尚不存在的名字，不是改写。本程序打印或渲染的每条命令行都带 `HERDR_COS_HOME=<root>`，复制的行会重新解析到记录的根，而不是靠猜。
 
 ## Worktrees
 
-`cos join` isolates each member in its own git worktree, so two members never write one working
-tree. It resolves the repo with `git rev-parse --show-toplevel` from the lead's cwd, then runs
-`git worktree add -b cos/<slug>/<label> <root>/worktrees/<slug>/<label> HEAD`, and opens the member's
-pane with `--cwd` set to that path. The worktree lives under the ledger root, not inside the repo,
-so the branch a member checks out never lands inside the ledger and the ledger is untouched by any
-branch. The member file records both `worktree` and `branch`, write-once with the rest of its
-identity, so recovery can name the tree again.
+`cos join` 把每个成员隔离进自己的 git worktree，两个成员永远不会写同一棵工作树。它从 lead 的 cwd 用 `git rev-parse --show-toplevel` 解析仓库，然后执行 `git worktree add -b cos/<slug>/<label> <root>/worktrees/<slug>/<label> HEAD`，并以 `--cwd` 指向该路径打开成员的 pane。worktree 位于账本根之下、仓库之外，这样成员 checkout 的分支永远不会落进账本，账本也不被任何分支触碰。成员文件把 `worktree` 与 `branch` 和其余身份一起写一次，恢复时可以再次点名这棵树。
 
-Two cases fall back to the lead's own working tree, and neither is an error: `cos join … --no-worktree`
-skips git entirely, and a lead whose cwd is not inside a repo gets a `note:` and shares its tree. In
-both the member file records `worktree: null`. A `git worktree add` that *fails* is different — the
-join stops before any pane is split and says so, because a half-joined member with no tree is worse
-than no member. A failure one step later is rolled back instead: if `pane split` or `pane move` is
-refused after the carve, the seconds-old bare checkout is removed and its branch deleted — the only
-`git worktree remove` and `git branch -d` `cos` ever runs; a *member's* tree is still removed only by
-a human — and the stray split pane is named for a human to close, because closing panes is not one of
-this program's two ports. There is otherwise no automatic cleanup: a member's worktree is removed by
-`git worktree remove` when a human decides the branch is spent, and `cos` never runs it.
+两种情况会退回 lead 自己的工作树，且都不是错误：`cos join … --no-worktree` 完全跳过 git；lead 的 cwd 不在仓库内时会收到一条 `note:` 并共享其树。两种情况成员文件都记录 `worktree: null`。`git worktree add` *失败*则不同——join 在任何 pane 被切分之前停止并明说，因为一个半接入且没有树的成员比没有成员更糟。晚一步的失败则回滚：如果 carve 之后 `pane split` 或 `pane move` 被拒绝，刚出生几秒的裸 checkout 会被移除、分支被删——这是 `cos` 唯一会跑的 `git worktree remove` 和 `git branch -d`；*成员的*树仍然只由人来移——而那个多出来的切分 pane 会被点名让人来关，因为关 pane 不在这条程序的两条端口之内。除此之外没有任何自动清理：成员的 worktree 由人在认定分支已耗尽时用 `git worktree remove` 移除，`cos` 从不代劳。
 
 ## Publishing
 
-Write the bytes to a same-directory temp file `<name>.<pid>.<rand>.tmp`, then `link(2)` it
-to the final name. `link` fails with `EEXIST` instead of replacing, so a collision is a
-signal, and a numbered publisher re-scans for `max+1` and retries. Two rules follow from
-that:
+先把字节写到同目录的临时文件 `<name>.<pid>.<rand>.tmp`，再用 `link(2)` 链到最终名字。`link` 遇 `EEXIST` 会失败而不是替换，所以冲突是一个信号，带序号的发布者会重扫 `max+1` 并重试。由此得出两条规则：
 
-- A published name never changes content. Entries are deleted wholesale once superseded
-  (`recycle`), which is not overwriting: the ack that justified the deletion still exists.
-- Temp and target share a directory, always. Copying to another filesystem would be the
-  non-atomic fallback that this design refuses to have.
-- A number is never re-handed out. The next sequence is `max(records, acks)+1`, not
-  `max(records)+1`, because recycling deletes the record and leaves the ack: without the ack
-  as a floor, the next message would arrive under a number the peer already consumed and
-  would be deleted as superseded before anyone read it. That is also why a `missing` report is
-  filed under `acks/<chan>/missing/` rather than beside the acks: an ack file's *name* is
-  floor material, so a report that names a number must never be able to read as consumption
-  of the record that later claims it — nor, on the other hand, ratchet every later message up
-  on a typo's word. `<seq>` in `cos ack` is validated as plain digits for the same reason:
-  `1e308` and `2**53+2` round-trip through JSON as integers and would wedge that floor.
-- A record's `link` is the commit point for its own body. The artifact is written inside the
-  allocator, immediately before the record is released, so a kill between the two strands an
-  orphan body in `artifacts/` rather than publishing a record whose `file` points at nothing.
-  A body whose name is taken means a sibling sender already holds that number, so the
-  allocator goes round again instead of failing the send — and a candidate is never
-  reconsidered, so the stranded body is not argued over twice.
-- A channel temp older than the ack deadline is unlinked by that channel's writer, so a kill
-  between staging and `link` does not litter the channel forever. Anything newer is left
-  alone, so a slow publish is never raced. No other directory is swept: those temps are
-  harmless, and sweeping them would mean deleting a file another process may be linking.
+- 已发布的名字永不改变内容。条目一旦被取代就整体删除（`recycle`），这不是覆盖：支持这次删除的 ack 仍然存在。
+- 临时文件与目标永远同目录。拷到另一个文件系统就是本设计拒绝的非原子回退。
+- 序号绝不二次发放。下一个序号是 `max(records, acks)+1` 而不是 `max(records)+1`，因为回收会删记录而留下 ack：没有 ack 作下限，下一条消息会以 peer 已经消费过的序号到达，并在被读取之前就当作被取代的删掉。这也是 `missing` 报告被归档在 `acks/<chan>/missing/` 而不是放在 ack 旁边的原因：ack 文件的*名字*就是下限材料，所以一份点名的报告绝不能被读作对后来认领该序号的记录的消费——反过来，也不能让每一个后来的消息为一次手误而抬高水位。`cos ack` 的 `<seq>` 被校验为纯数字也是同理：`1e308` 与 `2**53+2` 经 JSON 往返仍是整数，会把那个下限卡死。
+- 记录的 `link` 是它正文的提交点。artifact 在分配器内、记录发布之前写入，所以两步之间被 kill 只会在 `artifacts/` 留下一个孤儿正文，而不是发布一条 `file` 指向虚空的记录。正文名字被占用意味着同信道的另一个发送者已持有该序号，分配器再绕一圈而不是让 send 失败——且候选绝不重新考虑，所以那个搁浅的正文不会被争论第二次。
+- 超过 ack 期限的信道临时文件由该信道的写者解除链接，这样 staging 与 `link` 之间的 kill 不会让信道永久堆垃圾。更新的不碰，所以慢的发布不会被竞态掉。其他目录一概不扫：那些临时文件无害，扫它们就意味着删除别的进程可能正在 link 的文件。
 
-`cursors/` is the one exception, and it is deliberate: a cursor is a reading position, not
-evidence. Deleting it must not lose a record, must not consume anything twice, must not
-reuse a sequence number — it may cost at most one extra doorbell, which the ack check
-absorbs. If deleting `cursors/` ever changes anything else, that is a bug: the exemption
-only holds while the caches really are caches. One consequence of it is intended, not a
-leak: a reader's `.r` is clamped back to just below the *oldest record still owed an ack* —
-not to the highest acked one, which would let a later ack hide an earlier record nobody
-consumed. So an unacked record it was already shown is re-printed as `NEW` on every poll
-until it acks. Showing owed work again is the safe direction; hiding it is not.
+`cursors/` 是唯一的例外，而且是故意的：游标是读取位置，不是证据。删掉它不能丢记录、不能重复消费任何东西、不能复用序号——代价最多是一次额外的门铃，ack 检查能吸收它。如果删除 `cursors/` 改变了其他任何事情，那就是 bug：这个豁免只在缓存真的是缓存时成立。它的一个后果是有意的，不是泄漏：读者的 `.r` 会被钳回到*最旧一条仍欠 ack 的记录*之下——而不是最高的已 ack 记录，后者会让一个更晚的 ack 掩盖一条没人消费过的更早记录。所以一条已展示但未 ack 的记录会在每次 poll 时重新以 `NEW` 打出，直到它 ack。把欠着的工作再次展示是安全的方向；把它藏起来不是。
 
 ## Records
 
-`{v, fleet, seq, from, to, type, re, text, file}`. `type` is `send` or `reply` — an ack is
-never a record, only a file under `acks/`, so consumption has one home. `re` is
-`<from>-><to>#<seq>`, channel-qualified because sequence numbers are only unique per
-channel. `text` is empty when `file` is set: bodies over 1500 bytes live in `artifacts/` and
-the doorbell carries no body at all. A record's identity is `(fleet, channel, seq)`, so no
-clock, boot id, or random token is needed to deduplicate one.
+`{v, fleet, seq, from, to, type, re, text, file}`。`type` 是 `send` 或 `reply`——ack 永远不是记录，只是 `acks/` 下的一个文件，所以消费只有一个家。`re` 是 `<from>-><to>#<seq>`，带信道限定，因为序号只在单条信道内唯一。`file` 存在时 `text` 为空：超过 1500 字节的正文在 `artifacts/`，门铃完全不携带正文。记录的身份是 `(fleet, channel, seq)`，所以去重不需要时钟、boot id 或随机 token。
 
-An ack is a file, never a record, and its body carries either nothing (this seq was consumed)
-or `{"re":…}` — the `re` of the reply being acked, copied out of that record. The copy exists
-because `acks/` outlives `channels/`: after the writer recycles the answer, the ack is all that
-still proves it was ever given, and without it `unanswered` would keep reporting an answer that
-was already delivered. A third thing `cos ack` can write is not an ack at all: when the doorbell
-named a number the channel never held, it files `{"missing":true}` under `missing/` beside the
-acks and says so, on an open fleet. Nothing is redone, nothing is consumed, and the number stays
-free; a repeated phantom bell prints the same lines again rather than going silent.
-Polling a record whose `file` has vanished prints `<body MISSING at …>` and says not to redo
-the work on the strength of an absent file: the record is evidence, the body is not.
+ack 是文件，不是记录，正文要么为空（该 seq 已消费），要么是 `{"re":…}`——被 ack 的那条回复的 `re`，从那条记录里复制。复制之所以存在，是因为 `acks/` 比 `channels/` 活得久：写者回收回答之后，ack 是唯一还能证明它曾被给出的东西，没有它 `unanswered` 会一直报告一条其实已经送达的回答。`cos ack` 能写的第三样东西根本不是 ack：门铃点名的序号信道从未持有过时，它把 `{"missing":true}` 归档到 acks 旁的 `missing/` 并明说——编队开启时。什么都不重做，什么都不消费，序号保持空闲；重复的幻影门铃会再次打印同样的行而不是沉默。poll 一条 `file` 已消失的记录会打印 `<body MISSING at …>` 并说明不要凭一个缺失的文件重做工作：记录是证据，正文不是。
 
 ## Doorbell
 
-`herdr agent prompt <pane_id> "cosa <abs>/fleets/<slug>/peer-contract.md <label> <seq>"`, or
-`herdr pane run <pane_id> …` for a member pane whose agent never got registered. `cosa` is a
-marker, not a command: `agent prompt` types the line into an agent's composer, so a
-recognised agent reads it and acts; `pane run` hands a shell the whole line, and a shell finds
-no command named `cosa` — the program says so out loud and counts it as a notice, not a delivery.
-Slugs match `[a-z0-9][a-z0-9_-]{0,39}` and labels `[a-z][a-z0-9_-]{0,31}`. That is not only so
-the line survives quoting and space-splitting: since the line is handed to a shell, a name that
-fails these patterns is refused *at the bell*, before any token of a directory name reaches it.
-A member file or channel made by hand therefore rings nothing — it gets `not rung`, and the
-record stands. The root is held to `[A-Za-z0-9._:/-]+` and must be
-absolute and not `/`: it is embedded in a line a shell will read, so a space, a quote, a `$`,
-a backtick or a `;` in `HERDR_COS_HOME` is refused at `cos new` rather than typed onward. A registered agent is named `cos-<label>-<slug>` truncated to 32 characters, label
-first so two members cannot truncate onto the same name; that name is the member's identity
-across a pane-id change (see Member and observation state). It is an accelerator: it names
-the contract, which tells the recipient what to pull. Delivery is proven by nothing except
-the ack.
+`herdr agent prompt <pane_id> "cosa <abs>/fleets/<slug>/peer-contract.md <label> <seq>"`，或对 agent 从未注册成功的成员 pane 用 `herdr pane run <pane_id> …`。`cosa` 是标记，不是命令：`agent prompt` 把这行敲进 agent 的输入框，被识别的 agent 读了会行动；`pane run` 把整行交给 shell，而 shell 找不到名叫 `cosa` 的命令——程序会大声说明，并把它计为一条通知而非一次投递。slug 匹配 `[a-z0-9][a-z0-9_-]{0,39}`，label 匹配 `[a-z][a-z0-9_-]{0,31}`。这不只是为了行能挺过引号与空格切分：这行要交给 shell，不符合这两个模式的名字在*门铃处*就被拒绝——目录名的任何一个 token 都到不了 shell。因此手工造的成员文件或信道什么也敲不响——它得到 `not rung`，记录保持。根被限制为 `[A-Za-z0-9._:/-]+` 且必须绝对、不能是 `/`：它会被嵌进一行 shell 要读的文本，所以 `HERDR_COS_HOME` 里出现空格、引号、`$`、反引号或 `;` 会在 `cos new` 处被拒绝，而不是被继续敲下去。已注册的 agent 名为 `cos-<label>-<slug>`，截断到 32 字符，label 在前，这样两个成员不会截成同一个名字；这个名字是成员跨 pane id 变化的身份（见 Member and observation state）。它是一个加速器：它点名契约，契约告诉接收者去拉什么。投递的证明除了 ack 别无他物。
 
 ## Message states
 
-| state | test | action |
+| 状态 | 判定 | 动作 |
 |---|---|---|
-| `acked` | `acks/<to>~<from>/<seq>.json` exists | terminal; writer recycles the record and its artifact |
-| `unanswered` | acked, no `reply` record in the reverse channel carrying that `re`, no ack of such a reply holding its copy, and the acking pane is no longer `ready` | report to a human; never auto-redo — that would replay someone else's side effects. The record is held, not recycled, while the answer is owed: deleting it would delete the only evidence of the debt. |
-| `queued` | recipient observed `working` | nothing; a `working` pane must not be poked again |
-| `blocked` | recipient observed `blocked` | hand the approval dialog to a human; the record already stands |
-| `pending` | within the deadline, or not the channel head, or you are the reader | nothing |
-| `unproven` | past 240s (a pre-measurement estimate, see `cos.mjs` constants), no ack, and `state_change_seq` unmoved since the baseline | re-ring the **same** `seq` once, re-baseline, restart the deadline |
-| `dead` | the triple no longer resolves, or a re-ring still drew no ack | report; no further retry, no file written *about that message*. Whether the pass files `failures/<label>/<n>` is decided by the member, on a fleet that is still open: a `gone` member is never counted (its report is the whole story), while one that still resolves is counted as soon as it is `creating` or has a record addressed to it at `unproven` or `dead`. A closed fleet files none at all. That marker counts members, never records |
+| `acked` | `acks/<to>~<from>/<seq>.json` 存在 | 终态；写者回收记录与其 artifact |
+| `unanswered` | 已 ack，反向信道没有携带该 `re` 的 `reply` 记录，也没有持有其副本的此类回复的 ack，且 acking pane 已不再是 `ready` | 报告给人；绝不自动重做——那会重放别人造成的副作用。答案还被欠着时记录被持有、不回收：删掉它就删掉了欠债的唯一证据。 |
+| `queued` | 接收方被观察到 `working` | 什么都不做；`working` 的 pane 不能再戳 |
+| `blocked` | 接收方被观察到 `blocked` | 把审批对话框交给人类；记录本来就在 |
+| `pending` | 还在期限内，或不是信道头部，或你就是读者 | 什么都不做 |
+| `unproven` | 超过 240s（测量前的估算值，见 `cos.mjs` 常量），无 ack，且 `state_change_seq` 自基线以来未动 | 对**同一个** `seq` 重敲一次门铃，重设基线，重启期限 |
+| `dead` | 三元组不再解析，或重敲后仍无 ack | 报告；不再重试，*不就该消息写任何文件*。是否落盘 `failures/<label>/<n>` 由成员决定，仅限仍开启的编队：`gone` 的成员绝不计数（它的报告就是全部内容），仍可解析的成员一旦处于 `creating` 或有记录对它停在 `unproven`/`dead` 即计数。关闭的编队一律不落盘。那个标记数的是成员，不是记录 |
 
-`unanswered` is a fleet-wide scan, not a query about your own channels: any `cos reconcile` reports
-every owed answer it finds, including other members' debts, because the output is a report to a
-human and triggers no action. A peer that discharged your question by answering a *third* member —
-the peer-to-peer relay this protocol allows — leaves your reverse channel with no reply, so once
-that pane is gone you get the report even though the work was done. It is a report, not a redo:
-check the other channel before anyone repeats the task.
+`unanswered` 是全编队扫描，不是对你自己信道的查询：任何一次 `cos reconcile` 会报告它找到的每一笔欠答，包括别的成员的欠债，因为输出是给人看的报告，不触发动作。一个 peer 通过回答*第三个*成员——本协议允许的 peer-to-peer 中继——了结了你的问题，会让你的反向信道里没有回复，所以那个 pane 消失后你会收到报告，尽管工作已经完成。它是报告，不是重做：在任何人重复任务之前先去看另一条信道。
 
-`state_change_seq` is a negative-only *proof*: unmoved proves nothing ran in that pane, and nothing it
-shows ever counts as delivery. Its opposite is read, though — a moved counter is taken to prove only
-that *something* ran, which is enough to re-baseline and hold the record `pending` rather than escalate
-it, a use that can delay a judgement but never fake a consumption. It cannot prove delivery — upstream documents no such field, and a counter
-that any activity in a pane advances cannot separate "my prompt ran" from "it did something
-else". The baseline lives in the sender's `cursors/<from>~<to>.s`, under the same exemption as
-the cursor, so losing the cache may buy one extra idempotent re-ring and nothing more. A moved
-counter restarts the deadline, and either reading of the field is survivable there: if it moves
-only for prompts, what moved was the delivery; if it moves for unrelated activity too, a busy
-peer's record stays `pending` instead of escalating to `dead` — the safe direction, since the
-ack still ends it and `unanswered` catches the case where the debtor vanished.
-A member pane with no registered agent has no counter at all, so there the deadline alone is
-the trigger and the ack check absorbs the extra ring.
+`state_change_seq` 是一个只作否定用途的*证据*：没动证明不了什么都没跑，而它展示过的任何东西也都不算投递。反方向倒是可读——动了的计数器只被用来证明*有什么东西跑过*，这足以重设基线并把记录保持在 `pending` 而不是升级，这种用法可能推迟判断，但永远无法伪造消费。它证明不了投递——上游没有文档化这个字段，而一个 pane 内任何活动都会推进的计数器，分不清「我的 prompt 跑了」和「它干了别的」。基线存在发送方的 `cursors/<from>~<to>.s`，享有与游标相同的豁免，所以丢失缓存最多换来一次额外的幂等重敲，仅此而已。计数器动了会重启期限，而对这个字段的两种读法在那里都活得下去：如果它只为 prompt 而动，动的是投递；如果它为无关活动也动，忙碌 peer 的记录保持 `pending` 而不是升级到 `dead`——这是安全的方向，因为 ack 终结一切，而 `unanswered` 会接住欠债人消失的情形。
+没有注册 agent 的成员 pane 没有计数器，在那里期限本身就是触发器，ack 检查吸收那一次额外的敲击。
 
-A round trip is not instant and nothing here claims it is. The expected shape of one
-lead→idle-peer→answer exchange is about 4–8 tool calls across 2 model turns — two to eight
-minutes by eye: the bell has to be typed, the peer's model has to take a turn to read the
-contract and run its ack line, and the answer then waits on your next pull at the 30s cadence.
-Those are estimates read off the protocol's own step count. One live fleet has now run (2026-09-30, a
-named session on herdr 0.9.1, private protocol 22): its peer was scripted rather than a model, and the
-scripted half — read the rendered contract, `poll`, run the ack line the contract printed — took about a
-second end to end. That is a floor for the transport and the ledger, not a median for a round trip, so the
-minutes above stay an estimate of the model's turn and `240s` stays a pre-measurement value. What has machine backing is
-narrower than the three numbers suggest: the dispatch cost (one `agent list` plus N prompts once every
-member is already resolved, plus one `pane get` for each member that list left unnamed — the bell batch
-is not the whole command, because `cos send` opens with the reconcile pass. Only the batch is asserted,
-by the test titled `dispatch costs one agent list plus N doorbells and no wait flag` — which pins that
-path's *whole* post-`agent list` sequence to N `agent prompt` calls, so on it the `pane get` count is
-zero and a test says so; what no test bounds is how many `pane get` a reconcile pass makes when members
-are unnamed or moved), the `1500`-byte threshold (the code branches on it, a test
-checks both sides), and the `240s` *rule* — reached by feeding `cos` an injected clock 300s ahead,
-so the deadline logic is proven while the value itself stays an unmeasured guess. The `30s`
-cadence is enforced by nothing: `cos poll` prints it as advice and no code path reads a clock to
-check it, and no test times it either — `cos` cannot enforce a caller's interval, and the harness that
-would observe one has not run. So the plan's row asking for a scripted assertion on the pull interval
-is **not met** and stays unmet rather than being renamed. `cos` enforces no latency claim of any kind.
+一次往返不是瞬时的，这里没有任何表述声称它是。一次 lead→空闲 peer→回答 交换的预期形态约为 2 个模型回合里的 4–8 次工具调用——目测两到八分钟：门铃要敲进去，peer 的模型要花一个回合读契约并跑它的 ack 行，回答则等待你在 30s 节奏上的下一次拉取。这些是从协议自己的步骤数读出的估算。一次活体编队已经跑过（2026-09-30，herdr 0.9.1 上的命名 session，private protocol 22）：它的 peer 是脚本而非模型，脚本那一半——读渲染的契约、`poll`、跑契约打印的 ack 行——端到端约一秒。那是传输与账本的**下限**，不是往返的中位数，所以上面的分钟数保持为模型回合的估算，`240s` 保持为测量前的值。有机器背书的比三个数字看起来要窄：派发成本（成员全部解析完成后是一次 `agent list` 加 N 次 prompt，外加对 list 未点名的每个成员各一次 `pane get`——门铃批次不是整条命令，因为 `cos send` 以 reconcile pass 开场。只有批次被断言，测试标题为 `dispatch costs one agent list plus N doorbells and no wait flag`——它把该路径在 `agent list` 之后的*整段*序列钉死为 N 次 `agent prompt`，因此在那条路径上 `pane get` 的次数是零，且有测试作证；没有测试约束的是成员未命名或被移动时一次 reconcile pass 会做多少次 `pane get`）、`1500` 字节阈值（代码按它分支，两侧都有测试），以及 `240s` 的*规则*——通过向 `cos` 注入一个快进 300s 的时钟得到，所以期限逻辑被证明而数值本身仍是一个未测量的猜测。`30s` 节奏没有任何东西强制：`cos poll` 把它作为建议打印，没有代码路径读时钟去核查，也没有测试为它计时——`cos` 强制不了调用者的间隔，而能观测它的 harness 还没有跑。所以计划表里要求对拉取间隔做脚本化断言的那一行**未达成**，并且保持未达成，而不是改个说法。`cos` 不强制任何时延声明。
 
 ## Member and observation state
 
-Member state (`creating`, `ready`, `failed`, `gone`) is recomputed per call from
-`members/*.json` plus `herdr agent list`, cross-checked with `herdr pane get` — the agent
-list omits a pane stuck at `agent_not_ready` and a pane that was moved may carry a new id,
-so neither source alone is enough. It is never stored. The only trace is the no-progress
-counter behind `failed`, and it is bounded. A pass is *unproductive* for a member that still
-resolves in one of two ways: it is `creating` (so there is no agent that could have run anything),
-or a record addressed to it sits at `unproven` or `dead` (so a `ready` one has work owed past its
-deadline). Any other pass clears the counter, which is why a `ready` member with nothing owed to it
-is never `failed` — and one new ack filed under `acks/<label>~*` since the last marker clears it too.
-Two unproductive passes in a row is what makes `failed`, and the count then stops filing — a member
-that never comes back would otherwise add one file per pass for a fact already told, so `2` is the
-highest number `cos` files. That is a ceiling on writing, not on reading: the count is the highest
-marker name in `failures/<label>/`, so a `failures/<label>/7` made by hand prints `no-progress=7`. It
-stops printing on either of the two branches that clear an ordinary count — the first productive pass,
-or the first ack that member files past the marker's watermark, which can happen while it is still
-stuck — and the directory goes with one `rmSync` on either, never edited, only removed whole. A
-hand-made marker must also parse as JSON, because the newest marker's `acks` watermark is read out of
-it (`cos.mjs:203`); an empty file is a `cos <name>: unexpected SyntaxError: …` line and exit 1, not a
-count. On a fleet that is still open that stops six subcommands rather than one — every command but
-`new` opens with this pass — and `close` is among the six, so that fleet cannot be closed until a human
-edits the file: `cos` never repairs a marker, and either hand repair works — delete it, or make it parse,
-since the one field read out of it is the `acks` watermark and an absent field counts as `0`. A closed
-fleet reads no markers (`:361`), so the same file stops nothing there and a late `ack` still lands. What
-neither case changes is the marker itself: no pass rewrites or removes a file it cannot read, because the
-`rmSync` above sits behind that read. A
-`gone` member's are skipped by that same guard, so an unreadable one filed under an absent pane stays
-silent. And `cos ack` is not its own pass: its body never touches `failures/`, while the reconcile pass
-that opened the call does (`cos.mjs:361,657`), so an ack a member files is what makes the *next* pass
-clear that member's count.
-A `gone` member files nothing, because its absence is already the report and herdr will keep
-saying so; a closed fleet files nothing either. `failed` is that count and nothing else, so it
-reaches a member whose agent herdr never listed as well as one that resolved and then went quiet;
-the `(<reason>)` on the line is whatever the resolution said on that pass — `the agent is not visible
-to herdr yet` for the never-listed one, nothing at all (or a `re-bound from pane …` note) for the one
-that went quiet — and `cos` never restarts an agent on the
-strength of either. When the declared pane id is gone but a *named*
-agent answers to the recorded name in another pane, that is the same member: herdr owns pane ids, the ledger owns names, so the
-state is re-bound to the successor without editing the ledger. Two limits on that, stated
-plainly: it works only for members with a registered agent, and only while the name is
-unique — a bare pane that vanished is `gone`, and a name herdr reused for a different pane
-would re-bind wrongly.
+成员状态（`creating`、`ready`、`failed`、`gone`）每次调用都从 `members/*.json` 加 `herdr agent list` 重算，并与 `herdr pane get` 交叉核对——agent list 会漏掉卡在 `agent_not_ready` 的 pane，而被移动过的 pane 可能换了 id，所以两个来源单独都不够。它从不被存储。唯一的痕迹是 `failed` 背后的无进展计数，而且它有界。对仍可解析的成员而言，一趟 pass 在两种情况下*无产出*：它处于 `creating`（不存在能跑任何东西的 agent），或有记录对它停在 `unproven` 或 `dead`（即一个 `ready` 成员欠着过了期限的工作）。其他任何一趟都会清零计数，这就是不欠任何东西的 `ready` 成员永远不会 `failed` 的原因——而该成员在最近一次标记之后落在 `acks/<label>~*` 下的新 ack 同样会清零它。连续两趟无产出才构成 `failed`，计数随后停止落盘——一个永远不回来的成员否则会每趟多写一个文件去重复一个已经说过的事实，所以 `2` 是 `cos` 落盘的最大数字。那是写入的上限，不是读取的：计数取 `failures/<label>/` 里最大的标记名，所以手工造的 `failures/<label>/7` 会打印 `no-progress=7`。它在两种会清空普通计数的分支上停止打印——第一趟有产出，或该成员在标记水位之后落下的第一个 ack（它可能还卡着就发生了）——两种情况目录都随一次 `rmSync` 整体消失，从不被编辑，只被整体移除。手工造的标记还必须能解析为 JSON，因为最新标记的 `acks` 水位要从它读出（`cos.mjs:203`）；空文件换来的是一行 `cos <name>: unexpected SyntaxError: …` 加退出码 1，而不是一个计数。在仍开启的编队上这会卡住六条子命令而不止一条——除 `new` 外每条命令都以这一趟开场——`close` 也在六条之列，所以这个编队在人来修文件之前关不掉：`cos` 从不修复标记，而两种手工修复都行——删掉它，或者让它能解析，因为从它读出的只有 `acks` 水位，缺字段按 `0` 计。已关闭的编队不读标记（`:361`），同样的文件在那里卡不住任何东西，迟到的 `ack` 照样落盘。两种情况都不改变标记本身：没有一趟会重写或移除它读不了的文件，因为前面那个 `rmSync` 排在这次读取之后。
+`gone` 成员的标记被同一个守卫跳过，所以挂在已消失 pane 下的不可读文件保持沉默。而 `cos ack` 不构成自己的一趟：它的正文从不碰 `failures/`，打开这次调用的 reconcile pass 才会（`cos.mjs:361,657`），所以成员落下的 ack 让*下一趟*清掉该成员的计数。
+`gone` 成员什么都不落盘，因为它的缺席就是报告，herdr 会一直这么说；关闭的编队也什么都不落盘。`failed` 就是那个计数，别无其他，所以它同样会到达一个 agent 从未被 herdr 列出的成员，以及一个解析成功后归于沉默的成员；行上的 `(<reason>)` 是那一趟解析说的话——从未列出的成员是 `the agent is not visible to herdr yet`，沉默过的成员什么都没有（或一条 `re-bound from pane …` 备注）——而 `cos` 绝不会据此重启 agent。声明的 pane id 消失但一个*具名* agent 在另一个 pane 里以记录的名字应答时，那是同一名成员：pane id 归 herdr 管，名字归账本管，于是状态重新绑定到继任者，账本一个字节都不用改。两条限制直说：只对注册了 agent 的成员有效，且只在名字唯一时有效——消失的裸 pane 就是 `gone`，而 herdr 把名字复用给另一个 pane 会错误地重绑。
 
-One deviation from the plan, recorded because it moves who is on the hook. The plan made "the
-member's pane has `node`" a precondition of taking a member, and a refusal when it fails — without
-naming which subcommand would check. `cos` neither performs nor can perform it: checking a member's
-pane means running a command *in that pane*, which only herdr can do, and the program's two ports are
-`herdrExec` and `gitExec` — the second runs git locally with a fixed argv, so neither is a general
-shell and the claim read off "two fixed-argv ports and no third" stays true. So the check belongs to
-the lead, and `SKILL.md`'s gate
-says so; what compensates inside the ledger is the ack ladder, and it compensates only partially. A
-member whose agent cannot run `node`, in a pane where nothing else runs either, never acks: its record
-goes `unproven`, is re-rung once, then `dead`, and the report names the channel and sequence that are
-owed (`cos.mjs:340`) — a slow, loud failure rather than a quiet one. But an agent that takes the bell
-and fails *visibly* moves `state_change_seq`, and each pass that catches the counter at a new value
-re-baselines the stall clock (`:233-236`), so a row whose pane keeps producing stays `pending` and is
-never reported `dead`. One visible failure followed by silence is not that: the re-baseline is spent,
-the next pass past the deadline reaches `:237`, and the row walks `unproven` → one re-ring → `dead`
-like any other. What the lead keeps either way is the owed row in its own `OUT` batch, not a verdict. The plan's refusal was the cheap-sounding version of the same
-information; this is the version that keeps the two fixed-argv ports and says which half of the check is not covered.
+一个 pane 以恰好一个 `ready` 成员的身份自居，匹配 `HERDR_PANE_ID`。两个成员解析到同一个 pane id——被回收的 id，或一份写错的 `members/*.json`——意味着它们都不是这个 pane：`send` 和 `ack` 以 "this pane is not in the roster" 拒绝，reconcile 警告，因为以错误的 label 应答会让一个 pane 用自己的 ack 烧掉另一个 pane 的消息。歧义被拒绝，从不靠取第一个匹配来打破。
 
-A pane addresses itself as exactly one `ready` member, matched on `HERDR_PANE_ID`. Two
-members resolving to one pane id — a recycled id, or a wrong `members/*.json` — means neither
-of them is that pane: `send` and `ack` then refuse with "this pane is not in the roster" and
-reconcile warns, because answering as the wrong label would let one pane burn another one's
-messages with its acks. Ambiguity is refused, never broken by picking the first match.
+Observation state（`idle`、`working`、`blocked`、`done`、`unknown`）属于 herdr，只读不写；`unknown` 按 `gone` 处理，因为无法归类的 pane 被当作消费者计数是不安全的。两张表正交且永不合并：`working` 说了三元组是否解析的任何话，`failed` 也没说那个 pane 在干什么，任何成员状态都不从 observation 单独推导。
 
-Observation state (`idle`, `working`, `blocked`, `done`, `unknown`) belongs to herdr and is
-read, never written; `unknown` is treated as `gone`, because an unclassifiable pane is not
-safe to count as a consumer. The two tables are orthogonal and never merge: `working` says
-nothing about whether the triple resolves, `failed` says nothing about what that pane is
-doing, and no member state is derived from an observation alone.
+停摆时钟每条信道恰有一个所有者：发送方，且只对头部记录。既非端点的 pane 读得到阶梯但从不写槽位，更新的 send 也不能从更旧的未 ack 记录手里抢走槽位——那会给停摆的记录一张新的期限，让它被敲两次。
 
-The stall clock has exactly one owner per channel: the sender, and only for the head record.
-A pane that is neither endpoint reads the ladder but never writes the slot, and a newer send
-cannot take the slot from an older unacked one — that would hand the stalled record a fresh
-deadline and let it be belled twice.
-
-Each member file also carries the `role` and `kind` its `join` was given — write-once like the rest
-of the identity, and riding along on every state a member can be reported in, `gone` included, whose
-line still names the identity and the CLI a replacement should be started with. One gap: a `join`
-whose `agent start` failed records the role and leaves the kind null, because no CLI was ever bound,
-so that line shows no `kind=` and names nothing to start it with — the half-built branch, not a
-recovery hint. `cos` reads either field back
-only to print it: there is no role-to-channel table and no permission anywhere, so a role is a name
-for humans rather than a capability, and a member holding one is not thereby restricted to it. The
-same file carries `worktree` and `branch` (see Worktrees) — write-once too, but these are *not* on the
-`MEMBER` line: they are printed once at `join` and read back only by a human or a recovery, because no
-pass reconciles a tree and a member's worktree is only ever removed by hand.
+每个成员文件还携带 `join` 给它的 `role` 与 `kind`——与其余身份一样写一次，并跟随成员可能被报告的每一种状态，`gone` 也一样，那行仍然点名身份与替换者应当用哪个 CLI 启动。一个缺口：`agent start` 失败的 `join` 记录了角色而 kind 为 null，因为从未绑定过 CLI，所以那行没有 `kind=`，也没点名从哪启动——那是半建成的分支，不是恢复提示。`cos` 读回这两个字段只是为了打印：没有角色到信道的表，任何地方都没有权限，所以角色是给人看的名字而非能力，持有角色的成员并不因此被限制在它之内。同一份文件携带 `worktree` 与 `branch`（见 Worktrees）——同样写一次，但它们*不*上 `MEMBER` 行：在 `join` 时打印一次，之后只有人或恢复流程读回，因为没有哪趟 pass 会 reconcile 一棵树，成员的 worktree 也只由人移除。
 
 ## Output lines
 
-The lines a peer must act on are token-prefixed; the headers and tallies around them are for a
-human. `cos send` prints one `sent <from>-><to>#<seq>` per target, with ` (body in artifacts/)`
-appended when the body went to a file. That line proves the record was published, not that a bell
-rang. **Five** `WARN` wordings mean "no bell was handed to a registered agent": `not rung` (the name
-is not a label this program issues), `nothing sent` (the member is not `ready`), `doorbell withheld`
-(it sits at an approval dialog), `doorbell failed (herdr …)` (the call itself failed), and `… as a
-notice, not consumed` — the fifth of these, the only one where the line *did* reach the pane: a shell
-ran it looking for a command named `cosa` and found none, so nothing was consumed even though the text
-is on screen. `cos send` prints its whole batch of `sent` lines first and then one `WARN` block, so a
-warning *follows* its `sent` rather than sitting beside it, and that block carries the warnings of the
-reconcile pass which opened the call as well as this call's own. Only three of the five wordings can
-come from a retry at all, and a retry runs in the pass that opens every command but `new` — `poll` and
-`reconcile` included, where there is no `sent` line to follow: `not rung` (the doorbell carries a label
-outside the pattern given under Doorbell above — the label patterns defined at `cos.mjs:24` refuse a name that does not begin with a
-lowercase letter, or runs past 32 characters, as firmly as one carrying a stray character — which only a hand-made `members/<label>.json` can produce — and one such file is
-enough, because a pane matching it speaks as that label, so `cos send` publishes the channel itself and
-then refuses to bell its own rows: `cos send` checks the *target* against the roster it issues
-(`cos.mjs:543`), while the check that fires here rejects a bad label on either end of the row, `from`
-or `to` (`:309`)), `doorbell failed`, and
-the bare-pane notice. `nothing sent` and `doorbell withheld` cannot, because the ladder never calls a
-row retryable while its recipient is unready or sits at an approval dialog — those read `dead` and
-`blocked` instead (`cos.mjs:221-222`) and only `unproven` is re-rung. `cos send` closes with its own count — `doorbells N of M`, M
-records this call published and N bells **this call** handed to a registered agent (a bare-pane
-notice is in `M`, not in `N`) — so a withheld delivery is stated by the program rather than inferred
-from a missing line. The N is deliberately narrower than the whole command's ringing: `send` opens
-with a reconcile pass, and a pass can re-ring some *other*, older owed record. Those retries appear as
-their own `WARN … unproven — re-sent the doorbell once` and are counted by `cos reconcile`'s
-`doorbells N` (every bell that pass handed to a registered agent, which for `reconcile` can only be
-retries) with `re-sent N` the retries among it — a retry that landed on
-a bare pane counts as re-sent but not as a bell. `cos poll` prints neither tally; it prints
-`NEW <from> <seq> <type> <preview>` for work owed to you,
-each followed by a `RUN …` line that *is* the ack command — copy it verbatim — except on a channel
-whose name *or* record number `cos ack` would refuse, where a `WARN` takes that line's place and the
-`NEW` above it still prints, because hiding a record is worse than a peer finding it cannot be acked. Then `OUT
-<channel>#<seq> <state>` for your own unacked sends, then an unprefixed tally, then — only if that
-`OUT` batch was non-empty — `pull again in 30s; ack deadline 240s`, which is where the program itself
-speaks those two written estimates: the only *printed* line carrying them, and only while something is
-actually owed. The rendered contract carries them too — the deadline once and the cadence twice, in
-its own words (`cos.mjs:399,446`).
-`cos reconcile` opens with `fleet <slug> at <root>/fleets/<slug>` and prints `self: <label>` second,
-naming whose ladder it evaluated — or that this pane is not in the roster. That header only ever
-prints for a fleet that is still open: on a closed one the refusal at `is closed` (below) is the whole
-output, printed before the command body runs. Past the recommended member
-count `cos join` adds one `note: <n> members, over the recommended 6 counting the lead` line, and the
-four passes that report the fleet — `poll`, `send`, `ack`, `reconcile` — repeat the same fact as a
-`WARN <n> members exceeds the recommended 6`, and in `ack`'s case not on every exit: the `as MISSING`
-line and the `already acked: <label> consumed …` line return before the warning block
-(`cos.mjs:597,607`, against that block at `:617`), while the *other* `already acked` wording — the
-`already acked: <channel>#<seq>` of a race that lost after the record was read — is printed at `:615`
-and falls straight through to `:617`, so it does repeat the warning; `join` prints no such warning and `close` prints neither
-wording. Nothing refuses either. `cos ack` prints
-`acked: <label> consumed <channel>#<seq>` when it files an ack; for a number it already holds,
-`already acked: <label> consumed <channel>#<seq>` if the ack file was there before it read the
-record, or `already acked: <channel>#<seq>` if the record turned out to be published but consumed.
-A phantom doorbell earns two lines: `acked <channel>#<seq> as MISSING: …` then `nothing was
-redone …`. `cos reconcile` prints no `NEW`, `RUN` or
-`OUT` (it does not consume a read position) but does print `PENDING <channel>#<seq> <state>`, with
-` (<detail>)` appended whenever there is a reason to give, from anyone. Both print `MEMBER <label> <state>
-[role=…] [kind=…] [observed=…] [no-progress=<n>] [(<reason>)]`, `UNANSWERED <ref> owed by <label>` and `WARN
-<message>`. A `<body MISSING at …>` preview is a statement about the ledger rather than an
-instruction to work: report that line, redo nothing.
+peer 必须行动的行带 token 前缀；环绕它们的标题与合计是给人的。`cos send` 对每个目标打印一条 `sent <from>-><to>#<seq>`，正文进了文件时追加 ` (body in artifacts/)`。那行证明记录已发布，不证明门铃响了。**五种** `WARN` 措辞意味着「没有门铃被交给已注册的 agent」：`not rung`（名字不是本程序会发出的 label）、`nothing sent`（成员不是 `ready`）、`doorbell withheld`（它停在审批对话框）、`doorbell failed (herdr …)`（调用本身失败），以及 `… as a notice, not consumed`——五者中唯一一行*确实*到达了 pane 的：shell 找名为 `cosa` 的命令而不得，所以即使文字上了屏，什么也没被消费。`cos send` 先打印整批 `sent` 行再打一个 `WARN` 块，所以警告*跟在*它的 `sent` 后面而不是并肩，且那个块同时携带打开本次调用的 reconcile pass 的警告与本次自己的。五种措辞里只有三种可能来自重试，而重试发生在除 `new` 外每条命令开场的 pass 里——`poll` 和 `reconcile` 也在内，那里没有 `sent` 行可跟：`not rung`（门铃携带的 label 超出上文 Doorbell 处给定的模式——`cos.mjs:24` 定义的 label 模式会拒绝不以小写字母开头、或超过 32 字符的名字，正如拒绝携带杂字符的名字——后者只有手工造的 `members/<label>.json` 才造得出来——而这样一个文件就够了，因为匹配它的 pane 会以那个 label 发言，所以 `cos send` 自己发布信道然后拒绝敲它自己的行：`cos send` 按它发出的名册检查*目标*（`cos.mjs:543`），而这里触发的是拒绝行任一端坏 label 的检查，`from` 或 `to`（`:309`））、`doorbell failed`，以及裸 pane 通知。`nothing sent` 与 `doorbell withheld` 不可能来自重试，因为阶梯绝不把接收方未就绪或停在审批对话框的行标为可重试——那些读作 `dead` 与 `blocked`（`cos.mjs:221-222`），只有 `unproven` 会被重敲。`cos send` 以自己的计数收尾——`doorbells N of M`，M 是本次调用发布的记录数，N 是**本次调用**交给已注册 agent 的门铃数（裸 pane 通知计入 `M`，不计入 `N`）——所以被扣下的投递由程序亲口陈述，而不是靠缺行推断。N 有意窄于整条命令的敲击：`send` 以 reconcile pass 开场，pass 可能重敲的是*别的*、更旧的欠账。那些重试以自己的 `WARN … unproven — re-sent the doorbell once` 出现，计入 `cos reconcile` 的 `doorbells N`（那一趟交给已注册 agent 的每记门铃，对 `reconcile` 而言只可能是重试），其中 `re-sent N` 是重试数——落在裸 pane 上的重试计入 re-sent 而不计入门铃。`cos poll` 两个合计都不打印；它为欠你的工作打印 `NEW <from> <seq> <type> <preview>`，每条后跟一行 `RUN …`——那*就是* ack 命令，逐字复制——除非在一条 `cos ack` 会拒绝其名字*或*记录序号的信道上，此时一个 `WARN` 取代那行，而上面的 `NEW` 照印，因为藏起一条记录比 peer 发现它无法被 ack 更糟。然后 `OUT <channel>#<seq> <state>` 列你自己未 ack 的发送，再一条无前缀的合计，然后——仅当那批 `OUT` 非空——`pull again in 30s; ack deadline 240s`，程序自己说出这两个书面估算的就是这一行：唯一*打印*它们的地方，且只在确实有欠账时。渲染的契约也携带它们——期限一次、节奏两次，用契约自己的话（`cos.mjs:399,446`）。
+`cos reconcile` 以 `fleet <slug> at <root>/fleets/<slug>` 开场，第二条打印 `self: <label>`，点名它评估的是谁的阶梯——或本 pane 不在名册。这个头只在编队仍开启时打印：关闭的编队上，下面 `is closed` 的拒绝就是全部输出，先于命令主体打印。超过推荐成员数时 `cos join` 追加一行 `note: <n> members, over the recommended 6 counting the lead`，报告编队的四条命令——`poll`、`send`、`ack`、`reconcile`——以 `WARN <n> members exceeds the recommended 6` 重复同一事实，其中 `ack` 并非每次都重复：`as MISSING` 行与 `already acked: <label> consumed …` 行在警告块之前返回（`cos.mjs:597,607`，对 `:617` 的那个块），而另一种 `already acked` 措辞——记录读完之后输掉竞态的 `already acked: <channel>#<seq>`——打印在 `:615`、直落 `:617`，所以它确实重复警告；`join` 不打印这种警告，`close` 两种措辞都不打印。没有任何东西被拒绝。`cos ack` 落盘 ack 时打印 `acked: <label> consumed <channel>#<seq>`；对它已持有的序号，ack 文件在读取记录之前就在时打印 `already acked: <label> consumed <channel>#<seq>`，记录其实已发布且已消费时打印 `already acked: <channel>#<seq>`。一次幻影门铃得两行：`acked <channel>#<seq> as MISSING: …` 然后 `nothing was redone …`。`cos reconcile` 不打印 `NEW`、`RUN` 或 `OUT`（它不消费读取位置），但打印 `PENDING <channel>#<seq> <state>`，有任何理由时追加 ` (<detail>)`，来自任何人。两者都打印 `MEMBER <label> <state> [role=…] [kind=…] [observed=…] [no-progress=<n>] [(<reason>)]`、`UNANSWERED <ref> owed by <label>` 与 `WARN <message>`。`<body MISSING at …>` 的 preview 是对账本的陈述而非干活的指令：报告那一行，什么都不重做。
 
-One printed line is exactly one line: every C0 control character and DEL is replaced with a space at
-the single `out` sink, which `die`, a thrown error and every tally also pass through. A channel
-directory is a POSIX name and a POSIX name may contain a newline, so without
-that, a hand-made directory could forge a printed line — including a `RUN …` a peer would copy and
-run, filing consumption proof for a record it never read. The class is C0 plus DEL and nothing wider:
-`U+2028` and `U+0085` are **not** replaced, so a reader that split a line on Unicode breaks would see
-two. Independently of that, a `RUN` line is emitted only for a `from` matching
-`[a-z][a-z0-9_-]{0,31}` **and** a `seq` of at least 1 and no larger than the biggest integer a Number
-holds exactly — the label test is the one `cos ack` makes, and the two bounds are that subcommand's floor
-and cap seen from the number side rather than from the digits string it tests, so the two agree on every
-name that reaches here — a name whose number does not round-trip contributes no new number: either it
-resolves to a path that is not there and is skipped, or it resolves to a plain file beside it, whose
-record is then read twice. A
-name that could be read as two lines therefore never becomes a runnable line at all.
+一行打印出来的内容恰好是一行：每个 C0 控制字符与 DEL 都在唯一的 `out` 汇点被替换为空格，`die`、抛出的错误与每个合计也都经过它。信道目录是一个 POSIX 名字，而 POSIX 名字可以含换行，所以没有这道防线，手工造的目录能伪造一行打印——包括一条 peer 会照抄照跑的 `RUN …`，为一条它从未读过的记录落下消费凭证。类别是 C0 加 DEL，不再更宽：`U+2028` 与 `U+0085` **不**被替换，按 Unicode 断行切分的读者会看到两行。与此独立，`RUN` 行只对匹配 `[a-z][a-z0-9_-]{0,31}` 的 `from` **且**序号 ≥1 且不超过 Number 精确表示的最大整数的记录发出——label 测试是 `cos ack` 做的那一个，两个边界是该子命令从数字一侧（而非它测试的数字串一侧）看到的下限与上限，所以两者对每个到达这里的名字都一致——序号无法往返的名字不贡献新序号：它要么解析出不存在的路径而被跳过，要么解析成旁边的一个普通文件，而那份记录于是被读两次。可能被读成两行的名字因此永远不会变成可运行的行。
 
 ## Errors
 
-`cos` exits 0 on success, 1 on a refused or failed operation (`cos <cmd>: <message>` on
-stdout), 2 on a usage error — the seven-name `usage: cos <new|join|…>` line when the
-subcommand itself is missing or unknown, `cos <cmd>: <what>` when it is the slug that is
-absent or malformed. A crash that is not a refusal still prints one line —
-`cos <command>: unexpected <code>: <message>`, the command name filled in by the catch wrapped around
-the dispatch (a refusal printed from that same catch carries no `unexpected`; the only lines formatted
-outside it are the three usage lines printed before a dispatch is attempted — unknown subcommand,
-missing slug, malformed slug) — because a stack trace in a pane
-is noise a peer cannot act on. Herdr failures reach the line as `herdr reported <code>` — `spawn_failed`,
-`cli_usage_error`, `exit_<n>`, or whatever code the JSON envelope carried. Refusals that must
-be read as protocol statements: `already claimed` (the guard runs only when `manifest.json` is already
-written, and then fires if the slug has any `*.json` under `members/`, or a contract already; a claim
-interrupted before either exists is *finished* by the next `cos new`, so a herdr hiccup does not burn the
-name — and a directory with no manifest is not a claim at all, which is the fresh-root case `cos new`
-exists for), `no ledger at` (this root has no such fleet — recovery
-never invents one), `lives in … but this process resolves` (two roots), `send refused`
-(newer `v`: reading and acking old records stays safe, allocating sequence numbers does
-not), `is closed` (nothing is sent or reconciled any more; `ack` and `close` are the two
-subcommands still accepted, since an ack is evidence rather than work), `must be an absolute
-path` / `holds characters a doorbell line cannot carry` (the root), `ack needs: <from> <seq>`
-(a sequence number that is not plain digits cannot be recorded without poisoning the
-allocation floor), `published but unreadable` (an ack is refused for a record that will not
-parse: consuming what cannot be read would let it be deleted).
+`cos` 成功退出 0，被拒绝或失败的操作退出 1（stdout 上 `cos <cmd>: <message>`），用法错误退出 2——子命令缺失或未知时是七个名字的 `usage: cos <new|join|…>` 行，slug 缺失或畸形时是 `cos <cmd>: <what>`。不是拒绝的崩溃也只打印一行——`cos <command>: unexpected <code>: <message>`，命令名由包住 dispatch 的 catch 填入（从同一个 catch 打印的拒绝不带 `unexpected`；在 dispatch 之前打印、格式化在这之外的三行是 usage 行——未知子命令、缺 slug、slug 畸形）——因为 pane 里的一串堆栈是 peer 无法行动的噪声。herdr 失败以 `herdr reported <code>` 到达——`spawn_failed`、`cli_usage_error`、`exit_<n>`，或 JSON 信封携带的任何 code。必须被读作协议陈述的拒绝：`already claimed`（守卫只在 `manifest.json` 已写出时运行，随后在 slug 的 `members/` 下有任何 `*.json` 或契约已存在时触发；在两者存在之前被打断的认领由下一次 `cos new` *完成*，所以 herdr 打个嗝不会烧掉名字——而没有 manifest 的目录根本不是认领，那是 `cos new` 为之存在的全新根情形）、`no ledger at`（这个根没有这样的编队——恢复从不发明一个）、`lives in … but this process resolves`（两个根）、`send refused`（更新版 `v`：读旧记录与 ack 旧记录仍安全，分配新序号不安全）、`is closed`（不再发送也不再 reconcile；`ack` 与 `close` 是仍被接受的两条子命令，因为 ack 是证据而非工作）、`must be an absolute path` / `holds characters a doorbell line cannot carry`（根）、`ack needs: <from> <seq>`（不是纯数字的序号无法在不毒化分配下限的情况下被记录）、`published but unreadable`（无法解析的记录拒绝 ack：消费读不了的东西会让它被删除）。
 
 ## Invariants to keep when editing cos.mjs
 
-1. `linkSync` is the only means of publishing a final name; no `writeFileSync`/`renameSync`
-   onto an existing published path. Only `cursors/` is written in place, and only by the
-   label named in the cursor's own filename.
-2. Exactly two processes start, each behind one port and no other: herdr through `herdrExec(argv)`,
-   and `git` through `gitExec(argv, cwd)`, the latter used only to carve a member's worktree — and to
-   roll that carve back when a join dies before any member is registered. Both
-   ports take a fixed argv array and never a shell string, so neither can run what a name carries.
-   Tests replace both. (`node` appears in the contract's rendered lines because the peer's shell runs
-   them, not because anything here spawns it.)
-3. Sequence numbers and labels are claimed by failed `link()` retries, never by a clock, and
-   never re-handed out — the ack directory is part of the allocation floor.
-4. `acks/` and `manifest.json` are never recycled. A doorbell pointing at a record that is not
-   there is reported, filed under `missing/` on an open fleet, never written as an ack and never
-   redone — absence is not evidence of consumption in either direction.
-5. A record's `link` is the last thing that happens to it: the artifact is staged and released
-   before the record is committed, so no published record can name a body that was never
-   written. An orphan body is the accepted failure; an orphan record is not.
-6. A pane may act only as the one `ready` label whose pane id it holds. Two claimants is an
-   error, not a tie to break.
-7. Only the channel's own writer recycles it, only that writer sweeps its temp files, and a
-   record still owed an answer is held.
-8. A published file that will not parse is reported and skipped: never deleted, never
-   counted as consumed, never silently treated as an empty channel — and an ack of it is
-   refused.
-9. Every subcommand but `new` opens the ledger and reconciles before it acts. A closed fleet
-   still reconciles for reading, and a peer's `ack` is still accepted there — evidence, not
-   work — but the fleet itself produces none: no doorbell, no retry, no recycled record, no
-   `failures/` marker, and a phantom doorbell there is printed but not filed, since nothing there
-   retries and a filing with no reader would be a write for its own sake. Cursor writes (the clamp,
-   the `.r` an ack advances, and the sender's `.s` slot the ladder fills while reading) and the
-   stale-temp sweep do still happen: one touches only caches, the other only unlinks a file nothing
-   published.
-10. A doorbell carries the contract's absolute path, the recipient's label and the sequence number, and
-   nothing else — no sender, no channel, no body. The path is the one unavoidable token: a peer with no
-   way to find the ledger cannot read the rules it is being asked to follow. What the invariant protects
-   is everything *past* that pointer: the root, the slug, who sent it, its own label come from the ledger
-   and `HERDR_PANE_ID`, never from the line a shell typed.
-11. Every line `cos` prints for someone to run is a line `cos` would accept: the root and slug are
-   charset-checked, the label in an ack line is checked before that line is printed, and this
-   program's own path is the one token quoted. A peer must never be handed a command its own
-   program rejects. The same charset guard runs a second time, earlier: at the bell itself, before
-   the line is built, because `pane run` hands a shell the whole line and a shell executes it. A
-   ledger file *named* by hand, outside the name patterns `cos` issues names from (character set *and*
-   first character *and* length), therefore rings nothing
-   and prints `not rung`; its record stands, and someone renames the file. Neither sink may be
-   trusted to cover the other.
-   A *numbered* hand-made name has its own wall, and it is worth spelling out because two of its four
-   shapes look safe. A record is read back by the name its number prints as, so `007.json` and a
-   30-digit name resolve to a path that is not there: the pass says `published but unreadable: skipped,
-   not deleted, and nothing was acked for it` and prints no ack line for either. Note the fold that comes
-   with that — a plain `7.json` beside the `007.json` is read *twice*, because both names resolve to it
-   and the hand-made file's own body is never opened. The two shapes that *do* round-trip are the
-   interesting ones: `0.json` names a number `cos` never issues (its own allocation starts at 1) and
-   `9007199254740992.json` (= 2^53) is past the largest integer a Number holds exactly, and `cos ack`
-   refuses both — the first on its digits pattern, the second on its cap. So the printing path tests what
-   that subcommand tests, and either record becomes a `WARN … no ack line` instead of an instruction no
-   reader can run. Say plainly that the floor was a hole: the cap was already there and the floor was not.
-   Say equally plainly that two earlier accounts of it were wrong. The first claimed a lone `0.json`
-   printed a runnable `RUN` line; it does not print one of its own accord, because `cos poll` reports only
-   inbound records *above* its own read cursor (the record does show in `reconcile` as `PENDING
-   m1->lead#0 pending`, which names nothing to run, and `cos ack` refuses to clear it, so it sits in every
-   later report). The second claimed a hand-edited cursor was the only input that surfaces it, and that
-   is refuted too: the clamp that backs a read position up to one below the oldest record still owed an
-   ack is this program's own, and one below a record numbered 0 is **-1** — so a reader that already holds
-   a cursor for that channel, which any poll of it that found a readable record gives it, is pushed under
-   zero by the next pass (`poll`
-   runs the same clamp `reconcile` does), with no hand-edited file anywhere. Measured on that sequence:
-   `poll` prints `NEW m1 0` and the floor's `WARN`, then advances the cursor to the highest number it
-   reported; the next pass clamps it to -1 again; and the two take turns for as long as the record is
-   unacked, which is forever, because `cos
-   ack` refuses seq 0. A hand-edited `cursors/` file — that directory is the ledger's single in-place one
-   — reaches the same state, but it is not needed. The floor is therefore not decoration: it is what
-   stands between a cursor one function away and a line a peer copies and cannot run.
-   Two tests carry this, and the split is the point. The inbound one writes the four names into a channel
-   whose reader already holds a cursor, so the clamp supplies the reach; it pins a `published but
-   unreadable` warning *present* (not that each skipped name warns once), the cap's `WARN` and the floor's
-   `WARN` each printing with its own reason, and — the sharp form of "no ack line the reader cannot run" —
-   that every `RUN` line in that output names the one ordinary record and nothing else, while `cos ack` on
-   the zero exits 1. Its two no-bell assertions are the weak ones: a reader's own channel rings nothing
-   whatever the number. The outbound test is the one that measures the bell, and the bell is
-   **number-blind at both bounds**: with `lead->m1/0.json` and `lead->m1/9007199254740992.json` each aged
-   past the deadline, each is re-rung once, and the text handed to the pane ends `… m1 0` and `… m1
-   9007199254740992`. What the recipient's own `poll` then shows differs by bound *until the recipient
-   holds a cursor on that channel*, and a bell into a fresh pane arrives before any such cursor exists:
-   the over-cap record is printed as `NEW` with the `WARN` in place of an ack line, while the zero record
-   produces **no line at all** — `unreadInbound` wants numbers strictly above a cursor that, with no file
-   yet written, defaults to 0 — so that bell is rung into silence and the record's only sighting is
-   `reconcile`'s `PENDING` line, which names no command. The silence belongs to the missing cursor, not to
-   the number: once a reader holds any cursor there, the clamp pulls it to -1 and its own `poll` prints
-   `NEW lead 0` with the floor's `WARN` like any other record — which is why the inbound test above, whose
-   reader has a cursor, does see it. Either way the record stands, unacked. The rule
-   governs what this program *invites someone to run*, not what it rings.
-12. One printed line is exactly one line: control characters are replaced at the single output
-   sink, so no file or directory name can forge a line.
-13. A herdr call is judged by its **exit status**, never by whether its stdout looked useful: exit 0 is
-   success even when it printed nothing, nonzero is failure even when it printed a parseable body.
-   `pane run` prints nothing at all on success (measured on a live 0.9.1 server, 2026-09-30: the first doorbell of the first live fleet was
-   reported `doorbell failed` by a port that read empty stdout as a failure, while the line had in fact
-   been typed into the pane), and upstream makes the status the whole verdict — server errors are JSON on
-   stderr with exit 1, syntax errors exit 2. Read stdout for the fields, never for the answer.
-   Two corollaries, and they sit on opposite sides of the seam: the port at `cos.mjs:75` owns the first,
-   every caller owns the second. The first is that the verdict is `status 0` **and** the parsed body
-   names no `error` — so a body that reports failure is not accepted because the exit code was
-   friendly. The second is that a caller may read a field only off a response it has already branched
-   on `ok` for. One caller did not: `selfPane` took a `pane get` envelope straight off `.result`. Its
-   `$HERDR_PANE_ID` arm now goes through `paneLives`, which checks; the `--current` fallback always
-   branched on `ok` inline, so the helper is one arm's guard, not the function's. A test pins that a
-   failed `pane get` cannot name this pane.
+1. `linkSync` 是发布最终名字的唯一手段；不对已发布的路径使用 `writeFileSync`/`renameSync`。只有 `cursors/` 原地写，且只由游标文件名里那个 label 写。
+2. 恰好启动两个进程，各自在一条端口后面、别无其他：herdr 走 `herdrExec(argv)`，`git` 走 `gitExec(argv, cwd)`——后者只在为成员 carving worktree 时使用，以及在 join 在任何成员注册之前死掉时回滚那次 carve。两个端口都取固定 argv 数组，绝不取 shell 字符串，所以谁都执行不了名字里携带的内容。测试替换这两者。（`node` 出现在契约渲染的行里是因为 peer 的 shell 要运行它们，不是因为这里有什么东西启动它。）
+3. 序号与 label 由失败的 `link()` 重试认领，从不靠时钟，也绝不二次发放——ack 目录是分配下限的一部分。
+4. `acks/` 与 `manifest.json` 永不回收。指向不存在记录的门铃会被报告，在开启的编队上归档到 `missing/`，绝不写成 ack，也绝不重做——「缺席」在任何方向上都不是消费的证据。
+5. 记录的 `link` 是发生在它身上的最后一件事：artifact 先落盘、在记录提交前释放，所以已发布的记录不可能点名一个从未写出的正文。孤儿正文是被接受的失败；孤儿记录不是。
+6. 一个 pane 只能以它持有的 pane id 对应的那个 `ready` label 行动。两个认领者是错误，不是待打破的平局。
+7. 只有信道自己的写者回收它，只有那个写者清扫自己的临时文件，仍欠回答的记录被持有。
+8. 无法解析的已发布文件被报告并跳过：绝不删除、绝不计为已消费、绝不静默当作空信道——对它的 ack 被拒绝。
+9. 除 `new` 外每条子命令都先开账本并 reconcile 再行动。关闭的编队仍为读取而 reconcile，peer 的 `ack` 在那里仍被接受——证据而非工作——但编队本身不再产出：没有门铃、没有重试、没有回收的记录、没有 `failures/` 标记，那里的幻影门铃只打印不落盘，因为那里没有东西重试，而无读者的落盘是为写而写。游标写入（钳位、ack 推进的 `.r`、读取时阶梯填充的发送方 `.s` 槽位）与过期临时文件的清扫仍然发生：一个只碰缓存，另一个只解除链接一个什么都没发布的文件。
+10. 门铃携带契约的绝对路径、接收者的 label 与序号，别无其他——没有发送方、没有信道、没有正文。那个路径是唯一无法避免的 token：找不到账本的 peer 读不到它被要求遵守的规则。这条不变量保护的是那个指针*之后*的一切：根、slug、发送者、它自己的 label 都来自账本与 `HERDR_PANE_ID`，绝不来自 shell 敲进来的那行。
+11. `cos` 打印出来给人运行的每一行，都是 `cos` 自己会接受的一行：根与 slug 做过字符集检查，ack 行里的 label 在打印前检查，本程序自己的路径是唯一被加引号的 token。绝不能把一条自己的程序都会拒绝的命令交给 peer。同一道字符集守卫更早地再跑一次：在门铃本身处、在行被构造之前，因为 `pane run` 把整行交给 shell 执行。一份在 `cos` 发放名字的模式（字符集*与*首字符*与*长度）之外*手工命名*的账本文件因此什么也敲不响，打印 `not rung`；它的记录保持，然后有人把文件改名。两个汇点谁也不能指望另一个兜底。
+    *带序号的*手工名字有自己的一堵墙，值得展开，因为它四种形态里两种看起来无害。记录按其序号打印出的名字读回，所以 `007.json` 与 30 位长的名字解析出不存在的路径：这一趟说 `published but unreadable: skipped, not deleted, and nothing was acked for it`，两者都不打印 ack 行。注意随之而来的折叠——`007.json` 旁边的普通 `7.json` 会被读*两次*，因为两个名字都解析到它，而手工文件自己的正文从未被打开。真正能往返的两种形态才有趣：`0.json` 点名一个 `cos` 从不发放的序号（自己的分配从 1 开始），`9007199254740992.json`（= 2^53）超出 Number 精确表示的最大整数，`cos ack` 对两者都拒绝——前者按数字模式拒绝，后者按上限拒绝。所以打印路径测试的就是那个子命令测试的东西，任一记录都变成 `WARN … no ack line` 而不是一条读者无法运行的指令。直说：下限曾经是个洞——上限早就在，下限不在。同样直说，关于它的两次早期记述是错的。第一次声称孤立的 `0.json` 会打印一条可运行的 `RUN` 行；它不会自行打印，因为 `cos poll` 只报告*高于*自己读取游标的入站记录（该记录确实出现在 `reconcile` 里，作 `PENDING m1->lead#0 pending`，那行不点名任何可运行的东西，且 `cos ack` 拒绝清除它，于是它坐在之后每一份报告里）。第二次声称手工编辑的游标是让它现形的唯一入口，这也被驳倒了：把读取位置钳回到最旧一条仍欠 ack 的记录之下的钳位是本程序自己的行为，序号 0 之下是 **-1**——已持有该信道游标的读者（对该信道的任何一次 poll 只要读到过可读记录就会持有）会被下一趟推到零以下（`poll` 跑的是与 `reconcile` 相同的钳位），不需要任何手工文件。在该序列上实测：`poll` 打印 `NEW m1 0` 与下限的 `WARN`，然后把游标推进到它报告过的最大序号；下一趟又把游标钳回 -1；只要记录未 ack，两者就轮流下去，永不终止，因为 `cos ack` 拒绝 seq 0。手工编辑的 `cursors/` 文件——那是账本里唯一原地写的目录——也能到达同一状态，但它并非必需。所以下限不是装饰：它隔开的是「一步之遥的游标」与「peer 复制后跑不了的行」。
+    两条测试承载它，而分工正是要点。入站那条把四个名字写进一条读者已持有游标的信道，由钳位提供可达性；它钉住一条 `published but unreadable` 警告*存在*（不是每个被跳过的名字各警告一次）、上限的 `WARN` 与下限的 `WARN` 各自带自己的理由打印，以及——「没有读者跑不了的 ack 行」的锐利形态——输出里每一条 `RUN` 行都点名那条普通记录、别无其他，而 `cos ack` 对零退出 1。它的两条无门铃断言是弱的：读者自己的信道无论序号什么都不敲。出站那条才是测门铃的，而门铃在两个边界上都**对序号失明**：`lead->m1/0.json` 与 `lead->m1/9007199254740992.json` 各自过期后，各被重敲一次，交给 pane 的文本以 `… m1 0` 与 `… m1 9007199254740992` 结尾。接收者随后的 `poll` 看到什么因边界而异——*直到它持有该信道的游标为止*，而敲进全新 pane 的门铃到达时游标尚不存在：超上限的记录被它的 `poll` 打成 `NEW`、ack 行的位置是那条 `WARN`，而零记录**一行都不打**（`unreadInbound` 要求序号严格高于游标，而尚无文件时游标默认为 0）——所以那记门铃敲进了沉默，记录唯一的现形是 `reconcile` 的 `PENDING` 行，那行不点名任何命令。沉默属于缺失的游标，不属于序号：读者一旦持有那里的任何游标，钳位把它拉到 -1，它自己的 `poll` 就像对其他记录一样打印 `NEW lead 0` 与下限的 `WARN`——上文那条入站测试的读者有游标，所以确实看到了。无论哪种，记录保持未 ack。规则约束的是本程序*邀请*别人运行的东西，不是它敲的东西。
+12. 一行打印出来的内容恰好是一行：控制字符在唯一的输出汇点被替换，所以任何文件或目录名都伪造不了一行。
+13. 一次 herdr 调用由**退出状态**裁决，从不由 stdout 是否看起来有用裁决：退出 0 即成功，哪怕什么都没打印；非零即失败，哪怕打印了可解析的正文。`pane run` 成功时什么都不打印（2026-09-30 在活的 0.9.1 server 上实测：第一次活体编队的第一记门铃被一个把空 stdout 当失败的端口报了 `doorbell failed`，而那行其实已经敲进 pane），上游把状态作为全部裁决——server 错误是 stderr 上带退出码 1 的 JSON，语法错误退出 2。读 stdout 取字段，绝不读它取答案。两条推论，分处接缝两侧：`cos.mjs:75` 的端口拥有第一条，每个调用者拥有第二条。第一条：裁决是 `status 0` **且**解析出的 body 不点名 `error`——所以报失败的 body 不能因为退出码友好就被接受。第二条：调用者只能在已经按 `ok` 分支过的响应上读字段。有过一个没这么做的调用者：`selfPane` 直接从 `.result` 取 `pane get` 信封。它的 `$HERDR_PANE_ID` 分支现在走会检查的 `paneLives`；`--current` 回退本来就在行内按 `ok` 分支，所以那个 helper 是一个分支的守卫，不是整个函数的。有一条测试钉住：失败的 `pane get` 点名不了本 pane。
 
 ## Rejected framings
 
-- *Screen output as evidence.* A pane's visible text is not a consumption record; herdr can
-  render a pane the agent already moved past. Only `acks/` counts.
-- *`state_change_seq` as a delivery proof.* `arronKler/herdr-dispatch` treats it that way;
-  this design rejected the same reading without measuring it, because it does not have to:
-  upstream `herdr` never documents the field, and a counter that a pane's own turn-end can
-  advance could not distinguish "my prompt ran" from "it did something". It survives only as
-  the negative signal above, and if even that reading is wrong the ladder costs one extra
-  idempotent re-ring — never a lost record or a false claim of consumption.
-- *File output as a fallback.* Upstream `herdr` positions writing files as a last resort for
-  agent-to-agent exchange. Here the ledger is the primary medium, because the requirement is
-  "survive an interruption", and a screen does not.
+- *屏幕输出作为证据。* pane 的可见文本不是消费记录；herdr 渲染出的 pane 可能是 agent 已经划过去的内容。只有 `acks/` 作数。
+- *把 `state_change_seq` 当投递证明。* `arronKler/herdr-dispatch` 那样用它；本设计没有测量就拒绝了同一个读法，因为它不必测量：上游 `herdr` 从未文档化该字段，而一个 pane 自己的回合结束就能推进的计数器，分不清「我的 prompt 跑了」和「它干了别的」。它只作为上面的否定信号幸存；就算这个读法也错了，阶梯的代价是多一次幂等重敲——绝不是丢记录或虚假的消费声明。
+- *文件输出作为回退。* 上游 `herdr` 把写文件定位为 agent 间交换的最后手段。这里账本才是主媒介，因为需求是「活过一次中断」，而屏幕活不过。

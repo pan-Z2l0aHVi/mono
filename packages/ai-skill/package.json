@@ -18,7 +18,7 @@
   "scripts": {
     "build": "node scripts/check-skills.mjs",
     "prepack": "node scripts/check-skills.mjs",
-    "test": "vp test run"
+    "test": "vp test run scripts"
   },
   "devDependencies": {
     "vite": "catalog:",

@@ -189,7 +189,7 @@ test('new claims a fleet, writes a write-once manifest and a renderable contract
 test('the contract points at members/ for the roster and names all four member states', () => {
   const h = fleetWithMembers(2);
   const contract = readFileSync(join(h.fleet(), 'peer-contract.md'), 'utf8');
-  const roster = contract.split('\n').filter((l) => /^Roster:/.test(l)).join(' ');
+  const roster = contract.split('\n').filter((l) => l.startsWith('Roster:')).join(' ');
   assert.match(roster, /the files in `[^`]*\/members\/`/, 'a peer lists members/ rather than reading a roster out of the contract');
   assert.ok(!/\bm\d\b/.test(roster), 'and that sentence enumerates nobody: the roster is derived, so listing it here would go stale');
   assert.match(contract, /MEMBER <label>\s+creating\|ready\|failed\|gone/, 'the whole member-state set is in front of a peer, so it can report `failed` rather than invent a word');
@@ -807,7 +807,7 @@ test('a closed fleet is not reconciled again and its acks stay put', () => {
   const rec = h.at(0, ['reconcile', 'f']);
   assert.equal(rec.code, 1, rec.out.join('\n'));
   assert.equal(rec.out.length, 1, 'the refusal is the whole output…');
-  assert.ok(!/^fleet f at /.test(rec.out[0]), '…so reconcile never gets to print its header for a closed fleet');
+  assert.ok(!rec.out[0].startsWith('fleet f at '), '…so reconcile never gets to print its header for a closed fleet');
   assert.equal(existsSync(join(h.fleet(), 'acks', 'm1~lead', '1.json')), true, 'acks are never recycled');
   assert.equal(existsSync(join(h.fleet(), 'manifest.json')), true, 'the manifest survives close');
 });

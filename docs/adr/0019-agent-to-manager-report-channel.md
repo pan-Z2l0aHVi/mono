@@ -2,7 +2,7 @@
 
 - **Date**: 2026-09-29
 - **Status**: 已接受
-- **Amends**: [ADR-0015](0015-role-contracts-in-herdr-agents-skill.md)、[ADR-0016](0016-implementation-supervision.md)、[ADR-0017](0017-orchestration-decoupled-from-task.md) 中关于「消息只在 Supervisor 与 Manager 之间互发」和「巡检只读编排单元」的部分
+- **Amends**: [ADR-0015](0015-role-contracts-in-herdr-agents-skill.md)、[ADR-0016](0016-implementation-supervision.md)、[ADR-0017](0017-orchestration-decoupled-from-task.md) 中关于「消息只在 Supervisor 与 Manager 之间互发」和「巡检只读编排单元」的部分。（2026-10-02 修订：本 ADR 建立的报告通道随 herdr-agents 退役——herdr-cos 的账本本身就是报告通道，peer 报告是一条带 ack 的账本消息，`cos poll` 的 `MEMBER`/`UNANSWERED` 行承担巡检的信号职责，`$TMPDIR/herdr-agents/reports/` 与 `$TMPDIR/herdr-agents-monitor/` 一并退役。「结论进消息、证据按路径定点读」的原则在 herdr-cos 的 `cos send` 与 `artifacts/` 机制中延续。）
 - **Relates to**: [ADR-0017](0017-orchestration-decoupled-from-task.md)
 
 ## 背景

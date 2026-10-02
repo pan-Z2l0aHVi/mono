@@ -29,7 +29,7 @@ Once wired in, the agent discovers each skill by its SKILL.md frontmatter (`name
 
 ## What is exposed where
 
-- **GitHub source** (`npx skills add pan-Z2l0aHVi/mono`): the repo-authored skills plus mirrors of the third-party skills they depend on (e.g. `herdr` for `herdr-agents`). Nothing else.
+- **GitHub source** (`npx skills add pan-Z2l0aHVi/mono`): the repo-authored skills plus mirrors of the third-party skills they depend on (e.g. `herdr` for `herdr-cos`). Nothing else.
 - **npm package**: the repo-authored skills only.
 - Third-party skills that are mere local tooling for the mono repo are vendored in `.agents/skills-vendored/` (not scanned by the skills CLI) and never distributed.
 

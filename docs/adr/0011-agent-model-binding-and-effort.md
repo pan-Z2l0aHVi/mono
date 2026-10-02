@@ -4,7 +4,7 @@
 - **Status**: 已接受
 - **Amends**: [ADR-0010](0010-agent-role-orchestration.md) 的「执行体默认绑定」一节
 - **Amended by**: [ADR-0014](0014-task-system-v2.md)（取消角色默认模型与思考强度分档；模型与思考强度由用户会话设置或 Manager 按任务指定）
-- **Further amended by**: [ADR-0016](0016-implementation-supervision.md)（Role 与 Supervisor 的执行体绑定统一由 herdr-agents skill 维护）、[ADR-0020](0020-role-executor-not-bound.md)（2026-09-30：不再有执行体绑定，改为 Manager 建会话前当场选定）
+- **Further amended by**: [ADR-0016](0016-implementation-supervision.md)（Role 与 Supervisor 的执行体绑定统一由 herdr-agents skill 维护）、[ADR-0020](0020-role-executor-not-bound.md)（2026-09-30：不再有执行体绑定，改为 Manager 建会话前当场选定） （2026-10-02 注：herdr-agents skill 已被 herdr-cos 取代并退役，本行的旧路径作为历史记录保留，不再是活链接。）
 - **Superseded by**: [ADR-0017](0017-orchestration-decoupled-from-task.md) —— 本 ADR 已无现行内容：默认分档早被 ADR-0014 取消，绑定表归 herdr-agents skill（ADR-0015/0016），`Effort` 字段随 Task Packet 的 Coordination 区退化为指针而不再记录（ADR-0017）
 
 ## 背景
@@ -20,7 +20,7 @@ ADR-0010 建立了角色到执行体的默认绑定，但留下了两个问题�
 
 ### 1. 历史方案：角色 → 执行体 → 模型 → 思考强度默认绑定
 
-下表记录 2026-09-11 的决策背景，不是当前配置。ADR-0014 已取消这套默认分档；现在由用户会话或 Manager 按任务选择模型和思考强度。Role 也不再绑定执行体：Manager 在为某个 Role 建会话前向用户询问，用哪一种当场定；Reviewer 路由见 [`herdr-agents`](../../.agents/skills/herdr-agents/SKILL.md)。
+下表记录 2026-09-11 的决策背景，不是当前配置。ADR-0014 已取消这套默认分档；现在由用户会话或 Manager 按任务选择模型和思考强度。Role 也不再绑定执行体：Manager 在为某个 Role 建会话前向用户询问，用哪一种当场定；Reviewer 路由见 `herdr-agents`（退役路径）。
 
 | 角色             | 执行体                                             | 默认模型                            | 默认思考强度 |
 | ---------------- | -------------------------------------------------- | ----------------------------------- | ------------ |
@@ -31,7 +31,7 @@ ADR-0010 建立了角色到执行体的默认绑定，但留下了两个问题�
 | Reviewer（历史） | 按风险路由（高风险 → Claude Code；小功能 → Codex） | GLM-5.3 Flash / DeepSeek V4.1 Flash | high         |
 
 - 当时的方案让 Lib Coder、Biz Coder 使用 Codex CLI + DeepSeek V4.1 Flash，Manager、Designer 使用 Claude Code + GLM-5.3 Flash。
-- Reviewer 当时按风险路由：Claude Code 主审高风险变更，Codex CLI 负责独立小功能。当前路由和替代执行体记录方式见 herdr-agents skill 与 Task Packet。
+- Reviewer 当时按风险路由：Claude Code 主审高风险变更，Codex CLI 负责独立小功能。当前路由和替代执行体记录方式见 herdr-cos skill 与 Task Packet。
 - 模型和思考强度当时只是建议，不是强制值。Manager 可以按任务和接入层配置调整。
 - 模型路由和思考强度的实际配置属于执行体接入层，不在本仓库版本控制内；仓库只记录选择原则。
 
@@ -55,7 +55,7 @@ low、high、max 表达推理深度的建议起点，不是强制配置。Manage
 
 ## 后果
 
-- 当前 Role 到 executor 的表和启动参数见 [`.agents/skills/herdr-agents/SKILL.md`](../../.agents/skills/herdr-agents/SKILL.md)；模型与思考强度不设 Role 默认。
+- 当前 Role 到 executor 的表和启动参数见 `.agents/skills/herdr-agents/SKILL.md`（退役路径）；模型与思考强度不设 Role 默认。
 - `scripts/validate-context.mjs` 不再检查角色执行体自述或绑定镜像，只检查通用 context 路由、链接、frontmatter、出处和软链。
 - `docs/agents/task-packet.md` 不要求 `Effort` 字段；Manager 可在 Coordination 摘要或 handoff 中按需记录选择。
 
