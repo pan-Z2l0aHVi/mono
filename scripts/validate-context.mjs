@@ -33,7 +33,7 @@ function addError(message) {
 
 // skill 出处以 skills-lock.json 为权威：登记在册的是第三方上游件，正文由上游维护（见 AGENTS.md 语言纪律），
 // 其中的示例路径不作为本仓链接；未登记的即本仓自撰，必须列在下面。两边都不在就是出处未定。
-const repoAuthoredSkills = new Set(['contract-change-review', 'herdr-agents'])
+const repoAuthoredSkills = new Set(['contract-change-review', 'herdr-agents', 'herdr-cos'])
 const lockedSkills = new Set(Object.keys(JSON.parse(read('skills-lock.json')).skills))
 
 function fromLockedSkill(file) {

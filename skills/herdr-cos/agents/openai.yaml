@@ -1,0 +1,5 @@
+interface:
+  display_name: "herdr-cos"
+  short_description: "A shared ledger so herdr panes hand work to each other, each in its own worktree and role"
+policy:
+  allow_implicit_invocation: false

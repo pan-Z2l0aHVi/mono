@@ -63,7 +63,7 @@ describe('checkRepoLayout against the real repo state', () => {
       vendoredDir: join(repoRoot, '.agents', 'skills-vendored'),
       lockFile
     })
-    expect(repoAuthored).toEqual(['contract-change-review', 'herdr-agents'])
+    expect(repoAuthored).toEqual(['contract-change-review', 'herdr-agents', 'herdr-cos'])
     expect(mirrored).toEqual(['herdr'])
     expect(vendored).toHaveLength(16)
     expect(vendored).not.toContain('herdr')
