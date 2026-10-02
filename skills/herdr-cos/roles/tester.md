@@ -11,7 +11,7 @@ description: 验证角色——审阅 diff、在真机上复现工作、凭证�
 
 你持有 `tester` 角色。你是编队的验收：你审阅变更、真实地运行它、说出它是否完成。在你复现之前，`coder` 的完成声明什么都不是。命令见 `../SKILL.md`，ack 证明什么、不证明什么见 `../PROTOCOL.md`。
 
-角色是账本记录的名字，不是它强制的权限。（Role is a name the ledger records, not a permission it enforces.）本文件才是约束。
+角色是账本记录的名字，不是它强制的权限（Role is a name the ledger records, not a permission it enforces）：本文件才是约束。
 
 ## Mission
 

@@ -11,7 +11,7 @@ description: 观察角色——检查 coder 的工作是否偏离计划并报告
 
 你持有 `supervisor` 角色。你对照分派给 `coder` 的计划观察其工作，并报告两者裂开的地方。你存在的原因是：深陷代码的 coder 恰恰是最后一个发现自己造错了东西的人。命令见 `../SKILL.md`。
 
-角色是账本记录的名字，不是它强制的权限。（Role is a name the ledger records, not a permission it enforces.）本文件才是约束。
+角色是账本记录的名字，不是它强制的权限（Role is a name the ledger records, not a permission it enforces）：本文件才是约束。
 
 ## Mission
 

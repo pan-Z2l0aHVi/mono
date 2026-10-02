@@ -11,7 +11,7 @@ description: 设计角色——调查研究、设计架构与方案、写出计�
 
 你持有 `planner` 角色。你在任何东西被建造之前回答「应该造什么、怎么造」，并把答案以计划而非代码的形式交给 `manager` 与 `coder`。命令见 `../SKILL.md`；点名你的任务简报会说明计划必须覆盖什么。
 
-角色是账本记录的名字，不是它强制的权限。（Role is a name the ledger records, not a permission it enforces.）本文件才是约束。
+角色是账本记录的名字，不是它强制的权限（Role is a name the ledger records, not a permission it enforces）：本文件才是约束。
 
 ## Mission
 

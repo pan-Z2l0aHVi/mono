@@ -29,7 +29,7 @@ Manager 统一接收需求并编排，不引入 Integrator 或其他中间层级
 - **产品/设计需求**：Manager → Designer → 并行 Lib Coder + Biz Coder → Reviewer → Manager 总结；不启用实施期 Supervisor。
 - **技术需求**：Manager → 并行 Lib Coder + Biz Coder → Reviewer → Manager 总结；按 ADR-0016 的评分决定是否加入 Supervisor。
 
-是否启用 Designer 由 Manager 根据需求是否涉及产品设计或 UI 来判断，不按改动大小决定。Role 派发、handoff、Supervisor 和 pane 时序见 herdr-agents skill。
+是否启用 Designer 由 Manager 根据需求是否涉及产品设计或 UI 来判断，不按改动大小决定。Role 派发、handoff、Supervisor 和 pane 时序见 herdr-agents skill（退役路径）。
 
 ### 3. 目录边界即角色边界
 

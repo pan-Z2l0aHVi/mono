@@ -13,7 +13,7 @@
 | `already claimed` | `manifest.json` 已写出，**且** `members/` 下已有任何 `*.json` 或 `peer-contract.md` 已在其中 | 换新 slug。唯一可以重跑的情形：`manifest.json` 存在而 `members/` 下一个 `*.json` 都没有*且* `peer-contract.md` 不在——那是你自己早先的 `cos new` 认领中途死了，这次调用会完成它而不是烧掉名字。判定按后缀而非 label 形状：`members/` 下任何名为 `*.json` 的文件都算成员，哪怕是手工放的，所以一个多余的 `notes.json` 也会占住编队。任一半边存在即是认领：空的 `peer-contract.md` 算已渲染，`cos` 拒绝而不覆盖。完全没有 `manifest.json` 时以上都不适用——那是全新根的情形，`cos new` 直接进行 |
 | `acked … as MISSING` | 一记门铃点名了这个信道从未有过的序号 | 什么都不重做。那行就是报告，编队开不开启都打印。编队开启时它还会把 `{"missing":true}` 归档到 `acks/<to>~<from>/missing/`——在 acks 旁边而不是其中，所以它不消费任何记录，也不会挡住后来记录认领的序号；关闭的编队不落盘，因为那里没有东西重试 |
 | `MEMBER <label> creating` | pane 活着，herdr 尚未列出它的 agent | 等一个 poll 周期——第二趟仍无进展就会报 `failed`，那是同一个事实加了裁决（`PROTOCOL.md` 定义了什么叫无进展趟）；若持续，自己去那个 pane 看——herdr `pane read` 会显示审批对话框。`cos` 从不读 pane 输出：屏幕文本在这里不是证据，清除审批是人的动作 |
-| `MEMBER <label> gone` | 没有这个 pane、终端被替换，或 `unknown` | 它未 ack 的记录转为 `dead` 并被列出；需要的是重新加人（`cos join`），不是改写。那行仍带着它加入时的 `role=` 与 `kind=`——`agent start` 失败的成员有角色没有 `kind=`，即下文的半建成情形——所以替换者照同样的方式启动，而 `gone` 成员是报告而非退役（见 Retiring a member） |
+| `MEMBER <label> gone` | 没有这个 pane、终端被替换，或 `unknown` | 它未 ack 的记录转为 `dead` 并被列出；需要的是重新加人（`cos join`），不是改写。那行仍带着它加入时的 `role=` 与 `kind=`——`agent start` 失败的成员有角色没有 `kind=`，即下文的半建成情形——所以替换者照同样的方式启动，而 `gone` 成员是报告而非退役（见「退役一个成员」） |
 | `MEMBER <label> failed … no-progress=2` | 该成员连续两趟无进展：对 `creating` 是 herdr 从未列出过 agent；对 `ready` 是一条仍欠它的记录过了 ack 期限 | 它是 `cos poll` 与 `cos reconcile` 打印的一行，不是要你自己去找的文件，其余五条命令不打印。不欠任何东西的 `ready` 成员绝不会 `failed`；`gone` 的绝不计数。计数在 2 处停止*落盘*——是阈值不是累加——但上限在写入侧，读取不受限：手工造的标记打印自己的数字。手工处理：对那个 pane 跑 `herdr pane read` 看审批对话框。`cos` 绝不替你启动或重启 agent，而该成员的一个 ack 就会清掉标记 |
 | `UNANSWERED …` | 已 ack、无回复、欠债人已消失 | 报告给人。重做会重放另一个 agent 已经完成的工作 |
 | `NEW … <body MISSING at …>` | 记录幸存，它指向的 artifact 没有 | 报告那一行，**不要**凭缺失的文件重做工作。对它作最终裁决的仍是记录自己的 ack |
@@ -58,7 +58,7 @@
 
 退役一棵树：先关闭或改派 pane，然后 `git worktree remove <path>`（仅当里面有你决定丢弃的未提交工作时加 `--force`），工作已合并则 `git branch -d <branch>`。`cos` 两者都不代跑。
 
-## Retiring a member
+## 退役一个成员
 
 `gone` 是报告，不是清理。成员文件还在，所以每个 pass 都把它打印成 `gone`，并且继续计入推荐的六个——计数遍历 `members/*.json`，死 pane 的文件也是文件。真正退役一个：**先关它的 pane，再删 `members/<label>.json`**。
 

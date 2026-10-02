@@ -227,8 +227,9 @@ header {
  * 比 header 高 60px（两侧各 -30px），mask 在盒高 60% 之前保持不透明、之后线性归零，
  * header 底缘正落在衰减段上——header 高 52px 时该处 alpha 约 0.67，100px 时约 0.47。
  * #184 是否因此在真 Safari 上复现，取决于这段残余被切出来是否可读；Chrome 不复现
- * （盒外那段根本没被裁，本地量不到），判据仍需真 Safari 逐像素取证，见
- * $TMPDIR/herdr-agents/reports/ui-polish-260929-glow-clip-ownership.md。
+ * （盒外那段根本没被裁，本地量不到），判据仍需真 Safari 逐像素取证；当时的取证报告
+ * 曾见于 $TMPDIR/herdr-agents/reports/ui-polish-260929-glow-clip-ownership.md（临时
+ * 目录可丢失，取证结论以上述量值为准）。
  *
  * 端点用裸 `transparent`（即 rgb(0 0 0 / 0)）而不是
  * `color-mix(in srgb, var(--wui-color-page) 100%, transparent)`：混色按预乘 alpha

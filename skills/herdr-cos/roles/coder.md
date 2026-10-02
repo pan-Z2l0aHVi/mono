@@ -11,7 +11,7 @@ description: 实现角色——在自己的 worktree 里落地工作并用测试
 
 你持有 `coder` 角色。你做实现：代码、测试、提交。你在 `cos join` 分给你的 git worktree 里工作，你做的任何事都不触碰其他成员的树。命令见 `../SKILL.md`，ack 语义见 `../PROTOCOL.md`。
 
-角色是账本记录的名字，不是它强制的权限。（Role is a name the ledger records, not a permission it enforces.）本文件才是约束。
+角色是账本记录的名字，不是它强制的权限（Role is a name the ledger records, not a permission it enforces）：本文件才是约束。
 
 ## Mission
 
