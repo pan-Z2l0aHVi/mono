@@ -865,44 +865,264 @@ describe('ResourceList：触屏长按菜单', () => {
   })
 
   /*
-   * 回归：长按出行菜单时，抬手后浏览器补发的 click 也会落到 onRowSelect，于是菜单和
-   * 预览 drawer 同时弹出来。
+   * 造出「组件的长按到期、菜单被打开」这个状态。
+   *
+   * 真实路径是组件自己的长按计时器到期 → _openAt 成功 → _userOpenChange.mark() 派发
+   * open-change。jsdom 里那条计时器不驱动面板，所以这里直接造出同一个可观察结果。
+   *
+   * openAt 单独**不算**长按：它是命令式打开，按组件自己的注释不派发 open-change
+   * （context-menu/index.ts 的 openAt：「命令式打开不派发 open-change 事件」）。
+   * 只调 openAt 的用例在换掉判据之后仍会一路绿，却已经不再代表真实事件序列——判据依赖
+   * 「菜单此刻开着没有」时测试看不出问题，正是因为它只造了那个瞬间状态。
+   */
+  function longPressOpensMenu(menu: WebUiContextMenu, row: Element, pointerType = 'touch') {
+    row.dispatchEvent(pointer('pointerdown', { button: 0, clientX: 100, clientY: 100 }, pointerType))
+    menu.openAt(100, 100)
+    menu.dispatchEvent(new CustomEvent('open-change', { detail: { open: true } }))
+  }
+
+  /*
+   * 抬手。真实触控管线的顺序是 touchend → pointerup → 浏览器补发 click，
+   * 所以补发的 click 到达时 pointerup 已经过去了。
+   */
+  function touchLift(row: Element) {
+    row.dispatchEvent(pointer('pointerup', { clientX: 100, clientY: 100 }, 'touch'))
+  }
+
+  /*
+   * 回归（本轮要修的缺陷）：长按抬手时菜单与预览抽屉同时弹出。
    *
    * 组件侧的 _isLongPressFollowUp() 只吸收它自己菜单上的补发事件，管不到宿主的行激活，
    * 所以这个抑制必须在宿主这边做。观察点是 onSelect 有没有被调用——补发的 click 被吃掉时
    * 它一次都不该响。
    *
-   * 判据是「菜单此刻开着没有」而不是「刚才那手是触屏没有」，所以用例分两步：先用组件的
-   * 命令式 openAt 把菜单打开（长按的唯一对外可见结果），确认触屏的补发 click 被吞；再
-   * 确认菜单关着时触屏点击照常激活行。第一条若写成「按下即抑制」，轻点会被一起吞掉。
+   * 关键在菜单**已经关掉**：抬手后浏览器补发 click 的那几十毫秒里，菜单很可能因 blur /
+   * 外点先关，于是「菜单此刻开着没有」读到 false，抑制失效，抽屉照弹。判据必须落在
+   * 「刚才那手确实开出了菜单」这个已经发生过的事实上，与菜单此刻的状态无关。
    *
-   * jsdom 里长按计时器到期不会真的开面板，所以这里用 openAt 制造同样的可观察状态。
+   * 关菜单只能调 close()：isOpen 是只读 getter，写 menu.isOpen = false 是空操作，读回来
+   * 还是旧值，会得到「关了却读成 true」的反向结论。
    */
-  it('菜单开着时吞掉触屏的补发 click，菜单关着时触屏点击照常激活', async () => {
+  it('菜单已关时仍吞掉触屏的补发 click——判据不读菜单当前状态', async () => {
     const select = vi.fn<(id: string) => void>()
     const mounted = await mountList([resource({ id: 'r1' }), resource({ id: 'r2' })], [], {}, { onSelect: select })
     const menu = mounted.contextMenu as WebUiContextMenu
     try {
-      // 长按的痕迹：触屏 pointerdown 先落定，随后组件把菜单打开
-      mounted.rows[0].dispatchEvent(pointer('pointerdown', { button: 0, clientX: 100, clientY: 100 }, 'touch'))
-      menu.openAt(100, 100)
-      expect(menu.isOpen, '菜单应处于打开态').toBe(true)
+      longPressOpensMenu(menu, mounted.rows[0])
+      expect(menu.isOpen, '前置条件：长按确实开出了菜单').toBe(true)
 
-      // 抬手后浏览器补发的 click：菜单开着，必须被吃掉。
-      // 先用第二段（菜单关着时能激活）证明这条 click 通路本身是通的，这里红才说明是被吞。
+      // 抬手：菜单先被 blur / 外点关掉，浏览器补发的 click 后到。
+      menu.close()
+      await nextTick()
+      expect(menu.isOpen, '前置条件：此刻菜单确实是关的').toBe(false)
+
+      // 真实顺序：touchend → pointerup → 浏览器补发 click。判据锚在抬手，所以必须先抬手。
+      touchLift(mounted.rows[0])
+      mounted.rows[0].dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
+      await nextTick()
+      expect(select, '菜单已关时的补发 click 仍不该激活行').not.toHaveBeenCalled()
+    } finally {
+      mounted.unmount()
+    }
+  })
+
+  /*
+   * 上一组是用 helper 手工派发 open-change 来代表「长按开菜单」。这条不手工造事件：
+   * 让**组件自己的长按计时器**跑到期，由 web-ui-context-menu 真的去 _openAt 并派发
+   * open-change，宿主的抑制挂在真实事件序列上。
+   *
+   * 这补的是 helper 补不了的缺口：helper 能证明「收到 open-change 就抑制」，但证明不了
+   * 「组件真的会在长按到期时派发它」。宿主侧的判据完全建立在这条事件上，一旦组件改了派发
+   * 条件（例如改成只在菜单仍开着时补发），只有这条会红。
+   *
+   * 面板在 jsdom 里渲染不出来不影响判据：_openAt 同步把 _isOpen 置真，随后
+   * _userOpenChange.mark() 派发事件，这两步都在计时器回调里同步发生。
+   */
+  it('组件长按计时器到期派发的 open-change 就能抑制补发 click，菜单关掉也不影响', async () => {
+    vi.useFakeTimers()
+    const select = vi.fn<(id: string) => void>()
+    const mounted = await mountList([resource({ id: 'r1' })], [], {}, { onSelect: select })
+    const menu = mounted.contextMenu as WebUiContextMenu
+    try {
+      mounted.rows[0].dispatchEvent(pointer('pointerdown', { button: 0, clientX: 100, clientY: 100 }, 'touch'))
+
+      // 长按到期：组件自己开菜单并派发 open-change（没有手工派发）。
+      // 派发走组件的 open-change 句柄，落点晚于 _openAt 本身，所以这里必须让一个 tick：
+      // 少了它，宿主的监听还没跑到，随后的 click 就先到了。
+      vi.advanceTimersByTime(600)
+      await nextTick()
+      expect(menu.isOpen, '前置条件：组件的长按计时器确实开出了菜单').toBe(true)
+
+      // 抬手：菜单先被 blur / 外点关掉，补发的 click 后到
+      menu.close()
+      await nextTick()
+      expect(menu.isOpen, '前置条件：此刻菜单确实是关的').toBe(false)
+
+      touchLift(mounted.rows[0])
+      mounted.rows[0].dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
+      await nextTick()
+      expect(select, '真实长按事件序列下，菜单已关时的补发 click 仍不该激活行').not.toHaveBeenCalled()
+    } finally {
+      vi.useRealTimers()
+      mounted.unmount()
+    }
+  })
+
+  /*
+   * 回归（第二轮返工）：窗口若以「长按到期」为锚，取值就错了。
+   *
+   * 长按本来就是「按住不放」的手势——菜单弹出之后用户继续按住任意久都完全自然。而浏览器
+   * 补发的 click 是在**抬手那一刻**才到达的，所以它与「长按到期」的间隔等于「菜单弹出后
+   * 继续按住的时长」，**由用户决定、上界无限**。拿一个有限窗口去覆盖这段，等于给一个用户
+   * 可控的时长发通行证：按住超过窗口长度，抽屉照弹。
+   *
+   * 这条与前一条只差「按住多久」，所以它也是唯一能看见这个错的用例——窗口只要是有限值，
+   * 前一组断言全都照红不误。
+   */
+  it('长按后继续按住很久再抬手，补发的 click 仍被吃掉', async () => {
+    vi.useFakeTimers()
+    const select = vi.fn<(id: string) => void>()
+    const mounted = await mountList([resource({ id: 'r1' })], [], {}, { onSelect: select })
+    const menu = mounted.contextMenu as WebUiContextMenu
+    try {
+      longPressOpensMenu(menu, mounted.rows[0])
+
+      // 用户没抬手，继续按住 1500ms（远超任何合理窗口）
+      vi.advanceTimersByTime(1500)
+      expect(menu.isOpen, '前置条件：按住期间菜单一直开着').toBe(true)
+
+      // 抬手 → 菜单因 blur 关掉 → 补发的 click 到达
+      touchLift(mounted.rows[0])
+      menu.close()
+      await nextTick()
+      expect(menu.isOpen, '前置条件：此刻菜单确实是关的').toBe(false)
+
+      mounted.rows[0].dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
+      await nextTick()
+      expect(select, '按住很久再抬手，补发的 click 仍不该激活行').not.toHaveBeenCalled()
+    } finally {
+      vi.useRealTimers()
+      mounted.unmount()
+    }
+  })
+
+  /*
+   * R1 不得回归：菜单还开着时补发的 click 照样被吃掉。两条合起来才是完整判据——
+   * 开或关都抑制，说明判据读的是「开过」这个事实而不是某一瞬间的状态。
+   */
+  it('菜单开着时吞掉触屏的补发 click', async () => {
+    const select = vi.fn<(id: string) => void>()
+    const mounted = await mountList([resource({ id: 'r1' })], [], {}, { onSelect: select })
+    const menu = mounted.contextMenu as WebUiContextMenu
+    try {
+      longPressOpensMenu(menu, mounted.rows[0])
+      expect(menu.isOpen, '前置条件：菜单处于打开态').toBe(true)
+
+      touchLift(mounted.rows[0])
       mounted.rows[0].dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
       await nextTick()
       expect(select, '菜单开着时的补发 click 不该激活行').not.toHaveBeenCalled()
+    } finally {
+      mounted.unmount()
+    }
+  })
 
-      // 菜单关着时的触屏点击：那是用户真正想选中的一行，必须放行
-      menu.close()
+  /*
+   * R3：轻点必须照常激活行。抑制若写成「触屏按下过就吞 click」，轻点会被一起吞掉。
+   * 这里造的是「按下过、但没有长按开菜单」——全程没有 open-change。
+   */
+  it('触屏轻点（没有长按开菜单）照常激活行', async () => {
+    const select = vi.fn<(id: string) => void>()
+    const mounted = await mountList([resource({ id: 'r1' })], [], {}, { onSelect: select })
+    const menu = mounted.contextMenu as WebUiContextMenu
+    try {
+      mounted.rows[0].dispatchEvent(pointer('pointerdown', { button: 0, clientX: 100, clientY: 100 }, 'touch'))
       await nextTick()
-      expect(menu.isOpen, '菜单应已关闭').toBe(false)
+      // 轻点同样有抬手。没有这一步，这条用例就绕开了「抬手时该不该置标志」那道门——
+      // 去掉 longPressOpened 判断后轻点也会被吞，而这组断言照样全绿。
+      touchLift(mounted.rows[0])
+      mounted.rows[0].dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
+      await nextTick()
+      expect(select, '轻点照常激活行').toHaveBeenCalledWith(expect.objectContaining({ id: 'r1' }))
+    } finally {
+      mounted.unmount()
+    }
+  })
+
+  /*
+   * R4：鼠标右键开菜单后点行是合法操作，触屏的抑制不能波及它。
+   * 事件序列与长按几乎一致（菜单同样开着、同样派发 open-change），唯一区别是这一手
+   * 是鼠标。所以判据除了「开过菜单」还必须看「这一手是不是触屏」。
+   */
+  it('鼠标右键开菜单后点行照常激活，触屏抑制不波及鼠标路径', async () => {
+    const select = vi.fn<(id: string) => void>()
+    const mounted = await mountList([resource({ id: 'r1' })], [], {}, { onSelect: select })
+    const menu = mounted.contextMenu as WebUiContextMenu
+    try {
+      longPressOpensMenu(menu, mounted.rows[0], 'mouse')
+      expect(menu.isOpen, '前置条件：右键菜单处于打开态').toBe(true)
+
+      // 鼠标的抬手同样会发生，但它不该置标志（pointerType 不是 touch）
+      mounted.rows[0].dispatchEvent(pointer('pointerup', { clientX: 100, clientY: 100 }))
+      mounted.rows[0].dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
+      await nextTick()
+      expect(select, '鼠标右键菜单开着时点行照常激活').toHaveBeenCalledWith(expect.objectContaining({ id: 'r1' }))
+    } finally {
+      mounted.unmount()
+    }
+  })
+
+  /*
+   * 标志不能泄漏到下一手。
+   *
+   * 抬手会把 followUpClickPending 置上，等浏览器补发 click 来消费它。绝大多数情况下那个
+   * click 一定会来；但只要它没来（手势被系统吃掉、事件被吞、落点不是可点的元素），标志就会
+   * 悬在那里，而它一旦悬着，用户之后点任何一行都会「点不动」——比原缺陷更难解释。
+   *
+   * 唯一的作废闸是下一次 pointerdown，而它一定晚于补发 click（任何点击都先有 pointerdown），
+   * 所以这个闸既能收拾残留，又不会提前把该拦的那个 click 放跑。
+   */
+  it('抬手置的标志不泄漏到下一次手势：新的 pointerdown 之后点击照常激活', async () => {
+    const select = vi.fn<(id: string) => void>()
+    const mounted = await mountList([resource({ id: 'r1' }), resource({ id: 'r2' })], [], {}, { onSelect: select })
+    const menu = mounted.contextMenu as WebUiContextMenu
+    try {
+      longPressOpensMenu(menu, mounted.rows[0])
+      touchLift(mounted.rows[0])
+      // 补发的 click 这次没来（这是要构造的残留场景）
+
+      // 下一手的按下（没有再长按，菜单也不开着）
       mounted.rows[1].dispatchEvent(pointer('pointerdown', { button: 0, clientX: 100, clientY: 100 }, 'touch'))
       await nextTick()
       mounted.rows[1].dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
       await nextTick()
-      expect(select, '菜单关着时触屏点击照常激活').toHaveBeenCalledWith(expect.objectContaining({ id: 'r2' }))
+      expect(select, '上一手残留的标志不该吞掉这一手的点击').toHaveBeenCalledWith(expect.objectContaining({ id: 'r2' }))
+    } finally {
+      mounted.unmount()
+    }
+  })
+
+  /*
+   * 标志只被消费一次，不重复生效。
+   *
+   * 抬手置位、补发 click 消费之后，同一手不该再有第二次抑制——否则长按之后连点两下，
+   * 第二下会被当成补发事件吃掉。这个用例把「消费即清」钉住。
+   */
+  it('补发 click 消费标志后，同一手的下一次点击照常激活', async () => {
+    const select = vi.fn<(id: string) => void>()
+    const mounted = await mountList([resource({ id: 'r1' })], [], {}, { onSelect: select })
+    const menu = mounted.contextMenu as WebUiContextMenu
+    try {
+      longPressOpensMenu(menu, mounted.rows[0])
+      touchLift(mounted.rows[0])
+
+      mounted.rows[0].dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
+      await nextTick()
+      expect(select, '补发的 click 不该激活行').not.toHaveBeenCalled()
+
+      mounted.rows[0].dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
+      await nextTick()
+      expect(select, '消费之后同一手的下一次点击照常激活').toHaveBeenCalledWith(expect.objectContaining({ id: 'r1' }))
     } finally {
       mounted.unmount()
     }

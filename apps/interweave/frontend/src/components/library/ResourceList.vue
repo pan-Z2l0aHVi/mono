@@ -328,17 +328,85 @@ function handleRowsFocusin(event: FocusEvent) {
  * 同一时刻要记住「这一手是触屏」。长按抬手后浏览器补发的 click 会照常落到 onRowSelect，
  * 于是菜单和预览 drawer 同时弹出来——组件侧那个 _isLongPressFollowUp() 只吸收它自己
  * 菜单上的补发事件，管不到宿主的行激活，所以这个抑制必须在宿主这边做。
+ */
+
+/*
+ * 这一手长按**确实开出了菜单**。
  *
- * 不在 pointerdown 就置位：那时还分不出「这一手会长按」和「这一手是轻点」。每一种触屏
- * 按下都置位会把轻点也一起吞掉——onRowSelect 见到标志就 return，而轻点的 click 正是靠
- * 到达那里才激活行。真正的判据是「组件的菜单此刻开着没有」，那是长按唯一的对外可见
- * 结果，由 onRowSelect 在 click 到达时读。
+ * 由组件的 open-change 置位：组件的长按计时器到期后自己调 _openAt，成功才派发这个事件
+ * （context-menu/index.ts 的 _userOpenChange.mark()），所以触屏轻点不会误置它；命令式
+ * openAt 按组件的约定**不**派发这件事，宿主自己的右键路径因此也不会误置。
+ *
+ * 它只活到抬手或下一次按下，是个手势内作用域的中间量，不是判据本身。
+ */
+let longPressOpened = false
+
+/*
+ * 抬手后浏览器会为**同一次触摸**补发一个 click，它同样落到 onRowSelect。不吃掉它，
+ * 菜单和预览 drawer 就会一起弹出来——用户看到的正是这个。
+ *
+ * 置位时机是**抬手**，不是长按到期。这一点是踩过坑才定下来的：
+ *
+ * 长按本来就是「按住不放」的手势，菜单弹出之后用户继续按住任意久都完全自然。而补发的
+ * click 是在抬手那一刻才到达的，它与「长按到期」的间隔等于「菜单弹出后继续按住的时长」，
+ * 由用户决定、上界无限。曾经在这里挂过一个有限窗口（镜像组件的
+ * LONG_PRESS_FOLLOW_UP_WINDOW_MS），看起来有组件侧依据，实际上组件那个窗口吸收的是
+ * contextmenu——那个事件在长按到期时就派发了，到派发时距锚点已经是 0ms，所以 1000ms
+ * 对它成立，对补发的 click 却是给用户可控的时长发通行证：按住超过窗口长度，抽屉照弹。
+ *
+ * 所以这里不用任何时间窗口。抬手置位、下一次 click 消费、下一次 pointerdown 作废，
+ * 整条链上唯一的时钟是浏览器自己派发这两个事件的间隔，不需要我们猜一个值。
+ *
+ * 为什么不在 pointerdown 就置位：那一刻还分不出「这一手会长按」和「这一手是轻点」。每一种
+ * 触屏按下都置位会把轻点一起吞掉——onRowSelect 见到标志就 return，而轻点的 click 正是靠
+ * 到达那里才激活行。
+ */
+let followUpClickPending = false
+
+/*
+ * 这一手是不是触屏。
+ *
+ * 只在 open-change 那一刻用来把「触屏长按开菜单」与「鼠标右键开菜单」分开：两者派发的
+ * 事件序列几乎一样，但只有触屏那条的补发 click 需要被吞。它由 handleSweepStart 在**每一次**
+ * pointerdown 上重新判定，不粘滞——若只由 touch 置位，触屏轻点没走到 onRowSelect 时（例如
+ * 点在行外）它会一直是 true，之后一次鼠标右键开菜单就被误认成长按，右键之后点行会点不动。
  */
 let lastPointerWasTouch = false
 
+/**
+ * 抬手：把「长按开出了菜单」翻译成「马上会来一个补发的 click」。
+ *
+ * 真实触控管线的顺序是 touchend → pointerup → 浏览器补发 click，所以补发的 click 到达时
+ * pointerup 已经过去，标志来得及立住；反过来，下一次 pointerdown 一定晚于这个补发 click
+ * （任何点击都要先有 pointerdown），所以 pointerdown 上的作废闸不会把它提前清掉。
+ */
+function handleRowsPointerUp(event: PointerEvent) {
+  // 这道 pointerType 门是冗余的：longPressOpened 只可能由触屏 open-change 置起，而那条路
+  // 已经要求 lastPointerWasTouch（同样是触屏 pointerdown 才为真），所以鼠标抬手本来也进不来。
+  // 保留它是**局部可读性**：不读上面两个变量的人，靠这一行就能判断这里只管触屏。
+  //
+  // 相应地，变异验证里「去掉 pointerType 门」不会有任何用例转红——那是冗余，不是覆盖缺口，
+  // 两者不要混为一谈。这行不是承重墙，但它也不该被顺手删掉。
+  if (event.pointerType !== 'touch') return
+  if (longPressOpened) followUpClickPending = true
+  longPressOpened = false
+}
+
+/** 手势被系统接管（滚动等）时收尾：补发的 click 不会来，标志不必留。 */
+function handleRowsPointerCancel() {
+  longPressOpened = false
+}
+
+function handleContextMenuOpenChange(event: WebUiEvent<WebUiContextMenu, 'open-change'>) {
+  if (!event.detail.open) return
+  // 菜单关闭不消费标志：补发的 click 恰恰常发生在菜单已关之后，提前作废它就退回老缺陷。
+  // 鼠标右键开菜单时同样派发 open-change，但鼠标点行是合法的，不能吞。
+  if (!lastPointerWasTouch) return
+  longPressOpened = true
+}
+
 function syncTouchContext(event: PointerEvent) {
   if (event.pointerType !== 'touch') return
-  lastPointerWasTouch = true
   const target = event.target
   if (!(target instanceof HTMLElement)) return
   const row = target.closest<HTMLElement>('[data-resource-row]')
@@ -742,6 +810,18 @@ function armTouchSweep() {
 }
 
 function handleSweepStart(event: PointerEvent) {
+  // 每一手都重新判定触屏/鼠标，并作废上一次手势留下的待消费标志。
+  //
+  // 三件事都必须排在下面那些 early return 之前：非选择模式下这里会立刻返回，而长按菜单
+  // 恰恰只在非选择模式下可用。
+  //
+  // 作废的理由：抬手时若没等到补发的 click（被系统吃掉、落点不可点等），标志会悬着，
+  // 而它一旦悬着，用户之后点任何一行都会「点不动」。任何新的按下都清掉它；而补发的 click
+  // 一定早于下一次 pointerdown（任何点击都先有 pointerdown），所以这道闸收拾得了残留，
+  // 又不会把该拦的那个提前放跑。
+  lastPointerWasTouch = event.pointerType === 'touch'
+  followUpClickPending = false
+  longPressOpened = false
   // 长按菜单要用的 contextResource 在这里落定：这是 pointerdown 冒泡到容器上的第一个监听器，
   // 早于 web-ui-context-menu 自己那个（它在宿主上，我们在容器的后代里）。放在早的那一侧，
   // 长按计时器到期时 contextResource 已经是对的，菜单开出来就有完整项。
@@ -827,15 +907,17 @@ function onRowSelect(resource: ResourceView) {
     return
   }
   /*
-   * 长按抬手后浏览器补发的 click 会走到这里。若此刻菜单正开着，那这次 click 就是长按的
-   * 回声而不是一次有意的选择——吃掉，否则菜单与预览 drawer 会同时弹出来。
+   * 长按抬手后浏览器补发的 click 会走到这里。若刚才那手确实开出了菜单，这次 click 就是
+   * 长按的回声而不是一次有意的选择——吃掉，否则菜单与预览 drawer 会同时弹出来。
    *
-   * 判据用「菜单开着没有」而不是「刚才那手是触屏没有」：只有长按才会让菜单开着，轻点
-   * 时它始终关闭。标志 lastPointerWasTouch 则用来把这条判断限定在触屏路径上——鼠标的
-   * click 同样会到达这里，而菜单开着（右键打开）时鼠标点行是合法的，不能吞。
+   * 判据是 followUpClickPending：抬手时置位（前提是那手确实开出了菜单），补发的 click
+   * 消费掉即清。触屏与鼠标的区分在 handleContextMenuOpenChange 记标志时就做完了。
+   *
+   * 这里刻意不去读「菜单此刻开着没有」：补发的 click 到达之前菜单往往已经因 blur /
+   * 外点关掉，此刻去读到 false，这条抑制就失效了，抽屉照弹——那正是本判据要修的缺陷。
    */
-  if (lastPointerWasTouch && contextMenuRef.value?.isOpen) {
-    lastPointerWasTouch = false
+  if (followUpClickPending) {
+    followUpClickPending = false
     return
   }
   lastPointerWasTouch = false
@@ -968,6 +1050,7 @@ function handleRenameChange(resource: ResourceView, event: WebUiEvent<WebUiEdita
     ref="contextMenuRef"
     :disabled="resources.length === 0"
     :long-press="selectionMode ? undefined : true"
+    @open-change="handleContextMenuOpenChange"
     class="block w-full h-full min-h-0"
   >
     <!--
@@ -992,6 +1075,8 @@ function handleRenameChange(resource: ResourceView, event: WebUiEvent<WebUiEdita
       @keydown="handleRowsKeydown"
       @focusin="handleRowsFocusin"
       @pointerdown="handleSweepStart"
+      @pointerup="handleRowsPointerUp"
+      @pointercancel="handleRowsPointerCancel"
     >
       <div v-if="loading" class="grid min-h-64 place-items-center" aria-live="polite">
         <div class="grid justify-items-center gap-3 text-sm text-(--wui-color-text-secondary)">
