@@ -28,9 +28,11 @@ dialog {
   box-sizing: border-box;
   width: min(90vw, var(--wui-dialog-width, 360px));
 
-  /* `--wui-dialog-max-height` 是公开 token（README 有记录）。此前这里是硬编码，
-     宿主的覆写会静默失效。dvh 增强放在 @supports 内，见文件末尾。 */
-  max-height: var(--wui-dialog-max-height, 90vh);
+  /* 整卡兜底：防卡片高过视口。真正的内容区上限在 .desc（见下），这里只接住
+     「视口本身很矮、chrome + 内容区上限也放不下」的情况。字面量而非 token，
+     免得与 .desc 抢同一个数值——共用时外层必然先触发（它是整卡约束），
+     .desc 的 max-height 就成了永远轮不到的死约束。dvh 增强见文件末尾。 */
+  max-height: 100vh;
   padding: 0;
   border: none;
 
@@ -53,11 +55,47 @@ dialog {
 /* 动态视口高度兜底：移动端工具栏收放时不让 dialog 超出可见区域。
    放在 @supports 内而非与上一条并列，是因为 var() 的回退值要到计算值阶段才替换；
    不支持 dvh 的引擎会在该阶段拿到非法值，使整条声明变成 invalid-at-computed-value-time
-   而丢失 max-height。并列两条普通声明则由解析期丢弃，行为不同。 */
+   而丢失 max-height。并列两条普通声明则由解析期丢弃，行为不同。dialog 这条是字面量，
+   并列也不会丢，但统一放在 @supports 内，免得两条规则看起来像两种不同的兜底策略。
+
+   `.desc` 的 dvh 增强不在这里：它必须排在文件后面那条 `.desc` 规则之后才生效，
+   同特异度下靠后者胜。放在这里会被后面那条的 `90vh` 回退静默覆盖。 */
 @supports (height: 100dvh) {
   dialog {
-    max-height: var(--wui-dialog-max-height, min(90vh, 90dvh));
+    max-height: 100dvh;
   }
+}
+
+/* ===== 高度约束下移到内容区（chrome 由内容撑开） =====
+
+   宿主过去必须复述一个会变的 chrome 高度：AddDialog / RestoreDialog 都写
+   `height: min(calc(82vh - 108px), calc(var(--wui-dialog-max-height, 560px) - 108px))`
+   （改动前的写法，见 base b6b7eb34；这两处宿主已按新语义转换），
+   而那 108 里的 footer 一项就是 --wui-control-size——触摸端
+   `@media (pointer: coarse)` 把它从 36px 抬到 40px，chrome 随之长高，宿主的常数立刻腐坏。
+
+   现在 header / footer 完全由内容撑开，上限只落在 .desc。修掉的是「宿主必须知道 chrome
+   才能让内容区滚起来」：改动前 .desc 既没有上限也没有 overflow，内容超高时直接把卡片
+   顶出 dialog 盒子，唯一能滚的地方是宿主自己用 `min(calc(82vh - 108px), …)` 之类的
+   内层 height 撑出来的那一块。现在上限与滚动都归 .desc，宿主不必再为「让它滚」而算。
+
+   但「宿主不再需要知道 chrome 多高」并不成立，改成这样写会误导后人。--wui-dialog-max-height
+   的语义是**内容区**上限：宿主若要给整卡定上限，仍然得自己量出 chrome 再从 token 里减掉
+   （AddDialog / RestoreDialog 减 142，SettingsDialog 减 106，三处不能互相照抄）。把整卡
+   上限原样写进 token，卡片会比预期高出一个 chrome。
+
+   实测（Chromium + WebKit，见 __tests__/dialog-content-height.browser.spec.ts）：本组 CSS
+   只对 **title 模式**生效——body 模式（走 slot="body"、没有 .desc）的**卡片尺寸**不变。
+   但位置不保证：`dialog` 的整卡兜底从 min(90vh, 90dvh) 收紧到字面量 100vh，modal dialog
+   按自身盒子在视口里居中、卡片从盒子顶部起画，盒子更高 → 卡片在视口内上移。内容接近视口
+   高度时位移可观测（reviewer 实测 52px / 102px / 25.16px），只有内容远矮于视口时位移为 0
+   （两个 demo 正是落在这一档，巧合而非保证）。 */
+
+/* dialog 不是 flex 容器时 .desc 的 height:100% 拿不到确定高度（:host 是 display:contents，
+   dialog 自身默认 block），宿主的内层 grid 因此撑不满、两栏不等高。 */
+dialog:has(.desc) {
+  display: flex;
+  flex-direction: column;
 }
 
 /* 面板本身是模态表面，不作为可聚焦控件；Safari showModal() 会把焦点放到 dialog，不应画 UA ring。内部控件保留 focus ring。 */
@@ -112,6 +150,24 @@ dialog[open].is-visible::backdrop {
     opacity var(--wui-duration-dialog-enter, 320ms) var(--wui-ease-dialog, cubic-bezier(0.2, 0, 0, 1)),
     -webkit-backdrop-filter var(--wui-duration-dialog-enter, 320ms) var(--wui-ease-dialog, cubic-bezier(0.2, 0, 0, 1)),
     backdrop-filter var(--wui-duration-dialog-enter, 320ms) var(--wui-ease-dialog, cubic-bezier(0.2, 0, 0, 1));
+}
+
+/* 卡片改 grid 容器：title 与 footer 走 auto（内容撑开），.desc 走 minmax(0,1fr)。
+   minmax 的 0 是 .desc 能收缩的前提；配合 .desc 的 min-height:0 与 overflow-y:auto，
+   内容超高时滚动发生在内容区内部，而不是把卡片顶出 dialog 盒子。
+
+   单列而非与基础 .wui-dialog-body 合并：`:has()` 的特异度高于类选择器，合并会让
+   「仅 title 模式变 grid」变成「所有模式都变 grid」，那会改掉 body 模式的几何
+   （实测高内容 body 的卡片会从 3044 被夹到 896）。位置也受 stylelint
+   no-descending-specificity 约束：须排在基础规则之后、dialog.is-closing 之前。 */
+.wui-dialog-body:has(.desc) {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+
+  /* 这条 min-height: 0 是承重的（`.desc` 那条不是）：卡片是 `dialog` 这个 column flex
+     容器的 flex 项，`min-height: auto` 会把它垫到内容高度，视口的 100dvh 兜底就再也
+     夹不住。删掉后 token=5000px 时卡片实测 3154、dialog 896。 */
+  min-height: 0;
 }
 
 dialog.is-closing .wui-dialog-body {
@@ -179,12 +235,79 @@ dialog[open].is-visible .wui-dialog-body {
 }
 
 .desc {
-  margin: 0 0 var(--wui-dialog-desc-gap, var(--wui-space-6, 24px));
-  padding: 0;
+  /* 横向显式 clip 而非留默认的 visible：一旦本轴成为滚动容器，另一轴的 visible 会被
+     计算成 auto，宿主内容横向溢出时就会多出一条不该出现的横向滚动条。
+     Chromium / WebKit 实测：clip 与本规则下面的 auto 配对时计算值会降级成 hidden
+     （仍可被脚本滚动）。Firefox ≥128 不做这个降级、保持 clip，但仓库的 browser-mode
+     项目只跑 chromium，这句未经本仓 CI 证实。两个引擎都不画横向滚动条，所以这里
+     只需要「不是 auto」；断言写成 not.toBe('auto') 而非 toBe('clip')，否则会在
+     降级的引擎上误报。 */
+  overflow-x: clip;
+
+  /* 内容区自己滚。 */
+  overflow-y: auto;
+
+  /* 承重的是上面那条 `overflow-y: auto`：按 CSS Sizing 3，溢出轴不为 visible 的
+     grid 项其自动最小尺寸就是 0，`.desc` 无需再显式归零（实测删掉本条测试仍全绿，
+     改成 `auto auto auto` 也一样）。这里保留是防御性的：哪天 `overflow-y` 被改回
+     visible，显式归零仍在，minmax(0,1fr) 才不会被顶破。 */
+  min-height: 0;
+
+  /* 内容区上限 = token + ring 余量：token 语义是内容区高度，ring 不该从它里面扣。
+     token 只挂在这里，不与 dialog 的 max-height 共用——共用时外层（整卡）必然先触发。 */
+  max-height: calc(var(--wui-dialog-max-height, 90vh) + var(--wui-dialog-desc-focus-padding, 6px) * 2);
+
+  /* ===== focus-ring 余量：四个轴一视同仁，成对负 margin 原样扣回 =====
+
+     .desc 既是滚动容器又是裁剪盒（clip），贴在内容区任一沿的控件，其 ring
+     （offset 2 + width 3 = 5px）会被 padding box 裁掉；留 6px 余 1px。少补任何一条轴，
+     那一侧的 ring 就会退化成 1px 残条——只补 `padding-block` 的那版，全宽控件的左右环
+     就是这样被裁掉的（改动前 `.desc` 没有 overflow，最近裁剪祖先是 NONE，所以这是本轮
+     新引入的裁剪，不是既有限制）。
+
+     四条 padding 各配一条等量负 margin，把这 12px×2 从外部间距里扣回去，border box
+     回到改动前的样子，content box 的宽/高也不变（负 margin 让盒子外扩，padding 原样
+     吃回去）。所以 title→内容、内容→footer、内容与卡片左右沿的视觉间距与改动前逐像素
+     相同，宿主内层 grid 的可用尺寸也不变——后者是横向余量最该守住的不变量，否则
+     AddDialog 那种两栏 grid 的 drop zone 会换行（实测见
+     __tests__/dialog-content-height.browser.spec.ts 的「focus-ring 余量覆盖四条轴」）。
+
+     取舍，是取舍不是疏漏：负 margin 让 `.desc` 的 border box 溢出滚动内容区，所以
+     底部那圈 ring 余量不随内容滚动——滚到最底时 footer 那一侧仍留得住 padding，而
+     内容末端到 `.desc` 下沿的 desc-gap 恒定，不跟着内容走。 */
+  margin-top: calc(-1 * var(--wui-dialog-desc-focus-padding, 6px));
+
+  /* margin-bottom 是「desc-gap 减去那对 padding-block」，两个都是公开 token：宿主把
+     desc-gap 调到 focus-padding 以下就会算出负 margin（24/8 安全，4/2/0 会算出
+     -2/-4/-6）。max() 兜住下界 0——那条路径下内容末端与 footer 会贴在一起，但盒模型
+     与 grid 行分配不进负值区间。
+
+     横向不需要同样的兜底：margin-inline 恒为 -focus-padding，没有第二个公开 token 参与
+     减法。它与卡片 inline padding（默认 24px）的关系是「focus-padding 不应超过该
+     padding，否则 .desc 会横向溢出卡片」，由上面那段注释交代。 */
+  margin-bottom: max(
+    0px,
+    calc(var(--wui-dialog-desc-gap, var(--wui-space-6, 24px)) - var(--wui-dialog-desc-focus-padding, 6px))
+  );
+  margin-inline: calc(-1 * var(--wui-dialog-desc-focus-padding, 6px));
+  padding-block: var(--wui-dialog-desc-focus-padding, 6px);
+  padding-inline: var(--wui-dialog-desc-focus-padding, 6px);
 
   font-size: var(--wui-font-size, 14px);
   line-height: var(--wui-line-height-normal, 1.5);
   color: var(--wui-color-text, #1b1b1b);
+}
+
+/* `--wui-dialog-max-height` 是公开 token（README 有记录），语义是**内容区**高度。
+   默认值与整卡兜底同族（90vh / dvh），使未覆写的 dialog 视觉高度与改动前一致：
+   移动端 90vh 可能大于 90dvh（vh 取大视口高），少了 min() 内容区会探到工具栏下面。
+
+   必须紧跟在 `.desc` 之后而非文件开头的 @supports 块里：两者特异度相同（0,1,0），
+   靠后者胜。实测把本条挪到前面后，`.desc` 的计算值会退回 90vh。 */
+@supports (height: 100dvh) {
+  .desc {
+    max-height: calc(var(--wui-dialog-max-height, min(90vh, 90dvh)) + var(--wui-dialog-desc-focus-padding, 6px) * 2);
+  }
 }
 
 .wui-dialog-footer {

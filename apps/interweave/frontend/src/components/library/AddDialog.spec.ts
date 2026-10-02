@@ -576,4 +576,39 @@ describe('AddDialog', () => {
       mounted.close()
     }
   })
+
+  /*
+   * 高度契约：`--wui-dialog-max-height` 的语义已从「整卡高度」改成「内容区高度」，
+   * 上限改由 web-ui-dialog 内部的 `.desc` 承担。宿主因此不再复述 chrome 常数——
+   * 旧写法 `calc(var(--wui-dialog-max-height) - 108px)` 里的 108 含 footer 的
+   * --wui-control-size，触摸端媒体查询把它从 36 抬到 40 后立刻失配。
+   *
+   * 这条只断言声明本身，不做布局断言：jsdom 没有布局引擎，解不出 Tailwind 任意值里
+   * 的 calc。真实几何由浏览器验证与 packages/web-ui 的
+   * dialog-content-height.browser.spec.ts 覆盖。
+   */
+  it('token 扣掉的是实测 chrome（142），内层不再复述 chrome 常数', async () => {
+    const mounted = mountDialog([queueItem()])
+
+    try {
+      await nextTick()
+
+      const dialog = mounted.host.querySelector('web-ui-dialog')
+      if (!dialog) throw new Error('web-ui-dialog was not rendered')
+
+      // 空格必须写成下划线：写成字面空格会被 Tailwind 拆成三个类，整条声明静默失效，
+      // token 读出来是空串（这条已经踩过一次）。
+      expect(dialog.getAttribute('class')).toContain('[--wui-dialog-max-height:calc(min(82vh,560px)_-_142px)]')
+
+      const inner = [...mounted.host.querySelectorAll<HTMLElement>('[style]')].find(el =>
+        el.style.height.includes('--wui-dialog-max-height')
+      )
+      if (!inner) throw new Error('inner grid was not rendered')
+      expect(inner.style.height).toBe('var(--wui-dialog-max-height)')
+      // 回归护栏：旧的 108 不得复活。
+      expect(mounted.host.innerHTML).not.toContain('108px')
+    } finally {
+      mounted.close()
+    }
+  })
 })

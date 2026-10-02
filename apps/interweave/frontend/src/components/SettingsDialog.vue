@@ -94,7 +94,7 @@ function pickAccent(value: string) {
     :open="open"
     controlled
     closable
-    class="[--wui-dialog-width:min(90vw,480px)] [--wui-dialog-max-height:min(90vh,328px)]"
+    class="[--wui-dialog-width:min(90vw,480px)] [--wui-dialog-max-height:calc(min(90vh,328px)_-_106px)]"
     @open-change="handleOpenChange"
   >
     <span slot="title">设置</span>
@@ -103,29 +103,35 @@ function pickAccent(value: string) {
       固定高度：切 tab 不再让 dialog 长高矮。三个 tab 的内容高度本来差很多（实测
       通用 118 / 外观 208 / 资源库 144，见下），此前由内容撑高，切一次跳一次。
 
-      两个常数都是实测的，不是照抄 AddDialog 的 108（那个是「title + gap + footer」
-      三段，而这里删掉 footer 按钮后 footer 段高度为 0，基数已经变了）。
+      `--wui-dialog-max-height` 的语义已从「整卡高度」改成「内容区高度」
+      （见 @greypan/web-ui 的 dialog），上限改由组件的 `.desc` 承担，内层直接用 token
+      当高度——不是 height: 100%，那会让内容不足时 `.desc` 收缩到内容高，
+      「切 tab 不跳」这个性质就没了。
+      token 声明在外层 web-ui-dialog 上，内层作为后代继承得到，两个数不会走散。
+      token 里减掉的 106 是本 dialog 的 chrome 实测值，不是照抄 AddDialog 的 142——
+      这里删掉 footer 按钮后 footer 段高度为 0，基数已经变了。
       在 http://localhost:9245/ 打开本 dialog、量 web-ui-dialog shadow 内各段实测：
 
         卡片上 padding        20（上）+ 24（下）
         .title-row 外高      37.59（title 21.59 + margin-bottom 16）
-        .desc margin-bottom  24
-        .wui-dialog-footer   0（closable 的关闭按钮在标题行，footer slot 已空）
+        .desc margin-top       −6（focus-ring 上余量的成对负 margin，扣回 title 下方间距）
+        .desc padding-block   12（focus-ring 余量）
+        .desc margin-bottom   18
+        .wui-dialog-footer    0（closable 的关闭按钮在标题行，footer slot 已空）
         ------------------------------------------
-        chrome               105.59 → 106（向上取整，留亚像素余量）
+        chrome                105.59 → 106（向上取整，留亚像素余量）
 
       内容侧实测最高的一档是「外观」208（segmented + mb-4 + 主题行 + accent 色板）。
       328 = 106 (chrome) + 208 (最高内容) + 12 (focus ring 余量，见 py-1.5) + 2 (亚像素余量)。
       余下 2px 落在外观 tab 色板下方的空处，看不出来，却能挡住「别的平台行高差半像素
       就让最高的一档凭空长出滚动条」。
 
-      内层 height 用 var(--wui-dialog-max-height) 而不是把 min(90vh, 328px) 再抄一遍：
-      宿主那条声明在同一个元素上，内层作为后代继承得到，两个数不会走散。max-height 写
-      min(90vh, ...) 是为了让矮视口下整张卡片跟着缩，而不是内容被裁在 328px 里。
+      max-height 写 min(90vh, ...) 再减 chrome，是为了让矮视口下整张卡片跟着缩，
+      而不是内容被裁在 328px 里。
 
       overflow-y-auto 只是安全阀：328px 已经容得下最高的一档，常规尺寸下三个 tab 都不滚。
     -->
-    <div class="overflow-y-auto py-1.5" style="height: calc(var(--wui-dialog-max-height, 328px) - 106px)">
+    <div class="overflow-y-auto py-1.5" style="height: var(--wui-dialog-max-height)">
       <!-- 三段 tab 放在内容区顶部而不是标题栏：标题栏留给标题与关闭按钮，窄屏下两者不挤。 -->
       <web-ui-segmented class="mb-4 w-full" :value="activeTab" aria-label="设置分区" @change="handleTabChange">
         <web-ui-segmented-trigger v-for="tab in TABS" :key="tab.value" :value="tab.value">
