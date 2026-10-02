@@ -235,9 +235,17 @@ dialog.is-nested-lower .wui-drawer-drag-zone {
  * 节点之上，抬 z-index 无效。唯一量得着的杠杆是 `--wui-drawer-drag-bar-length`：
  * 它同时决定胶囊长度与本元素宽度，缩短它就同比例缩短本元素（README 已写明）。
  *
- * 高度只由胶囊中线 token 推导，不引入第二个常数：`中线 + 半个厚度` 恰是胶囊的外沿；
- * 而中线的下限（`max()` 第二项）保证 `中线 - 半个厚度 ≥ 4 > 0`，于是
- * **胶囊带恒被热边带包含**——两者不可能因为改了某个 padding 而悄悄错开，
+ * 高度取两条来源的 **max()**：
+ * - `中线 + 半个厚度` 恰是胶囊的外沿；
+ * - `--wui-drawer-drag-edge-size`（默认 20px）是给手指的命中厚度。
+ * 加这条是因为端头原本只有 12px（＝中线 10 + 半个厚度 2），真机反馈「很难拖动到」。
+ * 默认值取 20px 的依据：与主热区 `--wui-drawer-drag-zone-size` 的默认厚度同值，
+ * 于是**胶囊的命中带恒不窄于主热区**，「按你看到的把手」不会比「按旁边的带子」更难。
+ * 再往上加会开始吃掉 header 里控件的位置（端头整块可拖后，那一节是要放控件的）。
+ *
+ * 取 max() 而非直接用 token，是为了保住包含关系：中线的下限（`max()` 第二项）保证
+ * `中线 - 半个厚度 ≥ 4 > 0`，而热边从面板边缘（top/bottom placement 下恒为 0）起算，
+ * 于是**胶囊带恒被热边带包含**——consumer 把 edge-size 调到比胶囊带还小也吃不掉它。
  * 这条包含关系是 token 定义推出来的，不是靠约定维持的。
  *
  * 竖向仍比胶囊多出「面板边缘到胶囊近侧」那一条（≤ 中线 − 半个厚度，默认 8px），
@@ -254,7 +262,10 @@ dialog.is-nested-lower .wui-drawer-drag-zone {
   left: calc(50% - var(--wui-drawer-drag-bar-length, 56px) / 2);
 
   width: var(--wui-drawer-drag-bar-length, 56px);
-  height: calc(var(--wui-internal-drag-bar-center) + var(--wui-drawer-drag-bar-thickness, 4px) / 2);
+  height: max(
+    calc(var(--wui-internal-drag-bar-center) + var(--wui-drawer-drag-bar-thickness, 4px) / 2),
+    var(--wui-drawer-drag-edge-size, 20px)
+  );
 
   transition: opacity var(--wui-duration-feedback, 100ms) ease;
 }
@@ -464,6 +475,37 @@ dialog.is-dragging .wui-drawer-drag-zone {
 
 .wui-drawer-footer[hidden] {
   display: none;
+}
+
+/*
+ * 上下 placement：贴着可抓边缘的那一节（bottom 的 header、top 的 footer）整块可拖。
+ *
+ * 让开靠**逐个控件**在事件层判断（见 index.ts 的 _handleSectionDragPointerDown），
+ * 不靠把热区铺上来——铺上来会把这一节里的控件吞掉，正是 A6 修掉的那条缺陷。
+ * 所以这里只需要手势与光标两件样式，命中关系由那一节自己承担。
+ *
+ * `touch-action: none` 不可省：否则触摸落在标题文字或控件上时，浏览器会先把它
+ * 判成滚动意图，越过阈值就 pointercancel，拖拽根本起不来（与热区同一条理由）。
+ * 它是祖先节点，触摸落在深层 slotted 子元素上时同样生效——touch-action 沿命中链
+ * 求交，不要求落在声明元素本身上。
+ *
+ * 按 `[draggable]` 收口：draggable 为假时这一节不接手势，也不该被夺走触摸手势。
+ *
+ * 再按 `dialog:not(.is-nested-lower)` 收口，与事件层闸门（index.ts 的
+ * _handleSectionDragPointerDown）和热区 / 热边 / 胶囊那三条 `is-nested-lower` 退场
+ * 判同一条：嵌套下层的抽屉整套拖拽提示一起退场。这里漏掉就会只剩提示面没退——
+ * 而 `touch-action` 沿命中链求交，下层 header 区域的触摸滚动是被真的夺走的，
+ * 那里却拖不动：既骗光标又吞手势，比留着可拖的提示面更糟。
+ */
+:host([placement='bottom'][draggable]) dialog:not(.is-nested-lower) .wui-drawer-header,
+:host([placement='top'][draggable]) dialog:not(.is-nested-lower) .wui-drawer-footer {
+  touch-action: none;
+  cursor: grab;
+}
+
+:host([placement='bottom'][draggable]) dialog:not(.is-nested-lower).is-dragging .wui-drawer-header,
+:host([placement='top'][draggable]) dialog:not(.is-nested-lower).is-dragging .wui-drawer-footer {
+  cursor: grabbing;
 }
 
 /* ===== 关闭按钮（绝对定位）=====
