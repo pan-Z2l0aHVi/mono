@@ -1125,7 +1125,7 @@ Hover 模式使用 `pointerenter`/`pointerleave` 加延迟控制。Click 模式�
 
 `long-press` 是 opt-in 且只针对触屏：指针按住 `long-press-delay`（默认 `500` ms，与平台原生长按一致）后打开菜单，走与右键完全相同的路径。它只响应 `pointerType === 'touch'`；按住期间位移超过 10px 即取消，因此滚动不会误开菜单。由于浏览器会把同一次按住也识别为原生手势，长按打开后引擎补发的 `contextmenu` 与 `click` 会被吸收，既不会重复打开，也不会把刚打开的菜单立刻 light-dismiss 掉。
 
-`long-press` 打开的菜单贴视口下缘展开，水平方向仍跟随长按落点，并让开 `--wui-context-menu-safe-area-bottom`，避免最下面一项落进 home indicator。分流依据是**输入方式**而非视口宽度：窄窗口里的鼠标右键仍然贴着光标展开，只有触屏才拿到底部贴边的布局。
+`long-press` 打开的菜单从按点**向下**展开：上缘对齐按点 `y`、水平居中于按点 `x`，与 iOS / Android 原生长按菜单的形态一致。下方空间不够时面板翻转到按点上方而不是跑出屏幕，两轴都会被夹回视口内，并让开 `--wui-context-menu-safe-area-bottom`，避免最下面一项落进 home indicator。分流依据是**输入方式**而非视口宽度：窄窗口里的鼠标右键仍然贴着光标左上角展开。两者只有水平对齐量不同 —— 定位走的是同一趟 `computePosition`，因此不会各自漂移。
 
 `disabled` 只抑制菜单行为：右键与 `openAt()` 都不打开菜单。它不会给 default slot 里的内容置灰或改色——组件自身根本不渲染菜单面，没有可置灰的对象；禁用右键菜单也不等于禁用触发区。需要让禁用态在视觉上可读时，请在自己的内容上表达。
 

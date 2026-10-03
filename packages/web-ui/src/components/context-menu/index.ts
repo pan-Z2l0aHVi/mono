@@ -1,4 +1,4 @@
-import { computePosition, shift } from '@floating-ui/dom'
+import { computePosition, flip, shift } from '@floating-ui/dom'
 import { html, LitElement, unsafeCSS } from 'lit'
 import { customElement, property, state } from 'lit/decorators.js'
 
@@ -133,13 +133,26 @@ export class WebUiContextMenu extends LitElement {
    */
   private _scrim?: HTMLDialogElement
   /**
-   * 本次开启是否贴视口底边展开（触屏长按路径）。鼠标 / 键盘路径仍锚定落点。
+   * 本次开启是否**水平居中于触发点**（触屏长按路径）。鼠标 / 键盘路径仍左上角对齐光标。
    *
-   * 走「触屏才贴底」而不是「窄视口就贴底」：窄视口的鼠标右键仍期望菜单出现在光标旁，
-   * 按视口宽度分流会让同一块屏幕上的两种输入得到两套布局，且与本组件 opt-in 的
-   * `long-press` 属性不同源。开启来源由调用点显式传入，不靠运行时嗅探。
+   * 只切换 placement 的对齐量，不切换定位算法 —— 两条入口共用 `_positionMenu` 里的
+   * 同一套 `computePosition` + `flip` / `shift`，垂直契约（上缘对齐触发点、向下展开、
+   * 放不下翻到上方）完全一致。
+   *
+   * 触屏要居中：手指按下去的位置是「这块内容在这里」的意思，菜单在它正下方居中展开，
+   * 正是 iOS / Android 原生长按菜单的形态；左对齐会让菜单整体偏到手指右侧，看起来像
+   * 弹在了别的东西上面。
+   *
+   * 鼠标不居中：桌面右键的肌肉记忆是菜单**左上角**出现在光标处。更要紧的是居中会让光标
+   * 落在面板上缘正中 —— 也就是落在第一项的命中区里。后果是菜单一开就有项处于 hover 高亮，
+   * 并且紧接着再右键一次（想开子菜单）会打在菜单项上而不是空白处。`overlay-in-dialog`
+   * 里 `openAt(100, 400)` 那条用例钉的 `'top left'` 正是这条契约。
+   *
+   * 判据是**开启来源**（调用点显式传入），不靠运行时嗅探 pointerType 或视口宽度：
+   * 后两者会让同一块屏幕上的两种输入拿到两套布局，且与本组件 opt-in 的 `long-press`
+   * 属性不同源。
    */
-  private _anchorBottom = false
+  private _centerOnPressPoint = false
 
   /**
    * 本次关闭的来源，决定焦点归还走哪条路。语义见 `close()` 里的说明。
@@ -392,14 +405,14 @@ export class WebUiContextMenu extends LitElement {
     y: number,
     isInstant: boolean,
     suppressFocusVisible: boolean,
-    anchorBottom = false
+    centerOnPressPoint = false
   ): boolean {
     if (this.disabled) return false
     this._x = x
     this._y = y
     this._shouldOpenInstantly = isInstant
     this._suppressInitialFocusVisible = suppressFocusVisible
-    this._anchorBottom = anchorBottom
+    this._centerOnPressPoint = centerOnPressPoint
     this._outsideClickGuard.arm()
     if (this._isOpen) {
       this._closeSubmenusFrom(0, true)
@@ -463,97 +476,137 @@ export class WebUiContextMenu extends LitElement {
     this._hoverBinder.bind()
   }
 
+  /**
+   * 定位：**触屏长按与鼠标右键共用这一条 Floating UI 路径**。
+   *
+   * 两条入口现在只差「触发点的 x/y 从哪来」，布局契约完全一致：
+   * `bottom-start` 表达「面板上缘 == 触发点 y、向下展开」，水平以触发点 x 为基准。
+   * 之前有一条手写的贴底分支（先按点、再按视口下缘算 `top`），那是把「贴视口底」硬编码
+   * 成算术；真机反馈证明它错（菜单跑到屏幕最底部，与手指按下的位置完全脱节）。现在
+   * 落点交给 `flip` / `shift` 按**实际空间**决定，`placement` 只表达意图。
+   *
+   * 不再按「是否触屏」分流：窄视口的鼠标右键同样期望菜单贴着光标出现，按输入类型或视口
+   * 宽度分流会让同一块屏幕上的两种输入拿到两套布局。分流所需的 `_anchorAtPressPoint`
+   * 连同 `_positionMenuInViewport` / `_positionMenuAtPressPoint` 两个方法一起删掉 ——
+   * 面板恒为 open scrim `<dialog>` 的直接子节点（`createMenuPortalOverlay` 第三参传入
+   * scrim，`menu-portal.ts` 里 `container = scrim ?? …`），所以旧代码那条
+   * 「非 dialog 容器」的分支对 context-menu 本来就不可达。
+   *
+   * 算出来的 left/top 是**视口坐标**。面板是 `position: fixed`，而 scrim 刻意不带
+   * transform / filter / contain（见 style.css），因此不构成 fixed 的包含块 ——
+   * 坐标直接相对视口解析。这条等价关系由 style.css 的满屏声明保证，并由 R6 的
+   * 「scrim 无 transform/filter/contain」+ viewport-fit 的几何断言兜底。
+   */
   private _positionMenu() {
     const panel = this._menu?.panel
     if (!panel) return
 
+    /*
+     * 先读安全区，再碰面板：`getComputedStyle` 会强制一次同步布局，让它发生在面板进入
+     * 「可测」状态之前，而不是夹在「面板刚可测」与「Floating UI 量它」之间。
+     *
+     * 需要说清楚的是，**这不是** viewport-fit 那条横向断言里 2px 抖动的成因。把这一行移到
+     * 最前面实测并没有让那个偏差消失（改前改后都是 204 对期望 206）。那个 2px 来自 flip 的
+     * reset 会多跑一轮测量：那一刻面板宽 202px、落定后 200px。相关用例已经不再钉与视口
+     * 边界的精确距离。
+     */
+    const safeAreaBottom = this._safeAreaBottom()
+
     panel.style.visibility = 'hidden'
     panel.style.display = ''
 
-    /*
-     * 贴底路径不走 Floating UI：目标位置已经完全确定（水平锚长按点、垂直贴视口下缘），
-     * `shift` 那套「先摆再夹」只会把它从下缘推回来。
-     *
-     * 这里写的 left/top 是**视口坐标**。面板是 `position: fixed`，而 scrim 刻意不带
-     * transform / filter / contain（见 style.css），因此不构成 fixed 的包含块 ——
-     * 坐标直接相对视口解析。这条等价关系由 style.css 的满屏声明保证，并由 R6 的
-     * 「scrim 无 transform/filter/contain」+ R7 的几何断言兜底：scrim 一旦偏移，位置断言立刻红。
-     */
-    if (this._anchorBottom) {
-      this._positionMenuAtViewportBottom(panel)
-      return
-    }
-
-    // 普通 overlay root 不经过 transformed containing block，保留轻量的同步定位。
-    // 只有 panel 已进入 open native dialog 时才需要 Floating UI 解析坐标。
-    if (!(panel.parentElement instanceof HTMLDialogElement && panel.parentElement.open)) {
-      this._positionMenuInViewport(panel)
-      return
-    }
-
     const generation = this._menuPositionGeneration.next()
+    /*
+     * 可用矩形 = 视口 − 安全区 − 最小间距。flip 与 shift 必须吃**同一份** padding：
+     *
+     * - flip 用它判断「这一侧放不放得下」，决定翻不翻；
+     * - shift 用它做实际钳制，且 `crossAxis: true` 会**同时**钳主轴与交叉轴
+     *   （core 的 shift 默认 mainAxis=true / crossAxis=false，开了 crossAxis 才两边都管）。
+     *
+     * 安全区必须进 shift 而不只是 flip：flip 只挑「哪一侧」，挑完就把面板贴在触发点上，
+     * 不再管这一侧内部的位置。触发点本身落在安全区里时（按在屏幕最底部），挑出来的
+     * 「上方」那一侧仍然把面板下缘按在安全区里 —— 只有 shift 的主轴钳制会把它推上来。
+     * 这条正是 R7 用例在钉的行为。
+     */
+    const boundaryPadding = {
+      top: VIEWPORT_PADDING,
+      bottom: VIEWPORT_PADDING + safeAreaBottom,
+      left: VIEWPORT_PADDING,
+      right: VIEWPORT_PADDING
+    }
+    /*
+     * 限制 flip 的候选集为「下方 / 上方」两个，**刻意不含 `-start` / `-end` 的另一侧**。
+     *
+     * 为什么必须限制：`flip` 对对齐过的 placement（`bottom-start`）默认展开成
+     * `getExpandedPlacements()`，候选里带着 `bottom-end` / `top-end`。于是鼠标贴视口右缘、
+     * `bottom-start` 的对齐侧溢出时，flip 会认定「`bottom-end` 才放得下」并把面板整个挪到
+     * 光标左侧。落点仍在视口内，但那是一次没人要求的契约变更 —— 水平夹取本来就归 shift，
+     * 而且对齐量一变，transform-origin 的推导前提（对齐量不变 ⇒ 水平 origin 只由 shift 位移
+     * 决定）就不成立了。
+     *
+     * 用的是 `fallbackPlacements` 而不是 `allowedPlacements`：后者是 `autoPlacement` 的选项，
+     * `flip` 根本不读，传进去只会被静默忽略（TS 会报错，运行时会当成 padding 之外的字段丢掉）。
+     * `fallbackPlacements` 正是 flip 用来**替换**上面那个默认展开列表的字段，指定后
+     * `placements = [initialPlacement, ...fallbackPlacements]`，连 bestFit 兜底也只在这份
+     * 候选里挑，`-end` 因此永远不可能出现。
+     *
+     * 用例「鼠标贴视口右缘时对齐量不被 flip 改成 -end」钉的就是这一条。
+     */
+    const placements = this._centerOnPressPoint
+      ? (['bottom', 'top'] as const)
+      : (['bottom-start', 'top-start'] as const)
+
     void computePosition({ getBoundingClientRect: () => new DOMRect(this._x, this._y, 0, 0) }, panel, {
       strategy: 'fixed',
-      placement: 'bottom-start',
-      // crossAxis 必须显式开启：bottom-start 的 sideAxis 为 y，默认只钳制 x，
-      // 视口下缘打开时菜单底部会溢出且无法滚动进入视野。
-      middleware: [shift({ padding: 8, crossAxis: true })]
-    }).then(({ x, y, middlewareData }) => {
+      /*
+       * `bottom`（触屏）：面板上缘对齐触发点 y、水平居中于触发点 x。
+       * `bottom-start`（鼠标）：同样上缘对齐 y，但左缘对齐光标 x。理由见
+       * `_centerOnPressPoint` —— 居中会把光标落进面板上缘的命中区。
+       *
+       * 居中在贴边时**必然**被 shift 的交叉轴钳制打破（按点 x 太靠边，居中的面板会溢出视口）。
+       * 这不是缺陷而是取舍：完整可见优先于几何居中。shift 推完面板仍在视口内，
+       * 只是不再居中 —— 用例「按点贴视口右缘时仍完整可见」钉的就是这一条。
+       */
+      placement: placements[0],
+      middleware: [
+        /*
+         * flip 负责「向下放不下就翻到按点上方」—— 面板下缘对齐按点、向上长。
+         * 两侧都放不下（按点极低且面板极高）时它按 bestFit 选空间多的一侧并夹住主轴，
+         * 所以不需要自己再写一遍兜底夹取。
+         */
+        flip({ fallbackPlacements: [...placements], padding: boundaryPadding }),
+        shift({ padding: boundaryPadding, crossAxis: true })
+      ]
+    }).then(({ x, y, placement, middlewareData }) => {
       if (!this._isOpen || this._menu?.panel !== panel || !this._menuPositionGeneration.isCurrent(generation)) return
-      // dialog 相对坐标不能与 viewport 的 _x/_y 比较推导 origin（原点非零时几乎恒判
-      // right/bottom）；shift 数据是该坐标系内的钳制位移增量，负值即被推向该轴起点侧。
       const shiftX = middlewareData.shift?.x ?? 0
-      const shiftY = middlewareData.shift?.y ?? 0
-      this._applyMenuPosition(panel, x, y, shiftX < 0 ? 'right' : 'left', shiftY < 0 ? 'bottom' : 'top')
+      /*
+       * 垂直 origin 取 flip 后的实际 placement，不看 shift 位移：placement 直接说明面板
+       * 落在触发点的哪一侧，而「离触发点最近的那条边」就是 scale 应该长出来的地方。
+       *
+       * 水平：默认跟 placement 的对齐量；被 shift 推动时改用推动方向那一侧，菜单才是朝
+       * 光标「长过来」而不是从视口边缘滑进去。居中（placement 不带 `-` 对齐后缀）且未被
+       * 推动时保持 `center`。
+       */
+      const horizontalOrigin = !placement.includes('-')
+        ? shiftX === 0
+          ? 'center'
+          : shiftX < 0
+            ? 'right'
+            : 'left'
+        : shiftX < 0
+          ? 'right'
+          : 'left'
+      this._applyMenuPosition(panel, x, y, horizontalOrigin, placement.startsWith('bottom') ? 'top' : 'bottom')
     })
-  }
-
-  private _positionMenuInViewport(panel: HTMLElement) {
-    /*
-     * 用 offsetWidth / offsetHeight 而不是 getBoundingClientRect()。
-     *
-     * 此刻面板正带着进场动画 `transform: scale(var(--wui-scale-enter, 0.95))`
-     * （assets/overlay-motion.css），而 rect 含 transform：夹取会按缩小 5% 的尺寸算，
-     * 动画落定后面板长回去，越出视口下缘一段（实测 456px 高的菜单越出 14.8px，
-     * 面板 overflow-y: hidden，最下面一项直接点不到）。offset* 不受 transform 影响。
-     *
-     * dialog 路径不受这条影响：那条走 Floating UI，而它的 getDimensions 在
-     * rect 尺寸与 offset* 不一致（即存在 transform）时会回退到 offset*。
-     * 同为夹取算术，两条路径的取尺寸口径必须一致，所以这里显式取 offset*。
-     */
-    const { offsetWidth: width, offsetHeight: height } = panel
-    const vw = window.innerWidth
-    const vh = window.innerHeight
-
-    let x = this._x
-    let y = this._y
-
-    if (x + width > vw) x = vw - width - 8
-    if (y + height > vh) y = vh - height - 8
-    if (x < 0) x = 8
-    if (y < 0) y = 8
-
-    this._applyMenuPosition(panel, x, y)
-  }
-
-  /**
-   * 触屏长按的贴底定位：水平仍锚定长按落点（Q10 选 b），垂直贴视口下缘。
-   *
-   * 安全区一并让开：iOS 的 home indicator 压在视口下缘上，直接贴底会让最下面一项落进
-   * 指示条里。inset 从宿主的自定义属性读，宿主可以覆盖，缺省取 `env()` 的真实值。
-   */
-  private _positionMenuAtViewportBottom(panel: HTMLElement) {
-    // 尺寸仍取 offset*：进场动画的 scale 会污染 getBoundingClientRect()，理由同
-    // `_positionMenuInViewport` 的注释。
-    const { offsetWidth: width, offsetHeight: height } = panel
-    const maxX = Math.max(VIEWPORT_PADDING, window.innerWidth - width - VIEWPORT_PADDING)
-    const x = Math.min(Math.max(VIEWPORT_PADDING, this._x), maxX)
-    const y = Math.max(VIEWPORT_PADDING, window.innerHeight - height - this._safeAreaBottom() - VIEWPORT_PADDING)
-    this._applyMenuPosition(panel, x, y, x < this._x ? 'right' : 'left', 'bottom')
   }
 
   /**
    * 视口下缘的安全区高度（px）。
+   *
+   * 改按压点展开之后它**仍然必需**，而且不再只服务触屏：菜单默认从触发点向下长，触发点
+   * 落在屏幕下半部时面板下缘会进入 home indicator 区域。它现在折进 flip 与 shift 共用的
+   * 边界 padding（见 `_positionMenu`），不再需要单独一条 `maxBottom` 算术。
    *
    * 读宿主的自定义属性而不是 `env()`：自定义属性读回的是**计算后**的解析值，
    * 而 `env()` 在 JS 里没有对应的求值入口，只能间接经由声明它的属性取。
@@ -564,19 +617,23 @@ export class WebUiContextMenu extends LitElement {
     return Number.isFinite(value) ? value : 0
   }
 
+  /**
+   * 写下面板坐标与进场 transform 的原点。
+   *
+   * 两个 origin 必传且**不**再回退成坐标比较：flip 会改变垂直方向，回退表达式
+   * `y < this._y ? 'bottom' : 'top'` 在「面板顶边与触发点重合」时两边都成立，等于随机取。
+   * 唯一调用方从 flip 后的 placement 与 shift 位移推出真实侧边，见 `_positionMenu`。
+   */
   private _applyMenuPosition(
     panel: HTMLElement,
     x: number,
     y: number,
-    horizontalOrigin?: 'left' | 'right',
-    verticalOrigin?: 'top' | 'bottom'
+    horizontalOrigin: 'left' | 'right' | 'center',
+    verticalOrigin: 'top' | 'bottom'
   ) {
     panel.style.left = `${x}px`
     panel.style.top = `${y}px`
-    // 非 dialog 路径保持 viewport 坐标比较；dialog 路径由调用方传入 shift 推导值。
-    const horizontal = horizontalOrigin ?? (x < this._x ? 'right' : 'left')
-    const vertical = verticalOrigin ?? (y < this._y ? 'bottom' : 'top')
-    panel.style.setProperty('--wui-internal-overlay-transform-origin', `${vertical} ${horizontal}`)
+    panel.style.setProperty('--wui-internal-overlay-transform-origin', `${verticalOrigin} ${horizontalOrigin}`)
     panel.style.visibility = ''
   }
 
@@ -927,7 +984,7 @@ export class WebUiContextMenu extends LitElement {
         this._longPressOrigin = undefined
         if (this._isOpen) return
         this._longPressOpenedAt = performance.now()
-        // 触屏长按是本组件唯一的「贴底展开」入口：仍水平锚定长按点，垂直贴视口下缘。
+        // 触屏长按：面板上缘对齐按点、向下展开，水平居中于按点（判据见 `_centerOnPressPoint`）。
         if (this._openAt(origin.x, origin.y, false, true, true)) this._userOpenChange.mark()
       },
       // 属性已被 normalizeNumber 钳到 [0, 5000]，这里直接用；不再二次 Math.max。

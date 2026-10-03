@@ -39,16 +39,21 @@ async function settle() {
 
 describe('context-menu 长按（真实触控管线）', () => {
   /*
-   * R9：触屏长按打开的菜单**垂直贴视口下缘**，水平仍锚定长按落点（Q10 选 b）。
+   * R9（新契约）：触屏长按**从按下的位置向下展开，水平居中于按点**。
    *
-   * 这条断言替换了原「锚定在按下落点」——后者断言的是反转前的行为：面板贴着长按点展开。
-   * 契约反转后垂直方向必须贴底，原断言必然变红（实测 pressY=80 而 panel.top=848）。
+   * 契约反转过三次，这里记清楚当前这一版，免得下一轮又照着旧描述写断言：
+   * 1. 最初「锚定在按下落点」。
+   * 2. 改成「垂直贴视口下缘」—— 真机反馈那是错的：菜单跑到屏幕最底部，和手指按下的
+   *    位置完全脱节，看起来像弹出了另一个菜单。
+   * 3. 垂直改成「面板上缘对齐按点 y、向下展开」；放不下才翻转到按点上方（见下一条 R7）。
+   * 4. 水平从「左缘对齐按点 x」改成**居中于按点 x**（`placement: 'bottom'`）：
+   *    手指按的是「这块内容在这里」，菜单在它正下方居中展开才是 iOS/Android 原生形态；
+   *    左对齐会让菜单整体偏到手指右侧，看起来像弹在了别的东西上面。
    *
-   * 边距按实现的夹取算术反推：`_positionMenuAtViewportBottom` 取
-   * `y = innerHeight - height - safeArea - VIEWPORT_PADDING`，所以面板下缘到视口下缘
-   * 恰好是一个 `VIEWPORT_PADDING`（8px，安全区在测试环境为 0）。留 1px 容差给子像素。
+   * 精确坐标取 `style.top`（不受进场 scale 污染），可见性取 rect —— 两者都要，
+   * 只看 rect 会被动画时刻骗过，只看 style 则证明不了用户真的看得见。
    */
-  it('触屏长按打开菜单：垂直贴视口下缘、完整可见，水平仍锚定长按点', async () => {
+  it('触屏长按从按下的位置向下展开：上缘对齐按点、水平居中于按点、完整可见', async () => {
     const { el, target } = createMenu({ 'long-press': '' })
     await el.updateComplete
 
@@ -60,44 +65,91 @@ describe('context-menu 长按（真实触控管线）', () => {
     const panel = await waitForMenu(el)
     expect(el.isOpen).toBe(true)
 
+    // 垂直：上缘对齐按点、向下长。transform-origin 取在 top 一侧，scale 不影响上缘，
+    // 因此 style.top 与 rect.top 应当一致。
+    expect(Math.abs(Number.parseFloat(panel.style.top) - pressY)).toBeLessThanOrEqual(1)
     const panelRect = panel.getBoundingClientRect()
-    const viewportHeight = window.innerHeight
+    expect(Math.abs(panelRect.top - pressY)).toBeLessThanOrEqual(1)
+    expect(panelRect.bottom).toBeGreaterThan(pressY)
 
-    // 垂直：贴下缘，且下缘到视口下缘正好一个 VIEWPORT_PADDING。
-    expect(viewportHeight - panelRect.bottom).toBeGreaterThan(0)
-    expect(viewportHeight - panelRect.bottom).toBeLessThanOrEqual(9)
-
-    // 完整可见：上缘不得越出视口上，最下面一项要能被点到（面板 overflow-y: hidden）。
+    // 完整可见：不越视口上下（面板 overflow-y: hidden，越界即末项点不到）。
     expect(panelRect.top).toBeGreaterThanOrEqual(0)
-    expect(panelRect.height).toBeGreaterThan(0)
+    expect(panelRect.bottom).toBeLessThanOrEqual(window.innerHeight)
 
-    // 水平：仍锚定长按落点（贴底只改垂直方向）。
-    expect(pressX).toBeGreaterThanOrEqual(panelRect.left - 1)
-    expect(pressX).toBeLessThanOrEqual(panelRect.right + 1)
-
-    // 与长按落点的垂直关系已反转：面板整体在落点下方，不再罩住落点。
-    expect(panelRect.top).toBeGreaterThanOrEqual(pressY)
+    // 水平：**中心**对齐按点 x（placement 不带 `-start`，Floating UI 的默认对齐量就是居中）。
+    expect(Math.abs((panelRect.left + panelRect.right) / 2 - pressX)).toBeLessThanOrEqual(1)
+    // 反向：左缘**不**落在按点上。这一条才排除掉「左对齐也碰巧过上面的等式」——
+    // 左对齐时中心会偏出面板宽度的一半，上面那条必红，这里只把差异钉得更明确。
+    expect(Math.abs(panelRect.left - pressX)).toBeGreaterThan(1)
     cleanupElement(el)
   })
 
   /*
-   * R7 的安全区部分：iPhone 底部 home indicator 那一条不能被菜单压住。
+   * R9 的边界对面：按点贴视口右缘时**居中必须让位给完整可见**。
    *
-   * 测试环境里 `env(safe-area-inset-bottom)` 恒为 0，所以上面那条 R9 用例证明不了
-   * 安全区被真正读进夹取算术。这里覆盖自定义属性注入非零值 —— 实现读的是宿主的
-   * `--wui-context-menu-safe-area-bottom`（声明值是 `env(safe-area-inset-bottom, 0px)`），
-   * 覆盖它即等价于「真机上有 34px 安全区」。
+   * 这不是缺陷而是取舍，flip / shift 的组合天然给出这个结果：按点 x 太靠边，居中算出的
+   * 面板会横向溢出视口，shift 的交叉轴钳制把它推回来，于是面板不再居中但完整可见。
+   * 反过来硬保居中就会让面板右侧跑出屏幕，而面板 overflow 不裁，末项直接点不到。
    *
-   * 判据取行为约束不钉像素：下缘到视口下缘必须**大于**安全区，且只多出一个
-   * VIEWPORT_PADDING（8px，实现常量）。与 viewport-fit 同一取舍：钉死 padding
-   * 会让日后调它变成改测试。
+   * 钉两件事，缺一不可：
+   * 1. 完整可见（钳制的目的）；
+   * 2. 中心确实偏到了按点**左侧**（钳制的确发生了，而不是碰巧居中）。
    */
-  it('安全区非零时面板下缘让出 env(safe-area-inset-bottom)，且末项完整可见', async () => {
+  it('按点贴视口右缘时居中让位给夹取：面板完整可见但中心偏到按点左侧', async () => {
+    const { el, target } = createMenu({ 'long-press': '' })
+    await el.updateComplete
+
+    target.style.position = 'fixed'
+    target.style.right = '0'
+    target.style.top = '0'
+    target.style.width = '40px'
+    target.style.height = '160px'
+
+    const rect = target.getBoundingClientRect()
+    const pressX = rect.left + rect.width / 2
+    const pressY = rect.top + rect.height / 2
+
+    await realTouchPress(target, { holdMs: 700 })
+    const panel = await waitForMenu(el)
+    await settle()
+
+    const panelRect = panel.getBoundingClientRect()
+
+    // 钳制的目的：完整可见。
+    expect(panelRect.left).toBeGreaterThanOrEqual(0)
+    expect(panelRect.right).toBeLessThanOrEqual(window.innerWidth)
+
+    // 钳制的确发生了：中心被推到按点左侧，不再居中于按点。
+    expect((panelRect.left + panelRect.right) / 2).toBeLessThan(pressX)
+
+    // 垂直方向不受水平钳制牵连：仍然上缘对齐按点、向下展开。
+    expect(Math.abs(panelRect.top - pressY)).toBeLessThanOrEqual(1)
+    cleanupElement(el)
+  })
+
+  /*
+   * R7（新契约）：按点低到放不下时**翻转到按点上方**，并让开安全区。
+   *
+   * 测试环境里 `env(safe-area-inset-bottom)` 恒为 0，证明不了安全区进了夹取算术，
+   * 所以覆盖宿主的 `--wui-context-menu-safe-area-bottom`（声明值是
+   * `env(safe-area-inset-bottom, 0px)`），等价于「真机上有 34px 安全区」。
+   *
+   * 构造方式：把按点压到视口最底部，于是「向下展开」必然放不下 → 翻转 →
+   * 翻转后那一侧仍放不下 → 兜底夹取把面板下缘钉在 `maxBottom`。
+   * 判据取行为约束不钉像素：下缘到视口下缘必须**大于**安全区，且只多出一个
+   * VIEWPORT_PADDING(8px)。与 viewport-fit 同一取舍：钉死 padding 会让日后调它变成改测试。
+   */
+  it('按点低到放不下时翻转到按点上方，且面板下缘让出安全区、末项完整可见', async () => {
     const { el, target } = createMenu({ 'long-press': '' })
     el.style.setProperty('--wui-context-menu-safe-area-bottom', '34px')
     await el.updateComplete
 
-    const point = target.getBoundingClientRect()
+    target.style.position = 'fixed'
+    target.style.left = '0'
+    target.style.bottom = '0'
+    target.style.width = '240px'
+    target.style.height = '40px'
+
     await realTouchPress(target, { holdMs: 700 })
     const panel = await waitForMenu(el)
     await settle()
@@ -106,22 +158,25 @@ describe('context-menu 长按（真实触控管线）', () => {
     const safeArea = Number.parseFloat(getComputedStyle(el).getPropertyValue('--wui-context-menu-safe-area-bottom'))
     expect(safeArea).toBe(34)
 
+    const pressY = target.getBoundingClientRect().top + target.getBoundingClientRect().height / 2
     const panelRect = panel.getBoundingClientRect()
+
+    // 翻转生效：面板整体在按点上方，不再向下压出视口。
+    expect(panelRect.bottom).toBeLessThanOrEqual(pressY + 1)
+    expect(panelRect.top).toBeGreaterThanOrEqual(0)
+
+    // 安全区确实进了夹取算术：下缘让开 safeArea + 一个 VIEWPORT_PADDING。
     const gap = window.innerHeight - panelRect.bottom
     expect(gap).toBeGreaterThan(safeArea)
     expect(gap).toBeLessThanOrEqual(safeArea + 9)
 
-    // 完整可见不被裁：面板上缘不越视口上，末项整条落在安全区之上（用户点得到的实际后果）。
-    expect(panelRect.top).toBeGreaterThanOrEqual(0)
+    // 末项整条落在安全区之上（用户点得到的实际后果）。
     const items = panel.querySelectorAll<HTMLElement>('web-ui-dropdown-item')
     const last = items[items.length - 1]
     expect(last).toBeTruthy()
     const lastRect = last.getBoundingClientRect()
-    expect(lastRect.bottom).toBeLessThanOrEqual(window.innerHeight - safeArea)
+    expect(lastRect.bottom).toBeLessThanOrEqual(window.innerHeight - safeArea + 1)
     expect(lastRect.top).toBeGreaterThanOrEqual(0)
-
-    // 长按落点仍在面板上方：安全区不得把面板顶到落点之上。
-    expect(panelRect.top).toBeGreaterThanOrEqual(point.top)
     cleanupElement(el)
   })
 
@@ -133,7 +188,10 @@ describe('context-menu 长按（真实触控管线）', () => {
    * 有「补发 click」这一步，所以合成事件下这条断言恒绿——它守不住任何东西。
    *
    * 断言分三层，缺一层就可能被另一种实现蒙过去：
-   * 1. 命中测试：落点此刻解析到 scrim，不是下层目标（这是「为什么会穿透」的直接机制）。
+   * 1. 命中测试：落点此刻解析到 **scrim 子树**里的东西，不是下层目标（这是「为什么会穿透」
+   *    的直接机制）。这里刻意不要求「命中的必须**是** scrim」：新契约下面板从按点向下展开、
+   *    水平居中于按点，按点恰好落在面板上缘，命中到面板本身是正确结果。要守的是
+   *    「下层目标不在命中链上」，不是「scrim 必须亲自挡在那个坐标」。
    * 2. 行为：下层目标的 click 计数为 0。
    * 3. 菜单自身：补发 click 也不该把刚开的菜单关掉（`_isLongPressFollowUp` 那道闸）。
    */
@@ -156,10 +214,12 @@ describe('context-menu 长按（真实触控管线）', () => {
     await settle()
     await settle()
 
-    // (1) 命中测试：落点被 scrim 占据。
+    // (1) 命中测试：落点被模态 scrim 子树占据，下层目标不在命中链上。
     const scrim = document.querySelector<HTMLElement>('dialog[data-wui-menu-scrim]')
     expect(scrim).toBeTruthy()
-    expect(document.elementFromPoint(pressX, pressY)).toBe(scrim)
+    const hit = document.elementFromPoint(pressX, pressY)
+    expect(hit === scrim || scrim!.contains(hit)).toBe(true)
+    expect(hit === target || target.contains(hit)).toBe(false)
 
     // (2) 行为：下层目标零激活。
     expect(rowClicks).toBe(0)
