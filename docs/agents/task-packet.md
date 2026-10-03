@@ -1,6 +1,6 @@
 # Task Packet
 
-Task Packet 是单个 task 的主合同，记录目标、范围、验收、验证和交付边界。新会话可以据此恢复工作。多 Agent 的 Role 派发、账本命令和成员状态观察见 [`herdr-cos`](../../.agents/skills/herdr-cos/SKILL.md)，supervisor 的见证边界见 [`roles/supervisor.md`](../../.agents/skills/herdr-cos/roles/supervisor.md)。
+Task Packet 是单个 task 的主合同，记录目标、范围、验收、验证和交付边界。新会话可以据此恢复工作。
 
 ## 主合同
 
@@ -32,21 +32,10 @@ Handoff: <what is returned and when>
 
 级别、影响面和状态机以 [`workflow.md`](workflow.md) 为准。task state 中的 `diffHash`、review、approval、verification 和 `events[]` 由 `pnpm agent:task` 维护，packet 不重复这些机器记录。
 
-## 可选 Coordination 区域
-
-只有使用多 Agent 编排、且存在 task 时才填写。它只是指针：参与者、观察结论和未决事项的权威落点是 herdr-cos 账本（`$TMPDIR/herdr-cos` 下该 slug 的目录，消息、ack 与 `peer-contract.md` 即记录，语义见 [herdr-cos](../../.agents/skills/herdr-cos/PROTOCOL.md)），这里不复制它们，也不替代冻结 diff 或 review 证据。
-
-```text
-Coordination id: herdr-cos/<主题slug> | N/A
-Record: $TMPDIR/herdr-cos（账本根，slug 目录即记录）| N/A
-```
-
-coordination id 由 Manager 在编排开始时自由生成，不从 task id 派生；仓库惯例格式 `herdr-cos/<slug>`。账本语义（消息、ack、重试）见 [herdr-cos 的 PROTOCOL.md](../../.agents/skills/herdr-cos/PROTOCOL.md)，Role 派发与成员状态观察见 [`herdr-cos`](../../.agents/skills/herdr-cos/SKILL.md)。没有 task 的编排不写本区域，直接读账本。
-
 ## 恢复规则
 
-聊天消息、Herdr pane label、模型输出和 Supervisor 报告都不能替代冻结 diff 或验证记录。Task Packet 与它的 `evidence/` 同处 `$TMPDIR/greypan/tasks/<task-id>.md`——一条 task 的完整记录放在一个地方，而不是拆成「主合同在别处、证据在这里」。它和 task state 同属**本地工作记忆，可丢失**（[ADR-0018](../adr/0018-task-state-in-tmpdir.md)）：换机换用户从 commit 历史重建，不承诺恢复。
+聊天消息、模型输出和过程报告都不能替代冻结 diff 或验证记录。Task Packet 与它的 `evidence/` 同处 `$TMPDIR/greypan/tasks/<task-id>.md`——一条 task 的完整记录放在一个地方，而不是拆成「主合同在别处、证据在这里」。它和 task state 同属**本地工作记忆，可丢失**（[ADR-0018](../adr/0018-task-state-in-tmpdir.md)）：换机换用户从 commit 历史重建，不承诺恢复。
 
 在本机同用户的会话续作里，读取顺序是：先读 Task Packet，再读 `$TMPDIR/greypan/tasks/<task-id>.json`，最后按 [`workflow.md`](workflow.md) 判断当前 phase 和下一步；重启用 `pnpm agent:task status --task <task-id>` 的 `live` 核对，不靠记忆推断。state 已被清空时按 `workflow.md`「失败和恢复」重建，不靠重建 packet 蒙混过关。
 
-第三方 [`handoff` skill](../../.agents/skills/handoff/SKILL.md) 只用于压缩会话上下文，不改变本文件的任务主合同，也不改变多 Agent handoff 协议。
+第三方 [`handoff` skill](../../.agents/skills/handoff/SKILL.md) 只用于压缩会话上下文，不改变本文件的任务主合同。

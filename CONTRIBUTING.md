@@ -4,11 +4,10 @@
 
 ## 先看什么
 
-- **任务路由与不可绕过的边界**、Multi-Agent 分工：[`AGENTS.md`](AGENTS.md)
+- **任务路由与不可绕过的边界**：[`AGENTS.md`](AGENTS.md)
 - **全局拓扑、workspace 清单、依赖草图、热点与包级约束**：[`ARCHITECTURE.md`](ARCHITECTURE.md)
 - **跨包原则、领域术语与 ADR 索引**：[`CONTEXT.md`](CONTEXT.md)
 - **开发与协作工作流（任务级别、状态机、预授权操作、review）**：[`docs/agents/workflow.md`](docs/agents/workflow.md)
-- **多 Agent Role、handoff、Supervisor 与 Herdr 编排**：[`herdr-cos`](.agents/skills/herdr-cos/SKILL.md)（用户显式调用 `/herdr-cos` 时）
 - **按需加载 context 的原则与最小 context 组合**：[`docs/agents/context.md`](docs/agents/context.md)
 - **提交与 AI 协作署名**：[`docs/agents/commit.md`](docs/agents/commit.md)
 

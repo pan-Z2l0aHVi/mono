@@ -6,7 +6,7 @@ import { spawnSync } from 'node:child_process'
 // .agents/skills 全部是软链，见 skills/README.md）。这里把 update
 // 隔离在临时目录里跑——lock 复制过去，CLI 照常重解析源、比对 computedHash、
 // 只装变更项、更新 lock——然后由 reconcile 把变更内容搬回真实家：
-//   - 被自撰 skill 依赖而镜像在根 skills/ 的（如 herdr）→ 根 skills/<name>
+//   - 被自撰 skill 依赖而镜像在根 skills/ 的 → 根 skills/<name>
 //   - 其余 → .agents/skills-vendored/<name>
 // 并刷新 .agents/skills 软链、把更新过的 lock 拷回仓库根，最后跑
 // checkRepoLayout 确认三层布局不变量完好。
@@ -40,9 +40,15 @@ const symlinkTargetFor = (name, repoRoot) =>
  */
 function relinkAgentSurface(repoRoot) {
   const agentsSkillsDir = join(repoRoot, '.agents', 'skills')
+  // skills/ 根的 README.md 是 GitHub 通道的安装说明，不是 skill：它没有 SKILL.md，
+  // 把它链进指令面会让 check-skills 的「每个软链都要有真实家」不变量失败。
   const names = new Set([
-    ...readdirSync(join(repoRoot, 'skills')),
-    ...readdirSync(join(repoRoot, '.agents', 'skills-vendored'))
+    ...readdirSync(join(repoRoot, 'skills'), { withFileTypes: true })
+      .filter(entry => entry.isDirectory())
+      .map(entry => entry.name),
+    ...readdirSync(join(repoRoot, '.agents', 'skills-vendored'), { withFileTypes: true })
+      .filter(entry => entry.isDirectory())
+      .map(entry => entry.name)
   ])
   for (const name of names) {
     const linkPath = join(agentsSkillsDir, name)

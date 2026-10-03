@@ -2,7 +2,7 @@
 
 本文件规定 monorepo 实施任务的级别、状态机、变更证据、验证和 review/approval。实现见 [`scripts/task.mjs`](../../scripts/task.mjs)（`pnpm agent:task`）。
 
-worktree 和任务主合同分别见 [`worktrees.md`](worktrees.md) 与 [`task-packet.md`](task-packet.md)，release/hotfix playbook 见本文「Playbook」。多 Agent 的 Role、handoff、Supervisor 与 Herdr 编排见 [`herdr-cos`](../../.agents/skills/herdr-cos/SKILL.md)（账本协议：消息文件、ack、门铃；成员 worktree 由 `cos join` 内建隔离）。Herdr、Claude 和 Codex 只是执行适配层，不改变本流程的状态和 gate。完整决策见 [ADR-0014](../adr/0014-task-system-v2.md)。
+worktree 和任务主合同分别见 [`worktrees.md`](worktrees.md) 与 [`task-packet.md`](task-packet.md)，release/hotfix playbook 见本文「Playbook」。并行实施按 worktree 拆分的边界见 [`worktrees.md`](worktrees.md)。Claude、Codex 或其他客户端只是执行适配层，不改变本流程的状态和 gate。完整决策见 [ADR-0014](../adr/0014-task-system-v2.md)。
 
 ## 先建立任务
 
@@ -21,7 +21,7 @@ worktree 和任务主合同分别见 [`worktrees.md`](worktrees.md) 与 [`task-p
    pnpm agent:task start --task <task-id>
    ```
 
-5. 把范围、验收标准和验证命令写进 Task Packet。Role 列表和协调信息不写入 task state。GitHub issue 只是可选的追踪镜像，创建时用 `--issue` 记入 task state，事后可用 `issue` 子命令补挂。即使 issue 不可用，本地流程照常推进——持久审计本来就由 commit message、changeset 与 git 历史承担，不依赖任何一处在线状态。
+5. 把范围、验收标准和验证命令写进 Task Packet。GitHub issue 只是可选的追踪镜像，创建时用 `--issue` 记入 task state，事后可用 `issue` 子命令补挂。即使 issue 不可用，本地流程照常推进——持久审计本来就由 commit message、changeset 与 git 历史承担，不依赖任何一处在线状态。
 
 ## 任务级别
 
@@ -33,7 +33,7 @@ worktree 和任务主合同分别见 [`worktrees.md`](worktrees.md) 与 [`task-p
 | ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ | ------ | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------ | ----------------------- | ----------------------------------------------------------------------------------- |
 | T0   | 跨 workspace 的公共 API/exports/事件/类型契约；依赖、catalog、lockfile、构建配置或 CI；聚合发布或多 worktree 并行                                                                                                | 专属 task worktree                   | 必须   | 必须（pure subagent 或独立会话）                   | 必须                                                                                                   | 是                      | approved + hash 一致 + checks 通过                                                  |
 | T1   | 跨多个 workspace（`apps/*` / `packages/*`）但不改 T0 所列契约；公共导出变更但消费者仍在同一 workspace；改动 instruction system、`.agents/` 或根 `scripts/*.mjs` 的行为                                           | 专属 task worktree                   | 必须   | 可选（实施 agent 视情况，可 review 也可不 review） | 与 review 成对：记录了 review 就必须对同一 `diffHash` approve；没有 review 则不产生、也不要求 approval | 是                      | 有 review → approved + hash 一致 + checks 通过；无 review → hash 一致 + checks 通过 |
-| T2   | 改动全部落在一个 workspace 内，或只落在 `docs/` 等仓库根文档目录；且不改依赖字段与 lockfile、不改 CI 与 workspace 配置、不改被其它 workspace 消费的导出符号、不改 instruction system 与根 `scripts/*.mjs` 的行为 | 允许当前 worktree 直接改，不要求干净 | 可选   | 不用（需要时由 Manager 派 fresh subagent）         | 不要求                                                                                                 | 不强制                  | active + checks 通过                                                                |
+| T2   | 改动全部落在一个 workspace 内，或只落在 `docs/` 等仓库根文档目录；且不改依赖字段与 lockfile、不改 CI 与 workspace 配置、不改被其它 workspace 消费的导出符号、不改 instruction system 与根 `scripts/*.mjs` 的行为 | 允许当前 worktree 直接改，不要求干净 | 可选   | 不用（需要时派 fresh subagent）                    | 不要求                                                                                                 | 不强制                  | active + checks 通过                                                                |
 
 多级同时命中时取最高级（T0 > T1 > T2）。`pnpm agent:find-usages -- <paths...>` 只输出一个受影响 workspace 时，T2 的单 workspace 条件成立。本表是各级严格程度的权威。表里的 `checks` 指 `.agents/checks/` 下的仓库政策检查，三个级别在提交前都要通过。本仓当前有两条：`changeset-required`（只对有 task 的提交）和 `format-clean`（每条提交都要通过），细则以脚本注释为准。
 
@@ -112,14 +112,12 @@ freeze 自身执行归一化管线：`git add -A` 全量 staging（快照语义�
 ## review 拓扑
 
 - **T0**：必须 review。形态是 pure subagent 或独立会话，两者都算数，不强制「独立 Claude Code reviewer 会话」这一种。改用其他执行体时，按 skill 记录理由。Reviewer 与实施角色权限相同，但不参与实施，也不接收实施者的叙述，只审冻结 diff、任务主合同与证据。
-- **T1**：review 可选，由实施 agent 视情况决定——要了就派 pure subagent 或独立会话（Manager 在多 agent 编排里派），不要就走 `freeze → verify → done`。一旦记录了 review，approval 就与它成对，必须对同一 `diffHash` 批准。改用其他执行体时，按 skill 记录理由。Reviewer 只接收冻结 diff、任务主合同与证据。
-- **T2**：不用 review；需要额外 review 时，由 Manager 派 fresh subagent。
+- **T1**：review 可选，由实施 agent 视情况决定——要了就派 pure subagent 或独立会话，不要就走 `freeze → verify → done`。一旦记录了 review，approval 就与它成对，必须对同一 `diffHash` 批准。改用其他执行体时，按 skill 记录理由。Reviewer 只接收冻结 diff、任务主合同与证据。
+- **T2**：不用 review；需要额外 review 时，派 fresh subagent。
 - **任何级别禁止同一会话自审**：实施者复核自己的 diff 不构成 review。这条由文档与角色纪律承担，不由内核强制——id 是自报的，内核对得上 id 也证明不了是不是同一个会话。
 - owner、reviewer、approver、drop 署名人共用 id 形状 `^[A-Za-z0-9][A-Za-z0-9._-]{3,39}$`（如 `claude-code-reviewer-45a5b9eb`）。`--owner`/`AGENT_TASK_OWNER` 与另外三个声明身份的字段放在一起，才能形成可核对的记录。owner 由登录名兜底时不受该形状约束。内核强制的「互不相等」约束只剩一条：approver 不能等于本轮 reviewer（上一句的形状校验四个字段都还在）。reviewer 和 approver 都不再要求换掉 owner 身份，所以单 agent 工作流的最小身份组合是 owner 实施 + subagent review + owner approve——去掉 owner 身份限制后这三个槽位才凑得齐，否则一个人既实施又批自己的活会在 `approve` 那一步被永久挡住。
 
-审查报告先列具体发现，再按 `Block`、`Should fix`、`Nit` 排序。每条发现都要带文件和行号。没有缺陷时，也要说明测试缺口和残余风险。检查项包括公共行为与向后兼容性、聚焦测试覆盖、边界与失败情况、类型与错误处理、竞态或资源泄漏、用户输入安全风险和文档变更。重构要对照变更前后的行为清单。浏览器相关 review 按 [`browser-verification.md`](browser-verification.md) 核实证据。Supervisor 报告、实施者叙述和聊天记录都不能替代冻结 diff 或验证证据。
-
-多 Agent 的角色选择、目录边界、handoff 和成员状态观察见 [`herdr-cos`](../../.agents/skills/herdr-cos/SKILL.md)，supervisor 是见证角色（witness, not a gate），其观察边界见 [`roles/supervisor.md`](../../.agents/skills/herdr-cos/roles/supervisor.md)。本文件只说明它们如何影响 task 状态、冻结证据和 review 独立性：review 独立性与 gate 仍由本文件的 review 拓扑承担，supervisor 的报告是证据输入，不替代冻结 diff 或验证证据。
+审查报告先列具体发现，再按 `Block`、`Should fix`、`Nit` 排序。每条发现都要带文件和行号。没有缺陷时，也要说明测试缺口和残余风险。检查项包括公共行为与向后兼容性、聚焦测试覆盖、边界与失败情况、类型与错误处理、竞态或资源泄漏、用户输入安全风险和文档变更。重构要对照变更前后的行为清单。浏览器相关 review 按 [`browser-verification.md`](browser-verification.md) 核实证据。reviewer 报告、实施者叙述和聊天记录都不能替代冻结 diff 或验证证据。
 
 ## Playbook
 
@@ -132,7 +130,7 @@ release 和 hotfix 不是 task 体系的概念；它们是普通 task 在软件�
 
 - 命令失败时保留 task state 和工作树，先用 `pnpm agent:task status --task <task-id>` 判断当前 phase，不要重建或覆盖状态文件。
 - 需要终止或清理残留 task（agent 结束后遗留的 active task、快照无法物化的 task）时用 `pnpm agent:task drop --task <task-id> --reason <why> --by <your-agent-id>`；`--reason` 至少 10 个非空白字符，`--by` 与 reviewer/approver 同一套 id 形状。drop 是唯一合法的强制终态，不手工编辑 state JSON。
-- session、Herdr 或 harness 在**同一台机器、同一个用户**内重启后，从 task state 的 `phase`、`worktree`、`baseSha`、`events[]` 和 live stale 结果恢复，不从聊天记忆猜测进度。恢复规则到此为止：换机或换用户不承诺恢复，那种情况从 commit 历史重建。
+- session、客户端或 harness 在**同一台机器、同一个用户**内重启后，从 task state 的 `phase`、`worktree`、`baseSha`、`events[]` 和 live stale 结果恢复，不从聊天记忆猜测进度。恢复规则到此为止：换机或换用户不承诺恢复，那种情况从 commit 历史重建。
 - task state 在 task 进行中被清空（重启即清，见 [ADR-0018](../adr/0018-task-state-in-tmpdir.md)）时，用**同一个 task-id 重新 `agent:task new`**，重走 freeze / review / approve。此时 commit 还没发生，仓库里没有错误代码，重建的证据链与新建 task 等价。`new` 对 T0/T1 的干净起点要求不变：先恢复干净工作区再重建，不在脏工作区上绕过它。
 - GitHub issue 不可用时继续本地流程，最终报告注明「未同步」；issue 只作追踪镜像，不是执行真相——task state 同样不是。
-- release CI 失败时，机械性修复可由 Manager 直接处理；逻辑或测试修复回到原 task owner，并在聚合 diff 变化后重新 review。
+- release CI 失败时，机械性修复由聚合 task 的 owner 直接处理；逻辑或测试修复回到原 task owner，并在聚合 diff 变化后重新 review。

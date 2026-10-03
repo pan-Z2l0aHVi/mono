@@ -5,7 +5,7 @@
  * - `<repo>/skills/` — real directories, the GitHub discovery surface for
  *   `npx skills add pan-Z2l0aHVi/mono`. Holds the repo-authored skills plus
  *   "dependency mirrors": third-party skills that a repo-authored skill links
- *   to as a sibling dependency (e.g. herdr for herdr-cos).
+ *   to as a sibling dependency.
  * - `<repo>/.agents/skills-vendored/` — real directories for every other
  *   third-party skill tracked in the repo-root `skills-lock.json`. This dir is
  *   not scanned by the skills CLI, so those skills are never offered to

@@ -3,7 +3,7 @@
 - **Date**: 2026-09-28
 - **Status**: 已接受
 - **Amends**: [ADR-0014](0014-task-system-v2.md) §3 的状态落点（「状态存 `<git-common-dir>/tasks/<task-id>.json`，跨 worktree 共享」）与「后果」节「`<git-common-dir>/tasks/` 是唯一执行真相」一句
-- **Relates to**: [ADR-0017](0017-orchestration-decoupled-from-task.md)（编排层已解耦，巡检只把 task phase 当参考列）、[ADR-0016](0016-implementation-supervision.md)（evidence 不进 task state）
+- **Relates to**: 已删除的编排层 ADR（编排已与 task 解耦；evidence 不进 task state）——两者均随多 Agent 编排层于 2026-10-03 整体移除
 
 ## 背景
 
@@ -23,7 +23,7 @@ ADR-0014 把 task state 定在 `<git-common-dir>/tasks/<task-id>.json`。这个�
 
 ### 1. 落点改为 `$TMPDIR/greypan/tasks/`
 
-state 目录是 `$TMPDIR/greypan/tasks/`，Task Packet 的 `.md` 与 `evidence/` 与它同处一个 task 的目录下（它们是一条 task 的完整记录，不是两类东西）。目录不挂在 `herdr-agents` 名下：task 体系是根级设施，编排只是它的一个可选消费者（[ADR-0017](0017-orchestration-decoupled-from-task.md) 已经把两者解耦），把落点放进某个 skill 的命名空间会让基础设施的归属跟着 skill 走。
+state 目录是 `$TMPDIR/greypan/tasks/`，Task Packet 的 `.md` 与 `evidence/` 与它同处一个 task 的目录下（它们是一条 task 的完整记录，不是两类东西）。目录不挂在任何编排 skill 名下：task 体系是根级设施，把落点放进某个 skill 的命名空间会让基础设施的归属跟着 skill 走。
 
 `$TMPDIR` 本身一定存在（系统保证），`$TMPDIR/greypan/` 与 `tasks/` 不一定，所以创建只发生在写路径上（`saveState` 的 recursive mkdir）。读路径上目录不存在是合法状态，含义是「本机还没有任何 task」，返回空集而不是报错。
 
@@ -80,6 +80,6 @@ git notes 还有一条实测结论：它不在任何 refspec 里，不被 push �
 ## 替代方案
 
 - **继续留在 `<git-common-dir>/tasks/`**：这是被推翻的现状。问题不在落点本身，而在于文档把它称作「执行真相」——不搬目录、只改定位措辞也是可行选项，但那样 state 会继续与 `git worktree remove`、仓库目录一起消失，而文档已经不再承诺任何持久性，两边对不齐的状态比搬家更难解释。用户选择一次性把位置和定位都对齐。
-- **搬到仓库内的 `temp/`**：被否。同一相对路径在多个 worktree 下是不同的物理目录，「reviewer 在 A worktree、coder 在 B worktree」立刻取不到对方产物（[ADR-0017](0017-orchestration-decoupled-from-task.md) 的 B 组同因）。
+- **搬到仓库内的 `temp/`**：被否。同一相对路径在多个 worktree 下是不同的物理目录，「reviewer 在 A worktree、coder 在 B worktree」立刻取不到对方产物。
 - **迁到 `$XDG_STATE_HOME` 或 `~/Library/Application Support/`**：不重启即清，与「本地工作记忆」的定位更贴，但它是 per-user 的**持久**目录，`commonDir` 过滤之外还要处理同机多用户的可见性；`$TMPDIR` 已经是 per-user 且被系统清理，够用且少一条自建清理策略。
 - **只改定位措辞、不动代码**：见上，位置与定位会长期不一致。

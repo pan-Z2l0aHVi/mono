@@ -14,7 +14,7 @@ npx skills add pan-Z2l0aHVi/mono
 
 ## 各表面暴露什么
 
-- **GitHub 源**（`npx skills add pan-Z2l0aHVi/mono`）：自撰 skill + 它们依赖的第三方镜像（如 `herdr-cos` 依赖的 `herdr`）。仅此而已。
+- **GitHub 源**（`npx skills add pan-Z2l0aHVi/mono`）：自撰 skill + 它们依赖的第三方镜像。仅此而已。
 - 对 mono 仓库只是本地工具的第三方 skill，vendor 在 `.agents/skills-vendored/`（skills CLI 不扫描），永不分发。
 
 ## skill 依赖

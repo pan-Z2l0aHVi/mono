@@ -9,8 +9,8 @@ release 是聚合发布场景下的操作程序，不是独立的 task 类型。
 5. 确认聚合 diff 里 changesets 会读的**每一个**声明（`.changeset` 顶层与 `pre/` 下的非点 `.md`；`README.md`、`AGENTS.md`、`CLAUDE.md`、`GEMINI.md` 不参与发布，也不算声明——排除按 changesets 忽略表的原样大小写，只有 `README.md` 不区分大小写，所以 `.changeset/claude.md` 是一份真声明）都是 `changeset-required` 认可的形态（以成对 `---` 开头、分隔线前没有散落内容；frontmatter 里声明了包的还必须带正文），而不是「整批里至少有一个」——`changeset-required` 逐个核对，任何一个子 task 带畸形或空描述的 changeset 都会拦住聚合提交；聚合 diff 对 `origin/main` 天然包含被聚合 task 的 changeset，因此这道检查对 release 也无豁免。随后运行影响范围内测试、构建、契约和必要的浏览器验证，记录到 release task state。
 6. 创建 PR，等待 CI 和用户 approval；合并方式按仓库策略执行，默认 squash。跨包集成正确性由 CI 与 main 分支验证兜底（task 体系不再有 post-merge gate）。
 7. 合并后验证 main CI；有版本变更时再验证 changesets version PR、批准、合并和 npm 发布链。
-8. 两段验证通过后关闭 release task、删除 release branch/worktree，并关闭由本轮创建的 Herdr workspace；未完成验证不得清理证据。
+8. 两段验证通过后关闭 release task、删除 release branch/worktree，并清理本轮创建的临时资源；未完成验证不得清理证据。
 
 CI 的机械性格式和拼写修复可以由 Manager 处理；逻辑、测试和契约问题回到原 task owner 修复。任何 release diff 变化都必须重新 freeze/review/approve。
 
-release 聚合与集成验证由 Manager 直接协调，详见 [`herdr-cos`](../../.agents/skills/herdr-cos/SKILL.md)，不设独立 Integrator 层级。
+release 聚合与集成验证由聚合 task 的 owner 直接协调，不设独立 Integrator 层级。

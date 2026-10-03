@@ -33,7 +33,7 @@ function addError(message) {
 
 // skill 出处以 skills-lock.json 为权威：登记在册的是第三方上游件，正文由上游维护（见 AGENTS.md 语言纪律），
 // 其中的示例路径不作为本仓链接；未登记的即本仓自撰，必须列在下面。两边都不在就是出处未定。
-const repoAuthoredSkills = new Set(['contract-change-review', 'herdr-cos'])
+const repoAuthoredSkills = new Set(['contract-change-review'])
 const lockedSkills = new Set(Object.keys(JSON.parse(read('skills-lock.json')).skills))
 
 function fromLockedSkill(file) {
@@ -226,11 +226,10 @@ for (const [file, expectedTarget] of Object.entries(symlinks)) {
   }
 }
 
-// Role Contract 是显式 herdr skill 的输入，不是 Claude Code subagent。保留这条独立的
-// 注册形态检查，但不把它与固定 Role 集合、绑定表或 handoff 字段镜像绑在一起。
+// `.claude/agents` 不属于本仓契约：会话角色由客户端与会话本身承担，不再注册仓库内的 role 契约。
 try {
   if (fs.lstatSync(path.join(root, '.claude/agents')).isSymbolicLink())
-    addError('.claude/agents must not be a symlink; Role Contracts are opt-in session roles, not Claude Code subagents')
+    addError('.claude/agents must not be a symlink; the repo ships no session-role contracts')
 } catch (error) {
   if (error.code !== 'ENOENT') addError(`.claude/agents: cannot inspect path: ${error.message}`)
 }
@@ -253,7 +252,7 @@ const markdownFiles = [
   // 自撰写 skill 的实体在根 skills/（.agents/skills 里只是逐 skill 软链，walk 不跟随）。
   // skill 文档里的相对链接是按 agent 经 .agents/skills 软链读取的消费面写的，深度与实体路径不同，
   // 所以检查时把这些文件映射回 .agents/skills 路径——内容相同（软链），链接按消费面解析。
-  // 第三方依赖镜像（如 herdr）也是锁定的上游件，同样按 fromLockedSkill 排除出链接面。
+  // 第三方依赖镜像也是锁定的上游件，同样按 fromLockedSkill 排除出链接面。
   ...walk('skills', file => file.endsWith('.md'))
     .filter(file => !fromLockedSkill(file))
     // skills/ 根的 README.md 是 GitHub 通道门面文档，不在任何 skill 目录内，
@@ -348,7 +347,7 @@ for (const file of [...adrDocuments].sort()) {
 // 范围就是上面的 markdownFiles，也就是「指令面」。两个说明避免把覆盖范围读错：
 //   - docs/adr/** 在覆盖范围内：ADR 是承载现行基础设施指引的活文档，命令名陈旧就是陈旧，照判。
 //   - docs/research/** 按构造不在范围内（markdownFiles 不收它）：那是点时性研究记录，保持历史原貌。
-// 指令面没有其他收窄：herdr-cos skill 的命令引用已指引化到 docs/agents/commands.md，随本检查一同覆盖。
+// 指令面没有其他收窄。
 // 只收 `[a-zA-Z]` 开头的 token：pnpm 的全局开关（`--filter`/`-F`/`--dir`）和 flag 后的值都不是 script 引用。
 const pnpmRunForm = /\bpnpm run ([a-zA-Z][a-zA-Z0-9:._-]*)/g
 const pnpmBareForm = /\bpnpm ([a-zA-Z][a-zA-Z0-9:._-]*)/g
@@ -397,16 +396,6 @@ for (const file of [
 }
 for (const name of repoAuthoredSkills)
   if (!exists(`skills/${name}/SKILL.md`)) addError(`repoAuthoredSkills lists a skill without SKILL.md: skills/${name}`)
-
-// Role Contract 数量和职责可以演进；每个文件自身的 frontmatter 身份仍必须可加载且与文件名一致。
-// 这条检查不维护角色名单，因此新增 supervisor 或未来 Role 不需要同步修改 validator。
-for (const file of walk('skills/herdr-cos/roles', file => file.endsWith('.md'))) {
-  parseFrontmatter(file)
-  const expectedName = path.basename(file, '.md')
-  const source = fs.readFileSync(file, 'utf8')
-  const name = /^name:\s*(\S+)\s*$/m.exec(source)?.[1]
-  if (name !== expectedName) addError(`${relative(file)}: frontmatter name must be ${expectedName}`)
-}
 
 if (errors.length) {
   console.error(`validate-context failed with ${errors.length} error(s):`)

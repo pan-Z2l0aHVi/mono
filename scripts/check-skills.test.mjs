@@ -59,10 +59,10 @@ describe('checkRepoLayout against the real repo state', () => {
       vendoredDir: join(repoRoot, '.agents', 'skills-vendored'),
       lockFile
     })
-    assert.deepEqual(repoAuthored, ['contract-change-review', 'herdr-cos'])
-    assert.deepEqual(mirrored, ['herdr'])
-    assert.equal(vendored.length, 16)
-    assert.ok(!vendored.includes('herdr'))
+    assert.deepEqual(repoAuthored, ['contract-change-review'])
+    assert.deepEqual(mirrored, [])
+    assert.equal(vendored.length, 17)
+    assert.ok(vendored.includes('herdr'))
   })
 
   it('ships a README.md install doc at the skills/ root', () => {

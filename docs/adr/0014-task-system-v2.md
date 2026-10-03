@@ -2,15 +2,15 @@
 
 - **Date**: 2026-09-18
 - **Status**: 已接受
-- **Supersedes**: [ADR-0010](0010-agent-role-orchestration.md) 的任务状态机与 mode 词汇、[ADR-0012](0012-instruction-risk-tiering-and-pre-authorized-operations.md) 的风险分级表
-- **Amends**: [ADR-0011](0011-agent-model-binding-and-effort.md)（角色默认模型与思考强度分档取消，模型与思考强度由用户会话设置或 Manager 按任务指定）
-- **Amended by**: [ADR-0016](0016-implementation-supervision.md)（Role、Supervisor 和 coordination 不进入 task state）
-- **Superseded by**: [ADR-0017](0017-orchestration-decoupled-from-task.md) —— 本 ADR 中「Role 编排信息留在 skill 与 Task Packet 摘要中」一句不再现行：编排元数据的落点是 `$TMPDIR/herdr-agents/reports/` 下的编排记录。级别、状态机、证据、政策检查与 playbook 全部决策不变 （2026-10-02 注：herdr-agents skill 已被 herdr-cos 取代并退役，本行的旧路径作为历史记录保留，不再是活链接。）
+- **Supersedes**: 已删除的 ADR-0010「Agent 角色编排」的任务状态机与 mode 词汇、[ADR-0012](0012-instruction-risk-tiering-and-pre-authorized-operations.md) 的风险分级表（前者的 ADR 已随多 Agent 编排层于 2026-10-03 整体移除）
+- **Amends**: 已删除的 ADR-0011「Agent 模型绑定与思考强度分档」（角色默认模型与思考强度分档取消，模型与思考强度由用户会话设置；该 ADR 已随多 Agent 编排层于 2026-10-03 整体移除）
+- **Amended by**: 已删除的 ADR-0016「实施期 Supervisor」（Role、Supervisor 和 coordination 不进入 task state；该 ADR 已随多 Agent 编排层于 2026-10-03 整体移除）
 - **Amended by**: [ADR-0018](0018-task-state-in-tmpdir.md) —— §3 的状态落点被取代：`<git-common-dir>/tasks/` 改为 `$TMPDIR/greypan/tasks/`，task state 的定位从「唯一执行真相」改为可丢失的本地工作记忆。状态机、级别、快照口径、guard 与政策检查全部决策不变
+- **2026-10-03 注记**：原「Superseded by」指向的编排解耦 ADR 一并移除，其确立的原则（coordination 独立于 task、元数据落 `$TMPDIR`）随编排层退役；级别、状态机、证据、政策检查与 playbook 决策全部不变
 
 ## 背景
 
-旧 task 体系（ADR-0010/0012）经 89 个 task state 的量化审计后确认：证据链（baseSha/diffHash/review/approval/verify）与提交门禁零故障，但存在四类残余问题——mode 字段名不副实（`orchestrated` 实际是风险档，27/27 单角色；`release`/`hotfix` 在脚本中零行为分支）、post-merge close gate 与 squash merge 结构性冲突、状态残留与快照丢失只能手写 `forcedClose` JSON、`affectedWorkspaces`/`allowedPaths` 是无写入者的 schema 残留字段。用户决定推翻重来：重建一套脱离具体业务的抽象 task 内核，级别只表达 workflow 严格程度，软件迭代操作（release/hotfix）降级为 playbook 文档。
+旧 task 体系（已删除的 ADR-0010 与 ADR-0012）经 89 个 task state 的量化审计后确认：证据链（baseSha/diffHash/review/approval/verify）与提交门禁零故障，但存在四类残余问题——mode 字段名不副实（`orchestrated` 实际是风险档，27/27 单角色；`release`/`hotfix` 在脚本中零行为分支）、post-merge close gate 与 squash merge 结构性冲突、状态残留与快照丢失只能手写 `forcedClose` JSON、`affectedWorkspaces`/`allowedPaths` 是无写入者的 schema 残留字段。用户决定推翻重来：重建一套脱离具体业务的抽象 task 内核，级别只表达 workflow 严格程度，软件迭代操作（release/hotfix）降级为 playbook 文档。
 
 ## 决策
 
@@ -46,10 +46,10 @@ open -> active -> frozen -> reviewed -> approved -> done
 
 ### 5. review 拓扑与 task 边界
 
-- T0 必须 review，形态是 pure subagent 或独立会话；T1 的 review 可选，由实施 agent 视情况决定（Manager 在多 agent 编排里派 fresh 会话或 fresh subagent）；T2 不用 review，或派 fresh subagent 做额外 review。全程禁止同一会话自审。reviewer id 校验 `^[A-Za-z0-9][A-Za-z0-9._-]{3,39}$`，approver 还须 ≠ 本轮 reviewer。（2026-09-20 加固：同一条形状校验按 `AGENT_ID` 复用到 approver、drop 署名人与显式申报的 `--owner`（登录名兜底不受限），四个声明身份的字段落在同一字符集里「互不相等」才比的是人而不是字形；当时 reviewer 与 approver 比对的是 owner **历史**而非现值——`assign` 没有相位限制，只比现值会被「先派给别人、再回来批自己」绕开。三个身份互不相同才让「独立验收」成为机器事实，但 id 本身仍是自报的，内核防的是误用而不是合谋。2026-09-28 修订：reviewer 与 approver 的 ≠ owner 校验删除，只留 approver ≠ reviewer——owner 身份限制让单 agent 工作流的三个槽位凑不齐（owner 实施 + subagent review + owner approve 会在 `approve` 那一步被永久挡住）；「实施会话不得自审」因此改由文档与角色纪律承担，机器分辨不出两个 id 背后是不是同一个会话。T1 的 review 同时从强制改为可选并与 approval 成对：记了 review 就必须对同一 diffHash approve，没记则两者都不要求；T0 的双强制不变。状态机顺序不变，T1 只是允许跳过 `reviewed` / `approved` 两格。）
-- Role → executor 绑定、handoff、目录边界和 pane 时序由 `.agents/skills/herdr-agents/SKILL.md`（退役路径） 维护，Supervisor 协议由同目录的 `supervision.md`（退役路径） 维护；任何其他执行体都可承担任一 Role，替代执行体和理由记录在 Task Packet。默认模型与思考强度分档取消（amends ADR-0011）。
-- task state 只记录 task-level 事实，不记录 Role、Supervisor 或 coordination；旧 v1 state 的历史 `roles` 字段可读取但不解释、不迁移、不重写。`pnpm agent:task assign --roles` 明确拒绝。
-- 编排派发根据受影响的 workspace 决定：单 workspace 单 coder，跨 workspace 拆 handoff，Designer 按需；Supervisor 是否启用由 herdr-agents skill 的评分决定，且不影响本 ADR 的 task gate。
+- T0 必须 review，形态是 pure subagent 或独立会话；T1 的 review 可选，由实施 agent 视情况决定（需要时派 fresh 会话或 fresh subagent）；T2 不用 review，或派 fresh subagent 做额外 review。全程禁止同一会话自审。reviewer id 校验 `^[A-Za-z0-9][A-Za-z0-9._-]{3,39}$`，approver 还须 ≠ 本轮 reviewer。（2026-09-20 加固：同一条形状校验按 `AGENT_ID` 复用到 approver、drop 署名人与显式申报的 `--owner`（登录名兜底不受限），四个声明身份的字段落在同一字符集里「互不相等」才比的是人而不是字形；当时 reviewer 与 approver 比对的是 owner **历史**而非现值——`assign` 没有相位限制，只比现值会被「先派给别人、再回来批自己」绕开。三个身份互不相同才让「独立验收」成为机器事实，但 id 本身仍是自报的，内核防的是误用而不是合谋。2026-09-28 修订：reviewer 与 approver 的 ≠ owner 校验删除，只留 approver ≠ reviewer——owner 身份限制让单 agent 工作流的三个槽位凑不齐（owner 实施 + subagent review + owner approve 会在 `approve` 那一步被永久挡住）；「实施会话不得自审」因此改由文档与角色纪律承担，机器分辨不出两个 id 背后是不是同一个会话。T1 的 review 同时从强制改为可选并与 approval 成对：记了 review 就必须对同一 diffHash approve，没记则两者都不要求；T0 的双强制不变。状态机顺序不变，T1 只是允许跳过 `reviewed` / `approved` 两格。）
+- Role → executor 绑定、handoff、目录边界和 pane 时序曾由已删除的 herdr 编排 skill 维护；该层已于 2026-10-03 整体退役，本行保留为历史记录。默认模型与思考强度分档早已取消。
+- task state 只记录 task-level 事实；旧 v1 state 的历史 `roles` 字段可读取但不解释、不迁移、不重写。`pnpm agent:task assign --roles` 明确拒绝。
+- 跨 workspace 的拆分按 `agent:find-usages` 的受影响 workspace 决定，各 task 走本 ADR 的 gate（该行原为编排派发规则，随编排层于 2026-10-03 退役）。
 
 ### 6. 测试约定
 
@@ -62,7 +62,7 @@ open -> active -> frozen -> reviewed -> approved -> done
 ## 后果
 
 - `scripts/agent-workflow.mjs` 与 `agent-workflow.test.mjs` 删除，`agent:workflow` script 由 `task` 取代；`.vite-hooks/pre-commit` 只剩 `pnpm agent:task guard`。
-- 旧 task state 目录 `agent-workflow/` 清空后，`<git-common-dir>/tasks/` 是唯一执行真相；Role 编排信息留在 herdr-agents skill 和 Task Packet 摘要中。
+- 旧 task state 目录 `agent-workflow/` 清空后，`<git-common-dir>/tasks/` 是唯一执行真相；（原「Role 编排信息留在 herdr-agents skill 和 Task Packet 摘要中」一句随多 Agent 编排层于 2026-10-03 退役。）
 - release/hotfix 不再是 task 体系概念；release.md 改述为 release playbook，hotfix 独立成 playbook，各自声明如何满足级别 gate（workflow 文档重建阶段落地）。（2026-09-20 修订：hotfix 不再独立成文件，`docs/agents/hotfix.md` 已删除，正文内联在 `docs/agents/workflow.md`「Playbook」节；本条「hotfix 不是 task 体系概念、按级别 gate 满足要求」不变。同日 `ci:validate-context` 去掉的只是 Agent 指令文档语料的存在性断言（入口面 `AGENTS.md`/`CLAUDE.md`/`package.json` 仍要求存在），ADR 的发现性从「`CONTEXT.md` 逐条索引」改为「每份编号 ADR 至少有一条来自其他指令文档的入站链接」，不再把 `CONTEXT.md` 的体积钉成契约；断链、通用 frontmatter/skill provenance、pre-commit allowlist、必经命令和软链等检查保持不变。）
 - 跨包集成损坏不再有 post-merge gate 兜底，依赖 CI；`fix-code` 依赖 node_modules，冷 worktree 需先安装依赖。
 - instruction 预算基线（`scripts/instruction-budget.json`）随 `audit:instructions` 一并退役，不再维护。
