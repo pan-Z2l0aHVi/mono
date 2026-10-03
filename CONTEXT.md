@@ -74,7 +74,7 @@ workspace 清单、依赖草图与模块关系图见 [`ARCHITECTURE.md`](ARCHITE
 
 ## 关键 ADR
 
-表内只列仍承载现行决策的 ADR。多 Agent 编排层（Role 契约、执行体选择、Supervisor、编排账本与 handoff）连同其 skill 已整体退役：0010、0011、0015、0016、0017、0019、0020 的文档从索引移除，历史决策留在 git 历史里。编排不再是本仓的流程层——多 worktree 并行与 owner 边界由 [`docs/agents/workflow.md`](docs/agents/workflow.md) 和 [`docs/agents/worktrees.md`](docs/agents/worktrees.md) 承担。仍列在表内的 0012 与 0014 的历史修订注记提到被退役的编排层，那些只是历史，不构成现行指引。
+表内只列仍承载现行决策的 ADR。多 Agent 编排层（Role 契约、执行体选择、Supervisor、编排账本与 handoff）连同其 skill 已整体退役：0010、0011、0015、0016、0017、0019、0020 的文档从索引移除，历史决策留在 git 历史里。编排不再是本仓的流程层——需求拆分与 task 派发由外部编排层（herdr-projects）承担，本仓只保留 task 级门禁：级别判定、状态机、冻结证据、review/approval 独立性与验证要求见 [`docs/agents/workflow.md`](docs/agents/workflow.md)，owner 与 worktree 唯一性边界见 [`docs/agents/worktrees.md`](docs/agents/worktrees.md)。仍列在表内的 0012 与 0014 的历史修订注记提到被退役的编排层，那些只是历史，不构成现行指引。
 
 | ADR                                                                             | 决策                                                  | 何时读取                                                                  |
 | ------------------------------------------------------------------------------- | ----------------------------------------------------- | ------------------------------------------------------------------------- |
@@ -91,6 +91,7 @@ workspace 清单、依赖草图与模块关系图见 [`ARCHITECTURE.md`](ARCHITE
 | [0013](docs/adr/0013-web-ui-theme-transition.md)                                | Web UI Theme Transition                               | 修改 `web-ui-theme` 过渡 API、View Transition 生命周期或降级语义          |
 | [0014](docs/adr/0014-task-system-v2.md)                                         | Task 体系 v2（level 状态机、guard、checks、playbook） | 修改 `scripts/task.mjs`、任务级别 gate、pre-commit 门禁或 task state 布局 |
 | [0018](docs/adr/0018-task-state-in-tmpdir.md)                                   | Task state 落在系统临时目录                           | 修改 task state 落点、跨仓库列举范围或重启后的恢复规则                    |
+| [0021](docs/adr/0021-orchestration-layer-moved-to-herdr-projects.md)            | 编排层承接需求拆分与 task 派发                        | 修改 worktree 分工、T0 判据或 T0 的 review 形态                           |
 
 ## Interweave 产品与领域词汇
 

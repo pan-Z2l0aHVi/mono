@@ -2,7 +2,7 @@
 
 本文件规定 monorepo 实施任务的级别、状态机、变更证据、验证和 review/approval。实现见 [`scripts/task.mjs`](../../scripts/task.mjs)（`pnpm agent:task`）。
 
-worktree 和任务主合同分别见 [`worktrees.md`](worktrees.md) 与 [`task-packet.md`](task-packet.md)，release/hotfix playbook 见本文「Playbook」。并行实施按 worktree 拆分的边界见 [`worktrees.md`](worktrees.md)。Claude、Codex 或其他客户端只是执行适配层，不改变本流程的状态和 gate。完整决策见 [ADR-0014](../adr/0014-task-system-v2.md)。
+worktree 和任务主合同分别见 [`worktrees.md`](worktrees.md) 与 [`task-packet.md`](task-packet.md)，release/hotfix playbook 见本文「Playbook」。需求怎么拆成多个 task、并行度多大、worktree 与 branch 怎么分配，由编排层（herdr-projects）决定，仓库只保留 task 级的判定与门禁（与编排层的划界见 [ADR-0021](../adr/0021-orchestration-layer-moved-to-herdr-projects.md)）。Claude、Codex 或其他客户端只是执行适配层，不改变本流程的状态和 gate。完整决策见 [ADR-0014](../adr/0014-task-system-v2.md)。
 
 ## 先建立任务
 
@@ -10,10 +10,10 @@ worktree 和任务主合同分别见 [`worktrees.md`](worktrees.md) 与 [`task-p
 
 所有实施任务（判据见「任务级别」）必须先完成以下 preflight：
 
-1. 查看 `git status --short --branch`，确认当前工作区和目标 worktree 的已有变更归属。
+1. 查看 `git status --short --branch`，确认编排层交付的 worktree 是干净的：没有别人的在制品，也没有上一轮留下的未提交变更。
 2. 读取根 `AGENTS.md`、本文件和命中的 rule/guide；进入 workspace 后读取最近的包级 `AGENTS.md`。
 3. 为任务选择唯一、不可变的 task id 和级别（T0/T1/T2，T0 最严格）。
-4. 在目标 worktree 执行（新 worktree 先跑一次 `pnpm install && pnpm run build`，判据见 [`worktrees.md`](worktrees.md)「创建和复用」）：
+4. 在目标 worktree 执行（新 worktree 先跑一次 `pnpm install && pnpm run build`，判据见 [`worktrees.md`](worktrees.md)「编排层交付之后」）：
 
    ```sh
    pnpm agent:task new --task <task-id> --level t0|t1|t2 --issue <issue-url|N/A>
@@ -31,7 +31,7 @@ worktree 和任务主合同分别见 [`worktrees.md`](worktrees.md) 与 [`task-p
 
 | 级别 | 判据（命中任一即属该级）                                                                                                                                                                                         | worktree                             | freeze | review                                             | approval                                                                                               | done 前 ≥1 条 pass 验证 | commit gate（guard）                                                                |
 | ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ | ------ | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------ | ----------------------- | ----------------------------------------------------------------------------------- |
-| T0   | 跨 workspace 的公共 API/exports/事件/类型契约；依赖、catalog、lockfile、构建配置或 CI；聚合发布或多 worktree 并行                                                                                                | 专属 task worktree                   | 必须   | 必须（pure subagent 或独立会话）                   | 必须                                                                                                   | 是                      | approved + hash 一致 + checks 通过                                                  |
+| T0   | 跨 workspace 的公共 API/exports/事件/类型契约；依赖、catalog、lockfile、构建配置或 CI                                                                                                                            | 专属 task worktree                   | 必须   | 必须（pure subagent 或独立会话）                   | 必须                                                                                                   | 是                      | approved + hash 一致 + checks 通过                                                  |
 | T1   | 跨多个 workspace（`apps/*` / `packages/*`）但不改 T0 所列契约；公共导出变更但消费者仍在同一 workspace；改动 instruction system、`.agents/` 或根 `scripts/*.mjs` 的行为                                           | 专属 task worktree                   | 必须   | 可选（实施 agent 视情况，可 review 也可不 review） | 与 review 成对：记录了 review 就必须对同一 `diffHash` approve；没有 review 则不产生、也不要求 approval | 是                      | 有 review → approved + hash 一致 + checks 通过；无 review → hash 一致 + checks 通过 |
 | T2   | 改动全部落在一个 workspace 内，或只落在 `docs/` 等仓库根文档目录；且不改依赖字段与 lockfile、不改 CI 与 workspace 配置、不改被其它 workspace 消费的导出符号、不改 instruction system 与根 `scripts/*.mjs` 的行为 | 允许当前 worktree 直接改，不要求干净 | 可选   | 不用（需要时派 fresh subagent）                    | 不要求                                                                                                 | 不强制                  | active + checks 通过                                                                |
 
@@ -111,7 +111,7 @@ freeze 自身执行归一化管线：`git add -A` 全量 staging（快照语义�
 
 ## review 拓扑
 
-- **T0**：必须 review。形态是 pure subagent 或独立会话，两者都算数，不强制「独立 Claude Code reviewer 会话」这一种。改用其他执行体时，按 skill 记录理由。Reviewer 与实施角色权限相同，但不参与实施，也不接收实施者的叙述，只审冻结 diff、任务主合同与证据。
+- **T0**：必须 review。形态由编排层另起一个独立线程提供——该线程有自己的 worktree，从 owner 的分支检出（`--base <owner 分支>`），因此 reviewer 不进入 owner 的 worktree，也不要求 owner 为了 review 提前 push；在该线程内用 pure subagent 或独立会话执行审查都算数，不强制「独立 Claude Code reviewer 会话」这一种。改用其他执行体时，按 skill 记录理由。Reviewer 与实施角色权限相同，但不参与实施，也不接收实施者的叙述，只审冻结 diff、任务主合同与证据。
 - **T1**：review 可选，由实施 agent 视情况决定——要了就派 pure subagent 或独立会话，不要就走 `freeze → verify → done`。一旦记录了 review，approval 就与它成对，必须对同一 `diffHash` 批准。改用其他执行体时，按 skill 记录理由。Reviewer 只接收冻结 diff、任务主合同与证据。
 - **T2**：不用 review；需要额外 review 时，派 fresh subagent。
 - **任何级别禁止同一会话自审**：实施者复核自己的 diff 不构成 review。这条由文档与角色纪律承担，不由内核强制——id 是自报的，内核对得上 id 也证明不了是不是同一个会话。

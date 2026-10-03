@@ -23,9 +23,9 @@
 
 这是一个 pnpm + Turborepo monorepo：发布 `@greypan/*` 工具包和 Lit Web Components（`@greypan/web-ui`），并维护 React、Vue 与私有集成应用作为真实集成表面；长期架构方向、跨包边界与 ADR 索引见 [`CONTEXT.md`](CONTEXT.md)。
 
-Task 级别、状态机、冻结 diff、review、approval 和验证证据见 [`docs/agents/workflow.md`](docs/agents/workflow.md)。任务主合同见 [`docs/agents/task-packet.md`](docs/agents/task-packet.md)。
+Task 级别、状态机、冻结 diff、review、approval 和验证证据见 [`docs/agents/workflow.md`](docs/agents/workflow.md)。任务主合同见 [`docs/agents/task-packet.md`](docs/agents/task-packet.md)。需求拆分与 task 派发的归属见 [`ADR-0021`](docs/adr/0021-orchestration-layer-moved-to-herdr-projects.md)。
 
-并行实施仍要遵守 worktree 和 owner 边界。一个可变 task 只能有一个实施 worktree 和 owner。跨 `packages/*` 与 `apps/*` 的需求按影响面拆成独立 task，各自使用 task worktree，契约通过 task 主合同传递。
+并行实施仍要遵守 worktree 和 owner 边界。编排层为每条 task 分配独立的 branch、worktree 和 owner，一个可变 task 只能有一个实施 worktree 和 owner；仓库侧的责任是守住这个唯一性，不去改动或复用别人 task 的 worktree。需求怎么拆成多个 task、并行度多大、谁分到哪条 task，由编排层决定；task 之间靠 [`docs/agents/task-packet.md`](docs/agents/task-packet.md) 的主合同传递契约，仓库不要求 agent 自己拆分。
 
 ## 不可绕过的仓库边界
 
@@ -34,7 +34,7 @@ Task 级别、状态机、冻结 diff、review、approval 和验证证据见 [`d
 - `**/__screenshots__/` 和 `**/.vitest-attachments/` 是测试证据，不是常规源码产物；除非任务明确要求更新已验证的视觉基线，否则不创建、编辑或提交它们。
 - `AGENTS.md`（含包级）、`docs/adr/`、`docs/agents/`、`.agents/rules/`、根 `skills/` 下仓库自撰写 skill 的文档使用中文；自撰与第三方的判定以 `skills-lock.json` 为准，未登记的即自撰。第三方引入的 skill（根 `skills/` 下的依赖镜像与 `.agents/skills-vendored/` 下的 vendor）必须保持上游原文的语言与内容，更新时不得翻译或本地改写；其通用流程若与仓库规则、task guide 或实现事实冲突，以后者为准。技术术语、命令、路径和包名保留英文。
 - 缺少 Node、pnpm 或 Go 时先运行 `mise install`；准确版本以 `.mise.toml`、`package.json` 与目标包 manifest 为准。
-- 并行实施 Agent 必须使用不同的 branch/worktree。不得在共享工作区执行 `git switch`、`git checkout`、`git stash`、`git reset` 或 `git clean`。新建 worktree 统一放在仓库旁的 `<仓库目录名>-worktrees/<worktree 名>`（例：仓库在 `path/to/mono`，worktree 放 `path/to/mono-worktrees/<name>`）；工具自带的 worktree 默认路径（如 `.claude/worktrees/`）不采用。
+- 编排层为每个并行 task 分配独立的 branch 和 worktree。不得在共享工作区执行 `git switch`、`git checkout`、`git stash`、`git reset` 或 `git clean`。worktree 的路径与创建方式由编排层决定，仓库不规定。
 - worktree 布局见 [`docs/agents/worktrees.md`](docs/agents/worktrees.md)。
 - 预授权操作（本地测试与校验命令、包级构建、`agent:find-usages` / `agent:inspect-contract` / `agent:diff-contract` 等只读查询、在目标 worktree 内读文件）直接执行，不必逐步请示；需要逐次授权的是 commit/push/merge/publish、依赖与 lockfile、`.npmrc` / `.mise.toml` / Git 配置、凭证读写和破坏性 git 操作。清单见 [`docs/agents/workflow.md`](docs/agents/workflow.md) 的「预授权操作」。
 
@@ -57,6 +57,6 @@ Task 级别、状态机、冻结 diff、review、approval 和验证证据见 [`d
 | 代码 review                                       | [`docs/agents/workflow.md`](docs/agents/workflow.md)「review 拓扑」                                                                                                                                          |
 | 全局替换 / 重命名 / API 迁移 / 文件迁移           | [`docs/agents/global-rename.md`](docs/agents/global-rename.md)                                                                                                                                               |
 | Git commit                                        | [`.agents/rules/commit.md`](.agents/rules/commit.md)、[`docs/agents/commit.md`](docs/agents/commit.md)（AI 协作署名）和 [`CONTRIBUTING.md`](CONTRIBUTING.md)                                                 |
-| 开发流程、worktree 布局或 release 分支            | [`docs/agents/workflow.md`](docs/agents/workflow.md) 和 [`docs/agents/task-packet.md`](docs/agents/task-packet.md)                                                                                           |
+| 开发流程、worktree 布局或 release 分支            | [`docs/agents/workflow.md`](docs/agents/workflow.md) 和 [`docs/agents/task-packet.md`](docs/agents/task-packet.md)；需求拆分与 task 派发由编排层（herdr-projects）决定，仓库只保留 task 级门禁               |
 
 涉及 UI、UX、交互、响应式或浏览器运行时的改动，必须按 [`browser-verification.md`](docs/agents/browser-verification.md) 在真实浏览器验证；构建成功或 jsdom 测试不能替代该验证。实现不熟悉或跨浏览器语义不明确的 Web Platform API 时，使用 MDN MCP 验证语义和兼容性。
