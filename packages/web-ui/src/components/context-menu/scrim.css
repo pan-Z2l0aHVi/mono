@@ -1,0 +1,57 @@
+/*
+ * context-menu 的模态 scrim。以内联 style 子节点挂在 scrim 元素自身，随 scrim 一起摘除。
+ *
+ * 三条硬约束，改动前先读：
+ *
+ * 1. **绝不能**出现 transform / filter / contain / backdrop-filter / will-change /
+ *    perspective。菜单面板是 `position: fixed` + Floating UI `strategy: 'fixed'`，
+ *    上面任意一条都会让 scrim 成为 fixed 的包含块，Floating UI 返回的坐标随即整体偏移。
+ *    drawer 的 dialog 带着 `transform: translate(0,0)`，`_positionMenu` / `_positionSubmenu`
+ *    里的 `instanceof HTMLDialogElement && .open` 分支正是为那种情况才存在的。
+ *
+ * 2. 盒子必须**精确铺满视口**（下面把 margin / max-* / padding / border 全部清零）。
+ *    Floating UI 的 `strategy: 'fixed'` 会把最近的 `position: fixed` 祖先当作 offsetParent，
+ *    scrim 正是这样一个祖先 —— 它返回的坐标是**相对 scrim padding box** 的。
+ *    padding box 与视口逐像素相等时两套坐标系恰好重合，位置才对。默认 UA 的
+ *    `dialog:modal` 带 `margin: auto` 与 `max-width: calc(100% - 6px - 2em)`，
+ *    会让 scrim 居中且比视口小一圈 —— 那是静默偏移，测试里必须用几何断言钉住。
+ *
+ * 3. 视觉上保持透明。scrim 的职责是**吃掉下层命中**（点外面必关菜单，且下层收不到这次
+ *    click），不是给页面加一层遮罩变暗。给上下文菜单加全屏压暗会与 dialog / drawer 的
+ *    遮罩语义混淆，而它们是有可见边框的实体卡片。
+ */
+dialog.wui-context-menu-scrim {
+  position: fixed;
+  inset: 0;
+
+  /* 面板是 fixed，不在流内；UA 的 overflow: auto 在此既无内容可滚，也会引入滚动条。 */
+  overflow: visible;
+
+  width: auto;
+  max-width: none;
+  height: auto;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+
+  color: inherit;
+
+  /* 透明底：不加变暗遮罩，理由见文件头第 3 条。 */
+  background: transparent;
+}
+
+/*
+ * 菜单项激活触发的关闭会**提前**出顶层（见 index.ts 的 `_releaseScrimModality`）：
+ * 此刻焦点还在菜单里，UA 的焦点归还正好落在 opener 上；等退场结束再让顶层就晚了，
+ * 那时焦点已经被应用送走，归还会把它拽回来 blur 掉编辑器。
+ *
+ * scrim 元素本身必须留到面板真正被摘除 —— 面板挂在它里面，一起摘掉就没有退场动画了。
+ * 而 UA 的 `dialog:not([open]) { display: none }` 会把面板一起藏掉，所以这里显式恢复可见。
+ *
+ * 代价是这个尾巴上 scrim 已经在 top layer 之外：下层恢复可命中，面板的层级退回普通流。
+ * 尾巴只有一次退场过渡的时长（默认 160ms），且只发生在菜单项激活时。
+ */
+dialog.wui-context-menu-scrim:not([open]) {
+  display: block;
+}

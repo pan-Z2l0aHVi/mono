@@ -261,31 +261,31 @@ describe('context-menu 长按（jsdom 逻辑）', () => {
     cleanupElement(el)
   })
 
-  it('吸收窗口过期后，真实点击照常 light-dismiss', async () => {
-    vi.useFakeTimers()
-    const el = createMenu({ 'long-press': '' })
-    await waitForUpdate(el)
-
-    press(el)
-    await vi.advanceTimersByTimeAsync(600)
-    await waitForUpdate(el)
-    expect(el.isOpen).toBe(true)
-
-    el.close()
-    await waitForUpdate(el)
-    expect(el.isOpen).toBe(false)
-
-    // 走过吸收窗口与 outside-click guard 的解除（guard 用的是零延迟 setTimeout）。
-    await vi.advanceTimersByTimeAsync(1200)
-    el.openAt(100, 100)
-    await vi.advanceTimersByTimeAsync(0)
-    await waitForUpdate(el)
-    expect(el.isOpen).toBe(true)
-
-    // 窗口已过期：这次真实点击必须照常 light-dismiss。
-    document.body.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
-    await waitForUpdate(el)
-    expect(el.isOpen).toBe(false)
-    cleanupElement(el)
-  })
+  /*
+   * 原「吸收窗口过期后，真实点击照常 light-dismiss」已删除：它靠
+   * `document.body.dispatchEvent(click)` 触发。菜单打开时 scrim 处于 `showModal()`
+   * 模态态，真实浏览器里这个 click 到不了 body；jsdom 没有 top layer，合成事件照样派发，
+   * 于是它断言的是一条被模态契约关掉的通道。它唯一的实现就是 document 捕获阶段那个
+   * 兜底监听器，那段已随之删除。
+   *
+   * 契约没有丢，迁到了 browser project 的真实触控管线：
+   * `long-press.browser.spec.ts` 的「吸收窗口内的点击被吞，窗口过后同一次菜单上的真实
+   * 点击照常 dismiss」。它用 CDP 走完真长按，然后在**同一条用例**里断言两相：窗内点
+   * scrim 被吞、越过 `LONG_PRESS_FOLLOW_UP_WINDOW_MS` 后同一次点击生效。合成事件表达不了
+   * 「模态下下层收不到命中」，而这正是原用例赖以存在的前提。
+   */
 })
+
+// jsdom 未实现原生 dialog 的 modal 语义，这里局部补足 showModal/close 对 open 的影响。
+// 刻意不做成 test-helper 里的全局 shim —— 那会让共享 presence 的 `showModal?.()` 真正执行，
+// 改变 image-preview 等既有用例的观察点。依据见 test-helper.ts 末尾的说明。
+if (!HTMLDialogElement.prototype.showModal) {
+  HTMLDialogElement.prototype.showModal = function () {
+    this.setAttribute('open', '')
+  }
+}
+if (!HTMLDialogElement.prototype.close) {
+  HTMLDialogElement.prototype.close = function () {
+    this.removeAttribute('open')
+  }
+}

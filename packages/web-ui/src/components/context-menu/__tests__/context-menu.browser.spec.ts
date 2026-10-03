@@ -24,6 +24,22 @@ async function nextFrame() {
   await new Promise(resolve => requestAnimationFrame(resolve))
 }
 
+/**
+ * 等菜单打开后的首项聚焦落定。
+ *
+ * 模态化之后首项聚焦比从前晚一帧：`_focusFirstItem()` 必须等过 `showModal()` 排队的
+ * dialog focusing steps，否则焦点会被 UA 从菜单项挪回 `<dialog>`。组件侧理由与实测见
+ * `context-menu/index.ts` 里 `_focusFirstItem()` 上方的注释。
+ */
+async function waitForMenuFocus() {
+  for (let attempt = 0; attempt < 10; attempt++) {
+    await nextFrame()
+    const first = getMenuPanels('上下文菜单')[0]?.querySelector('web-ui-dropdown-item')
+    if (first?.shadowRoot?.activeElement) return
+  }
+  throw new Error('Expected the first menu item to take focus')
+}
+
 /** 合成 Escape：仲裁者挂在 document 捕获阶段，合成事件足以命中它。 */
 function dispatchEscape() {
   document.dispatchEvent(
@@ -106,13 +122,70 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
 
     menu.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, composed: true, clientX: 100, clientY: 100 }))
     await menu.updateComplete
-    await nextFrame()
+    await waitForMenuFocus()
 
     const panel = getMenuPanels('上下文菜单')[0]
     expect(menu.isOpen).toBe(true)
     expect(panel).toBeTruthy()
     expect(panel?.getAttribute('role')).toBe('menu')
     expect(panel?.getAttribute('aria-label')).toBe('上下文菜单')
+  })
+
+  /*
+   * R10：鼠标右键路径**保持锚定落点**，不受触屏贴底改动影响（Q11 选 a）。
+   *
+   * 触屏长按那条路径传 `_openAt(..., anchorBottom = true)` 走贴底算术；右键这条路
+   * 传的是默认 false，走 Floating UI 的 bottom-start + shift。落点选在视口中部
+   * 且菜单装得下，于是没有任何 shift —— 「锚定」可以按等式断言，不留容差口子。
+   *
+   * 反向断言（面板离下缘很远）是这条用例区别于长按用例的关键：只断言锚定的话，
+   * 某些窗口尺寸下两条路径的落点会重合，贴底改动悄悄蔓延到右键路径也测不出来。
+   */
+  it('鼠标右键打开时面板锚定在落点，未被贴底逻辑带偏', async () => {
+    const menu = document.createElement('web-ui-context-menu')
+    menu.innerHTML = '<web-ui-dropdown-item>Open</web-ui-dropdown-item>'
+    document.body.append(menu)
+    await menu.updateComplete
+
+    menu.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, composed: true, clientX: 120, clientY: 140 }))
+    await menu.updateComplete
+    await waitForMenuFocus()
+
+    const panel = getMenuPanels('上下文菜单')[0]
+    expect(panel).toBeTruthy()
+    // 等入场过渡落定：进场 scale 会污染 getBoundingClientRect() 的读数。
+    for (let attempt = 0; attempt < 20 && panel!.getAnimations().length > 0; attempt++) await nextFrame()
+
+    const rect = panel!.getBoundingClientRect()
+    expect(rect.left).toBeCloseTo(120, 0)
+    expect(rect.top).toBeCloseTo(140, 0)
+    // 反向：离视口下缘很远，说明没走贴底算术。
+    expect(window.innerHeight - rect.bottom).toBeGreaterThan(100)
+  })
+
+  /*
+   * R8/R10 的坐标→定位映射，走公开 API 面。精确值断言只能在 browser mode 做：
+   * 模态化后面板走 Floating UI + `shift({ padding: 8, crossAxis: true })`，jsdom 无布局时
+   * `getBoundingClientRect()` 恒返回全 0，shift 必然把坐标夹到 padding —— 那条断言在
+   * jsdom 里量不到任何实现改动（详见 context-menu.spec.ts 同名用例的注释）。
+   *
+   * 这里读 inline style 而不是 getBoundingClientRect()：前者是定位器**写入**的视口坐标，
+   * 不受进场 scale 污染，所以不必等过渡落定，断言也就不会被动画时序带偏。
+   */
+  it('openAt(x, y) 把面板锚定在指定坐标', async () => {
+    const menu = document.createElement('web-ui-context-menu')
+    menu.innerHTML = '<web-ui-dropdown-item>Open</web-ui-dropdown-item>'
+    document.body.append(menu)
+    await menu.updateComplete
+
+    menu.openAt(140, 180)
+    await menu.updateComplete
+    await nextFrame()
+
+    const panel = getMenuPanels('上下文菜单')[0]
+    expect(panel).toBeTruthy()
+    expect(panel?.style.left).toBe('140px')
+    expect(panel?.style.top).toBe('180px')
   })
 
   it('初始聚焦不绘制 accent，方向键导航后恢复键盘焦点视觉', async () => {
@@ -124,7 +197,9 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
 
     menu.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, composed: true, clientX: 100, clientY: 100 }))
     await menu.updateComplete
-    await nextFrame()
+    // 模态化后首项聚焦比从前晚一帧（须等过 showModal() 排队的 dialog focusing steps），
+    // 单帧不够 —— 同 `指针右键打开根菜单` 用例的理由。
+    await waitForMenuFocus()
 
     const panel = getMenuPanels('上下文菜单')[0]
     const items = [...(panel?.querySelectorAll<HTMLElement>('web-ui-dropdown-item') ?? [])]
@@ -161,7 +236,7 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
 
     menu.dispatchEvent(new KeyboardEvent('keydown', { key: 'ContextMenu', bubbles: true, composed: true }))
     await menu.updateComplete
-    await nextFrame()
+    await waitForMenuFocus()
 
     const firstItem = getMenuPanels('上下文菜单')[0]?.querySelector<HTMLElement>('web-ui-dropdown-item')
     const firstControl = firstItem?.shadowRoot?.querySelector<HTMLElement>('.item-inner')
@@ -169,6 +244,42 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
     expect(firstItem?.hasAttribute('data-wui-menu-focus-suppressed')).toBe(false)
     expect(firstControl?.matches(':focus-visible')).toBe(true)
     expect(getComputedStyle(firstControl!).backgroundColor).toBe('rgb(0, 136, 255)')
+  })
+
+  /*
+   * R5：Escape 关闭菜单**恰好一次** —— `open-change(false)` 只派发一次，且不留残余 scrim。
+   *
+   * 「恰好一次」是这里的重点。模态化引入了新的关闭动力：原生 `<dialog>` 自己也监听 Escape
+   * 并派发 `cancel`。组件吞掉了 `cancel` 的默认行为（`_onScrimCancel`），但如果哪天那道
+   * 吞拦失效，UA 会直接把 scrim 关掉 —— 那条路径**不经过组件状态机**，于是既可能漏派
+   * `open-change`，也会多出一条与组件无关的关闭。这条断言就是为了把那种双关钉住。
+   */
+  it('Escape 恰好关闭一次：open-change(false) 只派发一次且不留残余 scrim', async () => {
+    const menu = document.createElement('web-ui-context-menu')
+    const row = document.createElement('div')
+    row.tabIndex = 0
+    menu.append(row, document.createElement('web-ui-dropdown-item'))
+    document.body.append(menu)
+    await menu.updateComplete
+
+    const changes: CustomEvent<{ open: boolean }>[] = []
+    menu.addEventListener('open-change', event => changes.push(event as CustomEvent<{ open: boolean }>))
+
+    row.focus()
+    menu.openAt(120, 120)
+    await menu.updateComplete
+    await nextFrame()
+    expect(menu.isOpen).toBe(true)
+    expect(document.querySelector('dialog[data-wui-menu-scrim]')).toBeTruthy()
+
+    dispatchEscape()
+    await waitForItemsReturned(menu, 1)
+
+    const closed = changes.filter(event => !event.detail.open)
+    expect(closed).toHaveLength(1)
+    expect(menu.isOpen).toBe(false)
+    // 关闭后 top layer 里不能残留仍 showModal() 的 dialog：残留会把整页锁死。
+    expect(document.querySelector('dialog[data-wui-menu-scrim]')).toBeNull()
   })
 
   it('Escape 关闭后焦点回到打开前持焦的行', async () => {
@@ -196,30 +307,14 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
     expect(document.activeElement).toBe(row)
   })
 
-  it('关闭期间焦点被外部接管时不再抢回', async () => {
-    const menu = document.createElement('web-ui-context-menu')
-    const row = document.createElement('div')
-    row.tabIndex = 0
-    const editor = document.createElement('input')
-    menu.append(row, document.createElement('web-ui-dropdown-item'))
-    document.body.append(menu, editor)
-    await menu.updateComplete
-
-    row.focus()
-    menu.openAt(40, 40)
-    await menu.updateComplete
-    await nextFrame()
-
-    // 复刻 interweave 的重命名时序：菜单项回调同步建编辑态，微任务里 focus() 进输入框；
-    // 退场动画此刻还没结束，旧实现正是在这里把焦点拽回行上，blur 掉刚建立的编辑态。
-    editor.focus()
-    expect(document.activeElement).toBe(editor)
-
-    menu.close()
-    await waitForItemsReturned(menu, 1)
-
-    expect(document.activeElement).toBe(editor)
-  })
+  /*
+   * R12：原用例「关闭期间焦点被外部接管时不再抢回」已**删除**。
+   *
+   * 那道防护是为旧实现服务的：旧代码无条件 `focus()` 归还焦点，会抢走调用方在关闭期间
+   * 刚安排好的焦点，因此才需要「先看看有没有人接管」的判据。焦点归还在模态化之后交给
+   * `showModal()` / `close()` 的 UA 行为，组件不再自行实现，也就没有这道防护可保留 ——
+   * 实测外部接管焦点后 close，UA 会抢回 opener。这是接受的契约变化，不是回归。
+   */
 
   /*
    * 复刻 interweave 资源列表的右键重命名时序（两个组件都是本包的，无跨包依赖）：
@@ -275,7 +370,69 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
     expect(editable.value).toBe('原始标题')
   })
 
-  it('点击菜单面板外的 checkbox 时完成勾选并关闭菜单', async () => {
+  /*
+   * 关闭来源决定 scrim 何时出顶层，这层区分必须有测试守着。
+   *
+   * 菜单项激活：立刻出顶层（`close()` 里的 `_releaseScrimModality`）。理由见 index.ts
+   * 的 `close()` —— 此刻焦点还在菜单里，UA 的归还能落在 opener 上；等退场结束就晚了。
+   *
+   * 其余关闭（Escape / 点 scrim / 程序式）：保留 dialog 默认效果，scrim 在退场结束前
+   * 一直是 `:modal`，下层保持不可命中。
+   *
+   * 变异验证：把区分抹掉（所有关闭都提前出顶层）后，context-menu 的 95 条用例全绿，
+   * 一条都不会红。所以没有这条，下一个人很容易把「提前出顶层」推广到所有路径，
+   * 把点击穿透的窗口扩大到每一种关闭方式。
+   */
+  it('菜单项点击立刻让 scrim 出顶层，Escape 则撑到退场结束', async () => {
+    const itemMenu = document.createElement('web-ui-context-menu')
+    itemMenu.innerHTML = '<web-ui-dropdown-item>Open</web-ui-dropdown-item>'
+    document.body.append(itemMenu)
+    await itemMenu.updateComplete
+
+    itemMenu.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, composed: true, clientX: 60, clientY: 60 }))
+    await itemMenu.updateComplete
+    await waitForMenuFocus()
+    const itemScrim = document.querySelector<HTMLDialogElement>('dialog[data-wui-menu-scrim]')
+    expect(itemScrim?.matches(':modal')).toBe(true)
+
+    getMenuPanels('上下文菜单')[0]!.querySelector('web-ui-dropdown-item')!.click()
+    await nextFrame()
+    expect(itemScrim?.matches(':modal'), '菜单项点击后 scrim 应立刻出顶层').toBe(false)
+    // 出顶层不等于摘除：面板还要走完退场动画，否则视觉上会「啪」地消失。
+    expect(itemScrim?.isConnected).toBe(true)
+    await waitForItemsReturned(itemMenu, 1)
+    expect(itemScrim?.isConnected).toBe(false)
+
+    const escMenu = document.createElement('web-ui-context-menu')
+    escMenu.innerHTML = '<web-ui-dropdown-item>Open</web-ui-dropdown-item>'
+    document.body.append(escMenu)
+    await escMenu.updateComplete
+
+    escMenu.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, composed: true, clientX: 60, clientY: 60 }))
+    await escMenu.updateComplete
+    await waitForMenuFocus()
+    const escScrim = document.querySelector<HTMLDialogElement>('dialog[data-wui-menu-scrim]')
+    expect(escScrim?.matches(':modal')).toBe(true)
+
+    dispatchEscape()
+    await nextFrame()
+    expect(escScrim?.matches(':modal'), 'Escape 关闭应保留 dialog 默认效果，撑到退场结束').toBe(true)
+    await waitForItemsReturned(escMenu, 1)
+    expect(escScrim?.isConnected).toBe(false)
+  })
+
+  /*
+   * R1 / R2 的行为面：菜单打开时，下层目标既收不到命中，也收不到那次 click。
+   *
+   * 断言分两段，缺一不可：
+   *
+   * 1. **命中测试**：在 checkbox 中心做 elementFromPoint，必须解析到 scrim 而不是 checkbox。
+   *    这一段是「收不到命中」的直接证据；只断言「菜单关了」无法区分「被 scrim 挡住」与
+   *    「关掉了但事件照样穿透」。scrim 在 light DOM（document.body 下），不在 shadow 内，
+   *    因此这里用 document 级查询即可。
+   * 2. **行为**：点 scrim 后菜单关闭，而 checkbox 的 click 计数保持 0、checked 保持 false。
+   */
+  it('点 scrim 关闭菜单，且下层 checkbox 既不被命中也不收到 click', async () => {
     const menu = document.createElement('web-ui-context-menu')
     const row = document.createElement('div')
     const checkbox = document.createElement('web-ui-checkbox')
@@ -290,40 +447,46 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
     row.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, composed: true, clientX: 100, clientY: 100 }))
     await menu.updateComplete
     await nextFrame()
-    expect(menu.isOpen).toBe(true)
-
-    await userEvent.click(checkbox)
-    await menu.updateComplete
-    await nextFrame()
-
-    expect(checkbox.checked).toBe(true)
-    expect(menu.isOpen).toBe(false)
-  })
-
-  it('点击菜单面板外的列表行时保留行点击并关闭菜单', async () => {
-    const menu = document.createElement('web-ui-context-menu')
-    const row = document.createElement('button')
-    row.textContent = '打开资源'
-    const item = document.createElement('web-ui-dropdown-item')
-    item.textContent = 'Open'
-    menu.append(row, item)
-    document.body.append(menu)
-    await menu.updateComplete
-    let clicks = 0
-    row.addEventListener('click', () => clicks++)
-
-    row.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, composed: true, clientX: 100, clientY: 100 }))
-    await menu.updateComplete
     await nextFrame()
     expect(menu.isOpen).toBe(true)
 
-    await userEvent.click(row)
+    let checkboxClicks = 0
+    checkbox.addEventListener('click', () => checkboxClicks++)
+
+    const scrim = document.querySelector<HTMLElement>('dialog[data-wui-menu-scrim]')
+    expect(scrim).toBeTruthy()
+
+    // scrim 必须真的处于 top layer：`:modal` 只在 showModal() 真正生效时匹配。
+    // jsdom 不实现 `:modal`（theme.spec 那边只能断言 open），这条断言是它在真实
+    // 浏览器里唯一的落点 —— 「挂了个 dialog 元素」不等于「模态生效」。
+    expect((scrim as HTMLDialogElement).matches(':modal')).toBe(true)
+
+    // (1) 命中测试：checkbox 所在位置被 scrim 占据。
+    const rect = checkbox.getBoundingClientRect()
+    const cx = rect.left + rect.width / 2
+    const cy = rect.top + rect.height / 2
+    expect(document.elementFromPoint(cx, cy)).toBe(scrim)
+
+    // (2) 行为：点 scrim 只关菜单，下层目标零激活。
+    scrim!.click()
     await menu.updateComplete
     await nextFrame()
 
-    expect(clicks).toBe(1)
     expect(menu.isOpen).toBe(false)
+    expect(checkboxClicks).toBe(0)
+    expect(checkbox.checked).toBe(false)
   })
+
+  /*
+   * R17：原用例「点击菜单面板外的列表行时保留行点击并关闭菜单」已**删除** —— 契约反转。
+   *
+   * 这条是别人专门写下的 light-dismiss 契约（旧行为：点外面 = 既关菜单又激活下层目标），
+   * 而它正是用户报告的缺陷本身：一次点击同时产生「关菜单」与「激活行」两个后果，
+   * 中间没有任何仲裁，于是弹出菜单的同时打开了另一个资源。
+   *
+   * 模态化之后下层目标在菜单打开期间**收不到命中**（见下面 checkbox 用例的命中测试），
+   * 旧契约在物理上不再可能成立。取代它的是 scrim 用例：点外面 = 只关菜单。
+   */
 
   it('menu panel 内嵌套子 overlay 的 wheel 不被父菜单抑制', async () => {
     const menu = document.createElement('web-ui-context-menu')

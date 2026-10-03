@@ -1150,15 +1150,25 @@ Right-click context menu.
 
 **Methods:** `openAt(x: number, y: number)`, `close()`
 
+**CSS Custom Properties:**
+
+| Property                              | Default                            | Description                      |
+| ------------------------------------- | ---------------------------------- | -------------------------------- |
+| `--wui-context-menu-safe-area-bottom` | `env(safe-area-inset-bottom, 0px)` | Bottom inset a touch menu clears |
+
 Opens on `contextmenu` event. Menu items: `<web-ui-dropdown-item>`, `<web-ui-dropdown-divider>`, `<web-ui-dropdown-header>`. Supports keyboard navigation (Arrow keys, Enter, Escape) and submenu hover with `pointerenter`.
 
-`long-press` is opt-in and touch-only: a pointer held for `long-press-delay` (default `500` ms, matching the platform long press) opens the menu at the press point, through the same path as a right-click. It only reacts to `pointerType === 'touch'`, and holding while moving more than 10px cancels it, so scrolling never opens a menu. Because the browser also reports that same hold as a native gesture, the `contextmenu` and `click` it emits afterwards are absorbed rather than allowed to reopen — or immediately light-dismiss — the menu the long press just opened.
+While the menu is open it is modal: it renders into a transparent `<dialog>` in the browser's top layer, so nothing on the page below can be clicked or hit-tested. Clicking outside therefore dismisses the menu without also activating whatever was underneath — a row, a checkbox, a link. The scrim is deliberately invisible; it exists to absorb the hit, not to dim the page. One consequence to know about: for the ~160ms exit transition after a menu item is activated, the scrim has already left the top layer, so the page below is briefly clickable again and the menu's stacking level is that of the normal flow.
+
+`long-press` is opt-in and touch-only: a pointer held for `long-press-delay` (default `500` ms, matching the platform long press) opens the menu, through the same path as a right-click. It only reacts to `pointerType === 'touch'`, and holding while moving more than 10px cancels it, so scrolling never opens a menu. Because the browser also reports that same hold as a native gesture, the `contextmenu` and `click` it emits afterwards are absorbed rather than allowed to reopen — or immediately light-dismiss — the menu the long press just opened.
+
+A `long-press` menu is anchored to the bottom of the viewport, clearing `--wui-context-menu-safe-area-bottom` so it does not sit under a home indicator, and tracks the press point horizontally. The split is by input, not by viewport width: a narrow window still anchors a mouse right-click at the cursor, and only touch gets the bottom-anchored layout.
 
 `disabled` suppresses menu behaviour only: right-click and `openAt()` do not open a menu. It does not dim or otherwise restyle what you put in the default slot — the component renders no menu surface of its own to dim, and disabling the right-click menu is not the same as disabling your trigger. If a disabled state should read as disabled, render it on your own content.
 
 While the menu is open, consumer code may conditionally render, move, or remove menu items (e.g. Vue `v-if`) without re-inserting them at the host element; changes inside the portal are reconciled automatically, and framework anchors are returned to the host on close so subsequent framework patches keep working.
 
-On close, focus returns to whatever was focused when the menu opened, but only while the menu still holds focus. If a menu item's action has already moved focus elsewhere — opening an inline editor, for example — the menu leaves that focus alone instead of pulling it back, so the new focus target is not blurred by the closing menu.
+On close, focus returns to whatever was focused when the menu opened. That is the browser's own modal-dialog behaviour rather than something the component reimplements, which is also why it only works while the menu is the top layer. Activating a menu item is the one path that hands focus back early — at the click, before the exit transition — so that an item action which moves focus elsewhere (opening an inline editor, say) ends up keeping it: the closing menu never reaches in and pulls focus back out of the new target, so nothing that commits on blur fires a spurious edit.
 
 ---
 
