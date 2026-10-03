@@ -461,6 +461,14 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
     // 浏览器里唯一的落点 —— 「挂了个 dialog 元素」不等于「模态生效」。
     expect((scrim as HTMLDialogElement).matches(':modal')).toBe(true)
 
+    // ::backdrop 必须纯透明。它是独立伪元素、**不继承**元素的 background：只把 scrim
+    // 自己的 background 清成 transparent 挡不住它，`showModal()` 一开 UA 照样画默认的
+    // `rgba(0, 0, 0, 0.1)`。真机症状是「菜单一打开整页灰一层」，而元素级检查全部干净 ——
+    // 那层颜色不在元素上，所以这里只能直接问伪元素。
+    // jsdom 没有 ::backdrop，这条只能落在 browser spec。
+    const backdrop = getComputedStyle(scrim as Element, '::backdrop')
+    expect(backdrop.backgroundColor).toBe('rgba(0, 0, 0, 0)')
+
     // (1) 命中测试：checkbox 所在位置被 scrim 占据。
     const rect = checkbox.getBoundingClientRect()
     const cx = rect.left + rect.width / 2

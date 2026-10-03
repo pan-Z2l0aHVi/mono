@@ -404,7 +404,9 @@ describe('Portal overlay 在已打开原生 dialog 内（top layer）', () => {
     expect(rect.top).toBeGreaterThanOrEqual(0)
     expect(rect.right).toBeLessThanOrEqual(window.innerWidth)
     expect(rect.bottom).toBeLessThanOrEqual(window.innerHeight)
-    // origin：被 shift 沿 y 轴上推（shiftY 为负）→ bottom，位移方向与 origin 一致。
+    // origin：flip 把面板翻到了触发点**上方**（placement 变成 top-start），于是离触发点
+    // 最近的那条边是下沿，origin 随之为 bottom。旧实现这里是被 shift 沿 y 轴推上去的，
+    // 现在由 flip 决定 —— 断言不变，机制换了。
     expect(panel.style.getPropertyValue('--wui-internal-overlay-transform-origin')).toContain('bottom')
 
     expectVisibleInMenuScrim(panel, dialog)
