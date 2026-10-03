@@ -17,7 +17,6 @@ import { fileURLToPath } from 'node:url';
 // Tunables. Change the value here rather than adding a switch: HERDR_COS_HOME is the only env var read as config.
 const TEXT_THRESHOLD_BYTES = 1500; // bodies over this land in artifacts/ instead of the record
 const ACK_DEADLINE_MS = 240000; // no ack by here and nothing ran => re-ring once; not yet measured on a live fleet
-const LEAD_POLL_MS = 30000; // suggested pull cadence; it bounds how fast a reply is seen
 const PROTOCOL_V = 1, LEDGER_DIR_NAME = 'herdr-cos', MEMBER_WARN = 6, FAILED_AFTER = 2;
 const SELF_PATH = fileURLToPath(import.meta.url);
 const SKILL_DIR = join(dirname(SELF_PATH), '..'); // roles/ lives beside this program's parent
@@ -408,11 +407,11 @@ Program: ${cos}
    \`${cos} send ${slug} <from> <text|-> "<from>-><your-label>#<seq>"\`. \`-\` reads the body
    from stdin; bodies over ${TEXT_THRESHOLD_BYTES} bytes land in ${fleet}/artifacts/ and the
    record carries the path, so the doorbell stays one short line — read that file first.
-4. Poll no faster than every ${LEAD_POLL_MS / 1000}s, never resend work that some other pane's
-   ack already covers, and expect an unacked \`NEW\` to be shown again on the next poll: only
-   your ack ends it. If its preview says \`<body MISSING …>\`, report that line and do not redo it.
-   If your ack answers \`as MISSING\`, the doorbell named a number this channel never held: report
-   that line, redo nothing, and do not retry the ack.
+4. Pull whenever you are next able to — you are not a timer, so nothing here can be late. Never resend
+   work that some other pane's ack already covers, and expect an unacked \`NEW\` to be shown again on
+   the next poll: only your ack ends it. If its preview says \`<body MISSING …>\`, report that line
+   and do not redo it. If your ack answers \`as MISSING\`, the doorbell named a number this channel
+   never held: report that line, redo nothing, and do not retry the ack.
 
 ## Your working tree
 
@@ -455,7 +454,7 @@ ${cos} close ${slug}                                   stop reconciling this fle
 
 Roster: the files in \`${fleet}/members/\` — one write-once file per member; member state is
 not stored, it is recomputed from pane ids on every call.
-Ack deadline ${ACK_DEADLINE_MS / 1000}s. Lead pull cadence ${LEAD_POLL_MS / 1000}s.
+Ack deadline ${ACK_DEADLINE_MS / 1000}s. The lead pulls whenever it is next able to, not on a timer.
 `;
 }
 
@@ -603,7 +602,7 @@ function cmdPoll({ out, fp, report }) {
   for (const u of report.unanswered) out(`UNANSWERED ${u.ref} owed by ${u.owedBy} — reported, never auto-redone`);
   for (const w of report.warn) out(`WARN ${w}`);
   out(`fleet ${fp.slug}: ${report.members.length} member(s), ${mine.length} unacked outbound, ${report.unread.length} new inbound, ${report.removed} recycled`);
-  if (mine.length) out(`pull again in ${LEAD_POLL_MS / 1000}s; ack deadline ${ACK_DEADLINE_MS / 1000}s`);
+  if (mine.length) out(`unacked outbound above; ack deadline ${ACK_DEADLINE_MS / 1000}s`);
   return 0;
 }
 function cmdAck({ out, args, fp, report }) {

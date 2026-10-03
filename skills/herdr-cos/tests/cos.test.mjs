@@ -484,15 +484,30 @@ test('the first ack past a marker\'s watermark clears the count while the member
   assert.match(third.out.join('\n'), /^MEMBER m1 ready/m, 'one ack elsewhere is enough to un-fail a member herdr still lists');
 });
 
-test('the pull cadence line appears only while something outbound is unacked', () => {
+test('the outstanding-work line appears only while something outbound is unacked', () => {
   const h = fleetWithMembers(2);
   const quiet = h.at(0, ['poll', 'f']);
   assert.equal(quiet.code, 0, quiet.out.join('\n'));
-  assert.doesNotMatch(quiet.out.join('\n'), /pull again/, 'nothing is owed, so there is no cadence to hand out');
+  assert.doesNotMatch(quiet.out.join('\n'), /ack deadline/, 'nothing is owed, so there is nothing to nag about');
   assert.equal(h.call(['send', 'f', 'm1', 'a task']), 0, h.lines.join('\n'));
   const owed = h.at(0, ['poll', 'f']);
   assert.match(owed.out.join('\n'), /OUT lead->m1#1 pending/, 'poll says what is owed with an OUT line');
-  assert.match(owed.out.join('\n'), /pull again in 30s; ack deadline 240s/, 'and only then states the rhythm — both numbers are the written estimates, so this line is where they are pinned');
+  assert.match(owed.out.join('\n'), /unacked outbound above; ack deadline 240s/, 'and only then names what is owed. It carries no cadence: the lead pulls when it is next able to, and a number here would assert a rhythm nothing measures — see the render test below for the contract copy that used to');
+});
+
+test('no rendered contract or poll output asserts a lead cadence', () => {
+  // The lead is not a timer. A "pull every 30s" line reached the peer-contract.md that every lead
+  // and every member is guaranteed to read at runtime, which contradicted SKILL.md's own statement
+  // that no code consumes a cadence. Nothing in cos can observe the caller's interval, so any
+  // number printed as a requirement is a promise the program cannot keep.
+  const h = fleetWithMembers(1);
+  const contract = readFileSync(join(h.fleet(), 'peer-contract.md'), 'utf8');
+  assert.doesNotMatch(contract, /pull cadence/i, 'the contract handed to every member still states a cadence');
+  assert.match(contract, /whenever it is next able to/, 'so it says what the lead actually does instead');
+  assert.equal(h.call(['send', 'f', 'm1', 'a task']), 0, h.lines.join('\n'));
+  const owed = h.at(0, ['poll', 'f']);
+  assert.doesNotMatch(owed.out.join('\n'), /pull again in \d+s/, 'poll must not hand out a pull interval either');
+  assert.doesNotMatch(contract, /poll no faster than every \d+s/i, 'nor may the contract instruct a floor');
 });
 
 test('reconcile uses PENDING where poll uses OUT, and counts its own retry in its tally', () => {
@@ -1476,4 +1491,35 @@ test('every shipped role carries the fixed sections and restates that role is no
     }
     assert.match(text, /role is a name the ledger records, not a permission/i, `${n} does not repeat that a role is not enforced`);
   }
+});
+
+test('every shipped role says when to stop and when to keep going', () => {
+  // A role contract that never tells a member when to wait has no way to hold it: a coder that
+  // reads its brief, plans, and pauses looks identical to one that is thinking. Observed on this
+  // fleet: a member announced it would plan and start, then sat idle until the lead pushed it —
+  // no error, no blocked, no failure, just a member that had read everything and begun nothing.
+  // So each role must name the decision that stops it, and must not read as delivery-shaped.
+  const dir = here('../roles');
+  for (const n of readdirSync(dir).filter((f) => f.endsWith('.md')).sort()) {
+    const text = readFileSync(join(dir, n), 'utf8');
+    // Only the wording all five roles actually use. An earlier draft OR'd in four variants
+    // ("停下来问的只有一类", "不是停工的理由", …) to be tolerant — but none of the five matched
+    // any of them, so the ORs bought no coverage while letting supervisor.md lose its entire
+    // "keep going" enumeration and still pass. Tolerant matching here reads as coverage it isn't.
+    assert.match(
+      text,
+      /停下来问的只有/,
+      `${n} never says which questions are worth stopping for`
+    );
+    assert.match(
+      text,
+      /不是停下来的理由/,
+      `${n} lists no cases it must push through instead of waiting`
+    );
+  }
+  // The manager is the one who pushes a stalled member, so it carries the other half: a pull
+  // that only reports "no change" leaves a stalled member stalled.
+  const manager = readFileSync(join(dir, 'manager.md'), 'utf8');
+  assert.match(manager, /成员停住时推它|推它/, 'manager.md never tells the lead to push a member that stopped');
+  assert.match(manager, /不要只把它记成「无变化」/, 'manager.md lets a stalled member pass as "no change"');
 });
