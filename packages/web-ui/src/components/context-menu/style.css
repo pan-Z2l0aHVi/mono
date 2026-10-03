@@ -5,6 +5,12 @@
 }
 
 :host {
+  /*
+   * 视口下缘的安全区高度。贴底展开时菜单要让开它，否则 iOS 的 home indicator 会压住
+   * 最下面一项。用自定义属性而不是在 JS 里直接算：JS 侧没有 `env()` 的求值入口，
+   * 只能经由声明它的属性读回**计算后的**解析值。宿主可覆盖（如刘海屏模拟）。
+   */
+  --wui-context-menu-safe-area-bottom: env(safe-area-inset-bottom, 0px);
   display: inline-block;
 }
 

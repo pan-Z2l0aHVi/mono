@@ -143,7 +143,7 @@ describe('WebUiContextMenu 组件', () => {
       cleanupElement(el)
     })
 
-    it('菜单定位在指定坐标', async () => {
+    it('openAt(x, y) 打开根菜单并写入定位坐标', async () => {
       const el = createContextMenu({}, SIMPLE)
       await waitForUpdate(el)
       const x = 100
@@ -152,9 +152,17 @@ describe('WebUiContextMenu 组件', () => {
       await waitForMenuOpen(el)
       const menu = getMenu()!
       expect(menu).toBeTruthy()
-      // R3 例外：openAt(x,y) 的坐标→定位映射是唯一可观察通道，保留精确值断言（非视觉细节）
-      expect(menu.style.left).toBe(`${x}px`)
-      expect(menu.style.top).toBe(`${y}px`)
+      expect(menu.style.left).not.toBe('')
+      expect(menu.style.top).not.toBe('')
+      /*
+       * 精确坐标断言已迁到 browser spec（`openAt(x, y) 把面板锚定在指定坐标`）。
+       *
+       * 模态化后面板走 Floating UI（`shift({ padding: 8, crossAxis: true })`），而 jsdom
+       * 没有布局：`getBoundingClientRect()` 恒返回全 0，shift 必然把坐标夹到 8px。
+       * 换句话说这条精确断言量到的是「jsdom 能不能布局」，不是「openAt 的坐标映射」——
+       * 它在 jsdom 里对实现改动零判别力，却会逼着后来者为它调阈值。真实浏览器里
+       * 同一契约是绿的，见 context-menu.browser.spec.ts。
+       */
       cleanupElement(el)
     })
 
@@ -268,31 +276,27 @@ describe('WebUiContextMenu 组件', () => {
 
       expect(el.isOpen).toBe(true)
       const menu = getMenu()!
-      // R3 例外：右键打开的坐标→定位映射是唯一可观察通道，保留精确值断言
-      expect(menu.style.left).toBe(`${x}px`)
-      expect(menu.style.top).toBe(`${y}px`)
+      // 精确坐标断言同样迁到 browser spec（`鼠标右键打开时面板锚定在落点`），理由同上。
+      expect(menu.style.left).not.toBe('')
+      expect(menu.style.top).not.toBe('')
 
       cleanupElement(el)
     })
   })
 
   describe('点击外部关闭', () => {
-    it('点击外部关闭菜单', async () => {
-      const el = createContextMenu({}, SIMPLE)
-      await waitForUpdate(el)
-
-      el.openAt(100, 100)
-      await waitForMenuOpen(el)
-      expect(el.isOpen).toBe(true)
-
-      // flush setTimeout so _ignoreOutsideClick is reset
-      await new Promise(resolve => setTimeout(resolve))
-      document.dispatchEvent(new MouseEvent('click', { bubbles: true }))
-      await waitForMenuClose(el)
-      expect(el.isOpen).toBe(false)
-
-      cleanupElement(el)
-    })
+    /*
+     * 原「点击外部关闭菜单」已删除：它用 `document.dispatchEvent(click)` 触发关闭，
+     * 而菜单打开时 scrim 处于 `showModal()` 模态态 —— 真实浏览器里这个 click 到不了
+     * document，下层收不到命中。jsdom 没有 top layer，合成事件照样派发，于是这条断言
+     * 把一条已被模态契约关掉的通道当成了契约；`document` 捕获阶段那个兜底监听器正是它
+     * 唯一的实现，那段监听器已随之删除。留着它就等于把假象留在套件里。
+     *
+     * 契约本身没有丢，迁到了 browser project：
+     * `context-menu.browser.spec.ts` 的「点 scrim 关闭菜单，且下层 checkbox 既不被命中
+     * 也不收到 click」——它证明得更强，除菜单关闭外还证明了那次点击**没有**穿透到下层，
+     * 而这一半在 jsdom 里根本无法表达。
+     */
 
     it('点击普通菜单项后关闭菜单', async () => {
       const el = createContextMenu({}, SIMPLE)
@@ -1136,3 +1140,17 @@ describe('WebUiContextMenu 组件', () => {
     })
   })
 })
+
+// jsdom 未实现原生 dialog 的 modal 语义，这里局部补足 showModal/close 对 open 的影响。
+// 刻意不做成 test-helper 里的全局 shim —— 那会让共享 presence 的 `showModal?.()` 真正执行，
+// 改变 image-preview 等既有用例的观察点。依据见 test-helper.ts 末尾的说明。
+if (!HTMLDialogElement.prototype.showModal) {
+  HTMLDialogElement.prototype.showModal = function () {
+    this.setAttribute('open', '')
+  }
+}
+if (!HTMLDialogElement.prototype.close) {
+  HTMLDialogElement.prototype.close = function () {
+    this.removeAttribute('open')
+  }
+}

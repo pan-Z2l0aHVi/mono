@@ -16,6 +16,7 @@ import {
 import { createMenuPortalOverlay, type MenuPortalOverlay } from '@/shared/menu-portal/menu-portal'
 import {
   captureFrameworkAnchors,
+  findFocusedMenuItem,
   focusMenuItem,
   getMenuChildren,
   getMenuItemFromEvent,
@@ -33,6 +34,7 @@ import { defineOverlayPositioningGeneration } from '@/shared/overlay/positioning
 import { hideOverlayPresence, showOverlayPresence } from '@/shared/overlay/presence'
 import { defineScrollLockLease } from '@/shared/scroll-lock/scroll-lock'
 
+import scrimStyle from './scrim.css?inline'
 import style from './style.css?inline'
 
 const MARKER_TEXT = 'wui-context-menu-item'
@@ -52,6 +54,25 @@ const LONG_PRESS_MOVE_TOLERANCE = 10
  * 所以窗口只负责兜住「补发事件既没等到下一次按下、菜单也没关闭」这种不该发生的路径。
  */
 const LONG_PRESS_FOLLOW_UP_WINDOW_MS = 1000
+
+/**
+ * 菜单打开期间铺在整屏上的 scrim `<dialog>`。
+ *
+ * 用 `<dialog>` + `showModal()` 而不是 plain `div`：模态 dialog 进 top layer，
+ * 于是「z-index 谁高谁低」这道约束整体消失 —— 面板与 scrim 同在 top layer，
+ * 而 top layer 之下的任何 z-index 都碰不到它们。plain `div` 也能修好 light-dismiss
+ * 穿透，但那样 scrim 必须靠 z-index 压过 `--wui-layer-menu`(100)，是另一套易碎的约定。
+ */
+const SCRIM_ATTR = 'data-wui-menu-scrim'
+
+/** 本次关闭的来源。见 `_closeSource`。 */
+type CloseSource = 'menu-item' | 'default'
+
+/** 首项聚焦的最大尝试次数（含首次）。见 `_focusFirstItem`。 */
+const FOCUS_FIRST_ITEM_ATTEMPTS = 5
+
+/** 面板与视口边缘的最小间距，与既有夹取算术同源。 */
+const VIEWPORT_PADDING = 8
 
 @customElement('web-ui-context-menu')
 export class WebUiContextMenu extends LitElement {
@@ -88,7 +109,6 @@ export class WebUiContextMenu extends LitElement {
   private _activeSubmenuItems: HTMLElement[] = []
   private _longPressTimer: ReturnType<typeof setTimeout> | undefined
   private _longPressOrigin: { x: number; y: number } | undefined
-  private _longPressTarget: HTMLElement | undefined
   /**
    * 长按自行开菜单的时刻。浏览器会为**同一次触摸**补发两个事件，二者都属于
    * 那一次意图，不是两次独立操作：
@@ -105,6 +125,29 @@ export class WebUiContextMenu extends LitElement {
   // 时只允许最新一次定位写入；不同层级子菜单各有 panel，互不作废。
   private readonly _submenuPositionEpochs = new WeakMap<HTMLElement, number>()
   private _menu?: MenuPortalOverlay
+  /**
+   * 模态 scrim。菜单打开期间存在并处于 `showModal()` 状态，关闭时随面板一起移除。
+   *
+   * 面板必须**显式**挂进它（`createMenuPortalOverlay` 的第三参）：`resolveOverlayContainer`
+   * 查的是 target 的**祖先**里有无已打开的 dialog，而 scrim 是面板的反方向，祖先发现查不到。
+   */
+  private _scrim?: HTMLDialogElement
+  /**
+   * 本次开启是否贴视口底边展开（触屏长按路径）。鼠标 / 键盘路径仍锚定落点。
+   *
+   * 走「触屏才贴底」而不是「窄视口就贴底」：窄视口的鼠标右键仍期望菜单出现在光标旁，
+   * 按视口宽度分流会让同一块屏幕上的两种输入得到两套布局，且与本组件 opt-in 的
+   * `long-press` 属性不同源。开启来源由调用点显式传入，不靠运行时嗅探。
+   */
+  private _anchorBottom = false
+
+  /**
+   * 本次关闭的来源，决定焦点归还走哪条路。语义见 `close()` 里的说明。
+   *
+   * 只有菜单项激活这一条需要抢在退场之前出顶层；点外面 / Escape / 程序式关闭一律
+   * 保留 dialog 默认效果 —— 那正是用户「回到原处」的期望。
+   */
+  private _closeSource: CloseSource = 'default'
   /** 根面板的开启会话句柄；未开启时为 null。查询走它。 */
   private _menuHandle: OpenOverlayHandle | null = null
   /**
@@ -171,7 +214,6 @@ export class WebUiContextMenu extends LitElement {
   private readonly _menuItemAnchors = new Map<HTMLElement, Comment>()
   private readonly _scrollLock = defineScrollLockLease().make()
   private readonly _userOpenChange = new UserChangeController()
-  private _restoreFocusTarget?: HTMLElement
   private _shouldOpenInstantly = true
   private _suppressInitialFocusVisible = true
   private _refreshScheduled = false
@@ -198,7 +240,6 @@ export class WebUiContextMenu extends LitElement {
     this.addEventListener('pointermove', this._onPointerMove)
     this.addEventListener('pointerup', this._onPointerUp)
     this.addEventListener('pointercancel', this._onPointerCancel)
-    document.addEventListener('click', this._onClickOutside, true)
     document.addEventListener('contextmenu', this._onContextMenuOutside)
     document.addEventListener('wheel', this._onWheel, { capture: true, passive: false })
     document.addEventListener('touchmove', this._onTouchMove, { capture: true, passive: false })
@@ -214,7 +255,6 @@ export class WebUiContextMenu extends LitElement {
     this.removeEventListener('pointermove', this._onPointerMove)
     this.removeEventListener('pointerup', this._onPointerUp)
     this.removeEventListener('pointercancel', this._onPointerCancel)
-    document.removeEventListener('click', this._onClickOutside, true)
     document.removeEventListener('contextmenu', this._onContextMenuOutside)
     document.removeEventListener('wheel', this._onWheel, true)
     document.removeEventListener('touchmove', this._onTouchMove, true)
@@ -231,10 +271,14 @@ export class WebUiContextMenu extends LitElement {
     this._menu = undefined
     this._closeSubmenusFrom(0, true)
     this._closingSubmenus.restoreAll()
+    /*
+     * scrim 挂在 document.body 上，不随宿主一起脱离文档。不在这里收掉就会留下一张
+     * 仍然 `showModal()` 的全屏 dialog：top layer 不受宿主移除影响，整个页面就此锁死。
+     */
+    this._closeScrim()
     // 脱离文档即视为关闭：否则重连后 _isOpen 仍为 true 而 _menu 已清空，
     // 下次 openAt 会走已打开分支静默失败，菜单无法再打开。
     this._isOpen = false
-    this._restoreFocusTarget = undefined
     this._cancelLongPress()
     this._longPressOpenedAt = null
   }
@@ -250,7 +294,17 @@ export class WebUiContextMenu extends LitElement {
       if (this._isOpen) {
         this._syncScrollLock()
         if (!this._menu) {
-          this._menu = createMenuPortalOverlay('context-menu', this)
+          /*
+           * 顺序：先建 scrim 并 `showModal()`，再把面板挂进去。
+           *
+           * `showModal()` 会把此前聚焦的元素记为还原目标；此刻焦点仍在 opener 上，
+           * 正是归还目标。面板随后 `_focusFirstItem()` 把焦点带进菜单，关闭时 UA 还回去。
+           *
+           * 面板挂进 scrim 是承重的，不是「顺手放一起」：top layer 只对**自身子树内的
+           * 元素**做命中拦截，面板若留在 overlay root（scrim 之外），模态期间它自己就不可点。
+           */
+          const scrim = this._openScrim()
+          this._menu = createMenuPortalOverlay('context-menu', this, scrim)
           this._menu.panel.setAttribute('role', 'menu')
           this._menu.panel.setAttribute('aria-label', '上下文菜单')
           this._menu.panel.addEventListener('click', this._onMenuClick)
@@ -271,9 +325,11 @@ export class WebUiContextMenu extends LitElement {
             this._submenuHandles.set(submenu.panel, this._menuHandle.adopt(submenu.panel))
           }
           // 收尾栈里的子菜单面板同样「可见但已脱离快照」：`_closeSubmenusFrom` 只把它们
-          // 移出 `_activeSubmenus`，面板仍在 DOM 里退场。不补 adopt 的话它们会被判成
-          // 面板外，点它内部就关掉整张菜单（base 的登记树直到 dispose 才注销，故属回归）。
-          // 写进 `_submenuHandles` 是因为收尾结束时 `_releaseSubmenu` 按 panel 取句柄释放。
+          // 移出 `_activeSubmenus`，面板仍在 DOM 里退场。**这个循环承重**：不补 adopt，
+          // 它们就会落在句柄的登记树之外，被判成「面板外」，点它内部会关掉整张菜单。
+          // 用例 `退场窗口内重开后，收尾中的子菜单面板在取回前后都不可被当成面板外` 守着
+          // 这一条 —— 把循环体整段删掉，那条会红（实测 1 failed | 95 passed）。
+          // 写进 `_submenuHandles` 还因为收尾结束时 `_releaseSubmenu` 按 panel 取句柄释放。
           for (const container of this._closingSubmenus.closing()) {
             this._submenuHandles.set(container.panel, this._menuHandle.adopt(container.panel))
           }
@@ -285,7 +341,23 @@ export class WebUiContextMenu extends LitElement {
           this._refreshMenu()
           showOverlayPresence(this._menu.panel, { isInstant: this._shouldOpenInstantly })
           this._shouldOpenInstantly = true
-          this._focusFirstItem()
+          /*
+           * 首项聚焦必须再等一帧，不能和 `_refreshMenu()` 同帧。
+           *
+           * 两个原因都指向「太早」：
+           *
+           * 1. `showModal()` 的 dialog focusing steps 由 UA 排队执行，会在我们已经聚焦首项
+           *    **之后**再把焦点挪到 dialog 上 —— 模态化之前没有这一步，也就没有这场竞争。
+           * 2. `_setupMenuItems()` 刚创建的 `web-ui-dropdown-item` 尚未完成 Lit 的 shadow
+           *    渲染，`focusItem()` 此刻还找不到 `.item-inner`，静默无操作。
+           *
+           * 实测：同帧聚焦后 `document.activeElement` 是 `<dialog>` 而非首项；再等一帧聚焦，
+           * 焦点稳定落在菜单项内。
+           */
+          requestAnimationFrame(() => {
+            if (!this._isOpen || !this._menu) return
+            this._focusFirstItem()
+          })
         })
       } else {
         this._syncScrollLock(false)
@@ -315,12 +387,19 @@ export class WebUiContextMenu extends LitElement {
     this._openAt(x, y, true, true)
   }
 
-  private _openAt(x: number, y: number, isInstant: boolean, suppressFocusVisible: boolean): boolean {
+  private _openAt(
+    x: number,
+    y: number,
+    isInstant: boolean,
+    suppressFocusVisible: boolean,
+    anchorBottom = false
+  ): boolean {
     if (this.disabled) return false
     this._x = x
     this._y = y
     this._shouldOpenInstantly = isInstant
     this._suppressInitialFocusVisible = suppressFocusVisible
+    this._anchorBottom = anchorBottom
     this._outsideClickGuard.arm()
     if (this._isOpen) {
       this._closeSubmenusFrom(0, true)
@@ -330,7 +409,6 @@ export class WebUiContextMenu extends LitElement {
       this._scheduleRefresh()
       return false
     }
-    this._restoreFocusTarget ??= document.activeElement instanceof HTMLElement ? document.activeElement : undefined
     this._isOpen = true
     return true
   }
@@ -343,11 +421,26 @@ export class WebUiContextMenu extends LitElement {
     if (!this._isOpen) return
     this._isOpen = false
     this._menuPositionGeneration.invalidate()
+    /*
+     * 菜单项激活触发的关闭要**现在**就让 scrim 出顶层，不能等退场结束。
+     *
+     * 焦点归还由 UA 负责（`close()` 把焦点还给 `showModal()` 之前的 activeElement），
+     * 而菜单项的回调常紧接着把焦点送到别处 —— 典型是右键重命名：回调把行换成编辑态、
+     * 下一帧 `select()` 进 textarea。等到退场结束才关，UA 的归还会把焦点从 textarea
+     * 拽回那一行，blur 掉编辑器，而 editable-text 的 blur 契约会**提交未改动的标题**。
+     * 那是 interweave 上真实存在的 bug，不能放回来。
+     *
+     * 此刻焦点还在菜单里，UA 的归还正好落在 opener 上——那本来就是用户期望的落点，
+     * 应用随后的焦点转移不会被覆盖。元素本身要留到面板真正移除（见 `_releaseScrimModality`）。
+     */
+    if (this._closeSource === 'menu-item') this._releaseScrimModality()
+    this._closeSource = 'default'
   }
 
-  private readonly _closeFromUser = () => {
+  private readonly _closeFromUser = (source: CloseSource = 'default') => {
     if (!this._isOpen) return
     this._userOpenChange.mark()
+    this._closeSource = source
     this.close()
   }
 
@@ -376,6 +469,20 @@ export class WebUiContextMenu extends LitElement {
 
     panel.style.visibility = 'hidden'
     panel.style.display = ''
+
+    /*
+     * 贴底路径不走 Floating UI：目标位置已经完全确定（水平锚长按点、垂直贴视口下缘），
+     * `shift` 那套「先摆再夹」只会把它从下缘推回来。
+     *
+     * 这里写的 left/top 是**视口坐标**。面板是 `position: fixed`，而 scrim 刻意不带
+     * transform / filter / contain（见 style.css），因此不构成 fixed 的包含块 ——
+     * 坐标直接相对视口解析。这条等价关系由 style.css 的满屏声明保证，并由 R6 的
+     * 「scrim 无 transform/filter/contain」+ R7 的几何断言兜底：scrim 一旦偏移，位置断言立刻红。
+     */
+    if (this._anchorBottom) {
+      this._positionMenuAtViewportBottom(panel)
+      return
+    }
 
     // 普通 overlay root 不经过 transformed containing block，保留轻量的同步定位。
     // 只有 panel 已进入 open native dialog 时才需要 Floating UI 解析坐标。
@@ -429,6 +536,34 @@ export class WebUiContextMenu extends LitElement {
     this._applyMenuPosition(panel, x, y)
   }
 
+  /**
+   * 触屏长按的贴底定位：水平仍锚定长按落点（Q10 选 b），垂直贴视口下缘。
+   *
+   * 安全区一并让开：iOS 的 home indicator 压在视口下缘上，直接贴底会让最下面一项落进
+   * 指示条里。inset 从宿主的自定义属性读，宿主可以覆盖，缺省取 `env()` 的真实值。
+   */
+  private _positionMenuAtViewportBottom(panel: HTMLElement) {
+    // 尺寸仍取 offset*：进场动画的 scale 会污染 getBoundingClientRect()，理由同
+    // `_positionMenuInViewport` 的注释。
+    const { offsetWidth: width, offsetHeight: height } = panel
+    const maxX = Math.max(VIEWPORT_PADDING, window.innerWidth - width - VIEWPORT_PADDING)
+    const x = Math.min(Math.max(VIEWPORT_PADDING, this._x), maxX)
+    const y = Math.max(VIEWPORT_PADDING, window.innerHeight - height - this._safeAreaBottom() - VIEWPORT_PADDING)
+    this._applyMenuPosition(panel, x, y, x < this._x ? 'right' : 'left', 'bottom')
+  }
+
+  /**
+   * 视口下缘的安全区高度（px）。
+   *
+   * 读宿主的自定义属性而不是 `env()`：自定义属性读回的是**计算后**的解析值，
+   * 而 `env()` 在 JS 里没有对应的求值入口，只能间接经由声明它的属性取。
+   * 属性未解析时 `parseFloat` 得 NaN，落到 0 —— 与 `env(..., 0px)` 的缺省一致。
+   */
+  private _safeAreaBottom(): number {
+    const value = Number.parseFloat(getComputedStyle(this).getPropertyValue('--wui-context-menu-safe-area-bottom'))
+    return Number.isFinite(value) ? value : 0
+  }
+
   private _applyMenuPosition(
     panel: HTMLElement,
     x: number,
@@ -445,12 +580,29 @@ export class WebUiContextMenu extends LitElement {
     panel.style.visibility = ''
   }
 
-  private _focusFirstItem() {
+  /**
+   * 把焦点带进菜单的第一项。
+   *
+   * `attempt` 是重试计数：菜单项是刚被 `reconcileManagedMenuItems` 搬进来的自定义元素，
+   * 它们的 shadow（`.item-inner`）由各自的 Lit 更新**异步**渲染。`focusMenuItem()` 委托给
+   * 项的 `focusItem()`，那一刻 `.item-inner` 还不存在，于是**静默无操作** —— 不抛错、
+   * 也不留痕，只表现为「菜单开了但焦点没进去」。
+   *
+   * 所以这里不假设一次成功：调用后用 `findFocusedMenuItem` 复核，没落上就在下一帧再试，
+   * 最多 `FOCUS_FIRST_ITEM_ATTEMPTS` 次。上界是必要的 —— 菜单项若始终渲染不出来
+   * （空菜单、内容被外部换掉），不能让重试链一直跑下去。
+   */
+  private _focusFirstItem(attempt = 0) {
     const items = this._menu?.content.querySelectorAll<HTMLElement>('web-ui-dropdown-item:not([disabled])')
     const firstItem = items?.[0]
-    if (firstItem) {
-      focusMenuItem(firstItem, { suppressFocusVisible: this._suppressInitialFocusVisible })
-    }
+    if (!firstItem) return
+    focusMenuItem(firstItem, { suppressFocusVisible: this._suppressInitialFocusVisible })
+    if (attempt + 1 >= FOCUS_FIRST_ITEM_ATTEMPTS) return
+    if (findFocusedMenuItem([this._menu?.panel])) return
+    requestAnimationFrame(() => {
+      if (!this._isOpen || !this._menu) return
+      this._focusFirstItem(attempt + 1)
+    })
   }
 
   private _setupMenuItems() {
@@ -483,6 +635,100 @@ export class WebUiContextMenu extends LitElement {
     returnManagedMenuItemsToSlot(this, menu.content, this._menuItemAnchors)
   }
 
+  /**
+   * 建 scrim 并让它进入模态态，返回容器供面板挂载。
+   *
+   * 每次开启都新建而不是复用：scrim 的生命周期必须与「这一次开启」严格同进同出。
+   * 复用一个 dialog 意味着上一轮的 `close()` 事件、`open` 属性与 UA 记下的焦点还原目标
+   * 会跨会话残留，而这些都不是本组件能重置的。
+   */
+  private _openScrim(): HTMLDialogElement {
+    const scrim = document.createElement('dialog')
+    scrim.className = 'wui-context-menu-scrim'
+    /*
+     * scrim 的样式必须**显式挂到 scrim 元素上**。
+     *
+     * `static styles`（style.css）只进宿主的 shadow root，而 scrim 是 `document.body` 下的
+     * light DOM 节点，拿不到那份样式；`scrim.css` 若只躺在文件里而不注入，就是死代码。
+     * 实测未注入时 scrim 完全是 UA 默认 `dialog:modal` 的样子：`margin: auto` +
+     * `width/height: fit-content` 让它在 414x896 视口里缩成 **38x38 的白盒子**正中，
+     * `background` 还是不透明白 —— 菜单一开就在屏幕中间糊一块白色方块。
+     *
+     * 用子 `<style>` 而不是行内 `cssText`：与 `menu-portal.ts` 对 dialog 容器注入共享样式
+     * 是同一手法（那边已在 dialog 容器上验证过），随元素一起移除，不留全局残留。
+     */
+    const scrimStyles = document.createElement('style')
+    scrimStyles.textContent = scrimStyle
+    scrim.append(scrimStyles)
+    scrim.setAttribute(SCRIM_ATTR, '')
+    scrim.addEventListener('click', this._onScrimClick)
+    scrim.addEventListener('cancel', this._onScrimCancel)
+    // showModal() 要求元素已在文档中。
+    document.body.append(scrim)
+    scrim.showModal()
+    this._scrim = scrim
+    return scrim
+  }
+
+  /**
+   * 关掉并摘除 scrim。幂等：关闭分支与 `disconnectedCallback` 都会调。
+   *
+   * `close()` 触发 UA 的焦点归还，**必须先于面板 `remove()`** —— 理由见 `_closeMenuAfterPresence`。
+   */
+  private _closeScrim() {
+    const scrim = this._scrim
+    if (!scrim) return
+    this._scrim = undefined
+    if (scrim.open) scrim.close()
+    scrim.remove()
+  }
+
+  /**
+   * 只让 scrim 出顶层，不摘除元素。面板挂在 scrim 里，摘了就把退场动画一起摘掉。
+   *
+   * 提前出顶层是为了焦点（理由见 `close()`）。代价是这个尾巴上 scrim 已经在 top layer
+   * 之外：下层恢复可命中，且面板的层级退回普通流 —— 在「菜单开在 drawer/dialog 之上」
+   * 的场景里，退场动画会被下层的 top layer 盖住。
+   *
+   * 这条尾巴只有一次退场过渡的时长（默认 160ms），且只发生在菜单项激活时。
+   * 摘除仍在 `_closeScrim()`，那时面板已经走完。
+   */
+  private _releaseScrimModality() {
+    const scrim = this._scrim
+    if (scrim?.open) scrim.close()
+  }
+
+  /**
+   * 点 scrim = 关菜单（Q12：必关，不给 prop 选项），与 dialog / drawer 的实现同形：
+   * 只有落点就是 scrim 本身才算「点外面」，落在面板（scrim 的后代）上不算。
+   *
+   * 落点判据之所以只能是这两个，是模态给的：菜单打开期间下层收不到命中，事件只可能
+   * 落在 scrim 或面板上，两者都由本组件判定。
+   *
+   * 更早的实现在 document 捕获阶段挂 click 监听，把「点外面」理解成「命中测试落在菜单
+   * 面板之外」—— 宿主 light DOM 的每一行都满足这个条件，于是判定与行激活成了同一个
+   * click 的两个后果，中间没有任何仲裁，下层目标先被激活。那条监听器连同它的实现已一并
+   * 删除：模态化之后它没有任何还能生效的场景，别再挂回来。
+   */
+  private _onScrimClick = (e: MouseEvent) => {
+    if (e.target !== this._scrim) return
+    // 长按抬手后浏览器补发的 click 属于那一次触摸意图，不能把刚开的菜单关掉。
+    if (this._isLongPressFollowUp()) return
+    this._closeFromUser()
+  }
+
+  /**
+   * Escape 的**唯一**关闭路径仍是共享仲裁者（`_overlay.requestClose` → `closeDeepestOrAll`），
+   * 它按层深决定是关最深子菜单还是关整张菜单。原生 dialog 自己也监听 Escape 并派发
+   * `cancel`，若放任默认行为，UA 会直接关掉 scrim —— 那条路径不经过组件状态机，
+   * 既可能漏派 `open-change`，也会把「关最深一层」的语义降级成「整张菜单没了」。
+   *
+   * 因此这里只吞掉默认行为，不重复关闭。仲裁者那条路径已经会走 `_closeFromUser()`。
+   */
+  private _onScrimCancel = (e: Event) => {
+    e.preventDefault()
+  }
+
   private async _closeMenuAfterPresence() {
     const menu = this._menu
     if (menu && !(await hideOverlayPresence(menu.panel))) return
@@ -492,36 +738,30 @@ export class WebUiContextMenu extends LitElement {
      * 归还判定必须在移除面板之前做完：面板一脱离文档，「焦点仍在菜单内」就再也读不到了。
      * 子菜单层此刻仍可能持有焦点，一并计入。
      */
-    const focusPanels = [menu?.panel, ...this._activeSubmenus.map(submenu => submenu.panel)]
-    const shouldRestoreFocus = this._shouldRestoreFocus(focusPanels)
+    /*
+     * 先关 scrim 再摘面板，顺序不能反。
+     *
+     * 焦点归还是 `showModal()` / `close()` 的 UA 行为，不再由组件自己实现：UA 记的是
+     * `showModal()` 之前的 `document.activeElement`，`close()` 时还回去。反过来做就成了
+     * 实测里那条「open 中直接移除 dialog → 焦点丢到 body，不归还」——面板先脱离文档，
+     * 焦点链断了，UA 的还原目标也就落空。
+     *
+     * 菜单项激活那条路径的 scrim 早在 `close()` 里就出了顶层（`_releaseScrimModality`），
+     * 这里的 `close()` 对它是幂等空转，摘除照常发生。
+     *
+     * 「关闭期间焦点被外部接管时不抢回」那道防护不是被删除，是被**移到了更早的位置**：
+     * UA 自己没有这个分支（实测：外部接管后 close，焦点必被抢回 opener，`close()` /
+     * `remove()` / `open = false` / 摘 `open` / 置 `display:none` / opener 移除或不可聚焦，
+     * 十种写法全都照旧夺焦点）。所以只能在焦点**还没被送走**的时候就把顶层让掉 ——
+     * 也就是菜单项激活那一刻。点外面 / Escape / 程序式关闭不抢焦点是用户期望的语义，
+     * 那三条保留 dialog 默认效果。
+     */
+    this._closeScrim()
 
     // 登记已在关闭分支撤销（release ⟺ 关闭），这里只做内容归还与 DOM 收尾。
     this._returnItemsToSlot()
     menu?.panel.remove()
     this._menu = undefined
-    if (shouldRestoreFocus) this._restoreFocusTarget?.focus()
-    this._restoreFocusTarget = undefined
-  }
-
-  /**
-   * 关闭时是否把焦点归还给打开前的元素。
-   *
-   * 无条件归还会抢走调用方在关闭期间刚安排好的焦点：菜单项回调同步建立编辑态、
-   * 微任务里 `focus()` 进输入框，退场动画结束后的旧焦点目标一 `focus()` 就把它 blur 掉。
-   * 因此只在焦点仍归菜单（或根本没人接管，即 `body`）时才归还；焦点已被移到
-   * 菜单外的活节点上说明调用方另有安排，尊重现状。
-   */
-  private _shouldRestoreFocus(panels: (HTMLElement | undefined)[]): boolean {
-    const active = document.activeElement
-    if (!active || active === document.body) return true
-    if (active === this._restoreFocusTarget) return true
-    /*
-     * 判据是 `:focus-within` 而不是 `contains(activeElement)`：面板挂在 overlay 容器的
-     * shadow root 下，菜单项又把焦点放进自己 shadow 内的控件，浏览器一路上报到 shadow
-     * host（面板的祖先），`contains` 判不到。`:focus-within` 沿真实祖先链传播，
-     * 才是这里能同时覆盖「面板内」和「菜单项 shadow 内」的谓词。
-     */
-    return panels.some(panel => panel?.matches(':focus-within'))
   }
 
   private _hideMenuItems() {
@@ -545,6 +785,12 @@ export class WebUiContextMenu extends LitElement {
        * 注：「面板在根句柄子树里」这一条已由上面的 claim 分支保证 —— 该分支会把仍在
        * closing 栈里的面板一并重挂（`_closingSubmenus.closing()`）。实测单独摘掉这一行
        * 全部用例仍绿，所以它维护的是释放账本，不是树的成员关系。
+       *
+       * **这一行没有任何测试守护**：把 `adopt` 与 `set` 一起摘掉，context-menu 的 96 条
+       * 用例仍然全绿（实测 96 passed）。所以下面写的是「当前如此」—— 这一行维护的是
+       * 释放账本（收尾结束时 `_releaseSubmenu` 按 panel 取句柄），不是树的成员关系；
+       * 成员关系由上面 claim 分支的 `_closingSubmenus.closing()` 循环负责，那一条**是**
+       * 有测试的。改动这一行前请自己判断要不要补一条能红的用例，别把这里的沉默当成覆盖。
        */
       if (this._menuHandle) this._submenuHandles.set(closingSubmenu.panel, this._menuHandle.adopt(closingSubmenu.panel))
       item.setAttribute('active', '')
@@ -555,7 +801,12 @@ export class WebUiContextMenu extends LitElement {
     }
     if (getMenuChildren(item).length === 0) return
 
-    const submenu = createMenuPortalOverlay('context-submenu', this)
+    /*
+     * 子菜单与根菜单挂进**同一个** scrim。只改根菜单会让两层行为分裂：根层被 scrim
+     * 罩住时，子菜单若仍留在 overlay root，它自己就成了 scrim 子树外的元素 —— 模态期间
+     * 不可点，且点它内部会被判成「点外面」而关掉整张菜单。
+     */
+    const submenu = createMenuPortalOverlay('context-submenu', this, this._scrim)
     submenu.panel.dataset.level = String(level)
     submenu.panel.setAttribute('role', 'menu')
     submenu.panel.setAttribute('aria-label', '子菜单')
@@ -668,7 +919,6 @@ export class WebUiContextMenu extends LitElement {
     if (!this.longPress || this.disabled || e.pointerType !== 'touch') return
     this._cancelLongPress()
     this._longPressOrigin = { x: e.clientX, y: e.clientY }
-    this._longPressTarget = e.target instanceof HTMLElement ? e.target : undefined
     this._longPressTimer = setTimeout(
       () => {
         this._longPressTimer = undefined
@@ -677,8 +927,8 @@ export class WebUiContextMenu extends LitElement {
         this._longPressOrigin = undefined
         if (this._isOpen) return
         this._longPressOpenedAt = performance.now()
-        this._restoreFocusTarget = this._longPressTarget
-        if (this._openAt(origin.x, origin.y, false, true)) this._userOpenChange.mark()
+        // 触屏长按是本组件唯一的「贴底展开」入口：仍水平锚定长按点，垂直贴视口下缘。
+        if (this._openAt(origin.x, origin.y, false, true, true)) this._userOpenChange.mark()
       },
       // 属性已被 normalizeNumber 钳到 [0, 5000]，这里直接用；不再二次 Math.max。
       this.longPressDelay
@@ -730,7 +980,6 @@ export class WebUiContextMenu extends LitElement {
       return
     }
     e.preventDefault()
-    this._restoreFocusTarget = e.target instanceof HTMLElement ? e.target : undefined
     if (this._openAt(e.clientX, e.clientY, false, true)) this._userOpenChange.mark()
   }
 
@@ -756,15 +1005,6 @@ export class WebUiContextMenu extends LitElement {
     }
   }
 
-  private _onClickOutside = (e: MouseEvent) => {
-    if (!this._isOpen || this._outsideClickGuard.isArmed()) return
-    // 抬手后浏览器合成的 click 属于长按那一次意图，不能把刚打开的菜单关掉。
-    if (this._isLongPressFollowUp()) return
-    // 宿主 light DOM 是右键区域，不是菜单面板；其中的 checkbox、行等普通点击仍须 light-dismiss。
-    if (this._isMenuPanelEvent(e)) return
-    this._closeFromUser()
-  }
-
   private _onMenuClick = (e: MouseEvent) => {
     const item = getMenuItemFromEvent(e)
     if (!item || item.hasAttribute('disabled')) return
@@ -772,7 +1012,7 @@ export class WebUiContextMenu extends LitElement {
       this._openSubmenu(item)
       return
     }
-    this._closeFromUser()
+    this._closeFromUser('menu-item')
   }
 
   private _getLevelContainer(level: number) {
