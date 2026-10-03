@@ -35,6 +35,7 @@ function makeWorld(start = []) {
     repo: '/fake/repo',
     failWorktree: null,
     agentStarts: 0,
+    agentStartArgv: [],
     failAgentStart: null,
     nextPane: 2,
     add(pane) {
@@ -106,6 +107,7 @@ function makeWorld(start = []) {
     }
     if (group === 'agent' && sub === 'start') {
       world.agentStarts += 1;
+      world.agentStartArgv.push(argv);
       if (world.failAgentStart) return { ok: false, code: world.failAgentStart, message: 'agent blocked at startup', result: null };
       const p = find(argv[argv.indexOf('--pane') + 1]);
       if (!p) return { ok: false, code: 'pane_not_found', message: `no pane ${argv[argv.indexOf('--pane') + 1]}`, result: null };
@@ -222,6 +224,41 @@ test('join publishes one member file per label and never re-starts a failed agen
   assert.equal(h.world.agentStarts, 1);
   assert.equal(h.call(['join', 'f', 'right', 'codex']), 0);
   assert.deepEqual(readdirSync(join(h.fleet(), 'members')).filter((n) => n.endsWith('.json')).sort(), ['lead.json', 'm1.json', 'm2.json']);
+});
+
+test('join starts a member under the args its kind needs, and none for an unlisted kind', () => {
+  const h = newFleet(newHerdForJoin());
+  assert.equal(h.call(['join', 'f', 'right', 'codex']), 0, h.lines.join('\n'));
+  const codexStart = h.world.agentStartArgv.at(-1);
+  assert.deepEqual(
+    codexStart.slice(codexStart.indexOf('--')),
+    ['--', '--approve-for-me'],
+    'a codex member runs with --approve-for-me: on its own defaults it stops at an approval dialog, which reads as blocked, and a blocked member has its doorbell withheld'
+  );
+
+  assert.equal(h.call(['join', 'f', 'right', 'gemini']), 0, h.lines.join('\n'));
+  const geminiStart = h.world.agentStartArgv.at(-1);
+  assert.equal(geminiStart.includes('--'), false, 'an unlisted kind starts on its own defaults, with no stray --');
+  // claude is left out on purpose: --dangerously-skip-permissions bypasses the permission layer
+  // outright, which is the gap the benchmark research asks to close. See PROTOCOL.md.
+  assert.equal(h.call(['join', 'f', 'down', 'claude']), 0, h.lines.join('\n'));
+  assert.equal(h.world.agentStartArgv.at(-1).includes('--'), false, 'claude gets no args, so it keeps its own defaults');
+  // The args configure the member process only; the ledger records the kind and nothing else.
+  assert.equal(JSON.parse(readFileSync(join(h.fleet(), 'members', 'm2.json'), 'utf8')).kind, 'gemini');
+});
+
+test('a kind that names an Object.prototype member joins instead of throwing', () => {
+  // AGENT_ARGS is a plain object literal, so AGENT_ARGS['constructor'] is a function rather than
+  // undefined. Spreading one throws — and it throws after pane split and pane move, which strays
+  // a pane the ledger never records. Prototype-named kinds reach the lookup unfiltered: --kind is
+  // validated by herdr, but the lookup happens before herdr is called.
+  for (const kind of ['constructor', 'toString', 'hasOwnProperty', '__proto__']) {
+    const h = newFleet(newHerdForJoin());
+    assert.equal(h.call(['join', 'f', 'right', kind]), 0, `${kind}: ${h.lines.join('\n')}`);
+    const start = h.world.agentStartArgv.at(-1);
+    assert.equal(start.includes('--'), false, `${kind} is not a kind this table knows, so it starts unadorned`);
+    assert.equal(h.call(['join', 'f', 'right', 'gemini']), 0, `${kind}: the fleet is still usable afterwards`);
+  }
 });
 
 function newHerdForJoin() {

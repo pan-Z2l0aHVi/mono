@@ -23,6 +23,18 @@ const SELF_PATH = fileURLToPath(import.meta.url);
 const SKILL_DIR = join(dirname(SELF_PATH), '..'); // roles/ lives beside this program's parent
 const SLUG_RE = /^[a-z0-9][a-z0-9_-]{0,39}$/, LABEL_RE = /^[a-z][a-z0-9_-]{0,31}$/, REF_RE = /^[a-z0-9_-]+->[a-z0-9_-]+#\d+$/;
 
+// Args appended to `herdr agent start --kind <kind>` per kind, so a member runs under the
+// permissions its role needs instead of the CLI's own defaults. A member has to reach the herdr
+// socket (cos poll) and, for codex, that means it cannot sit behind an approval dialog it cannot
+// answer -- an unanswered prompt reads as `blocked`, and blocked members get their doorbell
+// withheld rather than delivered. Only kinds with a measured need are listed; an unlisted kind
+// starts exactly as it did before, on that CLI's own defaults. `claude` is deliberately absent:
+// `--dangerously-skip-permissions` bypasses the permission layer outright, which is the gap
+// docs/research/monorepo-for-agents-benchmark-260918.md asks to close, not one to default into.
+const AGENT_ARGS = {
+  codex: ['--approve-for-me'] // keeps the workspace-write sandbox; auto-reviews rather than skips
+};
+
 class CosError extends Error {}
 const die = (message) => { throw new CosError(message); };
 
@@ -513,7 +525,14 @@ function cmdJoin({ io, out, args, fp, cwd }) {
   let agentName = null;
   if (kind && kind !== 'none') {
     agentName = `cos-${label}-${fp.slug}`.slice(0, 32); // label first: a long slug must not truncate two members into one name
-    const started = io.herdrExec(['agent', 'start', agentName, '--kind', String(kind), '--pane', String(pane.pane_id)]);
+    // Object.hasOwn, not AGENT_ARGS[kind]: a plain object literal answers `constructor` and
+    // `toString` with functions from Object.prototype, and those reach the spread below — which
+    // throws after the pane was already split and moved, stranding a member the ledger never records.
+    const kindArgs = Object.hasOwn(AGENT_ARGS, String(kind)) ? AGENT_ARGS[String(kind)] : [];
+    const started = io.herdrExec([
+      'agent', 'start', agentName, '--kind', String(kind), '--pane', String(pane.pane_id),
+      ...(kindArgs.length ? ['--', ...kindArgs] : [])
+    ]);
     if (!started.ok) {
       // Registered without an agent: the half-success stays inspectable, and a retry would open a duplicate.
       out(`agent start returned herdr ${started.code}: ${started.message}`);

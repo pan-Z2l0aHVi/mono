@@ -34,6 +34,14 @@
 
 两种情况会退回 lead 自己的工作树，且都不是错误：`cos join … --no-worktree` 完全跳过 git；lead 的 cwd 不在仓库内时会收到一条 `note:` 并共享其树。两种情况成员文件都记录 `worktree: null`。`git worktree add` *失败*则不同——join 在任何 pane 被切分之前停止并明说，因为一个半接入且没有树的成员比没有成员更糟。晚一步的失败则回滚：如果 carve 之后 `pane split` 或 `pane move` 被拒绝，刚出生几秒的裸 checkout 会被移除、分支被删——这是 `cos` 唯一会跑的 `git worktree remove` 和 `git branch -d`；*成员的*树仍然只由人来移——而那个多出来的切分 pane 会被点名让人来关，因为关 pane 不在这条程序的两条端口之内。除此之外没有任何自动清理：成员的 worktree 由人在认定分支已耗尽时用 `git worktree remove` 移除，`cos` 从不代劳。
 
+## Member agent arguments
+
+`cos join <slug> <dir> <kind>` 把 kind 传给 `herdr agent start --kind`，并按 `cos.mjs` 的 `AGENT_ARGS` 表追加该 kind 的启动参数：目前只有 `codex` → `--approve-for-me`。理由是成员必须够到 herdr socket（`cos poll` 要用），而停在审批对话框上的成员读到的是 `blocked`——门铃被扣下而不是投递，所以「等审批」不是慢，是这条活根本送不到。已实测的只有 codex：同一条 `join` 命令，带这个参数启动的成员读到 `done`，不带的读到 `blocked`。未列出的 kind 不追加任何参数，照该 CLI 自己的默认值启动——这张表只记有实测需要的 kind，不预写尚未观察过的 kind。
+
+`claude` 有意不在表里：`--dangerously-skip-permissions` 绕过的是权限层本身（`claude --help`：*"Bypass all permission checks"*），而 `docs/research/monorepo-for-agents-benchmark-260918.md` 把「coder 侧零隔离」列为 P0/P1 缺口并建议用沙箱化替代它——把它设成默认值与那条建议方向相反。`--approve-for-me` 不同，它保留 workspace-write 沙箱、自动审查而非跳过审批，所以它在可接受的一侧。
+
+参数只影响成员进程，**不进账本**：`members/<label>.json` 的 `kind` 仍然是「它是在哪个 CLI 下启动的，别无其他」（见 Worktrees）。
+
 ## Publishing
 
 先把字节写到同目录的临时文件 `<name>.<pid>.<rand>.tmp`，再用 `link(2)` 链到最终名字。`link` 遇 `EEXIST` 会失败而不是替换，所以冲突是一个信号，带序号的发布者会重扫 `max+1` 并重试。由此得出两条规则：
