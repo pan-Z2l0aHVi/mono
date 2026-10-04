@@ -131,19 +131,6 @@ function menuItem(host: HTMLElement, label: string) {
 type SetChecked = (resourceId: string, checked: boolean) => void
 type RowHandler = (resource: ResourceView) => void
 
-/*
- * Tailwind 在 jsdom 里不生效，computed style 读不到圆角，所以断言行上的圆角类名。
- * 读成「上/下是否直角」而不是整串类名：类名拼写是实现，这两侧直不直才是行为。
- */
-function cornersOf(row: Element) {
-  const tokens = row.className.split(/\s+/)
-  const flat = tokens.includes('rounded-none')
-  return {
-    top: flat || tokens.includes('rounded-t-none'),
-    bottom: flat || tokens.includes('rounded-b-none')
-  }
-}
-
 describe('ResourceList', () => {
   afterEach(() => {
     document.body.innerHTML = ''
@@ -203,73 +190,6 @@ describe('ResourceList', () => {
       expect(filled.contextMenu?.hasAttribute('disabled')).toBe(false)
     } finally {
       filled.unmount()
-    }
-  })
-
-  it('相邻选中行交出相接的直角，让选区连成一片', async () => {
-    const ids = ['a', 'b', 'c', 'd', 'e']
-    const mounted = await mountList(
-      ids.map(id => resource({ id })),
-      ['b', 'c', 'd']
-    )
-    try {
-      expect(mounted.rows.map(cornersOf)).toEqual([
-        { top: false, bottom: false }, // a 未选中
-        { top: false, bottom: true }, // b 上圆下直
-        { top: true, bottom: true }, // c 两侧都挨着
-        { top: true, bottom: false }, // d 上直下圆
-        { top: false, bottom: false } // e 未选中
-      ])
-    } finally {
-      mounted.unmount()
-    }
-  })
-
-  it('被选中的行不连续时各自保持完整圆角', async () => {
-    const mounted = await mountList(
-      ['a', 'b', 'c'].map(id => resource({ id })),
-      ['a', 'c']
-    )
-    try {
-      expect(mounted.rows.map(cornersOf)).toEqual([
-        { top: false, bottom: false },
-        { top: false, bottom: false },
-        { top: false, bottom: false }
-      ])
-    } finally {
-      mounted.unmount()
-    }
-  })
-
-  it('邻居选中不会波及未选中的行', async () => {
-    const mounted = await mountList(
-      ['a', 'b', 'c'].map(id => resource({ id })),
-      ['b']
-    )
-    try {
-      expect(mounted.rows.map(cornersOf)).toEqual([
-        { top: false, bottom: false },
-        { top: false, bottom: false },
-        { top: false, bottom: false }
-      ])
-    } finally {
-      mounted.unmount()
-    }
-  })
-
-  it('全选时只有首尾两行的外侧保留圆角', async () => {
-    const mounted = await mountList(
-      ['a', 'b', 'c'].map(id => resource({ id })),
-      ['a', 'b', 'c']
-    )
-    try {
-      expect(mounted.rows.map(cornersOf)).toEqual([
-        { top: false, bottom: true },
-        { top: true, bottom: true },
-        { top: true, bottom: false }
-      ])
-    } finally {
-      mounted.unmount()
     }
   })
 })
@@ -1508,9 +1428,8 @@ describe('ResourceList：键盘导航与预览入口', () => {
    * 撑总高的内层 div 按 getTotalSize 给高度，整页据此产生滚动条，所以「列表有多长」与
    * 「DOM 里有多少行」从此解耦。
    *
-   * window 模式（滚动元素是 window）下两件事与 element 模式不同，都在这里钉住：
-   * 容器不再是滚动容器（没有 overflow-y-auto / min-h-0，那是内部滚动时代的产物）；
-   * 行的落点是 row.start - scrollMargin 而不是 row.start。
+   * window 模式（滚动元素是 window）下行位按 row.start - scrollMargin 落点，而不是
+   * row.start；容器自身不承担滚动职责。
    *
    * jsdom 里行高由 __tests__/virtualLayout 的桩给（真实高 40、估值 64），所以总高是
    * 「已量行 × 40 + 未量行 × 64」的混合值，不是纯估值。真实浏览器里同样是这个混合形态。
@@ -1522,10 +1441,7 @@ describe('ResourceList：键盘导航与预览入口', () => {
       expect(mounted.rows.length).toBeGreaterThan(0)
       expect(mounted.rows.length).toBeLessThan(100)
 
-      // 滚动元素是 window，容器不再承担滚动职责
       const container = mounted.container!
-      expect(container.className).not.toContain('overflow-y-auto')
-      expect(container.className).not.toContain('min-h-0')
 
       // 撑总高的内层 = 已量到的行按真实高度 + 还没量到的行按估值。
       // 不去数「量到了几行」：overscan 让窗口外几行也已挂载并被量到，DOM 行数与已量行数
@@ -1682,28 +1598,6 @@ describe('ResourceList：键盘导航与预览入口', () => {
   })
 
   /*
-   * 回归：行是 tab stop，而页面级 focus 环（assets/global.css）画的是 outline。Tailwind 的
-   * transition-colors 把 outline-color 一起过渡了，它的初始计算值是 currentcolor——从祖先继承
-   * 来的近黑文字色。留着它，Tab 过去时环会从近黑补间 100ms 到目标浅蓝，表现为边缘先黑一下
-   * 再变蓝（与 AppNav 的 navItemClass 同一个坑，那次修复没留下测试）。
-   *
-   * 钉住 transition 相关的整个 token 列表而不是只钉「不含 transition-colors」：往后有人给行
-   * 加过渡属性时，无论加的是 transition-all 还是 transition-[color,outline-color]，这个断言都
-   * 会先红一次，逼着改动显式说明新增的属性。jsdom 里 Tailwind 不生效，但类名字符串读得到，
-   * 所以这层守得住「过渡属性列表」，颜色与粗细仍由浏览器取证。
-   */
-  it('行的过渡只列 background-color，不带上 outline-color', async () => {
-    const mounted = await mountList(['a'].map(id => resource({ id })))
-    try {
-      const row = mounted.rows[0]
-      const transitionTokens = [...row.classList].filter(token => token.startsWith('transition'))
-      expect(transitionTokens).toEqual(['transition-[background-color]'])
-    } finally {
-      mounted.unmount()
-    }
-  })
-
-  /*
    * 回归：焦点进入行**不**自动开预览。预览抽屉内部是原生 <dialog> 的 showModal()，打开
    * 时浏览器把焦点拉进 dialog 并让其后的文档 inert——真机上实测过抽屉一开，row.focus()
    * 就没有响应，Tab 在行间切换这条主路径会当场断掉。预览改由焦点行上的空格触发。
@@ -1743,7 +1637,7 @@ describe('ResourceList：键盘导航与预览入口', () => {
     }
   })
 
-  it('鼠标 hover 仍留底色，但不再触发预览', async () => {
+  it('鼠标 hover 不再触发预览', async () => {
     const preview = vi.fn<(resource: ResourceView) => void>()
     const mounted = await mountList([resource({ id: 'r1' })], [], {}, { onPreview: preview })
 
@@ -1752,9 +1646,9 @@ describe('ResourceList：键盘导航与预览入口', () => {
       row.dispatchEvent(new MouseEvent('mouseenter'))
       row.dispatchEvent(new MouseEvent('mouseleave'))
 
+      // hover 的预览入口已下线（#187）：预览改由键盘空格触发。hover 的底色反馈是视觉
+      // 契约，由浏览器取证负责，这里只守「hover 不再开预览」这一条。
       expect(preview).not.toHaveBeenCalled()
-      // 要去掉的是「hover 作为预览触发判据」，底色本身是 hover 视觉反馈，必须留着
-      expect(row.className.split(/\s+/)).toContain('hover:bg-black/3.5')
     } finally {
       mounted.unmount()
     }

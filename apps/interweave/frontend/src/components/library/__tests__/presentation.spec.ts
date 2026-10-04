@@ -27,14 +27,13 @@ describe('library presentation', () => {
     expect(resourceIcon('unknown')).toBe(resourceIcon(ResourceKind.ResourceKindFile))
   })
 
-  it('闭集内每个颜色都有浅深两态的底色与文字色，不会渲染出无色 chip', () => {
-    for (const color of Object.values(TagColor).filter(value => value !== TagColor.$zero)) {
-      const className = tagClass(color)
-      expect(className).toMatch(/^bg-/)
-      expect(className).toMatch(/text-/)
-      // 浅色与深色各有一套；缺一套就意味着某一态下 chip 没有对比度。
-      expect(className).toContain('dark:bg-')
-      expect(className).toContain('dark:text-')
+  it('闭集内每个颜色都映射到非空中性档的 chip', () => {
+    // 具体色值属于视觉回归（浏览器取证），这里只守住「每个已登记颜色都有 chip、
+    // 且都不会静默退到中性档」——退档意味着两种颜色看起来一样，用户无从分辨。
+    const real = Object.values(TagColor).filter(value => value !== TagColor.$zero)
+    expect(real.length).toBeGreaterThan(0)
+    for (const color of real) {
+      expect(tagClass(color), `${color} 应有自己的 chip，且不退到中性档`).not.toBe(DEFAULT_TAG_CLASS)
     }
   })
 

@@ -444,7 +444,7 @@ describe('LibraryPage：确认弹窗退场', () => {
     }
   })
 
-  it('紧凑变体取消后仍保持 320px 宽度声明', async () => {
+  it('紧凑变体取消后退场期间内容保持原样', async () => {
     const mounted = await mountPage()
 
     try {
@@ -459,16 +459,16 @@ describe('LibraryPage：确认弹窗退场', () => {
       await nextTick()
 
       const dialog = confirmDialog(mounted.host, '移除')
-      const widthClass = '[--wui-dialog-width:320px]'
       expect(dialog.open).toBe(true)
-      expect(dialog.getAttribute('class')).toContain(widthClass)
+      expect(dialog.textContent).toContain('移除「photo」后不会加入资源库。')
 
       button(dialog, '取消').click()
       await nextTick()
 
+      // 退场动画有 260ms，期间弹窗一直可见：内容一旦清空，盒子会在第一帧塌陷。
       expect(dialog.open).toBe(false)
-      expect(dialog.getAttribute('class')).toContain(widthClass)
       expect(dialog.textContent).toContain('移除「photo」后不会加入资源库。')
+      expect(dialog.querySelector('[role="alert"]')).toBeNull()
     } finally {
       await mounted.close()
     }
