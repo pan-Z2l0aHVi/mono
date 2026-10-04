@@ -123,7 +123,7 @@ freeze 自身执行归一化管线：`git add -A` 全量 staging（快照语义�
 
 release 和 hotfix 不是 task 体系的概念；它们是普通 task 在软件迭代场景下的操作程序，各自说明如何满足对应的级别 gate：
 
-- **release playbook**（[`release.md`](release.md)）：聚合已批准 task、确认 changeset、集成验证、PR 与合并后验证。聚合 task 按 T0 建。
+- **release playbook**（[`release.md`](release.md)）：确认 changeset、集成验证、PR 与合并后验证。发布通道由编排层决定并分配，仓库不规定分支、worktree 与聚合方式（形态与取舍见 [ADR-0022](../adr/0022-release-flow-follows-herdr-projects.md)）；本 playbook 不自带级别，各 task 按自身影响面定级，其中至少一条为 T0 时这条集成 PR 才按 T0 走。
 - **hotfix playbook**：线上紧急修复仍按 `pnpm agent:task new --task hotfix-<slug> --level t0|t1 --playbook workflow.md#playbook` 建 task，T0/T1 的全部 gate 一项不免，紧急性不删除证据链。与普通 task 的差异只有三条：分支基线取生产状态而不是 dev lane 最新 head，合并节奏与 release playbook 一致；diff 保持最小，不顺手重构、不扩大范围；验证聚焦回归——修复点加受影响契约的聚焦测试，只有涉及浏览器运行时行为时才按 [`browser-verification.md`](browser-verification.md) 的证据档位执行。review 可以先于其他任务排期，但 reviewer 独立性要求不变。
 
 ## 失败和恢复
@@ -133,4 +133,4 @@ release 和 hotfix 不是 task 体系的概念；它们是普通 task 在软件�
 - session、客户端或 harness 在**同一台机器、同一个用户**内重启后，从 task state 的 `phase`、`worktree`、`baseSha`、`events[]` 和 live stale 结果恢复，不从聊天记忆猜测进度。恢复规则到此为止：换机或换用户不承诺恢复，那种情况从 commit 历史重建。
 - task state 在 task 进行中被清空（重启即清，见 [ADR-0018](../adr/0018-task-state-in-tmpdir.md)）时，用**同一个 task-id 重新 `agent:task new`**，重走 freeze / review / approve。此时 commit 还没发生，仓库里没有错误代码，重建的证据链与新建 task 等价。`new` 对 T0/T1 的干净起点要求不变：先恢复干净工作区再重建，不在脏工作区上绕过它。
 - GitHub issue 不可用时继续本地流程，最终报告注明「未同步」；issue 只作追踪镜像，不是执行真相——task state 同样不是。
-- release CI 失败时，机械性修复由聚合 task 的 owner 直接处理；逻辑或测试修复回到原 task owner，并在聚合 diff 变化后重新 review。
+- 发布 PR 的 CI 失败时，机械性修复由该 PR 对应 task 的 owner 直接处理；逻辑或测试修复回到原 task owner。修复产生的 commit 会让该 PR 已冻结的证据失效，需要重新 freeze/review/approve。
