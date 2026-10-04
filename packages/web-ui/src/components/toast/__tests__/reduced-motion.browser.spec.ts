@@ -9,7 +9,7 @@ async function nextFrame() {
   await new Promise(resolve => requestAnimationFrame(resolve))
 }
 
-// 定位器（非断言）：面板以 aria-live 标识（它是播报语义的载体），不用 class 名单（§12 C3）。
+// 定位器（非断言）：面板以 aria-live 标识（它是播报语义的载体），不用 class 名单。
 function queryPanel(el: WebUiToast): HTMLElement {
   return el.shadowRoot!.querySelector<HTMLElement>('[aria-live]')!
 }
@@ -59,13 +59,12 @@ function mountToast(motion: string | null): WebUiToast {
 afterEach(() => document.body.replaceChildren())
 
 /*
- * §10 S3：只断言「没有动效」是空转可过的（组件压根没动效时也绿）。本文件因此自带
+ * 只断言「没有动效」是空转可过的（组件压根没动效时也绿）。本文件因此自带
  * **控制组** —— 显式 `motion='full'` 作用在系统 reduce 下仍应启动入场过渡，
  * 以此证明断言有区分力；控制组与被测组走同一个 `sampleTransitions()` 驱动与观察函数。
  *
- * 本文件原名 `toast-enter-motion.browser.spec.ts`，在 browser 项目里用显式 `motion='reduced'`
- * 断言「缩放归 1」（= 读 token 值）。改名进入 browser-reduced-motion 项目后，被测组走
- * **系统** reduce（`motion` 省略 → 'system'），断言的是行为面。
+ * 被测组走**系统** reduce（`motion` 省略 → 'system'），断言的是行为面
+ * （无过渡），不读动效起点的 scale 取值（那属于计算样式）。
  */
 describe('减少动效下的 Toast 入场（浏览器）', () => {
   it('系统 reduce：入场全程不出现过渡；对照组 full 出现', async () => {

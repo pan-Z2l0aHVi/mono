@@ -33,8 +33,8 @@ async function openDialog(el: WebUiDialog) {
 
 /**
  * dialog 进场有 `transform: scale(1.1 → 1)`，未落定时 getBoundingClientRect 会带上
- * 缩放（16px 的偏移会量成 17.6px）。`is-visible` 由 presence 在 showModal 之后才补上，
- * 所以这里按「变换已收敛」这个条件轮询，而不是等一个固定时长、也不靠 getAnimations 的条数。
+ * 缩放。`is-visible` 由 presence 在 showModal 之后才补上，所以这里按「变换已收敛」
+ * 这个条件轮询，而不是等一个固定时长、也不靠 getAnimations 的条数。
  */
 async function settleEnterTransform(el: WebUiDialog) {
   const dialog = el.shadowRoot?.querySelector('dialog') as HTMLElement
@@ -44,44 +44,60 @@ async function settleEnterTransform(el: WebUiDialog) {
   }, 'Expected the dialog enter transform to settle at scale(1)')
 }
 
-function rectOf(el: WebUiDialog, selector: string): DOMRect {
-  const target = el.shadowRoot?.querySelector(selector)
-  if (!target) throw new Error(`Expected ${selector} to exist.`)
-  return target.getBoundingClientRect()
+/**
+ * 按「有可访问名」定位关闭按钮，不依赖内部 class，也不钉名字的字面量。
+ * 具体叫什么属于本地化内容，改语言不该让这批几何测试集体变红。
+ */
+function closeButtonOf(el: WebUiDialog): HTMLElement | null {
+  return (
+    [...(el.shadowRoot?.querySelectorAll<HTMLElement>('[aria-label]') ?? [])].find(
+      button => button.getAttribute('aria-label')?.trim() !== ''
+    ) ?? null
+  )
+}
+
+function closeRectOf(el: WebUiDialog): DOMRect {
+  const button = closeButtonOf(el)
+  if (!button) throw new Error('Expected the close button to exist')
+  return button.getBoundingClientRect()
+}
+
+function cardRectOf(el: WebUiDialog): DOMRect {
+  const dialog = el.shadowRoot?.querySelector('dialog') as HTMLElement
+  return dialog.getBoundingClientRect()
 }
 
 describe('WebUiDialog closable（浏览器几何）', () => {
-  it('body 模式下按钮浮在卡片内右上角', async () => {
+  // 按钮的位置契约只钉**用户可感知的边界关系**（在卡片内、与标题同行），不钉偏移像素：
+  // 日后调主题 spacing 令牌不该变成改测试。
+  it('body 模式下按钮浮在卡片内，不压出卡片边界', async () => {
     const el = createDialog('<section slot="body">自定义主体</section>')
     el.closable = true
     await openDialog(el)
 
-    const card = rectOf(el, '.wui-dialog-body')
-    const close = rectOf(el, '.wui-dialog-close')
+    const close = closeRectOf(el)
+    const card = cardRectOf(el)
 
     expect(close.width).toBeGreaterThan(0)
     expect(close.top).toBeGreaterThan(card.top)
     expect(close.right).toBeLessThanOrEqual(card.right)
-    // 默认 16px 偏移：贴着卡片内右上角，而不是压到卡片外或贴死边。
-    expect(card.right - close.right).toBeCloseTo(16, 0)
-    expect(close.top - card.top).toBeCloseTo(16, 0)
+    expect(close.bottom).toBeLessThanOrEqual(card.bottom)
   })
 
-  it('title-row 模式下按钮与标题同行且在标题右侧', async () => {
+  it('title-row 模式下按钮与标题同行，且在标题右侧', async () => {
     const el = createDialog('<span slot="title">标题</span>')
     el.closable = true
     await openDialog(el)
 
-    const title = rectOf(el, '.title')
-    const close = rectOf(el, '.wui-dialog-close')
-    const card = rectOf(el, '.wui-dialog-body')
+    const title = el.shadowRoot?.querySelector('.title')
+    if (!title) throw new Error('Expected the title to exist')
+    const titleRect = title.getBoundingClientRect()
+    const close = closeRectOf(el)
 
-    expect(close.left).toBeGreaterThanOrEqual(title.right)
+    expect(close.left).toBeGreaterThanOrEqual(titleRect.right)
     // 同行：按钮纵向落在标题行范围内，而不是被推到标题下方。
-    expect(close.top).toBeLessThan(title.bottom)
-    expect(close.bottom).toBeGreaterThan(title.top)
-    // 包裹层不改变卡片宽度语义，按钮仍在卡片内。
-    expect(close.right).toBeLessThanOrEqual(card.right)
+    expect(close.top).toBeLessThan(titleRect.bottom)
+    expect(close.bottom).toBeGreaterThan(titleRect.top)
   })
 
   it('点击按钮在真实浏览器里关闭原生 dialog', async () => {
@@ -92,18 +108,16 @@ describe('WebUiDialog closable（浏览器几何）', () => {
     const dialog = el.shadowRoot?.querySelector('dialog') as HTMLDialogElement
     expect(dialog.open).toBe(true)
 
-    const close = el.shadowRoot?.querySelector('.wui-dialog-close') as HTMLElement
-    close.click()
+    closeButtonOf(el)?.click()
     await el.updateComplete
 
     expect(el.open).toBe(false)
   })
 
-  it('不启用 closable 时不产生任何关闭按钮几何', async () => {
+  it('不启用 closable 时不产生关闭按钮', async () => {
     const el = createDialog('<span slot="title">标题</span>')
     await openDialog(el)
 
-    expect(el.shadowRoot?.querySelector('.wui-dialog-close')).toBeNull()
-    expect(el.shadowRoot?.querySelector('.title-row')).toBeNull()
+    expect(closeButtonOf(el)).toBeNull()
   })
 })

@@ -181,7 +181,7 @@ describe('context-menu 长按（真实触控管线）', () => {
   })
 
   /*
-   * R3（核心）：抬手后浏览器补发的 compat click **不穿透**到下层目标。
+   * 抬手后浏览器补发的 compat click **不穿透**到下层目标。
    *
    * 为什么这条只能用真实触控管线测：compat click 的 target 由**派发那一刻**对触点做命中
    * 测试决定，而不是 pointerdown 的 target。合成 `PointerEvent` / `dispatchEvent` 根本不会
@@ -299,9 +299,8 @@ describe('context-menu 长按（真实触控管线）', () => {
     await settle()
 
     expect(el.isOpen).toBe(false)
-    // R20：`toHaveLength(0)` 单独用是弱断言 —— 它只证明「查不到面板」，而查不到也可能是
-    // 查找器坏了。补一条直接证据：模态 scrim 根本没被创建。查找器坏掉时 `toHaveLength(0)`
-    // 会假绿，这条不会。
+    // `toHaveLength(0)` 只证明「查不到面板」，而查不到也可能是
+    // 查找器坏了；补一条直接证据：模态 scrim 根本没被创建。
     expect(getMenuPanels('上下文菜单')).toHaveLength(0)
     expect(document.querySelector('dialog[data-wui-menu-scrim]')).toBeNull()
     cleanupElement(el)
@@ -315,9 +314,8 @@ describe('context-menu 长按（真实触控管线）', () => {
     await settle()
 
     expect(el.isOpen).toBe(false)
-    // R20：`toHaveLength(0)` 单独用是弱断言 —— 它只证明「查不到面板」，而查不到也可能是
-    // 查找器坏了。补一条直接证据：模态 scrim 根本没被创建。查找器坏掉时 `toHaveLength(0)`
-    // 会假绿，这条不会。
+    // `toHaveLength(0)` 只证明「查不到面板」，而查不到也可能是查找器坏了；
+    // 补一条直接证据：模态 scrim 根本没被创建。
     expect(getMenuPanels('上下文菜单')).toHaveLength(0)
     expect(document.querySelector('dialog[data-wui-menu-scrim]')).toBeNull()
     cleanupElement(el)
@@ -334,9 +332,8 @@ describe('context-menu 长按（真实触控管线）', () => {
     // headless 下 CDP 触控不产生原生 contextmenu（已用事件序列确认），所以这里能干净地
     // 证明打开菜单的只有本组件的长按计时器，而它被属性 gate 住了。
     expect(el.isOpen).toBe(false)
-    // R20：`toHaveLength(0)` 单独用是弱断言 —— 它只证明「查不到面板」，而查不到也可能是
-    // 查找器坏了。补一条直接证据：模态 scrim 根本没被创建。查找器坏掉时 `toHaveLength(0)`
-    // 会假绿，这条不会。
+    // `toHaveLength(0)` 只证明「查不到面板」，而查不到也可能是查找器坏了；
+    // 补一条直接证据：模态 scrim 根本没被创建。
     expect(getMenuPanels('上下文菜单')).toHaveLength(0)
     expect(document.querySelector('dialog[data-wui-menu-scrim]')).toBeNull()
     cleanupElement(el)
