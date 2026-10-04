@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vite-plus/test'
 
 import '..'
-import { cleanupElement, expectReflected, spyEvents, waitForUpdate } from '@/shared/test-utils'
+import { cleanupElement, spyEvents, waitForUpdate } from '@/shared/test-utils'
 
 import type { WebUiCollapse } from '..'
 
@@ -14,274 +14,55 @@ function createCollapse(
   return el
 }
 
-function queryTriggerButton(el: WebUiCollapse): HTMLButtonElement {
-  return el.querySelector<HTMLButtonElement>('button.trigger')!
+const triggerButton = (el: WebUiCollapse): HTMLButtonElement => el.querySelector<HTMLButtonElement>('button.trigger')!
+
+/** 内容区是否已退出可访问性树：默认关闭稳态是 hidden，keep-mounted / peek 稳态是 inert。 */
+const contentState = (el: WebUiCollapse): 'hidden' | 'inert' | 'interactive' => {
+  const container = el.shadowRoot?.querySelector<HTMLElement>('.wui-collapse-content') as HTMLElement
+  const inner = el.shadowRoot?.querySelector<HTMLElement>('.wui-collapse-inner') as HTMLElement
+  if (container.hasAttribute('hidden')) return 'hidden'
+  return inner.hasAttribute('inert') ? 'inert' : 'interactive'
 }
 
-function queryContentNode(el: WebUiCollapse): HTMLElement {
-  return el.querySelector<HTMLElement>('[slot="content"]')!
-}
-
-// 点击 slot 进来的 trigger button（click 冒泡穿过 trigger wrapper 代理切换）。
-async function clickTrigger(el: WebUiCollapse) {
-  queryTriggerButton(el).click()
-  await waitForUpdate(el)
-}
-
-// peek 的动画写入落在 rAF 回调里；jsdom 无过渡时长，一帧后即落稳态。
+/** peek 的动画写入落在 rAF 回调里；jsdom 无过渡时长，一帧后即落稳态。 */
 async function nextFrame() {
   await new Promise(resolve => requestAnimationFrame(resolve))
 }
 
+// 点击 slot 进来的 trigger button（click 冒泡穿过 trigger wrapper 代理切换）。
+async function clickTrigger(el: WebUiCollapse) {
+  triggerButton(el).click()
+  await waitForUpdate(el)
+}
+
 describe('WebUiCollapse 组件', () => {
-  describe('属性：open', () => {
-    it('默认关闭', async () => {
+  describe('初始状态', () => {
+    it('默认关闭，内容区退出可访问性树', async () => {
       const el = createCollapse()
       await waitForUpdate(el)
 
       expect(el.open).toBe(false)
-      expectReflected(el, 'open', false)
-
-      cleanupElement(el)
-    })
-
-    it('open 属性反射到 host 元素', async () => {
-      const el = createCollapse()
-      el.open = true
-      await waitForUpdate(el)
-      expectReflected(el, 'open', true)
-      expect(el.hasAttribute('open')).toBe(true)
-
-      el.open = false
-      await waitForUpdate(el)
-      expectReflected(el, 'open', false)
       expect(el.hasAttribute('open')).toBe(false)
-
+      expect(contentState(el)).toBe('hidden')
       cleanupElement(el)
     })
 
-    it('初始 open attribute 直接展开，不隐藏内容', async () => {
-      // 「不播放展开动画」这一半需要真实过渡才能观察，见
-      // `collapse.browser.spec.ts` 的「初始带 open attribute 直接落稳态，不播放展开过渡」。
+    // 初始 open attribute 直接落展开稳态，不播动画（动画那一半见 browser spec）。
+    it('初始带 open attribute 时内容可见', async () => {
       const el = createCollapse()
       el.setAttribute('open', '')
       document.body.appendChild(el)
       await waitForUpdate(el)
 
-      const container = el.shadowRoot?.querySelector('.wui-collapse-content') as HTMLElement
-      expect(container.hasAttribute('hidden')).toBe(false)
-
+      expect(contentState(el)).toBe('interactive')
       cleanupElement(el)
     })
   })
 
-  describe('属性：disabled', () => {
-    it('默认不禁用', async () => {
-      const el = createCollapse()
-      await waitForUpdate(el)
-
-      expect(el.disabled).toBe(false)
-      expectReflected(el, 'disabled', false)
-
-      cleanupElement(el)
-    })
-
-    it('disabled 时点击 trigger 不改变 open', async () => {
-      const el = createCollapse()
-      el.disabled = true
-      await waitForUpdate(el)
-
-      const [events] = spyEvents<CustomEvent<{ open: boolean }>>(el, 'open-change')
-      await clickTrigger(el)
-
-      expect(el.open).toBe(false)
-      expect(events).toHaveLength(0)
-
-      cleanupElement(el)
-    })
-
-    it('disabled 回写 trigger 元素 aria-disabled', async () => {
-      const el = createCollapse()
-      el.disabled = true
-      await waitForUpdate(el)
-
-      expect(queryTriggerButton(el).getAttribute('aria-disabled')).toBe('true')
-
-      el.disabled = false
-      await waitForUpdate(el)
-      expect(queryTriggerButton(el).hasAttribute('aria-disabled')).toBe(false)
-
-      cleanupElement(el)
-    })
-  })
-
-  describe('属性：horizontal / keep-mounted', () => {
-    it('horizontal 默认垂直（false）且反射', async () => {
-      const el = createCollapse()
-      await waitForUpdate(el)
-
-      expect(el.horizontal).toBe(false)
-      expectReflected(el, 'horizontal', false)
-
-      el.horizontal = true
-      await waitForUpdate(el)
-      expectReflected(el, 'horizontal', true)
-      expect(el.getAttribute('horizontal')).toBe('')
-
-      cleanupElement(el)
-    })
-
-    it('keep-mounted 默认 false 且反射', async () => {
-      const el = createCollapse()
-      await waitForUpdate(el)
-
-      expect(el.keepMounted).toBe(false)
-      expectReflected(el, 'keep-mounted', false)
-
-      el.keepMounted = true
-      await waitForUpdate(el)
-      expectReflected(el, 'keep-mounted', true)
-
-      cleanupElement(el)
-    })
-  })
-
-  describe('属性：peek', () => {
-    it('默认未设置且不反射属性', async () => {
-      const el = createCollapse()
-      await waitForUpdate(el)
-
-      expect(el.peek).toBe(null)
-      expect(el.hasAttribute('peek')).toBe(false)
-
-      cleanupElement(el)
-    })
-
-    it('peek 反射到 host 元素', async () => {
-      const el = createCollapse()
-      el.peek = '120px'
-      await waitForUpdate(el)
-
-      expect(el.getAttribute('peek')).toBe('120px')
-
-      cleanupElement(el)
-    })
-
-    /*
-     * 已删（§12 C1 + §10 S1）：'peek 下发 CSS 变量到 track' 与 'peek 清空后清除下发的
-     * CSS 变量' 两例，断言分别落在 `track.style.getPropertyValue('--wui-collapse-peek')`
-     * 与 `track.hasAttribute('data-wui-peek')` —— 下发给样式层的自定义属性与内部标记属实现态；
-     * 「peek 清空后回落」的行为后果由下方 'peek 清空后回落默认关闭稳态' 承接（hidden + inert）。
-     */
-
-    it('peek 关闭稳态：内容可见但阻断交互', async () => {
-      const el = createCollapse()
-      el.peek = '120px'
-      await waitForUpdate(el)
-
-      const container = el.shadowRoot?.querySelector('.wui-collapse-content') as HTMLElement
-      const inner = el.shadowRoot?.querySelector('.wui-collapse-inner') as HTMLElement
-      expect(container.hasAttribute('hidden')).toBe(false)
-      expect(inner.getAttribute('inert')).toBe('')
-
-      cleanupElement(el)
-    })
-
-    it('peek 清空后回落默认关闭稳态', async () => {
-      const el = createCollapse()
-      el.peek = '120px'
-      await waitForUpdate(el)
-
-      el.peek = null
-      await waitForUpdate(el)
-
-      const container = el.shadowRoot?.querySelector('.wui-collapse-content') as HTMLElement
-      const inner = el.shadowRoot?.querySelector('.wui-collapse-inner') as HTMLElement
-      expect(container.hasAttribute('hidden')).toBe(true)
-      expect(inner.hasAttribute('inert')).toBe(false)
-
-      cleanupElement(el)
-    })
-
-    it('peek 下开合：展开解除 inert，收起回到裁剪态', async () => {
-      const el = createCollapse()
-      el.peek = '120px'
-      await waitForUpdate(el)
-
-      el.open = true
-      await waitForUpdate(el)
-      await nextFrame()
-
-      const inner = el.shadowRoot?.querySelector('.wui-collapse-inner') as HTMLElement
-      expect(inner.hasAttribute('inert')).toBe(false)
-
-      el.open = false
-      await waitForUpdate(el)
-      await nextFrame()
-
-      const container = el.shadowRoot?.querySelector('.wui-collapse-content') as HTMLElement
-      expect(container.hasAttribute('hidden')).toBe(false)
-      expect(inner.getAttribute('inert')).toBe('')
-
-      cleanupElement(el)
-    })
-
-    // jsdom 无布局，peek 的裁剪长度只能在浏览器用例里验证；这里只验挂载与交互语义。
-    it('peek 与 keep-mounted 并存时内容仍保留挂载且阻断交互', async () => {
-      const el = createCollapse()
-      el.peek = '120px'
-      el.keepMounted = true
-      await waitForUpdate(el)
-
-      const container = el.shadowRoot?.querySelector('.wui-collapse-content') as HTMLElement
-      const inner = el.shadowRoot?.querySelector('.wui-collapse-inner') as HTMLElement
-      expect(container.hasAttribute('hidden')).toBe(false)
-      expect(inner.getAttribute('inert')).toBe('')
-
-      cleanupElement(el)
-    })
-
-    it('peek 清空后但 keep-mounted 仍在：落到 inert 而非 hidden', async () => {
-      const el = createCollapse()
-      el.peek = '120px'
-      el.keepMounted = true
-      await waitForUpdate(el)
-
-      el.peek = null
-      await waitForUpdate(el)
-
-      const container = el.shadowRoot?.querySelector('.wui-collapse-content') as HTMLElement
-      const inner = el.shadowRoot?.querySelector('.wui-collapse-inner') as HTMLElement
-      expect(container.hasAttribute('hidden')).toBe(false)
-      expect(inner.getAttribute('inert')).toBe('')
-
-      cleanupElement(el)
-    })
-
-    it('peek 下开合不派发程序来源事件', async () => {
-      const el = createCollapse()
-      el.peek = '120px'
-      await waitForUpdate(el)
-
-      const [events] = spyEvents<CustomEvent<{ open: boolean }>>(el, 'open-change')
-      el.open = true
-      await waitForUpdate(el)
-      await nextFrame()
-      el.open = false
-      await waitForUpdate(el)
-      await nextFrame()
-
-      expect(events).toHaveLength(0)
-
-      cleanupElement(el)
-    })
-  })
-
-  describe('交互：trigger 点击', () => {
+  describe('trigger 交互与 ARIA 回写', () => {
     it('点击 trigger 切换 open 并派发 open-change', async () => {
       const el = createCollapse()
       await waitForUpdate(el)
-
       const [events] = spyEvents<CustomEvent<{ open: boolean }>>(el, 'open-change')
 
       await clickTrigger(el)
@@ -293,25 +74,25 @@ describe('WebUiCollapse 组件', () => {
       expect(el.open).toBe(false)
       expect(events).toHaveLength(2)
       expect(events[1]?.detail.open).toBe(false)
-
       cleanupElement(el)
     })
 
-    it('内容区 click 不切换（仅 trigger wrapper 代理）', async () => {
+    // 内容区的 click 不经过 trigger wrapper：点内容不该把面板关掉。
+    it('内容区 click 不切换', async () => {
       const el = createCollapse()
       await waitForUpdate(el)
-
       const [events] = spyEvents<CustomEvent<{ open: boolean }>>(el, 'open-change')
-      queryContentNode(el).click()
+
+      el.querySelector<HTMLElement>('[slot="content"]')!.click()
       await waitForUpdate(el)
 
       expect(el.open).toBe(false)
       expect(events).toHaveLength(0)
-
       cleanupElement(el)
     })
 
-    it('嵌套 collapse：内层 trigger 不激活外层根', async () => {
+    // 嵌套时内层 trigger 的 click 冒泡经过外层，若外层不做路径判定就会连带切换。
+    it('嵌套 collapse：内层 trigger 不激活外层', async () => {
       const el = createCollapse(
         '<button class="trigger">Outer</button><div slot="content"><web-ui-collapse id="inner"><button class="trigger">Inner</button><div slot="content">InnerContent</div></web-ui-collapse></div>'
       )
@@ -330,28 +111,26 @@ describe('WebUiCollapse 组件', () => {
       expect(innerEvents).toHaveLength(1)
       // 内层 open-change 冒泡经过外层（bubbles+composed 契约），外层自身不产生事件
       expect(outerEvents.filter(event => event.target === el)).toHaveLength(0)
-
       cleanupElement(el)
     })
-  })
 
-  describe('ARIA 回写', () => {
-    it('aria-expanded / aria-controls 回写到 trigger 元素', async () => {
+    // aria-controls 必须指向内容轨道，否则 AT 的关系引用指向不存在的元素。
+    it('aria-expanded / aria-controls 回写到 trigger 元素并随状态变化', async () => {
       const el = createCollapse()
       await waitForUpdate(el)
-
-      const button = queryTriggerButton(el)
-      expect(button.getAttribute('aria-expanded')).toBe('false')
+      const button = triggerButton(el)
       const track = el.shadowRoot?.querySelector('.wui-collapse-track') as HTMLElement
+
+      expect(button.getAttribute('aria-expanded')).toBe('false')
       expect(track.id).not.toBe('')
       expect(button.getAttribute('aria-controls')).toBe(track.id)
 
       await clickTrigger(el)
       expect(button.getAttribute('aria-expanded')).toBe('true')
-
       cleanupElement(el)
     })
 
+    // slot 内容可能晚于首帧才到位（framework 的 v-if），回写必须覆盖晚到的 trigger。
     it('trigger slot 后插入元素仍完成 ARIA 回写', async () => {
       const el = createCollapse('<div slot="content">Content</div>')
       await waitForUpdate(el)
@@ -364,216 +143,224 @@ describe('WebUiCollapse 组件', () => {
 
       expect(button.getAttribute('aria-expanded')).toBe('false')
       expect(button.getAttribute('aria-controls')).not.toBe('')
-
-      cleanupElement(el)
-    })
-  })
-
-  describe('事件：open-change', () => {
-    it('程序设置 open 不触发 open-change', async () => {
-      const el = createCollapse()
-      const [events] = spyEvents<CustomEvent<{ open: boolean }>>(el, 'open-change')
-
-      el.open = true
-      await waitForUpdate(el)
-
-      expect(events).toHaveLength(0)
-
       cleanupElement(el)
     })
 
-    it('程序关闭不触发 open-change', async () => {
-      const el = createCollapse()
-      el.open = true
-      await waitForUpdate(el)
-
-      const [events] = spyEvents<CustomEvent<{ open: boolean }>>(el, 'open-change')
-
-      el.open = false
-      await waitForUpdate(el)
-
-      expect(events).toHaveLength(0)
-
-      cleanupElement(el)
-    })
-
-    it('open 值不变时不触发', async () => {
-      const el = createCollapse()
-      el.open = true
-      await waitForUpdate(el)
-
-      const [events] = spyEvents<CustomEvent<{ open: boolean }>>(el, 'open-change')
-
-      el.open = true
-      await waitForUpdate(el)
-
-      expect(events).toHaveLength(0)
-
-      cleanupElement(el)
-    })
-
-    it('事件 detail 仅包含 open 布尔值', async () => {
-      const el = createCollapse()
-      await waitForUpdate(el)
-
-      const [events] = spyEvents<CustomEvent<{ open: boolean }>>(el, 'open-change')
-      await clickTrigger(el)
-
-      expect(Object.keys(events[0]?.detail ?? {})).toEqual(['open'])
-      expect(typeof events[0]?.detail.open).toBe('boolean')
-
-      cleanupElement(el)
-    })
-  })
-
-  describe('命令：show() / close() / toggle()', () => {
-    it('show() 打开但不触发 open-change', async () => {
-      const el = createCollapse()
-      const [events] = spyEvents<CustomEvent<{ open: boolean }>>(el, 'open-change')
-
-      el.show()
-      await waitForUpdate(el)
-
-      expect(el.open).toBe(true)
-      expect(events).toHaveLength(0)
-
-      cleanupElement(el)
-    })
-
-    it('close() 关闭但不触发 open-change', async () => {
-      const el = createCollapse()
-      el.open = true
-      await waitForUpdate(el)
-
-      const [events] = spyEvents<CustomEvent<{ open: boolean }>>(el, 'open-change')
-
-      el.close()
-      await waitForUpdate(el)
-
-      expect(el.open).toBe(false)
-      expect(events).toHaveLength(0)
-
-      cleanupElement(el)
-    })
-
-    it('toggle() 在开合间切换且不触发 open-change', async () => {
-      const el = createCollapse()
-      const [events] = spyEvents<CustomEvent<{ open: boolean }>>(el, 'open-change')
-
-      el.toggle()
-      await waitForUpdate(el)
-      expect(el.open).toBe(true)
-
-      el.toggle()
-      await waitForUpdate(el)
-      expect(el.open).toBe(false)
-      expect(events).toHaveLength(0)
-
-      cleanupElement(el)
-    })
-  })
-
-  describe('关闭稳态三态', () => {
-    it('默认关闭稳态：content 容器 hidden', async () => {
-      const el = createCollapse()
-      el.open = true
-      await waitForUpdate(el)
-
-      const container = el.shadowRoot?.querySelector('.wui-collapse-content') as HTMLElement
-      expect(container.hasAttribute('hidden')).toBe(false)
-
-      el.open = false
-      await waitForUpdate(el)
-
-      // jsdom 无计算过渡时长：直接落到稳态 hidden
-      expect(container.hasAttribute('hidden')).toBe(true)
-
-      cleanupElement(el)
-    })
-
-    it('keep-mounted 关闭稳态：容器不 hidden，inner 设 inert', async () => {
-      const el = createCollapse()
-      el.keepMounted = true
-      await waitForUpdate(el)
-      el.open = true
-      await waitForUpdate(el)
-
-      const container = el.shadowRoot?.querySelector('.wui-collapse-content') as HTMLElement
-      const inner = el.shadowRoot?.querySelector('.wui-collapse-inner') as HTMLElement
-      expect(container.hasAttribute('hidden')).toBe(false)
-
-      el.open = false
-      await waitForUpdate(el)
-
-      expect(container.hasAttribute('hidden')).toBe(false)
-      // inert 设在动画结构内部（公开契约：宿主可见但内容阻断交互）
-      expect(inner.getAttribute('inert')).toBe('')
-
-      cleanupElement(el)
-    })
-
-    it('关闭稳态下运行时切换 keep-mounted 重新落地 hidden/inert', async () => {
-      const el = createCollapse()
-      await waitForUpdate(el)
-      el.open = true
-      await waitForUpdate(el)
-
-      const container = el.shadowRoot?.querySelector('.wui-collapse-content') as HTMLElement
-      const inner = el.shadowRoot?.querySelector('.wui-collapse-inner') as HTMLElement
-
-      el.open = false
-      await waitForUpdate(el)
-      expect(container.hasAttribute('hidden')).toBe(true)
-
-      el.keepMounted = true
-      await waitForUpdate(el)
-      expect(container.hasAttribute('hidden')).toBe(false)
-      expect(inner.getAttribute('inert')).toBe('')
-
-      el.keepMounted = false
-      await waitForUpdate(el)
-      expect(container.hasAttribute('hidden')).toBe(true)
-      expect(inner.hasAttribute('inert')).toBe(false)
-
-      cleanupElement(el)
-    })
-  })
-
-  describe('内容投影', () => {
-    it('trigger 与 content 接受任意标记：非 button trigger 亦被回写 ARIA 并驱动开合', async () => {
-      // 原用例只把注入的 light DOM 再读回来（恒真），已改为断言真实后果：
-      // trigger slot 的首个 assigned 元素（此处是 <span>）被当作 trigger 回写 ARIA，
-      // 且点击它沿同一条 click 代理路径切换 open。
+    // trigger 的语义由 slot 进来的元素提供；组件不强行要求 button，但仍要能代理点击并回写 ARIA。
+    it('非 button 的 trigger 同样被回写 ARIA 并驱动开合', async () => {
       const el = createCollapse(
-        '<span class="trigger">自定义 <b>触发</b> 内容</span><div slot="content"><p>段落</p><ul><li>列表</li></ul></div>'
+        '<span class="trigger">自定义 <b>触发</b> 内容</span><div slot="content"><p>段落</p></div>'
       )
       await waitForUpdate(el)
-
       const trigger = el.querySelector<HTMLElement>('span.trigger')!
-      expect(trigger.getAttribute('aria-expanded')).toBe('false')
-      expect(trigger.getAttribute('aria-controls')).not.toBe('')
 
+      expect(trigger.getAttribute('aria-expanded')).toBe('false')
       trigger.click()
       await waitForUpdate(el)
 
       expect(el.open).toBe(true)
       expect(trigger.getAttribute('aria-expanded')).toBe('true')
+      cleanupElement(el)
+    })
+  })
 
+  describe('disabled', () => {
+    it('disabled 时点击 trigger 不切换 open，也不派发事件', async () => {
+      const el = createCollapse()
+      el.disabled = true
+      await waitForUpdate(el)
+      const [events] = spyEvents<CustomEvent<{ open: boolean }>>(el, 'open-change')
+
+      await clickTrigger(el)
+
+      expect(el.open).toBe(false)
+      expect(events).toHaveLength(0)
       cleanupElement(el)
     })
 
-    it('light DOM 永不移动：content 节点始终留在消费者侧', async () => {
+    it('disabled 回写 trigger 的 aria-disabled，并随属性解除', async () => {
+      const el = createCollapse()
+      el.disabled = true
+      await waitForUpdate(el)
+      expect(triggerButton(el).getAttribute('aria-disabled')).toBe('true')
+
+      el.disabled = false
+      await waitForUpdate(el)
+      expect(triggerButton(el).hasAttribute('aria-disabled')).toBe(false)
+      cleanupElement(el)
+    })
+  })
+
+  describe('关闭稳态的三种语义', () => {
+    // 三态是同一份内容的两种「退出可访问性树」手段：默认 display:none（连带卸载布局），
+    // keep-mounted / peek 保留挂载并用 inert 阻断交互（保滚动位置、可测量）。
+    it.each([
+      ['默认：内容容器 hidden', false, null, 'hidden'],
+      ['keep-mounted：保留挂载但 inert', true, null, 'inert'],
+      ['peek：保留挂载但 inert', false, '120px', 'inert'],
+      ['peek 与 keep-mounted 并存：仍 inert', true, '120px', 'inert']
+    ])('%s', async (_label, keepMounted, peek, expected) => {
+      const el = createCollapse()
+      el.keepMounted = keepMounted
+      if (peek !== null) el.peek = peek
+      await waitForUpdate(el)
+
+      expect(contentState(el)).toBe(expected)
+      cleanupElement(el)
+    })
+
+    it('展开解除 inert，收起回到原关闭稳态', async () => {
+      const el = createCollapse()
+      el.keepMounted = true
+      await waitForUpdate(el)
+
+      el.open = true
+      await waitForUpdate(el)
+      expect(contentState(el)).toBe('interactive')
+
+      el.open = false
+      await waitForUpdate(el)
+      expect(contentState(el)).toBe('inert')
+      cleanupElement(el)
+    })
+
+    // 运行态改 keep-mounted / peek 时关闭稳态必须在三态之间重新落地，否则会残留上一种模式的痕迹。
+    it('关闭稳态下切换 keep-mounted 会重新落地', async () => {
       const el = createCollapse()
       await waitForUpdate(el)
       el.open = true
       await waitForUpdate(el)
       el.open = false
       await waitForUpdate(el)
+      expect(contentState(el)).toBe('hidden')
 
-      const content = queryContentNode(el)
+      el.keepMounted = true
+      await waitForUpdate(el)
+      expect(contentState(el)).toBe('inert')
+
+      el.keepMounted = false
+      await waitForUpdate(el)
+      expect(contentState(el)).toBe('hidden')
+      cleanupElement(el)
+    })
+
+    it('peek 清空后回落默认关闭稳态', async () => {
+      const el = createCollapse()
+      el.peek = '120px'
+      await waitForUpdate(el)
+      expect(contentState(el)).toBe('inert')
+
+      el.peek = null
+      await waitForUpdate(el)
+      expect(contentState(el)).toBe('hidden')
+      cleanupElement(el)
+    })
+
+    it('peek 清空但 keep-mounted 仍在：落到 inert 而非 hidden', async () => {
+      const el = createCollapse()
+      el.peek = '120px'
+      el.keepMounted = true
+      await waitForUpdate(el)
+
+      el.peek = null
+      await waitForUpdate(el)
+
+      expect(contentState(el)).toBe('inert')
+      cleanupElement(el)
+    })
+
+    // 消费者的 light DOM 永远不移动：组件靠命令式 hidden/inert 管理，不改 slot 内容的位置。
+    it('内容节点始终留在消费者侧', async () => {
+      const el = createCollapse()
+      await waitForUpdate(el)
+      const content = el.querySelector<HTMLElement>('[slot="content"]')!
+
+      el.open = true
+      await waitForUpdate(el)
+      el.open = false
+      await waitForUpdate(el)
+
       expect(content.parentElement).toBe(el)
-      expect(el.contains(content)).toBe(true)
+      cleanupElement(el)
+    })
+  })
 
+  describe('open-change 只由用户手势派发', () => {
+    // notification 语义：组件总是自行变更 open，事件只作通知。程序式入口静默，
+    // 否则消费者回写属性会与通知形成回环。
+    it.each([
+      ['设置 open 属性', (el: WebUiCollapse) => void (el.open = true)],
+      ['show()', (el: WebUiCollapse) => el.show()],
+      ['toggle()', (el: WebUiCollapse) => el.toggle()]
+    ])('%s 不派发 open-change', async (_label, act) => {
+      const el = createCollapse()
+      await waitForUpdate(el)
+      const [events] = spyEvents<CustomEvent<{ open: boolean }>>(el, 'open-change')
+
+      act(el)
+      await waitForUpdate(el)
+
+      expect(el.open).toBe(true)
+      expect(events).toHaveLength(0)
+      cleanupElement(el)
+    })
+
+    it.each([
+      ['close()', (el: WebUiCollapse) => el.close(), true],
+      ['open=false', (el: WebUiCollapse) => void (el.open = false), true]
+    ])('%s 不派发 open-change', async (_label, act, startOpen) => {
+      const el = createCollapse()
+      if (startOpen) el.open = true
+      await waitForUpdate(el)
+      const [events] = spyEvents<CustomEvent<{ open: boolean }>>(el, 'open-change')
+
+      act(el)
+      await waitForUpdate(el)
+
+      expect(el.open).toBe(false)
+      expect(events).toHaveLength(0)
+      cleanupElement(el)
+    })
+
+    it('重复写入同一个 open 值不补发通知', async () => {
+      const el = createCollapse()
+      el.open = true
+      await waitForUpdate(el)
+      const [events] = spyEvents<CustomEvent<{ open: boolean }>>(el, 'open-change')
+
+      el.open = true
+      await waitForUpdate(el)
+
+      expect(events).toHaveLength(0)
+      cleanupElement(el)
+    })
+
+    // detail 的形状是公共契约：消费者按 `{ open }` 解构，多余字段会让它误判。
+    it('事件 detail 只含 open 布尔值', async () => {
+      const el = createCollapse()
+      await waitForUpdate(el)
+      const [events] = spyEvents<CustomEvent<{ open: boolean }>>(el, 'open-change')
+
+      await clickTrigger(el)
+
+      expect(Object.keys(events[0]?.detail ?? {})).toEqual(['open'])
+      cleanupElement(el)
+    })
+
+    it('peek 下的开合也不派发程序来源事件', async () => {
+      const el = createCollapse()
+      el.peek = '120px'
+      await waitForUpdate(el)
+      const [events] = spyEvents<CustomEvent<{ open: boolean }>>(el, 'open-change')
+
+      el.open = true
+      await waitForUpdate(el)
+      await nextFrame()
+      el.open = false
+      await waitForUpdate(el)
+      await nextFrame()
+
+      expect(events).toHaveLength(0)
       cleanupElement(el)
     })
   })

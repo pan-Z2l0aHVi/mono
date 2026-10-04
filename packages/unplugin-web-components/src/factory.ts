@@ -106,7 +106,10 @@ export const factory = (options: UnpluginWebComponentsOptions): UnpluginOptions 
 
     transform(code: string, id: string) {
       if (id.includes('node_modules')) return
-      if (!code.includes(kebabTagPrefix) && !code.includes(pascalTagPrefix)) return
+      // 用真实匹配用的正则做预筛，而不是大小写敏感的子串检查：模块源码里的大写/混合大小写
+      // kebab 标签（<WEB-UI-BUTTON>）contains('web-ui') 为假，会被预筛挡在 kebabReg 之前。
+      // String#search 对 g-flag 正则不写 lastIndex，预筛不会污染 makeImports 的 matchAll 起点
+      if (code.search(kebabReg) < 0 && code.search(pascalReg) < 0) return
       if (!/\.(vue|jsx|tsx)$/.test(id)) return
 
       const imports = makeImports(code)

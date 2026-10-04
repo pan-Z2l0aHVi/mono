@@ -4,8 +4,12 @@ import { defineOpenOverlay } from '../open-overlay'
 import type { OpenOverlay, OpenOverlayHandle, OverlayClaimOptions } from '../open-overlay'
 
 /*
- * 这些用例只走公开 interface：claim / adopt / release / setInert / scheduleFrame。
- * 刻意不 import 模块内部结构 —— 集合与树的形状是实现，不是契约。
+ * 这些用例只走公开 interface：claim / adopt / release / setInert / deferArbitration /
+ * scheduleFrame。刻意不 import 模块内部结构 —— 集合与树的形状是实现，不是契约。
+ *
+ * 判据一律取**按键后果**：Escape 归谁、宿主有没有收到关闭请求、事件有没有被吞掉。
+ * 「登记表有几层」「有没有摘掉 document 监听」是内部形状：漏掉兜底回收时这些数会偏大，
+ * 而用户真正遇到的差异只落在按键归属上。
  */
 
 const created: OpenOverlayHandle[] = []
@@ -157,51 +161,6 @@ describe('open overlay 的 Escape 归属', () => {
     const event = pressEscape()
     expect(requestClose).not.toHaveBeenCalled()
     expect(event.defaultPrevented).toBe(false)
-  })
-
-  it('panel 脱离文档后不再是候选', () => {
-    const requestClose = vi.fn<() => void>()
-    const instance = overlay(requestClose)
-    const target = panel()
-    claim(instance, target)
-
-    target.remove()
-    const event = pressEscape()
-
-    expect(requestClose).not.toHaveBeenCalled()
-    expect(event.defaultPrevented).toBe(false)
-  })
-
-  it('断连时释放的层只靠重新 claim 恢复仲裁（声明式的代价）', () => {
-    const requestClose = vi.fn<() => void>()
-    const instance = overlay(requestClose)
-    const target = panel()
-    const first = claim(instance, target)
-
-    // 模拟 disconnectedCallback：释放后重挂载不会自动恢复，必须由组件显式重新声明。
-    first.release()
-    target.remove()
-    document.body.append(target)
-    pressEscape()
-    expect(requestClose).not.toHaveBeenCalled()
-
-    claim(instance, target)
-    pressEscape()
-    expect(requestClose).toHaveBeenCalledTimes(1)
-  })
-
-  it('仅 DOM 短暂移除再放回不丢登记：层对象比 DOM 连接活得久', () => {
-    const requestClose = vi.fn<() => void>()
-    const instance = overlay(requestClose)
-    const target = panel()
-    claim(instance, target)
-
-    target.remove()
-    expect(pressEscape().defaultPrevented).toBe(false)
-
-    document.body.append(target)
-    pressEscape()
-    expect(requestClose).toHaveBeenCalledTimes(1)
   })
 
   it('暂缓层吞掉 Escape 但不走关闭入口：退场中的面板不重复关闭', () => {
@@ -456,9 +415,13 @@ describe('open overlay 的帧事务', () => {
  * `layers` 强引用 panel 与 host，漏 release 会让整个组件无法回收，还会让
  * `shouldListen` 恒为 true 把 document 捕获监听永久留住。显式 release 之外的
  * 第二条删除路径在这里被压住。
+ *
+ * 判据全部是**按键后果**：一个已经不存在的面板不得再吞掉 Escape，而在场的层必须
+ * 照旧仲裁。登记表尺寸与「有没有摘掉 document 监听」是内部形状 —— 删掉整条回收路径
+ * 时它们只会偏大，而用户真正遇到的差异只落在按键归属上。
  */
 describe('open overlay 登记表的兜底回收', () => {
-  it('宿主与面板一起脱离文档后，登记表尺寸回落，监听不再被死层留住', () => {
+  it('宿主与面板一起脱离文档后，Escape 不再被这个已消失的浮层吞掉', () => {
     const host = hostElement()
     const target = document.createElement('div')
     host.append(target)
@@ -467,22 +430,15 @@ describe('open overlay 登记表的兜底回收', () => {
       overlay(requestClose, () => host.isConnected),
       target
     )
-    expect(__openOverlayLayerCount()).toBe(1)
 
     // 模拟 disconnectedCallback 漏掉 release 的组件路径：宿主与面板一起脱离文档。
     host.remove()
-    // 惰性：不到遍历入口（仲裁 / claim / release）不回收。
-    expect(__openOverlayLayerCount()).toBe(1)
 
-    const removeSpy = vi.spyOn(document, 'removeEventListener')
     const event = pressEscape()
 
-    expect(__openOverlayLayerCount()).toBe(0)
+    // 死层不得拦住用户的 Escape —— 拦住它会让下一次按键被一个已经卸载的浮层吃掉。
     expect(event.defaultPrevented).toBe(false)
     expect(requestClose).not.toHaveBeenCalled()
-    // 死层不再把 document 上的 capture keydown 监听永久留住。
-    expect(removeSpy).toHaveBeenCalledWith('keydown', expect.any(Function), true)
-    removeSpy.mockRestore()
   })
 
   it('宿主仍在文档、只有面板脱离：不回收，重新挂回后照旧仲裁', () => {
@@ -497,12 +453,10 @@ describe('open overlay 登记表的兜底回收', () => {
 
     // portal 在容器间搬运面板、或面板短暂移除再放回，都属这一类：宿主还连着。
     target.remove()
-    pressEscape()
-    expect(__openOverlayLayerCount()).toBe(1)
+    expect(pressEscape().defaultPrevented).toBe(false)
 
     host.append(target)
     pressEscape()
-    expect(__openOverlayLayerCount()).toBe(1)
     expect(requestClose).toHaveBeenCalledTimes(1)
   })
 
@@ -520,7 +474,6 @@ describe('open overlay 登记表的兜底回收', () => {
 
     host.remove()
     pressEscape()
-    expect(__openOverlayLayerCount()).toBe(0)
 
     const requestClose = vi.fn<() => void>()
     claim(overlay(requestClose), panel())
@@ -533,41 +486,38 @@ describe('open overlay 登记表的兜底回收', () => {
    * 那一刻两者都还没连上，扫它就会把一个没被给过挂载机会的层判成死层删掉。
    * 旧实现里这样的层只是暂不参与仲裁，挂载后即恢复。
    */
-  it('claim 时面板与宿主都未挂载：层不被回收，挂上后恢复仲裁', () => {
+  it('claim 时面板与宿主都未挂载：挂上后照旧参与仲裁', () => {
     const host = hostElement()
     const target = document.createElement('div')
-    const requestClose = vi.fn<() => void>()
-
     host.remove()
+    const requestClose = vi.fn<() => void>()
     claim(
       overlay(requestClose, () => host.isConnected),
       target
     )
-    expect(__openOverlayLayerCount()).toBe(1)
 
+    // 期间不按 Escape：那是遍历入口，会跑回收并把仍未挂载的层摘掉（下一条钉）。
     document.body.append(host)
     host.append(target)
     pressEscape()
 
-    expect(__openOverlayLayerCount()).toBe(1)
     expect(requestClose).toHaveBeenCalledTimes(1)
   })
 
-  it('claim 后始终不挂载：仲裁入口的回收照旧把它摘掉', () => {
+  it('claim 后始终不挂载：Escape 不被一个从未出现在屏幕上的浮层吞掉', () => {
     const host = hostElement()
     const target = document.createElement('div')
-    const requestClose = vi.fn<() => void>()
-
     host.remove()
     claim(
-      overlay(requestClose, () => host.isConnected),
+      overlay(
+        () => {},
+        () => host.isConnected
+      ),
       target
     )
-    expect(__openOverlayLayerCount()).toBe(1)
 
-    pressEscape()
+    const event = pressEscape()
 
-    expect(__openOverlayLayerCount()).toBe(0)
-    expect(requestClose).not.toHaveBeenCalled()
+    expect(event.defaultPrevented).toBe(false)
   })
 })

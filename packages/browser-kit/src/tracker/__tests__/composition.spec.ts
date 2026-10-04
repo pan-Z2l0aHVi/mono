@@ -17,8 +17,8 @@ function createTransportStub() {
 }
 
 /**
- * 注入 fake transport 后，队列调度只经过 microtask；自旋等待断言条件收敛，
- * 不依赖真实时间。超过上限视为未收敛，让断言以超时信息失败。
+ * 注入 fake transport 后队列调度只经过 microtask，自旋等待即可收敛，不依赖真实时间。
+ * 上限兜底：未收敛时以超时信息失败，而不是挂到 vitest 的默认超时。
  */
 async function waitUntil(predicate: () => boolean, maxSpins = 1000): Promise<void> {
   for (let spin = 0; spin < maxSpins && !predicate(); spin += 1) {
@@ -34,147 +34,105 @@ async function settleMicrotasks(spins = 50): Promise<void> {
   }
 }
 
-describe('插件组合测试', () => {
+const setVisibility = (state: 'hidden' | 'visible') => {
+  Object.defineProperty(document, 'visibilityState', { value: state, configurable: true })
+  document.dispatchEvent(new Event('visibilitychange'))
+}
+
+describe('tracker 插件组合测试', () => {
   let transport: ReturnType<typeof createTransportStub>['transport']
 
   beforeEach(() => {
     vi.clearAllTimers()
     vi.restoreAllMocks()
     localStorage.clear()
-
-    const stub = createTransportStub()
-    transport = stub.transport
-
-    Object.defineProperty(navigator, 'onLine', {
-      value: true,
-      configurable: true
-    })
+    transport = createTransportStub().transport
+    Object.defineProperty(navigator, 'onLine', { value: true, configurable: true })
+    setVisibility('visible')
   })
 
-  describe('推荐顺序：batch → offline → last-words', () => {
-    function createTracker() {
-      return defineTracker({ url: 'https://example.com', transport })
-        .use(defineBatchTrack())
-        .use(defineOfflineRestore())
-        .use(defineLastWords())
-        .make()
-    }
+  it('推荐顺序 batch → offline → last-words：在线时按批上报', async () => {
+    const tracker = defineTracker({ url: 'https://example.com', transport })
+      .use(defineBatchTrack())
+      .use(defineOfflineRestore())
+      .use(defineLastWords())
+      .make()
 
-    it('正常上报：track 成功发送数据', async () => {
-      const tracker = createTracker()
-      tracker.track({ event: 'click' })
-      // batch 默认延迟 500ms，advance 后由队列 drain 发送。
-      vi.advanceTimersByTime(500)
-      await waitUntil(() => transport.mock.calls.length === 1)
+    tracker.track({ event: 'click' })
+    vi.advanceTimersByTime(500)
+    await waitUntil(() => transport.mock.calls.length === 1)
 
-      expect(transport.mock.calls[0][0]).toEqual([{ event: 'click' }])
-    })
-
-    it('离线缓存：离线时暂停 outbox，不发送数据', async () => {
-      Object.defineProperty(navigator, 'onLine', { value: false })
-      const tracker = createTracker()
-
-      tracker.track({ event: 'offline' })
-      vi.advanceTimersByTime(500)
-      await settleMicrotasks()
-
-      expect(transport).not.toHaveBeenCalled()
-    })
-
-    it('临终遗言：flush 立即发送积压数据', async () => {
-      // beforeunload 触发的是 flush 路径；真实页面卸载会让传输请求挂起，
-      // 这里直接用 flush() 覆盖 last-words 调用的发送路径。
-      const tracker = createTracker()
-
-      tracker.track({ event: 'before-close' })
-      await tracker.flush()
-
-      expect(transport).toHaveBeenCalledTimes(1)
-      expect(transport.mock.calls[0][0]).toEqual([{ event: 'before-close' }])
-    })
+    expect(transport.mock.calls[0][0]).toEqual([{ event: 'click' }])
   })
 
-  describe('不同顺序：batch → offline', () => {
-    it('仍然能正常上报', async () => {
-      const tracker = defineTracker({ url: 'https://example.com', transport })
-        .use(defineBatchTrack())
-        .use(defineOfflineRestore())
-        .make()
+  it('推荐顺序：离线时三条路径叠加也不误发', async () => {
+    // batch 延迟、offline 暂停、last-words 监听三者共存时最容易出现「以为暂停了其实没暂停」
+    Object.defineProperty(navigator, 'onLine', { value: false })
+    const tracker = defineTracker({ url: 'https://example.com', transport })
+      .use(defineBatchTrack())
+      .use(defineOfflineRestore())
+      .use(defineLastWords())
+      .make()
 
-      tracker.track({ event: 'click' })
-      vi.advanceTimersByTime(500)
-      await waitUntil(() => transport.mock.calls.length === 1)
+    tracker.track({ event: 'offline' })
+    vi.advanceTimersByTime(500)
+    await settleMicrotasks()
 
-      expect(transport.mock.calls[0][0]).toEqual([{ event: 'click' }])
-    })
-
-    it('离线时仍然不发送', async () => {
-      Object.defineProperty(navigator, 'onLine', { value: false })
-      const tracker = defineTracker({ url: 'https://example.com', transport })
-        .use(defineBatchTrack())
-        .use(defineOfflineRestore())
-        .make()
-
-      tracker.track({ event: 'offline' })
-      // 等待 batch delay (500ms) 触发发送尝试，确认离线时队列不消费
-      vi.advanceTimersByTime(500)
-      await settleMicrotasks()
-
-      expect(transport).not.toHaveBeenCalled()
-    })
+    expect(transport).not.toHaveBeenCalled()
   })
 
-  describe('最小组合：只有 core', () => {
-    it('正常上报', async () => {
-      const tracker = defineTracker({ url: 'https://example.com', transport }).make()
+  it('推荐顺序：转后台时离线积压的数据仍被冲刷', async () => {
+    Object.defineProperty(navigator, 'onLine', { value: false })
+    const tracker = defineTracker({ url: 'https://example.com', transport })
+      .use(defineBatchTrack())
+      .use(defineOfflineRestore())
+      .use(defineLastWords())
+      .make()
 
-      tracker.track({ event: 'click' })
-      await waitUntil(() => transport.mock.calls.length === 1)
+    tracker.track({ action: 'offline-data' })
+    await settleMicrotasks()
+    expect(transport).not.toHaveBeenCalled()
 
-      expect(transport.mock.calls[0][0]).toEqual({ event: 'click' })
-    })
+    // 退出路径无视离线暂停，把攒着的数据交出去
+    setVisibility('hidden')
+    await waitUntil(() => transport.mock.calls.length === 1)
 
-    it('core 有 flush 方法', () => {
-      const tracker = defineTracker({ url: 'https://example.com', transport }).make()
-
-      expect('flush' in tracker).toBe(true)
-    })
+    expect(transport.mock.calls[0][0]).toEqual([{ action: 'offline-data' }])
   })
 
-  describe('离线 + 临终遗言', () => {
-    it('离线积累的数据 flush 时立即发送', async () => {
-      Object.defineProperty(navigator, 'onLine', { value: false })
+  it('换序 batch → offline 仍然成立：组合结果不依赖 use 顺序', async () => {
+    const tracker = defineTracker({ url: 'https://example.com', transport })
+      .use(defineBatchTrack())
+      .use(defineOfflineRestore())
+      .make()
 
-      const tracker = defineTracker({ url: 'https://example.com', transport })
-        .use(defineBatchTrack())
-        .use(defineOfflineRestore())
-        .use(defineLastWords())
-        .make()
+    tracker.track({ event: 'click' })
+    vi.advanceTimersByTime(500)
+    await waitUntil(() => transport.mock.calls.length === 1)
 
-      tracker.track({ action: 'offline-data' })
-      await settleMicrotasks()
-      expect(transport).not.toHaveBeenCalled()
-
-      // 离线积压的数据通过 flush 立即发送（beforeunload 内部调用同一路径）；
-      // flush 忽略暂停状态但不解除暂停。
-      await tracker.flush()
-
-      expect(transport).toHaveBeenCalledTimes(1)
-      expect(transport.mock.calls[0][0]).toEqual([{ action: 'offline-data' }])
-    })
+    expect(transport.mock.calls[0][0]).toEqual([{ event: 'click' }])
   })
 
-  describe('无 batch-track 组合', () => {
-    it('core + offline + last-words flush 不应报错', async () => {
-      const tracker = defineTracker({ url: 'https://example.com', transport })
-        .use(defineOfflineRestore())
-        .use(defineLastWords())
-        .make()
+  it('最小组合 core：逐条直发，不套数组', async () => {
+    const tracker = defineTracker({ url: 'https://example.com', transport }).make()
 
-      tracker.track({ event: 'click' })
-      await waitUntil(() => transport.mock.calls.length === 1)
+    tracker.track({ event: 'click' })
+    await waitUntil(() => transport.mock.calls.length === 1)
 
-      await expect(tracker.flush()).resolves.toBeUndefined()
-    })
+    // 没组合 batch 时载荷形状是裸对象：后端要能同时接受两种形状
+    expect(transport.mock.calls[0][0]).toEqual({ event: 'click' })
+  })
+
+  it('无 batch-track 组合：flush 仍可发送，且不报错', async () => {
+    // last-words 依赖可选的 flush 能力；缺 batch 时应回落到 core 的 flush
+    const tracker = defineTracker({ url: 'https://example.com', transport })
+      .use(defineOfflineRestore())
+      .use(defineLastWords())
+      .make()
+
+    tracker.track({ event: 'click' })
+    await waitUntil(() => transport.mock.calls.length === 1)
+
+    await expect(tracker.flush()).resolves.toBeUndefined()
   })
 })

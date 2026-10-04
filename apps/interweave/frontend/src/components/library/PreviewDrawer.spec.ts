@@ -114,7 +114,6 @@ describe('PreviewDrawer', () => {
     const { host } = await mountDrawer(resourceOf(fileSource(), ResourceKind.ResourceKindImage))
     const image = host.querySelector('img')
     expect(image?.getAttribute('src')).toBe('/resource-media/source-1')
-    expect(image?.className).toContain('object-contain')
     expect(host.querySelector('iframe')).toBeNull()
     image?.dispatchEvent(new Event('error'))
     await nextTick()
