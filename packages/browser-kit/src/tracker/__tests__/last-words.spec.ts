@@ -17,8 +17,8 @@ function createTransportStub() {
 }
 
 /**
- * 注入 fake transport 后，队列调度只经过 microtask；自旋等待断言条件收敛，
- * 不依赖真实时间。超过上限视为未收敛，让断言以超时信息失败。
+ * 注入 fake transport 后队列调度只经过 microtask，自旋等待即可收敛，不依赖真实时间。
+ * 上限兜底：未收敛时以超时信息失败，而不是挂到 vitest 的默认超时。
  */
 async function waitUntil(predicate: () => boolean, maxSpins = 1000): Promise<void> {
   for (let spin = 0; spin < maxSpins && !predicate(); spin += 1) {
@@ -34,96 +34,118 @@ async function settleMicrotasks(spins = 50): Promise<void> {
   }
 }
 
-describe('亡语插件测试用例', () => {
+const setVisibility = (state: 'hidden' | 'visible') => {
+  Object.defineProperty(document, 'visibilityState', { value: state, configurable: true })
+  document.dispatchEvent(new Event('visibilitychange'))
+}
+
+describe('defineLastWords 测试', () => {
   let transport: ReturnType<typeof createTransportStub>['transport']
 
   beforeEach(() => {
     vi.clearAllTimers()
     vi.restoreAllMocks()
     localStorage.clear()
-
-    const stub = createTransportStub()
-    transport = stub.transport
-
-    Object.defineProperty(navigator, 'onLine', {
-      value: true,
-      configurable: true
-    })
+    transport = createTransportStub().transport
+    Object.defineProperty(navigator, 'onLine', { value: true, configurable: true })
   })
 
-  it('track 数据按 batch 周期发送，插件注册不抛异常', async () => {
-    // 真实 beforeunload 会在浏览器进入卸载流程时让传输请求挂起，
-    // 因此这里不派发 beforeunload；beforeunload 触发的是 flush 路径，
-    // 由下方 flush 用例覆盖。
+  it('页面转入后台时立刻冲刷积压数据', async () => {
+    // 移动端切走标签页即回收页面：等到 batch 窗口到期，数据就随页面一起没了。
+    // visibilitychange 是 unload 之外唯一还来得及发请求的时机。
     const tracker = defineTracker({ url: 'https://example.com', transport })
       .use(defineBatchTrack())
       .use(defineLastWords())
       .make()
 
     tracker.track({ event: 'before-close' })
-    vi.advanceTimersByTime(500)
+    expect(transport).not.toHaveBeenCalled()
+
+    setVisibility('hidden')
+
     await waitUntil(() => transport.mock.calls.length === 1)
-
     expect(transport.mock.calls[0][0]).toEqual([{ event: 'before-close' }])
-
-    tracker.track({ event: 'new-data' })
-    vi.advanceTimersByTime(500)
-    await waitUntil(() => transport.mock.calls.length === 2)
-
-    expect(transport.mock.calls[1][0]).toEqual([{ event: 'new-data' }])
   })
 
-  it('flush 立即发送积压数据（beforeunload 内部调用的路径）', async () => {
+  it('回到前台后重新武装，第二次切后台仍能冲刷', async () => {
     const tracker = defineTracker({ url: 'https://example.com', transport })
       .use(defineBatchTrack())
       .use(defineLastWords())
       .make()
 
-    tracker.track({ event: 'queued' })
-    await tracker.flush()
+    tracker.track({ event: 'first' })
+    setVisibility('hidden')
+    await waitUntil(() => transport.mock.calls.length === 1)
 
-    expect(transport.mock.calls.length).toBeGreaterThanOrEqual(1)
+    setVisibility('visible')
+
+    tracker.track({ event: 'second' })
+    // 「只发一次」的闸门若不重置，第二次切后台就静默丢数据
+    await settleMicrotasks()
+    expect(transport).toHaveBeenCalledTimes(1)
+
+    setVisibility('hidden')
+    await waitUntil(() => transport.mock.calls.length === 2)
+    expect(transport.mock.calls[1][0]).toEqual([{ event: 'second' }])
   })
 
-  it('hasSent 在页面重新可见时应重置', async () => {
-    Object.defineProperty(navigator, 'onLine', { value: false, configurable: true })
+  it('页面转后台前已有数据被发送过，则不产生空冲刷', async () => {
+    const tracker = defineTracker({ url: 'https://example.com', transport })
+      .use(defineBatchTrack({ defaultBatchDelay: 200 }))
+      .use(defineLastWords())
+      .make()
 
+    tracker.track({ event: 'already-sent' })
+    vi.advanceTimersByTime(200)
+    await waitUntil(() => transport.mock.calls.length === 1)
+
+    setVisibility('hidden')
+    await settleMicrotasks()
+
+    // 队列已空：再冲刷一次会白发一个请求
+    expect(transport).toHaveBeenCalledTimes(1)
+  })
+
+  it('离线积压的数据在转后台时照常冲刷', async () => {
+    // flush 忽略 pause 但不解除 pause：退出路径必须无视离线策略把数据交出去
+    Object.defineProperty(navigator, 'onLine', { value: false })
     const tracker = defineTracker({ url: 'https://example.com', transport })
       .use(defineBatchTrack())
       .use(defineOfflineRestore())
       .use(defineLastWords())
       .make()
 
-    tracker.track({ event: 'first' })
+    tracker.track({ action: 'offline-data' })
     await settleMicrotasks()
     expect(transport).not.toHaveBeenCalled()
 
-    Object.defineProperty(document, 'visibilityState', { value: 'hidden', configurable: true })
-    document.dispatchEvent(new Event('visibilitychange'))
+    setVisibility('hidden')
+
     await waitUntil(() => transport.mock.calls.length === 1)
-
-    expect(transport.mock.calls[0][0]).toEqual([{ event: 'first' }])
-
-    Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true })
-    document.dispatchEvent(new Event('visibilitychange'))
-
-    // flush 保持暂停状态，无需再次触发离线事件。
-
-    tracker.track({ event: 'second' })
-    await settleMicrotasks()
-    expect(transport).toHaveBeenCalledTimes(1)
-
-    Object.defineProperty(document, 'visibilityState', { value: 'hidden', configurable: true })
-    document.dispatchEvent(new Event('visibilitychange'))
-    await waitUntil(() => transport.mock.calls.length === 2)
-
-    expect(transport.mock.calls[1][0]).toEqual([{ event: 'second' }])
+    expect(transport.mock.calls[0][0]).toEqual([{ action: 'offline-data' }])
   })
 
-  it('无 flush 方法时不应报错', () => {
+  it('beforeunload 与 pagehide 也走同一条冲刷路径', () => {
+    // 三条退出路径必须等价：漏掉任一条，对应浏览器上就会丢数据
+    const tracker = defineTracker({ url: 'https://example.com', transport })
+      .use(defineBatchTrack())
+      .use(defineLastWords())
+      .make()
+
+    tracker.track({ event: 'unloading' })
+
+    expect(() => window.dispatchEvent(new Event('beforeunload'))).not.toThrow()
+    expect(transport).toHaveBeenCalledTimes(1)
+
+    // hasSent 闸门：同一次退出只发一次
+    expect(() => window.dispatchEvent(new Event('pagehide'))).not.toThrow()
+    expect(transport).toHaveBeenCalledTimes(1)
+  })
+
+  it('未组合 flush 能力的插件时退出路径不报错', () => {
+    // last-words 通过 ctx.flush?.() 调能力；没有 flush 时必须空转而不是抛错
     expect(() => {
       defineTracker({ url: 'https://example.com', transport }).use(defineLastWords()).make()
-
       window.dispatchEvent(new Event('beforeunload'))
     }).not.toThrow()
   })
