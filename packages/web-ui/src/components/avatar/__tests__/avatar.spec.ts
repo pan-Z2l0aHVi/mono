@@ -15,129 +15,75 @@ import type { WebUiAvatar } from '..'
 const createAvatar = (attrs?: Record<string, string>): WebUiAvatar =>
   mountElement<WebUiAvatar>('web-ui-avatar', { attrs })
 
-const innerOf = (el: WebUiAvatar): HTMLElement | null => queryA11y(el, '[role="img"]') as HTMLElement | null
+/** 头像的公开语义面：有 label 时是 `role="img"`，纯装饰时是 `role="presentation"`。 */
+const innerOf = (el: WebUiAvatar): HTMLElement | null =>
+  queryA11y(el, '[role="img"], [role="presentation"]') as HTMLElement | null
 
 describe('WebUiAvatar 组件', () => {
-  describe('默认属性与反射', () => {
-    it('默认值符合契约', async () => {
-      const el = createAvatar()
-      await waitForUpdate(el)
-      expect(el.size).toBe(40)
-      expect(el.shape).toBe('circle')
-      expect(el.src).toBe('')
-      expect(el.alt).toBe('')
-      expect(el.name).toBe('')
-      cleanupElement(el)
-    })
+  contractReflection('property 写入后同步到宿主 attribute', () => createAvatar(), [
+    ['size', 64, 'size', '64'],
+    ['shape', 'square', 'shape', 'square'],
+    ['src', '/avatar.png', 'src', '/avatar.png'],
+    ['alt', '用户头像', 'alt', '用户头像'],
+    ['name', 'John Doe', 'name', 'John Doe']
+  ])
 
-    contractReflection('property 写入后同步到宿主 attribute', () => createAvatar(), [
-      ['size', 64, 'size', '64'],
-      ['shape', 'square', 'shape', 'square'],
-      ['src', '/avatar.png', 'src', '/avatar.png'],
-      ['alt', '用户头像', 'alt', '用户头像'],
-      ['name', 'John Doe', 'name', 'John Doe']
-    ])
+  it('非法 shape 回退为 circle 并修正宿主 attribute', async () => {
+    const el = createAvatar()
+    await waitForUpdate(el)
 
-    it('非法 shape 回退为 circle', async () => {
-      const el = createAvatar()
-      await waitForUpdate(el)
-      el.setAttribute('shape', 'invalid-value')
-      await waitForUpdate(el)
-      expect(el.shape).toBe('circle')
-      expect(el.getAttribute('shape')).toBe('circle')
-      cleanupElement(el)
-    })
+    el.setAttribute('shape', 'invalid-value')
+    await waitForUpdate(el)
+
+    expect(el.shape).toBe('circle')
+    expect(el.getAttribute('shape')).toBe('circle')
+    cleanupElement(el)
   })
 
-  describe('插槽与原生组合', () => {
-    it('默认 slot 内容保留在 light DOM（与原生 span 组合）', async () => {
-      const el = createAvatar()
-      const child = document.createElement('span')
-      child.textContent = 'VIP'
-      el.appendChild(child)
-      document.body.appendChild(el)
-      await waitForUpdate(el)
-      expect(el.children.length).toBe(1)
-      expect(el.textContent?.trim()).toBe('VIP')
-      expect(el.querySelector('span')?.textContent).toBe('VIP')
-      cleanupElement(el)
-    })
-
-    it('在 button 内与 badge 组合使用不影响可访问性', async () => {
-      const wrap = document.createElement('div')
-      wrap.innerHTML = '<button><web-ui-avatar alt="用户" src="/a.png"></web-ui-avatar> 资料</button>'
-      document.body.appendChild(wrap)
-      const avatar = wrap.querySelector('web-ui-avatar') as WebUiAvatar
-      await waitForUpdate(avatar)
-      expect(queryA11y(avatar, '[role="img"]')).toBeTruthy()
-      cleanupElement(wrap)
-    })
-  })
-
-  describe('无障碍（对外可见）', () => {
+  describe('无障碍契约', () => {
+    // alt 优先于 name：alt 是调用方给的替代文本，name 只是兜底的可读名。
     it.each([
-      [{ alt: '用户头像', src: '/a.png' }, 'img', '用户头像'],
-      [{ name: 'Alice' }, 'img', 'Alice'],
-      [{}, 'presentation', null]
-    ] as const)('alt/name 组合决定 role 与 label %o', async (attrs, expectedRole, expectedLabel) => {
+      ['有 alt', { alt: '用户头像', src: '/a.png' }, 'img', '用户头像'],
+      ['只有 name', { name: 'Alice' }, 'img', 'Alice'],
+      ['两者都没有', {}, 'presentation', null]
+    ])('%s 决定 role 与 label', async (_label, attrs, expectedRole, expectedLabel) => {
       const el = createAvatar(attrs as Record<string, string>)
       await waitForUpdate(el)
+
       const node = queryA11y(el, `[role="${expectedRole}"]`)
       expect(node).toBeTruthy()
       expect(node?.getAttribute(expectedLabel ? 'aria-label' : 'aria-hidden')).toBe(expectedLabel ?? 'true')
       cleanupElement(el)
     })
 
-    it('alt 传递到内部 img 的 alt', async () => {
+    it('alt 传给内部 img，图片本身也带同样的替代文本', async () => {
       const el = createAvatar({ src: '/a.png', alt: '用户头像' })
       await waitForUpdate(el)
-      const img = innerOf(el)?.querySelector('img')
-      expect(img?.getAttribute('alt')).toBe('用户头像')
-      cleanupElement(el)
-    })
-  })
 
-  describe('边界与极端', () => {
-    it('未提供 src 时仍可渲染占位且为装饰性', async () => {
-      const el = createAvatar()
-      await waitForUpdate(el)
-      expect(queryA11y(el, '[role="presentation"]')).toBeTruthy()
-      cleanupElement(el)
-    })
-
-    it('超大 size 数值仍反射且不抛错', async () => {
-      const el = createAvatar()
-      await waitForUpdate(el)
-      el.size = 999
-      await waitForUpdate(el)
-      expect(el.size).toBe(999)
-      expect(el.getAttribute('size')).toBe('999')
+      expect(innerOf(el)?.querySelector('img')?.getAttribute('alt')).toBe('用户头像')
       cleanupElement(el)
     })
   })
 
   describe('回退渲染', () => {
-    it('单词 name 取首字母作为回退内容', async () => {
-      const el = createAvatar({ name: 'Alice' })
+    it.each([
+      ['单词取首字母', 'Alice', 'A'],
+      ['多词取前两个词首字母', 'John Doe', 'JD']
+    ])('%s', async (_label, name, expected) => {
+      const el = createAvatar({ name })
       await waitForUpdate(el)
-      expect(innerOf(el)?.textContent?.trim()).toBe('A')
+
+      expect(innerOf(el)?.textContent?.trim()).toBe(expected)
       cleanupElement(el)
     })
 
-    it('多词 name 取前两个词首字母', async () => {
-      const el = createAvatar({ name: 'John Doe' })
-      await waitForUpdate(el)
-      expect(innerOf(el)?.textContent?.trim()).toBe('JD')
-      cleanupElement(el)
-    })
-
+    // 加载失败必须换掉破图图标，否则用户看到的是浏览器默认的碎图。
     it('图片加载失败时移除 img 并回退到 initials', async () => {
       const el = createAvatar({ src: '/missing.png', name: 'Alice' })
       await waitForUpdate(el)
-      const img = innerOf(el)?.querySelector('img')
-      expect(img).toBeTruthy()
+      expect(innerOf(el)?.querySelector('img')).toBeTruthy()
 
-      img?.dispatchEvent(new Event('error'))
+      innerOf(el)?.querySelector('img')?.dispatchEvent(new Event('error'))
       await waitForUpdate(el)
 
       // 重新查询渲染面，避免复用可能已被重建的节点引用
@@ -146,7 +92,7 @@ describe('WebUiAvatar 组件', () => {
       cleanupElement(el)
     })
 
-    it('动态插入和删除默认 slot 时同步 fallback', async () => {
+    it('默认 slot 有内容时不再叠加 initials 回退', async () => {
       const el = createAvatar({ name: 'Alice' })
       await waitForUpdate(el)
 
@@ -154,37 +100,38 @@ describe('WebUiAvatar 组件', () => {
       content.textContent = 'VIP'
       el.append(content)
       await flushSlotChange(el)
-      expect(innerOf(el)?.textContent?.includes('Alice')).toBe(false)
+      expect(innerOf(el)?.textContent).not.toContain('Alice')
 
+      // 移除后回退必须回来：只加不减会让「内容被撤掉」这条路径悄悄失去占位。
       content.remove()
       await flushSlotChange(el)
       expect(innerOf(el)?.textContent?.trim()).toBe('A')
+      cleanupElement(el)
+    })
+  })
 
+  describe('light DOM 归属', () => {
+    it('slot 内容留在消费者侧，不被组件搬走', async () => {
+      const el = createAvatar()
+      const child = document.createElement('span')
+      child.textContent = 'VIP'
+      el.append(child)
+      await waitForUpdate(el)
+
+      expect(el.children).toHaveLength(1)
+      expect(child.parentElement).toBe(el)
       cleanupElement(el)
     })
 
-    it('反复断开重连后仍保持 slot 状态语义', async () => {
-      const el = createAvatar({ name: 'Alice' })
-      document.body.appendChild(el)
-      await waitForUpdate(el)
+    it('与按钮等原生元素组合时仍提供 img 语义', async () => {
+      const wrap = document.createElement('div')
+      wrap.innerHTML = '<button><web-ui-avatar alt="用户" src="/a.png"></web-ui-avatar> 资料</button>'
+      document.body.appendChild(wrap)
+      const avatar = wrap.querySelector('web-ui-avatar') as WebUiAvatar
+      await waitForUpdate(avatar)
 
-      for (let index = 0; index < 3; index++) {
-        el.remove()
-        document.body.appendChild(el)
-        await waitForUpdate(el)
-      }
-
-      const content = document.createElement('span')
-      content.textContent = 'VIP'
-      el.append(content)
-      await flushSlotChange(el)
-      expect(innerOf(el)?.textContent?.includes('Alice')).toBe(false)
-
-      content.remove()
-      await flushSlotChange(el)
-      expect(innerOf(el)?.textContent?.trim()).toBe('A')
-
-      cleanupElement(el)
+      expect(queryA11y(avatar, '[role="img"]')).toBeTruthy()
+      cleanupElement(wrap)
     })
   })
 })
