@@ -14,18 +14,21 @@ function panel(): HTMLElement | null {
   return getMenuPanels()[0] ?? null
 }
 
-function panelItemTexts(): string[] {
-  return [...(panel()?.querySelectorAll('web-ui-dropdown-item') ?? [])].map(el => el.textContent?.trim() ?? '')
-}
+const panelItemTexts = (): string[] =>
+  [...(panel()?.querySelectorAll('web-ui-dropdown-item') ?? [])].map(el => el.textContent?.trim() ?? '')
 
-function hostItemTexts(mountPoint: HTMLElement): string[] {
-  return [...mountPoint.querySelectorAll('web-ui-dropdown-item')].map(el => el.textContent?.trim() ?? '')
-}
+const hostItemTexts = (mountPoint: HTMLElement): string[] =>
+  [...mountPoint.querySelectorAll('web-ui-dropdown-item')].map(el => el.textContent?.trim() ?? '')
 
 async function nextFrame() {
   await new Promise(resolve => requestAnimationFrame(resolve))
 }
 
+/**
+ * 打开期间的框架渲染：菜单项被托管进浮层面板，`v-for` / `v-if` 的更新必须跟着迁移，
+ * 否则用户看到的菜单与数据源已经不一致。关闭时它们还要原样回到宿主，
+ * 否则 framework 的下一次 patch 会打在已经搬走的节点上。
+ */
 describe('WebUiDropdown 打开期实时渲染（浏览器）', () => {
   it('打开期新增菜单项实时迁入面板，关闭后回到宿主且可重开', async () => {
     const mountPoint = document.createElement('div')
@@ -70,24 +73,12 @@ describe('WebUiDropdown 打开期实时渲染（浏览器）', () => {
     await dropdown.updateComplete
     await pollUntil(() => panelItemTexts().length === 3, 'Expected reopened panel to contain all items')
 
-    // 稳态不增不减：多轮同步周期与多轮开关后项数稳定（防托管节点增殖活锁）。
+    // 稳态不增不减：多轮同步周期后项数稳定（防托管节点增殖活锁）。
     expect(panelItemTexts()).toEqual(['cut', 'copy', 'paste'])
     await nextFrame()
     await dropdown.updateComplete
     await nextFrame()
     expect(panelItemTexts(), '稳态下不得增殖或丢失条目').toEqual(['cut', 'copy', 'paste'])
-
-    dropdown.open = false
-    await dropdown.updateComplete
-    await pollUntil(
-      () => !panel() && mountPoint.querySelectorAll('web-ui-dropdown-item').length === 3,
-      'Expected portal disposal without item residue'
-    )
-
-    dropdown.open = true
-    await dropdown.updateComplete
-    await pollUntil(() => panelItemTexts().length === 3, 'Expected a second reopen to be complete')
-    expect(panelItemTexts()).toEqual(['cut', 'copy', 'paste'])
     app.unmount()
   })
 

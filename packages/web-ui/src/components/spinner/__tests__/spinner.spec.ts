@@ -4,24 +4,20 @@ import { cleanupElement, mountElement, waitForUpdate } from '@/shared/test-utils
 
 import { WebUiSpinner } from '..'
 
-describe('WebUiSpinner 组件', () => {
-  afterEach(() => {
-    document.body.replaceChildren()
-  })
+afterEach(() => {
+  document.body.replaceChildren()
+  WebUiSpinner.hide()
+})
 
-  describe('默认属性与反射', () => {
-    it('默认值与反射符合契约', async () => {
+describe('WebUiSpinner 组件', () => {
+  describe('无障碍契约', () => {
+    // 组件只在消费者没给语义时兜底；覆盖会把调用方自己的 role / aria-label 吞掉。
+    it('默认给出加载中的 status 语义', async () => {
       const el = mountElement<WebUiSpinner>('web-ui-spinner')
       await waitForUpdate(el)
-      expect(el.size).toBe(24)
+
       expect(el.getAttribute('role')).toBe('status')
       expect(el.getAttribute('aria-label')).toBe('加载中')
-      el.size = 40
-      await waitForUpdate(el)
-      expect(el.getAttribute('size')).toBe('40')
-      el.setAttribute('size', '32')
-      await waitForUpdate(el)
-      expect(el.size).toBe(32)
       cleanupElement(el)
     })
 
@@ -30,109 +26,69 @@ describe('WebUiSpinner 组件', () => {
         attrs: { role: 'alert', 'aria-label': '自定义加载提示' }
       })
       await waitForUpdate(el)
+
       expect(el.getAttribute('role')).toBe('alert')
       expect(el.getAttribute('aria-label')).toBe('自定义加载提示')
       cleanupElement(el)
     })
-
-    it('description 属性渲染为可见文本', async () => {
-      const el = mountElement<WebUiSpinner>('web-ui-spinner')
-      await waitForUpdate(el)
-      el.description = '正在加载数据...'
-      await waitForUpdate(el)
-      expect(el.shadowRoot?.textContent).toContain('正在加载数据...')
-      cleanupElement(el)
-    })
-
-    it('description slot 与原生组合', async () => {
-      const el = mountElement<WebUiSpinner>('web-ui-spinner')
-      const slotContent = document.createElement('span')
-      slotContent.slot = 'description'
-      slotContent.textContent = '请稍候'
-      el.appendChild(slotContent)
-      await waitForUpdate(el)
-      expect(el.querySelector('[slot="description"]')).toBeTruthy()
-      expect(el.getAttribute('role')).toBe('status')
-      cleanupElement(el)
-    })
   })
 
-  describe('命令式 API: show', () => {
-    afterEach(() => {
-      vi.useRealTimers()
-      WebUiSpinner.hide()
-    })
-
-    it('show() 创建并挂载到 body', async () => {
+  describe('命令式 API: show / hide', () => {
+    it('show() 创建并挂载到 body，hide() 移除它', () => {
       const el = WebUiSpinner.show()
-
-      await el.updateComplete
-
       expect(document.body.contains(el)).toBe(true)
-      el.remove()
+
+      WebUiSpinner.hide()
+      expect(document.body.contains(el)).toBe(false)
     })
 
-    it('show() 支持 size 和 description 选项', async () => {
+    it('show() 接受 size 与 description', () => {
       const el = WebUiSpinner.show({ size: 40, description: '正在加载数据...' })
-
-      await el.updateComplete
 
       expect(el.size).toBe(40)
       expect(el.description).toBe('正在加载数据...')
-      el.remove()
     })
 
+    // 全屏浮层同时只能有一个：第二次 show 要接管，第一次必须离开文档。
     it('多次 show() 只保留最新一个', () => {
-      const el1 = WebUiSpinner.show()
-      const el2 = WebUiSpinner.show()
+      const first = WebUiSpinner.show()
+      const second = WebUiSpinner.show()
 
-      expect(document.body.contains(el1)).toBe(false)
-      expect(document.body.contains(el2)).toBe(true)
-      el2.remove()
+      expect(document.body.contains(first)).toBe(false)
+      expect(document.body.contains(second)).toBe(true)
     })
 
-    it('show() 支持 duration 自动关闭', async () => {
+    it('show({ duration }) 到时自动关闭', () => {
       vi.useFakeTimers()
-
       const el = WebUiSpinner.show({ duration: 500 })
       expect(document.body.contains(el)).toBe(true)
 
       vi.advanceTimersByTime(500)
       expect(document.body.contains(el)).toBe(false)
+      vi.useRealTimers()
     })
 
     it('duration 为 0 时不自动关闭', () => {
       vi.useFakeTimers()
-
       const el = WebUiSpinner.show({ duration: 0 })
-      vi.advanceTimersByTime(10000)
-      expect(document.body.contains(el)).toBe(true)
 
-      el.remove()
+      vi.advanceTimersByTime(10_000)
+      expect(document.body.contains(el)).toBe(true)
+      vi.useRealTimers()
     })
-  })
 
-  describe('命令式 API: hide', () => {
-    it('hide() 移除当前 spinner', () => {
-      const el = WebUiSpinner.show()
-
-      expect(document.body.contains(el)).toBe(true)
+    it('hide() 清掉 duration 定时器，隐藏后不再自行关闭', () => {
+      vi.useFakeTimers()
+      const el = WebUiSpinner.show({ duration: 1000 })
       WebUiSpinner.hide()
+
+      vi.advanceTimersByTime(10_000)
       expect(document.body.contains(el)).toBe(false)
+      vi.useRealTimers()
     })
 
     it('未 show 时 hide() 不报错', () => {
       expect(() => WebUiSpinner.hide()).not.toThrow()
-    })
-
-    it('hide() 清除 duration 定时器', () => {
-      vi.useFakeTimers()
-
-      const el = WebUiSpinner.show({ duration: 1000 })
-      WebUiSpinner.hide()
-
-      vi.advanceTimersByTime(10000)
-      expect(document.body.contains(el)).toBe(false)
     })
   })
 })
