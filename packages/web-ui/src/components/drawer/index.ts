@@ -750,8 +750,7 @@ export class WebUiDrawer extends LitElement {
 
   override connectedCallback() {
     super.connectedCallback()
-    this._hasHeaderSlot = Array.from(this.children).some(child => child.getAttribute?.('slot') === 'header')
-    this._hasFooterSlot = Array.from(this.children).some(child => child.getAttribute?.('slot') === 'footer')
+    this._resyncSlotPresence()
     // 重挂载对账：断连时 presence、滚动锁、nested 层序与登记都已被撤销，而
     // `open` 未变化时 `updated()` 不会补跑任何 sync 分支。首次连接时 shadow 尚未
     // 渲染、`this.dialog` 为 null，三种情况都直接跳过；打开态的首次进入仍由
@@ -791,6 +790,36 @@ export class WebUiDrawer extends LitElement {
     if (!dialog) return
     this._handle = this._overlay.claim(dialog, { ancestryFrom: this })
     this._syncDragInert()
+  }
+
+  /**
+   * 对账 header / footer slot 的有无，**只在真的变了时排一次更新**。
+   *
+   * 排更新是这条对账不可省的一半：`showHeader` 与 footer 的 `?hidden` 只在 render 里求值，
+   * 而 Lit 的 `connectedCallback` 只做 `enableUpdating(true)` 与 `setConnected(true)`，本身不排
+   * 更新。两条 slotchange 处理器也接不住这条路径——slotchange 只在**分配集合**变化时派发，
+   * 断连期间清空槽位内容时宿主节点本身没动，事件不触发（Chromium 实测）。
+   *
+   * 漏掉这一半的后果：断连前有 footer、重连时已清空的抽屉留下一节空的 footer。它在 style.css
+   * 的 padding 下仍有真实高度（实测 32px），于是底部一条点不动的死带，拖拽热区的让位量也照
+   * 它算而不归零。
+   *
+   * 判据取 light DOM 子节点而非 `slot.assignedNodes()`：首次连接时 shadow 尚未渲染，slot 元素
+   * 还不存在，那一侧会直接跳过（首次连接的 presence 由 `firstUpdated()` 与 slotchange 兜底）；
+   * 这里要的正是重连对账——shadow root 跨断连保留，两侧都可用，但只有子节点扫描不依赖渲染
+   * 时序。「只在真变了才排」与两条 slotchange 处理器同一纪律，避免每次重连都多一次空渲染。
+   */
+  private _resyncSlotPresence() {
+    const hasHeader = this._hasSlottedChild('header')
+    const hasFooter = this._hasSlottedChild('footer')
+    if (hasHeader === this._hasHeaderSlot && hasFooter === this._hasFooterSlot) return
+    this._hasHeaderSlot = hasHeader
+    this._hasFooterSlot = hasFooter
+    this.requestUpdate()
+  }
+
+  private _hasSlottedChild(name: 'header' | 'footer') {
+    return Array.from(this.children).some(child => child.getAttribute('slot') === name)
   }
 
   private _checkSlotContent(name: string) {
