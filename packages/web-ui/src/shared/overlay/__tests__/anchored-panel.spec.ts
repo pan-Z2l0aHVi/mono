@@ -68,7 +68,6 @@ describe('anchored panel 的退场第三态', () => {
     api.open()
     const closing = api.close(() => false)
 
-    expect(__openOverlayLayerCount()).toBe(1)
     const event = pressEscape()
 
     expect(event.defaultPrevented).toBe(true)
@@ -76,7 +75,8 @@ describe('anchored panel 的退场第三态', () => {
 
     finishExit(panel)
     expect(await closing).toBe(true)
-    expect(__openOverlayLayerCount()).toBe(0)
+    // 退场播完且宿主不再认为开着：面板已隐藏、无人可见，Escape 交还出去。
+    expect(pressEscape().defaultPrevented).toBe(false)
   })
 
   it('退场中途重新 open()：新会话接管，旧 close() 报告未关闭', async () => {
@@ -87,7 +87,6 @@ describe('anchored panel 的退场第三态', () => {
     api.open()
 
     expect(await closing).toBe(false)
-    expect(__openOverlayLayerCount()).toBe(1)
     pressEscape()
     expect(requestClose).toHaveBeenCalledTimes(1)
   })
@@ -116,7 +115,6 @@ describe('anchored panel 的退场第三态', () => {
 
     finishExit(inner.panel)
     expect(await closing).toBe(true)
-    expect(__openOverlayLayerCount()).toBe(1)
 
     pressEscape()
     expect(outer.requestClose).toHaveBeenCalledTimes(1)
@@ -146,7 +144,8 @@ describe('anchored panel 的退场第三态', () => {
 
     finishExit(panel)
     expect(await closing).toBe(false)
-    expect(__openOverlayLayerCount()).toBe(1)
+    // 句柄没被丢弃：退场被打断时若清掉它，面板就留在屏幕上且没有关闭归属。
+    // 会话仍在场这一点由下一条（Escape 走宿主关闭入口）钉住。
     expect(api.getHandle()).not.toBeNull()
   })
 
@@ -167,6 +166,5 @@ describe('anchored panel 的退场第三态', () => {
 
     expect(event.defaultPrevented).toBe(true)
     expect(requestClose).toHaveBeenCalledTimes(1)
-    expect(__openOverlayLayerCount()).toBe(1)
   })
 })

@@ -209,6 +209,8 @@ describe('WebUiDrawer 嵌套层叠对数基准（浏览器）', () => {
     // 无任何覆盖时读到的就是注册项的 initialValue（token 注册成 <length>，
     // computed style 永远有确定值）。这条断言把 JS 侧常量钉在注册项上，
     // 防止镜像漂移——它是 jsdom 兜底的唯一依据，漂移会让 jsdom 与浏览器分叉。
+    // 后果不是像素：一旦漂移，jsdom 下算出的层序与浏览器不同，
+    // 于是只在 jsdom 跑的层序断言会给出与真机相反的结论。
     expect(readBase(drawer)).toBe(NESTED_PEEK_BASE_FALLBACK)
   })
 

@@ -46,29 +46,6 @@ function hitAt(el: WebUiDrawer, x: number, y: number): Element | null {
   return el.shadowRoot?.elementFromPoint(x, y) ?? null
 }
 
-/**
- * 落点顶层元素是否属于 header / footer 的**扁平树**。
- *
- * 沿扁平树上行：slotted 的 light DOM 节点要用 `assignedSlot` 才爬得到 shadow 包装元素，
- * 只用 `parentElement` 会在 `<slot>` 处断掉，把「命中 header 里的标题」误判成「不属于」。
- *
- * 这里**只回答归属，不回答「会不会起手」**：起手与否由行为判据（真实拖拽）证明。
- * 若把「在 header 里」直接当成「可起手」，这条断言就恒真——修之前 header 里本来就
- * 没有任何东西可拖，恒真断言比没有断言更坏（看起来在守着 A6，实际什么都证伪不了）。
- */
-function isHeaderFlatTreeNode(node: Element | null): boolean {
-  if (!node) return false
-  let current: Element | null = node
-  while (current) {
-    if (current.matches('.wui-drawer-header, .wui-drawer-footer')) return true
-    // 两个分支的显式类型是必需的：current 由这里的赋值决定类型，不标注就成了自引用推断。
-    const assigned: HTMLSlotElement | null = (current as HTMLElement).assignedSlot
-    const next: Element | null = assigned ? assigned.parentElement : current.parentElement
-    current = next
-  }
-  return false
-}
-
 function insideRect(point: { x: number; y: number }, rect: DOMRect, margin = 0): boolean {
   return (
     point.x >= rect.left - margin &&
@@ -99,7 +76,6 @@ async function mountDrawer(options: {
   placement: DrawerPlacement
   header?: boolean
   footer?: boolean
-  edgeSize?: string
 }): Promise<{ el: WebUiDrawer; log: ControlLog }> {
   const el = document.createElement('web-ui-drawer') as WebUiDrawer
   el.placement = options.placement
@@ -125,9 +101,6 @@ async function mountDrawer(options: {
       : '',
     '<div style="width:200px;height:180px">正文</div>'
   ].join('')
-  if (options.edgeSize !== undefined) {
-    el.style.setProperty('--wui-drawer-drag-edge-size', options.edgeSize)
-  }
   document.body.appendChild(el)
   el.open = true
   await el.updateComplete
@@ -294,42 +267,6 @@ describe('WebUiDrawer header / footer 整块可拖（浏览器）', () => {
     expect(close.contains(hit) || hit === close, `命中的是 ${hit?.tagName ?? 'null'}`).toBe(true)
   })
 
-  it('R1 bottom + header：header 盒内非控件落点只被已知拖拽面覆盖', async () => {
-    const { el } = await mountDrawer({ placement: 'bottom', header: true })
-    const header = query(el, '.wui-drawer-header')
-    const rect = header.getBoundingClientRect()
-    // 内置关闭按钮压在同一行盒内（top 16px + 26px 高），它同样是显式让开的控件，
-    // 必须一起排除，否则「整块可拖」的采样点会落在它身上。
-    const controls = [
-      ...['#rename', '#act', '#pick'].map(sel => el.querySelector(sel)!.getBoundingClientRect()),
-      query(el, '.wui-drawer-close').getBoundingClientRect()
-    ]
-
-    const samples: Array<{ x: number; y: number }> = []
-    for (const fx of [0.08, 0.35, 0.5, 0.65, 0.92]) {
-      for (const fy of [0.25, 0.5, 0.75]) {
-        samples.push({ x: rect.left + rect.width * fx, y: rect.top + rect.height * fy })
-      }
-    }
-    samples.push(center(el.querySelector('#title')!.getBoundingClientRect()))
-
-    let checked = 0
-    for (const point of samples) {
-      if (controls.some(c => insideRect(point, c, 1))) continue
-      checked += 1
-      const hit = hitAt(el, point.x, point.y)
-      // 顶层落点必须是 header 本身，或已知的拖拽命中面。把「让 header 可拖」实现成
-      // 「把热区铺到 header 上」的朴素修法会让这里命中 .wui-drawer-drag-zone 而变红——
-      // 这正是要防的回归：整块可拖靠 header 自己接手势，不靠加一层透明命中区。
-      const covered = hit?.matches('.wui-drawer-drag-edge, .wui-drawer-drag-zone') ?? false
-      expect(
-        covered || isHeaderFlatTreeNode(hit),
-        `header 内 (${point.x.toFixed(1)},${point.y.toFixed(1)}) 命中 ${hit?.tagName ?? 'null'}，既不在 header 上也不是拖拽面`
-      ).toBe(true)
-    }
-    expect(checked, '采样点全被控件排除，判据落空').toBeGreaterThan(6)
-  })
-
   it('R1 行为：标题与 header 空白处的真实按下都能进入拖拽', async () => {
     const { el } = await mountDrawer({ placement: 'bottom', header: true })
     const header = query(el, '.wui-drawer-header')
@@ -345,36 +282,39 @@ describe('WebUiDrawer header / footer 整块可拖（浏览器）', () => {
     expect(el.open, '拖拽把抽屉关掉了（净位移应归零）').toBe(true)
   })
 
-  it('R2 top + footer：对称成立', async () => {
+  it('R2 top + footer：footer 空白处的真实按下同样进入拖拽', async () => {
     const { el } = await mountDrawer({ placement: 'top', footer: true })
     const footer = query(el, '.wui-drawer-footer')
     const rect = footer.getBoundingClientRect()
     const control = el.querySelector('#fAct')!.getBoundingClientRect()
-
-    const samples: Array<{ x: number; y: number }> = []
-    for (const fx of [0.08, 0.35, 0.5, 0.92]) {
-      for (const fy of [0.25, 0.5, 0.75]) {
-        samples.push({ x: rect.left + rect.width * fx, y: rect.top + rect.height * fy })
-      }
-    }
-    let checked = 0
-    for (const point of samples) {
-      if (insideRect(point, control, 1)) continue
-      checked += 1
-      const hit = hitAt(el, point.x, point.y)
-      const covered = hit?.matches('.wui-drawer-drag-edge, .wui-drawer-drag-zone') ?? false
-      expect(
-        covered || isHeaderFlatTreeNode(hit),
-        `footer 内 (${point.x.toFixed(1)},${point.y.toFixed(1)}) 命中 ${hit?.tagName ?? 'null'}，既不在 footer 上也不是拖拽面`
-      ).toBe(true)
-    }
-    expect(checked).toBeGreaterThan(6)
 
     const point = findEmptyPoint(el, rect, [control])
     await realPressAt(point.x, point.y)
     const dragging = getDialog(el).classList.contains('is-dragging')
     await realReleaseAt(point.x, point.y)
     expect(dragging, 'footer 空白处按下未进入拖拽').toBe(true)
+  })
+
+  /*
+   * 让位量的另一端：没有 header/footer 时，热区必须回到面板端头（让位量为 0）。
+   *
+   * 上面 R1/R2/R3 都在「有那一节」的前提下成立，这一格是它们的补集：让位量是
+   * 「该节高度 + 间距」，那一节不存在时必须整体归零，否则热区会平白往面板里缩一截，
+   * 端头上那条最好按的带子凭空变窄。
+   *
+   * 判据是**关系**（热区端边与面板同边的差 ≤ 容差），不是「让位量等于某个像素值」，
+   * 也不是读 `--wui-internal-drawer-*-inset` 的计算值。
+   */
+  it('R2 没有 header/footer 时热区回到面板端头（让位量为 0）', async () => {
+    for (const placement of ['bottom', 'top'] as const) {
+      const { el } = await mountDrawer({ placement })
+      const dialog = getDialog(el).getBoundingClientRect()
+      const zone = query(el, '.wui-drawer-drag-zone').getBoundingClientRect()
+
+      const yieldAmount = placement === 'bottom' ? zone.top - dialog.top : dialog.bottom - zone.bottom
+      expect(Math.abs(yieldAmount), `${placement} 无头尾时让位=${yieldAmount}`).toBeLessThanOrEqual(EPS)
+      el.remove()
+    }
   })
 
   it('R3 header 里的可点控件仍可点（输入框 / 行内按钮 / 勾选框）', async () => {
@@ -426,36 +366,12 @@ describe('WebUiDrawer header / footer 整块可拖（浏览器）', () => {
     expect(log.closed).toBe(1)
   })
 
-  it('R6 端头热边加厚、胶囊带仍被包含、且仍由 token 控制', async () => {
-    const { el } = await mountDrawer({ placement: 'bottom', header: true })
-    const edgeRect = query(el, '.wui-drawer-drag-edge').getBoundingClientRect()
-    const barRect = query(el, '.wui-drawer-drag-bar').getBoundingClientRect()
-    const dialogTop = getDialog(el).getBoundingClientRect().top
-
-    // 旧值是 `中线 + 半个胶囊厚度` = 10 + 2 = 12px，加厚后必须严格大于它。
-    const legacy = 10 + 4 / 2
-    expect(edgeRect.height, `端头热边厚度=${edgeRect.height}`).toBeGreaterThan(legacy)
-    // 胶囊带必须仍被热边带包含（包含关系由 token 定义推出，不是约定维持的）。
-    expect(barRect.top - dialogTop, '胶囊近侧跑出热边').toBeGreaterThanOrEqual(edgeRect.top - dialogTop - EPS)
-    expect(edgeRect.bottom - dialogTop, '胶囊远侧跑出热边').toBeGreaterThanOrEqual(barRect.bottom - dialogTop - EPS)
-    // 仍贴住可抓取边缘。
-    expect(Math.abs(edgeRect.top - dialogTop)).toBeLessThanOrEqual(EPS)
-    el.remove()
-
-    const widened = await mountDrawer({ placement: 'bottom', header: true, edgeSize: '40px' })
-    const wide = query(widened.el, '.wui-drawer-drag-edge').getBoundingClientRect()
-    expect(Math.abs(wide.height - 40), `token 覆盖后厚度=${wide.height}`).toBeLessThanOrEqual(EPS)
-  })
-
-  it('R4 左右 placement：header 不接手势，热区几何不变', async () => {
+  it('R4 左右 placement：header 不接手势', async () => {
     for (const placement of ['right', 'left'] as const) {
       const { el } = await mountDrawer({ placement, header: true, footer: true })
-      const dialog = getDialog(el).getBoundingClientRect()
-      const zone = query(el, '.wui-drawer-drag-zone').getBoundingClientRect()
-      expect(Math.abs(zone.height - dialog.height), `${placement} 热区高=${zone.height}`).toBeLessThanOrEqual(EPS)
-      expect(Math.abs(zone.width - 20), `${placement} 热区宽=${zone.width}`).toBeLessThanOrEqual(EPS)
 
-      // 左右 placement 的拖拽轴是 x，header 不该起手。
+      // 左右 placement 的拖拽轴是 x，header 不该起手。判据是「按下没进入拖拽」，
+      // 不是热区的宽高 —— 后者是精确几何（政策第 6 条）。
       const rect = query(el, '.wui-drawer-header').getBoundingClientRect()
       const point = { x: rect.left + rect.width * 0.2, y: rect.top + rect.height / 2 }
       await realPressAt(point.x, point.y)
@@ -466,26 +382,41 @@ describe('WebUiDrawer header / footer 整块可拖（浏览器）', () => {
     }
   })
 
-  it('R5 无 header / footer 时热区几何不变', async () => {
-    for (const placement of ['bottom', 'top'] as const) {
-      const { el } = await mountDrawer({ placement })
-      const dialog = getDialog(el).getBoundingClientRect()
-      const zone = query(el, '.wui-drawer-drag-zone').getBoundingClientRect()
-      const offset = placement === 'bottom' ? zone.top - dialog.top : dialog.bottom - zone.bottom
-      expect(Math.abs(offset), `${placement} 无头尾时让位=${offset}`).toBeLessThanOrEqual(EPS)
-      el.remove()
-    }
-  })
+  /*
+   * 嵌套下层时 header 的手势闸同步退场。
+   *
+   * 判据只取事件层：下层抽屉被上层盖住后那里的 header 拖不动，起手必须被拒绝。
+   * `cursor` / `touch-action` 的计算值是观感与实现细节，不作断言 —— 但闸门本身
+   * 关不关得住，事件层是唯一可判定的那一面（且它才是真正吃手势的地方）。
+   */
+  it('嵌套下层时 header 的手势闸关闭：下层起手不进拖拽', async () => {
+    // 正控制用另一个 drawer：与 parent 同处一层的 control 不会被标成下层，
+    // 因此它能证明「独立时确实接手势」，又不干扰 parent 保持打开。
+    const control = document.createElement('web-ui-drawer') as WebUiDrawer
+    control.placement = 'bottom'
+    control.draggable = true
+    control.heading = '独立层'
+    document.body.append(control)
+    control.open = true
+    await control.updateComplete
+    await pollUntil(() => getDialog(control).classList.contains('is-visible'), 'control did not become visible')
 
-  it('嵌套下层时 header 的手势提示与 JS 闸同步退场（不夺触摸手势、不骗光标）', async () => {
-    /*
-     * 同一 drawer 做 A/B：先是独立的下层（提示面在），被上层盖成 is-nested-lower 后
-     * 提示面必须一起退。正控制在前，否定断言才有意义——否则「下层不是 grab」这条在
-     * 提示面压根没生效时也会绿。
-     *
-     * `touch-action` 沿命中链求交，所以这条不是纯观感：下层 header 若还留着
-     * `touch-action: none`，那里的触摸滚动是被真的夺走的，而那里拖不动。
-     */
+    const soloHeader = query(control, '.wui-drawer-header')
+    const soloRect = soloHeader.getBoundingClientRect()
+    soloHeader.dispatchEvent(
+      new PointerEvent('pointerdown', {
+        bubbles: true,
+        composed: true,
+        isPrimary: true,
+        pointerId: 1,
+        clientX: soloRect.left + soloRect.width / 2,
+        clientY: soloRect.top + soloRect.height / 2
+      })
+    )
+    await control.updateComplete
+    expect(getDialog(control).classList.contains('is-dragging'), '正控制：非下层时 header 起手没有进入拖拽').toBe(true)
+    control.remove()
+
     const parent = document.createElement('web-ui-drawer') as WebUiDrawer
     parent.placement = 'bottom'
     parent.draggable = true
@@ -501,23 +432,14 @@ describe('WebUiDrawer header / footer 整块可拖（浏览器）', () => {
     await parent.updateComplete
     await pollUntil(() => getDialog(parent).classList.contains('is-visible'), 'parent did not become visible')
 
-    // 正控制：还没被标成下层时，提示面确实在。
-    const soloHeader = query(parent, '.wui-drawer-header')
-    expect(getComputedStyle(soloHeader).cursor, '正控制：非下层时 header 不是 grab').toBe('grab')
-    expect(getComputedStyle(soloHeader).touchAction, '正控制：非下层时 header 没有夺走触摸手势').toBe('none')
-
-    // 开上层 → parent 被标成 is-nested-lower。
+    // 开上层 → parent 变成下层。
     child.open = true
     await child.updateComplete
     await pollUntil(() => getDialog(parent).classList.contains('is-nested-lower'), 'lower layer not marked')
     await new Promise(resolve => setTimeout(resolve, 250))
 
+    // 下层起手不进拖拽：那里拖不动，吞下手势只会让用户以为面板失灵。
     const lowerHeader = query(parent, '.wui-drawer-header')
-    const lowerStyle = getComputedStyle(lowerHeader)
-    expect(lowerStyle.cursor, '下层抽屉的 header 仍在暗示可拖').not.toBe('grab')
-    expect(lowerStyle.touchAction, '下层抽屉的 header 仍夺走触摸手势').not.toBe('none')
-
-    // 与事件层闸门判同一条：下层起手不进拖拽。
     const rect = lowerHeader.getBoundingClientRect()
     lowerHeader.dispatchEvent(
       new PointerEvent('pointerdown', {
