@@ -40,6 +40,46 @@ describe('unplugin-web-components', () => {
     expect(result.code).toContain(`import { WebUiA } from '@greypan/web-ui/components/a'`)
   })
 
+  it('模块源码里全大写的 kebab 标签也生成导入', async () => {
+    const result = await runTransform({
+      code: `
+      <template>
+        <WEB-UI-BUTTON />
+        <WEB-UI-CARD />
+      </template>
+    `,
+      id: '/src/App.vue'
+    })
+
+    expect(result.code).toContain(`import { WebUiButton } from '@greypan/web-ui/components/button'`)
+    expect(result.code).toContain(`import { WebUiCard } from '@greypan/web-ui/components/card'`)
+  })
+
+  it('模块源码里混合大小写的 kebab 标签归一到小写组件目录', async () => {
+    const result = await runTransform({
+      code: `
+      <template>
+        <web-ui-Button />
+      </template>
+    `,
+      id: '/src/App.vue'
+    })
+
+    expect(result.code).toContain(`import { WebUiButton } from '@greypan/web-ui/components/button'`)
+    expect(result.code).not.toContain('components/Button')
+  })
+
+  it('模块源码里全大写的 kebab 标签在 React 中也生成导入', async () => {
+    const result = await runTransform({
+      code: `
+      const App = () => <WEB-UI-BUTTON />
+    `,
+      id: '/src/App.jsx'
+    })
+
+    expect(result.code).toContain(`import { WebUiButton } from '@greypan/web-ui/components/button'`)
+  })
+
   it('tagPrefix 含正则元字符时不破坏组件识别', async () => {
     const result = await runTransform({
       options: { tagPrefix: 'web-ui.' },
