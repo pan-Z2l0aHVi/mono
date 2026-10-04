@@ -47,8 +47,8 @@ function dispatchEscape() {
   )
 }
 
-// R4：.wui-menu-content 是内部 class 定位器，按 R4 换为面板自身（web-ui-dropdown-item 的
-// 直接父级就是 role="menu" 面板），统一用公共浮层定位器 getMenuPanels 取面板。
+// 面板内容区 = 菜单条目的直接父级（公开 DOM 可查询），统一用公共浮层定位器
+// getMenuPanels 取 role="menu" 面板，不依赖内部 class。
 function getMenuContent() {
   const panel = getMenuPanels('上下文菜单')[0]
   if (!panel) throw new Error('Expected the context menu to be open')
@@ -132,7 +132,7 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
   })
 
   /*
-   * R10：鼠标右键路径**保持锚定落点**，不受触屏贴底改动影响（Q11 选 a）。
+   * 鼠标右键路径**保持锚定落点**，不受触屏贴底改动影响。
    *
    * 触屏长按那条路径传 `_openAt(..., anchorBottom = true)` 走贴底算术；右键这条路
    * 传的是默认 false，走 Floating UI 的 bottom-start + shift。落点选在视口中部
@@ -164,7 +164,7 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
   })
 
   /*
-   * R8/R10 的坐标→定位映射，走公开 API 面。精确值断言只能在 browser mode 做：
+   * 坐标→定位映射走公开 API 面。精确值断言只能在 browser mode 做：
    * 模态化后面板走 Floating UI + `shift({ padding: 8, crossAxis: true })`，jsdom 无布局时
    * `getBoundingClientRect()` 恒返回全 0，shift 必然把坐标夹到 padding —— 那条断言在
    * jsdom 里量不到任何实现改动（详见 context-menu.spec.ts 同名用例的注释）。
@@ -247,7 +247,7 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
   })
 
   /*
-   * R5：Escape 关闭菜单**恰好一次** —— `open-change(false)` 只派发一次，且不留残余 scrim。
+   * Escape 关闭菜单**恰好一次** —— `open-change(false)` 只派发一次，且不留残余 scrim。
    *
    * 「恰好一次」是这里的重点。模态化引入了新的关闭动力：原生 `<dialog>` 自己也监听 Escape
    * 并派发 `cancel`。组件吞掉了 `cancel` 的默认行为（`_onScrimCancel`），但如果哪天那道
@@ -306,15 +306,6 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
 
     expect(document.activeElement).toBe(row)
   })
-
-  /*
-   * R12：原用例「关闭期间焦点被外部接管时不再抢回」已**删除**。
-   *
-   * 那道防护是为旧实现服务的：旧代码无条件 `focus()` 归还焦点，会抢走调用方在关闭期间
-   * 刚安排好的焦点，因此才需要「先看看有没有人接管」的判据。焦点归还在模态化之后交给
-   * `showModal()` / `close()` 的 UA 行为，组件不再自行实现，也就没有这道防护可保留 ——
-   * 实测外部接管焦点后 close，UA 会抢回 opener。这是接受的契约变化，不是回归。
-   */
 
   /*
    * 复刻 interweave 资源列表的右键重命名时序（两个组件都是本包的，无跨包依赖）：
@@ -422,7 +413,7 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
   })
 
   /*
-   * R1 / R2 的行为面：菜单打开时，下层目标既收不到命中，也收不到那次 click。
+   * 行为面：菜单打开时，下层目标既收不到命中，也收不到那次 click。
    *
    * 断言分两段，缺一不可：
    *
@@ -484,17 +475,6 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
     expect(checkboxClicks).toBe(0)
     expect(checkbox.checked).toBe(false)
   })
-
-  /*
-   * R17：原用例「点击菜单面板外的列表行时保留行点击并关闭菜单」已**删除** —— 契约反转。
-   *
-   * 这条是别人专门写下的 light-dismiss 契约（旧行为：点外面 = 既关菜单又激活下层目标），
-   * 而它正是用户报告的缺陷本身：一次点击同时产生「关菜单」与「激活行」两个后果，
-   * 中间没有任何仲裁，于是弹出菜单的同时打开了另一个资源。
-   *
-   * 模态化之后下层目标在菜单打开期间**收不到命中**（见下面 checkbox 用例的命中测试），
-   * 旧契约在物理上不再可能成立。取代它的是 scrim 用例：点外面 = 只关菜单。
-   */
 
   it('menu panel 内嵌套子 overlay 的 wheel 不被父菜单抑制', async () => {
     const menu = document.createElement('web-ui-context-menu')
@@ -802,7 +782,7 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
     // 面板内条目顺序（含嵌套 submenu 父项的拼接文本）；getMenuChildren 不递归进 submenu 子项，
     // 与公开 querySelectorAll('web-ui-dropdown-item') 不等价，故保留内部定位器表达扁平顺序。
     expect(getMenuChildren(content).map(item => item.textContent?.trim())).toEqual(['编辑', '导出PDF'])
-    // slot 投影契约（§5 允许），保留
+    // 嵌套子项必须被投影出去，否则它会与父项一起出现在根菜单里（多出一层）。
     expect(nested.getAttribute('slot')).toBe('context-menu-hidden')
   })
 

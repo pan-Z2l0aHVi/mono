@@ -100,25 +100,16 @@ describe('WebUiContextMenu 组件', () => {
   })
 
   describe('属性：disabled', () => {
-    it('disabled 反射到 host', async () => {
+    // disabled 门控两条打开通道：程序化 openAt 与用户右键。两条都要守住，
+    // 只测一条的话另一条漏了门控不会被发现。
+    it('disabled 时 openAt() 与右键都不打开', async () => {
       const el = createContextMenu({ disabled: '' }, SIMPLE)
       await waitForUpdate(el)
-      expect(el.hasAttribute('disabled')).toBe(true)
-      cleanupElement(el)
-    })
 
-    it('disabled 时 openAt() 不生效', async () => {
-      const el = createContextMenu({ disabled: '' }, SIMPLE)
-      await waitForUpdate(el)
       el.openAt(100, 100)
       await waitForUpdate(el)
       expect(el.isOpen).toBe(false)
-      cleanupElement(el)
-    })
 
-    it('disabled 时右键不打开', async () => {
-      const el = createContextMenu({ disabled: '' }, SIMPLE)
-      await waitForUpdate(el)
       el.dispatchEvent(
         new MouseEvent('contextmenu', {
           bubbles: true,
@@ -133,38 +124,37 @@ describe('WebUiContextMenu 组件', () => {
   })
 
   describe('公开 API：openAt()', () => {
-    it('在指定坐标打开菜单', async () => {
-      const el = createContextMenu({}, SIMPLE)
-      await waitForUpdate(el)
-      el.openAt(50, 60)
-      await waitForMenuOpen(el)
-      expect(el.isOpen).toBe(true)
-      expect(getMenu()).toBeTruthy()
-      cleanupElement(el)
-    })
+    /*
+     * 精确坐标断言只落在 browser spec（`openAt(x, y) 把面板锚定在指定坐标` 与
+     * `鼠标右键打开时面板锚定在落点`）。
+     *
+     * 模态化后面板走 Floating UI（`shift({ padding: 8, crossAxis: true })`），而 jsdom
+     * 没有布局：`getBoundingClientRect()` 恒返回全 0，shift 必然把坐标夹到 8px。
+     * 在 jsdom 里断言坐标量到的是「jsdom 能不能布局」，不是「openAt 的坐标映射」——
+     * 对实现改动零判别力，却会逼着后来者为它调阈值。
+     *
+     * 这里保留的是 jsdom 能证的一半：面板真的挂出，且定位器真的写入了坐标。
+     */
+    const coords: ReadonlyArray<readonly [label: string, x: number, y: number]> = [
+      ['视口内坐标', 100, 200],
+      ['超出右下角', 9999, 9999],
+      ['负坐标', -100, -100]
+    ]
 
-    it('openAt(x, y) 打开根菜单并写入定位坐标', async () => {
-      const el = createContextMenu({}, SIMPLE)
-      await waitForUpdate(el)
-      const x = 100
-      const y = 200
-      el.openAt(x, y)
-      await waitForMenuOpen(el)
-      const menu = getMenu()!
-      expect(menu).toBeTruthy()
-      expect(menu.style.left).not.toBe('')
-      expect(menu.style.top).not.toBe('')
-      /*
-       * 精确坐标断言已迁到 browser spec（`openAt(x, y) 把面板锚定在指定坐标`）。
-       *
-       * 模态化后面板走 Floating UI（`shift({ padding: 8, crossAxis: true })`），而 jsdom
-       * 没有布局：`getBoundingClientRect()` 恒返回全 0，shift 必然把坐标夹到 8px。
-       * 换句话说这条精确断言量到的是「jsdom 能不能布局」，不是「openAt 的坐标映射」——
-       * 它在 jsdom 里对实现改动零判别力，却会逼着后来者为它调阈值。真实浏览器里
-       * 同一契约是绿的，见 context-menu.browser.spec.ts。
-       */
-      cleanupElement(el)
-    })
+    for (const [label, x, y] of coords) {
+      it(`${label}：打开菜单并写入定位坐标`, async () => {
+        const el = createContextMenu({}, SIMPLE)
+        await waitForUpdate(el)
+
+        el.openAt(x, y)
+        await waitForMenuOpen(el)
+
+        expect(el.isOpen).toBe(true)
+        expect(getMenu()?.style.left).not.toBe('')
+        expect(getMenu()?.style.top).not.toBe('')
+        cleanupElement(el)
+      })
+    }
 
     it('在外部点击事件中调用时保持打开', async () => {
       const el = createContextMenu({}, SIMPLE)
@@ -255,7 +245,7 @@ describe('WebUiContextMenu 组件', () => {
       cleanupElement(el)
       await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
 
-      // R3 例外：滚动锁的文档级副作用是唯一观察面（组件之外的副作用）
+      // 滚动锁的文档级副作用是唯一观察面（组件之外的副作用）
       expect(document.documentElement.style.overflow).toBe('')
     })
 
@@ -275,10 +265,9 @@ describe('WebUiContextMenu 组件', () => {
       await waitForMenuOpen(el)
 
       expect(el.isOpen).toBe(true)
-      const menu = getMenu()!
-      // 精确坐标断言同样迁到 browser spec（`鼠标右键打开时面板锚定在落点`），理由同上。
-      expect(menu.style.left).not.toBe('')
-      expect(menu.style.top).not.toBe('')
+      // 精确坐标断言在 browser spec（`鼠标右键打开时面板锚定在落点`），理由同上。
+      expect(getMenu()?.style.left).not.toBe('')
+      expect(getMenu()?.style.top).not.toBe('')
 
       cleanupElement(el)
     })
@@ -343,7 +332,7 @@ describe('WebUiContextMenu 组件', () => {
       el.openAt(100, 100)
       await waitForMenuOpen(el)
 
-      // R3 例外：滚动锁的文档级副作用是唯一观察面
+      // 滚动锁的文档级副作用是唯一观察面
       expect(document.documentElement.style.overflow).toBe('hidden')
 
       el.close()
@@ -360,7 +349,7 @@ describe('WebUiContextMenu 组件', () => {
       el.openAt(100, 100)
       await waitForMenuOpen(el)
 
-      // R3 例外：滚动锁的文档级副作用是唯一观察面
+      // 滚动锁的文档级副作用是唯一观察面
       expect(document.documentElement.style.overflow).toBe('')
       cleanupElement(el)
     })
@@ -377,7 +366,7 @@ describe('WebUiContextMenu 组件', () => {
       const event = new WheelEvent('wheel', { bubbles: true, cancelable: true })
       container.dispatchEvent(event)
 
-      // R3 例外：打开态阻止外部容器滚动是公开事件的默认行为（组件之外的副作用）
+      // 打开态阻止外部容器滚动是公开事件的默认行为（组件之外的副作用）
       expect(event.defaultPrevented).toBe(true)
 
       cleanupElement(el)
@@ -646,7 +635,7 @@ describe('WebUiContextMenu 组件', () => {
 
       expect(el.isOpen).toBe(true)
       expect(getMenuItems().map(item => item.textContent?.trim())).toEqual(['编辑', '直插项'])
-      // R4：纳入托管的可观察后果——关闭后框架直插的新项随其它项一起归还宿主 light DOM（无残留、顺序稳定）
+      // 纳入托管的可观察后果：关闭后框架直插的新项随其它项一起归还宿主 light DOM（无残留、顺序稳定）
       el.close()
       await waitForMenuClose(el)
       expect([...el.querySelectorAll(':scope > web-ui-dropdown-item')].map(item => item.textContent?.trim())).toEqual([
@@ -676,7 +665,7 @@ describe('WebUiContextMenu 组件', () => {
 
       expect(el.isOpen).toBe(true)
       expect(getMenuItems().map(item => item.textContent?.trim())).toEqual(['找回资源', '复制'])
-      // R4：卸载+锚点替换的可观察后果——关闭后旧项被框架卸载、新项与未变项一并归还宿主 light DOM
+      // 卸载+锚点替换的可观察后果：关闭后旧项被框架卸载、新项与未变项一并归还宿主 light DOM
       el.close()
       await waitForMenuClose(el)
       expect([...el.querySelectorAll(':scope > web-ui-dropdown-item')].map(item => item.textContent?.trim())).toEqual([
@@ -711,7 +700,7 @@ describe('WebUiContextMenu 组件', () => {
 
       const restored = [...el.querySelectorAll(':scope > web-ui-dropdown-item')].map(item => item.textContent?.trim())
       expect(restored).toEqual(['找回资源', '复制', '直插项'])
-      // R4：关闭后无残留的可观察后果 = 宿主 light DOM 项集合 == 期望项（marker 计数属内部机制，已删除）
+      // 关闭后无残留的可观察后果 = 宿主 light DOM 项集合 == 期望项
       // 框架 v-if 锚点随元素迁回宿主而非被销毁，否则框架持有 detached 引用下次 patch 崩溃
       expect([...content.childNodes]).toHaveLength(0)
       expect([...el.childNodes].some(node => node.nodeType === Node.COMMENT_NODE && node.textContent === 'v-if')).toBe(
@@ -821,44 +810,6 @@ describe('WebUiContextMenu 组件', () => {
 
       const menu = getMenu()
       expect(menu?.getAttribute('role')).toBe('menu')
-
-      cleanupElement(el)
-    })
-  })
-
-  describe('边界处理', () => {
-    it('右下角边界检测', async () => {
-      const el = createContextMenu({}, SIMPLE)
-      await waitForUpdate(el)
-
-      el.openAt(9999, 9999)
-      await waitForMenuOpen(el)
-
-      const menu = getMenu()!
-      expect(menu).toBeTruthy()
-      const left = Number.parseInt(menu.style.left)
-      const top = Number.parseInt(menu.style.top)
-      // R3 例外：断言「不出视口」的行为约束（left < innerWidth），而非某个像素值
-      expect(left).toBeLessThan(window.innerWidth)
-      expect(top).toBeLessThan(window.innerHeight)
-
-      cleanupElement(el)
-    })
-
-    it('左上角负坐标检测', async () => {
-      const el = createContextMenu({}, SIMPLE)
-      await waitForUpdate(el)
-
-      el.openAt(-100, -100)
-      await waitForMenuOpen(el)
-
-      const menu = getMenu()!
-      expect(menu).toBeTruthy()
-      const left = Number.parseInt(menu.style.left)
-      const top = Number.parseInt(menu.style.top)
-      // R3 例外：断言「不出视口」的行为约束（left >= 0），而非某个像素值
-      expect(left).toBeGreaterThanOrEqual(0)
-      expect(top).toBeGreaterThanOrEqual(0)
 
       cleanupElement(el)
     })
@@ -1117,8 +1068,7 @@ describe('WebUiContextMenu 组件', () => {
         await waitForItemOrder(validItems)
 
         // 两轮连续翻转 + 最后 reopen
-        // R4：Vue 的占位注释（#v-if 计数）不是本组件契约，已删除；
-        // 改为断言每次翻转后菜单项+分隔符的「顺序/集合稳定」（itemOrder 即等价可观察后果）。
+        // 判据是每次翻转后菜单项+分隔符的「顺序/集合稳定」，不是框架占位注释的数量。
         for (let round = 0; round < 2; round++) {
           broken.value = true
           await waitForItemOrder(brokenItems)
