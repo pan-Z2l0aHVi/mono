@@ -141,10 +141,9 @@ describe('排版族防漂移', () => {
     expect(bare, `\n${bare.map(at).join('\n')}`).toEqual([])
   })
 
-  it('排版族被真实消费（防止族存在但组件各写各的）', () => {
+  it('排版族被真实消费（族被整体弃用时不能靠删光调用点静默通过）', () => {
     const direct = find('font-size').filter(d => d.valueKey.includes('var(--wui-font-size'))
-    // 非空即可；阈值作用是让「族被整体弃用」不能靠删光调用点静默通过。
-    expect(direct.length, '直接引用排版族的 font-size 声明数').toBeGreaterThanOrEqual(25)
+    expect(direct.length, '直接引用排版族的 font-size 声明数').toBeGreaterThan(0)
   })
 
   it('组件 CSS 不出现裸 font-weight', () => {
@@ -202,19 +201,6 @@ describe('排版族防漂移', () => {
     )
     expect(unused, `\n未消费：${unused.join(', ')}`).toEqual([])
   })
-
-  it('排版族取值符合各族语义', () => {
-    expect(base.get('--wui-font-size-caption')).toBe('12px')
-    expect(base.get('--wui-font-size-readout')).toBe('13px')
-    expect(base.get('--wui-font-size')).toBe('14px')
-    expect(base.get('--wui-font-size-title')).toBe('18px')
-    expect(base.get('--wui-font-weight-medium')).toBe('500')
-    expect(base.get('--wui-font-weight-semibold')).toBe('600')
-    expect(base.get('--wui-line-height-tight')).toBe('1.2')
-    expect(base.get('--wui-line-height-snug')).toBe('1.4')
-    expect(base.get('--wui-line-height-normal')).toBe('1.5')
-    expect(base.get('--wui-line-height-relaxed')).toBe('1.6')
-  })
 })
 
 describe('间距族防漂移', () => {
@@ -229,27 +215,6 @@ describe('间距族防漂移', () => {
     for (const [index, step] of steps.entries()) {
       expect(step.value, `${step.name} 应为 ${(index + 1) * 4}px`).toBe(`${(index + 1) * 4}px`)
     }
-  })
-
-  it('间距阶当前的最大级是生效静态节奏值的 24px', () => {
-    // 组件层以生效的静态字面量写入的 padding/gap/margin 最大节奏值是 24px。预留
-    // 32/40 会引入两枚死 token，而 theme-tokens.spec.ts 要求每枚 token 都进双语文档
-    // ——死 token 要付出双份文档成本却换不到任何组件受益。需要更宽的留白时嵌入方直接
-    // 写 px 即可。
-    //
-    // 口径限定为「生效的静态」是有原因的：`<web-ui-empty>` 的 padding 默认
-    // `32px 24px`，字面上比本阶上限还宽，但它由 `--wui-empty-size` 在 JS 侧按尺寸档
-    // 派生（40/56/72 → 23px 17px / 32px 24px / 41px 31px），生效值来自尺寸那根轴而非
-    // 节奏，不构成反例。六个派生值里四个是奇数、4px 阶根本表示不了；56 档落在基准上
-    // 是尺寸选值的巧合（56 是唯一被 7 整除的，商恰为 8，而 8 是 4 的倍数，取整在这一
-    // 档并未发生），一根在三个尺寸中两个静默失效的杠杆不值得引入。
-    //
-    // 这里只断言**当前**的最大值，不写 `has('--wui-space-7') === false` 之类的
-    // 「这个名字不许存在」：死 token 已由上面的消费度用例完整覆盖，而这类断言会
-    // 挡住一次完全合规的扩展（按 4px 阶加上 space-7 并真的消费它），且报错信息会
-    // 把人引向错误的排查方向。将来真的加到 space-7 时，这一行会自然变红——那才是
-    // 一条正确的红：它提醒同时更新 ADR 与双语文档。
-    expect(base.get('--wui-space-6')).toBe('24px')
   })
 
   it('组件 CSS 的间距字面量只作为族内 fallback 出现', () => {

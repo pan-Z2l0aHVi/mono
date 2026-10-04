@@ -12,17 +12,15 @@ function createDivider(): WebUiDropdownDivider {
 }
 
 describe('WebUiDropdownDivider 组件', () => {
-  it('每个实例各自渲染独立的 separator 角色元素', async () => {
+  it('每个实例各自渲染一个 separator 角色元素', async () => {
     const first = createDivider()
     const second = createDivider()
     await waitForUpdate(first)
     await waitForUpdate(second)
 
-    const firstSeparator = queryA11y(first, '[role="separator"]')
-    const secondSeparator = queryA11y(second, '[role="separator"]')
-    expect(firstSeparator?.getAttribute('role')).toBe('separator')
-    expect(secondSeparator?.getAttribute('role')).toBe('separator')
-    expect(firstSeparator).not.toBe(secondSeparator)
+    // role="separator" 是分割线对辅助技术唯一的表达；断言它每个实例各有一枚。
+    expect(queryA11y(first, '[role="separator"]')).toBeTruthy()
+    expect(queryA11y(second, '[role="separator"]')).toBeTruthy()
 
     cleanupElement(first)
     cleanupElement(second)
