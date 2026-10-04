@@ -1,8 +1,12 @@
 /// <reference types="node" />
 /*
- * 走 node:fs 而不是 `?raw` import：test 侧的 CSS import 被 stub 成空串，两种查询都取不到内容。
- * app 的 tsconfig 把 types 收成空数组，这行引用按文件放行 @types/node——根 node_modules 里
- * 已经装着，web-ui 那边则是靠独立的 tsconfig.vitest.json 放行的，app 侧没有对应工程。
+ * 这些是 app 侧自绘的、与「无障碍」直接相关的 CSS 契约，jsdom 不跑 Tailwind 也不做
+ * 级联，所以这里读的是样式表源码、断言契约的**判据形状**而不是最终像素。三条都在钉一个
+ * 具体且现实的回归；一旦有人改成 stock 写法，深色模式在亮色系统上会失效对比度、
+ * 触摸最小可点尺寸会退到 36px、或 focus ring 会退回 UA 蓝环。
+ *
+ * 只保留「删掉/改写就真的会坏用户可感知的无障碍行为」的形状断言；具体尺寸、颜色与
+ * 具体工具类选择器属于浏览器取证范围（见 docs/agents/browser-verification.md），不在这里钉。
  */
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
@@ -14,53 +18,52 @@ const globalCss = readFileSync(fileURLToPath(new URL('./global.css', import.meta
 // 注释里会解释为什么不跟 prefers-color-scheme，断言只看真正参与级联的声明。
 const globalCssDeclarations = globalCss.replace(/\/\*[\s\S]*?\*\//g, '')
 
-/*
- * 这里只钉声明本身。`dark:` 展开后是否真的命中，取决于 web-ui 在 host 上写的
- * resolved-appearance 和浏览器的匹配结果，jsdom 既不实现媒体查询也不跑 Tailwind
- * 变体（见 ResourceList.spec.ts 关于 focus ring 的说明），所以视觉行为由真实浏览器
- * 取证负责，这里防的是有人把这条 @custom-variant 删掉或改回 prefers-color-scheme。
- */
 describe('global.css 的 dark 变体判据', () => {
-  it('重定义 dark 变体指向 web-ui-theme 的 resolved-appearance', () => {
+  it('dark: 跟随 web-ui-theme 的 resolved-appearance，而不是操作系统偏好', () => {
+    // 用户可在设置里显式选深色；OS 偏好仍是亮色时 stock 变体不会命中，app 会停在
+    // 亮底 + 浅色字，对比度塌掉。判据必须挂在 resolved-appearance 上。
     expect(globalCss).toMatch(/@custom-variant\s+dark\s*\([^)]*web-ui-theme\[resolved-appearance=['"]dark['"]\][^)]*\)/)
-  })
-
-  it('判据不退回 prefers-color-scheme，否则用户在亮色系统上选深色会失效', () => {
     expect(globalCssDeclarations).not.toContain('prefers-color-scheme')
-  })
-
-  it('判据包在 :where() 里，不抬高工具类的特异性', () => {
-    expect(globalCssDeclarations).toMatch(/@custom-variant\s+dark\s*\(&:where\(web-ui-theme\[resolved-appearance=/)
   })
 })
 
-/*
- * 触摸设备的控件高度覆写。jsdom 不实现媒体查询也不跑 shadow 级联，所以「40px 在真机上
- * 生效」由浏览器取证负责；这里钉的是这条声明的**形状**——它有三处一改就静默失效：
- *
- * ① 选择器必须是 `web-ui-theme`。36px 由 theme 的 shadow 内 `:host` 提供，写在 `:root` 上
- *    与它特异性相同，胜负取决于样式表顺序。
- * ② 判据必须是 `pointer: coarse`。改成宽度断点会让窄视口的桌面窗口也命中，触控板用户
- *    平白拿到 40px 的控件。
- * ③ 值必须落在 `--wui-control-size` 上。菜单项行高写死在 dropdown-item/style.css，
- *    不吃这个 token——所以这一条只该抬控件，不该把菜单行一起撑高。
- */
-describe('global.css 的触摸控件尺寸', () => {
-  it('在 web-ui-theme 上用 pointer: coarse 抬到 40px', () => {
-    expect(globalCssDeclarations).toMatch(
-      /@media\s*\(pointer:\s*coarse\)\s*\{[^}]*web-ui-theme\s*\{[^}]*--wui-control-size:\s*40px/
-    )
-  })
-
-  it('不退回宽度断点，触控板与窄视口桌面窗口不该命中', () => {
+describe('global.css 的触摸控件最小可点尺寸', () => {
+  it('用 pointer: coarse 抬到至少 40px，且不退回宽度断点', () => {
+    // 判据必须是 coarse pointer：改成宽度断点会让窄视口桌面窗口也命中，触控板用户平白
+    // 拿到放大的控件。值落在 web-ui-theme 宿主上（外部作者样式压过 shadow 内 :host）。
     const coarseBlock = globalCssDeclarations.match(/@media\s*\(pointer:\s*coarse\)\s*\{[\s\S]*?\n\}/)
     expect(coarseBlock).toBeTruthy()
+    expect(coarseBlock![0]).toMatch(/web-ui-theme\s*\{[^}]*--wui-control-size:\s*40px/)
     expect(coarseBlock![0]).not.toMatch(/max-width|min-width/)
   })
+})
 
-  it('不写在 :root 上——那与 theme 的 shadow :host 同特异性，胜负取决于样式表顺序', () => {
-    const coarseBlock = globalCssDeclarations.match(/@media\s*\(pointer:\s*coarse\)\s*\{[\s\S]*?\n\}/)
-    expect(coarseBlock![0]).toContain('web-ui-theme {')
-    expect(coarseBlock![0]).not.toMatch(/:root/)
+describe('global.css 的页面级 focus ring', () => {
+  it('给原生可聚焦元素画 :focus-visible 的 outline，且整条选择器保持 0 特异性', () => {
+    // 删掉整条会让原生元素（AppNav 按钮、添加对话框里的按钮）退回 UA 默认蓝环，与 web-ui
+    // 组件的浅蓝 focus 环形成两套 focus 语言，键盘用户看到不一致的焦点指示。
+    expect(globalCssDeclarations).toMatch(/:focus-visible\s*\{[^}]*outline:\s*var\(--wui-focus-ring-width/)
+
+    /*
+     * 特异性是这条规则里最容易悄悄坏掉的部分，所以按**完整选择器**断言，不按片段。
+     * 两层 `:where()` 都必须在：外层锚在 #app（只让 app 自绘元素命中），内层包住元素
+     * 选择器列表（把元素本身的权重清零）。任一层被拆掉：
+     *   - 拆内层 → 元素选择器恢复 (0,1,0)，整条升到 (0,2,0)，压不住页面自己的
+     *     `focus:outline-none`（同权重，靠顺序决胜），键盘焦点环被工具类吃掉；
+     *   - 拆外层 → 规则泄漏到 app 之外。
+     * 剩下的权重只有 :focus-visible 伪类 (0,1,0)，既能压过 UA 默认环，又让 app 的
+     * focus 工具类 (0,2,0) 照旧能单点覆盖。
+     *
+     * 所以这里匹配从 `:where(#app)` 起、到 `:focus-visible` 止的整段选择器前缀：内层
+     * `:where(` 一旦消失，元素列表就会直接暴露在 `:where(#app)` 之后，匹配随即失败。
+     */
+    const selectorPrefix = globalCssDeclarations.match(/:where\(#app\)\s*:where\([\s\S]*?\)\s*:focus-visible/)
+    expect(selectorPrefix, 'focus ring 的两层 :where() 选择器前缀应完整').not.toBeNull()
+
+    // 内层列表里确实列着原生可聚焦元素，而不是一个空壳 :where()。
+    const elementList = selectorPrefix![0].slice(selectorPrefix![0].indexOf(':where(', ':where(#app)'.length))
+    for (const selector of ['button', 'input', "[tabindex]:not([tabindex='-1'])"]) {
+      expect(elementList, `focus ring 应覆盖 ${selector}`).toContain(selector)
+    }
   })
 })

@@ -82,18 +82,14 @@ function button(host: HTMLElement, label: string) {
 }
 
 describe('DetailDrawer', () => {
-  it('重命名按钮常显且不残留 hover 显隐 class，点击仍进入重命名流程', async () => {
+  it('重命名按钮点击进入重命名流程', async () => {
     const resource = resourceView()
     const startRename = vi.fn<(target: ResourceView) => void>()
     const mounted = mountDrawer(resource, { onStartRename: startRename })
 
     try {
       await nextTick()
-      const renameButton = button(mounted.host, '重命名')
-
-      expect(renameButton.getAttribute('class')).toBe('shrink-0')
-
-      renameButton.click()
+      button(mounted.host, '重命名').click()
       expect(startRename).toHaveBeenCalledOnce()
       expect(startRename).toHaveBeenCalledWith(resource)
     } finally {

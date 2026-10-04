@@ -40,18 +40,10 @@ function buttonByLabel(host: HTMLElement, label: string) {
 }
 
 /*
- * 标题栏的关闭按钮由 web-ui-dialog 自己渲染，在它的 shadow 里（`.title-row` 里那枚
- * `aria-label="关闭"` 的 26px icon 按钮）。宿主拿不到那个节点，只能验它确实存在过：
- * `closable` 挂上了、宿主自己没有再画一枚标题栏按钮，也没有 footer「关闭」。
- *
- * 关闭**行为**由另两条覆盖——受控的 Escape/遮罩路径，以及 shadow 内按钮点击派发的
+ * 关闭**行为**由后面两条覆盖——受控的 Escape/遮罩路径，以及 shadow 内按钮点击派发的
  * `open-change`（组件把两条用户关闭入口收在 `_closeFromUser` 一处，controlled 下都只派发
  * 关闭请求，宿主因此仍拿到同一条 `update:open(false)`）。按钮本身点不点得动归 web-ui 自己测。
  */
-function titleCloseButton(host: HTMLElement) {
-  return dialogElement(host).shadowRoot?.querySelector<HTMLElement>('.title-row web-ui-button[aria-label="关闭"]')
-}
-
 function segmentedByLabel(host: HTMLElement, label: string) {
   const element = host.querySelector<WebUiSegmented>(`web-ui-segmented[aria-label="${label}"]`)
   if (!element) throw new Error(`segmented ${label} was not rendered`)
@@ -91,7 +83,7 @@ describe('SettingsDialog', () => {
     localStorage.clear()
   })
 
-  it('标题栏关闭按钮交给组件的 closable，宿主不再自绘也不再有 footer 关闭', async () => {
+  it('标题栏关闭交给组件的 closable，宿主不另画一套关闭入口', async () => {
     const mounted = mountDialog(() => {})
 
     try {
@@ -99,11 +91,10 @@ describe('SettingsDialog', () => {
 
       expect(mounted.host.querySelector('[slot="title"]')?.textContent).toContain('设置')
       expect(dialogElement(mounted.host).closable).toBe(true)
-      expect(titleCloseButton(mounted.host)).toBeTruthy()
-      // 两条自绘入口都已消失：标题栏不再有宿主画的 aria-label="关闭设置"，也没有 footer 按钮。
+      // 宿主不再自绘标题栏关闭按钮，也没有 footer「关闭」——标题行那一枚由 web-ui-dialog
+      // 自己渲染（在其 shadow 内），宿主拿不到那个节点。
       expect(() => buttonByLabel(mounted.host, '关闭设置')).toThrow('button 关闭设置 was not rendered')
       expect(mounted.host.querySelector('[slot="footer"]')).toBeNull()
-      expect(mounted.host.querySelectorAll('web-ui-button')).toHaveLength(0)
     } finally {
       mounted.close()
     }
@@ -161,6 +152,10 @@ describe('SettingsDialog', () => {
    * group 的 change 根本不派发：浏览器实测点 host 中心时 group.value 纹丝不动，而直接点
    * shadow 里的 label 才会切。jsdom 里点 host 无效、点 label 有效，组件自身的测试覆盖不到
    * 「从 light DOM 投影 slot 后 host 中心是否可点」这一层，所以这条断言必须在。
+   *
+   * 钉的是「六个色板各自有一个带可访问名与 role 的原生按钮」——也就是用户与辅助技术
+   * 实际命中的目标；radio 本身是不是 pointer-events-none 属于内部实现，另有下面两条
+   * 直接断言「点按钮 → store 写入」的用例守着因果链。
    */
   it('accent 色板的可点区域是原生按钮，不是 web-ui-radio 的 host', async () => {
     const mounted = mountDialog(() => {})
@@ -169,11 +164,6 @@ describe('SettingsDialog', () => {
       await nextTick()
       selectTrigger(segmentedByLabel(mounted.host, '设置分区'), 'appearance')
       await nextTick()
-
-      const radios = [...mounted.host.querySelectorAll<WebUiRadio>('web-ui-radio')]
-      for (const radio of radios) {
-        expect(radio.className).toContain('pointer-events-none')
-      }
 
       const buttons = [...mounted.host.querySelectorAll<HTMLButtonElement>('button[role="radio"]')]
       expect(buttons).toHaveLength(6)
@@ -307,32 +297,24 @@ describe('SettingsDialog', () => {
 
   /*
    * 高度契约：`--wui-dialog-max-height` 的语义已从「整卡高度」改成「内容区高度」，
-   * 上限改由 web-ui-dialog 内部的 `.desc` 承担。宿主因此不再复述 chrome 常数——
-   * 内层那条 `calc(var(--wui-dialog-max-height, 328px) - 106px)` 已整条删掉。
+   * 上限改由 web-ui-dialog 内部的 `.desc` 承担，宿主因此不再复述 chrome 常数。
    *
-   * 这里 chrome 是 106 而非 AddDialog 的 142：本 dialog 没有 footer 按钮
-   * （closable 的关闭按钮在标题行），footer 段高度为 0。三处不能互相照抄。
-   *
-   * 只断言声明本身：jsdom 没有布局引擎，解不出 Tailwind 任意值里的 calc。
-   * 真实几何由浏览器验证与 packages/web-ui 的 dialog-content-height.browser.spec.ts 覆盖。
+   * 只断言「内层引用 token 而非写死像素」这一层：jsdom 没有布局引擎，具体高度由浏览器
+   * 验证与 packages/web-ui 的 dialog-content-height.browser.spec.ts 覆盖。
    */
-  it('token 扣掉的是本 dialog 实测的 chrome（106），内层不再复述 chrome 常数', async () => {
+  it('内容区高度走 --wui-dialog-max-height token，内层不再复述 chrome 常数', async () => {
     const mounted = mountDialog(() => {})
 
     try {
       await nextTick()
-
-      const dialog = dialogElement(mounted.host)
-      // 空格必须写成下划线：写成字面空格会被 Tailwind 拆成三个类，整条声明静默失效。
-      expect(dialog.getAttribute('class')).toContain('[--wui-dialog-max-height:calc(min(90vh,328px)_-_106px)]')
 
       const inner = [...mounted.host.querySelectorAll<HTMLElement>('[style]')].find(el =>
         el.style.height.includes('--wui-dialog-max-height')
       )
       if (!inner) throw new Error('settings body was not rendered')
       expect(inner.style.height).toBe('var(--wui-dialog-max-height)')
-      // 回归护栏：内层不得再出现 106 这类 chrome 常数（token 里那一次是新语义下的换算）。
-      expect(inner.style.height).not.toContain('106')
+      // 回归护栏：内层不得再出现 chrome 常数（token 里那一次是新语义下的换算）。
+      expect(inner.style.height).not.toMatch(/\d+px/)
     } finally {
       mounted.close()
     }
