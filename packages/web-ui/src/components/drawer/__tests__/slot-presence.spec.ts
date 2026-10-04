@@ -110,4 +110,47 @@ describe('WebUiDrawer named-slot presence（jsdom）', () => {
     expect(assigned(el, 'footer')[0].id).toBe('new-action')
     cleanupElement(el)
   })
+
+  /*
+   * 断连期间清空 slot 内容：重连后该节必须重新隐藏。
+   *
+   * 缺陷形态（真实浏览器与 jsdom 皆复现）：`connectedCallback` 重算了 `_hasHeaderSlot` /
+   * `_hasFooterSlot`，却没排更新。Lit 的 `connectedCallback` 只做 `enableUpdating(true)`
+   * 与 `setConnected(true)`，本身不排更新；而 slotchange 只在**分配集合**变化时派发，
+   * 断连期间清空的是槽位内容的有无、宿主节点本身没动，于是两条处理器也不触发。
+   * `?hidden` 因此停在断连前的取值。
+   *
+   * 判据只钉用户后果——那一节重新 `hidden`：空节在 style.css 的 padding 下仍有真实高度，
+   * 成为一条点不动的死带，拖拽热区的让位量也按它算。
+   *
+   * assigned 只作前置观察、不能单独承重：分配是浏览器直给的，与组件要不要请求更新
+   * 无关，只断言它时本缺陷下照样绿。
+   */
+  it('断开期间清空 footer 内容，重连后 footer 重新隐藏', async () => {
+    const el = createDrawer('<button id="save" slot="footer">Save</button>')
+    await waitForUpdate(el)
+    expect(sectionState(el, 'footer').hidden).toBe(false)
+
+    el.remove()
+    el.querySelector('#save')!.remove()
+    document.body.append(el)
+    await waitForUpdate(el)
+
+    expect(sectionState(el, 'footer')).toEqual({ assigned: 0, hidden: true })
+  })
+
+  it('断开期间清空 header 内容，重连后 header 重新隐藏', async () => {
+    // 不给 heading：`showHeader` 退化成只看 `_hasHeaderSlot`，否则 heading 会把这一节
+    // 撑住，重连后的可见与否就分不清是 presence 失效还是本该如此。
+    const el = createDrawer('<h2 id="title" slot="header">Details</h2>')
+    await waitForUpdate(el)
+    expect(sectionState(el, 'header').hidden).toBe(false)
+
+    el.remove()
+    el.querySelector('#title')!.remove()
+    document.body.append(el)
+    await waitForUpdate(el)
+
+    expect(sectionState(el, 'header')).toEqual({ assigned: 0, hidden: true })
+  })
 })
