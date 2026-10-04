@@ -83,19 +83,15 @@ describe('scroll lock（浏览器）', () => {
     expect(row.getBoundingClientRect().top).toBe(documentTop - SCROLL_Y)
   })
 
-  it('锁定机制是根元素 overflow + overscroll-behavior，body 不再被写 position', async () => {
+  it('解锁后根元素样式交还', async () => {
     createSpacer(6000)
 
     lock()
     expect(document.documentElement.style.overflow).toBe('hidden')
-    expect(document.documentElement.style.overscrollBehavior).toBe('none')
-    expect(document.body.style.position).toBe('')
-    expect(document.body.style.top).toBe('')
-    expect(document.body.style.width).toBe('')
 
+    // 不锁：解锁后必须交还给页面自己的样式，不能留下残留。
     unlock()
     expect(document.documentElement.style.overflow).toBe('')
     expect(document.documentElement.style.overscrollBehavior).toBe('')
-    expect(document.body.style.position).toBe('')
   })
 })

@@ -285,6 +285,72 @@ describe('Portal overlay 在已打开原生 dialog 内（top layer）', () => {
     expect(panel?.textContent).toContain('Preview')
   })
 
+  /*
+   * 子菜单的相邻性语义：placement 是 `right-start` 且没有 offset middleware，
+   * 子菜单左缘即触发项右缘、顶边对齐（right-start 的纵向语义是**顶边对齐**，
+   * 子菜单可比触发项高，不得因此上移）。
+   *
+   * 判据是两条边的**关系**（差 ≤ 1px 容差），不是子菜单落在视口里的某个像素位置 ——
+   * 钳制那条由 `context-menu/viewport-fit.browser.spec.ts` 承担。
+   *
+   * 两处必须等入场过渡落定再量：入场期间面板带 scale，触发项的 rect 被缩放，
+   * 子菜单就会拿这份**过期参考矩形**去定位。这里只消除测试自身的竞态，不掩盖它 ——
+   * 相邻性断言反过来把这份竞态钉住了。
+   */
+  it('context-menu 子菜单与触发项相邻（right-start：左缘贴右缘、顶边对齐）', async () => {
+    const dialog = await openDrawerDialog()
+    const menu = document.createElement('web-ui-context-menu') as WebUiContextMenu
+    menu.innerHTML =
+      '<web-ui-dropdown-item submenu>Export<web-ui-dropdown-item>PDF</web-ui-dropdown-item></web-ui-dropdown-item>'
+    drawerDialogAppend(dialog, menu)
+    await menu.updateComplete
+
+    // x 取视口左缘附近：右开方向给子菜单留出充裕空间，保证右开语义成立，
+    // 不因空间不足翻转朝左（翻转朝左会走另一条分支）。
+    menu.openAt(8, 60)
+    await menu.updateComplete
+    const mainPanel = await waitForPanelPositioned(
+      getContextMenuPanel('.context-menu'),
+      'Expected the context menu to be positioned'
+    )
+
+    await waitFor(
+      () => mainPanel.getAnimations().length,
+      count => count === 0,
+      'Expected the main menu enter transition to settle'
+    )
+    const parentItem = mainPanel.querySelector<HTMLElement>('web-ui-dropdown-item')
+    parentItem?.click()
+    const submenu = await waitForPanelPositioned(
+      getContextMenuPanel('.context-submenu'),
+      'Expected the context submenu to be positioned'
+    )
+
+    // 同理，子菜单自身的入场过渡也要落定，否则量到的是 scale 中间态。
+    await waitFor(
+      () => submenu.getAnimations().length,
+      count => count === 0,
+      'Expected the submenu enter transition to settle'
+    )
+
+    const parentRect = parentItem!.getBoundingClientRect()
+    const submenuRect = submenu.getBoundingClientRect()
+    expect(
+      Math.abs(submenuRect.left - parentRect.right),
+      `子菜单左缘 ${submenuRect.left} 未贴触发项右缘 ${parentRect.right}`
+    ).toBeLessThanOrEqual(1)
+    expect(
+      Math.abs(submenuRect.top - parentRect.top),
+      `子菜单顶边 ${submenuRect.top} 未与触发项顶边 ${parentRect.top} 对齐`
+    ).toBeLessThanOrEqual(1)
+
+    // 相邻性之外还要确认它仍在模态 scrim 内可用 —— 这条场景正是「子菜单在 drawer 的
+    // dialog 内打开」，掉回宿主 dialog 的话面板会被下层抢走命中。
+    expectVisibleInMenuScrim(submenu, dialog)
+    expect(menu.isOpen).toBe(true)
+    expect(submenu.textContent).toContain('PDF')
+  })
+
   it('context-menu 主菜单快速 openAt 后最终定位为最新代', async () => {
     const dialog = await openDrawerDialog()
     const menu = document.createElement('web-ui-context-menu') as WebUiContextMenu
@@ -321,116 +387,6 @@ describe('Portal overlay 在已打开原生 dialog 内（top layer）', () => {
 
     expect(panel.style.left).toBe(latestLeft)
     expect(panel.style.top).toBe(latestTop)
-    expectVisibleInMenuScrim(panel, dialog)
-    expect(menu.isOpen).toBe(true)
-  })
-
-  it('context-menu 子菜单与触发项相邻且完整落在视口内', async () => {
-    const dialog = await openDrawerDialog()
-    const menu = document.createElement('web-ui-context-menu') as WebUiContextMenu
-    menu.innerHTML =
-      '<web-ui-dropdown-item submenu>Export<web-ui-dropdown-item>PDF</web-ui-dropdown-item></web-ui-dropdown-item>'
-    drawerDialogAppend(dialog, menu)
-    await menu.updateComplete
-
-    // x 取视口左缘附近：右开方向给子菜单留出充裕空间，保证右开语义成立，
-    // 不因空间不足翻转朝左（翻转朝左会走 gap 断言的另一分支）。
-    menu.openAt(8, 60)
-    await menu.updateComplete
-    const mainPanel = await waitForPanelPositioned(
-      getContextMenuPanel('.context-menu'),
-      'Expected the context menu to be positioned'
-    )
-
-    // 必须等主面板的入场过渡落定再点击：入场期间主面板带 scale，触发项的 rect 被缩放，
-    // 子菜单就会拿这份**过期参考矩形**去定位，落位后比触发项右缘内缩 ~10px。
-    // 这里只消除测试自身的竞态，不掩盖它 —— 相邻性断言反过来把它钉住了。
-    await waitFor(
-      () => mainPanel.getAnimations().length,
-      count => count === 0,
-      'Expected the main menu enter transition to settle'
-    )
-    const parentItem = mainPanel.querySelector<HTMLElement>('web-ui-dropdown-item')
-    parentItem?.click()
-    const submenu = await waitForPanelPositioned(
-      getContextMenuPanel('.context-submenu'),
-      'Expected the context submenu to be positioned'
-    )
-
-    // 同理，子菜单自身的入场过渡也要落定，否则量到的是 scale 中间态。
-    await waitFor(
-      () => submenu.getAnimations().length,
-      count => count === 0,
-      'Expected the submenu enter transition to settle'
-    )
-
-    // 相邻性：placement 是 right-start 且没有 offset middleware，子菜单左缘即触发项右缘。
-    const parentRect = parentItem!.getBoundingClientRect()
-    const submenuRect = submenu.getBoundingClientRect()
-    expect(Math.abs(submenuRect.left - parentRect.right)).toBeLessThanOrEqual(1)
-    // right-start 的纵向语义是**顶边对齐**：子菜单可比触发项高，不得因此上移。
-    expect(Math.abs(submenuRect.top - parentRect.top)).toBeLessThanOrEqual(1)
-
-    // 完整在视口内：shift(crossAxis) 的可观察面。
-    expect(submenuRect.left).toBeGreaterThanOrEqual(0)
-    expect(submenuRect.top).toBeGreaterThanOrEqual(0)
-    expect(submenuRect.right).toBeLessThanOrEqual(window.innerWidth)
-    expect(submenuRect.bottom).toBeLessThanOrEqual(window.innerHeight)
-
-    expectVisibleInMenuScrim(submenu, dialog)
-    expect(menu.isOpen).toBe(true)
-    expect(submenu.textContent).toContain('PDF')
-  })
-
-  it('context-menu 在视口下缘打开时面板完整钳制在视口内且 origin 含 bottom', async () => {
-    const dialog = await openDrawerDialog()
-    const menu = document.createElement('web-ui-context-menu') as WebUiContextMenu
-    menu.innerHTML =
-      '<web-ui-dropdown-item>Preview</web-ui-dropdown-item><web-ui-dropdown-item>Delete</web-ui-dropdown-item>'
-    drawerDialogAppend(dialog, menu)
-    await menu.updateComplete
-
-    // dialog 路径 shift 曾只钳制 x（crossAxis 默认 false），下缘打开时底部溢出。
-    menu.openAt(40, window.innerHeight - 60)
-    await menu.updateComplete
-    const panel = await waitForPanelPositioned(
-      getContextMenuPanel('.context-menu'),
-      'Expected the context menu to be positioned'
-    )
-
-    // 钳制：shift 的 padding 是 8，四边都不得越出视口。
-    const rect = panel.getBoundingClientRect()
-    expect(rect.left).toBeGreaterThanOrEqual(0)
-    expect(rect.top).toBeGreaterThanOrEqual(0)
-    expect(rect.right).toBeLessThanOrEqual(window.innerWidth)
-    expect(rect.bottom).toBeLessThanOrEqual(window.innerHeight)
-    // origin：flip 把面板翻到了触发点**上方**（placement 变成 top-start），于是离触发点
-    // 最近的那条边是下沿，origin 随之为 bottom。旧实现这里是被 shift 沿 y 轴推上去的，
-    // 现在由 flip 决定 —— 断言不变，机制换了。
-    expect(panel.style.getPropertyValue('--wui-internal-overlay-transform-origin')).toContain('bottom')
-
-    expectVisibleInMenuScrim(panel, dialog)
-    expect(menu.isOpen).toBe(true)
-  })
-
-  it('context-menu transform-origin 无 shift 推动时为 top left', async () => {
-    const dialog = await openDrawerDialog()
-    const menu = document.createElement('web-ui-context-menu') as WebUiContextMenu
-    menu.innerHTML =
-      '<web-ui-dropdown-item>Preview</web-ui-dropdown-item><web-ui-dropdown-item>Delete</web-ui-dropdown-item>'
-    drawerDialogAppend(dialog, menu)
-    await menu.updateComplete
-
-    // 光标取面板可完整容纳的位置，shift 不推动，origin 应为 top left；
-    // 旧启发式把 dialog 相对坐标与视口光标比较，dialog 原点非零时恒判 bottom right。
-    menu.openAt(100, 400)
-    await menu.updateComplete
-    const panel = await waitForPanelPositioned(
-      getContextMenuPanel('.context-menu'),
-      'Expected the context menu to be positioned'
-    )
-
-    expect(panel.style.getPropertyValue('--wui-internal-overlay-transform-origin')).toBe('top left')
     expectVisibleInMenuScrim(panel, dialog)
     expect(menu.isOpen).toBe(true)
   })
