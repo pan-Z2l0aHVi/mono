@@ -2340,3 +2340,18 @@ describe('ResourceList：连按方向键与卸载后的落焦', () => {
     }
   })
 })
+
+// jsdom 未实现原生 dialog 的 modal 语义，这里局部补足 showModal/close 对 open 的影响。
+// 刻意不做成全局 shim —— 本文件用的真实 web-ui-context-menu 直接调 `scrim.showModal()`，
+// 没有可选链兜底；而一旦全局补上，共享 presence 的 `showModal?.()` 在其他 spec
+// （web-ui 侧的 image-preview 等用例）就会真正执行，改变它们的观察点。
+if (!HTMLDialogElement.prototype.showModal) {
+  HTMLDialogElement.prototype.showModal = function () {
+    this.setAttribute('open', '')
+  }
+}
+if (!HTMLDialogElement.prototype.close) {
+  HTMLDialogElement.prototype.close = function () {
+    this.removeAttribute('open')
+  }
+}
