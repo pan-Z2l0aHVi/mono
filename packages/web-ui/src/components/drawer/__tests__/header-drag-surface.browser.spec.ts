@@ -170,6 +170,18 @@ async function settleGeometry(el: WebUiDrawer, timeoutMs = 5000) {
   }
 }
 
+/**
+ * 再等 n 帧。
+ *
+ * 让位量不来自布局本身，而来自 ResizeObserver 回调写回的自定义属性：那一节被重新隐藏后，
+ * 观察者要等一次尺寸回调才把让位量归零。`settleGeometry` 量的是 dialog 矩形，收敛时那一节
+ * 可能刚好已隐藏、属性却还没回写，所以这里再跨几帧把这条链路走完。按帧等而不是 sleep：
+ * 高负载下帧变慢，等待随之拉长而不是提前落空。
+ */
+async function settleFrames(frames: number) {
+  for (let i = 0; i < frames; i++) await new Promise(resolve => requestAnimationFrame(resolve))
+}
+
 async function realPressAt(x: number, y: number): Promise<void> {
   const client = cdp() as unknown as CdpSession
   const p = toViewportPoint(x, y)
@@ -475,6 +487,36 @@ describe('WebUiDrawer header / footer 整块可拖（浏览器）', () => {
       expect(Math.abs(offset), `${placement} 无头尾时让位=${offset}`).toBeLessThanOrEqual(EPS)
       el.remove()
     }
+  })
+
+  it('断开期间清空 footer，重连后热区让位量归零', async () => {
+    // footer 是 `top` placement 的对位：`bottom` 贴顶边让开 header，`top` 贴底边让开 footer。
+    const { el } = await mountDrawer({ placement: 'top', footer: true })
+    const dialog = getDialog(el)
+    // 让位量相对**面板**量，与本文件既有用例同一口径：bottom placement 是下沿锚定的，
+    // 面板自身长度会变，拿视口绝对坐标会把「让位归零」与「面板动了」混成同一现象。
+    const avoid = () =>
+      dialog.getBoundingClientRect().bottom - query(el, '.wui-drawer-drag-zone').getBoundingClientRect().bottom
+    // 前置判据同样钉关系：让位量至少要大于 footer 自身的高度（多的那截是间距）。
+    // 写成 "> 64" 那类魔数会把断言绑死在某个 mountDrawer 的 footer 高度上，换个 helper 就假红。
+    const footerHeight = query(el, '.wui-drawer-footer').getBoundingClientRect().height
+    const withFooter = avoid()
+    expect(withFooter, `有 footer 时让位=${withFooter}，footer 高=${footerHeight}`).toBeGreaterThan(footerHeight)
+
+    el.remove()
+    el.querySelector('[slot="footer"]')!.remove()
+    document.body.append(el)
+    await el.updateComplete
+    await pollUntil(() => getDialog(el).classList.contains('is-visible'), 'drawer did not become visible after remount')
+    await settleGeometry(el)
+    await settleFrames(3)
+
+    /*
+     * 判据是**关系**：重连后的让位量与「从来没有 footer」是同一几何（同为本文件紧挨着的
+     * 那条用例的终点），而不是钉某个像素值。让位量取自 offsetHeight，浏览器实测 32px 的空节
+     * 也会让位——正是本缺陷用户可感知的那条死带。
+     */
+    expect(Math.abs(avoid()), `重连后让位=${avoid()}`).toBeLessThanOrEqual(EPS)
   })
 
   it('嵌套下层时 header 的手势提示与 JS 闸同步退场（不夺触摸手势、不骗光标）', async () => {
