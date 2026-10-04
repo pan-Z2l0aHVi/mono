@@ -26,19 +26,11 @@ describe('definePlugin 测试', () => {
   })
 
   describe('make', () => {
-    it('应当实例化插件，并且能够调用插件的属性方法', () => {
-      function defineTracker() {
-        return definePlugin(() => ({
-          track: (event: string) => console.log(`tracking ${event}`)
-        }))
-      }
-      const tracker = defineTracker().make()
-      expect(tracker).toHaveProperty('track')
-      expect(typeof tracker.track).toBe('function')
+    it('把工厂函数的返回值原样暴露为实例方法', () => {
+      const tracker = definePlugin(() => ({ track: (event: string) => `tracked:${event}` })).make()
 
-      const spy = vi.spyOn(console, 'log').mockImplementation(() => {})
-      tracker.track('test event')
-      expect(spy).toHaveBeenCalled()
+      // 插件实例就是消费面：所有 wrapper 插件都靠 make() 拿到可调用的成员
+      expect(tracker.track('evt')).toBe('tracked:evt')
     })
   })
 
@@ -52,12 +44,14 @@ describe('definePlugin 测试', () => {
         send: (data: string) => `wrapped:${data}`
       }))
 
+      // batch-track 等 wrapper 插件依赖这一行为：自己的 track/flush 覆盖 core 的。
+      // 写错会静默变成「核心方法被空插件顶掉」，上报整体失效。
       const composed = base.use(wrapper).make()
-      // batch-track 等 wrapper 插件依赖这一行为：自己的 track/flush 覆盖 core 的
       expect(composed.send('x')).toBe('wrapped:x')
+      // 未被覆盖的成员仍从 base 取到
       expect(composed.who).toBe('base')
 
-      // 顺序对调时覆盖关系跟着对调，而非固定某一方
+      // 覆盖关系跟随 use 顺序，不是固定某一方优先
       const reversed = wrapper.use(base).make()
       expect(reversed.send('x')).toBe('base:x')
     })
@@ -111,28 +105,27 @@ describe('definePlugin 测试', () => {
         }
       })
 
-    it('应当正确组合 Store, Logger 和 Persist 逻辑', () => {
+    it('组合后写入穿透到 base，同时经过中间插件', () => {
       const logSpy = vi.spyOn(console, 'log')
 
       const store = defineStore({ a: 1, b: 2 }).use(defineLogger()).use(definePersist()).make()
 
       expect(store.get('a')).toBe(1)
 
-      // 调用顺序: Persist.set -> Logger.set -> Store.set
+      // 调用链 Persist.set → Logger.set → Store.set：最外层插件必须能调用到 base 的能力
       store.set('a', 100)
 
       expect(store.get('a')).toBe(100)
       expect(logSpy).toHaveBeenCalledWith('set a = 100.')
-
-      const cached = JSON.parse(localStorage.getItem('persit-store') || '{}')
-      expect(cached.a).toBe(100)
+      expect(JSON.parse(localStorage.getItem('persit-store') || '{}').a).toBe(100)
     })
 
-    it('应当在初始化时从持久化恢复数据', () => {
+    it('组合时从持久化恢复数据，覆盖 base 的初始值', () => {
       localStorage.setItem('persit-store', JSON.stringify({ a: 999 }))
 
       const store = defineStore({ a: 1 }).use(definePersist()).make()
 
+      // 恢复发生在工厂函数执行期：漏掉这一步会让用户每次刷新都丢掉上次的状态
       expect(store.get('a')).toBe(999)
     })
   })
