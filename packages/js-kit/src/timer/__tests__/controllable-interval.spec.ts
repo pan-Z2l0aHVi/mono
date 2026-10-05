@@ -24,6 +24,23 @@ describe('defineControllableInterval 测试', () => {
     expect(cb).toHaveBeenCalledTimes(3)
   })
 
+  it('回调内部调 stop 后定时器不再复活', () => {
+    // 回归：stop() 若在回调内部被调用，回调返回后的续期决策读到的是 stop 刚复位的
+    // isPaused=false，于是重新 setTimeout——定时器在 stop 之后继续触发，违背 stop 的含义。
+    // 既有 7 条用例都把 stop() 放在测试收尾清理，没有一条验证过 stop() 本身的效果。
+    const cb = vi.fn<() => void>()
+    const timer = defineControllableInterval({ callback: cb, interval: 1000 }).make()
+    cb.mockImplementation(() => timer.stop())
+
+    timer.start()
+    vi.advanceTimersByTime(1000)
+    expect(cb).toHaveBeenCalledTimes(1)
+
+    // 远超一个周期：若定时器复活，这里会第二次触发
+    vi.advanceTimersByTime(5000)
+    expect(cb).toHaveBeenCalledTimes(1)
+  })
+
   it('resume 补完暂停前的剩余时间，而不是重新计满一个周期', () => {
     // 这是本定时器区别于普通 setInterval 的核心契约：暂停 800ms 后只剩 200ms，
     // 回到前台时应立刻触发，而不是让用户再干等一个完整周期
