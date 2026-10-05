@@ -192,6 +192,77 @@ const allChainedSites = componentCssFiles.flatMap(file =>
   collectChainedSites(fs.readFileSync(file, 'utf8'), path.relative(`${packageRoot}src`, file))
 )
 
+/*
+ * 表面 token 的归属：哪个组件的哪条表面声明该消费哪一枚浮动表面 token。
+ *
+ * 上面的字面量守卫只管「fallback 字面量 == theme 定义值」，两边一起改就自洽通过：把
+ * tooltip 的 surface-menu 换成 surface-overlay、fallback 字面量同步换成 overlay 的合法值，
+ * parity 全程静默，而无 theme 时该面板落到 overlay 灰（暗色下是可见的错误颜色）。
+ * 那是 token **归属**被改错了，同步断言按定义看不见它。
+ *
+ * 归属为什么必须手写成清单而不靠注释：注释可以撒谎。dialog 的 CSS 注释写「overlay 面板」
+ * 而代码消费 surface-menu，任何读注释的守卫都会说「声明过了」而放过。清单对着代码比对，
+ * 不一致时必然红——它不是完美的第二来源（会过时），但它不会假装自己成立。
+ *
+ * 与 surface-elevation.browser.spec.ts 互补而非重叠：那份在浏览器里挂载组件、读 computed
+ * background 与 token 定义比，是运行时探针；本条是静态清单，零浏览器、零字面量断言。
+ * 两份各有对方做不到的事——运行时探针只钉住它显式提到的组件（本条覆盖 8 个里的 6 个它没提），
+ * 静态清单则不需要每个组件各写一套挂载样板（dialog/drawer/toast/tooltip 的打开路径各不相同）。
+ */
+const surfaceOwnership = new Map<string, string>([
+  // 菜单族：下拉、浮层气泡与提示条，同一档半透明玻璃底，浮在内容之上。
+  ['autocomplete', '--wui-color-surface-menu'],
+  ['popover', '--wui-color-surface-menu'],
+  ['select', '--wui-color-surface-menu'],
+  ['tooltip', '--wui-color-surface-menu'],
+  // 浮层族：dialog/drawer/toast 背后是被它遮住的主体内容，透过去会与浮层文字叠出干扰读的
+  // 对比，因此单独抬到更高的 alpha 换取可读性（见 theme/style.css dark 块注释）。
+  ['dialog', '--wui-color-surface-overlay'],
+  ['drawer', '--wui-color-surface-overlay'],
+  ['toast', '--wui-color-surface-overlay'],
+  // 侧边栏：深色下比 page 浅一档的专用 token，刻意不复用 overlay（见 layout/style.css 注释）。
+  ['layout', '--wui-color-surface-sidebar']
+])
+
+/**
+ * 提取某组件里「作为面板底色」的浮动表面 token，限 `surface-menu` / `surface-overlay` /
+ * `surface-sidebar` 三枚——浮动面板族。`surface-glass` / `-track` / `-control` 等不在本清单
+ * 范围：它们是控件表面而非浮层面板，归属规则不同（见 theme token 表的 Description 列）。
+ *
+ * 只认 `background-color` 上的 `var()`：这三枚 token 在组件 CSS 里的全部用法都是面板底色，
+ * 而 `background` 简写与 `--wui-*` 别名赋值里若出现，语义不一定是底色（别名可承载任意值），
+ * 按字面位置收会把它们误判成消费者。dialog/drawer 的 `--wui-dialog-bg` / `--wui-drawer-bg`
+ * 是可被 app 覆盖的出口，浮动表面 token 只作为它们的**回退默认值**出现——回退链上的最内层
+ * 同样是「这条声明最终消费哪枚 token」，故取最内层那个 var()。
+ */
+function surfaceTokensOf(css: string): string[] {
+  const tokens: string[] = []
+  const re = /background-color:[^;]*?var\(\s*(--wui-color-surface-(?:menu|overlay|sidebar))\s*,/g
+  let match: RegExpExecArray | null
+  while ((match = re.exec(css))) tokens.push(match[1])
+  return tokens
+}
+
+/** 组件目录名（与 `components/<name>/` 对应）。主题自身是定义源而非消费者，故排除。 */
+const surfaceComponentDirs = fs
+  .readdirSync(`${packageRoot}src/components`, { withFileTypes: true })
+  .filter(entry => entry.isDirectory() && entry.name !== 'theme')
+  .map(entry => entry.name)
+
+/** 组件目录 → 其 CSS 实际消费的浮动表面 token 集合。 */
+const actualSurfaceOwnership = new Map<string, Set<string>>(
+  surfaceComponentDirs.map(name => [
+    name,
+    new Set(
+      surfaceTokensOf(
+        collectCssFiles(`${packageRoot}src/components/${name}`, () => false)
+          .map(file => fs.readFileSync(file, 'utf8'))
+          .join('\n')
+      )
+    )
+  ])
+)
+
 describe('token fallback 与定义单一来源', () => {
   it('所有字面量 fallback 与 theme 默认定义一致', () => {
     const mismatches: string[] = []
@@ -244,6 +315,45 @@ describe('token fallback 与定义单一来源', () => {
     // 会无声失效），而不是某几处 token 被删；后者由断言本身的红负责，不必在这里体现。
     const chainedCount = allFallbackSites.filter(site => site.fallback.includes('var(')).length
     expect(chainedCount).toBeGreaterThan(40)
+  })
+
+  it('浮动表面 token 的归属与清单一致（token 被换掉时红）', () => {
+    // 双向比对，两个方向都要抓：
+    //  - 清单有、CSS 消费的不是它 → token 被换成了另一枚（本次要拦的正是这条）
+    //  - CSS 消费了浮动表面 token、清单里没有 → 新增组件忘了登记
+    // 只登记集合不比顺序：同一组件可能合法消费多枚，登记的是它**允许**消费的全集。
+    const unregistered: string[] = []
+    const mismatches: string[] = []
+
+    for (const [name, actual] of actualSurfaceOwnership) {
+      if (actual.size === 0) continue
+      const expected = surfaceOwnership.get(name)
+      if (expected === undefined) {
+        unregistered.push(`${name} 消费了 ${[...actual].sort().join('、')}，但归属清单里没有登记`)
+        continue
+      }
+      for (const token of [...actual].sort()) {
+        if (token !== expected) mismatches.push(`${name} 消费 ${token} ≠ 清单登记的 ${expected}`)
+      }
+    }
+
+    for (const [name, expected] of surfaceOwnership) {
+      const actual = actualSurfaceOwnership.get(name)
+      if (!actual?.has(expected)) {
+        mismatches.push(
+          `${name} 清单登记了 ${expected}，但组件 CSS 里没有消费它（实际：${actual?.size ? [...actual].sort().join('、') : '无'}）`
+        )
+      }
+    }
+
+    expect(unregistered, `\n${unregistered.join('\n')}`).toEqual([])
+    expect(mismatches, `\n${mismatches.join('\n')}`).toEqual([])
+  })
+
+  it('归属清单覆盖面保持规模（防退化到无守卫状态）', () => {
+    // 与上面两条覆盖面守卫同口径：数的是「清单登记的组件数」。低于阈值说明清单被删空或
+    // 组件目录被搬走，守卫静默失效而不是报错——这是清单型守卫的固有死法，须显式拦。
+    expect(surfaceOwnership.size).toBeGreaterThan(5)
   })
 })
 
