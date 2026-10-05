@@ -58,6 +58,7 @@ interface FallbackSite {
   fallback: string
   file: string
   line: number
+  index: number
 }
 function extractFallbacks(css: string, file: string): FallbackSite[] {
   const sites: FallbackSite[] = []
@@ -73,9 +74,54 @@ function extractFallbacks(css: string, file: string): FallbackSite[] {
     }
     const fallback = css.slice(match.index + match[0].length, i - 1).trim()
     const line = css.slice(0, match.index).split('\n').length
-    sites.push({ token: match[1], fallback, file, line })
+    sites.push({ token: match[1], fallback, file, line, index: match.index })
   }
   return sites
+}
+
+// 剥 CSS 注释：把 /* … */ 整段换成等长空白（换行保留）。平铺扫描看不见注释边界，
+// 注释里出现的 var(--wui-*, …) 会被当成真站点——今天无害只是因为那两个 token 在 theme
+// 里都没有定义，断言 continue 跳过；补上定义或注释里写成合法字面量，它就变成假红
+// （拿注释里的推导式当真值比）或假绿（注释里的字面量恰好匹配，掩盖真实站点的漂移）。
+//
+// 两个反例形状各留一道合成用例；每道的红分别由一次变异证明（剥除整体不生效、去掉字符串
+// 感知、注释收尾差一位）：
+//   content: "/*" / '\' /*'   字符串字面量里的 /* 不是注释起点（否则后面的真声明被整段吞掉）
+//   url(/* … */)              未加引号的 url() token 里虽然实际不解析注释，但剥掉会截断 token
+function stripCssComments(css: string): string {
+  const out = css.split('')
+  let i = 0
+  let quote: string | null = null
+  while (i < css.length) {
+    const ch = css[i]
+    if (quote !== null) {
+      if (ch === '\\') i += 2
+      else {
+        if (ch === quote) quote = null
+        i++
+      }
+      continue
+    }
+    if (ch === '"' || ch === "'") {
+      quote = ch
+      i++
+      continue
+    }
+    if (ch === '/' && css[i + 1] === '*') {
+      const end = css.indexOf('*/', i + 2)
+      const stop = end === -1 ? css.length : end + 2
+      for (let k = i; k < stop; k++) if (out[k] !== '\n') out[k] = ' '
+      i = stop
+      continue
+    }
+    i++
+  }
+  return out.join('')
+}
+
+/** 剥掉注释后再扫。index 与剥之前同一坐标系，断言里的 file:line 报错位置不变。 */
+function extractFallbacksIgnoringComments(css: string, file: string): FallbackSite[] {
+  return extractFallbacks(stripCssComments(css), file)
 }
 
 /**
@@ -123,7 +169,7 @@ function chainShape(value: string): string {
 
 /** 收集组件样式里全部链式 fallback（顶层 var() 的 fallback 内含 var() 的那些）。 */
 function collectChainedSites(css: string, file: string): FallbackSite[] {
-  return extractFallbacks(css, file).filter(site => site.fallback.includes('var('))
+  return extractFallbacksIgnoringComments(css, file).filter(site => site.fallback.includes('var('))
 }
 
 function collectCssFiles(dir: string, exclude: (file: string) => boolean): string[] {
@@ -140,7 +186,7 @@ function collectCssFiles(dir: string, exclude: (file: string) => boolean): strin
 // assets/*.css（glass / overlay-motion / menu-portal）自带 internal 别名与独立默认层，不纳入。
 const componentCssFiles = collectCssFiles(`${packageRoot}src/components`, file => file.includes('theme/style.css'))
 const allFallbackSites = componentCssFiles.flatMap(file =>
-  extractFallbacks(fs.readFileSync(file, 'utf8'), path.relative(`${packageRoot}src`, file))
+  extractFallbacksIgnoringComments(fs.readFileSync(file, 'utf8'), path.relative(`${packageRoot}src`, file))
 )
 const allChainedSites = componentCssFiles.flatMap(file =>
   collectChainedSites(fs.readFileSync(file, 'utf8'), path.relative(`${packageRoot}src`, file))
@@ -198,6 +244,102 @@ describe('token fallback 与定义单一来源', () => {
     // 会无声失效），而不是某几处 token 被删；后者由断言本身的红负责，不必在这里体现。
     const chainedCount = allFallbackSites.filter(site => site.fallback.includes('var(')).length
     expect(chainedCount).toBeGreaterThan(40)
+  })
+})
+
+describe('注释不是 fallback 站点', () => {
+  it('注释里的 var() 不计入站点，真实站点照收', () => {
+    // 真假各一，用同一段 CSS（形取自仓库里那两处真实注释）：剥注释后只该剩真实那条
+    const css = [
+      '/* 推导写成 `var(--wui-collapse-peek-edge, <推导式>)`：显式设了长度就听调用方的 */',
+      '.demo {',
+      '  /* 旧写法 var(--wui-dialog-max-height, 560px)，见 base b6b7eb34 */',
+      '  color: var(--wui-color-accent, #08f);',
+      '}'
+    ].join('\n')
+    const sites = extractFallbacksIgnoringComments(css, 'demo.css')
+    expect(sites.map(site => site.token)).toEqual(['--wui-color-accent'])
+    expect(sites[0]?.fallback).toBe('#08f')
+    // 剥之前注释里那两条确实会被收进来——这条同时钉住「该缺陷曾真实存在」
+    expect(extractFallbacks(css, 'demo.css').map(site => site.token)).toEqual([
+      '--wui-collapse-peek-edge',
+      '--wui-dialog-max-height',
+      '--wui-color-accent'
+    ])
+  })
+
+  it('注释里的链式 fallback 也不计入链式覆盖面', () => {
+    const css =
+      '/* var(--wui-color-accent, var(--wui-color-surface-menu, #fff)) */\n.a { color: var(--wui-color-text, #111); }'
+    const chained = collectChainedSites(css, 'demo.css')
+    expect(chained).toEqual([])
+    expect(extractFallbacksIgnoringComments(css, 'demo.css').map(site => site.fallback)).toEqual(['#111'])
+  })
+
+  it('剥注释后行号仍指向真实声明', () => {
+    // 报错信息里的 file:line 是定位手段；剥成等长空白时换行必须保留，行号才不漂
+    const css = '/* 第一行\n第二行\n第三行 */\n.a { color: var(--wui-color-accent, #08f); }'
+    expect(extractFallbacksIgnoringComments(css, 'demo.css')[0]?.line).toBe(4)
+  })
+
+  it('字符串字面量里的 /* 不是注释起点', () => {
+    // 少一层字符串感知就会把后面的真实声明整段吞掉——那是把假红换成了假绿
+    const css = '.a::after { content: "/*"; color: var(--wui-color-accent, #08f); }'
+    expect(extractFallbacksIgnoringComments(css, 'demo.css').map(site => site.fallback)).toEqual(['#08f'])
+  })
+
+  it('单引号字符串与转义引号同样不是注释起点', () => {
+    const css = `.a::after { content: '\\' /*'; color: var(--wui-color-accent, #08f); }`
+    expect(extractFallbacksIgnoringComments(css, 'demo.css').map(site => site.fallback)).toEqual(['#08f'])
+  })
+
+  it('单行注释里的 var() 不计入站点', () => {
+    const css = '.a {\n  /* 见 var(--wui-color-text, #111) */\n  color: var(--wui-color-accent, #08f);\n}'
+    expect(extractFallbacksIgnoringComments(css, 'demo.css').map(site => site.token)).toEqual(['--wui-color-accent'])
+  })
+
+  it('未闭合的注释吞到文件末尾，不把后面的 var() 收进来', () => {
+    // 真实 CSS 不会被这样写，但解析器若在这里把 /* 当普通字符，注释里的 var() 就会漏成站点
+    const css = '.a {\n  /* 忘了闭合 var(--wui-color-text, #111)\n'
+    expect(extractFallbacksIgnoringComments(css, 'demo.css')).toEqual([])
+  })
+
+  it('剥注释只影响 var() 站点，不动其余声明', () => {
+    const css = '/* 头 */\n.a {\n  /* 中 */\n  color: var(--wui-color-accent, #08f);\n  margin: 0;\n  /* 尾 */\n}'
+    const stripped = stripCssComments(css)
+    expect(stripped).toContain('margin: 0;')
+    expect(stripped).toContain('color: var(--wui-color-accent, #08f);')
+    expect(stripped).not.toContain('/*')
+    expect(stripped.length).toBe(css.length)
+    expect(stripped.split('\n').length).toBe(css.split('\n').length)
+  })
+
+  it('url() token 里的注释被剥掉但声明结构完好（本守卫不为 url 内的注释保 token 文本）', () => {
+    // 真实 CSS 里 token 内部不会写注释（未加引号的 url() token 遇 /* 实际终止该 token）。
+    // 这里只钉住剥除不会往 url( … ) 里灌空白而让括号配平失配——那会吞掉 url 后面整条声明，
+    // 即「多剥」变成「少扫」。token 文本本身被丢弃是已知取舍：url 的取值不属于本守卫断言面。
+    const css = '.a { mask-image: url(/* x */a.svg); color: var(--wui-color-accent, #08f); }'
+    expect(extractFallbacksIgnoringComments(css, 'demo.css').map(site => site.fallback)).toEqual(['#08f'])
+    expect(stripCssComments(css)).toContain('url(       a.svg); color: var(--wui-color-accent, #08f);')
+  })
+
+  it('剥注释后组件 CSS 的站点总数少 2（剥掉的两处正是注释内的 var()）', () => {
+    // 覆盖面口径：原样扫出 678 处，剥掉 collapse:176 与 dialog:72 两处注释站点后剩 676
+    expect(allFallbackSites).toHaveLength(676)
+  })
+
+  it('原样扫描与剥注释扫描的差集恰好是这两处，其余站点逐字不动', () => {
+    // 一条同时钉住两件事：剥注释确实生效（差集非空），且只动注释内的站点（差集就是这两处）
+    const inComments = componentCssFiles.flatMap(file => {
+      const rel = path.relative(`${packageRoot}src`, file)
+      const raw = extractFallbacks(fs.readFileSync(file, 'utf8'), rel)
+      const kept = new Set(extractFallbacksIgnoringComments(fs.readFileSync(file, 'utf8'), rel).map(s => s.index))
+      return raw.filter(site => !kept.has(site.index))
+    })
+    expect(inComments.map(site => `${site.file}:${site.line} ${site.token}`)).toEqual([
+      'components/collapse/style.css:176 --wui-collapse-peek-edge',
+      'components/dialog/style.css:72 --wui-dialog-max-height'
+    ])
   })
 })
 
