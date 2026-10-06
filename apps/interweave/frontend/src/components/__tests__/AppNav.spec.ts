@@ -1,6 +1,5 @@
 // @vitest-environment jsdom
 
-import { WebUiSvgDrawLines } from '@greypan/web-ui'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { createApp, nextTick, ref } from 'vue'
 
@@ -69,18 +68,6 @@ function navItem(host: HTMLElement, label: string) {
   return element
 }
 
-function drawHosts(host: HTMLElement) {
-  return [...host.querySelectorAll<WebUiSvgDrawLines>('web-ui-svg-draw-lines')]
-}
-
-/** playDraw 会先 await web-ui-icon.updateComplete 再 replay，需要跨若干个微/宏任务。 */
-async function flush() {
-  for (let i = 0; i < 5; i++) {
-    await nextTick()
-    await new Promise(resolve => setTimeout(resolve, 0))
-  }
-}
-
 describe('AppNav：主导航', () => {
   beforeEach(() => {
     route.value = { path: '/library' }
@@ -127,33 +114,11 @@ describe('AppNav：主导航', () => {
     await mounted.close()
   })
 
-  it('点击当前路由项时实例存活，直接重放该图标的画线动画', async () => {
-    const mounted = await mountNav()
-    const [library, map] = drawHosts(mounted.host)
-    const replay = vi.spyOn(WebUiSvgDrawLines.prototype, 'replay')
-
-    navItem(mounted.host, '资料库').click()
-    await flush()
-
-    expect(replay.mock.instances).toEqual([library])
-
-    await mounted.close()
-  })
-
-  it('跨路由点击同样重放目标图标的画线动画', async () => {
-    const mounted = await mountNav()
-    const map = drawHosts(mounted.host)[1]!
-    const replay = vi.spyOn(WebUiSvgDrawLines.prototype, 'replay')
-
-    navItem(mounted.host, '关系图谱').click()
-    await flush()
-
-    expect(router.push).toHaveBeenCalledWith('/map')
-    expect(replay.mock.instances).toEqual([map])
-
-    await mounted.close()
-  })
-
+  /*
+   * 画线动画的重放机制（replay 的触发与时机）由 web-ui 的 svg-draw-lines 组件测试覆盖；
+   * 这里不再 spy 组件原型方法复测一遍。导航自身的职责——aria-current、navigate 分支、
+   * 设置入口——由其余用例守住。
+   */
   it('折叠时不渲染文字标签，只保留 aria-label', async () => {
     const mounted = await mountNav({ collapsed: true })
 

@@ -55,6 +55,29 @@ describe('context-menu 长按（jsdom 逻辑）', () => {
     cleanupElement(el)
   })
 
+  /*
+   * 陷阱钉子：long-press 走 Lit 的 Boolean 转换器，只看「属性在不在」——
+   * setAttribute('long-press', 'false') 读回来也是 true。框架（如 Vue）对自定义元素走属性
+   * 路径，布尔 false 会被写成字符串 "false"，于是「:long-press="someBool"」这种绑定会把
+   * 语义整个反转：本想关闭，实际开启。真机上验证过 attribute "false" 而 property true。
+   *
+   * 这条钉住现行为，让任何想改转换器（比如把 "false" 判为关闭）的人都做成显式决定；
+   * 消费方的正确写法是「属性整个消失」，apps/interweave 的 ResourceList spec 里有宿主侧
+   * 的对应断言。
+   */
+  it('long-press="false" 字符串同样算启用：布尔语义是属性在不在，不是字面值', async () => {
+    vi.useFakeTimers()
+    const el = createMenu({ 'long-press': 'false' })
+    await waitForUpdate(el)
+
+    press(el)
+    await vi.advanceTimersByTimeAsync(600)
+    await waitForUpdate(el)
+
+    expect(el.isOpen).toBe(true)
+    cleanupElement(el)
+  })
+
   it('鼠标指针不触发长按', async () => {
     vi.useFakeTimers()
     const el = createMenu({ 'long-press': '' })

@@ -118,26 +118,12 @@ describe('AppLayout：应用外壳', () => {
     expect(navRoot()).toBe(nav)
   })
 
-  it('AppNav 落在 sidebar slot，页面内容落在 main', async () => {
-    await mountLayout()
-
-    expect(assignedTo('sidebar')).toContain(navRoot())
-    expect(assignedTo('default').map(element => element.getAttribute('data-testid'))).toEqual(['page-body'])
-  })
-
-  it('页面根节点的 slot="header" 投进 layout 的 header slot', async () => {
-    await mountLayout()
-
-    expect(assignedTo('header').map(element => element.getAttribute('data-testid'))).toEqual(['page-header'])
-  })
-
-  it('切到无 header 的页面时 header slot 清空，不残留上一页的工具条', async () => {
-    await mountLayout()
-    await navigate('/map')
-
-    expect(assignedTo('header')).toEqual([])
-    expect(assignedTo('default').map(element => element.textContent)).toEqual(['关系图谱'])
-  })
+  /*
+   * slot 分配矩阵（sidebar/header/default 各落到哪）不再逐条在此复测：jsdom 只能读
+   * assignedElements，断言的其实是 web-ui-layout 的 slot 机制本身，组件侧已覆盖；
+   * 页面与壳的接合由 LibraryPage.spec 的「根节点带 slot="header"」一条守住。
+   * 这里保留它，是因为设置对话框的挂载位置是本组件自有的接线（见下方用例）。
+   */
 })
 
 describe('AppLayout：设置对话框接线', () => {

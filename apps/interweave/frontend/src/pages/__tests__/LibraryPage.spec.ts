@@ -270,26 +270,10 @@ describe('LibraryPage：可用性感知接线', () => {
     runtimeStub.current = null
   })
 
-  it('打开详情：失效的 URL 首选 source 恰好触发一次探测', async () => {
-    const probeURLSourceOnOpen = vi.fn<LibraryRuntime['probeURLSourceOnOpen']>(async () => ({
-      source: source(),
-      outcome: SourceProbeOutcome.SourceProbeOutcomeAvailable
-    }))
-    runtimeStub.current = createRuntime({ probeURLSourceOnOpen })
-    const mounted = await mountPage()
-
-    try {
-      await openDetailFromMenu(mounted.host)
-
-      expect(probeURLSourceOnOpen).toHaveBeenCalledExactlyOnceWith('source-1')
-    } finally {
-      await mounted.close()
-    }
-  })
-
   /*
-   * 列表左键现在是预览：开的是预览抽屉，不该顺手去探测详情那条路上的 URL source。
-   * 探测只属于「打开详情」，由右键菜单的详情项触发。
+   * 探测的分支判定（只对失效的 URL source 探测、file 不探测等）归 useLibraryRuntime.spec
+   * ——composable 层已逐分支覆盖，页面层不再重复。这里只守页面接线：
+   * 左键走预览抽屉、不踩详情那一路的探测。
    */
   it('左键行进的是预览抽屉，不开详情也不探测', async () => {
     const probeURLSourceOnOpen = vi.fn<LibraryRuntime['probeURLSourceOnOpen']>()
@@ -303,45 +287,6 @@ describe('LibraryPage：可用性感知接线', () => {
 
       expect(drawerOpen(mounted.host, '资源预览')).toBe(true)
       expect(drawerOpen(mounted.host, '资源详情')).toBe(false)
-      expect(probeURLSourceOnOpen).not.toHaveBeenCalled()
-    } finally {
-      await mounted.close()
-    }
-  })
-
-  it('打开详情：已可用的 URL 首选 source 不触发探测', async () => {
-    const probeURLSourceOnOpen = vi.fn<LibraryRuntime['probeURLSourceOnOpen']>()
-    runtimeStub.current = createRuntime({
-      listResources: async () => [resource({ sources: [source({ available: true })] })],
-      probeURLSourceOnOpen
-    })
-    const mounted = await mountPage()
-
-    try {
-      await openDetailFromMenu(mounted.host)
-
-      expect(probeURLSourceOnOpen).not.toHaveBeenCalled()
-    } finally {
-      await mounted.close()
-    }
-  })
-
-  it('打开详情：file 首选 source 不触发探测', async () => {
-    const probeURLSourceOnOpen = vi.fn<LibraryRuntime['probeURLSourceOnOpen']>()
-    runtimeStub.current = createRuntime({
-      listResources: async () => [
-        resource({
-          kind: ResourceKind.ResourceKindImage,
-          sources: [source({ type: SourceType.SourceTypeFile, location: '/tmp/missing.png', available: false })]
-        })
-      ],
-      probeURLSourceOnOpen
-    })
-    const mounted = await mountPage()
-
-    try {
-      await openDetailFromMenu(mounted.host)
-
       expect(probeURLSourceOnOpen).not.toHaveBeenCalled()
     } finally {
       await mounted.close()
