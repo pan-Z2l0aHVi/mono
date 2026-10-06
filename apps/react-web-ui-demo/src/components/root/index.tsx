@@ -120,6 +120,13 @@ export function Root() {
     return () => mq.removeEventListener('change', handler)
   }, [])
   const sidebarWidth = isMobileSidebar ? 'min(320px, 80vw)' : desktopSidebarWidth
+  /*
+   * 折叠是桌面端的密度偏好，移动端 drawer 恒以展开态呈现同一份导航：drawer 宽
+   * min(320px, 80vw)，套用折叠态会把标签挤成居中截断。web-ui-layout 的
+   * `sidebar-collapsed` 契约同样写明它「不会影响移动端 Drawer」，它只是无从替
+   * Consumer 决定 slot 内容怎么渲染，所以闸门留在这里。
+   */
+  const navCollapsed = sidebarCollapsed && !isMobileSidebar
   const router = useRouter()
   const pathname = useRouterState({ select: s => s.location.pathname })
 
@@ -255,7 +262,7 @@ export function Root() {
                       className={
                         navItemClass +
                         (active ? '' : ' hover:bg-black/4 dark:hover:bg-white/6') +
-                        (sidebarCollapsed ? ' justify-center' : '')
+                        (navCollapsed ? ' justify-center' : '')
                       }
                       data-active={active}
                       aria-current={active ? 'page' : undefined}
@@ -263,7 +270,7 @@ export function Root() {
                     >
                       <span
                         className={
-                          sidebarCollapsed ? 'w-full truncate text-center text-sm' : 'min-w-0 flex-1 truncate text-sm'
+                          navCollapsed ? 'w-full truncate text-center text-sm' : 'min-w-0 flex-1 truncate text-sm'
                         }
                       >
                         {item.label}

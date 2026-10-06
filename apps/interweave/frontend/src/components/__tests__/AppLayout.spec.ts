@@ -126,6 +126,136 @@ describe('AppLayout：应用外壳', () => {
    */
 })
 
+/*
+ * issue #195：`sidebar-collapsed` 是桌面端的密度偏好，而 slot 内容同时服务桌面 aside
+ * 与移动端 drawer。若把折叠态直接透传给 AppNav，移动端抽屉里的导航会以折叠态渲染
+ * （collapsed 为真时不渲染文字标签）。闸门因此必须按 viewport 收窄。
+ *
+ * 两个 viewport 信号各由不同来源驱动，用例要同时拨动：宿主的 `mobile` 来自
+ * matchMedia（`useMediaQuery`），`web-ui-layout` 的 `_isMobile` 来自 window.innerWidth
+ * 加 resize 去抖。只拨一边都会让断言落在「半拍错位」的中间态上。
+ */
+describe('AppLayout：折叠偏好不跨视口泄漏', () => {
+  let mediaListener: ((event: MediaQueryListEvent) => void) | null = null
+  let mediaSource: { matches: boolean } | null = null
+  // 同一条用例内复用的 spy：jsdom 的 innerWidth 是只读 getter，只能靠 spy 改；对同一个
+  // 属性二次 spyOn 会撞上属性重定义，所以句柄存下来、之后只改返回值。afterEach 会清掉
+  // 它并 restoreAllMocks 还原 getter，下一条用例重新 spy 一次。
+  let innerWidthSpy: { mockReturnValue: (value: number) => unknown } | null = null
+
+  /**
+   * 可控 matchMedia：能翻转 matches 并按 useMediaQuery 的订阅派发 change。
+   * useMediaQuery 的 sync 读的是 `mediaQuery.matches` 而不是事件载荷，所以两件事
+   * 必须一起做——只派事件不会改变任何值。
+   */
+  function installMatchMedia() {
+    vi.stubGlobal('matchMedia', () => {
+      const list = matchMediaStub() as unknown as { matches: boolean } & MediaQueryList
+      list.addEventListener = ((type: string, callback: (event: MediaQueryListEvent) => void) => {
+        if (type !== 'change') return
+        mediaSource = list
+        mediaListener = callback
+      }) as MediaQueryList['addEventListener']
+      list.removeEventListener = (() => {
+        mediaSource = null
+        mediaListener = null
+      }) as MediaQueryList['removeEventListener']
+      return list
+    })
+  }
+
+  function setMediaMatches(matches: boolean) {
+    if (mediaSource) mediaSource.matches = matches
+    mediaListener?.({ matches } as MediaQueryListEvent)
+  }
+
+  function setViewportWidth(width: number) {
+    innerWidthSpy ??= vi.spyOn(window, 'innerWidth', 'get')
+    innerWidthSpy.mockReturnValue(width)
+    window.dispatchEvent(new Event('resize'))
+  }
+
+  /** 复刻 Toggle 的请求链路：layout 只派发请求，宿主回写受控属性。 */
+  function requestCollapse(collapsed: boolean) {
+    layoutRoot().dispatchEvent(new CustomEvent('sidebar-collapsed-change', { detail: { collapsed } }))
+  }
+
+  function isDrawerMode() {
+    return !!layoutRoot().shadowRoot?.querySelector('web-ui-drawer')
+  }
+
+  /** layout 的 resize 判定有 100ms 去抖。 */
+  const settleViewport = () => new Promise(resolve => setTimeout(resolve, 150))
+
+  beforeEach(() => {
+    installMatchMedia()
+    router = createRouter({
+      history: createMemoryHistory(),
+      routes: [
+        { path: '/', redirect: '/library' },
+        { path: '/library', component: LibraryPageStub },
+        { path: '/map', component: MapPageStub }
+      ]
+    })
+  })
+
+  afterEach(() => {
+    mediaListener = null
+    mediaSource = null
+    innerWidthSpy = null
+    app?.unmount()
+    host?.remove()
+    vi.restoreAllMocks()
+  })
+
+  it('桌面端维持折叠态：导航只剩图标', async () => {
+    setViewportWidth(1280)
+    await mountLayout()
+    requestCollapse(true)
+    await nextTick()
+
+    expect(isDrawerMode()).toBe(false)
+    expect(layoutRoot().sidebarCollapsed).toBe(true)
+    expect(navRoot().textContent).not.toContain('资料库')
+    expect(navRoot().querySelector('button[aria-label="资料库"]')).toBeTruthy()
+  })
+
+  it('移动端断点下同一个折叠偏好不把抽屉导航压成折叠态', async () => {
+    setViewportWidth(568)
+    await mountLayout()
+    setMediaMatches(true)
+    requestCollapse(true)
+    await nextTick()
+
+    expect(isDrawerMode()).toBe(true)
+    expect(layoutRoot().sidebarCollapsed).toBe(true)
+    expect(navRoot().textContent).toContain('资料库')
+  })
+
+  it('跨断点往返后折叠态在桌面端恢复生效', async () => {
+    setViewportWidth(1280)
+    await mountLayout()
+    requestCollapse(true)
+    await nextTick()
+    expect(navRoot().textContent).not.toContain('资料库')
+
+    setViewportWidth(568)
+    setMediaMatches(true)
+    await settleViewport()
+    await nextTick()
+    expect(isDrawerMode()).toBe(true)
+    expect(layoutRoot().sidebarCollapsed).toBe(true)
+    expect(navRoot().textContent).toContain('资料库')
+
+    setViewportWidth(1280)
+    setMediaMatches(false)
+    await settleViewport()
+    await nextTick()
+    expect(isDrawerMode()).toBe(false)
+    expect(navRoot().textContent).not.toContain('资料库')
+  })
+})
+
 describe('AppLayout：设置对话框接线', () => {
   beforeEach(() => {
     vi.stubGlobal('matchMedia', matchMediaStub)
