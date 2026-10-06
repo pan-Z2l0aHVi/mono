@@ -434,8 +434,8 @@ describe('注释不是 fallback 站点', () => {
   })
 
   it('剥注释后组件 CSS 的站点总数少 2（剥掉的两处正是注释内的 var()）', () => {
-    // 覆盖面口径：原样扫出 678 处，剥掉 collapse:176 与 dialog:72 两处注释站点后剩 676
-    expect(allFallbackSites).toHaveLength(676)
+    // 覆盖面口径：原样扫出 679 处，剥掉 collapse:176 与 dialog:72 两处注释站点后剩 677
+    expect(allFallbackSites).toHaveLength(677)
   })
 
   it('原样扫描与剥注释扫描的差集恰好是这两处，其余站点逐字不动', () => {

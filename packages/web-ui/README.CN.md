@@ -1498,7 +1498,7 @@ SVG 线条绘制动画，基于 `stroke-dashoffset`。直接在原元素上动�
 | ---------------------------- | ------ | -------------------------------------------------- |
 | `--wui-font-size-caption`    | `12px` | 密集 chrome 标签（徽标、toast 时间戳、菜单分组头） |
 | `--wui-font-size-readout`    | `13px` | 数字读数（图片预览的计数与缩放比）                 |
-| `--wui-font-size`            | `14px` | 正文与控件的基础字号                               |
+| `--wui-font-size`            | `14px` | 正文与控件的基础字号（含控件的占位文本）           |
 | `--wui-font-size-title`      | `18px` | 有界卡片标题（dialog、drawer）                     |
 | `--wui-font-weight-medium`   | `500`  | 强调行内文字的中等字重                             |
 | `--wui-font-weight-semibold` | `600`  | 标题的半粗字重                                     |
