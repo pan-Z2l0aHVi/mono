@@ -322,7 +322,6 @@ export class WebUiDropdown extends LitElement {
     this.open = false
   }
 
-  // 不影响 open prop。
   private _closeAllSubmenus() {
     this._closeSubmenuFrom(1, true)
     this._closingSubmenus.restoreAll()

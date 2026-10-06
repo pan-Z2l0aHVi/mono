@@ -180,7 +180,6 @@
     box-shadow var(--wui-duration-press, 80ms) ease;
 }
 
-/* 按压/拖拽才绘制玻璃描边环，环随 opacity 过渡淡入。 */
 .wui-segmented.is-pressed .wui-segmented-indicator::before,
 .wui-segmented.is-dragging .wui-segmented-indicator::before {
   opacity: 1;

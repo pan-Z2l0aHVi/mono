@@ -38,7 +38,6 @@
   background: transparent;
 }
 
-/* 自定义触发器自带度量，容器让位 */
 .autocomplete-trigger[data-custom-trigger] {
   width: auto;
 }

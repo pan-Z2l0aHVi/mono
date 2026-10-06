@@ -222,7 +222,6 @@ export class WebUiSegmented extends FormAssociated(LitElement) {
     const enabledTriggers = triggers.filter(t => !t.disabled)
     if (enabledTriggers.length === 0) return
 
-    // 必须按下当前选中的 trigger 才能启动指示器拖拽
     const activeTrigger = triggers.find(t => t.value === this._value)
     if (!activeTrigger || activeTrigger.disabled) return
 

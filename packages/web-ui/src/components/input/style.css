@@ -118,7 +118,6 @@ slot {
   color: var(--wui-color-text-secondary, #6a6a6a);
 }
 
-/* slot 无 slotted 内容时折叠 */
 slot.empty {
   display: none;
 }
