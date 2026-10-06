@@ -243,8 +243,6 @@ dialog[open].is-visible .wui-dialog-body {
      只需要「不是 auto」；断言写成 not.toBe('auto') 而非 toBe('clip')，否则会在
      降级的引擎上误报。 */
   overflow-x: clip;
-
-  /* 内容区自己滚。 */
   overflow-y: auto;
 
   /* 承重的是上面那条 `overflow-y: auto`：按 CSS Sizing 3，溢出轴不为 visible 的

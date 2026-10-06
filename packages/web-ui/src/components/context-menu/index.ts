@@ -65,7 +65,6 @@ const LONG_PRESS_FOLLOW_UP_WINDOW_MS = 1000
  */
 const SCRIM_ATTR = 'data-wui-menu-scrim'
 
-/** 本次关闭的来源。见 `_closeSource`。 */
 type CloseSource = 'menu-item' | 'default'
 
 /** 首项聚焦的最大尝试次数（含首次）。见 `_focusFirstItem`。 */
