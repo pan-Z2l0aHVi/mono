@@ -135,7 +135,6 @@ func TestResourceAndSourceLifecycle(t *testing.T) {
 		t.Errorf("expected remaining source to become preferred")
 	}
 
-	// 验证 Resource 不会失去所有入口。
 	if err := srcService.RemoveSource(ctx, resAfterRemove.Sources[0].ID); err == nil {
 		t.Errorf("expected error when removing only remaining source, got nil")
 	}

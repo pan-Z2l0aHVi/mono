@@ -75,9 +75,7 @@ func newRealFSWatcher() (fsEvents, error) {
 	return realFSEvents{fs}, nil
 }
 
-// Watcher 维护目录监听集合。
-//
-// 自身状态只有目录引用计数与 fd 成本估算；路径到 Source 的解析一律回查 DB，
+// Watcher 自身状态只有目录引用计数与 fd 成本估算；路径到 Source 的解析一律回查 DB，
 // 不维护易失的内存索引——重复 Source 不去重，内存索引要与 DB 双写才不出错。
 type Watcher struct {
 	fs   fsEvents
@@ -187,8 +185,7 @@ func (w *Watcher) SyncSources(ctx context.Context) error {
 	return nil
 }
 
-// Stop 停 ticker、清 debounce 定时器、等待 goroutine 退出并关闭 fsnotify。
-// 由 main.go 的 app.OnShutdown 与 defer 双保险调用，可重复调用。
+// Stop 由 main.go 的 app.OnShutdown 与 defer 双保险调用，可重复调用。
 func (w *Watcher) Stop() {
 	w.stopOnce.Do(func() {
 		close(w.done)

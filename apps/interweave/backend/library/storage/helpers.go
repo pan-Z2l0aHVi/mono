@@ -21,7 +21,6 @@ func placeholders(n int) string {
 	return strings.TrimSuffix(strings.Repeat("?,", n), ",")
 }
 
-// 按批切分 IN 子句的参数，供调用方在变量上限下分片查询。
 func chunkValues(values []string, size int) [][]string {
 	chunks := make([][]string, 0, (len(values)+size-1)/size)
 	for start := 0; start < len(values); start += size {

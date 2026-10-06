@@ -173,7 +173,6 @@ func TestURLSourceOperations(t *testing.T) {
 		t.Errorf("expected URL resource kind web without size, got kind=%q size=%v", res.Kind, res.SizeBytes)
 	}
 
-	// 显式刷新维持可用入口。
 	refreshed, err := srcService.RefreshURLSource(ctx, res.Sources[0].ID)
 	if err != nil {
 		t.Fatalf("RefreshURLSource error: %v", err)
@@ -182,7 +181,6 @@ func TestURLSourceOperations(t *testing.T) {
 		t.Errorf("expected refreshed source to stay available")
 	}
 
-	// 文件 Source 不允许刷新。
 	filePath := tempFile(t, "src-*.txt")
 	fileSrc, err := srcService.AddFileSource(ctx, res.ID, filePath)
 	if err != nil {
@@ -335,7 +333,6 @@ func TestPreferredSourceSwitching(t *testing.T) {
 	}
 }
 
-// 验证标签移除、建议与错误映射。
 func TestTagRemovalSuggestionAndErrors(t *testing.T) {
 	resService, _, tagService, _, cleanup := newTestServices(t)
 	defer cleanup()

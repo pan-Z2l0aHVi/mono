@@ -313,7 +313,6 @@ func (s *SourceService) requireResource(ctx context.Context, resourceID string) 
 	return nil
 }
 
-// 替换与抓取前确认目标 Source 存在，避免对无效目标做无效工作。
 func (s *SourceService) requireSource(ctx context.Context, sourceID string) error {
 	if _, err := s.sources.Get(ctx, s.db.SqlDB(), sourceID); err != nil {
 		return mapNotFound(err)
