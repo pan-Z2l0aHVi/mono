@@ -13,7 +13,7 @@ import { fileURLToPath } from 'node:url'
 
 import { describe, expect, it } from 'vite-plus/test'
 
-const globalCss = readFileSync(fileURLToPath(new URL('./global.css', import.meta.url)), 'utf8')
+const globalCss = readFileSync(fileURLToPath(new URL('../global.css', import.meta.url)), 'utf8')
 
 // 注释里会解释为什么不跟 prefers-color-scheme，断言只看真正参与级联的声明。
 const globalCssDeclarations = globalCss.replace(/\/\*[\s\S]*?\*\//g, '')

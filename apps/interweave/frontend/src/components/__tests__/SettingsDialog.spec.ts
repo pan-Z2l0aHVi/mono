@@ -9,7 +9,7 @@ import { createApp, h, nextTick } from 'vue'
 
 import { useSettingsStore } from '@/stores/settings'
 
-import SettingsDialog from './SettingsDialog.vue'
+import SettingsDialog from '../SettingsDialog.vue'
 
 function mountDialog(onUpdateOpen: (value: boolean) => void) {
   const host = document.createElement('div')

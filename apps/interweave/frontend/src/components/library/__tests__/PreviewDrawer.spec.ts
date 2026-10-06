@@ -5,9 +5,8 @@ import { createApp, h, nextTick, ref, type App } from 'vue'
 
 import type { ResourceSourceView, ResourceView } from '@/stores/library'
 
-import { ResourceKind } from '../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage'
-
-import PreviewDrawer from './PreviewDrawer.vue'
+import { ResourceKind } from '../../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage'
+import PreviewDrawer from '../PreviewDrawer.vue'
 
 interface MountOptions {
   open?: boolean

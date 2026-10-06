@@ -91,7 +91,7 @@ function selectNav(item: (typeof navItems)[number]) {
       >
         <web-ui-tooltip portal placement="right" :content="collapsed ? item.label : ''" :disabled="!collapsed">
           <web-ui-svg-draw-lines
-            :ref="element => setNavDrawRef(item.key, element)"
+            :ref="(element: unknown) => setNavDrawRef(item.key, element)"
             :duration="720"
             easing="ease-out"
             no-autoplay

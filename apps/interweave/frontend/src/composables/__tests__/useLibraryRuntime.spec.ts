@@ -11,17 +11,16 @@ import type {
   ResourceDTO,
   SourceDTO,
   TagDTO
-} from '../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/service'
-import { SourceProbeOutcome } from '../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/service'
+} from '../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/service'
+import { SourceProbeOutcome } from '../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/service'
 import {
   ResourceKind,
   SourceType,
   TagColor
-} from '../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage'
-import type { LibraryRuntime, SourceAvailabilityEventDTO } from '../services/library'
-import { useLibraryStore, type ResourceSourceView } from '../stores/library'
-
-import { useLibraryRuntime } from './useLibraryRuntime'
+} from '../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage'
+import type { LibraryRuntime, SourceAvailabilityEventDTO } from '../../services/library'
+import { useLibraryStore, type ResourceSourceView } from '../../stores/library'
+import { useLibraryRuntime } from '../useLibraryRuntime'
 
 function createResource(overrides: Partial<ResourceDTO> = {}): ResourceDTO {
   const source: SourceDTO = {

@@ -4,10 +4,9 @@ import type { WebUiAutocomplete } from '@greypan/web-ui'
 import { describe, expect, it, vi } from 'vite-plus/test'
 import { createApp, h, nextTick } from 'vue'
 
-import { ResourceKind } from '../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage'
-import type { LibraryQueueItem } from '../../services/library'
-
-import EditTagsDialog from './EditTagsDialog.vue'
+import { ResourceKind } from '../../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage'
+import type { LibraryQueueItem } from '../../../services/library'
+import EditTagsDialog from '../EditTagsDialog.vue'
 
 function mountDialog(target: LibraryQueueItem, onSave: (resourceId: string, tagNames: string[]) => void) {
   const host = document.createElement('div')

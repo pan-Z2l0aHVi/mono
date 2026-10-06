@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vite-plus/test'
 
-import { isSourceAvailabilityEvent } from './types'
+import { isSourceAvailabilityEvent } from '../types'
 
 describe('isSourceAvailabilityEvent（事件载荷守卫）', () => {
   it('接受完整载荷，size_bytes 缺省也接受', () => {

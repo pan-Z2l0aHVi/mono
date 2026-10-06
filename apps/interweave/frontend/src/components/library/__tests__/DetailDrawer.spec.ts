@@ -7,9 +7,8 @@ import { createApp, h, nextTick, shallowRef } from 'vue'
 
 import type { ResourceView } from '@/stores/library'
 
-import { ResourceKind } from '../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage'
-
-import DetailDrawer from './DetailDrawer.vue'
+import { ResourceKind } from '../../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage'
+import DetailDrawer from '../DetailDrawer.vue'
 
 type NoteChangeHandler = (resource: ResourceView, note: string, editor: WebUiTextarea | null) => void
 

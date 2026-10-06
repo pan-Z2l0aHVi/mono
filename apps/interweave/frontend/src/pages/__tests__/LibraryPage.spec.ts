@@ -8,18 +8,17 @@ import { createApp, nextTick, ref } from 'vue'
 import type {
   ResourceDTO,
   SourceDTO
-} from '../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/service'
-import { SourceProbeOutcome } from '../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/service'
+} from '../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/service'
+import { SourceProbeOutcome } from '../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/service'
 import {
   ResourceKind,
   SourceType,
   TagColor
-} from '../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage'
-import { stubLayout } from '../components/library/__tests__/virtualLayout'
-import type { LibraryRuntime, SourceAvailabilityEventDTO } from '../services/library'
-import { useLibraryStore } from '../stores/library'
-
-import LibraryPage from './LibraryPage.vue'
+} from '../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage'
+import { stubLayout } from '../../components/library/__tests__/virtualLayout'
+import type { LibraryRuntime, SourceAvailabilityEventDTO } from '../../services/library'
+import { useLibraryStore } from '../../stores/library'
+import LibraryPage from '../LibraryPage.vue'
 
 // 右键菜单由 web-ui 自己接管渲染，单测只需要它有这两个接口
 if (!customElements.get('web-ui-context-menu')) {

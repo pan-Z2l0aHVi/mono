@@ -6,10 +6,10 @@ import { createApp, h, nextTick, ref } from 'vue'
 
 import type { ResourceSourceView, ResourceView } from '@/stores/library'
 
-import { ResourceKind } from '../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage'
+import { ResourceKind } from '../../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage'
+import ResourceList from '../ResourceList.vue'
 
-import { currentScrollY, stubLayout, ROW_ESTIMATE, ROW_HEIGHT, VIEWPORT_HEIGHT } from './__tests__/virtualLayout'
-import ResourceList from './ResourceList.vue'
+import { currentScrollY, stubLayout, ROW_ESTIMATE, ROW_HEIGHT, VIEWPORT_HEIGHT } from './virtualLayout'
 
 // 右键菜单的渲染由 web-ui 自己接管，单测只需要它有这两个接口。detail 那一项的用例
 // 要真的走一遍「右键唤起 → 点详情」。

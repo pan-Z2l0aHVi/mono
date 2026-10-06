@@ -4,7 +4,7 @@ import { WebUiSvgDrawLines } from '@greypan/web-ui'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { createApp, nextTick, ref } from 'vue'
 
-import AppNav from './AppNav.vue'
+import AppNav from '../AppNav.vue'
 
 /** vue-router 的 useRoute/useRouter 需要注入；导航只读 path 与 push。 */
 const route = ref({ path: '/library' })

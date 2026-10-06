@@ -8,10 +8,9 @@ import { createApp, h, nextTick, ref } from 'vue'
 import {
   ResourceKind,
   TagColor
-} from '../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage'
-import type { LibraryQueueItem } from '../../services/library'
-
-import AddDialog from './AddDialog.vue'
+} from '../../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage'
+import type { LibraryQueueItem } from '../../../services/library'
+import AddDialog from '../AddDialog.vue'
 
 vi.mock('@greypan/web-ui', async importOriginal => {
   const actual = await importOriginal<typeof import('@greypan/web-ui')>()

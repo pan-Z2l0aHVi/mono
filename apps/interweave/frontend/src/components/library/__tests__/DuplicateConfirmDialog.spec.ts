@@ -4,10 +4,9 @@ import type { WebUiButton } from '@greypan/web-ui'
 import { describe, expect, it, vi } from 'vite-plus/test'
 import { createApp, h, nextTick } from 'vue'
 
-import { ResourceLocationMatchDTO } from '../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/service'
-
-import type { LibraryDuplicatePrompt } from './addQueue'
-import DuplicateConfirmDialog from './DuplicateConfirmDialog.vue'
+import { ResourceLocationMatchDTO } from '../../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/service'
+import type { LibraryDuplicatePrompt } from '../addQueue'
+import DuplicateConfirmDialog from '../DuplicateConfirmDialog.vue'
 
 function prompt(overrides: Partial<LibraryDuplicatePrompt> = {}): LibraryDuplicatePrompt {
   return {

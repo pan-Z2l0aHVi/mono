@@ -4,8 +4,8 @@ import '@greypan/web-ui'
 import { beforeEach, describe, expect, it } from 'vite-plus/test'
 import { createApp, h, nextTick } from 'vue'
 
-import type { LibraryRestoreQueueItem } from './restore'
-import RestoreDialog from './RestoreDialog.vue'
+import type { LibraryRestoreQueueItem } from '../restore'
+import RestoreDialog from '../RestoreDialog.vue'
 
 function queueItem(overrides: Partial<LibraryRestoreQueueItem> = {}): LibraryRestoreQueueItem {
   return {
