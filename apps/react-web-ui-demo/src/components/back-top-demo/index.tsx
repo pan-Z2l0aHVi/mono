@@ -1,4 +1,6 @@
 import type { WebUiBackTop } from '@greypan/web-ui'
+import { webUiScrollbarsOptions } from '@greypan/web-ui/scrollbars'
+import { OverlayScrollbarsComponent, type OverlayScrollbarsComponentRef } from 'overlayscrollbars-react'
 import { useEffect, useRef, type ReactNode } from 'react'
 
 interface ScrollBoxProps {
@@ -8,19 +10,23 @@ interface ScrollBoxProps {
 }
 
 function ScrollBox({ threshold = 200, behavior = 'smooth', children }: ScrollBoxProps) {
-  const boxRef = useRef<HTMLDivElement>(null)
+  const boxRef = useRef<OverlayScrollbarsComponentRef<'div'> | null>(null)
   const backTopRef = useRef<WebUiBackTop>(null)
 
-  // scrollTarget 是 element 属性而非 attribute，需要在挂载后手动赋值
+  // scrollTarget 是 element 属性而非 attribute，需要在挂载后手动赋值。
+  // 接管滚动后滚动发生在 OverlayScrollbars 生成的 viewport 上，宿主自己不再滚动，
+  // 所以目标要取 viewport 而不是宿主元素，否则按钮永远不会出现。
   useEffect(() => {
-    if (boxRef.current && backTopRef.current) {
-      backTopRef.current.scrollTarget = boxRef.current
+    const viewport = boxRef.current?.osInstance()?.elements().viewport
+    if (viewport && backTopRef.current) {
+      backTopRef.current.scrollTarget = viewport
     }
   }, [])
 
   return (
-    <div
+    <OverlayScrollbarsComponent
       ref={boxRef}
+      options={webUiScrollbarsOptions}
       className="h-48 overflow-auto rounded-xl border border-(--wui-color-border) bg-(--wui-color-surface-raised) p-3"
     >
       {Array.from({ length: 30 }, (_, i) => (
@@ -29,7 +35,7 @@ function ScrollBox({ threshold = 200, behavior = 'smooth', children }: ScrollBox
       <web-ui-back-top ref={backTopRef} threshold={threshold} scrollBehavior={behavior}>
         {children}
       </web-ui-back-top>
-    </div>
+    </OverlayScrollbarsComponent>
   )
 }
 
