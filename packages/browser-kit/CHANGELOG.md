@@ -1,5 +1,12 @@
 # @greypan/browser-kit
 
+## 3.0.1
+
+### Patch Changes
+
+- Updated dependencies [3c81816]
+  - @greypan/js-kit@3.0.1
+
 ## 3.0.0
 
 ### Major Changes
