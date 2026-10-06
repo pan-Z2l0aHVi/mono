@@ -26,6 +26,7 @@ bash scripts/commit.sh <type> <scope> "<subject>" --dry
   Co-authored-by: Claude <noreply@anthropic.com>
   ```
 
+- 以上规则约束提交层；合并层的署名由 GitHub 生成。squash 合并时，PR 内每个 author 与执行合并的人不同的 commit，都会在合并提交的正文末尾自动补上一条对应的 `Co-authored-by` 尾注。这条尾注是 GitHub 在合并时写入的，不是 agent 写入的——「不再叠加同名尾注」在提交层成立、在合并层不成立；在 `main` 上看到 `<agent> <邮箱>` 的 `Co-authored-by` 不要当作提交层违规去改。
 - 人类提交者仍对需求、设计、审查、测试和最终合并承担全部责任。
 - 共同作者尾注用于公开记录协作；GitHub 是否将其显示为独立 Contributors 条目取决于该邮箱能否被 GitHub 识别和归属。
 
