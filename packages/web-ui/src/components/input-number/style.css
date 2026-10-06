@@ -53,6 +53,14 @@ input {
     appearance: none;
   }
 
+  /* 同 input：占位文本的排版属于控件，不在这里另写一份。
+     颜色此前没声明，占位文本落在 UA 默认色上（浅/深两档都是 #757575），
+     与同系列其它控件的 secondary text token 不一致。 */
+  &::placeholder {
+    font: inherit;
+    color: var(--wui-color-text-secondary, #6a6a6a);
+  }
+
   &[type='number'] {
     appearance: textfield;
   }

@@ -1533,18 +1533,18 @@ The host uses `display: contents` and does not paint any background: the library
 
 **Typography tokens:** font sizes are named by the role the text plays, not by scale position — `caption` for dense chrome labels, `readout` for numeric readouts, the unsuffixed base for body copy, and `title` for bounded card headings. Weights are named by weight, and line heights by how much vertical air the text needs. These are appearance-independent: they stay the same under both light and dark.
 
-| Property                     | Default | Description                                                     |
-| ---------------------------- | ------- | --------------------------------------------------------------- |
-| `--wui-font-size-caption`    | `12px`  | Dense chrome labels (badge, toast timestamp, menu section head) |
-| `--wui-font-size-readout`    | `13px`  | Numeric readouts (image preview count and zoom ratio)           |
-| `--wui-font-size`            | `14px`  | Base font size for body copy and controls                       |
-| `--wui-font-size-title`      | `18px`  | Bounded card headings (dialog, drawer)                          |
-| `--wui-font-weight-medium`   | `500`   | Medium weight for emphasized inline text                        |
-| `--wui-font-weight-semibold` | `600`   | Semibold weight for headings                                    |
-| `--wui-line-height-tight`    | `1.2`   | Tight leading for large headings                                |
-| `--wui-line-height-snug`     | `1.4`   | Snug leading for mid-size headings                              |
-| `--wui-line-height-normal`   | `1.5`   | Normal leading for body copy                                    |
-| `--wui-line-height-relaxed`  | `1.6`   | Relaxed leading for long-form reading                           |
+| Property                     | Default | Description                                                                 |
+| ---------------------------- | ------- | --------------------------------------------------------------------------- |
+| `--wui-font-size-caption`    | `12px`  | Dense chrome labels (badge, toast timestamp, menu section head)             |
+| `--wui-font-size-readout`    | `13px`  | Numeric readouts (image preview count and zoom ratio)                       |
+| `--wui-font-size`            | `14px`  | Base font size for body copy and controls, including their placeholder text |
+| `--wui-font-size-title`      | `18px`  | Bounded card headings (dialog, drawer)                                      |
+| `--wui-font-weight-medium`   | `500`   | Medium weight for emphasized inline text                                    |
+| `--wui-font-weight-semibold` | `600`   | Semibold weight for headings                                                |
+| `--wui-line-height-tight`    | `1.2`   | Tight leading for large headings                                            |
+| `--wui-line-height-snug`     | `1.4`   | Snug leading for mid-size headings                                          |
+| `--wui-line-height-normal`   | `1.5`   | Normal leading for body copy                                                |
+| `--wui-line-height-relaxed`  | `1.6`   | Relaxed leading for long-form reading                                       |
 
 `line-height: 1` and `line-height: 0` inside components are intentionally not tokenized: the former vertically centers a single-line control label, the latter collapses a wrapper box onto its content. Neither is typographic leading, and tokenizing them would invite callers to retune them as if they were.
 
