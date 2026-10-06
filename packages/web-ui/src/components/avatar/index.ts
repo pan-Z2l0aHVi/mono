@@ -3,7 +3,9 @@ import { customElement, property, state } from 'lit/decorators.js'
 import { classMap } from 'lit/directives/class-map.js'
 import { ifDefined } from 'lit/directives/if-defined.js'
 
-// 注册 web-ui-icon（Rolldown tree-shake 副作用 import，引用类名阻止删除）
+// 注册 web-ui-icon：本组件模板直接渲染该标签，消费者模板里不会出现它，
+// 因此没有别处会引入。产物保留模块（build.rollupOptions.output.preserveModules）
+// 并由 package.json 的 sideEffects 保证这段副作用 import 不被 tree-shake 掉。
 import '@/components/icon'
 import glass from '@/assets/glass.css?inline'
 import { lucideUser } from '@/icons'

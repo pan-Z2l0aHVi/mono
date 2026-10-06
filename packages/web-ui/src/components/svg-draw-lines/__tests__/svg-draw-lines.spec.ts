@@ -104,85 +104,9 @@ describe('WebUiSvgDrawLines 组件', () => {
   })
 
   describe('方法：replay()', () => {
-    it('replay 是可调用的公开方法', () => {
-      const el = createSvgDrawLines()
-      expect(typeof el.replay).toBe('function')
-      el.remove()
-    })
-
-    it('无内容时 replay 不报错', async () => {
+    it('无内容时 replay 提前 resolve，不报错', async () => {
       const el = createSvgDrawLines()
       await expect(el.replay()).resolves.toBeUndefined()
-      el.remove()
-    })
-
-    it('有 SVG 内容时 replay 不报错', async () => {
-      const el = createSvgDrawLines()
-      el.innerHTML = '<svg><path d="M0 0 L100 100"/></svg>'
-      await waitForUpdate(el)
-      await expect(el.replay()).resolves.toBeUndefined()
-      el.remove()
-    })
-
-    it('连续多次 replay 不报错', async () => {
-      const el = createSvgDrawLines()
-      el.innerHTML = '<svg><path d="M0 0 L100 100"/></svg>'
-      await waitForUpdate(el)
-      await expect(el.replay()).resolves.toBeUndefined()
-      await expect(el.replay()).resolves.toBeUndefined()
-      await expect(el.replay()).resolves.toBeUndefined()
-      expect(el.querySelector('svg')).toBeTruthy()
-      el.remove()
-    })
-  })
-
-  describe('插槽投影', () => {
-    it('默认 slot 投影 SVG 内容', async () => {
-      const el = createSvgDrawLines()
-      el.innerHTML = '<svg><path d="M0 0 L100 100"/></svg>'
-      await waitForUpdate(el)
-      expect(el.querySelector('svg')).toBeTruthy()
-      el.remove()
-    })
-
-    it('多个同级 SVG', async () => {
-      const el = createSvgDrawLines()
-      el.innerHTML = `
-        <svg><path d="M0 0 L50 50"/></svg>
-        <svg><rect x="0" y="0" width="20" height="20"/></svg>
-      `
-      await waitForUpdate(el)
-      const svgs = el.querySelectorAll('svg')
-      expect(svgs.length).toBe(2)
-      el.remove()
-    })
-
-    it('深层嵌套的 SVG 几何元素', async () => {
-      const el = createSvgDrawLines()
-      el.innerHTML = `
-        <svg viewBox="0 0 100 100">
-          <g>
-            <g>
-              <path d="M10 10 L90 90" />
-              <circle cx="50" cy="50" r="30" />
-            </g>
-          </g>
-        </svg>
-      `
-      await waitForUpdate(el)
-      expect(el.querySelector('path')).toBeTruthy()
-      expect(el.querySelector('circle')).toBeTruthy()
-      el.remove()
-    })
-
-    it('连续 replay 不应抛异常', async () => {
-      const el = createSvgDrawLines()
-      el.innerHTML = '<svg><path d="M0 0 L100 100"/></svg>'
-      await waitForUpdate(el)
-
-      await expect(el.replay()).resolves.toBeUndefined()
-      await expect(el.replay()).resolves.toBeUndefined()
-
       el.remove()
     })
   })

@@ -1,0 +1,338 @@
+import { createPinia, setActivePinia } from 'pinia'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+
+vi.mock('../services/library', () => ({
+  createLibraryRuntime: vi.fn<() => LibraryRuntime>(() => {
+    throw new Error('测试必须注入 LibraryRuntime')
+  })
+}))
+
+import type {
+  ResourceDTO,
+  SourceDTO,
+  TagDTO
+} from '../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/service'
+import { SourceProbeOutcome } from '../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/service'
+import {
+  ResourceKind,
+  SourceType,
+  TagColor
+} from '../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage'
+import type { LibraryRuntime, SourceAvailabilityEventDTO } from '../../services/library'
+import { useLibraryStore, type ResourceSourceView } from '../../stores/library'
+import { useLibraryRuntime } from '../useLibraryRuntime'
+
+function createResource(overrides: Partial<ResourceDTO> = {}): ResourceDTO {
+  const source: SourceDTO = {
+    id: 'source-inline',
+    resource_id: 'resource-inline',
+    type: SourceType.SourceTypeFile,
+    location: '/tmp/inline.md',
+    available: true,
+    is_preferred: true,
+    order_index: 0,
+    metadata: null,
+    created_at: 100,
+    updated_at: 200
+  }
+  return {
+    id: 'resource-inline',
+    title: 'Inline resource',
+    note: '',
+    kind: ResourceKind.ResourceKindDocument,
+    size_bytes: 128,
+    created_at: 100,
+    updated_at: 200,
+    sources: [source],
+    tags: [],
+    preferred_source_id: source.id,
+    ...overrides
+  }
+}
+
+function createRuntime(overrides: Partial<LibraryRuntime> = {}): LibraryRuntime {
+  return {
+    isAvailable: true,
+    listResources: async () => [],
+    getResource: async resourceId => createResource({ id: resourceId }),
+    addFileResource: async () => createResource(),
+    addURLResource: async () => createResource(),
+    updateResourceTitle: async (resourceId, title) => createResource({ id: resourceId, title }),
+    updateResourceNote: async (resourceId, note) => createResource({ id: resourceId, note }),
+    deleteResource: async () => {},
+    addTag: async () =>
+      ({ id: 'tag-inline', name: 'inline', created_at: 300, color: TagColor.TagColorTeal }) satisfies TagDTO,
+    removeTag: async () => {},
+    refreshURLSource: async () => createResource().sources[0]!,
+    refreshFileSource: async () => createResource().sources[0]!,
+    replaceFileSource: async () => createResource().sources[0]!,
+    replaceURLSource: async () => createResource().sources[0]!,
+    chooseFilePaths: async () => [],
+    chooseFilePath: async () => null,
+    getClipboardFilePaths: async () => [],
+    prepareFilePreview: async () => ({ kind: ResourceKind.ResourceKindFile }),
+    releaseFilePreview: async () => {},
+    findResourceLocationMatches: async () => [],
+    probeURLSourceOnOpen: async () => ({
+      source: createResource().sources[0]!,
+      outcome: SourceProbeOutcome.SourceProbeOutcomeAvailable
+    }),
+    openExternal: async () => {},
+    resourceMediaURL: () => null,
+    pendingFilePreviewURL: () => null,
+    subscribeToDroppedFiles: () => () => {},
+    subscribeToPasteFileRequest: () => () => {},
+    subscribeToSourceAvailability: () => () => {},
+    ...overrides
+  }
+}
+
+describe('useLibraryRuntime', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+  })
+
+  it('Wails 可用时加载内联 DTO 并注册桌面事件', async () => {
+    const listResources = vi.fn<LibraryRuntime['listResources']>(async () => [createResource()])
+    const subscribeToDroppedFiles = vi.fn<LibraryRuntime['subscribeToDroppedFiles']>(() => () => {})
+    const subscribeToPasteFileRequest = vi.fn<LibraryRuntime['subscribeToPasteFileRequest']>(() => () => {})
+    const controller = useLibraryRuntime(
+      createRuntime({ listResources, subscribeToDroppedFiles, subscribeToPasteFileRequest })
+    )
+
+    await controller.loadResources()
+    controller.subscribeToDroppedFiles(() => {})
+    controller.subscribeToPasteFileRequest(() => {})
+
+    expect(useLibraryStore().resources[0]).toMatchObject({
+      id: 'resource-inline',
+      title: 'Inline resource',
+      preferred: { id: 'source-inline', type: 'file' }
+    })
+    expect(listResources).toHaveBeenCalledOnce()
+    expect(subscribeToDroppedFiles).toHaveBeenCalledOnce()
+    expect(subscribeToPasteFileRequest).toHaveBeenCalledOnce()
+  })
+
+  it('无 Wails bridge 时清空资源并跳过数据与事件调用', async () => {
+    const store = useLibraryStore()
+    store.setResources([createResource()])
+    const listResources = vi.fn<LibraryRuntime['listResources']>(async () => [createResource()])
+    const subscribeToDroppedFiles = vi.fn<LibraryRuntime['subscribeToDroppedFiles']>(() => () => {})
+    const subscribeToPasteFileRequest = vi.fn<LibraryRuntime['subscribeToPasteFileRequest']>(() => () => {})
+    const resourceMediaURL = vi.fn<LibraryRuntime['resourceMediaURL']>(() => '/resource-media/source-inline')
+    const controller = useLibraryRuntime(
+      createRuntime({
+        isAvailable: false,
+        listResources,
+        subscribeToDroppedFiles,
+        subscribeToPasteFileRequest,
+        resourceMediaURL
+      })
+    )
+
+    await controller.loadResources()
+
+    expect(store.resources).toEqual([])
+    expect(controller.error.value).toBe('')
+    expect(controller.isLoading.value).toBe(false)
+    expect(controller.resourceMediaURL('source-inline')).toBeNull()
+    controller.subscribeToDroppedFiles(() => {})
+    controller.subscribeToPasteFileRequest(() => {})
+    expect(listResources).not.toHaveBeenCalled()
+    expect(resourceMediaURL).not.toHaveBeenCalled()
+    expect(subscribeToDroppedFiles).not.toHaveBeenCalled()
+    expect(subscribeToPasteFileRequest).not.toHaveBeenCalled()
+  })
+
+  it('添加与删除使用 runtime 返回的内联 DTO 更新 store', async () => {
+    const created = createResource({ id: 'created', title: 'Created from inline data' })
+    const addFileResource = vi.fn<LibraryRuntime['addFileResource']>(async () => created)
+    const deleteResource = vi.fn<LibraryRuntime['deleteResource']>(async () => {})
+    const controller = useLibraryRuntime(createRuntime({ addFileResource, deleteResource }))
+
+    await controller.addResource({
+      id: 'queue-item',
+      kind: 'file',
+      resourceKind: ResourceKind.ResourceKindDocument,
+      title: 'Created from inline data',
+      location: '/tmp/inline.md',
+      tags: [],
+      previewToken: null,
+      mediaUrl: null
+    })
+    expect(useLibraryStore().resources.map(resource => resource.id)).toEqual(['created'])
+    expect(addFileResource).toHaveBeenCalledWith('/tmp/inline.md')
+
+    await controller.deleteResources(['created'])
+    expect(useLibraryStore().resources).toEqual([])
+    expect(deleteResource).toHaveBeenCalledWith('created')
+  })
+
+  it('添加资源后按队列标签逐项持久化并回读最新 DTO', async () => {
+    const created = createResource({ id: 'tagged', title: 'Tagged' })
+    const tagged = createResource({
+      id: 'tagged',
+      title: 'Tagged',
+      tags: [
+        { id: 'tag-design', name: 'Design', created_at: 300, color: TagColor.TagColorBlue },
+        { id: 'tag-travel', name: 'Travel', created_at: 300, color: TagColor.TagColorAmber }
+      ]
+    })
+    const addTag = vi.fn<LibraryRuntime['addTag']>(async (resourceId, tagName) => ({
+      id: `tag-${tagName}`,
+      name: tagName,
+      created_at: 300,
+      color: TagColor.TagColorTeal
+    }))
+    const getResource = vi.fn<LibraryRuntime['getResource']>(async () => tagged)
+    const controller = useLibraryRuntime(
+      createRuntime({
+        addFileResource: async () => created,
+        addTag,
+        getResource
+      })
+    )
+
+    await controller.addResource({
+      id: 'queue-tagged',
+      kind: 'file',
+      resourceKind: ResourceKind.ResourceKindDocument,
+      title: 'Tagged',
+      location: '/tmp/tagged.md',
+      tags: ['Design', 'Travel'],
+      previewToken: null,
+      mediaUrl: null
+    })
+
+    expect(addTag).toHaveBeenNthCalledWith(1, 'tagged', 'Design')
+    expect(addTag).toHaveBeenNthCalledWith(2, 'tagged', 'Travel')
+    expect(getResource).toHaveBeenCalledWith('tagged')
+    expect(useLibraryStore().resources[0]?.tagNames).toEqual(['Design', 'Travel'])
+  })
+
+  it('subscribeToSourceAvailability：Wails 不可用时不订阅且 disposer 可调用', () => {
+    const subscribeToSourceAvailability = vi.fn<LibraryRuntime['subscribeToSourceAvailability']>(() => () => {})
+    const controller = useLibraryRuntime(createRuntime({ isAvailable: false, subscribeToSourceAvailability }))
+
+    const dispose = controller.subscribeToSourceAvailability(() => {})
+
+    expect(subscribeToSourceAvailability).not.toHaveBeenCalled()
+    expect(() => dispose()).not.toThrow()
+  })
+
+  it('subscribeToSourceAvailability：Wails 可用时透传事件与 disposer', () => {
+    const stop = vi.fn<() => void>()
+    const subscribeToSourceAvailability = vi.fn<LibraryRuntime['subscribeToSourceAvailability']>(() => stop)
+    const listener = vi.fn<(event: SourceAvailabilityEventDTO) => void>()
+    const controller = useLibraryRuntime(createRuntime({ subscribeToSourceAvailability }))
+
+    const dispose = controller.subscribeToSourceAvailability(listener)
+    const event = {
+      source_id: 'source-inline',
+      resource_id: 'resource-inline',
+      type: 'file',
+      available: false,
+      changed_at: 400
+    }
+    subscribeToSourceAvailability.mock.calls[0]![0](event)
+    dispose()
+
+    expect(listener).toHaveBeenCalledWith(event)
+    expect(stop).toHaveBeenCalledOnce()
+  })
+
+  it('probeURLSourceOnOpen：只对判为不可用的 URL 首选 source 探测，回读最新 DTO 回流', async () => {
+    const revived = createResource({ id: 'resource-inline', size_bytes: 256 })
+    const getResource = vi.fn<LibraryRuntime['getResource']>(async () => revived)
+    const probeURLSourceOnOpen = vi.fn<LibraryRuntime['probeURLSourceOnOpen']>(async () => ({
+      source: createResource().sources[0]!,
+      outcome: SourceProbeOutcome.SourceProbeOutcomeAvailable
+    }))
+    const controller = useLibraryRuntime(createRuntime({ getResource, probeURLSourceOnOpen }))
+    useLibraryStore().setResources([createResource()])
+    const unavailable: ResourceSourceView = {
+      id: 'source-inline',
+      type: 'url',
+      location: 'https://example.com/dead',
+      available: false,
+      isPreferred: true,
+      orderIndex: 0,
+      metadata: null
+    }
+
+    await controller.probeURLSourceOnOpen(unavailable)
+
+    expect(probeURLSourceOnOpen).toHaveBeenCalledExactlyOnceWith('source-inline')
+    expect(getResource).toHaveBeenCalledWith('resource-inline')
+    expect(useLibraryStore().resources[0]?.sizeBytes).toBe(256)
+    expect(controller.error.value).toBe('')
+  })
+
+  it('probeURLSourceOnOpen：已可用、file source 与空首选都不触发探测', async () => {
+    const probeURLSourceOnOpen = vi.fn<LibraryRuntime['probeURLSourceOnOpen']>()
+    const controller = useLibraryRuntime(createRuntime({ probeURLSourceOnOpen }))
+    const base: ResourceSourceView = {
+      id: 'source-inline',
+      type: 'url',
+      location: 'https://example.com/live',
+      available: true,
+      isPreferred: true,
+      orderIndex: 0,
+      metadata: null
+    }
+
+    await controller.probeURLSourceOnOpen(base)
+    await controller.probeURLSourceOnOpen({ ...base, type: 'file', available: false })
+    await controller.probeURLSourceOnOpen(null)
+
+    expect(probeURLSourceOnOpen).not.toHaveBeenCalled()
+  })
+
+  it('probeURLSourceOnOpen：inconclusive 不改 store，只把后端文案呈上 error', async () => {
+    const probeURLSourceOnOpen = vi.fn<LibraryRuntime['probeURLSourceOnOpen']>(async () => ({
+      outcome: SourceProbeOutcome.SourceProbeOutcomeInconclusive,
+      message: '暂时无法检测该链接，请检查网络后重试'
+    }))
+    const controller = useLibraryRuntime(createRuntime({ probeURLSourceOnOpen }))
+    const store = useLibraryStore()
+    store.setResources([createResource()])
+    const before = JSON.stringify(store.resources)
+
+    await controller.probeURLSourceOnOpen({
+      id: 'source-inline',
+      type: 'url',
+      location: 'https://example.com/dead',
+      available: false,
+      isPreferred: true,
+      orderIndex: 0,
+      metadata: null
+    })
+
+    expect(JSON.stringify(store.resources)).toBe(before)
+    expect(controller.error.value).toBe('暂时无法检测该链接，请检查网络后重试')
+  })
+
+  it('probeURLSourceOnOpen：探测抛错只呈 error，不打断调用方', async () => {
+    const controller = useLibraryRuntime(
+      createRuntime({
+        probeURLSourceOnOpen: async () => {
+          throw new Error('探测失败')
+        }
+      })
+    )
+
+    await expect(
+      controller.probeURLSourceOnOpen({
+        id: 'source-inline',
+        type: 'url',
+        location: 'https://example.com/dead',
+        available: false,
+        isPreferred: true,
+        orderIndex: 0,
+        metadata: null
+      })
+    ).resolves.toBeUndefined()
+    expect(controller.error.value).toBe('探测失败')
+  })
+})

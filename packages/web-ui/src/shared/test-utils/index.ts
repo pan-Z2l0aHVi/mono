@@ -250,9 +250,6 @@ export function queryA11y(el: HTMLElement, selector: string): Element | null {
   return el.shadowRoot?.querySelector(selector) ?? null
 }
 
-/**
- * 验证宿主元素的布尔属性是否反射。
- */
 export function expectReflected(el: HTMLElement, attr: string, value: boolean): void {
   if (value) {
     expect(el.hasAttribute(attr)).toBe(true)
@@ -261,9 +258,6 @@ export function expectReflected(el: HTMLElement, attr: string, value: boolean): 
   }
 }
 
-/**
- * 清理测试中创建的 DOM 元素。
- */
 export function cleanupElement(el: HTMLElement | null | undefined): void {
   el?.remove()
 }
@@ -308,31 +302,77 @@ export function getThemedPortalPanel(
 }
 
 /**
- * 查询 fallback overlay root 中**所有** portal 面板（`getPortalPanel` 的多面板版）。
- * 供嵌套浮层场景使用（祖先与后代面板同时在场时需要全量枚举）。
+ * 枚举浮层容器。浮层面板可能挂在两种地方，必须一起枚举，否则模态化的 context-menu
+ * 会「查不到面板」：
+ *
+ * 1. overlay root 的 `[data-wui-overlay-container]`（dropdown 与未模态化的 context-menu）。
+ *    嵌套 theme 各自带一个 root，只查第一个会让内层 theme 的浮层整体漏掉。
+ * 2. 菜单 scrim `<dialog data-wui-menu-scrim>`：模态化的 context-menu 把面板挂进自己
+ *    `showModal()` 的 scrim（top layer），它不在任何 overlay root 里。菜单**内部**再嵌套的
+ *    anchored 浮层（popover 等）同样落进 scrim —— `findEnclosingOpenDialog` 把最近的已打开
+ *    dialog 当容器，而菜单打开期间那就是 scrim。
+ *
+ * 只留 (1) 的后果不是「测试报错」而是**静默退化**：面板搬进 scrim 后查找恒返回空，于是
+ * `toHaveLength(0)` 永远绿、`expect(panel).toBeTruthy()` 永远红。前者更危险 —— 它把一批
+ * 有效断言换成了永不失败的空断言。
  */
-export function getPortalPanels(role = 'dialog'): HTMLElement[] {
-  return Array.from(document.querySelectorAll<HTMLElement>('[data-wui-overlay-root]')).flatMap(root => {
-    const hosts = Array.from(root.shadowRoot?.querySelectorAll<HTMLElement>('[data-wui-overlay-container] > div') ?? [])
-    return hosts
-      .map(host => host.shadowRoot?.querySelector<HTMLElement>(`[role="${role}"]`))
-      .filter((panel): panel is HTMLElement => panel !== null && panel !== undefined)
-  })
+function getOverlayContainers(): HTMLElement[] {
+  return [
+    ...Array.from(document.querySelectorAll<HTMLElement>('[data-wui-overlay-root]')).flatMap(root =>
+      Array.from(root.shadowRoot?.querySelectorAll<HTMLElement>('[data-wui-overlay-container]') ?? [])
+    ),
+    ...Array.from(document.querySelectorAll<HTMLElement>('dialog[data-wui-menu-scrim]'))
+  ]
 }
 
 /**
- * 查询 fallback overlay root 中的菜单面板（dropdown / context-menu 族）。
+ * 取出容器下的 anchored portal host（带自身 shadow 的那一层）。
  *
- * 菜单族的面板**直接**挂到 `[data-wui-overlay-container]` 且自身带 `role="menu"`，
+ * 两棵树的相对深度不同：
+ *
+ * - overlay root 路径：`[data-wui-overlay-root]` 的 shadow 内有 `[data-wui-overlay-container]`，
+ *   host 是**它的直接子级**。
+ * - scrim 路径：容器是 `<dialog>` 本身。`[data-wui-overlay-container]` 只由 theme /
+ *   overlay-root 创建，浮层直接挂到 dialog 上时**没有**这一层，host 就是 dialog 的直接子级。
+ *
+ * 宽度必须按容器类型区分：overlay root 路径**不能**把容器的直接子级一并收进来 ——
+ * 菜单面板自身就是无 shadow 的直接子级，放宽会改变 dropdown / autocomplete 等既有查找结果。
+ */
+function getPortalHosts(container: HTMLElement): HTMLElement[] {
+  const overlayContainers = [
+    ...(container.matches('[data-wui-overlay-container]') ? [container] : []),
+    ...Array.from(container.querySelectorAll<HTMLElement>('[data-wui-overlay-container]'))
+  ]
+  const hosts = [
+    ...overlayContainers.flatMap(overlayContainer => Array.from(overlayContainer.children)),
+    ...(container instanceof HTMLDialogElement ? Array.from(container.children) : [])
+  ]
+  return hosts.filter((child): child is HTMLElement => child instanceof HTMLElement && child.shadowRoot !== null)
+}
+
+/**
+ * 查询**所有** portal 面板（`getPortalPanel` 的多面板版）。
+ * 供嵌套浮层场景使用（祖先与后代面板同时在场时需要全量枚举）。
+ */
+export function getPortalPanels(role = 'dialog'): HTMLElement[] {
+  return getOverlayContainers()
+    .flatMap(getPortalHosts)
+    .map(host => host.shadowRoot?.querySelector<HTMLElement>(`[role="${role}"]`))
+    .filter((panel): panel is HTMLElement => panel !== null && panel !== undefined)
+}
+
+/**
+ * 查询浮层容器中的菜单面板（dropdown / context-menu 族）。
+ *
+ * 菜单族的面板**直接**挂到 `[data-wui-overlay-container]`（或 scrim）且自身带 `role="menu"`，
  * 不像 anchored panel 那样再包一层带 shadow 的 portal host —— 因此不能复用
  * `getPortalPanel()`（后者要穿过内层 shadow）。`ariaLabel` 用于区分同族面板，
  * 例如 context-menu 的 `'上下文菜单'` 与 `'子菜单'`。
  */
 export function getMenuPanels(ariaLabel?: string): HTMLElement[] {
-  const container = document
-    .querySelector<HTMLElement>('[data-wui-overlay-root]')
-    ?.shadowRoot?.querySelector<HTMLElement>('[data-wui-overlay-container]')
-  const panels = Array.from(container?.querySelectorAll<HTMLElement>('[role="menu"]') ?? [])
+  const panels = getOverlayContainers().flatMap(container =>
+    Array.from(container.querySelectorAll<HTMLElement>('[role="menu"]'))
+  )
   return ariaLabel === undefined ? panels : panels.filter(panel => panel.getAttribute('aria-label') === ariaLabel)
 }
 

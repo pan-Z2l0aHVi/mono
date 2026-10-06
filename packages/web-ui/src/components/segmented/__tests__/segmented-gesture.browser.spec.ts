@@ -23,6 +23,26 @@ function optionSurface(trigger: WebUiSegmentedTrigger): HTMLElement {
   return surface
 }
 
+function triggerCenter(trigger: WebUiSegmentedTrigger): { x: number; y: number } {
+  const rect = optionSurface(trigger).getBoundingClientRect()
+  return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 }
+}
+
+/** 命中元素是否落在 trigger 这一层：host 本体，或其 shadow 内部的可交互面。 */
+function belongsToTrigger(hit: Element | null, trigger: WebUiSegmentedTrigger): boolean {
+  if (!hit) return false
+  if (hit === trigger) return true
+  const root = hit.getRootNode()
+  return root instanceof ShadowRoot && root.host === trigger
+}
+
+function describeHit(hit: Element | null): string {
+  if (!hit) return 'null'
+  const root = hit.getRootNode()
+  const scope = root instanceof ShadowRoot ? ` @${root.host.tagName.toLowerCase()}` : ''
+  return `${hit.tagName.toLowerCase()}${scope}`
+}
+
 // 注：本文件多处 `getBoundingClientRect()` 只用于给合成指针事件算 clientX/Y（测试驱动），
 // 不承载任何像素契约断言——R3 允许的"边界约束"以外的几何读取在此仅为造事件所需。
 function pointer(type: string, init: PointerEventInit): PointerEvent {
@@ -287,5 +307,42 @@ describe('WebUiSegmented 手势拖拽与吸附（浏览器）', () => {
     const onInnerAfter = new TouchEvent('touchmove', { bubbles: true, cancelable: true })
     t1Surface.dispatchEvent(onInnerAfter)
     expect(onInnerAfter.defaultPrevented).toBe(false)
+  })
+
+  /*
+   * 栈序契约：thumb 滑到哪个选项上方，那个选项的文字就必须仍在最上层；thumb 一旦盖住文字，
+   * 该选项的命中就会从自身 trigger 变成 segmented，用户点在选中项上却选不中它。
+   * 命中测试是唯一能观测栈序的运行时证据——thumb 的底色、投影、透明度都看不出来。
+   */
+  it('静止/按住/拖拽/松开下每个选项的文字都不被 thumb 遮挡', async () => {
+    const { segmented, t1, t3 } = createSegmented()
+    await segmented.updateComplete
+
+    const expectTextVisible = (state: string) => {
+      const hits = [t1, t3].map(trigger => {
+        const { x, y } = triggerCenter(trigger)
+        return { label: trigger.textContent ?? '', hit: document.elementFromPoint(x, y) }
+      })
+      expect(
+        hits.every(({ hit }, index) => belongsToTrigger(hit, [t1, t3][index]!)),
+        `${state} 下文字被 thumb 遮挡：${hits.map(({ label, hit }) => `「${label}」→ ${describeHit(hit)}`).join(' | ')}`
+      ).toBe(true)
+    }
+
+    expectTextVisible('静止态')
+
+    const inner = gestureSurface(segmented)
+    const t1Rect = t1.getBoundingClientRect()
+    inner.dispatchEvent(pointer('pointerdown', { clientX: t1Rect.left + 10, clientY: t1Rect.top + 10 }))
+    await segmented.updateComplete
+    expectTextVisible('按住态')
+
+    window.dispatchEvent(pointer('pointermove', { clientX: t1Rect.left + 30, clientY: t1Rect.top + 10 }))
+    await segmented.updateComplete
+    expectTextVisible('拖拽态')
+
+    window.dispatchEvent(pointer('pointerup', { clientX: t1Rect.left + 30, clientY: t1Rect.top + 10 }))
+    await segmented.updateComplete
+    expectTextVisible('松开后')
   })
 })

@@ -45,8 +45,10 @@ const option = name => {
 }
 const flag = name => args.includes(`--${name}`)
 
-function fail(message) {
+function fail(message, hint) {
   console.error(`agent-verify failed: ${message}`)
+  // 失败原因与下一步分开两行：原因可能来自 Chrome 协议或页面脚本，下一步是本工具能给的唯一可行动项。
+  if (hint) console.error(`agent-verify hint: ${hint}`)
   process.exitCode = 1
 }
 
@@ -140,6 +142,16 @@ export function chromeArgs({ profileDir, port = 0, headless = false, url } = {})
   return result
 }
 
+// 目标页连不上时的可行动提示。工具的默认 URL 指向本地 devserver，所以「连不上」最可能的解释是
+// devserver 没起，而不是 URL 写错；提示按这个真实分布排序：先起服务，再谈换地址。
+export function connectionHint(url) {
+  return (
+    `no page answered at ${url}. agent-verify drives a real browser against an already-running devserver, ` +
+    `so start one first: pnpm dev:react-web-ui-demo (or pnpm dev:vue-web-ui-demo / pnpm dev:interweave). ` +
+    `For any other target pass --url <url>; the default is https://127.0.0.1:5173/.`
+  )
+}
+
 // ===== 集成层（integration-only，不单测） =====
 
 function chromeCandidates() {
@@ -217,7 +229,13 @@ export async function navigate(cdp, url) {
   await cdp.send('Page.enable')
   const navigation = await cdp.send('Page.navigate', { url })
   // 不校验 errorText 会把取证跑在 chrome-error 页上，产出全部失真。
-  if (navigation.errorText) throw new Error(`navigation failed: ${navigation.errorText} (${url})`)
+  // 连不上目标页是本工具最常见的失败，而 Chrome 的原文（net::ERR_CONNECTION_REFUSED 之类）只说
+  // 「连不上」，不说下一步做什么。hint 把默认 URL 的语义讲清楚：它假定 devserver 已经在跑。
+  if (navigation.errorText) {
+    const error = new Error(`navigation failed: ${navigation.errorText} (${url})`)
+    error.hint = connectionHint(url)
+    throw error
+  }
   // 轮询 readyState，避免固定 sleep 在慢速 devserver 上采样到空页面。
   for (let attempt = 0; attempt < 50; attempt += 1) {
     if (await evaluate(cdp, 'document.readyState')) {
@@ -428,7 +446,7 @@ async function main() {
       cdp.close()
     }
   } catch (error) {
-    fail(error instanceof Error ? error.message : String(error))
+    fail(error instanceof Error ? error.message : String(error), error instanceof Error ? error.hint : undefined)
   } finally {
     session.child?.kill()
     // Chrome 退出与文件刷盘是异步的，profile 清理尽力而为（mkdtemp 目录由系统回收）。

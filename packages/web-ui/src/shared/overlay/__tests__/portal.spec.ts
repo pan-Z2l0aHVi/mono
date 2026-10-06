@@ -3,21 +3,26 @@ import { afterEach, describe, expect, it } from 'vite-plus/test'
 import { defineOverlayPortal, resolveOverlayContainer } from '../portal'
 
 afterEach(() => {
-  document.body.innerHTML = ''
+  document.body.replaceChildren()
 })
 
+/*
+ * Portal 承担两件对用户可见的事：**面板挂到哪里**（决定它能否留在 top layer 内、
+ * 是否被下层浮层抢走命中）与**内容在关闭后去哪**（必须回到原组件，否则内容直接消失）。
+ *
+ * 容器解析的判据是「显式容器优先」这一条规则本身，不锁属性名与 DOM 形状；
+ * 迁移的判据是内容最终回到原宿主，不锁面板内部结构。
+ */
 describe('浮层 Portal', () => {
   it('显式容器优先于主题和 fallback root', () => {
     const target = document.createElement('div')
     const container = document.createElement('div')
     document.body.append(target, container)
 
-    const resolved = resolveOverlayContainer(container, target)
-
-    expect(resolved).toBe(container)
+    expect(resolveOverlayContainer(container, target)).toBe(container)
   })
 
-  it('迁移内容并在销毁前恢复到原组件', () => {
+  it('内容迁入面板，销毁前恢复到原组件', () => {
     const target = document.createElement('div')
     const content = document.createElement('button')
     const container = document.createElement('div')
@@ -29,14 +34,15 @@ describe('浮层 Portal', () => {
 
     expect(portal.panel.contains(content)).toBe(true)
 
+    // 关闭路径：内容必须回到宿主组件 —— 面板一销毁就把它带走是内容直接消失。
     portal.restoreContent()
     portal.remove()
 
     expect(target.contains(content)).toBe(true)
-    expect(container.childElementCount).toBe(0)
+    expect(portal.panel.isConnected).toBe(false)
   })
 
-  it('可将受跟踪内容迁移到面板内的指定容器', () => {
+  it('可迁移到面板内的指定容器，恢复时同样回到原组件', () => {
     const target = document.createElement('div')
     const content = document.createElement('button')
     const container = document.createElement('div')
@@ -56,7 +62,7 @@ describe('浮层 Portal', () => {
     expect(target.contains(content)).toBe(true)
   })
 
-  it('框架在打开期物理删除已迁移节点时，内建解除追踪且不再恢复该节点', async () => {
+  it('框架在打开期物理删除已迁移节点时，不再恢复该节点', async () => {
     const target = document.createElement('div')
     const kept = document.createElement('button')
     const removed = document.createElement('button')
@@ -88,6 +94,8 @@ describe('浮层 Portal', () => {
 
     portal.restoreContent()
     portal.remove()
+
+    // 框架已经删掉的节点不能被「恢复」重新插回 DOM —— 那会凭空多出一个控件。
     expect(target.contains(kept)).toBe(true)
     expect(target.contains(removed)).toBe(false)
   })

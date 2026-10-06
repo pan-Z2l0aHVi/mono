@@ -26,12 +26,12 @@
 
   min-width: 18px;
   height: 18px;
-  padding: 0 4px;
+  padding: 0 var(--wui-space-1, 4px);
   border: 1px solid var(--wui-color-page, #fff);
   border-radius: var(--wui-radius-control, calc(infinity * 1px));
 
-  font-size: 12px;
-  font-weight: 500;
+  font-size: var(--wui-font-size-caption, 12px);
+  font-weight: var(--wui-font-weight-medium, 500);
   line-height: 1;
   color: var(--wui-color-on-accent, #fff);
   white-space: nowrap;

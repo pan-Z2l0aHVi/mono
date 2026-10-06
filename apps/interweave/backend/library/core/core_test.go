@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -133,6 +134,142 @@ func TestCoreErrorIdentityAndEmptySlices(t *testing.T) {
 	}
 	if global.TagNodes == nil || global.TagEdges == nil {
 		t.Errorf("expected non-nil empty map slices, got nodes=%v edges=%v", global.TagNodes == nil, global.TagEdges == nil)
+	}
+}
+
+// 重复提示的查询必须以 normalizeInput 的归一化结果比对：等价写法命中同一条记录，
+// 未命中返回非 nil 空切片，非法输入与纳入路径同源地报错。
+func TestFindResourceLocationMatchesNormalizesBeforeComparing(t *testing.T) {
+	db, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	resService := core.NewResourceService(db, remote.NewFetcher())
+	srcService := core.NewSourceService(db, remote.NewFetcher())
+	ctx := context.Background()
+
+	path := tempFile(t, "dupe-*.txt")
+	view, err := resService.AddFileResource(ctx, path)
+	if err != nil {
+		t.Fatalf("AddFileResource error: %v", err)
+	}
+
+	// 归一化等价写法：插入 . 与 .. 段后仍指向同一绝对路径。
+	equivalent := filepath.Join(filepath.Dir(path), ".", "..", filepath.Base(filepath.Dir(path)), filepath.Base(path))
+	matches, err := resService.FindResourceLocationMatches(ctx, equivalent, storage.SourceTypeFile)
+	if err != nil {
+		t.Fatalf("FindResourceLocationMatches error: %v", err)
+	}
+	if len(matches) != 1 {
+		t.Fatalf("expected the normalized-equivalent path to match once, got %+v", matches)
+	}
+	if matches[0].ResourceID != view.Resource.ID || matches[0].Title != view.Resource.Title {
+		t.Errorf("expected match on %q, got %+v", view.Resource.Title, matches[0])
+	}
+	// 回传位置必须是库里那条归一化位置，前端无从自行归一化。
+	if matches[0].Location != view.Sources[0].Location {
+		t.Errorf("expected stored location %q, got %q", view.Sources[0].Location, matches[0].Location)
+	}
+
+	empty, err := resService.FindResourceLocationMatches(ctx, tempFile(t, "other-*.txt"), storage.SourceTypeFile)
+	if err != nil {
+		t.Fatalf("FindResourceLocationMatches (miss) error: %v", err)
+	}
+	if empty == nil {
+		t.Error("expected non-nil empty matches so the caller can render an empty list")
+	}
+	if len(empty) != 0 {
+		t.Errorf("expected no matches for an unadded file, got %+v", empty)
+	}
+
+	if _, err := resService.FindResourceLocationMatches(ctx, "   ", storage.SourceTypeFile); err == nil {
+		t.Error("expected a normalize error for a blank file path, got nil")
+	}
+	if _, err := resService.FindResourceLocationMatches(ctx, "not-a-url", storage.SourceTypeURL); err == nil {
+		t.Error("expected a normalize error for a schemeless URL, got nil")
+	}
+
+	// 同一 Resource 在同一位置登记多条 Source（CONTEXT.md「重复 Source」）时按 Resource 去重。
+	if _, err := srcService.AddFileSource(ctx, view.Resource.ID, path); err != nil {
+		t.Fatalf("AddFileSource error: %v", err)
+	}
+	deduped, err := resService.FindResourceLocationMatches(ctx, path, storage.SourceTypeFile)
+	if err != nil {
+		t.Fatalf("FindResourceLocationMatches (duplicate sources) error: %v", err)
+	}
+	if len(deduped) != 1 {
+		t.Errorf("expected duplicate sources on one resource to collapse to one match, got %+v", deduped)
+	}
+}
+
+// URL 查询走同一套归一化（scheme/host 大小写、默认端口、空路径），并且不与文件入口串味。
+func TestFindResourceLocationMatchesCoversURLSources(t *testing.T) {
+	db, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	resService := core.NewResourceService(db, remote.NewFetcher())
+	ctx := context.Background()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+
+	view, err := resService.AddURLResource(ctx, srv.URL+"/page")
+	if err != nil {
+		t.Fatalf("AddURLResource error: %v", err)
+	}
+
+	upper := strings.Replace(srv.URL, "http://", "HTTP://", 1) + "/page"
+	matches, err := resService.FindResourceLocationMatches(ctx, upper, storage.SourceTypeURL)
+	if err != nil {
+		t.Fatalf("FindResourceLocationMatches error: %v", err)
+	}
+	if len(matches) != 1 || matches[0].ResourceID != view.Resource.ID {
+		t.Fatalf("expected the scheme-normalized URL to match once, got %+v", matches)
+	}
+	if matches[0].Location != view.Sources[0].Location {
+		t.Errorf("expected stored location %q, got %q", view.Sources[0].Location, matches[0].Location)
+	}
+
+	// URL 位置不参与文件查询：按 file 反查时它归一化成 cwd 下的相对路径，命不中这条记录。
+	asFile, err := resService.FindResourceLocationMatches(ctx, upper, storage.SourceTypeFile)
+	if err != nil {
+		t.Fatalf("FindResourceLocationMatches (as file) error: %v", err)
+	}
+	if len(asFile) != 0 {
+		t.Errorf("expected no file match for a URL entry, got %+v", asFile)
+	}
+}
+
+// 同一位置挂在多个 Resource 上时按纳入时间倒序返回，与资源库浏览顺序一致。
+func TestFindResourceLocationMatchesOrdersNewestFirst(t *testing.T) {
+	db, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	resService := core.NewResourceService(db, remote.NewFetcher())
+	ctx := context.Background()
+
+	path := tempFile(t, "shared-*.txt")
+	older, err := resService.AddFileResource(ctx, path)
+	if err != nil {
+		t.Fatalf("AddFileResource error: %v", err)
+	}
+	// 跨过毫秒边界，使两个 Resource 的纳入时间可区分，不依赖 ID 兜底排序。
+	time.Sleep(2 * time.Millisecond)
+	newer, err := resService.AddFileResource(ctx, path)
+	if err != nil {
+		t.Fatalf("AddFileResource error: %v", err)
+	}
+
+	matches, err := resService.FindResourceLocationMatches(ctx, path, storage.SourceTypeFile)
+	if err != nil {
+		t.Fatalf("FindResourceLocationMatches error: %v", err)
+	}
+	if len(matches) != 2 {
+		t.Fatalf("expected both resources to match, got %+v", matches)
+	}
+	if matches[0].ResourceID != newer.Resource.ID || matches[1].ResourceID != older.Resource.ID {
+		t.Errorf("expected newest first, got %s then %s", matches[0].ResourceID, matches[1].ResourceID)
 	}
 }
 

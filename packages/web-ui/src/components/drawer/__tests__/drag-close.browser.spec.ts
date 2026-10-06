@@ -35,6 +35,19 @@ function settled(el: WebUiDrawer): Promise<void> {
   return waitFor(() => getDialog(el).getAnimations({ subtree: true }).length === 0, 5000)
 }
 
+/**
+ * dialog **自身**上在跑的动画（不含 subtree 后代）。
+ *
+ * 收尾是否还在进行，看的是本层的动画还在不在；后代自己的过渡与本层无关，
+ * 混进来会把「已提前终结」误判成「仍在收尾」。
+ */
+function ownAnimations(el: WebUiDrawer): Animation[] {
+  const dialog = getDialog(el)
+  return dialog
+    .getAnimations({ subtree: true })
+    .filter(animation => (animation.effect as KeyframeEffect | null)?.target === dialog)
+}
+
 function createDrawer(): WebUiDrawer {
   const el = document.createElement('web-ui-drawer')
   document.body.appendChild(el)
@@ -692,8 +705,12 @@ describe('WebUiDrawer 拖拽关闭（浏览器）', () => {
 
   /*
    * issue #123：释放后的收尾（弹回打开位 / 滑出到闭合位）已从 WAAPI 弹簧迁移为
-   * CSS transition。下面三条是该迁移的验收锁，只认公开 DOM 面（transitionstart、
-   * getAnimations、内联样式），不对 `element.animate` 打桩（§12 C1）。
+   * CSS transition。判据只取公开 DOM 面（transitionstart / getAnimations）与最终的
+   * open 归宿 —— `is-settling`、内联 `transform`、`--wui-internal-settle-*` 这些
+   * 收尾参数与状态类是内部实现，断言它们等于把实现抄回测试（政策第 6 条）。
+   *
+   * 可观察的失败形态是「面板在半途瞬移」或「松手后没有回到打开位」，都由
+   * `open` 与 transitionstart 承担。
    */
   it('收尾期间后代冒泡的 transform transitionend 不提前终结收尾', async () => {
     const el = createDrawer()
@@ -705,25 +722,21 @@ describe('WebUiDrawer 拖拽关闭（浏览器）', () => {
     await el.updateComplete
     await waitForOpenTransition(el)
 
-    // 小位移慢速松手 → 弹回收尾（≥180ms）刚开始。
+    // 小位移慢速松手 → 弹回收尾刚开始。
     await dragAndRelease(el, { x: 30, y: 0 }, 10)
-    const dialog = getDialog(el)
-    const settleDuration = dialog.style.getPropertyValue('--wui-internal-settle-duration')
-    expect(dialog.classList.contains('is-settling')).toBe(true)
+    expect(ownAnimations(el).length, '弹回收尾没有跑起来').toBeGreaterThan(0)
 
-    // 后代自己的 transform 过渡结束：不能把本层收尾判定为完成（否则内联终值与
-    // 收尾参数被提前清除，抽屉在半途瞬移回打开位）。
+    // 后代自己的 transform 过渡结束：不能把本层收尾判定为完成。
     slotted.dispatchEvent(new TransitionEvent('transitionend', { bubbles: true, propertyName: 'transform' }))
 
-    expect(dialog.classList.contains('is-settling')).toBe(true)
-    expect(dialog.style.transform).not.toBe('')
-    expect(dialog.style.getPropertyValue('--wui-internal-settle-duration')).toBe(settleDuration)
+    // 提前终结的表现是内联终值被清掉、面板瞬移回打开位 —— 即收尾动画当场消失。
+    expect(ownAnimations(el).length, '后代 transitionend 提前终结了本层收尾').toBeGreaterThan(0)
 
     await settled(el)
     expect(el.open).toBe(true)
   })
 
-  it('释放后的收尾是 CSS transition，且不再创建 WAAPI 动画', async () => {
+  it('释放后的收尾是一条 CSS transition，不是脚本逐帧驱动的动画', async () => {
     const el = createDrawer()
     el.draggable = true
     el.open = true
@@ -733,39 +746,23 @@ describe('WebUiDrawer 拖拽关闭（浏览器）', () => {
     const dialog = getDialog(el)
     let snapshot: Animation[] = []
     dialog.addEventListener('transitionstart', event => {
-      // 在回调内同步抓取：收尾是单次 CSS 过渡，等 waitFor 轮询到（帧边界）时它可能已经结束，
+      // 在回调内同步抓取：收尾是单次 CSS 过渡，等轮询到（帧边界）时它可能已经结束，
       // 那时 getAnimations() 为空，断言就退化成永不失败的常绿。
-      if ((event as TransitionEvent).propertyName === 'transform') snapshot = dialog.getAnimations({ subtree: true })
+      if ((event as TransitionEvent).propertyName === 'transform') {
+        snapshot = ownAnimations(el)
+      }
     })
 
-    // 小位移慢速松手 → 弹回路径，收尾过渡在弹回期间可观察（不进入关闭管线）。
     await dragAndRelease(el, { x: 30, y: 0 }, 10)
     await waitFor(() => snapshot.length > 0, 1000)
 
+    // 收尾由 CSS transition 驱动时不会有 WAAPI 动画参与；若实现退回逐帧脚本动画，
+    // 这里会看到非 CSSTransition 的条目。
     expect(snapshot.length).toBeGreaterThan(0)
     expect(snapshot.filter(animation => !(animation instanceof CSSTransition))).toHaveLength(0)
 
     await settled(el)
     expect(el.open).toBe(true)
-  })
-
-  it('弹回结束后交还 CSS 管辖：内联 transform 与收尾参数都被清除', async () => {
-    const el = createDrawer()
-    el.draggable = true
-    el.open = true
-    await el.updateComplete
-    await waitForOpenTransition(el)
-
-    await dragAndRelease(el, { x: 30, y: 0 }, 10)
-    // 等收尾真正交还 CSS：`getAnimations()` 为空发生在过渡结束的那一刻，可能早于
-    // transitionend 被派发处理，直接等被断言的终态（内联样式被清除）才不会偶发抢跑。
-    const dialog = getDialog(el)
-    await waitFor(() => dialog.style.transform === '', 5000)
-
-    expect(dialog.style.transform).toBe('')
-    expect(dialog.style.getPropertyValue('--wui-internal-drag-backdrop-opacity')).toBe('')
-    // 收尾时长/缓动是一次性的，不能残留到下一次开关。
-    expect(dialog.style.getPropertyValue('--wui-internal-settle-duration')).toBe('')
   })
 
   it('弹回后走普通关闭路径仍触发 transform 过渡（内联残留回归锁）', async () => {
@@ -779,11 +776,11 @@ describe('WebUiDrawer 拖拽关闭（浏览器）', () => {
 
     // 弹回若残留 translateX(0px) 内联，会盖住闭合态 CSS transform：之后用
     // 按钮/遮罩/Esc 关闭时计算值恒为 0，开关都不再触发过渡。
-    // 同上，等内联样式真正被清除再验证下一次关闭（getAnimations 为空会抢跑）。
-    const dialog = getDialog(el)
-    await waitFor(() => dialog.style.transform === '', 5000)
+    // 等收尾真的结束（动画归零）再验证下一次关闭 —— 内联样式是否清干净不是判据，
+    // 「下一次关闭还有没有过渡」才是。
+    await settled(el)
     const started: string[] = []
-    dialog.addEventListener('transitionstart', event => started.push((event as TransitionEvent).propertyName))
+    getDialog(el).addEventListener('transitionstart', event => started.push((event as TransitionEvent).propertyName))
 
     el.close()
     await waitFor(() => !el.open, 5000)

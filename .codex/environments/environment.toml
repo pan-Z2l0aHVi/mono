@@ -11,7 +11,7 @@ pnpm i
 [[actions]]
 name = "check code"
 icon = "check"
-command = "pnpm run check:code"
+command = "pnpm run check-code"
 
 [[actions]]
 name = "build all"
@@ -41,4 +41,4 @@ command = "pnpm exec turbo dev --filter=@greypan/interweave --filter=\"@greypan/
 [[actions]]
 name = "validate context"
 icon = "check"
-command = "pnpm validate:context"
+command = "pnpm ci:validate-context"

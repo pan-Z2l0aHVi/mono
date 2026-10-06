@@ -99,6 +99,47 @@ export class WebUiEditableText extends FormAssociated(LitElement) {
   @property({ type: String, reflect: true }) placeholder = ''
   @property({ type: Boolean, reflect: true }) disabled = false
   @property({ type: Boolean, reflect: true }) readonly = false
+
+  /**
+   * 卸载时按提交语义结束编辑，默认 false。
+   *
+   * 跨引擎实测（Chromium 与 WebKit 各一轮）结论**不一致**，这是本属性的主要价值来源：
+   *
+   * - Chromium：移除正在编辑的组件会向编辑层派发 `blur`，默认行为下 `change` 已照常派发
+   *   一次，草稿不丢。blur 与 change 同步排在 `disconnectedCallback` 之后（后者在
+   *   disconnected 步骤内跑完），卸载因此没拿到一条「排在该消费方状态更新之前」的提交来源。
+   * - WebKit（Safari / iOS）：移除**不派发 blur**，默认路径什么都不提交，草稿随组件一起丢弃。
+   *   这里 blur 兜底不存在，只有显式开启本属性才能保住草稿。
+   * - Gecko（Firefox）**未验证**：实测所用机器上没有任何 Firefox 能启动，这里不做断言。把它当作
+   *   未知，而不是默认与上面两者之一相同。
+   *
+   * 所以在 Safari 上这不是可选优化而是必需的：默认值 `false` 对 Safari 用户等于没有兜底，
+   * 消费方若依赖「行被回收时草稿不丢」，在 Safari 上必须显式开启本属性。
+   *
+   * 开启后由 `disconnectedCallback` 复用 `_commitEditing`，与 `Enter`／`blur` 是同一份实现，
+   * 卸载不是第三条独立的提交语义。副作用与 `blur` 提交一致：草稿成为新值、退出编辑、
+   * 派发一次 `change`（冒泡且组合）。两处与 `blur` 刻意不同：
+   *
+   * 1. 提交判据——`Enter` 与 `blur` 由用户动作触发，一律算提交意图；卸载没有这种意图，
+   *    因此只在草稿与进入编辑时的值确实不同时才提交，不产生空提交。
+   * 2. 禁用与只读态——`disabled` / `readonly` 时与 `_onBlur` 一致：不派发提交事件。两者对「已有
+   *    草稿」的后果不同，必须分开说：`disabled` 下草稿保留在组件上；`readonly` 下草稿是真的
+   *    丢掉——`readonly` 阻止不了先前的输入，而卸载时不会再有 blur 兜底（WebKit 上连 blur
+   *    都没有）。可达路径是「可编辑态进入 → 起草稿 → 期间翻 readonly → 卸载」。这里不按取消
+   *    处理：cancel 的契约是恢复 `_editBase`，而卸载既没有焦点要交还也没有宿主接收结果，
+   *    改成 cancel 还会与「与 `_onBlur` 一致」这条公开承诺相悖。用户看到的是「我打的字没了」，
+   *    既没有 change 也没有 cancel。
+   *
+   * 派发发生在卸载回调内，`change` 沿组合路径向上派发，因此挂在组件自身或任一祖先上的监听
+   * 都会执行，**包括已经随宿主一起被卸载的祖先**——派发不要求祖先仍在文档中。这正是虚拟化
+   * 场景需要的：消费方的监听器往往就挂在被回收的那一行上。因此监听器不能假定组件此刻仍在
+   * 文档里；需要把结果交给宿主树之外的状态时，用 `queueMicrotask` 之类的显式转交。
+   *
+   * 祖先上的 `display: none` 不是卸载：组件仍在文档中、不派发任何事件（两引擎一致），那种
+   * 场合需要消费方主动结束编辑。
+   */
+  @property({ type: Boolean, reflect: true, attribute: 'commit-on-unmount' }) commitOnUnmount = false
+
   @property({ type: String, attribute: 'aria-label' }) override ariaLabel: string | null = null
 
   @state() private _value = ''
@@ -156,6 +197,27 @@ export class WebUiEditableText extends FormAssociated(LitElement) {
 
   override disconnectedCallback() {
     super.disconnectedCallback()
+    /*
+     * 卸载没有用户动作作为提交意图（`Enter` / `blur` 都有），所以判据是草稿与进入编辑时的
+     * 值是否不同，而不是「是否提交过」——Escape 会把值恢复成 `_editBase`，但那是取消，与
+     * 本次卸载无关；一个只聚焦了没打字的会话也不该在消失时凭空产生一次 change。
+     *
+     * `_isDisabled` 与 `readonly` 两道守卫都与 `_onBlur` 对称：两者都不派发提交事件。`disabled`
+     * 必须显式判——`disabled = true` 与 `remove()` 在同一任务里执行时 Lit 更新是微任务，
+     * `updated()` 还没跑到（禁用态退出编辑那条分支尚未执行），此时组件仍在编辑态，不判就会
+     * 派发一条 blur 路径明确拒绝的 change。`readonly` 不能靠「草稿恒等于基线」兜住：可编辑态
+     * 进入并起草稿之后属性才翻成 readonly 的会话，基线仍是进入编辑时的旧值，两条判据都成立
+     * 却不该提交（草稿在这次卸载中丢失，理由见 property 的 JSDoc）。
+     */
+    if (
+      this.commitOnUnmount &&
+      this._editing &&
+      !this._isDisabled &&
+      !this.readonly &&
+      this._value !== this._editBase
+    ) {
+      this._commitEditing(false)
+    }
     this._releaseEditingKeys()
     this._teardownAutosize()
   }

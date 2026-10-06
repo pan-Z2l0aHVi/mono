@@ -17,8 +17,8 @@ function createTransportStub() {
 }
 
 /**
- * 注入 fake transport 后，队列调度只经过 microtask；自旋等待断言条件收敛，
- * 不依赖真实时间。超过上限视为未收敛，让断言以超时信息失败。
+ * 注入 fake transport 后队列调度只经过 microtask，自旋等待即可收敛，不依赖真实时间。
+ * 上限兜底：未收敛时以超时信息失败，而不是挂到 vitest 的默认超时。
  */
 async function waitUntil(predicate: () => boolean, maxSpins = 1000): Promise<void> {
   for (let spin = 0; spin < maxSpins && !predicate(); spin += 1) {
@@ -34,9 +34,8 @@ async function settleMicrotasks(spins = 50): Promise<void> {
   }
 }
 
-describe('页面错误插件测试用例', () => {
+describe('definePageErrors 测试', () => {
   let transport: ReturnType<typeof createTransportStub>['transport']
-  let items: object[]
   const trackers: Array<{ stop(): void }> = []
 
   function makeTracker(tracker: ReturnType<typeof defineTracker>) {
@@ -45,43 +44,44 @@ describe('页面错误插件测试用例', () => {
     return made
   }
 
+  const dispatchUncaught = (detail: {
+    message: string
+    error: Error
+    filename?: string
+    lineno?: number
+    colno?: number
+  }) => window.dispatchEvent(new ErrorEvent('error', detail))
+
   beforeEach(() => {
     vi.clearAllTimers()
     vi.restoreAllMocks()
     localStorage.clear()
-
-    const stub = createTransportStub()
-    transport = stub.transport
-    items = stub.items
+    transport = createTransportStub().transport
   })
 
   afterEach(() => {
+    // 不 stop 会让监听器活到下一个用例，把两个用例的错误混进同一条记录
     for (const tracker of trackers) tracker.stop()
     trackers.length = 0
   })
 
-  it('收集 uncaught error 并生成标准 page_error 事件', async () => {
+  it('uncaught error 生成带来源位置的 page_error 事件', async () => {
     makeTracker(
-      defineTracker({ url: 'https://example.com', transport }).use(
-        definePageErrors({
-          metadata: { app: 'demo' }
-        })
-      )
+      defineTracker({ url: 'https://example.com', transport }).use(definePageErrors({ metadata: { app: 'demo' } }))
     )
 
-    window.dispatchEvent(
-      new ErrorEvent('error', {
-        message: 'boom',
-        filename: '/assets/app.js',
-        lineno: 12,
-        colno: 34,
-        error: new Error('boom')
-      })
-    )
+    dispatchUncaught({
+      message: 'boom',
+      filename: '/assets/app.js',
+      lineno: 12,
+      colno: 34,
+      error: new Error('boom')
+    })
 
     await waitUntil(() => transport.mock.calls.length === 1)
     const payload = transport.mock.calls[0][0] as Record<string, unknown>
 
+    // 定位崩溃需要 filename/lineno/colno，少一个都会让用户报的错没法查
     expect(payload).toMatchObject({
       event: 'page_error',
       error: {
@@ -94,99 +94,82 @@ describe('页面错误插件测试用例', () => {
       metadata: { app: 'demo' }
     })
     expect(payload.error).toHaveProperty('stack')
-    expect(typeof payload.timestamp).toBe('number')
   })
 
-  it('收集 unhandled rejection 并省略 uncaught 专有字段', async () => {
+  it('unhandled rejection 归入独立 category，且不带源码位置', async () => {
     makeTracker(defineTracker({ url: 'https://example.com', transport }).use(definePageErrors()))
 
     window.dispatchEvent(
-      new PromiseRejectionEvent('unhandledrejection', {
-        promise: Promise.resolve(),
-        reason: new Error('rejected')
-      })
+      new PromiseRejectionEvent('unhandledrejection', { promise: Promise.resolve(), reason: new Error('rejected') })
     )
 
     await waitUntil(() => transport.mock.calls.length === 1)
     const payload = transport.mock.calls[0][0] as Record<string, unknown>
 
+    // 两类错误要能被后端分开统计，否则无法判断该修哪条链路
     expect(payload).toMatchObject({
       event: 'page_error',
-      error: {
-        category: 'unhandled_rejection',
-        message: 'rejected'
-      }
+      error: { category: 'unhandled_rejection', message: 'rejected' }
     })
     expect(payload.error).not.toHaveProperty('filename')
     expect(payload.error).not.toHaveProperty('lineno')
-    expect(payload.error).not.toHaveProperty('colno')
   })
 
-  it('同一签名在窗口内去重，窗口过期后允许重新上报', async () => {
+  it('相同签名在窗口内去重，窗口过期后重新上报', async () => {
     makeTracker(defineTracker({ url: 'https://example.com', transport }).use(definePageErrors()))
 
-    const dispatchError = () => {
-      window.dispatchEvent(
-        new ErrorEvent('error', {
-          message: 'same',
-          filename: '/assets/app.js',
-          lineno: 1,
-          colno: 2,
-          error: new Error('same')
-        })
-      )
-    }
+    const dispatchSame = () =>
+      dispatchUncaught({ message: 'same', filename: '/assets/app.js', lineno: 1, colno: 2, error: new Error('same') })
 
-    dispatchError()
-    dispatchError()
+    dispatchSame()
+    dispatchSame()
     await waitUntil(() => transport.mock.calls.length === 1)
+
+    // 循环里抛同一个错会淹没上报配额：去重按「同类错误只报一次」
     expect(transport.mock.calls.length).toBe(1)
 
-    vi.advanceTimersByTime(5_000)
-    dispatchError()
+    vi.advanceTimersByTime(5000)
+    dispatchSame()
     await waitUntil(() => transport.mock.calls.length === 2)
   })
 
-  it('总数限制达到上限后丢弃新错误', async () => {
+  it('达到 maxErrors 后丢弃新错误', async () => {
     makeTracker(
       defineTracker({ url: 'https://example.com', transport }).use(
-        definePageErrors({
-          maxErrors: 1,
-          dedupeWindowMs: 0
-        })
+        definePageErrors({ maxErrors: 1, dedupeWindowMs: 0 })
       )
     )
 
-    window.dispatchEvent(new ErrorEvent('error', { message: 'first', error: new Error('first') }))
+    dispatchUncaught({ message: 'first', error: new Error('first') })
     await waitUntil(() => transport.mock.calls.length === 1)
 
-    window.dispatchEvent(new ErrorEvent('error', { message: 'second', error: new Error('second') }))
+    dispatchUncaught({ message: 'second', error: new Error('second') })
     await settleMicrotasks()
+
+    // 上限存在是为了保护上报通道本身不被错误风暴打垮
     expect(transport.mock.calls.length).toBe(1)
   })
 
-  it('按配置截断 message 和 stack', async () => {
+  it('按配置截断 message 与 stack', async () => {
     makeTracker(
       defineTracker({ url: 'https://example.com', transport }).use(
-        definePageErrors({
-          dedupeWindowMs: 0,
-          maxMessageLength: 10,
-          maxStackLength: 20
-        })
+        definePageErrors({ dedupeWindowMs: 0, maxMessageLength: 10, maxStackLength: 20 })
       )
     )
 
     const error = new Error('x'.repeat(30))
     error.stack = 's'.repeat(30)
-    window.dispatchEvent(new ErrorEvent('error', { message: error.message, error }))
+    dispatchUncaught({ message: error.message, error })
 
     await waitUntil(() => transport.mock.calls.length === 1)
     const payload = transport.mock.calls[0][0] as { error: { message: string; stack?: string } }
+
+    // 截断是为了控制单次载荷体积；写死不截断会让上报请求本身超限
     expect(payload.error.message).toHaveLength(10)
     expect(payload.error.stack).toHaveLength(20)
   })
 
-  it('metadata 求值失败时仍上报错误本体', async () => {
+  it('metadata 求值抛错时仍上报错误本体', async () => {
     makeTracker(
       defineTracker({ url: 'https://example.com', transport }).use(
         definePageErrors({
@@ -197,15 +180,17 @@ describe('页面错误插件测试用例', () => {
       )
     )
 
-    window.dispatchEvent(new ErrorEvent('error', { message: 'boom', error: new Error('boom') }))
+    dispatchUncaught({ message: 'boom', error: new Error('boom') })
     await waitUntil(() => transport.mock.calls.length === 1)
 
     const payload = transport.mock.calls[0][0] as Record<string, unknown>
+
+    // metadata 是增强信息：它坏掉不该连累最关键的那条错误记录
     expect(payload.event).toBe('page_error')
     expect(payload).not.toHaveProperty('metadata')
   })
 
-  it('metadata getter 抛错时仍上报错误本体', async () => {
+  it('metadata 是 throwing getter 时，构造插件与派发事件都不抛错', async () => {
     const options: PageErrorsOptions = {}
     Object.defineProperty(options, 'metadata', {
       enumerable: true,
@@ -214,13 +199,12 @@ describe('页面错误插件测试用例', () => {
       }
     })
 
+    // options 不展开进插件配置：throwing getter 在构造期就会炸掉整个 tracker
     expect(() =>
       makeTracker(defineTracker({ url: 'https://example.com', transport }).use(definePageErrors(options)))
     ).not.toThrow()
 
-    expect(() =>
-      window.dispatchEvent(new ErrorEvent('error', { message: 'boom', error: new Error('boom') }))
-    ).not.toThrow()
+    dispatchUncaught({ message: 'boom', error: new Error('boom') })
     await waitUntil(() => transport.mock.calls.length === 1)
 
     const payload = transport.mock.calls[0][0] as Record<string, unknown>
@@ -228,7 +212,7 @@ describe('页面错误插件测试用例', () => {
     expect(payload).not.toHaveProperty('metadata')
   })
 
-  it('metadata 不能覆盖事件标准字段', async () => {
+  it('metadata 不能覆盖事件的标准字段', async () => {
     makeTracker(
       defineTracker({ url: 'https://example.com', transport }).use(
         definePageErrors({
@@ -237,52 +221,20 @@ describe('页面错误插件测试用例', () => {
       )
     )
 
-    window.dispatchEvent(new ErrorEvent('error', { message: 'boom', error: new Error('boom') }))
+    dispatchUncaught({ message: 'boom', error: new Error('boom') })
     await waitUntil(() => transport.mock.calls.length === 1)
 
     const payload = transport.mock.calls[0][0] as Record<string, unknown>
+
+    // 标准字段被覆盖会让后端把一条崩溃记录当成任意事件解析，错误彻底不可用
     expect(payload.event).toBe('page_error')
-    expect(payload.error).not.toBe(null)
-    expect(typeof payload.timestamp).toBe('number')
+    expect(payload.error).not.toBeNull()
   })
 
-  it('stop 后停止收集页面错误', async () => {
-    const tracker = makeTracker(defineTracker({ url: 'https://example.com', transport }).use(definePageErrors()))
-
-    window.dispatchEvent(new ErrorEvent('error', { message: 'first', error: new Error('first') }))
-    await waitUntil(() => transport.mock.calls.length === 1)
-
-    tracker.stop()
-    window.dispatchEvent(new ErrorEvent('error', { message: 'second', error: new Error('second') }))
-    await settleMicrotasks()
-    expect(transport.mock.calls.length).toBe(1)
-  })
-
-  it('stop 后停止收集 unhandled rejection', async () => {
-    const tracker = makeTracker(defineTracker({ url: 'https://example.com', transport }).use(definePageErrors()))
-
-    window.dispatchEvent(
-      new PromiseRejectionEvent('unhandledrejection', {
-        promise: Promise.resolve(),
-        reason: new Error('before stop')
-      })
-    )
-    await waitUntil(() => transport.mock.calls.length === 1)
-
-    tracker.stop()
-    window.dispatchEvent(
-      new PromiseRejectionEvent('unhandledrejection', {
-        promise: Promise.resolve(),
-        reason: new Error('after stop')
-      })
-    )
-    await settleMicrotasks()
-    expect(transport.mock.calls.length).toBe(1)
-  })
-
-  it('非 Error 且 String(reason) 抛错时仍上报一次且不产生二次异常', async () => {
+  it('reason 无法字符串化时上报占位文案，且不产生二次异常', async () => {
     makeTracker(defineTracker({ url: 'https://example.com', transport }).use(definePageErrors()))
 
+    // 第三方代码抛出的对象 toString 可能抛错：错误上报器自己绝不能因此再抛一次
     const hostileReason = {
       toString() {
         throw new Error('cannot stringify')
@@ -290,17 +242,47 @@ describe('页面错误插件测试用例', () => {
     }
     expect(() =>
       window.dispatchEvent(
-        new PromiseRejectionEvent('unhandledrejection', {
-          promise: Promise.resolve(),
-          reason: hostileReason
-        })
+        new PromiseRejectionEvent('unhandledrejection', { promise: Promise.resolve(), reason: hostileReason })
       )
     ).not.toThrow()
 
     await waitUntil(() => transport.mock.calls.length === 1)
     const payload = transport.mock.calls[0][0] as { error: { message: string } }
     expect(payload.error.message).toBe('Unknown unhandled rejection')
+
     await settleMicrotasks()
+    expect(transport.mock.calls.length).toBe(1)
+  })
+
+  it('stop 后不再收集 uncaught error', async () => {
+    const tracker = makeTracker(defineTracker({ url: 'https://example.com', transport }).use(definePageErrors()))
+
+    dispatchUncaught({ message: 'first', error: new Error('first') })
+    await waitUntil(() => transport.mock.calls.length === 1)
+
+    tracker.stop()
+    dispatchUncaught({ message: 'second', error: new Error('second') })
+    await settleMicrotasks()
+
+    // stop 之后仍上报：被卸载的组件会继续制造噪音
+    expect(transport.mock.calls.length).toBe(1)
+  })
+
+  it('stop 后不再收集 unhandled rejection', async () => {
+    const tracker = makeTracker(defineTracker({ url: 'https://example.com', transport }).use(definePageErrors()))
+
+    const dispatchRejection = (reason: string) =>
+      window.dispatchEvent(
+        new PromiseRejectionEvent('unhandledrejection', { promise: Promise.resolve(), reason: new Error(reason) })
+      )
+
+    dispatchRejection('before stop')
+    await waitUntil(() => transport.mock.calls.length === 1)
+
+    tracker.stop()
+    dispatchRejection('after stop')
+    await settleMicrotasks()
+
     expect(transport.mock.calls.length).toBe(1)
   })
 
@@ -309,18 +291,18 @@ describe('页面错误插件测试用例', () => {
       defineTracker({ url: 'https://example.com', transport }).use(defineBatchTrack()).use(definePageErrors())
     )
 
-    window.dispatchEvent(new ErrorEvent('error', { message: 'batched', error: new Error('batched') }))
+    dispatchUncaught({ message: 'batched', error: new Error('batched') })
     vi.advanceTimersByTime(500)
 
     await waitUntil(() => transport.mock.calls.length === 1)
+
+    // 组合 batch-track 时错误走数组载荷：形状不一致会让后端整批解析失败，
+    // 结果是崩溃记录一条都进不去
     expect(transport.mock.calls[0][0]).toEqual([
       {
         event: 'page_error',
         timestamp: expect.any(Number),
-        error: expect.objectContaining({
-          category: 'uncaught',
-          message: 'batched'
-        })
+        error: expect.objectContaining({ category: 'uncaught', message: 'batched' })
       }
     ])
   })

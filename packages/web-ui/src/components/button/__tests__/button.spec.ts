@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vite-plus/test'
 
 import { cleanupElement, expectReflected, mountElement, spyEvents, waitForUpdate } from '@/shared/test-utils'
+import '@/components/button-group'
 
 import '..'
 import type { WebUiButton } from '..'
@@ -256,6 +257,39 @@ describe('WebUiButton 组件', () => {
       el.shadowRoot?.querySelector('button')?.click()
       expect(events).toHaveLength(0)
       cleanupElement(el)
+    })
+  })
+
+  describe('组内分割线', () => {
+    /**
+     * 分割线是 aria-hidden 的装饰，但它多渲染一条就是视觉缺陷。宿主 button 自身没有
+     * 公开属性表达「我在组里且是不是末位」，只能通过真实 button-group 上下文驱动。
+     * 渲染规则见 `button/index.ts` 的 `groupContext && !groupContext.isLast`。
+     */
+    const dividerOf = (button: WebUiButton): Element | null =>
+      button.shadowRoot?.querySelector('[aria-hidden="true"].group-divider') ?? null
+
+    it('组内非末位渲染分割线，末位不渲染；离组后都不渲染', async () => {
+      const group = document.createElement('web-ui-button-group')
+      group.innerHTML = '<web-ui-button>A</web-ui-button><web-ui-button>B</web-ui-button>'
+      document.body.append(group)
+      await waitForUpdate(group)
+
+      const [first, second] = [...group.querySelectorAll<WebUiButton>('web-ui-button')]
+      await Promise.all([first.updateComplete, second.updateComplete])
+
+      expect(dividerOf(first), '非末位应渲染分割线').not.toBeNull()
+      expect(dividerOf(second), '末位不应渲染分割线').toBeNull()
+
+      const container = document.createElement('div')
+      document.body.append(container)
+      container.append(first)
+      await Promise.all([first.updateComplete, waitForUpdate(group)])
+
+      expect(dividerOf(first), '离组后不应再渲染分割线').toBeNull()
+
+      cleanupElement(container)
+      cleanupElement(group)
     })
   })
 

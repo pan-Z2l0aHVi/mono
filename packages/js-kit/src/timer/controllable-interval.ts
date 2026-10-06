@@ -33,18 +33,30 @@ export function defineControllableInterval(options: Options) {
     const { callback, interval } = options
     let timerId: ReturnType<typeof setTimeout> | null = null
     let isPaused = false
+    // 重复调度链是否仍然活着。`isPaused` 只表达暂停，stop() 会把它复位成 false，
+    // 所以回调内部调 stop() 时单看 isPaused 会误判成「恢复中，继续续期」而让定时器复活。
+    let isRunning = false
     let remainingTime = 0
     let lastStartTime = 0
 
-    function tick(delay: number) {
+    function schedule(delay: number) {
       // 单一调度句柄：start/resume/手动 tick 共用它，设置前先清理旧句柄，
       // 否则运行中或暂停中手动 tick 后再 resume 会留下旧 timeout 双触发。
       if (timerId) clearTimeout(timerId)
       lastStartTime = Date.now()
       timerId = setTimeout(() => {
         callback()
-        if (!isPaused) tick(interval)
+        // callback() 内的 stop() 会先清掉 isRunning，这里再续期前必须回查它，
+        // 否则 stop() 之后仍会重新 setTimeout。
+        if (isRunning && !isPaused) schedule(interval)
       }, delay)
+    }
+
+    // 手动 tick 不受 stop 约束：调用它就是显式重新点亮调度链，
+    // 所以链内自我续期走 schedule() 而不是 tick()。
+    function tick(delay: number) {
+      isRunning = true
+      schedule(delay)
     }
 
     function start() {
@@ -76,6 +88,7 @@ export function defineControllableInterval(options: Options) {
 
       timerId = null
       isPaused = false
+      isRunning = false
       remainingTime = 0
     }
 

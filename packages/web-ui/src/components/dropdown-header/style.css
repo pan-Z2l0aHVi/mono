@@ -11,9 +11,9 @@
 .header {
   user-select: none;
 
-  padding: 8px 8px 4px;
+  padding: var(--wui-space-2, 8px) var(--wui-space-2, 8px) var(--wui-space-1, 4px);
 
-  font-size: 12px;
-  font-weight: 600;
+  font-size: var(--wui-font-size-caption, 12px);
+  font-weight: var(--wui-font-weight-semibold, 600);
   color: var(--wui-color-text-tertiary, color-mix(in srgb, var(--wui-color-text) 35%, transparent));
 }

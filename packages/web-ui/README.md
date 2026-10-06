@@ -25,6 +25,8 @@ import '@greypan/web-ui'
 // import '@greypan/web-ui/components/button'
 ```
 
+A subpath import registers only the component it names, so import every tag the page uses.
+
 ```html
 <web-ui-button variant="primary">Click me</web-ui-button> <web-ui-icon .icon="${lucidePlus}"></web-ui-icon>
 ```
@@ -354,24 +356,24 @@ Text input with clearable, prefix/suffix slots.
 
 Multi-line text input with auto-resize.
 
-| Attribute         | Type      | Default | Description                                                                                       |
-| ----------------- | --------- | ------- | ------------------------------------------------------------------------------------------------- |
-| `value`           | `string`  | `''`    | Textarea value                                                                                    |
-| `placeholder`     | `string`  | `''`    | Placeholder text                                                                                  |
-| `rows`            | `number`  | `3`     | Visible rows                                                                                      |
-| `name`            | `string`  | `''`    | Form field name                                                                                   |
-| `disabled`        | `boolean` | `false` | Disabled state                                                                                    |
-| `readonly`        | `boolean` | `false` | Read-only state                                                                                   |
-| `required`        | `boolean` | `false` | Required validation                                                                               |
-| `clearable`       | `boolean` | `false` | Show clear button                                                                                 |
-| `full`            | `boolean` | `false` | Full width                                                                                        |
-| `borderless`      | `boolean` | `false` | Ghost form: removes border, background, and shadow; keeps padding, height metrics, and focus ring |
-| `autosize`        | `boolean` | `false` | Auto-resize height                                                                                |
-| `max-height`      | `number`  | `0`     | Autosize max height (px); `0` = unlimited                                                         |
-| `minlength`       | `number`  | —       | Minimum length validation                                                                         |
-| `maxlength`       | `number`  | —       | Maximum length validation                                                                         |
-| `aria-label`      | `string`  | —       | Accessible label                                                                                  |
-| `aria-labelledby` | `string`  | —       | Accessible label reference                                                                        |
+| Attribute         | Type      | Default | Description                                                                                          |
+| ----------------- | --------- | ------- | ---------------------------------------------------------------------------------------------------- |
+| `value`           | `string`  | `''`    | Textarea value                                                                                       |
+| `placeholder`     | `string`  | `''`    | Placeholder text                                                                                     |
+| `rows`            | `number`  | `3`     | Visible rows                                                                                         |
+| `name`            | `string`  | `''`    | Form field name                                                                                      |
+| `disabled`        | `boolean` | `false` | Disabled state                                                                                       |
+| `readonly`        | `boolean` | `false` | Read-only state                                                                                      |
+| `required`        | `boolean` | `false` | Required validation                                                                                  |
+| `clearable`       | `boolean` | `false` | Show clear button                                                                                    |
+| `full`            | `boolean` | `false` | Full width                                                                                           |
+| `borderless`      | `boolean` | `false` | Ghost form: removes border, background, and shadow; keeps padding, height metrics, and focus ring    |
+| `autosize`        | `boolean` | `false` | Auto-resize height; also forces `resize: none`, because the native grip fights a script-owned height |
+| `max-height`      | `number`  | `0`     | Autosize max height (px); `0` = unlimited                                                            |
+| `minlength`       | `number`  | —       | Minimum length validation                                                                            |
+| `maxlength`       | `number`  | —       | Maximum length validation                                                                            |
+| `aria-label`      | `string`  | —       | Accessible label                                                                                     |
+| `aria-labelledby` | `string`  | —       | Accessible label reference                                                                           |
 
 **Events:** `input`, `change`, `focus`, `blur`
 
@@ -390,14 +392,15 @@ Multi-line text input with auto-resize.
 
 Inline plain-text editor: click the text to edit in place, `Enter` and `blur` commit, `Escape` cancels. The text layer and the editing layer share one box, so entering edit mode does not move a single pixel.
 
-| Attribute     | Type      | Default | Description                                                                                                                                                |
-| ------------- | --------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `value`       | `string`  | `''`    | Current value; the declarative value captured on first connection becomes the `form.reset()` default; later attribute or property changes do not update it |
-| `placeholder` | `string`  | `''`    | Text shown while the value is empty                                                                                                                        |
-| `name`        | `string`  | `''`    | Form field name                                                                                                                                            |
-| `disabled`    | `boolean` | `false` | Disabled state; behavior only, no visual dimming                                                                                                           |
-| `readonly`    | `boolean` | `false` | Read-only state; focus, selection, and copying remain available, but edits cannot commit                                                                   |
-| `aria-label`  | `string`  | —       | Accessible label                                                                                                                                           |
+| Attribute           | Type      | Default | Description                                                                                                                                                |
+| ------------------- | --------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `value`             | `string`  | `''`    | Current value; the declarative value captured on first connection becomes the `form.reset()` default; later attribute or property changes do not update it |
+| `placeholder`       | `string`  | `''`    | Text shown while the value is empty                                                                                                                        |
+| `name`              | `string`  | `''`    | Form field name                                                                                                                                            |
+| `disabled`          | `boolean` | `false` | Disabled state; behavior only, no visual dimming                                                                                                           |
+| `readonly`          | `boolean` | `false` | Read-only state; focus, selection, and copying remain available, but edits cannot commit                                                                   |
+| `commit-on-unmount` | `boolean` | `false` | End an in-progress edit by committing when the element is unmounted; see below                                                                             |
+| `aria-label`        | `string`  | —       | Accessible label                                                                                                                                           |
 
 **Events:** `input` (per keystroke), `change` (commit), `cancel` (cancel; shares its name with the native `<dialog>` `cancel`, so it neither bubbles nor crosses shadow boundaries and is dispatched on the component itself only). React has no synthetic event covering `cancel`: listen with `addEventListener('cancel', ...)`
 
@@ -406,6 +409,18 @@ Inline plain-text editor: click the text to edit in place, `Enter` and `blur` co
 Clicking places the caret at the clicked offset; keyboard focus places it at the end of the text. `Enter` and `blur` both commit the draft and dispatch `change` exactly once; `Enter` does not insert a newline and returns focus to the host, while `blur` leaves the focus wherever the user moved it. `Escape` alone cancels: the value returns to what it was when editing started, `cancel` is dispatched with no `change`, focus returns to the host, and the key is consumed by the editing layer, so an outer overlay (drawer, menu) is not closed by the same press. The `cancel` event neither bubbles nor crosses shadow boundaries and is dispatched on the component itself only: when the component is projected inside an overlay's shadow root, such as a drawer title, it never reaches the overlay's native `cancel` close pipeline, so listen on the component itself. A value that already contains newlines still renders as several lines; only typing `Enter` no longer adds one. An empty value keeps showing the placeholder, and the editing layer always sizes itself to its own content, so an empty or whitespace-only draft still has room for the caret even where the host itself collapses (a flex item with `min-width: 0`, a table cell).
 
 `select()` enters edit mode with the whole content selected, and re-selects it when already editing. While `disabled` it does nothing, matching `focus()`. While `readonly`, focus and selection remain available, but input is rejected and leaving edit mode does not dispatch `change`.
+
+**Unmounting mid-edit.** What happens when an element being edited is removed from the DOM depends on the engine, and the difference is the reason this property exists:
+
+- **Chromium** dispatches `blur` on the editing layer, so a plain `value` commit already happens today and the default `false` leaves that untouched. `blur` and the `change` it triggers are dispatched synchronously _after_ the unmount callback has run, so the commit arrives after whatever state the caller updates in response to the removal has already been applied.
+- **WebKit (Safari, iOS)** dispatches no `blur` at all. With the default `false` nothing is committed and the draft is dropped along with the element.
+- **Gecko (Firefox)** is **unverified**: no Firefox build would start on the machine this was measured on, so nothing is claimed here. Treat Gecko as unknown rather than as matching either column above, and enable the property if you need the unmount commit to be the thing that saves the draft.
+
+If your code relies on a draft surviving the row being recycled, **enable `commit-on-unmount`**: on Safari and iOS it is the only thing that saves the draft, and in Chromium it moves the commit ahead of the removal-driven `blur`. In both engines the unmount then ends an open editing session by committing — the draft becomes the new value, edit mode exits, and `change` is dispatched exactly once, from the same code `Enter` and `blur` use. Measured on Chromium and WebKit; the browser test suite runs on Chromium only, so the WebKit result comes from a one-off cross-engine run rather than from CI, and Gecko was not measured at all.
+
+Unlike `Enter` and `blur`, which a user action triggers and which therefore always count as an intent to commit, unmount carries no such intent. The commit therefore only fires when the draft really differs from the value captured when editing began, so a session that changed nothing does not produce an empty `change`. An element that is not editing at all has nothing to commit and dispatches nothing, and neither does one that is `disabled` or `readonly` — matching the `blur` path, which dispatches no commit in either state. What happens to a draft that already exists differs between the two, though: under `disabled` the draft stays on the element, while under `readonly` it is genuinely lost. `readonly` does not retract input typed earlier, and on unmount there is no `blur` left to commit it — on WebKit there is no `blur` at all. The path is reachable: enter editing while editable, type a draft, flip to `readonly`, then unmount. It is not treated as a cancel, because cancelling means restoring the value editing started from and there is no focus to return or host to hand a result to at unmount; the user simply sees their typing disappear, with neither `change` nor `cancel`.
+
+The commit fires from the unmount callback, so `change` still travels the composed path and reaches listeners on the component or any ancestor, including ancestors that are themselves being unmounted: dispatching does not require an ancestor to still be in the document. Listeners must therefore not assume the component is still connected; hand the result to state outside the host tree explicitly (for example in a `queueMicrotask`) when it has to outlive the removal. Note that this reach is not guaranteed for an unmount React drives from its own render: such a removal never reaches React's delegated event root, so `onChange` will not fire there and the value has to be read from the element instead — the same caveat that applies to `cancel` above. Setting `display: none` on an ancestor is not a removal — the component stays connected and dispatches nothing in either engine, so end the edit explicitly in that case.
 
 The host is an inline-level box: it sizes to its content unless a width is set, and grows with wrapped lines. Font, color, text alignment and white space are inherited from the surrounding context, so the component reads as ordinary text until it is edited.
 
@@ -504,9 +519,9 @@ Editable combobox with input filtering and single option selection.
 
 **Methods:** `focus()`, `blur()`
 
-**Slots:** `default` (project `<web-ui-option>` elements), `trigger` (custom trigger content, replacing the default input), `empty` (replace the "no matches" state; falls back to "No matches")
+**Slots:** `default` (project `<web-ui-option>` elements), `trigger` (custom trigger content, replacing the default input)
 
-Typing filters the option list by label (`contains` or `prefix`, or `none` to disable filtering). Selecting an option fills the input with its label and exposes the option's value via `selected-value`; `change` fires on selection commit. Supports ArrowDown/ArrowUp/Enter/Escape keyboard navigation.
+Typing filters the option list by label (`contains` or `prefix`, or `none` to disable filtering). When no option matches, the dropdown stays closed; deleting characters so at least one option matches reopens it. Selecting an option fills the input with its label and exposes the option's value via `selected-value`; `change` fires on selection commit. Supports ArrowDown/ArrowUp/Enter/Escape keyboard navigation.
 
 **Trigger:** the default trigger is an internal `web-ui-input`. Put any editable component in the `trigger` slot to replace it. The wrapper keeps the combobox ARIA and marks itself with `data-custom-trigger`, and the dropdown stays anchored to the trigger element. Programmatic `focus()` / `blur()` delegate to the active trigger: `web-ui-input` and `web-ui-textarea` move focus to their native control, while a custom trigger without its own focus redirection is focused as the host itself.
 
@@ -522,9 +537,7 @@ The custom trigger exposes the same contract as the default one: a string `value
 
 Multiline triggers (a trigger whose editable element is a `<textarea>`) keep Enter for newlines: Enter never selects the highlighted option and never commits a custom value; close the panel with Escape or blur. Selecting an option still writes its label back to the trigger. A single-line custom trigger keeps the default Enter behavior. ArrowUp/ArrowDown follow the same exception while the panel is open: they move the text caret instead of navigating options, so keyboard option navigation is unavailable in that state. Select with a pointer click. With the panel closed, ArrowDown/ArrowUp still open it.
 
-When `allow-custom-value` is enabled, pressing Enter with no active option and no matching candidate commits the raw input as a custom value and closes the panel. `change` fires and `selected-value` remains empty. The component does not create an option automatically or trim the raw value. Text matching a disabled option cannot bypass the disabled state or derive as a selected option.
-
-Use `<div slot="empty">…</div>` for static, non-interactive empty-state content. Portal rendering moves this node into the floating panel and restores it to the host after close.
+When `allow-custom-value` is enabled, pressing Enter with no active option and no matching candidate commits the raw input as a custom value and keeps the dropdown closed. `change` fires and `selected-value` remains empty. The component does not create an option automatically or trim the raw value. Text matching a disabled option cannot bypass the disabled state or derive as a selected option.
 
 **CSS Custom Properties:**
 
@@ -681,11 +694,11 @@ Syncs child checkbox `checked` state. `disabled` supplies inherited effective di
 
 ##### Tokens
 
-| Token                      | Default | Description                   |
-| -------------------------- | ------- | ----------------------------- |
-| `--wui-checkbox-group-gap` | `8px`   | Gap between member checkboxes |
+| Token                      | Default              | Description                   |
+| -------------------------- | -------------------- | ----------------------------- |
+| `--wui-checkbox-group-gap` | `var(--wui-space-2)` | Gap between member checkboxes |
 
-Set it on the group element itself, or on an ancestor inside the same `<web-ui-theme>` scope. The theme host declares `8px` for its own subtree, so an override placed above a `<web-ui-theme>` element does not reach the group.
+Set it on the group element itself, or on an ancestor inside the same `<web-ui-theme>` scope. The theme host declares the spacing step for its own subtree, so an override placed above a `<web-ui-theme>` element does not reach the group. Its default now resolves through `--wui-space-2`, so overriding that step on the theme host also moves the gap between members; setting this token still wins over both.
 
 ```css
 web-ui-checkbox-group {
@@ -715,11 +728,11 @@ Radio group managing single selection.
 
 ##### Tokens
 
-| Token                   | Default | Description               |
-| ----------------------- | ------- | ------------------------- |
-| `--wui-radio-group-gap` | `8px`   | Gap between member radios |
+| Token                   | Default              | Description               |
+| ----------------------- | -------------------- | ------------------------- |
+| `--wui-radio-group-gap` | `var(--wui-space-2)` | Gap between member radios |
 
-Set it on the group element itself, or on an ancestor inside the same `<web-ui-theme>` scope. The theme host declares `8px` for its own subtree, so an override placed above a `<web-ui-theme>` element does not reach the group.
+Set it on the group element itself, or on an ancestor inside the same `<web-ui-theme>` scope. The theme host declares the spacing step for its own subtree, so an override placed above a `<web-ui-theme>` element does not reach the group. Its default now resolves through `--wui-space-2`, so overriding that step on the theme host also moves the gap between members; setting this token still wins over both.
 
 ```css
 web-ui-radio-group {
@@ -802,6 +815,7 @@ Modal dialog using native `<dialog>` with `showModal()`.
 | Attribute           | Type      | Default | Description                                                                    |
 | ------------------- | --------- | ------- | ------------------------------------------------------------------------------ |
 | `open`              | `boolean` | `false` | Dialog visibility                                                              |
+| `closable`          | `boolean` | `false` | Show the built-in close button                                                 |
 | `no-scroll-lock`    | `boolean` | `false` | Do not lock body scroll when open                                              |
 | `no-backdrop-close` | `boolean` | `false` | Do not close on backdrop click                                                 |
 | `no-escape-close`   | `boolean` | `false` | Do not close when Escape is pressed                                            |
@@ -815,22 +829,29 @@ Modal dialog using native `<dialog>` with `showModal()`.
 
 Uses native `<dialog>` with `@cancel` prevention. Escape calls `close()` unless `no-escape-close` is present. Click on backdrop closes dialog unless `no-backdrop-close` is present. With `controlled`, both only emit the close request instead.
 
+With `closable`, a built-in close button is rendered in both content modes, and it follows the same close path as Escape and backdrop clicks (so `controlled` applies to it identically). The two modes place it differently: without a `body` slot the button sits in a `.title-row` flex line next to the title; with a `body` slot the title row does not exist, so the button is a direct child of the glass card and is absolutely positioned at its top-right corner (offset by `--wui-dialog-close-top` / `--wui-dialog-close-right`). It uses the same `ooui:close` icon as the drawer close button. Omitting `closable` renders nothing at all — no button and no extra wrapper.
+
 > **Escape ownership:** Escape is arbitrated by a single shared owner, so one keypress closes only the **innermost** open overlay (popover, select, autocomplete, dropdown, context-menu, drawer and dialog all take part). With a select open inside a drawer, the first Escape closes the select and only the second closes the drawer. Sibling overlays that do not nest fall back to open order, closing the most recently opened one. A panel that is still playing its exit transition stays on screen and still catches the Escape, but any overlay that is still open outranks it, so one keypress still closes exactly one layer. `image-preview` takes part as well: its native `<dialog>` is registered with the same arbiter, so Escape is decided by layer order; the component's `cancel` handler only vetoes the native instant close, keeping the top layer until the exit transition finishes.
 
 **CSS Custom Properties:**
 
-| Property                      | Default                                      | Description                                                                           |
-| ----------------------------- | -------------------------------------------- | ------------------------------------------------------------------------------------- |
-| `--wui-dialog-width`          | `360px`                                      | Dialog width                                                                          |
-| `--wui-dialog-max-height`     | `90vh`                                       | Dialog max height                                                                     |
-| `--wui-dialog-overlay-bg`     | `var(--wui-color-backdrop)`                  | Backdrop background                                                                   |
-| `--wui-dialog-bg`             | `var(--wui-color-surface-overlay)`           | Glass card background, falls back to `rgb(246 246 246 / 0.82)`                        |
-| `--wui-dialog-padding`        | `20px 24px 24px`                             | Dialog surface padding                                                                |
-| `--wui-dialog-title-gap`      | `16px`                                       | Spacing below the title                                                               |
-| `--wui-dialog-desc-gap`       | `24px`                                       | Spacing below the body content                                                        |
-| `--wui-dialog-footer-gap`     | `10px` / `12px` (horizontal)                 | Spacing between footer buttons                                                        |
-| `--wui-dialog-footer-justify` | `flex-end` (default) / `center` (horizontal) | Footer `justify-content`; override to `flex-end` for right-aligned horizontal buttons |
-| `--wui-dialog-scale-enter`    | `1.1`                                        | Enter scale start: the panel shrinks in from `1.1` to `1`, and exit reverses it       |
+| Property                          | Default                                      | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| --------------------------------- | -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `--wui-dialog-width`              | `360px`                                      | Dialog width                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| `--wui-dialog-max-height`         | `90vh` / `min(90vh, 90dvh)` (dvh engines)    | Max height of the content area (`.desc`), not of the card. Two fallback tiers: `90vh` on the base rule, `min(90vh, 90dvh)` inside `@supports (height: 100dvh)` — an engine without `dvh` support only ever gets `90vh`. See the note below for the chrome conversion                                                                                                                                                                                                                                                                 |
+| `--wui-dialog-close-top`          | `16px`                                       | `closable` button offset from the card top (body mode)                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| `--wui-dialog-close-right`        | `16px`                                       | `closable` button offset from the card right edge (body mode)                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| `--wui-dialog-overlay-bg`         | `var(--wui-color-backdrop)`                  | Backdrop background                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| `--wui-dialog-bg`                 | `var(--wui-color-surface-overlay)`           | Glass card background, falls back to `rgb(248 248 248 / 0.92)`                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| `--wui-dialog-padding`            | `20px 24px 24px`                             | Dialog surface padding                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| `--wui-dialog-title-gap`          | `16px`                                       | Spacing below the title                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| `--wui-dialog-desc-gap`           | `24px`                                       | Spacing below the body content                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| `--wui-dialog-desc-focus-padding` | `6px`                                        | Focus-ring margin reserved on **all four** sides of the content area. `.desc` is a scroll container and, because one axis must be non-`visible`, a clip box as well, so a control flush against any of its four edges would have its ring clipped by the padding box; the margin covers the `5px` ring (`offset: 2` + `width: 3`) on every axis. Hosts do not need to reserve this themselves. Paired negative margins keep the chrome height unchanged, so this can be retuned to a platform's font metrics without moving the card |
+| `--wui-dialog-footer-gap`         | `10px` / `12px` (horizontal)                 | Spacing between footer buttons                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| `--wui-dialog-footer-justify`     | `flex-end` (default) / `center` (horizontal) | Footer `justify-content`; override to `flex-end` for right-aligned horizontal buttons                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| `--wui-dialog-scale-enter`        | `1.1`                                        | Enter scale start: the panel shrinks in from `1.1` to `1`, and exit reverses it                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+
+> **Height semantics:** the token caps the content area, not the card. The title row and the footer stay sized by their content, and anything past the cap scrolls inside `.desc`; the card itself is bounded only by a literal `100vh` / `100dvh` backstop, which catches the case where the viewport is too short to fit chrome plus the cap. A host that wants to bound the **whole card** must still measure its own chrome (card padding + title row + gaps + footer) and subtract it from the token — the three dialogs in the Interweave frontend subtract 142, 142 and 106 respectively. What no longer needs that number is making the content area scroll: before, `.desc` had neither a cap nor `overflow`, so the only element that could scroll was a host-sized inner box, and a host that wanted overflow to scroll had to compute that height itself.
 
 #### `<web-ui-drawer>`
 
@@ -859,9 +880,17 @@ Side drawer using native `<dialog>` with closing animation. In non-headless mode
 
 Closing keeps the native dialog in the top layer until the `--wui-duration-drawer-exit` transition completes (240ms by default), then calls `dialog.close()`. Escape always follows this close path; `no-backdrop-close` controls backdrop clicks only.
 
-When `closable` is set, the built-in close button is positioned at the header's top-right corner (defaults `16px` down and `20px` in from the edge) instead of stretching across the drawer body.
+When `closable` is set, the built-in close button is positioned at the header's top-right corner (defaults `16px` down and `16px` in from the edge) instead of stretching across the drawer body. The `16px` down resolves through `--wui-space-4` so it tracks the drawer's header padding; the `16px` in is the button's own offset to the panel's right edge, which is not the header's horizontal padding (`20px`), so it stays a literal.
 
-**Drag to close:** With `draggable`, a gray capsule drag bar (4×56px by default, visually centered 10px from the inner edge inside a 20px-thick hit zone) appears on the drawer's inner edge (left edge for `right`, right edge for `left`, bottom edge for `top`, top edge for `bottom`) while open:
+**Drag to close:** With `draggable`, a gray capsule drag bar (4×56px by default, visually centered 10px from the inner edge) appears on the drawer's inner edge (left edge for `right`, right edge for `left`, bottom edge for `top`, top edge for `bottom`) while open:
+
+The visual center follows half of `--wui-drawer-content-padding`, floored at half the bar thickness plus 4px: zeroing that padding to let content fill the panel edge-to-edge still leaves the capsule a visible inset, so it neither crosses the panel's inner edge nor sits flush against it.
+
+The capsule is a visual marker only: it is `pointer-events: none` and never swallows a press. What you press is a hit surface. On `left` / `right` that is the drag zone alone. On `top` / `bottom` there are three: the drag zone, a band along the grab edge (exactly as wide as the capsule, and at least `--wui-drawer-drag-edge-size` thick), and the header (`placement=bottom`) or footer (`placement=top`) section in full. The edge band's height is the larger of the capsule's own outer edge and that token, so it covers the capsule's band by construction — pressing the capsule starts a drag and hovering it lights it up, on every placement.
+
+The drag zone yields to the header (`placement=bottom`) or the footer (`placement=top`), so that section never pushes the capsule away from the edge — and that section takes the drag itself instead of sitting inert: a press anywhere in it starts a drag, title text included. Controls are kept clear **one by one, at the event layer**, rather than by cutting the hit surface geometrically. A press whose composed path contains an interactive element — native `button` / `input` / `select` / `textarea` / `label` / `a[href]` / `summary`, anything `contenteditable`, an interactive ARIA `role` (`button`, `checkbox`, `switch`, `tab`, `menuitem`, `option`, `slider`, …), or any explicit `tabindex` other than `-1` — reaches the control and starts no drag. A custom control that is not natively interactive has to carry one of those markers to be recognised; adding `role` or `tabindex` is the way in, and it is the right call for accessibility anyway. Geometric cutting was rejected on purpose: it would have to measure each control's position, so it breaks the moment a control moves, and it relocates the A6 defect rather than removing it. The trade is explicit. The built-in close button sits against the panel's right edge, outside the capsule's span, so it stays clickable; a control placed inside the capsule's horizontal span is still covered by the drag surface over the band's height.
+
+One consequence follows from the handle occupying that span: a control placed inside it whose top edge falls within the band's height (`--wui-drawer-drag-edge-size`, `20px` by default, or the capsule's own outer edge when that is thicker) has its upper part covered by the drag surface, since the handle is drawn there and a drag has to start where the handle is. `z-index` does not lift it clear — Chromium keeps the band above slotted content — so the levers are `--wui-drawer-drag-bar-length`, which sets the capsule length and the band width together, and `--wui-drawer-drag-edge-size`, which sets the band's thickness.
 
 - Dragging follows the pointer in real time; the backdrop fades proportionally.
 - Backdrop click now only honors a genuine tap chain: the press must start on the backdrop itself and the press-to-release travel must stay within the tap magnitude. The click the browser generates for a press–drag–release lands on the common ancestor (`dialog`) regardless of where the press started. Pressing on the panel content or on the backdrop itself and releasing over the backdrop used to close the drawer through that click. The component records the pointerdown origin and validates it on click, so such drag releases always rebound. A `detail`-0 click (keyboard / programmatic) never consumes the pointer record.
@@ -879,22 +908,29 @@ When `closable` is set, the built-in close button is positioned at the header's 
 
 **CSS Custom Properties:**
 
-| Property                          | Default                            | Description                                                                  |
-| --------------------------------- | ---------------------------------- | ---------------------------------------------------------------------------- |
-| `--wui-drawer-width`              | `320px`                            | Drawer width                                                                 |
-| `--wui-drawer-height`             | `300px`                            | Drawer height (top/bottom)                                                   |
-| `--wui-drawer-bg`                 | `var(--wui-color-surface-overlay)` | Drawer body background                                                       |
-| `--wui-drawer-radius`             | `var(--wui-radius-overlay, 28px)`  | Floating card corner radius (non-headless)                                   |
-| `--wui-drawer-inset`              | `8px`                              | Floating card viewport inset (non-headless); `0` gives edge-to-edge geometry |
-| `--wui-drawer-overlay-bg`         | `rgb(0 0 0 / 0.12)`                | Backdrop background                                                          |
-| `--wui-drawer-drag-zone-size`     | `20px`                             | Drag-to-close hit zone thickness on the inner edge (draggable)               |
-| `--wui-drawer-drag-bar-thickness` | `4px`                              | Drag bar capsule thickness (short axis)                                      |
-| `--wui-drawer-drag-bar-length`    | `56px`                             | Drag bar capsule length (along the drawer edge)                              |
-| `--wui-drawer-header-padding`     | `16px 20px`                        | Header section padding                                                       |
-| `--wui-drawer-close-top`          | `16px`                             | Built-in close button offset from the top of the header                      |
-| `--wui-drawer-close-right`        | `16px`                             | Built-in close button offset from the right edge of the drawer               |
-| `--wui-drawer-content-padding`    | `20px`                             | Content area padding; also drives drag bar visual center (half value)        |
-| `--wui-drawer-footer-padding`     | `16px 20px`                        | Footer section padding                                                       |
+| Property                          | Default                            | Description                                                                                                                                                                                                                                                                       |
+| --------------------------------- | ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--wui-drawer-width`              | `320px`                            | Drawer width                                                                                                                                                                                                                                                                      |
+| `--wui-drawer-height`             | `300px`                            | Drawer height (top/bottom)                                                                                                                                                                                                                                                        |
+| `--wui-drawer-bg`                 | `var(--wui-color-surface-overlay)` | Drawer body background                                                                                                                                                                                                                                                            |
+| `--wui-drawer-radius`             | `var(--wui-radius-overlay, 28px)`  | Floating card corner radius (non-headless)                                                                                                                                                                                                                                        |
+| `--wui-drawer-inset`              | `8px`                              | Floating card viewport inset (non-headless); `0` gives edge-to-edge geometry                                                                                                                                                                                                      |
+| `--wui-drawer-nested-peek-base`   | `43.2px`                           | Nested-stack reveal step base `A` (`28.8px` at `width <= 640px`); total stack width grows as `A · ln(n)`, so a single layer never moves and each extra layer reveals less. `0` disables the reveal. See the note below.                                                           |
+| `--wui-drawer-overlay-bg`         | `rgb(0 0 0 / 0.12)`                | Backdrop background                                                                                                                                                                                                                                                               |
+| `--wui-drawer-drag-zone-size`     | `20px`                             | Drag-to-close hit zone thickness on the inner edge (draggable)                                                                                                                                                                                                                    |
+| `--wui-drawer-drag-zone-inset`    | `var(--wui-space-1, 4px)`          | Breathing gap between the drag hit zone and the header (`placement=bottom`) or footer (`placement=top`) it yields to. `0` when that section is absent                                                                                                                             |
+| `--wui-drawer-drag-bar-thickness` | `4px`                              | Drag bar capsule thickness (short axis)                                                                                                                                                                                                                                           |
+| `--wui-drawer-drag-bar-length`    | `56px`                             | Drag bar capsule length (along the drawer edge)                                                                                                                                                                                                                                   |
+| `--wui-drawer-drag-edge-size`     | `20px`                             | Thickness of the capsule's hit band along the grab edge (`top` / `bottom` only). Floored by the capsule's own outer edge, so the capsule band is always covered; the default matches `--wui-drawer-drag-zone-size`, so the handle is never harder to hit than the strip beside it |
+| `--wui-drawer-header-padding`     | `16px 20px`                        | Header section padding                                                                                                                                                                                                                                                            |
+| `--wui-drawer-close-top`          | `16px`                             | Built-in close button offset from the top of the header                                                                                                                                                                                                                           |
+| `--wui-drawer-close-right`        | `16px`                             | Built-in close button offset from the right edge of the drawer                                                                                                                                                                                                                    |
+| `--wui-drawer-content-padding`    | `20px`                             | Content area padding; also drives drag bar visual center (half value, floored at half the bar thickness + 4px)                                                                                                                                                                    |
+| `--wui-drawer-footer-padding`     | `16px 20px`                        | Footer section padding                                                                                                                                                                                                                                                            |
+
+`--wui-drawer-nested-peek-base` needs no declaration of yours: the `43.2px` default is the `initialValue` of the property the component registers with `CSS.registerProperty` (in `components/drawer/index.ts`), and narrow viewports get a smaller `28.8px` base from the `@media (width <= 640px)` rule in `components/drawer/style.css`. Those two places are where the shipped defaults live. Setting the token on the host (or any ancestor) overrides both, at any viewport width.
+
+With the shipped defaults, a four-layer stack of `320px` drawers reveals `29.94px` / `17.52px` / `12.43px` per step on desktop and `19.96px` / `11.68px` / `8.29px` on narrow viewports, for a total stack width of `59.89px` and `39.93px` respectively. A single layer never moves, because `ln(1)` is `0`.
 
 #### `imagePreview()`
 
@@ -1101,10 +1137,12 @@ Tooltip overlay using pointer/focus triggers.
 
 Right-click context menu.
 
-| Attribute        | Type      | Default | Description                |
-| ---------------- | --------- | ------- | -------------------------- |
-| `disabled`       | `boolean` | `false` | Disabled state             |
-| `no-scroll-lock` | `boolean` | `false` | Allow background scrolling |
+| Attribute          | Type      | Default | Description                                                   |
+| ------------------ | --------- | ------- | ------------------------------------------------------------- |
+| `disabled`         | `boolean` | `false` | Right-click does not open the menu; no visual dimming         |
+| `no-scroll-lock`   | `boolean` | `false` | Allow background scrolling                                    |
+| `long-press`       | `boolean` | `false` | Open on a touch long press (opt-in; mouse uses `contextmenu`) |
+| `long-press-delay` | `number`  | `500`   | Hold duration in ms before `long-press` opens the menu        |
 
 **Events:** `open-change` (`CustomEvent<{ open: boolean }>`)
 
@@ -1112,9 +1150,25 @@ Right-click context menu.
 
 **Methods:** `openAt(x: number, y: number)`, `close()`
 
+**CSS Custom Properties:**
+
+| Property                              | Default                            | Description                      |
+| ------------------------------------- | ---------------------------------- | -------------------------------- |
+| `--wui-context-menu-safe-area-bottom` | `env(safe-area-inset-bottom, 0px)` | Bottom inset a touch menu clears |
+
 Opens on `contextmenu` event. Menu items: `<web-ui-dropdown-item>`, `<web-ui-dropdown-divider>`, `<web-ui-dropdown-header>`. Supports keyboard navigation (Arrow keys, Enter, Escape) and submenu hover with `pointerenter`.
 
+While the menu is open it is modal: it renders into a transparent `<dialog>` in the browser's top layer, so nothing on the page below can be clicked or hit-tested. Clicking outside therefore dismisses the menu without also activating whatever was underneath — a row, a checkbox, a link. The scrim is deliberately invisible; it exists to absorb the hit, not to dim the page. One consequence to know about: for the ~160ms exit transition after a menu item is activated, the scrim has already left the top layer, so the page below is briefly clickable again and the menu's stacking level is that of the normal flow.
+
+`long-press` is opt-in and touch-only: a pointer held for `long-press-delay` (default `500` ms, matching the platform long press) opens the menu, through the same path as a right-click. It only reacts to `pointerType === 'touch'`, and holding while moving more than 10px cancels it, so scrolling never opens a menu. Because the browser also reports that same hold as a native gesture, the `contextmenu` and `click` it emits afterwards are absorbed rather than allowed to reopen — or immediately light-dismiss — the menu the long press just opened.
+
+A `long-press` menu opens downward from the press point: its top edge sits at the press `y` and it is centred horizontally on the press `x`, which is how native iOS and Android long-press menus appear. When there is not enough room below, the panel flips above the press point rather than running off the screen, and both axes are clamped into the viewport while clearing `--wui-context-menu-safe-area-bottom` so it does not sit under a home indicator. The split is by input, not by viewport width: a narrow window still anchors a mouse right-click at the cursor's top-left corner. Only the horizontal alignment differs — both paths run the same `computePosition` pass, so touch and mouse cannot drift apart.
+
+`disabled` suppresses menu behaviour only: right-click and `openAt()` do not open a menu. It does not dim or otherwise restyle what you put in the default slot — the component renders no menu surface of its own to dim, and disabling the right-click menu is not the same as disabling your trigger. If a disabled state should read as disabled, render it on your own content.
+
 While the menu is open, consumer code may conditionally render, move, or remove menu items (e.g. Vue `v-if`) without re-inserting them at the host element; changes inside the portal are reconciled automatically, and framework anchors are returned to the host on close so subsequent framework patches keep working.
+
+On close, focus returns to whatever was focused when the menu opened. That is the browser's own modal-dialog behaviour rather than something the component reimplements, which is also why it only works while the menu is the top layer. Activating a menu item is the one path that hands focus back early — at the click, before the exit transition — so that an item action which moves focus elsewhere (opening an inline editor, say) ends up keeping it: the closing menu never reaches in and pulls focus back out of the new target, so nothing that commits on blur fires a spurious edit.
 
 ---
 
@@ -1205,24 +1259,48 @@ Badge / notification count.
 
 Empty state placeholder.
 
-| Attribute     | Type                             | Default    | Description      |
-| ------------- | -------------------------------- | ---------- | ---------------- |
-| `title`       | `string`                         | `''`       | Title text       |
-| `description` | `string`                         | `''`       | Description text |
-| `size`        | `'small' \| 'medium' \| 'large'` | `'medium'` | Empty state size |
+| Attribute     | Type     | Default | Description                                                    |
+| ------------- | -------- | ------- | -------------------------------------------------------------- |
+| `title`       | `string` | `''`    | Title text                                                     |
+| `description` | `string` | `''`    | Description text                                               |
+| `size`        | `number` | `56`    | Layout scale in px; invalid or non-positive values become `56` |
+
+`size` is the one knob for the whole placeholder. It drives the icon container, `min-height`, padding, and the title/description font size, so a large icon no longer sits in medium-sized whitespace:
+
+| `size` | Icon box | Glyph  | `min-height` | Padding block/inline | Title  | Description |
+| ------ | -------- | ------ | ------------ | -------------------- | ------ | ----------- |
+| `40`   | `40px`   | `17px` | `171px`      | `23px/17px`          | `14px` | `13px`      |
+| `56`   | `56px`   | `24px` | `240px`      | `32px/24px`          | `16px` | `14px`      |
+| `72`   | `72px`   | `31px` | `309px`      | `41px/31px`          | `16px` | `14px`      |
+
+The derived values are `min-height: round(size * 30 / 7)`, `padding-block: round(size * 4 / 7)`, and `padding-inline: round(size * 3 / 7)`; the default glyph is `round(size * 3 / 7)`.
+
+Font size is one step rather than a scale: below `56` the title is `14px` and the description `13px`, and from `56` up they are `16px` and `14px`. A bigger placeholder gets its presence from whitespace, not from bigger text.
+
+**Migrating from the `'small' \| 'medium' \| 'large'` enum:** `size` is now a number, and the removed tiers had hand-tuned metrics that these ratios only approach — `small` was `160px` tall with `20px 16px` padding, `large` was `320px` with `48px 32px`. Section margins and content width never followed the tiers.
+
+| Old value | New value | Default glyph |
+| --------- | --------- | ------------- |
+| `small`   | `40`      | `17`          |
+| `medium`  | `56`      | `24`          |
+| `large`   | `72`      | `31`          |
 
 **Slots:** `default` (title, overrides `title` prop), `icon`, `description`, `action`
 
 **CSS Custom Properties:**
 
-| Property                            | Default     | Description                    |
-| ----------------------------------- | ----------- | ------------------------------ |
-| `--wui-empty-min-height`            | `240px`     | Min height (medium)            |
-| `--wui-empty-padding`               | `32px 24px` | Padding (medium)               |
-| `--wui-empty-icon-size`             | `56px`      | Icon container size (medium)   |
-| `--wui-empty-content-width`         | `480px`     | Max width of title/description |
-| `--wui-empty-title-font-size`       | `16px`      | Title font size (medium)       |
-| `--wui-empty-description-font-size` | `14px`      | Description font size (medium) |
+Each one overrides the value `size` derives, so all eight stay authoritative — including the two font sizes. Defaults are the values at the default `size` of `56`.
+
+| Property                            | Default     | Description                                 |
+| ----------------------------------- | ----------- | ------------------------------------------- |
+| `--wui-empty-min-height`            | `240px`     | Min height                                  |
+| `--wui-empty-padding`               | `32px 24px` | Padding                                     |
+| `--wui-empty-icon-size`             | `56px`      | Icon container size; overrides `size`       |
+| `--wui-empty-content-width`         | `480px`     | Max width of title, description, and action |
+| `--wui-empty-title-margin-top`      | `16px`      | Space between the icon and the title        |
+| `--wui-empty-title-font-size`       | `16px`      | Title font size                             |
+| `--wui-empty-description-font-size` | `14px`      | Description font size                       |
+| `--wui-empty-action-margin-top`     | `20px`      | Space above the action slot                 |
 
 #### `<web-ui-icon>`
 
@@ -1350,16 +1428,17 @@ Responsive page layout with an optional full-width banner, a collapsible desktop
 
 At `640px` and below, the sidebar becomes a `web-ui-drawer` with its built-in glass body, scrollable content, and drag zone. The layout maps `sidebar-width` to `--wui-drawer-width` and `--wui-layout-sidebar-radius` to `--wui-drawer-radius`. The mobile toggle appears in the header row as a glass button. Its left inset defaults to `8px`; align it with your own header padding via `--wui-layout-mobile-toggle-inset`.
 
-`header-glow` adds a pointer-transparent decorative glow behind header-slot content and the mobile toggle. It is a Header background rather than a foreground layer, so slotted content remains above it. Override its color with `--wui-layout-header-glow-color` (default: `--wui-color-page`). The glow concentration and spread are controlled by the internal variable `--wui-layout-header-glow-height` (default: `150%`); increase for stronger coverage, decrease for a subtler effect. Layout layers are ordered as Header (`10`) < Auxiliary (`20`) < Banner (`30`) < Tabbar (`40`) < Sidebar (`50`).
+`header-glow` adds a pointer-transparent decorative glow behind header-slot content and the mobile toggle. It is a Header background rather than a foreground layer, so slotted content remains above it. The glow takes its colour from `--wui-color-page`, so it follows light and dark appearance on its own; override that property on `web-ui-layout`, on the theme, or anywhere above it to change it. Two pseudo-elements build it. `::before` paints the colour as a `linear-gradient` inside the header box, fading to fully transparent, and `::after` adds a real `backdrop-filter: blur(4px)` layer whose `mask` fades that blur toward zero alpha at the bottom edge. Keeping the two apart means blur strength and colour strength do not pull on each other. Both expand with a negative `margin` rather than a `transform`. Horizontal clipping is owned by `.layout-content`, so the glow never produces a horizontal scrollbar. Layout layers are ordered as Header (`10`) < Auxiliary (`20`) < Banner (`30`) < Tabbar (`40`) < Sidebar (`50`).
 
 The sidebar card surface is `--wui-color-surface-sidebar`. In light mode it keeps its translucent neutral layer; in dark mode it sits one notch above `--wui-color-page`, level with `--wui-color-surface`. It is a separate token because dialog, drawer and toast share `--wui-color-surface-overlay` and may use a different surface.
 
 **CSS Custom Properties:**
 
-| Property                           | Default | Description                                      |
-| ---------------------------------- | ------- | ------------------------------------------------ |
-| `--wui-layout-sidebar-radius`      | `24px`  | Border radius of sidebar card (desktop & mobile) |
-| `--wui-layout-mobile-toggle-inset` | `8px`   | Left inset of the mobile header toggle           |
+| Property                            | Default | Description                                                                          |
+| ----------------------------------- | ------- | ------------------------------------------------------------------------------------ |
+| `--wui-layout-sidebar-radius`       | `24px`  | Border radius of sidebar card (desktop & mobile)                                     |
+| `--wui-layout-mobile-toggle-inset`  | `8px`   | Left inset of the mobile header toggle                                               |
+| `--wui-layout-sidebar-toggle-width` | `44px`  | Width of the desktop sidebar collapse toggle; floored at `--wui-control-size` (36px) |
 
 #### `<web-ui-back-top>`
 
@@ -1445,19 +1524,54 @@ The host uses `display: contents` and does not paint any background: the library
 
 | Property                  | Default | Description                                      |
 | ------------------------- | ------- | ------------------------------------------------ |
-| `--wui-font-size`         | `14px`  | Base font size for controls                      |
 | `--wui-input-width`       | `200px` | Default width for compact form controls          |
 | `--wui-control-size`      | `36px`  | Default height and square min-width for controls |
 | `--wui-overlay-min-width` | `200px` | Minimum anchored overlay width                   |
 | `--wui-focus-ring-width`  | `3px`   | Focus indicator width                            |
 
+**Typography tokens:** font sizes are named by the role the text plays, not by scale position — `caption` for dense chrome labels, `readout` for numeric readouts, the unsuffixed base for body copy, and `title` for bounded card headings. Weights are named by weight, and line heights by how much vertical air the text needs. These are appearance-independent: they stay the same under both light and dark.
+
+| Property                     | Default | Description                                                     |
+| ---------------------------- | ------- | --------------------------------------------------------------- |
+| `--wui-font-size-caption`    | `12px`  | Dense chrome labels (badge, toast timestamp, menu section head) |
+| `--wui-font-size-readout`    | `13px`  | Numeric readouts (image preview count and zoom ratio)           |
+| `--wui-font-size`            | `14px`  | Base font size for body copy and controls                       |
+| `--wui-font-size-title`      | `18px`  | Bounded card headings (dialog, drawer)                          |
+| `--wui-font-weight-medium`   | `500`   | Medium weight for emphasized inline text                        |
+| `--wui-font-weight-semibold` | `600`   | Semibold weight for headings                                    |
+| `--wui-line-height-tight`    | `1.2`   | Tight leading for large headings                                |
+| `--wui-line-height-snug`     | `1.4`   | Snug leading for mid-size headings                              |
+| `--wui-line-height-normal`   | `1.5`   | Normal leading for body copy                                    |
+| `--wui-line-height-relaxed`  | `1.6`   | Relaxed leading for long-form reading                           |
+
+`line-height: 1` and `line-height: 0` inside components are intentionally not tokenized: the former vertically centers a single-line control label, the latter collapses a wrapper box onto its content. Neither is typographic leading, and tokenizing them would invite callers to retune them as if they were.
+
+**Spacing tokens:** a six-step scale on a 4px base, stopping at 24px — the largest spacing value the component layer writes as an _effective_ static rhythm literal. (The one wider padding, `<web-ui-empty>`'s `32px 24px`, is derived in JS from `--wui-empty-size`, so it belongs to that size axis rather than to the rhythm; see the exclusions below.) These do not replace the per-component override tokens (`--wui-button-px`, `--wui-dialog-padding`, and friends) — they act as the fallback default _for_ those tokens, so each component still decides its own padding while the scale says where that value sits in the overall rhythm. Overriding a step therefore gives the embedding application a density lever across every migrated call site — a lever over rhythm, not over structure; see the exclusions below.
+
+| Property        | Default | Description                        |
+| --------------- | ------- | ---------------------------------- |
+| `--wui-space-1` | `4px`   | Tight inset (badge, menu)          |
+| `--wui-space-2` | `8px`   | Control gap, group gap, inline pad |
+| `--wui-space-3` | `12px`  | Horizontal control padding         |
+| `--wui-space-4` | `16px`  | Standard section separation        |
+| `--wui-space-5` | `20px`  | Overlay content padding            |
+| `--wui-space-6` | `24px`  | Wide overlay inset                 |
+
+The scale deliberately omits `1px`, `2px`, `6px`, `7.5px`, `10px`, and negative values. `1px` is the structural width of hairlines and stroke rings; `2px`, `6px`, and `7.5px` are optical corrections; `10px` is a half-step coupling value off the 4px grid; negative margins cancel a flex gap or a button's padding. Each answers a different "why this number", none of them share spacing semantics, and folding them into one ruler would make overriding any one of them disturb the rest.
+
+A second exclusion is by meaning rather than by value: offsets that align to the viewport edge or to the host's own content edge stay off the scale even when they land on the 4px grid — `--wui-image-preview-edge-gap`, `--wui-toast-viewport-gap`, `--wui-layout-mobile-toggle-inset`, `--wui-back-top-right` / `--wui-back-top-left` / `--wui-back-top-bottom`, `--wui-drawer-inset`, and `--wui-drawer-close-right`. Their reference frame is the screen or the host's content edge, not the rhythm between neighbours, so folding them in would make "tighten `--wui-space-2`" unexpectedly move a component away from the screen edge. `--wui-drawer-close-top` is the counter-example: it does resolve through `--wui-space-4`, because it tracks the drawer's header padding and the two must move together.
+
+A third exclusion is spacing that a component derives from a **size** prop instead of writing as rhythm: `<web-ui-empty>` scales its `padding`, `min-block-size`, and glyph with `--wui-empty-size`, so its padding is `23px 17px` / `32px 24px` / `41px 31px` at the `40` / `56` / `72` steps. Four of those six values are odd, so a 4px scale cannot represent them at all. The `56` step's `32px 24px` landing on the base is a coincidence of the size choice, not a sign that the value belongs to the rhythm: `56` is the only one of the three that divides by 7, its quotient is exactly 8, and 8 is itself a multiple of 4 — no rounding happens on that step at all. A density lever that is silently inert on two of three sizes and coincidentally live on the third is worse than no lever, and the whole set moves whenever `size` does — so these stay off the scale. Reach for a literal `px` there instead.
+
+Overrides must sit inside the `<web-ui-theme>` scope, since the theme host declares the steps for its own subtree. One known boundary: the overlay styles in `assets/*.css` are injected either into a theme-owned overlay root, where the scale applies, or into the document-level fallback overlay root — a plain `div` that sees no theme tokens — where overlay spacing always resolves to its literal fallback.
+
 **Selection control tokens (radio, checkbox):**
 
-| Property                       | Default | Description                                     |
-| ------------------------------ | ------- | ----------------------------------------------- |
-| `--wui-selection-control-size` | `18px`  | Indicator (circle / box) width and height       |
-| `--wui-radio-group-gap`        | `8px`   | Member spacing inside `<web-ui-radio-group>`    |
-| `--wui-checkbox-group-gap`     | `8px`   | Member spacing inside `<web-ui-checkbox-group>` |
+| Property                       | Default              | Description                                     |
+| ------------------------------ | -------------------- | ----------------------------------------------- |
+| `--wui-selection-control-size` | `18px`               | Indicator (circle / box) width and height       |
+| `--wui-checkbox-group-gap`     | `var(--wui-space-2)` | Member spacing inside `<web-ui-checkbox-group>` |
+| `--wui-radio-group-gap`        | `var(--wui-space-2)` | Member spacing inside `<web-ui-radio-group>`    |
 
 **Radius tokens:**
 
@@ -1471,7 +1585,6 @@ The host uses `display: contents` and does not paint any background: the library
 
 | Property                     | Default | Description                  |
 | ---------------------------- | ------- | ---------------------------- |
-| `--wui-layer-base`           | `0`     | Base content                 |
 | `--wui-layer-inline-overlay` | `1`     | Overlay local to a component |
 | `--wui-layer-header`         | `10`    | Page header                  |
 | `--wui-layer-auxiliary`      | `20`    | Floating utility controls    |
@@ -1487,41 +1600,41 @@ The host uses `display: contents` and does not paint any background: the library
 
 **Color tokens:**
 
-| Property                           | Light default                                                | Dark default                                                 | Description                     |
-| ---------------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------- |
-| `--wui-color-page`                 | `#fff`                                                       | `#242628`                                                    | Page background                 |
-| `--wui-color-surface`              | `#fff`                                                       | `#2c2c2e`                                                    | Plain surface                   |
-| `--wui-color-surface-raised`       | `#f2f2f7`                                                    | `#2c2c2e`                                                    | Raised surface                  |
-| `--wui-color-surface-control`      | `#dfdfdf`                                                    | `#3a3a3c`                                                    | Neutral control surface         |
-| `--wui-color-surface-track`        | `#e5e5ea`                                                    | `#444446`                                                    | Slider and switch track surface |
-| `--wui-color-surface-menu`         | `rgb(254 254 254 / 0.76)`                                    | `rgb(49 48 50 / 0.74)`                                       | Menu and floating panel surface |
-| `--wui-color-surface-glass`        | `rgb(250 250 250 / 0.34)`                                    | `rgb(44 44 46 / 0.42)`                                       | Liquid glass surface            |
-| `--wui-color-surface-glass-hover`  | `color-mix(... text 6%, surface-glass)`                      | `color-mix(... text 6%, surface-glass)`                      | Full glass hover background     |
-| `--wui-color-surface-glass-active` | `color-mix(... text 15%, surface-glass)`                     | `color-mix(... text 15%, surface-glass)`                     | Full glass pressed background   |
-| `--wui-color-surface-overlay`      | `rgb(246 246 246 / 0.82)`                                    | `rgb(32 34 34 / 0.9)`                                        | Translucent overlay surface     |
-| `--wui-color-surface-sidebar`      | `rgb(233 233 233 / 0.82)`                                    | `rgb(44 44 46 / 0.8)`                                        | Sidebar panel surface           |
-| `--wui-color-surface-segmented`    | `#e5e5ea`                                                    | `#3a3a3c`                                                    | Segmented indicator surface     |
-| `--wui-color-surface-selected`     | `#fff`                                                       | `#5c5c5e`                                                    | Selected surface                |
-| `--wui-color-text`                 | `#1b1b1b`                                                    | `#e9eaea`                                                    | Primary text                    |
-| `--wui-color-text-secondary`       | `#6a6a6a`                                                    | `#a1a1a6`                                                    | Secondary text                  |
-| `--wui-color-text-tertiary`        | `color-mix(in srgb, var(--wui-color-text) 35%, transparent)` | `color-mix(in srgb, var(--wui-color-text) 42%, transparent)` | Tertiary text and quiet icons   |
-| `--wui-color-text-disabled`        | `color-mix(in srgb, var(--wui-color-text) 32%, transparent)` | `color-mix(in srgb, var(--wui-color-text) 38%, transparent)` | Disabled foreground text        |
-| `--wui-color-state-layer-hover`    | `color-mix(in srgb, var(--wui-color-text) 6%, transparent)`  | `color-mix(in srgb, var(--wui-color-text) 6%, transparent)`  | Transparent hover overlay       |
-| `--wui-color-state-layer-active`   | `color-mix(in srgb, var(--wui-color-text) 15%, transparent)` | `color-mix(in srgb, var(--wui-color-text) 15%, transparent)` | Transparent pressed overlay     |
-| `--wui-color-border`               | `rgb(0 0 0 / 0.1)`                                           | `rgb(255 255 255 / 0.14)`                                    | Normal border and divider       |
-| `--wui-color-glass-border`         | `transparent`                                                | `rgb(255 255 255 / 0.05)`                                    | Glass border tint               |
-| `--wui-color-glass-highlight`      | `rgb(255 255 255 / 0.9)`                                     | `rgb(255 255 255 / 0.1)`                                     | Glass edge highlight            |
-| `--wui-color-glass-corner`         | `rgb(255 255 255 / 0.5)`                                     | `rgb(255 255 255 / 0.2)`                                     | Glass corner sheen on border    |
-| `--wui-color-glass-shade`          | `rgb(0 0 0 / 0.03)`                                          | `rgb(0 0 0 / 0.5)`                                           | Glass corner shade on border    |
-| `--wui-color-accent`               | `#08f`                                                       | `#0a84ff`                                                    | Accent and focused input border |
-| `--wui-color-on-accent`            | `#fff`                                                       | `#fff`                                                       | Foreground on accent            |
-| `--wui-color-on-control`           | `#fff`                                                       | `#f2f2f7`                                                    | Foreground on control inner     |
-| `--wui-color-success`              | `#16a34a`                                                    | `#30d158`                                                    | Success                         |
-| `--wui-color-warning`              | `#d97706`                                                    | `#ff9f0a`                                                    | Warning                         |
-| `--wui-color-danger`               | `#dc2626`                                                    | `#ff453a`                                                    | Danger                          |
-| `--wui-color-info`                 | `#2563eb`                                                    | `#64d2ff`                                                    | Info                            |
-| `--wui-color-backdrop`             | `rgb(0 0 0 / 0.12)`                                          | `rgb(0 0 0 / 0.48)`                                          | Modal backdrop                  |
-| `--wui-color-focus-ring`           | `rgb(0 136 255 / 0.4)`                                       | `rgb(10 132 255 / 0.62)`                                     | Focus indicator color           |
+| Property                           | Light default                                                        | Dark default                                                            | Description                                    |
+| ---------------------------------- | -------------------------------------------------------------------- | ----------------------------------------------------------------------- | ---------------------------------------------- |
+| `--wui-color-page`                 | `#fff`                                                               | `#242628`                                                               | Page background                                |
+| `--wui-color-surface`              | `#fff`                                                               | `#2c2c2e`                                                               | Plain surface                                  |
+| `--wui-color-surface-raised`       | `#f2f2f7`                                                            | `#2c2c2e`                                                               | Raised surface                                 |
+| `--wui-color-surface-control`      | `#dfdfdf`                                                            | `#3a3a3c`                                                               | Neutral control surface                        |
+| `--wui-color-surface-track`        | `#e5e5ea`                                                            | `#444446`                                                               | Slider and switch track surface                |
+| `--wui-color-surface-menu`         | `rgb(250 250 250 / 0.76)`                                            | `rgb(49 48 50 / 0.74)`                                                  | Menu and floating panel surface                |
+| `--wui-color-surface-glass`        | `rgb(250 250 250 / 0.34)`                                            | `rgb(44 44 46 / 0.42)`                                                  | Liquid glass surface                           |
+| `--wui-color-surface-glass-hover`  | `color-mix(... text 6%, surface-glass)`                              | `color-mix(... text 6%, surface-glass)`                                 | Full glass hover background                    |
+| `--wui-color-surface-glass-active` | `color-mix(... text 15%, surface-glass)`                             | `color-mix(... text 15%, surface-glass)`                                | Full glass pressed background                  |
+| `--wui-color-surface-overlay`      | `rgb(248 248 248 / 0.92)`                                            | `rgb(32 34 34 / 0.92)`                                                  | Translucent overlay surface                    |
+| `--wui-color-surface-sidebar`      | `rgb(233 233 233 / 0.82)`                                            | `rgb(44 44 46 / 0.8)`                                                   | Sidebar panel surface                          |
+| `--wui-color-surface-segmented`    | `#e5e5ea`                                                            | `#3a3a3c`                                                               | Segmented indicator surface                    |
+| `--wui-color-surface-selected`     | `#fff`                                                               | `#5c5c5e`                                                               | Selected surface                               |
+| `--wui-color-text`                 | `#1b1b1b`                                                            | `#e9eaea`                                                               | Primary text                                   |
+| `--wui-color-text-secondary`       | `#6a6a6a`                                                            | `#a1a1a6`                                                               | Secondary text                                 |
+| `--wui-color-text-tertiary`        | `color-mix(in srgb, var(--wui-color-text) 35%, transparent)`         | `color-mix(in srgb, var(--wui-color-text) 42%, transparent)`            | Tertiary text and quiet icons                  |
+| `--wui-color-text-disabled`        | `color-mix(in srgb, var(--wui-color-text) 32%, transparent)`         | `color-mix(in srgb, var(--wui-color-text) 38%, transparent)`            | Disabled foreground text                       |
+| `--wui-color-state-layer-hover`    | `color-mix(in srgb, var(--wui-color-text) 6%, transparent)`          | `color-mix(in srgb, var(--wui-color-text) 6%, transparent)`             | Transparent hover overlay                      |
+| `--wui-color-state-layer-active`   | `color-mix(in srgb, var(--wui-color-text) 15%, transparent)`         | `color-mix(in srgb, var(--wui-color-text) 15%, transparent)`            | Transparent pressed overlay                    |
+| `--wui-color-border`               | `rgb(0 0 0 / 0.1)`                                                   | `rgb(255 255 255 / 0.14)`                                               | Normal border and divider                      |
+| `--wui-color-glass-highlight`      | `rgb(255 255 255 / 0.9)`                                             | `rgb(255 255 255 / 0.1)`                                                | Inset highlight on the surface                 |
+| `--wui-color-glass-ring`           | `rgb(0 0 0 / 0.05)`                                                  | `rgb(255 255 255 / 0.05)`                                               | Base tint of the 1px ring                      |
+| `--wui-color-glass-ring-sheen`     | `rgb(255 255 255 / 0.5)`                                             | `rgb(255 255 255 / 0.2)`                                                | Corner sheen on the ring                       |
+| `--wui-color-glass-ring-shade`     | `rgb(0 0 0 / 0.03)`                                                  | `rgb(0 0 0 / 0.5)`                                                      | Corner shade on the ring                       |
+| `--wui-color-accent`               | `#08f`                                                               | `#0a84ff`                                                               | Accent and focused input border                |
+| `--wui-color-on-accent`            | `#fff`                                                               | `#fff`                                                                  | Foreground on accent                           |
+| `--wui-color-on-control`           | `#fff`                                                               | `#f2f2f7`                                                               | Foreground on control inner                    |
+| `--wui-color-success`              | `#16a34a`                                                            | `#30d158`                                                               | Success                                        |
+| `--wui-color-warning`              | `#d97706`                                                            | `#ff9f0a`                                                               | Warning                                        |
+| `--wui-color-danger`               | `#dc2626`                                                            | `#ff453a`                                                               | Danger                                         |
+| `--wui-color-info`                 | `#2563eb`                                                            | `#64d2ff`                                                               | Info                                           |
+| `--wui-color-backdrop`             | `rgb(0 0 0 / 0.12)`                                                  | `rgb(0 0 0 / 0.48)`                                                     | Modal backdrop                                 |
+| `--wui-color-focus-ring`           | `color-mix(in srgb, var(--wui-color-accent, #08f) 40%, transparent)` | `color-mix(in srgb, var(--wui-color-accent, #0a84ff) 62%, transparent)` | Focus indicator color, derived from the accent |
 
 **Shadow tokens:**
 

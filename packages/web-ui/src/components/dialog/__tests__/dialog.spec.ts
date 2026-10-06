@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vite-plus/test'
+import { afterEach, describe, expect, it } from 'vite-plus/test'
 
 import '..'
 import { cleanupElement, spyEvents, waitForUpdate } from '@/shared/test-utils'
@@ -12,10 +12,18 @@ function createDialog(slots = ''): WebUiDialog {
   return el
 }
 
-describe('WebUiDialog 组件', () => {
-  describe('属性：open', () => {
+/** 打开态的内部原生 dialog —— 遮罩点击的落点。 */
+function panelOf(el: WebUiDialog): HTMLDialogElement | null {
+  return el.shadowRoot?.querySelector('dialog') ?? null
+}
+
+afterEach(() => document.body.replaceChildren())
+
+describe('WebUiDialog', () => {
+  describe('open 反射与程序化开关', () => {
     it('open 属性反射到 host 元素', async () => {
       const el = createDialog()
+
       el.open = true
       await waitForUpdate(el)
       expect(el.hasAttribute('open')).toBe(true)
@@ -23,48 +31,9 @@ describe('WebUiDialog 组件', () => {
       el.open = false
       await waitForUpdate(el)
       expect(el.hasAttribute('open')).toBe(false)
-
-      cleanupElement(el)
-    })
-  })
-
-  describe('属性：no-scroll-lock', () => {
-    it('默认打开时锁定背景滚动，关闭后恢复', async () => {
-      const el = createDialog()
-      el.open = true
-      await waitForUpdate(el)
-
-      expect(document.body.style.position).toBe('fixed')
-
-      el.close()
-      await waitForUpdate(el)
-      expect(document.body.style.position).toBe('')
       cleanupElement(el)
     })
 
-    it('no-scroll-lock 为 true 时不锁定背景滚动', async () => {
-      const el = createDialog()
-      el.setAttribute('no-scroll-lock', '')
-      el.open = true
-      await waitForUpdate(el)
-
-      expect(document.body.style.position).toBe('')
-      cleanupElement(el)
-    })
-
-    it('打开期间切换 no-scroll-lock 立即同步滚动锁', async () => {
-      const el = createDialog()
-      el.open = true
-      await waitForUpdate(el)
-      el.setAttribute('no-scroll-lock', '')
-      await waitForUpdate(el)
-
-      expect(document.body.style.position).toBe('')
-      cleanupElement(el)
-    })
-  })
-
-  describe('事件：open-change', () => {
     it('程序设置 open 不触发 open-change', async () => {
       const el = createDialog()
       const [events] = spyEvents<CustomEvent<{ open: boolean }>>(el, 'open-change')
@@ -76,21 +45,7 @@ describe('WebUiDialog 组件', () => {
       cleanupElement(el)
     })
 
-    it('程序关闭不触发 open-change', async () => {
-      const el = createDialog()
-      el.open = true
-      await waitForUpdate(el)
-
-      const [events] = spyEvents<CustomEvent<{ open: boolean }>>(el, 'open-change')
-
-      el.open = false
-      await waitForUpdate(el)
-
-      expect(events).toHaveLength(0)
-      cleanupElement(el)
-    })
-
-    it('open 值不变时不触发', async () => {
+    it('程序设置 open 为已打开的同值不触发 open-change', async () => {
       const el = createDialog()
       el.open = true
       await waitForUpdate(el)
@@ -103,10 +58,8 @@ describe('WebUiDialog 组件', () => {
       expect(events).toHaveLength(0)
       cleanupElement(el)
     })
-  })
 
-  describe('命令：showModal()', () => {
-    it('设置 open=true 但不触发 open-change', async () => {
+    it('showModal() 打开但不触发 open-change', async () => {
       const el = createDialog()
       const [events] = spyEvents<CustomEvent<{ open: boolean }>>(el, 'open-change')
 
@@ -118,7 +71,9 @@ describe('WebUiDialog 组件', () => {
       cleanupElement(el)
     })
 
-    it('已打开时再次调用不重复触发', async () => {
+    // 幂等性：已打开时重复调用 showModal() 既不重派事件也不关掉面板。
+    // 少了这条，重复调用导致的「重复 showModal」回归无人看守。
+    it('已打开时再次调用 showModal() 不重复触发、也不关闭', async () => {
       const el = createDialog()
       el.open = true
       await waitForUpdate(el)
@@ -129,12 +84,11 @@ describe('WebUiDialog 组件', () => {
       await waitForUpdate(el)
 
       expect(events).toHaveLength(0)
+      expect(el.open).toBe(true)
       cleanupElement(el)
     })
-  })
 
-  describe('命令：close()', () => {
-    it('设置 open=false 但不触发 open-change', async () => {
+    it('close() 关闭但不触发 open-change', async () => {
       const el = createDialog()
       el.open = true
       await waitForUpdate(el)
@@ -150,92 +104,128 @@ describe('WebUiDialog 组件', () => {
     })
   })
 
-  /*
-   * 已删（§2 D3 存在性恒真）：'无障碍 > 打开时 shadow DOM 内存在原生 dialog 元素'
-   * 的唯一断言是 `expect(el.shadowRoot?.querySelector('dialog')).toBeTruthy()`。
-   * "用原生 <dialog> 承载" 是实现选择（换成 div + 自建 top layer 的等价实现不该被这条断言判失败），
-   * 故不再断言元素存在；其中**有行为语义**的那一半 —— "打开后确实处在 modal 层" —— 改由
-   * `dialog.browser.spec.ts` 用平台语义 `dialog.matches(':modal')` 断言。
-   */
-
-  describe('属性：noEscapeClose', () => {
-    it('property/attribute 按 Boolean 语义双向同步', async () => {
+  describe('滚动锁', () => {
+    // 文档级副作用是滚动锁唯一的观察面（组件自身 DOM 里读不到）。
+    it('默认打开时锁定背景滚动，关闭后恢复', async () => {
       const el = createDialog()
-      el.noEscapeClose = true
-      await waitForUpdate(el)
-      expect(el.hasAttribute('no-escape-close')).toBe(true)
 
-      el.noEscapeClose = false
+      el.open = true
       await waitForUpdate(el)
-      expect(el.hasAttribute('no-escape-close')).toBe(false)
+      expect(document.documentElement.style.overflow).toBe('hidden')
 
-      el.setAttribute('no-escape-close', 'false')
+      el.close()
       await waitForUpdate(el)
-      expect(el.noEscapeClose).toBe(true)
+      expect(document.documentElement.style.overflow).toBe('')
+      cleanupElement(el)
+    })
+
+    it('no-scroll-lock 为 true 时不锁定背景滚动', async () => {
+      const el = createDialog()
+      el.noScrollLock = true
+
+      el.open = true
+      await waitForUpdate(el)
+
+      expect(document.documentElement.style.overflow).toBe('')
+      cleanupElement(el)
+    })
+
+    it('打开期间切换 no-scroll-lock 立即释放滚动锁', async () => {
+      const el = createDialog()
+      el.open = true
+      await waitForUpdate(el)
+      expect(document.documentElement.style.overflow).toBe('hidden')
+
+      el.noScrollLock = true
+      await waitForUpdate(el)
+
+      expect(document.documentElement.style.overflow).toBe('')
       cleanupElement(el)
     })
   })
 
-  describe('属性：noBackdropClose', () => {
+  describe('布尔属性语义', () => {
+    // `="false"` 仍为真——Boolean 反射契约，不是「字符串解析成假值」。
+    const cases = [
+      ['noEscapeClose', 'no-escape-close'],
+      ['noBackdropClose', 'no-backdrop-close'],
+      ['controlled', 'controlled']
+    ] as const
+
+    for (const [prop, attr] of cases) {
+      it(`${prop} 按 Boolean 语义双向同步`, async () => {
+        const el = createDialog()
+
+        el[prop] = true
+        await waitForUpdate(el)
+        expect(el.hasAttribute(attr)).toBe(true)
+
+        el[prop] = false
+        await waitForUpdate(el)
+        expect(el.hasAttribute(attr)).toBe(false)
+
+        el.setAttribute(attr, 'false')
+        await waitForUpdate(el)
+        expect(el[prop]).toBe(true)
+        cleanupElement(el)
+      })
+    }
+  })
+
+  describe('遮罩点击关闭', () => {
     it('默认允许点击遮罩关闭对话框', async () => {
       const el = createDialog()
       el.open = true
       await waitForUpdate(el)
-      const dialog = el.shadowRoot?.querySelector('dialog')
 
-      dialog?.click()
+      panelOf(el)?.click()
       await waitForUpdate(el)
-      expect(el.open).toBe(false)
 
+      expect(el.open).toBe(false)
       cleanupElement(el)
     })
 
     it('no-backdrop-close 存在时点击遮罩不关闭', async () => {
       const el = createDialog()
-      el.setAttribute('no-backdrop-close', '')
+      el.noBackdropClose = true
       el.open = true
       await waitForUpdate(el)
-      const dialog = el.shadowRoot?.querySelector('dialog')
 
-      expect(el.noBackdropClose).toBe(true)
-      dialog?.click()
+      panelOf(el)?.click()
       await waitForUpdate(el)
-      expect(el.open).toBe(true)
 
+      expect(el.open).toBe(true)
       cleanupElement(el)
     })
 
+    // `no-backdrop-close="false"` 仍是「存在」（Boolean 反射语义），用户后果是同一个：
+    // 点遮罩不关闭。表驱动那条只读属性，这里钉行为——只钉属性的话，某天反射对了
+    // 但遮罩点击闸门失效，这条不会红。
     it('no-backdrop-close="false" 仍禁用遮罩关闭', async () => {
       const el = createDialog()
       el.setAttribute('no-backdrop-close', 'false')
+      el.open = true
       await waitForUpdate(el)
+
+      panelOf(el)?.click()
+      await waitForUpdate(el)
+
       expect(el.noBackdropClose).toBe(true)
+      expect(el.open).toBe(true)
       cleanupElement(el)
     })
   })
 
-  describe('属性：controlled', () => {
-    it('property/attribute 按 Boolean 语义双向同步', async () => {
-      const el = createDialog()
-      el.controlled = true
-      await waitForUpdate(el)
-      expect(el.hasAttribute('controlled')).toBe(true)
-
-      el.controlled = false
-      await waitForUpdate(el)
-      expect(el.hasAttribute('controlled')).toBe(false)
-      cleanupElement(el)
-    })
-
-    it('controlled 下点击遮罩只派发 open-change(false) 请求，不修改 open', async () => {
+  describe('controlled 模式', () => {
+    // 关键用户流程：受控下组件只发请求，改不改 open 由 consumer 决定。
+    it('点击遮罩只派发 open-change(false) 请求，不修改 open', async () => {
       const el = createDialog()
       el.controlled = true
       el.open = true
       await waitForUpdate(el)
       const [events] = spyEvents<CustomEvent<{ open: boolean }>>(el, 'open-change')
-      const dialog = el.shadowRoot?.querySelector('dialog')
 
-      dialog?.click()
+      panelOf(el)?.click()
       await waitForUpdate(el)
 
       expect(el.open).toBe(true)
@@ -244,7 +234,7 @@ describe('WebUiDialog 组件', () => {
       cleanupElement(el)
     })
 
-    it('controlled 下程序化 close() 依然直通关闭，不派发 open-change', async () => {
+    it('程序化 close() 直通关闭，不派发 open-change', async () => {
       const el = createDialog()
       el.controlled = true
       el.open = true

@@ -1,6 +1,13 @@
 import assert from 'node:assert/strict'
 
-import { buildTouchSequence, chromeArgs, classifySamples, parsePoints, RECORDER_SOURCE } from './agent-verify.mjs'
+import {
+  buildTouchSequence,
+  chromeArgs,
+  classifySamples,
+  connectionHint,
+  parsePoints,
+  RECORDER_SOURCE
+} from './agent-verify.mjs'
 
 // ===== parsePoints =====
 assert.deepEqual(parsePoints('10,20 300,400'), [
@@ -74,5 +81,16 @@ assert.equal(args.at(-1), 'http://127.0.0.1:5173/')
 const headless = chromeArgs({ profileDir: '/tmp/p', port: 9223, headless: true })
 assert.equal(headless[0], '--remote-debugging-port=9223')
 assert.ok(headless.includes('--headless=new'))
+
+// ===== connectionHint =====
+// 提示必须点名被访问的 URL、给出「先起 devserver」这个真实分布上的首选动作、并说明默认值可覆盖。
+const defaultHint = connectionHint('https://127.0.0.1:5173/')
+assert.match(defaultHint, /https:\/\/127\.0\.0\.1:5173\//)
+assert.match(defaultHint, /pnpm dev:react-web-ui-demo/)
+assert.match(defaultHint, /--url <url>/)
+assert.match(defaultHint, /default is https:\/\/127\.0\.0\.1:5173\//)
+// 显式传入别的目标时，提示不得退回到默认 URL 的措辞。
+const customHint = connectionHint('https://example.test:8443/app')
+assert.match(customHint, /https:\/\/example\.test:8443\/app/)
 
 console.log('agent-verify tests passed')

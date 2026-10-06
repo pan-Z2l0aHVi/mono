@@ -44,7 +44,7 @@ jobs:
         uses: changesets/action@v2
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          version-script: pnpm run release:version
+          version-script: pnpm run release-version
           pr-title: 'chore: version packages'
           commit-message: 'chore: version packages'
 

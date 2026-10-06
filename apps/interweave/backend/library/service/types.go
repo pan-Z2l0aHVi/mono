@@ -2,6 +2,22 @@ package service
 
 import "github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage"
 
+// SourceAvailabilityEventName 是可用性翻转的推送事件名，与既有 library: 事件同前缀同风格。
+const SourceAvailabilityEventName = "library:source-availability-changed"
+
+// ResourceKind 是 Resource 展示分类的闭集；文件分类由 Go 侧维护，URL 固定为 web。
+type ResourceKind = storage.ResourceKind
+
+const (
+	ResourceKindImage    = storage.ResourceKindImage
+	ResourceKindVideo    = storage.ResourceKindVideo
+	ResourceKindAudio    = storage.ResourceKindAudio
+	ResourceKindDocument = storage.ResourceKindDocument
+	ResourceKindWeb      = storage.ResourceKindWeb
+	ResourceKindJSON     = storage.ResourceKindJSON
+	ResourceKindFile     = storage.ResourceKindFile
+)
+
 // Source 抓取到的展示元数据。结构对应 remote.URLMetadata 的序列化形态，
 // 在 service 层解析为类型化对象，前端不再接触 JSON 字符串。
 type SourceMetadataDTO struct {
@@ -9,6 +25,21 @@ type SourceMetadataDTO struct {
 	SiteName    string `json:"site_name"`
 	Description string `json:"description"`
 	FaviconURL  string `json:"favicon_url"`
+}
+
+// FilePreviewDTO 为待添加文件提供权威 kind 与可选的本地媒体读取授权。
+type FilePreviewDTO struct {
+	Kind  ResourceKind `json:"kind"`
+	Token string       `json:"token,omitempty"`
+}
+
+// ResourceLocationMatchDTO 是「库内已有同一入口」的命中项，供添加前的重复确认框列出。
+// 只带展示所需字段：完整资源视图（全部 Source、标签、元数据）对这条提示是过量数据。
+type ResourceLocationMatchDTO struct {
+	ResourceID string `json:"resource_id"`
+	Title      string `json:"title"`
+	// Location 是后端归一化后的位置，因此与库里记录逐字一致（前端无从自行归一化）。
+	Location string `json:"location"`
 }
 
 // 为前端呈现 Resource 的外部入口。
@@ -31,18 +62,56 @@ type TagDTO struct {
 	ID        string `json:"id"`
 	Name      string `json:"name"`
 	CreatedAt int64  `json:"created_at"`
+	// Color 是展示色 key，同一名称恒定；前端据此渲染 chip，不在客户端按名称猜颜色。
+	Color storage.TagColor `json:"color"`
 }
 
 // 为前端提供完整但不承载外部内容的资源视图。
 type ResourceDTO struct {
-	ID          string      `json:"id"`
-	Title       string      `json:"title"`
+	ID    string `json:"id"`
+	Title string `json:"title"`
+	// Kind 由后端按首选 Source 派生；旧客户端可忽略此可选字段。
+	Kind ResourceKind `json:"kind,omitempty"`
+	// SizeBytes 是首选文件 Source 的当前字节数；URL、失效或不可读文件不提供该字段。
+	SizeBytes   *int64      `json:"size_bytes,omitempty"`
 	Note        string      `json:"note"`
 	CreatedAt   int64       `json:"created_at"`
 	UpdatedAt   int64       `json:"updated_at"`
 	Sources     []SourceDTO `json:"sources"`
 	Tags        []TagDTO    `json:"tags"`
 	PreferredID string      `json:"preferred_source_id"`
+}
+
+// SourceAvailabilityEventDTO 是可用性翻转的推送载荷。只推文件 Source：
+// URL 没有监听，其可用性由打开时探测走返回值回流，不需要事件。
+type SourceAvailabilityEventDTO struct {
+	SourceID   string             `json:"source_id"`
+	ResourceID string             `json:"resource_id"`
+	Type       storage.SourceType `json:"type"`
+	Available  bool               `json:"available"`
+	// SizeBytes 只在翻转的是该 Resource 的首选文件 Source 时有值。
+	SizeBytes *int64 `json:"size_bytes,omitempty"`
+	ChangedAt int64  `json:"changed_at"`
+}
+
+// SourceProbeOutcome 是打开时探测的结论集合。
+// 取值与 core.ProbeOutcome 一致，由 sourceProbeOutcomeDTO 显式映射，
+// 使前端契约成为独立类型而不是对 Go 常量的再导出。
+type SourceProbeOutcome string
+
+const (
+	SourceProbeOutcomeAvailable   SourceProbeOutcome = "available"
+	SourceProbeOutcomeUnavailable SourceProbeOutcome = "unavailable"
+	// SourceProbeOutcomeInconclusive 表示本次无法判定，未落库。
+	SourceProbeOutcomeInconclusive SourceProbeOutcome = "inconclusive"
+)
+
+// SourceProbeResultDTO 承载打开时探测的结论；Inconclusive 时 Source 字段省略。
+type SourceProbeResultDTO struct {
+	Source  *SourceDTO         `json:"source,omitempty"`
+	Outcome SourceProbeOutcome `json:"outcome"`
+	// Message 是用户可见文案，由后端出（沿用 core 哨兵文案口径），前端不自己拼领域文案。
+	Message string `json:"message,omitempty"`
 }
 
 // 为 Map 提供主题聚合视图。

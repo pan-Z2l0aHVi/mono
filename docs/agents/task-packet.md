@@ -1,6 +1,6 @@
 # Task Packet
 
-Task Packet 是单个 task 的主合同，记录目标、范围、验收、验证和交付边界。新会话可以据此恢复工作。多 Agent 的 Role 派发、handoff 模板、Supervisor 协议和 Herdr 时序见 [`herdr-agents`](../../.agents/skills/herdr-agents/SKILL.md)。
+Task Packet 是单个 task 的主合同，记录目标、范围、验收、验证和交付边界。新会话可以据此恢复工作。
 
 ## 主合同
 
@@ -30,28 +30,14 @@ Review: <required topology or not required>
 Handoff: <what is returned and when>
 ```
 
-级别、影响面和状态机以 [`workflow.md`](workflow.md) 为准。task state 中的 `diffHash`、review、approval、verification 和 `events[]` 由 `pnpm task` 维护，packet 不重复这些机器记录。
+级别、影响面和状态机以 [`workflow.md`](workflow.md) 为准。task state 中的 `diffHash`、review、approval、verification 和 `events[]` 由 `pnpm agent:task` 维护，packet 不重复这些机器记录。
 
-## 可选 Coordination 区域
-
-只有使用多 Agent 编排时才填写。Coordination 只记录恢复工作所需的信息，不进入 task state，也不替代冻结 diff 或 review 证据。
-
-```text
-Coordination id: herdr-agents/<task-id> | N/A
-Participants: <role/executor pairs>
-Supervisor: enabled | skipped (<score and reason>)
-Checkpoints:
-  - before-first-write: <clear | open | resolved | disputed | escalated; summary>
-  - first-verifiable-slice: <clear | open | resolved | disputed | escalated; summary>
-  - before-final-delivery: <clear | open | resolved | disputed | escalated; summary>
-Readiness: <Ready | Not ready | N/A>
-Open decisions: <Manager decisions still needed>
-```
-
-固定的 coordination id、报告状态、纠错规则和 Reviewer 隔离见 [`herdr-agents`](../../.agents/skills/herdr-agents/SKILL.md)。Manager 只记录恢复工作所需的信息，例如启用评分、覆盖理由、检查点结论、争议处理和 pane 生命周期，不复制完整聊天记录。
+`Owner`、`Worktree`、`Base` 三个字段的值由编排层提供：worktree 路径与 base SHA 来自它交付 task 时的工作树，owner 标识对应承接这条 task 的线程。packet 只如实记录这三项，不自行推导、不改写——编排层改了归属就重新 assign 并同步 packet。
 
 ## 恢复规则
 
-聊天消息、Herdr pane label、模型输出和 Supervisor 报告都不能替代 task state、冻结 diff 或验证记录。重启后，先读 Task Packet，再读 `<git-common-dir>/tasks/<task-id>.json`，最后按 [`workflow.md`](workflow.md) 判断当前 phase 和下一步。
+聊天消息、模型输出和过程报告都不能替代冻结 diff 或验证记录。Task Packet 与它的 `evidence/` 同处 `$TMPDIR/greypan/tasks/<task-id>.md`——一条 task 的完整记录放在一个地方，而不是拆成「主合同在别处、证据在这里」。它和 task state 同属**本地工作记忆，可丢失**（[ADR-0018](../adr/0018-task-state-in-tmpdir.md)）：换机换用户从 commit 历史重建，不承诺恢复。
 
-第三方 [`handoff` skill](../../.agents/skills/handoff/SKILL.md) 只用于压缩会话上下文，不改变本文件的任务主合同，也不改变多 Agent handoff 协议。
+在本机同用户的会话续作里，读取顺序是：先读 Task Packet，再读 `$TMPDIR/greypan/tasks/<task-id>.json`，最后按 [`workflow.md`](workflow.md) 判断当前 phase 和下一步；重启用 `pnpm agent:task status --task <task-id>` 的 `live` 核对，不靠记忆推断。state 已被清空时按 `workflow.md`「失败和恢复」重建，不靠重建 packet 蒙混过关。
+
+第三方 [`handoff` skill](../../.agents/skills/handoff/SKILL.md) 只用于压缩会话上下文，不改变本文件的任务主合同。

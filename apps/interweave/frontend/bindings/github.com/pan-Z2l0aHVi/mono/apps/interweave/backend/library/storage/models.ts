@@ -6,6 +6,25 @@
 import { Create as $Create } from "@wailsio/runtime";
 
 /**
+ * ResourceKind 是 Resource 展示层的权威闭集词汇，不写入 Source 或 Resource 表。
+ * 文件按扩展名映射，URL Source 固定为 web；未知文件扩展名归入 file。
+ */
+export enum ResourceKind {
+    /**
+     * The Go zero value for the underlying type of the enum.
+     */
+    $zero = "",
+
+    ResourceKindImage = "image",
+    ResourceKindVideo = "video",
+    ResourceKindAudio = "audio",
+    ResourceKindDocument = "document",
+    ResourceKindWeb = "web",
+    ResourceKindJSON = "json",
+    ResourceKindFile = "file",
+};
+
+/**
  * 区分本地与网络入口，避免用内容类型替代来源语义。
  */
 export enum SourceType {
@@ -16,4 +35,36 @@ export enum SourceType {
 
     SourceTypeFile = "file",
     SourceTypeURL = "url",
+};
+
+/**
+ * TagColor 是标签展示色的闭集词汇，按标签名唯一确定并持久化到 tag_colors。
+ * 库里只存 key：浅色/深色两套 chip 样式由前端按 key 映射，
+ * 因此调对比度或换主题不必迁移已落库的颜色。
+ */
+export enum TagColor {
+    /**
+     * The Go zero value for the underlying type of the enum.
+     */
+    $zero = "",
+
+    TagColorBlue = "blue",
+    TagColorEmerald = "emerald",
+    TagColorTeal = "teal",
+    TagColorCyan = "cyan",
+    TagColorSky = "sky",
+    TagColorIndigo = "indigo",
+    TagColorViolet = "violet",
+    TagColorPurple = "purple",
+    TagColorPink = "pink",
+    TagColorRed = "red",
+    TagColorOrange = "orange",
+    TagColorAmber = "amber",
+    TagColorYellow = "yellow",
+
+    /**
+     * TagColorGray 不参与随机分配：它是 DTO 边界归一与存量无色行唯一确定的落点，
+     * 同时也是前端中性兜底所在的一档。常量与前端映射都保留，只是不进随机池。
+     */
+    TagColorGray = "gray",
 };

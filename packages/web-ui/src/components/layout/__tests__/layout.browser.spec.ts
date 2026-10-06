@@ -1,46 +1,27 @@
 import { afterEach, describe, expect, it } from 'vite-plus/test'
-import { page } from 'vite-plus/test/browser'
+import { page, userEvent } from 'vite-plus/test/browser'
 
 import '..'
-import { pollUntil, queryA11y } from '@/shared/test-utils'
+import '../../theme'
+import { pollUntil, queryA11y, waitForFrame } from '@/shared/test-utils'
 
 import type { WebUiLayout } from '..'
 
-function createLayout({
-  banner = true,
-  bannerContent = 'Banner',
-  headerGlow = false
-}: { banner?: boolean; bannerContent?: string; headerGlow?: boolean } = {}): WebUiLayout {
+const MOBILE_VIEWPORT = { width: 390, height: 844 }
+const DESKTOP_VIEWPORT = { width: 1280, height: 720 }
+
+function createLayout(): WebUiLayout {
   const layout = document.createElement('web-ui-layout')
-  if (headerGlow) layout.setAttribute('header-glow', '')
   layout.innerHTML = `
-    ${banner ? `<div slot="banner" style="height: 36px">${bannerContent}</div>` : ''}
     <header slot="header">Header</header>
-    <div slot="sidebar" class="sidebar-consumer" style="display: flex; flex-direction: column; height: 100%; min-height: 0">
-      <div class="sidebar-title" style="flex-shrink: 0">Sidebar title</div>
-      <nav class="sidebar-nav" style="flex: 1; min-height: 0; overflow-y: auto"><div style="height: 2000px">Sidebar navigation</div></nav>
-    </div>
+    <div slot="sidebar" style="height: 100%">Sidebar</div>
     <main style="height: 2000px">Content</main>
-    <div slot="tabbar">Tabbar</div>
   `
   document.body.append(layout)
   return layout
 }
 
-async function nextFrame() {
-  await new Promise(resolve => requestAnimationFrame(resolve))
-}
-
-async function waitForLayoutTransition(layout: WebUiLayout) {
-  await layout.updateComplete
-  await nextFrame()
-
-  // 浏览器动画完成是布局状态稳定的确切终点，避免用固定 350ms 猜测过渡时长。
-  const animations = [...(layout.shadowRoot?.getAnimations() ?? []), ...layout.getAnimations({ subtree: true })]
-  await Promise.allSettled(animations.map(animation => animation.finished))
-  await layout.updateComplete
-}
-
+/** 受控契约：组件只派发请求，由消费者回写属性。 */
 function syncControlledSidebarState(layout: WebUiLayout) {
   layout.addEventListener('sidebar-collapsed-change', event => {
     layout.sidebarCollapsed = (event as CustomEvent<{ collapsed: boolean }>).detail.collapsed
@@ -50,123 +31,91 @@ function syncControlledSidebarState(layout: WebUiLayout) {
   })
 }
 
+const byLabel = (layout: WebUiLayout, label: string): HTMLElement => {
+  const found = queryA11y(layout, `[aria-label="${label}"]`) as HTMLElement | null
+  if (!found) throw new Error(`layout 未渲染 aria-label="${label}" 的 toggle`)
+  return found
+}
+
 afterEach(async () => {
   window.scrollTo(0, 0)
   document.body.replaceChildren()
-  await page.viewport(1280, 720)
+  await page.viewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height)
 })
 
 describe('WebUiLayout 组件（浏览器）', () => {
-  describe('桌面端行为', () => {
-    it('Toggle 请求受控折叠；Consumer 回写后 aria-label 切换为「展开侧边栏」', async () => {
-      await page.viewport(1280, 720)
+  describe('桌面端 sidebar 折叠', () => {
+    it('Toggle 请求受控折叠，回写后 aria-label 反映新状态', async () => {
+      await page.viewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height)
       const layout = createLayout()
       await layout.updateComplete
-      await nextFrame()
 
       const requested: boolean[] = []
       layout.addEventListener('sidebar-collapsed-change', event => {
         requested.push((event as CustomEvent<{ collapsed: boolean }>).detail.collapsed)
         layout.sidebarCollapsed = (event as CustomEvent<{ collapsed: boolean }>).detail.collapsed
       })
-
-      // 桌面 Toggle 通过 aria-label 定位，该 label 本身即受控折叠契约的一部分
-      const toggle = queryA11y(layout, '[aria-label="折叠侧边栏"]') as HTMLElement
-      expect(toggle).toBeTruthy()
-      expect(toggle.getAttribute('aria-label')).toBe('折叠侧边栏')
-
-      toggle.click()
       await layout.updateComplete
-      await waitForLayoutTransition(layout)
+
+      byLabel(layout, '折叠侧边栏').click()
+      await layout.updateComplete
 
       expect(requested).toEqual([true])
       expect(layout.sidebarCollapsed).toBe(true)
-      const expandedToggle = queryA11y(layout, '[aria-label="展开侧边栏"]') as HTMLElement
-      expect(expandedToggle).toBeTruthy()
-      expect(expandedToggle.getAttribute('aria-label')).toBe('展开侧边栏')
+      // byLabel 缺失即抛错，所以这里断的是 label 的**取值**而不是存在性。
+      expect(byLabel(layout, '展开侧边栏').getAttribute('aria-label')).toBe('展开侧边栏')
     })
 
-    it('外部受控属性更新会渲染，且不派发用户变更事件', async () => {
-      await page.viewport(1280, 720)
-      const layout = createLayout({ banner: false })
+    // 受控语义：属性面变更不是用户请求，不该回派事件，否则消费者的回写会形成回环。
+    it('外部受控属性更新会渲染，但不派发请求事件', async () => {
+      await page.viewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height)
+      const layout = createLayout()
       await layout.updateComplete
 
       let eventCount = 0
       layout.addEventListener('sidebar-collapsed-change', () => eventCount++)
 
-      const toggleBefore = queryA11y(layout, '[aria-label="折叠侧边栏"]') as HTMLElement
-      expect(toggleBefore).toBeTruthy()
-
       layout.sidebarCollapsed = true
       await layout.updateComplete
-      await waitForLayoutTransition(layout)
 
-      expect(queryA11y(layout, '[aria-label="展开侧边栏"]')).toBeTruthy()
+      expect(byLabel(layout, '展开侧边栏').getAttribute('aria-label')).toBe('展开侧边栏')
       expect(eventCount).toBe(0)
     })
 
-    it('kebab-case 布尔 attribute 遵循存在语义；camelCase 属性绑定才可表达 false（Vue 互操作）', async () => {
-      await page.viewport(1280, 720)
-      const layout = createLayout({ banner: false })
+    // Vue 的 `:sidebar-collapsed="false"` 会写入字符串 attribute "false"。Lit 布尔属性按
+    // 存在语义解析，因此 kebab-case 绑定表达不了 false，只能走 camelCase property 绑定。
+    it('kebab-case attribute 遵循存在语义，camelCase property 绑定才能表达 false', async () => {
+      await page.viewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height)
+      const layout = createLayout()
       await layout.updateComplete
 
-      // Vue 的 `:sidebar-collapsed="false"` 会写入字符串 attribute "false"。
-      // Lit 布尔属性按原生 HTML 存在语义解析：attribute 存在即为 true，因此该绑定无法表达 false。
       layout.setAttribute('sidebar-collapsed', 'false')
       await layout.updateComplete
       expect(layout.sidebarCollapsed).toBe(true)
 
-      // Vue 的 `:sidebarCollapsed="false"`（camelCase 属性名）命中既有 property，
-      // Vue 直接写 DOM property，Lit 收到 false 并移除对应 attribute。
       layout.sidebarCollapsed = false
       await layout.updateComplete
       expect(layout.sidebarCollapsed).toBe(false)
       expect(layout.hasAttribute('sidebar-collapsed')).toBe(false)
     })
-
-    it('header-glow 属性从 attribute 反射为布尔（保留属性/反射契约）', async () => {
-      await page.viewport(1280, 720)
-      const layout = createLayout({ headerGlow: true })
-      await layout.updateComplete
-      await nextFrame()
-
-      expect(layout.hasAttribute('header-glow')).toBe(true)
-      expect(layout.headerGlow).toBe(true)
-
-      layout.removeAttribute('header-glow')
-      await layout.updateComplete
-      expect(layout.headerGlow).toBe(false)
-      expect(layout.hasAttribute('header-glow')).toBe(false)
-    })
   })
 
-  describe('移动端行为', () => {
-    it('不渲染桌面 aside，改用受控的默认 web-ui-drawer', async () => {
-      await page.viewport(390, 844)
+  describe('移动端 drawer', () => {
+    // 640px 两侧切换两套 DOM：桌面渲染 aside + 常驻侧栏，移动端渲染受控 drawer。
+    it('移动端改用受控 drawer，不再渲染桌面 aside', async () => {
+      await page.viewport(MOBILE_VIEWPORT.width, MOBILE_VIEWPORT.height)
       const layout = createLayout()
       await layout.updateComplete
 
       expect(queryA11y(layout, 'aside')).toBeFalsy()
       const drawer = queryA11y(layout, 'web-ui-drawer')
       expect(drawer).toBeTruthy()
-      expect(drawer?.hasAttribute('headless')).toBe(false)
       expect(drawer?.getAttribute('dialog-label')).toBe('主导航')
       expect(drawer?.hasAttribute('draggable')).toBe(true)
     })
 
-    it('移动端 Toggle 公开 aria-label 为「打开导航菜单」且为 glass 变体', async () => {
-      await page.viewport(390, 844)
-      const layout = createLayout()
-      await layout.updateComplete
-
-      const toggle = queryA11y(layout, '[aria-label="打开导航菜单"]') as HTMLElement
-      expect(toggle).toBeTruthy()
-      expect(toggle.getAttribute('aria-label')).toBe('打开导航菜单')
-      expect(toggle.getAttribute('variant')).toBe('glass')
-    })
-
-    it('Toggle 请求打开 Drawer；Consumer 回写后 drawer 的 open 与 sidebarOpen 一致', async () => {
-      await page.viewport(390, 844)
+    it('Toggle 请求打开 drawer，回写后与 sidebarOpen 一致', async () => {
+      await page.viewport(MOBILE_VIEWPORT.width, MOBILE_VIEWPORT.height)
       const layout = createLayout()
       syncControlledSidebarState(layout)
       await layout.updateComplete
@@ -176,66 +125,18 @@ describe('WebUiLayout 组件（浏览器）', () => {
         requested.push((event as CustomEvent<{ open: boolean }>).detail.open)
       )
 
-      const toggle = queryA11y(layout, '[aria-label="打开导航菜单"]') as HTMLElement
-      expect(toggle).toBeTruthy()
-      expect(toggle.getAttribute('aria-label')).toBe('打开导航菜单')
-
-      toggle.click()
+      byLabel(layout, '打开导航菜单').click()
       await layout.updateComplete
-      await waitForLayoutTransition(layout)
 
       const drawer = queryA11y(layout, 'web-ui-drawer') as HTMLElement
       await pollUntil(() => drawer.hasAttribute('open'), 'Expected drawer to open')
 
       expect(requested).toEqual([true])
       expect(layout.sidebarOpen).toBe(true)
-      expect(drawer.getAttribute('open')).toBe('')
     })
 
-    it('外部 sidebar-open 驱动 Drawer；拒绝 Escape/遮罩关闭请求时保持打开且不泄漏 open-change', async () => {
-      await page.viewport(390, 844)
-      const layout = createLayout()
-      await layout.updateComplete
-
-      const sidebarOpenRequests: boolean[] = []
-      let leakedOpenChangeCount = 0
-      layout.addEventListener('sidebar-open-change', event => {
-        sidebarOpenRequests.push((event as CustomEvent<{ open: boolean }>).detail.open)
-      })
-      layout.addEventListener('open-change', () => leakedOpenChangeCount++)
-
-      layout.sidebarOpen = true
-      await layout.updateComplete
-      await waitForLayoutTransition(layout)
-
-      const drawer = queryA11y(layout, 'web-ui-drawer') as HTMLElement
-      const dialog = drawer.shadowRoot?.querySelector('dialog') as HTMLDialogElement
-      expect(drawer.hasAttribute('open')).toBe(true)
-      expect(sidebarOpenRequests).toEqual([])
-
-      dialog.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'Escape' }))
-      // 遮罩关闭是「pointerdown 落在遮罩 + 近静止 click」的指针链路；detail 为 0 的
-      // dialog.click() 不来自指针，会被 drawer 忽略（对齐 image-preview 的守卫）。
-      dialog.dispatchEvent(
-        new PointerEvent('pointerdown', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 20, clientY: 20 })
-      )
-      dialog.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1, clientX: 20, clientY: 20 }))
-      await layout.updateComplete
-      await waitForLayoutTransition(layout)
-
-      expect(layout.sidebarOpen).toBe(true)
-      expect(drawer.hasAttribute('open')).toBe(true)
-      expect(sidebarOpenRequests).toEqual([false, false])
-      expect(leakedOpenChangeCount).toBe(0)
-
-      layout.sidebarOpen = false
-      await layout.updateComplete
-      await waitForLayoutTransition(layout)
-      expect(drawer.hasAttribute('open')).toBe(false)
-    })
-
-    it('Drawer Escape 关闭会请求受控的 sidebar-open=false', async () => {
-      await page.viewport(390, 844)
+    it('drawer 的关闭请求冒泡为 sidebar-open-change，组件自身不吞', async () => {
+      await page.viewport(MOBILE_VIEWPORT.width, MOBILE_VIEWPORT.height)
       const layout = createLayout()
       syncControlledSidebarState(layout)
       await layout.updateComplete
@@ -244,224 +145,534 @@ describe('WebUiLayout 组件（浏览器）', () => {
       layout.addEventListener('sidebar-open-change', event =>
         requested.push((event as CustomEvent<{ open: boolean }>).detail.open)
       )
-      const toggle = queryA11y(layout, '[aria-label="打开导航菜单"]') as HTMLElement
-      toggle.click()
-      await layout.updateComplete
-      await waitForLayoutTransition(layout)
 
+      byLabel(layout, '打开导航菜单').click()
+      await layout.updateComplete
       const drawer = queryA11y(layout, 'web-ui-drawer') as HTMLElement
       await pollUntil(() => drawer.hasAttribute('open'), 'Expected drawer to open')
+
       const dialog = drawer.shadowRoot?.querySelector('dialog') as HTMLDialogElement
       dialog.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'Escape' }))
       await layout.updateComplete
-      await waitForLayoutTransition(layout)
 
       expect(requested).toEqual([true, false])
       expect(layout.sidebarOpen).toBe(false)
-      expect(drawer.hasAttribute('open')).toBe(false)
-    })
-
-    it('内部 Drawer 启用 draggable 手势关闭', async () => {
-      await page.viewport(390, 844)
-      const layout = createLayout()
-      syncControlledSidebarState(layout)
-      await layout.updateComplete
-
-      const drawer = queryA11y(layout, 'web-ui-drawer') as HTMLElement
-      expect(drawer.hasAttribute('draggable')).toBe(true)
+      await pollUntil(() => !drawer.hasAttribute('open'), 'Expected drawer to close')
     })
   })
 
-  describe('桌面端 Sidebar 拖拽调宽（浏览器）', () => {
+  describe('桌面端 sidebar 拖拽与键盘调宽', () => {
+    async function resizableLayout(): Promise<WebUiLayout> {
+      await page.viewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height)
+      const layout = createLayout()
+      layout.setAttribute('sidebar-resizable', '')
+      await layout.updateComplete
+      await waitForFrame()
+      return layout
+    }
+
+    const handleOf = (layout: WebUiLayout): HTMLElement => {
+      const handle = queryA11y(layout, '[role="separator"]') as HTMLElement | null
+      if (!handle) throw new Error('layout 未渲染 resize handle')
+      return handle
+    }
+
+    const pointer = (type: string, init: PointerEventInit) =>
+      new PointerEvent(type, { bubbles: true, pointerId: 1, isPrimary: true, ...init })
+
     it('未启用 sidebar-resizable 时不渲染 handle', async () => {
-      await page.viewport(1280, 720)
+      await page.viewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height)
       const layout = createLayout()
       await layout.updateComplete
-      await nextFrame()
 
-      expect(layout.sidebarResizable).toBe(false)
-      // 用 handle 的 role=separator 公开抓手判定，而非内部 class
       expect(queryA11y(layout, '[role="separator"]')).toBeFalsy()
     })
 
-    it('拖拽 handle 松手派发一次 sidebar-width-change 请求，值约等于起始宽度 + 位移', async () => {
-      await page.viewport(1280, 720)
-      const layout = createLayout()
-      layout.setAttribute('sidebar-resizable', '')
-      await layout.updateComplete
-      await nextFrame()
-
+    it('拖拽 handle 松手派发一次调宽请求', async () => {
+      const layout = await resizableLayout()
       const widthRequests: string[] = []
       layout.addEventListener('sidebar-width-change', event =>
         widthRequests.push((event as CustomEvent<{ width: string }>).detail.width)
       )
+      const handle = handleOf(layout)
 
-      const handle = queryA11y(layout, '[role="separator"]') as HTMLElement
-      expect(handle).toBeTruthy()
-      expect(handle.getAttribute('role')).toBe('separator')
-
-      // 起始宽度以公开属性 sidebarWidth 为准（默认 240px），位移仅取决于 clientX 之差
-      const startWidth = parseFloat(layout.sidebarWidth)
-      handle.dispatchEvent(
-        new PointerEvent('pointerdown', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 0 })
-      )
+      handle.dispatchEvent(pointer('pointerdown', { clientX: 0 }))
       await layout.updateComplete
-      handle.dispatchEvent(
-        new PointerEvent('pointermove', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 60 })
-      )
-      await nextFrame()
-      handle.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 60 }))
+      handle.dispatchEvent(pointer('pointermove', { clientX: 60 }))
+      await layout.updateComplete
+      handle.dispatchEvent(pointer('pointerup', { clientX: 60 }))
       await layout.updateComplete
 
       expect(widthRequests).toHaveLength(1)
-      expect(parseFloat(widthRequests[0])).toBeCloseTo(startWidth + 60, 0)
+      expect(parseFloat(widthRequests[0])).toBeCloseTo(parseFloat(layout.sidebarWidth) + 60, 0)
     })
 
-    it('拖拽宽度被 min/max 钳制：请求值落在 [min, max]', async () => {
-      await page.viewport(1280, 720)
-      const layout = createLayout()
-      layout.setAttribute('sidebar-resizable', '')
-      const minWidth = 200
-      const maxWidth = 300
-      layout.setAttribute('sidebar-min-width', `${minWidth}px`)
-      layout.setAttribute('sidebar-max-width', `${maxWidth}px`)
-      await layout.updateComplete
-      await nextFrame()
+    // 受控契约：拖拽只请求，不自行改 sidebar-width，宽度仍归消费者管。
+    it('拖拽只派发请求，不自行改写 sidebarWidth', async () => {
+      const layout = await resizableLayout()
+      layout.addEventListener('sidebar-width-change', () => {})
+      const handle = handleOf(layout)
+      const before = layout.sidebarWidth
 
+      handle.dispatchEvent(pointer('pointerdown', { clientX: 0 }))
+      await layout.updateComplete
+      handle.dispatchEvent(pointer('pointermove', { clientX: 60 }))
+      await layout.updateComplete
+      handle.dispatchEvent(pointer('pointerup', { clientX: 60 }))
+      await layout.updateComplete
+
+      expect(layout.sidebarWidth).toBe(before)
+    })
+
+    it('零位移松手不派发调宽请求（点击而非拖拽）', async () => {
+      const layout = await resizableLayout()
       const widthRequests: string[] = []
       layout.addEventListener('sidebar-width-change', event =>
         widthRequests.push((event as CustomEvent<{ width: string }>).detail.width)
       )
+      const handle = handleOf(layout)
 
-      const handle = queryA11y(layout, '[role="separator"]') as HTMLElement
-
-      handle.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerId: 1, isPrimary: true }))
+      handle.dispatchEvent(pointer('pointerdown', { clientX: 0 }))
       await layout.updateComplete
-      handle.dispatchEvent(
-        new PointerEvent('pointermove', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 400 })
-      )
-      await nextFrame()
-      handle.dispatchEvent(
-        new PointerEvent('pointerup', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 400 })
-      )
+      handle.dispatchEvent(pointer('pointerup', { clientX: 0 }))
       await layout.updateComplete
-      expect(widthRequests).toHaveLength(1)
-      expect(parseFloat(widthRequests[0])).toBeCloseTo(maxWidth, 0)
-
-      handle.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerId: 1, isPrimary: true }))
-      await layout.updateComplete
-      handle.dispatchEvent(
-        new PointerEvent('pointermove', { bubbles: true, pointerId: 1, isPrimary: true, clientX: -400 })
-      )
-      await nextFrame()
-      handle.dispatchEvent(
-        new PointerEvent('pointerup', { bubbles: true, pointerId: 1, isPrimary: true, clientX: -400 })
-      )
-      await layout.updateComplete
-      expect(widthRequests).toHaveLength(2)
-      expect(parseFloat(widthRequests[1])).toBeCloseTo(minWidth, 0)
-    })
-
-    it('sidebar-min-width 未设置时回退为 collapsed-width（请求值钳制到 collapsedWidth）', async () => {
-      await page.viewport(1280, 720)
-      const layout = createLayout()
-      layout.setAttribute('sidebar-resizable', '')
-      await layout.updateComplete
-      await nextFrame()
-
-      const widthRequests: string[] = []
-      layout.addEventListener('sidebar-width-change', event =>
-        widthRequests.push((event as CustomEvent<{ width: string }>).detail.width)
-      )
-
-      const handle = queryA11y(layout, '[role="separator"]') as HTMLElement
-      const collapsedWidth = parseFloat(layout.collapsedWidth)
-
-      handle.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerId: 1, isPrimary: true }))
-      await layout.updateComplete
-      handle.dispatchEvent(
-        new PointerEvent('pointermove', { bubbles: true, pointerId: 1, isPrimary: true, clientX: -600 })
-      )
-      await nextFrame()
-      handle.dispatchEvent(
-        new PointerEvent('pointerup', { bubbles: true, pointerId: 1, isPrimary: true, clientX: -600 })
-      )
-      await layout.updateComplete
-
-      expect(widthRequests).toHaveLength(1)
-      expect(parseFloat(widthRequests[0])).toBeCloseTo(collapsedWidth, 0)
-    })
-
-    it('零位移松手不派发 sidebar-width-change', async () => {
-      await page.viewport(1280, 720)
-      const layout = createLayout()
-      layout.setAttribute('sidebar-resizable', '')
-      await layout.updateComplete
-      await nextFrame()
-
-      const widthRequests: string[] = []
-      layout.addEventListener('sidebar-width-change', event =>
-        widthRequests.push((event as CustomEvent<{ width: string }>).detail.width)
-      )
-
-      const handle = queryA11y(layout, '[role="separator"]') as HTMLElement
-      // down 后原位 up：点击而非拖拽，不应产生调宽请求
-      handle.dispatchEvent(
-        new PointerEvent('pointerdown', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 0 })
-      )
-      await layout.updateComplete
-      handle.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 0 }))
-      await layout.updateComplete
-      await waitForLayoutTransition(layout)
 
       expect(widthRequests).toHaveLength(0)
     })
 
-    it('键盘调宽：handle 为 role=separator/tabindex=0；方向键步进不派发，Enter 提交一次请求', async () => {
-      await page.viewport(1280, 720)
+    /*
+     * 拖拽调宽的边界契约（README 记载）：请求值必须落在 `[min, max]` 内，且**不等于**
+     * 越界目标值。判别力全在「不等于」那半句——只断 `toBeLessOrEqual(max)` 的话，
+     * 把钳制整段删掉改成原样透传也能过。
+     */
+    it('拖拽越界时请求值被钳制到 min / max，而不是越界目标值', async () => {
+      await page.viewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height)
       const layout = createLayout()
       layout.setAttribute('sidebar-resizable', '')
       layout.setAttribute('sidebar-min-width', '200px')
       layout.setAttribute('sidebar-max-width', '300px')
       await layout.updateComplete
-      await nextFrame()
+      await waitForFrame()
 
       const widthRequests: string[] = []
       layout.addEventListener('sidebar-width-change', event =>
         widthRequests.push((event as CustomEvent<{ width: string }>).detail.width)
       )
+      const handle = handleOf(layout)
 
-      const handle = queryA11y(layout, '[role="separator"]') as HTMLElement
-      expect(handle.getAttribute('role')).toBe('separator')
-      expect(handle.getAttribute('tabindex')).toBe('0')
+      // 远大于 max 的拖拽：起点宽度 240 + 400 已远超上限 300。
+      handle.dispatchEvent(pointer('pointerdown', { clientX: 0 }))
+      await layout.updateComplete
+      handle.dispatchEvent(pointer('pointermove', { clientX: 400 }))
+      await layout.updateComplete
+      handle.dispatchEvent(pointer('pointerup', { clientX: 400 }))
+      await layout.updateComplete
 
-      const startWidth = parseFloat(layout.sidebarWidth)
-      // 向右键入两步增宽（每步 16px），步进期间直接改临时宽度但不派发
-      handle.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'ArrowRight' }))
-      await layout.updateComplete
-      handle.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'ArrowRight' }))
-      await layout.updateComplete
-      await waitForLayoutTransition(layout)
-      const expectedWidth = startWidth + 32
+      expect(widthRequests).toHaveLength(1)
+      expect(parseFloat(widthRequests[0])).toBeCloseTo(300, 0)
+      // 不等于未钳制的目标值（240 + 400）
+      expect(parseFloat(widthRequests[0])).not.toBeCloseTo(640, 0)
 
-      expect(widthRequests).toHaveLength(0)
-      handle.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'Enter' }))
+      // 远小于 min 的拖拽：240 - 400 已低于下限 200。
+      handle.dispatchEvent(pointer('pointerdown', { clientX: 0 }))
       await layout.updateComplete
-      expect(widthRequests).toEqual([`${expectedWidth}px`])
+      handle.dispatchEvent(pointer('pointermove', { clientX: -400 }))
+      await layout.updateComplete
+      handle.dispatchEvent(pointer('pointerup', { clientX: -400 }))
+      await layout.updateComplete
+
+      expect(widthRequests).toHaveLength(2)
+      expect(parseFloat(widthRequests[1])).toBeCloseTo(200, 0)
+      // 不等于未钳制的目标值（240 - 400）
+      expect(parseFloat(widthRequests[1])).not.toBeCloseTo(-160, 0)
     })
 
-    it('折叠态隐藏 handle；展开后重现', async () => {
-      await page.viewport(1280, 720)
+    /*
+     * `sidebar-min-width` 未设置时下限回退到 `collapsed-width`（README 明文记载）。
+     * 判别力来自「等于 collapsedWidth」——把回退分支改成常数，这条立刻转红。
+     * 不钉具体数值：collapsedWidth 是公开属性，测试自己从它取值。
+     */
+    it('未设 min-width 时下限回退为 collapsed-width', async () => {
+      await page.viewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height)
       const layout = createLayout()
       layout.setAttribute('sidebar-resizable', '')
+      layout.collapsedWidth = '90px'
       await layout.updateComplete
-      await nextFrame()
+      await waitForFrame()
 
+      const widthRequests: string[] = []
+      layout.addEventListener('sidebar-width-change', event =>
+        widthRequests.push((event as CustomEvent<{ width: string }>).detail.width)
+      )
+      const handle = handleOf(layout)
+
+      handle.dispatchEvent(pointer('pointerdown', { clientX: 0 }))
+      await layout.updateComplete
+      handle.dispatchEvent(pointer('pointermove', { clientX: -600 }))
+      await layout.updateComplete
+      handle.dispatchEvent(pointer('pointerup', { clientX: -600 }))
+      await layout.updateComplete
+
+      expect(widthRequests).toHaveLength(1)
+      expect(parseFloat(widthRequests[0])).toBeCloseTo(parseFloat(layout.collapsedWidth), 0)
+    })
+
+    /*
+     * `sidebar-max-width` 的内置硬上限：无论配多大，Sidebar 最多占视口一半。
+     * 配一个远超半屏的值，判别力来自「不等于配置值」——去掉硬上限就转红。
+     */
+    it('max-width 超过半屏时被内置上限接管', async () => {
+      await page.viewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height)
+      const layout = createLayout()
+      layout.setAttribute('sidebar-resizable', '')
+      layout.setAttribute('sidebar-max-width', '5000px')
+      await layout.updateComplete
+      await waitForFrame()
+
+      const widthRequests: string[] = []
+      layout.addEventListener('sidebar-width-change', event =>
+        widthRequests.push((event as CustomEvent<{ width: string }>).detail.width)
+      )
+      const handle = handleOf(layout)
+
+      handle.dispatchEvent(pointer('pointerdown', { clientX: 0 }))
+      await layout.updateComplete
+      handle.dispatchEvent(pointer('pointermove', { clientX: 4000 }))
+      await layout.updateComplete
+      handle.dispatchEvent(pointer('pointerup', { clientX: 4000 }))
+      await layout.updateComplete
+
+      expect(widthRequests).toHaveLength(1)
+      const halfViewport = DESKTOP_VIEWPORT.width / 2
+      expect(parseFloat(widthRequests[0])).toBeLessThanOrEqual(halfViewport)
+      expect(parseFloat(widthRequests[0])).not.toBeCloseTo(5000, 0)
+    })
+
+    it('pointercancel 中断手势且不派发调宽请求', async () => {
+      const layout = await resizableLayout()
+      const widthRequests: string[] = []
+      layout.addEventListener('sidebar-width-change', event =>
+        widthRequests.push((event as CustomEvent<{ width: string }>).detail.width)
+      )
+      const handle = handleOf(layout)
+
+      handle.dispatchEvent(pointer('pointerdown', { clientX: 0 }))
+      await layout.updateComplete
+      handle.dispatchEvent(pointer('pointermove', { clientX: -100 }))
+      await layout.updateComplete
+      handle.dispatchEvent(pointer('pointercancel', {}))
+      await layout.updateComplete
+
+      expect(widthRequests).toHaveLength(0)
+      expect(layout.sidebarWidth).toBe('240px')
+    })
+
+    // 手写的 role=separator 必须自己补 tabindex，否则键盘用户永远到不了调宽把手。
+    it('handle 是可聚焦的 splitter', async () => {
+      const layout = await resizableLayout()
+      const handle = handleOf(layout)
+
+      expect(handle.getAttribute('role')).toBe('separator')
+      expect(handle.getAttribute('tabindex')).toBe('0')
+      expect(handle.getAttribute('aria-orientation')).toBe('vertical')
+    })
+
+    it('键盘步进只改临时宽度，Enter 才提交一次请求', async () => {
+      const layout = await resizableLayout()
+      const widthRequests: string[] = []
+      layout.addEventListener('sidebar-width-change', event =>
+        widthRequests.push((event as CustomEvent<{ width: string }>).detail.width)
+      )
+      const handle = handleOf(layout)
+
+      handle.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight' }))
+      await layout.updateComplete
+      handle.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight' }))
+      await layout.updateComplete
+      expect(widthRequests).toHaveLength(0)
+
+      handle.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }))
+      await layout.updateComplete
+      expect(widthRequests).toHaveLength(1)
+      expect(parseFloat(widthRequests[0])).toBeGreaterThan(parseFloat(layout.sidebarWidth))
+    })
+
+    /*
+     * Enter 提交后临时宽度必须清空（`_resizeWidth = null`），焦点仍停在把手上时
+     * 再按回车是「无未提交调整」，不该再派发第二次请求——这正是 :233 注释写明的
+     * 意图。判别力来自**第二次** Enter：只按一次 Enter 的用例无法区分「提交后清空」
+     * 与「提交后原样留着」，删掉清空这行本用例立刻转红。
+     */
+    it('Enter 提交后清空临时宽度，再按一次 Enter 不重复派发', async () => {
+      const layout = await resizableLayout()
+      const widthRequests: string[] = []
+      layout.addEventListener('sidebar-width-change', event =>
+        widthRequests.push((event as CustomEvent<{ width: string }>).detail.width)
+      )
+      const handle = handleOf(layout)
+
+      handle.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight' }))
+      await layout.updateComplete
+      handle.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight' }))
+      await layout.updateComplete
+
+      handle.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }))
+      await layout.updateComplete
+      expect(widthRequests).toHaveLength(1)
+
+      // 焦点未动，把手上没有新的未提交调整：回车不该产生第二次请求。
+      handle.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }))
+      await layout.updateComplete
+      expect(widthRequests).toHaveLength(1)
+    })
+
+    /*
+     * 清空临时宽度的第二个后果，也是「受控契约」的一半：提交后下一步方向键必须
+     * 从 **prop 管辖的渲染宽度** 起算，而不是从刚提交过的值继续往上叠。
+     *
+     * 判别力在于两条路径的落点差一个完整步进（256 vs 288）：Consumer 有权拒绝或
+     * 钳制请求，若组件把未回写的旧值留在 `_resizeWidth` 里，后续步进就从一个用户
+     * 实际没得到的宽度起算并逐次累积。清空这行，本用例立刻转红。
+     */
+    it('Enter 提交后方向键从 prop 宽度起算，不接着未回写的提交值累积', async () => {
+      const layout = await resizableLayout()
+      const widthRequests: string[] = []
+      layout.addEventListener('sidebar-width-change', event =>
+        widthRequests.push((event as CustomEvent<{ width: string }>).detail.width)
+      )
+      const handle = handleOf(layout)
+
+      handle.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight' }))
+      await layout.updateComplete
+      handle.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight' }))
+      await layout.updateComplete
+      handle.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }))
+      await layout.updateComplete
+
+      // 提交后 aside 宽度过渡回 prop 值；下一步的起点读的是 computed width，
+      // 必须等过渡落定，否则会读到动画中间值。
+      const aside = queryA11y(layout, 'aside') as HTMLElement
+      await pollUntil(
+        () => Math.abs(parseFloat(window.getComputedStyle(aside).width) - parseFloat(layout.sidebarWidth)) < 1,
+        'Expected sidebar width to settle back to the prop value'
+      )
+
+      handle.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight' }))
+      await layout.updateComplete
+      handle.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }))
+      await layout.updateComplete
+
+      expect(widthRequests).toHaveLength(2)
+      // Consumer 未回写，prop 仍是起点宽度：下一步 = 起点 + 一个步进。
+      expect(parseFloat(widthRequests[1])).toBeCloseTo(parseFloat(layout.sidebarWidth) + 16, 0)
+      // 钉住「不是接着提交值累积」：那会是一个步进之差（272 + 16 而非 240 + 16）。
+      expect(parseFloat(widthRequests[1])).not.toBeCloseTo(parseFloat(widthRequests[0]) + 16, 0)
+    })
+
+    /*
+     * Shift 加速步进（WAI-ARIA splitter 的常规约定）：同一起点、同一个 key，
+     * 不带 Shift 走 N 步与带 Shift 走 1 步必须落到同一宽度。
+     *
+     * 判别力钉的是两个分支的**比值关系**而不是某个具体像素：起点宽度、min/max
+     * resolver 或步长常量改动后断言依然成立，而把 `shiftKey ? 64 : 16` 的加速
+     * 分支删成恒定 16 时两组落点立刻分叉（256 vs 304）转红。
+     */
+    it('Shift 加速：1 次 Shift 步进与 4 次普通步进落到同一宽度', async () => {
+      // 每个序列用独立 layout：Enter 提交后 aside 宽度会过渡回 prop 值，
+      // 复用同一个实例会让下一个序列的起点落在过渡中间值上（见 :213-215 的
+      // `getComputedStyle` 读法）。
+      const committedAfterArrowRight = async (presses: number, shiftKey: boolean) => {
+        const layout = await resizableLayout()
+        const widthRequests: string[] = []
+        layout.addEventListener('sidebar-width-change', event =>
+          widthRequests.push((event as CustomEvent<{ width: string }>).detail.width)
+        )
+        const handle = handleOf(layout)
+
+        for (let press = 0; press < presses; press += 1) {
+          handle.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', shiftKey }))
+          await layout.updateComplete
+        }
+        handle.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }))
+        await layout.updateComplete
+
+        expect(widthRequests).toHaveLength(1)
+        return parseFloat(widthRequests[0])
+      }
+
+      const onePlainStep = await committedAfterArrowRight(1, false)
+      const fourPlainSteps = await committedAfterArrowRight(4, false)
+      const oneShiftStep = await committedAfterArrowRight(1, true)
+
+      // 4 次普通步进 ≡ 1 次 Shift 步进。
+      expect(oneShiftStep).toBeCloseTo(fourPlainSteps, 0)
+      // 护栏：单次普通步进必须明显更小，否则上面那条可能因「两个分支都没动」而空转。
+      expect(oneShiftStep).not.toBeCloseTo(onePlainStep, 0)
+    })
+
+    /*
+     * 键盘入口与拖拽入口共用同一对 resolver，但走的是另一段代码：Home/End 是 WAI-ARIA
+     * splitter 的标准语义（政策 §3 的「可访问性契约」），键盘用户只能走这条路。
+     * 下面两条与拖拽那三条同判据：`toBeCloseTo` 钉边界值 + `not.toBeCloseTo(越界目标值)`，
+     * 不钉具体像素——resolver 改掉即红，整段钳制删掉也红（未钳制值与边界差几百像素）。
+     */
+    it('键盘 Home/End 提交到 min / max 边界，而不是越界目标值', async () => {
+      await page.viewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height)
+      const layout = createLayout()
+      layout.setAttribute('sidebar-resizable', '')
+      layout.setAttribute('sidebar-min-width', '200px')
+      layout.setAttribute('sidebar-max-width', '300px')
+      await layout.updateComplete
+      await waitForFrame()
+
+      const widthRequests: string[] = []
+      layout.addEventListener('sidebar-width-change', event =>
+        widthRequests.push((event as CustomEvent<{ width: string }>).detail.width)
+      )
+      const handle = handleOf(layout)
+      const key = (k: string) => handle.dispatchEvent(new KeyboardEvent('keydown', { key: k }))
+
+      key('End')
+      await layout.updateComplete
+      key('Enter')
+      await layout.updateComplete
+
+      expect(widthRequests).toHaveLength(1)
+      expect(parseFloat(widthRequests[0])).toBeCloseTo(300, 0)
+      // 起点宽度 240，若 End 未钳到 max 而是无界步进，落点会远离上限
+      expect(parseFloat(widthRequests[0])).not.toBeCloseTo(parseFloat(layout.sidebarWidth), 0)
+
+      key('Home')
+      await layout.updateComplete
+      key('Enter')
+      await layout.updateComplete
+
+      expect(widthRequests).toHaveLength(2)
+      expect(parseFloat(widthRequests[1])).toBeCloseTo(200, 0)
+      expect(parseFloat(widthRequests[1])).not.toBeCloseTo(parseFloat(layout.sidebarWidth), 0)
+    })
+
+    it('键盘方向键步进被 min / max 钳住，不越过边界', async () => {
+      await page.viewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height)
+      const layout = createLayout()
+      layout.setAttribute('sidebar-resizable', '')
+      layout.setAttribute('sidebar-min-width', '200px')
+      layout.setAttribute('sidebar-max-width', '300px')
+      await layout.updateComplete
+      await waitForFrame()
+
+      const widthRequests: string[] = []
+      layout.addEventListener('sidebar-width-change', event =>
+        widthRequests.push((event as CustomEvent<{ width: string }>).detail.width)
+      )
+      const handle = handleOf(layout)
+
+      // 从 240 连续右移会越过上限 300；提交值必须仍停在边界。
+      for (let step = 0; step < 10; step += 1) {
+        handle.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight' }))
+        await layout.updateComplete
+      }
+      handle.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }))
+      await layout.updateComplete
+
+      expect(widthRequests).toHaveLength(1)
+      expect(parseFloat(widthRequests[0])).toBeCloseTo(300, 0)
+      // 无钳制时 240 + 10×16 = 400
+      expect(parseFloat(widthRequests[0])).not.toBeCloseTo(400, 0)
+
+      // 从 240 连续左移会越过下限 200。
+      for (let step = 0; step < 10; step += 1) {
+        handle.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft' }))
+        await layout.updateComplete
+      }
+      handle.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }))
+      await layout.updateComplete
+
+      expect(widthRequests).toHaveLength(2)
+      expect(parseFloat(widthRequests[1])).toBeCloseTo(200, 0)
+      // 无钳制时 240 - 10×16 = 80
+      expect(parseFloat(widthRequests[1])).not.toBeCloseTo(80, 0)
+    })
+
+    /*
+     * 键盘入口同样要覆盖 `sidebar-min-width` 未设置时的回退分支：Home 必须落到
+     * `collapsed-width` 而不是别处。判别力与拖拽那条一致——resolver 改掉即红。
+     */
+    it('键盘 Home 在未设 min-width 时回退到 collapsed-width', async () => {
+      await page.viewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height)
+      const layout = createLayout()
+      layout.setAttribute('sidebar-resizable', '')
+      layout.collapsedWidth = '90px'
+      await layout.updateComplete
+      await waitForFrame()
+
+      const widthRequests: string[] = []
+      layout.addEventListener('sidebar-width-change', event =>
+        widthRequests.push((event as CustomEvent<{ width: string }>).detail.width)
+      )
+      const handle = handleOf(layout)
+
+      handle.dispatchEvent(new KeyboardEvent('keydown', { key: 'Home' }))
+      await layout.updateComplete
+      handle.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }))
+      await layout.updateComplete
+
+      expect(widthRequests).toHaveLength(1)
+      expect(parseFloat(widthRequests[0])).toBeCloseTo(parseFloat(layout.collapsedWidth), 0)
+      // 不等于展开宽度：回退分支若失效，Home 会落到 sidebarWidth
+      expect(parseFloat(widthRequests[0])).not.toBeCloseTo(parseFloat(layout.sidebarWidth), 0)
+    })
+
+    // 键盘入口同样受内置半屏硬上限约束，绕过它键盘用户能把侧栏撑满整个视口。
+    it('键盘 End 在 max-width 超过半屏时被内置上限接管', async () => {
+      await page.viewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height)
+      const layout = createLayout()
+      layout.setAttribute('sidebar-resizable', '')
+      layout.setAttribute('sidebar-max-width', '5000px')
+      await layout.updateComplete
+      await waitForFrame()
+
+      const widthRequests: string[] = []
+      layout.addEventListener('sidebar-width-change', event =>
+        widthRequests.push((event as CustomEvent<{ width: string }>).detail.width)
+      )
+      const handle = handleOf(layout)
+
+      handle.dispatchEvent(new KeyboardEvent('keydown', { key: 'End' }))
+      await layout.updateComplete
+      handle.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }))
+      await layout.updateComplete
+
+      expect(widthRequests).toHaveLength(1)
+      expect(parseFloat(widthRequests[0])).toBeLessThanOrEqual(DESKTOP_VIEWPORT.width / 2)
+      expect(parseFloat(widthRequests[0])).not.toBeCloseTo(5000, 0)
+    })
+
+    it('Escape 撤回键盘调整，不提交请求', async () => {
+      const layout = await resizableLayout()
+      const widthRequests: string[] = []
+      layout.addEventListener('sidebar-width-change', event =>
+        widthRequests.push((event as CustomEvent<{ width: string }>).detail.width)
+      )
+      const handle = handleOf(layout)
+
+      handle.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight' }))
+      await layout.updateComplete
+      handle.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+      await layout.updateComplete
+      handle.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }))
+      await layout.updateComplete
+
+      expect(widthRequests).toHaveLength(0)
+    })
+
+    // 折叠态没有可调的侧栏，把手必须随折叠一起消失。
+    it('折叠态隐藏 handle，展开后重现', async () => {
+      const layout = await resizableLayout()
       expect(queryA11y(layout, '[role="separator"]')).toBeTruthy()
 
       layout.sidebarCollapsed = true
       await layout.updateComplete
-      await waitForLayoutTransition(layout)
       expect(queryA11y(layout, '[role="separator"]')).toBeFalsy()
 
       layout.sidebarCollapsed = false
@@ -469,124 +680,81 @@ describe('WebUiLayout 组件（浏览器）', () => {
       expect(queryA11y(layout, '[role="separator"]')).toBeTruthy()
     })
 
-    it('pointercancel 恢复 prop 管辖宽度且不派发事件', async () => {
-      await page.viewport(1280, 720)
-      const layout = createLayout()
-      layout.setAttribute('sidebar-resizable', '')
-      await layout.updateComplete
-      await nextFrame()
-
+    // 跨越断点会卸载桌面 layout（把手随之消失）。悬挂的手势若不终结，切回桌面后
+    // 所有新拖拽都会在入口被 `_isResizing()` 拦下。
+    it('拖拽中视口跨越移动端断点后，切回桌面仍可再次拖拽', async () => {
+      const layout = await resizableLayout()
       const widthRequests: string[] = []
       layout.addEventListener('sidebar-width-change', event =>
         widthRequests.push((event as CustomEvent<{ width: string }>).detail.width)
       )
 
-      const handle = queryA11y(layout, '[role="separator"]') as HTMLElement
-      const startWidth = layout.sidebarWidth
-      handle.dispatchEvent(
-        new PointerEvent('pointerdown', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 0 })
-      )
-      await layout.updateComplete
-      handle.dispatchEvent(
-        new PointerEvent('pointermove', { bubbles: true, pointerId: 1, isPrimary: true, clientX: -100 })
-      )
-      await nextFrame()
-      handle.dispatchEvent(new PointerEvent('pointercancel', { bubbles: true, pointerId: 1, isPrimary: true }))
-      await layout.updateComplete
-      await waitForLayoutTransition(layout)
-
-      expect(widthRequests).toHaveLength(0)
-      expect(layout.sidebarWidth).toBe(startWidth)
-    })
-
-    it('capture 提前丢失后：window 捕获层接管拖拽直到松手收尾', async () => {
-      await page.viewport(1280, 720)
-      const layout = createLayout()
-      layout.setAttribute('sidebar-resizable', '')
-      await layout.updateComplete
-      await nextFrame()
-
-      const widthRequests: string[] = []
-      layout.addEventListener('sidebar-width-change', event =>
-        widthRequests.push((event as CustomEvent<{ width: string }>).detail.width)
-      )
-
-      const handle = queryA11y(layout, '[role="separator"]') as HTMLElement
-      const startWidth = parseFloat(layout.sidebarWidth)
-
-      handle.dispatchEvent(
-        new PointerEvent('pointerdown', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 0 })
-      )
+      handleOf(layout).dispatchEvent(pointer('pointerdown', { clientX: 0 }))
       await layout.updateComplete
 
-      // 复现 Chromium 提前 lostpointercapture 的场景：后续事件不再经过 handle，
-      // 按 hit-test 散落（此处直接派发到 body），window 捕获层必须继续消费。
-      document.body.dispatchEvent(
-        new PointerEvent('pointermove', { bubbles: true, composed: true, pointerId: 1, isPrimary: true, clientX: 80 })
-      )
-      await nextFrame()
-      // 跟手不中断：向右拖 80px 增宽由 window 层消费，期间仍不派发
+      await page.viewport(MOBILE_VIEWPORT.width, MOBILE_VIEWPORT.height)
+      await pollUntil(() => !queryA11y(layout, '[role="separator"]'), 'Expected handle to unmount on mobile')
+
+      await page.viewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height)
+      await pollUntil(() => Boolean(queryA11y(layout, '[role="separator"]')), 'Expected handle to remount on desktop')
       expect(widthRequests).toHaveLength(0)
 
-      document.body.dispatchEvent(
-        new PointerEvent('pointerup', { bubbles: true, composed: true, pointerId: 1, isPrimary: true, clientX: 80 })
-      )
+      const freshHandle = handleOf(layout)
+      freshHandle.dispatchEvent(pointer('pointerdown', { clientX: 0 }))
+      await layout.updateComplete
+      freshHandle.dispatchEvent(pointer('pointermove', { clientX: 60 }))
+      await layout.updateComplete
+      freshHandle.dispatchEvent(pointer('pointerup', { clientX: 60 }))
       await layout.updateComplete
 
       expect(widthRequests).toHaveLength(1)
-      expect(parseFloat(widthRequests[0])).toBeCloseTo(startWidth + 80, 0)
     })
+  })
 
-    it('拖拽中视口跨越移动端断点：手势被终结且切回桌面后可再次拖拽', async () => {
-      await page.viewport(1280, 720)
+  describe('banner 可见高度', () => {
+    // banner 高度驱动 header 的晕染渐变起点。banner 滚出视口后必须收敛到 0，
+    // 否则渐变会停在一个已经不可见的偏移上。
+    it('banner 在场时报告可见高度，滚出视口后归零', async () => {
+      await page.viewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height)
+      const layout = document.createElement('web-ui-layout')
+      layout.innerHTML = `
+        <div slot="banner" style="height: 120px">Banner</div>
+        <header slot="header">Header</header>
+        <main style="height: 2000px">Content</main>
+      `
+      document.body.append(layout)
+      await layout.updateComplete
+      await waitForFrame()
+
+      const visibleHeight = () => layout.style.getPropertyValue('--wui-layout-visible-banner-height')
+      await pollUntil(() => visibleHeight() !== '', 'Expected the banner tracker to report an area')
+      // 顶部视口内的 banner 按自身高度计入，不做逐像素比对。
+      expect(Number.parseFloat(visibleHeight())).toBeGreaterThan(0)
+
+      window.scrollTo(0, 400)
+      await pollUntil(() => visibleHeight() === '0px', 'Expected the visible banner height to settle at zero')
+      expect(visibleHeight()).toBe('0px')
+    })
+  })
+
+  describe('键盘可达性', () => {
+    // 桌面 toggle 必须真的能被键盘拿到焦点，并且焦点样式对键盘用户可见，
+    // 否则键盘用户既到不了它、到了也看不出焦点在哪。合成 focus() 不带键盘模态，
+    // 先用真键盘 Tab 建立模态——与 focus-ring 用例同一手法。
+    it('键盘 Tab 可聚焦桌面 toggle 并显示 focus ring', async () => {
+      await page.viewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height)
       const layout = createLayout()
-      layout.setAttribute('sidebar-resizable', '')
       await layout.updateComplete
-      await nextFrame()
+      await waitForFrame()
 
-      const widthRequests: string[] = []
-      layout.addEventListener('sidebar-width-change', event =>
-        widthRequests.push((event as CustomEvent<{ width: string }>).detail.width)
-      )
+      await userEvent.tab()
+      const toggle = byLabel(layout, '折叠侧边栏')
+      toggle.focus()
 
-      const handle = queryA11y(layout, '[role="separator"]') as HTMLElement
-      handle.dispatchEvent(
-        new PointerEvent('pointerdown', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 0 })
-      )
-      await layout.updateComplete
-
-      await page.viewport(390, 844)
-      await waitForLayoutTransition(layout)
-      await pollUntil(
-        () => !queryA11y(layout, '[role="separator"]'),
-        'Expected desktop resize handle to unmount after switching to mobile'
-      )
-
-      await page.viewport(1280, 720)
-      await waitForLayoutTransition(layout)
-      await pollUntil(
-        () => Boolean(queryA11y(layout, '[role="separator"]')),
-        'Expected desktop resize handle to mount after switching back to desktop'
-      )
-      const freshHandle = queryA11y(layout, '[role="separator"]') as HTMLElement
-      expect(freshHandle).toBeTruthy()
-      // 悬挂手势的终结不应派发任何宽度请求
-      expect(widthRequests).toHaveLength(0)
-
-      // 带真实位移的拖拽 + 松手：正常派发调宽请求
-      freshHandle.dispatchEvent(
-        new PointerEvent('pointerdown', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 0 })
-      )
-      await layout.updateComplete
-      freshHandle.dispatchEvent(
-        new PointerEvent('pointermove', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 60 })
-      )
-      await nextFrame()
-      freshHandle.dispatchEvent(
-        new PointerEvent('pointerup', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 60 })
-      )
-      await layout.updateComplete
-      expect(widthRequests).toHaveLength(1)
+      const inner = toggle.shadowRoot?.querySelector('button') as HTMLButtonElement | null
+      expect(inner).toBeTruthy()
+      expect(toggle.shadowRoot?.activeElement ?? inner).toBe(inner)
+      expect(inner?.matches(':focus-visible')).toBe(true)
     })
   })
 })

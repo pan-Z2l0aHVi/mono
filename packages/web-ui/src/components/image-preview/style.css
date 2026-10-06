@@ -228,10 +228,10 @@ dialog::backdrop {
   top: var(--wui-image-preview-edge-gap, 20px);
   left: var(--wui-image-preview-edge-gap, 20px);
 
-  padding: 4px 12px;
+  padding: var(--wui-space-1, 4px) var(--wui-space-3, 12px);
   border-radius: var(--wui-radius-control, calc(infinity * 1px));
 
-  font-size: 13px;
+  font-size: var(--wui-font-size-readout, 13px);
   font-variant-numeric: tabular-nums;
   color: var(--wui-color-text, #1b1b1b);
 }
@@ -276,7 +276,7 @@ dialog::backdrop {
 .wui-image-preview-scale {
   min-width: 48px;
 
-  font-size: 13px;
+  font-size: var(--wui-font-size-readout, 13px);
   font-variant-numeric: tabular-nums;
   color: var(--wui-color-text, #1b1b1b);
   text-align: center;

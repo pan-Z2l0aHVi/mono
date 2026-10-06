@@ -5,7 +5,7 @@
 // dist 截断（vp build --watch 清空 d.ts）、watch 进程污染、turbo 缓存未生效、
 // node_modules 链接失效、git worktree 残留。
 //
-// 用法：pnpm run env:doctor [--json] [--fix] [--kill-watchers]
+// 用法：pnpm run agent:env-doctor [--json] [--fix] [--kill-watchers]
 //   --json           机器可读输出（人类可读走 stdout 文本）
 //   --fix            可修项自动修复：git worktree prune；dist 审计失败时 turbo --force 重建
 //   --kill-watchers  终止检测到的 watch 进程（默认只 warn，不自动杀）

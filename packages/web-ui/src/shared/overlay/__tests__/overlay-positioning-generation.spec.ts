@@ -85,6 +85,15 @@ afterEach(() => {
   document.body.replaceChildren()
 })
 
+/*
+ * 定位代际：`computePosition` 是异步的，两次刷新可能乱序完成。
+ *
+ * 留下的是用户能看见的失败形态：面板被一次**已经作废**的定位结果推到旧坐标，
+ * 或者在浮层已经关掉之后又被写回坐标。三条断言分别对应「乱序完成」「宽度同样乱序」
+ * 与「关闭后不得再写」；机制侧的 `--wui-internal-overlay-transform-origin` 等
+ * 内部变量一律不读。
+ */
+
 describe('overlay positioning generation', () => {
   it('两次定位 promise 乱序完成时，最终坐标来自最新请求', async () => {
     const trigger = createTrigger()

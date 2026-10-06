@@ -26,9 +26,6 @@ describe('WebUiDialog 组件（浏览器）', () => {
     await component.updateComplete
     await new Promise(resolve => requestAnimationFrame(resolve))
 
-    // 原用例还断言 `getComputedStyle(dialog).outlineStyle === 'none'`（D2 计算样式）
-    // 与 `expect(dialog).toBeTruthy()`（D3 存在性），均已按 §12 C1 / §2 D3 删除；
-    // 保留的是焦点归宿契约（§3 白名单）。
     const dialog = component.shadowRoot?.querySelector('dialog') as HTMLDialogElement
     dialog.focus()
 
@@ -186,12 +183,9 @@ describe('WebUiDialog 组件（浏览器）', () => {
   })
   it('modal 固定在视口内：页面滚动后仍完整可见，且处于 :modal 层', async () => {
     // 历史回归：单层重构曾把 dialog 覆盖成 `position: relative`，导致 top layer 里的 modal
-    // 回到文档流——出现在页面顶部且跟随页面滚动，用户看到"残影"与"没有固定居中"。
+    // 回到文档流——出现在页面顶部且跟随页面滚动，用户看到「残影」与「没有固定居中」。
     //
-    // 原用例的断言是 `getComputedStyle(dialog).position === 'fixed'` + 滚动前后 rect 等值，
-    // 属 §12 C1 的几何 / 计算样式取值，已删。改为 §8 R3 第二通道「边界约束」：
-    // 断言 modal **不随页面滚动离开视口**，同样能抓住该回归（relative 时滚动 500px 后
-    // dialog 已在视口之外），但不锁死任何像素值；"在 modal 层"改用平台语义 `:modal`。
+    // 判据只取行为约束「滚动后不离开视口」与平台语义 `:modal`，不锁任何像素或计算样式。
     await page.viewport(800, 600)
     const spacer = document.createElement('div')
     spacer.style.height = '2000px'
@@ -204,7 +198,7 @@ describe('WebUiDialog 组件（浏览器）', () => {
       component.open = true
       await component.updateComplete
       const dialog = component.shadowRoot?.querySelector('dialog') as HTMLDialogElement
-      // 等进场 scale 过渡收敛再采样（WAAPI，§10 S2），避免缩放中的 rect 抖动
+      // 等进场 scale 过渡收敛再采样，避免缩放中的 rect 抖动
       await pollUntil(() => dialog.getAnimations().length === 0, 'dialog enter transition did not settle')
 
       expect(dialog.matches(':modal')).toBe(true)

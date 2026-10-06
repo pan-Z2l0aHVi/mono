@@ -10,8 +10,7 @@ import { dispatchOpenChangeEvent } from '@/shared/open-state'
 import { defineAnchoredPanel } from '@/shared/overlay/anchored-panel'
 import { defineOpenOverlay } from '@/shared/overlay/open-overlay'
 import { FLOATING_PLACEMENTS } from '@/shared/overlay/placement-props'
-import { defineOverlayPortal } from '@/shared/overlay/portal'
-import type { OverlayContainer, OverlayPortal } from '@/shared/overlay/portal'
+import { defineOverlayPortal, type OverlayContainer, type OverlayPortal } from '@/shared/overlay/portal'
 
 import style from './style.css?inline'
 

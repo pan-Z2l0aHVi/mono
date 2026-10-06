@@ -67,7 +67,7 @@ jobs:
             ${{ runner.os }}-go-
 
       - name: Check shared agent context
-        run: pnpm run validate:context
+        run: pnpm run ci:validate-context
 
       - name: Check changesets
         if: github.event_name == 'pull_request' && github.head_ref != 'changeset-release/main'
@@ -77,13 +77,13 @@ jobs:
         run: pnpm run build
 
       - name: Test repository Agent tools
-        run: pnpm run test:scripts
+        run: pnpm run ci:test-scripts
 
       - name: Check published package contracts
-        run: pnpm run check:pack
+        run: pnpm run check-pack
 
       - name: Format + Lint + Type-check + Go vet
-        run: pnpm run check:code
+        run: pnpm run check-code
 
       - name: Cache Playwright browsers
         uses: actions/cache@v5

@@ -13,12 +13,20 @@ export {
 };
 
 export {
+    FilePreviewDTO,
     GlobalMapDTO,
     LocalMapDTO,
     ResourceDTO,
+    ResourceLocationMatchDTO,
     SourceDTO,
     SourceMetadataDTO,
+    SourceProbeOutcome,
+    SourceProbeResultDTO,
     TagDTO,
     TagEdgeDTO,
     TagNodeDTO
+} from "./models.js";
+
+export type {
+    ResourceKind
 } from "./models.js";

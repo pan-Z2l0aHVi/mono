@@ -10,7 +10,11 @@
  *
  * 视觉规格：
  * - scale = 0.95^depth
- * - shift = shrink + depth * 12px（向屏幕内侧偏移，露出阶梯卡片边缘）
+ * - 堆叠总宽度随层数按对数曲线增长：T(n) = base · ln(n)。
+ *   shift = shrink + sizeDiff + base · ln(depth + 1)（向屏幕内侧偏移，露出阶梯卡片边缘）。
+ *   ln(1) = 0，单层不受影响；层数越多每层新增的露边越少，堆叠总宽不随层数线性膨胀。
+ *   base 读自公开 token `--wui-drawer-nested-peek-base`（注册项的 initialValue 是桌面
+ *   基准的唯一真相源，窄视口基准由 drawer 的媒体查询覆盖），消费方可整体改写层叠观感。
  * - 过渡 transform 450ms cubic-bezier(0.22, 1, 0.36, 1)
  *
  * 拖拽与释放后的收尾期间 JS 直接写 dialog.style.transform（优先级高于本机制的
@@ -21,7 +25,19 @@ import { definePlugin } from '@greypan/js-kit'
 
 const DEPTH_VARIABLE = '--wui-internal-drawer-nested-depth'
 const NESTED_SCALE = 0.95
-const NESTED_PEEK_OFFSET = 12
+export const PEEK_BASE_VARIABLE = '--wui-drawer-nested-peek-base'
+/*
+ * 注册项 initialValue 的镜像，**不是**第二真相源：真实基准由 drawer/index.ts 的
+ * `CSS.registerProperty` 决定，浏览器里 computed style 永远有值，走不到这个兜底。
+ * 保留它只为 jsdom——那里没有 registerProperty，getComputedStyle 返回空串，
+ * 层序数学仍需要有定义的基准。浏览器 spec 有一条断言把两者钉在一起，防止漂移。
+ */
+export const NESTED_PEEK_BASE_FALLBACK = 43.2
+/*
+ * 与 drawer/style.css 里 `@media (width <= 640px)` 同一条断点：跨越断点时媒体查询会
+ * 换掉基准，已打开的堆叠要重算，否则会停留在旧断点的露边宽度上。
+ */
+const NESTED_PEEK_BASE_QUERY = '(width <= 640px)'
 
 interface NestedDrawerEntry {
   dialog: HTMLDialogElement
@@ -31,6 +47,17 @@ interface NestedDrawerEntry {
 const entries = new Set<NestedDrawerEntry>()
 
 let documentListenerAttached = false
+let peekBaseQuery: MediaQueryList | null = null
+
+function readPeekBase(dialog: HTMLDialogElement): number {
+  const raw = getComputedStyle(dialog).getPropertyValue(PEEK_BASE_VARIABLE)
+  const parsed = Number.parseFloat(raw)
+  return Number.isFinite(parsed) ? parsed : NESTED_PEEK_BASE_FALLBACK
+}
+
+function handlePeekBaseChange() {
+  if (entries.size > 0) applyLayers()
+}
 
 function applyLayers() {
   const openEntries: Array<{
@@ -67,7 +94,10 @@ function applyLayers() {
       }
     }
     const sizeDiff = Math.max(0, aboveMaxSize - size)
-    const shift = depth > 0 ? shrink + sizeDiff + depth * NESTED_PEEK_OFFSET : 0
+    // 逐层读基准：消费方可以给某一层单独换基准，不必所有层共用一个值。
+    const peek = readPeekBase(dialog) * Math.log(depth + 1)
+    // depth 0 显式归零：单层抽屉的偏移不依赖 ln(1) 的浮点结果，也不依赖基准是否被改写。
+    const shift = depth > 0 ? shrink + sizeDiff + peek : 0
 
     dialog.style.setProperty(DEPTH_VARIABLE, String(depth))
     dialog.style.setProperty('--wui-internal-drawer-nested-scale', scale.toFixed(4))
@@ -89,6 +119,11 @@ function handleAnyDialogClose(event: Event) {
 function ensureDocumentListener() {
   if (documentListenerAttached) return
   document.addEventListener('close', handleAnyDialogClose, true)
+  // jsdom 等无 matchMedia 的环境：媒体查询换不掉基准，但打开/关闭路径仍会重算。
+  if (typeof window.matchMedia === 'function') {
+    peekBaseQuery = window.matchMedia(NESTED_PEEK_BASE_QUERY)
+    peekBaseQuery.addEventListener('change', handlePeekBaseChange)
+  }
   documentListenerAttached = true
 }
 
@@ -136,6 +171,8 @@ export const defineNestedDrawerLayers = () =>
       }
       if (entries.size === 0 && documentListenerAttached) {
         document.removeEventListener('close', handleAnyDialogClose, true)
+        peekBaseQuery?.removeEventListener('change', handlePeekBaseChange)
+        peekBaseQuery = null
         documentListenerAttached = false
       }
     }

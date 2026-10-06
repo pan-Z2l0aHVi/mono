@@ -2,8 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
 import { queryA11y } from '@/shared/test-utils'
 
-import '..'
-import type { WebUiToast, ToastCloseReason, ToastPosition, ToastType } from '..'
+import type { WebUiToast, ToastPosition, ToastType } from '..'
 import { toast } from '..'
 
 function createToastElement(attrs?: Record<string, string>, message = 'test message'): WebUiToast {
@@ -35,7 +34,7 @@ function getToasts(): NodeListOf<WebUiToast> {
   )
 }
 
-// 定位器（非断言）：容器以 data 属性标识 position，不用 class 名单（§12 C3）。
+// 定位器（非断言）：容器以 data 属性标识 position，不用 class 名单。
 function getToastContainer(position: ToastPosition): HTMLElement | null {
   return getFallbackOverlayRoot()?.querySelector<HTMLElement>(`[data-wui-toast-position="${position}"]`) ?? null
 }
@@ -43,6 +42,15 @@ function getToastContainer(position: ToastPosition): HTMLElement | null {
 // 公开观察面：overlay root 里实际挂载的 web-ui-toast 元素（取代内部测试钩子 toast._visibleCount()）。
 function mountedToasts(): WebUiToast[] {
   return Array.from(getToasts())
+}
+
+/** 面板里第一个带非空可访问名的控件。按「有名字」定位，不钉名字的字面量。 */
+function namedControl(el: WebUiToast): Element | null {
+  return (
+    [...(el.shadowRoot?.querySelectorAll<HTMLElement>('[aria-label]') ?? [])].find(
+      control => control.getAttribute('aria-label')?.trim() !== ''
+    ) ?? null
+  )
 }
 
 // 等待 toast 完成挂载和动画（批量挂载微任务 + el.show() 的 rAF）
@@ -82,14 +90,7 @@ describe('WebUiToast 组件', () => {
   })
 
   describe('属性：visible', () => {
-    it('默认值为 false', async () => {
-      const el = createToastElement()
-      await el.updateComplete
-      expect(el.visible).toBe(false)
-      expect(el.hasAttribute('visible')).toBe(false)
-      el.remove()
-    })
-
+    // 默认 false 已在「自动关闭 / show()」各条里被行为覆盖（未 show 时不播报也不计时）。
     it('visible 反射到 host', async () => {
       const el = createToastElement()
       el.visible = true
@@ -104,24 +105,23 @@ describe('WebUiToast 组件', () => {
   })
 
   describe('属性：noCloseButton', () => {
-    it('默认渲染带无障碍名的关闭按钮', async () => {
-      const el = createToastElement()
-      await el.updateComplete
-      expect(el.noCloseButton).toBe(false)
-      expect(el.hasAttribute('no-close-button')).toBe(false)
-      // 关闭按钮是"指针可达"的公开控件，按 a11y 名定位而不是内部 class（§12 C3）
-      expect(queryA11y(el, '[aria-label="关闭"]')).not.toBeNull()
-      el.remove()
-    })
+    /*
+     * 关闭按钮是「指针可达」的公开控件，按「有可访问名」定位而不是内部 class。
+     * 刻意不钉名字的字面量：可访问名必须存在是 AT 契约，叫什么属于本地化内容。
+     * 两条合成一条：要么渲染出可命名的关闭按钮，要么完全不渲染。
+     */
+    it('默认渲染可访问的关闭按钮，no-close-button 时不渲染', async () => {
+      const closable = createToastElement()
+      await closable.updateComplete
+      expect(closable.noCloseButton).toBe(false)
+      expect(namedControl(closable)).not.toBeNull()
+      closable.remove()
 
-    it('no-close-button 反射到 host 且不渲染关闭按钮', async () => {
-      const el = createToastElement()
-      el.setAttribute('no-close-button', '')
-      await el.updateComplete
-      expect(el.noCloseButton).toBe(true)
-      expect(el.hasAttribute('no-close-button')).toBe(true)
-      expect(queryA11y(el, '[aria-label="关闭"]')).toBeNull()
-      el.remove()
+      const bare = createToastElement({ 'no-close-button': '' })
+      await bare.updateComplete
+      expect(bare.hasAttribute('no-close-button')).toBe(true)
+      expect(namedControl(bare)).toBeNull()
+      bare.remove()
     })
   })
 
@@ -145,23 +145,9 @@ describe('WebUiToast 组件', () => {
     })
   })
 
-  describe('属性：duration', () => {
-    it('默认值为 3000', async () => {
-      const el = createToastElement()
-      await el.updateComplete
-      expect(el.duration).toBe(3000)
-      el.remove()
-    })
-  })
-
   describe('属性：position', () => {
-    it('默认 top-right', async () => {
-      const el = createToastElement()
-      await el.updateComplete
-      expect(el.getAttribute('position')).toBe('top-right')
-      el.remove()
-    })
-
+    // 默认值已在「容器管理：position 容器承担礼貌播报语义」与 upsert 用例里被
+    // 行为后果覆盖（不传 position 时 toast 落进 top-right 容器）。这里只钉反射。
     it('position 反射到 host', async () => {
       const el = createToastElement({ position: 'bottom-left' })
       await el.updateComplete
@@ -457,43 +443,39 @@ describe('WebUiToast 组件', () => {
 })
 
 describe('toast 命令式 API', () => {
-  describe('命令式 API：toast.success()', () => {
-    it('创建 success 类型 toast', async () => {
-      const id = toast.success('成功')
-      expect(id).toBeTruthy()
-      await waitForToastMounted()
-      expect(mountedToasts()).toHaveLength(1)
-    })
+  describe('命令式快捷入口', () => {
+    /*
+     * 四个 shortcut 共用同一套挂载管线，差异只有「传哪个 type」。表驱动合成一条：
+     * 逐个开元素重复断言 toHaveLength(1) 会让这条低价值契约有四份可被整体删掉的副本。
+     * 各自的默认时长另有专条覆盖（error 是 5000）。
+     */
+    const shortcuts = [
+      ['success', toast.success],
+      ['info', toast.info],
+      ['warning', toast.warning],
+      ['error', toast.error]
+    ] as const
 
-    it('返回唯一 id', async () => {
-      const id1 = toast.success('消息1')
-      const id2 = toast.success('消息2')
-      await waitForToastMounted()
-      expect(id1).not.toBe(id2)
-    })
-  })
+    it('四个 shortcut 都挂载出对应类型的 toast，并各自返回唯一 id', async () => {
+      for (const [type, shortcut] of shortcuts) {
+        const id = shortcut('消息')
+        expect(id).toBeTruthy()
+        await waitForToastMounted()
 
-  describe('命令式 API：toast.info()', () => {
-    it('创建 info 类型 toast', async () => {
-      toast.info('提示')
-      await waitForToastMounted()
-      expect(mountedToasts()).toHaveLength(1)
-    })
-  })
+        const mounted = mountedToasts()
+        expect(mounted.map(el => el.type)).toContain(type)
+        expect(mounted.map(el => el.toastId)).toContain(id)
 
-  describe('命令式 API：toast.warning()', () => {
-    it('创建 warning 类型 toast', async () => {
-      toast.warning('警告')
-      await waitForToastMounted()
-      expect(mountedToasts()).toHaveLength(1)
-    })
-  })
+        toast.clear()
+        vi.advanceTimersByTime(240)
+      }
 
-  describe('命令式 API：toast.error()', () => {
-    it('创建 error 类型 toast', async () => {
-      toast.error('错误')
+      // 两次调用不撞 id：撞了会让两条 toast 互相覆盖。
+      const first = toast.success('消息1')
+      const second = toast.success('消息2')
       await waitForToastMounted()
-      expect(mountedToasts()).toHaveLength(1)
+      expect(first).not.toBe(second)
+      expect(mountedToasts()).toHaveLength(2)
     })
   })
 
@@ -861,8 +843,7 @@ describe('toast 命令式 API', () => {
       await waitForToastMounted()
       const container = getToastContainer('top-right')
       expect(container).toBeTruthy()
-      // 原用例断言的是容器 class 名单（`wui-toast-container`，§2 D2 内部 class），已删；
-      // 容器对 AT 的公开语义保留：礼貌播报的日志区，新增条目被播报。
+      // 容器对 AT 的公开语义：礼貌播报的日志区，新增条目被播报。
       expect(container?.getAttribute('role')).toBe('log')
       expect(container?.getAttribute('aria-live')).toBe('polite')
       expect(container?.getAttribute('aria-relevant')).toBe('additions')

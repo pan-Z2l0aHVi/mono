@@ -2,7 +2,7 @@
 
 - **测试框架**：Vitest（通过 `vite-plus`）
 - **运行所有测试**：`pnpm run test`（根 `turbo test` 编排所有 workspace `test` 任务；已配置的 browser-mode package 会在此命令中运行 Chromium `*.browser.spec.ts`）
-- **运行受影响测试**：受影响包识别用 `pnpm find:usages -- <paths...>`（输出命中 workspace），再对目标包或包族运行 `pnpm --filter @greypan/<name> test` 或 `pnpm test -- --filter "@greypan/<name>..."`。已移除独立的 `test:affected` 根命令，避免与 `find:usages` 的影响面判断重复权威。迭代与调试默认使用本命令或包级聚焦测试；全量 `pnpm run test` 留到最终提交确认前。
+- **运行受影响测试**：受影响包识别用 `pnpm agent:find-usages -- <paths...>`（输出命中 workspace），再对目标包或包族运行 `pnpm --filter @greypan/<name> test` 或 `pnpm test -- --filter "@greypan/<name>..."`。已移除独立的 `test:affected` 根命令，避免与 `agent:find-usages` 的影响面判断重复权威。迭代与调试默认使用本命令或包级聚焦测试；全量 `pnpm run test` 留到最终提交确认前。
 - **运行单个包的测试**：`pnpm --filter @greypan/<name> test`（执行 `vp test run`）
 - **测试文件**：`*.spec.ts`、`*.test.ts`、`*.spec.tsx`
 - **Demo 应用**：`react-web-ui-demo` 和 `vue-web-ui-demo` 目前没有维护的单元测试套件，因此不包含测试脚本、Vite 测试配置和 `tsconfig.vitest.json`。请在真实浏览器中验证 demo 行为。
@@ -21,7 +21,7 @@
 
 ## 验证选择与证据
 
-对变更路径运行 `pnpm find:usages -- <paths...>`（review 或基线对比按范围加 `--base <git-ref>`、`--staged` 或 `--worktree`）。输出是验证计划的起点，不替代对实际 diff、公共行为和浏览器语义的判断；工具语义见 [`context.md`](context.md)。
+对变更路径运行 `pnpm agent:find-usages -- <paths...>`（review 或基线对比按范围加 `--base <git-ref>`、`--staged` 或 `--worktree`）。输出是验证计划的起点，不替代对实际 diff、公共行为和浏览器语义的判断；工具语义见 [`context.md`](context.md)。
 
 根据受影响的契约选择验证方式：
 

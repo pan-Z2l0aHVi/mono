@@ -21,21 +21,18 @@ function DrawerDemo() {
   const [draggableVisible, setDraggableVisible] = useState(false)
   const [draggableTopVisible, setDraggableTopVisible] = useState(false)
   const [draggableHeadlessVisible, setDraggableHeadlessVisible] = useState(false)
-  // Nested 抽屉：声明式嵌套，无额外 API。后打开的是顶层，先打开的按 0.95^depth 缩放并向旁边偏移露出卡片边缘。
+  // Nested 抽屉：声明式嵌套，无额外 API。后打开的是顶层，先打开的按 0.95^depth 缩放并向旁边偏移露出卡片边缘；露边量按 A·ln(n) 递减。
   const [nestedL1, setNestedL1] = useState(false)
   const [nestedL2, setNestedL2] = useState(false)
   const [nestedL3, setNestedL3] = useState(false)
   const [nestedL4, setNestedL4] = useState(false)
-  // 多宽度嵌套（父宽子窄 / 级联收窄）
   const [diffWidthL1, setDiffWidthL1] = useState(false)
   const [diffWidthL2, setDiffWidthL2] = useState(false)
   const [diffWidthL3, setDiffWidthL3] = useState(false)
-  // 乱序宽度嵌套（窄 300px → 宽 520px → 极窄 240px → 中宽 400px）
   const [randomWidthL1, setRandomWidthL1] = useState(false)
   const [randomWidthL2, setRandomWidthL2] = useState(false)
   const [randomWidthL3, setRandomWidthL3] = useState(false)
   const [randomWidthL4, setRandomWidthL4] = useState(false)
-  // 同级（非 DOM 嵌套）自动层叠
   const [siblingL1, setSiblingL1] = useState(false)
   const [siblingL2, setSiblingL2] = useState(false)
   const [siblingL3, setSiblingL3] = useState(false)
@@ -337,7 +334,9 @@ function DrawerDemo() {
       </div>
       <p className="mb-3 text-sm text-(--wui-color-text-secondary)">
         同组件声明式嵌套即 nested：后打开的位于顶层全尺寸，下层按 0.95<sup>n</sup>
-        缩放并向内侧平移露出阶梯式卡片边缘；多层宽度不同或乱序交错时，自动计算上方最大宽度进行补偿，确保所有底层的左缘均不会被上方更宽的抽屉遮挡；Escape
+        缩放并向内侧平移，露出阶梯式卡片边缘。露边宽度按对数曲线分配：总堆叠宽度
+        <code>A·ln(n)</code>
+        ，单层不动，每多一层只多露一点，层数增加时不再线性膨胀。多层宽度不同或乱序交错时，自动计算上方最大宽度进行补偿，确保所有底层的左缘均不会被上方更宽的抽屉遮挡；Escape
         与遮罩点击只作用于最顶层，逐层退出。
       </p>
       <web-ui-drawer
@@ -497,7 +496,7 @@ function DrawerDemo() {
       <h2>同级自动层叠</h2>
       <p className="mb-3 text-sm text-gray-500">
         多个 drawer 在同级 DOM 挂载，依次打开后由内部 <code>defineNestedDrawerLayers</code> 自动管理层序——先开的按
-        0.95^depth 缩放并向内侧偏移，后开的全尺寸在顶层。
+        0.95^depth 缩放并向内侧偏移（偏移量按 <code>A·ln(n)</code> 对数分配），后开的全尺寸在顶层。
       </p>
       <div className="mb-3 flex gap-2">
         <web-ui-button onClick={() => setSiblingL1(true)}>打开 Drawer 1</web-ui-button>

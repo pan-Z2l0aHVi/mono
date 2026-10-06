@@ -10,6 +10,31 @@ import { Create as $Create } from "@wailsio/runtime";
 import * as storage$0 from "../storage/models.js";
 
 /**
+ * FilePreviewDTO 为待添加文件提供权威 kind 与可选的本地媒体读取授权。
+ */
+export class FilePreviewDTO {
+    "kind": ResourceKind;
+    "token"?: string;
+
+    /** Creates a new FilePreviewDTO instance. */
+    constructor($$source: Partial<FilePreviewDTO> = {}) {
+        if (!("kind" in $$source)) {
+            this["kind"] = storage$0.ResourceKind.$zero;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new FilePreviewDTO instance from a string or object.
+     */
+    static createFrom($$source: any = {}): FilePreviewDTO {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new FilePreviewDTO($$parsedSource as Partial<FilePreviewDTO>);
+    }
+}
+
+/**
  * 为 Map 的全局概览提供聚合结果。
  */
 export class GlobalMapDTO {
@@ -103,6 +128,16 @@ export class LocalMapDTO {
 export class ResourceDTO {
     "id": string;
     "title": string;
+
+    /**
+     * Kind 由后端按首选 Source 派生；旧客户端可忽略此可选字段。
+     */
+    "kind"?: ResourceKind;
+
+    /**
+     * SizeBytes 是首选文件 Source 的当前字节数；URL、失效或不可读文件不提供该字段。
+     */
+    "size_bytes"?: number | null;
     "note": string;
     "created_at": number;
     "updated_at": number;
@@ -144,16 +179,58 @@ export class ResourceDTO {
      * Creates a new ResourceDTO instance from a string or object.
      */
     static createFrom($$source: any = {}): ResourceDTO {
-        const $$createField5_0 = $$createType8;
-        const $$createField6_0 = $$createType9;
+        const $$createField7_0 = $$createType8;
+        const $$createField8_0 = $$createType9;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("sources" in $$parsedSource) {
-            $$parsedSource["sources"] = $$createField5_0($$parsedSource["sources"]);
+            $$parsedSource["sources"] = $$createField7_0($$parsedSource["sources"]);
         }
         if ("tags" in $$parsedSource) {
-            $$parsedSource["tags"] = $$createField6_0($$parsedSource["tags"]);
+            $$parsedSource["tags"] = $$createField8_0($$parsedSource["tags"]);
         }
         return new ResourceDTO($$parsedSource as Partial<ResourceDTO>);
+    }
+}
+
+/**
+ * ResourceKind 是 Resource 展示分类的闭集；文件分类由 Go 侧维护，URL 固定为 web。
+ */
+export type ResourceKind = storage$0.ResourceKind;
+
+/**
+ * ResourceLocationMatchDTO 是「库内已有同一入口」的命中项，供添加前的重复确认框列出。
+ * 只带展示所需字段：完整资源视图（全部 Source、标签、元数据）对这条提示是过量数据。
+ */
+export class ResourceLocationMatchDTO {
+    "resource_id": string;
+    "title": string;
+
+    /**
+     * Location 是后端归一化后的位置，因此与库里记录逐字一致（前端无从自行归一化）。
+     */
+    "location": string;
+
+    /** Creates a new ResourceLocationMatchDTO instance. */
+    constructor($$source: Partial<ResourceLocationMatchDTO> = {}) {
+        if (!("resource_id" in $$source)) {
+            this["resource_id"] = "";
+        }
+        if (!("title" in $$source)) {
+            this["title"] = "";
+        }
+        if (!("location" in $$source)) {
+            this["location"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new ResourceLocationMatchDTO instance from a string or object.
+     */
+    static createFrom($$source: any = {}): ResourceLocationMatchDTO {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new ResourceLocationMatchDTO($$parsedSource as Partial<ResourceLocationMatchDTO>);
     }
 }
 
@@ -260,12 +337,71 @@ export class SourceMetadataDTO {
 }
 
 /**
+ * SourceProbeOutcome 是打开时探测的结论集合。
+ * 取值与 core.ProbeOutcome 一致，由 sourceProbeOutcomeDTO 显式映射，
+ * 使前端契约成为独立类型而不是对 Go 常量的再导出。
+ */
+export enum SourceProbeOutcome {
+    /**
+     * The Go zero value for the underlying type of the enum.
+     */
+    $zero = "",
+
+    SourceProbeOutcomeAvailable = "available",
+    SourceProbeOutcomeUnavailable = "unavailable",
+
+    /**
+     * SourceProbeOutcomeInconclusive 表示本次无法判定，未落库。
+     */
+    SourceProbeOutcomeInconclusive = "inconclusive",
+};
+
+/**
+ * SourceProbeResultDTO 承载打开时探测的结论；Inconclusive 时 Source 字段省略。
+ */
+export class SourceProbeResultDTO {
+    "source"?: SourceDTO | null;
+    "outcome": SourceProbeOutcome;
+
+    /**
+     * Message 是用户可见文案，由后端出（沿用 core 哨兵文案口径），前端不自己拼领域文案。
+     */
+    "message"?: string;
+
+    /** Creates a new SourceProbeResultDTO instance. */
+    constructor($$source: Partial<SourceProbeResultDTO> = {}) {
+        if (!("outcome" in $$source)) {
+            this["outcome"] = SourceProbeOutcome.$zero;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new SourceProbeResultDTO instance from a string or object.
+     */
+    static createFrom($$source: any = {}): SourceProbeResultDTO {
+        const $$createField0_0 = $$createType12;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("source" in $$parsedSource) {
+            $$parsedSource["source"] = $$createField0_0($$parsedSource["source"]);
+        }
+        return new SourceProbeResultDTO($$parsedSource as Partial<SourceProbeResultDTO>);
+    }
+}
+
+/**
  * 为前端呈现可复用的语义标签。
  */
 export class TagDTO {
     "id": string;
     "name": string;
     "created_at": number;
+
+    /**
+     * Color 是展示色 key，同一名称恒定；前端据此渲染 chip，不在客户端按名称猜颜色。
+     */
+    "color": storage$0.TagColor;
 
     /** Creates a new TagDTO instance. */
     constructor($$source: Partial<TagDTO> = {}) {
@@ -277,6 +413,9 @@ export class TagDTO {
         }
         if (!("created_at" in $$source)) {
             this["created_at"] = 0;
+        }
+        if (!("color" in $$source)) {
+            this["color"] = storage$0.TagColor.$zero;
         }
 
         Object.assign(this, $$source);
@@ -372,3 +511,4 @@ const $$createType8 = $Create.Array($$createType7);
 const $$createType9 = $Create.Array($$createType4);
 const $$createType10 = SourceMetadataDTO.createFrom;
 const $$createType11 = $Create.Nullable($$createType10);
+const $$createType12 = $Create.Nullable($$createType7);

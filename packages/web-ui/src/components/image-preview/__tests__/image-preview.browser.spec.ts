@@ -56,7 +56,7 @@ function stageOf(image: HTMLImageElement): HTMLElement {
   return (image.closest('.wui-image-preview-stage') as HTMLElement) ?? image.parentElement!
 }
 
-/** 当前图片：`is-current` 只作定位器（§12 C3），断言对象始终是公开量。 */
+/** 当前图片：`is-current` 只作定位器，断言对象始终是公开量。 */
 function currentImage(host: HTMLElement): HTMLImageElement {
   return host.shadowRoot?.querySelector(
     '.wui-image-preview-slide.is-current .wui-image-preview-image'
@@ -93,8 +93,8 @@ function timedPointer(type: string, init: PointerEventInit & { timeStamp?: numbe
 }
 
 /**
- * 等进场动画把舞台几何稳定下来（§12 C2：rect 只用于「驱动 / 稳定判据」，
- * 本文件不做任何几何取值断言 —— 手势落点换算与稳定等待都不是断言对象）。
+ * 等进场动画把舞台几何稳定下来。rect 只用于「驱动 / 稳定判据」，
+ * 本文件不做任何几何取值断言 —— 手势落点换算与稳定等待都不是断言对象。
  */
 async function waitForStageSettled(stage: HTMLElement): Promise<void> {
   let last = ''
@@ -117,7 +117,7 @@ describe('imagePreview 命令式 API（浏览器）', () => {
   it('内部关闭按钮可获得焦点', async () => {
     const { handle, host } = await openPreview({ closable: true, nav: true, toolbar: true })
 
-    // class 只作定位器（§12 C3）；断言对象是「关闭控件可聚焦」这一 a11y 后果。
+    // class 只作定位器；断言对象是「关闭控件可聚焦」这一 a11y 后果。
     const close = host.shadowRoot?.querySelector<HTMLElement>('.wui-image-preview-close')
     const nativeButton = close?.shadowRoot?.querySelector('button') as HTMLButtonElement | null
     nativeButton?.focus()
@@ -484,7 +484,7 @@ describe('imagePreview 命令式 API（浏览器）', () => {
     const image = currentImage(host)
     await pollUntil(() => image.complete && image.offsetWidth > 0, 'image did not load')
 
-    // class 只作定位器（§12 C3）：断言对象是可访问树的暴露面，不是内部 class 名单、
+    // class 只作定位器：断言对象是可访问树的暴露面，不是内部 class 名单、
     // 也不是相邻图的几何位置。
     const slides = Array.from(host.shadowRoot?.querySelectorAll('.wui-image-preview-slide') ?? []) as HTMLElement[]
     const exposed = slides.filter(slide => slide.getAttribute('aria-hidden') !== 'true')
@@ -633,7 +633,7 @@ describe('imagePreview 命令式 API（浏览器）', () => {
       const stage = stageOf(image)
       await waitForStageSettled(stage)
 
-      // 舞台宽度只用于换算手势 clientX（§12 C2：驱动，非几何断言）。
+      // 舞台宽度只用于换算手势 clientX（驱动，非几何断言）。
       const threshold = Math.round(stage.clientWidth * 0.15)
       const below = Math.max(4, threshold - 8)
       const above = threshold + 8
@@ -653,5 +653,73 @@ describe('imagePreview 命令式 API（浏览器）', () => {
       await handle.closed
     }
     await page.viewport(1280, 720)
+  })
+})
+
+/*
+ * 相对 src 的加载淡入。
+ *
+ * 缺陷本体：settle 时曾登记 `image.src` —— 那是 IDL 属性，相对 src 会被解析成绝对 URL；
+ * 而 render 侧 `is-loaded` 查的是 `this.images[i].src`（调用方原始串）。相对 src 下两者
+ * 永不相等 → `is-loaded` 永不施加 → 图片停在 `opacity: 0`，尽管 img 早已 complete。
+ * 表现是「图片加载了但整块空白」，本文件的其余 fixture 全是 data: URI（原始串 == 解析后
+ * 串），覆盖不到该形态。
+ *
+ * 判据用**与缺省态的相对关系**而不是精确 opacity 值：未施加 is-loaded 的相邻图仍在过渡
+ * 起点上，两条路径的起点相同，因此「当前图淡入到位而相邻图没有」才真的说明状态被登记上了。
+ */
+describe('imagePreview 相对 src（浏览器）', () => {
+  /**
+   * 取 fixture 的**根相对** URL：由本 spec 自身的 URL 解析出路径，dev server 按此
+   * 路径直接伺服该 svg。
+   *
+   * 刻意避开两种会被 vite 内联成 data: URI 的写法（fixture 小于 assetsInlineLimit，
+   * 一旦内联就退化成绝对形态、复现不了缺陷）：`import url from './fixtures/…svg'`
+   * 与字面量 `new URL('./fixtures/…svg', import.meta.url)`。这里先剥掉 spec URL 上的
+   * `?import&browserv=…` 查询串再拼路径，绕开 vite 对该模式的静态重写。
+   */
+  const relativeSrcOf = (): string => {
+    const specPath = import.meta.url.replace(/\?.*$/, '')
+    return new URL('fixtures/relative-src.svg', specPath).pathname
+  }
+
+  /** 当前图与「未 settle 的相邻图」的淡入透明度。两者起点相同，只差 is-loaded。 */
+  async function opacityPair(host: LitElement): Promise<{ current: number; neighbor: number }> {
+    await pollUntil(() => getComputedStyle(currentImage(host)).opacity === '1', 'the current image never faded in')
+    const images = [...(host.shadowRoot?.querySelectorAll('img') ?? [])] as HTMLImageElement[]
+    const current = currentImage(host)
+    const neighbor = images.find(image => image !== current)
+    if (!neighbor) throw new Error('expected the preview to render an adjacent image')
+    return {
+      current: Number(getComputedStyle(current).opacity),
+      neighbor: Number(getComputedStyle(neighbor).opacity)
+    }
+  }
+
+  it('加载完成后当前图淡入到位', async () => {
+    // 前提：确为根相对形态，否则本用例会退化成对绝对 URL 的断言。
+    expect(relativeSrcOf().startsWith('/')).toBe(true)
+
+    const handle = imagePreview({ images: [{ src: relativeSrcOf(), alt: '相对 src' }] })
+    const host = hostElement()
+    await host.updateComplete
+
+    expect((await opacityPair(host)).current).toBe(1)
+
+    handle.close()
+    await handle.closed
+  })
+
+  it('加载失败时同样淡入以回退展示 alt 文案', async () => {
+    const handle = imagePreview({ images: [{ src: '/no-such-image-404.png', alt: '缺失图片' }] })
+    const host = hostElement()
+    await host.updateComplete
+
+    // @error 与 @load 共用 settle 回调，同样要按原始串登记，否则失败态也停在起点。
+    expect((await opacityPair(host)).current).toBe(1)
+    expect(currentImage(host).alt).toBe('缺失图片')
+
+    handle.close()
+    await handle.closed
   })
 })

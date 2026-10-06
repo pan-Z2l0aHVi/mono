@@ -12,9 +12,11 @@ catalog:
   '@floating-ui/dom': ^1.8.0
   '@iconify-json/akar-icons': ^1.2.7
   '@iconify-json/bi': ^1.2.7
+  '@iconify-json/fluent': ^1.2.58
   '@iconify-json/heroicons': ^1.2.3
   '@iconify-json/jam': ^1.2.3
   '@iconify-json/lucide': ^1.2.126
+  '@iconify-json/mdi': ^1.2.3
   '@iconify-json/ooui': ^1.2.20
   '@iconify-json/radix-icons': ^1.2.6
   '@iconify-json/si': ^1.2.17
@@ -25,6 +27,7 @@ catalog:
   '@tailwindcss/vite': ^4.3.2
   '@tanstack/react-router': ^1.170.32
   '@tanstack/router-plugin': ^1.168.35
+  '@tanstack/vue-virtual': ^3.13.39
   '@testing-library/react': ^16.3.2
   '@tsconfig/node24': ^24.0.4
   '@types/jsdom': ^30.0.0

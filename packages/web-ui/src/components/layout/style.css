@@ -6,7 +6,6 @@
 
 :host {
   --wui-layout-visible-banner-height: 0px;
-  --wui-layout-header-glow-color: var(--wui-color-page, #fff);
 
   display: block;
 }
@@ -59,7 +58,7 @@ aside {
   height: calc(100dvh - var(--wui-layout-visible-banner-height));
   max-height: calc(100vh - var(--wui-layout-visible-banner-height));
   max-height: calc(100dvh - var(--wui-layout-visible-banner-height));
-  padding: 8px 0 8px 8px;
+  padding: var(--wui-space-2, 8px) 0 var(--wui-space-2, 8px) var(--wui-space-2, 8px);
 
   transition: width var(--wui-duration-layout, 200ms) var(--wui-ease-enter, cubic-bezier(0.23, 1, 0.32, 1));
 
@@ -86,8 +85,15 @@ aside {
   }
 
   .sidebar-toggle {
-    --wui-button-width: 44px;
-    margin: 8px;
+    /*
+     * 走可覆盖的 var：`.sidebar-toggle` 自身声明的 `--wui-button-width` 优先于从
+     * 祖先继承的同名变量，app 侧无法直接改写它。要让折叠态的 toggle 跟着折叠宽度
+     * 一起变，只能由这里显式接一个出口。取值由 app 决定，本组件不假设折叠宽度。
+     * 默认值与历史硬编码一致，不设置时行为不变。
+     */
+    --wui-button-width: var(--wui-layout-sidebar-toggle-width, 44px);
+
+    margin: var(--wui-space-2, 8px);
   }
 
   &.collapsed {
@@ -138,33 +144,63 @@ aside.is-resizing .sidebar-resize-handle::before {
   opacity: 1;
 }
 
+/*
+ * 键盘 focus 同时给出两样东西：竖条与 hover / 拖拽同形，ring 与其余组件同一套浅蓝
+ * 样式。竖条说明「命中条在哪」，ring 说明「键盘落点在哪」——handle 宽 12px 且通高，
+ * 命中区远大于 3px 竖条本身，只靠竖条不足以说明焦点位置。
+ *
+ * ring 沿用 --wui-focus-ring-width / --wui-color-focus-ring 两个 token。圆角取
+ * control token 后 outline 呈细长胶囊，与 button 的胶囊 ring 同一形状语言；offset
+ * 2px 让 ring 骑在 aside 右缘内外两侧，不被 aside 裁掉。
+ */
+.sidebar-resize-handle:focus-visible {
+  border-radius: var(--wui-radius-control, calc(infinity * 1px));
+  outline: var(--wui-focus-ring-width, 3px) solid
+    var(--wui-color-focus-ring, color-mix(in srgb, var(--wui-color-accent, #08f) 40%, transparent));
+  outline-offset: 2px;
+}
+
 /* 拖拽中禁用宽度过渡，保证实时跟手。 */
 aside.is-resizing {
   transition: none;
 }
 
 .layout-content {
+  /*
+   * glow 的两层伪元素用负 margin 向外扩展（见 header::before / ::after），会溢出内容列
+   * 并撑出页面横向滚动条（移动端约 30px），横向裁剪因此归属本层。它有 min-width: 0，
+   * 是容纳横向溢出的位置。
+   * clip 不创建滚动容器，因此不影响 header / footer 自身的 sticky；也不用 hidden——
+   * 那会把本层变成滚动容器，sticky 随即失效。
+   *
+   * 这一层不负责纵向羽化，也切不到它：glow 的下缘断层来自 header 自身的裁剪上下文
+   * （见 header 的注释），真 Safari 上把本层改成 overflow-x: visible / unset
+   * 与保持 clip 的截图逐像素相同。
+   */
+  overflow-x: clip;
   display: flex;
   flex: 1;
   flex-direction: column;
+
   min-width: 0;
 }
 
 header {
-  /* 将负层级 glow 限定在 Header 的局部 stacking context，slot 内容自然位于其上。 */
+  /*
+   * isolation: isolate 既把负层级 glow 限定在本 Header 的局部 stacking context
+   * （slot 内容自然位于其上），也顺带使本层成为该上下文的裁剪边界：z-index: -1 的
+   * glow 伪元素溢出 header 盒的部分会被切掉。横向裁剪上移到 .layout-content。
+   *
+   * 「纵向必须 visible 才留得住下拉浮层的溢出空间」仍然成立——overflow-* 一旦生效
+   * 就会裁剪该轴，visible 是这些槽位内容唯一的溢出出口。
+   */
   isolation: isolate;
   position: sticky;
   z-index: var(--wui-layer-header, 10);
   top: 0;
 
-  /*
-   * glow 伪元素用 scale + translate 向外扩展，会溢出 header 盒子并撑出页面横向滚动条
-   * （移动端约 30px）。这里只裁横向：纵向保持 visible，下拉浮层等槽位内容仍可溢出。
-   * clip 不创建滚动容器，因此不影响 header 自身的 sticky。
-   */
-  overflow-x: clip;
   display: flex;
-  gap: 8px;
+  gap: var(--wui-space-2, 8px);
   align-items: center;
 }
 
@@ -178,8 +214,28 @@ header {
  * Header 的装饰性背景晕染
  * ========================
  *
- * 伪元素随 header 的实际盒子尺寸和 sticky 位置变化，自然适配 header slot 的
- * 高度与位置，无需单独维护一层 DOM。
+ * 两层伪元素随 header 的实际盒子尺寸和 sticky 位置变化，自然适配 header slot 的
+ * 高度与位置，无需单独维护一层 DOM。::before 是晕染色本身，::after 在更外一圈叠一层
+ * 真实模糊（backdrop-filter）。职责分开后，模糊强度与晕染浓度互不牵制。
+ *
+ * 两层都用负 margin 向外撑开，而不是 transform: scale。渐变完全画在盒内，底缘在
+ * 触及 header 盒之前就归零，盒外那一段不带可见不透明度。
+ *
+ * ::after 的 backdrop-filter 按规范会把模糊延伸到盒外，而 `isolation: isolate` 让
+ * header 成为 z-index: -1 伪元素的裁剪边界，WebKit 在这条边界上会切掉盒外那段
+ * （真 Safari 实测 11 级台阶）。mask 把模糊沿高度收到 0，但**残余不为 0**：它的盒
+ * 比 header 高 60px（两侧各 -30px），mask 在盒高 60% 之前保持不透明、之后线性归零，
+ * header 底缘正落在衰减段上——header 高 52px 时该处 alpha 约 0.67，100px 时约 0.47。
+ * #184 是否因此在真 Safari 上复现，取决于这段残余被切出来是否可读；Chrome 不复现
+ * （盒外那段根本没被裁，本地量不到），判据仍需真 Safari 逐像素取证；当时的取证报告
+ * 曾见于一份临时取证报告 ui-polish-260929-glow-clip-ownership.md（临时目录可丢失，
+ * 取证结论以上述量值为准）。
+ *
+ * 端点用裸 `transparent`（即 rgb(0 0 0 / 0)）而不是
+ * `color-mix(in srgb, var(--wui-color-page) 100%, transparent)`：混色按预乘 alpha
+ * 进行，后者算出来是完全不透明的原色（alpha = 1×1 + 0×0 = 1），终点没有羽化，实测
+ * 台阶反而从 11 级恶化到 152 级。裸 transparent 在渐变插值中同样按预乘处理，各引擎
+ * 一致淡到 0，且不引入新色相。
  */
 :host([header-glow]) header::before {
   pointer-events: none;
@@ -188,11 +244,27 @@ header {
   position: absolute;
   z-index: -1;
   inset: 0;
-  transform: translateY(-50%) scale(1.05, 2);
 
-  opacity: 0.95;
-  background-color: var(--wui-layout-header-glow-color);
-  filter: blur(10px);
+  margin: -10px;
+
+  background: linear-gradient(to bottom, var(--wui-color-page, #fff), transparent);
+}
+
+:host([header-glow]) header::after {
+  pointer-events: none;
+  content: '';
+
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+
+  margin: -30px;
+
+  backdrop-filter: blur(4px);
+
+  mask-image: linear-gradient(to bottom, black 0%, black 60%, transparent 100%);
+  mask-repeat: no-repeat;
+  mask-size: 100% 100%;
 }
 
 main {
@@ -218,7 +290,7 @@ footer {
 
   .mobile-toggle {
     align-self: flex-start;
-    margin-top: 8px;
+    margin-top: var(--wui-space-2, 8px);
   }
 }
 

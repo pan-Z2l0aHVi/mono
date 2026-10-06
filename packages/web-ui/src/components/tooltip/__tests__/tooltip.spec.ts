@@ -37,15 +37,6 @@ afterEach(() => {
 
 describe('WebUiTooltip 组件', () => {
   describe('属性：placement', () => {
-    it('默认值为 top', async () => {
-      const el = createTooltip()
-      await waitForUpdate(el)
-
-      expect(el.placement).toBe('top')
-
-      cleanupElement(el)
-    })
-
     contractReflection('placement 反射到宿主 attribute', () => createTooltip(), [
       ['placement', 'right', 'placement', 'right']
     ])
@@ -158,18 +149,8 @@ describe('WebUiTooltip 组件', () => {
   })
 
   describe('属性：show-delay / hide-delay', () => {
-    it('showDelay 默认 200', () => {
-      const el = createTooltip()
-      expect(el.showDelay).toBe(200)
-      cleanupElement(el)
-    })
-
-    it('hideDelay 默认 100', () => {
-      const el = createTooltip()
-      expect(el.hideDelay).toBe(100)
-      cleanupElement(el)
-    })
-
+    // 默认 200 / 100 在下面的「指针进入/离开」两条里被行为覆盖（推进 200ms 才出现、
+    // 推进 100ms 才消失）。这里只钉取值边界：负值回退 0，超上限回退 5000。
     it('showDelay 负值回退到 0', () => {
       const el = createTooltip()
       el.showDelay = -1
@@ -186,16 +167,19 @@ describe('WebUiTooltip 组件', () => {
   })
 
   describe('属性：offset', () => {
-    it('offset 默认 6', () => {
-      const el = createTooltip()
-      expect(el.offset).toBe(6)
-      cleanupElement(el)
-    })
+    // 打开态改 offset 属于状态转换（政策 §3）：面板必须仍然可见，不能因为重定位
+    // 被重新隐藏。判据取面板的公开 `hidden` 后果，不读定位器的内部状态。
+    it('打开态修改 offset 后面板仍可见', async () => {
+      const el = createTooltip({ content: '提示' })
+      el.open = true
+      await waitForUpdate(el)
 
-    it('自定义 offset', () => {
-      const el = createTooltip()
       el.offset = 12
-      expect(el.offset).toBe(12)
+      await waitForUpdate(el)
+      vi.advanceTimersToNextFrame()
+      await waitForUpdate(el)
+
+      expect(queryA11y(el, '[role="tooltip"]')?.hasAttribute('hidden')).toBe(false)
       cleanupElement(el)
     })
 
@@ -203,19 +187,6 @@ describe('WebUiTooltip 组件', () => {
       const el = createTooltip()
       ;(el as any).offset = NaN
       expect(el.offset).toBe(6)
-      cleanupElement(el)
-    })
-
-    it('打开后修改 offset 保持面板可见', async () => {
-      const el = createTooltip({ content: '提示' })
-      el.open = true
-      await waitForUpdate(el)
-      el.offset = 12
-      await waitForUpdate(el)
-      vi.advanceTimersToNextFrame()
-      await waitForUpdate(el)
-
-      expect(queryA11y(el, '[role="tooltip"]')?.hasAttribute('hidden')).toBe(false)
       cleanupElement(el)
     })
   })

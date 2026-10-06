@@ -12,7 +12,7 @@
   overscroll-behavior: contain;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--wui-space-2, 8px);
 
   /* 负向定位只露出可见 gap；剩余 padding 继续作为阴影裁剪缓冲区 */
   max-height: calc(100vh + 2 * (var(--wui-toast-container-padding) - var(--wui-toast-viewport-gap)));

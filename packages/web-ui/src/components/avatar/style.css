@@ -60,7 +60,7 @@ slot {
   user-select: none;
 
   font-size: calc(var(--wui-avatar-size, 40px) * 0.4);
-  font-weight: 500;
+  font-weight: var(--wui-font-weight-medium, 500);
   line-height: 1;
   color: rgb(27 27 27 / 0.7);
 }

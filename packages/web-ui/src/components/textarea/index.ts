@@ -96,6 +96,21 @@ export class WebUiTextarea extends FormAssociated(LitElement) {
         textarea.value = this._value
       }
     }
+    /*
+     * 高度只在这里算，autosize 的两条改值路径（用户输入、外部改写）都汇到
+     * changed.has('_value')，不必各自调一次。
+     *
+     * 不能等 ResizeObserver：autosize 把高度写成内联 px，换值时盒子尺寸没变，
+     * 不会触发回调，于是旧高度会一直留着（例如同一个 textarea 随抽屉切换资源，
+     * 从长备注切到短备注仍占着长备注的高度）。
+     *
+     * rows 同理：它决定 height:auto 时的自然高度，但 inline px 会盖掉它，
+     * 改 rows 不会让盒子尺寸变化，ResizeObserver 同样看不到。
+     *
+     * 上面的 textarea.value 兜底在正常路径上是 no-op——render() 里的 .value 绑定
+     * 已经先一步把新值写进 DOM 了；它留给 binding 未生效的场景。
+     */
+    if (this.autosize && (changed.has('_value') || changed.has('rows'))) this._autosize()
     if (changed.has('autosize')) {
       if (this.autosize) {
         this._setupAutosize()
@@ -153,7 +168,6 @@ export class WebUiTextarea extends FormAssociated(LitElement) {
     this._value = e.target.value
     this._formAssociation.sync()
     this._syncValidity()
-    this._autosize()
   }
 
   private handleFocus() {

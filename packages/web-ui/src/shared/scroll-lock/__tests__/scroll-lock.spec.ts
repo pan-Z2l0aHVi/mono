@@ -4,9 +4,7 @@ import { defineScrollLockLease } from '../scroll-lock'
 
 afterEach(() => {
   document.documentElement.style.overflow = ''
-  document.body.style.position = ''
-  document.body.style.top = ''
-  document.body.style.width = ''
+  document.documentElement.style.overscrollBehavior = ''
 })
 
 describe('scroll lock lease', () => {
@@ -16,12 +14,12 @@ describe('scroll lock lease', () => {
 
     first.sync(true)
     second.sync(true)
-    expect(document.body.style.position).toBe('fixed')
+    expect(document.documentElement.style.overflow).toBe('hidden')
 
     first.release()
-    expect(document.body.style.position).toBe('fixed')
+    expect(document.documentElement.style.overflow).toBe('hidden')
 
     second.release()
-    expect(document.body.style.position).toBe('')
+    expect(document.documentElement.style.overflow).toBe('')
   })
 })

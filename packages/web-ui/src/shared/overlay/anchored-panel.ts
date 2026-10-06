@@ -1,9 +1,7 @@
 import { definePlugin } from '@greypan/js-kit'
 
 import type { OpenOverlay, OpenOverlayHandle, OverlayArbitration } from './open-overlay'
-import type { OverlayOptions } from './overlay'
-import { defineOverlay } from './overlay'
-import type { OverlayApi } from './overlay'
+import { defineOverlay, type OverlayApi, type OverlayOptions } from './overlay'
 import type { OverlayPortal } from './portal'
 import { hideOverlayPresence, showOverlayPresence } from './presence'
 

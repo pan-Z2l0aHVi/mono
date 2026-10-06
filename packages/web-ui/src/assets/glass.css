@@ -39,15 +39,28 @@
 }
 
 /*
- * 玻璃描边：底环 + 对角受光/背光。background-color 用 border 色铺满整圈（含圆角
- * 弧段，修复胶囊弧段无着色发暗的问题）；叠两枚 corner→transparent radial 作左上/
- * 右下受光光泽，再叠两枚 shade→transparent radial（置于最上层）压暗右上/左下背光
- * 角，形成对角光影的玻璃立体感。四枚渐变均为锚定角点、半径 --wui-glass-corner-radius
- * 的固定物理尺寸正圆——视觉覆盖范围不随元素宽高缩放（百分比方案在大面板上暗边
- * 过长、小控件上过弱），各组件用与自身 border-radius 同源的值覆盖该变量即可联动。
- * 颜色由 theme 按明暗主题提供 --wui-color-glass-corner / --wui-color-glass-shade /
- * --wui-color-glass-border；-webkit-mask-* 旧语法（含 mask-composite:xor）由
- * lightningcss 按 targets 自动生成，无前缀 mask-composite 留给 Chrome 120+。
+ * 玻璃描边环：底色铺满整圈，其上叠两枚 sheen→transparent radial 作左上/右下受光
+ * 光泽，再叠两枚 shade→transparent radial（置于最上层）压暗右上/左下背光角，形成
+ * 对角光影的玻璃立体感。
+ *
+ * 底色（--wui-color-glass-ring）不是可选项：四枚 radial 全部锚定角点、半径固定
+ * （R = --wui-glass-corner-radius，sheen 用 2R、shade 用 R），一条边只有长过约 3R
+ * 才有一段落在所有 radial 之外。底色是唯一覆盖那一段的一层，也是圆角弧段（如 pill
+ * 的半圆端）不发暗的原因。三枚 token 同属 ring 前缀，因为它们共同描述这一枚环，
+ * 而非三个独立效果。
+ *
+ * 底色字面量取明色值 rgb(0 0 0 / 0.05) 而非 transparent：本文件其余玻璃 token 的
+ * fallback 一律等于明色真值（surface-glass / brightness / highlight / sheen / shade），
+ * token 缺省时（未挂 <web-ui-theme>，或 theme 未设 appearance —— 颜色 token 只定义在
+ * [appearance] 三个选择器下）整套玻璃面就是明色观感，这一层没有理由例外。
+ *
+ * 渐变半径为 --wui-glass-corner-radius 的固定物理尺寸正圆——视觉覆盖范围不随元素
+ * 宽高缩放（百分比方案在大面板上暗边过长、小控件上过弱），各组件用与自身
+ * border-radius 同源的值覆盖该变量即可联动。
+ *
+ * 同源的 --wui-color-glass-highlight 不在此层：它是元素自身 box-shadow 的 inset
+ * 高光，与本环无关。-webkit-mask-* 旧语法（含 mask-composite:xor）由 lightningcss
+ * 按 targets 自动生成，无前缀 mask-composite 留给 Chrome 120+。
  */
 .wui-glass::before {
   pointer-events: none;
@@ -59,26 +72,26 @@
   padding: 1px;
   border-radius: inherit;
 
-  background-color: var(--wui-color-glass-border, transparent);
+  background-color: var(--wui-color-glass-ring, rgb(0 0 0 / 0.05));
   background-image:
     radial-gradient(
       var(--wui-glass-corner-radius, 32px) at 100% 0,
-      var(--wui-color-glass-shade, rgb(0 0 0 / 0.03)),
+      var(--wui-color-glass-ring-shade, rgb(0 0 0 / 0.03)),
       transparent
     ),
     radial-gradient(
       var(--wui-glass-corner-radius, 32px) at 0 100%,
-      var(--wui-color-glass-shade, rgb(0 0 0 / 0.03)),
+      var(--wui-color-glass-ring-shade, rgb(0 0 0 / 0.03)),
       transparent
     ),
     radial-gradient(
       calc(var(--wui-glass-corner-radius, 32px) * 2) at 0 0,
-      var(--wui-color-glass-corner, rgb(255 255 255 / 0.5)),
+      var(--wui-color-glass-ring-sheen, rgb(255 255 255 / 0.5)),
       transparent
     ),
     radial-gradient(
       calc(var(--wui-glass-corner-radius, 32px) * 2) at 100% 100%,
-      var(--wui-color-glass-corner, rgb(255 255 255 / 0.5)),
+      var(--wui-color-glass-ring-sheen, rgb(255 255 255 / 0.5)),
       transparent
     );
 

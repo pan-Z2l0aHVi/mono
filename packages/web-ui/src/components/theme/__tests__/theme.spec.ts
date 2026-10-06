@@ -1,11 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
-import type { WebUiContextMenu } from '@/components/context-menu'
 import { toast } from '@/components/toast'
 
 import { WebUiTheme } from '..'
 import '@/components/context-menu'
-import '@/components/toast'
+import '@/components/dropdown-item'
 
 function createTheme(appearance?: 'light' | 'dark' | 'system'): WebUiTheme {
   const theme = document.createElement('web-ui-theme')
@@ -603,7 +602,7 @@ describe('WebUiTheme 组件', () => {
   })
 
   describe('Context Menu 集成', () => {
-    it('使用最近主题的 theme-owned overlay root', async () => {
+    it('模态化后面板不进 theme overlay root，改挂进 scrim', async () => {
       const theme = createTheme('dark')
       const menu = document.createElement('web-ui-context-menu')
       menu.innerHTML = '<web-ui-dropdown-item>编辑</web-ui-dropdown-item>'
@@ -614,7 +613,23 @@ describe('WebUiTheme 组件', () => {
       menu.openAt(80, 80)
       await new Promise(resolve => requestAnimationFrame(resolve))
 
-      expect(theme.getOverlayRoot()?.querySelector('[role="menu"]')).toBeTruthy()
+      /*
+       * 契约已反转。面板必须与 scrim 同处 top layer 才在模态期间可点，而 scrim 挂在
+       * document.body 上、不是 theme 宿主的子孙 —— nearest-theme 归属就此丢失。
+       * 这份丢失是既定取舍（context-menu 独有；dropdown / select / popover 仍解析进
+       * 最近主题的 overlay root），连带后果是 scrim 拿不到 theme 作用域里的设计 token。
+       *
+       * 两侧都断言：只断言「在 scrim 里」会让「又掉回 overlay root」伪装成通过，
+       * 只断言「不在 overlay root 里」则无法证明它去了该去的地方。
+       */
+      expect(theme.getOverlayRoot()?.querySelector('[role="menu"]')).toBeNull()
+
+      const scrim = document.querySelector<HTMLDialogElement>('dialog[data-wui-menu-scrim]')
+      expect(scrim).toBeTruthy()
+      expect(scrim?.open).toBe(true)
+      const panel = scrim?.querySelector('[role="menu"]')
+      expect(panel).toBeTruthy()
+      expect(panel?.textContent).toContain('编辑')
       theme.remove()
     })
   })
@@ -632,3 +647,17 @@ describe('WebUiTheme 组件', () => {
     })
   })
 })
+
+// jsdom 未实现原生 dialog 的 modal 语义，这里局部补足 showModal/close 对 open 的影响。
+// 与 context-menu spec 里的同名 shim 一样刻意不做成全局：放进 test-helper 会让共享
+// presence 的 `showModal?.()` 真正执行，改变 image-preview 等既有用例的观察点。
+if (!HTMLDialogElement.prototype.showModal) {
+  HTMLDialogElement.prototype.showModal = function () {
+    this.setAttribute('open', '')
+  }
+}
+if (!HTMLDialogElement.prototype.close) {
+  HTMLDialogElement.prototype.close = function () {
+    this.removeAttribute('open')
+  }
+}

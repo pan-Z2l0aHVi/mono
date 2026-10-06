@@ -22,14 +22,14 @@
   position: relative;
 
   display: flex;
-  gap: 8px;
+  gap: var(--wui-space-2, 8px);
   align-items: flex-start;
 
   box-sizing: border-box;
   width: var(--wui-textarea-width, 200px);
   min-width: var(--wui-control-size, 36px);
   min-height: var(--wui-control-size, 36px);
-  padding: 7.5px 12px;
+  padding: 7.5px var(--wui-space-3, 12px);
   border-radius: var(--wui-radius-menu, 18px);
 }
 
@@ -65,7 +65,7 @@ textarea {
   /* 表单控件不继承字体；显式继承以对齐宿主排版，避免 UA 默认字体差异 */
   font: inherit;
   font-size: var(--wui-font-size, 14px);
-  line-height: 1.5;
+  line-height: var(--wui-line-height-normal, 1.5);
   color: var(--wui-color-text, #1b1b1b);
 
   background: transparent;
@@ -82,6 +82,15 @@ textarea {
   &:read-only {
     cursor: default;
   }
+}
+
+/*
+ * autosize 由组件用 JS 独占高度（_autosize 写内联 height），原生 resize 拖拽与它是
+ * 两套高度来源：用户拖高后，下一次内容变化又会被 autosize 拉回去，拖拽变成假动作。
+ * 所以 autosize 下关掉 resize grip，需要上限高度请用 max-height（CSS 钳制）。
+ */
+:host([autosize]) textarea {
+  resize: none;
 }
 
 /* Coarse pointers include iOS Safari, where a sub-16px font triggers focus zoom. */
@@ -111,7 +120,8 @@ textarea {
 :host([focused]) .wui-textarea-inner::after {
   box-shadow:
     inset 0 0 0 1px var(--wui-color-accent, #08f),
-    0 0 0 var(--wui-focus-ring-width, 3px) var(--wui-color-focus-ring, rgb(0 136 255 / 0.4));
+    0 0 0 var(--wui-focus-ring-width, 3px)
+      var(--wui-color-focus-ring, color-mix(in srgb, var(--wui-color-accent, #08f) 40%, transparent));
 }
 
 slot {

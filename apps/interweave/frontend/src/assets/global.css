@@ -1,5 +1,20 @@
 @import 'tailwindcss';
 
+/*
+ * `dark:` 跟随 web-ui 的 resolved-appearance，不跟随 prefers-color-scheme。
+ *
+ * Tailwind v4 的 dark 变体默认只认操作系统偏好，但 interweave 的外观是用户可设的
+ * （设置里能显式选 light/dark）。两者不是一回事：用户在亮色系统上显式选「深色」时，
+ * OS 偏好仍是 light，stock 变体不会命中，app 侧就会停在亮色底 + 已翻成浅色的文字，
+ * 对比度塌掉。所以在这里把判据换成 `web-ui-theme` 写在自己 host 属性上的
+ * resolved-appearance —— 它是 appearance 属性经 system 解析后的派生输出，light DOM 里
+ * 选择器够得到，system 态下也随 OS 翻转实时更新。
+ *
+ * 写成 :where() 是为了不抬高特异性：变体带来的权重仍只有工具类本身，与被替换前同级。
+ */
+/* stylelint-disable-next-line at-rule-no-unknown -- Tailwind v4 指令 */
+@custom-variant dark (&:where(web-ui-theme[resolved-appearance='dark'], web-ui-theme[resolved-appearance='dark'] *));
+
 html,
 body,
 #app,
@@ -16,4 +31,52 @@ body {
 
 :not(:defined) {
   display: none;
+}
+
+/*
+ * 页面级 focus ring 对齐 web-ui 组件的浅蓝样式。
+ *
+ * web-ui 组件把 ring 写在自己 shadow 内，够不到 light DOM；app 自绘的原生元素
+ * （AppNav 导航按钮、添加对话框里的按钮）此前落回 UA 默认蓝环，于是同一页面上
+ * 键盘 Tab 时出现两套 focus 语言——组件是半透明浅蓝描边，原生元素是实心系统蓝。
+ *
+ * 放在 document 样式表而不是 layout 的 shadow 里：::slotted() 只能命中 slot 的
+ * 直接子元素，而 AppNav 的 <button> 嵌在自己的根 div 内，从组件侧根本够不着。
+ * 元素选择器本身包在 :where() 里（0 特异性），只剩 :focus-visible 的伪类权重
+ * (0,1,0)：既压得住 UA 默认蓝环，又让页面自己的 focus 工具类
+ * （如 focus:outline-none 的 (0,2,0)）照旧能单点覆盖。
+ */
+:where(#app)
+  :where(
+    a[href],
+    button,
+    input,
+    select,
+    textarea,
+    summary,
+    [tabindex]:not([tabindex='-1']),
+    [contenteditable]:not([contenteditable='false'])
+  ):focus-visible {
+  outline: var(--wui-focus-ring-width, 3px) solid var(--wui-color-focus-ring, rgb(0 136 255 / 0.4));
+  outline-offset: 2px;
+}
+
+/*
+ * 触摸设备的最小可点尺寸：控件从 36px 抬到 40px。
+ *
+ * 写在 `web-ui-theme` 而不是 `:root`：36px 这个默认值由 theme 的 shadow 内 `:host` 提供，
+ * 而 `:root` 上的声明与 `:host` 特异性相同、且离组件更远，谁生效取决于样式表顺序，不可靠。
+ * 直接写在 theme 宿主元素上则是「外部作者样式压过 shadow 内 :host」，与 drawer 窄屏覆写
+ * 同一个机制（drawer/style.css 里 --wui-drawer-nested-peek-base 那条）。
+ *
+ * 判据用 `pointer: coarse` 而不是屏幕宽度：触屏笔记本、带笔触的平板都命中，而窄视口的桌面
+ * 窗口不命中——后者有精确指针，36px 配鼠标指针是合适的。菜单行高写死 32px
+ * （dropdown-item/style.css），不吃这个 token，所以项高不会被这一条带着变。
+ *
+ * 验收限制：桌面 DevTools 的设备模拟不覆写 pointer 特性，本条只能在真机上确认命中。
+ */
+@media (pointer: coarse) {
+  web-ui-theme {
+    --wui-control-size: 40px;
+  }
 }

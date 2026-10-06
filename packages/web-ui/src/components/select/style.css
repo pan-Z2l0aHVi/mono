@@ -35,19 +35,20 @@
 
   overflow: clip;
   display: flex;
-  gap: 8px;
+  gap: var(--wui-space-2, 8px);
   align-items: center;
 
   box-sizing: border-box;
   width: var(--wui-input-width, 200px);
   min-width: var(--wui-control-size, 36px);
   height: var(--wui-control-size, 36px);
-  padding: 0 12px;
+  padding: 0 var(--wui-space-3, 12px);
   border: none;
   border-radius: var(--wui-radius-control, calc(infinity * 1px));
 
   &:focus-visible {
-    outline: var(--wui-focus-ring-width, 3px) solid var(--wui-color-focus-ring, rgb(0 136 255 / 0.4));
+    outline: var(--wui-focus-ring-width, 3px) solid
+      var(--wui-color-focus-ring, color-mix(in srgb, var(--wui-color-accent, #08f) 40%, transparent));
     outline-offset: 2px;
   }
 }
@@ -109,6 +110,9 @@
   --wui-internal-duration-float-enter: var(--wui-duration-float-enter, 240ms);
   --wui-internal-duration-float-exit: var(--wui-duration-float-exit, 160ms);
   --wui-glass-corner-radius: var(--wui-radius-menu, 18px);
+
+  /* 环底色转 transparent，宽面板的长边中段不留铺底，见 menu-portal.css 同处注释。 */
+  --wui-color-glass-ring: transparent;
   position: absolute;
   z-index: var(--wui-layer-inline-overlay, 1);
 
@@ -120,7 +124,7 @@
   border-radius: var(--wui-radius-menu, 18px);
 
   /* 玻璃背景：wui-glass 在面板自身，这里覆盖其默认玻璃底为菜单表面色 */
-  background-color: var(--wui-color-surface-menu, rgb(254 254 254 / 0.76));
+  background-color: var(--wui-color-surface-menu, rgb(250 250 250 / 0.76));
 
   &.portal {
     position: fixed;
@@ -138,7 +142,7 @@
 }
 
 .select-content {
-  padding: 4px;
+  padding: var(--wui-space-1, 4px);
 }
 
 :host([portal]) .select-overlay {

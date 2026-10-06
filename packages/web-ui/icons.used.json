@@ -67,5 +67,9 @@
   "lucide:list-restart",
   "radix-icons:reset",
   "akar-icons:check",
-  "bi:check"
+  "bi:check",
+  "bi:check-lg",
+  "akar-icons:circle-check",
+  "fluent:tag-search-24-regular",
+  "mdi:tag-search-outline"
 ]

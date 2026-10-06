@@ -29,7 +29,7 @@ function tooltipPanels(node: Node = document.body, found: HTMLElement[] = []): H
 /**
  * 公开可观察量：面板 `role="tooltip"` ∧ 非 `hidden` ∧ 内容已投影。
  *
- * `hidden` 是 R1 明文允许的断言对象——它是可见性的公开后果，不是内部状态名。
+ * `hidden` 是可见性的公开后果，不是内部状态名。
  */
 function visiblePanel(label: string): HTMLElement | undefined {
   return tooltipPanels().find(panel => !panel.hidden && (panel.textContent ?? '').includes(label))
@@ -59,15 +59,14 @@ async function visibleWithin(label: string, frames: number): Promise<boolean> {
 }
 
 /**
- * 「指针滑到相邻目标」的零延迟行为（判据 §10 S6 对 R1 例外的最终处置）。
+ * 「指针滑到相邻目标」的零延迟行为。
  *
- * 原 `repeat-presence.browser.spec.ts` 的主题是逐帧 presence 序列（`entering` → `open`），
- * 即 `src/shared/overlay/presence.ts` 里「先钉在过渡起点、下一 rAF 再进 open」的那一帧相位差。
- * b6 实测确认该差异只是**帧级视觉瞬态**（两条路径终点同为 opacity 1 / blur 4px / scale 1），
- * 按 §5 不写这种断言，R1 例外因此取消。
+ * 逐帧 presence 序列（`entering` → `open`，即 presence.ts 里「先钉在过渡起点、
+ * 下一 rAF 再进 open」的那一帧相位差）实测只是帧级视觉瞬态——两条路径终点同为
+ * opacity 1 / blur 4px / scale 1——不值得断言。
  *
- * 但同一条代码路径还产生**第二个**后果，且它是干净的用户可见行为——
- * `components/tooltip/index.ts:157`：
+ * 但同一条代码路径还产生**第二个**后果，且它是干净的用户可见行为
+ * ——`components/tooltip/index.ts:157`：
  *
  * ```ts
  * const isRepeat = visibleTooltipCount > 0

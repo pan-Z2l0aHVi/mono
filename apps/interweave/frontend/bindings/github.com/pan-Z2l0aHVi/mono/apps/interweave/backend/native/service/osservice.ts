@@ -11,6 +11,15 @@
 import { Call as $Call, CancellablePromise as $CancellablePromise, Create as $Create } from "@wailsio/runtime";
 
 /**
+ * GetClipboardFilePaths 返回剪贴板中当前存在的普通文件绝对路径，不读取文件内容。
+ */
+export function GetClipboardFilePaths(): $CancellablePromise<string[]> {
+    return $Call.ByID(3002030334).then(($result: any) => {
+        return $$createType0($result);
+    });
+}
+
+/**
  * 始终交还给系统默认应用，Interweave 不接管外部内容。
  */
 export function OpenExternal(target: string): $CancellablePromise<void> {
@@ -23,3 +32,6 @@ export function OpenExternal(target: string): $CancellablePromise<void> {
 export function ShowInFileManager(filePath: string): $CancellablePromise<void> {
     return $Call.ByID(2523750525, filePath);
 }
+
+// Private type creation functions
+const $$createType0 = $Create.Array($Create.Any);

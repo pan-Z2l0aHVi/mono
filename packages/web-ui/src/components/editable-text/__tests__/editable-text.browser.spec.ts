@@ -184,6 +184,19 @@ const blurByFocusElsewhere = async (): Promise<HTMLButtonElement> => {
   return outside
 }
 
+/**
+ * 进入编辑并留下草稿：真实聚焦 + 真实按键，只有「行离开渲染窗口」这一环不是浏览器默认
+ * 动作，因此失败只可能归因于卸载路径本身。
+ */
+const startDraft = async (el: WebUiEditableText): Promise<void> => {
+  await waitForUpdate(el)
+  el.focus()
+  await waitForUpdate(el)
+  await userEvent.keyboard(' world')
+  await waitForUpdate(el)
+  expect(el.value).toBe('hello world')
+}
+
 describe('WebUiEditableText 布局契约（浏览器）', () => {
   beforeAll(loadParityFont)
 
@@ -689,6 +702,403 @@ describe('WebUiEditableText 交互契约（浏览器）', () => {
       detachChange()
     }
     cleanupElement(el)
+  })
+
+  /*
+   * 卸载提交（commit-on-unmount）：本组用例的行为随引擎分叉，Chromium 与 WebKit 实测结论
+   * 不一致，Gecko 未取证。改这一组之前先读下面三行，别把其中一列当成通用基线：
+   *
+   *   Chromium —— 移除正在编辑的组件 → editor blur → change（来自 `_onBlur`）
+   *   WebKit   —— 同上，但**一个事件都没有**：不派发 blur，也不派发 change
+   *   Gecko    —— 未能取证
+   *
+   * blur 与 change 在 Chromium 上都**同步**派发，落在同一轮自定义元素回调里，不是异步；测试
+   * 因此在 `remove()` 同步返回后直接断言，不等微任务也不等帧——那层等待只会掩盖次序问题。
+   *
+   * 两条要点：
+   *
+   * 1. 「卸载能不能提交」本身就是引擎相关的。Chromium 上默认路径靠 blur 提交一次，本属性在
+   *    那里补的是提交判据（有无实际变更）与提交时机（blur 排在 disconnected 之后、消费方
+   *    状态可能已不在场）；WebKit 上默认路径什么都不提交，本属性是那里**唯一**能让卸载提交
+   *    的手段。所以下面那条锁默认行为的用例只在 Chromium 成立——本套件只跑 Chromium，在
+   *    WebKit 上跑它会得到 0，那是引擎差异不是回归。
+   * 2. `display: none` 两引擎一致：不派发任何事件，组件也不卸载，编辑态原样保留。因此「行被
+   *    移出渲染窗口」这条路不做处理；真要处理得由消费方主动结束编辑，不是本属性的范围。
+   */
+
+  it('默认 commit-on-unmount=false：Chromium 上移除正在编辑的组件仍靠 blur 提交一次', async () => {
+    /*
+     * 锁住 Chromium 上的默认行为（见块首）：blur 照样到达编辑层，`_onBlur` 照常提交，本属性
+     * 不得改变这个结果。**这条断言在 WebKit 上不成立**——那里移除不派发 blur，默认路径什么
+     * 都不提交。本套件只跑 Chromium；在 WebKit 上跑它得到 0 是引擎差异，不是回归。
+     */
+    const el = mount({ value: 'hello' })
+    await startDraft(el)
+    expect(el.shadowRoot!.activeElement, '编辑层确实持有焦点').toBe(editorOf(el))
+
+    const [editorBlurs, detachEditorBlurs] = spyEvents(editorOf(el), 'blur')
+    const [changes, detachChange] = spyEvents(el, 'change')
+    try {
+      el.remove()
+      await waitForUpdate(el)
+
+      expect(editorBlurs, 'DOM 移除把 blur 派发到编辑层').toHaveLength(1)
+      expect(changes, '默认路径的这次提交来自 blur，恰好一次').toHaveLength(1)
+      expect(el.value, '草稿成为新值，默认路径不会丢草稿').toBe('hello world')
+      expect(el.hasAttribute('editing')).toBe(false)
+    } finally {
+      detachEditorBlurs()
+      detachChange()
+    }
+    cleanupElement(el)
+  })
+
+  it('commit-on-unmount：重新聚焦后的第二次草稿在卸载时不丢，也不与 blur 重复提交', async () => {
+    /*
+     * handoff 描述的缺口，也是本属性真正补上的那一处。提交一次后再重新聚焦会开启一段新的
+     * 编辑会话（`_editBase` 重取当前值）；这段会话被虚拟化回收时，卸载成为明确的提交来源。
+     *
+     * 「恰好一次」在这里不是空话：commit 开启后同一会话有两条提交来源（卸载回调 + DOM 移除
+     * 自带的 blur），提交若不先摘编辑态就会派发两次 change，虚拟化列表按行应用改名就会
+     * 重复写一次。
+     */
+    const row = mountElement('div', { parent: document.body })
+    const el = mount({ value: 'hello', 'commit-on-unmount': '' })
+    row.append(el)
+    await waitForUpdate(el)
+
+    // 第一段：提交一次
+    el.focus()
+    await waitForUpdate(el)
+    await userEvent.keyboard(' world')
+    await waitForUpdate(el)
+    expect(el.value).toBe('hello world')
+    editorOf(el).dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, composed: true, cancelable: true })
+    )
+    await waitForUpdate(el)
+    expect(el.hasAttribute('editing'), '提交后退出编辑').toBe(false)
+    expect(el.value).toBe('hello world')
+
+    // 第二段：重新聚焦，开启新的编辑会话并留下新草稿
+    // Enter 已把焦点交还宿主，直接再 focus() 是空操作（不产生 focus 事件），需先 blur
+    el.blur()
+    el.focus()
+    await waitForUpdate(el)
+    expect(el.hasAttribute('editing'), '重新聚焦开启新的编辑会话').toBe(true)
+    await userEvent.keyboard(' again')
+    await waitForUpdate(el)
+    expect(el.value).toBe('hello world again')
+
+    const [editorBlurs, detachEditorBlurs] = spyEvents(editorOf(el), 'blur')
+    const [cancels, detachCancel] = spyEvents(el, 'cancel')
+    const [changes, detachChange] = spyEvents(el, 'change')
+    try {
+      row.remove()
+      await waitForUpdate(el)
+
+      expect(changes, '卸载提交与随后的 blur 合起来恰好一次 change').toHaveLength(1)
+      expect(changes[0].bubbles, 'change 沿组合路径冒泡').toBe(true)
+      expect(changes[0].composed).toBe(true)
+      expect(cancels, '卸载提交不派发 cancel').toHaveLength(0)
+      expect(
+        editorBlurs.length,
+        'DOM 移除的 blur 确实到达过（WebKit 上不派发，故本断言只在 Chromium 成立）'
+      ).toBeGreaterThanOrEqual(1)
+      expect(el.value, '第二次草稿成为新值，没有被丢弃').toBe('hello world again')
+      expect(el.hasAttribute('editing')).toBe(false)
+    } finally {
+      detachEditorBlurs()
+      detachCancel()
+      detachChange()
+    }
+    cleanupElement(el)
+    row.remove()
+  })
+
+  it('commit-on-unmount：与既有提交路径的差别只在提交判据，行为逐项一致', async () => {
+    /*
+     * 本属性复用 `_commitEditing`，因此不引入第三套语义——气泡、组合、不派发 cancel、
+     * 不干预焦点，与 `blur` 提交逐项相同。这里把它们与既有路径并排断言，防止将来给卸载
+     * 分支单开一条实现时漂移。
+     */
+    const el = mount({ value: 'hello', 'commit-on-unmount': '' })
+    await waitForUpdate(el)
+    el.focus()
+    await waitForUpdate(el)
+    await userEvent.keyboard(' world')
+    await waitForUpdate(el)
+    expect(el.value).toBe('hello world')
+
+    const [cancels, detachCancel] = spyEvents(el, 'cancel')
+    const [changes, detachChange] = spyEvents(el, 'change')
+    try {
+      el.remove()
+      await waitForUpdate(el)
+
+      expect(changes, '恰好一次').toHaveLength(1)
+      expect(changes[0].bubbles, 'bubbles 与 blur 提交一致').toBe(true)
+      expect(changes[0].composed, 'composed 与 blur 提交一致').toBe(true)
+      expect(cancels, '提交不派发 cancel').toHaveLength(0)
+      expect(el.value, '草稿成为新值').toBe('hello world')
+      expect(el.hasAttribute('editing'), '退出编辑').toBe(false)
+    } finally {
+      detachCancel()
+      detachChange()
+    }
+    cleanupElement(el)
+  })
+
+  it('行被移出渲染窗口不卸载组件：display:none 既不派发事件也不结束编辑', async () => {
+    /*
+     * 这条是实测结果（见块首第 2 点），写出来是为了把边界钉死：`display: none` 下组件
+     * 仍在文档中、不会卸载，也没有 blur 可言，因此无论本属性开不开，编辑态都原样保留。
+     * 想在这种形状下收尾，消费方得主动结束编辑。
+     */
+    const row = mountElement('div', { parent: document.body })
+    const el = mount({ value: 'hello', 'commit-on-unmount': '' })
+    row.append(el)
+    await startDraft(el)
+
+    const [changes, detachChange] = spyEvents(el, 'change')
+    try {
+      row.style.display = 'none'
+      await waitForUpdate(el)
+
+      expect(changes, '移出渲染窗口不派发 change').toHaveLength(0)
+      expect(el.isConnected, '组件没有被卸载').toBe(true)
+      expect(el.value, '草稿仍在').toBe('hello world')
+      expect(el.hasAttribute('editing'), '编辑态原样保留').toBe(true)
+    } finally {
+      row.style.display = ''
+      detachChange()
+    }
+    cleanupElement(el)
+    row.remove()
+  })
+
+  it('commit-on-unmount：不在编辑态被移除是空提交，不派发 change', async () => {
+    const el = mount({ value: 'hello', 'commit-on-unmount': '' })
+    await waitForUpdate(el)
+    expect(el.hasAttribute('editing')).toBe(false)
+
+    const [changes, detachChange] = spyEvents(el, 'change')
+    try {
+      el.remove()
+      await waitForUpdate(el)
+
+      expect(changes, '空闲态被移除不派发 change').toHaveLength(0)
+      expect(el.value).toBe('hello')
+    } finally {
+      detachChange()
+    }
+    cleanupElement(el)
+  })
+
+  it('默认：宿主持有焦点时被移除靠 blur 提交一次，本属性不改变这一结果', async () => {
+    /*
+     * 与第一条对照：焦点落在宿主上时，DOM 移除会派发 blur，默认行为照常提交一次 change。
+     * 这条把那半边的实测固定成契约，避免日后误把默认行为读成「DOM 移除一律不提交」。
+     */
+    const el = mount({ value: 'hello' })
+    await waitForUpdate(el)
+    el.focus()
+    await waitForUpdate(el)
+    expect(el.hasAttribute('editing')).toBe(true)
+    await userEvent.keyboard(' world')
+    await waitForUpdate(el)
+    expect(el.value).toBe('hello world')
+
+    const [editorBlurs, detachEditorBlurs] = spyEvents(editorOf(el), 'blur')
+    const [changes, detachChange] = spyEvents(el, 'change')
+    try {
+      el.remove()
+      await waitForUpdate(el)
+
+      expect(
+        editorBlurs.length,
+        'DOM 移除后的 blur 确实到达（WebKit 上不派发，故本断言只在 Chromium 成立）'
+      ).toBeGreaterThanOrEqual(1)
+      expect(changes, '默认行为的这次提交来自 blur，恰好一次').toHaveLength(1)
+      expect(el.value).toBe('hello world')
+      expect(el.hasAttribute('editing')).toBe(false)
+    } finally {
+      detachEditorBlurs()
+      detachChange()
+    }
+    cleanupElement(el)
+  })
+
+  it('commit-on-unmount：宿主持有焦点时被移除不与 blur 重复提交', async () => {
+    /*
+     * 这半个焦点归属下开启后多一条提交来源：卸载回调提交一次，随后的 blur 到达时编辑态
+     * 已摘除而早退。这条锁住「恰好一次」——提交若不先摘编辑态，同一次移除就会拿到两次
+     * change，虚拟化列表按行应用改名就会重复写一次。
+     */
+    const el = mount({ value: 'hello', 'commit-on-unmount': '' })
+    await waitForUpdate(el)
+    el.focus()
+    await waitForUpdate(el)
+    await userEvent.keyboard(' world')
+    await waitForUpdate(el)
+    expect(el.value).toBe('hello world')
+
+    const [editorBlurs, detachEditorBlurs] = spyEvents(editorOf(el), 'blur')
+    const [changes, detachChange] = spyEvents(el, 'change')
+    try {
+      el.remove()
+      await waitForUpdate(el)
+
+      expect(
+        editorBlurs.length,
+        '随后的 blur 确实到达过（WebKit 上不派发，故本断言只在 Chromium 成立）'
+      ).toBeGreaterThanOrEqual(1)
+      expect(changes, '卸载提交与随后的 blur 合起来恰好一次 change').toHaveLength(1)
+      expect(el.value).toBe('hello world')
+      expect(el.hasAttribute('editing')).toBe(false)
+    } finally {
+      detachEditorBlurs()
+      detachChange()
+    }
+    cleanupElement(el)
+  })
+
+  it('commit-on-unmount：readonly 卸载退出编辑、不派发 change', async () => {
+    /*
+     * readonly 的 blur 与 Enter 都只退出编辑、不派发 change（见 `_onBlur` 与 Enter 分支）。
+     * 卸载路径同样不派发，原因有两条且各自独立：`_onInput` 把 readonly 的输入挡在 `_value`
+     * 之外，草稿恒等于基线，于是「有无实际变更」判据不成立；没有提交就没有收尾，编辑态
+     * 照常由 DOM 移除带来的 blur 摘掉。这里锁住的是与既有两条路径相同的对外行为。
+     */
+    const el = mount({ value: 'hello', readonly: '', 'commit-on-unmount': '' })
+    await waitForUpdate(el)
+    el.focus()
+    await waitForUpdate(el)
+    await userEvent.keyboard(' world')
+    await waitForUpdate(el)
+    expect(el.value, 'readonly 拒绝输入，没有草稿').toBe('hello')
+
+    const [cancels, detachCancel] = spyEvents(el, 'cancel')
+    const [changes, detachChange] = spyEvents(el, 'change')
+    try {
+      el.remove()
+      await waitForUpdate(el)
+
+      expect(changes, 'readonly 卸载不派发 change').toHaveLength(0)
+      expect(cancels).toHaveLength(0)
+      expect(el.value).toBe('hello')
+      expect(el.hasAttribute('editing'), '编辑态照常退出').toBe(false)
+    } finally {
+      detachCancel()
+      detachChange()
+    }
+    cleanupElement(el)
+  })
+
+  it('commit-on-unmount：change 到达随宿主一起被卸载的祖先监听器', async () => {
+    /*
+     * 虚拟化列表的实际形态：行容器本身也在被回收。监听器挂在即将消失的祖先上时 change
+     * 仍必须送达——派发沿组合路径上行，不要求祖先此刻还在文档里。这条同时排除了
+     * 「在 disconnectedCallback 里因宿主已不在文档中而跳过派发」的实现。
+     */
+    const row = mountElement('div', { parent: document.body })
+    const el = mount({ value: 'hello', 'commit-on-unmount': '' })
+    row.append(el)
+    await startDraft(el)
+
+    const seenByRow: Event[] = []
+    const onRowChange = (e: Event) => seenByRow.push(e)
+    row.addEventListener('change', onRowChange)
+    const [changes, detachChange] = spyEvents(el, 'change')
+    try {
+      row.remove()
+      await waitForUpdate(el)
+
+      expect(changes).toHaveLength(1)
+      expect(seenByRow, '祖先自身也已被卸载，change 依然到达').toHaveLength(1)
+      expect(seenByRow[0], '祖先听到的是同一个事件对象').toBe(changes[0])
+      expect(el.isConnected, '断言时组件确实已在文档外').toBe(false)
+    } finally {
+      row.removeEventListener('change', onRowChange)
+      detachChange()
+    }
+    cleanupElement(el)
+    row.remove()
+  })
+
+  it('commit-on-unmount：remove 后同任务重新挂载，卸载仍提交一次且不与 blur 重复', async () => {
+    /*
+     * 列表复用节点的形状：同一个任务里摘下再挂到别处（虚拟化窗口平移、key 复用都可能）。
+     * 实施中实测到这条的事件序反常——blur 派发在 disconnectedCallback 之后，但 change 落到
+     * **重新挂载之后**才到达监听器，因此消费方在那一刻读到的组件已经是接在别处的同一个节点。
+     * 开启本属性后提交发生在卸载回调内，change 在重新挂载之前就派发，监听器读到的是它提交
+     * 的那个节点；随后的 blur 因编辑态已摘除而早退。
+     */
+    const rowA = mountElement('div', { parent: document.body })
+    const rowB = mountElement('div', { parent: document.body })
+    const el = mount({ value: 'hello', 'commit-on-unmount': '' })
+    rowA.append(el)
+    await startDraft(el)
+
+    const seenByRowA: Event[] = []
+    const onRowAChange = (e: Event) => seenByRowA.push(e)
+    rowA.addEventListener('change', onRowAChange)
+    const [editorBlurs, detachEditorBlurs] = spyEvents(editorOf(el), 'blur')
+    const [changes, detachChange] = spyEvents(el, 'change')
+    try {
+      rowA.remove()
+      rowB.append(el)
+      await waitForUpdate(el)
+
+      expect(changes, '卸载提交恰好一次').toHaveLength(1)
+      expect(seenByRowA, 'change 在重新挂载前派发，仍到达原祖先监听器').toHaveLength(1)
+      expect(seenByRowA[0], '祖先听到的是同一个事件对象').toBe(changes[0])
+      expect(el.value, '草稿成为新值').toBe('hello world')
+      expect(el.hasAttribute('editing')).toBe(false)
+      expect(
+        editorBlurs.length,
+        '随后的 blur 确实到达过，但编辑态已摘除（WebKit 上不派发，故本断言只在 Chromium 成立）'
+      ).toBeGreaterThanOrEqual(1)
+    } finally {
+      rowA.removeEventListener('change', onRowAChange)
+      detachEditorBlurs()
+      detachChange()
+    }
+    cleanupElement(el)
+    rowA.remove()
+    rowB.remove()
+  })
+
+  it('默认：remove 后同任务重新挂载，change 落到重新挂载之后才被监听器读到', async () => {
+    /*
+     * 与上一条对照，把实测到的默认行为固定成契约：blur 排在 disconnectedCallback 之后，
+     * 而它触发的 change 直到组件重新挂载才到达监听器。消费方若依赖这条提交，读到的会是
+     * 一个已经接在别处的节点——这是开启 commit-on-unmount 的实际理由之一。
+     */
+    const rowA = mountElement('div', { parent: document.body })
+    const rowB = mountElement('div', { parent: document.body })
+    const el = mount({ value: 'hello' })
+    rowA.append(el)
+    await startDraft(el)
+
+    const connectedAtDispatch: boolean[] = []
+    const [changes, detachChange] = spyEvents(el, 'change')
+    const onChange = () => connectedAtDispatch.push(el.isConnected)
+    el.addEventListener('change', onChange)
+    try {
+      rowA.remove()
+      rowB.append(el)
+      await waitForUpdate(el)
+
+      expect(changes, '默认路径仍提交一次').toHaveLength(1)
+      expect(connectedAtDispatch, '监听器收到 change 时组件已经重新挂载').toEqual([true])
+    } finally {
+      el.removeEventListener('change', onChange)
+      detachChange()
+    }
+    cleanupElement(el)
+    rowA.remove()
+    rowB.remove()
   })
 
   it('Enter 提交：派发 change、退出编辑、不插入换行', async () => {

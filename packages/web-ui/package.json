@@ -38,7 +38,7 @@
   "scripts": {
     "build": "vp build",
     "test": "vp test run",
-    "dev": "vp build --watch",
+    "dev": "vp build --watch --emptyOutDir=false",
     "generate-icons": "node --experimental-strip-types scripts/generate-icons.ts"
   },
   "dependencies": {
@@ -51,8 +51,10 @@
     "@greypan/tsconfig": "workspace:*",
     "@iconify-json/akar-icons": "catalog:",
     "@iconify-json/bi": "catalog:",
+    "@iconify-json/fluent": "catalog:",
     "@iconify-json/jam": "catalog:",
     "@iconify-json/lucide": "catalog:",
+    "@iconify-json/mdi": "catalog:",
     "@iconify-json/si": "catalog:",
     "@iconify-json/tabler": "catalog:",
     "@iconify-json/heroicons": "catalog:",

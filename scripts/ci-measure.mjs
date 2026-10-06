@@ -1,4 +1,4 @@
-// 用法: pnpm measure:ci [--days=14] [--workflow=CI] [--json]
+// 用法: pnpm ci:measure [--days=14] [--workflow=CI] [--json]
 //
 // 只读的 CI 成本台账：算出窗口内每个 workflow 跑了多少次、墙钟多少分钟、按触发事件怎么分、同一份
 // commit 被重复验证几遍。「重复验证」是这轮拓扑改动的成本口径，不是错误率。

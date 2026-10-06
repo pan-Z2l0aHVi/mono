@@ -5,7 +5,7 @@ import { defineBatchTrack } from '../plugins/batch-track'
 
 vi.useFakeTimers()
 
-/** 记录条目的 fake transport；替代 sendBeacon 桩与 MSW 捕获。 */
+/** 记录条目的 fake transport。批量断言只看 transport 收到什么，不关心怎么发出去。 */
 function createTransportStub() {
   const items: object[] = []
   const transport = vi.fn<(item: object) => Promise<void>>(async item => {
@@ -15,8 +15,8 @@ function createTransportStub() {
 }
 
 /**
- * 注入 fake transport 后，队列调度只经过 microtask；自旋等待断言条件收敛，
- * 不依赖真实时间。超过上限视为未收敛，让断言以超时信息失败。
+ * 注入 fake transport 后队列调度只经过 microtask，自旋等待即可收敛，不依赖真实时间。
+ * 上限兜底：未收敛时以超时信息失败，而不是挂到 vitest 的默认超时。
  */
 async function waitUntil(predicate: () => boolean, maxSpins = 1000): Promise<void> {
   for (let spin = 0; spin < maxSpins && !predicate(); spin += 1) {
@@ -25,19 +25,20 @@ async function waitUntil(predicate: () => boolean, maxSpins = 1000): Promise<voi
   expect(predicate(), '等待队列调度收敛超时').toBe(true)
 }
 
-describe('聚合上报测试用例', () => {
+const deliveredCount = (transport: ReturnType<typeof createTransportStub>['transport']) =>
+  transport.mock.calls.reduce((total, call) => total + (call[0] as unknown[]).length, 0)
+
+describe('defineBatchTrack 测试', () => {
   let transport: ReturnType<typeof createTransportStub>['transport']
 
   beforeEach(() => {
     vi.clearAllTimers()
     vi.restoreAllMocks()
     localStorage.clear()
-
-    const stub = createTransportStub()
-    transport = stub.transport
+    transport = createTransportStub().transport
   })
 
-  it('批量聚合：在延迟内合并多次上报', async () => {
+  it('窗口内的多次 track 合并成一个数组批次，保持入队顺序', async () => {
     const tracker = defineTracker({ url: 'https://example.com', transport })
       .use(defineBatchTrack({ defaultBatchDelay: 200 }))
       .make()
@@ -45,69 +46,29 @@ describe('聚合上报测试用例', () => {
     tracker.track({ event: 'click' })
     tracker.track({ event: 'view' })
 
+    // 延迟未到之前不得发送：合并是这个插件存在的全部意义
     expect(transport).not.toHaveBeenCalled()
 
     vi.advanceTimersByTime(200)
     await waitUntil(() => transport.mock.calls.length === 1)
 
-    expect(transport).toHaveBeenCalledTimes(1)
     expect(transport.mock.calls[0][0]).toEqual([{ event: 'click' }, { event: 'view' }])
   })
 
-  it('数据分片：超过阈值时分片生效', async () => {
-    // maxBatchKB 压到 4 让小数据量也能触发分片：测试只关心分片语义，
-    // 数据量放大到 10000 会在 CI 高负载下撞 vitest 默认 15s 超时（实测 18.4s）。
-    const tracker = defineTracker({ url: 'https://example.com', transport })
-      .use(defineBatchTrack({ defaultBatchDelay: 200, maxBatchKB: 4 }))
-      .make()
-
-    const totalCount = 2000
-    for (let i = 0; i < totalCount; i++) {
-      tracker.track({ event: 'view' })
-    }
-
-    vi.advanceTimersByTime(200)
-    await waitUntil(() => transport.mock.calls.length >= 1)
-
-    const body = transport.mock.calls[0][0] as unknown[]
-    expect(Array.isArray(body)).toBe(true)
-    expect(body.length).toBeLessThan(totalCount)
-  })
-
-  it('分片后所有数据无丢失（transport 累计条数一致）', async () => {
-    // fake transport 同步记录每个分片，不依赖浏览器并发请求行为。
-    // 数据量与 maxBatchKB 的取舍见上一个用例；30s 显式超时兜底 CI 负载尖峰。
-    const tracker = defineTracker({ url: 'https://example.com', transport })
-      .use(defineBatchTrack({ defaultBatchDelay: 200, maxBatchKB: 4 }))
-      .make()
-
-    const totalCount = 2000
-    for (let i = 0; i < totalCount; i++) {
-      tracker.track({ event: 'view' })
-    }
-
-    vi.advanceTimersByTime(200)
-
-    // 常规 drain 按顺序确认每个分片；等待全部分片送达后再统计。
-    const deliveredCount = () => transport.mock.calls.reduce((total, call) => total + (call[0] as unknown[]).length, 0)
-    await waitUntil(() => deliveredCount() >= totalCount)
-
-    expect(transport.mock.calls.length).toBeGreaterThanOrEqual(2)
-    expect(deliveredCount()).toBe(totalCount)
-  }, 30000)
-
-  it('flush 应立即发送批量数据', async () => {
+  it('单条数据也包成数组发送，后端格式统一', async () => {
     const tracker = defineTracker({ url: 'https://example.com', transport })
       .use(defineBatchTrack({ defaultBatchDelay: 200 }))
       .make()
 
-    tracker.track({ event: 'queued' })
-    await tracker.flush()
+    tracker.track({ event: 'single' })
+    vi.advanceTimersByTime(200)
+    await waitUntil(() => transport.mock.calls.length === 1)
 
-    expect(transport.mock.calls.length).toBeGreaterThanOrEqual(1)
+    // 始终发数组：后端按一种格式解析，混发对象会让服务端分支漏掉单条事件
+    expect(transport.mock.calls[0][0]).toEqual([{ event: 'single' }])
   })
 
-  it('batchDelay <= 0 时应立即上报，不经过批处理', async () => {
+  it('batchDelay <= 0 时逐条直发，不进批量通道', async () => {
     const tracker = defineTracker({ url: 'https://example.com', transport })
       .use(defineBatchTrack({ defaultBatchDelay: 200 }))
       .make()
@@ -118,13 +79,12 @@ describe('聚合上报测试用例', () => {
     expect(transport.mock.calls[0][0]).toEqual({ event: 'immediate' })
   })
 
-  it('defaultBatchDelay=0 时不延迟，直接上报', async () => {
+  it('defaultBatchDelay 为 0 时按 setTimeout(0) 逐次发送', async () => {
     const tracker = defineTracker({ url: 'https://example.com', transport })
       .use(defineBatchTrack({ defaultBatchDelay: 0 }))
       .make()
 
     tracker.track({ event: 'instant-1' })
-    // defaultBatchDelay=0 时 track 使用 setTimeout(0)，advance 任意正数即可触发
     vi.advanceTimersByTime(1)
     await waitUntil(() => transport.mock.calls.length === 1)
 
@@ -135,7 +95,19 @@ describe('聚合上报测试用例', () => {
     expect(transport).toHaveBeenCalledTimes(2)
   })
 
-  it('未超过 maxBatchKB 时整批单次发送', async () => {
+  it('flush 立刻结算未到窗口的批次', async () => {
+    const tracker = defineTracker({ url: 'https://example.com', transport })
+      .use(defineBatchTrack({ defaultBatchDelay: 5000 }))
+      .make()
+
+    tracker.track({ event: 'queued' })
+    await tracker.flush()
+
+    // 页面卸载时窗口永远不会到，flush 是唯一能把数据发出去的路径
+    expect(transport.mock.calls[0][0]).toEqual([{ event: 'queued' }])
+  })
+
+  it('未超过 maxBatchKB 时整批一次发送', async () => {
     const tracker = defineTracker({ url: 'https://example.com', transport })
       .use(defineBatchTrack({ defaultBatchDelay: 200, maxBatchKB: 64 }))
       .make()
@@ -146,37 +118,64 @@ describe('聚合上报测试用例', () => {
     vi.advanceTimersByTime(200)
     await waitUntil(() => transport.mock.calls.length === 1)
 
-    expect(transport).toHaveBeenCalledTimes(1)
-    const body = transport.mock.calls[0][0] as unknown[]
-    expect(Array.isArray(body)).toBe(true)
-    expect(body).toHaveLength(3)
+    expect(transport.mock.calls[0][0]).toHaveLength(3)
   })
 
-  it('单条数据应直接发送', async () => {
+  it('超过 maxBatchKB 时二分分片，且分片后条目一条不少', async () => {
+    // maxBatchKB 压到 4（≈4KB），用每条 ~600 字节的 padding 让 20 条累计超过阈值：
+    // 分片正确性与条目总量无关，用尽量少的数据触发即可。之前用 2000 条触发分片，
+    // 在 CI 高负载下会撞默认 15s 超时（实测 18.4s），靠加超时参数续命不是修法。
     const tracker = defineTracker({ url: 'https://example.com', transport })
-      .use(defineBatchTrack({ defaultBatchDelay: 200 }))
+      .use(defineBatchTrack({ defaultBatchDelay: 200, maxBatchKB: 4 }))
       .make()
 
-    tracker.track({ event: 'single' })
-    vi.advanceTimersByTime(200)
-    await waitUntil(() => transport.mock.calls.length === 1)
-
-    expect(transport).toHaveBeenCalledTimes(1)
-  })
-
-  it('自定义 maxBatchKB 应生效', async () => {
-    const tracker = defineTracker({ url: 'https://example.com', transport })
-      .use(defineBatchTrack({ defaultBatchDelay: 200, maxBatchKB: 0.001 }))
-      .make()
-
-    // 每条数据约 20 字节，maxBatchKB=0.001KB ≈ 1 字节，应触发分片
-    for (let i = 0; i < 5; i++) {
-      tracker.track({ event: `item-${i}` })
+    const totalCount = 20
+    const padding = 'x'.repeat(600)
+    for (let i = 0; i < totalCount; i++) {
+      tracker.track({ event: 'view', i, padding })
     }
 
     vi.advanceTimersByTime(200)
-    await waitUntil(() => transport.mock.calls.length === 5)
+    await waitUntil(() => deliveredCount(transport) >= totalCount)
 
-    expect(transport).toHaveBeenCalledTimes(5)
+    // 分片数 > 1 且累计条数守恒：sendBeacon 有 64KB 上限，
+    // 静默截断会让用户行为数据静默丢失且不可见
+    expect(transport.mock.calls.length).toBeGreaterThan(1)
+    expect(deliveredCount(transport)).toBe(totalCount)
+    for (const call of transport.mock.calls) {
+      expect(Array.isArray(call[0])).toBe(true)
+    }
+  })
+
+  it('单条数据超过 maxBatchKB 时照发，不无限递归', async () => {
+    const tracker = defineTracker({ url: 'https://example.com', transport })
+      .use(defineBatchTrack({ defaultBatchDelay: 200, maxBatchKB: 0.0001 }))
+      .make()
+
+    tracker.track({ event: 'oversized', padding: 'x'.repeat(500) })
+    vi.advanceTimersByTime(200)
+    await waitUntil(() => transport.mock.calls.length === 1)
+
+    // 单条无法再切分；best-effort 投递优于丢事件或栈溢出
+    expect(transport.mock.calls[0][0]).toEqual([{ event: 'oversized', padding: 'x'.repeat(500) }])
+  })
+
+  it('transform 在批量通道之下生效，作用于整批载荷', async () => {
+    const tracker = defineTracker({
+      url: 'https://example.com',
+      transport,
+      transform: (data: object) => ({ ...data, extra: true })
+    })
+      .use(defineBatchTrack({ defaultBatchDelay: 200 }))
+      .make()
+
+    tracker.track({ event: 'click' })
+    vi.advanceTimersByTime(200)
+    await waitUntil(() => transport.mock.calls.length === 1)
+
+    // transform 拿到的输入是 batch-track 合并后的数组（不是逐条）：core 的
+    // onConsume 只在最终载荷上跑一次 transform。写死成逐条会静默产出
+    // 形状不同的载荷，后端解析随之失配。
+    expect(transport.mock.calls[0][0]).toEqual({ 0: { event: 'click' }, extra: true })
   })
 })

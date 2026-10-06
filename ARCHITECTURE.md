@@ -21,7 +21,7 @@
 
 ### 发布 / 私有边界
 
-- `packages/*`：当前 manifests 中均为非 `private` workspace；除 `@greypan/tsconfig` 外通常发布运行时代码，`tsconfig` 发布 JSON profiles。最终发布范围以各 package 的 `files`、`exports` 和 `publishConfig` 为准。
+- `packages/*`：当前 manifests 中均为非 `private` workspace；除 `@greypan/tsconfig` 外通常发布运行时代码，`tsconfig` 发布 JSON profiles。自撰 agent skills 不走 npm，以 GitHub 为唯一分发通道（实体在仓库根 `skills/`，`npx skills add pan-Z2l0aHVi/mono` 的发现面，见 `skills/README.md`）。最终发布范围以各 package 的 `files`、`exports` 和 `publishConfig` 为准。
 - `apps/*`：当前 manifests 中均为 `private` 集成或交付应用，不是公共 API 的权威来源。
 - `apps/interweave/frontend`：独立 private workspace，属于 Wails 前端集成面；Go host 位于 `apps/interweave`。
 
@@ -69,6 +69,6 @@
 | `@greypan/unplugin-web-components` | 模块转换支持 `.vue`/`.jsx`/`.tsx`，Vite 另经 `transformIndexHtml` 处理 Vite 构建入口 HTML；不扩展到 vanilla `.js`/`.ts` 或 `public/` 等非构建 HTML，除非先更新该边界的设计决策。HTML 注入只在 Vite；Webpack 只做源码转换。标签按 kebab-case 识别，大小写归一化，不支持驼峰/帕斯卡。公共行为经公共 API 加聚焦测试并核对两种 bundler adapter。 |
 | `@greypan/test-kit`                | 供其他包复用的 Vitest browser mode + MSW 基础设施；改 MSW 生命周期或 browser-mode 前先读 `docs/agents/testing.md`。tracker spec 共享浏览器全局变量和一个 service worker，保持文件串行；除非移除共享状态，不要重新启用文件并行。公共行为通过公共 API 添加聚焦测试，不把这些基础设施约束复制到消费包指令中。                                   |
 | `@greypan/deps-reload`             | 只用于开发期：监听本地 workspace 包 `dist/` 变化并整页刷新，不得当作生产构建行为。依赖 Node >=20.11 的 `import.meta.dirname`；修改目录定位或 watcher 生命周期时先核对源码与相关测试。                                                                                                                                                        |
-| `@greypan/tsconfig`                | 经 TypeScript `extends` 消费的 profile 配置包；改 profile 时检查所有继承者仍过根 `pnpm run check:code`。profile 层级与使用边界以 `packages/tsconfig/*.json` 为准。                                                                                                                                                                           |
+| `@greypan/tsconfig`                | 经 TypeScript `extends` 消费的 profile 配置包；改 profile 时检查所有继承者仍过根 `pnpm run check-code`。profile 层级与使用边界以 `packages/tsconfig/*.json` 为准。                                                                                                                                                                           |
 
 任务路由、按需查询工具与权威来源顺序以根 [`AGENTS.md`](AGENTS.md) 和 [`docs/agents/context.md`](docs/agents/context.md) 为权威，本文件不复制。

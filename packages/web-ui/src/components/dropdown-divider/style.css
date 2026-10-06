@@ -11,6 +11,6 @@
 
 .divider {
   height: 1px;
-  margin: 4px 8px;
+  margin: var(--wui-space-1, 4px) var(--wui-space-2, 8px);
   background-color: var(--wui-color-border, rgb(0 0 0 / 0.1));
 }

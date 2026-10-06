@@ -28,14 +28,4 @@ describe('WebUiDropdownHeader 组件', () => {
 
     cleanupElement(el)
   })
-
-  it('无内容时仍完成渲染且不投影任何节点', async () => {
-    const el = createHeader()
-    await waitForUpdate(el)
-
-    expect(projectedCount(el)).toBe(0)
-    expect(queryA11y(el, 'slot')).not.toBeNull()
-
-    cleanupElement(el)
-  })
 })

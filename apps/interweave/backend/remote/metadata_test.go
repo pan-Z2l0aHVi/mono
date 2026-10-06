@@ -29,12 +29,12 @@ func TestFetcher_FetchURL_SuccessHTML(t *testing.T) {
 	defer ts.Close()
 
 	fetcher := remote.NewFetcher()
-	meta, available, err := fetcher.FetchURL(context.Background(), ts.URL)
+	meta, reachability, err := fetcher.FetchURL(context.Background(), ts.URL)
 	if err != nil {
 		t.Fatalf("FetchURL error = %v", err)
 	}
-	if !available {
-		t.Fatalf("expected available = true, got false")
+	if reachability != remote.ReachabilityAvailable {
+		t.Fatalf("expected ReachabilityAvailable, got %v", reachability)
 	}
 	if meta.Title != "Example Page Title" {
 		t.Errorf("expected Title = 'Example Page Title', got %q", meta.Title)
@@ -58,11 +58,11 @@ func TestFetcher_FetchURL_NonHTML(t *testing.T) {
 	defer ts.Close()
 
 	fetcher := remote.NewFetcher()
-	meta, available, err := fetcher.FetchURL(context.Background(), ts.URL)
+	meta, reachability, err := fetcher.FetchURL(context.Background(), ts.URL)
 	if err != nil {
 		t.Fatalf("FetchURL error = %v", err)
 	}
-	if !available {
+	if reachability != remote.ReachabilityAvailable {
 		t.Fatalf("expected available = true for JSON response")
 	}
 	if meta.Title != "" {
@@ -81,11 +81,46 @@ func TestFetcher_FetchURL_TimeoutOrError(t *testing.T) {
 	defer cancel()
 
 	fetcher := remote.NewFetcher()
-	_, available, err := fetcher.FetchURL(ctx, ts.URL)
-	if available {
-		t.Errorf("expected available = false on timeout/cancellation")
+	_, reachability, err := fetcher.FetchURL(ctx, ts.URL)
+	if reachability != remote.ReachabilityUnknown {
+		t.Errorf("expected ReachabilityUnknown on timeout/cancellation, got %v", reachability)
 	}
 	if err == nil {
 		t.Errorf("expected error on timeout")
+	}
+}
+
+// 服务端明确拒绝与本次无法判定必须可区分：前者可以落库为失效，
+// 后者不能，否则断网会把整片 URL 资源误标为失效。
+func TestFetcher_FetchURL_ServerRejectionIsUnavailable(t *testing.T) {
+	for _, status := range []int{http.StatusNotFound, http.StatusInternalServerError} {
+		t.Run(http.StatusText(status), func(t *testing.T) {
+			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				w.WriteHeader(status)
+			}))
+			defer ts.Close()
+
+			_, reachability, err := remote.NewFetcher().FetchURL(context.Background(), ts.URL)
+			if err != nil {
+				t.Fatalf("FetchURL error = %v", err)
+			}
+			if reachability != remote.ReachabilityUnavailable {
+				t.Fatalf("expected ReachabilityUnavailable for %d, got %v", status, reachability)
+			}
+		})
+	}
+}
+
+func TestFetcher_FetchURL_ClosedServerIsUnknown(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
+	target := ts.URL
+	ts.Close()
+
+	_, reachability, err := remote.NewFetcher().FetchURL(context.Background(), target)
+	if err == nil {
+		t.Errorf("expected transport error after server close")
+	}
+	if reachability != remote.ReachabilityUnknown {
+		t.Fatalf("expected ReachabilityUnknown after server close, got %v", reachability)
 	}
 }

@@ -1,1 +1,1 @@
-mise exec -- pnpm task guard
+mise exec -- pnpm agent:task guard

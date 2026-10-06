@@ -1,8 +1,6 @@
 import { html, LitElement, unsafeCSS } from 'lit'
 import { customElement, property } from 'lit/decorators.js'
 
-// web-ui-button 必须注册（Rolldown tree-shake 副作用 import，引用类名阻止删除）
-import '@/components/button'
 import glass from '@/assets/glass.css?inline'
 import {
   buttonGroupContextKey,
