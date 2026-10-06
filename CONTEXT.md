@@ -74,7 +74,7 @@ workspace 清单、依赖草图与模块关系图见 [`ARCHITECTURE.md`](ARCHITE
 
 ## 关键 ADR
 
-表内只列仍承载现行决策的 ADR。多 Agent 编排层（Role 契约、执行体选择、Supervisor、编排账本与 handoff）连同其 skill 已整体退役：0010、0011、0015、0016、0017、0019、0020 的文档从索引移除，历史决策留在 git 历史里。编排不再是本仓的流程层——需求拆分与 task 派发由外部编排层（herdr-projects）承担，本仓只保留 task 级门禁：级别判定、状态机、冻结证据、review/approval 独立性与验证要求见 [`docs/agents/workflow.md`](docs/agents/workflow.md)，owner 与 worktree 唯一性边界见 [`docs/agents/worktrees.md`](docs/agents/worktrees.md)。仍列在表内的 0012 与 0014 的历史修订注记提到被退役的编排层，那些只是历史，不构成现行指引。另有一篇已作废、只留历史记录的 ADR 也不再入表：[0022](docs/adr/0022-release-flow-follows-herdr-projects.md)（发布通道形态）。它记录的形态与 herdr-projects 的流程冲突——那条流程以任务为交付单元，一条 task 一个 PR 直接合进 `main`，没有发布通道分支；仓库侧的责任面见 [`docs/agents/release.md`](docs/agents/release.md)。
+表内只列仍承载现行决策的 ADR。多 Agent 编排层（Role 契约、执行体选择、Supervisor、编排账本与 handoff）连同其 skill 已整体退役：0010、0011、0015、0016、0017、0019、0020 的文档从索引移除，历史决策留在 git 历史里。编排不再是本仓的流程层——需求拆分与 task 派发由外部编排层（herdr-projects）承担，本仓只保留 task 级门禁：级别判定、状态机、冻结证据、review/approval 独立性与验证要求见 [`docs/agents/workflow.md`](docs/agents/workflow.md)，owner 与 worktree 唯一性边界见 [`docs/agents/worktrees.md`](docs/agents/worktrees.md)。仍列在表内的 0012 与 0014 的历史修订注记提到被退役的编排层，那些只是历史，不构成现行指引。另有一篇 ADR 已整篇删除，同样不在表内：0022（发布通道形态）。它记录的形态与 herdr-projects 的流程冲突——那条流程以任务为交付单元，一条 task 一个 PR 直接合进 `main`，没有发布通道分支；仓库侧的责任面见 [`docs/agents/release.md`](docs/agents/release.md)。
 
 | ADR                                                                             | 决策                                                  | 何时读取                                                                  |
 | ------------------------------------------------------------------------------- | ----------------------------------------------------- | ------------------------------------------------------------------------- |

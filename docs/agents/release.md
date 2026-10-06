@@ -8,7 +8,7 @@ release 是发布场景下的操作程序，不是独立的 task 类型。**流�
 
 `.github/workflows/ci.yml` 的触发面是 `pull_request` 且 `branches: [main]`（触发面的单一声明在 `.github/scripts/ci-topology.mjs`，由 `scripts/ci-topology.test.mjs` 拿真实 YAML 逐字段比对）。在这个形态下每条 task 的 PR 都指向 `main`，所以**每条 PR 都拿得到 `check`**；`main` 的 ruleset（`strict required status`，唯一必需上下文 `check`）认的也是这一次运行。
 
-指向其它分支的 PR 拿不到 `check`，那是触发面的形状而不是配置疏漏。需要让某条 PR 也触发时，改 `ci.yml` 的 `branches:` 与 `ci-topology.mjs` 那一行，并重新评估成本。
+指向其它分支的 PR 拿不到 `check`，那是触发面的形状而不是配置疏漏。**本仓不把 `branches:` 扩到 `main` 之外**：每条 task 的 PR 都指向 `main`，没有需要额外覆盖的 base。真要加目标分支，同时改 `ci.yml` 的 `branches:` 与 `.github/scripts/ci-topology.mjs` 那一行（两者必须一致，`scripts/ci-topology.test.mjs` 会比对）。
 
 ## 合并方式
 
