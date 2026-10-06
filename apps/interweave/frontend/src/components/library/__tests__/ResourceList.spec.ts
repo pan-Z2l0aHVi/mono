@@ -1466,7 +1466,6 @@ describe('ResourceList：键盘导航与预览入口', () => {
     try {
       const container = mounted.container!
       expect(container.getAttribute('tabindex')).toBe('0')
-      // 默认活动行是首行
       expect(mounted.rows.map(row => row.getAttribute('tabindex'))).toEqual(['0', '-1', '-1'])
       // 页面级 focus 环只画在活动行与容器上
       expect(container.matches("[tabindex]:not([tabindex='-1'])")).toBe(true)
