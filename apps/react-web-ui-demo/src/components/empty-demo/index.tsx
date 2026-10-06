@@ -26,9 +26,9 @@ function EmptyDemo() {
 
       <h2>尺寸</h2>
       <div className="grid gap-3">
-        <web-ui-empty size="small" title="小尺寸空状态"></web-ui-empty>
-        <web-ui-empty size="medium" title="默认尺寸空状态"></web-ui-empty>
-        <web-ui-empty size="large" title="大尺寸空状态"></web-ui-empty>
+        <web-ui-empty size={40} title="小尺寸空状态"></web-ui-empty>
+        <web-ui-empty size={56} title="默认尺寸空状态"></web-ui-empty>
+        <web-ui-empty size={72} title="大尺寸空状态"></web-ui-empty>
       </div>
 
       <h2>仅标题</h2>

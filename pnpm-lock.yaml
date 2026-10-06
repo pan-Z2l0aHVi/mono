@@ -185,6 +185,9 @@ catalogs:
     '@iconify-json/bi':
       specifier: ^1.2.7
       version: 1.2.7
+    '@iconify-json/fluent':
+      specifier: ^1.2.58
+      version: 1.2.58
     '@iconify-json/heroicons':
       specifier: ^1.2.3
       version: 1.2.3
@@ -194,6 +197,9 @@ catalogs:
     '@iconify-json/lucide':
       specifier: ^1.2.126
       version: 1.2.129
+    '@iconify-json/mdi':
+      specifier: ^1.2.3
+      version: 1.2.3
     '@iconify-json/ooui':
       specifier: ^1.2.20
       version: 1.2.23
@@ -227,6 +233,9 @@ catalogs:
     '@tanstack/router-plugin':
       specifier: ^1.168.35
       version: 1.168.35
+    '@tanstack/vue-virtual':
+      specifier: ^3.13.39
+      version: 3.13.39
     '@testing-library/react':
       specifier: ^16.3.2
       version: 16.3.3
@@ -520,6 +529,9 @@ importers:
       '@greypan/web-ui':
         specifier: workspace:*
         version: link:../../../packages/web-ui
+      '@tanstack/vue-virtual':
+        specifier: 'catalog:'
+        version: 3.13.39(vue@3.5.42(typescript@6.0.3))
       '@unhead/vue':
         specifier: 'catalog:'
         version: 3.4.0(@oxc-project/types@0.148.0)(@voidzero-dev/vite-plus-core@0.3.2(@types/node@26.4.1)(jiti@2.7.0)(terser@5.51.2)(typescript@6.0.3)(yaml@2.9.0))(lightningcss@1.33.0)(oxc-parser@0.148.0)(rolldown@1.2.7)(rollup@4.63.1)(vue@3.5.42(typescript@6.0.3))(webpack@5.110.3(lightningcss@1.33.0)(postcss@8.5.28))
@@ -901,6 +913,9 @@ importers:
       '@iconify-json/bi':
         specifier: 'catalog:'
         version: 1.2.7
+      '@iconify-json/fluent':
+        specifier: 'catalog:'
+        version: 1.2.58
       '@iconify-json/heroicons':
         specifier: 'catalog:'
         version: 1.2.3
@@ -910,6 +925,9 @@ importers:
       '@iconify-json/lucide':
         specifier: 'catalog:'
         version: 1.2.129
+      '@iconify-json/mdi':
+        specifier: 'catalog:'
+        version: 1.2.3
       '@iconify-json/ooui':
         specifier: 'catalog:'
         version: 1.2.23
@@ -2039,6 +2057,9 @@ packages:
   '@iconify-json/bi@1.2.7':
     resolution: {integrity: sha512-IPz8WNxmLkH1I9msl+0Q4OnmjjvP4uU0Z61a4i4sqonB6vKSbMGUWuGn8/YuuszlReVj8rf+3gNv5JU8Xoljyg==}
 
+  '@iconify-json/fluent@1.2.58':
+    resolution: {integrity: sha512-KiWNF3LXZ4rvicH2MR8FKVN49MB++400rSiDpjVSP4V0GjsGViSPw5PJQ3pKDNPohL5wBW/ZDpo+rCYYFbmFkA==}
+
   '@iconify-json/heroicons@1.2.3':
     resolution: {integrity: sha512-n+vmCEgTesRsOpp5AB5ILB6srsgsYK+bieoQBNlafvoEhjVXLq8nIGN4B0v/s4DUfa0dOrjwE/cKJgIKdJXOEg==}
 
@@ -2047,6 +2068,9 @@ packages:
 
   '@iconify-json/lucide@1.2.129':
     resolution: {integrity: sha512-pa0ufllJOXTDIH2BxE/BtWQEf/x46/lINDWcmncICV1/52veZ7KSBzQaVh9xDpmjDs8QN4j2Ex/LWlSSveL3yw==}
+
+  '@iconify-json/mdi@1.2.3':
+    resolution: {integrity: sha512-O3cLwbDOK7NNDf2ihaQOH5F9JglnulNDFV7WprU2dSoZu3h3cWH//h74uQAB87brHmvFVxIOkuBX2sZSzYhScg==}
 
   '@iconify-json/ooui@1.2.23':
     resolution: {integrity: sha512-fydvBuq9Kg+Bw0ZhHIuQz0KMMlCp6ijRQoJxYJeqhnjgWnO0qr/s59Uzyw2P2YpA07PoZV5hbS6/kCuk9pEO+A==}
@@ -3092,9 +3116,17 @@ packages:
   '@tanstack/store@0.9.3':
     resolution: {integrity: sha512-8reSzl/qGWGGVKhBoxXPMWzATSbZLZFWhwBAFO9NAyp0TxzfBP0mIrGb8CP8KrQTmvzXlR/vFPPUrHTLBGyFyw==}
 
+  '@tanstack/virtual-core@3.17.11':
+    resolution: {integrity: sha512-+ILjvtHup6Y2hzQ6YzwMgX1Q+oQpxEGOXCEsCNaPoIP0VxMbizIBTmYTDtkerkIQS8/CbP1BRuyt8V/8BCsy1g==}
+
   '@tanstack/virtual-file-routes@1.162.0':
     resolution: {integrity: sha512-uhOeFyxLcU41HzvrxsGpiWdcMbScY1EDgbZ5K7DVRMYInbLYWAC0EA/kx9wXAoSM8q82bUG2hRl8+EAjE6XAbA==}
     engines: {node: '>=20.19'}
+
+  '@tanstack/vue-virtual@3.13.39':
+    resolution: {integrity: sha512-AG8sI+6nfrDvN6ixuHJL9LaJTf3//0V5VITZYW3UOaIuSVexnEzsbMu4LH/JhMfRTxwhUXPnLqkl1DlzkZbRtg==}
+    peerDependencies:
+      vue: ^2.7.0 || ^3.0.0
 
   '@testing-library/dom@10.4.1':
     resolution: {integrity: sha512-o4PXJQidqJl82ckFaXUeoAW+XysPLauYI43Abki5hABd853iMhitooc6znOnczgbTYmEP6U6/y1ZyKAIsvMKGg==}
@@ -8360,6 +8392,10 @@ snapshots:
     dependencies:
       '@iconify/types': 2.0.0
 
+  '@iconify-json/fluent@1.2.58':
+    dependencies:
+      '@iconify/types': 2.0.0
+
   '@iconify-json/heroicons@1.2.3':
     dependencies:
       '@iconify/types': 2.0.0
@@ -8369,6 +8405,10 @@ snapshots:
       '@iconify/types': 2.0.0
 
   '@iconify-json/lucide@1.2.129':
+    dependencies:
+      '@iconify/types': 2.0.0
+
+  '@iconify-json/mdi@1.2.3':
     dependencies:
       '@iconify/types': 2.0.0
 
@@ -9060,7 +9100,14 @@ snapshots:
 
   '@tanstack/store@0.9.3': {}
 
+  '@tanstack/virtual-core@3.17.11': {}
+
   '@tanstack/virtual-file-routes@1.162.0': {}
+
+  '@tanstack/vue-virtual@3.13.39(vue@3.5.42(typescript@6.0.3))':
+    dependencies:
+      '@tanstack/virtual-core': 3.17.11
+      vue: 3.5.42(typescript@6.0.3)
 
   '@testing-library/dom@10.4.1':
     dependencies:

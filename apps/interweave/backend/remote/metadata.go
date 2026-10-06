@@ -19,6 +19,19 @@ type URLMetadata struct {
 	FaviconURL  string `json:"favicon_url"`
 }
 
+// Reachability 区分「服务端明确拒绝」与「本次无法判定」：
+// 断网、DNS 失败或超时都不是链接失效的证据，三者塌缩成同一个 false 会误伤整个 URL 资源库。
+type Reachability int
+
+const (
+	// 本次请求无法判定（网络不可达、超时、DNS 或解析失败）。
+	ReachabilityUnknown Reachability = iota
+	// 服务端以 2xx/3xx 明确接受。
+	ReachabilityAvailable
+	// 服务端以 4xx/5xx 明确拒绝。
+	ReachabilityUnavailable
+)
+
 // 将远程读取限制为用户触发的一次短时操作。
 type Fetcher struct {
 	client *http.Client
@@ -34,22 +47,23 @@ func NewFetcher() *Fetcher {
 }
 
 // 以一次请求判断入口可达性；展示信息缺失不应否定可达性。
-func (f *Fetcher) FetchURL(ctx context.Context, targetURL string) (*URLMetadata, bool, error) {
+// 错误与 Reachability 分开表达：调用方需要区分「明确不可用」与「本次无法判定」。
+func (f *Fetcher) FetchURL(ctx context.Context, targetURL string) (*URLMetadata, Reachability, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, targetURL, nil)
 	if err != nil {
-		return nil, false, err
+		return nil, ReachabilityUnknown, err
 	}
 
 	req.Header.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 Interweave/1.0")
 
 	resp, err := f.client.Do(req)
 	if err != nil {
-		return nil, false, err
+		return nil, ReachabilityUnknown, err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 400 {
-		return nil, false, nil
+		return nil, ReachabilityUnavailable, nil
 	}
 
 	meta := &URLMetadata{}
@@ -57,14 +71,14 @@ func (f *Fetcher) FetchURL(ctx context.Context, targetURL string) (*URLMetadata,
 
 	// 非 HTML 内容仍可作为可用入口保留。
 	if !strings.Contains(strings.ToLower(contentType), "text/html") {
-		return meta, true, nil
+		return meta, ReachabilityAvailable, nil
 	}
 
 	// 限制元数据读取成本，避免将纳入流程变为内容抓取。
 	bodyReader := io.LimitReader(resp.Body, 1024*1024)
 	parseHTMLMetadata(bodyReader, targetURL, meta)
 
-	return meta, true, nil
+	return meta, ReachabilityAvailable, nil
 }
 
 func parseHTMLMetadata(r io.Reader, baseURLStr string, meta *URLMetadata) {

@@ -45,24 +45,21 @@ const draggableTopVisible = ref(false)
 const draggableHeadlessVisible = ref(false)
 
 // Nested 抽屉：声明式嵌套，无额外 API。后打开的是顶层，先打开的按 0.95^depth
-// 缩放并向内侧平移露出阶梯式卡片边缘。
+// 缩放并向内侧平移露出阶梯式卡片边缘；露边量按 A·ln(n) 递减。
 const nestedL1 = ref(false)
 const nestedL2 = ref(false)
 const nestedL3 = ref(false)
 const nestedL4 = ref(false)
 
-// 多宽度嵌套（500px → 360px → 260px）
 const diffWidthL1 = ref(false)
 const diffWidthL2 = ref(false)
 const diffWidthL3 = ref(false)
 
-// 乱序宽度嵌套（窄 300px → 宽 520px → 极窄 240px → 中宽 400px）
 const randomWidthL1 = ref(false)
 const randomWidthL2 = ref(false)
 const randomWidthL3 = ref(false)
 const randomWidthL4 = ref(false)
 
-// 同级（非 DOM 嵌套）自动层叠
 const siblingL1 = ref(false)
 const siblingL2 = ref(false)
 const siblingL3 = ref(false)
@@ -292,7 +289,9 @@ const siblingL3 = ref(false)
     </div>
     <p class="mb-3 text-sm text-(--wui-color-text-secondary)">
       同组件声明式嵌套即 nested：后打开的位于顶层全尺寸，下层按 0.95<sup>n</sup>
-      缩放并向内侧平移露出阶梯式卡片边缘；多层宽度不同或乱序交错时，自动计算上方最大宽度进行补偿，确保所有底层的左缘均不会被上方更宽的抽屉遮挡；Escape
+      缩放并向内侧平移，露出阶梯式卡片边缘。露边宽度按对数曲线分配：总堆叠宽度
+      <code>A·ln(n)</code
+      >，单层不动，每多一层只多露一点，层数增加时不再线性膨胀。多层宽度不同或乱序交错时，自动计算上方最大宽度进行补偿，确保所有底层的左缘均不会被上方更宽的抽屉遮挡；Escape
       与遮罩点击只作用于最顶层，逐层退出。
     </p>
     <web-ui-drawer
@@ -469,7 +468,7 @@ const siblingL3 = ref(false)
     <h2>同级自动层叠</h2>
     <p class="mb-3 text-sm text-gray-500">
       多个 drawer 在同级 DOM 挂载，依次打开后由内部 <code>defineNestedDrawerLayers</code> 自动管理层序——先开的按
-      0.95^depth 缩放并向内侧偏移，后开的全尺寸在顶层。
+      0.95^depth 缩放并向内侧偏移（偏移量按 <code>A·ln(n)</code> 对数分配），后开的全尺寸在顶层。
     </p>
     <div class="mb-3 flex gap-2">
       <web-ui-button @click="siblingL1 = true">打开 Drawer 1</web-ui-button>

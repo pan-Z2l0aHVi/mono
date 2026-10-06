@@ -1,8 +1,10 @@
-import { html, LitElement, type PropertyValues, unsafeCSS } from 'lit'
+import { html, LitElement, nothing, type PropertyValues, unsafeCSS } from 'lit'
 import { customElement, property, state } from 'lit/decorators.js'
 
+import '@/components/icon'
 import '@/components/button'
 import glass from '@/assets/glass.css?inline'
+import { oouiClose } from '@/icons'
 import { UserChangeController } from '@/shared/events/user-change'
 import { dispatchOpenChangeEvent } from '@/shared/open-state'
 import { defineNativeDialogPresence } from '@/shared/overlay/native-dialog-presence'
@@ -16,6 +18,7 @@ export class WebUiDialog extends LitElement {
   static override styles = [unsafeCSS(glass), unsafeCSS(style)]
 
   @property({ type: Boolean, reflect: true }) open = false
+  @property({ type: Boolean, reflect: true }) closable = false
   @property({ type: Boolean, reflect: true, attribute: 'no-scroll-lock' }) noScrollLock = false
   @property({ type: Boolean, reflect: true, attribute: 'no-backdrop-close' }) noBackdropClose = false
   @property({ type: Boolean, reflect: true, attribute: 'no-escape-close' }) noEscapeClose = false
@@ -36,14 +39,7 @@ export class WebUiDialog extends LitElement {
    * 自己表达关闭语义（controlled 只派发请求）。
    */
   private readonly _overlay = defineOpenOverlay().make({
-    requestClose: () => {
-      if (this.controlled) {
-        this.emitOpenChange(false)
-        return
-      }
-      this._userOpenChange.mark()
-      this.close()
-    },
+    requestClose: () => this._closeFromUser(),
     isConnected: () => this.isConnected
   })
   /** 当前开启会话的句柄；未开启时为 null。查询与惰性同步走它。 */
@@ -66,6 +62,20 @@ export class WebUiDialog extends LitElement {
     if (props.has('open')) {
       if (this._userOpenChange.consume()) this.emitOpenChange()
       this._presence.sync(this.open)
+      if (this.open) {
+        // presence.sync 内的 showModal() 把 dialog 提升进 top layer。双击手势本身
+        // 留下的活选区会被浏览器拿去和提升后的新布局重新解析，结果选区落到刚挂载的
+        // dialog 正文上。脆弱的是「手势来源的活选区」，不是 dblclick 的判定窗口：把
+        // 打开推迟 250ms（早过双击判定）仍然复现。选区由浏览器在 showModal() 调用
+        // 内部生成：脚本没有任何 Selection API 调用，在 dblclick 上 preventDefault
+        // 也拦不住。
+        //
+        // 实测（Chromium）showModal() 不会动打开前已经存在的选区，所以这一次清理
+        // 同时也覆盖「先选中页面文本、再打开」的情况——modal 打开后被选中的内容挡在
+        // 遮罩后面本来也已不可用。这里只清文档选区，不动 user-select，浮层内正文
+        // 仍可正常拖选。
+        window.getSelection()?.removeAllRanges()
+      }
       // 原生 dialog 登记为开启态浮层：挂在它上面的 portal 面板成为本层后代，
       // Escape 仲裁据此判出最内层（issue #120 Block 1）。
       const dialog = this.dialog
@@ -145,23 +155,21 @@ export class WebUiDialog extends LitElement {
    * 「打开态被移出文档再接回」两例立刻转红，断言正是 `dispatchEvent(cancel) === false`。
    */
   private handleCancel(e: Event) {
-    // 子控件（例如 file input）可能派发冒泡的 cancel；只让 native dialog 自身的 cancel 关闭。
     if (e.target !== e.currentTarget) return
 
-    // 保留 top layer 直到视觉退场完成，避免原生关闭跳过退出动画。
     e.preventDefault()
     if (this.noEscapeClose) return
-    if (this.controlled) {
-      this.emitOpenChange(false)
-      return
-    }
-    this._userOpenChange.mark()
-    this.close()
+    this._closeFromUser()
   }
 
   private handleBackdropClick(e: MouseEvent) {
     if (e.target !== (e.currentTarget as HTMLDialogElement)) return
     if (this.noBackdropClose) return
+    this._closeFromUser()
+  }
+
+  /** 用户发起的关闭入口（Escape、遮罩点击、关闭按钮）共用一条路径。 */
+  private readonly _closeFromUser = () => {
     if (this.controlled) {
       this.emitOpenChange(false)
       return
@@ -213,6 +221,26 @@ export class WebUiDialog extends LitElement {
     this._hasBody = e.target.assignedElements().length > 0
   }
 
+  /**
+   * 两种内容模式的关闭按钮位置不同：`inline` 参与 `.title-row` 的 flex 布局，
+   * `floating` 绝对定位到卡片右上角。分开命名而不是靠 CSS 就近覆盖，
+   * 是为了让每种模式的几何只由一个 class 决定。
+   */
+  private _renderCloseButton(modifier: 'inline' | 'floating') {
+    return html`
+      <web-ui-button
+        class="wui-dialog-close wui-dialog-close-${modifier}"
+        @click=${this._closeFromUser}
+        aria-label="关闭"
+        variant="secondary"
+        icon
+        size="26"
+      >
+        <web-ui-icon size="14" .icon=${oouiClose}></web-ui-icon>
+      </web-ui-button>
+    `
+  }
+
   override render() {
     return html`
       <dialog
@@ -224,10 +252,22 @@ export class WebUiDialog extends LitElement {
         <div class="wui-dialog-body wui-glass">
           ${
             this._hasBody
-              ? html`<slot name="body" @slotchange=${this._onBodySlotChange}></slot>`
+              ? html`
+                  <slot name="body" @slotchange=${this._onBodySlotChange}></slot>
+                  ${this.closable ? this._renderCloseButton('floating') : nothing}
+                `
               : html`
                   <slot name="body" @slotchange=${this._onBodySlotChange} hidden></slot>
-                  <div class="title"><slot name="title"></slot></div>
+                  ${
+                    this.closable
+                      ? html`
+                          <div class="title-row">
+                            <div class="title"><slot name="title"></slot></div>
+                            ${this._renderCloseButton('inline')}
+                          </div>
+                        `
+                      : html`<div class="title"><slot name="title"></slot></div>`
+                  }
                   <div class="desc"><slot></slot></div>
                   <div class="wui-dialog-footer"><slot name="footer"></slot></div>
                 `

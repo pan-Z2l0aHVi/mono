@@ -74,24 +74,25 @@ workspace 清单、依赖草图与模块关系图见 [`ARCHITECTURE.md`](ARCHITE
 
 ## 关键 ADR
 
-| ADR                                                                             | 决策                                                  | 何时读取                                                                  |
-| ------------------------------------------------------------------------------- | ----------------------------------------------------- | ------------------------------------------------------------------------- |
-| [0001](docs/adr/0001-ci-pipeline.md)                                            | CI Pipeline                                           | 修改验证、Changesets 或发布门控（`vp staged` 已被 ADR-0014 退役，需连读） |
-| [0002](docs/adr/0002-build-toolchain.md)                                        | Build Toolchain                                       | 修改 Vite Plus、构建或测试工具链（暂存修复已被 ADR-0014 退役，需连读）    |
-| [0003](docs/adr/0003-release-planes.md)                                         | Release Planes                                        | 修改 npm/Wails 发布流程                                                   |
-| [0004](docs/adr/0004-progressive-agent-context-architecture.md)                 | Agent Context Architecture                            | 修改 agent context、rules、skills 或 instruction system                   |
-| [0005](docs/adr/0005-web-ui-component-architecture.md)                          | Web UI Component Architecture                         | 修改 web-ui 组件技术选型、公共契约、事件模型、框架类型适配或 icon 系统    |
-| [0006](docs/adr/0006-web-ui-composition-rendering-architecture.md)              | Web UI Composition & Rendering Architecture           | 修改 overlay 交互/定位、布局层级、design token 或 @lit/context 组合模式   |
-| [0007](docs/adr/0007-plugin-system.md)                                          | Plugin System                                         | 设计可组合状态或行为模块                                                  |
-| [0008](docs/adr/0008-interweave-backend-architecture.md)                        | Interweave Backend Architecture                       | 修改 interweave Go 模块、Wails Service 或 frontend bindings               |
-| [0009](docs/adr/0009-interweave-sqlite-persistence-wal.md)                      | SQLite Persistence WAL                                | 修改 interweave 持久化层或 SQLite 并发模型                                |
-| [0010](docs/adr/0010-agent-role-orchestration.md)                               | Agent Role Orchestration                              | 修改角色分工、编排路由或 handoff 契约                                     |
-| [0011](docs/adr/0011-agent-model-binding-and-effort.md)                         | Agent Model Binding & Effort                          | 修改角色-执行体绑定（分档已被 ADR-0014 取消，需连读）                     |
-| [0012](docs/adr/0012-instruction-risk-tiering-and-pre-authorized-operations.md) | Instruction Risk Tiering & Pre-authorized Operations  | 修改预授权操作（风险分级表与约束预算基线已被 ADR-0014 取代/退役，需连读） |
-| [0013](docs/adr/0013-web-ui-theme-transition.md)                                | Web UI Theme Transition                               | 修改 `web-ui-theme` 过渡 API、View Transition 生命周期或降级语义          |
-| [0014](docs/adr/0014-task-system-v2.md)                                         | Task 体系 v2（level 状态机、guard、checks、playbook） | 修改 `scripts/task.mjs`、任务级别 gate、pre-commit 门禁或 task state 布局 |
-| [0015](docs/adr/0015-role-contracts-in-herdr-agents-skill.md)                   | Role Contracts In Herdr Agents Skill                  | 修改 Role Contract、skill 出处标记或 herdr 编排时序                       |
-| [0016](docs/adr/0016-implementation-supervision.md)                             | Implementation Supervision                            | 修改实施期 Supervisor、协作报告或 task state 边界                         |
+表内只列仍承载现行决策的 ADR。多 Agent 编排层（Role 契约、执行体选择、Supervisor、编排账本与 handoff）连同其 skill 已整体退役：0010、0011、0015、0016、0017、0019、0020 的文档从索引移除，历史决策留在 git 历史里。编排不再是本仓的流程层——需求拆分与 task 派发由外部编排层（herdr-projects）承担，本仓只保留 task 级门禁：级别判定、状态机、冻结证据、review/approval 独立性与验证要求见 [`docs/agents/workflow.md`](docs/agents/workflow.md)，owner 与 worktree 唯一性边界见 [`docs/agents/worktrees.md`](docs/agents/worktrees.md)。仍列在表内的 0012 与 0014 的历史修订注记提到被退役的编排层，那些只是历史，不构成现行指引。
+
+| ADR                                                                             | 决策                                                          | 何时读取                                                                  |
+| ------------------------------------------------------------------------------- | ------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| [0001](docs/adr/0001-ci-pipeline.md)                                            | CI Pipeline                                                   | 修改验证、Changesets 或发布门控（`vp staged` 已被 ADR-0014 退役，需连读） |
+| [0002](docs/adr/0002-build-toolchain.md)                                        | Build Toolchain                                               | 修改 Vite Plus、构建或测试工具链（暂存修复已被 ADR-0014 退役，需连读）    |
+| [0003](docs/adr/0003-release-planes.md)                                         | Release Planes                                                | 修改 npm/Wails 发布流程                                                   |
+| [0004](docs/adr/0004-progressive-agent-context-architecture.md)                 | Agent Context Architecture                                    | 修改 agent context、rules、skills 或 instruction system                   |
+| [0005](docs/adr/0005-web-ui-component-architecture.md)                          | Web UI Component Architecture                                 | 修改 web-ui 组件技术选型、公共契约、事件模型、框架类型适配或 icon 系统    |
+| [0006](docs/adr/0006-web-ui-composition-rendering-architecture.md)              | Web UI Composition & Rendering Architecture                   | 修改 overlay 交互/定位、布局层级、design token 或 @lit/context 组合模式   |
+| [0007](docs/adr/0007-plugin-system.md)                                          | Plugin System                                                 | 设计可组合状态或行为模块                                                  |
+| [0008](docs/adr/0008-interweave-backend-architecture.md)                        | Interweave Backend Architecture                               | 修改 interweave Go 模块、Wails Service 或 frontend bindings               |
+| [0009](docs/adr/0009-interweave-sqlite-persistence-wal.md)                      | SQLite Persistence WAL                                        | 修改 interweave 持久化层或 SQLite 并发模型                                |
+| [0012](docs/adr/0012-instruction-risk-tiering-and-pre-authorized-operations.md) | Instruction Risk Tiering & Pre-authorized Operations          | 修改预授权操作（风险分级表与约束预算基线已被 ADR-0014 取代/退役，需连读） |
+| [0013](docs/adr/0013-web-ui-theme-transition.md)                                | Web UI Theme Transition                                       | 修改 `web-ui-theme` 过渡 API、View Transition 生命周期或降级语义          |
+| [0014](docs/adr/0014-task-system-v2.md)                                         | Task 体系 v2（level 状态机、guard、checks、playbook）         | 修改 `scripts/task.mjs`、任务级别 gate、pre-commit 门禁或 task state 布局 |
+| [0018](docs/adr/0018-task-state-in-tmpdir.md)                                   | Task state 落在系统临时目录                                   | 修改 task state 落点、跨仓库列举范围或重启后的恢复规则                    |
+| [0021](docs/adr/0021-orchestration-layer-moved-to-herdr-projects.md)            | 编排层承接需求拆分与 task 派发                                | 修改 worktree 分工、T0 判据或 T0 的 review 形态                           |
+| [0022](docs/adr/0022-release-flow-follows-herdr-projects.md)                    | 发布流程随编排层移交后的形态（通道归属、CI 触发面、合并方式） | 修改 `ci.yml` 触发面、发布通道归属、合并方式或 release playbook           |
 
 ## Interweave 产品与领域词汇
 
@@ -123,7 +124,8 @@ _Avoid_: 添加时自动去重、重复定位、隐式合并或转移 Source
 
 **Source 可用性**:
 以 `available: boolean` 持久化：`true` 为可用，`false` 为不可用。新建 URL 必须在 10 秒总时限内完成基础元数据抓取再写入；失败或超时仍写入为 `false`，非 HTML 或展示元数据缺失不影响 `true`，后续非元数据数据加载不阻塞写入。新建文件先做轻量 `stat`，成功或失败分别写入 `true` 或 `false`，但都纳入且不读内容或计算 hash。
-_Avoid_: `unknown`、独立状态枚举、以元数据完整性替代可用性、后台状态探测
+已登记的 file source 只监听其所在目录：`available` 随文件增删自动翻转并恢复，媒体读取确认不可达时立即改判为 `false`。URL 不做监听，只在用户打开详情时按需重新判定；该次判定无法得出结论时保留原值。
+_Avoid_: `unknown`、独立状态枚举、以元数据完整性替代可用性、后台轮询探测、把无法判定写成不可用
 
 **语义标签（Semantic Tag）**:
 用户赋予 Resource 的扁平内容意义。每个 Tag 有不可变内部 `tag_id`；名称经标准化后不可变；标准名称相同即自动复用；没有别名、全局管理面板或自动语义合并；操作仅在单个 Resource 上增删 Tagging。标签无父子、路径、继承或显式标签关系；Resource 的关联仅从共享语义标签派生。

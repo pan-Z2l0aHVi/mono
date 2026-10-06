@@ -5,6 +5,7 @@ import '@/components/icon'
 import '@/components/button'
 import glass from '@/assets/glass.css?inline'
 import { oouiClose } from '@/icons'
+import { ElementHeightController } from '@/shared/element-height'
 import { UserChangeController } from '@/shared/events/user-change'
 import { attachDragGesture, dampOverscroll, type DragGestureHandle } from '@/shared/gesture'
 import { normalizeLiteral } from '@/shared/normalize'
@@ -58,6 +59,49 @@ const DRAG_REQUEST_WINDOW_MS = 120
 const BACKDROP_TAP_DISTANCE = 10
 
 /*
+ * header / footer 让开给「可点控件」的选择器（上下 placement 专用）。
+ *
+ * 上下 placement 的端头整块可拖后，让开靠**逐个控件**在事件层判断，不靠几何切割：
+ * 切割要测量每个控件的位置，控件一改位置就失效；逐个控件让开是结构性的。
+ *
+ * 判据是「这个元素自己就代表一次用户操作」，分三类：
+ *   - 原生可交互元素与原生可点容器（button / input / label / a[href] / summary …）
+ *   - 显式可编辑（contenteditable）
+ *   - 交互语义 role（组件库自绘的 checkbox、tab、menuitem 等没有原生标签）
+ * 另加「作者显式给了可聚焦 tabindex」：自定义控件常只靠 tabindex 暴露可操作性。
+ *
+ * 方向是**保守让开**：判不出来就让开。让开的代价是那一小块起不了拖（用户多点一下），
+ * 判错的代价是控件失效（A6 那条回归），两者不对等。
+ */
+const HEADER_FOOTER_INTERACTIVE_SELECTOR = [
+  'button',
+  'input',
+  'select',
+  'textarea',
+  'label',
+  'summary',
+  'a[href]',
+  'audio[controls]',
+  'video[controls]',
+  '[contenteditable]:not([contenteditable="false"])',
+  '[tabindex]:not([tabindex="-1"])',
+  '[role="button"]',
+  '[role="link"]',
+  '[role="checkbox"]',
+  '[role="switch"]',
+  '[role="radio"]',
+  '[role="tab"]',
+  '[role="menuitem"]',
+  '[role="menuitemcheckbox"]',
+  '[role="menuitemradio"]',
+  '[role="option"]',
+  '[role="textbox"]',
+  '[role="combobox"]',
+  '[role="slider"]',
+  '[role="spinbutton"]'
+].join(',')
+
+/*
  * 释放后的收尾（弹回打开位 / 滑出到闭合位）由 CSS transition 接管（issue #123）：
  * 拖拽期间内联 transform + `transition: none`，松手时把终值与过渡参数写入内联并在
  * 同一次样式重算里解除抑制，回弹即唯一的一次 CSS 过渡。全程无 `element.animate()`、
@@ -106,6 +150,31 @@ if (typeof CSS !== 'undefined' && 'registerProperty' in CSS) {
       syntax: '<length>',
       inherits: true,
       initialValue: '8px'
+    })
+  } catch {
+    // 已注册（如 HMR 重复执行）时忽略
+  }
+  /*
+   * 嵌套层叠对数曲线的基准 A（shift = A · ln(depth + 1)）：注册为 <length> 后
+   * 桌面基准只有这一个真相源，JS 从 computed style 读到的永远是确定值；
+   * 窄视口基准由 style.css 的媒体查询覆盖同一 token。消费方写 unitless 的
+   * `0` 会在计算值阶段归一成 `0px`（层叠露边归零，而不是让 ln 项算出 NaN）。
+   *
+   * A = 43.2px 来自视觉 pass：桌面基准由 54px 调小两成，四层等宽 320px 时逐层露边
+   * 29.94 / 17.52 / 12.43px，总堆叠宽 59.89px（54px 一档是 37.43 / 21.90 / 15.53，
+   * 总宽 74.86px）。
+   *
+   * 取值由**最里层**那一跳决定：对数曲线压得最狠的正是第四层，它只有
+   * A·ln(4/3) = 0.288A。12.43px 仍略高于旧的 12px 线性步进，但余量已经收窄到
+   * 3.5%——继续下调会让最里层那一条边与上一条边难以分辨，A=54 时这一跳有 15.53px，
+   * 余量 29%。若还要更小的基准，应先改 ln 的压缩比而不是只降 A。
+   */
+  try {
+    CSS.registerProperty({
+      name: '--wui-drawer-nested-peek-base',
+      syntax: '<length>',
+      inherits: true,
+      initialValue: '43.2px'
     })
   } catch {
     // 已注册（如 HMR 重复执行）时忽略
@@ -186,6 +255,37 @@ export class WebUiDrawer extends LitElement {
   private _hasHeaderSlot = false
   private _hasFooterSlot = false
   private readonly _userOpenChange = new UserChangeController()
+  /*
+   * 上下 placement 的拖拽热区要让开头尾两节（见 style.css 的 --wui-internal-drawer-* 说明）：
+   * `bottom` 贴顶边、热区让开 header，`top` 贴底边、热区让开 footer。让开的量就是那一节的
+   * border-box 高度，写成 host 上的自定义属性交给 CSS 去算偏移——样式侧因此不必知道
+   * header / footer 的存在与高度，两条 placement 规则各只读自己的那个属性。
+   *
+   * 用 offsetHeight 而非 CSS 侧推导：`[hidden]` 的节天然是 0（让位量归零，热区回到面板边缘），
+   * 而「header 存在但高度为 0」与「没有 header」在布局上是同一件事，不需要额外的存在性开关。
+   * 高度是动态的（consumer 的 padding、窄屏断点改写、slotted 内容换行），所以观察而非读取一次。
+   */
+  private readonly _headerHeight = new ElementHeightController(this, '.wui-drawer-header', height =>
+    this._setAvoidance('--wui-internal-drawer-header-inset', height)
+  )
+  private readonly _footerHeight = new ElementHeightController(this, '.wui-drawer-footer', height =>
+    this._setAvoidance('--wui-internal-drawer-footer-inset', height)
+  )
+
+  /*
+   * 让位量 = 该节高度 + 一点呼吸间距，且**只在真有那一节时**才加间距。
+   *
+   * 间距写成属性值里的 calc 而不是让 CSS 无条件相加，是因为「没有 header」这一态必须精确等于
+   * 修复前的几何（让位量 0，热区顶边贴面板顶边）。若让间距无条件生效，无 header 的抽屉会
+   * 平移 4px，胶囊相对内缘的既有内缩（drag-bar-inset.browser.spec.ts 钉住的关系）跟着变，
+   * 这条护栏就不该为了新方案让步。间距本身仍以 token 暴露，真机调参不必回滚代码。
+   */
+  private _setAvoidance(property: string, height: number) {
+    this.style.setProperty(
+      property,
+      height > 0 ? `calc(${height}px + var(--wui-drawer-drag-zone-inset, var(--wui-space-1, 4px)))` : '0px'
+    )
+  }
   private readonly _scrollLock = defineScrollLockLease().make()
   private readonly _presence = defineNativeDialogPresence().make({
     getDialog: () => this.dialog,
@@ -299,6 +399,51 @@ export class WebUiDrawer extends LitElement {
     this._dragAwaitWriteback = false
   }
 
+  /**
+   * 上下 placement 的 header / footer 自己接拖拽手势。
+   *
+   * 为什么不是「把热区铺到 header 上」：那样 header 里的控件会被透明命中层吞掉，
+   * 正是 A6 修掉的那条缺陷。这里改成事件层让开——控件照常收自己的事件，拖拽只在
+   * 「落点不是可点控件」时起手。
+   *
+   * 三道闸门任一不成立就不接管：
+   * 1. placement 必须是上下。左右 placement 的拖拽轴是 x，端头在竖边上，header
+   *    既不在可抓边缘上也不该起手（R4 的行为侧）。
+   * 2. 下层嵌套抽屉整套拖拽提示一起退场。热区与热边靠 CSS 的 pointer-events 退场，
+   *    事件层必须自己判同一条，否则 header 会成为唯一一条漏网的入口。
+   * 3. 落点路径里有可点控件就让开——控件优先于「这一块可拖」。
+   */
+  private _handleSectionDragPointerDown(e: PointerEvent) {
+    if (this._placement !== 'top' && this._placement !== 'bottom') return
+    const section = (e.currentTarget as HTMLElement | null)?.closest('.wui-drawer-header, .wui-drawer-footer')
+    const isHeader = section?.classList.contains('wui-drawer-header') ?? false
+    // 只有**贴着可抓边缘**的那一节接手势：bottom 的 header、top 的 footer。
+    // 另一节在面板远端，在那里起手却朝闭合方向拖是反直觉的，也不属于「端头」——
+    // 与热区只让开同一侧那节是同一条边界。
+    if (this._placement === 'bottom' && !isHeader) return
+    if (this._placement === 'top' && isHeader) return
+    // 下层嵌套抽屉整套拖拽提示一起退场：热区与热边靠 CSS 的 pointer-events 退场，
+    // 事件层必须判同一条，否则这里是唯一一条漏网的入口。
+    if (this.dialog?.classList.contains('is-nested-lower')) return
+    if (this._isInteractivePath(e)) return
+    this._handleDragPointerDown(e)
+  }
+
+  /**
+   * 按下路径上是否出现可点控件。
+   *
+   * 走 composedPath 而不是 event.target：消费侧 slotted 控件与组件库自绘控件都各有
+   * shadow root，target 只给出最内层那个节点，沿 parentElement 上行会在 shadow 边界
+   * 断掉，控件自己那层反而看不见。
+   */
+  private _isInteractivePath(e: PointerEvent): boolean {
+    const path = typeof e.composedPath === 'function' ? e.composedPath() : [e.target]
+    for (const node of path) {
+      if (node instanceof Element && node.matches(HEADER_FOOTER_INTERACTIVE_SELECTOR)) return true
+    }
+    return false
+  }
+
   private _handleDragPointerDown(e: PointerEvent) {
     if (!this.open || !this.draggable || this._isDragging()) return
     // 多点触控的副指针（isPrimary 明确为 false）不参与手势。
@@ -348,7 +493,7 @@ export class WebUiDrawer extends LitElement {
         this._dragOffset = this._dragInitialOffset + dampOverscroll(dragDelta)
         this._trackSwipeCancel(this._dragAxis === 'x' ? info.clientX : info.clientY, dragDelta)
 
-        // 达到关闭阈值时胶囊变 accent 色作视觉确认（ADR-0027）。与距离分支共用同一量
+        // 达到关闭阈值时胶囊换成更实的中性灰作视觉确认（ADR-0027）。与距离分支共用同一量
         //（自抓取瞬间起的净位移）与同一阈值，视觉确认与实际判定不会漂移。
         const dragSize = this._measureDragSize()
         const dragDisplacement = this._dragOffset - this._dragInitialOffset
@@ -605,8 +750,7 @@ export class WebUiDrawer extends LitElement {
 
   override connectedCallback() {
     super.connectedCallback()
-    this._hasHeaderSlot = Array.from(this.children).some(child => child.getAttribute?.('slot') === 'header')
-    this._hasFooterSlot = Array.from(this.children).some(child => child.getAttribute?.('slot') === 'footer')
+    this._resyncSlotPresence()
     // 重挂载对账：断连时 presence、滚动锁、nested 层序与登记都已被撤销，而
     // `open` 未变化时 `updated()` 不会补跑任何 sync 分支。首次连接时 shadow 尚未
     // 渲染、`this.dialog` 为 null，三种情况都直接跳过；打开态的首次进入仍由
@@ -646,6 +790,36 @@ export class WebUiDrawer extends LitElement {
     if (!dialog) return
     this._handle = this._overlay.claim(dialog, { ancestryFrom: this })
     this._syncDragInert()
+  }
+
+  /**
+   * 对账 header / footer slot 的有无，**只在真的变了时排一次更新**。
+   *
+   * 排更新是这条对账不可省的一半：`showHeader` 与 footer 的 `?hidden` 只在 render 里求值，
+   * 而 Lit 的 `connectedCallback` 只做 `enableUpdating(true)` 与 `setConnected(true)`，本身不排
+   * 更新。两条 slotchange 处理器也接不住这条路径——slotchange 只在**分配集合**变化时派发，
+   * 断连期间清空槽位内容时宿主节点本身没动，事件不触发（Chromium 实测）。
+   *
+   * 漏掉这一半的后果：断连前有 footer、重连时已清空的抽屉留下一节空的 footer。它在 style.css
+   * 的 padding 下仍有真实高度（实测 32px），于是底部一条点不动的死带，拖拽热区的让位量也照
+   * 它算而不归零。
+   *
+   * 判据取 light DOM 子节点而非 `slot.assignedNodes()`：首次连接时 shadow 尚未渲染，slot 元素
+   * 还不存在，那一侧会直接跳过（首次连接的 presence 由 `firstUpdated()` 与 slotchange 兜底）；
+   * 这里要的正是重连对账——shadow root 跨断连保留，两侧都可用，但只有子节点扫描不依赖渲染
+   * 时序。「只在真变了才排」与两条 slotchange 处理器同一纪律，避免每次重连都多一次空渲染。
+   */
+  private _resyncSlotPresence() {
+    const hasHeader = this._hasSlottedChild('header')
+    const hasFooter = this._hasSlottedChild('footer')
+    if (hasHeader === this._hasHeaderSlot && hasFooter === this._hasFooterSlot) return
+    this._hasHeaderSlot = hasHeader
+    this._hasFooterSlot = hasFooter
+    this.requestUpdate()
+  }
+
+  private _hasSlottedChild(name: 'header' | 'footer') {
+    return Array.from(this.children).some(child => child.getAttribute('slot') === name)
   }
 
   private _checkSlotContent(name: string) {
@@ -706,6 +880,18 @@ export class WebUiDrawer extends LitElement {
       }
       this._presence.sync(this.open)
       if (this.open) {
+        // presence.sync 内的 showModal() 把 dialog 提升进 top layer。双击手势本身
+        // 留下的活选区会被浏览器拿去和提升后的新布局重新解析，结果选区落到刚挂载的
+        // drawer 正文上。脆弱的是「手势来源的活选区」，不是 dblclick 的判定窗口：把
+        // 打开推迟 250ms（早过双击判定）仍然复现。选区由浏览器在 showModal() 调用
+        // 内部生成：脚本没有任何 Selection API 调用，在 dblclick 上 preventDefault
+        // 也拦不住。
+        //
+        // 实测（Chromium）showModal() 不会动打开前已经存在的选区，所以这一次清理
+        // 同时也覆盖「先选中页面文本、再打开」的情况——modal 打开后被选中的内容挡在
+        // 遮罩后面本来也已不可用。这里只清文档选区，不动 user-select，抽屉内正文
+        // 仍可正常拖选；拖拽手柄与开关时序不受影响。
+        window.getSelection()?.removeAllRanges()
         // presence.sync 已同步发起 showModal：此刻 dialog.open 为真，计数出正确
         // 的层序 depth 并驱动下层缩放。直接同步 register，不等待 is-visible
         //（那要再等一帧，且打开过渡期间上层关系已应确立）。
@@ -891,11 +1077,28 @@ export class WebUiDrawer extends LitElement {
     const dialogLabelledBy = !dialogLabel && !this.headless && showHeader ? 'wui-drawer-heading' : nothing
 
     // 拖拽热区：仅在打开且 draggable 时渲染；胶囊 + 加宽命中条贴在抽屉内缘。
+    // 胶囊是热区的**兄弟节点**而非后代：热区要让开 header / footer（见 style.css），
+    // 胶囊作为后代会连带继承那份让位量，被一起推离面板边缘。两者都是 dialog 的直接子节点，
+    // 胶囊因此相对 dialog 定位、恒贴可抓取边缘，热区则继续为端头上的按钮让位。
+    //
+    // 端头热边补上解耦留下的空档：胶囊贴回边缘后就不再落在热区的让开区里
+    // （bottom + header 实测胶囊带 [8,12]、热区带 [60,80]），那一段若没有命中层，
+    // 胶囊就成了一条按不下去、悬停不亮的死装饰——R1 与 R3 在几何上本就不可同满足，
+    // 结构解耦只让两者不再互相位移，命中层必须另给。热边只在上下 placement 渲染：
+    // 左右两条的胶囊本就落在热区内，多一个元素只会让 R5「左右几何不变」需要额外论证。
+    //
+    // 顺序要紧：胶囊排最后，两条热区（边、区）都在它前面，hover / active / 确认态三条规则
+    // 因此靠通用兄弟选择器 `~` 挂上去。写成相邻兄弟 `+` 的话热边那条会静默失效。
+    const needsEdgeBand = this.placement === 'top' || this.placement === 'bottom'
     const dragBar = this.draggable
       ? html`
-          <div class="wui-drawer-drag-zone" @pointerdown=${this._handleDragPointerDown}>
-            <div class="wui-drawer-drag-bar"></div>
-          </div>
+          ${
+            needsEdgeBand
+              ? html`<div class="wui-drawer-drag-edge" @pointerdown=${this._handleDragPointerDown}></div>`
+              : nothing
+          }
+          <div class="wui-drawer-drag-zone" @pointerdown=${this._handleDragPointerDown}></div>
+          <div class="wui-drawer-drag-bar"></div>
         `
       : nothing
 
@@ -916,7 +1119,12 @@ export class WebUiDrawer extends LitElement {
             ? html`<slot></slot>${dragBar}`
             : html`
                 <div class="wui-drawer-body wui-glass">
-                  <div class="wui-drawer-header" id="wui-drawer-heading" ?hidden=${!showHeader}>
+                  <div
+                    class="wui-drawer-header"
+                    id="wui-drawer-heading"
+                    ?hidden=${!showHeader}
+                    @pointerdown=${this._handleSectionDragPointerDown}
+                  >
                     <slot name="header" @slotchange=${this.handleHeaderSlotChange}>
                       ${this.heading ? html`<span class="wui-drawer-heading">${this.heading}</span>` : nothing}
                     </slot>
@@ -924,7 +1132,11 @@ export class WebUiDrawer extends LitElement {
                   <div class="wui-drawer-content">
                     <slot></slot>
                   </div>
-                  <div class="wui-drawer-footer" ?hidden=${!this._hasFooterSlot}>
+                  <div
+                    class="wui-drawer-footer"
+                    ?hidden=${!this._hasFooterSlot}
+                    @pointerdown=${this._handleSectionDragPointerDown}
+                  >
                     <slot name="footer" @slotchange=${this.handleFooterSlotChange}></slot>
                   </div>
                 </div>

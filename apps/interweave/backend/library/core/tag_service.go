@@ -58,6 +58,14 @@ func (s *TagService) AddTagToResource(ctx context.Context, resourceID string, in
 			if err := s.tags.Insert(ctx, tx, stored); err != nil {
 				return err
 			}
+			color := storage.RandomTagColor()
+			if err := s.tags.EnsureColor(ctx, tx, stdName, color); err != nil {
+				return err
+			}
+			// tag_colors 的行只随 tags 的行一起产生（新建时同事务写入，启动补色只遍历
+			// 已有标签），所以走到这里的名称必定还没有颜色行，OR IGNORE 不会与刚生成的
+			// 色分叉，返回值与后续读取一致。
+			stored.Color = color
 		} else if err != nil {
 			return err
 		}

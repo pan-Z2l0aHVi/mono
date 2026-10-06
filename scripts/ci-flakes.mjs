@@ -5,7 +5,7 @@
 //
 //   mkdir -p /tmp/flakes && cd /tmp/flakes
 //   gh run download <run-id> --pattern 'ci-test-output-*'      # 每个失败 attempt 一个 run
-//   pnpm run flakes:ci .
+//   pnpm run ci:flakes .
 //
 // 刻意不判断「重跑之后是否变绿」：那需要知道同一个 run 的后续 attempt 有没有留下 artifact，而留痕只在
 // 失败时写，缺席本身携带不了信息。这份榜单只回答「谁反复红」，修、隔离还是加 retry 由人决定。

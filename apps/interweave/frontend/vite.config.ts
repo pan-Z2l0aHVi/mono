@@ -10,6 +10,9 @@ export default {
   resolve: {
     tsconfigPaths: true
   },
+  test: {
+    setupFiles: ['./test-helper.ts']
+  },
   server: {
     host: true,
     port: Number(process.env.WAILS_VITE_PORT) || 9245,

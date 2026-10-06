@@ -30,12 +30,12 @@
 
   .back-top-inner:focus-visible {
     border-radius: var(--wui-radius-control, calc(infinity * 1px));
-    outline: var(--wui-focus-ring-width, 3px) solid var(--wui-color-focus-ring, rgb(0 136 255 / 0.4));
+    outline: var(--wui-focus-ring-width, 3px) solid
+      var(--wui-color-focus-ring, color-mix(in srgb, var(--wui-color-accent, #08f) 40%, transparent));
     outline-offset: 2px;
   }
 }
 
-/* 容器模式下按钮脱离 fixed，改为流内布局并按偏移变量左/右对齐 */
 :host([container-mode]) .back-top-inner {
   position: static;
   margin-right: var(--wui-back-top-right, 20px);

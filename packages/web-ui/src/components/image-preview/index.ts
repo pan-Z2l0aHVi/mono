@@ -160,7 +160,6 @@ class WebUiImagePreview extends LitElement {
     requestClose: () => this.close(),
     isConnected: () => this.isConnected
   })
-  /** 当前开启会话的句柄；未开启时为 null。 */
   private _handle: OpenOverlayHandle | null = null
   private readonly _presence = defineNativeDialogPresence().make({
     getDialog: () => this.dialog,
@@ -317,6 +316,25 @@ class WebUiImagePreview extends LitElement {
 
     if (props.has('_open')) {
       this._presence.sync(this._open)
+      if (this._open) {
+        // presence.sync 内的 showModal() 把 dialog 提升进 top layer，和 dialog /
+        // drawer 走同一条路径。dialog / drawer 上实测到的机制是：双击手势留下的活选区
+        // 会被浏览器拿去和提升后的新布局重新解析，落进刚挂载的面板正文。脆弱的是
+        // 「手势来源的活选区」，不是 dblclick 的判定窗口（把打开推迟 250ms 仍复现）；
+        // 选区由浏览器在 showModal() 调用内部生成，脚本没有任何 Selection API 调用，
+        // 在 dblclick 上 preventDefault 也拦不住。
+        //
+        // 但**双击路径在本组件上不复现**：预览层自身是 user-select: none（见
+        // style.css），重解析拿不到可落的文本。实测 native showModal() 刚返回时
+        // 选区本就是 rangeCount === 0，既没有可见高亮，也没有残留的塌陷 range；
+        // 且这与触发目标本身无关——换成一块可选中文本 div 当触发目标，仍是 0。
+        //
+        // 真正让这一行有意义的是另一条事实：showModal() 不会动打开前就已存在的选区。
+        // 所以它清的是「先选中页面文本、再打开预览」这条路径，属防御性清理，同时让
+        // 三个组件的打开行为保持一致（dialog / drawer 上这行是真修复，本组件上是
+        // 兜底）。这里只清文档选区，不动 user-select。
+        window.getSelection()?.removeAllRanges()
+      }
       // 原生 dialog 登记为开启态浮层：Escape 仲裁据此判出最内层（issue #120 Block 1）。
       const dialog = this.dialog
       if (dialog) {
@@ -441,8 +459,23 @@ class WebUiImagePreview extends LitElement {
   private _handleImageSettled = (event: Event) => {
     const image = event.currentTarget as HTMLImageElement | null
     if (!image) return
-    this._loadedSources.add(image.src)
+    this._markLoaded(image)
     this.requestUpdate()
+  }
+
+  /**
+   * 登记加载完成的图片，键与 render 侧 `is-loaded` 的查询同源。
+   *
+   * 不能用 `image.src`：那是 IDL 属性，返回**相对 src 解析后的绝对 URL**，而查询用的是
+   * `this.images[i].src`（调用方原始串）。相对 src 下两者永不相等 → `is-loaded` 永不
+   * 施加 → 图片停在 `opacity: 0`，尽管 img 早已 `complete`。
+   *
+   * 所属下标由模板写在 `data-index` 上（与该 img 的 `src` 出自同一处），因此多图 /
+   * lazy 渲染下不会错位。
+   */
+  private _markLoaded(image: HTMLImageElement): void {
+    const src = this.images[Number(image.dataset.index)]?.src
+    if (src !== undefined) this._loadedSources.add(src)
   }
 
   /*
@@ -801,6 +834,7 @@ class WebUiImagePreview extends LitElement {
                               'wui-image-preview-image': true,
                               'is-loaded': this._loadedSources.has(this.images[prevIndex].src)
                             })}
+                            data-index=${prevIndex}
                             src=${this.images[prevIndex].src}
                             alt=${this.images[prevIndex].alt ?? ''}
                             draggable="false"
@@ -821,6 +855,7 @@ class WebUiImagePreview extends LitElement {
                               'wui-image-preview-image': true,
                               'is-loaded': this._loadedSources.has(this.images[this._index].src)
                             })}
+                            data-index=${this._index}
                             src=${this.images[this._index].src}
                             alt=${this.images[this._index].alt ?? ''}
                             draggable="false"
@@ -841,6 +876,7 @@ class WebUiImagePreview extends LitElement {
                               'wui-image-preview-image': true,
                               'is-loaded': this._loadedSources.has(this.images[nextIndex].src)
                             })}
+                            data-index=${nextIndex}
                             src=${this.images[nextIndex].src}
                             alt=${this.images[nextIndex].alt ?? ''}
                             draggable="false"

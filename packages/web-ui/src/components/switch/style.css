@@ -59,7 +59,7 @@
   /* 实际获得焦点的是内部 sr-only 的 checkbox，track 本身不可聚焦；
      :focus-visible 在 track 上永不匹配，需用 :focus-within 让键盘焦点环生效 */
   &:focus-within {
-    outline-color: var(--wui-color-focus-ring, rgb(0 136 255 / 0.4));
+    outline-color: var(--wui-color-focus-ring, color-mix(in srgb, var(--wui-color-accent, #08f) 40%, transparent));
   }
 
   &.is-open {
@@ -96,6 +96,9 @@
     box-shadow var(--wui-duration-press, 80ms) ease;
 
   &.is-pressed {
+    /* 环底色随按压态转 transparent：pill 的长边长不过 3R，底色不覆盖中段，
+       去掉它只是少一层均匀灰 tint（理由见 menu-portal.css）。 */
+    --wui-color-glass-ring: transparent;
     transform: translateX(0) scale(1.5);
 
     width: 20px;

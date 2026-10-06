@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
 import '@/components/context-menu'
 import '@/components/dropdown'
+import '@/components/dropdown-item'
 import '@/components/popover'
 import '@/components/tooltip'
 import { getMenuPanels, queryA11y, spyEvents, waitForUpdate } from '@/shared/test-utils'
@@ -268,3 +269,18 @@ describe('open-change 契约（notification 语义：程序式静默，用户手
     })
   }
 })
+
+// jsdom 未实现原生 dialog 的 modal 语义，这里局部补足 showModal/close 对 open 的影响。
+// 本文件在 jsdom 下驱动 context-menu（模态 scrim 走 `showModal()`），缺这两个方法会直接抛错，
+// 菜单根本开不起来，下面所有 open-change 断言会连带失败 —— 那是环境缺陷，不是契约缺陷。
+// 刻意不做成 test-helper 里的全局 shim，理由见 test-helper.ts 末尾。
+if (!HTMLDialogElement.prototype.showModal) {
+  HTMLDialogElement.prototype.showModal = function () {
+    this.setAttribute('open', '')
+  }
+}
+if (!HTMLDialogElement.prototype.close) {
+  HTMLDialogElement.prototype.close = function () {
+    this.removeAttribute('open')
+  }
+}

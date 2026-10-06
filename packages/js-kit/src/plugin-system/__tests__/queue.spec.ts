@@ -11,12 +11,13 @@ describe('defineQueue', () => {
     vi.restoreAllMocks()
   })
 
-  it('enqueue 会调用消费者，并在调用后立即视为完成', async () => {
+  it('enqueue 同步交给消费者，且不会重复投递', async () => {
     const onConsume = vi.fn<(item: { id: number }) => void>()
     const queue = defineQueue({ onConsume }).make()
 
     queue.enqueue({ id: 1 })
 
+    // 入队即同步交付：埋点类消费者靠这一点保证 track() 返回前已经发出
     expect(onConsume).toHaveBeenCalledWith({ id: 1 })
     await queue.flush()
     expect(onConsume).toHaveBeenCalledTimes(1)
@@ -130,7 +131,6 @@ describe('defineQueue', () => {
     await settleMicrotasks()
     expect(consumed).toEqual([3])
     expect(errors.map(({ item }) => item)).toEqual([1, 2])
-    expect(queue).toBeDefined()
   })
 
   it('onConsumeError 自身抛错不会阻塞队列', async () => {

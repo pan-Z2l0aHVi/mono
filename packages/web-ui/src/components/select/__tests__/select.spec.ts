@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vite-plus/test'
+import { describe, expect, it } from 'vite-plus/test'
 
 import type { WebUiOption } from '@/components/option'
 
@@ -269,12 +269,12 @@ describe('WebUiSelect 组件', () => {
       trigger.click()
       await waitForUpdate(el)
 
-      expect(document.body.style.position).toBe('fixed')
+      expect(document.documentElement.style.overflow).toBe('hidden')
 
       document.body.click()
       await waitForUpdate(el)
 
-      expect(document.body.style.position).toBe('')
+      expect(document.documentElement.style.overflow).toBe('')
 
       cleanupElement(el)
     })
@@ -287,7 +287,7 @@ describe('WebUiSelect 组件', () => {
       trigger.click()
       await waitForUpdate(el)
 
-      expect(document.body.style.position).toBe('')
+      expect(document.documentElement.style.overflow).toBe('')
 
       cleanupElement(el)
     })
@@ -302,7 +302,7 @@ describe('WebUiSelect 组件', () => {
       el.setAttribute('no-scroll-lock', '')
       await waitForUpdate(el)
 
-      expect(document.body.style.position).toBe('')
+      expect(document.documentElement.style.overflow).toBe('')
 
       cleanupElement(el)
     })

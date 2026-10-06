@@ -9,13 +9,13 @@ async function nextFrame() {
   await new Promise(resolve => requestAnimationFrame(resolve))
 }
 
-function waitFor(predicate: () => boolean, timeoutMs = 2000): Promise<void> {
+function waitFor(predicate: () => boolean, message = 'waitFor timeout', timeoutMs = 2000): Promise<void> {
   return new Promise((resolve, reject) => {
     const start = performance.now()
     const step = (): void => {
       if (predicate()) return resolve()
-      if (performance.now() - start > timeoutMs) return reject(new Error('waitFor timeout'))
-      step()
+      if (performance.now() - start > timeoutMs) return reject(new Error(message))
+      setTimeout(step, 16)
     }
     setTimeout(step, 16)
   })
@@ -76,9 +76,9 @@ function mountInsideTheme(motion: string | null, collapse: WebUiCollapse): HTMLE
   return theme
 }
 
-function createCollapse(html: string, setup?: (el: WebUiCollapse) => void): WebUiCollapse {
+function createCollapse(setup?: (el: WebUiCollapse) => void): WebUiCollapse {
   const el = document.createElement('web-ui-collapse')
-  el.innerHTML = html
+  el.innerHTML = '<button class="trigger">Trigger</button><div slot="content">Content</div>'
   setup?.(el)
   return el
 }
@@ -86,38 +86,37 @@ function createCollapse(html: string, setup?: (el: WebUiCollapse) => void): WebU
 afterEach(() => document.body.replaceChildren())
 
 /*
- * §10 S3：只断言「没有动效」是空转可过的（组件压根没动效时也绿）。本文件因此自带
+ * 只断言「没有动效」是空转可过的（组件压根没动效时也绿）。本文件因此自带
  * **控制组** —— 显式 `motion='full'` 作用在系统 reduce 下**仍应启动过渡**，
  * 以此证明断言有区分力；控制组与被测组走同一个 `sampleTransitions()` 驱动与观察函数。
  */
 describe('减少动效下的 Collapse（浏览器）', () => {
-  const CONTENT =
-    '<button class="trigger">Trigger</button><div slot="content"><div style="height: 80px">Content</div></div>'
-
-  it('系统 reduce：展开收起全程不出现过渡；对照组 full 出现', async () => {
-    const reducedEl = mountInsideTheme(null, createCollapse(CONTENT))
-    const reduced = reducedEl.querySelector('web-ui-collapse') as WebUiCollapse
+  it('系统 reduce：展开收起全程无过渡，内容仍然开合到位；对照组 full 出现过渡', async () => {
+    const theme = mountInsideTheme(null, createCollapse())
+    const reduced = theme.querySelector('web-ui-collapse') as WebUiCollapse
     await reduced.updateComplete
 
     expect(await sampleTransitions(reduced, true)).toHaveLength(0)
+    // 减动效只去掉插值，不能把状态转换一起去掉：内容必须真的露出来。
     expect(queryContentContainer(reduced).hidden).toBe(false)
 
     expect(await sampleTransitions(reduced, false)).toHaveLength(0)
-    await waitFor(() => queryContentContainer(reduced).hidden === true)
+    await waitFor(() => queryContentContainer(reduced).hidden === true, 'content did not hide under reduced motion')
 
     // 对照组：显式 full 覆盖系统 reduce → 同一驱动必须采到过渡
-    const fullEl = mountInsideTheme('full', createCollapse(CONTENT))
-    const full = fullEl.querySelector('web-ui-collapse') as WebUiCollapse
+    const fullTheme = mountInsideTheme('full', createCollapse())
+    const full = fullTheme.querySelector('web-ui-collapse') as WebUiCollapse
     await full.updateComplete
 
     expect((await sampleTransitions(full, true)).length).toBeGreaterThan(0)
     expect(queryContentContainer(full).hidden).toBe(false)
   })
 
+  // reduce 下 inert 必须照旧生效：减动效的用户同样不该能聚焦到收起的面板里。
   it('keep-mounted 关闭稳态在 reduce 下仍阻断交互，全程无过渡', async () => {
     const theme = mountInsideTheme(
       null,
-      createCollapse(CONTENT, el => {
+      createCollapse(el => {
         el.keepMounted = true
       })
     )
@@ -127,7 +126,7 @@ describe('减少动效下的 Collapse（浏览器）', () => {
     expect(await sampleTransitions(el, true)).toHaveLength(0)
 
     expect(await sampleTransitions(el, false)).toHaveLength(0)
-    await waitFor(() => queryInner(el).hasAttribute('inert'))
+    await waitFor(() => queryInner(el).hasAttribute('inert'), 'inner never became inert under reduced motion')
 
     expect(queryContentContainer(el).hidden).toBe(false)
     expect(queryInner(el).hasAttribute('inert')).toBe(true)

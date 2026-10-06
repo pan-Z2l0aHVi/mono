@@ -18,7 +18,11 @@
   box-shadow:
     inset 0 -1px 2px rgb(0 0 0 / 0.12),
     inset 0 1px 2px rgb(255 255 255 / 0.5),
-    0 0 4px rgb(0 136 255 / 0.3);
+    /*
+     * 外发光跟着 accent，而不是 --wui-color-focus-ring：这是选中态的装饰性辉光，
+     * 与键盘焦点环是两种东西（alpha 也不同：0.3 vs 0.4/0.62）。默认值下与原值等价。
+     */
+    0 0 4px color-mix(in srgb, var(--wui-color-accent, #08f) 30%, transparent);
 
   transition:
     opacity var(--wui-duration-trigger, 160ms) ease,

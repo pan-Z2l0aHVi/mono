@@ -9,6 +9,24 @@
 }
 
 dialog {
+  /*
+   * 胶囊中线的唯一定义处。热区与胶囊是 dialog 的两个直接子节点，定义在 dialog 上
+   * 才能被双方读到——早前它定义在 .wui-drawer-drag-zone 上，靠「胶囊是热区后代」才读得到；
+   * 两者拆成兄弟后那个定义位置就断了（胶囊读不到值，定位用的 calc 整条失效）。
+   * 自定义属性沿树继承，热区仍然读得到它，诊断输出不受影响。
+   *
+   * 胶囊中线跟随内容区 padding，consumer 覆盖 --wui-drawer-content-padding 后拖拽条自动居中；
+   * max() 的第二项是下限，分两截来由：
+   *   - 半个胶囊厚度：padding 归零时中线不会压在面板内缘上、一半落在面板之外
+   *     （dialog 是 overflow: visible，这半截不被裁掉而是骑在遮罩上）。
+   *   - 再加 4px 呼吸间距：只兜住「不越界」时胶囊仍贴死面板边缘，读作挤在边框阴影线外侧。
+   *     4px 是视觉调参结论（真机反馈），不开放成 consumer token。
+   */
+  --wui-internal-drag-bar-center: max(
+    calc(var(--wui-drawer-content-padding, 20px) / 2),
+    calc(var(--wui-drawer-drag-bar-thickness, 4px) / 2 + 4px)
+  );
+
   /* 显式 position: fixed（防御性）：UA 的 dialog:modal 默认 fixed，但作者样式若覆盖
      position 会把它退回文档流——top layer 里的 modal dialog 变成按文档流定位，出现在
      页面顶部且跟随页面滚动。 */
@@ -115,17 +133,31 @@ dialog[open].is-visible::backdrop {
 /*
  * 热区贴在抽屉内缘，宽度由 --wui-drawer-drag-zone-size（默认 20px）控制便于触控命中；
  * 胶囊本身由 --wui-drawer-drag-bar-thickness × --wui-drawer-drag-bar-length（默认 4×56px）控制。
- * 胶囊绝对定位在 --wui-drawer-content-padding 的视觉中线（默认 20px → 中线 10px）；
+ * 胶囊绝对定位在 --wui-drawer-content-padding 的视觉中线（默认 20px → 中线 10px），
+ * 并以半个胶囊厚度加 4px 呼吸间距兜底，使 padding 归零的 consumer 也留有可见内缩（见下方 max()）；
  * 热区仍覆盖内缘起 --wui-drawer-drag-zone-size，保证触控命中面积不随胶囊收窄。
  * 位置随 placement 切换：right 贴在左缘、left 贴在右缘、top 贴在底边、bottom 贴在顶边。
+ *
+ * 上下两条还要**让开开头尾两节**：热区是 dialog 的绝对定位兄弟节点，压在 panel 的端头上，
+ * 而那一端上正有 header（bottom）或 footer（top）——按钮与点击都落在热区底下。让开量由
+ * index.ts 用 ResizeObserver 量出该节的 border-box 高度写成 --wui-internal-drawer-*-inset，
+ * 两者都不存在时为 0，热区回到修复前的边缘位置。
+ *
+ * 胶囊与热区因此**不共用一套偏移**：两者都是 dialog 的直接子节点（兄弟，不是父子），
+ * 胶囊恒定相对 dialog 定位、贴住可抓取边缘，热区独自承担让开量。早前胶囊是热区的后代，
+ * `top` 相对热区算，于是被动继承了那 60px 让位量、被一起推离面板边缘（实测内缩 68px）。
+ * 让开量是热区一方的约束，不该外溢到纯视觉的胶囊上；反过来把热区推回 0 又会让 A6 的
+ * header 遮挡立刻回归。两个约束只有靠结构解耦才同时成立，调数值必然牺牲其一。
+ *
+ * 代价是这一让开把胶囊所在的端头**腾空了**：胶囊贴回边缘后落在让开区里，两条带恒不相交。
+ * 补洞的不是本元素，而是端头那条热边 `.wui-drawer-drag-edge`（见它的规则）——
+ * 两者各管一段，缺一条胶囊就成了死装饰。R1 与 R3 在几何上本就不可同满足，
+ * 这里只是把「不可同满足」拆成两段各自成立，而不是假装它们能同时成立。
  *
  * 按在面板边缘之外的坐标属于遮罩：轻点走「点遮罩关闭」（click 链路回溯校验，
  * 见 index.ts 的 handleBackdropClick），拖拽松手不关闭。
  */
 .wui-drawer-drag-zone {
-  /* 胶囊中线跟随内容区 padding，consumer 覆盖 --wui-drawer-content-padding 后拖拽条自动居中。 */
-  --wui-internal-drag-bar-center: calc(var(--wui-drawer-content-padding, 20px) / 2);
-
   touch-action: none;
   cursor: grab;
 
@@ -163,21 +195,139 @@ dialog.is-nested-lower .wui-drawer-drag-zone {
 }
 
 :host([placement='top']) .wui-drawer-drag-zone {
-  bottom: 0;
+  /*
+   * 让开 footer（不是 header）：`top` 贴的是面板**底边**，那一侧压住的是 footer。
+   * 头部在内缘的另一端，与本 placement 的热区不重叠。
+   */
+  bottom: var(--wui-internal-drawer-footer-inset, 0);
 }
 
 :host([placement='bottom']) .wui-drawer-drag-zone {
+  /* 对称：让开 header。左右两条不受影响（贴的是竖边，header / footer 都不在那里）。 */
+  top: var(--wui-internal-drawer-header-inset, 0);
+}
+
+/*
+ * 端头热边：贴住可抓取边缘的一条常驻热区，只在上下 placement 渲染（见 index.ts）。
+ *
+ * 它补的是上面那条让开量腾出的空档。胶囊贴回边缘后不在热区里了，用户却仍然看着它，
+ * 于是「handle 靠近边缘」这个诉求必须连着可拖、可点亮一起兑现，否则胶囊只是装饰。
+ *
+ * **足迹不得超过它所代表的胶囊**：宽度取胶囊长度、水平居中，与胶囊同一套 left。
+ * 这一条是本元素唯一真正的不变量，也是关按钮与消费侧 header 控件的安全保证——
+ * 早前它是满宽的，于是横扫 header 整个宽度：实测 consumer 把 `--wui-drawer-drag-bar-thickness`
+ * 调到 24px 时内置关闭按钮与消费侧左右按钮各被吃 40%、40px 时各 100%。
+ * 关按钮从来不是特例，**满宽才是病根**。收窄后关按钮贴右缘、胶囊居中，
+ * 只要胶囊自己没伸到按钮所在的位置，两者就永不相交——对所有 thickness / space-4
+ * 组合都成立（断言按 8 组组合逐一量相交面积），且完全不依赖 close-top。
+ *
+ * 代价明说：触摸命中面积从满宽收到胶囊长度（默认 390×12 → 56×12）。可接受——
+ * **热区本身没动**（满宽 20–32px 仍在让开位上），大面积起手能力并未丢失，
+ * 热边只负责兑现「你看到的那个把手按得动」。
+ *
+ * 收窄后仍压不死的情况只有一类：消费侧把可点控件放在胶囊那条水平跨度内。
+ * 纯 CSS 无法消除（带要覆盖胶囊就必须有胶囊那么宽，而胶囊就画在那里）。
+ * 但那不是新引入的视觉冲突——thickness 40px 时胶囊自身已压在 header 内容上，
+ * 热边只是把「胶囊盖住的地方」一并变成可拖。是 consumer 要求了一个粗把手，
+ * 而把手就画在 header 上。
+ *
+ * 实测：给该控件抬 z-index ≥ 5 **救不回来**——Chromium 里本元素始终压在 slotted
+ * 节点之上，抬 z-index 无效。唯一量得着的杠杆是 `--wui-drawer-drag-bar-length`：
+ * 它同时决定胶囊长度与本元素宽度，缩短它就同比例缩短本元素（README 已写明）。
+ *
+ * 高度取两条来源的 **max()**：
+ * - `中线 + 半个厚度` 恰是胶囊的外沿；
+ * - `--wui-drawer-drag-edge-size`（默认 20px）是给手指的命中厚度。
+ * 加这条是因为端头原本只有 12px（＝中线 10 + 半个厚度 2），真机反馈「很难拖动到」。
+ * 默认值取 20px 的依据：与主热区 `--wui-drawer-drag-zone-size` 的默认厚度同值，
+ * 于是**胶囊的命中带恒不窄于主热区**，「按你看到的把手」不会比「按旁边的带子」更难。
+ * 再往上加会开始吃掉 header 里控件的位置（端头整块可拖后，那一节是要放控件的）。
+ *
+ * 取 max() 而非直接用 token，是为了保住包含关系：中线的下限（`max()` 第二项）保证
+ * `中线 - 半个厚度 ≥ 4 > 0`，而热边从面板边缘（top/bottom placement 下恒为 0）起算，
+ * 于是**胶囊带恒被热边带包含**——consumer 把 edge-size 调到比胶囊带还小也吃不掉它。
+ * 这条包含关系是 token 定义推出来的，不是靠约定维持的。
+ *
+ * 竖向仍比胶囊多出「面板边缘到胶囊近侧」那一条（≤ 中线 − 半个厚度，默认 8px），
+ * 用来让指针不必精确压在 4px 粗的胶囊上。
+ */
+.wui-drawer-drag-edge {
+  touch-action: none;
+  cursor: grab;
+
+  position: absolute;
+  z-index: 4;
+
+  /* 只在上下 placement 渲染（见 index.ts），故居中方式与胶囊的那条规则逐字相同。 */
+  left: calc(50% - var(--wui-drawer-drag-bar-length, 56px) / 2);
+
+  width: var(--wui-drawer-drag-bar-length, 56px);
+  height: max(
+    calc(var(--wui-internal-drag-bar-center) + var(--wui-drawer-drag-bar-thickness, 4px) / 2),
+    var(--wui-drawer-drag-edge-size, 20px)
+  );
+
+  transition: opacity var(--wui-duration-feedback, 100ms) ease;
+}
+
+/*
+ * 嵌套下层时整套拖拽提示一起退场，热边也不例外——否则下层抽屉会留一条看不见起点、
+ * 按下去却能拖的悬空热边，比悬空胶囊更费解。
+ */
+dialog.is-nested-lower .wui-drawer-drag-edge {
+  pointer-events: none;
+  opacity: 0;
+}
+
+:host([placement='bottom']) .wui-drawer-drag-edge {
   top: 0;
 }
 
+:host([placement='top']) .wui-drawer-drag-edge {
+  bottom: 0;
+}
+
 .wui-drawer-drag-bar {
+  /*
+   * 胶囊是纯视觉件，命中与拖拽全部归两条热区（端头热边 + 让开量热区）。
+   * pointer-events: none 是这件事得以成立的前提：
+   * 胶囊叠在热区之上（z-index 更高），若参与命中测试，按在胶囊上的手势会被胶囊吃掉，
+   * 热区的 @pointerdown 收不到事件，从胶囊起手的拖拽直接失效。端头热边按构造覆盖胶囊带，
+   * 所以「从胶囊起手」与「从热边空白处起手」命中的是同一个元素。
+   *
+   * 它同时解掉了 hover / active 的归属：pointer-events 为 none 时胶囊永不成为 hover 目标，
+   * 指针落在胶囊上时下面的热区/热边照常 :hover，「热区点亮胶囊」在四个 placement 上都成立，
+   * 不必给胶囊另挂监听（同一手势会触发两次）。
+   */
+  pointer-events: none;
+
   position: absolute;
+
+  /*
+   * 5 高于热区与端头热边（均 4），与面板主体（无 z-index 的静态盒）也不冲突。
+   * 与 close 按钮同为 5：两者之间靠的不是层序而是几何（胶囊居中、按钮贴右缘）。
+   * 而胶囊 `pointer-events: none`，从不参与命中测试，层序高低对它没有命中含义。
+   */
+  z-index: 5;
 
   width: var(--wui-drawer-drag-bar-thickness, 4px);
   height: var(--wui-drawer-drag-bar-length, 56px);
   border-radius: var(--wui-radius-control, calc(infinity * 1px));
 
   background: color-mix(in srgb, var(--wui-color-text, #1b1b1b) 24%, transparent);
+
+  /* 与热区同一条淡入淡出，嵌套下层退场时两者同步（见下面的 is-nested-lower）。 */
+  transition: opacity var(--wui-duration-feedback, 100ms) ease;
+}
+
+/*
+ * 嵌套下层时整套拖拽提示一起退场，热区与胶囊一起。胶囊曾被热区那条规则顺带盖住
+ * （它是热区的后代，opacity 作用于它的渲染）；拆成兄弟后必须显式列出，否则下层抽屉
+ * 会剩一条没人操作的悬空胶囊。放在基础规则之后，保住 no-descending-specificity 的升序。
+ */
+dialog.is-nested-lower .wui-drawer-drag-bar {
+  pointer-events: none;
+  opacity: 0;
 }
 
 :host([placement='right']) .wui-drawer-drag-bar {
@@ -206,17 +356,34 @@ dialog.is-nested-lower .wui-drawer-drag-zone {
   left: calc(50% - var(--wui-drawer-drag-bar-length, 56px) / 2);
 }
 
-.wui-drawer-drag-zone:hover .wui-drawer-drag-bar,
-.wui-drawer-drag-zone:active .wui-drawer-drag-bar {
+/*
+ * 通用兄弟选择器：胶囊排在这两个热区之后（index.ts 的 render 里同一个模板表达式产出
+ * 这三个节点），`~` 因此在**所有 placement** 上都成立，且与「热边是否存在」无关——
+ * 上下 placement 多一条热边、左右 placement 只有一条，写成 `+` 会让热边那条静默失配。
+ * 这两条规则早前写成后代选择器（.zone:hover .bar），胶囊拆成兄弟后不再满足——不报错、
+ * 只是静默不变色，是本结构改动最隐蔽的一处回归。
+ */
+.wui-drawer-drag-edge:hover ~ .wui-drawer-drag-bar,
+.wui-drawer-drag-edge:active ~ .wui-drawer-drag-bar,
+.wui-drawer-drag-zone:hover ~ .wui-drawer-drag-bar,
+.wui-drawer-drag-zone:active ~ .wui-drawer-drag-bar {
   background: color-mix(in srgb, var(--wui-color-text, #1b1b1b) 40%, transparent);
 }
 
 /*
- * 达到关闭阈值的 accent 确认需压过上方 :hover/:active 中性色（拖拽全程 capture
- * 使 hover 恒成立），这里的选择器特异性 (0,3,1) 高于 hover/active 的 (0,3,0)。
+ * 达到关闭阈值的确认态：比拖拽静息态更实的中性灰，取代原来的 accent 蓝。
+ * 55% 这一档是看着真浏览器定的：拖拽全程 capture 使 hover/active 恒成立，40% 那档
+ * 在拖拽中始终可见，确认态必须明显压过它——试过的 25%（比静息态还淡）越过阈值
+ * 读成「变弱」，24% 的静息灰与它几乎无法区分。55% 相对静息 40% 有可辨的一档
+ * 落差，又不至于重到读成实心深色条；再往上（60%）与 55% 的观感差别小于它与 40%
+ * 的差别，收益不抵「更重」。
+ * 这里的选择器特异性 (0,3,1) 高于 hover/active 的 (0,3,0)，靠特异性而非顺序压盖。
+ * 拆成兄弟后仍**保留 .wui-drawer-drag-zone 这一段**（用 `~` 接胶囊）：若缩写成
+ * `dialog.is-drag-close .wui-drawer-drag-bar` 会掉到 (0,2,1)，反过来被 (0,3,0) 的
+ * hover/active 压过，确认态在拖拽全程（capture 使 hover 恒成立）就不再显形。
  */
-dialog.is-drag-close .wui-drawer-drag-zone .wui-drawer-drag-bar {
-  background: var(--wui-color-accent, #08f);
+dialog.is-drag-close .wui-drawer-drag-zone ~ .wui-drawer-drag-bar {
+  background: color-mix(in srgb, var(--wui-color-text, #1b1b1b) 55%, transparent);
 }
 
 :host([placement='left']) dialog {
@@ -265,20 +432,24 @@ dialog.is-dragging .wui-drawer-drag-zone {
   display: flex;
   flex-direction: column;
   height: 100%;
-  background-color: var(--wui-drawer-bg, var(--wui-color-surface-overlay, rgb(246 246 246 / 0.82)));
+  background-color: var(--wui-drawer-bg, var(--wui-color-surface-overlay, rgb(248 248 248 / 0.92)));
 }
 
 .wui-drawer-header {
+  /*
+   * 刻意没有分割线（footer 同）。面板主体 `.wui-drawer-body` 自带 `.wui-glass` 的描边环与
+   * 投影，分区靠 padding 与排版层级读出来；再叠一条写死的 6% 黑线，在半透明玻璃面上会读成
+   * 一道硬接缝，且它不跟随任何 token——换外观时是块跟不上的残留。
+   */
   display: flex;
   align-items: center;
   justify-content: space-between;
 
-  padding: var(--wui-drawer-header-padding, 16px 20px);
-  border-bottom: 1px solid rgb(0 0 0 / 0.06);
+  padding: var(--wui-drawer-header-padding, var(--wui-space-4, 16px) var(--wui-space-5, 20px));
 
-  font-size: 18px;
-  font-weight: 600;
-  line-height: 1.4;
+  font-size: var(--wui-font-size-title, 18px);
+  font-weight: var(--wui-font-weight-semibold, 600);
+  line-height: var(--wui-line-height-snug, 1.4);
 }
 
 .wui-drawer-header[hidden] {
@@ -290,29 +461,81 @@ dialog.is-dragging .wui-drawer-drag-zone {
   overscroll-behavior: contain;
   flex: 1;
 
-  padding: var(--wui-drawer-content-padding, 20px);
+  padding: var(--wui-drawer-content-padding, var(--wui-space-5, 20px));
 
   font-size: var(--wui-font-size, 14px);
-  line-height: 1.5;
+  line-height: var(--wui-line-height-normal, 1.5);
   color: var(--wui-color-text, #1b1b1b);
 }
 
 .wui-drawer-footer {
   flex-shrink: 0;
-  padding: var(--wui-drawer-footer-padding, 16px 20px);
-  border-top: 1px solid rgb(0 0 0 / 0.06);
+  padding: var(--wui-drawer-footer-padding, var(--wui-space-4, 16px) var(--wui-space-5, 20px));
 }
 
 .wui-drawer-footer[hidden] {
   display: none;
 }
 
-/* ===== 关闭按钮（绝对定位，top/right 与 header-padding 垂直/水平分量对齐） ===== */
+/*
+ * 上下 placement：贴着可抓边缘的那一节（bottom 的 header、top 的 footer）整块可拖。
+ *
+ * 让开靠**逐个控件**在事件层判断（见 index.ts 的 _handleSectionDragPointerDown），
+ * 不靠把热区铺上来——铺上来会把这一节里的控件吞掉，正是 A6 修掉的那条缺陷。
+ * 所以这里只需要手势与光标两件样式，命中关系由那一节自己承担。
+ *
+ * `touch-action: none` 不可省：否则触摸落在标题文字或控件上时，浏览器会先把它
+ * 判成滚动意图，越过阈值就 pointercancel，拖拽根本起不来（与热区同一条理由）。
+ * 它是祖先节点，触摸落在深层 slotted 子元素上时同样生效——touch-action 沿命中链
+ * 求交，不要求落在声明元素本身上。
+ *
+ * 按 `[draggable]` 收口：draggable 为假时这一节不接手势，也不该被夺走触摸手势。
+ *
+ * 再按 `dialog:not(.is-nested-lower)` 收口，与事件层闸门（index.ts 的
+ * _handleSectionDragPointerDown）和热区 / 热边 / 胶囊那三条 `is-nested-lower` 退场
+ * 判同一条：嵌套下层的抽屉整套拖拽提示一起退场。这里漏掉就会只剩提示面没退——
+ * 而 `touch-action` 沿命中链求交，下层 header 区域的触摸滚动是被真的夺走的，
+ * 那里却拖不动：既骗光标又吞手势，比留着可拖的提示面更糟。
+ */
+:host([placement='bottom'][draggable]) dialog:not(.is-nested-lower) .wui-drawer-header,
+:host([placement='top'][draggable]) dialog:not(.is-nested-lower) .wui-drawer-footer {
+  touch-action: none;
+  cursor: grab;
+}
+
+:host([placement='bottom'][draggable]) dialog:not(.is-nested-lower).is-dragging .wui-drawer-header,
+:host([placement='top'][draggable]) dialog:not(.is-nested-lower).is-dragging .wui-drawer-footer {
+  cursor: grabbing;
+}
+
+/* ===== 关闭按钮（绝对定位）=====
+   top 恰好等于 header padding 的垂直分量（16px），因此挂 --wui-space-4 与 header padding
+   同源：覆盖该级时二者一起动，注释里写死的对齐关系不会断。
+   right 是按钮到 drawer 右边沿的独立偏移（16px），不对齐相邻元素的节奏值（header
+   的水平分量是 20px，与它并不相等），参照系是容器边缘而非相邻元素之间的节奏，故与
+   --wui-image-preview-edge-gap 等边缘对齐值同属一族，保持字面量。挂到 --wui-space-4
+   本身并不会造成视觉变化（该级默认仍是 16px）——不挂阶的理由是语义归属，不是视觉风险。 */
 
 .wui-drawer-close {
   position: absolute;
-  z-index: 3;
-  top: var(--wui-drawer-close-top, 16px);
+
+  /*
+   * 5，高于端头热边（4）。
+   *
+   * 端头热边收窄到胶囊长度之后，默认与常规 token 下它与本按钮的相交面积**恒为 0px²**
+   * （实测 thickness 4/16/24/40 × space-4 16/8/4 共 12 组，测试按这个矩阵逐组断言），
+   * 正常情形靠几何就够。
+   * 这一层防的是几何失效的那一格：`--wui-drawer-drag-bar-length` 同样是公开 token，
+   * 调到把手伸到按钮所在的位置时相交面积不为 0（实测 320px 时为 78px²），
+   * 此时唯一还能救的就是层序。
+   *
+   * 为它单独抬这一层是有实测依据的**不对称**，不是泛泛的防御性声明：
+   * 消费侧把控件塞进把手跨度里时，同一招不管用——Chromium 里端头热边始终压在
+   * **slotted** 节点之上，给 slotted 元素抬 z-index 无效（已在测试注释里记下实测）。
+   * 本按钮是组件自己画的 shadow 节点，层序对它有效，所以它是这条链上唯一能自救的节点。
+   */
+  z-index: 5;
+  top: var(--wui-drawer-close-top, var(--wui-space-4, 16px));
   right: var(--wui-drawer-close-right, 16px);
   bottom: auto;
   left: auto;
@@ -437,6 +660,29 @@ dialog.is-dragging .wui-drawer-drag-zone {
 :host(:not([headless])[placement='bottom']) dialog[open].is-visible {
   transform: translate(0, 0);
   translate: 0 calc(var(--wui-internal-drawer-nested-shift) * -1);
+}
+
+/*
+ * 窄视口的层叠基准：同一个 `--wui-drawer-nested-peek-base` 换成更小的 A。
+ * 桌面基准（43.2px）来自 index.ts 的 `CSS.registerProperty` initialValue，这里只覆盖窄视口，
+ * 因此 A 的桌面真相源仍只有注册项一处。
+ *
+ * 28.8px 沿用桌面:窄屏 3:2，窄屏随桌面同比缩小：桌面 54→43.2，窄屏 36→28.8，3:2 不变。
+ * 第一跳仍是 28.8·ln2 = 19.96px，高于旧的 12px 线性步进；四层总宽 39.93px。
+ *
+ * 屏内余量不再是定 3:2 的理由：390px 视口上单层左缘有 390 − 8 − 320 = 62px，
+ * 桌面基准的四层总宽 43.2·ln4 = 59.89px 也放得下（54px 一档的 74.86px 才会溢出）。
+ * 保留窄屏档是为了不改变既定比例关系，同时给窄屏留出更宽的抽屉可视区。
+ *
+ * 断点字面量与 shared/overlay/nested-drawer-layers.ts 的 matchMedia 查询各有一份：
+ * 跨断点时 JS 侧靠它重算已打开的堆叠，两处必须同步（见该文件的同名常量）。
+ *
+ * 消费方在页面里给宿主写的值仍然优先——外层树的声明压过 shadow 内的 :host 规则。
+ */
+@media (width <= 640px) {
+  :host(:not([headless])) {
+    --wui-drawer-nested-peek-base: 28.8px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

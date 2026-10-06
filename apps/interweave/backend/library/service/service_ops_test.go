@@ -5,11 +5,14 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
 	coreLibrary "github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/core"
+	libraryMedia "github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/media"
 	"github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/service"
+	"github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage"
 	"github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/remote"
 )
 
@@ -21,7 +24,7 @@ func newTestServices(t *testing.T) (*service.ResourceService, *service.SourceSer
 	coreSource := coreLibrary.NewSourceService(db, fetcher)
 	coreTag := coreLibrary.NewTagService(db)
 	coreMap := coreLibrary.NewMapService(db)
-	resService := service.NewResourceService(coreResource)
+	resService := service.NewResourceService(coreResource, libraryMedia.NewPendingPreviewRegistry())
 	srcService := service.NewSourceService(coreSource)
 	tagService := service.NewTagService(coreTag)
 	mapService := service.NewMapService(coreMap)
@@ -37,6 +40,48 @@ func tempFile(t *testing.T, name string) string {
 	f.Close()
 	t.Cleanup(func() { _ = os.Remove(f.Name()) })
 	return f.Name()
+}
+
+// 重复提示的 service 契约：只回带展示字段的命中项，未命中回非 nil 空切片（前端据此判定零打扰）。
+func TestFindResourceLocationMatchesReturnsPromptFields(t *testing.T) {
+	resService, _, _, _, cleanup := newTestServices(t)
+	defer cleanup()
+	ctx := context.Background()
+
+	path := tempFile(t, "prompt-*.txt")
+	added, err := resService.AddFileResource(ctx, path)
+	if err != nil {
+		t.Fatalf("AddFileResource error: %v", err)
+	}
+
+	matches, err := resService.FindResourceLocationMatches(ctx, path, storage.SourceTypeFile)
+	if err != nil {
+		t.Fatalf("FindResourceLocationMatches error: %v", err)
+	}
+	if len(matches) != 1 {
+		t.Fatalf("expected one match, got %+v", matches)
+	}
+	if matches[0].ResourceID != added.ID {
+		t.Errorf("expected resource_id %s, got %s", added.ID, matches[0].ResourceID)
+	}
+	if matches[0].Title != added.Title {
+		t.Errorf("expected title %q, got %q", added.Title, matches[0].Title)
+	}
+	if matches[0].Location != added.Sources[0].Location {
+		t.Errorf("expected location %q, got %q", added.Sources[0].Location, matches[0].Location)
+	}
+
+	empty, err := resService.FindResourceLocationMatches(ctx, tempFile(t, "absent-*.txt"), storage.SourceTypeFile)
+	if err != nil {
+		t.Fatalf("FindResourceLocationMatches (miss) error: %v", err)
+	}
+	if empty == nil || len(empty) != 0 {
+		t.Errorf("expected a non-nil empty match list, got %+v", empty)
+	}
+
+	if _, err := resService.FindResourceLocationMatches(ctx, path, storage.SourceTypeURL); err == nil {
+		t.Error("expected a normalize error when a local path is looked up as a URL, got nil")
+	}
 }
 
 // 验证标题、备注、列表、搜索与删除的维护路径。
@@ -124,8 +169,10 @@ func TestURLSourceOperations(t *testing.T) {
 	if len(res.Sources) != 1 || !res.Sources[0].Available || !res.Sources[0].IsPreferred {
 		t.Errorf("expected single available preferred source, got %+v", res.Sources)
 	}
+	if res.Kind != service.ResourceKindWeb || res.SizeBytes != nil {
+		t.Errorf("expected URL resource kind web without size, got kind=%q size=%v", res.Kind, res.SizeBytes)
+	}
 
-	// 显式刷新维持可用入口。
 	refreshed, err := srcService.RefreshURLSource(ctx, res.Sources[0].ID)
 	if err != nil {
 		t.Fatalf("RefreshURLSource error: %v", err)
@@ -134,7 +181,6 @@ func TestURLSourceOperations(t *testing.T) {
 		t.Errorf("expected refreshed source to stay available")
 	}
 
-	// 文件 Source 不允许刷新。
 	filePath := tempFile(t, "src-*.txt")
 	fileSrc, err := srcService.AddFileSource(ctx, res.ID, filePath)
 	if err != nil {
@@ -167,6 +213,84 @@ func TestURLSourceOperations(t *testing.T) {
 	}
 	if unavail.Sources[0].Available {
 		t.Errorf("expected unavailable source, got available")
+	}
+}
+
+// 验证文件 Resource 的权威 kind、原始字节数，以及显式同路径刷新可以恢复可用状态。
+func TestFileResourceDisplayMetadataAndRefresh(t *testing.T) {
+	resService, srcService, _, _, cleanup := newTestServices(t)
+	defer cleanup()
+	ctx := context.Background()
+
+	path := filepath.Join(t.TempDir(), "metadata.json")
+	if err := os.WriteFile(path, []byte("123456789"), 0o644); err != nil {
+		t.Fatalf("failed to write fixture: %v", err)
+	}
+	res, err := resService.AddFileResource(ctx, path)
+	if err != nil {
+		t.Fatalf("AddFileResource error: %v", err)
+	}
+	if res.Kind != service.ResourceKindJSON {
+		t.Errorf("expected JSON kind, got %q", res.Kind)
+	}
+	if res.SizeBytes == nil || *res.SizeBytes != 9 {
+		t.Errorf("expected 9-byte size, got %v", res.SizeBytes)
+	}
+
+	sourceID := res.Sources[0].ID
+	orderIndex := res.Sources[0].OrderIndex
+	if err := os.Remove(path); err != nil {
+		t.Fatalf("failed to remove fixture: %v", err)
+	}
+	refreshed, err := srcService.RefreshFileSource(ctx, sourceID)
+	if err != nil {
+		t.Fatalf("RefreshFileSource unavailable error: %v", err)
+	}
+	if refreshed.Available {
+		t.Errorf("expected missing file to be unavailable after refresh")
+	}
+
+	if err := os.WriteFile(path, []byte("123456789"), 0o644); err != nil {
+		t.Fatalf("failed to restore fixture: %v", err)
+	}
+	refreshed, err = srcService.RefreshFileSource(ctx, sourceID)
+	if err != nil {
+		t.Fatalf("RefreshFileSource restored error: %v", err)
+	}
+	if !refreshed.Available || refreshed.Location != path || refreshed.ID != sourceID || refreshed.OrderIndex != orderIndex || !refreshed.IsPreferred {
+		t.Errorf("expected same source identity/location/order to become available, got %+v", refreshed)
+	}
+
+	after, err := resService.GetResource(ctx, res.ID)
+	if err != nil {
+		t.Fatalf("GetResource after refresh error: %v", err)
+	}
+	if after.SizeBytes == nil || *after.SizeBytes != 9 || after.Kind != service.ResourceKindJSON {
+		t.Errorf("expected refreshed display metadata, got kind=%q size=%v", after.Kind, after.SizeBytes)
+	}
+}
+
+// URL 刷新与文件刷新是类型特定能力，调用错误类型不能悄悄修改入口。
+func TestFileSourceRefreshTypeAndErrorPaths(t *testing.T) {
+	resService, srcService, _, _, cleanup := newTestServices(t)
+	defer cleanup()
+	ctx := context.Background()
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		_, _ = w.Write([]byte(`<title>Remote</title>`))
+	}))
+	defer ts.Close()
+
+	res, err := resService.AddURLResource(ctx, ts.URL)
+	if err != nil {
+		t.Fatalf("AddURLResource error: %v", err)
+	}
+	if _, err := srcService.RefreshFileSource(ctx, res.Sources[0].ID); err == nil || err.Error() != "only file sources can be refreshed" {
+		t.Errorf("expected file refresh type error, got %v", err)
+	}
+	if _, err := srcService.RefreshFileSource(ctx, "missing"); err == nil || err.Error() != "source not found" {
+		t.Errorf("expected source not found for missing file refresh, got %v", err)
 	}
 }
 
@@ -209,7 +333,6 @@ func TestPreferredSourceSwitching(t *testing.T) {
 	}
 }
 
-// 验证标签移除、建议与错误映射。
 func TestTagRemovalSuggestionAndErrors(t *testing.T) {
 	resService, _, tagService, _, cleanup := newTestServices(t)
 	defer cleanup()

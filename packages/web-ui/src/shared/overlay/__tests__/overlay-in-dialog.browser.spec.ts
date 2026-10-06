@@ -4,6 +4,8 @@ import '@/components/autocomplete'
 import '@/components/context-menu'
 import '@/components/dialog'
 import '@/components/drawer'
+import '@/components/dropdown-item'
+import '@/components/option'
 import '@/components/popover'
 import '@/components/select'
 import '@/components/tooltip'
@@ -126,6 +128,36 @@ function expectVisibleInDialog(panel: HTMLElement | null | undefined, dialog: HT
   ).toBe(true)
 }
 
+/**
+ * context-menu 模态化后的容器解析：面板挂进菜单自建的 scrim `<dialog>`，与 scrim 同处 top layer。
+ *
+ * 祖先发现查不到它 —— `findEnclosingOpenDialog` 找的是 target 的**祖先**里的已打开 dialog，
+ * 而 scrim 是面板的反方向，方向相反；面板也不在宿主 shadow root 内。所以这条路径只能由
+ * `createMenuPortalOverlay` 的第三参显式指定容器，查询同理得从 scrim 起。
+ */
+function getMenuScrim(): HTMLDialogElement {
+  const scrim = document.querySelector<HTMLDialogElement>('dialog[data-wui-menu-scrim]')
+  if (!scrim) throw new Error('Expected an open context-menu scrim dialog')
+  return scrim
+}
+
+function getContextMenuPanel(selector: string): HTMLElement | null {
+  return getMenuScrim().querySelector<HTMLElement>(selector)
+}
+
+/**
+ * 取代 `expectVisibleInDialog` 对 context-menu 的适用性：模态化后「面板在宿主 dialog 内」
+ * 恰恰是**被反转**的那半条契约，所以这里额外断言它不再成立 —— 只断言前半条会让
+ * 「面板掉回宿主 dialog」这种真实回归伪装成通过。
+ */
+function expectVisibleInMenuScrim(panel: HTMLElement | null | undefined, dialog: HTMLDialogElement) {
+  const scrim = getMenuScrim()
+  expect(scrim.matches(':modal')).toBe(true)
+  expect(scrim.open).toBe(true)
+  expect(scrim.contains(panel ?? null)).toBe(true)
+  expect(dialog.contains(panel ?? null)).toBe(false)
+}
+
 describe('Portal overlay 在已打开原生 dialog 内（top layer）', () => {
   it('popover 面板挂载到 dialog 内并保持可视', async () => {
     const dialog = await openDrawerDialog()
@@ -233,7 +265,7 @@ describe('Portal overlay 在已打开原生 dialog 内（top layer）', () => {
     expect(autocomplete.value).toBe('Apple')
   })
 
-  it('context-menu 面板挂载到 dialog 内', async () => {
+  it('context-menu 模态化后面板挂进 scrim 而非宿主 dialog', async () => {
     const dialog = await openDrawerDialog()
     const menu = document.createElement('web-ui-context-menu') as WebUiContextMenu
     menu.innerHTML = '<web-ui-dropdown-item>Preview</web-ui-dropdown-item>'
@@ -245,10 +277,78 @@ describe('Portal overlay 在已打开原生 dialog 内（top layer）', () => {
     await nextFrame()
     await nextFrame()
 
-    const panel = dialog.querySelector<HTMLElement>('.context-menu')
-    expectVisibleInDialog(panel, dialog)
+    // 契约已反转：模态化让 context-menu 自建 scrim 接管「点外面关闭」，面板因此必须
+    // 与 scrim 同处 top layer 才能在模态期间保持可点（top layer 只拦自身子树）。
+    const panel = getContextMenuPanel('.context-menu')
+    expectVisibleInMenuScrim(panel, dialog)
     expect(menu.isOpen).toBe(true)
     expect(panel?.textContent).toContain('Preview')
+  })
+
+  /*
+   * 子菜单的相邻性语义：placement 是 `right-start` 且没有 offset middleware，
+   * 子菜单左缘即触发项右缘、顶边对齐（right-start 的纵向语义是**顶边对齐**，
+   * 子菜单可比触发项高，不得因此上移）。
+   *
+   * 判据是两条边的**关系**（差 ≤ 1px 容差），不是子菜单落在视口里的某个像素位置 ——
+   * 钳制那条由 `context-menu/viewport-fit.browser.spec.ts` 承担。
+   *
+   * 两处必须等入场过渡落定再量：入场期间面板带 scale，触发项的 rect 被缩放，
+   * 子菜单就会拿这份**过期参考矩形**去定位。这里只消除测试自身的竞态，不掩盖它 ——
+   * 相邻性断言反过来把这份竞态钉住了。
+   */
+  it('context-menu 子菜单与触发项相邻（right-start：左缘贴右缘、顶边对齐）', async () => {
+    const dialog = await openDrawerDialog()
+    const menu = document.createElement('web-ui-context-menu') as WebUiContextMenu
+    menu.innerHTML =
+      '<web-ui-dropdown-item submenu>Export<web-ui-dropdown-item>PDF</web-ui-dropdown-item></web-ui-dropdown-item>'
+    drawerDialogAppend(dialog, menu)
+    await menu.updateComplete
+
+    // x 取视口左缘附近：右开方向给子菜单留出充裕空间，保证右开语义成立，
+    // 不因空间不足翻转朝左（翻转朝左会走另一条分支）。
+    menu.openAt(8, 60)
+    await menu.updateComplete
+    const mainPanel = await waitForPanelPositioned(
+      getContextMenuPanel('.context-menu'),
+      'Expected the context menu to be positioned'
+    )
+
+    await waitFor(
+      () => mainPanel.getAnimations().length,
+      count => count === 0,
+      'Expected the main menu enter transition to settle'
+    )
+    const parentItem = mainPanel.querySelector<HTMLElement>('web-ui-dropdown-item')
+    parentItem?.click()
+    const submenu = await waitForPanelPositioned(
+      getContextMenuPanel('.context-submenu'),
+      'Expected the context submenu to be positioned'
+    )
+
+    // 同理，子菜单自身的入场过渡也要落定，否则量到的是 scale 中间态。
+    await waitFor(
+      () => submenu.getAnimations().length,
+      count => count === 0,
+      'Expected the submenu enter transition to settle'
+    )
+
+    const parentRect = parentItem!.getBoundingClientRect()
+    const submenuRect = submenu.getBoundingClientRect()
+    expect(
+      Math.abs(submenuRect.left - parentRect.right),
+      `子菜单左缘 ${submenuRect.left} 未贴触发项右缘 ${parentRect.right}`
+    ).toBeLessThanOrEqual(1)
+    expect(
+      Math.abs(submenuRect.top - parentRect.top),
+      `子菜单顶边 ${submenuRect.top} 未与触发项顶边 ${parentRect.top} 对齐`
+    ).toBeLessThanOrEqual(1)
+
+    // 相邻性之外还要确认它仍在模态 scrim 内可用 —— 这条场景正是「子菜单在 drawer 的
+    // dialog 内打开」，掉回宿主 dialog 的话面板会被下层抢走命中。
+    expectVisibleInMenuScrim(submenu, dialog)
+    expect(menu.isOpen).toBe(true)
+    expect(submenu.textContent).toContain('PDF')
   })
 
   it('context-menu 主菜单快速 openAt 后最终定位为最新代', async () => {
@@ -265,7 +365,7 @@ describe('Portal overlay 在已打开原生 dialog 内（top layer）', () => {
     menu.openAt(20, 20)
     await menu.updateComplete
     const panel = await waitFor(
-      () => dialog.querySelector<HTMLElement>('.context-menu'),
+      () => getContextMenuPanel('.context-menu'),
       value => value !== null && value.style.visibility === 'hidden',
       'Expected the gated context menu panel to be created'
     )
@@ -287,81 +387,7 @@ describe('Portal overlay 在已打开原生 dialog 内（top layer）', () => {
 
     expect(panel.style.left).toBe(latestLeft)
     expect(panel.style.top).toBe(latestTop)
-    expect(menu.isOpen).toBe(true)
-  })
-
-  it('context-menu 子菜单在 dialog 内与触发项相邻且在视口内', async () => {
-    const dialog = await openDrawerDialog()
-    const menu = document.createElement('web-ui-context-menu') as WebUiContextMenu
-    menu.innerHTML =
-      '<web-ui-dropdown-item submenu>Export<web-ui-dropdown-item>PDF</web-ui-dropdown-item></web-ui-dropdown-item>'
-    drawerDialogAppend(dialog, menu)
-    await menu.updateComplete
-
-    // x 取视口左缘附近：右开方向给子菜单留出充裕空间，保证右开语义成立，
-    // 不因空间不足翻转朝左（翻转朝左会走 gap 断言的另一分支）。
-    menu.openAt(8, 60)
-    await menu.updateComplete
-    const mainPanel = await waitForPanelPositioned(
-      dialog.querySelector<HTMLElement>('.context-menu'),
-      'Expected the context menu to be positioned'
-    )
-
-    const parentItem = mainPanel.querySelector<HTMLElement>('web-ui-dropdown-item')
-    parentItem?.click()
-    const submenu = await waitForPanelPositioned(
-      dialog.querySelector<HTMLElement>('.context-submenu'),
-      'Expected the context submenu to be positioned'
-    )
-
-    // 子菜单面板已定位并解析进 dialog（相邻性由定位代际契约承接，此处不取几何量）。
-    expect(submenu.style.left).not.toBe('')
-    expect(submenu.style.top).not.toBe('')
-    expectVisibleInDialog(submenu, dialog)
-    expect(menu.isOpen).toBe(true)
-    expect(submenu.textContent).toContain('PDF')
-  })
-
-  it('context-menu 在视口下缘打开时面板完整钳制在视口内且 origin 含 bottom', async () => {
-    const dialog = await openDrawerDialog()
-    const menu = document.createElement('web-ui-context-menu') as WebUiContextMenu
-    menu.innerHTML =
-      '<web-ui-dropdown-item>Preview</web-ui-dropdown-item><web-ui-dropdown-item>Delete</web-ui-dropdown-item>'
-    drawerDialogAppend(dialog, menu)
-    await menu.updateComplete
-
-    // dialog 路径 shift 曾只钳制 x（crossAxis 默认 false），下缘打开时底部溢出。
-    menu.openAt(40, window.innerHeight - 60)
-    await menu.updateComplete
-    const panel = await waitForPanelPositioned(
-      dialog.querySelector<HTMLElement>('.context-menu'),
-      'Expected the context menu to be positioned'
-    )
-
-    expectVisibleInDialog(panel, dialog)
-    // 下缘打开的钳制语义由定位代际契约（主菜单快速 openAt 用例）承接，
-    // 此处仅验证面板已挂载进 dialog 且菜单处于打开态（不取内部 CSS 变量）。
-    expect(menu.isOpen).toBe(true)
-  })
-
-  it('context-menu transform-origin 无 shift 推动时为 top left', async () => {
-    const dialog = await openDrawerDialog()
-    const menu = document.createElement('web-ui-context-menu') as WebUiContextMenu
-    menu.innerHTML =
-      '<web-ui-dropdown-item>Preview</web-ui-dropdown-item><web-ui-dropdown-item>Delete</web-ui-dropdown-item>'
-    drawerDialogAppend(dialog, menu)
-    await menu.updateComplete
-
-    // 光标取面板可完整容纳的位置，shift 不推动，origin 应为 top left；
-    // 旧启发式把 dialog 相对坐标与视口光标比较，dialog 原点非零时恒判 bottom right。
-    menu.openAt(100, 400)
-    await menu.updateComplete
-    const panel = await waitForPanelPositioned(
-      dialog.querySelector<HTMLElement>('.context-menu'),
-      'Expected the context menu to be positioned'
-    )
-
-    expectVisibleInDialog(panel, dialog)
+    expectVisibleInMenuScrim(panel, dialog)
     expect(menu.isOpen).toBe(true)
   })
 
@@ -380,17 +406,21 @@ describe('Portal overlay 在已打开原生 dialog 内（top layer）', () => {
     // 拉长退出过渡：hover 关闭走 200ms 定时器重开，需保证重开时面板仍在 closing
     // 缓存内（默认 160ms 出场 + 80ms 兜底会在重开前完成收尾并移除面板，复用不成立）。
     // 注意「声明 2000ms」不等于「实际 2000ms」——必须同时等入场过渡跑完，见下方注释。
-    dialog.style.setProperty('--wui-duration-float-exit', '2000ms')
     menu.openAt(8, 60)
     await menu.updateComplete
     const mainPanel = await waitForPanelPositioned(
-      dialog.querySelector<HTMLElement>('.context-menu'),
+      getContextMenuPanel('.context-menu'),
       'Expected the context menu to be positioned'
     )
+    // 必须设在 **scrim** 上而不是宿主 dialog：模态化后面板挂进了 scrim，
+    // `--wui-internal-duration-float-exit: var(--wui-duration-float-exit, 160ms)`
+    // 沿继承链从容器解析。设在 dialog 上对它完全不可见 —— 2000ms 声明形同虚设，
+    // 面板在重开前就被移出 closing 缓存，竞态前提消失、用例退化成「重建新面板」的假绿。
+    getMenuScrim().style.setProperty('--wui-duration-float-exit', '2000ms')
     const parentItem = mainPanel.querySelector<HTMLElement>('web-ui-dropdown-item')
     parentItem?.dispatchEvent(new PointerEvent('pointerenter'))
     await waitFor(
-      () => dialog.querySelector<HTMLElement>('.context-submenu'),
+      () => getContextMenuPanel('.context-submenu'),
       submenu => submenu !== null && submenu.dataset.wuiPresence === 'open',
       'Expected the gated submenu panel to be present'
     )
@@ -401,10 +431,11 @@ describe('Portal overlay 在已打开原生 dialog 内（top layer）', () => {
     // 重开退化为重建新面板——复用前提不成立，本用例的竞态也就无从发生。
     // 入场结束后关闭是全新过渡，声明时长如实生效，面板得以存活到重开。
     await waitFor(
-      () => dialog.querySelector<HTMLElement>('.context-submenu'),
+      () => getContextMenuPanel('.context-submenu'),
       submenu => submenu !== null && submenu.dataset.wuiPresence === 'open' && submenu.getAnimations().length === 0,
       'Expected the gated submenu enter transition to settle'
     )
+    const panelBeforeClose = getContextMenuPanel('.context-submenu')
 
     // 悬停普通项触发关闭（非即时，面板进 closing 缓存），同帧悬停回父项重开：
     // 复用同一 panel 发起第二次定位并先行完成；随后放行被扣的首次定位——
@@ -412,13 +443,15 @@ describe('Portal overlay 在已打开原生 dialog 内（top layer）', () => {
     const copyItem = mainPanel.querySelectorAll<HTMLElement>('web-ui-dropdown-item')[1]
     copyItem?.dispatchEvent(new PointerEvent('pointerenter'))
     parentItem?.dispatchEvent(new PointerEvent('pointerenter'))
-    // 重开可能复用 closing 缓存面板或重建新面板：轮询内动态解析当前活跃子菜单面板；
-    // 竞态断言不受面板身份影响（写错坐标的面板必然偏离触发项）。
+    // 竞态断言落在动态解析出的当前活跃子菜单面板上；面板身份则必须**仍是同一个** ——
+    // 换成重建面板就说明 2000ms 声明没生效、closing 缓存没命中，竞态从未发生，
+    // 后面那条「坐标不被迟到写入覆盖」会变成恒真断言。这条即 R18 的负向对照。
     const submenu = await waitFor(
-      () => dialog.querySelector<HTMLElement>('.context-submenu'),
+      () => getContextMenuPanel('.context-submenu'),
       panel => Boolean(panel.style.left && panel.style.top && panel.dataset.wuiPresence === 'open'),
       'Expected the reopened submenu to be positioned'
     )
+    expect(submenu).toBe(panelBeforeClose)
 
     // 放行被扣的首次定位前，先记录重开定位已写入的 inline left/top：其坐标已被重开
     // 定位覆盖，迟到的旧写入必须被丢弃而非覆盖——与「主菜单快速 openAt」用例同一契约形态。
@@ -434,7 +467,7 @@ describe('Portal overlay 在已打开原生 dialog 内（top layer）', () => {
     // 子菜单的 inline left/top 不应因迟到旧定位而改变（代际竞态契约，非几何断言）。
     expect(submenu.style.left).toBe(reopenLeft)
     expect(submenu.style.top).toBe(reopenTop)
-    expectVisibleInDialog(submenu, dialog)
+    expectVisibleInMenuScrim(submenu, dialog)
     expect(menu.isOpen).toBe(true)
     expect(submenu.textContent).toContain('PDF')
   })

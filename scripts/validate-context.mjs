@@ -7,6 +7,7 @@ import { listPnpmWorkspaceManifests, readPnpmWorkspacePatterns } from './workspa
 
 const root = path.resolve(import.meta.dirname, '..')
 const errors = []
+let rootScripts = new Set()
 
 const relative = file => path.relative(root, file) || '.'
 // context index 要与 worktree 的绝对路径无关：先归一为正斜杠，跨平台才能得到稳定指纹。
@@ -32,47 +33,46 @@ function addError(message) {
 
 // skill 出处以 skills-lock.json 为权威：登记在册的是第三方上游件，正文由上游维护（见 AGENTS.md 语言纪律），
 // 其中的示例路径不作为本仓链接；未登记的即本仓自撰，必须列在下面。两边都不在就是出处未定。
-const repoAuthoredSkills = new Set(['contract-change-review', 'herdr-agents'])
+const repoAuthoredSkills = new Set(['contract-change-review'])
 const lockedSkills = new Set(Object.keys(JSON.parse(read('skills-lock.json')).skills))
 
 function fromLockedSkill(file) {
   const [first, second, third] = relative(file).split(path.sep)
+  // 第三方 skill 的实体家：根 skills/ 只放依赖镜像，其余在 .agents/skills-vendored/；
+  // .agents/skills/<name> 现在是逐 skill 软链（walk 不会深入，但存在性检查会经过）。
+  if (first === 'skills') return lockedSkills.has(second)
+  if (first === '.agents' && second === 'skills-vendored') return lockedSkills.has(third)
   return first === '.agents' && second === 'skills' && lockedSkills.has(third)
 }
 
 // 入口面必须存在；其余门禁钉通用 context 能力：断链、锚点、frontmatter、skill/role 出处、入口指针与软链。
 // 被删掉的是「指令文档语料必须存在」——它会随内容演进膨胀，反而阻止删减；被引用的文档由断链检查负责。
-for (const file of ['AGENTS.md', 'CLAUDE.md']) {
-  if (!exists(file)) addError(`missing required context file: ${file}`)
-}
+if (!exists('AGENTS.md')) addError('missing required context file: AGENTS.md')
 
 // AGENTS.md 的章节标题与叙述措辞不再是契约。入口断言只保留「必经链接 + init 命令」两条；
 // 结构不变量锚点（<!-- invariant:... -->）是惰性注释，保留供人工检索，不再有机器校验（audit:instructions 已删除，见 ADR-0014）。
 if (exists('AGENTS.md')) {
   const agents = read('AGENTS.md')
-  for (const marker of ['docs/agents/workflow.md', 'pnpm task new']) {
+  for (const marker of ['docs/agents/workflow.md', 'pnpm agent:task new']) {
     if (!agents.includes(marker)) addError(`AGENTS.md is missing mandatory marker: ${marker}`)
   }
 }
 
-if (exists('.vite-hooks/pre-commit') && !read('.vite-hooks/pre-commit').includes('pnpm task guard'))
+if (exists('.vite-hooks/pre-commit') && !read('.vite-hooks/pre-commit').includes('pnpm agent:task guard'))
   addError('.vite-hooks/pre-commit is missing the task commit guard')
 
-if (exists('CONTRIBUTING.md') && !read('CONTRIBUTING.md').includes('pnpm task start --task <task-id>'))
+if (exists('CONTRIBUTING.md') && !read('CONTRIBUTING.md').includes('pnpm agent:task start --task <task-id>'))
   addError('CONTRIBUTING.md is missing the workflow edit gate')
 
-// 薄适配入口用尺寸契约替代措辞契约：措辞可以随模型换代重写，只要它仍是不复制规则的短入口。
-const CLAUDE_ADAPTER_MAX_CHARACTERS = 800
-if (exists('CLAUDE.md')) {
-  const claudeStat = fs.lstatSync(path.join(root, 'CLAUDE.md'))
-  const claudeSource = read('CLAUDE.md')
-  if (claudeStat.isSymbolicLink()) addError('CLAUDE.md must remain a thin regular-file adapter, not a symlink')
-  if (!claudeSource.includes('AGENTS.md')) addError('CLAUDE.md must point at the shared AGENTS.md entry')
-  if (claudeSource.length > CLAUDE_ADAPTER_MAX_CHARACTERS)
-    addError(
-      `CLAUDE.md is ${claudeSource.length} characters; the thin adapter ceiling is ${CLAUDE_ADAPTER_MAX_CHARACTERS}`
-    )
-}
+// 根目录不再有客户端适配文件。实测 Claude Code 2.1.283 已原生发现 AGENTS.md，但只要根目录存在 CLAUDE.md，
+// 它的原生发现就整条不生效：默认的 claude-md-or-agents-md 只在项目没有 CLAUDE.md 时才读 AGENTS.md，显式声明
+// claude-md-and-agents-md 也救不回来（两种模式下包级 AGENTS.md 都不再按需注入）。根入口因此只保留 AGENTS.md，
+// Claude Code 与 Codex 读同一份层级文件。这道断言拦住的是「放回一行 @AGENTS.md shim」——它看起来是零副作用的
+// 兼容保险，实际会让全部包级指令静默退回到靠模型自觉 Read。
+if (exists('CLAUDE.md'))
+  addError(
+    'root CLAUDE.md must not exist: it silently disables Claude Code AGENTS.md discovery and package-level injection'
+  )
 
 if (exists('.claude/settings.local.json')) {
   try {
@@ -94,14 +94,15 @@ if (exists('.claude/settings.local.json')) {
 if (exists('package.json')) {
   try {
     const packageJson = JSON.parse(read('package.json'))
+    rootScripts = new Set(Object.keys(packageJson.scripts ?? {}))
     for (const script of [
-      'task',
-      'validate:context',
-      'check:pack',
-      'find:usages',
-      'inspect:contract',
-      'diff:contract',
-      'test:scripts'
+      'agent:task',
+      'ci:validate-context',
+      'check-pack',
+      'agent:find-usages',
+      'agent:inspect-contract',
+      'agent:diff-contract',
+      'ci:test-scripts'
     ]) {
       if (typeof packageJson.scripts?.[script] !== 'string') addError(`package.json is missing scripts.${script}`)
     }
@@ -225,11 +226,10 @@ for (const [file, expectedTarget] of Object.entries(symlinks)) {
   }
 }
 
-// Role Contract 是显式 herdr skill 的输入，不是 Claude Code subagent。保留这条独立的
-// 注册形态检查，但不把它与固定 Role 集合、绑定表或 handoff 字段镜像绑在一起。
+// `.claude/agents` 不属于本仓契约：会话角色由客户端与会话本身承担，不再注册仓库内的 role 契约。
 try {
   if (fs.lstatSync(path.join(root, '.claude/agents')).isSymbolicLink())
-    addError('.claude/agents must not be a symlink; Role Contracts are opt-in session roles, not Claude Code subagents')
+    addError('.claude/agents must not be a symlink; the repo ships no session-role contracts')
 } catch (error) {
   if (error.code !== 'ENOENT') addError(`.claude/agents: cannot inspect path: ${error.message}`)
 }
@@ -249,6 +249,17 @@ const markdownFiles = [
   ...walk('docs/agents', file => file.endsWith('.md')),
   ...walk('docs/adr', file => file.endsWith('.md')),
   ...walk('.agents', file => file.endsWith('.md')).filter(file => !fromLockedSkill(file)),
+  // 自撰写 skill 的实体在根 skills/（.agents/skills 里只是逐 skill 软链，walk 不跟随）。
+  // skill 文档里的相对链接是按 agent 经 .agents/skills 软链读取的消费面写的，深度与实体路径不同，
+  // 所以检查时把这些文件映射回 .agents/skills 路径——内容相同（软链），链接按消费面解析。
+  // 第三方依赖镜像也是锁定的上游件，同样按 fromLockedSkill 排除出链接面。
+  ...walk('skills', file => file.endsWith('.md'))
+    .filter(file => !fromLockedSkill(file))
+    // skills/ 根的 README.md 是 GitHub 通道门面文档，不在任何 skill 目录内，
+    // 没有对应的 .agents/skills 软链消费路径——按真实路径入面即可。
+    .filter(file => path.dirname(relativePosix(file)) !== 'skills')
+    .map(file => path.join(root, '.agents', 'skills', path.relative(path.join(root, 'skills'), file))),
+  ...(exists('skills/README.md') ? [path.join(root, 'skills', 'README.md')] : []),
   ...walk('packages', file => path.basename(file) === 'AGENTS.md'),
   ...walk('apps', file => path.basename(file) === 'AGENTS.md'),
   // workspace README 与包级 AGENTS.md 同属指令面，但只能列一层：walk 会连 apps/*/node_modules 与 dist 一起吞进来。
@@ -318,6 +329,41 @@ for (const file of [...adrDocuments].sort()) {
   if (!inboundTargets.has(file)) addError(`${relative(file)}: no inbound link from the instruction surface`)
 }
 
+// 根命令存在性：文档里写的根命令必须在 package.json scripts 里真的存在，否则读者照抄必然失败。
+// 断链检查管不到这种「链接本身没坏、但它指向的东西被改名或删了」的引用面，所以单列一条。
+//
+// 只断言两种无歧义的形态：
+//   1. `pnpm run <name>` —— pnpm 的显式形式，永远指根 script。
+//   2. `pnpm <name>` 且 `<name>` 含 `:` 或 `-` —— 本仓 script 名的形状，正是重命名会留下的陈旧形态。
+// 不断言裸单词形态（`pnpm test` / `pnpm dev` / `pnpm install` / `pnpm changeset publish` / `pnpm workspace`）：
+// 它与 pnpm 自身的子命令、本地可解析的二进制和散文用词无法区分，误报会淹没真信号。
+// 已知代价：
+//   - 「加了 namespace 之前的旧形态」那种裸单词写法抓不到，陈旧性由 review 兜。
+//   - flag 插入形态不覆盖：`pnpm run --silent <cmd>` 这类中间插 flag 的写法匹配不到，本仓当前扫描面内无此形态。
+//   - `pnpm run <name>` 形态未来若文档引用包级 script（如 `pnpm run dev`）会误报；当前扫描面内无此形态，
+//     所以没有为它加白名单——真出现时按「包级引用应写成 `pnpm --filter <pkg> <script>`」修正文档，而不是放宽检查。
+// 约定见 docs/agents/commands.md。
+//
+// 范围就是上面的 markdownFiles，也就是「指令面」。两个说明避免把覆盖范围读错：
+//   - docs/adr/** 在覆盖范围内：ADR 是承载现行基础设施指引的活文档，命令名陈旧就是陈旧，照判。
+//   - docs/research/** 按构造不在范围内（markdownFiles 不收它）：那是点时性研究记录，保持历史原貌。
+// 指令面没有其他收窄。
+// 只收 `[a-zA-Z]` 开头的 token：pnpm 的全局开关（`--filter`/`-F`/`--dir`）和 flag 后的值都不是 script 引用。
+const pnpmRunForm = /\bpnpm run ([a-zA-Z][a-zA-Z0-9:._-]*)/g
+const pnpmBareForm = /\bpnpm ([a-zA-Z][a-zA-Z0-9:._-]*)/g
+for (const file of markdownFiles) {
+  const source = fs.readFileSync(file, 'utf8')
+  const reported = new Set()
+  const check = name => {
+    // 同一个名字在同一个文件里重复出现只报一次，否则一次整段重写会刷出几十行同因错误。
+    if (rootScripts.has(name) || reported.has(name)) return
+    reported.add(name)
+    addError(`${relative(file)}: references root command \`${name}\`, which is not in package.json scripts`)
+  }
+  for (const match of source.matchAll(pnpmRunForm)) check(match[1])
+  for (const match of source.matchAll(pnpmBareForm)) if (/[:-]/.test(match[1])) check(match[1])
+}
+
 function parseFrontmatter(file) {
   const source = fs.readFileSync(file, 'utf8')
   if (!source.startsWith('---\n')) {
@@ -337,27 +383,19 @@ function parseFrontmatter(file) {
   }
 }
 
-for (const file of walk('.agents/skills', file => path.basename(file) === 'SKILL.md')) {
+// skill 的实体家是根 skills/（自撰写 + 依赖镜像）与 .agents/skills-vendored/（其余第三方）；
+// .agents/skills/ 里只有逐 skill 软链，walk 不跟随，所以出处检查直接走两个实体目录。
+for (const file of [
+  ...walk('skills', file => path.basename(file) === 'SKILL.md'),
+  ...walk('.agents/skills-vendored', file => path.basename(file) === 'SKILL.md')
+]) {
   parseFrontmatter(file)
   const name = path.basename(path.dirname(file))
   if (repoAuthoredSkills.has(name) === lockedSkills.has(name))
-    addError(
-      `.agents/skills/${name}: provenance must be either skills-lock.json or repoAuthoredSkills, not both or neither`
-    )
+    addError(`skills/${name}: provenance must be either skills-lock.json or repoAuthoredSkills, not both or neither`)
 }
 for (const name of repoAuthoredSkills)
-  if (!exists(`.agents/skills/${name}/SKILL.md`))
-    addError(`repoAuthoredSkills lists a skill without SKILL.md: .agents/skills/${name}`)
-
-// Role Contract 数量和职责可以演进；每个文件自身的 frontmatter 身份仍必须可加载且与文件名一致。
-// 这条检查不维护角色名单，因此新增 supervisor 或未来 Role 不需要同步修改 validator。
-for (const file of walk('.agents/skills/herdr-agents/roles', file => file.endsWith('.md'))) {
-  parseFrontmatter(file)
-  const expectedName = path.basename(file, '.md')
-  const source = fs.readFileSync(file, 'utf8')
-  const name = /^name:\s*(\S+)\s*$/m.exec(source)?.[1]
-  if (name !== expectedName) addError(`${relative(file)}: frontmatter name must be ${expectedName}`)
-}
+  if (!exists(`skills/${name}/SKILL.md`)) addError(`repoAuthoredSkills lists a skill without SKILL.md: skills/${name}`)
 
 if (errors.length) {
   console.error(`validate-context failed with ${errors.length} error(s):`)

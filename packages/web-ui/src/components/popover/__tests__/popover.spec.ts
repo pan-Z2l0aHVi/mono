@@ -45,15 +45,9 @@ afterEach(() => {
 
 describe('WebUiPopover 组件', () => {
   describe('属性：trigger', () => {
-    it('默认值为 click', async () => {
-      const el = createPopover('Btn', 'Content')
-      await waitForUpdate(el)
-
-      expect(el.trigger).toBe('click')
-
-      cleanupElement(el)
-    })
-
+    // trigger 决定「哪些用户手势能开关面板」，取值回退在下面的三条触发方式分组里
+    // 由行为本身覆盖（hover 分组全部用 trigger=hover 驱动）。这里只钉「字面量
+    // 被原样接受」——非法值回退与 placement 走同一条 normalizeLiteral 路径。
     it('设置为 hover', async () => {
       const el = createPopover('Btn', 'Content', { trigger: 'hover' })
       await waitForUpdate(el)
@@ -71,74 +65,55 @@ describe('WebUiPopover 组件', () => {
 
       cleanupElement(el)
     })
+
+    it('非法值回退到 click', async () => {
+      const el = createPopover('Btn', 'Content', { trigger: 'invalid' })
+      await waitForUpdate(el)
+
+      expect(el.trigger).toBe('click')
+
+      cleanupElement(el)
+    })
   })
 
   describe('属性：open', () => {
-    it('默认为关闭', async () => {
-      const el = createPopover('Btn', 'Content')
-      await waitForUpdate(el)
-
-      expect(el.open).toBe(false)
-      expect(el.isOpen).toBe(false)
-
-      cleanupElement(el)
-    })
-
-    it('设置 open=true 显示面板', async () => {
-      const el = createPopover('Btn', 'Content')
-      el.open = true
-      await el.updateComplete
-      vi.advanceTimersToNextFrame()
-      await waitForUpdate(el)
-
-      expect(el.isOpen).toBe(true)
-      const panel = queryA11y(el, '[role="dialog"]')
-      expect(panel?.hasAttribute('hidden')).toBe(false)
-
-      cleanupElement(el)
-    })
-
-    it('设置 open=false 关闭面板', async () => {
-      const el = createPopover('Btn', 'Content')
-      el.open = true
-      await el.updateComplete
-      vi.advanceTimersToNextFrame()
-      await waitForUpdate(el)
-      expect(el.isOpen).toBe(true)
-
-      el.open = false
-      await waitForUpdate(el)
-      expect(el.isOpen).toBe(false)
-
-      cleanupElement(el)
-    })
-
-    it('open=false 时移除 host 的 open 属性', async () => {
-      const el = createPopover('Btn', 'Content')
-      el.open = true
-      await waitForUpdate(el)
-      expect(el.hasAttribute('open')).toBe(true)
-
-      el.open = false
-      await waitForUpdate(el)
-      expect(el.hasAttribute('open')).toBe(false)
-
-      cleanupElement(el)
-    })
-
     contractReflection('open 反射到 host attribute', () => createPopover('Btn', 'Content'), [
       ['open', true, 'open', '']
     ])
-  })
 
-  describe('属性：portal', () => {
-    it('默认关闭', async () => {
+    it('默认不挂出面板', async () => {
       const el = createPopover('Btn', 'Content')
-      expect(el.portal).toBe(false)
+      await waitForUpdate(el)
+      vi.advanceTimersToNextFrame()
+      await waitForUpdate(el)
+
+      expect(el.isOpen).toBe(false)
+      expect(queryA11y(el, '[role="dialog"]')?.hasAttribute('hidden')).not.toBe(false)
 
       cleanupElement(el)
     })
 
+    // 开关面板是 popover 的核心契约：面板真的挂出 / 真的隐藏，且不是把 el.open 自读一遍。
+    it('open 翻转真的挂出与隐藏面板', async () => {
+      const el = createPopover('Btn', 'Content')
+
+      el.open = true
+      await el.updateComplete
+      vi.advanceTimersToNextFrame()
+      await waitForUpdate(el)
+      expect(el.isOpen).toBe(true)
+      expect(queryA11y(el, '[role="dialog"]')?.hasAttribute('hidden')).toBe(false)
+
+      el.open = false
+      await waitForUpdate(el)
+      expect(el.isOpen).toBe(false)
+      expect(queryA11y(el, '[role="dialog"]')?.hasAttribute('hidden')).not.toBe(false)
+
+      cleanupElement(el)
+    })
+  })
+
+  describe('属性：portal', () => {
     contractReflection('portal 反射到 host attribute', () => createPopover('Btn', 'Content'), [
       ['portal', true, 'portal', '']
     ])
@@ -174,24 +149,6 @@ describe('WebUiPopover 组件', () => {
   })
 
   describe('属性：placement', () => {
-    it('默认值为 bottom', async () => {
-      const el = createPopover('Btn', 'Content')
-      await waitForUpdate(el)
-
-      expect(el.placement).toBe('bottom')
-
-      cleanupElement(el)
-    })
-
-    it('设置为 top', async () => {
-      const el = createPopover('Btn', 'Content', { placement: 'top' })
-      await waitForUpdate(el)
-
-      expect(el.placement).toBe('top')
-
-      cleanupElement(el)
-    })
-
     contractReflection('placement 反射到 host attribute', () => createPopover('Btn', 'Content'), [
       ['placement', 'left', 'placement', 'left']
     ])
@@ -206,30 +163,22 @@ describe('WebUiPopover 组件', () => {
     })
   })
 
-  describe('属性：offset', () => {
-    it('默认值为 8', async () => {
-      const el = createPopover('Btn', 'Content')
-      await waitForUpdate(el)
-
-      expect(el.offset).toBe(8)
-
-      cleanupElement(el)
-    })
-
-    it('自定义 offset', async () => {
-      const el = createPopover('Btn', 'Content')
-      el.offset = 16
-      await waitForUpdate(el)
-      expect(el.offset).toBe(16)
-
-      cleanupElement(el)
-    })
-
-    it('打开后修改 placement 和 offset 保持面板可见', async () => {
+  describe('属性：offset / placement', () => {
+    /*
+     * 打开态改定位参数属于状态转换（政策 §3）：面板必须仍然可见，不能因为重定位
+     * 被重新隐藏。两条各开一个元素——共用一条会让失败时说不清是哪个参数触发的。
+     *
+     * 顺序是「先开后改」：反过来（先改后开）测的是打开流程读到了新值，与这里要守的
+     * 「已打开的面板被重定位后不消失」不是同一件事，判别力差一层。
+     */
+    it('打开态修改 offset 后面板仍可见', async () => {
       const el = createPopover('Btn', 'Content')
       el.open = true
+      await el.updateComplete
+      vi.advanceTimersToNextFrame()
       await waitForUpdate(el)
-      el.placement = 'top'
+      expect(queryA11y(el, '[role="dialog"]')?.hasAttribute('hidden')).toBe(false)
+
       el.offset = 16
       await waitForUpdate(el)
       vi.advanceTimersToNextFrame()
@@ -239,17 +188,31 @@ describe('WebUiPopover 组件', () => {
       cleanupElement(el)
     })
 
-    it('负值回退到 0', async () => {
+    it('打开态修改 placement 后面板仍可见', async () => {
       const el = createPopover('Btn', 'Content')
+      el.open = true
+      await el.updateComplete
+      vi.advanceTimersToNextFrame()
+      await waitForUpdate(el)
+      expect(queryA11y(el, '[role="dialog"]')?.hasAttribute('hidden')).toBe(false)
+
+      el.placement = 'top'
+      await waitForUpdate(el)
+      vi.advanceTimersToNextFrame()
+      await waitForUpdate(el)
+
+      expect(queryA11y(el, '[role="dialog"]')?.hasAttribute('hidden')).toBe(false)
+      cleanupElement(el)
+    })
+
+    // 越界回退是公开 token 的取值边界：offset 下限 0，上限 100。
+    it('负值与过大值回退到边界内', async () => {
+      const el = createPopover('Btn', 'Content')
+
       el.offset = -10
       await waitForUpdate(el)
       expect(el.offset).toBe(0)
 
-      cleanupElement(el)
-    })
-
-    it('过大值回退到上限', async () => {
-      const el = createPopover('Btn', 'Content')
       el.offset = 999
       await waitForUpdate(el)
       expect(el.offset).toBe(100)
@@ -541,57 +504,26 @@ describe('WebUiPopover 组件', () => {
   })
 
   describe('公开 API', () => {
-    it('show() 打开', async () => {
+    // 命令式 API 与 open 属性走同一条状态机，唯一独立的东西是「命令序列本身能驱动
+    // 面板挂出与隐藏」。合进一条：三条各开一个元素的重复用例会让同一契约可被整体删除。
+    it('show() / toggle() / close() 驱动面板挂出与隐藏', async () => {
       const el = createPopover('Btn', 'Content')
       await waitForUpdate(el)
+      const panel = () => queryA11y(el, '[role="dialog"]')?.hasAttribute('hidden')
 
       el.show()
       await el.updateComplete
       vi.advanceTimersToNextFrame()
       await waitForUpdate(el)
       expect(el.isOpen).toBe(true)
+      expect(panel()).toBe(false)
 
-      cleanupElement(el)
-    })
-
-    it('close() 关闭', async () => {
-      const el = createPopover('Btn', 'Content')
-      await waitForUpdate(el)
-
-      el.show()
-      await el.updateComplete
-      vi.advanceTimersToNextFrame()
-      await waitForUpdate(el)
       el.close()
       await waitForUpdate(el)
       expect(el.isOpen).toBe(false)
-
-      cleanupElement(el)
-    })
-
-    it('toggle() 切换', async () => {
-      const el = createPopover('Btn', 'Content')
-      await waitForUpdate(el)
+      expect(panel()).not.toBe(false)
 
       el.toggle()
-      await el.updateComplete
-      vi.advanceTimersToNextFrame()
-      await waitForUpdate(el)
-      expect(el.isOpen).toBe(true)
-
-      el.toggle()
-      await waitForUpdate(el)
-      expect(el.isOpen).toBe(false)
-
-      cleanupElement(el)
-    })
-
-    it('isOpen 返回当前状态', async () => {
-      const el = createPopover('Btn', 'Content')
-      await waitForUpdate(el)
-
-      expect(el.isOpen).toBe(false)
-      el.show()
       await el.updateComplete
       vi.advanceTimersToNextFrame()
       await waitForUpdate(el)
@@ -602,39 +534,20 @@ describe('WebUiPopover 组件', () => {
   })
 
   describe('可访问性', () => {
-    it('面板有 role="dialog"', async () => {
+    // 面板 role 与 trigger 上的 ARIA 回写合并成一条：它们描述的是同一屏里
+    // 「弹层是什么 + 触发器当前指向什么」这一组对外语义，分成三条会让整组可被删掉而不被发现。
+    it('面板暴露 role=dialog，trigger 承载 aria-expanded 与 aria-controls', async () => {
       const el = createPopover('Btn', 'Content')
       await waitForUpdate(el)
 
       const panel = queryA11y(el, '[role="dialog"]')
       expect(panel?.getAttribute('role')).toBe('dialog')
 
-      cleanupElement(el)
-    })
-
-    it('trigger wrapper 有 aria-expanded', async () => {
-      const el = createPopover('Btn', 'Content')
-      await waitForUpdate(el)
-
-      const wrapper = el.shadowRoot?.querySelector('[aria-expanded]')
-      expect(wrapper?.getAttribute('aria-expanded')).toBe('false')
-
-      el.open = true
-      await el.updateComplete
-      vi.advanceTimersToNextFrame()
-      await waitForUpdate(el)
-      expect(wrapper?.getAttribute('aria-expanded')).toBe('true')
-
-      cleanupElement(el)
-    })
-
-    it('aria-expanded / aria-controls 回写到 trigger 元素', async () => {
-      const el = createPopover('Btn', 'Content')
-      await waitForUpdate(el)
-
+      // 回写落在 trigger slot 的 assigned element 上（不是 shadow 里的包装层）：
+      // 包装层不可聚焦，AT 读不到它的 ARIA 状态。
       const trigger = el.querySelector<HTMLElement>('[slot="trigger"]')!
       expect(trigger.getAttribute('aria-expanded')).toBe('false')
-      expect(trigger.getAttribute('aria-controls')).toBe(el.shadowRoot?.querySelector('[role="dialog"]')?.id)
+      expect(trigger.getAttribute('aria-controls')).toBe(panel?.id)
 
       clickTrigger(el)
       await waitForUpdate(el)

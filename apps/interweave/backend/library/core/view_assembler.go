@@ -92,6 +92,7 @@ func (a viewAssembler) assembleMany(ctx context.Context, q storage.Queryer, reso
 		if view.Sources == nil {
 			view.Sources = []Source{}
 		}
+		view.Kind, view.SizeBytes = resourceViewMetadata(view.Sources)
 		view.Tags = tagsByResource[res.ID]
 		if view.Tags == nil {
 			view.Tags = []Tag{}

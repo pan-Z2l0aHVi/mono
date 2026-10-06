@@ -5,7 +5,51 @@
 }
 
 :host {
+  /*
+   * 排版族：按角色命名，不引入数字阶（与 §6.3 的 radius 决策同构——名字回答
+   * 「这块文字是什么」，不回答「它是第几号」）。
+   *
+   * 字号四档，各自对应一个真实角色而非尺寸偏好：
+   *   caption 12px  密集 chrome 标签（badge、toast 时间戳、menu 分组头）
+   *   readout 13px  数字读数（image-preview 计数与缩放比，带 tabular-nums；
+   *                 13px 是承重的——它要装进 min-width:48px 的胶囊）
+   *   14px          正文基准，即下面的 --wui-font-size
+   *   title 18px    有界卡片标题（dialog、drawer）
+   *
+   * 行高同理分四档。组件里的 line-height:1 与 0 刻意不 token 化：前者是控件内
+   * 单行标签的垂直居中手段，后者是让包裹盒高收缩到内容的技巧，两者都不是
+   * 排版行高，token 化会误导后来者以为可以整体调它们。
+   */
+  --wui-font-size-caption: 12px;
+  --wui-font-size-readout: 13px;
   --wui-font-size: 14px;
+  --wui-font-size-title: 18px;
+  --wui-font-weight-medium: 500;
+  --wui-font-weight-semibold: 600;
+  --wui-line-height-tight: 1.2;
+  --wui-line-height-snug: 1.4;
+  --wui-line-height-normal: 1.5;
+  --wui-line-height-relaxed: 1.6;
+
+  /*
+   * 间距阶：4px 基准的 6 级，止于组件层以生效的静态节奏字面量写入的最大值 24px（唯一更宽的
+   * empty padding 由 --wui-empty-size 在 JS 侧派生，属尺寸那根轴）。它不替代组件的
+   * 局部覆盖 token（--wui-button-px、--wui-dialog-padding 等），而是充当那些
+   * token 的 fallback 默认值——组件继续决定「我的 padding 是多少」，本族提供
+   * 「这个值在整套尺度里的位置」，嵌入方因此拿到一个全局密度杠杆。
+   *
+   * 本族刻意不含 1px / 2px / 6px / 7.5px / 10px 与负值。1px 是发丝线与描边环的
+   * 结构宽度；2px、6px、7.5px 是光学修正；10px 是 4px 阶之外的半档耦合值；负
+   * margin 用来抵消 flex gap 或按钮 padding。它们都是「为什么是这个数」各自独立
+   * 的答案，不共享「间距」语义，收进同一把尺子只会让覆盖其中之一时误伤其余。
+   */
+  --wui-space-1: 4px;
+  --wui-space-2: 8px;
+  --wui-space-3: 12px;
+  --wui-space-4: 16px;
+  --wui-space-5: 20px;
+  --wui-space-6: 24px;
+
   --wui-input-width: 200px;
   --wui-control-size: 36px;
   --wui-overlay-min-width: 200px;
@@ -14,10 +58,9 @@
   --wui-selection-control-size: 18px;
 
   /* radio-group / checkbox-group 成员间距，两个 group 各自可覆盖。 */
-  --wui-radio-group-gap: 8px;
-  --wui-checkbox-group-gap: 8px;
+  --wui-radio-group-gap: var(--wui-space-2);
+  --wui-checkbox-group-gap: var(--wui-space-2);
 
-  --wui-layer-base: 0;
   --wui-layer-inline-overlay: 1;
   --wui-layer-header: 10;
   --wui-layer-auxiliary: 20;
@@ -156,11 +199,11 @@
   --wui-color-surface-raised: #f2f2f7;
   --wui-color-surface-control: #dfdfdf;
   --wui-color-surface-track: #e5e5ea;
-  --wui-color-surface-menu: rgb(254 254 254 / 0.76);
+  --wui-color-surface-menu: rgb(250 250 250 / 0.76);
   --wui-color-surface-glass: rgb(250 250 250 / 0.34);
   --wui-color-surface-glass-hover: color-mix(in srgb, var(--wui-color-text) 6%, var(--wui-color-surface-glass));
   --wui-color-surface-glass-active: color-mix(in srgb, var(--wui-color-text) 15%, var(--wui-color-surface-glass));
-  --wui-color-surface-overlay: rgb(246 246 246 / 0.82);
+  --wui-color-surface-overlay: rgb(248 248 248 / 0.92);
 
   /* 侧边栏专用表面：浅色保持中性分层，深色单独抬升一档（见下方 dark 块注释）。 */
   --wui-color-surface-sidebar: rgb(233 233 233 / 0.82);
@@ -173,10 +216,22 @@
   --wui-color-state-layer-hover: color-mix(in srgb, var(--wui-color-text) 6%, transparent);
   --wui-color-state-layer-active: color-mix(in srgb, var(--wui-color-text) 15%, transparent);
   --wui-color-border: rgb(0 0 0 / 0.1);
-  --wui-color-glass-border: transparent;
+
+  /*
+   * 玻璃色按「绘制在哪一层」分组，两个前缀对应两个互不相干的层：
+   *
+   * glass-highlight  → 元素自身的 box-shadow inset 高光（不是描边环的一部分）
+   * glass-ring-*     → ::before 用 mask 挖出来的 1px 描边环，共三枚：
+   *                    ring 是铺满整圈的底色，ring-sheen / ring-shade 是其上
+   *                    两枚对角 radial，只覆盖四个角
+   *
+   * 底色必须存在：四枚 radial 都锚在角点且半径固定（sheen 2R、shade R），一条边
+   * 长过约 3R 就有一段落在所有 radial 之外，只靠 radial 时那段会整段消失。
+   */
   --wui-color-glass-highlight: rgb(255 255 255 / 0.9);
-  --wui-color-glass-corner: rgb(255 255 255 / 0.5);
-  --wui-color-glass-shade: rgb(0 0 0 / 0.03);
+  --wui-color-glass-ring: rgb(0 0 0 / 0.05);
+  --wui-color-glass-ring-sheen: rgb(255 255 255 / 0.5);
+  --wui-color-glass-ring-shade: rgb(0 0 0 / 0.03);
   --wui-glass-brightness: 1.06;
   --wui-color-accent: #08f;
   --wui-color-on-accent: #fff;
@@ -190,7 +245,7 @@
   --wui-shadow-panel: 0 3px 9px rgb(0 0 0 / 0.27);
   --wui-shadow-glass:
     0 0 1px rgb(0 0 0 / 0.02), 0 0 8px rgb(0 0 0 / 0.03), 0 2px 16px rgb(0 0 0 / 0.025), 0 8px 32px rgb(0 0 0 / 0.015);
-  --wui-color-focus-ring: rgb(0 136 255 / 0.4);
+  --wui-color-focus-ring: color-mix(in srgb, var(--wui-color-accent, #08f) 40%, transparent);
   color-scheme: light;
 }
 
@@ -204,14 +259,16 @@
   --wui-color-surface-glass: rgb(44 44 46 / 0.42);
   --wui-color-surface-glass-hover: color-mix(in srgb, var(--wui-color-text) 6%, var(--wui-color-surface-glass));
   --wui-color-surface-glass-active: color-mix(in srgb, var(--wui-color-text) 15%, var(--wui-color-surface-glass));
-  --wui-color-surface-overlay: rgb(32 34 34 / 0.9);
+  --wui-color-surface-overlay: rgb(32 34 34 / 0.92);
 
   /* 深色 elevation：浮动面板与侧边栏都比 page 浅一档。取 --wui-color-surface
      （#2c2c2e）作为「page 之上一档」的基准色，面板按自身 alpha 叠在 page 上，
      合成结果约 rgb(46 45 47)，与 #2c2c2e 相差不超过 2/255。
      alpha 低于早期的 0.92/0.9：颜色抬升后高 alpha 会让面板读成实心纸片，
      降到 0.74/0.8 恢复旧版的透感（模糊底内容可透出），层级方向不变。
-     overlay 不随之抬升：dialog/drawer/toast 共用该 token，不在本次范围内。 */
+     overlay 是唯一的例外：dialog/drawer/toast 背后的内容是被遮住的主体内容，
+     透过去会与浮层自身文字叠出干扰读的对比，因此单独抬到 0.92 换取可读性，
+     代价是失去透感——它本来也不属于「面板透出 page」的层级语义。 */
   --wui-color-surface-sidebar: rgb(44 44 46 / 0.8);
   --wui-color-surface-segmented: #3a3a3c;
   --wui-color-surface-selected: #5c5c5e;
@@ -222,10 +279,10 @@
   --wui-color-state-layer-hover: color-mix(in srgb, var(--wui-color-text) 6%, transparent);
   --wui-color-state-layer-active: color-mix(in srgb, var(--wui-color-text) 15%, transparent);
   --wui-color-border: rgb(255 255 255 / 0.14);
-  --wui-color-glass-border: rgb(255 255 255 / 0.05);
   --wui-color-glass-highlight: rgb(255 255 255 / 0.1);
-  --wui-color-glass-corner: rgb(255 255 255 / 0.2);
-  --wui-color-glass-shade: rgb(0 0 0 / 0.5);
+  --wui-color-glass-ring: rgb(255 255 255 / 0.05);
+  --wui-color-glass-ring-sheen: rgb(255 255 255 / 0.2);
+  --wui-color-glass-ring-shade: rgb(0 0 0 / 0.5);
   --wui-glass-brightness: 1.02;
   --wui-color-accent: #0a84ff;
   --wui-color-on-accent: #fff;
@@ -238,7 +295,7 @@
   --wui-shadow-overlay: 0 18px 48px rgb(0 0 0 / 0.48);
   --wui-shadow-panel: 0 4px 16px rgb(0 0 0 / 0.32);
   --wui-shadow-glass: 0 8px 24px rgb(0 0 0 / 0.08);
-  --wui-color-focus-ring: rgb(10 132 255 / 0.62);
+  --wui-color-focus-ring: color-mix(in srgb, var(--wui-color-accent, #0a84ff) 62%, transparent);
   color-scheme: dark;
 }
 
@@ -253,7 +310,7 @@
     --wui-color-surface-glass: rgb(44 44 46 / 0.42);
     --wui-color-surface-glass-hover: color-mix(in srgb, var(--wui-color-text) 6%, var(--wui-color-surface-glass));
     --wui-color-surface-glass-active: color-mix(in srgb, var(--wui-color-text) 15%, var(--wui-color-surface-glass));
-    --wui-color-surface-overlay: rgb(32 34 34 / 0.9);
+    --wui-color-surface-overlay: rgb(32 34 34 / 0.92);
     --wui-color-surface-sidebar: rgb(44 44 46 / 0.8);
     --wui-color-surface-segmented: #3a3a3c;
     --wui-color-surface-selected: #5c5c5e;
@@ -264,10 +321,10 @@
     --wui-color-state-layer-hover: color-mix(in srgb, var(--wui-color-text) 6%, transparent);
     --wui-color-state-layer-active: color-mix(in srgb, var(--wui-color-text) 15%, transparent);
     --wui-color-border: rgb(255 255 255 / 0.14);
-    --wui-color-glass-border: rgb(255 255 255 / 0.05);
     --wui-color-glass-highlight: rgb(255 255 255 / 0.1);
-    --wui-color-glass-corner: rgb(255 255 255 / 0.2);
-    --wui-color-glass-shade: rgb(0 0 0 / 0.5);
+    --wui-color-glass-ring: rgb(255 255 255 / 0.05);
+    --wui-color-glass-ring-sheen: rgb(255 255 255 / 0.2);
+    --wui-color-glass-ring-shade: rgb(0 0 0 / 0.5);
     --wui-glass-brightness: 1.02;
     --wui-color-accent: #0a84ff;
     --wui-color-on-accent: #fff;
@@ -280,7 +337,7 @@
     --wui-shadow-overlay: 0 18px 48px rgb(0 0 0 / 0.48);
     --wui-shadow-panel: 0 4px 16px rgb(0 0 0 / 0.32);
     --wui-shadow-glass: 0 8px 24px rgb(0 0 0 / 0.08);
-    --wui-color-focus-ring: rgb(10 132 255 / 0.62);
+    --wui-color-focus-ring: color-mix(in srgb, var(--wui-color-accent, #0a84ff) 62%, transparent);
     color-scheme: dark;
   }
 }

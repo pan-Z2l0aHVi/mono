@@ -2,9 +2,9 @@
  * Library headless view-model store。
  *
  * 职责边界（ADR-0015：Pinia 不复制 Go 内部规则）：这里只做两类事——
- * 1. DTO → view-model 翻译：与后端契约的词汇在此一次性对齐。prototype 页面
- *    曾使用 name / broken / sourceType: 'local'|'link' 等分歧词汇，对应关系为
- *    name→title、broken→!available、local/link→file/url；页面不得再各自翻译 DTO。
+ * 1. DTO → view-model 翻译：与后端契约的词汇在此一次性对齐。早期草稿里的
+ *    name / broken / sourceType: 'local'|'link' 等分歧词汇，
+ *    对应关系为 name→title、broken→!available、local/link→file/url；页面不得再各自翻译 DTO。
  * 2. 列表展示语义：搜索、过滤、排序与派生标签集合，恰好实现一次。
  * preferred 基数、唯一 Source 删除约束等领域不变量留在 Go core，前端只读。
  *
@@ -13,24 +13,29 @@
  */
 import { defineStore } from 'pinia'
 
-import type { ResourceDTO } from '../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/service'
+import type {
+  ResourceDTO,
+  ResourceKind as ResourceDTOKind
+} from '../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/service'
+import type { TagColor as TagColorDTO } from '../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage'
 
 export type SourceType = 'file' | 'url'
 
-/** 资源展示分类：url 一律为 web；文件按扩展名粗分类，未知扩展归入 file。 */
-export type ResourceKind = 'pdf' | 'document' | 'data' | 'web' | 'file'
+/** 生成闭集之外的旧客户端或异常值统一降级为 unknown。 */
+export type ResourceKind = ResourceDTOKind | 'unknown'
 
-const KIND_BY_EXTENSION: Record<string, ResourceKind> = {
-  pdf: 'pdf',
-  doc: 'document',
-  docx: 'document',
-  md: 'document',
-  txt: 'document',
-  rtf: 'document',
-  json: 'data',
-  csv: 'data',
-  yaml: 'data',
-  yml: 'data'
+/**
+ * 标签展示色，由后端按标签名持久化。
+ *
+ * 颜色不是前端的装饰决策：同一名称在全库各处必须是同一个颜色，所以这里只搬运
+ * 后端给的 key，映射成 chip 样式是 presentation 层的事。
+ */
+export type TagColor = TagColorDTO
+
+export interface TagView {
+  id: string
+  name: string
+  color: TagColor
 }
 
 export interface ResourceSourceView {
@@ -58,10 +63,16 @@ export interface ResourceView {
   sources: ResourceSourceView[]
   /** 首选入口；DTO 契约保证恰有一个，view 只做派生快照。 */
   preferred: ResourceSourceView | null
+  tags: TagView[]
+  /**
+   * tags 的按名投影，供按名称工作的界面使用：编辑标签对话框的草稿与入队队列都只有
+   * 名称（队列里的标签尚未落库，没有颜色可言），过滤与排序也只认名称。
+   */
   tagNames: string[]
-  /** 至少一个入口可用即为可用；对应 prototype 的 broken 取反。 */
+  /** 至少一个入口可用即为可用。 */
   available: boolean
   kind: ResourceKind
+  sizeBytes: number | null
 }
 
 export type AvailabilityFilter = 'all' | 'available' | 'unavailable'
@@ -96,13 +107,6 @@ function toSourceView(source: ResourceDTO['sources'][number]): ResourceSourceVie
   }
 }
 
-function kindOf(source: ResourceSourceView | null): ResourceKind {
-  if (!source || source.type === 'url') return 'web'
-  const dot = source.location.lastIndexOf('.')
-  if (dot < 0 || dot === source.location.length - 1) return 'file'
-  return KIND_BY_EXTENSION[source.location.slice(dot + 1).toLowerCase()] ?? 'file'
-}
-
 /** DTO → view-model；preferred 派生自 is_preferred，available 由各入口聚合。 */
 export function toResourceView(dto: ResourceDTO): ResourceView {
   const sources = dto.sources.map(toSourceView)
@@ -115,13 +119,18 @@ export function toResourceView(dto: ResourceDTO): ResourceView {
     updatedAt: dto.updated_at,
     sources,
     preferred,
+    tags: dto.tags.map(toTagView),
     tagNames: dto.tags.map(tag => tag.name),
     available: sources.some(source => source.available),
-    kind: kindOf(preferred ?? sources[0] ?? null)
+    kind: dto.kind || 'unknown',
+    sizeBytes: dto.size_bytes ?? null
   }
 }
 
-/** 过滤 + 排序；语义与 prototype 一致，词汇已对齐 view-model。 */
+function toTagView(tag: ResourceDTO['tags'][number]): TagView {
+  return { id: tag.id, name: tag.name, color: tag.color }
+}
+
 export function filterAndSort(resources: ResourceView[], criteria: ListCriteria): ResourceView[] {
   const query = criteria.searchQuery.trim().toLowerCase()
 
@@ -175,6 +184,20 @@ export const useLibraryStore = defineStore('library', {
     allTagNames(state): string[] {
       return [...new Set(state.resources.flatMap(resource => resource.tagNames))].sort()
     },
+    /**
+     * 标签名 → 持久化颜色。
+     *
+     * 入队队列与编辑标签对话框手里只有标签名（队列里的标签还没落库，不存在颜色），
+     * 它们要显示已存在标签的颜色只能按名回查。不在这张表里的名称就是尚未创建，
+     * 展示中性档。
+     */
+    tagColors(state): Record<string, TagColor> {
+      const colors: Record<string, TagColor> = {}
+      for (const resource of state.resources) {
+        for (const tag of resource.tags) colors[tag.name] = tag.color
+      }
+      return colors
+    },
     hasActiveFilter(state): boolean {
       return (
         state.searchQuery.trim() !== '' ||
@@ -199,6 +222,39 @@ export const useLibraryStore = defineStore('library', {
     /** 整表替换视图；由 service 调用方（页面/composable）喂数据，store 不直接触达 Wails。 */
     setResources(resources: ResourceDTO[]) {
       this.resources = resources.map(toResourceView)
+    },
+    /** 合并 service 返回的最新快照，避免 CRUD 后等待整表重载。 */
+    upsertResource(resource: ResourceDTO) {
+      const nextResource = toResourceView(resource)
+      const index = this.resources.findIndex(item => item.id === nextResource.id)
+      if (index === -1) {
+        this.resources.push(nextResource)
+        return
+      }
+      this.resources.splice(index, 1, nextResource)
+    },
+    removeResources(ids: string[]) {
+      const removedIds = new Set(ids)
+      this.resources = this.resources.filter(resource => !removedIds.has(resource.id))
+    },
+    /**
+     * 按 source 就地翻转 available 并重算派生字段；sourceId 不存在时静默 no-op。
+     *
+     * 不能走 toResourceView：那条路需要完整 ResourceDTO，而事件只带局部字段。
+     * preferred 与 sources[] 共享同一对象引用，所以改 source.available 会连带更新
+     * preferred——但仅当它就是首选时；sizeBytes 的判断已把这条约束写明。
+     */
+    applySourceAvailability(sourceId: string, available: boolean, sizeBytes: number | null | undefined) {
+      for (const resource of this.resources) {
+        const source = resource.sources.find(item => item.id === sourceId)
+        if (!source) continue
+        source.available = available
+        // size 只在翻转的是首选 source 时才有意义（size 由首选 source 派生）。
+        if (resource.preferred?.id === sourceId) resource.sizeBytes = sizeBytes ?? null
+        // available 是 sources 的聚合，必须重算，否则过滤与行内样式不会立即生效。
+        resource.available = resource.sources.some(item => item.available)
+        return
+      }
     },
     resetFilters() {
       this.searchQuery = ''

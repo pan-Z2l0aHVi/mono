@@ -2,7 +2,7 @@
 # 提交边界的清洁度 gate：只检不改。范围是 `vp check`（格式 + lint + 类型）、stylelint 与
 # `gofmt -l`。它与 task 无关，所以在「没有 active task」的提交里也照跑（`scripts/task.mjs` 的
 # alwaysOnChecks 把它列进无 task 子集）。这道保证之所以不挂在 task 档位上：T0/T1 必经 freeze 的
-# `fix:code` 归一化，而 T2 的快速通道与无 task 提交不经过 freeze，那一层对它们不存在；把一条
+# `fix-code` 归一化，而 T2 的快速通道与无 task 提交不经过 freeze，那一层对它们不存在；把一条
 # check-only 的检查放在 commit 边界，三条路径拿到的就是同一条保证。
 #
 # 刻意不代为 fix：commit 期改写文件会与 freeze 的快照不变式打架（内容变了，diffHash 就 stale），
@@ -14,7 +14,7 @@
 # hash），代价是同一个文件在 index 与工作区分叉时，本检查判定的是工作区那一份。分叉要自己收敛：
 # 改完重新 `git add`。两条由此漏出去的形状是已接受的残余：只 add 了未归一化的那半个 hunk
 # （工作区已格式化），以及 `git add x && rm x`（清单还列着它，工作区没有，于是跳过）。挡住它们的
-# 是仓级 `pnpm run check:code`（CI 跑的就是它）与 review，不是这里。
+# 是仓级 `pnpm run check-code`（CI 跑的就是它）与 review，不是这里。
 #
 # 下面三段 heredoc 循环形状相同而不抽成函数：`set --` 在函数里改的是函数自己的位置参数（POSIX sh
 # 动态作用域），抽出来就把参数留在了函数里。内核以 POSIX sh 执行本文件（无扩展名、需要 +x），
@@ -48,7 +48,7 @@ while IFS= read -r file; do
   # `--allow-empty-input` 以 0 退出，`vp check` 同理（实测它把 `scripts/*.mjs` 展开成 13 个文件），
   # 于是那一类命名是已知残余：既可能漏检，也可能反过来把未暂存的文件拉进来拦提交。不按元字符拦截，
   # 因为本仓就跟踪着 apps/vue-web-ui-demo/src/pages/[...all]/index.vue，拦住它的代价比管住一个畸形
-  # 命名大；兜底仍是全仓 `check:code`。
+  # 命名大；兜底仍是全仓 `check-code`。
   case "$file" in
     -*)
       echo "format check cannot run: staged path '$file' starts with '-' and would be parsed" >&2
@@ -131,7 +131,7 @@ $stylelint_files
 STYLELINT
   # shellcheck disable=SC2086
   if [ "$#" -gt 0 ] && ! $stylelint_cmd --allow-empty-input "$@"; then
-    report "stylelint <files>; pnpm run fix:stylelint fixes the whole repo"
+    report "stylelint <files>; pnpm run fix-stylelint fixes the whole repo"
     status=1
   fi
 fi
@@ -157,7 +157,7 @@ GO
   fi
   if [ -n "${unformatted:-}" ]; then
     printf '%s\n' "$unformatted" >&2
-    report "gofmt -w <files>; pnpm run fix:go fixes the whole repo"
+    report "gofmt -w <files>; pnpm run fix-go fixes the whole repo"
     status=1
   fi
 fi

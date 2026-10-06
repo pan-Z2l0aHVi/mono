@@ -38,7 +38,6 @@
   background: transparent;
 }
 
-/* 自定义触发器自带度量，容器让位 */
 .autocomplete-trigger[data-custom-trigger] {
   width: auto;
 }
@@ -55,7 +54,8 @@
 
 /* 自定义触发器场景下包装 div 可能成为 tab 位，补 focus ring（默认触发器自带） */
 .autocomplete-trigger:focus-visible {
-  outline: var(--wui-focus-ring-width, 3px) solid var(--wui-color-focus-ring, rgb(0 136 255 / 0.4));
+  outline: var(--wui-focus-ring-width, 3px) solid
+    var(--wui-color-focus-ring, color-mix(in srgb, var(--wui-color-accent, #08f) 40%, transparent));
   outline-offset: 2px;
 }
 
@@ -70,6 +70,9 @@
   --wui-option-check-display: none;
   --wui-internal-glass-shadow: var(--wui-shadow-panel, 0 3px 9px rgb(0 0 0 / 0.27));
   --wui-glass-corner-radius: var(--wui-radius-menu, 18px);
+
+  /* 环底色转 transparent，宽面板的长边中段不留铺底，见 menu-portal.css 同处注释。 */
+  --wui-color-glass-ring: transparent;
   --wui-internal-duration-float-enter: var(--wui-duration-float-enter, 240ms);
   --wui-internal-duration-float-exit: var(--wui-duration-float-exit, 160ms);
   position: absolute;
@@ -83,7 +86,7 @@
   border-radius: var(--wui-radius-menu, 18px);
 
   /* 玻璃背景：wui-glass 在面板自身，这里覆盖其默认玻璃底为菜单表面色 */
-  background-color: var(--wui-color-surface-menu, rgb(254 254 254 / 0.76));
+  background-color: var(--wui-color-surface-menu, rgb(250 250 250 / 0.76));
 
   &.portal {
     position: fixed;
@@ -101,14 +104,7 @@
 }
 
 .autocomplete-content {
-  padding: 4px;
-}
-
-.autocomplete-empty {
-  padding: 8px 12px;
-  font-size: var(--wui-font-size, 14px);
-  color: var(--wui-color-text-secondary, #6a6a6a);
-  text-align: center;
+  padding: var(--wui-space-1, 4px);
 }
 
 /* 非匹配候选隐藏：本地模式经 slot 投影，portal 模式为面板直接子元素 */

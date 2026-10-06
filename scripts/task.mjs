@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // Task 内核：脱离具体业务的抽象任务状态机。级别（level）只表达 workflow 严格程度；
 // 内核不含 release、changeset、deploy 等任何业务词汇，仓库级政策通过 .agents/checks/
-// 的可执行检查挂载。状态存 git common dir 下的 tasks/，跨 worktree 共享。
+// 的可执行检查挂载。状态存 $TMPDIR/greypan/tasks/：本地工作记忆，可以丢失（ADR-0018），
+// 持久审计交给 commit message、changeset 与 git 历史。跨 worktree 共享，但跨仓库不共享。
 import { execFileSync } from 'node:child_process'
 import crypto from 'node:crypto'
 import fs from 'node:fs'
@@ -9,13 +10,19 @@ import os from 'node:os'
 import path from 'node:path'
 
 const root = path.resolve(process.env.AGENT_TASK_ROOT ?? path.join(import.meta.dirname, '..'))
+// AGENT_TASK_STATE_DIR 与 AGENT_TASK_ROOT 同类：前者换 state 落点（fixture 隔离用），后者换
+// 默认 worktree。state 目录是 per-user 共享的，多个仓库的 state 会在同一个目录里，所以所有
+// 列举路径都必须再按 commonDir 过滤，见 activeStates。
+const stateDir = path.resolve(process.env.AGENT_TASK_STATE_DIR ?? path.join(os.tmpdir(), 'greypan', 'tasks'))
 const phases = new Set(['open', 'active', 'frozen', 'reviewed', 'approved', 'done', 'dropped'])
 const levels = new Set(['t0', 't1', 't2'])
 const SCHEMA_VERSION = 1
 // 参与方标识形状：owner / reviewer / approver / drop 的署名人共用，保证事件里每个角色都是可
-// 比对的 id。四个字段之间的约束全是「彼此不相等」，比的又是字符串，所以只有都落在同一字符集里，
-// 「coder-1」与「coder-1␠」（␠ = 空格）这种看着是两个身份、实际是同一个人的写法才不会被放过。
-// 形状只写一份：同一条规则喂四个命令，把字面量抄进四条报错里迟早会漂。
+// 比对的 id。字段之间仍有「彼此不相等」的约束（如今只剩 approver ≠ reviewer），比的是字符串，
+// 所以四个字段都落在同一字符集里，「coder-1」与「coder-1␠」（␠ = 空格）这种看着是两个身份、
+// 实际是同一个人的写法才不会被放过。owner 不再参与任何比对（单 agent 工作流要求 owner 自己
+// approve，见 approvalRequired），但显式申报的 `--owner` 仍走这条形状校验，四条记录因此仍可
+// 直接比对。形状只写一份：同一条规则喂四个命令，把字面量抄进四条报错里迟早会漂。
 const AGENT_ID_PATTERN = '[A-Za-z0-9][A-Za-z0-9._-]{3,39}'
 const AGENT_ID = new RegExp(`^${AGENT_ID_PATTERN}$`)
 
@@ -105,28 +112,35 @@ function resolveWorktree(value = root) {
   return { worktree: topLevel, commonDir: fs.realpathSync(commonPath) }
 }
 
-function stateDirectory(commonDir) {
-  return path.join(commonDir, 'tasks')
-}
-
-function stateFile(commonDir, taskId) {
-  return path.join(stateDirectory(commonDir), `${validateTaskId(taskId)}.json`)
+function stateFile(taskId) {
+  return path.join(stateDir, `${validateTaskId(taskId)}.json`)
 }
 
 function activeStates(commonDir) {
-  const directory = stateDirectory(commonDir)
-  if (!fs.existsSync(directory)) return []
+  if (!fs.existsSync(stateDir)) return []
   return fs
-    .readdirSync(directory)
+    .readdirSync(stateDir)
     .filter(file => file.endsWith('.json'))
     .flatMap(file => {
-      const parsed = parseStateFile(path.join(directory, file))
+      const parsed = parseStateFile(path.join(stateDir, file))
       if (parsed.error) {
-        // 目录扫描是所有 worktree guard 的共享路径：单个损坏 state（崩溃半写、schema 升级遗留）
-        // 不应阻塞无关 worktree 的提交；降级为可见警告并跳过，硬失败保留给 target task 的 loadState。
-        console.error(`warning: skipping unreadable task state; ${parsed.error}`)
+        // 单个坏 state 不该阻塞无关 worktree 的提交，降级为可见警告并跳过；硬失败保留给
+        // target task 的 loadState。警告有归属边界：state 目录是 per-user 共享的（ADR-0018），
+        // 能证明属于别的仓库的坏 state 不在本仓库的 guard 上刷屏。SCHEMA_VERSION 升版时全机所有
+        // 仓库的旧 state 同时变成 unsupported，这条过滤是唯一不让噪音跨仓库传播的办法。
+        // 反过来，认不出归属的（JSON 解不开、或没写 commonDir）照常警告：静默吞掉会让 guard
+        // 在本仓库自己的 state 损坏时无声降级成「无 active task」，那正是「不静默放行」要防的形态。
+        if (parsed.commonDir === undefined || parsed.commonDir === commonDir)
+          console.error(`warning: skipping unreadable task state; ${parsed.error}`)
         return []
       }
+      // 落点从 <git-common-dir>/tasks/ 搬到 $TMPDIR/greypan/tasks/ 之后，这个目录由同一台
+      // 机器上的所有仓库共用，仓库删掉之后它的 state 也不会跟着消失（孤儿 state）。commonDir
+      // 是 state 自带的仓库身份，列举侧按它过滤就得到「只列当前 repo」的语义：别的仓库的 state
+      // 既不列也不删，更不该在别人的 guard 上刷警告（坏 state 的警告按同一条归属边界过滤）。
+      // 定向命令不受这条影响——loadState 拿到的 file 就是按 task id 算的，跨仓库的同名 id 由
+      // liveState 的 commonDir 比对硬失败。
+      if (parsed.commonDir !== commonDir) return []
       return parsed.state.phase !== 'done' && parsed.state.phase !== 'dropped' ? [parsed.state] : []
     })
 }
@@ -137,6 +151,20 @@ function readStateFile(file) {
   return parsed.state
 }
 
+// 从半解析的 state 里取仓库归属。列举侧要能在 parseStateFile 失败（schema 版本不匹配、
+// 必填字段缺失）时仍然判断这个 state 属于哪个仓库：共享目录一旦遇到 SCHEMA_VERSION 升版，
+// 全机所有仓库的旧 state 同时变成 unsupported，没有归属判断它们就会一起刷到本仓库的
+// guard 上。入参刻意宽松——取不到（非对象、没有非空 commonDir）就返回 undefined 且不抛，
+// 调用方按「归属不明」照常警告：静默吞掉会让 guard 在本仓库自己的 state 损坏时无声降级成
+// 「无 active task」，那正是「不静默放行」要防的形态。空串算「缺归属」而不是「属于别处」：
+// saveState 写的 commonDir 是 realpath 结果，空串只可能来自损坏或手写，声称归属一个空路径
+// 不是「证明属于别仓库」。
+function stateOwner(state) {
+  return state && typeof state === 'object' && typeof state.commonDir === 'string' && state.commonDir !== ''
+    ? state.commonDir
+    : undefined
+}
+
 function parseStateFile(file) {
   let state
   try {
@@ -145,12 +173,15 @@ function parseStateFile(file) {
     return { error: `cannot read task state ${file}: ${error instanceof Error ? error.message : String(error)}` }
   }
   if (!state || typeof state !== 'object' || !phases.has(state.phase) || typeof state.taskId !== 'string')
-    return { error: `task state is invalid: ${file}` }
+    return { error: `task state is invalid: ${file}`, commonDir: stateOwner(state) }
   if (state.version !== SCHEMA_VERSION)
-    return { error: `task state ${file} has unsupported schema version: ${JSON.stringify(state.version)}` }
+    return {
+      error: `task state ${file} has unsupported schema version: ${JSON.stringify(state.version)}`,
+      commonDir: stateOwner(state)
+    }
   // v1 读取不解释可选的编排字段。旧 state 可能仍带顶层 roles 和历史 assign.roles；保留原值，
   // 不在 load/status 时迁移或重写。task 内核只使用 owner/worktree 等自身字段。
-  return { state }
+  return { state, commonDir: stateOwner(state) }
 }
 
 function assertWorktreeAvailable(commonDir, worktree, taskId) {
@@ -159,14 +190,15 @@ function assertWorktreeAvailable(commonDir, worktree, taskId) {
 }
 
 function loadState(taskId) {
-  const { commonDir } = resolveWorktree()
-  const file = stateFile(commonDir, taskId)
+  const file = stateFile(taskId)
   if (!fs.existsSync(file)) fail(`task is not initialized: ${taskId}`)
   return { file, state: readStateFile(file) }
 }
 
 // saveState 原子但不加跨进程锁：同一 task 的读-改-写由「单 owner」使用模型串行化，
 // 并发执行同一 task 的两条命令仍可能丢事件，这是接受的边界（guard/status 只读不受影响）。
+// mkdir 是必需的：$TMPDIR 本身一定存在（系统保证），$TMPDIR/greypan/ 与 tasks/ 不一定，
+// 而 state 目录在读路径上不存在时是「本机还没有任何 task」的合法状态，所以只在这里建。
 function saveState(file, state) {
   fs.mkdirSync(path.dirname(file), { recursive: true, mode: 0o700 })
   const temporary = `${file}.${process.pid}.${crypto.randomBytes(4).toString('hex')}.tmp`
@@ -215,6 +247,9 @@ function currentSnapshot(worktree, baseSha) {
 
 function liveState(state) {
   const { worktree, commonDir } = resolveWorktree(state.worktree)
+  // state 不再住在仓库自己的目录下，所以「这份 state 属不属于当前仓库」要靠 commonDir 认，
+  // 不再由文件所在位置保证。孤儿 state（仓库已删、state 还在 $TMPDIR 里）因此会在这里硬失败，
+  // 而不是被静默当成当前仓库的 task。
   if (commonDir !== state.commonDir) fail(`task ${state.taskId} belongs to another Git repository`)
   const branch = gitAt(worktree, 'branch', '--show-current')
   const current = currentSnapshot(worktree, state.baseSha)
@@ -248,11 +283,11 @@ function assertCurrentHash(state, live, label = 'task evidence') {
     )
 }
 
-// freeze 归一化与 commit 收敛到同一起点：全量 staging 后运行仓库的 fix:code
+// freeze 归一化与 commit 收敛到同一起点：全量 staging 后运行仓库的 fix-code
 //（CI=true 关闭交互），fix 产物重新 staging 后再取快照。pre-commit 只剩 guard、
 // 不运行任何 fixer，因此不存在「commit 期改写文件导致冻结失效」的竞态；commit 边界的
 // 清洁度保证（格式、lint 与类型）由 check-only 的 .agents/checks/format-clean 提供，它对三条提交路径都生效。
-// fix:code 归一化是强制的：声明了 fix:code 但依赖未安装时直接失败并指引安装，
+// fix-code 归一化是强制的：声明了 fix-code 但依赖未安装时直接失败并指引安装，
 // 只有不含该脚本的仓库（测试 fixture、纯 git 仓库）才允许跳过。
 // 全量 staging 的范围边界不在这里，而在「谁要求干净起点」：T0/T1 的 open → active 要求 worktree
 // 干净，所以 `git add -A` 扫进来的只可能是本 task 起点之后的改动；T2 的 start 豁免干净，于是
@@ -265,13 +300,13 @@ function normalizeWorktree(worktree) {
   const manifestPath = path.join(worktree, 'package.json')
   if (!fs.existsSync(manifestPath)) return false
   const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'))
-  if (!manifest.scripts?.['fix:code']) return false
+  if (!manifest.scripts?.['fix-code']) return false
   if (!fs.existsSync(path.join(worktree, 'node_modules')))
     fail(
-      `worktree dependencies are missing in ${worktree}; normalization via fix:code is mandatory — run "pnpm install && pnpm run build" in the worktree, then re-run freeze`
+      `worktree dependencies are missing in ${worktree}; normalization via fix-code is mandatory — run "pnpm install && pnpm run build" in the worktree, then re-run freeze`
     )
   try {
-    execFileSync('pnpm', ['run', 'fix:code'], { cwd: worktree, stdio: 'pipe', env: { ...process.env, CI: 'true' } })
+    execFileSync('pnpm', ['run', 'fix-code'], { cwd: worktree, stdio: 'pipe', env: { ...process.env, CI: 'true' } })
   } catch (error) {
     const detail = error?.stderr?.toString().trim() || error?.stdout?.toString().trim()
     fail(
@@ -341,9 +376,9 @@ function runChecks(worktree, state, phase) {
   return ran
 }
 
-// owner 的两种来源区别对待：显式的 `--owner` / AGENT_TASK_OWNER 是一次身份申报，必须和
-// reviewer/approver/署名人同形状，否则四个字段之间的「不相等」比的是字符串而不是人。登录名是
-// 兜底而非申报，短用户名不该让人连 task 都建不了，所以不受这条约束。
+// owner 的两种来源区别对待：显式的 `--owner` / AGENT_TASK_OWNER 是一次身份申报，与
+// reviewer/approver/署名人落在同一形状里，四条事件记录才可比对。登录名是兜底而非申报，短用户名
+// 不该让人连 task 都建不了，所以不受这条约束。
 function declaredOwner(options) {
   if (options.owner !== undefined) return assertAgentId(options.owner, 'owner')
   if (process.env.AGENT_TASK_OWNER) return assertAgentId(process.env.AGENT_TASK_OWNER, 'owner')
@@ -370,7 +405,7 @@ function newTask(options) {
   }
   const branch = gitAt(worktree, 'branch', '--show-current')
   if (!branch) fail(`task worktree must be attached to a branch: ${worktree}`)
-  const file = stateFile(commonDir, taskId)
+  const file = stateFile(taskId)
   if (fs.existsSync(file)) fail(`task already exists: ${taskId}`)
   const state = {
     version: SCHEMA_VERSION,
@@ -387,7 +422,7 @@ function newTask(options) {
     issue: options.issue ? normalizeIssue(options.issue) : null,
     playbook: options.playbook || null,
     diffHash: null,
-    review: { required: level !== 't2', result: null, diffHash: null, reviewer: null, at: null },
+    review: { required: level === 't0', result: null, diffHash: null, reviewer: null, at: null },
     approval: { granted: false, diffHash: null, approver: null, at: null },
     verification: [],
     events: []
@@ -461,7 +496,9 @@ function freeze(options) {
   if (!options['allow-empty'] && snapshot.trackedFiles.length === 0 && snapshot.untrackedFiles.length === 0)
     fail(`task ${taskId} has no changes to freeze; use --allow-empty only for an intentional empty task`)
   state.diffHash = snapshot.hash
-  state.review = { required: state.review.required, result: null, diffHash: null, reviewer: null, at: null }
+  // required 跟着 level 重算，而不是原样带回旧值：它记的是当前档位的 review 政策，建 task
+  // 时写下的快照会与后来的规则修订错位。
+  state.review = { required: state.level === 't0', result: null, diffHash: null, reviewer: null, at: null }
   state.approval = { granted: false, diffHash: null, approver: null, at: null }
   state.phase = 'frozen'
   appendEvent(state, 'freeze', {
@@ -475,13 +512,15 @@ function freeze(options) {
   print({ ...state, live: { ...liveState(state), current: snapshot } })
 }
 
-// 该 task 的「实施方」身份集合：当前 owner 加上事件里出现过的每一个 owner。assign 可以在
-// 任意相位改写 owner，只比对现值就能被「先派给别人、再 approve 自己」绕开，所以独立性核对
-// 的是历史，不是某一时刻的字段。
-function implementers(state) {
-  const ids = new Set([state.owner])
-  for (const event of state.events) if (event.owner) ids.add(event.owner)
-  return ids
+// 这一档的 approval 是否必需。T0 恒需要。T1 的 review 可选，于是 approval 与之成对：记了
+// review 就必须对同一 diffHash 批，否则「审过」和「批了」两个槽位各说各话，review 会退化成一条
+// 无人负责的记录；没记 review 就不产生、也不要求 approval，那条路径在 guard 与 done 上只留
+// 「冻结快照一致 + 验证」。取 level 而不是 state 里的 review.required——后者是建 task 时写下的
+// 历史快照，既有 T1 state 里还是 true，读它会让旧 task 继续按已废止的口径被拦。
+function approvalRequired(state) {
+  if (state.level === 't0') return true
+  if (state.level === 't1') return state.review.result !== null
+  return false
 }
 
 function review(options) {
@@ -494,8 +533,6 @@ function review(options) {
   const reviewer = options.reviewer || process.env.AGENT_TASK_REVIEWER
   if (!reviewer) fail(`review requires --reviewer <id> so independence is auditable`)
   assertAgentId(reviewer, 'reviewer')
-  if (implementers(state).has(reviewer))
-    fail(`reviewer ${reviewer} is or was an owner of this task; review must come from a different identity`)
   const live = liveState(state)
   assertCurrentHash(state, live, 'review')
   state.review = { required: state.review.required, result, diffHash: state.diffHash, reviewer, at: now() }
@@ -517,8 +554,6 @@ function approve(options) {
   const approver = options.approver || process.env.AGENT_TASK_APPROVER
   if (!approver) fail(`approval requires --approver <id> so authorization is auditable`)
   assertAgentId(approver, 'approver')
-  if (implementers(state).has(approver))
-    fail(`approver ${approver} is or was an owner of this task; approval must come from a different identity`)
   if (approver === state.review.reviewer) fail(`approver must be different from the reviewer of this diff`)
   state.approval = { granted: true, diffHash: state.diffHash, approver, at: now() }
   appendEvent(state, 'approve', { approver, diffHash: state.diffHash })
@@ -548,9 +583,10 @@ function verify(options) {
   print(state)
 }
 
-// done 的级别差异：t0/t1 要求 review pass、approval 与至少一条最新 pass 验证，
-// 且快照一致、工作区干净；t2 是快速通道，只要求分支一致——验证与 review 是
-// 推荐实践，不作为硬 gate。
+// done 的级别差异：t0 要求 review pass、approval 与至少一条最新 pass 验证；t1 的 review
+// 可选，于是收尾相位由 approvalRequired 决定——记了 review 就与 approval 成对，停在
+// approved，没记 review 就在 frozen 直接收尾。两档都要求快照一致、工作区干净与最新一条
+// pass 验证；t2 是快速通道，只要求分支一致——验证与 review 是推荐实践，不作为硬 gate。
 function done(options) {
   const taskId = validateTaskId(requireOption(options, 'task'))
   const { file, state } = loadState(taskId)
@@ -559,8 +595,9 @@ function done(options) {
     const live = liveState(state)
     assertTaskBranch(state, live, 'done')
   } else {
-    assertPhase(state, ['approved'])
-    if (state.review.result !== 'pass') fail(`task ${taskId} requires a passing review before done`)
+    const needsApproval = approvalRequired(state)
+    assertPhase(state, needsApproval ? ['approved'] : ['frozen'])
+    if (needsApproval && state.review.result !== 'pass') fail(`task ${taskId} requires a passing review before done`)
     const lastVerification = state.verification.at(-1)
     if (!lastVerification || lastVerification.result !== 'pass')
       fail(`task ${taskId} does not have a passing latest verification result`)
@@ -605,7 +642,7 @@ function status(options) {
   const live = liveState(state)
   if (!state.issue)
     console.error(
-      `hint: task ${state.taskId} has no linked issue; attach one with "pnpm task issue --task ${state.taskId} --ref <issue-url|N/A>"`
+      `hint: task ${state.taskId} has no linked issue; attach one with "pnpm agent:task issue --task ${state.taskId} --ref <issue-url|N/A>"`
     )
   print({ ...state, live, stale: live.stale })
 }
@@ -638,7 +675,7 @@ function guard(options) {
     // 它失败时上面的提示根本不会出现，拦住提交的理由以检查自己的输出为准。
     const ran = runChecks(resolved.worktree, null, 'commit')
     console.error(
-      `task gate: not enforced — no active task in ${resolved.worktree}; implementation changes start with "pnpm task new --task <id> --level <t0|t1|t2>" (contract in docs/agents/workflow.md)`
+      `task gate: not enforced — no active task in ${resolved.worktree}; implementation changes start with "pnpm agent:task new --task <id> --level <t0|t1|t2>" (contract in docs/agents/workflow.md)`
     )
     print({ ok: true, enforced: false, checks: ran, worktree: resolved.worktree })
     return
@@ -672,9 +709,13 @@ function guard(options) {
     fail(
       `task ${state.taskId} has changes after its last freeze/review/approval; commit is blocked — re-run freeze (it stages the diff and normalizes formatting) and repeat review/approval`
     )
-  assertPhase(state, ['approved'])
-  if (!state.approval.granted || state.approval.diffHash !== state.diffHash)
-    fail(`task ${state.taskId} is not approved for commit`)
+  // 快照一致是 T0/T1 两条路径共同的底座，差别只在 approval：T0 与记了 review 的 T1 要
+  // approved，没记 review 的 T1 停在 frozen 就够（见 approvalRequired）。
+  if (approvalRequired(state)) {
+    assertPhase(state, ['approved'])
+    if (!state.approval.granted || state.approval.diffHash !== state.diffHash)
+      fail(`task ${state.taskId} is not approved for commit`)
+  } else assertPhase(state, ['frozen'])
   allowCommit()
 }
 
@@ -685,7 +726,9 @@ function print(value) {
 function main() {
   const options = parseArgs(process.argv.slice(2))
   if (!options.command || options.command === 'help') {
-    console.log('usage: pnpm task <new|assign|start|freeze|review|approve|verify|done|drop|status|issue|guard> ...')
+    console.log(
+      'usage: pnpm agent:task <new|assign|start|freeze|review|approve|verify|done|drop|status|issue|guard> ...'
+    )
     return
   }
   const handlers = {

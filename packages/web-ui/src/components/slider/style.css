@@ -33,7 +33,7 @@
   background-color: var(--wui-color-surface-track, #e5e5ea);
 
   &:focus-visible {
-    outline-color: var(--wui-color-focus-ring, rgb(0 136 255 / 0.4));
+    outline-color: var(--wui-color-focus-ring, color-mix(in srgb, var(--wui-color-accent, #08f) 40%, transparent));
   }
 
   &.is-disabled {
@@ -150,6 +150,8 @@
   }
 
   &.is-pressed:not(.is-dragging) {
+    /* 环底色随按压/拖拽态转 transparent（理由见 menu-portal.css）。 */
+    --wui-color-glass-ring: transparent;
     transform: translate(-50%, -50%) scale(1.5);
     background-color: transparent;
     box-shadow:
@@ -160,6 +162,7 @@
   }
 
   &.is-dragging {
+    --wui-color-glass-ring: transparent;
     cursor: grabbing;
     transform: translate(-50%, -50%) scale(1.5);
     background-color: transparent;

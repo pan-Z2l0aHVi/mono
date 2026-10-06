@@ -25,6 +25,8 @@ import '@greypan/web-ui'
 // import '@greypan/web-ui/components/button'
 ```
 
+subpath 导入只注册它点名的那个组件，页面用到的每个标签都要单独导入。
+
 ```html
 <web-ui-button variant="primary">点击我</web-ui-button> <web-ui-icon .icon="${lucidePlus}"></web-ui-icon>
 ```
@@ -324,24 +326,24 @@ dropdown、tooltip）不需要它。
 
 多行文本输入框，支持自动调整高度。
 
-| 属性              | 类型      | 默认值  | 说明                                                                  |
-| ----------------- | --------- | ------- | --------------------------------------------------------------------- |
-| `value`           | `string`  | `''`    | 输入值                                                                |
-| `placeholder`     | `string`  | `''`    | 占位文本                                                              |
-| `rows`            | `number`  | `3`     | 显示行数                                                              |
-| `name`            | `string`  | `''`    | 表单字段名                                                            |
-| `disabled`        | `boolean` | `false` | 禁用状态                                                              |
-| `readonly`        | `boolean` | `false` | 只读状态                                                              |
-| `required`        | `boolean` | `false` | 必填校验                                                              |
-| `clearable`       | `boolean` | `false` | 显示清除按钮                                                          |
-| `full`            | `boolean` | `false` | 全宽                                                                  |
-| `borderless`      | `boolean` | `false` | ghost 形态：移除边框、背景与阴影；保留 padding、高度度量与 focus ring |
-| `autosize`        | `boolean` | `false` | 自动调整高度                                                          |
-| `max-height`      | `number`  | `0`     | 自动高度上限（px），`0` 表示不限制                                    |
-| `minlength`       | `number`  | —       | 最小长度校验                                                          |
-| `maxlength`       | `number`  | —       | 最大长度校验                                                          |
-| `aria-label`      | `string`  | —       | 无障碍标签                                                            |
-| `aria-labelledby` | `string`  | —       | 无障碍标签引用                                                        |
+| 属性              | 类型      | 默认值  | 说明                                                                    |
+| ----------------- | --------- | ------- | ----------------------------------------------------------------------- |
+| `value`           | `string`  | `''`    | 输入值                                                                  |
+| `placeholder`     | `string`  | `''`    | 占位文本                                                                |
+| `rows`            | `number`  | `3`     | 显示行数                                                                |
+| `name`            | `string`  | `''`    | 表单字段名                                                              |
+| `disabled`        | `boolean` | `false` | 禁用状态                                                                |
+| `readonly`        | `boolean` | `false` | 只读状态                                                                |
+| `required`        | `boolean` | `false` | 必填校验                                                                |
+| `clearable`       | `boolean` | `false` | 显示清除按钮                                                            |
+| `full`            | `boolean` | `false` | 全宽                                                                    |
+| `borderless`      | `boolean` | `false` | ghost 形态：移除边框、背景与阴影；保留 padding、高度度量与 focus ring   |
+| `autosize`        | `boolean` | `false` | 自动调整高度；同时强制 `resize: none`，原生拖拽柄会与脚本接管的高度冲突 |
+| `max-height`      | `number`  | `0`     | 自动高度上限（px），`0` 表示不限制                                      |
+| `minlength`       | `number`  | —       | 最小长度校验                                                            |
+| `maxlength`       | `number`  | —       | 最大长度校验                                                            |
+| `aria-label`      | `string`  | —       | 无障碍标签                                                              |
+| `aria-labelledby` | `string`  | —       | 无障碍标签引用                                                          |
 
 **事件：** `input`, `change`, `focus`, `blur`
 
@@ -360,14 +362,15 @@ dropdown、tooltip）不需要它。
 
 行内纯文本编辑器：点击文字就地编辑，`Enter` 与 `blur` 提交，`Escape` 取消。文本层与编辑层共用一个盒，进入编辑态不会移动任何一个像素。
 
-| 属性          | 类型      | 默认值  | 说明                                                                                                      |
-| ------------- | --------- | ------- | --------------------------------------------------------------------------------------------------------- |
-| `value`       | `string`  | `''`    | 当前值；首次连接时捕获声明式初值作为 `form.reset()` 默认，连接后修改 attribute 或 property 均不更新该初值 |
-| `placeholder` | `string`  | `''`    | 值为空时显示的占位文本                                                                                    |
-| `name`        | `string`  | `''`    | 表单字段名                                                                                                |
-| `disabled`    | `boolean` | `false` | 禁用状态；只影响行为，不做视觉置灰                                                                        |
-| `readonly`    | `boolean` | `false` | 只读状态；仍可聚焦、全选和复制，但不能编辑或提交 `change`                                                 |
-| `aria-label`  | `string`  | —       | 无障碍标签                                                                                                |
+| 属性                | 类型      | 默认值  | 说明                                                                                                      |
+| ------------------- | --------- | ------- | --------------------------------------------------------------------------------------------------------- |
+| `value`             | `string`  | `''`    | 当前值；首次连接时捕获声明式初值作为 `form.reset()` 默认，连接后修改 attribute 或 property 均不更新该初值 |
+| `placeholder`       | `string`  | `''`    | 值为空时显示的占位文本                                                                                    |
+| `name`              | `string`  | `''`    | 表单字段名                                                                                                |
+| `disabled`          | `boolean` | `false` | 禁用状态；只影响行为，不做视觉置灰                                                                        |
+| `readonly`          | `boolean` | `false` | 只读状态；仍可聚焦、全选和复制，但不能编辑或提交 `change`                                                 |
+| `commit-on-unmount` | `boolean` | `false` | 卸载时按提交语义结束编辑态；见下文                                                                        |
+| `aria-label`        | `string`  | —       | 无障碍标签                                                                                                |
 
 **事件：** `input`（每次输入）、`change`（提交）、`cancel`（取消；与原生 `<dialog>` 的 `cancel` 同名，不冒泡、不组合，只在组件本身派发）。React 没有覆盖 `cancel` 的合成事件，须用 `addEventListener('cancel', ...)` 监听
 
@@ -376,6 +379,18 @@ dropdown、tooltip）不需要它。
 点击时光标落在点击处；键盘聚焦时落在文本末尾。`Enter` 与 `blur` 均提交草稿并恰好派发一次 `change`：`Enter` 不插入换行，并把焦点交还宿主；`blur` 不干预焦点，焦点留在用户移往的位置。只有 `Escape` 取消：值回到进入编辑时的状态，派发 `cancel` 而不派发 `change`，焦点交还宿主，且按键由编辑层消费，外层浮层（抽屉、菜单）不会因同一次按键关闭。`cancel` 不冒泡也不组合，只在组件本身派发：组件被投映在浮层 shadow 内时（如 drawer 标题），它不会触达浮层的原生 `cancel` 关闭管线，监听一律挂在组件本身。值里已有的换行仍按多行渲染，只是不能再靠输入 `Enter` 增加换行。空值继续显示 placeholder；编辑层始终按自身内容撑高，因此空草稿或纯空格草稿在宿主自身塌缩的场合（flex 项 `min-width: 0`、表格单元格）也仍有承接光标的位置。
 
 `select()` 进入编辑态并全选内容；已在编辑态时只重新全选。`disabled` 时与 `focus()` 一样不产生效果。`readonly` 时仍可聚焦和全选，但输入被拒绝，退出编辑态也不派发 `change`。
+
+**编辑到一半被卸载。** 正在编辑的元素被从 DOM 移除时会发生什么，取决于引擎，这个差异正是本属性存在的理由：
+
+- **Chromium** 会在编辑层上派发 `blur`，因此纯粹的 `value` 提交今天就已经发生，默认 `false` 不改变这一点。`blur` 与它触发的 `change` 都在卸载回调跑完**之后**同步派发，也就是说提交落在「消费方针对这次移除已经更新完状态」之后。
+- **WebKit（Safari、iOS）** 完全不派发 `blur`。默认 `false` 下什么都不提交，草稿随元素一起丢弃。
+- **Gecko（Firefox）未验证**：实测所用机器上没有任何 Firefox 能启动，因此这里不做任何断言。把 Gecko 当作未知，而不是默认它与上面两列之一相同；需要靠卸载提交来保住草稿时，请开启本属性。
+
+如果你的代码依赖「行被回收时草稿不丢」，请**开启 `commit-on-unmount`**：在 Safari 与 iOS 上它是唯一能保住草稿的手段，在 Chromium 上它把提交提前到移除自带的 `blur` 之前。两个引擎下，卸载都按提交语义收尾一段开着的编辑会话——草稿成为新值、退出编辑、恰好派发一次 `change`，走的是与 `Enter`、`blur` 同一份实现。结论在 Chromium 与 WebKit 上实测过；浏览器测试套件只跑 Chromium，WebKit 的结果来自一次一次性跨引擎取证、不在 CI 里，Gecko 则完全没有测。
+
+`Enter` 与 `blur` 由用户动作触发，一律算提交意图；卸载没有这种意图。因此只有草稿与进入编辑时的值确实不同时才提交——什么都没改的会话不会产生空提交。不在编辑态时没有可提交的内容；`disabled` 或 `readonly` 时与 `blur` 路径一致，都不派发提交事件。但两者对「已经有草稿」的处置不同：`disabled` 下草稿留在组件上，`readonly` 下草稿是真的丢掉。`readonly` 阻止不了先前输入的字，而卸载时已没有 blur 可以兜底提交——WebKit 上连 blur 都没有。可达路径是：可编辑态进入 → 起草稿 → 期间翻 readonly → 卸载。这里不按取消处理——取消的契约是恢复进入编辑时的值，而卸载既没有焦点要交也没有宿主接收结果；用户看到的是「我打的字没了」，既没有 `change` 也没有 `cancel`。
+
+提交发生在卸载回调里，`change` 仍沿组合路径向上派发，因此挂在组件自身或任一祖先上的监听都会执行，**包括自身也正在被卸载的祖先**：派发不要求祖先此刻还在文档里。因此监听器不能假定组件仍在文档中；结果需要活过这次移除时，用 `queueMicrotask` 之类的方式显式转交给宿主树之外的状态。注意这条可达性对「由 React 自身 render 驱动的卸载」并不成立：那种移除走不到 React 的事件委托根，`onChange` 不会触发，只能改为从元素上读值——与上文 `cancel` 的告示同源。在祖先上设 `display: none` 不算移除——两个引擎下组件都仍在文档中、不派发任何事件，那种场合需要消费方主动结束编辑。
 
 宿主是行内级盒子：未设宽度时随内容伸缩，折行后高度按行数增长。字体、颜色、文本对齐与空白处理全部继承外部上下文，因此编辑前它就是一段普通文字。
 
@@ -472,9 +487,9 @@ Portal 面板创建时会镜像 host 上解析后的这些变量；更新 host �
 
 **方法：** `focus()`, `blur()`
 
-**插槽：** `default`（投影 `<web-ui-option>` 元素）、`trigger`（自定义触发器内容——替换默认输入框）、`empty`（替换无匹配空态；默认回退为「无匹配选项」）
+**插槽：** `default`（投影 `<web-ui-option>` 元素）、`trigger`（自定义触发器内容——替换默认输入框）
 
-键入时按 label 过滤候选（`contains` 或 `prefix`，`none` 关闭过滤）。选择 option 时文本回填为该项 label，`selected-value` 暴露该项的 value；`change` 在选择提交时触发。支持 ArrowDown/ArrowUp/Enter/Escape 键盘导航。
+键入时按 label 过滤候选（`contains` 或 `prefix`，`none` 关闭过滤）。没有匹配项时下拉面板保持关闭；删除字符后重新出现匹配项时，面板会再次打开。选择 option 时文本回填为该项 label，`selected-value` 暴露该项的 value；`change` 在选择提交时触发。支持 ArrowDown/ArrowUp/Enter/Escape 键盘导航。
 
 **触发器：** 默认触发器是 shadow 内的 `web-ui-input`。把任意可编辑组件放进 `trigger` slot 即可替换它——包装 div 继续承载 combobox ARIA，并以 `data-custom-trigger` 标记当前使用自定义触发器，浮层始终以触发器元素为锚点。组件的 `focus()` / `blur()` 委托到当前生效的触发器：`web-ui-input` 与 `web-ui-textarea` 会把焦点落到内部原生控件；自定义触发器没有自己的 focus 重定向时，按宿主自身聚焦。
 
@@ -490,9 +505,7 @@ Portal 面板创建时会镜像 host 上解析后的这些变量；更新 host �
 
 多行触发器（可编辑元素为 `<textarea>`）保留 Enter 换行语义：Enter 不会选中高亮项，也不会提交 custom value，关闭面板用 Escape 或 blur。选择 option 仍会把该项 label 回写到触发器。单行自定义触发器保持默认的 Enter 语义。面板打开时 ArrowUp/ArrowDown 适用同一例外：方向键移动文本光标而不导航候选，该状态下键盘无法导航 option——用指针点击选择。面板关闭时 ArrowDown/ArrowUp 仍可打开面板。
 
-启用 `allow-custom-value` 后，无匹配且无活动 option 时，Enter 会把当前输入原文作为 custom value 提交并关闭面板；`change` 会触发，`selected-value` 保持为空。组件不会自动创建 option，也不会 trim 原文。命中禁用 option 的文本不会绕过禁用语义，也不会派生为已选 option。
-
-通过 `<div slot="empty">…</div>` 自定义静态、非交互的空态内容。Portal 渲染时该节点会迁入浮层，关闭后恢复到宿主。
+启用 `allow-custom-value` 后，无匹配且无活动 option 时，Enter 会把当前输入原文作为 custom value 提交并保持面板关闭；`change` 会触发，`selected-value` 保持为空。组件不会自动创建 option，也不会 trim 原文。命中禁用 option 的文本不会绕过禁用语义，也不会派生为已选 option。
 
 **CSS 自定义属性：**
 
@@ -647,11 +660,11 @@ Portal 面板创建时会镜像 host 上解析后的这些变量；更新 host �
 
 ##### Token
 
-| Token                      | 默认值 | 说明                     |
-| -------------------------- | ------ | ------------------------ |
-| `--wui-checkbox-group-gap` | `8px`  | 成员 checkbox 之间的间距 |
+| Token                      | 默认值               | 说明                     |
+| -------------------------- | -------------------- | ------------------------ |
+| `--wui-checkbox-group-gap` | `var(--wui-space-2)` | 成员 checkbox 之间的间距 |
 
-在 group 元素本身，或同一个 `<web-ui-theme>` 作用域内的祖先元素上设置。theme 宿主会为自己的子树声明 `8px`，写在 `<web-ui-theme>` 元素之外的覆盖到不了 group。
+在 group 元素本身，或同一个 `<web-ui-theme>` 作用域内的祖先元素上设置。theme 宿主会为自己的子树声明该间距阶，写在 `<web-ui-theme>` 元素之外的覆盖到不了 group。它的默认值现在经 `--wui-space-2` 解析，所以在 theme 宿主上覆盖该级会连带改变成员间距；显式设置这个 token 仍然优先于两者。
 
 ```css
 web-ui-checkbox-group {
@@ -681,11 +694,11 @@ web-ui-checkbox-group {
 
 ##### Token
 
-| Token                   | 默认值 | 说明                  |
-| ----------------------- | ------ | --------------------- |
-| `--wui-radio-group-gap` | `8px`  | 成员 radio 之间的间距 |
+| Token                   | 默认值               | 说明                  |
+| ----------------------- | -------------------- | --------------------- |
+| `--wui-radio-group-gap` | `var(--wui-space-2)` | 成员 radio 之间的间距 |
 
-在 group 元素本身，或同一个 `<web-ui-theme>` 作用域内的祖先元素上设置。theme 宿主会为自己的子树声明 `8px`，写在 `<web-ui-theme>` 元素之外的覆盖到不了 group。
+在 group 元素本身，或同一个 `<web-ui-theme>` 作用域内的祖先元素上设置。theme 宿主会为自己的子树声明该间距阶，写在 `<web-ui-theme>` 元素之外的覆盖到不了 group。它的默认值现在经 `--wui-space-2` 解析，所以在 theme 宿主上覆盖该级会连带改变成员间距；显式设置这个 token 仍然优先于两者。
 
 ```css
 web-ui-radio-group {
@@ -765,6 +778,7 @@ web-ui-radio-group {
 | 属性                | 类型      | 默认值  | 说明                                                      |
 | ------------------- | --------- | ------- | --------------------------------------------------------- |
 | `open`              | `boolean` | `false` | 对话框可见性                                              |
+| `closable`          | `boolean` | `false` | 显示内置关闭按钮                                          |
 | `no-scroll-lock`    | `boolean` | `false` | 打开时不锁定页面滚动                                      |
 | `no-backdrop-close` | `boolean` | `false` | 禁止点击遮罩关闭                                          |
 | `no-escape-close`   | `boolean` | `false` | 禁止按 Escape 关闭                                        |
@@ -778,22 +792,29 @@ web-ui-radio-group {
 
 使用原生 `<dialog>`，`@cancel` 阻止默认关闭行为。除非存在 `no-escape-close`，否则 Escape 调用 `close()`；除非存在 `no-backdrop-close`，否则点击遮罩关闭。启用 `controlled` 后，两者都只派发关闭请求而不自关闭。
 
+启用 `closable` 后，两种内容模式都会渲染内置关闭按钮，且与 Escape、遮罩点击走同一条关闭路径（`controlled` 对它同样生效）。两种模式的位置不同：没有 `body` 插槽时按钮位于 `.title-row` 这条 flex 行里、与标题同行；有 `body` 插槽时不存在标题行，按钮作为玻璃卡片的直接子元素绝对定位到卡片右上角（偏移由 `--wui-dialog-close-top` / `--wui-dialog-close-right` 控制）。图标与 drawer 关闭按钮同为 `ooui:close`。不启用 `closable` 时什么都不渲染——既没有按钮，也没有多余的包裹层。
+
 > **Escape 归属**：Escape 由共享仲裁者统一判定，一次按键只关闭**最内层**的已打开浮层（popover、select、autocomplete、dropdown、context-menu、drawer、dialog 都参与）。例如在 drawer 内打开 select，第一次 Escape 只关 select，第二次才关 drawer。互不嵌套的并列浮层按打开顺序关闭最上层。正在播退场过渡的面板仍在场上，也仍由它接住 Escape——但只要还有别的浮层开着，那一次按键仍然归该层，「一次按键关一层」不因此改变。`image-preview` 同样参与：它的原生 `<dialog>` 会登记进同一个仲裁者，Escape 按层级判定；组件的 `cancel` handler 只是拦掉原生的瞬时关闭，把 top layer 保留到退场过渡结束。
 
 **CSS 自定义属性：**
 
-| 属性                          | 默认值                                     | 说明                                                                  |
-| ----------------------------- | ------------------------------------------ | --------------------------------------------------------------------- |
-| `--wui-dialog-width`          | `360px`                                    | 对话框宽度                                                            |
-| `--wui-dialog-max-height`     | `90vh`                                     | 对话框最大高度                                                        |
-| `--wui-dialog-overlay-bg`     | `var(--wui-color-backdrop)`                | 遮罩背景色                                                            |
-| `--wui-dialog-bg`             | `var(--wui-color-surface-overlay)`         | 玻璃卡片背景色，回退到 `rgb(246 246 246 / 0.82)`                      |
-| `--wui-dialog-padding`        | `20px 24px 24px`                           | 对话框表面内边距                                                      |
-| `--wui-dialog-title-gap`      | `16px`                                     | 标题下方间距                                                          |
-| `--wui-dialog-desc-gap`       | `24px`                                     | 正文内容下方间距                                                      |
-| `--wui-dialog-footer-gap`     | `10px` / horizontal `12px`                 | Footer 按钮间距                                                       |
-| `--wui-dialog-footer-justify` | `flex-end`（默认）/ `center`（horizontal） | Footer `justify-content`；horizontal 模式下覆盖为 `flex-end` 可右对齐 |
-| `--wui-dialog-scale-enter`    | `1.1`                                      | 进场缩放起点：由 `1.1` 收缩到 `1`，退场反向                           |
+| 属性                              | 默认值                                     | 说明                                                                                                                                                                                                                                                                                                                                                                  |
+| --------------------------------- | ------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--wui-dialog-width`              | `360px`                                    | 对话框宽度                                                                                                                                                                                                                                                                                                                                                            |
+| `--wui-dialog-max-height`         | `90vh` / `min(90vh, 90dvh)`（dvh 引擎）    | 内容区（`.desc`）的最大高度，不是整卡高度。两套 fallback：基础规则 `90vh`，`@supports (height: 100dvh)` 内 `min(90vh, 90dvh)`——不支持 dvh 的引擎只拿到 `90vh`。整卡换算见下方说明                                                                                                                                                                                     |
+| `--wui-dialog-close-top`          | `16px`                                     | `closable` 按钮距卡片顶部的偏移（body 模式）                                                                                                                                                                                                                                                                                                                          |
+| `--wui-dialog-close-right`        | `16px`                                     | `closable` 按钮距卡片右沿的偏移（body 模式）                                                                                                                                                                                                                                                                                                                          |
+| `--wui-dialog-overlay-bg`         | `var(--wui-color-backdrop)`                | 遮罩背景色                                                                                                                                                                                                                                                                                                                                                            |
+| `--wui-dialog-bg`                 | `var(--wui-color-surface-overlay)`         | 玻璃卡片背景色，回退到 `rgb(248 248 248 / 0.92)`                                                                                                                                                                                                                                                                                                                      |
+| `--wui-dialog-padding`            | `20px 24px 24px`                           | 对话框表面内边距                                                                                                                                                                                                                                                                                                                                                      |
+| `--wui-dialog-title-gap`          | `16px`                                     | 标题下方间距                                                                                                                                                                                                                                                                                                                                                          |
+| `--wui-dialog-desc-gap`           | `24px`                                     | 正文内容下方间距                                                                                                                                                                                                                                                                                                                                                      |
+| `--wui-dialog-desc-focus-padding` | `6px`                                      | 内容区**四边**预留的 focus-ring 余量。`.desc` 既是滚动容器，又因为有一条轴必须非 `visible` 而成了裁剪盒，所以紧贴其任一沿的控件，ring 都会被 padding box 裁掉；这个余量在四个轴上都覆盖 `5px` 的 ring（`offset: 2` + `width: 3`）。横向余量同样由组件提供，宿主不需要自己留。成对负 margin 使 chrome 高度保持不变，因此可按各平台字体度量重新调这个值而不改变整卡高度 |
+| `--wui-dialog-footer-gap`         | `10px` / horizontal `12px`                 | Footer 按钮间距                                                                                                                                                                                                                                                                                                                                                       |
+| `--wui-dialog-footer-justify`     | `flex-end`（默认）/ `center`（horizontal） | Footer `justify-content`；horizontal 模式下覆盖为 `flex-end` 可右对齐                                                                                                                                                                                                                                                                                                 |
+| `--wui-dialog-scale-enter`        | `1.1`                                      | 进场缩放起点：由 `1.1` 收缩到 `1`，退场反向                                                                                                                                                                                                                                                                                                                           |
+
+> **高度语义**：本 token 限制的是内容区，不是整卡。标题行与 footer 仍由内容撑开，超出上限的部分在 `.desc` 内部滚动；整卡本身只由字面量 `100vh` / `100dvh` 兜底，接住「视口太矮、chrome 加内容区上限也放不下」的情况。要给**整卡**定上限的宿主仍需自行量出 chrome（卡片内边距 + 标题行 + 间距 + footer）并从 token 里减掉——Interweave 前端三个 dialog 分别减 142、142、106。不再需要这个数的是「让内容区滚起来」：改动前 `.desc` 既没有上限也没有 `overflow`，唯一能滚的是宿主自己撑出来的内层盒子，宿主想让它滚就必须自己算这个高度。
 
 #### `<web-ui-drawer>`
 
@@ -822,9 +843,17 @@ web-ui-radio-group {
 
 关闭时保留原生 dialog 的 top layer，待退出过渡完成后调用 `dialog.close()`。Escape 始终走此关闭路径；`no-backdrop-close` 仅控制遮罩点击。
 
-启用 `closable` 时，内置关闭按钮固定在 header 右上角（默认顶部 `16px`、右侧 `20px`），不会再拉伸到抽屉中间。
+启用 `closable` 时，内置关闭按钮固定在 header 右上角（默认顶部 `16px`、右侧 `16px`），不会再拉伸到抽屉中间。顶部 `16px` 经 `--wui-space-4` 解析，因此与 drawer 的 header padding 同源；右侧 `16px` 是按钮自身到面板右边沿的偏移，它并不等于 header 的水平内边距（`20px`），因此保持字面量。
 
-**拖拽关闭：** 启用 `draggable` 后，打开的抽屉在内缘显示灰色胶囊 drag bar（默认 4×56px，视觉中线距内缘 10px，位于 20px 厚的命中热区内；`right` 在左缘、`left` 在右缘、`top` 在下缘、`bottom` 在上缘）：
+**拖拽关闭：** 启用 `draggable` 后，打开的抽屉在内缘显示灰色胶囊 drag bar（默认 4×56px，视觉中线距内缘 10px；`right` 在左缘、`left` 在右缘、`top` 在下缘、`bottom` 在上缘）：
+
+中线跟随 `--wui-drawer-content-padding` 的半值，并以「半个胶囊厚度 + 4px 呼吸间距」兜底：把该 padding 归零、让内容贴边铺满时，胶囊仍留可见内缩，既不会越出面板内缘，也不会贴死面板边缘。
+
+胶囊是纯视觉件：`pointer-events: none`，本身不吃任何一次按下。真正被按下的是命中层。左右 placement 只有热区；上下 placement 有三层——拖拽热区、沿可抓取边缘的一条端头热边（宽度与胶囊等宽，厚度不小于 `--wui-drawer-drag-edge-size`），以及整块的 header（`placement=bottom`）或 footer（`placement=top`）。热边的高度取「胶囊外沿」与该 token 的较大者，按构造覆盖胶囊所在的带，所以在四个 placement 上，按住胶囊能开始拖拽、悬停胶囊会点亮它。
+
+让开 header（`placement=bottom`）或 footer（`placement=top`）的是热区本身，因此那一节不会把胶囊推离面板边缘；而那一节改由**自己**接拖拽，不再整块按不动：在它里面任意一点起手都能开始拖拽，标题文字同样在内。控件的让开是**逐个控件、在事件层**做的，不是把命中面几何切开——按下路径上只要出现可点元素（原生 `button` / `input` / `select` / `textarea` / `label` / `a[href]` / `summary`，任何 `contenteditable`，交互语义 `role`（`button`、`checkbox`、`switch`、`tab`、`menuitem`、`option`、`slider` 等），以及任何显式 `tabindex` 且不为 `-1`），这一次按下就交给控件、不起拖拽。自绘控件若本身不是原生可交互元素，需要带上其中之一才会被认出来；补 `role` 或 `tabindex` 就是入口，而它本身也是无障碍上该做的事。几何切割是被有意否掉的：它必须测量每个控件的位置，控件一动就失效，而且只是把 A6 那条缺陷换了个位置。代价是明说的：内置关闭按钮贴着面板右缘、在胶囊跨度之外，仍可点击；落在胶囊水平跨度内的控件，其顶部到热边高度之间仍被拖拽面盖住。
+
+「把手占位」自带一条推论：落在这条跨度内、顶边又落在热边高度（`--wui-drawer-drag-edge-size`，默认 20px；胶囊外沿更厚时以胶囊为准）之内的控件，上部会被拖拽面盖住——把手就画在那里，起手必须从把手所在的位置开始。抬 `z-index` 没用（Chromium 里热边始终压在 slotted 内容之上），量得着的杠杆是 `--wui-drawer-drag-bar-length`（同时决定胶囊长度与热边宽度）与 `--wui-drawer-drag-edge-size`（热边厚度）。
 
 - 拖拽实时跟手，遮罩透明度按比例淡出。
 - 遮罩点击关闭只认**轻点链路**：按下起点在遮罩上、且按-放位移在轻点量级内的 click 才关闭。浏览器对「按下 → 拖动 → 松手」生成的 click 落在起点与松手点的共同祖先（dialog）上——从面板内容或遮罩上开始拖拽、松手落在遮罩时，click 的 target 同样是 dialog；组件在 `pointerdown` 记录起点与坐标做回溯校验，这类拖拽松手一律弹回。`detail` 为 0 的 click（键盘/程序化来源）不消费指针记录。
@@ -842,22 +871,29 @@ web-ui-radio-group {
 
 **CSS 自定义属性：**
 
-| 属性                              | 默认值                             | 说明                                                 |
-| --------------------------------- | ---------------------------------- | ---------------------------------------------------- |
-| `--wui-drawer-width`              | `320px`                            | 抽屉宽度                                             |
-| `--wui-drawer-height`             | `300px`                            | 抽屉高度（上/下）                                    |
-| `--wui-drawer-bg`                 | `var(--wui-color-surface-overlay)` | 抽屉背景色                                           |
-| `--wui-drawer-radius`             | `var(--wui-radius-overlay, 28px)`  | 浮动卡片圆角（非 headless）                          |
-| `--wui-drawer-inset`              | `8px`                              | 浮动卡片视口留边（非 headless）；置 `0` 为贴边几何   |
-| `--wui-drawer-overlay-bg`         | `rgb(0 0 0 / 0.12)`                | 遮罩背景色                                           |
-| `--wui-drawer-drag-zone-size`     | `20px`                             | Drag-to-close 命中热区厚度（draggable）              |
-| `--wui-drawer-drag-bar-thickness` | `4px`                              | Drag bar 胶囊厚度（短轴）                            |
-| `--wui-drawer-drag-bar-length`    | `56px`                             | Drag bar 胶囊长度（沿抽屉边缘）                      |
-| `--wui-drawer-header-padding`     | `16px 20px`                        | Header 区域 padding                                  |
-| `--wui-drawer-close-top`          | `16px`                             | 内置关闭按钮相对 header 顶部的偏移                   |
-| `--wui-drawer-close-right`        | `16px`                             | 内置关闭按钮相对抽屉右缘的偏移                       |
-| `--wui-drawer-content-padding`    | `20px`                             | 内容区 padding；同时驱动 drag bar 视觉中线（取半值） |
-| `--wui-drawer-footer-padding`     | `16px 20px`                        | Footer 区域 padding                                  |
+| 属性                              | 默认值                             | 说明                                                                                                                                                                |
+| --------------------------------- | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--wui-drawer-width`              | `320px`                            | 抽屉宽度                                                                                                                                                            |
+| `--wui-drawer-height`             | `300px`                            | 抽屉高度（上/下）                                                                                                                                                   |
+| `--wui-drawer-bg`                 | `var(--wui-color-surface-overlay)` | 抽屉背景色                                                                                                                                                          |
+| `--wui-drawer-radius`             | `var(--wui-radius-overlay, 28px)`  | 浮动卡片圆角（非 headless）                                                                                                                                         |
+| `--wui-drawer-inset`              | `8px`                              | 浮动卡片视口留边（非 headless）；置 `0` 为贴边几何                                                                                                                  |
+| `--wui-drawer-nested-peek-base`   | `43.2px`                           | 嵌套堆叠露边基准 `A`（`width <= 640px` 时为 `28.8px`）；堆叠总宽按 `A · ln(n)` 增长，单层因此完全不动，每多一层新增的露边递减。置 `0` 关闭露边。详见下方说明        |
+| `--wui-drawer-overlay-bg`         | `rgb(0 0 0 / 0.12)`                | 遮罩背景色                                                                                                                                                          |
+| `--wui-drawer-drag-zone-size`     | `20px`                             | Drag-to-close 命中热区厚度（draggable）                                                                                                                             |
+| `--wui-drawer-drag-zone-inset`    | `var(--wui-space-1, 4px)`          | 拖拽热区与它避让的那一节（`placement=bottom` 的 header / `placement=top` 的 footer）之间的呼吸间距；该节不存在时为 0                                                |
+| `--wui-drawer-drag-bar-thickness` | `4px`                              | Drag bar 胶囊厚度（短轴）                                                                                                                                           |
+| `--wui-drawer-drag-bar-length`    | `56px`                             | Drag bar 胶囊长度（沿抽屉边缘）                                                                                                                                     |
+| `--wui-drawer-drag-edge-size`     | `20px`                             | 胶囊命中带沿可抓取边缘的厚度（仅上下 placement）。以胶囊外沿兜底，胶囊所在的带恒被覆盖；默认值与 `--wui-drawer-drag-zone-size` 同值，于是把手不会比旁边的带子更难按 |
+| `--wui-drawer-header-padding`     | `16px 20px`                        | Header 区域 padding                                                                                                                                                 |
+| `--wui-drawer-close-top`          | `16px`                             | 内置关闭按钮相对 header 顶部的偏移                                                                                                                                  |
+| `--wui-drawer-close-right`        | `16px`                             | 内置关闭按钮相对抽屉右缘的偏移                                                                                                                                      |
+| `--wui-drawer-content-padding`    | `20px`                             | 内容区 padding；同时驱动 drag bar 视觉中线（取半值，不低于半个胶囊厚度 + 4px）                                                                                      |
+| `--wui-drawer-footer-padding`     | `16px 20px`                        | Footer 区域 padding                                                                                                                                                 |
+
+`--wui-drawer-nested-peek-base` 不需要消费方声明：默认值 `43.2px` 是组件用 `CSS.registerProperty` 注册该属性时的 `initialValue`（`components/drawer/index.ts`），窄视口的 `28.8px` 基准来自 `components/drawer/style.css` 的 `@media (width <= 640px)` 规则——这两处就是内置基准的所在地。在宿主或任意祖先上设置该 token 可同时覆盖两者，在任何视口宽度下都生效。
+
+按内置基准，四层 `320px` 等宽堆叠逐层露边在桌面端为 `29.94px` / `17.52px` / `12.43px`、窄视口为 `19.96px` / `11.68px` / `8.29px`，对应总堆叠宽度 `59.89px` 与 `39.93px`。单层始终不动，因为 `ln(1)` 为 `0`。
 
 #### `imagePreview()`
 
@@ -1064,10 +1100,12 @@ Hover 模式使用 `pointerenter`/`pointerleave` 加延迟控制。Click 模式�
 
 右键上下文菜单。
 
-| 属性             | 类型      | 默认值  | 说明         |
-| ---------------- | --------- | ------- | ------------ |
-| `disabled`       | `boolean` | `false` | 禁用状态     |
-| `no-scroll-lock` | `boolean` | `false` | 允许背景滚动 |
+| 属性               | 类型      | 默认值  | 说明                                             |
+| ------------------ | --------- | ------- | ------------------------------------------------ |
+| `disabled`         | `boolean` | `false` | 右键不打开菜单，不做视觉置灰                     |
+| `no-scroll-lock`   | `boolean` | `false` | 允许背景滚动                                     |
+| `long-press`       | `boolean` | `false` | 触屏长按打开菜单（opt-in；鼠标走 `contextmenu`） |
+| `long-press-delay` | `number`  | `500`   | `long-press` 触发前需按住的时长（ms）            |
 
 **事件：** `open-change` (`CustomEvent<{ open: boolean }>`)
 
@@ -1075,9 +1113,25 @@ Hover 模式使用 `pointerenter`/`pointerleave` 加延迟控制。Click 模式�
 
 **方法：** `openAt(x: number, y: number)`, `close()`
 
+**CSS 自定义属性：**
+
+| 属性                                  | 默认值                             | 说明                         |
+| ------------------------------------- | ---------------------------------- | ---------------------------- |
+| `--wui-context-menu-safe-area-bottom` | `env(safe-area-inset-bottom, 0px)` | 触屏菜单需要让开的底部 inset |
+
 通过 `contextmenu` 事件打开。菜单项：`web-ui-dropdown-item`、`web-ui-dropdown-divider`、`web-ui-dropdown-header`。支持键盘导航和子菜单 hover。
 
+菜单打开期间是模态的：它渲染进浏览器 top layer 里一个透明的 `<dialog>`，下层页面拿不到任何命中测试。因此「点外面」只会关掉菜单，不会顺带把下面那一行、那个 checkbox、那个链接一起激活。scrim 刻意保持完全透明——它的职责是吃掉这次命中，不是给页面加一层遮罩。另有一处需要知道的代价：菜单项激活后约 160ms 的退场过渡里，scrim 已经提前出了 top layer，下层页面在这段时间重新可点，菜单的层级也退回普通流。
+
+`long-press` 是 opt-in 且只针对触屏：指针按住 `long-press-delay`（默认 `500` ms，与平台原生长按一致）后打开菜单，走与右键完全相同的路径。它只响应 `pointerType === 'touch'`；按住期间位移超过 10px 即取消，因此滚动不会误开菜单。由于浏览器会把同一次按住也识别为原生手势，长按打开后引擎补发的 `contextmenu` 与 `click` 会被吸收，既不会重复打开，也不会把刚打开的菜单立刻 light-dismiss 掉。
+
+`long-press` 打开的菜单从按点**向下**展开：上缘对齐按点 `y`、水平居中于按点 `x`，与 iOS / Android 原生长按菜单的形态一致。下方空间不够时面板翻转到按点上方而不是跑出屏幕，两轴都会被夹回视口内，并让开 `--wui-context-menu-safe-area-bottom`，避免最下面一项落进 home indicator。分流依据是**输入方式**而非视口宽度：窄窗口里的鼠标右键仍然贴着光标左上角展开。两者只有水平对齐量不同 —— 定位走的是同一趟 `computePosition`，因此不会各自漂移。
+
+`disabled` 只抑制菜单行为：右键与 `openAt()` 都不打开菜单。它不会给 default slot 里的内容置灰或改色——组件自身根本不渲染菜单面，没有可置灰的对象；禁用右键菜单也不等于禁用触发区。需要让禁用态在视觉上可读时，请在自己的内容上表达。
+
 菜单打开期间，Consumer可以安全地使用条件渲染（如 Vue `v-if`）切换、移动或删除菜单项，无需重新插入到宿主元素；portal 内的变更会自动 reconcile，关闭时框架锚点随元素迁回宿主，保证后续框架更新正常。
+
+关闭时，焦点会归还给菜单打开前持焦的元素。这条是浏览器模态 dialog 自带的行为，而不是组件自己实现的——也正因如此，它只在菜单还在 top layer 时才生效。菜单项激活是唯一会提前交还焦点的路径：在点击那一刻就还，退场过渡之后不再过问，于是菜单项回调若把焦点移到别处（例如就地进入编辑态），焦点就留在那里了。关闭过程不会再把焦点从新的焦点目标上拽走，因此按 blur 提交的那类组件也不会因此提交一次没改过的编辑。
 
 ---
 
@@ -1168,24 +1222,48 @@ Hover 模式使用 `pointerenter`/`pointerleave` 加延迟控制。Click 模式�
 
 空状态占位。
 
-| 属性          | 类型                             | 默认值     | 说明     |
-| ------------- | -------------------------------- | ---------- | -------- |
-| `title`       | `string`                         | `''`       | 标题     |
-| `description` | `string`                         | `''`       | 描述文本 |
-| `size`        | `'small' \| 'medium' \| 'large'` | `'medium'` | 尺寸     |
+| 属性          | 类型     | 默认值 | 说明                                          |
+| ------------- | -------- | ------ | --------------------------------------------- |
+| `title`       | `string` | `''`   | 标题                                          |
+| `description` | `string` | `''`   | 描述文本                                      |
+| `size`        | `number` | `56`   | 版面缩放基准（px）；非法值或非正数回退为 `56` |
+
+`size` 是整个空态的单一旋钮：它驱动图标盒、`min-height`、内边距与标题/描述字号，因此大图标不再配 medium 留白：
+
+| `size` | 图标盒 | 字形   | `min-height` | 内边距 块/行 | 标题   | 描述   |
+| ------ | ------ | ------ | ------------ | ------------ | ------ | ------ |
+| `40`   | `40px` | `17px` | `171px`      | `23px/17px`  | `14px` | `13px` |
+| `56`   | `56px` | `24px` | `240px`      | `32px/24px`  | `16px` | `14px` |
+| `72`   | `72px` | `31px` | `309px`      | `41px/31px`  | `16px` | `14px` |
+
+派生规则是 `min-height: round(size * 30 / 7)`、`padding-block: round(size * 4 / 7)`、`padding-inline: round(size * 3 / 7)`，默认字形是 `round(size * 3 / 7)`。
+
+字号只有一档台阶而不是连续缩放：低于 `56` 时标题 `14px`、描述 `13px`，`56` 及以上为 `16px` 与 `14px`。更大的空态靠留白撑开，而不是靠字变大。
+
+**从 `'small' \| 'medium' \| 'large'` 枚举迁移：** `size` 现在是数字。被删除的档位是手调值，这套比例只能逼近而复现不了——`small` 原本是 `160px` 高、`20px 16px` 内边距，`large` 原本是 `320px` 与 `48px 32px`。段间距与内容宽度从未跟随档位。
+
+| 旧值     | 新值 | 默认字形 |
+| -------- | ---- | -------- |
+| `small`  | `40` | `17`     |
+| `medium` | `56` | `24`     |
+| `large`  | `72` | `31`     |
 
 **插槽：** `default`（标题，覆盖 `title` 属性）、`icon`、`description`、`action`
 
 **CSS 自定义属性：**
 
-| 属性                                | 默认值      | 说明               |
-| ----------------------------------- | ----------- | ------------------ |
-| `--wui-empty-min-height`            | `240px`     | 最小高度（medium） |
-| `--wui-empty-padding`               | `32px 24px` | 内边距（medium）   |
-| `--wui-empty-icon-size`             | `56px`      | 图标容器尺寸       |
-| `--wui-empty-content-width`         | `480px`     | 标题/描述最大宽度  |
-| `--wui-empty-title-font-size`       | `16px`      | 标题字号（medium） |
-| `--wui-empty-description-font-size` | `14px`      | 描述字号（medium） |
+每一项都覆盖 `size` 派生的值，因此八个属性始终优先——包括两个字号。默认值取默认 `size` 为 `56` 时的取值。
+
+| 属性                                | 默认值      | 说明                        |
+| ----------------------------------- | ----------- | --------------------------- |
+| `--wui-empty-min-height`            | `240px`     | 最小高度                    |
+| `--wui-empty-padding`               | `32px 24px` | 内边距                      |
+| `--wui-empty-icon-size`             | `56px`      | 图标容器尺寸，优先于 `size` |
+| `--wui-empty-content-width`         | `480px`     | 标题/描述/操作区最大宽度    |
+| `--wui-empty-title-margin-top`      | `16px`      | 图标与标题之间的间距        |
+| `--wui-empty-title-font-size`       | `16px`      | 标题字号                    |
+| `--wui-empty-description-font-size` | `14px`      | 描述字号                    |
+| `--wui-empty-action-margin-top`     | `20px`      | 操作区上方的间距            |
 
 #### `<web-ui-icon>`
 
@@ -1313,16 +1391,17 @@ WebUiSpinner.hide() // 隐藏
 
 在 `640px` 及以下，侧边栏会切换为使用内置 glass body、可滚动 content 和 drag zone 的 `web-ui-drawer`。Layout 会将 `sidebar-width` 映射为 `--wui-drawer-width`，将 `--wui-layout-sidebar-radius` 映射为 `--wui-drawer-radius`。移动端 Toggle 以 glass 变体位于 header 行内。其左缩进默认 `8px`，可通过 `--wui-layout-mobile-toggle-inset` 与 Consumer 自身的 header 内边距对齐。
 
-`header-glow` 会在 header 插槽内容和移动端 Toggle 的背后添加 `pointer-events: none` 的装饰性晕染。它属于 Header 背景而非前景层，因此插槽内容始终位于其上方；可通过 `--wui-layout-header-glow-color` 覆盖颜色，默认值为 `--wui-color-page`。晕染浓度和范围由内部变量 `--wui-layout-header-glow-height`（默认 `150%`）控制；增大可加强覆盖，减小则更柔和。布局层级顺序为 Header（`10`）< Auxiliary（`20`）< Banner（`30`）< Tabbar（`40`）< Sidebar（`50`）。
+`header-glow` 会在 header 插槽内容和移动端 Toggle 的背后添加 `pointer-events: none` 的装饰性晕染。它属于 Header 背景而非前景层，因此插槽内容始终位于其上方。晕染颜色取自 `--wui-color-page`，因此浅色/暗色模式自动跟随；要改颜色，在 `web-ui-layout`、theme 或其上层任意位置覆盖该属性即可。晕染由两层伪元素合成：`::before` 在 header 盒内用 `linear-gradient` 绘制底色并渐变到全透明，`::after` 再叠一层真实的 `backdrop-filter: blur(4px)`，并用 `mask` 让这层模糊的 alpha 沿高度衰减、到底缘附近归零。两层职责分开后，模糊强度与颜色浓度互不牵制。两层都用负 `margin` 而不是 `transform` 向外撑开。横向裁剪归属 `.layout-content`，glow 因此不会撑出横向滚动条。布局层级顺序为 Header（`10`）< Auxiliary（`20`）< Banner（`30`）< Tabbar（`40`）< Sidebar（`50`）。
 
 侧边栏卡片表面使用 `--wui-color-surface-sidebar`：浅色保持半透明中性分层，深色比 `--wui-color-page` 浅一档、与 `--wui-color-surface` 同级。它独立成 token，是因为 dialog、drawer 和 toast 共用 `--wui-color-surface-overlay`，可以采用不同表面。
 
 **CSS 自定义属性：**
 
-| 属性                               | 默认值 | 说明                                 |
-| ---------------------------------- | ------ | ------------------------------------ |
-| `--wui-layout-sidebar-radius`      | `24px` | 侧边栏卡片圆角（桌面端和移动端共用） |
-| `--wui-layout-mobile-toggle-inset` | `8px`  | 移动端 header Toggle 的左缩进        |
+| 属性                                | 默认值 | 说明                                                                |
+| ----------------------------------- | ------ | ------------------------------------------------------------------- |
+| `--wui-layout-sidebar-radius`       | `24px` | 侧边栏卡片圆角（桌面端和移动端共用）                                |
+| `--wui-layout-mobile-toggle-inset`  | `8px`  | 移动端 header Toggle 的左缩进                                       |
+| `--wui-layout-sidebar-toggle-width` | `44px` | 桌面端侧边栏折叠 Toggle 的宽度，下限为 `--wui-control-size`（36px） |
 
 #### `<web-ui-back-top>`
 
@@ -1408,19 +1487,54 @@ SVG 线条绘制动画，基于 `stroke-dashoffset`。直接在原元素上动�
 
 | 属性                      | 默认值  | 说明                     |
 | ------------------------- | ------- | ------------------------ |
-| `--wui-font-size`         | `14px`  | 控件基础字号             |
 | `--wui-input-width`       | `200px` | 紧凑表单控件默认宽度     |
 | `--wui-control-size`      | `36px`  | 控件默认高度和方形最小宽 |
 | `--wui-overlay-min-width` | `200px` | 锚定浮层最小宽度         |
 | `--wui-focus-ring-width`  | `3px`   | Focus 指示器宽度         |
 
+**排版 token：** 字号按文字扮演的角色命名，而不是按它在尺度里的位置——`caption` 是密集 chrome 上的小标签，`readout` 是数字读数，无后缀的基准字号是正文，`title` 是有界卡片标题。字重按重量命名，行高按这段文字需要的垂直空气命名。这一族与外观无关：light 和 dark 下取值相同。
+
+| 属性                         | 默认值 | 说明                                               |
+| ---------------------------- | ------ | -------------------------------------------------- |
+| `--wui-font-size-caption`    | `12px` | 密集 chrome 标签（徽标、toast 时间戳、菜单分组头） |
+| `--wui-font-size-readout`    | `13px` | 数字读数（图片预览的计数与缩放比）                 |
+| `--wui-font-size`            | `14px` | 正文与控件的基础字号                               |
+| `--wui-font-size-title`      | `18px` | 有界卡片标题（dialog、drawer）                     |
+| `--wui-font-weight-medium`   | `500`  | 强调行内文字的中等字重                             |
+| `--wui-font-weight-semibold` | `600`  | 标题的半粗字重                                     |
+| `--wui-line-height-tight`    | `1.2`  | 大号标题的紧行高                                   |
+| `--wui-line-height-snug`     | `1.4`  | 中号标题的适中行高                                 |
+| `--wui-line-height-normal`   | `1.5`  | 正文的常规行高                                     |
+| `--wui-line-height-relaxed`  | `1.6`  | 长文阅读的宽松行高                                 |
+
+组件里的 `line-height: 1` 与 `line-height: 0` 刻意不做 token：前者是控件内单行标签的垂直居中手段，后者是把包裹盒高收缩到内容——两者都不是排版行高，token 化会诱使调用方把它们当成行高去整体调节。
+
+**间距 token：** 4px 基准的六级阶，止于 24px——组件层以生效的静态节奏字面量写入的最大间距值。（唯一更宽的是 `<web-ui-empty>` 的 `32px 24px`，它由 `--wui-empty-size` 在 JS 侧派生，属尺寸那根轴而非节奏，理由见下面的排除项。）它不替代组件各自的覆盖 token（`--wui-button-px`、`--wui-dialog-padding` 等），而是充当那些 token 的 fallback 默认值——组件仍然决定自己的 padding，间距阶只说明这个值在整体节奏里的位置。因此覆盖某一级，就等于给嵌入应用一根作用于所有已挂阶调用点的密度杠杆——它调的是节奏，不是结构，理由见下面的排除项。
+
+| 属性            | 默认值 | 说明                       |
+| --------------- | ------ | -------------------------- |
+| `--wui-space-1` | `4px`  | 紧凑内边距（徽标、菜单）   |
+| `--wui-space-2` | `8px`  | 控件间距、组间距、行内间距 |
+| `--wui-space-3` | `12px` | 控件水平内边距             |
+| `--wui-space-4` | `16px` | 标准区块间距               |
+| `--wui-space-5` | `20px` | 浮层内容内边距             |
+| `--wui-space-6` | `24px` | 宽浮层内边距               |
+
+这一阶刻意不含 `1px`、`2px`、`6px`、`7.5px`、`10px` 和负值。`1px` 是发丝线和描边环的结构宽度；`2px`、`6px`、`7.5px` 是光学修正；`10px` 是 4px 阶之外的半档耦合值；负 margin 用来抵消 flex gap 或按钮的 padding。它们的「为什么是这个数」各自独立，没有共享间距语义，收进同一把尺子只会让覆盖其中之一时误伤其余。
+
+第二类排除按语义而非按取值：对齐视口边缘或宿主自身内容边缘的偏移量，即使正好落在 4px 阶上也不挂阶——`--wui-image-preview-edge-gap`、`--wui-toast-viewport-gap`、`--wui-layout-mobile-toggle-inset`、`--wui-back-top-right` / `--wui-back-top-left` / `--wui-back-top-bottom`、`--wui-drawer-inset` 与 `--wui-drawer-close-right`。它们的参照系是屏幕或宿主的内容边缘，不是相邻元素之间的节奏；并进间距阶会让「收紧 `--wui-space-2`」意外把组件推离屏幕边缘。`--wui-drawer-close-top` 是反例：它经 `--wui-space-4` 解析，因为它要跟随 drawer 的 header padding，两者必须一起动。
+
+第三类排除是由组件**尺寸** prop 派生、而非写成节奏值的间距：`<web-ui-empty>` 让 `padding`、`min-block-size` 与图形尺寸跟随 `--wui-empty-size` 缩放，`40` / `56` / `72` 三档实测 padding 分别是 `23px 17px` / `32px 24px` / `41px 31px`。这六个值里有四个是奇数，4px 阶根本无法表示；`56` 档的 `32px 24px` 落在基准上纯属尺寸选值的巧合——`56` 是三档里唯一被 7 整除的，商恰为 8，而 8 本身是 4 的倍数，取整在这一档根本没有发生。一根在三个尺寸里有两个静默失效、只在第三个上碰巧生效的密度杠杆，比没有杠杆更糟；何况整组值本来就随 `size` 走，因此不挂阶。这里直接写 px 即可。
+
+覆盖必须落在 `<web-ui-theme>` 作用域内，因为 theme 宿主只为自己的子树声明这些级。已知边界：`assets/*.css` 的浮层样式有两条注入路径——经 theme 自带的 overlay root 注入时间距阶生效，退到 document 级 fallback overlay root（一个看不到 theme token 的普通 `div`）时，浮层间距恒取字面量 fallback。
+
 **选择控件 token（radio、checkbox）：**
 
-| 属性                           | 默认值 | 说明                                 |
-| ------------------------------ | ------ | ------------------------------------ |
-| `--wui-selection-control-size` | `18px` | 指示器（圆点 / 方框）宽高            |
-| `--wui-radio-group-gap`        | `8px`  | `<web-ui-radio-group>` 的成员间距    |
-| `--wui-checkbox-group-gap`     | `8px`  | `<web-ui-checkbox-group>` 的成员间距 |
+| 属性                           | 默认值               | 说明                                 |
+| ------------------------------ | -------------------- | ------------------------------------ |
+| `--wui-selection-control-size` | `18px`               | 指示器（圆点 / 方框）宽高            |
+| `--wui-radio-group-gap`        | `var(--wui-space-2)` | `<web-ui-radio-group>` 的成员间距    |
+| `--wui-checkbox-group-gap`     | `var(--wui-space-2)` | `<web-ui-checkbox-group>` 的成员间距 |
 
 **圆角 token：**
 
@@ -1434,7 +1548,6 @@ SVG 线条绘制动画，基于 `stroke-dashoffset`。直接在原元素上动�
 
 | 属性                         | 默认值 | 说明           |
 | ---------------------------- | ------ | -------------- |
-| `--wui-layer-base`           | `0`    | 基础内容       |
 | `--wui-layer-inline-overlay` | `1`    | 组件内部浮层   |
 | `--wui-layer-header`         | `10`   | 页面 Header    |
 | `--wui-layer-auxiliary`      | `20`   | 悬浮工具控件   |
@@ -1450,41 +1563,41 @@ SVG 线条绘制动画，基于 `stroke-dashoffset`。直接在原元素上动�
 
 **颜色 token：**
 
-| 属性                               | 浅色默认值                                                   | 深色默认值                                                   | 说明                   |
-| ---------------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------ | ---------------------- |
-| `--wui-color-page`                 | `#fff`                                                       | `#242628`                                                    | 页面背景               |
-| `--wui-color-surface`              | `#fff`                                                       | `#2c2c2e`                                                    | 普通 表面              |
-| `--wui-color-surface-raised`       | `#f2f2f7`                                                    | `#2c2c2e`                                                    | 抬升表面               |
-| `--wui-color-surface-control`      | `#dfdfdf`                                                    | `#3a3a3c`                                                    | 中性可交互控件表面     |
-| `--wui-color-surface-track`        | `#e5e5ea`                                                    | `#444446`                                                    | Slider/Switch 轨道表面 |
-| `--wui-color-surface-menu`         | `rgb(254 254 254 / 0.76)`                                    | `rgb(49 48 50 / 0.74)`                                       | Menu 和浮动面板表面    |
-| `--wui-color-surface-glass`        | `rgb(250 250 250 / 0.34)`                                    | `rgb(44 44 46 / 0.42)`                                       | 液态玻璃表面           |
-| `--wui-color-surface-glass-hover`  | `color-mix(... text 6%, surface-glass)`                      | `color-mix(... text 6%, surface-glass)`                      | Glass 完整悬停背景     |
-| `--wui-color-surface-glass-active` | `color-mix(... text 15%, surface-glass)`                     | `color-mix(... text 15%, surface-glass)`                     | Glass 完整按下背景     |
-| `--wui-color-surface-overlay`      | `rgb(246 246 246 / 0.82)`                                    | `rgb(32 34 34 / 0.9)`                                        | 半透明浮层表面         |
-| `--wui-color-surface-sidebar`      | `rgb(233 233 233 / 0.82)`                                    | `rgb(44 44 46 / 0.8)`                                        | 侧边栏面板表面         |
-| `--wui-color-surface-segmented`    | `#e5e5ea`                                                    | `#3a3a3c`                                                    | Segmented 指示器表面   |
-| `--wui-color-surface-selected`     | `#fff`                                                       | `#5c5c5e`                                                    | 选中表面               |
-| `--wui-color-text`                 | `#1b1b1b`                                                    | `#e9eaea`                                                    | 主要文本               |
-| `--wui-color-text-secondary`       | `#6a6a6a`                                                    | `#a1a1a6`                                                    | 次要文本               |
-| `--wui-color-text-tertiary`        | `color-mix(in srgb, var(--wui-color-text) 35%, transparent)` | `color-mix(in srgb, var(--wui-color-text) 42%, transparent)` | 三级文本和弱意图图标   |
-| `--wui-color-text-disabled`        | `color-mix(in srgb, var(--wui-color-text) 32%, transparent)` | `color-mix(in srgb, var(--wui-color-text) 38%, transparent)` | 禁用态前景文本         |
-| `--wui-color-state-layer-hover`    | `color-mix(in srgb, var(--wui-color-text) 6%, transparent)`  | `color-mix(in srgb, var(--wui-color-text) 6%, transparent)`  | 透明悬停层             |
-| `--wui-color-state-layer-active`   | `color-mix(in srgb, var(--wui-color-text) 15%, transparent)` | `color-mix(in srgb, var(--wui-color-text) 15%, transparent)` | 透明按下层             |
-| `--wui-color-border`               | `rgb(0 0 0 / 0.1)`                                           | `rgb(255 255 255 / 0.14)`                                    | 常规边框和分隔线       |
-| `--wui-color-glass-border`         | `transparent`                                                | `rgb(255 255 255 / 0.05)`                                    | Glass 边框色调         |
-| `--wui-color-glass-highlight`      | `rgb(255 255 255 / 0.9)`                                     | `rgb(255 255 255 / 0.1)`                                     | Glass 高光边缘         |
-| `--wui-color-glass-corner`         | `rgb(255 255 255 / 0.5)`                                     | `rgb(255 255 255 / 0.2)`                                     | Glass 边框角落光泽     |
-| `--wui-color-glass-shade`          | `rgb(0 0 0 / 0.03)`                                          | `rgb(0 0 0 / 0.5)`                                           | Glass 边框背光角压暗   |
-| `--wui-color-accent`               | `#08f`                                                       | `#0a84ff`                                                    | Accent 和输入焦点边框  |
-| `--wui-color-on-accent`            | `#fff`                                                       | `#fff`                                                       | Accent 上的前景色      |
-| `--wui-color-on-control`           | `#fff`                                                       | `#f2f2f7`                                                    | 控件内芯前景色         |
-| `--wui-color-success`              | `#16a34a`                                                    | `#30d158`                                                    | 成功                   |
-| `--wui-color-warning`              | `#d97706`                                                    | `#ff9f0a`                                                    | 警告                   |
-| `--wui-color-danger`               | `#dc2626`                                                    | `#ff453a`                                                    | 危险                   |
-| `--wui-color-info`                 | `#2563eb`                                                    | `#64d2ff`                                                    | 信息                   |
-| `--wui-color-backdrop`             | `rgb(0 0 0 / 0.12)`                                          | `rgb(0 0 0 / 0.48)`                                          | Modal 遮罩             |
-| `--wui-color-focus-ring`           | `rgb(0 136 255 / 0.4)`                                       | `rgb(10 132 255 / 0.62)`                                     | Focus 指示器颜色       |
+| 属性                               | 浅色默认值                                                           | 深色默认值                                                              | 说明                             |
+| ---------------------------------- | -------------------------------------------------------------------- | ----------------------------------------------------------------------- | -------------------------------- |
+| `--wui-color-page`                 | `#fff`                                                               | `#242628`                                                               | 页面背景                         |
+| `--wui-color-surface`              | `#fff`                                                               | `#2c2c2e`                                                               | 普通 表面                        |
+| `--wui-color-surface-raised`       | `#f2f2f7`                                                            | `#2c2c2e`                                                               | 抬升表面                         |
+| `--wui-color-surface-control`      | `#dfdfdf`                                                            | `#3a3a3c`                                                               | 中性可交互控件表面               |
+| `--wui-color-surface-track`        | `#e5e5ea`                                                            | `#444446`                                                               | Slider/Switch 轨道表面           |
+| `--wui-color-surface-menu`         | `rgb(250 250 250 / 0.76)`                                            | `rgb(49 48 50 / 0.74)`                                                  | Menu 和浮动面板表面              |
+| `--wui-color-surface-glass`        | `rgb(250 250 250 / 0.34)`                                            | `rgb(44 44 46 / 0.42)`                                                  | 液态玻璃表面                     |
+| `--wui-color-surface-glass-hover`  | `color-mix(... text 6%, surface-glass)`                              | `color-mix(... text 6%, surface-glass)`                                 | Glass 完整悬停背景               |
+| `--wui-color-surface-glass-active` | `color-mix(... text 15%, surface-glass)`                             | `color-mix(... text 15%, surface-glass)`                                | Glass 完整按下背景               |
+| `--wui-color-surface-overlay`      | `rgb(248 248 248 / 0.92)`                                            | `rgb(32 34 34 / 0.92)`                                                  | 半透明浮层表面                   |
+| `--wui-color-surface-sidebar`      | `rgb(233 233 233 / 0.82)`                                            | `rgb(44 44 46 / 0.8)`                                                   | 侧边栏面板表面                   |
+| `--wui-color-surface-segmented`    | `#e5e5ea`                                                            | `#3a3a3c`                                                               | Segmented 指示器表面             |
+| `--wui-color-surface-selected`     | `#fff`                                                               | `#5c5c5e`                                                               | 选中表面                         |
+| `--wui-color-text`                 | `#1b1b1b`                                                            | `#e9eaea`                                                               | 主要文本                         |
+| `--wui-color-text-secondary`       | `#6a6a6a`                                                            | `#a1a1a6`                                                               | 次要文本                         |
+| `--wui-color-text-tertiary`        | `color-mix(in srgb, var(--wui-color-text) 35%, transparent)`         | `color-mix(in srgb, var(--wui-color-text) 42%, transparent)`            | 三级文本和弱意图图标             |
+| `--wui-color-text-disabled`        | `color-mix(in srgb, var(--wui-color-text) 32%, transparent)`         | `color-mix(in srgb, var(--wui-color-text) 38%, transparent)`            | 禁用态前景文本                   |
+| `--wui-color-state-layer-hover`    | `color-mix(in srgb, var(--wui-color-text) 6%, transparent)`          | `color-mix(in srgb, var(--wui-color-text) 6%, transparent)`             | 透明悬停层                       |
+| `--wui-color-state-layer-active`   | `color-mix(in srgb, var(--wui-color-text) 15%, transparent)`         | `color-mix(in srgb, var(--wui-color-text) 15%, transparent)`            | 透明按下层                       |
+| `--wui-color-border`               | `rgb(0 0 0 / 0.1)`                                                   | `rgb(255 255 255 / 0.14)`                                               | 常规边框和分隔线                 |
+| `--wui-color-glass-highlight`      | `rgb(255 255 255 / 0.9)`                                             | `rgb(255 255 255 / 0.1)`                                                | 表面 inset 高光                  |
+| `--wui-color-glass-ring`           | `rgb(0 0 0 / 0.05)`                                                  | `rgb(255 255 255 / 0.05)`                                               | 1px 描边环底色                   |
+| `--wui-color-glass-ring-sheen`     | `rgb(255 255 255 / 0.5)`                                             | `rgb(255 255 255 / 0.2)`                                                | 描边环角落受光光泽               |
+| `--wui-color-glass-ring-shade`     | `rgb(0 0 0 / 0.03)`                                                  | `rgb(0 0 0 / 0.5)`                                                      | 描边环角落背光压暗               |
+| `--wui-color-accent`               | `#08f`                                                               | `#0a84ff`                                                               | Accent 和输入焦点边框            |
+| `--wui-color-on-accent`            | `#fff`                                                               | `#fff`                                                                  | Accent 上的前景色                |
+| `--wui-color-on-control`           | `#fff`                                                               | `#f2f2f7`                                                               | 控件内芯前景色                   |
+| `--wui-color-success`              | `#16a34a`                                                            | `#30d158`                                                               | 成功                             |
+| `--wui-color-warning`              | `#d97706`                                                            | `#ff9f0a`                                                               | 警告                             |
+| `--wui-color-danger`               | `#dc2626`                                                            | `#ff453a`                                                               | 危险                             |
+| `--wui-color-info`                 | `#2563eb`                                                            | `#64d2ff`                                                               | 信息                             |
+| `--wui-color-backdrop`             | `rgb(0 0 0 / 0.12)`                                                  | `rgb(0 0 0 / 0.48)`                                                     | Modal 遮罩                       |
+| `--wui-color-focus-ring`           | `color-mix(in srgb, var(--wui-color-accent, #08f) 40%, transparent)` | `color-mix(in srgb, var(--wui-color-accent, #0a84ff) 62%, transparent)` | Focus 指示器颜色，由 accent 派生 |
 
 **阴影 token：**
 

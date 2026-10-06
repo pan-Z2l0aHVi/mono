@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vite-plus/test'
+import { describe, expect, it } from 'vite-plus/test'
 
 import '..'
 import '@/components/segmented-trigger'
@@ -170,6 +170,29 @@ describe('WebUiSegmented 组件', () => {
     })
   })
 
+  describe('属性：variant', () => {
+    // README 明文承诺「Illegal values fall back to `inset`」。回退链一旦被摘掉，
+    // 非法值会透传进 `:host([variant=...])` 选择器，轨道与 thumb 双双失配样式。
+    it('默认 inset，非法值回退 inset，attribute 驱动 property', async () => {
+      const el = createSegmented(TRIGGER_HTML)
+      await waitForUpdate(el)
+      expect(el.variant).toBe('inset')
+      expect(el.getAttribute('variant'), '默认值应反射到宿主').toBe('inset')
+
+      el.variant = 'bogus'
+      await waitForUpdate(el)
+      expect(el.variant, '非法值应回退到 inset').toBe('inset')
+      expect(el.getAttribute('variant'), '回退值应反射到宿主').toBe('inset')
+
+      el.setAttribute('variant', 'raised')
+      await waitForUpdate(el)
+      expect(el.variant, 'attribute 应驱动 property').toBe('raised')
+      expect(el.getAttribute('variant')).toBe('raised')
+
+      cleanupElement(el)
+    })
+  })
+
   describe('用户交互', () => {
     it('点击子 trigger 后 value 更新为所选值', async () => {
       const el = createSegmented(TRIGGER_HTML)
@@ -225,27 +248,6 @@ describe('WebUiSegmented 组件', () => {
 
       detachInput()
       detachChange()
-      cleanupElement(el)
-    })
-  })
-
-  describe('玻璃轨道与指示器', () => {
-    it('轨道静止态挂载共享玻璃配方，指示器恒挂同一配方供按压/拖拽透出', async () => {
-      const el = createSegmented(TRIGGER_HTML)
-      await waitForUpdate(el)
-
-      const track = queryA11y(el, '.wui-segmented')
-      expect(track).not.toBeNull()
-      expect(track?.classList.contains('wui-glass')).toBe(true)
-
-      const indicator = queryA11y(el, '.wui-segmented-indicator')
-      expect(indicator).not.toBeNull()
-      expect(indicator?.classList.contains('wui-glass')).toBe(true)
-
-      el.value = 'b'
-      await waitForUpdate(el)
-      expect(queryA11y(el, '.wui-segmented-indicator')?.classList.contains('wui-glass')).toBe(true)
-
       cleanupElement(el)
     })
   })

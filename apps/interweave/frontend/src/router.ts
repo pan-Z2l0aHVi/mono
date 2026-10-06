@@ -5,6 +5,10 @@ export const router = createRouter({
   routes: [
     {
       path: '/',
+      redirect: '/library'
+    },
+    {
+      path: '/library',
       component: () => import('@/pages/LibraryPage.vue')
     },
     {
@@ -18,11 +22,6 @@ export const router = createRouter({
     {
       path: '/settings',
       component: () => import('@/pages/SettingsPage.vue')
-    },
-    {
-      path: '/prototype/interweave-shell',
-      component: () => import('@/pages/prototype/InterweaveShellPrototypePage.vue'),
-      meta: { prototype: true }
     }
   ]
 })
