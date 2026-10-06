@@ -25,7 +25,6 @@ async function waitUntil(predicate: () => boolean, maxSpins = 1000): Promise<voi
   expect(predicate(), '等待队列调度收敛超时').toBe(true)
 }
 
-/** 各分片累计送达的条目总数。 */
 const deliveredCount = (transport: ReturnType<typeof createTransportStub>['transport']) =>
   transport.mock.calls.reduce((total, call) => total + (call[0] as unknown[]).length, 0)
 

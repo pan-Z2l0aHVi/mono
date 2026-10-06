@@ -51,18 +51,15 @@ const nestedL2 = ref(false)
 const nestedL3 = ref(false)
 const nestedL4 = ref(false)
 
-// 多宽度嵌套（500px → 360px → 260px）
 const diffWidthL1 = ref(false)
 const diffWidthL2 = ref(false)
 const diffWidthL3 = ref(false)
 
-// 乱序宽度嵌套（窄 300px → 宽 520px → 极窄 240px → 中宽 400px）
 const randomWidthL1 = ref(false)
 const randomWidthL2 = ref(false)
 const randomWidthL3 = ref(false)
 const randomWidthL4 = ref(false)
 
-// 同级（非 DOM 嵌套）自动层叠
 const siblingL1 = ref(false)
 const siblingL2 = ref(false)
 const siblingL3 = ref(false)

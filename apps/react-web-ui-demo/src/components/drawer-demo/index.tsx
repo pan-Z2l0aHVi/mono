@@ -26,16 +26,13 @@ function DrawerDemo() {
   const [nestedL2, setNestedL2] = useState(false)
   const [nestedL3, setNestedL3] = useState(false)
   const [nestedL4, setNestedL4] = useState(false)
-  // 多宽度嵌套（父宽子窄 / 级联收窄）
   const [diffWidthL1, setDiffWidthL1] = useState(false)
   const [diffWidthL2, setDiffWidthL2] = useState(false)
   const [diffWidthL3, setDiffWidthL3] = useState(false)
-  // 乱序宽度嵌套（窄 300px → 宽 520px → 极窄 240px → 中宽 400px）
   const [randomWidthL1, setRandomWidthL1] = useState(false)
   const [randomWidthL2, setRandomWidthL2] = useState(false)
   const [randomWidthL3, setRandomWidthL3] = useState(false)
   const [randomWidthL4, setRandomWidthL4] = useState(false)
-  // 同级（非 DOM 嵌套）自动层叠
   const [siblingL1, setSiblingL1] = useState(false)
   const [siblingL2, setSiblingL2] = useState(false)
   const [siblingL3, setSiblingL3] = useState(false)

@@ -250,9 +250,6 @@ export function queryA11y(el: HTMLElement, selector: string): Element | null {
   return el.shadowRoot?.querySelector(selector) ?? null
 }
 
-/**
- * 验证宿主元素的布尔属性是否反射。
- */
 export function expectReflected(el: HTMLElement, attr: string, value: boolean): void {
   if (value) {
     expect(el.hasAttribute(attr)).toBe(true)
@@ -261,9 +258,6 @@ export function expectReflected(el: HTMLElement, attr: string, value: boolean): 
   }
 }
 
-/**
- * 清理测试中创建的 DOM 元素。
- */
 export function cleanupElement(el: HTMLElement | null | undefined): void {
   el?.remove()
 }

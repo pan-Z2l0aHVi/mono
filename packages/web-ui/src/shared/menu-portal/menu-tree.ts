@@ -134,7 +134,6 @@ export function reconcileManagedMenuItems(
     ensureMarker(subtree, true)
   }
 
-  // 宿主中尚存的托管项移入 content。
   for (const subtree of inHost) {
     content.appendChild(subtree)
   }
