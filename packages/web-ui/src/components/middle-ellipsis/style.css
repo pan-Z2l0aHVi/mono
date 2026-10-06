@@ -1,0 +1,31 @@
+:host {
+  overflow: hidden;
+  display: block;
+}
+
+.root {
+  position: relative;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.text {
+  white-space: nowrap;
+}
+
+/*
+ * 两个隐藏量具。必须是出流盒子：留在流内的话宿主的 max-content 会被全文撑开，
+ * 而截断的前提正是「宽度来自容器」。
+ */
+.measure,
+.marker-probe {
+  pointer-events: none;
+
+  position: absolute;
+  top: 0;
+  left: 0;
+
+  white-space: nowrap;
+
+  visibility: hidden;
+}

@@ -299,6 +299,7 @@ dropdown、tooltip）不需要它。
 | **数据展示**          | [`<web-ui-avatar>`](#web-ui-avatar)                       |
 |                       | [`<web-ui-badge>`](#web-ui-badge)                         |
 |                       | [`<web-ui-empty>`](#web-ui-empty)                         |
+|                       | [`<web-ui-middle-ellipsis>`](#web-ui-middle-ellipsis)     |
 |                       | [`<web-ui-icon>`](#web-ui-icon)                           |
 |                       | [`<web-ui-spinner>`](#web-ui-spinner)                     |
 | **布局与工具**        | [`<web-ui-layout>`](#web-ui-layout)                       |
@@ -1287,6 +1288,30 @@ Hover 模式使用 `pointerenter`/`pointerleave` 加延迟控制。Click 模式�
 | `--wui-empty-title-font-size`       | `16px`      | 标题字号                    |
 | `--wui-empty-description-font-size` | `14px`      | 描述字号                    |
 | `--wui-empty-action-margin-top`     | `20px`      | 操作区上方的间距            |
+
+#### `<web-ui-middle-ellipsis>`
+
+单行中间省略：保留首尾、丢掉中间——`very-long-file-…-abcdefghij.txt`——而 `text-overflow: ellipsis` 只能保住头部。
+
+| 属性              | 类型     | 默认值 | 说明                                                                                                     |
+| ----------------- | -------- | ------ | -------------------------------------------------------------------------------------------------------- |
+| `text`            | `string` | `''`   | 完整文本。组件只读它，不回写。                                                                           |
+| `marker`          | `string` | `'…'`  | 插在两端之间的标记。空串即截断但不给任何可见信号。                                                       |
+| `marker-position` | `number` | `50`   | 标记所在的横向比例，0–100。`0` 贴行末（只剩头部），`100` 贴行首（只剩尾部）。越界夹紧，`NaN` 回退 `50`。 |
+
+使用条件与 `text-overflow: ellipsis` 相同：**单行、且有确定行内尺寸**。块级盒子、flex 行里的 `flex: 1; min-width: 0`、grid 轨道都可以。宿主按自身内容撑宽时不存在可用空间，组件按量到的宽度切一次就停止继续收缩，而不是一路塌到只剩标记。
+
+文件名场景靠 `marker-position` 调节，头部是路径噪声、尾部才是扩展名时取大值。下表是示意而非可复现的取值——确切切点取决于字体——取自 16px `system-ui`、240px 盒子：
+
+| `marker-position` | 240px 盒子里                      |
+| ----------------- | --------------------------------- |
+| `0`               | `very-long-file-name-abcdefghi…`  |
+| `50`（默认）      | `very-long-file-…-abcdefghij.txt` |
+| `80`              | `very-l…file-name-abcdefghij.txt` |
+
+切点一律落在**字素簇**边界上：代理对、组合符序列、ZWJ emoji 都不会被从中间劈开。截断期间完整原文写在文本元素的 `title` 上，放得下之后移除。宿主需为 `direction: ltr`；`direction: rtl` 下合串会被双向算法重排。
+
+**已知限制——复制与辅助技术。** 元素里装的是屏幕上那串，因此选中复制拿到的是截断后的文本，读屏与页内查找命中的也是截断后的串。CSS 的 `text-overflow` 没有这两个问题（它从不改动文本节点），这是用 JS 算切点绕不开的代价；原文经 `title` 提供。保持全文留在 DOM 里的替代方案及其代价见 `docs/research/web-ui-middle-ellipsis-261007.md`。
 
 #### `<web-ui-icon>`
 
