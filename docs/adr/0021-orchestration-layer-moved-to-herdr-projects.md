@@ -57,7 +57,7 @@ T0 必须 review 的要求不变，形态改变：编排层为 review 开一条�
 
 ## 行为变化
 
-- **仓库文档不再教手工编排**。`worktrees.md` 的路径约定、`git switch -C`、`--unset-upstream`、package worktree 复用规则删除；`AGENTS.md` 的手工路径约定删除；`release.md` 的 Manager 角色表述改为聚合 task 的 owner。
+- **仓库文档不再教手工编排**。`worktrees.md` 的路径约定、`git switch -C`、`--unset-upstream`、package worktree 复用规则删除；`AGENTS.md` 的手工路径约定删除；`release.md` 的 Manager 角色表述改为聚合 task 的 owner。（2026-10-06 注记：最后这一条随之作废——「聚合 task」这一层本身没有了，交付单元是任务，一条 task 的 PR 直接合进 `main`。见 [ADR-0022](0022-release-flow-follows-herdr-projects.md) 的作废说明。）
 - **一个 worktree 的初始化责任人明确为执行者**，不是编排层。
 - **T0 判据表少一项**，其余单元格、表头结构与「多级同时命中时取最高级」一条不变。级别对应的 freeze/review/approval/验证/commit gate 一项不减。
 - **review 拓扑的 T0 一条改写**，T1/T2 的表述原样保留；「同一会话禁止自审」与 id 形状规则不变。

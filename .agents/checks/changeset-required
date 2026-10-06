@@ -6,7 +6,7 @@
 # frontmatter 里声明了包就必须写正文，否则版本 PR 会把一条空描述写进公共包的 CHANGELOG。
 # 只含两行 `---` 的空壳仍然合法——docs/agents/commit.md 用它表达「纯 docs/chore，无版本影响」。
 # 比 changesets 自身严一点：分隔线之前不允许散落内容（它的正则是非锚定的，那种文件它照收）。
-# release 聚合 diff 对 base（origin/main）天然包含被聚合 task 的 changeset 文件。
+# 每个 PR 的 diff 对 base（origin/main）天然包含这个 task 自己的 changeset 文件。
 #
 # 内核以 POSIX sh 执行本文件（无扩展名、需要 +x），所以只写 sh 与 awk 的可移植子集。
 set -e

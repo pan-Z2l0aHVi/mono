@@ -1,8 +1,20 @@
 # ADR-0022: 发布流程随编排层移交后的形态
 
 - **Date**: 2026-10-04
-- **Status**: 已接受
+- **Status**: 已作废（2026-10-06），保留作历史记录
 - **Relates to**: [ADR-0021](0021-orchestration-layer-moved-to-herdr-projects.md)（拆分与派发权的移交）、[ADR-0001](0001-ci-pipeline.md)（CI 触发面）、[ADR-0003](0003-release-planes.md)（发布平面）
+
+## 作废说明（2026-10-06）
+
+本文记录的是「多条 task 聚到一条发布通道分支、再由该分支开一个 PR 进 `main`」的形态，该形态已作废。现行形态以 herdr-projects 自身的 skill 为唯一权威：**交付单元是任务**——一条 task 一个 worktree、一条分支、一个 PR，直接合进默认分支 `main`，中间没有发布通道这一层。
+
+以下正文只作历史记录保留，不构成指引；今天照做的是 [`docs/agents/release.md`](../agents/release.md)，仓库与编排层的边界见 [ADR-0021](0021-orchestration-layer-moved-to-herdr-projects.md)。逐条现状：
+
+- §1「发布通道由编排层拥有」随通道一起作废；同节「仓库只保留集成验证与合并后验证」仍然成立，已由 `release.md` 承接。
+- §2 的结论（不给 `ci.yml` 扩展 `branches:`）仍然成立，但**理由换了**：`branches: [main]` 对「每条 task 的 PR 都指向 `main`」的形态恰好覆盖，每条 PR 都拿得到 `check`。原文的成本论证（同一份树被验证 N 次）只作一条事实保留，不再支撑任何决定。
+- §3 前半「发布通道内保留每条 task 的独立 commit」随通道一起作废；后半「PR → `main` 保持 squash」仍然成立。
+- §4 作废：没有集成 PR，也就没有它整体定级的问题；各 task 按自身影响面定级。
+- 「为什么不为流程形态变更单开一篇 ADR 之前先问」一节只解释本文当初为何单开，不再是现行依据。
 
 ## 背景
 
