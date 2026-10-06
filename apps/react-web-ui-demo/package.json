@@ -12,6 +12,8 @@
     "@greypan/js-kit": "workspace:*",
     "@greypan/web-ui": "workspace:*",
     "@tanstack/react-router": "catalog:",
+    "overlayscrollbars": "catalog:",
+    "overlayscrollbars-react": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
     "react-error-boundary": "catalog:",

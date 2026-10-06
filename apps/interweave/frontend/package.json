@@ -19,6 +19,8 @@
     "@vue/devtools-api": "catalog:",
     "@vueuse/core": "catalog:",
     "@wailsio/runtime": "catalog:",
+    "overlayscrollbars": "catalog:",
+    "overlayscrollbars-vue": "catalog:",
     "pinia": "catalog:",
     "vee-validate": "catalog:",
     "vue": "catalog:",

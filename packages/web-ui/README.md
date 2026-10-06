@@ -31,6 +31,31 @@ A subpath import registers only the component it names, so import every tag the 
 <web-ui-button variant="primary">Click me</web-ui-button> <web-ui-icon .icon="${lucidePlus}"></web-ui-icon>
 ```
 
+## Scrollbars
+
+`@greypan/web-ui/scrollbars` carries the repo-wide scrollbar behavior for [OverlayScrollbars](https://github.com/KingSora/OverlayScrollbars)
+hosts: a macOS-aligned theme, auto-hide with a brief reveal on hover, and clicking the track scrolling to that spot.
+Import the stylesheet once per document and pass the options to whichever adapter you initialize with.
+
+```js
+import '@greypan/web-ui/scrollbars.css'
+import { webUiScrollbarsOptions } from '@greypan/web-ui/scrollbars'
+import { OverlayScrollbarsComponent } from 'overlayscrollbars-react' // or overlayscrollbars-vue
+
+;<OverlayScrollbarsComponent options={webUiScrollbarsOptions}>{children}</OverlayScrollbarsComponent>
+```
+
+- `overlayscrollbars` is an optional peer dependency and is only needed by this subpath. The stylesheet already
+  contains the library's structural styles, so it replaces `import 'overlayscrollbars/overlayscrollbars.css'`.
+- Keep the container's own `overflow` declaration (`overflow-y-auto`, …). OverlayScrollbars overrides it once it
+  takes over, but it is what keeps the container scrollable until then.
+- The target must be a plain scroll container. OverlayScrollbars turns the host into a flex row and moves its
+  children into a generated viewport, so a host whose own layout carries meaning — a grid, a centred box, a `ul`/`ol`
+  — loses it.
+- OverlayScrollbars only changes the element it is initialized on; children keep their native scrollbars. To cover
+  the document scroller, initialize `document.body` — `window.scrollY` / `window.scrollTo` keep their native
+  semantics there.
+
 ## Framework Setup
 
 ### Cross-framework API conventions

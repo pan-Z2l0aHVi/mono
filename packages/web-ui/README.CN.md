@@ -31,6 +31,29 @@ subpath 导入只注册它点名的那个组件，页面用到的每个标签都
 <web-ui-button variant="primary">点击我</web-ui-button> <web-ui-icon .icon="${lucidePlus}"></web-ui-icon>
 ```
 
+## 滚动条
+
+`@greypan/web-ui/scrollbars` 承载全仓统一的 [OverlayScrollbars](https://github.com/KingSora/OverlayScrollbars)
+滚动条行为：对齐 macOS 的主题、自动隐藏且 hover 时短暂显示、点击轨道滚动到该位置。样式表每份文档导入一次，
+选项传给所用的适配包。
+
+```js
+import '@greypan/web-ui/scrollbars.css'
+import { webUiScrollbarsOptions } from '@greypan/web-ui/scrollbars'
+import { OverlayScrollbarsComponent } from 'overlayscrollbars-vue' // 或 overlayscrollbars-react
+
+<OverlayScrollbarsComponent :options="webUiScrollbarsOptions">{children}</OverlayScrollbarsComponent>
+```
+
+- `overlayscrollbars` 是可选 peer dependency，只有这个 subpath 需要它。样式表里已经包含库自己的结构样式，
+  它替代 `import 'overlayscrollbars/overlayscrollbars.css'`。
+- 容器自己的 `overflow` 声明（`overflow-y-auto` 等）要保留：OverlayScrollbars 接管后会覆盖它，但接管之前
+  靠它维持可滚动。
+- 目标必须是「纯粹的滚动容器」。OverlayScrollbars 会把宿主变成 flex 行、把子节点搬进它生成的 viewport，
+  所以宿主自身的布局一旦承重（grid、居中盒子、`ul`/`ol`）就会坏。
+- OverlayScrollbars 只改变它被初始化到的那个元素，子元素保持原生滚动条。要覆盖文档滚动条就初始化
+  `document.body`——在那里 `window.scrollY` / `window.scrollTo` 保持原生语义。
+
 ## 框架集成
 
 ### 跨框架 API 约定

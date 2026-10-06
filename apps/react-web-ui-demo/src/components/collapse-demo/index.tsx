@@ -1,4 +1,6 @@
 import { lucideChevronDown, radixIconsPanelLeftMinimized } from '@greypan/web-ui/icons'
+import { webUiScrollbarsOptions } from '@greypan/web-ui/scrollbars'
+import { OverlayScrollbarsComponent } from 'overlayscrollbars-react'
 
 function CollapseDemo() {
   return (
@@ -74,11 +76,11 @@ function CollapseDemo() {
             展开长列表
           </button>
           <div slot="content">
-            <div className="max-h-40 overflow-y-auto p-3">
+            <OverlayScrollbarsComponent options={webUiScrollbarsOptions} className="max-h-40 overflow-y-auto p-3">
               {Array.from({ length: 20 }, (_, i) => (
                 <p key={i}>列表项 {i + 1}</p>
               ))}
-            </div>
+            </OverlayScrollbarsComponent>
           </div>
         </web-ui-collapse>
       </div>

@@ -2,7 +2,13 @@
 import { local } from '@greypan/browser-kit'
 import type { WebUiEvent, WebUiLayout, WebUiSelect } from '@greypan/web-ui'
 import { lucideX } from '@greypan/web-ui/icons'
+import { webUiScrollbarsOptions } from '@greypan/web-ui/scrollbars'
 import { useHead } from '@unhead/vue'
+import {
+  OverlayScrollbarsComponent,
+  useOverlayScrollbars,
+  type OverlayScrollbarsComponentRef
+} from 'overlayscrollbars-vue'
 import { computed, onMounted, onScopeDispose, ref } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 
@@ -101,12 +107,17 @@ const route = useRoute()
 const router = useRouter()
 
 useHead({ title: () => route.meta.title })
-const navSidebar = ref<HTMLElement>()
+const navSidebar = ref<OverlayScrollbarsComponentRef>()
+
+// 整页滚动条接管的是 document 的滚动元素，不是某个 DOM 容器，所以没有可渲染的宿主元素，
+// 只能直接初始化 body。
+const [initPageScrollbars] = useOverlayScrollbars({ options: webUiScrollbarsOptions })
 
 onMounted(async () => {
+  initPageScrollbars(document.body)
   await router.isReady()
   requestAnimationFrame(() => {
-    const link = navSidebar.value?.querySelector('[data-active="true"]')
+    const link = navSidebar.value?.getElement()?.querySelector('[data-active="true"]')
     link?.scrollIntoView({ block: 'center' })
   })
 })
@@ -208,9 +219,10 @@ function isNavActive(path: string) {
             <web-ui-option value="system" label="跟随系统">跟随系统</web-ui-option>
           </web-ui-select>
         </div>
-        <div
+        <OverlayScrollbarsComponent
           slot="sidebar"
           ref="navSidebar"
+          :options="webUiScrollbarsOptions"
           class="relative z-20 h-full min-h-0 overflow-y-auto p-2 max-[640px]:px-0"
           aria-label="应用导航"
         >
@@ -233,7 +245,7 @@ function isNavActive(path: string) {
               </span>
             </RouterLink>
           </nav>
-        </div>
+        </OverlayScrollbarsComponent>
         <div class="p-3">
           <!-- 正文 gutter 归 shell 所有：web-ui-layout 的 main 不带 padding，逐页加会漏页。 -->
           <RouterView />

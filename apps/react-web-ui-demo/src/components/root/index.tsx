@@ -1,6 +1,12 @@
 import type { WebUiSelect } from '@greypan/web-ui'
 import { lucideX } from '@greypan/web-ui/icons'
+import { webUiScrollbarsOptions } from '@greypan/web-ui/scrollbars'
 import { Link, Outlet, useRouter, useRouterState } from '@tanstack/react-router'
+import {
+  OverlayScrollbarsComponent,
+  useOverlayScrollbars,
+  type OverlayScrollbarsComponentRef
+} from 'overlayscrollbars-react'
 import { useEffect, useRef, useState } from 'react'
 import { ErrorBoundary } from 'react-error-boundary'
 
@@ -111,7 +117,7 @@ export function Root() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [desktopSidebarWidth, setDesktopSidebarWidth] = useState<string>(getInitialSidebarWidth)
-  const navSidebarRef = useRef<HTMLDivElement>(null)
+  const navSidebarRef = useRef<OverlayScrollbarsComponentRef<'div'> | null>(null)
   const [isMobileSidebar, setIsMobileSidebar] = useState(() => window.matchMedia('(max-width: 640px)').matches)
   useEffect(() => {
     const mq = window.matchMedia('(max-width: 640px)')
@@ -130,10 +136,17 @@ export function Root() {
   const router = useRouter()
   const pathname = useRouterState({ select: s => s.location.pathname })
 
+  // 整页滚动条接管的是 document 的滚动元素，不是某个 DOM 容器，所以没有可渲染的宿主元素，
+  // 只能直接初始化 body。
+  const [initPageScrollbars] = useOverlayScrollbars({ options: webUiScrollbarsOptions })
+  useEffect(() => {
+    initPageScrollbars(document.body)
+  }, [initPageScrollbars])
+
   useEffect(() => {
     void router.load().then(() => {
       requestAnimationFrame(() => {
-        const link = navSidebarRef.current?.querySelector('.active')
+        const link = navSidebarRef.current?.getElement()?.querySelector('.active')
         link?.scrollIntoView({ block: 'center' })
       })
     })
@@ -246,9 +259,10 @@ export function Root() {
                 </web-ui-option>
               </web-ui-select>
             </div>
-            <div
+            <OverlayScrollbarsComponent
               slot="sidebar"
               ref={navSidebarRef}
+              options={webUiScrollbarsOptions}
               className="relative z-20 h-full min-h-0 overflow-y-auto p-2 max-[640px]:px-0"
               aria-label="应用导航"
             >
@@ -279,7 +293,7 @@ export function Root() {
                   )
                 })}
               </nav>
-            </div>
+            </OverlayScrollbarsComponent>
             {/* 正文 gutter 归 shell 所有：`web-ui-layout` 的 main 不带 padding，逐页加会漏页。 */}
             <div className="p-3">
               <Outlet />

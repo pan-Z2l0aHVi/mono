@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import type { WebUiDialog, WebUiEvent, WebUiRadio, WebUiSegmented } from '@greypan/web-ui'
+import { webUiScrollbarsOptions } from '@greypan/web-ui/scrollbars'
+import { OverlayScrollbarsComponent } from 'overlayscrollbars-vue'
 import { storeToRefs } from 'pinia'
 import { ref } from 'vue'
 
@@ -130,8 +132,13 @@ function pickAccent(value: string) {
       而不是内容被裁在 328px 里。
 
       overflow-y-auto 只是安全阀：328px 已经容得下最高的一档，常规尺寸下三个 tab 都不滚。
+      滚动条由 OverlayScrollbars 接管，overflow-y-auto 保留为初始化前的兜底。
     -->
-    <div class="overflow-y-auto py-1.5" style="height: var(--wui-dialog-max-height)">
+    <OverlayScrollbarsComponent
+      :options="webUiScrollbarsOptions"
+      class="overflow-y-auto py-1.5"
+      style="height: var(--wui-dialog-max-height)"
+    >
       <!-- 三段 tab 放在内容区顶部而不是标题栏：标题栏留给标题与关闭按钮，窄屏下两者不挤。 -->
       <web-ui-segmented class="mb-4 w-full" :value="activeTab" aria-label="设置分区" @change="handleTabChange">
         <web-ui-segmented-trigger v-for="tab in TABS" :key="tab.value" :value="tab.value">
@@ -225,6 +232,6 @@ function pickAccent(value: string) {
           class="[--wui-empty-min-height:0] [--wui-empty-padding:0]"
         />
       </div>
-    </div>
+    </OverlayScrollbarsComponent>
   </web-ui-dialog>
 </template>
