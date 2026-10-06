@@ -182,7 +182,6 @@ export class WebUiSvgDrawLines extends LitElement {
         })
       }
 
-      // Gap fix for paths ending with Z/z
       if (el.tagName === 'path') {
         const d = el.getAttribute('d')
         if (d && /[Zz]\s*$/.test(d) && !run.patchedD.has(el)) {

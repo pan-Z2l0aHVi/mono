@@ -68,9 +68,6 @@ export class WebUiLayout extends LitElement {
   @property({ type: Boolean, attribute: 'sidebar-open', reflect: true })
   sidebarOpen = false
 
-  /**
-   * 启用 header 晕染效果
-   */
   @property({ type: Boolean, attribute: 'header-glow', reflect: true })
   headerGlow = false
 

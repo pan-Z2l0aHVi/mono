@@ -160,7 +160,6 @@ class WebUiImagePreview extends LitElement {
     requestClose: () => this.close(),
     isConnected: () => this.isConnected
   })
-  /** 当前开启会话的句柄；未开启时为 null。 */
   private _handle: OpenOverlayHandle | null = null
   private readonly _presence = defineNativeDialogPresence().make({
     getDialog: () => this.dialog,
