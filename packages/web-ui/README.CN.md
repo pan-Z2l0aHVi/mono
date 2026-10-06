@@ -1346,6 +1346,8 @@ WebUiSpinner.hide() // 隐藏
 
 **事件：** `sidebar-collapsed-change`（`CustomEvent<{ collapsed: boolean }>`）用于请求更新桌面端折叠状态；`sidebar-open-change`（`CustomEvent<{ open: boolean }>`）用于请求更新移动端 Drawer 打开状态；`sidebar-width-change`（`CustomEvent<{ width: string }>`）用于请求在拖拽调整结束后更新侧边栏宽度。Consumer 必须将请求值回写到对应的受控属性。
 
+**折叠只作用于桌面端：** `sidebar-collapsed` 只收窄桌面端侧边栏，布局不对移动端 Drawer 施加任何折叠几何。两条分支承载的是同一份 `sidebar` 插槽内容，所以侧边栏内容密度跟着该属性变的 Consumer 必须按视口收窄这个条件（例如 `collapsed && !isMobile`），否则桌面的折叠偏好会一路渲染进 Drawer。见 issue #195。
+
 **侧边栏调整宽度：** 启用 `sidebar-resizable` 后，桌面端侧边栏右边缘会出现调整手柄（折叠状态下隐藏）；悬停或拖拽时显示 3px 宽的强调色垂直线和 `col-resize` 光标。
 
 - 拖拽时实时更新宽度（禁止过渡动画，限制在 `[min, max]` 和视口范围内）。

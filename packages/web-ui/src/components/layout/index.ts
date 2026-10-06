@@ -34,6 +34,10 @@ export class WebUiLayout extends LitElement {
    *
    * `true` 只会将桌面 Sidebar 收窄到 `collapsedWidth`，不会影响移动端 Drawer。
    * 它不与 `sidebarOpen` 合并：前者是跨视口保留的密度选择，后者是移动端瞬时的 modal 可见性。
+   *
+   * 两处渲染的是同一份 `sidebar` slot 内容，所以本属性只负责桌面 aside 的几何：Consumer
+   * 若让自己的 slot 内容跟着它变形态（隐藏标签、改排布），必须自行按视口收窄那个条件，
+   * 否则折叠态会一路渲染进移动端 Drawer（issue #195）。
    */
   @property({ type: Boolean, attribute: 'sidebar-collapsed', reflect: true })
   sidebarCollapsed = false

@@ -1383,6 +1383,8 @@ Responsive page layout with an optional full-width banner, a collapsible desktop
 
 **Events:** `sidebar-collapsed-change` (`CustomEvent<{ collapsed: boolean }>`) requests a desktop collapse-state update. `sidebar-open-change` (`CustomEvent<{ open: boolean }>`) requests a mobile drawer open-state update. `sidebar-width-change` (`CustomEvent<{ width: string }>`) requests a sidebar width update after a resize drag ends. Consumers must write the requested value back to the corresponding controlled property.
 
+**Desktop-only collapse:** `sidebar-collapsed` only narrows the desktop sidebar; the layout applies no collapsed geometry to the mobile drawer. Both branches host the same `sidebar` slot content, so a consumer whose sidebar content changes density with that property must gate it on the viewport (for example `collapsed && !isMobile`) — otherwise a collapsed desktop preference renders inside the drawer. See issue #195.
+
 **Sidebar resize:** With `sidebar-resizable`, a resize handle appears on the desktop sidebar's right edge (hidden while collapsed); hovering or dragging shows a 3px accent vertical line with a `col-resize` cursor.
 
 - Dragging updates the width in real time (transition suppressed, clamped to `[min, max]` and the viewport).

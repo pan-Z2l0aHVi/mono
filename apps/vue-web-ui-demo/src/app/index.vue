@@ -49,6 +49,14 @@ const mobileSidebarQuery = window.matchMedia('(max-width: 640px)')
 const isMobileSidebarViewport = ref(mobileSidebarQuery.matches)
 const desktopSidebarWidth = ref(getInitialSidebarWidth())
 const sidebarWidth = computed(() => (isMobileSidebarViewport.value ? mobileSidebarWidth : desktopSidebarWidth.value))
+
+/*
+ * 折叠是桌面端的密度偏好，移动端 drawer 恒以展开态呈现同一份导航：drawer 宽
+ * min(320px, 80vw)，套用折叠态会把标签挤成居中截断。web-ui-layout 的
+ * `sidebar-collapsed` 契约同样写明它「不会影响移动端 Drawer」，它只是无从替
+ * Consumer 决定 slot 内容怎么渲染，所以闸门留在这里。
+ */
+const navCollapsed = computed(() => sidebarCollapsed.value && !isMobileSidebarViewport.value)
 function syncMobileSidebarViewport() {
   isMobileSidebarViewport.value = mobileSidebarQuery.matches
 }
@@ -214,15 +222,13 @@ function isNavActive(path: string) {
               :class="[
                 navItemClass,
                 isNavActive(item.path) ? '' : 'hover:bg-black/4 dark:hover:bg-white/6',
-                sidebarCollapsed ? 'justify-center' : ''
+                navCollapsed ? 'justify-center' : ''
               ]"
               :data-active="isNavActive(item.path)"
               :aria-current="isNavActive(item.path) ? 'page' : undefined"
               :aria-label="item.label"
             >
-              <span
-                :class="sidebarCollapsed ? 'w-full truncate text-center text-sm' : 'min-w-0 flex-1 truncate text-sm'"
-              >
+              <span :class="navCollapsed ? 'w-full truncate text-center text-sm' : 'min-w-0 flex-1 truncate text-sm'">
                 {{ item.label }}
               </span>
             </RouterLink>

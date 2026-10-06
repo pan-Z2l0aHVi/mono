@@ -16,6 +16,14 @@ const desktopSidebarWidth = ref('240px')
 const mobile = useMediaQuery('(max-width: 640px)')
 const sidebarWidth = computed(() => (mobile.value ? 'min(320px, 80vw)' : desktopSidebarWidth.value))
 
+/*
+ * 折叠是**桌面端**的密度偏好，移动端 drawer 恒以展开态呈现同一份导航：drawer 宽
+ * min(320px, 80vw)，套用折叠态会把标签挤掉（collapsed 为真时 AppNav 不渲染文字）。
+ * web-ui-layout 的 `sidebar-collapsed` 契约同样写明它「不会影响移动端 Drawer」，
+ * 它只是无从替 Consumer 决定 slot 内容怎么渲染，所以闸门留在这里。
+ */
+const navCollapsed = computed(() => sidebarCollapsed.value && !mobile.value)
+
 function updateSidebarCollapsed(event: WebUiEvent<WebUiLayout, 'sidebar-collapsed-change'>) {
   sidebarCollapsed.value = event.detail.collapsed
 }
@@ -61,12 +69,7 @@ function closeSidebar() {
     @sidebar-open-change="updateSidebarOpen"
     @sidebar-width-change="updateSidebarWidth"
   >
-    <AppNav
-      slot="sidebar"
-      :collapsed="sidebarCollapsed"
-      @navigate="closeSidebar"
-      @open-settings="settingsOpen = true"
-    />
+    <AppNav slot="sidebar" :collapsed="navCollapsed" @navigate="closeSidebar" @open-settings="settingsOpen = true" />
 
     <RouterView />
   </web-ui-layout>
